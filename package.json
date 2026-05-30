@@ -10,7 +10,7 @@
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "build:web": "pnpm --filter ./frontend build",
-    "build:api": "cd backend && go build -o bin/server ./cmd/server"
+    "build:api": "cd backend && go build -o bin/api ./cmd/api"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

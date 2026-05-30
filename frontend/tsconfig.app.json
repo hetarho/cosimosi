@@ -15,6 +15,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* FSD path alias (TS 6+: paths resolve relative to this tsconfig) */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
