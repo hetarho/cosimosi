@@ -1,0 +1,84 @@
+name: cosimosi
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cosimosi-postgres
+    environment:
+      POSTGRES_USER: cosimosi
+      POSTGRES_PASSWORD: cosimosi
+      POSTGRES_DB: cosimosi
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations/0001_init.up.sql:/docker-entrypoint-initdb.d/0001_init.up.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cosimosi -d cosimosi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: cosimosi-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minio minio12345 &&
+      mc mb --ignore-existing local/artworks &&
+      mc anonymous set download local/artworks
+      "
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cosimosi-backend
+    profiles: ["dev"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
+      CORS_ORIGIN: http://localhost:1214
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: artworks
+      S3_ACCESS_KEY: minio
+      S3_SECRET_KEY: minio12345
+      S3_USE_PATH_STYLE: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+      - backend_go_mod:/go/pkg/mod
+      - backend_tmp:/app/tmp
+
+volumes:
+  postgres_data:
+  minio_data:
+  backend_go_mod:
+  backend_tmp:

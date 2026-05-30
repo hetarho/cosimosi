@@ -1,0 +1,22 @@
+{
+  "name": "cosimosi",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Mood-as-art diary, WebGL composition playground",
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,magenta \"pnpm --filter ./frontend dev\" \"pnpm run dev:api\"",
+    "dev:api": "docker compose --profile dev up backend",
+    "dev:web": "pnpm --filter ./frontend dev",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "build:web": "pnpm --filter ./frontend build",
+    "build:api": "cd backend && go build -o bin/server ./cmd/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "packageManager": "pnpm@10.26.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
