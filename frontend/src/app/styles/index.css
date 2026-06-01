@@ -1,15 +1,70 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@theme {
+  /* 깊은 우주 배경 */
+  --color-space-900: #050510;
+  --color-space-800: #0a0a1f;
+  --color-space-700: #12122e;
+
+  /* 감정 → 색 팔레트 (shared/config/palette.ts와 동일 값) */
+  --color-mood-violet: #7f77dd;
+  --color-mood-teal: #1d9e75;
+  --color-mood-coral: #d85a30;
+  --color-mood-pink: #d4537e;
+  --color-mood-amber: #ef9f27;
+
+  /* 타이포 */
+  --font-display: "Iowan Old Style", ui-serif, Georgia, "Noto Serif KR", serif;
+  --font-sans: ui-sans-serif, system-ui, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+
 :root {
   color-scheme: dark;
 }
 
-html, body, #root {
-  height: 100%;
+html {
+  scroll-behavior: smooth;
+}
+
+body {
   margin: 0;
+  min-height: 100%;
   background: #050510;
   color: #f5f5fa;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  overflow: hidden;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@layer components {
+  /* 글래스모피즘 카드 — GlassCard가 사용 */
+  .glass {
+    background: color-mix(in oklab, white 7%, transparent);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid color-mix(in oklab, white 14%, transparent);
+    box-shadow:
+      0 24px 70px -28px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 0 color-mix(in oklab, white 10%, transparent);
+  }
+}
+
+/* 접근성: 모션 줄이기. (motion JS 애니메이션은 각 컴포넌트의 useReducedMotion으로 별도 처리) */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

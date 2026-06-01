@@ -109,7 +109,9 @@ app  ──►  pages  ──►  widgets  ──►  features  ──►  entit
 ### 2.6 네이밍 (유지)
 
 - 슬라이스/폴더: `kebab-case`, **단수** 기본 (`star`, not `stars`).
-- 파일: `kebab-case`. React 컴포넌트 export: `PascalCase`, 가능한 한 named export.
+- **컴포넌트 파일: `PascalCase`** (`HeroSection.tsx`, `GlassCard.tsx`) — 기존 `App.tsx`·`HomePage.tsx`와 일관.
+- 비컴포넌트 모듈(훅·스토어·유틸·설정·`index.ts`): `kebab-case`/`camelCase` (`use-record-mood.ts`, `query-client.ts`).
+- React 컴포넌트 export 이름: `PascalCase`, 가능한 한 named export.
 
 ### 2.7 렌더링 스택 — R3F 9 + WebGPURenderer + TSL (확정)
 
@@ -325,7 +327,7 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 | 로깅/에러 | Structured logging + Sentry | |
 | 객체 스토리지 | **MVP 미사용** | 일기 텍스트만. MinIO/S3 코드는 휴면(썸네일 필요 시 부활). |
 
-> 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Hetzner 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계).
+> 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Hetzner 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계). **CI/CD·실배포(develop→스테이징, main→프로덕션 자동 배포)는 [plan/14.deploy-cicd.md](plan/14.deploy-cicd.md)** 에서 전개한다.
 
 ---
 

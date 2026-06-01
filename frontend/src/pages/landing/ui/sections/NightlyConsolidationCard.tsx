@@ -1,0 +1,174 @@
+import { useEffect, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
+import { GlassCard } from '@/shared/ui'
+import { cn } from '@/shared/lib'
+import { MOOD } from '@/shared/config'
+
+const ACCENT = MOOD.violet
+
+/** stage 0=대기, 1=재활성화, 2=재분배, 3=요지추출, 4=가지치기/완료 */
+const STAGES = [
+  { label: '잠들기 전 — 최근 기억의 작은 성단', tag: '대기' },
+  { label: '재활성화 — 낮의 별들이 다시 깜빡인다', tag: '1 · REACTIVATION' },
+  { label: '재분배 — 별들이 큰 구조의 중심으로 모인다', tag: '2 · REDISTRIBUTION' },
+  { label: '요지 추출 — 디테일을 덜어 핵심만 남긴다', tag: '3 · GIST' },
+  { label: '가지치기 — 약한 연결을 정리하고 마무리', tag: '4 · PRUNING' },
+] as const
+
+const CX = 80
+const CY = 55
+
+/** 별 5개: 시작 좌표(흩어짐) + 중심 방향(재분배 후) */
+const STARS = [
+  { x: 24, y: 24, r: 5.5, weak: false },
+  { x: 132, y: 30, r: 4.5, weak: true },
+  { x: 30, y: 86, r: 4, weak: true },
+  { x: 128, y: 84, r: 5, weak: false },
+  { x: 78, y: 18, r: 4.5, weak: false },
+] as const
+
+/** 라인: 두 별 인덱스 + 약한 연결 여부(가지치기 대상) */
+const LINKS = [
+  { a: 4, b: 0, weak: false },
+  { a: 4, b: 1, weak: true },
+  { a: 0, b: 2, weak: true },
+  { a: 4, b: 3, weak: false },
+  { a: 0, b: 4, weak: false },
+] as const
+
+const lerp = (from: number, to: number, t: number) => from + (to - from) * t
+
+export function NightlyConsolidationCard() {
+  const reduce = useReducedMotion()
+  const [stage, setStage] = useState(0)
+  const [running, setRunning] = useState(false)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  useEffect(() => {
+    return () => {
+      timers.current.forEach(clearTimeout)
+      timers.current = []
+    }
+  }, [])
+
+  const runNight = () => {
+    timers.current.forEach(clearTimeout)
+    timers.current = []
+    if (reduce) {
+      setStage(4)
+      setRunning(false)
+      return
+    }
+    setRunning(true)
+    setStage(1)
+    ;[2, 3, 4].forEach((next, i) => {
+      timers.current.push(
+        setTimeout(() => {
+          setStage(next)
+          if (next === 4) setRunning(false)
+        }, (i + 1) * 1100),
+      )
+    })
+  }
+
+  // 단계별 보간 진행도
+  const gather = stage >= 2 ? 1 : 0 // 중심으로 모임
+  const gist = stage >= 3 ? 1 : 0 // 단순·축소
+  const pulse = stage === 1 // 재활성화 펄스
+  const pruned = stage >= 4 // 약한 라인 fade
+
+  return (
+    <GlassCard className="flex flex-col gap-4 p-6 sm:p-8" style={{ borderColor: `${ACCENT}33` }}>
+      <span className="text-xs uppercase tracking-widest text-mood-violet/80">SLEEP CONSOLIDATION</span>
+      <h3 className="font-display text-xl text-white/90 sm:text-2xl">우주의 수면 — 야간 공고화</h3>
+      <p className="text-sm leading-relaxed text-white/60">
+        수면 중 뇌는 최근의 별들을 다시 깜빡여(재활성화) 더 큰 기억 구조로 재분배하고, 흐릿한 디테일은 요지로
+        추리며, 약한 연결은 가지치기합니다. 원본 일기는 그대로 둔 채, 별자리만 다시 정돈되는 밤입니다.
+      </p>
+
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
+        <svg viewBox="0 0 160 110" className="block w-full" role="img" aria-label="야간 공고화 시뮬레이션">
+          <defs>
+            <radialGradient id="nc-glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={ACCENT} stopOpacity={0.9} />
+              <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
+            </radialGradient>
+          </defs>
+
+          {/* 연결선 */}
+          {LINKS.map((l, i) => {
+            const a = STARS[l.a]
+            const b = STARS[l.b]
+            const ax = lerp(a.x, CX, l.a === 4 ? 0 : gather * 0.55)
+            const ay = lerp(a.y, CY, l.a === 4 ? 0 : gather * 0.55)
+            const bx = lerp(b.x, CX, l.b === 4 ? 0 : gather * 0.55)
+            const by = lerp(b.y, CY, l.b === 4 ? 0 : gather * 0.55)
+            const faded = l.weak && pruned
+            return (
+              <motion.line
+                key={`l-${i}`}
+                x1={ax}
+                y1={ay}
+                x2={bx}
+                y2={by}
+                stroke={ACCENT}
+                strokeWidth={l.weak ? 0.6 : 1.1}
+                strokeLinecap="round"
+                animate={{ opacity: faded ? 0 : l.weak ? 0.35 : 0.7 }}
+                transition={{ duration: reduce ? 0 : 0.6 }}
+              />
+            )
+          })}
+
+          {/* 별 */}
+          {STARS.map((s, i) => {
+            const tx = lerp(s.x, CX, gather * 0.55)
+            const ty = lerp(s.y, CY, gather * 0.55)
+            const radius = s.r * (1 - gist * 0.4) // 요지 추출 시 축소
+            return (
+              <motion.g
+                key={`s-${i}`}
+                animate={{ x: tx - s.x, y: ty - s.y }}
+                transition={{ duration: reduce ? 0 : 0.8, ease: 'easeInOut' }}
+              >
+                {(pulse || i === 4) && (
+                  <motion.circle
+                    cx={s.x}
+                    cy={s.y}
+                    r={radius + 4}
+                    fill="url(#nc-glow)"
+                    animate={pulse ? { opacity: [0.2, 0.7, 0.2], scale: [1, 1.25, 1] } : { opacity: 0.25 }}
+                    transition={pulse ? { duration: 0.9, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.4 }}
+                    style={{ transformOrigin: `${s.x}px ${s.y}px` }}
+                  />
+                )}
+                <motion.circle
+                  cx={s.x}
+                  cy={s.y}
+                  fill="#dfe3ff"
+                  animate={{ r: radius, opacity: gist && s.weak ? 0.5 : 0.95 }}
+                  transition={{ duration: reduce ? 0 : 0.6 }}
+                />
+              </motion.g>
+            )
+          })}
+        </svg>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs leading-relaxed text-white/40">{STAGES[stage].label}</p>
+        <button
+          type="button"
+          onClick={runNight}
+          disabled={running}
+          className={cn(
+            'shrink-0 rounded-full border border-mood-violet/40 px-4 py-1.5 text-xs font-medium text-white/90 transition',
+            running ? 'cursor-default opacity-50' : 'hover:border-mood-violet/70 hover:bg-mood-violet/10',
+          )}
+        >
+          {stage === 0 ? '밤 보내기' : running ? STAGES[stage].tag : '다시'}
+        </button>
+      </div>
+    </GlassCard>
+  )
+}
