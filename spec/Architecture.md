@@ -1,0 +1,376 @@
+# cosimosi Architecture
+
+이 문서는 cosimosi 프로젝트의 코드 구조와 그 결정 근거를 정리한다.
+[concept.md](concept.md)가 "무엇을 만드는가(엔그램 우주)"라면, 이 문서는 **"어떻게 만드는가"**다. 작업 진행 상태와 단계별 체크리스트는 [plan/](plan/)의 번호별 스펙.
+
+요지는 세 줄이다.
+
+- **프론트엔드**: [Feature-Sliced Design (FSD)](https://feature-sliced.design/) — 공식 사양 v2. 렌더링은 **React Three Fiber 9 + three.js `WebGPURenderer` + TSL**(WebGL2 자동 폴백).
+- **백엔드**: Go의 **package-by-feature + 헥사고날 규율**. 데이터는 **sqlc + pgvector + 가중치 그래프(memory_links)**, API는 **Connect RPC + Protobuf**, AI는 **공급자 추상화 + 비동기 워커**.
+- **모바일**: **React Native** 트랙(deferred). 웹과 도메인·상태·시뮬레이션·셰이더·API 클라이언트를 공유하도록 지금부터 구조를 격리한다.
+
+> 이 문서는 **결정 사항의 기록**이다. 실제 인프라 구성·마이그레이션·코드 작성은 [plan/](plan/)의 번호별 스펙(체크박스)을 따라 진행한다.
+
+---
+
+## 0. 무엇이 바뀌었나 (솔라시스템 → 엔그램 피벗)
+
+초기 cosimosi는 "나=태양, 감정=행성" 태양계 메타포였다. 본 문서 기준으로 **엔그램 우주**(기억=별, 시냅스=가중치 선, 회상으로 강화, 시간으로 감쇠)로 **완전 전환**한다. 스택 결정은 2026년 상반기 생태계 사실로 재검증했고 결과는 다음과 같다.
+
+| 영역 | 이전 | 현재 (확정) | 근거 요약 |
+|---|---|---|---|
+| 컨셉 | 태양계/행성 | **엔그램 우주/별·시냅스** | concept.md |
+| 프론트 3D | R3F (WebGL) | **R3F 9 유지 + WebGPURenderer + TSL** | force-graph 생태계가 React 1차 타깃(d3-force-3d→three-forcegraph→r3f-forcegraph). WebGPU=성능 천장+모바일(react-native-webgpu) 재사용. WebGL2 폴백으로 안전 |
+| DB 접근 | sqlc | **sqlc 유지 + pgvector + 얇은 pgx** | pgvector 유사도·재귀 CTE·원자적 가중치 강화는 raw SQL의 본진. sqlc v1.23+가 `vector`를 `pgvector.Vector`로 자동 생성 |
+| API | Echo REST + 수기 DTO | **Connect RPC + Protobuf (unary 전용)** | 버릴 코드 없는 유일한 전환 창. proto=그래프 페이로드 단일 계약, 웹/RN TS 클라 공유. 단 RN은 unary만 지원 → 스트리밍 미사용 |
+| 인프라 | AWS + MinIO | **Supabase + Hetzner + Cloudflare** | 관리형 pgvector + 소셜 Auth로 솔로 운영부담 최소 |
+| 모바일 | Flutter 3D | **React Native (deferred)** | Flutter는 웹 React 코드 0% 공유. RN은 도메인·상태·셰이더·R3F 씬까지 공유 |
+| AI | 없음 | **공급자 추상화 + 비동기 워커** | 어떤 LLM/임베딩도 교체 가능한 포트 |
+
+---
+
+## 1. 한눈에
+
+```
+cosimosi/
+├── spec/                      ← 기획·아키텍처·작업 스펙
+│   ├── concept.md             ← 비전(엔그램 우주) — 무엇을/왜
+│   ├── Architecture.md        ← 이 문서 — 어떻게
+│   └── plan/                  ← 번호별 작업 스펙(체크박스). 00.overview.md가 색인
+├── proto/                     ← .proto 단일 계약 (Connect RPC) — 신설 예정
+├── frontend/                  ← React 19 + Vite 8 + R3F 9 (WebGPU+TSL) + Zustand (FSD)
+│   └── src/
+│       ├── app/               ← 진입점·프로바이더·전역 스타일
+│       ├── pages/             ← 라우트 단위 화면
+│       ├── widgets/           ← 자족적 큰 UI 블록 (예: universe-canvas)
+│       ├── features/          ← 사용자 행동 (예: record-memory, recall)
+│       ├── entities/          ← 도메인 객체 (memory, star, synapse)
+│       └── shared/            ← 도메인 무관 공용 (ui, lib/force-sim, lib/shaders, lib/r3f, api, config)
+└── backend/                   ← Go 1.26 + connect-go + pgx + sqlc + pgvector (package-by-feature)
+    ├── cmd/api/               ← 컴포지션 루트 (HTTP/RPC 서버)
+    ├── cmd/worker/            ← 비동기 AI 파이프라인 워커 — 신설 예정
+    └── internal/
+        ├── memory/            ← 기능: 기억(별) — 일기 원본·분류·비주얼
+        ├── link/              ← 기능: 시냅스(가중치 그래프)
+        ├── ai/                ← 공급자 추상화 (Embedder, Extractor 포트 + 어댑터)
+        ├── job/               ← 비동기 작업 큐
+        ├── platform/          ← config, postgres, rpcserver (인프라)
+        └── db/                ← sqlc 입력(queries, migrations) + 출력(gen)
+```
+
+**의존 방향은 양쪽 모두 한쪽으로만 흐른다.** 프론트는 `app → pages → widgets → features → entities → shared`, 백엔드는 `RPC 핸들러 → service → repository(인터페이스) → 도메인`으로 안쪽으로만.
+
+> `proto/`, `cmd/worker/`, `internal/{link,ai,job}`은 **신설 예정**이다. 현재 코드베이스는 `internal/entry`(→`memory`로 진화), Echo 기반 `/health`+`GET /entries`, `entries` 테이블만 존재한다(상세는 plan/ 스펙).
+
+---
+
+## 2. 프론트엔드: Feature-Sliced Design + 엔그램 렌더링
+
+### 2.1 왜 FSD인가 (유지)
+
+- **명시적 사양이 있다.** 공식 사이트가 레이어·임포트 규칙·세그먼트 이름을 못 박는다. 검증 가능한 구조.
+- **R3F·Zustand·feature-rich SPA와 잘 맞는다.** 자족적 큰 UI 블록(`<Canvas>`)이 `widgets`에 정확히 들어간다.
+- **확장이 선형적이다.** 별·시냅스·뷰·상호작용이 늘어도 슬라이스/세그먼트를 더하며 평탄하게 자란다.
+
+### 2.2 6 레이어 (위 → 아래)
+
+| 레이어 | 한 줄 정의 | 엔그램 예시 |
+|---|---|---|
+| **`app`** | 라우팅·진입점·프로바이더·전역 스타일 | `App.tsx`, `styles/index.css` |
+| **`pages`** | 라우트 단위 화면 | `home`(우주), `dormant`(잠든 별 탐색) |
+| **`widgets`** | 자족적 큰 UI 블록 | `universe-canvas` (R3F `<Canvas>` + WebGPU 렌더러 + 씬 셸) |
+| **`features`** | 사용자에게 가치를 주는 행동 | `record-memory`(일기 작성), `recall`(별 회상·강화) |
+| **`entities`** | 도메인 객체 | `memory`(기억), `star`(별 시각), `synapse`(시냅스 시각) |
+| **`shared`** | 도메인 무관 재사용 | `ui`, `lib/force-sim`, `lib/shaders`, `lib/r3f`, `api`, `config` |
+
+> `processes`는 deprecated — 쓰지 않는다. 모든 레이어를 다 쓸 필요는 없다(필요할 때만 추가).
+
+### 2.3 임포트 방향 규칙 (가장 중요, 유지)
+
+```
+app  ──►  pages  ──►  widgets  ──►  features  ──►  entities  ──►  shared
+```
+
+- 화살표는 임포트 방향. 위에서 아래로만.
+- 같은 레이어 다른 슬라이스끼리는 원칙적으로 임포트 금지(`entities` 간 `@x` 예외는 공식 Public API 문서 참조).
+- `app`·`shared`는 슬라이스 없이 어디서든 참조 가능.
+- 추후 `eslint-plugin-boundaries`/`@feature-sliced/steiger`로 강제.
+
+### 2.4 슬라이스 + 세그먼트 (유지)
+
+- **슬라이스**: 도메인 어휘 폴더(`star`, `universe-canvas`, `record-memory`).
+- **세그먼트**: 기술적 성격 폴더 — `ui`(컴포넌트·셰이더 바인딩), `model`(타입·스토어·로직, **Zustand는 여기**), `api`(백엔드 호출·매퍼), `lib`(슬라이스 내부 전용), `config`.
+- `components/`·`hooks/`·`types/` 같은 일반 이름 금지(공식 안티패턴).
+
+### 2.5 Public API 규칙 (유지)
+
+슬라이스는 자신의 `index.ts`로만 외부 노출. 슬라이스 내부 파일을 외부에서 직접 임포트 금지. **와일드카드 배럴(`export *`) 금지** — 노출 심볼만 명시.
+
+### 2.6 네이밍 (유지)
+
+- 슬라이스/폴더: `kebab-case`, **단수** 기본 (`star`, not `stars`).
+- 파일: `kebab-case`. React 컴포넌트 export: `PascalCase`, 가능한 한 named export.
+
+### 2.7 렌더링 스택 — R3F 9 + WebGPURenderer + TSL (확정)
+
+엔그램 우주는 본질이 **force-directed 그래프 시각화**(수천 별 인스턴싱 + 수천 fat-line 시냅스 + 매 프레임 갱신)다. 이 워크로드의 사실상 표준 생태계(`d3-force-3d` → `three-forcegraph` → `r3f-forcegraph`)는 전부 React 1차 타깃이라 **R3F 9를 유지**한다.
+
+렌더러는 **three.js `WebGPURenderer`** 를 채택한다.
+
+- **이유:** 드로우콜 오버헤드가 작아 대규모 그래프에 유리하고, compute 셰이더로 시뮬레이션 오프로딩 여지가 있으며, **모바일(react-native-webgpu)이 같은 WebGPU**라 웹/모바일이 한 미래로 수렴한다.
+- **안전망:** `WebGPURenderer`는 WebGPU 미지원 환경에서 **WebGL2로 자동 폴백**한다. 2026년 기준 주요 브라우저가 WebGPU 정식 지원.
+- **셰이더는 TSL(Three Shading Language)로 작성한다.** TSL은 한 번 작성하면 WebGPU(WGSL)·WebGL2(GLSL) 양쪽으로 자동 컴파일 → **웹↔모바일 셰이더 공유**, GLSL→TSL 재작업 없음.
+- **포스트프로세싱(Bloom):** WebGL 전용인 `@react-three/postprocessing` 대신 **three.js 노드 기반 후처리(`PostProcessing` + `bloom` 노드)** 를 쓴다. (현재 `package.json`의 `@react-three/postprocessing`은 이 전환에서 제거 대상 — plan/ 스펙에서 처리)
+- **R3F 연결:** `<Canvas>`의 `gl`에 비동기로 `WebGPURenderer`를 생성·`await renderer.init()` 후 반환한다.
+- **drei 갭:** 일부 WebGL 전제 헬퍼·`Html`/`Loader`는 WebGPU/모바일에서 제약이 있다. **씬 안에 DOM `Html`을 넣지 않는다** — 라벨/HUD는 three 오브젝트(Sprite/Troika 텍스트) 또는 별도 2D HUD widget으로 분리(모바일 이식성).
+
+### 2.8 성능 아키텍처 — 시뮬레이션 분리 · 렌더러 격리 · 인스턴싱 (확정)
+
+> **연구 핵심 인사이트:** "렌더러 0.x% 차이보다 **force-directed 시뮬레이션 오프로딩**과 **InstancedMesh 배칭**이 체감 성능을 훨씬 좌우한다." 따라서 다음을 처음부터 구조에 박는다.
+
+1. **시뮬레이션을 렌더에서 분리.** `shared/lib/force-sim`에 **순수 `tick(dt)` 모듈**로 둔다. 입력=노드/엣지 배열, 출력=좌표 `Float32Array`. 내부에 `requestAnimationFrame`/`useFrame`을 넣지 않는다. 수천 노드는 O(N²)을 피해 **Barnes-Hut quadtree** 사용. 웹은 **Web Worker**, 추후 모바일은 worklet/WebGPU compute로 호출만 바꾼다.
+2. **렌더는 좌표를 받아 그리기만.** `useFrame`에서 `InstancedMesh.matrix`/셰이더 uniform만 갱신한다. **React state로 60fps 구동 금지**(리렌더 폭발).
+3. **인스턴싱·배칭 우선.** 별 = `InstancedMesh`(수천 노드를 소수 draw call), 시냅스 = `Line2`/배칭(가변 두께 fat-line). 처음부터 이 전제로 설계.
+4. **렌더러 추상화 경계(port).** `shared`에 도메인 중립 그래프 모델(`StarNode`/`SynapseEdge`)과 `GraphRenderer` 포트를 정의하고, R3F 구현은 `widgets/universe-canvas`·`entities/*/ui`에만 가둔다. **도메인 코드가 `three`/R3F 타입을 직접 import하지 않게** 한다 → 모바일에서 WebGPU/Filament로 바꿔도 포트 구현만 교체.
+
+### 2.9 R3F 컴포넌트 배치 (엔그램)
+
+| 무엇 | 어디 | 이유 |
+|---|---|---|
+| `<Canvas>` + WebGPU 렌더러 + 조명·카메라·Bloom 노드 | **widgets** — `widgets/universe-canvas/ui/UniverseCanvas.tsx` | 자족적 큰 UI 블록 |
+| 별 인스턴스 렌더 + TSL 머티리얼 | **entities** — `entities/star/ui/StarField.tsx` | 도메인 시각화. **생성 오브젝트의 고유함은 per-instance 시드(감정·강도·임베딩 파생)를 TSL에서 변형**해 표현 — 공유 지오메트리 + 인스턴싱을 유지하면서도 별마다 다른 형태·색(수천 노드 성능) |
+| 시냅스(fat-line) 렌더 + 가중치→두께/밝기 TSL | **entities** — `entities/synapse/ui/SynapseLines.tsx` | 도메인 시각화 |
+| 별 회상·강화, 근접 항해 | **features** — `features/recall/` | 사용자 가치 행동 |
+| force-sim, 셰이더 소스, 렌더러 셋업 | **shared/lib/{force-sim,shaders,r3f}** | 도메인 무관 |
+
+### 2.10 Zustand 스토어 위치 (유지)
+
+- 비즈니스 객체 상태(별 목록, 그래프, 선택된 별) → `entities/<entity>/model/`
+- 사용자 행동 상태(작성 드래프트, 현재 카메라 모드) → `features/<feature>/model/` 또는 widget의 `model`
+- 진짜 글로벌(테마, 세션) → `app/`
+- **스토어를 `lib`/`api`에 넣지 말 것.** 단, force-sim 결과 좌표 버퍼처럼 고빈도 데이터는 스토어 대신 ref/worker 메시지로(리렌더 회피).
+
+### 2.11 모바일 재사용 전략 — React Native 트랙 (확정, deferred)
+
+웹이 React/R3F이므로 모바일은 **React Native로 확정**(Flutter 폐기). Flutter는 `.proto` 계약 외 0% 공유라 사실상 앱을 두 번 만드는 것이고, RN은 도메인·상태·시뮬레이션·셰이더·R3F 씬 그래프·Connect 클라이언트까지 대부분 공유한다.
+
+**단 "렌더러 선택"을 "트랙 선택"에서 분리한다.** R3F 모바일 렌더러는 2026년 현재 과도기(`@react-three/fiber/native`(expo-gl)는 버전 충돌·성능 문제, `react-native-webgpu`는 production-capable-but-evolving)이므로:
+
+- **지금 확정:** 트랙 = RN + TS + Zustand + Connect(unary). 모노레포 승격 대비해 FSD 임포트 방향을 깨끗이 유지.
+- **모바일 착수 시 결정:** 렌더러. **목표는 `react-native-webgpu` + three `WebGPURenderer` + TSL**(웹과 동일). 출시 안정성이 급하면 `react-native-filament`(고성능·R3F 미재사용) 폴백 검토.
+- **지금 해야 할 일은 렌더러 교체 비용을 0에 가깝게 만드는 격리**(§2.8 port). 구체 규칙:
+  - `entities/*/model`·`shared/lib/{force-sim,shaders}`·`shared/api`·`shared/config` = **순수/공유 레이어**. `three`/React/DOM import 금지(셰이더는 TSL 소스로).
+  - `app`·`pages`·`widgets/ui`·`entities/*/ui` = **플랫폼 레이어**(렌더링·HUD). 플랫폼 분기는 여기서만(`*.native.tsx`). **`model`에는 `.native` 분기 금지.**
+  - 모바일 추가 시 `pnpm workspace`로 `packages/core`(공유) · `apps/web` · `apps/mobile`로 승격. 핵심: `ui→model` import OK, `model→ui/three/react` import 금지.
+- ⚠️ **Connect 스트리밍은 RN 미지원**(connect-es가 RN fetch 한계로 unary만). 따라서 회상 강화 등 실시간 갱신을 **서버 푸시 스트리밍으로 설계하지 않는다** → 클라 로컬 시뮬레이션 + unary 배치 영속(§3.4).
+
+---
+
+## 3. 백엔드: Package-by-Feature + 헥사고날 규율
+
+### 3.1 왜 sqlc인가 (유지·재확인)
+
+Go 커뮤니티 2025–2026 합의대로 풀 Clean Architecture/ORM 대신 **package-by-feature + sqlc**를 쓴다. 엔그램 피벗으로 이 결정은 **오히려 강화**된다 — 핵심 워크로드가 단순 CRUD가 아니라 **벡터 유사도·재귀 그래프·원자적 가중치 강화**라, ORM 추상화의 이득이 거의 없고 raw SQL의 통제가 정확히 필요하다.
+
+- **sqlc는 이미 repository다**(sqlc 이슈 #2467). 그 위에 ORM을 또 얹지 않는다.
+- **인터페이스는 소비자(서비스) 측에 선언**한다 — 관용적 Go.
+- sqlc **v1.23+**는 pgx/v5에서 `vector` 컬럼을 `pgvector.Vector`로 **자동 생성**(타입 오버라이드 불필요).
+- ⚠️ 스키마는 `vector(1536)` 비수식 형태로 선언(`public.vector(...)`는 이슈 #3548로 `interface{}` 생성).
+
+### 3.2 디렉터리 레이아웃
+
+```
+backend/
+├── cmd/
+│   ├── api/main.go            ← 컴포지션 루트(RPC/HTTP 서버). 와이어링은 여기서만.
+│   └── worker/main.go         ← 비동기 AI 파이프라인 워커 (신설 예정)
+├── internal/
+│   ├── memory/                ← 기능: 기억(별). 일기 원본·분류·비주얼 속성·활성도
+│   │   ├── memory.go          ← 도메인 (Memory, Mood, VisualSpec)
+│   │   ├── repository.go      ← Repository 인터페이스(소비자 측)
+│   │   ├── service.go         ← 비즈니스 로직
+│   │   ├── repository_pg.go   ← sqlc gen + 얇은 pgx (동적 쿼리)
+│   │   └── handler.go         ← Connect RPC 서비스 핸들러
+│   ├── link/                  ← 기능: 시냅스(가중치 그래프). 강화·감쇠·이웃 조회
+│   ├── ai/                    ← 공급자 추상화 (Embedder, Extractor 포트 + 어댑터)
+│   ├── job/                   ← 비동기 작업 큐 (enqueue/claim/complete)
+│   ├── platform/              ← config, postgres(pgxpool+pgvector 등록), rpcserver
+│   └── db/                    ← migrations(.up/.down), queries(*.sql), gen(sqlc 출력, 손대지 않음)
+├── proto/ 또는 ../proto       ← .proto 단일 계약 (Connect RPC)
+├── sqlc.yaml · buf.gen.yaml   ← 코드젠 설정
+└── go.mod
+```
+
+> DTO(`dto.go`)는 더 이상 손으로 쓰지 않는다 — **proto 생성 타입이 전송 계층 모델**이다(§3.4). S3 클라이언트(`platform/s3`)는 MVP에서 미사용(객체 스토리지 비활성 — §6).
+
+### 3.3 의존 방향 (가장 중요, 유지)
+
+```
+RPC 핸들러 ──► service ──► Repository(interface) ──► repository_pg ──► db/gen(sqlc) + 얇은 pgx
+                │
+                └─► 도메인 타입 (Memory, Link) — 무엇도 의존하지 않음
+```
+
+- **안쪽으로만.** 핸들러는 service를 알지만 그 반대는 모른다.
+- **기능 간 호출은 service ↔ service.** `link` 기능이 `memory` 데이터가 필요하면 `memory.Service` 인터페이스에 의존.
+- **proto 생성 타입·sqlc 생성 타입은 인프라.** 도메인은 둘 다 모른다. 핸들러가 proto↔도메인, `repository_pg`가 row↔도메인 매핑.
+
+### 3.4 API = Connect RPC + Protobuf (확정, Echo REST 대체)
+
+전송 계층을 **Connect RPC + Protobuf**로 전환한다. 지금이 버릴 코드가 없는 유일한 전환 창이며, 엔그램 페이로드(노드+가중치 엣지+진화하는 비주얼 속성)는 살아있는 그래프라 **protobuf 필드-번호 진화**가 수기 JSON DTO 동기화보다 안전하다.
+
+- **`.proto`가 단일 계약 원천.** `buf` + `protoc-gen-connect-go`/`protoc-gen-go`로 Go 서버, `protobuf-es`+`connect-es`로 TS 클라이언트 생성 → **웹·React Native 공유**(추후 Flutter는 connect-dart).
+- **proto = DTO 레이어.** 기존 "DTO vs 도메인 분리" 철학과 정합 — 도메인은 순수 유지, 핸들러가 proto↔도메인 매핑.
+- **unary 전용.** RN이 server-streaming을 지원하지 않으므로(§2.11) 스트리밍을 쓰지 않는다. **회상 강화는 클라 로컬 시뮬레이션 + unary 배치 업서트로 영속화**한다(폴링/스트리밍 불필요).
+- **idempotent unary는 HTTP GET** 으로 노출 가능 → 초기 그래프 로드를 Cloudflare CDN 캐시.
+- **서버 셋업:** connect-go 핸들러는 `http.Handler`이므로 `net/http` mux에 마운트한다. `h2c`로 평문 HTTP/2, `connectrpc.com/cors`로 CORS. **기존 Echo는 제거**(또는 `/health`만 남기는 얇은 mux로 대체) — `platform/rpcserver`로 재명명.
+- ⚠️ `connect-go`는 Go 1.25+ 요구(현재 빌드 이미지 `golang:1.26`이라 충족).
+- ⚠️ **Windows 호스트에서 `buf`/`protoc` .exe 직접 실행 금지**(Application Control 차단) → **Docker/WSL 안에서 codegen** 실행(기존 `sqlc`/`go`와 동일 패턴).
+
+### 3.5 데이터 계층 — sqlc + pgvector + 그래프 (확정)
+
+엔그램의 DB 책임은 세 가지이며 전부 raw SQL/sqlc의 강점이다.
+
+1. **벡터 유사도** — `ORDER BY embedding <=> $1 LIMIT k`. 새 기억을 top-k 최근접과 연결. **HNSW 인덱스**(`vector_cosine_ops`) 권장.
+2. **가중치 그래프** — `memory_links` 이웃 조회, top-N 강한 시냅스, `WITH RECURSIVE` N-홉 성단 추출.
+3. **원자적 강화(헵)** — `INSERT ... ON CONFLICT (a_id,b_id) DO UPDATE SET weight = LEAST(1.0, memory_links.weight + EXCLUDED.weight)`. 다건 강화는 **`UNNEST($1::text[],$2::text[],$3::float8[])` 배치 업서트**(`:copyfrom`은 COPY라 ON CONFLICT 불가).
+
+- **얇은 pgx 보강:** 런타임에 홉 수/필터가 바뀌는 **동적 N-홉 순회·동적 정렬**만 `repository_pg.go` 내부에서 pgx로 직접 작성(sqlc 정적 생성과 안 맞는 부분). 정적 쿼리는 전부 sqlc.
+- **pgvector 등록:** pgx 풀 after-connect 훅에서 `pgvector-go`의 타입을 등록(`pgxvec.RegisterTypes`)하거나 sqlc 자동 매핑 사용.
+- **마이그레이션 도구:** 현재 컨테이너 첫 기동 마운트 방식. `memory_links`/HNSW 인덱스 추가가 두 번째 마이그레이션이므로 이 시점에 **goose** 도입(plan/ 스펙).
+
+### 3.6 비동기 워커 (확정)
+
+일기 저장은 즉시 응답하고, AI 파이프라인은 백그라운드에서 돈다.
+
+```
+[동기] 일기 작성 → RPC → memory 원본 저장 → job 큐 적재 → "별 생성 중" 응답
+[비동기 worker]
+   job claim → Embedder.Embed(text) → pgvector 저장
+            → (v1) Extractor.Extract(text) → 분류·개체·비주얼
+            → top-k 최근접 조회 → link 생성(초기 weight)
+            → job complete
+```
+
+- **큐:** `jobs` 테이블 기반(별도 브로커 없이). `SELECT ... FOR UPDATE SKIP LOCKED`로 워커가 안전하게 claim. (규모가 커지면 전용 큐로 진화.)
+- **워커는 별도 프로세스**(`cmd/worker`)이나 MVP에선 같은 바이너리의 고루틴으로 시작해도 됨(plan/ 스펙에서 택일).
+- **견고성:** 구조화 출력 강제 + 파싱 실패 재시도 + 범위 밖 값 폴백 + 지수 백오프. 실패한 job은 상태 보존.
+
+### 3.7 AI 공급자 추상화 (확정 — "어떤 LLM이든 교체 가능")
+
+AI는 **포트(인터페이스)** 뒤에 둔다. 도메인·서비스·워커는 포트에만 의존하고, 어댑터(OpenAI/DeepSeek/로컬 등)는 가장 바깥에서 주입한다.
+
+```go
+// internal/ai
+type Embedder interface {
+    Embed(ctx context.Context, text string) ([]float32, error) // 차원은 어댑터가 보장(기본 1536)
+}
+type Extractor interface { // v1: 일화/의미 분류·인물·장소·주제·비주얼 속성
+    Extract(ctx context.Context, text string) (Extraction, error)
+}
+```
+
+- **선택은 설정(config)으로.** `AI_EMBEDDER=openai`, `AI_EXTRACTOR=deepseek` 식. 차원이 바뀌면 임베딩 컬럼/인덱스 재생성이 필요하므로 차원은 설정에 고정·기록.
+- **MVP 범위:** **Embedder 필수**(연결의 핵심). **Extractor는 포트만 정의**하고 MVP는 no-op 또는 단순 기본 — 비주얼 속성은 감정/강도 기반 **결정론적 매핑**으로 대체. **LLM 추출(분류·개체·풍부한 비주얼)은 v1**에서 같은 포트로 슬롯인.
+- **비용 관리:** 건당 토큰 상한·호출 캐싱·일/월 상한 + 알림. 임베딩(저비용)과 LLM(고비용)을 분리 계측.
+
+### 3.8 흔한 함정 (유지·갱신)
+
+1. **sqlc 위에 또 손으로 Repository를 까는 것.** sqlc가 이미 repository다.
+2. **인터페이스를 구현부에 선언.** 소비자(service) 측에 둔다.
+3. **도메인 타입에 `json:`/`db:`/proto 태그.** 인프라가 도메인에 새겨진다. proto·row 타입은 별도.
+4. **`public.vector(n)`로 스키마 선언.** `vector(n)` 비수식으로(이슈 #3548).
+5. **회상 강화를 server-streaming으로 설계.** RN 미지원 — unary 배치로.
+6. **별 좌표를 서버가 권위 저장.** 좌표는 클라 force-sim에서 창발. 서버는 **가중치 그래프만** 권위. (안정화 좌표 캐싱은 선택적 최적화)
+7. **핸들러에 비즈니스 로직.** 핸들러는 얇게, 정책은 service.
+
+---
+
+## 4. 데이터 모델 (개념 수준)
+
+> 정확한 타입·인덱스는 마이그레이션에서 확정(plan/ 스펙). 여기서는 *무엇을 들고 있어야 하는지*.
+
+- **users** — 계정/세션. **Supabase Auth** 연동(소셜 로그인). MVP 단일 사용자 동안은 최소 컬럼.
+- **memories(별)** — `id`, `user_id`, `entry_date`, `body`(일기 원본), `mood`/`intensity`(선택, 비주얼용), `visual_spec`(JSONB), `last_recalled_at`, `created_at`. *(현재 `entries` 테이블이 이리로 진화 — `note`→`body`, `intensity` 추가, `artwork_spec`→`visual_spec`)*
+- **embeddings** — `memory_id`, `embedding vector(1536)`, `model`(어댑터/차원 기록). pgvector + HNSW.
+- **memory_links(시냅스)** — `a_id`, `b_id`(정규화: `a_id < b_id`로 무방향 1행), `weight`(0~1), `link_type`(semantic/temporal/entity/co_recall), `co_activation_count`, `last_activated_at`, `created_at`. PK `(a_id,b_id)`.
+- **jobs** — 비동기 작업 큐. `id`, `memory_id`, `kind`, `status`, `attempts`, `error`, 타임스탬프.
+
+> **희소성 원칙:** `memory_links`는 전체 비교가 아니라 top-k 최근접만 연결한다(생물학적으로도 엔그램은 희소).
+
+---
+
+## 5. 망각 모델 구현 (확정 — 구체 수치는 기본값, 튜닝 가능)
+
+concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔그램)** 을 다음과 같이 구현한다. **데이터도 우주의 별·시냅스도 절대 삭제·제거하지 않는다.** 감쇠는 **렌더 시 계산되는 밝기 상태**일 뿐이다.
+
+- **활성도 감쇠:** `activation(Δt) = exp(-λ · Δt_days)`, **반감기 30일** → `λ = ln2/30 ≈ 0.0231/day`. `Δt`는 `now - last_recalled_at`(별) / `last_activated_at`(연결).
+- **최소 밝기 바닥(floor):** 유효 밝기는 **`a_min = 0.05`로 바닥을 둔다 — 0이 되어 사라지지 않는다.** `a_min`까지 내려간 별·시냅스는 **"잠든(dormant) 상태"로 어둡게 계속 렌더링**되며(우주에서 제거하지 않음, `GetUniverse`는 전체 그래프 반환), 항해·클릭으로 접근 가능. 잠든 별은 별도 탐색(`ListDormant`)으로도 찾는다.
+- **유효 밝기:** 별 = `max(a_min, activation)`; 시냅스 = `weight · max(a_min, activation)`.
+- **연결 생성 초기 강도:** `w0 = clamp(α·cos_sim + β·temporal_bonus, 0, 1)`, 기본 `α=1.0`, `temporal_bonus`는 같은 주 `+0.3` 선형 감소. 연결 임계 `cos_sim ≥ τ = 0.75`, **top-k = 8**.
+- **공동 회상 강화(헵):** 함께 본 두 별의 연결 `weight += 0.05`(상한 1.0), `co_activation_count++`, `last_activated_at = now`. **별을 회상하면 `last_recalled_at = now`** → 잠들었던 별이 다시 켜짐(재공고화).
+- **셰이더 매핑(TSL):** 선 두께 `lerp(0.5px, 4px, weight·brightness)`, emissive `weight·brightness`, **펄스** `sin(time·f)·amp` (최근 강화된 연결일수록 amp↑). 별 크기 `f(intensity)`(결정론적), 색 = mood 팔레트, 밝기 = `max(a_min, activation)`(잠든 별도 은은한 잔광).
+- **계산 위치:** 활성도는 `last_*_at`로부터 **렌더 시 결정론적으로 계산**(서버가 매번 쓰지 않음). 강화/회상 이벤트만 unary 배치로 영속화.
+
+---
+
+## 6. 인프라 (확정 — 구성은 추후, 문서엔 결정만)
+
+| 레이어 | 선택 | 비고 |
+|---|---|---|
+| 웹 호스팅 | **Cloudflare Pages** | 정적 + 글로벌 CDN. unary GET 그래프 로드 캐시. |
+| 백엔드 | **Hetzner VPS** (Docker Compose) | Go API + worker. |
+| DB/Auth | **Supabase** (관리형 Postgres + pgvector + Auth) | 소셜 로그인·세션·관리형 벡터. ⚠️ Hetzner↔Supabase **리전 코로케이션**(지연 방지). |
+| 로컬 개발 | Docker Compose | postgres 이미지를 **pgvector 포함**(예: `pgvector/pgvector:pg16`)으로 교체. |
+| 로깅/에러 | Structured logging + Sentry | |
+| 객체 스토리지 | **MVP 미사용** | 일기 텍스트만. MinIO/S3 코드는 휴면(썸네일 필요 시 부활). |
+
+> 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Hetzner 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계).
+
+---
+
+## 7. 공통 컨벤션 (유지)
+
+- **언어:** 한국어(UI 카피·문서), 영어(코드·식별자).
+- **Git 커밋:** Conventional Commits — 영문 제목 / 한글 본문. 의미 단위로 작게.
+- **포맷팅:** 프론트 ESLint, 백엔드 `gofmt`.
+- **시간:** UTC 저장, 표시 시 사용자 로컬 변환.
+- **ID:** 백엔드에서 `TEXT` PK(UUID 또는 nanoid). 클라이언트는 ID를 만들지 않는다.
+- **Windows:** 사용자 디렉터리 .exe가 Application Control로 차단됨 → `go`/`sqlc`/`buf`/`protoc`는 **Docker/WSL 안에서** 실행.
+
+---
+
+## 8. 의도적으로 *지금* 도입하지 않은 것
+
+| 항목 | 이유 |
+|---|---|
+| Connect server-streaming | RN 미지원. 회상 강화는 unary 배치로. 필요 시 웹 전용 SSE/WS 별도 채널. |
+| LLM 추출(Extractor 구현) | MVP는 임베딩만으로 연결. 비주얼은 결정론적. v1에서 같은 포트로 슬롯인. |
+| 객체 스토리지(S3/MinIO) | 텍스트 일기만. 썸네일/첨부 생기면 부활. |
+| 모바일 렌더러 확정 | RN 렌더러 생태계 과도기. 트랙(RN)만 확정, 렌더러는 착수 시점에. |
+| 모노레포(`packages/core`) | 현재 단일 frontend. 모바일 추가 시 승격(FSD 격리로 비용 낮음). |
+| 인증(다중 사용자) | 단일 사용자 MVP. Supabase Auth는 다중 사용자 단계에서 활성. |
+| 우주 공유 · 함께한 기억(공명) | 소셜 레이어. 인증·다중 사용자·교차 사용자 참조 필요. v1+ (concept.md "우주 공유와 함께한 기억"). 일기 본문은 비공개, 공유는 우주 풍경만. |
+| 생성 오브젝트 고도화 | MVP는 기본 형상 + 감정 색(인스턴싱). 시드 기반 고유 형태 생성은 v1 (§2.9 per-instance 시드 방식). |
+| 우주 배경 = 요즘 상태 | MVP는 단순 배경. 최근 감정 종합으로 앰비언트 색·분위기를 바꾸는 건 v1. |
+| 좌표 서버 캐싱 | 우선 클라 force-sim. 규모 커지면 안정화 좌표 캐싱 도입. |
+| eslint-plugin-boundaries / steiger | 솔로 단계는 컨벤션으로 충분. CI/팀 생기면. |
+
+---
+
+## 9. 참고 자료
+
+### FSD
+- [Feature-Sliced Design — Overview](https://feature-sliced.design/docs/get-started/overview) · [Layers](https://feature-sliced.design/docs/reference/layers) · [Slices and segments](https://feature-sliced.design/docs/reference/slices-segments) · [Public API](https://feature-sliced.design/docs/reference/public-api)
+
+### 프론트 3D / WebGPU / 모바일
+- [R3F docs](https://r3f.docs.pmnd.rs/getting-started/installation) · [Scaling performance](https://r3f.docs.pmnd.rs/advanced/scaling-performance)
+- [r3f-forcegraph](https://github.com/vasturiano/r3f-forcegraph) · [three-forcegraph](https://github.com/vasturiano/three-forcegraph) · [d3-force-3d](https://github.com/vasturiano/d3-force-3d)
+- [three.js WebGPU 마이그레이션](https://www.utsubo.com/blog/webgpu-threejs-migration-guide) · [three.js Line2](https://threejs.org/docs/pages/Line2.html) · [InstancedMesh2](https://agargaro.github.io/instanced-mesh/)
+- [react-native-webgpu (Software Mansion)](https://github.com/wcandillon/react-native-webgpu) · [react-native-filament](https://github.com/margelo/react-native-filament)
+
+### 백엔드 (Go / sqlc / pgvector / Connect)
+- [sqlc changelog (pgvector 자동 생성)](https://docs.sqlc.dev/en/latest/reference/changelog.html) · [sqlc #2467 (repository)](https://github.com/sqlc-dev/sqlc/issues/2467) · [#3548 (vector 함정)](https://github.com/sqlc-dev/sqlc/issues/3548)
+- [pgvector](https://github.com/pgvector/pgvector) · [pgvector-go](https://github.com/pgvector/pgvector-go) · [sqlc INSERT/UNNEST](https://docs.sqlc.dev/en/latest/howto/insert.html)
+- [connect-go](https://pkg.go.dev/connectrpc.com/connect) · [connect-es v2](https://buf.build/blog/connect-es-v2) · [connect-query-es](https://github.com/connectrpc/connect-query-es) · [Connect 프로토콜](https://connectrpc.com/docs/protocol/) · [buf](https://github.com/bufbuild/buf)
+- [Three Dots Labs — Clean Architecture](https://threedots.tech/post/introducing-clean-architecture/) · [Go Code Review — Interfaces](https://go.dev/wiki/CodeReviewComments#interfaces)
