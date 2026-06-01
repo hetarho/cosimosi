@@ -16,8 +16,8 @@
 
 ## 상태
 
-- **2026-06-01 피벗**: 기존 "태양계 / mood-as-art" → **엔그램 우주**로 전환. 기획·아키텍처·작업 스펙은 확정(`spec/`).
-- **구현은 진행 예정**: MVP는 [spec/plan/](spec/plan/)의 `01`–`13` 스펙을 의존 순서대로 구현한다. 현재 코드베이스는 **피벗 이전 스캐폴딩**(Echo · `entries` 테이블 · placeholder 프론트)이며, 스펙을 따라 진화한다.
+- **스펙 확정 · 구현 착수 단계.** 기획·아키텍처·작업 스펙이 `spec/`에 확정돼 있고, 이를 따라 코드 구현을 시작한다.
+- MVP는 [spec/plan/](spec/plan/)의 `01`–`13` 스펙을 의존 순서대로 구현한다. 현재 코드베이스는 **초기 스캐폴딩**(Echo · `entries` 테이블 · placeholder 프론트)이며, 스펙을 따라 진화한다.
 
 ## 스택 (확정)
 
@@ -28,11 +28,11 @@
 | API | **Connect RPC + Protobuf** (unary) | `.proto` 단일 계약 → Go·TS·(추후 Dart) 코드젠 |
 | 백엔드 | Go 1.26 + connect-go + pgx/v5 + **sqlc** | package-by-feature + 헥사고날 규율 |
 | DB | PostgreSQL + **pgvector** | 임베딩 유사도 + 가중치 그래프(`memory_links`) |
-| AI | **공급자 추상화**(Embedder/Extractor 포트) | 어떤 LLM·임베딩도 교체 가능. 기본 OpenAI 임베딩 |
+| AI | **공급자 추상화**(Embedder/Extractor 포트) | 어떤 LLM·임베딩도 교체 가능. OpenAI 임베딩(키 없이 개발 시 `mock`) |
 | 인증·호스팅 | **Supabase**(Auth+PG+pgvector) + **Hetzner**(Go) + **Cloudflare Pages**(웹) | |
 | 모바일 | **React Native** (deferred) | 웹과 도메인·셰이더·API 공유. 렌더러 타깃 `react-native-webgpu`+TSL |
 
-스택 선택 근거는 [spec/Architecture.md §0](spec/Architecture.md).
+스택 선택 근거는 [spec/Architecture.md](spec/Architecture.md)의 각 절(§2 FSD · §3 렌더링 · §4 백엔드).
 
 ## 사전 요구
 
@@ -90,12 +90,12 @@ cosimosi/
 |---|---|
 | `DATABASE_URL` | Postgres(+pgvector) DSN |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Supabase Auth (프론트, 스펙 01) |
-| `OPENAI_API_KEY` / `AI_EMBEDDER` | AI 공급자 (기본 OpenAI 임베딩, 스펙 05) |
+| `OPENAI_API_KEY` / `AI_EMBEDDER` | AI 공급자 (`mock`=키 없이 개발 / `openai`=실 임베딩, 스펙 05) |
 | `CORS_ORIGIN` | 허용 오리진 (`http://localhost:1214`) |
 
 ## 배포 (계획)
 
-웹 = **Cloudflare Pages**, 백엔드(api + worker) = **Hetzner VPS**(Docker Compose), DB·인증 = **Supabase**. 실제 프로비저닝은 MVP 안정화 후 — [spec/Architecture.md §6](spec/Architecture.md).
+웹 = **Cloudflare Pages**, 백엔드(api + worker) = **Hetzner VPS**(Docker Compose), DB·인증 = **Supabase**. 실제 프로비저닝은 MVP 안정화 후 — [spec/Architecture.md §7](spec/Architecture.md), CI/CD는 [spec/plan/14](spec/plan/14.deploy-cicd.md).
 
 ## 비-목표
 
