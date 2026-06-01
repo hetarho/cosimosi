@@ -1,108 +1,102 @@
 # cosimosi
 
-오늘의 기분과 있었던 일을 WebGL 아트워크로 표현해 일기로 모으는 풀스택 앱.
+**내 일기는 기억의 우주.** 일기를 쓰면 AI가 그 기억을 **별(엔그램)** 로 띄우고, 의미가 닿는 기억끼리 **시냅스(빛의 선)** 로 잇는다. 함께 떠올린 기억은 연결이 굵어지고, 오래 안 떠올린 별은 어두워지되 **사라지지 않는다**(침묵 엔그램). 자신의 기억이 빚은 우주를 탐험하며 삶을 되돌아보는 감성 3D 일기 서비스.
 
-수많은 작은 인터랙티브 아트 컴포넌트들을 조합해 **셀 수 없는 조합**의 아트웍을 만들어 매일 한 장씩 다이어리에 저장한다.
+> 신경과학 **엔그램 이론**(헵 가소성·재공고화·침묵 엔그램)을 데이터 구조와 인터랙션 전체에 매핑했다. 자세한 비전은 [spec/concept.md](spec/concept.md).
 
-## 스택
+## 문서 (source of truth)
 
-| 레이어 | 선택 | 이유 |
+이 저장소는 **스펙 주도(spec-driven)** 로 개발한다. *무엇을·왜·어떻게·지금 무엇을* 짓는지가 전부 `spec/`에 있다.
+
+| 문서 | 내용 |
+|---|---|
+| [spec/concept.md](spec/concept.md) | **무엇을 / 왜** — 엔그램 우주 비전(별·시냅스·망각·생성 오브젝트·소셜) |
+| [spec/Architecture.md](spec/Architecture.md) | **어떻게** — FSD 프론트 / package-by-feature 백엔드 / 스택 결정·근거 |
+| [spec/plan/](spec/plan/) | **지금 무엇을** — 번호별 작업 스펙(체크박스). [00.overview](spec/plan/00.overview.md)가 색인 |
+
+## 상태
+
+- **2026-06-01 피벗**: 기존 "태양계 / mood-as-art" → **엔그램 우주**로 전환. 기획·아키텍처·작업 스펙은 확정(`spec/`).
+- **구현은 진행 예정**: MVP는 [spec/plan/](spec/plan/)의 `01`–`13` 스펙을 의존 순서대로 구현한다. 현재 코드베이스는 **피벗 이전 스캐폴딩**(Echo · `entries` 테이블 · placeholder 프론트)이며, 스펙을 따라 진화한다.
+
+## 스택 (확정)
+
+| 레이어 | 선택 | 비고 |
 |---|---|---|
-| WebGL 셸 | **React Three Fiber 9** + drei + postprocessing | "조합 가능한 아트 컴포넌트" 도메인에 정확히 부합. 순수 Three.js·Threlte·TresJS·Babylon 후보 중 생태계·컴포지션 모두 우위 |
-| 프론트엔드 셸 | Vite 8 + React 19 + TypeScript 6 + Tailwind v4 + Zustand 5 | 개인 다이어리라 SSR 불필요, HMR/번들이 R3F와 잘 맞음 |
-| 백엔드 | **Go 1.26** + Echo v4 + sqlc + pgx/v5 | AWS(App Runner·ECS Fargate)에서 cold start·메모리·이미지 크기 모두 Node 대비 우위. 타입 안전 SQL |
-| 스토리지 | PostgreSQL 16 + S3 (로컬: MinIO) | 메타데이터는 PG, 아트워크 스냅샷은 오브젝트 스토어 |
-| 인증 | (MVP 없음) | 단일 사용자 출시 후 확장 |
+| 3D 프론트 | React Three Fiber 9 + three **WebGPURenderer + TSL** (WebGL2 폴백) | force-graph 생태계가 React 1차 + 모바일 재사용. Bloom은 three 노드 |
+| 프론트 셸 | Vite 8 + React 19 + TS 6 + Tailwind 4 + Zustand 5 (**FSD**) | |
+| API | **Connect RPC + Protobuf** (unary) | `.proto` 단일 계약 → Go·TS·(추후 Dart) 코드젠 |
+| 백엔드 | Go 1.26 + connect-go + pgx/v5 + **sqlc** | package-by-feature + 헥사고날 규율 |
+| DB | PostgreSQL + **pgvector** | 임베딩 유사도 + 가중치 그래프(`memory_links`) |
+| AI | **공급자 추상화**(Embedder/Extractor 포트) | 어떤 LLM·임베딩도 교체 가능. 기본 OpenAI 임베딩 |
+| 인증·호스팅 | **Supabase**(Auth+PG+pgvector) + **Hetzner**(Go) + **Cloudflare Pages**(웹) | |
+| 모바일 | **React Native** (deferred) | 웹과 도메인·셰이더·API 공유. 렌더러 타깃 `react-native-webgpu`+TSL |
 
-상세 의사결정은 첫 커밋 시점의 기술 검토 참고.
+스택 선택 근거는 [spec/Architecture.md §0](spec/Architecture.md).
 
 ## 사전 요구
 
-- Node ≥ 20, **pnpm 10** (`corepack enable` 또는 `npm i -g pnpm`)
-- **Go 1.26+**
-- **Docker Desktop** (로컬 인프라용)
+- Node ≥ 20, **pnpm 10** (`corepack enable`)
+- **Docker Desktop** (로컬 인프라)
+- ⚠️ **Windows**: 사용자 디렉터리 unsigned `.exe`가 Application Control로 차단됨 → `go`·`sqlc`·`buf`·`protoc`는 **Docker/WSL 안에서** 실행한다(Windows 호스트 직접 실행 금지).
 
-OS는 Windows·macOS·Linux 모두 동일하게 동작 — 루트 npm 스크립트는 `concurrently`로 셸 차이를 흡수한다.
-
-## 빠른 시작
+## 빠른 시작 (개발)
 
 ```bash
-# 1) 환경 변수
 cp .env.example .env        # Windows: copy .env.example .env
-
-# 2) 의존성
 pnpm install                # 루트 + frontend 워크스페이스
-
-# 3) 개발 서버 (postgres + minio + backend + frontend 한 방에)
-pnpm dev
+pnpm dev                    # 프론트(vite :1214) + 백엔드(docker :8080) 동시
 ```
 
-열 곳:
 - 프론트엔드: <http://localhost:1214>
 - 백엔드 헬스: <http://localhost:8080/health>
-- MinIO 콘솔: <http://localhost:9001> (`minio` / `minio12345`)
 
-> 첫 기동 시 `backend/migrations/0001_init.up.sql`이 Postgres 컨테이너 `docker-entrypoint-initdb.d`에 자동 마운트돼 마이그레이션이 적용된다. 마이그레이션을 다시 적용하려면 `docker compose down -v` 후 `pnpm dev`.
-
-> **Note (Windows)** — 백엔드는 호스트의 Go가 아니라 **Docker 컨테이너 안에서 air로 hot-reload** 한다. 일부 Windows 보안 정책(Defender Application Control)이 사용자 디렉터리의 unsigned `.exe` 실행을 차단하기 때문. `backend/` 내 `.go` 파일을 수정하면 컨테이너가 자동으로 재빌드한다. macOS/Linux에서도 동일하게 동작한다 — 별도 분기 불필요.
+> 백엔드는 호스트 Go가 아니라 **Docker 컨테이너 안 air**로 hot-reload 한다(위 Windows 사유). 로컬 Postgres는 스펙 [03.data-schema](spec/plan/03.data-schema.md)에서 `pgvector/pgvector:pg16` 이미지로 전환된다.
 
 ## 일상 명령어
 
 | 명령 | 동작 |
 |---|---|
-| `pnpm dev` | 프론트(Vite, 포트 1214) + 백엔드(Docker, 포트 8080) 동시 실행 |
-| `pnpm dev:web` | 프론트만 |
-| `pnpm dev:api` | 백엔드 컨테이너만 (air hot-reload 포함) |
-| `pnpm infra:up` / `infra:down` | postgres + minio만 on/off |
-| `pnpm build:web` | 프론트엔드 프로덕션 빌드 → `frontend/dist` |
-| `pnpm build:api` | Go 단일 바이너리 → `backend/bin/server` (Linux/macOS 호스트용; Windows에선 Docker 이미지로 빌드) |
+| `pnpm dev` | 프론트(Vite) + 백엔드(Docker) 동시 |
+| `pnpm dev:web` / `pnpm dev:api` | 프론트만 / 백엔드 컨테이너만 |
+| `pnpm infra:up` / `infra:down` | 로컬 인프라 on/off |
+| `pnpm build:web` | 프론트 프로덕션 빌드 → `frontend/dist` |
+
+> 코드젠(`buf generate`, `sqlc generate`)은 스펙 02·03에서 **Docker 명령**으로 추가된다.
 
 ## 디렉터리
 
 ```
 cosimosi/
-├── frontend/
-│   └── src/
-│       ├── art/       조합 가능한 WebGL 빌딩 블록 (MoodOrb · DustField · Ribbon …)
-│       ├── scene/     빌딩 블록을 조립해 만드는 씬
-│       ├── diary/     일기·캘린더 UI
-│       ├── store/     Zustand 스토어
-│       └── api/       백엔드 클라이언트
-└── backend/
-    ├── cmd/server/    엔트리포인트
-    ├── internal/
-    │   ├── api/       Echo 라우터·핸들러
-    │   ├── domain/    엔티티 (entry, mood …)
-    │   ├── storage/   pgx 풀, S3 클라이언트
-    │   └── config/    env 로딩
-    ├── db/queries/    sqlc용 SQL
-    └── migrations/    마이그레이션
+├── spec/            ← 기획·아키텍처·작업 스펙 (source of truth)
+├── proto/           ← .proto 단일 계약 (스펙 02에서 신설)
+├── frontend/src/    ← FSD: app · pages · widgets · features · entities · shared
+└── backend/         ← Go: cmd/{api,worker} · internal/{memory,link,ai,job,platform,db}
 ```
 
-**컨벤션:** 새로운 아트 컴포넌트는 `frontend/src/art/`에 prop 기반 단일 파일로 추가하고, `frontend/src/scene/`에서만 조립한다. 아트 컴포넌트는 외부 상태에 직접 의존하지 않고 props로만 색·속도·크기 등을 받아 조합성을 유지한다.
+상세 레이아웃·의존 방향은 [spec/Architecture.md §1](spec/Architecture.md).
+
+## 개발 방식 (spec-driven)
+
+1. [spec/plan/00.overview.md](spec/plan/00.overview.md)에서 **선행 의존이 끝난 스펙**을 고른다. (권장 순서: `03 → 02(+01) → 04 → 05 ‖ (06,07) → 08 → 09 → 10 → 11 → 12 → 13`)
+2. 그 `NN.*.md`의 목적·범위·설계·영향 파일·수용 기준·태스크를 읽고 구현한다(cold-start로 완주 가능하게 작성됨).
+3. 태스크를 끝낼 때마다 **체크박스(`- [ ]`→`- [x]`)** 를 갱신하고 커밋한다 — Conventional Commits(영문 제목 / 한글 본문).
 
 ## 환경 변수 (`.env`)
 
-| 키 | 설명 | 기본값 |
-|---|---|---|
-| `PORT` | 백엔드 포트 | `8080` |
-| `DATABASE_URL` | Postgres DSN | docker-compose 값 |
-| `CORS_ORIGIN` | 허용 오리진 | `http://localhost:1214` |
-| `S3_ENDPOINT` | S3 엔드포인트 (MinIO는 `http://localhost:9000`) | MinIO |
-| `S3_REGION` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | S3 자격증명 | MinIO 기본값 |
-| `S3_USE_PATH_STYLE` | MinIO는 `true`, AWS S3는 `false` | `true` |
-| `VITE_API_URL` | 브라우저에서 호출할 API base URL | `http://localhost:8080` |
+`.env.example`은 스펙 진행에 따라 갱신된다. 목표 키:
 
-## 배포 노트
+| 키 | 설명 |
+|---|---|
+| `DATABASE_URL` | Postgres(+pgvector) DSN |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Supabase Auth (프론트, 스펙 01) |
+| `OPENAI_API_KEY` / `AI_EMBEDDER` | AI 공급자 (기본 OpenAI 임베딩, 스펙 05) |
+| `CORS_ORIGIN` | 허용 오리진 (`http://localhost:1214`) |
 
-- 백엔드는 **단일 정적 바이너리**(`go build -o bin/server ./cmd/server`)로 컨테이너에 넣어 **AWS App Runner** 또는 **ECS Fargate**에 올리는 것을 권장. Lambda도 가능하나 DB 커넥션 풀과 어울리지 않아 비추.
-- 프론트는 `pnpm build:web` 결과를 **S3 + CloudFront** 또는 Amplify Hosting에 정적 배포.
-- 프로덕션 S3는 `S3_USE_PATH_STYLE=false` + 도메인 분리, MinIO 자격증명 제거.
+## 배포 (계획)
 
-## 다음 단계 (로드맵 아이디어)
+웹 = **Cloudflare Pages**, 백엔드(api + worker) = **Hetzner VPS**(Docker Compose), DB·인증 = **Supabase**. 실제 프로비저닝은 MVP 안정화 후 — [spec/Architecture.md §6](spec/Architecture.md).
 
-- [ ] sqlc 코드젠 워이어업 + `/api/entries` CRUD 구현
-- [ ] 일기 캘린더 UI
-- [ ] 아트 빌딩 블록 추가 (Flowfield · Brushstroke · AudioReactive)
-- [ ] 클라이언트 측 아트워크 스냅샷 → S3 업로드
-- [ ] 다중 사용자 대비 인증 (Cognito 또는 자체 JWT)
+## 비-목표
+
+공개 소셜 네트워크 ✕ · 감정 분석/조언 도구 ✕ · 차트/통계 대시보드 ✕ · 기억을 박제하는 도구 ✕. cosimosi는 **살아있는 기억의 우주(풍경)** 를 만든다. ([spec/concept.md](spec/concept.md) 비-목표)
