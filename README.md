@@ -93,7 +93,7 @@ cosimosi/
 | 키 | 설명 |
 |---|---|
 | `DATABASE_URL` | Postgres(+pgvector) DSN |
-| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Supabase Auth (프론트, 스펙 01) |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth (프론트, 스펙 01) |
 | `OPENAI_API_KEY` / `AI_EMBEDDER` | AI 공급자 (`mock`=키 없이 개발 / `openai`=실 임베딩, 스펙 05) |
 | `CORS_ORIGIN` | 허용 오리진 (`http://localhost:1214`) |
 

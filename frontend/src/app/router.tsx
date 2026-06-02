@@ -1,6 +1,8 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 import { LandingPage } from '@/pages/landing'
+import { HomePage } from '@/pages/home'
 import { RootLayout } from './RootLayout'
+import { SessionGate } from './ui/SessionGate'
 
 const rootRoute = createRootRoute({ component: RootLayout })
 
@@ -11,7 +13,21 @@ const indexRoute = createRoute({
   component: LandingPage,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute])
+// /universe = 우주 셸(보호 라우트). 게이트는 라우트가 소유한다 — 미인증이면 SessionGate가
+// 사인인 화면으로 막고, `/` 랜딩은 게이트 없이 공개로 둔다 (01).
+const universeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/universe',
+  component: function UniverseRoute() {
+    return (
+      <SessionGate>
+        <HomePage />
+      </SessionGate>
+    )
+  },
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, universeRoute])
 
 export const router = createRouter({
   routeTree,
