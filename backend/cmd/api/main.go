@@ -1,12 +1,16 @@
 // Command api is the cosimosi HTTP API server.
 //
 // This file is the composition root: it is the only place that wires
-// configuration, infrastructure clients, feature services, and HTTP
-// routes together. Every other package depends inward.
+// configuration, infrastructure clients, and HTTP routes together.
+// Every other package depends inward.
+//
+// MVP scaffolding: a minimal net/http server exposing /health only.
+// The Connect RPC server (platform/rpcserver) is introduced in plan/02.
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -15,13 +19,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/labstack/echo/v4"
-
-	"github.com/cosimosi/backend/internal/entry"
 	"github.com/cosimosi/backend/internal/platform/config"
-	"github.com/cosimosi/backend/internal/platform/httpserver"
 	"github.com/cosimosi/backend/internal/platform/postgres"
-	"github.com/cosimosi/backend/internal/platform/s3"
 )
 
 const version = "0.0.1"
@@ -46,42 +45,23 @@ func main() {
 	}
 	defer db.Close()
 
-	s3Client, err := s3.New(ctx, s3.Options{
-		Endpoint:     cfg.S3Endpoint,
-		Region:       cfg.S3Region,
-		AccessKey:    cfg.S3AccessKey,
-		SecretKey:    cfg.S3SecretKey,
-		UsePathStyle: cfg.S3UsePathStyle,
-	})
-	if err != nil {
-		slog.Error("s3 init failed", "err", err)
-		os.Exit(1)
-	}
-	_ = s3Client // wired into a feature service when needed
-
-	e := httpserver.New(cfg.CORSOrigin)
-
-	e.GET("/health", func(c echo.Context) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		dbStatus := "down"
-		if err := db.Ping(c.Request().Context()); err == nil {
+		if err := db.Ping(r.Context()); err == nil {
 			dbStatus = "up"
 		}
-		return c.JSON(http.StatusOK, echo.Map{
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status":  "ok",
 			"version": version,
 			"db":      dbStatus,
 		})
 	})
 
-	api := e.Group("/api")
-
-	entryRepo := entry.NewPgRepository(db)
-	entrySvc := entry.NewService(entryRepo)
-	entry.RegisterRoutes(api, entrySvc)
-
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           e,
+		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

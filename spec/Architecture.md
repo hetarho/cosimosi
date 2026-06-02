@@ -199,7 +199,7 @@ backend/
 └── go.mod
 ```
 
-> DTO(`dto.go`)는 손으로 쓰지 않는다 — **proto 생성 타입이 전송 계층 모델**이다(§4.4). S3 클라이언트(`platform/s3`)는 MVP에서 미사용(객체 스토리지 비활성 — §7).
+> DTO(`dto.go`)는 손으로 쓰지 않는다 — **proto 생성 타입이 전송 계층 모델**이다(§4.4).
 
 ### 4.3 의존 방향
 
@@ -334,7 +334,6 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 | DB/Auth | **Supabase** (관리형 Postgres + pgvector + Auth) | 소셜 로그인·세션·관리형 벡터. ⚠️ Hetzner↔Supabase **리전 코로케이션**(지연 방지). |
 | 로컬 개발 | Docker Compose | postgres 이미지를 **pgvector 포함**(예: `pgvector/pgvector:pg16`)으로 교체. |
 | 로깅/에러 | Structured logging + Sentry | |
-| 객체 스토리지 | **MVP 미사용** | 일기 텍스트만. MinIO/S3 코드는 휴면(썸네일 필요 시 부활). |
 
 > 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Hetzner 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계). **CI/CD·실배포(develop→스테이징, main→프로덕션 자동 배포)는 [plan/14.deploy-cicd.md](plan/14.deploy-cicd.md)** 에서 전개한다.
 
@@ -357,7 +356,6 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 |---|---|
 | Connect server-streaming | RN 미지원. 회상 강화는 unary 배치로. 필요 시 웹 전용 SSE/WS 별도 채널. |
 | LLM 추출(Extractor 구현) | MVP는 임베딩만으로 연결. 비주얼은 결정론적. v1에서 같은 포트로 슬롯인. |
-| 객체 스토리지(S3/MinIO) | 텍스트 일기만. 썸네일/첨부 생기면 부활. |
 | 모바일 렌더러 확정 | RN 렌더러 생태계 과도기. 트랙(RN)만 확정, 렌더러는 착수 시점에. |
 | 모노레포(`packages/core`) | 현재 단일 frontend. 모바일 추가 시 승격(FSD 격리로 비용 낮음). |
 | 인증 — **사인인은 MVP에 포함(ON)** | MVP = **Supabase Auth 단일 계정 사인인 ON**(혼자 쓰지만 로그인은 한다). **모든 쿼리는 `user_id`로 스코프**(인터셉터 주입, §5·§4.4). **OFF인 것은 다중 사용자 공유/소셜 로그인뿐** — 그것이 다중 사용자 단계로 연기됨. |

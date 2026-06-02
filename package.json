@@ -2,7 +2,7 @@
   "name": "cosimosi",
   "version": "0.0.1",
   "private": true,
-  "description": "Mood-as-art diary, WebGL composition playground",
+  "description": "Engram universe diary — your memories as a living 3D cosmos",
   "scripts": {
     "dev": "concurrently -n web,api -c cyan,magenta \"pnpm --filter ./frontend dev\" \"pnpm run dev:api\"",
     "dev:api": "docker compose --profile dev up backend",
