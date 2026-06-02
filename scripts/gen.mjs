@@ -1,0 +1,52 @@
+// Code generation: proto → Go·TS (buf) and SQL schema → Go (sqlc), all via Docker.
+//
+//   pnpm gen          both (whatever is configured)
+//   pnpm gen:proto    buf only
+//   pnpm gen:sql      sqlc only
+//
+// Configs land later: buf.gen.yaml + proto/ in spec 02, schema.sql in spec 03.
+// Until then the matching step skips with a note instead of failing.
+
+import { run, mount, hasBufConfig, hasDbSchema, section, ok, note } from './lib.mjs'
+
+const target = process.argv[2] // undefined | 'proto' | 'sql'
+const wantProto = !target || target === 'proto'
+const wantSql = !target || target === 'sql'
+
+section('codegen')
+let did = false
+
+if (wantProto) {
+  if (hasBufConfig()) {
+    note('buf generate (proto → Go·TS)')
+    // Template lives at backend/buf.gen.yaml, module input is proto/ — both must be
+    // explicit (a bare `buf generate` at repo root has no buf.gen.yaml and fails).
+    run('docker', [
+      'run', '--rm',
+      '-v', mount('', '/work'), '-w', '/work',
+      'bufbuild/buf:latest',
+      'generate', '--template', 'backend/buf.gen.yaml', 'proto',
+    ])
+    ok('buf 완료')
+    did = true
+  } else {
+    note('buf 건너뜀 — proto 계약(backend/buf.gen.yaml)은 spec 02에서 추가됨')
+  }
+}
+
+if (wantSql) {
+  if (hasDbSchema()) {
+    note('sqlc generate (schema.sql → Go)')
+    run('docker', [
+      'run', '--rm',
+      '-v', mount('backend', '/app'), '-w', '/app',
+      'sqlc/sqlc:latest', 'generate',
+    ])
+    ok('sqlc 완료')
+    did = true
+  } else {
+    note('sqlc 건너뜀 — DB 스키마(backend/internal/db/schema.sql)는 spec 03에서 추가됨')
+  }
+}
+
+if (!did) note('아직 생성할 대상 없음. spec 02·03 머지 후 다시 실행하면 자동으로 켜져요.')

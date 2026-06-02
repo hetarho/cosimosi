@@ -43,32 +43,36 @@
 ## 빠른 시작 (개발)
 
 ```bash
-cp .env.example .env        # Windows: copy .env.example .env
-pnpm install                # 루트 + frontend 워크스페이스
+pnpm setup                  # .env 생성 · 의존성 · postgres · 마이그레이션 · 코드젠 (한 번)
 pnpm dev                    # 프론트(vite :1214) + 백엔드(docker :8080) 동시
 ```
 
 - 프론트엔드: <http://localhost:1214>
 - 백엔드 헬스: <http://localhost:8080/health>
 
-> 백엔드는 호스트 Go가 아니라 **Docker 컨테이너 안 air**로 hot-reload 한다(위 Windows 사유). 로컬 Postgres는 스펙 [03.data-schema](spec/plan/03.data-schema.md)에서 `pgvector/pgvector:pg16` 이미지로 전환된다.
+> `pnpm setup`은 멱등하다 — 계약(`proto`)·스키마 변경을 pull한 뒤 다시 돌리거나, 부분만 필요하면 `pnpm gen`·`pnpm db:migrate`만 따로 돌려도 된다. 안쪽 개발 루프인 `pnpm dev`는 일부러 재생성/마이그레이션을 **안 한다**(빠른 리로드 유지).
+> 백엔드는 호스트 Go가 아니라 **Docker 컨테이너 안 air**로 hot-reload 한다(위 Windows 사유). 코드젠(`buf`/`sqlc`)·마이그레이션(`goose`)도 전부 **Docker 일회성 컨테이너**로 돈다 — Node 래퍼([scripts/](scripts/))가 셸(PowerShell/bash) 차이를 흡수한다. 로컬 Postgres는 스펙 [03.data-schema](spec/plan/03.data-schema.md)에서 `pgvector/pgvector:pg16` 이미지로 전환된다.
 
 ## 일상 명령어
 
 | 명령 | 동작 |
 |---|---|
+| `pnpm setup` | 최초/리셋용 부트스트랩(.env·deps·postgres·migrate·gen) |
 | `pnpm dev` | 프론트(Vite) + 백엔드(Docker) 동시 |
 | `pnpm dev:web` / `pnpm dev:api` | 프론트만 / 백엔드 컨테이너만 |
+| `pnpm gen` | 코드젠 전체 — `gen:proto`(buf) / `gen:sql`(sqlc) 개별 |
+| `pnpm db:migrate` | goose up — `db:status` / `db:down` / `db:reset` |
 | `pnpm infra:up` / `infra:down` | 로컬 인프라 on/off |
 | `pnpm build:web` | 프론트 프로덕션 빌드 → `frontend/dist` |
 
-> 코드젠(`buf generate`, `sqlc generate`)은 스펙 02·03에서 **Docker 명령**으로 추가된다.
+> 코드젠(`buf`/`sqlc`)·마이그레이션(`goose`)은 전부 Docker로 돌며([scripts/](scripts/) 래퍼), 각 툴 config가 생기기 전(`buf.gen.yaml`=02, `schema.sql`=03)에는 해당 단계를 **친절히 건너뛴다**. 생성 코드(`*/gen/`)는 리포에 커밋한다 — 계약/스키마 변경 시 `pnpm gen` 후 함께 커밋.
 
 ## 디렉터리
 
 ```
 cosimosi/
 ├── spec/            ← 기획·아키텍처·작업 스펙 (source of truth)
+├── scripts/         ← DX 부트스트랩 — setup·gen·db (Docker 래퍼, 셸 무관)
 ├── proto/           ← .proto 단일 계약 (스펙 02에서 신설)
 ├── frontend/src/    ← FSD: app · pages · widgets · features · entities · shared
 └── backend/         ← Go: cmd/{api,worker} · internal/{memory,link,ai,job,platform,db}
