@@ -1,0 +1,159 @@
+package memory
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"connectrpc.com/connect"
+
+	cosimosiv1 "github.com/cosimosi/backend/internal/gen/cosimosi/v1"
+	"github.com/cosimosi/backend/internal/gen/cosimosi/v1/cosimosiv1connect"
+	"github.com/cosimosi/backend/internal/platform/rpcserver"
+)
+
+// Handler adapts proto ↔ domain for the MemoryService RPCs implemented in spec 04
+// (RecordMemory, GetUniverse). The remaining RPCs — ReinforceLinks/RecallMemory
+// (spec 11) and ListDormant (spec 12) — inherit CodeUnimplemented from the
+// embedded base. It stays thin: auth + mapping only, policy lives in Service.
+type Handler struct {
+	cosimosiv1connect.UnimplementedMemoryServiceHandler
+	svc *Service
+}
+
+// NewHandler builds the Connect handler over the memory service.
+func NewHandler(svc *Service) *Handler {
+	return &Handler{svc: svc}
+}
+
+var _ cosimosiv1connect.MemoryServiceHandler = (*Handler)(nil)
+
+// RecordMemory persists a diary entry and returns the new star id. Requires an
+// authenticated caller (1.2); an unset/invalid entry_date maps to InvalidArgument.
+func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecordMemoryRequest]) (*connect.Response[cosimosiv1.RecordMemoryResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+
+	msg := req.Msg
+	entryDate, err := parseEntryDate(msg.GetEntryDate())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	memoryID, err := h.svc.RecordMemory(ctx, RecordInput{
+		UserID:         userID,
+		Body:           msg.GetBody(),
+		EntryDate:      entryDate,
+		Mood:           moodFromProto(msg.GetMood()),
+		Intensity:      msg.GetIntensity(),
+		IdempotencyKey: msg.GetIdempotencyKey(),
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&cosimosiv1.RecordMemoryResponse{MemoryId: memoryID}), nil
+}
+
+// GetUniverse returns the caller's full star + synapse graph (dormant included),
+// with last_*_at as raw values — brightness/coordinates are computed client-side
+// (constitution §2·§3).
+func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosiv1.GetUniverseRequest]) (*connect.Response[cosimosiv1.GetUniverseResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+
+	uni, err := h.svc.GetUniverse(ctx, userID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	stars := make([]*cosimosiv1.Star, 0, len(uni.Memories))
+	for _, m := range uni.Memories {
+		stars = append(stars, &cosimosiv1.Star{
+			MemoryId:       m.ID,
+			Mood:           moodToProto(m.Mood),
+			Intensity:      m.Intensity,
+			LastRecalledAt: formatTime(m.LastRecalledAt),
+		})
+	}
+
+	synapses := make([]*cosimosiv1.Synapse, 0, len(uni.Synapses))
+	for _, s := range uni.Synapses {
+		synapses = append(synapses, &cosimosiv1.Synapse{
+			AId:             s.AID,
+			BId:             s.BID,
+			Weight:          s.Weight,
+			LinkType:        s.LinkType,
+			LastActivatedAt: formatTime(s.LastActivatedAt),
+		})
+	}
+
+	return connect.NewResponse(&cosimosiv1.GetUniverseResponse{Stars: stars, Synapses: synapses}), nil
+}
+
+// parseEntryDate accepts "YYYY-MM-DD" or empty (→ zero time, service defaults to today).
+func parseEntryDate(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid entry_date (want YYYY-MM-DD): %w", err)
+	}
+	return t, nil
+}
+
+// formatTime renders a nullable timestamp as RFC3339 UTC, or "" when nil.
+func formatTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
+func moodFromProto(m cosimosiv1.Mood) Mood {
+	switch m {
+	case cosimosiv1.Mood_JOY:
+		return MoodJoy
+	case cosimosiv1.Mood_CALM:
+		return MoodCalm
+	case cosimosiv1.Mood_SAD:
+		return MoodSad
+	case cosimosiv1.Mood_ANGER:
+		return MoodAnger
+	case cosimosiv1.Mood_FEAR:
+		return MoodFear
+	case cosimosiv1.Mood_LOVE:
+		return MoodLove
+	case cosimosiv1.Mood_NEUTRAL:
+		return MoodNeutral
+	default:
+		return MoodUnspecified
+	}
+}
+
+func moodToProto(m Mood) cosimosiv1.Mood {
+	switch m {
+	case MoodJoy:
+		return cosimosiv1.Mood_JOY
+	case MoodCalm:
+		return cosimosiv1.Mood_CALM
+	case MoodSad:
+		return cosimosiv1.Mood_SAD
+	case MoodAnger:
+		return cosimosiv1.Mood_ANGER
+	case MoodFear:
+		return cosimosiv1.Mood_FEAR
+	case MoodLove:
+		return cosimosiv1.Mood_LOVE
+	case MoodNeutral:
+		return cosimosiv1.Mood_NEUTRAL
+	default:
+		return cosimosiv1.Mood_MOOD_UNSPECIFIED
+	}
+}

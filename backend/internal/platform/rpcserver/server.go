@@ -1,8 +1,8 @@
 // Package rpcserver is server plumbing only: it wires the Connect handler onto a
 // net/http mux with h2c (cleartext HTTP/2), CORS, and the auth + logging
 // interceptors, plus a /health endpoint. It holds NO business logic — the real
-// MemoryService implementation lives in internal/memory (spec 04); spec 02 mounts
-// a CodeUnimplemented stub (handler.go) so the server compiles and boots.
+// MemoryService implementation lives in internal/memory and is injected into New
+// by the composition root (cmd/api).
 package rpcserver
 
 import (
@@ -22,17 +22,17 @@ import (
 	"github.com/cosimosi/backend/internal/platform/config"
 )
 
-// New builds the fully-wired HTTP server: the MemoryService Connect handler
-// (currently the stub) behind logging→auth interceptors, a /health endpoint that
-// reports DB reachability, all wrapped in CORS and h2c. The caller owns the
-// listen/shutdown lifecycle (cmd/api).
-func New(cfg *config.Config, db *pgxpool.Pool, version string) *http.Server {
+// New builds the fully-wired HTTP server: the given MemoryService Connect handler
+// (the real implementation from internal/memory, injected by cmd/api) behind
+// logging→auth interceptors, a /health endpoint that reports DB reachability, all
+// wrapped in CORS and h2c. The caller owns the listen/shutdown lifecycle (cmd/api).
+func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler) *http.Server {
 	mux := http.NewServeMux()
 
 	// Logging is outermost, auth innermost (onion order): every request — even
 	// auth-rejected ones — is logged, and the handler only runs once authenticated.
 	path, handler := cosimosiv1connect.NewMemoryServiceHandler(
-		memoryServiceStub{},
+		memorySvc,
 		connect.WithInterceptors(
 			NewLoggingInterceptor(slog.Default()),
 			NewAuthInterceptor(cfg.SupabaseJWTSecret),

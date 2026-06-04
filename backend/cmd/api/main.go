@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cosimosi/backend/internal/link"
+	"github.com/cosimosi/backend/internal/memory"
 	"github.com/cosimosi/backend/internal/platform/config"
 	"github.com/cosimosi/backend/internal/platform/postgres"
 	"github.com/cosimosi/backend/internal/platform/rpcserver"
@@ -43,7 +45,14 @@ func main() {
 	}
 	defer db.Close()
 
-	server := rpcserver.New(cfg, db, version)
+	// Compose the feature graph: link read service feeds the memory service's
+	// GetUniverse; the memory handler is the real MemoryService implementation
+	// mounted by rpcserver (replacing spec 02's stub).
+	linkSvc := link.NewService(link.NewRepository(db))
+	memorySvc := memory.NewService(memory.NewRepository(db), linkSvc)
+	memoryHandler := memory.NewHandler(memorySvc)
+
+	server := rpcserver.New(cfg, db, version, memoryHandler)
 
 	// A serve error (e.g. the port is already bound) must NOT exit 0 — an
 	// orchestrator would read a clean exit as success and never restart us.
