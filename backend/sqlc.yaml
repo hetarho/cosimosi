@@ -2,7 +2,9 @@ version: "2"
 sql:
   - engine: "postgresql"
     queries: "internal/db/queries"
-    schema: "internal/db/migrations"
+    # goose Down 섹션의 DROP 문이 sqlc 누적 파싱과 충돌하므로, 마이그레이션 디렉터리가
+    # 아니라 그 Up DDL을 평탄화한 순수 스냅샷(schema.sql)을 schema 입력으로 쓴다.
+    schema: "internal/db/schema.sql"
     gen:
       go:
         package: "gen"

@@ -12,13 +12,17 @@ import { run, mount, hasDbSchema, COMPOSE_NETWORK, section, ok, note, fail } fro
 
 const DBSTRING = 'postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable'
 
-const goose = (...cmd) =>
+// goose has no official Docker image (pressly publishes binaries only), so we use the
+// maintained kukymbr/goose-docker wrapper: it mounts /migrations, reads GOOSE_DRIVER /
+// GOOSE_DBSTRING, and takes the command via GOOSE_COMMAND (defaults to up).
+const goose = (command) =>
   run('docker', [
     'run', '--rm', '--network', COMPOSE_NETWORK,
-    '-v', mount('backend/internal/db/migrations', '/m'),
+    '-v', mount('backend/internal/db/migrations', '/migrations'),
     '-e', 'GOOSE_DRIVER=postgres',
     '-e', `GOOSE_DBSTRING=${DBSTRING}`,
-    'ghcr.io/pressly/goose:3', '-dir', '/m', ...cmd,
+    '-e', `GOOSE_COMMAND=${command}`,
+    'ghcr.io/kukymbr/goose-docker:3.27.1',
   ])
 
 const action = process.argv[2] ?? 'up'
