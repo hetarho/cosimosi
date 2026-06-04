@@ -16,3 +16,6 @@ backend/tmp/
 
 # Local data
 data/
+
+# Claude Code local runtime state (machine/session-specific — never commit)
+.claude/scheduled_tasks.lock

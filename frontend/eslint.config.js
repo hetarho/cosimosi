@@ -7,7 +7,9 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage']),
+  // src/shared/api/gen is protoc-gen-es output (generated transport types,
+  // constitution §5) — infrastructure, not linted/hand-edited.
+  globalIgnores(['dist', 'coverage', 'src/shared/api/gen']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

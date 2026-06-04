@@ -10,6 +10,7 @@
     "dev:web": "pnpm --filter ./frontend dev",
     "gen": "node scripts/gen.mjs",
     "gen:proto": "node scripts/gen.mjs proto",
+    "buf:gen": "node scripts/gen.mjs proto",
     "gen:sql": "node scripts/gen.mjs sql",
     "db:migrate": "node scripts/db.mjs up",
     "db:status": "node scripts/db.mjs status",

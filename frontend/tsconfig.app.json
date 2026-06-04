@@ -23,7 +23,10 @@
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    /* erasableSyntaxOnly is intentionally NOT set here: protoc-gen-es emits real
+       TS `enum`s (e.g. Mood) into src/shared/api/gen, which is non-erasable
+       syntax. Generated transport types are infrastructure (constitution §5);
+       Vite/esbuild transpile enums fine. tsconfig.node.json keeps it on. */
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]

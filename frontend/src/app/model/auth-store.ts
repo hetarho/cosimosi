@@ -26,9 +26,16 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   init: () => {
     // getSession 해소 전까지 status는 'loading' → 사인인 화면 깜빡임 방지 (1.7), 세션 복원 (1.5).
-    void supabase.auth.getSession().then(({ data }) => {
-      set({ session: data.session, status: data.session ? 'authed' : 'anon' })
-    })
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        set({ session: data.session, status: data.session ? 'authed' : 'anon' })
+      })
+      .catch((err) => {
+        // 조회가 reject돼도 'loading'에 갇히지 않게 anon으로 떨어뜨린다 (1.7 무한 스플래시 방지).
+        console.error('[auth.getSession]', err)
+        set({ session: null, status: 'anon' })
+      })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -59,8 +66,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (error) throw error
   },
 
-  // 세션 삭제 (1.4). onAuthStateChange가 status를 'anon'으로 전환한다.
+  // 세션 삭제 (1.4). 성공 시 onAuthStateChange가 status를 'anon'으로 전환한다.
   signOut: async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    // 실패하면 SIGNED_OUT 이벤트가 안 올 수 있어 'authed'에 갇힌다 → 로컬 상태를 직접 내린다.
+    if (error) {
+      console.error('[auth.signOut]', error)
+      set({ session: null, status: 'anon' })
+    }
   },
 }))

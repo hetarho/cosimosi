@@ -1,0 +1,17 @@
+# buf v2 workspace. The single proto module lives in proto/ (path is relative to
+# this file, so this must sit at the repo root for `modules: [{ path: proto }]`).
+# Codegen runs `buf generate --template backend/buf.gen.yaml proto` (see scripts/gen.mjs).
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  except:
+    # Mood enum values are persisted as their bare name strings in records.mood
+    # (see memory.proto), so we intentionally drop the MOOD_ prefix that
+    # ENUM_VALUE_PREFIX requires — keeps the stored value "JOY", not "MOOD_JOY".
+    - ENUM_VALUE_PREFIX
+breaking:
+  use:
+    - FILE

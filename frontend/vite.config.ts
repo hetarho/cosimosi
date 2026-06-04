@@ -26,7 +26,9 @@ export default defineConfig(({ mode }) => {
       port: 1214,
       strictPort: true,
       proxy: {
-        '/api': { target: apiUrl, changeOrigin: true },
+        // Connect transport uses baseUrl '/api' (shared/api/transport.ts); strip the
+        // prefix so '/api/cosimosi.v1.MemoryService/…' reaches the backend at root '/'.
+        '/api': { target: apiUrl, changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, '') },
         '/health': { target: apiUrl, changeOrigin: true },
       },
     },

@@ -31,6 +31,11 @@ services:
       PORT: "8080"
       DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
       CORS_ORIGIN: http://localhost:1214
+      # Threaded from the root .env (compose interpolates ${...}). Without the
+      # secret the auth interceptor fails closed and every signed-in RPC returns
+      # Unauthenticated; the :- default keeps compose quiet when it's unset.
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      SUPABASE_PROJECT_URL: ${SUPABASE_PROJECT_URL:-}
     ports:
       - "8080:8080"
     volumes:

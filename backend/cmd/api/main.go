@@ -1,16 +1,13 @@
-// Command api is the cosimosi HTTP API server.
+// Command api is the cosimosi HTTP/RPC API server.
 //
-// This file is the composition root: it is the only place that wires
-// configuration, infrastructure clients, and HTTP routes together.
-// Every other package depends inward.
-//
-// MVP scaffolding: a minimal net/http server exposing /health only.
-// The Connect RPC server (platform/rpcserver) is introduced in plan/02.
+// This file is the composition root: the only place that wires configuration,
+// infrastructure clients, and the server together. Every other package depends
+// inward. The Connect server itself (mux, h2c, CORS, interceptors, /health) is
+// assembled in internal/platform/rpcserver.
 package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -21,6 +18,7 @@ import (
 
 	"github.com/cosimosi/backend/internal/platform/config"
 	"github.com/cosimosi/backend/internal/platform/postgres"
+	"github.com/cosimosi/backend/internal/platform/rpcserver"
 )
 
 const version = "0.0.1"
@@ -45,36 +43,26 @@ func main() {
 	}
 	defer db.Close()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		dbStatus := "down"
-		if err := db.Ping(r.Context()); err == nil {
-			dbStatus = "up"
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"status":  "ok",
-			"version": version,
-			"db":      dbStatus,
-		})
-	})
+	server := rpcserver.New(cfg, db, version)
 
-	server := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
+	// A serve error (e.g. the port is already bound) must NOT exit 0 — an
+	// orchestrator would read a clean exit as success and never restart us.
+	// Surface it on a channel so the startup path can exit non-zero.
+	serveErr := make(chan error, 1)
 	go func() {
 		slog.Info("server starting", "port", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("listen failed", "err", err)
-			stop()
+			serveErr <- err
 		}
 	}()
 
-	<-ctx.Done()
-	slog.Info("shutting down")
+	select {
+	case <-ctx.Done():
+		slog.Info("shutting down")
+	case err := <-serveErr:
+		slog.Error("listen failed", "err", err)
+		os.Exit(1)
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
