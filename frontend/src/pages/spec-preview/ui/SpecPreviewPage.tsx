@@ -444,7 +444,7 @@ function Spec06Panel() {
           <code className="text-white/90">bloom</code> TSL) — <code className="text-white/90">useFrame</code>{' '}
           priority로 렌더 소유.
         </li>
-        <li>짙은 남색 배경 + 별 먼지(Points) + 발광 더미 별(InstancedMesh).</li>
+        <li>짙은 남색 배경 + 별 먼지(Points) + 실제 별(08 StarField, 스토어 기반 — 10에서 결선).</li>
         <li>카메라 모드 nebula(줌 제한)/recall(자유) — 우상단 HUD 토글로 전환.</li>
         <li>
           렌더러 격리: <code className="text-white/90">shared/lib/r3f/types.ts</code>는 three/React 미의존
@@ -725,6 +725,42 @@ function Spec09Panel() {
   )
 }
 
+// --- 10 record-memory-ui (live integration; real flow is the /universe route) ---
+
+function Spec10Panel() {
+  return (
+    <div className="space-y-3 text-white/70">
+      <p>
+        첫 끝-끝 수직 슬라이스. 실제 흐름은{' '}
+        <a href="/universe" className="text-sky-300 underline">
+          /universe
+        </a>{' '}
+        에서 동작합니다(로그인 필요). 04 RPC + 06/08 렌더를 하나의 사용자 흐름으로 잇습니다:
+      </p>
+      <ul className="list-disc space-y-1 pl-5 text-sm">
+        <li>
+          마운트 시 <code className="text-white/90">GetUniverse</code> 1회 → <code className="text-white/90">stars[]</code>
+          를 <code className="text-white/90">StarNode[]</code>로 매핑(map-star: seed=seedFromId·mood 7종·
+          last_recalled_at→epoch, <b>좌표 미생성</b>) → 스토어 적재 → StarField 렌더. (synapses 무시 — 09/11.)
+        </li>
+        <li>
+          폼 제출 → 임시 <code className="text-white/90">temp-</code> 별 <b>낙관적 즉시 등장</b>(addStar) →
+          <code className="text-white/90">RecordMemory</code> → 성공 시 서버 memory_id로 교체(replaceStar, 기존
+          별 위치 유지) / 실패 시 임시 별만 롤백(removeStar) + 한국어 에러. 서버 별은 삭제 안 함(원칙2).
+        </li>
+        <li>
+          새로고침해도 별 잔존(원본 영속, 원칙1). 신규 별의 시냅스는 05 워커가 채운 뒤 <b>다음 GetUniverse
+          refetch</b>에서 보임(폴링/스트리밍 아님, 원칙6).
+        </li>
+        <li>본문·시점은 작성 드래프트에만 보유 — 렌더 스토어(StarNode)에는 안 넣음(원칙1·§2.7).</li>
+      </ul>
+      <p className="text-sm text-white/40">
+        빈 우주(별 0개)면 "첫 일기를 적어 첫 별을 띄워보세요" 안내 + force-sim 0노드 무크래시.
+      </p>
+    </div>
+  )
+}
+
 // --- not-yet-built specs: planned-feature placeholder ---
 
 function future(desc: string): ComponentType {
@@ -749,7 +785,7 @@ const SPECS: SpecEntry[] = [
   { num: '07', title: 'force-sim', scope: 'FE', done: true, Panel: Spec07Panel },
   { num: '08', title: 'star-rendering', scope: 'FE', done: true, Panel: Spec08Panel },
   { num: '09', title: 'synapse-rendering', scope: 'FE', done: true, Panel: Spec09Panel },
-  { num: '10', title: 'record-memory-ui', scope: 'FE', done: false, Panel: future('작성 폼 → 별 등장(수직 슬라이스, 04 API 연동).') },
+  { num: '10', title: 'record-memory-ui', scope: 'FE', done: true, Panel: Spec10Panel },
   { num: '11', title: 'recall-reinforce', scope: 'FS', done: false, Panel: future('회상 · 공동 회상 강화(weight 증가, last_*_at 갱신).') },
   { num: '12', title: 'decay-dormant', scope: 'FS', done: false, Panel: future('활성도 감쇠 · 최소 밝기 · 잠든 별 탐색.') },
   { num: '13', title: 'mvp-verification', scope: 'FS', done: false, Panel: future('pnpm dev 전체 한 바퀴 · E2E · 에러 점검.') },

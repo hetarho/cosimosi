@@ -1,13 +1,12 @@
 // The universe canvas shell (Architecture §3.3): R3F <Canvas> + async WebGPU
-// renderer + dark background + ambient star dust + glowing dummy stars + Bloom +
-// camera rig. Real stars/synapses/force-sim/data come in specs 07–10; this proves
-// the rendering foundation on dummy data. No DOM <Html> in the scene (constitution
-// §4 — mobile portability); labels/HUD are a separate 2D widget later.
+// renderer + dark background + ambient star dust + the real StarField (08, driven by
+// the memory store / spec 10 data) + Bloom + camera rig. No DOM <Html> in the scene
+// (constitution §4 — mobile portability); labels/HUD are a separate 2D widget.
 import { useEffect, useMemo, useRef } from 'react'
 import { Canvas, type GLProps } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
+import { StarField } from '@/entities/star'
 import { mulberry32 } from '@/shared/lib'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
 import { useCameraMode } from '../model/use-camera-mode'
@@ -49,36 +48,6 @@ function StarDust({ count = 1500 }: { count?: number }) {
   )
 }
 
-/** Verification-only glowing points — replaced by entities/star (08). Bright +
- *  toneMapped=false so Bloom picks them up. count<=0 (empty universe) renders
- *  nothing without crashing (acceptance 1.10). key={count} forces a fresh
- *  instanceMatrix if the count ever changes (avoids writing past the old buffer). */
-function DummyStars({ count = 14 }: { count?: number }) {
-  const ref = useRef<THREE.InstancedMesh>(null)
-
-  useEffect(() => {
-    const mesh = ref.current
-    if (!mesh) return
-    const rng = mulberry32(0xc0ffee)
-    const dummy = new THREE.Object3D()
-    for (let i = 0; i < count; i++) {
-      dummy.position.set((rng() - 0.5) * 26, (rng() - 0.5) * 26, (rng() - 0.5) * 26)
-      dummy.scale.setScalar(0.3 + rng() * 0.6)
-      dummy.updateMatrix()
-      mesh.setMatrixAt(i, dummy.matrix)
-    }
-    mesh.instanceMatrix.needsUpdate = true
-  }, [count])
-
-  if (count <= 0) return null
-  return (
-    <instancedMesh key={count} ref={ref} args={[undefined, undefined, count]}>
-      <icosahedronGeometry args={[1, 2]} />
-      <meshBasicMaterial color="#cdb6ff" toneMapped={false} />
-    </instancedMesh>
-  )
-}
-
 /** Camera controls gated by mode: nebula clamps zoom for a whole-universe overview
  *  (1.5); recall releases the clamp for free close-up navigation (1.6). makeDefault
  *  so future camera consumers (specs 07–10) and the bloom pass stay on one camera. */
@@ -95,7 +64,7 @@ function CameraRig() {
   )
 }
 
-export function UniverseCanvas({ dummyCount = 14 }: { dummyCount?: number }) {
+export function UniverseCanvas() {
   // R3F does NOT dispose a custom WebGPU renderer on unmount (its teardown only
   // calls renderLists?.dispose()/forceContextLoss?.(), neither of which exists on
   // WebGPURenderer), so we dispose it ourselves. This parent-level cleanup runs
@@ -124,7 +93,7 @@ export function UniverseCanvas({ dummyCount = 14 }: { dummyCount?: number }) {
       <color attach="background" args={['#070b1e']} />
       <ambientLight intensity={0.4} />
       <StarDust count={1500} />
-      <DummyStars count={dummyCount} />
+      <StarField />
       <CameraRig />
       <BloomPass />
     </Canvas>
