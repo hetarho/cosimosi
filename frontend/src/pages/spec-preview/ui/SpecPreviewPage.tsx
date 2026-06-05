@@ -17,6 +17,11 @@ import {
   tick,
   type SimGraph,
 } from '@/shared/lib/force-sim'
+import { Canvas, type GLProps } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
+import { createRenderer } from '@/shared/lib/r3f'
+import { StarField } from '@/entities/star'
+import { seedFromId, useMemoryStore, type Mood as StarMood, type StarNode } from '@/entities/memory'
 
 type Scope = 'FE' | 'BE' | 'FS' | 'Infra'
 
@@ -585,6 +590,84 @@ function Spec07Panel() {
   )
 }
 
+// --- 08 star-rendering (interactive: dummy stars in a single InstancedMesh) ---
+
+const DEMO_MOODS: StarMood[] = ['joy', 'calm', 'sad', 'anger', 'fear', 'love', 'neutral']
+
+/** Deterministic dummy stars: varied mood (color), intensity (size), and age
+ *  (brightness). Called from a click handler, so Date.now() is fine here. */
+function makeDummyStars(n: number): StarNode[] {
+  const now = Date.now()
+  const out: StarNode[] = []
+  for (let i = 0; i < n; i++) {
+    const id = `demo-${i}`
+    const ageDays = (i * 53) % 130 // 0..130 days → brightness spread
+    out.push({
+      id,
+      index: i,
+      memory: {
+        id,
+        mood: DEMO_MOODS[i % DEMO_MOODS.length],
+        intensity: 0.25 + (((i * 37) % 100) / 100) * 0.75,
+        lastRecalledAt: now - ageDays * 86_400_000,
+        seed: seedFromId(id),
+      },
+    })
+  }
+  return out
+}
+
+function Spec08Panel() {
+  const stars = useMemoryStore((s) => s.stars)
+  const setStars = useMemoryStore((s) => s.setStars)
+  return (
+    <div className="space-y-4 text-white/70">
+      <p>
+        기억=별의 순수 도메인 모델 + 시각화. 수천 별을 <b>단일 InstancedMesh</b> 1개로 그리고(원칙8), 별마다
+        색=mood·크기=intensity·밝기=activation(시간 감쇠, a_min=0.05 바닥)을 TSL 노드 머티리얼로 반영합니다.
+        좌표는 더미(피보나치 구) — 실제 force-sim(07) 연동·데이터 fetch는 10에서.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+          onClick={() => setStars(makeDummyStars(300))}
+        >
+          더미 별 300개
+        </button>
+        <button
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+          onClick={() => setStars(makeDummyStars(800))}
+        >
+          800개
+        </button>
+        <button
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+          onClick={() => setStars([])}
+        >
+          지우기
+        </button>
+        <span className="text-sm text-white/50">현재 {stars.length}개 · 단일 InstancedMesh</span>
+      </div>
+      <div className="h-80 w-full overflow-hidden rounded-md border border-white/10" data-lenis-prevent>
+        <Canvas
+          gl={createRenderer as unknown as GLProps}
+          flat
+          camera={{ position: [0, 0, 95], fov: 55, near: 0.1, far: 3000 }}
+        >
+          <color attach="background" args={['#070b1e']} />
+          <ambientLight intensity={0.5} />
+          <StarField />
+          <OrbitControls enableDamping makeDefault />
+        </Canvas>
+      </div>
+      <p className="text-sm text-white/40">
+        색=감정, 크기=강도, 밝기=activation 차이가 구분됩니다(Bloom은 /universe 경로에서). 좌표 갱신은
+        useFrame 경로로만 — 별 추가/선택 외 React 리렌더 없음(원칙3).
+      </p>
+    </div>
+  )
+}
+
 // --- not-yet-built specs: planned-feature placeholder ---
 
 function future(desc: string): ComponentType {
@@ -607,7 +690,7 @@ const SPECS: SpecEntry[] = [
   { num: '05', title: 'embedding-worker', scope: 'BE', done: true, Panel: Spec05Panel },
   { num: '06', title: 'universe-canvas', scope: 'FE', done: true, Panel: Spec06Panel },
   { num: '07', title: 'force-sim', scope: 'FE', done: true, Panel: Spec07Panel },
-  { num: '08', title: 'star-rendering', scope: 'FE', done: false, Panel: future('별 인스턴싱 렌더(InstancedMesh + TSL 셰이더).') },
+  { num: '08', title: 'star-rendering', scope: 'FE', done: true, Panel: Spec08Panel },
   { num: '09', title: 'synapse-rendering', scope: 'FE', done: false, Panel: future('시냅스 연결선 렌더(Line2 + TSL).') },
   { num: '10', title: 'record-memory-ui', scope: 'FE', done: false, Panel: future('작성 폼 → 별 등장(수직 슬라이스, 04 API 연동).') },
   { num: '11', title: 'recall-reinforce', scope: 'FS', done: false, Panel: future('회상 · 공동 회상 강화(weight 증가, last_*_at 갱신).') },
