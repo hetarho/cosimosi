@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const batchUpsertLinks = `-- name: BatchUpsertLinks :exec
+INSERT INTO memory_links (a_id, b_id, weight, user_id, link_type)
+SELECT LEAST(a, b), GREATEST(a, b), w, u, 'semantic'
+FROM (
+    SELECT
+        unnest($1::text[])     AS a,
+        unnest($2::text[])     AS b,
+        unnest($3::float8[]) AS w,
+        unnest($4::text[])  AS u
+) AS pairs
+ON CONFLICT (a_id, b_id) DO UPDATE
+SET weight = GREATEST(memory_links.weight, EXCLUDED.weight)
+`
+
+type BatchUpsertLinksParams struct {
+	AIds    []string  `json:"a_ids"`
+	BIds    []string  `json:"b_ids"`
+	Weights []float64 `json:"weights"`
+	UserIds []string  `json:"user_ids"`
+}
+
+// Initial semantic synapses from the embedding worker (spec 05), one statement
+// via UNNEST, with link_type literal 'semantic' (memory_links.link_type is NOT
+// NULL, no default — spec 03). On conflict we keep the stronger weight (GREATEST)
+// so re-running a job never weakens an existing link; co-recall reinforcement is
+// spec 11's job.
+//
+// IMPORTANT: the (a_id, b_id) pair is normalized HERE with LEAST/GREATEST, not by
+// the caller, so ordering uses the SAME database collation (en_US.utf8) as the
+// a_id<b_id CHECK and the (a_id,b_id) PK. The ids are mixed-case base64url; a Go
+// byte-order swap disagrees with the locale collation (e.g. 'Zx' < 'aB' is true
+// in Go but false in Postgres) and would violate the CHECK — so the DB decides.
+func (q *Queries) BatchUpsertLinks(ctx context.Context, arg BatchUpsertLinksParams) error {
+	_, err := q.db.Exec(ctx, batchUpsertLinks,
+		arg.AIds,
+		arg.BIds,
+		arg.Weights,
+		arg.UserIds,
+	)
+	return err
+}
+
 const listLinksByUser = `-- name: ListLinksByUser :many
 SELECT ml.a_id, ml.b_id, ml.weight, ml.link_type, ml.co_activation_count, ml.last_activated_at
 FROM memory_links ml

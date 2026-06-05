@@ -11,6 +11,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// EmbedDim is the fixed embedding dimension for the MVP (constitution §7,
+// Architecture §4.7). text-embedding-3-small and the mock embedder both emit
+// 1536-d vectors; the embeddings.vector(1536) column and HNSW index assume it.
+// Changing it requires re-embedding + index rebuild, so it is a compile-time
+// constant rather than an env var.
+const EmbedDim = 1536
+
 type Config struct {
 	Port        string
 	DatabaseURL string
@@ -23,6 +30,12 @@ type Config struct {
 	// Unused in the MVP HS256 path; reserved for JWKS verification of asymmetric
 	// signing keys in v1.
 	SupabaseProjectURL string
+	// AIEmbedder selects the embedding adapter (constitution §7): "mock" (keyless,
+	// deterministic — the default, used for keyless E2E) or "openai".
+	AIEmbedder string
+	// OpenAIAPIKey authenticates the OpenAI embedder. Empty unless AIEmbedder is
+	// "openai"; the factory fails fast if "openai" is selected without it.
+	OpenAIAPIKey string
 }
 
 func Load() (*Config, error) {
@@ -35,6 +48,8 @@ func Load() (*Config, error) {
 		CORSOrigin:         getEnv("CORS_ORIGIN", "http://localhost:1214"),
 		SupabaseJWTSecret:  getEnv("SUPABASE_JWT_SECRET", ""),
 		SupabaseProjectURL: getEnv("SUPABASE_PROJECT_URL", ""),
+		AIEmbedder:         getEnv("AI_EMBEDDER", "mock"),
+		OpenAIAPIKey:       getEnv("OPENAI_API_KEY", ""),
 	}
 
 	if cfg.DatabaseURL == "" {

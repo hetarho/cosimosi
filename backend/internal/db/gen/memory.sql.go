@@ -11,22 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const enqueueJob = `-- name: EnqueueJob :exec
-INSERT INTO jobs (id, memory_id, kind, status)
-VALUES ($1, $2, 'embed', 'pending')
-`
-
-type EnqueueJobParams struct {
-	ID       string `json:"id"`
-	MemoryID string `json:"memory_id"`
-}
-
-// Hands embedding/linking to the async worker (spec 05). 04 only enqueues.
-func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) error {
-	_, err := q.db.Exec(ctx, enqueueJob, arg.ID, arg.MemoryID)
-	return err
-}
-
 const findMemoryByIdempotencyKey = `-- name: FindMemoryByIdempotencyKey :one
 
 SELECT m.id AS memory_id
@@ -49,6 +33,29 @@ func (q *Queries) FindMemoryByIdempotencyKey(ctx context.Context, arg FindMemory
 	var memory_id string
 	err := row.Scan(&memory_id)
 	return memory_id, err
+}
+
+const getMemoryForEmbed = `-- name: GetMemoryForEmbed :one
+SELECT m.user_id, r.body, r.entry_date
+FROM memories m
+JOIN records r ON r.id = m.record_id
+WHERE m.id = $1
+`
+
+type GetMemoryForEmbedRow struct {
+	UserID    string      `json:"user_id"`
+	Body      string      `json:"body"`
+	EntryDate pgtype.Date `json:"entry_date"`
+}
+
+// Loads what the embedding worker needs (spec 05): the star's owner, the original
+// diary body, and its entry_date (for the temporal_bonus baseline). body/entry_date
+// live on the immutable records row, read via JOIN.
+func (q *Queries) GetMemoryForEmbed(ctx context.Context, id string) (GetMemoryForEmbedRow, error) {
+	row := q.db.QueryRow(ctx, getMemoryForEmbed, id)
+	var i GetMemoryForEmbedRow
+	err := row.Scan(&i.UserID, &i.Body, &i.EntryDate)
+	return i, err
 }
 
 const insertMemory = `-- name: InsertMemory :one

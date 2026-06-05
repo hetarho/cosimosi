@@ -22,10 +22,14 @@ INSERT INTO memories (id, user_id, record_id)
 VALUES ($1, $2, $3)
 RETURNING id;
 
--- name: EnqueueJob :exec
--- Hands embedding/linking to the async worker (spec 05). 04 only enqueues.
-INSERT INTO jobs (id, memory_id, kind, status)
-VALUES ($1, $2, 'embed', 'pending');
+-- name: GetMemoryForEmbed :one
+-- Loads what the embedding worker needs (spec 05): the star's owner, the original
+-- diary body, and its entry_date (for the temporal_bonus baseline). body/entry_date
+-- live on the immutable records row, read via JOIN.
+SELECT m.user_id, r.body, r.entry_date
+FROM memories m
+JOIN records r ON r.id = m.record_id
+WHERE m.id = $1;
 
 -- name: ListMemoriesByUser :many
 -- Every star for the user, dormant included (no brightness filter — constitution

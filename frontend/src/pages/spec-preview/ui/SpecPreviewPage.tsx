@@ -368,6 +368,45 @@ function Spec04Panel() {
   )
 }
 
+// --- 05 embedding-worker (architecture) ---
+
+function Spec05Panel() {
+  return (
+    <div className="space-y-3 text-white/70">
+      <p>
+        비동기 워커(백엔드성 스펙). 04가 일기 저장 시 <code className="text-white/90">jobs</code> 큐에 적재한
+        작업을 소비해 임베딩과 시냅스를 만듭니다. 04 패널에서 일기를 2건 기록한 뒤 GetUniverse를 다시 부르면
+        시냅스(edges)가 채워집니다. 파이프라인:
+      </p>
+      <ul className="list-disc space-y-1 pl-5 text-sm">
+        <li>
+          <b>claim</b> — <code className="text-white/90">FOR UPDATE SKIP LOCKED</code>로 due 상태
+          <code className="text-white/90">pending</code> job 1건을 원자적으로 잠그고 running 표시(동시 워커 안전).
+        </li>
+        <li>
+          <b>embed</b> — AI 포트(원칙7) 뒤의 어댑터. <code className="text-white/90">AI_EMBEDDER=mock</code>는
+          키 없이 텍스트 해시 시드의 결정론적 1536차원 벡터, <code className="text-white/90">openai</code>는
+          text-embedding-3-small. 결과를 <code className="text-white/90">embeddings</code>(pgvector)에 업서트.
+        </li>
+        <li>
+          <b>link</b> — KNN top-8 중 <code className="text-white/90">cos_sim ≥ 0.75</code> 후보(같은 user_id,
+          자기 제외)에 <code className="text-white/90">w0 = clamp(α·cos_sim + temporal_bonus, 0, 1)</code>(α=1,
+          같은 주 +0.3 선형 감소)로 가중치 계산 → <code className="text-white/90">memory_links</code> UNNEST 배치
+          업서트(무방향 a&lt;b 정규화는 DB 콜레이션과 일치하도록 <code className="text-white/90">LEAST/GREATEST</code>).
+        </li>
+        <li>
+          <b>실패</b> — 지수 백오프(<code className="text-white/90">next_run_at = now + base·2^attempts</code>)로
+          재시도, 한계 도달 시 <code className="text-white/90">failed</code>로 보존(삭제 안 함). 별·원본 일기 불변.
+        </li>
+      </ul>
+      <p className="text-sm text-white/40">
+        멱등: 임베딩 업서트 + 링크 <code>GREATEST</code> 업서트라 재실행이 안전. 좌표는 저장하지 않음(클라
+        force-sim 권위, 원칙3). mock은 의미가 아니라 안정성만 모델 — 동일 본문이어야 링크가 생깁니다.
+      </p>
+    </div>
+  )
+}
+
 // --- not-yet-built specs: planned-feature placeholder ---
 
 function future(desc: string): ComponentType {
@@ -387,7 +426,7 @@ const SPECS: SpecEntry[] = [
   { num: '02', title: 'rpc-contract — Connect 서버·전송·인증', scope: 'FS', done: true, Panel: Spec02Panel },
   { num: '03', title: 'data-schema — pgvector·goose·sqlc', scope: 'BE', done: true, Panel: Spec03Panel },
   { num: '04', title: 'memory-api — RecordMemory·GetUniverse', scope: 'BE', done: true, Panel: Spec04Panel },
-  { num: '05', title: 'embedding-worker', scope: 'BE', done: false, Panel: future('임베딩 생성 워커 + 의미 유사 top-k 연결(시냅스) 생성. jobs 큐 소비.') },
+  { num: '05', title: 'embedding-worker', scope: 'BE', done: true, Panel: Spec05Panel },
   { num: '06', title: 'universe-canvas', scope: 'FE', done: false, Panel: future('WebGPU 캔버스 · Bloom · 카메라 컨트롤.') },
   { num: '07', title: 'force-sim', scope: 'FE', done: false, Panel: future('Barnes-Hut 힘 시뮬레이션 tick + Worker(별 좌표 창발).') },
   { num: '08', title: 'star-rendering', scope: 'FE', done: false, Panel: future('별 인스턴싱 렌더(InstancedMesh + TSL 셰이더).') },
