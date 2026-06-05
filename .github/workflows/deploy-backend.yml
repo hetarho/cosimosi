@@ -1,7 +1,9 @@
-# Backend deploy (spec 14): on merge to develop|main, build a static image, push to GHCR,
-# then over SSH run migrations FIRST (direct 5432) and only then roll the API to the new
-# image. develop→staging, main→production (separate compose stacks on one VPS). The path
-# filter keeps frontend-only changes from triggering a backend deploy (2.2).
+# Backend deploy (spec 14). On push to develop|main (backend paths), the `build` job
+# always BUILDS the static image (validates the Dockerfile in CI) and PUSHES it to GHCR
+# only when deploy is enabled. The `rollout` job (migrate → swap the API over SSH) only
+# runs once the VPS is ready: set repo variable DEPLOY_ENABLED=true + the SSH/DB secrets.
+# Until then push + rollout are skipped (not failed) — no GHCR/VPS dependency, so the
+# workflow stays green during prep. develop→staging, main→production (one VPS, two stacks).
 name: Deploy backend
 
 on:
@@ -19,10 +21,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    # GitHub Environment → per-env secrets + optional manual-approval protection on prod.
-    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
     permissions:
       contents: read
       packages: write
@@ -32,22 +32,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Login only needed when we actually push (DEPLOY_ENABLED). GITHUB_TOKEN is automatic.
       - name: Log in to GHCR
+        if: ${{ vars.DEPLOY_ENABLED == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # GHCR auth is automatic
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push image
+      - name: Build image (push to GHCR only when deploy is enabled)
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          push: true
+          push: ${{ vars.DEPLOY_ENABLED == 'true' }}
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:${{ env.ENV_NAME }}
+
+  rollout:
+    needs: build
+    runs-on: ubuntu-latest
+    # VPS가 준비되기 전에는 건너뛴다(빨간 실패 방지). 준비되면 repo variable
+    # DEPLOY_ENABLED=true + 아래 secrets(SSH_HOST/SSH_USER/SSH_KEY, env별 DIRECT_DATABASE_URL)
+    # 를 설정하면 자동으로 동작한다.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    # GitHub Environment → per-env secrets + optional manual-approval protection on prod.
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      ENV_NAME: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
 
       # (6a) Migration files must be on the VPS before goose runs (it mounts them).
       - name: Sync migrations to VPS

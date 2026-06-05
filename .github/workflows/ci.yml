@@ -1,10 +1,13 @@
-# PR merge gate (spec 14, 2.1): frontend lint + build and backend vet + build must pass
-# before a PR can merge to develop/main. Linux runners, so the Windows .exe block (§8)
-# doesn't apply — Go runs natively here.
+# CI gate (spec 14, 2.1): frontend lint + build and backend vet + build must pass.
+# Runs on PRs (merge gate) AND on direct pushes to develop/main (solo-dev validation —
+# no PR needed to catch a break). Linux runners, so the Windows .exe block (§8) doesn't
+# apply — Go runs natively here. No secrets needed, so this is safe to run anytime.
 name: CI
 
 on:
   pull_request:
+    branches: [develop, main]
+  push:
     branches: [develop, main]
 
 jobs:
