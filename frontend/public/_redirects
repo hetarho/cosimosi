@@ -1,4 +1,0 @@
-# Cloudflare Pages SPA fallback (spec 14): client-side routes (/universe, /dormant)
-# have no file on disk, so serve index.html with 200 for any unmatched path. Without
-# this, a refresh or deep link to those routes returns 404. Vite copies public/ → dist/.
-/*  /index.html  200
