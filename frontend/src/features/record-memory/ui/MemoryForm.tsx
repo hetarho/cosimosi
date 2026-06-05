@@ -26,7 +26,7 @@ export function MemoryForm() {
 
   return (
     <form
-      className="flex w-80 flex-col gap-3 rounded-xl border border-white/10 bg-black/40 p-4 backdrop-blur"
+      className="flex w-full flex-col gap-3 rounded-xl border border-white/10 bg-black/40 p-4 backdrop-blur"
       onSubmit={(e) => {
         e.preventDefault()
         void submit()

@@ -51,9 +51,11 @@ function StarDust({ count = 1500 }: { count?: number }) {
   )
 }
 
-/** Camera controls gated by mode: nebula clamps zoom for a whole-universe overview
- *  (1.5); recall releases the clamp for free close-up navigation (1.6). makeDefault
- *  so future camera consumers (specs 07–10) and the bloom pass stay on one camera. */
+/** Camera controls gated by mode. nebula = the wide overview: fully free zoom in/out
+ *  (no clamp) so you can frame the whole star shell or dive in at will. recall = close
+ *  navigation: zoom-OUT is capped (maxDistance 70) so you stay "in" the universe and
+ *  can't pull back to an overview — instead you fly around via the HUD D-pad (NavController
+ *  translates the camera). makeDefault so the bloom pass + fly-to share one camera. */
 function CameraRig() {
   const mode = useCameraMode((s) => s.mode)
   return (
@@ -61,10 +63,66 @@ function CameraRig() {
       makeDefault
       enableDamping
       enablePan={mode === 'recall'}
-      minDistance={mode === 'nebula' ? 22 : 1}
-      maxDistance={mode === 'nebula' ? 80 : 600}
+      minDistance={mode === 'nebula' ? 2 : 1}
+      maxDistance={mode === 'nebula' ? 1500 : 70}
     />
   )
+}
+
+const WORLD_UP = new THREE.Vector3(0, 1, 0)
+
+/** Recall-mode "real navigation". Two distinct motions, both frame-rate-independent and
+ *  a no-op outside recall:
+ *  - z (전진/후진): translate the camera AND orbit target together along the look
+ *    direction — flies the rig through space, distance (and zoom clamp) preserved.
+ *  - x/y (방향키): rotate the LOOK in place. Camera position stays fixed; only the orbit
+ *    target swings around it (yaw about world-up, pitch about the camera's right axis),
+ *    so it's a first-person turn, not a strafe. Rotation preserves the camera↔target
+ *    distance, so OrbitControls.update() re-aims without nudging the position. */
+function NavController() {
+  const mode = useCameraMode((s) => s.mode)
+  const move = useCameraMode((s) => s.move)
+  const camera = useThree((s) => s.camera)
+  const controls = useThree((s) => s.controls) as
+    | { target: THREE.Vector3; update: () => void }
+    | null
+  const right = useRef(new THREE.Vector3())
+  const fwd = useRef(new THREE.Vector3())
+  const look = useRef(new THREE.Vector3())
+  const tmp = useRef(new THREE.Vector3())
+
+  useFrame((_, dt) => {
+    const { x, y, z } = move
+    if (mode !== 'recall' || !controls || (x === 0 && y === 0 && z === 0)) return
+    const dist = camera.position.distanceTo(controls.target)
+
+    // 전진/후진: move the whole rig along the look direction (position changes).
+    if (z !== 0) {
+      fwd.current.subVectors(controls.target, camera.position).normalize()
+      fwd.current.multiplyScalar(z * dist * 0.9 * dt)
+      camera.position.add(fwd.current)
+      controls.target.add(fwd.current)
+    }
+
+    // 방향키: rotate the look vector (target − camera). Length is preserved, so the
+    // position stays put and only the aim changes.
+    if ((x !== 0 || y !== 0) && dist > 0) {
+      const ang = 1.4 * dt
+      look.current.subVectors(controls.target, camera.position)
+      if (x !== 0) look.current.applyAxisAngle(WORLD_UP, -x * ang) // yaw (left/right)
+      if (y !== 0) {
+        right.current.setFromMatrixColumn(camera.matrix, 0).normalize()
+        tmp.current.copy(look.current).applyAxisAngle(right.current, y * ang) // pitch
+        // Don't tip past ~±80° of vertical (avoid the gimbal flip at the poles).
+        if (Math.abs(tmp.current.dot(WORLD_UP) / dist) < 0.985) look.current.copy(tmp.current)
+      }
+      controls.target.copy(camera.position).add(look.current)
+    }
+
+    controls.update()
+  })
+
+  return null
 }
 
 /** Renders the synapse graph (09 Line2/TSL) at the same deterministic star positions
@@ -156,7 +214,7 @@ export function UniverseCanvas() {
       // param/return types to R3F's nominal GLProps.
       gl={createRenderer as unknown as GLProps}
       flat
-      camera={{ position: [0, 0, 46], fov: 55, near: 0.1, far: 2000 }}
+      camera={{ position: [0, 0, 110], fov: 72, near: 0.1, far: 2000 }}
       onCreated={(state) => {
         const gl = state.gl as unknown as WebGPURenderer
         glRef.current = gl
@@ -171,6 +229,7 @@ export function UniverseCanvas() {
       <UniverseSynapses />
       <StarField />
       <CameraRig />
+      <NavController />
       <FlyToController />
       <BloomPass />
     </Canvas>
