@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Link } from '@tanstack/react-router'
 import { UniverseCanvas, useCameraMode } from '@/widgets/universe-canvas'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
@@ -52,13 +53,21 @@ export function HomePage() {
       <div className="absolute right-4 bottom-4 z-10">
         <MemoryPanel />
       </div>
-      <button
-        type="button"
-        onClick={toggle}
-        className="absolute top-4 right-4 z-10 rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
-      >
-        카메라: {mode === 'nebula' ? '성운(전체 조망)' : '회상(근접 항해)'}
-      </button>
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <Link
+          to="/dormant"
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
+        >
+          잠든 별
+        </Link>
+        <button
+          type="button"
+          onClick={toggle}
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
+        >
+          카메라: {mode === 'nebula' ? '성운(전체 조망)' : '회상(근접 항해)'}
+        </button>
+      </div>
 
       {starCount === 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-12 z-10 text-center">

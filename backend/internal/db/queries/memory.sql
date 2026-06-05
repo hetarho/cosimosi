@@ -52,3 +52,18 @@ FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.user_id = $1
 ORDER BY m.created_at;
+
+-- name: ListDormant :many
+-- Long-unrecalled (dormant) stars for the dormant-search page (spec 12). A search aid,
+-- NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
+-- compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
+-- brightness is computed client-side from this same value). The service converts the
+-- dormancy threshold into `cutoff`. mood/intensity JOINed from records (no body sent —
+-- the dormant list renders Star; the original is fetched on recall, spec 11). Same
+-- column shape as ListMemoriesByUser so it maps to the same domain Memory.
+SELECT m.id AS memory_id, r.mood, r.intensity, m.last_recalled_at
+FROM memories m
+JOIN records r ON r.id = m.record_id
+WHERE m.user_id = $1
+  AND m.last_recalled_at < sqlc.arg(cutoff)::timestamptz
+ORDER BY m.last_recalled_at ASC;

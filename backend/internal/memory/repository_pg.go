@@ -118,6 +118,28 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 	return out, nil
 }
 
+// ListDormant returns the user's long-unrecalled stars (last_recalled_at < cutoff),
+// ascending — same column shape as ListByUser, so it maps to the same domain Memory.
+func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff time.Time) ([]Memory, error) {
+	rows, err := gen.New(r.pool).ListDormant(ctx, gen.ListDormantParams{
+		UserID: userID,
+		Cutoff: pgtype.Timestamptz{Time: cutoff, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list dormant: %w", err)
+	}
+	out := make([]Memory, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, Memory{
+			ID:             row.MemoryID,
+			Mood:           moodFromDB(row.Mood),
+			Intensity:      intensityFromDB(row.Intensity),
+			LastRecalledAt: timeFromDB(row.LastRecalledAt),
+		})
+	}
+	return out, nil
+}
+
 // TouchRecall sets memories.last_recalled_at=now for the user's star (no-op if
 // absent — the original record is never touched, constitution §1).
 func (r *pgRepository) TouchRecall(ctx context.Context, userID, memoryID string) error {

@@ -2,8 +2,29 @@ package memory
 
 import (
 	"context"
+	"math"
 	"time"
 )
+
+// Dormancy threshold (spec 12): a star is "dormant" once its RAW activation
+// exp(-λ·Δt) falls to/below this. These constants MIRROR (must stay in sync with) the
+// client forgetting model in entities/memory/model/activation.ts — A_MIN, HALF_LIFE_DAYS,
+// and isDormant's default 2·A_MIN. There's no shared cross-language source, so changing
+// one side requires changing the other. The server converts the threshold to an
+// equivalent time cutoff so the SQL compares last_recalled_at only (no decay math).
+const (
+	halfLifeDays      = 30.0
+	dormancyThreshold = 2 * 0.05 // 2·A_MIN
+)
+
+// dormantCutoff converts the dormancy threshold (RAW activation) into a time cutoff:
+// activation = exp(-λ·Δt_days) ≤ threshold  ⟺  Δt ≥ ln(1/threshold)/λ
+// = HALF_LIFE_DAYS·log2(1/threshold) days. A star last recalled before this is dormant.
+// Pure (now injected) so the conversion is testable; no decay math leaks into SQL.
+func dormantCutoff(now time.Time) time.Time {
+	days := halfLifeDays * math.Log2(1/dormancyThreshold)
+	return now.Add(-time.Duration(days * float64(24*time.Hour)))
+}
 
 // Service holds the diary/star business policy. It depends only on ports
 // (Repository, LinkService) — no transport, no db. There is intentionally no
@@ -48,6 +69,14 @@ func (s *Service) GetUniverse(ctx context.Context, userID string) (Universe, err
 // the link service, which normalizes/sums and persists idempotently by batch_id.
 func (s *Service) ReinforceLinks(ctx context.Context, userID, batchID string, deltas []LinkDelta) error {
 	return s.links.ReinforceLinks(ctx, userID, batchID, deltas)
+}
+
+// ListDormant returns the caller's long-unrecalled stars (search aid for the dormant
+// page, spec 12). It converts the dormancy threshold to a time cutoff and lets the
+// query compare last_recalled_at only — GetUniverse still returns the whole graph
+// (constitution §2; ListDormant is not a delete/filter).
+func (s *Service) ListDormant(ctx context.Context, userID string) ([]Memory, error) {
+	return s.repo.ListDormant(ctx, userID, dormantCutoff(time.Now().UTC()))
 }
 
 // RecallMemory re-ignites a star (last_recalled_at=now) and returns its immutable

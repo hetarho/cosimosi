@@ -13,6 +13,7 @@ import { MeshStandardNodeMaterial } from 'three/webgpu'
 import { attribute, float, vec3 } from 'three/tsl'
 import { starBrightness, useMemoryStore } from '@/entities/memory'
 import { moodRgb } from '@/shared/config'
+import { fibonacciStarPosition } from '@/shared/lib'
 
 /** intensity (0..1) → instance scale. */
 function sizeFor(intensity: number): number {
@@ -68,7 +69,6 @@ export function StarField({ positionsRef }: StarFieldProps) {
     const dummy = new Float32Array(count * 3)
     const now = Date.now()
     const obj = new THREE.Object3D()
-    const golden = Math.PI * (3 - Math.sqrt(5))
 
     for (let i = 0; i < count; i++) {
       const m = stars[i].memory
@@ -80,16 +80,14 @@ export function StarField({ positionsRef }: StarFieldProps) {
       brightArr[i] = starBrightness(m.lastRecalledAt, now)
       scales[i] = sizeFor(m.intensity)
 
-      // Deterministic fibonacci-sphere dummy layout (radius varies by seed).
-      const y = count > 1 ? 1 - (i / (count - 1)) * 2 : 0
-      const rAtY = Math.sqrt(Math.max(0, 1 - y * y))
-      const theta = golden * i
-      const r = 22 + m.seed * 24
-      dummy[i * 3] = Math.cos(theta) * rAtY * r
-      dummy[i * 3 + 1] = y * r
-      dummy[i * 3 + 2] = Math.sin(theta) * rAtY * r
+      // Deterministic fibonacci-sphere dummy layout (shared with the camera fly-to so
+      // they agree on each star's position — 12). Radius varies by seed.
+      const [px, py, pz] = fibonacciStarPosition(i, count, m.seed)
+      dummy[i * 3] = px
+      dummy[i * 3 + 1] = py
+      dummy[i * 3 + 2] = pz
 
-      obj.position.set(dummy[i * 3], dummy[i * 3 + 1], dummy[i * 3 + 2])
+      obj.position.set(px, py, pz)
       obj.scale.setScalar(scales[i])
       obj.updateMatrix()
       mesh.setMatrixAt(i, obj.matrix)

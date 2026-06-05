@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 // ErrNotFound is returned by repository reads when a requested row is absent.
@@ -22,6 +23,12 @@ type Repository interface {
 	// ListByUser returns every star for the user, dormant ones included (no
 	// brightness filter — constitution §2), with mood/intensity JOINed from records.
 	ListByUser(ctx context.Context, userID string) ([]Memory, error)
+
+	// ListDormant returns the user's stars whose last_recalled_at is before cutoff
+	// (long unrecalled), ascending. The cutoff is derived in the service from the
+	// dormancy threshold; the query compares time only (no decay math — constitution
+	// §2). This is a search aid, not a delete/filter (GetUniverse stays whole).
+	ListDormant(ctx context.Context, userID string, cutoff time.Time) ([]Memory, error)
 
 	// TouchRecall re-ignites a star (sets memories.last_recalled_at=now); a no-op if
 	// the (user, memory) pair is absent (spec 11). Only the star is mutable; the

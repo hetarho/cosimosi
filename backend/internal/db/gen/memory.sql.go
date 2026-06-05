@@ -144,6 +144,59 @@ func (q *Queries) InsertRecord(ctx context.Context, arg InsertRecordParams) erro
 	return err
 }
 
+const listDormant = `-- name: ListDormant :many
+SELECT m.id AS memory_id, r.mood, r.intensity, m.last_recalled_at
+FROM memories m
+JOIN records r ON r.id = m.record_id
+WHERE m.user_id = $1
+  AND m.last_recalled_at < $2::timestamptz
+ORDER BY m.last_recalled_at ASC
+`
+
+type ListDormantParams struct {
+	UserID string             `json:"user_id"`
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+}
+
+type ListDormantRow struct {
+	MemoryID       string             `json:"memory_id"`
+	Mood           *string            `json:"mood"`
+	Intensity      *float32           `json:"intensity"`
+	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+}
+
+// Long-unrecalled (dormant) stars for the dormant-search page (spec 12). A search aid,
+// NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
+// compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
+// brightness is computed client-side from this same value). The service converts the
+// dormancy threshold into `cutoff`. mood/intensity JOINed from records (no body sent —
+// the dormant list renders Star; the original is fetched on recall, spec 11). Same
+// column shape as ListMemoriesByUser so it maps to the same domain Memory.
+func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]ListDormantRow, error) {
+	rows, err := q.db.Query(ctx, listDormant, arg.UserID, arg.Cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDormantRow
+	for rows.Next() {
+		var i ListDormantRow
+		if err := rows.Scan(
+			&i.MemoryID,
+			&i.Mood,
+			&i.Intensity,
+			&i.LastRecalledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMemoriesByUser = `-- name: ListMemoriesByUser :many
 SELECT m.id AS memory_id, r.mood, r.intensity, m.last_recalled_at
 FROM memories m

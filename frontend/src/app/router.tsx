@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 import { LandingPage } from '@/pages/landing'
 import { HomePage } from '@/pages/home'
+import { DormantPage } from '@/pages/dormant'
 import { SpecPreviewPage } from '@/pages/spec-preview'
 import { RootLayout } from './RootLayout'
 import { SessionGate } from './ui/SessionGate'
@@ -28,6 +29,20 @@ const universeRoute = createRoute({
   },
 })
 
+// /dormant = 잠든 별 탐색(보호 라우트, 12). 항목 클릭 → focusStar → /universe 로 이동 →
+// 카메라 fly-to → 회상 재점화.
+const dormantRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dormant',
+  component: function DormantRoute() {
+    return (
+      <SessionGate>
+        <DormantPage />
+      </SessionGate>
+    )
+  },
+})
+
 // /spec-preview = dev 전용 스펙 프리뷰 샌드박스(프로덕션 빌드엔 라우트 미등록).
 const specPreviewRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -38,6 +53,7 @@ const specPreviewRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   universeRoute,
+  dormantRoute,
   ...(import.meta.env.DEV ? [specPreviewRoute] : []),
 ])
 

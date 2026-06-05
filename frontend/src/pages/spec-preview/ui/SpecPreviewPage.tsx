@@ -8,7 +8,12 @@ import { useMemo, useState, type ComponentType, type ReactNode } from 'react'
 import { Code, ConnectError, createClient, type Interceptor } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { getAccessToken, memoryClient } from '@/shared/api'
-import { MemoryService, Mood, type GetUniverseResponse } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import {
+  MemoryService,
+  Mood,
+  type GetUniverseResponse,
+  type Star,
+} from '@/shared/api/gen/cosimosi/v1/memory_pb'
 import {
   alpha as simAlpha,
   createSim,
@@ -21,7 +26,16 @@ import { Canvas, type GLProps } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { createRenderer } from '@/shared/lib/r3f'
 import { StarField } from '@/entities/star'
-import { seedFromId, useMemoryStore, type Mood as StarMood, type StarNode } from '@/entities/memory'
+import {
+  activation,
+  isDormant,
+  seedFromId,
+  starBrightness,
+  synapseBrightness,
+  useMemoryStore,
+  type Mood as StarMood,
+  type StarNode,
+} from '@/entities/memory'
 import { SynapseLines, type SynapseEdge } from '@/entities/synapse'
 
 type Scope = 'FE' | 'BE' | 'FS' | 'Infra'
@@ -937,6 +951,154 @@ function Spec11Panel() {
   )
 }
 
+// --- 12 decay-dormant (interactive: decay model + ListDormant) ---
+
+const DECAY_DAY_MS = 86_400_000
+
+function DecayBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-white/50">{label}</span>
+        <span className="font-mono text-white/70">{value.toFixed(3)}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-indigo-400/80" style={{ width: `${value * 100}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function Spec12Panel() {
+  const [devToken, setDevToken] = useState('')
+  const client = useMemo(
+    () => (devToken.trim() ? makeDevClient(devToken.trim()) : memoryClient),
+    [devToken],
+  )
+  const [days, setDays] = useState(30)
+  const [weight, setWeight] = useState(0.8)
+  const [dormant, setDormant] = useState<Star[] | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  // Pure model preview: use now=0 and lastRecalledAt=-Δt so activation = exp(-λ·Δt)
+  // with no Date.now() in render (react-hooks/purity).
+  const t = -days * DECAY_DAY_MS
+  const act = activation(t, 0)
+  const starB = starBrightness(t, 0)
+  const synB = synapseBrightness(weight, t, 0)
+  const dormantFlag = isDormant(t, 0)
+
+  async function fetchDormant() {
+    setError('')
+    setBusy(true)
+    try {
+      const res = await client.listDormant({})
+      setDormant(res.stars)
+    } catch (e) {
+      setError(errText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 text-white/70">
+      <p>
+        망각 모델: 활성도는 <code className="text-white/90">exp(-λ·Δt)</code>(λ=ln2/30)로 감쇠하되, 별·시냅스
+        밝기는 <code className="text-white/90">a_min=0.05</code> 바닥 아래로 내려가지 않아 사라지지 않습니다(원칙 2).
+        실제 화면은{' '}
+        <a href="/universe" className="text-sky-300 underline">
+          /universe
+        </a>{' '}
+        ·{' '}
+        <a href="/dormant" className="text-sky-300 underline">
+          /dormant
+        </a>
+        (로그인 필요).
+      </p>
+
+      <section className="space-y-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <h3 className="text-sm font-medium text-white/80">감쇠 시뮬레이터 (순수 model)</h3>
+        <label className="flex flex-col gap-1 text-xs text-white/50">
+          마지막 회상 후 경과: {days}일
+          <input type="range" min={0} max={400} value={days} onChange={(e) => setDays(Number(e.target.value))} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/50">
+          시냅스 weight: {weight.toFixed(2)}
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={weight}
+            onChange={(e) => setWeight(Number(e.target.value))}
+          />
+        </label>
+        <DecayBar label="activation = exp(-λ·Δt) (raw)" value={act} />
+        <DecayBar label="별 밝기 = max(a_min, activation)" value={starB} />
+        <DecayBar label="시냅스 밝기 = weight·max(a_min, act)" value={synB} />
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-white/50">잠든 별 판정 (activation ≤ 2·a_min):</span>
+          {dormantFlag ? (
+            <span className="rounded bg-amber-500/20 px-2 py-0.5 text-amber-300">잠듦 (dormant)</span>
+          ) : (
+            <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-emerald-300">활성 (awake)</span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/35">
+          Δt=30일 → activation≈0.5(반감기), 충분히 크면 별 밝기는 정확히 a_min=0.05에서 멈춥니다(0 아님).
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-white/80">ListDormant — 잠든 별 탐색(보조 조회)</h3>
+        <details className="rounded-md border border-white/10 bg-white/5 p-3 text-sm">
+          <summary className="cursor-pointer text-white/60">고급: dev 토큰</summary>
+          <textarea
+            className={`${inputCls} mt-2 h-20 w-full font-mono text-xs`}
+            placeholder="eyJ… (HS256 dev JWT)"
+            value={devToken}
+            onChange={(e) => setDevToken(e.target.value)}
+          />
+        </details>
+        <button
+          className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20 disabled:opacity-50"
+          onClick={() => void fetchDormant()}
+          disabled={busy}
+        >
+          잠든 별 불러오기 (ListDormant)
+        </button>
+        {dormant && (
+          <div className="space-y-1 text-sm">
+            <p className="text-white/50">{dormant.length}개 (cutoff 이전 · last_recalled_at 오름차순)</p>
+            <ul className="space-y-1">
+              {dormant.map((s) => (
+                <li key={s.memoryId} className="flex gap-2 rounded-md bg-white/5 px-3 py-1.5 text-xs">
+                  <span className="font-mono text-white/60">{s.memoryId.slice(0, 10)}…</span>
+                  <span className="text-white/50">{Mood[s.mood]}</span>
+                  <span className="ml-auto text-white/35">{s.lastRecalledAt}</span>
+                </li>
+              ))}
+              {dormant.length === 0 && (
+                <li className="rounded-md bg-white/5 px-3 py-2 text-xs text-white/40">
+                  잠든 별이 없습니다(전부 최근 회상). GetUniverse는 그래도 전체 그래프를 반환합니다(3.2).
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+        {error && <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">⚠ {error}</p>}
+      </section>
+
+      <p className="text-sm text-white/40">
+        검증: 감쇠 곡선이 a_min에서 바닥 처리(1.2) · 시냅스 밝기=weight·max(a_min,act)(1.3) · ListDormant는
+        cutoff 이전 별만(3.1), 삭제 아님 — GetUniverse는 전체 유지(3.2). 잠든 별 클릭→fly-to→회상은 /dormant에서.
+      </p>
+    </div>
+  )
+}
+
 // --- not-yet-built specs: planned-feature placeholder ---
 
 function future(desc: string): ComponentType {
@@ -963,7 +1125,7 @@ const SPECS: SpecEntry[] = [
   { num: '09', title: 'synapse-rendering', scope: 'FE', done: true, Panel: Spec09Panel },
   { num: '10', title: 'record-memory-ui', scope: 'FE', done: true, Panel: Spec10Panel },
   { num: '11', title: 'recall-reinforce', scope: 'FS', done: true, Panel: Spec11Panel },
-  { num: '12', title: 'decay-dormant', scope: 'FS', done: false, Panel: future('활성도 감쇠 · 최소 밝기 · 잠든 별 탐색.') },
+  { num: '12', title: 'decay-dormant', scope: 'FS', done: true, Panel: Spec12Panel },
   { num: '13', title: 'mvp-verification', scope: 'FS', done: false, Panel: future('pnpm dev 전체 한 바퀴 · E2E · 에러 점검.') },
   { num: '14', title: 'deploy-cicd', scope: 'Infra', done: false, Panel: future('develop→스테이징 · main→프로덕션 자동 배포.') },
 ]

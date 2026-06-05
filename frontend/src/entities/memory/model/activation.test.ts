@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { moodRgb, NEUTRAL_RGB } from '@/shared/config'
-import { A_MIN, activation, HALF_LIFE_DAYS, starBrightness } from './activation'
+import {
+  A_MIN,
+  activation,
+  HALF_LIFE_DAYS,
+  isDormant,
+  starBrightness,
+  synapseBrightness,
+} from './activation'
 
 const DAY_MS = 86_400_000
 
@@ -27,6 +34,47 @@ describe('activation', () => {
   it('treats a future lastRecalledAt as Δt=0 (no >1 brightness)', () => {
     const now = 1_700_000_000_000
     expect(activation(now + DAY_MS, now)).toBe(1.0)
+  })
+})
+
+describe('synapseBrightness (spec 12, 1.3)', () => {
+  const now = 1_700_000_000_000
+
+  it('is weight · activation when fresh (Δt=0)', () => {
+    expect(synapseBrightness(0.8, now, now)).toBeCloseTo(0.8, 10)
+  })
+
+  it('scales weight by the activation decay', () => {
+    const past = now - HALF_LIFE_DAYS * DAY_MS // activation ≈ 0.5
+    expect(synapseBrightness(1.0, past, now)).toBeGreaterThan(0.49)
+    expect(synapseBrightness(1.0, past, now)).toBeLessThan(0.51)
+  })
+
+  it('floors the activation factor at A_MIN (link dims but never vanishes)', () => {
+    const longAgo = now - 1000 * DAY_MS // activation ≪ A_MIN
+    expect(synapseBrightness(1.0, longAgo, now)).toBeCloseTo(A_MIN, 10)
+    expect(synapseBrightness(0.5, longAgo, now)).toBeCloseTo(0.5 * A_MIN, 10)
+  })
+})
+
+describe('isDormant (spec 12)', () => {
+  const now = 1_700_000_000_000
+
+  it('is false for a freshly recalled star', () => {
+    expect(isDormant(now, now)).toBe(false)
+  })
+
+  it('is true once raw activation falls to/below the default 2·A_MIN threshold', () => {
+    // activation = 2·A_MIN = 0.1 at Δt = ln(1/0.1)/λ = 30·log2(10) ≈ 99.66 days.
+    const days = HALF_LIFE_DAYS * Math.log2(1 / (2 * A_MIN))
+    expect(isDormant(now - (days + 1) * DAY_MS, now)).toBe(true)
+    expect(isDormant(now - (days - 1) * DAY_MS, now)).toBe(false)
+  })
+
+  it('respects a custom threshold (boundary on raw activation)', () => {
+    const past = now - HALF_LIFE_DAYS * DAY_MS // activation ≈ 0.5
+    expect(isDormant(past, now, 0.5)).toBe(true) // 0.5 ≤ 0.5
+    expect(isDormant(past, now, 0.49)).toBe(false)
   })
 })
 

@@ -13,10 +13,11 @@ import (
 	"github.com/cosimosi/backend/internal/platform/rpcserver"
 )
 
-// Handler adapts proto ↔ domain for the MemoryService RPCs implemented in spec 04
-// (RecordMemory, GetUniverse). The remaining RPCs — ReinforceLinks/RecallMemory
-// (spec 11) and ListDormant (spec 12) — inherit CodeUnimplemented from the
-// embedded base. It stays thin: auth + mapping only, policy lives in Service.
+// Handler adapts proto ↔ domain for the MemoryService RPCs: RecordMemory/GetUniverse
+// (spec 04), ReinforceLinks/RecallMemory (spec 11), ListDormant (spec 12) — all
+// implemented below. The embedded UnimplementedMemoryServiceHandler is only a
+// forward-compat shim for RPCs added to the proto but not yet handled. It stays thin:
+// auth + mapping only, policy lives in Service.
 type Handler struct {
 	cosimosiv1connect.UnimplementedMemoryServiceHandler
 	svc *Service
@@ -140,6 +141,30 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 			CreatedAt: formatTime(&rec.CreatedAt),
 		},
 	}), nil
+}
+
+// ListDormant returns the caller's long-unrecalled stars as Star (02 reuse — no body;
+// the original is fetched on recall, spec 11). The full graph is unaffected
+// (GetUniverse still returns everything — constitution §2). An empty list is valid.
+func (h *Handler) ListDormant(ctx context.Context, req *connect.Request[cosimosiv1.ListDormantRequest]) (*connect.Response[cosimosiv1.ListDormantResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	memories, err := h.svc.ListDormant(ctx, userID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	stars := make([]*cosimosiv1.Star, 0, len(memories))
+	for _, m := range memories {
+		stars = append(stars, &cosimosiv1.Star{
+			MemoryId:       m.ID,
+			Mood:           moodToProto(m.Mood),
+			Intensity:      m.Intensity,
+			LastRecalledAt: formatTime(m.LastRecalledAt),
+		})
+	}
+	return connect.NewResponse(&cosimosiv1.ListDormantResponse{Stars: stars}), nil
 }
 
 // parseEntryDate accepts "YYYY-MM-DD" or empty (→ zero time, service defaults to today).
