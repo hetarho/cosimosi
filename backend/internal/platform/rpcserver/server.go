@@ -35,7 +35,7 @@ func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimos
 		memorySvc,
 		connect.WithInterceptors(
 			NewLoggingInterceptor(slog.Default()),
-			NewAuthInterceptor(cfg.SupabaseJWTSecret),
+			NewAuthInterceptor(cfg.SupabaseJWTSecret, cfg.SupabaseProjectURL),
 		),
 	)
 	mux.Handle(path, handler)

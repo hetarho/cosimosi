@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -21,25 +22,66 @@ func UserIDFromContext(ctx context.Context) (string, bool) {
 	return v, ok
 }
 
-// NewAuthInterceptor validates the Bearer JWT on each unary RPC against the
-// Supabase shared HS256 secret, injects the "sub" claim as the user id, and
-// rejects a missing/invalid/expired token with CodeUnauthenticated before the
-// handler runs. /health is registered directly on the mux and bypasses this.
+// NewAuthInterceptor validates the Bearer JWT on each unary RPC, injects the "sub"
+// claim as the user id, and rejects a missing/invalid/expired token with
+// CodeUnauthenticated before the handler runs. /health is registered directly on the
+// mux and bypasses this.
 //
-// Fails CLOSED when the secret is empty: golang-jwt's HMAC verify has no minimum
-// key-length check, so a token forged with the empty key would otherwise verify
-// (auth bypass + arbitrary user_id). We reject every protected RPC instead — the
-// server still boots so /health and DB work locally without Supabase configured.
+// Two verification paths, selected by the token's alg (and constrained by
+// WithValidMethods, so an attacker can't downgrade across them):
+//   - ES256/RS256 (Supabase's default, asymmetric signing keys) → verified against the
+//     project's PUBLIC keys from {projectURL}/auth/v1/.well-known/jwks.json (fetched once
+//     at boot, cached + auto-refreshed, selected by `kid`).
+//   - HS256 (legacy shared secret + the /spec-preview dev token) → verified with `secret`.
 //
-// MVP scope: signature + alg allowlist + expiry. aud/iss/role enforcement is
-// deferred (Supabase aud can be a string or array and has varied across
-// versions — enforcing it now risks false rejections). Asymmetric signing-key
-// (JWKS) verification is a v1 swap behind this same interceptor.
-func NewAuthInterceptor(secret string) connect.UnaryInterceptorFunc {
+// Fails CLOSED: with neither a JWKS source nor a secret, every protected RPC is rejected.
+// HMAC is only allowed when `secret` is non-empty (golang-jwt's HMAC verify has no minimum
+// key-length check, so an empty key would otherwise verify — auth bypass). The server
+// still boots without Supabase configured so /health and local DB work.
+//
+// MVP scope: signature + alg allowlist + expiry. aud/iss/role enforcement is deferred
+// (Supabase aud can be a string or array and has varied across versions).
+func NewAuthInterceptor(secret, projectURL string) connect.UnaryInterceptorFunc {
 	key := []byte(secret)
-	if len(key) == 0 {
-		slog.Warn("SUPABASE_JWT_SECRET is empty — all protected RPCs will be rejected (auth fails closed)")
+	methods := make([]string, 0, 3)
+	if len(key) > 0 {
+		methods = append(methods, "HS256")
 	}
+
+	// Asymmetric verification via the Supabase project JWKS (the default since 2025).
+	var jwks jwt.Keyfunc
+	if projectURL != "" {
+		jwksURL := strings.TrimRight(projectURL, "/") + "/auth/v1/.well-known/jwks.json"
+		k, err := keyfunc.NewDefault([]string{jwksURL})
+		if err != nil {
+			// Don't fail boot — log and run HMAC-only (asymmetric tokens then rejected).
+			slog.Warn("JWKS init failed; asymmetric tokens will be rejected", "url", jwksURL, "err", err)
+		} else {
+			jwks = k.Keyfunc
+			methods = append(methods, "ES256", "RS256")
+			slog.Info("JWKS verification enabled", "url", jwksURL)
+		}
+	}
+
+	if len(methods) == 0 {
+		slog.Warn("no JWT verification configured (set SUPABASE_PROJECT_URL for JWKS and/or SUPABASE_JWT_SECRET) — all protected RPCs will be rejected (auth fails closed)")
+	}
+
+	// keyFor returns the correct key material per alg family, never crossing them
+	// (blocks the RS256→HS256 key-confusion and "none" attacks).
+	keyFor := func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); ok {
+			if len(key) == 0 {
+				return nil, errors.New("HMAC token but no secret configured")
+			}
+			return key, nil
+		}
+		if jwks == nil {
+			return nil, errors.New("asymmetric token but JWKS not configured")
+		}
+		return jwks(t) // ES256/RS256 → JWKS public key by kid
+	}
+
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// This interceptor is for the server side; on a client it would attach
@@ -48,7 +90,7 @@ func NewAuthInterceptor(secret string) connect.UnaryInterceptorFunc {
 				return next(ctx, req)
 			}
 
-			if len(key) == 0 {
+			if len(methods) == 0 {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("auth not configured"))
 			}
 
@@ -57,14 +99,7 @@ func NewAuthInterceptor(secret string) connect.UnaryInterceptorFunc {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing or malformed bearer token"))
 			}
 
-			tok, err := jwt.Parse(raw, func(t *jwt.Token) (any, error) {
-				// Defense-in-depth alongside WithValidMethods: reject non-HMAC algs
-				// (blocks the RS256→HS256 key-confusion and "none" attacks).
-				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, errors.New("unexpected signing method")
-				}
-				return key, nil
-			}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
+			tok, err := jwt.Parse(raw, keyFor, jwt.WithValidMethods(methods), jwt.WithExpirationRequired())
 			if err != nil {
 				// Log the precise reason server-side; return an opaque message so the
 				// client can't distinguish expired vs bad-signature vs malformed.
