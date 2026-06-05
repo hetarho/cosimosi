@@ -22,6 +22,7 @@ import { OrbitControls } from '@react-three/drei'
 import { createRenderer } from '@/shared/lib/r3f'
 import { StarField } from '@/entities/star'
 import { seedFromId, useMemoryStore, type Mood as StarMood, type StarNode } from '@/entities/memory'
+import { SynapseLines, type SynapseEdge } from '@/entities/synapse'
 
 type Scope = 'FE' | 'BE' | 'FS' | 'Infra'
 
@@ -668,6 +669,62 @@ function Spec08Panel() {
   )
 }
 
+// --- 09 synapse-rendering (interactive: weighted edges as Line2/TSL) ---
+
+const SYN_STARS: Record<string, [number, number, number]> = {
+  s0: [0, 32, 0],
+  s1: [30, 10, 6],
+  s2: [18, -26, -6],
+  s3: [-18, -26, 6],
+  s4: [-30, 10, -6],
+  s5: [0, 0, 28],
+}
+const synPositionOf = (id: string): [number, number, number] | null => SYN_STARS[id] ?? null
+
+const SYN_EDGES: SynapseEdge[] = [
+  { aId: 's0', bId: 's1', weight: 1.0, brightness: 1.0, reinforcedRecency: 0.9, linkType: 'semantic' }, // strong + pulsing
+  { aId: 's1', bId: 's2', weight: 0.7, brightness: 0.8, reinforcedRecency: 0, linkType: 'semantic' },
+  { aId: 's2', bId: 's3', weight: 0.3, brightness: 0.5, reinforcedRecency: 0, linkType: 'temporal' }, // weak
+  { aId: 's3', bId: 's4', weight: 0.1, brightness: 0.05, reinforcedRecency: 0, linkType: 'semantic' }, // dormant (floored)
+  { aId: 's4', bId: 's0', weight: 0.85, brightness: 0.9, reinforcedRecency: 0.4, linkType: 'co_recall' }, // strong + mild pulse
+  { aId: 's5', bId: 's0', weight: 0.6, brightness: 0.7, reinforcedRecency: 0, linkType: 'entity' },
+  { aId: 's5', bId: 'ghost', weight: 1, brightness: 1, reinforcedRecency: 0, linkType: 'semantic' }, // missing endpoint → skipped (1.6)
+]
+
+function Spec09Panel() {
+  return (
+    <div className="space-y-4 text-white/70">
+      <p>
+        별과 별을 잇는 시냅스(가중치 엣지)를 fat-line(Line2)으로 배칭 렌더. 강도(weight·brightness)를{' '}
+        <b>밝기·alpha·펄스</b>로 매핑 — 강한 엣지는 밝고 진하게, 약/잠든 엣지는 어둡지만 a_min 바닥으로 은은히
+        잔존(원칙2), 최근 강화된 엣지(reinforcedRecency&gt;0)는 펄스합니다. 두께는 머티리얼 전역 스칼라(per-edge
+        변조 불가). 좌표는 props로 받음(좌표 권위는 force-sim).
+      </p>
+      <div className="h-80 w-full overflow-hidden rounded-md border border-white/10" data-lenis-prevent>
+        <Canvas
+          gl={createRenderer as unknown as GLProps}
+          flat
+          camera={{ position: [0, 0, 90], fov: 55, near: 0.1, far: 2000 }}
+        >
+          <color attach="background" args={['#070b1e']} />
+          {Object.entries(SYN_STARS).map(([id, p]) => (
+            <mesh key={id} position={p}>
+              <sphereGeometry args={[1.6, 16, 16]} />
+              <meshBasicMaterial color="#cdb6ff" toneMapped={false} />
+            </mesh>
+          ))}
+          <SynapseLines edges={SYN_EDGES} positionOf={synPositionOf} />
+          <OrbitControls enableDamping makeDefault />
+        </Canvas>
+      </div>
+      <p className="text-sm text-white/40">
+        7개 엣지 중 강도가 제각각(weight 1.0~0.1)이고 2개는 펄스. 마지막 엣지는 끝점(ghost)이 없어 건너뜀(1.6).
+        강화 로직은 11, 감쇠(activation) 산출은 12 — 여기선 받은 값을 시각에 매핑만.
+      </p>
+    </div>
+  )
+}
+
 // --- not-yet-built specs: planned-feature placeholder ---
 
 function future(desc: string): ComponentType {
@@ -691,7 +748,7 @@ const SPECS: SpecEntry[] = [
   { num: '06', title: 'universe-canvas', scope: 'FE', done: true, Panel: Spec06Panel },
   { num: '07', title: 'force-sim', scope: 'FE', done: true, Panel: Spec07Panel },
   { num: '08', title: 'star-rendering', scope: 'FE', done: true, Panel: Spec08Panel },
-  { num: '09', title: 'synapse-rendering', scope: 'FE', done: false, Panel: future('시냅스 연결선 렌더(Line2 + TSL).') },
+  { num: '09', title: 'synapse-rendering', scope: 'FE', done: true, Panel: Spec09Panel },
   { num: '10', title: 'record-memory-ui', scope: 'FE', done: false, Panel: future('작성 폼 → 별 등장(수직 슬라이스, 04 API 연동).') },
   { num: '11', title: 'recall-reinforce', scope: 'FS', done: false, Panel: future('회상 · 공동 회상 강화(weight 증가, last_*_at 갱신).') },
   { num: '12', title: 'decay-dormant', scope: 'FS', done: false, Panel: future('활성도 감쇠 · 최소 밝기 · 잠든 별 탐색.') },
