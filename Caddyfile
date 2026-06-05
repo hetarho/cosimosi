@@ -1,0 +1,12 @@
+# Caddy reverse proxy + automatic HTTPS for the cosimosi API (spec 14). The site address
+# comes from $API_DOMAIN, set per stack in the compose .env: api.<도메인> (prod) or
+# api.staging.<도메인> (staging). Caddy provisions and renews the TLS cert automatically.
+# The upstream speaks h2c (Connect over HTTP/2 cleartext) on :8080; CORS is handled by the
+# API itself (connectrpc.com/cors, allowed origin = CORS_ORIGIN), not here.
+{$API_DOMAIN} {
+	reverse_proxy api:8080 {
+		transport http {
+			versions h2c 2
+		}
+	}
+}

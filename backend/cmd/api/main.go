@@ -16,6 +16,9 @@ import (
 	"syscall"
 	"time"
 
+	sentry "github.com/getsentry/sentry-go"
+	sentryhttp "github.com/getsentry/sentry-go/http"
+
 	"github.com/cosimosi/backend/internal/ai"
 	"github.com/cosimosi/backend/internal/job"
 	"github.com/cosimosi/backend/internal/link"
@@ -35,6 +38,24 @@ func main() {
 	if err != nil {
 		slog.Error("config load failed", "err", err)
 		os.Exit(1)
+	}
+
+	// Production error tracking (spec 14 §9). No DSN → skipped entirely, so local/dev
+	// and tests are unaffected. Handler panics are captured by the sentryhttp wrap below.
+	sentryEnabled := false
+	if cfg.SentryDSN != "" {
+		if err := sentry.Init(sentry.ClientOptions{
+			Dsn:         cfg.SentryDSN,
+			Environment: cfg.SentryEnvironment,
+			Release:     version,
+		}); err != nil {
+			slog.Warn("sentry init failed; continuing without it", "err", err)
+		} else {
+			sentryEnabled = true
+			defer sentry.Flush(2 * time.Second)
+			defer sentry.Recover()
+			slog.Info("sentry enabled", "environment", cfg.SentryEnvironment)
+		}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -71,6 +92,13 @@ func main() {
 	}()
 
 	server := rpcserver.New(cfg, db, version, memoryHandler)
+
+	// Capture handler panics in Sentry (Repanic so net/http still returns 500). Wrapping
+	// the outermost handler keeps Sentry in the composition root — rpcserver stays
+	// infra-only. No-op path: only wrapped when Sentry actually initialized.
+	if sentryEnabled {
+		server.Handler = sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle(server.Handler)
+	}
 
 	// A serve error (e.g. the port is already bound) must NOT exit 0 — an
 	// orchestrator would read a clean exit as success and never restart us.

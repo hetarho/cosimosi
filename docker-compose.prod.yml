@@ -1,0 +1,33 @@
+# Production runtime (spec 14): the GHCR API image behind a Caddy reverse proxy with
+# automatic HTTPS. NO local postgres — DATABASE_URL points at Supabase. Each environment
+# is a separate stack on the VPS (/srv/cosimosi-staging, /srv/cosimosi-prod) with its own
+# untracked .env. IMAGE_TAG is read from that .env — the deploy step writes IMAGE_TAG=<sha>
+# there so `pull` and `up -d` resolve the SAME image (never pass it inline; an inline
+# assignment only reaches the first command — spec 14 §4).
+services:
+  api:
+    image: ghcr.io/hetarho/cosimosi-api:${IMAGE_TAG:-latest}
+    env_file: .env
+    restart: unless-stopped
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Caddy reads {$API_DOMAIN} from its own env; pull it from the stack .env.
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:

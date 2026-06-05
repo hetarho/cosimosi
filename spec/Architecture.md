@@ -327,6 +327,8 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 
 ## 7. 인프라 (구성은 추후, 문서엔 결정만)
 
+> 구현(CI/CD 파이프라인·prod Dockerfile·compose·Caddy·Actions·배포 절차)은 [plan/14 deploy-cicd](plan/14.deploy-cicd.md) + [DEPLOY.md](../DEPLOY.md).
+
 | 레이어 | 선택 | 비고 |
 |---|---|---|
 | 웹 호스팅 | **Cloudflare Pages** | 정적 + 글로벌 CDN. unary GET 그래프 로드 캐시. |

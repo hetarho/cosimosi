@@ -36,6 +36,12 @@ type Config struct {
 	// OpenAIAPIKey authenticates the OpenAI embedder. Empty unless AIEmbedder is
 	// "openai"; the factory fails fast if "openai" is selected without it.
 	OpenAIAPIKey string
+	// SentryDSN enables production error tracking (spec 14 §9). Empty = disabled:
+	// the composition root skips sentry.Init entirely (no-op locally / in tests).
+	SentryDSN string
+	// SentryEnvironment tags captured events (production|staging|…); defaults to
+	// "development" when unset.
+	SentryEnvironment string
 }
 
 func Load() (*Config, error) {
@@ -50,6 +56,8 @@ func Load() (*Config, error) {
 		SupabaseProjectURL: getEnv("SUPABASE_PROJECT_URL", ""),
 		AIEmbedder:         getEnv("AI_EMBEDDER", "mock"),
 		OpenAIAPIKey:       getEnv("OPENAI_API_KEY", ""),
+		SentryDSN:          getEnv("SENTRY_DSN", ""),
+		SentryEnvironment:  getEnv("SENTRY_ENVIRONMENT", "development"),
 	}
 
 	if cfg.DatabaseURL == "" {

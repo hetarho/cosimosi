@@ -1,0 +1,91 @@
+# Backend deploy (spec 14): on merge to develop|main, build a static image, push to GHCR,
+# then over SSH run migrations FIRST (direct 5432) and only then roll the API to the new
+# image. develop→staging, main→production (separate compose stacks on one VPS). The path
+# filter keeps frontend-only changes from triggering a backend deploy (2.2).
+name: Deploy backend
+
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - 'backend/**'
+      - 'docker-compose.prod.yml'
+      - 'Caddyfile'
+      - '.github/workflows/deploy-backend.yml'
+
+# Serialize deploys per environment (never roll two images at once).
+concurrency:
+  group: deploy-backend-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # GitHub Environment → per-env secrets + optional manual-approval protection on prod.
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/hetarho/cosimosi-api
+      ENV_NAME: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # GHCR auth is automatic
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ env.ENV_NAME }}
+
+      # (6a) Migration files must be on the VPS before goose runs (it mounts them).
+      - name: Sync migrations to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: 'backend/internal/db/migrations/*'
+          target: '/srv/cosimosi-${{ env.ENV_NAME }}/migrations'
+          strip_components: 4
+
+      - name: Migrate (direct 5432) → set IMAGE_TAG → roll out
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: IMAGE_TAG,DIRECT_DATABASE_URL,ENV_NAME
+          script: |
+            set -e
+            cd "/srv/cosimosi-${ENV_NAME}"
+            # 1) Migrations FIRST, via the DIRECT connection (5432 — never the 6543 pooler
+            #    for DDL). Failure here exits non-zero → the API is never replaced.
+            docker run --rm -v "$PWD/migrations:/m" \
+              -e GOOSE_DRIVER=postgres -e GOOSE_DBSTRING="$DIRECT_DATABASE_URL" \
+              ghcr.io/pressly/goose:3 -dir /m up
+            # 2) Record IMAGE_TAG in the stack .env so `pull` and `up` resolve the SAME
+            #    SHA (an inline IMAGE_TAG=... would only reach `pull`, spec 14 §4).
+            if grep -q '^IMAGE_TAG=' .env; then
+              sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env
+            else
+              echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
+            fi
+            # 3) Roll the API to the new image, then prune dangling layers.
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f
