@@ -23,9 +23,16 @@ const authHeaderInterceptor: Interceptor = (next) => async (req) => {
 // → backend origin from VITE_API_URL (built assets have no proxy).
 const baseUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL
 
+// keepalive lets an in-flight unary request outlive page teardown — needed so the
+// recall reinforcement batch flushed on beforeunload/visibilitychange (spec 11, 1.3)
+// actually reaches the server. Safe here: the service is unary-only (constitution §6)
+// and request bodies are tiny, well under the 64KB keepalive cap.
+const keepaliveFetch: typeof fetch = (input, init) => fetch(input, { ...init, keepalive: true })
+
 const transport = createConnectTransport({
   baseUrl,
   interceptors: [authHeaderInterceptor],
+  fetch: keepaliveFetch,
 })
 
 /** Typed client for cosimosi.v1.MemoryService (single service, unary RPCs). */

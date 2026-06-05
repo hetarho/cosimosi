@@ -6,16 +6,16 @@ import (
 )
 
 // Service holds the diary/star business policy. It depends only on ports
-// (Repository, LinkReader) — no transport, no db. There is intentionally no
+// (Repository, LinkService) — no transport, no db. There is intentionally no
 // Update/Delete method for records (constitution §1: the original is immutable).
 type Service struct {
 	repo  Repository
-	links LinkReader
+	links LinkService
 }
 
 // NewService wires the memory service over its persistence Repository and a
-// LinkReader (the synapse read view, satisfied by link.Service).
-func NewService(repo Repository, links LinkReader) *Service {
+// LinkService (synapse read + reinforce, satisfied by link.Service).
+func NewService(repo Repository, links LinkService) *Service {
 	return &Service{repo: repo, links: links}
 }
 
@@ -42,4 +42,20 @@ func (s *Service) GetUniverse(ctx context.Context, userID string) (Universe, err
 		return Universe{}, err
 	}
 	return Universe{Memories: memories, Synapses: synapses}, nil
+}
+
+// ReinforceLinks applies co-recall reinforcement increments (spec 11) — delegates to
+// the link service, which normalizes/sums and persists idempotently by batch_id.
+func (s *Service) ReinforceLinks(ctx context.Context, userID, batchID string, deltas []LinkDelta) error {
+	return s.links.ReinforceLinks(ctx, userID, batchID, deltas)
+}
+
+// RecallMemory re-ignites a star (last_recalled_at=now) and returns its immutable
+// original Record (records JOIN). Touch is WHERE-guarded, so an absent memory leaves
+// nothing changed and GetRecord surfaces ErrNotFound (→ NotFound at the handler).
+func (s *Service) RecallMemory(ctx context.Context, userID, memoryID string) (Record, error) {
+	if err := s.repo.TouchRecall(ctx, userID, memoryID); err != nil {
+		return Record{}, err
+	}
+	return s.repo.GetRecord(ctx, userID, memoryID)
 }

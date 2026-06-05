@@ -31,6 +31,19 @@ FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = $1;
 
+-- name: RecallMemoryTouch :exec
+-- Re-ignite a star on recall (spec 11): only memories.last_recalled_at changes (the
+-- star is mutable; the original record is NOT — constitution §1). No RETURNING.
+UPDATE memories SET last_recalled_at = now() WHERE id = @id AND user_id = @user_id;
+
+-- name: GetRecordByMemory :one
+-- Read the immutable original for the recall panel (records JOIN). body/entry_date/
+-- mood live on records; never mutated, never RETURNING * from memories (no body there).
+SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at
+FROM memories m
+JOIN records r ON r.id = m.record_id
+WHERE m.id = @id AND m.user_id = @user_id;
+
 -- name: ListMemoriesByUser :many
 -- Every star for the user, dormant included (no brightness filter — constitution
 -- §2). mood/intensity are sourced from records via JOIN.

@@ -26,6 +26,7 @@ export interface StarFieldProps {
 
 export function StarField({ positionsRef }: StarFieldProps) {
   const stars = useMemoryStore((s) => s.stars)
+  const select = useMemoryStore((s) => s.select)
   const count = stars.length
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const scalesRef = useRef<Float32Array>(new Float32Array(0))
@@ -124,5 +125,19 @@ export function StarField({ positionsRef }: StarFieldProps) {
 
   if (count === 0) return null
   // key={count} → fresh instanceMatrix sized to the new count when stars change.
-  return <instancedMesh key={count} ref={meshRef} args={[geometry, material, count]} />
+  // onClick → select that star (raycast gives the instance slot); the recall feature
+  // (11) reacts to selectedId. stopPropagation so only the nearest star is picked.
+  return (
+    <instancedMesh
+      key={count}
+      ref={meshRef}
+      args={[geometry, material, count]}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.instanceId == null) return
+        const node = stars[e.instanceId]
+        if (node) select(node.id)
+      }}
+    />
+  )
 }

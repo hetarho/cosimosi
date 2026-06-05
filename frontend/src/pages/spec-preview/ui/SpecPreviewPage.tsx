@@ -761,6 +761,182 @@ function Spec10Panel() {
   )
 }
 
+// --- 11 recall-reinforce (interactive: reinforce → idempotent → recall → persist) ---
+
+function Spec11Panel() {
+  const [devToken, setDevToken] = useState('')
+  const client = useMemo(
+    () => (devToken.trim() ? makeDevClient(devToken.trim()) : memoryClient),
+    [devToken],
+  )
+
+  const [aId, setAId] = useState('')
+  const [bId, setBId] = useState('')
+  const [batchId, setBatchId] = useState('')
+  const [recallId, setRecallId] = useState('')
+
+  const [log, setLog] = useState<string[]>([])
+  const [record, setRecord] = useState<Awaited<ReturnType<typeof client.recallMemory>>['record'] | null>(null)
+  const [weight, setWeight] = useState<number | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const addLog = (line: string) => setLog((l) => [line, ...l].slice(0, 8))
+
+  async function reinforce(reuse: boolean) {
+    setError('')
+    setBusy(true)
+    try {
+      const id = reuse && batchId ? batchId : crypto.randomUUID()
+      setBatchId(id)
+      await client.reinforceLinks({ items: [{ aId, bId, deltaWeight: 0.05 }], batchId: id })
+      addLog(`ReinforceLinks(+0.05) batch=${id.slice(0, 8)}… ${reuse ? '(재전송)' : ''}`)
+    } catch (e) {
+      setError(errText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function recall() {
+    setError('')
+    setBusy(true)
+    setRecord(null)
+    try {
+      const res = await client.recallMemory({ memoryId: recallId })
+      setRecord(res.record ?? null)
+      addLog(`RecallMemory(${recallId.slice(0, 8)}…) → last_recalled_at 갱신`)
+    } catch (e) {
+      setError(errText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function checkWeight() {
+    setError('')
+    setBusy(true)
+    try {
+      const res = await client.getUniverse({})
+      const edge = res.synapses.find(
+        (s) => (s.aId === aId && s.bId === bId) || (s.aId === bId && s.bId === aId),
+      )
+      setWeight(edge ? edge.weight : null)
+      addLog(`GetUniverse → 페어 weight = ${edge ? edge.weight.toFixed(2) : '(엣지 없음)'}`)
+    } catch (e) {
+      setError(errText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 text-white/70">
+      <p>
+        회상·공동 회상 강화. 실제 흐름(별 클릭→≥2초 dwell→원본 일기 패널·이웃 항해·디바운스 배치 강화)은{' '}
+        <a href="/universe" className="text-sky-300 underline">
+          /universe
+        </a>{' '}
+        에서 동작합니다. 여기선 두 RPC를 직접 호출해 핵심 불변식을 확인합니다(04 패널 GetUniverse 표에서
+        memory_id 두 개를 복사해 넣으세요).
+      </p>
+
+      <details className="rounded-md border border-white/10 bg-white/5 p-3 text-sm">
+        <summary className="cursor-pointer text-white/60">고급: dev 토큰 (Supabase 미로그인 시)</summary>
+        <textarea
+          className={`${inputCls} mt-2 h-20 w-full font-mono text-xs`}
+          placeholder="eyJ… (HS256 dev JWT)"
+          value={devToken}
+          onChange={(e) => setDevToken(e.target.value)}
+        />
+      </details>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-white/80">ReinforceLinks — 공동 회상 강화(증분 +0.05)</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="a_id (memory_id)">
+            <input className={inputCls} value={aId} onChange={(e) => setAId(e.target.value)} />
+          </Field>
+          <Field label="b_id (memory_id)">
+            <input className={inputCls} value={bId} onChange={(e) => setBId(e.target.value)} />
+          </Field>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+            onClick={() => void reinforce(false)}
+            disabled={busy || !aId || !bId}
+          >
+            강화 (새 batch_id)
+          </button>
+          <button
+            className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20 disabled:opacity-50"
+            onClick={() => void reinforce(true)}
+            disabled={busy || !batchId}
+          >
+            같은 batch_id 재전송 (멱등 — weight 불변)
+          </button>
+          <button
+            className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20 disabled:opacity-50"
+            onClick={() => void checkWeight()}
+            disabled={busy || !aId || !bId}
+          >
+            weight 확인 (GetUniverse)
+          </button>
+        </div>
+        {weight !== null && (
+          <p className="text-sm text-emerald-400">
+            페어 weight = <span className="font-mono">{weight.toFixed(2)}</span> (강화·재전송 후 재확인 시
+            한 번만 가산 = 멱등, 상한 1.0)
+          </p>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-medium text-white/80">RecallMemory — 불변 원본 일기(읽기 전용)</h3>
+        <Field label="memory_id">
+          <input className={inputCls} value={recallId} onChange={(e) => setRecallId(e.target.value)} />
+        </Field>
+        <button
+          className="rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+          onClick={() => void recall()}
+          disabled={busy || !recallId}
+        >
+          회상하기 (RecallMemory)
+        </button>
+        {record && (
+          <article className="space-y-1 rounded-md border border-white/10 bg-white/5 p-3 text-sm">
+            <div className="flex gap-2 text-xs text-white/45">
+              <span>{record.entryDate}</span>
+              <span>·</span>
+              <span>{Mood[record.mood]}</span>
+              <span>·</span>
+              <span>강도 {record.intensity.toFixed(2)}</span>
+            </div>
+            <p className="whitespace-pre-wrap text-white/85">{record.body}</p>
+            <p className="pt-1 text-[10px] text-white/30">
+              편집/삭제 컨트롤 없음 — 원본 불변(원칙 1). body는 records JOIN으로 읽음.
+            </p>
+          </article>
+        )}
+      </section>
+
+      {log.length > 0 && (
+        <div className="rounded-md border border-white/10 bg-black/30 p-3 font-mono text-xs text-white/50">
+          {log.map((l, i) => (
+            <div key={`${i}-${l}`}>{l}</div>
+          ))}
+        </div>
+      )}
+      {error && <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">⚠ {error}</p>}
+      <p className="text-sm text-white/40">
+        검증: 강화 후 weight +0.05 → 같은 batch_id 재전송해도 weight 불변(멱등 1.10) → 새로고침/GetUniverse에도
+        유지(영속 1.6). RecallMemory는 last_recalled_at만 갱신하고 원본은 불변(1.2). 감쇠 후 "밝아짐" 렌더는 12.
+      </p>
+    </div>
+  )
+}
+
 // --- not-yet-built specs: planned-feature placeholder ---
 
 function future(desc: string): ComponentType {
@@ -786,7 +962,7 @@ const SPECS: SpecEntry[] = [
   { num: '08', title: 'star-rendering', scope: 'FE', done: true, Panel: Spec08Panel },
   { num: '09', title: 'synapse-rendering', scope: 'FE', done: true, Panel: Spec09Panel },
   { num: '10', title: 'record-memory-ui', scope: 'FE', done: true, Panel: Spec10Panel },
-  { num: '11', title: 'recall-reinforce', scope: 'FS', done: false, Panel: future('회상 · 공동 회상 강화(weight 증가, last_*_at 갱신).') },
+  { num: '11', title: 'recall-reinforce', scope: 'FS', done: true, Panel: Spec11Panel },
   { num: '12', title: 'decay-dormant', scope: 'FS', done: false, Panel: future('활성도 감쇠 · 최소 밝기 · 잠든 별 탐색.') },
   { num: '13', title: 'mvp-verification', scope: 'FS', done: false, Panel: future('pnpm dev 전체 한 바퀴 · E2E · 에러 점검.') },
   { num: '14', title: 'deploy-cicd', scope: 'Infra', done: false, Panel: future('develop→스테이징 · main→프로덕션 자동 배포.') },

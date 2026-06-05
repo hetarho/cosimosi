@@ -66,9 +66,27 @@ type Universe struct {
 	Synapses []Synapse
 }
 
-// LinkReader is the consumer-defined view the memory service needs to compose a
-// Universe. link.Service satisfies it. Defining it here (not importing link)
-// keeps the dependency one-way: link → memory, never the reverse.
-type LinkReader interface {
+// LinkDelta is one co-recall reinforcement increment for a star pair (spec 11).
+type LinkDelta struct {
+	AID, BID    string
+	DeltaWeight float64
+}
+
+// Record is the immutable original diary, read on recall (constitution §1). Sourced
+// from the records table (not memories — the star carries no body).
+type Record struct {
+	Body      string
+	EntryDate time.Time
+	Mood      Mood
+	Intensity float64
+	CreatedAt time.Time
+}
+
+// LinkService is the consumer-defined synapse port the memory service needs: read
+// (compose a Universe) + co-recall reinforcement (spec 11). link.Service satisfies
+// it. Defining it here (not importing link) keeps the dependency one-way:
+// link → memory, never the reverse.
+type LinkService interface {
 	ListByUser(ctx context.Context, userID string) ([]Synapse, error)
+	ReinforceLinks(ctx context.Context, userID, batchID string, deltas []LinkDelta) error
 }

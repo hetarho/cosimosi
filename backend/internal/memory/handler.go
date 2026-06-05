@@ -96,6 +96,52 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 	return connect.NewResponse(&cosimosiv1.GetUniverseResponse{Stars: stars, Synapses: synapses}), nil
 }
 
+// ReinforceLinks applies a co-recall reinforcement batch (spec 11). unary, idempotent
+// by batch_id; pairs are normalized + summed in the service.
+func (h *Handler) ReinforceLinks(ctx context.Context, req *connect.Request[cosimosiv1.ReinforceLinksRequest]) (*connect.Response[cosimosiv1.ReinforceLinksResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	msg := req.Msg
+	deltas := make([]LinkDelta, 0, len(msg.GetItems()))
+	for _, it := range msg.GetItems() {
+		deltas = append(deltas, LinkDelta{AID: it.GetAId(), BID: it.GetBId(), DeltaWeight: it.GetDeltaWeight()})
+	}
+	if err := h.svc.ReinforceLinks(ctx, userID, msg.GetBatchId(), deltas); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&cosimosiv1.ReinforceLinksResponse{}), nil
+}
+
+// RecallMemory re-ignites a star and returns its immutable original Record (records
+// JOIN). NotFound when the (user, memory) pair doesn't exist (1.8); never mutates the
+// original (constitution §1).
+func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecallMemoryRequest]) (*connect.Response[cosimosiv1.RecallMemoryResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	memoryID := req.Msg.GetMemoryId()
+	rec, err := h.svc.RecallMemory(ctx, userID, memoryID)
+	if errors.Is(err, ErrNotFound) {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&cosimosiv1.RecallMemoryResponse{
+		Record: &cosimosiv1.Record{
+			MemoryId:  memoryID,
+			Body:      rec.Body,
+			EntryDate: rec.EntryDate.UTC().Format("2006-01-02"),
+			Mood:      moodToProto(rec.Mood),
+			Intensity: rec.Intensity,
+			CreatedAt: formatTime(&rec.CreatedAt),
+		},
+	}), nil
+}
+
 // parseEntryDate accepts "YYYY-MM-DD" or empty (→ zero time, service defaults to today).
 func parseEntryDate(s string) (time.Time, error) {
 	if s == "" {

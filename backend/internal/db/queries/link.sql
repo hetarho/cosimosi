@@ -28,3 +28,36 @@ FROM (
 ) AS pairs
 ON CONFLICT (a_id, b_id) DO UPDATE
 SET weight = GREATEST(memory_links.weight, EXCLUDED.weight);
+
+-- name: ReinforceLinks :exec
+-- Co-recall (Hebbian) reinforcement (spec 11, Architecture §6/§4.5): apply per-pair
+-- INCREMENTAL deltas. New row → weight=LEAST(1.0, delta), link_type='co_recall';
+-- existing → weight=LEAST(1.0, weight+delta), co_activation_count++,
+-- last_activated_at=now. The cap is on BOTH branches: a single batch's summed delta
+-- for a pair can exceed 1.0 (the client accumulates uncapped), so a first-ever link
+-- must clamp too — weight is a 0..1 invariant (schema §50), not just on conflict.
+-- a_id<b_id is normalized HERE with LEAST/GREATEST under the DB collation (matches
+-- the a_id<b_id CHECK / PK — a Go byte-order swap would disagree with en_US.utf8).
+INSERT INTO memory_links (a_id, b_id, user_id, weight, link_type, co_activation_count, last_activated_at, created_at)
+SELECT LEAST(a, b), GREATEST(a, b), @user_id, LEAST(1.0, d), 'co_recall', 1, now(), now()
+FROM (
+    SELECT
+        unnest(@a_ids::text[])    AS a,
+        unnest(@b_ids::text[])    AS b,
+        unnest(@deltas::float8[]) AS d
+) AS pairs
+ON CONFLICT (a_id, b_id) DO UPDATE
+SET weight              = LEAST(1.0, memory_links.weight + EXCLUDED.weight),
+    co_activation_count = memory_links.co_activation_count + 1,
+    last_activated_at   = now();
+
+-- name: ClaimBatch :execrows
+-- Idempotency CLAIM (spec 11, 1.5/1.10): insert the batch_id row FIRST, inside the
+-- reinforce tx. Returns 1 if THIS tx claimed the batch (proceed with the upsert), 0 if
+-- it was already processed (skip). Because the insert runs before the upsert, the
+-- batch_id PK holds a lock for the whole tx, so a concurrent duplicate batch_id BLOCKS
+-- here until the first tx commits, then sees the conflict and gets 0 — true
+-- serialization (a check-then-act EXISTS guard would let both pass and double-count).
+INSERT INTO processed_batches (batch_id, user_id)
+VALUES (@batch_id, @user_id)
+ON CONFLICT (batch_id) DO NOTHING;

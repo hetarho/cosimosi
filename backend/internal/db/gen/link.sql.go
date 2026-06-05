@@ -53,6 +53,31 @@ func (q *Queries) BatchUpsertLinks(ctx context.Context, arg BatchUpsertLinksPara
 	return err
 }
 
+const claimBatch = `-- name: ClaimBatch :execrows
+INSERT INTO processed_batches (batch_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT (batch_id) DO NOTHING
+`
+
+type ClaimBatchParams struct {
+	BatchID string `json:"batch_id"`
+	UserID  string `json:"user_id"`
+}
+
+// Idempotency CLAIM (spec 11, 1.5/1.10): insert the batch_id row FIRST, inside the
+// reinforce tx. Returns 1 if THIS tx claimed the batch (proceed with the upsert), 0 if
+// it was already processed (skip). Because the insert runs before the upsert, the
+// batch_id PK holds a lock for the whole tx, so a concurrent duplicate batch_id BLOCKS
+// here until the first tx commits, then sees the conflict and gets 0 — true
+// serialization (a check-then-act EXISTS guard would let both pass and double-count).
+func (q *Queries) ClaimBatch(ctx context.Context, arg ClaimBatchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimBatch, arg.BatchID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listLinksByUser = `-- name: ListLinksByUser :many
 SELECT ml.a_id, ml.b_id, ml.weight, ml.link_type, ml.co_activation_count, ml.last_activated_at
 FROM memory_links ml
@@ -95,4 +120,44 @@ func (q *Queries) ListLinksByUser(ctx context.Context, userID string) ([]ListLin
 		return nil, err
 	}
 	return items, nil
+}
+
+const reinforceLinks = `-- name: ReinforceLinks :exec
+INSERT INTO memory_links (a_id, b_id, user_id, weight, link_type, co_activation_count, last_activated_at, created_at)
+SELECT LEAST(a, b), GREATEST(a, b), $1, LEAST(1.0, d), 'co_recall', 1, now(), now()
+FROM (
+    SELECT
+        unnest($2::text[])    AS a,
+        unnest($3::text[])    AS b,
+        unnest($4::float8[]) AS d
+) AS pairs
+ON CONFLICT (a_id, b_id) DO UPDATE
+SET weight              = LEAST(1.0, memory_links.weight + EXCLUDED.weight),
+    co_activation_count = memory_links.co_activation_count + 1,
+    last_activated_at   = now()
+`
+
+type ReinforceLinksParams struct {
+	UserID string    `json:"user_id"`
+	AIds   []string  `json:"a_ids"`
+	BIds   []string  `json:"b_ids"`
+	Deltas []float64 `json:"deltas"`
+}
+
+// Co-recall (Hebbian) reinforcement (spec 11, Architecture §6/§4.5): apply per-pair
+// INCREMENTAL deltas. New row → weight=LEAST(1.0, delta), link_type='co_recall';
+// existing → weight=LEAST(1.0, weight+delta), co_activation_count++,
+// last_activated_at=now. The cap is on BOTH branches: a single batch's summed delta
+// for a pair can exceed 1.0 (the client accumulates uncapped), so a first-ever link
+// must clamp too — weight is a 0..1 invariant (schema §50), not just on conflict.
+// a_id<b_id is normalized HERE with LEAST/GREATEST under the DB collation (matches
+// the a_id<b_id CHECK / PK — a Go byte-order swap would disagree with en_US.utf8).
+func (q *Queries) ReinforceLinks(ctx context.Context, arg ReinforceLinksParams) error {
+	_, err := q.db.Exec(ctx, reinforceLinks,
+		arg.UserID,
+		arg.AIds,
+		arg.BIds,
+		arg.Deltas,
+	)
+	return err
 }

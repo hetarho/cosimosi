@@ -21,6 +21,22 @@ export const MOOD_PALETTE: Record<Mood, RGB> = {
   neutral: [0.6, 0.6, 0.6], // grey
 }
 
+/** Korean display labels — the single source for mood UI text (don't re-list per component). */
+export const MOOD_LABEL: Record<Mood, string> = {
+  joy: '기쁨',
+  calm: '평온',
+  sad: '슬픔',
+  anger: '분노',
+  fear: '두려움',
+  love: '사랑',
+  neutral: '중립',
+}
+
+/** Mood → Korean label with neutral fallback; never throws on an unknown string. */
+export function moodLabel(mood: string): string {
+  return MOOD_LABEL[mood as Mood] ?? '중립'
+}
+
 /** Fallback for an unknown/out-of-range mood (defends acceptance 1.5). */
 export const NEUTRAL_RGB: RGB = [0.6, 0.6, 0.6]
 

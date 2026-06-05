@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { UniverseCanvas, useCameraMode } from '@/widgets/universe-canvas'
 import { MemoryForm } from '@/features/record-memory'
+import { MemoryPanel, useRecallStore } from '@/features/recall'
 import { getUniverse, useMemoryStore } from '@/entities/memory'
 
-// The universe shell (spec 10): full-screen <UniverseCanvas/> (renders the stars from
-// the memory store) + 2D HUD overlays (compose form, camera toggle) OUTSIDE the R3F
-// scene (Architecture §3.1). On mount we load the universe once via GetUniverse.
+// The universe shell (spec 10, extended by 11): full-screen <UniverseCanvas/> (renders
+// the stars from the memory store) + 2D HUD overlays (compose form, camera toggle,
+// recall panel) OUTSIDE the R3F scene (Architecture §3.1). On mount we load the
+// universe once via GetUniverse.
 export function HomePage() {
   const mode = useCameraMode((s) => s.mode)
   const toggle = useCameraMode((s) => s.toggle)
@@ -20,6 +22,25 @@ export function HomePage() {
     })
   }, [])
 
+  // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3). The
+  // model store is DOM-free (1.9); the window listeners live here in the page layer.
+  // visibilitychange(hidden) fires more reliably than beforeunload (esp. on mobile),
+  // and the transport uses keepalive so the request survives teardown.
+  useEffect(() => {
+    const flush = () => {
+      void useRecallStore.getState().flush()
+    }
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('beforeunload', flush)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      window.removeEventListener('beforeunload', flush)
+      document.removeEventListener('visibilitychange', onHide)
+    }
+  }, [])
+
   return (
     <div className="fixed inset-0" data-lenis-prevent>
       <UniverseCanvas />
@@ -27,6 +48,9 @@ export function HomePage() {
       {/* HUD: 2D DOM overlays outside the canvas */}
       <div className="absolute top-4 left-4 z-10">
         <MemoryForm />
+      </div>
+      <div className="absolute right-4 bottom-4 z-10">
+        <MemoryPanel />
       </div>
       <button
         type="button"

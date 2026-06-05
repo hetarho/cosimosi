@@ -58,6 +58,41 @@ func (q *Queries) GetMemoryForEmbed(ctx context.Context, id string) (GetMemoryFo
 	return i, err
 }
 
+const getRecordByMemory = `-- name: GetRecordByMemory :one
+SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at
+FROM memories m
+JOIN records r ON r.id = m.record_id
+WHERE m.id = $1 AND m.user_id = $2
+`
+
+type GetRecordByMemoryParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+type GetRecordByMemoryRow struct {
+	Body      string             `json:"body"`
+	EntryDate pgtype.Date        `json:"entry_date"`
+	Mood      *string            `json:"mood"`
+	Intensity *float32           `json:"intensity"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// Read the immutable original for the recall panel (records JOIN). body/entry_date/
+// mood live on records; never mutated, never RETURNING * from memories (no body there).
+func (q *Queries) GetRecordByMemory(ctx context.Context, arg GetRecordByMemoryParams) (GetRecordByMemoryRow, error) {
+	row := q.db.QueryRow(ctx, getRecordByMemory, arg.ID, arg.UserID)
+	var i GetRecordByMemoryRow
+	err := row.Scan(
+		&i.Body,
+		&i.EntryDate,
+		&i.Mood,
+		&i.Intensity,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertMemory = `-- name: InsertMemory :one
 INSERT INTO memories (id, user_id, record_id)
 VALUES ($1, $2, $3)
@@ -149,4 +184,20 @@ func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]List
 		return nil, err
 	}
 	return items, nil
+}
+
+const recallMemoryTouch = `-- name: RecallMemoryTouch :exec
+UPDATE memories SET last_recalled_at = now() WHERE id = $1 AND user_id = $2
+`
+
+type RecallMemoryTouchParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+// Re-ignite a star on recall (spec 11): only memories.last_recalled_at changes (the
+// star is mutable; the original record is NOT — constitution §1). No RETURNING.
+func (q *Queries) RecallMemoryTouch(ctx context.Context, arg RecallMemoryTouchParams) error {
+	_, err := q.db.Exec(ctx, recallMemoryTouch, arg.ID, arg.UserID)
+	return err
 }

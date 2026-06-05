@@ -118,6 +118,37 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 	return out, nil
 }
 
+// TouchRecall sets memories.last_recalled_at=now for the user's star (no-op if
+// absent — the original record is never touched, constitution §1).
+func (r *pgRepository) TouchRecall(ctx context.Context, userID, memoryID string) error {
+	if err := gen.New(r.pool).RecallMemoryTouch(ctx, gen.RecallMemoryTouchParams{
+		ID: memoryID, UserID: userID,
+	}); err != nil {
+		return fmt.Errorf("touch recall: %w", err)
+	}
+	return nil
+}
+
+// GetRecord reads the immutable original (records JOIN) for the recall panel.
+func (r *pgRepository) GetRecord(ctx context.Context, userID, memoryID string) (Record, error) {
+	row, err := gen.New(r.pool).GetRecordByMemory(ctx, gen.GetRecordByMemoryParams{
+		ID: memoryID, UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Record{}, ErrNotFound
+	}
+	if err != nil {
+		return Record{}, fmt.Errorf("get record: %w", err)
+	}
+	return Record{
+		Body:      row.Body,
+		EntryDate: row.EntryDate.Time,
+		Mood:      moodFromDB(row.Mood),
+		Intensity: intensityFromDB(row.Intensity),
+		CreatedAt: row.CreatedAt.Time,
+	}, nil
+}
+
 // newID is the server-authoritative id source: clients never supply ids
 // (constitution §3/§8). 16 bytes of crypto entropy, base64url without padding.
 func newID() (string, error) {
