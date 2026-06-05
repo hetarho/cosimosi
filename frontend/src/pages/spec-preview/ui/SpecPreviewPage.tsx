@@ -9,6 +9,14 @@ import { Code, ConnectError, createClient, type Interceptor } from '@connectrpc/
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { getAccessToken, memoryClient } from '@/shared/api'
 import { MemoryService, Mood, type GetUniverseResponse } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import {
+  alpha as simAlpha,
+  createSim,
+  isSettled,
+  positions,
+  tick,
+  type SimGraph,
+} from '@/shared/lib/force-sim'
 
 type Scope = 'FE' | 'BE' | 'FS' | 'Infra'
 
@@ -407,6 +415,176 @@ function Spec05Panel() {
   )
 }
 
+// --- 06 universe-canvas (architecture; live preview is the /universe route) ---
+
+function Spec06Panel() {
+  return (
+    <div className="space-y-3 text-white/70">
+      <p>
+        WebGPU 우주 캔버스 셸. 실제 화면은{' '}
+        <a href="/universe" className="text-sky-300 underline">
+          /universe
+        </a>{' '}
+        라우트에서 전체 화면으로 동작합니다(로그인 필요). 구조:
+      </p>
+      <ul className="list-disc space-y-1 pl-5 text-sm">
+        <li>
+          R3F <code className="text-white/90">&lt;Canvas&gt;</code> + three{' '}
+          <code className="text-white/90">WebGPURenderer</code>(비동기 init, WebGPU 미지원 시 WebGL2 자동
+          폴백 — <code className="text-white/90">forceWebGL</code>로 폴백 경고 회피).
+        </li>
+        <li>
+          노드 기반 Bloom(<code className="text-white/90">RenderPipeline</code> +{' '}
+          <code className="text-white/90">bloom</code> TSL) — <code className="text-white/90">useFrame</code>{' '}
+          priority로 렌더 소유.
+        </li>
+        <li>짙은 남색 배경 + 별 먼지(Points) + 발광 더미 별(InstancedMesh).</li>
+        <li>카메라 모드 nebula(줌 제한)/recall(자유) — 우상단 HUD 토글로 전환.</li>
+        <li>
+          렌더러 격리: <code className="text-white/90">shared/lib/r3f/types.ts</code>는 three/React 미의존
+          (모바일 재사용, 원칙4). 언마운트 시 렌더러 dispose.
+        </li>
+      </ul>
+      <p className="text-sm text-white/40">별/시냅스 실제 렌더는 08·09, 별 좌표(force-sim)는 07.</p>
+    </div>
+  )
+}
+
+// --- 07 force-sim (interactive: run the layout, watch it converge) ---
+
+const FORCE_DEMO: SimGraph = {
+  // 4 existing (pinned) stars + 1 new star linked strongly to p1, weakly to p2.
+  // Free set = {new} ∪ 1-hop {p1, p2}; p3/p4 stay fixed (partial placement). The new
+  // star should settle closer to its STRONG neighbor (p1) than its weak one (p2).
+  nodes: [
+    { id: 'p1', pinned: true, x: -55, y: -20, z: 0 },
+    { id: 'p2', pinned: true, x: 60, y: -10, z: 0 },
+    { id: 'p3', pinned: true, x: 15, y: 60, z: 0 },
+    { id: 'p4', pinned: true, x: -35, y: 50, z: 0 },
+    { id: 'new', pinned: false, x: 0, y: 0, z: 0 },
+  ],
+  edges: [
+    { source: 'new', target: 'p1', weight: 1.0 },
+    { source: 'new', target: 'p2', weight: 0.25 },
+  ],
+}
+
+// id → node index (stable module constant; FORCE_DEMO never changes).
+const FORCE_DEMO_IDX = new Map(FORCE_DEMO.nodes.map((nd, i) => [nd.id, i] as const))
+
+function Spec07Panel() {
+  // sim is created once and mutated in place by tick(); `pos` (a fresh copy each
+  // step) is the state that actually drives re-renders. No refs (the React 19 lint
+  // forbids reading refs during render).
+  const [sim, setSim] = useState(() => createSim(FORCE_DEMO))
+  const [pos, setPos] = useState<Float32Array>(() => positions(sim))
+  const [a, setA] = useState(() => simAlpha(sim))
+  const [settled, setSettled] = useState(false)
+
+  const reset = () => {
+    const s = createSim(FORCE_DEMO)
+    setSim(s)
+    setPos(positions(s))
+    setA(simAlpha(s))
+    setSettled(false)
+  }
+  const step = (steps: number) => {
+    tick(sim, steps)
+    setPos(positions(sim))
+    setA(simAlpha(sim))
+    setSettled(isSettled(sim))
+  }
+
+  // 2D projection (x,y), auto-fit to the viewBox.
+  const W = 380
+  const H = 240
+  const pad = 24
+  const nodes = FORCE_DEMO.nodes
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (let i = 0; i < nodes.length; i++) {
+    minX = Math.min(minX, pos[i * 3])
+    maxX = Math.max(maxX, pos[i * 3])
+    minY = Math.min(minY, pos[i * 3 + 1])
+    maxY = Math.max(maxY, pos[i * 3 + 1])
+  }
+  const sx = (x: number) => pad + ((x - minX) / (maxX - minX || 1)) * (W - 2 * pad)
+  const sy = (y: number) => pad + ((y - minY) / (maxY - minY || 1)) * (H - 2 * pad)
+
+  return (
+    <div className="space-y-4 text-white/70">
+      <p>
+        별 좌표는 임베딩이 아니라 <b>연결 가중치 그래프의 힘 시뮬레이션</b>에서 창발합니다(원칙3). 순수{' '}
+        <code className="text-white/90">tick(dt)</code> 모듈(Barnes-Hut octree, three/React 미의존) — 여기선
+        메인 스레드에서 직접 펌프하지만 실제 앱은 Web Worker가 돕습니다. 아래는 기존 별 4개(고정) + 새 별
+        1개가 강한 연결(p1, w=1.0)·약한 연결(p2, w=0.25)에 끌려 자리 잡는 데모:
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+          onClick={() => step(20)}
+        >
+          tick ×20
+        </button>
+        <button
+          className="rounded-md bg-indigo-500/80 px-3 py-1.5 text-sm hover:bg-indigo-500"
+          onClick={() => step(2000)}
+        >
+          수렴까지
+        </button>
+        <button
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+          onClick={reset}
+        >
+          리셋
+        </button>
+        <span className="text-sm text-white/50">
+          alpha {a.toFixed(4)} · {settled ? 'settled ✓' : 'running'}
+        </span>
+      </div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full max-w-md rounded-md border border-white/10 bg-[#070b1e]"
+      >
+        {FORCE_DEMO.edges.map((e) => {
+          const a0 = FORCE_DEMO_IDX.get(e.source)!
+          const b0 = FORCE_DEMO_IDX.get(e.target)!
+          return (
+            <line
+              key={`${e.source}-${e.target}`}
+              x1={sx(pos[a0 * 3])}
+              y1={sy(pos[a0 * 3 + 1])}
+              x2={sx(pos[b0 * 3])}
+              y2={sy(pos[b0 * 3 + 1])}
+              stroke={e.weight >= 0.8 ? 'rgba(160,180,255,0.9)' : 'rgba(160,180,255,0.3)'}
+              strokeWidth={e.weight >= 0.8 ? 2 : 1}
+            />
+          )
+        })}
+        {nodes.map((nd, i) => (
+          <g key={nd.id}>
+            <circle
+              cx={sx(pos[i * 3])}
+              cy={sy(pos[i * 3 + 1])}
+              r={nd.id === 'new' ? 7 : 5}
+              fill={nd.id === 'new' ? '#cdb6ff' : nd.pinned ? '#3b5bdb' : '#9fb4ff'}
+            />
+            <text x={sx(pos[i * 3]) + 9} y={sy(pos[i * 3 + 1]) + 3} fontSize="10" fill="rgba(255,255,255,0.55)">
+              {nd.id}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <p className="text-sm text-white/40">
+        파란 별 = 고정(pinned), 보라 별 = 새 별. 수렴 후 새 별은 강연결 p1 쪽에 더 가깝게 자리합니다. p3·p4는
+        새 별의 1-hop 밖이라 움직이지 않습니다(부분 배치).
+      </p>
+    </div>
+  )
+}
+
 // --- not-yet-built specs: planned-feature placeholder ---
 
 function future(desc: string): ComponentType {
@@ -427,8 +605,8 @@ const SPECS: SpecEntry[] = [
   { num: '03', title: 'data-schema — pgvector·goose·sqlc', scope: 'BE', done: true, Panel: Spec03Panel },
   { num: '04', title: 'memory-api — RecordMemory·GetUniverse', scope: 'BE', done: true, Panel: Spec04Panel },
   { num: '05', title: 'embedding-worker', scope: 'BE', done: true, Panel: Spec05Panel },
-  { num: '06', title: 'universe-canvas', scope: 'FE', done: false, Panel: future('WebGPU 캔버스 · Bloom · 카메라 컨트롤.') },
-  { num: '07', title: 'force-sim', scope: 'FE', done: false, Panel: future('Barnes-Hut 힘 시뮬레이션 tick + Worker(별 좌표 창발).') },
+  { num: '06', title: 'universe-canvas', scope: 'FE', done: true, Panel: Spec06Panel },
+  { num: '07', title: 'force-sim', scope: 'FE', done: true, Panel: Spec07Panel },
   { num: '08', title: 'star-rendering', scope: 'FE', done: false, Panel: future('별 인스턴싱 렌더(InstancedMesh + TSL 셰이더).') },
   { num: '09', title: 'synapse-rendering', scope: 'FE', done: false, Panel: future('시냅스 연결선 렌더(Line2 + TSL).') },
   { num: '10', title: 'record-memory-ui', scope: 'FE', done: false, Panel: future('작성 폼 → 별 등장(수직 슬라이스, 04 API 연동).') },
