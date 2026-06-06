@@ -55,6 +55,117 @@ body {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   랜딩 전체-페이지 테마 (spec 15). 식별자는 LandingPage 루트의 data-landing-theme.
+   --ld-* 토큰은 [data-landing-theme] 안에서만 유효하므로 다른 라우트엔 영향이 없다.
+   배경 atmosphere는 테마별 컴포넌트가, 글래스·히어로·액센트 크롬은 아래 토큰이 운반한다.
+   ───────────────────────────────────────────────────────────────────────── */
+[data-landing-theme] {
+  /* 기본값(테마 블록이 덮어쓴다) */
+  --ld-base: #030308;
+  --ld-accent: #5566a8;
+  --ld-accent-soft: #c4d0f2;
+  --ld-hero-grad: linear-gradient(120deg, #f4f7ff, #cdd8ff 56%, #93a6da);
+  --ld-glass-bg: color-mix(in oklab, #0a0e1e 36%, transparent);
+  --ld-glass-border: color-mix(in oklab, white 10%, transparent);
+  --ld-glass-blur: 14px;
+  --ld-glass-shadow: 0 24px 70px -28px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 0 color-mix(in oklab, white 8%, transparent);
+  --ld-grain-opacity: 0.14;
+}
+
+[data-landing-theme='deepfield'] {
+  --ld-base: #030308;
+  --ld-accent: #5566a8;
+  --ld-accent-soft: #c4d0f2;
+  --ld-hero-grad: linear-gradient(120deg, #f4f7ff 0%, #cdd8ff 56%, #93a6da 100%);
+  --ld-glass-bg: color-mix(in oklab, #0a0e1e 36%, transparent);
+  --ld-glass-border: color-mix(in oklab, white 8%, transparent);
+  --ld-glass-blur: 12px;
+  --ld-glass-shadow: 0 26px 80px -34px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 0 color-mix(in oklab, white 6%, transparent);
+  --ld-grain-opacity: 0.16;
+}
+
+[data-landing-theme='aurora'] {
+  --ld-base: #07040f;
+  --ld-accent: #8a7be6;
+  --ld-accent-soft: #c9b8ff;
+  --ld-hero-grad: linear-gradient(120deg, #cdd9ff 0%, #c9b8ff 32%, #ff9ec7 66%, #7fe0c6 100%);
+  --ld-glass-bg: color-mix(in oklab, #1a1430 22%, transparent);
+  --ld-glass-border: color-mix(in oklab, #c9b8ff 20%, transparent);
+  --ld-glass-blur: 18px;
+  --ld-glass-shadow: 0 30px 88px -34px rgba(26, 14, 56, 0.85),
+    inset 0 1px 0 0 color-mix(in oklab, #ddd0ff 12%, transparent);
+  --ld-grain-opacity: 0.13;
+}
+
+[data-landing-theme='liquid'] {
+  --ld-base: #0a0418;
+  --ld-accent: #ff5fa0;
+  --ld-accent-soft: #ffa6cf;
+  --ld-hero-grad: linear-gradient(120deg, #ffd9b0 0%, #ff8fc2 40%, #9b7bff 74%, #5fd0c0 100%);
+  --ld-glass-bg: color-mix(in oklab, white 9%, transparent);
+  --ld-glass-border: color-mix(in oklab, white 18%, transparent);
+  --ld-glass-blur: 24px;
+  --ld-glass-shadow: 0 30px 90px -30px rgba(40, 6, 60, 0.7),
+    inset 0 1px 0 0 color-mix(in oklab, white 16%, transparent);
+  --ld-grain-opacity: 0.10;
+}
+
+[data-landing-theme='ember'] {
+  --ld-base: #070505;
+  --ld-accent: #ef7a3a;
+  --ld-accent-soft: #ffb482;
+  --ld-hero-grad: linear-gradient(118deg, #f7ece2 0%, #ffb482 46%, #ef7a3a 100%);
+  --ld-glass-bg: color-mix(in oklab, #2a1c14 26%, transparent);
+  --ld-glass-border: color-mix(in oklab, #ef7a3a 18%, transparent);
+  --ld-glass-blur: 14px;
+  --ld-glass-shadow: 0 30px 86px -34px rgba(60, 24, 8, 0.85),
+    inset 0 1px 0 0 color-mix(in oklab, #ffcaa0 10%, transparent);
+  --ld-grain-opacity: 0.14;
+}
+
+/* 랜딩 안의 글래스 카드만 테마 토큰으로 재테마(전역 .glass는 그대로). */
+[data-landing-theme] .glass {
+  background: var(--ld-glass-bg);
+  backdrop-filter: blur(var(--ld-glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--ld-glass-blur)) saturate(150%);
+  border-color: var(--ld-glass-border);
+  box-shadow: var(--ld-glass-shadow);
+}
+
+/* 히어로 헤드라인 그라디언트 텍스트. */
+.ld-hero-grad {
+  background-image: var(--ld-hero-grad);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* 필름 그레인 셸 — GrainOverlay가 사용. 모션시 미세 지터. */
+.ld-grain {
+  position: fixed;
+  inset: -150%;
+  width: 400%;
+  height: 400%;
+  pointer-events: none;
+  opacity: var(--ld-grain-opacity);
+  mix-blend-mode: screen;
+}
+@keyframes ld-grain-shift {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-3%, -4%); }
+  30% { transform: translate(2%, -2%); }
+  50% { transform: translate(-2%, 3%); }
+  70% { transform: translate(3%, 1%); }
+  90% { transform: translate(-1%, -3%); }
+  100% { transform: translate(0, 0); }
+}
+.ld-grain--animated {
+  animation: ld-grain-shift 1.1s steps(6) infinite;
+}
+
 /* 접근성: 모션 줄이기. (motion JS 애니메이션은 각 컴포넌트의 useReducedMotion으로 별도 처리) */
 @media (prefers-reduced-motion: reduce) {
   html {

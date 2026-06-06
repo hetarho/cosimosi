@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Section } from '@/shared/ui'
-import { blobPath, cn } from '@/shared/lib'
+import { cn } from '@/shared/lib'
 import { MOOD, type MoodKey } from '@/shared/config'
+import { useLandingTheme } from '../../model/theme'
+import { VizStar, VizSynapse } from '../viz'
 
 interface StarNode {
   id: number
@@ -44,63 +46,57 @@ function neighborsOf(id: number): Set<number> {
   return set
 }
 
-/** "뇌가 곧 우주" — 기억(별)과 시냅스(빛의 선)로 이뤄진 작은 성단 데모. */
+/** "뇌가 곧 우주" — 기억(별)과 시냅스(빛의 선)로 이뤄진 작은 성단 데모. 테마별 시각 언어로 그린다. */
 export function ConceptSection() {
+  const concept = useLandingTheme((s) => s.theme)
   const [activeId, setActiveId] = useState<number | null>(null)
   const active = activeId === null ? null : neighborsOf(activeId)
 
   const isNodeLit = (id: number) => active === null || active.has(id)
-  const isEdgeLit = (a: number, b: number) =>
-    active === null || (active.has(a) && active.has(b))
+  const isEdgeLit = (a: number, b: number) => active === null || (active.has(a) && active.has(b))
 
   return (
     <Section id="concept">
       <div className="flex flex-col gap-4">
-        <span className="text-xs uppercase tracking-widest text-mood-violet/80">
+        <span className="text-xs uppercase tracking-widest" style={{ color: 'var(--ld-accent-soft)' }}>
           Concept
         </span>
-        <h2 className="font-display text-3xl text-white/90 sm:text-4xl">
-          뇌가 곧 우주
-        </h2>
+        <h2 className="font-display text-3xl text-white/90 sm:text-4xl">뇌가 곧 우주</h2>
         <p className="max-w-2xl text-base leading-relaxed text-white/60">
-          수많은 기억이 별이 되고, 관련된 기억끼리 시냅스 같은 빛의 선으로 이어져
-          하나의 성단을 이룹니다. 머릿속에서만 펼쳐지던 풍경을, 눈에 보이는
-          작은 우주로 옮겨 둔 것이 cosimosi입니다.
+          수많은 기억이 별이 되고, 관련된 기억끼리 시냅스 같은 빛의 선으로 이어져 하나의 성단을
+          이룹니다. 머릿속에서만 펼쳐지던 풍경을, 눈에 보이는 작은 우주로 옮겨 둔 것이 cosimosi입니다.
         </p>
       </div>
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
-        <figure className="relative overflow-hidden rounded-3xl border border-white/10 bg-space-900/60">
+        <figure className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10 bg-space-900/40">
           <svg
             viewBox="0 0 100 100"
             className="h-full w-full"
             role="img"
             aria-label="기억과 시냅스로 이뤄진 별 성단 데모. 별 위에 올리면 연결된 기억이 함께 밝아집니다."
           >
-            {/* 시냅스: 빛의 선 */}
+            {/* 시냅스: 빛의 선(테마별 곡선) */}
             <g>
               {EDGES.map(([a, b]) => {
                 const lit = isEdgeLit(a, b)
-                const na = NODES[a]
-                const nb = NODES[b]
                 return (
-                  <line
+                  <VizSynapse
                     key={`${a}-${b}`}
-                    x1={na.x}
-                    y1={na.y}
-                    x2={nb.x}
-                    y2={nb.y}
-                    stroke={MOOD[na.mood]}
-                    strokeWidth={lit ? 0.9 : 0.4}
-                    strokeOpacity={lit ? 0.7 : 0.12}
-                    strokeLinecap="round"
-                    className="transition-all duration-500"
+                    x1={NODES[a].x}
+                    y1={NODES[a].y}
+                    x2={NODES[b].x}
+                    y2={NODES[b].y}
+                    color={MOOD[NODES[a].mood]}
+                    strength={lit ? 0.85 : 0.28}
+                    active={lit && active !== null}
+                    concept={concept}
                   />
                 )
               })}
             </g>
 
-            {/* 별(엔그램): mood 색 블롭 + 코어 */}
+            {/* 별(엔그램) */}
             <g>
               {NODES.map((node) => {
                 const lit = isNodeLit(node.id)
@@ -112,22 +108,13 @@ export function ConceptSection() {
                     tabIndex={0}
                     aria-label={`기억: ${node.label}`}
                     aria-pressed={isActive}
-                    className="cursor-pointer outline-none transition-all duration-500"
-                    style={{
-                      opacity: lit ? 1 : 0.22,
-                      transform: `translate(${node.x}px, ${node.y}px) scale(${
-                        isActive ? 1.18 : lit ? 1 : 0.92
-                      })`,
-                      transformBox: 'fill-box',
-                      transformOrigin: 'center',
-                    }}
+                    className="cursor-pointer outline-none transition-opacity duration-500"
+                    style={{ opacity: lit ? 1 : 0.28 }}
                     onMouseEnter={() => setActiveId(node.id)}
                     onMouseLeave={() => setActiveId(null)}
                     onFocus={() => setActiveId(node.id)}
                     onBlur={() => setActiveId(null)}
-                    onClick={() =>
-                      setActiveId((prev) => (prev === node.id ? null : node.id))
-                    }
+                    onClick={() => setActiveId((prev) => (prev === node.id ? null : node.id))}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
@@ -135,18 +122,18 @@ export function ConceptSection() {
                       }
                     }}
                   >
-                    <path
-                      d={blobPath(node.id * 97 + 13, {
-                        radius: node.r,
-                        cx: 0,
-                        cy: 0,
-                        points: 7,
-                        variance: 0.32,
-                      })}
-                      fill={MOOD[node.mood]}
-                      fillOpacity={lit ? 0.85 : 0.5}
+                    {/* 넉넉한 히트 영역 */}
+                    <circle cx={node.x} cy={node.y} r={node.r * 2.1} fill="transparent" />
+                    <VizStar
+                      cx={node.x}
+                      cy={node.y}
+                      r={node.r}
+                      color={MOOD[node.mood]}
+                      seed={node.id * 97 + 13}
+                      concept={concept}
+                      brightness={lit ? 1 : 0.55}
+                      active={isActive}
                     />
-                    <circle r={node.r * 0.32} cx={0} cy={0} fill="#dfe3ff" fillOpacity={lit ? 0.9 : 0.4} />
                   </g>
                 )
               })}
@@ -171,14 +158,9 @@ export function ConceptSection() {
                   onMouseLeave={() => setActiveId(null)}
                   onFocus={() => setActiveId(node.id)}
                   onBlur={() => setActiveId(null)}
-                  onClick={() =>
-                    setActiveId((prev) => (prev === node.id ? null : node.id))
-                  }
+                  onClick={() => setActiveId((prev) => (prev === node.id ? null : node.id))}
                 >
-                  <span
-                    className="size-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: MOOD[node.mood] }}
-                  />
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: MOOD[node.mood] }} />
                   <span className="text-sm leading-relaxed text-white/80">{node.label}</span>
                 </button>
               </li>
@@ -190,9 +172,7 @@ export function ConceptSection() {
       <p className="mt-6 text-xs leading-relaxed text-white/40">
         {activeId === null
           ? '별 하나에 마음을 두면, 함께 떠오르는 기억들이 같이 밝아집니다.'
-          : `"${NODES[activeId].label}" 그리고 이어진 ${
-              neighborsOf(activeId).size - 1
-            }개의 기억이 함께 빛나는 중`}
+          : `"${NODES[activeId].label}" 그리고 이어진 ${neighborsOf(activeId).size - 1}개의 기억이 함께 빛나는 중`}
       </p>
     </Section>
   )

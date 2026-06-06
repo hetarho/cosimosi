@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { Lock } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
-import { blobPath, mulberry32 } from '@/shared/lib'
+import { mulberry32 } from '@/shared/lib'
 import { MOOD, MOOD_KEYS, type MoodKey } from '@/shared/config'
+import { useLandingTheme } from '../../model/theme'
+import { VizStar } from '../viz'
 
 const BASE_SEED = 4217
 const ORIGINAL_TEXT = '비 오는 날, 오래된 노래를 들었다.'
@@ -32,6 +34,7 @@ function makeMemory(version: number): Memory {
 
 export function ReconsolidationCard() {
   const reduce = useReducedMotion()
+  const concept = useLandingTheme((s) => s.theme)
   const [history, setHistory] = useState<Memory[]>(() => [makeMemory(0)])
   const current = history[history.length - 1]
   const accent = MOOD[current.mood]
@@ -47,8 +50,8 @@ export function ReconsolidationCard() {
         재공고화 — 회상할 때마다 다시 빚어진다
       </h3>
       <p className="text-sm leading-relaxed text-white/60">
-        회상은 기억을 잠시 말랑하게(labile) 만들어 다시 굳힌다. 그 사이 기억은 강해지거나 약해지거나
-        갱신될 수 있다. cosimosi는 세 겹이다 — 원본 일기는 불변, 별은 회상마다 다시 빚어지는 가변,
+        회상은 기억을 잠시 말랑하게(labile) 만들어 다시 굳힙니다. 그 사이 기억은 강해지거나 약해지거나
+        갱신될 수 있어요. cosimosi의 기억은 세 겹입니다 — 원본 일기는 불변, 별은 회상마다 다시 빚어지는 가변,
         변천사는 그 모든 흔적의 누적.
       </p>
 
@@ -61,11 +64,11 @@ export function ReconsolidationCard() {
           </div>
           <p className="font-display text-base leading-relaxed text-white/85">{ORIGINAL_TEXT}</p>
           <p className="text-xs leading-relaxed text-white/40">
-            회상을 거듭해도 당신이 쓴 이 문장은 절대 바뀌지 않는다.
+            회상을 거듭해도 당신이 쓴 이 문장은 절대 바뀌지 않아요.
           </p>
         </div>
 
-        {/* 별 — 가변, 회상마다 재생성 */}
+        {/* 별 — 가변, 회상마다 재성형 */}
         <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-space-800/40 p-4">
           <motion.svg
             viewBox="0 0 100 100"
@@ -75,21 +78,15 @@ export function ReconsolidationCard() {
             transition={reduce ? undefined : { duration: 0.6 }}
             key={current.version}
           >
-            <defs>
-              <radialGradient id={`recon-star-${current.version}`} cx="50%" cy="45%" r="60%">
-                <stop offset="0%" stopColor={accent} stopOpacity={current.brightness} />
-                <stop offset="100%" stopColor={accent} stopOpacity={current.brightness * 0.25} />
-              </radialGradient>
-            </defs>
-            <motion.path
-              d={blobPath(BASE_SEED + current.version, { points: 7, variance: 0.4 })}
-              fill={`url(#recon-star-${current.version})`}
-              stroke={accent}
-              strokeOpacity={0.6}
-              strokeWidth={1}
-              initial={reduce ? false : { opacity: 0.3 }}
-              animate={{ opacity: 1 }}
-              transition={reduce ? { duration: 0 } : { duration: 0.5 }}
+            <VizStar
+              cx={50}
+              cy={50}
+              r={30}
+              color={accent}
+              seed={BASE_SEED + current.version}
+              concept={concept}
+              brightness={current.brightness}
+              active
             />
           </motion.svg>
           <button
@@ -101,7 +98,7 @@ export function ReconsolidationCard() {
             회상하기
           </button>
           <p className="text-xs text-white/40">
-            회상 {current.version}회 · 별이 다시 빚어졌다 (밝기 {Math.round(current.brightness * 100)}%)
+            회상 {current.version}회 · 별이 다시 빚어졌어요 (밝기 {Math.round(current.brightness * 100)}%)
           </p>
         </div>
       </div>
@@ -110,30 +107,26 @@ export function ReconsolidationCard() {
       <div className="flex flex-col gap-2">
         <span className="text-xs uppercase tracking-widest text-white/40">EVOLUTION · 변천사</span>
         <div className="flex items-end gap-3 overflow-x-auto pb-1">
-          {history.map((m) => {
-            const c = MOOD[m.mood]
-            return (
-              <div key={m.version} className="flex shrink-0 flex-col items-center gap-1">
-                <svg viewBox="0 0 100 100" className="size-10">
-                  <path
-                    d={blobPath(BASE_SEED + m.version, { points: 7, variance: 0.4 })}
-                    fill={c}
-                    fillOpacity={m.brightness}
-                    stroke={c}
-                    strokeOpacity={0.5}
-                    strokeWidth={1.5}
-                  />
-                </svg>
-                <span className="text-[10px] text-white/40">{m.version}</span>
-              </div>
-            )
-          })}
+          {history.map((m) => (
+            <div key={m.version} className="flex shrink-0 flex-col items-center gap-1">
+              <svg viewBox="0 0 100 100" className="size-10">
+                <VizStar
+                  cx={50}
+                  cy={50}
+                  r={30}
+                  color={MOOD[m.mood]}
+                  seed={BASE_SEED + m.version}
+                  concept={concept}
+                  brightness={m.brightness}
+                />
+              </svg>
+              <span className="text-[10px] text-white/40">{m.version}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <p className="text-xs leading-relaxed text-white/40">
-        원본은 불변, 별은 가변, 변천사는 누적.
-      </p>
+      <p className="text-xs leading-relaxed text-white/40">원본은 불변, 별은 가변, 변천사는 누적.</p>
     </GlassCard>
   )
 }

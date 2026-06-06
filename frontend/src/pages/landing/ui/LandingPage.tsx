@@ -1,4 +1,7 @@
-import { NebulaBackground, Section } from '@/shared/ui'
+import { Section } from '@/shared/ui'
+import { useLandingTheme } from '../model/theme'
+import { LandingBackground } from './backgrounds/LandingBackground'
+import { ThemeSwitcher } from './ThemeSwitcher'
 import { HeroSection } from './sections/HeroSection'
 import { ConceptSection } from './sections/ConceptSection'
 import { EngramCard } from './sections/EngramCard'
@@ -12,9 +15,13 @@ import { ResonanceSection } from './sections/ResonanceSection'
 import { CtaFooterSection } from './sections/CtaFooterSection'
 
 export function LandingPage() {
+  const theme = useLandingTheme((s) => s.theme)
+
+  // data-landing-theme: index.css의 --ld-* 토큰(글래스·히어로·액센트 크롬)이 이 안에서만 적용된다.
   return (
-    <div className="relative">
-      <NebulaBackground />
+    <div className="relative" data-landing-theme={theme}>
+      <LandingBackground theme={theme} />
+      <ThemeSwitcher />
       <main className="relative z-0">
         <HeroSection />
         <ConceptSection />

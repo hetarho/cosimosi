@@ -1,14 +1,9 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { ArrowDown } from 'lucide-react'
 import { blobPath } from '@/shared/lib'
-import { MOOD } from '@/shared/config'
+import { useScrollToSection } from '../../lib/scroll'
 
-/** 페이지 어디로든 부드럽게 스크롤. */
-function scrollToId(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-/** 장식용 floating 블롭(생성 별). 시드 고정 → 항상 같은 모양. */
+/** 장식용 floating 블롭(생성 별). 시드 고정 → 항상 같은 모양. 색은 테마 액센트(currentColor). */
 function FloatingStar({
   seed,
   color,
@@ -31,15 +26,15 @@ function FloatingStar({
       height={size}
       aria-hidden
       className={className}
-      style={{ filter: `drop-shadow(0 0 24px ${color}88)` }}
+      style={{ color, filter: 'drop-shadow(0 0 26px currentColor)', opacity: 0.55 }}
       animate={reduced ? undefined : { y: [0, -drift, 0], rotate: [0, drift * 0.4, 0] }}
       transition={{ duration: 9 + seed * 0.7, repeat: Infinity, ease: 'easeInOut' }}
     >
-      <path d={blobPath(seed, { points: 7, variance: 0.4 })} fill={color} fillOpacity={0.32} />
+      <path d={blobPath(seed, { points: 7, variance: 0.4 })} fill="currentColor" fillOpacity={0.4} />
       <path
         d={blobPath(seed, { points: 7, variance: 0.4, radius: 22 })}
-        fill={color}
-        fillOpacity={0.7}
+        fill="currentColor"
+        fillOpacity={0.85}
       />
     </motion.svg>
   )
@@ -47,6 +42,7 @@ function FloatingStar({
 
 export function HeroSection() {
   const reduced = useReducedMotion()
+  const scrollTo = useScrollToSection()
 
   const container = {
     hidden: {},
@@ -59,10 +55,10 @@ export function HeroSection() {
 
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
-      {/* 장식용 생성 별(floating) */}
+      {/* 장식용 생성 별(floating) — 테마 액센트로 물든다 */}
       <FloatingStar
         seed={7}
-        color={MOOD.violet}
+        color="var(--ld-accent-soft)"
         size={150}
         drift={22}
         reduced={!!reduced}
@@ -70,7 +66,7 @@ export function HeroSection() {
       />
       <FloatingStar
         seed={23}
-        color={MOOD.teal}
+        color="var(--ld-accent)"
         size={110}
         drift={16}
         reduced={!!reduced}
@@ -85,48 +81,53 @@ export function HeroSection() {
       >
         <motion.span
           variants={item}
-          className="text-xs uppercase tracking-[0.35em] text-mood-violet/80"
+          className="text-xs uppercase tracking-[0.35em]"
+          style={{ color: 'var(--ld-accent-soft)' }}
         >
           cosimosi
         </motion.span>
 
         <motion.h1
           variants={item}
-          className="font-display text-4xl leading-tight text-white sm:text-6xl md:text-7xl"
+          className="ld-hero-grad font-display text-4xl leading-tight sm:text-6xl md:text-7xl"
         >
           내 일기는 기억의 우주.
         </motion.h1>
 
         <motion.p
           variants={item}
-          className="max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg"
+          className="max-w-2xl text-base leading-relaxed text-white/65 sm:text-lg"
         >
-          기억은 별, 함께 떠올린 기억은 빛으로 이어진다. 그리고 그 별은 — 진짜 기억처럼 — 떠올릴
+          기억은 별, 함께 떠올린 기억끼리는 빛으로 이어진다. 그리고 그 별은 — 진짜 기억처럼 — 떠올릴
           때마다 다시 빚어진다.
         </motion.p>
 
         <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <button
             type="button"
-            onClick={() => scrollToId('cta')}
-            className="rounded-full bg-mood-violet px-7 py-3 text-sm font-medium text-white shadow-lg shadow-mood-violet/30 transition hover:scale-[1.03] hover:bg-mood-violet/90 active:scale-95"
+            onClick={() => scrollTo('cta')}
+            className="rounded-full px-7 py-3 text-sm font-medium text-white transition hover:scale-[1.03] hover:brightness-110 active:scale-95"
+            style={{
+              backgroundColor: 'var(--ld-accent)',
+              boxShadow: '0 16px 46px -18px var(--ld-accent)',
+            }}
           >
             우주 만들어보기
           </button>
           <button
             type="button"
-            onClick={() => scrollToId('science')}
-            className="glass rounded-full border border-white/15 px-7 py-3 text-sm font-medium text-white/80 transition hover:scale-[1.03] hover:text-white active:scale-95"
+            onClick={() => scrollTo('concept')}
+            className="glass rounded-full px-7 py-3 text-sm font-medium text-white/80 transition hover:scale-[1.03] hover:text-white active:scale-95"
           >
             더 알아보기
           </button>
         </motion.div>
       </motion.div>
 
-      {/* 스크롤 힌트 */}
+      {/* 스크롤 힌트 — 다음 섹션(컨셉)으로 */}
       <motion.button
         type="button"
-        onClick={() => scrollToId('science')}
+        onClick={() => scrollTo('concept')}
         aria-label="아래로 스크롤"
         className="absolute bottom-8 z-10 text-white/40 transition hover:text-white/70"
         animate={reduced ? undefined : { y: [0, 8, 0] }}

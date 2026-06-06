@@ -3,6 +3,8 @@ import { motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { cn } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
+import { useLandingTheme } from '../../model/theme'
+import { VizStar, VizSynapse } from '../viz'
 
 const ACCENT = MOOD.violet
 
@@ -20,11 +22,11 @@ const CY = 55
 
 /** 별 5개: 시작 좌표(흩어짐) + 중심 방향(재분배 후) */
 const STARS = [
-  { x: 24, y: 24, r: 5.5, weak: false },
-  { x: 132, y: 30, r: 4.5, weak: true },
-  { x: 30, y: 86, r: 4, weak: true },
-  { x: 128, y: 84, r: 5, weak: false },
-  { x: 78, y: 18, r: 4.5, weak: false },
+  { x: 24, y: 24, r: 6, weak: false },
+  { x: 132, y: 30, r: 5, weak: true },
+  { x: 30, y: 86, r: 4.5, weak: true },
+  { x: 128, y: 84, r: 5.5, weak: false },
+  { x: 78, y: 18, r: 5, weak: false },
 ] as const
 
 /** 라인: 두 별 인덱스 + 약한 연결 여부(가지치기 대상) */
@@ -40,6 +42,7 @@ const lerp = (from: number, to: number, t: number) => from + (to - from) * t
 
 export function NightlyConsolidationCard() {
   const reduce = useReducedMotion()
+  const concept = useLandingTheme((s) => s.theme)
   const [stage, setStage] = useState(0)
   const [running, setRunning] = useState(false)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -88,14 +91,7 @@ export function NightlyConsolidationCard() {
 
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
         <svg viewBox="0 0 160 110" className="block w-full" role="img" aria-label="야간 공고화 시뮬레이션">
-          <defs>
-            <radialGradient id="nc-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={ACCENT} stopOpacity={0.9} />
-              <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
-            </radialGradient>
-          </defs>
-
-          {/* 연결선 */}
+          {/* 연결선(시냅스) — 약한 연결은 가지치기 단계에서 사라진다 */}
           {LINKS.map((l, i) => {
             const a = STARS[l.a]
             const b = STARS[l.b]
@@ -105,50 +101,34 @@ export function NightlyConsolidationCard() {
             const by = lerp(b.y, CY, l.b === 4 ? 0 : gather * 0.55)
             const faded = l.weak && pruned
             return (
-              <motion.line
-                key={`l-${i}`}
-                x1={ax}
-                y1={ay}
-                x2={bx}
-                y2={by}
-                stroke={ACCENT}
-                strokeWidth={l.weak ? 0.6 : 1.1}
-                strokeLinecap="round"
-                animate={{ opacity: faded ? 0 : l.weak ? 0.35 : 0.7 }}
-                transition={{ duration: reduce ? 0 : 0.6 }}
-              />
+              <motion.g key={`l-${i}`} animate={{ opacity: faded ? 0 : 1 }} transition={{ duration: reduce ? 0 : 0.6 }}>
+                <VizSynapse x1={ax} y1={ay} x2={bx} y2={by} color={ACCENT} strength={l.weak ? 0.4 : 0.82} arc={0.1} concept={concept} />
+              </motion.g>
             )
           })}
 
-          {/* 별 */}
+          {/* 별 — 중심으로 모이고(재분배), 요지화로 작아지고, 재활성화 때 깜빡인다 */}
           {STARS.map((s, i) => {
             const tx = lerp(s.x, CX, gather * 0.55)
             const ty = lerp(s.y, CY, gather * 0.55)
-            const radius = s.r * (1 - gist * 0.4) // 요지 추출 시 축소
+            const radius = s.r * (1 - gist * 0.4)
             return (
               <motion.g
                 key={`s-${i}`}
-                animate={{ x: tx - s.x, y: ty - s.y }}
-                transition={{ duration: reduce ? 0 : 0.8, ease: 'easeInOut' }}
+                animate={{
+                  x: tx - s.x,
+                  y: ty - s.y,
+                  scale: pulse ? [1, 1.22, 1] : 1,
+                  opacity: gist && s.weak ? 0.55 : 1,
+                }}
+                transition={
+                  pulse
+                    ? { duration: 0.9, repeat: Infinity, ease: 'easeInOut' }
+                    : { duration: reduce ? 0 : 0.8, ease: 'easeInOut' }
+                }
+                style={{ transformOrigin: `${s.x}px ${s.y}px`, transformBox: 'view-box' }}
               >
-                {(pulse || i === 4) && (
-                  <motion.circle
-                    cx={s.x}
-                    cy={s.y}
-                    r={radius + 4}
-                    fill="url(#nc-glow)"
-                    animate={pulse ? { opacity: [0.2, 0.7, 0.2], scale: [1, 1.25, 1] } : { opacity: 0.25 }}
-                    transition={pulse ? { duration: 0.9, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.4 }}
-                    style={{ transformOrigin: `${s.x}px ${s.y}px` }}
-                  />
-                )}
-                <motion.circle
-                  cx={s.x}
-                  cy={s.y}
-                  fill="#dfe3ff"
-                  animate={{ r: radius, opacity: gist && s.weak ? 0.5 : 0.95 }}
-                  transition={{ duration: reduce ? 0 : 0.6 }}
-                />
+                <VizStar cx={s.x} cy={s.y} r={radius} color={ACCENT} seed={i * 53 + 11} concept={concept} active={i === 4} />
               </motion.g>
             )
           })}
