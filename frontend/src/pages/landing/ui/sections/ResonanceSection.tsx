@@ -4,8 +4,9 @@ import { Section, GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { VizSynapse } from '../viz'
 import type { VizConcept } from '../viz'
+import { StarCanvas, Star3D } from '../star3d'
 
 // 좌/우 두 사람의 우주에 새겨진 같은 사건의 별. seed 고정 → 결정론적 모양.
 const ME = { seed: 0x5e0f, mood: MOOD.violet, label: '나의 별' } as const
@@ -30,14 +31,18 @@ function MiniUniverse({
     r: 0.6 + rand() * 1.1,
   }))
   return (
-    <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
-      <circle cx="50" cy="50" r="46" fill={mood} fillOpacity={0.05} />
-      <circle cx="50" cy="50" r="46" fill="none" stroke={mood} strokeOpacity={0.18} />
-      {dust.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r={d.r} fill="#dfe3ff" fillOpacity={0.35} />
-      ))}
-      <VizStar cx={50} cy={50} r={18} color={mood} seed={seed} concept={concept} brightness={bright ? 1 : 0.5} />
-    </svg>
+    <div className="relative h-full w-full">
+      <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
+        <circle cx="50" cy="50" r="46" fill={mood} fillOpacity={0.05} />
+        <circle cx="50" cy="50" r="46" fill="none" stroke={mood} strokeOpacity={0.18} />
+        {dust.map((d, i) => (
+          <circle key={i} cx={d.x} cy={d.y} r={d.r} fill="#dfe3ff" fillOpacity={0.35} />
+        ))}
+      </svg>
+      <StarCanvas width={100} height={100} animated className="pointer-events-none absolute inset-0">
+        <Star3D concept={concept} color={mood} x={50} y={50} r={18} seed={seed} brightness={bright ? 1 : 0.5} />
+      </StarCanvas>
+    </div>
   )
 }
 

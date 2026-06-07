@@ -12,7 +12,8 @@ export function ThemeSwitcher() {
   const reduce = useReducedMotion()
   const theme = useLandingTheme((s) => s.theme)
   const setTheme = useLandingTheme((s) => s.setTheme)
-  const [open, setOpen] = useState(true)
+  // 기본은 접힌 FAB. 첫인상의 주의 예산을 콘텐츠·CTA에 양보하고, 원하는 사람만 펼쳐 테마를 비교한다.
+  const [open, setOpen] = useState(false)
   const active = THEMES.find((t) => t.id === theme) ?? THEMES[0]
 
   return (

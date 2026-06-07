@@ -4,7 +4,8 @@ import { GlassCard } from '@/shared/ui'
 import { cn } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { VizSynapse } from '../viz'
+import { StarCanvas, Star3D } from '../star3d'
 
 const ACCENT = MOOD.violet
 
@@ -89,7 +90,7 @@ export function NightlyConsolidationCard() {
         추리며, 약한 연결은 가지치기합니다. 원본 일기는 그대로 둔 채, 별자리만 다시 정돈되는 밤입니다.
       </p>
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
         <svg viewBox="0 0 160 110" className="block w-full" role="img" aria-label="야간 공고화 시뮬레이션">
           {/* 연결선(시냅스) — 약한 연결은 가지치기 단계에서 사라진다 */}
           {LINKS.map((l, i) => {
@@ -106,33 +107,29 @@ export function NightlyConsolidationCard() {
               </motion.g>
             )
           })}
+        </svg>
 
-          {/* 별 — 중심으로 모이고(재분배), 요지화로 작아지고, 재활성화 때 깜빡인다 */}
+        {/* 별 — 테마별 WebGL 오브제. 중심으로 모이고(Star3D가 부드럽게 따라감), 요지화로 작아진다 */}
+        <StarCanvas width={160} height={110} animated className="pointer-events-none absolute inset-0">
           {STARS.map((s, i) => {
             const tx = lerp(s.x, CX, gather * 0.55)
             const ty = lerp(s.y, CY, gather * 0.55)
             const radius = s.r * (1 - gist * 0.4)
             return (
-              <motion.g
-                key={`s-${i}`}
-                animate={{
-                  x: tx - s.x,
-                  y: ty - s.y,
-                  scale: pulse ? [1, 1.22, 1] : 1,
-                  opacity: gist && s.weak ? 0.55 : 1,
-                }}
-                transition={
-                  pulse
-                    ? { duration: 0.9, repeat: Infinity, ease: 'easeInOut' }
-                    : { duration: reduce ? 0 : 0.8, ease: 'easeInOut' }
-                }
-                style={{ transformOrigin: `${s.x}px ${s.y}px`, transformBox: 'view-box' }}
-              >
-                <VizStar cx={s.x} cy={s.y} r={radius} color={ACCENT} seed={i * 53 + 11} concept={concept} active={i === 4} />
-              </motion.g>
+              <Star3D
+                key={i}
+                concept={concept}
+                color={ACCENT}
+                x={tx}
+                y={ty}
+                r={radius}
+                seed={i * 53 + 11}
+                brightness={gist && s.weak ? 0.5 : 1}
+                active={i === 4 || pulse}
+              />
             )
           })}
-        </svg>
+        </StarCanvas>
       </div>
 
       <div className="flex items-center justify-between gap-3">

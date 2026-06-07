@@ -12,8 +12,9 @@ export function DevTools() {
   if (!import.meta.env.DEV) return null
   return (
     <Suspense fallback={null}>
+      {/* 우하단은 제품 UI(랜딩 테마 스위처 FAB) 자리 → devtools 토글은 좌측으로 비킨다. */}
       <RouterDevtools position="bottom-left" />
-      <QueryDevtools initialIsOpen={false} />
+      <QueryDevtools initialIsOpen={false} buttonPosition="top-left" />
     </Suspense>
   )
 }

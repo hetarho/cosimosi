@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { VizSynapse } from '../viz'
+import { StarCanvas, Star3D } from '../star3d'
 
 const TEAL = MOOD.teal
 
@@ -31,21 +32,15 @@ export function HebbianCard() {
       </p>
 
       <div className="rounded-2xl border border-white/10 bg-space-900/40 p-4">
-        <svg viewBox="0 0 120 64" className="h-32 w-full" role="img" aria-label="두 기억을 잇는 시냅스">
-          <VizSynapse
-            x1={28}
-            y1={32}
-            x2={92}
-            y2={32}
-            color={TEAL}
-            strength={t}
-            arc={0.16}
-            active={strength >= 62}
-            concept={concept}
-          />
-          <VizStar cx={28} cy={32} r={11} color={TEAL} seed={101} concept={concept} brightness={0.5 + t * 0.5} />
-          <VizStar cx={92} cy={32} r={11} color={TEAL} seed={202} concept={concept} brightness={0.5 + t * 0.5} />
-        </svg>
+        <div className="relative">
+          <svg viewBox="0 0 120 64" className="h-32 w-full" role="img" aria-label="두 기억을 잇는 시냅스">
+            <VizSynapse x1={28} y1={32} x2={92} y2={32} color={TEAL} strength={t} arc={0.16} active={strength >= 62} concept={concept} />
+          </svg>
+          <StarCanvas width={120} height={64} animated className="pointer-events-none absolute inset-0">
+            <Star3D concept={concept} color={TEAL} x={28} y={32} r={11} seed={101} brightness={0.5 + t * 0.5} active={strength >= 62} />
+            <Star3D concept={concept} color={TEAL} x={92} y={32} r={11} seed={202} brightness={0.5 + t * 0.5} active={strength >= 62} />
+          </StarCanvas>
+        </div>
 
         <label className="mt-1 flex flex-col gap-2">
           <span className="flex items-center justify-between text-xs text-white/55">

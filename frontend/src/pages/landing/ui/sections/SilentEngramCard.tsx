@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizStar } from '../viz'
+import { StarCanvas, Star3D } from '../star3d'
 
 const CORAL = MOOD.coral
 /** 빛이 완전히 꺼지지 않는 바닥값(침묵 엔그램은 사라지지 않는다). */
@@ -38,16 +38,16 @@ export function SilentEngramCard() {
 
       <div className="flex items-end justify-around gap-4 rounded-2xl border border-white/10 bg-space-900/40 p-5">
         <div className="flex flex-col items-center gap-2">
-          <svg viewBox="0 0 100 100" className="h-20 w-20" aria-hidden>
-            <VizStar cx={50} cy={50} r={28} color={CORAL} seed={107} concept={concept} brightness={connected} />
-          </svg>
+          <StarCanvas width={100} height={100} animated className="h-20 w-20">
+            <Star3D concept={concept} color={CORAL} x={50} y={50} r={28} seed={107} brightness={connected} />
+          </StarCanvas>
           <span className="text-xs text-white/70">연결 많은 별</span>
           <span className="text-[11px] tabular-nums text-mood-coral/80">밝기 {Math.round(connected * 100)}%</span>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <svg viewBox="0 0 100 100" className="h-20 w-20" aria-hidden>
-            <VizStar cx={50} cy={50} r={28} color={CORAL} seed={233} concept={concept} brightness={isolated} />
-          </svg>
+          <StarCanvas width={100} height={100} animated className="h-20 w-20">
+            <Star3D concept={concept} color={CORAL} x={50} y={50} r={28} seed={233} brightness={isolated} />
+          </StarCanvas>
           <span className="text-xs text-white/70">고립된 별</span>
           <span className="text-[11px] tabular-nums text-mood-coral/80">밝기 {Math.round(isolated * 100)}%</span>
         </div>

@@ -3,7 +3,8 @@ import { Section } from '@/shared/ui'
 import { cn } from '@/shared/lib'
 import { MOOD, type MoodKey } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { VizSynapse } from '../viz'
+import { StarCanvas, Star3D } from '../star3d'
 
 interface StarNode {
   id: number
@@ -122,23 +123,30 @@ export function ConceptSection() {
                       }
                     }}
                   >
-                    {/* 넉넉한 히트 영역 */}
+                    {/* 넉넉한 히트 영역(별 비주얼은 위의 WebGL StarCanvas가 그린다) */}
                     <circle cx={node.x} cy={node.y} r={node.r * 2.1} fill="transparent" />
-                    <VizStar
-                      cx={node.x}
-                      cy={node.y}
-                      r={node.r}
-                      color={MOOD[node.mood]}
-                      seed={node.id * 97 + 13}
-                      concept={concept}
-                      brightness={lit ? 1 : 0.55}
-                      active={isActive}
-                    />
                   </g>
                 )
               })}
             </g>
           </svg>
+
+          {/* WebGL 별 오버레이 — SVG 시냅스 위에 테마별 오브제로 별을 그린다(좌표·meet 정합, hover는 아래 SVG가 처리). */}
+          <StarCanvas width={100} height={100} animated className="pointer-events-none absolute inset-0">
+            {NODES.map((node) => (
+              <Star3D
+                key={node.id}
+                concept={concept}
+                color={MOOD[node.mood]}
+                x={node.x}
+                y={node.y}
+                r={node.r}
+                seed={node.id * 97 + 13}
+                brightness={isNodeLit(node.id) ? 1 : 0.45}
+                active={activeId === node.id}
+              />
+            ))}
+          </StarCanvas>
         </figure>
 
         <ul className="flex flex-col gap-2">

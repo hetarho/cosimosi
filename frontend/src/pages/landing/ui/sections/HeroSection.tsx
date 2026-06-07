@@ -1,48 +1,24 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { ArrowDown } from 'lucide-react'
-import { blobPath } from '@/shared/lib'
+import { useNavigate } from '@tanstack/react-router'
+import { enterDemoMode } from '@/shared/demo'
+import { MOOD } from '@/shared/config'
 import { useScrollToSection } from '../../lib/scroll'
-
-/** 장식용 floating 블롭(생성 별). 시드 고정 → 항상 같은 모양. 색은 테마 액센트(currentColor). */
-function FloatingStar({
-  seed,
-  color,
-  className,
-  size,
-  drift,
-  reduced,
-}: {
-  seed: number
-  color: string
-  className: string
-  size: number
-  drift: number
-  reduced: boolean
-}) {
-  return (
-    <motion.svg
-      viewBox="0 0 100 100"
-      width={size}
-      height={size}
-      aria-hidden
-      className={className}
-      style={{ color, filter: 'drop-shadow(0 0 26px currentColor)', opacity: 0.55 }}
-      animate={reduced ? undefined : { y: [0, -drift, 0], rotate: [0, drift * 0.4, 0] }}
-      transition={{ duration: 9 + seed * 0.7, repeat: Infinity, ease: 'easeInOut' }}
-    >
-      <path d={blobPath(seed, { points: 7, variance: 0.4 })} fill="currentColor" fillOpacity={0.4} />
-      <path
-        d={blobPath(seed, { points: 7, variance: 0.4, radius: 22 })}
-        fill="currentColor"
-        fillOpacity={0.85}
-      />
-    </motion.svg>
-  )
-}
+import { useLandingTheme } from '../../model/theme'
+import { ThemedStar } from '../star3d'
 
 export function HeroSection() {
   const reduced = useReducedMotion()
   const scrollTo = useScrollToSection()
+  const navigate = useNavigate()
+  const theme = useLandingTheme((s) => s.theme)
+
+  // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 데모 우주로 바로 보낸다.
+  // (로그인/DB 없이 더미 우주 진입 — CtaFooterSection의 tryDemo와 동일 경로.)
+  const tryDemo = () => {
+    enterDemoMode()
+    void navigate({ to: '/universe' })
+  }
 
   const container = {
     hidden: {},
@@ -55,30 +31,17 @@ export function HeroSection() {
 
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
-      {/* 장식용 생성 별(floating) — 테마 액센트로 물든다 */}
-      <FloatingStar
-        seed={7}
-        color="var(--ld-accent-soft)"
-        size={150}
-        drift={22}
-        reduced={!!reduced}
-        className="pointer-events-none absolute left-[8%] top-[18%] hidden sm:block"
-      />
-      <FloatingStar
-        seed={23}
-        color="var(--ld-accent)"
-        size={110}
-        drift={16}
-        reduced={!!reduced}
-        className="pointer-events-none absolute right-[10%] bottom-[20%] hidden sm:block"
-      />
-
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
         className="relative z-10 flex max-w-3xl flex-col items-center gap-7"
       >
+        {/* 테마별로 완전히 다른 오브제로 변신하는 WebGL 별 엠블럼(크리스털·성운·액체·잉걸불). */}
+        <motion.div variants={item}>
+          <ThemedStar concept={theme} color={MOOD.violet} seed={7} size={220} className="mx-auto" />
+        </motion.div>
+
         <motion.span
           variants={item}
           className="text-xs uppercase tracking-[0.35em]"
@@ -102,25 +65,28 @@ export function HeroSection() {
           때마다 다시 빚어진다.
         </motion.p>
 
-        <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-          <button
-            type="button"
-            onClick={() => scrollTo('cta')}
-            className="rounded-full px-7 py-3 text-sm font-medium text-white transition hover:scale-[1.03] hover:brightness-110 active:scale-95"
-            style={{
-              backgroundColor: 'var(--ld-accent)',
-              boxShadow: '0 16px 46px -18px var(--ld-accent)',
-            }}
-          >
-            우주 만들어보기
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollTo('concept')}
-            className="glass rounded-full px-7 py-3 text-sm font-medium text-white/80 transition hover:scale-[1.03] hover:text-white active:scale-95"
-          >
-            더 알아보기
-          </button>
+        <motion.div variants={item} className="flex flex-col items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+            <button
+              type="button"
+              onClick={tryDemo}
+              className="rounded-full px-7 py-3 text-sm font-medium text-white transition hover:scale-[1.03] hover:brightness-110 active:scale-95"
+              style={{
+                backgroundColor: 'var(--ld-accent)',
+                boxShadow: '0 16px 46px -18px var(--ld-accent)',
+              }}
+            >
+              우주 만들어보기
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTo('concept')}
+              className="glass rounded-full px-7 py-3 text-sm font-medium text-white/80 transition hover:scale-[1.03] hover:text-white active:scale-95"
+            >
+              더 알아보기
+            </button>
+          </div>
+          <span className="text-xs text-white/45">로그인 없이 바로 둘러볼 수 있어요</span>
         </motion.div>
       </motion.div>
 

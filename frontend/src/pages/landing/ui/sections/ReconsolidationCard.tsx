@@ -1,46 +1,53 @@
 import { useState } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
 import { Lock } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
-import { MOOD, MOOD_KEYS, type MoodKey } from '@/shared/config'
+import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
 import { VizStar } from '../viz'
+import { StarCanvas, Star3D } from '../star3d'
 
 const BASE_SEED = 4217
 const ORIGINAL_TEXT = '비 오는 날, 오래된 노래를 들었다.'
+/** 이 기억의 감정 색 계열(고정). 회상이 색을 통째로 바꾸지는 않는다. */
+const BASE_COLOR = MOOD.pink
 
-/** version으로부터 결정론적으로 색을 고른다. 회상마다 강해지거나 흐려지는 양방향 변형 느낌. */
-function moodFor(version: number): MoodKey {
-  const rand = mulberry32(BASE_SEED + version * 31)
-  return MOOD_KEYS[Math.floor(rand() * MOOD_KEYS.length)]
-}
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
-/** version으로부터 밝기(불투명도)를 결정. LTP(강화)/LTD(약화) 양방향. */
-function brightnessFor(version: number): number {
-  const rand = mulberry32(BASE_SEED + version * 97 + 5)
-  return 0.45 + rand() * 0.5
-}
-
+/**
+ * 한 기억의 한 시점. 회상은 "랜덤 재생성"이 아니라 같은 기억을 다시 굳히는 과정이다.
+ * 그래서 형태(seed)와 감정 색 계열은 유지되고 — 밝기만 강화/약화 양방향으로, 색조는 좁은 폭으로
+ * 갱신된다. (재공고화는 강화·약화·갱신 모두 가능하되 "그 기억"을 벗어나진 않는다.)
+ */
 interface Memory {
   version: number
-  mood: MoodKey
+  /** 0.4~1 — 직전 대비 ±한 발씩 걷는 양방향 워크. */
   brightness: number
+  /** 원본 색 기준 ±28° 이내의 좁은 색조 갱신. */
+  hueShift: number
+  /** 직전 시점 대비 강화(up)/약화(down). */
+  dir: 'up' | 'down'
 }
 
-function makeMemory(version: number): Memory {
-  return { version, mood: moodFor(version), brightness: brightnessFor(version) }
+/** 직전 상태로부터 결정론적으로 다음 회상 시점을 빚는다(난수 재생성이 아닌 제약된 드리프트). */
+function nextMemory(prev: Memory | null, version: number): Memory {
+  if (!prev) return { version, brightness: 0.7, hueShift: 0, dir: 'up' }
+  const rand = mulberry32(BASE_SEED + version * 2654435761)
+  const goesUp = rand() < 0.5
+  const step = 0.1 + rand() * 0.12 // 0.10~0.22
+  const brightness = clamp(prev.brightness + (goesUp ? step : -step), 0.4, 1)
+  const hueShift = clamp(prev.hueShift + (rand() - 0.5) * 18, -28, 28)
+  const dir = brightness >= prev.brightness ? 'up' : 'down'
+  return { version, brightness, hueShift, dir }
 }
 
 export function ReconsolidationCard() {
-  const reduce = useReducedMotion()
   const concept = useLandingTheme((s) => s.theme)
-  const [history, setHistory] = useState<Memory[]>(() => [makeMemory(0)])
+  const [history, setHistory] = useState<Memory[]>(() => [nextMemory(null, 0)])
   const current = history[history.length - 1]
-  const accent = MOOD[current.mood]
 
   const recall = () => {
-    setHistory((prev) => [...prev, makeMemory(prev.length)])
+    setHistory((prev) => [...prev, nextMemory(prev[prev.length - 1], prev.length)])
   }
 
   return (
@@ -70,35 +77,28 @@ export function ReconsolidationCard() {
 
         {/* 별 — 가변, 회상마다 재성형 */}
         <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-space-800/40 p-4">
-          <motion.svg
-            viewBox="0 0 100 100"
+          <div
             className="size-32"
+            style={{ filter: `hue-rotate(${current.hueShift}deg)`, transition: 'filter 0.5s ease' }}
+            role="img"
             aria-label={`회상 ${current.version}회 시점의 별`}
-            animate={reduce ? undefined : { scale: [1, 1.04, 1] }}
-            transition={reduce ? undefined : { duration: 0.6 }}
-            key={current.version}
           >
-            <VizStar
-              cx={50}
-              cy={50}
-              r={30}
-              color={accent}
-              seed={BASE_SEED + current.version}
-              concept={concept}
-              brightness={current.brightness}
-              active
-            />
-          </motion.svg>
+            <StarCanvas width={100} height={100} animated className="h-full w-full">
+              <Star3D concept={concept} color={BASE_COLOR} x={50} y={50} r={30} seed={BASE_SEED} brightness={current.brightness} active />
+            </StarCanvas>
+          </div>
           <button
             type="button"
             onClick={recall}
             className="rounded-full border border-white/15 px-5 py-2 text-sm text-white/80 transition-colors hover:border-mood-pink/60 hover:text-white"
-            style={{ boxShadow: `0 0 24px -8px ${accent}` }}
+            style={{ boxShadow: `0 0 24px -8px ${BASE_COLOR}` }}
           >
             회상하기
           </button>
           <p className="text-xs text-white/40">
-            회상 {current.version}회 · 별이 다시 빚어졌어요 (밝기 {Math.round(current.brightness * 100)}%)
+            {current.version === 0
+              ? '처음 그대로의 별 — 같은 형태로 다시 굳을 준비가 됐어요'
+              : `회상 ${current.version}회 · ${current.dir === 'up' ? '강화 ↑' : '약화 ↓'} · 같은 기억이 다시 굳었어요 (밝기 ${Math.round(current.brightness * 100)}%)`}
           </p>
         </div>
       </div>
@@ -109,18 +109,20 @@ export function ReconsolidationCard() {
         <div className="flex items-end gap-3 overflow-x-auto pb-1">
           {history.map((m) => (
             <div key={m.version} className="flex shrink-0 flex-col items-center gap-1">
-              <svg viewBox="0 0 100 100" className="size-10">
+              <svg viewBox="0 0 100 100" className="size-10" style={{ filter: `hue-rotate(${m.hueShift}deg)` }}>
                 <VizStar
                   cx={50}
                   cy={50}
                   r={30}
-                  color={MOOD[m.mood]}
-                  seed={BASE_SEED + m.version}
+                  color={BASE_COLOR}
+                  seed={BASE_SEED}
                   concept={concept}
                   brightness={m.brightness}
                 />
               </svg>
-              <span className="text-[10px] text-white/40">{m.version}</span>
+              <span className="text-[10px] text-white/40">
+                {m.version === 0 ? '최초' : `${m.version}${m.dir === 'up' ? '↑' : '↓'}`}
+              </span>
             </div>
           ))}
         </div>

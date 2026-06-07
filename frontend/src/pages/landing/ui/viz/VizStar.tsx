@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { blobPath } from '@/shared/lib'
 import { clamp01, type VizConcept } from './viz-concept'
 
 export interface VizStarProps {
@@ -13,7 +14,7 @@ export interface VizStarProps {
   brightness?: number
   /** 강조(hover/active) 시 더 또렷하게. */
   active?: boolean
-  /** (선택) 결정론 시드 — 현재 광점 렌더엔 미사용, 호출부 호환용. */
+  /** 결정론 시드 — 코어 블롭의 고유 형태를 빚는다. 같은 seed면 항상 같은 모양. */
   seed?: number
 }
 
@@ -24,14 +25,20 @@ export interface VizStarProps {
  *  - deepfield: 가느다란 회절 스파이크(천체사진 별빛)
  *  - liquid: 옅은 스페큘러 sheen(빛 반사)
  * 어떤 svg viewBox 안에든 박힌다.
+ *
+ * 코어는 정원이 아니라 seed로 빚어진 고유 블롭이다 — "기억마다 하나뿐인 형태가
+ * 의미에서 창발한다"는 컨셉을 시각적으로 증명한다. 같은 seed면 항상 같은 모양.
  */
-export function VizStar({ cx, cy, r, color, concept, brightness = 1, active = false }: VizStarProps) {
+export function VizStar({ cx, cy, r, color, concept, brightness = 1, active = false, seed = 1 }: VizStarProps) {
   const id = useId().replace(/:/g, '')
   const b = clamp01(brightness)
   const k = active ? 1.12 : 1
   const bloomR = r * (concept === 'aurora' ? 3.4 : concept === 'ember' ? 3.0 : 2.7) * k
   const coreR = r * 0.62 * k
   const bloomO = (concept === 'deepfield' ? 0.5 : 0.62) * b * (active ? 1.25 : 1)
+  // 코어 형태: 작을수록 변형을 줄여(둥글게) 작은 썸네일에서도 별로 읽히게 한다.
+  const variance = coreR < 5 ? 0.22 : 0.32
+  const corePath = blobPath(seed, { points: 7, variance, radius: coreR, cx, cy })
 
   return (
     <g>
@@ -57,8 +64,8 @@ export function VizStar({ cx, cy, r, color, concept, brightness = 1, active = fa
         </g>
       )}
 
-      {/* 발광 코어 */}
-      <circle cx={cx} cy={cy} r={coreR} fill={`url(#${id}c)`} />
+      {/* 발광 코어 — seed로 빚어진 고유 형태(별마다 다른 모양) */}
+      <path d={corePath} fill={`url(#${id}c)`} />
       <circle cx={cx} cy={cy} r={coreR * 0.42} fill="#ffffff" fillOpacity={0.92 * b} />
 
       {/* liquid: 옅은 스페큘러 sheen */}
