@@ -40,7 +40,7 @@ export function CtaFooterSection() {
   // mock: 실제 백엔드 전송 없음. 폼 값은 사용하지 않고 제출을 시뮬레이션해 감사 상태로 전환한다.
   const onSubmit = async () => {
     await new Promise((resolve) => setTimeout(resolve, 600))
-    toast.success('대기자 명단에 등록됐어요. 감사합니다.')
+    toast.success('잘 받았어요. 공개되면 가장 먼저 알려드릴게요.')
     setSubmitted(true)
   }
 
@@ -54,11 +54,11 @@ export function CtaFooterSection() {
         <h2 className="font-display text-4xl leading-tight text-white/90 sm:text-5xl">
           당신의 기억으로
           <br />
-          우주를 만들어보세요
+          우주 하나를 띄워보세요
         </h2>
         <p className="max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
-          오늘의 일기가 하나의 별이 됩니다. 떠올릴 때마다 별은 다시 빛나고, 잊어도 사라지지 않습니다.
-          가장 먼저 당신만의 엔그램 우주를 만나보세요.
+          오늘 쓴 한 편이 별이 되고, 떠올릴 때마다 다시 빛난다. 잊어도 사라지지 않는, 당신만의
+          엔그램 우주를 가장 먼저 만나보세요.
         </p>
 
         {/* 가입 없이 바로 둘러보기 — 더미 우주를 띄워 별 추가·회상·잠든 별까지 체험한다. */}
@@ -70,10 +70,10 @@ export function CtaFooterSection() {
             className="inline-flex items-center justify-center gap-2 rounded-full border border-mood-teal/40 bg-mood-teal/15 px-6 py-3 text-sm font-medium text-mood-teal transition hover:bg-mood-teal/25 sm:text-base"
           >
             <Rocket size={18} aria-hidden />
-            가입 없이 체험해보기
+            가입 없이 들어가 보기
             <ArrowRight size={16} aria-hidden />
           </motion.button>
-          <span className="text-xs text-white/40">로그인 없이 둘러볼 수 있어요. 새로고침하면 초기화됩니다.</span>
+          <span className="text-xs text-white/40">로그인 없이 둘러볼 수 있어요. 새로고침하면 처음으로 돌아갑니다.</span>
         </div>
       </div>
 
@@ -91,15 +91,15 @@ export function CtaFooterSection() {
             >
               <Sparkles size={22} aria-hidden />
             </span>
-            <p className="font-display text-lg text-white/90">등록이 완료됐어요</p>
+            <p className="font-display text-lg text-white/90">메일을 받아 두었어요</p>
             <p className="text-sm leading-relaxed text-white/60">
-              공개 소식이 준비되면 가장 먼저 알려드릴게요. 함께해주셔서 감사합니다.
+              공개되면 가장 먼저 알려드릴게요. 기다려주셔서 고마워요.
             </p>
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
             <label htmlFor="cta-email" className="text-left text-xs uppercase tracking-widest text-mood-violet/80">
-              대기자 등록
+              공개 소식 받기
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
@@ -124,7 +124,7 @@ export function CtaFooterSection() {
                 whileTap={reduce ? undefined : { scale: 0.97 }}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-mood-violet px-5 py-3 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-60"
               >
-                {isSubmitting ? '등록 중' : '등록'}
+                {isSubmitting ? '보내는 중' : '받기'}
                 <ArrowRight size={16} aria-hidden />
               </motion.button>
             </div>
@@ -132,7 +132,7 @@ export function CtaFooterSection() {
               <p className="text-left text-xs leading-relaxed text-mood-coral">{errors.email.message}</p>
             )}
             <p className="text-left text-xs leading-relaxed text-white/40">
-              실제 발송 없이 데모로 동작해요. 입력하신 정보는 저장되지 않습니다.
+              지금은 데모라 실제로 보내지는 않아요. 적어주신 메일은 저장하지 않습니다.
             </p>
           </form>
         )}
@@ -149,7 +149,7 @@ function Footer() {
     <footer className="flex w-full flex-col items-center gap-3 border-t border-white/10 pt-10 text-center">
       <span className="font-display text-lg tracking-wide text-white/90">cosimosi</span>
       <p className="max-w-sm text-sm leading-relaxed text-white/60">
-        우리 뇌는 하나의 작은 우주입니다. 당신의 기억을 별로, 그 사이를 빛의 선으로.
+        우리 뇌는 하나의 작은 우주. 당신의 기억은 별이 되고, 그 사이는 빛의 선으로 이어진다.
       </p>
       <p className="text-xs leading-relaxed text-white/40">© 2026 cosimosi. All rights reserved.</p>
     </footer>

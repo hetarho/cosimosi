@@ -38,9 +38,13 @@ function FitCamera({ width, height }: { width: number; height: number }) {
     cam.right = halfW
     cam.top = halfH
     cam.bottom = -halfH
-    cam.position.set(0, 0, 10)
+    // ortho는 거리에 무관하게 크기가 같으므로, 카메라를 박스 크기에 비례해 충분히 뒤로 물려 어떤 r의
+    // 별이든 near~far 슬랩 안에 통째로 들어오게 한다. (z=10·far=100이던 기존값은 near 평면이 z=9.9라
+    // r>~10인 별의 앞면이 잘려 구의 단면 내부가 드러나던 버그의 원인이었다.)
+    const depth = Math.max(width, height)
+    cam.position.set(0, 0, depth * 2)
     cam.near = 0.1
-    cam.far = 100
+    cam.far = depth * 4
     cam.updateProjectionMatrix()
     set({ camera: cam })
   }, [set, size.width, size.height, width, height])

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
-import { Section, GlassCard } from '@/shared/ui'
+import { GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
@@ -52,17 +52,7 @@ export function ResonanceSection() {
   const [resonant, setResonant] = useState(false)
 
   return (
-    <Section id="resonance">
-      <span className="text-xs uppercase tracking-widest" style={{ color: 'var(--ld-accent-soft)' }}>
-        Resonance
-      </span>
-      <h2 className="mt-3 font-display text-3xl text-white/90 sm:text-4xl">함께한 기억 — 공명</h2>
-      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base">
-        같은 사건도 두 사람의 우주에는 각자의 별로 남습니다. 친구가 같은 일을 자기 관점으로 다시 쓰면,
-        따로 빛나던 두 별이 하나의 빛줄기로 이어집니다. 우리는 그 연결을 공명이라 부릅니다.
-      </p>
-
-      <GlassCard className="mt-8 flex flex-col gap-6 p-6 sm:p-8">
+    <GlassCard className="flex flex-col gap-6 p-6 sm:p-8">
         <div className="relative">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
             <figure className="flex flex-col items-center gap-2">
@@ -74,6 +64,17 @@ export function ResonanceSection() {
 
             {/* 가운데 공명 선: resonant일 때 이어짐. 빛알갱이가 오간다(모션 줄이면 정적). */}
             <div className="relative flex h-24 w-16 items-center justify-center sm:w-28">
+              {/* 공명할 때 join에 번지는 숨쉬는 빛무리. */}
+              {resonant && (
+                <motion.div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{ background: `radial-gradient(circle, ${MOOD.amber}44 0%, transparent 70%)` }}
+                  initial={{ opacity: 0 }}
+                  animate={reduce ? { opacity: 0.5 } : { opacity: [0.3, 0.6, 0.3] }}
+                  transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
               <svg viewBox="0 0 100 40" className="h-full w-full" aria-hidden>
                 <VizSynapse
                   x1={6}
@@ -116,15 +117,14 @@ export function ResonanceSection() {
             className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-sm text-white/80 transition hover:bg-white/10"
             aria-pressed={resonant}
           >
-            {resonant ? '공명 해제' : '친구가 같은 날을 다시 쓰다'}
+            {resonant ? '공명 풀기' : '친구가 같은 날을 다시 쓰다'}
           </button>
           <p className="text-xs text-white/40">
             {resonant
-              ? '두 별이 공명합니다. 같은 사건을 함께 회상할수록 연결은 또렷해집니다.'
-              : '아직 두 별은 각자의 우주에서 따로 빛납니다.'}
+              ? '두 별이 공명한다. 같은 밤을 함께 떠올릴수록 빛줄기는 또렷해진다.'
+              : '아직 두 별은 각자의 우주에서 따로 빛난다.'}
           </p>
         </div>
       </GlassCard>
-    </Section>
   )
 }

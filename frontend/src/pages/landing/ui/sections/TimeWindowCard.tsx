@@ -54,13 +54,7 @@ export function TimeWindowCard() {
 
   return (
     <GlassCard className="flex flex-col gap-4 p-6 sm:p-8">
-      <span className="text-xs uppercase tracking-widest text-mood-amber/80">MEMORY LINKING</span>
-      <h3 className="font-display text-xl text-white/90 sm:text-2xl">기억 연결의 시간 창</h3>
-      <p className="text-sm leading-relaxed text-white/60">
-        비슷한 시기에 쓴 기억끼리 시냅스로 엮입니다. 하지만 그 창은 수 시간에서 하루로 짧아서, 하루가
-        지나면 빠르게 닫히고 일주일쯤 되면 연결은 거의 남지 않습니다. 슬라이더로 두 기억 사이의
-        간격을 바꿔 보세요.
-      </p>
+      <span className="text-sm text-mood-amber/90">그 인연은 대개 같은 하루 안에서 맺어진다</span>
 
       <div className="flex flex-col gap-4">
         {/* 두 기억(별)과 그 사이 시냅스 — 간격이 멀어질수록 별이 떨어지고 연결이 약해진다 */}
@@ -69,10 +63,10 @@ export function TimeWindowCard() {
             <svg viewBox={`0 0 100 ${STAGE_H}`} className="h-28 w-full" role="img" aria-label="두 기억을 잇는 시냅스의 시간 창">
               <VizSynapse x1={LEFT_X} y1={STAR_Y} x2={rightX} y2={STAR_Y} color={ACCENT} strength={s} arc={0.18} active={s >= 0.6} concept={concept} />
               <text x={LEFT_X} y={STAGE_H - 6} textAnchor="middle" fill="#ffffff" fillOpacity={0.4} style={{ fontSize: 5 }}>
-                어제의 기억
+                먼저 쓴 기억
               </text>
               <text x={rightX} y={STAGE_H - 6} textAnchor="middle" fill="#ffffff" fillOpacity={0.4} style={{ fontSize: 5 }}>
-                새 기억
+                나중에 쓴 기억
               </text>
             </svg>
             <StarCanvas width={100} height={STAGE_H} animated className="pointer-events-none absolute inset-0">
@@ -85,7 +79,7 @@ export function TimeWindowCard() {
         {/* 슬라이더 */}
         <div className="flex flex-col gap-2">
           <label htmlFor={sliderId} className="flex items-baseline justify-between text-xs text-white/50">
-            <span>두 기억 사이 시간 간격</span>
+            <span>두 기억 사이에 흐른 시간</span>
             <span className="font-display text-base tabular-nums" style={{ color: ACCENT }}>
               {humanGap(gapHours)}
             </span>
@@ -112,7 +106,7 @@ export function TimeWindowCard() {
         {/* 연결 강도 막대 + 퍼센트 */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-xs text-white/50">
-            <span>연결 강도</span>
+            <span>이어진 정도</span>
             <span className="tabular-nums text-white/80">{pct}%</span>
           </div>
           <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
@@ -128,10 +122,10 @@ export function TimeWindowCard() {
 
       <p className="text-xs leading-relaxed text-white/40">
         {pct >= 60
-          ? `간격 ${humanGap(gapHours)} · 두 별이 강한 빛의 선으로 이어집니다.`
+          ? `${humanGap(gapHours)} 사이 — 두 별이 또렷한 빛줄기로 이어진다.`
           : pct >= 15
-            ? `간격 ${humanGap(gapHours)} · 연결이 옅어지고 있습니다.`
-            : `간격 ${humanGap(gapHours)} · 시간 창이 닫혀 거의 이어지지 않습니다.`}
+            ? `${humanGap(gapHours)} 사이 — 선이 점점 옅어진다.`
+            : `${humanGap(gapHours)}이 지나, 창이 닫혔다 — 둘은 거의 이어지지 않는다.`}
       </p>
     </GlassCard>
   )

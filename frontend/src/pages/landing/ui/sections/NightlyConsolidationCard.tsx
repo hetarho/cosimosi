@@ -11,11 +11,11 @@ const ACCENT = MOOD.violet
 
 /** stage 0=대기, 1=재활성화, 2=재분배, 3=요지추출, 4=가지치기/완료 */
 const STAGES = [
-  { label: '잠들기 전 — 최근 기억의 작은 성단', tag: '대기' },
-  { label: '재활성화 — 낮의 별들이 다시 깜빡인다', tag: '1 · REACTIVATION' },
-  { label: '재분배 — 별들이 큰 구조의 중심으로 모인다', tag: '2 · REDISTRIBUTION' },
-  { label: '요지 추출 — 디테일을 덜어 핵심만 남긴다', tag: '3 · GIST' },
-  { label: '가지치기 — 약한 연결을 정리하고 마무리', tag: '4 · PRUNING' },
+  { label: '잠들기 전 — 낮에 담은 작은 성단', tag: '대기' },
+  { label: '다시 깜빡인다 — 낮의 별들이 깨어난다', tag: '1 · 재활성화' },
+  { label: '모여든다 — 별들이 큰 자리의 중심으로', tag: '2 · 재분배' },
+  { label: '줄거리만 남는다 — 흐릿한 디테일을 덜어낸다', tag: '3 · 요지' },
+  { label: '가지를 친다 — 약한 선을 가만히 정리한다', tag: '4 · 가지치기' },
 ] as const
 
 const CX = 80
@@ -83,13 +83,6 @@ export function NightlyConsolidationCard() {
 
   return (
     <GlassCard className="flex flex-col gap-4 p-6 sm:p-8" style={{ borderColor: `${ACCENT}33` }}>
-      <span className="text-xs uppercase tracking-widest text-mood-violet/80">SLEEP CONSOLIDATION</span>
-      <h3 className="font-display text-xl text-white/90 sm:text-2xl">우주의 수면 — 야간 공고화</h3>
-      <p className="text-sm leading-relaxed text-white/60">
-        수면 중 뇌는 최근의 별들을 다시 깜빡여(재활성화) 더 큰 기억 구조로 재분배하고, 흐릿한 디테일은 요지로
-        추리며, 약한 연결은 가지치기합니다. 원본 일기는 그대로 둔 채, 별자리만 다시 정돈되는 밤입니다.
-      </p>
-
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
         <svg viewBox="0 0 160 110" className="block w-full" role="img" aria-label="야간 공고화 시뮬레이션">
           {/* 연결선(시냅스) — 약한 연결은 가지치기 단계에서 사라진다 */}

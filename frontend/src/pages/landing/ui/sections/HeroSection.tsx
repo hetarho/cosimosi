@@ -54,15 +54,15 @@ export function HeroSection() {
           variants={item}
           className="ld-hero-grad font-display text-4xl leading-tight sm:text-6xl md:text-7xl"
         >
-          내 일기는 기억의 우주.
+          내 일기는, 기억의 우주.
         </motion.h1>
 
         <motion.p
           variants={item}
           className="max-w-2xl text-base leading-relaxed text-white/65 sm:text-lg"
         >
-          기억은 별, 함께 떠올린 기억끼리는 빛으로 이어진다. 그리고 그 별은 — 진짜 기억처럼 — 떠올릴
-          때마다 다시 빚어진다.
+          기억은 별이 되고, 함께 떠올린 기억끼리 빛으로 이어진다. 그리고 그 별은 — 진짜 기억이
+          그렇듯 — 떠올릴 때마다 조금씩 다시 빚어진다.
         </motion.p>
 
         <motion.div variants={item} className="flex flex-col items-center gap-3">
@@ -83,7 +83,7 @@ export function HeroSection() {
               onClick={() => scrollTo('concept')}
               className="glass rounded-full px-7 py-3 text-sm font-medium text-white/80 transition hover:scale-[1.03] hover:text-white active:scale-95"
             >
-              더 알아보기
+              천천히 둘러보기
             </button>
           </div>
           <span className="text-xs text-white/45">로그인 없이 바로 둘러볼 수 있어요</span>

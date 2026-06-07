@@ -34,13 +34,6 @@ export function EngramCard() {
       onBlur={() => setActive(false)}
       tabIndex={0}
     >
-      <span className="text-xs uppercase tracking-widest text-mood-violet/80">ENGRAM</span>
-      <h3 className="font-display text-xl text-white/90 sm:text-2xl">엔그램 — 기억의 물리적 흔적</h3>
-      <p className="text-sm leading-relaxed text-white/60">
-        뇌에서 기억은 뉴런 앙상블로 저장되고, 뉴런들은 시냅스로 이어집니다. cosimosi에선 하나의
-        일기가 별이 되고, 별과 별을 잇는 빛의 선이 그 시냅스입니다.
-      </p>
-
       <div className="rounded-2xl border border-white/10 bg-space-900/40 p-4">
         <div className="relative">
           <svg viewBox="0 0 240 100" className="h-auto w-full" role="img" aria-label="뉴런이 별(엔그램)로 매핑되는 모습">
@@ -72,13 +65,13 @@ export function EngramCard() {
         </div>
 
         <div className="mt-3 flex items-center justify-between text-[11px] text-white/40">
-          <span>뉴런 앙상블</span>
+          <span>뉴런 다발</span>
           <span>별 = 엔그램</span>
         </div>
       </div>
 
       <p className="text-xs text-white/40">
-        {active ? '연결 활성 — 기억의 흔적이 빛납니다' : '커서를 올리면 시냅스가 깨어납니다'}
+        {active ? '불이 들어왔다 — 기억의 흔적이 빛난다.' : '다가가면, 잠들었던 시냅스가 깨어난다.'}
       </p>
     </GlassCard>
   )

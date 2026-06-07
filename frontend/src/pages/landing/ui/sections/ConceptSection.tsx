@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Section } from '@/shared/ui'
 import { cn } from '@/shared/lib'
 import { MOOD, type MoodKey } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
@@ -57,19 +56,8 @@ export function ConceptSection() {
   const isEdgeLit = (a: number, b: number) => active === null || (active.has(a) && active.has(b))
 
   return (
-    <Section id="concept">
-      <div className="flex flex-col gap-4">
-        <span className="text-xs uppercase tracking-widest" style={{ color: 'var(--ld-accent-soft)' }}>
-          Concept
-        </span>
-        <h2 className="font-display text-3xl text-white/90 sm:text-4xl">뇌가 곧 우주</h2>
-        <p className="max-w-2xl text-base leading-relaxed text-white/60">
-          수많은 기억이 별이 되고, 관련된 기억끼리 시냅스 같은 빛의 선으로 이어져 하나의 성단을
-          이룹니다. 머릿속에서만 펼쳐지던 풍경을, 눈에 보이는 작은 우주로 옮겨 둔 것이 cosimosi입니다.
-        </p>
-      </div>
-
-      <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+    <div>
+      <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
         <figure className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10 bg-space-900/40">
           <svg
             viewBox="0 0 100 100"
@@ -179,9 +167,9 @@ export function ConceptSection() {
 
       <p className="mt-6 text-xs leading-relaxed text-white/40">
         {activeId === null
-          ? '별 하나에 마음을 두면, 함께 떠오르는 기억들이 같이 밝아집니다.'
-          : `"${NODES[activeId].label}" 그리고 이어진 ${neighborsOf(activeId).size - 1}개의 기억이 함께 빛나는 중`}
+          ? '별 하나에 마음을 두면, 함께 떠오르는 기억이 같이 밝아진다.'
+          : `"${NODES[activeId].label}" — 여기 이어진 ${neighborsOf(activeId).size - 1}개의 기억이 함께 빛난다.`}
       </p>
-    </Section>
+    </div>
   )
 }
