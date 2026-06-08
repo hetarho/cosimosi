@@ -8,8 +8,9 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
 import { StarField } from '@/entities/star'
-import { SynapseLines, useSynapseStore } from '@/entities/synapse'
+import { SynapseFilaments, SynapseDust, useSynapseStore } from '@/entities/synapse'
 import { useMemoryStore } from '@/entities/memory'
+import { moodRgb, NEUTRAL_RGB } from '@/shared/config'
 import { mulberry32, fibonacciStarPosition } from '@/shared/lib'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
 import { useCameraMode } from '../model/use-camera-mode'
@@ -125,20 +126,32 @@ function NavController() {
   return null
 }
 
-/** Renders the synapse graph (09 Line2/TSL) at the same deterministic star positions
- *  StarField uses, so edges connect the rendered stars. Edge brightness (incl. dormant
- *  dimming) is already baked into the store by get-universe (12). */
+/** Renders the synapse graph (braided TSL filaments) at the same deterministic star
+ *  positions StarField uses, so edges connect the rendered stars; each filament also
+ *  fades between its two endpoint stars' mood colors. Edge brightness (incl. dormant
+ *  dimming) is already baked into the store by get-universe (12). positionOf + colorOf
+ *  are built in one useMemo so both stay stable (the filament geometry rebuilds only
+ *  when the star set changes, not on every parent render). */
 function UniverseSynapses() {
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
-  const positionOf = useMemo(() => {
-    const byId = new Map(
+  const { positionOf, colorOf } = useMemo(() => {
+    const posById = new Map(
       stars.map((s, i) => [s.id, fibonacciStarPosition(i, stars.length, s.memory.seed)] as const),
     )
-    return (id: string): [number, number, number] | null => byId.get(id) ?? null
+    const colById = new Map(stars.map((s) => [s.id, moodRgb(s.memory.mood)] as const))
+    return {
+      positionOf: (id: string): [number, number, number] | null => posById.get(id) ?? null,
+      colorOf: (id: string): readonly [number, number, number] => colById.get(id) ?? NEUTRAL_RGB,
+    }
   }, [stars])
   if (edges.length === 0 || stars.length === 0) return null
-  return <SynapseLines edges={edges} positionOf={positionOf} />
+  return (
+    <>
+      <SynapseFilaments edges={edges} positionOf={positionOf} colorOf={colorOf} />
+      <SynapseDust edges={edges} positionOf={positionOf} colorOf={colorOf} />
+    </>
+  )
 }
 
 /** Camera fly-to (12): when the dormant page sets focusStarId, lerp the camera to that

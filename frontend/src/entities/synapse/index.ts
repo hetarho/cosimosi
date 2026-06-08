@@ -1,4 +1,6 @@
 // Public API for the synapse entity (named exports — no wildcard barrel).
+export { SynapseFilaments, type SynapseFilamentsProps } from './ui/SynapseFilaments'
+export { SynapseDust, type SynapseDustProps } from './ui/SynapseDust'
 export { SynapseLines, type SynapseLinesProps } from './ui/SynapseLines'
 export type { SynapseEdge, LinkType } from './model/types'
 export { useSynapseStore, toSynapseEdge, neighborsOf, type UniverseSynapse } from './model/store'

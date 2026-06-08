@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { UniverseCanvas, useCameraMode } from '@/widgets/universe-canvas'
+import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
 import { getUniverse, useMemoryStore } from '@/entities/memory'
@@ -168,6 +168,9 @@ export function HomePage() {
   return (
     <div className="fixed inset-0" data-lenis-prevent>
       <UniverseCanvas />
+      {/* Film grain over the canvas (DOM overlay, not the bloom pipeline) — sits above the
+          canvas but before the HUD, and is pointer-events:none, so HUD stays interactive. */}
+      <UniverseGrain />
 
       {/* HUD: 2D DOM overlays outside the canvas */}
 
