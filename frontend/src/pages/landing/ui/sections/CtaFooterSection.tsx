@@ -54,11 +54,11 @@ export function CtaFooterSection() {
         <h2 className="font-display text-4xl leading-tight text-white/90 sm:text-5xl">
           당신의 기억으로
           <br />
-          우주 하나를 띄워보세요
+          우주 하나를 띄워볼까요?
         </h2>
         <p className="max-w-xl text-sm leading-relaxed text-white/60 sm:text-base">
-          오늘 쓴 한 편이 별이 되고, 떠올릴 때마다 다시 빛난다. 잊어도 사라지지 않는, 당신만의
-          엔그램 우주를 가장 먼저 만나보세요.
+          오늘 쓴 한 편이 별이 되고, 떠올릴 때마다 다시 빛나요. 잊어도 사라지지 않는 엔그램 우주를,
+          가장 먼저 만나봐요.
         </p>
 
         {/* 가입 없이 바로 둘러보기 — 더미 우주를 띄워 별 추가·회상·잠든 별까지 체험한다. */}
@@ -73,7 +73,7 @@ export function CtaFooterSection() {
             가입 없이 들어가 보기
             <ArrowRight size={16} aria-hidden />
           </motion.button>
-          <span className="text-xs text-white/40">로그인 없이 둘러볼 수 있어요. 새로고침하면 처음으로 돌아갑니다.</span>
+          <span className="text-xs text-white/40">로그인 없이 둘러볼 수 있어요. 새로고침하면 처음으로 돌아가요.</span>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ export function CtaFooterSection() {
               <p className="text-left text-xs leading-relaxed text-mood-coral">{errors.email.message}</p>
             )}
             <p className="text-left text-xs leading-relaxed text-white/40">
-              지금은 데모라 실제로 보내지는 않아요. 적어주신 메일은 저장하지 않습니다.
+              지금은 데모라 실제로 보내지는 않아요. 적어주신 메일은 저장하지 않아요.
             </p>
           </form>
         )}
@@ -149,7 +149,7 @@ function Footer() {
     <footer className="flex w-full flex-col items-center gap-3 border-t border-white/10 pt-10 text-center">
       <span className="font-display text-lg tracking-wide text-white/90">cosimosi</span>
       <p className="max-w-sm text-sm leading-relaxed text-white/60">
-        우리 뇌는 하나의 작은 우주. 당신의 기억은 별이 되고, 그 사이는 빛의 선으로 이어진다.
+        우리 뇌는 하나의 작은 우주. 당신의 기억은 별이 되고, 그 사이는 빛의 선으로 이어져요.
       </p>
       <p className="text-xs leading-relaxed text-white/40">© 2026 cosimosi. All rights reserved.</p>
     </footer>

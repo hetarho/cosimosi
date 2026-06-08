@@ -1,36 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import { animate, motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { cn } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizSynapse } from '../viz'
-import { StarCanvas, Star3D } from '../star3d'
+import { VizStar, VizSynapse } from '../viz'
 
 const ACCENT = MOOD.violet
 
-/** stage 0=대기, 1=재활성화, 2=재분배, 3=요지추출, 4=가지치기/완료 */
+/** stage 0=대기, 1=재활성화(깜빡), 2=재분배(중심으로 모임), 3=요지(축소·약한 별 흐려짐), 4=가지치기(약한 선 제거) */
 const STAGES = [
   { label: '잠들기 전 — 낮에 담은 작은 성단', tag: '대기' },
-  { label: '다시 깜빡인다 — 낮의 별들이 깨어난다', tag: '1 · 재활성화' },
-  { label: '모여든다 — 별들이 큰 자리의 중심으로', tag: '2 · 재분배' },
-  { label: '줄거리만 남는다 — 흐릿한 디테일을 덜어낸다', tag: '3 · 요지' },
-  { label: '가지를 친다 — 약한 선을 가만히 정리한다', tag: '4 · 가지치기' },
+  { label: '다시 깜빡여요 — 낮의 별들이 깨어나요', tag: '1 · 재활성화' },
+  { label: '모여들어요 — 더 큰 자리의 중심으로', tag: '2 · 재분배' },
+  { label: '줄거리만 남겨요 — 흐릿한 디테일을 덜어내요', tag: '3 · 요지' },
+  { label: '가지를 쳐요 — 약한 선을 가만히 정리해요', tag: '4 · 가지치기' },
 ] as const
 
 const CX = 80
-const CY = 55
+const CY = 56
 
-/** 별 5개: 시작 좌표(흩어짐) + 중심 방향(재분배 후) */
+/** 별 5개: 시작 좌표(흩어짐) + weak(요지화에서 흐려지고, 그 별로 가는 선이 가지치기 대상). */
 const STARS = [
-  { x: 24, y: 24, r: 6, weak: false },
-  { x: 132, y: 30, r: 5, weak: true },
-  { x: 30, y: 86, r: 4.5, weak: true },
-  { x: 128, y: 84, r: 5.5, weak: false },
-  { x: 78, y: 18, r: 5, weak: false },
+  { x: 26, y: 26, r: 6.5, weak: false },
+  { x: 134, y: 30, r: 5, weak: true },
+  { x: 32, y: 88, r: 4.5, weak: true },
+  { x: 128, y: 86, r: 6, weak: false },
+  { x: 80, y: 22, r: 7, weak: false },
 ] as const
 
-/** 라인: 두 별 인덱스 + 약한 연결 여부(가지치기 대상) */
+/** 연결: 두 별 인덱스 + 약한 연결 여부(가지치기 대상). */
 const LINKS = [
   { a: 4, b: 0, weak: false },
   { a: 4, b: 1, weak: true },
@@ -40,6 +39,17 @@ const LINKS = [
 ] as const
 
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t
+
+/** target으로 부드럽게 따라가는 값. 별과 시냅스가 이 값을 공유해 같은 좌표로 그려지므로 절대 어긋나지 않는다. */
+function useEased(target: number, duration: number) {
+  const [v, setV] = useState(target)
+  useEffect(() => {
+    const controls = animate(v, target, { duration, ease: [0.22, 1, 0.36, 1], onUpdate: setV })
+    return () => controls.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration])
+  return v
+}
 
 export function NightlyConsolidationCard() {
   const reduce = useReducedMotion()
@@ -70,59 +80,74 @@ export function NightlyConsolidationCard() {
         setTimeout(() => {
           setStage(next)
           if (next === 4) setRunning(false)
-        }, (i + 1) * 1100),
+        }, (i + 1) * 1200),
       )
     })
   }
 
-  // 단계별 보간 진행도
-  const gather = stage >= 2 ? 1 : 0 // 중심으로 모임
-  const gist = stage >= 3 ? 1 : 0 // 단순·축소
-  const pulse = stage === 1 // 재활성화 펄스
-  const pruned = stage >= 4 // 약한 라인 fade
+  const dur = reduce ? 0 : 0.9
+  const gather = useEased(stage >= 2 ? 1 : 0, dur) // 중심으로 모임
+  const gist = useEased(stage >= 3 ? 1 : 0, dur) // 축소·요지화
+  const prune = useEased(stage >= 4 ? 1 : 0, reduce ? 0 : 0.6) // 약한 선 제거
+  const pulse = stage === 1 // 재활성화 깜빡
+
+  // 단일 좌표 소스 — 별과 시냅스가 동일 positions를 참조하므로 어떤 단계에서도 정확히 붙어 움직인다.
+  const positions = STARS.map((s) => ({
+    x: lerp(s.x, CX, gather * 0.6),
+    y: lerp(s.y, CY, gather * 0.6),
+    r: s.r * (1 - gist * 0.4),
+    dim: s.weak ? 1 - gist * 0.55 : 1,
+  }))
 
   return (
     <GlassCard className="flex flex-col gap-4 p-6 sm:p-8" style={{ borderColor: `${ACCENT}33` }}>
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
-        <svg viewBox="0 0 160 110" className="block w-full" role="img" aria-label="야간 공고화 시뮬레이션">
-          {/* 연결선(시냅스) — 약한 연결은 가지치기 단계에서 사라진다 */}
-          {LINKS.map((l, i) => {
-            const a = STARS[l.a]
-            const b = STARS[l.b]
-            const ax = lerp(a.x, CX, l.a === 4 ? 0 : gather * 0.55)
-            const ay = lerp(a.y, CY, l.a === 4 ? 0 : gather * 0.55)
-            const bx = lerp(b.x, CX, l.b === 4 ? 0 : gather * 0.55)
-            const by = lerp(b.y, CY, l.b === 4 ? 0 : gather * 0.55)
-            const faded = l.weak && pruned
-            return (
-              <motion.g key={`l-${i}`} animate={{ opacity: faded ? 0 : 1 }} transition={{ duration: reduce ? 0 : 0.6 }}>
-                <VizSynapse x1={ax} y1={ay} x2={bx} y2={by} color={ACCENT} strength={l.weak ? 0.4 : 0.82} arc={0.1} concept={concept} />
-              </motion.g>
-            )
-          })}
-        </svg>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
+        <svg viewBox="0 0 160 112" className="block w-full" role="img" aria-label="야간 공고화 시뮬레이션">
+          {/* '더 큰 자리' — 모이기 시작하면 중심에 옅은 자리빛이 떠올라, 별들이 어디로 합쳐지는지 보여준다. */}
+          <circle cx={CX} cy={CY} r={28} fill={ACCENT} opacity={gather * 0.07} />
+          <circle cx={CX} cy={CY} r={28} fill="none" stroke={ACCENT} strokeOpacity={gather * 0.2} strokeDasharray="2 3.5" />
 
-        {/* 별 — 테마별 WebGL 오브제. 중심으로 모이고(Star3D가 부드럽게 따라감), 요지화로 작아진다 */}
-        <StarCanvas width={160} height={110} animated className="pointer-events-none absolute inset-0">
-          {STARS.map((s, i) => {
-            const tx = lerp(s.x, CX, gather * 0.55)
-            const ty = lerp(s.y, CY, gather * 0.55)
-            const radius = s.r * (1 - gist * 0.4)
+          {/* 시냅스 — positions 공유. 약한 선은 가지치기에서 부드럽게 사라진다. */}
+          {LINKS.map((l, i) => {
+            const a = positions[l.a]
+            const b = positions[l.b]
             return (
-              <Star3D
-                key={i}
-                concept={concept}
-                color={ACCENT}
-                x={tx}
-                y={ty}
-                r={radius}
-                seed={i * 53 + 11}
-                brightness={gist && s.weak ? 0.5 : 1}
-                active={i === 4 || pulse}
-              />
+              <g key={`l-${i}`} opacity={l.weak ? 1 - prune : 1}>
+                <VizSynapse
+                  x1={a.x}
+                  y1={a.y}
+                  x2={b.x}
+                  y2={b.y}
+                  color={ACCENT}
+                  strength={l.weak ? 0.4 : 0.82}
+                  arc={0.1}
+                  active={gather > 0.4}
+                  concept={concept}
+                />
+              </g>
             )
           })}
-        </StarCanvas>
+
+          {/* 별 — positions 공유. 재활성화 때 그룹이 함께 깜빡이고, 요지화로 작아지며 약한 별은 흐려진다. */}
+          <motion.g
+            animate={pulse && !reduce ? { opacity: [0.55, 1, 0.55] } : { opacity: 1 }}
+            transition={pulse && !reduce ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+          >
+            {positions.map((p, i) => (
+              <g key={`s-${i}`} opacity={p.dim}>
+                <VizStar
+                  cx={p.x}
+                  cy={p.y}
+                  r={p.r}
+                  color={ACCENT}
+                  concept={concept}
+                  seed={i * 53 + 11}
+                  active={!STARS[i].weak && (pulse || gather > 0.6)}
+                />
+              </g>
+            ))}
+          </motion.g>
+        </svg>
       </div>
 
       <div className="flex items-center justify-between gap-3">

@@ -218,8 +218,8 @@ export function PresentSelfCard() {
 
       <p className="text-xs leading-relaxed text-white/40">
         {added.length === 0
-          ? `요즘은 '${hot.label}' 쪽에 마음이 머문다. 새로 쓴 기억은 그 빛으로 끌려간다.`
-          : `새 별이 '${FEELINGS[added[added.length - 1].feeling].label}'의 별무리 곁에 내려앉았다 — 어디 놓일지는 연결이 정한다.`}
+          ? `요즘은 '${hot.label}' 쪽에 마음이 머물러요. 새로 쓴 기억은 그 빛으로 끌려가요.`
+          : `새 별이 '${FEELINGS[added[added.length - 1].feeling].label}' 별무리 곁에 내려앉았어요 — 어디 놓일지는 연결이 정해요.`}
       </p>
     </div>
   )

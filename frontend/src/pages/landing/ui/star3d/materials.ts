@@ -27,7 +27,6 @@ import {
   pow,
   sin,
   max,
-  min,
   dot,
   normalize,
   length,
@@ -152,9 +151,9 @@ function buildLiquid(col: V3, u: StarUniforms, seed: number): ThemedStarBuild {
   m.roughness = 0.04
 
   const t = ftime(u)
-  const np = positionLocal.mul(1.4).add(vec3(seed)).add(vec3(0, 0, 1).mul(t.mul(0.45)))
-  // 큰 출렁임 + 잔물결 2중 변위
-  const disp = mx_noise_float(np).mul(0.1).add(mx_noise_float(np.mul(2.6).add(vec3(3.7))).mul(0.035))
+  const np = positionLocal.mul(1.1).add(vec3(seed)).add(vec3(0, 0, 1).mul(t.mul(0.8)))
+  // 크게 출렁이는 저주파 + 잔물결 고주파 — 둘 다 진폭·속도를 키워 훨씬 액체처럼 일렁인다.
+  const disp = mx_noise_float(np).mul(0.22).add(mx_noise_float(np.mul(2.6).add(vec3(3.7))).mul(0.07))
   m.positionNode = positionLocal.add(normalLocal.mul(disp))
 
   const viewDir = normalize(cameraPosition.sub(positionWorld))
@@ -168,28 +167,29 @@ function buildLiquid(col: V3, u: StarUniforms, seed: number): ThemedStarBuild {
   return { star: { geometry, material: m }, halo, update: makeUpdate(u), spin: 0.4, dispose: disposerFor(geometry, m, halo) }
 }
 
-/** ember — 검은 외피 위 2중 fbm 용암 균열망 + 백열 중심 + 깜빡임. */
+/** ember — 저폴리 기하 흑요석 결정. 2중 fbm 균열망(과해서 폐기) 대신, 면을 또렷이 드러내는
+ *  flatShading 위에 부드러운 저주파 노이즈로 '어디가 달궈졌나'만 정해 면 일부가 용암처럼 빛나고
+ *  은은히 깜빡인다. 기하학적이고 절제된 잉걸불. */
 function buildEmber(col: V3, u: StarUniforms, seed: number): ThemedStarBuild {
-  const geometry = new THREE.IcosahedronGeometry(1, 4)
+  const geometry = new THREE.OctahedronGeometry(1, 0) // 8면 결정 — deepfield(20면 보석)와 확실히 다른 각진 형태
   const m = new MeshStandardNodeMaterial()
+  m.flatShading = true // 면마다 평면 노멀 → 각진 기하가 또렷이 드러남
   m.metalness = 0.0
-  m.roughness = 0.8
+  m.roughness = 0.5
 
   const t = ftime(u)
-  const fp = positionLocal.mul(2.0).add(vec3(seed)).add(vec3(0, 1, 0).mul(t.mul(-0.2)))
-  const big = mx_fractal_noise_float(fp, 4).abs()
-  const fine = mx_fractal_noise_float(fp.mul(3.1).add(vec3(5.2)), 3).abs()
-  const veins = min(big, fine) // 두 스케일이 겹친 좁은 균열망
-  const heat = smoothstep(float(0.3), float(0.02), veins) // 균열에서 발광
-  const core = smoothstep(float(0.12), float(0.0), veins) // 균열 중심 백열
-  const flicker = sin(t.mul(5.0).add(float(seed))).mul(0.09).add(0.91)
-  const crust = col.mul(0.08)
-  const lava = col.mul(2.2).add(vec3(0.5, 0.18, 0))
+  // 균열을 그리지 않는다 — 저주파 노이즈로 달궈진 영역만 정하고, 면 음영이 형태를 만든다.
+  const np = positionLocal.mul(1.4).add(vec3(seed))
+  const n = mx_fractal_noise_float(np, 3).mul(0.5).add(0.5) // 0~1
+  const heat = smoothstep(float(0.5), float(0.92), n) // 일부 면만 용암색으로 달군다
+  const flicker = sin(t.mul(2.4).add(float(seed))).mul(0.07).add(0.93) // 은은한 깜빡임
+  const crust = col.mul(0.1)
+  const lava = col.mul(1.9).add(vec3(0.5, 0.18, 0))
   m.colorNode = crust
-  m.emissiveNode = mix(crust, lava, heat).add(vec3(1, 0.62, 0.22).mul(core.mul(0.6))).mul(flicker).mul(fbright(u))
+  m.emissiveNode = mix(crust, lava, heat).mul(flicker).mul(fbright(u))
 
   const halo = buildHalo(col, u)
-  return { star: { geometry, material: m }, halo, update: makeUpdate(u), spin: 0.12, dispose: disposerFor(geometry, m, halo) }
+  return { star: { geometry, material: m }, halo, update: makeUpdate(u), spin: 0.16, dispose: disposerFor(geometry, m, halo) }
 }
 
 /** 테마 → 별 오브제 빌드. color는 mood hex(의미색 보존), seed는 결정론 변형. */

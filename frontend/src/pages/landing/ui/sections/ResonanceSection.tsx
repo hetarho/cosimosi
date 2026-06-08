@@ -4,9 +4,8 @@ import { GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizSynapse } from '../viz'
+import { VizStar, VizSynapse } from '../viz'
 import type { VizConcept } from '../viz'
-import { StarCanvas, Star3D } from '../star3d'
 
 // 좌/우 두 사람의 우주에 새겨진 같은 사건의 별. seed 고정 → 결정론적 모양.
 const ME = { seed: 0x5e0f, mood: MOOD.violet, label: '나의 별' } as const
@@ -31,18 +30,14 @@ function MiniUniverse({
     r: 0.6 + rand() * 1.1,
   }))
   return (
-    <div className="relative h-full w-full">
-      <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
-        <circle cx="50" cy="50" r="46" fill={mood} fillOpacity={0.05} />
-        <circle cx="50" cy="50" r="46" fill="none" stroke={mood} strokeOpacity={0.18} />
-        {dust.map((d, i) => (
-          <circle key={i} cx={d.x} cy={d.y} r={d.r} fill="#dfe3ff" fillOpacity={0.35} />
-        ))}
-      </svg>
-      <StarCanvas width={100} height={100} animated className="pointer-events-none absolute inset-0">
-        <Star3D concept={concept} color={mood} x={50} y={50} r={18} seed={seed} brightness={bright ? 1 : 0.5} />
-      </StarCanvas>
-    </div>
+    <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
+      <circle cx="50" cy="50" r="46" fill={mood} fillOpacity={0.05} />
+      <circle cx="50" cy="50" r="46" fill="none" stroke={mood} strokeOpacity={0.18} />
+      {dust.map((d, i) => (
+        <circle key={i} cx={d.x} cy={d.y} r={d.r} fill="#dfe3ff" fillOpacity={0.35} />
+      ))}
+      <VizStar cx={50} cy={50} r={18} color={mood} concept={concept} seed={seed} brightness={bright ? 1 : 0.5} />
+    </svg>
   )
 }
 
@@ -121,8 +116,8 @@ export function ResonanceSection() {
           </button>
           <p className="text-xs text-white/40">
             {resonant
-              ? '두 별이 공명한다. 같은 밤을 함께 떠올릴수록 빛줄기는 또렷해진다.'
-              : '아직 두 별은 각자의 우주에서 따로 빛난다.'}
+              ? '두 별이 공명해요. 같은 밤을 함께 떠올릴수록 빛줄기가 또렷해져요.'
+              : '아직 두 별은 각자의 우주에서 따로 빛나요.'}
           </p>
         </div>
       </GlassCard>

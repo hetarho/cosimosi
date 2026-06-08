@@ -3,8 +3,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizSynapse } from '../viz'
-import { StarCanvas, Star3D } from '../star3d'
+import { VizStar, VizSynapse } from '../viz'
 
 const ACCENT = MOOD.amber
 
@@ -54,26 +53,22 @@ export function TimeWindowCard() {
 
   return (
     <GlassCard className="flex flex-col gap-4 p-6 sm:p-8">
-      <span className="text-sm text-mood-amber/90">그 인연은 대개 같은 하루 안에서 맺어진다</span>
+      <span className="text-sm text-mood-amber/90">그 인연은 대개 같은 하루 안에서 맺어져요</span>
 
       <div className="flex flex-col gap-4">
         {/* 두 기억(별)과 그 사이 시냅스 — 간격이 멀어질수록 별이 떨어지고 연결이 약해진다 */}
         <div className="rounded-2xl border border-white/10 bg-space-900/40 p-3">
-          <div className="relative">
-            <svg viewBox={`0 0 100 ${STAGE_H}`} className="h-28 w-full" role="img" aria-label="두 기억을 잇는 시냅스의 시간 창">
-              <VizSynapse x1={LEFT_X} y1={STAR_Y} x2={rightX} y2={STAR_Y} color={ACCENT} strength={s} arc={0.18} active={s >= 0.6} concept={concept} />
-              <text x={LEFT_X} y={STAGE_H - 6} textAnchor="middle" fill="#ffffff" fillOpacity={0.4} style={{ fontSize: 5 }}>
-                먼저 쓴 기억
-              </text>
-              <text x={rightX} y={STAGE_H - 6} textAnchor="middle" fill="#ffffff" fillOpacity={0.4} style={{ fontSize: 5 }}>
-                나중에 쓴 기억
-              </text>
-            </svg>
-            <StarCanvas width={100} height={STAGE_H} animated className="pointer-events-none absolute inset-0">
-              <Star3D concept={concept} color={ACCENT} x={LEFT_X} y={STAR_Y} r={6.5} seed={71} />
-              <Star3D concept={concept} color={ACCENT} x={rightX} y={STAR_Y} r={6} seed={42} brightness={0.5 + s * 0.5} />
-            </StarCanvas>
-          </div>
+          <svg viewBox={`0 0 100 ${STAGE_H}`} className="h-28 w-full" role="img" aria-label="두 기억을 잇는 시냅스의 시간 창">
+            <VizSynapse x1={LEFT_X} y1={STAR_Y} x2={rightX} y2={STAR_Y} color={ACCENT} strength={s} arc={0.18} active={s >= 0.6} concept={concept} />
+            <VizStar cx={LEFT_X} cy={STAR_Y} r={6.5} color={ACCENT} concept={concept} seed={71} />
+            <VizStar cx={rightX} cy={STAR_Y} r={6} color={ACCENT} concept={concept} seed={42} brightness={0.5 + s * 0.5} />
+            <text x={LEFT_X} y={STAGE_H - 6} textAnchor="middle" fill="#ffffff" fillOpacity={0.4} style={{ fontSize: 5 }}>
+              먼저 쓴 기억
+            </text>
+            <text x={rightX} y={STAGE_H - 6} textAnchor="middle" fill="#ffffff" fillOpacity={0.4} style={{ fontSize: 5 }}>
+              나중에 쓴 기억
+            </text>
+          </svg>
         </div>
 
         {/* 슬라이더 */}
@@ -122,10 +117,10 @@ export function TimeWindowCard() {
 
       <p className="text-xs leading-relaxed text-white/40">
         {pct >= 60
-          ? `${humanGap(gapHours)} 사이 — 두 별이 또렷한 빛줄기로 이어진다.`
+          ? `${humanGap(gapHours)} 사이 — 두 별이 또렷한 빛줄기로 이어져요.`
           : pct >= 15
-            ? `${humanGap(gapHours)} 사이 — 선이 점점 옅어진다.`
-            : `${humanGap(gapHours)}이 지나, 창이 닫혔다 — 둘은 거의 이어지지 않는다.`}
+            ? `${humanGap(gapHours)} 사이 — 선이 점점 옅어져요.`
+            : `${humanGap(gapHours)}이 지나, 창이 닫혔어요 — 둘은 거의 이어지지 않아요.`}
       </p>
     </GlassCard>
   )

@@ -65,7 +65,8 @@ export function Star3D({ concept, color, x, y, r, seed = 1, brightness = 1, acti
 
   return (
     <group ref={outerRef}>
-      {/* 글로우 헤일로 — 별 뒤, 자전 안 함 */}
+      {/* 글로우 헤일로 — 별 뒤, 자전 안 함. 부모(ThemedStar/카드)가 논리 박스를 별의 ~4배로 잡으면
+          이 halo(r*3.4)가 박스 안에 온전히 들어와 카메라가 가장자리를 사각으로 자르지 않는다. */}
       <mesh geometry={build.halo.geometry} material={build.halo.material} position={[0, 0, -0.5]} scale={r * 3.4} />
       {/* 별 코어 — 테마별 형태/기법, 천천히 자전 */}
       <group ref={spinRef}>

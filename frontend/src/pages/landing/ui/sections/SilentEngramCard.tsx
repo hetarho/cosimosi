@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { StarCanvas, Star3D } from '../star3d'
+import { VizStar } from '../viz'
 
 const CORAL = MOOD.coral
 /** 빛이 완전히 꺼지지 않는 바닥값(침묵 엔그램은 사라지지 않는다). */
@@ -28,16 +28,16 @@ export function SilentEngramCard() {
     <GlassCard className="flex flex-col gap-4 p-6 sm:p-8">
       <div className="flex items-end justify-around gap-4 rounded-2xl border border-white/10 bg-space-900/40 p-5">
         <div className="flex flex-col items-center gap-2">
-          <StarCanvas width={100} height={100} animated className="h-20 w-20">
-            <Star3D concept={concept} color={CORAL} x={50} y={50} r={28} seed={107} brightness={connected} />
-          </StarCanvas>
+          <svg viewBox="0 0 100 100" className="h-20 w-20" aria-hidden>
+            <VizStar cx={50} cy={50} r={28} color={CORAL} concept={concept} seed={107} brightness={connected} />
+          </svg>
           <span className="text-xs text-white/70">연결이 많은 별</span>
           <span className="text-[11px] tabular-nums text-mood-coral/80">밝기 {Math.round(connected * 100)}%</span>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <StarCanvas width={100} height={100} animated className="h-20 w-20">
-            <Star3D concept={concept} color={CORAL} x={50} y={50} r={28} seed={233} brightness={isolated} />
-          </StarCanvas>
+          <svg viewBox="0 0 100 100" className="h-20 w-20" aria-hidden>
+            <VizStar cx={50} cy={50} r={28} color={CORAL} concept={concept} seed={233} brightness={isolated} />
+          </svg>
           <span className="text-xs text-white/70">홀로 떨어진 별</span>
           <span className="text-[11px] tabular-nums text-mood-coral/80">밝기 {Math.round(isolated * 100)}%</span>
         </div>
@@ -68,8 +68,8 @@ export function SilentEngramCard() {
       </div>
 
       <p className="text-xs leading-relaxed text-white/40">
-        아무리 시간이 흘러도 빛은 {Math.round(FLOOR * 100)}% 아래로 꺼지지 않는다. 원본은 그대로 남고,
-        단서 하나면 별은 다시 깨어난다.
+        아무리 시간이 흘러도 빛은 {Math.round(FLOOR * 100)}% 아래로 꺼지지 않아요. 원본은 그대로 남고,
+        단서 하나면 별은 다시 깨어나요.
       </p>
     </GlassCard>
   )

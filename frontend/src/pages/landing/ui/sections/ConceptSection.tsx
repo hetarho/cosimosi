@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { cn } from '@/shared/lib'
 import { MOOD, type MoodKey } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
-import { VizSynapse } from '../viz'
-import { StarCanvas, Star3D } from '../star3d'
+import { VizStar, VizSynapse } from '../viz'
 
 interface StarNode {
   id: number
@@ -98,7 +97,7 @@ export function ConceptSection() {
                     aria-label={`기억: ${node.label}`}
                     aria-pressed={isActive}
                     className="cursor-pointer outline-none transition-opacity duration-500"
-                    style={{ opacity: lit ? 1 : 0.28 }}
+                    style={{ opacity: lit ? 1 : 0.4 }}
                     onMouseEnter={() => setActiveId(node.id)}
                     onMouseLeave={() => setActiveId(null)}
                     onFocus={() => setActiveId(node.id)}
@@ -111,30 +110,22 @@ export function ConceptSection() {
                       }
                     }}
                   >
-                    {/* 넉넉한 히트 영역(별 비주얼은 위의 WebGL StarCanvas가 그린다) */}
+                    {/* 별 비주얼(테마별 SVG 오브제) + 넉넉한 투명 히트 영역 */}
+                    <VizStar
+                      cx={node.x}
+                      cy={node.y}
+                      r={node.r}
+                      color={MOOD[node.mood]}
+                      concept={concept}
+                      seed={node.id * 97 + 13}
+                      active={isActive}
+                    />
                     <circle cx={node.x} cy={node.y} r={node.r * 2.1} fill="transparent" />
                   </g>
                 )
               })}
             </g>
           </svg>
-
-          {/* WebGL 별 오버레이 — SVG 시냅스 위에 테마별 오브제로 별을 그린다(좌표·meet 정합, hover는 아래 SVG가 처리). */}
-          <StarCanvas width={100} height={100} animated className="pointer-events-none absolute inset-0">
-            {NODES.map((node) => (
-              <Star3D
-                key={node.id}
-                concept={concept}
-                color={MOOD[node.mood]}
-                x={node.x}
-                y={node.y}
-                r={node.r}
-                seed={node.id * 97 + 13}
-                brightness={isNodeLit(node.id) ? 1 : 0.45}
-                active={activeId === node.id}
-              />
-            ))}
-          </StarCanvas>
         </figure>
 
         <ul className="flex flex-col gap-2">
@@ -167,8 +158,8 @@ export function ConceptSection() {
 
       <p className="mt-6 text-xs leading-relaxed text-white/40">
         {activeId === null
-          ? '별 하나에 마음을 두면, 함께 떠오르는 기억이 같이 밝아진다.'
-          : `"${NODES[activeId].label}" — 여기 이어진 ${neighborsOf(activeId).size - 1}개의 기억이 함께 빛난다.`}
+          ? '별 하나에 마음을 두면, 함께 떠오르는 기억이 같이 밝아져요.'
+          : `"${NODES[activeId].label}" — 여기 이어진 ${neighborsOf(activeId).size - 1}개의 기억이 함께 빛나요.`}
       </p>
     </div>
   )

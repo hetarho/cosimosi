@@ -6,7 +6,6 @@ import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useLandingTheme } from '../../model/theme'
 import { VizStar } from '../viz'
-import { StarCanvas, Star3D } from '../star3d'
 
 const BASE_SEED = 4217
 const ORIGINAL_TEXT = '비 오는 날, 오래된 노래를 들었다.'
@@ -63,7 +62,7 @@ export function ReconsolidationCard() {
           </div>
           <p className="font-display text-base leading-relaxed text-white/85">{ORIGINAL_TEXT}</p>
           <p className="text-xs leading-relaxed text-white/40">
-            몇 번을 떠올려도, 그날 내가 쓴 이 문장은 그대로다.
+            몇 번을 떠올려도, 그날 내가 쓴 이 문장은 그대로예요.
           </p>
         </div>
 
@@ -87,9 +86,9 @@ export function ReconsolidationCard() {
                 transition={{ duration: 0.8, ease: 'easeOut' }}
               />
             )}
-            <StarCanvas width={100} height={100} animated className="h-full w-full">
-              <Star3D concept={concept} color={BASE_COLOR} x={50} y={50} r={30} seed={BASE_SEED} brightness={current.brightness} active />
-            </StarCanvas>
+            <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
+              <VizStar cx={50} cy={50} r={30} color={BASE_COLOR} concept={concept} seed={BASE_SEED} brightness={current.brightness} active />
+            </svg>
           </div>
           <button
             type="button"
@@ -101,8 +100,8 @@ export function ReconsolidationCard() {
           </button>
           <p className="text-xs text-white/40">
             {current.version === 0
-              ? '처음 그대로의 별. 같은 모습으로 다시 굳을 준비가 됐다.'
-              : `${current.version}번째 회상 · ${current.dir === 'up' ? '강화 ↑' : '약화 ↓'} · 같은 기억이 조금 다른 빛으로 굳었다 (밝기 ${Math.round(current.brightness * 100)}%)`}
+              ? '처음 그대로의 별. 같은 모습으로 다시 굳을 준비가 됐어요.'
+              : `${current.version}번째 회상 · ${current.dir === 'up' ? '강화 ↑' : '약화 ↓'} · 같은 기억이 조금 다른 빛으로 굳었어요 (밝기 ${Math.round(current.brightness * 100)}%)`}
           </p>
         </div>
       </div>
@@ -132,7 +131,7 @@ export function ReconsolidationCard() {
         </div>
       </div>
 
-      <p className="text-xs leading-relaxed text-white/40">원본은 그대로, 별은 변하고, 변천사는 쌓인다.</p>
+      <p className="text-xs leading-relaxed text-white/40">원본은 그대로, 별은 변하고, 변천사는 차곡차곡 쌓여가요.</p>
     </GlassCard>
   )
 }

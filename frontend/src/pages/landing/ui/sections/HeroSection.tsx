@@ -37,22 +37,26 @@ export function HeroSection() {
         animate="show"
         className="relative z-10 flex max-w-3xl flex-col items-center gap-7"
       >
-        {/* 테마별로 완전히 다른 오브제로 변신하는 WebGL 별 엠블럼(크리스털·성운·액체·잉걸불). */}
-        <motion.div variants={item}>
-          <ThemedStar concept={theme} color={MOOD.violet} seed={7} size={220} className="mx-auto" />
+        {/* cosimosi + 바로 뒤 별 엠블럼 — 별을 글자에 고정(absolute, 글자 중심)해 아래 간격을 어떻게
+            바꾸든 cosimosi와 별이 늘 같은 자리에 정렬된다. 별 박스는 크게 잡아 글로우가 안 잘린다. */}
+        <motion.div variants={item} className="relative flex items-center justify-center">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          >
+            <ThemedStar concept={theme} color={MOOD.violet} seed={7} size={320} />
+          </div>
+          <span
+            className="relative text-xs uppercase tracking-[0.35em]"
+            style={{ color: 'var(--ld-accent-soft)' }}
+          >
+            cosimosi
+          </span>
         </motion.div>
-
-        <motion.span
-          variants={item}
-          className="text-xs uppercase tracking-[0.35em]"
-          style={{ color: 'var(--ld-accent-soft)' }}
-        >
-          cosimosi
-        </motion.span>
 
         <motion.h1
           variants={item}
-          className="ld-hero-grad font-display text-4xl leading-tight sm:text-6xl md:text-7xl"
+          className="ld-hero-grad mt-10 font-display text-4xl leading-tight sm:mt-14 sm:text-6xl md:text-7xl"
         >
           내 일기는, 기억의 우주.
         </motion.h1>
@@ -61,8 +65,8 @@ export function HeroSection() {
           variants={item}
           className="max-w-2xl text-base leading-relaxed text-white/65 sm:text-lg"
         >
-          기억은 별이 되고, 함께 떠올린 기억끼리 빛으로 이어진다. 그리고 그 별은 — 진짜 기억이
-          그렇듯 — 떠올릴 때마다 조금씩 다시 빚어진다.
+          기억은 별이 되고, 함께 떠올린 기억끼리 빛으로 이어져요. 그리고 그 별은 — 진짜 기억이
+          그렇듯 — 떠올릴 때마다 조금씩 다시 빚어져요.
         </motion.p>
 
         <motion.div variants={item} className="flex flex-col items-center gap-3">
