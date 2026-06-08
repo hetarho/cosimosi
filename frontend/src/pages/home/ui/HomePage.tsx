@@ -42,6 +42,9 @@ function isTypingTarget() {
 function NavPad() {
   const mode = useCameraMode((s) => s.mode)
   const setMove = useCameraMode((s) => s.setMove)
+  // On mobile the recall panel (bottom sheet) overlaps the bottom-center D-pad — hide the pad
+  // there while a star's info is open (desktop keeps it: the pad is left, the panel is right).
+  const infoOpen = useMemoryStore((s) => s.selectedId != null)
 
   // Keyboard: track the set of held keys and recompute move from it, so chords work and
   // releasing one key of an axis correctly falls back to the other still-held one. Active
@@ -99,7 +102,9 @@ function NavPad() {
   // Mobile: bottom-center, lifted above the compose trigger (bottom-4). Desktop (sm+):
   // left-center, out of the way of the top/bottom HUD.
   return (
-    <div className="absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 sm:top-1/2 sm:bottom-auto sm:left-4 sm:translate-x-0 sm:-translate-y-1/2">
+    <div
+      className={`absolute bottom-24 left-1/2 z-20 ${infoOpen ? 'hidden sm:flex' : 'flex'} -translate-x-1/2 items-center gap-3 sm:top-1/2 sm:bottom-auto sm:left-4 sm:translate-x-0 sm:-translate-y-1/2`}
+    >
       {/* forward / back thrust along the look direction (keys: W / S) */}
       <div className="flex flex-col gap-1.5">
         <button type="button" aria-label="전진" title="전진 (W)" className={`${btn} text-xs`} {...hold('z', 1)}>
@@ -206,7 +211,10 @@ export function HomePage() {
       </div>
       <NavPad />
 
-      <div className="absolute right-4 bottom-4 z-10">
+      {/* Star info — mobile: lifted above the bottom compose button (was overlapping it) and
+          height-capped so a long memory scrolls instead of hitting the top controls. Desktop:
+          unchanged bottom-right (compose is a top-left panel there, so no overlap). */}
+      <div className="absolute right-4 bottom-20 z-10 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain sm:bottom-4 sm:max-h-none sm:overflow-visible">
         <MemoryPanel />
       </div>
       {/* top-16: clear the global 로그아웃 pill (SessionGate, top-4 right-4) so these
