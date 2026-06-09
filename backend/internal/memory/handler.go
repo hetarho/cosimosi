@@ -13,11 +13,10 @@ import (
 	"github.com/cosimosi/backend/internal/platform/rpcserver"
 )
 
-// Handler adapts proto ↔ domain for the MemoryService RPCs: RecordMemory/GetUniverse
-// (spec 04), ReinforceLinks/RecallMemory (spec 11), ListDormant (spec 12) — all
-// implemented below. The embedded UnimplementedMemoryServiceHandler is only a
-// forward-compat shim for RPCs added to the proto but not yet handled. It stays thin:
-// auth + mapping only, policy lives in Service.
+// Handler adapts proto ↔ domain for the MemoryService RPCs (RecordMemory, GetUniverse,
+// ReinforceLinks, RecallMemory, ListDormant — all implemented below). The embedded
+// UnimplementedMemoryServiceHandler is only a forward-compat shim for RPCs added to the
+// proto but not yet handled. It stays thin: auth + mapping only, policy lives in Service.
 type Handler struct {
 	cosimosiv1connect.UnimplementedMemoryServiceHandler
 	svc *Service
@@ -31,7 +30,7 @@ func NewHandler(svc *Service) *Handler {
 var _ cosimosiv1connect.MemoryServiceHandler = (*Handler)(nil)
 
 // RecordMemory persists a diary entry and returns the new star id. Requires an
-// authenticated caller (1.2); an unset/invalid entry_date maps to InvalidArgument.
+// authenticated caller; an unset/invalid entry_date maps to InvalidArgument.
 func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecordMemoryRequest]) (*connect.Response[cosimosiv1.RecordMemoryResponse], error) {
 	userID, ok := rpcserver.UserIDFromContext(ctx)
 	if !ok {
@@ -97,7 +96,7 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 	return connect.NewResponse(&cosimosiv1.GetUniverseResponse{Stars: stars, Synapses: synapses}), nil
 }
 
-// ReinforceLinks applies a co-recall reinforcement batch (spec 11). unary, idempotent
+// ReinforceLinks applies a co-recall reinforcement batch. unary, idempotent
 // by batch_id; pairs are normalized + summed in the service.
 func (h *Handler) ReinforceLinks(ctx context.Context, req *connect.Request[cosimosiv1.ReinforceLinksRequest]) (*connect.Response[cosimosiv1.ReinforceLinksResponse], error) {
 	userID, ok := rpcserver.UserIDFromContext(ctx)
@@ -116,7 +115,7 @@ func (h *Handler) ReinforceLinks(ctx context.Context, req *connect.Request[cosim
 }
 
 // RecallMemory re-ignites a star and returns its immutable original Record (records
-// JOIN). NotFound when the (user, memory) pair doesn't exist (1.8); never mutates the
+// JOIN). NotFound when the (user, memory) pair doesn't exist; never mutates the
 // original (constitution §1).
 func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecallMemoryRequest]) (*connect.Response[cosimosiv1.RecallMemoryResponse], error) {
 	userID, ok := rpcserver.UserIDFromContext(ctx)
@@ -143,8 +142,8 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 	}), nil
 }
 
-// ListDormant returns the caller's long-unrecalled stars as Star (02 reuse — no body;
-// the original is fetched on recall, spec 11). The full graph is unaffected
+// ListDormant returns the caller's long-unrecalled stars as Star (no body;
+// the original is fetched on recall). The full graph is unaffected
 // (GetUniverse still returns everything — constitution §2). An empty list is valid.
 func (h *Handler) ListDormant(ctx context.Context, req *connect.Request[cosimosiv1.ListDormantRequest]) (*connect.Response[cosimosiv1.ListDormantResponse], error) {
 	userID, ok := rpcserver.UserIDFromContext(ctx)

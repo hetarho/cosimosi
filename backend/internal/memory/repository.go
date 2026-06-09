@@ -31,7 +31,7 @@ type Repository interface {
 	ListDormant(ctx context.Context, userID string, cutoff time.Time) ([]Memory, error)
 
 	// TouchRecall re-ignites a star (sets memories.last_recalled_at=now); a no-op if
-	// the (user, memory) pair is absent (spec 11). Only the star is mutable; the
+	// the (user, memory) pair is absent. Only the star is mutable; the
 	// record is never touched (constitution §1).
 	TouchRecall(ctx context.Context, userID, memoryID string) error
 

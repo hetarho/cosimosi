@@ -3,8 +3,8 @@
 //   1. .env            (copy from .env.example if missing)
 //   2. deps            (pnpm install — workspace)
 //   3. postgres        (docker compose up -d postgres, wait for healthy)
-//   4. migrations      (goose up — skips until spec 03 lands)
-//   5. codegen         (buf + sqlc — skip whichever isn't configured yet)
+//   4. migrations      (goose up — skips when no migrations yet)
+//   5. codegen         (buf + sqlc — skip whichever isn't configured)
 //
 // Idempotent: safe to re-run after pulling contract/schema changes. The inner
 // dev loop (`pnpm dev`) intentionally does NOT re-run this — run setup (or the

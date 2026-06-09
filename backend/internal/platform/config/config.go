@@ -11,11 +11,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// EmbedDim is the fixed embedding dimension for the MVP (constitution §7,
-// Architecture §4.7). text-embedding-3-small and the mock embedder both emit
-// 1536-d vectors; the embeddings.vector(1536) column and HNSW index assume it.
-// Changing it requires re-embedding + index rebuild, so it is a compile-time
-// constant rather than an env var.
+// EmbedDim is the fixed embedding dimension. text-embedding-3-small and the mock
+// embedder both emit 1536-d vectors; the embeddings.vector(1536) column and HNSW
+// index assume it. Changing it requires re-embedding + index rebuild, so it is a
+// compile-time constant rather than an env var.
 const EmbedDim = 1536
 
 type Config struct {
@@ -26,9 +25,8 @@ type Config struct {
 	// access tokens (the rpcserver auth interceptor). Empty in environments
 	// without auth configured — protected RPCs then fail closed (Unauthenticated).
 	SupabaseJWTSecret string
-	// SupabaseProjectURL is the project base URL (e.g. https://<ref>.supabase.co).
-	// Unused in the MVP HS256 path; reserved for JWKS verification of asymmetric
-	// signing keys in v1.
+	// SupabaseProjectURL is the project base URL (e.g. https://<ref>.supabase.co),
+	// used to fetch the JWKS for verifying asymmetric (ES256/RS256) tokens.
 	SupabaseProjectURL string
 	// AIEmbedder selects the embedding adapter (constitution §7): "mock" (keyless,
 	// deterministic — the default, used for keyless E2E) or "openai".
@@ -36,7 +34,7 @@ type Config struct {
 	// OpenAIAPIKey authenticates the OpenAI embedder. Empty unless AIEmbedder is
 	// "openai"; the factory fails fast if "openai" is selected without it.
 	OpenAIAPIKey string
-	// SentryDSN enables production error tracking (spec 14 §9). Empty = disabled:
+	// SentryDSN enables production error tracking. Empty = disabled:
 	// the composition root skips sentry.Init entirely (no-op locally / in tests).
 	SentryDSN string
 	// SentryEnvironment tags captured events (production|staging|…); defaults to

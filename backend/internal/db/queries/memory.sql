@@ -23,7 +23,7 @@ VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: GetMemoryForEmbed :one
--- Loads what the embedding worker needs (spec 05): the star's owner, the original
+-- Loads what the embedding worker needs: the star's owner, the original
 -- diary body, and its entry_date (for the temporal_bonus baseline). body/entry_date
 -- live on the immutable records row, read via JOIN.
 SELECT m.user_id, r.body, r.entry_date
@@ -32,7 +32,7 @@ JOIN records r ON r.id = m.record_id
 WHERE m.id = $1;
 
 -- name: RecallMemoryTouch :exec
--- Re-ignite a star on recall (spec 11): only memories.last_recalled_at changes (the
+-- Re-ignite a star on recall: only memories.last_recalled_at changes (the
 -- star is mutable; the original record is NOT — constitution §1). No RETURNING.
 UPDATE memories SET last_recalled_at = now() WHERE id = @id AND user_id = @user_id;
 
@@ -54,7 +54,7 @@ WHERE m.user_id = $1
 ORDER BY m.created_at;
 
 -- name: ListDormant :many
--- Long-unrecalled (dormant) stars for the dormant-search page (spec 12). A search aid,
+-- Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
 -- NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
 -- compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
 -- brightness is computed client-side from this same value). The service converts the

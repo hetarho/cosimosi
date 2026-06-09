@@ -20,7 +20,6 @@ function settle(state: ReturnType<typeof createSim>, cap = 2000): void {
 }
 
 describe('force-sim', () => {
-  // 1.1 — strong links converge shorter than weak links.
   it('converges strong-weight pairs closer than weak ones (1.1)', () => {
     // Two well-separated pairs (no pins): pair A-B is strong, C-D is weak. Cross-pair
     // repulsion is negligible at this separation; within each pair the spring (scaled
@@ -45,7 +44,6 @@ describe('force-sim', () => {
     expect(strong).toBeLessThan(weak)
   })
 
-  // 1.2 — pinned nodes (with no new-node neighbor) never move.
   it('keeps pinned nodes fixed (1.2)', () => {
     const graph: SimGraph = {
       nodes: [node('p1', true, 10, 5, -3), node('p2', true, -10, 2, 7)],
@@ -96,7 +94,6 @@ describe('force-sim', () => {
     expect(moved(0)).toBeGreaterThan(1e-6)
   })
 
-  // 1.4 — positions length and input order.
   it('returns positions of length n*3 in input order (1.4)', () => {
     const graph: SimGraph = {
       nodes: [node('a', true, 1, 2, 3), node('b', true, 4, 5, 6), node('c', true, 7, 8, 9)],
@@ -110,7 +107,6 @@ describe('force-sim', () => {
     expect(Array.from(buf)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
   })
 
-  // 1.7 — edges referencing unknown nodes are ignored, no throw.
   it('ignores edges with unknown endpoints (1.7)', () => {
     const graph: SimGraph = {
       nodes: [node('a', false, 0, 0, 0), node('b', false, 10, 0, 0)],

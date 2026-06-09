@@ -1,6 +1,5 @@
-// GetUniverse loader (spec 10, extended by 11): fetch the universe once, map stars[] →
-// StarNode[] into the authoritative store, AND map synapses[] → SynapseEdge[] into the
-// 11 edge store (10 ignored synapses; 11 loads them — acceptance 1.12). No
+// GetUniverse loader: fetch the universe once, map stars[] → StarNode[] into the
+// authoritative store, and map synapses[] → SynapseEdge[] into the edge store. No
 // three/React/DOM (constitution §4·3.2) — zustand's getState() is a vanilla call.
 import { memoryClient } from '@/shared/api'
 import { isDemoMode, demoStars, demoSynapses } from '@/shared/demo'
@@ -11,7 +10,7 @@ import { mapStar } from './map-star'
 
 /** Loads the universe once and replaces the star + synapse sets. The synapse `brightness`
  *  field is the time-DECAY factor max(A_MIN, activation(last_activated_at)) — NOT the
- *  weight-folded value: 09's visualIntensity already multiplies by weight, so the final
+ *  weight-folded value: visualIntensity already multiplies by weight, so the final
  *  rendered strength is weight·max(A_MIN, activation) = synapseBrightness (the dormant
  *  link dims but never vanishes, constitution §2). Throws on RPC failure (caller surfaces it). */
 export async function getUniverse(): Promise<void> {

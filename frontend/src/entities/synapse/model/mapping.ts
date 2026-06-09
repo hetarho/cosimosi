@@ -1,6 +1,5 @@
-// Pure weight·brightness → visual-parameter mapping (spec 09, Architecture §6).
-// Testable, three-free (constitution §4). Line2NodeMaterial has no per-edge width,
-// so strength is carried by emissive/alpha/pulse, not thickness.
+// Pure weight·brightness → visual-parameter mapping. Testable, three-free.
+// Line2NodeMaterial has no per-edge width, so strength is carried by emissive/alpha/pulse, not thickness.
 import type { SynapseEdge } from './types'
 
 export const A_MIN = 0.05
@@ -10,21 +9,20 @@ export const WIDTH_THIN_PX = 1
 export const WIDTH_THICK_PX = 4
 export const THICK_THRESHOLD = 0.5 // weight ≥ 0.5 → thick bucket
 
-export const ALPHA_MIN = 0.15 // weak/dormant edges still glow faintly (constitution §2)
+export const ALPHA_MIN = 0.15 // weak/dormant edges still glow faintly
 export const ALPHA_MAX = 1
 
 export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
 
-/** Effective visual strength = weight · max(a_min, brightness) (Architecture §6),
- *  clamped to [0,1] so a stray weight/brightness > 1 (e.g. from spec 12) can't blow
- *  out alpha/color on the additive material. */
+/** Effective visual strength = weight · max(a_min, brightness), clamped to [0,1] so a stray
+ *  weight/brightness > 1 can't blow out alpha/color on the additive material. */
 export const visualIntensity = (e: SynapseEdge): number =>
   Math.min(1, Math.max(0, e.weight) * Math.max(A_MIN, e.brightness))
 
 /** Emissive brightness driver. */
 export const emissive = (e: SynapseEdge): number => visualIntensity(e)
 
-/** Opacity driver, floored at ALPHA_MIN so weak/dormant edges remain visible (1.4). */
+/** Opacity driver, floored at ALPHA_MIN so weak/dormant edges remain visible. */
 export const alpha = (e: SynapseEdge): number => lerp(ALPHA_MIN, ALPHA_MAX, visualIntensity(e))
 
 /** Pulse amplitude for sin(time·f)·amp — recently-reinforced edges pulse stronger. */

@@ -16,8 +16,8 @@ const glFactory = ((props: Parameters<typeof createRenderer>[0]) =>
 
 /**
  * 직접 소유한 ortho 카메라로 논리 박스를 contain(여백)으로 비춘다 — SVG meet과 동일. 캔버스 픽셀
- * 비율이 어떻든 x·y 스케일이 같아 오브제가 찌그러지지 않는다. (drei 카메라의 자동 종횡비와 충돌해
- * 왜곡되던 문제를 직접 제어로 해결.)
+ * 비율이 어떻든 x·y 스케일이 같아 오브제가 찌그러지지 않는다. (drei 카메라의 자동 종횡비는
+ * 비정사각 캔버스에서 오브제를 왜곡시키므로 직접 제어한다.)
  */
 function FitCamera({ width, height }: { width: number; height: number }) {
   const set = useThree((s) => s.set)
@@ -39,8 +39,8 @@ function FitCamera({ width, height }: { width: number; height: number }) {
     cam.top = halfH
     cam.bottom = -halfH
     // ortho는 거리에 무관하게 크기가 같으므로, 카메라를 박스 크기에 비례해 충분히 뒤로 물려 어떤 r의
-    // 별이든 near~far 슬랩 안에 통째로 들어오게 한다. (z=10·far=100이던 기존값은 near 평면이 z=9.9라
-    // r>~10인 별의 앞면이 잘려 구의 단면 내부가 드러나던 버그의 원인이었다.)
+    // 별이든 near~far 슬랩 안에 통째로 들어오게 한다. (near 평면이 별 앞면보다 가까워야 큰 r의 별
+    // 앞면이 잘리지 않는다.)
     const depth = Math.max(width, height)
     cam.position.set(0, 0, depth * 2)
     cam.near = 0.1

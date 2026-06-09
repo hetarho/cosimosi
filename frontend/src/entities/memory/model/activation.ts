@@ -17,8 +17,6 @@ export function starBrightness(lastRecalledAt: number, now: number): number {
   return Math.max(A_MIN, activation(lastRecalledAt, now))
 }
 
-// --- spec 12 additions (08 symbols above are reused, never redefined) ---
-
 /** Effective synapse brightness = weight · max(A_MIN, activation). Floored like a star
  *  (a dormant link dims but never vanishes — constitution §2). `now` is injected. */
 export function synapseBrightness(weight: number, lastActivatedAt: number, now: number): number {

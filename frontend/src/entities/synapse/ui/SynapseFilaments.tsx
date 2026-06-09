@@ -1,5 +1,4 @@
-// Synapse visualization (replaces the straight LineSegments2 of SynapseLines): each
-// edge becomes a gently CURVED, world-space bundle of thin glow strands that helically
+// Synapse visualization: each edge becomes a gently CURVED, world-space bundle of thin glow strands that helically
 // TWIST around the connecting axis and pinch into each star at both ends — a braided
 // "dust vein" rather than a flat screen-space stroke. World-space TubeGeometry (not
 // Line2's screen-space width) is what restores volumetric depth, so the universe stops

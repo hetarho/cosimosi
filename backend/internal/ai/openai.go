@@ -112,8 +112,7 @@ func (e *OpenAIEmbedder) Embed(ctx context.Context, text string) ([]float32, err
 	}
 
 	e.toCache(key, vec)
-	// Cost-guard counters (acceptance 2.4), surfaced per call as a structured line —
-	// embedding metrics kept distinct from any future LLM-extraction metrics.
+	// Cost-guard counters (acceptance 2.4), surfaced per call as a structured line.
 	slog.Debug("embedding done",
 		"model", e.model,
 		"embed_calls", e.metrics.EmbedCalls.Load(),

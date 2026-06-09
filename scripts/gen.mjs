@@ -4,8 +4,8 @@
 //   pnpm gen:proto    buf only
 //   pnpm gen:sql      sqlc only
 //
-// Configs land later: buf.gen.yaml + proto/ in spec 02, schema.sql in spec 03.
-// Until then the matching step skips with a note instead of failing.
+// If a tool's config isn't present yet, the matching step skips with a note
+// instead of failing.
 
 import { run, mount, hasBufConfig, hasDbSchema, section, ok, note } from './lib.mjs'
 
@@ -30,7 +30,7 @@ if (wantProto) {
     ok('buf 완료')
     did = true
   } else {
-    note('buf 건너뜀 — proto 계약(backend/buf.gen.yaml)은 spec 02에서 추가됨')
+    note('buf 건너뜀 — proto 계약(backend/buf.gen.yaml)이 아직 없음')
   }
 }
 
@@ -45,8 +45,8 @@ if (wantSql) {
     ok('sqlc 완료')
     did = true
   } else {
-    note('sqlc 건너뜀 — DB 스키마(backend/internal/db/schema.sql)는 spec 03에서 추가됨')
+    note('sqlc 건너뜀 — DB 스키마(backend/internal/db/schema.sql)가 아직 없음')
   }
 }
 
-if (!did) note('아직 생성할 대상 없음. spec 02·03 머지 후 다시 실행하면 자동으로 켜져요.')
+if (!did) note('아직 생성할 대상 없음. 설정 추가 후 다시 실행하면 자동으로 켜져요.')

@@ -1,9 +1,9 @@
--- Async job queue (spec 05, Architecture §4.6). The RecordMemory transaction
--- (spec 04) enqueues; the embedding worker claims/completes/fails. Jobs are never
--- deleted — a give-up is preserved as status='failed' (constitution §1/§2).
+-- Async job queue. The RecordMemory transaction enqueues; the embedding
+-- worker claims/completes/fails. Jobs are never deleted — a give-up is
+-- preserved as status='failed' (constitution §1/§2).
 
 -- name: EnqueueJob :exec
--- Hands embedding/linking to the async worker. 04's RecordMemory only enqueues.
+-- Hands embedding/linking to the async worker. RecordMemory only enqueues.
 INSERT INTO jobs (id, memory_id, kind, status)
 VALUES ($1, $2, 'embed', 'pending');
 

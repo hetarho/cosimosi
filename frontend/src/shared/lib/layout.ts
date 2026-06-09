@@ -1,8 +1,5 @@
-// Deterministic star layout — the stand-in placement used by /universe until the
-// force-sim coordinate buffer (07) is wired in. Pure math (no three/React/DOM) so the
-// star renderer (08 StarField) and the camera fly-to (12) read the SAME formula and
-// therefore agree on where each star is. When force-sim coords arrive, both consumers
-// switch to that shared buffer instead.
+// Deterministic Fibonacci-sphere star layout. Pure math (no three/React/DOM) so the
+// star renderer and the camera fly-to read the SAME formula and agree on each star's position.
 const GOLDEN = Math.PI * (3 - Math.sqrt(5))
 
 /** Fibonacci-sphere position for star i of n; the radius varies by the star's seed so

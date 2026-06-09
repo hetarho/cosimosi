@@ -5,8 +5,8 @@
 //   pnpm db:down      goose down    (roll back one)
 //   pnpm db:reset     goose reset + up  (wipe to clean schema, re-apply)
 //
-// Requires postgres to be running (`pnpm infra:up` / `pnpm setup`). The schema
-// itself lands in spec 03; until then there's nothing to migrate, so we skip.
+// Requires postgres to be running (`pnpm infra:up` / `pnpm setup`). When no
+// migrations exist yet, there's nothing to migrate, so we skip.
 
 import { run, mount, hasDbSchema, COMPOSE_NETWORK, section, ok, note, fail } from './lib.mjs'
 
@@ -29,7 +29,7 @@ const action = process.argv[2] ?? 'up'
 section(`db ${action}`)
 
 if (!hasDbSchema()) {
-  note('마이그레이션이 아직 없음 — DB 스키마는 spec 03에서 추가됨. 건너뜀.')
+  note('마이그레이션이 아직 없음 — DB 스키마가 추가되면 적용됨. 건너뜀.')
   process.exit(0)
 }
 

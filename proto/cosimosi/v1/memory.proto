@@ -13,9 +13,6 @@ option go_package = "github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimo
 // star positions emerge client-side in the force-sim (constitution §3); the
 // server is authoritative only over the weighted graph. unary only — no
 // streaming (constitution §6, RN cannot consume server streams).
-//
-// This spec (02) defines SIGNATURES + STUBS only. Business logic lands later:
-// RecordMemory/GetUniverse in 04, ReinforceLinks/RecallMemory in 11, ListDormant in 12.
 
 // Mood is the single source of truth for the 7 moods, shared by BE/FE generated
 // types. records.mood (TEXT, nullable) stores this enum's name string.
@@ -30,7 +27,7 @@ enum Mood {
   NEUTRAL = 7;
 }
 
-// --- RecordMemory (04) ---
+// --- RecordMemory ---
 
 message RecordMemoryRequest {
   string body = 1;
@@ -46,7 +43,7 @@ message RecordMemoryResponse {
   string memory_id = 1;
 }
 
-// --- GetUniverse (04, idempotent) ---
+// --- GetUniverse (idempotent) ---
 
 // Star is the visual input for a star (no body). Brightness = max(a_min,
 // activation) is computed client-side; the server is authoritative only over
@@ -75,7 +72,7 @@ message GetUniverseResponse {
   repeated Synapse synapses = 2;
 }
 
-// --- RecallMemory (11, reconsolidation) ---
+// --- RecallMemory (reconsolidation) ---
 
 message RecallMemoryRequest {
   string memory_id = 1;
@@ -95,7 +92,7 @@ message RecallMemoryResponse {
   Record record = 1;
 }
 
-// --- ReinforceLinks (11, batch upsert) ---
+// --- ReinforceLinks (batch upsert) ---
 
 // Reinforcement is accumulated locally on the client, then flushed as a unary
 // batch. delta_weight is an increment, not an absolute value.
@@ -112,7 +109,7 @@ message ReinforceLinksRequest {
 
 message ReinforceLinksResponse {}
 
-// --- ListDormant (12, dormant stars) ---
+// --- ListDormant (dormant stars) ---
 
 message ListDormantRequest {}
 
@@ -123,9 +120,9 @@ message ListDormantResponse {
 // MemoryService is the single service (no separate LinkService). All RPCs are
 // unary — streaming is intentionally not defined (constitution §6).
 service MemoryService {
-  rpc RecordMemory(RecordMemoryRequest) returns (RecordMemoryResponse);          // 04
-  rpc GetUniverse(GetUniverseRequest) returns (GetUniverseResponse);             // 04 (idempotent)
-  rpc ReinforceLinks(ReinforceLinksRequest) returns (ReinforceLinksResponse);    // 11 batch upsert
-  rpc RecallMemory(RecallMemoryRequest) returns (RecallMemoryResponse);          // 11 reconsolidation
-  rpc ListDormant(ListDormantRequest) returns (ListDormantResponse);             // 12 dormant stars
+  rpc RecordMemory(RecordMemoryRequest) returns (RecordMemoryResponse);
+  rpc GetUniverse(GetUniverseRequest) returns (GetUniverseResponse);             // idempotent
+  rpc ReinforceLinks(ReinforceLinksRequest) returns (ReinforceLinksResponse);    // batch upsert
+  rpc RecallMemory(RecallMemoryRequest) returns (RecallMemoryResponse);          // reconsolidation
+  rpc ListDormant(ListDormantRequest) returns (ListDormantResponse);             // dormant stars
 }

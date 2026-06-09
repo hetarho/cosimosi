@@ -14,9 +14,9 @@ import (
 type userIDKey struct{}
 
 // UserIDFromContext returns the authenticated user id — the Supabase JWT "sub"
-// claim injected by the auth interceptor. Feature handlers (04/11/12) use it to
-// scope every query to the caller (constitution: user_id isolation). The bool is
-// false on paths that never passed through the interceptor.
+// claim injected by the auth interceptor. Feature handlers use it to scope every
+// query to the caller (user_id isolation). The bool is false on paths that never
+// passed through the interceptor.
 func UserIDFromContext(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(userIDKey{}).(string)
 	return v, ok
@@ -39,7 +39,7 @@ func UserIDFromContext(ctx context.Context) (string, bool) {
 // key-length check, so an empty key would otherwise verify — auth bypass). The server
 // still boots without Supabase configured so /health and local DB work.
 //
-// MVP scope: signature + alg allowlist + expiry. aud/iss/role enforcement is deferred
+// Validates signature + alg allowlist + expiry only. aud/iss/role are not enforced
 // (Supabase aud can be a string or array and has varied across versions).
 func NewAuthInterceptor(secret, projectURL string) connect.UnaryInterceptorFunc {
 	key := []byte(secret)

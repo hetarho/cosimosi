@@ -27,8 +27,7 @@ type Repository interface {
 
 // GraphStore is the worker's view over embedding + synapse persistence. It is a
 // consumer-side port kept in the job package because the worker owns the
-// embedding pipeline (spec 05 영향 파일); the pgx implementation is in
-// repository_pg.go. Co-recall reinforcement and decay are specs 11/12.
+// embedding pipeline; the pgx implementation is in repository_pg.go.
 type GraphStore interface {
 	// GetMemoryForEmbed loads the star's owner, original body, and entry_date
 	// (memories JOIN records) for embedding.

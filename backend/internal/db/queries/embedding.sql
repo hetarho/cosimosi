@@ -1,5 +1,5 @@
--- Embedding persistence + KNN (spec 05). embeddings.vector(1536) is declared
--- unqualified (sqlc #3548) and indexed with HNSW vector_cosine_ops (spec 03).
+-- Embedding persistence + KNN. embeddings.vector(1536) is declared
+-- unqualified (sqlc #3548) and indexed with HNSW vector_cosine_ops.
 
 -- name: UpsertEmbedding :exec
 -- Idempotent per memory: a retried job replaces the vector/model rather than
@@ -14,7 +14,7 @@ SET embedding = EXCLUDED.embedding,
 -- name: KnnNearest :many
 -- Top-k nearest same-user neighbors (excluding self), cosine similarity ≥ τ=0.75,
 -- nearest first. Returns each candidate's entry_date for the temporal_bonus.
--- user_id filter = multi-user isolation (acceptance 3.3); HNSW serves the ORDER BY.
+-- user_id filter = multi-user isolation; HNSW serves the ORDER BY.
 SELECT
     e.memory_id,
     (1 - (e.embedding <=> @query::vector))::float8 AS cos_sim,

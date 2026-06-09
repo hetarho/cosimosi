@@ -212,9 +212,9 @@ export function HomePage() {
       </div>
       <NavPad />
 
-      {/* Star info — mobile: lifted above the bottom compose button (was overlapping it) and
-          height-capped so a long memory scrolls instead of hitting the top controls. Desktop:
-          unchanged bottom-right (compose is a top-left panel there, so no overlap). */}
+      {/* Star info — mobile: above the bottom compose button and height-capped so a long
+          memory scrolls instead of reaching the top controls. Desktop: bottom-right (compose
+          is a top-left panel, so no overlap). */}
       <div className="absolute right-4 bottom-20 z-10 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain sm:bottom-4 sm:max-h-none sm:overflow-visible">
         <MemoryPanel />
       </div>

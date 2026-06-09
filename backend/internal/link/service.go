@@ -34,7 +34,7 @@ func (s *Service) ReinforceLinks(ctx context.Context, userID, batchID string, de
 	for _, d := range deltas {
 		a, b := d.AID, d.BID
 		if a == "" || b == "" || a == b {
-			continue // skip empty/self pairs
+			continue
 		}
 		if a > b {
 			a, b = b, a

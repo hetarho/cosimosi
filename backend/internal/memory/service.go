@@ -65,14 +65,14 @@ func (s *Service) GetUniverse(ctx context.Context, userID string) (Universe, err
 	return Universe{Memories: memories, Synapses: synapses}, nil
 }
 
-// ReinforceLinks applies co-recall reinforcement increments (spec 11) — delegates to
+// ReinforceLinks applies co-recall reinforcement increments — delegates to
 // the link service, which normalizes/sums and persists idempotently by batch_id.
 func (s *Service) ReinforceLinks(ctx context.Context, userID, batchID string, deltas []LinkDelta) error {
 	return s.links.ReinforceLinks(ctx, userID, batchID, deltas)
 }
 
 // ListDormant returns the caller's long-unrecalled stars (search aid for the dormant
-// page, spec 12). It converts the dormancy threshold to a time cutoff and lets the
+// page). It converts the dormancy threshold to a time cutoff and lets the
 // query compare last_recalled_at only — GetUniverse still returns the whole graph
 // (constitution §2; ListDormant is not a delete/filter).
 func (s *Service) ListDormant(ctx context.Context, userID string) ([]Memory, error) {

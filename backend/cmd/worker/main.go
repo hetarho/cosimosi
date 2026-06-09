@@ -1,10 +1,8 @@
 // Command worker runs the embedding pipeline as a standalone process.
 //
-// This is the optional process-split skeleton (spec 05 T018, Architecture §4.6):
-// the same job.Worker the API runs as a goroutine, wrapped as its own binary for
-// when the embedding load warrants scaling it independently. MVP does not require
-// it — `cmd/api` already starts the worker in-process — but keeping the
-// composition root here makes that split a config change, not a rewrite.
+// This is the optional process-split binary: the same job.Worker the API runs as
+// a goroutine, wrapped as its own binary for when the embedding load warrants
+// scaling it independently. cmd/api already starts the worker in-process.
 package main
 
 import (

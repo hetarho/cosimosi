@@ -1,5 +1,5 @@
-// Pure star/memory domain types (spec 08). No three/React/DOM, no json/db/proto
-// tags (constitution §4·§5 — mobile reusable, transport/persistence stay outside).
+// Pure star/memory domain types. No three/React/DOM, no json/db/proto tags
+// (constitution §4·§5 — mobile reusable, transport/persistence stay outside).
 import type { Mood } from '@/shared/config'
 
 // Mood's single source is shared/config (the palette types its keys there). Re-export

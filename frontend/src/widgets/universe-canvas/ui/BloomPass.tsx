@@ -1,10 +1,8 @@
 // Node-based Bloom (Architecture §3.1). Import asymmetry is intentional: the
 // pipeline CLASS lives in core (`three/webgpu`), the `bloom` helper is an addon.
 //
-// ⚠️ three pin note: the spec referenced `PostProcessing`, but in three 0.184 that
-// class is DEPRECATED (since r183) and its constructor emits a warnOnce — which
-// would trip DoD 1.7 (no console warnings). The class was renamed to
-// `RenderPipeline`; we use that. Re-check this name on any three upgrade.
+// Use RenderPipeline, not the deprecated PostProcessing class (renamed in three r183+;
+// its constructor emits a console warnOnce). Re-check this name on any three upgrade.
 import { useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RenderPipeline, type WebGPURenderer } from 'three/webgpu'

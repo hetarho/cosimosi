@@ -3,8 +3,8 @@
 // Why Node (not a Makefile/bash script): the toolchain (buf/sqlc/goose) runs in
 // Docker because Windows Application Control blocks unsigned .exe in the user dir
 // (see README). These wrappers invoke Docker identically from PowerShell, bash, or
-// CI — no per-shell quoting. Each tool's config lands in a later spec, so the
-// scripts light up when present and skip cleanly otherwise.
+// CI — no per-shell quoting. The scripts light up when a tool's config is
+// present and skip cleanly otherwise.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -40,9 +40,9 @@ export const pnpm = (args) =>
 // Compose project is `name: cosimosi` → default network is stable.
 export const COMPOSE_NETWORK = 'cosimosi_default'
 
-// --- sentinels: a tool's config arrives in a later spec; run only once present ---
-export const hasBufConfig = () => existsSync(`${repoRoot}/backend/buf.gen.yaml`) //          spec 02
-export const hasDbSchema = () => existsSync(`${repoRoot}/backend/internal/db/schema.sql`) //  spec 03
+// --- sentinels: a step runs only once its tool's config is present ---
+export const hasBufConfig = () => existsSync(`${repoRoot}/backend/buf.gen.yaml`)
+export const hasDbSchema = () => existsSync(`${repoRoot}/backend/internal/db/schema.sql`)
 
 // --- console output ---
 export const section = (t) => console.log(`\n\x1b[36m▶ ${t}\x1b[0m`)

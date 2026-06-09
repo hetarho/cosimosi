@@ -124,10 +124,10 @@ func TestWorkerPipelineIntegration(t *testing.T) {
 	}
 }
 
-// TestClaimReclaimsStaleRunningIntegration proves the P1 fix: a job stranded in
-// 'running' by a crashed/killed worker is reclaimed once it's older than the
-// lease, without bumping attempts; a fresh 'running' job is left alone. It uses a
-// unique kind so the live 'embed' worker never races it.
+// TestClaimReclaimsStaleRunningIntegration: a job stranded in 'running' by a
+// crashed/killed worker is reclaimed once it's older than the lease, without
+// bumping attempts; a fresh 'running' job is left alone. It uses a unique kind so
+// the live 'embed' worker never races it.
 func TestClaimReclaimsStaleRunningIntegration(t *testing.T) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {

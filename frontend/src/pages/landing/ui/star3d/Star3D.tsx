@@ -1,5 +1,5 @@
 // 공유 StarCanvas 안에 박히는 별 하나(캔버스 측 합성). 별 몸체·halo는 star 엔티티에서 불러오고
-// (buildShowcaseStar / buildHalo), 여기선 그 둘을 각각 mesh로 얹는다 — 별=form, halo=캔버스가
+// (buildSingleStar / buildHalo), 여기선 그 둘을 각각 mesh로 얹는다 — 별=form, halo=캔버스가
 // 입히는 효과. 논리 좌표 (x,y,r)로 위치/크기를 지정하면(부모 박스 기준, y-down) 월드 좌표로 변환해
 // 배치한다. halo는 자전하지 않고 별 코어만 천천히 돈다. brightness/active 변화는 demand 모드에서도
 // 보이도록 invalidate로 한 프레임을 깨운다.

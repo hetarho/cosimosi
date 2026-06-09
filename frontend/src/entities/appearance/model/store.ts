@@ -10,7 +10,7 @@ const THEME_IDS = new Set<Theme>(THEMES.map((t) => t.id))
 const OBJECT_IDS = new Set<StarObject>(STAR_OBJECTS.map((o) => o.id))
 
 const STORAGE_KEY = 'cosimosi.appearance'
-const LEGACY_KEY = 'cosimosi.landing.theme' // 랜딩 전용 시절(분리 이전) 키
+const LEGACY_KEY = 'cosimosi.landing.theme' // 레거시 마이그레이션용 구 저장 키
 
 interface AppearanceState {
   theme: Theme
@@ -20,10 +20,10 @@ interface AppearanceState {
 }
 
 /**
- * 옛 키(cosimosi.landing.theme)에서 1회 승계. 분리 이전 저장본은 {theme:'deepfield'|...} 하나로
- * 색+형태를 함께 운반했고, 그 값이 새 StarObject id와 동일하므로(deepfield/aurora/liquid/ember)
- * theme이 옛 4-값이면 그걸 object로 승계해 복귀 사용자의 별 '형태'를 보존한다(theme은 vast로 폴백).
- * 새 키가 이미 있으면 persist가 처리하므로 건드리지 않는다.
+ * 구 키(cosimosi.landing.theme)에서 1회 승계한다. 구 저장본은 {theme:'deepfield'|...}로
+ * 색+형태를 함께 담았고 그 값이 StarObject id(deepfield/aurora/liquid/ember)와 같으므로,
+ * theme이 그 4-값이면 object로 승계하고 theme은 vast로 폴백한다.
+ * 새 키가 이미 있으면 건드리지 않는다.
  */
 function legacyInitial(): { theme: Theme; object: StarObject } {
   const base = { theme: DEFAULT_THEME, object: DEFAULT_OBJECT }

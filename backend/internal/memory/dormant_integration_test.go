@@ -1,15 +1,15 @@
 //go:build integration
 
-// Integration test for spec 12 ListDormant against live Postgres. Opt-in (build tag
-// `integration`). Run on the compose network:
+// Integration test for ListDormant against live Postgres. Opt-in (build tag
+// `integration`). Run on the compose network (see docker run command below).
 //
 //	docker run --rm --network cosimosi_default \
 //	  -e DATABASE_URL=postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable \
 //	  -v ${PWD}/backend:/app -w /app golang:1.26 \
 //	  go test -tags integration -run Integration -v ./internal/memory/
 //
-// Covers 3.1 (only stars before cutoff, ascending) and 3.2 (ListByUser/GetUniverse
-// still returns the WHOLE graph — dormant ones are not removed/filtered).
+// Verifies dormant stars are listed by cutoff (ascending) while ListByUser/GetUniverse
+// still returns the WHOLE graph (dormant ones are not removed/filtered).
 package memory_test
 
 import (
@@ -65,7 +65,7 @@ func TestListDormantIntegration(t *testing.T) {
 
 	repo := memory.NewRepository(pool)
 
-	// 3.1: repo cutoff at -100 days → only the 200-day-old star.
+	// repo cutoff at -100 days → only the 200-day-old star.
 	cutoff := time.Now().UTC().Add(-100 * 24 * time.Hour)
 	dormant, err := repo.ListDormant(ctx, user, cutoff)
 	if err != nil {
@@ -75,7 +75,7 @@ func TestListDormantIntegration(t *testing.T) {
 		t.Fatalf("ListDormant(repo) = %+v, want only %s", dormant, dormantID)
 	}
 
-	// 3.1 via the service (real now → ~99.66-day cutoff): same result.
+	// via the service (real now → ~99.66-day cutoff): same result.
 	svc := memory.NewService(repo, link.NewService(link.NewRepository(pool)))
 	sd, err := svc.ListDormant(ctx, user)
 	if err != nil {
@@ -85,7 +85,7 @@ func TestListDormantIntegration(t *testing.T) {
 		t.Fatalf("ListDormant(service) = %+v, want only %s", sd, dormantID)
 	}
 
-	// 3.2: the full graph is unaffected — ListByUser returns BOTH stars.
+	// the full graph is unaffected — ListByUser returns BOTH stars.
 	all, err := repo.ListByUser(ctx, user)
 	if err != nil {
 		t.Fatalf("list by user: %v", err)

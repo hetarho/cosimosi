@@ -66,7 +66,7 @@ type Universe struct {
 	Synapses []Synapse
 }
 
-// LinkDelta is one co-recall reinforcement increment for a star pair (spec 11).
+// LinkDelta is one co-recall reinforcement increment for a star pair.
 type LinkDelta struct {
 	AID, BID    string
 	DeltaWeight float64

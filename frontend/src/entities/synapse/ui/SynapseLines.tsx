@@ -1,13 +1,11 @@
-// Synapse visualization (spec 09, Architecture §3.3): all weighted edges batched
-// into ONE LineSegments2 (few draw calls — 1.1). WebGPU import path (06 uses
+// Synapse visualization: all weighted edges batched into ONE LineSegments2 (few draw calls). WebGPU import path (uses
 // WebGPURenderer; the default lines/ GLSL path would break): LineSegments2 from the
 // webgpu addon, Line2NodeMaterial from three/webgpu.
 //
 // Strength (weight·brightness) is shown via per-edge color magnitude + a per-edge
 // pulse, carried by vertexColors. Line2NodeMaterial exposes no clean per-edge
 // attribute to a TSL pulse node, so we bake intensity AND the sin-pulse into the
-// instance colors on the CPU each frame (positions update each frame too) — the
-// observable result matches the spec's emissive/alpha/pulse mapping. Per-edge
+// instance colors on the CPU each frame (positions update each frame too). Per-edge
 // thickness is unsupported (global scalar), so it's not the strength channel.
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -26,7 +24,7 @@ const LINE_WIDTH_PX = 2
 
 export interface SynapseLinesProps {
   edges: SynapseEdge[]
-  /** Star coordinate lookup (08/force-sim). Returns null for an unknown id (1.6). */
+  /** Star coordinate lookup. Returns null for an unknown id. */
   positionOf: (id: string) => [number, number, number] | null
 }
 
@@ -66,7 +64,7 @@ export function SynapseLines({ edges, positionOf }: SynapseLinesProps) {
   )
 
   // Per-frame: rewrite positions (from positionOf) + colors (intensity·pulse). No
-  // React state → no re-render (1.5). Missing coords → zero-length segment (1.6).
+  // React state → no re-render. Missing coords → zero-length segment.
   // We mutate the geometry-owned interleaved arrays (stride 6: [start xyz, end xyz]
   // per segment) directly — not a hook return — so it's a legit imperative buffer
   // update.
@@ -101,7 +99,7 @@ export function SynapseLines({ edges, positionOf }: SynapseLinesProps) {
       positions[o + 4] = b[1]
       positions[o + 5] = b[2]
       // magnitude = floored intensity (alpha) · pulse; floor keeps dormant edges
-      // visible (1.4), reinforcedRecency=0 ⇒ pulse factor 1 ⇒ static (1.3).
+      // visible, reinforcedRecency=0 ⇒ pulse factor 1 ⇒ static.
       const mag = edgeAlpha(e) * (1 + Math.sin(t * PULSE_FREQ) * pulseAmp(e))
       const r = SYNAPSE_RGB[0] * mag
       const g = SYNAPSE_RGB[1] * mag

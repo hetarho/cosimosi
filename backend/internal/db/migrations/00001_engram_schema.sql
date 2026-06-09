@@ -1,6 +1,6 @@
 -- 엔그램 우주의 영속 계층(3겹): 불변 원본(records) · 가변 별(memories) ·
 -- 임베딩(embeddings) · 시냅스 가중치 그래프(memory_links) · 비동기 큐(jobs) ·
--- 회상 강화 멱등(processed_batches). 이 DDL이 04/05/11/12가 따르는 단일 권위 스키마다.
+-- 회상 강화 멱등(processed_batches). 이 DDL이 단일 권위 스키마다.
 --
 -- 헌법: ① 원본 일기 불변(records UPDATE/DELETE 쿼리 절대 금지) ② 별·시냅스 행 삭제 금지(감쇠는 밝기만).
 
@@ -60,7 +60,7 @@ CREATE TABLE jobs (
     status      TEXT NOT NULL DEFAULT 'pending',  -- pending/running/done/failed
     attempts    INT NOT NULL DEFAULT 0,
     error       TEXT NOT NULL DEFAULT '',
-    next_run_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- 지수 백오프 예약 시각(05: now + base*2^attempts)
+    next_run_at TIMESTAMPTZ NOT NULL DEFAULT now(), -- 지수 백오프 예약 시각(now + base*2^attempts)
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );

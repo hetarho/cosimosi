@@ -27,8 +27,8 @@ func NewRepository(pool *pgxpool.Pool) Repository {
 }
 
 // RecordMemory runs record → memory → job in one transaction so a failure leaves
-// no partial rows (acceptance 1.1/1.3). With an idempotency key, an existing
-// (user_id, key) short-circuits to the stored memory id without writing (1.5).
+// no partial rows. With an idempotency key, an existing (user_id, key)
+// short-circuits to the stored memory id without writing.
 func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {

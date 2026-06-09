@@ -1,8 +1,8 @@
-// The single authoritative star store for rendering (spec 08). zustand holds
-// StarNode[] — NOT coordinates: positions come from the force-sim Float32Array,
-// subscribed by ref in the ui to avoid 60fps React re-renders (constitution §3,
-// Architecture §2.7). Spec 10 extends this with addStar/replaceStar/removeStar for
-// the optimistic record flow (this store stays the authority, keyed on StarNode).
+// The single authoritative star store for rendering. zustand holds StarNode[] —
+// NOT coordinates: positions come from the force-sim Float32Array, subscribed by ref
+// in the ui to avoid 60fps React re-renders (constitution §3, Architecture §2.7).
+// addStar/replaceStar/removeStar drive the optimistic record flow (this store stays
+// the authority, keyed on StarNode).
 import { create } from 'zustand'
 import type { StarNode } from './types'
 
@@ -11,7 +11,7 @@ interface MemoryState {
   selectedId: string | null
   setStars: (stars: StarNode[]) => void
   select: (id: string | null) => void
-  // ── spec 10: optimistic record flow (StarNode-based) ──
+  // ── optimistic record flow (StarNode-based) ──
   /** Append a new star (e.g. an optimistic temp star); index = its slot. */
   addStar: (node: StarNode) => void
   /** Swap a temp star for the server-confirmed one, keeping its slot index. */

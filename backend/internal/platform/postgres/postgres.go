@@ -16,7 +16,7 @@ func New(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("pgxpool.ParseConfig: %w", err)
 	}
 	// Register pgvector types on every new connection so `vector` columns decode
-	// to/from pgvector.Vector (Architecture §4.5). Runs once per pooled conn.
+	// to/from pgvector.Vector. Runs once per pooled conn.
 	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		return pgxvec.RegisterTypes(ctx, conn)
 	}

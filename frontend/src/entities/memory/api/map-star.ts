@@ -1,7 +1,7 @@
-// proto Star → domain StarNode (spec 10). Pure: no three/React/DOM (constitution
-// §4·3.2). Coordinates are NOT mapped — they emerge from the client force-sim
-// (constitution §3, acceptance 3.1). seed is derived from the memory id via the
-// shared seedFromId (single source, 08), so the same id always yields the same star.
+// proto Star → domain StarNode. Pure: no three/React/DOM (constitution §4·3.2).
+// Coordinates are NOT mapped — they emerge from the client force-sim (constitution
+// §3, acceptance 3.1). seed is derived from the memory id via the shared seedFromId,
+// so the same id always yields the same star.
 import { Mood as ProtoMood, type Star } from '@/shared/api/gen/cosimosi/v1/memory_pb'
 import type { Mood } from '@/shared/config'
 import { seedFromId } from '../model/seed'

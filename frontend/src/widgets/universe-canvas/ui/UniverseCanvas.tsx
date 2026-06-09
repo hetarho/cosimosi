@@ -79,7 +79,7 @@ const NEBULA_ZOOM_SPEED = 0.12 // wheel dolly sensitivity (fraction of radius pe
 // Recall-mode flight feel. Forward/back thrust uses a world-space VELOCITY → inertia (coasts on
 // release) plus acceleration (eases up to BASE_SPEED·boost while held). Shake is a tiny rig wobble.
 const BASE_SPEED = 16 // world units/sec cruise (before the hold-boost)
-const MAX_BOOST = 2 // hold thrust → up to 2× cruise (가속도 최대 2배)
+const MAX_BOOST = 2 // hold thrust → up to 2× cruise
 const BOOST_RAMP = 1.4 // seconds of holding to reach MAX_BOOST
 const ACCEL_K = 2.4 // velocity ease toward the target speed while thrusting (1/s)
 const DRAG_K = 4 // velocity ease toward 0 on release (1/s) — firm "regen braking" (τ≈0.25s, settles <1s)
@@ -100,7 +100,7 @@ const SHAKE_FREQ_HIT = 1.6 // added at peak jolt
 // Look-rotation feel (시선 회전) — mirrors the thrust: a TARGET angular velocity the actual eases
 // toward (가속도, ramping faster the longer you hold via lookBoost) and coasts to a stop on release
 // (관성). The per-frame yaw/pitch is applied about the live LOCAL axes so it composes with free-look.
-const LOOK_BASE_RATE = 1.4 // rad/s base turn rate (the old fixed look speed)
+const LOOK_BASE_RATE = 1.4 // rad/s base turn rate
 const LOOK_MAX_BOOST = 2.2 // hold longer → up to 2.2× turn rate (가속도)
 const LOOK_BOOST_RAMP = 1.2 // seconds of holding to reach LOOK_MAX_BOOST
 const LOOK_ACCEL_K = 5 // angular-velocity ease toward target while turning (1/s)
@@ -113,7 +113,7 @@ const FOCUS_K = 4 // aim-lerp rate (1/s) — how fast the gaze swings onto a sel
  *   - recall (우주선): UNCHANGED — driven entirely by the D-pad (NavController owns position +
  *     look); OrbitControls' own rotate/zoom are off so they don't fight the controller. Pan is
  *     never wanted. controls.enabled stays true so NavController's same-delta shifts are
- *     reproduced by update() exactly as before.
+ *     reproduced by update().
  *   - nebula (자유 관찰): OrbitControls' rotate/zoom are off too, and we DISABLE the controls
  *     entirely (enabled=false) — this stops drei's per-frame update() loop, so its [0,PI] polar
  *     clamp + world-up re-alignment can no longer snap back the free orbit. The custom
@@ -148,7 +148,7 @@ function CameraRig() {
   )
 }
 
-/** nebula-mode FREE rotation (issue #1 fix). A custom arcball: a one-finger (or left-mouse) drag
+/** nebula-mode FREE rotation. A custom arcball: a one-finger (or left-mouse) drag
  *  yaws about the camera's LOCAL up and pitches about its LOCAL right — both re-read from the live
  *  camera basis each frame — so there is NO world-up pole and no "stuck spot"; you can tumble fully
  *  over the top/bottom and keep going. A flick keeps spinning, decaying via NEBULA_DAMP. Wheel
@@ -164,7 +164,6 @@ function CameraRig() {
  *  pole). On LEAVING nebula (active→false — a mode toggle, a fly-to, or a transition flight) the
  *  effect cleanup RE-LEVELS camera.up to world-up, so the rolled frame can't leak into recall /
  *  fly-to / the guided flights, which all consume camera.up via OrbitControls.update()→lookAt
- *  (old nebula was always level, so this keeps those horizons exactly as before).
  *
  *  A strict no-op outside nebula AND during any guided flight (active = nebula && !transitioning):
  *  there OrbitControls is enabled and owns the camera. Listeners attach to the WebGL canvas. */
@@ -285,7 +284,7 @@ function NebulaOrbitController() {
       pend.current.yaw = 0
       pend.current.pitch = 0
       // RE-LEVEL: shed any roll the free arcball accrued so the guided flights + recall (which read
-      // camera.up via OrbitControls.update()→lookAt) start upright, exactly as the old nebula did.
+      // camera.up via OrbitControls.update()→lookAt) start upright.
       camera.up.set(0, 1, 0)
     }
   }, [active, gl, camera])
@@ -719,7 +718,7 @@ const FOCUS_UP = new THREE.Vector3(0, 1, 0) // world up — re-leveled into duri
  *   - nebula (원거리): also ORBIT the camera to the star's radial side at the SAME viewing distance
  *     (a rotation, not a surprise zoom) and re-level the horizon, so the star swings to a clean
  *     head-on framing — in FRONT, between the camera and the cloud — instead of being aimed at
- *     across the field from an arbitrary angle (the old awkwardness).
+ *     across the field from an arbitrary angle.
  *  NavController (recall) and NebulaOrbitController (nebula) stand down while selectedId is set, so
  *  nothing fights this. A no-op during a guided flight (transitioning) — FlyTo/ModeTransition own
  *  the camera then; this engages the instant they finish. Releases when the panel closes (select(null)).

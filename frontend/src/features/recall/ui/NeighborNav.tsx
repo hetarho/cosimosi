@@ -3,9 +3,8 @@
 // neighbor selects it → MemoryPanel re-dwells → that ≥2s view pairs with this one
 // (co-recall, 1.3). Weight drives a width hint (thicker = stronger link).
 //
-// NOTE: the spec's T018 also calls for a camera fly-to on click; that needs a
-// camera-target mechanism the canvas doesn't expose yet (useCameraMode only toggles
-// nebula/recall), so navigation here is selection-only — fly-to is deferred to 12.
+// Selection-only: the canvas exposes no camera-target mechanism (useCameraMode only
+// toggles nebula/recall), so there is no fly-to on click.
 import { useMemo } from 'react'
 import { neighborsOf, useSynapseStore } from '@/entities/synapse'
 import { useMemoryStore } from '@/entities/memory'

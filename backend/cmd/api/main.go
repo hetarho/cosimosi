@@ -40,7 +40,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Production error tracking (spec 14 §9). No DSN → skipped entirely, so local/dev
+	// Production error tracking. No DSN → skipped entirely, so local/dev
 	// and tests are unaffected. Handler panics are captured by the sentryhttp wrap below.
 	sentryEnabled := false
 	if cfg.SentryDSN != "" {
@@ -70,14 +70,14 @@ func main() {
 
 	// Compose the feature graph: link read service feeds the memory service's
 	// GetUniverse; the memory handler is the real MemoryService implementation
-	// mounted by rpcserver (replacing spec 02's stub).
+	// mounted by rpcserver.
 	linkSvc := link.NewService(link.NewRepository(db))
 	memorySvc := memory.NewService(memory.NewRepository(db), linkSvc)
 	memoryHandler := memory.NewHandler(memorySvc)
 
-	// Async embedding worker (spec 05): consumes the jobs the RecordMemory
+	// Async embedding worker: consumes the jobs the RecordMemory
 	// transaction enqueues, fills embeddings, and writes initial semantic synapses.
-	// MVP runs it as a goroutine in this process (Architecture §4.6); it shares the
+	// It runs as a goroutine in this process and shares the
 	// signal-cancelled ctx so it stops on shutdown.
 	embedder, err := ai.NewEmbedder(cfg)
 	if err != nil {
