@@ -171,7 +171,7 @@ export function HomePage() {
   }, [])
 
   return (
-    <div className="fixed inset-0" data-lenis-prevent>
+    <div className="universe-page fixed inset-0" data-lenis-prevent>
       <UniverseCanvas />
       {/* Film grain over the canvas (DOM overlay, not the bloom pipeline) — sits above the
           canvas but before the HUD, and is pointer-events:none, so HUD stays interactive. */}

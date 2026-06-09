@@ -64,13 +64,22 @@ const SHIP_BOUNDARY = STAR_SHELL_OUTER * 0.85 // ~39 — stop short of the empty
 const SHIP_LOOK_AHEAD = 24 // recentre: how far ahead of the origin the look target sits
 const NEBULA_FRAME_DIST = 110 // fallback reframe distance (only when there's no saved overview pose)
 
+// nebula free-orbit (자유 관찰): a custom arcball rotation that NEVER hits a pole. Drag yaws
+// about the camera's LOCAL up and pitches about its LOCAL right — both derived from the live
+// camera basis each frame — so there's no world-up alignment and no [0,PI] phi clamp to get
+// stuck on. Distance (radius from target) is dollied by wheel/pinch, clamped to the same
+// 58/1500 range OrbitControls used.
+const NEBULA_ROTATE_SPEED = 2.4 // radians of orbit per full-canvas-width drag
+const NEBULA_DAMP = 9 // 1/s — angular-velocity decay (inertial spin-down on release)
+const NEBULA_ZOOM_SPEED = 0.12 // wheel dolly sensitivity (fraction of radius per notch)
+
 // Recall-mode flight feel. Forward/back thrust uses a world-space VELOCITY → inertia (coasts on
 // release) plus acceleration (eases up to BASE_SPEED·boost while held). Shake is a tiny rig wobble.
 const BASE_SPEED = 16 // world units/sec cruise (before the hold-boost)
 const MAX_BOOST = 2 // hold thrust → up to 2× cruise (가속도 최대 2배)
 const BOOST_RAMP = 1.4 // seconds of holding to reach MAX_BOOST
 const ACCEL_K = 2.4 // velocity ease toward the target speed while thrusting (1/s)
-const DRAG_K = 0.9 // velocity ease toward 0 on release (1/s) — the coasting inertia
+const DRAG_K = 4 // velocity ease toward 0 on release (1/s) — firm "regen braking" (τ≈0.25s, settles <1s)
 const SPEED_REF = BASE_SPEED * MAX_BOOST // normaliser for the speed-scaled shake
 const RECOIL = 1.2 // inward bounce on wall contact ("hit a wall")
 const WALL_REARM = 3 // must drift this far back inside before another wall jolt can fire
@@ -85,32 +94,242 @@ const SHAKE_FREQ_IDLE = 0.32 // idle frequency scale (slow left-right sway)
 const SHAKE_FREQ_MOVE = 1.25 // added at full speed
 const SHAKE_FREQ_HIT = 1.6 // added at peak jolt
 
-/** OrbitControls gated by mode. nebula = wide overview: zoom-out free (frame the whole shell),
- *  zoom-IN capped at OBSERVE_MIN_DIST so you stay outside the cloud. recall = close navigation
- *  via the HUD D-pad (NavController), bounded by SHIP_BOUNDARY. While a mode transition is in
- *  flight the distance clamps are relaxed declaratively (so the flight can pass through the
- *  forbidden zone) and snap back on arrival. makeDefault so the bloom pass + fly-to + mode
- *  transitions share one camera. */
+/** OrbitControls stays mounted + makeDefault in EVERY mode, so `s.controls` (its .target +
+ *  .update()) is a single stable instance that NavController / FlyTo / ModeTransition can rely on
+ *  with zero null/swap windows. What changes per mode:
+ *   - recall (우주선): UNCHANGED — driven entirely by the D-pad (NavController owns position +
+ *     look); OrbitControls' own rotate/zoom are off so they don't fight the controller. Pan is
+ *     never wanted. controls.enabled stays true so NavController's same-delta shifts are
+ *     reproduced by update() exactly as before.
+ *   - nebula (자유 관찰): OrbitControls' rotate/zoom are off too, and we DISABLE the controls
+ *     entirely (enabled=false) — this stops drei's per-frame update() loop, so its [0,PI] polar
+ *     clamp + world-up re-alignment can no longer snap back the free orbit. The custom
+ *     NebulaOrbitController owns rotation/zoom this whole time (arcball about local axes → no pole).
+ *   - during a transition flight: controls are RE-ENABLED (controlsEnabled becomes true) so the
+ *     FlyTo / ModeTransition lerp can keep calling update() to point the camera at the lerped
+ *     target, and the distance clamps are relaxed so the flight can cross the forbidden zone.
+ *  makeDefault so the bloom pass + fly-to + mode transitions share one camera. */
 function CameraRig() {
   const mode = useCameraMode((s) => s.mode)
   const transitioning = useCameraMode((s) => s.transitioning)
   const minDistance = transitioning ? 0.01 : mode === 'nebula' ? OBSERVE_MIN_DIST : 1
   const maxDistance = transitioning ? 1e6 : mode === 'nebula' ? 1500 : 70
-  // recall (우주선) is driven ENTIRELY by the D-pad (NavController owns position + look), so
-  // mouse/drag orbit + scroll-zoom are disabled there — otherwise they fight the controller.
-  // Pan is never wanted. During a transition flight, input is off too so it can't grab the lerp.
-  const interactive = mode === 'nebula' && !transitioning
+  // OrbitControls' OWN rotate/zoom are never used now (recall = D-pad, nebula = custom orbit);
+  // it only provides the shared target + update() solve. Keep them false so no built-in drag can
+  // grab any mode.
+  // `enabled`: in nebula (non-transition) we turn the whole controller OFF so its per-frame
+  // update() can't re-clamp the pole / re-flatten camera.up under the custom orbit. In recall and
+  // during ANY transition flight it must stay ON (NavController + the lerps depend on update()).
+  const controlsEnabled = transitioning || mode !== 'nebula'
   return (
     <OrbitControls
       makeDefault
+      enabled={controlsEnabled}
       enableDamping
-      enableRotate={interactive}
-      enableZoom={interactive}
+      enableRotate={false}
+      enableZoom={false}
       enablePan={false}
       minDistance={minDistance}
       maxDistance={maxDistance}
     />
   )
+}
+
+/** nebula-mode FREE rotation (issue #1 fix). A custom arcball: a one-finger (or left-mouse) drag
+ *  yaws about the camera's LOCAL up and pitches about its LOCAL right — both re-read from the live
+ *  camera basis each frame — so there is NO world-up pole and no "stuck spot"; you can tumble fully
+ *  over the top/bottom and keep going. A flick keeps spinning, decaying via NEBULA_DAMP. Wheel
+ *  (desktop) and two-finger pinch (touch) dolly along the view ray, clamped to the same 58..1500
+ *  radius nebula used. Pan is intentionally absent.
+ *
+ *  Coupling: OrbitControls stays makeDefault but CameraRig sets it enabled=false in nebula, so its
+ *  per-frame update() (and its [0,PI] polar clamp / world-up re-alignment) is dormant and never
+ *  fights us — we drive camera.position + camera.up + lookAt(target) directly, orbiting the shared
+ *  (fixed) controls.target.
+ *
+ *  Roll containment: the arcball necessarily rolls camera.up off world-up (that's what removes the
+ *  pole). On LEAVING nebula (active→false — a mode toggle, a fly-to, or a transition flight) the
+ *  effect cleanup RE-LEVELS camera.up to world-up, so the rolled frame can't leak into recall /
+ *  fly-to / the guided flights, which all consume camera.up via OrbitControls.update()→lookAt
+ *  (old nebula was always level, so this keeps those horizons exactly as before).
+ *
+ *  A strict no-op outside nebula AND during any guided flight (active = nebula && !transitioning):
+ *  there OrbitControls is enabled and owns the camera. Listeners attach to the WebGL canvas. */
+function NebulaOrbitController() {
+  const mode = useCameraMode((s) => s.mode)
+  const transitioning = useCameraMode((s) => s.transitioning)
+  const camera = useThree((s) => s.camera)
+  const gl = useThree((s) => s.gl)
+  const controls = useThree((s) => s.controls) as
+    | { target: THREE.Vector3; update: () => void }
+    | null
+
+  const pending = useRef({ yaw: 0, pitch: 0 }) // drag delta accumulated since last frame (radians)
+  const vel = useRef({ yaw: 0, pitch: 0 }) // inertial angular velocity (rad/s) after release
+  const dragging = useRef(false)
+  const lastXY = useRef({ x: 0, y: 0 })
+  const pointers = useRef(new Map<number, { x: number; y: number }>()) // live pointers (multi-touch)
+  const pinchDist = useRef(0) // previous two-finger distance (0 = not pinching)
+  const pendingZoom = useRef(0) // dolly accumulated since last frame (fraction of radius)
+  const active = mode === 'nebula' && !transitioning
+
+  const right = useRef(new THREE.Vector3())
+  const up = useRef(new THREE.Vector3())
+  const offset = useRef(new THREE.Vector3())
+  const q = useRef(new THREE.Quaternion())
+
+  useEffect(() => {
+    if (!active) return
+    const el = gl.domElement
+    const span = () => Math.max(1, el.clientWidth || el.width)
+    // Capture refs into locals so the cleanup reads the same objects (react-hooks/exhaustive-deps).
+    const pts = pointers.current
+    const drag = dragging
+    const pend = pending
+    const vRef = vel
+    const pinch = pinchDist
+    const zoom = pendingZoom
+    const last = lastXY
+    const twoFingerDist = () => {
+      const it = pts.values()
+      const a = it.next().value
+      const b = it.next().value
+      return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0
+    }
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return // mouse: left-drag only
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      el.setPointerCapture?.(e.pointerId)
+      if (pts.size === 1) {
+        drag.current = true
+        vRef.current.yaw = 0
+        vRef.current.pitch = 0
+        pend.current.yaw = 0
+        pend.current.pitch = 0
+        last.current = { x: e.clientX, y: e.clientY }
+      } else if (pts.size === 2) {
+        drag.current = false // two fingers → pinch-zoom, suspend rotate
+        pinch.current = twoFingerDist()
+      }
+    }
+    const onMove = (e: PointerEvent) => {
+      const p = pts.get(e.pointerId)
+      if (!p) return
+      p.x = e.clientX
+      p.y = e.clientY
+      if (pts.size >= 2) {
+        // PINCH: spreading fingers (distance grows) zooms IN (radius shrinks).
+        const d = twoFingerDist()
+        if (pinch.current > 0 && d > 0) zoom.current += pinch.current / d - 1
+        pinch.current = d
+      } else if (drag.current) {
+        // Accumulate the raw pointer delta (handles multiple moves per frame) into a 1:1 orbit.
+        const s = span()
+        pend.current.yaw += (-(e.clientX - last.current.x) / s) * NEBULA_ROTATE_SPEED
+        pend.current.pitch += (-(e.clientY - last.current.y) / s) * NEBULA_ROTATE_SPEED
+        last.current = { x: e.clientX, y: e.clientY }
+      }
+    }
+    const onUp = (e: PointerEvent) => {
+      pts.delete(e.pointerId)
+      el.releasePointerCapture?.(e.pointerId)
+      if (pts.size === 1) {
+        // dropped from pinch back to one finger → resume rotate from the survivor (no jump)
+        pinch.current = 0
+        const survivor = pts.values().next().value
+        if (survivor) last.current = { x: survivor.x, y: survivor.y }
+        drag.current = true
+      } else if (pts.size === 0) {
+        drag.current = false
+        pinch.current = 0
+      }
+    }
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      zoom.current += Math.sign(e.deltaY) * NEBULA_ZOOM_SPEED
+    }
+
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointercancel', onUp)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('wheel', onWheel)
+      pts.clear()
+      drag.current = false
+      pinch.current = 0
+      zoom.current = 0
+      vRef.current.yaw = 0
+      vRef.current.pitch = 0
+      pend.current.yaw = 0
+      pend.current.pitch = 0
+      // RE-LEVEL: shed any roll the free arcball accrued so the guided flights + recall (which read
+      // camera.up via OrbitControls.update()→lookAt) start upright, exactly as the old nebula did.
+      camera.up.set(0, 1, 0)
+    }
+  }, [active, gl, camera])
+
+  useFrame((_, dt) => {
+    if (!active || !controls) return
+    const target = controls.target
+    offset.current.subVectors(camera.position, target)
+
+    // ROTATE — 1:1 while dragging; coast (decaying) after release. Angles are frame-rate independent.
+    let yaw: number
+    let pitch: number
+    if (dragging.current) {
+      yaw = pending.current.yaw
+      pitch = pending.current.pitch
+      pending.current.yaw = 0
+      pending.current.pitch = 0
+      if (dt > 0) {
+        vel.current.yaw = yaw / dt // remember this frame's rate → flick inertia on release
+        vel.current.pitch = pitch / dt
+      }
+    } else {
+      yaw = vel.current.yaw * dt
+      pitch = vel.current.pitch * dt
+      const decay = Math.exp(-dt * NEBULA_DAMP)
+      vel.current.yaw *= decay
+      vel.current.pitch *= decay
+      if (Math.abs(vel.current.yaw) < 1e-4) vel.current.yaw = 0
+      if (Math.abs(vel.current.pitch) < 1e-4) vel.current.pitch = 0
+    }
+    if (yaw !== 0 || pitch !== 0) {
+      // LOCAL right/up from the live camera basis → true arcball, never re-aligns to world up.
+      right.current.setFromMatrixColumn(camera.matrix, 0).normalize()
+      up.current.setFromMatrixColumn(camera.matrix, 1).normalize()
+      q.current.setFromAxisAngle(up.current, yaw)
+      offset.current.applyQuaternion(q.current)
+      camera.up.applyQuaternion(q.current)
+      q.current.setFromAxisAngle(right.current, pitch)
+      offset.current.applyQuaternion(q.current)
+      camera.up.applyQuaternion(q.current)
+    }
+
+    // DOLLY (wheel / two-finger pinch), clamped to the nebula 58..1500 radius range.
+    if (pendingZoom.current !== 0) {
+      const r = offset.current.length()
+      offset.current.setLength(
+        THREE.MathUtils.clamp(r * (1 + pendingZoom.current), OBSERVE_MIN_DIST, 1500),
+      )
+      pendingZoom.current = 0
+    }
+
+    // Drive the camera directly — OrbitControls is disabled in nebula, so no update() is needed
+    // (calling it would only re-solve the same pose). We own position + up + aim here.
+    camera.position.copy(target).add(offset.current)
+    camera.up.normalize()
+    camera.lookAt(target)
+  })
+
+  return null
 }
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0)
@@ -466,6 +685,7 @@ export function UniverseCanvas() {
       <UniverseSynapses />
       <StarField />
       <CameraRig />
+      <NebulaOrbitController />
       <NavController />
       <FlyToController />
       <ModeTransitionController />

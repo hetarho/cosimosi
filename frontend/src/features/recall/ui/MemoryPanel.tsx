@@ -79,7 +79,9 @@ function RecallView({ memoryId }: { memoryId: string }) {
             <span>·</span>
             <span>강도 {record.intensity.toFixed(2)}</span>
           </div>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85">{record.body}</p>
+          <p className="selectable whitespace-pre-wrap text-sm leading-relaxed text-white/85">
+            {record.body}
+          </p>
         </article>
       )}
 
