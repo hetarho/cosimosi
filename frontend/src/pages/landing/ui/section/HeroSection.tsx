@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { ArrowDown } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { enterDemoMode } from '@/shared/demo'
+import { enterDemoMode } from '@/shared/lib/demo'
 import { useScrollToSection } from '../../lib/scroll'
 import { themeAccent, useAppearance } from '@/entities/appearance'
 import { ThemedStar } from '../star3d'

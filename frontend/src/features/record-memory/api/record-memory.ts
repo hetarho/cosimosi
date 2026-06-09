@@ -2,8 +2,8 @@
 // interceptor attaches the token). The server returns only memory_id — the client
 // already holds body/mood for the optimistic star (Architecture §4.6).
 import { memoryClient } from '@/shared/api'
-import { isDemoMode, demoAddRecord } from '@/shared/demo'
-import type { Mood } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import { isDemoMode, demoAddRecord } from '@/shared/lib/demo'
+import type { Mood } from '@/shared/api'
 
 export interface RecordMemoryInput {
   body: string

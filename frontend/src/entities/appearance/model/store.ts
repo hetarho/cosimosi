@@ -1,5 +1,7 @@
 // 앱 전역 시각 설정 store(테마 + 별 오브제 형태). 웹 전용 사용자 선호라 localStorage에 지속한다.
 // 랜딩과 우주(universe) 양쪽이 이 entity를 구독해 같은 테마/형태를 반영한다.
+// 위치 근거: §2.7상 theme은 app 후보지만, object(StarObject)가 도메인-비주얼이라 둘을 한 쌍으로 묶어
+// 여기(entities/appearance) 둔다 — 여러 페이지가 같은 entity로 함께 구독한다. app 분리는 의도적으로 안 함.
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type StarObject, STAR_OBJECTS, DEFAULT_OBJECT } from '@/entities/star/@x/appearance'

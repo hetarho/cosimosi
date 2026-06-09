@@ -8,7 +8,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Sparkles, ArrowRight, Mail, Rocket } from 'lucide-react'
 import { GlassCard, Section } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
-import { enterDemoMode } from '@/shared/demo'
+import { enterDemoMode } from '@/shared/lib/demo'
 
 // 대기자 등록 폼 스키마 (zod v4)
 const schema = z.object({

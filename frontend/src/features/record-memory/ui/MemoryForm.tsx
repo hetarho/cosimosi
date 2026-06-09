@@ -1,7 +1,7 @@
 // Compose form (spec 10) — a 2D HUD, rendered OUTSIDE the R3F canvas (no DOM in the
 // scene, Architecture §3.1). Body + mood + intensity + date → submit drives the
 // optimistic record flow.
-import { Mood } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import { Mood } from '@/shared/api'
 import { useDraftStore } from '../model/draft-store'
 import { useRecordMemory } from '../model/use-record-memory'
 

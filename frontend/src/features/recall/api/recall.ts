@@ -1,7 +1,7 @@
 // Recall RPCs via the single shared Connect client (02). unary only (constitution §6).
 import { memoryClient } from '@/shared/api'
-import { isDemoMode, demoRecall } from '@/shared/demo'
-import type { Record as RecordMsg } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import { isDemoMode, demoRecall } from '@/shared/lib/demo'
+import type { Record as RecordMsg } from '@/shared/api'
 
 /** Re-ignite a star and read its immutable original Record (read-only panel). */
 export async function recallMemory(memoryId: string): Promise<RecordMsg | undefined> {

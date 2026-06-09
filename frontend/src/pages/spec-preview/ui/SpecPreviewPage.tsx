@@ -13,7 +13,7 @@ import {
   Mood,
   type GetUniverseResponse,
   type Star,
-} from '@/shared/api/gen/cosimosi/v1/memory_pb'
+} from '@/shared/api'
 import {
   alpha as simAlpha,
   createSim,

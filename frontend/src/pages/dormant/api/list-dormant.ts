@@ -3,7 +3,7 @@
 // client-side with the same starBrightness (08) used in the canvas (no decay math on
 // the server). The response is Star (no body) — the original is fetched on recall (11).
 import { memoryClient } from '@/shared/api'
-import { isDemoMode, demoStars } from '@/shared/demo'
+import { isDemoMode, demoStars } from '@/shared/lib/demo'
 import { isDormant, moodFromProto, starBrightness, type Mood } from '@/entities/memory'
 
 export interface DormantStar {

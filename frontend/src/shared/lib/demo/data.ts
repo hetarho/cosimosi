@@ -15,7 +15,7 @@ import {
   type Record as RecordMsg,
   type Star,
   type Synapse,
-} from '@/shared/api/gen/cosimosi/v1/memory_pb'
+} from '@/shared/api'
 
 const DAY_MS = 86_400_000
 

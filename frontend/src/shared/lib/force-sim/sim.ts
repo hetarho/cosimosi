@@ -3,7 +3,7 @@
 // the weighted graph (constitution §3). Existing stars are pinned; only a new star
 // and its 1-hop neighbors move (partial placement), so adding a memory doesn't
 // rearrange the whole universe (concept §결정1).
-import { mulberry32 } from '@/shared/lib/prng'
+import { mulberry32 } from '../prng'
 import type { SimGraph, SimParams } from './types'
 import { accumulateRepulsion, buildOctree } from './octree'
 

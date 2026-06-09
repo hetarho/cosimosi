@@ -2,7 +2,7 @@
 // Coordinates are NOT mapped — they emerge from the client force-sim (constitution
 // §3, acceptance 3.1). seed is derived from the memory id via the shared seedFromId,
 // so the same id always yields the same star.
-import { Mood as ProtoMood, type Star } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import { Mood as ProtoMood, type Star } from '@/shared/api'
 import type { Mood } from '@/shared/config'
 import { seedFromId } from '../model/seed'
 import type { Memory, StarNode } from '../model/types'

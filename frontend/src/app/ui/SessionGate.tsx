@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { exitDemoMode, isDemoMode, resetDemo } from '@/shared/demo'
+import { exitDemoMode, isDemoMode, resetDemo } from '@/shared/lib/demo'
 import { useAuthStore } from '../model/auth-store'
 import { SignInScreen } from './SignInScreen'
 

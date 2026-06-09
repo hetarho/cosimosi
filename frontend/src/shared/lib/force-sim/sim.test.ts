@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mulberry32 } from '@/shared/lib/prng'
+import { mulberry32 } from '../prng'
 import { alpha, createSim, isSettled, positions, tick } from './sim'
 import type { SimGraph, SimNode } from './types'
 

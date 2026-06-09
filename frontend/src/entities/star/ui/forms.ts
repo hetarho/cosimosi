@@ -32,7 +32,7 @@ import {
   mx_noise_float,
   mx_fractal_noise_float,
 } from 'three/tsl'
-import type { StarObject } from './types'
+import type { StarObject } from '../model/types'
 
 /** Rodrigues 회전 — 단위축 k를 중심으로 노드 v를 angle(rad)만큼 돈다. 셰이더에서 자전을 만든다.
  *  입력은 내부에서 vec3()/float()로 감싼다(TS 타입엔 .mul/.add가 없어 감싸야 체이닝 가능 — 파일 관용구). */

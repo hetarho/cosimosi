@@ -30,7 +30,7 @@ import {
   mx_noise_float,
   mx_fractal_noise_float,
 } from 'three/tsl'
-import type { StarObject } from './types'
+import type { StarObject } from '../model/types'
 
 const makeColorNode = (hex: string) => vec3(uniform(new THREE.Color(hex)) as never)
 type V3 = ReturnType<typeof makeColorNode>

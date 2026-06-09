@@ -14,7 +14,7 @@ import { DEFAULT_OBJECT } from '../model/kinds'
 import type { StarObject } from '../model/types'
 import { moodRgb } from '@/shared/config'
 import { fibonacciStarPosition } from '@/shared/lib'
-import { buildStarForm } from '../model/forms'
+import { buildStarForm } from './forms'
 
 /** intensity (0..1) → instance scale. */
 function sizeFor(intensity: number): number {

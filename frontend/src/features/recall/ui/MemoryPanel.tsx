@@ -4,7 +4,7 @@
 // (last_recalled_at=now) AND returns the immutable original Record (read-only, no edit
 // path — constitution §1). The same 2s threshold accumulates the co-recall pair (1.3).
 import { useEffect, useState } from 'react'
-import type { Record as RecordMsg } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import type { Record as RecordMsg } from '@/shared/api'
 import { moodFromProto, useMemoryStore } from '@/entities/memory'
 import { moodLabel } from '@/shared/config'
 import { recallMemory } from '../api/recall'

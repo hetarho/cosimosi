@@ -2,7 +2,7 @@
 // they are never put in the render store (constitution §1: the immutable original
 // is records; the star carries no body/date — Architecture §2.7).
 import { create } from 'zustand'
-import { Mood } from '@/shared/api/gen/cosimosi/v1/memory_pb'
+import { Mood } from '@/shared/api'
 
 export type SubmitStatus = 'idle' | 'submitting' | 'error'
 
