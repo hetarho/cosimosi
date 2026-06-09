@@ -710,17 +710,26 @@ function ModeTransitionController() {
   return null
 }
 
-/** Gaze-lock (focus): when a star is SELECTED — a direct click (recall panel, 11) or a fly-to
- *  arrival — lerp the orbit target onto that star so the camera turns IN PLACE to face it
- *  (position fixed) and holds it centred while the panel is open. NavController (recall) and
- *  NebulaOrbitController (nebula) stand down while selectedId is set, so nothing fights this aim.
- *  A no-op during a guided flight (transitioning) — FlyTo/ModeTransition own the camera then; this
- *  engages the instant they finish with selectedId set. Releases when the panel closes (select(null)).
+const FOCUS_UP = new THREE.Vector3(0, 1, 0) // world up — re-leveled into during a nebula framing
+
+/** Gaze-lock + framing (focus): when a star is SELECTED — a direct click (recall panel, 11) or a
+ *  fly-to arrival — bring it to front-centre and hold it while the panel is open. Mode-specific:
+ *   - recall (근접): AIM-LOCK only — lerp the orbit target onto the star so the camera turns IN
+ *     PLACE to face it (position fixed). Feels right when you're already among the stars.
+ *   - nebula (원거리): also ORBIT the camera to the star's radial side at the SAME viewing distance
+ *     (a rotation, not a surprise zoom) and re-level the horizon, so the star swings to a clean
+ *     head-on framing — in FRONT, between the camera and the cloud — instead of being aimed at
+ *     across the field from an arbitrary angle (the old awkwardness).
+ *  NavController (recall) and NebulaOrbitController (nebula) stand down while selectedId is set, so
+ *  nothing fights this. A no-op during a guided flight (transitioning) — FlyTo/ModeTransition own
+ *  the camera then; this engages the instant they finish. Releases when the panel closes (select(null)).
  *  Reads the SAME fibonacci layout as StarField + fly-to so it lands on the rendered star. */
 function FocusController() {
   const selectedId = useMemoryStore((s) => s.selectedId)
   const stars = useMemoryStore((s) => s.stars)
+  const mode = useCameraMode((s) => s.mode)
   const transitioning = useCameraMode((s) => s.transitioning)
+  const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
     | null
@@ -732,11 +741,35 @@ function FocusController() {
     return new THREE.Vector3(x, y, z)
   }, [selectedId, stars])
 
+  // Nebula framing distance, captured at selection: orbit to the star at the SAME distance the user
+  // was viewing from (a rotation, not a surprise zoom). Clamped to the nebula range for safety.
+  const radiusRef = useRef(OBSERVE_MIN_DIST)
+  const desired = useRef(new THREE.Vector3())
+  const dir = useRef(new THREE.Vector3())
+  useEffect(() => {
+    if (!selectedId || !controls) return
+    radiusRef.current = THREE.MathUtils.clamp(
+      camera.position.distanceTo(controls.target),
+      OBSERVE_MIN_DIST,
+      1500,
+    )
+  }, [selectedId, camera, controls])
+
   useFrame((_, dt) => {
     if (!targetPos || !controls || transitioning) return
-    // Aim-lock: lerp the orbit target onto the star. OrbitControls.update() keeps the camera
-    // POSITION fixed and re-points it at the moved target → the gaze swings in place onto the star.
-    controls.target.lerp(targetPos, 1 - Math.exp(-dt * FOCUS_K))
+    const k = 1 - Math.exp(-dt * FOCUS_K)
+    // nebula (원거리): orbit the camera onto the star's radial line at the captured distance →
+    // camera = star + starDir·D, so the star sits in FRONT with the cloud behind it. Re-level the
+    // horizon for a clean head-on framing (skip near vertical, where lookAt's up is singular).
+    if (mode === 'nebula' && targetPos.lengthSq() > 1e-6) {
+      desired.current.copy(targetPos).normalize().multiplyScalar(radiusRef.current).add(targetPos)
+      camera.position.lerp(desired.current, k)
+      dir.current.subVectors(targetPos, camera.position).normalize()
+      if (Math.abs(dir.current.y) < 0.985) camera.up.lerp(FOCUS_UP, k).normalize()
+    }
+    // AIM-LOCK (both modes): lerp the orbit target onto the star. OrbitControls.update() repoints
+    // the camera at it (recall: position fixed → turns in place; nebula: at the orbited position).
+    controls.target.lerp(targetPos, k)
     controls.update()
   })
 
