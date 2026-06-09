@@ -22,8 +22,10 @@ import {
   clamp,
   pow,
   sin,
+  cos,
   max,
   dot,
+  cross,
   normalize,
   mx_noise_float,
   mx_fractal_noise_float,
@@ -41,6 +43,19 @@ interface U {
 const ftime = (u: U) => float(u.time as never)
 const fbright = (u: U) => float(u.bright as never)
 
+/** Rodrigues 회전 — 단위축 k를 중심으로 노드 v를 angle(rad)만큼 돈다(forms.ts와 동일 기법, 단일 별 판).
+ *  입력은 내부에서 vec3()/float()로 감싼다(TS 타입엔 .mul/.add가 없어 — 파일 관용구). */
+function rotateAroundAxis(vIn: unknown, kIn: unknown, angleIn: unknown) {
+  const v = vec3(vIn as never)
+  const k = vec3(kIn as never)
+  const angle = float(angleIn as never)
+  const c = cos(angle)
+  const s = sin(angle)
+  const cr = vec3(cross(k, v) as never)
+  const kv = float(dot(k, v) as never)
+  return v.mul(c).add(cr.mul(s)).add(k.mul(kv.mul(float(1).sub(c))))
+}
+
 type Body = { geometry: THREE.BufferGeometry; material: THREE.Material; spin: number }
 
 export interface SingleStarBuild extends Body {
@@ -48,19 +63,30 @@ export interface SingleStarBuild extends Body {
   update: (time: number, bright: number) => void
 }
 
-/** deepfield — 불투명 저폴리 보석. 면 페이싯 + 발광 바닥 + 가장자리 흰빛 회절 스파클. */
-function crystalBody(col: V3, u: U): Body {
+/** deepfield — 불투명 저폴리 보석. 면 페이싯 + 발광 바닥 + 가장자리 흰빛 회절 스파클.
+ *  자전은 셰이더(positionNode)가 돌린다 — 메시 그룹은 안 돌리므로 spin은 0. */
+function crystalBody(col: V3, u: U, seed: number): Body {
   const geometry = new THREE.IcosahedronGeometry(1, 0)
   const m = new MeshStandardNodeMaterial()
   m.flatShading = true
   m.metalness = 0.0
   m.roughness = 0.34
+  // 회전축은 seed로 결정(단일 별이라 빌드 시 상수). 각도는 주파수 다른 sin들을 겹쳐 '부드러운 랜덤
+  // 방향 전환'을 만든다 — 각속도가 ~2~3초마다 부호를 바꿔 방향이 천천히 뒤집힌다.
+  const ax = new THREE.Vector3(Math.sin(seed * 1.7) + 0.3, Math.cos(seed * 1.1), Math.sin(seed * 2.3) - 0.2).normalize()
+  const axis = vec3(ax.x, ax.y, ax.z)
+  const tt = ftime(u)
+  const fseed = float(seed)
+  const angle = tt.mul(0.1).add(sin(tt.mul(1.2).add(fseed)).mul(0.45)).add(sin(tt.mul(0.55).add(fseed.mul(1.7))).mul(0.5))
+  // 위치·법선을 함께 돌려야 flatShading 면 음영(ndv)이 회전을 따라온다.
+  m.positionNode = rotateAroundAxis(positionLocal, axis, angle)
+  m.normalNode = rotateAroundAxis(normalLocal, axis, angle)
   const viewDir = normalize(cameraPosition.sub(positionWorld))
   const ndv = max(dot(normalWorld, viewDir), float(0))
   const edge = pow(clamp(float(1).sub(ndv), float(0), float(1)), float(4.0))
   m.colorNode = col.mul(0.85)
   m.emissiveNode = col.mul(0.4).add(vec3(0.92, 0.96, 1.0).mul(edge.mul(0.7))).mul(fbright(u))
-  return { geometry, material: m, spin: 0.4 }
+  return { geometry, material: m, spin: 0 }
 }
 
 /** aurora — 도메인 워핑 fbm 성운(흐르는 빛 구름, 중심 불투명·가장자리 투명). */
@@ -69,9 +95,10 @@ function nebulaBody(col: V3, u: U, seed: number): Body {
   const m = new MeshBasicNodeMaterial()
   m.transparent = true
   m.depthWrite = false
-  const flow = vec3(0, 1, 0).mul(ftime(u).mul(0.14))
+  // 대기처럼 순환 — 위로 흐르며 좌우로 휘젓고, 도메인 워프가 시간에 따라 진화해 무늬가 휘돌며 섞인다.
+  const flow = vec3(0, 1, 0).mul(ftime(u).mul(0.2)).add(vec3(1, 0, 0).mul(sin(ftime(u).mul(0.3).add(float(seed))).mul(0.28)))
   const p = positionLocal.mul(1.6).add(flow).add(vec3(seed))
-  const warp = mx_fractal_noise_float(p, 3)
+  const warp = mx_fractal_noise_float(p.add(vec3(0, 0, 1).mul(ftime(u).mul(0.16))), 3)
   const pw = p.add(vec3(warp).mul(0.7))
   const n = mx_fractal_noise_float(pw, 5).mul(0.5).add(0.5)
   const n2 = mx_fractal_noise_float(pw.mul(2.3).add(vec3(7.1)), 4).mul(0.5).add(0.5)
@@ -108,7 +135,8 @@ function emberBody(col: V3, u: U, seed: number): Body {
   m.flatShading = true
   m.metalness = 0.0
   m.roughness = 0.5
-  const np = positionLocal.mul(1.4).add(vec3(seed))
+  // 달궈진 면이 표면을 따라 천천히 흘러 순환하고(시간 드리프트), 그 위에서 은은히 깜빡인다(flicker).
+  const np = positionLocal.mul(1.4).add(vec3(seed)).add(vec3(0.6, 1, 0.2).mul(ftime(u).mul(0.12)))
   const n = mx_fractal_noise_float(np, 3).mul(0.5).add(0.5)
   const heat = smoothstep(float(0.5), float(0.92), n)
   const flicker = sin(ftime(u).mul(2.4).add(float(seed))).mul(0.07).add(0.93)
@@ -134,6 +162,6 @@ export function buildSingleStar(object: StarObject, hex: string, seed: number, b
         ? liquidBody(col, u, seed)
         : object === 'ember'
           ? emberBody(col, u, seed)
-          : crystalBody(col, u)
+          : crystalBody(col, u, seed)
   return { ...body, update }
 }

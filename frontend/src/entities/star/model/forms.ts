@@ -24,13 +24,28 @@ import {
   clamp,
   pow,
   sin,
+  cos,
   max,
   dot,
+  cross,
   normalize,
   mx_noise_float,
   mx_fractal_noise_float,
 } from 'three/tsl'
 import type { StarObject } from './types'
+
+/** Rodrigues 회전 — 단위축 k를 중심으로 노드 v를 angle(rad)만큼 돈다. 셰이더에서 자전을 만든다.
+ *  입력은 내부에서 vec3()/float()로 감싼다(TS 타입엔 .mul/.add가 없어 감싸야 체이닝 가능 — 파일 관용구). */
+function rotateAroundAxis(vIn: unknown, kIn: unknown, angleIn: unknown) {
+  const v = vec3(vIn as never)
+  const k = vec3(kIn as never)
+  const angle = float(angleIn as never)
+  const c = cos(angle)
+  const s = sin(angle)
+  const cr = vec3(cross(k, v) as never)
+  const kv = float(dot(k, v) as never)
+  return v.mul(c).add(cr.mul(s)).add(k.mul(kv.mul(float(1).sub(c))))
+}
 
 export interface StarFormBuild {
   geometry: THREE.BufferGeometry
@@ -58,12 +73,13 @@ export function buildStarForm(object: StarObject): StarFormBuild {
 
   switch (object) {
     case 'aurora': {
-      // 성운 — 도메인 워핑 fbm 빛구름이 천천히 흐른다. (instanced 정렬 이슈 회피 위해 불투명 + 자가발광.)
+      // 성운 — 도메인 워핑 fbm 빛구름이 대기처럼 순환한다: 위로 흐르면서 좌우로 천천히 휘젓고,
+      // 도메인 워프 자체가 시간에 따라 진화해 무늬가 휘돌며 섞인다. (instanced 정렬 회피 위해 불투명+자가발광.)
       const geometry = new THREE.IcosahedronGeometry(1, 4)
       m.roughness = 0.9
-      const flow = vec3(0, 1, 0).mul(t.mul(0.14))
+      const flow = vec3(0, 1, 0).mul(t.mul(0.2)).add(vec3(1, 0, 0).mul(sin(t.mul(0.3).add(seed)).mul(0.28)))
       const p = positionLocal.mul(1.6).add(flow).add(vec3(seed))
-      const warp = mx_fractal_noise_float(p, 3)
+      const warp = mx_fractal_noise_float(p.add(vec3(0, 0, 1).mul(t.mul(0.16))), 3)
       const pw = p.add(vec3(warp).mul(0.7))
       const n = mx_fractal_noise_float(pw, 5).mul(0.5).add(0.5)
       const n2 = mx_fractal_noise_float(pw.mul(2.3).add(vec3(7.1)), 4).mul(0.5).add(0.5)
@@ -90,11 +106,12 @@ export function buildStarForm(object: StarObject): StarFormBuild {
       return { geometry, material: m, update }
     }
     case 'ember': {
-      // 잉걸불 — 각진 8면 결정. 저주파 fbm으로 '달궈진 면'을 정해 일부가 용암색으로 빛나고 은은히 깜빡인다.
+      // 잉걸불 — 각진 8면 결정. 저주파 fbm '달궈진 면'이 표면을 따라 천천히 흘러 순환하고(시간 드리프트),
+      // 그 위에서 은은히 깜빡인다(flicker).
       const geometry = new THREE.OctahedronGeometry(1, 0)
       m.flatShading = true
       m.roughness = 0.5
-      const np = positionLocal.mul(1.4).add(vec3(seed))
+      const np = positionLocal.mul(1.4).add(vec3(seed)).add(vec3(0.6, 1, 0.2).mul(t.mul(0.12)))
       const n = mx_fractal_noise_float(np, 3).mul(0.5).add(0.5)
       const heat = smoothstep(float(0.5), float(0.92), n)
       const flicker = sin(t.mul(2.4).add(seed)).mul(0.07).add(0.93)
@@ -111,6 +128,17 @@ export function buildStarForm(object: StarObject): StarFormBuild {
       const geometry = new THREE.IcosahedronGeometry(1, 0)
       m.flatShading = true
       m.roughness = 0.34
+      // 천천히 자전하되 방향이 부드럽게 바뀐다 — 별마다 seed로 회전축·위상이 달라 제각각 돈다.
+      // 인스턴스마다 상태를 들 수 없어, 주파수가 다른 sin들을 겹쳐 시간 함수만으로 방향 전환을 만든다.
+      // 각속도(=d(angle)/dt)가 ~2~3초마다 부호를 바꿔 방향이 천천히 뒤집힌다.
+      const axis = normalize(vec3(sin(seed.mul(1.7)).add(0.3), cos(seed.mul(1.1)), sin(seed.mul(2.3)).sub(0.2)))
+      const angle = t
+        .mul(0.1)
+        .add(sin(t.mul(1.2).add(seed)).mul(0.45))
+        .add(sin(t.mul(0.55).add(seed.mul(1.7))).mul(0.5))
+      // 위치·법선을 함께 돌려야 flatShading의 면 음영(ndv)이 회전을 따라온다.
+      m.positionNode = rotateAroundAxis(positionLocal, axis, angle)
+      m.normalNode = rotateAroundAxis(normalLocal, axis, angle)
       const viewDir = normalize(cameraPosition.sub(positionWorld))
       const ndv = max(dot(normalWorld, viewDir), float(0))
       const facet = ndv.mul(0.5).add(0.5) // 면이 카메라를 향한 정도로 밝기 차 → 컷이 보임
