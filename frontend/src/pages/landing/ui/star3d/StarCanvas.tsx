@@ -2,7 +2,7 @@
 // 컨텍스트가 폭발하므로, 카드당 하나만 둔다. ortho 카메라가 논리 좌표 박스(SVG viewBox와 동일한
 // y-down 좌표계)를 왜곡 없이(contain) 비추도록 맞춰, 자식 Star3D가 SVG가 그리던 (x,y,r)에 정확히
 // 박힌다. IntersectionObserver로 화면 근처일 때만 장착하고, 안 보이면 렌더 루프를 멈춘다.
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Canvas, useThree, type GLProps } from '@react-three/fiber'
 import { useReducedMotion } from 'motion/react'
 import { OrthographicCamera } from 'three'
@@ -67,10 +67,28 @@ export function StarCanvas({ width, height, animated = false, className, childre
   const { ref, mounted, visible } = useInView<HTMLDivElement>()
   const frameloop = !visible ? 'never' : animated && !reduced ? 'always' : 'demand'
 
+  // R3F는 커스텀 WebGPU 렌더러를 언마운트 시 dispose하지 않는다(UniverseCanvas와 동일 이슈). 직접
+  // 보관·정리하지 않으면 StrictMode(dev) 더블마운트나 라우트 전환 때 init()이 진행 중이던 렌더러가
+  // 고아로 남아 두 번째 렌더러와 같은 캔버스를 두고 경쟁 → 간헐적으로 첫 프레임이 안 떠 새로고침해야
+  // 보이던 버그의 원인. 직접 dispose해 고아 렌더러를 없앤다.
+  const glRef = useRef<{ dispose?: () => void } | null>(null)
+  useEffect(() => () => glRef.current?.dispose?.(), [])
+
   return (
     <div ref={ref} className={className} aria-hidden>
       {mounted && (
-        <Canvas gl={glFactory} flat dpr={[1, 2]} frameloop={frameloop}>
+        <Canvas
+          gl={glFactory}
+          flat
+          dpr={[1, 2]}
+          frameloop={frameloop}
+          onCreated={(state) => {
+            glRef.current = state.gl as unknown as { dispose?: () => void }
+            // async WebGPU init 이후 한 프레임을 보장한다 — demand 모드(reduced-motion)에서 마운트 시
+            // invalidate가 init보다 먼저 끝나 첫 프레임을 놓치던 경우를 막는다.
+            state.invalidate()
+          }}
+        >
           <FitCamera width={width} height={height} />
           <ambientLight intensity={0.5} />
           <directionalLight position={[1.5, 2, 5]} intensity={2.4} />

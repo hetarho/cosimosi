@@ -4,10 +4,10 @@
 import { cn } from '@/shared/lib'
 import { StarCanvas } from './StarCanvas'
 import { Star3D } from './Star3D'
-import type { LandingThemeId } from '../../model/theme'
+import type { StarObject } from '@/entities/star'
 
 export interface ThemedStarProps {
-  concept: LandingThemeId
+  concept: StarObject
   /** mood hex(의미색). */
   color: string
   seed?: number

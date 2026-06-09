@@ -10,6 +10,7 @@ import { type WebGPURenderer } from 'three/webgpu'
 import { StarField } from '@/entities/star'
 import { SynapseFilaments, SynapseDust, useSynapseStore } from '@/entities/synapse'
 import { useMemoryStore } from '@/entities/memory'
+import { useAppearance, themeBg } from '@/entities/appearance'
 import { moodRgb, NEUTRAL_RGB } from '@/shared/config'
 import { mulberry32, fibonacciStarPosition } from '@/shared/lib'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
@@ -21,6 +22,8 @@ import { BloomPass } from './BloomPass'
  *  mulberry32 (not Math.random) keeps generation pure during render
  *  (react-hooks/purity) and the layout stable across re-renders. */
 function StarDust({ count = 1500 }: { count?: number }) {
+  // Dim the ambient dust while a star is focused (spotlight) so only the selected star reads bright.
+  const dimmed = useMemoryStore((s) => s.selectedId != null)
   const positions = useMemo(() => {
     const rng = mulberry32(0x5eed)
     const arr = new Float32Array(count * 3)
@@ -45,7 +48,7 @@ function StarDust({ count = 1500 }: { count?: number }) {
         sizeAttenuation
         color="#9fb4ff"
         transparent
-        opacity={0.5}
+        opacity={dimmed ? 0.14 : 0.5}
         depthWrite={false}
       />
     </points>
@@ -102,6 +105,7 @@ const LOOK_MAX_BOOST = 2.2 // hold longer → up to 2.2× turn rate (가속도)
 const LOOK_BOOST_RAMP = 1.2 // seconds of holding to reach LOOK_MAX_BOOST
 const LOOK_ACCEL_K = 5 // angular-velocity ease toward target while turning (1/s)
 const LOOK_DRAG_K = 3 // angular-velocity ease toward 0 on release (1/s) — the coasting inertia
+const FOCUS_K = 4 // aim-lerp rate (1/s) — how fast the gaze swings onto a selected star and holds
 
 /** OrbitControls stays mounted + makeDefault in EVERY mode, so `s.controls` (its .target +
  *  .update()) is a single stable instance that NavController / FlyTo / ModeTransition can rely on
@@ -180,7 +184,9 @@ function NebulaOrbitController() {
   const pointers = useRef(new Map<number, { x: number; y: number }>()) // live pointers (multi-touch)
   const pinchDist = useRef(0) // previous two-finger distance (0 = not pinching)
   const pendingZoom = useRef(0) // dolly accumulated since last frame (fraction of radius)
-  const active = mode === 'nebula' && !transitioning
+  // While a star is selected (focus/spotlight), FocusController owns the aim — stand down.
+  const selectedId = useMemoryStore((s) => s.selectedId)
+  const active = mode === 'nebula' && !transitioning && selectedId == null
 
   const right = useRef(new THREE.Vector3())
   const up = useRef(new THREE.Vector3())
@@ -358,6 +364,8 @@ function NavController() {
   const mode = useCameraMode((s) => s.mode)
   const move = useCameraMode((s) => s.move)
   const transitioning = useCameraMode((s) => s.transitioning)
+  // A selected star locks the gaze (FocusController) — recall nav stands down until deselected.
+  const selectedId = useMemoryStore((s) => s.selectedId)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -380,7 +388,7 @@ function NavController() {
   useFrame((_, dt) => {
     // GATE: bail outside recall and during any guided flight. No nav fights the dive/fly-to, so
     // those always arrive and clear `transitioning`. Undo any residual shake and reset state.
-    if (mode !== 'recall' || !controls || transitioning) {
+    if (mode !== 'recall' || !controls || transitioning || selectedId != null) {
       if (shakeOffset.current.lengthSq() > 0) {
         camera.position.sub(shakeOffset.current)
         controls?.target.sub(shakeOffset.current)
@@ -532,6 +540,8 @@ function NavController() {
 function UniverseSynapses() {
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
+  // Spotlight: fade the whole synapse web while a star is focused so it stands alone.
+  const dim = useMemoryStore((s) => (s.selectedId ? 0.1 : 1))
   const { positionOf, colorOf } = useMemo(() => {
     const posById = new Map(
       stars.map((s, i) => [s.id, fibonacciStarPosition(i, stars.length, s.memory.seed)] as const),
@@ -545,8 +555,8 @@ function UniverseSynapses() {
   if (edges.length === 0 || stars.length === 0) return null
   return (
     <>
-      <SynapseFilaments edges={edges} positionOf={positionOf} colorOf={colorOf} />
-      <SynapseDust edges={edges} positionOf={positionOf} colorOf={colorOf} />
+      <SynapseFilaments edges={edges} positionOf={positionOf} colorOf={colorOf} dim={dim} />
+      <SynapseDust edges={edges} positionOf={positionOf} colorOf={colorOf} dim={dim} />
     </>
   )
 }
@@ -700,6 +710,39 @@ function ModeTransitionController() {
   return null
 }
 
+/** Gaze-lock (focus): when a star is SELECTED — a direct click (recall panel, 11) or a fly-to
+ *  arrival — lerp the orbit target onto that star so the camera turns IN PLACE to face it
+ *  (position fixed) and holds it centred while the panel is open. NavController (recall) and
+ *  NebulaOrbitController (nebula) stand down while selectedId is set, so nothing fights this aim.
+ *  A no-op during a guided flight (transitioning) — FlyTo/ModeTransition own the camera then; this
+ *  engages the instant they finish with selectedId set. Releases when the panel closes (select(null)).
+ *  Reads the SAME fibonacci layout as StarField + fly-to so it lands on the rendered star. */
+function FocusController() {
+  const selectedId = useMemoryStore((s) => s.selectedId)
+  const stars = useMemoryStore((s) => s.stars)
+  const transitioning = useCameraMode((s) => s.transitioning)
+  const controls = useThree((s) => s.controls) as
+    | { target: THREE.Vector3; update: () => void }
+    | null
+  const targetPos = useMemo(() => {
+    if (!selectedId) return null
+    const idx = stars.findIndex((s) => s.id === selectedId)
+    if (idx === -1) return null
+    const [x, y, z] = fibonacciStarPosition(idx, stars.length, stars[idx].memory.seed)
+    return new THREE.Vector3(x, y, z)
+  }, [selectedId, stars])
+
+  useFrame((_, dt) => {
+    if (!targetPos || !controls || transitioning) return
+    // Aim-lock: lerp the orbit target onto the star. OrbitControls.update() keeps the camera
+    // POSITION fixed and re-points it at the moved target → the gaze swings in place onto the star.
+    controls.target.lerp(targetPos, 1 - Math.exp(-dt * FOCUS_K))
+    controls.update()
+  })
+
+  return null
+}
+
 export function UniverseCanvas() {
   // R3F does NOT dispose a custom WebGPU renderer on unmount (its teardown only
   // calls renderLists?.dispose()/forceContextLoss?.(), neither of which exists on
@@ -709,6 +752,11 @@ export function UniverseCanvas() {
   // (acceptance 1.7).
   const glRef = useRef<WebGPURenderer | null>(null)
   useEffect(() => () => glRef.current?.dispose(), [])
+
+  // 우주의 색 = 선택한 테마(appearance entity)의 깊은 배경색. 별(기억) 색은 mood(감정 의미색)라 보존.
+  const bg = themeBg(useAppearance((s) => s.theme))
+  // 별(기억) 오브제의 형태 = 선택한 object. StarField가 형태별 지오메트리·재질로 그린다(색은 mood 유지).
+  const object = useAppearance((s) => s.object)
 
   return (
     <Canvas
@@ -726,15 +774,16 @@ export function UniverseCanvas() {
         }
       }}
     >
-      <color attach="background" args={['#070b1e']} />
+      <color attach="background" args={[bg]} />
       <ambientLight intensity={0.4} />
       <StarDust count={1500} />
       <UniverseSynapses />
-      <StarField />
+      <StarField object={object} />
       <CameraRig />
       <NebulaOrbitController />
       <NavController />
       <FlyToController />
+      <FocusController />
       <ModeTransitionController />
       <BloomPass />
     </Canvas>

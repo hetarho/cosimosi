@@ -1,7 +1,6 @@
 import { useId } from 'react'
-import { mulberry32, blobPath } from '@/shared/lib'
-import { clamp01 } from '../viz-concept'
-import { lighten, darken, mix } from '../viz-color'
+import { mulberry32, blobPath, clamp01 } from '@/shared/lib'
+import { lighten, darken, mix } from '../../lib/color'
 import type { StarVisualProps } from './types'
 
 const HOT = '#ffd28a' // 백열 톤

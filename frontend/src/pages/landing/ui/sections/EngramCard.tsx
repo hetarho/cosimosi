@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
+import { useAppearance } from '@/entities/appearance'
 import { useInView } from '../../lib/use-in-view'
 import { useCoarsePointer } from '../../lib/use-coarse-pointer'
-import { VizStar, VizSynapse } from '../viz'
+import { VizStar } from '@/entities/star'
+import { VizSynapse } from '@/entities/synapse'
 
 const VIOLET = MOOD.violet
 
@@ -16,7 +17,7 @@ const VIOLET = MOOD.violet
  */
 export function EngramCard() {
   const reduce = useReducedMotion()
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [hovered, setHovered] = useState(false)
   const { ref, visible } = useInView<HTMLDivElement>()
   const coarse = useCoarsePointer()

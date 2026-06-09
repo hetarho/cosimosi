@@ -2,6 +2,8 @@
 export { SynapseFilaments, type SynapseFilamentsProps } from './ui/SynapseFilaments'
 export { SynapseDust, type SynapseDustProps } from './ui/SynapseDust'
 export { SynapseLines, type SynapseLinesProps } from './ui/SynapseLines'
+export { VizSynapse, type VizSynapseProps } from './ui/VizSynapse'
+export { synapseCurve } from './lib/curve'
 export type { SynapseEdge, LinkType } from './model/types'
 export { useSynapseStore, toSynapseEdge, neighborsOf, type UniverseSynapse } from './model/store'
 export {

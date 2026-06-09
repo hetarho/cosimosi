@@ -1,6 +1,6 @@
 import { useId } from 'react'
-import { clamp01 } from '../viz-concept'
-import { lighten } from '../viz-color'
+import { clamp01 } from '@/shared/lib'
+import { lighten } from '../../lib/color'
 import type { StarVisualProps } from './types'
 
 /** 정n각형 path(추상 결정 윤곽). rot=시작각(도). */

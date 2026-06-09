@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
+import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { getUniverse, useMemoryStore } from '@/entities/memory'
 
 // The universe shell (spec 10, extended by 11): full-screen <UniverseCanvas/> (renders
@@ -234,6 +235,9 @@ export function HomePage() {
           카메라: {mode === 'nebula' ? '성운(전체 조망)' : '회상(근접 항해)'}
         </button>
       </div>
+
+      {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(우하단은 MemoryPanel, 하단은 compose/NavPad와 겹침). */}
+      <AppearanceSwitcher className="top-28 right-4" />
 
       {starCount === 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-12 z-10 text-center">

@@ -4,7 +4,7 @@
 // three/React/DOM (constitution §4·3.2) — zustand's getState() is a vanilla call.
 import { memoryClient } from '@/shared/api'
 import { isDemoMode, demoStars, demoSynapses } from '@/shared/demo'
-import { toSynapseEdge, useSynapseStore } from '@/entities/synapse'
+import { toSynapseEdge, useSynapseStore } from '@/entities/synapse/@x/memory'
 import { A_MIN, activation } from '../model/activation'
 import { useMemoryStore } from '../model/store'
 import { mapStar } from './map-star'

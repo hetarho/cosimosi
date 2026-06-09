@@ -1,4 +1,6 @@
-import { clamp01, synapseCurve, type VizConcept } from './viz-concept'
+import { clamp01 } from '@/shared/lib'
+import type { StarObject } from '@/entities/star/@x/synapse'
+import { synapseCurve } from '../lib/curve'
 
 export interface VizSynapseProps {
   x1: number
@@ -9,7 +11,7 @@ export interface VizSynapseProps {
   color: string
   /** 0~1 시냅스 강도 → 굵기·밝기. */
   strength: number
-  concept: VizConcept
+  concept: StarObject
   /** 곡률(직선의 지루함 제거). 기본 0.14. */
   arc?: number
   active?: boolean
@@ -19,7 +21,8 @@ export interface VizSynapseProps {
 /**
  * 두 별을 잇는 시냅스를 '빛의 실'로 그린다 — 굵은 페인트 선이 아니라, 넓고 아주 옅은 글로우 위에
  * 가느다란 발광 코어. 항상 휘어진 곡선(직선 금지). strength가 굵기·밝기를 키운다.
- * 테마는 한 끗만: ember=따뜻한 코어, deepfield=점선 별자리 선, 그 외=차가운 백색 코어.
+ * 오브제(형태)마다 한 끗만 다르다(색 테마와 독립): ember=mood색 코어, deepfield=점선 별자리 선,
+ * 그 외=차가운 백색 코어.
  */
 export function VizSynapse({
   x1,

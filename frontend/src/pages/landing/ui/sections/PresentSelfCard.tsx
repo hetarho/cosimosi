@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { cn } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar } from '@/entities/star'
+import { VizSynapse } from '@/entities/synapse'
 
 // 무대 좌표계(가로로 넓은 우주 한 자락).
 const VW = 100
@@ -61,7 +62,7 @@ function clusterStars(f: Feeling) {
  */
 export function PresentSelfCard() {
   const reduce = useReducedMotion()
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [feeling, setFeeling] = useState(0)
   const [added, setAdded] = useState<NewStar[]>([])
 

@@ -1,7 +1,7 @@
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../model/theme'
+import { useAppearance } from '@/entities/appearance'
+import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { LandingBackground } from './backgrounds/LandingBackground'
-import { ThemeSwitcher } from './ThemeSwitcher'
 import { JourneyAct } from './JourneyAct'
 import { HeroSection } from './sections/HeroSection'
 import { ConceptSection } from './sections/ConceptSection'
@@ -21,13 +21,14 @@ import { CtaFooterSection } from './sections/CtaFooterSection'
  * 재공고화 → 망각(침묵) → 야간 공고화 → 공명. 각 장은 JourneyAct가 같은 계층으로 그린다.
  */
 export function LandingPage() {
-  const theme = useLandingTheme((s) => s.theme)
+  // data-theme(코스모스 색)은 RootLayout이 <html>에 앱 전역으로 박는다(appearance entity 구독).
+  // 여기선 index.css의 --ld-* 글래스·히어로 크롬을 랜딩 안으로 한정하는 data-landing-theme만 둔다.
+  const theme = useAppearance((s) => s.theme)
 
-  // data-landing-theme: index.css의 --ld-* 토큰(글래스·히어로·액센트 크롬)이 이 안에서만 적용된다.
   return (
     <div className="relative" data-landing-theme={theme}>
       <LandingBackground theme={theme} />
-      <ThemeSwitcher />
+      <AppearanceSwitcher />
       <main className="relative z-0">
         <HeroSection />
 

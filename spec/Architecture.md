@@ -83,10 +83,21 @@ cosimosi/
 app  ──►  pages  ──►  widgets  ──►  features  ──►  entities  ──►  shared
 ```
 
-- 화살표는 임포트 방향. 위에서 아래로만.
-- 같은 레이어 다른 슬라이스끼리는 원칙적으로 임포트 금지(`entities` 간 `@x` 예외는 공식 Public API 문서 참조).
-- `app`·`shared`는 슬라이스 없이 어디서든 참조 가능.
+- 화살표는 임포트 방향. 위에서 아래로만 — 한 슬라이스는 **자기보다 아래 레이어**의 슬라이스만 import한다(공식 "import rule on layers").
+- **같은 레이어의 다른 슬라이스끼리 직접 import 금지.** 유일한 예외: **`entities` 간 교차 참조는 `@x` 공개 API로만**(공식 cross-import 규약, entities 레이어 한정).
+  - 제공자 entity `A`가 소비자 `B` 전용 공개 API를 둔다: `entities/A/@x/B.ts` (일반 공개 API는 `entities/A/index.ts`).
+  - 소비자 `B`의 코드는 **그 교차 API에서만** 가져온다: `import type { Foo } from '@/entities/A/@x/B'` (`A/@x/B` = "A를 B에 맞춰 교차 노출"). `entities/A/index.ts`를 직접 import하지 않는다.
+  - 공식 권고: 교차 참조는 **최소화**하고 "제거가 비합리적일 때만" 쓴다. 가능하면 공유 조각을 `shared`로 내리거나 상위(`widgets`/`pages`)에서 조합해 교차 참조 자체를 없앤다.
+- `app`·`shared`는 슬라이스 구분 없이 어디서든 참조 가능.
 - 추후 `eslint-plugin-boundaries`/`@feature-sliced/steiger`로 강제.
+
+> **현재 entities 간 교차는 모두 `@x` 적용 완료:**
+> - `entities/memory/@x/star.ts` → star의 `StarField`가 구독하는 `useMemoryStore`·`starBrightness`
+> - `entities/synapse/@x/memory.ts` → memory의 `getUniverse`가 동기화하는 `useSynapseStore`·`toSynapseEdge`
+> - `entities/star/@x/appearance.ts` → appearance store가 참조하는 `StarObject`·`STAR_OBJECTS`·`DEFAULT_OBJECT`
+> - `entities/star/@x/synapse.ts` → `VizSynapse`의 `concept`(`StarObject`) 타입
+>
+> 새 교차 참조가 필요하면 같은 식으로 제공자에 `@x/{소비자}.ts`를 두고 거기서만 가져온다. (widgets·features·pages가 entities를 쓰는 건 하위 레이어 import라 일반 `index.ts`를 쓴다 — `@x`는 entities 간에만.)
 
 ### 2.4 슬라이스 + 세그먼트
 

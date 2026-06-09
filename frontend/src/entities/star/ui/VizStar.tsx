@@ -1,13 +1,13 @@
-import type { VizConcept } from './viz-concept'
-import { CrystalStar, NebulaStar, LiquidStar, EmberStar, type StarVisualProps } from './stars'
+import { CrystalStar, NebulaStar, LiquidStar, EmberStar, type StarVisualProps } from './svg'
+import type { StarObject } from '../model/types'
 
 export interface VizStarProps extends StarVisualProps {
-  /** 시각 언어(= 랜딩 테마). 테마마다 완전히 다른 별 오브제로 그려진다. */
-  concept: VizConcept
+  /** 별 오브제 종류 — 종류마다 완전히 다른 형태로 그려진다. */
+  concept: StarObject
 }
 
 /**
- * 별 하나를 '빛'으로 그리는 SVG 프리미티브 — 테마마다 완전히 다른 오브제로 dispatch한다:
+ * 별 하나를 '빛'으로 그리는 SVG 프리미티브(2D 렌더) — 종류마다 완전히 다른 오브제로 dispatch한다:
  *  - deepfield → 크리스털(회절 스파이크 + 보석 패싯)
  *  - aurora    → 성운(흐르는 빛구름)
  *  - liquid    → 유리 액체 구슬(굴절·스페큘러)

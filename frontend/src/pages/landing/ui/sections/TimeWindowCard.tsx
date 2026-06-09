@@ -2,8 +2,9 @@ import { useId, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar } from '@/entities/star'
+import { VizSynapse } from '@/entities/synapse'
 
 const ACCENT = MOOD.amber
 
@@ -42,7 +43,7 @@ const STAR_Y = 28
 
 export function TimeWindowCard() {
   const reduce = useReducedMotion()
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const sliderId = useId()
   const [t, setT] = useState(0.18) // 기본: 약 3시간
 

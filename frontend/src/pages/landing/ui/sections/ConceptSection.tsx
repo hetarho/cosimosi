@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { cn } from '@/shared/lib'
 import { MOOD, type MoodKey } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar } from '@/entities/star'
+import { VizSynapse } from '@/entities/synapse'
 
 interface StarNode {
   id: number
@@ -47,7 +48,7 @@ function neighborsOf(id: number): Set<number> {
 
 /** "뇌가 곧 우주" — 기억(별)과 시냅스(빛의 선)로 이뤄진 작은 성단 데모. 테마별 시각 언어로 그린다. */
 export function ConceptSection() {
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [activeId, setActiveId] = useState<number | null>(null)
   const active = activeId === null ? null : neighborsOf(activeId)
 

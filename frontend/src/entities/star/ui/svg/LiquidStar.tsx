@@ -1,7 +1,6 @@
 import { useId } from 'react'
-import { blobPath } from '@/shared/lib'
-import { clamp01 } from '../viz-concept'
-import { lighten } from '../viz-color'
+import { blobPath, clamp01 } from '@/shared/lib'
+import { lighten } from '../../lib/color'
 import type { StarVisualProps } from './types'
 
 /**

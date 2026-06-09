@@ -3,8 +3,9 @@ import { animate, motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { cn } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar } from '@/entities/star'
+import { VizSynapse } from '@/entities/synapse'
 
 const ACCENT = MOOD.violet
 
@@ -53,7 +54,7 @@ function useEased(target: number, duration: number) {
 
 export function NightlyConsolidationCard() {
   const reduce = useReducedMotion()
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [stage, setStage] = useState(0)
   const [running, setRunning] = useState(false)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])

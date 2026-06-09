@@ -3,9 +3,9 @@ import { motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
-import type { VizConcept } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar, type StarObject } from '@/entities/star'
+import { VizSynapse } from '@/entities/synapse'
 
 // 좌/우 두 사람의 우주에 새겨진 같은 사건의 별. seed 고정 → 결정론적 모양.
 const ME = { seed: 0x5e0f, mood: MOOD.violet, label: '나의 별' } as const
@@ -21,7 +21,7 @@ function MiniUniverse({
   seed: number
   mood: string
   bright: boolean
-  concept: VizConcept
+  concept: StarObject
 }) {
   const rand = mulberry32(seed)
   const dust = Array.from({ length: 7 }, () => ({
@@ -43,7 +43,7 @@ function MiniUniverse({
 
 export function ResonanceSection() {
   const reduce = useReducedMotion()
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [resonant, setResonant] = useState(false)
 
   return (

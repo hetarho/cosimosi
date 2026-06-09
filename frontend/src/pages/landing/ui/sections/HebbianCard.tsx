@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar, VizSynapse } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar } from '@/entities/star'
+import { VizSynapse } from '@/entities/synapse'
 
 const TEAL = MOOD.teal
 
@@ -15,7 +16,7 @@ function plasticityState(strength: number): { label: string; tone: string } {
 
 /** 헵 가소성 카드 — "함께 회상" 슬라이더로 두 별을 잇는 시냅스를 양방향으로 강화/약화. */
 export function HebbianCard() {
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [strength, setStrength] = useState(50)
   const t = strength / 100
   const state = plasticityState(strength)

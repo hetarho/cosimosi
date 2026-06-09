@@ -1,7 +1,6 @@
 import { useId } from 'react'
-import { mulberry32 } from '@/shared/lib'
-import { clamp01 } from '../viz-concept'
-import { lighten, shiftHue } from '../viz-color'
+import { mulberry32, clamp01 } from '@/shared/lib'
+import { lighten, shiftHue } from '../../lib/color'
 import type { StarVisualProps } from './types'
 
 /**

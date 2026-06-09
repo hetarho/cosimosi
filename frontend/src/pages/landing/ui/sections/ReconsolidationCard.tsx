@@ -4,8 +4,8 @@ import { Lock } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar } from '@/entities/star'
 
 const BASE_SEED = 4217
 const ORIGINAL_TEXT = '비 오는 날, 오래된 노래를 들었다.'
@@ -43,7 +43,7 @@ function nextMemory(prev: Memory | null, version: number): Memory {
 
 export function ReconsolidationCard() {
   const reduce = useReducedMotion()
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [history, setHistory] = useState<Memory[]>(() => [nextMemory(null, 0)])
   const current = history[history.length - 1]
 

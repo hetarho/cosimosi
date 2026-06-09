@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
-import { useLandingTheme } from '../../model/theme'
-import { VizStar } from '../viz'
+import { useAppearance } from '@/entities/appearance'
+import { VizStar } from '@/entities/star'
 
 const CORAL = MOOD.coral
 /** 빛이 완전히 꺼지지 않는 바닥값(침묵 엔그램은 사라지지 않는다). */
@@ -15,7 +15,7 @@ function brightness(time: number, decay: number): number {
 }
 
 export function SilentEngramCard() {
-  const concept = useLandingTheme((s) => s.theme)
+  const concept = useAppearance((s) => s.object)
   const [time, setTime] = useState(60)
 
   // 연결 많은 별: 완만한 감쇠 / 고립된 별: 가파른 감쇠 (망각 속도는 관련성에 좌우)

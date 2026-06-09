@@ -2,16 +2,18 @@ import { motion, useReducedMotion } from 'motion/react'
 import { ArrowDown } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { enterDemoMode } from '@/shared/demo'
-import { MOOD } from '@/shared/config'
 import { useScrollToSection } from '../../lib/scroll'
-import { useLandingTheme } from '../../model/theme'
+import { themeAccent, useAppearance } from '@/entities/appearance'
 import { ThemedStar } from '../star3d'
 
 export function HeroSection() {
   const reduced = useReducedMotion()
   const scrollTo = useScrollToSection()
   const navigate = useNavigate()
-  const theme = useLandingTheme((s) => s.theme)
+  // 형태는 오브제(object)를, 색은 테마(theme)의 accent를 따른다 — 테마를 바꾸면 히어로 별의 색도
+  // 그 우주색(violet/amber/teal)으로 함께 전환된다.
+  const object = useAppearance((s) => s.object)
+  const accent = themeAccent(useAppearance((s) => s.theme))
 
   // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 데모 우주로 바로 보낸다.
   // (로그인/DB 없이 더미 우주 진입 — CtaFooterSection의 tryDemo와 동일 경로.)
@@ -44,7 +46,7 @@ export function HeroSection() {
             aria-hidden
             className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
           >
-            <ThemedStar concept={theme} color={MOOD.violet} seed={7} size={320} />
+            <ThemedStar concept={object} color={accent} seed={7} size={320} />
           </div>
           <span
             className="relative text-xs uppercase tracking-[0.35em]"

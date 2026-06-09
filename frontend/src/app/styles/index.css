@@ -1,20 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./color.css";
 
 @theme {
-  /* 깊은 우주 배경 */
-  --color-space-900: #050510;
-  --color-space-800: #0a0a1f;
-  --color-space-700: #12122e;
-
-  /* 감정 → 색 팔레트 (shared/config/palette.ts와 동일 값) */
-  --color-mood-violet: #7f77dd;
-  --color-mood-teal: #1d9e75;
-  --color-mood-coral: #d85a30;
-  --color-mood-pink: #d4537e;
-  --color-mood-amber: #ef9f27;
-
-  /* 타이포 */
+  /* 타이포 — 색 토큰은 color.css 에서 관리 */
   --font-display: "Iowan Old Style", ui-serif, Georgia, "Noto Serif KR", serif;
   --font-sans: ui-sans-serif, system-ui, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 }
@@ -30,7 +19,7 @@ html {
 body {
   margin: 0;
   min-height: 100%;
-  background: #050510;
+  background: var(--p-neutral-950); /* 테마(data-theme) 배경을 따라간다 */
   color: #f5f5fa;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -56,17 +45,19 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   랜딩 전체-페이지 테마 (spec 15). 식별자는 LandingPage 루트의 data-landing-theme.
+   랜딩 색 테마 크롬. 식별자는 LandingPage 루트의 data-landing-theme(= color.css의 data-theme와 동일값).
    --ld-* 토큰은 [data-landing-theme] 안에서만 유효하므로 다른 라우트엔 영향이 없다.
-   배경 atmosphere는 테마별 컴포넌트가, 글래스·히어로·액센트 크롬은 아래 토큰이 운반한다.
+   accent·base는 코스모스 색 시스템(--theme-accent / --p-neutral-950)을 그대로 따라가고(단일 출처),
+   배경 atmosphere는 테마별 컴포넌트가, 글래스·히어로 크롬은 아래 토큰이 운반한다.
+   별 오브제 형태는 이 축과 독립(data 없이 store.object로 dispatch).
    ───────────────────────────────────────────────────────────────────────── */
 [data-landing-theme] {
-  /* 기본값(테마 블록이 덮어쓴다) */
-  --ld-base: #030308;
-  --ld-accent: #5566a8;
-  --ld-accent-soft: #c4d0f2;
-  --ld-hero-grad: linear-gradient(120deg, #f4f7ff, #cdd8ff 56%, #93a6da);
-  --ld-glass-bg: color-mix(in oklab, #0a0e1e 36%, transparent);
+  /* base·accent는 코스모스 토큰을 따라간다 → data-theme이 바뀌면 자동 전환 */
+  --ld-base: var(--p-neutral-950);
+  --ld-accent: var(--theme-accent);
+  --ld-accent-soft: var(--theme-accent-soft);
+  --ld-hero-grad: linear-gradient(120deg, var(--p-neutral-50), var(--theme-accent-soft) 56%, var(--theme-accent));
+  --ld-glass-bg: color-mix(in oklab, var(--p-neutral-900) 55%, transparent);
   --ld-glass-border: color-mix(in oklab, white 10%, transparent);
   --ld-glass-blur: 14px;
   --ld-glass-shadow: 0 24px 70px -28px rgba(0, 0, 0, 0.8),
@@ -76,13 +67,9 @@ body {
   --ld-deband-opacity: 0.55;
 }
 
-[data-landing-theme='deepfield'] {
-  --ld-base: #030308;
-  --ld-accent: #5566a8;
-  --ld-accent-soft: #c4d0f2;
-  --ld-hero-grad: linear-gradient(120deg, #f4f7ff 0%, #cdd8ff 56%, #93a6da 100%);
-  --ld-glass-bg: color-mix(in oklab, #0a0e1e 36%, transparent);
-  --ld-glass-border: color-mix(in oklab, white 8%, transparent);
+/* 광활한 우주 — 깊은 인디고, 강한 그레인의 사진 같은 질감. 차분하고 절제. */
+[data-landing-theme='vast'] {
+  --ld-glass-border: color-mix(in oklab, var(--theme-accent-soft) 12%, transparent);
   --ld-glass-blur: 12px;
   --ld-glass-shadow: 0 26px 80px -34px rgba(0, 0, 0, 0.9),
     inset 0 1px 0 0 color-mix(in oklab, white 6%, transparent);
@@ -90,47 +77,28 @@ body {
   --ld-deband-opacity: 0.62;
 }
 
-[data-landing-theme='aurora'] {
-  --ld-base: #07040f;
-  --ld-accent: #8a7be6;
-  --ld-accent-soft: #c9b8ff;
-  --ld-hero-grad: linear-gradient(120deg, #cdd9ff 0%, #c9b8ff 32%, #ff9ec7 66%, #7fe0c6 100%);
-  --ld-glass-bg: color-mix(in oklab, #1a1430 22%, transparent);
-  --ld-glass-border: color-mix(in oklab, #c9b8ff 20%, transparent);
-  --ld-glass-blur: 18px;
-  --ld-glass-shadow: 0 30px 88px -34px rgba(26, 14, 56, 0.85),
-    inset 0 1px 0 0 color-mix(in oklab, #ddd0ff 12%, transparent);
-  --ld-grain-opacity: 0.13;
-  --ld-deband-opacity: 0.5;
-}
-
-[data-landing-theme='liquid'] {
-  --ld-base: #0a0418;
-  --ld-accent: #ff5fa0;
-  --ld-accent-soft: #ffa6cf;
-  --ld-hero-grad: linear-gradient(120deg, #ffd9b0 0%, #ff8fc2 40%, #9b7bff 74%, #5fd0c0 100%);
+/* 경쾌한 우주 — 채도 높은 자홍 메시. 밝은 광택 글래스, 디더는 약하게(색이 탁해지지 않게). */
+[data-landing-theme='lively'] {
+  --ld-hero-grad: linear-gradient(120deg, #ffd9b0 0%, #ff8fc2 40%, #c77bff 74%, #5fd0c0 100%);
   --ld-glass-bg: color-mix(in oklab, white 9%, transparent);
   --ld-glass-border: color-mix(in oklab, white 18%, transparent);
-  --ld-glass-blur: 24px;
+  --ld-glass-blur: 22px;
   --ld-glass-shadow: 0 30px 90px -30px rgba(40, 6, 60, 0.7),
     inset 0 1px 0 0 color-mix(in oklab, white 16%, transparent);
-  --ld-grain-opacity: 0.10;
-  /* 채도 높은 메시 → 디더는 약하게(색이 탁해지지 않게). */
-  --ld-deband-opacity: 0.34;
+  --ld-grain-opacity: 0.1;
+  --ld-deband-opacity: 0.36;
 }
 
-[data-landing-theme='ember'] {
-  --ld-base: #070505;
-  --ld-accent: #ef7a3a;
-  --ld-accent-soft: #ffb482;
-  --ld-hero-grad: linear-gradient(118deg, #f7ece2 0%, #ffb482 46%, #ef7a3a 100%);
-  --ld-glass-bg: color-mix(in oklab, #2a1c14 26%, transparent);
-  --ld-glass-border: color-mix(in oklab, #ef7a3a 18%, transparent);
-  --ld-glass-blur: 14px;
-  --ld-glass-shadow: 0 30px 86px -34px rgba(60, 24, 8, 0.85),
-    inset 0 1px 0 0 color-mix(in oklab, #ffcaa0 10%, transparent);
-  --ld-grain-opacity: 0.14;
-  --ld-deband-opacity: 0.55;
+/* 잔잔한 우주 — 고요한 청록. 부드러운 글래스, 은은한 그레인. */
+[data-landing-theme='calm'] {
+  --ld-hero-grad: linear-gradient(120deg, #e6fffb 0%, #9fe9da 44%, #3fd6b5 100%);
+  --ld-glass-bg: color-mix(in oklab, #0a201d 30%, transparent);
+  --ld-glass-border: color-mix(in oklab, var(--theme-accent-soft) 18%, transparent);
+  --ld-glass-blur: 18px;
+  --ld-glass-shadow: 0 30px 88px -34px rgba(6, 32, 30, 0.85),
+    inset 0 1px 0 0 color-mix(in oklab, #ccfff4 12%, transparent);
+  --ld-grain-opacity: 0.12;
+  --ld-deband-opacity: 0.5;
 }
 
 /* 랜딩 안의 글래스 카드만 테마 토큰으로 재테마(전역 .glass는 그대로). */

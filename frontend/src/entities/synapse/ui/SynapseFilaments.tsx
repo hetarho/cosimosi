@@ -206,9 +206,11 @@ export interface SynapseFilamentsProps {
   positionOf: (id: string) => [number, number, number] | null
   /** Star mood color lookup (linear RGB 0..1) — the filament fades between its two ends. */
   colorOf: (id: string) => readonly [number, number, number]
+  /** Global dim multiplier (0..1): 1 normally, <1 to fade the whole web while a star is focused. */
+  dim?: number
 }
 
-export function SynapseFilaments({ edges, positionOf, colorOf }: SynapseFilamentsProps) {
+export function SynapseFilaments({ edges, positionOf, colorOf, dim = 1 }: SynapseFilamentsProps) {
   // Built once; rebuilt only when the edge set or the lookups change (all stable from the
   // parent's useMemo). No per-frame CPU work — the shader does all motion via uTime.
   const built = useMemo(() => {
@@ -224,6 +226,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf }: SynapseFilament
     const opac = float(attribute('aOpacity', 'float') as never) // per-edge opacity (±jitter)
     const pulse = float(attribute('aPulse', 'float') as never)
     const uTime = uniform(0) // manual clock — the built-in `time` node is frozen here
+    const uDim = uniform(1) // focus spotlight: 1 normally, <1 fades the whole web while focused
 
     const along = uv().x // 0→1 along the tube length (three's TubeGeometry uv convention)
     const around = uv().y // 0→1 around the cross-section
@@ -265,7 +268,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf }: SynapseFilament
     // level is kept modest so dense areas don't wash out.
     const flowTerm = float(0.6).add(flowGlow.mul(0.55))
     const glowVar = float(0.55).add(nGlow.mul(0.85)) // ~0.55..1.4 down the strand
-    const glow = bright.mul(breath).mul(flowTerm).mul(glowVar)
+    const glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)
     material.colorNode = color.mul(glow)
 
     // opacityNode = cross-section shape × end-taper × per-edge opacity × the along-length
@@ -288,18 +291,21 @@ export function SynapseFilaments({ edges, positionOf, colorOf }: SynapseFilament
     // Baked bounds are computed from the merged buffer; the bundle spans the universe, so
     // skip culling (same rationale as SynapseLines / StarField).
     mesh.frustumCulled = false
-    return { mesh, geometry, material, uTime }
+    return { mesh, geometry, material, uTime, uDim }
   }, [edges, positionOf, colorOf])
 
   // Hold the time uniform in a ref so the per-frame write targets a mutable ref (exempt
   // from the hook-immutability lint) rather than the useMemo return value directly — the
   // same escape hatch SynapseLines uses for its per-frame buffer writes.
   const uTimeRef = useRef<{ value: number } | null>(null)
+  const uDimRef = useRef<{ value: number } | null>(null)
   useEffect(() => {
     if (!built) return
     uTimeRef.current = built.uTime
+    uDimRef.current = built.uDim
     return () => {
       uTimeRef.current = null
+      uDimRef.current = null
       built.geometry.dispose()
       built.material.dispose()
     }
@@ -309,6 +315,9 @@ export function SynapseFilaments({ edges, positionOf, colorOf }: SynapseFilament
   useFrame((state) => {
     const u = uTimeRef.current
     if (u) u.value = state.clock.elapsedTime
+    // Focus spotlight: push the latest dim into the shared uniform (through the ref — no rebuild).
+    const d = uDimRef.current
+    if (d) d.value = dim
   })
 
   if (!built) return null

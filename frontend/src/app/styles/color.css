@@ -1,0 +1,164 @@
+/* color.css — 컬러 토큰 + 우주 무드 테마 (Tailwind v4 · CSS-first · OKLCH)
+ *
+ * 레이어:
+ *   Tier 1 PALETTE  : --p-{색}-{명도} — 색상별 50~950 스케일. brand 색은 고정, neutral(배경)은
+ *                     테마 가변 축(--theme-bg-hue / --theme-bg-chroma)을 참조해 테마마다 색조가 바뀐다.
+ *   THEME           : [data-theme] 가 가변 축(배경 hue/chroma + accent)만 덮어쓴다 → 배경·표면·
+ *                     테두리·accent 가 통째로 그 우주 분위기로 전환. mood(감정색)는 보존된다.
+ *   Tier 2 SEMANTIC : @theme inline 의 --color-{무엇}-{어디}-{역할} — 유틸(bg-/text-/border-…) 생성.
+ *                     palette/테마축을 var() 로 참조하므로 런타임 전환이 그대로 반영된다.
+ *
+ * 사용:  <div class="bg-surface-bg-raised text-content-text-primary" />,  bg-accent,  text-mood-violet
+ * 테마:  <html data-theme="vast | lively | calm">  (미지정 시 vast)
+ */
+
+:root {
+  /* ── 테마 가변 축 (기본 = 광활한 우주). [data-theme] 가 이 4개만 덮어쓴다 ── */
+  --theme-bg-hue: 272; /* 배경 색조 */
+  --theme-bg-chroma: 0.85; /* 배경 채도 배율 */
+  --theme-accent: var(--p-violet-400); /* UI 강조 */
+  --theme-accent-soft: var(--p-violet-200);
+
+  /* ── Tier 1 · BRAND PALETTE (고정 원시색, 직접 사용 금지) ── */
+  /* violet — base #7f77dd */
+  --p-violet-50: oklch(0.985 0.027 284.7);
+  --p-violet-100: oklch(0.943 0.048 284.7);
+  --p-violet-200: oklch(0.863 0.083 284.7);
+  --p-violet-300: oklch(0.773 0.113 284.7);
+  --p-violet-400: oklch(0.683 0.138 284.7);
+  --p-violet-500: oklch(0.623 0.15 284.7);
+  --p-violet-600: oklch(0.553 0.15 284.7);
+  --p-violet-700: oklch(0.483 0.135 284.7);
+  --p-violet-800: oklch(0.413 0.114 284.7);
+  --p-violet-900: oklch(0.353 0.093 284.7);
+  --p-violet-950: oklch(0.243 0.069 284.7);
+
+  /* teal — base #1d9e75 */
+  --p-teal-50: oklch(0.985 0.022 165.5);
+  --p-teal-100: oklch(0.943 0.039 165.5);
+  --p-teal-200: oklch(0.863 0.068 165.5);
+  --p-teal-300: oklch(0.773 0.092 165.5);
+  --p-teal-400: oklch(0.683 0.113 165.5);
+  --p-teal-500: oklch(0.623 0.123 165.5);
+  --p-teal-600: oklch(0.553 0.123 165.5);
+  --p-teal-700: oklch(0.483 0.111 165.5);
+  --p-teal-800: oklch(0.413 0.094 165.5);
+  --p-teal-900: oklch(0.353 0.076 165.5);
+  --p-teal-950: oklch(0.243 0.057 165.5);
+
+  /* coral — base #d85a30 */
+  --p-coral-50: oklch(0.985 0.03 38.3);
+  --p-coral-100: oklch(0.943 0.054 38.3);
+  --p-coral-200: oklch(0.863 0.093 38.3);
+  --p-coral-300: oklch(0.773 0.126 38.3);
+  --p-coral-400: oklch(0.683 0.155 38.3);
+  --p-coral-500: oklch(0.623 0.168 38.3);
+  --p-coral-600: oklch(0.553 0.168 38.3);
+  --p-coral-700: oklch(0.483 0.151 38.3);
+  --p-coral-800: oklch(0.413 0.128 38.3);
+  --p-coral-900: oklch(0.353 0.104 38.3);
+  --p-coral-950: oklch(0.243 0.077 38.3);
+
+  /* pink — base #d4537e */
+  --p-pink-50: oklch(0.985 0.03 2.5);
+  --p-pink-100: oklch(0.942 0.053 2.5);
+  --p-pink-200: oklch(0.862 0.092 2.5);
+  --p-pink-300: oklch(0.772 0.125 2.5);
+  --p-pink-400: oklch(0.682 0.153 2.5);
+  --p-pink-500: oklch(0.622 0.167 2.5);
+  --p-pink-600: oklch(0.552 0.167 2.5);
+  --p-pink-700: oklch(0.482 0.15 2.5);
+  --p-pink-800: oklch(0.412 0.127 2.5);
+  --p-pink-900: oklch(0.352 0.103 2.5);
+  --p-pink-950: oklch(0.242 0.077 2.5);
+
+  /* amber — base #ef9f27 (밝은 단계는 clamp 보정) */
+  --p-amber-50: oklch(0.98 0.025 70.8);
+  --p-amber-100: oklch(0.955 0.05 70.8);
+  --p-amber-200: oklch(0.91 0.09 70.8);
+  --p-amber-300: oklch(0.914 0.116 70.8);
+  --p-amber-400: oklch(0.824 0.142 70.8);
+  --p-amber-500: oklch(0.764 0.154 70.8);
+  --p-amber-600: oklch(0.694 0.154 70.8);
+  --p-amber-700: oklch(0.624 0.139 70.8);
+  --p-amber-800: oklch(0.554 0.117 70.8);
+  --p-amber-900: oklch(0.494 0.096 70.8);
+  --p-amber-950: oklch(0.384 0.071 70.8);
+
+  /* neutral — 우주 배경·별빛·글자. 명도 스케일은 고정, 색조(hue)·채도(chroma)는 테마 가변. */
+  --p-neutral-50: oklch(0.97 calc(0.008 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-100: oklch(0.915 calc(0.018 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-200: oklch(0.82 calc(0.02 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-300: oklch(0.7 calc(0.024 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-400: oklch(0.57 calc(0.028 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-500: oklch(0.45 calc(0.03 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-600: oklch(0.35 calc(0.032 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-700: oklch(0.25 calc(0.034 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-800: oklch(0.165 calc(0.035 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-900: oklch(0.11 calc(0.032 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+  --p-neutral-950: oklch(0.068 calc(0.024 * var(--theme-bg-chroma)) var(--theme-bg-hue));
+}
+
+/* ─── 우주 무드 테마 ─────────────────────────────────────────────────────
+   각 테마는 가변 축(배경 hue/chroma + accent)만 덮어쓴다. 명도 스케일·brand·mood 는 공통. */
+
+/* 광활한 우주 — 깊은 인디고 심연, 차가운 violet 강조. 정적이고 웅장. (기본) */
+:root,
+[data-theme='vast'] {
+  --theme-bg-hue: 272;
+  --theme-bg-chroma: 0.85;
+  --theme-accent: var(--p-violet-400);
+  --theme-accent-soft: var(--p-violet-200);
+}
+
+/* 경쾌한 우주 — 따뜻한 자홍, amber/pink 강조. 채도 높고 생동. */
+[data-theme='lively'] {
+  --theme-bg-hue: 318;
+  --theme-bg-chroma: 1.5;
+  --theme-accent: var(--p-amber-400);
+  --theme-accent-soft: var(--p-pink-300);
+}
+
+/* 잔잔한 우주 — 고요한 청록, teal 강조. 부드럽고 평온. */
+[data-theme='calm'] {
+  --theme-bg-hue: 198;
+  --theme-bg-chroma: 0.9;
+  --theme-accent: var(--p-teal-400);
+  --theme-accent-soft: var(--p-teal-200);
+}
+
+/* ── Tier 2 · SEMANTIC ({무엇}-{어디}-{역할}) ──────────────────────────
+   @theme inline → bg-/text-/border-… 유틸 생성 + palette/테마축 참조 유지(런타임 전환 가능). */
+@theme inline {
+  /* surface — 면(배경·테두리). 테마 배경 색조를 따라간다. */
+  --color-surface-bg-base: var(--p-neutral-950); /* 페이지 바탕 */
+  --color-surface-bg-raised: var(--p-neutral-900); /* 카드·패널 */
+  --color-surface-bg-overlay: var(--p-neutral-800); /* 위에 뜬 표면 */
+  --color-surface-border-subtle: var(--p-neutral-700);
+  --color-surface-border-strong: var(--p-neutral-600);
+
+  /* content — 글자 */
+  --color-content-text-primary: var(--p-neutral-100);
+  --color-content-text-muted: var(--p-neutral-300);
+  --color-content-text-strong: var(--p-neutral-50);
+
+  /* accent — 테마 강조(UI). 테마마다 색이 바뀐다. */
+  --color-accent-primary: var(--theme-accent);
+  --color-accent-soft: var(--theme-accent-soft);
+
+  /* star — 별 오브제 */
+  --color-star-bg-primary: var(--p-neutral-100); /* 별 코어 */
+  --color-star-glow-violet: var(--p-violet-500); /* 별 글로우 */
+
+  /* mood — 감정 의미색(별·시냅스가 운반). 테마와 무관하게 보존. 500 = 브랜드 기준색 */
+  --color-mood-violet: var(--p-violet-500);
+  --color-mood-teal: var(--p-teal-500);
+  --color-mood-coral: var(--p-coral-500);
+  --color-mood-pink: var(--p-pink-500);
+  --color-mood-amber: var(--p-amber-500);
+
+  /* ── 기존 유틸 호환(bg-space-900 등). 신규 코드는 surface-* 를 쓰고 점진 마이그레이션 ── */
+  --color-space-900: var(--p-neutral-950);
+  --color-space-800: var(--p-neutral-900);
+  --color-space-700: var(--p-neutral-800);
+}
