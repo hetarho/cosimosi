@@ -94,6 +94,15 @@ const SHAKE_FREQ_IDLE = 0.32 // idle frequency scale (slow left-right sway)
 const SHAKE_FREQ_MOVE = 1.25 // added at full speed
 const SHAKE_FREQ_HIT = 1.6 // added at peak jolt
 
+// Look-rotation feel (시선 회전) — mirrors the thrust: a TARGET angular velocity the actual eases
+// toward (가속도, ramping faster the longer you hold via lookBoost) and coasts to a stop on release
+// (관성). The per-frame yaw/pitch is applied about the live LOCAL axes so it composes with free-look.
+const LOOK_BASE_RATE = 1.4 // rad/s base turn rate (the old fixed look speed)
+const LOOK_MAX_BOOST = 2.2 // hold longer → up to 2.2× turn rate (가속도)
+const LOOK_BOOST_RAMP = 1.2 // seconds of holding to reach LOOK_MAX_BOOST
+const LOOK_ACCEL_K = 5 // angular-velocity ease toward target while turning (1/s)
+const LOOK_DRAG_K = 3 // angular-velocity ease toward 0 on release (1/s) — the coasting inertia
+
 /** OrbitControls stays mounted + makeDefault in EVERY mode, so `s.controls` (its .target +
  *  .update()) is a single stable instance that NavController / FlyTo / ModeTransition can rely on
  *  with zero null/swap windows. What changes per mode:
@@ -332,8 +341,6 @@ function NebulaOrbitController() {
   return null
 }
 
-const WORLD_UP = new THREE.Vector3(0, 1, 0)
-
 /** Recall-mode "real navigation" — one frame-rate-independent useFrame. Order: gate → revert
  *  last shake → accel/inertia thrust → look rotation → wall clamp(+recoil/jolt) → orbit solve →
  *  apply fresh shake → final solve. A no-op outside recall AND during any guided flight
@@ -359,10 +366,12 @@ function NavController() {
   const right = useRef(new THREE.Vector3())
   const upAxis = useRef(new THREE.Vector3())
   const fwd = useRef(new THREE.Vector3())
-  const look = useRef(new THREE.Vector3())
+  const q = useRef(new THREE.Quaternion()) // free-look yaw/pitch rotation
   const tmp = useRef(new THREE.Vector3())
   const vel = useRef(new THREE.Vector3()) // world-space velocity → inertia/coasting
   const boost = useRef(1) // 1→2 acceleration multiplier while thrusting
+  const lookVel = useRef({ yaw: 0, pitch: 0 }) // angular velocity (rad/s) → look inertia/coasting
+  const lookBoost = useRef(1) // 1→LOOK_MAX_BOOST turn-rate multiplier while turning
   const onWall = useRef(false) // touching the wall last frame (one-shot recoil/jolt gate)
   const shakePhase = useRef(0) // accumulated shake phase (its rate varies with speed/impact)
   const shakeImpulse = useRef(0) // decaying wall jolt
@@ -380,6 +389,9 @@ function NavController() {
       }
       vel.current.set(0, 0, 0)
       boost.current = 1
+      lookVel.current.yaw = 0
+      lookVel.current.pitch = 0
+      lookBoost.current = 1
       shakeImpulse.current = 0
       onWall.current = false
       return
@@ -411,19 +423,50 @@ function NavController() {
       changed = true
     }
 
-    // 방향키: rotate the look in place (un-accelerated); position fixed, only the aim turns.
-    if (x !== 0 || y !== 0) {
+    // 방향키: FREE-LOOK with ACCELERATION + INERTIA. A TARGET angular velocity from the input
+    // (ramping via lookBoost the longer you hold = 가속도) is eased toward while turning and coasts
+    // toward 0 on release (관성) — so the aim glides to a stop like the thrust. The resulting
+    // per-frame yaw/pitch is applied about the live LOCAL axes (yaw=local up, pitch=local right,
+    // rotating BOTH look and up). So "turn right" always pans the view right relative to the
+    // cockpit — never a clockwise spin near the zenith — and there's NO world-up pole to lock pitch
+    // on. World-frame roll only accrues from combined yaw+pitch, like a real ship; guided flights
+    // (fly-to / mode transition) re-level camera.up to world up.
+    const turning = x !== 0 || y !== 0
+    lookBoost.current = turning
+      ? Math.min(LOOK_MAX_BOOST, lookBoost.current + dt / LOOK_BOOST_RAMP)
+      : 1
+    const tgtYaw = -x * LOOK_BASE_RATE * lookBoost.current
+    const tgtPitch = y * LOOK_BASE_RATE * lookBoost.current
+    lookVel.current.yaw +=
+      (tgtYaw - lookVel.current.yaw) * (1 - Math.exp(-dt * (x !== 0 ? LOOK_ACCEL_K : LOOK_DRAG_K)))
+    lookVel.current.pitch +=
+      (tgtPitch - lookVel.current.pitch) *
+      (1 - Math.exp(-dt * (y !== 0 ? LOOK_ACCEL_K : LOOK_DRAG_K)))
+    // Snap the tiny coasting tail to a dead stop once released (no endless sub-pixel drift).
+    if (x === 0 && Math.abs(lookVel.current.yaw) < 1e-3) lookVel.current.yaw = 0
+    if (y === 0 && Math.abs(lookVel.current.pitch) < 1e-3) lookVel.current.pitch = 0
+    const dYaw = lookVel.current.yaw * dt
+    const dPitch = lookVel.current.pitch * dt
+    if (dYaw !== 0 || dPitch !== 0) {
       const dist = camera.position.distanceTo(controls.target)
       if (dist > 0) {
-        const ang = 1.4 * dt
-        look.current.subVectors(controls.target, camera.position)
-        if (x !== 0) look.current.applyAxisAngle(WORLD_UP, -x * ang) // yaw
-        if (y !== 0) {
-          right.current.setFromMatrixColumn(camera.matrix, 0).normalize()
-          tmp.current.copy(look.current).applyAxisAngle(right.current, y * ang) // pitch
-          if (Math.abs(tmp.current.dot(WORLD_UP) / dist) < 0.985) look.current.copy(tmp.current)
+        fwd.current.subVectors(controls.target, camera.position).normalize()
+        upAxis.current.copy(camera.up).normalize()
+        if (dYaw !== 0) {
+          // yaw about LOCAL up (rotating about up leaves up itself unchanged)
+          q.current.setFromAxisAngle(upAxis.current, dYaw)
+          fwd.current.applyQuaternion(q.current)
         }
-        controls.target.copy(camera.position).add(look.current)
+        if (dPitch !== 0) {
+          // pitch about LOCAL right; rotate up too so it stays ⟂ to look → smooth past vertical
+          right.current.crossVectors(fwd.current, upAxis.current).normalize()
+          q.current.setFromAxisAngle(right.current, dPitch)
+          fwd.current.applyQuaternion(q.current)
+          upAxis.current.applyQuaternion(q.current)
+        }
+        fwd.current.normalize()
+        camera.up.copy(upAxis.current).normalize()
+        controls.target.copy(camera.position).addScaledVector(fwd.current, dist)
         changed = true
       }
     }
@@ -538,10 +581,11 @@ function FlyToController() {
     const [x, y, z] = fibonacciStarPosition(idx, stars.length, stars[idx].memory.seed)
     targetRef.current = new THREE.Vector3(x, y, z)
     flyingIdRef.current = focusStarId
+    camera.up.set(0, 1, 0) // re-level: shed any free-look/arcball roll so the dive + recall is upright
     setMode('recall') // release the nebula zoom clamp for the close-up
     setTransitioning(true) // relax the orbit + ship-boundary clamps so the flight isn't yanked
     focusStar(null) // consume the request now → no stale store focus; refs drive the flight
-  }, [focusStarId, stars, setMode, setTransitioning, focusStar])
+  }, [focusStarId, stars, setMode, setTransitioning, focusStar, camera])
 
   useFrame((_, dt) => {
     const target = targetRef.current
@@ -622,6 +666,9 @@ function ModeTransitionController() {
       posRef.current = out.multiplyScalar(NEBULA_FRAME_DIST)
       tgtRef.current = new THREE.Vector3(0, 0, 0)
     }
+    // Re-level: shed any free-look roll (recall) or arcball roll (nebula) so the flight and the
+    // destination pose are upright — matches the always-level overview the saved pose was taken at.
+    camera.up.set(0, 1, 0)
     // CameraRig relaxes the orbit clamps while this flag is up; restored on arrival.
     setTransitioning(true)
   }, [resetNonce, mode, camera, controls, setTransitioning])
