@@ -45,6 +45,17 @@
 - `entry_date`가 비면 service가 `now()`(UTC)로 기본 채운다. 클라 폼 기본값은 로컬 오늘 날짜.
 - 응답은 별의 `last_recalled_at`·시냅스의 `weight`/`last_activated_at`을 raw로만 싣는다 — 밝기·활성도·좌표는 서버가 계산하지 않는다(헌법2·3).
 
+### RecordMemory 입력 검증 (17)
+
+records는 append-only(헌법1)라 **쓰기 전 검증이 유일한 방어선**이다 — 통과 못 하면 record/memory/job 어느 것도 생성되지 않는다(임베딩 비용 0). service 레이어가 검증하고 핸들러가 `InvalidArgument`로 매핑하며, FE는 그 sentinel 문구로 한국어 카피를 고른다(서버 테스트가 문구를 핀으로 고정).
+
+| 규칙 | 값 / 조건 |
+|---|---|
+| 빈 본문 거부 | `TrimSpace(body) == ""` → `ErrEmptyBody`. 클라 폼도 사전 차단 |
+| 본문 길이 상한 | `4000 runes`(`memory.MaxBodyRunes`) — 임베더 절단 상한(`ai maxInputRunes`)과 정렬(테스트 가드: 임베더 캡 ≥ 검증 캡). 클라도 4,000자 사전 차단 + 초과 시 "일기가 너무 길어요" 카피 |
+| 강도 범위 | `intensity ∈ [0,1]`, NaN 거부 → `ErrIntensityRange` (별 크기 셰이더 `f(intensity)` 계약 보호) |
+| 날짜 형식 | `entry_date`는 `YYYY-MM-DD` 또는 빈 값(핸들러 검증, 기존) |
+
 ### 멱등성 · 격리
 
 | 규칙 | 값 |
@@ -67,3 +78,4 @@
 - 구현: plan 03 · `backend/internal/db/migrations/00001_engram_schema.sql` — records/memories/embeddings/memory_links/jobs/processed_batches 6테이블 단일 권위 DDL, 멱등 부분 UNIQUE, user_id 격리.
 - 구현: plan 04 · `backend/internal/db/queries/memory.sql`, `backend/internal/memory/{memory.go,handler.go,service.go,repository_pg.go}` — RecordMemory(record→memory→job 트랜잭션, 서버 권위 ID, 멱등 반환)·GetUniverse·RecallMemory·ListDormant, 도메인 무태그.
 - 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`, `frontend/src/features/record-memory/model/draft-store.ts` — 본문 + mood select + intensity 슬라이더 + 날짜 → 단일 별 기록 폼.
+- 구현: plan 17 · `backend/internal/memory/{memory.go,service.go,handler.go,service_test.go}`(검증 sentinel·InvalidArgument 매핑·문구 핀), `backend/internal/ai/limits_test.go`(캡 정렬 가드), `frontend/src/features/record-memory/{api/record-memory.ts,model/use-record-memory.ts}`(사전 차단 + 한국어 카피 매핑).
