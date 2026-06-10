@@ -2,7 +2,6 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import { LandingPage } from '@/pages/landing'
 import { HomePage } from '@/pages/home'
 import { DormantPage } from '@/pages/dormant'
-import { SpecPreviewPage } from '@/pages/spec-preview'
 import { RootLayout } from './RootLayout'
 import { SessionGate } from './ui/SessionGate'
 
@@ -43,19 +42,7 @@ const dormantRoute = createRoute({
   },
 })
 
-// /spec-preview = dev 전용 스펙 프리뷰 샌드박스(프로덕션 빌드엔 라우트 미등록).
-const specPreviewRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/spec-preview',
-  component: SpecPreviewPage,
-})
-
-const routeTree = rootRoute.addChildren([
-  indexRoute,
-  universeRoute,
-  dormantRoute,
-  ...(import.meta.env.DEV ? [specPreviewRoute] : []),
-])
+const routeTree = rootRoute.addChildren([indexRoute, universeRoute, dormantRoute])
 
 export const router = createRouter({
   routeTree,

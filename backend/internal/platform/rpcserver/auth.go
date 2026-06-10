@@ -32,7 +32,7 @@ func UserIDFromContext(ctx context.Context) (string, bool) {
 //   - ES256/RS256 (Supabase's default, asymmetric signing keys) → verified against the
 //     project's PUBLIC keys from {projectURL}/auth/v1/.well-known/jwks.json (fetched once
 //     at boot, cached + auto-refreshed, selected by `kid`).
-//   - HS256 (legacy shared secret + the /spec-preview dev token) → verified with `secret`.
+//   - HS256 (legacy shared secret) → verified with `secret`.
 //
 // Fails CLOSED: with neither a JWKS source nor a secret, every protected RPC is rejected.
 // HMAC is only allowed when `secret` is non-empty (golang-jwt's HMAC verify has no minimum
