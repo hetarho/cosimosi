@@ -93,9 +93,12 @@ jobs:
             cd "/srv/cosimosi-${ENV_NAME}"
             # 1) Migrations FIRST, via the DIRECT connection (5432 — never the 6543 pooler
             #    for DDL). Failure here exits non-zero → the API is never replaced.
-            docker run --rm -v "$PWD/migrations:/m" \
+            #    goose has no official Docker image — kukymbr/goose-docker wrapper, same
+            #    as scripts/db.mjs: mounts /migrations, command via GOOSE_COMMAND.
+            docker run --rm -v "$PWD/migrations:/migrations" \
               -e GOOSE_DRIVER=postgres -e GOOSE_DBSTRING="$DIRECT_DATABASE_URL" \
-              ghcr.io/pressly/goose:3 -dir /m up
+              -e GOOSE_COMMAND=up \
+              ghcr.io/kukymbr/goose-docker:3.27.1
             # 2) Record IMAGE_TAG in the stack .env so `pull` and `up` resolve the SAME
             #    SHA (an inline IMAGE_TAG=... would only reach `pull`, spec 14 §4).
             if grep -q '^IMAGE_TAG=' .env; then
