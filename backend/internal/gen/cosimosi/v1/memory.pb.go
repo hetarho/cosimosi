@@ -910,13 +910,13 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x05ANGER\x10\x04\x12\b\n" +
 	"\x04FEAR\x10\x05\x12\b\n" +
 	"\x04LOVE\x10\x06\x12\v\n" +
-	"\aNEUTRAL\x10\a2\xb8\x03\n" +
+	"\aNEUTRAL\x10\a2\xc2\x03\n" +
 	"\rMemoryService\x12S\n" +
-	"\fRecordMemory\x12 .cosimosi.v1.RecordMemoryRequest\x1a!.cosimosi.v1.RecordMemoryResponse\x12P\n" +
-	"\vGetUniverse\x12\x1f.cosimosi.v1.GetUniverseRequest\x1a .cosimosi.v1.GetUniverseResponse\x12Y\n" +
+	"\fRecordMemory\x12 .cosimosi.v1.RecordMemoryRequest\x1a!.cosimosi.v1.RecordMemoryResponse\x12U\n" +
+	"\vGetUniverse\x12\x1f.cosimosi.v1.GetUniverseRequest\x1a .cosimosi.v1.GetUniverseResponse\"\x03\x90\x02\x01\x12Y\n" +
 	"\x0eReinforceLinks\x12\".cosimosi.v1.ReinforceLinksRequest\x1a#.cosimosi.v1.ReinforceLinksResponse\x12S\n" +
-	"\fRecallMemory\x12 .cosimosi.v1.RecallMemoryRequest\x1a!.cosimosi.v1.RecallMemoryResponse\x12P\n" +
-	"\vListDormant\x12\x1f.cosimosi.v1.ListDormantRequest\x1a .cosimosi.v1.ListDormantResponseBAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
+	"\fRecallMemory\x12 .cosimosi.v1.RecallMemoryRequest\x1a!.cosimosi.v1.RecallMemoryResponse\x12U\n" +
+	"\vListDormant\x12\x1f.cosimosi.v1.ListDormantRequest\x1a .cosimosi.v1.ListDormantResponse\"\x03\x90\x02\x01BAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
 
 var (
 	file_cosimosi_v1_memory_proto_rawDescOnce sync.Once

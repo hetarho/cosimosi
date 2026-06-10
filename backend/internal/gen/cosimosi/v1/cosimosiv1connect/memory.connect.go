@@ -80,6 +80,7 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+MemoryServiceGetUniverseProcedure,
 			connect.WithSchema(memoryServiceMethods.ByName("GetUniverse")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		reinforceLinks: connect.NewClient[v1.ReinforceLinksRequest, v1.ReinforceLinksResponse](
@@ -98,6 +99,7 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+MemoryServiceListDormantProcedure,
 			connect.WithSchema(memoryServiceMethods.ByName("ListDormant")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -163,6 +165,7 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		MemoryServiceGetUniverseProcedure,
 		svc.GetUniverse,
 		connect.WithSchema(memoryServiceMethods.ByName("GetUniverse")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	memoryServiceReinforceLinksHandler := connect.NewUnaryHandler(
@@ -181,6 +184,7 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		MemoryServiceListDormantProcedure,
 		svc.ListDormant,
 		connect.WithSchema(memoryServiceMethods.ByName("ListDormant")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/cosimosi.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

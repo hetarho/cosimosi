@@ -119,10 +119,16 @@ message ListDormantResponse {
 
 // MemoryService is the single service (no separate LinkService). All RPCs are
 // unary — streaming is intentionally not defined (constitution §6).
+// NO_SIDE_EFFECTS on the idempotent reads exposes them as HTTP GET (connect-go
+// accepts GET automatically; the web transport opts in via useHttpGet — §4.4).
 service MemoryService {
   rpc RecordMemory(RecordMemoryRequest) returns (RecordMemoryResponse);
-  rpc GetUniverse(GetUniverseRequest) returns (GetUniverseResponse);             // idempotent
+  rpc GetUniverse(GetUniverseRequest) returns (GetUniverseResponse) {            // idempotent
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ReinforceLinks(ReinforceLinksRequest) returns (ReinforceLinksResponse);    // batch upsert
   rpc RecallMemory(RecallMemoryRequest) returns (RecallMemoryResponse);          // reconsolidation
-  rpc ListDormant(ListDormantRequest) returns (ListDormantResponse);             // dormant stars
+  rpc ListDormant(ListDormantRequest) returns (ListDormantResponse) {            // dormant stars
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
