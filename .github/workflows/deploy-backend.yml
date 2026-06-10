@@ -12,7 +12,6 @@ on:
     paths:
       - 'backend/**'
       - 'docker-compose.prod.yml'
-      - 'Caddyfile'
       - '.github/workflows/deploy-backend.yml'
   # Manual redeploy from the Actions tab (deploys the selected branch's environment).
   workflow_dispatch:
@@ -107,6 +106,8 @@ jobs:
               echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
             fi
             # 3) Roll the API to the new image, then prune dangling layers.
+            #    --remove-orphans: drop containers for services removed from the compose
+            #    file (e.g. the old per-stack caddy) instead of leaving them running.
             docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
