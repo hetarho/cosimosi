@@ -2,7 +2,7 @@
 // renderer + dark background + ambient star dust + the real StarField (08, driven by
 // the memory store / spec 10 data) + Bloom + camera rig. No DOM <Html> in the scene
 // (constitution §4 — mobile portability); labels/HUD are a separate 2D widget.
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, type GLProps, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -785,6 +785,20 @@ export function UniverseCanvas() {
   const glRef = useRef<WebGPURenderer | null>(null)
   useEffect(() => () => glRef.current?.dispose(), [])
 
+  // 렌더러 init 실패 표면화(17, 2.2): R3F는 async gl 팩토리의 reject를 fire-and-forget
+  // 으로 삼킨다(.catch 없는 내부 run()) — 바운더리가 영영 못 받는다. 그래서 실패를
+  // state로 받아 "렌더 중 throw"로 바꿔 페이지의 에러 바운더리에 전달한다.
+  const [initError, setInitError] = useState<unknown>(null)
+  const glFactory = useCallback(
+    (props: Parameters<typeof createRenderer>[0]) =>
+      createRenderer(props).catch((e: unknown) => {
+        setInitError(e)
+        throw e // R3F 내부 진행도 멈춘다(거부 그대로 — 콘솔의 unhandled rejection은 진짜 장애 신호)
+      }),
+    [],
+  )
+  if (initError != null) throw initError
+
   // 우주의 색 = 선택한 테마(appearance entity)의 깊은 배경색. 별(기억) 색은 mood(감정 의미색)라 보존.
   const bg = themeBg(useAppearance((s) => s.theme))
   // 별(기억) 오브제의 형태 = 선택한 object. StarField가 형태별 지오메트리·재질로 그린다(색은 mood 유지).
@@ -792,10 +806,9 @@ export function UniverseCanvas() {
 
   return (
     <Canvas
-      // gl = async WebGPU factory (WebGL2 auto-fallback). createRenderer is a valid
-      // R3F async GLProps factory; the cast only bridges its WebGPURenderer-specific
-      // param/return types to R3F's nominal GLProps.
-      gl={createRenderer as unknown as GLProps}
+      // gl = async WebGPU factory (WebGL2 auto-fallback) + init 실패 표면화 래퍼. 캐스트는
+      // WebGPURenderer 고유 파라미터/반환 타입을 R3F의 명목 GLProps로 잇는 것뿐.
+      gl={glFactory as unknown as GLProps}
       flat
       camera={{ position: [0, 0, 110], fov: 72, near: 0.1, far: 2000 }}
       onCreated={(state) => {

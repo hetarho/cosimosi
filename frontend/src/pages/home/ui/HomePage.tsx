@@ -1,7 +1,10 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { errorMessage } from '@/shared/lib'
+import { RendererUnavailableError } from '@/shared/lib/r3f'
+import { primaryButtonCls } from '@/shared/ui'
 import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
@@ -24,6 +27,47 @@ const KEY_MOVE: Record<string, ['x' | 'y' | 'z', number]> = {
   ArrowDown: ['y', -1],
   ArrowLeft: ['x', -1],
   ArrowRight: ['x', 1],
+}
+
+/** 우주 영역 풀오버레이 에러 카드 chrome — 쿼리 실패(16)와 캔버스 크래시(17)가 공유. */
+function UniverseErrorCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center">
+      <div className="flex w-80 max-w-[85vw] flex-col gap-3 rounded-xl border border-white/10 bg-black/60 p-5 text-center backdrop-blur">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** 캔버스 전용 폴백(17, 2.1/2.2) — Sentry FallbackRender 시그니처의 모듈 레벨 컴포넌트.
+ *  (인라인 화살표를 fallback으로 주면 Sentry가 함수를 element type으로 써서 HomePage
+ *  리렌더마다 폴백이 리마운트된다 — 재시도 버튼 포커스 유실.) 원인 구분: 렌더러 자체가
+ *  불가한 기기(WebGPU·WebGL2 모두 실패 — 재시도 무의미, 안내만)와 일반 렌더 크래시
+ *  (다시 시도 = 캔버스 리마운트). 어느 쪽이든 HUD(작성 폼)는 바운더리 밖이라 살아 있다. */
+function CanvasErrorFallback({ error, resetError }: { error: unknown; resetError: () => void }) {
+  const unavailable = error instanceof RendererUnavailableError
+  return (
+    <UniverseErrorCard>
+      {unavailable ? (
+        <>
+          <p className="text-sm text-white/85">이 브라우저/기기에서는 우주를 그릴 수 없어요.</p>
+          <p className="text-xs text-white/45">
+            최신 Chrome·Edge·Safari로 열거나, 그래픽 가속이 켜져 있는지 확인해 주세요. 일기
+            작성은 그대로 할 수 있어요 — 별은 안전하게 기록돼요.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-white/85">우주를 불러오지 못했어요.</p>
+          <p className="text-xs break-all text-white/40">{errorMessage(error)}</p>
+          <button type="button" onClick={resetError} className={primaryButtonCls}>
+            다시 시도
+          </button>
+        </>
+      )}
+    </UniverseErrorCard>
+  )
 }
 
 /** True when the user is typing in a field — keyboard nav must not hijack those keys. */
@@ -175,7 +219,12 @@ export function HomePage() {
 
   return (
     <div className="universe-page fixed inset-0" data-lenis-prevent>
-      <UniverseCanvas />
+      {/* 바운더리는 Canvas에만(17): R3F 트리의 throw·렌더러 init 실패(위젯이 state→render
+          throw로 표면화)가 흰 화면이 되지 않게 폴백을 그리되, 형제인 HUD(작성 폼·패널)는
+          살린다. resetError → 캔버스 리마운트. */}
+      <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
+        <UniverseCanvas />
+      </Sentry.ErrorBoundary>
       {/* Film grain over the canvas (DOM overlay, not the bloom pipeline) — sits above the
           canvas but before the HUD, and is pointer-events:none, so HUD stays interactive. */}
       <UniverseGrain />
@@ -253,19 +302,17 @@ export function HomePage() {
       {/* 첫 로드 실패 — 침묵 금지(1.2): 에러 카드 + 재시도. (데이터가 이미 있으면 백그라운드
           refetch 실패여도 마지막 우주를 그대로 두는 편이 낫다 — 카드로 가리지 않는다.) */}
       {universe.isError && universeData === undefined && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center">
-          <div className="flex w-80 max-w-[85vw] flex-col gap-3 rounded-xl border border-white/10 bg-black/60 p-5 text-center backdrop-blur">
-            <p className="text-sm text-white/85">우주를 불러오지 못했어요.</p>
-            <p className="text-xs break-all text-white/40">{errorMessage(universe.error)}</p>
-            <button
-              type="button"
-              onClick={() => void universe.refetch()}
-              className="rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
-            >
-              다시 시도
-            </button>
-          </div>
-        </div>
+        <UniverseErrorCard>
+          <p className="text-sm text-white/85">우주를 불러오지 못했어요.</p>
+          <p className="text-xs break-all text-white/40">{errorMessage(universe.error)}</p>
+          <button
+            type="button"
+            onClick={() => void universe.refetch()}
+            className={primaryButtonCls}
+          >
+            다시 시도
+          </button>
+        </UniverseErrorCard>
       )}
 
       {universe.isSuccess && starCount === 0 && (

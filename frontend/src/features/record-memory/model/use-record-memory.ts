@@ -10,7 +10,12 @@ import {
   useMemoryStore,
   type StarNode,
 } from '@/entities/memory'
-import { recordMemory } from '../api/record-memory'
+import {
+  BODY_TOO_LONG_MSG,
+  MAX_BODY_CHARS,
+  recordErrorMessage,
+  recordMemory,
+} from '../api/record-memory'
 import { useDraftStore } from './draft-store'
 
 type DomainMood = StarNode['memory']['mood']
@@ -39,6 +44,11 @@ export function useRecordMemory() {
     if (draft.status === 'submitting') return // guard a fast double-submit
     if (!draft.body.trim()) {
       useDraftStore.getState().setError('일기 본문을 입력하세요')
+      return
+    }
+    // 사전 길이 차단(17): 서버도 같은 상한으로 거부하지만, 와이어 왕복 없이 즉시 안내.
+    if ([...draft.body].length > MAX_BODY_CHARS) {
+      useDraftStore.getState().setError(BODY_TOO_LONG_MSG)
       return
     }
 
@@ -73,10 +83,11 @@ export function useRecordMemory() {
           void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
         }, WORKER_SYNC_DELAY_MS)
       }
-    } catch {
-      // 임시 별만 롤백, 서버 별 보존 (1.3 / 헌법2)
+    } catch (e) {
+      // 임시 별만 롤백, 서버 별 보존 (1.3 / 헌법2). 서버 검증(InvalidArgument, 17)은
+      // 입력을 고치면 되는 문제라 구체 메시지로 표면화한다(2.8).
       useMemoryStore.getState().removeStar(tempId)
-      useDraftStore.getState().setError('별을 띄우지 못했어요. 잠시 후 다시 시도해 주세요.')
+      useDraftStore.getState().setError(recordErrorMessage(e))
     }
   }, [queryClient])
 

@@ -3,6 +3,7 @@ import { LandingPage } from '@/pages/landing'
 import { HomePage } from '@/pages/home'
 import { DormantPage } from '@/pages/dormant'
 import { RootLayout } from './RootLayout'
+import { NotFoundScreen, RouteErrorScreen } from './ui/ErrorScreens'
 import { SessionGate } from './ui/SessionGate'
 
 const rootRoute = createRootRoute({ component: RootLayout })
@@ -48,6 +49,9 @@ export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
+  // 라우트 로드/렌더 실패·없는 경로의 설계된 폴백(17, 2.3) — 흰 화면 금지.
+  defaultErrorComponent: RouteErrorScreen,
+  defaultNotFoundComponent: NotFoundScreen,
 })
 
 declare module '@tanstack/react-router' {
