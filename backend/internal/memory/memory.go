@@ -6,8 +6,28 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// Validation sentinels for the write path. records are append-only (constitution
+// §1), so rejecting invalid input BEFORE the transaction is the only defense —
+// there is no cleanup path afterwards. The handler maps these to InvalidArgument.
+// ⚠️ The FE substring-matches these MESSAGE TEXTS to pick Korean copy
+// (frontend/src/features/record-memory/api/record-memory.ts) — rewording one
+// breaks that mapping silently; service_test.go pins the matched substrings.
+var (
+	ErrEmptyBody      = errors.New("memory: body is empty")
+	ErrBodyTooLong    = errors.New("memory: body exceeds max length")
+	ErrIntensityRange = errors.New("memory: intensity out of range [0,1]")
+)
+
+// MaxBodyRunes caps the diary body length. It MIRRORS (must stay in sync with)
+// the embedder input cap ai/openai.go maxInputRunes: anything longer would be
+// silently truncated before embedding, so the star's semantic position would
+// ignore the tail — better to reject up front than embed half a diary. The FE
+// error copy ("4000자") also assumes this value.
+const MaxBodyRunes = 4000
 
 // Mood is the domain mood, one of 7 fixed values (or empty = unspecified). It is
 // stored as its lowercase string in records.mood (nullable) and mapped to/from

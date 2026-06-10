@@ -51,7 +51,13 @@ func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimos
 		Intensity:      msg.GetIntensity(),
 		IdempotencyKey: msg.GetIdempotencyKey(),
 	})
-	if err != nil {
+	switch {
+	// Validation sentinels → InvalidArgument (17): the client shows the message
+	// to the user (use-record-memory maps it to Korean copy), so it must not be
+	// blanket-coded Internal.
+	case errors.Is(err, ErrEmptyBody), errors.Is(err, ErrBodyTooLong), errors.Is(err, ErrIntensityRange):
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	case err != nil:
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"runtime/debug"
 	"time"
 
 	"github.com/cosimosi/backend/internal/ai"
@@ -95,7 +96,7 @@ func (w *Worker) processOne(ctx context.Context) bool {
 		w.logger.Error("claim job failed", "err", err)
 		return false
 	}
-	if err := w.handle(ctx, j); err != nil {
+	if err := w.safeHandle(ctx, j); err != nil {
 		if ctx.Err() != nil {
 			// Interrupted by shutdown, not a genuine failure: leave the job 'running'
 			// and don't burn an attempt. ClaimJob's lease reclaims it on the next run.
@@ -105,6 +106,26 @@ func (w *Worker) processOne(ctx context.Context) bool {
 		w.failWithBackoff(ctx, j, err)
 	}
 	return true
+}
+
+// safeHandle runs handle with a panic guard (17, acceptance 2.7): a panicking
+// job (bad embedder response, nil deref on odd data) becomes a normal failure —
+// backed off and retried/failed by failWithBackoff — instead of killing the
+// whole single binary (API + worker share the process in MVP). The stack is
+// logged HERE (the only place the panicking frames exist): the persisted job
+// error keeps just the value, and failWithBackoff's shutdown-interruption branch
+// can no longer swallow the evidence.
+func (w *Worker) safeHandle(ctx context.Context, j Job) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			w.logger.Error("job panic recovered",
+				"job", j.ID, "memory", j.MemoryID, "panic", p,
+				"stack", string(debug.Stack()),
+			)
+			err = fmt.Errorf("job panic recovered: %v", p)
+		}
+	}()
+	return w.handle(ctx, j)
 }
 
 // handle runs the pipeline for one claimed job. Every step is idempotent

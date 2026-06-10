@@ -22,21 +22,43 @@ import (
 	"github.com/cosimosi/backend/internal/platform/config"
 )
 
+// maxRequestBytes caps a single unary request message (17, acceptance 2.6). The
+// largest legitimate payload is a RecordMemory body (≤4000 runes ≈ 16KB UTF-8),
+// so 256KB is generous headroom while shutting down cheap large-POST DoS /
+// embedding-cost amplification on the 1GB Lightsail box. It also stays coherent
+// with the client's 64KB keepalive flush cap (spec 11).
+const maxRequestBytes = 256 << 10 // 256 KiB
+
+// Server hardening timeouts (17): ReadTimeout bounds slow-body uploads (a
+// trickled POST would otherwise park a goroutine forever — ReadHeaderTimeout
+// covers headers only), WriteTimeout bounds slow-reader responses, IdleTimeout
+// reaps abandoned keep-alive connections. Unary handlers finish in milliseconds,
+// so generous values only bound abuse, not real traffic.
+const (
+	readTimeout  = 30 * time.Second
+	writeTimeout = 30 * time.Second
+	idleTimeout  = 120 * time.Second
+)
+
 // New builds the fully-wired HTTP server: the given MemoryService Connect handler
 // (the real implementation from internal/memory, injected by cmd/api) behind
 // logging→auth interceptors, a /health endpoint that reports DB reachability, all
-// wrapped in CORS and h2c. The caller owns the listen/shutdown lifecycle (cmd/api).
-func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler) *http.Server {
+// wrapped in CORS and h2c. panicCapture (nil-safe) forwards recovered RPC panics
+// to the composition root's tracker. The caller owns the listen/shutdown lifecycle.
+func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, panicCapture PanicCapture) *http.Server {
 	mux := http.NewServeMux()
 
 	// Logging is outermost, auth innermost (onion order): every request — even
 	// auth-rejected ones — is logged, and the handler only runs once authenticated.
+	// WithRecover (17, 2.7): panic → stack-logged + captured + CodeInternal (recover.go).
 	path, handler := cosimosiv1connect.NewMemoryServiceHandler(
 		memorySvc,
+		connect.WithReadMaxBytes(maxRequestBytes),
 		connect.WithInterceptors(
 			NewLoggingInterceptor(slog.Default()),
 			NewAuthInterceptor(cfg.SupabaseJWTSecret, cfg.SupabaseProjectURL),
 		),
+		connect.WithRecover(newRecoverHandler(slog.Default(), panicCapture)),
 	)
 	mux.Handle(path, handler)
 
@@ -56,12 +78,20 @@ func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimos
 
 	// h2c wraps the outermost handler so the cleartext HTTP/2 upgrade applies to
 	// all traffic (we terminate TLS at the edge — Cloudflare/Hetzner — per §7).
-	root := h2c.NewHandler(withCORS(mux, cfg.CORSOrigin), &http2.Server{})
+	// Read/WriteTimeout DO reach h2c streams (x/net arms per-stream deadlines from
+	// the BaseConfig *http.Server) — only IdleTimeout doesn't propagate, so the
+	// http2.Server mirrors it for stream-less h2c connections.
+	root := h2c.NewHandler(withCORS(mux, cfg.CORSOrigin), &http2.Server{
+		IdleTimeout: idleTimeout,
+	})
 
 	return &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           root,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
 	}
 }
 

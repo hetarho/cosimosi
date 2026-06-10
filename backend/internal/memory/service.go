@@ -3,7 +3,9 @@ package memory
 import (
 	"context"
 	"math"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Dormancy threshold (spec 12): a star is "dormant" once its RAW activation
@@ -40,10 +42,23 @@ func NewService(repo Repository, links LinkService) *Service {
 	return &Service{repo: repo, links: links}
 }
 
-// RecordMemory applies server policy (default entry_date = today UTC) and
-// delegates the record→memory→job transaction to the repository. Ids are
-// server-generated in the repository; clients never supply them (§3/§8).
+// RecordMemory applies server policy — input validation first (records are
+// append-only, so this is the only defense: an empty/oversized body would
+// otherwise become a permanent record plus a paid embedding job), then the
+// entry_date default — and delegates the record→memory→job transaction to the
+// repository. Ids are server-generated in the repository (§3/§8).
 func (s *Service) RecordMemory(ctx context.Context, in RecordInput) (string, error) {
+	if strings.TrimSpace(in.Body) == "" {
+		return "", ErrEmptyBody
+	}
+	if utf8.RuneCountInString(in.Body) > MaxBodyRunes {
+		return "", ErrBodyTooLong
+	}
+	// NaN compares false to both bounds — reject it explicitly (binary protobuf
+	// can carry NaN doubles even though JSON cannot).
+	if math.IsNaN(in.Intensity) || in.Intensity < 0 || in.Intensity > 1 {
+		return "", ErrIntensityRange
+	}
 	if in.EntryDate.IsZero() {
 		in.EntryDate = time.Now().UTC()
 	}

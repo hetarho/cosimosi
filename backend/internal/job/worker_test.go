@@ -1,7 +1,10 @@
 package job
 
 import (
+	"context"
+	"log/slog"
 	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -100,5 +103,64 @@ func TestBackoffDelayGrowsAndCaps(t *testing.T) {
 	}
 	if d := backoffDelay(20, base, max); d != max { // base·2^19 ≫ 5m → cap
 		t.Fatalf("attempt 20 backoff = %v, want cap %v", d, max)
+	}
+}
+
+// --- panic recovery (17, acceptance 2.7) ---
+
+// stubJobs hands out one job and records how it was failed.
+type stubJobs struct {
+	failStatus Status
+	failMsg    string
+	failed     bool
+}
+
+func (s *stubJobs) Claim(context.Context, Kind) (Job, error) {
+	return Job{ID: "j1", MemoryID: "m1"}, nil
+}
+func (s *stubJobs) Complete(context.Context, string) error { return nil }
+func (s *stubJobs) Fail(_ context.Context, _ string, status Status, msg string, _ time.Time) error {
+	s.failed = true
+	s.failStatus = status
+	s.failMsg = msg
+	return nil
+}
+
+type stubStore struct{}
+
+func (stubStore) GetMemoryForEmbed(context.Context, string) (MemoryForEmbed, error) {
+	return MemoryForEmbed{UserID: "u1", Body: "body", EntryDate: day("2026-06-04")}, nil
+}
+func (stubStore) UpsertEmbedding(context.Context, string, string, []float32, string) error {
+	return nil
+}
+func (stubStore) KnnNearest(context.Context, string, []float32, string, int) ([]Neighbor, error) {
+	return nil, nil
+}
+func (stubStore) BatchUpsertLinks(context.Context, []LinkUpsert) error { return nil }
+
+// panicEmbedder simulates an adapter blowing up mid-pipeline.
+type panicEmbedder struct{}
+
+func (panicEmbedder) Embed(context.Context, string) ([]float32, error) { panic("boom") }
+func (panicEmbedder) Dim() int                                         { return 3 }
+func (panicEmbedder) Model() string                                    { return "panic-test" }
+
+// A panicking job must not kill the process (the single binary runs API+worker):
+// it becomes a normal backoff failure (pending retry on the first attempt).
+func TestProcessOneRecoversFromPanic(t *testing.T) {
+	jobs := &stubJobs{}
+	w := NewWorker(jobs, stubStore{}, panicEmbedder{}, slog.New(slog.DiscardHandler))
+	if claimed := w.processOne(context.Background()); !claimed {
+		t.Fatal("processOne = false, want true (a job was claimed)")
+	}
+	if !jobs.failed {
+		t.Fatal("panicking job was not handed to failWithBackoff")
+	}
+	if jobs.failStatus != StatusPending {
+		t.Fatalf("first-attempt panic status = %q, want pending (backoff retry)", jobs.failStatus)
+	}
+	if !strings.Contains(jobs.failMsg, "panic") {
+		t.Fatalf("failure message %q does not mention the panic", jobs.failMsg)
 	}
 }

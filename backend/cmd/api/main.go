@@ -91,11 +91,25 @@ func main() {
 		close(workerDone)
 	}()
 
-	server := rpcserver.New(cfg, db, version, memoryHandler)
+	// RPC panics are recovered INSIDE connect (rpcserver recover handler, 17) and
+	// no longer propagate to the sentryhttp wrap below — this hook is how they
+	// still reach Sentry. Keeps Sentry in the composition root (rpcserver stays
+	// infra-only; nil hook = log-only).
+	var panicCapture rpcserver.PanicCapture
+	if sentryEnabled {
+		panicCapture = func(ctx context.Context, _ string, p any) {
+			hub := sentry.GetHubFromContext(ctx) // request-scoped hub from the sentryhttp wrap
+			if hub == nil {
+				hub = sentry.CurrentHub()
+			}
+			hub.RecoverWithContext(ctx, p)
+		}
+	}
+	server := rpcserver.New(cfg, db, version, memoryHandler, panicCapture)
 
-	// Capture handler panics in Sentry (Repanic so net/http still returns 500). Wrapping
-	// the outermost handler keeps Sentry in the composition root — rpcserver stays
-	// infra-only. No-op path: only wrapped when Sentry actually initialized.
+	// The sentryhttp wrap still earns its keep after 17: it attaches the
+	// request-scoped hub the capture hook reads, and catches panics from non-RPC
+	// mux handlers (/health). Repanic so net/http still returns 500 on those.
 	if sentryEnabled {
 		server.Handler = sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle(server.Handler)
 	}

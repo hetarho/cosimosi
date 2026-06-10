@@ -22,8 +22,10 @@ const (
 	// cap on RUNES with a ceiling conservative enough that even dense CJK text
 	// (worst case ~2 tokens/rune → 8191/2 ≈ 4095) stays under the limit. Over-long
 	// input is truncated (acceptance 2.4) rather than risking a hard API rejection
-	// that would just retry-then-fail. A precise tiktoken-based cap is a v1 upgrade;
-	// diaries rarely exceed a few thousand characters, so truncation is seldom hit.
+	// that would just retry-then-fail. A precise tiktoken-based cap is a v1 upgrade.
+	// MIRRORS memory.MaxBodyRunes (17): RecordMemory rejects longer bodies up
+	// front, so this truncation is a last-resort guard, not the normal path —
+	// keep the two values in sync (no shared constant to avoid an ai↔memory edge).
 	maxInputRunes = 4000
 )
 
