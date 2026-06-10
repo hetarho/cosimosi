@@ -14,6 +14,8 @@ on:
       - 'docker-compose.prod.yml'
       - 'Caddyfile'
       - '.github/workflows/deploy-backend.yml'
+  # Manual redeploy from the Actions tab (deploys the selected branch's environment).
+  workflow_dispatch:
 
 # Serialize deploys per environment (never roll two images at once).
 concurrency:

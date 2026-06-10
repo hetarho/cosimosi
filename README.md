@@ -29,7 +29,7 @@
 | 백엔드 | Go 1.26 + connect-go + pgx/v5 + **sqlc** | package-by-feature + 헥사고날 규율 |
 | DB | PostgreSQL + **pgvector** | 임베딩 유사도 + 가중치 그래프(`memory_links`) |
 | AI | **공급자 추상화**(Embedder/Extractor 포트) | 어떤 LLM·임베딩도 교체 가능. OpenAI 임베딩(키 없이 개발 시 `mock`) |
-| 인증·호스팅 | **Supabase**(Auth+PG+pgvector) + **Hetzner**(Go) + **Cloudflare Pages**(웹) | |
+| 인증·호스팅 | **Supabase**(Auth+PG+pgvector) + **AWS Lightsail**(Go) + **Cloudflare Workers**(웹 정적 자산) | |
 | 모바일 | **React Native** (deferred) | 웹과 도메인·셰이더·API 공유. 렌더러 타깃 `react-native-webgpu`+TSL |
 
 스택 선택 근거는 [spec/Architecture.md](spec/Architecture.md)의 각 절(§2 FSD · §3 렌더링 · §4 백엔드).
@@ -99,7 +99,7 @@ cosimosi/
 
 ## 배포 (계획)
 
-웹 = **Cloudflare Pages**, 백엔드(api + worker) = **Hetzner VPS**(Docker Compose), DB·인증 = **Supabase**. 실제 프로비저닝은 MVP 안정화 후 — [spec/Architecture.md §7](spec/Architecture.md), CI/CD는 [spec/plan/14](spec/plan/14.deploy-cicd.md).
+웹 = **Cloudflare Workers**(정적 자산), 백엔드(api + worker) = **AWS Lightsail VPS**(서울, Docker Compose), DB·인증 = **Supabase**(서울 — Lightsail과 리전 코로케이션). 실제 프로비저닝은 MVP 안정화 후 — [spec/Architecture.md §7](spec/Architecture.md), CI/CD는 [spec/plan/14](spec/plan/14.deploy-cicd.md), 운영 절차는 [DEPLOY.md](DEPLOY.md).
 
 ## 비-목표
 

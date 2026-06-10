@@ -342,13 +342,13 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 
 | 레이어 | 선택 | 비고 |
 |---|---|---|
-| 웹 호스팅 | **Cloudflare Pages** | 정적 + 글로벌 CDN. unary GET 그래프 로드 캐시. |
-| 백엔드 | **Hetzner VPS** (Docker Compose) | Go API + worker. |
-| DB/Auth | **Supabase** (관리형 Postgres + pgvector + Auth) | 소셜 로그인·세션·관리형 벡터. ⚠️ Hetzner↔Supabase **리전 코로케이션**(지연 방지). |
+| 웹 호스팅 | **Cloudflare Workers** (정적 자산, 루트 `wrangler.jsonc`) | 정적 + 글로벌 CDN. unary GET 그래프 로드 캐시. |
+| 백엔드 | **AWS Lightsail VPS** (서울 `ap-northeast-2`, Docker Compose) | Go API + worker. 정액 $7/월·x86(GHCR `linux/amd64` 그대로)·Supabase와 같은 리전. Hetzner는 한국 리전이 없어(최근접 싱가포르, 가격 할증) 미채택. |
+| DB/Auth | **Supabase** (관리형 Postgres + pgvector + Auth) | 소셜 로그인·세션·관리형 벡터. ⚠️ Lightsail↔Supabase **리전 코로케이션**(둘 다 서울 — API↔DB 지연 방지). |
 | 로컬 개발 | Docker Compose | postgres 이미지를 **pgvector 포함**(예: `pgvector/pgvector:pg16`)으로 교체. |
 | 로깅/에러 | Structured logging + Sentry | |
 
-> 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Hetzner 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계). **CI/CD·실배포(develop→스테이징, main→프로덕션 자동 배포)는 [plan/14.deploy-cicd.md](plan/14.deploy-cicd.md)** 에서 전개한다.
+> 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Lightsail 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계). **CI/CD·실배포(develop→스테이징, main→프로덕션 자동 배포)는 [plan/14.deploy-cicd.md](plan/14.deploy-cicd.md)** 에서 전개한다.
 
 ---
 
