@@ -11,4 +11,16 @@ export {
 } from './model/activation'
 export { seedFromId } from './model/seed'
 export { useMemoryStore } from './model/store'
-export { getUniverse, mapStar, moodFromProto } from './api'
+export { parseEpochMs } from './model/time'
+export {
+  universeQueryOptions,
+  universeInvalidateKey,
+  dormantQueryOptions,
+  dormantInvalidateKey,
+  applyUniverse,
+  RECORD_QUERY_ROOT,
+  RECORD_QUERY_DEFAULTS,
+  recordQueryKey,
+  mapStar,
+  moodFromProto,
+} from './api'

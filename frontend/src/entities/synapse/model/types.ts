@@ -14,4 +14,7 @@ export interface SynapseEdge {
   /** 0..1 recent-reinforcement (drives pulse amplitude; produced by 11/12). */
   reinforcedRecency: number
   linkType: LinkType
+  /** epoch ms of last activation — brightness re-derives from this on refetch merge
+   *  (16) so decay progresses instead of max()-freezing at first-load brightness. */
+  lastActivatedAt?: number
 }

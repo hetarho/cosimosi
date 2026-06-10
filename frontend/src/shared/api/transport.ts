@@ -29,10 +29,16 @@ const baseUrl = import.meta.env.DEV ? '/api' : import.meta.env.VITE_API_URL
 // and request bodies are tiny, well under the 64KB keepalive cap.
 const keepaliveFetch: typeof fetch = (input, init) => fetch(input, { ...init, keepalive: true })
 
-const transport = createConnectTransport({
+/** The single Connect transport. Exported (16) so connect-query can mount it on
+ *  TransportProvider and build query keys / queryFns against the SAME instance the
+ *  imperative client uses — two transports would split the query-key space. */
+export const transport = createConnectTransport({
   baseUrl,
   interceptors: [authHeaderInterceptor],
   fetch: keepaliveFetch,
+  // 멱등 읽기(GetUniverse·ListDormant — proto NO_SIDE_EFFECTS)는 HTTP GET으로 나간다.
+  // connect-go가 GET을 자동 수용; CDN 캐시는 비목표(인증 응답)지만 §4.4가 기록한 방향(16).
+  useHttpGet: true,
 })
 
 /** Typed client for cosimosi.v1.MemoryService (single service, unary RPCs). */

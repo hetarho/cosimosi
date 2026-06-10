@@ -1,11 +1,20 @@
-// Recall panel (spec 11) — a 2D HUD outside the R3F canvas (Architecture §3.1).
-// Clicking a star selects it; the panel opens in a "dwelling" state and only after a
-// ≥2s ACTIVE view (1.2/1.11) does it fire RecallMemory — which re-ignites the star
-// (last_recalled_at=now) AND returns the immutable original Record (read-only, no edit
-// path — constitution §1). The same 2s threshold accumulates the co-recall pair (1.3).
+// Recall panel (spec 11, cached by 16) — a 2D HUD outside the R3F canvas (Architecture
+// §3.1). Clicking a star selects it; the panel opens in a "dwelling" state and only
+// after a ≥2s ACTIVE view (1.2/1.11) does it fire RecallMemory — which re-ignites the
+// star (last_recalled_at=now) AND returns the immutable original Record (read-only, no
+// edit path — constitution §1). The same 2s threshold accumulates the co-recall pair
+// (1.3). The Record is immutable → cached forever (['record', id]): a re-open shows the
+// body instantly from cache while the touch still fires in the background (16, 1.5).
 import { useEffect, useState } from 'react'
+import * as Sentry from '@sentry/react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Record as RecordMsg } from '@/shared/api'
-import { moodFromProto, useMemoryStore } from '@/entities/memory'
+import {
+  dormantInvalidateKey,
+  moodFromProto,
+  recordQueryKey,
+  useMemoryStore,
+} from '@/entities/memory'
 import { moodLabel } from '@/shared/config'
 import { recallMemory } from '../api/recall'
 import { DWELL_MS } from '../model'
@@ -19,31 +28,52 @@ type Phase = 'dwelling' | 'loading' | 'shown' | 'error'
 function RecallView({ memoryId }: { memoryId: string }) {
   const select = useMemoryStore((s) => s.select)
   const recordActiveView = useRecallStore((s) => s.recordActiveView)
-  const [record, setRecord] = useState<RecordMsg | null>(null)
-  const [phase, setPhase] = useState<Phase>('dwelling')
+  const queryClient = useQueryClient()
+  // 재열람 = 캐시에서 즉시 본문(스피너 없음, 1.5). 원본은 불변(헌법 §1)이라 안전하다.
+  const [record, setRecord] = useState<RecordMsg | null>(
+    () => queryClient.getQueryData<RecordMsg>(recordQueryKey(memoryId)) ?? null,
+  )
+  const [phase, setPhase] = useState<Phase>(record ? 'shown' : 'dwelling')
 
   useEffect(() => {
     let cancelled = false
     // ≥2s active dwell → a real recall (1.2/1.11). A glance (<2s: closed or star
-    // switched) clears the timer → no touch, no co-recall.
+    // switched) clears the timer → no touch, no co-recall. 캐시 히트여도 touch는 매번
+    // 발사한다(재점화 의미론, 16 — 캐시가 touch를 생략하면 감쇠 모델이 굶는다); 캐시를
+    // 보여주는 중의 touch 실패는 비차단(다음 열람에 재시도).
     const timer = setTimeout(() => {
       recordActiveView(memoryId) // co-recall pair with the previous active view (1.3)
-      setPhase('loading')
+      const hasCached = queryClient.getQueryData(recordQueryKey(memoryId)) != null
+      if (!hasCached) setPhase('loading')
       recallMemory(memoryId)
         .then((r) => {
+          // cancelled 가드가 캐시 쓰기보다 먼저다: 로그아웃·출처 리셋(queryClient.clear)
+          // 뒤에 늦게 도착한 응답이 이전 사용자의 기록을 빈 캐시에 재주입하면 안 된다
+          // (언마운트 = cancelled). 별 전환으로 잃는 시드는 다음 열람이 다시 채운다.
           if (cancelled) return
-          setRecord(r ?? null)
-          setPhase(r ? 'shown' : 'error')
+          if (r) {
+            // 영구 시드(staleTime ∞ — app/query-client의 record 기본값): 다음 열람은 캐시로.
+            queryClient.setQueryData(recordQueryKey(memoryId), r)
+            // 회상된 별은 잠에서 깸 → 잠든 별 목록 무효화(1.6).
+            void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
+            setRecord(r)
+            setPhase('shown')
+          } else if (!hasCached) {
+            setPhase('error')
+          }
         })
-        .catch(() => {
-          if (!cancelled) setPhase('error')
+        .catch((e: unknown) => {
+          // 캐시 표시 중의 touch 실패는 화면엔 비차단이지만 침묵하면 재점화 유실(감쇠 모델
+          // 굶주림)을 영영 모른다 → Sentry에 기록(스펙 §변이별; DSN 없으면 no-op).
+          Sentry.captureException(e)
+          if (!cancelled && !hasCached) setPhase('error')
         })
     }, DWELL_MS)
     return () => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [memoryId, recordActiveView])
+  }, [memoryId, recordActiveView, queryClient])
 
   return (
     <div className="flex w-96 max-w-[90vw] flex-col gap-3 rounded-xl border border-white/10 bg-black/50 p-4 backdrop-blur">

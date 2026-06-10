@@ -29,11 +29,20 @@ export const useMemoryStore = create<MemoryState>((set) => ({
   addStar: (node) => set((s) => ({ stars: [...s.stars, { ...node, index: s.stars.length }] })),
   replaceStar: (tempId, node) =>
     set((s) => {
-      // If the temp star is gone (e.g. a GetUniverse refetch ran mid-submit), APPEND
-      // the confirmed star rather than dropping it — never lose a saved memory.
-      if (!s.stars.some((st) => st.id === tempId)) {
-        return { stars: [...s.stars, { ...node, index: s.stars.length }] }
+      // If a refetch already merged the server-confirmed star while RecordMemory was in
+      // flight (16 — merge appends unknown server stars), swapping the temp would leave
+      // the SAME memory rendered as two stars. Drop the temp instead (re-indexed).
+      if (s.stars.some((st) => st.id === node.id)) {
+        const stars = s.stars
+          .filter((st) => st.id !== tempId)
+          .map((st, i) => (st.index === i ? st : { ...st, index: i }))
+        return { stars }
       }
+      // Temp gone: merge never removes temps, so the only cause is a source-boundary
+      // reset (sign-out/demo switch, 16) mid-submit — the confirmed star belongs to the
+      // PREVIOUS source. Do NOT append it into the new session; the memory is committed
+      // server-side and the owner's next GetUniverse shows it.
+      if (!s.stars.some((st) => st.id === tempId)) return s
       return { stars: s.stars.map((st) => (st.id === tempId ? { ...node, index: st.index } : st)) }
     }),
   removeStar: (tempId) =>

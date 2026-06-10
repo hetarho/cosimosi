@@ -1,4 +1,5 @@
 // Recall RPCs via the single shared Connect client (02). unary only (constitution §6).
+// ⚠️ reinforceLinks (flush 경로)는 16에서 변경 금지 — keepalive 명령형 호출 유지(헌법 §6).
 import { memoryClient } from '@/shared/api'
 import { isDemoMode, demoRecall } from '@/shared/lib/demo'
 import type { Record as RecordMsg } from '@/shared/api'

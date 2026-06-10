@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { errorMessage } from '@/shared/lib'
 import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
-import { getUniverse, useMemoryStore } from '@/entities/memory'
+import { applyUniverse, universeQueryOptions, useMemoryStore } from '@/entities/memory'
 
 // The universe shell (spec 10, extended by 11): full-screen <UniverseCanvas/> (renders
 // the stars from the memory store) + 2D HUD overlays (compose form, camera toggle,
-// recall panel) OUTSIDE the R3F scene (Architecture §3.1). On mount we load the
-// universe once via GetUniverse.
+// recall panel) OUTSIDE the R3F scene (Architecture §3.1). The universe loads via the
+// GetUniverse query (16) — loading/error/retry UI here, merge-sync into the stores.
 /** Maps keyboard codes → a move axis + value. WASD/Arrows so multiple keys chord
  *  naturally (forward + turn at once) — the single-pointer mouse can't. x = yaw, y =
  *  pitch (look), z = forward/back. */
@@ -138,19 +140,19 @@ export function HomePage() {
   const mode = useCameraMode((s) => s.mode)
   const toggle = useCameraMode((s) => s.toggle)
   const starCount = useMemoryStore((s) => s.stars.length)
-  const loadedRef = useRef(false)
   // Mobile-only: the compose form is hidden by default (keep the universe unobstructed)
   // and expands into a full-width bottom sheet. On desktop (sm+) it stays a persistent
   // top-left panel, so this flag is ignored there.
   const [composeOpen, setComposeOpen] = useState(false)
 
+  // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
+  // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4) — 제출 중 temp 별,
+  // 기존 별 슬롯/좌표, 로컬이 앞선 타임스탬프를 깨지 않는다.
+  const universe = useQuery(universeQueryOptions())
+  const { data: universeData } = universe
   useEffect(() => {
-    if (loadedRef.current) return // guard StrictMode double-invoke / re-renders (2.1)
-    loadedRef.current = true
-    void getUniverse().catch((e) => {
-      console.error('[universe] GetUniverse failed', e)
-    })
-  }, [])
+    if (universeData) applyUniverse(universeData)
+  }, [universeData])
 
   // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3). The
   // model store is DOM-free (1.9); the window listeners live here in the page layer.
@@ -239,7 +241,34 @@ export function HomePage() {
       {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(우하단은 MemoryPanel, 하단은 compose/NavPad와 겹침). */}
       <AppearanceSwitcher className="top-28 right-4" />
 
-      {starCount === 0 && (
+      {/* 우주 로딩 — 응답 전의 빈 캔버스를 "별이 없다"로 오인시키지 않는다(1.1). */}
+      {universe.isPending && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <p className="animate-pulse rounded-full border border-white/10 bg-black/40 px-4 py-2 text-sm text-white/70 backdrop-blur">
+            우주를 불러오는 중…
+          </p>
+        </div>
+      )}
+
+      {/* 첫 로드 실패 — 침묵 금지(1.2): 에러 카드 + 재시도. (데이터가 이미 있으면 백그라운드
+          refetch 실패여도 마지막 우주를 그대로 두는 편이 낫다 — 카드로 가리지 않는다.) */}
+      {universe.isError && universeData === undefined && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <div className="flex w-80 max-w-[85vw] flex-col gap-3 rounded-xl border border-white/10 bg-black/60 p-5 text-center backdrop-blur">
+            <p className="text-sm text-white/85">우주를 불러오지 못했어요.</p>
+            <p className="text-xs break-all text-white/40">{errorMessage(universe.error)}</p>
+            <button
+              type="button"
+              onClick={() => void universe.refetch()}
+              className="rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      )}
+
+      {universe.isSuccess && starCount === 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-12 z-10 text-center">
           <p className="text-sm text-white/55">
             아직 별이 없어요. 첫 일기를 적어 첫 별을 띄워보세요.

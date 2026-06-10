@@ -5,6 +5,7 @@
 import { Mood as ProtoMood, type Star } from '@/shared/api'
 import type { Mood } from '@/shared/config'
 import { seedFromId } from '../model/seed'
+import { parseEpochMs } from '../model/time'
 import type { Memory, StarNode } from '../model/types'
 
 const PROTO_TO_MOOD: Partial<Record<ProtoMood, Mood>> = {
@@ -25,12 +26,11 @@ export function moodFromProto(m: ProtoMood): Mood {
 /** Maps a proto Star to a domain StarNode at the given instance slot. */
 export function mapStar(star: Star, index: number): StarNode {
   const id = star.memoryId
-  const parsed = Date.parse(star.lastRecalledAt)
   const memory: Memory = {
     id,
     mood: moodFromProto(star.mood),
     intensity: star.intensity,
-    lastRecalledAt: Number.isFinite(parsed) ? parsed : Date.now(),
+    lastRecalledAt: parseEpochMs(star.lastRecalledAt, Date.now()),
     seed: seedFromId(id),
   }
   return { id, memory, index }

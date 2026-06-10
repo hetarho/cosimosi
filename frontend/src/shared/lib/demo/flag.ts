@@ -20,6 +20,17 @@ function readPersisted(): boolean {
 
 let demo = readPersisted()
 
+// 모드가 실제로 바뀔 때 호출되는 콜백. 데이터 출처(체험 더미 ↔ 실서버)가 바뀌면 쿼리
+// 캐시·렌더 스토어를 리셋해야 하는데(16 — 둘은 같은 쿼리 키를 공유한다), 그 리셋은 app
+// 레이어 소유다. shared가 app을 import할 수 없으므로(상향 금지) app이 여기로 주입한다.
+type DemoModeListener = () => void
+let onModeChange: DemoModeListener | null = null
+
+/** 모드 전환 콜백 등록(app 부팅 시 1회). null로 해제. */
+export function setDemoModeListener(cb: DemoModeListener | null): void {
+  onModeChange = cb
+}
+
 /** 현재 체험 모드인가. API 래퍼·세션 게이트가 동기로 호출한다. */
 export function isDemoMode(): boolean {
   return demo
@@ -27,20 +38,24 @@ export function isDemoMode(): boolean {
 
 /** 체험 모드 진입(랜딩 "체험해보기"). 이후 라우트 이동에도 유지된다. */
 export function enterDemoMode(): void {
+  if (demo) return
   demo = true
   try {
     sessionStorage.setItem(KEY, '1')
   } catch {
     /* 저장 실패해도 메모리 플래그로 이번 세션은 동작 */
   }
+  onModeChange?.()
 }
 
 /** 체험 종료(랜딩 복귀). 추가했던 더미 별도 함께 비운다. */
 export function exitDemoMode(): void {
+  if (!demo) return
   demo = false
   try {
     sessionStorage.removeItem(KEY)
   } catch {
     /* noop */
   }
+  onModeChange?.()
 }

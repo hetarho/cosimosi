@@ -34,6 +34,10 @@ interface RecallState {
   recordActiveView: (id: string) => void
   /** Send the accumulated batch now (debounce, beforeunload, neighbor-jump). */
   flush: () => Promise<void>
+  /** Source-boundary reset (sign-out / demo switch, 16): swap in a fresh session so the
+   *  previous source's pending pairs/deltas/lastViewedId never leak into the next one.
+   *  The flush MECHANISM is untouched — this only replaces the session it drains from. */
+  reset: () => void
 }
 
 export const useRecallStore = create<RecallState>((set, get) => ({
@@ -62,13 +66,21 @@ export const useRecallStore = create<RecallState>((set, get) => ({
     } catch {
       // failure → re-merge the drained increments under the SAME batchId for retry
       // (1.7). The server dedups by batchId (1.10), so a resend never double-counts.
+      // Skip if a source-boundary reset swapped the session mid-flight — reviving the
+      // previous source's deltas would flush them under the next identity.
       const cur = get().session
-      for (const it of items) {
-        const k = pairKey(it.aId, it.bId)
-        cur.deltas.set(k, (cur.deltas.get(k) ?? 0) + it.deltaWeight)
+      if (cur === s) {
+        for (const it of items) {
+          const k = pairKey(it.aId, it.bId)
+          cur.deltas.set(k, (cur.deltas.get(k) ?? 0) + it.deltaWeight)
+        }
       }
     } finally {
       inFlight = false
     }
+  },
+  reset: () => {
+    clearFlushTimer()
+    set({ session: createSession(newBatchId()) })
   },
 }))

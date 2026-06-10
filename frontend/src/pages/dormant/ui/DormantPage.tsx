@@ -2,11 +2,14 @@
 // click one to fly the camera to it in /universe and re-ignite it (recall, 11). The
 // dormant list is a search aid — GetUniverse still renders the whole graph (these stars
 // are NOT removed, just dim — constitution §2). Empty list → friendly guidance (4.2).
-import { useEffect, useMemo, useState } from 'react'
+// Queried via dormantQueryOptions (16): staleTime 5m, invalidated on recall success.
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { errorMessage } from '@/shared/lib'
 import { moodLabel } from '@/shared/config'
 import { useCameraMode } from '@/widgets/universe-canvas'
-import { listDormant, type DormantStar } from '../api/list-dormant'
+import { dormantStarsQueryOptions } from '../api/list-dormant'
 
 function daysAgo(epochMs: number): number {
   return Math.floor((Date.now() - epochMs) / 86_400_000)
@@ -15,23 +18,8 @@ function daysAgo(epochMs: number): number {
 export function DormantPage() {
   const navigate = useNavigate()
   const focusStar = useCameraMode((s) => s.focusStar)
-  const [stars, setStars] = useState<DormantStar[] | null>(null)
-  const [error, setError] = useState('')
+  const { data: stars, isPending, isError, error, refetch } = useQuery(dormantStarsQueryOptions())
   const [query, setQuery] = useState('')
-
-  useEffect(() => {
-    let cancelled = false
-    listDormant()
-      .then((s) => {
-        if (!cancelled) setStars(s)
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const filtered = useMemo(() => {
     if (!stars) return []
@@ -67,17 +55,28 @@ export function DormantPage() {
           onChange={(e) => setQuery(e.target.value)}
         />
 
-        {error && <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-300">⚠ {error}</p>}
+        {isError && (
+          <div className="flex items-center justify-between gap-3 rounded-md bg-red-500/10 px-3 py-2">
+            <p className="text-sm text-red-300">⚠ {errorMessage(error)}</p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="shrink-0 rounded-md bg-white/10 px-3 py-1 text-xs text-white/80 transition hover:bg-white/20"
+            >
+              다시 시도
+            </button>
+          </div>
+        )}
 
-        {stars === null && !error && <p className="text-sm text-white/40">불러오는 중…</p>}
+        {isPending && <p className="text-sm text-white/40">불러오는 중…</p>}
 
-        {stars !== null && stars.length === 0 && (
+        {stars && stars.length === 0 && (
           <p className="rounded-md border border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-white/45">
             잠든 별이 아직 없습니다. 별이 어두워질 만큼 시간이 지나면 여기 모여요.
           </p>
         )}
 
-        {stars !== null && stars.length > 0 && filtered.length === 0 && (
+        {stars && stars.length > 0 && filtered.length === 0 && (
           <p className="text-sm text-white/40">검색 결과가 없어요.</p>
         )}
 
