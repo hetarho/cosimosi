@@ -16,6 +16,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | <2초 열람(패널 닫기·다른 별 전환)은 타이머가 취소되어 회상·공동 회상 모두 미발생 | 카운트 0 |
 | ≥2초 확정 시 `RecallMemory` 호출 → `memories.last_recalled_at = now`만 갱신 | 별만 가변 |
 | 회상 패널은 **읽기 전용 원본 `Record`** — 본문·`entry_date`·`mood`·`intensity` 표시, 편집·삭제 컨트롤 없음 | read-only |
+| **재열람** — 원본이 캐시에 있으면(불변, [data-sync](../domain/data-sync.md)) 본문을 **즉시 표시**(스피너 없음); touch(`RecallMemory`)는 ≥2초 dwell 후 백그라운드로 매번 발사 | 캐시 우선 |
 | 이웃 항해 — 선택 별 시냅스 이웃을 `neighborsOf(edges, selectedId)`로 weight 내림차순 렌더, 최대 표시 수 | `MAX_NEIGHBORS = 8` |
 | 이웃 클릭 = 선택 전환만(`select(id)`) — 패널이 재-dwell. **카메라 fly-to 아님**(NeighborNav는 카메라 타깃을 만들지 않는다) | 선택 전환 |
 
@@ -53,7 +54,8 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | 데이터 출처 — `isDemoMode()`이면 API 래퍼가 백엔드 대신 더미데이터로 분기(`demoStars`/`demoSynapses`/`demoRecall`/`demoAddRecord`) | 더미 우주 |
 | 강화 영속 없음 — `reinforceLinks`는 데모에서 no-op, 서버/proto 미기록 | no server write |
 | 새로고침 시 모듈 리로드 → base 더미만 재생성, 체험 중 추가한 별은 소멸 | 세션 한정 |
-| 화면 코드 동일 — 회상·기록·이웃·잠든 별 동선은 일반 모드와 같은 컴포넌트(데이터 출처만 분기) | UI 분기 없음 |
+| 화면 코드 동일 — 회상·기록·이웃·잠든 별 동선은 일반 모드와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기) | UI 분기 없음 |
+| 모드 전환(enter/exit) = 데이터 출처 전환 → 쿼리 캐시·렌더 스토어 전체 리셋([data-sync](../domain/data-sync.md) 출처 경계) — 체험 별이 실계정 우주에 섞이지 않는다 | 경계 리셋 |
 
 ## 불변식 (invariants)
 

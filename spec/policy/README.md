@@ -32,7 +32,8 @@ spec/policy/
 │   ├── synapse.md       ← 시냅스: 연결 생성(의미 KNN), weight·헵 강화, 시각·삭제 없음
 │   ├── memory.md        ← 기억·엔그램: 2겹(불변 원본/가변 별), 감정 입력, 멱등·격리
 │   ├── universe.md      ← 우주 전체: 좌표(정적 fibonacci)·권위, 배경, 삭제 없음
-│   └── navigation.md    ← 항행·카메라: 모드, fly-to 속도·감쇠, 비행 물리·줌
+│   ├── navigation.md    ← 항행·카메라: 모드, fly-to 속도·감쇠, 비행 물리·줌
+│   └── data-sync.md     ← 데이터 동기화: 쿼리 캐시·이벤트 무효화·병합 규칙·출처 경계 리셋
 └── ux/                  ← 사용자 경험 규칙
     ├── interaction.md   ← 회상·기록·공동회상·체험(demo) 상호작용
     ├── landing.md       ← 랜딩 비전 showcase·이론 카드·내러티브
