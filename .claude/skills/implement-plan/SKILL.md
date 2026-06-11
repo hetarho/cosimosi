@@ -4,7 +4,8 @@ description: >-
   Implement a numbered work spec from this repo's spec/plan/ directory end-to-end —
   read the spec, build its tasks top-to-bottom, regenerate code with `pnpm gen` when the
   proto contract changes and apply `pnpm db:migrate` when the DB schema changes, then
-  verify (frontend build + lint + the spec's Definition-of-Done) and report completion.
+  verify (frontend build + lint + the spec's Definition-of-Done), code-review the diff
+  (/code-review, per 00.overview's 구현 프로세스), and report completion.
   Use this skill whenever the user asks to implement / build / 구현 a plan or spec in this
   repo — phrasings like "plan 하나 구현해줘", "03 구현해줘", "다음 plan 해줘", "spec 구현",
   "implement spec NN", "이거 마저 구현", or to continue spec-driven work — even when they
@@ -98,9 +99,27 @@ working tree for the user to commit (don't delete or gitignore them).
 
 If a check fails, fix it and re-run — don't report done with a known-red check.
 
-## Step 5 — Report completion (and do NOT commit)
+## Step 5 — Code review → refactor (00.overview 구현 프로세스 step 2)
 
-When DoD passes, update `spec/plan/00.overview.md`: flip the spec's row
+Verified-to-build ≠ reviewed. 00.overview's **구현 프로세스** mandates a review pass right after
+implementation ("한 단계를 건너뛰지 않는다"): Step 4's automated checks catch *broken*; a review catches
+*wrong* and *messy*. Run it on the spec's diff **before** reporting — don't skip it just because the build is green.
+
+1. **`/code-review` on the diff — always.** Reviews working-tree changes for correctness bugs +
+   reuse/simplification/efficiency cleanups. Apply the findings; for any you reject, note why.
+2. **codex review — fuller pass for non-trivial logic** (per 00.overview; skip for small/mechanical diffs,
+   or when the user says "just /code-review"). Spawn it **synchronously** — the delegate must wait for codex,
+   not re-detach to its own background (the **double-background** trap orphans the result; happened in spec 16).
+   Run `/code-review` *while* codex runs (~25 min); when codex returns, **merge** (dedupe + severity-rank) — it's
+   a different engine, strong on race/lifecycle issues and second-order bugs from your own refactor.
+   ⚠️ **Don't end the turn waiting for codex** — if `/code-review` fixes are in but codex is still running, call
+   `TaskOutput(block=true, timeout=600000)` repeatedly (~3× for codex's ~25 min) to block in-turn, then merge.
+3. **Re-verify if the review changed code** — re-run the relevant Step 4 checks; a refactor can introduce a
+   second-order bug, so don't report green on un-rebuilt changes.
+
+## Step 6 — Report completion (and do NOT commit)
+
+When DoD passes **and the review is reflected**, update `spec/plan/00.overview.md`: flip the spec's row
 status (⬜ → ✅) in the index table and its line in **전체 진행도**. Then report in this shape:
 
 ```
@@ -108,6 +127,7 @@ status (⬜ → ✅) in the index table and its line in **전체 진행도**. Th
 - 구현: T001–TNNN 체크박스 갱신
 - 코드젠/마이그레이션: <pnpm gen / db:migrate 결과, 또는 "해당 없음">
 - 검증: build ✅ · lint ✅ · DoD <항목별 ✅/주의>
+- 리뷰: /code-review <반영 N·기각 M+이유> (+ codex <합산> 또는 "생략")
 - 남은 것/주의: <있으면>
 - 커밋: 안 함 — 변경 파일 준비됨. 커밋은 직접 (convention: Conventional Commits, 영문 제목/한글 본문).
 ```
@@ -123,4 +143,5 @@ Commits — English title, Korean body) and the established practice of committi
 | `pnpm db:migrate` / `db:status` / `db:reset` | goose up / status / 리셋(down+up) — Docker, postgres 필요 |
 | `pnpm infra:up` / `infra:down` | 로컬 postgres on/off |
 | `pnpm --filter ./frontend build` / `lint` | 프론트 검증 |
+| `/code-review` (skill) | 구현 diff 코드리뷰(정확성 버그 + 정리) — Step 5, 필수 |
 | `pnpm setup` | fresh/리셋 부트스트랩(.env·deps·postgres·migrate·gen) |
