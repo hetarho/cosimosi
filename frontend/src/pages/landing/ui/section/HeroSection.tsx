@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, LogIn } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { enterDemoMode } from '@/shared/lib/demo'
+import { enterDemoMode, exitDemoMode, resetDemo } from '@/shared/lib/demo'
 import { useScrollToSection } from '../../lib/scroll'
 import { themeAccent, useAppearance } from '@/entities/appearance'
 import { ThemedStar } from '../star3d'
@@ -22,6 +22,14 @@ export function HeroSection() {
     void navigate({ to: '/universe' })
   }
 
+  // 로그인: /universe로 가면 SessionGate가 사인인 화면을 띄운다. 데모 플래그가 남아 있으면
+  // 게이트를 그냥 통과해 더미 우주가 떠 버리므로, 플래그와 더미 별을 비우고 이동한다.
+  const goSignIn = () => {
+    exitDemoMode()
+    resetDemo()
+    void navigate({ to: '/universe' })
+  }
+
   const container = {
     hidden: {},
     show: { transition: { staggerChildren: reduced ? 0 : 0.16, delayChildren: 0.1 } },
@@ -33,6 +41,15 @@ export function HeroSection() {
 
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
+      {/* 페이지 최상단 로그인 진입 — 우하단 고정인 AppearanceSwitcher와 겹치지 않게 우상단에 둔다. */}
+      <button
+        type="button"
+        onClick={goSignIn}
+        className="glass absolute right-5 top-5 z-20 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-white/70 transition hover:scale-[1.03] hover:text-white active:scale-95 sm:right-6 sm:top-6 sm:text-sm"
+      >
+        <LogIn size={15} aria-hidden />
+        로그인하기
+      </button>
       <motion.div
         variants={container}
         initial="hidden"

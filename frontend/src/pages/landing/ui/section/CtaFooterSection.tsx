@@ -5,10 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
-import { Sparkles, ArrowRight, Mail, Rocket } from 'lucide-react'
+import { Sparkles, ArrowRight, Mail, Rocket, LogIn } from 'lucide-react'
 import { GlassCard, Section } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
-import { enterDemoMode } from '@/shared/lib/demo'
+import { enterDemoMode, exitDemoMode, resetDemo } from '@/shared/lib/demo'
 
 // 대기자 등록 폼 스키마 (zod v4)
 const schema = z.object({
@@ -25,6 +25,14 @@ export function CtaFooterSection() {
   // 켜고 /universe로 이동하면 세션 게이트가 통과시키고 API들이 더미데이터를 돌려준다.
   const tryDemo = () => {
     enterDemoMode()
+    void navigate({ to: '/universe' })
+  }
+
+  // 로그인: /universe로 가면 SessionGate가 사인인 화면을 띄운다. 데모 플래그가 남아 있으면
+  // 게이트를 그냥 통과해 더미 우주가 떠 버리므로, 플래그와 더미 별을 비우고 이동한다.
+  const goSignIn = () => {
+    exitDemoMode()
+    resetDemo()
     void navigate({ to: '/universe' })
   }
 
@@ -63,16 +71,27 @@ export function CtaFooterSection() {
 
         {/* 가입 없이 바로 둘러보기 — 더미 우주를 띄워 별 추가·회상·잠든 별까지 체험한다. */}
         <div className="flex flex-col items-center gap-2">
-          <motion.button
-            type="button"
-            onClick={tryDemo}
-            whileTap={reduce ? undefined : { scale: 0.97 }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-mood-teal/40 bg-mood-teal/15 px-6 py-3 text-sm font-medium text-mood-teal transition hover:bg-mood-teal/25 sm:text-base"
-          >
-            <Rocket size={18} aria-hidden />
-            가입 없이 들어가 보기
-            <ArrowRight size={16} aria-hidden />
-          </motion.button>
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+            <motion.button
+              type="button"
+              onClick={tryDemo}
+              whileTap={reduce ? undefined : { scale: 0.97 }}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-mood-teal/40 bg-mood-teal/15 px-6 py-3 text-sm font-medium text-mood-teal transition hover:bg-mood-teal/25 sm:text-base"
+            >
+              <Rocket size={18} aria-hidden />
+              가입 없이 들어가 보기
+              <ArrowRight size={16} aria-hidden />
+            </motion.button>
+            <motion.button
+              type="button"
+              onClick={goSignIn}
+              whileTap={reduce ? undefined : { scale: 0.97 }}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white sm:text-base"
+            >
+              <LogIn size={18} aria-hidden />
+              로그인하기
+            </motion.button>
+          </div>
           <span className="text-xs text-white/40">로그인 없이 둘러볼 수 있어요. 새로고침하면 처음으로 돌아가요.</span>
         </div>
       </div>
