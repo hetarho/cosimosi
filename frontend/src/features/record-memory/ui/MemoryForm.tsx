@@ -2,17 +2,27 @@
 // scene, Architecture §3.1). Body + mood + intensity + date → submit drives the
 // optimistic record flow.
 import { Mood } from '@/shared/api'
+import { moodFromProto } from '@/entities/memory'
+import { moodLabel } from '@/shared/config'
 import { useDraftStore } from '../model/draft-store'
 import { useRecordMemory } from '../model/use-record-memory'
 
-const MOODS: { value: Mood; label: string }[] = [
-  { value: Mood.JOY, label: '기쁨' },
-  { value: Mood.CALM, label: '평온' },
-  { value: Mood.SAD, label: '슬픔' },
-  { value: Mood.ANGER, label: '분노' },
-  { value: Mood.FEAR, label: '두려움' },
-  { value: Mood.LOVE, label: '사랑' },
-  { value: Mood.NEUTRAL, label: '중립' },
+// 13 moods in quadrant order (spec 29): HAP → LAP → HAN → LAN → neutral.
+// Labels come from MOOD_LABEL via moodLabel (single source — not re-listed here).
+const MOOD_OPTIONS: Mood[] = [
+  Mood.JOY,
+  Mood.EXCITEMENT,
+  Mood.LOVE,
+  Mood.CALM,
+  Mood.GRATITUDE,
+  Mood.RELIEF,
+  Mood.ANGER,
+  Mood.FEAR,
+  Mood.STRESS,
+  Mood.SAD,
+  Mood.TIRED,
+  Mood.EMPTINESS,
+  Mood.NEUTRAL,
 ]
 
 const inputCls =
@@ -49,9 +59,9 @@ export function MemoryForm() {
             value={String(mood)}
             onChange={(e) => setMood(Number(e.target.value) as Mood)}
           >
-            {MOODS.map((m) => (
-              <option key={m.value} value={String(m.value)}>
-                {m.label}
+            {MOOD_OPTIONS.map((m) => (
+              <option key={m} value={String(m)}>
+                {moodLabel(moodFromProto(m))}
               </option>
             ))}
           </select>

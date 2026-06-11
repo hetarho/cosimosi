@@ -17,7 +17,8 @@ export interface DemoSimPanelProps {
   initialSimId?: string
 }
 
-// MemoryForm과 같은 7종 감정 라벨 — 데모의 "별 띄우기" 컨트롤러가 기록 폼을 대신한다.
+// 데모의 "별 띄우기" 컨트롤러가 기록 폼을 대신한다. 기록 폼은 13종(spec 29)이지만
+// 데모는 미리 쓴 일기 본문(QUICK_ENTRIES)이 있는 기존 7종만 노출한다.
 const MOODS: { value: Mood; label: string }[] = [
   { value: Mood.JOY, label: '기쁨' },
   { value: Mood.CALM, label: '평온' },
