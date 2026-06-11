@@ -10,11 +10,13 @@ import * as Sentry from '@sentry/react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Record as RecordMsg } from '@/shared/api'
 import { capture, EVENTS } from '@/shared/lib'
+import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import {
   dormantInvalidateKey,
   isDormant,
   moodFromProto,
   recordQueryKey,
+  universeInvalidateKey,
   useMemoryStore,
 } from '@/entities/memory'
 import { moodLabel } from '@/shared/config'
@@ -48,7 +50,7 @@ function RecallView({ memoryId }: { memoryId: string }) {
       // recall_open(18) — 회상 발화 시점(터치 직전)의 활성도로 잠든 별 재점화 여부를 판단.
       const star = useMemoryStore.getState().stars.find((s) => s.id === memoryId)
       capture(EVENTS.recallOpen, {
-        is_dormant: star ? isDormant(star.memory.lastRecalledAt, Date.now()) : false,
+        is_dormant: star ? isDormant(star.memory.lastRecalledAt, virtualNowMs()) : false,
       })
       const hasCached = queryClient.getQueryData(recordQueryKey(memoryId)) != null
       if (!hasCached) setPhase('loading')
@@ -63,6 +65,11 @@ function RecallView({ memoryId }: { memoryId: string }) {
             queryClient.setQueryData(recordQueryKey(memoryId), r)
             // 회상된 별은 잠에서 깸 → 잠든 별 목록 무효화(1.6).
             void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
+            // 데모 재점화(spec 19): demoMarkRecalled가 전진시킨 lastRecalledAt을 우주에
+            // 반영(refetch→mergeStars max 통과→별이 다시 밝아짐). 비데모는 staleTime이 소유.
+            if (isDemoMode()) {
+              void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+            }
             setRecord(r)
             setPhase('shown')
           } else if (!hasCached) {

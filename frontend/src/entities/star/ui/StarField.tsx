@@ -10,6 +10,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { starBrightness, useMemoryStore } from '@/entities/memory/@x/star'
+import { virtualNowMs } from '@/shared/lib/demo'
+import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
 import { DEFAULT_OBJECT } from '../model/kinds'
 import type { StarObject } from '../model/types'
 import { moodRgb } from '@/shared/config'
@@ -20,6 +22,21 @@ import { buildStarForm } from './forms'
 function sizeFor(intensity: number): number {
   return 0.6 + Math.max(0, Math.min(1, intensity)) * 1.4
 }
+
+// 별 탄생 애니메이션: 새로 생긴 별은 한 점에서 살짝 튀어 오르며(easeOutBack) 정상 크기로
+// 자라난다 — 뚝 나타나는 등장을 "태어나는" 등장으로 바꾼다. 첫 로드/출처 리셋의 일괄
+// 시드는 애니메이션하지 않는다(우주 전체가 펑펑 터지면 소음이다).
+const BIRTH_DUR_S = 1.2
+function easeOutBack(x: number): number {
+  const c1 = 1.70158
+  const c3 = c1 + 1
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2)
+}
+
+// 별 미세 부유: 각 별이 제 좌표 주변을 seed 기반의 서로 다른 주기·위상으로 떠다닌다 —
+// 우주가 정지화면처럼 굳지 않는다. 수식·파라미터는 model/wobble이 단일 출처:
+// SynapseFilaments의 정점 셰이더가 같은 수식으로 끝점을 움직여 연결이 별 중앙을
+// 정확히 따라간다. prefers-reduced-motion이면 정지.
 
 // Focus spotlight (11): while a star is selected, every OTHER star dims to FOCUS_DIM of its
 // brightness and the selected one is nudged up by FOCUS_BOOST — applied by re-weighting the
@@ -41,6 +58,11 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
   const count = stars.length
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const scalesRef = useRef<Float32Array>(new Float32Array(0))
+  // 탄생 추적: 더미 좌표 보존(버퍼 없는 셸에서 탄생 중 별의 행렬을 다시 쓰기 위해) +
+  // 본 적 있는 id 집합 + 탄생 중 id → 시작 시각(elapsed; -1은 "다음 프레임에 시작" 마커).
+  const dummyRef = useRef<Float32Array>(new Float32Array(0))
+  const seenRef = useRef<Set<string>>(new Set())
+  const spawnRef = useRef<Map<string, number>>(new Map())
 
   // 선택된 형태(object)별 공유 지오메트리 + TSL 머티리얼. 모든 인스턴스가 하나를 공유하므로
   // 형태 변경은 O(1)(메시 1개 재구성) — 드로우콜은 그대로다(constitution §8). 머티리얼은
@@ -58,13 +80,27 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
   // (effect, not render).
   useLayoutEffect(() => {
     const mesh = meshRef.current
-    if (!mesh || count === 0) return
+    if (!mesh || count === 0) {
+      // 우주가 비워지면(출처 리셋) 탄생 추적도 초기화 — 재시드가 일괄 탄생 연출이 되지 않게.
+      seenRef.current = new Set()
+      spawnRef.current.clear()
+      return
+    }
+    // 새로 생긴 별만 탄생 대상으로 표시(seen이 비어 있는 첫 시드는 제외).
+    const seen = seenRef.current
+    if (seen.size > 0) {
+      for (const s of stars) if (!seen.has(s.id)) spawnRef.current.set(s.id, -1)
+    }
+    seenRef.current = new Set(stars.map((s) => s.id))
+
     const moodArr = new Float32Array(count * 3)
     const seedArr = new Float32Array(count)
     const brightArr = new Float32Array(count)
     const scales = new Float32Array(count)
     const dummy = new Float32Array(count * 3)
-    const now = Date.now()
+    // 가상 시계(spec 19): 데모 시간 머신이 흘린 시간만큼 감쇠가 진행된 밝기로 그린다.
+    // 비데모에선 Date.now()와 동일값.
+    const now = virtualNowMs()
     const obj = new THREE.Object3D()
 
     for (let i = 0; i < count; i++) {
@@ -85,7 +121,8 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
       dummy[i * 3 + 2] = pz
 
       obj.position.set(px, py, pz)
-      obj.scale.setScalar(scales[i])
+      // 탄생 대기 중인 별은 0에 가깝게 시작 — useFrame이 easeOutBack으로 키운다.
+      obj.scale.setScalar(scales[i] * (spawnRef.current.has(stars[i].id) ? 1e-3 : 1))
       obj.updateMatrix()
       mesh.setMatrixAt(i, obj.matrix)
     }
@@ -94,6 +131,7 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
     geometry.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seedArr, 1))
     geometry.setAttribute('aBrightness', new THREE.InstancedBufferAttribute(brightArr, 1))
     scalesRef.current = scales
+    dummyRef.current = dummy
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
   }, [stars, count, geometry])
@@ -106,7 +144,7 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
     const attr = geometry.getAttribute('aBrightness') as THREE.InstancedBufferAttribute | undefined
     if (!attr || count === 0) return
     const selIdx = selectedId ? stars.findIndex((s) => s.id === selectedId) : -1
-    const now = Date.now()
+    const now = virtualNowMs()
     const arr = attr.array as Float32Array
     for (let i = 0; i < count; i++) {
       const base = starBrightness(stars[i].memory.lastRecalledAt, now)
@@ -115,23 +153,56 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
     attr.needsUpdate = true
   }, [selectedId, stars, count, geometry])
 
-  // Per-frame coordinate subscription: write LIVE force-sim positions (07/10) into the
-  // instance matrices, preserving the baked scale. No setState → no re-render (1.6).
-  // The dummy layout is static (set once above), so without a live buffer this does
-  // nothing — no per-frame re-upload of a motionless scene.
+  // Per-frame matrix write: LIVE force-sim positions (07/10) 또는 더미 좌표 위에 별 미세
+  // 부유(WOBBLE_AMP)와 탄생 스케일을 얹는다. No setState → no re-render (1.6).
+  // reduced-motion + 버퍼·탄생 없음이면 정적 장면을 매 프레임 다시 올리지 않는다.
   const scratch = useMemo(() => new THREE.Object3D(), [])
+  const reduceMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
   useFrame((state) => {
     // 형태 애니메이션용 시간 전진(liquid 출렁임 / ember 깜빡임 / aurora 흐름). 위치 버퍼가 없어도
     // 매 프레임 올려야 하므로 아래 early-return보다 먼저 둔다.
     update(state.clock.elapsedTime)
     const mesh = meshRef.current
-    const buf = positionsRef?.current
-    if (!mesh || count === 0 || !buf) return
+    if (!mesh || count === 0) return
     const scales = scalesRef.current
-    if (buf.length < count * 3 || scales.length < count) return
+    const t = state.clock.elapsedTime
+    const spawns = spawnRef.current
+    // -1 마커(레이아웃에서 표시)는 첫 프레임의 elapsed로 확정.
+    if (spawns.size > 0) for (const [id, t0] of spawns) if (t0 < 0) spawns.set(id, t)
+    /** 탄생 스케일 배율(easeOutBack 0→1, 완료 시 추적 해제). 추적에 없으면 1. */
+    const birthFactor = (id: string): number => {
+      const t0 = spawns.get(id)
+      if (t0 == null) return 1
+      const age = (t - t0) / BIRTH_DUR_S
+      if (age >= 1) {
+        spawns.delete(id)
+        return 1
+      }
+      return Math.max(1e-3, easeOutBack(age))
+    }
+
+    const buf = positionsRef?.current
+    const live = buf && buf.length >= count * 3 ? buf : null
+    const base = live ?? dummyRef.current
+    if (base.length < count * 3 || scales.length < count) return
+    const wob = reduceMotion ? 0 : WOBBLE_AMP
+    // 움직일 것이 하나도 없으면(모션 축소 + 라이브 버퍼·탄생 없음) 정적 유지.
+    if (wob === 0 && !live && spawns.size === 0) return
+
     for (let i = 0; i < count; i++) {
-      scratch.position.set(buf[i * 3], buf[i * 3 + 1], buf[i * 3 + 2])
-      scratch.scale.setScalar(scales[i])
+      const m = stars[i].memory
+      // seed(0..1) 기반의 별마다 다른 주기·위상 — 같은 별은 항상 같은 궤적(결정론).
+      scratch.position.set(
+        base[i * 3] + wobbleUnit(m.seed, t, 0) * wob,
+        base[i * 3 + 1] + wobbleUnit(m.seed, t, 1) * wob,
+        base[i * 3 + 2] + wobbleUnit(m.seed, t, 2) * wob,
+      )
+      scratch.scale.setScalar(scales[i] * birthFactor(stars[i].id))
       scratch.updateMatrix()
       mesh.setMatrixAt(i, scratch.matrix)
     }

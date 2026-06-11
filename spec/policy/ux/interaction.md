@@ -4,7 +4,7 @@
 
 ## 정의
 
-cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 동작한다. 사용자가 별을 일정 시간 이상 *바라보는* 행위만이 회상·공동 회상으로 카운트되고, 그보다 짧은 스침은 아무 것도 바꾸지 않는다. 현재 구현된 갈래는 네 가지다: (1) **회상** — 별 클릭 → ≥2초 능동 열람 → 읽기 전용 원본 패널, (2) **공동 회상** — 직전 능동 열람 별과의 페어 연결 강화, (3) **기록** — 본문+감정+강도+날짜 폼 제출 → 단일 별 낙관적 등장, (4) **체험(demo)** — 비로그인 더미 우주 둘러보기. AI 감정 감지·기억 조각화·이론 렌즈 오버레이는 plan 19·21에서 다룬다(아직 정책 아님).
+cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 동작한다. 사용자가 별을 일정 시간 이상 *바라보는* 행위만이 회상·공동 회상으로 카운트되고, 그보다 짧은 스침은 아무 것도 바꾸지 않는다. 현재 구현된 갈래는 네 가지다: (1) **회상** — 별 클릭 → ≥2초 능동 열람 → 읽기 전용 원본 패널, (2) **공동 회상** — 직전 능동 열람 별과의 페어 연결 강화, (3) **기록** — 본문+감정+강도+날짜 폼 제출 → 단일 별 낙관적 등장, (4) **체험(demo)** — 비로그인 더미 우주 + **기억 시뮬레이션 패널**(가상 시계·시간 머신·이론별 체험 액션). AI 감정 감지·기억 조각화는 plan 20·21에서 다룬다(아직 정책 아님).
 
 ## 규칙 · 파라미터
 
@@ -50,11 +50,15 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 
 | 규칙 | 값 |
 | --- | --- |
-| 진입 — 랜딩의 데모 버튼 → `enterDemoMode()` → `sessionStorage('cosimosi:demo'='1')` → `/universe` | 세션 플래그 |
+| 진입 — 랜딩의 데모 버튼/카드 "이 카드 체험하기" → `enterDemoMode()` → `sessionStorage('cosimosi:demo'='1')` → `/universe`(카드는 `?sim=<id>`로 해당 시뮬 항목 포커스, 잘못된 id 무시) | 세션 플래그 |
 | 데이터 출처 — `isDemoMode()`이면 API 래퍼가 백엔드 대신 더미데이터로 분기(`demoStars`/`demoSynapses`/`demoRecall`/`demoAddRecord`) | 더미 우주 |
-| 강화 영속 없음 — `reinforceLinks`는 데모에서 no-op, 서버/proto 미기록 | no server write |
-| 새로고침 시 모듈 리로드 → base 더미만 재생성, 체험 중 추가한 별은 소멸 | 세션 한정 |
-| 화면 코드 동일 — 회상·기록·이웃·잠든 별 동선은 일반 모드와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기) | UI 분기 없음 |
+| **가상 시계** — 데모의 밝기·잠듦 파생 "현재 시각"은 `virtualNowMs() = Date.now() + offset`(offset은 데모에서만 ≠0). 시뮬 패널 "하루/한 달 지나기"가 offset을 전진시키고 별·엣지 밝기를 재파생 — 실제 감쇠 수식([star](../domain/star.md) 반감기 30일·바닥 5%)이 그대로 돈다(연출 없음). 비데모는 항상 `Date.now()`와 동일값 | `skipDemoDays` |
+| **데모 재점화** — 데모 회상(≥2초)도 그 별의 `lastRecalledAt`을 가상 now로 전진(`demoMarkRecalled`) + universe 쿼리 무효화 → 잠든 별이 다시 밝아지는 루프가 데모에서 완결 | 서버 대칭 |
+| **데모 별 띄우기** — 데모의 기록은 작성 폼이 아니라 패널의 "별 띄우기" 컨트롤러: 감정(7종)·날짜만 고르면 그 감정으로 미리 써 둔 일기 중 무작위 본문으로 별이 태어난다(`demoAddStar`). 같은 (가상)날 별과 temporal, 같은 mood 최신 별과 semantic 연결을 로컬 생성(실서버 임베딩 τ=0.75·top-8·같은날+0.3의 **근사** — 패널이 명시) | 근사 시연 |
+| **헵 로컬 미리보기** — 데모에서 공동 회상 페어가 확정되는 즉시 그 엣지 weight를 로컬 +0.05(상한 1.0, 없던 페어는 `co_recall` 로컬 생성) → 굵어짐이 바로 보인다. `reinforceLinks`는 여전히 no-op, 서버/proto 미기록 | no server write |
+| **시뮬레이션 HUD** — 데모에서만, 좌하단 진입 칩 2개로 **서로 다른 모달**을 연다: ① "🧪 기억 실험실" 컨트롤러 패널(시간 머신·별 띄우기), ② "❕ 엔그램 이론" 안내 모달 — 이론을 나열하지 않고 **한 번에 하나씩** 점 탭·‹›·방향키·스와이프 페이지네이션으로 넘기며, 이론↔컨트롤 1:1 버튼 없이 howTo(어떤 컨트롤러로 어떤 행위)만 적는다(`SIM_ENTRIES` — 항목 추가만으로 확장, plan 20–27 소비). `?sim=<id>` 진입은 이론 모달이 그 페이지로 열린 채 시작. 시간 스킵은 ~0.9s ease 트윈으로 흐른다(밝기 뚝 끊김 방지). "처음으로" = exit→reset→enter 경로로 초기 우주 복귀 | `widgets/demo-sim` |
+| 새로고침 시 모듈 리로드 → base 더미만 재생성, 체험 중 추가한 별·연결·가상 시계 offset 소멸 | 세션 한정 |
+| 화면 코드 동일 — 회상·이웃·잠든 별 동선은 일반 모드와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기). 예외: **기록 폼은 데모에서 숨김**(위 "별 띄우기" 컨트롤러가 대체) | 기록만 대체 |
 | 모드 전환(enter/exit) = 데이터 출처 전환 → 쿼리 캐시·렌더 스토어 전체 리셋([data-sync](../domain/data-sync.md) 출처 경계) — 체험 별이 실계정 우주에 섞이지 않는다 | 경계 리셋 |
 
 ## 불변식 (invariants)
@@ -73,5 +77,5 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 - **공동 회상:** 구현: plan 11 · `frontend/src/features/recall/model/co-recall.ts`(`CO_RECALL_DELTA`·`DWELL_MS`·`DEBOUNCE_IDLE_MS`·`pairKey`)·`model/store.ts`(디바운스·재시도·in-flight 직렬화)·`pages/home/ui/HomePage.tsx`(`beforeunload`/`visibilitychange` flush)·`shared/api/transport.ts`(keepalive).
 - **기록:** 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`(본문+감정 select+강도+날짜)·`model/draft-store.ts`(기본 오늘·7종 mood)·`model/use-record-memory.ts`(낙관적 add/replace/remove).
 - **잠든 별 재점화 동선:** 구현: plan 12 · `frontend/src/pages/dormant`(`ListDormant`)·`entities/memory/model/activation.ts`(`isDormant`).
-- **체험:** 구현: plan 11·12 데모 분기 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주)·`features/recall/api/recall.ts`(demo no-op/recall).
+- **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/store.ts`(데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).
 - **불변식:** 헌법 1·2·3·6·8(`spec/plan/00.overview.md`).

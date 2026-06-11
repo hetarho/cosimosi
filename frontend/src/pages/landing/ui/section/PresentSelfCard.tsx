@@ -5,6 +5,7 @@ import { MOOD } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
 import { VizStar } from '@/entities/star'
 import { VizSynapse } from '@/entities/synapse'
+import { TheoryBadge } from './TheoryBadge'
 
 // 무대 좌표계(가로로 넓은 우주 한 자락).
 const VW = 100
@@ -222,6 +223,8 @@ export function PresentSelfCard() {
           ? `요즘은 '${hot.label}' 쪽에 마음이 머물러요. 새로 쓴 기억은 그 빛으로 끌려가요.`
           : `새 별이 '${FEELINGS[added[added.length - 1].feeling].label}' 별무리 곁에 내려앉았어요 — 어디 놓일지는 연결이 정해요.`}
       </p>
+
+      <TheoryBadge status="planned" plan="22·25" />
     </div>
   )
 }

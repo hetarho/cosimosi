@@ -6,6 +6,7 @@ import { MOOD } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
 import { VizStar } from '@/entities/star'
 import { VizSynapse } from '@/entities/synapse'
+import { TheoryBadge } from './TheoryBadge'
 
 const ACCENT = MOOD.violet
 
@@ -153,6 +154,7 @@ export function NightlyConsolidationCard() {
 
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs leading-relaxed text-white/40">{STAGES[stage].label}</p>
+        <TheoryBadge status="planned" plan="27" className="shrink-0" />
         <button
           type="button"
           onClick={runNight}

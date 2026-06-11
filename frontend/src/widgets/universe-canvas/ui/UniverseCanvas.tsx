@@ -2,7 +2,7 @@
 // renderer + dark background + ambient star dust + the real StarField (08, driven by
 // the memory store / spec 10 data) + Bloom + camera rig. No DOM <Html> in the scene
 // (constitution §4 — mobile portability); labels/HUD are a separate 2D widget.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Canvas, type GLProps, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -541,23 +541,52 @@ function UniverseSynapses() {
   const stars = useMemoryStore((s) => s.stars)
   // Spotlight: fade the whole synapse web while a star is focused so it stands alone.
   const dim = useMemoryStore((s) => (s.selectedId ? 0.1 : 1))
-  const { positionOf, colorOf } = useMemo(() => {
+  const { positionOf, colorOf, seedOf } = useMemo(() => {
     const posById = new Map(
       stars.map((s, i) => [s.id, fibonacciStarPosition(i, stars.length, s.memory.seed)] as const),
     )
     const colById = new Map(stars.map((s) => [s.id, moodRgb(s.memory.mood)] as const))
+    const seedById = new Map(stars.map((s) => [s.id, s.memory.seed] as const))
     return {
       positionOf: (id: string): [number, number, number] | null => posById.get(id) ?? null,
       colorOf: (id: string): readonly [number, number, number] => colById.get(id) ?? NEUTRAL_RGB,
+      // 부유 seed(StarField와 동일) — 필라멘트 끝이 떠다니는 별 중앙을 따라간다(spec 19).
+      seedOf: (id: string): number => seedById.get(id) ?? 0,
     }
   }, [stars])
   if (edges.length === 0 || stars.length === 0) return null
   return (
     <>
-      <SynapseFilaments edges={edges} positionOf={positionOf} colorOf={colorOf} dim={dim} />
+      <SynapseFilaments edges={edges} positionOf={positionOf} colorOf={colorOf} seedOf={seedOf} dim={dim} />
       <SynapseDust edges={edges} positionOf={positionOf} colorOf={colorOf} dim={dim} />
     </>
   )
+}
+
+/** 우주의 숨(미세 부유): 별·시냅스를 한 그룹으로 묶어 아주 느리게 위아래·좌우로 띄운다 —
+ *  입력이 없을 때도 우주가 정지화면처럼 굳지 않는다. 시냅스가 같은 그룹에 있어 연결이
+ *  별에서 떨어지지 않고, 진폭(≤0.9)이 작아 fly-to/포커스의 고정 좌표 타깃과의 오차는
+ *  체감되지 않는다. 별이 선택(포커스)되면 진폭을 0으로 풀어 조준이 흔들리지 않게 하고,
+ *  prefers-reduced-motion이면 아예 움직이지 않는다(정책: motion-accessibility). */
+function UniverseDrift({ children }: { children: ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  const amp = useRef(1) // 선택 중 0으로, 해제 후 1로 부드럽게 복귀
+  const selected = useMemoryStore((s) => s.selectedId != null)
+  const reduce = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
+  useFrame((state, dt) => {
+    const g = ref.current
+    if (!g || reduce) return
+    amp.current += ((selected ? 0 : 1) - amp.current) * (1 - Math.exp(-dt * 2))
+    const t = state.clock.elapsedTime
+    g.position.y = Math.sin(t * 0.22) * 0.9 * amp.current
+    g.position.x = Math.sin(t * 0.13 + 1.7) * 0.45 * amp.current
+  })
+  return <group ref={ref}>{children}</group>
 }
 
 /** Camera fly-to (12): when the dormant page sets focusStarId, lerp the camera to that
@@ -754,9 +783,37 @@ function FocusController() {
     )
   }, [selectedId, camera, controls])
 
+  // 성운 모드에서 포커스가 orbit target을 별 위로 끌어다 두므로, 패널을 닫은 뒤에도 자유
+  // 관찰 회전이 그 별을 축으로 돌게 된다(회전축이 바뀌는 버그). 선택 직전의 target을
+  // 기억해 두었다가 해제 시 부드럽게 되돌린다. 근접(recall) 모드는 시선이 별에 남는 게
+  // 자연스러우므로 복원하지 않는다.
+  const savedTargetRef = useRef<THREE.Vector3 | null>(null)
+  useEffect(() => {
+    if (mode !== 'nebula') {
+      savedTargetRef.current = null
+      return
+    }
+    if (selectedId && controls && savedTargetRef.current === null) {
+      savedTargetRef.current = controls.target.clone()
+    }
+  }, [selectedId, mode, controls])
+
   useFrame((_, dt) => {
-    if (!targetPos || !controls || transitioning) return
+    if (!controls || transitioning) return
     const k = 1 - Math.exp(-dt * FOCUS_K)
+    if (!targetPos) {
+      // 해제 직후: orbit 중심을 포커스 이전 자리로 회복(NebulaOrbitController가 매 프레임
+      // target을 바라보므로 lerp만으로 시점이 부드럽게 되돌아간다).
+      const saved = savedTargetRef.current
+      if (saved && mode === 'nebula') {
+        controls.target.lerp(saved, k)
+        if (controls.target.distanceTo(saved) < 0.05) {
+          controls.target.copy(saved)
+          savedTargetRef.current = null
+        }
+      }
+      return
+    }
     // nebula (원거리): orbit the camera onto the star's radial line at the captured distance →
     // camera = star + starDir·D, so the star sits in FRONT with the cloud behind it. Re-level the
     // horizon for a clean head-on framing (skip near vertical, where lookAt's up is singular).
@@ -824,8 +881,11 @@ export function UniverseCanvas() {
       <color attach="background" args={[bg]} />
       <ambientLight intensity={0.4} />
       <StarDust count={1500} />
-      <UniverseSynapses />
-      <StarField object={object} />
+      {/* 별과 시냅스는 함께 부유(연결이 떨어지지 않게); StarDust는 밖에 두어 시차가 생긴다. */}
+      <UniverseDrift>
+        <UniverseSynapses />
+        <StarField object={object} />
+      </UniverseDrift>
       <CameraRig />
       <NebulaOrbitController />
       <NavController />

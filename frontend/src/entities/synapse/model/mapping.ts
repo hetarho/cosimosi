@@ -34,3 +34,35 @@ export const widthBucket = (e: SynapseEdge): 'thin' | 'thick' =>
 
 export const bucketWidthPx = (b: 'thin' | 'thick'): number =>
   b === 'thick' ? WIDTH_THICK_PX : WIDTH_THIN_PX
+
+// ── 유사도(연결 강도) 단계별 필라멘트 스타일(spec 19) ──────────────────────────
+// visualIntensity(weight×시간감쇠) 구간 → 가닥 수·굵기·밝기·불투명도. 연결 시각의
+// 단일 조절점: 아래 표의 경계·값만 바꾸면 우주 전체의 연결 표현이 함께 바뀐다
+// (SynapseFilaments가 소비). 약한 연결은 한두 가닥 실처럼 은은하게, 강할수록
+// 가닥이 늘고 굵고 밝아진다 — "강한 인연만 자기주장한다".
+
+export interface StrandStyle {
+  /** 한 연결을 이루는 빛가닥 수. */
+  strands: number
+  /** 가닥 기본 반지름(world units). */
+  radius: number
+  /** 발광 베이스(0..1) — 셰이더 brightness 기준값(±지터는 소비처가 얹는다). */
+  bright: number
+  /** 불투명도 베이스(0..1). */
+  opacity: number
+}
+
+/** 강도 단계표 — [상한(미만), 스타일]. 마지막 단계가 그 이상 전부를 받는다. */
+export const STRAND_TIERS: readonly (readonly [number, StrandStyle])[] = [
+  [0.35, { strands: 2, radius: 0.01, bright: 0.2, opacity: 0.5 }], // 옅은 인연 — 실 한두 가닥
+  [0.6, { strands: 4, radius: 0.018, bright: 0.32, opacity: 0.62 }], // 보통
+  [0.85, { strands: 6, radius: 0.028, bright: 0.45, opacity: 0.72 }], // 강함
+  [Infinity, { strands: 9, radius: 0.04, bright: 0.6, opacity: 0.82 }], // 가장 또렷한 인연
+]
+
+/** visualIntensity → 단계별 스타일. */
+export function strandStyle(e: SynapseEdge): StrandStyle {
+  const i = visualIntensity(e)
+  for (const [max, style] of STRAND_TIERS) if (i < max) return style
+  return STRAND_TIERS[STRAND_TIERS.length - 1][1]
+}

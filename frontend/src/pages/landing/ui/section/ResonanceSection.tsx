@@ -6,6 +6,7 @@ import { MOOD } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
 import { VizStar, type StarObject } from '@/entities/star'
 import { VizSynapse } from '@/entities/synapse'
+import { TheoryBadge } from './TheoryBadge'
 
 // 좌/우 두 사람의 우주에 새겨진 같은 사건의 별. seed 고정 → 결정론적 모양.
 const ME = { seed: 0x5e0f, mood: MOOD.violet, label: '나의 별' } as const
@@ -119,6 +120,7 @@ export function ResonanceSection() {
               ? '두 별이 공명해요. 같은 밤을 함께 떠올릴수록 빛줄기가 또렷해져요.'
               : '아직 두 별은 각자의 우주에서 따로 빛나요.'}
           </p>
+          <TheoryBadge status="planned" plan="30" />
         </div>
       </GlassCard>
   )

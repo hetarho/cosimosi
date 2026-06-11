@@ -4,6 +4,7 @@
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { bodyLengthBucket, capture, EVENTS } from '@/shared/lib'
+import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import {
   moodFromProto,
   seedFromId,
@@ -33,7 +34,8 @@ function buildStar(id: string, mood: DomainMood, intensity: number): StarNode {
   return {
     id,
     index: 0, // store assigns the real slot on add/replace
-    memory: { id, mood, intensity, lastRecalledAt: Date.now(), seed: seedFromId(id) },
+    // 가상 시계(spec 19): 데모 시간 머신 뒤에 쓴 낙관 별도 "방금" 태어난 밝기로 — 비데모 동일값.
+    memory: { id, mood, intensity, lastRecalledAt: virtualNowMs(), seed: seedFromId(id) },
   }
 }
 
@@ -85,10 +87,13 @@ export function useRecordMemory() {
       // 페이지를 떠나도 안전하다(비활성 쿼리는 stale 마킹 → 다음 마운트에서 refetch).
       if (tempAlive) {
         if (workerSyncTimer) clearTimeout(workerSyncTimer)
+        // 데모(spec 19)는 워커가 없고 demoAddRecord가 연결을 동기 생성하므로 바로 당겨와
+        // "새 일기 → 별 + 연결"이 즉시 보인다. 실서버는 워커 시간을 그대로 기다린다.
+        const delay = isDemoMode() ? 800 : WORKER_SYNC_DELAY_MS
         workerSyncTimer = setTimeout(() => {
           workerSyncTimer = null
           void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
-        }, WORKER_SYNC_DELAY_MS)
+        }, delay)
       }
     } catch (e) {
       // 임시 별만 롤백, 서버 별 보존 (1.3 / 헌법2). 서버 검증(InvalidArgument, 17)은

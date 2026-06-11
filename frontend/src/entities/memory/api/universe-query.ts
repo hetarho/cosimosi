@@ -11,7 +11,7 @@ import {
   transport,
   type GetUniverseResponse,
 } from '@/shared/api'
-import { demoStars, demoSynapses, isDemoMode } from '@/shared/lib/demo'
+import { demoStars, demoSynapses, isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import { toSynapseEdge, useSynapseStore } from '@/entities/synapse/@x/memory'
 import { starBrightness } from '../model/activation'
 import { mergeEdges, mergeStars } from '../model/merge'
@@ -67,7 +67,8 @@ export function universeInvalidateKey() {
  *  NOT the weight-folded value: visualIntensity already multiplies by weight at render
  *  (08/12), so a dormant link dims but never vanishes (constitution §2). */
 export function applyUniverse(res: GetUniverseResponse): void {
-  const now = Date.now()
+  // 가상 시계(spec 19): 데모 시간 머신이 보낸 시간을 포함한 now로 밝기를 파생한다.
+  const now = virtualNowMs()
   const memory = useMemoryStore.getState()
   const stars = mergeStars(
     memory.stars,
@@ -86,4 +87,22 @@ export function applyUniverse(res: GetUniverseResponse): void {
   })
   const edges = mergeEdges(synapse.edges, incoming, now)
   if (edges !== synapse.edges) synapse.setEdges(edges)
+}
+
+/** 시간 머신(spec 19) 직후, 현재 스토어의 별·엣지 밝기를 가상 now로 재파생한다.
+ *  데이터(타임스탬프)는 그대로이고 "지금"만 움직였으므로 refetch는 no-op이다(structural
+ *  sharing이 같은 내용을 같은 참조로 유지) — 대신 별 배열의 identity를 갱신해 StarField의
+ *  rebuild 효과가 새 now로 밝기를 다시 굽게 하고, 엣지 brightness는 여기서 직접 재파생한다. */
+export function refreshActivation(): void {
+  const now = virtualNowMs()
+  const memory = useMemoryStore.getState()
+  if (memory.stars.length > 0) memory.setStars([...memory.stars])
+  const synapse = useSynapseStore.getState()
+  if (synapse.edges.length > 0) {
+    synapse.setEdges(
+      synapse.edges.map((e) =>
+        e.lastActivatedAt != null ? { ...e, brightness: starBrightness(e.lastActivatedAt, now) } : e,
+      ),
+    )
+  }
 }

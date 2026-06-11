@@ -1,76 +1,20 @@
-import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
-import { MOOD } from '@/shared/config'
-import { useAppearance } from '@/entities/appearance'
-import { VizStar } from '@/entities/star'
+import { SilentEngramDemo } from '@/entities/theory'
+import { TheoryBadge } from './TheoryBadge'
+import { TryInUniverse } from './TryInUniverse'
 
-const CORAL = MOOD.coral
-/** 빛이 완전히 꺼지지 않는 바닥값(침묵 엔그램은 사라지지 않는다). */
-const FLOOR = 0.12
-/** 시간(0~100)에 따른 별빛 밝기. 고립된 별일수록 가파르게 감쇠하되 FLOOR 아래로는 안 내려감. */
-function brightness(time: number, decay: number): number {
-  const t = time / 100
-  return FLOOR + (1 - FLOOR) * Math.exp(-decay * t)
-}
-
+/**
+ * 침묵 엔그램 카드 — 시연 본체는 entities/theory의 SilentEngramDemo(데모 모달과 공유,
+ * spec 19). 랜딩은 카드 크롬(GlassCard)과 상태 배지·"이 카드 체험하기"만 얹는다.
+ */
 export function SilentEngramCard() {
-  const concept = useAppearance((s) => s.object)
-  const [time, setTime] = useState(60)
-
-  // 연결 많은 별: 완만한 감쇠 / 고립된 별: 가파른 감쇠 (망각 속도는 관련성에 좌우)
-  const connectedDecay = 0.8
-  const isolatedDecay = 2.6
-  const connected = brightness(time, connectedDecay)
-  const isolated = brightness(time, isolatedDecay)
-
   return (
     <GlassCard className="flex flex-col gap-4 p-6 sm:p-8">
-      <div className="flex items-end justify-around gap-4 rounded-2xl border border-white/10 bg-space-900/40 p-5">
-        <div className="flex flex-col items-center gap-2">
-          <svg viewBox="0 0 100 100" className="h-20 w-20" aria-hidden>
-            <VizStar cx={50} cy={50} r={28} color={CORAL} concept={concept} seed={107} brightness={connected} />
-          </svg>
-          <span className="text-xs text-white/70">연결이 많은 별</span>
-          <span className="text-[11px] tabular-nums text-mood-coral/80">밝기 {Math.round(connected * 100)}%</span>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <svg viewBox="0 0 100 100" className="h-20 w-20" aria-hidden>
-            <VizStar cx={50} cy={50} r={28} color={CORAL} concept={concept} seed={233} brightness={isolated} />
-          </svg>
-          <span className="text-xs text-white/70">홀로 떨어진 별</span>
-          <span className="text-[11px] tabular-nums text-mood-coral/80">밝기 {Math.round(isolated * 100)}%</span>
-        </div>
+      <SilentEngramDemo />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <TheoryBadge status="done" plan="12" />
+        <TryInUniverse sim="dormant" />
       </div>
-
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between text-xs text-white/50">
-          <span>시간 흐름</span>
-          <span className="tabular-nums">{time === 0 ? '방금' : `+${time}일 뒤`}</span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={time}
-          onChange={(e) => setTime(Number(e.target.value))}
-          aria-label="시간 흐름"
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-mood-coral"
-        />
-        <button
-          type="button"
-          onClick={() => setTime(0)}
-          className="inline-flex items-center justify-center gap-1.5 self-start rounded-full border border-mood-coral/40 bg-mood-coral/10 px-4 py-1.5 text-xs text-mood-coral transition-colors hover:bg-mood-coral/20"
-        >
-          <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          다시 비추기
-        </button>
-      </div>
-
-      <p className="text-xs leading-relaxed text-white/40">
-        아무리 시간이 흘러도 빛은 {Math.round(FLOOR * 100)}% 아래로 꺼지지 않아요. 원본은 그대로 남고,
-        단서 하나면 별은 다시 깨어나요.
-      </p>
     </GlassCard>
   )
 }

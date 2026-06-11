@@ -13,10 +13,13 @@ export {
   THICK_THRESHOLD,
   WIDTH_THIN_PX,
   WIDTH_THICK_PX,
+  STRAND_TIERS,
+  type StrandStyle,
   visualIntensity,
   emissive,
   alpha,
   pulseAmp,
+  strandStyle,
   widthBucket,
   bucketWidthPx,
 } from './model/mapping'

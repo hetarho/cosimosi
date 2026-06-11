@@ -25,9 +25,22 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
-import { attribute, vec3, float, uniform, uv, sin, fract, smoothstep, clamp } from 'three/tsl'
+import {
+  attribute,
+  vec2,
+  vec3,
+  float,
+  uniform,
+  uv,
+  sin,
+  fract,
+  smoothstep,
+  clamp,
+  positionLocal,
+} from 'three/tsl'
 import { mulberry32 } from '@/shared/lib'
-import { visualIntensity, pulseAmp } from '../model/mapping'
+import { WOBBLE_AMP, WOBBLE_FREQ, WOBBLE_PHASE } from '@/entities/star/@x/synapse'
+import { visualIntensity, pulseAmp, strandStyle } from '../model/mapping'
 import type { SynapseEdge } from '../model/types'
 
 const RADIAL = 6 // tube cross-section segments (round enough under bloom, cheap)
@@ -70,6 +83,7 @@ function buildFilamentGeometry(
   edges: SynapseEdge[],
   positionOf: (id: string) => [number, number, number] | null,
   colorOf: (id: string) => readonly [number, number, number],
+  seedOf: (id: string) => number,
 ): THREE.BufferGeometry | null {
   // Keep the strongest edges when over the cap (sort copy — never mutate the store array).
   const list =
@@ -104,19 +118,20 @@ function buildFilamentGeometry(
     const jOpacity = rng() // opacity jitter
     const inten = visualIntensity(e)
     const pulse = pulseAmp(e)
-    // Many fine threads per synapse → a dense, wispy fiber bundle (not a few fat ropes):
-    // 5..9 strands, more for stronger edges.
-    const strandCount = 5 + Math.round(inten * 4)
-    // Per-edge NATURAL variation (deterministic): brightness, opacity and thickness each
-    // get an independent jitter so no two filaments read identically. brightBase tracks
-    // edge intensity (~0.30..0.72); brightness varies ±0.2 around it (a 0.5 line → 0.3..0.7).
-    const brightVal = Math.min(1, Math.max(0.1, 0.3 + inten * 0.42 + (jBright * 2 - 1) * 0.2))
-    const opacityVal = Math.min(1, Math.max(0.35, 0.72 + (jOpacity * 2 - 1) * 0.25))
+    // 유사도 단계별 스타일(model/mapping STRAND_TIERS — 단일 조절점): 가닥 수·굵기·
+    // 밝기·불투명도가 강도 구간으로 정해지고, 방금 강화된 엣지(pulse=reinforcedRecency)는
+    // 가닥 +3·굵기 ×1.5로 한 단계 위처럼 읽혀 회상 강화(+0.05)가 즉시 보인다.
+    const style = strandStyle(e)
+    const strandCount = Math.min(14, style.strands + Math.round(pulse * 3))
+    // Per-edge NATURAL variation (deterministic): brightness/opacity/thickness each get an
+    // independent jitter so no two filaments read identically.
+    const brightVal = Math.min(1, Math.max(0.1, style.bright + (jBright * 2 - 1) * 0.12))
+    const opacityVal = Math.min(1, Math.max(0.3, style.opacity + (jOpacity * 2 - 1) * 0.15))
     const widthJitter = 0.7 + jWidth * 0.65 // 0.7..1.35
     const bowMag = len * (0.05 + 0.08 * h)
-    const helixR = 0.35 + h * 0.3 + inten * 0.2
+    const helixR = 0.35 + h * 0.3 + inten * 0.25 + pulse * 0.15
     // Hair-thin strands — they read mostly via bloom, wrapped in the SynapseDust mist.
-    const baseR = (0.015 + inten * 0.022) * widthJitter
+    const baseR = style.radius * widthJitter * (1 + pulse * 0.5)
     const tubular = Math.min(56, Math.max(20, Math.round(len)))
 
     // Bowed centre curve: arc the bundle off the straight chord (a dust lane, not a wire).
@@ -138,6 +153,10 @@ function buildFilamentGeometry(
 
     const colA = colorOf(e.aId)
     const colB = colorOf(e.bId)
+    // 양 끝 별의 부유 seed — 정점 셰이더가 StarField와 같은 수식으로 끝점을 움직여
+    // 필라멘트가 떠다니는 별의 중앙을 따라간다(아래 positionNode).
+    const sA = seedOf(e.aId)
+    const sB = seedOf(e.bId)
 
     for (let s = 0; s < strandCount; s++) {
       const phase = (s / strandCount) * Math.PI * 2
@@ -170,6 +189,13 @@ function buildFilamentGeometry(
       const aBright = new Float32Array(vCount)
       const aOpac = new Float32Array(vCount)
       const aPul = new Float32Array(vCount)
+      // ⚠ WebGPU 정점 버퍼 한도(8) — attribute를 늘릴 때마다 버퍼가 1개씩 든다. 부유
+      // seed 두 개는 vec2 하나로 패킹하고, along은 이미 바인딩된 uv.x를 재사용한다.
+      const aWob = new Float32Array(vCount * 2)
+      for (let v = 0; v < vCount; v++) {
+        aWob[v * 2] = sA
+        aWob[v * 2 + 1] = sB
+      }
       for (let v = 0; v < vCount; v++) {
         const along = Math.floor(v / ringStride) / tubular // 0..1 down the tube
         const d = baseR * (alongNoise(along, strandSeed) - 0.5) * 0.8 // radius ≈ baseR·(1 ± 0.4)
@@ -189,6 +215,7 @@ function buildFilamentGeometry(
       geo.setAttribute('aBright', new THREE.BufferAttribute(aBright, 1))
       geo.setAttribute('aOpacity', new THREE.BufferAttribute(aOpac, 1))
       geo.setAttribute('aPulse', new THREE.BufferAttribute(aPul, 1))
+      geo.setAttribute('aWob', new THREE.BufferAttribute(aWob, 2))
       tubes.push(geo) // identical attr layout across all tubes → merge succeeds
     }
   }
@@ -205,15 +232,17 @@ export interface SynapseFilamentsProps {
   positionOf: (id: string) => [number, number, number] | null
   /** Star mood color lookup (linear RGB 0..1) — the filament fades between its two ends. */
   colorOf: (id: string) => readonly [number, number, number]
+  /** Star wobble seed lookup (0..1) — 끝점이 StarField의 부유를 그대로 따라가게 한다. */
+  seedOf: (id: string) => number
   /** Global dim multiplier (0..1): 1 normally, <1 to fade the whole web while a star is focused. */
   dim?: number
 }
 
-export function SynapseFilaments({ edges, positionOf, colorOf, dim = 1 }: SynapseFilamentsProps) {
+export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, dim = 1 }: SynapseFilamentsProps) {
   // Built once; rebuilt only when the edge set or the lookups change (all stable from the
   // parent's useMemo). No per-frame CPU work — the shader does all motion via uTime.
   const built = useMemo(() => {
-    const geometry = buildFilamentGeometry(edges, positionOf, colorOf)
+    const geometry = buildFilamentGeometry(edges, positionOf, colorOf, seedOf)
     if (!geometry) return null
 
     const material = new MeshBasicNodeMaterial()
@@ -224,11 +253,36 @@ export function SynapseFilaments({ edges, positionOf, colorOf, dim = 1 }: Synaps
     const bright = float(attribute('aBright', 'float') as never) // per-edge brightness (±jitter)
     const opac = float(attribute('aOpacity', 'float') as never) // per-edge opacity (±jitter)
     const pulse = float(attribute('aPulse', 'float') as never)
+    // 양 끝 별의 부유 seed — vec2 하나로 패킹(WebGPU 정점 버퍼 한도 8 안에 머물기).
+    const wobSeed = vec2(attribute('aWob', 'vec2') as never)
+    const wobA = float(wobSeed.x)
+    const wobB = float(wobSeed.y)
     const uTime = uniform(0) // manual clock — the built-in `time` node is frozen here
     const uDim = uniform(1) // focus spotlight: 1 normally, <1 fades the whole web while focused
 
     const along = uv().x // 0→1 along the tube length (three's TubeGeometry uv convention)
     const around = uv().y // 0→1 around the cross-section
+
+    // 끝점 부유(spec 19): StarField의 wobble 수식(entities/star model/wobble — 단일 출처)을
+    // 정점 셰이더로 재현해, 필라멘트가 양 끝 별의 부유를 aAlong(0→1)으로 보간하며 따라간다.
+    // 별이 떠다녀도 연결이 항상 별 중앙에 붙어 있다. reduced-motion이면 StarField와 함께 정지.
+    // (uv()·mix 대신 전용 attribute + add/sub/mul — 이 레포에서 검증된 노드 연산만 쓴다.)
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const wobAmp = reduceMotion ? 0 : WOBBLE_AMP
+    const wobbleOf = (s: typeof wobA) => {
+      const axis = (i: 0 | 1 | 2) =>
+        sin(
+          uTime
+            .mul(s.mul(WOBBLE_FREQ[i][1]).add(WOBBLE_FREQ[i][0]))
+            .add(s.mul(Math.PI * 2 * WOBBLE_PHASE[i])),
+        )
+      return vec3(axis(0), axis(1), axis(2)).mul(wobAmp)
+    }
+    const wobStart = wobbleOf(wobA)
+    const wobDelta = wobbleOf(wobB).sub(wobStart)
+    material.positionNode = positionLocal.add(wobStart.add(wobDelta.mul(along)))
 
     // FLOW: a packet of light slides A→B (energy moving between two memories). The
     // per-strand seed offsets the phase so the braid's strands don't pulse in lockstep.
@@ -291,7 +345,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf, dim = 1 }: Synaps
     // skip culling (same rationale as SynapseLines / StarField).
     mesh.frustumCulled = false
     return { mesh, geometry, material, uTime, uDim }
-  }, [edges, positionOf, colorOf])
+  }, [edges, positionOf, colorOf, seedOf])
 
   // Hold the time uniform in a ref so the per-frame write targets a mutable ref (exempt
   // from the hook-immutability lint) rather than the useMemo return value directly — the

@@ -6,6 +6,7 @@ import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
 import { VizStar } from '@/entities/star'
+import { TheoryBadge } from './TheoryBadge'
 
 const BASE_SEED = 4217
 const ORIGINAL_TEXT = '비 오는 날, 오래된 노래를 들었다.'
@@ -132,6 +133,9 @@ export function ReconsolidationCard() {
       </div>
 
       <p className="text-xs leading-relaxed text-white/40">원본은 그대로, 별은 변하고, 변천사는 차곡차곡 쌓여가요.</p>
+
+      {/* 원본 불변(헌법1)은 이미 참 — 회상마다 별이 다시 빚어지는 쪽이 plan 23의 비전이다. */}
+      <TheoryBadge status="planned" plan="23·24" />
     </GlassCard>
   )
 }

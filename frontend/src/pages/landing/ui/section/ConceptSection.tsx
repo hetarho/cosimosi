@@ -4,6 +4,8 @@ import { MOOD, type MoodKey } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
 import { VizStar } from '@/entities/star'
 import { VizSynapse } from '@/entities/synapse'
+import { TheoryBadge } from './TheoryBadge'
+import { TryInUniverse } from './TryInUniverse'
 
 interface StarNode {
   id: number
@@ -162,6 +164,11 @@ export function ConceptSection() {
           ? '별 하나에 마음을 두면, 함께 떠오르는 기억이 같이 밝아져요.'
           : `"${NODES[activeId].label}" — 여기 이어진 ${neighborsOf(activeId).size - 1}개의 기억이 함께 빛나요.`}
       </p>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <TheoryBadge status="done" plan="08·09" />
+        <TryInUniverse sim="engram" label="체험으로 보기" />
+      </div>
     </div>
   )
 }

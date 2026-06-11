@@ -1,11 +1,13 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 import { errorMessage, reportUniverseData } from '@/shared/lib'
+import { isDemoMode } from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
 import { primaryButtonCls } from '@/shared/ui'
 import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
+import { DemoSimPanel } from '@/widgets/demo-sim'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
@@ -184,6 +186,8 @@ export function HomePage() {
   const mode = useCameraMode((s) => s.mode)
   const toggle = useCameraMode((s) => s.toggle)
   const starCount = useMemoryStore((s) => s.stars.length)
+  // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
+  const { sim } = useSearch({ from: '/universe' })
   // Mobile-only: the compose form is hidden by default (keep the universe unobstructed)
   // and expands into a full-width bottom sheet. On desktop (sm+) it stays a persistent
   // top-left panel, so this flag is ignored there.
@@ -239,36 +243,42 @@ export function HomePage() {
 
       {/* HUD: 2D DOM overlays outside the canvas */}
 
-      {/* Compose — desktop (sm+): persistent top-left panel. */}
-      <div className="absolute top-4 left-4 z-20 hidden w-80 sm:block">
-        <MemoryForm />
-      </div>
-
-      {/* Compose — mobile (<sm): hidden by default; a full-width trigger expands it into
-          a full-width bottom sheet so it doesn't cover the universe while exploring. */}
-      <div className="sm:hidden">
-        {composeOpen ? (
-          <div className="absolute inset-x-2 bottom-2 z-30">
-            <button
-              type="button"
-              onClick={() => setComposeOpen(false)}
-              aria-label="닫기"
-              className="absolute top-3 right-3 z-10 rounded-md px-2 text-white/50 transition hover:text-white/90"
-            >
-              ✕
-            </button>
+      {/* Compose — 데모에선 숨김: 본문 입력 대신 시뮬 패널의 "별 띄우기"(감정·날짜 드롭다운,
+          내용은 미리 쓴 일기)가 기록 컨트롤러를 담당한다(spec 19). */}
+      {!isDemoMode() && (
+        <>
+          {/* Compose — desktop (sm+): persistent top-left panel. */}
+          <div className="absolute top-4 left-4 z-20 hidden w-80 sm:block">
             <MemoryForm />
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setComposeOpen(true)}
-            className="absolute inset-x-4 bottom-4 z-20 rounded-xl border border-white/10 bg-indigo-500/80 px-4 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-indigo-500"
-          >
-            ✦ 새 일기 — 별 띄우기
-          </button>
-        )}
-      </div>
+
+          {/* Compose — mobile (<sm): hidden by default; a full-width trigger expands it into
+              a full-width bottom sheet so it doesn't cover the universe while exploring. */}
+          <div className="sm:hidden">
+            {composeOpen ? (
+              <div className="absolute inset-x-2 bottom-2 z-30">
+                <button
+                  type="button"
+                  onClick={() => setComposeOpen(false)}
+                  aria-label="닫기"
+                  className="absolute top-3 right-3 z-10 rounded-md px-2 text-white/50 transition hover:text-white/90"
+                >
+                  ✕
+                </button>
+                <MemoryForm />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setComposeOpen(true)}
+                className="absolute inset-x-4 bottom-4 z-20 rounded-xl border border-white/10 bg-indigo-500/80 px-4 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-indigo-500"
+              >
+                ✦ 새 일기 — 별 띄우기
+              </button>
+            )}
+          </div>
+        </>
+      )}
       <NavPad />
 
       {/* Star info — mobile: above the bottom compose button and height-capped so a long
@@ -297,6 +307,10 @@ export function HomePage() {
 
       {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(우하단은 MemoryPanel, 하단은 compose/NavPad와 겹침). */}
       <AppearanceSwitcher className="top-28 right-4" />
+
+      {/* 시뮬레이션 패널(spec 19) — 데모에서만, 좌하단(데스크톱)/하단 시트(모바일).
+          데모의 기록은 이 패널의 "별 띄우기" 컨트롤러가 담당한다(작성 폼은 데모에서 숨김). */}
+      {isDemoMode() && <DemoSimPanel initialSimId={sim} />}
 
       {/* 우주 로딩 — 응답 전의 빈 캔버스를 "별이 없다"로 오인시키지 않는다(1.1). */}
       {universe.isPending && (

@@ -18,6 +18,7 @@ export {
   dormantQueryOptions,
   dormantInvalidateKey,
   applyUniverse,
+  refreshActivation,
   RECORD_QUERY_ROOT,
   RECORD_QUERY_DEFAULTS,
   recordQueryKey,

@@ -4,6 +4,7 @@
 // so the same id always yields the same star.
 import { Mood as ProtoMood, type Star } from '@/shared/api'
 import type { Mood } from '@/shared/config'
+import { virtualNowMs } from '@/shared/lib/demo'
 import { seedFromId } from '../model/seed'
 import { parseEpochMs } from '../model/time'
 import type { Memory, StarNode } from '../model/types'
@@ -30,7 +31,8 @@ export function mapStar(star: Star, index: number): StarNode {
     id,
     mood: moodFromProto(star.mood),
     intensity: star.intensity,
-    lastRecalledAt: parseEpochMs(star.lastRecalledAt, Date.now()),
+    // 폴백 now도 가상 시계(spec 19)로 — 파싱 불가 타임스탬프가 데모 시간과 어긋나지 않게.
+    lastRecalledAt: parseEpochMs(star.lastRecalledAt, virtualNowMs()),
     seed: seedFromId(id),
   }
   return { id, memory, index }

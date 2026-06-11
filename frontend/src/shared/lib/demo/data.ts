@@ -16,11 +16,12 @@ import {
   type Star,
   type Synapse,
 } from '@/shared/api'
+import { virtualNowMs, resetDemoClock } from './clock'
 
 const DAY_MS = 86_400_000
 
 /** 더미 우주의 한 별 = 한 일기. daysAgo는 마지막 회상 경과일(밝기/잠듦을 좌우). */
-interface DemoEntry {
+export interface DemoEntry {
   id: string
   mood: Mood
   intensity: number
@@ -31,7 +32,8 @@ interface DemoEntry {
 
 // 손으로 고른 일기들 — 감정/강도/회상 시점을 다양하게. 최근 = 밝게, 오래된 것 =
 // 어둑하게(잠든 별 목록·회상 fly-to 체험용). 30개면 우주가 "별이 많다"고 읽힌다.
-const DEMO_ENTRIES: DemoEntry[] = [
+// export는 observe.ts(관찰 셀렉터)의 파생용 — 공개 API(index.ts)에는 올리지 않는다.
+export const DEMO_ENTRIES: DemoEntry[] = [
   { id: 'demo-001', mood: Mood.JOY, intensity: 0.92, daysAgo: 0, body: '오늘 드디어 첫 마라톤 10km를 완주했다. 결승선 앞에서 다리가 풀렸지만 끝까지 뛰었다는 게 믿기지 않는다.' },
   { id: 'demo-002', mood: Mood.LOVE, intensity: 0.88, daysAgo: 1, body: '엄마가 끓여준 미역국 냄새에 잠을 깼다. 별거 아닌데 코끝이 시큰했다. 사랑받고 있다는 건 이런 거구나.' },
   { id: 'demo-003', mood: Mood.CALM, intensity: 0.55, daysAgo: 2, body: '비 오는 카페 창가 자리. 따뜻한 라떼 한 잔과 책 한 권. 아무것도 안 해도 되는 오후가 이렇게 귀할 줄이야.' },
@@ -67,14 +69,15 @@ const DEMO_ENTRIES: DemoEntry[] = [
 
 // 별 사이 시냅스(연결선). a < b 무방향 규약. lastActivatedAt가 최근일수록 밝게 빛난다.
 // weight·activation으로 굵기/밝기가 결정된다(11/12). 주제·시간·감정으로 묶었다.
-interface DemoEdge {
+export interface DemoEdge {
   a: string
   b: string
   weight: number
   linkType: string
   daysAgo: number
 }
-const DEMO_EDGES: DemoEdge[] = [
+// export는 observe.ts(관찰 셀렉터)의 파생용 — 공개 API(index.ts)에는 올리지 않는다.
+export const DEMO_EDGES: DemoEdge[] = [
   { a: 'demo-001', b: 'demo-008', weight: 0.8, linkType: 'semantic', daysAgo: 1 }, // 성취감
   { a: 'demo-002', b: 'demo-010', weight: 0.9, linkType: 'entity', daysAgo: 1 }, // 가족
   { a: 'demo-010', b: 'demo-024', weight: 0.55, linkType: 'entity', daysAgo: 5 },
@@ -135,10 +138,13 @@ let baseStars: Star[] = []
 let baseSynapses: Synapse[] = []
 const records = new Map<string, RecordMsg>() // base + 체험 중 추가분, recall이 읽는다
 const addedStars: Star[] = [] // 체험 중 추가한 별(라우트 이동에도 유지, 새로고침 시 소멸)
+const addedEdges: Synapse[] = [] // 체험 중 추가한 별의 연결(시냅스 생성 이론 시연, spec 19)
 
 function ensureSeeded(): void {
   if (seededAt) return
-  seededAt = Date.now()
+  // 가상 now 기준 시드 — 진입 직후엔 offset=0이라 실제 now와 같고, 이후 시간 머신이
+  // offset을 키우면 같은 데이터가 그만큼 "늙은" 것으로 파생된다(spec 19).
+  seededAt = virtualNowMs()
   baseStars = DEMO_ENTRIES.map((e) => toStar(seededAt, e))
   baseSynapses = DEMO_EDGES.map((ed) =>
     create(SynapseSchema, {
@@ -158,10 +164,10 @@ export function demoStars(): Star[] {
   return [...baseStars, ...addedStars]
 }
 
-/** GetUniverse 시냅스. (추가 별은 시냅스 없이 떠 있다 — 체험상 충분.) */
+/** GetUniverse 시냅스: base + 체험 중 추가한 별의 연결(spec 19 — 시냅스 생성 시연). */
 export function demoSynapses(): Synapse[] {
   ensureSeeded()
-  return baseSynapses
+  return [...baseSynapses, ...addedEdges]
 }
 
 /** RecallMemory 대체: 원본 일기. 없는 id면 undefined(패널이 에러 처리). */
@@ -170,8 +176,21 @@ export function demoRecall(memoryId: string): RecordMsg | undefined {
   return records.get(memoryId)
 }
 
+// 새 별이 만드는 데모 연결 수 상한 — 우주를 어지럽히지 않는 선에서 "연결이 생긴다"를 보인다.
+const ADD_SAME_DAY_LINKS = 2
+const ADD_SAME_MOOD_LINKS = 1
+
+/** a<b 무방향 규약으로 데모 엣지를 추가한다(방금 생긴 연결 → lastActivatedAt = 가상 now). */
+function pushAddedEdge(idA: string, idB: string, weight: number, linkType: string, nowIso: string) {
+  const [aId, bId] = idA < idB ? [idA, idB] : [idB, idA]
+  addedEdges.push(create(SynapseSchema, { aId, bId, weight, linkType, lastActivatedAt: nowIso }))
+}
+
 /** RecordMemory 대체: 새 별을 더미 우주에 추가하고 새 id를 돌려준다(API 호출 없음).
- *  추가분은 records(회상)와 addedStars(재진입 시 재시드)에 모두 반영된다. */
+ *  추가분은 records(회상)와 addedStars(재진입 시 재시드)에 모두 반영된다.
+ *  시냅스 생성 이론(spec 19)의 시연으로 연결도 함께 만든다 — 실서버 워커(임베딩
+ *  τ=0.75·top-8 + 같은날+0.3)의 **데모 근사**: 같은 날 별과 temporal, 같은 mood
+ *  최신 별과 semantic. (임베딩 없는 근사임은 시뮬레이션 패널이 문구로 밝힌다.) */
 export function demoAddRecord(input: {
   body: string
   mood: Mood
@@ -180,7 +199,8 @@ export function demoAddRecord(input: {
 }): string {
   ensureSeeded()
   const id = `demo-new-${crypto.randomUUID()}`
-  const now = Date.now()
+  const now = virtualNowMs()
+  const nowIso = new Date(now).toISOString()
   records.set(
     id,
     create(RecordSchema, {
@@ -189,7 +209,7 @@ export function demoAddRecord(input: {
       entryDate: input.entryDate,
       mood: input.mood,
       intensity: input.intensity,
-      createdAt: new Date(now).toISOString(),
+      createdAt: nowIso,
     }),
   )
   addedStars.push(
@@ -197,17 +217,88 @@ export function demoAddRecord(input: {
       memoryId: id,
       mood: input.mood,
       intensity: input.intensity,
-      lastRecalledAt: new Date(now).toISOString(), // 방금 만든 별 → 가장 밝게
+      lastRecalledAt: nowIso, // 방금 만든 별 → 가장 밝게
     }),
   )
+
+  // 같은 날 시간창: entryDate가 같은 기존 일기와 잇는다(최신순 상한 ADD_SAME_DAY_LINKS).
+  const others = [...records.values()].filter((r) => r.memoryId !== id)
+  const sameDay = others
+    .filter((r) => r.entryDate === input.entryDate)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, ADD_SAME_DAY_LINKS)
+  for (const r of sameDay) pushAddedEdge(id, r.memoryId, 0.55, 'temporal', nowIso)
+
+  // 의미 근사: 같은 mood의 최신 일기와 잇는다(같은 날로 이미 이어진 별은 제외).
+  const linkedIds = new Set(sameDay.map((r) => r.memoryId))
+  const sameMood = others
+    .filter((r) => r.mood === input.mood && !linkedIds.has(r.memoryId))
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, ADD_SAME_MOOD_LINKS)
+  for (const r of sameMood) pushAddedEdge(id, r.memoryId, 0.6, 'semantic', nowIso)
+
   return id
 }
 
-/** 체험 종료 시 추가분을 비워 다음 진입을 깨끗하게 한다(base는 다음 ensureSeeded에서 재생성). */
+// 시뮬 패널 "별 띄우기"용 — 감정별로 미리 써 둔 짧은 일기 10개. 체험에서 내용 자체는
+// 중요하지 않으므로(별 탄생·연결 생성을 보여주는 용도) 무작위로 하나를 골라 띄운다.
+const QUICK_ENTRIES: { mood: Mood; intensity: number; body: string }[] = [
+  { mood: Mood.JOY, intensity: 0.85, body: '드디어 합격 메일이 왔다. 몇 번을 다시 읽었는지 모른다. 오늘 밤은 잠이 안 올 것 같다.' },
+  { mood: Mood.JOY, intensity: 0.7, body: '길에서 동전 노래방을 발견하고 두 곡 불렀다. 목은 쉬었지만 기분은 최고.' },
+  { mood: Mood.LOVE, intensity: 0.9, body: '오늘 손을 잡고 걸었다. 별말 없이 걸었는데도 그 길이 끝나지 않길 바랐다.' },
+  { mood: Mood.LOVE, intensity: 0.75, body: '동생이 말없이 내 책상에 귤을 까놓고 갔다. 다정함은 이렇게 조용히 온다.' },
+  { mood: Mood.CALM, intensity: 0.5, body: '창문을 열어두고 빗소리를 들으며 차를 마셨다. 아무 일도 없는 저녁이 좋다.' },
+  { mood: Mood.CALM, intensity: 0.45, body: '아침 일찍 동네를 한 바퀴 걸었다. 공기가 차고 깨끗해서 머리가 맑아졌다.' },
+  { mood: Mood.SAD, intensity: 0.6, body: '오래 쓰던 머그컵이 깨졌다. 그냥 컵일 뿐인데, 마음 한구석이 같이 금 갔다.' },
+  { mood: Mood.ANGER, intensity: 0.65, body: '줄을 서 있는데 누가 아무렇지 않게 새치기를 했다. 한마디 못 한 내가 더 분하다.' },
+  { mood: Mood.FEAR, intensity: 0.55, body: '내일 결과 발표다. 휴대폰을 쥐었다 놓았다 하며 하루를 다 써버렸다.' },
+  { mood: Mood.NEUTRAL, intensity: 0.4, body: '장을 보고, 빨래를 개고, 일찍 누웠다. 적당히 평범해서 나쁘지 않은 하루.' },
+]
+
+/** 시뮬 패널 "별 띄우기": 고른 감정·날짜로 별을 만든다(spec 19 — 데모의 기록 컨트롤러).
+ *  본문은 그 감정으로 미리 써 둔 일기 중 무작위 — 체험에서 내용은 시연용일 뿐이다.
+ *  새 별 id를 돌려준다. */
+export function demoAddStar(mood: Mood, entryDate: string): string {
+  const pool = QUICK_ENTRIES.filter((q) => q.mood === mood)
+  const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : QUICK_ENTRIES[0]
+  return demoAddRecord({ body: pick.body, mood, intensity: pick.intensity, entryDate })
+}
+
+/** 별 띄우기 날짜 입력의 기본값 — 오늘(가상 시계 기준), YYYY-MM-DD. */
+export function demoToday(): string {
+  return dateFrom(virtualNowMs(), 0)
+}
+
+/** RecallMemory의 재점화(서버 `last_recalled_at=now`)를 데모에서 재현한다(spec 19):
+ *  그 별의 lastRecalledAt을 가상 now로 전진. **불변 교체**로 새 Star 객체를 만들어야
+ *  쿼리 캐시의 protobuf structural sharing이 변경을 감지한다(제자리 변이는 이전
+ *  응답까지 같이 바뀌어 refetch가 no-op이 된다). 원본(records)은 불변(헌법1). */
+export function demoMarkRecalled(memoryId: string): void {
+  ensureSeeded()
+  const nowIso = new Date(virtualNowMs()).toISOString()
+  const renew = (s: Star): Star =>
+    create(StarSchema, {
+      memoryId: s.memoryId,
+      mood: s.mood,
+      intensity: s.intensity,
+      lastRecalledAt: nowIso,
+    })
+  const bi = baseStars.findIndex((s) => s.memoryId === memoryId)
+  if (bi >= 0) {
+    baseStars[bi] = renew(baseStars[bi])
+    return
+  }
+  const ai = addedStars.findIndex((s) => s.memoryId === memoryId)
+  if (ai >= 0) addedStars[ai] = renew(addedStars[ai])
+}
+
+/** 체험 종료 시 추가분·가상 시계를 비워 다음 진입을 깨끗하게 한다(base는 다음 ensureSeeded에서 재생성). */
 export function resetDemo(): void {
   seededAt = 0
   baseStars = []
   baseSynapses = []
   addedStars.length = 0
+  addedEdges.length = 0
   records.clear()
+  resetDemoClock()
 }

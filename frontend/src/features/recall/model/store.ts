@@ -4,8 +4,11 @@
 // setTimeout + crypto are RN-safe globals; the beforeunload flush lives in the UI.
 import { create } from 'zustand'
 import { capture, EVENTS } from '@/shared/lib'
+import { isDemoMode } from '@/shared/lib/demo'
+import { useSynapseStore } from '@/entities/synapse'
 import { reinforceLinks } from '../api/recall'
 import {
+  CO_RECALL_DELTA,
   createSession,
   DEBOUNCE_IDLE_MS,
   drainDeltas,
@@ -44,7 +47,15 @@ interface RecallState {
 export const useRecallStore = create<RecallState>((set, get) => ({
   session: createSession(newBatchId()),
   recordActiveView: (id) => {
-    onActiveView(get().session, id)
+    const session = get().session
+    const prev = session.lastViewedId
+    onActiveView(session, id)
+    // 데모 헵 미리보기(spec 19): 페어가 확정되는 즉시 그 엣지의 weight를 로컬로 올려
+    // 굵어짐이 바로 보이게 한다(상한 1.0, 없던 페어는 co_recall 생성). 영속은 그대로
+    // flush 경로 소유 — 데모에선 reinforceLinks가 no-op이라 서버 쓰기가 없다(11 불변).
+    if (prev && prev !== id && isDemoMode()) {
+      useSynapseStore.getState().bumpEdgeWeight(prev, id, CO_RECALL_DELTA)
+    }
     clearFlushTimer()
     flushTimer = setTimeout(() => {
       void get().flush()

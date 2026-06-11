@@ -1,3 +1,14 @@
 // Public API for the demo("체험") module — 명시 export만(FSD 공개 API 규칙).
 export { isDemoMode, enterDemoMode, exitDemoMode, setDemoModeListener } from './flag'
-export { demoStars, demoSynapses, demoRecall, demoAddRecord, resetDemo } from './data'
+export {
+  demoStars,
+  demoSynapses,
+  demoRecall,
+  demoAddRecord,
+  demoAddStar,
+  demoToday,
+  demoMarkRecalled,
+  resetDemo,
+} from './data'
+export { virtualNowMs, skipDemoDays, demoOffsetDays, resetDemoClock } from './clock'
+export { brightestStarId, thickestEdge, sameDayPair, dormantStarId } from './observe'

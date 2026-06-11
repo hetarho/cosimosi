@@ -5,6 +5,7 @@
 // body가 없다 — 원본은 회상(11)에서 가져온다.
 import { queryOptions } from '@tanstack/react-query'
 import type { ListDormantResponse } from '@/shared/api'
+import { virtualNowMs } from '@/shared/lib/demo'
 import {
   dormantQueryOptions,
   moodFromProto,
@@ -22,7 +23,8 @@ export interface DormantStar {
 }
 
 function toDormantStars(res: ListDormantResponse): DormantStar[] {
-  const now = Date.now()
+  // 가상 시계(spec 19): 데모 시간 머신과 캔버스 밝기가 같은 now를 보게 한다. 비데모 동일값.
+  const now = virtualNowMs()
   return res.stars.map((s) => {
     const last = parseEpochMs(s.lastRecalledAt, now)
     return {

@@ -7,12 +7,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { capture, errorMessage, EVENTS } from '@/shared/lib'
+import { virtualNowMs } from '@/shared/lib/demo'
 import { moodLabel } from '@/shared/config'
 import { useCameraMode } from '@/widgets/universe-canvas'
 import { dormantStarsQueryOptions } from '../api/list-dormant'
 
+// 가상 시계(spec 19) 기준 경과일 — 데모 시간 머신이 보낸 날수가 "N일 전"에 반영된다.
 function daysAgo(epochMs: number): number {
-  return Math.floor((Date.now() - epochMs) / 86_400_000)
+  return Math.floor((virtualNowMs() - epochMs) / 86_400_000)
 }
 
 export function DormantPage() {

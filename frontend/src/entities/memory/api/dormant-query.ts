@@ -11,7 +11,7 @@ import {
   transport,
   type ListDormantResponse,
 } from '@/shared/api'
-import { isDemoMode, demoStars } from '@/shared/lib/demo'
+import { isDemoMode, demoStars, virtualNowMs } from '@/shared/lib/demo'
 import { isDormant } from '../model/activation'
 import { parseEpochMs } from '../model/time'
 
@@ -25,8 +25,9 @@ function buildDormantQueryOptions() {
     ...base,
     queryFn: ({ signal }: { signal: AbortSignal }): Promise<ListDormantResponse> => {
       // 체험 모드: 서버가 하던 잠듦 필터를 클라에서 동일 규칙(isDormant)으로 재현한다.
+      // now는 가상 시계(spec 19) — 시간 머신이 보낸 시간만큼 잠든 별이 늘어난다.
       if (isDemoMode()) {
-        const now = Date.now()
+        const now = virtualNowMs()
         const stars = demoStars().filter((s) => isDormant(parseEpochMs(s.lastRecalledAt, now), now))
         return Promise.resolve(create(ListDormantResponseSchema, { stars }))
       }
