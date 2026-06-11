@@ -118,6 +118,15 @@ func (w *Worker) logQueueSummary(ctx context.Context) {
 
 // processOne claims and handles a single job. It returns true if a job was
 // claimed (success or failure), false when the queue is empty.
+//
+// KindExtract stub (spec 20 → 21): the kind exists but is intentionally NOT
+// claimed here — nothing enqueues extract jobs yet, so the embed loop stays
+// unchanged and the stub never runs (no-op-safe). Spec 21 wires the fan-out:
+//
+//	case KindExtract:
+//	  ext, err := w.extractor.Extract(ctx, m.Body) // 21: inject ai.Extractor into Worker
+//	  // 21: ext.Segments → InsertMemory fan-out + one embed job per fragment
+//	  return w.jobs.Complete(ctx, j.ID)            // 20: safe completion, no star creation
 func (w *Worker) processOne(ctx context.Context) bool {
 	j, err := w.jobs.Claim(ctx, KindEmbed)
 	switch {

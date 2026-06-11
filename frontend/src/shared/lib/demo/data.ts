@@ -44,6 +44,9 @@ export const DEMO_ENTRIES: DemoEntry[] = [
   { id: 'demo-008', mood: Mood.JOY, intensity: 0.8, daysAgo: 9, body: '프로젝트 데모가 성공적으로 끝났다. 팀원들과 하이파이브할 때의 그 열기를 오래 기억하고 싶다.' },
   { id: 'demo-009', mood: Mood.ANGER, intensity: 0.72, daysAgo: 11, body: '회의에서 또 말이 끊겼다. 끝까지 못 한 그 문장이 하루 종일 목에 걸려 있었다.' },
   { id: 'demo-010', mood: Mood.LOVE, intensity: 0.84, daysAgo: 13, body: '할머니 댁에 다녀왔다. 내 손을 꼭 잡고 "밥은 잘 챙겨 먹니" 물으시는데, 그 온기가 며칠째 손에 남아 있다.' },
+  // ▼ 분절 데모 후보(spec 20 T014 → 21에서 사용): 하루 안에 장면 전환(출근→일→점심→퇴근)이
+  //   있는 다장면 엔트리 — 21의 "1 일기 → N 조각 별" 체험이 이 엔트리를 분절 시연에 쓴다
+  //   (필요 시 21에서 본문을 장면별 감정이 갈리는 문단으로 보강).
   { id: 'demo-011', mood: Mood.NEUTRAL, intensity: 0.4, daysAgo: 16, body: '특별할 것 없는 하루. 출근, 일, 점심, 일, 퇴근. 그래도 무탈하다는 게 어떤 날엔 가장 큰 다행이다.' },
   { id: 'demo-012', mood: Mood.CALM, intensity: 0.52, daysAgo: 19, body: '주말 아침 산책. 공기가 차고 맑았다. 이어폰을 빼고 새소리만 들으며 걸었다.' },
   { id: 'demo-013', mood: Mood.JOY, intensity: 0.76, daysAgo: 22, body: '오래 기다린 책이 도착했다. 포장을 뜯는 순간의 설렘. 첫 장을 펼치기 전 이 기분이 제일 좋다.' },

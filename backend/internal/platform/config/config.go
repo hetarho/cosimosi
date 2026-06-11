@@ -31,9 +31,27 @@ type Config struct {
 	// AIEmbedder selects the embedding adapter (constitution §7): "mock" (keyless,
 	// deterministic — the default, used for keyless E2E) or "openai".
 	AIEmbedder string
-	// OpenAIAPIKey authenticates the OpenAI embedder. Empty unless AIEmbedder is
-	// "openai"; the factory fails fast if "openai" is selected without it.
+	// AIExtractor selects the extraction adapter (spec 20, constitution §7):
+	// "mock" (keyless, deterministic — the default) or "llm" (the provider
+	// abstraction below).
+	AIExtractor string
+	// LLMProvider selects the LLM provider behind the llm.Client port (spec 20):
+	// openai | gemini | claude | deepseek | grok. Only consulted when something
+	// (AI_EXTRACTOR=llm) actually needs an LLM.
+	LLMProvider string
+	// LLMModel overrides the selected provider's default model. Empty = use the
+	// provider default (see internal/llm).
+	LLMModel string
+	// OpenAIAPIKey authenticates the OpenAI adapters (embedder + llm provider
+	// share it). The factories fail fast when an OpenAI adapter is selected
+	// without it.
 	OpenAIAPIKey string
+	// Per-provider LLM API keys (spec 20). Only the selected LLM_PROVIDER's key
+	// is required; llm.New fails fast naming the missing env var.
+	GeminiAPIKey    string
+	AnthropicAPIKey string
+	DeepSeekAPIKey  string
+	XAIAPIKey       string
 	// SentryDSN enables production error tracking. Empty = disabled:
 	// the composition root skips sentry.Init entirely (no-op locally / in tests).
 	SentryDSN string
@@ -53,7 +71,14 @@ func Load() (*Config, error) {
 		SupabaseJWTSecret:  getEnv("SUPABASE_JWT_SECRET", ""),
 		SupabaseProjectURL: getEnv("SUPABASE_PROJECT_URL", ""),
 		AIEmbedder:         getEnv("AI_EMBEDDER", "mock"),
+		AIExtractor:        getEnv("AI_EXTRACTOR", "mock"),
+		LLMProvider:        getEnv("LLM_PROVIDER", "openai"),
+		LLMModel:           getEnv("LLM_MODEL", ""),
 		OpenAIAPIKey:       getEnv("OPENAI_API_KEY", ""),
+		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
+		AnthropicAPIKey:    getEnv("ANTHROPIC_API_KEY", ""),
+		DeepSeekAPIKey:     getEnv("DEEPSEEK_API_KEY", ""),
+		XAIAPIKey:          getEnv("XAI_API_KEY", ""),
 		SentryDSN:          getEnv("SENTRY_DSN", ""),
 		SentryEnvironment:  getEnv("SENTRY_ENVIRONMENT", "development"),
 	}

@@ -14,10 +14,17 @@ const (
 	StatusFailed  Status = "failed"
 )
 
-// Kind is the job type stored in jobs.kind. MVP has one: embed.
+// Kind is the job type stored in jobs.kind.
 type Kind string
 
-const KindEmbed Kind = "embed"
+const (
+	KindEmbed Kind = "embed"
+	// KindExtract is the event-boundary extraction job (spec 20). Defined here
+	// so the kind exists end-to-end, but NOTHING enqueues it yet — spec 21 wires
+	// RecordMemory to enqueue it and the worker to fan the segments out into
+	// fragment stars (1 diary → N memories).
+	KindExtract Kind = "extract"
+)
 
 // Job is a claimed unit of work. Attempts is the count BEFORE this attempt; the
 // worker uses it to compute the next backoff on failure.
