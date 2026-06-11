@@ -38,7 +38,8 @@ spec/policy/
     ├── interaction.md   ← 회상·기록·공동회상·체험(demo) 상호작용
     ├── landing.md       ← 랜딩 비전 showcase·이론 카드·내러티브
     ├── motion-accessibility.md  ← 모션·reduced-motion·접근성·glow
-    └── error-feedback.md ← 실패 상태 UX: 바운더리 3겹·폴백 카피·검증 메시지(흰 화면 금지)
+    ├── error-feedback.md ← 실패 상태 UX: 바운더리 3겹·폴백 카피·검증 메시지(흰 화면 금지)
+    └── analytics-privacy.md ← 분석·관측: 이벤트 설계표·본문 금지·마스킹·Sentry·큐 요약 로그
 ```
 
 - **domain/** 은 도메인별로 다시 나눈다. 새 도메인이 생기면 파일을 더한다(예: 소셜 레이어 도입 시 `domain/sharing.md`).

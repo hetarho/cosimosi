@@ -48,7 +48,7 @@ type GetMemoryForEmbedRow struct {
 	EntryDate pgtype.Date `json:"entry_date"`
 }
 
-// Loads what the embedding worker needs (spec 05): the star's owner, the original
+// Loads what the embedding worker needs: the star's owner, the original
 // diary body, and its entry_date (for the temporal_bonus baseline). body/entry_date
 // live on the immutable records row, read via JOIN.
 func (q *Queries) GetMemoryForEmbed(ctx context.Context, id string) (GetMemoryForEmbedRow, error) {
@@ -165,7 +165,7 @@ type ListDormantRow struct {
 	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
 }
 
-// Long-unrecalled (dormant) stars for the dormant-search page (spec 12). A search aid,
+// Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
 // NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
 // compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
 // brightness is computed client-side from this same value). The service converts the
@@ -248,7 +248,7 @@ type RecallMemoryTouchParams struct {
 	UserID string `json:"user_id"`
 }
 
-// Re-ignite a star on recall (spec 11): only memories.last_recalled_at changes (the
+// Re-ignite a star on recall: only memories.last_recalled_at changes (the
 // star is mutable; the original record is NOT — constitution §1). No RETURNING.
 func (q *Queries) RecallMemoryTouch(ctx context.Context, arg RecallMemoryTouchParams) error {
 	_, err := q.db.Exec(ctx, recallMemoryTouch, arg.ID, arg.UserID)

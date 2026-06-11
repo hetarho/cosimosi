@@ -12,7 +12,7 @@ import { SynapseFilaments, SynapseDust, useSynapseStore } from '@/entities/synap
 import { useMemoryStore } from '@/entities/memory'
 import { useAppearance, themeBg } from '@/entities/appearance'
 import { moodRgb, NEUTRAL_RGB } from '@/shared/config'
-import { mulberry32, fibonacciStarPosition } from '@/shared/lib'
+import { mulberry32, fibonacciStarPosition, reportUniverseRenderer } from '@/shared/lib'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
 import { useCameraMode } from '../model/use-camera-mode'
 import { BloomPass } from './BloomPass'
@@ -814,6 +814,8 @@ export function UniverseCanvas() {
       onCreated={(state) => {
         const gl = state.gl as unknown as WebGPURenderer
         glRef.current = gl
+        // universe_loaded의 renderer 속성(18, 3.3) — WebGPU/WebGL2 폴백 비율 측정.
+        reportUniverseRenderer(rendererBackend(gl))
         if (import.meta.env.DEV) {
           console.log('[universe] renderer backend:', rendererBackend(gl))
         }

@@ -9,8 +9,10 @@ import { useEffect, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Record as RecordMsg } from '@/shared/api'
+import { capture, EVENTS } from '@/shared/lib'
 import {
   dormantInvalidateKey,
+  isDormant,
   moodFromProto,
   recordQueryKey,
   useMemoryStore,
@@ -43,6 +45,11 @@ function RecallView({ memoryId }: { memoryId: string }) {
     // 보여주는 중의 touch 실패는 비차단(다음 열람에 재시도).
     const timer = setTimeout(() => {
       recordActiveView(memoryId) // co-recall pair with the previous active view (1.3)
+      // recall_open(18) — 회상 발화 시점(터치 직전)의 활성도로 잠든 별 재점화 여부를 판단.
+      const star = useMemoryStore.getState().stars.find((s) => s.id === memoryId)
+      capture(EVENTS.recallOpen, {
+        is_dormant: star ? isDormant(star.memory.lastRecalledAt, Date.now()) : false,
+      })
       const hasCached = queryClient.getQueryData(recordQueryKey(memoryId)) != null
       if (!hasCached) setPhase('loading')
       recallMemory(memoryId)
@@ -101,7 +108,9 @@ function RecallView({ memoryId }: { memoryId: string }) {
 
       {phase === 'shown' && record && (
         // Read-only: no edit/delete controls (constitution §1, acceptance 1.1).
-        <article className="flex flex-col gap-2">
+        // ph-no-capture: 일기 원문 영역 — PostHog autocapture가 이 서브트리를 아예
+        // 건드리지 않게 한다(프라이버시 헌법 3; mask_all_text 위의 이중 가드).
+        <article className="ph-no-capture flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs text-white/45">
             <span>{record.entryDate}</span>
             <span>·</span>

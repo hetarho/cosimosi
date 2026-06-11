@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Palette, X } from 'lucide-react'
-import { cn } from '@/shared/lib'
+import { capture, cn, EVENTS } from '@/shared/lib'
 import { THEMES, useAppearance } from '@/entities/appearance'
 import { STAR_OBJECTS } from '@/entities/star'
 
@@ -136,7 +136,11 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
               groupLabel="색 테마"
               items={THEMES}
               value={theme}
-              onChange={(id) => setTheme(id as (typeof THEMES)[number]['id'])}
+              onChange={(id) => {
+                if (id === theme) return // 같은 테마 재클릭은 전환이 아니다 — 이벤트 오염 방지
+                setTheme(id as (typeof THEMES)[number]['id'])
+                capture(EVENTS.appearanceSwitch, { theme: id }) // 외형 기능 사용률(18)
+              }}
             />
 
             <div className="h-px bg-white/10" />

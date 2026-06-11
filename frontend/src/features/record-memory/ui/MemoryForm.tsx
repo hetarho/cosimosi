@@ -33,8 +33,10 @@ export function MemoryForm() {
       }}
     >
       <h2 className="text-sm font-medium text-white/80">새 일기 — 별 띄우기</h2>
+      {/* ph-no-capture: 일기 본문 입력 — PostHog autocapture가 이 요소를 아예 건드리지
+          않게 한다(스펙 18 프라이버시 헌법 3; mask_all_text 위의 이중 가드). */}
       <textarea
-        className={`${inputCls} h-24 resize-none`}
+        className={`${inputCls} ph-no-capture h-24 resize-none`}
         placeholder="오늘의 기억을 적어보세요…"
         value={body}
         onChange={(e) => setBody(e.target.value)}

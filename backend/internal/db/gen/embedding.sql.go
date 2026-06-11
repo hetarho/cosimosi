@@ -42,7 +42,7 @@ type KnnNearestRow struct {
 
 // Top-k nearest same-user neighbors (excluding self), cosine similarity ≥ τ=0.75,
 // nearest first. Returns each candidate's entry_date for the temporal_bonus.
-// user_id filter = multi-user isolation (acceptance 3.3); HNSW serves the ORDER BY.
+// user_id filter = multi-user isolation; HNSW serves the ORDER BY.
 func (q *Queries) KnnNearest(ctx context.Context, arg KnnNearestParams) ([]KnnNearestRow, error) {
 	rows, err := q.db.Query(ctx, knnNearest,
 		arg.Query,
@@ -85,8 +85,8 @@ type UpsertEmbeddingParams struct {
 	Model     string           `json:"model"`
 }
 
-// Embedding persistence + KNN (spec 05). embeddings.vector(1536) is declared
-// unqualified (sqlc #3548) and indexed with HNSW vector_cosine_ops (spec 03).
+// Embedding persistence + KNN. embeddings.vector(1536) is declared
+// unqualified (sqlc #3548) and indexed with HNSW vector_cosine_ops.
 // Idempotent per memory: a retried job replaces the vector/model rather than
 // erroring, so the pipeline is safe to re-run (constitution §1: never touches records).
 func (q *Queries) UpsertEmbedding(ctx context.Context, arg UpsertEmbeddingParams) error {

@@ -1,3 +1,13 @@
+export {
+  EVENTS,
+  bodyLengthBucket,
+  capture,
+  identifyUser,
+  initAnalytics,
+  reportUniverseData,
+  reportUniverseRenderer,
+  resetAnalyticsIdentity,
+} from './analytics'
 export { cn } from './utils'
 export { clamp01 } from './num'
 export { errorMessage } from './error'

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/shared/api'
+import { capture, EVENTS, identifyUser, resetAnalyticsIdentity } from '@/shared/lib'
 import { resetUniverseData } from './reset-universe-data'
 
 // 순수 상태·로직 레이어. three/React/DOM 을 직접 import 하지 않는다(모바일 RN 재사용 — 원칙 4).
@@ -18,6 +19,18 @@ let lastUserId: string | null | undefined = undefined
 function syncIdentity(session: Session | null): void {
   const uid = session?.user?.id ?? null
   if (lastUserId !== undefined && uid !== lastUserId) resetUniverseData()
+  // 분석 식별 동기화(18): uid가 새로 확인되는 순간(신규 사인인·세션 복원·계정 전환)이
+  // sign_in 1회 = "가입/재방문" 단위다. TOKEN_REFRESHED 등 같은 uid 이벤트는 통과.
+  // 식별자는 Supabase uid만 보낸다(이메일 등 PII 금지).
+  if (uid && uid !== lastUserId) {
+    // 중간 null 없이 A→B로 바로 전환돼도 이전 계정의 세션/디바이스 컨텍스트가 새
+    // 계정에 이어지지 않게 먼저 끊는다.
+    if (lastUserId) resetAnalyticsIdentity()
+    identifyUser(uid)
+    capture(EVENTS.signIn, {})
+  } else if (!uid && lastUserId) {
+    resetAnalyticsIdentity()
+  }
   lastUserId = uid
 }
 

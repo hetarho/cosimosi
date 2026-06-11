@@ -3,6 +3,7 @@
 // the idempotent server (1.10) collapses duplicates. No three/React/DOM (1.9):
 // setTimeout + crypto are RN-safe globals; the beforeunload flush lives in the UI.
 import { create } from 'zustand'
+import { capture, EVENTS } from '@/shared/lib'
 import { reinforceLinks } from '../api/recall'
 import {
   createSession,
@@ -61,8 +62,15 @@ export const useRecallStore = create<RecallState>((set, get) => ({
     inFlight = true
     try {
       await reinforceLinks(items, batchId)
-      // success → rotate batchId; keep the deltas accumulated during the await.
-      set({ session: { ...get().session, batchId: newBatchId() } })
+      // 출처 리셋이 전송 중 세션을 교체했으면 이 배치는 이전 사용자 소유 — 이벤트도
+      // batchId 회전도 새 세션에 적용하지 않는다(실패 경로의 cur === s 가드와 대칭, 18).
+      if (get().session === s) {
+        // reinforce_flush(18) — 공동 회상(헵 강화)이 실제로 도는지. 성공 배치만 센다
+        // (재시도는 같은 batchId로 합쳐지므로 성공 시점이 중복 없는 1회).
+        capture(EVENTS.reinforceFlush, { pair_count: items.length })
+        // success → rotate batchId; keep the deltas accumulated during the await.
+        set({ session: { ...s, batchId: newBatchId() } })
+      }
     } catch {
       // failure → re-merge the drained increments under the SAME batchId for retry
       // (1.7). The server dedups by batchId (1.10), so a resend never double-counts.

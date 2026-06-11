@@ -125,6 +125,7 @@ func (s *stubJobs) Fail(_ context.Context, _ string, status Status, msg string, 
 	s.failMsg = msg
 	return nil
 }
+func (s *stubJobs) Stats(context.Context) (QueueStats, error) { return QueueStats{}, nil }
 
 type stubStore struct{}
 

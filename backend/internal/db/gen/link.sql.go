@@ -32,11 +32,11 @@ type BatchUpsertLinksParams struct {
 	UserIds []string  `json:"user_ids"`
 }
 
-// Initial semantic synapses from the embedding worker (spec 05), one statement
-// via UNNEST, with link_type literal 'semantic' (memory_links.link_type is NOT
-// NULL, no default — spec 03). On conflict we keep the stronger weight (GREATEST)
-// so re-running a job never weakens an existing link; co-recall reinforcement is
-// spec 11's job.
+// Initial semantic synapses from the embedding worker, one statement via
+// UNNEST, with link_type literal 'semantic' (memory_links.link_type is NOT
+// NULL, no default). On conflict we keep the stronger weight (GREATEST) so
+// re-running a job never weakens an existing link; co-recall reinforcement is
+// handled by ReinforceLinks.
 //
 // IMPORTANT: the (a_id, b_id) pair is normalized HERE with LEAST/GREATEST, not by
 // the caller, so ordering uses the SAME database collation (en_US.utf8) as the
@@ -64,7 +64,7 @@ type ClaimBatchParams struct {
 	UserID  string `json:"user_id"`
 }
 
-// Idempotency CLAIM (spec 11, 1.5/1.10): insert the batch_id row FIRST, inside the
+// Idempotency CLAIM: insert the batch_id row FIRST, inside the
 // reinforce tx. Returns 1 if THIS tx claimed the batch (proceed with the upsert), 0 if
 // it was already processed (skip). Because the insert runs before the upsert, the
 // batch_id PK holds a lock for the whole tx, so a concurrent duplicate batch_id BLOCKS
@@ -144,12 +144,12 @@ type ReinforceLinksParams struct {
 	Deltas []float64 `json:"deltas"`
 }
 
-// Co-recall (Hebbian) reinforcement (spec 11, Architecture §6/§4.5): apply per-pair
+// Co-recall (Hebbian) reinforcement: apply per-pair
 // INCREMENTAL deltas. New row → weight=LEAST(1.0, delta), link_type='co_recall';
 // existing → weight=LEAST(1.0, weight+delta), co_activation_count++,
 // last_activated_at=now. The cap is on BOTH branches: a single batch's summed delta
 // for a pair can exceed 1.0 (the client accumulates uncapped), so a first-ever link
-// must clamp too — weight is a 0..1 invariant (schema §50), not just on conflict.
+// must clamp too — weight is a 0..1 invariant, not just on conflict.
 // a_id<b_id is normalized HERE with LEAST/GREATEST under the DB collation (matches
 // the a_id<b_id CHECK / PK — a Go byte-order swap would disagree with en_US.utf8).
 func (q *Queries) ReinforceLinks(ctx context.Context, arg ReinforceLinksParams) error {

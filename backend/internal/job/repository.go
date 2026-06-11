@@ -23,6 +23,20 @@ type Repository interface {
 	// next_run_at to retry, or status='failed' to preserve a give-up (never
 	// deletes — constitution §1/§2). attempts is incremented by the query.
 	Fail(ctx context.Context, id string, status Status, errMsg string, nextRunAt time.Time) error
+	// Stats counts the queue by status and measures the oldest pending job's age —
+	// the worker logs it periodically so a silent backlog is visible (spec 18).
+	Stats(ctx context.Context) (QueueStats, error)
+}
+
+// QueueStats is one snapshot of the job queue for the periodic summary log.
+// DuePending counts only jobs claimable right now (next_run_at <= now) —
+// Pending also includes retries waiting out their backoff.
+type QueueStats struct {
+	Pending          int
+	DuePending       int
+	Running          int
+	Failed           int
+	OldestPendingAge time.Duration
 }
 
 // GraphStore is the worker's view over embedding + synapse persistence. It is a

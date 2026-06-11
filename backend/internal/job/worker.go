@@ -27,6 +27,9 @@ const (
 	defaultMaxAttempts  = 5
 	defaultBaseBackoff  = 2 * time.Second
 	defaultMaxBackoff   = 5 * time.Minute
+	// 큐 상태 요약 로그 주기(spec 18, 3.6) — 그라파나 없이 docker logs만으로
+	// pending/failed 백로그와 최고령 잡 나이를 본다.
+	defaultSummaryInterval = 5 * time.Minute
 )
 
 // Worker is the embedding pipeline loop: claim → embed → store → KNN → link →
@@ -38,11 +41,12 @@ type Worker struct {
 	embedder ai.Embedder
 	logger   *slog.Logger
 
-	pollInterval time.Duration
-	maxAttempts  int
-	baseBackoff  time.Duration
-	maxBackoff   time.Duration
-	k            int
+	pollInterval    time.Duration
+	maxAttempts     int
+	baseBackoff     time.Duration
+	maxBackoff      time.Duration
+	summaryInterval time.Duration
+	k               int
 }
 
 // NewWorker wires the worker over its ports. A nil logger falls back to the default.
@@ -51,27 +55,35 @@ func NewWorker(jobs Repository, store GraphStore, embedder ai.Embedder, logger *
 		logger = slog.Default()
 	}
 	return &Worker{
-		jobs:         jobs,
-		store:        store,
-		embedder:     embedder,
-		logger:       logger,
-		pollInterval: defaultPollInterval,
-		maxAttempts:  defaultMaxAttempts,
-		baseBackoff:  defaultBaseBackoff,
-		maxBackoff:   defaultMaxBackoff,
-		k:            knnK,
+		jobs:            jobs,
+		store:           store,
+		embedder:        embedder,
+		logger:          logger,
+		pollInterval:    defaultPollInterval,
+		maxAttempts:     defaultMaxAttempts,
+		baseBackoff:     defaultBaseBackoff,
+		maxBackoff:      defaultMaxBackoff,
+		summaryInterval: defaultSummaryInterval,
+		k:               knnK,
 	}
 }
 
 // Run drains the queue, then polls every pollInterval until ctx is cancelled.
 // It claims one job at a time and keeps going while jobs are available so a
-// backlog clears without waiting a full interval per job.
+// backlog clears without waiting a full interval per job. Every summaryInterval
+// it logs one queue-stats line (spec 18, 3.6) — including at startup, so the
+// first log after a deploy already shows any backlog left from the previous run.
 func (w *Worker) Run(ctx context.Context) {
 	w.logger.Info("embedding worker started", "embedder", w.embedder.Model(), "poll", w.pollInterval)
+	var lastSummary time.Time // zero → the first loop iteration logs immediately
 	for {
 		if ctx.Err() != nil {
 			w.logger.Info("embedding worker stopped")
 			return
+		}
+		if time.Since(lastSummary) >= w.summaryInterval {
+			lastSummary = time.Now()
+			w.logQueueSummary(ctx)
 		}
 		if w.processOne(ctx) {
 			continue // claimed something — drain the queue without sleeping
@@ -83,6 +95,25 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-time.After(w.pollInterval):
 		}
 	}
+}
+
+// logQueueSummary emits the one-line queue snapshot. A stats failure is logged
+// and skipped — observability must never wedge the pipeline.
+func (w *Worker) logQueueSummary(ctx context.Context) {
+	stats, err := w.jobs.Stats(ctx)
+	if err != nil {
+		if ctx.Err() == nil {
+			w.logger.Warn("queue stats failed", "err", err)
+		}
+		return
+	}
+	w.logger.Info("queue summary",
+		"pending", stats.Pending,
+		"due_pending", stats.DuePending,
+		"running", stats.Running,
+		"failed", stats.Failed,
+		"oldest_pending", stats.OldestPendingAge.Truncate(time.Second),
+	)
 }
 
 // processOne claims and handles a single job. It returns true if a job was

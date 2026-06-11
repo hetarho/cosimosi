@@ -13,9 +13,15 @@ export default defineConfig(({ mode }) => {
   const envDir = path.resolve(__dirname, '..')
   const env = loadEnv(mode, envDir, '')
   const apiUrl = env.VITE_API_URL ?? 'http://localhost:8080'
+  // Sentry release 태깅(spec 18, 3.4): 명시한 VITE_APP_VERSION이 없으면 CF Workers
+  // 빌드가 제공하는 커밋 SHA를 쓴다. 로컬 빌드는 빈 문자열 → release 태깅 생략.
+  const appVersion = env.VITE_APP_VERSION ?? process.env.WORKERS_CI_COMMIT_SHA ?? ''
 
   return {
     envDir,
+    define: {
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

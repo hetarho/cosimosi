@@ -73,6 +73,20 @@ func (r *pgRepository) Fail(ctx context.Context, id string, status Status, errMs
 	return nil
 }
 
+func (r *pgRepository) Stats(ctx context.Context) (QueueStats, error) {
+	row, err := gen.New(r.pool).JobQueueStats(ctx)
+	if err != nil {
+		return QueueStats{}, fmt.Errorf("job queue stats: %w", err)
+	}
+	return QueueStats{
+		Pending:          int(row.Pending),
+		DuePending:       int(row.DuePending),
+		Running:          int(row.Running),
+		Failed:           int(row.Failed),
+		OldestPendingAge: time.Duration(row.OldestPendingSeconds * float64(time.Second)),
+	}, nil
+}
+
 // --- embedding/synapse (GraphStore) ---
 
 func (r *pgRepository) GetMemoryForEmbed(ctx context.Context, memoryID string) (MemoryForEmbed, error) {

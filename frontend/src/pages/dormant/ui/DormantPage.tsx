@@ -3,10 +3,10 @@
 // dormant list is a search aid — GetUniverse still renders the whole graph (these stars
 // are NOT removed, just dim — constitution §2). Empty list → friendly guidance (4.2).
 // Queried via dormantQueryOptions (16): staleTime 5m, invalidated on recall success.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { errorMessage } from '@/shared/lib'
+import { capture, errorMessage, EVENTS } from '@/shared/lib'
 import { moodLabel } from '@/shared/config'
 import { useCameraMode } from '@/widgets/universe-canvas'
 import { dormantStarsQueryOptions } from '../api/list-dormant'
@@ -20,6 +20,14 @@ export function DormantPage() {
   const focusStar = useCameraMode((s) => s.focusStar)
   const { data: stars, isPending, isError, error, refetch } = useQuery(dormantStarsQueryOptions())
   const [query, setQuery] = useState('')
+
+  // dormant_visit(18) — 기능 발견율. 목록이 처음 도착한 시점에 방문당 1회.
+  const visitSent = useRef(false)
+  useEffect(() => {
+    if (!stars || visitSent.current) return
+    visitSent.current = true
+    capture(EVENTS.dormantVisit, { dormant_count: stars.length })
+  }, [stars])
 
   const filtered = useMemo(() => {
     if (!stars) return []

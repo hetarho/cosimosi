@@ -36,6 +36,22 @@ RETURNING id, memory_id, attempts;
 -- name: CompleteJob :exec
 UPDATE jobs SET status = 'done', updated_at = now() WHERE id = @id;
 
+-- name: JobQueueStats :one
+-- 큐 백로그 가시화(spec 18): 상태별 카운트 + 최고령 pending의 나이(초). 워커가 주기
+-- 요약 로그 한 줄로 남긴다 — 백로그가 침묵 속에 쌓이는 걸 docker logs로 본다.
+-- due_pending은 지금 처리 가능한 것(ClaimJob과 같은 next_run_at<=now() 기준) —
+-- pending 전체에는 backoff 대기 중인 재시도도 섞여 있어 따로 센다.
+SELECT
+    count(*) FILTER (WHERE status = 'pending')::int8 AS pending,
+    count(*) FILTER (WHERE status = 'pending' AND next_run_at <= now())::int8 AS due_pending,
+    count(*) FILTER (WHERE status = 'running')::int8 AS running,
+    count(*) FILTER (WHERE status = 'failed')::int8  AS failed,
+    COALESCE(
+        EXTRACT(EPOCH FROM now() - min(created_at) FILTER (WHERE status = 'pending')),
+        0
+    )::float8 AS oldest_pending_seconds
+FROM jobs;
+
 -- name: FailJob :exec
 -- Records the failure and reschedules. The worker passes status='pending' with a
 -- backed-off next_run_at to retry, or status='failed' once attempts hit the cap

@@ -78,10 +78,10 @@ type EnqueueJobParams struct {
 	MemoryID string `json:"memory_id"`
 }
 
-// Async job queue (spec 05, Architecture §4.6). The RecordMemory transaction
-// (spec 04) enqueues; the embedding worker claims/completes/fails. Jobs are never
-// deleted — a give-up is preserved as status='failed' (constitution §1/§2).
-// Hands embedding/linking to the async worker. 04's RecordMemory only enqueues.
+// Async job queue. The RecordMemory transaction enqueues; the embedding
+// worker claims/completes/fails. Jobs are never deleted — a give-up is
+// preserved as status='failed' (constitution §1/§2).
+// Hands embedding/linking to the async worker. RecordMemory only enqueues.
 func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) error {
 	_, err := q.db.Exec(ctx, enqueueJob, arg.ID, arg.MemoryID)
 	return err
@@ -115,4 +115,42 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) error {
 		arg.ID,
 	)
 	return err
+}
+
+const jobQueueStats = `-- name: JobQueueStats :one
+SELECT
+    count(*) FILTER (WHERE status = 'pending')::int8 AS pending,
+    count(*) FILTER (WHERE status = 'pending' AND next_run_at <= now())::int8 AS due_pending,
+    count(*) FILTER (WHERE status = 'running')::int8 AS running,
+    count(*) FILTER (WHERE status = 'failed')::int8  AS failed,
+    COALESCE(
+        EXTRACT(EPOCH FROM now() - min(created_at) FILTER (WHERE status = 'pending')),
+        0
+    )::float8 AS oldest_pending_seconds
+FROM jobs
+`
+
+type JobQueueStatsRow struct {
+	Pending              int64   `json:"pending"`
+	DuePending           int64   `json:"due_pending"`
+	Running              int64   `json:"running"`
+	Failed               int64   `json:"failed"`
+	OldestPendingSeconds float64 `json:"oldest_pending_seconds"`
+}
+
+// 큐 백로그 가시화(spec 18): 상태별 카운트 + 최고령 pending의 나이(초). 워커가 주기
+// 요약 로그 한 줄로 남긴다 — 백로그가 침묵 속에 쌓이는 걸 docker logs로 본다.
+// due_pending은 지금 처리 가능한 것(ClaimJob과 같은 next_run_at<=now() 기준) —
+// pending 전체에는 backoff 대기 중인 재시도도 섞여 있어 따로 센다.
+func (q *Queries) JobQueueStats(ctx context.Context) (JobQueueStatsRow, error) {
+	row := q.db.QueryRow(ctx, jobQueueStats)
+	var i JobQueueStatsRow
+	err := row.Scan(
+		&i.Pending,
+		&i.DuePending,
+		&i.Running,
+		&i.Failed,
+		&i.OldestPendingSeconds,
+	)
+	return i, err
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'rea
 import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { errorMessage } from '@/shared/lib'
+import { errorMessage, reportUniverseData } from '@/shared/lib'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
 import { primaryButtonCls } from '@/shared/ui'
 import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
@@ -195,7 +195,15 @@ export function HomePage() {
   const universe = useQuery(universeQueryOptions())
   const { data: universeData } = universe
   useEffect(() => {
-    if (universeData) applyUniverse(universeData)
+    if (universeData) {
+      applyUniverse(universeData)
+      // universe_loaded의 데이터 쪽(18, 3.3) — 렌더러 쪽(캔버스 onCreated)과 합류해
+      // 1회만 전송된다. 본문 없는 카운트만.
+      reportUniverseData({
+        star_count: universeData.stars.length,
+        synapse_count: universeData.synapses.length,
+      })
+    }
   }, [universeData])
 
   // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3). The
