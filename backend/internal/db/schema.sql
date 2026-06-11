@@ -78,3 +78,20 @@ CREATE TABLE processed_batches (
     user_id    TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 시각 개인 설정(spec 30, 00002): 서버는 사용자 오버라이드만 저장(기본값은 클라 소유).
+CREATE TABLE user_settings (
+    user_id     TEXT PRIMARY KEY,
+    theme       TEXT,
+    star_object TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 감정색 오버라이드 — 정규화 행(미래 "xx%가 골랐어요" GROUP BY (mood,color) 집계).
+CREATE TABLE user_emotion_colors (
+    user_id TEXT NOT NULL,
+    mood    TEXT NOT NULL,
+    color   TEXT NOT NULL,
+    PRIMARY KEY (user_id, mood)
+);

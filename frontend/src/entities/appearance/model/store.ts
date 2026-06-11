@@ -1,7 +1,9 @@
-// 앱 전역 시각 설정 store(테마 + 별 오브제 형태). 웹 전용 사용자 선호라 localStorage에 지속한다.
-// 랜딩과 우주(universe) 양쪽이 이 entity를 구독해 같은 테마/형태를 반영한다.
-// 위치 근거: §2.7상 theme은 app 후보지만, object(StarObject)가 도메인-비주얼이라 둘을 한 쌍으로 묶어
-// 여기(entities/appearance) 둔다 — 여러 페이지가 같은 entity로 함께 구독한다. app 분리는 의도적으로 안 함.
+// 앱 전역 시각 설정 store. 테마·오브제는 *기기* 선호라 localStorage에 지속하고, 감정색
+// 오버라이드(emotionColors)는 *per-user* 서버 값이라 메모리에만 둔다(공용 PC에 개인 데이터를
+// 영속하지 않는다 — domain/data-sync 정책). 인증 세션이면 GetSettings로 시드되고(spec 30),
+// 로그아웃·계정 전환·체험 전환 시 출처 리셋이 비운다. 랜딩·우주 양쪽이 이 entity를 구독한다.
+// 위치 근거: §2.7상 theme은 app 후보지만, object(StarObject)가 도메인-비주얼이라 둘을 한 쌍으로
+// 묶어 여기(entities/appearance) 둔다 — 여러 페이지가 같은 entity로 함께 구독한다.
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type StarObject, STAR_OBJECTS, DEFAULT_OBJECT } from '@/entities/star/@x/appearance'
@@ -14,11 +16,26 @@ const OBJECT_IDS = new Set<StarObject>(STAR_OBJECTS.map((o) => o.id))
 const STORAGE_KEY = 'cosimosi.appearance'
 const LEGACY_KEY = 'cosimosi.landing.theme' // 레거시 마이그레이션용 구 저장 키
 
+/** 서버가 내려준 시각 오버라이드(spec 30). theme/object가 비면 기존(기본) 값을 유지하고,
+ *  emotionColors는 사용자가 바꾼 mood만 담는다(빈 맵 = 전부 기본 팔레트). */
+export interface ServerAppearance {
+  theme?: string
+  object?: string
+  emotionColors: Record<string, string>
+}
+
 interface AppearanceState {
   theme: Theme
   object: StarObject
+  /** mood(소문자) → "#RRGGBB" 사용자 오버라이드. 서버 시드·메모리 전용. 빈 맵 = 전부 기본 팔레트. */
+  emotionColors: Record<string, string>
   setTheme: (id: Theme) => void
   setObject: (id: StarObject) => void
+  setEmotionColor: (mood: string, color: string) => void
+  /** GetSettings 응답(오버라이드만)을 store에 머지 — 인증 세션에서 서버가 단일 진실. */
+  applyServerSettings: (s: ServerAppearance) => void
+  /** 출처 경계 리셋(로그아웃·계정 전환·체험 전환): per-user 감정색 오버라이드를 비운다. */
+  resetServerSettings: () => void
 }
 
 /**
@@ -48,16 +65,37 @@ function legacyInitial(): { theme: Theme; object: StarObject } {
   }
 }
 
-/** localStorage 지속(키: cosimosi.appearance). 새로고침해도 마지막 테마·형태 유지. */
+/** localStorage 지속(키: cosimosi.appearance) — 단 기기 선호(테마·오브제)만. */
 export const useAppearance = create<AppearanceState>()(
   persist(
     (set) => ({
       ...legacyInitial(),
+      emotionColors: {},
       setTheme: (id) => set({ theme: id }),
       setObject: (id) => set({ object: id }),
+      setEmotionColor: (mood, color) =>
+        set((s) => ({ emotionColors: { ...s.emotionColors, [mood]: color } })),
+      applyServerSettings: (sv) =>
+        set((s) => {
+          // 색 내용이 그대로면 참조를 유지 — 테마·오브제만 바뀐 쓰기/재시드에서 별·시냅스 색
+          // 전체 재베이킹(StarField aMood·UniverseSynapses colById)을 피한다.
+          const keys = Object.keys(sv.emotionColors)
+          const sameColors =
+            keys.length === Object.keys(s.emotionColors).length &&
+            keys.every((k) => sv.emotionColors[k] === s.emotionColors[k])
+          return {
+            theme: sv.theme && THEME_IDS.has(sv.theme as Theme) ? (sv.theme as Theme) : s.theme,
+            object:
+              sv.object && OBJECT_IDS.has(sv.object as StarObject) ? (sv.object as StarObject) : s.object,
+            emotionColors: sameColors ? s.emotionColors : sv.emotionColors,
+          }
+        }),
+      resetServerSettings: () => set({ emotionColors: {} }),
     }),
     {
       name: STORAGE_KEY,
+      // 기기 선호(테마·오브제)만 영속 — emotionColors는 per-user라 메모리 전용(공용 PC 개인정보 미영속).
+      partialize: (s) => ({ theme: s.theme, object: s.object }),
       // 알 수 없는/손상된 값이 저장돼 있어도 각 축의 기본값으로 폴백.
       merge: (persisted, current) => {
         const p = persisted as Partial<AppearanceState> | undefined

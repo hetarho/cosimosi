@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/v1/memory.proto.
  */
 export const file_cosimosi_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxIoQBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIikKFFJlY29yZE1lbW9yeVJlc3BvbnNlEhEKCW1lbW9yeV9pZBgBIAEoCSJnCgRTdGFyEhEKCW1lbW9yeV9pZBgBIAEoCRIfCgRtb29kGAIgASgOMhEuY29zaW1vc2kudjEuTW9vZBIRCglpbnRlbnNpdHkYAyABKAESGAoQbGFzdF9yZWNhbGxlZF9hdBgEIAEoCSJjCgdTeW5hcHNlEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIOCgZ3ZWlnaHQYAyABKAESEQoJbGlua190eXBlGAQgASgJEhkKEWxhc3RfYWN0aXZhdGVkX2F0GAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCJfChNHZXRVbml2ZXJzZVJlc3BvbnNlEiAKBXN0YXJzGAEgAygLMhEuY29zaW1vc2kudjEuU3RhchImCghzeW5hcHNlcxgCIAMoCzIULmNvc2ltb3NpLnYxLlN5bmFwc2UiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIjsKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMsIDCg1NZW1vcnlTZXJ2aWNlElMKDFJlY29yZE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY29yZE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXNwb25zZRJVCgtHZXRVbml2ZXJzZRIfLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVxdWVzdBogLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVzcG9uc2UiA5ACARJZCg5SZWluZm9yY2VMaW5rcxIiLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVxdWVzdBojLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVzcG9uc2USUwoMUmVjYWxsTWVtb3J5EiAuY29zaW1vc2kudjEuUmVjYWxsTWVtb3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlc3BvbnNlElUKC0xpc3REb3JtYW50Eh8uY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXF1ZXN0GiAuY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXNwb25zZSIDkAIBQkFaP2dpdGh1Yi5jb20vY29zaW1vc2kvYmFja2VuZC9pbnRlcm5hbC9nZW4vY29zaW1vc2kvdjE7Y29zaW1vc2l2MWIGcHJvdG8z");
+  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxIoQBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIikKFFJlY29yZE1lbW9yeVJlc3BvbnNlEhEKCW1lbW9yeV9pZBgBIAEoCSJnCgRTdGFyEhEKCW1lbW9yeV9pZBgBIAEoCRIfCgRtb29kGAIgASgOMhEuY29zaW1vc2kudjEuTW9vZBIRCglpbnRlbnNpdHkYAyABKAESGAoQbGFzdF9yZWNhbGxlZF9hdBgEIAEoCSJjCgdTeW5hcHNlEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIOCgZ3ZWlnaHQYAyABKAESEQoJbGlua190eXBlGAQgASgJEhkKEWxhc3RfYWN0aXZhdGVkX2F0GAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCJfChNHZXRVbml2ZXJzZVJlc3BvbnNlEiAKBXN0YXJzGAEgAygLMhEuY29zaW1vc2kudjEuU3RhchImCghzeW5hcHNlcxgCIAMoCzIULmNvc2ltb3NpLnYxLlN5bmFwc2UiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIjsKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJImEKCFNldHRpbmdzEg0KBXRoZW1lGAEgASgJEhMKC3N0YXJfb2JqZWN0GAIgASgJEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MikgEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3JCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdCJBChZVcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMsIDCg1NZW1vcnlTZXJ2aWNlElMKDFJlY29yZE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY29yZE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXNwb25zZRJVCgtHZXRVbml2ZXJzZRIfLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVxdWVzdBogLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVzcG9uc2UiA5ACARJZCg5SZWluZm9yY2VMaW5rcxIiLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVxdWVzdBojLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVzcG9uc2USUwoMUmVjYWxsTWVtb3J5EiAuY29zaW1vc2kudjEuUmVjYWxsTWVtb3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlc3BvbnNlElUKC0xpc3REb3JtYW50Eh8uY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXF1ZXN0GiAuY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXNwb25zZSIDkAIBMsMBCg9TZXR0aW5nc1NlcnZpY2USVQoLR2V0U2V0dGluZ3MSHy5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1JlcXVlc3QaIC5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlIgOQAgESWQoOVXBkYXRlU2V0dGluZ3MSIi5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1JlcXVlc3QaIy5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlQkFaP2dpdGh1Yi5jb20vY29zaW1vc2kvYmFja2VuZC9pbnRlcm5hbC9nZW4vY29zaW1vc2kvdjE7Y29zaW1vc2l2MWIGcHJvdG8z");
 
 /**
  * @generated from message cosimosi.v1.RecordMemoryRequest
@@ -358,6 +358,145 @@ export const ListDormantResponseSchema: GenMessage<ListDormantResponse> = /*@__P
   messageDesc(file_cosimosi_v1_memory, 13);
 
 /**
+ * EmotionColor overrides one mood's star color. color is "#RRGGBB".
+ *
+ * @generated from message cosimosi.v1.EmotionColor
+ */
+export type EmotionColor = Message<"cosimosi.v1.EmotionColor"> & {
+  /**
+   * @generated from field: cosimosi.v1.Mood mood = 1;
+   */
+  mood: Mood;
+
+  /**
+   * @generated from field: string color = 2;
+   */
+  color: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.EmotionColor.
+ * Use `create(EmotionColorSchema)` to create a new message.
+ */
+export const EmotionColorSchema: GenMessage<EmotionColor> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 14);
+
+/**
+ * Settings is the user's stored visual overrides (not a complete config — the
+ * client merges these over its defaults).
+ *
+ * @generated from message cosimosi.v1.Settings
+ */
+export type Settings = Message<"cosimosi.v1.Settings"> & {
+  /**
+   * "" = client default (vast)
+   *
+   * @generated from field: string theme = 1;
+   */
+  theme: string;
+
+  /**
+   * "" = client default (deepfield)
+   *
+   * @generated from field: string star_object = 2;
+   */
+  starObject: string;
+
+  /**
+   * only moods the user overrode (0..13)
+   *
+   * @generated from field: repeated cosimosi.v1.EmotionColor emotion_colors = 3;
+   */
+  emotionColors: EmotionColor[];
+};
+
+/**
+ * Describes the message cosimosi.v1.Settings.
+ * Use `create(SettingsSchema)` to create a new message.
+ */
+export const SettingsSchema: GenMessage<Settings> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 15);
+
+/**
+ * @generated from message cosimosi.v1.GetSettingsRequest
+ */
+export type GetSettingsRequest = Message<"cosimosi.v1.GetSettingsRequest"> & {
+};
+
+/**
+ * Describes the message cosimosi.v1.GetSettingsRequest.
+ * Use `create(GetSettingsRequestSchema)` to create a new message.
+ */
+export const GetSettingsRequestSchema: GenMessage<GetSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 16);
+
+/**
+ * @generated from message cosimosi.v1.GetSettingsResponse
+ */
+export type GetSettingsResponse = Message<"cosimosi.v1.GetSettingsResponse"> & {
+  /**
+   * @generated from field: cosimosi.v1.Settings settings = 1;
+   */
+  settings?: Settings | undefined;
+};
+
+/**
+ * Describes the message cosimosi.v1.GetSettingsResponse.
+ * Use `create(GetSettingsResponseSchema)` to create a new message.
+ */
+export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 17);
+
+/**
+ * Partial update: only present fields are upserted; omitted fields are preserved.
+ * Sending emotion_colors upserts that subset — it never deletes the others.
+ *
+ * @generated from message cosimosi.v1.UpdateSettingsRequest
+ */
+export type UpdateSettingsRequest = Message<"cosimosi.v1.UpdateSettingsRequest"> & {
+  /**
+   * @generated from field: optional string theme = 1;
+   */
+  theme?: string | undefined;
+
+  /**
+   * @generated from field: optional string star_object = 2;
+   */
+  starObject?: string | undefined;
+
+  /**
+   * @generated from field: repeated cosimosi.v1.EmotionColor emotion_colors = 3;
+   */
+  emotionColors: EmotionColor[];
+};
+
+/**
+ * Describes the message cosimosi.v1.UpdateSettingsRequest.
+ * Use `create(UpdateSettingsRequestSchema)` to create a new message.
+ */
+export const UpdateSettingsRequestSchema: GenMessage<UpdateSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 18);
+
+/**
+ * @generated from message cosimosi.v1.UpdateSettingsResponse
+ */
+export type UpdateSettingsResponse = Message<"cosimosi.v1.UpdateSettingsResponse"> & {
+  /**
+   * the stored overrides after the update
+   *
+   * @generated from field: cosimosi.v1.Settings settings = 1;
+   */
+  settings?: Settings | undefined;
+};
+
+/**
+ * Describes the message cosimosi.v1.UpdateSettingsResponse.
+ * Use `create(UpdateSettingsResponseSchema)` to create a new message.
+ */
+export const UpdateSettingsResponseSchema: GenMessage<UpdateSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 19);
+
+/**
  * Mood is the single source of truth for the 13 moods (4 affective quadrants ×3 +
  * neutral; spec 29), shared by BE/FE generated types. records.mood (TEXT, nullable)
  * stores this enum's name string. Existing 1–7 are frozen; new 6 appended (wire-compat).
@@ -501,4 +640,31 @@ export const MemoryService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_v1_memory, 0);
+
+/**
+ * SettingsService owns per-user visual personalization — a separate bounded
+ * context from MemoryService (the star graph). unary only (constitution §6);
+ * GetSettings is idempotent (exposed as HTTP GET).
+ *
+ * @generated from service cosimosi.v1.SettingsService
+ */
+export const SettingsService: GenService<{
+  /**
+   * @generated from rpc cosimosi.v1.SettingsService.GetSettings
+   */
+  getSettings: {
+    methodKind: "unary";
+    input: typeof GetSettingsRequestSchema;
+    output: typeof GetSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc cosimosi.v1.SettingsService.UpdateSettings
+   */
+  updateSettings: {
+    methodKind: "unary";
+    input: typeof UpdateSettingsRequestSchema;
+    output: typeof UpdateSettingsResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_cosimosi_v1_memory, 1);
 

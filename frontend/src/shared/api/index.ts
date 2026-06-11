@@ -5,11 +5,13 @@ export { memoryClient, transport } from './transport'
 export {
   Mood,
   MemoryService,
+  SettingsService,
   RecordSchema,
   StarSchema,
   SynapseSchema,
   GetUniverseResponseSchema,
   ListDormantResponseSchema,
+  GetSettingsResponseSchema,
 } from './gen/cosimosi/v1/memory_pb'
 export type {
   Star,
@@ -17,4 +19,6 @@ export type {
   Synapse,
   GetUniverseResponse,
   ListDormantResponse,
+  Settings,
+  GetSettingsResponse,
 } from './gen/cosimosi/v1/memory_pb'

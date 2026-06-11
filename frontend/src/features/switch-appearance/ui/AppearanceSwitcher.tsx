@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Palette, X } from 'lucide-react'
 import { capture, cn, EVENTS } from '@/shared/lib'
-import { THEMES, useAppearance } from '@/entities/appearance'
+import { THEMES, useAppearance, pushSettings } from '@/entities/appearance'
 import { STAR_OBJECTS } from '@/entities/star'
 
 interface ChipItem {
@@ -139,6 +139,7 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
               onChange={(id) => {
                 if (id === theme) return // 같은 테마 재클릭은 전환이 아니다 — 이벤트 오염 방지
                 setTheme(id as (typeof THEMES)[number]['id'])
+                void pushSettings({ theme: id }) // 서버 영속(인증 시; 미인증·체험은 로컬만) — spec 30
                 capture(EVENTS.appearanceSwitch, { theme: id }) // 외형 기능 사용률(18)
               }}
             />
@@ -150,7 +151,11 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
               groupLabel="별 오브제 형태"
               items={STAR_OBJECTS}
               value={object}
-              onChange={(id) => setObject(id as (typeof STAR_OBJECTS)[number]['id'])}
+              onChange={(id) => {
+                const obj = id as (typeof STAR_OBJECTS)[number]['id']
+                setObject(obj)
+                void pushSettings({ starObject: obj }) // 서버 영속(인증 시) — spec 30
+              }}
             />
           </motion.div>
         ) : (

@@ -868,6 +868,307 @@ func (x *ListDormantResponse) GetStars() []*Star {
 	return nil
 }
 
+// EmotionColor overrides one mood's star color. color is "#RRGGBB".
+type EmotionColor struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mood          Mood                   `protobuf:"varint,1,opt,name=mood,proto3,enum=cosimosi.v1.Mood" json:"mood,omitempty"`
+	Color         string                 `protobuf:"bytes,2,opt,name=color,proto3" json:"color,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EmotionColor) Reset() {
+	*x = EmotionColor{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EmotionColor) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmotionColor) ProtoMessage() {}
+
+func (x *EmotionColor) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmotionColor.ProtoReflect.Descriptor instead.
+func (*EmotionColor) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *EmotionColor) GetMood() Mood {
+	if x != nil {
+		return x.Mood
+	}
+	return Mood_MOOD_UNSPECIFIED
+}
+
+func (x *EmotionColor) GetColor() string {
+	if x != nil {
+		return x.Color
+	}
+	return ""
+}
+
+// Settings is the user's stored visual overrides (not a complete config — the
+// client merges these over its defaults).
+type Settings struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Theme         string                 `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`                                      // "" = client default (vast)
+	StarObject    string                 `protobuf:"bytes,2,opt,name=star_object,json=starObject,proto3" json:"star_object,omitempty"`          // "" = client default (deepfield)
+	EmotionColors []*EmotionColor        `protobuf:"bytes,3,rep,name=emotion_colors,json=emotionColors,proto3" json:"emotion_colors,omitempty"` // only moods the user overrode (0..13)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Settings) Reset() {
+	*x = Settings{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Settings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Settings) ProtoMessage() {}
+
+func (x *Settings) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Settings.ProtoReflect.Descriptor instead.
+func (*Settings) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *Settings) GetTheme() string {
+	if x != nil {
+		return x.Theme
+	}
+	return ""
+}
+
+func (x *Settings) GetStarObject() string {
+	if x != nil {
+		return x.StarObject
+	}
+	return ""
+}
+
+func (x *Settings) GetEmotionColors() []*EmotionColor {
+	if x != nil {
+		return x.EmotionColors
+	}
+	return nil
+}
+
+type GetSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSettingsRequest) Reset() {
+	*x = GetSettingsRequest{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSettingsRequest) ProtoMessage() {}
+
+func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{16}
+}
+
+type GetSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *Settings              `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSettingsResponse) Reset() {
+	*x = GetSettingsResponse{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSettingsResponse) ProtoMessage() {}
+
+func (x *GetSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetSettingsResponse) GetSettings() *Settings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+// Partial update: only present fields are upserted; omitted fields are preserved.
+// Sending emotion_colors upserts that subset — it never deletes the others.
+type UpdateSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Theme         *string                `protobuf:"bytes,1,opt,name=theme,proto3,oneof" json:"theme,omitempty"`
+	StarObject    *string                `protobuf:"bytes,2,opt,name=star_object,json=starObject,proto3,oneof" json:"star_object,omitempty"`
+	EmotionColors []*EmotionColor        `protobuf:"bytes,3,rep,name=emotion_colors,json=emotionColors,proto3" json:"emotion_colors,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateSettingsRequest) Reset() {
+	*x = UpdateSettingsRequest{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSettingsRequest) ProtoMessage() {}
+
+func (x *UpdateSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSettingsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *UpdateSettingsRequest) GetTheme() string {
+	if x != nil && x.Theme != nil {
+		return *x.Theme
+	}
+	return ""
+}
+
+func (x *UpdateSettingsRequest) GetStarObject() string {
+	if x != nil && x.StarObject != nil {
+		return *x.StarObject
+	}
+	return ""
+}
+
+func (x *UpdateSettingsRequest) GetEmotionColors() []*EmotionColor {
+	if x != nil {
+		return x.EmotionColors
+	}
+	return nil
+}
+
+type UpdateSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *Settings              `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"` // the stored overrides after the update
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateSettingsResponse) Reset() {
+	*x = UpdateSettingsResponse{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSettingsResponse) ProtoMessage() {}
+
+func (x *UpdateSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSettingsResponse.ProtoReflect.Descriptor instead.
+func (*UpdateSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UpdateSettingsResponse) GetSettings() *Settings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
 var File_cosimosi_v1_memory_proto protoreflect.FileDescriptor
 
 const file_cosimosi_v1_memory_proto_rawDesc = "" +
@@ -920,7 +1221,27 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x16ReinforceLinksResponse\"\x14\n" +
 	"\x12ListDormantRequest\">\n" +
 	"\x13ListDormantResponse\x12'\n" +
-	"\x05stars\x18\x01 \x03(\v2\x11.cosimosi.v1.StarR\x05stars*\xb5\x01\n" +
+	"\x05stars\x18\x01 \x03(\v2\x11.cosimosi.v1.StarR\x05stars\"K\n" +
+	"\fEmotionColor\x12%\n" +
+	"\x04mood\x18\x01 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x14\n" +
+	"\x05color\x18\x02 \x01(\tR\x05color\"\x83\x01\n" +
+	"\bSettings\x12\x14\n" +
+	"\x05theme\x18\x01 \x01(\tR\x05theme\x12\x1f\n" +
+	"\vstar_object\x18\x02 \x01(\tR\n" +
+	"starObject\x12@\n" +
+	"\x0eemotion_colors\x18\x03 \x03(\v2\x19.cosimosi.v1.EmotionColorR\remotionColors\"\x14\n" +
+	"\x12GetSettingsRequest\"H\n" +
+	"\x13GetSettingsResponse\x121\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.cosimosi.v1.SettingsR\bsettings\"\xb4\x01\n" +
+	"\x15UpdateSettingsRequest\x12\x19\n" +
+	"\x05theme\x18\x01 \x01(\tH\x00R\x05theme\x88\x01\x01\x12$\n" +
+	"\vstar_object\x18\x02 \x01(\tH\x01R\n" +
+	"starObject\x88\x01\x01\x12@\n" +
+	"\x0eemotion_colors\x18\x03 \x03(\v2\x19.cosimosi.v1.EmotionColorR\remotionColorsB\b\n" +
+	"\x06_themeB\x0e\n" +
+	"\f_star_object\"K\n" +
+	"\x16UpdateSettingsResponse\x121\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.cosimosi.v1.SettingsR\bsettings*\xb5\x01\n" +
 	"\x04Mood\x12\x14\n" +
 	"\x10MOOD_UNSPECIFIED\x10\x00\x12\a\n" +
 	"\x03JOY\x10\x01\x12\b\n" +
@@ -945,7 +1266,10 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\vGetUniverse\x12\x1f.cosimosi.v1.GetUniverseRequest\x1a .cosimosi.v1.GetUniverseResponse\"\x03\x90\x02\x01\x12Y\n" +
 	"\x0eReinforceLinks\x12\".cosimosi.v1.ReinforceLinksRequest\x1a#.cosimosi.v1.ReinforceLinksResponse\x12S\n" +
 	"\fRecallMemory\x12 .cosimosi.v1.RecallMemoryRequest\x1a!.cosimosi.v1.RecallMemoryResponse\x12U\n" +
-	"\vListDormant\x12\x1f.cosimosi.v1.ListDormantRequest\x1a .cosimosi.v1.ListDormantResponse\"\x03\x90\x02\x01BAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
+	"\vListDormant\x12\x1f.cosimosi.v1.ListDormantRequest\x1a .cosimosi.v1.ListDormantResponse\"\x03\x90\x02\x012\xc3\x01\n" +
+	"\x0fSettingsService\x12U\n" +
+	"\vGetSettings\x12\x1f.cosimosi.v1.GetSettingsRequest\x1a .cosimosi.v1.GetSettingsResponse\"\x03\x90\x02\x01\x12Y\n" +
+	"\x0eUpdateSettings\x12\".cosimosi.v1.UpdateSettingsRequest\x1a#.cosimosi.v1.UpdateSettingsResponseBAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
 
 var (
 	file_cosimosi_v1_memory_proto_rawDescOnce sync.Once
@@ -960,7 +1284,7 @@ func file_cosimosi_v1_memory_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_v1_memory_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_cosimosi_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_cosimosi_v1_memory_proto_goTypes = []any{
 	(Mood)(0),                      // 0: cosimosi.v1.Mood
 	(*RecordMemoryRequest)(nil),    // 1: cosimosi.v1.RecordMemoryRequest
@@ -977,6 +1301,12 @@ var file_cosimosi_v1_memory_proto_goTypes = []any{
 	(*ReinforceLinksResponse)(nil), // 12: cosimosi.v1.ReinforceLinksResponse
 	(*ListDormantRequest)(nil),     // 13: cosimosi.v1.ListDormantRequest
 	(*ListDormantResponse)(nil),    // 14: cosimosi.v1.ListDormantResponse
+	(*EmotionColor)(nil),           // 15: cosimosi.v1.EmotionColor
+	(*Settings)(nil),               // 16: cosimosi.v1.Settings
+	(*GetSettingsRequest)(nil),     // 17: cosimosi.v1.GetSettingsRequest
+	(*GetSettingsResponse)(nil),    // 18: cosimosi.v1.GetSettingsResponse
+	(*UpdateSettingsRequest)(nil),  // 19: cosimosi.v1.UpdateSettingsRequest
+	(*UpdateSettingsResponse)(nil), // 20: cosimosi.v1.UpdateSettingsResponse
 }
 var file_cosimosi_v1_memory_proto_depIdxs = []int32{
 	0,  // 0: cosimosi.v1.RecordMemoryRequest.mood:type_name -> cosimosi.v1.Mood
@@ -987,21 +1317,30 @@ var file_cosimosi_v1_memory_proto_depIdxs = []int32{
 	8,  // 5: cosimosi.v1.RecallMemoryResponse.record:type_name -> cosimosi.v1.Record
 	10, // 6: cosimosi.v1.ReinforceLinksRequest.items:type_name -> cosimosi.v1.LinkDelta
 	3,  // 7: cosimosi.v1.ListDormantResponse.stars:type_name -> cosimosi.v1.Star
-	1,  // 8: cosimosi.v1.MemoryService.RecordMemory:input_type -> cosimosi.v1.RecordMemoryRequest
-	5,  // 9: cosimosi.v1.MemoryService.GetUniverse:input_type -> cosimosi.v1.GetUniverseRequest
-	11, // 10: cosimosi.v1.MemoryService.ReinforceLinks:input_type -> cosimosi.v1.ReinforceLinksRequest
-	7,  // 11: cosimosi.v1.MemoryService.RecallMemory:input_type -> cosimosi.v1.RecallMemoryRequest
-	13, // 12: cosimosi.v1.MemoryService.ListDormant:input_type -> cosimosi.v1.ListDormantRequest
-	2,  // 13: cosimosi.v1.MemoryService.RecordMemory:output_type -> cosimosi.v1.RecordMemoryResponse
-	6,  // 14: cosimosi.v1.MemoryService.GetUniverse:output_type -> cosimosi.v1.GetUniverseResponse
-	12, // 15: cosimosi.v1.MemoryService.ReinforceLinks:output_type -> cosimosi.v1.ReinforceLinksResponse
-	9,  // 16: cosimosi.v1.MemoryService.RecallMemory:output_type -> cosimosi.v1.RecallMemoryResponse
-	14, // 17: cosimosi.v1.MemoryService.ListDormant:output_type -> cosimosi.v1.ListDormantResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	0,  // 8: cosimosi.v1.EmotionColor.mood:type_name -> cosimosi.v1.Mood
+	15, // 9: cosimosi.v1.Settings.emotion_colors:type_name -> cosimosi.v1.EmotionColor
+	16, // 10: cosimosi.v1.GetSettingsResponse.settings:type_name -> cosimosi.v1.Settings
+	15, // 11: cosimosi.v1.UpdateSettingsRequest.emotion_colors:type_name -> cosimosi.v1.EmotionColor
+	16, // 12: cosimosi.v1.UpdateSettingsResponse.settings:type_name -> cosimosi.v1.Settings
+	1,  // 13: cosimosi.v1.MemoryService.RecordMemory:input_type -> cosimosi.v1.RecordMemoryRequest
+	5,  // 14: cosimosi.v1.MemoryService.GetUniverse:input_type -> cosimosi.v1.GetUniverseRequest
+	11, // 15: cosimosi.v1.MemoryService.ReinforceLinks:input_type -> cosimosi.v1.ReinforceLinksRequest
+	7,  // 16: cosimosi.v1.MemoryService.RecallMemory:input_type -> cosimosi.v1.RecallMemoryRequest
+	13, // 17: cosimosi.v1.MemoryService.ListDormant:input_type -> cosimosi.v1.ListDormantRequest
+	17, // 18: cosimosi.v1.SettingsService.GetSettings:input_type -> cosimosi.v1.GetSettingsRequest
+	19, // 19: cosimosi.v1.SettingsService.UpdateSettings:input_type -> cosimosi.v1.UpdateSettingsRequest
+	2,  // 20: cosimosi.v1.MemoryService.RecordMemory:output_type -> cosimosi.v1.RecordMemoryResponse
+	6,  // 21: cosimosi.v1.MemoryService.GetUniverse:output_type -> cosimosi.v1.GetUniverseResponse
+	12, // 22: cosimosi.v1.MemoryService.ReinforceLinks:output_type -> cosimosi.v1.ReinforceLinksResponse
+	9,  // 23: cosimosi.v1.MemoryService.RecallMemory:output_type -> cosimosi.v1.RecallMemoryResponse
+	14, // 24: cosimosi.v1.MemoryService.ListDormant:output_type -> cosimosi.v1.ListDormantResponse
+	18, // 25: cosimosi.v1.SettingsService.GetSettings:output_type -> cosimosi.v1.GetSettingsResponse
+	20, // 26: cosimosi.v1.SettingsService.UpdateSettings:output_type -> cosimosi.v1.UpdateSettingsResponse
+	20, // [20:27] is the sub-list for method output_type
+	13, // [13:20] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_v1_memory_proto_init() }
@@ -1009,15 +1348,16 @@ func file_cosimosi_v1_memory_proto_init() {
 	if File_cosimosi_v1_memory_proto != nil {
 		return
 	}
+	file_cosimosi_v1_memory_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_v1_memory_proto_rawDesc), len(file_cosimosi_v1_memory_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   20,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_cosimosi_v1_memory_proto_goTypes,
 		DependencyIndexes: file_cosimosi_v1_memory_proto_depIdxs,

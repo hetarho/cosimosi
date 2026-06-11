@@ -26,6 +26,7 @@ import (
 	"github.com/cosimosi/backend/internal/platform/config"
 	"github.com/cosimosi/backend/internal/platform/postgres"
 	"github.com/cosimosi/backend/internal/platform/rpcserver"
+	"github.com/cosimosi/backend/internal/settings"
 )
 
 const version = "0.0.1"
@@ -74,6 +75,7 @@ func main() {
 	linkSvc := link.NewService(link.NewRepository(db))
 	memorySvc := memory.NewService(memory.NewRepository(db), linkSvc)
 	memoryHandler := memory.NewHandler(memorySvc)
+	settingsHandler := settings.NewHandler(settings.NewService(settings.NewRepository(db)))
 
 	// Async embedding worker: consumes the jobs the RecordMemory
 	// transaction enqueues, fills embeddings, and writes initial semantic synapses.
@@ -105,7 +107,7 @@ func main() {
 			hub.RecoverWithContext(ctx, p)
 		}
 	}
-	server := rpcserver.New(cfg, db, version, memoryHandler, panicCapture)
+	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, panicCapture)
 
 	// The sentryhttp wrap still earns its keep after 17: it attaches the
 	// request-scoped hub the capture hook reads, and catches panics from non-RPC

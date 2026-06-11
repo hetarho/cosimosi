@@ -64,3 +64,17 @@ type Record struct {
 	IdempotencyKey *string            `json:"idempotency_key"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
+
+type UserEmotionColor struct {
+	UserID string `json:"user_id"`
+	Mood   string `json:"mood"`
+	Color  string `json:"color"`
+}
+
+type UserSetting struct {
+	UserID     string             `json:"user_id"`
+	Theme      *string            `json:"theme"`
+	StarObject *string            `json:"star_object"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}

@@ -11,7 +11,7 @@ import { StarField } from '@/entities/star'
 import { SynapseFilaments, SynapseDust, useSynapseStore } from '@/entities/synapse'
 import { useMemoryStore } from '@/entities/memory'
 import { useAppearance, themeBg } from '@/entities/appearance'
-import { moodRgb, NEUTRAL_RGB } from '@/shared/config'
+import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
 import { mulberry32, fibonacciStarPosition, reportUniverseRenderer } from '@/shared/lib'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
 import { useCameraMode } from '../model/use-camera-mode'
@@ -539,13 +539,14 @@ function NavController() {
 function UniverseSynapses() {
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
+  const emotionColors = useAppearance((s) => s.emotionColors)
   // Spotlight: fade the whole synapse web while a star is focused so it stands alone.
   const dim = useMemoryStore((s) => (s.selectedId ? 0.1 : 1))
   const { positionOf, colorOf, seedOf } = useMemo(() => {
     const posById = new Map(
       stars.map((s, i) => [s.id, fibonacciStarPosition(i, stars.length, s.memory.seed)] as const),
     )
-    const colById = new Map(stars.map((s) => [s.id, moodRgb(s.memory.mood)] as const))
+    const colById = new Map(stars.map((s) => [s.id, resolveMoodRgb(s.memory.mood, emotionColors)] as const))
     const seedById = new Map(stars.map((s) => [s.id, s.memory.seed] as const))
     return {
       positionOf: (id: string): [number, number, number] | null => posById.get(id) ?? null,
@@ -553,7 +554,7 @@ function UniverseSynapses() {
       // 부유 seed(StarField와 동일) — 필라멘트 끝이 떠다니는 별 중앙을 따라간다(spec 19).
       seedOf: (id: string): number => seedById.get(id) ?? 0,
     }
-  }, [stars])
+  }, [stars, emotionColors])
   if (edges.length === 0 || stars.length === 0) return null
   return (
     <>
@@ -860,6 +861,8 @@ export function UniverseCanvas() {
   const bg = themeBg(useAppearance((s) => s.theme))
   // 별(기억) 오브제의 형태 = 선택한 object. StarField가 형태별 지오메트리·재질로 그린다(색은 mood 유지).
   const object = useAppearance((s) => s.object)
+  // 감정색 사용자 오버라이드(spec 30) — 별·시냅스 색에 기본 팔레트 대신 우선 적용(빈 맵=기본).
+  const emotionColors = useAppearance((s) => s.emotionColors)
 
   return (
     <Canvas
@@ -884,7 +887,7 @@ export function UniverseCanvas() {
       {/* 별과 시냅스는 함께 부유(연결이 떨어지지 않게); StarDust는 밖에 두어 시차가 생긴다. */}
       <UniverseDrift>
         <UniverseSynapses />
-        <StarField object={object} />
+        <StarField object={object} emotionColors={emotionColors} />
       </UniverseDrift>
       <CameraRig />
       <NebulaOrbitController />

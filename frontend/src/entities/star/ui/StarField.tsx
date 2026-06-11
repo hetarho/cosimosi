@@ -14,7 +14,7 @@ import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
 import { DEFAULT_OBJECT } from '../model/kinds'
 import type { StarObject } from '../model/types'
-import { moodRgb } from '@/shared/config'
+import { resolveMoodRgb } from '@/shared/config'
 import { fibonacciStarPosition } from '@/shared/lib'
 import { buildStarForm } from './forms'
 
@@ -49,9 +49,11 @@ export interface StarFieldProps {
   positionsRef?: { readonly current: Float32Array | null }
   /** 별(기억) 오브제 형태(appearance.object) — 형태별 지오메트리·머티리얼로 dispatch. 기본 deepfield. */
   object?: StarObject
+  /** 감정색 사용자 오버라이드(mood→"#RRGGBB", spec 30). 없는 mood는 기본 팔레트(MOOD_PALETTE). */
+  emotionColors?: Record<string, string>
 }
 
-export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldProps) {
+export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors }: StarFieldProps) {
   const stars = useMemoryStore((s) => s.stars)
   const select = useMemoryStore((s) => s.select)
   const selectedId = useMemoryStore((s) => s.selectedId)
@@ -105,7 +107,7 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
 
     for (let i = 0; i < count; i++) {
       const m = stars[i].memory
-      const rgb = moodRgb(m.mood)
+      const rgb = resolveMoodRgb(m.mood, emotionColors)
       moodArr[i * 3] = rgb[0]
       moodArr[i * 3 + 1] = rgb[1]
       moodArr[i * 3 + 2] = rgb[2]
@@ -134,7 +136,7 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT }: StarFieldPr
     dummyRef.current = dummy
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
-  }, [stars, count, geometry])
+  }, [stars, count, geometry, emotionColors])
 
   // Focus spotlight: re-weight aBrightness when the selection (or star set / form) changes —
   // selected boosted, all others dimmed; full brightness restored when nothing is selected. Reads

@@ -3,3 +3,4 @@
 export type { Theme, ThemeMeta } from './model/types'
 export { THEMES, DEFAULT_THEME, themeAccent, themeBg } from './model/themes'
 export { useAppearance } from './model/store'
+export { settingsQueryOptions, applySettings, pushSettings } from './api/settings-query'

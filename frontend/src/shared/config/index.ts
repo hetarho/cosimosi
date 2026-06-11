@@ -6,6 +6,8 @@ export {
   NEUTRAL_RGB,
   moodRgb,
   moodLabel,
+  hexToRgb,
+  resolveMoodRgb,
   type Mood,
   type RGB,
   type Affect,

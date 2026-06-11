@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// MemoryServiceName is the fully-qualified name of the MemoryService service.
 	MemoryServiceName = "cosimosi.v1.MemoryService"
+	// SettingsServiceName is the fully-qualified name of the SettingsService service.
+	SettingsServiceName = "cosimosi.v1.SettingsService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -48,6 +50,12 @@ const (
 	// MemoryServiceListDormantProcedure is the fully-qualified name of the MemoryService's ListDormant
 	// RPC.
 	MemoryServiceListDormantProcedure = "/cosimosi.v1.MemoryService/ListDormant"
+	// SettingsServiceGetSettingsProcedure is the fully-qualified name of the SettingsService's
+	// GetSettings RPC.
+	SettingsServiceGetSettingsProcedure = "/cosimosi.v1.SettingsService/GetSettings"
+	// SettingsServiceUpdateSettingsProcedure is the fully-qualified name of the SettingsService's
+	// UpdateSettings RPC.
+	SettingsServiceUpdateSettingsProcedure = "/cosimosi.v1.SettingsService/UpdateSettings"
 )
 
 // MemoryServiceClient is a client for the cosimosi.v1.MemoryService service.
@@ -226,4 +234,102 @@ func (UnimplementedMemoryServiceHandler) RecallMemory(context.Context, *connect.
 
 func (UnimplementedMemoryServiceHandler) ListDormant(context.Context, *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.MemoryService.ListDormant is not implemented"))
+}
+
+// SettingsServiceClient is a client for the cosimosi.v1.SettingsService service.
+type SettingsServiceClient interface {
+	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
+}
+
+// NewSettingsServiceClient constructs a client for the cosimosi.v1.SettingsService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SettingsServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	settingsServiceMethods := v1.File_cosimosi_v1_memory_proto.Services().ByName("SettingsService").Methods()
+	return &settingsServiceClient{
+		getSettings: connect.NewClient[v1.GetSettingsRequest, v1.GetSettingsResponse](
+			httpClient,
+			baseURL+SettingsServiceGetSettingsProcedure,
+			connect.WithSchema(settingsServiceMethods.ByName("GetSettings")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		updateSettings: connect.NewClient[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse](
+			httpClient,
+			baseURL+SettingsServiceUpdateSettingsProcedure,
+			connect.WithSchema(settingsServiceMethods.ByName("UpdateSettings")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// settingsServiceClient implements SettingsServiceClient.
+type settingsServiceClient struct {
+	getSettings    *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	updateSettings *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
+}
+
+// GetSettings calls cosimosi.v1.SettingsService.GetSettings.
+func (c *settingsServiceClient) GetSettings(ctx context.Context, req *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
+	return c.getSettings.CallUnary(ctx, req)
+}
+
+// UpdateSettings calls cosimosi.v1.SettingsService.UpdateSettings.
+func (c *settingsServiceClient) UpdateSettings(ctx context.Context, req *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error) {
+	return c.updateSettings.CallUnary(ctx, req)
+}
+
+// SettingsServiceHandler is an implementation of the cosimosi.v1.SettingsService service.
+type SettingsServiceHandler interface {
+	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
+}
+
+// NewSettingsServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSettingsServiceHandler(svc SettingsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	settingsServiceMethods := v1.File_cosimosi_v1_memory_proto.Services().ByName("SettingsService").Methods()
+	settingsServiceGetSettingsHandler := connect.NewUnaryHandler(
+		SettingsServiceGetSettingsProcedure,
+		svc.GetSettings,
+		connect.WithSchema(settingsServiceMethods.ByName("GetSettings")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	settingsServiceUpdateSettingsHandler := connect.NewUnaryHandler(
+		SettingsServiceUpdateSettingsProcedure,
+		svc.UpdateSettings,
+		connect.WithSchema(settingsServiceMethods.ByName("UpdateSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/cosimosi.v1.SettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SettingsServiceGetSettingsProcedure:
+			settingsServiceGetSettingsHandler.ServeHTTP(w, r)
+		case SettingsServiceUpdateSettingsProcedure:
+			settingsServiceUpdateSettingsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSettingsServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSettingsServiceHandler struct{}
+
+func (UnimplementedSettingsServiceHandler) GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.SettingsService.GetSettings is not implemented"))
+}
+
+func (UnimplementedSettingsServiceHandler) UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.SettingsService.UpdateSettings is not implemented"))
 }

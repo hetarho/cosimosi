@@ -12,6 +12,7 @@ import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { applyUniverse, universeQueryOptions, useMemoryStore } from '@/entities/memory'
+import { applySettings, settingsQueryOptions } from '@/entities/appearance'
 
 // The universe shell (spec 10, extended by 11): full-screen <UniverseCanvas/> (renders
 // the stars from the memory store) + 2D HUD overlays (compose form, camera toggle,
@@ -209,6 +210,13 @@ export function HomePage() {
       })
     }
   }, [universeData])
+
+  // 개인 시각 설정(spec 30): 인증된 우주에서 GetSettings로 appearance store를 시드한다(서버
+  // 오버라이드를 기본값 위에 머지). 데모는 빈 응답 → 기본값. 미인증 랜딩은 이 페이지를 안 그린다.
+  const { data: settingsData } = useQuery(settingsQueryOptions())
+  useEffect(() => {
+    if (settingsData) applySettings(settingsData)
+  }, [settingsData])
 
   // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3). The
   // model store is DOM-free (1.9); the window listeners live here in the page layer.

@@ -139,3 +139,52 @@ service MemoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
+
+// --- Settings (per-user visual personalization, spec 30) ---
+//
+// The server stores only the user's OVERRIDES; the client owns the default
+// palette/theme/object (it must, for the unauth/offline path) and merges these
+// over them. Empty theme/star_object and absent emotion_colors entries mean
+// "use the client default" — the server does not duplicate the defaults.
+
+// EmotionColor overrides one mood's star color. color is "#RRGGBB".
+message EmotionColor {
+  Mood mood = 1;
+  string color = 2;
+}
+
+// Settings is the user's stored visual overrides (not a complete config — the
+// client merges these over its defaults).
+message Settings {
+  string theme = 1;                          // "" = client default (vast)
+  string star_object = 2;                    // "" = client default (deepfield)
+  repeated EmotionColor emotion_colors = 3;  // only moods the user overrode (0..13)
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  Settings settings = 1;
+}
+
+// Partial update: only present fields are upserted; omitted fields are preserved.
+// Sending emotion_colors upserts that subset — it never deletes the others.
+message UpdateSettingsRequest {
+  optional string theme = 1;
+  optional string star_object = 2;
+  repeated EmotionColor emotion_colors = 3;
+}
+
+message UpdateSettingsResponse {
+  Settings settings = 1;                     // the stored overrides after the update
+}
+
+// SettingsService owns per-user visual personalization — a separate bounded
+// context from MemoryService (the star graph). unary only (constitution §6);
+// GetSettings is idempotent (exposed as HTTP GET).
+service SettingsService {
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+}

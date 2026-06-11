@@ -71,6 +71,27 @@ export function moodRgb(mood: string): RGB {
   return MOOD_PALETTE[mood as Mood] ?? NEUTRAL_RGB
 }
 
+/** "#RRGGBB" → linear-RGB tuple (0..1). Direct 8-bit mapping (no gamma) so it is the
+ *  inverse of how the palette tuples are authored — a default round-trips within 8-bit.
+ *  Returns null on a malformed string (caller falls back to the palette). */
+export function hexToRgb(hex: string): RGB | null {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex)
+  if (!m) return null
+  const n = parseInt(m[1], 16)
+  return [((n >> 16) & 0xff) / 255, ((n >> 8) & 0xff) / 255, (n & 0xff) / 255]
+}
+
+/** Star color = the user's per-mood override (spec 30) if set, else the default palette.
+ *  `overrides` maps mood → "#RRGGBB"; an unset/malformed entry falls back to moodRgb. */
+export function resolveMoodRgb(mood: string, overrides?: Record<string, string>): RGB {
+  const hex = overrides?.[mood]
+  if (hex) {
+    const rgb = hexToRgb(hex)
+    if (rgb) return rgb
+  }
+  return moodRgb(mood)
+}
+
 /** Russell circumplex quadrant: high/low arousal × positive/negative valence, + center. */
 export type Quadrant = 'HAP' | 'LAP' | 'HAN' | 'LAN' | 'center'
 

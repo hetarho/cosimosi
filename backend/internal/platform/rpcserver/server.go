@@ -45,22 +45,25 @@ const (
 // logging→auth interceptors, a /health endpoint that reports DB reachability, all
 // wrapped in CORS and h2c. panicCapture (nil-safe) forwards recovered RPC panics
 // to the composition root's tracker. The caller owns the listen/shutdown lifecycle.
-func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, panicCapture PanicCapture) *http.Server {
+func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, settingsSvc cosimosiv1connect.SettingsServiceHandler, panicCapture PanicCapture) *http.Server {
 	mux := http.NewServeMux()
 
 	// Logging is outermost, auth innermost (onion order): every request — even
 	// auth-rejected ones — is logged, and the handler only runs once authenticated.
 	// WithRecover (17, 2.7): panic → stack-logged + captured + CodeInternal (recover.go).
-	path, handler := cosimosiv1connect.NewMemoryServiceHandler(
-		memorySvc,
+	// MemoryService + SettingsService share one interceptor stack (auth applies to both).
+	opts := []connect.HandlerOption{
 		connect.WithReadMaxBytes(maxRequestBytes),
 		connect.WithInterceptors(
 			NewLoggingInterceptor(slog.Default()),
 			NewAuthInterceptor(cfg.SupabaseJWTSecret, cfg.SupabaseProjectURL),
 		),
 		connect.WithRecover(newRecoverHandler(slog.Default(), panicCapture)),
-	)
-	mux.Handle(path, handler)
+	}
+	memoryPath, memoryHandler := cosimosiv1connect.NewMemoryServiceHandler(memorySvc, opts...)
+	mux.Handle(memoryPath, memoryHandler)
+	settingsPath, settingsHandler := cosimosiv1connect.NewSettingsServiceHandler(settingsSvc, opts...)
+	mux.Handle(settingsPath, settingsHandler)
 
 	// /health is mounted directly on the mux, so it bypasses the interceptors.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
