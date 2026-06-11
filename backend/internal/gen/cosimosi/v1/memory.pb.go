@@ -21,8 +21,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Mood is the single source of truth for the 7 moods, shared by BE/FE generated
-// types. records.mood (TEXT, nullable) stores this enum's name string.
+// Mood is the single source of truth for the 13 moods (4 affective quadrants ×3 +
+// neutral; spec 29), shared by BE/FE generated types. records.mood (TEXT, nullable)
+// stores this enum's name string. Existing 1–7 are frozen; new 6 appended (wire-compat).
 type Mood int32
 
 const (
@@ -34,19 +35,31 @@ const (
 	Mood_FEAR             Mood = 5
 	Mood_LOVE             Mood = 6
 	Mood_NEUTRAL          Mood = 7
+	Mood_EXCITEMENT       Mood = 8
+	Mood_GRATITUDE        Mood = 9
+	Mood_RELIEF           Mood = 10
+	Mood_STRESS           Mood = 11
+	Mood_TIRED            Mood = 12
+	Mood_EMPTINESS        Mood = 13
 )
 
 // Enum value maps for Mood.
 var (
 	Mood_name = map[int32]string{
-		0: "MOOD_UNSPECIFIED",
-		1: "JOY",
-		2: "CALM",
-		3: "SAD",
-		4: "ANGER",
-		5: "FEAR",
-		6: "LOVE",
-		7: "NEUTRAL",
+		0:  "MOOD_UNSPECIFIED",
+		1:  "JOY",
+		2:  "CALM",
+		3:  "SAD",
+		4:  "ANGER",
+		5:  "FEAR",
+		6:  "LOVE",
+		7:  "NEUTRAL",
+		8:  "EXCITEMENT",
+		9:  "GRATITUDE",
+		10: "RELIEF",
+		11: "STRESS",
+		12: "TIRED",
+		13: "EMPTINESS",
 	}
 	Mood_value = map[string]int32{
 		"MOOD_UNSPECIFIED": 0,
@@ -57,6 +70,12 @@ var (
 		"FEAR":             5,
 		"LOVE":             6,
 		"NEUTRAL":          7,
+		"EXCITEMENT":       8,
+		"GRATITUDE":        9,
+		"RELIEF":           10,
+		"STRESS":           11,
+		"TIRED":            12,
+		"EMPTINESS":        13,
 	}
 )
 
@@ -901,7 +920,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x16ReinforceLinksResponse\"\x14\n" +
 	"\x12ListDormantRequest\">\n" +
 	"\x13ListDormantResponse\x12'\n" +
-	"\x05stars\x18\x01 \x03(\v2\x11.cosimosi.v1.StarR\x05stars*d\n" +
+	"\x05stars\x18\x01 \x03(\v2\x11.cosimosi.v1.StarR\x05stars*\xb5\x01\n" +
 	"\x04Mood\x12\x14\n" +
 	"\x10MOOD_UNSPECIFIED\x10\x00\x12\a\n" +
 	"\x03JOY\x10\x01\x12\b\n" +
@@ -910,7 +929,17 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x05ANGER\x10\x04\x12\b\n" +
 	"\x04FEAR\x10\x05\x12\b\n" +
 	"\x04LOVE\x10\x06\x12\v\n" +
-	"\aNEUTRAL\x10\a2\xc2\x03\n" +
+	"\aNEUTRAL\x10\a\x12\x0e\n" +
+	"\n" +
+	"EXCITEMENT\x10\b\x12\r\n" +
+	"\tGRATITUDE\x10\t\x12\n" +
+	"\n" +
+	"\x06RELIEF\x10\n" +
+	"\x12\n" +
+	"\n" +
+	"\x06STRESS\x10\v\x12\t\n" +
+	"\x05TIRED\x10\f\x12\r\n" +
+	"\tEMPTINESS\x10\r2\xc2\x03\n" +
 	"\rMemoryService\x12S\n" +
 	"\fRecordMemory\x12 .cosimosi.v1.RecordMemoryRequest\x1a!.cosimosi.v1.RecordMemoryResponse\x12U\n" +
 	"\vGetUniverse\x12\x1f.cosimosi.v1.GetUniverseRequest\x1a .cosimosi.v1.GetUniverseResponse\"\x03\x90\x02\x01\x12Y\n" +

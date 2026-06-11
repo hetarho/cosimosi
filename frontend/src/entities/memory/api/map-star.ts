@@ -17,6 +17,12 @@ const PROTO_TO_MOOD: Partial<Record<ProtoMood, Mood>> = {
   [ProtoMood.FEAR]: 'fear',
   [ProtoMood.LOVE]: 'love',
   [ProtoMood.NEUTRAL]: 'neutral',
+  [ProtoMood.EXCITEMENT]: 'excitement',
+  [ProtoMood.GRATITUDE]: 'gratitude',
+  [ProtoMood.RELIEF]: 'relief',
+  [ProtoMood.STRESS]: 'stress',
+  [ProtoMood.TIRED]: 'tired',
+  [ProtoMood.EMPTINESS]: 'emptiness',
 }
 
 /** proto Mood enum → domain mood string; UNSPECIFIED/unknown → 'neutral'. */

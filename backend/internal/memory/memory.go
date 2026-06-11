@@ -29,9 +29,10 @@ var (
 // error copy ("4000자") also assumes this value.
 const MaxBodyRunes = 4000
 
-// Mood is the domain mood, one of 7 fixed values (or empty = unspecified). It is
-// stored as its lowercase string in records.mood (nullable) and mapped to/from
-// the proto Mood enum in the handler. The empty Mood means "not set".
+// Mood is the domain mood, one of 13 fixed values (4 affective quadrants ×3 + neutral;
+// spec 29) or empty = unspecified. It is stored as its lowercase string in records.mood
+// (nullable) and mapped to/from the proto Mood enum in the handler. The empty Mood means
+// "not set". Values are string-aligned 1:1 with proto Mood and the FE MOOD_PALETTE keys.
 type Mood string
 
 const (
@@ -43,6 +44,12 @@ const (
 	MoodFear        Mood = "fear"
 	MoodLove        Mood = "love"
 	MoodNeutral     Mood = "neutral"
+	MoodExcitement  Mood = "excitement"
+	MoodGratitude   Mood = "gratitude"
+	MoodRelief      Mood = "relief"
+	MoodStress      Mood = "stress"
+	MoodTired       Mood = "tired"
+	MoodEmptiness   Mood = "emptiness"
 )
 
 // RecordInput is what RecordMemory writes to the immutable records table

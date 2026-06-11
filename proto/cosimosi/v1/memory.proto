@@ -14,8 +14,9 @@ option go_package = "github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimo
 // server is authoritative only over the weighted graph. unary only — no
 // streaming (constitution §6, RN cannot consume server streams).
 
-// Mood is the single source of truth for the 7 moods, shared by BE/FE generated
-// types. records.mood (TEXT, nullable) stores this enum's name string.
+// Mood is the single source of truth for the 13 moods (4 affective quadrants ×3 +
+// neutral; spec 29), shared by BE/FE generated types. records.mood (TEXT, nullable)
+// stores this enum's name string. Existing 1–7 are frozen; new 6 appended (wire-compat).
 enum Mood {
   MOOD_UNSPECIFIED = 0;
   JOY = 1;
@@ -25,6 +26,12 @@ enum Mood {
   FEAR = 5;
   LOVE = 6;
   NEUTRAL = 7;
+  EXCITEMENT = 8;
+  GRATITUDE = 9;
+  RELIEF = 10;
+  STRESS = 11;
+  TIRED = 12;
+  EMPTINESS = 13;
 }
 
 // --- RecordMemory ---

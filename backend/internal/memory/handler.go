@@ -208,6 +208,18 @@ func moodFromProto(m cosimosiv1.Mood) Mood {
 		return MoodLove
 	case cosimosiv1.Mood_NEUTRAL:
 		return MoodNeutral
+	case cosimosiv1.Mood_EXCITEMENT:
+		return MoodExcitement
+	case cosimosiv1.Mood_GRATITUDE:
+		return MoodGratitude
+	case cosimosiv1.Mood_RELIEF:
+		return MoodRelief
+	case cosimosiv1.Mood_STRESS:
+		return MoodStress
+	case cosimosiv1.Mood_TIRED:
+		return MoodTired
+	case cosimosiv1.Mood_EMPTINESS:
+		return MoodEmptiness
 	default:
 		return MoodUnspecified
 	}
@@ -229,6 +241,18 @@ func moodToProto(m Mood) cosimosiv1.Mood {
 		return cosimosiv1.Mood_LOVE
 	case MoodNeutral:
 		return cosimosiv1.Mood_NEUTRAL
+	case MoodExcitement:
+		return cosimosiv1.Mood_EXCITEMENT
+	case MoodGratitude:
+		return cosimosiv1.Mood_GRATITUDE
+	case MoodRelief:
+		return cosimosiv1.Mood_RELIEF
+	case MoodStress:
+		return cosimosiv1.Mood_STRESS
+	case MoodTired:
+		return cosimosiv1.Mood_TIRED
+	case MoodEmptiness:
+		return cosimosiv1.Mood_EMPTINESS
 	default:
 		return cosimosiv1.Mood_MOOD_UNSPECIFIED
 	}
