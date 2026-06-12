@@ -19,6 +19,16 @@ export function BloomPass() {
   const gl = useThree((s) => s.gl) as unknown as WebGPURenderer
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera)
+  // The pass node's render targets are sized when the pipeline is BUILT and do not
+  // follow later renderer-size changes. If that size ever differs from the canvas
+  // swapchain — the canvas mounts after first paint (login splash→canvas, SPA route
+  // change) so R3F sizes the renderer a tick later, or the window is resized — every
+  // frame's color attachment (300×150 / stale) mismatches the swapchain resolve target
+  // and the command buffer is rejected (black screen). Rebuild the pipeline whenever
+  // the logical size or DPR changes so the pass targets always match the renderer.
+  const width = useThree((s) => s.size.width)
+  const height = useThree((s) => s.size.height)
+  const dpr = useThree((s) => s.viewport.dpr)
 
   const { pipeline, nodes } = useMemo(() => {
     const scenePass = pass(scene, camera)
@@ -28,7 +38,12 @@ export function BloomPass() {
     const p = new RenderPipeline(gl)
     p.outputNode = scenePass.add(bloomNode)
     return { pipeline: p, nodes: [scenePass, bloomNode] }
-  }, [gl, scene, camera])
+    // width/height/dpr are deliberate REBUILD KEYS, not values used in the body: a
+    // deferred mount or a resize must rebuild the pass targets at the new size (see
+    // comment above). exhaustive-deps flags them as "unnecessary" for exactly that
+    // reason — the rebuild-on-size-change is the intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gl, scene, camera, width, height, dpr])
 
   useEffect(
     () => () => {
