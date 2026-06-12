@@ -8,59 +8,45 @@ import (
 	"github.com/cosimosi/backend/internal/platform/config"
 )
 
-// Per-provider default models, verified against official docs 2026-06
-// (spec 20 공급자 매트릭스). LLM_MODEL overrides any of them.
-const (
-	defaultOpenAIModel    = "gpt-5.4-mini"
-	defaultGeminiModel    = "gemini-3.5-flash"
-	defaultAnthropicModel = "claude-opus-4-8"
-	defaultDeepSeekModel  = "deepseek-v4-flash"
-	defaultGrokModel      = "grok-4.3"
-)
-
 // llmTimeout bounds one completion call. LLM extraction is slower than
 // embeddings (reasoning-capable models), so this is deliberately generous;
 // the worker's job timeout/backoff is the outer guard.
 const llmTimeout = 120 * time.Second
 
 // New selects the provider adapter from config (LLM_PROVIDER + LLM_MODEL +
-// the provider's API key), mirroring ai.NewEmbedder: missing key → fail fast
-// naming the env var, unknown provider → explicit error. Swapping providers is
-// env-only (constitution §7).
+// the provider's API key) via the provider matrix (providers.go), mirroring
+// ai.NewEmbedder: missing key → fail fast naming the env var, unknown provider
+// → explicit error. Swapping providers is env-only (constitution §7); the
+// admin-console DB path layers on top via the Resolver (resolver.go).
 func New(cfg *config.Config) (Client, error) {
-	httpClient := &http.Client{Timeout: llmTimeout}
-	model := cfg.LLMModel
-	switch cfg.LLMProvider {
-	case "", "openai":
-		if cfg.OpenAIAPIKey == "" {
-			return nil, fmt.Errorf("LLM_PROVIDER=openai requires OPENAI_API_KEY")
-		}
-		return newOpenAICompat("openai", "https://api.openai.com/v1/chat/completions",
-			cfg.OpenAIAPIKey, orDefault(model, defaultOpenAIModel), true, "max_completion_tokens", httpClient), nil
-	case "deepseek":
-		if cfg.DeepSeekAPIKey == "" {
-			return nil, fmt.Errorf("LLM_PROVIDER=deepseek requires DEEPSEEK_API_KEY")
-		}
-		return newOpenAICompat("deepseek", "https://api.deepseek.com/chat/completions",
-			cfg.DeepSeekAPIKey, orDefault(model, defaultDeepSeekModel), false, "max_tokens", httpClient), nil
-	case "grok":
-		if cfg.XAIAPIKey == "" {
-			return nil, fmt.Errorf("LLM_PROVIDER=grok requires XAI_API_KEY")
-		}
-		return newOpenAICompat("grok", "https://api.x.ai/v1/chat/completions",
-			cfg.XAIAPIKey, orDefault(model, defaultGrokModel), true, "max_tokens", httpClient), nil
-	case "claude":
-		if cfg.AnthropicAPIKey == "" {
-			return nil, fmt.Errorf("LLM_PROVIDER=claude requires ANTHROPIC_API_KEY")
-		}
-		return newAnthropic(cfg.AnthropicAPIKey, orDefault(model, defaultAnthropicModel), httpClient), nil
-	case "gemini":
-		if cfg.GeminiAPIKey == "" {
-			return nil, fmt.Errorf("LLM_PROVIDER=gemini requires GEMINI_API_KEY")
-		}
-		return newGemini(cfg.GeminiAPIKey, orDefault(model, defaultGeminiModel), httpClient), nil
-	default:
+	provider := orDefault(cfg.LLMProvider, DefaultProvider)
+	spec, ok := Provider(provider)
+	if !ok {
 		return nil, fmt.Errorf("unknown LLM_PROVIDER %q (want openai|gemini|claude|deepseek|grok)", cfg.LLMProvider)
+	}
+	key := keyFromConfig(cfg, provider)
+	if key == "" {
+		return nil, fmt.Errorf("LLM_PROVIDER=%s requires %s", provider, spec.KeyEnv)
+	}
+	return NewForProvider(provider, cfg.LLMModel, key, &http.Client{Timeout: llmTimeout})
+}
+
+// keyFromConfig maps a matrix provider to its config key field (the env vars
+// named by ProviderSpec.KeyEnv, already loaded by config.Load).
+func keyFromConfig(cfg *config.Config, provider string) string {
+	switch provider {
+	case "openai":
+		return cfg.OpenAIAPIKey
+	case "gemini":
+		return cfg.GeminiAPIKey
+	case "claude":
+		return cfg.AnthropicAPIKey
+	case "deepseek":
+		return cfg.DeepSeekAPIKey
+	case "grok":
+		return cfg.XAIAPIKey
+	default:
+		return ""
 	}
 }
 

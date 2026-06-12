@@ -12,6 +12,7 @@ import (
 )
 
 type userIDKey struct{}
+type userEmailKey struct{}
 
 // UserIDFromContext returns the authenticated user id — the Supabase JWT "sub"
 // claim injected by the auth interceptor. Feature handlers use it to scope every
@@ -19,6 +20,15 @@ type userIDKey struct{}
 // passed through the interceptor.
 func UserIDFromContext(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(userIDKey{}).(string)
+	return v, ok
+}
+
+// UserEmailFromContext returns the verified JWT "email" claim (Supabase includes
+// it in access tokens). Consumed by the admin gate so the ADMIN_USER_IDS
+// allowlist can name admins by email as well as UUID; may be absent ("") on
+// tokens without the claim.
+func UserEmailFromContext(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(userEmailKey{}).(string)
 	return v, ok
 }
 
@@ -65,6 +75,18 @@ func NewAuthInterceptor(secret, projectURL string) connect.UnaryInterceptorFunc 
 
 	if len(methods) == 0 {
 		slog.Warn("no JWT verification configured (set SUPABASE_PROJECT_URL for JWKS and/or SUPABASE_JWT_SECRET) — all protected RPCs will be rejected (auth fails closed)")
+	}
+
+	// emailVerified reports whether the token's email address is confirmed.
+	// Supabase carries the flag in user_metadata.email_verified (true for OAuth
+	// providers like Google and for confirmed email signups).
+	emailVerified := func(claims jwt.MapClaims) bool {
+		meta, ok := claims["user_metadata"].(map[string]any)
+		if !ok {
+			return false
+		}
+		verified, ok := meta["email_verified"].(bool)
+		return ok && verified
 	}
 
 	// keyFor returns the correct key material per alg family, never crossing them
@@ -118,6 +140,16 @@ func NewAuthInterceptor(secret, projectURL string) connect.UnaryInterceptorFunc 
 				state.userID = sub
 			}
 			ctx = context.WithValue(ctx, userIDKey{}, sub)
+			// email rides along for the admin-gate allowlist — but ONLY when the
+			// token says it is verified. A Supabase project that allows unverified
+			// signups would otherwise let anyone claim an allowlisted address and
+			// walk into AdminService. Fail-closed: no flag = not trusted (UUID
+			// allowlist entries still work for such tokens).
+			if claims, ok := tok.Claims.(jwt.MapClaims); ok {
+				if email, ok := claims["email"].(string); ok && email != "" && emailVerified(claims) {
+					ctx = context.WithValue(ctx, userEmailKey{}, email)
+				}
+			}
 			return next(ctx, req)
 		}
 	})

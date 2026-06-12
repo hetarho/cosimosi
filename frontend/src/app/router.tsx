@@ -1,4 +1,9 @@
-import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  lazyRouteComponent,
+} from '@tanstack/react-router'
 import { LandingPage } from '@/pages/landing'
 import { HomePage } from '@/pages/home'
 import { DormantPage } from '@/pages/dormant'
@@ -48,7 +53,23 @@ const dormantRoute = createRoute({
   },
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, universeRoute, dormantRoute])
+// /admin = 관리자 콘솔(spec 34). lazy 코드 스플릿 — 관리자 1인용 화면이 메인 번들에
+// 실리지 않게 한다. SessionGate는 인증만 막고, 관리자 여부는 서버 게이트가 판정한다:
+// 비관리자는 첫 RPC의 PermissionDenied → 페이지가 NotFound 화면을 렌더(표면 비노출).
+const LazyAdminPage = lazyRouteComponent(() => import('@/pages/admin'), 'AdminPage')
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin',
+  component: function AdminRoute() {
+    return (
+      <SessionGate>
+        <LazyAdminPage />
+      </SessionGate>
+    )
+  },
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, universeRoute, dormantRoute, adminRoute])
 
 export const router = createRouter({
   routeTree,

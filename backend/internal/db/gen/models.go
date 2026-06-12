@@ -28,6 +28,31 @@ type Job struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type LlmProviderConfig struct {
+	Provider    string             `json:"provider"`
+	Models      []string           `json:"models"`
+	ApiKeyEnc   []byte             `json:"api_key_enc"`
+	ApiKeyLast4 *string            `json:"api_key_last4"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type LlmSelection struct {
+	ID        int16              `json:"id"`
+	Provider  string             `json:"provider"`
+	Model     string             `json:"model"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type LlmUsageDaily struct {
+	Day          pgtype.Date `json:"day"`
+	Provider     string      `json:"provider"`
+	Model        string      `json:"model"`
+	Kind         string      `json:"kind"`
+	Calls        int64       `json:"calls"`
+	InputTokens  int64       `json:"input_tokens"`
+	OutputTokens int64       `json:"output_tokens"`
+}
+
 type Memory struct {
 	ID             string             `json:"id"`
 	UserID         string             `json:"user_id"`

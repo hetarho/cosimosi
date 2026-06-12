@@ -40,8 +40,8 @@ func TestMockExtractorParagraphsWinOverSentences(t *testing.T) {
 
 func TestMockExtractorSingleSceneSingleSegment(t *testing.T) {
 	for _, text := range []string{
-		"오늘은 종일 비가 와서 집에만 있었다",   // no terminator at all
-		"무탈하게 평범한 하루를 보냈다.",        // one sentence
+		"오늘은 종일 비가 와서 집에만 있었다", // no terminator at all
+		"무탈하게 평범한 하루를 보냈다.",    // one sentence
 	} {
 		ext, _ := NewMockExtractor().Extract(context.Background(), text)
 		if len(ext.Segments) != 1 {

@@ -95,3 +95,31 @@ CREATE TABLE user_emotion_colors (
     color   TEXT NOT NULL,
     PRIMARY KEY (user_id, mood)
 );
+
+-- 관리자 콘솔 LLM 운영(spec 34, 00003): overrides-only — 코드 매트릭스가 SSOT, DB는
+-- 관리자가 바꾼 것(추가 모델·AES-256-GCM 암호화 키·활성 선택·사용량 누적)만 담는다.
+CREATE TABLE llm_provider_configs (
+    provider      TEXT PRIMARY KEY,
+    models        TEXT[] NOT NULL DEFAULT '{}',
+    api_key_enc   BYTEA,
+    api_key_last4 TEXT,
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE llm_selection (
+    id         SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    provider   TEXT NOT NULL,
+    model      TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE llm_usage_daily (
+    day           DATE NOT NULL,
+    provider      TEXT NOT NULL,
+    model         TEXT NOT NULL,
+    kind          TEXT NOT NULL,
+    calls         BIGINT NOT NULL DEFAULT 0,
+    input_tokens  BIGINT NOT NULL DEFAULT 0,
+    output_tokens BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, provider, model, kind)
+);

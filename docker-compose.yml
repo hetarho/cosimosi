@@ -47,6 +47,9 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      # Admin console (spec 34) — allowlist + LLM key envelope master key.
+      ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}
+      LLM_KEY_ENCRYPTION_KEY: ${LLM_KEY_ENCRYPTION_KEY:-}
     ports:
       - "8080:8080"
     volumes:

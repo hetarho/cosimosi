@@ -19,6 +19,7 @@ import (
 	sentry "github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 
+	"github.com/cosimosi/backend/internal/admin"
 	"github.com/cosimosi/backend/internal/ai"
 	"github.com/cosimosi/backend/internal/job"
 	"github.com/cosimosi/backend/internal/link"
@@ -77,6 +78,18 @@ func main() {
 	memoryHandler := memory.NewHandler(memorySvc)
 	settingsHandler := settings.NewHandler(settings.NewService(settings.NewRepository(db)))
 
+	// Admin console (spec 34): LLM provider/key management + ops dashboard.
+	// A nil cipher (LLM_KEY_ENCRYPTION_KEY unset) is a valid degraded state —
+	// reads work, key writes return FailedPrecondition; an INVALID key is a
+	// boot error (a typo silently disabling encryption would be worse).
+	adminCipher, err := admin.NewCipher(cfg.LLMKeyEncryptionKey)
+	if err != nil {
+		slog.Error("admin cipher init failed", "err", err)
+		os.Exit(1)
+	}
+	adminSvc := admin.NewService(admin.NewRepository(db), adminCipher, cfg)
+	adminHandler := admin.NewHandler(adminSvc)
+
 	// Async embedding worker: consumes the jobs the RecordMemory
 	// transaction enqueues, fills embeddings, and writes initial semantic synapses.
 	// It runs as a goroutine in this process and shares the
@@ -107,7 +120,7 @@ func main() {
 			hub.RecoverWithContext(ctx, p)
 		}
 	}
-	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, panicCapture)
+	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, adminHandler, panicCapture)
 
 	// The sentryhttp wrap still earns its keep after 17: it attaches the
 	// request-scoped hub the capture hook reads, and catches panics from non-RPC

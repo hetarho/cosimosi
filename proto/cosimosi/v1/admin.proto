@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package cosimosi.v1;
+
+option go_package = "github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1";
+
+// admin.proto is the management-console contract (spec 34): runtime LLM
+// provider/key administration + the operations dashboard. Like memory.proto it
+// is a DTO layer only (constitution §5), unary only (constitution §6).
+//
+// SECURITY INVARIANT: no message in this file ever carries a plaintext API key
+// server→client. Keys travel client→server only (SetProviderKey/TestProviderKey
+// requests); every response exposes at most key_set + key_last4.
+
+// ProviderConfig is one provider card: the code matrix's read-only default
+// model merged with the admin's stored overrides (models + key status).
+message ProviderConfig {
+  string provider = 1;        // matrix key: openai|gemini|claude|deepseek|grok
+  string default_model = 2;   // code-matrix default (read-only)
+  repeated string models = 3; // admin-added selectable models
+  bool key_set = 4;
+  string key_last4 = 5;       // "" when no key
+  string key_updated_at = 6;  // RFC3339; "" when no key ever stored
+}
+
+message GetLLMConfigRequest {}
+
+message GetLLMConfigResponse {
+  repeated ProviderConfig providers = 1; // always the full matrix (DB merged over it)
+  string active_provider = 2;            // DB selection, or the env fallback when unset
+  string active_model = 3;               // "" = provider default
+  // encryption_ready=false → LLM_KEY_ENCRYPTION_KEY is unset on the server; the
+  // console shows a setup banner and key writes are rejected (FailedPrecondition).
+  bool encryption_ready = 4;
+}
+
+// Write-only: api_key is encrypted server-side and never returned.
+message SetProviderKeyRequest {
+  string provider = 1;
+  string api_key = 2;
+}
+
+message SetProviderKeyResponse {
+  ProviderConfig provider = 1;
+}
+
+message DeleteProviderKeyRequest {
+  string provider = 1;
+}
+
+message DeleteProviderKeyResponse {
+  ProviderConfig provider = 1;
+}
+
+// Replaces the provider's admin-added model list wholesale.
+message UpdateProviderModelsRequest {
+  string provider = 1;
+  repeated string models = 2;
+}
+
+message UpdateProviderModelsResponse {
+  ProviderConfig provider = 1;
+}
+
+message SetActiveLLMRequest {
+  string provider = 1;
+  string model = 2; // must be in models ∪ {default_model, ""}; "" = provider default
+}
+
+message SetActiveLLMResponse {
+  string active_provider = 1;
+  string active_model = 2;
+}
+
+// Validates a key with one tiny completion (MaxTokens 16). api_key is optional:
+// empty = test the stored key (so a saved key can be re-verified later).
+message TestProviderKeyRequest {
+  string provider = 1;
+  string model = 2;   // "" = provider default
+  string api_key = 3; // "" = use the stored (decrypted) key
+}
+
+message TestProviderKeyResponse {
+  bool ok = 1;
+  string message = 2; // failure reason; never contains the key
+  int64 latency_ms = 3;
+}
+
+// DayCount is one point of the 30-day record series. day = "YYYY-MM-DD".
+message DayCount {
+  string day = 1;
+  int64 count = 2;
+}
+
+// UsageRow is one llm_usage_daily row (UTC day × provider × model × kind).
+message UsageRow {
+  string day = 1; // "YYYY-MM-DD" (UTC)
+  string provider = 2;
+  string model = 3;
+  string kind = 4; // "extract" (embed is a future kind)
+  int64 calls = 5;
+  int64 input_tokens = 6;
+  int64 output_tokens = 7;
+}
+
+message GetAdminOverviewRequest {}
+
+message GetAdminOverviewResponse {
+  int64 users = 1;    // COUNT(DISTINCT user_id) FROM records (+auth.users when present)
+  int64 records = 2;
+  int64 memories = 3;
+  int64 synapses = 4;
+  int64 jobs_pending = 5;
+  int64 jobs_processing = 6;
+  int64 jobs_failed = 7;
+  int64 jobs_done_24h = 8;
+  repeated DayCount record_series = 9; // last 30 days of diary counts
+  repeated UsageRow llm_usage = 10;    // last 30 days of token usage
+}
+
+// AdminService is gated by the ADMIN_USER_IDS allowlist interceptor (fail-closed:
+// empty list rejects everyone). Non-admin callers get PermissionDenied on every
+// RPC and the client renders a NotFound screen (the admin surface stays hidden).
+service AdminService {
+  rpc GetLLMConfig(GetLLMConfigRequest) returns (GetLLMConfigResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc SetProviderKey(SetProviderKeyRequest) returns (SetProviderKeyResponse);
+  rpc DeleteProviderKey(DeleteProviderKeyRequest) returns (DeleteProviderKeyResponse);
+  rpc UpdateProviderModels(UpdateProviderModelsRequest) returns (UpdateProviderModelsResponse);
+  rpc SetActiveLLM(SetActiveLLMRequest) returns (SetActiveLLMResponse);
+  rpc TestProviderKey(TestProviderKeyRequest) returns (TestProviderKeyResponse);
+  rpc GetAdminOverview(GetAdminOverviewRequest) returns (GetAdminOverviewResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

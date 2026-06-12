@@ -45,7 +45,7 @@ const (
 // logging→auth interceptors, a /health endpoint that reports DB reachability, all
 // wrapped in CORS and h2c. panicCapture (nil-safe) forwards recovered RPC panics
 // to the composition root's tracker. The caller owns the listen/shutdown lifecycle.
-func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, settingsSvc cosimosiv1connect.SettingsServiceHandler, panicCapture PanicCapture) *http.Server {
+func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, settingsSvc cosimosiv1connect.SettingsServiceHandler, adminSvc cosimosiv1connect.AdminServiceHandler, panicCapture PanicCapture) *http.Server {
 	mux := http.NewServeMux()
 
 	// Logging is outermost, auth innermost (onion order): every request — even
@@ -64,6 +64,14 @@ func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimos
 	mux.Handle(memoryPath, memoryHandler)
 	settingsPath, settingsHandler := cosimosiv1connect.NewSettingsServiceHandler(settingsSvc, opts...)
 	mux.Handle(settingsPath, settingsHandler)
+
+	// AdminService gets the same chain PLUS the allowlist gate (spec 34) —
+	// WithInterceptors accumulates, so the gate runs after logging→auth and
+	// before the handler. Cloned so the shared opts slice is never aliased.
+	adminOpts := append(append([]connect.HandlerOption{}, opts...),
+		connect.WithInterceptors(NewAdminGateInterceptor(cfg.AdminUserIDs)))
+	adminPath, adminHandler := cosimosiv1connect.NewAdminServiceHandler(adminSvc, adminOpts...)
+	mux.Handle(adminPath, adminHandler)
 
 	// /health is mounted directly on the mux, so it bypasses the interceptors.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

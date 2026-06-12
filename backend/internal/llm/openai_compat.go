@@ -83,6 +83,11 @@ func (c *openAICompat) Complete(ctx context.Context, req Request) (Response, err
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		// usage is best-effort metering input (spec 34) — absent fields stay 0.
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.Unmarshal(respBody, &parsed); err != nil {
 		return Response{}, fmt.Errorf("%s: decode response: %w", c.provider, err)
@@ -90,7 +95,10 @@ func (c *openAICompat) Complete(ctx context.Context, req Request) (Response, err
 	if len(parsed.Choices) == 0 {
 		return Response{}, fmt.Errorf("%s: empty choices", c.provider)
 	}
-	return Response{Text: parsed.Choices[0].Message.Content}, nil
+	return Response{
+		Text:  parsed.Choices[0].Message.Content,
+		Usage: Usage{InputTokens: parsed.Usage.PromptTokens, OutputTokens: parsed.Usage.CompletionTokens},
+	}, nil
 }
 
 // postJSON is the shared HTTP helper for all adapters in this package:

@@ -7,6 +7,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -58,6 +59,16 @@ type Config struct {
 	// SentryEnvironment tags captured events (production|staging|…); defaults to
 	// "development" when unset.
 	SentryEnvironment string
+	// AdminUserIDs is the AdminService allowlist (spec 34): comma-separated
+	// Supabase user UUIDs and/or account emails, matched (case-insensitively)
+	// against the JWT sub/email claims. Empty = every caller is rejected
+	// (fail-closed) — the admin console is opt-in per environment.
+	AdminUserIDs []string
+	// LLMKeyEncryptionKey is the base64-encoded 32-byte master key for the
+	// AES-256-GCM envelope around stored LLM provider API keys (spec 34).
+	// Lives ONLY in the server env — a DB dump alone cannot decrypt the keys.
+	// Empty = key writes are rejected with FailedPrecondition.
+	LLMKeyEncryptionKey string
 }
 
 func Load() (*Config, error) {
@@ -65,22 +76,24 @@ func Load() (*Config, error) {
 	_ = godotenv.Load(".env")
 
 	cfg := &Config{
-		Port:               getEnv("PORT", "8080"),
-		DatabaseURL:        getEnv("DATABASE_URL", ""),
-		CORSOrigin:         getEnv("CORS_ORIGIN", "http://localhost:1214"),
-		SupabaseJWTSecret:  getEnv("SUPABASE_JWT_SECRET", ""),
-		SupabaseProjectURL: getEnv("SUPABASE_PROJECT_URL", ""),
-		AIEmbedder:         getEnv("AI_EMBEDDER", "mock"),
-		AIExtractor:        getEnv("AI_EXTRACTOR", "mock"),
-		LLMProvider:        getEnv("LLM_PROVIDER", "openai"),
-		LLMModel:           getEnv("LLM_MODEL", ""),
-		OpenAIAPIKey:       getEnv("OPENAI_API_KEY", ""),
-		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
-		AnthropicAPIKey:    getEnv("ANTHROPIC_API_KEY", ""),
-		DeepSeekAPIKey:     getEnv("DEEPSEEK_API_KEY", ""),
-		XAIAPIKey:          getEnv("XAI_API_KEY", ""),
-		SentryDSN:          getEnv("SENTRY_DSN", ""),
-		SentryEnvironment:  getEnv("SENTRY_ENVIRONMENT", "development"),
+		Port:                getEnv("PORT", "8080"),
+		DatabaseURL:         getEnv("DATABASE_URL", ""),
+		CORSOrigin:          getEnv("CORS_ORIGIN", "http://localhost:1214"),
+		SupabaseJWTSecret:   getEnv("SUPABASE_JWT_SECRET", ""),
+		SupabaseProjectURL:  getEnv("SUPABASE_PROJECT_URL", ""),
+		AIEmbedder:          getEnv("AI_EMBEDDER", "mock"),
+		AIExtractor:         getEnv("AI_EXTRACTOR", "mock"),
+		LLMProvider:         getEnv("LLM_PROVIDER", "openai"),
+		LLMModel:            getEnv("LLM_MODEL", ""),
+		OpenAIAPIKey:        getEnv("OPENAI_API_KEY", ""),
+		GeminiAPIKey:        getEnv("GEMINI_API_KEY", ""),
+		AnthropicAPIKey:     getEnv("ANTHROPIC_API_KEY", ""),
+		DeepSeekAPIKey:      getEnv("DEEPSEEK_API_KEY", ""),
+		XAIAPIKey:           getEnv("XAI_API_KEY", ""),
+		SentryDSN:           getEnv("SENTRY_DSN", ""),
+		SentryEnvironment:   getEnv("SENTRY_ENVIRONMENT", "development"),
+		AdminUserIDs:        splitCSV(getEnv("ADMIN_USER_IDS", "")),
+		LLMKeyEncryptionKey: getEnv("LLM_KEY_ENCRYPTION_KEY", ""),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -94,4 +107,15 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// splitCSV splits a comma-separated env value into trimmed non-empty entries.
+func splitCSV(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

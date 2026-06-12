@@ -22,3 +22,13 @@ export type {
   Settings,
   GetSettingsResponse,
 } from './gen/cosimosi/v1/memory_pb'
+// 관리자 콘솔 계약(spec 34) — AdminService는 서버 allowlist 게이트 뒤에 있다.
+export { AdminService } from './gen/cosimosi/v1/admin_pb'
+export type {
+  ProviderConfig,
+  GetLLMConfigResponse,
+  GetAdminOverviewResponse,
+  TestProviderKeyResponse,
+  UsageRow,
+  DayCount,
+} from './gen/cosimosi/v1/admin_pb'

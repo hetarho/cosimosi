@@ -155,22 +155,29 @@ func TestLLMExtractorContentGarbageFallsBackTransportErrorPropagates(t *testing.
 }
 
 func TestNewExtractorSelection(t *testing.T) {
-	if _, err := NewExtractor(&config.Config{AIExtractor: "mock"}); err != nil {
+	if _, err := NewExtractor(&config.Config{AIExtractor: "mock"}, nil); err != nil {
 		t.Fatalf("mock: %v", err)
 	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: ""}); err != nil {
+	if _, err := NewExtractor(&config.Config{AIExtractor: ""}, nil); err != nil {
 		t.Fatalf("default should be mock: %v", err)
 	}
-	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai", OpenAIAPIKey: "sk-test"}); err != nil {
+	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai", OpenAIAPIKey: "sk-test"}, nil); err != nil {
 		t.Fatalf("llm+key: %v", err)
 	} else if _, ok := ext.(*LLMExtractor); !ok {
 		t.Fatalf("llm should build *LLMExtractor, got %T", ext)
 	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai"}); err == nil ||
+	// Injected client (the spec-34 Resolver path) wins over env config —
+	// no env key needed when a client is supplied.
+	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm"}, stubLLM{text: "{}"}); err != nil {
+		t.Fatalf("llm+injected client: %v", err)
+	} else if _, ok := ext.(*LLMExtractor); !ok {
+		t.Fatalf("injected client should build *LLMExtractor, got %T", ext)
+	}
+	if _, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai"}, nil); err == nil ||
 		!strings.Contains(err.Error(), "OPENAI_API_KEY") {
 		t.Fatalf("llm without key should fail fast naming the env var, got %v", err)
 	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: "banana"}); err == nil ||
+	if _, err := NewExtractor(&config.Config{AIExtractor: "banana"}, nil); err == nil ||
 		!strings.Contains(err.Error(), "unknown AI_EXTRACTOR") {
 		t.Fatalf("unknown extractor should error, got %v", err)
 	}

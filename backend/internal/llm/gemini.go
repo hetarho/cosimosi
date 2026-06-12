@@ -65,6 +65,11 @@ func (c *geminiClient) Complete(ctx context.Context, req Request) (Response, err
 				} `json:"parts"`
 			} `json:"content"`
 		} `json:"candidates"`
+		// usageMetadata is best-effort metering input (spec 34) — absent fields stay 0.
+		UsageMetadata struct {
+			PromptTokenCount     int `json:"promptTokenCount"`
+			CandidatesTokenCount int `json:"candidatesTokenCount"`
+		} `json:"usageMetadata"`
 	}
 	if err := json.Unmarshal(respBody, &parsed); err != nil {
 		return Response{}, fmt.Errorf("gemini: decode response: %w", err)
@@ -76,5 +81,11 @@ func (c *geminiClient) Complete(ctx context.Context, req Request) (Response, err
 	for _, p := range parsed.Candidates[0].Content.Parts {
 		sb.WriteString(p.Text)
 	}
-	return Response{Text: sb.String()}, nil
+	return Response{
+		Text: sb.String(),
+		Usage: Usage{
+			InputTokens:  parsed.UsageMetadata.PromptTokenCount,
+			OutputTokens: parsed.UsageMetadata.CandidatesTokenCount,
+		},
+	}, nil
 }

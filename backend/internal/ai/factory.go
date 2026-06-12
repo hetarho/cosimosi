@@ -25,17 +25,25 @@ func NewEmbedder(cfg *config.Config) (Embedder, error) {
 }
 
 // NewExtractor selects the extraction adapter from config (AI_EXTRACTOR):
-// "mock" (keyless, deterministic — the default) or "llm" (the provider
-// abstraction — LLM_PROVIDER picks openai|gemini|claude|deepseek|grok).
-// Mirrors NewEmbedder (constitution §7).
-func NewExtractor(cfg *config.Config) (Extractor, error) {
+// "mock" (keyless, deterministic — the default) or "llm". Mirrors NewEmbedder
+// (constitution §7).
+//
+// client is the optional injected llm.Client for the "llm" path — the
+// composition root passes the admin-backed llm.NewResolver (spec 34) so the
+// active provider/model/key swap at runtime without a restart. nil preserves
+// the spec-20 env-only path (llm.New). The mock path never touches it, so the
+// keyless flow is unchanged either way.
+func NewExtractor(cfg *config.Config, client llm.Client) (Extractor, error) {
 	switch cfg.AIExtractor {
 	case "", "mock":
 		return NewMockExtractor(), nil
 	case "llm":
-		client, err := llm.New(cfg)
-		if err != nil {
-			return nil, fmt.Errorf("AI_EXTRACTOR=llm: %w", err)
+		if client == nil {
+			c, err := llm.New(cfg)
+			if err != nil {
+				return nil, fmt.Errorf("AI_EXTRACTOR=llm: %w", err)
+			}
+			client = c
 		}
 		return NewLLMExtractor(client), nil
 	default:

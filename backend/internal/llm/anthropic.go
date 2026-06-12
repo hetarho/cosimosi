@@ -66,16 +66,22 @@ func (c *anthropicClient) Complete(ctx context.Context, req Request) (Response, 
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
+		// usage is best-effort metering input (spec 34) — absent fields stay 0.
+		Usage struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.Unmarshal(respBody, &parsed); err != nil {
 		return Response{}, fmt.Errorf("claude: decode response: %w", err)
 	}
+	usage := Usage{InputTokens: parsed.Usage.InputTokens, OutputTokens: parsed.Usage.OutputTokens}
 	for _, block := range parsed.Content {
 		if block.Type == "text" {
-			return Response{Text: block.Text}, nil
+			return Response{Text: block.Text, Usage: usage}, nil
 		}
 	}
 	// No text block (e.g. a refusal): hand back empty text — the caller's
 	// content validation treats it as unusable and falls back (concept §4.6).
-	return Response{Text: ""}, nil
+	return Response{Text: "", Usage: usage}, nil
 }

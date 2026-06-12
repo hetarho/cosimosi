@@ -10,6 +10,7 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"time"
 )
 
 // Client is the single LLM port: one unary completion, optionally constrained
@@ -42,8 +43,33 @@ type Request struct {
 	MaxTokens int     // response token cap; 0 = adapter default
 }
 
+// Usage is the token count one completion consumed, mapped from the provider's
+// usage metadata (spec 34 — the unit-economics input). Best-effort: providers
+// that omit usage yield zeros.
+type Usage struct {
+	InputTokens  int
+	OutputTokens int
+}
+
 // Response is the model's text output. When Request.Schema was set, Text is
 // the (claimed) JSON document.
 type Response struct {
-	Text string
+	Text  string
+	Usage Usage
+}
+
+// ConfigSource is the port the Resolver reads the runtime-active LLM selection
+// from (spec 34). Implemented by internal/admin (DB selection + key decryption)
+// — llm itself knows neither the DB nor the admin context (dependency
+// inversion, constitution §7). ok=false = nothing configured → env fallback.
+// model "" = the provider's default.
+type ConfigSource interface {
+	ActiveLLM(ctx context.Context) (provider, model, apiKey string, ok bool, err error)
+}
+
+// UsageSink receives per-call token usage after a successful Complete (spec 34).
+// Implementations must be cheap/best-effort — the Resolver logs and drops sink
+// errors so metering can never fail an extraction.
+type UsageSink interface {
+	RecordUsage(ctx context.Context, day time.Time, provider, model string, usage Usage) error
 }
