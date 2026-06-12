@@ -13,6 +13,7 @@ export function resetUniverseData(): void {
   const memory = useMemoryStore.getState()
   memory.select(null)
   memory.setStars([])
+  memory.setLoadedEmpty(false) // 새 출처의 "빈 우주 확인"은 다음 GetUniverse가 다시 판정
   useSynapseStore.getState().setEdges([])
   // per-user 감정색 오버라이드(spec 30)도 출처를 넘기지 않는다 — 다음 사용자가 GetSettings로
   // 다시 시드한다(테마·오브제는 기기 선호라 유지). 미인증 전환이면 기본 팔레트로 복귀.

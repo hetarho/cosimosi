@@ -76,7 +76,7 @@ func TestListDormantIntegration(t *testing.T) {
 	}
 
 	// via the service (real now → ~99.66-day cutoff): same result.
-	svc := memory.NewService(repo, link.NewService(link.NewRepository(pool)))
+	svc := memory.NewService(repo, link.NewService(link.NewRepository(pool)), nil)
 	sd, err := svc.ListDormant(ctx, user)
 	if err != nil {
 		t.Fatalf("service list dormant: %v", err)

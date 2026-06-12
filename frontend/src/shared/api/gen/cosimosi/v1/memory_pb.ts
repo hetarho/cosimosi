@@ -10,7 +10,86 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/v1/memory.proto.
  */
 export const file_cosimosi_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxIpUBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEg8KB3ZhbGVuY2UYBiABKAEiPQoUUmVjb3JkTWVtb3J5UmVzcG9uc2USEQoJcmVjb3JkX2lkGAEgASgJEhIKCm1lbW9yeV9pZHMYAiADKAkieAoEU3RhchIRCgltZW1vcnlfaWQYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhgKEGxhc3RfcmVjYWxsZWRfYXQYBCABKAkSDwoHdmFsZW5jZRgMIAEoASJjCgdTeW5hcHNlEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIOCgZ3ZWlnaHQYAyABKAESEQoJbGlua190eXBlGAQgASgJEhkKEWxhc3RfYWN0aXZhdGVkX2F0GAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCJfChNHZXRVbml2ZXJzZVJlc3BvbnNlEiAKBXN0YXJzGAEgAygLMhEuY29zaW1vc2kudjEuU3RhchImCghzeW5hcHNlcxgCIAMoCzIULmNvc2ltb3NpLnYxLlN5bmFwc2UiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIjsKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJImEKCFNldHRpbmdzEg0KBXRoZW1lGAEgASgJEhMKC3N0YXJfb2JqZWN0GAIgASgJEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MikgEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3JCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdCJBChZVcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMsIDCg1NZW1vcnlTZXJ2aWNlElMKDFJlY29yZE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY29yZE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXNwb25zZRJVCgtHZXRVbml2ZXJzZRIfLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVxdWVzdBogLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVzcG9uc2UiA5ACARJZCg5SZWluZm9yY2VMaW5rcxIiLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVxdWVzdBojLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVzcG9uc2USUwoMUmVjYWxsTWVtb3J5EiAuY29zaW1vc2kudjEuUmVjYWxsTWVtb3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlc3BvbnNlElUKC0xpc3REb3JtYW50Eh8uY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXF1ZXN0GiAuY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXNwb25zZSIDkAIBMsMBCg9TZXR0aW5nc1NlcnZpY2USVQoLR2V0U2V0dGluZ3MSHy5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1JlcXVlc3QaIC5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlIgOQAgESWQoOVXBkYXRlU2V0dGluZ3MSIi5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1JlcXVlc3QaIy5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlQkFaP2dpdGh1Yi5jb20vY29zaW1vc2kvYmFja2VuZC9pbnRlcm5hbC9nZW4vY29zaW1vc2kvdjE7Y29zaW1vc2l2MWIGcHJvdG8z");
+  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxImEKDFNlZ21lbnREcmFmdBIMCgR0ZXh0GAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIPCgd2YWxlbmNlGAQgASgBIiQKFFNlZ21lbnRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkiRAoVU2VnbWVudE1lbW9yeVJlc3BvbnNlEisKCHNlZ21lbnRzGAEgAygLMhkuY29zaW1vc2kudjEuU2VnbWVudERyYWZ0IsIBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEg8KB3ZhbGVuY2UYBiABKAESKwoIc2VnbWVudHMYByADKAsyGS5jb3NpbW9zaS52MS5TZWdtZW50RHJhZnQiPQoUUmVjb3JkTWVtb3J5UmVzcG9uc2USEQoJcmVjb3JkX2lkGAEgASgJEhIKCm1lbW9yeV9pZHMYAiADKAkieAoEU3RhchIRCgltZW1vcnlfaWQYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhgKEGxhc3RfcmVjYWxsZWRfYXQYBCABKAkSDwoHdmFsZW5jZRgMIAEoASJjCgdTeW5hcHNlEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIOCgZ3ZWlnaHQYAyABKAESEQoJbGlua190eXBlGAQgASgJEhkKEWxhc3RfYWN0aXZhdGVkX2F0GAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCJfChNHZXRVbml2ZXJzZVJlc3BvbnNlEiAKBXN0YXJzGAEgAygLMhEuY29zaW1vc2kudjEuU3RhchImCghzeW5hcHNlcxgCIAMoCzIULmNvc2ltb3NpLnYxLlN5bmFwc2UiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIjsKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJImEKCFNldHRpbmdzEg0KBXRoZW1lGAEgASgJEhMKC3N0YXJfb2JqZWN0GAIgASgJEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MikgEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3JCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdCJBChZVcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMpoECg1NZW1vcnlTZXJ2aWNlElYKDVNlZ21lbnRNZW1vcnkSIS5jb3NpbW9zaS52MS5TZWdtZW50TWVtb3J5UmVxdWVzdBoiLmNvc2ltb3NpLnYxLlNlZ21lbnRNZW1vcnlSZXNwb25zZRJTCgxSZWNvcmRNZW1vcnkSIC5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXF1ZXN0GiEuY29zaW1vc2kudjEuUmVjb3JkTWVtb3J5UmVzcG9uc2USVQoLR2V0VW5pdmVyc2USHy5jb3NpbW9zaS52MS5HZXRVbml2ZXJzZVJlcXVlc3QaIC5jb3NpbW9zaS52MS5HZXRVbml2ZXJzZVJlc3BvbnNlIgOQAgESWQoOUmVpbmZvcmNlTGlua3MSIi5jb3NpbW9zaS52MS5SZWluZm9yY2VMaW5rc1JlcXVlc3QaIy5jb3NpbW9zaS52MS5SZWluZm9yY2VMaW5rc1Jlc3BvbnNlElMKDFJlY2FsbE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNhbGxNZW1vcnlSZXNwb25zZRJVCgtMaXN0RG9ybWFudBIfLmNvc2ltb3NpLnYxLkxpc3REb3JtYW50UmVxdWVzdBogLmNvc2ltb3NpLnYxLkxpc3REb3JtYW50UmVzcG9uc2UiA5ACATLDAQoPU2V0dGluZ3NTZXJ2aWNlElUKC0dldFNldHRpbmdzEh8uY29zaW1vc2kudjEuR2V0U2V0dGluZ3NSZXF1ZXN0GiAuY29zaW1vc2kudjEuR2V0U2V0dGluZ3NSZXNwb25zZSIDkAIBElkKDlVwZGF0ZVNldHRpbmdzEiIuY29zaW1vc2kudjEuVXBkYXRlU2V0dGluZ3NSZXF1ZXN0GiMuY29zaW1vc2kudjEuVXBkYXRlU2V0dGluZ3NSZXNwb25zZUJBWj9naXRodWIuY29tL2Nvc2ltb3NpL2JhY2tlbmQvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3YxO2Nvc2ltb3NpdjFiBnByb3RvMw");
+
+/**
+ * SegmentDraft is one PROPOSED fragment star: the AI's split of a diary into a
+ * scene + its detected emotion, returned for the user to review/edit BEFORE
+ * anything is persisted. The same shape rides RecordMemoryRequest.segments as
+ * the user-confirmed (possibly edited or manually added) final list.
+ *
+ * @generated from message cosimosi.v1.SegmentDraft
+ */
+export type SegmentDraft = Message<"cosimosi.v1.SegmentDraft"> & {
+  /**
+   * fragment text (non-empty)
+   *
+   * @generated from field: string text = 1;
+   */
+  text: string;
+
+  /**
+   * @generated from field: cosimosi.v1.Mood mood = 2;
+   */
+  mood: Mood;
+
+  /**
+   * 0..1 arousal
+   *
+   * @generated from field: double intensity = 3;
+   */
+  intensity: number;
+
+  /**
+   * -1..1 signed affect
+   *
+   * @generated from field: double valence = 4;
+   */
+  valence: number;
+};
+
+/**
+ * Describes the message cosimosi.v1.SegmentDraft.
+ * Use `create(SegmentDraftSchema)` to create a new message.
+ */
+export const SegmentDraftSchema: GenMessage<SegmentDraft> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 0);
+
+/**
+ * @generated from message cosimosi.v1.SegmentMemoryRequest
+ */
+export type SegmentMemoryRequest = Message<"cosimosi.v1.SegmentMemoryRequest"> & {
+  /**
+   * @generated from field: string body = 1;
+   */
+  body: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.SegmentMemoryRequest.
+ * Use `create(SegmentMemoryRequestSchema)` to create a new message.
+ */
+export const SegmentMemoryRequestSchema: GenMessage<SegmentMemoryRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 1);
+
+/**
+ * @generated from message cosimosi.v1.SegmentMemoryResponse
+ */
+export type SegmentMemoryResponse = Message<"cosimosi.v1.SegmentMemoryResponse"> & {
+  /**
+   * 1..5 proposed fragments, never empty
+   *
+   * @generated from field: repeated cosimosi.v1.SegmentDraft segments = 1;
+   */
+  segments: SegmentDraft[];
+};
+
+/**
+ * Describes the message cosimosi.v1.SegmentMemoryResponse.
+ * Use `create(SegmentMemoryResponseSchema)` to create a new message.
+ */
+export const SegmentMemoryResponseSchema: GenMessage<SegmentMemoryResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 2);
 
 /**
  * mood/intensity/valence are OPTIONAL whole-diary hints (spec 21): the AI
@@ -57,6 +136,16 @@ export type RecordMemoryRequest = Message<"cosimosi.v1.RecordMemoryRequest"> & {
    * @generated from field: double valence = 6;
    */
   valence: number;
+
+  /**
+   * User-confirmed fragment list from the SegmentMemory review step. When
+   * non-empty the server persists EXACTLY these as the fragment stars in the
+   * same transaction as the record (no async extract job) and memory_ids is
+   * populated in the response. Empty = legacy async-extract path.
+   *
+   * @generated from field: repeated cosimosi.v1.SegmentDraft segments = 7;
+   */
+  segments: SegmentDraft[];
 };
 
 /**
@@ -64,14 +153,14 @@ export type RecordMemoryRequest = Message<"cosimosi.v1.RecordMemoryRequest"> & {
  * Use `create(RecordMemoryRequestSchema)` to create a new message.
  */
 export const RecordMemoryRequestSchema: GenMessage<RecordMemoryRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 0);
+  messageDesc(file_cosimosi_v1_memory, 3);
 
 /**
- * Fragment fan-out is asynchronous (spec 21): only the immutable record id is
- * final at response time. memory_ids is usually EMPTY — the fragment stars
- * arrive on the next GetUniverse refetch (constitution §6, "stars arrive
- * async"); it is non-empty only on an idempotent replay of an already
- * fanned-out record.
+ * With request.segments (the review flow) the fan-out is synchronous and
+ * memory_ids is final at response time. Without segments (legacy async path,
+ * spec 21) memory_ids is EMPTY — the fragment stars arrive on the next
+ * GetUniverse refetch (constitution §6); it is then non-empty only on an
+ * idempotent replay of an already fanned-out record.
  *
  * @generated from message cosimosi.v1.RecordMemoryResponse
  */
@@ -84,7 +173,7 @@ export type RecordMemoryResponse = Message<"cosimosi.v1.RecordMemoryResponse"> &
   recordId: string;
 
   /**
-   * fragment stars — may be empty
+   * fragment stars — empty on the async path
    *
    * @generated from field: repeated string memory_ids = 2;
    */
@@ -96,7 +185,7 @@ export type RecordMemoryResponse = Message<"cosimosi.v1.RecordMemoryResponse"> &
  * Use `create(RecordMemoryResponseSchema)` to create a new message.
  */
 export const RecordMemoryResponseSchema: GenMessage<RecordMemoryResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 1);
+  messageDesc(file_cosimosi_v1_memory, 4);
 
 /**
  * Star is the visual input for a star (no body). Brightness = max(a_min,
@@ -142,7 +231,7 @@ export type Star = Message<"cosimosi.v1.Star"> & {
  * Use `create(StarSchema)` to create a new message.
  */
 export const StarSchema: GenMessage<Star> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 2);
+  messageDesc(file_cosimosi_v1_memory, 5);
 
 /**
  * Synapse is a weighted, undirected (a < b) link. Only weight is authoritative;
@@ -182,7 +271,7 @@ export type Synapse = Message<"cosimosi.v1.Synapse"> & {
  * Use `create(SynapseSchema)` to create a new message.
  */
 export const SynapseSchema: GenMessage<Synapse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 3);
+  messageDesc(file_cosimosi_v1_memory, 6);
 
 /**
  * @generated from message cosimosi.v1.GetUniverseRequest
@@ -195,7 +284,7 @@ export type GetUniverseRequest = Message<"cosimosi.v1.GetUniverseRequest"> & {
  * Use `create(GetUniverseRequestSchema)` to create a new message.
  */
 export const GetUniverseRequestSchema: GenMessage<GetUniverseRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 4);
+  messageDesc(file_cosimosi_v1_memory, 7);
 
 /**
  * @generated from message cosimosi.v1.GetUniverseResponse
@@ -217,7 +306,7 @@ export type GetUniverseResponse = Message<"cosimosi.v1.GetUniverseResponse"> & {
  * Use `create(GetUniverseResponseSchema)` to create a new message.
  */
 export const GetUniverseResponseSchema: GenMessage<GetUniverseResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 5);
+  messageDesc(file_cosimosi_v1_memory, 8);
 
 /**
  * @generated from message cosimosi.v1.RecallMemoryRequest
@@ -234,7 +323,7 @@ export type RecallMemoryRequest = Message<"cosimosi.v1.RecallMemoryRequest"> & {
  * Use `create(RecallMemoryRequestSchema)` to create a new message.
  */
 export const RecallMemoryRequestSchema: GenMessage<RecallMemoryRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 6);
+  messageDesc(file_cosimosi_v1_memory, 9);
 
 /**
  * Record is the immutable original (sourced from the records table).
@@ -278,7 +367,7 @@ export type Record = Message<"cosimosi.v1.Record"> & {
  * Use `create(RecordSchema)` to create a new message.
  */
 export const RecordSchema: GenMessage<Record> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 7);
+  messageDesc(file_cosimosi_v1_memory, 10);
 
 /**
  * @generated from message cosimosi.v1.RecallMemoryResponse
@@ -295,7 +384,7 @@ export type RecallMemoryResponse = Message<"cosimosi.v1.RecallMemoryResponse"> &
  * Use `create(RecallMemoryResponseSchema)` to create a new message.
  */
 export const RecallMemoryResponseSchema: GenMessage<RecallMemoryResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 8);
+  messageDesc(file_cosimosi_v1_memory, 11);
 
 /**
  * Reinforcement is accumulated locally on the client, then flushed as a unary
@@ -325,7 +414,7 @@ export type LinkDelta = Message<"cosimosi.v1.LinkDelta"> & {
  * Use `create(LinkDeltaSchema)` to create a new message.
  */
 export const LinkDeltaSchema: GenMessage<LinkDelta> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 9);
+  messageDesc(file_cosimosi_v1_memory, 12);
 
 /**
  * @generated from message cosimosi.v1.ReinforceLinksRequest
@@ -347,7 +436,7 @@ export type ReinforceLinksRequest = Message<"cosimosi.v1.ReinforceLinksRequest">
  * Use `create(ReinforceLinksRequestSchema)` to create a new message.
  */
 export const ReinforceLinksRequestSchema: GenMessage<ReinforceLinksRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 10);
+  messageDesc(file_cosimosi_v1_memory, 13);
 
 /**
  * @generated from message cosimosi.v1.ReinforceLinksResponse
@@ -360,7 +449,7 @@ export type ReinforceLinksResponse = Message<"cosimosi.v1.ReinforceLinksResponse
  * Use `create(ReinforceLinksResponseSchema)` to create a new message.
  */
 export const ReinforceLinksResponseSchema: GenMessage<ReinforceLinksResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 11);
+  messageDesc(file_cosimosi_v1_memory, 14);
 
 /**
  * @generated from message cosimosi.v1.ListDormantRequest
@@ -373,7 +462,7 @@ export type ListDormantRequest = Message<"cosimosi.v1.ListDormantRequest"> & {
  * Use `create(ListDormantRequestSchema)` to create a new message.
  */
 export const ListDormantRequestSchema: GenMessage<ListDormantRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 12);
+  messageDesc(file_cosimosi_v1_memory, 15);
 
 /**
  * @generated from message cosimosi.v1.ListDormantResponse
@@ -392,7 +481,7 @@ export type ListDormantResponse = Message<"cosimosi.v1.ListDormantResponse"> & {
  * Use `create(ListDormantResponseSchema)` to create a new message.
  */
 export const ListDormantResponseSchema: GenMessage<ListDormantResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 13);
+  messageDesc(file_cosimosi_v1_memory, 16);
 
 /**
  * EmotionColor overrides one mood's star color. color is "#RRGGBB".
@@ -416,7 +505,7 @@ export type EmotionColor = Message<"cosimosi.v1.EmotionColor"> & {
  * Use `create(EmotionColorSchema)` to create a new message.
  */
 export const EmotionColorSchema: GenMessage<EmotionColor> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 14);
+  messageDesc(file_cosimosi_v1_memory, 17);
 
 /**
  * Settings is the user's stored visual overrides (not a complete config — the
@@ -452,7 +541,7 @@ export type Settings = Message<"cosimosi.v1.Settings"> & {
  * Use `create(SettingsSchema)` to create a new message.
  */
 export const SettingsSchema: GenMessage<Settings> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 15);
+  messageDesc(file_cosimosi_v1_memory, 18);
 
 /**
  * @generated from message cosimosi.v1.GetSettingsRequest
@@ -465,7 +554,7 @@ export type GetSettingsRequest = Message<"cosimosi.v1.GetSettingsRequest"> & {
  * Use `create(GetSettingsRequestSchema)` to create a new message.
  */
 export const GetSettingsRequestSchema: GenMessage<GetSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 16);
+  messageDesc(file_cosimosi_v1_memory, 19);
 
 /**
  * @generated from message cosimosi.v1.GetSettingsResponse
@@ -482,7 +571,7 @@ export type GetSettingsResponse = Message<"cosimosi.v1.GetSettingsResponse"> & {
  * Use `create(GetSettingsResponseSchema)` to create a new message.
  */
 export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 17);
+  messageDesc(file_cosimosi_v1_memory, 20);
 
 /**
  * Partial update: only present fields are upserted; omitted fields are preserved.
@@ -512,7 +601,7 @@ export type UpdateSettingsRequest = Message<"cosimosi.v1.UpdateSettingsRequest">
  * Use `create(UpdateSettingsRequestSchema)` to create a new message.
  */
 export const UpdateSettingsRequestSchema: GenMessage<UpdateSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 18);
+  messageDesc(file_cosimosi_v1_memory, 21);
 
 /**
  * @generated from message cosimosi.v1.UpdateSettingsResponse
@@ -531,7 +620,7 @@ export type UpdateSettingsResponse = Message<"cosimosi.v1.UpdateSettingsResponse
  * Use `create(UpdateSettingsResponseSchema)` to create a new message.
  */
 export const UpdateSettingsResponseSchema: GenMessage<UpdateSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 19);
+  messageDesc(file_cosimosi_v1_memory, 22);
 
 /**
  * Mood is the single source of truth for the 13 moods (4 affective quadrants ×3 +
@@ -627,6 +716,16 @@ export const MoodSchema: GenEnum<Mood> = /*@__PURE__*/
  * @generated from service cosimosi.v1.MemoryService
  */
 export const MemoryService: GenService<{
+  /**
+   * preview, no write
+   *
+   * @generated from rpc cosimosi.v1.MemoryService.SegmentMemory
+   */
+  segmentMemory: {
+    methodKind: "unary";
+    input: typeof SegmentMemoryRequestSchema;
+    output: typeof SegmentMemoryResponseSchema;
+  },
   /**
    * @generated from rpc cosimosi.v1.MemoryService.RecordMemory
    */

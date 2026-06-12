@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/cosimosi/backend/internal/db/fragment"
 )
 
 // ErrNoJob is returned by Claim when no due pending job is available.
@@ -79,16 +81,11 @@ type RecordForExtract struct {
 	HintValence   float64
 }
 
-// Segment is one event-boundary fragment to persist as a star (spec 21). It is
-// the job package's OWN shape (not ai.Segment) so the GraphStore port stays
-// decoupled from the extractor adapter layer; the worker maps between them.
-type Segment struct {
-	Index     int
-	Text      string
-	Mood      string // 13-value lowercase mood, "" = unset
-	Intensity float64
-	Valence   float64
-}
+// Segment is one event-boundary fragment to persist as a star (spec 21) — an
+// alias of the shared fan-out core's shape (db/fragment), NOT ai.Segment, so
+// the GraphStore port stays decoupled from the extractor adapter layer; the
+// worker maps between them.
+type Segment = fragment.Segment
 
 // MemoryForEmbed is the input the worker embeds. Text is the fragment's own
 // text (or the whole diary body when fragment_text is NULL).

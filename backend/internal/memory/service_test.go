@@ -29,7 +29,7 @@ func (s *stubRepo) GetRecord(context.Context, string, string) (Record, error) {
 
 func newTestService() (*Service, *stubRepo) {
 	repo := &stubRepo{}
-	return NewService(repo, nil), repo
+	return NewService(repo, nil, nil), repo
 }
 
 // Validation rejects bad input BEFORE the repository runs (records are

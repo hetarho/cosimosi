@@ -155,30 +155,86 @@ func TestLLMExtractorContentGarbageFallsBackTransportErrorPropagates(t *testing.
 }
 
 func TestNewExtractorSelection(t *testing.T) {
-	if _, err := NewExtractor(&config.Config{AIExtractor: "mock"}, nil); err != nil {
+	if _, err := NewExtractor(&config.Config{AIExtractor: "mock"}, nil, nil); err != nil {
 		t.Fatalf("mock: %v", err)
 	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: ""}, nil); err != nil {
-		t.Fatalf("default should be mock: %v", err)
+	// Default without a ConfigSource (standalone worker/tests) stays the keyless mock.
+	if ext, err := NewExtractor(&config.Config{AIExtractor: ""}, nil, nil); err != nil {
+		t.Fatalf("default without source should be mock: %v", err)
+	} else if _, ok := ext.(*MockExtractor); !ok {
+		t.Fatalf("default without source should build *MockExtractor, got %T", ext)
 	}
-	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai", OpenAIAPIKey: "sk-test"}, nil); err != nil {
+	// Default WITH a ConfigSource (cmd/api with admin wiring) is the admin-followed switch.
+	if ext, err := NewExtractor(&config.Config{AIExtractor: ""}, stubLLM{text: "{}"}, stubSource{}); err != nil {
+		t.Fatalf("default with source: %v", err)
+	} else if _, ok := ext.(*SwitchingExtractor); !ok {
+		t.Fatalf("default with source should build *SwitchingExtractor, got %T", ext)
+	}
+	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai", OpenAIAPIKey: "sk-test"}, nil, nil); err != nil {
 		t.Fatalf("llm+key: %v", err)
 	} else if _, ok := ext.(*LLMExtractor); !ok {
 		t.Fatalf("llm should build *LLMExtractor, got %T", ext)
 	}
 	// Injected client (the spec-34 Resolver path) wins over env config —
 	// no env key needed when a client is supplied.
-	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm"}, stubLLM{text: "{}"}); err != nil {
+	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm"}, stubLLM{text: "{}"}, nil); err != nil {
 		t.Fatalf("llm+injected client: %v", err)
 	} else if _, ok := ext.(*LLMExtractor); !ok {
 		t.Fatalf("injected client should build *LLMExtractor, got %T", ext)
 	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai"}, nil); err == nil ||
+	if _, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai"}, nil, nil); err == nil ||
 		!strings.Contains(err.Error(), "OPENAI_API_KEY") {
 		t.Fatalf("llm without key should fail fast naming the env var, got %v", err)
 	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: "banana"}, nil); err == nil ||
+	if _, err := NewExtractor(&config.Config{AIExtractor: "banana"}, nil, nil); err == nil ||
 		!strings.Contains(err.Error(), "unknown AI_EXTRACTOR") {
 		t.Fatalf("unknown extractor should error, got %v", err)
+	}
+}
+
+// stubSource is a toggleable llm.ConfigSource for the switching tests.
+type stubSource struct {
+	ok  bool
+	err error
+}
+
+func (s stubSource) ActiveLLM(context.Context) (string, string, string, bool, error) {
+	return "openai", "", "sk-test", s.ok, s.err
+}
+
+// The admin-followed switch routes by the source's active flag: active → the
+// real LLM extractor, inactive → the keyless mock (spec 34 — turning AI
+// extraction on/off is a console action). Each phase uses a fresh switch
+// because the probe result is TTL-cached.
+func TestSwitchingExtractorRoutes(t *testing.T) {
+	raw := `{"segments":[{"index":0,"text":"조각","mood":"joy","intensity":0.5,"valence":0.5,
+	  "entities":{"people":[],"places":[],"topics":[]}}]}`
+
+	active := NewSwitchingExtractor(stubSource{ok: true}, NewLLMExtractor(stubLLM{text: raw}), NewMockExtractor())
+	ext, err := active.Extract(context.Background(), "원문 일기")
+	if err != nil {
+		t.Fatalf("active: %v", err)
+	}
+	if ext.Segments[0].Mood != MoodJoy {
+		t.Fatalf("active source should route to the LLM extractor, got mood %q", ext.Segments[0].Mood)
+	}
+
+	inactive := NewSwitchingExtractor(stubSource{ok: false}, NewLLMExtractor(stubLLM{text: raw}), NewMockExtractor())
+	ext, err = inactive.Extract(context.Background(), "원문 일기")
+	if err != nil {
+		t.Fatalf("inactive: %v", err)
+	}
+	if ext.Segments[0].Mood != MoodNeutral {
+		t.Fatalf("inactive source should route to the mock, got mood %q", ext.Segments[0].Mood)
+	}
+
+	// A broken source keeps the last known route (here: the initial mock default).
+	broken := NewSwitchingExtractor(stubSource{err: errors.New("db down")}, NewLLMExtractor(stubLLM{text: raw}), NewMockExtractor())
+	ext, err = broken.Extract(context.Background(), "원문 일기")
+	if err != nil {
+		t.Fatalf("broken source: %v", err)
+	}
+	if ext.Segments[0].Mood != MoodNeutral {
+		t.Fatalf("broken source should keep the mock route, got mood %q", ext.Segments[0].Mood)
 	}
 }

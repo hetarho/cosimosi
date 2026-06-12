@@ -38,7 +38,14 @@ interface EventProps {
     load_ms: number
     renderer: 'webgpu' | 'webgl2'
   }
-  record_memory: { mood: string; body_length_bucket: BodyLengthBucket; success: boolean }
+  // 감정이 조각 단위(검토 후 확정)가 되면서 fragment_count가 새 신호다. mood는 기존
+  // 대시보드(스펙 18 설계표)가 깨지지 않게 상수 'auto'로 유지한다.
+  record_memory: {
+    mood: string
+    fragment_count: number
+    body_length_bucket: BodyLengthBucket
+    success: boolean
+  }
   recall_open: { is_dormant: boolean }
   reinforce_flush: { pair_count: number }
   dormant_visit: { dormant_count: number }

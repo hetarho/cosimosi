@@ -25,17 +25,28 @@ func NewEmbedder(cfg *config.Config) (Embedder, error) {
 }
 
 // NewExtractor selects the extraction adapter from config (AI_EXTRACTOR):
-// "mock" (keyless, deterministic — the default) or "llm". Mirrors NewEmbedder
-// (constitution §7).
+// unset/"auto" (admin-controlled switch — the default), "mock" (force keyless),
+// or "llm" (force real). Mirrors NewEmbedder (constitution §7).
 //
-// client is the optional injected llm.Client for the "llm" path — the
-// composition root passes the admin-backed llm.NewResolver (spec 34) so the
-// active provider/model/key swap at runtime without a restart. nil preserves
-// the spec-20 env-only path (llm.New). The mock path never touches it, so the
-// keyless flow is unchanged either way.
-func NewExtractor(cfg *config.Config, client llm.Client) (Extractor, error) {
+// client is the optional injected llm.Client — the composition root passes the
+// admin-backed llm.NewResolver (spec 34) so the active provider/model/key swap
+// at runtime without a restart; nil preserves the spec-20 env-only path
+// (llm.New). src is the admin ConfigSource the default "auto" mode follows:
+// with an ACTIVE console selection extraction is real, without one it degrades
+// to the keyless mock — turning AI on/off is a console action, not an env
+// change. src=nil (standalone worker without admin wiring, tests) keeps "auto"
+// at the keyless mock, exactly the old default.
+func NewExtractor(cfg *config.Config, client llm.Client, src llm.ConfigSource) (Extractor, error) {
 	switch cfg.AIExtractor {
-	case "", "mock":
+	case "", "auto":
+		if src == nil {
+			return NewMockExtractor(), nil
+		}
+		if client == nil {
+			client = llm.NewResolver(src, cfg, nil)
+		}
+		return NewSwitchingExtractor(src, NewLLMExtractor(client), NewMockExtractor()), nil
+	case "mock":
 		return NewMockExtractor(), nil
 	case "llm":
 		if client == nil {
@@ -47,6 +58,6 @@ func NewExtractor(cfg *config.Config, client llm.Client) (Extractor, error) {
 		}
 		return NewLLMExtractor(client), nil
 	default:
-		return nil, fmt.Errorf("unknown AI_EXTRACTOR %q (want mock|llm)", cfg.AIExtractor)
+		return nil, fmt.Errorf("unknown AI_EXTRACTOR %q (want auto|mock|llm)", cfg.AIExtractor)
 	}
 }

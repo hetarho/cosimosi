@@ -8,6 +8,10 @@ tmp_dir = "tmp"
   exclude_dir = ["tmp", "bin", "internal/db/migrations", "internal/db/gen"]
   delay = 800
   stop_on_error = true
+  # Windows 바인드 마운트는 inotify 이벤트가 컨테이너로 전달되지 않아 fsnotify 감시가
+  # 조용히 죽는다(코드를 고쳐도 영영 재빌드 안 됨) — 폴링으로 감시한다.
+  poll = true
+  poll_interval = 1000
 
 [log]
   time = true

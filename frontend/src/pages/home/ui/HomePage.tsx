@@ -194,6 +194,17 @@ export function HomePage() {
   // top-left panel, so this flag is ignored there.
   const [composeOpen, setComposeOpen] = useState(false)
 
+  // 페이지 HUD의 하단 시트(작성 폼·기억 실험실)가 열려 있는 동안 캔버스에 알린다 —
+  // 모바일에선 별들이 화면 중앙에 있어 시트에 가려지므로, 캔버스가 view offset+줌아웃으로
+  // 우주를 화면 위 1/3 지점에 띄운다(ViewOffsetController; sm 미만에서만이라 데스크톱은
+  // 무변화). 회상 패널(선택된 별)은 컨트롤러가 memory store에서 직접 구독한다.
+  const [demoSheetOpen, setDemoSheetOpen] = useState(false)
+  const setSheetOpen = useCameraMode((s) => s.setSheetOpen)
+  useEffect(() => {
+    setSheetOpen(composeOpen || demoSheetOpen)
+    return () => setSheetOpen(false)
+  }, [composeOpen, demoSheetOpen, setSheetOpen])
+
   // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
   // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4) — 제출 중 temp 별,
   // 기존 별 슬롯/좌표, 로컬이 앞선 타임스탬프를 깨지 않는다.
@@ -318,7 +329,7 @@ export function HomePage() {
 
       {/* 시뮬레이션 패널(spec 19) — 데모에서만, 좌하단(데스크톱)/하단 시트(모바일).
           데모의 기록은 이 패널의 "별 띄우기" 컨트롤러가 담당한다(작성 폼은 데모에서 숨김). */}
-      {isDemoMode() && <DemoSimPanel initialSimId={sim} />}
+      {isDemoMode() && <DemoSimPanel initialSimId={sim} onSheetChange={setDemoSheetOpen} />}
 
       {/* 우주 로딩 — 응답 전의 빈 캔버스를 "별이 없다"로 오인시키지 않는다(1.1). */}
       {universe.isPending && (

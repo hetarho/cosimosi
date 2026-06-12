@@ -33,6 +33,31 @@ import (
 
 const version = "0.0.1"
 
+// segmenterAdapter maps the ai extraction result onto memory's consumer-side
+// Extractor port (SegmentMemory preview). It lives in the composition root so
+// memory never imports ai — the ai test suite imports memory for the body-cap
+// mirror guard, and an ai import in memory would be an import cycle.
+type segmenterAdapter struct {
+	inner ai.Extractor
+}
+
+func (a segmenterAdapter) Extract(ctx context.Context, body string) ([]memory.SegmentInput, error) {
+	ext, err := a.inner.Extract(ctx, body)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]memory.SegmentInput, 0, len(ext.Segments))
+	for _, s := range ext.Segments {
+		out = append(out, memory.SegmentInput{
+			Text:      s.Text,
+			Mood:      memory.Mood(s.Mood),
+			Intensity: s.Intensity,
+			Valence:   s.Valence,
+		})
+	}
+	return out, nil
+}
+
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
@@ -71,14 +96,6 @@ func main() {
 	}
 	defer db.Close()
 
-	// Compose the feature graph: link read service feeds the memory service's
-	// GetUniverse; the memory handler is the real MemoryService implementation
-	// mounted by rpcserver.
-	linkSvc := link.NewService(link.NewRepository(db))
-	memorySvc := memory.NewService(memory.NewRepository(db), linkSvc)
-	memoryHandler := memory.NewHandler(memorySvc)
-	settingsHandler := settings.NewHandler(settings.NewService(settings.NewRepository(db)))
-
 	// Admin console (spec 34): LLM provider/key management + ops dashboard.
 	// A nil cipher (LLM_KEY_ENCRYPTION_KEY unset) is a valid degraded state —
 	// reads work, key writes return FailedPrecondition; an INVALID key is a
@@ -91,24 +108,38 @@ func main() {
 	adminSvc := admin.NewService(admin.NewRepository(db), adminCipher, cfg)
 	adminHandler := admin.NewHandler(adminSvc)
 
-	// Async extraction + embedding worker (specs 05/21): consumes the extract job
-	// the RecordMemory transaction enqueues, fans the diary out into fragment
-	// stars, then embeds each fragment and writes initial semantic synapses.
-	// It runs as a goroutine in this process and shares the
-	// signal-cancelled ctx so it stops on shutdown.
 	embedder, err := ai.NewEmbedder(cfg)
 	if err != nil {
 		slog.Error("embedder init failed", "err", err)
 		os.Exit(1)
 	}
 	// The extractor's llm client is the admin-backed resolver (spec 34): the
-	// active provider/model/key swap at runtime without a restart. The mock path
-	// (AI_EXTRACTOR unset) never touches it.
-	extractor, err := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc))
+	// active provider/model/key swap at runtime without a restart. adminSvc also
+	// serves as the ConfigSource the default "auto" mode follows — an ACTIVE
+	// console selection routes extraction to the real LLM, none degrades to the
+	// keyless mock (turning AI on/off is a console action, not an env change).
+	// Shared by the worker (async extract jobs) AND the memory service
+	// (synchronous SegmentMemory preview).
+	extractor, err := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
 	if err != nil {
 		slog.Error("extractor init failed", "err", err)
 		os.Exit(1)
 	}
+
+	// Compose the feature graph: link read service feeds the memory service's
+	// GetUniverse; the memory handler is the real MemoryService implementation
+	// mounted by rpcserver. The extractor reaches memory through the
+	// segmenterAdapter (memory's consumer port — memory must not import ai).
+	linkSvc := link.NewService(link.NewRepository(db))
+	memorySvc := memory.NewService(memory.NewRepository(db), linkSvc, segmenterAdapter{inner: extractor})
+	memoryHandler := memory.NewHandler(memorySvc)
+	settingsHandler := settings.NewHandler(settings.NewService(settings.NewRepository(db)))
+
+	// Async extraction + embedding worker (specs 05/21): consumes the extract job
+	// the RecordMemory transaction enqueues, fans the diary out into fragment
+	// stars, then embeds each fragment and writes initial semantic synapses.
+	// It runs as a goroutine in this process and shares the
+	// signal-cancelled ctx so it stops on shutdown.
 	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, slog.Default())
 	workerDone := make(chan struct{})
 	go func() {

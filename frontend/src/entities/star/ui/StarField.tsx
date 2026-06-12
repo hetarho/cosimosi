@@ -23,6 +23,9 @@ function sizeFor(intensity: number): number {
   return 0.6 + Math.max(0, Math.min(1, intensity)) * 1.4
 }
 
+/** 버스트 레이어는 클릭 대상이 아니다 — raycast 무력화로 별 클릭이 가려지지 않게. */
+const NOOP_RAYCAST = () => undefined
+
 // 별 탄생 애니메이션: 새로 생긴 별은 한 점에서 살짝 튀어 오르며(easeOutBack) 정상 크기로
 // 자라난다 — 뚝 나타나는 등장을 "태어나는" 등장으로 바꾼다. 첫 로드/출처 리셋의 일괄
 // 시드는 애니메이션하지 않는다(우주 전체가 펑펑 터지면 소음이다).
@@ -31,6 +34,43 @@ function easeOutBack(x: number): number {
   const c1 = 1.70158
   const c3 = c1 + 1
   return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2)
+}
+
+// 탄생 버스트: 새 별 자리에서 mood 색의 발광 디스크+링이 빠르게 퍼지며 사그라든다
+// (additive — 색이 검정으로 가면 투명과 같다). 스케일 탄생 애니메이션과 함께 "별이
+// 태어났다"를 한눈에 알린다. 빌보드 인스턴스 메시 1개 = 추가 드로우콜 1개(헌법 §8).
+const BURST_DUR_S = 1.6
+const MAX_BURSTS = 32 // 동시 탄생 상한(초과분은 버스트만 생략 — 별 자체는 정상 탄생)
+const BURST_BASE_SCALE = 2.5 // 시작 크기(별 스케일 배수)
+const BURST_GROW = 16 // 수명 동안 추가로 퍼지는 배수
+function easeOutCubic(x: number): number {
+  return 1 - Math.pow(1 - x, 3)
+}
+
+// 방사형 글로우(중심 코어) + 얇은 링(충격파) 텍스처 — 모듈 싱글턴(재생성 방지).
+let burstTexture: THREE.CanvasTexture | null = null
+function getBurstTexture(): THREE.CanvasTexture | null {
+  if (burstTexture || typeof document === 'undefined') return burstTexture
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const g = c.getContext('2d')
+  if (!g) return null
+  const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  grad.addColorStop(0, 'rgba(255,255,255,1)')
+  grad.addColorStop(0.22, 'rgba(255,255,255,0.55)')
+  grad.addColorStop(0.6, 'rgba(255,255,255,0.12)')
+  grad.addColorStop(1, 'rgba(255,255,255,0)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, size, size)
+  g.strokeStyle = 'rgba(255,255,255,0.5)'
+  g.lineWidth = 3
+  g.beginPath()
+  g.arc(size / 2, size / 2, size * 0.42, 0, Math.PI * 2)
+  g.stroke()
+  burstTexture = new THREE.CanvasTexture(c)
+  return burstTexture
 }
 
 // 별 미세 부유: 각 별이 제 좌표 주변을 seed 기반의 서로 다른 주기·위상으로 떠다닌다 —
@@ -65,6 +105,12 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
   const dummyRef = useRef<Float32Array>(new Float32Array(0))
   const seenRef = useRef<Set<string>>(new Set())
   const spawnRef = useRef<Map<string, number>>(new Map())
+  // 탄생 버스트 추적(스케일 탄생과 분리 — 수명이 다르다) + mood 색 배열 + id→슬롯 맵
+  // (버스트 루프가 전체 별이 아니라 활성 버스트만 돌게).
+  const burstRef = useRef<THREE.InstancedMesh>(null)
+  const burstsRef = useRef<Map<string, number>>(new Map())
+  const moodsRef = useRef<Float32Array>(new Float32Array(0))
+  const indexByIdRef = useRef<Map<string, number>>(new Map())
 
   // 선택된 형태(object)별 공유 지오메트리 + TSL 머티리얼. 모든 인스턴스가 하나를 공유하므로
   // 형태 변경은 O(1)(메시 1개 재구성) — 드로우콜은 그대로다(constitution §8). 머티리얼은
@@ -76,6 +122,24 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     material.dispose()
   }, [geometry, material])
 
+  // 탄생 버스트용 빌보드 쿼드 + additive 머티리얼(컴포넌트 수명 동안 1회 생성).
+  const burst = useMemo(
+    () => ({
+      geometry: new THREE.PlaneGeometry(1, 1),
+      material: new THREE.MeshBasicMaterial({
+        map: getBurstTexture(),
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    }),
+    [],
+  )
+  useEffect(() => () => {
+    burst.geometry.dispose()
+    burst.material.dispose()
+  }, [burst])
+
   // (Re)build per-instance attributes + base matrices when the star set changes.
   // useLayoutEffect runs in the commit phase (before the first R3F frame), so the
   // attributes are bound before the material first renders. Date.now() here is fine
@@ -86,14 +150,26 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
       // 우주가 비워지면(출처 리셋) 탄생 추적도 초기화 — 재시드가 일괄 탄생 연출이 되지 않게.
       seenRef.current = new Set()
       spawnRef.current.clear()
+      burstsRef.current.clear()
       return
     }
-    // 새로 생긴 별만 탄생 대상으로 표시(seen이 비어 있는 첫 시드는 제외).
+    // 새로 생긴 별만 탄생 대상으로 표시. 첫 시드(seen 비어 있음)는 제외하되, "빈 우주를
+    // 이미 확인한"(loadedEmpty) 뒤의 첫 도착 — 신규 유저의 첫 일기 — 은 진짜 탄생이다.
     const seen = seenRef.current
-    if (seen.size > 0) {
-      for (const s of stars) if (!seen.has(s.id)) spawnRef.current.set(s.id, -1)
+    if (seen.size > 0 || useMemoryStore.getState().loadedEmpty) {
+      for (const s of stars) {
+        if (!seen.has(s.id)) {
+          spawnRef.current.set(s.id, -1)
+          burstsRef.current.set(s.id, -1)
+        }
+      }
     }
     seenRef.current = new Set(stars.map((s) => s.id))
+    indexByIdRef.current = new Map(stars.map((s, i) => [s.id, i]))
+    // 별 집합에서 빠진 id의 탄생 추적은 정리 — 만료가 별 루프에 묶여 있어 그대로 두면
+    // bursts.size가 0으로 못 돌아가 정적 장면 최적화가 영영 깨진다.
+    for (const id of spawnRef.current.keys()) if (!seenRef.current.has(id)) spawnRef.current.delete(id)
+    for (const id of burstsRef.current.keys()) if (!seenRef.current.has(id)) burstsRef.current.delete(id)
 
     const moodArr = new Float32Array(count * 3)
     const seedArr = new Float32Array(count)
@@ -134,6 +210,7 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     geometry.setAttribute('aBrightness', new THREE.InstancedBufferAttribute(brightArr, 1))
     scalesRef.current = scales
     dummyRef.current = dummy
+    moodsRef.current = moodArr
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
   }, [stars, count, geometry, emotionColors])
@@ -159,6 +236,9 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
   // 부유(WOBBLE_AMP)와 탄생 스케일을 얹는다. No setState → no re-render (1.6).
   // reduced-motion + 버퍼·탄생 없음이면 정적 장면을 매 프레임 다시 올리지 않는다.
   const scratch = useMemo(() => new THREE.Object3D(), [])
+  // 버스트 전용 스크래치 — scratch와 분리(빌보드가 쿼터니언을 만지므로 별 행렬이 오염되지 않게).
+  const burstScratch = useMemo(() => new THREE.Object3D(), [])
+  const burstColor = useMemo(() => new THREE.Color(), [])
   const reduceMotion = useMemo(
     () =>
       typeof window !== 'undefined' &&
@@ -193,8 +273,10 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     const base = live ?? dummyRef.current
     if (base.length < count * 3 || scales.length < count) return
     const wob = reduceMotion ? 0 : WOBBLE_AMP
+    const bursts = burstsRef.current
+    if (reduceMotion) bursts.clear() // 모션 축소: 탄생 버스트도 생략
     // 움직일 것이 하나도 없으면(모션 축소 + 라이브 버퍼·탄생 없음) 정적 유지.
-    if (wob === 0 && !live && spawns.size === 0) return
+    if (wob === 0 && !live && spawns.size === 0 && bursts.size === 0) return
 
     for (let i = 0; i < count; i++) {
       const m = stars[i].memory
@@ -209,6 +291,58 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
       mesh.setMatrixAt(i, scratch.matrix)
     }
     mesh.instanceMatrix.needsUpdate = true
+
+    // 탄생 버스트: 활성 버스트만(전체 별이 아니라) 빌보드 슬롯에 채운다 — 별과 같은
+    // 좌표(wobble 포함)에서 mood 색 글로우가 퍼지며 (1-age)²로 사그라든다(additive라
+    // 색→검정 = 페이드아웃). 별 집합에 없는 id는 레이아웃 효과가 이미 정리했다.
+    const burstMesh = burstRef.current
+    if (burstMesh) {
+      const moods = moodsRef.current
+      const indexById = indexByIdRef.current
+      let slot = 0
+      if (bursts.size > 0 && moods.length >= count * 3) {
+        for (const [id, marked] of bursts) {
+          if (slot >= MAX_BURSTS) break
+          const i = indexById.get(id)
+          if (i == null || i >= count) {
+            bursts.delete(id)
+            continue
+          }
+          let t0 = marked
+          if (t0 < 0) {
+            t0 = t // -1 마커는 첫 프레임의 elapsed로 확정(스케일 탄생과 동일 규약)
+            bursts.set(id, t)
+          }
+          const age = (t - t0) / BURST_DUR_S
+          if (age >= 1) {
+            bursts.delete(id)
+            continue
+          }
+          const m = stars[i].memory
+          burstScratch.position.set(
+            base[i * 3] + wobbleUnit(m.seed, t, 0) * wob,
+            base[i * 3 + 1] + wobbleUnit(m.seed, t, 1) * wob,
+            base[i * 3 + 2] + wobbleUnit(m.seed, t, 2) * wob,
+          )
+          burstScratch.quaternion.copy(state.camera.quaternion) // billboard
+          burstScratch.scale.setScalar(
+            scales[i] * (BURST_BASE_SCALE + BURST_GROW * easeOutCubic(age)),
+          )
+          burstScratch.updateMatrix()
+          burstMesh.setMatrixAt(slot, burstScratch.matrix)
+          const fade = (1 - age) * (1 - age) * 1.6
+          burstColor.setRGB(moods[i * 3] * fade, moods[i * 3 + 1] * fade, moods[i * 3 + 2] * fade)
+          burstMesh.setColorAt(slot, burstColor)
+          slot++
+        }
+      }
+      burstMesh.count = slot
+      burstMesh.visible = slot > 0
+      if (slot > 0) {
+        burstMesh.instanceMatrix.needsUpdate = true
+        if (burstMesh.instanceColor) burstMesh.instanceColor.needsUpdate = true
+      }
+    }
   })
 
   if (count === 0) return null
@@ -216,18 +350,30 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
   // instanceMatrix를 깨끗이 다시 만든다. onClick → 그 별 선택(raycast가 인스턴스 슬롯을 준다);
   // 회상 기능(11)이 selectedId에 반응. stopPropagation으로 가장 가까운 별만 집힌다.
   return (
-    <instancedMesh
-      key={`${object}-${count}`}
-      ref={meshRef}
-      args={[geometry, material, count]}
-      // 지오메트리·머티리얼은 위 useEffect가 직접 해제하므로 R3F 자동 해제를 끈다(이중 해제 방지).
-      dispose={null}
-      onClick={(e) => {
-        e.stopPropagation()
-        if (e.instanceId == null) return
-        const node = stars[e.instanceId]
-        if (node) select(node.id)
-      }}
-    />
+    <>
+      <instancedMesh
+        key={`${object}-${count}`}
+        ref={meshRef}
+        args={[geometry, material, count]}
+        // 지오메트리·머티리얼은 위 useEffect가 직접 해제하므로 R3F 자동 해제를 끈다(이중 해제 방지).
+        dispose={null}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (e.instanceId == null) return
+          const node = stars[e.instanceId]
+          if (node) select(node.id)
+        }}
+      />
+      {/* 탄생 버스트 레이어 — 클릭은 별이 받아야 하므로 raycast를 끈다. 행렬이 매 프레임
+          갱신되는 빌보드라 frustumCulled를 꺼서(기본 바운딩이 plane 1×1) 오컬링을 막는다. */}
+      <instancedMesh
+        ref={burstRef}
+        args={[burst.geometry, burst.material, MAX_BURSTS]}
+        dispose={null}
+        visible={false}
+        frustumCulled={false}
+        raycast={NOOP_RAYCAST}
+      />
+    </>
   )
 }

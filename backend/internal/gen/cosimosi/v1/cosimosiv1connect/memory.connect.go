@@ -35,6 +35,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// MemoryServiceSegmentMemoryProcedure is the fully-qualified name of the MemoryService's
+	// SegmentMemory RPC.
+	MemoryServiceSegmentMemoryProcedure = "/cosimosi.v1.MemoryService/SegmentMemory"
 	// MemoryServiceRecordMemoryProcedure is the fully-qualified name of the MemoryService's
 	// RecordMemory RPC.
 	MemoryServiceRecordMemoryProcedure = "/cosimosi.v1.MemoryService/RecordMemory"
@@ -60,6 +63,7 @@ const (
 
 // MemoryServiceClient is a client for the cosimosi.v1.MemoryService service.
 type MemoryServiceClient interface {
+	SegmentMemory(context.Context, *connect.Request[v1.SegmentMemoryRequest]) (*connect.Response[v1.SegmentMemoryResponse], error)
 	RecordMemory(context.Context, *connect.Request[v1.RecordMemoryRequest]) (*connect.Response[v1.RecordMemoryResponse], error)
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
 	ReinforceLinks(context.Context, *connect.Request[v1.ReinforceLinksRequest]) (*connect.Response[v1.ReinforceLinksResponse], error)
@@ -78,6 +82,12 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 	baseURL = strings.TrimRight(baseURL, "/")
 	memoryServiceMethods := v1.File_cosimosi_v1_memory_proto.Services().ByName("MemoryService").Methods()
 	return &memoryServiceClient{
+		segmentMemory: connect.NewClient[v1.SegmentMemoryRequest, v1.SegmentMemoryResponse](
+			httpClient,
+			baseURL+MemoryServiceSegmentMemoryProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("SegmentMemory")),
+			connect.WithClientOptions(opts...),
+		),
 		recordMemory: connect.NewClient[v1.RecordMemoryRequest, v1.RecordMemoryResponse](
 			httpClient,
 			baseURL+MemoryServiceRecordMemoryProcedure,
@@ -115,11 +125,17 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // memoryServiceClient implements MemoryServiceClient.
 type memoryServiceClient struct {
+	segmentMemory  *connect.Client[v1.SegmentMemoryRequest, v1.SegmentMemoryResponse]
 	recordMemory   *connect.Client[v1.RecordMemoryRequest, v1.RecordMemoryResponse]
 	getUniverse    *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
 	reinforceLinks *connect.Client[v1.ReinforceLinksRequest, v1.ReinforceLinksResponse]
 	recallMemory   *connect.Client[v1.RecallMemoryRequest, v1.RecallMemoryResponse]
 	listDormant    *connect.Client[v1.ListDormantRequest, v1.ListDormantResponse]
+}
+
+// SegmentMemory calls cosimosi.v1.MemoryService.SegmentMemory.
+func (c *memoryServiceClient) SegmentMemory(ctx context.Context, req *connect.Request[v1.SegmentMemoryRequest]) (*connect.Response[v1.SegmentMemoryResponse], error) {
+	return c.segmentMemory.CallUnary(ctx, req)
 }
 
 // RecordMemory calls cosimosi.v1.MemoryService.RecordMemory.
@@ -149,6 +165,7 @@ func (c *memoryServiceClient) ListDormant(ctx context.Context, req *connect.Requ
 
 // MemoryServiceHandler is an implementation of the cosimosi.v1.MemoryService service.
 type MemoryServiceHandler interface {
+	SegmentMemory(context.Context, *connect.Request[v1.SegmentMemoryRequest]) (*connect.Response[v1.SegmentMemoryResponse], error)
 	RecordMemory(context.Context, *connect.Request[v1.RecordMemoryRequest]) (*connect.Response[v1.RecordMemoryResponse], error)
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
 	ReinforceLinks(context.Context, *connect.Request[v1.ReinforceLinksRequest]) (*connect.Response[v1.ReinforceLinksResponse], error)
@@ -163,6 +180,12 @@ type MemoryServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	memoryServiceMethods := v1.File_cosimosi_v1_memory_proto.Services().ByName("MemoryService").Methods()
+	memoryServiceSegmentMemoryHandler := connect.NewUnaryHandler(
+		MemoryServiceSegmentMemoryProcedure,
+		svc.SegmentMemory,
+		connect.WithSchema(memoryServiceMethods.ByName("SegmentMemory")),
+		connect.WithHandlerOptions(opts...),
+	)
 	memoryServiceRecordMemoryHandler := connect.NewUnaryHandler(
 		MemoryServiceRecordMemoryProcedure,
 		svc.RecordMemory,
@@ -197,6 +220,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 	)
 	return "/cosimosi.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case MemoryServiceSegmentMemoryProcedure:
+			memoryServiceSegmentMemoryHandler.ServeHTTP(w, r)
 		case MemoryServiceRecordMemoryProcedure:
 			memoryServiceRecordMemoryHandler.ServeHTTP(w, r)
 		case MemoryServiceGetUniverseProcedure:
@@ -215,6 +240,10 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 
 // UnimplementedMemoryServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedMemoryServiceHandler struct{}
+
+func (UnimplementedMemoryServiceHandler) SegmentMemory(context.Context, *connect.Request[v1.SegmentMemoryRequest]) (*connect.Response[v1.SegmentMemoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.MemoryService.SegmentMemory is not implemented"))
+}
 
 func (UnimplementedMemoryServiceHandler) RecordMemory(context.Context, *connect.Request[v1.RecordMemoryRequest]) (*connect.Response[v1.RecordMemoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.MemoryService.RecordMemory is not implemented"))

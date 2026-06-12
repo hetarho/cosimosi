@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/cosimosi/backend/internal/db/fragment"
 	"github.com/cosimosi/backend/internal/db/gen"
 )
 
@@ -26,11 +27,14 @@ func NewRepository(pool *pgxpool.Pool) Repository {
 	return &pgRepository{pool: pool}
 }
 
-// RecordMemory runs record → extract job in one transaction so a failure leaves
-// no partial rows (spec 21: the fragment stars are born asynchronously in the
-// extract worker — no memory row is written here). With an idempotency key, an
-// existing (user_id, key) short-circuits to the stored record id plus whatever
-// fragment ids its fan-out has produced so far, without writing.
+// RecordMemory runs the record write in one transaction so a failure leaves no
+// partial rows. With user-confirmed Segments (review step) the same transaction
+// also fans them out as fragment stars (N memories + N embed jobs + intra-entry
+// links) and returns their ids; without Segments the legacy path enqueues an
+// extract job and the fragments are born asynchronously (spec 21). With an
+// idempotency key, an existing (user_id, key) short-circuits to the stored
+// record id plus whatever fragment ids its fan-out has produced so far,
+// without writing.
 func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string, []string, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -78,6 +82,30 @@ func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string
 		IdempotencyKey: keyToDB(in.IdempotencyKey),
 	}); err != nil {
 		return "", nil, fmt.Errorf("insert record: %w", err)
+	}
+
+	if len(in.Segments) > 0 {
+		// User-confirmed fragments: same-transaction fan-out via the SHARED core
+		// (db/fragment — single owner of the fan-out shape, so this path and the
+		// async extract worker can never drift).
+		segs := make([]fragment.Segment, 0, len(in.Segments))
+		for i, s := range in.Segments {
+			segs = append(segs, fragment.Segment{
+				Index:     i,
+				Text:      s.Text,
+				Mood:      string(s.Mood),
+				Intensity: s.Intensity,
+				Valence:   s.Valence,
+			})
+		}
+		memoryIDs, err := fragment.FanOutTx(ctx, q, recordID, in.UserID, segs)
+		if err != nil {
+			return "", nil, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return "", nil, fmt.Errorf("commit: %w", err)
+		}
+		return recordID, memoryIDs, nil
 	}
 
 	jobID, err := newID()

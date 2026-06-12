@@ -739,6 +739,61 @@ function ModeTransitionController() {
   return null
 }
 
+// 모바일 하단 시트(작성 폼·회상 패널·기억 실험실)가 열리면 우주의 중심이 시트에 가려진다
+// — 카메라는 그대로 두고 투영만 조작한다: view offset으로 세계 중심을 화면 위 1/3 지점에
+// 올리고, camera.zoom을 살짝 풀어(줌아웃) 별들이 남은 화면 위쪽에 더 넓게 담기게 한다.
+// 투영 차원의 시프트라 두 카메라 모드·전환 비행·포커스 어느 것과도 충돌하지 않고, 시트가
+// 닫히면 부드럽게 복귀한다. sm(640px) 미만에서만 — 데스크톱 패널은 측면이라 불필요.
+const SHEET_BREAKPOINT_PX = 640
+const SHEET_VIEW_SHIFT = 1 / 6 // 중심(1/2)을 1/3로 올리는 데 필요한 오프셋 = 화면높이의 1/6
+const SHEET_ZOOM = 0.8 // 시트가 열린 동안의 줌아웃(1 = 원래 화각)
+
+function ViewOffsetController() {
+  // 페이지 HUD가 올리는 시트(작성 폼, 기억 실험실) + 위젯이 스스로 아는 회상 패널(선택된
+  // 별) — 회상은 여기서 직접 구독해, 별 선택이 어느 경로로 일어나도 시프트가 따라온다.
+  const hudSheetOpen = useCameraMode((s) => s.sheetOpen)
+  const recallOpen = useMemoryStore((s) => s.selectedId != null)
+  const offset = useRef(0)
+  const zoom = useRef(1)
+  const applied = useRef({ off: 0, zoom: 1, w: 0, h: 0 })
+  useFrame((state, dt) => {
+    const camera = state.camera
+    const size = state.size
+    if (!(camera instanceof THREE.PerspectiveCamera)) return
+    const active = (hudSheetOpen || recallOpen) && size.width < SHEET_BREAKPOINT_PX
+    const targetOff = active ? size.height * SHEET_VIEW_SHIFT : 0
+    const targetZoom = active ? SHEET_ZOOM : 1
+    const k = 1 - Math.exp(-dt * 6) // frame-rate-independent ease
+    const nextOff = offset.current + (targetOff - offset.current) * k
+    offset.current = Math.abs(nextOff - targetOff) < 0.5 ? targetOff : nextOff
+    const nextZoom = zoom.current + (targetZoom - zoom.current) * k
+    zoom.current = Math.abs(nextZoom - targetZoom) < 1e-3 ? targetZoom : nextZoom
+
+    const a = applied.current
+    if (offset.current === 0 && zoom.current === 1) {
+      if (camera.view?.enabled || camera.zoom !== 1) {
+        camera.zoom = 1
+        camera.clearViewOffset() // updateProjectionMatrix 포함
+        a.off = 0
+        a.zoom = 1
+      }
+      return
+    }
+    // 정착 후에는 재적용하지 않는다(매 프레임 투영행렬 재계산 방지). size가 바뀌면
+    // 저장된 fullWidth/fullHeight가 낡으므로 그때만 다시 적용한다.
+    if (a.off === offset.current && a.zoom === zoom.current && a.w === size.width && a.h === size.height) {
+      return
+    }
+    camera.zoom = zoom.current
+    camera.setViewOffset(size.width, size.height, 0, offset.current, size.width, size.height)
+    a.off = offset.current
+    a.zoom = zoom.current
+    a.w = size.width
+    a.h = size.height
+  })
+  return null
+}
+
 const FOCUS_UP = new THREE.Vector3(0, 1, 0) // world up — re-leveled into during a nebula framing
 
 /** Gaze-lock + framing (focus): when a star is SELECTED — a direct click (recall panel, 11) or a
@@ -933,6 +988,7 @@ export function UniverseCanvas() {
       <FlyToController />
       <FocusController />
       <ModeTransitionController />
+      <ViewOffsetController />
       <BloomPass />
     </Canvas>
   )

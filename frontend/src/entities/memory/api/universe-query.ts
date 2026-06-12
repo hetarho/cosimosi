@@ -75,6 +75,9 @@ export function applyUniverse(res: GetUniverseResponse): void {
     res.stars.map((s, i) => mapStar(s, i)),
   )
   if (stars !== memory.stars) memory.setStars(stars)
+  // "빈 우주를 확인했다" 마킹 — 신규 유저의 첫 일기 별이 탄생 연출을 받게 한다
+  // (StarField는 이 플래그 없이는 첫 도착 배치를 '첫 로드 시드'로 보고 연출을 건너뛴다).
+  if (stars.length === 0 && !memory.loadedEmpty) memory.setLoadedEmpty(true)
 
   const synapse = useSynapseStore.getState()
   const incoming = res.synapses.map((s) => {

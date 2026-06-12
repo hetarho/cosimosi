@@ -17,10 +17,13 @@ import (
 // (frontend/src/features/record-memory/api/record-memory.ts) — rewording one
 // breaks that mapping silently; service_test.go pins the matched substrings.
 var (
-	ErrEmptyBody      = errors.New("memory: body is empty")
-	ErrBodyTooLong    = errors.New("memory: body exceeds max length")
-	ErrIntensityRange = errors.New("memory: intensity out of range [0,1]")
-	ErrValenceRange   = errors.New("memory: valence out of range [-1,1]")
+	ErrEmptyBody       = errors.New("memory: body is empty")
+	ErrBodyTooLong     = errors.New("memory: body exceeds max length")
+	ErrIntensityRange  = errors.New("memory: intensity out of range [0,1]")
+	ErrValenceRange    = errors.New("memory: valence out of range [-1,1]")
+	ErrEmptySegment    = errors.New("memory: segment text is empty")
+	ErrSegmentTooLong  = errors.New("memory: segment text exceeds max length")
+	ErrTooManySegments = errors.New("memory: too many segments")
 )
 
 // MaxBodyRunes caps the diary body length. It MIRRORS (must stay in sync with)
@@ -53,6 +56,22 @@ const (
 	MoodEmptiness   Mood = "emptiness"
 )
 
+// MaxSegments caps a user-confirmed fragment list. The AI proposes at most 5
+// (ai maxSegments); the review step lets the user add manual fragments on top,
+// so this cap is higher but still bounded (each fragment costs an embed job).
+const MaxSegments = 10
+
+// SegmentInput is one fragment star of a diary: the AI's proposal from
+// SegmentMemory (preview) and, after the user reviewed/edited it, the confirmed
+// shape persisted by RecordMemory. Unlike the record-level hints, mood/
+// intensity/valence here are the fragment's OWN values, not fallbacks.
+type SegmentInput struct {
+	Text      string
+	Mood      Mood
+	Intensity float64 // 0..1
+	Valence   float64 // -1..1
+}
+
 // RecordInput is what RecordMemory writes to the immutable records table
 // (constitution §1). It is deliberately separate from the Memory (star) domain:
 // the original diary text is persisted here and never mutated. Mood/Intensity/
@@ -66,6 +85,11 @@ type RecordInput struct {
 	Intensity      float64   // 0..1, optional hint (0 when unset)
 	Valence        float64   // -1..1, optional hint (0 when unset)
 	IdempotencyKey string    // optional; empty = not applied
+	// Segments is the user-confirmed fragment list from the review step. When
+	// non-empty the repository persists EXACTLY these as the fragment stars in
+	// the record's transaction (no async extract job); empty keeps the legacy
+	// async-extract path.
+	Segments []SegmentInput
 }
 
 // Memory is the star projection used by GetUniverse — no body, no entry_date.
@@ -121,4 +145,13 @@ type Record struct {
 type LinkService interface {
 	ListByUser(ctx context.Context, userID string) ([]Synapse, error)
 	ReinforceLinks(ctx context.Context, userID, batchID string, deltas []LinkDelta) error
+}
+
+// Extractor is the consumer-defined segmentation port for the synchronous
+// SegmentMemory preview (the review step): split a diary into proposed
+// fragments. Satisfied by a composition-root adapter over ai.Extractor —
+// memory must NOT import ai (the ai test suite imports memory for the body-cap
+// mirror guard, so an ai import here would be an import cycle).
+type Extractor interface {
+	Extract(ctx context.Context, body string) ([]SegmentInput, error)
 }

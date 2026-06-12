@@ -15,6 +15,9 @@ import { resetDemoExperience, runTimeSkip } from '../model/time-travel'
 export interface DemoSimPanelProps {
   /** `/universe?sim=<id>` 진입 포커스 — 이론 모달을 그 이론 페이지로 연다(없는 id는 무시). */
   initialSimId?: string
+  /** 기억 실험실 시트의 열림 상태를 페이지 HUD에 알린다 — 모바일에서 캔버스가 별들을
+   *  화면 위쪽으로 올리고 줌아웃하게(ViewOffsetController). */
+  onSheetChange?: (open: boolean) => void
 }
 
 // 데모의 "별 띄우기" 컨트롤러가 기록 폼을 대신한다. 기록 폼은 13종(spec 29)이지만
@@ -310,7 +313,7 @@ function TheoryModal({ initialPage, onClose }: { initialPage: number; onClose: (
   )
 }
 
-export function DemoSimPanel({ initialSimId }: DemoSimPanelProps) {
+export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps) {
   const focusedIdx = THEORIES.findIndex((e) => e.id === initialSimId)
   // 데스크톱은 컨트롤러를 펼친 채, 모바일은 칩으로 접어 시작(우주를 가리지 않게).
   const [controlsOpen, setControlsOpen] = useState(
@@ -319,6 +322,12 @@ export function DemoSimPanel({ initialSimId }: DemoSimPanelProps) {
   // ?sim= 진입(랜딩 "이 카드 체험하기")은 그 이론 페이지가 떠 있는 채로 시작한다.
   const [theoryOpen, setTheoryOpen] = useState(focusedIdx >= 0)
   const elapsed = demoOffsetDays()
+
+  // 기억 실험실 시트가 하단을 덮는 동안 페이지에 알린다(모바일 카메라 시프트용).
+  useEffect(() => {
+    onSheetChange?.(controlsOpen)
+    return () => onSheetChange?.(false)
+  }, [controlsOpen, onSheetChange])
 
   return (
     <>

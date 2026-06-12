@@ -23,11 +23,16 @@ interface CameraModeState {
    *  orbit-distance + ship-boundary clamps are relaxed during it so the camera can fly
    *  through the otherwise-forbidden zone; restored on arrival. */
   transitioning: boolean
+  /** True while a bottom sheet (compose form / recall panel) covers the lower screen.
+   *  On mobile the canvas shifts its view offset so the stars sit in the upper third
+   *  instead of hiding behind the sheet (ViewOffsetController). Set by the page HUD. */
+  sheetOpen: boolean
   setMode: (mode: CameraMode) => void
   toggle: () => void
   focusStar: (id: string | null) => void
   setMove: (m: Partial<{ x: number; y: number; z: number }>) => void
   setTransitioning: (transitioning: boolean) => void
+  setSheetOpen: (sheetOpen: boolean) => void
 }
 
 const NO_MOVE = { x: 0, y: 0, z: 0 }
@@ -38,6 +43,7 @@ export const useCameraMode = create<CameraModeState>((set) => ({
   move: { ...NO_MOVE },
   resetNonce: 0,
   transitioning: false,
+  sheetOpen: false,
   // Leaving recall stops any held movement so it can't get stuck (e.g. pointerup lost
   // when the mode flips out from under the D-pad).
   setMode: (mode) => set({ mode, move: { ...NO_MOVE } }),
@@ -50,4 +56,5 @@ export const useCameraMode = create<CameraModeState>((set) => ({
   focusStar: (focusStarId) => set({ focusStarId }),
   setMove: (m) => set((s) => ({ move: { ...s.move, ...m } })),
   setTransitioning: (transitioning) => set({ transitioning }),
+  setSheetOpen: (sheetOpen) => set({ sheetOpen }),
 }))

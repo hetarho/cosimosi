@@ -12,8 +12,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/cosimosi/backend/internal/admin"
 	"github.com/cosimosi/backend/internal/ai"
 	"github.com/cosimosi/backend/internal/job"
+	"github.com/cosimosi/backend/internal/llm"
 	"github.com/cosimosi/backend/internal/platform/config"
 	"github.com/cosimosi/backend/internal/platform/postgres"
 )
@@ -44,9 +46,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Standalone worker uses the env-only extractor path (nil llm client → llm.New
-	// from config). The admin-backed runtime resolver is wired in cmd/api only.
-	extractor, err := ai.NewExtractor(cfg, nil)
+	// Standalone worker follows the SAME admin-controlled extractor selection as
+	// cmd/api (spec 34): an active console selection → real LLM extraction, none
+	// → keyless mock. Without this the two binaries would extract differently
+	// for the same admin state.
+	adminCipher, err := admin.NewCipher(cfg.LLMKeyEncryptionKey)
+	if err != nil {
+		slog.Error("admin cipher init failed", "err", err)
+		os.Exit(1)
+	}
+	adminSvc := admin.NewService(admin.NewRepository(db), adminCipher, cfg)
+	extractor, err := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
 	if err != nil {
 		slog.Error("extractor init failed", "err", err)
 		os.Exit(1)

@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -29,26 +30,56 @@ func dormantCutoff(now time.Time) time.Time {
 }
 
 // Service holds the diary/star business policy. It depends only on ports
-// (Repository, LinkService) — no transport, no db. There is intentionally no
-// Update/Delete method for records (constitution §1: the original is immutable).
+// (Repository, LinkService, Extractor) — no transport, no db, no ai. There is
+// intentionally no Update/Delete method for records (constitution §1: the
+// original is immutable).
 type Service struct {
-	repo  Repository
-	links LinkService
+	repo      Repository
+	links     LinkService
+	extractor Extractor
 }
 
-// NewService wires the memory service over its persistence Repository and a
-// LinkService (synapse read + reinforce, satisfied by link.Service).
-func NewService(repo Repository, links LinkService) *Service {
-	return &Service{repo: repo, links: links}
+// NewService wires the memory service over its persistence Repository, a
+// LinkService (synapse read + reinforce, satisfied by link.Service) and the
+// segmentation Extractor (SegmentMemory preview; composition-root adapter over
+// ai.Extractor). A nil extractor degrades to one whole-body neutral segment —
+// same keyless behavior as ai.NoopExtractor, without importing ai.
+func NewService(repo Repository, links LinkService, extractor Extractor) *Service {
+	return &Service{repo: repo, links: links, extractor: extractor}
+}
+
+// SegmentMemory runs the LLM extraction SYNCHRONOUSLY and returns the proposed
+// fragments WITHOUT persisting anything — the preview the user reviews/edits
+// before RecordMemory commits the confirmed list. Body bounds mirror the write
+// path (the preview must never accept a diary the record would reject). An
+// extraction failure surfaces as an error (the user retries; nothing was
+// written); a degraded/keyless extractor yields one whole-body segment, never
+// zero.
+func (s *Service) SegmentMemory(ctx context.Context, body string) ([]SegmentInput, error) {
+	if strings.TrimSpace(body) == "" {
+		return nil, ErrEmptyBody
+	}
+	if utf8.RuneCountInString(body) > MaxBodyRunes {
+		return nil, ErrBodyTooLong
+	}
+	if s.extractor == nil {
+		return []SegmentInput{{Text: strings.TrimSpace(body), Mood: MoodNeutral}}, nil
+	}
+	segs, err := s.extractor.Extract(ctx, body)
+	if err != nil {
+		return nil, fmt.Errorf("segment extract: %w", err)
+	}
+	return segs, nil
 }
 
 // RecordMemory applies server policy — input validation first (records are
 // append-only, so this is the only defense: an empty/oversized body would
 // otherwise become a permanent record plus paid extraction/embedding jobs),
-// then the entry_date default — and delegates the record→extract-job
-// transaction to the repository (spec 21: the fragment stars are created
-// asynchronously, so memoryIDs is normally empty). Ids are server-generated in
-// the repository (§3/§8).
+// then the entry_date default — and delegates the transaction to the
+// repository. With user-confirmed Segments (review step) the fragments are
+// persisted in the same transaction and memoryIDs returns them; without, the
+// legacy async-extract path runs and memoryIDs is empty (spec 21). Ids are
+// server-generated in the repository (§3/§8).
 func (s *Service) RecordMemory(ctx context.Context, in RecordInput) (string, []string, error) {
 	if strings.TrimSpace(in.Body) == "" {
 		return "", nil, ErrEmptyBody
@@ -63,6 +94,28 @@ func (s *Service) RecordMemory(ctx context.Context, in RecordInput) (string, []s
 	}
 	if math.IsNaN(in.Valence) || in.Valence < -1 || in.Valence > 1 {
 		return "", nil, ErrValenceRange
+	}
+	// User-confirmed fragments (review step): same up-front defense as the body —
+	// each becomes a permanent memory row plus a paid embed job, so an empty/
+	// oversized/out-of-range fragment is rejected before the transaction.
+	if len(in.Segments) > MaxSegments {
+		return "", nil, ErrTooManySegments
+	}
+	for i := range in.Segments {
+		seg := &in.Segments[i]
+		seg.Text = strings.TrimSpace(seg.Text)
+		if seg.Text == "" {
+			return "", nil, ErrEmptySegment
+		}
+		if utf8.RuneCountInString(seg.Text) > MaxBodyRunes {
+			return "", nil, ErrSegmentTooLong
+		}
+		if math.IsNaN(seg.Intensity) || seg.Intensity < 0 || seg.Intensity > 1 {
+			return "", nil, ErrIntensityRange
+		}
+		if math.IsNaN(seg.Valence) || seg.Valence < -1 || seg.Valence > 1 {
+			return "", nil, ErrValenceRange
+		}
 	}
 	if in.EntryDate.IsZero() {
 		in.EntryDate = time.Now().UTC()
