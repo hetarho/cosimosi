@@ -841,7 +841,39 @@ export function UniverseCanvas() {
   // disposed first, then the renderer frees the backend device + all GPU textures
   // (acceptance 1.7).
   const glRef = useRef<WebGPURenderer | null>(null)
-  useEffect(() => () => glRef.current?.dispose(), [])
+  const resizeObsRef = useRef<ResizeObserver | null>(null)
+  useEffect(
+    () => () => {
+      resizeObsRef.current?.disconnect()
+      glRef.current?.dispose()
+    },
+    [],
+  )
+
+  // Mount the R3F <Canvas> one frame after this widget, never on the same tick. R3F
+  // only configures the renderer once it measures the container as non-zero; on a
+  // fresh authed load the canvas would otherwise mount mid-layout, get measured as
+  // 0×0, and never render (black). Deferring to the next animation frame guarantees
+  // the full-viewport container is laid out before R3F measures it.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  // Keep the renderer + camera synced to the container size: ResizeObserver re-applies
+  // it on layout changes and window resizes, so the WebGPU color attachment never
+  // diverges from the swapchain (a mismatch rejects every frame → black canvas).
+  const syncSize = useCallback((gl: WebGPURenderer, camera: THREE.Camera, el: Element) => {
+    const w = el.clientWidth
+    const h = el.clientHeight
+    if (w === 0 || h === 0) return
+    gl.setSize(w, h, true)
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.aspect = w / h
+      camera.updateProjectionMatrix()
+    }
+  }, [])
 
   // 렌더러 init 실패 표면화(17, 2.2): R3F는 async gl 팩토리의 reject를 fire-and-forget
   // 으로 삼킨다(.catch 없는 내부 run()) — 바운더리가 영영 못 받는다. 그래서 실패를
@@ -864,6 +896,8 @@ export function UniverseCanvas() {
   // 감정색 사용자 오버라이드(spec 30) — 별·시냅스 색에 기본 팔레트 대신 우선 적용(빈 맵=기본).
   const emotionColors = useAppearance((s) => s.emotionColors)
 
+  if (!mounted) return null
+
   return (
     <Canvas
       // gl = async WebGPU factory (WebGL2 auto-fallback) + init 실패 표면화 래퍼. 캐스트는
@@ -874,6 +908,10 @@ export function UniverseCanvas() {
       onCreated={(state) => {
         const gl = state.gl as unknown as WebGPURenderer
         glRef.current = gl
+        const container = gl.domElement.parentElement ?? gl.domElement
+        const ro = new ResizeObserver(() => syncSize(gl, state.camera, container))
+        ro.observe(container)
+        resizeObsRef.current = ro
         // universe_loaded의 renderer 속성(18, 3.3) — WebGPU/WebGL2 폴백 비율 측정.
         reportUniverseRenderer(rendererBackend(gl))
         if (import.meta.env.DEV) {
