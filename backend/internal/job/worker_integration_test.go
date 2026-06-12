@@ -70,7 +70,8 @@ func TestWorkerPipelineIntegration(t *testing.T) {
 		if _, err := q.InsertMemory(ctx, gen.InsertMemoryParams{ID: s.mem, UserID: s.user, RecordID: s.rec}); err != nil {
 			t.Fatalf("insert memory: %v", err)
 		}
-		if err := q.EnqueueJob(ctx, gen.EnqueueJobParams{ID: s.job, MemoryID: s.mem}); err != nil {
+		memID := s.mem
+		if err := q.EnqueueEmbedJob(ctx, gen.EnqueueEmbedJobParams{ID: s.job, MemoryID: &memID}); err != nil {
 			t.Fatalf("enqueue job: %v", err)
 		}
 	}
@@ -78,7 +79,7 @@ func TestWorkerPipelineIntegration(t *testing.T) {
 	// is still open) — t.Cleanup would instead run after Close and silently no-op.
 	defer cleanup(ctx, pool, userA, userB)
 
-	w := NewWorker(NewRepository(pool), NewGraphStore(pool), ai.NewMockEmbedder(config.EmbedDim), slog.Default())
+	w := NewWorker(NewRepository(pool), NewGraphStore(pool), ai.NewMockEmbedder(config.EmbedDim), ai.NoopExtractor{}, slog.Default())
 
 	// Drain the whole queue (our 3 jobs plus any pre-existing pending ones).
 	for i := 0; i < 1000; i++ {
@@ -96,8 +97,9 @@ func TestWorkerPipelineIntegration(t *testing.T) {
 	}
 
 	// 1.3/1.4/3.3: the two identical-body A stars are linked; the row is a_id<b_id,
-	// weight clamped to 1.0 (cos_sim 1.0 + same-day temporal 0.3), user_id=A. No
-	// cross-user leak: B (single, isolated) has 0 links.
+	// weight = semanticWeightCap (cos_sim 1.0 + same-day temporal 0.3 → clamp 1.0
+	// → capped below the intra-entry 0.8, spec 21), user_id=A. No cross-user leak:
+	// B (single, isolated) has 0 links.
 	links := listLinks(ctx, pool, userA)
 	if len(links) != 1 {
 		t.Fatalf("userA links = %d, want 1", len(links))
@@ -109,8 +111,8 @@ func TestWorkerPipelineIntegration(t *testing.T) {
 	if !(l.aID == minStr(memA1, memA2) && l.bID == maxStr(memA1, memA2)) {
 		t.Errorf("link endpoints = (%s,%s), want sorted(%s,%s)", l.aID, l.bID, memA1, memA2)
 	}
-	if l.weight < 0.999 {
-		t.Errorf("link weight = %f, want ~1.0", l.weight)
+	if l.weight < semanticWeightCap-0.001 || l.weight > semanticWeightCap+0.001 {
+		t.Errorf("link weight = %f, want semantic cap %f", l.weight, semanticWeightCap)
 	}
 	if got := len(listLinks(ctx, pool, userB)); got != 0 {
 		t.Errorf("userB links = %d, want 0 (isolated star — constitution §2/3.2)", got)
@@ -121,6 +123,75 @@ func TestWorkerPipelineIntegration(t *testing.T) {
 		if st := scanString(ctx, pool, "SELECT status FROM jobs WHERE id=$1", s.job); st != "done" {
 			t.Errorf("job %s status = %q, want done", s.job, st)
 		}
+	}
+}
+
+// TestExtractFanOutIntegration: an extract job fans one multi-scene diary out
+// into N fragment stars (spec 21) — N memories sharing the record_id, one embed
+// job each (drained to embeddings), all fragment pairs bound with intra_entry
+// w=0.8, the original record untouched, and a re-run of the extract path a
+// no-op (idempotent).
+func TestExtractFanOutIntegration(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	pool, err := postgres.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	q := gen.New(pool)
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 36)
+	user := "itest-F-" + suffix
+	rec, jobID := "rec-F-"+suffix, "job-F-"+suffix
+	today := pgtype.Date{Time: time.Now().UTC(), Valid: true}
+	// Three blank-line paragraphs → MockExtractor splits into 3 segments.
+	body := "아침 산책이 좋았다.\n\n낮 회의가 뒤집혔다.\n\n밤 통화로 풀렸다."
+
+	if err := q.InsertRecord(ctx, gen.InsertRecordParams{ID: rec, UserID: user, Body: body, EntryDate: today}); err != nil {
+		t.Fatalf("insert record: %v", err)
+	}
+	recID, userID := rec, user
+	if err := q.EnqueueExtractJob(ctx, gen.EnqueueExtractJobParams{ID: jobID, RecordID: &recID, UserID: &userID}); err != nil {
+		t.Fatalf("enqueue extract job: %v", err)
+	}
+	defer cleanup(ctx, pool, user)
+
+	w := NewWorker(NewRepository(pool), NewGraphStore(pool), ai.NewMockEmbedder(config.EmbedDim), ai.NewMockExtractor(), slog.Default())
+	for i := 0; i < 1000; i++ {
+		if !w.processOne(ctx) {
+			break
+		}
+	}
+
+	// 1.1: 3 fragment stars share the record.
+	frags, err := q.ListMemoryIDsByRecord(ctx, rec)
+	if err != nil || len(frags) != 3 {
+		t.Fatalf("fragments = %v (err %v), want 3", frags, err)
+	}
+	// 1.2: each fragment embedded separately.
+	if got := countRows(ctx, pool, "SELECT count(*) FROM embeddings WHERE user_id=$1", user); got != 3 {
+		t.Errorf("embeddings = %d, want 3", got)
+	}
+	// 1.3: all 3 pairs bound intra_entry at 0.8 (semantic links may also exist, capped below).
+	if got := countRows(ctx, pool,
+		"SELECT count(*) FROM memory_links WHERE user_id=$1 AND link_type='intra_entry' AND weight::numeric = 0.8", user); got != 3 {
+		t.Errorf("intra_entry links = %d, want 3", got)
+	}
+	// 1.5: exactly one record row, body unchanged (constitution §1).
+	if got := scanString(ctx, pool, "SELECT body FROM records WHERE id=$1", rec); got != body {
+		t.Errorf("record body changed: %q", got)
+	}
+	// Idempotency: a second fan-out for the same record returns the existing ids.
+	again, err := NewGraphStore(pool).FanOutFragments(ctx, rec, user, []Segment{{Index: 0, Text: "dup"}})
+	if err != nil || len(again) != 3 {
+		t.Fatalf("re-fan-out = %v (err %v), want existing 3 ids", again, err)
+	}
+	if got := countRows(ctx, pool, "SELECT count(*) FROM memories WHERE record_id=$1", rec); got != 3 {
+		t.Errorf("memories after re-fan-out = %d, want 3 (no duplicates)", got)
 	}
 }
 
@@ -224,10 +295,12 @@ func scanString(ctx context.Context, pool *pgxpool.Pool, sql, arg string) string
 
 func cleanup(ctx context.Context, pool *pgxpool.Pool, users ...string) {
 	for _, u := range users {
-		// Order respects FKs: links/embeddings/jobs → memories → records.
+		// Order respects FKs: links/embeddings/jobs → memories → records. Extract
+		// jobs have memory_id NULL (spec 21) — they are keyed by record_id instead.
 		_, _ = pool.Exec(ctx, "DELETE FROM memory_links WHERE user_id=$1", u)
 		_, _ = pool.Exec(ctx, "DELETE FROM embeddings WHERE user_id=$1", u)
 		_, _ = pool.Exec(ctx, "DELETE FROM jobs WHERE memory_id IN (SELECT id FROM memories WHERE user_id=$1)", u)
+		_, _ = pool.Exec(ctx, "DELETE FROM jobs WHERE record_id IN (SELECT id FROM records WHERE user_id=$1)", u)
 		_, _ = pool.Exec(ctx, "DELETE FROM memories WHERE user_id=$1", u)
 		_, _ = pool.Exec(ctx, "DELETE FROM records WHERE user_id=$1", u)
 	}

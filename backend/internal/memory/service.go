@@ -44,20 +44,25 @@ func NewService(repo Repository, links LinkService) *Service {
 
 // RecordMemory applies server policy — input validation first (records are
 // append-only, so this is the only defense: an empty/oversized body would
-// otherwise become a permanent record plus a paid embedding job), then the
-// entry_date default — and delegates the record→memory→job transaction to the
-// repository. Ids are server-generated in the repository (§3/§8).
-func (s *Service) RecordMemory(ctx context.Context, in RecordInput) (string, error) {
+// otherwise become a permanent record plus paid extraction/embedding jobs),
+// then the entry_date default — and delegates the record→extract-job
+// transaction to the repository (spec 21: the fragment stars are created
+// asynchronously, so memoryIDs is normally empty). Ids are server-generated in
+// the repository (§3/§8).
+func (s *Service) RecordMemory(ctx context.Context, in RecordInput) (string, []string, error) {
 	if strings.TrimSpace(in.Body) == "" {
-		return "", ErrEmptyBody
+		return "", nil, ErrEmptyBody
 	}
 	if utf8.RuneCountInString(in.Body) > MaxBodyRunes {
-		return "", ErrBodyTooLong
+		return "", nil, ErrBodyTooLong
 	}
 	// NaN compares false to both bounds — reject it explicitly (binary protobuf
 	// can carry NaN doubles even though JSON cannot).
 	if math.IsNaN(in.Intensity) || in.Intensity < 0 || in.Intensity > 1 {
-		return "", ErrIntensityRange
+		return "", nil, ErrIntensityRange
+	}
+	if math.IsNaN(in.Valence) || in.Valence < -1 || in.Valence > 1 {
+		return "", nil, ErrValenceRange
 	}
 	if in.EntryDate.IsZero() {
 		in.EntryDate = time.Now().UTC()

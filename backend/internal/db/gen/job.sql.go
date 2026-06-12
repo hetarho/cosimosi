@@ -25,7 +25,7 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, memory_id, attempts
+RETURNING id, memory_id, record_id, attempts
 `
 
 type ClaimJobParams struct {
@@ -34,9 +34,10 @@ type ClaimJobParams struct {
 }
 
 type ClaimJobRow struct {
-	ID       string `json:"id"`
-	MemoryID string `json:"memory_id"`
-	Attempts int32  `json:"attempts"`
+	ID       string  `json:"id"`
+	MemoryID *string `json:"memory_id"`
+	RecordID *string `json:"record_id"`
+	Attempts int32   `json:"attempts"`
 }
 
 // Atomically claim one job of the kind and mark it running. FOR UPDATE SKIP LOCKED
@@ -54,7 +55,12 @@ type ClaimJobRow struct {
 func (q *Queries) ClaimJob(ctx context.Context, arg ClaimJobParams) (ClaimJobRow, error) {
 	row := q.db.QueryRow(ctx, claimJob, arg.Kind, arg.LeaseSeconds)
 	var i ClaimJobRow
-	err := row.Scan(&i.ID, &i.MemoryID, &i.Attempts)
+	err := row.Scan(
+		&i.ID,
+		&i.MemoryID,
+		&i.RecordID,
+		&i.Attempts,
+	)
 	return i, err
 }
 
@@ -67,23 +73,43 @@ func (q *Queries) CompleteJob(ctx context.Context, id string) error {
 	return err
 }
 
-const enqueueJob = `-- name: EnqueueJob :exec
-
+const enqueueEmbedJob = `-- name: EnqueueEmbedJob :exec
 INSERT INTO jobs (id, memory_id, kind, status)
 VALUES ($1, $2, 'embed', 'pending')
 `
 
-type EnqueueJobParams struct {
-	ID       string `json:"id"`
-	MemoryID string `json:"memory_id"`
+type EnqueueEmbedJobParams struct {
+	ID       string  `json:"id"`
+	MemoryID *string `json:"memory_id"`
+}
+
+// Hands embedding/linking of ONE fragment star to the async worker. Enqueued by
+// the extract fan-out transaction (spec 21), one per fragment.
+func (q *Queries) EnqueueEmbedJob(ctx context.Context, arg EnqueueEmbedJobParams) error {
+	_, err := q.db.Exec(ctx, enqueueEmbedJob, arg.ID, arg.MemoryID)
+	return err
+}
+
+const enqueueExtractJob = `-- name: EnqueueExtractJob :exec
+
+INSERT INTO jobs (id, record_id, user_id, kind, status)
+VALUES ($1, $2, $3, 'extract', 'pending')
+`
+
+type EnqueueExtractJobParams struct {
+	ID       string  `json:"id"`
+	RecordID *string `json:"record_id"`
+	UserID   *string `json:"user_id"`
 }
 
 // Async job queue. The RecordMemory transaction enqueues; the embedding
 // worker claims/completes/fails. Jobs are never deleted — a give-up is
 // preserved as status='failed' (constitution §1/§2).
-// Hands embedding/linking to the async worker. RecordMemory only enqueues.
-func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) error {
-	_, err := q.db.Exec(ctx, enqueueJob, arg.ID, arg.MemoryID)
+// Hands segmentation (1 diary → N fragment stars, spec 21) to the async worker.
+// Keyed by record_id — there is no memory yet (the fragments don't exist until
+// the extract worker fans them out). RecordMemory only enqueues.
+func (q *Queries) EnqueueExtractJob(ctx context.Context, arg EnqueueExtractJobParams) error {
+	_, err := q.db.Exec(ctx, enqueueExtractJob, arg.ID, arg.RecordID, arg.UserID)
 	return err
 }
 

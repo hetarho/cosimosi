@@ -2,11 +2,14 @@ package job
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
@@ -51,7 +54,13 @@ func (r *pgRepository) Claim(ctx context.Context, kind Kind) (Job, error) {
 	if err != nil {
 		return Job{}, fmt.Errorf("claim job: %w", err)
 	}
-	return Job{ID: row.ID, MemoryID: row.MemoryID, Attempts: int(row.Attempts)}, nil
+	return Job{
+		ID:       row.ID,
+		Kind:     kind,
+		MemoryID: strFromDB(row.MemoryID),
+		RecordID: strFromDB(row.RecordID),
+		Attempts: int(row.Attempts),
+	}, nil
 }
 
 func (r *pgRepository) Complete(ctx context.Context, id string) error {
@@ -87,6 +96,120 @@ func (r *pgRepository) Stats(ctx context.Context) (QueueStats, error) {
 	}, nil
 }
 
+// --- fragment fan-out (GraphStore, spec 21) ---
+
+func (r *pgRepository) GetRecordForExtract(ctx context.Context, recordID string) (RecordForExtract, error) {
+	row, err := gen.New(r.pool).GetRecordForExtract(ctx, recordID)
+	if err != nil {
+		return RecordForExtract{}, fmt.Errorf("get record for extract %s: %w", recordID, err)
+	}
+	return RecordForExtract{
+		UserID:        row.UserID,
+		Body:          row.Body,
+		EntryDate:     row.EntryDate.Time,
+		HintMood:      strFromDB(row.Mood),
+		HintIntensity: f32FromDB(row.Intensity),
+		HintValence:   f32FromDB(row.Valence),
+	}, nil
+}
+
+func (r *pgRepository) FragmentIDs(ctx context.Context, recordID string) ([]string, error) {
+	ids, err := gen.New(r.pool).ListMemoryIDsByRecord(ctx, recordID)
+	if err != nil {
+		return nil, fmt.Errorf("list fragments for %s: %w", recordID, err)
+	}
+	return ids, nil
+}
+
+// FanOutFragments runs the whole fan-out in ONE transaction: N InsertMemory +
+// N EnqueueEmbedJob + the intra-entry links — a partial failure rolls back all
+// (acceptance 1.1–1.3). The already-fanned-out short-circuit makes a retried or
+// lease-reclaimed extract job a no-op. A CONCURRENT double-run (two workers on
+// the same record after a lease expiry) can pass the check on both sides; the
+// UNIQUE (record_id, fragment_index) index then rejects the loser, which is
+// converted back into the idempotent path (existing ids) instead of a retry storm.
+func (r *pgRepository) FanOutFragments(ctx context.Context, recordID, userID string, segs []Segment) ([]string, error) {
+	ids, err := r.fanOutTx(ctx, recordID, userID, segs)
+	if isUniqueViolation(err) {
+		existing, listErr := gen.New(r.pool).ListMemoryIDsByRecord(ctx, recordID)
+		if listErr == nil && len(existing) > 0 {
+			return existing, nil
+		}
+	}
+	return ids, err
+}
+
+func (r *pgRepository) fanOutTx(ctx context.Context, recordID, userID string, segs []Segment) ([]string, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin fan-out tx: %w", err)
+	}
+	defer tx.Rollback(ctx) // no-op once committed
+
+	q := gen.New(tx)
+
+	existing, err := q.ListMemoryIDsByRecord(ctx, recordID)
+	if err != nil {
+		return nil, fmt.Errorf("check existing fragments: %w", err)
+	}
+	if len(existing) > 0 {
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("commit (already fanned out): %w", err)
+		}
+		return existing, nil
+	}
+
+	ids := make([]string, 0, len(segs))
+	for _, s := range segs {
+		memoryID, err := newID()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := q.InsertMemory(ctx, gen.InsertMemoryParams{
+			ID:            memoryID,
+			UserID:        userID,
+			RecordID:      recordID,
+			Mood:          strToDB(s.Mood),
+			Intensity:     f32ToDB(s.Intensity),
+			FragmentIndex: int32(s.Index),
+			FragmentText:  strToDB(s.Text),
+			Valence:       f32ToDB(s.Valence),
+		}); err != nil {
+			return nil, fmt.Errorf("insert fragment %d: %w", s.Index, err)
+		}
+		jobID, err := newID()
+		if err != nil {
+			return nil, err
+		}
+		if err := q.EnqueueEmbedJob(ctx, gen.EnqueueEmbedJobParams{ID: jobID, MemoryID: &memoryID}); err != nil {
+			return nil, fmt.Errorf("enqueue embed job for fragment %d: %w", s.Index, err)
+		}
+		ids = append(ids, memoryID)
+	}
+
+	// Within-event binding: every fragment pair, w=0.8 (a<b normalized in SQL).
+	if len(ids) >= 2 {
+		var aIDs, bIDs, userIDs []string
+		for i := 0; i < len(ids); i++ {
+			for k := i + 1; k < len(ids); k++ {
+				aIDs = append(aIDs, ids[i])
+				bIDs = append(bIDs, ids[k])
+				userIDs = append(userIDs, userID)
+			}
+		}
+		if err := q.BatchUpsertIntraEntryLinks(ctx, gen.BatchUpsertIntraEntryLinksParams{
+			AIds: aIDs, BIds: bIDs, UserIds: userIDs,
+		}); err != nil {
+			return nil, fmt.Errorf("upsert intra-entry links: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit fan-out: %w", err)
+	}
+	return ids, nil
+}
+
 // --- embedding/synapse (GraphStore) ---
 
 func (r *pgRepository) GetMemoryForEmbed(ctx context.Context, memoryID string) (MemoryForEmbed, error) {
@@ -96,7 +219,7 @@ func (r *pgRepository) GetMemoryForEmbed(ctx context.Context, memoryID string) (
 	}
 	return MemoryForEmbed{
 		UserID:    row.UserID,
-		Body:      row.Body,
+		Text:      row.Text,
 		EntryDate: row.EntryDate.Time,
 	}, nil
 }
@@ -159,4 +282,50 @@ func (r *pgRepository) BatchUpsertLinks(ctx context.Context, links []LinkUpsert)
 		return fmt.Errorf("batch upsert links: %w", err)
 	}
 	return nil
+}
+
+// isUniqueViolation reports a Postgres 23505 (unique_violation) — the fan-out
+// fence on UNIQUE (record_id, fragment_index).
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+// newID is the server-authoritative id source (same recipe as the memory
+// repository): 16 bytes of crypto entropy, base64url without padding.
+func newID() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", fmt.Errorf("generate id: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b[:]), nil
+}
+
+// --- domain ↔ db (nullable) mappers ---
+
+func strFromDB(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// strToDB stores "" as NULL ("" = unset mood / no fragment text → r.body fallback).
+func strToDB(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func f32FromDB(f *float32) float64 {
+	if f == nil {
+		return 0
+	}
+	return float64(*f)
+}
+
+func f32ToDB(v float64) *float32 {
+	f := float32(v)
+	return &f
 }

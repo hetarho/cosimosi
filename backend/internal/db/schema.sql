@@ -7,7 +7,8 @@
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 불변 원본(원칙 1): UPDATE/DELETE 쿼리 절대 생성 금지
+-- 불변 원본(원칙 1): UPDATE/DELETE 쿼리 절대 생성 금지.
+-- mood/intensity/valence는 선택적 전체-일기 사용자 힌트(prior, spec 21).
 CREATE TABLE records (
     id              TEXT PRIMARY KEY,
     user_id         TEXT NOT NULL,
@@ -16,21 +17,29 @@ CREATE TABLE records (
     mood            TEXT,
     intensity       REAL,
     idempotency_key TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    valence         REAL                              -- 00004(spec 21)
 );
 CREATE UNIQUE INDEX records_idem_idx ON records (user_id, idempotency_key)
     WHERE idempotency_key IS NOT NULL;
 
--- 별(가변): 원본과 분리, record_id로 참조
+-- 별(가변): 원본과 분리, record_id로 참조(non-unique — 1 record → N 조각 별, spec 21).
+-- 조각별 감정(mood/intensity/valence)·조각 데이터(fragment_*)는 이 가변 레이어에 산다.
 CREATE TABLE memories (
     id               TEXT PRIMARY KEY,
     user_id          TEXT NOT NULL,
     record_id        TEXT NOT NULL REFERENCES records(id),
     visual_spec      JSONB,
     last_recalled_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    mood             TEXT,                             -- 00004(spec 21) 조각 감정
+    intensity        REAL,                             -- 00004 조각 강도 0~1
+    fragment_index   INT NOT NULL DEFAULT 0,           -- 00004 일기 내 조각 순서
+    fragment_text    TEXT,                             -- 00004 임베딩용 조각 텍스트(NULL → r.body)
+    valence          REAL DEFAULT 0                    -- 00004 부호 정동 -1..1
 );
 CREATE INDEX memories_user_idx ON memories (user_id);
+CREATE UNIQUE INDEX memories_record_fragment_idx ON memories (record_id, fragment_index);
 
 -- 임베딩: vector(1536) 비수식 선언(sqlc #3548 회피)
 CREATE TABLE embeddings (
@@ -58,17 +67,21 @@ CREATE TABLE memory_links (
 CREATE INDEX memory_links_b_idx ON memory_links (b_id);
 CREATE INDEX memory_links_user_idx ON memory_links (user_id);
 
--- 비동기 큐(§4.6): FOR UPDATE SKIP LOCKED claim용
+-- 비동기 큐(§4.6): FOR UPDATE SKIP LOCKED claim용.
+-- 키잉(00004, spec 21): embed job = memory_id, extract job = record_id(memory_id NULL),
+-- consolidate job(27) = user_id.
 CREATE TABLE jobs (
     id          TEXT PRIMARY KEY,
-    memory_id   TEXT NOT NULL REFERENCES memories(id),
+    memory_id   TEXT REFERENCES memories(id),
     kind        TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'pending',
     attempts    INT NOT NULL DEFAULT 0,
     error       TEXT NOT NULL DEFAULT '',
     next_run_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    record_id   TEXT REFERENCES records(id),          -- 00004(spec 21) extract job 키
+    user_id     TEXT                                  -- 00004 consolidate job 키(27)
 );
 CREATE INDEX jobs_claim_idx ON jobs (status, next_run_at);
 

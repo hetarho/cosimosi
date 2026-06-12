@@ -6,7 +6,7 @@
 
 시냅스는 두 기억(별) 사이의 **가중치(`weight ∈ [0,1]`)를 가진 무방향 연결**이다(`memory_links` 1행). 새 별의 임베딩으로 의미 KNN을 돌려 태어나고(`link_type='semantic'`), 함께 회상될 때 헵 규칙으로 강해지며(`link_type='co_recall'`), 시간으로 어두워지되 행은 결코 삭제되지 않는다(헌법2 — 밝기만 낮춘다). `weight`(서버 권위 그래프)와 별의 시간 감쇠가 합쳐져 화면의 밝기·alpha·펄스가 된다.
 
-시냅스 자신은 좌표를 갖지 않는다 — 잇는 두 별의 클라 좌표를 조회해 그린다(헌법3, 좌표 배치 규칙은 navigation 정책 소관). 조각 일내 결속(intra_entry)·교차 캡·경쟁적 할당 편향·약한 선 가지치기·변조 감쇠·`co_activation_count`의 DTO 노출은 plan 21·22·26·27에서 다룬다(아직 정책 아님).
+시냅스 자신은 좌표를 갖지 않는다 — 잇는 두 별의 클라 좌표를 조회해 그린다(헌법3, 좌표 배치 규칙은 navigation 정책 소관). 같은 일기에서 태어난 조각 별끼리는 **일내 결속(`intra_entry`, w=0.8 고정)** 으로 묶이고, 교차(semantic) 링크는 그 아래로 캡된다(21 — 아래 표). 경쟁적 할당 편향·약한 선 가지치기·변조 감쇠·`co_activation_count`의 DTO 노출은 plan 22·26·27에서 다룬다(아직 정책 아님).
 
 ## 규칙 · 파라미터
 
@@ -14,12 +14,21 @@
 
 | 규칙 | 정전 값 |
 |---|---|
-| 의미 KNN 임계 τ | `cos_sim ≥ 0.75`, 미만은 미연결 |
+| 의미 KNN 임계 τ | `cos_sim ≥ 0.75`, 미만은 미연결 — **조각 임베딩** 기준(조각마다 따로 임베딩, 21) |
 | top-k | 의미 후보 최대 `k = 8`, `embedding <=> query` 오름차순 |
-| 초기 가중치 w0 | `clamp(α·cos_sim + temporal_bonus, 0, 1)`, `α = 1.0` |
+| 초기 가중치 w0 | `min(clamp(α·cos_sim + temporal_bonus, 0, 1), 0.79)`, `α = 1.0` — **semantic 캡 0.79**(21: 교차 링크는 일내 결속 0.8보다 항상 약하다) |
 | temporal_bonus | 같은 날 `+0.3` → 7일에 `0` 선형 감소(`본인 record entry_date` vs 후보 `entry_date`) |
 | link_type | 리터럴 `'semantic'` |
-| 업서트 | UNNEST 배치, `ON CONFLICT (a_id,b_id) DO UPDATE SET weight = GREATEST(기존, 신규)` |
+| 업서트 | UNNEST 배치, `ON CONFLICT (a_id,b_id) DO UPDATE SET weight = GREATEST(기존, 신규)` — 형제 조각이 KNN에 잡혀도 GREATEST가 일내 0.8을 유지 |
+
+### 일내 결속 (intra_entry — within-event binding, 21)
+
+| 규칙 | 정전 값 |
+|---|---|
+| 생성 | extract fan-out 트랜잭션이 같은 `record_id` 조각의 **모든 쌍**을 결속(조각 N≤5 → 쌍 ≤10) |
+| 가중치 | `0.8` 고정 — 교차 semantic 캡(0.79) 위 = 같은-사건 결속이 항상 최강 |
+| link_type | 리터럴 `'intra_entry'` |
+| 정규화·업서트 | `LEAST/GREATEST`(DB 콜레이션) a<b 정규화, `ON CONFLICT … GREATEST`(재실행이 약화시키지 않음) |
 
 ### 헵 공동 회상 강화 (co_recall)
 
@@ -36,8 +45,8 @@
 
 | 규칙 | 정전 값 |
 |---|---|
-| 정의된 값 | `'semantic'` \| `'temporal'` \| `'entity'` \| `'co_recall'` |
-| 실제 생성 경로 | 의미 생성 = `'semantic'`, 공동 회상 = `'co_recall'`(`'temporal'`·`'entity'`는 타입에만 정의, 생성하는 경로 없음) |
+| 정의된 값 | `'semantic'` \| `'temporal'` \| `'entity'` \| `'co_recall'` \| `'intra_entry'`(21) |
+| 실제 생성 경로 | 의미 생성 = `'semantic'`, 공동 회상 = `'co_recall'`, 일내 결속 = `'intra_entry'`(`'temporal'`·`'entity'`는 타입에만 정의, 생성하는 경로 없음) |
 
 ### 시각 (visual)
 
@@ -63,6 +72,7 @@
 ## 구현 근거
 
 - 의미 생성(τ/k/w0/temporal_bonus·UNNEST 배치): plan 05 · `backend/internal/job/worker.go`(`buildLinks`·`initialWeight`·`temporalBonus`), `backend/internal/db/queries/embedding.sql`(`KnnNearest`), `backend/internal/db/queries/link.sql`(`BatchUpsertLinks`).
+- 일내 결속·semantic 캡(0.8/`semanticWeightCap` 0.79): plan 21 · `backend/internal/db/queries/link.sql`(`BatchUpsertIntraEntryLinks`), `backend/internal/job/{worker.go,repository_pg.go}`(`FanOutFragments`).
 - 헵 강화·멱등(+0.05 cap 1.0·co_activation_count·batch_id): plan 11 · `backend/internal/db/queries/link.sql`(`ReinforceLinks`·`ClaimBatch`), `frontend/src/features/recall/model/co-recall.ts`.
 - link_type 4종 정의: plan 09 · `frontend/src/entities/synapse/model/types.ts`.
 - 시각(weight·max(A_MIN,brightness)→emissive/alpha/펄스): plan 09 · `frontend/src/entities/synapse/model/mapping.ts`(`visualIntensity`·`A_MIN`·`ALPHA_MIN`), 별 감쇠 입력 plan 12.

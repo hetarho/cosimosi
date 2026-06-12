@@ -12,6 +12,8 @@ export interface Memory {
   mood: Mood
   /** 0..1 emotional intensity → size/presence. */
   intensity: number
+  /** -1..1 signed affect of the fragment (spec 21; 26 consumes in λ_eff). */
+  valence: number
   /** epoch ms; input to activation/brightness. */
   lastRecalledAt: number
   /** deterministic hash of the memory id (seedFromId) → per-instance shape variation. */

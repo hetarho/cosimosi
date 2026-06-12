@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Mood } from '@/shared/api'
-import { demoAddStar, demoOffsetDays, demoToday } from '@/shared/lib/demo'
+import { demoAddMultiSceneStar, demoAddStar, demoOffsetDays, demoToday } from '@/shared/lib/demo'
 import { universeInvalidateKey } from '@/entities/memory'
 import { THEORIES, TheoryDemo } from '@/entities/theory'
 import { resetDemoExperience, runTimeSkip } from '../model/time-travel'
@@ -59,6 +59,12 @@ function ControlsPanel({ onClose }: { onClose: () => void }) {
   // refetch가 별을 실어 오면 탄생 애니메이션(StarField)이 등장을 보여준다.
   const spawnStar = () => {
     demoAddStar(mood, date)
+    void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+  }
+  // "다감정 하루 띄우기"(spec 21): 여러 감정이 담긴 일기 한 편 → 색이 다른 N개 조각
+  // 별이 강한 일내(intra_entry) 선으로 묶여 태어난다(기억 분할 체험).
+  const spawnMultiScene = () => {
+    demoAddMultiSceneStar(date)
     void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
   }
 
@@ -135,8 +141,12 @@ function ControlsPanel({ onClose }: { onClose: () => void }) {
         <button type="button" onClick={spawnStar} className={chipBtn}>
           이 감정으로 별 띄우기
         </button>
+        <button type="button" onClick={spawnMultiScene} className={chipBtn}>
+          ✨ 다감정 하루 띄우기 — 일기 1편 → 별 여럿
+        </button>
         <p className="text-[11px] leading-relaxed text-white/40">
-          내용은 미리 써 둔 일기에서 골라요 — 같은 날·비슷한 감정의 기억과 이어져요.
+          내용은 미리 써 둔 일기에서 골라요 — 같은 날·비슷한 감정의 기억과 이어지고,
+          여러 감정이 담긴 하루는 장면마다 조각 별로 갈라져요.
         </p>
       </div>
 

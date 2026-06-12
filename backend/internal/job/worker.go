@@ -12,13 +12,17 @@ import (
 	"github.com/cosimosi/backend/internal/ai"
 )
 
-// Connection-rule constants (Architecture §6, spec 05). τ is also enforced in the
-// KnnNearest SQL; it is repeated here only for documentation.
+// Connection-rule constants (Architecture §6, specs 05/21). τ is also enforced
+// in the KnnNearest SQL; it is repeated here only for documentation.
 const (
 	knnK               = 8   // top-k nearest neighbors to consider
 	weightAlpha        = 1.0 // α in w0 = clamp(α·cos_sim + temporal_bonus, 0, 1)
 	temporalBonusMax   = 0.3 // +0.3 when the two entries share a day…
 	temporalWindowDays = 7.0 // …decaying linearly to 0 at 7 days apart
+	// semanticWeightCap keeps every cross-entry semantic link strictly below the
+	// intra-entry binding weight 0.8 (spec 21, acceptance 1.3): same-event
+	// fragments must always read as the strongest bond.
+	semanticWeightCap = 0.79
 )
 
 // Worker-loop defaults.
@@ -32,14 +36,16 @@ const (
 	defaultSummaryInterval = 5 * time.Minute
 )
 
-// Worker is the embedding pipeline loop: claim → embed → store → KNN → link →
-// complete, with exponential backoff on failure. It depends only on ports
-// (queue, graph store, embedder) — no transport, no db.
+// Worker is the async pipeline loop: extract (segment → fragment fan-out) and
+// embed (embed → store → KNN → link) jobs, with exponential backoff on failure.
+// It depends only on ports (queue, graph store, embedder, extractor) — no
+// transport, no db.
 type Worker struct {
-	jobs     Repository
-	store    GraphStore
-	embedder ai.Embedder
-	logger   *slog.Logger
+	jobs      Repository
+	store     GraphStore
+	embedder  ai.Embedder
+	extractor ai.Extractor
+	logger    *slog.Logger
 
 	pollInterval    time.Duration
 	maxAttempts     int
@@ -49,15 +55,21 @@ type Worker struct {
 	k               int
 }
 
-// NewWorker wires the worker over its ports. A nil logger falls back to the default.
-func NewWorker(jobs Repository, store GraphStore, embedder ai.Embedder, logger *slog.Logger) *Worker {
+// NewWorker wires the worker over its ports. A nil logger falls back to the
+// default; a nil extractor falls back to NoopExtractor (whole diary = one
+// neutral segment), keeping keyless environments functional.
+func NewWorker(jobs Repository, store GraphStore, embedder ai.Embedder, extractor ai.Extractor, logger *slog.Logger) *Worker {
 	if logger == nil {
 		logger = slog.Default()
+	}
+	if extractor == nil {
+		extractor = ai.NoopExtractor{}
 	}
 	return &Worker{
 		jobs:            jobs,
 		store:           store,
 		embedder:        embedder,
+		extractor:       extractor,
 		logger:          logger,
 		pollInterval:    defaultPollInterval,
 		maxAttempts:     defaultMaxAttempts,
@@ -117,18 +129,17 @@ func (w *Worker) logQueueSummary(ctx context.Context) {
 }
 
 // processOne claims and handles a single job. It returns true if a job was
-// claimed (success or failure), false when the queue is empty.
-//
-// KindExtract stub (spec 20 → 21): the kind exists but is intentionally NOT
-// claimed here — nothing enqueues extract jobs yet, so the embed loop stays
-// unchanged and the stub never runs (no-op-safe). Spec 21 wires the fan-out:
-//
-//	case KindExtract:
-//	  ext, err := w.extractor.Extract(ctx, m.Body) // 21: inject ai.Extractor into Worker
-//	  // 21: ext.Segments → InsertMemory fan-out + one embed job per fragment
-//	  return w.jobs.Complete(ctx, j.ID)            // 20: safe completion, no star creation
+// claimed (success or failure), false when the queue is empty. Extract jobs are
+// claimed first (spec 21): a diary's fragments must exist before their embed
+// jobs do, so draining extraction first keeps the universe's stars arriving in
+// write order under backlog. (Under an extract-heavy backlog embed work queues
+// up behind it — acceptable for the single in-process worker; per-kind workers
+// are spec 27's scaling concern.)
 func (w *Worker) processOne(ctx context.Context) bool {
-	j, err := w.jobs.Claim(ctx, KindEmbed)
+	j, err := w.jobs.Claim(ctx, KindExtract)
+	if errors.Is(err, ErrNoJob) {
+		j, err = w.jobs.Claim(ctx, KindEmbed)
+	}
 	switch {
 	case errors.Is(err, ErrNoJob):
 		return false
@@ -159,25 +170,70 @@ func (w *Worker) safeHandle(ctx context.Context, j Job) (err error) {
 	defer func() {
 		if p := recover(); p != nil {
 			w.logger.Error("job panic recovered",
-				"job", j.ID, "memory", j.MemoryID, "panic", p,
+				"job", j.ID, "kind", string(j.Kind), "memory", j.MemoryID, "record", j.RecordID, "panic", p,
 				"stack", string(debug.Stack()),
 			)
 			err = fmt.Errorf("job panic recovered: %v", p)
 		}
 	}()
+	if j.Kind == KindExtract {
+		return w.handleExtract(ctx, j)
+	}
 	return w.handle(ctx, j)
 }
 
-// handle runs the pipeline for one claimed job. Every step is idempotent
+// handleExtract runs the fragmentation pipeline for one claimed extract job
+// (spec 21): load the immutable diary → segment via the Extractor port → fan
+// the segments out as fragment stars (one tx: N memories + N embed jobs +
+// intra-entry links). FanOutFragments is idempotent (already-fanned-out records
+// short-circuit), so a retry after a mid-pipeline failure is safe; the original
+// record is never mutated (constitution §1).
+func (w *Worker) handleExtract(ctx context.Context, j Job) error {
+	// A job reclaimed after a crash-before-Complete already has its fragments —
+	// check FIRST so the (paid) LLM extraction isn't re-run just to no-op.
+	if existing, err := w.store.FragmentIDs(ctx, j.RecordID); err == nil && len(existing) > 0 {
+		if err := w.jobs.Complete(ctx, j.ID); err != nil {
+			return fmt.Errorf("complete (already fanned out): %w", err)
+		}
+		w.logger.Info("extract already fanned out", "job", j.ID, "record", j.RecordID, "fragments", len(existing))
+		return nil
+	}
+
+	rec, err := w.store.GetRecordForExtract(ctx, j.RecordID)
+	if err != nil {
+		return fmt.Errorf("load record: %w", err)
+	}
+
+	ext, err := w.extractor.Extract(ctx, rec.Body)
+	if err != nil {
+		return fmt.Errorf("extract: %w", err)
+	}
+
+	segs := applyManualHint(toSegments(ext.Segments), rec)
+	ids, err := w.store.FanOutFragments(ctx, j.RecordID, rec.UserID, segs)
+	if err != nil {
+		return fmt.Errorf("fan out fragments: %w", err)
+	}
+
+	if err := w.jobs.Complete(ctx, j.ID); err != nil {
+		return fmt.Errorf("complete: %w", err)
+	}
+	w.logger.Info("extract done", "job", j.ID, "record", j.RecordID, "fragments", len(ids))
+	return nil
+}
+
+// handle runs the embed pipeline for one claimed job. Every step is idempotent
 // (embedding upsert, GREATEST link upsert) so a retry after a mid-pipeline
 // failure is safe. The original record/memory is never mutated (constitution §1).
+// Since spec 21 the input is the FRAGMENT's own text (whole-diary fallback) —
+// each fragment star embeds separately.
 func (w *Worker) handle(ctx context.Context, j Job) error {
 	m, err := w.store.GetMemoryForEmbed(ctx, j.MemoryID)
 	if err != nil {
 		return fmt.Errorf("load memory: %w", err)
 	}
 
-	vec, err := w.embedder.Embed(ctx, m.Body)
+	vec, err := w.embedder.Embed(ctx, m.Text)
 	if err != nil {
 		return fmt.Errorf("embed: %w", err)
 	}
@@ -228,18 +284,62 @@ func (w *Worker) failWithBackoff(ctx context.Context, j Job, cause error) {
 
 // --- pure helpers (unit-tested) ---
 
+// toSegments maps the extractor's segments onto the GraphStore port's own
+// Segment shape (the port stays decoupled from the ai adapter layer, §5).
+func toSegments(in []ai.Segment) []Segment {
+	out := make([]Segment, 0, len(in))
+	for _, s := range in {
+		out = append(out, Segment{
+			Index:     s.Index,
+			Text:      s.Text,
+			Mood:      string(s.Mood),
+			Intensity: s.Intensity,
+			Valence:   s.Valence,
+		})
+	}
+	return out
+}
+
+// applyManualHint applies the user's optional whole-diary emotion hints as the
+// FALLBACK (spec 21, acceptance 1.6): only when extraction degraded to the
+// single-neutral-segment shape (NoopExtractor / LLM parse fallback — one
+// segment, neutral mood, zero valence). A genuinely multi-fragment or
+// affect-carrying extraction is never overridden by the hint.
+func applyManualHint(segs []Segment, rec RecordForExtract) []Segment {
+	if len(segs) != 1 || segs[0].Valence != 0 {
+		return segs
+	}
+	s := &segs[0]
+	if s.Mood != "" && s.Mood != string(ai.MoodNeutral) {
+		return segs
+	}
+	if rec.HintMood != "" {
+		s.Mood = rec.HintMood
+	}
+	if s.Intensity == 0 && rec.HintIntensity > 0 {
+		s.Intensity = rec.HintIntensity
+	}
+	if rec.HintValence != 0 {
+		s.Valence = rec.HintValence
+	}
+	return segs
+}
+
 // buildLinks turns KNN candidates into semantic links. The threshold (cos_sim ≥
 // τ) is already applied by the SQL, so every candidate becomes a link. The pair
 // is emitted (self, neighbor); BatchUpsertLinks does the authoritative a<b
 // normalization with LEAST/GREATEST under the DB collation (the byte-order swap
 // here would disagree with en_US.utf8 and violate the a_id<b_id CHECK).
+// Weights are capped below the intra-entry binding (spec 21) so a cross-entry
+// semantic link can never outweigh same-event fragments; sibling fragments that
+// surface as KNN neighbors keep their 0.8 via the GREATEST upsert.
 func buildLinks(selfID, userID string, selfDate time.Time, neighbors []Neighbor) []LinkUpsert {
 	out := make([]LinkUpsert, 0, len(neighbors))
 	for _, n := range neighbors {
 		if n.MemoryID == selfID {
 			continue // defensive: KnnNearest already excludes self
 		}
-		w := initialWeight(n.CosSim, temporalBonus(selfDate, n.EntryDate))
+		w := math.Min(initialWeight(n.CosSim, temporalBonus(selfDate, n.EntryDate)), semanticWeightCap)
 		out = append(out, LinkUpsert{AID: selfID, BID: n.MemoryID, Weight: w, UserID: userID})
 	}
 	return out

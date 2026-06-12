@@ -37,6 +37,7 @@ export function mapStar(star: Star, index: number): StarNode {
     id,
     mood: moodFromProto(star.mood),
     intensity: star.intensity,
+    valence: star.valence,
     // 폴백 now도 가상 시계(spec 19)로 — 파싱 불가 타임스탬프가 데모 시간과 어긋나지 않게.
     lastRecalledAt: parseEpochMs(star.lastRecalledAt, virtualNowMs()),
     seed: seedFromId(id),

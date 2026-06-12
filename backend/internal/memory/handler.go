@@ -29,8 +29,10 @@ func NewHandler(svc *Service) *Handler {
 
 var _ cosimosiv1connect.MemoryServiceHandler = (*Handler)(nil)
 
-// RecordMemory persists a diary entry and returns the new star id. Requires an
-// authenticated caller; an unset/invalid entry_date maps to InvalidArgument.
+// RecordMemory persists a diary entry and returns the immutable record id; the
+// fragment star ids arrive asynchronously via GetUniverse (spec 21, constitution
+// §6), so memory_ids is normally empty. Requires an authenticated caller; an
+// unset/invalid entry_date maps to InvalidArgument.
 func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecordMemoryRequest]) (*connect.Response[cosimosiv1.RecordMemoryResponse], error) {
 	userID, ok := rpcserver.UserIDFromContext(ctx)
 	if !ok {
@@ -43,25 +45,27 @@ func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimos
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	memoryID, err := h.svc.RecordMemory(ctx, RecordInput{
+	recordID, memoryIDs, err := h.svc.RecordMemory(ctx, RecordInput{
 		UserID:         userID,
 		Body:           msg.GetBody(),
 		EntryDate:      entryDate,
 		Mood:           moodFromProto(msg.GetMood()),
 		Intensity:      msg.GetIntensity(),
+		Valence:        msg.GetValence(),
 		IdempotencyKey: msg.GetIdempotencyKey(),
 	})
 	switch {
 	// Validation sentinels → InvalidArgument (17): the client shows the message
 	// to the user (use-record-memory maps it to Korean copy), so it must not be
 	// blanket-coded Internal.
-	case errors.Is(err, ErrEmptyBody), errors.Is(err, ErrBodyTooLong), errors.Is(err, ErrIntensityRange):
+	case errors.Is(err, ErrEmptyBody), errors.Is(err, ErrBodyTooLong),
+		errors.Is(err, ErrIntensityRange), errors.Is(err, ErrValenceRange):
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	case err != nil:
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return connect.NewResponse(&cosimosiv1.RecordMemoryResponse{MemoryId: memoryID}), nil
+	return connect.NewResponse(&cosimosiv1.RecordMemoryResponse{RecordId: recordID, MemoryIds: memoryIDs}), nil
 }
 
 // GetUniverse returns the caller's full star + synapse graph (dormant included),
@@ -84,6 +88,7 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 			MemoryId:       m.ID,
 			Mood:           moodToProto(m.Mood),
 			Intensity:      m.Intensity,
+			Valence:        m.Valence,
 			LastRecalledAt: formatTime(m.LastRecalledAt),
 		})
 	}
@@ -166,6 +171,7 @@ func (h *Handler) ListDormant(ctx context.Context, req *connect.Request[cosimosi
 			MemoryId:       m.ID,
 			Mood:           moodToProto(m.Mood),
 			Intensity:      m.Intensity,
+			Valence:        m.Valence,
 			LastRecalledAt: formatTime(m.LastRecalledAt),
 		})
 	}

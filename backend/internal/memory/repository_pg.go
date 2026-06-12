@@ -26,13 +26,15 @@ func NewRepository(pool *pgxpool.Pool) Repository {
 	return &pgRepository{pool: pool}
 }
 
-// RecordMemory runs record → memory → job in one transaction so a failure leaves
-// no partial rows. With an idempotency key, an existing (user_id, key)
-// short-circuits to the stored memory id without writing.
-func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string, error) {
+// RecordMemory runs record → extract job in one transaction so a failure leaves
+// no partial rows (spec 21: the fragment stars are born asynchronously in the
+// extract worker — no memory row is written here). With an idempotency key, an
+// existing (user_id, key) short-circuits to the stored record id plus whatever
+// fragment ids its fan-out has produced so far, without writing.
+func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string, []string, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return "", fmt.Errorf("begin tx: %w", err)
+		return "", nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx) // no-op once committed
 
@@ -40,26 +42,30 @@ func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string
 
 	if in.IdempotencyKey != "" {
 		key := in.IdempotencyKey
-		existing, err := q.FindMemoryByIdempotencyKey(ctx, gen.FindMemoryByIdempotencyKeyParams{
+		existing, err := q.FindRecordByIdempotencyKey(ctx, gen.FindRecordByIdempotencyKeyParams{
 			UserID:         in.UserID,
 			IdempotencyKey: &key,
 		})
 		switch {
 		case err == nil:
-			if err := tx.Commit(ctx); err != nil {
-				return "", fmt.Errorf("commit (idempotent hit): %w", err)
+			memoryIDs, err := q.ListMemoryIDsByRecord(ctx, existing)
+			if err != nil {
+				return "", nil, fmt.Errorf("list fragments (idempotent hit): %w", err)
 			}
-			return existing, nil
+			if err := tx.Commit(ctx); err != nil {
+				return "", nil, fmt.Errorf("commit (idempotent hit): %w", err)
+			}
+			return existing, memoryIDs, nil
 		case errors.Is(err, pgx.ErrNoRows):
 			// Not seen before — fall through to insert.
 		default:
-			return "", fmt.Errorf("idempotency check: %w", err)
+			return "", nil, fmt.Errorf("idempotency check: %w", err)
 		}
 	}
 
 	recordID, err := newID()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if err := q.InsertRecord(ctx, gen.InsertRecordParams{
 		ID:             recordID,
@@ -68,39 +74,32 @@ func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string
 		EntryDate:      pgtype.Date{Time: in.EntryDate, Valid: true},
 		Mood:           moodToDB(in.Mood),
 		Intensity:      intensityToDB(in.Intensity),
+		Valence:        valenceToDB(in.Valence),
 		IdempotencyKey: keyToDB(in.IdempotencyKey),
 	}); err != nil {
-		return "", fmt.Errorf("insert record: %w", err)
-	}
-
-	memoryID, err := newID()
-	if err != nil {
-		return "", err
-	}
-	if _, err := q.InsertMemory(ctx, gen.InsertMemoryParams{
-		ID:       memoryID,
-		UserID:   in.UserID,
-		RecordID: recordID,
-	}); err != nil {
-		return "", fmt.Errorf("insert memory: %w", err)
+		return "", nil, fmt.Errorf("insert record: %w", err)
 	}
 
 	jobID, err := newID()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	if err := q.EnqueueJob(ctx, gen.EnqueueJobParams{ID: jobID, MemoryID: memoryID}); err != nil {
-		return "", fmt.Errorf("enqueue job: %w", err)
+	if err := q.EnqueueExtractJob(ctx, gen.EnqueueExtractJobParams{
+		ID:       jobID,
+		RecordID: &recordID,
+		UserID:   &in.UserID,
+	}); err != nil {
+		return "", nil, fmt.Errorf("enqueue extract job: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("commit: %w", err)
+		return "", nil, fmt.Errorf("commit: %w", err)
 	}
-	return memoryID, nil
+	return recordID, nil, nil
 }
 
-// ListByUser returns every star for the user (dormant included), mood/intensity
-// JOINed from records.
+// ListByUser returns every star for the user (dormant included);
+// mood/intensity/valence are the fragment's own (memories, spec 21).
 func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory, error) {
 	rows, err := gen.New(r.pool).ListMemoriesByUser(ctx, userID)
 	if err != nil {
@@ -112,6 +111,7 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 			ID:             row.MemoryID,
 			Mood:           moodFromDB(row.Mood),
 			Intensity:      intensityFromDB(row.Intensity),
+			Valence:        valenceFromDB(row.Valence),
 			LastRecalledAt: timeFromDB(row.LastRecalledAt),
 		})
 	}
@@ -134,6 +134,7 @@ func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff ti
 			ID:             row.MemoryID,
 			Mood:           moodFromDB(row.Mood),
 			Intensity:      intensityFromDB(row.Intensity),
+			Valence:        valenceFromDB(row.Valence),
 			LastRecalledAt: timeFromDB(row.LastRecalledAt),
 		})
 	}
@@ -203,7 +204,26 @@ func intensityToDB(v float64) *float32 {
 	return &f
 }
 
+// valenceToDB stores the optional hint; 0 means "unset" (proto double default —
+// documented on RecordMemoryRequest.valence) and maps to NULL.
+func valenceToDB(v float64) *float32 {
+	if v == 0 {
+		return nil
+	}
+	f := float32(v)
+	return &f
+}
+
 func intensityFromDB(f *float32) float64 {
+	if f == nil {
+		return 0
+	}
+	return float64(*f)
+}
+
+// valenceFromDB is intensityFromDB's valence twin — separate name because the
+// ranges differ (valence -1..1 vs intensity 0..1) and may diverge later.
+func valenceFromDB(f *float32) float64 {
 	if f == nil {
 		return 0
 	}

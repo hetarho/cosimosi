@@ -23,6 +23,7 @@ import (
 	"github.com/cosimosi/backend/internal/ai"
 	"github.com/cosimosi/backend/internal/job"
 	"github.com/cosimosi/backend/internal/link"
+	"github.com/cosimosi/backend/internal/llm"
 	"github.com/cosimosi/backend/internal/memory"
 	"github.com/cosimosi/backend/internal/platform/config"
 	"github.com/cosimosi/backend/internal/platform/postgres"
@@ -90,8 +91,9 @@ func main() {
 	adminSvc := admin.NewService(admin.NewRepository(db), adminCipher, cfg)
 	adminHandler := admin.NewHandler(adminSvc)
 
-	// Async embedding worker: consumes the jobs the RecordMemory
-	// transaction enqueues, fills embeddings, and writes initial semantic synapses.
+	// Async extraction + embedding worker (specs 05/21): consumes the extract job
+	// the RecordMemory transaction enqueues, fans the diary out into fragment
+	// stars, then embeds each fragment and writes initial semantic synapses.
 	// It runs as a goroutine in this process and shares the
 	// signal-cancelled ctx so it stops on shutdown.
 	embedder, err := ai.NewEmbedder(cfg)
@@ -99,7 +101,15 @@ func main() {
 		slog.Error("embedder init failed", "err", err)
 		os.Exit(1)
 	}
-	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, slog.Default())
+	// The extractor's llm client is the admin-backed resolver (spec 34): the
+	// active provider/model/key swap at runtime without a restart. The mock path
+	// (AI_EXTRACTOR unset) never touches it.
+	extractor, err := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc))
+	if err != nil {
+		slog.Error("extractor init failed", "err", err)
+		os.Exit(1)
+	}
+	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, slog.Default())
 	workerDone := make(chan struct{})
 	go func() {
 		worker.Run(ctx)

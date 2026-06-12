@@ -18,7 +18,7 @@ type Embedding struct {
 
 type Job struct {
 	ID        string             `json:"id"`
-	MemoryID  string             `json:"memory_id"`
+	MemoryID  *string            `json:"memory_id"`
 	Kind      string             `json:"kind"`
 	Status    string             `json:"status"`
 	Attempts  int32              `json:"attempts"`
@@ -26,6 +26,8 @@ type Job struct {
 	NextRunAt pgtype.Timestamptz `json:"next_run_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	RecordID  *string            `json:"record_id"`
+	UserID    *string            `json:"user_id"`
 }
 
 type LlmProviderConfig struct {
@@ -60,6 +62,11 @@ type Memory struct {
 	VisualSpec     []byte             `json:"visual_spec"`
 	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	Mood           *string            `json:"mood"`
+	Intensity      *float32           `json:"intensity"`
+	FragmentIndex  int32              `json:"fragment_index"`
+	FragmentText   *string            `json:"fragment_text"`
+	Valence        *float32           `json:"valence"`
 }
 
 type MemoryLink struct {
@@ -88,6 +95,7 @@ type Record struct {
 	Intensity      *float32           `json:"intensity"`
 	IdempotencyKey *string            `json:"idempotency_key"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	Valence        *float32           `json:"valence"`
 }
 
 type UserEmotionColor struct {

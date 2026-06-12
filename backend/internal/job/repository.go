@@ -39,12 +39,25 @@ type QueueStats struct {
 	OldestPendingAge time.Duration
 }
 
-// GraphStore is the worker's view over embedding + synapse persistence. It is a
-// consumer-side port kept in the job package because the worker owns the
-// embedding pipeline; the pgx implementation is in repository_pg.go.
+// GraphStore is the worker's view over fragment fan-out + embedding + synapse
+// persistence. It is a consumer-side port kept in the job package because the
+// worker owns the pipeline; the pgx implementation is in repository_pg.go.
 type GraphStore interface {
-	// GetMemoryForEmbed loads the star's owner, original body, and entry_date
-	// (memories JOIN records) for embedding.
+	// GetRecordForExtract loads what the extract worker segments: the immutable
+	// diary body, its owner/date, and the optional manual-emotion hints (spec 21).
+	GetRecordForExtract(ctx context.Context, recordID string) (RecordForExtract, error)
+	// FragmentIDs returns the record's existing fragment star ids (fragment
+	// order). The worker checks it BEFORE paying the LLM extraction call so a
+	// job reclaimed after a crash-before-Complete doesn't re-extract.
+	FragmentIDs(ctx context.Context, recordID string) ([]string, error)
+	// FanOutFragments persists one diary's segments as fragment stars in a SINGLE
+	// transaction (spec 21): N memories + one embed job each + the intra-entry
+	// links (w=0.8) between every fragment pair — partial failure rolls back all.
+	// If the record already has fragments (a retried/reclaimed extract job), it
+	// inserts nothing and returns the existing ids — fan-out is idempotent.
+	FanOutFragments(ctx context.Context, recordID, userID string, segs []Segment) (memoryIDs []string, err error)
+	// GetMemoryForEmbed loads the star's owner, the fragment text (whole-diary
+	// body fallback), and entry_date for embedding.
 	GetMemoryForEmbed(ctx context.Context, memoryID string) (MemoryForEmbed, error)
 	// UpsertEmbedding stores/replaces the memory's vector and the model that made it.
 	UpsertEmbedding(ctx context.Context, memoryID, userID string, vec []float32, model string) error
@@ -55,10 +68,33 @@ type GraphStore interface {
 	BatchUpsertLinks(ctx context.Context, links []LinkUpsert) error
 }
 
-// MemoryForEmbed is the input the worker embeds.
+// RecordForExtract is the extract worker's input: the immutable original plus
+// the user's optional whole-diary emotion hints (zero values = no hint).
+type RecordForExtract struct {
+	UserID        string
+	Body          string
+	EntryDate     time.Time
+	HintMood      string
+	HintIntensity float64
+	HintValence   float64
+}
+
+// Segment is one event-boundary fragment to persist as a star (spec 21). It is
+// the job package's OWN shape (not ai.Segment) so the GraphStore port stays
+// decoupled from the extractor adapter layer; the worker maps between them.
+type Segment struct {
+	Index     int
+	Text      string
+	Mood      string // 13-value lowercase mood, "" = unset
+	Intensity float64
+	Valence   float64
+}
+
+// MemoryForEmbed is the input the worker embeds. Text is the fragment's own
+// text (or the whole diary body when fragment_text is NULL).
 type MemoryForEmbed struct {
 	UserID    string
-	Body      string
+	Text      string
 	EntryDate time.Time
 }
 

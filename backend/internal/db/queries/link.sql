@@ -29,6 +29,23 @@ FROM (
 ON CONFLICT (a_id, b_id) DO UPDATE
 SET weight = GREATEST(memory_links.weight, EXCLUDED.weight);
 
+-- name: BatchUpsertIntraEntryLinks :exec
+-- Within-event binding (spec 21): fragments of the SAME diary entry are bound
+-- with a strong fixed weight (0.8, always above the capped cross-entry semantic
+-- links). a<b is normalized HERE with LEAST/GREATEST under the DB collation
+-- (same reasoning as BatchUpsertLinks above). GREATEST on conflict keeps a
+-- re-run from weakening anything.
+INSERT INTO memory_links (a_id, b_id, weight, user_id, link_type)
+SELECT LEAST(a, b), GREATEST(a, b), 0.8, u, 'intra_entry'
+FROM (
+    SELECT
+        unnest(@a_ids::text[])    AS a,
+        unnest(@b_ids::text[])    AS b,
+        unnest(@user_ids::text[]) AS u
+) AS pairs
+ON CONFLICT (a_id, b_id) DO UPDATE
+SET weight = GREATEST(memory_links.weight, EXCLUDED.weight);
+
 -- name: ReinforceLinks :exec
 -- Co-recall (Hebbian) reinforcement: apply per-pair
 -- INCREMENTAL deltas. New row → weight=LEAST(1.0, delta), link_type='co_recall';

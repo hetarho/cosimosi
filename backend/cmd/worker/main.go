@@ -44,6 +44,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, slog.Default())
+	// Standalone worker uses the env-only extractor path (nil llm client → llm.New
+	// from config). The admin-backed runtime resolver is wired in cmd/api only.
+	extractor, err := ai.NewExtractor(cfg, nil)
+	if err != nil {
+		slog.Error("extractor init failed", "err", err)
+		os.Exit(1)
+	}
+
+	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, slog.Default())
 	worker.Run(ctx) // blocks until ctx is cancelled by a signal
 }

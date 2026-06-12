@@ -6,6 +6,7 @@ export {
   demoRecall,
   demoAddRecord,
   demoAddStar,
+  demoAddMultiSceneStar,
   demoToday,
   demoMarkRecalled,
   resetDemo,

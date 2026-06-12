@@ -14,8 +14,15 @@ interface MemoryState {
   // ── optimistic record flow (StarNode-based) ──
   /** Append a new star (e.g. an optimistic temp star); index = its slot. */
   addStar: (node: StarNode) => void
+  /** Append a fragment fan-out batch (spec 21: 1 diary → N stars) in one update;
+   *  each node gets the next free slot. */
+  addStars: (nodes: StarNode[]) => void
   /** Swap a temp star for the server-confirmed one, keeping its slot index. */
   replaceStar: (tempId: string, node: StarNode) => void
+  /** Swap a batch of temp stars for their confirmed fan-out (spec 21): tempIds
+   *  are removed (only `temp-` ids — server stars are never removed, constitution
+   *  §2), nodes not already present are appended, slots re-indexed. */
+  replaceMany: (tempIds: string[], nodes: StarNode[]) => void
   /** Roll back a temp star only (id starts with `temp-`); server stars are never
    *  removed (constitution §2). */
   removeStar: (tempId: string) => void
@@ -27,6 +34,15 @@ export const useMemoryStore = create<MemoryState>((set) => ({
   setStars: (stars) => set({ stars }),
   select: (selectedId) => set({ selectedId }),
   addStar: (node) => set((s) => ({ stars: [...s.stars, { ...node, index: s.stars.length }] })),
+  addStars: (nodes) =>
+    set((s) => {
+      // Skip ids already merged by a racing refetch (16) — same dedup reasoning
+      // as replaceStar's first branch, batched.
+      const known = new Set(s.stars.map((st) => st.id))
+      const fresh = nodes.filter((n) => !known.has(n.id))
+      if (fresh.length === 0) return s
+      return { stars: [...s.stars, ...fresh.map((n, k) => ({ ...n, index: s.stars.length + k }))] }
+    }),
   replaceStar: (tempId, node) =>
     set((s) => {
       // If a refetch already merged the server-confirmed star while RecordMemory was in
@@ -44,6 +60,16 @@ export const useMemoryStore = create<MemoryState>((set) => ({
       // server-side and the owner's next GetUniverse shows it.
       if (!s.stars.some((st) => st.id === tempId)) return s
       return { stars: s.stars.map((st) => (st.id === tempId ? { ...node, index: st.index } : st)) }
+    }),
+  replaceMany: (tempIds, nodes) =>
+    set((s) => {
+      const removable = new Set(tempIds.filter((id) => id.startsWith('temp-'))) // §2: temps only
+      const kept = s.stars.filter((st) => !removable.has(st.id))
+      const known = new Set(kept.map((st) => st.id))
+      const fresh = nodes.filter((n) => !known.has(n.id))
+      if (removable.size === 0 && fresh.length === 0) return s
+      const stars = [...kept, ...fresh].map((st, i) => (st.index === i ? st : { ...st, index: i }))
+      return { stars }
     }),
   removeStar: (tempId) =>
     set((s) => {

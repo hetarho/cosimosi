@@ -14,9 +14,9 @@ type stubRepo struct {
 	lastInput *RecordInput
 }
 
-func (s *stubRepo) RecordMemory(_ context.Context, in RecordInput) (string, error) {
+func (s *stubRepo) RecordMemory(_ context.Context, in RecordInput) (string, []string, error) {
 	s.lastInput = &in
-	return "mem-1", nil
+	return "rec-1", nil, nil
 }
 func (s *stubRepo) ListByUser(context.Context, string) ([]Memory, error) { return nil, nil }
 func (s *stubRepo) ListDormant(context.Context, string, time.Time) ([]Memory, error) {
@@ -49,11 +49,15 @@ func TestRecordMemoryValidation(t *testing.T) {
 		{"intensity NaN", RecordInput{Body: "ok", Intensity: math.NaN()}, ErrIntensityRange},
 		{"intensity 0 passes", RecordInput{Body: "ok", Intensity: 0}, nil},
 		{"intensity 1 passes", RecordInput{Body: "ok", Intensity: 1}, nil},
+		{"valence below -1", RecordInput{Body: "ok", Valence: -1.01}, ErrValenceRange},
+		{"valence above 1", RecordInput{Body: "ok", Valence: 1.01}, ErrValenceRange},
+		{"valence NaN", RecordInput{Body: "ok", Valence: math.NaN()}, ErrValenceRange},
+		{"valence bounds pass", RecordInput{Body: "ok", Valence: -1}, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			svc, repo := newTestService()
-			_, err := svc.RecordMemory(context.Background(), c.in)
+			_, _, err := svc.RecordMemory(context.Background(), c.in)
 			if !errors.Is(err, c.wantErr) {
 				t.Fatalf("RecordMemory err = %v, want %v", err, c.wantErr)
 			}
@@ -87,7 +91,7 @@ func TestValidationSentinelTextPinned(t *testing.T) {
 // validation was added in front of it.
 func TestRecordMemoryDefaultsEntryDate(t *testing.T) {
 	svc, repo := newTestService()
-	if _, err := svc.RecordMemory(context.Background(), RecordInput{Body: "ok", Intensity: 0.5}); err != nil {
+	if _, _, err := svc.RecordMemory(context.Background(), RecordInput{Body: "ok", Intensity: 0.5}); err != nil {
 		t.Fatalf("RecordMemory = %v, want nil", err)
 	}
 	if repo.lastInput == nil || repo.lastInput.EntryDate.IsZero() {

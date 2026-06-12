@@ -1,32 +1,53 @@
 -- records is immutable (constitution §1): there are deliberately NO UPDATE or
 -- DELETE queries here. Order matters — record → memory → job — because
 -- memories.record_id is a NOT NULL FK to records.id.
+-- Since spec 21 the relation is 1 record → N fragment memories (record_id is a
+-- non-unique FK); per-fragment mood/intensity/valence live on memories.
 
--- name: FindMemoryByIdempotencyKey :one
--- Idempotency: return the existing memory_id for a (user_id, idempotency_key) pair.
-SELECT m.id AS memory_id
+-- name: FindRecordByIdempotencyKey :one
+-- Idempotency: return the existing record id for a (user_id, idempotency_key)
+-- pair. Fragment memory ids (possibly none yet — extract is async) are listed
+-- separately via ListMemoryIDsByRecord.
+SELECT r.id
 FROM records r
-JOIN memories m ON m.record_id = r.id
 WHERE r.user_id = $1 AND r.idempotency_key = $2;
+
+-- name: ListMemoryIDsByRecord :many
+-- All fragment stars born from one record, in fragment order. Used by the
+-- idempotent RecordMemory replay and the extract worker's already-fanned-out check.
+SELECT id
+FROM memories
+WHERE record_id = $1
+ORDER BY fragment_index;
 
 -- name: InsertRecord :exec
 -- The immutable original. No memory_id column (the star points to the record, not
--- the reverse). idempotency_key is nullable.
-INSERT INTO records (id, user_id, body, entry_date, mood, intensity, idempotency_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+-- the reverse). mood/intensity/valence are optional whole-diary user hints
+-- (spec 21 — the AI detects per-fragment emotion); idempotency_key is nullable.
+INSERT INTO records (id, user_id, body, entry_date, mood, intensity, valence, idempotency_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: InsertMemory :one
--- The star. record_id (NOT NULL FK) links back to the original; mood/intensity/
--- entry_date live only on records (read via JOIN).
-INSERT INTO memories (id, user_id, record_id)
-VALUES ($1, $2, $3)
+-- One fragment star (spec 21): record_id (non-unique FK) links back to the
+-- original; the fragment's own emotion and text live HERE on the mutable star
+-- layer (never on the immutable record).
+INSERT INTO memories (id, user_id, record_id, mood, intensity, fragment_index, fragment_text, valence)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id;
 
+-- name: GetRecordForExtract :one
+-- Loads what the extract worker needs: the immutable body to segment, the owner,
+-- entry_date, and the optional manual-emotion hints (fallback when extraction
+-- degrades to a single neutral segment).
+SELECT r.user_id, r.body, r.entry_date, r.mood, r.intensity, r.valence
+FROM records r
+WHERE r.id = $1;
+
 -- name: GetMemoryForEmbed :one
--- Loads what the embedding worker needs: the star's owner, the original
--- diary body, and its entry_date (for the temporal_bonus baseline). body/entry_date
--- live on the immutable records row, read via JOIN.
-SELECT m.user_id, r.body, r.entry_date
+-- Loads what the embedding worker needs: the star's owner, the FRAGMENT text
+-- (NULL → whole-diary body fallback), and entry_date (for the temporal_bonus
+-- baseline). Each fragment embeds separately (spec 21).
+SELECT m.user_id, COALESCE(m.fragment_text, r.body) AS text, r.entry_date
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = $1;
@@ -46,24 +67,24 @@ WHERE m.id = @id AND m.user_id = @user_id;
 
 -- name: ListMemoriesByUser :many
 -- Every star for the user, dormant included (no brightness filter — constitution
--- §2). mood/intensity are sourced from records via JOIN.
-SELECT m.id AS memory_id, r.mood, r.intensity, m.last_recalled_at
+-- §2). mood/intensity/valence are the FRAGMENT's own (memories, spec 21) — no
+-- records JOIN anymore.
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
 FROM memories m
-JOIN records r ON r.id = m.record_id
 WHERE m.user_id = $1
-ORDER BY m.created_at;
+ORDER BY m.created_at, m.fragment_index;
 
 -- name: ListDormant :many
 -- Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
 -- NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
 -- compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
 -- brightness is computed client-side from this same value). The service converts the
--- dormancy threshold into `cutoff`. mood/intensity JOINed from records (no body sent —
--- the dormant list renders Star; the original is fetched on recall, spec 11). Same
--- column shape as ListMemoriesByUser so it maps to the same domain Memory.
-SELECT m.id AS memory_id, r.mood, r.intensity, m.last_recalled_at
+-- dormancy threshold into `cutoff`. mood/intensity/valence are the fragment's own
+-- (memories, spec 21; no body sent — the dormant list renders Star; the original is
+-- fetched on recall, spec 11). Same column shape as ListMemoriesByUser so it maps to
+-- the same domain Memory.
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
 FROM memories m
-JOIN records r ON r.id = m.record_id
 WHERE m.user_id = $1
   AND m.last_recalled_at < sqlc.arg(cutoff)::timestamptz
 ORDER BY m.last_recalled_at ASC;

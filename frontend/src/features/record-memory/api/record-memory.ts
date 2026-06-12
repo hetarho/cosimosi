@@ -1,10 +1,11 @@
-// RecordMemory call wrapper (spec 10). Uses the shared Connect client (02's auth
-// interceptor attaches the token). The server returns only memory_id — the client
-// already holds body/mood for the optimistic star (Architecture §4.6).
+// RecordMemory call wrapper (spec 10, reshaped by 21). Uses the shared Connect
+// client (02's auth interceptor attaches the token). The server returns the
+// immutable record_id immediately; the fragment stars are born asynchronously
+// (extract worker) and arrive on the next GetUniverse refetch — memory_ids is
+// normally empty (Architecture §4.6, constitution §6).
 import { Code, ConnectError } from '@connectrpc/connect'
-import { memoryClient } from '@/shared/api'
+import { Mood, memoryClient } from '@/shared/api'
 import { isDemoMode, demoAddRecord } from '@/shared/lib/demo'
-import type { Mood } from '@/shared/api'
 
 /** 본문 최대 길이 — 서버 memory.MaxBodyRunes(4000)의 거울. [...str].length(코드 포인트)
  *  ≒ Go의 rune 수라 같은 잣대로 잰다. 제출 전 사전 차단(17) + 에러 카피가 함께 쓴다. */
@@ -34,31 +35,40 @@ export function recordErrorMessage(e: unknown): string {
 
 export interface RecordMemoryInput {
   body: string
-  mood: Mood
-  intensity: number
   entryDate: string // YYYY-MM-DD
-  /** Dedup key (server skips a repeat) — pass the submit's temp id so a retried
+  /** 수동 감정 토글(spec 21, 1.6)이 켜졌을 때만 전달되는 선택 힌트 — AI 감지의 fallback. */
+  mood?: Mood
+  intensity?: number
+  /** Dedup key (server skips a repeat) — pass the submit's nonce so a retried
    *  request can't create a duplicate record. */
   idempotencyKey?: string
 }
 
-/** Records a diary entry; resolves to the new memory id. */
-export async function recordMemory(input: RecordMemoryInput): Promise<string> {
-  // 체험 모드: 더미 우주에 별을 추가하고 새 id를 즉시 반환(네트워크 없음).
+export interface RecordMemoryResult {
+  /** 불변 원본 id — 응답 시점에 확정. */
+  recordId: string
+  /** 조각 별 id들 — 보통 빈 배열(조각은 다음 GetUniverse refetch로 도착, 헌법6). */
+  memoryIds: string[]
+}
+
+/** Records a diary entry; the fragment stars arrive on a later refetch. */
+export async function recordMemory(input: RecordMemoryInput): Promise<RecordMemoryResult> {
+  // 체험 모드: 더미 우주에서 동기 fan-out(다감정 일기 → N 별, spec 21) 후 즉시 반환.
   if (isDemoMode()) {
-    return demoAddRecord({
+    const memoryIds = demoAddRecord({
       body: input.body,
-      mood: input.mood,
-      intensity: input.intensity,
+      mood: input.mood ?? Mood.MOOD_UNSPECIFIED,
+      intensity: input.intensity ?? 0,
       entryDate: input.entryDate,
     })
+    return { recordId: memoryIds[0] ?? '', memoryIds }
   }
   const res = await memoryClient.recordMemory({
     body: input.body,
-    mood: input.mood,
-    intensity: input.intensity,
+    mood: input.mood ?? Mood.MOOD_UNSPECIFIED,
+    intensity: input.intensity ?? 0,
     entryDate: input.entryDate,
     idempotencyKey: input.idempotencyKey ?? '',
   })
-  return res.memoryId
+  return { recordId: res.recordId, memoryIds: res.memoryIds }
 }

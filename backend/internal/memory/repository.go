@@ -15,10 +15,12 @@ var ErrNotFound = errors.New("memory: not found")
 // (constitution §1: the original diary is immutable).
 type Repository interface {
 	// RecordMemory persists, in a single transaction: (idempotency check →)
-	// records insert (immutable) → memories insert → jobs enqueue, returning the
-	// new memory id. If the (user_id, idempotency_key) pair already exists, it
-	// returns the existing memory id without writing anything.
-	RecordMemory(ctx context.Context, in RecordInput) (memoryID string, err error)
+	// records insert (immutable) → extract job enqueue (spec 21). The fragment
+	// stars are created asynchronously by the extract worker, so memoryIDs is
+	// normally EMPTY — it is non-empty only on an idempotent replay of a record
+	// whose fan-out already ran. If the (user_id, idempotency_key) pair already
+	// exists, nothing is written.
+	RecordMemory(ctx context.Context, in RecordInput) (recordID string, memoryIDs []string, err error)
 
 	// ListByUser returns every star for the user, dormant ones included (no
 	// brightness filter — constitution §2), with mood/intensity JOINed from records.

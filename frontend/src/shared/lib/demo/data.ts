@@ -107,6 +107,23 @@ export const DEMO_EDGES: DemoEdge[] = [
   { a: 'demo-016', b: 'demo-004', weight: 0.4, linkType: 'co_recall', daysAgo: 28 },
 ]
 
+// ── 기억 분할(spec 21) — 1 일기 → N 조각 별 시드 데이터 ──
+// 한 record body를 N개 조각 별이 공유한다(각자 다른 mood, 조각끼리 intra_entry 0.8).
+// recall은 memory id 단위라 조각 어느 별을 열어도 같은 원본 일기가 보인다(헌법1).
+const FRAGMENT_BODY = [
+  '아침 산책길, 어제 내린 비로 공기가 유리처럼 맑았다. 천천히 걸으며 오늘은 괜찮을 거라 생각했다.',
+  '낮 회의에서 준비한 안건이 통째로 뒤집혔다. 말문이 막혔고, 자리로 돌아와서도 한참 손이 떨렸다.',
+  '밤에 친구의 긴 전화. "네 잘못이 아니야"라는 말에 하루 종일 조여 있던 가슴이 스르르 풀렸다.',
+].join('\n\n')
+
+// id prefix는 DEMO_ENTRIES의 `demo-0NN`과 다른 네임스페이스(`demo-frag-`)라
+// 엔트리가 늘어나도 충돌하지 않는다.
+const DEMO_FRAGMENTS: { id: string; mood: Mood; intensity: number; daysAgo: number }[] = [
+  { id: 'demo-frag-f0', mood: Mood.CALM, intensity: 0.5, daysAgo: 1 },
+  { id: 'demo-frag-f1', mood: Mood.ANGER, intensity: 0.78, daysAgo: 1 },
+  { id: 'demo-frag-f2', mood: Mood.RELIEF, intensity: 0.62, daysAgo: 1 },
+]
+
 function isoFrom(now: number, daysAgo: number): string {
   return new Date(now - daysAgo * DAY_MS).toISOString()
 }
@@ -159,6 +176,29 @@ function ensureSeeded(): void {
     }),
   )
   for (const e of DEMO_ENTRIES) records.set(e.id, toRecord(seededAt, e))
+
+  // 분할 시드(spec 21): 한 일기에서 태어난 색 다른 3개의 별 + 강한 일내 결속.
+  for (const f of DEMO_FRAGMENTS) {
+    baseStars.push(toStar(seededAt, { ...f, body: FRAGMENT_BODY }))
+    records.set(f.id, toRecord(seededAt, { ...f, body: FRAGMENT_BODY }))
+  }
+  for (let i = 0; i < DEMO_FRAGMENTS.length; i++) {
+    for (let k = i + 1; k < DEMO_FRAGMENTS.length; k++) {
+      const [aId, bId] =
+        DEMO_FRAGMENTS[i].id < DEMO_FRAGMENTS[k].id
+          ? [DEMO_FRAGMENTS[i].id, DEMO_FRAGMENTS[k].id]
+          : [DEMO_FRAGMENTS[k].id, DEMO_FRAGMENTS[i].id]
+      baseSynapses.push(
+        create(SynapseSchema, {
+          aId,
+          bId,
+          weight: 0.8,
+          linkType: 'intra_entry',
+          lastActivatedAt: isoFrom(seededAt, DEMO_FRAGMENTS[i].daysAgo),
+        }),
+      )
+    }
+  }
 }
 
 /** GetUniverse 대체: base + 체험 중 추가한 별. 라우트 재진입 시에도 추가분이 유지된다. */
@@ -189,58 +229,122 @@ function pushAddedEdge(idA: string, idB: string, weight: number, linkType: strin
   addedEdges.push(create(SynapseSchema, { aId, bId, weight, linkType, lastActivatedAt: nowIso }))
 }
 
-/** RecordMemory 대체: 새 별을 더미 우주에 추가하고 새 id를 돌려준다(API 호출 없음).
- *  추가분은 records(회상)와 addedStars(재진입 시 재시드)에 모두 반영된다.
- *  시냅스 생성 이론(spec 19)의 시연으로 연결도 함께 만든다 — 실서버 워커(임베딩
- *  τ=0.75·top-8 + 같은날+0.3)의 **데모 근사**: 같은 날 별과 temporal, 같은 mood
- *  최신 별과 semantic. (임베딩 없는 근사임은 시뮬레이션 패널이 문구로 밝힌다.) */
+// ── 데모 분절 근사(spec 21) — 실서버 ai.Extractor의 **데모 근사** ──
+// 실서버는 LLM이 사건 경계·조각 감정을 읽는다. 체험은 네트워크 없이: 빈 줄 문단을
+// 사건 경계로(MockExtractor와 같은 구조 신호), 감정은 한국어 단서어 매칭 + (실패 시)
+// 직전 조각과 다른 색 회전으로 근사한다 — "조각마다 색이 다르다"는 체험 보장(2.1).
+const DEMO_MAX_FRAGMENTS = 3
+
+const MOOD_KEYWORDS: [Mood, RegExp][] = [
+  [Mood.ANGER, /화가|짜증|분노|열받|뒤집혔|억울/],
+  [Mood.FEAR, /불안|걱정|두려|무서|떨렸|떨린/],
+  [Mood.SAD, /슬프|눈물|우울|서글|허전|그리웠/],
+  [Mood.RELIEF, /안도|다행|풀렸|후련/],
+  [Mood.LOVE, /사랑|고마|다정|따뜻|포옹/],
+  [Mood.JOY, /기쁘|행복|신나|즐겁|웃었|설레/],
+  [Mood.CALM, /평온|고요|차분|편안|맑았|잔잔/],
+]
+// 회전 폴백 — 사분면이 갈리는 순서라 인접 조각의 색이 항상 다르다.
+const MOOD_ROTATION: Mood[] = [Mood.CALM, Mood.ANGER, Mood.JOY, Mood.SAD, Mood.LOVE]
+
+/** 빈 줄 문단 분리(사건 경계의 구조 근사) — 문단이 하나면 분할하지 않는다. */
+function splitScenes(body: string): string[] {
+  const scenes = body
+    .split(/\n\s*\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (scenes.length <= 1) return [body]
+  if (scenes.length <= DEMO_MAX_FRAGMENTS) return scenes
+  // 초과분은 마지막 조각에 합친다(텍스트 유실 없음 — ai.normalizeExtraction과 동일 규칙).
+  return [...scenes.slice(0, DEMO_MAX_FRAGMENTS - 1), scenes.slice(DEMO_MAX_FRAGMENTS - 1).join(' ')]
+}
+
+/** 조각 감정 근사: 단서어 매칭 → 실패 시 직전 조각과 다른 색 회전. */
+function detectSceneMood(text: string, index: number, prev: Mood | null): Mood {
+  for (const [mood, re] of MOOD_KEYWORDS) if (re.test(text)) return mood
+  const fallback = MOOD_ROTATION[index % MOOD_ROTATION.length]
+  if (fallback !== prev) return fallback
+  return MOOD_ROTATION[(index + 1) % MOOD_ROTATION.length]
+}
+
+/** RecordMemory 대체(spec 21): 일기를 조각 별 fan-out으로 더미 우주에 추가하고 조각
+ *  id들을 돌려준다(API 호출 없음). 문단이 여럿이면 N개 별이 태어나 intra_entry 0.8로
+ *  강하게 묶이고(같은 record body 공유), 단일 문단이면 기존처럼 별 1개다.
+ *  연결 생성(spec 19)의 데모 근사도 유지한다 — 첫 조각이 같은 날 별과 temporal,
+ *  같은 mood 최신 별과 semantic으로 이어진다(임베딩 없는 근사임은 패널이 밝힌다). */
 export function demoAddRecord(input: {
   body: string
   mood: Mood
   intensity: number
   entryDate: string
-}): string {
+}): string[] {
   ensureSeeded()
-  const id = `demo-new-${crypto.randomUUID()}`
   const now = virtualNowMs()
   const nowIso = new Date(now).toISOString()
-  records.set(
-    id,
-    create(RecordSchema, {
-      memoryId: id,
-      body: input.body,
-      entryDate: input.entryDate,
-      mood: input.mood,
-      intensity: input.intensity,
-      createdAt: nowIso,
-    }),
-  )
-  addedStars.push(
-    create(StarSchema, {
-      memoryId: id,
-      mood: input.mood,
-      intensity: input.intensity,
-      lastRecalledAt: nowIso, // 방금 만든 별 → 가장 밝게
-    }),
-  )
+  const scenes = splitScenes(input.body)
+  const baseId = `demo-new-${crypto.randomUUID()}`
+
+  const ids: string[] = []
+  let prevMood: Mood | null = null
+  scenes.forEach((scene, i) => {
+    const id = scenes.length === 1 ? baseId : `${baseId}-f${i}`
+    // 수동 힌트(첫 조각)가 있으면 그대로, 아니면 조각마다 감정을 근사 감지한다.
+    const mood =
+      scenes.length === 1 && input.mood !== Mood.MOOD_UNSPECIFIED
+        ? input.mood
+        : detectSceneMood(scene, i, prevMood)
+    prevMood = mood
+    const intensity = input.intensity > 0 ? input.intensity : 0.65
+    // 원본은 공유(불변 1 record — 헌법1): 어느 조각 별을 열어도 같은 일기가 보인다.
+    records.set(
+      id,
+      create(RecordSchema, {
+        memoryId: id,
+        body: input.body,
+        entryDate: input.entryDate,
+        mood,
+        intensity,
+        createdAt: nowIso,
+      }),
+    )
+    addedStars.push(
+      create(StarSchema, {
+        memoryId: id,
+        mood,
+        intensity,
+        lastRecalledAt: nowIso, // 방금 만든 별 → 가장 밝게
+      }),
+    )
+    ids.push(id)
+  })
+
+  // 일내 결속(within-event binding): 모든 조각 쌍을 강한 고정 가중치로.
+  for (let i = 0; i < ids.length; i++) {
+    for (let k = i + 1; k < ids.length; k++) {
+      pushAddedEdge(ids[i], ids[k], 0.8, 'intra_entry', nowIso)
+    }
+  }
 
   // 같은 날 시간창: entryDate가 같은 기존 일기와 잇는다(최신순 상한 ADD_SAME_DAY_LINKS).
-  const others = [...records.values()].filter((r) => r.memoryId !== id)
+  const first = ids[0]
+  const idSet = new Set(ids)
+  const others = [...records.values()].filter((r) => !idSet.has(r.memoryId))
   const sameDay = others
     .filter((r) => r.entryDate === input.entryDate)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, ADD_SAME_DAY_LINKS)
-  for (const r of sameDay) pushAddedEdge(id, r.memoryId, 0.55, 'temporal', nowIso)
+  for (const r of sameDay) pushAddedEdge(first, r.memoryId, 0.55, 'temporal', nowIso)
 
-  // 의미 근사: 같은 mood의 최신 일기와 잇는다(같은 날로 이미 이어진 별은 제외).
+  // 의미 근사: 첫 조각과 같은 mood의 최신 일기와 잇는다(같은 날로 이미 이어진 별은 제외).
+  const firstMood = records.get(first)?.mood
   const linkedIds = new Set(sameDay.map((r) => r.memoryId))
   const sameMood = others
-    .filter((r) => r.mood === input.mood && !linkedIds.has(r.memoryId))
+    .filter((r) => r.mood === firstMood && !linkedIds.has(r.memoryId))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, ADD_SAME_MOOD_LINKS)
-  for (const r of sameMood) pushAddedEdge(id, r.memoryId, 0.6, 'semantic', nowIso)
+  for (const r of sameMood) pushAddedEdge(first, r.memoryId, 0.6, 'semantic', nowIso)
 
-  return id
+  return ids
 }
 
 // 시뮬 패널 "별 띄우기"용 — 감정별로 미리 써 둔 짧은 일기 10개. 체험에서 내용 자체는
@@ -260,11 +364,34 @@ const QUICK_ENTRIES: { mood: Mood; intensity: number; body: string }[] = [
 
 /** 시뮬 패널 "별 띄우기": 고른 감정·날짜로 별을 만든다(spec 19 — 데모의 기록 컨트롤러).
  *  본문은 그 감정으로 미리 써 둔 일기 중 무작위 — 체험에서 내용은 시연용일 뿐이다.
- *  새 별 id를 돌려준다. */
+ *  새 별 id를 돌려준다(단일 문단 일기 → 항상 별 1개). */
 export function demoAddStar(mood: Mood, entryDate: string): string {
   const pool = QUICK_ENTRIES.filter((q) => q.mood === mood)
   const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : QUICK_ENTRIES[0]
-  return demoAddRecord({ body: pick.body, mood, intensity: pick.intensity, entryDate })
+  return demoAddRecord({ body: pick.body, mood, intensity: pick.intensity, entryDate })[0]
+}
+
+// 시뮬 패널 "다감정 하루 띄우기"(spec 21)용 — 장면(문단)마다 감정이 갈리는 미리 쓴
+// 다감정 일기들. 빈 줄 문단이 사건 경계로 읽혀 demoAddRecord가 N개 별로 fan-out한다.
+const MULTI_SCENE_ENTRIES: string[] = [
+  [
+    '늦잠을 자고 일어나 창을 여니 볕이 좋아서 괜히 웃었다. 오랜만에 느긋한 아침.',
+    '오후에 메일 하나로 일정이 전부 꼬였다. 짜증이 솟았지만 어디에 화를 내야 할지도 몰랐다.',
+    '저녁엔 좋아하는 노래를 틀어놓고 방을 정리했다. 마음이 조금씩 차분해졌다.',
+  ].join('\n\n'),
+  [
+    '발표 직전까지 손이 떨렸다. 실수하면 어쩌나 하는 걱정이 멈추지 않았다.',
+    '끝나고 나니 다행이라는 말밖에 안 나왔다. 어깨가 한꺼번에 풀렸다.',
+    '집에 오는 길, 고생했다며 친구가 사준 따뜻한 국밥. 고마워서 코끝이 찡했다.',
+  ].join('\n\n'),
+]
+
+/** 시뮬 패널 "다감정 하루 띄우기"(spec 21): 여러 감정이 담긴 미리 쓴 일기 한 편을
+ *  조각 별 fan-out으로 띄운다 — 색이 다른 N개 별이 강한 일내 선으로 묶여 등장한다.
+ *  태어난 조각 id들을 돌려준다. */
+export function demoAddMultiSceneStar(entryDate: string): string[] {
+  const body = MULTI_SCENE_ENTRIES[Math.floor(Math.random() * MULTI_SCENE_ENTRIES.length)]
+  return demoAddRecord({ body, mood: Mood.MOOD_UNSPECIFIED, intensity: 0, entryDate })
 }
 
 /** 별 띄우기 날짜 입력의 기본값 — 오늘(가상 시계 기준), YYYY-MM-DD. */

@@ -36,18 +36,26 @@ enum Mood {
 
 // --- RecordMemory ---
 
+// mood/intensity/valence are OPTIONAL whole-diary hints (spec 21): the AI
+// extractor detects per-fragment emotion, so unset values are simply ignored;
+// a set hint is only used as the fallback when extraction degrades.
 message RecordMemoryRequest {
   string body = 1;
-  Mood mood = 2;
-  double intensity = 3;
+  Mood mood = 2;               // optional hint (manual-emotion toggle)
+  double intensity = 3;        // optional hint, 0..1
   string entry_date = 4;       // YYYY-MM-DD
   string idempotency_key = 5;
+  double valence = 6;          // optional hint, -1..1 (0 = unset/neutral)
 }
 
-// Instant star appearance is client-optimistic (built from memory_id + form
-// values). The client already holds body/mood, so only the new id comes back.
+// Fragment fan-out is asynchronous (spec 21): only the immutable record id is
+// final at response time. memory_ids is usually EMPTY — the fragment stars
+// arrive on the next GetUniverse refetch (constitution §6, "stars arrive
+// async"); it is non-empty only on an idempotent replay of an already
+// fanned-out record.
 message RecordMemoryResponse {
-  string memory_id = 1;
+  string record_id = 1;            // immutable original (final)
+  repeated string memory_ids = 2;  // fragment stars — may be empty
 }
 
 // --- GetUniverse (idempotent) ---
@@ -55,11 +63,15 @@ message RecordMemoryResponse {
 // Star is the visual input for a star (no body). Brightness = max(a_min,
 // activation) is computed client-side; the server is authoritative only over
 // last_recalled_at.
+// Field numbers 5–11 are RESERVED by later specs (5–8 = 23 reshaping,
+// 9–10 = 28 wayfinding, 11 = 36 resonance — 00.overview 공유 설계 결정);
+// valence therefore takes 12.
 message Star {
   string memory_id = 1;
   Mood mood = 2;
   double intensity = 3;
   string last_recalled_at = 4;
+  double valence = 12;         // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
 }
 
 // Synapse is a weighted, undirected (a < b) link. Only weight is authoritative;

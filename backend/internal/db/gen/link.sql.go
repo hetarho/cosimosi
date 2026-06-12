@@ -11,6 +11,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const batchUpsertIntraEntryLinks = `-- name: BatchUpsertIntraEntryLinks :exec
+INSERT INTO memory_links (a_id, b_id, weight, user_id, link_type)
+SELECT LEAST(a, b), GREATEST(a, b), 0.8, u, 'intra_entry'
+FROM (
+    SELECT
+        unnest($1::text[])    AS a,
+        unnest($2::text[])    AS b,
+        unnest($3::text[]) AS u
+) AS pairs
+ON CONFLICT (a_id, b_id) DO UPDATE
+SET weight = GREATEST(memory_links.weight, EXCLUDED.weight)
+`
+
+type BatchUpsertIntraEntryLinksParams struct {
+	AIds    []string `json:"a_ids"`
+	BIds    []string `json:"b_ids"`
+	UserIds []string `json:"user_ids"`
+}
+
+// Within-event binding (spec 21): fragments of the SAME diary entry are bound
+// with a strong fixed weight (0.8, always above the capped cross-entry semantic
+// links). a<b is normalized HERE with LEAST/GREATEST under the DB collation
+// (same reasoning as BatchUpsertLinks above). GREATEST on conflict keeps a
+// re-run from weakening anything.
+func (q *Queries) BatchUpsertIntraEntryLinks(ctx context.Context, arg BatchUpsertIntraEntryLinksParams) error {
+	_, err := q.db.Exec(ctx, batchUpsertIntraEntryLinks, arg.AIds, arg.BIds, arg.UserIds)
+	return err
+}
+
 const batchUpsertLinks = `-- name: BatchUpsertLinks :exec
 INSERT INTO memory_links (a_id, b_id, weight, user_id, link_type)
 SELECT LEAST(a, b), GREATEST(a, b), w, u, 'semantic'

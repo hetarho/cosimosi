@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/cosimosi/backend/internal/ai"
 )
 
 func day(s string) time.Time {
@@ -79,10 +81,70 @@ func TestBuildLinksExcludesSelfAndComputesWeight(t *testing.T) {
 		if l.UserID != "user-1" {
 			t.Fatalf("user_id not carried: %q", l.UserID)
 		}
-		// Same-day neighbors get cos_sim + 0.3, clamped to 1.0.
-		if l.Weight != 1.0 {
-			t.Fatalf("same-day high-sim weight = %f, want 1.0", l.Weight)
+		// Same-day neighbors get cos_sim + 0.3, clamped to 1.0, then capped below
+		// the intra-entry binding 0.8 (spec 21, acceptance 1.3).
+		if l.Weight != semanticWeightCap {
+			t.Fatalf("same-day high-sim weight = %f, want cap %f", l.Weight, semanticWeightCap)
 		}
+	}
+}
+
+// Cross-entry semantic links must stay strictly below the intra-entry 0.8 no
+// matter how similar the texts are (spec 21, acceptance 1.3).
+func TestBuildLinksCapsBelowIntraEntryWeight(t *testing.T) {
+	date := day("2026-06-04")
+	links := buildLinks("self", "u", date, []Neighbor{{MemoryID: "n", CosSim: 1.0, EntryDate: date}})
+	if len(links) != 1 || links[0].Weight >= 0.8 {
+		t.Fatalf("semantic weight %v, want < 0.8", links)
+	}
+	// Below the cap the weight is untouched (30-day gap → temporalBonus 0 → w0 = cos_sim).
+	links = buildLinks("self", "u", date.AddDate(0, 0, 30), []Neighbor{{MemoryID: "n", CosSim: 0.75, EntryDate: date}})
+	if links[0].Weight != 0.75 {
+		t.Fatalf("uncapped weight = %f, want 0.75", links[0].Weight)
+	}
+}
+
+// --- extract fan-out helpers (spec 21) ---
+
+func TestToSegmentsMapsAllFields(t *testing.T) {
+	segs := toSegments([]ai.Segment{
+		{Index: 0, Text: "아침", Mood: ai.MoodCalm, Intensity: 0.4, Valence: 0.5},
+		{Index: 1, Text: "오후", Mood: ai.MoodAnger, Intensity: 0.8, Valence: -0.7},
+	})
+	if len(segs) != 2 {
+		t.Fatalf("got %d segments, want 2", len(segs))
+	}
+	if segs[1].Index != 1 || segs[1].Text != "오후" || segs[1].Mood != "anger" ||
+		segs[1].Intensity != 0.8 || segs[1].Valence != -0.7 {
+		t.Fatalf("segment not mapped: %+v", segs[1])
+	}
+}
+
+func TestApplyManualHintOnlyOnDegradedShape(t *testing.T) {
+	hint := RecordForExtract{HintMood: "joy", HintIntensity: 0.7, HintValence: 0.6}
+
+	// Degraded shape (single neutral segment) → hint applies.
+	got := applyManualHint([]Segment{{Text: "t", Mood: "neutral"}}, hint)
+	if got[0].Mood != "joy" || got[0].Intensity != 0.7 || got[0].Valence != 0.6 {
+		t.Fatalf("hint not applied on degraded shape: %+v", got[0])
+	}
+
+	// Real multi-fragment extraction → untouched.
+	multi := applyManualHint([]Segment{{Mood: "calm"}, {Mood: "anger"}}, hint)
+	if multi[0].Mood != "calm" || multi[1].Mood != "anger" {
+		t.Fatalf("multi-fragment extraction was overridden: %+v", multi)
+	}
+
+	// Single segment with REAL detected affect (non-neutral mood or valence) → untouched.
+	real := applyManualHint([]Segment{{Mood: "sad", Intensity: 0.3, Valence: -0.4}}, hint)
+	if real[0].Mood != "sad" || real[0].Valence != -0.4 {
+		t.Fatalf("detected affect was overridden: %+v", real[0])
+	}
+
+	// No hint → degraded shape stays neutral.
+	none := applyManualHint([]Segment{{Mood: "neutral"}}, RecordForExtract{})
+	if none[0].Mood != "neutral" || none[0].Valence != 0 {
+		t.Fatalf("no-hint fallback mutated: %+v", none[0])
 	}
 }
 
@@ -115,8 +177,12 @@ type stubJobs struct {
 	failed     bool
 }
 
-func (s *stubJobs) Claim(context.Context, Kind) (Job, error) {
-	return Job{ID: "j1", MemoryID: "m1"}, nil
+func (s *stubJobs) Claim(_ context.Context, kind Kind) (Job, error) {
+	// Only the embed queue has work — processOne probes extract first (spec 21).
+	if kind == KindExtract {
+		return Job{}, ErrNoJob
+	}
+	return Job{ID: "j1", Kind: kind, MemoryID: "m1"}, nil
 }
 func (s *stubJobs) Complete(context.Context, string) error { return nil }
 func (s *stubJobs) Fail(_ context.Context, _ string, status Status, msg string, _ time.Time) error {
@@ -129,8 +195,15 @@ func (s *stubJobs) Stats(context.Context) (QueueStats, error) { return QueueStat
 
 type stubStore struct{}
 
+func (stubStore) GetRecordForExtract(context.Context, string) (RecordForExtract, error) {
+	return RecordForExtract{UserID: "u1", Body: "body", EntryDate: day("2026-06-04")}, nil
+}
+func (stubStore) FragmentIDs(context.Context, string) ([]string, error) { return nil, nil }
+func (stubStore) FanOutFragments(_ context.Context, _, _ string, segs []Segment) ([]string, error) {
+	return make([]string, len(segs)), nil
+}
 func (stubStore) GetMemoryForEmbed(context.Context, string) (MemoryForEmbed, error) {
-	return MemoryForEmbed{UserID: "u1", Body: "body", EntryDate: day("2026-06-04")}, nil
+	return MemoryForEmbed{UserID: "u1", Text: "body", EntryDate: day("2026-06-04")}, nil
 }
 func (stubStore) UpsertEmbedding(context.Context, string, string, []float32, string) error {
 	return nil
@@ -151,7 +224,7 @@ func (panicEmbedder) Model() string                                    { return 
 // it becomes a normal backoff failure (pending retry on the first attempt).
 func TestProcessOneRecoversFromPanic(t *testing.T) {
 	jobs := &stubJobs{}
-	w := NewWorker(jobs, stubStore{}, panicEmbedder{}, slog.New(slog.DiscardHandler))
+	w := NewWorker(jobs, stubStore{}, panicEmbedder{}, ai.NoopExtractor{}, slog.New(slog.DiscardHandler))
 	if claimed := w.processOne(context.Background()); !claimed {
 		t.Fatal("processOne = false, want true (a job was claimed)")
 	}

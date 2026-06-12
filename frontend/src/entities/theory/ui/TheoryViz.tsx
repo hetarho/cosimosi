@@ -29,6 +29,20 @@ function Scene({ id, concept }: { id: string; concept: StarObject }) {
         </>
       )
     }
+    case 'fragmentation':
+      // 일기 1편 → 색이 다른 조각 별 셋, 강한 일내(intra_entry) 결속(spec 21).
+      return (
+        <>
+          <rect x={14} y={26} width={34} height={28} rx={4} fill="none" stroke={VIOLET} strokeWidth={1.4} opacity={0.6} />
+          <path d="M20 34 H42 M20 40 H42 M20 46 H34" stroke={VIOLET} strokeWidth={1.2} strokeLinecap="round" opacity={0.45} />
+          <VizSynapse x1={104} y1={22} x2={146} y2={40} color={AMBER} strength={0.9} arc={0.1} active concept={concept} />
+          <VizSynapse x1={104} y1={22} x2={118} y2={60} color={AMBER} strength={0.9} arc={-0.12} active concept={concept} />
+          <VizSynapse x1={118} y1={60} x2={146} y2={40} color={AMBER} strength={0.9} arc={0.1} active concept={concept} />
+          <VizStar cx={104} cy={22} r={10} color={TEAL} concept={concept} seed={11} active />
+          <VizStar cx={146} cy={40} r={10} color={CORAL} concept={concept} seed={47} active />
+          <VizStar cx={118} cy={60} r={10} color={AMBER} concept={concept} seed={83} active />
+        </>
+      )
     case 'synapse':
       // 새 별이 같은 날(temporal)·비슷한 의미(semantic)의 별과 이어진다.
       return (

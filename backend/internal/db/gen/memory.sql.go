@@ -11,15 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const findMemoryByIdempotencyKey = `-- name: FindMemoryByIdempotencyKey :one
+const findRecordByIdempotencyKey = `-- name: FindRecordByIdempotencyKey :one
 
-SELECT m.id AS memory_id
+SELECT r.id
 FROM records r
-JOIN memories m ON m.record_id = r.id
 WHERE r.user_id = $1 AND r.idempotency_key = $2
 `
 
-type FindMemoryByIdempotencyKeyParams struct {
+type FindRecordByIdempotencyKeyParams struct {
 	UserID         string  `json:"user_id"`
 	IdempotencyKey *string `json:"idempotency_key"`
 }
@@ -27,16 +26,20 @@ type FindMemoryByIdempotencyKeyParams struct {
 // records is immutable (constitution §1): there are deliberately NO UPDATE or
 // DELETE queries here. Order matters — record → memory → job — because
 // memories.record_id is a NOT NULL FK to records.id.
-// Idempotency: return the existing memory_id for a (user_id, idempotency_key) pair.
-func (q *Queries) FindMemoryByIdempotencyKey(ctx context.Context, arg FindMemoryByIdempotencyKeyParams) (string, error) {
-	row := q.db.QueryRow(ctx, findMemoryByIdempotencyKey, arg.UserID, arg.IdempotencyKey)
-	var memory_id string
-	err := row.Scan(&memory_id)
-	return memory_id, err
+// Since spec 21 the relation is 1 record → N fragment memories (record_id is a
+// non-unique FK); per-fragment mood/intensity/valence live on memories.
+// Idempotency: return the existing record id for a (user_id, idempotency_key)
+// pair. Fragment memory ids (possibly none yet — extract is async) are listed
+// separately via ListMemoryIDsByRecord.
+func (q *Queries) FindRecordByIdempotencyKey(ctx context.Context, arg FindRecordByIdempotencyKeyParams) (string, error) {
+	row := q.db.QueryRow(ctx, findRecordByIdempotencyKey, arg.UserID, arg.IdempotencyKey)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getMemoryForEmbed = `-- name: GetMemoryForEmbed :one
-SELECT m.user_id, r.body, r.entry_date
+SELECT m.user_id, COALESCE(m.fragment_text, r.body) AS text, r.entry_date
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = $1
@@ -44,17 +47,17 @@ WHERE m.id = $1
 
 type GetMemoryForEmbedRow struct {
 	UserID    string      `json:"user_id"`
-	Body      string      `json:"body"`
+	Text      string      `json:"text"`
 	EntryDate pgtype.Date `json:"entry_date"`
 }
 
-// Loads what the embedding worker needs: the star's owner, the original
-// diary body, and its entry_date (for the temporal_bonus baseline). body/entry_date
-// live on the immutable records row, read via JOIN.
+// Loads what the embedding worker needs: the star's owner, the FRAGMENT text
+// (NULL → whole-diary body fallback), and entry_date (for the temporal_bonus
+// baseline). Each fragment embeds separately (spec 21).
 func (q *Queries) GetMemoryForEmbed(ctx context.Context, id string) (GetMemoryForEmbedRow, error) {
 	row := q.db.QueryRow(ctx, getMemoryForEmbed, id)
 	var i GetMemoryForEmbedRow
-	err := row.Scan(&i.UserID, &i.Body, &i.EntryDate)
+	err := row.Scan(&i.UserID, &i.Text, &i.EntryDate)
 	return i, err
 }
 
@@ -93,30 +96,77 @@ func (q *Queries) GetRecordByMemory(ctx context.Context, arg GetRecordByMemoryPa
 	return i, err
 }
 
+const getRecordForExtract = `-- name: GetRecordForExtract :one
+SELECT r.user_id, r.body, r.entry_date, r.mood, r.intensity, r.valence
+FROM records r
+WHERE r.id = $1
+`
+
+type GetRecordForExtractRow struct {
+	UserID    string      `json:"user_id"`
+	Body      string      `json:"body"`
+	EntryDate pgtype.Date `json:"entry_date"`
+	Mood      *string     `json:"mood"`
+	Intensity *float32    `json:"intensity"`
+	Valence   *float32    `json:"valence"`
+}
+
+// Loads what the extract worker needs: the immutable body to segment, the owner,
+// entry_date, and the optional manual-emotion hints (fallback when extraction
+// degrades to a single neutral segment).
+func (q *Queries) GetRecordForExtract(ctx context.Context, id string) (GetRecordForExtractRow, error) {
+	row := q.db.QueryRow(ctx, getRecordForExtract, id)
+	var i GetRecordForExtractRow
+	err := row.Scan(
+		&i.UserID,
+		&i.Body,
+		&i.EntryDate,
+		&i.Mood,
+		&i.Intensity,
+		&i.Valence,
+	)
+	return i, err
+}
+
 const insertMemory = `-- name: InsertMemory :one
-INSERT INTO memories (id, user_id, record_id)
-VALUES ($1, $2, $3)
+INSERT INTO memories (id, user_id, record_id, mood, intensity, fragment_index, fragment_text, valence)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id
 `
 
 type InsertMemoryParams struct {
-	ID       string `json:"id"`
-	UserID   string `json:"user_id"`
-	RecordID string `json:"record_id"`
+	ID            string   `json:"id"`
+	UserID        string   `json:"user_id"`
+	RecordID      string   `json:"record_id"`
+	Mood          *string  `json:"mood"`
+	Intensity     *float32 `json:"intensity"`
+	FragmentIndex int32    `json:"fragment_index"`
+	FragmentText  *string  `json:"fragment_text"`
+	Valence       *float32 `json:"valence"`
 }
 
-// The star. record_id (NOT NULL FK) links back to the original; mood/intensity/
-// entry_date live only on records (read via JOIN).
+// One fragment star (spec 21): record_id (non-unique FK) links back to the
+// original; the fragment's own emotion and text live HERE on the mutable star
+// layer (never on the immutable record).
 func (q *Queries) InsertMemory(ctx context.Context, arg InsertMemoryParams) (string, error) {
-	row := q.db.QueryRow(ctx, insertMemory, arg.ID, arg.UserID, arg.RecordID)
+	row := q.db.QueryRow(ctx, insertMemory,
+		arg.ID,
+		arg.UserID,
+		arg.RecordID,
+		arg.Mood,
+		arg.Intensity,
+		arg.FragmentIndex,
+		arg.FragmentText,
+		arg.Valence,
+	)
 	var id string
 	err := row.Scan(&id)
 	return id, err
 }
 
 const insertRecord = `-- name: InsertRecord :exec
-INSERT INTO records (id, user_id, body, entry_date, mood, intensity, idempotency_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO records (id, user_id, body, entry_date, mood, intensity, valence, idempotency_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type InsertRecordParams struct {
@@ -126,11 +176,13 @@ type InsertRecordParams struct {
 	EntryDate      pgtype.Date `json:"entry_date"`
 	Mood           *string     `json:"mood"`
 	Intensity      *float32    `json:"intensity"`
+	Valence        *float32    `json:"valence"`
 	IdempotencyKey *string     `json:"idempotency_key"`
 }
 
 // The immutable original. No memory_id column (the star points to the record, not
-// the reverse). idempotency_key is nullable.
+// the reverse). mood/intensity/valence are optional whole-diary user hints
+// (spec 21 — the AI detects per-fragment emotion); idempotency_key is nullable.
 func (q *Queries) InsertRecord(ctx context.Context, arg InsertRecordParams) error {
 	_, err := q.db.Exec(ctx, insertRecord,
 		arg.ID,
@@ -139,15 +191,15 @@ func (q *Queries) InsertRecord(ctx context.Context, arg InsertRecordParams) erro
 		arg.EntryDate,
 		arg.Mood,
 		arg.Intensity,
+		arg.Valence,
 		arg.IdempotencyKey,
 	)
 	return err
 }
 
 const listDormant = `-- name: ListDormant :many
-SELECT m.id AS memory_id, r.mood, r.intensity, m.last_recalled_at
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
 FROM memories m
-JOIN records r ON r.id = m.record_id
 WHERE m.user_id = $1
   AND m.last_recalled_at < $2::timestamptz
 ORDER BY m.last_recalled_at ASC
@@ -162,6 +214,7 @@ type ListDormantRow struct {
 	MemoryID       string             `json:"memory_id"`
 	Mood           *string            `json:"mood"`
 	Intensity      *float32           `json:"intensity"`
+	Valence        *float32           `json:"valence"`
 	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
 }
 
@@ -169,9 +222,10 @@ type ListDormantRow struct {
 // NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
 // compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
 // brightness is computed client-side from this same value). The service converts the
-// dormancy threshold into `cutoff`. mood/intensity JOINed from records (no body sent —
-// the dormant list renders Star; the original is fetched on recall, spec 11). Same
-// column shape as ListMemoriesByUser so it maps to the same domain Memory.
+// dormancy threshold into `cutoff`. mood/intensity/valence are the fragment's own
+// (memories, spec 21; no body sent — the dormant list renders Star; the original is
+// fetched on recall, spec 11). Same column shape as ListMemoriesByUser so it maps to
+// the same domain Memory.
 func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]ListDormantRow, error) {
 	rows, err := q.db.Query(ctx, listDormant, arg.UserID, arg.Cutoff)
 	if err != nil {
@@ -185,6 +239,7 @@ func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]Lis
 			&i.MemoryID,
 			&i.Mood,
 			&i.Intensity,
+			&i.Valence,
 			&i.LastRecalledAt,
 		); err != nil {
 			return nil, err
@@ -198,22 +253,23 @@ func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]Lis
 }
 
 const listMemoriesByUser = `-- name: ListMemoriesByUser :many
-SELECT m.id AS memory_id, r.mood, r.intensity, m.last_recalled_at
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
 FROM memories m
-JOIN records r ON r.id = m.record_id
 WHERE m.user_id = $1
-ORDER BY m.created_at
+ORDER BY m.created_at, m.fragment_index
 `
 
 type ListMemoriesByUserRow struct {
 	MemoryID       string             `json:"memory_id"`
 	Mood           *string            `json:"mood"`
 	Intensity      *float32           `json:"intensity"`
+	Valence        *float32           `json:"valence"`
 	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
 }
 
 // Every star for the user, dormant included (no brightness filter — constitution
-// §2). mood/intensity are sourced from records via JOIN.
+// §2). mood/intensity/valence are the FRAGMENT's own (memories, spec 21) — no
+// records JOIN anymore.
 func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]ListMemoriesByUserRow, error) {
 	rows, err := q.db.Query(ctx, listMemoriesByUser, userID)
 	if err != nil {
@@ -227,11 +283,41 @@ func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]List
 			&i.MemoryID,
 			&i.Mood,
 			&i.Intensity,
+			&i.Valence,
 			&i.LastRecalledAt,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMemoryIDsByRecord = `-- name: ListMemoryIDsByRecord :many
+SELECT id
+FROM memories
+WHERE record_id = $1
+ORDER BY fragment_index
+`
+
+// All fragment stars born from one record, in fragment order. Used by the
+// idempotent RecordMemory replay and the extract worker's already-fanned-out check.
+func (q *Queries) ListMemoryIDsByRecord(ctx context.Context, recordID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listMemoryIDsByRecord, recordID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

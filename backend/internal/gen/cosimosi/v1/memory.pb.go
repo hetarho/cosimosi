@@ -106,13 +106,17 @@ func (Mood) EnumDescriptor() ([]byte, []int) {
 	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{0}
 }
 
+// mood/intensity/valence are OPTIONAL whole-diary hints (spec 21): the AI
+// extractor detects per-fragment emotion, so unset values are simply ignored;
+// a set hint is only used as the fallback when extraction degrades.
 type RecordMemoryRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Body           string                 `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
-	Mood           Mood                   `protobuf:"varint,2,opt,name=mood,proto3,enum=cosimosi.v1.Mood" json:"mood,omitempty"`
-	Intensity      float64                `protobuf:"fixed64,3,opt,name=intensity,proto3" json:"intensity,omitempty"`
+	Mood           Mood                   `protobuf:"varint,2,opt,name=mood,proto3,enum=cosimosi.v1.Mood" json:"mood,omitempty"`     // optional hint (manual-emotion toggle)
+	Intensity      float64                `protobuf:"fixed64,3,opt,name=intensity,proto3" json:"intensity,omitempty"`                // optional hint, 0..1
 	EntryDate      string                 `protobuf:"bytes,4,opt,name=entry_date,json=entryDate,proto3" json:"entry_date,omitempty"` // YYYY-MM-DD
 	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	Valence        float64                `protobuf:"fixed64,6,opt,name=valence,proto3" json:"valence,omitempty"` // optional hint, -1..1 (0 = unset/neutral)
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -182,11 +186,22 @@ func (x *RecordMemoryRequest) GetIdempotencyKey() string {
 	return ""
 }
 
-// Instant star appearance is client-optimistic (built from memory_id + form
-// values). The client already holds body/mood, so only the new id comes back.
+func (x *RecordMemoryRequest) GetValence() float64 {
+	if x != nil {
+		return x.Valence
+	}
+	return 0
+}
+
+// Fragment fan-out is asynchronous (spec 21): only the immutable record id is
+// final at response time. memory_ids is usually EMPTY — the fragment stars
+// arrive on the next GetUniverse refetch (constitution §6, "stars arrive
+// async"); it is non-empty only on an idempotent replay of an already
+// fanned-out record.
 type RecordMemoryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	MemoryId      string                 `protobuf:"bytes,1,opt,name=memory_id,json=memoryId,proto3" json:"memory_id,omitempty"`
+	RecordId      string                 `protobuf:"bytes,1,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`    // immutable original (final)
+	MemoryIds     []string               `protobuf:"bytes,2,rep,name=memory_ids,json=memoryIds,proto3" json:"memory_ids,omitempty"` // fragment stars — may be empty
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -221,22 +236,33 @@ func (*RecordMemoryResponse) Descriptor() ([]byte, []int) {
 	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RecordMemoryResponse) GetMemoryId() string {
+func (x *RecordMemoryResponse) GetRecordId() string {
 	if x != nil {
-		return x.MemoryId
+		return x.RecordId
 	}
 	return ""
+}
+
+func (x *RecordMemoryResponse) GetMemoryIds() []string {
+	if x != nil {
+		return x.MemoryIds
+	}
+	return nil
 }
 
 // Star is the visual input for a star (no body). Brightness = max(a_min,
 // activation) is computed client-side; the server is authoritative only over
 // last_recalled_at.
+// Field numbers 5–11 are RESERVED by later specs (5–8 = 23 reshaping,
+// 9–10 = 28 wayfinding, 11 = 36 resonance — 00.overview 공유 설계 결정);
+// valence therefore takes 12.
 type Star struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	MemoryId       string                 `protobuf:"bytes,1,opt,name=memory_id,json=memoryId,proto3" json:"memory_id,omitempty"`
 	Mood           Mood                   `protobuf:"varint,2,opt,name=mood,proto3,enum=cosimosi.v1.Mood" json:"mood,omitempty"`
 	Intensity      float64                `protobuf:"fixed64,3,opt,name=intensity,proto3" json:"intensity,omitempty"`
 	LastRecalledAt string                 `protobuf:"bytes,4,opt,name=last_recalled_at,json=lastRecalledAt,proto3" json:"last_recalled_at,omitempty"`
+	Valence        float64                `protobuf:"fixed64,12,opt,name=valence,proto3" json:"valence,omitempty"` // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -297,6 +323,13 @@ func (x *Star) GetLastRecalledAt() string {
 		return x.LastRecalledAt
 	}
 	return ""
+}
+
+func (x *Star) GetValence() float64 {
+	if x != nil {
+		return x.Valence
+	}
+	return 0
 }
 
 // Synapse is a weighted, undirected (a < b) link. Only weight is authoritative;
@@ -1173,21 +1206,25 @@ var File_cosimosi_v1_memory_proto protoreflect.FileDescriptor
 
 const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\n" +
-	"\x18cosimosi/v1/memory.proto\x12\vcosimosi.v1\"\xb6\x01\n" +
+	"\x18cosimosi/v1/memory.proto\x12\vcosimosi.v1\"\xd0\x01\n" +
 	"\x13RecordMemoryRequest\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\tR\x04body\x12%\n" +
 	"\x04mood\x18\x02 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x1c\n" +
 	"\tintensity\x18\x03 \x01(\x01R\tintensity\x12\x1d\n" +
 	"\n" +
 	"entry_date\x18\x04 \x01(\tR\tentryDate\x12'\n" +
-	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"3\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x18\n" +
+	"\avalence\x18\x06 \x01(\x01R\avalence\"R\n" +
 	"\x14RecordMemoryResponse\x12\x1b\n" +
-	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\"\x92\x01\n" +
+	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x1d\n" +
+	"\n" +
+	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xac\x01\n" +
 	"\x04Star\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\x12%\n" +
 	"\x04mood\x18\x02 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x1c\n" +
 	"\tintensity\x18\x03 \x01(\x01R\tintensity\x12(\n" +
-	"\x10last_recalled_at\x18\x04 \x01(\tR\x0elastRecalledAt\"\x90\x01\n" +
+	"\x10last_recalled_at\x18\x04 \x01(\tR\x0elastRecalledAt\x12\x18\n" +
+	"\avalence\x18\f \x01(\x01R\avalence\"\x90\x01\n" +
 	"\aSynapse\x12\x11\n" +
 	"\x04a_id\x18\x01 \x01(\tR\x03aId\x12\x11\n" +
 	"\x04b_id\x18\x02 \x01(\tR\x03bId\x12\x16\n" +

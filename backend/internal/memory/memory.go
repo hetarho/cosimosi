@@ -20,6 +20,7 @@ var (
 	ErrEmptyBody      = errors.New("memory: body is empty")
 	ErrBodyTooLong    = errors.New("memory: body exceeds max length")
 	ErrIntensityRange = errors.New("memory: intensity out of range [0,1]")
+	ErrValenceRange   = errors.New("memory: valence out of range [-1,1]")
 )
 
 // MaxBodyRunes caps the diary body length. It MIRRORS (must stay in sync with)
@@ -54,23 +55,27 @@ const (
 
 // RecordInput is what RecordMemory writes to the immutable records table
 // (constitution §1). It is deliberately separate from the Memory (star) domain:
-// the original diary text is persisted here and never mutated.
+// the original diary text is persisted here and never mutated. Mood/Intensity/
+// Valence are OPTIONAL whole-diary hints (spec 21) — the AI detects per-fragment
+// emotion; a hint only feeds the degraded-extraction fallback.
 type RecordInput struct {
 	UserID         string
 	Body           string    // the diary original — kept forever in records
 	EntryDate      time.Time // user-chosen moment (defaults to today)
-	Mood           Mood      // optional (MoodUnspecified → stored NULL)
-	Intensity      float64   // 0..1, optional (0 when unset)
+	Mood           Mood      // optional hint (MoodUnspecified → stored NULL)
+	Intensity      float64   // 0..1, optional hint (0 when unset)
+	Valence        float64   // -1..1, optional hint (0 when unset)
 	IdempotencyKey string    // optional; empty = not applied
 }
 
 // Memory is the star projection used by GetUniverse — no body, no entry_date.
-// mood/intensity are sourced from records via JOIN; brightness/coordinates are
-// NOT here (computed client-side, constitution §2·§3).
+// mood/intensity/valence are the FRAGMENT's own (memories, spec 21);
+// brightness/coordinates are NOT here (computed client-side, constitution §2·§3).
 type Memory struct {
 	ID             string // = memory_id
-	Mood           Mood   // JOINed from records
+	Mood           Mood   // the fragment's AI-detected mood
 	Intensity      float64
+	Valence        float64    // -1..1 signed affect (26 consumes in λ_eff)
 	LastRecalledAt *time.Time // activity basis for client brightness (04 never mutates it)
 }
 

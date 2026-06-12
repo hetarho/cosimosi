@@ -1,17 +1,13 @@
-// Optimistic record flow (spec 10): submit → optimistic addStar → RecordMemory →
-// replaceStar(server id) on success / removeStar rollback on failure (StarNode-based,
-// constitution §2/§3·§6). body/entryDate stay in the draft (never the render store).
+// Record flow (spec 21, supersedes spec 10's single optimistic star): submit →
+// RecordMemory(record_id 확정) → "조각내는 중"(segmenting) → 지연 GetUniverse
+// invalidate로 N개 조각 별이 병합 도착(merge appends — addStars 의미론, spec 16
+// 1.4). 조각 수·감정을 클라가 모르므로 낙관 별은 띄우지 않는다(헌법6 — 별은 비동기
+// 도착). body/entryDate stay in the draft (never the render store).
 import { useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { bodyLengthBucket, capture, EVENTS } from '@/shared/lib'
-import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
-import {
-  moodFromProto,
-  seedFromId,
-  universeInvalidateKey,
-  useMemoryStore,
-  type StarNode,
-} from '@/entities/memory'
+import { isDemoMode } from '@/shared/lib/demo'
+import { moodFromProto, universeInvalidateKey } from '@/entities/memory'
 import {
   BODY_TOO_LONG_MSG,
   MAX_BODY_CHARS,
@@ -20,23 +16,32 @@ import {
 } from '../api/record-memory'
 import { useDraftStore } from './draft-store'
 
-type DomainMood = StarNode['memory']['mood']
+// 워커가 extract(조각 fan-out)→embed(시냅스)를 만들 시간(§4.6 "연결은 다음 refetch
+// 에서"). 가벼운 재시도 2회(spec 21, 1.7) — 첫 invalidate가 조각 별을, 둘째가 늦게
+// 생긴 시냅스까지 실어 온다. 무한/조건 폴링 금지(spec 16): 이후는 stale 안전망 몫.
+const REFETCH_DELAYS_MS = [3_500, 10_000]
+// 데모는 fan-out이 동기(demoAddRecord)라 바로 당겨온다.
+const DEMO_REFETCH_DELAYS_MS = [800]
 
-// 워커가 임베딩→시냅스를 만들 시간(§4.6 "연결은 다음 refetch에서"). 횟수 제한 1회 —
-// 무한/조건 폴링 금지(spec 16): 이웃이 없어 링크가 0개여도 정상이다.
-const WORKER_SYNC_DELAY_MS = 10_000
+// 연속 기록을 하나로 코알레스: 마지막 기록 기준으로만 체인을 다시 건다(그 refetch가
+// 그동안의 별·시냅스를 전부 포함한다) — K개 연속 제출이 2K번의 우주 refetch가 되지 않게.
+let syncTimers: ReturnType<typeof setTimeout>[] = []
 
-// 연속 기록을 하나로 코알레스: 마지막 기록 +10s에 1회만 invalidate(그 refetch가 그동안의
-// 별·시냅스를 전부 포함한다) — K개 연속 제출이 K번의 전체 우주 refetch가 되지 않게.
-let workerSyncTimer: ReturnType<typeof setTimeout> | null = null
-
-function buildStar(id: string, mood: DomainMood, intensity: number): StarNode {
-  return {
-    id,
-    index: 0, // store assigns the real slot on add/replace
-    // 가상 시계(spec 19): 데모 시간 머신 뒤에 쓴 낙관 별도 "방금" 태어난 밝기로 — 비데모 동일값.
-    memory: { id, mood, intensity, lastRecalledAt: virtualNowMs(), seed: seedFromId(id) },
-  }
+/** 조각 도착 동기화 체인: 지연 invalidate 1~2회, 마지막에 segmenting 해제. */
+function scheduleFragmentSync(queryClient: QueryClient, delays: number[]) {
+  for (const t of syncTimers) clearTimeout(t)
+  syncTimers = delays.map((d, i) =>
+    setTimeout(() => {
+      // queryClient는 앱 수명 싱글턴이라 페이지를 떠나도 안전하다(비활성 쿼리는
+      // stale 마킹 → 다음 마운트에서 refetch).
+      void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+      if (i === delays.length - 1) {
+        syncTimers = []
+        const draft = useDraftStore.getState()
+        if (draft.status === 'segmenting') draft.setStatus('idle')
+      }
+    }, d),
+  )
 }
 
 export function useRecordMemory() {
@@ -56,53 +61,41 @@ export function useRecordMemory() {
       return
     }
 
-    const moodStr = moodFromProto(draft.mood)
-    // record_memory 공통 속성(18, 3.2) — 본문은 길이 버킷으로만 환원, 원문은 싣지 않는다.
-    const metric = { mood: moodStr, body_length_bucket: bodyLengthBucket(bodyCodePoints) }
-    const tempId = `temp-${crypto.randomUUID()}`
-    useMemoryStore.getState().addStar(buildStar(tempId, moodStr, draft.intensity)) // 별 즉시 등장 (1.1)
+    const manual = draft.manualMood
+    // record_memory 공통 속성(18, 3.2) — 본문은 길이 버킷으로만 환원, 원문은 싣지
+    // 않는다. 감정은 AI 감지가 기본(21)이라 수동 토글일 때만 실제 mood를 싣는다.
+    const metric = {
+      mood: manual ? moodFromProto(draft.mood) : 'auto',
+      body_length_bucket: bodyLengthBucket(bodyCodePoints),
+    }
     useDraftStore.getState().setStatus('submitting')
+    // 출처 가드(18): 제출 중 체험↔실서버 전환이 일어나면 이벤트·refetch를 이전
+    // 출처에 귀속시키지 않는다(이전엔 temp 별 생존 여부로 판별 — 21에서 temp 별 제거).
+    const wasDemo = isDemoMode()
 
     try {
-      const memoryId = await recordMemory({
+      await recordMemory({
         body: draft.body,
-        mood: draft.mood,
-        intensity: draft.intensity,
         entryDate: draft.entryDate,
-        idempotencyKey: tempId, // dedup a retried submit server-side
+        ...(manual ? { mood: draft.mood, intensity: draft.intensity } : {}),
+        // 드래프트 수명 동안 고정된 nonce — 실패 후 재제출이 같은 키로 가서 서버가
+        // 중복 record를 만들지 않는다(성공 reset()에서만 다음 일기용으로 갱신).
+        idempotencyKey: `rec-${draft.submitNonce}`,
       })
-      const memory = useMemoryStore.getState()
-      // 출처 리셋(로그아웃·체험 전환)이 제출 중에 일어났으면 temp가 이미 사라졌다 — 이
-      // 별은 이전 출처 소유라 새 세션에 반영하지 않는다(replaceStar도 no-op). 서버엔
-      // 커밋돼 있으므로 소유자의 다음 GetUniverse가 보여준다.
-      const tempAlive = memory.stars.some((st) => st.id === tempId)
-      // 이벤트도 같은 출처일 때만 — 리셋 후 capture하면 이전 사용자의 기록이 다음
-      // 식별자(익명/새 계정)에 귀속된다(18).
-      if (tempAlive) capture(EVENTS.recordMemory, { ...metric, success: true })
-      // 서버 id로 확정 별 교체, 기존 별 위치 유지 (1.2)
-      memory.replaceStar(tempId, buildStar(memoryId, moodStr, draft.intensity))
+      const sameSource = isDemoMode() === wasDemo
+      // 출처가 바뀌었으면(체험↔실서버) 이벤트·refetch·segmenting 모두 이전 출처
+      // 소유라 건너뛴다 — 드래프트만 비우고 끝(서버엔 커밋돼 있음).
       useDraftStore.getState().reset()
-      // 별은 즉시(위 낙관), 연결은 다음 refetch에서(spec 16 1.3): ~10s 뒤 1회 invalidate →
-      // 워커가 만든 시냅스가 새로고침 없이 나타난다. queryClient는 앱 수명 싱글턴이라
-      // 페이지를 떠나도 안전하다(비활성 쿼리는 stale 마킹 → 다음 마운트에서 refetch).
-      if (tempAlive) {
-        if (workerSyncTimer) clearTimeout(workerSyncTimer)
-        // 데모(spec 19)는 워커가 없고 demoAddRecord가 연결을 동기 생성하므로 바로 당겨와
-        // "새 일기 → 별 + 연결"이 즉시 보인다. 실서버는 워커 시간을 그대로 기다린다.
-        const delay = isDemoMode() ? 800 : WORKER_SYNC_DELAY_MS
-        workerSyncTimer = setTimeout(() => {
-          workerSyncTimer = null
-          void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
-        }, delay)
-      }
+      if (!sameSource) return
+      capture(EVENTS.recordMemory, { ...metric, success: true })
+      // 본문 비우고 "조각내는 중" 표시(1.7) → 지연 refetch가 N개 조각 별을 병합으로
+      // 실어 온다(머지가 새 서버 별을 뒤에 append — addStars 의미론, spec 16 1.4).
+      useDraftStore.getState().setStatus('segmenting')
+      scheduleFragmentSync(queryClient, isDemoMode() ? DEMO_REFETCH_DELAYS_MS : REFETCH_DELAYS_MS)
     } catch (e) {
-      // 임시 별만 롤백, 서버 별 보존 (1.3 / 헌법2). 서버 검증(InvalidArgument, 17)은
-      // 입력을 고치면 되는 문제라 구체 메시지로 표면화한다(2.8).
-      // 실패 이벤트도 출처 유지 시에만(temp가 살아있을 때) — 성공 경로와 동일한 귀속 가드.
-      if (useMemoryStore.getState().stars.some((st) => st.id === tempId)) {
-        capture(EVENTS.recordMemory, { ...metric, success: false })
-      }
-      useMemoryStore.getState().removeStar(tempId)
+      // 서버 검증(InvalidArgument, 17)은 입력을 고치면 되는 문제라 구체 메시지로
+      // 표면화한다(2.8). 실패 이벤트도 출처 유지 시에만 — 성공 경로와 동일한 귀속 가드.
+      if (isDemoMode() === wasDemo) capture(EVENTS.recordMemory, { ...metric, success: false })
       useDraftStore.getState().setError(recordErrorMessage(e))
     }
   }, [queryClient])

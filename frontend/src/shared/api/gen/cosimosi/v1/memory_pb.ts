@@ -10,9 +10,13 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/v1/memory.proto.
  */
 export const file_cosimosi_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxIoQBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIikKFFJlY29yZE1lbW9yeVJlc3BvbnNlEhEKCW1lbW9yeV9pZBgBIAEoCSJnCgRTdGFyEhEKCW1lbW9yeV9pZBgBIAEoCRIfCgRtb29kGAIgASgOMhEuY29zaW1vc2kudjEuTW9vZBIRCglpbnRlbnNpdHkYAyABKAESGAoQbGFzdF9yZWNhbGxlZF9hdBgEIAEoCSJjCgdTeW5hcHNlEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIOCgZ3ZWlnaHQYAyABKAESEQoJbGlua190eXBlGAQgASgJEhkKEWxhc3RfYWN0aXZhdGVkX2F0GAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCJfChNHZXRVbml2ZXJzZVJlc3BvbnNlEiAKBXN0YXJzGAEgAygLMhEuY29zaW1vc2kudjEuU3RhchImCghzeW5hcHNlcxgCIAMoCzIULmNvc2ltb3NpLnYxLlN5bmFwc2UiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIjsKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJImEKCFNldHRpbmdzEg0KBXRoZW1lGAEgASgJEhMKC3N0YXJfb2JqZWN0GAIgASgJEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MikgEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3JCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdCJBChZVcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMsIDCg1NZW1vcnlTZXJ2aWNlElMKDFJlY29yZE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY29yZE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXNwb25zZRJVCgtHZXRVbml2ZXJzZRIfLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVxdWVzdBogLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVzcG9uc2UiA5ACARJZCg5SZWluZm9yY2VMaW5rcxIiLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVxdWVzdBojLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVzcG9uc2USUwoMUmVjYWxsTWVtb3J5EiAuY29zaW1vc2kudjEuUmVjYWxsTWVtb3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlc3BvbnNlElUKC0xpc3REb3JtYW50Eh8uY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXF1ZXN0GiAuY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXNwb25zZSIDkAIBMsMBCg9TZXR0aW5nc1NlcnZpY2USVQoLR2V0U2V0dGluZ3MSHy5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1JlcXVlc3QaIC5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlIgOQAgESWQoOVXBkYXRlU2V0dGluZ3MSIi5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1JlcXVlc3QaIy5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlQkFaP2dpdGh1Yi5jb20vY29zaW1vc2kvYmFja2VuZC9pbnRlcm5hbC9nZW4vY29zaW1vc2kvdjE7Y29zaW1vc2l2MWIGcHJvdG8z");
+  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxIpUBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEg8KB3ZhbGVuY2UYBiABKAEiPQoUUmVjb3JkTWVtb3J5UmVzcG9uc2USEQoJcmVjb3JkX2lkGAEgASgJEhIKCm1lbW9yeV9pZHMYAiADKAkieAoEU3RhchIRCgltZW1vcnlfaWQYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhgKEGxhc3RfcmVjYWxsZWRfYXQYBCABKAkSDwoHdmFsZW5jZRgMIAEoASJjCgdTeW5hcHNlEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIOCgZ3ZWlnaHQYAyABKAESEQoJbGlua190eXBlGAQgASgJEhkKEWxhc3RfYWN0aXZhdGVkX2F0GAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCJfChNHZXRVbml2ZXJzZVJlc3BvbnNlEiAKBXN0YXJzGAEgAygLMhEuY29zaW1vc2kudjEuU3RhchImCghzeW5hcHNlcxgCIAMoCzIULmNvc2ltb3NpLnYxLlN5bmFwc2UiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIjsKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJImEKCFNldHRpbmdzEg0KBXRoZW1lGAEgASgJEhMKC3N0YXJfb2JqZWN0GAIgASgJEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MikgEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3JCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdCJBChZVcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMsIDCg1NZW1vcnlTZXJ2aWNlElMKDFJlY29yZE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY29yZE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXNwb25zZRJVCgtHZXRVbml2ZXJzZRIfLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVxdWVzdBogLmNvc2ltb3NpLnYxLkdldFVuaXZlcnNlUmVzcG9uc2UiA5ACARJZCg5SZWluZm9yY2VMaW5rcxIiLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVxdWVzdBojLmNvc2ltb3NpLnYxLlJlaW5mb3JjZUxpbmtzUmVzcG9uc2USUwoMUmVjYWxsTWVtb3J5EiAuY29zaW1vc2kudjEuUmVjYWxsTWVtb3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlc3BvbnNlElUKC0xpc3REb3JtYW50Eh8uY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXF1ZXN0GiAuY29zaW1vc2kudjEuTGlzdERvcm1hbnRSZXNwb25zZSIDkAIBMsMBCg9TZXR0aW5nc1NlcnZpY2USVQoLR2V0U2V0dGluZ3MSHy5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1JlcXVlc3QaIC5jb3NpbW9zaS52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlIgOQAgESWQoOVXBkYXRlU2V0dGluZ3MSIi5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1JlcXVlc3QaIy5jb3NpbW9zaS52MS5VcGRhdGVTZXR0aW5nc1Jlc3BvbnNlQkFaP2dpdGh1Yi5jb20vY29zaW1vc2kvYmFja2VuZC9pbnRlcm5hbC9nZW4vY29zaW1vc2kvdjE7Y29zaW1vc2l2MWIGcHJvdG8z");
 
 /**
+ * mood/intensity/valence are OPTIONAL whole-diary hints (spec 21): the AI
+ * extractor detects per-fragment emotion, so unset values are simply ignored;
+ * a set hint is only used as the fallback when extraction degrades.
+ *
  * @generated from message cosimosi.v1.RecordMemoryRequest
  */
 export type RecordMemoryRequest = Message<"cosimosi.v1.RecordMemoryRequest"> & {
@@ -22,11 +26,15 @@ export type RecordMemoryRequest = Message<"cosimosi.v1.RecordMemoryRequest"> & {
   body: string;
 
   /**
+   * optional hint (manual-emotion toggle)
+   *
    * @generated from field: cosimosi.v1.Mood mood = 2;
    */
   mood: Mood;
 
   /**
+   * optional hint, 0..1
+   *
    * @generated from field: double intensity = 3;
    */
   intensity: number;
@@ -42,6 +50,13 @@ export type RecordMemoryRequest = Message<"cosimosi.v1.RecordMemoryRequest"> & {
    * @generated from field: string idempotency_key = 5;
    */
   idempotencyKey: string;
+
+  /**
+   * optional hint, -1..1 (0 = unset/neutral)
+   *
+   * @generated from field: double valence = 6;
+   */
+  valence: number;
 };
 
 /**
@@ -52,16 +67,28 @@ export const RecordMemoryRequestSchema: GenMessage<RecordMemoryRequest> = /*@__P
   messageDesc(file_cosimosi_v1_memory, 0);
 
 /**
- * Instant star appearance is client-optimistic (built from memory_id + form
- * values). The client already holds body/mood, so only the new id comes back.
+ * Fragment fan-out is asynchronous (spec 21): only the immutable record id is
+ * final at response time. memory_ids is usually EMPTY — the fragment stars
+ * arrive on the next GetUniverse refetch (constitution §6, "stars arrive
+ * async"); it is non-empty only on an idempotent replay of an already
+ * fanned-out record.
  *
  * @generated from message cosimosi.v1.RecordMemoryResponse
  */
 export type RecordMemoryResponse = Message<"cosimosi.v1.RecordMemoryResponse"> & {
   /**
-   * @generated from field: string memory_id = 1;
+   * immutable original (final)
+   *
+   * @generated from field: string record_id = 1;
    */
-  memoryId: string;
+  recordId: string;
+
+  /**
+   * fragment stars — may be empty
+   *
+   * @generated from field: repeated string memory_ids = 2;
+   */
+  memoryIds: string[];
 };
 
 /**
@@ -75,6 +102,9 @@ export const RecordMemoryResponseSchema: GenMessage<RecordMemoryResponse> = /*@_
  * Star is the visual input for a star (no body). Brightness = max(a_min,
  * activation) is computed client-side; the server is authoritative only over
  * last_recalled_at.
+ * Field numbers 5–11 are RESERVED by later specs (5–8 = 23 reshaping,
+ * 9–10 = 28 wayfinding, 11 = 36 resonance — 00.overview 공유 설계 결정);
+ * valence therefore takes 12.
  *
  * @generated from message cosimosi.v1.Star
  */
@@ -98,6 +128,13 @@ export type Star = Message<"cosimosi.v1.Star"> & {
    * @generated from field: string last_recalled_at = 4;
    */
   lastRecalledAt: string;
+
+  /**
+   * -1..1 signed affect (spec 21; 26 consumes in λ_eff)
+   *
+   * @generated from field: double valence = 12;
+   */
+  valence: number;
 };
 
 /**

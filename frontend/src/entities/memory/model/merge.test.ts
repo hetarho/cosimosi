@@ -11,7 +11,7 @@ function star(id: string, index: number, lastRecalledAt = NOW): StarNode {
   return {
     id,
     index,
-    memory: { id, mood: 'joy', intensity: 0.5, lastRecalledAt, seed: index * 0.1 },
+    memory: { id, mood: 'joy', intensity: 0.5, valence: 0, lastRecalledAt, seed: index * 0.1 },
   }
 }
 

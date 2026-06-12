@@ -2,8 +2,16 @@
 -- worker claims/completes/fails. Jobs are never deleted — a give-up is
 -- preserved as status='failed' (constitution §1/§2).
 
--- name: EnqueueJob :exec
--- Hands embedding/linking to the async worker. RecordMemory only enqueues.
+-- name: EnqueueExtractJob :exec
+-- Hands segmentation (1 diary → N fragment stars, spec 21) to the async worker.
+-- Keyed by record_id — there is no memory yet (the fragments don't exist until
+-- the extract worker fans them out). RecordMemory only enqueues.
+INSERT INTO jobs (id, record_id, user_id, kind, status)
+VALUES ($1, $2, $3, 'extract', 'pending');
+
+-- name: EnqueueEmbedJob :exec
+-- Hands embedding/linking of ONE fragment star to the async worker. Enqueued by
+-- the extract fan-out transaction (spec 21), one per fragment.
 INSERT INTO jobs (id, memory_id, kind, status)
 VALUES ($1, $2, 'embed', 'pending');
 
@@ -31,7 +39,7 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, memory_id, attempts;
+RETURNING id, memory_id, record_id, attempts;
 
 -- name: CompleteJob :exec
 UPDATE jobs SET status = 'done', updated_at = now() WHERE id = @id;
