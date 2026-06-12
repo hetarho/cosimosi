@@ -45,9 +45,10 @@
   `SetActiveLLM`은 `model ∈ models ∪ {default_model, ''}` 밖이면 `InvalidArgument`.
 - **우선순위 DB(콘솔) > env:** `llm.NewResolver`가 selection을 **TTL 30s 캐시**로 읽어
   어댑터에 위임한다 — 공급자/모델/키 교체는 **재시작 없이 ≤30s 내** 다음 `Complete`부터
-  반영. selection이 비어 있으면 env(`LLM_PROVIDER`/키) `factory.New`로 폴백(spec-20 동작
-  보존, `AI_EXTRACTOR=mock` 키리스 경로 불변). 소스 에러(DB 다운·복호화 실패)는 로그 후
-  폴백 — 추출을 실패시키지 않는다.
+  반영. selection이 비어 있으면 `SwitchingExtractor`가 resolver 호출 전에 키리스 mock으로
+  라우팅한다 — 추출 on/off는 콘솔 액션이고 env 노브는 없다(resolver 자체의 env
+  `factory.New` 폴백은 TTL 어긋남 창에서만 닿는 엣지 경로). 소스 에러(DB 다운·복호화
+  실패)는 로그 후 마지막 라우트 유지 — 추출을 실패시키지 않는다.
 - 의존 방향: `llm`은 DB·admin을 모른다 — admin이 `llm.ConfigSource`(selection+복호화)와
   `llm.UsageSink`(계측)를 구현해 주입한다(헌법7 유지).
 

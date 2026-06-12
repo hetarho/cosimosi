@@ -56,11 +56,7 @@ func main() {
 		os.Exit(1)
 	}
 	adminSvc := admin.NewService(admin.NewRepository(db), adminCipher, cfg)
-	extractor, err := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
-	if err != nil {
-		slog.Error("extractor init failed", "err", err)
-		os.Exit(1)
-	}
+	extractor := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
 
 	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, slog.Default())
 	worker.Run(ctx) // blocks until ctx is cancelled by a signal

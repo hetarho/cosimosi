@@ -18,10 +18,10 @@ const resolverTTL = 30 * time.Second
 // resolver is the dynamic Client (spec 34): each Complete resolves the active
 // (provider, model, key) from the ConfigSource under a short TTL cache and
 // delegates to the matching adapter. With nothing configured in the DB
-// (ok=false) it falls back to the env-built factory.New client, preserving
-// spec-20 behavior exactly — including the keyless mock path, which never
-// reaches this type at all (ai.NewExtractor only builds an llm client when
-// AI_EXTRACTOR=llm).
+// (ok=false) it falls back to the env-built factory.New client (spec-20
+// behavior). The keyless mock path never reaches this type at all — the
+// SwitchingExtractor routes to the mock before an llm call is made when no
+// console selection is active.
 type resolver struct {
 	src  ConfigSource
 	sink UsageSink // nil-safe; failures are logged, never propagated (4.2)

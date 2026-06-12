@@ -1,7 +1,7 @@
 # LLM 공급자 추상화 (`backend/internal/llm`)
 
 도메인 코드는 어떤 LLM인지 모른다. LLM이 필요한 로직은 `llm.Client` 포트만 호출하고,
-실제 공급자(openai · gemini · claude · deepseek · grok)는 **env만으로** 갈아끼운다(헌법7).
+실제 공급자(openai · gemini · claude · deepseek · grok)는 **admin 콘솔에서** 갈아끼운다(헌법7, spec 34).
 
 ```
 도메인(ai.LLMExtractor 등)
@@ -17,40 +17,27 @@ backend/internal/llm
    └─ gemini.go         Gemini generateContent (gemini)
 ```
 
-## 사용 (env)
+## 추출 모드 — env 노브 없음
 
-```bash
-AI_EXTRACTOR=llm          # mock(기본·키리스) | llm
-LLM_PROVIDER=claude       # openai | gemini | claude | deepseek | grok (기본 openai)
-LLM_MODEL=                # 비우면 공급자 기본 모델
-ANTHROPIC_API_KEY=sk-...  # 선택한 공급자의 키만 있으면 됨
-```
+추출은 **admin 콘솔의 활성 LLM 선택을 따른다**(spec 34): 활성 선택이 있으면 실제 추출, 없으면 키리스 mock. AI를 켜고 끄는 것은 콘솔 액션이지 env 변경이 아니며, 이를 위한 env 변수는 존재하지 않는다. (admin 배선 없이 뜨는 단독 도구·테스트는 키리스 mock으로 고정된다 — `ai.NewExtractor`에 src=nil.)
 
-## API 키 넣는 곳 (환경별)
+## API 키 넣는 곳
 
-키는 **admin 콘솔(권장) 또는 env로만** 들어간다 — 코드·리포에 절대 커밋하지 않는다(`.env`는 비추적).
+키는 **admin 콘솔로만** 들어간다 — env 파일·코드·리포에 두지 않는다.
 
-| 환경 | 넣는 곳 | 전달 경로 |
-|---|---|---|
-| **admin 콘솔 (권장, spec 34)** | 웹 `/admin` → 공급자 카드에 키 입력·저장 + 활성 LLM 선택 | DB에 **AES-256-GCM 암호문만** 저장(`0x01‖nonce‖ct`, AAD=provider; 마스터키 `LLM_KEY_ENCRYPTION_KEY`는 서버 env에만). `llm.NewResolver`가 TTL 30s 캐시로 읽어 **재배포·재시작 없이 ≤30s 내 반영**. 어떤 응답·로그에도 평문 비반환(`key_set`+last4만) |
-| 로컬 (env 폴백) | **리포 루트 `.env`** (`.env.example` 복사 후 채움) | ① 호스트에서 백엔드 실행 시: `config.Load()`의 godotenv가 `../.env`를 직접 읽음 ② dev 컨테이너(`docker compose --profile dev`): compose가 루트 `.env`를 `${...}`로 보간해 backend 서비스 `environment:`로 주입 (docker-compose.yml에 변수 목록 있음) |
-| 스테이징/프로덕션 (env 폴백) | **VPS `/srv/cosimosi-{staging,prod}/.env`** (`chmod 600`, 비추적 — DEPLOY.md §4) | `docker-compose.prod.yml`의 `env_file: .env`가 파일 전체를 컨테이너에 주입. 키 목록 문서화는 `.env.production.example` |
-
-**우선순위: DB(콘솔) > env.** `llm_selection`이 설정돼 있으면 콘솔의 활성 공급자·모델·키를 쓰고, 비어 있으면 env(`LLM_PROVIDER`/키)로 폴백한다 — env-only 운영도 그대로 동작한다.
+웹 `/admin` → 공급자 카드에 키 입력·저장 + 활성 LLM 선택. DB에는 **AES-256-GCM 암호문만** 저장된다(`0x01‖nonce‖ct`, AAD=provider; 마스터키 `LLM_KEY_ENCRYPTION_KEY`는 서버 env에만 — DB 덤프 단독으로는 복호화 불가). `llm.NewResolver`가 TTL 30s 캐시로 읽어 **재배포·재시작 없이 ≤30s 내 반영**되고, 어떤 응답·로그에도 평문은 비반환된다(`key_set`+last4만).
 
 콘솔 경로 순서: ① 서버 env에 `LLM_KEY_ENCRYPTION_KEY`(`openssl rand -base64 32`)와 `ADMIN_USER_IDS`(관리자 UUID/이메일)를 한 번만 설정 → ② `/admin`에서 공급자 키 저장(테스트 버튼으로 검증) → ③ 활성 LLM 선택·저장 — 끝. 이후 키 로테이션·모델 변경·공급자 전환은 전부 웹에서, 재배포 없이.
 
-env 폴백 순서: ① 루트 `.env`(또는 VPS 스택 `.env`)에 `AI_EXTRACTOR=llm` + `LLM_PROVIDER=<공급자>` + 그 공급자의 키 한 줄을 채운다 → ② 백엔드 재시작(dev 컨테이너는 `docker compose --profile dev up -d backend`로 재생성 — env는 재시작이 아니라 재생성 시 반영된다) → ③ 로그에 fail-fast 에러가 없으면 끝(키가 비면 부팅 시 `LLM_PROVIDER=… requires …_API_KEY`로 즉사한다).
+서버 env에 남는 LLM 관련 값은 둘뿐이다: `LLM_KEY_ENCRYPTION_KEY`(마스터키)와 `ADMIN_USER_IDS`(콘솔 접근 허용 목록). `OPENAI_API_KEY`는 **임베더**(`AI_EMBEDDER=openai`) 전용이다. 프론트(`VITE_*`)와 무관하다 — LLM 키는 전부 백엔드 전용이고 브라우저에 노출되지 않는다.
 
-프론트(`VITE_*`)와 무관하다 — LLM 키는 전부 백엔드 전용이고 브라우저에 노출되지 않는다.
-
-| provider | 기본 모델 | 키 env | 구조화 출력 |
-|---|---|---|---|
-| `openai` | `gpt-5.4-mini` | `OPENAI_API_KEY` | `response_format: json_schema (strict)` |
-| `gemini` | `gemini-3.5-flash` | `GEMINI_API_KEY` | `responseMimeType` + `responseJsonSchema` |
-| `claude` | `claude-opus-4-8` | `ANTHROPIC_API_KEY` | `output_config.format: json_schema` |
-| `deepseek` | `deepseek-v4-flash` | `DEEPSEEK_API_KEY` | `json_object` + 프롬프트 내 스키마(자동 강등) |
-| `grok` | `grok-4.3` | `XAI_API_KEY` | `response_format: json_schema (strict)` |
+| provider | 기본 모델 | 구조화 출력 |
+|---|---|---|
+| `openai` | `gpt-5.4-mini` | `response_format: json_schema (strict)` |
+| `gemini` | `gemini-3.5-flash` | `responseMimeType` + `responseJsonSchema` |
+| `claude` | `claude-opus-4-8` | `output_config.format: json_schema` |
+| `deepseek` | `deepseek-v4-flash` | `json_object` + 프롬프트 내 스키마(자동 강등) |
+| `grok` | `grok-4.3` | `response_format: json_schema (strict)` |
 
 ## 새 공급자 추가하기
 

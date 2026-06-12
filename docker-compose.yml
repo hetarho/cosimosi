@@ -36,17 +36,12 @@ services:
       # Unauthenticated; the :- default keeps compose quiet when it's unset.
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
       SUPABASE_PROJECT_URL: ${SUPABASE_PROJECT_URL:-}
-      # AI adapters (spec 05·20) — also threaded from the root .env. Defaults keep
-      # everything keyless (mock); set the vars in .env to use real providers.
+      # AI adapters (spec 05·34) — embedding is env-selected (mock = keyless
+      # default; openai needs OPENAI_API_KEY). Extraction has NO env knob: it
+      # follows the admin console's active LLM selection (keyless mock when none
+      # is active), and provider keys live encrypted in the DB via the console.
       AI_EMBEDDER: ${AI_EMBEDDER:-mock}
-      AI_EXTRACTOR: ${AI_EXTRACTOR:-mock}
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      LLM_MODEL: ${LLM_MODEL:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      XAI_API_KEY: ${XAI_API_KEY:-}
       # Admin console (spec 34) — allowlist + LLM key envelope master key.
       ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}
       LLM_KEY_ENCRYPTION_KEY: ${LLM_KEY_ENCRYPTION_KEY:-}

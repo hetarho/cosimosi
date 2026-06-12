@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math"
-	"strings"
 	"testing"
 
 	"github.com/cosimosi/backend/internal/llm"
@@ -155,40 +154,24 @@ func TestLLMExtractorContentGarbageFallsBackTransportErrorPropagates(t *testing.
 }
 
 func TestNewExtractorSelection(t *testing.T) {
-	if _, err := NewExtractor(&config.Config{AIExtractor: "mock"}, nil, nil); err != nil {
-		t.Fatalf("mock: %v", err)
-	}
-	// Default without a ConfigSource (standalone worker/tests) stays the keyless mock.
-	if ext, err := NewExtractor(&config.Config{AIExtractor: ""}, nil, nil); err != nil {
-		t.Fatalf("default without source should be mock: %v", err)
+	// Without a ConfigSource (standalone tooling/tests) extraction pins the keyless mock.
+	if ext := NewExtractor(&config.Config{}, nil, nil); ext == nil {
+		t.Fatal("without source: nil extractor")
 	} else if _, ok := ext.(*MockExtractor); !ok {
-		t.Fatalf("default without source should build *MockExtractor, got %T", ext)
+		t.Fatalf("without source should build *MockExtractor, got %T", ext)
 	}
-	// Default WITH a ConfigSource (cmd/api with admin wiring) is the admin-followed switch.
-	if ext, err := NewExtractor(&config.Config{AIExtractor: ""}, stubLLM{text: "{}"}, stubSource{}); err != nil {
-		t.Fatalf("default with source: %v", err)
+	// With a ConfigSource (cmd/api·worker with admin wiring) it is the admin-followed
+	// switch — there is no env knob (spec 34: AI on/off is a console action).
+	if ext := NewExtractor(&config.Config{}, stubLLM{text: "{}"}, stubSource{}); ext == nil {
+		t.Fatal("with source: nil extractor")
 	} else if _, ok := ext.(*SwitchingExtractor); !ok {
-		t.Fatalf("default with source should build *SwitchingExtractor, got %T", ext)
+		t.Fatalf("with source should build *SwitchingExtractor, got %T", ext)
 	}
-	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai", OpenAIAPIKey: "sk-test"}, nil, nil); err != nil {
-		t.Fatalf("llm+key: %v", err)
-	} else if _, ok := ext.(*LLMExtractor); !ok {
-		t.Fatalf("llm should build *LLMExtractor, got %T", ext)
-	}
-	// Injected client (the spec-34 Resolver path) wins over env config —
-	// no env key needed when a client is supplied.
-	if ext, err := NewExtractor(&config.Config{AIExtractor: "llm"}, stubLLM{text: "{}"}, nil); err != nil {
-		t.Fatalf("llm+injected client: %v", err)
-	} else if _, ok := ext.(*LLMExtractor); !ok {
-		t.Fatalf("injected client should build *LLMExtractor, got %T", ext)
-	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: "llm", LLMProvider: "openai"}, nil, nil); err == nil ||
-		!strings.Contains(err.Error(), "OPENAI_API_KEY") {
-		t.Fatalf("llm without key should fail fast naming the env var, got %v", err)
-	}
-	if _, err := NewExtractor(&config.Config{AIExtractor: "banana"}, nil, nil); err == nil ||
-		!strings.Contains(err.Error(), "unknown AI_EXTRACTOR") {
-		t.Fatalf("unknown extractor should error, got %v", err)
+	// nil client + source still works: the factory builds the resolver itself.
+	if ext := NewExtractor(&config.Config{}, nil, stubSource{}); ext == nil {
+		t.Fatal("with source, nil client: nil extractor")
+	} else if _, ok := ext.(*SwitchingExtractor); !ok {
+		t.Fatalf("with source, nil client should build *SwitchingExtractor, got %T", ext)
 	}
 }
 

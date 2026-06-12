@@ -115,16 +115,12 @@ func main() {
 	}
 	// The extractor's llm client is the admin-backed resolver (spec 34): the
 	// active provider/model/key swap at runtime without a restart. adminSvc also
-	// serves as the ConfigSource the default "auto" mode follows — an ACTIVE
-	// console selection routes extraction to the real LLM, none degrades to the
-	// keyless mock (turning AI on/off is a console action, not an env change).
+	// serves as the ConfigSource the extractor follows — an ACTIVE console
+	// selection routes extraction to the real LLM, none degrades to the keyless
+	// mock (turning AI on/off is a console action, not an env change).
 	// Shared by the worker (async extract jobs) AND the memory service
 	// (synchronous SegmentMemory preview).
-	extractor, err := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
-	if err != nil {
-		slog.Error("extractor init failed", "err", err)
-		os.Exit(1)
-	}
+	extractor := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
 
 	// Compose the feature graph: link read service feeds the memory service's
 	// GetUniverse; the memory handler is the real MemoryService implementation

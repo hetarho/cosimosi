@@ -57,8 +57,8 @@
 | 조각 수 | `[1,5]` 클램프(상한 8 이내) — 초과분은 **마지막 조각에 병합**(텍스트 무손실), 코드가 항상 재적용 |
 | 조각 감정 모델 | `Mood` 13종(29 — 색/UX 레이어, 사분면-우선 선택·tie-break·한국어 정동 레시피는 29 가이드라인을 프롬프트로 사용) · `Intensity ∈ [0,1]` = arousal(기억 무게) · `Valence ∈ [-1,1]` = 부호 있는 정서가(0=중립; 영속·물리 소비는 21·26) |
 | 견고성 | 응답은 파싱→화이트리스트→클램프(intensity `[0,1]`·valence `[-1,1]`·NaN→0)→Index 0-based 재부여; **어떤 깨짐이든 단일 조각 폴백**(전체 원문·neutral·valence 0) — 에러가 아닌 정상 경로. 전송 실패만 에러(워커 백오프) |
-| 어댑터 선택 | `AI_EXTRACTOR=mock`(기본 — 키리스·결정론적 문단/문장 분절·neutral) \| `llm`(실 LLM) |
-| LLM 공급자 추상화 | `internal/llm`의 단일 `llm.Client` 포트 뒤에서 `LLM_PROVIDER=openai\|gemini\|claude\|deepseek\|grok` env로 교체(헌법7). 기본 모델 gpt-5.4-mini / gemini-3.5-flash / claude-opus-4-8 / deepseek-v4-flash / grok-4.3, `LLM_MODEL`로 오버라이드. 키 없으면 fail-fast |
+| 어댑터 선택 | env 노브 없음(34) — admin 콘솔의 활성 LLM 선택을 따른다: 활성이면 실 LLM, 없으면 키리스 mock(결정론적 문단/문장 분절·neutral). admin 배선 없는 단독 도구·테스트는 mock 고정 |
+| LLM 공급자 추상화 | `internal/llm`의 단일 `llm.Client` 포트 뒤에서 공급자(openai\|gemini\|claude\|deepseek\|grok)·모델·키를 admin 콘솔에서 교체(헌법7·34). 기본 모델 gpt-5.4-mini / gemini-3.5-flash / claude-opus-4-8 / deepseek-v4-flash / grok-4.3, 모델 오버라이드는 콘솔 selection |
 | 조각 시드 | `ai.SegmentSeed(diaryID, fragmentIndex, text) = FNV64a(diary_id:idx:sha1(normalize(text)))` — 결정론적(21이 별 형태/좌표 시드로 소비) |
 | 비용 가드 | 입력 4000 runes 절단(임베더 캡 미러)·텍스트 해시 캐시·`ExtractMetrics`(임베딩 `Metrics`와 분리 계측) |
 

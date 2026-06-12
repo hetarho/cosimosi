@@ -32,13 +32,13 @@ type Config struct {
 	// AIEmbedder selects the embedding adapter (constitution §7): "mock" (keyless,
 	// deterministic — the default, used for keyless E2E) or "openai".
 	AIEmbedder string
-	// AIExtractor selects the extraction adapter (spec 20, constitution §7):
-	// "mock" (keyless, deterministic — the default) or "llm" (the provider
-	// abstraction below).
-	AIExtractor string
+	// There is deliberately NO extractor env knob (spec 34): extraction follows
+	// the admin console — real while an LLM selection is ACTIVE, keyless mock
+	// otherwise. Turning AI on/off is a console action, not an env change.
+	//
 	// LLMProvider selects the LLM provider behind the llm.Client port (spec 20):
-	// openai | gemini | claude | deepseek | grok. Only consulted when something
-	// (AI_EXTRACTOR=llm) actually needs an LLM.
+	// openai | gemini | claude | deepseek | grok. Only consulted by the llm
+	// resolver's env fallback when the console has nothing configured.
 	LLMProvider string
 	// LLMModel overrides the selected provider's default model. Empty = use the
 	// provider default (see internal/llm).
@@ -82,7 +82,6 @@ func Load() (*Config, error) {
 		SupabaseJWTSecret:   getEnv("SUPABASE_JWT_SECRET", ""),
 		SupabaseProjectURL:  getEnv("SUPABASE_PROJECT_URL", ""),
 		AIEmbedder:          getEnv("AI_EMBEDDER", "mock"),
-		AIExtractor:         getEnv("AI_EXTRACTOR", "mock"),
 		LLMProvider:         getEnv("LLM_PROVIDER", "openai"),
 		LLMModel:            getEnv("LLM_MODEL", ""),
 		OpenAIAPIKey:        getEnv("OPENAI_API_KEY", ""),

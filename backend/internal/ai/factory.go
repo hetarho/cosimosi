@@ -24,40 +24,21 @@ func NewEmbedder(cfg *config.Config) (Embedder, error) {
 	}
 }
 
-// NewExtractor selects the extraction adapter from config (AI_EXTRACTOR):
-// unset/"auto" (admin-controlled switch — the default), "mock" (force keyless),
-// or "llm" (force real). Mirrors NewEmbedder (constitution §7).
+// NewExtractor wires the admin-controlled extractor (spec 34): extraction is
+// real while the admin console has an ACTIVE LLM selection and degrades to the
+// keyless mock otherwise — turning AI on/off is a console action, never an env
+// change (there is deliberately no env knob for it).
 //
 // client is the optional injected llm.Client — the composition root passes the
-// admin-backed llm.NewResolver (spec 34) so the active provider/model/key swap
-// at runtime without a restart; nil preserves the spec-20 env-only path
-// (llm.New). src is the admin ConfigSource the default "auto" mode follows:
-// with an ACTIVE console selection extraction is real, without one it degrades
-// to the keyless mock — turning AI on/off is a console action, not an env
-// change. src=nil (standalone worker without admin wiring, tests) keeps "auto"
-// at the keyless mock, exactly the old default.
-func NewExtractor(cfg *config.Config, client llm.Client, src llm.ConfigSource) (Extractor, error) {
-	switch cfg.AIExtractor {
-	case "", "auto":
-		if src == nil {
-			return NewMockExtractor(), nil
-		}
-		if client == nil {
-			client = llm.NewResolver(src, cfg, nil)
-		}
-		return NewSwitchingExtractor(src, NewLLMExtractor(client), NewMockExtractor()), nil
-	case "mock":
-		return NewMockExtractor(), nil
-	case "llm":
-		if client == nil {
-			c, err := llm.New(cfg)
-			if err != nil {
-				return nil, fmt.Errorf("AI_EXTRACTOR=llm: %w", err)
-			}
-			client = c
-		}
-		return NewLLMExtractor(client), nil
-	default:
-		return nil, fmt.Errorf("unknown AI_EXTRACTOR %q (want auto|mock|llm)", cfg.AIExtractor)
+// admin-backed llm.NewResolver so the active provider/model/key swap at runtime
+// without a restart; nil builds one over src. src=nil (standalone tooling
+// without admin wiring, tests) pins the keyless mock.
+func NewExtractor(cfg *config.Config, client llm.Client, src llm.ConfigSource) Extractor {
+	if src == nil {
+		return NewMockExtractor()
 	}
+	if client == nil {
+		client = llm.NewResolver(src, cfg, nil)
+	}
+	return NewSwitchingExtractor(src, NewLLMExtractor(client), NewMockExtractor())
 }
