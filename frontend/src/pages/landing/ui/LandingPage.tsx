@@ -9,6 +9,7 @@ import { EngramCard } from './section/EngramCard'
 import { FragmentationCard } from './section/FragmentationCard'
 import { HebbianCard } from './section/HebbianCard'
 import { TimeWindowCard } from './section/TimeWindowCard'
+import { AmbientMoodCard } from './section/AmbientMoodCard'
 import { PresentSelfCard } from './section/PresentSelfCard'
 import { ReconsolidationCard } from './section/ReconsolidationCard'
 import { SilentEngramCard } from './section/SilentEngramCard'
@@ -112,9 +113,12 @@ export function LandingPage() {
           chapter="VII"
           eyebrow="요즘의 나 · 경쟁적 할당"
           heading="지금의 내가, 우주를 물들여요"
-          lead="별은 제자리에 머물지만, 그 별을 비추는 빛은 요즘의 나를 따라 달라져요. 새로 쓴 기억은 빈 곳이 아니라 요즘 자주 머문 별무리 곁으로 끌려가 자리를 잡아요 — 어디 놓일지는 연결이 정해요."
+          lead="별은 제자리에 머물지만, 그 별을 비추는 빛은 요즘의 나를 따라 달라져요. 같은 별들도 오늘의 하늘색이 다르면 다르게 보이죠. 그리고 새로 쓴 기억은 빈 곳이 아니라 요즘 자주 머문 별무리 곁으로 끌려가 자리를 잡아요 — 어디 놓일지는 연결이 정해요."
         >
-          <PresentSelfCard />
+          <div className="grid gap-6 md:grid-cols-2">
+            <AmbientMoodCard />
+            <PresentSelfCard />
+          </div>
         </JourneyAct>
 
         <JourneyAct

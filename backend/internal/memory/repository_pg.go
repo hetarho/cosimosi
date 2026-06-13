@@ -178,6 +178,30 @@ func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff ti
 	return out, nil
 }
 
+// ListRecentForAmbient reads the user's recent fragment emotions (last_recalled_at >=
+// since) for the ambient summary (spec 25). The query's WHERE guarantees a non-null
+// last_recalled_at, so the timestamp maps directly; nullable mood/intensity/valence
+// reuse the same domain mappers as the star reads.
+func (r *pgRepository) ListRecentForAmbient(ctx context.Context, userID string, since time.Time) ([]EmotionSample, error) {
+	rows, err := gen.New(r.pool).ListRecentForAmbient(ctx, gen.ListRecentForAmbientParams{
+		UserID: userID,
+		Since:  pgtype.Timestamptz{Time: since, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list recent for ambient: %w", err)
+	}
+	out := make([]EmotionSample, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, EmotionSample{
+			Mood:           moodFromDB(row.Mood),
+			Intensity:      intensityFromDB(row.Intensity),
+			Valence:        valenceFromDB(row.Valence),
+			LastRecalledAt: row.LastRecalledAt.Time,
+		})
+	}
+	return out, nil
+}
+
 // TouchRecall sets memories.last_recalled_at=now for the user's star (no-op if
 // absent — the original record is never touched, constitution §1).
 func (r *pgRepository) TouchRecall(ctx context.Context, userID, memoryID string) error {

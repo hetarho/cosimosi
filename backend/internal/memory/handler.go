@@ -150,7 +150,18 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 		})
 	}
 
-	return connect.NewResponse(&cosimosiv1.GetUniverseResponse{Stars: stars, Synapses: synapses}), nil
+	return connect.NewResponse(&cosimosiv1.GetUniverseResponse{
+		Stars:    stars,
+		Synapses: synapses,
+		// Ambient is the recent-mood summary (spec 25), not a coordinate (constitution §3);
+		// an empty universe yields the neutral zero value (hue/sat/arousal/valence all 0).
+		Ambient: &cosimosiv1.AmbientMood{
+			Hue:     uni.Ambient.Hue,
+			Sat:     uni.Ambient.Sat,
+			Arousal: uni.Ambient.Arousal,
+			Valence: uni.Ambient.Valence,
+		},
+	}), nil
 }
 
 // ReinforceLinks applies a co-recall reinforcement batch. unary, idempotent

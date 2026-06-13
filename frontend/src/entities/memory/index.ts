@@ -11,6 +11,16 @@ export {
 } from './model/activation'
 export { seedFromId } from './model/seed'
 export { reshapedBrightness, reshapedSeed } from './model/reshape'
+export {
+  deriveAmbient,
+  ambientLights,
+  ambientToRgb,
+  excitabilityGain,
+  AMBIENT_LIGHTS_K,
+  type Ambient,
+  type AmbientLight,
+  type AmbientStar,
+} from './model/ambient'
 export { useMemoryStore } from './model/store'
 export { parseEpochMs } from './model/time'
 export {

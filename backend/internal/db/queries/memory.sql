@@ -82,6 +82,17 @@ FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index;
 
+-- name: ListRecentForAmbient :many
+-- 요즘 상태(ambient) 종합 입력(spec 25): 7일 윈도 안에서 회상/생성된 조각 별의 감정만.
+-- 가중 종합(exp 감쇠·정규화·HSV)은 도메인(AggregateAmbient)에서 한다 — SQL엔 감쇠 수식을
+-- 넣지 않는다(ListDormant·12와 같은 패턴: sargable·결정론). last_recalled_at은 생성 시
+-- now() 기본값이라 "막 적어 둔" 조각도, 회상으로 끌어올린 조각도 자연히 무게를 받는다.
+-- mood/intensity/valence 출처는 memories(가변 별 레이어, spec 21); fragment_index 무관.
+SELECT m.mood, m.intensity, m.valence, m.last_recalled_at
+FROM memories m
+WHERE m.user_id = $1
+  AND m.last_recalled_at >= sqlc.arg(since)::timestamptz; -- since = now - TauMoodDays·k
+
 -- name: ListDormant :many
 -- Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
 -- NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE

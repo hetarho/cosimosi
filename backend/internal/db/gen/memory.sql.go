@@ -391,6 +391,7 @@ func (q *Queries) ListDirectNeighbors(ctx context.Context, arg ListDirectNeighbo
 }
 
 const listDormant = `-- name: ListDormant :many
+
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
        m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
 FROM memories m
@@ -416,6 +417,7 @@ type ListDormantRow struct {
 	Version          int32              `json:"version"`
 }
 
+// since = now - TauMoodDays·k
 // Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
 // NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
 // compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
@@ -567,6 +569,55 @@ func (q *Queries) ListMemoryIDsByRecord(ctx context.Context, recordID string) ([
 			return nil, err
 		}
 		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentForAmbient = `-- name: ListRecentForAmbient :many
+SELECT m.mood, m.intensity, m.valence, m.last_recalled_at
+FROM memories m
+WHERE m.user_id = $1
+  AND m.last_recalled_at >= $2::timestamptz
+`
+
+type ListRecentForAmbientParams struct {
+	UserID string             `json:"user_id"`
+	Since  pgtype.Timestamptz `json:"since"`
+}
+
+type ListRecentForAmbientRow struct {
+	Mood           *string            `json:"mood"`
+	Intensity      *float32           `json:"intensity"`
+	Valence        *float32           `json:"valence"`
+	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+}
+
+// 요즘 상태(ambient) 종합 입력(spec 25): 7일 윈도 안에서 회상/생성된 조각 별의 감정만.
+// 가중 종합(exp 감쇠·정규화·HSV)은 도메인(AggregateAmbient)에서 한다 — SQL엔 감쇠 수식을
+// 넣지 않는다(ListDormant·12와 같은 패턴: sargable·결정론). last_recalled_at은 생성 시
+// now() 기본값이라 "막 적어 둔" 조각도, 회상으로 끌어올린 조각도 자연히 무게를 받는다.
+// mood/intensity/valence 출처는 memories(가변 별 레이어, spec 21); fragment_index 무관.
+func (q *Queries) ListRecentForAmbient(ctx context.Context, arg ListRecentForAmbientParams) ([]ListRecentForAmbientRow, error) {
+	rows, err := q.db.Query(ctx, listRecentForAmbient, arg.UserID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecentForAmbientRow
+	for rows.Next() {
+		var i ListRecentForAmbientRow
+		if err := rows.Scan(
+			&i.Mood,
+			&i.Intensity,
+			&i.Valence,
+			&i.LastRecalledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -17,6 +17,7 @@ export type {
   Star,
   Record,
   Synapse,
+  AmbientMood,
   GetUniverseResponse,
   ListDormantResponse,
   EvolutionSnapshot,

@@ -116,9 +116,20 @@ message Synapse {
 
 message GetUniverseRequest {}
 
+// AmbientMood = "지금의 나"의 색조 요약 (spec 25): 최근 7일 조각 감정의 시간가중 종합.
+// 별 좌표가 아닌 전역 배경 한 겹(서버 권위는 가중 그래프뿐 — 헌법3). 다중 광원의
+// 위치/풀 색은 proto에 없다 — 클라가 이 요약 + 로드된 별 분포 + 시드로 결정론 생성한다.
+message AmbientMood {
+  double hue = 1;      // 0..360 대표 색조(HSV) — moodRgb 팔레트 가중합에서 환산
+  double sat = 2;      // 0..1 채도(감정의 또렷함)
+  double arousal = 3;  // 0..1 각성도(최근성·강도가 높을수록 ↑) — 흥분성 게인 입력
+  double valence = 4;  // -1..1 시간가중 평균 정서가(배경 색 온도·채도 보정; 20·21이 추출·영속)
+}
+
 message GetUniverseResponse {
   repeated Star stars = 1;
   repeated Synapse synapses = 2;
+  AmbientMood ambient = 3;  // 25 추가 — 비면 클라가 별에서 폴백 파생
 }
 
 // --- RecallMemory (reconsolidation) ---

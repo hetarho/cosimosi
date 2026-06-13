@@ -26,6 +26,12 @@ type Repository interface {
 	// brightness filter — constitution §2), with mood/intensity JOINed from records.
 	ListByUser(ctx context.Context, userID string) ([]Memory, error)
 
+	// ListRecentForAmbient returns the user's recent fragment emotions within the 7-day
+	// ambient window (last_recalled_at >= since): mood/intensity/valence + activity time,
+	// the raw input AggregateAmbient time-weights into the "요즘" summary (spec 25). The
+	// service derives `since` from TauMoodDays; the query carries no decay math (12 pattern).
+	ListRecentForAmbient(ctx context.Context, userID string, since time.Time) ([]EmotionSample, error)
+
 	// ListDormant returns the user's stars whose last_recalled_at is before cutoff
 	// (long unrecalled), ascending. The cutoff is derived in the service from the
 	// dormancy threshold; the query compares time only (no decay math — constitution

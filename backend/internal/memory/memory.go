@@ -7,6 +7,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 )
 
@@ -165,11 +166,149 @@ type Synapse struct {
 	LastActivatedAt   *time.Time
 }
 
+// AmbientMood is the time-weighted summary of the user's recent fragment emotions —
+// "지금의 나" (spec 25). It is a global background tint, NOT a star coordinate
+// (constitution §3) and carries no tags (constitution §5). Empty (all-zero) means a
+// neutral / empty universe. The client derives the multi-light color DISTRIBUTION from
+// the loaded stars itself (server authority is the weighted graph only); this summary
+// drives the representative color + the excitability gain.
+type AmbientMood struct {
+	Hue     float64 // 0..360 대표 색조(HSV) — 팔레트 가중합에서 환산
+	Sat     float64 // 0..1 채도(감정의 또렷함 = 가중 평균색의 HSV 채도)
+	Arousal float64 // 0..1 각성도(최근성·강도가 높을수록 ↑) → 흥분성 게인 입력
+	Valence float64 // -1..1 시간가중 평균 정서가(음=차가운·무거운 하늘, 양=따뜻한 하늘) → 배경 색 보정
+}
+
+// EmotionSample is one recent fragment's affect, the raw input to AggregateAmbient
+// (spec 25). last_recalled_at is the activity time (creation or recall) the 7-day
+// envelope weighs. Pure domain — the repository maps the sqlc row into this.
+type EmotionSample struct {
+	Mood           Mood
+	Intensity      float64 // 0..1
+	Valence        float64 // -1..1
+	LastRecalledAt time.Time
+}
+
 // Universe is the whole authoritative graph for one user: every star and every
-// synapse, dormant ones included (no brightness filter — constitution §2).
+// synapse, dormant ones included (no brightness filter — constitution §2). Ambient
+// is the recent-mood summary that tints the background (spec 25).
 type Universe struct {
 	Memories []Memory
 	Synapses []Synapse
+	Ambient  AmbientMood
+}
+
+const (
+	// TauMoodDays is the slow mood envelope (spec 25): far slower than the 6h
+	// excitability window (22's tauExc) — "요즘" tints over days, not hours.
+	TauMoodDays = 7.0
+	// arousalGainCoef: g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]).
+	arousalGainCoef = 0.3
+)
+
+// ExcitabilityGain is the global gain the recent mood exposes to the competitive
+// allocation bias (spec 25, concept §결정2): a more aroused "요즘" pulls new fragments
+// harder toward hot clusters. arousal ONLY — valence acts on color, not on the gain
+// (decay weighting is spec 26). Empty universe → arousal 0 → gain 1.0 (no-op).
+func ExcitabilityGain(a AmbientMood) float64 { return 1 + arousalGainCoef*a.Arousal }
+
+// moodRGB is the BE half of the single mood→RGB palette (mirrors the FE MOOD_PALETTE
+// in shared/config/mood.ts — the 13 moods of spec 29). Linear RGB 0..1. AggregateAmbient
+// reduces a weighted blend of these to a hue/sat, so this and the FE fallback agree on
+// the color of "요즘". An unknown/unspecified mood reads as neutral grey.
+var moodRGB = map[Mood][3]float64{
+	MoodJoy:        {1.0, 0.84, 0.3},
+	MoodCalm:       {0.4, 0.75, 0.85},
+	MoodSad:        {0.35, 0.45, 0.72},
+	MoodAnger:      {0.92, 0.28, 0.28},
+	MoodFear:       {0.55, 0.35, 0.78},
+	MoodLove:       {0.96, 0.5, 0.72},
+	MoodNeutral:    {0.6, 0.6, 0.6},
+	MoodExcitement: {1.0, 0.55, 0.2},
+	MoodGratitude:  {0.55, 0.82, 0.6},
+	MoodRelief:     {0.5, 0.82, 0.78},
+	MoodStress:     {0.88, 0.35, 0.5},
+	MoodTired:      {0.45, 0.5, 0.6},
+	MoodEmptiness:  {0.32, 0.34, 0.5},
+}
+
+func moodRgbOf(m Mood) [3]float64 {
+	if rgb, ok := moodRGB[m]; ok {
+		return rgb
+	}
+	return [3]float64{0.6, 0.6, 0.6} // neutral grey
+}
+
+// AggregateAmbient is the pure 7-day time-weighted aggregation of recent fragment
+// emotions into the "요즘" summary (spec 25, acceptance 1.1–1.4). For each sample the
+// weight is w = intensity·exp(-Δt/τ) (Δt in days, τ=TauMoodDays): an older event decays
+// monotonically (1.3) and a fainter one weighs less. From the weighted blend:
+//   - hue/sat = HSV of the intensity-weighted average mood color (mixed moods → grey →
+//     low sat; one dominant emotion → vivid),
+//   - arousal = 1-exp(-Σw) ∈ [0,1) — more recent/intense mood reads as more aroused (1.2),
+//   - valence = Σ(w·valence)/Σw — the time-weighted mean signed affect.
+// An empty window (no samples, or Σw=0) returns the neutral AmbientMood{} (1.4), so
+// ExcitabilityGain stays 1.0. now is injected so the decay is testable.
+func AggregateAmbient(samples []EmotionSample, now time.Time) AmbientMood {
+	var sumW, sumWV, r, g, b float64
+	for _, s := range samples {
+		dtDays := now.Sub(s.LastRecalledAt).Hours() / 24
+		if dtDays < 0 {
+			dtDays = 0 // future timestamp (clock skew) → treat as now
+		}
+		intensity := s.Intensity
+		if intensity < 0 {
+			intensity = 0
+		}
+		w := intensity * math.Exp(-dtDays/TauMoodDays)
+		if w <= 0 {
+			continue
+		}
+		rgb := moodRgbOf(s.Mood)
+		r += w * rgb[0]
+		g += w * rgb[1]
+		b += w * rgb[2]
+		sumW += w
+		sumWV += w * s.Valence
+	}
+	if sumW <= 0 {
+		return AmbientMood{}
+	}
+	hue, sat := rgbToHueSat(r/sumW, g/sumW, b/sumW)
+	return AmbientMood{
+		Hue:     hue,
+		Sat:     sat,
+		Arousal: 1 - math.Exp(-sumW),
+		Valence: clampf(sumWV/sumW, -1, 1),
+	}
+}
+
+// rgbToHueSat returns the HSV hue (0..360) and saturation (0..1) of a linear RGB triple.
+// Value is dropped — ambient brightness comes from arousal, not the blend's luminance.
+func rgbToHueSat(r, g, b float64) (hue, sat float64) {
+	maxc := math.Max(r, math.Max(g, b))
+	minc := math.Min(r, math.Min(g, b))
+	if maxc <= 0 {
+		return 0, 0
+	}
+	sat = (maxc - minc) / maxc
+	delta := maxc - minc
+	if delta == 0 {
+		return 0, sat // grey → hue undefined, report 0
+	}
+	switch maxc {
+	case r:
+		hue = math.Mod((g-b)/delta, 6)
+	case g:
+		hue = (b-r)/delta + 2
+	default:
+		hue = (r-g)/delta + 4
+	}
+	hue *= 60
+	if hue < 0 {
+		hue += 360
+	}
+	return hue, sat
 }
 
 // LinkDelta is one co-recall reinforcement increment for a star pair.

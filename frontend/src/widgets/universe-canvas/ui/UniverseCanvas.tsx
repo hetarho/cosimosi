@@ -28,6 +28,7 @@ import {
   strength as memoryStrength,
   targetRadius,
 } from '@/shared/lib'
+import { AmbientNebula } from './AmbientNebula'
 import { SelfStar } from './SelfStar'
 import {
   createSim,
@@ -1348,6 +1349,9 @@ export function UniverseCanvas() {
     >
       <color attach="background" args={[bg]} />
       <ambientLight intensity={0.4} />
+      {/* 테마 깊은 베이스색(위) 위에 요즘 상태(spec 25)를 여러 넓은 광원으로 가산한다 — 단일
+          톤이 아니라 군데군데 번지는 불규칙 그라디언트. 별·시냅스보다 뒤(renderOrder<0). */}
+      <AmbientNebula />
       <StarDust count={1500} />
       {/* 별과 시냅스는 함께 부유(연결이 떨어지지 않게); StarDust는 밖에 두어 시차가 생긴다.
           자아 별(나)도 같은 그룹에서 부유해 강한 기억과의 거리감이 유지된다(spec 38).

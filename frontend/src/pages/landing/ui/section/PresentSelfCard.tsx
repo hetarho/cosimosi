@@ -239,7 +239,7 @@ export function PresentSelfCard() {
         때마다 그 무리의 흥분성을 절반으로 낮춰 다른 무리에도 자리를 내줘요.
       </p>
 
-      <TheoryBadge status="planned" plan="22·25" />
+      <TheoryBadge status="done" plan="22·25" />
     </div>
   )
 }

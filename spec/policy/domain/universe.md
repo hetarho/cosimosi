@@ -6,7 +6,7 @@
 
 우주는 별(기억)과 시냅스(연결)의 그래프를 3D 공간에 형상화한 것이다. 개별 별·시냅스의 규칙은 각 도메인 정책(star/synapse)에 두고, **이 문서는 그것들이 모인 전체 차원**만 정의한다: (1) 별 좌표가 어떻게 배치되는가, (2) 좌표의 권위가 어디 있는가, (3) 배경이 무엇을 비추는가, (4) 무엇이 절대 사라지지 않는가.
 
-별 좌표는 클라의 **라이브 force-sim**(순수 Barnes-Hut, `shared/lib/force-sim`)에서 창발한다(22). `UniverseCanvas`의 `LiveLayoutController`가 별·시냅스 그래프로 단일 좌표 버퍼를 펌프하고 네 readers 전부에 공급한다. **좌표는 두 축으로 나뉜다(38): 거리(반지름)는 강함, 방향(각도)은 연결.** 우주 중심에는 **자아("나") 별**이 떠 있고(그래프 비참여), 각 기억은 강함(`activation`(최근성, 12) + 감정 강도)에 따라 그 중심에서 떨어진다 — 자주·최근 떠올린 강렬한 기억일수록 가깝고, 잊혀갈수록 바깥. 회상하면 강함↑로 **중앙으로**, 시간이 지나면 강함↓로 **바깥으로** 미끄러지고, 새 기억은 가장 강하므로 **중앙 근처에서 태어난다**. 방향(각도·이웃)은 여전히 그래프 스프링·척력과 22의 흥분성 편향이 정한다. 새 조각은 가장 뜨거운 성단의 *각도* 근처에 시드된다(`seedNearCluster`). 버퍼가 아직 없는 초기 프레임은 `fibonacciStarPosition`(방향)으로 폴백한다. 요즘 상태(ambient) 배경·야간 공고화는 plan 25·27에서 다룬다(아직 정책 아님).
+별 좌표는 클라의 **라이브 force-sim**(순수 Barnes-Hut, `shared/lib/force-sim`)에서 창발한다(22). `UniverseCanvas`의 `LiveLayoutController`가 별·시냅스 그래프로 단일 좌표 버퍼를 펌프하고 네 readers 전부에 공급한다. **좌표는 두 축으로 나뉜다(38): 거리(반지름)는 강함, 방향(각도)은 연결.** 우주 중심에는 **자아("나") 별**이 떠 있고(그래프 비참여), 각 기억은 강함(`activation`(최근성, 12) + 감정 강도)에 따라 그 중심에서 떨어진다 — 자주·최근 떠올린 강렬한 기억일수록 가깝고, 잊혀갈수록 바깥. 회상하면 강함↑로 **중앙으로**, 시간이 지나면 강함↓로 **바깥으로** 미끄러지고, 새 기억은 가장 강하므로 **중앙 근처에서 태어난다**. 방향(각도·이웃)은 여전히 그래프 스프링·척력과 22의 흥분성 편향이 정한다. 새 조각은 가장 뜨거운 성단의 *각도* 근처에 시드된다(`seedNearCluster`). 버퍼가 아직 없는 초기 프레임은 `fibonacciStarPosition`(방향)으로 폴백한다. 우주의 배경은 테마 깊은 베이스색 위에 **요즘 상태(ambient)** 가 여러 넓은 광원으로 번지는 한 겹을 더한다(25 — 아래 §요즘 상태 배경). 야간 공고화는 plan 27에서 다룬다(아직 정책 아님).
 
 ## 규칙 · 파라미터
 
@@ -31,6 +31,19 @@
 | 테마 ↔ 별색 분리 | 배경은 테마(깊이), 별색은 mood(7색 의미 팔레트)로 독립. 테마 변경이 별의 mood 색을 바꾸지 않는다 |
 | 먼지 디밍 | 별 선택(focus) 시 별 먼지 불투명도 0.5 → 0.14로 낮춰 선택 별만 밝게(스포트라이트) |
 
+### 요즘 상태 배경 (ambient mood, 25)
+
+개별 별이 *과거의 한 순간*이라면 **배경은 "지금의 나"** 다 — 최근 조각들의 감정을 7일로 시간가중 종합해, 우세한 감정 몇을 각각 하나의 넓은 광원으로 흩뿌려 테마 베이스색 위에 가산한다. 단일 톤이 아니라 군데군데 번지는 불규칙한 빛이다.
+
+| 규칙 | 값 / 조건 |
+|---|---|
+| 종합 요약 (서버) | `GetUniverse`가 최근 7일(`TAU_MOOD=7d`) 윈도의 조각 감정(`mood·intensity·valence·last_recalled_at`)을 가중치 `w = intensity·exp(-Δt/τ)`로 종합해 `AmbientMood{hue,sat,arousal,valence}`로 응답. `arousal = 1−exp(-Σw)` ∈ [0,1), `valence = Σ(w·v)/Σw`, `hue/sat` = 강도가중 mood-RGB 블렌드의 HSV. 쿼리 `since = now − τ·3`(≈21일, exp 무시 가능 지점). 빈 우주 → 중립 0값. **좌표·광원 위치 필드 없음**(헌법3) |
+| 다중 광원 배경 (클라) | `AmbientNebula`가 로드된 별에서 우세 감정 **top-K(≤6, 상대 비중 <0.04 버림)** 를 각각 하나의 넓고 부드러운 **가산(additive) 빌보드**로, `mulberry32` 시드 불규칙 배치(반경 120~200 구면, 별 구름 밖)·`depthWrite/depthTest=false`·`renderOrder<0`로 별·시냅스 뒤에 둔다. 카메라가 움직이면 3D 시차로 깊이가 산다 |
+| 광원 색 | 각 풀 색 = `moodRgb(mood)`(테마 무관 7색 의미 팔레트)를 **valence로 온도·채도 보정**(양→따뜻·채도↑(금/장미), 음→차갑·탁(청록/보라)). 풀 밝기·크기 = `arousal`·상대 비중. 색의 의미는 테마와 무관하게 유지(테마=깊이, mood=요즘색) |
+| 색 분포 권위 | 서버는 **요약(ambient)만**, 다중 광원의 **색 분포는 클라가 별에서 파생**(`ambientLights`/`deriveAmbient` — 좌표·렌더 입력은 클라 권위, 헌법3). 서버 `ambient` 미수신(데모·구버전)이면 클라가 같은 7일 종합으로 폴백 |
+| 애니메이션 | BloomPass(`RenderPipeline`)가 내장 TSL `time` 노드를 진전시키지 않으므로, ambient 변경 시 **~0.8s 색 크로스페이드**·느린 드리프트·일렁임을 `useFrame` **수동 uniform**으로 구동(`StarField.update`·`Synapse uTime`과 같은 관용). `prefers-reduced-motion`이면 드리프트·일렁임 정지, 색만 유지 |
+| 흥분성 게인 | `g = 1 + 0.3·arousal`(arousal만; ∈[1,1.3])을 도메인 헬퍼(`memory.ExcitabilityGain` / `entities/memory excitabilityGain`)로 정의. 현재 할당 바이어스 `W_EXC`(22)에는 배선돼 있지 않다 — `worker.go`에 배선 지점 주석만(라이브 스케일은 27 야간 공고화 seam) |
+
 ### 삭제 없음 (no deletion)
 
 | 규칙 | 값 / 조건 |
@@ -53,5 +66,6 @@
 - 반지름=강함·각도=연결 · 자아 별 · 재이완: 구현 plan 38 · `frontend/src/shared/lib/layout.ts`(`strength`·`targetRadius`·`R_MIN`/`R_MAX`), `frontend/src/shared/lib/force-sim/{types.ts,sim.ts}`(`radius`·`radialStrength`·셸 힘), `frontend/src/widgets/universe-canvas/ui/{UniverseCanvas.tsx,SelfStar.tsx}`(`radiusOf`·re-kick·자아 별), `frontend/src/entities/appearance/model/self-objects.ts`(`SELF_OBJECTS`)
 - 좌표 권위 = 서버 그래프만 · fibonacci 폴백: 구현 plan 07·22 · `frontend/src/shared/lib/force-sim/types.ts`(순수 입출력 계약, 좌표 미저장), `frontend/src/shared/lib/layout.ts`
 - 우주 배경색 · 테마 분리: 구현 plan 06 · `frontend/src/entities/appearance/model/themes.ts`(`themeBg`), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`
+- 요즘 상태(ambient) 배경 · 다중 광원 · 흥분성 게인: 구현 plan 25 · `backend/internal/memory/memory.go`(`AmbientMood`·`AggregateAmbient`·`ExcitabilityGain`·`moodRGB`·`rgbToHueSat`)·`service.go`(`GetUniverse`)·`db/queries/memory.sql`(`ListRecentForAmbient`), `frontend/src/entities/memory/model/ambient.ts`(`deriveAmbient`·`ambientLights`·`ambientToRgb`·`excitabilityGain`), `frontend/src/widgets/universe-canvas/ui/AmbientNebula.tsx`, `backend/internal/job/worker.go`(W_EXC 배선 지점 주석)
 - 밝기 바닥 · 삭제 없음: 구현 plan 08·12 · `frontend/src/entities/memory/model/activation.ts`(`A_MIN`, `starBrightness`, `synapseBrightness`)
 - 렌더 셸(WebGPU·WebGL2 폴백·노드 Bloom·씬 내 DOM 금지): 구현 plan 06 · `frontend/src/shared/lib/r3f/`, `frontend/src/widgets/universe-canvas/ui/BloomPass.tsx`

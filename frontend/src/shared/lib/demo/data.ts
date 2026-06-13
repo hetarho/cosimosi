@@ -21,6 +21,27 @@ import { virtualNowMs, resetDemoClock } from './clock'
 
 const DAY_MS = 86_400_000
 
+// 데모 별의 부호 정동(spec 25 — 요즘 상태 배경의 온도). 실서버는 AI가 조각별 valence를
+// 추출·영속하지만, 체험은 네트워크 없이 mood에서 근사한다(shared/config MOOD_AFFECT의
+// 정서가와 같은 값). deriveAmbient/ambientLights가 이 valence로 배경 색을 따뜻↔차갑게
+// 보정해 "평온한 요즘=따뜻한 하늘 / 격동한 요즘=차가운 하늘"을 체험에서 보인다(1.11).
+const MOOD_VALENCE: Partial<Record<Mood, number>> = {
+  [Mood.JOY]: 0.8,
+  [Mood.EXCITEMENT]: 0.65,
+  [Mood.LOVE]: 0.75,
+  [Mood.CALM]: 0.55,
+  [Mood.GRATITUDE]: 0.6,
+  [Mood.RELIEF]: 0.45,
+  [Mood.ANGER]: -0.7,
+  [Mood.FEAR]: -0.6,
+  [Mood.STRESS]: -0.55,
+  [Mood.SAD]: -0.6,
+  [Mood.TIRED]: -0.45,
+  [Mood.EMPTINESS]: -0.5,
+  [Mood.NEUTRAL]: 0,
+}
+const valenceOf = (mood: Mood): number => MOOD_VALENCE[mood] ?? 0
+
 /** 더미 우주의 한 별 = 한 일기. daysAgo는 마지막 회상 경과일(밝기/잠듦을 좌우). */
 export interface DemoEntry {
   id: string
@@ -281,6 +302,7 @@ function toStar(now: number, e: DemoEntry): Star {
     memoryId: e.id,
     mood: e.mood,
     intensity: e.intensity,
+    valence: valenceOf(e.mood), // spec 25: 요즘 상태 배경 온도(체험 근사)
     lastRecalledAt: isoFrom(now, e.daysAgo),
     brightnessOffset: r?.brightnessOffset ?? 0,
     hueShift: r?.hueShift ?? 0,
@@ -486,6 +508,7 @@ export function demoAddRecord(input: {
         memoryId: id,
         mood,
         intensity,
+        valence: valenceOf(mood), // spec 25: 새 조각도 요즘 상태 배경을 그쪽 색으로 끌어당긴다
         lastRecalledAt: nowIso, // 방금 만든 별 → 가장 밝게
       }),
     )
@@ -596,6 +619,7 @@ function renewStar(s: Star, lastRecalledAt: string): Star {
     memoryId: s.memoryId,
     mood: s.mood,
     intensity: s.intensity,
+    valence: s.valence, // 회상 재점화에도 부호 정동 보존(spec 25 배경 온도)
     lastRecalledAt,
     brightnessOffset: r?.brightnessOffset ?? s.brightnessOffset,
     hueShift: r?.hueShift ?? s.hueShift,
