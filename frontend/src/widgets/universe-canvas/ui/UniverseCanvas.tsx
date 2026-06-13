@@ -629,10 +629,15 @@ function LiveLayoutController({
   positionsRef,
   onLayout,
   onReady,
+  onReset,
 }: {
   positionsRef: MutableRefObject<Float32Array | null>
   onLayout: (layout: LayoutMap) => void
   onReady: () => void
+  /** Re-hide the universe when the star set empties WITHOUT being a genuine empty universe —
+   *  a mid-session source reset (demo "처음으로") clears stars without remounting, so the next
+   *  batch must settle behind the veil again instead of animating in from seeds (spec 38). */
+  onReset: () => void
 }) {
   const stars = useMemoryStore((s) => s.stars)
   const edges = useSynapseStore((s) => s.edges)
@@ -671,9 +676,14 @@ function LiveLayoutController({
       simRef.current = null
       positionsRef.current = null
       onLayout(new Map())
-      // A genuinely-empty universe has nothing to place — reveal immediately. While it's
-      // merely "not loaded yet" (stars pending), stay hidden so the load doesn't flash.
+      // A genuinely-empty universe has nothing to place — reveal immediately. Otherwise it's
+      // "not loaded yet" (initial pending) OR a mid-session reset: re-arm the veil so the next
+      // batch settles hidden (readyRef reset → markReady can fire again on the next settle).
       if (loadedEmpty) markReady()
+      else {
+        readyRef.current = false
+        onReset()
+      }
       return
     }
     const now = virtualNowMs()
@@ -745,7 +755,7 @@ function LiveLayoutController({
     publish(sim, buf) // synapses get the seed layout now; they reconnect on each settle
     if (isSettled(sim)) markReady() // already settled (e.g. a single star) → reveal now
     // edges are part of the graph; rebuilding on an edge change keeps the springs current.
-  }, [stars, edges, positionsRef, onLayout, publish, loadedEmpty, markReady])
+  }, [stars, edges, positionsRef, onLayout, publish, loadedEmpty, markReady, onReset])
 
   useFrame(() => {
     const sim = simRef.current
@@ -1244,6 +1254,7 @@ export function UniverseCanvas() {
   // the user never sees filaments snapping from seed positions to their relaxed spots (38).
   const [ready, setReady] = useState(false)
   const onReady = useCallback(() => setReady(true), [])
+  const onReset = useCallback(() => setReady(false), []) // re-veil on a mid-session source reset
   // Safety net: reveal anyway after a few seconds so a stuck/errored load (stars never
   // arrive, layout never settles) can't trap the user behind the loading veil forever.
   useEffect(() => {
@@ -1303,7 +1314,12 @@ export function UniverseCanvas() {
           <StarField object={object} emotionColors={emotionColors} positionsRef={positionsRef} />
         </UniverseDrift>
       </group>
-      <LiveLayoutController positionsRef={positionsRef} onLayout={onLayout} onReady={onReady} />
+      <LiveLayoutController
+        positionsRef={positionsRef}
+        onLayout={onLayout}
+        onReady={onReady}
+        onReset={onReset}
+      />
       <CameraRig />
       <NebulaOrbitController />
       <NavController />

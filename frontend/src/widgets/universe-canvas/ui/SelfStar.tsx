@@ -27,7 +27,7 @@ import {
 } from 'three/tsl'
 import { useAppearance, themeAccent, type SelfObject } from '@/entities/appearance'
 
-// Sits just inside the strongest memory shell (R_MIN=8, shared/lib/layout) so the closest
+// Sits just inside the strongest memory shell (R_MIN=6, shared/lib/layout) so the closest
 // memories ring it without being swallowed.
 const SELF_RADIUS = 5
 
