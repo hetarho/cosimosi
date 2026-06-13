@@ -107,13 +107,22 @@ implementation ("한 단계를 건너뛰지 않는다"): Step 4's automated chec
 
 1. **`/code-review` on the diff — always.** Reviews working-tree changes for correctness bugs +
    reuse/simplification/efficiency cleanups. Apply the findings; for any you reject, note why.
-2. **codex review — fuller pass for non-trivial logic** (per 00.overview; skip for small/mechanical diffs,
-   or when the user says "just /code-review"). Spawn it **synchronously** — the delegate must wait for codex,
-   not re-detach to its own background (the **double-background** trap orphans the result; happened in spec 16).
-   Run `/code-review` *while* codex runs (~25 min); when codex returns, **merge** (dedupe + severity-rank) — it's
-   a different engine, strong on race/lifecycle issues and second-order bugs from your own refactor.
-   ⚠️ **Don't end the turn waiting for codex** — if `/code-review` fixes are in but codex is still running, call
-   `TaskOutput(block=true, timeout=600000)` repeatedly (~3× for codex's ~25 min) to block in-turn, then merge.
+2. **`/codex:review` — fuller pass for non-trivial logic** (per 00.overview; skip for small/mechanical diffs,
+   or when the user says "just /code-review"). This calls the **real Codex engine** (a different model — `codex
+   exec` via the codex plugin), strong on race/lifecycle issues and second-order bugs from your own refactor.
+   - **Invoke the `/codex:review` command itself — pass `--background`** (e.g. `/codex:review --background`). That
+     flag makes it run as a Claude background task with no bg/fg prompt; if you ever invoke it without the flag
+     and it asks "Wait / Run in background", **choose Run in background**. Either way the SAME `/codex:review`
+     command runs the Codex CLI reviewer.
+   - ⚠️ **Do NOT route codex through the `codex:rescue` agent or any sub-agent.** That's the **double-background**
+     trap (spec 16) — and worse, a sub-agent can silently *substitute its own (non-Codex) review* when the CLI
+     hiccups, so you think you got a cross-engine pass when you didn't (happened on spec 26). `/codex:review` runs
+     Codex directly. If `/codex:status` shows Codex isn't set up/available, **say so in the report** — never pass
+     off a non-Codex review as codex.
+   - Run `/code-review` *while* the codex background task runs (~25 min); apply its findings meanwhile.
+   ⚠️ **Don't end the turn waiting for codex.** When `/code-review` fixes are in but the codex background task is
+   still running, block in-turn until it finishes (poll `/codex:status`, or `TaskOutput(block=true,
+   timeout=600000)` on the codex task id, ~3× for its ~25 min), then **merge** (dedupe + severity-rank) and reflect.
 3. **Re-verify if the review changed code** — re-run the relevant Step 4 checks; a refactor can introduce a
    second-order bug, so don't report green on un-rebuilt changes.
 
@@ -144,4 +153,5 @@ Commits — English title, Korean body) and the established practice of committi
 | `pnpm infra:up` / `infra:down` | 로컬 postgres on/off |
 | `pnpm --filter ./frontend build` / `lint` | 프론트 검증 |
 | `/code-review` (skill) | 구현 diff 코드리뷰(정확성 버그 + 정리) — Step 5, 필수 |
+| `/codex:review --background` | 실제 Codex 엔진 교차 리뷰(다른 모델) — Step 5, 비자명 diff. rescue 에이전트 경유 금지. `/codex:status`로 진행 확인 |
 | `pnpm setup` | fresh/리셋 부트스트랩(.env·deps·postgres·migrate·gen) |
