@@ -74,11 +74,14 @@ const HOT_TAU_MS = 6 * 60 * 60 * 1000
 
 // Self-anchored radial layout (spec 38). Each star's target shell radius = f(strength);
 // the radius is recomputed each frame from the current time so a star glides outward as it
-// fades and inward when recalled. To avoid re-relaxing the whole graph every frame, the sim
-// is only re-kicked when some star's target radius drifts past REKICK_THRESHOLD (a recall
-// jump always crosses it; slow time-decay crosses it occasionally → stepwise glide).
-const REKICK_THRESHOLD = 0.5
-const REKICK_ALPHA = 0.3
+// fades and inward when recalled. Time decay changes a star's DISTANCE (strength), never its
+// CONNECTIONS — so when only the shells drift we move each node ALONG ITS RADIUS toward the
+// new shell and DON'T reheat the spring sim. Reheating (bumping global alpha) re-energizes
+// every link spring + repulsion at once, which flings well-connected hubs that settled in a
+// strained tug-of-war between their near shell and strong links to faded far neighbours (the
+// "star swings way out and back" bug). The springs only relax on a GRAPH change (the rebuild
+// effect starts a fresh sim at alpha=1); time drift is a pure radial glide.
+const RADIAL_GLIDE = 0.12 // per-frame ease toward the target shell (direction preserved)
 
 /** A memory's target distance from the central self star (spec 38): strength (activation =
  *  recency, 12 + emotional intensity) → radius. Strong/fresh → near centre, faded → outer.
@@ -644,9 +647,8 @@ function LiveLayoutController({
   const loadedEmpty = useMemoryStore((s) => s.loadedEmpty)
   const simRef = useRef<SimState | null>(null)
   const settledRef = useRef(true)
+  const glidingRef = useRef(false) // mid radial glide (time drift) → publish once when it ends
   const readyRef = useRef(false) // fire onReady exactly once
-  // Reused scratch for the per-frame target radii (avoids a per-frame allocation).
-  const targetScratchRef = useRef<Float32Array>(new Float32Array(0))
   // Memory facts by id (lastRecalledAt + intensity) for the per-frame radius recompute —
   // memoized so it's not rebuilt every frame, only when the star set changes.
   const memoryById = useMemo(
@@ -760,45 +762,63 @@ function LiveLayoutController({
   useFrame(() => {
     const sim = simRef.current
     if (!sim) return
-
-    // Recompute each star's target radius from the CURRENT time so it glides outward as it
-    // fades / inward when recalled (spec 38 1.3/1.4). `sim.radius` holds the shells the sim
-    // last relaxed to; we compare the fresh targets against THAT (not against last frame's
-    // value) so slow sub-threshold decay ACCUMULATES and eventually crosses the threshold —
-    // otherwise a per-frame overwrite would reset the baseline and the drift would never fire.
-    // When it crosses, apply all targets at once and re-kick; otherwise stay settled.
     const now = virtualNowMs()
-    let targets = targetScratchRef.current
-    if (targets.length !== sim.n) {
-      targets = new Float32Array(sim.n)
-      targetScratchRef.current = targets
-    }
-    let maxDelta = 0
-    for (let i = 0; i < sim.n; i++) {
-      const mem = memoryById.get(sim.ids[i])
-      const r = mem ? radiusOf(mem, now) : sim.radius[i]
-      targets[i] = r
-      const d = Math.abs(r - sim.radius[i])
-      if (d > maxDelta) maxDelta = d
-    }
-    if (maxDelta > REKICK_THRESHOLD) {
-      sim.radius.set(targets) // commit the new shells (recall pull-in / accumulated decay)
-      if (sim.alpha < REKICK_ALPHA) sim.alpha = REKICK_ALPHA
-      settledRef.current = false
-    }
 
-    if (isSettled(sim)) {
-      if (!settledRef.current) {
-        settledRef.current = true
-        const buf = simPositions(sim)
-        positionsRef.current = buf
-        publish(sim, buf) // filaments reconnect at the emergent coordinates
-        markReady() // first settle → reveal the placed universe (idempotent)
-      }
+    // (A) Spring-relaxation phase — only after a GRAPH change (the rebuild effect started a
+    // fresh sim at alpha=1): pump the springs until they settle, then publish the emergent
+    // coordinates (filaments reconnect) and reveal. This is where connected stars pull into
+    // constellations; time drift never enters here.
+    if (!isSettled(sim)) {
+      settledRef.current = false
+      positionsRef.current = tick(sim, LAYOUT_TICKS_PER_FRAME)
       return
     }
-    settledRef.current = false
-    positionsRef.current = tick(sim, LAYOUT_TICKS_PER_FRAME)
+    if (!settledRef.current) {
+      settledRef.current = true
+      const buf = simPositions(sim)
+      positionsRef.current = buf
+      publish(sim, buf)
+      markReady()
+    }
+
+    // (B) Time-drift radial glide (spec 38 1.3/1.4). Each star's shell radius = strength
+    // changes as it fades (outward) or is recalled (inward), but its CONNECTIONS don't — so
+    // ease each node ALONG ITS RADIUS toward the new shell, leaving the spring sim cold. This
+    // avoids reheating the link springs, which would fling a strained hub (the demo-014 swing).
+    // StarField reads positionsRef live every frame (smooth glide); the filament snapshot is
+    // republished once when the glide finishes (same cadence as a settle).
+    const px = sim.px
+    let moved = false
+    for (let i = 0; i < sim.n; i++) {
+      const mem = memoryById.get(sim.ids[i])
+      const target = mem ? radiusOf(mem, now) : sim.radius[i]
+      sim.radius[i] = target // keep shells current so a later graph re-relax uses them
+      const xi = i * 3
+      const len = Math.hypot(px[xi], px[xi + 1], px[xi + 2])
+      if (len < 1e-3) {
+        if (target > 1e-3) {
+          px[xi] = target // degenerate (at origin) → park on the +x shell, no random kick
+          moved = true
+        }
+        continue
+      }
+      const goal = len + (target - len) * RADIAL_GLIDE
+      if (Math.abs(goal - len) < 1e-3) continue // already on its shell
+      const k = goal / len
+      px[xi] *= k
+      px[xi + 1] *= k
+      px[xi + 2] *= k
+      moved = true
+    }
+    if (moved) {
+      positionsRef.current = simPositions(sim) // stars track the glide live
+      glidingRef.current = true
+    } else if (glidingRef.current) {
+      glidingRef.current = false
+      const buf = simPositions(sim)
+      positionsRef.current = buf
+      publish(sim, buf) // glide finished → filaments reconnect at the new shells
+    }
   })
 
   return null
