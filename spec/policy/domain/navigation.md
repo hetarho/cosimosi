@@ -4,7 +4,7 @@
 
 ## 정의
 
-**항행(navigation)** 은 사용자가 자기 우주를 둘러보고 별에 다가가는 **카메라의 운동 규칙**이다. 두 시점(`nebula` 성운 조망 / `recall` 회상 근접)과 한 별로의 접근(fly-to)을 별개 화면이 아니라 **같은 우주의 다른 카메라 자세**로 잇는다. 카메라는 좌표를 만들지 않고 별의 좌표를 **읽어** 그 위를 날 뿐이다(헌법3). 현재 fly-to·focus가 읽는 별 좌표는 클라이언트의 정적 결정론 배치 `fibonacciStarPosition(i, n, seed)`다(`shared/lib/layout.ts`) — 동일 인덱싱을 StarField·UniverseSynapses·FlyToController·FocusController가 공유한다. (라이브 force-sim 좌표 버퍼로의 전환은 plan 22에서 다룬다 — 아직 정책 아님.)
+**항행(navigation)** 은 사용자가 자기 우주를 둘러보고 별에 다가가는 **카메라의 운동 규칙**이다. 두 시점(`nebula` 성운 조망 / `recall` 회상 근접)과 한 별로의 접근(fly-to)을 별개 화면이 아니라 **같은 우주의 다른 카메라 자세**로 잇는다. 카메라는 좌표를 만들지 않고 별의 좌표를 **읽어** 그 위를 날 뿐이다(헌법3). fly-to·focus가 읽는 별 좌표는 클라 **라이브 force-sim 좌표 버퍼**다(22) — `UniverseCanvas.LiveLayoutController`가 펌프하는 단일 `Float32Array`(슬롯 = `stars` 배열 인덱스)를 StarField·UniverseSynapses·FlyToController·FocusController 네 readers가 공유한다(`readBufferPosition`). 버퍼가 아직 없는 초기 프레임엔 `fibonacciStarPosition(i, n, seed)`(`shared/lib/layout.ts`)로 폴백한다. fly-to/focus는 버퍼를 직접(capture·매 프레임) 읽고, 시냅스는 settle 시 발행되는 좌표 스냅샷에 굽는다.
 
 ## 규칙 · 파라미터
 
@@ -20,7 +20,7 @@
 
 ### fly-to — 대상 별로의 부드러운 접근
 
-`focusStarId` 설정 → 그 별의 좌표를 타깃으로 `useFrame`에서 카메라 위치·`lookAt`(`controls.target`)을 보간해 이동, 도달 후 `select(id)`로 회상 패널을 연다(매 프레임 React state 금지 — ref 보간). 진입 시 `mode='recall'`·`transitioning=true`로 전환해 줌·경계 클램프를 풀고, `camera.up`을 월드업으로 재정렬한다.
+`focusStarId` 설정 → 진입 시 그 별의 **라이브 버퍼 좌표**(슬롯 = 배열 인덱스, fibonacci 폴백)를 타깃으로 잡아 `useFrame`에서 카메라 위치·`lookAt`(`controls.target`)을 보간해 이동, 도달 후 `select(id)`로 회상 패널을 연다(매 프레임 React state 금지 — ref 보간). 진입 시 `mode='recall'`·`transitioning=true`로 전환해 줌·경계 클램프를 풀고, `camera.up`을 월드업으로 재정렬한다.
 
 | 파라미터 | 값 | 의미 |
 |---|---|---|
@@ -55,7 +55,7 @@
 
 ### 별 포커스(focus)
 
-별이 `select`로 선택되면 FocusController가 그 별을 화면 정면·중앙에 맞추고 패널이 열린 동안 유지한다(aim-lerp `FOCUS_K=4` /s). `recall`은 위치 고정·시선만 별로 회전, `nebula`는 같은 거리에서 별의 방사 방향으로 궤도 이동 후 수평 재정렬. 이때 NavController·NebulaOrbitController는 대기한다.
+별이 `select`로 선택되면 FocusController가 그 별을 화면 정면·중앙에 맞추고 패널이 열린 동안 유지한다(aim-lerp `FOCUS_K=4` /s). 타깃 좌표는 매 프레임 라이브 버퍼에서 읽어 아직 relax 중인 별도 따라간다. `recall`은 위치 고정·시선만 별로 회전, `nebula`는 같은 거리에서 별의 방사 방향으로 궤도 이동 후 수평 재정렬. 이때 NavController·NebulaOrbitController는 대기한다.
 
 ### 잠든 별 fly-to
 
@@ -64,12 +64,14 @@
 ## 불변식 (invariants)
 
 - **3D 씬 안 DOM(`<Html>`) 금지.** 카메라·항행 컨트롤러는 씬 안에 DOM을 만들지 않는다(헌법8 — 모바일 이식성).
-- **좌표는 클라 창발·서버는 그래프만.** 카메라는 좌표를 **읽기만** 하고 만들지 않는다. fly-to·focus·별 렌더·시냅스 렌더의 모든 reader가 같은 좌표 함수·같은 인덱싱(`fibonacciStarPosition(i, n, seed)`)을 공유한다 — 한 reader라도 다르면 카메라가 별을 놓친다(헌법3).
+- **좌표는 클라 창발·서버는 그래프만.** 카메라는 좌표를 **읽기만** 하고 만들지 않는다. fly-to·focus·별 렌더·시냅스 렌더의 모든 reader가 같은 라이브 좌표 버퍼·같은 인덱싱(슬롯 = `stars` 배열 인덱스)을 공유한다 — 한 reader라도 옛 정적 fibonacci에 남으면 카메라가 렌더된 별을 놓친다(헌법3). fibonacci는 버퍼 미준비 시 폴백으로만 쓴다.
 - **별은 삭제되지 않는다.** 잠든 별도 우주에 남아 클릭·항해로 접근 가능하다(헌법2). 항행은 별을 숨기거나 제거하지 않는다.
+- **별은 거리로 움직인다(38).** 별은 고정이 아니라 강함(활성도+감정강도)에 따라 중심에서 멀어지고/가까워진다(회상→중앙·시간→바깥). fly-to·focus는 타깃을 **매 프레임 라이브 버퍼에서** 다시 읽으므로 아직 미끄러지는 별도 정확히 따라간다(고정 캡처 금지).
 - **매 프레임 React state 구동 금지.** 카메라는 `useFrame`에서 ref/uniform으로만 갱신한다(헌법4 — 리렌더 폭발 방지).
 
 ## 구현 근거
 
 - 카메라 모드·줌 클램프(`OBSERVE_MIN_DIST`/`SHIP_BOUNDARY`)·비행 물리(가속·관성·벽 반동)·아크볼 회전: 구현 plan 06 · `frontend/src/widgets/universe-canvas/model/use-camera-mode.ts`, `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`CameraRig`/`NavController`/`NebulaOrbitController`/`ModeTransitionController`).
 - fly-to 보간(`k=1−exp(−dt·3)`, 오프셋 12, 임계 0.6)·잠든 별 도달·`focusStarId`/`focusStar`: 구현 plan 12 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FlyToController`/`FocusController`), `frontend/src/pages/dormant`.
-- 좌표 함수 단일 출처(정적 결정론 배치): 구현 plan 08 · `frontend/src/shared/lib/layout.ts`.
+- 라이브 좌표 버퍼 단일 출처(네 reader 동기·fibonacci 폴백·`readBufferPosition`): 구현 plan 08·22 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController`), `frontend/src/shared/lib/force-sim/`, `frontend/src/shared/lib/layout.ts`.
+- 별 반지름 이동(거리=강함)·fly-to/focus 매 프레임 라이브 추적: 구현 plan 38 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`radiusOf`·`FlyToController`/`FocusController`의 버퍼 재독), `frontend/src/shared/lib/layout.ts`(`targetRadius`).

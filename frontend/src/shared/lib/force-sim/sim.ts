@@ -19,7 +19,13 @@ const DEFAULTS: SimParams = {
   centerGravity: 0.01,
   velocityDecay: 0.6,
   alphaMin: 0.001,
+  radialStrength: 0.08,
 }
+
+// Distance floor for the radial-shell spring: below this a node is treated as "at the
+// centre" with no well-defined radial direction, so the shell force is skipped (avoids a
+// divide-by-zero and a random kick from the origin).
+const RADIAL_MIN_DIST = 1e-3
 
 // Spring strength multiplier applied on top of each edge's weight.
 const LINK_STRENGTH = 1.0
@@ -34,6 +40,10 @@ export interface SimState {
   px: Float32Array<ArrayBuffer>
   vx: Float32Array<ArrayBuffer>
   free: Uint8Array // 1 = may move, 0 = fixed
+  // Per-node target shell radius (spec 38); 0 → classic centerGravity origin pull. The
+  // caller may mutate entries between ticks (e.g. as a memory's strength changes on recall
+  // / decay) and re-kick `alpha` to glide the node to its new shell.
+  radius: Float32Array
   edges: Array<{ a: number; b: number; weight: number }> // validated, index-based
   params: SimParams
   alpha: number
@@ -41,7 +51,15 @@ export interface SimState {
   n: number
 }
 
-export function createSim(graph: SimGraph, params?: Partial<SimParams>): SimState {
+export interface CreateSimOptions {
+  /** When false, a new (pinned=false) node KEEPS its caller-provided (x,y,z) instead of
+   *  being reseeded to its neighbor average — used when the caller has already placed new
+   *  stars near the hot cluster (spec 22, seedNearCluster). Default true (07 behavior). */
+  seedNewNodes?: boolean
+}
+
+export function createSim(graph: SimGraph, params?: Partial<SimParams>, opts?: CreateSimOptions): SimState {
+  const seedNewNodes = opts?.seedNewNodes ?? true
   const p: SimParams = { ...DEFAULTS, ...params }
   const nodes = graph.nodes
   const n = nodes.length
@@ -50,6 +68,7 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>): SimStat
   const index = new Map<string, number>()
   const px = new Float32Array(n * 3)
   const vx = new Float32Array(n * 3)
+  const radius = new Float32Array(n) // target shell radius per node; 0 = origin gravity
   for (let i = 0; i < n; i++) {
     const node = nodes[i]
     ids[i] = node.id
@@ -57,6 +76,7 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>): SimStat
     px[i * 3] = node.x
     px[i * 3 + 1] = node.y
     px[i * 3 + 2] = node.z
+    radius[i] = node.radius ?? 0
   }
 
   // Validate edges: silently drop any referencing an unknown node (acceptance 1.7).
@@ -95,6 +115,7 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>): SimStat
   const rng = mulberry32(0x5eed)
   for (let i = 0; i < n; i++) {
     if (nodes[i].pinned) continue
+    if (!seedNewNodes) continue // caller placed it (seedNearCluster) — keep its coords
     const nb = neighbors[i]
     if (nb.length > 0) {
       let sx = 0,
@@ -119,7 +140,7 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>): SimStat
   // d3-style alpha decay so the layout settles toward alphaMin over ~300 ticks.
   const alphaDecay = 1 - Math.pow(p.alphaMin, 1 / 300)
 
-  return { ids, px, vx, free, edges, params: p, alpha: 1, alphaDecay, n }
+  return { ids, px, vx, free, radius, edges, params: p, alpha: 1, alphaDecay, n }
 }
 
 /** Advance the layout by `steps` ticks; returns the current positions snapshot. */
@@ -133,8 +154,8 @@ export function tick(state: SimState, steps = 1): Float32Array {
 }
 
 function step(state: SimState): void {
-  const { px, vx, free, edges, params, n, alpha } = state
-  const { theta, repulsion, linkDistance, centerGravity, velocityDecay } = params
+  const { px, vx, free, radius, edges, params, n, alpha } = state
+  const { theta, repulsion, linkDistance, centerGravity, velocityDecay, radialStrength } = params
 
   // Repulsion (Barnes-Hut). All nodes — incl. fixed — are sources, so a new star is
   // pushed by the existing cluster; only free nodes receive the force.
@@ -173,13 +194,31 @@ function step(state: SimState): void {
     }
   }
 
-  // Center gravity + integrate (velocity damp → move). Fixed nodes never move.
+  // Positioning pull + integrate (velocity damp → move). Fixed nodes never move.
+  // radius>0 → spring toward that shell (|p|=radius) so distance-from-centre encodes
+  // strength (spec 38); radius 0 → classic centerGravity origin pull (07 behavior).
   for (let i = 0; i < n; i++) {
     if (!free[i]) continue
     const xi = i * 3
-    vx[xi] += -px[xi] * centerGravity * alpha
-    vx[xi + 1] += -px[xi + 1] * centerGravity * alpha
-    vx[xi + 2] += -px[xi + 2] * centerGravity * alpha
+    const r = radius[i]
+    if (r > 0) {
+      const len = Math.sqrt(px[xi] * px[xi] + px[xi + 1] * px[xi + 1] + px[xi + 2] * px[xi + 2])
+      if (len > RADIAL_MIN_DIST) {
+        // f>0 pushes outward when inside the shell, inward when outside → settles at |p|=r.
+        const f = ((r - len) / len) * radialStrength * alpha
+        vx[xi] += px[xi] * f
+        vx[xi + 1] += px[xi + 1] * f
+        vx[xi + 2] += px[xi + 2] * f
+      } else {
+        // At the origin there's no radial direction → nudge along +x so a node that drifted
+        // exactly to centre (rare repulsion cancellation) still escapes to its shell.
+        vx[xi] += r * radialStrength * alpha
+      }
+    } else {
+      vx[xi] += -px[xi] * centerGravity * alpha
+      vx[xi + 1] += -px[xi + 1] * centerGravity * alpha
+      vx[xi + 2] += -px[xi + 2] * centerGravity * alpha
+    }
 
     vx[xi] *= velocityDecay
     vx[xi + 1] *= velocityDecay

@@ -6,6 +6,20 @@
 /** 우주의 색·분위기 테마. */
 export type Theme = 'vast' | 'lively' | 'calm'
 
+/** 중심 "나" 별(self anchor)의 형태(spec 38). 일반 별 오브제(StarObject)와 별개 축 —
+ *  우주에 단 하나, 중심에 고정되어 강한 기억을 곁에 둔다. */
+export type SelfObject = 'nebula-heart' | 'core' | 'well'
+
+export interface SelfObjectMeta {
+  id: SelfObject
+  /** 스위처에 보이는 이름. */
+  name: string
+  /** 한 줄 설명. */
+  tagline: string
+  /** 스위처 칩 미리보기 그라디언트(CSS background 값). */
+  swatch: string
+}
+
 export interface ThemeMeta {
   id: Theme
   /** 스위처에 보이는 이름. */

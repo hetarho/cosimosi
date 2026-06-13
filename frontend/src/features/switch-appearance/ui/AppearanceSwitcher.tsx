@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Palette, X } from 'lucide-react'
 import { capture, cn, EVENTS } from '@/shared/lib'
-import { THEMES, useAppearance, pushSettings } from '@/entities/appearance'
+import { THEMES, SELF_OBJECTS, useAppearance, pushSettings } from '@/entities/appearance'
 import { STAR_OBJECTS } from '@/entities/star'
 
 interface ChipItem {
@@ -105,6 +105,8 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
   const setTheme = useAppearance((s) => s.setTheme)
   const object = useAppearance((s) => s.object)
   const setObject = useAppearance((s) => s.setObject)
+  const selfObject = useAppearance((s) => s.selfObject)
+  const setSelfObject = useAppearance((s) => s.setSelfObject)
   const [open, setOpen] = useState(false)
 
   return (
@@ -156,6 +158,17 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
                 setObject(obj)
                 void pushSettings({ starObject: obj }) // 서버 영속(인증 시) — spec 30
               }}
+            />
+
+            <div className="h-px bg-white/10" />
+
+            {/* 자아 별(나) 형태 — 우주 중심 앵커(spec 38). 기기 로컬 선호(서버 동기는 후속). */}
+            <SwatchRadioGroup
+              label="나 — 중심 별의 형태"
+              groupLabel="자아 별 형태"
+              items={SELF_OBJECTS}
+              value={selfObject}
+              onChange={(id) => setSelfObject(id as (typeof SELF_OBJECTS)[number]['id'])}
             />
           </motion.div>
         ) : (

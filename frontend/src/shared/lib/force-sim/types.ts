@@ -12,6 +12,11 @@ export interface SimNode {
   x: number
   y: number
   z: number
+  /** Target shell radius from the origin (spec 38): the node is pulled toward |p|=radius
+   *  by `radialStrength` instead of toward the origin. Undefined / 0 → the classic
+   *  centerGravity origin pull (07 behavior preserved). Used to map a memory's distance
+   *  from the central "나" star to its strength (recency + emotional intensity). */
+  radius?: number
 }
 
 export interface SimEdge {
@@ -39,4 +44,7 @@ export interface SimParams {
   velocityDecay: number
   /** Convergence floor: below this alpha the layout is settled. Default 0.001. */
   alphaMin: number
+  /** Spring coefficient toward each node's target shell radius (spec 38). Only active
+   *  for nodes with radius>0; nodes with radius 0 use centerGravity instead. Default 0.08. */
+  radialStrength: number
 }

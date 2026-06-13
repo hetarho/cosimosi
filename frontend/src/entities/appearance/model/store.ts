@@ -7,11 +7,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type StarObject, STAR_OBJECTS, DEFAULT_OBJECT } from '@/entities/star/@x/appearance'
-import type { Theme } from './types'
+import type { SelfObject, Theme } from './types'
 import { THEMES, DEFAULT_THEME } from './themes'
+import { SELF_OBJECTS, DEFAULT_SELF_OBJECT } from './self-objects'
 
 const THEME_IDS = new Set<Theme>(THEMES.map((t) => t.id))
 const OBJECT_IDS = new Set<StarObject>(STAR_OBJECTS.map((o) => o.id))
+const SELF_OBJECT_IDS = new Set<SelfObject>(SELF_OBJECTS.map((o) => o.id))
 
 const STORAGE_KEY = 'cosimosi.appearance'
 const LEGACY_KEY = 'cosimosi.landing.theme' // 레거시 마이그레이션용 구 저장 키
@@ -27,10 +29,13 @@ export interface ServerAppearance {
 interface AppearanceState {
   theme: Theme
   object: StarObject
+  /** 중심 "나" 별의 형태(spec 38). `object`와 같은 기기-로컬 선호(서버 동기는 후속). */
+  selfObject: SelfObject
   /** mood(소문자) → "#RRGGBB" 사용자 오버라이드. 서버 시드·메모리 전용. 빈 맵 = 전부 기본 팔레트. */
   emotionColors: Record<string, string>
   setTheme: (id: Theme) => void
   setObject: (id: StarObject) => void
+  setSelfObject: (id: SelfObject) => void
   setEmotionColor: (mood: string, color: string) => void
   /** GetSettings 응답(오버라이드만)을 store에 머지 — 인증 세션에서 서버가 단일 진실. */
   applyServerSettings: (s: ServerAppearance) => void
@@ -70,9 +75,11 @@ export const useAppearance = create<AppearanceState>()(
   persist(
     (set) => ({
       ...legacyInitial(),
+      selfObject: DEFAULT_SELF_OBJECT,
       emotionColors: {},
       setTheme: (id) => set({ theme: id }),
       setObject: (id) => set({ object: id }),
+      setSelfObject: (id) => set({ selfObject: id }),
       setEmotionColor: (mood, color) =>
         set((s) => ({ emotionColors: { ...s.emotionColors, [mood]: color } })),
       applyServerSettings: (sv) =>
@@ -94,8 +101,8 @@ export const useAppearance = create<AppearanceState>()(
     }),
     {
       name: STORAGE_KEY,
-      // 기기 선호(테마·오브제)만 영속 — emotionColors는 per-user라 메모리 전용(공용 PC 개인정보 미영속).
-      partialize: (s) => ({ theme: s.theme, object: s.object }),
+      // 기기 선호(테마·오브제·자아 별)만 영속 — emotionColors는 per-user라 메모리 전용(공용 PC 개인정보 미영속).
+      partialize: (s) => ({ theme: s.theme, object: s.object, selfObject: s.selfObject }),
       // 알 수 없는/손상된 값이 저장돼 있어도 각 축의 기본값으로 폴백.
       merge: (persisted, current) => {
         const p = persisted as Partial<AppearanceState> | undefined
@@ -103,6 +110,8 @@ export const useAppearance = create<AppearanceState>()(
           ...current,
           theme: p?.theme && THEME_IDS.has(p.theme) ? p.theme : current.theme,
           object: p?.object && OBJECT_IDS.has(p.object) ? p.object : current.object,
+          selfObject:
+            p?.selfObject && SELF_OBJECT_IDS.has(p.selfObject) ? p.selfObject : current.selfObject,
         }
       },
     },

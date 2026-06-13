@@ -30,44 +30,67 @@ export interface DemoEntry {
   body: string
 }
 
-// 손으로 고른 일기들 — 감정/강도/회상 시점을 다양하게. 최근 = 밝게, 오래된 것 =
-// 어둑하게(잠든 별 목록·회상 fly-to 체험용). 30개면 우주가 "별이 많다"고 읽힌다.
-// export는 observe.ts(관찰 셀렉터)의 파생용 — 공개 API(index.ts)에는 올리지 않는다.
+// 약 6개월간 주 2~3회 기록한 흐름을 **시뮬레이션**해 만든 더미 우주(scripts/gen-demo-universe.mjs).
+// 손으로 엣지를 그리지 않고, 시간 순서대로 의미 유사도 top-k 링크 + temporal bonus로 시냅스가
+// 생기고, 중간의 회상 세션이 일부 기억을 재점화(밝아짐→중앙)하며, 안 떠올린 건 감쇠(어둑→바깥)한
+// 결과다 — 그래서 별들이 한 줄이 아니라 주제별 성단으로 서로 얽힌다(spec 22/38). 최근 = 밝게(작은
+// daysAgo), 오래된 것 = 어둑하게(잠든 별 목록·회상 fly-to 체험용). 재생성하려면 위 스크립트를 돌려
+// 출력을 여기 붙인다. export는 observe.ts(관찰 셀렉터)의 파생용 — 공개 API(index.ts)에는 안 올린다.
 export const DEMO_ENTRIES: DemoEntry[] = [
-  { id: 'demo-001', mood: Mood.JOY, intensity: 0.92, daysAgo: 0, body: '오늘 드디어 첫 마라톤 10km를 완주했다. 결승선 앞에서 다리가 풀렸지만 끝까지 뛰었다는 게 믿기지 않는다.' },
-  { id: 'demo-002', mood: Mood.LOVE, intensity: 0.88, daysAgo: 1, body: '엄마가 끓여준 미역국 냄새에 잠을 깼다. 별거 아닌데 코끝이 시큰했다. 사랑받고 있다는 건 이런 거구나.' },
-  { id: 'demo-003', mood: Mood.CALM, intensity: 0.55, daysAgo: 2, body: '비 오는 카페 창가 자리. 따뜻한 라떼 한 잔과 책 한 권. 아무것도 안 해도 되는 오후가 이렇게 귀할 줄이야.' },
-  { id: 'demo-004', mood: Mood.JOY, intensity: 0.7, daysAgo: 3, body: '오랜만에 친구들과 보드게임. 배가 아플 때까지 웃었다. 어른이 되어도 이렇게 유치하게 놀 수 있어 다행이다.' },
-  { id: 'demo-005', mood: Mood.FEAR, intensity: 0.6, daysAgo: 4, body: '내일 발표 생각에 새벽까지 잠이 안 온다. 잘 해낼 수 있을까. 자료는 다 외웠는데도 손이 떨린다.' },
-  { id: 'demo-006', mood: Mood.CALM, intensity: 0.48, daysAgo: 6, body: '퇴근길 한강에서 노을을 봤다. 주황빛이 물 위로 길게 번지는 걸 한참 멍하니 바라봤다.' },
-  { id: 'demo-007', mood: Mood.SAD, intensity: 0.65, daysAgo: 7, body: '키우던 화분이 끝내 시들었다. 매일 물을 줬는데도. 무언가를 돌보는 일은 늘 마음 한구석을 졸이게 한다.' },
-  { id: 'demo-008', mood: Mood.JOY, intensity: 0.8, daysAgo: 9, body: '프로젝트 데모가 성공적으로 끝났다. 팀원들과 하이파이브할 때의 그 열기를 오래 기억하고 싶다.' },
-  { id: 'demo-009', mood: Mood.ANGER, intensity: 0.72, daysAgo: 11, body: '회의에서 또 말이 끊겼다. 끝까지 못 한 그 문장이 하루 종일 목에 걸려 있었다.' },
-  { id: 'demo-010', mood: Mood.LOVE, intensity: 0.84, daysAgo: 13, body: '할머니 댁에 다녀왔다. 내 손을 꼭 잡고 "밥은 잘 챙겨 먹니" 물으시는데, 그 온기가 며칠째 손에 남아 있다.' },
-  // ▼ 분절 데모 후보(spec 20 T014 → 21에서 사용): 하루 안에 장면 전환(출근→일→점심→퇴근)이
-  //   있는 다장면 엔트리 — 21의 "1 일기 → N 조각 별" 체험이 이 엔트리를 분절 시연에 쓴다
-  //   (필요 시 21에서 본문을 장면별 감정이 갈리는 문단으로 보강).
-  { id: 'demo-011', mood: Mood.NEUTRAL, intensity: 0.4, daysAgo: 16, body: '특별할 것 없는 하루. 출근, 일, 점심, 일, 퇴근. 그래도 무탈하다는 게 어떤 날엔 가장 큰 다행이다.' },
-  { id: 'demo-012', mood: Mood.CALM, intensity: 0.52, daysAgo: 19, body: '주말 아침 산책. 공기가 차고 맑았다. 이어폰을 빼고 새소리만 들으며 걸었다.' },
-  { id: 'demo-013', mood: Mood.JOY, intensity: 0.76, daysAgo: 22, body: '오래 기다린 책이 도착했다. 포장을 뜯는 순간의 설렘. 첫 장을 펼치기 전 이 기분이 제일 좋다.' },
-  { id: 'demo-014', mood: Mood.SAD, intensity: 0.58, daysAgo: 27, body: '친한 동료가 이직한다. 축하한다고 말했지만, 빈 옆자리를 상상하니 마음이 가라앉았다.' },
-  { id: 'demo-015', mood: Mood.FEAR, intensity: 0.5, daysAgo: 31, body: '건강검진 결과를 기다리는 일주일. 별일 아닐 거라 되뇌면서도 자꾸 최악을 그리게 된다.' },
-  { id: 'demo-016', mood: Mood.LOVE, intensity: 0.9, daysAgo: 34, body: '그 사람과 처음으로 같이 요리를 했다. 서툴러서 다 태웠지만, 주방에서 부딪힌 어깨가 자꾸 생각난다.' },
-  { id: 'demo-017', mood: Mood.JOY, intensity: 0.68, daysAgo: 38, body: '길에서 우연히 옛 친구를 만났다. 10년 만인데 어제 본 것처럼 떠들었다. 인연은 참 신기하다.' },
-  { id: 'demo-018', mood: Mood.ANGER, intensity: 0.6, daysAgo: 43, body: '약속을 또 일방적으로 미뤘다는 연락. 화가 났다기보다, 매번 내가 기다리는 쪽이라는 게 서글펐다.' },
-  { id: 'demo-019', mood: Mood.CALM, intensity: 0.45, daysAgo: 49, body: '오랜만에 손글씨로 편지를 썼다. 자판이 아닌 펜으로 쓰니 문장 하나하나가 천천히 익었다.' },
-  { id: 'demo-020', mood: Mood.NEUTRAL, intensity: 0.38, daysAgo: 56, body: '대청소를 했다. 안 쓰는 물건을 한 봉지 비웠더니 방이 조금 넓어졌고 마음도 그만큼 가벼워졌다.' },
-  { id: 'demo-021', mood: Mood.SAD, intensity: 0.7, daysAgo: 64, body: '비 오는 밤, 옛 사진첩을 넘겼다. 그때는 몰랐던 표정들이 이제야 보인다. 좋았던 만큼 아렸다.' },
-  { id: 'demo-022', mood: Mood.JOY, intensity: 0.82, daysAgo: 73, body: '첫 월급으로 부모님께 선물을 샀다. 받고 어쩔 줄 몰라 하시는 모습에 내가 더 신이 났다.' },
-  { id: 'demo-023', mood: Mood.FEAR, intensity: 0.55, daysAgo: 88, body: '큰 결정을 앞두고 있다. 어느 쪽을 골라도 후회할 것 같아서, 고르는 일 자체가 무섭다.' },
-  // ── 아래는 오래되어 어둑해진 "잠든 별"들(잠든 별 목록·회상 fly-to 체험용) ──
-  { id: 'demo-024', mood: Mood.LOVE, intensity: 0.86, daysAgo: 118, body: '졸업식 날. 친구들과 사진을 수백 장 찍었다. 다 같이 모일 마지막 날일 줄, 그때는 정말 몰랐다.' },
-  { id: 'demo-025', mood: Mood.CALM, intensity: 0.5, daysAgo: 142, body: '혼자 떠난 첫 기차 여행. 창밖으로 흘러가는 논밭을 보며 아무 생각도 하지 않았던 그 몇 시간.' },
-  { id: 'demo-026', mood: Mood.SAD, intensity: 0.74, daysAgo: 176, body: '오래 키우던 강아지를 떠나보낸 날. 현관에서 더는 나를 기다리지 않는다는 게 가장 받아들이기 어려웠다.' },
-  { id: 'demo-027', mood: Mood.JOY, intensity: 0.78, daysAgo: 213, body: '바다에서 처음으로 수영에 성공한 여름. 짠물을 잔뜩 먹었지만, 발이 안 닿는 곳에 떠 있던 그 자유로움.' },
-  { id: 'demo-028', mood: Mood.NEUTRAL, intensity: 0.42, daysAgo: 268, body: '이사한 첫날. 텅 빈 방 한가운데 앉아 컵라면을 먹었다. 모든 게 새로 시작되는 묘한 고요함.' },
-  { id: 'demo-029', mood: Mood.ANGER, intensity: 0.64, daysAgo: 331, body: '오해로 크게 다툰 날. 지나고 보면 별것 아닌 말 한마디였는데, 그때는 왜 그렇게 날이 섰을까.' },
-  { id: 'demo-030', mood: Mood.LOVE, intensity: 0.95, daysAgo: 452, body: '아주 오래전 어느 봄, 벚꽃 아래에서. 흩날리는 꽃잎 사이로 웃던 얼굴이 아직도 가장 환하게 남아 있다.' },
+  { id: 'demo-001', mood: Mood.EXCITEMENT, intensity: 0.6, daysAgo: 2, body: '새집 창으로 들어오는 아침 볕이 좋다. 여기서 맞는 첫 주말이 기대된다.' },
+  { id: 'demo-002', mood: Mood.NEUTRAL, intensity: 0.42, daysAgo: 3, body: '이사 첫날. 텅 빈 방 한가운데 앉아 컵라면을 먹었다. 모든 게 새로 시작되는 묘한 고요함.' },
+  { id: 'demo-003', mood: Mood.CALM, intensity: 0.55, daysAgo: 3, body: '새 책상을 정리했다. 새 팀, 새 자리. 반년 전 첫 출근의 내가 떠올라 잠깐 웃었다.' },
+  { id: 'demo-004', mood: Mood.LOVE, intensity: 0.9, daysAgo: 4, body: '그 사람과 손을 잡고 걸었다. 별말 없었는데도 그 길이 끝나지 않길 바랐다.' },
+  { id: 'demo-005', mood: Mood.LOVE, intensity: 0.7, daysAgo: 5, body: '길고양이 한 마리가 며칠째 현관 앞에 온다. 사료를 두니 경계하면서도 먹는다. 이름을 붙여버렸다.' },
+  { id: 'demo-006', mood: Mood.SAD, intensity: 0.75, daysAgo: 5, body: '현관 앞 그 고양이가 며칠째 안 보인다. 밥그릇만 그대로다. 내가 너무 정을 줬나.' },
+  { id: 'demo-007', mood: Mood.JOY, intensity: 0.62, daysAgo: 5, body: '이사 가기 전 동네 책방에 들렀다. 단골이 되기도 전에 떠나는 게 아쉬워 두 권을 샀다.' },
+  { id: 'demo-008', mood: Mood.CALM, intensity: 0.5, daysAgo: 6, body: '대청소를 했다. 안 쓰는 물건을 한 봉지 비웠더니 방도 마음도 그만큼 가벼워졌다.' },
+  { id: 'demo-009', mood: Mood.GRATITUDE, intensity: 0.72, daysAgo: 7, body: '이사 소식에 엄마가 제일 먼저 반찬부터 걱정한다. 그 잔소리가 오늘은 고마웠다.' },
+  { id: 'demo-010', mood: Mood.SAD, intensity: 0.5, daysAgo: 9, body: '이직한 동료의 송별 모임. 웃으며 보냈지만 돌아오는 길은 좀 허전했다.' },
+  { id: 'demo-011', mood: Mood.LOVE, intensity: 0.82, daysAgo: 11, body: '함께 새집을 보러 다녔다. 빈방을 보며 같은 상상을 하고 있다는 걸 알았다.' },
+  { id: 'demo-012', mood: Mood.ANGER, intensity: 0.6, daysAgo: 12, body: '약속을 또 일방적으로 미뤘다. 화가 났다기보다, 매번 기다리는 쪽이 나라는 게 서글펐다.' },
+  { id: 'demo-013', mood: Mood.LOVE, intensity: 0.8, daysAgo: 12, body: '다툰 뒤 처음으로 먼저 연락이 왔다. \'미안해\' 한마디에 며칠 묵은 게 스르르 풀렸다.' },
+  { id: 'demo-014', mood: Mood.LOVE, intensity: 0.85, daysAgo: 12, body: '다툼 끝에 오래 이야기했다. 서로의 서툰 데를 조금 더 알게 됐다. 이런 게 가까워지는 거겠지.' },
+  { id: 'demo-015', mood: Mood.STRESS, intensity: 0.55, daysAgo: 14, body: '이사를 결정했다. 짐을 싸려고 둘러보니 이 방에 쌓인 시간이 새삼 무겁다.' },
+  { id: 'demo-016', mood: Mood.EXCITEMENT, intensity: 0.6, daysAgo: 16, body: '큰맘 먹고 러닝화를 샀다. 내일부터 뛴다 다짐했는데, 다짐만으로 벌써 설렌다.' },
+  { id: 'demo-017', mood: Mood.RELIEF, intensity: 0.6, daysAgo: 16, body: '드디어 쉬지 않고 2km. 별것 아닌데 끝나고 혼자 주먹을 불끈 쥐었다.' },
+  { id: 'demo-018', mood: Mood.JOY, intensity: 0.72, daysAgo: 16, body: '처음으로 5km를 완주했다. 다리가 풀렸지만 끝까지 뛰었다는 게 믿기지 않는다.' },
+  { id: 'demo-019', mood: Mood.JOY, intensity: 0.9, daysAgo: 16, body: '10km 대회 완주. 결승선 앞에서 다리가 풀렸지만 끝까지 뛰었다. 반년 전의 나는 상상도 못 했다.' },
+  { id: 'demo-020', mood: Mood.LOVE, intensity: 0.82, daysAgo: 19, body: '할머니 댁. 내 손을 꼭 잡고 \'밥은 잘 챙겨 먹니\' 하시는데 그 온기가 며칠째 남는다.' },
+  { id: 'demo-021', mood: Mood.FEAR, intensity: 0.65, daysAgo: 19, body: '할머니가 입원하셨다는 연락. 별일 아니라는데도 자꾸 최악을 그리게 된다.' },
+  { id: 'demo-022', mood: Mood.RELIEF, intensity: 0.7, daysAgo: 19, body: '할머니가 퇴원하셨다. 전화기 너머 목소리에 기운이 돌아 한참을 웃으며 통화했다.' },
+  { id: 'demo-023', mood: Mood.GRATITUDE, intensity: 0.6, daysAgo: 26, body: '힘들 때 펼친 책의 한 문장이 오늘의 나를 정확히 통과했다. 누가 나 대신 써둔 것 같았다.' },
+  { id: 'demo-024', mood: Mood.CALM, intensity: 0.46, daysAgo: 28, body: '퇴근길 골목에 목련이 폈다. 봄이 오는 걸 늘 꽃이 먼저 알려준다.' },
+  { id: 'demo-025', mood: Mood.EXCITEMENT, intensity: 0.8, daysAgo: 31, body: '새 팀 첫 발표가 성공적으로 끝났다. 팀원들과 하이파이브할 때의 열기를 오래 기억하고 싶다.' },
+  { id: 'demo-026', mood: Mood.JOY, intensity: 0.68, daysAgo: 35, body: '길에서 우연히 옛 친구를 만났다. 10년 만인데 어제 본 것처럼 떠들었다.' },
+  { id: 'demo-027', mood: Mood.ANGER, intensity: 0.55, daysAgo: 39, body: '사소한 걸로 또 부딪혔다. 같은 얘기를 반복하는 우리가 잠깐 미웠다.' },
+  { id: 'demo-028', mood: Mood.LOVE, intensity: 0.78, daysAgo: 43, body: '주말 본가. 엄마가 끓여준 미역국 냄새에 잠을 깼다. 사랑받는다는 건 이런 거구나.' },
+  { id: 'demo-029', mood: Mood.FEAR, intensity: 0.6, daysAgo: 45, body: '다른 팀으로 옮길 기회가 왔다. 좋은 제안인데 왜 이렇게 무섭지. 고르는 일 자체가 두렵다.' },
+  { id: 'demo-030', mood: Mood.STRESS, intensity: 0.62, daysAgo: 45, body: '팀 이동을 두고 계속 저울질. 어느 쪽을 골라도 후회할 것 같아 밤마다 천장만 본다.' },
+  { id: 'demo-031', mood: Mood.RELIEF, intensity: 0.7, daysAgo: 45, body: '결국 팀을 옮기기로 했다. 정하고 나니, 무서웠던 게 무색하게 마음이 가벼워졌다.' },
+  { id: 'demo-032', mood: Mood.CALM, intensity: 0.5, daysAgo: 51, body: '오랜만에 강변을 달렸다. 생각이 많을 땐 다리를 움직이는 게 약이 된다.' },
+  { id: 'demo-033', mood: Mood.LOVE, intensity: 0.88, daysAgo: 63, body: '함께 본 영화가 끝나고도 한참 자리에 앉아 있었다. 말없이 있어도 편한 사람이 생겼다.' },
+  { id: 'demo-034', mood: Mood.CALM, intensity: 0.5, daysAgo: 67, body: '비 오는 카페 창가. 따뜻한 라떼와 책 한 권. 아무것도 안 해도 되는 오후가 귀하다.' },
+  { id: 'demo-035', mood: Mood.JOY, intensity: 0.6, daysAgo: 71, body: '지하철에서 읽던 책의 마지막 장을 덮었다. 다 읽기 아까워 일부러 천천히 읽었는데.' },
+  { id: 'demo-036', mood: Mood.GRATITUDE, intensity: 0.7, daysAgo: 83, body: '엄마와 한 시간 통화. 별 내용 없었는데 끊고 나니 괜히 든든했다.' },
+  { id: 'demo-037', mood: Mood.CALM, intensity: 0.52, daysAgo: 87, body: '프로젝트가 본격적으로 굴러간다. 바쁘지만 내가 맡은 자리가 분명해진 느낌.' },
+  { id: 'demo-038', mood: Mood.SAD, intensity: 0.58, daysAgo: 95, body: '친한 동료가 이직한다. 축하한다고 했지만 빈 옆자리를 상상하니 마음이 가라앉았다.' },
+  { id: 'demo-039', mood: Mood.CALM, intensity: 0.48, daysAgo: 103, body: '주말 아침 산책. 공기가 차고 맑았다. 이어폰을 빼고 새소리만 들으며 걸었다.' },
+  { id: 'demo-040', mood: Mood.STRESS, intensity: 0.68, daysAgo: 111, body: '회의에서 또 말이 끊겼다. 끝까지 못 한 그 문장이 하루 종일 목에 걸려 있었다.' },
+  { id: 'demo-041', mood: Mood.CALM, intensity: 0.5, daysAgo: 115, body: '오랜만에 손글씨로 편지를 썼다. 펜으로 쓰니 문장 하나하나가 천천히 익었다.' },
+  { id: 'demo-042', mood: Mood.NEUTRAL, intensity: 0.4, daysAgo: 123, body: '특별할 것 없는 하루. 출근, 일, 점심, 일, 퇴근. 무탈하다는 게 어떤 날엔 가장 큰 다행이다.' },
+  { id: 'demo-043', mood: Mood.EXCITEMENT, intensity: 0.7, daysAgo: 127, body: '내 아이디어가 처음으로 회의에서 채택됐다. 별것 아닌 기능 하나인데 종일 붕 떠 있었다.' },
+  { id: 'demo-044', mood: Mood.LOVE, intensity: 0.85, daysAgo: 131, body: '그 사람과 처음 같이 요리를 했다. 다 태웠지만 주방에서 부딪힌 어깨가 자꾸 생각난다.' },
+  { id: 'demo-045', mood: Mood.JOY, intensity: 0.65, daysAgo: 143, body: '오래 기다린 책이 도착했다. 포장을 뜯기 전 이 설렘이 제일 좋다.' },
+  { id: 'demo-046', mood: Mood.CALM, intensity: 0.5, daysAgo: 147, body: '한강에서 노을을 봤다. 주황빛이 물 위로 길게 번지는 걸 한참 멍하니 바라봤다.' },
+  { id: 'demo-047', mood: Mood.CALM, intensity: 0.5, daysAgo: 151, body: '이제 회의에서 질문 하나는 한다. 작은 건데도 내 자리가 조금 생긴 기분.' },
+  { id: 'demo-048', mood: Mood.LOVE, intensity: 0.7, daysAgo: 157, body: '소개로 만난 사람과 두 번째 만남. 헤어지고도 대화가 자꾸 떠올라 잠을 설쳤다.' },
+  { id: 'demo-049', mood: Mood.JOY, intensity: 0.7, daysAgo: 160, body: '오랜 친구와 보드게임. 배가 아플 때까지 웃었다. 어른이 되어도 이렇게 유치할 수 있어 다행이다.' },
+  { id: 'demo-050', mood: Mood.TIRED, intensity: 0.5, daysAgo: 164, body: '첫 달리기. 5분 만에 숨이 턱까지 찼다. 작심삼일이 될까 무섭지만 일단 나갔다.' },
+  { id: 'demo-051', mood: Mood.FEAR, intensity: 0.55, daysAgo: 168, body: '첫 주간회의에서 한마디도 못 했다. 다들 아는 얘기를 나만 모르는 것 같아 손에 땀이 났다.' },
+  { id: 'demo-052', mood: Mood.LOVE, intensity: 0.8, daysAgo: 171, body: '엄마가 보낸 반찬 택배. 김치통 사이에 끼워둔 쪽지 한 장에 코끝이 시큰했다.' },
+  { id: 'demo-053', mood: Mood.CALM, intensity: 0.45, daysAgo: 178, body: '퇴근길에 낯선 동네를 한 바퀴 걸었다. 길을 모르니 오히려 천천히 보게 된다.' },
+  { id: 'demo-054', mood: Mood.STRESS, intensity: 0.6, daysAgo: 182, body: '첫 출근. 모든 게 낯설고 이름조차 못 외운 얼굴들 사이에서 하루 종일 긴장했다.' },
 ]
 
 // 별 사이 시냅스(연결선). a < b 무방향 규약. lastActivatedAt가 최근일수록 밝게 빛난다.
@@ -80,31 +103,150 @@ export interface DemoEdge {
   daysAgo: number
 }
 // export는 observe.ts(관찰 셀렉터)의 파생용 — 공개 API(index.ts)에는 올리지 않는다.
+// DEMO_ENTRIES와 함께 scripts/gen-demo-universe.mjs 시뮬레이션이 산출한다(손으로 그리지 않음):
+// 시간 순서대로 의미 유사도 top-k + temporal bonus로 시냅스가 생기고(weight는 cos 캡 0.79 부근),
+// 회상 세션이 co_recall로 강화하며 lastActivated를 끌어올린다 → 주제별 성단이 서로 얽힌다.
 export const DEMO_EDGES: DemoEdge[] = [
-  { a: 'demo-001', b: 'demo-008', weight: 0.8, linkType: 'semantic', daysAgo: 1 }, // 성취감
-  { a: 'demo-002', b: 'demo-010', weight: 0.9, linkType: 'entity', daysAgo: 1 }, // 가족
-  { a: 'demo-010', b: 'demo-024', weight: 0.55, linkType: 'entity', daysAgo: 5 },
-  { a: 'demo-003', b: 'demo-006', weight: 0.7, linkType: 'semantic', daysAgo: 2 }, // 고요한 풍경
-  { a: 'demo-006', b: 'demo-012', weight: 0.65, linkType: 'semantic', daysAgo: 3 },
-  { a: 'demo-012', b: 'demo-025', weight: 0.4, linkType: 'semantic', daysAgo: 20 },
-  { a: 'demo-004', b: 'demo-017', weight: 0.75, linkType: 'entity', daysAgo: 6 }, // 친구
-  { a: 'demo-008', b: 'demo-009', weight: 0.5, linkType: 'temporal', daysAgo: 8 }, // 일
-  { a: 'demo-009', b: 'demo-018', weight: 0.6, linkType: 'semantic', daysAgo: 10 }, // 분노
-  { a: 'demo-005', b: 'demo-015', weight: 0.68, linkType: 'semantic', daysAgo: 12 }, // 불안
-  { a: 'demo-015', b: 'demo-023', weight: 0.52, linkType: 'semantic', daysAgo: 30 },
-  { a: 'demo-007', b: 'demo-026', weight: 0.6, linkType: 'semantic', daysAgo: 40 }, // 상실
-  { a: 'demo-014', b: 'demo-021', weight: 0.45, linkType: 'co_recall', daysAgo: 25 },
-  { a: 'demo-016', b: 'demo-030', weight: 0.7, linkType: 'co_recall', daysAgo: 60 }, // 사랑
-  { a: 'demo-013', b: 'demo-019', weight: 0.5, linkType: 'semantic', daysAgo: 18 }, // 책/글
-  { a: 'demo-011', b: 'demo-020', weight: 0.4, linkType: 'temporal', daysAgo: 22 }, // 평범한 정리
-  { a: 'demo-020', b: 'demo-028', weight: 0.35, linkType: 'semantic', daysAgo: 90 },
-  { a: 'demo-022', b: 'demo-001', weight: 0.6, linkType: 'co_recall', daysAgo: 14 }, // 첫 성취
-  { a: 'demo-024', b: 'demo-017', weight: 0.5, linkType: 'temporal', daysAgo: 70 },
-  { a: 'demo-027', b: 'demo-025', weight: 0.42, linkType: 'temporal', daysAgo: 120 }, // 여행/여름
-  { a: 'demo-021', b: 'demo-026', weight: 0.55, linkType: 'co_recall', daysAgo: 80 },
-  { a: 'demo-018', b: 'demo-029', weight: 0.48, linkType: 'semantic', daysAgo: 150 },
-  { a: 'demo-002', b: 'demo-022', weight: 0.65, linkType: 'entity', daysAgo: 16 }, // 부모님
-  { a: 'demo-016', b: 'demo-004', weight: 0.4, linkType: 'co_recall', daysAgo: 28 },
+  { a: 'demo-001', b: 'demo-024', weight: 0.79, linkType: 'semantic', daysAgo: 2 },
+  { a: 'demo-001', b: 'demo-034', weight: 0.79, linkType: 'semantic', daysAgo: 2 },
+  { a: 'demo-001', b: 'demo-039', weight: 0.79, linkType: 'semantic', daysAgo: 2 },
+  { a: 'demo-001', b: 'demo-046', weight: 0.79, linkType: 'semantic', daysAgo: 2 },
+  { a: 'demo-001', b: 'demo-053', weight: 0.79, linkType: 'semantic', daysAgo: 2 },
+  { a: 'demo-002', b: 'demo-008', weight: 0.79, linkType: 'semantic', daysAgo: 3 },
+  { a: 'demo-002', b: 'demo-015', weight: 0.79, linkType: 'semantic', daysAgo: 3 },
+  { a: 'demo-003', b: 'demo-040', weight: 0.79, linkType: 'semantic', daysAgo: 3 },
+  { a: 'demo-003', b: 'demo-043', weight: 0.79, linkType: 'semantic', daysAgo: 3 },
+  { a: 'demo-003', b: 'demo-047', weight: 0.79, linkType: 'semantic', daysAgo: 3 },
+  { a: 'demo-003', b: 'demo-051', weight: 0.79, linkType: 'semantic', daysAgo: 3 },
+  { a: 'demo-003', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 3 },
+  { a: 'demo-004', b: 'demo-012', weight: 0.79, linkType: 'entity', daysAgo: 4 },
+  { a: 'demo-004', b: 'demo-013', weight: 0.79, linkType: 'entity', daysAgo: 4 },
+  { a: 'demo-004', b: 'demo-033', weight: 0.79, linkType: 'entity', daysAgo: 4 },
+  { a: 'demo-004', b: 'demo-044', weight: 0.79, linkType: 'entity', daysAgo: 4 },
+  { a: 'demo-004', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 4 },
+  { a: 'demo-005', b: 'demo-006', weight: 0.79, linkType: 'co_recall', daysAgo: 5 },
+  { a: 'demo-007', b: 'demo-023', weight: 0.79, linkType: 'semantic', daysAgo: 5 },
+  { a: 'demo-007', b: 'demo-035', weight: 0.79, linkType: 'semantic', daysAgo: 5 },
+  { a: 'demo-007', b: 'demo-041', weight: 0.79, linkType: 'semantic', daysAgo: 5 },
+  { a: 'demo-007', b: 'demo-045', weight: 0.79, linkType: 'semantic', daysAgo: 5 },
+  { a: 'demo-008', b: 'demo-015', weight: 0.79, linkType: 'semantic', daysAgo: 6 },
+  { a: 'demo-009', b: 'demo-020', weight: 0.62, linkType: 'semantic', daysAgo: 7 },
+  { a: 'demo-009', b: 'demo-021', weight: 0.62, linkType: 'semantic', daysAgo: 7 },
+  { a: 'demo-009', b: 'demo-028', weight: 0.79, linkType: 'entity', daysAgo: 7 },
+  { a: 'demo-009', b: 'demo-036', weight: 0.79, linkType: 'entity', daysAgo: 7 },
+  { a: 'demo-009', b: 'demo-052', weight: 0.79, linkType: 'entity', daysAgo: 7 },
+  { a: 'demo-010', b: 'demo-026', weight: 0.79, linkType: 'entity', daysAgo: 9 },
+  { a: 'demo-010', b: 'demo-038', weight: 0.79, linkType: 'entity', daysAgo: 9 },
+  { a: 'demo-010', b: 'demo-049', weight: 0.79, linkType: 'entity', daysAgo: 9 },
+  { a: 'demo-011', b: 'demo-012', weight: 0.79, linkType: 'entity', daysAgo: 11 },
+  { a: 'demo-011', b: 'demo-013', weight: 0.79, linkType: 'entity', daysAgo: 11 },
+  { a: 'demo-011', b: 'demo-033', weight: 0.79, linkType: 'entity', daysAgo: 11 },
+  { a: 'demo-011', b: 'demo-044', weight: 0.79, linkType: 'entity', daysAgo: 11 },
+  { a: 'demo-011', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 11 },
+  { a: 'demo-012', b: 'demo-013', weight: 0.79, linkType: 'co_recall', daysAgo: 12 },
+  { a: 'demo-012', b: 'demo-014', weight: 0.79, linkType: 'co_recall', daysAgo: 12 },
+  { a: 'demo-012', b: 'demo-027', weight: 0.79, linkType: 'entity', daysAgo: 39 },
+  { a: 'demo-012', b: 'demo-033', weight: 0.79, linkType: 'entity', daysAgo: 63 },
+  { a: 'demo-012', b: 'demo-044', weight: 0.79, linkType: 'entity', daysAgo: 107 },
+  { a: 'demo-012', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 107 },
+  { a: 'demo-013', b: 'demo-014', weight: 0.79, linkType: 'co_recall', daysAgo: 12 },
+  { a: 'demo-013', b: 'demo-027', weight: 0.79, linkType: 'entity', daysAgo: 39 },
+  { a: 'demo-013', b: 'demo-033', weight: 0.79, linkType: 'entity', daysAgo: 63 },
+  { a: 'demo-013', b: 'demo-044', weight: 0.79, linkType: 'entity', daysAgo: 91 },
+  { a: 'demo-013', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 91 },
+  { a: 'demo-014', b: 'demo-033', weight: 0.79, linkType: 'entity', daysAgo: 23 },
+  { a: 'demo-014', b: 'demo-044', weight: 0.79, linkType: 'entity', daysAgo: 23 },
+  { a: 'demo-014', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 23 },
+  { a: 'demo-016', b: 'demo-017', weight: 0.79, linkType: 'co_recall', daysAgo: 16 },
+  { a: 'demo-016', b: 'demo-018', weight: 0.79, linkType: 'co_recall', daysAgo: 16 },
+  { a: 'demo-016', b: 'demo-019', weight: 0.79, linkType: 'co_recall', daysAgo: 16 },
+  { a: 'demo-016', b: 'demo-032', weight: 0.79, linkType: 'semantic', daysAgo: 51 },
+  { a: 'demo-016', b: 'demo-050', weight: 0.79, linkType: 'semantic', daysAgo: 164 },
+  { a: 'demo-017', b: 'demo-018', weight: 0.79, linkType: 'co_recall', daysAgo: 16 },
+  { a: 'demo-017', b: 'demo-019', weight: 0.79, linkType: 'co_recall', daysAgo: 16 },
+  { a: 'demo-017', b: 'demo-032', weight: 0.79, linkType: 'semantic', daysAgo: 51 },
+  { a: 'demo-017', b: 'demo-050', weight: 0.79, linkType: 'semantic', daysAgo: 139 },
+  { a: 'demo-018', b: 'demo-019', weight: 0.79, linkType: 'co_recall', daysAgo: 16 },
+  { a: 'demo-018', b: 'demo-032', weight: 0.79, linkType: 'semantic', daysAgo: 51 },
+  { a: 'demo-018', b: 'demo-050', weight: 0.79, linkType: 'semantic', daysAgo: 99 },
+  { a: 'demo-019', b: 'demo-032', weight: 0.79, linkType: 'semantic', daysAgo: 17 },
+  { a: 'demo-019', b: 'demo-050', weight: 0.79, linkType: 'semantic', daysAgo: 17 },
+  { a: 'demo-020', b: 'demo-021', weight: 0.79, linkType: 'co_recall', daysAgo: 19 },
+  { a: 'demo-020', b: 'demo-022', weight: 0.79, linkType: 'co_recall', daysAgo: 19 },
+  { a: 'demo-020', b: 'demo-028', weight: 0.62, linkType: 'semantic', daysAgo: 43 },
+  { a: 'demo-020', b: 'demo-036', weight: 0.62, linkType: 'semantic', daysAgo: 83 },
+  { a: 'demo-020', b: 'demo-052', weight: 0.62, linkType: 'semantic', daysAgo: 135 },
+  { a: 'demo-021', b: 'demo-022', weight: 0.79, linkType: 'co_recall', daysAgo: 19 },
+  { a: 'demo-021', b: 'demo-028', weight: 0.62, linkType: 'semantic', daysAgo: 43 },
+  { a: 'demo-021', b: 'demo-036', weight: 0.62, linkType: 'semantic', daysAgo: 55 },
+  { a: 'demo-021', b: 'demo-052', weight: 0.62, linkType: 'semantic', daysAgo: 55 },
+  { a: 'demo-022', b: 'demo-028', weight: 0.62, linkType: 'semantic', daysAgo: 20 },
+  { a: 'demo-022', b: 'demo-036', weight: 0.62, linkType: 'semantic', daysAgo: 20 },
+  { a: 'demo-022', b: 'demo-052', weight: 0.62, linkType: 'semantic', daysAgo: 20 },
+  { a: 'demo-023', b: 'demo-035', weight: 0.79, linkType: 'semantic', daysAgo: 26 },
+  { a: 'demo-023', b: 'demo-041', weight: 0.79, linkType: 'semantic', daysAgo: 26 },
+  { a: 'demo-023', b: 'demo-045', weight: 0.79, linkType: 'semantic', daysAgo: 26 },
+  { a: 'demo-024', b: 'demo-034', weight: 0.79, linkType: 'semantic', daysAgo: 28 },
+  { a: 'demo-024', b: 'demo-039', weight: 0.79, linkType: 'semantic', daysAgo: 28 },
+  { a: 'demo-024', b: 'demo-046', weight: 0.79, linkType: 'semantic', daysAgo: 28 },
+  { a: 'demo-024', b: 'demo-053', weight: 0.79, linkType: 'semantic', daysAgo: 28 },
+  { a: 'demo-025', b: 'demo-040', weight: 0.79, linkType: 'semantic', daysAgo: 31 },
+  { a: 'demo-025', b: 'demo-043', weight: 0.79, linkType: 'semantic', daysAgo: 31 },
+  { a: 'demo-025', b: 'demo-047', weight: 0.79, linkType: 'semantic', daysAgo: 31 },
+  { a: 'demo-025', b: 'demo-051', weight: 0.79, linkType: 'semantic', daysAgo: 31 },
+  { a: 'demo-025', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 31 },
+  { a: 'demo-026', b: 'demo-038', weight: 0.79, linkType: 'entity', daysAgo: 35 },
+  { a: 'demo-026', b: 'demo-049', weight: 0.79, linkType: 'entity', daysAgo: 35 },
+  { a: 'demo-027', b: 'demo-033', weight: 0.79, linkType: 'entity', daysAgo: 39 },
+  { a: 'demo-027', b: 'demo-044', weight: 0.79, linkType: 'entity', daysAgo: 39 },
+  { a: 'demo-027', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 39 },
+  { a: 'demo-028', b: 'demo-036', weight: 0.79, linkType: 'entity', daysAgo: 43 },
+  { a: 'demo-028', b: 'demo-052', weight: 0.79, linkType: 'entity', daysAgo: 43 },
+  { a: 'demo-029', b: 'demo-030', weight: 0.79, linkType: 'co_recall', daysAgo: 45 },
+  { a: 'demo-029', b: 'demo-031', weight: 0.79, linkType: 'co_recall', daysAgo: 45 },
+  { a: 'demo-029', b: 'demo-040', weight: 0.7, linkType: 'semantic', daysAgo: 75 },
+  { a: 'demo-029', b: 'demo-043', weight: 0.7, linkType: 'semantic', daysAgo: 75 },
+  { a: 'demo-029', b: 'demo-047', weight: 0.7, linkType: 'semantic', daysAgo: 75 },
+  { a: 'demo-029', b: 'demo-051', weight: 0.7, linkType: 'semantic', daysAgo: 75 },
+  { a: 'demo-029', b: 'demo-054', weight: 0.7, linkType: 'semantic', daysAgo: 75 },
+  { a: 'demo-030', b: 'demo-031', weight: 0.79, linkType: 'co_recall', daysAgo: 45 },
+  { a: 'demo-030', b: 'demo-043', weight: 0.7, linkType: 'semantic', daysAgo: 59 },
+  { a: 'demo-030', b: 'demo-047', weight: 0.7, linkType: 'semantic', daysAgo: 59 },
+  { a: 'demo-030', b: 'demo-051', weight: 0.7, linkType: 'semantic', daysAgo: 59 },
+  { a: 'demo-030', b: 'demo-054', weight: 0.7, linkType: 'semantic', daysAgo: 59 },
+  { a: 'demo-031', b: 'demo-047', weight: 0.7, linkType: 'semantic', daysAgo: 47 },
+  { a: 'demo-031', b: 'demo-051', weight: 0.7, linkType: 'semantic', daysAgo: 47 },
+  { a: 'demo-031', b: 'demo-054', weight: 0.7, linkType: 'semantic', daysAgo: 47 },
+  { a: 'demo-032', b: 'demo-050', weight: 0.79, linkType: 'semantic', daysAgo: 51 },
+  { a: 'demo-033', b: 'demo-044', weight: 0.79, linkType: 'entity', daysAgo: 63 },
+  { a: 'demo-033', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 63 },
+  { a: 'demo-034', b: 'demo-039', weight: 0.79, linkType: 'semantic', daysAgo: 67 },
+  { a: 'demo-034', b: 'demo-046', weight: 0.79, linkType: 'semantic', daysAgo: 67 },
+  { a: 'demo-034', b: 'demo-053', weight: 0.79, linkType: 'semantic', daysAgo: 67 },
+  { a: 'demo-035', b: 'demo-041', weight: 0.79, linkType: 'semantic', daysAgo: 71 },
+  { a: 'demo-035', b: 'demo-045', weight: 0.79, linkType: 'semantic', daysAgo: 71 },
+  { a: 'demo-036', b: 'demo-052', weight: 0.79, linkType: 'entity', daysAgo: 83 },
+  { a: 'demo-037', b: 'demo-040', weight: 0.79, linkType: 'semantic', daysAgo: 87 },
+  { a: 'demo-037', b: 'demo-043', weight: 0.79, linkType: 'semantic', daysAgo: 87 },
+  { a: 'demo-037', b: 'demo-047', weight: 0.79, linkType: 'semantic', daysAgo: 87 },
+  { a: 'demo-037', b: 'demo-051', weight: 0.79, linkType: 'semantic', daysAgo: 87 },
+  { a: 'demo-037', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 87 },
+  { a: 'demo-038', b: 'demo-049', weight: 0.79, linkType: 'entity', daysAgo: 95 },
+  { a: 'demo-039', b: 'demo-046', weight: 0.79, linkType: 'semantic', daysAgo: 103 },
+  { a: 'demo-039', b: 'demo-053', weight: 0.79, linkType: 'semantic', daysAgo: 103 },
+  { a: 'demo-040', b: 'demo-043', weight: 0.79, linkType: 'semantic', daysAgo: 111 },
+  { a: 'demo-040', b: 'demo-047', weight: 0.79, linkType: 'semantic', daysAgo: 111 },
+  { a: 'demo-040', b: 'demo-051', weight: 0.79, linkType: 'semantic', daysAgo: 111 },
+  { a: 'demo-040', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 111 },
+  { a: 'demo-041', b: 'demo-045', weight: 0.79, linkType: 'semantic', daysAgo: 115 },
+  { a: 'demo-043', b: 'demo-047', weight: 0.79, linkType: 'semantic', daysAgo: 127 },
+  { a: 'demo-043', b: 'demo-051', weight: 0.79, linkType: 'semantic', daysAgo: 127 },
+  { a: 'demo-043', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 127 },
+  { a: 'demo-044', b: 'demo-048', weight: 0.79, linkType: 'entity', daysAgo: 131 },
+  { a: 'demo-046', b: 'demo-053', weight: 0.79, linkType: 'semantic', daysAgo: 147 },
+  { a: 'demo-047', b: 'demo-051', weight: 0.79, linkType: 'semantic', daysAgo: 151 },
+  { a: 'demo-047', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 151 },
+  { a: 'demo-051', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 168 },
 ]
 
 // ── 기억 분할(spec 21) — 1 일기 → N 조각 별 시드 데이터 ──
@@ -222,6 +364,8 @@ export function demoRecall(memoryId: string): RecordMsg | undefined {
 // 새 별이 만드는 데모 연결 수 상한 — 우주를 어지럽히지 않는 선에서 "연결이 생긴다"를 보인다.
 const ADD_SAME_DAY_LINKS = 2
 const ADD_SAME_MOOD_LINKS = 1
+// 흥분성 시간 창(~6h, 서버 tauExc와 동일) — 이 안에 회상된 별만 새 기억을 끌어당긴다(spec 22).
+const HOT_WINDOW_MS = 6 * 60 * 60 * 1000
 
 /** a<b 무방향 규약으로 데모 엣지를 추가한다(방금 생긴 연결 → lastActivatedAt = 가상 now). */
 function pushAddedEdge(idA: string, idB: string, weight: number, linkType: string, nowIso: string) {
@@ -343,6 +487,18 @@ export function demoAddRecord(input: {
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, ADD_SAME_MOOD_LINKS)
   for (const r of sameMood) pushAddedEdge(first, r.memoryId, 0.6, 'semantic', nowIso)
+  for (const r of sameMood) linkedIds.add(r.memoryId)
+
+  // 흥분성 편향 할당(spec 22) 데모 근사: 방금(~6h 내) 회상해 "뜨거운" 별이 있으면 새 조각을
+  // 그 별과도 잇는다 — 라이브 force-sim이 새 별을 그 hot 성단 곁으로 끌어간다(회상→새 기억).
+  // ~6h를 넘겨 식으면 후보에서 빠져 끌림이 사라진다(시간 창 시연, 1.11). 서버 biasedLinks의
+  // 흥분성 편향(semantic + W_EXC·e)을 네트워크 없이 흉내 낸 것이다.
+  const hot = [...baseStars, ...addedStars]
+    .filter((s) => !idSet.has(s.memoryId) && !linkedIds.has(s.memoryId))
+    .map((s) => ({ id: s.memoryId, recalled: Date.parse(s.lastRecalledAt) }))
+    .filter((s) => Number.isFinite(s.recalled) && now - s.recalled <= HOT_WINDOW_MS)
+    .sort((a, b) => b.recalled - a.recalled)[0]
+  if (hot) pushAddedEdge(first, hot.id, 0.66, 'semantic', nowIso)
 
   return ids
 }

@@ -2,20 +2,102 @@
 // renderer + dark background + ambient star dust + the real StarField (08, driven by
 // the memory store / spec 10 data) + Bloom + camera rig. No DOM <Html> in the scene
 // (constitution §4 — mobile portability); labels/HUD are a separate 2D widget.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+} from 'react'
 import { Canvas, type GLProps, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
 import { StarField } from '@/entities/star'
 import { SynapseFilaments, SynapseDust, useSynapseStore } from '@/entities/synapse'
-import { useMemoryStore } from '@/entities/memory'
+import { useMemoryStore, activation, A_MIN } from '@/entities/memory'
 import { useAppearance, themeBg } from '@/entities/appearance'
 import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
-import { mulberry32, fibonacciStarPosition, reportUniverseRenderer } from '@/shared/lib'
+import {
+  cn,
+  mulberry32,
+  fibonacciStarPosition,
+  reportUniverseRenderer,
+  strength as memoryStrength,
+  targetRadius,
+} from '@/shared/lib'
+import { SelfStar } from './SelfStar'
+import {
+  createSim,
+  isSettled,
+  positions as simPositions,
+  tick,
+  seedNearCluster,
+  type SeedNeighbor,
+  type SimEdge,
+  type SimNode,
+  type SimState,
+} from '@/shared/lib/force-sim'
+import { virtualNowMs } from '@/shared/lib/demo'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
 import { useCameraMode } from '../model/use-camera-mode'
 import { BloomPass } from './BloomPass'
+
+/** A star's live (or settled) position by `stars`-array slot. The single source of star
+ *  coordinates (constitution §3): read the force-sim buffer when it's ready, else the
+ *  deterministic fibonacci shell seed (07's new-node rule) so the first frames don't
+ *  flicker. ALL four readers (StarField/Synapses/FlyTo/Focus) resolve through this so
+ *  the camera always reaches the rendered star (acceptance 1.7). */
+function readBufferPosition(
+  buf: Float32Array | null,
+  index: number,
+  count: number,
+  seed: number,
+): [number, number, number] {
+  if (buf && index >= 0 && index < count && buf.length >= count * 3) {
+    return [buf[index * 3], buf[index * 3 + 1], buf[index * 3 + 2]]
+  }
+  return fibonacciStarPosition(index, count, seed)
+}
+
+/** A snapshot of settled star positions by id — what the synapse renderers bake against.
+ *  Published by the layout controller at each settle so filaments reconnect at the stars'
+ *  emergent (not stale fibonacci) coordinates. */
+type LayoutMap = Map<string, [number, number, number]>
+
+// Live force-sim pumping budget. ~6h excitability window for the FE hot-cluster seed,
+// mirroring the server's tauExc (spec 22) — a star recalled within ~6h is "hot".
+const LAYOUT_TICKS_PER_FRAME = 2
+const HOT_TAU_MS = 6 * 60 * 60 * 1000
+
+// Self-anchored radial layout (spec 38). Each star's target shell radius = f(strength);
+// the radius is recomputed each frame from the current time so a star glides outward as it
+// fades and inward when recalled. To avoid re-relaxing the whole graph every frame, the sim
+// is only re-kicked when some star's target radius drifts past REKICK_THRESHOLD (a recall
+// jump always crosses it; slow time-decay crosses it occasionally → stepwise glide).
+const REKICK_THRESHOLD = 0.5
+const REKICK_ALPHA = 0.3
+
+/** A memory's target distance from the central self star (spec 38): strength (activation =
+ *  recency, 12 + emotional intensity) → radius. Strong/fresh → near centre, faded → outer.
+ *  Activation is floored at A_MIN (the same floor as brightness, 12) so the most dormant
+ *  stars don't all collapse onto one identical outer shell — intensity still spreads them. */
+function radiusOf(mem: { lastRecalledAt: number; intensity: number }, now: number): number {
+  const act = Math.max(A_MIN, activation(mem.lastRecalledAt, now))
+  return targetRadius(memoryStrength(act, mem.intensity))
+}
+
+/** Scale a seed position onto a target-radius shell, keeping its direction (so a new star
+ *  rises at its cluster's angle but at its strength's distance). Origin-degenerate → fall
+ *  back to a fixed axis so normalize is stable. */
+function atRadius(pos: readonly [number, number, number], r: number): [number, number, number] {
+  const len = Math.hypot(pos[0], pos[1], pos[2])
+  if (len < 1e-3) return [r, 0, 0]
+  const k = r / len
+  return [pos[0] * k, pos[1] * k, pos[2] * k]
+}
 
 /** Faint ambient point cloud — the "star dust" backdrop (acceptance 1.3). Always
  *  present, independent of the graph, so an empty universe still renders (1.10).
@@ -530,31 +612,212 @@ function NavController() {
   return null
 }
 
-/** Renders the synapse graph (braided TSL filaments) at the same deterministic star
- *  positions StarField uses, so edges connect the rendered stars; each filament also
- *  fades between its two endpoint stars' mood colors. Edge brightness (incl. dormant
- *  dimming) is already baked into the store by get-universe (12). positionOf + colorOf
- *  are built in one useMemo so both stay stable (the filament geometry rebuilds only
- *  when the star set changes, not on every parent render). */
-function UniverseSynapses() {
+/** The live force-sim pump (spec 22 + 38). Builds ONE weighted graph from the star set and
+ *  synapse edges and advances it each frame into a single positions buffer every coordinate
+ *  reader shares (acceptance 1.7) — star coordinates EMERGE from the graph (constitution §3).
+ *
+ *  spec 38 — distance is strength, angle is connection: ALL memory stars are free and pulled
+ *  toward a shell of radius = f(strength) (radial-shell force); the graph springs + repulsion
+ *  place the ANGLE, biased toward the hottest cluster a new fragment links into (seedNearCluster,
+ *  spec 22). Angular continuity across rebuilds comes from resuming each star at its prior live
+ *  position. Recall (activation↑ → radius↓) glides a star inward, time decay glides it outward —
+ *  the per-frame loop recomputes target radii and re-kicks the sim when they drift past a
+ *  threshold. Tightened sim params (less repulsion, shorter links, firmer radial spring) keep
+ *  the cloud compact rather than sprawling. `onReady` fires once the FIRST layout settles (or
+ *  immediately for a genuinely-empty universe) so the shell can reveal the placed stars. */
+function LiveLayoutController({
+  positionsRef,
+  onLayout,
+  onReady,
+}: {
+  positionsRef: MutableRefObject<Float32Array | null>
+  onLayout: (layout: LayoutMap) => void
+  onReady: () => void
+}) {
+  const stars = useMemoryStore((s) => s.stars)
+  const edges = useSynapseStore((s) => s.edges)
+  const loadedEmpty = useMemoryStore((s) => s.loadedEmpty)
+  const simRef = useRef<SimState | null>(null)
+  const settledRef = useRef(true)
+  const readyRef = useRef(false) // fire onReady exactly once
+  // Reused scratch for the per-frame target radii (avoids a per-frame allocation).
+  const targetScratchRef = useRef<Float32Array>(new Float32Array(0))
+  // Memory facts by id (lastRecalledAt + intensity) for the per-frame radius recompute —
+  // memoized so it's not rebuilt every frame, only when the star set changes.
+  const memoryById = useMemo(
+    () => new Map(stars.map((s) => [s.id, s.memory] as const)),
+    [stars],
+  )
+
+  // Publish a positions snapshot (id → coord) for the synapse renderers to bake against.
+  const publish = useCallback(
+    (sim: SimState, buf: Float32Array) => {
+      const layout: LayoutMap = new Map()
+      sim.ids.forEach((id, i) => layout.set(id, [buf[i * 3], buf[i * 3 + 1], buf[i * 3 + 2]]))
+      onLayout(layout)
+    },
+    [onLayout],
+  )
+
+  // Reveal the universe once the FIRST layout has settled (fires exactly once).
+  const markReady = useCallback(() => {
+    if (readyRef.current) return
+    readyRef.current = true
+    onReady()
+  }, [onReady])
+
+  useEffect(() => {
+    if (stars.length === 0) {
+      simRef.current = null
+      positionsRef.current = null
+      onLayout(new Map())
+      // A genuinely-empty universe has nothing to place — reveal immediately. While it's
+      // merely "not loaded yet" (stars pending), stay hidden so the load doesn't flash.
+      if (loadedEmpty) markReady()
+      return
+    }
+    const now = virtualNowMs()
+    const count = stars.length
+
+    // The OUTGOING sim's live positions by id — so a star still moving when this rebuild
+    // fires resumes from where it currently is (angular continuity, no jump). spec 38: all
+    // stars are free (they breathe radially with strength); the radial-shell force places
+    // distance, the graph springs + repulsion place angle.
+    const prevPos = new Map<string, [number, number, number]>()
+    const prevSim = simRef.current
+    const prevBuf = positionsRef.current
+    if (prevSim && prevBuf && prevBuf.length >= prevSim.ids.length * 3) {
+      prevSim.ids.forEach((id, i) =>
+        prevPos.set(id, [prevBuf[i * 3], prevBuf[i * 3 + 1], prevBuf[i * 3 + 2]]),
+      )
+    }
+
+    // Heat (recency 0..1) per star — exp decay over ~6h, mirroring the server's excitability
+    // window so the new-fragment seed leans toward the recently-active cluster (spec 22).
+    const heatById = new Map<string, number>()
+    for (const s of stars) {
+      const ageMs = Math.max(0, now - s.memory.lastRecalledAt)
+      heatById.set(s.id, Math.exp(-ageMs / HOT_TAU_MS))
+    }
+    const neighborsById = new Map<string, string[]>()
+    const addNeighbor = (from: string, to: string) => {
+      const list = neighborsById.get(from)
+      if (list) list.push(to)
+      else neighborsById.set(from, [to])
+    }
+    for (const e of edges) {
+      addNeighbor(e.aId, e.bId)
+      addNeighbor(e.bId, e.aId)
+    }
+    const prevPosOf = (id: string): readonly [number, number, number] | null => prevPos.get(id) ?? null
+
+    const nodes: SimNode[] = stars.map((s, i) => {
+      const r = radiusOf(s.memory, now)
+      // Angular continuity: resume from the live position if it was already placed.
+      const resume = prevPos.get(s.id)
+      if (resume) return { id: s.id, pinned: false, x: resume[0], y: resume[1], z: resume[2], radius: r }
+      // New (or first load): rise at the hottest cluster's ANGLE (seedNearCluster), but at
+      // the strength's DISTANCE (fresh memory → strong → near the centre). spec 38 1.5/1.6.
+      const seedNbrs: SeedNeighbor[] = (neighborsById.get(s.id) ?? []).map((nid) => ({
+        id: nid,
+        heat: heatById.get(nid) ?? 0,
+      }))
+      const fallback = fibonacciStarPosition(i, count, s.memory.seed)
+      const seeded = seedNearCluster(s.id, seedNbrs, prevPosOf, fallback)
+      const [x, y, z] = atRadius(seeded, r)
+      return { id: s.id, pinned: false, x, y, z, radius: r }
+    })
+    const simEdges: SimEdge[] = edges.map((e) => ({ source: e.aId, target: e.bId, weight: e.weight }))
+
+    // Tightened params (spec 38) keep the cloud compact: weaker repulsion + a SHORT link rest
+    // length so connected stars pull into tight constellations (not a sprawling line), and a
+    // firmer radial spring so each still hugs its strength-shell (distance = strength).
+    // seedNewNodes:false → keep the resume / dir·radius placement instead of a neighbor average.
+    const sim = createSim(
+      { nodes, edges: simEdges },
+      { repulsion: -18, linkDistance: 14, radialStrength: 0.1 },
+      { seedNewNodes: false },
+    )
+    simRef.current = sim
+    const buf = simPositions(sim)
+    positionsRef.current = buf
+    settledRef.current = isSettled(sim)
+    publish(sim, buf) // synapses get the seed layout now; they reconnect on each settle
+    if (isSettled(sim)) markReady() // already settled (e.g. a single star) → reveal now
+    // edges are part of the graph; rebuilding on an edge change keeps the springs current.
+  }, [stars, edges, positionsRef, onLayout, publish, loadedEmpty, markReady])
+
+  useFrame(() => {
+    const sim = simRef.current
+    if (!sim) return
+
+    // Recompute each star's target radius from the CURRENT time so it glides outward as it
+    // fades / inward when recalled (spec 38 1.3/1.4). `sim.radius` holds the shells the sim
+    // last relaxed to; we compare the fresh targets against THAT (not against last frame's
+    // value) so slow sub-threshold decay ACCUMULATES and eventually crosses the threshold —
+    // otherwise a per-frame overwrite would reset the baseline and the drift would never fire.
+    // When it crosses, apply all targets at once and re-kick; otherwise stay settled.
+    const now = virtualNowMs()
+    let targets = targetScratchRef.current
+    if (targets.length !== sim.n) {
+      targets = new Float32Array(sim.n)
+      targetScratchRef.current = targets
+    }
+    let maxDelta = 0
+    for (let i = 0; i < sim.n; i++) {
+      const mem = memoryById.get(sim.ids[i])
+      const r = mem ? radiusOf(mem, now) : sim.radius[i]
+      targets[i] = r
+      const d = Math.abs(r - sim.radius[i])
+      if (d > maxDelta) maxDelta = d
+    }
+    if (maxDelta > REKICK_THRESHOLD) {
+      sim.radius.set(targets) // commit the new shells (recall pull-in / accumulated decay)
+      if (sim.alpha < REKICK_ALPHA) sim.alpha = REKICK_ALPHA
+      settledRef.current = false
+    }
+
+    if (isSettled(sim)) {
+      if (!settledRef.current) {
+        settledRef.current = true
+        const buf = simPositions(sim)
+        positionsRef.current = buf
+        publish(sim, buf) // filaments reconnect at the emergent coordinates
+        markReady() // first settle → reveal the placed universe (idempotent)
+      }
+      return
+    }
+    settledRef.current = false
+    positionsRef.current = tick(sim, LAYOUT_TICKS_PER_FRAME)
+  })
+
+  return null
+}
+
+/** Renders the synapse graph (braided TSL filaments) at the SAME star positions the live
+ *  force-sim produces (shared `layout` snapshot), so edges connect the rendered stars; each
+ *  filament also fades between its two endpoint stars' mood colors. Edge brightness (incl.
+ *  dormant dimming) is already baked into the store by get-universe (12). positionOf + colorOf
+ *  are built in one useMemo so both stay stable (the filament geometry rebuilds only when the
+ *  star set, colors, or the published layout change — not on every parent render). The layout
+ *  is published at build (seed positions) and again on each settle, so filaments render right
+ *  away and then reconnect at the relaxed coordinates once the sim settles (spec 22/38). */
+function UniverseSynapses({ layout }: { layout: LayoutMap }) {
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
   const emotionColors = useAppearance((s) => s.emotionColors)
   // Spotlight: fade the whole synapse web while a star is focused so it stands alone.
   const dim = useMemoryStore((s) => (s.selectedId ? 0.1 : 1))
   const { positionOf, colorOf, seedOf } = useMemo(() => {
-    const posById = new Map(
-      stars.map((s, i) => [s.id, fibonacciStarPosition(i, stars.length, s.memory.seed)] as const),
-    )
     const colById = new Map(stars.map((s) => [s.id, resolveMoodRgb(s.memory.mood, emotionColors)] as const))
     const seedById = new Map(stars.map((s) => [s.id, s.memory.seed] as const))
     return {
-      positionOf: (id: string): [number, number, number] | null => posById.get(id) ?? null,
+      positionOf: (id: string): [number, number, number] | null => layout.get(id) ?? null,
       colorOf: (id: string): readonly [number, number, number] => colById.get(id) ?? NEUTRAL_RGB,
       // 부유 seed(StarField와 동일) — 필라멘트 끝이 떠다니는 별 중앙을 따라간다(spec 19).
       seedOf: (id: string): number => seedById.get(id) ?? 0,
     }
-  }, [stars, emotionColors])
+  }, [stars, emotionColors, layout])
   if (edges.length === 0 || stars.length === 0) return null
   return (
     <>
@@ -597,7 +860,7 @@ function UniverseDrift({ children }: { children: ReactNode }) {
  *  target is captured — so no stale focus can yank the camera on a later visit, and the
  *  flight survives StrictMode's setup→cleanup→setup (refs persist). Pure useFrame
  *  interpolation — no per-frame React state. */
-function FlyToController() {
+function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
   const focusStarId = useCameraMode((s) => s.focusStarId)
   const focusStar = useCameraMode((s) => s.focusStar)
   const setMode = useCameraMode((s) => s.setMode)
@@ -613,22 +876,33 @@ function FlyToController() {
 
   useEffect(() => {
     if (!focusStarId) return
-    // Index by ARRAY position (like StarField + UniverseSynapses), not StarNode.index,
-    // so the camera lands exactly where the star is rendered even if the two ever drift.
+    // Index by ARRAY position (= the force-sim buffer slot, like StarField + Synapses),
+    // not StarNode.index, so the camera lands exactly where the star is rendered. Read the
+    // LIVE buffer (fibonacci fallback) — never the static shell, or fly-to misses the star.
     const idx = stars.findIndex((s) => s.id === focusStarId)
     if (idx === -1) return // stars not loaded yet — effect re-runs when `stars` arrives
-    const [x, y, z] = fibonacciStarPosition(idx, stars.length, stars[idx].memory.seed)
+    const [x, y, z] = readBufferPosition(positionsRef.current, idx, stars.length, stars[idx].memory.seed)
     targetRef.current = new THREE.Vector3(x, y, z)
     flyingIdRef.current = focusStarId
     camera.up.set(0, 1, 0) // re-level: shed any free-look/arcball roll so the dive + recall is upright
     setMode('recall') // release the nebula zoom clamp for the close-up
     setTransitioning(true) // relax the orbit + ship-boundary clamps so the flight isn't yanked
     focusStar(null) // consume the request now → no stale store focus; refs drive the flight
-  }, [focusStarId, stars, setMode, setTransitioning, focusStar, camera])
+  }, [focusStarId, stars, setMode, setTransitioning, focusStar, camera, positionsRef])
 
   useFrame((_, dt) => {
     const target = targetRef.current
     if (!target) return
+    // Track the star LIVE while flying: if it's still relaxing (a fresh fragment), re-read its
+    // buffer position each frame so the camera follows it to its settled spot instead of a
+    // stale capture (and "arrival" is judged against where it actually is).
+    if (flyingIdRef.current) {
+      const idx = stars.findIndex((s) => s.id === flyingIdRef.current)
+      if (idx !== -1) {
+        const [x, y, z] = readBufferPosition(positionsRef.current, idx, stars.length, stars[idx].memory.seed)
+        target.set(x, y, z)
+      }
+    }
     // Park the camera on the INNER side of the star (toward the centre) so it stays within
     // the ship boundary — you meet the star from inside the universe, not from outside it.
     const desired = target.clone().sub(target.clone().normalize().multiplyScalar(12))
@@ -808,7 +1082,7 @@ const FOCUS_UP = new THREE.Vector3(0, 1, 0) // world up — re-leveled into duri
  *  nothing fights this. A no-op during a guided flight (transitioning) — FlyTo/ModeTransition own
  *  the camera then; this engages the instant they finish. Releases when the panel closes (select(null)).
  *  Reads the SAME fibonacci layout as StarField + fly-to so it lands on the rendered star. */
-function FocusController() {
+function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
   const selectedId = useMemoryStore((s) => s.selectedId)
   const stars = useMemoryStore((s) => s.stars)
   const mode = useCameraMode((s) => s.mode)
@@ -817,13 +1091,16 @@ function FocusController() {
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
     | null
-  const targetPos = useMemo(() => {
+  // The selected star's buffer slot + seed (pure derivation). Its position is read LIVE from
+  // the force-sim buffer each frame, so focus tracks the star even while it's still relaxing.
+  const sel = useMemo(() => {
     if (!selectedId) return null
     const idx = stars.findIndex((s) => s.id === selectedId)
     if (idx === -1) return null
-    const [x, y, z] = fibonacciStarPosition(idx, stars.length, stars[idx].memory.seed)
-    return new THREE.Vector3(x, y, z)
+    return { idx, seed: stars[idx].memory.seed }
   }, [selectedId, stars])
+  const count = stars.length
+  const targetPos = useRef(new THREE.Vector3())
 
   // Nebula framing distance, captured at selection: orbit to the star at the SAME distance the user
   // was viewing from (a rotation, not a surprise zoom). Clamped to the nebula range for safety.
@@ -857,7 +1134,7 @@ function FocusController() {
   useFrame((_, dt) => {
     if (!controls || transitioning) return
     const k = 1 - Math.exp(-dt * FOCUS_K)
-    if (!targetPos) {
+    if (!sel) {
       // 해제 직후: orbit 중심을 포커스 이전 자리로 회복(NebulaOrbitController가 매 프레임
       // target을 바라보므로 lerp만으로 시점이 부드럽게 되돌아간다).
       const saved = savedTargetRef.current
@@ -870,18 +1147,22 @@ function FocusController() {
       }
       return
     }
+    // The rendered star position — read LIVE from the shared buffer (fibonacci fallback), so
+    // focus lands exactly where StarField drew it (acceptance 1.7).
+    const [tx, ty, tz] = readBufferPosition(positionsRef.current, sel.idx, count, sel.seed)
+    const target = targetPos.current.set(tx, ty, tz)
     // nebula (원거리): orbit the camera onto the star's radial line at the captured distance →
     // camera = star + starDir·D, so the star sits in FRONT with the cloud behind it. Re-level the
     // horizon for a clean head-on framing (skip near vertical, where lookAt's up is singular).
-    if (mode === 'nebula' && targetPos.lengthSq() > 1e-6) {
-      desired.current.copy(targetPos).normalize().multiplyScalar(radiusRef.current).add(targetPos)
+    if (mode === 'nebula' && target.lengthSq() > 1e-6) {
+      desired.current.copy(target).normalize().multiplyScalar(radiusRef.current).add(target)
       camera.position.lerp(desired.current, k)
-      dir.current.subVectors(targetPos, camera.position).normalize()
+      dir.current.subVectors(target, camera.position).normalize()
       if (Math.abs(dir.current.y) < 0.985) camera.up.lerp(FOCUS_UP, k).normalize()
     }
     // AIM-LOCK (both modes): lerp the orbit target onto the star. OrbitControls.update() repoints
     // the camera at it (recall: position fixed → turns in place; nebula: at the orbited position).
-    controls.target.lerp(targetPos, k)
+    controls.target.lerp(target, k)
     controls.update()
   })
 
@@ -950,11 +1231,45 @@ export function UniverseCanvas() {
   const object = useAppearance((s) => s.object)
   // 감정색 사용자 오버라이드(spec 30) — 별·시냅스 색에 기본 팔레트 대신 우선 적용(빈 맵=기본).
   const emotionColors = useAppearance((s) => s.emotionColors)
+  // 중심 "나" 별 형태(spec 38) — 우주 중심 앵커. 강한 기억이 그 곁에 모인다.
+  const selfObject = useAppearance((s) => s.selfObject)
+
+  // The ONE live force-sim positions buffer all four readers share (spec 22, acceptance 1.7):
+  // StarField + FlyTo + Focus read it directly (per-frame / at capture); the synapse renderers
+  // bake against the `layout` snapshot published whenever the layout settles.
+  const positionsRef = useRef<Float32Array | null>(null)
+  const [layout, setLayout] = useState<LayoutMap>(() => new Map())
+  const onLayout = useCallback((next: LayoutMap) => setLayout(next), [])
+  // Hide the stars/synapses until the FIRST layout settles, then reveal them in place — so
+  // the user never sees filaments snapping from seed positions to their relaxed spots (38).
+  const [ready, setReady] = useState(false)
+  const onReady = useCallback(() => setReady(true), [])
+  // Safety net: reveal anyway after a few seconds so a stuck/errored load (stars never
+  // arrive, layout never settles) can't trap the user behind the loading veil forever.
+  useEffect(() => {
+    if (ready) return
+    const id = setTimeout(() => setReady(true), 8000)
+    return () => clearTimeout(id)
+  }, [ready])
 
   if (!mounted) return null
 
   return (
-    <Canvas
+    <>
+      {/* 첫 레이아웃이 정착할 때까지 별·시냅스를 가리고, 그 동안 별먼지 배경 위에 잔잔한 안내를
+          띄운다. 정착하면 부드럽게 사라진다(pointer-events 없음 — HUD는 그대로 조작 가능). */}
+      <div
+        aria-hidden={ready}
+        className={cn(
+          'pointer-events-none absolute inset-0 z-10 grid place-items-center transition-opacity duration-700',
+          ready ? 'opacity-0' : 'opacity-100',
+        )}
+      >
+        <p className="animate-pulse text-sm tracking-wide text-white/55">
+          별들이 제자리를 찾고 있어요…
+        </p>
+      </div>
+      <Canvas
       // gl = async WebGPU factory (WebGL2 auto-fallback) + init 실패 표면화 래퍼. 캐스트는
       // WebGPURenderer 고유 파라미터/반환 타입을 R3F의 명목 GLProps로 잇는 것뿐.
       gl={glFactory as unknown as GLProps}
@@ -977,19 +1292,27 @@ export function UniverseCanvas() {
       <color attach="background" args={[bg]} />
       <ambientLight intensity={0.4} />
       <StarDust count={1500} />
-      {/* 별과 시냅스는 함께 부유(연결이 떨어지지 않게); StarDust는 밖에 두어 시차가 생긴다. */}
-      <UniverseDrift>
-        <UniverseSynapses />
-        <StarField object={object} emotionColors={emotionColors} />
-      </UniverseDrift>
+      {/* 별과 시냅스는 함께 부유(연결이 떨어지지 않게); StarDust는 밖에 두어 시차가 생긴다.
+          자아 별(나)도 같은 그룹에서 부유해 강한 기억과의 거리감이 유지된다(spec 38).
+          visible=ready: 첫 레이아웃이 정착하기 전엔 가려, 시냅스가 엉뚱한 자리에서 움직이는
+          과정을 숨기고 모두 제자리에 놓인 뒤 드러낸다(38). 컨트롤러는 게이트 밖에서 항상 돈다. */}
+      <group visible={ready}>
+        <UniverseDrift>
+          <SelfStar selfObject={selfObject} />
+          <UniverseSynapses layout={layout} />
+          <StarField object={object} emotionColors={emotionColors} positionsRef={positionsRef} />
+        </UniverseDrift>
+      </group>
+      <LiveLayoutController positionsRef={positionsRef} onLayout={onLayout} onReady={onReady} />
       <CameraRig />
       <NebulaOrbitController />
       <NavController />
-      <FlyToController />
-      <FocusController />
+      <FlyToController positionsRef={positionsRef} />
+      <FocusController positionsRef={positionsRef} />
       <ModeTransitionController />
       <ViewOffsetController />
       <BloomPass />
-    </Canvas>
+      </Canvas>
+    </>
   )
 }

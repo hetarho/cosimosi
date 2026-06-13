@@ -2,10 +2,11 @@
 // InstancedMesh (few draw calls — constitution §8) with a TSL node material so it
 // runs on WebGPU and the WebGL2 fallback. Per-instance color/brightness/seed come
 // from InstancedBufferAttributes; size (=f(intensity)) is baked into the instance
-// matrix scale. Coordinates are updated in useFrame from the force-sim buffer (07)
-// with NO React re-render (constitution §3, acceptance 1.6) — until 10 wires that
-// buffer, a deterministic dummy cluster stands in. This is the only place three/TSL
-// appears; the model layer stays pure.
+// matrix scale. Coordinates are updated in useFrame from the live force-sim buffer
+// (07/22, wired by UniverseCanvas's LiveLayoutController) with NO React re-render
+// (constitution §3, acceptance 1.6); when the buffer isn't ready yet a deterministic
+// fibonacci dummy stands in (same formula → no flicker). This is the only place
+// three/TSL appears; the model layer stays pure.
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
