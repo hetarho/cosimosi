@@ -8,7 +8,7 @@
 
 별의 *지금 모습*은 결정론적 시드와 사용자가 고른 감정에서 나온다 — 색은 감정(mood)에서, 크기는 강도(intensity)에서, 형태는 시드에서 정해지고, 밝기는 회상 최근성으로 감쇠한다. 감정·강도는 **사용자가 기록 폼에서 직접 고른다**(AI 감정 감지가 아니다). 좌표는 별의 속성이 아니라 클라이언트가 결정론적으로 배치하며 서버는 좌표를 저장하지 않는다(헌법3 — navigation 정책 소관).
 
-> 일기 1편 → N 조각 별 분할, 조각별 AI 감정 감지, 야간 요지화는 plan 20·21·27에서 다룬다(아직 정책 아님).
+> 일기 1편 → N 조각 별 분할·조각별 AI 감정 감지는 plan 20·21에서 다룬다([memory](memory.md) 정책). 야간 요지화는 아래 §요지화(27).
 
 ## 규칙 · 파라미터
 
@@ -75,6 +75,16 @@
 | 렌더 합성 | `aBrightness = clamp(starBrightness + brightness_offset, A_MIN, 1)`(바닥 보존); `aSeed = seed + form_seed_delta`; `aHueShift`(rad)로 mood 색을 회색축(1,1,1) 둘레로 회전(휘도 보존). 회상 직후 갱신은 GetUniverse refetch로 반영(낙관 갱신 아님) |
 | 간격 효과 | 공동 회상 강화 delta는 FE `co-recall`에서 `CO_RECALL_DELTA·(1 + SPACING_GAIN·clamp(gapDays/SPACING_REF,0,1))`로 키운다(간격 둔 인출이 더 큰 강화); 서버 `ReinforceLinks`는 클라 delta를 1.0 cap으로 멱등 업서트(변경 없음) |
 
+### 요지화 (gist, 27)
+
+야간 공고화(27)는 오래되고 거의 안 떠올린 별의 형태를 한 단계 더 추상화한다 — 디테일이 녹고 일반적 인상만 남는 요지 추출(체계 공고화). **밝기가 아니라 형태 시드만** 단순화하므로 별은 어두워지지 않고 *모양이 가라앉는다*. 원본 `records`는 손대지 않는다(헌법1 — 가변 별의 형태 파라미터만).
+
+| 규칙 | 값 / 조건 |
+|---|---|
+| 요지 대상 | `created_at < now - GIST_AGE(30일)` 이고 `last_recalled_at < now - 14일`(저회상)이며 `form_seed_delta < 1` |
+| 단순화 | `form_seed_delta`를 `GIST_SIMPLIFY=0.4`만큼 **단조 증가**(`GREATEST(기존, LEAST(1, 기존+0.4))` — 후퇴·복잡화 금지), `version++`. `aSeed = seed + form_seed_delta`로 형태가 한 단계 추상화돼 재파생 |
+| 변천사 | 각 요지 변경은 `evolution_history`에 `trigger='nightly_gist'`(pe 0·dir −1) **append**(23 테이블 재사용, INSERT 전용 — [memory](memory.md) 정책). 24 변천사 타임랩스가 그대로 보여준다 |
+
 ## 불변식 (invariants)
 
 - **별은 삭제되지 않는다(헌법2).** 감쇠는 밝기만 낮추며, 유효 밝기는 `A_MIN=0.05` 바닥 위로 유지된다. 잠든 별도 `A_MIN` 잔광으로 계속 렌더되고 클릭 가능하다 — 물리 삭제·소멸이 없다.
@@ -91,3 +101,4 @@
 - 사용자 감정·강도 입력(mood select + intensity 슬라이더) → `records`: 구현 plan 04 · `features/record-memory/ui/MemoryForm.tsx` · `features/record-memory/model/use-record-memory.ts`.
 - record(불변)/memory(별) 분리·낙관적 단일 별: 구현 plan 03·04·10 · `backend/internal/db/migrations/00001_engram_schema.sql` · `features/record-memory/model/use-record-memory.ts`.
 - 재공고화 재성형(PE 게이트·강도 의존·양방향 경계·직접 이웃 한정·간격 효과·렌더 합성): 구현 plan 23 · `backend/internal/db/migrations/00005_reconsolidation.sql` · `backend/internal/memory/service.go`(`reconsolidate`·`reshapeState`·`strengthOf`·`cosineSim`·`directionFor`) · `entities/memory/model/reshape.ts` · `entities/star/ui/{StarField.tsx,forms.ts}` · `features/recall/model/co-recall.ts`.
+- 요지화(form_seed_delta 단조 증가·요지 대상 판정·변천사 append): 구현 plan 27 · `backend/internal/job/consolidate.go`(`handleConsolidate` ③) · `backend/internal/db/queries/memory.sql`(`GistSimplifyStars`·`AppendGistHistory`) · `aSeed=seed+form_seed_delta`는 23의 `reshapedSeed`(`entities/memory/model/reshape.ts`)·`entities/star/ui/StarField.tsx`가 이미 배선.

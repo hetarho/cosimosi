@@ -171,9 +171,15 @@ func (w *Worker) logQueueSummary(ctx context.Context) {
 // up behind it — acceptable for the single in-process worker; per-kind workers
 // are spec 27's scaling concern.)
 func (w *Worker) processOne(ctx context.Context) bool {
+	// Priority: extract → embed → consolidate. Interactive work (a diary becoming
+	// stars + their links) drains first; the nightly whole-graph pass (spec 27) is a
+	// heavy batch and claims last so it never starves the arrival pipeline.
 	j, err := w.jobs.Claim(ctx, KindExtract)
 	if errors.Is(err, ErrNoJob) {
 		j, err = w.jobs.Claim(ctx, KindEmbed)
+	}
+	if errors.Is(err, ErrNoJob) {
+		j, err = w.jobs.Claim(ctx, KindConsolidate)
 	}
 	switch {
 	case errors.Is(err, ErrNoJob):
@@ -211,10 +217,14 @@ func (w *Worker) safeHandle(ctx context.Context, j Job) (err error) {
 			err = fmt.Errorf("job panic recovered: %v", p)
 		}
 	}()
-	if j.Kind == KindExtract {
+	switch j.Kind {
+	case KindExtract:
 		return w.handleExtract(ctx, j)
+	case KindConsolidate:
+		return w.handleConsolidate(ctx, j)
+	default:
+		return w.handle(ctx, j)
 	}
-	return w.handle(ctx, j)
 }
 
 // handleExtract runs the fragmentation pipeline for one claimed extract job

@@ -6,7 +6,7 @@
 
 우주는 별(기억)과 시냅스(연결)의 그래프를 3D 공간에 형상화한 것이다. 개별 별·시냅스의 규칙은 각 도메인 정책(star/synapse)에 두고, **이 문서는 그것들이 모인 전체 차원**만 정의한다: (1) 별 좌표가 어떻게 배치되는가, (2) 좌표의 권위가 어디 있는가, (3) 배경이 무엇을 비추는가, (4) 무엇이 절대 사라지지 않는가.
 
-별 좌표는 클라의 **라이브 force-sim**(순수 Barnes-Hut, `shared/lib/force-sim`)에서 창발한다(22). `UniverseCanvas`의 `LiveLayoutController`가 별·시냅스 그래프로 단일 좌표 버퍼를 펌프하고 네 readers 전부에 공급한다. **좌표는 두 축으로 나뉜다(38): 거리(반지름)는 강함, 방향(각도)은 연결.** 우주 중심에는 **자아("나") 별**이 떠 있고(그래프 비참여), 각 기억은 강함(`activation`(최근성, 12) + 감정 강도)에 따라 그 중심에서 떨어진다 — 자주·최근 떠올린 강렬한 기억일수록 가깝고, 잊혀갈수록 바깥. 회상하면 강함↑로 **중앙으로**, 시간이 지나면 강함↓로 **바깥으로** 미끄러지고, 새 기억은 가장 강하므로 **중앙 근처에서 태어난다**. 방향(각도·이웃)은 여전히 그래프 스프링·척력과 22의 흥분성 편향이 정한다. 새 조각은 가장 뜨거운 성단의 *각도* 근처에 시드된다(`seedNearCluster`). 버퍼가 아직 없는 초기 프레임은 `fibonacciStarPosition`(방향)으로 폴백한다. 우주의 배경은 테마 깊은 베이스색 위에 **요즘 상태(ambient)** 가 여러 넓은 광원으로 번지는 한 겹을 더한다(25 — 아래 §요즘 상태 배경). 야간 공고화는 plan 27에서 다룬다(아직 정책 아님).
+별 좌표는 클라의 **라이브 force-sim**(순수 Barnes-Hut, `shared/lib/force-sim`)에서 창발한다(22). `UniverseCanvas`의 `LiveLayoutController`가 별·시냅스 그래프로 단일 좌표 버퍼를 펌프하고 네 readers 전부에 공급한다. **좌표는 두 축으로 나뉜다(38): 거리(반지름)는 강함, 방향(각도)은 연결.** 우주 중심에는 **자아("나") 별**이 떠 있고(그래프 비참여), 각 기억은 강함(`activation`(최근성, 12) + 감정 강도)에 따라 그 중심에서 떨어진다 — 자주·최근 떠올린 강렬한 기억일수록 가깝고, 잊혀갈수록 바깥. 회상하면 강함↑로 **중앙으로**, 시간이 지나면 강함↓로 **바깥으로** 미끄러지고, 새 기억은 가장 강하므로 **중앙 근처에서 태어난다**. 방향(각도·이웃)은 여전히 그래프 스프링·척력과 22의 흥분성 편향이 정한다. 새 조각은 가장 뜨거운 성단의 *각도* 근처에 시드된다(`seedNearCluster`). 버퍼가 아직 없는 초기 프레임은 `fibonacciStarPosition`(방향)으로 폴백한다. 우주의 배경은 테마 깊은 베이스색 위에 **요즘 상태(ambient)** 가 여러 넓은 광원으로 번지는 한 겹을 더한다(25 — 아래 §요즘 상태 배경). 밤마다 **야간 공고화**가 우주를 한 번 정돈한다(27 — 아래 §야간 공고화).
 
 ## 규칙 · 파라미터
 
@@ -44,6 +44,21 @@
 | 애니메이션 | BloomPass(`RenderPipeline`)가 내장 TSL `time` 노드를 진전시키지 않으므로, ambient 변경 시 **~0.8s 색 크로스페이드**·느린 드리프트·일렁임을 `useFrame` **수동 uniform**으로 구동(`StarField.update`·`Synapse uTime`과 같은 관용). `prefers-reduced-motion`이면 드리프트·일렁임 정지, 색만 유지 |
 | 흥분성 게인 | `g = 1 + 0.3·arousal`(arousal만; ∈[1,1.3])을 도메인 헬퍼(`memory.ExcitabilityGain` / `entities/memory excitabilityGain`)로 정의. 현재 할당 바이어스 `W_EXC`(22)에는 배선돼 있지 않다 — `worker.go`에 배선 지점 주석만(라이브 스케일은 27 야간 공고화 seam) |
 
+### 야간 공고화 (nightly consolidation, 27)
+
+밤마다 사용자별 `consolidate` 잡(`KindConsolidate`)이 한 번 깨어나 우주를 4패스로 정돈하고, 아침에 살짝 달라진 풍경(morning diff)을 남긴다 — **무엇도 삭제하지 않는다(헌법2).** 잡은 **야간 티커**가 매일 한 번(`consolidateHourUTC=18` ≈ 03:00 KST) 활성 사용자(별 ≥1)별로 enqueue하고(멱등 — 대기/실행 중이면 미적재), 워커가 `Claim(KindConsolidate)`로 한 건씩(extract·embed 다음 우선순위) 처리한다. 티커는 실제로 배포되는 단일 바이너리(`cmd/api`)와 분리 워커(`cmd/worker`) 양쪽에서 기동된다.
+
+| 패스 | 규칙 / 값 |
+|---|---|
+| ① 재안정화 (re-stabilize) | 사용자 전 그래프를 서버 측 force-sim(클라 `shared/lib/force-sim`과 **동일 힘 모델** — 척력 −30·linkDistance 30·centerGravity 0.01·velocityDecay 0.6·alphaMin 0.001, 척력은 정확 O(N²))으로 수렴(≤600틱)시킨다. 밤엔 pin을 풀어 **전체** 재안정화. 캐시 좌표가 있으면 그걸 시드(재진입 가속), 없으면 결정론적 fibonacci 셸 |
+| ② 재분배 (redistribute) | 각 별을 **호스트 성단**(연결 성분, union-find) centroid로 `redistributeLerp=0.6` 끌어들인다. **도식 적합**(성단 크기 ≥3 이고 degree ≥2) 별엔 `schemaBonus=0.15` 추가(최대 lerp 0.95) — 반복 성단의 잘 연결된 기억이 더 빨리 통합 |
+| 안정 좌표 캐시 | ①② 결과를 `memories.stable_x/y/z`에 upsert. **권위 아님 — 캐시뿐(헌법3).** proto로 클라에 나가지 않는다(`memory.proto` "no coordinate fields"); 서버의 **다음 밤 재진입 시드**로만 재사용한다 |
+| ③ 요지 (gist) | `created_at`이 `gistAgeDays=30`보다 오래되고 `last_recalled_at`이 `gistRecallCutoffDays=14`보다 과거이며 `form_seed_delta<1`인 별의 `form_seed_delta`를 `gistFormSimplify=0.4`만큼 **단조 증가**(GREATEST — 후퇴 금지)하고 `version++`. 각 변경은 `evolution_history`에 `trigger='nightly_gist'`(pe 0·dir −1)로 **append**(23 테이블 재사용, INSERT 전용). 형태가 한 단계 추상화된다(별 도메인 §요지화) |
+| ④ 가지치기 (prune) | `weight < weakEdgeThreshold=0.2` 이고 `last_activated_at`이 `weakEdgeIdleDays=14`보다 과거인 선의 `weight`를 `weakEdgeFloor=0.05`로 **LEAST**(밝기만↓). 행은 남고 클릭 가능 — **DELETE 0(헌법2)** |
+| ⑤ 흥분성 리셋 (24h 회전) | 성단 흥분성 `e(c,t)`(22)는 타임스탬프 파생(τ=6h)이라 **영속 컬럼이 없다** — 잡이 활동 수시간 뒤(야간) 돌므로 아침엔 이미 ≈0. 리셋은 시간 감쇠로 **내재**하며 별도 UPDATE가 없다(00.overview 공유 결정) |
+| 실패 안전 | 어떤 패스가 실패해도 기존 `failWithBackoff`로 재시도/보존(`failed`). 모든 패스 멱등(좌표 재캐시·`form_seed_delta` GREATEST·`weight` LEAST·요지 history는 RETURNING 집합에 키잉)이라 재실행이 삭제·손상 없음(헌법1·2) |
+| morning diff (FE) | 갱신된 `form_seed_delta`(요지 형태)·어두워진 약한 선이 다음 `GetUniverse` refetch로 자연히 반영된다. 라이브는 **하루 첫 접속 1회** "밤사이 우주가 한 번 정리됐어요" 노트(localStorage 일자 스탬프·`MorningDiffNote`). 데모는 별도 버튼 없이 **"하루/한 달 지나기"가 밤사이 정리(4패스)를 함께** 돌려(트윈 정착 후 1회) 같은 노트를 띄운다 — "하루가 지났으면 밤도 지났다". 안정 좌표는 클라에 안 가므로 좌표 자체는 클라 force-sim 재창발(헌법3) |
+
 ### 삭제 없음 (no deletion)
 
 | 규칙 | 값 / 조건 |
@@ -68,4 +83,5 @@
 - 우주 배경색 · 테마 분리: 구현 plan 06 · `frontend/src/entities/appearance/model/themes.ts`(`themeBg`), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`
 - 요즘 상태(ambient) 배경 · 다중 광원 · 흥분성 게인: 구현 plan 25 · `backend/internal/memory/memory.go`(`AmbientMood`·`AggregateAmbient`·`ExcitabilityGain`·`moodRGB`·`rgbToHueSat`)·`service.go`(`GetUniverse`)·`db/queries/memory.sql`(`ListRecentForAmbient`), `frontend/src/entities/memory/model/ambient.ts`(`deriveAmbient`·`ambientLights`·`ambientToRgb`·`excitabilityGain`), `frontend/src/widgets/universe-canvas/ui/AmbientNebula.tsx`, `backend/internal/job/worker.go`(W_EXC 배선 지점 주석)
 - 밝기 바닥 · 삭제 없음: 구현 plan 08·12 · `frontend/src/entities/memory/model/activation.ts`(`A_MIN`, `starBrightness`, `synapseBrightness`)
+- 야간 공고화 4패스 · 야간 티커 · 안정 좌표 캐시: 구현 plan 27 · `backend/internal/job/consolidate.go`(`handleConsolidate`·`consolidateLayout`·`redistribute`·`consolidateClusters`·`StartNightlyConsolidation`)·`worker.go`(claim 분기)·`repository.go`/`repository_pg.go`(`GraphStore` 공고화 포트·`Scheduler`)·`db/queries/{memory.sql,link.sql,job.sql}`(`ListStarsForConsolidate`·`CacheStableCoords`·`GistSimplifyStars`·`AppendGistHistory`·`PruneWeakLinks`·`EnqueueConsolidateJob`·`ListActiveUserIDs`)·`db/migrations/00006_nightly_consolidation.sql`(`stable_x/y/z`)·`cmd/{api,worker}/main.go`(티커 기동) / FE morning diff: `frontend/src/shared/ui/MorningDiffNote.tsx`·`pages/home/ui/HomePage.tsx`·`shared/lib/demo/data.ts`(`demoConsolidate`)·`widgets/demo-sim`(`runConsolidate`·"밤 보내기")
 - 렌더 셸(WebGPU·WebGL2 폴백·노드 Bloom·씬 내 DOM 금지): 구현 plan 06 · `frontend/src/shared/lib/r3f/`, `frontend/src/widgets/universe-canvas/ui/BloomPass.tsx`

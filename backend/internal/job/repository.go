@@ -73,6 +73,84 @@ type GraphStore interface {
 	LoadExcitabilityInputs(ctx context.Context, userID string, ids []string) (ExcitabilityInputs, error)
 	// BatchUpsertLinks inserts/strengthens the semantic synapses in one statement.
 	BatchUpsertLinks(ctx context.Context, links []LinkUpsert) error
+
+	// --- nightly consolidation (spec 27) ---
+
+	// LoadConsolidateGraph reads the whole user graph the nightly pass operates on:
+	// every star (id + last_recalled_at + cached stable coords) and every synapse
+	// (a/b + weight + last_activated_at). The coords are a CACHE, not authority
+	// (constitution §3) — the server seeds its own re-layout from them.
+	LoadConsolidateGraph(ctx context.Context, userID string) (ConsolidateGraph, error)
+	// RunConsolidation applies passes ②–④ AND completes the job in ONE transaction:
+	// cache the re-stabilized coords, gist-simplify (RETURNING) + append a coherent
+	// nightly_gist history row per gisted star, prune weak links, then mark the job
+	// done. Atomic completion is what makes a retry exactly-once — a failure rolls back
+	// every write together so the next attempt re-runs from a clean slate (the gist step
+	// is monotonic but NOT idempotent if re-applied, so it must not commit without the
+	// job's completion). Returns the number of stars gisted (for the log). Never deletes
+	// rows (constitution §2) and never touches records (§1).
+	RunConsolidation(ctx context.Context, jobID, userID string, w ConsolidationWrite) (gisted int, err error)
+}
+
+// ConsolidationWrite is the nightly pass's write payload (spec 27) — the re-stabilized
+// coordinate cache plus the gist/prune thresholds, applied atomically by RunConsolidation.
+type ConsolidationWrite struct {
+	Coords           []StableCoord // ①② re-stabilized coords to cache (re-entry only — §3)
+	Simplify         float64       // ③ form_seed_delta monotonic step
+	AgeCutoff        time.Time     // ③ gist only stars created before this
+	RecallCutoff     time.Time     // ③ …and un-recalled since this
+	GistDedupeCutoff time.Time     // ③ …and not already nightly-gisted since this (reclaim idempotency)
+	WeakThreshold    float64       // ④ prune links weaker than this
+	Floor         float64       // ④ …down to this weight (dim, never deleted)
+	IdleCutoff    time.Time     // ④ …and un-activated since this
+}
+
+// Scheduler is the nightly ticker's PRODUCER port (spec 27). It is deliberately
+// separate from the consumer Repository (which has no Enqueue — see above): the
+// ticker enqueues consolidate jobs outside any RecordMemory transaction, so a
+// pool-scoped enqueue here is correct. The pgx implementation is in repository_pg.go.
+type Scheduler interface {
+	// ActiveUserIDs lists users with at least one star — the consolidate targets.
+	ActiveUserIDs(ctx context.Context) ([]string, error)
+	// EnqueueConsolidate enqueues one consolidate job for the user, idempotently:
+	// it is a no-op if a pending/running consolidate job already exists for them
+	// (so a double-ticker or multiple daily wakeups never stack duplicates).
+	// Returns true when a job was actually enqueued.
+	EnqueueConsolidate(ctx context.Context, userID string) (bool, error)
+}
+
+// ConsolidateGraph is the nightly pass's whole-graph input (spec 27).
+type ConsolidateGraph struct {
+	Stars []ConsolidateStar
+	Links []ConsolidateLink
+}
+
+// ConsolidateStar is one node for the server-side re-layout: its recency (the
+// redistribution/excitability weight) plus the cached stable coordinate (nil =
+// never cached → cold seed). Coords are a re-entry cache, not authority (§3).
+type ConsolidateStar struct {
+	ID             string
+	LastRecalledAt time.Time
+	StableX        *float64
+	StableY        *float64
+	StableZ        *float64
+}
+
+// ConsolidateLink is one weighted, undirected synapse for the re-layout springs +
+// cluster derivation. LastActivatedAt feeds the cluster excitability bias.
+type ConsolidateLink struct {
+	AID             string
+	BID             string
+	Weight          float64
+	LastActivatedAt time.Time
+}
+
+// StableCoord is one star's re-stabilized coordinate to cache (§3 — cache only).
+type StableCoord struct {
+	ID string
+	X  float64
+	Y  float64
+	Z  float64
 }
 
 // ExcitabilityInputs is the worker's raw material for the competitive-allocation

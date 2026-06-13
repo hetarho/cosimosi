@@ -85,6 +85,9 @@ type Memory struct {
 	HueShift         float32            `json:"hue_shift"`
 	FormSeedDelta    float32            `json:"form_seed_delta"`
 	Version          int32              `json:"version"`
+	StableX          *float32           `json:"stable_x"`
+	StableY          *float32           `json:"stable_y"`
+	StableZ          *float32           `json:"stable_z"`
 }
 
 type MemoryLink struct {

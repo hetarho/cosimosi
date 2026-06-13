@@ -215,6 +215,12 @@ func (stubStore) LoadExcitabilityInputs(context.Context, string, []string) (Exci
 	return ExcitabilityInputs{Recalled: map[string]time.Time{}}, nil
 }
 func (stubStore) BatchUpsertLinks(context.Context, []LinkUpsert) error { return nil }
+func (stubStore) LoadConsolidateGraph(context.Context, string) (ConsolidateGraph, error) {
+	return ConsolidateGraph{}, nil
+}
+func (stubStore) RunConsolidation(context.Context, string, string, ConsolidationWrite) (int, error) {
+	return 0, nil
+}
 
 // panicEmbedder simulates an adapter blowing up mid-pipeline.
 type panicEmbedder struct{}

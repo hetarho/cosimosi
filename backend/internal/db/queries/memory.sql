@@ -158,3 +158,61 @@ VALUES (@id, @memory_id, @user_id, @version, @brightness, @hue_shift, @form_seed
 -- A star's variant log, version ascending (spec 23; UI is spec 24). user_id = isolation.
 SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at
 FROM evolution_history WHERE memory_id = @memory_id AND user_id = @user_id ORDER BY version ASC;
+
+-- ── 야간 공고화(spec 27) ──
+
+-- name: ListStarsForConsolidate :many
+-- ①② 입력: 야간 재안정화/재분배가 쓰는 별 목록 + 안정 좌표 캐시(있으면 다음 밤 force-sim
+-- 시드). last_recalled_at은 흥분성·재분배 가중(22 파생)에, stable_*는 재진입 시드에 쓴다.
+-- 좌표는 권위 아님(헌법3) — proto로 클라에 나가지 않는다. user_id = isolation.
+SELECT m.id AS memory_id, m.last_recalled_at, m.stable_x, m.stable_y, m.stable_z
+FROM memories m
+WHERE m.user_id = $1
+ORDER BY m.created_at, m.fragment_index;
+
+-- name: CacheStableCoords :exec
+-- 야간 재안정화(①②) 결과 좌표 캐시(권위 아님 — 헌법3). UNNEST 배치 upsert, user_id 격리.
+UPDATE memories AS m SET stable_x = c.x, stable_y = c.y, stable_z = c.z
+FROM (SELECT unnest(@ids::text[]) AS id,
+             unnest(@xs::float4[]) AS x, unnest(@ys::float4[]) AS y, unnest(@zs::float4[]) AS z) AS c
+WHERE m.id = c.id AND m.user_id = @user_id;
+
+-- name: GistSimplifyStars :many
+-- ③ 요지: 오래되고(created_at < age_cutoff) 저회상인(last_recalled_at < recall_cutoff) 별의
+-- form_seed_delta를 단조 증가(GREATEST — 후퇴 금지, LEAST로 1.0 상한). 이미 1.0이면 제외
+-- (여유 있는 별만 — 무변 스냅샷 방지). version++ 해 변천사 길이와 정합. WHERE는 시각·값 비교만
+-- (exp()/감쇠식 금지 — sargable). RETURNING으로 갱신된 행을 그대로 AppendGistHistory에 넘겨
+-- memories ↔ evolution_history 정합을 보장(스냅샷 의존·레이스 없음). 원본 record 불변(헌법1).
+-- 최근(idle_cutoff~지금) nightly_gist 변천사가 이미 있는 별은 제외 — 이번 잡이 RunConsolidation
+-- 트랜잭션으로 한 시도 안에선 원자적이지만, 잡 lease 만료로 재claim돼 *다시* 돌면(거대 그래프·
+-- 다중 워커) 같은 밤 form_seed_delta가 두 번 진행될 수 있다. 직전 nightly_gist append를 보고
+-- 건너뛰어 야간 1회 멱등을 보장한다(첫 시도의 history가 커밋돼 있으므로 재실행은 무변).
+UPDATE memories
+SET form_seed_delta = GREATEST(memories.form_seed_delta, LEAST(1.0::real, memories.form_seed_delta + sqlc.arg(simplify)::float4)),
+    version = memories.version + 1
+WHERE memories.user_id = @user_id
+  AND memories.created_at < sqlc.arg(age_cutoff)::timestamptz
+  AND memories.last_recalled_at < sqlc.arg(recall_cutoff)::timestamptz
+  AND memories.form_seed_delta < 1.0
+  AND NOT EXISTS (
+    SELECT 1 FROM evolution_history eh
+    WHERE eh.memory_id = memories.id AND eh.user_id = memories.user_id
+      AND eh.trigger = 'nightly_gist'
+      AND eh.created_at > sqlc.arg(gist_dedupe_cutoff)::timestamptz
+  )
+RETURNING memories.id AS memory_id, memories.version, memories.brightness_offset, memories.hue_shift, memories.form_seed_delta;
+
+-- name: AppendGistHistory :exec
+-- ③ 요지 변천사 append(INSERT 전용 — UPDATE/DELETE 금지, 헌법1·2). trigger='nightly_gist',
+-- pe=0(시간 기반·예측오차 무관), dir=-1(형태가 한 단계 가라앉음). GistSimplifyStars의 RETURNING
+-- 값(version·brightness_offset 스냅샷·hue_shift·새 form_seed_delta)을 그대로 싣는다.
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir)
+SELECT g.id, g.memory_id, @user_id, g.version, g.brightness, g.hue_shift, g.form_seed_delta, 'nightly_gist', 0, -1
+FROM (
+    SELECT unnest(@ids::text[]) AS id,
+           unnest(@memory_ids::text[]) AS memory_id,
+           unnest(@versions::int[]) AS version,
+           unnest(@brightnesses::float4[]) AS brightness,
+           unnest(@hue_shifts::float4[]) AS hue_shift,
+           unnest(@form_seed_deltas::float4[]) AS form_seed_delta
+) AS g;

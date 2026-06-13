@@ -25,16 +25,23 @@ const (
 	// enqueues one per diary, and the worker fans the segments out into fragment
 	// stars (1 diary → N memories), each with its own embed job.
 	KindExtract Kind = "extract"
+	// KindConsolidate is the nightly "universe sleep" job (spec 27): the nightly
+	// ticker enqueues one per active user, and the worker runs the 4-pass
+	// consolidation (re-stabilize → redistribute → gist → prune) over that user's
+	// whole graph. Keyed by UserID (no per-star memory_id).
+	KindConsolidate Kind = "consolidate"
 )
 
 // Job is a claimed unit of work. Keying follows jobs' columns: an embed job
 // carries MemoryID (the fragment star), an extract job carries RecordID (the
-// fragments don't exist yet). Attempts is the count BEFORE this attempt; the
+// fragments don't exist yet), a consolidate job (spec 27) carries UserID (a
+// whole-graph nightly pass). Attempts is the count BEFORE this attempt; the
 // worker uses it to compute the next backoff on failure.
 type Job struct {
 	ID       string
 	Kind     Kind
-	MemoryID string // embed jobs; empty for extract
-	RecordID string // extract jobs; empty for embed
+	MemoryID string // embed jobs; empty otherwise
+	RecordID string // extract jobs; empty otherwise
+	UserID   string // consolidate jobs (spec 27); empty otherwise
 	Attempts int
 }

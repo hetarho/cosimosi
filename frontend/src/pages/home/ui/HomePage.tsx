@@ -5,7 +5,7 @@ import { Link, useSearch } from '@tanstack/react-router'
 import { errorMessage, reportUniverseData } from '@/shared/lib'
 import { isDemoMode } from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
-import { primaryButtonCls } from '@/shared/ui'
+import { MorningDiffNote, primaryButtonCls } from '@/shared/ui'
 import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
 import { DemoSimPanel } from '@/widgets/demo-sim'
 import { MemoryForm } from '@/features/record-memory'
@@ -72,6 +72,24 @@ function CanvasErrorFallback({ error, resetError }: { error: unknown; resetError
       )}
     </UniverseErrorCard>
   )
+}
+
+// Morning diff (spec 27, acceptance 6.1): the nightly consolidation runs once a night,
+// so the first universe open of a new local day IS "공고화 이후 처음" — show the note once.
+// localStorage day-stamp gates it to one show per day (no server signal needed; star
+// coordinates/consolidation state never ride proto — 헌법3). claim returns true exactly
+// once per local day and persists immediately, so a re-render / refetch can't re-fire it.
+const MORNING_DIFF_KEY = 'cosimosi:morning-diff:lastShown'
+function claimMorningDiffForToday(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const today = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in local tz
+    if (window.localStorage.getItem(MORNING_DIFF_KEY) === today) return false
+    window.localStorage.setItem(MORNING_DIFF_KEY, today)
+    return true
+  } catch {
+    return false // private mode / disabled storage — just skip the note
+  }
 }
 
 /** True when the user is typing in a field — keyboard nav must not hijack those keys. */
@@ -200,6 +218,8 @@ export function HomePage() {
   // 우주를 화면 위 1/3 지점에 띄운다(ViewOffsetController; sm 미만에서만이라 데스크톱은
   // 무변화). 회상 패널(선택된 별)은 컨트롤러가 memory store에서 직접 구독한다.
   const [demoSheetOpen, setDemoSheetOpen] = useState(false)
+  // Morning diff (6.1) — live universe only; demo's "밤 보내기" owns its own note.
+  const [morningDiff, setMorningDiff] = useState(false)
   const setSheetOpen = useCameraMode((s) => s.setSheetOpen)
   useEffect(() => {
     setSheetOpen(composeOpen || demoSheetOpen)
@@ -229,6 +249,18 @@ export function HomePage() {
   useEffect(() => {
     if (settingsData) applySettings(settingsData)
   }, [settingsData])
+
+  // First universe open of a new local day → the morning-diff note once (6.1). Gated to a
+  // non-empty live universe (a brand-new user with no stars sees nothing to "정리"). The
+  // claim+show is deferred to a rAF (so the setState isn't synchronous in the effect) and
+  // the claim runs INSIDE it — a re-render that cancels the frame never burns the day-stamp.
+  useEffect(() => {
+    if (isDemoMode() || !universe.isSuccess || starCount === 0) return
+    const id = requestAnimationFrame(() => {
+      if (claimMorningDiffForToday()) setMorningDiff(true)
+    })
+    return () => cancelAnimationFrame(id)
+  }, [universe.isSuccess, starCount])
 
   // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3). The
   // model store is DOM-free (1.9); the window listeners live here in the page layer.
@@ -262,6 +294,11 @@ export function HomePage() {
       <UniverseGrain />
 
       {/* HUD: 2D DOM overlays outside the canvas */}
+
+      {/* 야간 공고화 morning diff(spec 27, 6.1) — 하루 첫 접속 1회. 데모는 자체 "밤 보내기"가 띄운다. */}
+      {!isDemoMode() && (
+        <MorningDiffNote show={morningDiff} onDismiss={() => setMorningDiff(false)} />
+      )}
 
       {/* Compose — 데모에선 숨김: 본문 입력 대신 시뮬 패널의 "별 띄우기"(감정·날짜 드롭다운,
           내용은 미리 쓴 일기)가 기록 컨트롤러를 담당한다(spec 19). */}

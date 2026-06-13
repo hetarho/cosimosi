@@ -39,8 +39,11 @@ CREATE TABLE memories (
     valence          REAL DEFAULT 0,                   -- 00004 부호 정동 -1..1
     brightness_offset REAL NOT NULL DEFAULT 0,         -- 00005(spec 23) 재공고화 누적 ±밝기 오프셋
     hue_shift        REAL NOT NULL DEFAULT 0,          -- 00005 감정 기준 색 ±28° 색조
-    form_seed_delta  REAL NOT NULL DEFAULT 0,          -- 00005 형태 시드 미세 jitter
-    version          INT NOT NULL DEFAULT 0            -- 00005 재성형 횟수(=변천사 길이)
+    form_seed_delta  REAL NOT NULL DEFAULT 0,          -- 00005 형태 시드 미세 jitter(27 야간 요지가 단조 증가)
+    version          INT NOT NULL DEFAULT 0,           -- 00005 재성형 횟수(=변천사 길이)
+    stable_x         REAL,                             -- 00006(spec 27) 야간 재안정화 안정 좌표 캐시(권위 아님 — 헌법3)
+    stable_y         REAL,                             -- 00006 클라/서버가 force-sim 재진입 시드로만 재사용(proto 미노출)
+    stable_z         REAL                              -- 00006 NULL이면 처음부터 산출
 );
 CREATE INDEX memories_user_idx ON memories (user_id);
 CREATE UNIQUE INDEX memories_record_fragment_idx ON memories (record_id, fragment_index);
@@ -88,6 +91,9 @@ CREATE TABLE jobs (
     user_id     TEXT                                  -- 00004 consolidate job 키(27)
 );
 CREATE INDEX jobs_claim_idx ON jobs (status, next_run_at);
+-- 사용자당 활성(대기/실행) consolidate 잡 최대 1개(27 — 야간 티커 중복 적재 방지 백스톱).
+CREATE UNIQUE INDEX jobs_one_active_consolidate_idx ON jobs (user_id)
+    WHERE kind = 'consolidate' AND status IN ('pending', 'running');
 
 -- 회상 강화 배치 멱등성
 CREATE TABLE processed_batches (

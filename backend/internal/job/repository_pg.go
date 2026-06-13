@@ -60,6 +60,7 @@ func (r *pgRepository) Claim(ctx context.Context, kind Kind) (Job, error) {
 		Kind:     kind,
 		MemoryID: strFromDB(row.MemoryID),
 		RecordID: strFromDB(row.RecordID),
+		UserID:   strFromDB(row.UserID),
 		Attempts: int(row.Attempts),
 	}, nil
 }
@@ -270,6 +271,175 @@ func (r *pgRepository) BatchUpsertLinks(ctx context.Context, links []LinkUpsert)
 		return fmt.Errorf("batch upsert links: %w", err)
 	}
 	return nil
+}
+
+// --- nightly consolidation (GraphStore, spec 27) ---
+
+func (r *pgRepository) LoadConsolidateGraph(ctx context.Context, userID string) (ConsolidateGraph, error) {
+	q := gen.New(r.pool)
+	starRows, err := q.ListStarsForConsolidate(ctx, userID)
+	if err != nil {
+		return ConsolidateGraph{}, fmt.Errorf("list stars for consolidate: %w", err)
+	}
+	stars := make([]ConsolidateStar, 0, len(starRows))
+	for _, row := range starRows {
+		stars = append(stars, ConsolidateStar{
+			ID:             row.MemoryID,
+			LastRecalledAt: row.LastRecalledAt.Time,
+			StableX:        f64Ptr(row.StableX),
+			StableY:        f64Ptr(row.StableY),
+			StableZ:        f64Ptr(row.StableZ),
+		})
+	}
+	linkRows, err := q.ListLinksByUser(ctx, userID)
+	if err != nil {
+		return ConsolidateGraph{}, fmt.Errorf("list links for consolidate: %w", err)
+	}
+	links := make([]ConsolidateLink, 0, len(linkRows))
+	for _, row := range linkRows {
+		links = append(links, ConsolidateLink{
+			AID:             row.AID,
+			BID:             row.BID,
+			Weight:          float64(row.Weight),
+			LastActivatedAt: row.LastActivatedAt.Time,
+		})
+	}
+	return ConsolidateGraph{Stars: stars, Links: links}, nil
+}
+
+// RunConsolidation applies passes ②–④ + job completion in ONE transaction (spec 27).
+// Two layers make a re-run safe, since the gist UPDATE advances form_seed_delta by a fixed
+// step (monotonic but NOT idempotent):
+//   - within an attempt: bundling gist + its history append + prune + stable-coord cache +
+//     CompleteJob in one tx means a mid-job failure rolls them ALL back together — never a
+//     half-applied (and re-appliable) consolidation.
+//   - across attempts: if the whole job exceeds the 120s claim lease (huge graph) or a worker
+//     crashes after committing, the reclaimed re-run's gist WHERE (gist_dedupe_cutoff) sees
+//     the prior committed nightly_gist history and skips those stars — so the same night never
+//     double-advances. The gist RETURNING rows feed the history insert in-tx, so memories ↔
+//     evolution_history can never drift. No DELETE (constitution §2); records untouched (§1).
+func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID string, w ConsolidationWrite) (int, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("begin consolidation tx: %w", err)
+	}
+	defer tx.Rollback(ctx) // no-op once committed
+	q := gen.New(tx)
+
+	if len(w.Coords) > 0 {
+		ids := make([]string, len(w.Coords))
+		xs := make([]float32, len(w.Coords))
+		ys := make([]float32, len(w.Coords))
+		zs := make([]float32, len(w.Coords))
+		for i, c := range w.Coords {
+			ids[i], xs[i], ys[i], zs[i] = c.ID, float32(c.X), float32(c.Y), float32(c.Z)
+		}
+		if err := q.CacheStableCoords(ctx, gen.CacheStableCoordsParams{
+			UserID: userID, Ids: ids, Xs: xs, Ys: ys, Zs: zs,
+		}); err != nil {
+			return 0, fmt.Errorf("cache stable coords: %w", err)
+		}
+	}
+
+	gisted, err := q.GistSimplifyStars(ctx, gen.GistSimplifyStarsParams{
+		Simplify:         float32(w.Simplify),
+		UserID:           userID,
+		AgeCutoff:        pgtype.Timestamptz{Time: w.AgeCutoff, Valid: true},
+		RecallCutoff:     pgtype.Timestamptz{Time: w.RecallCutoff, Valid: true},
+		GistDedupeCutoff: pgtype.Timestamptz{Time: w.GistDedupeCutoff, Valid: true},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("gist simplify: %w", err)
+	}
+	if len(gisted) > 0 {
+		histIDs := make([]string, len(gisted))
+		memoryIDs := make([]string, len(gisted))
+		versions := make([]int32, len(gisted))
+		brightnesses := make([]float32, len(gisted))
+		hueShifts := make([]float32, len(gisted))
+		formSeedDeltas := make([]float32, len(gisted))
+		for i, row := range gisted {
+			id, err := newID()
+			if err != nil {
+				return 0, fmt.Errorf("gist history id: %w", err)
+			}
+			histIDs[i] = id
+			memoryIDs[i] = row.MemoryID
+			versions[i] = row.Version
+			brightnesses[i] = row.BrightnessOffset // brightness_offset snapshot at this version (23)
+			hueShifts[i] = row.HueShift
+			formSeedDeltas[i] = row.FormSeedDelta
+		}
+		if err := q.AppendGistHistory(ctx, gen.AppendGistHistoryParams{
+			UserID: userID, Ids: histIDs, MemoryIds: memoryIDs, Versions: versions,
+			Brightnesses: brightnesses, HueShifts: hueShifts, FormSeedDeltas: formSeedDeltas,
+		}); err != nil {
+			return 0, fmt.Errorf("append gist history: %w", err)
+		}
+	}
+
+	if err := q.PruneWeakLinks(ctx, gen.PruneWeakLinksParams{
+		Floor:         float32(w.Floor),
+		UserID:        userID,
+		WeakThreshold: float32(w.WeakThreshold),
+		IdleCutoff:    pgtype.Timestamptz{Time: w.IdleCutoff, Valid: true},
+	}); err != nil {
+		return 0, fmt.Errorf("prune weak links: %w", err)
+	}
+
+	if err := q.CompleteJob(ctx, jobID); err != nil {
+		return 0, fmt.Errorf("complete consolidate: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit consolidation: %w", err)
+	}
+	return len(gisted), nil
+}
+
+// --- nightly scheduler (producer, spec 27) ---
+
+// pgScheduler is the nightly ticker's enqueue side. Kept distinct from the consumer
+// Repository so the "no Enqueue on the consumer" invariant (see Repository doc) stays
+// crisp: consolidate jobs are enqueued by the ticker, outside any RecordMemory tx.
+type pgScheduler struct {
+	pool *pgxpool.Pool
+}
+
+// NewScheduler builds the nightly-consolidation Scheduler over a pgx pool.
+func NewScheduler(pool *pgxpool.Pool) Scheduler { return &pgScheduler{pool: pool} }
+
+func (s *pgScheduler) ActiveUserIDs(ctx context.Context) ([]string, error) {
+	ids, err := gen.New(s.pool).ListActiveUserIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list active user ids: %w", err)
+	}
+	return ids, nil
+}
+
+func (s *pgScheduler) EnqueueConsolidate(ctx context.Context, userID string) (bool, error) {
+	id, err := newID()
+	if err != nil {
+		return false, err
+	}
+	uid := userID
+	n, err := gen.New(s.pool).EnqueueConsolidateJob(ctx, gen.EnqueueConsolidateJobParams{
+		ID:     id,
+		UserID: &uid,
+	})
+	if err != nil {
+		return false, fmt.Errorf("enqueue consolidate job: %w", err)
+	}
+	return n > 0, nil
+}
+
+// f64Ptr lifts a nullable REAL (sqlc *float32) into the pure domain's *float64
+// (a NULL stable coordinate = never cached → cold seed; constitution §5/§3).
+func f64Ptr(f *float32) *float64 {
+	if f == nil {
+		return nil
+	}
+	v := float64(*f)
+	return &v
 }
 
 // isUniqueViolation reports a Postgres 23505 (unique_violation) — the fan-out

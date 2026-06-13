@@ -15,6 +15,21 @@ VALUES ($1, $2, $3, 'extract', 'pending');
 INSERT INTO jobs (id, memory_id, kind, status)
 VALUES ($1, $2, 'embed', 'pending');
 
+-- name: EnqueueConsolidateJob :execrows
+-- 야간 공고화(spec 27) 잡 enqueue — 별 단위 memory_id 없이 user_id로 키잉(전체 그래프 1패스).
+-- 멱등: 그 사용자의 consolidate 잡이 이미 대기/실행 중이면 넣지 않는다(티커가 cmd/api·cmd/worker
+-- 양쪽에서 돌거나 하루에 여러 번 깨어나도 중복 적재되지 않게). 반환 행 수로 실제 적재 여부를 안다.
+INSERT INTO jobs (id, user_id, kind, status)
+SELECT @id, @user_id, 'consolidate', 'pending'
+WHERE NOT EXISTS (
+    SELECT 1 FROM jobs
+    WHERE user_id = @user_id AND kind = 'consolidate' AND status IN ('pending', 'running')
+);
+
+-- name: ListActiveUserIDs :many
+-- 야간 티커가 consolidate 잡을 돌릴 대상 — 별이 하나라도 있는 사용자(베타 규모엔 distinct로 충분).
+SELECT DISTINCT user_id FROM memories;
+
 -- name: ClaimJob :one
 -- Atomically claim one job of the kind and mark it running. FOR UPDATE SKIP LOCKED
 -- makes concurrent workers safe. Two cases are claimable:
@@ -39,7 +54,7 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, memory_id, record_id, attempts;
+RETURNING id, memory_id, record_id, user_id, attempts;
 
 -- name: CompleteJob :exec
 UPDATE jobs SET status = 'done', updated_at = now() WHERE id = @id;

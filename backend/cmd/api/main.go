@@ -143,6 +143,17 @@ func main() {
 		close(workerDone)
 	}()
 
+	// Nightly consolidation ticker (spec 27): once a day it enqueues a consolidate job
+	// per active user; the worker goroutine above claims/runs them. In this single-binary
+	// MVP deploy the worker runs here (Architecture §4.6), so the ticker lives here too —
+	// without it the nightly pass would never fire (cmd/worker isn't deployed). Shares the
+	// signal-cancelled ctx; enqueue is idempotent so a co-running cmd/worker can't duplicate.
+	tickerDone := make(chan struct{})
+	go func() {
+		job.StartNightlyConsolidation(ctx, job.NewScheduler(db), slog.Default())
+		close(tickerDone)
+	}()
+
 	// RPC panics are recovered INSIDE connect (rpcserver recover handler, 17) and
 	// no longer propagate to the sentryhttp wrap below — this hook is how they
 	// still reach Sentry. Keeps Sentry in the composition root (rpcserver stays
@@ -200,5 +211,13 @@ func main() {
 	case <-workerDone:
 	case <-time.After(5 * time.Second):
 		slog.Warn("worker did not stop in time; proceeding to shutdown")
+	}
+	// The ticker observes the same cancelled ctx and returns promptly (it's idle between
+	// daily wake-ups, or its enqueue calls fail fast on the cancelled ctx). Bounded wait so
+	// db.Close() never runs out from under an in-flight enqueue.
+	select {
+	case <-tickerDone:
+	case <-time.After(2 * time.Second):
+		slog.Warn("nightly ticker did not stop in time; proceeding to shutdown")
 	}
 }

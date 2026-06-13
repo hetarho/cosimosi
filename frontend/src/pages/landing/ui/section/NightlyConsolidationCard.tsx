@@ -10,14 +10,19 @@ import { TheoryBadge } from './TheoryBadge'
 
 const ACCENT = MOOD.violet
 
-/** stage 0=대기, 1=재활성화(깜빡), 2=재분배(중심으로 모임), 3=요지(축소·약한 별 흐려짐), 4=가지치기(약한 선 제거) */
+/** stage 0=대기, 1=재활성화(깜빡), 2=재분배(중심으로 모임), 3=요지(축소·약한 별 흐려짐),
+ *  4=가지치기(약한 선의 *밝기*만 바닥으로 — 선은 그대로 남아 어두워질 뿐, 삭제 아님 — 헌법2) */
 const STAGES = [
   { label: '잠들기 전 — 낮에 담은 작은 성단', tag: '대기' },
   { label: '다시 깜빡여요 — 낮의 별들이 깨어나요', tag: '1 · 재활성화' },
   { label: '모여들어요 — 더 큰 자리의 중심으로', tag: '2 · 재분배' },
   { label: '줄거리만 남겨요 — 흐릿한 디테일을 덜어내요', tag: '3 · 요지' },
-  { label: '가지를 쳐요 — 약한 선을 가만히 정리해요', tag: '4 · 가지치기' },
+  { label: '약한 선은 빛만 낮춰요 — 지우지 않고 어둑하게 남겨요', tag: '4 · 가지치기' },
 ] as const
+
+// 가지치기 후에도 약한 선이 가닿는 최소 밝기(바닥). 0이 아니라 floor라, 선은 사라지지 않고
+// 어두워질 뿐이다(헌법2 — 별·선은 우주에서 삭제하지 않는다). 서버 weakEdgeFloor의 시연 대응.
+const PRUNE_FLOOR = 0.16
 
 const CX = 80
 const CY = 56
@@ -114,7 +119,8 @@ export function NightlyConsolidationCard() {
             const a = positions[l.a]
             const b = positions[l.b]
             return (
-              <g key={`l-${i}`} opacity={l.weak ? 1 - prune : 1}>
+              // 약한 선은 0이 아니라 PRUNE_FLOOR까지만 흐려진다 — 어두워질 뿐 사라지지 않는다(헌법2).
+              <g key={`l-${i}`} opacity={l.weak ? 1 - prune * (1 - PRUNE_FLOOR) : 1}>
                 <VizSynapse
                   x1={a.x}
                   y1={a.y}
@@ -152,9 +158,16 @@ export function NightlyConsolidationCard() {
         </svg>
       </div>
 
+      {/* 4단계 뒤 생물학적 근거: 잠들기 전 쌓인 성단 흥분성을 매일 0으로 되돌려, 다음 낮의
+          기억 할당이 새로 시작된다(24시간 주기의 엔그램 회전 — Cho et al. 2022). */}
+      <p className="text-[11px] leading-relaxed text-white/35">
+        그리고 밤마다 성단의 흥분성을 0으로 되돌려요 — 다음 날의 기억이 어제에 눌리지 않고 새로
+        자리를 얻도록. 24시간을 주기로 도는 <span className="text-white/50">엔그램 회전</span>이에요.
+      </p>
+
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs leading-relaxed text-white/40">{STAGES[stage].label}</p>
-        <TheoryBadge status="planned" plan="27" className="shrink-0" />
+        <TheoryBadge status="done" plan="27" className="shrink-0" />
         <button
           type="button"
           onClick={runNight}

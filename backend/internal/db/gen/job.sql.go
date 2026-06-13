@@ -25,7 +25,7 @@ WHERE id = (
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, memory_id, record_id, attempts
+RETURNING id, memory_id, record_id, user_id, attempts
 `
 
 type ClaimJobParams struct {
@@ -37,6 +37,7 @@ type ClaimJobRow struct {
 	ID       string  `json:"id"`
 	MemoryID *string `json:"memory_id"`
 	RecordID *string `json:"record_id"`
+	UserID   *string `json:"user_id"`
 	Attempts int32   `json:"attempts"`
 }
 
@@ -59,6 +60,7 @@ func (q *Queries) ClaimJob(ctx context.Context, arg ClaimJobParams) (ClaimJobRow
 		&i.ID,
 		&i.MemoryID,
 		&i.RecordID,
+		&i.UserID,
 		&i.Attempts,
 	)
 	return i, err
@@ -71,6 +73,31 @@ UPDATE jobs SET status = 'done', updated_at = now() WHERE id = $1
 func (q *Queries) CompleteJob(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, completeJob, id)
 	return err
+}
+
+const enqueueConsolidateJob = `-- name: EnqueueConsolidateJob :execrows
+INSERT INTO jobs (id, user_id, kind, status)
+SELECT $1, $2, 'consolidate', 'pending'
+WHERE NOT EXISTS (
+    SELECT 1 FROM jobs
+    WHERE user_id = $2 AND kind = 'consolidate' AND status IN ('pending', 'running')
+)
+`
+
+type EnqueueConsolidateJobParams struct {
+	ID     string  `json:"id"`
+	UserID *string `json:"user_id"`
+}
+
+// 야간 공고화(spec 27) 잡 enqueue — 별 단위 memory_id 없이 user_id로 키잉(전체 그래프 1패스).
+// 멱등: 그 사용자의 consolidate 잡이 이미 대기/실행 중이면 넣지 않는다(티커가 cmd/api·cmd/worker
+// 양쪽에서 돌거나 하루에 여러 번 깨어나도 중복 적재되지 않게). 반환 행 수로 실제 적재 여부를 안다.
+func (q *Queries) EnqueueConsolidateJob(ctx context.Context, arg EnqueueConsolidateJobParams) (int64, error) {
+	result, err := q.db.Exec(ctx, enqueueConsolidateJob, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const enqueueEmbedJob = `-- name: EnqueueEmbedJob :exec
@@ -179,4 +206,29 @@ func (q *Queries) JobQueueStats(ctx context.Context) (JobQueueStatsRow, error) {
 		&i.OldestPendingSeconds,
 	)
 	return i, err
+}
+
+const listActiveUserIDs = `-- name: ListActiveUserIDs :many
+SELECT DISTINCT user_id FROM memories
+`
+
+// 야간 티커가 consolidate 잡을 돌릴 대상 — 별이 하나라도 있는 사용자(베타 규모엔 distinct로 충분).
+func (q *Queries) ListActiveUserIDs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listActiveUserIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -98,6 +98,24 @@ describe('mergeStars (spec 16, 1.4)', () => {
     // unchanged relevance + unchanged recall → identity preserved (no needless rebuild).
     expect(mergeStars(merged, [star('a', 9, NOW, 0.8)])).toBe(merged)
   })
+
+  it('forwards server reshaping state (specs 23·27) even when recall/relevance are unchanged', () => {
+    // brightnessOffset/hueShift/formSeedDelta/version are server-authoritative (recall reshape,
+    // nightly gist) and never advanced locally — so a recalled-reshaped or night-gisted star must
+    // adopt the incoming shape, or it freezes at first load.
+    const local = [star('a', 0)]
+    const gisted = {
+      ...local[0],
+      memory: { ...local[0].memory, formSeedDelta: 0.4, version: 1 },
+    }
+    const merged = mergeStars(local, [gisted])
+    expect(merged).not.toBe(local) // changed → re-rendered (form re-derives)
+    expect(merged[0].memory.formSeedDelta).toBe(0.4)
+    expect(merged[0].memory.version).toBe(1)
+    expect(merged[0].index).toBe(0) // slot/identity rules still hold
+    // re-applying the same shape → identity preserved (no needless rebuild).
+    expect(mergeStars(merged, [gisted])).toBe(merged)
+  })
 })
 
 describe('mergeEdges (spec 16, 1.4/1.8)', () => {

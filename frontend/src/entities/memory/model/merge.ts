@@ -23,6 +23,12 @@ function edgeKey(e: SynapseEdge): string {
  *   signal (cos vs the "요즘 토픽" centroid) that shifts between fetches as the centroid moves,
  *   and the client never advances it locally — so a max()/keep-local merge would freeze it at
  *   the first-load value. Forwarding it keeps decay-resistance current as 요즘 evolves.
+ * - The reshaping state (`brightnessOffset`/`hueShift`/`formSeedDelta`/`version`, specs 23·27)
+ *   is ALSO taken from the server unconditionally, for the same reason: it is server-authoritative
+ *   (reconsolidation reshapes on recall, the nightly gist simplifies form — both server-side) and
+ *   the client never advances it optimistically ("낙관 갱신 아님"). A keep-local merge would freeze
+ *   the star's shape at its first-load version, so a recalled-reshaped or night-gisted star would
+ *   never visibly change on an in-session refetch. Forwarding makes those re-shapes land.
  * - Local-only stars are kept: `temp-` optimistic stars (replaceStar owns their swap)
  *   and just-confirmed stars a stale response doesn't include yet.
  * - Server-only stars are appended at the end → next free instance slots.
@@ -36,10 +42,30 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
     if (!inc) return node
     incomingById.delete(node.id)
     const lastRecalledAt = Math.max(node.memory.lastRecalledAt, inc.memory.lastRecalledAt)
-    const relevance = inc.memory.relevance // server-authoritative; reflects the shifting 요즘 centroid
-    if (lastRecalledAt === node.memory.lastRecalledAt && relevance === node.memory.relevance) return node
+    const m = inc.memory // server-authoritative signals (never advanced locally): forward as-is
+    if (
+      lastRecalledAt === node.memory.lastRecalledAt &&
+      m.relevance === node.memory.relevance &&
+      m.brightnessOffset === node.memory.brightnessOffset &&
+      m.hueShift === node.memory.hueShift &&
+      m.formSeedDelta === node.memory.formSeedDelta &&
+      m.version === node.memory.version
+    ) {
+      return node
+    }
     changed = true
-    return { ...node, memory: { ...node.memory, lastRecalledAt, relevance } }
+    return {
+      ...node,
+      memory: {
+        ...node.memory,
+        lastRecalledAt,
+        relevance: m.relevance,
+        brightnessOffset: m.brightnessOffset,
+        hueShift: m.hueShift,
+        formSeedDelta: m.formSeedDelta,
+        version: m.version,
+      },
+    }
   })
   const appended = [...incomingById.values()].map((n, k) => ({ ...n, index: local.length + k }))
   if (!changed && appended.length === 0) return local

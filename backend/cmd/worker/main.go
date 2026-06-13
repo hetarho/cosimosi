@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/cosimosi/backend/internal/admin"
 	"github.com/cosimosi/backend/internal/ai"
@@ -58,6 +59,25 @@ func main() {
 	adminSvc := admin.NewService(admin.NewRepository(db), adminCipher, cfg)
 	extractor := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
 
+	// Nightly consolidation ticker (spec 27): once a day enqueue a consolidate job
+	// per active user; the worker below claims/runs them. Shares the signal-cancelled
+	// ctx, so it stops on shutdown. Enqueue is idempotent, so this co-existing with
+	// cmd/api's ticker (single-binary deploy runs the worker there too) never duplicates.
+	tickerDone := make(chan struct{})
+	go func() {
+		job.StartNightlyConsolidation(ctx, job.NewScheduler(db), slog.Default())
+		close(tickerDone)
+	}()
+
 	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, slog.Default())
 	worker.Run(ctx) // blocks until ctx is cancelled by a signal
+
+	// ctx is cancelled (signal) by the time Run returns. Wait for the ticker to observe it
+	// and stop before the deferred db.Close() runs, so the pool isn't closed under an
+	// in-flight enqueue (bounded — the ticker is idle between daily wake-ups).
+	select {
+	case <-tickerDone:
+	case <-time.After(2 * time.Second):
+		slog.Warn("nightly ticker did not stop in time; proceeding to shutdown")
+	}
 }

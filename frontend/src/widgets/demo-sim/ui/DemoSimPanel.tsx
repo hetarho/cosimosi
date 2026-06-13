@@ -8,9 +8,10 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { useQueryClient } from '@tanstack/react-query'
 import { Mood } from '@/shared/api'
 import { demoAddMultiSceneStar, demoAddStar, demoOffsetDays, demoToday } from '@/shared/lib/demo'
+import { MorningDiffNote } from '@/shared/ui'
 import { universeInvalidateKey } from '@/entities/memory'
 import { THEORIES, TheoryDemo } from '@/entities/theory'
-import { resetDemoExperience, runTimeSkip } from '../model/time-travel'
+import { resetDemoExperience, runConsolidate, runTimeSkip } from '../model/time-travel'
 
 export interface DemoSimPanelProps {
   /** `/universe?sim=<id>` 진입 포커스 — 이론 모달을 그 이론 페이지로 연다(없는 id는 무시). */
@@ -42,14 +43,19 @@ const inputCls =
   'rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/90 outline-none focus:border-white/30'
 
 /** 컨트롤러 패널 — 시간 머신 + 별 띄우기(감정·날짜 드롭다운, 본문은 미리 쓴 일기). */
-function ControlsPanel({ onClose }: { onClose: () => void }) {
+function ControlsPanel({ onClose, onConsolidated }: { onClose: () => void; onConsolidated: () => void }) {
   const queryClient = useQueryClient()
   const [elapsed, setElapsed] = useState(demoOffsetDays)
   const [mood, setMood] = useState<Mood>(Mood.JOY)
   const [date, setDate] = useState(demoToday)
 
   const skip = (days: number) => {
-    runTimeSkip(queryClient, days)
+    // 하루가 지났으면 그 밤사이 야간 공고화(spec 27)도 일어난다 — 트윈이 정착하면(onSettled)
+    // 4패스를 흘려보내고 morning diff 노트를 띄운다(별도 "밤 보내기" 버튼 없이 합쳐진 경험).
+    runTimeSkip(queryClient, days, () => {
+      runConsolidate(queryClient)
+      onConsolidated()
+    })
     // 스킵은 ~0.9s 트윈으로 흐르므로(time-travel) 시계를 읽지 않고 목표 경과일을 바로 표시.
     setElapsed((e) => e + days)
   }
@@ -111,6 +117,9 @@ function ControlsPanel({ onClose }: { onClose: () => void }) {
             처음으로
           </button>
         </div>
+        <p className="text-[11px] leading-relaxed text-indigo-200/60">
+          하루를 넘기면 별이 시간만큼 어두워지고, 그 밤사이 우주가 한 번 정리돼요(요지·가지치기).
+        </p>
       </div>
 
       {/* 컨트롤러 2 — 별 띄우기: 감정·날짜만 고르면 미리 쓴 일기로 별이 태어난다. */}
@@ -321,6 +330,8 @@ export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps)
   )
   // ?sim= 진입(랜딩 "이 카드 체험하기")은 그 이론 페이지가 떠 있는 채로 시작한다.
   const [theoryOpen, setTheoryOpen] = useState(focusedIdx >= 0)
+  // "밤 보내기" 후 morning diff 노트(spec 27, 8.1/6.1).
+  const [morningDiff, setMorningDiff] = useState(false)
   const elapsed = demoOffsetDays()
 
   // 기억 실험실 시트가 하단을 덮는 동안 페이지에 알린다(모바일 카메라 시프트용).
@@ -355,7 +366,11 @@ export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps)
         </button>
       </div>
 
-      {controlsOpen && <ControlsPanel onClose={() => setControlsOpen(false)} />}
+      <MorningDiffNote show={morningDiff} onDismiss={() => setMorningDiff(false)} />
+
+      {controlsOpen && (
+        <ControlsPanel onClose={() => setControlsOpen(false)} onConsolidated={() => setMorningDiff(true)} />
+      )}
       {theoryOpen && (
         <TheoryModal
           initialPage={Math.max(0, focusedIdx)}

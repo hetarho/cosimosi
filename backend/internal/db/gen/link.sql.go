@@ -193,6 +193,35 @@ func (q *Queries) ListLinksForCluster(ctx context.Context, arg ListLinksForClust
 	return items, nil
 }
 
+const pruneWeakLinks = `-- name: PruneWeakLinks :exec
+UPDATE memory_links
+SET weight = LEAST(weight, $1::float4)
+WHERE user_id = $2
+  AND weight < $3::float4
+  AND last_activated_at < $4::timestamptz
+`
+
+type PruneWeakLinksParams struct {
+	Floor         float32            `json:"floor"`
+	UserID        string             `json:"user_id"`
+	WeakThreshold float32            `json:"weak_threshold"`
+	IdleCutoff    pgtype.Timestamptz `json:"idle_cutoff"`
+}
+
+// ④ 야간 가지치기(spec 27): 약하고(weight < weak_threshold) 안 쓰인(last_activated_at <
+// idle_cutoff) 선의 weight를 바닥으로(LEAST — 절대 올리지 않음). 밝기는 26 클라 모델이 weight로
+// 산출하므로 선이 어두워질 뿐 **사라지지 않는다** — 행은 남기고 클릭 가능(헌법2, DELETE 금지).
+// WHERE는 weight·시각 비교만(sargable). user_id = isolation.
+func (q *Queries) PruneWeakLinks(ctx context.Context, arg PruneWeakLinksParams) error {
+	_, err := q.db.Exec(ctx, pruneWeakLinks,
+		arg.Floor,
+		arg.UserID,
+		arg.WeakThreshold,
+		arg.IdleCutoff,
+	)
+	return err
+}
+
 const reinforceLinks = `-- name: ReinforceLinks :exec
 INSERT INTO memory_links (a_id, b_id, user_id, weight, link_type, co_activation_count, last_activated_at, created_at)
 SELECT LEAST(a, b), GREATEST(a, b), $1, LEAST(1.0, d), 'co_recall', 1, now(), now()

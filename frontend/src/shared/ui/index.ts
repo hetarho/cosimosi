@@ -1,4 +1,5 @@
 export { GlassCard } from './GlassCard'
+export { MorningDiffNote } from './MorningDiffNote'
 export { NotFoundScreen } from './NotFoundScreen'
 export { Section } from './Section'
 export { StarFieldCanvas } from './StarFieldCanvas'

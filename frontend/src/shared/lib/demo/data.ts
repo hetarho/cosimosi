@@ -620,6 +620,7 @@ function renewStar(s: Star, lastRecalledAt: string): Star {
     mood: s.mood,
     intensity: s.intensity,
     valence: s.valence, // 회상 재점화에도 부호 정동 보존(spec 25 배경 온도)
+    relevance: s.relevance, // 관련성(spec 26)도 보존 — 불변 교체가 서버 파생값을 0으로 지우지 않게
     lastRecalledAt,
     brightnessOffset: r?.brightnessOffset ?? s.brightnessOffset,
     hueShift: r?.hueShift ?? s.hueShift,
@@ -694,6 +695,57 @@ export function demoReshape(memoryId: string): void {
   // 별을 불변 교체해 우주가 변형된 별을 그린다(lastRecalledAt은 demoMarkRecalled가 따로 전진).
   const nowIso = new Date(virtualNowMs()).toISOString()
   replaceStar(memoryId, (s) => renewStar(s, nowIso))
+}
+
+// 야간 공고화(spec 27) 체험 근사 — 서버 4패스의 데모 대응(네트워크 없이). 별·선은 절대
+// 지우지 않는다(헌법2): 개수는 그대로 두고 ③ 요지(오래된 별의 형태를 한 단계 단순화)와
+// ④ 가지치기(약하고 안 쓰인 선의 weight를 바닥으로 — 어둑하게만)만 데이터에 반영한다.
+// ①②(재안정화·재분배)는 좌표 변환이라 라이브 force-sim이 refetch에서 다시 안정화하며 보인다.
+const DEMO_GIST_AGE_DAYS = 30 // 마지막 회상 후 이보다 오래된 별이 요지 대상(서버 gistAgeDays와 동일)
+const DEMO_GIST_SIMPLIFY = 0.18 // 요지 1회의 form_seed_delta 단조 증가폭
+const DEMO_WEAK_THRESHOLD = 0.7 // 데모 우주는 선이 촘촘·강해 상대적 약함 기준(서버 0.2의 데모 근사)
+const DEMO_IDLE_DAYS = 14 // 이보다 오래 안 쓰인 선이 가지치기 대상(서버 weakEdgeIdleDays와 동일)
+const DEMO_PRUNE_FLOOR = 0.12 // 가지치기 후 선이 가닿는 최소 weight(0 아님 — 어둑하게 남는다)
+
+/** RecordMemory처럼 데모 우주를 제자리에서 변환한다 — "밤 보내기"(spec 27): 오래된 별의
+ *  형태를 한 단계 요지화하고(③), 약하고 안 쓰인 선은 빛만 바닥으로 낮춘다(④). 별·선 개수는
+ *  그대로(삭제 0 — 헌법2). 불변 교체로 새 객체를 만들어 쿼리 캐시가 변경을 감지하게 한다. */
+export function demoConsolidate(): void {
+  ensureSeeded()
+  const now = virtualNowMs()
+  // ③ 요지: 오래되고 저회상인 별의 form_seed_delta 단조 증가 + version++(형태가 한 단계 가라앉는다).
+  for (const s of [...baseStars, ...addedStars]) {
+    const recalledMs = Date.parse(s.lastRecalledAt)
+    if (!Number.isFinite(recalledMs)) continue
+    if ((now - recalledMs) / DAY_MS <= DEMO_GIST_AGE_DAYS) continue
+    const prev = reshapeState.get(s.memoryId) ?? { brightnessOffset: 0, hueShift: 0, formSeedDelta: 0, version: 0 }
+    if (prev.formSeedDelta >= FORM_DELTA_MAX) continue // 이미 다 단순화 — 후퇴 없음(단조)
+    reshapeState.set(s.memoryId, {
+      ...prev,
+      formSeedDelta: clampDemo(prev.formSeedDelta + DEMO_GIST_SIMPLIFY, 0, FORM_DELTA_MAX),
+      version: prev.version + 1,
+    })
+    replaceStar(s.memoryId, (st) => renewStar(st, st.lastRecalledAt)) // lastRecalledAt 보존(요지는 회상 아님)
+  }
+  // ④ 가지치기: 약하고(weight<임계) 안 쓰인(idle>14일) 선의 weight를 바닥으로 — 어둑하게만, 삭제 0.
+  const prune = (list: Synapse[]) => {
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i]
+      const idleDays = (now - Date.parse(e.lastActivatedAt)) / DAY_MS
+      if (e.weight < DEMO_WEAK_THRESHOLD && Number.isFinite(idleDays) && idleDays > DEMO_IDLE_DAYS) {
+        list[i] = create(SynapseSchema, {
+          aId: e.aId,
+          bId: e.bId,
+          weight: Math.min(e.weight, DEMO_PRUNE_FLOOR),
+          linkType: e.linkType,
+          lastActivatedAt: e.lastActivatedAt,
+          coActivationCount: e.coActivationCount,
+        })
+      }
+    }
+  }
+  prune(baseSynapses)
+  prune(addedEdges)
 }
 
 // 변천사 타임랩스(24) 체험용 합성. 한 별을 여러 번 novelty 회상한 결과를 결정론적으로 빚어,

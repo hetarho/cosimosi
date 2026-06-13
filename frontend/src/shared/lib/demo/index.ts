@@ -10,6 +10,7 @@ export {
   demoToday,
   demoMarkRecalled,
   demoReshape,
+  demoConsolidate,
   demoEvolution,
   resetDemo,
 } from './data'

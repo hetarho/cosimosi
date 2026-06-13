@@ -48,6 +48,45 @@ func (q *Queries) AppendEvolution(ctx context.Context, arg AppendEvolutionParams
 	return err
 }
 
+const appendGistHistory = `-- name: AppendGistHistory :exec
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir)
+SELECT g.id, g.memory_id, $1, g.version, g.brightness, g.hue_shift, g.form_seed_delta, 'nightly_gist', 0, -1
+FROM (
+    SELECT unnest($2::text[]) AS id,
+           unnest($3::text[]) AS memory_id,
+           unnest($4::int[]) AS version,
+           unnest($5::float4[]) AS brightness,
+           unnest($6::float4[]) AS hue_shift,
+           unnest($7::float4[]) AS form_seed_delta
+) AS g
+`
+
+type AppendGistHistoryParams struct {
+	UserID         string    `json:"user_id"`
+	Ids            []string  `json:"ids"`
+	MemoryIds      []string  `json:"memory_ids"`
+	Versions       []int32   `json:"versions"`
+	Brightnesses   []float32 `json:"brightnesses"`
+	HueShifts      []float32 `json:"hue_shifts"`
+	FormSeedDeltas []float32 `json:"form_seed_deltas"`
+}
+
+// ③ 요지 변천사 append(INSERT 전용 — UPDATE/DELETE 금지, 헌법1·2). trigger='nightly_gist',
+// pe=0(시간 기반·예측오차 무관), dir=-1(형태가 한 단계 가라앉음). GistSimplifyStars의 RETURNING
+// 값(version·brightness_offset 스냅샷·hue_shift·새 form_seed_delta)을 그대로 싣는다.
+func (q *Queries) AppendGistHistory(ctx context.Context, arg AppendGistHistoryParams) error {
+	_, err := q.db.Exec(ctx, appendGistHistory,
+		arg.UserID,
+		arg.Ids,
+		arg.MemoryIds,
+		arg.Versions,
+		arg.Brightnesses,
+		arg.HueShifts,
+		arg.FormSeedDeltas,
+	)
+	return err
+}
+
 const applyReshape = `-- name: ApplyReshape :exec
 UPDATE memories
 SET brightness_offset = $1, hue_shift = $2,
@@ -72,6 +111,33 @@ func (q *Queries) ApplyReshape(ctx context.Context, arg ApplyReshapeParams) erro
 		arg.FormSeedDelta,
 		arg.ID,
 		arg.UserID,
+	)
+	return err
+}
+
+const cacheStableCoords = `-- name: CacheStableCoords :exec
+UPDATE memories AS m SET stable_x = c.x, stable_y = c.y, stable_z = c.z
+FROM (SELECT unnest($2::text[]) AS id,
+             unnest($3::float4[]) AS x, unnest($4::float4[]) AS y, unnest($5::float4[]) AS z) AS c
+WHERE m.id = c.id AND m.user_id = $1
+`
+
+type CacheStableCoordsParams struct {
+	UserID string    `json:"user_id"`
+	Ids    []string  `json:"ids"`
+	Xs     []float32 `json:"xs"`
+	Ys     []float32 `json:"ys"`
+	Zs     []float32 `json:"zs"`
+}
+
+// 야간 재안정화(①②) 결과 좌표 캐시(권위 아님 — 헌법3). UNNEST 배치 upsert, user_id 격리.
+func (q *Queries) CacheStableCoords(ctx context.Context, arg CacheStableCoordsParams) error {
+	_, err := q.db.Exec(ctx, cacheStableCoords,
+		arg.UserID,
+		arg.Ids,
+		arg.Xs,
+		arg.Ys,
+		arg.Zs,
 	)
 	return err
 }
@@ -286,6 +352,80 @@ func (q *Queries) GetReshapeContext(ctx context.Context, arg GetReshapeContextPa
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const gistSimplifyStars = `-- name: GistSimplifyStars :many
+UPDATE memories
+SET form_seed_delta = GREATEST(memories.form_seed_delta, LEAST(1.0::real, memories.form_seed_delta + $1::float4)),
+    version = memories.version + 1
+WHERE memories.user_id = $2
+  AND memories.created_at < $3::timestamptz
+  AND memories.last_recalled_at < $4::timestamptz
+  AND memories.form_seed_delta < 1.0
+  AND NOT EXISTS (
+    SELECT 1 FROM evolution_history eh
+    WHERE eh.memory_id = memories.id AND eh.user_id = memories.user_id
+      AND eh.trigger = 'nightly_gist'
+      AND eh.created_at > $5::timestamptz
+  )
+RETURNING memories.id AS memory_id, memories.version, memories.brightness_offset, memories.hue_shift, memories.form_seed_delta
+`
+
+type GistSimplifyStarsParams struct {
+	Simplify         float32            `json:"simplify"`
+	UserID           string             `json:"user_id"`
+	AgeCutoff        pgtype.Timestamptz `json:"age_cutoff"`
+	RecallCutoff     pgtype.Timestamptz `json:"recall_cutoff"`
+	GistDedupeCutoff pgtype.Timestamptz `json:"gist_dedupe_cutoff"`
+}
+
+type GistSimplifyStarsRow struct {
+	MemoryID         string  `json:"memory_id"`
+	Version          int32   `json:"version"`
+	BrightnessOffset float32 `json:"brightness_offset"`
+	HueShift         float32 `json:"hue_shift"`
+	FormSeedDelta    float32 `json:"form_seed_delta"`
+}
+
+// ③ 요지: 오래되고(created_at < age_cutoff) 저회상인(last_recalled_at < recall_cutoff) 별의
+// form_seed_delta를 단조 증가(GREATEST — 후퇴 금지, LEAST로 1.0 상한). 이미 1.0이면 제외
+// (여유 있는 별만 — 무변 스냅샷 방지). version++ 해 변천사 길이와 정합. WHERE는 시각·값 비교만
+// (exp()/감쇠식 금지 — sargable). RETURNING으로 갱신된 행을 그대로 AppendGistHistory에 넘겨
+// memories ↔ evolution_history 정합을 보장(스냅샷 의존·레이스 없음). 원본 record 불변(헌법1).
+// 최근(idle_cutoff~지금) nightly_gist 변천사가 이미 있는 별은 제외 — 이번 잡이 RunConsolidation
+// 트랜잭션으로 한 시도 안에선 원자적이지만, 잡 lease 만료로 재claim돼 *다시* 돌면(거대 그래프·
+// 다중 워커) 같은 밤 form_seed_delta가 두 번 진행될 수 있다. 직전 nightly_gist append를 보고
+// 건너뛰어 야간 1회 멱등을 보장한다(첫 시도의 history가 커밋돼 있으므로 재실행은 무변).
+func (q *Queries) GistSimplifyStars(ctx context.Context, arg GistSimplifyStarsParams) ([]GistSimplifyStarsRow, error) {
+	rows, err := q.db.Query(ctx, gistSimplifyStars,
+		arg.Simplify,
+		arg.UserID,
+		arg.AgeCutoff,
+		arg.RecallCutoff,
+		arg.GistDedupeCutoff,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GistSimplifyStarsRow
+	for rows.Next() {
+		var i GistSimplifyStarsRow
+		if err := rows.Scan(
+			&i.MemoryID,
+			&i.Version,
+			&i.BrightnessOffset,
+			&i.HueShift,
+			&i.FormSeedDelta,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const insertMemory = `-- name: InsertMemory :one
@@ -658,6 +798,52 @@ func (q *Queries) ListStarVectorsByUser(ctx context.Context, userID string) ([]L
 			&i.Intensity,
 			&i.LastRecalledAt,
 			&i.Embedding,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStarsForConsolidate = `-- name: ListStarsForConsolidate :many
+
+SELECT m.id AS memory_id, m.last_recalled_at, m.stable_x, m.stable_y, m.stable_z
+FROM memories m
+WHERE m.user_id = $1
+ORDER BY m.created_at, m.fragment_index
+`
+
+type ListStarsForConsolidateRow struct {
+	MemoryID       string             `json:"memory_id"`
+	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+	StableX        *float32           `json:"stable_x"`
+	StableY        *float32           `json:"stable_y"`
+	StableZ        *float32           `json:"stable_z"`
+}
+
+// ── 야간 공고화(spec 27) ──
+// ①② 입력: 야간 재안정화/재분배가 쓰는 별 목록 + 안정 좌표 캐시(있으면 다음 밤 force-sim
+// 시드). last_recalled_at은 흥분성·재분배 가중(22 파생)에, stable_*는 재진입 시드에 쓴다.
+// 좌표는 권위 아님(헌법3) — proto로 클라에 나가지 않는다. user_id = isolation.
+func (q *Queries) ListStarsForConsolidate(ctx context.Context, userID string) ([]ListStarsForConsolidateRow, error) {
+	rows, err := q.db.Query(ctx, listStarsForConsolidate, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStarsForConsolidateRow
+	for rows.Next() {
+		var i ListStarsForConsolidateRow
+		if err := rows.Scan(
+			&i.MemoryID,
+			&i.LastRecalledAt,
+			&i.StableX,
+			&i.StableY,
+			&i.StableZ,
 		); err != nil {
 			return nil, err
 		}

@@ -78,6 +78,17 @@ FROM memory_links ml
 WHERE ml.user_id = @user_id
   AND (ml.a_id = ANY(@ids::text[]) OR ml.b_id = ANY(@ids::text[]));
 
+-- name: PruneWeakLinks :exec
+-- ④ 야간 가지치기(spec 27): 약하고(weight < weak_threshold) 안 쓰인(last_activated_at <
+-- idle_cutoff) 선의 weight를 바닥으로(LEAST — 절대 올리지 않음). 밝기는 26 클라 모델이 weight로
+-- 산출하므로 선이 어두워질 뿐 **사라지지 않는다** — 행은 남기고 클릭 가능(헌법2, DELETE 금지).
+-- WHERE는 weight·시각 비교만(sargable). user_id = isolation.
+UPDATE memory_links
+SET weight = LEAST(weight, sqlc.arg(floor)::float4)
+WHERE user_id = @user_id
+  AND weight < sqlc.arg(weak_threshold)::float4
+  AND last_activated_at < sqlc.arg(idle_cutoff)::timestamptz;
+
 -- name: ClaimBatch :execrows
 -- Idempotency CLAIM: insert the batch_id row FIRST, inside the
 -- reinforce tx. Returns 1 if THIS tx claimed the batch (proceed with the upsert), 0 if
