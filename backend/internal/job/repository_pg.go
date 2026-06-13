@@ -223,6 +223,30 @@ func (r *pgRepository) KnnNearest(ctx context.Context, userID string, vec []floa
 	return out, nil
 }
 
+func (r *pgRepository) LoadExcitabilityInputs(ctx context.Context, userID string, ids []string) (ExcitabilityInputs, error) {
+	if len(ids) == 0 {
+		return ExcitabilityInputs{Recalled: map[string]time.Time{}}, nil
+	}
+	q := gen.New(r.pool)
+	recalledRows, err := q.ListLastRecalled(ctx, gen.ListLastRecalledParams{UserID: userID, Ids: ids})
+	if err != nil {
+		return ExcitabilityInputs{}, fmt.Errorf("list last recalled: %w", err)
+	}
+	recalled := make(map[string]time.Time, len(recalledRows))
+	for _, row := range recalledRows {
+		recalled[row.ID] = row.LastRecalledAt.Time
+	}
+	linkRows, err := q.ListLinksForCluster(ctx, gen.ListLinksForClusterParams{UserID: userID, Ids: ids})
+	if err != nil {
+		return ExcitabilityInputs{}, fmt.Errorf("list links for cluster: %w", err)
+	}
+	links := make([]ClusterLink, 0, len(linkRows))
+	for _, row := range linkRows {
+		links = append(links, ClusterLink{AID: row.AID, BID: row.BID, LastActivatedAt: row.LastActivatedAt.Time})
+	}
+	return ExcitabilityInputs{Recalled: recalled, Links: links}, nil
+}
+
 func (r *pgRepository) BatchUpsertLinks(ctx context.Context, links []LinkUpsert) error {
 	if len(links) == 0 {
 		return nil

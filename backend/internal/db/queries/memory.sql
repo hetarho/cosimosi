@@ -57,6 +57,13 @@ WHERE m.id = $1;
 -- star is mutable; the original record is NOT — constitution §1). No RETURNING.
 UPDATE memories SET last_recalled_at = now() WHERE id = @id AND user_id = @user_id;
 
+-- name: ListLastRecalled :many
+-- The candidate stars' last_recalled_at (spec 22): the per-star excitability event
+-- feeding e(c,t). Derived from the existing timestamp — no excitability column
+-- (acceptance 1.5, single source). user_id = isolation.
+SELECT m.id, m.last_recalled_at FROM memories m
+WHERE m.user_id = @user_id AND m.id = ANY(@ids::text[]);
+
 -- name: GetRecordByMemory :one
 -- Read the immutable original for the recall panel (records JOIN). body/entry_date/
 -- mood live on records; never mutated, never RETURNING * from memories (no body there).

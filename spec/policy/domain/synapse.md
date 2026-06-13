@@ -6,7 +6,7 @@
 
 시냅스는 두 기억(별) 사이의 **가중치(`weight ∈ [0,1]`)를 가진 무방향 연결**이다(`memory_links` 1행). 새 별의 임베딩으로 의미 KNN을 돌려 태어나고(`link_type='semantic'`), 함께 회상될 때 헵 규칙으로 강해지며(`link_type='co_recall'`), 시간으로 어두워지되 행은 결코 삭제되지 않는다(헌법2 — 밝기만 낮춘다). `weight`(서버 권위 그래프)와 별의 시간 감쇠가 합쳐져 화면의 밝기·alpha·펄스가 된다.
 
-시냅스 자신은 좌표를 갖지 않는다 — 잇는 두 별의 클라 좌표를 조회해 그린다(헌법3, 좌표 배치 규칙은 navigation 정책 소관). 같은 일기에서 태어난 조각 별끼리는 **일내 결속(`intra_entry`, w=0.8 고정)** 으로 묶이고, 교차(semantic) 링크는 그 아래로 캡된다(21 — 아래 표). 경쟁적 할당 편향·약한 선 가지치기·변조 감쇠·`co_activation_count`의 DTO 노출은 plan 22·26·27에서 다룬다(아직 정책 아님).
+시냅스 자신은 좌표를 갖지 않는다 — 잇는 두 별의 클라 좌표를 조회해 그린다(헌법3, 좌표 배치 규칙은 navigation 정책 소관). 같은 일기에서 태어난 조각 별끼리는 **일내 결속(`intra_entry`, w=0.8 고정)** 으로 묶이고, 교차(semantic) 링크는 그 아래로 캡된다(21 — 아래 표). 새 별의 semantic 연결 후보는 의미 유사도뿐 아니라 **이웃 성단의 흥분성**(최근 활성도)으로 편향 선택된다(22 — 아래 경쟁적 할당). 약한 선 가지치기·관련성 변조 감쇠·`co_activation_count`의 DTO 노출은 plan 26·27에서 다룬다(아직 정책 아님).
 
 ## 규칙 · 파라미터
 
@@ -15,11 +15,26 @@
 | 규칙 | 정전 값 |
 |---|---|
 | 의미 KNN 임계 τ | `cos_sim ≥ 0.75`, 미만은 미연결 — **조각 임베딩** 기준(조각마다 따로 임베딩, 21) |
-| top-k | 의미 후보 최대 `k = 8`, `embedding <=> query` 오름차순 |
-| 초기 가중치 w0 | `min(clamp(α·cos_sim + temporal_bonus, 0, 1), 0.79)`, `α = 1.0` — **semantic 캡 0.79**(21: 교차 링크는 일내 결속 0.8보다 항상 약하다) |
+| 후보 상한 candidateK | `KnnNearest LIMIT = 16`(=`knnK·2`), `embedding <=> query` 오름차순 — 흥분성 재정렬 여지 확보(22) |
+| 최종 링크 수 biasedK | 후보를 흥분성 편향으로 재정렬해 상위 **`5`** 만 링크(22) |
+| 초기 가중치 w0 | `min(clamp(α·cos_sim + temporal_bonus, 0, 1), 0.79)`, `α = 1.0` — **semantic 캡 0.79**(21: 교차 링크는 일내 결속 0.8보다 항상 약하다). 흥분성은 **선택만** 편향하고 가중치는 의미·시간이 정한다 |
 | temporal_bonus | 같은 날 `+0.3` → 7일에 `0` 선형 감소(`본인 record entry_date` vs 후보 `entry_date`) |
 | link_type | 리터럴 `'semantic'` |
 | 업서트 | UNNEST 배치, `ON CONFLICT (a_id,b_id) DO UPDATE SET weight = GREATEST(기존, 신규)` — 형제 조각이 KNN에 잡혀도 GREATEST가 일내 0.8을 유지 |
+
+### 경쟁적 할당 편향 (competitive allocation · excitability, 22)
+
+새 조각은 의미만이 아니라 **최근 활성(흥분성 높은) 성단**으로 더 끌려가 연결된다. 흥분성은 새 컬럼 없이 기존 타임스탬프에서 파생한다(마이그레이션 0건 — 단일 출처).
+
+| 규칙 | 정전 값 |
+|---|---|
+| 흥분성 `e(c,t)` | `Σ exp(-Δt/TAU_EXC)` — 성단 멤버 별 `last_recalled_at` + 멤버 간 시냅스 `last_activated_at`을 이벤트로 누적 |
+| 시간 상수 TAU_EXC | `6h`(반감기 ≈4h) — 3h 전 활성 성단은 강하게 편향, **24h 전 성단은 사실상 0** |
+| 성단 도출 | 후보 별들의 기존 시냅스로 **연결성분(union-find)** 파생, cluster 컬럼 없음(`ListLinksForCluster` 입력). 정밀 군집은 27 소관 |
+| 편향 점수 | `score = cos_sim + W_EXC·norm_e(neighbor_cluster)`, `W_EXC = 0.25`, `norm_e = e / max_e`(후보 성단 중 최대, 0..1) |
+| 소프트 억제 | 한 성단에 조각이 할당될 때마다 그 성단 `e × inhibitDecay`(`0.5`) → 한 성단 독식 방지(Delamare/Clopath 경쟁 항) |
+| 폴백 | 후보 성단이 하나거나 흥분성이 전부 0이면 순수 `cos_sim` 정렬(기존 동작)로 자연 폴백, throw 없음 |
+| 좌표 시드(클라) | 새 조각은 라이브 force-sim에서 **argmax-e 성단 centroid 근처**에 시드(navigation 정책 — `seedNearCluster`) |
 
 ### 일내 결속 (intra_entry — within-event binding, 21)
 
@@ -72,6 +87,7 @@
 ## 구현 근거
 
 - 의미 생성(τ/k/w0/temporal_bonus·UNNEST 배치): plan 05 · `backend/internal/job/worker.go`(`buildLinks`·`initialWeight`·`temporalBonus`), `backend/internal/db/queries/embedding.sql`(`KnnNearest`), `backend/internal/db/queries/link.sql`(`BatchUpsertLinks`).
+- 경쟁적 할당 편향(흥분성 `e(c,t)`·TAU_EXC 6h·W_EXC 0.25·inhibitDecay 0.5·candidateK 16·biasedK 5): plan 22 · `backend/internal/job/worker.go`(`excitability`·`deriveClusters`·`clusterExcitability`·`biasedLinks`), `backend/internal/db/queries/link.sql`(`ListLinksForCluster`)·`memory.sql`(`ListLastRecalled`), `backend/internal/job/repository_pg.go`(`LoadExcitabilityInputs`).
 - 일내 결속·semantic 캡(0.8/`semanticWeightCap` 0.79): plan 21 · `backend/internal/db/queries/link.sql`(`BatchUpsertIntraEntryLinks`), `backend/internal/job/{worker.go,repository_pg.go}`(`FanOutFragments`).
 - 헵 강화·멱등(+0.05 cap 1.0·co_activation_count·batch_id): plan 11 · `backend/internal/db/queries/link.sql`(`ReinforceLinks`·`ClaimBatch`), `frontend/src/features/recall/model/co-recall.ts`.
 - link_type 4종 정의: plan 09 · `frontend/src/entities/synapse/model/types.ts`.

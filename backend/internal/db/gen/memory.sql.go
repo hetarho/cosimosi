@@ -252,6 +252,44 @@ func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]Lis
 	return items, nil
 }
 
+const listLastRecalled = `-- name: ListLastRecalled :many
+SELECT m.id, m.last_recalled_at FROM memories m
+WHERE m.user_id = $1 AND m.id = ANY($2::text[])
+`
+
+type ListLastRecalledParams struct {
+	UserID string   `json:"user_id"`
+	Ids    []string `json:"ids"`
+}
+
+type ListLastRecalledRow struct {
+	ID             string             `json:"id"`
+	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+}
+
+// The candidate stars' last_recalled_at (spec 22): the per-star excitability event
+// feeding e(c,t). Derived from the existing timestamp — no excitability column
+// (acceptance 1.5, single source). user_id = isolation.
+func (q *Queries) ListLastRecalled(ctx context.Context, arg ListLastRecalledParams) ([]ListLastRecalledRow, error) {
+	rows, err := q.db.Query(ctx, listLastRecalled, arg.UserID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLastRecalledRow
+	for rows.Next() {
+		var i ListLastRecalledRow
+		if err := rows.Scan(&i.ID, &i.LastRecalledAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMemoriesByUser = `-- name: ListMemoriesByUser :many
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
 FROM memories m

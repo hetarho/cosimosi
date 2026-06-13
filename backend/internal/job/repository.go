@@ -66,8 +66,33 @@ type GraphStore interface {
 	// KnnNearest returns up to k same-user neighbors (excluding self) with cosine
 	// similarity ≥ τ, nearest first, each with its record entry_date.
 	KnnNearest(ctx context.Context, userID string, vec []float32, selfID string, k int) ([]Neighbor, error)
+	// LoadExcitabilityInputs reads what the worker needs to score cluster excitability
+	// (spec 22) for the given candidate ids: each candidate's last_recalled_at and the
+	// synapses touching any candidate (cluster derivation + co-activation events). All
+	// DERIVED from existing timestamps — no excitability column (acceptance 1.5).
+	LoadExcitabilityInputs(ctx context.Context, userID string, ids []string) (ExcitabilityInputs, error)
 	// BatchUpsertLinks inserts/strengthens the semantic synapses in one statement.
 	BatchUpsertLinks(ctx context.Context, links []LinkUpsert) error
+}
+
+// ExcitabilityInputs is the worker's raw material for the competitive-allocation
+// re-rank (spec 22): the candidate stars' recency and the synapses among/around them.
+// A pure domain value (no db/proto tags — constitution §5); the worker turns it into
+// per-cluster excitability inside biasedLinks.
+type ExcitabilityInputs struct {
+	// Recalled maps a candidate memory id → its last_recalled_at (an excitability event).
+	Recalled map[string]time.Time
+	// Links are the synapses touching any candidate (a_id/b_id + last_activated_at): the
+	// union-find input for cluster derivation and a co-activation excitability event.
+	Links []ClusterLink
+}
+
+// ClusterLink is one synapse the cluster derivation walks: an undirected (a,b) pair
+// with the time it was last co-activated.
+type ClusterLink struct {
+	AID             string
+	BID             string
+	LastActivatedAt time.Time
 }
 
 // RecordForExtract is the extract worker's input: the immutable original plus

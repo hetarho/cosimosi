@@ -211,6 +211,9 @@ func (stubStore) UpsertEmbedding(context.Context, string, string, []float32, str
 func (stubStore) KnnNearest(context.Context, string, []float32, string, int) ([]Neighbor, error) {
 	return nil, nil
 }
+func (stubStore) LoadExcitabilityInputs(context.Context, string, []string) (ExcitabilityInputs, error) {
+	return ExcitabilityInputs{Recalled: map[string]time.Time{}}, nil
+}
 func (stubStore) BatchUpsertLinks(context.Context, []LinkUpsert) error { return nil }
 
 // panicEmbedder simulates an adapter blowing up mid-pipeline.

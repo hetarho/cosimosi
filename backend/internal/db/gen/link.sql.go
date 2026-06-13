@@ -151,6 +151,48 @@ func (q *Queries) ListLinksByUser(ctx context.Context, userID string) ([]ListLin
 	return items, nil
 }
 
+const listLinksForCluster = `-- name: ListLinksForCluster :many
+SELECT ml.a_id, ml.b_id, ml.last_activated_at
+FROM memory_links ml
+WHERE ml.user_id = $1
+  AND (ml.a_id = ANY($2::text[]) OR ml.b_id = ANY($2::text[]))
+`
+
+type ListLinksForClusterParams struct {
+	UserID string   `json:"user_id"`
+	Ids    []string `json:"ids"`
+}
+
+type ListLinksForClusterRow struct {
+	AID             string             `json:"a_id"`
+	BID             string             `json:"b_id"`
+	LastActivatedAt pgtype.Timestamptz `json:"last_activated_at"`
+}
+
+// Synapses touching any of the candidate stars (spec 22): the server derives clusters
+// as connected components over these edges (union-find), with no cluster column — the
+// weak semantic-graph clustering that competitive allocation biases toward. Returns the
+// 1-hop endpoints + last_activated_at (an excitability event). user_id = isolation.
+func (q *Queries) ListLinksForCluster(ctx context.Context, arg ListLinksForClusterParams) ([]ListLinksForClusterRow, error) {
+	rows, err := q.db.Query(ctx, listLinksForCluster, arg.UserID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLinksForClusterRow
+	for rows.Next() {
+		var i ListLinksForClusterRow
+		if err := rows.Scan(&i.AID, &i.BID, &i.LastActivatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const reinforceLinks = `-- name: ReinforceLinks :exec
 INSERT INTO memory_links (a_id, b_id, user_id, weight, link_type, co_activation_count, last_activated_at, created_at)
 SELECT LEAST(a, b), GREATEST(a, b), $1, LEAST(1.0, d), 'co_recall', 1, now(), now()

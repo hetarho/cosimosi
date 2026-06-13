@@ -15,6 +15,8 @@ SET embedding = EXCLUDED.embedding,
 -- Top-k nearest same-user neighbors (excluding self), cosine similarity ≥ τ=0.75,
 -- nearest first. Returns each candidate's entry_date for the temporal_bonus.
 -- user_id filter = multi-user isolation; HNSW serves the ORDER BY.
+-- Since spec 22 the worker calls this with k=candidateK (=knnK*2) to widen the pool the
+-- excitability re-rank (biasedLinks) trims to biasedK; the query itself is unchanged.
 SELECT
     e.memory_id,
     (1 - (e.embedding <=> @query::vector))::float8 AS cos_sim,

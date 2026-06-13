@@ -25,6 +25,30 @@ const (
 	semanticWeightCap = 0.79
 )
 
+// Competitive-allocation / excitability constants (spec 22). A new fragment's KNN
+// candidates are re-ranked by how recently their CLUSTER was active ("excitability"),
+// so a star is more readily absorbed by a recently-recalled/written constellation —
+// modelling engram allocation by excitability competition (concept §결정2).
+const (
+	// tauExc is the excitability time constant: e(c,t)=Σ exp(-Δt/tauExc). With τ=6h the
+	// half-life is ≈4h, so a cluster active 3h ago biases strongly while one active 24h
+	// ago contributes ≈0 — the ~6h allocation window (acceptance 1.2).
+	tauExc = 6 * time.Hour
+	// wExc weights the excitability bias in score = cos_sim + wExc·norm_e. Bias only —
+	// the link WEIGHT still comes from initialWeight(cos, temporal) (spec 22, 1.1).
+	wExc = 0.25
+	// biasedK is the final number of links kept after the excitability re-rank (≤ candidateK).
+	biasedK = 5
+	// candidateK is the KNN candidate ceiling: a wider pool gives the re-rank room to prefer
+	// a hotter cluster over a marginally-closer-but-cold one. Derived as knnK*2 so tuning
+	// knnK keeps the pool proportional.
+	candidateK = knnK * 2
+	// inhibitDecay is the soft-inhibition factor: each time a cluster absorbs a fragment its
+	// e is multiplied by this, so one hot cluster can't monopolize every candidate
+	// (Delamare/Clopath synaptic competition term — acceptance 1.3).
+	inhibitDecay = 0.5
+)
+
 // Worker-loop defaults.
 const (
 	defaultPollInterval = 2 * time.Second
@@ -76,7 +100,9 @@ func NewWorker(jobs Repository, store GraphStore, embedder ai.Embedder, extracto
 		baseBackoff:     defaultBaseBackoff,
 		maxBackoff:      defaultMaxBackoff,
 		summaryInterval: defaultSummaryInterval,
-		k:               knnK,
+		// Fetch the wider candidate pool (=knnK*2): the excitability re-rank trims it
+		// back to biasedK final links (spec 22). knnK stays the conceptual neighbor count.
+		k: candidateK,
 	}
 }
 
@@ -251,8 +277,26 @@ func (w *Worker) handle(ctx context.Context, j Job) error {
 	}
 
 	// 0 neighbors above τ is normal — the star stays isolated in the universe
-	// (constitution §2, acceptance 3.2); the job still completes.
-	links := buildLinks(j.MemoryID, m.UserID, m.EntryDate, neighbors)
+	// (constitution §2, acceptance 3.2); the job still completes with no links.
+	var links []LinkUpsert
+	if len(neighbors) > 0 {
+		// Competitive allocation (spec 22): bias the candidate selection toward recently
+		// active clusters. Excitability is DERIVED from existing timestamps — no extra
+		// column (acceptance 1.5) — and biasedLinks falls back to cos_sim order when it
+		// is all zero or there's a single cluster, so this never regresses the base path.
+		ids := make([]string, len(neighbors))
+		for i, n := range neighbors {
+			ids[i] = n.MemoryID
+		}
+		exc, err := w.store.LoadExcitabilityInputs(ctx, m.UserID, ids)
+		if err != nil {
+			return fmt.Errorf("excitability inputs: %w", err)
+		}
+		now := time.Now().UTC()
+		clusterOf := deriveClusters(neighbors, exc.Links)
+		clusterE := clusterExcitability(now, clusterOf, exc.Recalled, exc.Links)
+		links = biasedLinks(j.MemoryID, m.UserID, m.EntryDate, now, neighbors, clusterOf, clusterE)
+	}
 	if len(links) > 0 {
 		if err := w.store.BatchUpsertLinks(ctx, links); err != nil {
 			return fmt.Errorf("upsert links: %w", err)
@@ -339,6 +383,170 @@ func buildLinks(selfID, userID string, selfDate time.Time, neighbors []Neighbor)
 		if n.MemoryID == selfID {
 			continue // defensive: KnnNearest already excludes self
 		}
+		w := math.Min(initialWeight(n.CosSim, temporalBonus(selfDate, n.EntryDate)), semanticWeightCap)
+		out = append(out, LinkUpsert{AID: selfID, BID: n.MemoryID, Weight: w, UserID: userID})
+	}
+	return out
+}
+
+// excitability is e(c,t)=Σ exp(-Δt/tauExc) over a cluster's event timestamps (spec
+// 22): member stars' last_recalled_at + incident synapses' last_activated_at. A
+// future event (Δt<0, clock skew) clamps to Δt=0. With τ=6h an event 3h ago weighs
+// ≈0.7 while one 24h ago weighs ≈0.02 — the ~6h allocation window (acceptance 1.2).
+// Zero-value (missing) timestamps are skipped, not treated as the epoch.
+func excitability(now time.Time, events []time.Time) float64 {
+	tau := tauExc.Hours()
+	var e float64
+	for _, ev := range events {
+		if ev.IsZero() {
+			continue
+		}
+		dt := now.Sub(ev).Hours()
+		if dt < 0 {
+			dt = 0
+		}
+		e += math.Exp(-dt / tau)
+	}
+	return e
+}
+
+// deriveClusters groups the candidate stars into connected components over their
+// existing synapses (union-find), returning candidate id → cluster root (spec 22).
+// 1-hop neighbor ids in the links act as connectors but aren't themselves candidates;
+// an isolated candidate is its own cluster. This is a lightweight buildLinks-time
+// derivation with no cluster column — precise clustering is spec 27's nightly job.
+func deriveClusters(cands []Neighbor, links []ClusterLink) map[string]string {
+	parent := make(map[string]string)
+	rank := make(map[string]int)
+	var find func(string) string
+	find = func(x string) string {
+		p, ok := parent[x]
+		if !ok {
+			parent[x] = x
+			return x
+		}
+		if p != x {
+			parent[x] = find(p)
+		}
+		return parent[x]
+	}
+	// Union by rank → the root is the deeper tree's root, not the last-seen node, so the
+	// cluster label is independent of link iteration order (DB row order is unspecified).
+	union := func(a, b string) {
+		ra, rb := find(a), find(b)
+		if ra == rb {
+			return
+		}
+		if rank[ra] < rank[rb] {
+			ra, rb = rb, ra
+		}
+		parent[rb] = ra
+		if rank[ra] == rank[rb] {
+			rank[ra]++
+		}
+	}
+	for _, c := range cands {
+		find(c.MemoryID)
+	}
+	for _, l := range links {
+		union(l.AID, l.BID)
+	}
+	out := make(map[string]string, len(cands))
+	for _, c := range cands {
+		out[c.MemoryID] = find(c.MemoryID)
+	}
+	return out
+}
+
+// clusterExcitability sums each cluster's excitability from its candidate members'
+// recall recency and its incident synapses' co-activation recency (spec 22). A link is
+// attributed via whichever endpoint has a clusterOf entry (only candidates do; the (a,b)
+// order is collation-normalized, so the candidate may be a_id OR b_id — hence the BID
+// fallback). A link touching no candidate can't be returned by ListLinksForCluster, so
+// the final guard is defensive.
+func clusterExcitability(now time.Time, clusterOf map[string]string, recalled map[string]time.Time, links []ClusterLink) map[string]float64 {
+	events := make(map[string][]time.Time)
+	for id, cl := range clusterOf {
+		if t, ok := recalled[id]; ok {
+			events[cl] = append(events[cl], t)
+		}
+	}
+	for _, l := range links {
+		cl, ok := clusterOf[l.AID]
+		if !ok {
+			cl, ok = clusterOf[l.BID]
+		}
+		if !ok {
+			continue
+		}
+		events[cl] = append(events[cl], l.LastActivatedAt)
+	}
+	out := make(map[string]float64, len(events))
+	for cl, evs := range events {
+		out[cl] = excitability(now, evs)
+	}
+	return out
+}
+
+// biasedLinks re-ranks KNN candidates by competitive allocation (spec 22): each
+// candidate scores cos_sim + wExc·norm_e(its cluster), where norm_e is the cluster's
+// excitability normalized to 0..1 by the hottest candidate cluster. It greedily takes
+// the top biasedK, and each pick multiplies that cluster's e by inhibitDecay (soft
+// inhibition) so one hot cluster can't monopolize a fragment's links (acceptance 1.3).
+// The link WEIGHT is unchanged — initialWeight(cos, temporal) capped below the
+// intra-entry bond — because excitability biases SELECTION, not strength (1.1). With
+// no excitability or a single cluster the score reduces to cos_sim order, i.e. the
+// plain top-biasedK by similarity (acceptance 1.4 fallback). clusterE is not mutated.
+func biasedLinks(selfID, userID string, selfDate, now time.Time, cands []Neighbor, clusterOf map[string]string, clusterE map[string]float64) []LinkUpsert {
+	_ = now // reserved for future time-dependent scoring; e is precomputed by the caller
+	pool := make([]Neighbor, 0, len(cands))
+	for _, c := range cands {
+		if c.MemoryID != selfID { // defensive: KnnNearest already excludes self
+			pool = append(pool, c)
+		}
+	}
+	var maxE float64
+	for _, e := range clusterE {
+		if e > maxE {
+			maxE = e
+		}
+	}
+	// Local copy so soft inhibition stays internal (pure helper — no caller side effect).
+	e := make(map[string]float64, len(clusterE))
+	for k, v := range clusterE {
+		e[k] = v
+	}
+	score := func(n Neighbor) float64 {
+		if maxE <= 0 {
+			return n.CosSim
+		}
+		return n.CosSim + wExc*(e[clusterOf[n.MemoryID]]/maxE)
+	}
+
+	limit := biasedK
+	if len(pool) < limit {
+		limit = len(pool)
+	}
+	used := make([]bool, len(pool))
+	out := make([]LinkUpsert, 0, limit)
+	for len(out) < limit {
+		best := -1
+		var bestScore float64
+		for i, c := range pool {
+			if used[i] {
+				continue
+			}
+			// First-encountered wins ties; pool is cos_sim-desc (KnnNearest order) → deterministic.
+			if s := score(c); best == -1 || s > bestScore {
+				best, bestScore = i, s
+			}
+		}
+		if best == -1 {
+			break
+		}
+		used[best] = true
+		n := pool[best]
+		e[clusterOf[n.MemoryID]] *= inhibitDecay
 		w := math.Min(initialWeight(n.CosSim, temporalBonus(selfDate, n.EntryDate)), semanticWeightCap)
 		out = append(out, LinkUpsert{AID: selfID, BID: n.MemoryID, Weight: w, UserID: userID})
 	}

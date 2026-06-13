@@ -68,6 +68,16 @@ SET weight              = LEAST(1.0, memory_links.weight + EXCLUDED.weight),
     co_activation_count = memory_links.co_activation_count + 1,
     last_activated_at   = now();
 
+-- name: ListLinksForCluster :many
+-- Synapses touching any of the candidate stars (spec 22): the server derives clusters
+-- as connected components over these edges (union-find), with no cluster column — the
+-- weak semantic-graph clustering that competitive allocation biases toward. Returns the
+-- 1-hop endpoints + last_activated_at (an excitability event). user_id = isolation.
+SELECT ml.a_id, ml.b_id, ml.last_activated_at
+FROM memory_links ml
+WHERE ml.user_id = @user_id
+  AND (ml.a_id = ANY(@ids::text[]) OR ml.b_id = ANY(@ids::text[]));
+
 -- name: ClaimBatch :execrows
 -- Idempotency CLAIM: insert the batch_id row FIRST, inside the
 -- reinforce tx. Returns 1 if THIS tx claimed the batch (proceed with the upsert), 0 if
