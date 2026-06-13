@@ -93,6 +93,17 @@ FROM memories m
 WHERE m.user_id = $1
   AND m.last_recalled_at >= sqlc.arg(since)::timestamptz; -- since = now - TauMoodDays·k
 
+-- name: ListStarVectorsByUser :many
+-- 관련성 가중 망각(spec 26) 입력: 모든 별의 의미 임베딩 + 최근성·강도 가중치. 서버가
+-- "요즘 토픽 중심 벡터"(최근 별 임베딩 시간가중 평균)를 만들고 별마다 cos 정합도를 계산해
+-- GetUniverse에 relevance로 싣는다. LEFT JOIN이라 임베딩이 아직 없는 별(embed 잡 대기 중)도
+-- NULL 임베딩으로 함께 나온다 → relevance 0(중립). 감쇠/cos 수식은 도메인(RelevanceByStar)에서
+-- 하고 SQL엔 넣지 않는다(12·25와 같은 패턴). user_id = isolation.
+SELECT m.id AS memory_id, m.intensity, m.last_recalled_at, e.embedding
+FROM memories m
+LEFT JOIN embeddings e ON e.memory_id = m.id
+WHERE m.user_id = $1;
+
 -- name: ListDormant :many
 -- Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
 -- NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE

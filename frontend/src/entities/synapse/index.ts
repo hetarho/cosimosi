@@ -5,7 +5,13 @@ export { SynapseLines, type SynapseLinesProps } from './ui/SynapseLines'
 export { VizSynapse, type VizSynapseProps } from './ui/VizSynapse'
 export { synapseCurve } from './lib/curve'
 export type { SynapseEdge, LinkType } from './model/types'
-export { useSynapseStore, toSynapseEdge, neighborsOf, type UniverseSynapse } from './model/store'
+export {
+  useSynapseStore,
+  toSynapseEdge,
+  neighborsOf,
+  degreeNormById,
+  type UniverseSynapse,
+} from './model/store'
 export {
   A_MIN,
   ALPHA_MIN,
@@ -19,6 +25,7 @@ export {
   emissive,
   alpha,
   pulseAmp,
+  vitality,
   strandStyle,
   widthBucket,
   bucketWidthPx,

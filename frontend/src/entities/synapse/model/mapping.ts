@@ -25,8 +25,15 @@ export const emissive = (e: SynapseEdge): number => visualIntensity(e)
 /** Opacity driver, floored at ALPHA_MIN so weak/dormant edges remain visible. */
 export const alpha = (e: SynapseEdge): number => lerp(ALPHA_MIN, ALPHA_MAX, visualIntensity(e))
 
-/** Pulse amplitude for sin(time·f)·amp — recently-reinforced edges pulse stronger. */
-export const pulseAmp = (e: SynapseEdge): number => e.reinforcedRecency
+/** 링크 활력(spec 26): 누적 공동 회상(co_activation_count)이 많을수록 "살아있는" 연결.
+ *  log 압축으로 0..~0.12에 bounded — 처음 몇 번이 가장 크게 기여하고 이후 완만해진다.
+ *  서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일하다. */
+export const vitality = (e: SynapseEdge): number =>
+  0.12 * Math.min(1, Math.log2(1 + Math.max(0, e.coActivationCount)) / 4)
+
+/** Pulse amplitude for sin(time·f)·amp — recently-reinforced edges pulse stronger; an
+ *  often-co-recalled (vital) link keeps a faint baseline pulse even when not just reinforced. */
+export const pulseAmp = (e: SynapseEdge): number => Math.min(1, e.reinforcedRecency + vitality(e))
 
 /** Thickness can't be modulated per edge → return a bucket key (optional 2-group render). */
 export const widthBucket = (e: SynapseEdge): 'thin' | 'thick' =>

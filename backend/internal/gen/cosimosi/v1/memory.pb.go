@@ -427,7 +427,7 @@ func (x *RecordMemoryResponse) GetMemoryIds() []string {
 // last_recalled_at.
 // Field numbers 9–11 are RESERVED by later specs (9–10 = 28 wayfinding,
 // 11 = 36 resonance — 00.overview 공유 설계 결정); 5–8 are the spec 23 reshaping
-// state (mutable star layer); valence therefore takes 12.
+// state (mutable star layer); valence takes 12; relevance (26) takes 13.
 type Star struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	MemoryId         string                 `protobuf:"bytes,1,opt,name=memory_id,json=memoryId,proto3" json:"memory_id,omitempty"`
@@ -439,8 +439,12 @@ type Star struct {
 	FormSeedDelta    float64                `protobuf:"fixed64,7,opt,name=form_seed_delta,json=formSeedDelta,proto3" json:"form_seed_delta,omitempty"`        // 23: 형태 시드 미세 jitter
 	Version          int32                  `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty"`                                            // 23: 재성형 횟수(=변천사 길이)
 	Valence          float64                `protobuf:"fixed64,12,opt,name=valence,proto3" json:"valence,omitempty"`                                          // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// 26: 0..1 별 임베딩 ↔ "요즘 토픽 중심 벡터"의 cos 정합도. 서버가 GetUniverse에서
+	// 계산(weight처럼 의미 그래프 파생값 — 헌법3 위반 아님; 밝기 자체는 여전히 클라가
+	// exp(-λ_eff·Δt)로 계산). 임베딩 미생성 별·데모(서버 없음)에선 0=중립.
+	Relevance     float64 `protobuf:"fixed64,13,opt,name=relevance,proto3" json:"relevance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Star) Reset() {
@@ -536,6 +540,13 @@ func (x *Star) GetValence() float64 {
 	return 0
 }
 
+func (x *Star) GetRelevance() float64 {
+	if x != nil {
+		return x.Relevance
+	}
+	return 0
+}
+
 // Synapse is a weighted, undirected (a < b) link. Only weight is authoritative;
 // thickness/brightness are derived in the client shader.
 type Synapse struct {
@@ -545,8 +556,11 @@ type Synapse struct {
 	Weight          float64                `protobuf:"fixed64,3,opt,name=weight,proto3" json:"weight,omitempty"`
 	LinkType        string                 `protobuf:"bytes,4,opt,name=link_type,json=linkType,proto3" json:"link_type,omitempty"`
 	LastActivatedAt string                 `protobuf:"bytes,5,opt,name=last_activated_at,json=lastActivatedAt,proto3" json:"last_activated_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// 26: 공동 회상 횟수(이미 memory_links에 영속·ListLinksByUser가 SELECT 중). 링크
+	// 활력(자주 함께 떠올린 연결일수록 또렷)을 시각에 반영하고, 27 야간 가지치기 입력으로 노출.
+	CoActivationCount int32 `protobuf:"varint,6,opt,name=co_activation_count,json=coActivationCount,proto3" json:"co_activation_count,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Synapse) Reset() {
@@ -612,6 +626,13 @@ func (x *Synapse) GetLastActivatedAt() string {
 		return x.LastActivatedAt
 	}
 	return ""
+}
+
+func (x *Synapse) GetCoActivationCount() int32 {
+	if x != nil {
+		return x.CoActivationCount
+	}
+	return 0
 }
 
 type GetUniverseRequest struct {
@@ -1702,7 +1723,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x14RecordMemoryResponse\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x1d\n" +
 	"\n" +
-	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xb8\x02\n" +
+	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xd6\x02\n" +
 	"\x04Star\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\x12%\n" +
 	"\x04mood\x18\x02 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x1c\n" +
@@ -1712,13 +1733,15 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\thue_shift\x18\x06 \x01(\x01R\bhueShift\x12&\n" +
 	"\x0fform_seed_delta\x18\a \x01(\x01R\rformSeedDelta\x12\x18\n" +
 	"\aversion\x18\b \x01(\x05R\aversion\x12\x18\n" +
-	"\avalence\x18\f \x01(\x01R\avalence\"\x90\x01\n" +
+	"\avalence\x18\f \x01(\x01R\avalence\x12\x1c\n" +
+	"\trelevance\x18\r \x01(\x01R\trelevance\"\xc0\x01\n" +
 	"\aSynapse\x12\x11\n" +
 	"\x04a_id\x18\x01 \x01(\tR\x03aId\x12\x11\n" +
 	"\x04b_id\x18\x02 \x01(\tR\x03bId\x12\x16\n" +
 	"\x06weight\x18\x03 \x01(\x01R\x06weight\x12\x1b\n" +
 	"\tlink_type\x18\x04 \x01(\tR\blinkType\x12*\n" +
-	"\x11last_activated_at\x18\x05 \x01(\tR\x0flastActivatedAt\"\x14\n" +
+	"\x11last_activated_at\x18\x05 \x01(\tR\x0flastActivatedAt\x12.\n" +
+	"\x13co_activation_count\x18\x06 \x01(\x05R\x11coActivationCount\"\x14\n" +
 	"\x12GetUniverseRequest\"e\n" +
 	"\vAmbientMood\x12\x10\n" +
 	"\x03hue\x18\x01 \x01(\x01R\x03hue\x12\x10\n" +

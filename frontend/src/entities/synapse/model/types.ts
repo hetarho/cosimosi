@@ -17,4 +17,7 @@ export interface SynapseEdge {
   /** epoch ms of last activation — brightness re-derives from this on refetch merge
    *  (16) so decay progresses instead of max()-freezing at first-load brightness. */
   lastActivatedAt?: number
+  /** 공동 회상 횟수(spec 26) — 서버 memory_links.co_activation_count를 그대로 운반. 링크
+   *  활력(자주 함께 떠올린 연결일수록 또렷)을 시각에 반영하고 27 가지치기 입력으로 노출. */
+  coActivationCount: number
 }

@@ -10,7 +10,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { reshapedBrightness, reshapedSeed, starBrightness, useMemoryStore } from '@/entities/memory/@x/star'
+import { modulatedBrightness, reshapedBrightness, reshapedSeed, useMemoryStore } from '@/entities/memory/@x/star'
+import { degreeNormById, useSynapseStore } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
 import { DEFAULT_OBJECT } from '../model/kinds'
@@ -99,6 +100,14 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
   const select = useMemoryStore((s) => s.select)
   const selectedId = useMemoryStore((s) => s.selectedId)
   const count = stars.length
+  // 변조 감쇠(spec 26)의 R_conn 입력: 별별 degree를 우주 중앙값으로 정규화한 맵. degree는
+  // 어떤 PAIR가 존재하느냐(토폴로지)에만 의존하므로 토폴로지 시그니처로 메모해, 시간 머신의
+  // refreshActivation이 밝기 재파생만을 위해 엣지 배열을 갈아끼우는 동안(spec 19) 아래 빌드
+  // 효과가 헛돌지 않게 한다(같은 pair 집합 → 같은 맵 identity → rebuild 미발화).
+  const edges = useSynapseStore((s) => s.edges)
+  const edgeTopo = useMemo(() => edges.map((e) => `${e.aId}~${e.bId}`).join(','), [edges])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the pair set, not the array identity
+  const degreeNorm = useMemo(() => degreeNormById(edges), [edgeTopo])
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const scalesRef = useRef<Float32Array>(new Float32Array(0))
   // 탄생 추적: 더미 좌표 보존(버퍼 없는 셸에서 탄생 중 별의 행렬을 다시 쓰기 위해) +
@@ -193,8 +202,13 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
       moodArr[i * 3 + 2] = rgb[2]
       // 재성형 합성(spec 23): 형태 시드·밝기는 누적 재공고화 상태를 더한 유효값으로,
       // 색조는 라디안 attribute로 머티리얼에 넘긴다. 기본 0이면 기존 별과 동일.
+      // 밝기는 변조 감쇠(spec 26): 연결(R_conn)·요즘 관련성(R_recent)·감정(R_emo)으로 별마다
+      // λ_eff가 달라 — 연결 많고 요즘과 닿고 감정 강한 별일수록 천천히 어두워진다.
       seedArr[i] = reshapedSeed(m.seed, m.formSeedDelta)
-      brightArr[i] = reshapedBrightness(starBrightness(m.lastRecalledAt, now), m.brightnessOffset)
+      brightArr[i] = reshapedBrightness(
+        modulatedBrightness(m.lastRecalledAt, now, degreeNorm.get(stars[i].id) ?? 0, m.relevance, m.intensity, m.valence),
+        m.brightnessOffset,
+      )
       hueArr[i] = (m.hueShift * Math.PI) / 180
       scales[i] = sizeFor(m.intensity)
 
@@ -221,7 +235,7 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     moodsRef.current = moodArr
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
-  }, [stars, count, geometry, emotionColors])
+  }, [stars, count, geometry, emotionColors, degreeNorm])
 
   // Focus spotlight: re-weight aBrightness when the selection (or star set / form) changes —
   // selected boosted, all others dimmed; full brightness restored when nothing is selected. Reads
@@ -234,13 +248,16 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     const now = virtualNowMs()
     const arr = attr.array as Float32Array
     for (let i = 0; i < count; i++) {
-      // Focus 재가중도 재성형 합성을 거친 같은 유효 밝기(spec 23)에서 출발한다.
+      // Focus 재가중도 재성형(spec 23)·변조 감쇠(spec 26)를 거친 같은 유효 밝기에서 출발한다.
       const m = stars[i].memory
-      const base = reshapedBrightness(starBrightness(m.lastRecalledAt, now), m.brightnessOffset)
+      const base = reshapedBrightness(
+        modulatedBrightness(m.lastRecalledAt, now, degreeNorm.get(stars[i].id) ?? 0, m.relevance, m.intensity, m.valence),
+        m.brightnessOffset,
+      )
       arr[i] = base * (selIdx < 0 ? 1 : i === selIdx ? FOCUS_BOOST : FOCUS_DIM)
     }
     attr.needsUpdate = true
-  }, [selectedId, stars, count, geometry])
+  }, [selectedId, stars, count, geometry, degreeNorm])
 
   // Per-frame matrix write: LIVE force-sim positions (07/10) 또는 더미 좌표 위에 별 미세
   // 부유(WOBBLE_AMP)와 탄생 스케일을 얹는다. No setState → no re-render (1.6).

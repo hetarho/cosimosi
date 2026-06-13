@@ -91,7 +91,7 @@ message RecordMemoryResponse {
 // last_recalled_at.
 // Field numbers 9–11 are RESERVED by later specs (9–10 = 28 wayfinding,
 // 11 = 36 resonance — 00.overview 공유 설계 결정); 5–8 are the spec 23 reshaping
-// state (mutable star layer); valence therefore takes 12.
+// state (mutable star layer); valence takes 12; relevance (26) takes 13.
 message Star {
   string memory_id = 1;
   Mood mood = 2;
@@ -102,6 +102,10 @@ message Star {
   double form_seed_delta = 7;    // 23: 형태 시드 미세 jitter
   int32 version = 8;             // 23: 재성형 횟수(=변천사 길이)
   double valence = 12;         // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
+  // 26: 0..1 별 임베딩 ↔ "요즘 토픽 중심 벡터"의 cos 정합도. 서버가 GetUniverse에서
+  // 계산(weight처럼 의미 그래프 파생값 — 헌법3 위반 아님; 밝기 자체는 여전히 클라가
+  // exp(-λ_eff·Δt)로 계산). 임베딩 미생성 별·데모(서버 없음)에선 0=중립.
+  double relevance = 13;
 }
 
 // Synapse is a weighted, undirected (a < b) link. Only weight is authoritative;
@@ -112,6 +116,9 @@ message Synapse {
   double weight = 3;
   string link_type = 4;
   string last_activated_at = 5;
+  // 26: 공동 회상 횟수(이미 memory_links에 영속·ListLinksByUser가 SELECT 중). 링크
+  // 활력(자주 함께 떠올린 연결일수록 또렷)을 시각에 반영하고, 27 야간 가지치기 입력으로 노출.
+  int32 co_activation_count = 6;
 }
 
 message GetUniverseRequest {}

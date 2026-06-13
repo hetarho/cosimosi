@@ -391,7 +391,6 @@ func (q *Queries) ListDirectNeighbors(ctx context.Context, arg ListDirectNeighbo
 }
 
 const listDormant = `-- name: ListDormant :many
-
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
        m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
 FROM memories m
@@ -417,7 +416,6 @@ type ListDormantRow struct {
 	Version          int32              `json:"version"`
 }
 
-// since = now - TauMoodDays·k
 // Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
 // NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
 // compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
@@ -614,6 +612,52 @@ func (q *Queries) ListRecentForAmbient(ctx context.Context, arg ListRecentForAmb
 			&i.Intensity,
 			&i.Valence,
 			&i.LastRecalledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStarVectorsByUser = `-- name: ListStarVectorsByUser :many
+
+SELECT m.id AS memory_id, m.intensity, m.last_recalled_at, e.embedding
+FROM memories m
+LEFT JOIN embeddings e ON e.memory_id = m.id
+WHERE m.user_id = $1
+`
+
+type ListStarVectorsByUserRow struct {
+	MemoryID       string             `json:"memory_id"`
+	Intensity      *float32           `json:"intensity"`
+	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+	Embedding      *pgvector.Vector   `json:"embedding"`
+}
+
+// since = now - TauMoodDays·k
+// 관련성 가중 망각(spec 26) 입력: 모든 별의 의미 임베딩 + 최근성·강도 가중치. 서버가
+// "요즘 토픽 중심 벡터"(최근 별 임베딩 시간가중 평균)를 만들고 별마다 cos 정합도를 계산해
+// GetUniverse에 relevance로 싣는다. LEFT JOIN이라 임베딩이 아직 없는 별(embed 잡 대기 중)도
+// NULL 임베딩으로 함께 나온다 → relevance 0(중립). 감쇠/cos 수식은 도메인(RelevanceByStar)에서
+// 하고 SQL엔 넣지 않는다(12·25와 같은 패턴). user_id = isolation.
+func (q *Queries) ListStarVectorsByUser(ctx context.Context, userID string) ([]ListStarVectorsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listStarVectorsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStarVectorsByUserRow
+	for rows.Next() {
+		var i ListStarVectorsByUserRow
+		if err := rows.Scan(
+			&i.MemoryID,
+			&i.Intensity,
+			&i.LastRecalledAt,
+			&i.Embedding,
 		); err != nil {
 			return nil, err
 		}

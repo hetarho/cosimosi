@@ -38,6 +38,8 @@ export function mapStar(star: Star, index: number): StarNode {
     mood: moodFromProto(star.mood),
     intensity: star.intensity,
     valence: star.valence,
+    // 서버가 GetUniverse에서 계산한 "요즘 토픽" 정합도(spec 26); 데모/구버전 응답엔 0.
+    relevance: star.relevance,
     // 폴백 now도 가상 시계(spec 19)로 — 파싱 불가 타임스탬프가 데모 시간과 어긋나지 않게.
     lastRecalledAt: parseEpochMs(star.lastRecalledAt, virtualNowMs()),
     seed: seedFromId(id),

@@ -11,12 +11,15 @@ export interface UniverseSynapse {
   weight: number
   linkType: string
   lastActivatedAt: string
+  /** 공동 회상 횟수(spec 26) — proto 신규 필드. 데모/구버전 응답엔 없어 0이 기본. */
+  coActivationCount?: number
 }
 
 const LINK_TYPES: LinkType[] = ['semantic', 'temporal', 'entity', 'co_recall']
 
 /** proto synapse → domain SynapseEdge. brightness defaults to 1 and
- *  reinforcedRecency to 0 until real activation derives them. */
+ *  reinforcedRecency to 0 until real activation derives them; coActivationCount
+ *  rides through from the server (0 when absent — demo/older responses). */
 export function toSynapseEdge(s: UniverseSynapse): SynapseEdge {
   return {
     aId: s.aId,
@@ -24,6 +27,7 @@ export function toSynapseEdge(s: UniverseSynapse): SynapseEdge {
     weight: s.weight,
     brightness: 1,
     reinforcedRecency: 0,
+    coActivationCount: s.coActivationCount ?? 0,
     linkType: (LINK_TYPES as string[]).includes(s.linkType) ? (s.linkType as LinkType) : 'semantic',
   }
 }
@@ -53,6 +57,7 @@ export const useSynapseStore = create<SynapseState>((set) => ({
           weight: Math.min(1, delta),
           brightness: 1,
           reinforcedRecency: 1,
+          coActivationCount: 1, // first co-recall (mirrors server ReinforceLinks new-row count)
           linkType: 'co_recall',
           lastActivatedAt: now,
         }
@@ -64,6 +69,7 @@ export const useSynapseStore = create<SynapseState>((set) => ({
         weight: Math.min(1, edges[i].weight + delta),
         brightness: 1,
         reinforcedRecency: 1,
+        coActivationCount: edges[i].coActivationCount + 1, // ++ on conflict (mirrors server)
         lastActivatedAt: now,
       }
       return { edges }
@@ -73,4 +79,25 @@ export const useSynapseStore = create<SynapseState>((set) => ({
 /** Pure: edges incident to memoryId (for neighbor navigation). */
 export function neighborsOf(edges: SynapseEdge[], memoryId: string): SynapseEdge[] {
   return edges.filter((e) => e.aId === memoryId || e.bId === memoryId)
+}
+
+/** Pure: star id → degree normalized by the universe's MEDIAN degree (spec 26's R_conn
+ *  input). degree = incident-edge count (= neighborsOf(...).length, computed in one pass);
+ *  degreeNorm = degree / median, so the typical star sits at ~1 and a hub rises above it.
+ *  A median of 0 (no edges) falls back to 1 so the ratio is finite. Stars with no edges are
+ *  absent from the map → callers read 0 (no connection bonus). three/DOM-free (헌법4). */
+export function degreeNormById(edges: SynapseEdge[]): Map<string, number> {
+  const degree = new Map<string, number>()
+  for (const e of edges) {
+    degree.set(e.aId, (degree.get(e.aId) ?? 0) + 1)
+    degree.set(e.bId, (degree.get(e.bId) ?? 0) + 1)
+  }
+  if (degree.size === 0) return degree
+  const sorted = [...degree.values()].sort((x, y) => x - y)
+  const mid = Math.floor(sorted.length / 2)
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+  const denom = median > 0 ? median : 1
+  const out = new Map<string, number>()
+  for (const [id, d] of degree) out.set(id, d / denom)
+  return out
 }

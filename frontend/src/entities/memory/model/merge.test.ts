@@ -7,7 +7,7 @@ import type { StarNode } from './types'
 const NOW = 1_700_000_000_000
 const DAY_MS = 86_400_000
 
-function star(id: string, index: number, lastRecalledAt = NOW): StarNode {
+function star(id: string, index: number, lastRecalledAt = NOW, relevance = 0): StarNode {
   return {
     id,
     index,
@@ -16,6 +16,7 @@ function star(id: string, index: number, lastRecalledAt = NOW): StarNode {
       mood: 'joy',
       intensity: 0.5,
       valence: 0,
+      relevance,
       lastRecalledAt,
       seed: index * 0.1,
       brightnessOffset: 0,
@@ -33,6 +34,7 @@ function edge(aId: string, bId: string, over: Partial<SynapseEdge> = {}): Synaps
     weight: 0.5,
     brightness: 0.8,
     reinforcedRecency: 0,
+    coActivationCount: 0,
     linkType: 'semantic',
     ...over,
   }
@@ -84,6 +86,18 @@ describe('mergeStars (spec 16, 1.4)', () => {
     const merged = mergeStars(local, [star('b', 0), star('a', 1), star('c', 2)])
     expect(merged.map((s) => s.id)).toEqual(['a', 'b', 'c'])
   })
+
+  it('forwards server relevance even when lastRecalledAt is unchanged (spec 26)', () => {
+    // relevance is server-computed (요즘 토픽 cos) and shifts between fetches; the client never
+    // advances it locally, so the merge must take the incoming value or it freezes at first load.
+    const local = [star('a', 0, NOW, 0.2)]
+    const merged = mergeStars(local, [star('a', 9, NOW, 0.8)]) // same recall time, fresher relevance
+    expect(merged).not.toBe(local) // changed → re-rendered
+    expect(merged[0].memory.relevance).toBe(0.8)
+    expect(merged[0].index).toBe(0) // slot/identity rules still hold
+    // unchanged relevance + unchanged recall → identity preserved (no needless rebuild).
+    expect(mergeStars(merged, [star('a', 9, NOW, 0.8)])).toBe(merged)
+  })
 })
 
 describe('mergeEdges (spec 16, 1.4/1.8)', () => {
@@ -99,6 +113,15 @@ describe('mergeEdges (spec 16, 1.4/1.8)', () => {
     expect(merged[0].weight).toBe(0.7)
     const merged2 = mergeEdges(local, [edge('a', 'b', { weight: 0.9 })], NOW) // server is ahead
     expect(merged2[0].weight).toBe(0.9)
+  })
+
+  it('takes max(server, local) for coActivationCount — monotone, never thinned (spec 26)', () => {
+    const local = [edge('a', 'b', { coActivationCount: 3 })] // local bumped ahead
+    expect(mergeEdges(local, [edge('a', 'b', { coActivationCount: 2 })], NOW)[0].coActivationCount).toBe(3)
+    const merged = mergeEdges(local, [edge('a', 'b', { coActivationCount: 5 })], NOW) // server ahead
+    expect(merged[0].coActivationCount).toBe(5)
+    // a count bump alone (weight already capped) still registers as a change.
+    expect(merged).not.toBe(local)
   })
 
   it('falls back to max for brightness without timestamps, max for reinforcedRecency', () => {

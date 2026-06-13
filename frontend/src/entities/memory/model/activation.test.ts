@@ -5,6 +5,9 @@ import {
   activation,
   HALF_LIFE_DAYS,
   isDormant,
+  LAMBDA,
+  lambdaEff,
+  modulatedBrightness,
   starBrightness,
   synapseBrightness,
 } from './activation'
@@ -75,6 +78,78 @@ describe('isDormant (spec 12)', () => {
     const past = now - HALF_LIFE_DAYS * DAY_MS // activation ≈ 0.5
     expect(isDormant(past, now, 0.5)).toBe(true) // 0.5 ≤ 0.5
     expect(isDormant(past, now, 0.49)).toBe(false)
+  })
+})
+
+describe('modulatedBrightness / lambdaEff (spec 26)', () => {
+  const now = 1_700_000_000_000
+  const d30 = now - 30 * DAY_MS
+  // (degreeNorm, relevance, intensity, valence) → brightness at Δt=30d, all else equal.
+  const at30 = (deg: number, rel: number, int: number, val: number) =>
+    modulatedBrightness(d30, now, deg, rel, int, val)
+
+  it('(a) more connections (degree↑) keep a star brighter at the same Δt (1.2)', () => {
+    expect(at30(2, 0, 0.3, 0)).toBeGreaterThan(at30(0, 0, 0.3, 0))
+  })
+
+  it('(b) stronger emotion (intensity↑) keeps a star brighter (1.3)', () => {
+    expect(at30(0, 0, 0.9, 0)).toBeGreaterThan(at30(0, 0, 0.1, 0))
+  })
+
+  it('(c) higher relevance to 요즘 토픽 keeps a star brighter (1.4)', () => {
+    expect(at30(0, 0.9, 0.3, 0)).toBeGreaterThan(at30(0, 0, 0.3, 0))
+  })
+
+  it('(d) strong NEGATIVE valence resists decay extra (Kensinger & Corkin — DELTA_VAL)', () => {
+    // same arousal; negative affect adds resistance, positive affect adds none.
+    expect(at30(0, 0, 0.5, -0.8)).toBeGreaterThan(at30(0, 0, 0.5, 0.8))
+  })
+
+  it('(e) isolated·flat star decays ~2–3× faster than a connected·emotional one', () => {
+    const connected = lambdaEff(1.2, 0.4, 0.75, -0.2)
+    const isolated = lambdaEff(0, 0, 0.15, 0)
+    const ratio = isolated / connected
+    expect(ratio).toBeGreaterThanOrEqual(2)
+    expect(ratio).toBeLessThanOrEqual(3.5)
+    // …and the gap is visible: the connected star is clearly brighter at 30 and 90 days.
+    expect(at30(1.2, 0.4, 0.75, -0.2)).toBeGreaterThan(at30(0, 0, 0.15, 0))
+    const d90 = now - 90 * DAY_MS
+    expect(modulatedBrightness(d90, now, 1.2, 0.4, 0.75, -0.2)).toBeGreaterThan(
+      modulatedBrightness(d90, now, 0, 0, 0.15, 0),
+    )
+  })
+
+  it('(f) floors at A_MIN for huge Δt — never below, never 0, never deleted (2.2, 헌법2)', () => {
+    // Strongest resistance decays slowest, so it only reaches the floor for an enormous Δt;
+    // both converge to EXACTLY A_MIN (not 0), and neither ever dips below it.
+    const longAgo = now - 1_000_000 * DAY_MS
+    const conn = modulatedBrightness(longAgo, now, 5, 1, 1, -1) // strongest resistance
+    const iso = modulatedBrightness(longAgo, now, 0, 0, 0, 0) // weakest
+    expect(conn).toBeCloseTo(A_MIN, 6)
+    expect(iso).toBeCloseTo(A_MIN, 6)
+    expect(iso).toBeGreaterThan(0)
+    // Floor invariant at a moderate Δt too: a fast-decaying star never drops below A_MIN.
+    expect(modulatedBrightness(now - 300 * DAY_MS, now, 0, 0, 0, 0)).toBeGreaterThanOrEqual(A_MIN)
+  })
+
+  it('(g) clamps stray inputs — λ_eff ≤ λ_base, brightness ≤ 1 (4.2)', () => {
+    // negative degree, relevance>1, intensity>1, valence<-1 must not accelerate decay or
+    // overshoot brightness. Δt=0 → exactly 1.0 (the (1-A_MIN)·exp ceiling), never above.
+    expect(lambdaEff(-5, 2, 1.5, -3)).toBeLessThanOrEqual(LAMBDA + 1e-12)
+    expect(modulatedBrightness(now, now, -5, 2, 1.5, -3)).toBeCloseTo(1, 10)
+    expect(modulatedBrightness(now + DAY_MS, now, 2, 0.5, 0.5, -0.5)).toBeLessThanOrEqual(1)
+  })
+
+  it('(h) every R ∈ (0,1] so modulation only SLOWS decay (λ_eff ≤ λ_base = ln2/30)', () => {
+    for (const [deg, rel, int, val] of [
+      [0, 0, 0, 0],
+      [3, 1, 1, -1],
+      [0.5, 0.5, 0.5, 0.5],
+    ] as const) {
+      expect(lambdaEff(deg, rel, int, val)).toBeLessThanOrEqual(LAMBDA + 1e-12)
+    }
+    // all-neutral inputs leave λ_base untouched (the modulation ceiling).
+    expect(lambdaEff(0, 0, 0, 0)).toBeCloseTo(LAMBDA, 12)
   })
 })
 

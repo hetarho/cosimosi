@@ -25,6 +25,9 @@ func (s *stubRepo) ListDormant(context.Context, string, time.Time) ([]Memory, er
 func (s *stubRepo) ListRecentForAmbient(context.Context, string, time.Time) ([]EmotionSample, error) {
 	return nil, nil
 }
+func (s *stubRepo) ListStarVectorsByUser(context.Context, string) ([]StarVector, error) {
+	return nil, nil
+}
 func (s *stubRepo) TouchRecall(context.Context, string, string) error { return nil }
 func (s *stubRepo) GetRecord(context.Context, string, string) (Record, error) {
 	return Record{}, ErrNotFound
@@ -132,6 +135,9 @@ func (r *reshapeRepo) ListDormant(context.Context, string, time.Time) ([]Memory,
 	return nil, nil
 }
 func (r *reshapeRepo) ListRecentForAmbient(context.Context, string, time.Time) ([]EmotionSample, error) {
+	return nil, nil
+}
+func (r *reshapeRepo) ListStarVectorsByUser(context.Context, string) ([]StarVector, error) {
 	return nil, nil
 }
 func (r *reshapeRepo) TouchRecall(context.Context, string, string) error { return nil }

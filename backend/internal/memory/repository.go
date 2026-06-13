@@ -32,6 +32,12 @@ type Repository interface {
 	// service derives `since` from TauMoodDays; the query carries no decay math (12 pattern).
 	ListRecentForAmbient(ctx context.Context, userID string, since time.Time) ([]EmotionSample, error)
 
+	// ListStarVectorsByUser returns every star's semantic embedding + recency/intensity
+	// weights (spec 26) — the input to the "요즘 토픽" centroid + per-star relevance. A star
+	// whose embed job hasn't run yet appears with an empty embedding (relevance 0). user_id
+	// = isolation. (GetUniverse degrades to all-neutral relevance if this read fails.)
+	ListStarVectorsByUser(ctx context.Context, userID string) ([]StarVector, error)
+
 	// ListDormant returns the user's stars whose last_recalled_at is before cutoff
 	// (long unrecalled), ascending. The cutoff is derived in the service from the
 	// dormancy threshold; the query compares time only (no decay math — constitution

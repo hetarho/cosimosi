@@ -14,7 +14,7 @@ import {
 import type { LinkType, SynapseEdge } from './types'
 
 function edge(weight: number, brightness: number, recency = 0, linkType: LinkType = 'semantic'): SynapseEdge {
-  return { aId: 'a', bId: 'b', weight, brightness, reinforcedRecency: recency, linkType }
+  return { aId: 'a', bId: 'b', weight, brightness, reinforcedRecency: recency, coActivationCount: 0, linkType }
 }
 
 describe('synapse mapping', () => {

@@ -5,9 +5,15 @@ export {
   starBrightness,
   synapseBrightness,
   isDormant,
+  modulatedBrightness,
+  lambdaEff,
   LAMBDA,
   A_MIN,
   HALF_LIFE_DAYS,
+  ALPHA_CONN,
+  BETA_RECENT,
+  GAMMA_EMO,
+  DELTA_VAL,
 } from './model/activation'
 export { seedFromId } from './model/seed'
 export { reshapedBrightness, reshapedSeed } from './model/reshape'

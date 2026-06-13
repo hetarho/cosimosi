@@ -19,6 +19,10 @@ function edgeKey(e: SynapseEdge): string {
  * Merge an incoming (server) star set into the local render set, keyed by memory id.
  * - Existing stars keep their OBJECT IDENTITY (slot `index`, seed, emergent position)
  *   unless the server's lastRecalledAt is ahead — then only that field advances (max).
+ * - `relevance` (spec 26) is taken from the server UNCONDITIONALLY: it is a server-computed
+ *   signal (cos vs the "요즘 토픽" centroid) that shifts between fetches as the centroid moves,
+ *   and the client never advances it locally — so a max()/keep-local merge would freeze it at
+ *   the first-load value. Forwarding it keeps decay-resistance current as 요즘 evolves.
  * - Local-only stars are kept: `temp-` optimistic stars (replaceStar owns their swap)
  *   and just-confirmed stars a stale response doesn't include yet.
  * - Server-only stars are appended at the end → next free instance slots.
@@ -32,9 +36,10 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
     if (!inc) return node
     incomingById.delete(node.id)
     const lastRecalledAt = Math.max(node.memory.lastRecalledAt, inc.memory.lastRecalledAt)
-    if (lastRecalledAt === node.memory.lastRecalledAt) return node
+    const relevance = inc.memory.relevance // server-authoritative; reflects the shifting 요즘 centroid
+    if (lastRecalledAt === node.memory.lastRecalledAt && relevance === node.memory.relevance) return node
     changed = true
-    return { ...node, memory: { ...node.memory, lastRecalledAt } }
+    return { ...node, memory: { ...node.memory, lastRecalledAt, relevance } }
   })
   const appended = [...incomingById.values()].map((n, k) => ({ ...n, index: local.length + k }))
   if (!changed && appended.length === 0) return local
@@ -67,6 +72,9 @@ export function mergeEdges(
     incomingByKey.delete(key)
     const weight = Math.max(edge.weight, inc.weight)
     const reinforcedRecency = Math.max(edge.reinforcedRecency, inc.reinforcedRecency)
+    // co_activation_count is monotone (server only ++; local bump also ++), so max() is exact —
+    // a refetch picks up the server's incremented count, a stale one never thins it (spec 26).
+    const coActivationCount = Math.max(edge.coActivationCount, inc.coActivationCount)
     const ts = Math.max(edge.lastActivatedAt ?? 0, inc.lastActivatedAt ?? 0)
     const lastActivatedAt = ts > 0 ? ts : undefined
     // 타임스탬프를 아는 쪽이 하나라도 있으면 거기서 재파생(감쇠 진행), 없으면 max 폴백.
@@ -78,12 +86,13 @@ export function mergeEdges(
       weight === edge.weight &&
       brightness === edge.brightness &&
       reinforcedRecency === edge.reinforcedRecency &&
+      coActivationCount === edge.coActivationCount &&
       lastActivatedAt === edge.lastActivatedAt
     ) {
       return edge
     }
     changed = true
-    return { ...edge, weight, brightness, reinforcedRecency, lastActivatedAt }
+    return { ...edge, weight, brightness, reinforcedRecency, coActivationCount, lastActivatedAt }
   })
   const appended = [...incomingByKey.values()]
   if (!changed && appended.length === 0) return local

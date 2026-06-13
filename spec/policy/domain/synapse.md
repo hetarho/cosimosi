@@ -6,7 +6,7 @@
 
 시냅스는 두 기억(별) 사이의 **가중치(`weight ∈ [0,1]`)를 가진 무방향 연결**이다(`memory_links` 1행). 새 별의 임베딩으로 의미 KNN을 돌려 태어나고(`link_type='semantic'`), 함께 회상될 때 헵 규칙으로 강해지며(`link_type='co_recall'`), 시간으로 어두워지되 행은 결코 삭제되지 않는다(헌법2 — 밝기만 낮춘다). `weight`(서버 권위 그래프)와 별의 시간 감쇠가 합쳐져 화면의 밝기·alpha·펄스가 된다.
 
-시냅스 자신은 좌표를 갖지 않는다 — 잇는 두 별의 클라 좌표를 조회해 그린다(헌법3, 좌표 배치 규칙은 navigation 정책 소관). 같은 일기에서 태어난 조각 별끼리는 **일내 결속(`intra_entry`, w=0.8 고정)** 으로 묶이고, 교차(semantic) 링크는 그 아래로 캡된다(21 — 아래 표). 새 별의 semantic 연결 후보는 의미 유사도뿐 아니라 **이웃 성단의 흥분성**(최근 활성도)으로 편향 선택된다(22 — 아래 경쟁적 할당). 약한 선 가지치기·관련성 변조 감쇠·`co_activation_count`의 DTO 노출은 plan 26·27에서 다룬다(아직 정책 아님).
+시냅스 자신은 좌표를 갖지 않는다 — 잇는 두 별의 클라 좌표를 조회해 그린다(헌법3, 좌표 배치 규칙은 navigation 정책 소관). 같은 일기에서 태어난 조각 별끼리는 **일내 결속(`intra_entry`, w=0.8 고정)** 으로 묶이고, 교차(semantic) 링크는 그 아래로 캡된다(21 — 아래 표). 새 별의 semantic 연결 후보는 의미 유사도뿐 아니라 **이웃 성단의 흥분성**(최근 활성도)으로 편향 선택된다(22 — 아래 경쟁적 할당). 공동 회상 횟수(`co_activation_count`)는 `Synapse` DTO로 노출돼 링크 활력 시각에 반영된다(26 — 아래 시각). 약한 선 가지치기는 plan 27에서 다룬다(아직 정책 아님).
 
 ## 규칙 · 파라미터
 
@@ -52,7 +52,7 @@
 | 능동 인출 게이트 | 별 `DWELL_MS = 2000`(≥2초) 능동 열람 + 직전 능동 열람 별과 페어링 시 1 이벤트, 2초 미만 스침·스크롤 미카운트 |
 | 이벤트당 증분 delta | `+0.05`(`CO_RECALL_DELTA`), 한 윈도 같은 페어는 합산 |
 | 강화 식 | 기존 행 `weight = LEAST(1.0, weight + delta)`; 신규 행 `weight = LEAST(1.0, delta)`, `link_type='co_recall'` |
-| 카운터 | 기존 행 갱신 시 `co_activation_count++`, `last_activated_at = now()` |
+| 카운터 | 기존 행 갱신 시 `co_activation_count++`, `last_activated_at = now()`. 누계는 `Synapse.co_activation_count`(proto)로 노출(26) → 링크 활력 시각 + 27 가지치기 입력 |
 | 영속 | 클라 증분 누적 → 디바운스 유휴 `5s`(`DEBOUNCE_IDLE_MS`) + `beforeunload` flush로 unary 배치 |
 | 멱등 | `batch_id`를 `processed_batches`에 먼저 CLAIM(같은 tx) — 재전송 이중 가산 방지 |
 
@@ -71,7 +71,8 @@
 | 밝기 입력 brightness | `= max(A_MIN, activation)`(별 시간 감쇠 결과를 받는 입력값) |
 | 밝기 바닥 | `A_MIN = 0.05`, alpha 바닥 `ALPHA_MIN = 0.15`(약/잠든 엣지도 잔존) |
 | emissive · alpha | `emissive = visualIntensity`, `alpha = lerp(ALPHA_MIN, ALPHA_MAX, visualIntensity)` |
-| 펄스 | `sin(time·f)·amp`, `amp = reinforcedRecency` |
+| 링크 활력 vitality (26) | `vitality = 0.12·min(1, log2(1 + co_activation_count)/4)` ∈ `[0, 0.12]` — 자주 함께 떠올린 연결일수록 또렷. 서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일 |
+| 펄스 | `sin(time·f)·amp`, `amp = clamp(reinforcedRecency + vitality, 0, 1)` — 최근 강화 + 누적 공동 회상 활력 |
 | 두께 | per-edge 변조 불가(Line2NodeMaterial 전역 스칼라) → 선택적 2버킷(`thin=1px`/`thick=4px`, 임계 `weight ≥ 0.5`) |
 | 렌더 | Line2(fat-line) 배칭 + TSL, `useFrame` 수동 갱신(React state 리렌더 없음) |
 
@@ -92,4 +93,5 @@
 - 헵 강화·멱등(+0.05 cap 1.0·co_activation_count·batch_id): plan 11 · `backend/internal/db/queries/link.sql`(`ReinforceLinks`·`ClaimBatch`), `frontend/src/features/recall/model/co-recall.ts`.
 - link_type 4종 정의: plan 09 · `frontend/src/entities/synapse/model/types.ts`.
 - 시각(weight·max(A_MIN,brightness)→emissive/alpha/펄스): plan 09 · `frontend/src/entities/synapse/model/mapping.ts`(`visualIntensity`·`A_MIN`·`ALPHA_MIN`), 별 감쇠 입력 plan 12.
+- `co_activation_count` DTO 노출 + 링크 활력(`vitality`→펄스): plan 26 · `proto/cosimosi/v1/memory.proto`(`Synapse.co_activation_count`), `backend/internal/memory/handler.go`(GetUniverse 매핑), `frontend/src/entities/synapse/model/{store.ts,mapping.ts,types.ts}`(`toSynapseEdge`·`vitality`·`pulseAmp`). degree 정규화(`degreeNormById`)는 별 변조 감쇠 `R_conn` 입력([star](star.md)).
 - 삭제 금지 전체 반환: plan 05/11 · `backend/internal/db/queries/link.sql`(`ListLinksByUser`).

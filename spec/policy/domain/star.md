@@ -8,7 +8,7 @@
 
 별의 *지금 모습*은 결정론적 시드와 사용자가 고른 감정에서 나온다 — 색은 감정(mood)에서, 크기는 강도(intensity)에서, 형태는 시드에서 정해지고, 밝기는 회상 최근성으로 감쇠한다. 감정·강도는 **사용자가 기록 폼에서 직접 고른다**(AI 감정 감지가 아니다). 좌표는 별의 속성이 아니라 클라이언트가 결정론적으로 배치하며 서버는 좌표를 저장하지 않는다(헌법3 — navigation 정책 소관).
 
-> 일기 1편 → N 조각 별 분할, 조각별 AI 감정 감지, 야간 요지화, 관련성·감정 가중 변조 감쇠는 plan 20·21·26·27에서 다룬다(아직 정책 아님).
+> 일기 1편 → N 조각 별 분할, 조각별 AI 감정 감지, 야간 요지화는 plan 20·21·27에서 다룬다(아직 정책 아님).
 
 ## 규칙 · 파라미터
 
@@ -41,11 +41,25 @@
 
 | 규칙 | 값 / 식 |
 |---|---|
-| 시간 감쇠 `activation` | `activation(Δt) = exp(-λ·Δt_days)`, `λ = ln2/30` (`HALF_LIFE_DAYS=30` → λ≈0.0231/day); Δt=0 → 1, 30일 → 0.5. 단일 전역 λ |
-| 밝기 바닥 `A_MIN` | **0.05** — 별은 0으로 꺼지거나 삭제되지 않는다(헌법2) |
-| 별 유효 밝기 | `starBrightness = max(A_MIN, activation)` → per-instance `aBrightness`(forms가 emissive에 곱함) |
+| 시간 감쇠 `activation` | `activation(Δt) = exp(-λ_base·Δt_days)`, `λ_base = ln2/30` (`HALF_LIFE_DAYS=30` → ≈0.0231/day); Δt=0 → 1, 30일 → 0.5. 변조 감쇠(아래)의 기준 λ |
+| 밝기 바닥 `A_MIN` | **0.05** — 별은 0으로 꺼지거나 삭제되지 않는다(헌법2). 변조 감쇠도 같은 바닥을 쓴다(랜딩 카드의 0.12는 시연용 값일 뿐 두 번째 바닥이 아니다) |
+| 별 유효 밝기(잠든 별 탐색) | `starBrightness = max(A_MIN, activation)`(단일 λ — `ListDormant` cutoff 환산·dormant 판정의 기준) |
 | 잠든(dormant) 판정 | raw activation `≤ 2·A_MIN`. 바닥 적용 *전* raw 값 기준. 서버 `ListDormant`는 동등한 시각 cutoff로 환산 |
-| 계산 위치 | 밝기·activation은 **클라이언트가 렌더 시 계산**; 서버는 `last_recalled_at`/`last_activated_at`만 저장(밝기 컬럼 없음) |
+| 계산 위치 | 밝기·activation은 **클라이언트가 렌더 시 계산**; 서버는 `last_recalled_at`/`last_activated_at` + (변조 감쇠의) `relevance`만 권위(밝기 컬럼 없음) |
+
+#### 관련성·감정 가중 변조 감쇠 (modulated decay, spec 26)
+
+우주에 그려지는 별 밝기(`StarField`의 `aBrightness`)는 단일 λ가 아니라 **별마다 변조된 `λ_eff`** 로 감쇠한다 — 연결 많고·요즘의 나와 닿고·감정 강한 별은 천천히, 고립된 저강도·요즘 무관 별은 빨리 어두워지되 바닥(`A_MIN`) 아래로는 내려가지 않는다. "망각은 시간만이 아니라 관련성의 함수다"(concept.md §망각).
+
+| 규칙 | 값 / 식 |
+|---|---|
+| 변조 감쇠율 `λ_eff` | `λ_eff = λ_base · R_conn · R_recent · R_emo`. 각 `R ∈ (0,1]`이라 변조는 감쇠를 **늦추기만** 한다(`λ_eff ≤ λ_base`, 가속 없음). 모든 입력은 clamp 방어 |
+| `R_conn` (연결) | `1/(1 + 0.6·degree_norm)`, `ALPHA_CONN=0.6`. `degree_norm = 별 degree / 우주 degree 중앙값`(중앙값 0 → 1 폴백). 연결 많을수록 저항↑ |
+| `R_recent` (요즘 관련성) | `1/(1 + 0.5·relevance)`, `BETA_RECENT=0.5`. `relevance = clamp(cos(별 임베딩, 요즘 토픽 중심 벡터), 0, 1)` — **서버가 `GetUniverse`에서 계산**(weight처럼 의미 그래프 파생값이므로 헌법3 위반 아님; 밝기 자체는 여전히 클라가 계산). 요즘 토픽 = 최근 별 임베딩의 시간가중 평균(`intensity·exp(-Δt/7d)`, `AggregateAmbient`와 같은 envelope). 임베딩 미생성 별·데모(서버 없음) → `relevance=0`(중립) |
+| `R_emo` (감정) | `1/(1 + 0.7·intensity + 0.4·max(0,-valence))`, `GAMMA_EMO=0.7`·`DELTA_VAL=0.4`. 각성(intensity)과 강한 **부정** 정서가일수록 저항↑(편도체 매개 — Kensinger & Corkin 2004) |
+| 변조 유효 밝기 | `modulatedBrightness = A_MIN + (1-A_MIN)·exp(-λ_eff·Δt_days)` ∈ `[A_MIN, 1]`. 재성형 합성(`+brightness_offset`)·focus 가중은 그 위에 그대로 얹힌다 |
+| 고립 vs 연결 | 고립·저강도·요즘 무관 별은 연결·고강도·요즘 관련 별보다 **~2~3배 빠르게** 어두워진다(둘 다 `A_MIN`에서 멈춤, 삭제 없음) |
+| 계산 위치 | `λ_eff`·`modulatedBrightness`는 **클라가 렌더 시 계산**(`entities/memory/model/activation.ts`, 순수). 서버가 주는 건 `relevance` 입력 하나뿐(헌법3) |
 
 ### 재공고화 재성형 (reconsolidation reshaping)
 
@@ -66,7 +80,8 @@
 - **별은 삭제되지 않는다(헌법2).** 감쇠는 밝기만 낮추며, 유효 밝기는 `A_MIN=0.05` 바닥 위로 유지된다. 잠든 별도 `A_MIN` 잔광으로 계속 렌더되고 클릭 가능하다 — 물리 삭제·소멸이 없다.
 - **원본 record는 불변·영구다(헌법1).** 별의 색·크기·밝기·재성형 상태는 모두 가변 별 레이어(`memories`)·클라 렌더 계산에서만 결정되고, `records`는 UPDATE/DELETE되지 않는다. 재공고화가 누적돼도 유효 밝기는 `A_MIN` 바닥 위로 유지된다(헌법2).
 - **시드 재현성(헌법3).** 같은 `memory_id`는 항상 `seedFromId`로 같은 시드 → 같은 형태. 새로고침·재진입 후에도 같은 별 모양. 별은 좌표를 속성으로 갖지 않는다(좌표는 클라 결정·서버 비저장).
-- **model 순수성(헌법4).** `entities/memory/model/**`·`shared/config/mood.ts`의 도메인 식(`activation`·`starBrightness`·`isDormant`·`seedFromId`·`MOOD_PALETTE`)은 three/React/DOM을 import하지 않는다(모바일 재사용).
+- **model 순수성(헌법4).** `entities/memory/model/**`·`shared/config/mood.ts`의 도메인 식(`activation`·`starBrightness`·`isDormant`·`lambdaEff`·`modulatedBrightness`·`seedFromId`·`MOOD_PALETTE`)은 three/React/DOM을 import하지 않는다(모바일 재사용).
+- **relevance만 서버 권위(헌법3).** 변조 감쇠의 `relevance`는 서버가 임베딩 cos로 계산해 `Star.relevance`로 보내는 의미 그래프 파생값이다(weight와 동급). `degree`(연결)·`intensity`/`valence`(감정)는 클라가 이미 가진 값이고, `λ_eff`·밝기 합성은 전부 클라 렌더 계산 — 서버는 좌표도 밝기도 저장하지 않는다.
 - **렌더 권위(헌법8).** 수천 별은 단일 `InstancedMesh`로 그려 draw call이 별 수에 비례하지 않는다. 색·밝기·시드는 uniform이 아니라 per-instance attribute에서 온다.
 
 ## 구현 근거

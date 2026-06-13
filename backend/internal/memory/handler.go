@@ -142,11 +142,12 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 	synapses := make([]*cosimosiv1.Synapse, 0, len(uni.Synapses))
 	for _, s := range uni.Synapses {
 		synapses = append(synapses, &cosimosiv1.Synapse{
-			AId:             s.AID,
-			BId:             s.BID,
-			Weight:          s.Weight,
-			LinkType:        s.LinkType,
-			LastActivatedAt: formatTime(s.LastActivatedAt),
+			AId:               s.AID,
+			BId:               s.BID,
+			Weight:            s.Weight,
+			LinkType:          s.LinkType,
+			LastActivatedAt:   formatTime(s.LastActivatedAt),
+			CoActivationCount: int32(s.CoActivationCount), // 26: link vitality (already persisted/SELECTed)
 		})
 	}
 
@@ -271,6 +272,7 @@ func toStar(m Memory) *cosimosiv1.Star {
 		HueShift:         m.HueShift,
 		FormSeedDelta:    m.FormSeedDelta,
 		Version:          int32(m.Version),
+		Relevance:        m.Relevance, // 26: 0 outside GetUniverse (ListDormant doesn't score it)
 	}
 }
 
