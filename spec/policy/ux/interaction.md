@@ -61,9 +61,22 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | 화면 코드 동일 — 회상·이웃·잠든 별 동선은 일반 모드와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기). 예외: **기록 폼은 데모에서 숨김**(위 "별 띄우기" 컨트롤러가 대체) | 기록만 대체 |
 | 모드 전환(enter/exit) = 데이터 출처 전환 → 쿼리 캐시·렌더 스토어 전체 리셋([data-sync](../domain/data-sync.md) 출처 경계) — 체험 별이 실계정 우주에 섞이지 않는다 | 경계 리셋 |
 
+### 5. 변천사 보기 (evolution timelapse, 24)
+
+회상 패널(`phase==='shown'`)의 **"변천사 보기"** 진입점으로 그 별이 변해 온 길을 연다 — 우주 캔버스 위 오버레이(별도 라우트 없음, 우주는 뒤에 영속; 31 셸 도입 전까지 페이지가 합성). 23이 쌓은 `evolution_history`를 **읽기 전용**으로 스크럽하는 타임랩스다.
+
+| 규칙 | 값 / 조건 |
+|---|---|
+| 진입점 | 회상 패널 read-only 원본 아래 "변천사 보기" 버튼 → `useEvolutionStore.open(memory_id)`(페이지가 recall→evolution을 콜백으로 배선; 두 feature는 서로 import하지 않음) |
+| 데이터 | `GetEvolutionHistory(memory_id)` unary read(헌법6) → `version` 오름차순 스냅샷. 빈 목록=정상("아직 변천사가 없어요 — 최초 모습 그대로") |
+| 버전 재현 | 같은 `VizStar`(시그니처 불변): `seed = baseSeed + form_seed_delta·k`(형태 변주)·`brightness`·래퍼 `hue-rotate(hue_shift°)`. `concept`(StarObject)·감정색은 별 전 생애 고정(회상은 색을 통째로 바꾸지 않음) |
+| 계기 라벨 | `recall`→"회상" · `new_neighbor`→"새 이웃" · `nightly_gist`→"야간 요지", `dir`로 강화↑/약화↓ 보조 |
+| 불변 원본 병치 | 화면 한편에 11의 `RecallMemory` `Record`(body·entry_date·mood)를 읽기 전용 고정 — 슬라이더를 어디로 옮겨도 원본 텍스트는 그대로(헌법1). 캐시(`recordQueryKey`)에서 재사용(새 RPC 없음) |
+| 체험(demo) | `demoEvolution(memory_id)`가 ≥3 버전을 결정론적으로 합성(trigger 섞음) → 백엔드 호출 없이 스크럽·재현·원본 병치 |
+
 ## 불변식 (invariants)
 
-- **원본 편집·삭제 UI 없음 (헌법1).** 회상 패널은 read-only `Record`만 보여준다. 어떤 상호작용도 `records`를 UPDATE/DELETE하지 않는다.
+- **원본 편집·삭제 UI 없음 (헌법1).** 회상 패널·변천사 화면 모두 read-only `Record`만 보여준다. 변천사 슬라이더를 어디로 옮겨도 원본은 불변이며, 어떤 상호작용도 `records`를 UPDATE/DELETE하지 않는다. 변천사 조회(`GetEvolutionHistory`)는 read-only(INSERT/UPDATE/DELETE·`RETURNING *` 없음).
 - **별·시냅스 삭제 금지 (헌법2).** 낙관적 롤백은 `temp-` 접두 임시 별만 제거하며, 서버에서 온 별·엣지는 절대 제거하지 않는다.
 - **능동 인출이 강화의 유일한 트리거.** `<DWELL_MS` 스침·단순 전환은 회상·공동 회상으로 카운트되지 않는다.
 - **공동 회상은 멱등하게 영속.** 같은 `batch_id` 재전송은 두 번 가산되지 않는다.
@@ -77,5 +90,6 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 - **공동 회상:** 구현: plan 11 · `frontend/src/features/recall/model/co-recall.ts`(`CO_RECALL_DELTA`·`DWELL_MS`·`DEBOUNCE_IDLE_MS`·`pairKey`)·`model/store.ts`(디바운스·재시도·in-flight 직렬화)·`pages/home/ui/HomePage.tsx`(`beforeunload`/`visibilitychange` flush)·`shared/api/transport.ts`(keepalive).
 - **기록:** 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`(본문+감정 select+강도+날짜)·`model/draft-store.ts`(기본 오늘·7종 mood)·`model/use-record-memory.ts`(낙관적 add/replace/remove).
 - **잠든 별 재점화 동선:** 구현: plan 12 · `frontend/src/pages/dormant`(`ListDormant`)·`entities/memory/model/activation.ts`(`isDormant`).
+- **변천사 보기:** 구현: plan 24 · `frontend/src/features/evolution/{api/evolution.ts,model/{history.ts,store.ts},ui/EvolutionPanel.tsx}`(unary read·순수 model·스크럽 타임랩스+불변 원본 병치)·`features/recall/ui/MemoryPanel.tsx`("변천사 보기" 진입점)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선)·`shared/lib/demo/data.ts`(`demoEvolution`). BE read RPC는 plan 23(`GetEvolutionHistory`).
 - **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/store.ts`(데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).
 - **불변식:** 헌법 1·2·3·6·8(`spec/plan/00.overview.md`).

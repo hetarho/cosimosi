@@ -28,8 +28,9 @@ import { NeighborNav } from './NeighborNav'
 type Phase = 'dwelling' | 'loading' | 'shown' | 'error'
 
 /** Inner panel for one selected star. Keyed by memoryId so a new selection remounts it
- *  fresh (state resets without a setState-in-effect). */
-function RecallView({ memoryId }: { memoryId: string }) {
+ *  fresh (state resets without a setState-in-effect). onOpenEvolution is wired by the page
+ *  (FSD: recall doesn't import the evolution feature — the page composes both). */
+function RecallView({ memoryId, onOpenEvolution }: { memoryId: string; onOpenEvolution?: (memoryId: string) => void }) {
   const select = useMemoryStore((s) => s.select)
   const recordActiveView = useRecallStore((s) => s.recordActiveView)
   const queryClient = useQueryClient()
@@ -128,6 +129,16 @@ function RecallView({ memoryId }: { memoryId: string }) {
           <p className="selectable whitespace-pre-wrap text-sm leading-relaxed text-white/85">
             {record.body}
           </p>
+          {/* 변천사 보기(24): 이 별이 변해 온 길을 우주 위 오버레이로 연다(우주를 떠나지 않음). */}
+          {onOpenEvolution && (
+            <button
+              type="button"
+              onClick={() => onOpenEvolution(memoryId)}
+              className="mt-1 w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-mood-pink/60 hover:text-white"
+            >
+              변천사 보기
+            </button>
+          )}
         </article>
       )}
 
@@ -136,8 +147,8 @@ function RecallView({ memoryId }: { memoryId: string }) {
   )
 }
 
-export function MemoryPanel() {
+export function MemoryPanel({ onOpenEvolution }: { onOpenEvolution?: (memoryId: string) => void } = {}) {
   const selectedId = useMemoryStore((s) => s.selectedId)
   if (!selectedId) return null
-  return <RecallView key={selectedId} memoryId={selectedId} />
+  return <RecallView key={selectedId} memoryId={selectedId} onOpenEvolution={onOpenEvolution} />
 }

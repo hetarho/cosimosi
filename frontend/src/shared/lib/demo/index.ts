@@ -10,7 +10,7 @@ export {
   demoToday,
   demoMarkRecalled,
   demoReshape,
-  demoEvolutionHistory,
+  demoEvolution,
   resetDemo,
 } from './data'
 export type { EvolutionSnap } from './data'

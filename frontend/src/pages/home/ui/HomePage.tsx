@@ -10,6 +10,7 @@ import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe
 import { DemoSimPanel } from '@/widgets/demo-sim'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
+import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { applyUniverse, universeQueryOptions, useMemoryStore } from '@/entities/memory'
 import { applySettings, settingsQueryOptions } from '@/entities/appearance'
@@ -304,7 +305,12 @@ export function HomePage() {
           memory scrolls instead of reaching the top controls. Desktop: bottom-right (compose
           is a top-left panel, so no overlap). */}
       <div className="absolute right-4 bottom-20 z-10 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain sm:bottom-4 sm:max-h-none sm:overflow-visible">
-        <MemoryPanel />
+        <MemoryPanel onOpenEvolution={(id) => useEvolutionStore.getState().open(id)} />
+      </div>
+      {/* 변천사 타임랩스(24) — 우주 위 중앙 오버레이(31 셸 도입 전까지 페이지 합성). 우주 캔버스는
+          뒤에 영속하고, 회상 패널의 "변천사 보기"가 useEvolutionStore.open으로 연다. */}
+      <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center p-4">
+        <EvolutionPanel />
       </div>
       {/* top-16: clear the global 로그아웃 pill (SessionGate, top-4 right-4) so these
           page controls don't sit hidden underneath it. */}

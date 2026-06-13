@@ -19,6 +19,8 @@ export type {
   Synapse,
   GetUniverseResponse,
   ListDormantResponse,
+  EvolutionSnapshot,
+  GetEvolutionHistoryResponse,
   Settings,
   GetSettingsResponse,
 } from './gen/cosimosi/v1/memory_pb'

@@ -308,15 +308,17 @@ const records = new Map<string, RecordMsg>() // base + 체험 중 추가분, rec
 const addedStars: Star[] = [] // 체험 중 추가한 별(라우트 이동에도 유지, 새로고침 시 소멸)
 const addedEdges: Synapse[] = [] // 체험 중 추가한 별의 연결(시냅스 생성 이론 시연, spec 19)
 
-// 재공고화 재성형(spec 23): 별별 누적 재성형 상태 + 회상 시도 횟수(PE 게이트의 결정론 입력) +
-// append-only 변천사. toStar가 상태를 Star에 반영하고, demoReshape가 경계 안에서 누적한다.
+// 재공고화 재성형(spec 23): 별별 누적 재성형 상태 + 회상 시도 횟수(PE 게이트의 결정론 입력).
+// toStar가 상태를 Star에 반영해 우주에서 별이 다시 빚어진다. 변천사 타임랩스(24)는
+// demoEvolution이 결정론적으로 합성한다(체험 showcase — 별마다 ≥3 버전 보장).
 interface DemoReshape {
   brightnessOffset: number
   hueShift: number
   formSeedDelta: number
   version: number
 }
-/** 한 재성형 시점의 변천사 스냅샷(서버 EvolutionSnapshot의 데모 대응 — UI는 24). */
+/** 변천사 한 스냅샷(서버 EvolutionSnapshot의 데모 대응 — 24 뷰어가 소비). brightness는
+ *  뷰어가 바로 쓰는 표시 밝기(0..1), hueShift는 도, formSeedDelta는 형태 변주. */
 export interface EvolutionSnap {
   version: number
   brightness: number
@@ -325,10 +327,10 @@ export interface EvolutionSnap {
   trigger: string
   pe: number
   dir: number
+  createdAt: string
 }
 const reshapeState = new Map<string, DemoReshape>()
 const reshapeAttempts = new Map<string, number>() // memoryId → 회상 시도 누계(변형 여부 무관)
-const evolutionLog = new Map<string, EvolutionSnap[]>() // memoryId → 변천사(version 오름차순)
 
 function ensureSeeded(): void {
   if (seededAt) return
@@ -642,17 +644,16 @@ function hashId(id: string): number {
 }
 
 /** RecallMemory의 PE 게이트 재성형(spec 23)을 데모에서 재현한다: 회상이 담은 새 맥락(PE)이
- *  충분할 때만(>=0.15) 대상 별을 경계 안에서 양방향으로 다시 빚고(밝기·색조·형태), 변천사를
- *  append하며 별을 불변 교체한다. novelty 없는 회상(PE<0.15)은 무변(변천사도 안 쌓임).
- *  attempt마다 결정론적 PE를 뽑아 "매 회상 ≠ 변형"을 보인다(서버는 MVP에서 PE 0이라 무변 —
- *  체험은 novelty를 시뮬레이션해 비전을 보여준다). */
+ *  충분할 때만(>=0.15) 대상 별을 경계 안에서 양방향으로 다시 빚고(밝기·색조·형태) 별을 불변
+ *  교체해 우주에 반영한다. novelty 없는 회상(PE<0.15)은 무변. attempt마다 결정론적 PE를 뽑아
+ *  "매 회상 ≠ 변형"을 보인다(서버는 MVP에서 PE 0이라 무변 — 체험은 novelty를 시뮬레이션). */
 export function demoReshape(memoryId: string): void {
   ensureSeeded()
   const attempt = (reshapeAttempts.get(memoryId) ?? 0) + 1
   reshapeAttempts.set(memoryId, attempt)
   // 결정론적 PE: id+attempt 해시 → [0,1).
   const pe = mulberry32(hashId(memoryId) + attempt * 2654435761)()
-  if (pe < DEMO_PE_THRESHOLD) return // novelty 없음 → 단순 재점화만(변형·변천사 없음)
+  if (pe < DEMO_PE_THRESHOLD) return // novelty 없음 → 단순 재점화만(변형 없음)
 
   const prev = reshapeState.get(memoryId) ?? { brightnessOffset: 0, hueShift: 0, formSeedDelta: 0, version: 0 }
   const magnitude = (0.1 + 0.12 * pe) * (1 - demoStrength(prev.version)) // strength↑ ⇒ 작아짐
@@ -666,25 +667,53 @@ export function demoReshape(memoryId: string): void {
     version: prev.version + 1,
   }
   reshapeState.set(memoryId, next)
-  const log = evolutionLog.get(memoryId) ?? []
-  log.push({
-    version: next.version,
-    brightness: next.brightnessOffset,
-    hueShift: next.hueShift,
-    formSeedDelta: next.formSeedDelta,
-    trigger: 'recall',
-    pe,
-    dir,
-  })
-  evolutionLog.set(memoryId, log)
   // 별을 불변 교체해 우주가 변형된 별을 그린다(lastRecalledAt은 demoMarkRecalled가 따로 전진).
   const nowIso = new Date(virtualNowMs()).toISOString()
   replaceStar(memoryId, (s) => renewStar(s, nowIso))
 }
 
-/** GetEvolutionHistory 대체(spec 23 데모): 그 별의 변천사(version 오름차순). UI는 24. */
-export function demoEvolutionHistory(memoryId: string): EvolutionSnap[] {
-  return evolutionLog.get(memoryId) ?? []
+// 변천사 타임랩스(24) 체험용 합성. 한 별을 여러 번 novelty 회상한 결과를 결정론적으로 빚어,
+// 어떤 별을 열어도 ≥3 버전(version 0 최초 + 재성형들)이 또렷이 다른 형태/색조/밝기로 보이게
+// 한다. trigger를 회상/새 이웃/야간 요지로 섞고, ReconsolidationCard식 제약 드리프트를 쓴다.
+const DEMO_EVO_TRIGGERS = ['recall', 'recall', 'new_neighbor', 'nightly_gist']
+
+/** GetEvolutionHistory 대체(spec 24 데모): 그 별의 변천사(version 오름차순, ≥3 버전).
+ *  brightness는 뷰어 표시 밝기(0.4..1), hueShift는 ±28° 이내, formSeedDelta는 ±0.6 이내. */
+export function demoEvolution(memoryId: string): EvolutionSnap[] {
+  const seed = hashId(memoryId)
+  const dayMs = DAY_MS
+  const now = virtualNowMs()
+  // v0 — 최초 모습(변형 없음).
+  const snaps: EvolutionSnap[] = [
+    {
+      version: 0,
+      brightness: 0.7,
+      hueShift: 0,
+      formSeedDelta: 0,
+      trigger: 'recall',
+      pe: 0,
+      dir: 0,
+      createdAt: new Date(now - DEMO_EVO_TRIGGERS.length * dayMs).toISOString(),
+    },
+  ]
+  for (let i = 1; i < DEMO_EVO_TRIGGERS.length; i++) {
+    const prev = snaps[i - 1]
+    const rand = mulberry32(seed + i * 2654435761)
+    const pe = 0.3 + rand() * 0.6 // novelty 충분(게이트 통과) — 표시 보조값
+    const step = 0.08 + rand() * 0.1
+    const dir = rand() < 0.5 ? -1 : 1
+    snaps.push({
+      version: i,
+      brightness: clampDemo(prev.brightness + dir * step, 0.4, 1),
+      hueShift: clampDemo(prev.hueShift + dir * step * 60, -HUE_MAX_DEG, HUE_MAX_DEG),
+      formSeedDelta: clampDemo(prev.formSeedDelta + dir * step * 1.4, -FORM_DELTA_MAX, FORM_DELTA_MAX),
+      trigger: DEMO_EVO_TRIGGERS[i],
+      pe,
+      dir,
+      createdAt: new Date(now - (DEMO_EVO_TRIGGERS.length - i) * dayMs).toISOString(),
+    })
+  }
+  return snaps
 }
 
 /** 체험 종료 시 추가분·가상 시계를 비워 다음 진입을 깨끗하게 한다(base는 다음 ensureSeeded에서 재생성). */
@@ -697,6 +726,5 @@ export function resetDemo(): void {
   records.clear()
   reshapeState.clear()
   reshapeAttempts.clear()
-  evolutionLog.clear()
   resetDemoClock()
 }
