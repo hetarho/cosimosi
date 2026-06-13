@@ -75,8 +75,9 @@ WHERE m.id = @id AND m.user_id = @user_id;
 -- name: ListMemoriesByUser :many
 -- Every star for the user, dormant included (no brightness filter — constitution
 -- §2). mood/intensity/valence are the FRAGMENT's own (memories, spec 21) — no
--- records JOIN anymore.
-SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
+-- records JOIN anymore. The reshaping state (spec 23) rides the same row.
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
 FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index;
@@ -89,9 +90,49 @@ ORDER BY m.created_at, m.fragment_index;
 -- dormancy threshold into `cutoff`. mood/intensity/valence are the fragment's own
 -- (memories, spec 21; no body sent — the dormant list renders Star; the original is
 -- fetched on recall, spec 11). Same column shape as ListMemoriesByUser so it maps to
--- the same domain Memory.
-SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
+-- the same domain Memory (reshaping state included, spec 23).
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
 FROM memories m
 WHERE m.user_id = $1
   AND m.last_recalled_at < sqlc.arg(cutoff)::timestamptz
 ORDER BY m.last_recalled_at ASC;
+
+-- name: GetReshapeContext :one
+-- PE/strength inputs for one recalled star (spec 23): the cumulative reshaping
+-- state + version, the star's embedding (PE = 1-cos(recall_ctx, last_consolidated);
+-- embeddings filled by 03/05), the co-recall total (strength = how consolidated),
+-- and created_at (age term). Star-only read — never touches the immutable record.
+SELECT m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta,
+       e.embedding,
+       COALESCE((SELECT SUM(ml.co_activation_count) FROM memory_links ml
+                 WHERE (ml.a_id = m.id OR ml.b_id = m.id) AND ml.user_id = m.user_id), 0)::int AS co_recall_total,
+       m.created_at
+FROM memories m JOIN embeddings e ON e.memory_id = m.id
+WHERE m.id = @id AND m.user_id = @user_id;
+
+-- name: ListDirectNeighbors :many
+-- 1-hop direct neighbors over memory_links (spec 23, content-limited scope): only
+-- the recalled star + these are reshaped; indirect neighbors stay untouched.
+SELECT (CASE WHEN ml.a_id = @id THEN ml.b_id ELSE ml.a_id END)::text AS neighbor_id
+FROM memory_links ml
+WHERE ml.user_id = @user_id AND (ml.a_id = @id OR ml.b_id = @id);
+
+-- name: ApplyReshape :exec
+-- Reshape one mutable star (spec 23): only memories changes, version++ — the
+-- original record is NEVER touched (constitution §1, grep: no UPDATE records).
+UPDATE memories
+SET brightness_offset = @brightness_offset, hue_shift = @hue_shift,
+    form_seed_delta = @form_seed_delta, version = version + 1
+WHERE id = @id AND user_id = @user_id;
+
+-- name: AppendEvolution :exec
+-- One append-only variant row (spec 23): INSERT only — never UPDATE/DELETE an
+-- existing evolution_history row (constitution §1·§2).
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir)
+VALUES (@id, @memory_id, @user_id, @version, @brightness, @hue_shift, @form_seed_delta, @trigger, @pe, @dir);
+
+-- name: GetEvolutionHistory :many
+-- A star's variant log, version ascending (spec 23; UI is spec 24). user_id = isolation.
+SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at
+FROM evolution_history WHERE memory_id = @memory_id AND user_id = @user_id ORDER BY version ASC;

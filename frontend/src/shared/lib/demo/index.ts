@@ -9,7 +9,10 @@ export {
   demoAddMultiSceneStar,
   demoToday,
   demoMarkRecalled,
+  demoReshape,
+  demoEvolutionHistory,
   resetDemo,
 } from './data'
+export type { EvolutionSnap } from './data'
 export { virtualNowMs, skipDemoDays, demoOffsetDays, resetDemoClock } from './clock'
 export { brightestStarId, thickestEdge, sameDayPair, dormantStarId } from './observe'

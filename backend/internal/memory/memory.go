@@ -95,12 +95,62 @@ type RecordInput struct {
 // Memory is the star projection used by GetUniverse — no body, no entry_date.
 // mood/intensity/valence are the FRAGMENT's own (memories, spec 21);
 // brightness/coordinates are NOT here (computed client-side, constitution §2·§3).
+// The reshaping state (spec 23) IS here — it is a render input to the mutable star
+// layer, not a coordinate.
 type Memory struct {
 	ID             string // = memory_id
 	Mood           Mood   // the fragment's AI-detected mood
 	Intensity      float64
 	Valence        float64    // -1..1 signed affect (26 consumes in λ_eff)
 	LastRecalledAt *time.Time // activity basis for client brightness (04 never mutates it)
+	// Reconsolidation reshaping (spec 23): cumulative ± brightness offset, hue shift
+	// (degrees), form-seed jitter, and the version (= variant-log length).
+	BrightnessOffset float64
+	HueShift         float64
+	FormSeedDelta    float64
+	Version          int
+}
+
+// EvolutionSnapshot is one append-only reshaping event of a star (spec 23): the
+// cumulative reshaping state at that version plus what triggered it. Read by spec
+// 24 (timelapse UI). Pure domain — no db/proto tags (constitution §5).
+type EvolutionSnapshot struct {
+	Version       int
+	Brightness    float64 // brightness_offset snapshot at this version
+	HueShift      float64
+	FormSeedDelta float64
+	Trigger       string // 'recall' | 'new_neighbor' | 'nightly_gist'
+	PE            float64
+	Dir           int // +1 강화 / -1 약화
+	CreatedAt     time.Time
+}
+
+// ReshapeState is the cumulative reshaping state of one star, the input/output of a
+// single reconsolidation step (spec 23). Brightness offset, hue shift (degrees) and
+// form-seed delta accumulate within their bounds; version counts the variants.
+type ReshapeState struct {
+	BrightnessOffset float64
+	HueShift         float64
+	FormSeedDelta    float64
+	Version          int
+}
+
+// ReshapeContext is the PE/strength input the service reads before a reconsolidation
+// step (spec 23): the current reshaping state, the two embeddings whose angle is the
+// prediction error, the co-recall total (strength = how consolidated the star is) and
+// its age. Pure domain.
+//
+// PE = clamp(1 - cos(RecallEmbedding, ConsolidatedEmbedding), 0, 1). In MVP there is no
+// stored consolidation snapshot, so the repository fills BOTH from the star's own
+// embedding column — cos=1, pe=0 — and reshaping stays a no-op in production (acceptance
+// 1.1). The two fields are a seam: a future recall-context / nightly-gist embedding (27)
+// drives pe>0 without touching the gate, and unit tests inject differing vectors.
+type ReshapeContext struct {
+	State                 ReshapeState
+	RecallEmbedding       []float64 // recall_ctx_emb
+	ConsolidatedEmbedding []float64 // last_consolidated_emb (= recall_ctx_emb in MVP)
+	CoRecall              int       // Σ co_activation_count over incident links → strength
+	CreatedAt             time.Time
 }
 
 // Synapse is a weighted, undirected (a < b) link between two stars. Only weight

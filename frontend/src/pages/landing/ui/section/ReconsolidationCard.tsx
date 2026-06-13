@@ -13,12 +13,15 @@ const ORIGINAL_TEXT = '비 오는 날, 오래된 노래를 들었다.'
 /** 이 기억의 감정 색 계열(고정). 회상이 색을 통째로 바꾸지는 않는다. */
 const BASE_COLOR = MOOD.pink
 
+/** 예측 오차 게이트(spec 23 PE_THRESHOLD): 새로운 맥락이 이만큼은 돼야 별이 말랑해진다. */
+const PE_THRESHOLD = 0.15
+
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
 /**
  * 한 기억의 한 시점. 회상은 "랜덤 재생성"이 아니라 같은 기억을 다시 굳히는 과정이다.
- * 그래서 형태(seed)와 감정 색 계열은 유지되고 — 밝기만 강화/약화 양방향으로, 색조는 좁은 폭으로
- * 갱신된다. (재공고화는 강화·약화·갱신 모두 가능하되 "그 기억"을 벗어나진 않는다.)
+ * 그래서 형태(seed)와 감정 색 계열은 유지되고 — 밝기만 강화/약화 양방향으로, 색조는 좁은 폭으로,
+ * 형태는 시드 미세 jitter로 갱신된다. (재공고화는 강화·약화·갱신 모두 가능하되 "그 기억"을 벗어나진 않는다.)
  */
 interface Memory {
   version: number
@@ -26,30 +29,52 @@ interface Memory {
   brightness: number
   /** 원본 색 기준 ±28° 이내의 좁은 색조 갱신. */
   hueShift: number
+  /** 형태 시드 미세 jitter(±0.6 이내) — 같은 기억이 조금 다른 형태로 다시 굳는다. */
+  formSeedDelta: number
   /** 직전 시점 대비 강화(up)/약화(down). */
   dir: 'up' | 'down'
 }
 
-/** 직전 상태로부터 결정론적으로 다음 회상 시점을 빚는다(난수 재생성이 아닌 제약된 드리프트). */
-function nextMemory(prev: Memory | null, version: number): Memory {
-  if (!prev) return { version, brightness: 0.7, hueShift: 0, dir: 'up' }
-  const rand = mulberry32(BASE_SEED + version * 2654435761)
-  const goesUp = rand() < 0.5
-  const step = 0.1 + rand() * 0.12 // 0.10~0.22
-  const brightness = clamp(prev.brightness + (goesUp ? step : -step), 0.4, 1)
-  const hueShift = clamp(prev.hueShift + (rand() - 0.5) * 18, -28, 28)
-  const dir = brightness >= prev.brightness ? 'up' : 'down'
-  return { version, brightness, hueShift, dir }
+/** 회상이 거듭될수록(version↑) 별이 더 굳어 변화폭이 작아진다(강도 의존 — strength↑ ⇒ magnitude↓). */
+function strengthFor(version: number): number {
+  return clamp(0.22 * Math.log2(1 + version), 0, 0.85)
 }
+
+/** 한 번의 회상 시도. PE 게이트를 통과(novelty 충분)할 때만 별을 다시 빚고, 아니면 prev 그대로(무변).
+ *  attempt마다 결정론적 PE를 뽑아 "매 클릭 ≠ 변형"을 보인다(난수 재생성이 아닌 제약된 드리프트). */
+function attemptRecall(prev: Memory, attempt: number): { next: Memory; changed: boolean } {
+  const rand = mulberry32(BASE_SEED + attempt * 2654435761)
+  const pe = rand() // 0..1 — 이번 회상이 담은 새 맥락의 크기
+  if (pe < PE_THRESHOLD) return { next: prev, changed: false } // novelty 없음 → 단순 재점화(무변)
+  const magnitude = (0.1 + 0.12 * pe) * (1 - strengthFor(prev.version)) // strength↑ ⇒ 작아짐
+  const goesUp = rand() < 0.5
+  const dirSign = goesUp ? 1 : -1
+  const brightness = clamp(prev.brightness + dirSign * Math.max(0.04, magnitude), 0.4, 1)
+  const hueShift = clamp(prev.hueShift + dirSign * magnitude * 120, -28, 28)
+  const formSeedDelta = clamp(prev.formSeedDelta + dirSign * magnitude * 2, -0.6, 0.6)
+  return {
+    next: { version: prev.version + 1, brightness, hueShift, formSeedDelta, dir: goesUp ? 'up' : 'down' },
+    changed: true,
+  }
+}
+
+const INITIAL: Memory = { version: 0, brightness: 0.7, hueShift: 0, formSeedDelta: 0, dir: 'up' }
 
 export function ReconsolidationCard() {
   const reduce = useReducedMotion()
   const concept = useAppearance((s) => s.object)
-  const [history, setHistory] = useState<Memory[]>(() => [nextMemory(null, 0)])
+  const [history, setHistory] = useState<Memory[]>(() => [INITIAL])
+  const [attempts, setAttempts] = useState(0)
+  /** 직전 클릭이 게이트에 막혀 변화가 없었는지 — 안내 문구로 보인다. */
+  const [lastBlocked, setLastBlocked] = useState(false)
   const current = history[history.length - 1]
 
   const recall = () => {
-    setHistory((prev) => [...prev, nextMemory(prev[prev.length - 1], prev.length)])
+    const attempt = attempts + 1
+    setAttempts(attempt)
+    const { next, changed } = attemptRecall(history[history.length - 1], attempt)
+    setLastBlocked(!changed)
+    if (changed) setHistory((prev) => [...prev, next]) // 변천사는 변형이 일어날 때만 쌓인다
   }
 
   return (
@@ -88,7 +113,8 @@ export function ReconsolidationCard() {
               />
             )}
             <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
-              <VizStar cx={50} cy={50} r={30} color={BASE_COLOR} concept={concept} seed={BASE_SEED} brightness={current.brightness} active />
+              {/* 형태 시드에 formSeedDelta를 합성 — 밝기·색조뿐 아니라 형태까지 다시 빚어진다(spec 23). */}
+              <VizStar cx={50} cy={50} r={30} color={BASE_COLOR} concept={concept} seed={BASE_SEED + current.formSeedDelta * 6} brightness={current.brightness} active />
             </svg>
           </div>
           <button
@@ -100,9 +126,11 @@ export function ReconsolidationCard() {
             다시 떠올리기
           </button>
           <p className="text-xs text-white/40">
-            {current.version === 0
-              ? '처음 그대로의 별. 같은 모습으로 다시 굳을 준비가 됐어요.'
-              : `${current.version}번째 회상 · ${current.dir === 'up' ? '강화 ↑' : '약화 ↓'} · 같은 기억이 조금 다른 빛으로 굳었어요 (밝기 ${Math.round(current.brightness * 100)}%)`}
+            {lastBlocked
+              ? '새로울 게 없던 회상 — 별은 그대로 다시 굳었어요 (예측 오차가 낮아 변형 없음).'
+              : current.version === 0
+                ? '처음 그대로의 별. 같은 모습으로 다시 굳을 준비가 됐어요.'
+                : `${current.version}번째 회상 · ${current.dir === 'up' ? '강화 ↑' : '약화 ↓'} · 같은 기억이 조금 다른 빛과 형태로 굳었어요 (밝기 ${Math.round(current.brightness * 100)}%)`}
           </p>
         </div>
       </div>
@@ -119,7 +147,7 @@ export function ReconsolidationCard() {
                   cy={50}
                   r={30}
                   color={BASE_COLOR}
-                  seed={BASE_SEED}
+                  seed={BASE_SEED + m.formSeedDelta * 6}
                   concept={concept}
                   brightness={m.brightness}
                 />
@@ -134,8 +162,8 @@ export function ReconsolidationCard() {
 
       <p className="text-xs leading-relaxed text-white/40">원본은 그대로, 별은 변하고, 변천사는 차곡차곡 쌓여가요.</p>
 
-      {/* 원본 불변(헌법1)은 이미 참 — 회상마다 별이 다시 빚어지는 쪽이 plan 23의 비전이다. */}
-      <TheoryBadge status="planned" plan="23·24" />
+      {/* PE 게이트 양방향 재성형 + append-only 변천사는 plan 23이 구현했다(타임랩스 UI는 24). */}
+      <TheoryBadge status="done" plan="23" />
     </GlassCard>
   )
 }

@@ -10,7 +10,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { starBrightness, useMemoryStore } from '@/entities/memory/@x/star'
+import { reshapedBrightness, reshapedSeed, starBrightness, useMemoryStore } from '@/entities/memory/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
 import { DEFAULT_OBJECT } from '../model/kinds'
@@ -175,6 +175,9 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     const moodArr = new Float32Array(count * 3)
     const seedArr = new Float32Array(count)
     const brightArr = new Float32Array(count)
+    // 재공고화 색조(spec 23): hueShift(도)를 라디안으로 — 머티리얼이 mood 색을 회색축
+    // 둘레로 그만큼 돌린다. 기본 0 → 회전 없음(기존 별 무변).
+    const hueArr = new Float32Array(count)
     const scales = new Float32Array(count)
     const dummy = new Float32Array(count * 3)
     // 가상 시계(spec 19): 데모 시간 머신이 흘린 시간만큼 감쇠가 진행된 밝기로 그린다.
@@ -188,8 +191,11 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
       moodArr[i * 3] = rgb[0]
       moodArr[i * 3 + 1] = rgb[1]
       moodArr[i * 3 + 2] = rgb[2]
-      seedArr[i] = m.seed
-      brightArr[i] = starBrightness(m.lastRecalledAt, now)
+      // 재성형 합성(spec 23): 형태 시드·밝기는 누적 재공고화 상태를 더한 유효값으로,
+      // 색조는 라디안 attribute로 머티리얼에 넘긴다. 기본 0이면 기존 별과 동일.
+      seedArr[i] = reshapedSeed(m.seed, m.formSeedDelta)
+      brightArr[i] = reshapedBrightness(starBrightness(m.lastRecalledAt, now), m.brightnessOffset)
+      hueArr[i] = (m.hueShift * Math.PI) / 180
       scales[i] = sizeFor(m.intensity)
 
       // Deterministic fibonacci-sphere dummy layout (shared with the camera fly-to so
@@ -209,6 +215,7 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     geometry.setAttribute('aMood', new THREE.InstancedBufferAttribute(moodArr, 3))
     geometry.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seedArr, 1))
     geometry.setAttribute('aBrightness', new THREE.InstancedBufferAttribute(brightArr, 1))
+    geometry.setAttribute('aHueShift', new THREE.InstancedBufferAttribute(hueArr, 1))
     scalesRef.current = scales
     dummyRef.current = dummy
     moodsRef.current = moodArr
@@ -227,7 +234,9 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     const now = virtualNowMs()
     const arr = attr.array as Float32Array
     for (let i = 0; i < count; i++) {
-      const base = starBrightness(stars[i].memory.lastRecalledAt, now)
+      // Focus 재가중도 재성형 합성을 거친 같은 유효 밝기(spec 23)에서 출발한다.
+      const m = stars[i].memory
+      const base = reshapedBrightness(starBrightness(m.lastRecalledAt, now), m.brightnessOffset)
       arr[i] = base * (selIdx < 0 ? 1 : i === selIdx ? FOCUS_BOOST : FOCUS_DIM)
     }
     attr.needsUpdate = true

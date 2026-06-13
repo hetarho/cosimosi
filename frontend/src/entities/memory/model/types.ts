@@ -18,6 +18,14 @@ export interface Memory {
   lastRecalledAt: number
   /** deterministic hash of the memory id (seedFromId) → per-instance shape variation. */
   seed: number
+  /** 재공고화 누적 ±밝기 오프셋(spec 23) — reshapedBrightness가 별 밝기에 합성. */
+  brightnessOffset: number
+  /** 감정 기준 색 ±28° 색조(도, spec 23) — StarField가 aHueShift로 머티리얼에 합성. */
+  hueShift: number
+  /** 형태 시드 미세 jitter(spec 23) — reshapedSeed가 별 형태 시드에 합성. */
+  formSeedDelta: number
+  /** 재성형 횟수(=변천사 길이, spec 23). */
+  version: number
 }
 
 /** A star in the render set; `index` is its InstancedMesh instance slot. */

@@ -53,6 +53,9 @@ const (
 	// MemoryServiceListDormantProcedure is the fully-qualified name of the MemoryService's ListDormant
 	// RPC.
 	MemoryServiceListDormantProcedure = "/cosimosi.v1.MemoryService/ListDormant"
+	// MemoryServiceGetEvolutionHistoryProcedure is the fully-qualified name of the MemoryService's
+	// GetEvolutionHistory RPC.
+	MemoryServiceGetEvolutionHistoryProcedure = "/cosimosi.v1.MemoryService/GetEvolutionHistory"
 	// SettingsServiceGetSettingsProcedure is the fully-qualified name of the SettingsService's
 	// GetSettings RPC.
 	SettingsServiceGetSettingsProcedure = "/cosimosi.v1.SettingsService/GetSettings"
@@ -69,6 +72,7 @@ type MemoryServiceClient interface {
 	ReinforceLinks(context.Context, *connect.Request[v1.ReinforceLinksRequest]) (*connect.Response[v1.ReinforceLinksResponse], error)
 	RecallMemory(context.Context, *connect.Request[v1.RecallMemoryRequest]) (*connect.Response[v1.RecallMemoryResponse], error)
 	ListDormant(context.Context, *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error)
+	GetEvolutionHistory(context.Context, *connect.Request[v1.GetEvolutionHistoryRequest]) (*connect.Response[v1.GetEvolutionHistoryResponse], error)
 }
 
 // NewMemoryServiceClient constructs a client for the cosimosi.v1.MemoryService service. By default,
@@ -120,17 +124,25 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getEvolutionHistory: connect.NewClient[v1.GetEvolutionHistoryRequest, v1.GetEvolutionHistoryResponse](
+			httpClient,
+			baseURL+MemoryServiceGetEvolutionHistoryProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("GetEvolutionHistory")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // memoryServiceClient implements MemoryServiceClient.
 type memoryServiceClient struct {
-	segmentMemory  *connect.Client[v1.SegmentMemoryRequest, v1.SegmentMemoryResponse]
-	recordMemory   *connect.Client[v1.RecordMemoryRequest, v1.RecordMemoryResponse]
-	getUniverse    *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
-	reinforceLinks *connect.Client[v1.ReinforceLinksRequest, v1.ReinforceLinksResponse]
-	recallMemory   *connect.Client[v1.RecallMemoryRequest, v1.RecallMemoryResponse]
-	listDormant    *connect.Client[v1.ListDormantRequest, v1.ListDormantResponse]
+	segmentMemory       *connect.Client[v1.SegmentMemoryRequest, v1.SegmentMemoryResponse]
+	recordMemory        *connect.Client[v1.RecordMemoryRequest, v1.RecordMemoryResponse]
+	getUniverse         *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
+	reinforceLinks      *connect.Client[v1.ReinforceLinksRequest, v1.ReinforceLinksResponse]
+	recallMemory        *connect.Client[v1.RecallMemoryRequest, v1.RecallMemoryResponse]
+	listDormant         *connect.Client[v1.ListDormantRequest, v1.ListDormantResponse]
+	getEvolutionHistory *connect.Client[v1.GetEvolutionHistoryRequest, v1.GetEvolutionHistoryResponse]
 }
 
 // SegmentMemory calls cosimosi.v1.MemoryService.SegmentMemory.
@@ -163,6 +175,11 @@ func (c *memoryServiceClient) ListDormant(ctx context.Context, req *connect.Requ
 	return c.listDormant.CallUnary(ctx, req)
 }
 
+// GetEvolutionHistory calls cosimosi.v1.MemoryService.GetEvolutionHistory.
+func (c *memoryServiceClient) GetEvolutionHistory(ctx context.Context, req *connect.Request[v1.GetEvolutionHistoryRequest]) (*connect.Response[v1.GetEvolutionHistoryResponse], error) {
+	return c.getEvolutionHistory.CallUnary(ctx, req)
+}
+
 // MemoryServiceHandler is an implementation of the cosimosi.v1.MemoryService service.
 type MemoryServiceHandler interface {
 	SegmentMemory(context.Context, *connect.Request[v1.SegmentMemoryRequest]) (*connect.Response[v1.SegmentMemoryResponse], error)
@@ -171,6 +188,7 @@ type MemoryServiceHandler interface {
 	ReinforceLinks(context.Context, *connect.Request[v1.ReinforceLinksRequest]) (*connect.Response[v1.ReinforceLinksResponse], error)
 	RecallMemory(context.Context, *connect.Request[v1.RecallMemoryRequest]) (*connect.Response[v1.RecallMemoryResponse], error)
 	ListDormant(context.Context, *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error)
+	GetEvolutionHistory(context.Context, *connect.Request[v1.GetEvolutionHistoryRequest]) (*connect.Response[v1.GetEvolutionHistoryResponse], error)
 }
 
 // NewMemoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -218,6 +236,13 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceGetEvolutionHistoryHandler := connect.NewUnaryHandler(
+		MemoryServiceGetEvolutionHistoryProcedure,
+		svc.GetEvolutionHistory,
+		connect.WithSchema(memoryServiceMethods.ByName("GetEvolutionHistory")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MemoryServiceSegmentMemoryProcedure:
@@ -232,6 +257,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceRecallMemoryHandler.ServeHTTP(w, r)
 		case MemoryServiceListDormantProcedure:
 			memoryServiceListDormantHandler.ServeHTTP(w, r)
+		case MemoryServiceGetEvolutionHistoryProcedure:
+			memoryServiceGetEvolutionHistoryHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -263,6 +290,10 @@ func (UnimplementedMemoryServiceHandler) RecallMemory(context.Context, *connect.
 
 func (UnimplementedMemoryServiceHandler) ListDormant(context.Context, *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.MemoryService.ListDormant is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) GetEvolutionHistory(context.Context, *connect.Request[v1.GetEvolutionHistoryRequest]) (*connect.Response[v1.GetEvolutionHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.MemoryService.GetEvolutionHistory is not implemented"))
 }
 
 // SettingsServiceClient is a client for the cosimosi.v1.SettingsService service.

@@ -16,6 +16,20 @@ type Embedding struct {
 	Model     string           `json:"model"`
 }
 
+type EvolutionHistory struct {
+	ID            string             `json:"id"`
+	MemoryID      string             `json:"memory_id"`
+	UserID        string             `json:"user_id"`
+	Version       int32              `json:"version"`
+	Brightness    float32            `json:"brightness"`
+	HueShift      float32            `json:"hue_shift"`
+	FormSeedDelta float32            `json:"form_seed_delta"`
+	Trigger       string             `json:"trigger"`
+	Pe            float32            `json:"pe"`
+	Dir           int32              `json:"dir"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type Job struct {
 	ID        string             `json:"id"`
 	MemoryID  *string            `json:"memory_id"`
@@ -56,17 +70,21 @@ type LlmUsageDaily struct {
 }
 
 type Memory struct {
-	ID             string             `json:"id"`
-	UserID         string             `json:"user_id"`
-	RecordID       string             `json:"record_id"`
-	VisualSpec     []byte             `json:"visual_spec"`
-	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	Mood           *string            `json:"mood"`
-	Intensity      *float32           `json:"intensity"`
-	FragmentIndex  int32              `json:"fragment_index"`
-	FragmentText   *string            `json:"fragment_text"`
-	Valence        *float32           `json:"valence"`
+	ID               string             `json:"id"`
+	UserID           string             `json:"user_id"`
+	RecordID         string             `json:"record_id"`
+	VisualSpec       []byte             `json:"visual_spec"`
+	LastRecalledAt   pgtype.Timestamptz `json:"last_recalled_at"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	Mood             *string            `json:"mood"`
+	Intensity        *float32           `json:"intensity"`
+	FragmentIndex    int32              `json:"fragment_index"`
+	FragmentText     *string            `json:"fragment_text"`
+	Valence          *float32           `json:"valence"`
+	BrightnessOffset float32            `json:"brightness_offset"`
+	HueShift         float32            `json:"hue_shift"`
+	FormSeedDelta    float32            `json:"form_seed_delta"`
+	Version          int32              `json:"version"`
 }
 
 type MemoryLink struct {

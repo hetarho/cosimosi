@@ -41,6 +41,11 @@ export function mapStar(star: Star, index: number): StarNode {
     // 폴백 now도 가상 시계(spec 19)로 — 파싱 불가 타임스탬프가 데모 시간과 어긋나지 않게.
     lastRecalledAt: parseEpochMs(star.lastRecalledAt, virtualNowMs()),
     seed: seedFromId(id),
+    // 재공고화 상태(spec 23) — proto 기본값 0이면 무변형(기존 별과 동일).
+    brightnessOffset: star.brightnessOffset,
+    hueShift: star.hueShift,
+    formSeedDelta: star.formSeedDelta,
+    version: star.version,
   }
   return { id, memory, index }
 }

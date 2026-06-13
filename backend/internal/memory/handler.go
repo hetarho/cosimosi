@@ -136,13 +136,7 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 
 	stars := make([]*cosimosiv1.Star, 0, len(uni.Memories))
 	for _, m := range uni.Memories {
-		stars = append(stars, &cosimosiv1.Star{
-			MemoryId:       m.ID,
-			Mood:           moodToProto(m.Mood),
-			Intensity:      m.Intensity,
-			Valence:        m.Valence,
-			LastRecalledAt: formatTime(m.LastRecalledAt),
-		})
+		stars = append(stars, toStar(m))
 	}
 
 	synapses := make([]*cosimosiv1.Synapse, 0, len(uni.Synapses))
@@ -219,15 +213,54 @@ func (h *Handler) ListDormant(ctx context.Context, req *connect.Request[cosimosi
 	}
 	stars := make([]*cosimosiv1.Star, 0, len(memories))
 	for _, m := range memories {
-		stars = append(stars, &cosimosiv1.Star{
-			MemoryId:       m.ID,
-			Mood:           moodToProto(m.Mood),
-			Intensity:      m.Intensity,
-			Valence:        m.Valence,
-			LastRecalledAt: formatTime(m.LastRecalledAt),
-		})
+		stars = append(stars, toStar(m))
 	}
 	return connect.NewResponse(&cosimosiv1.ListDormantResponse{Stars: stars}), nil
+}
+
+// GetEvolutionHistory returns a star's append-only variant log, version ascending
+// (spec 23; the timelapse UI is spec 24). An empty list is valid (a star never
+// reshaped). user_id isolation is enforced in the query.
+func (h *Handler) GetEvolutionHistory(ctx context.Context, req *connect.Request[cosimosiv1.GetEvolutionHistoryRequest]) (*connect.Response[cosimosiv1.GetEvolutionHistoryResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	snaps, err := h.svc.GetEvolutionHistory(ctx, userID, req.Msg.GetMemoryId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*cosimosiv1.EvolutionSnapshot, 0, len(snaps))
+	for _, s := range snaps {
+		out = append(out, &cosimosiv1.EvolutionSnapshot{
+			Version:       int32(s.Version),
+			Brightness:    s.Brightness,
+			HueShift:      s.HueShift,
+			FormSeedDelta: s.FormSeedDelta,
+			Trigger:       s.Trigger,
+			Pe:            s.PE,
+			Dir:           int32(s.Dir),
+			CreatedAt:     formatTime(&s.CreatedAt),
+		})
+	}
+	return connect.NewResponse(&cosimosiv1.GetEvolutionHistoryResponse{Snapshots: out}), nil
+}
+
+// toStar maps a domain Memory to the proto Star (no coordinates — constitution §3),
+// including the spec-23 reshaping state. Shared by GetUniverse and ListDormant so the
+// two render paths can never drift in which fields they expose.
+func toStar(m Memory) *cosimosiv1.Star {
+	return &cosimosiv1.Star{
+		MemoryId:         m.ID,
+		Mood:             moodToProto(m.Mood),
+		Intensity:        m.Intensity,
+		Valence:          m.Valence,
+		LastRecalledAt:   formatTime(m.LastRecalledAt),
+		BrightnessOffset: m.BrightnessOffset,
+		HueShift:         m.HueShift,
+		FormSeedDelta:    m.FormSeedDelta,
+		Version:          int32(m.Version),
+	}
 }
 
 // parseEntryDate accepts "YYYY-MM-DD" or empty (→ zero time, service defaults to today).

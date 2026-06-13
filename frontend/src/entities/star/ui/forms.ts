@@ -57,7 +57,11 @@ export interface StarFormBuild {
 /** appearance.object → 별 인스턴스의 {지오메트리, 머티리얼, uTime}. mood 색은 attribute로 보존. */
 export function buildStarForm(object: StarObject): StarFormBuild {
   // attribute()/uniform()의 TS 타입엔 .mul/.add가 없어 vec3()/float()로 감싸(as never) 체이닝 가능 노드를 얻는다.
-  const mood = vec3(attribute('aMood', 'vec3') as never)
+  const moodRaw = vec3(attribute('aMood', 'vec3') as never)
+  // 재공고화 색조(spec 23): mood 색을 회색축(1,1,1) 둘레로 aHueShift(rad)만큼 돌린다 —
+  // 휘도(성분 합)는 보존되는 좁은 색조 갱신. 기본 0 → 회전 없음(기존 별 색 그대로).
+  const hueShift = float(attribute('aHueShift', 'float') as never)
+  const mood = vec3(rotateAroundAxis(moodRaw, normalize(vec3(1, 1, 1)), hueShift) as never)
   const bright = float(attribute('aBrightness', 'float') as never)
   const seed = float(attribute('aSeed', 'float') as never)
   const uTime = uniform(0)

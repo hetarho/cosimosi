@@ -36,7 +36,11 @@ CREATE TABLE memories (
     intensity        REAL,                             -- 00004 조각 강도 0~1
     fragment_index   INT NOT NULL DEFAULT 0,           -- 00004 일기 내 조각 순서
     fragment_text    TEXT,                             -- 00004 임베딩용 조각 텍스트(NULL → r.body)
-    valence          REAL DEFAULT 0                    -- 00004 부호 정동 -1..1
+    valence          REAL DEFAULT 0,                   -- 00004 부호 정동 -1..1
+    brightness_offset REAL NOT NULL DEFAULT 0,         -- 00005(spec 23) 재공고화 누적 ±밝기 오프셋
+    hue_shift        REAL NOT NULL DEFAULT 0,          -- 00005 감정 기준 색 ±28° 색조
+    form_seed_delta  REAL NOT NULL DEFAULT 0,          -- 00005 형태 시드 미세 jitter
+    version          INT NOT NULL DEFAULT 0            -- 00005 재성형 횟수(=변천사 길이)
 );
 CREATE INDEX memories_user_idx ON memories (user_id);
 CREATE UNIQUE INDEX memories_record_fragment_idx ON memories (record_id, fragment_index);
@@ -91,6 +95,23 @@ CREATE TABLE processed_batches (
     user_id    TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 재공고화 변천사(spec 23, 00005): 별이 다시 빚어질 때마다 1행 append(INSERT 전용 —
+-- UPDATE/DELETE 절대 금지, 헌법1·2). 24가 version 오름차순으로 읽어 타임랩스를 그린다.
+CREATE TABLE evolution_history (
+    id              TEXT PRIMARY KEY,
+    memory_id       TEXT NOT NULL REFERENCES memories(id),
+    user_id         TEXT NOT NULL,
+    version         INT  NOT NULL,
+    brightness      REAL NOT NULL,
+    hue_shift       REAL NOT NULL,
+    form_seed_delta REAL NOT NULL,
+    trigger         TEXT NOT NULL,
+    pe              REAL NOT NULL,
+    dir             INT  NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX evolution_history_memory_idx ON evolution_history (memory_id, version);
 
 -- 시각 개인 설정(spec 30, 00002): 서버는 사용자 오버라이드만 저장(기본값은 클라 소유).
 CREATE TABLE user_settings (

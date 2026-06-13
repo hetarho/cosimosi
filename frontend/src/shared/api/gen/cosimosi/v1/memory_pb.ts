@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/v1/memory.proto.
  */
 export const file_cosimosi_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxImEKDFNlZ21lbnREcmFmdBIMCgR0ZXh0GAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIPCgd2YWxlbmNlGAQgASgBIiQKFFNlZ21lbnRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkiRAoVU2VnbWVudE1lbW9yeVJlc3BvbnNlEisKCHNlZ21lbnRzGAEgAygLMhkuY29zaW1vc2kudjEuU2VnbWVudERyYWZ0IsIBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEg8KB3ZhbGVuY2UYBiABKAESKwoIc2VnbWVudHMYByADKAsyGS5jb3NpbW9zaS52MS5TZWdtZW50RHJhZnQiPQoUUmVjb3JkTWVtb3J5UmVzcG9uc2USEQoJcmVjb3JkX2lkGAEgASgJEhIKCm1lbW9yeV9pZHMYAiADKAkieAoEU3RhchIRCgltZW1vcnlfaWQYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhgKEGxhc3RfcmVjYWxsZWRfYXQYBCABKAkSDwoHdmFsZW5jZRgMIAEoASJjCgdTeW5hcHNlEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIOCgZ3ZWlnaHQYAyABKAESEQoJbGlua190eXBlGAQgASgJEhkKEWxhc3RfYWN0aXZhdGVkX2F0GAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCJfChNHZXRVbml2ZXJzZVJlc3BvbnNlEiAKBXN0YXJzGAEgAygLMhEuY29zaW1vc2kudjEuU3RhchImCghzeW5hcHNlcxgCIAMoCzIULmNvc2ltb3NpLnYxLlN5bmFwc2UiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIjsKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJImEKCFNldHRpbmdzEg0KBXRoZW1lGAEgASgJEhMKC3N0YXJfb2JqZWN0GAIgASgJEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MikgEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3JCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdCJBChZVcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMpoECg1NZW1vcnlTZXJ2aWNlElYKDVNlZ21lbnRNZW1vcnkSIS5jb3NpbW9zaS52MS5TZWdtZW50TWVtb3J5UmVxdWVzdBoiLmNvc2ltb3NpLnYxLlNlZ21lbnRNZW1vcnlSZXNwb25zZRJTCgxSZWNvcmRNZW1vcnkSIC5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXF1ZXN0GiEuY29zaW1vc2kudjEuUmVjb3JkTWVtb3J5UmVzcG9uc2USVQoLR2V0VW5pdmVyc2USHy5jb3NpbW9zaS52MS5HZXRVbml2ZXJzZVJlcXVlc3QaIC5jb3NpbW9zaS52MS5HZXRVbml2ZXJzZVJlc3BvbnNlIgOQAgESWQoOUmVpbmZvcmNlTGlua3MSIi5jb3NpbW9zaS52MS5SZWluZm9yY2VMaW5rc1JlcXVlc3QaIy5jb3NpbW9zaS52MS5SZWluZm9yY2VMaW5rc1Jlc3BvbnNlElMKDFJlY2FsbE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNhbGxNZW1vcnlSZXNwb25zZRJVCgtMaXN0RG9ybWFudBIfLmNvc2ltb3NpLnYxLkxpc3REb3JtYW50UmVxdWVzdBogLmNvc2ltb3NpLnYxLkxpc3REb3JtYW50UmVzcG9uc2UiA5ACATLDAQoPU2V0dGluZ3NTZXJ2aWNlElUKC0dldFNldHRpbmdzEh8uY29zaW1vc2kudjEuR2V0U2V0dGluZ3NSZXF1ZXN0GiAuY29zaW1vc2kudjEuR2V0U2V0dGluZ3NSZXNwb25zZSIDkAIBElkKDlVwZGF0ZVNldHRpbmdzEiIuY29zaW1vc2kudjEuVXBkYXRlU2V0dGluZ3NSZXF1ZXN0GiMuY29zaW1vc2kudjEuVXBkYXRlU2V0dGluZ3NSZXNwb25zZUJBWj9naXRodWIuY29tL2Nvc2ltb3NpL2JhY2tlbmQvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3YxO2Nvc2ltb3NpdjFiBnByb3RvMw");
+  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxImEKDFNlZ21lbnREcmFmdBIMCgR0ZXh0GAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIPCgd2YWxlbmNlGAQgASgBIiQKFFNlZ21lbnRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkiRAoVU2VnbWVudE1lbW9yeVJlc3BvbnNlEisKCHNlZ21lbnRzGAEgAygLMhkuY29zaW1vc2kudjEuU2VnbWVudERyYWZ0IsIBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEg8KB3ZhbGVuY2UYBiABKAESKwoIc2VnbWVudHMYByADKAsyGS5jb3NpbW9zaS52MS5TZWdtZW50RHJhZnQiPQoUUmVjb3JkTWVtb3J5UmVzcG9uc2USEQoJcmVjb3JkX2lkGAEgASgJEhIKCm1lbW9yeV9pZHMYAiADKAki0AEKBFN0YXISEQoJbWVtb3J5X2lkGAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIYChBsYXN0X3JlY2FsbGVkX2F0GAQgASgJEhkKEWJyaWdodG5lc3Nfb2Zmc2V0GAUgASgBEhEKCWh1ZV9zaGlmdBgGIAEoARIXCg9mb3JtX3NlZWRfZGVsdGEYByABKAESDwoHdmVyc2lvbhgIIAEoBRIPCgd2YWxlbmNlGAwgASgBImMKB1N5bmFwc2USDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEg4KBndlaWdodBgDIAEoARIRCglsaW5rX3R5cGUYBCABKAkSGQoRbGFzdF9hY3RpdmF0ZWRfYXQYBSABKAkiFAoSR2V0VW5pdmVyc2VSZXF1ZXN0Il8KE0dldFVuaXZlcnNlUmVzcG9uc2USIAoFc3RhcnMYASADKAsyES5jb3NpbW9zaS52MS5TdGFyEiYKCHN5bmFwc2VzGAIgAygLMhQuY29zaW1vc2kudjEuU3luYXBzZSIoChNSZWNhbGxNZW1vcnlSZXF1ZXN0EhEKCW1lbW9yeV9pZBgBIAEoCSKFAQoGUmVjb3JkEhEKCW1lbW9yeV9pZBgBIAEoCRIMCgRib2R5GAIgASgJEhIKCmVudHJ5X2RhdGUYAyABKAkSHwoEbW9vZBgEIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAUgASgBEhIKCmNyZWF0ZWRfYXQYBiABKAkiOwoUUmVjYWxsTWVtb3J5UmVzcG9uc2USIwoGcmVjb3JkGAEgASgLMhMuY29zaW1vc2kudjEuUmVjb3JkIqIBChFFdm9sdXRpb25TbmFwc2hvdBIPCgd2ZXJzaW9uGAEgASgFEhIKCmJyaWdodG5lc3MYAiABKAESEQoJaHVlX3NoaWZ0GAMgASgBEhcKD2Zvcm1fc2VlZF9kZWx0YRgEIAEoARIPCgd0cmlnZ2VyGAUgASgJEgoKAnBlGAYgASgBEgsKA2RpchgHIAEoBRISCgpjcmVhdGVkX2F0GAggASgJIi8KGkdldEV2b2x1dGlvbkhpc3RvcnlSZXF1ZXN0EhEKCW1lbW9yeV9pZBgBIAEoCSJQChtHZXRFdm9sdXRpb25IaXN0b3J5UmVzcG9uc2USMQoJc25hcHNob3RzGAEgAygLMh4uY29zaW1vc2kudjEuRXZvbHV0aW9uU25hcHNob3QiPQoJTGlua0RlbHRhEgwKBGFfaWQYASABKAkSDAoEYl9pZBgCIAEoCRIUCgxkZWx0YV93ZWlnaHQYAyABKAEiUAoVUmVpbmZvcmNlTGlua3NSZXF1ZXN0EiUKBWl0ZW1zGAEgAygLMhYuY29zaW1vc2kudjEuTGlua0RlbHRhEhAKCGJhdGNoX2lkGAIgASgJIhgKFlJlaW5mb3JjZUxpbmtzUmVzcG9uc2UiFAoSTGlzdERvcm1hbnRSZXF1ZXN0IjcKE0xpc3REb3JtYW50UmVzcG9uc2USIAoFc3RhcnMYASADKAsyES5jb3NpbW9zaS52MS5TdGFyIj4KDEVtb3Rpb25Db2xvchIfCgRtb29kGAEgASgOMhEuY29zaW1vc2kudjEuTW9vZBINCgVjb2xvchgCIAEoCSJhCghTZXR0aW5ncxINCgV0aGVtZRgBIAEoCRITCgtzdGFyX29iamVjdBgCIAEoCRIxCg5lbW90aW9uX2NvbG9ycxgDIAMoCzIZLmNvc2ltb3NpLnYxLkVtb3Rpb25Db2xvciIUChJHZXRTZXR0aW5nc1JlcXVlc3QiPgoTR2V0U2V0dGluZ3NSZXNwb25zZRInCghzZXR0aW5ncxgBIAEoCzIVLmNvc2ltb3NpLnYxLlNldHRpbmdzIpIBChVVcGRhdGVTZXR0aW5nc1JlcXVlc3QSEgoFdGhlbWUYASABKAlIAIgBARIYCgtzdGFyX29iamVjdBgCIAEoCUgBiAEBEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yQggKBl90aGVtZUIOCgxfc3Rhcl9vYmplY3QiQQoWVXBkYXRlU2V0dGluZ3NSZXNwb25zZRInCghzZXR0aW5ncxgBIAEoCzIVLmNvc2ltb3NpLnYxLlNldHRpbmdzKrUBCgRNb29kEhQKEE1PT0RfVU5TUEVDSUZJRUQQABIHCgNKT1kQARIICgRDQUxNEAISBwoDU0FEEAMSCQoFQU5HRVIQBBIICgRGRUFSEAUSCAoETE9WRRAGEgsKB05FVVRSQUwQBxIOCgpFWENJVEVNRU5UEAgSDQoJR1JBVElUVURFEAkSCgoGUkVMSUVGEAoSCgoGU1RSRVNTEAsSCQoFVElSRUQQDBINCglFTVBUSU5FU1MQDTKJBQoNTWVtb3J5U2VydmljZRJWCg1TZWdtZW50TWVtb3J5EiEuY29zaW1vc2kudjEuU2VnbWVudE1lbW9yeVJlcXVlc3QaIi5jb3NpbW9zaS52MS5TZWdtZW50TWVtb3J5UmVzcG9uc2USUwoMUmVjb3JkTWVtb3J5EiAuY29zaW1vc2kudjEuUmVjb3JkTWVtb3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLlJlY29yZE1lbW9yeVJlc3BvbnNlElUKC0dldFVuaXZlcnNlEh8uY29zaW1vc2kudjEuR2V0VW5pdmVyc2VSZXF1ZXN0GiAuY29zaW1vc2kudjEuR2V0VW5pdmVyc2VSZXNwb25zZSIDkAIBElkKDlJlaW5mb3JjZUxpbmtzEiIuY29zaW1vc2kudjEuUmVpbmZvcmNlTGlua3NSZXF1ZXN0GiMuY29zaW1vc2kudjEuUmVpbmZvcmNlTGlua3NSZXNwb25zZRJTCgxSZWNhbGxNZW1vcnkSIC5jb3NpbW9zaS52MS5SZWNhbGxNZW1vcnlSZXF1ZXN0GiEuY29zaW1vc2kudjEuUmVjYWxsTWVtb3J5UmVzcG9uc2USVQoLTGlzdERvcm1hbnQSHy5jb3NpbW9zaS52MS5MaXN0RG9ybWFudFJlcXVlc3QaIC5jb3NpbW9zaS52MS5MaXN0RG9ybWFudFJlc3BvbnNlIgOQAgESbQoTR2V0RXZvbHV0aW9uSGlzdG9yeRInLmNvc2ltb3NpLnYxLkdldEV2b2x1dGlvbkhpc3RvcnlSZXF1ZXN0GiguY29zaW1vc2kudjEuR2V0RXZvbHV0aW9uSGlzdG9yeVJlc3BvbnNlIgOQAgEywwEKD1NldHRpbmdzU2VydmljZRJVCgtHZXRTZXR0aW5ncxIfLmNvc2ltb3NpLnYxLkdldFNldHRpbmdzUmVxdWVzdBogLmNvc2ltb3NpLnYxLkdldFNldHRpbmdzUmVzcG9uc2UiA5ACARJZCg5VcGRhdGVTZXR0aW5ncxIiLmNvc2ltb3NpLnYxLlVwZGF0ZVNldHRpbmdzUmVxdWVzdBojLmNvc2ltb3NpLnYxLlVwZGF0ZVNldHRpbmdzUmVzcG9uc2VCQVo/Z2l0aHViLmNvbS9jb3NpbW9zaS9iYWNrZW5kL2ludGVybmFsL2dlbi9jb3NpbW9zaS92MTtjb3NpbW9zaXYxYgZwcm90bzM");
 
 /**
  * SegmentDraft is one PROPOSED fragment star: the AI's split of a diary into a
@@ -191,9 +191,9 @@ export const RecordMemoryResponseSchema: GenMessage<RecordMemoryResponse> = /*@_
  * Star is the visual input for a star (no body). Brightness = max(a_min,
  * activation) is computed client-side; the server is authoritative only over
  * last_recalled_at.
- * Field numbers 5–11 are RESERVED by later specs (5–8 = 23 reshaping,
- * 9–10 = 28 wayfinding, 11 = 36 resonance — 00.overview 공유 설계 결정);
- * valence therefore takes 12.
+ * Field numbers 9–11 are RESERVED by later specs (9–10 = 28 wayfinding,
+ * 11 = 36 resonance — 00.overview 공유 설계 결정); 5–8 are the spec 23 reshaping
+ * state (mutable star layer); valence therefore takes 12.
  *
  * @generated from message cosimosi.v1.Star
  */
@@ -217,6 +217,34 @@ export type Star = Message<"cosimosi.v1.Star"> & {
    * @generated from field: string last_recalled_at = 4;
    */
   lastRecalledAt: string;
+
+  /**
+   * 23: 누적 ±밝기 오프셋(재공고화); client composites onto brightness
+   *
+   * @generated from field: double brightness_offset = 5;
+   */
+  brightnessOffset: number;
+
+  /**
+   * 23: 감정 기준 색 ±28° 색조(degrees)
+   *
+   * @generated from field: double hue_shift = 6;
+   */
+  hueShift: number;
+
+  /**
+   * 23: 형태 시드 미세 jitter
+   *
+   * @generated from field: double form_seed_delta = 7;
+   */
+  formSeedDelta: number;
+
+  /**
+   * 23: 재성형 횟수(=변천사 길이)
+   *
+   * @generated from field: int32 version = 8;
+   */
+  version: number;
 
   /**
    * -1..1 signed affect (spec 21; 26 consumes in λ_eff)
@@ -387,6 +415,106 @@ export const RecallMemoryResponseSchema: GenMessage<RecallMemoryResponse> = /*@_
   messageDesc(file_cosimosi_v1_memory, 11);
 
 /**
+ * EvolutionSnapshot is one append-only reshaping event of a star: the cumulative
+ * reshaping state at that version plus what triggered it. Rows are never updated
+ * or deleted (constitution §1·§2); the timelapse UI (spec 24) reads them ascending.
+ *
+ * @generated from message cosimosi.v1.EvolutionSnapshot
+ */
+export type EvolutionSnapshot = Message<"cosimosi.v1.EvolutionSnapshot"> & {
+  /**
+   * @generated from field: int32 version = 1;
+   */
+  version: number;
+
+  /**
+   * brightness_offset snapshot at this version
+   *
+   * @generated from field: double brightness = 2;
+   */
+  brightness: number;
+
+  /**
+   * @generated from field: double hue_shift = 3;
+   */
+  hueShift: number;
+
+  /**
+   * @generated from field: double form_seed_delta = 4;
+   */
+  formSeedDelta: number;
+
+  /**
+   * 'recall' | 'new_neighbor' | 'nightly_gist'(27)
+   *
+   * @generated from field: string trigger = 5;
+   */
+  trigger: string;
+
+  /**
+   * prediction error that opened the soft window
+   *
+   * @generated from field: double pe = 6;
+   */
+  pe: number;
+
+  /**
+   * +1 강화 / -1 약화
+   *
+   * @generated from field: int32 dir = 7;
+   */
+  dir: number;
+
+  /**
+   * @generated from field: string created_at = 8;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.EvolutionSnapshot.
+ * Use `create(EvolutionSnapshotSchema)` to create a new message.
+ */
+export const EvolutionSnapshotSchema: GenMessage<EvolutionSnapshot> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 12);
+
+/**
+ * @generated from message cosimosi.v1.GetEvolutionHistoryRequest
+ */
+export type GetEvolutionHistoryRequest = Message<"cosimosi.v1.GetEvolutionHistoryRequest"> & {
+  /**
+   * @generated from field: string memory_id = 1;
+   */
+  memoryId: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.GetEvolutionHistoryRequest.
+ * Use `create(GetEvolutionHistoryRequestSchema)` to create a new message.
+ */
+export const GetEvolutionHistoryRequestSchema: GenMessage<GetEvolutionHistoryRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 13);
+
+/**
+ * @generated from message cosimosi.v1.GetEvolutionHistoryResponse
+ */
+export type GetEvolutionHistoryResponse = Message<"cosimosi.v1.GetEvolutionHistoryResponse"> & {
+  /**
+   * version ascending
+   *
+   * @generated from field: repeated cosimosi.v1.EvolutionSnapshot snapshots = 1;
+   */
+  snapshots: EvolutionSnapshot[];
+};
+
+/**
+ * Describes the message cosimosi.v1.GetEvolutionHistoryResponse.
+ * Use `create(GetEvolutionHistoryResponseSchema)` to create a new message.
+ */
+export const GetEvolutionHistoryResponseSchema: GenMessage<GetEvolutionHistoryResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 14);
+
+/**
  * Reinforcement is accumulated locally on the client, then flushed as a unary
  * batch. delta_weight is an increment, not an absolute value.
  *
@@ -414,7 +542,7 @@ export type LinkDelta = Message<"cosimosi.v1.LinkDelta"> & {
  * Use `create(LinkDeltaSchema)` to create a new message.
  */
 export const LinkDeltaSchema: GenMessage<LinkDelta> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 12);
+  messageDesc(file_cosimosi_v1_memory, 15);
 
 /**
  * @generated from message cosimosi.v1.ReinforceLinksRequest
@@ -436,7 +564,7 @@ export type ReinforceLinksRequest = Message<"cosimosi.v1.ReinforceLinksRequest">
  * Use `create(ReinforceLinksRequestSchema)` to create a new message.
  */
 export const ReinforceLinksRequestSchema: GenMessage<ReinforceLinksRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 13);
+  messageDesc(file_cosimosi_v1_memory, 16);
 
 /**
  * @generated from message cosimosi.v1.ReinforceLinksResponse
@@ -449,7 +577,7 @@ export type ReinforceLinksResponse = Message<"cosimosi.v1.ReinforceLinksResponse
  * Use `create(ReinforceLinksResponseSchema)` to create a new message.
  */
 export const ReinforceLinksResponseSchema: GenMessage<ReinforceLinksResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 14);
+  messageDesc(file_cosimosi_v1_memory, 17);
 
 /**
  * @generated from message cosimosi.v1.ListDormantRequest
@@ -462,7 +590,7 @@ export type ListDormantRequest = Message<"cosimosi.v1.ListDormantRequest"> & {
  * Use `create(ListDormantRequestSchema)` to create a new message.
  */
 export const ListDormantRequestSchema: GenMessage<ListDormantRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 15);
+  messageDesc(file_cosimosi_v1_memory, 18);
 
 /**
  * @generated from message cosimosi.v1.ListDormantResponse
@@ -481,7 +609,7 @@ export type ListDormantResponse = Message<"cosimosi.v1.ListDormantResponse"> & {
  * Use `create(ListDormantResponseSchema)` to create a new message.
  */
 export const ListDormantResponseSchema: GenMessage<ListDormantResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 16);
+  messageDesc(file_cosimosi_v1_memory, 19);
 
 /**
  * EmotionColor overrides one mood's star color. color is "#RRGGBB".
@@ -505,7 +633,7 @@ export type EmotionColor = Message<"cosimosi.v1.EmotionColor"> & {
  * Use `create(EmotionColorSchema)` to create a new message.
  */
 export const EmotionColorSchema: GenMessage<EmotionColor> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 17);
+  messageDesc(file_cosimosi_v1_memory, 20);
 
 /**
  * Settings is the user's stored visual overrides (not a complete config — the
@@ -541,7 +669,7 @@ export type Settings = Message<"cosimosi.v1.Settings"> & {
  * Use `create(SettingsSchema)` to create a new message.
  */
 export const SettingsSchema: GenMessage<Settings> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 18);
+  messageDesc(file_cosimosi_v1_memory, 21);
 
 /**
  * @generated from message cosimosi.v1.GetSettingsRequest
@@ -554,7 +682,7 @@ export type GetSettingsRequest = Message<"cosimosi.v1.GetSettingsRequest"> & {
  * Use `create(GetSettingsRequestSchema)` to create a new message.
  */
 export const GetSettingsRequestSchema: GenMessage<GetSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 19);
+  messageDesc(file_cosimosi_v1_memory, 22);
 
 /**
  * @generated from message cosimosi.v1.GetSettingsResponse
@@ -571,7 +699,7 @@ export type GetSettingsResponse = Message<"cosimosi.v1.GetSettingsResponse"> & {
  * Use `create(GetSettingsResponseSchema)` to create a new message.
  */
 export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 20);
+  messageDesc(file_cosimosi_v1_memory, 23);
 
 /**
  * Partial update: only present fields are upserted; omitted fields are preserved.
@@ -601,7 +729,7 @@ export type UpdateSettingsRequest = Message<"cosimosi.v1.UpdateSettingsRequest">
  * Use `create(UpdateSettingsRequestSchema)` to create a new message.
  */
 export const UpdateSettingsRequestSchema: GenMessage<UpdateSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 21);
+  messageDesc(file_cosimosi_v1_memory, 24);
 
 /**
  * @generated from message cosimosi.v1.UpdateSettingsResponse
@@ -620,7 +748,7 @@ export type UpdateSettingsResponse = Message<"cosimosi.v1.UpdateSettingsResponse
  * Use `create(UpdateSettingsResponseSchema)` to create a new message.
  */
 export const UpdateSettingsResponseSchema: GenMessage<UpdateSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_memory, 22);
+  messageDesc(file_cosimosi_v1_memory, 25);
 
 /**
  * Mood is the single source of truth for the 13 moods (4 affective quadrants ×3 +
@@ -773,6 +901,16 @@ export const MemoryService: GenService<{
     methodKind: "unary";
     input: typeof ListDormantRequestSchema;
     output: typeof ListDormantResponseSchema;
+  },
+  /**
+   * 변천사(24)
+   *
+   * @generated from rpc cosimosi.v1.MemoryService.GetEvolutionHistory
+   */
+  getEvolutionHistory: {
+    methodKind: "unary";
+    input: typeof GetEvolutionHistoryRequestSchema;
+    output: typeof GetEvolutionHistoryResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_v1_memory, 0);

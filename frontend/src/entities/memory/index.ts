@@ -10,6 +10,7 @@ export {
   HALF_LIFE_DAYS,
 } from './model/activation'
 export { seedFromId } from './model/seed'
+export { reshapedBrightness, reshapedSeed } from './model/reshape'
 export { useMemoryStore } from './model/store'
 export { parseEpochMs } from './model/time'
 export {

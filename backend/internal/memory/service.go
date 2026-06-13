@@ -2,7 +2,9 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"strings"
 	"time"
@@ -18,6 +20,44 @@ import (
 const (
 	halfLifeDays      = 30.0
 	dormancyThreshold = 2 * 0.05 // 2·A_MIN
+)
+
+// Reconsolidation reshaping parameters (spec 23). A recall only reshapes a star when
+// it carries new context (prediction error ≥ peThreshold); the reshape MAGNITUDE
+// shrinks as the star gets more consolidated (strength↑ ⇒ magnitude↓), and the change
+// is bounded both per-step (brightness) and cumulatively (hue/form). These are the
+// single source for the numbers; policy/domain/star.md mirrors them.
+const (
+	// peThreshold gates the soft window: below it a recall is a plain re-ignition
+	// (spec 11), no reshape, no evolution row (acceptance 1.1).
+	peThreshold = 0.15
+	// baseStep is the magnitude ceiling at pe=1, strength=0 — magnitude =
+	// baseStep·pe·(1-strength) (acceptance 1.3).
+	baseStep = 0.22
+	// brightness offset moves one bounded step per reshape: dir·clamp(magnitude, 0.10,
+	// 0.22) (acceptance 1.2).
+	minBrightStep = 0.10
+	maxBrightStep = 0.22
+	// brightnessOffsetMax bounds the CUMULATIVE offset so the stored value (and the
+	// evolution_history snapshot 24 reads) can't grow without limit across many recalls.
+	// Effective brightness = clamp(base+offset, A_MIN, 1) with base∈[A_MIN,1], so ±1
+	// already saturates both ends — beyond it the offset would be meaningless.
+	brightnessOffsetMax = 1.0
+	// neighborFactor scales the step applied to direct neighbors — smaller than the
+	// recalled star's (acceptance 1.5).
+	neighborFactor = 0.4
+	// hue jitter is magnitude·hueGainDeg degrees per step, accumulated within ±28°
+	// of the emotion-anchored color (acceptance 1.2).
+	hueGainDeg = 60.0
+	hueMaxDeg  = 28.0
+	// form-seed jitter is magnitude·formGain per step, accumulated within ±formDeltaMax.
+	formGain     = 0.5
+	formDeltaMax = 0.6
+	// strength = clamp(strengthRecallGain·log2(1+co_recall) + ageGain·age_norm, 0, 1):
+	// stars recalled more often / older read as more consolidated and reshape less.
+	strengthRecallGain = 0.15
+	ageGain            = 0.30
+	ageRefDays         = 90.0
 )
 
 // dormantCutoff converts the dormancy threshold (RAW activation) into a time cutoff:
@@ -144,6 +184,107 @@ func (s *Service) ReinforceLinks(ctx context.Context, userID, batchID string, de
 	return s.links.ReinforceLinks(ctx, userID, batchID, deltas)
 }
 
+// --- reconsolidation pure helpers (spec 23, unit-tested) ---
+
+// cosineSim is the cosine similarity of two equal-length vectors, 0 when either is
+// empty, lengths differ, or a vector is all-zero (no defined angle). Used for the PE
+// gate; a pure function so the soft-window math is testable without a DB.
+func cosineSim(a, b []float64) float64 {
+	if len(a) == 0 || len(a) != len(b) {
+		return 0
+	}
+	var dot, na, nb float64
+	for i := range a {
+		dot += a[i] * b[i]
+		na += a[i] * a[i]
+		nb += b[i] * b[i]
+	}
+	if na == 0 || nb == 0 {
+		return 0
+	}
+	return dot / (math.Sqrt(na) * math.Sqrt(nb))
+}
+
+// strengthOf is the strength-dependent term (acceptance 1.3): a star recalled more
+// often (co_recall) or older (age) reads as more consolidated and reshapes less.
+// strength = clamp(strengthRecallGain·log2(1+co_recall) + ageGain·clamp(age/ageRef,0,1), 0, 1).
+func strengthOf(coRecall int, ageDays float64) float64 {
+	if coRecall < 0 {
+		coRecall = 0
+	}
+	rec := strengthRecallGain * math.Log2(1+float64(coRecall))
+	age := ageGain * clampf(ageDays/ageRefDays, 0, 1)
+	return clampf(rec+age, 0, 1)
+}
+
+// reshapeStep is the raw reshape magnitude = baseStep·pe·(1-strength) (acceptance 1.3):
+// strength↑ ⇒ magnitude↓. Bounds on the APPLIED change live in reshapeState.
+func reshapeStep(pe, strength float64) float64 {
+	return baseStep * pe * (1 - strength)
+}
+
+// directionFor picks a deterministic ±1 from the star id + version (acceptance 1.2:
+// "방향은 회상 별의 시드+version에서 결정론적으로" — the id hash stands in for the
+// client-derived seed, which the server never holds). Same (id, version) → same dir.
+func directionFor(memoryID string, version int) int {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(memoryID))
+	if (h.Sum32()+uint32(version))%2 == 0 {
+		return 1
+	}
+	return -1
+}
+
+// reshapeState applies one bounded reconsolidation step to a star's cumulative state
+// (acceptance 1.2): brightness offset moves dir·clamp(magnitude,0.10,0.22)·factor; hue
+// and form-seed jitter accumulate within ±28°/±formDeltaMax; version++. factor scales
+// the whole step down for direct neighbors (acceptance 1.5). Pure — no I/O.
+func reshapeState(prev ReshapeState, magnitude float64, dir int, factor float64) ReshapeState {
+	d := float64(dir)
+	brightStep := clampf(magnitude, minBrightStep, maxBrightStep) * factor
+	hueStep := d * magnitude * hueGainDeg * factor
+	formStep := d * magnitude * formGain * factor
+	return ReshapeState{
+		BrightnessOffset: clampf(prev.BrightnessOffset+d*brightStep, -brightnessOffsetMax, brightnessOffsetMax),
+		HueShift:         clampf(prev.HueShift+hueStep, -hueMaxDeg, hueMaxDeg),
+		FormSeedDelta:    clampf(prev.FormSeedDelta+formStep, -formDeltaMax, formDeltaMax),
+		Version:          prev.Version + 1,
+	}
+}
+
+// peGate is the prediction-error gate input: clamp(1 - cos(recall, consolidated), 0, 1),
+// but 0 when either embedding can't define an angle (empty or zero-norm). cosineSim
+// returns 0 for a degenerate vector, which would otherwise read as pe=1 (maximal
+// novelty) and reshape on every recall — "can't measure novelty" must mean pe 0.
+func peGate(recall, consolidated []float64) float64 {
+	if !usableEmbedding(recall) || !usableEmbedding(consolidated) {
+		return 0
+	}
+	return clampf(1-cosineSim(recall, consolidated), 0, 1)
+}
+
+// usableEmbedding reports whether a vector can define a cosine angle (non-empty with at
+// least one non-zero component).
+func usableEmbedding(v []float64) bool {
+	for _, x := range v {
+		if x != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// clampf bounds v to [lo, hi].
+func clampf(v, lo, hi float64) float64 {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
 // ListDormant returns the caller's long-unrecalled stars (search aid for the dormant
 // page). It converts the dormancy threshold to a time cutoff and lets the
 // query compare last_recalled_at only — GetUniverse still returns the whole graph
@@ -152,12 +293,101 @@ func (s *Service) ListDormant(ctx context.Context, userID string) ([]Memory, err
 	return s.repo.ListDormant(ctx, userID, dormantCutoff(time.Now().UTC()))
 }
 
-// RecallMemory re-ignites a star (last_recalled_at=now) and returns its immutable
-// original Record (records JOIN). Touch is WHERE-guarded, so an absent memory leaves
-// nothing changed and GetRecord surfaces ErrNotFound (→ NotFound at the handler).
+// RecallMemory re-ignites a star (last_recalled_at=now), applies PE-gated
+// reconsolidation reshaping (spec 23), and returns its immutable original Record
+// (records JOIN). Touch is WHERE-guarded, so an absent memory leaves nothing changed
+// and GetRecord surfaces ErrNotFound (→ NotFound at the handler). The original record
+// is never mutated — only the star layer + the append-only variant log (constitution
+// §1·§2).
 func (s *Service) RecallMemory(ctx context.Context, userID, memoryID string) (Record, error) {
 	if err := s.repo.TouchRecall(ctx, userID, memoryID); err != nil {
 		return Record{}, err
 	}
+	// Reconsolidation is BEST-EFFORT: it must never deny the user their immutable
+	// original (the spec-11 recall contract). A reshape failure (DB hiccup on a
+	// reshape write/read) degrades this recall to plain re-ignition — the record read
+	// below is the authority on existence and is what the caller actually requested.
+	_ = s.reconsolidate(ctx, userID, memoryID)
 	return s.repo.GetRecord(ctx, userID, memoryID)
+}
+
+// reconsolidate runs the spec-23 soft-window model: read the star's PE/strength
+// context, gate on prediction error, and — when novel enough — reshape the recalled
+// star plus its DIRECT neighbors (content-limited; indirect neighbors stay frozen,
+// acceptance 1.5), appending each change to the variant log. A star with no embedding
+// yet (extract/embed still pending) has no PE basis, so reshaping is skipped — the
+// recall is then the plain re-ignition of spec 11. In MVP the recall context IS the
+// star's own embedding (no stored consolidation snapshot), so pe is structurally 0 and
+// the gate keeps this a no-op in production; the helpers are exercised by unit tests
+// and the demo simulates novelty (T-체험).
+func (s *Service) reconsolidate(ctx context.Context, userID, memoryID string) error {
+	rc, err := s.repo.GetReshapeContext(ctx, userID, memoryID)
+	if errors.Is(err, ErrNotFound) {
+		return nil // no star+embedding → nothing to reshape (spec 11 re-ignition only)
+	}
+	if err != nil {
+		return err
+	}
+	// PE gate. MVP: both embeddings are the star's own (no stored snapshot), so cos=1
+	// and pe=0 (acceptance 1.1). A future recall-context / gist embedding feeds the
+	// same gate without changing it. A degenerate (empty/zero-norm) embedding can't
+	// measure novelty → pe 0 (no reshape), NOT pe 1 — cosineSim returns 0 for a
+	// zero-norm vector, and "can't compare" must read as "no novelty".
+	pe := peGate(rc.RecallEmbedding, rc.ConsolidatedEmbedding)
+	if pe < peThreshold {
+		return nil // novelty 없음 → 단순 재점화만(spec 11과 동일)
+	}
+	ageDays := time.Since(rc.CreatedAt).Hours() / 24
+	magnitude := reshapeStep(pe, strengthOf(rc.CoRecall, ageDays))
+	// Direction comes from the RECALLED star (acceptance 1.2). Direct neighbors are
+	// pulled along in the SAME direction — "this memory re-shaped its neighbors with
+	// it" — rather than each drifting by its own id parity.
+	dir := directionFor(memoryID, rc.State.Version)
+
+	// The recalled star: full-size step.
+	if err := s.applyAndLog(ctx, userID, memoryID, rc.State, pe, magnitude, dir, 1.0); err != nil {
+		return err
+	}
+
+	// Direct neighbors (1-hop): reduced step, each appended too.
+	neighbors, err := s.repo.ListDirectNeighbors(ctx, userID, memoryID)
+	if err != nil {
+		return err
+	}
+	for _, nID := range neighbors {
+		nc, err := s.repo.GetReshapeContext(ctx, userID, nID)
+		if errors.Is(err, ErrNotFound) {
+			continue // a neighbor without an embedding yet — skip, never break the recall
+		}
+		if err != nil {
+			return err
+		}
+		if err := s.applyAndLog(ctx, userID, nID, nc.State, pe, magnitude, dir, neighborFactor); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// applyAndLog reshapes one star (step scaled by factor) and appends the resulting
+// state to the append-only variant log AS ONE ATOMIC UNIT (repo.ReshapeStar wraps both
+// writes in a transaction) so version and the variant log can never diverge — a crash
+// between the UPDATE and the INSERT would otherwise bump version with no matching row.
+func (s *Service) applyAndLog(ctx context.Context, userID, memoryID string, prev ReshapeState, pe, magnitude float64, dir int, factor float64) error {
+	next := reshapeState(prev, magnitude, dir, factor)
+	return s.repo.ReshapeStar(ctx, userID, memoryID, next, EvolutionSnapshot{
+		Version:       next.Version,
+		Brightness:    next.BrightnessOffset,
+		HueShift:      next.HueShift,
+		FormSeedDelta: next.FormSeedDelta,
+		Trigger:       "recall",
+		PE:            pe,
+		Dir:           dir,
+	})
+}
+
+// GetEvolutionHistory returns a star's append-only variant log, version ascending
+// (spec 23; the timelapse UI is spec 24). user_id isolation is enforced in the query.
+func (s *Service) GetEvolutionHistory(ctx context.Context, userID, memoryID string) ([]EvolutionSnapshot, error) {
+	return s.repo.GetEvolutionHistory(ctx, userID, memoryID)
 }

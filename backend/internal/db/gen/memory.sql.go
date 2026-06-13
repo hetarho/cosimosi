@@ -9,7 +9,72 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
+
+const appendEvolution = `-- name: AppendEvolution :exec
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+`
+
+type AppendEvolutionParams struct {
+	ID            string  `json:"id"`
+	MemoryID      string  `json:"memory_id"`
+	UserID        string  `json:"user_id"`
+	Version       int32   `json:"version"`
+	Brightness    float32 `json:"brightness"`
+	HueShift      float32 `json:"hue_shift"`
+	FormSeedDelta float32 `json:"form_seed_delta"`
+	Trigger       string  `json:"trigger"`
+	Pe            float32 `json:"pe"`
+	Dir           int32   `json:"dir"`
+}
+
+// One append-only variant row (spec 23): INSERT only — never UPDATE/DELETE an
+// existing evolution_history row (constitution §1·§2).
+func (q *Queries) AppendEvolution(ctx context.Context, arg AppendEvolutionParams) error {
+	_, err := q.db.Exec(ctx, appendEvolution,
+		arg.ID,
+		arg.MemoryID,
+		arg.UserID,
+		arg.Version,
+		arg.Brightness,
+		arg.HueShift,
+		arg.FormSeedDelta,
+		arg.Trigger,
+		arg.Pe,
+		arg.Dir,
+	)
+	return err
+}
+
+const applyReshape = `-- name: ApplyReshape :exec
+UPDATE memories
+SET brightness_offset = $1, hue_shift = $2,
+    form_seed_delta = $3, version = version + 1
+WHERE id = $4 AND user_id = $5
+`
+
+type ApplyReshapeParams struct {
+	BrightnessOffset float32 `json:"brightness_offset"`
+	HueShift         float32 `json:"hue_shift"`
+	FormSeedDelta    float32 `json:"form_seed_delta"`
+	ID               string  `json:"id"`
+	UserID           string  `json:"user_id"`
+}
+
+// Reshape one mutable star (spec 23): only memories changes, version++ — the
+// original record is NEVER touched (constitution §1, grep: no UPDATE records).
+func (q *Queries) ApplyReshape(ctx context.Context, arg ApplyReshapeParams) error {
+	_, err := q.db.Exec(ctx, applyReshape,
+		arg.BrightnessOffset,
+		arg.HueShift,
+		arg.FormSeedDelta,
+		arg.ID,
+		arg.UserID,
+	)
+	return err
+}
 
 const findRecordByIdempotencyKey = `-- name: FindRecordByIdempotencyKey :one
 
@@ -36,6 +101,57 @@ func (q *Queries) FindRecordByIdempotencyKey(ctx context.Context, arg FindRecord
 	var id string
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getEvolutionHistory = `-- name: GetEvolutionHistory :many
+SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at
+FROM evolution_history WHERE memory_id = $1 AND user_id = $2 ORDER BY version ASC
+`
+
+type GetEvolutionHistoryParams struct {
+	MemoryID string `json:"memory_id"`
+	UserID   string `json:"user_id"`
+}
+
+type GetEvolutionHistoryRow struct {
+	Version       int32              `json:"version"`
+	Brightness    float32            `json:"brightness"`
+	HueShift      float32            `json:"hue_shift"`
+	FormSeedDelta float32            `json:"form_seed_delta"`
+	Trigger       string             `json:"trigger"`
+	Pe            float32            `json:"pe"`
+	Dir           int32              `json:"dir"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+// A star's variant log, version ascending (spec 23; UI is spec 24). user_id = isolation.
+func (q *Queries) GetEvolutionHistory(ctx context.Context, arg GetEvolutionHistoryParams) ([]GetEvolutionHistoryRow, error) {
+	rows, err := q.db.Query(ctx, getEvolutionHistory, arg.MemoryID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetEvolutionHistoryRow
+	for rows.Next() {
+		var i GetEvolutionHistoryRow
+		if err := rows.Scan(
+			&i.Version,
+			&i.Brightness,
+			&i.HueShift,
+			&i.FormSeedDelta,
+			&i.Trigger,
+			&i.Pe,
+			&i.Dir,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getMemoryForEmbed = `-- name: GetMemoryForEmbed :one
@@ -128,6 +244,50 @@ func (q *Queries) GetRecordForExtract(ctx context.Context, id string) (GetRecord
 	return i, err
 }
 
+const getReshapeContext = `-- name: GetReshapeContext :one
+SELECT m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta,
+       e.embedding,
+       COALESCE((SELECT SUM(ml.co_activation_count) FROM memory_links ml
+                 WHERE (ml.a_id = m.id OR ml.b_id = m.id) AND ml.user_id = m.user_id), 0)::int AS co_recall_total,
+       m.created_at
+FROM memories m JOIN embeddings e ON e.memory_id = m.id
+WHERE m.id = $1 AND m.user_id = $2
+`
+
+type GetReshapeContextParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+type GetReshapeContextRow struct {
+	Version          int32              `json:"version"`
+	BrightnessOffset float32            `json:"brightness_offset"`
+	HueShift         float32            `json:"hue_shift"`
+	FormSeedDelta    float32            `json:"form_seed_delta"`
+	Embedding        *pgvector.Vector   `json:"embedding"`
+	CoRecallTotal    int32              `json:"co_recall_total"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+// PE/strength inputs for one recalled star (spec 23): the cumulative reshaping
+// state + version, the star's embedding (PE = 1-cos(recall_ctx, last_consolidated);
+// embeddings filled by 03/05), the co-recall total (strength = how consolidated),
+// and created_at (age term). Star-only read — never touches the immutable record.
+func (q *Queries) GetReshapeContext(ctx context.Context, arg GetReshapeContextParams) (GetReshapeContextRow, error) {
+	row := q.db.QueryRow(ctx, getReshapeContext, arg.ID, arg.UserID)
+	var i GetReshapeContextRow
+	err := row.Scan(
+		&i.Version,
+		&i.BrightnessOffset,
+		&i.HueShift,
+		&i.FormSeedDelta,
+		&i.Embedding,
+		&i.CoRecallTotal,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertMemory = `-- name: InsertMemory :one
 INSERT INTO memories (id, user_id, record_id, mood, intensity, fragment_index, fragment_text, valence)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -197,8 +357,42 @@ func (q *Queries) InsertRecord(ctx context.Context, arg InsertRecordParams) erro
 	return err
 }
 
+const listDirectNeighbors = `-- name: ListDirectNeighbors :many
+SELECT (CASE WHEN ml.a_id = $1 THEN ml.b_id ELSE ml.a_id END)::text AS neighbor_id
+FROM memory_links ml
+WHERE ml.user_id = $2 AND (ml.a_id = $1 OR ml.b_id = $1)
+`
+
+type ListDirectNeighborsParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+// 1-hop direct neighbors over memory_links (spec 23, content-limited scope): only
+// the recalled star + these are reshaped; indirect neighbors stay untouched.
+func (q *Queries) ListDirectNeighbors(ctx context.Context, arg ListDirectNeighborsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listDirectNeighbors, arg.ID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var neighbor_id string
+		if err := rows.Scan(&neighbor_id); err != nil {
+			return nil, err
+		}
+		items = append(items, neighbor_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDormant = `-- name: ListDormant :many
-SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
 FROM memories m
 WHERE m.user_id = $1
   AND m.last_recalled_at < $2::timestamptz
@@ -211,11 +405,15 @@ type ListDormantParams struct {
 }
 
 type ListDormantRow struct {
-	MemoryID       string             `json:"memory_id"`
-	Mood           *string            `json:"mood"`
-	Intensity      *float32           `json:"intensity"`
-	Valence        *float32           `json:"valence"`
-	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+	MemoryID         string             `json:"memory_id"`
+	Mood             *string            `json:"mood"`
+	Intensity        *float32           `json:"intensity"`
+	Valence          *float32           `json:"valence"`
+	LastRecalledAt   pgtype.Timestamptz `json:"last_recalled_at"`
+	BrightnessOffset float32            `json:"brightness_offset"`
+	HueShift         float32            `json:"hue_shift"`
+	FormSeedDelta    float32            `json:"form_seed_delta"`
+	Version          int32              `json:"version"`
 }
 
 // Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
@@ -225,7 +423,7 @@ type ListDormantRow struct {
 // dormancy threshold into `cutoff`. mood/intensity/valence are the fragment's own
 // (memories, spec 21; no body sent — the dormant list renders Star; the original is
 // fetched on recall, spec 11). Same column shape as ListMemoriesByUser so it maps to
-// the same domain Memory.
+// the same domain Memory (reshaping state included, spec 23).
 func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]ListDormantRow, error) {
 	rows, err := q.db.Query(ctx, listDormant, arg.UserID, arg.Cutoff)
 	if err != nil {
@@ -241,6 +439,10 @@ func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]Lis
 			&i.Intensity,
 			&i.Valence,
 			&i.LastRecalledAt,
+			&i.BrightnessOffset,
+			&i.HueShift,
+			&i.FormSeedDelta,
+			&i.Version,
 		); err != nil {
 			return nil, err
 		}
@@ -291,23 +493,28 @@ func (q *Queries) ListLastRecalled(ctx context.Context, arg ListLastRecalledPara
 }
 
 const listMemoriesByUser = `-- name: ListMemoriesByUser :many
-SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at
+SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
 FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index
 `
 
 type ListMemoriesByUserRow struct {
-	MemoryID       string             `json:"memory_id"`
-	Mood           *string            `json:"mood"`
-	Intensity      *float32           `json:"intensity"`
-	Valence        *float32           `json:"valence"`
-	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+	MemoryID         string             `json:"memory_id"`
+	Mood             *string            `json:"mood"`
+	Intensity        *float32           `json:"intensity"`
+	Valence          *float32           `json:"valence"`
+	LastRecalledAt   pgtype.Timestamptz `json:"last_recalled_at"`
+	BrightnessOffset float32            `json:"brightness_offset"`
+	HueShift         float32            `json:"hue_shift"`
+	FormSeedDelta    float32            `json:"form_seed_delta"`
+	Version          int32              `json:"version"`
 }
 
 // Every star for the user, dormant included (no brightness filter — constitution
 // §2). mood/intensity/valence are the FRAGMENT's own (memories, spec 21) — no
-// records JOIN anymore.
+// records JOIN anymore. The reshaping state (spec 23) rides the same row.
 func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]ListMemoriesByUserRow, error) {
 	rows, err := q.db.Query(ctx, listMemoriesByUser, userID)
 	if err != nil {
@@ -323,6 +530,10 @@ func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]List
 			&i.Intensity,
 			&i.Valence,
 			&i.LastRecalledAt,
+			&i.BrightnessOffset,
+			&i.HueShift,
+			&i.FormSeedDelta,
+			&i.Version,
 		); err != nil {
 			return nil, err
 		}

@@ -40,4 +40,23 @@ type Repository interface {
 	// GetRecord reads the immutable original (records JOIN) for the recall panel;
 	// returns ErrNotFound when the (user, memory) pair is absent.
 	GetRecord(ctx context.Context, userID, memoryID string) (Record, error)
+
+	// GetReshapeContext reads the PE/strength input for a reconsolidation step
+	// (spec 23): the star's current reshaping state, embedding, co-recall total and
+	// age. Returns ErrNotFound when the (user, memory) pair has no star+embedding.
+	GetReshapeContext(ctx context.Context, userID, memoryID string) (ReshapeContext, error)
+
+	// ListDirectNeighbors returns the 1-hop neighbor ids over memory_links (spec 23,
+	// content-limited reshaping scope). Empty when the star is isolated.
+	ListDirectNeighbors(ctx context.Context, userID, memoryID string) ([]string, error)
+
+	// ReshapeStar applies the new cumulative reshaping state (version++) AND appends one
+	// variant row to the append-only log IN ONE TRANSACTION, so version and the log can
+	// never diverge. Only the mutable star + the append-only log change; the original
+	// record is never touched (constitution §1·§2). The evolution id is server-generated.
+	ReshapeStar(ctx context.Context, userID, memoryID string, st ReshapeState, snap EvolutionSnapshot) error
+
+	// GetEvolutionHistory reads a star's variant log, version ascending (spec 23; UI
+	// is spec 24).
+	GetEvolutionHistory(ctx context.Context, userID, memoryID string) ([]EvolutionSnapshot, error)
 }

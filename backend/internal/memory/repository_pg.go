@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pgvector/pgvector-go"
 
 	"github.com/cosimosi/backend/internal/db/fragment"
 	"github.com/cosimosi/backend/internal/db/gen"
@@ -136,11 +137,15 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 	out := make([]Memory, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, Memory{
-			ID:             row.MemoryID,
-			Mood:           moodFromDB(row.Mood),
-			Intensity:      intensityFromDB(row.Intensity),
-			Valence:        valenceFromDB(row.Valence),
-			LastRecalledAt: timeFromDB(row.LastRecalledAt),
+			ID:               row.MemoryID,
+			Mood:             moodFromDB(row.Mood),
+			Intensity:        intensityFromDB(row.Intensity),
+			Valence:          valenceFromDB(row.Valence),
+			LastRecalledAt:   timeFromDB(row.LastRecalledAt),
+			BrightnessOffset: float64(row.BrightnessOffset),
+			HueShift:         float64(row.HueShift),
+			FormSeedDelta:    float64(row.FormSeedDelta),
+			Version:          int(row.Version),
 		})
 	}
 	return out, nil
@@ -159,11 +164,15 @@ func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff ti
 	out := make([]Memory, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, Memory{
-			ID:             row.MemoryID,
-			Mood:           moodFromDB(row.Mood),
-			Intensity:      intensityFromDB(row.Intensity),
-			Valence:        valenceFromDB(row.Valence),
-			LastRecalledAt: timeFromDB(row.LastRecalledAt),
+			ID:               row.MemoryID,
+			Mood:             moodFromDB(row.Mood),
+			Intensity:        intensityFromDB(row.Intensity),
+			Valence:          valenceFromDB(row.Valence),
+			LastRecalledAt:   timeFromDB(row.LastRecalledAt),
+			BrightnessOffset: float64(row.BrightnessOffset),
+			HueShift:         float64(row.HueShift),
+			FormSeedDelta:    float64(row.FormSeedDelta),
+			Version:          int(row.Version),
 		})
 	}
 	return out, nil
@@ -198,6 +207,130 @@ func (r *pgRepository) GetRecord(ctx context.Context, userID, memoryID string) (
 		Intensity: intensityFromDB(row.Intensity),
 		CreatedAt: row.CreatedAt.Time,
 	}, nil
+}
+
+// GetReshapeContext reads the PE/strength input for one recalled star (spec 23).
+// ErrNotFound when the star+embedding pair is absent (a star with no embedding yet —
+// extract/embed still pending — has no PE basis, so reshaping is simply skipped).
+func (r *pgRepository) GetReshapeContext(ctx context.Context, userID, memoryID string) (ReshapeContext, error) {
+	row, err := gen.New(r.pool).GetReshapeContext(ctx, gen.GetReshapeContextParams{
+		ID: memoryID, UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ReshapeContext{}, ErrNotFound
+	}
+	if err != nil {
+		return ReshapeContext{}, fmt.Errorf("get reshape context: %w", err)
+	}
+	// No consolidation snapshot exists yet (no column), so both embeddings are the
+	// star's own — cos=1, pe=0 (acceptance 1.1). The seam lets a future snapshot feed
+	// a real prediction error without changing the service gate.
+	emb := embeddingToDomain(row.Embedding)
+	return ReshapeContext{
+		State: ReshapeState{
+			BrightnessOffset: float64(row.BrightnessOffset),
+			HueShift:         float64(row.HueShift),
+			FormSeedDelta:    float64(row.FormSeedDelta),
+			Version:          int(row.Version),
+		},
+		RecallEmbedding:       emb,
+		ConsolidatedEmbedding: emb,
+		CoRecall:              int(row.CoRecallTotal),
+		CreatedAt:             row.CreatedAt.Time,
+	}, nil
+}
+
+// ListDirectNeighbors returns the 1-hop neighbor ids over memory_links (spec 23).
+func (r *pgRepository) ListDirectNeighbors(ctx context.Context, userID, memoryID string) ([]string, error) {
+	ids, err := gen.New(r.pool).ListDirectNeighbors(ctx, gen.ListDirectNeighborsParams{
+		ID: memoryID, UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list direct neighbors: %w", err)
+	}
+	return ids, nil
+}
+
+// ReshapeStar applies the new reshaping state (version++) and appends the variant row
+// IN ONE TRANSACTION — a crash between the two would otherwise bump version on memories
+// with no matching evolution_history row (the append-only log would drift from version).
+// Only the mutable star + the log change; the record is never touched (constitution §1).
+func (r *pgRepository) ReshapeStar(ctx context.Context, userID, memoryID string, st ReshapeState, snap EvolutionSnapshot) error {
+	evoID, err := newID()
+	if err != nil {
+		return err
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin reshape tx: %w", err)
+	}
+	defer tx.Rollback(ctx) // no-op once committed
+	q := gen.New(tx)
+	if err := q.ApplyReshape(ctx, gen.ApplyReshapeParams{
+		ID:               memoryID,
+		UserID:           userID,
+		BrightnessOffset: float32(st.BrightnessOffset),
+		HueShift:         float32(st.HueShift),
+		FormSeedDelta:    float32(st.FormSeedDelta),
+	}); err != nil {
+		return fmt.Errorf("apply reshape: %w", err)
+	}
+	if err := q.AppendEvolution(ctx, gen.AppendEvolutionParams{
+		ID:            evoID,
+		MemoryID:      memoryID,
+		UserID:        userID,
+		Version:       int32(snap.Version),
+		Brightness:    float32(snap.Brightness),
+		HueShift:      float32(snap.HueShift),
+		FormSeedDelta: float32(snap.FormSeedDelta),
+		Trigger:       snap.Trigger,
+		Pe:            float32(snap.PE),
+		Dir:           int32(snap.Dir),
+	}); err != nil {
+		return fmt.Errorf("append evolution: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit reshape: %w", err)
+	}
+	return nil
+}
+
+// GetEvolutionHistory reads a star's variant log, version ascending (spec 23).
+func (r *pgRepository) GetEvolutionHistory(ctx context.Context, userID, memoryID string) ([]EvolutionSnapshot, error) {
+	rows, err := gen.New(r.pool).GetEvolutionHistory(ctx, gen.GetEvolutionHistoryParams{
+		MemoryID: memoryID, UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get evolution history: %w", err)
+	}
+	out := make([]EvolutionSnapshot, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, EvolutionSnapshot{
+			Version:       int(row.Version),
+			Brightness:    float64(row.Brightness),
+			HueShift:      float64(row.HueShift),
+			FormSeedDelta: float64(row.FormSeedDelta),
+			Trigger:       row.Trigger,
+			PE:            float64(row.Pe),
+			Dir:           int(row.Dir),
+			CreatedAt:     row.CreatedAt.Time,
+		})
+	}
+	return out, nil
+}
+
+// embeddingToDomain flattens a pgvector column into the pure-domain []float64 the
+// PE cosine uses; nil/absent vector → nil (cosineSim then yields pe 0).
+func embeddingToDomain(v *pgvector.Vector) []float64 {
+	if v == nil {
+		return nil
+	}
+	src := v.Slice()
+	out := make([]float64, len(src))
+	for i, f := range src {
+		out[i] = float64(f)
+	}
+	return out
 }
 
 // newID is the server-authoritative id source: clients never supply ids

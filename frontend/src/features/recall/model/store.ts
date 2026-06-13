@@ -4,7 +4,7 @@
 // setTimeout + crypto are RN-safe globals; the beforeunload flush lives in the UI.
 import { create } from 'zustand'
 import { capture, EVENTS } from '@/shared/lib'
-import { isDemoMode } from '@/shared/lib/demo'
+import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import { useSynapseStore } from '@/entities/synapse'
 import { reinforceLinks } from '../api/recall'
 import {
@@ -49,7 +49,8 @@ export const useRecallStore = create<RecallState>((set, get) => ({
   recordActiveView: (id) => {
     const session = get().session
     const prev = session.lastViewedId
-    onActiveView(session, id)
+    // 가상 시계(spec 19)를 넘겨 간격 효과(spec 23)가 데모 "하루 지나기"에도 반응하게 한다.
+    onActiveView(session, id, virtualNowMs())
     // 데모 헵 미리보기(spec 19): 페어가 확정되는 즉시 그 엣지의 weight를 로컬로 올려
     // 굵어짐이 바로 보이게 한다(상한 1.0, 없던 페어는 co_recall 생성). 영속은 그대로
     // flush 경로 소유 — 데모에선 reinforceLinks가 no-op이라 서버 쓰기가 없다(11 불변).

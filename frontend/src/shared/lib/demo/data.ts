@@ -16,6 +16,7 @@ import {
   type Star,
   type Synapse,
 } from '@/shared/api'
+import { mulberry32 } from '../prng'
 import { virtualNowMs, resetDemoClock } from './clock'
 
 const DAY_MS = 86_400_000
@@ -275,11 +276,16 @@ function dateFrom(now: number, daysAgo: number): string {
 }
 
 function toStar(now: number, e: DemoEntry): Star {
+  const r = reshapeState.get(e.id)
   return create(StarSchema, {
     memoryId: e.id,
     mood: e.mood,
     intensity: e.intensity,
     lastRecalledAt: isoFrom(now, e.daysAgo),
+    brightnessOffset: r?.brightnessOffset ?? 0,
+    hueShift: r?.hueShift ?? 0,
+    formSeedDelta: r?.formSeedDelta ?? 0,
+    version: r?.version ?? 0,
   })
 }
 
@@ -301,6 +307,28 @@ let baseSynapses: Synapse[] = []
 const records = new Map<string, RecordMsg>() // base + 체험 중 추가분, recall이 읽는다
 const addedStars: Star[] = [] // 체험 중 추가한 별(라우트 이동에도 유지, 새로고침 시 소멸)
 const addedEdges: Synapse[] = [] // 체험 중 추가한 별의 연결(시냅스 생성 이론 시연, spec 19)
+
+// 재공고화 재성형(spec 23): 별별 누적 재성형 상태 + 회상 시도 횟수(PE 게이트의 결정론 입력) +
+// append-only 변천사. toStar가 상태를 Star에 반영하고, demoReshape가 경계 안에서 누적한다.
+interface DemoReshape {
+  brightnessOffset: number
+  hueShift: number
+  formSeedDelta: number
+  version: number
+}
+/** 한 재성형 시점의 변천사 스냅샷(서버 EvolutionSnapshot의 데모 대응 — UI는 24). */
+export interface EvolutionSnap {
+  version: number
+  brightness: number
+  hueShift: number
+  formSeedDelta: number
+  trigger: string
+  pe: number
+  dir: number
+}
+const reshapeState = new Map<string, DemoReshape>()
+const reshapeAttempts = new Map<string, number>() // memoryId → 회상 시도 누계(변형 여부 무관)
+const evolutionLog = new Map<string, EvolutionSnap[]>() // memoryId → 변천사(version 오름차순)
 
 function ensureSeeded(): void {
   if (seededAt) return
@@ -558,24 +586,105 @@ export function demoToday(): string {
 /** RecallMemory의 재점화(서버 `last_recalled_at=now`)를 데모에서 재현한다(spec 19):
  *  그 별의 lastRecalledAt을 가상 now로 전진. **불변 교체**로 새 Star 객체를 만들어야
  *  쿼리 캐시의 protobuf structural sharing이 변경을 감지한다(제자리 변이는 이전
- *  응답까지 같이 바뀌어 refetch가 no-op이 된다). 원본(records)은 불변(헌법1). */
-export function demoMarkRecalled(memoryId: string): void {
-  ensureSeeded()
-  const nowIso = new Date(virtualNowMs()).toISOString()
-  const renew = (s: Star): Star =>
-    create(StarSchema, {
-      memoryId: s.memoryId,
-      mood: s.mood,
-      intensity: s.intensity,
-      lastRecalledAt: nowIso,
-    })
+ *  응답까지 같이 바뀌어 refetch가 no-op이 된다). 원본(records)은 불변(헌법1).
+ *  누적 재성형 상태(spec 23)는 보존해 교체로 사라지지 않게 한다. */
+function renewStar(s: Star, lastRecalledAt: string): Star {
+  const r = reshapeState.get(s.memoryId)
+  return create(StarSchema, {
+    memoryId: s.memoryId,
+    mood: s.mood,
+    intensity: s.intensity,
+    lastRecalledAt,
+    brightnessOffset: r?.brightnessOffset ?? s.brightnessOffset,
+    hueShift: r?.hueShift ?? s.hueShift,
+    formSeedDelta: r?.formSeedDelta ?? s.formSeedDelta,
+    version: r?.version ?? s.version,
+  })
+}
+
+/** baseStars/addedStars에서 그 별을 불변 교체한다(structural sharing이 변경을 감지하도록). */
+function replaceStar(memoryId: string, next: (s: Star) => Star): void {
   const bi = baseStars.findIndex((s) => s.memoryId === memoryId)
   if (bi >= 0) {
-    baseStars[bi] = renew(baseStars[bi])
+    baseStars[bi] = next(baseStars[bi])
     return
   }
   const ai = addedStars.findIndex((s) => s.memoryId === memoryId)
-  if (ai >= 0) addedStars[ai] = renew(addedStars[ai])
+  if (ai >= 0) addedStars[ai] = next(addedStars[ai])
+}
+
+export function demoMarkRecalled(memoryId: string): void {
+  ensureSeeded()
+  const nowIso = new Date(virtualNowMs()).toISOString()
+  replaceStar(memoryId, (s) => renewStar(s, nowIso))
+}
+
+// 재공고화 재성형 파라미터(spec 23 데모 — 서버 service.go·랜딩 카드와 같은 결).
+const DEMO_PE_THRESHOLD = 0.15
+const HUE_MAX_DEG = 28
+const FORM_DELTA_MAX = 0.6
+const clampDemo = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
+
+/** 회상 거듭될수록(version↑) 별이 굳어 변화폭이 작아진다(강도 의존 — strength↑ ⇒ magnitude↓). */
+function demoStrength(version: number): number {
+  return clampDemo(0.22 * Math.log2(1 + version), 0, 0.85)
+}
+
+/** id → PRNG 시드(FNV-1a 32-bit). seedFromId(entities)의 데모 로컬 판 — shared는 entities를
+ *  import할 수 없으므로(FSD 하향 의존) 여기 둔다. */
+function hashId(id: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+/** RecallMemory의 PE 게이트 재성형(spec 23)을 데모에서 재현한다: 회상이 담은 새 맥락(PE)이
+ *  충분할 때만(>=0.15) 대상 별을 경계 안에서 양방향으로 다시 빚고(밝기·색조·형태), 변천사를
+ *  append하며 별을 불변 교체한다. novelty 없는 회상(PE<0.15)은 무변(변천사도 안 쌓임).
+ *  attempt마다 결정론적 PE를 뽑아 "매 회상 ≠ 변형"을 보인다(서버는 MVP에서 PE 0이라 무변 —
+ *  체험은 novelty를 시뮬레이션해 비전을 보여준다). */
+export function demoReshape(memoryId: string): void {
+  ensureSeeded()
+  const attempt = (reshapeAttempts.get(memoryId) ?? 0) + 1
+  reshapeAttempts.set(memoryId, attempt)
+  // 결정론적 PE: id+attempt 해시 → [0,1).
+  const pe = mulberry32(hashId(memoryId) + attempt * 2654435761)()
+  if (pe < DEMO_PE_THRESHOLD) return // novelty 없음 → 단순 재점화만(변형·변천사 없음)
+
+  const prev = reshapeState.get(memoryId) ?? { brightnessOffset: 0, hueShift: 0, formSeedDelta: 0, version: 0 }
+  const magnitude = (0.1 + 0.12 * pe) * (1 - demoStrength(prev.version)) // strength↑ ⇒ 작아짐
+  const dir = mulberry32(hashId(memoryId) * 2654435761 + attempt)() < 0.5 ? -1 : 1
+  // 게인은 서버 service.go(hueGainDeg=60·formGain=0.5)와 일치시켜 체험 우주가 실서버와
+  // 같은 폭으로 다시 빚어지게 한다(데모는 실 렌더러를 그대로 탄다 — 같은 aHueShift 경로).
+  const next: DemoReshape = {
+    brightnessOffset: clampDemo(prev.brightnessOffset + dir * clampDemo(magnitude, 0.1, 0.22), -1, 1),
+    hueShift: clampDemo(prev.hueShift + dir * magnitude * 60, -HUE_MAX_DEG, HUE_MAX_DEG),
+    formSeedDelta: clampDemo(prev.formSeedDelta + dir * magnitude * 0.5, -FORM_DELTA_MAX, FORM_DELTA_MAX),
+    version: prev.version + 1,
+  }
+  reshapeState.set(memoryId, next)
+  const log = evolutionLog.get(memoryId) ?? []
+  log.push({
+    version: next.version,
+    brightness: next.brightnessOffset,
+    hueShift: next.hueShift,
+    formSeedDelta: next.formSeedDelta,
+    trigger: 'recall',
+    pe,
+    dir,
+  })
+  evolutionLog.set(memoryId, log)
+  // 별을 불변 교체해 우주가 변형된 별을 그린다(lastRecalledAt은 demoMarkRecalled가 따로 전진).
+  const nowIso = new Date(virtualNowMs()).toISOString()
+  replaceStar(memoryId, (s) => renewStar(s, nowIso))
+}
+
+/** GetEvolutionHistory 대체(spec 23 데모): 그 별의 변천사(version 오름차순). UI는 24. */
+export function demoEvolutionHistory(memoryId: string): EvolutionSnap[] {
+  return evolutionLog.get(memoryId) ?? []
 }
 
 /** 체험 종료 시 추가분·가상 시계를 비워 다음 진입을 깨끗하게 한다(base는 다음 ensureSeeded에서 재생성). */
@@ -586,5 +695,8 @@ export function resetDemo(): void {
   addedStars.length = 0
   addedEdges.length = 0
   records.clear()
+  reshapeState.clear()
+  reshapeAttempts.clear()
+  evolutionLog.clear()
   resetDemoClock()
 }

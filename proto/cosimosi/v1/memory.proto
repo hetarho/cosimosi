@@ -89,14 +89,18 @@ message RecordMemoryResponse {
 // Star is the visual input for a star (no body). Brightness = max(a_min,
 // activation) is computed client-side; the server is authoritative only over
 // last_recalled_at.
-// Field numbers 5–11 are RESERVED by later specs (5–8 = 23 reshaping,
-// 9–10 = 28 wayfinding, 11 = 36 resonance — 00.overview 공유 설계 결정);
-// valence therefore takes 12.
+// Field numbers 9–11 are RESERVED by later specs (9–10 = 28 wayfinding,
+// 11 = 36 resonance — 00.overview 공유 설계 결정); 5–8 are the spec 23 reshaping
+// state (mutable star layer); valence therefore takes 12.
 message Star {
   string memory_id = 1;
   Mood mood = 2;
   double intensity = 3;
   string last_recalled_at = 4;
+  double brightness_offset = 5;  // 23: 누적 ±밝기 오프셋(재공고화); client composites onto brightness
+  double hue_shift = 6;          // 23: 감정 기준 색 ±28° 색조(degrees)
+  double form_seed_delta = 7;    // 23: 형태 시드 미세 jitter
+  int32 version = 8;             // 23: 재성형 횟수(=변천사 길이)
   double valence = 12;         // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
 }
 
@@ -137,6 +141,30 @@ message RecallMemoryResponse {
   Record record = 1;
 }
 
+// --- GetEvolutionHistory (append-only 변천사 read; UI is spec 24) ---
+
+// EvolutionSnapshot is one append-only reshaping event of a star: the cumulative
+// reshaping state at that version plus what triggered it. Rows are never updated
+// or deleted (constitution §1·§2); the timelapse UI (spec 24) reads them ascending.
+message EvolutionSnapshot {
+  int32 version = 1;
+  double brightness = 2;          // brightness_offset snapshot at this version
+  double hue_shift = 3;
+  double form_seed_delta = 4;
+  string trigger = 5;             // 'recall' | 'new_neighbor' | 'nightly_gist'(27)
+  double pe = 6;                  // prediction error that opened the soft window
+  int32 dir = 7;                  // +1 강화 / -1 약화
+  string created_at = 8;
+}
+
+message GetEvolutionHistoryRequest {
+  string memory_id = 1;
+}
+
+message GetEvolutionHistoryResponse {
+  repeated EvolutionSnapshot snapshots = 1;  // version ascending
+}
+
 // --- ReinforceLinks (batch upsert) ---
 
 // Reinforcement is accumulated locally on the client, then flushed as a unary
@@ -175,6 +203,9 @@ service MemoryService {
   rpc ReinforceLinks(ReinforceLinksRequest) returns (ReinforceLinksResponse);    // batch upsert
   rpc RecallMemory(RecallMemoryRequest) returns (RecallMemoryResponse);          // reconsolidation
   rpc ListDormant(ListDormantRequest) returns (ListDormantResponse) {            // dormant stars
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetEvolutionHistory(GetEvolutionHistoryRequest) returns (GetEvolutionHistoryResponse) {  // 변천사(24)
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
