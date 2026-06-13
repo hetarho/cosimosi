@@ -74,14 +74,14 @@ const HOT_TAU_MS = 6 * 60 * 60 * 1000
 
 // Self-anchored radial layout (spec 38). Each star's target shell radius = f(strength);
 // the radius is recomputed each frame from the current time so a star glides outward as it
-// fades and inward when recalled. Time decay changes a star's DISTANCE (strength), never its
-// CONNECTIONS — so when only the shells drift we move each node ALONG ITS RADIUS toward the
-// new shell and DON'T reheat the spring sim. Reheating (bumping global alpha) re-energizes
-// every link spring + repulsion at once, which flings well-connected hubs that settled in a
-// strained tug-of-war between their near shell and strong links to faded far neighbours (the
-// "star swings way out and back" bug). The springs only relax on a GRAPH change (the rebuild
-// effect starts a fresh sim at alpha=1); time drift is a pure radial glide.
-const RADIAL_GLIDE = 0.12 // per-frame ease toward the target shell (direction preserved)
+// fades and inward when recalled. `sim.radius` is the SOFT target the sim's radial spring
+// relaxes toward (alongside links + repulsion) — so at settle |p| is a BALANCE, not exactly
+// the shell. To avoid re-relaxing the whole graph every frame, the sim is only re-kicked when
+// some star's target radius drifts past REKICK_THRESHOLD (a recall jump always crosses it;
+// slow time-decay crosses it occasionally → stepwise glide). The whole sim (radial + links +
+// repulsion) relaxes together to a new balance; synapses publish on settle, never mid-relax.
+const REKICK_THRESHOLD = 0.5
+const REKICK_ALPHA = 0.3
 
 /** A memory's target distance from the central self star (spec 38): strength (activation =
  *  recency, 12 + emotional intensity) → radius. Strong/fresh → near centre, faded → outer.
@@ -647,8 +647,13 @@ function LiveLayoutController({
   const loadedEmpty = useMemoryStore((s) => s.loadedEmpty)
   const simRef = useRef<SimState | null>(null)
   const settledRef = useRef(true)
-  const glidingRef = useRef(false) // mid radial glide (time drift) → publish once when it ends
   const readyRef = useRef(false) // fire onReady exactly once
+  // Last graph topology (star ids + edge pairs) the sim was built for — so a stars/edges
+  // array-ref change that DIDN'T change the graph (the demo skip's refreshActivation replaces
+  // both arrays ~12×/tween just to recompute brightness) does NOT rebuild the sim.
+  const topoRef = useRef('')
+  // Reused scratch for the per-frame target radii (avoids a per-frame allocation).
+  const targetScratchRef = useRef<Float32Array>(new Float32Array(0))
   // Memory facts by id (lastRecalledAt + intensity) for the per-frame radius recompute —
   // memoized so it's not rebuilt every frame, only when the star set changes.
   const memoryById = useMemo(
@@ -677,6 +682,7 @@ function LiveLayoutController({
     if (stars.length === 0) {
       simRef.current = null
       positionsRef.current = null
+      topoRef.current = ''
       onLayout(new Map())
       // A genuinely-empty universe has nothing to place — reveal immediately. Otherwise it's
       // "not loaded yet" (initial pending) OR a mid-session reset: re-arm the veil so the next
@@ -688,6 +694,18 @@ function LiveLayoutController({
       }
       return
     }
+    // Rebuild the sim only when the graph TOPOLOGY changes (a star or edge added/removed) —
+    // NOT on every stars/edges array-ref change. The demo time-skip's refreshActivation
+    // replaces both arrays ~12×/tween (SKIP_TICK_MS) just to recompute time-decayed
+    // brightness; without this guard each replacement rebuilt the sim from seed and re-kicked,
+    // producing the star churn + synapse-stretch "chaos" on every skip. Elapsed-time radius
+    // drift is handled by the per-frame re-kick below, so a same-topology refresh keeps the
+    // live sim running smoothly (stars just dim; synapses re-bake at the same coordinates).
+    const topo =
+      stars.map((s) => s.id).join(',') + '|' + edges.map((e) => `${e.aId}~${e.bId}`).join(',')
+    if (topo === topoRef.current && simRef.current) return
+    topoRef.current = topo
+
     const now = virtualNowMs()
     const count = stars.length
 
@@ -762,63 +780,47 @@ function LiveLayoutController({
   useFrame(() => {
     const sim = simRef.current
     if (!sim) return
+
+    // Recompute each star's target radius from the CURRENT time so it glides outward as it
+    // fades / inward when recalled (spec 38 1.3/1.4). `sim.radius` holds the shells the sim
+    // last relaxed to; we compare the fresh targets against THAT (not against last frame's
+    // value) so slow sub-threshold decay ACCUMULATES and eventually crosses the threshold —
+    // otherwise a per-frame overwrite would reset the baseline and the drift would never fire.
+    // When it crosses, apply all targets at once and re-kick the whole sim (radial + links +
+    // repulsion relax together to a new balance); otherwise stay settled. Synapses publish on
+    // settle, so they reconnect at the relaxed coordinates — never mid-relaxation.
     const now = virtualNowMs()
-
-    // (A) Spring-relaxation phase — only after a GRAPH change (the rebuild effect started a
-    // fresh sim at alpha=1): pump the springs until they settle, then publish the emergent
-    // coordinates (filaments reconnect) and reveal. This is where connected stars pull into
-    // constellations; time drift never enters here.
-    if (!isSettled(sim)) {
-      settledRef.current = false
-      positionsRef.current = tick(sim, LAYOUT_TICKS_PER_FRAME)
-      return
+    let targets = targetScratchRef.current
+    if (targets.length !== sim.n) {
+      targets = new Float32Array(sim.n)
+      targetScratchRef.current = targets
     }
-    if (!settledRef.current) {
-      settledRef.current = true
-      const buf = simPositions(sim)
-      positionsRef.current = buf
-      publish(sim, buf)
-      markReady()
-    }
-
-    // (B) Time-drift radial glide (spec 38 1.3/1.4). Each star's shell radius = strength
-    // changes as it fades (outward) or is recalled (inward), but its CONNECTIONS don't — so
-    // ease each node ALONG ITS RADIUS toward the new shell, leaving the spring sim cold. This
-    // avoids reheating the link springs, which would fling a strained hub (the demo-014 swing).
-    // StarField reads positionsRef live every frame (smooth glide); the filament snapshot is
-    // republished once when the glide finishes (same cadence as a settle).
-    const px = sim.px
-    let moved = false
+    let maxDelta = 0
     for (let i = 0; i < sim.n; i++) {
       const mem = memoryById.get(sim.ids[i])
-      const target = mem ? radiusOf(mem, now) : sim.radius[i]
-      sim.radius[i] = target // keep shells current so a later graph re-relax uses them
-      const xi = i * 3
-      const len = Math.hypot(px[xi], px[xi + 1], px[xi + 2])
-      if (len < 1e-3) {
-        if (target > 1e-3) {
-          px[xi] = target // degenerate (at origin) → park on the +x shell, no random kick
-          moved = true
-        }
-        continue
+      const r = mem ? radiusOf(mem, now) : sim.radius[i]
+      targets[i] = r
+      const d = Math.abs(r - sim.radius[i])
+      if (d > maxDelta) maxDelta = d
+    }
+    if (maxDelta > REKICK_THRESHOLD) {
+      sim.radius.set(targets) // commit the new shells (recall pull-in / accumulated decay)
+      if (sim.alpha < REKICK_ALPHA) sim.alpha = REKICK_ALPHA
+      settledRef.current = false
+    }
+
+    if (isSettled(sim)) {
+      if (!settledRef.current) {
+        settledRef.current = true
+        const buf = simPositions(sim)
+        positionsRef.current = buf
+        publish(sim, buf) // filaments reconnect at the emergent coordinates
+        markReady() // first settle → reveal the placed universe (idempotent)
       }
-      const goal = len + (target - len) * RADIAL_GLIDE
-      if (Math.abs(goal - len) < 1e-3) continue // already on its shell
-      const k = goal / len
-      px[xi] *= k
-      px[xi + 1] *= k
-      px[xi + 2] *= k
-      moved = true
+      return
     }
-    if (moved) {
-      positionsRef.current = simPositions(sim) // stars track the glide live
-      glidingRef.current = true
-    } else if (glidingRef.current) {
-      glidingRef.current = false
-      const buf = simPositions(sim)
-      positionsRef.current = buf
-      publish(sim, buf) // glide finished → filaments reconnect at the new shells
-    }
+    settledRef.current = false
+    positionsRef.current = tick(sim, LAYOUT_TICKS_PER_FRAME)
   })
 
   return null
@@ -832,7 +834,13 @@ function LiveLayoutController({
  *  star set, colors, or the published layout change — not on every parent render). The layout
  *  is published at build (seed positions) and again on each settle, so filaments render right
  *  away and then reconnect at the relaxed coordinates once the sim settles (spec 22/38). */
-function UniverseSynapses({ layout }: { layout: LayoutMap }) {
+function UniverseSynapses({
+  layout,
+  positionsRef,
+}: {
+  layout: LayoutMap
+  positionsRef: MutableRefObject<Float32Array | null>
+}) {
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
   const emotionColors = useAppearance((s) => s.emotionColors)
@@ -848,11 +856,29 @@ function UniverseSynapses({ layout }: { layout: LayoutMap }) {
       seedOf: (id: string): number => seedById.get(id) ?? 0,
     }
   }, [stars, emotionColors, layout])
+  // id → live force-sim buffer row (stars order == sim.ids order == buffer order). Lets the
+  // filaments follow the live positions per frame so they don't lag the moving stars (spec 24).
+  const idIndex = useMemo(() => new Map(stars.map((s, i) => [s.id, i] as const)), [stars])
   if (edges.length === 0 || stars.length === 0) return null
   return (
     <>
-      <SynapseFilaments edges={edges} positionOf={positionOf} colorOf={colorOf} seedOf={seedOf} dim={dim} />
-      <SynapseDust edges={edges} positionOf={positionOf} colorOf={colorOf} dim={dim} />
+      <SynapseFilaments
+        edges={edges}
+        positionOf={positionOf}
+        colorOf={colorOf}
+        seedOf={seedOf}
+        positionsRef={positionsRef}
+        idIndex={idIndex}
+        dim={dim}
+      />
+      <SynapseDust
+        edges={edges}
+        positionOf={positionOf}
+        colorOf={colorOf}
+        positionsRef={positionsRef}
+        idIndex={idIndex}
+        dim={dim}
+      />
     </>
   )
 }
@@ -1330,7 +1356,7 @@ export function UniverseCanvas() {
       <group visible={ready}>
         <UniverseDrift>
           <SelfStar selfObject={selfObject} />
-          <UniverseSynapses layout={layout} />
+          <UniverseSynapses layout={layout} positionsRef={positionsRef} />
           <StarField object={object} emotionColors={emotionColors} positionsRef={positionsRef} />
         </UniverseDrift>
       </group>

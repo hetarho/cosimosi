@@ -76,15 +76,37 @@ function alongNoise(t: number, seed: number): number {
   return s * 0.5 + 0.5
 }
 
+/** One edge's vertex span in the merged geometry + the endpoint coords it was BAKED at, so a
+ *  per-frame pass can translate that span to follow the live force-sim positions (spec 24 fix:
+ *  synapses track moving stars instead of lagging until the next settle-publish). */
+interface EdgeRange {
+  aId: string
+  bId: string
+  bakedA: [number, number, number]
+  bakedB: [number, number, number]
+  vStart: number
+  vEnd: number
+}
+
+interface FilamentBuild {
+  geometry: THREE.BufferGeometry
+  edgeRanges: EdgeRange[]
+  /** Pristine baked vertex positions (before any live-follow drift) — the drift baseline. */
+  bakedPositions: Float32Array
+  /** Per-vertex `along` (0→1 down the tube) = uv.x — the lerp weight between endpoint A and B. */
+  alongPerVertex: Float32Array
+}
+
 /** Build ONE merged BufferGeometry of every edge's braided strands, with a per-vertex baked
  *  mood gradient (aColor) + per-edge brightness/opacity/pulse attributes the TSL material
- *  reads, and a CPU-baked along-length radius variation. Returns null if nothing renderable. */
+ *  reads, and a CPU-baked along-length radius variation. Also returns each edge's vertex span
+ *  + baked endpoints for the per-frame live-follow. Returns null if nothing renderable. */
 function buildFilamentGeometry(
   edges: SynapseEdge[],
   positionOf: (id: string) => [number, number, number] | null,
   colorOf: (id: string) => readonly [number, number, number],
   seedOf: (id: string) => number,
-): THREE.BufferGeometry | null {
+): FilamentBuild | null {
   // Keep the strongest edges when over the cap (sort copy — never mutate the store array).
   const list =
     edges.length > MAX_EDGES
@@ -92,6 +114,8 @@ function buildFilamentGeometry(
       : edges
 
   const tubes: THREE.BufferGeometry[] = []
+  const edgeRanges: EdgeRange[] = []
+  let vTotal = 0 // running vertex count → each edge's [vStart, vEnd) span in the merged buffer
   const A = new THREE.Vector3()
   const B = new THREE.Vector3()
   const dir = new THREE.Vector3()
@@ -158,6 +182,7 @@ function buildFilamentGeometry(
     const sA = seedOf(e.aId)
     const sB = seedOf(e.bId)
 
+    const vStartEdge = vTotal // first merged-buffer vertex of this edge's strands
     for (let s = 0; s < strandCount; s++) {
       const phase = (s / strandCount) * Math.PI * 2
       // Helix offset tapered by sin(πt): 0 at both stars (all strands meet the star) and
@@ -217,13 +242,30 @@ function buildFilamentGeometry(
       geo.setAttribute('aPulse', new THREE.BufferAttribute(aPul, 1))
       geo.setAttribute('aWob', new THREE.BufferAttribute(aWob, 2))
       tubes.push(geo) // identical attr layout across all tubes → merge succeeds
+      vTotal += vCount
     }
+    // Record this edge's merged-buffer span + the endpoints it was baked at (live-follow).
+    edgeRanges.push({
+      aId: e.aId,
+      bId: e.bId,
+      bakedA: [A.x, A.y, A.z],
+      bakedB: [B.x, B.y, B.z],
+      vStart: vStartEdge,
+      vEnd: vTotal,
+    })
   }
 
   if (tubes.length === 0) return null
   const merged = BufferGeometryUtils.mergeGeometries(tubes, false)
   tubes.forEach((g) => g.dispose())
-  return merged ?? null // mergeGeometries returns null on an attribute mismatch
+  if (!merged) return null // mergeGeometries returns null on an attribute mismatch
+  // Snapshot the pristine baked positions + per-vertex `along` (uv.x) so the per-frame
+  // live-follow can recompute position = baked + lerp(driftA, driftB, along) cheaply.
+  const bakedPositions = (merged.attributes.position.array as Float32Array).slice()
+  const uvArr = merged.attributes.uv.array as Float32Array
+  const alongPerVertex = new Float32Array(merged.attributes.position.count)
+  for (let v = 0; v < alongPerVertex.length; v++) alongPerVertex[v] = uvArr[v * 2]
+  return { geometry: merged, edgeRanges, bakedPositions, alongPerVertex }
 }
 
 export interface SynapseFilamentsProps {
@@ -234,16 +276,23 @@ export interface SynapseFilamentsProps {
   colorOf: (id: string) => readonly [number, number, number]
   /** Star wobble seed lookup (0..1) — 끝점이 StarField의 부유를 그대로 따라가게 한다. */
   seedOf: (id: string) => number
+  /** Live force-sim positions buffer (same one StarField reads). When present, the filament
+   *  endpoints FOLLOW it every frame so synapses don't lag behind moving stars during a
+   *  re-kick relaxation (spec 24). idIndex maps a star id → its row in the buffer. */
+  positionsRef?: { readonly current: Float32Array | null }
+  idIndex?: Map<string, number>
   /** Global dim multiplier (0..1): 1 normally, <1 to fade the whole web while a star is focused. */
   dim?: number
 }
 
-export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, dim = 1 }: SynapseFilamentsProps) {
-  // Built once; rebuilt only when the edge set or the lookups change (all stable from the
-  // parent's useMemo). No per-frame CPU work — the shader does all motion via uTime.
+export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positionsRef, idIndex, dim = 1 }: SynapseFilamentsProps) {
+  // Geometry is baked from the published layout snapshot; rebuilt only when the edge set or
+  // lookups change. Per frame the endpoints are TRANSLATED to follow the live force-sim
+  // buffer (live-follow below) so synapses track moving stars without a geometry rebuild.
   const built = useMemo(() => {
-    const geometry = buildFilamentGeometry(edges, positionOf, colorOf, seedOf)
-    if (!geometry) return null
+    const fb = buildFilamentGeometry(edges, positionOf, colorOf, seedOf)
+    if (!fb) return null
+    const geometry = fb.geometry
 
     const material = new MeshBasicNodeMaterial()
     // attribute()'s TS type doesn't carry its value type → wrap in vec3()/float() (the
@@ -344,7 +393,16 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, dim = 1 }
     // Baked bounds are computed from the merged buffer; the bundle spans the universe, so
     // skip culling (same rationale as SynapseLines / StarField).
     mesh.frustumCulled = false
-    return { mesh, geometry, material, uTime, uDim }
+    return {
+      mesh,
+      geometry,
+      material,
+      uTime,
+      uDim,
+      edgeRanges: fb.edgeRanges,
+      bakedPositions: fb.bakedPositions,
+      alongPerVertex: fb.alongPerVertex,
+    }
   }, [edges, positionOf, colorOf, seedOf])
 
   // Hold the time uniform in a ref so the per-frame write targets a mutable ref (exempt
@@ -352,25 +410,83 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, dim = 1 }
   // same escape hatch SynapseLines uses for its per-frame buffer writes.
   const uTimeRef = useRef<{ value: number } | null>(null)
   const uDimRef = useRef<{ value: number } | null>(null)
+  // Live-follow handle held in a ref (the same escape hatch the uniforms use) so the per-frame
+  // writes don't mutate the useMemo return directly (react-compiler immutability rule).
+  const followRef = useRef<{
+    geometry: THREE.BufferGeometry
+    edgeRanges: EdgeRange[]
+    bakedPositions: Float32Array
+    alongPerVertex: Float32Array
+  } | null>(null)
   useEffect(() => {
     if (!built) return
     uTimeRef.current = built.uTime
     uDimRef.current = built.uDim
+    followRef.current = {
+      geometry: built.geometry,
+      edgeRanges: built.edgeRanges,
+      bakedPositions: built.bakedPositions,
+      alongPerVertex: built.alongPerVertex,
+    }
     return () => {
       uTimeRef.current = null
       uDimRef.current = null
+      followRef.current = null
       built.geometry.dispose()
       built.material.dispose()
     }
   }, [built])
 
-  // One float write per frame (no React state, no geometry rebuild).
+  // Per-frame: bump the animation/dim uniforms, then make the filament endpoints FOLLOW the
+  // live force-sim buffer (spec 24). The geometry was baked at the layout snapshot; while the
+  // sim relaxes, stars move in the live buffer ahead of the next settle-publish, so without
+  // this the filaments lag at their baked endpoints and snap on settle. We translate each
+  // edge's vertex span by lerp(driftA, driftB, along) where drift = live − baked — the same
+  // endpoint-interpolation the wobble path uses — so tubes track their stars with NO rebuild.
+  // Skipped entirely when nothing drifted (settled) so it costs nothing at rest.
+  const DRIFT_EPS = 1e-3
   useFrame((state) => {
     const u = uTimeRef.current
     if (u) u.value = state.clock.elapsedTime
     // Focus spotlight: push the latest dim into the shared uniform (through the ref — no rebuild).
     const d = uDimRef.current
     if (d) d.value = dim
+
+    const b = followRef.current
+    const buf = positionsRef?.current
+    if (!b || !buf || !idIndex) return
+    const pos = b.geometry.attributes.position.array as Float32Array
+    const baked = b.bakedPositions
+    const along = b.alongPerVertex
+    let moved = false
+    for (const e of b.edgeRanges) {
+      const ia = idIndex.get(e.aId)
+      const ib = idIndex.get(e.bId)
+      if (ia == null || ib == null) continue
+      if (buf.length < (ia + 1) * 3 || buf.length < (ib + 1) * 3) continue
+      const dax = buf[ia * 3] - e.bakedA[0]
+      const day = buf[ia * 3 + 1] - e.bakedA[1]
+      const daz = buf[ia * 3 + 2] - e.bakedA[2]
+      const dbx = buf[ib * 3] - e.bakedB[0]
+      const dby = buf[ib * 3 + 1] - e.bakedB[1]
+      const dbz = buf[ib * 3 + 2] - e.bakedB[2]
+      // Skip this edge if neither endpoint drifted meaningfully (settled → baked == live).
+      if (
+        Math.abs(dax) < DRIFT_EPS && Math.abs(day) < DRIFT_EPS && Math.abs(daz) < DRIFT_EPS &&
+        Math.abs(dbx) < DRIFT_EPS && Math.abs(dby) < DRIFT_EPS && Math.abs(dbz) < DRIFT_EPS
+      ) {
+        continue
+      }
+      for (let v = e.vStart; v < e.vEnd; v++) {
+        const t = along[v]
+        const i3 = v * 3
+        pos[i3] = baked[i3] + dax + (dbx - dax) * t
+        pos[i3 + 1] = baked[i3 + 1] + day + (dby - day) * t
+        pos[i3 + 2] = baked[i3 + 2] + daz + (dbz - daz) * t
+      }
+      moved = true
+    }
+    if (moved) b.geometry.attributes.position.needsUpdate = true
   })
 
   if (!built) return null
