@@ -3,8 +3,8 @@
 // neighbor selects it → MemoryPanel re-dwells → that ≥2s view pairs with this one
 // (co-recall, 1.3). Weight drives a width hint (thicker = stronger link).
 //
-// Selection-only: the canvas exposes no camera-target mechanism (useCameraMode only
-// toggles nebula/recall), so there is no fly-to on click.
+// Selection-only: clicking a neighbor sends focus.SELECT_STAR (gaze-locks onto it in place,
+// no fly-to). Fly-to is reserved for the dormant-star pick (nav.FLY_TO_STAR). (spec 39)
 import { useMemo } from 'react'
 import { useSelector } from '@xstate/react'
 import { neighborsOf, useSynapseStore } from '@/entities/synapse'

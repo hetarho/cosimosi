@@ -1,4 +1,4 @@
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useSelector } from '@xstate/react'
 import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
@@ -7,7 +7,13 @@ import { errorMessage, reportUniverseData } from '@/shared/lib'
 import { isDemoMode } from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
 import { Backdrop, MorningDiffNote, OverlayHost, primaryButtonCls } from '@/shared/ui'
-import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
+import {
+  UniverseCanvas,
+  UniverseGrain,
+  navigationActor,
+  selectHeadingMode,
+  useViewport,
+} from '@/widgets/universe-canvas'
 import { DemoSimPanel } from '@/widgets/demo-sim'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
@@ -121,8 +127,13 @@ function isTypingTarget() {
  *  NavController (inside the canvas) applies them each frame (x/y rotate the look, z
  *  thrusts forward/back). Hidden in nebula mode (there you zoom/orbit freely). */
 function NavPad() {
-  const mode = useCameraMode((s) => s.mode)
-  const setMove = useCameraMode((s) => s.setMove)
+  const mode = useSelector(navigationActor, selectHeadingMode)
+  // D-pad 입력 → 항행 머신 SET_MOVE(부분 병합). 안정 참조(useCallback)로 아래 effect 의존성 안전.
+  const setMove = useCallback(
+    (m: Partial<{ x: number; y: number; z: number }>) =>
+      navigationActor.send({ type: 'SET_MOVE', move: m }),
+    [],
+  )
   // On mobile the recall panel (bottom sheet) overlaps the bottom-center D-pad — hide the pad
   // there while a star's info is open (desktop keeps it: the pad is left, the panel is right). (focus 머신)
   const infoOpen = useSelector(focusActor, selectIsStarFocus)
@@ -227,8 +238,7 @@ function NavPad() {
 }
 
 export function HomePage() {
-  const mode = useCameraMode((s) => s.mode)
-  const toggle = useCameraMode((s) => s.toggle)
+  const mode = useSelector(navigationActor, selectHeadingMode)
   const starCount = useMemoryStore((s) => s.stars.length)
   // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
@@ -284,10 +294,10 @@ export function HomePage() {
     focusActor.send({ type: 'SELECT_DIARY', recordId })
     setPeek(true)
   }
-  // 잠든 별을 고르면 그 별로 fly-to(12 focusStar) + 시트는 peek로 — 우주를 떠나지 않는다(1.2).
+  // 잠든 별을 고르면 그 별로 fly-to(항행 FLY_TO_STAR) + 시트는 peek로 — 우주를 떠나지 않는다(1.2).
   // 포커스(별)는 fly-to 도착 시 FlyToController가 SELECT_STAR로 연다.
   function focusDormant(memoryId: string) {
-    useCameraMode.getState().focusStar(memoryId)
+    navigationActor.send({ type: 'FLY_TO_STAR', id: memoryId })
     setPeek(true)
   }
   // 패널 닫기 = 포커스 해제(focus DISMISS) + `?panel=` 제거. replace로 history를 더럽히지 않아(닫기
@@ -308,7 +318,7 @@ export function HomePage() {
   const [demoSheetOpen, setDemoSheetOpen] = useState(false)
   // Morning diff (6.1) — live universe only; demo's "밤 보내기" owns its own note.
   const [morningDiff, setMorningDiff] = useState(false)
-  const setSheetOpen = useCameraMode((s) => s.setSheetOpen)
+  const setSheetOpen = useViewport((s) => s.setSheetOpen)
   useEffect(() => {
     // compose는 탐색 오버레이가 열리면 숨으므로(panel != null) view-offset도 그 *실제 표시 여부*를
     // 따라야 한다 — 안 그러면 패널을 열어 둔 채 우주가 위로 밀리고 줌된 상태로 남는다(셸 시트 뒤 오정렬).
@@ -492,7 +502,7 @@ export function HomePage() {
         </button>
         <button
           type="button"
-          onClick={toggle}
+          onClick={() => navigationActor.send({ type: 'TOGGLE_MODE' })}
           className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
         >
           {/* 모바일은 좁은 우상단 폭에 맞춰 짧게(아이콘+한 단어), 데스크톱은 풀 라벨. */}

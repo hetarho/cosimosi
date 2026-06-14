@@ -123,11 +123,13 @@ selectIsStarFocus / selectIsDiaryFocus / selectIsFocused / selectFrameNonce
 
 ---
 
-## 4. Core 2 — 항행 머신 `navigation.machine`
+## 4. Core 2 — 항행 머신 `navigation.machine` ✅(P2 구현됨)
 
 > `widgets/universe-canvas/model/navigation.machine.ts` · **카메라의 "우주비행" FSM.**
 
 `mode` 플래그 + 3개의 useRef 비행 컨트롤러(FlyTo·FrameAll·ModeTransition)와 곳곳에 흩어진 `transitioning` set을 **한 머신**으로.
+
+> **as-built(P2):** 모듈 싱글턴 `navigationActor`(focus와 동형 — 구 use-camera-mode zustand 수명). 이벤트 `TOGGLE_MODE/FLY_TO_STAR/FRAME_DIARY/ARRIVED/SET_MOVE`. context = 이산 타깃(`flyStarId`/`frameRecordId`/`frameSeq`/`transitionTo`) + `move`. D-pad `move`는 press/release 이산 이벤트(`SET_MOVE`)로 context에 두고 NavController가 매 프레임 `getSnapshot`으로 읽는다(60fps 이벤트 아님). 뷰포트 시트 힌트(`sheetOpen`)는 항행이 아니라 HUD라 별도 `use-viewport.ts`(작은 zustand). 비행 도착은 컨트롤러가 `ARRIVED`로 알리고, 비행 컨트롤러(FlyTo·FrameAll)는 `getSnapshot().matches(자기상태)`로 다른 비행이 가져가면 양보한다(단일 카메라 소유 보장). 카메라 *수학*(arcball·flight lerp·shake)은 그대로, 상태 소스만 머신으로 교체.
 
 ```
         ┌──────────────── TOGGLE_MODE ────────────────┐
@@ -160,27 +162,24 @@ selectIsStarFocus / selectIsDiaryFocus / selectIsFocused / selectFrameNonce
 
 ---
 
-## 5. 나브 ↔ 포커스 계약
+## 5. 나브 ↔ 포커스 계약 (as-built)
 
-둘은 상호의존이다(포커스가 비행을 요청하고, 나브의 도착이 포커스를 확정). 순환 ref를 피하는 표준 배선:
+둘은 상호의존이다(포커스가 비행을 요청, 나브의 도착이 포커스를 확정). 둘 다 **모듈 싱글턴 액터**(`focusActor`·`navigationActor`)라 input-ref 순환 문제가 없다 — **얇은 브리지/직접 send**로 잇는다:
 
 ```
-  navigation 액터  ← (1) 먼저 생성 (focus ref 불필요 — 이벤트 반응 + emit만)
-        ▲  │
-        │  │ emit('arrived.star', {id})
-  sendTo│  │
- (FLY_TO_STAR / FRAME_DIARY)        (3) 페이지 한 줄 브리지:
-        │  ▼                            navActor.on('arrived.star',
-  focus 액터  ← (2) navigation ref를 input으로 받아 생성              e => focusActor.send({type:'CONFIRM_STAR', id:e.id}))
+  focus 머신 ── diary 진입(recordId/frameNonce 변화) ──► FocusNavBridge(useEffect)
+                                                          └─► navigationActor.send(FRAME_DIARY) → framingDiary
+  navigation 머신 ── flyingToStar ARRIVED ──► FlyToController
+                                              └─► focusActor.send(SELECT_STAR)  (도착 시 회상 패널)
+  navigation 머신 ── recall 진입 ──► RecallDismissGuard(useEffect)
+                                     └─► focusActor.send(DISMISS) (diary면 — 근접에선 단일 엔그램만)
 ```
 
-1. `navigation` 액터를 **먼저** 만든다 — 어떤 ref도 필요 없다(이벤트에 반응하고 도착을 `emit`만).
-2. `focus` 액터를 **`navigation` ref를 `input`으로** 받아 만든다 → `focus`는 `sendTo(navRef, …)`로 비행을 요청.
-3. 도착 알림은 `navigation`이 `emit({ type: 'arrived.star', id })`, 페이지(`HomePage`)가 `navActor.on('arrived.star', …) → focusActor.send(…)` **한 줄**로 브리지.
+- **포커스 → 나브:** `FocusNavBridge`(widget useEffect)가 포커스 `diary` 진입(또는 같은 일기 재선택 frameNonce↑)을 `navigationActor.send(FRAME_DIARY)`로. 별 fly-to는 dormant 선택이 `navigationActor.send(FLY_TO_STAR)` 직접.
+- **나브 → 포커스:** fly-to 도착 시 `FlyToController`가 `focusActor.send(SELECT_STAR)`(회상 패널), `recall` 진입 시 `RecallDismissGuard`가 diary면 `DISMISS`.
+- 둘 다 모듈 싱글턴이라 per-frame `getSnapshot()`이 빠르고 `resetUniverseData`도 닿는다. 비행 컨트롤러는 `getSnapshot().matches(자기상태)`로 다른 비행이 가져가면 양보(단일 카메라 소유). 라우팅이 더 늘면 부모 `universe` 오케스트레이터로 승격(그 전엔 과설계).
 
-이러면 둘 다 **top-level standalone 액터**라 per-frame `getSnapshot()`이 빠르고(자식 액터 indirection 없음), **순환 ref가 없다**. 라우팅이 더 늘면 부모 `universe` 오케스트레이터가 둘을 `invoke`하고 `sendTo`로 중계하는 형태로 승격한다(그 전엔 과설계).
-
-**캔버스 입력.** `<Canvas onPointerMissed>`(빈 곳 탭)은 `focusActor.send({ type: 'DISMISS' })` **하나만** 보낸다 — 별·일기 해제가 한 곳으로 모인다(현재 `selectedId`·`highlightedRecordId`를 각각 getState로 지우던 코드 대체).
+**캔버스 입력.** `<Canvas onPointerMissed>`(빈 곳 탭)은 `focusActor.send({ type: 'DISMISS' })` **하나만** 보낸다 — 별·일기 해제가 한 곳으로 모인다(구 `selectedId`·`highlightedRecordId`를 각각 getState로 지우던 코드 대체).
 
 ---
 

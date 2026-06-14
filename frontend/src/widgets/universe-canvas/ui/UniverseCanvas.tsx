@@ -56,7 +56,18 @@ import {
 } from '@/shared/lib/force-sim'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
-import { useCameraMode } from '../model/use-camera-mode'
+import {
+  navigationActor,
+  selectIsNebula,
+  selectIsRecall,
+  selectTransitioning,
+  selectFlyStarId,
+  selectFrameRecordId,
+  selectFrameSeq,
+  selectInModeTransition,
+  selectTransitionTo,
+} from '../model/navigation.machine'
+import { useViewport } from '../model/use-viewport'
 import { BloomPass } from './BloomPass'
 
 /** A star's live (or settled) position by `stars`-array slot. The single source of star
@@ -229,17 +240,18 @@ const FOCUS_K = 4 // aim-lerp rate (1/s) — how fast the gaze swings onto a sel
  *     target, and the distance clamps are relaxed so the flight can cross the forbidden zone.
  *  makeDefault so the bloom pass + fly-to + mode transitions share one camera. */
 function CameraRig() {
-  const mode = useCameraMode((s) => s.mode)
-  const transitioning = useCameraMode((s) => s.transitioning)
-  const minDistance = transitioning ? 0.01 : mode === 'nebula' ? OBSERVE_MIN_DIST : 1
-  const maxDistance = transitioning ? 1e6 : mode === 'nebula' ? 1500 : 70
+  // 항행 머신(spec 39). settled nebula/recall은 transitioning 태그가 없으므로 isNebula가 곧 비전환 nebula.
+  const transitioning = useSelector(navigationActor, selectTransitioning)
+  const isNebula = useSelector(navigationActor, selectIsNebula)
+  const minDistance = transitioning ? 0.01 : isNebula ? OBSERVE_MIN_DIST : 1
+  const maxDistance = transitioning ? 1e6 : isNebula ? 1500 : 70
   // OrbitControls' OWN rotate/zoom are never used now (recall = D-pad, nebula = custom orbit);
   // it only provides the shared target + update() solve. Keep them false so no built-in drag can
   // grab any mode.
   // `enabled`: in nebula (non-transition) we turn the whole controller OFF so its per-frame
   // update() can't re-clamp the pole / re-flatten camera.up under the custom orbit. In recall and
   // during ANY transition flight it must stay ON (NavController + the lerps depend on update()).
-  const controlsEnabled = transitioning || mode !== 'nebula'
+  const controlsEnabled = transitioning || !isNebula
   return (
     <OrbitControls
       makeDefault
@@ -274,8 +286,8 @@ function CameraRig() {
  *  A strict no-op outside nebula AND during any guided flight (active = nebula && !transitioning):
  *  there OrbitControls is enabled and owns the camera. Listeners attach to the WebGL canvas. */
 function NebulaOrbitController() {
-  const mode = useCameraMode((s) => s.mode)
-  const transitioning = useCameraMode((s) => s.transitioning)
+  // 항행 머신(spec 39): settled nebula에서만 자유 궤도를 소유(전환/recall/flyingToStar 중엔 비활성).
+  const isNebula = useSelector(navigationActor, selectIsNebula)
   const camera = useThree((s) => s.camera)
   const gl = useThree((s) => s.gl)
   const controls = useThree((s) => s.controls) as
@@ -293,7 +305,7 @@ function NebulaOrbitController() {
   const downXY = useRef({ x: 0, y: 0 }) // its press position — the deadzone origin
   // While a star is selected (focus/spotlight), FocusController owns the aim — stand down. (focus 머신)
   const starFocused = useSelector(focusActor, selectIsStarFocus)
-  const active = mode === 'nebula' && !transitioning && !starFocused
+  const active = isNebula && !starFocused
 
   const right = useRef(new THREE.Vector3())
   const up = useRef(new THREE.Vector3())
@@ -493,11 +505,7 @@ function NebulaOrbitController() {
  *  - Shake: a tiny screen-space rig wobble (same offset on camera+target → heading/radius kept;
  *    reverted next frame so it never drifts). Always on (idle hum), stronger with speed + jolts. */
 function NavController() {
-  const mode = useCameraMode((s) => s.mode)
-  const move = useCameraMode((s) => s.move)
-  const transitioning = useCameraMode((s) => s.transitioning)
-  // A selected star locks the gaze (FocusController) — recall nav stands down until deselected. (focus 머신)
-  const starFocused = useSelector(focusActor, selectIsStarFocus)
+  // 항행·포커스 머신은 매 프레임 getSnapshot으로 읽는다(NavController는 useFrame만 — 구독 불필요).
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -518,9 +526,12 @@ function NavController() {
   const shakeOffset = useRef(new THREE.Vector3()) // last frame's wobble (reverted next frame)
 
   useFrame((_, dt) => {
-    // GATE: bail outside recall and during any guided flight. No nav fights the dive/fly-to, so
-    // those always arrive and clear `transitioning`. Undo any residual shake and reset state.
-    if (mode !== 'recall' || !controls || transitioning || starFocused) {
+    // GATE: settled recall에서만 D-pd 항해(matches('recall')는 transitioning 태그가 없어 fly-to/모드전환
+    // 비행을 자동 제외 — 그 비행들이 항상 도착해 transitioning이 풀린다). 별 포커스 중엔 stand down.
+    const navSnap = navigationActor.getSnapshot()
+    const recall = navSnap.matches('recall')
+    const starFocused = focusActor.getSnapshot().matches('star')
+    if (!recall || !controls || starFocused) {
       if (shakeOffset.current.lengthSq() > 0) {
         camera.position.sub(shakeOffset.current)
         controls?.target.sub(shakeOffset.current)
@@ -541,7 +552,7 @@ function NavController() {
     camera.position.sub(shakeOffset.current)
     controls.target.sub(shakeOffset.current)
 
-    const { x, y, z } = move
+    const { x, y, z } = navSnap.context.move
     let changed = false
 
     // 전진/후진 — ACCELERATION + INERTIA. boost ramps 1→2 while held (resets on release); the
@@ -997,10 +1008,8 @@ function UniverseDrift({ children }: { children: ReactNode }) {
  *  flight survives StrictMode's setup→cleanup→setup (refs persist). Pure useFrame
  *  interpolation — no per-frame React state. */
 function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
-  const focusStarId = useCameraMode((s) => s.focusStarId)
-  const focusStar = useCameraMode((s) => s.focusStar)
-  const setMode = useCameraMode((s) => s.setMode)
-  const setTransitioning = useCameraMode((s) => s.setTransitioning)
+  // 항행 머신이 flyingToStar 상태일 때만 flyStarId가 목표를 준다(spec 39); transitioning 태그가 클램프 완화.
+  const flyStarId = useSelector(navigationActor, selectFlyStarId)
   const stars = useMemoryStore((s) => s.stars)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
@@ -1010,24 +1019,31 @@ function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Floa
   const flyingIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!focusStarId) return
+    if (!flyStarId) return
     // Index by ARRAY position (= the force-sim buffer slot, like StarField + Synapses),
     // not StarNode.index, so the camera lands exactly where the star is rendered. Read the
     // LIVE buffer (fibonacci fallback) — never the static shell, or fly-to misses the star.
-    const idx = stars.findIndex((s) => s.id === focusStarId)
+    const idx = stars.findIndex((s) => s.id === flyStarId)
     if (idx === -1) return // stars not loaded yet — effect re-runs when `stars` arrives
     const [x, y, z] = readBufferPosition(positionsRef.current, idx, stars.length, stars[idx].memory.seed)
     targetRef.current = new THREE.Vector3(x, y, z)
-    flyingIdRef.current = focusStarId
+    flyingIdRef.current = flyStarId
     camera.up.set(0, 1, 0) // re-level: shed any free-look/arcball roll so the dive + recall is upright
-    setMode('recall') // release the nebula zoom clamp for the close-up
-    setTransitioning(true) // relax the orbit + ship-boundary clamps so the flight isn't yanked
-    focusStar(null) // consume the request now → no stale store focus; refs drive the flight
-  }, [focusStarId, stars, setMode, setTransitioning, focusStar, camera, positionsRef])
+    // 모드/전환 플래그는 nav 머신의 flyingToStar 상태(transitioning 태그)가 소유 — 별도 set 불요.
+    // flyStarId는 도착(ARRIVED→recall) 전까지만 non-null이라 stale 재발화가 없다(구 focusStar(null) 소비 대체).
+  }, [flyStarId, stars, camera, positionsRef])
 
   useFrame((_, dt) => {
     const target = targetRef.current
     if (!target) return
+    // 다른 전이(FRAME_DIARY로 framingDiary 전환 등)가 flyingToStar를 가져가면 nav가 그 상태를 떠난다 →
+    // 여기서 양보(FrameAll과 대칭). 안 그러면 FlyTo가 계속 카메라를 끌며 도착 시 stale SELECT_STAR·ARRIVED를
+    // 쏴 일기 조망을 별 선택으로 덮고 엉뚱한 상태로 안착한다. nav를 LIVE(getSnapshot)로 읽는다.
+    if (!navigationActor.getSnapshot().matches('flyingToStar')) {
+      targetRef.current = null
+      flyingIdRef.current = null
+      return
+    }
     // Track the star LIVE while flying: if it's still relaxing (a fresh fragment), re-read its
     // buffer position each frame so the camera follows it to its settled spot instead of a
     // stale capture (and "arrival" is judged against where it actually is).
@@ -1055,7 +1071,7 @@ function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Floa
       if (flyingIdRef.current) focusActor.send({ type: 'SELECT_STAR', id: flyingIdRef.current })
       targetRef.current = null
       flyingIdRef.current = null
-      setTransitioning(false) // restore recall clamps now that we're parked inside the shell
+      navigationActor.send({ type: 'ARRIVED' }) // nav flyingToStar → recall (클램프 복원)
     }
   })
 
@@ -1073,33 +1089,32 @@ function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Floa
  *  The whole-set centroid is recomputed fresh each request (acceptance 1.2). lerp/damp reuses
  *  the 12 fly-to feel (k=1−exp(−dt·4), as ModeTransition). */
 function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
-  // 일기 조망 = focus 머신의 diary 상태(spec 39). recordId가 강조 일기, frameNonce가 단조 증가하는
-  // 프레이밍 요청(구 wayfinding.frameRequest.nonce 대체) — 같은 일기를 다시 골라도 재발화한다.
-  const recordId = useSelector(focusActor, selectHighlightedRecordId)
-  const frameNonce = useSelector(focusActor, selectFrameNonce)
-  const setMode = useCameraMode((s) => s.setMode)
-  const setTransitioning = useCameraMode((s) => s.setTransitioning)
+  // 일기 조망 = 항행 머신의 framingDiary 상태(spec 39). focus→nav 브리지(FocusNavBridge)가 포커스가
+  // 일기로 진입할 때 FRAME_DIARY를 보내 이 상태로 들이고, recordId·frameSeq를 채운다. frameSeq는 단조
+  // 증가(같은 일기 재조망도 재발화 — 구 wayfinding.frameRequest.nonce 대체). transitioning 태그가 클램프 완화.
+  const recordId = useSelector(navigationActor, selectFrameRecordId)
+  const frameSeq = useSelector(navigationActor, selectFrameSeq)
   const stars = useMemoryStore((s) => s.stars)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
     | null
-  const lastNonceRef = useRef(0)
+  const lastSeqRef = useRef(0)
   const posRef = useRef<THREE.Vector3 | null>(null)
   const tgtRef = useRef<THREE.Vector3 | null>(null)
 
   useEffect(() => {
-    if (recordId == null || frameNonce === lastNonceRef.current) return
+    if (recordId == null || frameSeq === lastSeqRef.current) return
 
     // Resolve the diary's stars → buffer slots (= array slot, like FlyTo/StarField/Synapses).
     const count = stars.length
     const slots: number[] = []
     for (let i = 0; i < count; i++) if (stars[i].memory.recordId === recordId) slots.push(i)
-    // Don't consume the nonce yet if the universe stars haven't loaded — the diary list loads
+    // Don't consume the seq yet if the universe stars haven't loaded — the diary list loads
     // independently of GetUniverse, so a pick (or ?panel=diary deep-link) can fire first. The
     // effect re-runs when `stars` arrives (it's a dep); consume only once we can actually frame.
     if (slots.length === 0) return
-    lastNonceRef.current = frameNonce
+    lastSeqRef.current = frameSeq
 
     // Read the LIVE coordinates (single source); fall back to the deterministic fibonacci
     // shell (same as the other readers) for any slot whose buffer row isn't ready yet.
@@ -1137,24 +1152,17 @@ function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<F
 
     // 단일 포커스 해제는 구조적 — focus 머신이 diary 상태라 별 선택은 이미 없다(구 select(null) 불요).
     camera.up.set(0, 1, 0) // re-level: shed any free-look/arcball roll
-    if (useCameraMode.getState().mode === 'recall') setMode('nebula') // 근접→far 강제(1.4)
-    setTransitioning(true) // relax the orbit/ship clamps for the flight; restored on arrival
-  }, [recordId, frameNonce, stars, positionsRef, camera, setMode, setTransitioning])
+    // 근접→far 강제·클램프 완화는 nav framingDiary 상태(transitioning 태그)가 소유. 도착 시 ARRIVED→nebula.
+  }, [recordId, frameSeq, stars, positionsRef, camera])
 
   useFrame((_, dt) => {
     const pos = posRef.current
     const tgt = tgtRef.current
     if (!pos || !tgt) return
-    // Frame-all is FAR-only and owns the camera only in nebula. If another owner takes over —
-    // a camera toggle to recall bumps resetNonce so ModeTransitionController starts its own
-    // flight AND flips mode — abort here so the two don't write camera/controls.target the same
-    // frames (jitter / wrong pose). The toggle/fly-to path that flipped the mode owns
-    // `transitioning` and clears it on arrival, so we leave that flag untouched.
-    // Read the LIVE mode (getState), NOT a render-lagged subscription: framing FROM recall arms
-    // this flight and calls setMode('nebula') in the SAME effect tick — zustand updates getState
-    // synchronously, so by this frame the store is already 'nebula' and we don't false-abort the
-    // just-armed flight (a subscribed `mode` would still read 'recall' until the next render).
-    if (useCameraMode.getState().mode !== 'nebula') {
+    // 다른 비행(토글→modeTransition, fly-to)이 카메라를 가져가면 nav가 framingDiary를 떠난다 → 여기서
+    // 양보(두 컨트롤러가 같은 프레임에 camera/target을 쓰는 jitter 방지). nav 상태를 LIVE로 읽는다
+    // (getSnapshot, 렌더-지연 구독 아님) — 다른 전이가 동기로 일어나도 즉시 반영된다.
+    if (!navigationActor.getSnapshot().matches('framingDiary')) {
       posRef.current = null
       tgtRef.current = null
       return
@@ -1175,10 +1183,22 @@ function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<F
       }
       posRef.current = null
       tgtRef.current = null
-      setTransitioning(false) // CameraRig snaps the nebula clamps back
+      navigationActor.send({ type: 'ARRIVED' }) // framingDiary → nebula (CameraRig가 클램프 복원)
     }
   })
 
+  return null
+}
+
+/** focus→nav 브리지(spec 39): 포커스가 일기로 진입하면(또는 같은 일기 재선택으로 frameNonce가 오르면)
+ *  항행 머신에 FRAME_DIARY를 보내 framingDiary 상태로 들인다 — 두 머신을 순환 ref 없이 잇는 한 곳.
+ *  recordId가 null(별 포커스·idle)이면 보내지 않는다(나브는 자기 상태로 전이). */
+function FocusNavBridge() {
+  const recordId = useSelector(focusActor, selectHighlightedRecordId)
+  const frameNonce = useSelector(focusActor, selectFrameNonce)
+  useEffect(() => {
+    if (recordId != null) navigationActor.send({ type: 'FRAME_DIARY', recordId })
+  }, [recordId, frameNonce])
   return null
 }
 
@@ -1188,12 +1208,12 @@ function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<F
  *  해제된다(구 NearFarHighlightGuard의 selectedId 분기 불요). recall에서 별 포커스(star)는 정상이라
  *  diary일 때만 DISMISS한다. */
 function RecallDismissGuard() {
-  const mode = useCameraMode((s) => s.mode)
+  const isRecall = useSelector(navigationActor, selectIsRecall)
   useEffect(() => {
-    if (mode === 'recall' && focusActor.getSnapshot().matches('diary')) {
+    if (isRecall && focusActor.getSnapshot().matches('diary')) {
       focusActor.send({ type: 'DISMISS' })
     }
-  }, [mode])
+  }, [isRecall])
   return null
 }
 
@@ -1208,9 +1228,9 @@ function RecallDismissGuard() {
  *  through the otherwise-forbidden zone — e.g. diving in from far outside, or flying out from
  *  deep inside. They're restored to the destination mode's limits on arrival. */
 function ModeTransitionController() {
-  const mode = useCameraMode((s) => s.mode)
-  const resetNonce = useCameraMode((s) => s.resetNonce)
-  const setTransitioning = useCameraMode((s) => s.setTransitioning)
+  // 항행 머신 modeTransition 상태(spec 39) — TOGGLE_MODE로 진입, transitionTo가 도착 모드.
+  const inModeTransition = useSelector(navigationActor, selectInModeTransition)
+  const transitionTo = useSelector(navigationActor, selectTransitionTo)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -1223,14 +1243,14 @@ function ModeTransitionController() {
   const savedNebulaTgt = useRef<THREE.Vector3 | null>(null)
 
   useEffect(() => {
-    if (resetNonce === 0) return // skip the initial mount; react only to real toggles
+    if (!inModeTransition) return // modeTransition 상태로 들어올 때만(실제 토글)
     // Preserve the current facing through the flight.
     if (controls) dir.current.subVectors(controls.target, camera.position)
     else camera.getWorldDirection(dir.current)
     if (dir.current.lengthSq() < 1e-6) dir.current.set(0, 0, -1)
     dir.current.normalize()
 
-    if (mode === 'recall') {
+    if (transitionTo === 'recall') {
       // Remember the overview vantage we're leaving (position + look), so toggling back
       // returns us to it instead of reframing — the camera ends up right where it started.
       savedNebulaPos.current = camera.position.clone()
@@ -1254,9 +1274,8 @@ function ModeTransitionController() {
     // Re-level: shed any free-look roll (recall) or arcball roll (nebula) so the flight and the
     // destination pose are upright — matches the always-level overview the saved pose was taken at.
     camera.up.set(0, 1, 0)
-    // CameraRig relaxes the orbit clamps while this flag is up; restored on arrival.
-    setTransitioning(true)
-  }, [resetNonce, mode, camera, controls, setTransitioning])
+    // 클램프 완화는 nav modeTransition 상태(transitioning 태그)가 소유 — 도착 시 ARRIVED→transitionTo.
+  }, [inModeTransition, transitionTo, camera, controls])
 
   useFrame((_, dt) => {
     const pos = posRef.current
@@ -1278,7 +1297,7 @@ function ModeTransitionController() {
       }
       posRef.current = null
       tgtRef.current = null
-      setTransitioning(false) // CameraRig snaps the destination clamps back
+      navigationActor.send({ type: 'ARRIVED' }) // modeTransition → transitionTo (CameraRig가 클램프 복원)
     }
   })
 
@@ -1297,7 +1316,7 @@ const SHEET_ZOOM = 0.8 // 시트가 열린 동안의 줌아웃(1 = 원래 화각
 function ViewOffsetController() {
   // 페이지 HUD가 올리는 시트(작성 폼, 기억 실험실) + 위젯이 스스로 아는 회상 패널(선택된
   // 별) — 회상은 여기서 직접 구독해, 별 선택이 어느 경로로 일어나도 시프트가 따라온다.
-  const hudSheetOpen = useCameraMode((s) => s.sheetOpen)
+  const hudSheetOpen = useViewport((s) => s.sheetOpen)
   const recallOpen = useSelector(focusActor, selectIsStarFocus)
   // 일기 조망(spec 31): 일기를 고르면 하단에 일기 카드가 떠 있으므로, 그 일기 별들을 화면 위쪽으로
   // 올려(시선 위로) 카드에 가리지 않게 한다 — 모바일·데스크톱 공통(카드가 하단 중앙이라). (focus 머신)
@@ -1363,8 +1382,8 @@ const FOCUS_UP = new THREE.Vector3(0, 1, 0) // world up — re-leveled into duri
 function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
   const selectedId = useSelector(focusActor, selectFocusedStarId)
   const stars = useMemoryStore((s) => s.stars)
-  const mode = useCameraMode((s) => s.mode)
-  const transitioning = useCameraMode((s) => s.transitioning)
+  const isNebula = useSelector(navigationActor, selectIsNebula)
+  const transitioning = useSelector(navigationActor, selectTransitioning)
   // 일기 조망(spec 28)이 활성이면 frame-all이 orbit 타깃을 소유한다 — 포커스 해제 복원이
   // 그 프레이밍을 끌어내리지 않게 한다(아래 deselect 분기에서 가드). (focus 머신, spec 39)
   const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
@@ -1403,14 +1422,14 @@ function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Floa
   // 자연스러우므로 복원하지 않는다.
   const savedTargetRef = useRef<THREE.Vector3 | null>(null)
   useEffect(() => {
-    if (mode !== 'nebula') {
+    if (!isNebula) {
       savedTargetRef.current = null
       return
     }
     if (selectedId && controls && savedTargetRef.current === null) {
       savedTargetRef.current = controls.target.clone()
     }
-  }, [selectedId, mode, controls])
+  }, [selectedId, isNebula, controls])
 
   useFrame((_, dt) => {
     if (!controls || transitioning) return
@@ -1426,7 +1445,7 @@ function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Floa
       // 해제 직후: orbit 중심을 포커스 이전 자리로 회복(NebulaOrbitController가 매 프레임
       // target을 바라보므로 lerp만으로 시점이 부드럽게 되돌아간다).
       const saved = savedTargetRef.current
-      if (saved && mode === 'nebula') {
+      if (saved && isNebula) {
         controls.target.lerp(saved, k)
         if (controls.target.distanceTo(saved) < 0.05) {
           controls.target.copy(saved)
@@ -1442,7 +1461,7 @@ function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Floa
     // nebula (원거리): orbit the camera onto the star's radial line at the captured distance →
     // camera = star + starDir·D, so the star sits in FRONT with the cloud behind it. Re-level the
     // horizon for a clean head-on framing (skip near vertical, where lookAt's up is singular).
-    if (mode === 'nebula' && target.lengthSq() > 1e-6) {
+    if (isNebula && target.lengthSq() > 1e-6) {
       desired.current.copy(target).normalize().multiplyScalar(radiusRef.current).add(target)
       camera.position.lerp(desired.current, k)
       dir.current.subVectors(target, camera.position).normalize()
@@ -1630,6 +1649,7 @@ export function UniverseCanvas() {
       <FlyToController positionsRef={positionsRef} />
       <FocusController positionsRef={positionsRef} />
       <FrameAllController positionsRef={positionsRef} />
+      <FocusNavBridge />
       <RecallDismissGuard />
       <ModeTransitionController />
       <ViewOffsetController />
