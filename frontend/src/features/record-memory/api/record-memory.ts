@@ -8,8 +8,10 @@
 // response time. Without segments the legacy async-extract path still applies
 // (memory_ids empty, fragments arrive on a later GetUniverse refetch).
 import { Code, ConnectError } from '@connectrpc/connect'
+import type { QueryClient } from '@tanstack/react-query'
 import type { Mood } from '@/shared/api'
 import { memoryClient } from '@/shared/api'
+import { universeInvalidateKey } from '@/entities/memory'
 
 /** 본문 최대 길이 — 서버 memory.MaxBodyRunes(4000)의 거울. [...str].length(코드 포인트)
  *  ≒ Go의 rune 수라 같은 잣대로 잰다. 제출 전 사전 차단(17) + 에러 카피가 함께 쓴다. */
@@ -122,4 +124,20 @@ export async function recordMemory(input: RecordMemoryInput): Promise<RecordMemo
     })),
   })
   return { recordId: res.recordId, memoryIds: res.memoryIds }
+}
+
+// 확정 조각 제출 후 시냅스(임베드 잡 → KNN 링크)가 생길 시간(§4.6 "연결은 다음 refetch에서"). 별
+// 자체는 제출 직후의 즉시 invalidate로 이미 도착해 있다. 연속 기록은 마지막 기준으로만 체인을 다시
+// 걸어 코알레스(K개 연속 제출이 2K번 refetch 되지 않게). queryClient는 앱 수명 싱글턴이라 페이지를
+// 떠나도 안전(비활성 쿼리는 stale 마킹 → 다음 마운트에서 refetch). 페이지가 compose 'submitted'에서 호출.
+const SYNAPSE_REFETCH_DELAYS_MS = [8_000]
+let syncTimers: ReturnType<typeof setTimeout>[] = []
+export function scheduleSynapseSync(queryClient: QueryClient): void {
+  for (const t of syncTimers) clearTimeout(t)
+  syncTimers = SYNAPSE_REFETCH_DELAYS_MS.map((d, i) =>
+    setTimeout(() => {
+      void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+      if (i === SYNAPSE_REFETCH_DELAYS_MS.length - 1) syncTimers = []
+    }, d),
+  )
 }
