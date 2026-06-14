@@ -5,7 +5,7 @@
 import { useMemoryStore, focusActor } from '@/entities/memory'
 import { useSynapseStore } from '@/entities/synapse'
 import { useAppearance } from '@/entities/appearance'
-import { useRecallStore } from '@/features/recall'
+import { recallFlushActor } from '@/features/recall'
 import { queryClient } from '../query-client'
 
 export function resetUniverseData(): void {
@@ -20,6 +20,7 @@ export function resetUniverseData(): void {
   // per-user 감정색 오버라이드(spec 30)도 출처를 넘기지 않는다 — 다음 사용자가 GetSettings로
   // 다시 시드한다(테마·오브제는 기기 선호라 유지). 미인증 전환이면 기본 팔레트로 복귀.
   useAppearance.getState().resetServerSettings()
-  // 이전 출처의 미flush 공동회상 페어·lastViewedId도 경계를 넘지 않는다(세션 교체).
-  useRecallStore.getState().reset()
+  // 이전 출처의 미flush 공동회상 페어·lastViewedId도 경계를 넘지 않는다(세션 교체 — flushing 중이면
+  // RESET이 invoke를 취소해 그 배치가 새 세션에 적용되지 않는다).
+  recallFlushActor.send({ type: 'RESET' })
 }

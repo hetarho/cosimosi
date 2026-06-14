@@ -26,7 +26,7 @@ import {
 import { moodLabel } from '@/shared/config'
 import { recallMemory } from '../api/recall'
 import { DWELL_MS } from '../model'
-import { useRecallStore } from '../model/store'
+import { recallFlushActor } from '../model/recall-flush.machine'
 import { NeighborNav } from './NeighborNav'
 
 type Phase = 'dwelling' | 'loading' | 'shown' | 'error'
@@ -44,7 +44,6 @@ function RecallView({
   onOpenEvolution?: (memoryId: string) => void
   onSeeDiaryStars?: (recordId: string) => void
 }) {
-  const recordActiveView = useRecallStore((s) => s.recordActiveView)
   const queryClient = useQueryClient()
   // 이 별이 가리키는 원본 일기 id(spec 28) — "이 일기의 다른 별들 보기"의 그룹 키. 별이 사라지지
   // 않는 한(헌법2) 안정적이라 selector가 값으로 비교해 불필요한 리렌더는 없다.
@@ -68,7 +67,7 @@ function RecallView({
     // 발사한다(재점화 의미론, 16 — 캐시가 touch를 생략하면 감쇠 모델이 굶는다); 캐시를
     // 보여주는 중의 touch 실패는 비차단(다음 열람에 재시도).
     const timer = setTimeout(() => {
-      recordActiveView(memoryId) // co-recall pair with the previous active view (1.3)
+      recallFlushActor.send({ type: 'RECORD_VIEW', id: memoryId }) // co-recall pair with previous active view (1.3)
       // recall_open(18) — 회상 발화 시점(터치 직전)의 활성도로 잠든 별 재점화 여부를 판단.
       const star = useMemoryStore.getState().stars.find((s) => s.id === memoryId)
       capture(EVENTS.recallOpen, {
@@ -112,7 +111,7 @@ function RecallView({
       cancelled = true
       clearTimeout(timer)
     }
-  }, [memoryId, recordActiveView, queryClient])
+  }, [memoryId, queryClient])
 
   return (
     <div className="flex w-96 max-w-[90vw] flex-col gap-3 rounded-xl border border-white/10 bg-black/50 p-4 backdrop-blur">

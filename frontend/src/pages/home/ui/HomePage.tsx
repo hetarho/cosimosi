@@ -16,7 +16,7 @@ import {
 } from '@/widgets/universe-canvas'
 import { DemoSimPanel } from '@/widgets/demo-sim'
 import { MemoryForm, composeActor, scheduleSynapseSync } from '@/features/record-memory'
-import { MemoryPanel, useRecallStore } from '@/features/recall'
+import { MemoryPanel, recallFlushActor } from '@/features/recall'
 import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
 import { DiaryCard, DiarySheet } from '@/features/diary-list'
 import { DormantSheet } from '@/features/dormant-search'
@@ -383,7 +383,7 @@ export function HomePage() {
   // and the transport uses keepalive so the request survives teardown.
   useEffect(() => {
     const flush = () => {
-      void useRecallStore.getState().flush()
+      recallFlushActor.send({ type: 'FLUSH' })
     }
     const onHide = () => {
       if (document.visibilityState === 'hidden') flush()

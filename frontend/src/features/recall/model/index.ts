@@ -1,4 +1,4 @@
-export { useRecallStore } from './store'
+export { recallFlushActor, selectIsFlushing } from './recall-flush.machine'
 export {
   CO_RECALL_DELTA,
   DWELL_MS,
