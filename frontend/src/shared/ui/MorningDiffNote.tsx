@@ -33,7 +33,7 @@ export function MorningDiffNote({
     <div
       aria-hidden={!show}
       className={cn(
-        'pointer-events-none absolute inset-x-0 top-6 z-20 flex justify-center transition-opacity duration-700',
+        'pointer-events-none absolute inset-x-0 top-[calc(1.5rem+env(safe-area-inset-top))] z-20 flex justify-center transition-opacity duration-700',
         show ? 'opacity-100' : 'opacity-0',
       )}
     >

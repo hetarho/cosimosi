@@ -19,6 +19,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | **재열람** — 원본이 캐시에 있으면(불변, [data-sync](../domain/data-sync.md)) 본문을 **즉시 표시**(스피너 없음); touch(`RecallMemory`)는 ≥2초 dwell 후 백그라운드로 매번 발사 | 캐시 우선 |
 | 이웃 항해 — 선택 별 시냅스 이웃을 `neighborsOf(edges, selectedId)`로 weight 내림차순 렌더, 최대 표시 수 | `MAX_NEIGHBORS = 8` |
 | 이웃 클릭 = 선택 전환만(`select(id)`) — 패널이 재-dwell. **카메라 fly-to 아님**(NeighborNav는 카메라 타깃을 만들지 않는다) | 선택 전환 |
+| **포커스 해제(배경 탭)** — 별을 고르면 은은한 딤(`Backdrop`)으로 집중을 알리고, 회상 패널 ✕ **또는 빈 우주 탭**(캔버스 `onPointerMissed`→`select(null)`)으로 해제·복귀. 별 탭(선택 전환)·드래그(회전)는 통과(해제 아님 — R3F가 클릭 delta로 구분) | 배경 탭=복귀 |
 
 ### 2. 공동 회상 (co-recall)
 
@@ -90,6 +91,8 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | 단일 선택 우선 | 단일 별 포커스(`select`)가 있으면 일기 강조는 적용하지 않는다(근접 포커스 우선); 강조는 far 조망의 상태 |
 | 조각 텍스트 캐시 | `fragment_text`도 원본과 같은 불변·영구 캐시(`['record', id, 'fragment']`)에 시드 → 재열람 즉시 표시. 단일 조각/구 데이터는 `""` → 본문으로 폴백(토글 숨김) |
 | 딥링크 | `/universe?panel=diary`로 진입하면 일기 목록 오버레이가 열린 채 시작(별도 `/diary` 라우트 없음 — 우주 셸 위 오버레이) |
+| 일기 카드(선택 후) | 일기를 고르면 잦아든 손잡이 대신 **그 일기 카드**(날짜·발췌·별 개수·"목록"/닫기)를 하단에 띄우고, 카메라는 그 일기 별들을 화면 위쪽으로(view offset, frame-all 위에 시선만↑) 올려 카드에 가리지 않게 한다 |
+| 해제(배경 탭) | 별·일기 조망은 은은한 딤(`Backdrop`)으로 집중을 알린다. **빈 우주를 탭하면**(캔버스 `onPointerMissed`) 강조 해제 + 일기 패널까지 닫혀 우주로 **완전 복귀**; 별을 탭하면 그 조각 회상으로 전환(near/far 가드). 목록 펼침 상태에선 시트 뒤 차단형 딤(바깥 탭=닫기) |
 | 체험(demo) | `demoListRecords`가 더미 별을 `record_id`로 묶어 목록을 만들고, 다조각 일기(흩어진 `demo-rec-scatter` 포함)로 조망+강조를 네트워크 없이 체험 |
 
 ## 불변식 (invariants)
@@ -107,7 +110,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 - **회상:** 구현: plan 11 · `frontend/src/features/recall/ui/MemoryPanel.tsx`(dwell 타이머·read-only 패널)·`ui/NeighborNav.tsx`(이웃 항해, 선택 전환만)·`api/recall.ts`(`RecallMemory`).
 - **공동 회상:** 구현: plan 11 · `frontend/src/features/recall/model/co-recall.ts`(`CO_RECALL_DELTA`·`DWELL_MS`·`DEBOUNCE_IDLE_MS`·`pairKey`)·`model/store.ts`(디바운스·재시도·in-flight 직렬화)·`pages/home/ui/HomePage.tsx`(`beforeunload`/`visibilitychange` flush)·`shared/api/transport.ts`(keepalive).
 - **기록:** 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`(본문+감정 select+강도+날짜)·`model/draft-store.ts`(기본 오늘·7종 mood)·`model/use-record-memory.ts`(낙관적 add/replace/remove).
-- **잠든 별 재점화 동선:** 구현: plan 12 · `frontend/src/pages/dormant`(`ListDormant`)·`entities/memory/model/activation.ts`(`isDormant`).
+- **잠든 별 재점화 동선:** 구현: plan 12·31 · `frontend/src/features/dormant-search`(`ListDormant`·`DormantSheet`)·`entities/memory/model/activation.ts`(`isDormant`). 잠든 별 탐색은 별도 `/dormant` 페이지가 아니라 우주 셸 위 오버레이다(모바일 바텀시트/데스크톱 사이드 패널, 비차단; 별 선택 시 시트 peek + 뒤 우주 fly-to — [navigation](../domain/navigation.md) 우주 셸 영속). 일기 목록(아래 §6)과 같은 `OverlayHost`(`shared/ui`)를 쓴다.
 - **변천사 보기:** 구현: plan 24 · `frontend/src/features/evolution/{api/evolution.ts,model/{history.ts,store.ts},ui/EvolutionPanel.tsx}`(unary read·순수 model·스크럽 타임랩스+불변 원본 병치)·`features/recall/ui/MemoryPanel.tsx`("변천사 보기" 진입점)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선)·`shared/lib/demo/data.ts`(`demoEvolution`). BE read RPC는 plan 23(`GetEvolutionHistory`).
 - **길찾기(원본 일기·엔그램·별):** 구현: plan 28 · `frontend/src/features/diary-list/ui/DiarySheet.tsx`(일기 목록·검색 오버레이)·`entities/memory/api/records-query.ts`(`recordsQueryOptions`/`recordsInvalidateKey` — 소비처가 두 레이어라 dormant/universe처럼 entity 소유; record 성공 시 무효화)·`features/wayfinding/{model/frame.ts,model/store.ts}`(순수 frame-all·강조/프레임 상태)·`features/recall/ui/MemoryPanel.tsx`(조각 텍스트+원본 전체+다른 별 동선)·`entities/star/ui/StarField.tsx`·`entities/synapse/model/store.ts`(`edgesWithin`)·`widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`·강조 렌더)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선·`?panel=diary`). BE는 `ListRecords` rpc + `Star.record_id`/`fragment_index` + `RecallMemoryResponse.fragment_text`.
 - **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/store.ts`(데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).

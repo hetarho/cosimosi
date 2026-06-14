@@ -1,7 +1,7 @@
 // ListDormant query (spec 12, queried in 16). 키+queryFn+캐시 정책(서버 상태의 정체성)은
-// 엔터티가 소유한다 — 소비처가 두 레이어(pages/dormant의 목록 화면, features/recall의 회상
-// 성공 invalidate)에 걸쳐 있고 features는 pages를 import할 수 없기 때문. 뷰 모델 매핑
-// (DormantStar select)은 pages/dormant가 가진다.
+// 엔터티가 소유한다 — 소비처가 두 레이어(features/dormant-search의 목록 오버레이, features/recall의
+// 회상 성공 invalidate)에 걸쳐 있기 때문(공통 하위 레이어 = entity). 뷰 모델 매핑
+// (DormantStar select)은 features/dormant-search가 가진다.
 import { callUnaryMethod, createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-query'
 import { queryOptions } from '@tanstack/react-query'
 import { create } from '@bufbuild/protobuf'
@@ -39,7 +39,7 @@ function buildDormantQueryOptions() {
   })
 }
 
-// 옵션 1회 생성·재사용(검색 키 입력마다 리렌더되는 DormantPage에서 protobuf 키 재생성 방지).
+// 옵션 1회 생성·재사용(검색 키 입력마다 리렌더되는 DormantSheet에서 protobuf 키 재생성 방지).
 let dormantOptionsCache: ReturnType<typeof buildDormantQueryOptions> | undefined
 
 /** ListDormant 쿼리 옵션(키+fetch+캐시 정책). 뷰 모델 select는 소비처가 얹는다. */
@@ -48,7 +48,7 @@ export function dormantQueryOptions() {
 }
 
 /** ListDormant 부분 키(transport·input 생략 → 모든 변형 매치) — invalidate 전용(1.6:
- *  회상된 별은 잠에서 깸 → 다음 /dormant 진입 시 목록에서 제외). */
+ *  회상된 별은 잠에서 깸 → 다음 잠든 별 오버레이 진입 시 목록에서 제외). */
 export function dormantInvalidateKey() {
   return createConnectQueryKey({ schema: MemoryService.method.listDormant, cardinality: 'finite' })
 }

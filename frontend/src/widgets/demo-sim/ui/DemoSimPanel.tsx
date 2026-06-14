@@ -80,7 +80,7 @@ function ControlsPanel({ onClose, onConsolidated }: { onClose: () => void; onCon
   return (
     <section
       aria-label="기억 실험실 컨트롤러"
-      className="absolute inset-x-2 bottom-2 z-30 flex max-h-[70dvh] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-black/60 p-4 backdrop-blur sm:inset-x-auto sm:bottom-14 sm:left-4 sm:z-20 sm:max-h-[55dvh] sm:w-80"
+      className="absolute inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-30 flex max-h-[70dvh] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-black/60 p-4 backdrop-blur sm:inset-x-auto sm:bottom-14 sm:left-4 sm:z-20 sm:max-h-[55dvh] sm:w-80"
     >
       <header className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-white/85">🧪 기억 실험실</h2>
@@ -344,7 +344,7 @@ export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps)
     <>
       {/* 진입 칩 — 컨트롤러와 이론 안내는 서로 다른 모달. (데모에선 작성 폼/트리거가 없어
           모바일에서도 좌하단이 비어 있다.) */}
-      <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
+      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-20 flex items-center gap-2">
         <button
           type="button"
           onClick={() => setControlsOpen((v) => !v)}

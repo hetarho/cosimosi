@@ -277,6 +277,8 @@ function NebulaOrbitController() {
   const pointers = useRef(new Map<number, { x: number; y: number }>()) // live pointers (multi-touch)
   const pinchDist = useRef(0) // previous two-finger distance (0 = not pinching)
   const pendingZoom = useRef(0) // dolly accumulated since last frame (fraction of radius)
+  const armedPointer = useRef<number | null>(null) // 1-finger pointer awaiting the drag deadzone (tap vs orbit)
+  const downXY = useRef({ x: 0, y: 0 }) // its press position — the deadzone origin
   // While a star is selected (focus/spotlight), FocusController owns the aim — stand down.
   const selectedId = useMemoryStore((s) => s.selectedId)
   const active = mode === 'nebula' && !transitioning && selectedId == null
@@ -298,6 +300,9 @@ function NebulaOrbitController() {
     const pinch = pinchDist
     const zoom = pendingZoom
     const last = lastXY
+    const arm = armedPointer
+    const dwn = downXY
+    const DRAG_DEADZONE = 8 // px — below this, a 1-finger press is a tap (→ star select), not an orbit
     const twoFingerDist = () => {
       const it = pts.values()
       const a = it.next().value
@@ -308,16 +313,25 @@ function NebulaOrbitController() {
     const onDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return // mouse: left-drag only
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      // Capture on down so THIS pointer's up/cancel ALWAYS returns to us — even if the finger lifts
+      // over a HUD overlay — so `pts` never keeps a stale id (which a later gesture would mis-read
+      // as a pinch). Capture does NOT suppress the star's R3F onClick; the tap-vs-orbit split is the
+      // deadzone below (rotation is gated on drag.current), not on capture.
       el.setPointerCapture?.(e.pointerId)
       if (pts.size === 1) {
-        drag.current = true
+        // Arm the finger but DON'T rotate yet — wait for the deadzone, so a tap (the finger barely
+        // moves) doesn't nudge the universe out from under the fingertip; the star's onClick fires.
+        drag.current = false
+        arm.current = e.pointerId
+        dwn.current = { x: e.clientX, y: e.clientY }
+        last.current = { x: e.clientX, y: e.clientY }
         vRef.current.yaw = 0
         vRef.current.pitch = 0
         pend.current.yaw = 0
         pend.current.pitch = 0
-        last.current = { x: e.clientX, y: e.clientY }
       } else if (pts.size === 2) {
         drag.current = false // two fingers → pinch-zoom, suspend rotate
+        arm.current = null
         pinch.current = twoFingerDist()
       }
     }
@@ -331,26 +345,38 @@ function NebulaOrbitController() {
         const d = twoFingerDist()
         if (pinch.current > 0 && d > 0) zoom.current += pinch.current / d - 1
         pinch.current = d
-      } else if (drag.current) {
-        // Accumulate the raw pointer delta (handles multiple moves per frame) into a 1:1 orbit.
-        const s = span()
-        pend.current.yaw += (-(e.clientX - last.current.x) / s) * NEBULA_ROTATE_SPEED
-        pend.current.pitch += (-(e.clientY - last.current.y) / s) * NEBULA_ROTATE_SPEED
-        last.current = { x: e.clientX, y: e.clientY }
+        return
       }
+      if (!drag.current) {
+        // Still inside the deadzone → not a drag yet (keep it tappable). Promote to an orbit only
+        // once the armed finger travels past the threshold, and capture ONLY then so a sub-deadzone
+        // tap is never stolen from the star raycast.
+        if (arm.current !== e.pointerId) return
+        if (Math.hypot(e.clientX - dwn.current.x, e.clientY - dwn.current.y) < DRAG_DEADZONE) return
+        drag.current = true // promote past the deadzone (already captured on down)
+        last.current = { x: e.clientX, y: e.clientY } // orbit starts here — no jump for the deadzone travel
+      }
+      // Accumulate the raw pointer delta (handles multiple moves per frame) into a 1:1 orbit.
+      const s = span()
+      pend.current.yaw += (-(e.clientX - last.current.x) / s) * NEBULA_ROTATE_SPEED
+      pend.current.pitch += (-(e.clientY - last.current.y) / s) * NEBULA_ROTATE_SPEED
+      last.current = { x: e.clientX, y: e.clientY }
     }
     const onUp = (e: PointerEvent) => {
       pts.delete(e.pointerId)
-      el.releasePointerCapture?.(e.pointerId)
+      if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture?.(e.pointerId)
       if (pts.size === 1) {
-        // dropped from pinch back to one finger → resume rotate from the survivor (no jump)
+        // dropped from pinch back to one finger → resume rotate from the survivor (no jump). It's a
+        // confirmed drag (post-pinch), not a fresh tap, so no deadzone re-arm.
         pinch.current = 0
         const survivor = pts.values().next().value
         if (survivor) last.current = { x: survivor.x, y: survivor.y }
         drag.current = true
+        arm.current = null
       } else if (pts.size === 0) {
         drag.current = false
         pinch.current = 0
+        arm.current = null
       }
     }
     const onWheel = (e: WheelEvent) => {
@@ -371,6 +397,7 @@ function NebulaOrbitController() {
       el.removeEventListener('wheel', onWheel)
       pts.clear()
       drag.current = false
+      arm.current = null
       pinch.current = 0
       zoom.current = 0
       vRef.current.yaw = 0
@@ -1264,6 +1291,9 @@ function ViewOffsetController() {
   // 별) — 회상은 여기서 직접 구독해, 별 선택이 어느 경로로 일어나도 시프트가 따라온다.
   const hudSheetOpen = useCameraMode((s) => s.sheetOpen)
   const recallOpen = useMemoryStore((s) => s.selectedId != null)
+  // 일기 조망(spec 31): 일기를 고르면 하단에 일기 카드가 떠 있으므로, 그 일기 별들을 화면 위쪽으로
+  // 올려(시선 위로) 카드에 가리지 않게 한다 — 모바일·데스크톱 공통(카드가 하단 중앙이라).
+  const diaryFramed = useWayfindingStore((s) => s.highlightedRecordId != null)
   const offset = useRef(0)
   const zoom = useRef(1)
   const applied = useRef({ off: 0, zoom: 1, w: 0, h: 0 })
@@ -1271,9 +1301,12 @@ function ViewOffsetController() {
     const camera = state.camera
     const size = state.size
     if (!(camera instanceof THREE.PerspectiveCamera)) return
-    const active = (hudSheetOpen || recallOpen) && size.width < SHEET_BREAKPOINT_PX
+    const sheetActive = (hudSheetOpen || recallOpen) && size.width < SHEET_BREAKPOINT_PX
+    const active = sheetActive || diaryFramed
     const targetOff = active ? size.height * SHEET_VIEW_SHIFT : 0
-    const targetZoom = active ? SHEET_ZOOM : 1
+    // 일기 조망은 frame-all이 이미 별을 화면에 꼭 맞게 담았으므로 줌아웃하지 않는다(별이 작아지지
+    // 않게) — 시선만 위로(offset). 모바일 시트(작성·회상)일 때만 살짝 줌아웃해 좁아진 위쪽에 더 담는다.
+    const targetZoom = sheetActive ? SHEET_ZOOM : 1
     const k = 1 - Math.exp(-dt * 6) // frame-rate-independent ease
     const nextOff = offset.current + (targetOff - offset.current) * k
     offset.current = Math.abs(nextOff - targetOff) < 0.5 ? targetOff : nextOff
@@ -1526,6 +1559,19 @@ export function UniverseCanvas() {
       gl={glFactory as unknown as GLProps}
       flat
       camera={{ position: [0, 0, 110], fov: 72, near: 0.1, far: 2000 }}
+      // 빈 우주를 톡 치면 포커스 해제·복귀(은은한 딤도 함께 사라진다 — spec 31). R3F는 클릭 delta로
+      // 드래그(회전)를 걸러 onPointerMissed는 '탭'에만 온다. 우선순위: 선택된 별 → 해제, 아니면 일기
+      // 조망 → 강조 해제(페이지가 그 해제를 보고 일기 패널을 닫아 완전히 복귀시킨다). 별 탭은 onClick.
+      onPointerMissed={() => {
+        // 빈 우주를 톡 치면 포커스를 통째로 비워 복귀한다 — 별 선택과 일기 조망이 (전환 한 프레임)
+        // 함께 떠 있어도 한 번에 해제(둘 다 없으면 무해한 no-op). 드래그(회전)는 R3F가 delta로 걸러
+        // 여기로 오지 않는다(탭만).
+        const mem = useMemoryStore.getState()
+        if (mem.selectedId != null) mem.select(null)
+        if (useWayfindingStore.getState().highlightedRecordId != null) {
+          useWayfindingStore.getState().clear()
+        }
+      }}
       onCreated={(state) => {
         const gl = state.gl as unknown as WebGPURenderer
         glRef.current = gl

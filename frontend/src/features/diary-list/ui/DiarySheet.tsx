@@ -1,9 +1,10 @@
-// Original-diary list/search (spec 28, 원본 일기로 별 찾기) — a 2D HUD overlay OVER the persistent
-// universe canvas (Architecture §3.1; we never leave the universe). Picking a diary frames ALL
-// of its stars and highlights them (the page wires onSelectDiary → wayfinding.frameRecord); the
-// sheet then "잦아든다" to a peek so the framed stars are visible. Stand-in for spec 31's overlay
-// shell — when 31 lands this folds into its OverlayHost (panel='diary'), same as the 24 timelapse.
-// Read-only: the body shown is a short EXCERPT (the immutable original opens via recall — 헌법1).
+// Original-diary list/search (spec 28, 원본 일기로 별 찾기) — CONTENT ONLY for the universe
+// shell's OverlayHost (shared/ui, spec 31). Picking a diary frames ALL of its stars and
+// highlights them (the page wires onSelectDiary → wayfinding.frameRecord + shell setPeek); the
+// host then collapses to a peek handle so the framed stars are visible. We never leave the
+// universe (Architecture §3.1 — canvas-outside DOM). Read-only: the body shown is a short
+// EXCERPT (the immutable original opens via recall — 헌법1). The chrome (header/peek/snap) is
+// the OverlayHost's job; this component emits only the intro + search + list.
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { errorMessage } from '@/shared/lib'
@@ -11,20 +12,12 @@ import { errorMessage } from '@/shared/lib'
 // (DiarySheet 읽기 + record-memory 무효화)에 걸쳐 있어, feature가 아니라 entity에 둔다(spec 28).
 import { recordsQueryOptions } from '@/entities/memory'
 
-type View = 'open' | 'peek'
-
 export interface DiarySheetProps {
-  /** open = full list/search; peek = collapsed handle (after a diary was framed). */
-  view: View
-  /** Close the sheet entirely (the page also clears the diary highlight). */
-  onClose: () => void
-  /** Expand peek → open. */
-  onExpand: () => void
-  /** A diary was chosen — frame + highlight its stars (page wires to wayfinding). */
+  /** A diary was chosen — frame + highlight its stars (page wires to wayfinding + peek). */
   onSelectDiary: (recordId: string) => void
 }
 
-export function DiarySheet({ view, onClose, onExpand, onSelectDiary }: DiarySheetProps) {
+export function DiarySheet({ onSelectDiary }: DiarySheetProps) {
   const { data, isPending, isError, error, refetch } = useQuery(recordsQueryOptions())
   const [query, setQuery] = useState('')
 
@@ -38,56 +31,21 @@ export function DiarySheet({ view, onClose, onExpand, onSelectDiary }: DiaryShee
     )
   }, [records, query])
 
-  // peek: 프레이밍 후 잦아든 손잡이 — 별을 가리지 않으면서 목록으로 돌아갈 길을 남긴다(1.1).
-  if (view === 'peek') {
-    return (
-      <div className="absolute bottom-4 left-4 z-30 flex items-center gap-1 rounded-full border border-white/10 bg-black/55 pl-3 backdrop-blur">
-        <button
-          type="button"
-          onClick={onExpand}
-          className="py-1.5 text-sm text-white/80 transition hover:text-white"
-        >
-          📖 일기 목록 펼치기
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="일기 목록 닫기"
-          className="px-2 py-1.5 text-white/45 transition hover:text-white/90"
-        >
-          ✕
-        </button>
-      </div>
-    )
-  }
-
   return (
-    // 데스크톱(sm+): 좌측 패널. 모바일: 하단 시트. 우주는 뒤에 영속(31 셸 도입 전 페이지 합성).
-    <div className="absolute inset-x-2 bottom-2 z-30 flex max-h-[70vh] flex-col gap-3 rounded-2xl border border-white/10 bg-black/60 p-4 backdrop-blur sm:inset-x-auto sm:bottom-auto sm:top-4 sm:left-4 sm:max-h-[calc(100dvh-2rem)] sm:w-80">
-      <header className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-white/80">원본 일기 — 별 찾기</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="닫기"
-          className="rounded-md px-2 text-white/50 transition hover:text-white/90"
-        >
-          ✕
-        </button>
-      </header>
-      <p className="text-xs leading-relaxed text-white/45">
+    <>
+      <p className="shrink-0 text-xs leading-relaxed text-white/45">
         일기를 고르면 그날 흩어진 별들을 한눈에 담는 자리로 날아가 강조해 보여줘요.
       </p>
 
       <input
-        className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/30"
+        className="w-full shrink-0 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/30"
         placeholder="날짜·내용으로 검색…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
 
       {isError && (
-        <div className="flex items-center justify-between gap-3 rounded-md bg-red-500/10 px-3 py-2">
+        <div className="flex shrink-0 items-center justify-between gap-3 rounded-md bg-red-500/10 px-3 py-2">
           <p className="text-sm text-red-300">⚠ {errorMessage(error)}</p>
           <button
             type="button"
@@ -111,7 +69,7 @@ export function DiarySheet({ view, onClose, onExpand, onSelectDiary }: DiaryShee
         <p className="text-sm text-white/40">검색 결과가 없어요.</p>
       )}
 
-      <ul className="flex flex-col gap-2 overflow-y-auto overscroll-contain">
+      <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain">
         {filtered.map((r) => (
           <li key={r.recordId}>
             <button
@@ -129,6 +87,6 @@ export function DiarySheet({ view, onClose, onExpand, onSelectDiary }: DiaryShee
           </li>
         ))}
       </ul>
-    </div>
+    </>
   )
 }

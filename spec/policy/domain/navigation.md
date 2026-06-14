@@ -50,8 +50,11 @@
 | 회전 속도 `NEBULA_ROTATE_SPEED` | `2.4` rad / 캔버스폭 드래그 | 로컬 축 아크볼(극점 없음) |
 | 회전 감쇠 `NEBULA_DAMP` | `9` /s | 릴리스 후 관성 회전 감쇠 |
 | 돌리 감도 `NEBULA_ZOOM_SPEED` | `0.12` | 휠/핀치 줌 한 노치당 반경 비율 |
+| 탭/드래그 데드존 | `8` px | 한 손가락이 이 미만 움직이면 **탭(=별 선택)**, 넘으면 **회전 드래그** — 탭하다 우주가 미끄러지거나, 끌어 돌리다 별이 잘못 선택되는 충돌을 가른다 |
 
 - 모드 이탈 시 `camera.up`을 월드업(0,1,0)으로 재정렬해 아크볼 롤이 다른 모드로 새지 않게 한다.
+- **탭 vs 회전(터치).** 포인터는 down 시점에 캡처해(업이 항상 캔버스로 돌아오게 — stale 포인터 방지) 두되, 회전은 데드존(8px)을 넘은 뒤에만 시작한다. 별 선택은 R3F `onClick`이되 `e.delta > 8`(드래그)면 무시한다 — 캡처는 별 `onClick`을 막지 않으므로, 탭=선택·드래그=회전이 양쪽 경로(카메라/선택)에서 함께 갈린다.
+- **모바일 NavPad 한 손 배치.** recall 비행 D-pad는 모바일에서 추력(전진/후진)을 좌하단, 시선 회전을 우하단으로 갈라(`justify-between`) 양 엄지가 각자 한쪽을 잡고 "전진하며 회전"을 한 손에 친다(데스크톱은 좌측 한 묶음). 탐색 오버레이가 열리면 pad를 숨기고 이동을 0으로 정지한다.
 
 ### 별 포커스(focus)
 
@@ -59,7 +62,11 @@
 
 ### 잠든 별 fly-to
 
-`/dormant` 항목 클릭 → `focusStar(memory_id)` → `/universe` 이동 → 위 fly-to 메커니즘으로 동일하게 그 별로 이동 → 도달 후 회상으로 재점화. 잠든 별이라고 별도 카메라 경로를 쓰지 않는다.
+잠든 별 오버레이(우주 셸 위, `?panel=dormant`) 항목 클릭 → `focusStar(memory_id)` → 위 fly-to 메커니즘으로 그 별로 이동(라우트 이동 없음 — 캔버스 영속) + 시트는 peek로 잦아듦 → 도달 후 회상으로 재점화. 잠든 별이라고 별도 카메라 경로를 쓰지 않는다.
+
+### 우주 셸 영속 — 탐색은 라우트가 아니라 패널 상태
+
+리스트·탐색(잠든 별·원본 일기·변천사)은 **별도 페이지로 우주를 떠나지 않는다**. `/universe`의 WebGPU 캔버스는 **영속 셸**로 한 번만 마운트되고, 목록은 그 위 2D 오버레이로 떠오른다(모바일=바텀시트/데스크톱=사이드 패널, 캔버스 밖 DOM). 오버레이를 여닫아도 캔버스·렌더러는 **재초기화되지 않는다**. 탐색은 라우트가 아니라 **셸 패널 상태**(`useShellStore{panel,peek}`)이며, 딥링크·뒤로가기는 `?panel=dormant|diary` search param으로만 동기화한다 — URL이 단일 출처이고 거울 이펙트 1개가 스토어에 반영한다(라우트 비증가; 옛 `/dormant`는 `/universe?panel=dormant` redirect). 항목을 고르면 시트가 peek(핸들)로 낮아지고 뒤 우주에서 fly-to/frame-all로 그 별(들)로 이동한다.
 
 ### 조망 프레이밍(frame-all) — 원본 일기의 모든 별
 
@@ -73,6 +80,8 @@
 | 보간 감쇠 | `k = 1 − exp(−dt·4)` | 모드 전환 비행과 같은 ease, 목표까지 `< 0.5`면 정차 |
 
 중심·반경·거리 계산은 **순수 함수**(`features/wayfinding/model/frame.ts`, three/DOM 미의존)고, 위젯 컨트롤러가 라이브 좌표를 읽어 적용한다(좌표는 읽기만 — 헌법3).
+
+- **일기 카드 시선↑(view offset).** 일기를 고르면 하단에 일기 카드가 떠 있으므로, frame-all 위에 **투영 시선만 위로**(`ViewOffsetController`, 화면높이 1/6) 올려 별들이 카드에 가리지 않게 한다(모바일·데스크톱 공통). frame-all이 이미 화면에 맞췄으므로 **줌아웃은 하지 않는다**(별이 작아지지 않게 — 줌아웃은 모바일 작성/회상 시트 한정). 카드를 닫으면(배경 탭) 오프셋이 부드럽게 0으로 복귀.
 
 ### near/far 가드 — 근접=단일 엔그램만
 
@@ -89,7 +98,8 @@
 ## 구현 근거
 
 - 카메라 모드·줌 클램프(`OBSERVE_MIN_DIST`/`SHIP_BOUNDARY`)·비행 물리(가속·관성·벽 반동)·아크볼 회전: 구현 plan 06 · `frontend/src/widgets/universe-canvas/model/use-camera-mode.ts`, `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`CameraRig`/`NavController`/`NebulaOrbitController`/`ModeTransitionController`).
-- fly-to 보간(`k=1−exp(−dt·3)`, 오프셋 12, 임계 0.6)·잠든 별 도달·`focusStarId`/`focusStar`: 구현 plan 12 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FlyToController`/`FocusController`), `frontend/src/pages/dormant`.
+- fly-to 보간(`k=1−exp(−dt·3)`, 오프셋 12, 임계 0.6)·잠든 별 도달·`focusStarId`/`focusStar`: 구현 plan 12 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FlyToController`/`FocusController`), `frontend/src/features/dormant-search`.
+- 우주 셸 영속·탐색=패널 상태(`?panel=` 동기화·캔버스 비재초기화): 구현 plan 31 · `frontend/src/pages/home/ui/HomePage.tsx`(셸 합성·URL↔스토어 거울 이펙트), `frontend/src/features/universe/model/shell-store.ts`(`useShellStore`), `frontend/src/shared/ui/{OverlayHost,BottomSheet,SidePanel}.tsx`, `frontend/src/app/router.tsx`(`/dormant`→`/universe?panel=dormant` redirect).
 - 라이브 좌표 버퍼 단일 출처(네 reader 동기·fibonacci 폴백·`readBufferPosition`): 구현 plan 08·22 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController`), `frontend/src/shared/lib/force-sim/`, `frontend/src/shared/lib/layout.ts`.
 - 별 반지름 이동(거리=강함)·fly-to/focus 매 프레임 라이브 추적: 구현 plan 38 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`radiusOf`·`FlyToController`/`FocusController`의 버퍼 재독), `frontend/src/shared/lib/layout.ts`(`targetRadius`).
 - 조망 프레이밍(frame-all 거리·반경·`FRAME_MARGIN`/`FRAME_MIN_DISTANCE`)·near/far 가드(근접=단일만): 구현 plan 28 · `frontend/src/features/wayfinding/model/frame.ts`(순수 `frameTarget`)·`model/store.ts`, `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`).

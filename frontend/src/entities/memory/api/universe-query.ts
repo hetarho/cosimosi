@@ -33,7 +33,8 @@ function ambientStarsOf(stars: { memory: AmbientStar }[]): AmbientStar[] {
 // 단일 작성자 우주(spec 16 §캐싱 전략): 시간 만료가 아니라 이벤트(record +10s)가 갱신을
 // 끈다. staleTime 5m + focus refetch는 멀티 디바이스 드리프트만 커버하는 안전망.
 const UNIVERSE_STALE_MS = 5 * 60_000
-// 30m 보관: /dormant 다녀오기 같은 라우트 왕복에서 캐시로 즉시 표시.
+// 30m 보관: 랜딩↔우주 라우트 왕복에서 캐시로 즉시 표시(잠든 별·일기 탐색은 spec 31부터
+// 우주 셸 위 오버레이라 캔버스가 언마운트되지 않는다 — 그 동선엔 왕복 자체가 없다).
 const UNIVERSE_GC_MS = 30 * 60_000
 
 function buildUniverseQueryOptions() {

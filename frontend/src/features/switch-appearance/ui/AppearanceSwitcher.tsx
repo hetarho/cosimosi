@@ -110,7 +110,14 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className={cn('fixed z-50', className ?? 'bottom-4 right-4 sm:bottom-6 sm:right-6')}>
+    <div
+      className={cn(
+        'fixed z-50',
+        // 기본(랜딩 등 className 미지정): 홈 인디케이터/제스처 바를 비키도록 safe-area 보정.
+        className ??
+          'bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:right-6',
+      )}
+    >
       <AnimatePresence mode="wait" initial={false}>
         {open ? (
           <motion.div

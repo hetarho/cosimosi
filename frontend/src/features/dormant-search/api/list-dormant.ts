@@ -1,8 +1,8 @@
-// /dormant 목록의 뷰 모델 (spec 12). 쿼리의 정체성(키·queryFn·캐시 정책)은
-// entities/memory의 dormantQueryOptions가 소유하고(16 — features/recall의 invalidate와
-// 같은 출처), 이 페이지는 proto Star[] → DormantStar 매핑(select)만 얹는다. brightness는
-// 캔버스와 같은 starBrightness(08)로 클라 계산(서버에 감쇠 수학 없음); 응답 Star에는
-// body가 없다 — 원본은 회상(11)에서 가져온다.
+// 잠든 별 목록의 뷰 모델 (spec 12, 셸 오버레이로 전환 spec 31). 쿼리의 정체성(키·queryFn·
+// 캐시 정책)은 entities/memory의 dormantQueryOptions가 소유하고(16 — features/recall의
+// invalidate와 같은 출처), 이 feature는 proto Star[] → DormantStar 매핑(select)만 얹는다.
+// brightness는 캔버스와 같은 starBrightness(08)로 클라 계산(서버에 감쇠 수학 없음); 응답
+// Star에는 body가 없다 — 원본은 회상(11)에서 가져온다.
 import { queryOptions } from '@tanstack/react-query'
 import type { ListDormantResponse } from '@/shared/api'
 import { virtualNowMs } from '@/shared/lib/demo'

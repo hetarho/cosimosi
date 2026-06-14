@@ -24,13 +24,13 @@ export function SessionGate({ children }: { children: ReactNode }) {
     return (
       <>
         {children}
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 z-50 flex items-center gap-2">
           <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-xs text-amber-200/90 backdrop-blur">
             체험 모드 · 새로고침하면 초기화돼요
           </span>
           <button
             onClick={leave}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/50 backdrop-blur transition hover:text-white/80"
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/50 backdrop-blur transition hover:text-white/80"
           >
             체험 종료
           </button>
@@ -54,7 +54,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
       {children}
       <button
         onClick={() => void signOut()}
-        className="fixed top-4 right-4 z-50 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/50 backdrop-blur transition hover:text-white/80"
+        className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 z-50 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/50 backdrop-blur transition hover:text-white/80"
       >
         로그아웃
       </button>

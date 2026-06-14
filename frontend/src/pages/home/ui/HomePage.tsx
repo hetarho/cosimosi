@@ -1,17 +1,19 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useSearch } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { errorMessage, reportUniverseData } from '@/shared/lib'
 import { isDemoMode } from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
-import { MorningDiffNote, primaryButtonCls } from '@/shared/ui'
+import { Backdrop, MorningDiffNote, OverlayHost, primaryButtonCls } from '@/shared/ui'
 import { UniverseCanvas, UniverseGrain, useCameraMode } from '@/widgets/universe-canvas'
 import { DemoSimPanel } from '@/widgets/demo-sim'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
 import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
-import { DiarySheet } from '@/features/diary-list'
+import { DiaryCard, DiarySheet } from '@/features/diary-list'
+import { DormantSheet } from '@/features/dormant-search'
+import { useShellStore } from '@/features/universe'
 import { useWayfindingStore } from '@/features/wayfinding'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { applyUniverse, universeQueryOptions, useMemoryStore } from '@/entities/memory'
@@ -116,6 +118,9 @@ function NavPad() {
   // On mobile the recall panel (bottom sheet) overlaps the bottom-center D-pad — hide the pad
   // there while a star's info is open (desktop keeps it: the pad is left, the panel is right).
   const infoOpen = useMemoryStore((s) => s.selectedId != null)
+  // A shell overlay (dormant/diary) covers the lower screen on mobile and the left on desktop —
+  // hide the pad entirely while one is open so it isn't buried under the sheet/panel (spec 31).
+  const panelOpen = useShellStore((s) => s.panel != null)
 
   // Keyboard: track the set of held keys and recompute move from it, so chords work and
   // releasing one key of an axis correctly falls back to the other still-held one. Active
@@ -154,6 +159,12 @@ function NavPad() {
     }
   }, [mode, setMove])
 
+  // 패널이 열려 pad가 `hidden`이 되면 누르고 있던 버튼의 pointerup이 영영 안 와 move가 멈춰버린다
+  // (시트 뒤에서 우주가 계속 전진/회전) — 패널이 열리는 순간 이동을 0으로 정지시킨다.
+  useEffect(() => {
+    if (panelOpen) setMove({ x: 0, y: 0, z: 0 })
+  }, [panelOpen, setMove])
+
   if (mode !== 'recall') return null
 
   const btn =
@@ -170,11 +181,14 @@ function NavPad() {
     onPointerCancel: () => setMove({ [axis]: 0 }),
   })
 
-  // Mobile: bottom-center, lifted above the compose trigger (bottom-4). Desktop (sm+):
-  // left-center, out of the way of the top/bottom HUD.
+  // Mobile: thrust hugs the LEFT edge, look-pad the RIGHT (justify-between) so each thumb owns
+  // one side — the "전진하며 시선 회전" chord works one-handed and the center stays clear to see
+  // stars (spec 31 4a). Desktop (sm+): both groups sit together at left-center, out of the HUD.
+  // bottom lifts above the home-indicator (safe-area) and the compose trigger.
+  const visibility = panelOpen ? 'hidden' : infoOpen ? 'hidden sm:flex' : 'flex'
   return (
     <div
-      className={`absolute bottom-24 left-1/2 z-20 ${infoOpen ? 'hidden sm:flex' : 'flex'} -translate-x-1/2 items-center gap-3 sm:top-1/2 sm:bottom-auto sm:left-4 sm:translate-x-0 sm:-translate-y-1/2`}
+      className={`absolute inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 ${visibility} items-end justify-between sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-4 sm:-translate-y-1/2 sm:items-center sm:justify-start sm:gap-3`}
     >
       {/* forward / back thrust along the look direction (keys: W / S) */}
       <div className="flex flex-col gap-1.5">
@@ -209,22 +223,69 @@ export function HomePage() {
   const toggle = useCameraMode((s) => s.toggle)
   const starCount = useMemoryStore((s) => s.stars.length)
   // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
-  // ?panel=diary — 원본 일기 목록 오버레이 딥링크(spec 28). 진입 시 1회만 읽어 시트를 연다.
-  const { sim, panel } = useSearch({ from: '/universe' })
-  // 원본 일기 목록 오버레이(spec 28): closed → 진입버튼/딥링크로 open → 일기 선택 시 peek로
-  // 잦아들며(별을 가리지 않게) 그 일기 별들을 프레이밍+강조한다(31 셸 도입 전 페이지 합성).
-  const [diaryView, setDiaryView] = useState<'closed' | 'open' | 'peek'>(
-    panel === 'diary' ? 'open' : 'closed',
-  )
-  // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(wayfinding) 시트는 peek로.
+  // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
+  const { sim, panel: urlPanel } = useSearch({ from: '/universe' })
+  const navigate = useNavigate({ from: '/universe' })
+
+  // 우주 셸 패널 상태(spec 31) — 영속 캔버스 위에 어떤 탐색/리스트 오버레이가 떠 있는지의 단일
+  // 출처. 탐색은 라우트가 아니라 패널 상태다 — `?panel=`로만 딥링크/뒤로가기를 동기화하고 캔버스는
+  // 절대 언마운트하지 않는다(1.5/1.6).
+  const panel = useShellStore((s) => s.panel)
+  const peek = useShellStore((s) => s.peek)
+  const openPanel = useShellStore((s) => s.openPanel)
+  const closePanel = useShellStore((s) => s.closePanel)
+  const setPeek = useShellStore((s) => s.setPeek)
+
+  // 포커스 상태(별 회상 선택 / 일기 조망 강조) — 은은한 딤을 깔아 "지금 한 곳에 집중 중"임을 알리고,
+  // 빈 우주를 탭하면(캔버스 onPointerMissed) 해제·복귀한다(spec 31).
+  const selectedId = useMemoryStore((s) => s.selectedId)
+  const highlightedRecordId = useWayfindingStore((s) => s.highlightedRecordId)
+  const focused = selectedId != null || highlightedRecordId != null
+
+  // URL이 딥링크 가능한 패널(dormant/diary)의 단일 출처다 — 한 개의 거울 이펙트만 `?panel=`을
+  // 셸 스토어에 반영하고, UI의 열기/닫기는 navigate만 한다. 가드는 렌더 클로저의 stale `panel`이
+  // 아니라 `getState()`(현재값)로 비교해 ① 두 이펙트가 stale 스냅샷으로 레이스하지 않고(딥링크가
+  // `?panel=`을 스스로 지우거나 뒤로가기를 삼키지 않게) ② 항목 선택 시 setPeek(true)가 보존되게
+  // 한다(openPanel은 peek를 리셋하므로 패널이 실제로 바뀔 때만 호출). 변천사는 URL 딥링크 대상이
+  // 아니다(별 id 필요 — features/evolution이 자체 스토어로 연다).
+  useEffect(() => {
+    const next = urlPanel ?? null
+    if (useShellStore.getState().panel === next) return
+    if (next === null) closePanel()
+    else openPanel(next)
+  }, [urlPanel, openPanel, closePanel])
+
+  // 일기 조망 중 강조가 풀리면 일기 패널도 닫아 완전히 복귀한다(배경 탭=onPointerMissed→wayfinding.clear,
+  // 또는 근접 진입 시 NearFarHighlightGuard.clear). "배경 누르면 돌아오기"의 일기 쪽 마무리(spec 31).
+  useEffect(() => {
+    if (panel === 'diary' && peek && highlightedRecordId == null) {
+      void navigate({ search: (prev) => ({ ...prev, panel: undefined }), replace: true })
+    }
+  }, [panel, peek, highlightedRecordId, navigate])
+
+  // 리스트/탐색 패널 열기 — 뒤로가기로 닫히도록 history에 push한다. 새 목록은 깨끗이 시작하도록
+  // 직전 일기 강조를 해제하고(시각 전용 — records/memories 불변), 같은 패널 재진입이면 peek를 펼친다.
+  function showPanel(p: 'dormant' | 'diary') {
+    useWayfindingStore.getState().clear()
+    setPeek(false)
+    void navigate({ search: (prev) => ({ ...prev, panel: p }) })
+  }
+  // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(wayfinding) 시트는 peek로
+  // 잦아든다 — 뒤 우주에서 frame-all fly-to(28). 시각 전용(records/memories 불변, 헌법1·2).
   function frameDiary(recordId: string) {
     useWayfindingStore.getState().frameRecord(recordId)
-    setDiaryView('peek')
+    setPeek(true)
   }
-  // 시트 닫기 = 강조 해제(시각 전용 — records/memories 불변, 헌법1·2).
-  function closeDiary() {
-    setDiaryView('closed')
+  // 잠든 별을 고르면 그 별로 fly-to(12 focusStar) + 시트는 peek로 — 우주를 떠나지 않는다(1.2).
+  function focusDormant(memoryId: string) {
+    useCameraMode.getState().focusStar(memoryId)
+    setPeek(true)
+  }
+  // 패널 닫기 = 강조 해제 + `?panel=` 제거. replace로 history를 더럽히지 않아(닫기 직후 뒤로가기가
+  // 패널을 되살리지 않음) 거울 이펙트가 스토어를 닫는다.
+  function closeShellPanel() {
     useWayfindingStore.getState().clear()
+    void navigate({ search: (prev) => ({ ...prev, panel: undefined }), replace: true })
   }
   // Mobile-only: the compose form is hidden by default (keep the universe unobstructed)
   // and expands into a full-width bottom sheet. On desktop (sm+) it stays a persistent
@@ -240,9 +301,11 @@ export function HomePage() {
   const [morningDiff, setMorningDiff] = useState(false)
   const setSheetOpen = useCameraMode((s) => s.setSheetOpen)
   useEffect(() => {
-    setSheetOpen(composeOpen || demoSheetOpen)
+    // compose는 탐색 오버레이가 열리면 숨으므로(panel != null) view-offset도 그 *실제 표시 여부*를
+    // 따라야 한다 — 안 그러면 패널을 열어 둔 채 우주가 위로 밀리고 줌된 상태로 남는다(셸 시트 뒤 오정렬).
+    setSheetOpen((composeOpen && panel == null) || demoSheetOpen)
     return () => setSheetOpen(false)
-  }, [composeOpen, demoSheetOpen, setSheetOpen])
+  }, [composeOpen, panel, demoSheetOpen, setSheetOpen])
 
   // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
   // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4) — 제출 중 temp 별,
@@ -311,6 +374,10 @@ export function HomePage() {
           canvas but before the HUD, and is pointer-events:none, so HUD stays interactive. */}
       <UniverseGrain />
 
+      {/* 포커스 딤(spec 31) — 별 회상·일기 조망 중 은은히 어둡혀 집중을 알린다. pointer-events-none이라
+          별 탭·드래그는 그대로 캔버스로 통과하고, 빈 곳 탭은 캔버스 onPointerMissed가 해제로 받는다. */}
+      {focused && <Backdrop className="z-10" />}
+
       {/* HUD: 2D DOM overlays outside the canvas */}
 
       {/* 야간 공고화 morning diff(spec 27, 6.1) — 하루 첫 접속 1회. 데모는 자체 "밤 보내기"가 띄운다. */}
@@ -328,30 +395,33 @@ export function HomePage() {
           </div>
 
           {/* Compose — mobile (<sm): hidden by default; a full-width trigger expands it into
-              a full-width bottom sheet so it doesn't cover the universe while exploring. */}
-          <div className="sm:hidden">
-            {composeOpen ? (
-              <div className="absolute inset-x-2 bottom-2 z-30">
+              a full-width bottom sheet. 탐색 오버레이(dormant/diary)가 열려 있으면 숨긴다 — 같은
+              하단 모서리의 peek 손잡이와 충돌하지 않게(spec 31). safe-area로 홈 인디케이터 위로 올린다. */}
+          {panel == null && (
+            <div className="sm:hidden">
+              {composeOpen ? (
+                <div className="absolute inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-30">
+                  <button
+                    type="button"
+                    onClick={() => setComposeOpen(false)}
+                    aria-label="닫기"
+                    className="absolute top-2 right-2 z-10 grid h-9 w-9 place-items-center rounded-md text-white/50 transition hover:text-white/90"
+                  >
+                    ✕
+                  </button>
+                  <MemoryForm />
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setComposeOpen(false)}
-                  aria-label="닫기"
-                  className="absolute top-3 right-3 z-10 rounded-md px-2 text-white/50 transition hover:text-white/90"
+                  onClick={() => setComposeOpen(true)}
+                  className="absolute inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 rounded-xl border border-white/10 bg-indigo-500/80 px-4 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-indigo-500"
                 >
-                  ✕
+                  ✦ 새 일기 — 별 띄우기
                 </button>
-                <MemoryForm />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setComposeOpen(true)}
-                className="absolute inset-x-4 bottom-4 z-20 rounded-xl border border-white/10 bg-indigo-500/80 px-4 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-indigo-500"
-              >
-                ✦ 새 일기 — 별 띄우기
-              </button>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </>
       )}
       <NavPad />
@@ -359,7 +429,7 @@ export function HomePage() {
       {/* Star info — mobile: above the bottom compose button and height-capped so a long
           memory scrolls instead of reaching the top controls. Desktop: bottom-right (compose
           is a top-left panel, so no overlap). */}
-      <div className="absolute right-4 bottom-20 z-10 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain sm:bottom-4 sm:max-h-none sm:overflow-visible">
+      <div className="absolute right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 max-h-[calc(100dvh-12rem)] overflow-y-auto overscroll-contain sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:max-h-[calc(100dvh-2rem)] sm:overflow-y-auto">
         <MemoryPanel
           onOpenEvolution={(id) => useEvolutionStore.getState().open(id)}
           // "이 일기의 다른 별들 보기"(spec 28): 같은 record_id 별들을 조망 프레이밍+강조한다
@@ -367,7 +437,7 @@ export function HomePage() {
           // 시트가 열려 있었다면 peek로 잦아들게 해(diary-list 경로와 동일) 프레이밍된 별을 가리지 않는다.
           onSeeDiaryStars={(recordId) => {
             useWayfindingStore.getState().frameRecord(recordId)
-            setDiaryView((v) => (v === 'closed' ? 'closed' : 'peek'))
+            if (panel === 'diary') setPeek(true)
           }}
         />
       </div>
@@ -376,45 +446,77 @@ export function HomePage() {
       <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center p-4">
         <EvolutionPanel />
       </div>
-      {/* top-16: clear the global 로그아웃 pill (SessionGate, top-4 right-4) so these
-          page controls don't sit hidden underneath it. */}
-      <div className="absolute top-16 right-4 z-10 flex gap-2">
-        {/* 원본 일기로 별 찾기(spec 28) — 우주 위 오버레이로 일기 목록을 연다(라우트 이동 없음). */}
+      {/* top-16(+safe): clear the global 로그아웃 pill (SessionGate, top-4 right-4) so these
+          page controls don't sit hidden underneath it. z-30 so they stay tappable above the
+          NavPad/compose HUD (z-20) and never get buried (spec 31). */}
+      <div className="absolute top-[calc(4rem+env(safe-area-inset-top))] right-4 z-30 flex gap-2">
+        {/* 원본 일기로 별 찾기(spec 28) — 우주 위 오버레이로 일기 목록을 연다(라우트 이동 없음, 31 셸). */}
         <button
           type="button"
-          onClick={() => setDiaryView('open')}
-          className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
+          onClick={() => showPanel('diary')}
+          className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
         >
           일기
         </button>
-        <Link
-          to="/dormant"
-          className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
+        {/* 잠든 별 탐색(spec 12) — 별도 라우트가 아니라 셸 위 오버레이를 연다(spec 31). */}
+        <button
+          type="button"
+          onClick={() => showPanel('dormant')}
+          className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
         >
           잠든 별
-        </Link>
+        </button>
         <button
           type="button"
           onClick={toggle}
-          className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
+          className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
         >
-          카메라: {mode === 'nebula' ? '성운(전체 조망)' : '회상(근접 항해)'}
+          {/* 모바일은 좁은 우상단 폭에 맞춰 짧게(아이콘+한 단어), 데스크톱은 풀 라벨. */}
+          <span className="sm:hidden">{mode === 'nebula' ? '🔭 성운' : '🚀 회상'}</span>
+          <span className="hidden sm:inline">
+            카메라: {mode === 'nebula' ? '성운(전체 조망)' : '회상(근접 항해)'}
+          </span>
         </button>
       </div>
 
-      {/* 원본 일기 목록 오버레이(spec 28) — 우주 캔버스 뒤에 영속(31 셸 도입 전 페이지 합성).
-          일기를 고르면 그 일기 별들을 프레이밍+강조하고 시트는 peek로 잦아든다. */}
-      {diaryView !== 'closed' && (
-        <DiarySheet
-          view={diaryView}
-          onClose={closeDiary}
-          onExpand={() => setDiaryView('open')}
-          onSelectDiary={frameDiary}
-        />
+      {/* 우주 셸 오버레이(spec 31) — 영속 캔버스 위 비차단 호스트(모바일=바텀시트/데스크톱=사이드
+          패널). 각 feature는 콘텐츠(`…Sheet`)만 제공하고, 호스트가 컨테이너·peek·스냅·reduced-motion을
+          맡는다. 캔버스는 절대 재init되지 않는다(1.5). */}
+      {panel === 'dormant' && (
+        <OverlayHost
+          open
+          peek={peek}
+          title="잠든 별"
+          peekLabel="🌙 잠든 별 목록 펼치기"
+          onClose={closeShellPanel}
+          onExpand={() => setPeek(false)}
+        >
+          <DormantSheet onSelect={focusDormant} />
+        </OverlayHost>
+      )}
+      {panel === 'diary' && (
+        <OverlayHost
+          open
+          peek={peek}
+          title="원본 일기 — 별 찾기"
+          peekLabel="📖 일기 목록 펼치기"
+          onClose={closeShellPanel}
+          onExpand={() => setPeek(false)}
+          // 일기를 고르면 잦아든 손잡이 대신 그 일기 카드를 하단에 — 어떤 일기를 조망 중인지 보이게(spec 31).
+          peekSlot={
+            <DiaryCard
+              recordId={highlightedRecordId}
+              onExpand={() => setPeek(false)}
+              onClose={closeShellPanel}
+            />
+          }
+        >
+          <DiarySheet onSelectDiary={frameDiary} />
+        </OverlayHost>
       )}
 
-      {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(우하단은 MemoryPanel, 하단은 compose/NavPad와 겹침). */}
-      <AppearanceSwitcher className="top-28 right-4" />
+      {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(safe-area로 노치 아래). FAB은 z-50(전역 chrome). */}
+      <AppearanceSwitcher className="top-[calc(7rem+env(safe-area-inset-top))] right-4" />
 
       {/* 시뮬레이션 패널(spec 19) — 데모에서만, 좌하단(데스크톱)/하단 시트(모바일).
           데모의 기록은 이 패널의 "별 띄우기" 컨트롤러가 담당한다(작성 폼은 데모에서 숨김). */}

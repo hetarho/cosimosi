@@ -3,10 +3,10 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  redirect,
 } from '@tanstack/react-router'
 import { LandingPage } from '@/pages/landing'
 import { HomePage } from '@/pages/home'
-import { DormantPage } from '@/pages/dormant'
 import { RootLayout } from './RootLayout'
 import { NotFoundScreen, RouteErrorScreen } from './ui/ErrorScreens'
 import { SessionGate } from './ui/SessionGate'
@@ -26,11 +26,14 @@ const universeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/universe',
   // ?sim=<id> — 데모 시뮬레이션 패널의 진입 포커스(spec 19, 랜딩 카드 "이 카드 체험하기").
-  // ?panel=diary — 원본 일기 목록 오버레이 딥링크(spec 28; 별도 /diary 라우트는 두지 않는다 —
-  // 우주 셸 위 오버레이). 문자열만 통과시키고, 알 수 없는 값은 페이지가 무시한다.
-  validateSearch: (search: Record<string, unknown>): { sim?: string; panel?: 'diary' } => ({
+  // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31). 라우트를 늘리지 않고
+  // (별도 /dormant·/diary 없음) 셸 패널 상태를 search param으로만 동기화한다(딥링크·뒤로가기).
+  // 알 수 없는 값은 무시. (변천사는 별 id가 필요해 URL 딥링크 대상이 아님 — 회상에서 열린다.)
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { sim?: string; panel?: 'dormant' | 'diary' } => ({
     sim: typeof search.sim === 'string' ? search.sim : undefined,
-    panel: search.panel === 'diary' ? 'diary' : undefined,
+    panel: search.panel === 'dormant' || search.panel === 'diary' ? search.panel : undefined,
   }),
   component: function UniverseRoute() {
     return (
@@ -41,17 +44,14 @@ const universeRoute = createRoute({
   },
 })
 
-// /dormant = 잠든 별 탐색(보호 라우트, 12). 항목 클릭 → focusStar → /universe 로 이동 →
-// 카메라 fly-to → 회상 재점화.
-const dormantRoute = createRoute({
+// /dormant — 잠든 별 탐색은 더 이상 별도 풀페이지가 아니라 우주 셸 위 오버레이다(spec 31).
+// 옛 링크/북마크 보존을 위해 `/universe?panel=dormant`로 영구 리다이렉트한다(라우트 비증가;
+// 인증 게이트는 목적지 /universe의 SessionGate가 건다).
+const dormantRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dormant',
-  component: function DormantRoute() {
-    return (
-      <SessionGate>
-        <DormantPage />
-      </SessionGate>
-    )
+  beforeLoad: () => {
+    throw redirect({ to: '/universe', search: { panel: 'dormant' } })
   },
 })
 
@@ -71,7 +71,12 @@ const adminRoute = createRoute({
   },
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, universeRoute, dormantRoute, adminRoute])
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  universeRoute,
+  dormantRedirectRoute,
+  adminRoute,
+])
 
 export const router = createRouter({
   routeTree,

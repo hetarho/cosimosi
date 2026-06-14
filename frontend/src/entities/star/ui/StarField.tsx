@@ -412,6 +412,10 @@ export function StarField({
         dispose={null}
         onClick={(e) => {
           e.stopPropagation()
+          // 드래그(우주 회전)면 선택이 아니다 — 탭만 별을 연다. R3F가 e.delta에 down↔up 이동거리(px)를
+          // 채우므로, 우주를 끌어 돌리다 손을 뗀 별은 선택되지 않는다(NebulaOrbitController 드래그
+          // 데드존 8px과 같은 기준). 없으면 raycast가 down 시점 히트로 onClick을 쏴 별이 잘못 선택된다.
+          if (e.delta > 8) return
           if (e.instanceId == null) return
           const node = stars[e.instanceId]
           if (node) select(node.id)

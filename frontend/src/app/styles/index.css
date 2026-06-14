@@ -28,7 +28,8 @@ body {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100vh; /* 구형 폴백 */
+  min-height: 100dvh; /* 모바일 주소창 변화를 따르는 동적 뷰포트(우주 HUD의 dvh와 단위 통일) */
 }
 
 @layer components {
