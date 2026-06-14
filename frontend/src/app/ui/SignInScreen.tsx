@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { GlassCard } from '@/shared/ui'
-import { useAuthStore } from '../model/auth-store'
+import { useAuthActions } from './session-context'
 
 /**
  * 사인인 화면 — 미인증 상태의 /universe 보호 라우트에서 렌더된다 (1.1). 두 방식:
@@ -8,9 +8,7 @@ import { useAuthStore } from '../model/auth-store'
  *  ② Google OAuth — redirect 후 /universe 복귀 시 세션 수립 (1.8)
  */
 export function SignInScreen() {
-  const signInWithOtp = useAuthStore((s) => s.signInWithOtp)
-  const verifyOtp = useAuthStore((s) => s.verifyOtp)
-  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle)
+  const { signInWithOtp, verifyOtp, signInWithGoogle } = useAuthActions()
 
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')

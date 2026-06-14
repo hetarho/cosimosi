@@ -97,9 +97,13 @@ export interface StarFieldProps {
   /** 감정색 사용자 오버라이드(mood→"#RRGGBB", spec 30). 없는 mood는 기본 팔레트(MOOD_PALETTE). */
   emotionColors?: Record<string, string>
   /** 강조할 원본 일기 id(spec 28) — 그 일기의 별만 밝히고 나머지는 dim한다(원본 일기로 별 찾기).
-   *  record_id만 받아 자기 stars 구독으로 집합을 파생한다(엔터티는 wayfinding feature store를
-   *  못 읽으므로 위젯이 record_id만 prop으로 넘긴다). null = 강조 없음. */
+   *  record_id만 받아 자기 stars 구독으로 집합을 파생한다. null = 강조 없음. */
   highlightedRecordId?: string | null
+  /** 선택된 별 id(focus 머신, spec 39) — 위젯이 prop으로 내린다(엔터티는 머신을 직접 읽지 않음·
+   *  props 구동). 선택된 별은 FOCUS_BOOST, 나머지는 FOCUS_DIM. null = 선택 없음. */
+  selectedId?: string | null
+  /** 별 탭 → 그 별 선택(위젯이 focus.SELECT_STAR로 배선). 드래그(우주 회전)는 제외(e.delta 가드). */
+  onSelect?: (id: string) => void
 }
 
 export function StarField({
@@ -107,10 +111,10 @@ export function StarField({
   object = DEFAULT_OBJECT,
   emotionColors,
   highlightedRecordId = null,
+  selectedId = null,
+  onSelect,
 }: StarFieldProps) {
   const stars = useMemoryStore((s) => s.stars)
-  const select = useMemoryStore((s) => s.select)
-  const selectedId = useMemoryStore((s) => s.selectedId)
   const count = stars.length
   // 강조 일기의 별 id 집합 — record_id로 그룹(spec 28). 선택 변경/별 집합 변경 시에만 재계산.
   const highlightedIds = useMemo(
@@ -418,7 +422,7 @@ export function StarField({
           if (e.delta > 8) return
           if (e.instanceId == null) return
           const node = stars[e.instanceId]
-          if (node) select(node.id)
+          if (node) onSelect?.(node.id)
         }}
       />
       {/* 탄생 버스트 레이어 — 클릭은 별이 받아야 하므로 raycast를 끈다. 행렬이 매 프레임

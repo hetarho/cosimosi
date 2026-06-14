@@ -6,16 +6,17 @@
 // Selection-only: the canvas exposes no camera-target mechanism (useCameraMode only
 // toggles nebula/recall), so there is no fly-to on click.
 import { useMemo } from 'react'
+import { useSelector } from '@xstate/react'
 import { neighborsOf, useSynapseStore } from '@/entities/synapse'
-import { useMemoryStore } from '@/entities/memory'
+import { useMemoryStore, focusActor, selectFocusedStarId } from '@/entities/memory'
 import { moodLabel } from '@/shared/config'
 
 const MAX_NEIGHBORS = 8
 
 export function NeighborNav() {
-  const selectedId = useMemoryStore((s) => s.selectedId)
+  // 선택된 별 = focus 머신(spec 39). 이웃 클릭 → focus.SELECT_STAR로 그 별로 전환(재dwell→공동회상).
+  const selectedId = useSelector(focusActor, selectFocusedStarId)
   const stars = useMemoryStore((s) => s.stars)
-  const select = useMemoryStore((s) => s.select)
   const edges = useSynapseStore((s) => s.edges)
 
   const neighbors = useMemo(() => {
@@ -42,7 +43,7 @@ export function NeighborNav() {
           <li key={n.id}>
             <button
               type="button"
-              onClick={() => select(n.id)}
+              onClick={() => focusActor.send({ type: 'SELECT_STAR', id: n.id })}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-white/70 transition hover:bg-white/10"
             >
               <span

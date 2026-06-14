@@ -13,12 +13,24 @@ import {
 } from 'react'
 import { Canvas, type GLProps, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import { useSelector } from '@xstate/react'
 import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
 import { StarField } from '@/entities/star'
 import { SynapseFilaments, SynapseDust, useSynapseStore, edgesWithin } from '@/entities/synapse'
-import { useMemoryStore, activation, A_MIN, starsOfRecord } from '@/entities/memory'
-import { useWayfindingStore, frameTarget } from '@/features/wayfinding'
+import {
+  useMemoryStore,
+  activation,
+  A_MIN,
+  starsOfRecord,
+  focusActor,
+  selectFocusedStarId,
+  selectHighlightedRecordId,
+  selectIsStarFocus,
+  selectIsDiaryFocus,
+  selectFrameNonce,
+} from '@/entities/memory'
+import { frameTarget } from '@/features/wayfinding'
 import { useAppearance, themeBg } from '@/entities/appearance'
 import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
 import {
@@ -114,9 +126,9 @@ function atRadius(pos: readonly [number, number, number], r: number): [number, n
  *  (react-hooks/purity) and the layout stable across re-renders. */
 function StarDust({ count = 1500 }: { count?: number }) {
   // Dim the ambient dust while a star is focused (spotlight) OR a diary is highlighted
-  // (원본 일기 조망, spec 28) so only the foregrounded stars read bright.
-  const focused = useMemoryStore((s) => s.selectedId != null)
-  const highlighting = useWayfindingStore((s) => s.highlightedRecordId != null)
+  // (원본 일기 조망, spec 28) so only the foregrounded stars read bright. (focus 머신, spec 39)
+  const focused = useSelector(focusActor, selectIsStarFocus)
+  const highlighting = useSelector(focusActor, selectIsDiaryFocus)
   const dimmed = focused || highlighting
   const positions = useMemo(() => {
     const rng = mulberry32(0x5eed)
@@ -279,9 +291,9 @@ function NebulaOrbitController() {
   const pendingZoom = useRef(0) // dolly accumulated since last frame (fraction of radius)
   const armedPointer = useRef<number | null>(null) // 1-finger pointer awaiting the drag deadzone (tap vs orbit)
   const downXY = useRef({ x: 0, y: 0 }) // its press position — the deadzone origin
-  // While a star is selected (focus/spotlight), FocusController owns the aim — stand down.
-  const selectedId = useMemoryStore((s) => s.selectedId)
-  const active = mode === 'nebula' && !transitioning && selectedId == null
+  // While a star is selected (focus/spotlight), FocusController owns the aim — stand down. (focus 머신)
+  const starFocused = useSelector(focusActor, selectIsStarFocus)
+  const active = mode === 'nebula' && !transitioning && !starFocused
 
   const right = useRef(new THREE.Vector3())
   const up = useRef(new THREE.Vector3())
@@ -484,8 +496,8 @@ function NavController() {
   const mode = useCameraMode((s) => s.mode)
   const move = useCameraMode((s) => s.move)
   const transitioning = useCameraMode((s) => s.transitioning)
-  // A selected star locks the gaze (FocusController) — recall nav stands down until deselected.
-  const selectedId = useMemoryStore((s) => s.selectedId)
+  // A selected star locks the gaze (FocusController) — recall nav stands down until deselected. (focus 머신)
+  const starFocused = useSelector(focusActor, selectIsStarFocus)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -508,7 +520,7 @@ function NavController() {
   useFrame((_, dt) => {
     // GATE: bail outside recall and during any guided flight. No nav fights the dive/fly-to, so
     // those always arrive and clear `transitioning`. Undo any residual shake and reset state.
-    if (mode !== 'recall' || !controls || transitioning || selectedId != null) {
+    if (mode !== 'recall' || !controls || transitioning || starFocused) {
       if (shakeOffset.current.lengthSq() > 0) {
         camera.position.sub(shakeOffset.current)
         controls?.target.sub(shakeOffset.current)
@@ -883,7 +895,7 @@ function UniverseSynapses({
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
   const emotionColors = useAppearance((s) => s.emotionColors)
-  const selectedId = useMemoryStore((s) => s.selectedId)
+  const selectedId = useSelector(focusActor, selectFocusedStarId)
   // 강조 일기의 별 id 집합 — record_id로 그룹(spec 28). 별 집합/강조 record 변경 시에만 재계산.
   const highlightedIds = useMemo(
     () =>
@@ -959,7 +971,7 @@ function UniverseSynapses({
 function UniverseDrift({ children }: { children: ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   const amp = useRef(1) // 선택 중 0으로, 해제 후 1로 부드럽게 복귀
-  const selected = useMemoryStore((s) => s.selectedId != null)
+  const selected = useSelector(focusActor, selectIsStarFocus)
   const reduce = useMemo(
     () =>
       typeof window !== 'undefined' &&
@@ -990,7 +1002,6 @@ function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Floa
   const setMode = useCameraMode((s) => s.setMode)
   const setTransitioning = useCameraMode((s) => s.setTransitioning)
   const stars = useMemoryStore((s) => s.stars)
-  const select = useMemoryStore((s) => s.select)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -1039,7 +1050,9 @@ function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Floa
       camera.lookAt(target)
     }
     if (camera.position.distanceTo(desired) < 0.6) {
-      if (flyingIdRef.current) select(flyingIdRef.current) // arrived → recall panel (11)
+      // arrived → recall panel (11). 도착 시점에 focus를 별로 — dormant fly-to가 우주에 안착한 뒤
+      // 패널을 연다(focus 머신, spec 39). 직접 클릭은 StarField onSelect가 이미 즉시 SELECT_STAR.
+      if (flyingIdRef.current) focusActor.send({ type: 'SELECT_STAR', id: flyingIdRef.current })
       targetRef.current = null
       flyingIdRef.current = null
       setTransitioning(false) // restore recall clamps now that we're parked inside the shell
@@ -1060,11 +1073,13 @@ function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Floa
  *  The whole-set centroid is recomputed fresh each request (acceptance 1.2). lerp/damp reuses
  *  the 12 fly-to feel (k=1−exp(−dt·4), as ModeTransition). */
 function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
-  const frameRequest = useWayfindingStore((s) => s.frameRequest)
+  // 일기 조망 = focus 머신의 diary 상태(spec 39). recordId가 강조 일기, frameNonce가 단조 증가하는
+  // 프레이밍 요청(구 wayfinding.frameRequest.nonce 대체) — 같은 일기를 다시 골라도 재발화한다.
+  const recordId = useSelector(focusActor, selectHighlightedRecordId)
+  const frameNonce = useSelector(focusActor, selectFrameNonce)
   const setMode = useCameraMode((s) => s.setMode)
   const setTransitioning = useCameraMode((s) => s.setTransitioning)
   const stars = useMemoryStore((s) => s.stars)
-  const select = useMemoryStore((s) => s.select)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -1074,18 +1089,17 @@ function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<F
   const tgtRef = useRef<THREE.Vector3 | null>(null)
 
   useEffect(() => {
-    const req = frameRequest
-    if (!req || req.nonce === lastNonceRef.current) return
+    if (recordId == null || frameNonce === lastNonceRef.current) return
 
     // Resolve the diary's stars → buffer slots (= array slot, like FlyTo/StarField/Synapses).
     const count = stars.length
     const slots: number[] = []
-    for (let i = 0; i < count; i++) if (stars[i].memory.recordId === req.recordId) slots.push(i)
+    for (let i = 0; i < count; i++) if (stars[i].memory.recordId === recordId) slots.push(i)
     // Don't consume the nonce yet if the universe stars haven't loaded — the diary list loads
     // independently of GetUniverse, so a pick (or ?panel=diary deep-link) can fire first. The
     // effect re-runs when `stars` arrives (it's a dep); consume only once we can actually frame.
     if (slots.length === 0) return
-    lastNonceRef.current = req.nonce
+    lastNonceRef.current = frameNonce
 
     // Read the LIVE coordinates (single source); fall back to the deterministic fibonacci
     // shell (same as the other readers) for any slot whose buffer row isn't ready yet.
@@ -1121,11 +1135,11 @@ function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<F
     posRef.current = center.clone().addScaledVector(dir, dist)
     tgtRef.current = center
 
-    select(null) // 조망은 단일 포커스를 풀고 시작(FocusController stand-down)
+    // 단일 포커스 해제는 구조적 — focus 머신이 diary 상태라 별 선택은 이미 없다(구 select(null) 불요).
     camera.up.set(0, 1, 0) // re-level: shed any free-look/arcball roll
     if (useCameraMode.getState().mode === 'recall') setMode('nebula') // 근접→far 강제(1.4)
     setTransitioning(true) // relax the orbit/ship clamps for the flight; restored on arrival
-  }, [frameRequest, stars, positionsRef, camera, setMode, setTransitioning, select])
+  }, [recordId, frameNonce, stars, positionsRef, camera, setMode, setTransitioning])
 
   useFrame((_, dt) => {
     const pos = posRef.current
@@ -1168,24 +1182,18 @@ function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<F
   return null
 }
 
-/** Diary-highlight guard (spec 28). Two invariants, both clearing the diary 조망 highlight from
- *  the composition layer (the entity StarField never reads the feature store):
- *   - near/far (acceptance 1.4): 근접(recall)에서는 단일 엔그램만 — when the camera enters recall
- *     (user toggles), clear the highlight. Framing a diary FROM recall switches to nebula first
- *     (FrameAllController), so this never fights an in-progress frame.
- *   - single-focus wins: when a star is SELECTED, single-star focus takes over, so the diary
- *     highlight must clear — otherwise it would re-appear when the recall panel closes. The
- *     frame-from-recall flow is safe: FrameAllController does select(null) AFTER frameRecord, so
- *     this fires with selectedId=null (no clear) and the fresh highlight survives. */
-function NearFarHighlightGuard() {
+/** 근접/원거리 가드(spec 28·39). 일기 조망은 FAR(nebula) 전용이므로, 카메라가 recall로 들어가면
+ *  일기 조망을 해제한다(acceptance 1.4 — 근접에서는 단일 엔그램만). 별 선택이 강조를 푸는 두 번째
+ *  불변식은 이제 구조적이다 — focus 머신은 star/diary 중 하나만 활성이라 별을 고르면 diary는 자동
+ *  해제된다(구 NearFarHighlightGuard의 selectedId 분기 불요). recall에서 별 포커스(star)는 정상이라
+ *  diary일 때만 DISMISS한다. */
+function RecallDismissGuard() {
   const mode = useCameraMode((s) => s.mode)
-  const selectedId = useMemoryStore((s) => s.selectedId)
   useEffect(() => {
-    if (mode === 'recall') useWayfindingStore.getState().clear()
+    if (mode === 'recall' && focusActor.getSnapshot().matches('diary')) {
+      focusActor.send({ type: 'DISMISS' })
+    }
   }, [mode])
-  useEffect(() => {
-    if (selectedId != null) useWayfindingStore.getState().clear()
-  }, [selectedId])
   return null
 }
 
@@ -1290,10 +1298,10 @@ function ViewOffsetController() {
   // 페이지 HUD가 올리는 시트(작성 폼, 기억 실험실) + 위젯이 스스로 아는 회상 패널(선택된
   // 별) — 회상은 여기서 직접 구독해, 별 선택이 어느 경로로 일어나도 시프트가 따라온다.
   const hudSheetOpen = useCameraMode((s) => s.sheetOpen)
-  const recallOpen = useMemoryStore((s) => s.selectedId != null)
+  const recallOpen = useSelector(focusActor, selectIsStarFocus)
   // 일기 조망(spec 31): 일기를 고르면 하단에 일기 카드가 떠 있으므로, 그 일기 별들을 화면 위쪽으로
-  // 올려(시선 위로) 카드에 가리지 않게 한다 — 모바일·데스크톱 공통(카드가 하단 중앙이라).
-  const diaryFramed = useWayfindingStore((s) => s.highlightedRecordId != null)
+  // 올려(시선 위로) 카드에 가리지 않게 한다 — 모바일·데스크톱 공통(카드가 하단 중앙이라). (focus 머신)
+  const diaryFramed = useSelector(focusActor, selectIsDiaryFocus)
   const offset = useRef(0)
   const zoom = useRef(1)
   const applied = useRef({ off: 0, zoom: 1, w: 0, h: 0 })
@@ -1353,13 +1361,13 @@ const FOCUS_UP = new THREE.Vector3(0, 1, 0) // world up — re-leveled into duri
  *  the camera then; this engages the instant they finish. Releases when the panel closes (select(null)).
  *  Reads the SAME fibonacci layout as StarField + fly-to so it lands on the rendered star. */
 function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
-  const selectedId = useMemoryStore((s) => s.selectedId)
+  const selectedId = useSelector(focusActor, selectFocusedStarId)
   const stars = useMemoryStore((s) => s.stars)
   const mode = useCameraMode((s) => s.mode)
   const transitioning = useCameraMode((s) => s.transitioning)
   // 일기 조망(spec 28)이 활성이면 frame-all이 orbit 타깃을 소유한다 — 포커스 해제 복원이
-  // 그 프레이밍을 끌어내리지 않게 한다(아래 deselect 분기에서 가드).
-  const highlightedRecordId = useWayfindingStore((s) => s.highlightedRecordId)
+  // 그 프레이밍을 끌어내리지 않게 한다(아래 deselect 분기에서 가드). (focus 머신, spec 39)
+  const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -1513,9 +1521,10 @@ export function UniverseCanvas() {
   const emotionColors = useAppearance((s) => s.emotionColors)
   // 중심 "나" 별 형태(spec 38) — 우주 중심 앵커. 강한 기억이 그 곁에 모인다.
   const selfObject = useAppearance((s) => s.selfObject)
-  // 원본 일기 조망 강조(spec 28) — 강조 record만 구독(드물게 변함; 별 집합 변경엔 안 묶임).
-  // StarField/UniverseSynapses가 record_id로 자기 별 집합을 파생해 강조/dim한다.
-  const highlightedRecordId = useWayfindingStore((s) => s.highlightedRecordId)
+  // 포커스 상태(focus 머신, spec 39) — 강조 일기 record_id + 선택 별 id. StarField/UniverseSynapses에
+  // prop으로 내려 record_id로 자기 별 집합을 파생해 강조/dim하고, 별 탭은 onSelect로 머신에 보낸다.
+  const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
+  const selectedId = useSelector(focusActor, selectFocusedStarId)
 
   // The ONE live force-sim positions buffer all four readers share (spec 22, acceptance 1.7):
   // StarField + FlyTo + Focus read it directly (per-frame / at capture); the synapse renderers
@@ -1563,14 +1572,9 @@ export function UniverseCanvas() {
       // 드래그(회전)를 걸러 onPointerMissed는 '탭'에만 온다. 우선순위: 선택된 별 → 해제, 아니면 일기
       // 조망 → 강조 해제(페이지가 그 해제를 보고 일기 패널을 닫아 완전히 복귀시킨다). 별 탭은 onClick.
       onPointerMissed={() => {
-        // 빈 우주를 톡 치면 포커스를 통째로 비워 복귀한다 — 별 선택과 일기 조망이 (전환 한 프레임)
-        // 함께 떠 있어도 한 번에 해제(둘 다 없으면 무해한 no-op). 드래그(회전)는 R3F가 delta로 걸러
-        // 여기로 오지 않는다(탭만).
-        const mem = useMemoryStore.getState()
-        if (mem.selectedId != null) mem.select(null)
-        if (useWayfindingStore.getState().highlightedRecordId != null) {
-          useWayfindingStore.getState().clear()
-        }
+        // 빈 우주를 톡 치면 포커스를 통째로 비워 복귀한다(focus 머신 DISMISS — 별/일기 한 번에, idle이면
+        // 무해). 드래그(회전)는 R3F가 delta로 걸러 여기로 오지 않는다(탭만).
+        focusActor.send({ type: 'DISMISS' })
       }}
       onCreated={(state) => {
         const gl = state.gl as unknown as WebGPURenderer
@@ -1609,6 +1613,8 @@ export function UniverseCanvas() {
             emotionColors={emotionColors}
             positionsRef={positionsRef}
             highlightedRecordId={highlightedRecordId}
+            selectedId={selectedId}
+            onSelect={(id) => focusActor.send({ type: 'SELECT_STAR', id })}
           />
         </UniverseDrift>
       </group>
@@ -1624,7 +1630,7 @@ export function UniverseCanvas() {
       <FlyToController positionsRef={positionsRef} />
       <FocusController positionsRef={positionsRef} />
       <FrameAllController positionsRef={positionsRef} />
-      <NearFarHighlightGuard />
+      <RecallDismissGuard />
       <ModeTransitionController />
       <ViewOffsetController />
       <BloomPass />

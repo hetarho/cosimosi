@@ -118,10 +118,22 @@ app  ──►  pages  ──►  widgets  ──►  features  ──►  entit
 
 ### 2.7 Zustand 스토어 위치
 
-- 비즈니스 객체 상태(별 목록, 그래프, 선택된 별) → `entities/<entity>/model/`
-- 사용자 행동 상태(작성 드래프트, 현재 카메라 모드) → `features/<feature>/model/` 또는 widget의 `model`
-- 진짜 글로벌(테마, 세션) → `app/`
+- 비즈니스 객체 **데이터**(별 목록, 그래프, ambient) → `entities/<entity>/model/`
+- 사용자 행동 **데이터**(작성 드래프트 텍스트, 개인 설정) → `features/<feature>/model/` 또는 widget의 `model`
+- 진짜 글로벌 데이터(테마) → `app/`
 - **스토어를 `lib`/`api`에 넣지 말 것.** 단, force-sim 결과 좌표 버퍼처럼 고빈도 데이터는 스토어 대신 ref/worker 메시지로(리렌더 회피).
+- ⚠️ **제어 상태(control state)는 zustand가 아니라 상태 머신(§2.8)** — mode·phase·lifecycle·배타 selection(카메라 모드, 포커스 대상, 작성 단계, 세션)은 XState로. zustand는 **값·컬렉션(데이터)** 만 든다.
+
+### 2.8 상태 머신 (XState)
+
+cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 카메라가 성운/회상/비행/조망을 오가고, "무엇에 집중하나"가 배타 모드로 갈린다. 이런 **제어 상태(mode·phase·lifecycle·배타 selection)** 는 nullable 필드 + 동기화 이펙트로 흩뜨리면 같은 논리 상태를 두 곳이 다르게 표현해 불일치가 난다. 그래서 제어 상태는 **XState v5 상태 머신**으로 단일화하고, **데이터는 zustand/Query**로 분리한다(§2.7).
+
+- **제어 상태 vs 데이터:** "N개 배타 상황 중 하나" → 머신. 값·컬렉션(별 배열·그래프·캐시·좌표 버퍼) → zustand/Query/ref. **데이터를 머신 context로 옮기지 않는다**(id 참조만). 고빈도 연속값(매 프레임 lerp·`move`·drag)은 머신 이벤트로 흘리지 않는다.
+- **배치(FSD):** 머신은 소유 레이어의 `model/<name>.machine.ts`(순수 TS — 헌법4 충족). React 바인딩(`@xstate/react`)·R3F 연동(`useFrame`+`getSnapshot`)은 `ui`에서만. 엔티티는 머신 스냅샷 파생 props로 렌더만.
+- **R3F per-frame:** WebGPU 루프는 React 렌더가 아니라 `actorRef.getSnapshot()`로 매 프레임 읽고, 임계 도달 시 `send`. 컨트롤러에서 `useMachine` 금지(§3.2 "60fps에 React state 금지"와 정합).
+- **핵심 머신:** 항행(camera, widget) · 포커스(interaction, feature) 두 Core + 세션(app)·작성(record-memory)·회상 flush(recall) lifecycle.
+
+> 상세 — 전체 카탈로그·두 Core 상태도·나브↔포커스 계약은 **[state-machines.md](state-machines.md)**, 작성 규약·v5 API·테스트·안티패턴은 **[xstate-guide.md](xstate-guide.md)**, 단계적 전환 작업은 **[plan/39](plan/39.state-machine-refactor.md)**.
 
 ---
 

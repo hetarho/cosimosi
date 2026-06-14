@@ -2,17 +2,18 @@
 // 사용자/모드를 포함하지 않고(단일 사용자 우주), 스토어 병합(merge)은 무삭제라 자체 치유가
 // 없다 — 출처가 바뀌는 순간(로그아웃·계정 전환·체험 enter/exit) 캐시와 렌더 스토어를 통째로
 // 비우는 것이 이전 출처의 별·일기 본문이 새 출처로 새지 않게 하는 유일한 경계다.
-import { useMemoryStore } from '@/entities/memory'
+import { useMemoryStore, focusActor } from '@/entities/memory'
 import { useSynapseStore } from '@/entities/synapse'
 import { useAppearance } from '@/entities/appearance'
 import { useRecallStore } from '@/features/recall'
-import { useWayfindingStore } from '@/features/wayfinding'
 import { queryClient } from '../query-client'
 
 export function resetUniverseData(): void {
   queryClient.clear()
+  // 포커스(별 선택·일기 조망)도 출처를 넘기지 않는다 — 이전 출처의 선택/강조가 새 출처에 남지
+  // 않게 한다(구 memory.select(null) + wayfinding.clear()의 단일 대체).
+  focusActor.send({ type: 'DISMISS' })
   const memory = useMemoryStore.getState()
-  memory.select(null)
   memory.setStars([])
   memory.setLoadedEmpty(false) // 새 출처의 "빈 우주 확인"은 다음 GetUniverse가 다시 판정
   useSynapseStore.getState().setEdges([])
@@ -21,7 +22,4 @@ export function resetUniverseData(): void {
   useAppearance.getState().resetServerSettings()
   // 이전 출처의 미flush 공동회상 페어·lastViewedId도 경계를 넘지 않는다(세션 교체).
   useRecallStore.getState().reset()
-  // 원본 일기 조망 강조·프레임 요청(spec 28)도 경계를 넘기지 않는다 — 안 비우면 새 출처가
-  // 이전 일기의 하이라이트(먼지 dim)나 미해결 프레임 요청을 들고 시작한다.
-  useWayfindingStore.getState().clear()
 }

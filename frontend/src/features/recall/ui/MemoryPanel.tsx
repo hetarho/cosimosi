@@ -7,16 +7,19 @@
 // body instantly from cache while the touch still fires in the background (16, 1.5).
 import { useEffect, useState } from 'react'
 import * as Sentry from '@sentry/react'
+import { useSelector } from '@xstate/react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Record as RecordMsg } from '@/shared/api'
 import { capture, EVENTS } from '@/shared/lib'
 import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import {
   dormantInvalidateKey,
+  focusActor,
   fragmentTextQueryKey,
   isDormant,
   moodFromProto,
   recordQueryKey,
+  selectFocusedStarId,
   universeInvalidateKey,
   useMemoryStore,
 } from '@/entities/memory'
@@ -41,7 +44,6 @@ function RecallView({
   onOpenEvolution?: (memoryId: string) => void
   onSeeDiaryStars?: (recordId: string) => void
 }) {
-  const select = useMemoryStore((s) => s.select)
   const recordActiveView = useRecallStore((s) => s.recordActiveView)
   const queryClient = useQueryClient()
   // 이 별이 가리키는 원본 일기 id(spec 28) — "이 일기의 다른 별들 보기"의 그룹 키. 별이 사라지지
@@ -118,7 +120,7 @@ function RecallView({
         <h2 className="text-sm font-medium text-white/80">회상 — 원본 일기</h2>
         <button
           type="button"
-          onClick={() => select(null)}
+          onClick={() => focusActor.send({ type: 'DISMISS' })}
           aria-label="닫기"
           className="rounded-md px-2 text-white/50 transition hover:text-white/90"
         >
@@ -209,7 +211,7 @@ export function MemoryPanel({
   onOpenEvolution?: (memoryId: string) => void
   onSeeDiaryStars?: (recordId: string) => void
 } = {}) {
-  const selectedId = useMemoryStore((s) => s.selectedId)
+  const selectedId = useSelector(focusActor, selectFocusedStarId)
   if (!selectedId) return null
   return (
     <RecallView

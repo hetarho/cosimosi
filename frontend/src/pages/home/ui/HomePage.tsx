@@ -1,4 +1,5 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useSelector } from '@xstate/react'
 import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
@@ -14,9 +15,16 @@ import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
 import { DiaryCard, DiarySheet } from '@/features/diary-list'
 import { DormantSheet } from '@/features/dormant-search'
 import { useShellStore } from '@/features/universe'
-import { useWayfindingStore } from '@/features/wayfinding'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
-import { applyUniverse, universeQueryOptions, useMemoryStore } from '@/entities/memory'
+import {
+  applyUniverse,
+  universeQueryOptions,
+  useMemoryStore,
+  focusActor,
+  selectHighlightedRecordId,
+  selectIsStarFocus,
+  selectIsFocused,
+} from '@/entities/memory'
 import { applySettings, settingsQueryOptions } from '@/entities/appearance'
 
 // The universe shell (spec 10, extended by 11): full-screen <UniverseCanvas/> (renders
@@ -116,8 +124,8 @@ function NavPad() {
   const mode = useCameraMode((s) => s.mode)
   const setMove = useCameraMode((s) => s.setMove)
   // On mobile the recall panel (bottom sheet) overlaps the bottom-center D-pad — hide the pad
-  // there while a star's info is open (desktop keeps it: the pad is left, the panel is right).
-  const infoOpen = useMemoryStore((s) => s.selectedId != null)
+  // there while a star's info is open (desktop keeps it: the pad is left, the panel is right). (focus 머신)
+  const infoOpen = useSelector(focusActor, selectIsStarFocus)
   // A shell overlay (dormant/diary) covers the lower screen on mobile and the left on desktop —
   // hide the pad entirely while one is open so it isn't buried under the sheet/panel (spec 31).
   const panelOpen = useShellStore((s) => s.panel != null)
@@ -236,11 +244,11 @@ export function HomePage() {
   const closePanel = useShellStore((s) => s.closePanel)
   const setPeek = useShellStore((s) => s.setPeek)
 
-  // 포커스 상태(별 회상 선택 / 일기 조망 강조) — 은은한 딤을 깔아 "지금 한 곳에 집중 중"임을 알리고,
-  // 빈 우주를 탭하면(캔버스 onPointerMissed) 해제·복귀한다(spec 31).
-  const selectedId = useMemoryStore((s) => s.selectedId)
-  const highlightedRecordId = useWayfindingStore((s) => s.highlightedRecordId)
-  const focused = selectedId != null || highlightedRecordId != null
+  // 포커스 상태(focus 머신, spec 39) — 별 회상 선택 / 일기 조망. 은은한 딤으로 "집중 중"을 알리고,
+  // 빈 우주를 탭하면(캔버스 onPointerMissed → focus DISMISS) 해제·복귀한다(spec 31). highlightedRecordId는
+  // 일기 카드 렌더 + diary-close 이펙트에, focused는 포커스 딤에 쓴다.
+  const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
+  const focused = useSelector(focusActor, selectIsFocused)
 
   // URL이 딥링크 가능한 패널(dormant/diary)의 단일 출처다 — 한 개의 거울 이펙트만 `?panel=`을
   // 셸 스토어에 반영하고, UI의 열기/닫기는 navigate만 한다. 가드는 렌더 클로저의 stale `panel`이
@@ -266,25 +274,26 @@ export function HomePage() {
   // 리스트/탐색 패널 열기 — 뒤로가기로 닫히도록 history에 push한다. 새 목록은 깨끗이 시작하도록
   // 직전 일기 강조를 해제하고(시각 전용 — records/memories 불변), 같은 패널 재진입이면 peek를 펼친다.
   function showPanel(p: 'dormant' | 'diary') {
-    useWayfindingStore.getState().clear()
+    focusActor.send({ type: 'DISMISS' }) // 새 목록은 깨끗이 — 직전 포커스(별/일기) 해제
     setPeek(false)
     void navigate({ search: (prev) => ({ ...prev, panel: p }) })
   }
-  // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(wayfinding) 시트는 peek로
+  // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(focus 머신 diary) 시트는 peek로
   // 잦아든다 — 뒤 우주에서 frame-all fly-to(28). 시각 전용(records/memories 불변, 헌법1·2).
   function frameDiary(recordId: string) {
-    useWayfindingStore.getState().frameRecord(recordId)
+    focusActor.send({ type: 'SELECT_DIARY', recordId })
     setPeek(true)
   }
   // 잠든 별을 고르면 그 별로 fly-to(12 focusStar) + 시트는 peek로 — 우주를 떠나지 않는다(1.2).
+  // 포커스(별)는 fly-to 도착 시 FlyToController가 SELECT_STAR로 연다.
   function focusDormant(memoryId: string) {
     useCameraMode.getState().focusStar(memoryId)
     setPeek(true)
   }
-  // 패널 닫기 = 강조 해제 + `?panel=` 제거. replace로 history를 더럽히지 않아(닫기 직후 뒤로가기가
-  // 패널을 되살리지 않음) 거울 이펙트가 스토어를 닫는다.
+  // 패널 닫기 = 포커스 해제(focus DISMISS) + `?panel=` 제거. replace로 history를 더럽히지 않아(닫기
+  // 직후 뒤로가기가 패널을 되살리지 않음) 거울 이펙트가 스토어를 닫는다.
   function closeShellPanel() {
-    useWayfindingStore.getState().clear()
+    focusActor.send({ type: 'DISMISS' })
     void navigate({ search: (prev) => ({ ...prev, panel: undefined }), replace: true })
   }
   // Mobile-only: the compose form is hidden by default (keep the universe unobstructed)
@@ -362,6 +371,21 @@ export function HomePage() {
     }
   }, [])
 
+  // Esc → 포커스 해제(별 회상·일기 조망)로 복귀(배경 탭과 동일). 구버전은 일기 조망의 Esc를
+  // OverlayHost가 처리했는데 일기 카드가 호스트 밖으로 나오며 사라졌다 — 여기서 되살린다. 리스트가
+  // 펼쳐져 있으면(panel!=null && !peek) OverlayHost의 Esc가 목록 닫기를 맡으므로 양보한다(이중 처리 방지).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || isTypingTarget()) return
+      const shell = useShellStore.getState()
+      if (shell.panel != null && !shell.peek) return
+      if (focusActor.getSnapshot().matches('idle')) return
+      focusActor.send({ type: 'DISMISS' })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
     <div className="universe-page fixed inset-0" data-lenis-prevent>
       {/* 바운더리는 Canvas에만(17): R3F 트리의 throw·렌더러 init 실패(위젯이 state→render
@@ -432,11 +456,11 @@ export function HomePage() {
       <div className="absolute right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 max-h-[calc(100dvh-12rem)] overflow-y-auto overscroll-contain sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:max-h-[calc(100dvh-2rem)] sm:overflow-y-auto">
         <MemoryPanel
           onOpenEvolution={(id) => useEvolutionStore.getState().open(id)}
-          // "이 일기의 다른 별들 보기"(spec 28): 같은 record_id 별들을 조망 프레이밍+강조한다
-          // (FrameAllController가 단일 포커스를 풀고 far로 전환 — 패널은 자연히 닫힌다). 일기
-          // 시트가 열려 있었다면 peek로 잦아들게 해(diary-list 경로와 동일) 프레이밍된 별을 가리지 않는다.
+          // "이 일기의 다른 별들 보기"(spec 28·39): 일기 목록 클릭(SELECT_DIARY)과 동일한 SEE_DIARY_STARS를
+          // 보낸다 — 둘 다 focus 머신의 diary 상태로 수렴해 같은 일기 카드 + 조망을 보인다(구버전은 한쪽만
+          // 동작하던 불일치). 일기 목록이 열려 있었다면 peek로 잦아들게 해 프레이밍된 별을 가리지 않는다.
           onSeeDiaryStars={(recordId) => {
-            useWayfindingStore.getState().frameRecord(recordId)
+            focusActor.send({ type: 'SEE_DIARY_STARS', recordId })
             if (panel === 'diary') setPeek(true)
           }}
         />
@@ -494,25 +518,33 @@ export function HomePage() {
           <DormantSheet onSelect={focusDormant} />
         </OverlayHost>
       )}
-      {panel === 'diary' && (
+      {/* 일기 목록(spec 31) — 펼친 상태에서만 호스트로 띄운다. 일기를 고르면 peek=true가 되어 목록은
+          사라지고, 아래의 포커스 구동 DiaryCard가 그 자리를 대신한다(목록≠조망 — orthogonal, spec 39). */}
+      {panel === 'diary' && !peek && (
         <OverlayHost
           open
-          peek={peek}
+          peek={false}
           title="원본 일기 — 별 찾기"
           peekLabel="📖 일기 목록 펼치기"
           onClose={closeShellPanel}
           onExpand={() => setPeek(false)}
-          // 일기를 고르면 잦아든 손잡이 대신 그 일기 카드를 하단에 — 어떤 일기를 조망 중인지 보이게(spec 31).
-          peekSlot={
-            <DiaryCard
-              recordId={highlightedRecordId}
-              onExpand={() => setPeek(false)}
-              onClose={closeShellPanel}
-            />
-          }
         >
           <DiarySheet onSelectDiary={frameDiary} />
         </OverlayHost>
+      )}
+      {/* 조망 중인 일기 카드(spec 31·39) — 포커스=일기면 어느 경로(목록 선택·"이 일기의 다른 별들")로든
+          하단에 뜬다(구버전은 panel==='diary'에 묶여 회상 패널 경로에선 카드가 안 떴다). 단 일기 목록이
+          펼쳐져 있을 땐(panel='diary' && !peek 위 호스트가 떠 있음) 카드를 숨겨 겹치지 않게 한다. "목록"은
+          목록을 펼치고(카드는 위 가드로 숨음), ✕·배경 탭·Esc는 복귀. */}
+      {highlightedRecordId && (panel !== 'diary' || peek) && (
+        <DiaryCard
+          recordId={highlightedRecordId}
+          onExpand={() => {
+            setPeek(false)
+            void navigate({ search: (prev) => ({ ...prev, panel: 'diary' }) })
+          }}
+          onClose={closeShellPanel}
+        />
       )}
 
       {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(safe-area로 노치 아래). FAB은 z-50(전역 chrome). */}

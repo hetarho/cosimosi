@@ -9,7 +9,6 @@ import type { Ambient } from './ambient'
 
 interface MemoryState {
   stars: StarNode[]
-  selectedId: string | null
   /** 요즘 상태 요약(spec 25) — 서버 GetUniverse가 보낸 ambient 우선, 미수신(데모·구버전)이면
    *  로드된 별에서 파생(deriveAmbient). 다중 광원의 색 분포는 클라가 별에서 따로 만든다(원칙3).
    *  null = 아직 우주를 로드하지 않음 → 배경은 테마 베이스색만. */
@@ -23,7 +22,6 @@ interface MemoryState {
   setLoadedEmpty: (loadedEmpty: boolean) => void
   /** 요즘 상태 요약 설정(서버값 우선, 미수신 시 deriveAmbient 폴백 — get-universe가 호출). */
   setAmbient: (ambient: Ambient) => void
-  select: (id: string | null) => void
   // ── optimistic record flow (StarNode-based) ──
   /** Append a new star (e.g. an optimistic temp star); index = its slot. */
   addStar: (node: StarNode) => void
@@ -54,13 +52,11 @@ export function starsOfRecord(stars: StarNode[], recordId: string): StarNode[] {
 
 export const useMemoryStore = create<MemoryState>((set) => ({
   stars: [],
-  selectedId: null,
   loadedEmpty: false,
   ambient: null,
   setStars: (stars) => set({ stars }),
   setLoadedEmpty: (loadedEmpty) => set({ loadedEmpty }),
   setAmbient: (ambient) => set({ ambient }),
-  select: (selectedId) => set({ selectedId }),
   addStar: (node) => set((s) => ({ stars: [...s.stars, { ...node, index: s.stars.length }] })),
   addStars: (nodes) =>
     set((s) => {

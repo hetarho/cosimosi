@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { exitDemoMode, isDemoMode, resetDemo } from '@/shared/lib/demo'
-import { useAuthStore } from '../model/auth-store'
+import { SessionContext, useAuthActions } from './session-context'
 import { SignInScreen } from './SignInScreen'
 
 /**
@@ -11,8 +11,9 @@ import { SignInScreen } from './SignInScreen'
  * 같은 우주 셸을 더미데이터로 그대로 둘러보게 한다.
  */
 export function SessionGate({ children }: { children: ReactNode }) {
-  const status = useAuthStore((s) => s.status)
-  const signOut = useAuthStore((s) => s.signOut)
+  // 머신 상태값(flat) → 'loading' | 'authed' | 'anon'. 그 슬라이스만 구독(전환마다 리렌더 X).
+  const status = SessionContext.useSelector((s) => s.value as 'loading' | 'authed' | 'anon')
+  const { signOut } = useAuthActions()
   const navigate = useNavigate()
 
   if (isDemoMode()) {

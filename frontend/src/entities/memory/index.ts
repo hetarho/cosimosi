@@ -28,6 +28,16 @@ export {
   type AmbientStar,
 } from './model/ambient'
 export { useMemoryStore, starsOfRecord } from './model/store'
+// 포커스 머신(구 memory.selectedId + wayfinding.highlightedRecordId/frameRequest의 단일 출처).
+export {
+  focusActor,
+  selectFocusedStarId,
+  selectHighlightedRecordId,
+  selectIsStarFocus,
+  selectIsDiaryFocus,
+  selectIsFocused,
+  selectFrameNonce,
+} from './model/focus.machine'
 export { parseEpochMs } from './model/time'
 export {
   universeQueryOptions,
