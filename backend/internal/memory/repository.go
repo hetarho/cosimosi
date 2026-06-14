@@ -26,6 +26,11 @@ type Repository interface {
 	// brightness filter — constitution §2), with mood/intensity JOINed from records.
 	ListByUser(ctx context.Context, userID string) ([]Memory, error)
 
+	// ListRecords returns the user's original diaries as wayfinding entry points
+	// (spec 28): each with its fragment-star count, entry-date descending, body as a
+	// short excerpt only. records is read-only (constitution §1).
+	ListRecords(ctx context.Context, userID string) ([]RecordSummary, error)
+
 	// ListRecentForAmbient returns the user's recent fragment emotions within the 7-day
 	// ambient window (last_recalled_at >= since): mood/intensity/valence + activity time,
 	// the raw input AggregateAmbient time-weights into the "요즘" summary (spec 25). The

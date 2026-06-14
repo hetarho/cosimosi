@@ -13,6 +13,7 @@ import { capture, EVENTS } from '@/shared/lib'
 import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import {
   dormantInvalidateKey,
+  fragmentTextQueryKey,
   isDormant,
   moodFromProto,
   recordQueryKey,
@@ -28,16 +29,34 @@ import { NeighborNav } from './NeighborNav'
 type Phase = 'dwelling' | 'loading' | 'shown' | 'error'
 
 /** Inner panel for one selected star. Keyed by memoryId so a new selection remounts it
- *  fresh (state resets without a setState-in-effect). onOpenEvolution is wired by the page
- *  (FSD: recall doesn't import the evolution feature — the page composes both). */
-function RecallView({ memoryId, onOpenEvolution }: { memoryId: string; onOpenEvolution?: (memoryId: string) => void }) {
+ *  fresh (state resets without a setState-in-effect). onOpenEvolution / onSeeDiaryStars are
+ *  wired by the page (FSD: recall doesn't import the evolution/wayfinding features — the page
+ *  composes them). */
+function RecallView({
+  memoryId,
+  onOpenEvolution,
+  onSeeDiaryStars,
+}: {
+  memoryId: string
+  onOpenEvolution?: (memoryId: string) => void
+  onSeeDiaryStars?: (recordId: string) => void
+}) {
   const select = useMemoryStore((s) => s.select)
   const recordActiveView = useRecallStore((s) => s.recordActiveView)
   const queryClient = useQueryClient()
+  // 이 별이 가리키는 원본 일기 id(spec 28) — "이 일기의 다른 별들 보기"의 그룹 키. 별이 사라지지
+  // 않는 한(헌법2) 안정적이라 selector가 값으로 비교해 불필요한 리렌더는 없다.
+  const recordId = useMemoryStore((s) => s.stars.find((st) => st.id === memoryId)?.memory.recordId ?? '')
   // 재열람 = 캐시에서 즉시 본문(스피너 없음, 1.5). 원본은 불변(헌법 §1)이라 안전하다.
   const [record, setRecord] = useState<RecordMsg | null>(
     () => queryClient.getQueryData<RecordMsg>(recordQueryKey(memoryId)) ?? null,
   )
+  // 그 별의 조각 텍스트(spec 28) — 원본과 같은 불변·영구 캐시에서 즉시(재열람 무스피너).
+  const [fragmentText, setFragmentText] = useState<string>(
+    () => queryClient.getQueryData<string>(fragmentTextQueryKey(memoryId)) ?? '',
+  )
+  // 기본은 조각만; 사용자가 "원본 일기 전체 보기"를 누르면 불변 원본 전체로 펼친다.
+  const [showFull, setShowFull] = useState(false)
   const [phase, setPhase] = useState<Phase>(record ? 'shown' : 'dwelling')
 
   useEffect(() => {
@@ -63,7 +82,9 @@ function RecallView({ memoryId, onOpenEvolution }: { memoryId: string; onOpenEvo
           if (cancelled) return
           if (r) {
             // 영구 시드(staleTime ∞ — app/query-client의 record 기본값): 다음 열람은 캐시로.
-            queryClient.setQueryData(recordQueryKey(memoryId), r)
+            // 조각 텍스트(spec 28)도 같은 불변·영구 캐시 prefix에 시드한다.
+            queryClient.setQueryData(recordQueryKey(memoryId), r.record)
+            queryClient.setQueryData(fragmentTextQueryKey(memoryId), r.fragmentText)
             // 회상된 별은 잠에서 깸 → 잠든 별 목록 무효화(1.6).
             void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
             // 데모 재점화(spec 19): demoMarkRecalled가 전진시킨 lastRecalledAt을 우주에
@@ -71,7 +92,8 @@ function RecallView({ memoryId, onOpenEvolution }: { memoryId: string; onOpenEvo
             if (isDemoMode()) {
               void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
             }
-            setRecord(r)
+            setRecord(r.record)
+            setFragmentText(r.fragmentText)
             setPhase('shown')
           } else if (!hasCached) {
             setPhase('error')
@@ -126,19 +148,52 @@ function RecallView({ memoryId, onOpenEvolution }: { memoryId: string; onOpenEvo
             <span>·</span>
             <span>강도 {record.intensity.toFixed(2)}</span>
           </div>
-          <p className="selectable whitespace-pre-wrap text-sm leading-relaxed text-white/85">
-            {record.body}
-          </p>
-          {/* 변천사 보기(24): 이 별이 변해 온 길을 우주 위 오버레이로 연다(우주를 떠나지 않음). */}
-          {onOpenEvolution && (
-            <button
-              type="button"
-              onClick={() => onOpenEvolution(memoryId)}
-              className="mt-1 w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-mood-pink/60 hover:text-white"
-            >
-              변천사 보기
-            </button>
-          )}
+          {(() => {
+            // 별 → 조각 → 원본 3겹(spec 28): 기본은 이 별의 조각 텍스트(있을 때), "원본 일기
+            // 전체 보기"를 누르면 불변 Record 전체로 펼친다. 조각이 없거나(단일 조각) 본문과
+            // 같으면 그냥 원본 전체만 보인다(토글 숨김).
+            const hasFragment = fragmentText !== '' && fragmentText !== record.body
+            const shownText = hasFragment && !showFull ? fragmentText : record.body
+            return (
+              <>
+                <p className="selectable whitespace-pre-wrap text-sm leading-relaxed text-white/85">
+                  {shownText}
+                </p>
+                {hasFragment && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFull((v) => !v)}
+                    className="w-fit text-xs text-white/50 underline-offset-2 transition hover:text-white/80 hover:underline"
+                  >
+                    {showFull ? '조각만 보기' : '원본 일기 전체 보기'}
+                  </button>
+                )}
+              </>
+            )
+          })()}
+          {/* 동선 버튼 묶음: 변천사(24) / 이 일기의 다른 별들(28). 편집·삭제 없음(헌법1). */}
+          <div className="mt-1 flex flex-wrap gap-2">
+            {/* 변천사 보기(24): 이 별이 변해 온 길을 우주 위 오버레이로 연다(우주를 떠나지 않음). */}
+            {onOpenEvolution && (
+              <button
+                type="button"
+                onClick={() => onOpenEvolution(memoryId)}
+                className="w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-mood-pink/60 hover:text-white"
+              >
+                변천사 보기
+              </button>
+            )}
+            {/* 이 일기의 다른 별들 보기(28): 같은 record_id 별들을 조망 위치로 프레이밍+강조. */}
+            {onSeeDiaryStars && recordId && (
+              <button
+                type="button"
+                onClick={() => onSeeDiaryStars(recordId)}
+                className="w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-mood-pink/60 hover:text-white"
+              >
+                이 일기의 다른 별들 보기
+              </button>
+            )}
+          </div>
         </article>
       )}
 
@@ -147,8 +202,21 @@ function RecallView({ memoryId, onOpenEvolution }: { memoryId: string; onOpenEvo
   )
 }
 
-export function MemoryPanel({ onOpenEvolution }: { onOpenEvolution?: (memoryId: string) => void } = {}) {
+export function MemoryPanel({
+  onOpenEvolution,
+  onSeeDiaryStars,
+}: {
+  onOpenEvolution?: (memoryId: string) => void
+  onSeeDiaryStars?: (recordId: string) => void
+} = {}) {
   const selectedId = useMemoryStore((s) => s.selectedId)
   if (!selectedId) return null
-  return <RecallView key={selectedId} memoryId={selectedId} onOpenEvolution={onOpenEvolution} />
+  return (
+    <RecallView
+      key={selectedId}
+      memoryId={selectedId}
+      onOpenEvolution={onOpenEvolution}
+      onSeeDiaryStars={onSeeDiaryStars}
+    />
+  )
 }

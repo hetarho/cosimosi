@@ -18,6 +18,8 @@ function star(id: string, index: number, lastRecalledAt = NOW, relevance = 0): S
       valence: 0,
       relevance,
       lastRecalledAt,
+      recordId: id,
+      fragmentIndex: 0,
       seed: index * 0.1,
       brightnessOffset: 0,
       hueShift: 0,

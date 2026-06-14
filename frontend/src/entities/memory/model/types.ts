@@ -20,6 +20,11 @@ export interface Memory {
   relevance: number
   /** epoch ms; input to activation/brightness. */
   lastRecalledAt: number
+  /** 이 별이 가리키는 불변 원본 일기 id (spec 28). 클라가 record_id로 별을 일기 단위로
+   *  그룹해 조망/하이라이팅한다(원본 일기로 별 찾기). 빈 문자열 = 그룹 키 없음(구 데이터). */
+  recordId: string
+  /** 일기 내 조각 순서(spec 28; 21이 채움). */
+  fragmentIndex: number
   /** deterministic hash of the memory id (seedFromId) → per-instance shape variation. */
   seed: number
   /** 재공고화 누적 ±밝기 오프셋(spec 23) — reshapedBrightness가 별 밝기에 합성. */

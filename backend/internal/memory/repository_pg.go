@@ -146,6 +146,28 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 			HueShift:         float64(row.HueShift),
 			FormSeedDelta:    float64(row.FormSeedDelta),
 			Version:          int(row.Version),
+			RecordID:         row.RecordID,         // 28: 일기 단위 그룹 키
+			FragmentIndex:    int(row.FragmentIndex), // 28: 일기 내 조각 순서
+		})
+	}
+	return out, nil
+}
+
+// ListRecords returns the user's original diaries (spec 28): one RecordSummary per
+// record with its fragment-star count, entry-date descending. records is read-only
+// (constitution §1 — the query is a GROUP BY SELECT, no UPDATE/DELETE).
+func (r *pgRepository) ListRecords(ctx context.Context, userID string) ([]RecordSummary, error) {
+	rows, err := gen.New(r.pool).ListRecords(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list records: %w", err)
+	}
+	out := make([]RecordSummary, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, RecordSummary{
+			RecordID:    row.RecordID,
+			EntryDate:   row.EntryDate.Time,
+			BodyExcerpt: row.BodyExcerpt,
+			StarCount:   int(row.StarCount),
 		})
 	}
 	return out, nil
@@ -246,12 +268,22 @@ func (r *pgRepository) GetRecord(ctx context.Context, userID, memoryID string) (
 		return Record{}, fmt.Errorf("get record: %w", err)
 	}
 	return Record{
-		Body:      row.Body,
-		EntryDate: row.EntryDate.Time,
-		Mood:      moodFromDB(row.Mood),
-		Intensity: intensityFromDB(row.Intensity),
-		CreatedAt: row.CreatedAt.Time,
+		Body:         row.Body,
+		EntryDate:    row.EntryDate.Time,
+		Mood:         moodFromDB(row.Mood),
+		Intensity:    intensityFromDB(row.Intensity),
+		CreatedAt:    row.CreatedAt.Time,
+		FragmentText: fragmentTextFromDB(row.FragmentText), // 28: 별 → 조각(NULL → "")
 	}, nil
+}
+
+// fragmentTextFromDB maps the nullable memories.fragment_text to "" (single-fragment /
+// pre-21 stars store NULL → the client falls back to the whole-record body, spec 28).
+func fragmentTextFromDB(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // GetReshapeContext reads the PE/strength input for one recalled star (spec 23).

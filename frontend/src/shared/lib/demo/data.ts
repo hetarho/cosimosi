@@ -10,9 +10,11 @@ import { create } from '@bufbuild/protobuf'
 import {
   Mood,
   RecordSchema,
+  RecordSummarySchema,
   StarSchema,
   SynapseSchema,
   type Record as RecordMsg,
+  type RecordSummary,
   type Star,
   type Synapse,
 } from '@/shared/api'
@@ -271,21 +273,47 @@ export const DEMO_EDGES: DemoEdge[] = [
   { a: 'demo-051', b: 'demo-054', weight: 0.79, linkType: 'semantic', daysAgo: 168 },
 ]
 
-// ── 기억 분할(spec 21) — 1 일기 → N 조각 별 시드 데이터 ──
-// 한 record body를 N개 조각 별이 공유한다(각자 다른 mood, 조각끼리 intra_entry 0.8).
-// recall은 memory id 단위라 조각 어느 별을 열어도 같은 원본 일기가 보인다(헌법1).
-const FRAGMENT_BODY = [
-  '아침 산책길, 어제 내린 비로 공기가 유리처럼 맑았다. 천천히 걸으며 오늘은 괜찮을 거라 생각했다.',
-  '낮 회의에서 준비한 안건이 통째로 뒤집혔다. 말문이 막혔고, 자리로 돌아와서도 한참 손이 떨렸다.',
-  '밤에 친구의 긴 전화. "네 잘못이 아니야"라는 말에 하루 종일 조여 있던 가슴이 스르르 풀렸다.',
-].join('\n\n')
-
-// id prefix는 DEMO_ENTRIES의 `demo-0NN`과 다른 네임스페이스(`demo-frag-`)라
-// 엔트리가 늘어나도 충돌하지 않는다.
-const DEMO_FRAGMENTS: { id: string; mood: Mood; intensity: number; daysAgo: number }[] = [
-  { id: 'demo-frag-f0', mood: Mood.CALM, intensity: 0.5, daysAgo: 1 },
-  { id: 'demo-frag-f1', mood: Mood.ANGER, intensity: 0.78, daysAgo: 1 },
-  { id: 'demo-frag-f2', mood: Mood.RELIEF, intensity: 0.62, daysAgo: 1 },
+// ── 기억 분할(spec 21) + 원본 일기로 별 찾기(spec 28) — 1 일기 → N 조각 별 시드 데이터 ──
+// 한 원본 일기(recordId)를 N개 조각 별이 공유한다(각자 다른 mood, 조각끼리 intra_entry 0.8).
+// recall은 memory id 단위라 어느 조각을 열어도 같은 원본 일기가 보이고(헌법1), record_id로
+// 묶으면 "그 일기의 모든 별"을 조망할 수 있다(spec 28). 조각의 마지막 회상(daysAgo)을 달리해
+// 흩어 두면(scatter 레코드) frame-all이 매번 모두 담는 조망을 새로 계산하는 걸 체험한다(1.2).
+interface DemoFragment {
+  mood: Mood
+  intensity: number
+  /** 그 조각 별의 마지막 회상 경과일(밝기/반지름을 좌우 — 같은 일기여도 조각마다 다를 수 있다). */
+  daysAgo: number
+  /** 그 조각의 텍스트(별 → 조각). 합치면 원본 일기 본문이 된다. */
+  text: string
+}
+interface DemoMultiRecord {
+  /** id prefix는 DEMO_ENTRIES의 `demo-0NN`과 다른 네임스페이스라 엔트리가 늘어나도 충돌 없다. */
+  recordId: string
+  /** 일기를 쓴 날의 경과일(record entry_date — 조각이 흩어져도 원본 작성일은 하나). */
+  entryDaysAgo: number
+  fragments: DemoFragment[]
+}
+const DEMO_MULTI_RECORDS: DemoMultiRecord[] = [
+  // 갓 태어나 한곳에 모인 다감정 하루(spec 21 — 같은 일기의 조각은 태어날 땐 근처에).
+  {
+    recordId: 'demo-rec-fragday',
+    entryDaysAgo: 1,
+    fragments: [
+      { mood: Mood.CALM, intensity: 0.5, daysAgo: 1, text: '아침 산책길, 어제 내린 비로 공기가 유리처럼 맑았다. 천천히 걸으며 오늘은 괜찮을 거라 생각했다.' },
+      { mood: Mood.ANGER, intensity: 0.78, daysAgo: 1, text: '낮 회의에서 준비한 안건이 통째로 뒤집혔다. 말문이 막혔고, 자리로 돌아와서도 한참 손이 떨렸다.' },
+      { mood: Mood.RELIEF, intensity: 0.62, daysAgo: 1, text: '밤에 친구의 긴 전화. "네 잘못이 아니야"라는 말에 하루 종일 조여 있던 가슴이 스르르 풀렸다.' },
+    ],
+  },
+  // 오래전 쓴 일기 — 조각들이 회상 이력에 따라 우주 곳곳으로 흩어졌다(spec 28 — 조망이 필요한 경우).
+  {
+    recordId: 'demo-rec-scatter',
+    entryDaysAgo: 70,
+    fragments: [
+      { mood: Mood.JOY, intensity: 0.72, daysAgo: 3, text: '오랜만에 옛 사진첩을 펼쳤다. 첫 장의 앳된 얼굴이 낯설어 혼자 한참 들여다봤다.' },
+      { mood: Mood.SAD, intensity: 0.5, daysAgo: 58, text: '그때 곁에 있던 얼굴들, 이제 절반은 연락이 끊겼다. 웃고 있는 사진이 오늘따라 시리다.' },
+      { mood: Mood.GRATITUDE, intensity: 0.6, daysAgo: 116, text: '그래도 이 장면을 남겨둔 그때의 나에게 고맙다. 덕분에 오늘 다시 한 번 만났으니.' },
+    ],
+  },
 ]
 
 function isoFrom(now: number, daysAgo: number): string {
@@ -296,7 +324,9 @@ function dateFrom(now: number, daysAgo: number): string {
   return new Date(now - daysAgo * DAY_MS).toISOString().slice(0, 10) // YYYY-MM-DD
 }
 
-function toStar(now: number, e: DemoEntry): Star {
+// recordId/fragmentIndex(spec 28): 단일 일기 별은 자기 id가 곧 record(1조각). 다조각 일기는
+// 공유 recordId + 순서를 넘긴다 — 클라가 record_id로 별을 일기 단위로 그룹/조망한다.
+function toStar(now: number, e: DemoEntry, recordId: string = e.id, fragmentIndex = 0): Star {
   const r = reshapeState.get(e.id)
   return create(StarSchema, {
     memoryId: e.id,
@@ -304,6 +334,8 @@ function toStar(now: number, e: DemoEntry): Star {
     intensity: e.intensity,
     valence: valenceOf(e.mood), // spec 25: 요즘 상태 배경 온도(체험 근사)
     lastRecalledAt: isoFrom(now, e.daysAgo),
+    recordId,
+    fragmentIndex,
     brightnessOffset: r?.brightnessOffset ?? 0,
     hueShift: r?.hueShift ?? 0,
     formSeedDelta: r?.formSeedDelta ?? 0,
@@ -327,6 +359,7 @@ let seededAt = 0
 let baseStars: Star[] = []
 let baseSynapses: Synapse[] = []
 const records = new Map<string, RecordMsg>() // base + 체험 중 추가분, recall이 읽는다
+const fragmentTextsById = new Map<string, string>() // memoryId → 그 조각 텍스트(spec 28; 단일 조각은 미등록 → "")
 const addedStars: Star[] = [] // 체험 중 추가한 별(라우트 이동에도 유지, 새로고침 시 소멸)
 const addedEdges: Synapse[] = [] // 체험 중 추가한 별의 연결(시냅스 생성 이론 시연, spec 19)
 
@@ -371,26 +404,36 @@ function ensureSeeded(): void {
   )
   for (const e of DEMO_ENTRIES) records.set(e.id, toRecord(seededAt, e))
 
-  // 분할 시드(spec 21): 한 일기에서 태어난 색 다른 3개의 별 + 강한 일내 결속.
-  for (const f of DEMO_FRAGMENTS) {
-    baseStars.push(toStar(seededAt, { ...f, body: FRAGMENT_BODY }))
-    records.set(f.id, toRecord(seededAt, { ...f, body: FRAGMENT_BODY }))
-  }
-  for (let i = 0; i < DEMO_FRAGMENTS.length; i++) {
-    for (let k = i + 1; k < DEMO_FRAGMENTS.length; k++) {
-      const [aId, bId] =
-        DEMO_FRAGMENTS[i].id < DEMO_FRAGMENTS[k].id
-          ? [DEMO_FRAGMENTS[i].id, DEMO_FRAGMENTS[k].id]
-          : [DEMO_FRAGMENTS[k].id, DEMO_FRAGMENTS[i].id]
-      baseSynapses.push(
-        create(SynapseSchema, {
-          aId,
-          bId,
-          weight: 0.8,
-          linkType: 'intra_entry',
-          lastActivatedAt: isoFrom(seededAt, DEMO_FRAGMENTS[i].daysAgo),
-        }),
-      )
+  // 분할 시드(spec 21·28): 한 원본 일기(recordId)에서 태어난 색 다른 조각 별 + 강한 일내 결속.
+  // 어느 조각을 회상해도 같은 원본 일기가 보이고(records 공유), record_id로 묶으면 그 일기의
+  // 모든 별을 조망할 수 있다(spec 28). scatter 레코드는 조각의 daysAgo가 달라 우주에 흩어진다.
+  for (const rec of DEMO_MULTI_RECORDS) {
+    const body = rec.fragments.map((f) => f.text).join('\n\n')
+    const entryDate = dateFrom(seededAt, rec.entryDaysAgo)
+    const createdAt = isoFrom(seededAt, rec.entryDaysAgo)
+    const ids: string[] = []
+    rec.fragments.forEach((f, i) => {
+      const id = `${rec.recordId}-f${i}`
+      ids.push(id)
+      baseStars.push(toStar(seededAt, { id, mood: f.mood, intensity: f.intensity, daysAgo: f.daysAgo, body }, rec.recordId, i))
+      // 원본은 공유(불변 1 record — 헌법1). entry_date는 일기 작성일(조각이 흩어져도 하나).
+      records.set(id, create(RecordSchema, { memoryId: id, body, entryDate, mood: f.mood, intensity: f.intensity, createdAt }))
+      fragmentTextsById.set(id, f.text)
+    })
+    // 일내 결속(within-event binding): 모든 조각 쌍을 강한 고정 가중치로(intra_entry 0.8).
+    for (let i = 0; i < ids.length; i++) {
+      for (let k = i + 1; k < ids.length; k++) {
+        const [aId, bId] = ids[i] < ids[k] ? [ids[i], ids[k]] : [ids[k], ids[i]]
+        baseSynapses.push(
+          create(SynapseSchema, {
+            aId,
+            bId,
+            weight: 0.8,
+            linkType: 'intra_entry',
+            lastActivatedAt: isoFrom(seededAt, rec.fragments[i].daysAgo),
+          }),
+        )
+      }
     }
   }
 }
@@ -411,6 +454,38 @@ export function demoSynapses(): Synapse[] {
 export function demoRecall(memoryId: string): RecordMsg | undefined {
   ensureSeeded()
   return records.get(memoryId)
+}
+
+/** RecallMemory.fragment_text 대체(spec 28): 그 별의 조각 텍스트. 단일 조각/미등록이면 ""
+ *  (패널이 원본 본문으로 폴백). */
+export function demoFragmentText(memoryId: string): string {
+  ensureSeeded()
+  return fragmentTextsById.get(memoryId) ?? ''
+}
+
+/** ListRecords 대체(spec 28): 더미 우주의 별을 record_id로 묶어 원본 일기 목록을 만든다 —
+ *  일기별 조각 별 개수 + 본문 발췌(80자) + 작성일 내림차순(서버 ListRecords와 같은 모양).
+ *  body/entry_date는 그 record를 공유하는 조각의 records 항목에서 읽는다(모두 동일). */
+export function demoListRecords(): RecordSummary[] {
+  ensureSeeded()
+  const byRecord = new Map<string, { entryDate: string; body: string; count: number }>()
+  for (const s of [...baseStars, ...addedStars]) {
+    const recordId = s.recordId || s.memoryId // 구 데이터/단일 조각은 자기 id가 곧 record
+    const rec = records.get(s.memoryId)
+    const existing = byRecord.get(recordId)
+    if (existing) existing.count++
+    else byRecord.set(recordId, { entryDate: rec?.entryDate ?? '', body: rec?.body ?? '', count: 1 })
+  }
+  return [...byRecord.entries()]
+    .sort((a, b) => (a[1].entryDate < b[1].entryDate ? 1 : a[1].entryDate > b[1].entryDate ? -1 : 0))
+    .map(([recordId, v]) =>
+      create(RecordSummarySchema, {
+        recordId,
+        entryDate: v.entryDate,
+        bodyExcerpt: v.body.slice(0, 80),
+        starCount: v.count,
+      }),
+    )
 }
 
 // 새 별이 만드는 데모 연결 수 상한 — 우주를 어지럽히지 않는 선에서 "연결이 생긴다"를 보인다.
@@ -510,8 +585,12 @@ export function demoAddRecord(input: {
         intensity,
         valence: valenceOf(mood), // spec 25: 새 조각도 요즘 상태 배경을 그쪽 색으로 끌어당긴다
         lastRecalledAt: nowIso, // 방금 만든 별 → 가장 밝게
+        recordId: baseId, // spec 28: 같은 일기의 조각은 baseId로 묶인다(단일 조각이면 id===baseId)
+        fragmentIndex: i,
       }),
     )
+    // 다조각이면 그 장면이 조각 텍스트(별 → 조각); 단일 문단이면 본문==조각이라 미등록("" 폴백).
+    if (scenes.length > 1) fragmentTextsById.set(id, scene)
     ids.push(id)
   })
 
@@ -621,6 +700,8 @@ function renewStar(s: Star, lastRecalledAt: string): Star {
     intensity: s.intensity,
     valence: s.valence, // 회상 재점화에도 부호 정동 보존(spec 25 배경 온도)
     relevance: s.relevance, // 관련성(spec 26)도 보존 — 불변 교체가 서버 파생값을 0으로 지우지 않게
+    recordId: s.recordId, // 일기 단위 그룹 키(spec 28)도 보존
+    fragmentIndex: s.fragmentIndex,
     lastRecalledAt,
     brightnessOffset: r?.brightnessOffset ?? s.brightnessOffset,
     hueShift: r?.hueShift ?? s.hueShift,
@@ -800,6 +881,7 @@ export function resetDemo(): void {
   addedStars.length = 0
   addedEdges.length = 0
   records.clear()
+  fragmentTextsById.clear()
   reshapeState.clear()
   reshapeAttempts.clear()
   resetDemoClock()

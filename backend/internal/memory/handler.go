@@ -208,6 +208,7 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 			Intensity: rec.Intensity,
 			CreatedAt: formatTime(&rec.CreatedAt),
 		},
+		FragmentText: rec.FragmentText, // 28: 별 → 조각(NULL이면 ""; 클라가 body로 폴백)
 	}), nil
 }
 
@@ -258,6 +259,30 @@ func (h *Handler) GetEvolutionHistory(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(&cosimosiv1.GetEvolutionHistoryResponse{Snapshots: out}), nil
 }
 
+// ListRecords returns the caller's original diaries as wayfinding entry points (spec
+// 28, 원본 일기로 별 찾기): id + entry date + body excerpt + fragment-star count, entry-date
+// descending. An empty list is valid (no diaries yet). records is read-only (constitution §1).
+func (h *Handler) ListRecords(ctx context.Context, req *connect.Request[cosimosiv1.ListRecordsRequest]) (*connect.Response[cosimosiv1.ListRecordsResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	records, err := h.svc.ListRecords(ctx, userID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*cosimosiv1.RecordSummary, 0, len(records))
+	for _, r := range records {
+		out = append(out, &cosimosiv1.RecordSummary{
+			RecordId:    r.RecordID,
+			EntryDate:   r.EntryDate.UTC().Format("2006-01-02"),
+			BodyExcerpt: r.BodyExcerpt,
+			StarCount:   int32(r.StarCount),
+		})
+	}
+	return connect.NewResponse(&cosimosiv1.ListRecordsResponse{Records: out}), nil
+}
+
 // toStar maps a domain Memory to the proto Star (no coordinates — constitution §3),
 // including the spec-23 reshaping state. Shared by GetUniverse and ListDormant so the
 // two render paths can never drift in which fields they expose.
@@ -272,6 +297,8 @@ func toStar(m Memory) *cosimosiv1.Star {
 		HueShift:         m.HueShift,
 		FormSeedDelta:    m.FormSeedDelta,
 		Version:          int32(m.Version),
+		RecordId:         m.RecordID,         // 28: 일기 단위 그룹 키 (ListDormant은 "" — 그룹 불필요)
+		FragmentIndex:    int32(m.FragmentIndex), // 28: 일기 내 조각 순서
 		Relevance:        m.Relevance, // 26: 0 outside GetUniverse (ListDormant doesn't score it)
 	}
 }

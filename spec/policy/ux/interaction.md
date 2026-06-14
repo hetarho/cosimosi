@@ -74,6 +74,24 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | 불변 원본 병치 | 화면 한편에 11의 `RecallMemory` `Record`(body·entry_date·mood)를 읽기 전용 고정 — 슬라이더를 어디로 옮겨도 원본 텍스트는 그대로(헌법1). 캐시(`recordQueryKey`)에서 재사용(새 RPC 없음) |
 | 체험(demo) | `demoEvolution(memory_id)`가 ≥3 버전을 결정론적으로 합성(trigger 섞음) → 백엔드 호출 없이 스크럽·재현·원본 병치 |
 
+### 6. 원본 일기·엔그램·별 길찾기 (wayfinding, 28)
+
+원본 일기 ↔ 엔그램(조각) ↔ 현재 별의 **3겹 연결**을 길찾기로 잇는다. 같은 일기의 조각은 태어날 땐 근처에 모이지만 회상·재공고화·재배치로 어디로 흩어졌을지 알 수 없어, 원본 일기로 찾으면 **그 일기의 모든 별을 한눈에 담는 조망 위치를 매번 새로 계산**해 보여준다. 찾기·강조는 모두 **시각 전용** — `records`/`memories`/`memory_links`를 수정·삭제하지 않는다(헌법1·2).
+
+| 갈래 | 동선 |
+|---|---|
+| **원본 일기로 별 찾기** (조망·하이라이팅) | 우주 셸 위 오버레이로 원본 일기 목록(`ListRecords` — 작성일 내림차순·일기별 별 개수·본문 발췌)·검색 → 일기 하나 선택 → 그 일기(`record_id`)의 **모든 별**을 담는 far 조망으로 fly-to([navigation](../domain/navigation.md) frame-all) + 그 별·일내 시냅스 강조·나머지 dim. 시트는 peek로 잦아든다 |
+| **엔그램으로 별 찾기** (근접 단일) | 조각(엔그램) 하나 → 그 **단일 별**로 근접 fly-to(`focusStar` 재사용). 근접(`recall`)에서는 단일 엔그램 단위만 — 일기 전체 조망은 far 전환 후([navigation](../domain/navigation.md) near/far 가드) |
+| **별 → 조각 → 원본** (3겹 연결) | 별 클릭 회상 패널에 그 별의 **조각 텍스트(`fragment_text`)** 를 기본 표시 + **"원본 일기 전체 보기"**(불변 `Record` body 펼침) + **"이 일기의 다른 별들 보기"**(같은 `record_id` 조망 프레이밍). 편집·삭제 없음(헌법1) |
+
+| 규칙 | 값 / 조건 |
+|---|---|
+| 강조(하이라이팅) | 선택 일기 별 `aBrightness` 부스트(`FOCUS_BOOST=1.3`)·비강조 별·먼지 dim(`FOCUS_DIM=0.12`, 잠든 별 dust dimming 재사용)·그 일기의 일내(intra) 시냅스만 또렷·나머지 웹 dim. 선택 변경 시에만 재기록(매 프레임 React state 금지) |
+| 단일 선택 우선 | 단일 별 포커스(`select`)가 있으면 일기 강조는 적용하지 않는다(근접 포커스 우선); 강조는 far 조망의 상태 |
+| 조각 텍스트 캐시 | `fragment_text`도 원본과 같은 불변·영구 캐시(`['record', id, 'fragment']`)에 시드 → 재열람 즉시 표시. 단일 조각/구 데이터는 `""` → 본문으로 폴백(토글 숨김) |
+| 딥링크 | `/universe?panel=diary`로 진입하면 일기 목록 오버레이가 열린 채 시작(별도 `/diary` 라우트 없음 — 우주 셸 위 오버레이) |
+| 체험(demo) | `demoListRecords`가 더미 별을 `record_id`로 묶어 목록을 만들고, 다조각 일기(흩어진 `demo-rec-scatter` 포함)로 조망+강조를 네트워크 없이 체험 |
+
 ## 불변식 (invariants)
 
 - **원본 편집·삭제 UI 없음 (헌법1).** 회상 패널·변천사 화면 모두 read-only `Record`만 보여준다. 변천사 슬라이더를 어디로 옮겨도 원본은 불변이며, 어떤 상호작용도 `records`를 UPDATE/DELETE하지 않는다. 변천사 조회(`GetEvolutionHistory`)는 read-only(INSERT/UPDATE/DELETE·`RETURNING *` 없음).
@@ -91,5 +109,6 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 - **기록:** 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`(본문+감정 select+강도+날짜)·`model/draft-store.ts`(기본 오늘·7종 mood)·`model/use-record-memory.ts`(낙관적 add/replace/remove).
 - **잠든 별 재점화 동선:** 구현: plan 12 · `frontend/src/pages/dormant`(`ListDormant`)·`entities/memory/model/activation.ts`(`isDormant`).
 - **변천사 보기:** 구현: plan 24 · `frontend/src/features/evolution/{api/evolution.ts,model/{history.ts,store.ts},ui/EvolutionPanel.tsx}`(unary read·순수 model·스크럽 타임랩스+불변 원본 병치)·`features/recall/ui/MemoryPanel.tsx`("변천사 보기" 진입점)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선)·`shared/lib/demo/data.ts`(`demoEvolution`). BE read RPC는 plan 23(`GetEvolutionHistory`).
+- **길찾기(원본 일기·엔그램·별):** 구현: plan 28 · `frontend/src/features/diary-list/ui/DiarySheet.tsx`(일기 목록·검색 오버레이)·`entities/memory/api/records-query.ts`(`recordsQueryOptions`/`recordsInvalidateKey` — 소비처가 두 레이어라 dormant/universe처럼 entity 소유; record 성공 시 무효화)·`features/wayfinding/{model/frame.ts,model/store.ts}`(순수 frame-all·강조/프레임 상태)·`features/recall/ui/MemoryPanel.tsx`(조각 텍스트+원본 전체+다른 별 동선)·`entities/star/ui/StarField.tsx`·`entities/synapse/model/store.ts`(`edgesWithin`)·`widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`·강조 렌더)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선·`?panel=diary`). BE는 `ListRecords` rpc + `Star.record_id`/`fragment_index` + `RecallMemoryResponse.fragment_text`.
 - **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/store.ts`(데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).
 - **불변식:** 헌법 1·2·3·6·8(`spec/plan/00.overview.md`).

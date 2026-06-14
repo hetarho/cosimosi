@@ -27,18 +27,21 @@ export {
   type AmbientLight,
   type AmbientStar,
 } from './model/ambient'
-export { useMemoryStore } from './model/store'
+export { useMemoryStore, starsOfRecord } from './model/store'
 export { parseEpochMs } from './model/time'
 export {
   universeQueryOptions,
   universeInvalidateKey,
   dormantQueryOptions,
   dormantInvalidateKey,
+  recordsQueryOptions,
+  recordsInvalidateKey,
   applyUniverse,
   refreshActivation,
   RECORD_QUERY_ROOT,
   RECORD_QUERY_DEFAULTS,
   recordQueryKey,
+  fragmentTextQueryKey,
   mapStar,
   moodFromProto,
 } from './api'

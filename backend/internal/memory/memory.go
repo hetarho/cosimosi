@@ -104,6 +104,12 @@ type Memory struct {
 	Intensity      float64
 	Valence        float64    // -1..1 signed affect (26 consumes in λ_eff)
 	LastRecalledAt *time.Time // activity basis for client brightness (04 never mutates it)
+	// Wayfinding (spec 28): which immutable original diary this star is a fragment of,
+	// and its order within it. The client GROUPS stars by RecordID for whole-diary
+	// framing/highlighting (원본 일기로 별 찾기). Empty/zero outside ListByUser (ListDormant
+	// doesn't read them — dormant search is per-star).
+	RecordID      string
+	FragmentIndex int
 	// Reconsolidation reshaping (spec 23): cumulative ± brightness offset, hue shift
 	// (degrees), form-seed jitter, and the version (= variant-log length).
 	BrightnessOffset float64
@@ -391,13 +397,26 @@ type LinkDelta struct {
 }
 
 // Record is the immutable original diary, read on recall (constitution §1). Sourced
-// from the records table (not memories — the star carries no body).
+// from the records table (not memories — the star carries no body). FragmentText is
+// the recalled STAR's own fragment slice (memories.fragment_text, spec 28) — empty for
+// single-fragment / pre-21 stars; Body always stays the WHOLE original (원본 일기 전체).
 type Record struct {
-	Body      string
-	EntryDate time.Time
-	Mood      Mood
-	Intensity float64
-	CreatedAt time.Time
+	Body         string
+	EntryDate    time.Time
+	Mood         Mood
+	Intensity    float64
+	CreatedAt    time.Time
+	FragmentText string
+}
+
+// RecordSummary is one original diary as a wayfinding entry point (spec 28): id (the
+// Star.RecordID group key), entry date, a short body excerpt (never the full body) and
+// how many fragment stars it spawned. Pure domain — no db/proto tags (constitution §5).
+type RecordSummary struct {
+	RecordID    string
+	EntryDate   time.Time
+	BodyExcerpt string
+	StarCount   int
 }
 
 // LinkService is the consumer-defined synapse port the memory service needs: read

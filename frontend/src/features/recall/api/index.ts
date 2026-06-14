@@ -1,1 +1,1 @@
-export { recallMemory, reinforceLinks } from './recall'
+export { recallMemory, reinforceLinks, type RecallResult } from './recall'

@@ -6,5 +6,6 @@ export {
   refreshActivation,
 } from './universe-query'
 export { dormantQueryOptions, dormantInvalidateKey } from './dormant-query'
-export { RECORD_QUERY_ROOT, RECORD_QUERY_DEFAULTS, recordQueryKey } from './record-query'
+export { recordsQueryOptions, recordsInvalidateKey } from './records-query'
+export { RECORD_QUERY_ROOT, RECORD_QUERY_DEFAULTS, recordQueryKey, fragmentTextQueryKey } from './record-query'
 export { mapStar, moodFromProto } from './map-star'

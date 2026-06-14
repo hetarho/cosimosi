@@ -244,7 +244,7 @@ func (q *Queries) GetMemoryForEmbed(ctx context.Context, id string) (GetMemoryFo
 }
 
 const getRecordByMemory = `-- name: GetRecordByMemory :one
-SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at
+SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at, m.fragment_text
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = $1 AND m.user_id = $2
@@ -256,15 +256,19 @@ type GetRecordByMemoryParams struct {
 }
 
 type GetRecordByMemoryRow struct {
-	Body      string             `json:"body"`
-	EntryDate pgtype.Date        `json:"entry_date"`
-	Mood      *string            `json:"mood"`
-	Intensity *float32           `json:"intensity"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Body         string             `json:"body"`
+	EntryDate    pgtype.Date        `json:"entry_date"`
+	Mood         *string            `json:"mood"`
+	Intensity    *float32           `json:"intensity"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	FragmentText *string            `json:"fragment_text"`
 }
 
 // Read the immutable original for the recall panel (records JOIN). body/entry_date/
 // mood live on records; never mutated, never RETURNING * from memories (no body there).
+// spec 28: m.fragment_text rides along (별 → 조각) so the recall panel can show the
+// star's own fragment text; records.body stays the WHOLE original (원본 일기 전체 보기).
+// fragment_text is NULL for single-fragment / pre-21 stars → the handler emits "".
 func (q *Queries) GetRecordByMemory(ctx context.Context, arg GetRecordByMemoryParams) (GetRecordByMemoryRow, error) {
 	row := q.db.QueryRow(ctx, getRecordByMemory, arg.ID, arg.UserID)
 	var i GetRecordByMemoryRow
@@ -274,6 +278,7 @@ func (q *Queries) GetRecordByMemory(ctx context.Context, arg GetRecordByMemoryPa
 		&i.Mood,
 		&i.Intensity,
 		&i.CreatedAt,
+		&i.FragmentText,
 	)
 	return i, err
 }
@@ -634,7 +639,8 @@ func (q *Queries) ListLastRecalled(ctx context.Context, arg ListLastRecalledPara
 
 const listMemoriesByUser = `-- name: ListMemoriesByUser :many
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
-       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version,
+       m.record_id, m.fragment_index
 FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index
@@ -650,11 +656,15 @@ type ListMemoriesByUserRow struct {
 	HueShift         float32            `json:"hue_shift"`
 	FormSeedDelta    float32            `json:"form_seed_delta"`
 	Version          int32              `json:"version"`
+	RecordID         string             `json:"record_id"`
+	FragmentIndex    int32              `json:"fragment_index"`
 }
 
 // Every star for the user, dormant included (no brightness filter — constitution
 // §2). mood/intensity/valence are the FRAGMENT's own (memories, spec 21) — no
 // records JOIN anymore. The reshaping state (spec 23) rides the same row.
+// spec 28: record_id/fragment_index ride along so the client can GROUP stars by
+// their original diary (일기 단위 조망/하이라이팅) without a separate query.
 func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]ListMemoriesByUserRow, error) {
 	rows, err := q.db.Query(ctx, listMemoriesByUser, userID)
 	if err != nil {
@@ -674,6 +684,8 @@ func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]List
 			&i.HueShift,
 			&i.FormSeedDelta,
 			&i.Version,
+			&i.RecordID,
+			&i.FragmentIndex,
 		); err != nil {
 			return nil, err
 		}
@@ -752,6 +764,49 @@ func (q *Queries) ListRecentForAmbient(ctx context.Context, arg ListRecentForAmb
 			&i.Intensity,
 			&i.Valence,
 			&i.LastRecalledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecords = `-- name: ListRecords :many
+SELECT r.id AS record_id, r.entry_date, left(r.body, 80) AS body_excerpt, count(m.id)::int AS star_count
+FROM records r JOIN memories m ON m.record_id = r.id
+WHERE r.user_id = $1
+GROUP BY r.id, r.entry_date, r.body
+ORDER BY r.entry_date DESC
+`
+
+type ListRecordsRow struct {
+	RecordID    string      `json:"record_id"`
+	EntryDate   pgtype.Date `json:"entry_date"`
+	BodyExcerpt string      `json:"body_excerpt"`
+	StarCount   int32       `json:"star_count"`
+}
+
+// 원본 일기로 별 찾기(spec 28) 진입 목록: 호출 user의 원본 일기 + 일기별 조각 별 개수.
+// records는 읽기만(헌법1 — UPDATE/DELETE 없음). body는 전체가 아니라 excerpt(left 80)만
+// 보낸다(원본 전체는 RecallMemory). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
+func (q *Queries) ListRecords(ctx context.Context, userID string) ([]ListRecordsRow, error) {
+	rows, err := q.db.Query(ctx, listRecords, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecordsRow
+	for rows.Next() {
+		var i ListRecordsRow
+		if err := rows.Scan(
+			&i.RecordID,
+			&i.EntryDate,
+			&i.BodyExcerpt,
+			&i.StarCount,
 		); err != nil {
 			return nil, err
 		}

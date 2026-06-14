@@ -4,6 +4,8 @@ export {
   demoStars,
   demoSynapses,
   demoRecall,
+  demoFragmentText,
+  demoListRecords,
   demoAddRecord,
   demoAddStar,
   demoAddMultiSceneStar,

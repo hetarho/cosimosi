@@ -11,6 +11,8 @@ import { DemoSimPanel } from '@/widgets/demo-sim'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, useRecallStore } from '@/features/recall'
 import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
+import { DiarySheet } from '@/features/diary-list'
+import { useWayfindingStore } from '@/features/wayfinding'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { applyUniverse, universeQueryOptions, useMemoryStore } from '@/entities/memory'
 import { applySettings, settingsQueryOptions } from '@/entities/appearance'
@@ -207,7 +209,23 @@ export function HomePage() {
   const toggle = useCameraMode((s) => s.toggle)
   const starCount = useMemoryStore((s) => s.stars.length)
   // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
-  const { sim } = useSearch({ from: '/universe' })
+  // ?panel=diary — 원본 일기 목록 오버레이 딥링크(spec 28). 진입 시 1회만 읽어 시트를 연다.
+  const { sim, panel } = useSearch({ from: '/universe' })
+  // 원본 일기 목록 오버레이(spec 28): closed → 진입버튼/딥링크로 open → 일기 선택 시 peek로
+  // 잦아들며(별을 가리지 않게) 그 일기 별들을 프레이밍+강조한다(31 셸 도입 전 페이지 합성).
+  const [diaryView, setDiaryView] = useState<'closed' | 'open' | 'peek'>(
+    panel === 'diary' ? 'open' : 'closed',
+  )
+  // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(wayfinding) 시트는 peek로.
+  function frameDiary(recordId: string) {
+    useWayfindingStore.getState().frameRecord(recordId)
+    setDiaryView('peek')
+  }
+  // 시트 닫기 = 강조 해제(시각 전용 — records/memories 불변, 헌법1·2).
+  function closeDiary() {
+    setDiaryView('closed')
+    useWayfindingStore.getState().clear()
+  }
   // Mobile-only: the compose form is hidden by default (keep the universe unobstructed)
   // and expands into a full-width bottom sheet. On desktop (sm+) it stays a persistent
   // top-left panel, so this flag is ignored there.
@@ -342,7 +360,16 @@ export function HomePage() {
           memory scrolls instead of reaching the top controls. Desktop: bottom-right (compose
           is a top-left panel, so no overlap). */}
       <div className="absolute right-4 bottom-20 z-10 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain sm:bottom-4 sm:max-h-none sm:overflow-visible">
-        <MemoryPanel onOpenEvolution={(id) => useEvolutionStore.getState().open(id)} />
+        <MemoryPanel
+          onOpenEvolution={(id) => useEvolutionStore.getState().open(id)}
+          // "이 일기의 다른 별들 보기"(spec 28): 같은 record_id 별들을 조망 프레이밍+강조한다
+          // (FrameAllController가 단일 포커스를 풀고 far로 전환 — 패널은 자연히 닫힌다). 일기
+          // 시트가 열려 있었다면 peek로 잦아들게 해(diary-list 경로와 동일) 프레이밍된 별을 가리지 않는다.
+          onSeeDiaryStars={(recordId) => {
+            useWayfindingStore.getState().frameRecord(recordId)
+            setDiaryView((v) => (v === 'closed' ? 'closed' : 'peek'))
+          }}
+        />
       </div>
       {/* 변천사 타임랩스(24) — 우주 위 중앙 오버레이(31 셸 도입 전까지 페이지 합성). 우주 캔버스는
           뒤에 영속하고, 회상 패널의 "변천사 보기"가 useEvolutionStore.open으로 연다. */}
@@ -352,6 +379,14 @@ export function HomePage() {
       {/* top-16: clear the global 로그아웃 pill (SessionGate, top-4 right-4) so these
           page controls don't sit hidden underneath it. */}
       <div className="absolute top-16 right-4 z-10 flex gap-2">
+        {/* 원본 일기로 별 찾기(spec 28) — 우주 위 오버레이로 일기 목록을 연다(라우트 이동 없음). */}
+        <button
+          type="button"
+          onClick={() => setDiaryView('open')}
+          className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
+        >
+          일기
+        </button>
         <Link
           to="/dormant"
           className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
@@ -366,6 +401,17 @@ export function HomePage() {
           카메라: {mode === 'nebula' ? '성운(전체 조망)' : '회상(근접 항해)'}
         </button>
       </div>
+
+      {/* 원본 일기 목록 오버레이(spec 28) — 우주 캔버스 뒤에 영속(31 셸 도입 전 페이지 합성).
+          일기를 고르면 그 일기 별들을 프레이밍+강조하고 시트는 peek로 잦아든다. */}
+      {diaryView !== 'closed' && (
+        <DiarySheet
+          view={diaryView}
+          onClose={closeDiary}
+          onExpand={() => setDiaryView('open')}
+          onSelectDiary={frameDiary}
+        />
+      )}
 
       {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(우하단은 MemoryPanel, 하단은 compose/NavPad와 겹침). */}
       <AppearanceSwitcher className="top-28 right-4" />

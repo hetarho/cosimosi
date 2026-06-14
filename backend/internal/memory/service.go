@@ -203,6 +203,13 @@ func (s *Service) GetUniverse(ctx context.Context, userID string) (Universe, err
 	return Universe{Memories: memories, Synapses: synapses, Ambient: ambient}, nil
 }
 
+// ListRecords returns the caller's original diaries as wayfinding entry points
+// (spec 28, 원본 일기로 별 찾기). Thin passthrough — the repository owns the GROUP BY /
+// excerpt / ordering; records stays read-only (constitution §1).
+func (s *Service) ListRecords(ctx context.Context, userID string) ([]RecordSummary, error) {
+	return s.repo.ListRecords(ctx, userID)
+}
+
 // ReinforceLinks applies co-recall reinforcement increments — delegates to
 // the link service, which normalizes/sums and persists idempotently by batch_id.
 func (s *Service) ReinforceLinks(ctx context.Context, userID, batchID string, deltas []LinkDelta) error {

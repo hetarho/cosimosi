@@ -14,3 +14,10 @@ export const RECORD_QUERY_DEFAULTS = {
 export function recordQueryKey(memoryId: string): readonly [string, string] {
   return [RECORD_QUERY_ROOT, memoryId] as const
 }
+
+/** ['record', memoryId, 'fragment'] — 그 별의 조각 텍스트(spec 28). 원본과 같은 불변·영구
+ *  정책을 RECORD_QUERY_ROOT prefix에서 상속(setQueryDefaults가 prefix로 매칭) → 재열람은
+ *  스피너 없이 조각 텍스트도 캐시에서 즉시 보인다. RecallMemory 성공 때만 시드. */
+export function fragmentTextQueryKey(memoryId: string): readonly [string, string, string] {
+  return [RECORD_QUERY_ROOT, memoryId, 'fragment'] as const
+}

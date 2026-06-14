@@ -16,8 +16,9 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
 import { StarField } from '@/entities/star'
-import { SynapseFilaments, SynapseDust, useSynapseStore } from '@/entities/synapse'
-import { useMemoryStore, activation, A_MIN } from '@/entities/memory'
+import { SynapseFilaments, SynapseDust, useSynapseStore, edgesWithin } from '@/entities/synapse'
+import { useMemoryStore, activation, A_MIN, starsOfRecord } from '@/entities/memory'
+import { useWayfindingStore, frameTarget } from '@/features/wayfinding'
 import { useAppearance, themeBg } from '@/entities/appearance'
 import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
 import {
@@ -68,6 +69,10 @@ function readBufferPosition(
  *  emergent (not stale fibonacci) coordinates. */
 type LayoutMap = Map<string, [number, number, number]>
 
+/** Stable empty highlight set (spec 28) — a module singleton so the default prop identity
+ *  never changes (no needless re-memo / effect re-run when nothing is highlighted). */
+const EMPTY_ID_SET: ReadonlySet<string> = new Set()
+
 // Live force-sim pumping budget. ~6h excitability window for the FE hot-cluster seed,
 // mirroring the server's tauExc (spec 22) — a star recalled within ~6h is "hot".
 const LAYOUT_TICKS_PER_FRAME = 2
@@ -108,8 +113,11 @@ function atRadius(pos: readonly [number, number, number], r: number): [number, n
  *  mulberry32 (not Math.random) keeps generation pure during render
  *  (react-hooks/purity) and the layout stable across re-renders. */
 function StarDust({ count = 1500 }: { count?: number }) {
-  // Dim the ambient dust while a star is focused (spotlight) so only the selected star reads bright.
-  const dimmed = useMemoryStore((s) => s.selectedId != null)
+  // Dim the ambient dust while a star is focused (spotlight) OR a diary is highlighted
+  // (원본 일기 조망, spec 28) so only the foregrounded stars read bright.
+  const focused = useMemoryStore((s) => s.selectedId != null)
+  const highlighting = useWayfindingStore((s) => s.highlightedRecordId != null)
+  const dimmed = focused || highlighting
   const positions = useMemo(() => {
     const rng = mulberry32(0x5eed)
     const arr = new Float32Array(count * 3)
@@ -838,15 +846,30 @@ function LiveLayoutController({
 function UniverseSynapses({
   layout,
   positionsRef,
+  highlightedRecordId = null,
 }: {
   layout: LayoutMap
   positionsRef: MutableRefObject<Float32Array | null>
+  /** 강조 중인 원본 일기 id(spec 28). null = 강조 없음. 자기 stars 구독으로 집합을 파생한다. */
+  highlightedRecordId?: string | null
 }) {
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
   const emotionColors = useAppearance((s) => s.emotionColors)
-  // Spotlight: fade the whole synapse web while a star is focused so it stands alone.
-  const dim = useMemoryStore((s) => (s.selectedId ? 0.1 : 1))
+  const selectedId = useMemoryStore((s) => s.selectedId)
+  // 강조 일기의 별 id 집합 — record_id로 그룹(spec 28). 별 집합/강조 record 변경 시에만 재계산.
+  const highlightedIds = useMemo(
+    () =>
+      highlightedRecordId
+        ? new Set(starsOfRecord(stars, highlightedRecordId).map((s) => s.id))
+        : EMPTY_ID_SET,
+    [highlightedRecordId, stars],
+  )
+  // 일기 조망 강조(spec 28)는 단일 선택이 없을 때만(선택=근접 포커스 우선, StarField와 동일).
+  const highlightActive = !selectedId && highlightedIds.size > 0
+  // Spotlight/조망: fade the whole synapse web while a star is focused OR a diary is framed,
+  // so the foregrounded connections stand alone. 조망일 땐 그 일기의 일내(intra) 선만 위에 또렷이.
+  const dim = selectedId ? 0.1 : highlightActive ? 0.12 : 1
   const { positionOf, colorOf, seedOf } = useMemo(() => {
     const colById = new Map(stars.map((s) => [s.id, resolveMoodRgb(s.memory.mood, emotionColors)] as const))
     const seedById = new Map(stars.map((s) => [s.id, s.memory.seed] as const))
@@ -860,6 +883,11 @@ function UniverseSynapses({
   // id → live force-sim buffer row (stars order == sim.ids order == buffer order). Lets the
   // filaments follow the live positions per frame so they don't lag the moving stars (spec 24).
   const idIndex = useMemo(() => new Map(stars.map((s, i) => [s.id, i] as const)), [stars])
+  // 강조 일기의 일내(within-event) 선 — 두 끝점이 모두 강조 집합에 든 엣지(spec 28, 1.1).
+  const withinEdges = useMemo(
+    () => (highlightActive ? edgesWithin(edges, highlightedIds) : []),
+    [edges, highlightedIds, highlightActive],
+  )
   if (edges.length === 0 || stars.length === 0) return null
   return (
     <>
@@ -880,6 +908,18 @@ function UniverseSynapses({
         idIndex={idIndex}
         dim={dim}
       />
+      {/* 조망 강조: 그 일기의 일내 선만 또렷하게(dim=1) 위에 한 겹 더 — 나머지 웹은 dim. */}
+      {withinEdges.length > 0 && (
+        <SynapseFilaments
+          edges={withinEdges}
+          positionOf={positionOf}
+          colorOf={colorOf}
+          seedOf={seedOf}
+          positionsRef={positionsRef}
+          idIndex={idIndex}
+          dim={1}
+        />
+      )}
     </>
   )
 }
@@ -979,6 +1019,146 @@ function FlyToController({ positionsRef }: { positionsRef: MutableRefObject<Floa
     }
   })
 
+  return null
+}
+
+/** Frame-all camera (spec 28, 원본 일기로 별 찾기): when the user picks a diary, fly to a far
+ *  vantage that fits ALL its stars on screen and hold there while they're highlighted. Reads
+ *  the wayfinding store's frameRequest (keyed by nonce so re-framing the same diary re-fires),
+ *  resolves the diary's stars to live force-sim buffer slots (the single coordinate source —
+ *  헌법3; fibonacci fallback when the buffer isn't ready), and computes the vantage with the
+ *  PURE frameTarget (frame.ts). Near/far guard (acceptance 1.4): a diary 조망 is FAR-only, so a
+ *  recall (근접) camera is switched to nebula first and any single-star focus is released; the
+ *  fit distance is clamped to the nebula viewing range so arrival isn't yanked by CameraRig.
+ *  The whole-set centroid is recomputed fresh each request (acceptance 1.2). lerp/damp reuses
+ *  the 12 fly-to feel (k=1−exp(−dt·4), as ModeTransition). */
+function FrameAllController({ positionsRef }: { positionsRef: MutableRefObject<Float32Array | null> }) {
+  const frameRequest = useWayfindingStore((s) => s.frameRequest)
+  const setMode = useCameraMode((s) => s.setMode)
+  const setTransitioning = useCameraMode((s) => s.setTransitioning)
+  const stars = useMemoryStore((s) => s.stars)
+  const select = useMemoryStore((s) => s.select)
+  const camera = useThree((s) => s.camera)
+  const controls = useThree((s) => s.controls) as
+    | { target: THREE.Vector3; update: () => void }
+    | null
+  const lastNonceRef = useRef(0)
+  const posRef = useRef<THREE.Vector3 | null>(null)
+  const tgtRef = useRef<THREE.Vector3 | null>(null)
+
+  useEffect(() => {
+    const req = frameRequest
+    if (!req || req.nonce === lastNonceRef.current) return
+
+    // Resolve the diary's stars → buffer slots (= array slot, like FlyTo/StarField/Synapses).
+    const count = stars.length
+    const slots: number[] = []
+    for (let i = 0; i < count; i++) if (stars[i].memory.recordId === req.recordId) slots.push(i)
+    // Don't consume the nonce yet if the universe stars haven't loaded — the diary list loads
+    // independently of GetUniverse, so a pick (or ?panel=diary deep-link) can fire first. The
+    // effect re-runs when `stars` arrives (it's a dep); consume only once we can actually frame.
+    if (slots.length === 0) return
+    lastNonceRef.current = req.nonce
+
+    // Read the LIVE coordinates (single source); fall back to the deterministic fibonacci
+    // shell (same as the other readers) for any slot whose buffer row isn't ready yet.
+    let buf = positionsRef.current
+    if (!buf || buf.length < count * 3) {
+      buf = new Float32Array(count * 3)
+      for (const slot of slots) {
+        const [x, y, z] = fibonacciStarPosition(slot, count, stars[slot].memory.seed)
+        buf[slot * 3] = x
+        buf[slot * 3 + 1] = y
+        buf[slot * 3 + 2] = z
+      }
+    }
+
+    // Limiting fov so the bounding sphere fits in BOTH dimensions (portrait → horizontal fov
+    // is the tighter one). frameTarget is pure; the widget supplies the fov + reads coords.
+    const persp = camera instanceof THREE.PerspectiveCamera ? camera : null
+    const vFov = THREE.MathUtils.degToRad(persp ? persp.fov : 72)
+    const aspect = persp ? persp.aspect : 1
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect)
+    const ft = frameTarget(buf, slots, Math.min(vFov, hFov))
+    if (!ft) return
+
+    const center = new THREE.Vector3(ft.center[0], ft.center[1], ft.center[2])
+    // View from OUTSIDE along the centroid's radial (nebula 조망 feel); centroid at the origin
+    // → keep the current view direction; degenerate → +Z. Clamp the fit distance to the nebula
+    // viewing range so arrival sits exactly where CameraRig will keep it (no post-arrival yank).
+    const dir = center.clone()
+    if (dir.lengthSq() < 1e-6) dir.copy(camera.position).sub(center)
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1)
+    dir.normalize()
+    const dist = THREE.MathUtils.clamp(ft.distance, OBSERVE_MIN_DIST, 1500)
+    posRef.current = center.clone().addScaledVector(dir, dist)
+    tgtRef.current = center
+
+    select(null) // 조망은 단일 포커스를 풀고 시작(FocusController stand-down)
+    camera.up.set(0, 1, 0) // re-level: shed any free-look/arcball roll
+    if (useCameraMode.getState().mode === 'recall') setMode('nebula') // 근접→far 강제(1.4)
+    setTransitioning(true) // relax the orbit/ship clamps for the flight; restored on arrival
+  }, [frameRequest, stars, positionsRef, camera, setMode, setTransitioning, select])
+
+  useFrame((_, dt) => {
+    const pos = posRef.current
+    const tgt = tgtRef.current
+    if (!pos || !tgt) return
+    // Frame-all is FAR-only and owns the camera only in nebula. If another owner takes over —
+    // a camera toggle to recall bumps resetNonce so ModeTransitionController starts its own
+    // flight AND flips mode — abort here so the two don't write camera/controls.target the same
+    // frames (jitter / wrong pose). The toggle/fly-to path that flipped the mode owns
+    // `transitioning` and clears it on arrival, so we leave that flag untouched.
+    // Read the LIVE mode (getState), NOT a render-lagged subscription: framing FROM recall arms
+    // this flight and calls setMode('nebula') in the SAME effect tick — zustand updates getState
+    // synchronously, so by this frame the store is already 'nebula' and we don't false-abort the
+    // just-armed flight (a subscribed `mode` would still read 'recall' until the next render).
+    if (useCameraMode.getState().mode !== 'nebula') {
+      posRef.current = null
+      tgtRef.current = null
+      return
+    }
+    const k = 1 - Math.exp(-dt * 4) // frame-rate-independent ease (= ModeTransition)
+    camera.position.lerp(pos, k)
+    if (controls) {
+      controls.target.lerp(tgt, k)
+      controls.update()
+    } else {
+      camera.lookAt(tgt)
+    }
+    if (camera.position.distanceTo(pos) < 0.5) {
+      camera.position.copy(pos)
+      if (controls) {
+        controls.target.copy(tgt)
+        controls.update()
+      }
+      posRef.current = null
+      tgtRef.current = null
+      setTransitioning(false) // CameraRig snaps the nebula clamps back
+    }
+  })
+
+  return null
+}
+
+/** Diary-highlight guard (spec 28). Two invariants, both clearing the diary 조망 highlight from
+ *  the composition layer (the entity StarField never reads the feature store):
+ *   - near/far (acceptance 1.4): 근접(recall)에서는 단일 엔그램만 — when the camera enters recall
+ *     (user toggles), clear the highlight. Framing a diary FROM recall switches to nebula first
+ *     (FrameAllController), so this never fights an in-progress frame.
+ *   - single-focus wins: when a star is SELECTED, single-star focus takes over, so the diary
+ *     highlight must clear — otherwise it would re-appear when the recall panel closes. The
+ *     frame-from-recall flow is safe: FrameAllController does select(null) AFTER frameRecord, so
+ *     this fires with selectedId=null (no clear) and the fresh highlight survives. */
+function NearFarHighlightGuard() {
+  const mode = useCameraMode((s) => s.mode)
+  const selectedId = useMemoryStore((s) => s.selectedId)
+  useEffect(() => {
+    if (mode === 'recall') useWayfindingStore.getState().clear()
+  }, [mode])
+  useEffect(() => {
+    if (selectedId != null) useWayfindingStore.getState().clear()
+  }, [selectedId])
   return null
 }
 
@@ -1144,6 +1324,9 @@ function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Floa
   const stars = useMemoryStore((s) => s.stars)
   const mode = useCameraMode((s) => s.mode)
   const transitioning = useCameraMode((s) => s.transitioning)
+  // 일기 조망(spec 28)이 활성이면 frame-all이 orbit 타깃을 소유한다 — 포커스 해제 복원이
+  // 그 프레이밍을 끌어내리지 않게 한다(아래 deselect 분기에서 가드).
+  const highlightedRecordId = useWayfindingStore((s) => s.highlightedRecordId)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
@@ -1192,6 +1375,13 @@ function FocusController({ positionsRef }: { positionsRef: MutableRefObject<Floa
     if (!controls || transitioning) return
     const k = 1 - Math.exp(-dt * FOCUS_K)
     if (!sel) {
+      // 일기 조망(frame-all, spec 28)이 orbit 타깃을 소유 중이면 복원하지 않는다 — frameRecord가
+      // select(null)을 하므로 그 직후 여기로 오는데, 저장 타깃으로 되돌리면 방금 프레이밍한 일기
+      // 별들이 화면에서 미끄러진다. 저장 타깃을 버려(stale 복원 방지) frame-all에 양보한다.
+      if (highlightedRecordId) {
+        savedTargetRef.current = null
+        return
+      }
       // 해제 직후: orbit 중심을 포커스 이전 자리로 회복(NebulaOrbitController가 매 프레임
       // target을 바라보므로 lerp만으로 시점이 부드럽게 되돌아간다).
       const saved = savedTargetRef.current
@@ -1290,6 +1480,9 @@ export function UniverseCanvas() {
   const emotionColors = useAppearance((s) => s.emotionColors)
   // 중심 "나" 별 형태(spec 38) — 우주 중심 앵커. 강한 기억이 그 곁에 모인다.
   const selfObject = useAppearance((s) => s.selfObject)
+  // 원본 일기 조망 강조(spec 28) — 강조 record만 구독(드물게 변함; 별 집합 변경엔 안 묶임).
+  // StarField/UniverseSynapses가 record_id로 자기 별 집합을 파생해 강조/dim한다.
+  const highlightedRecordId = useWayfindingStore((s) => s.highlightedRecordId)
 
   // The ONE live force-sim positions buffer all four readers share (spec 22, acceptance 1.7):
   // StarField + FlyTo + Focus read it directly (per-frame / at capture); the synapse renderers
@@ -1360,8 +1553,17 @@ export function UniverseCanvas() {
       <group visible={ready}>
         <UniverseDrift>
           <SelfStar selfObject={selfObject} />
-          <UniverseSynapses layout={layout} positionsRef={positionsRef} />
-          <StarField object={object} emotionColors={emotionColors} positionsRef={positionsRef} />
+          <UniverseSynapses
+            layout={layout}
+            positionsRef={positionsRef}
+            highlightedRecordId={highlightedRecordId}
+          />
+          <StarField
+            object={object}
+            emotionColors={emotionColors}
+            positionsRef={positionsRef}
+            highlightedRecordId={highlightedRecordId}
+          />
         </UniverseDrift>
       </group>
       <LiveLayoutController
@@ -1375,6 +1577,8 @@ export function UniverseCanvas() {
       <NavController />
       <FlyToController positionsRef={positionsRef} />
       <FocusController positionsRef={positionsRef} />
+      <FrameAllController positionsRef={positionsRef} />
+      <NearFarHighlightGuard />
       <ModeTransitionController />
       <ViewOffsetController />
       <BloomPass />

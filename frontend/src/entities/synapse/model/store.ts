@@ -81,6 +81,17 @@ export function neighborsOf(edges: SynapseEdge[], memoryId: string): SynapseEdge
   return edges.filter((e) => e.aId === memoryId || e.bId === memoryId)
 }
 
+/** Pure: the edges INTERNAL to a star set — both endpoints in `ids` (spec 28). For a diary's
+ *  star set these are its within-event (일내) connections: the intra_entry links spec 21 wrote
+ *  to bind the fragments, plus any later same-diary links. (We test set-membership, not the
+ *  link_type string: toSynapseEdge collapses the server's 'intra_entry' to 'semantic', so
+ *  membership is the reliable signal.) Wayfinding highlights these brighter while the rest of
+ *  the web dims. three/DOM-free (헌법4). */
+export function edgesWithin(edges: SynapseEdge[], ids: ReadonlySet<string>): SynapseEdge[] {
+  if (ids.size === 0) return []
+  return edges.filter((e) => ids.has(e.aId) && ids.has(e.bId))
+}
+
 /** Pure: star id → degree normalized by the universe's MEDIAN degree (spec 26's R_conn
  *  input). degree = incident-edge count (= neighborsOf(...).length, computed in one pass);
  *  degreeNorm = degree / median, so the typical star sits at ~1 and a hub rises above it.

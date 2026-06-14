@@ -6,6 +6,7 @@ import { useMemoryStore } from '@/entities/memory'
 import { useSynapseStore } from '@/entities/synapse'
 import { useAppearance } from '@/entities/appearance'
 import { useRecallStore } from '@/features/recall'
+import { useWayfindingStore } from '@/features/wayfinding'
 import { queryClient } from '../query-client'
 
 export function resetUniverseData(): void {
@@ -20,4 +21,7 @@ export function resetUniverseData(): void {
   useAppearance.getState().resetServerSettings()
   // 이전 출처의 미flush 공동회상 페어·lastViewedId도 경계를 넘지 않는다(세션 교체).
   useRecallStore.getState().reset()
+  // 원본 일기 조망 강조·프레임 요청(spec 28)도 경계를 넘기지 않는다 — 안 비우면 새 출처가
+  // 이전 일기의 하이라이트(먼지 dim)나 미해결 프레임 요청을 들고 시작한다.
+  useWayfindingStore.getState().clear()
 }

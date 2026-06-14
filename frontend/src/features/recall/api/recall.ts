@@ -1,11 +1,19 @@
 // Recall RPCs via the single shared Connect client (02). unary only (constitution §6).
 // ⚠️ reinforceLinks (flush 경로)는 16에서 변경 금지 — keepalive 명령형 호출 유지(헌법 §6).
 import { memoryClient } from '@/shared/api'
-import { isDemoMode, demoRecall, demoMarkRecalled, demoReshape } from '@/shared/lib/demo'
+import { isDemoMode, demoRecall, demoFragmentText, demoMarkRecalled, demoReshape } from '@/shared/lib/demo'
 import type { Record as RecordMsg } from '@/shared/api'
 
-/** Re-ignite a star and read its immutable original Record (read-only panel). */
-export async function recallMemory(memoryId: string): Promise<RecordMsg | undefined> {
+/** A recall result: the immutable original Record + this star's own fragment text (spec 28;
+ *  "" when single-fragment / pre-21 → the panel falls back to the whole body). */
+export interface RecallResult {
+  record: RecordMsg
+  fragmentText: string
+}
+
+/** Re-ignite a star and read its immutable original Record + fragment text (read-only panel).
+ *  Returns undefined when the star/record is absent. */
+export async function recallMemory(memoryId: string): Promise<RecallResult | undefined> {
   if (isDemoMode()) {
     const record = demoRecall(memoryId) // 체험: 더미 원본 일기 반환
     // 재점화(spec 19): 서버의 last_recalled_at=now를 데모 데이터에 재현 — 잠든 별이
@@ -15,11 +23,12 @@ export async function recallMemory(memoryId: string): Promise<RecordMsg | undefi
     if (record) {
       demoMarkRecalled(memoryId)
       demoReshape(memoryId)
+      return { record, fragmentText: demoFragmentText(memoryId) }
     }
-    return record
+    return undefined
   }
   const res = await memoryClient.recallMemory({ memoryId })
-  return res.record
+  return res.record ? { record: res.record, fragmentText: res.fragmentText } : undefined
 }
 
 /** Persist a co-recall reinforcement batch (idempotent by batchId). */

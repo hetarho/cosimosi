@@ -67,17 +67,33 @@ WHERE m.user_id = @user_id AND m.id = ANY(@ids::text[]);
 -- name: GetRecordByMemory :one
 -- Read the immutable original for the recall panel (records JOIN). body/entry_date/
 -- mood live on records; never mutated, never RETURNING * from memories (no body there).
-SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at
+-- spec 28: m.fragment_text rides along (별 → 조각) so the recall panel can show the
+-- star's own fragment text; records.body stays the WHOLE original (원본 일기 전체 보기).
+-- fragment_text is NULL for single-fragment / pre-21 stars → the handler emits "".
+SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at, m.fragment_text
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = @id AND m.user_id = @user_id;
+
+-- name: ListRecords :many
+-- 원본 일기로 별 찾기(spec 28) 진입 목록: 호출 user의 원본 일기 + 일기별 조각 별 개수.
+-- records는 읽기만(헌법1 — UPDATE/DELETE 없음). body는 전체가 아니라 excerpt(left 80)만
+-- 보낸다(원본 전체는 RecallMemory). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
+SELECT r.id AS record_id, r.entry_date, left(r.body, 80) AS body_excerpt, count(m.id)::int AS star_count
+FROM records r JOIN memories m ON m.record_id = r.id
+WHERE r.user_id = $1
+GROUP BY r.id, r.entry_date, r.body
+ORDER BY r.entry_date DESC;
 
 -- name: ListMemoriesByUser :many
 -- Every star for the user, dormant included (no brightness filter — constitution
 -- §2). mood/intensity/valence are the FRAGMENT's own (memories, spec 21) — no
 -- records JOIN anymore. The reshaping state (spec 23) rides the same row.
+-- spec 28: record_id/fragment_index ride along so the client can GROUP stars by
+-- their original diary (일기 단위 조망/하이라이팅) without a separate query.
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
-       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version,
+       m.record_id, m.fragment_index
 FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index;

@@ -26,9 +26,11 @@ const universeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/universe',
   // ?sim=<id> — 데모 시뮬레이션 패널의 진입 포커스(spec 19, 랜딩 카드 "이 카드 체험하기").
-  // 문자열만 통과시키고, 레지스트리에 없는 id는 패널이 무시한다.
-  validateSearch: (search: Record<string, unknown>): { sim?: string } => ({
+  // ?panel=diary — 원본 일기 목록 오버레이 딥링크(spec 28; 별도 /diary 라우트는 두지 않는다 —
+  // 우주 셸 위 오버레이). 문자열만 통과시키고, 알 수 없는 값은 페이지가 무시한다.
+  validateSearch: (search: Record<string, unknown>): { sim?: string; panel?: 'diary' } => ({
     sim: typeof search.sim === 'string' ? search.sim : undefined,
+    panel: search.panel === 'diary' ? 'diary' : undefined,
   }),
   component: function UniverseRoute() {
     return (

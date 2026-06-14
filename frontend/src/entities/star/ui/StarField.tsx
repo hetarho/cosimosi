@@ -10,7 +10,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { modulatedBrightness, reshapedBrightness, reshapedSeed, useMemoryStore } from '@/entities/memory/@x/star'
+import { modulatedBrightness, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore } from '@/entities/memory/@x/star'
 import { degreeNormById, useSynapseStore } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
@@ -83,6 +83,9 @@ function getBurstTexture(): THREE.CanvasTexture | null {
 // Focus spotlight (11): while a star is selected, every OTHER star dims to FOCUS_DIM of its
 // brightness and the selected one is nudged up by FOCUS_BOOST — applied by re-weighting the
 // per-instance aBrightness the forms read (each form multiplies emissive by it). No rebuild.
+// Diary highlight (spec 28, 원본 일기로 별 찾기) reuses the SAME re-weighting at the same
+// strengths: the chosen diary's stars boost, the rest dim — only the SET (one star vs many)
+// differs. (Focus takes precedence: framing a diary clears any single selection.)
 const FOCUS_DIM = 0.12
 const FOCUS_BOOST = 1.3
 
@@ -93,13 +96,30 @@ export interface StarFieldProps {
   object?: StarObject
   /** 감정색 사용자 오버라이드(mood→"#RRGGBB", spec 30). 없는 mood는 기본 팔레트(MOOD_PALETTE). */
   emotionColors?: Record<string, string>
+  /** 강조할 원본 일기 id(spec 28) — 그 일기의 별만 밝히고 나머지는 dim한다(원본 일기로 별 찾기).
+   *  record_id만 받아 자기 stars 구독으로 집합을 파생한다(엔터티는 wayfinding feature store를
+   *  못 읽으므로 위젯이 record_id만 prop으로 넘긴다). null = 강조 없음. */
+  highlightedRecordId?: string | null
 }
 
-export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors }: StarFieldProps) {
+export function StarField({
+  positionsRef,
+  object = DEFAULT_OBJECT,
+  emotionColors,
+  highlightedRecordId = null,
+}: StarFieldProps) {
   const stars = useMemoryStore((s) => s.stars)
   const select = useMemoryStore((s) => s.select)
   const selectedId = useMemoryStore((s) => s.selectedId)
   const count = stars.length
+  // 강조 일기의 별 id 집합 — record_id로 그룹(spec 28). 선택 변경/별 집합 변경 시에만 재계산.
+  const highlightedIds = useMemo(
+    () =>
+      highlightedRecordId
+        ? new Set(starsOfRecord(stars, highlightedRecordId).map((s) => s.id))
+        : null,
+    [highlightedRecordId, stars],
+  )
   // 변조 감쇠(spec 26)의 R_conn 입력: 별별 degree를 우주 중앙값으로 정규화한 맵. degree는
   // 어떤 PAIR가 존재하느냐(토폴로지)에만 의존하므로 토폴로지 시그니처로 메모해, 시간 머신의
   // refreshActivation이 밝기 재파생만을 위해 엣지 배열을 갈아끼우는 동안(spec 19) 아래 빌드
@@ -245,6 +265,9 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
     const attr = geometry.getAttribute('aBrightness') as THREE.InstancedBufferAttribute | undefined
     if (!attr || count === 0) return
     const selIdx = selectedId ? stars.findIndex((s) => s.id === selectedId) : -1
+    // 일기 조망 강조(spec 28): 단일 선택이 없을 때만 적용(선택=근접 포커스가 우선). 강조 집합의
+    // 별은 FOCUS_BOOST로 밝히고 나머지는 FOCUS_DIM(잠든 별 dust dimming과 같은 시각 언어).
+    const hi = selIdx < 0 && highlightedIds && highlightedIds.size > 0 ? highlightedIds : null
     const now = virtualNowMs()
     const arr = attr.array as Float32Array
     for (let i = 0; i < count; i++) {
@@ -254,10 +277,13 @@ export function StarField({ positionsRef, object = DEFAULT_OBJECT, emotionColors
         modulatedBrightness(m.lastRecalledAt, now, degreeNorm.get(stars[i].id) ?? 0, m.relevance, m.intensity, m.valence),
         m.brightnessOffset,
       )
-      arr[i] = base * (selIdx < 0 ? 1 : i === selIdx ? FOCUS_BOOST : FOCUS_DIM)
+      let factor = 1
+      if (selIdx >= 0) factor = i === selIdx ? FOCUS_BOOST : FOCUS_DIM
+      else if (hi) factor = hi.has(stars[i].id) ? FOCUS_BOOST : FOCUS_DIM
+      arr[i] = base * factor
     }
     attr.needsUpdate = true
-  }, [selectedId, stars, count, geometry, degreeNorm])
+  }, [selectedId, highlightedIds, stars, count, geometry, degreeNorm])
 
   // Per-frame matrix write: LIVE force-sim positions (07/10) 또는 더미 좌표 위에 별 미세
   // 부유(WOBBLE_AMP)와 탄생 스케일을 얹는다. No setState → no re-render (1.6).

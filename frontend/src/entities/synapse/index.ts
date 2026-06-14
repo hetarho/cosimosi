@@ -9,6 +9,7 @@ export {
   useSynapseStore,
   toSynapseEdge,
   neighborsOf,
+  edgesWithin,
   degreeNormById,
   type UniverseSynapse,
 } from './model/store'

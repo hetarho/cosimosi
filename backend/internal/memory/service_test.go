@@ -19,6 +19,9 @@ func (s *stubRepo) RecordMemory(_ context.Context, in RecordInput) (string, []st
 	return "rec-1", nil, nil
 }
 func (s *stubRepo) ListByUser(context.Context, string) ([]Memory, error) { return nil, nil }
+func (s *stubRepo) ListRecords(context.Context, string) ([]RecordSummary, error) {
+	return nil, nil
+}
 func (s *stubRepo) ListDormant(context.Context, string, time.Time) ([]Memory, error) {
 	return nil, nil
 }
@@ -131,6 +134,9 @@ func (r *reshapeRepo) RecordMemory(context.Context, RecordInput) (string, []stri
 	return "", nil, nil
 }
 func (r *reshapeRepo) ListByUser(context.Context, string) ([]Memory, error) { return nil, nil }
+func (r *reshapeRepo) ListRecords(context.Context, string) ([]RecordSummary, error) {
+	return nil, nil
+}
 func (r *reshapeRepo) ListDormant(context.Context, string, time.Time) ([]Memory, error) {
 	return nil, nil
 }

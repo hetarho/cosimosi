@@ -7,7 +7,7 @@
 import { useCallback } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { bodyLengthBucket, capture, EVENTS } from '@/shared/lib'
-import { universeInvalidateKey } from '@/entities/memory'
+import { recordsInvalidateKey, universeInvalidateKey } from '@/entities/memory'
 import {
   BODY_TOO_LONG_MSG,
   EMPTY_FRAGMENT_MSG,
@@ -113,6 +113,9 @@ export function useRecordMemory() {
       // 확정 조각은 동기 fan-out이라 별이 이미 서버에 있다 — 즉시 당겨와 탄생
       // 연출과 함께 띄우고, 시냅스(비동기 임베딩)는 지연 refetch로 실어 온다.
       void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+      // 새 일기가 "원본 일기로 별 찾기"(spec 28) 목록에 바로 뜨게 — 별은 이미 보이는데 일기
+      // 목록만 ≤60s 뒤처지지 않도록 이벤트 무효화(dormant가 회상 성공에 무효화되는 것과 같은 결).
+      void queryClient.invalidateQueries({ queryKey: recordsInvalidateKey() })
       scheduleSynapseSync(queryClient, SYNAPSE_REFETCH_DELAYS_MS)
     } catch (e) {
       // 서버 검증(InvalidArgument, 17)은 입력을 고치면 되는 문제라 구체 메시지로

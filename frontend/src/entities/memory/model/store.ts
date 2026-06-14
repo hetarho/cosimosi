@@ -41,6 +41,17 @@ interface MemoryState {
   removeStar: (tempId: string) => void
 }
 
+/** Pure: the stars that came from one original diary (spec 28), in fragment order.
+ *  The wayfinding group key is `recordId`; empty/blank recordId is never grouped (a
+ *  star with no record key — old data — matches nothing). Used to frame + highlight a
+ *  whole diary's stars (원본 일기로 별 찾기). three/DOM-free (헌법4). */
+export function starsOfRecord(stars: StarNode[], recordId: string): StarNode[] {
+  if (!recordId) return []
+  return stars
+    .filter((s) => s.memory.recordId === recordId)
+    .sort((a, b) => a.memory.fragmentIndex - b.memory.fragmentIndex)
+}
+
 export const useMemoryStore = create<MemoryState>((set) => ({
   stars: [],
   selectedId: null,

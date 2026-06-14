@@ -61,6 +61,23 @@
 
 `/dormant` 항목 클릭 → `focusStar(memory_id)` → `/universe` 이동 → 위 fly-to 메커니즘으로 동일하게 그 별로 이동 → 도달 후 회상으로 재점화. 잠든 별이라고 별도 카메라 경로를 쓰지 않는다.
 
+### 조망 프레이밍(frame-all) — 원본 일기의 모든 별
+
+원본 일기 하나(`record_id`)를 고르면 그 일기에서 태어난 **모든 조각 별을 한 화면에 담는** far 자세로 카메라를 보간 이동한다(fly-to의 별 집합 확장). 별 집합의 라이브 좌표에서 **중심(centroid)·바운딩 반경 R** 을 매번 새로 구하고(흩어진 별도 그 순간 좌표로), 그 구를 화면에 채우는 거리 `d = R / sin(fov/2) · MARGIN`을 잡는다. `fov`는 세로·가로 화각 중 **작은 쪽**(세로·가로 모두 들어오게). 카메라 = 중심 + 방사 방향·`d`, `lookAt` = 중심.
+
+| 파라미터 | 값 | 의미 |
+|---|---|---|
+| 여유 배수 `FRAME_MARGIN` | `1.3` | 바깥 별이 화면 가장자리에 딱 붙지 않게 |
+| 거리 바닥 `FRAME_MIN_DISTANCE` | `12` | 반경≈0(단일 별 일기)일 때 단일 fly-to와 같은 근접으로 수렴(degenerate) |
+| 거리 클램프 | `[OBSERVE_MIN_DIST=58, 1500]` | 조망은 nebula이므로 도착 자세를 그 줌 범위에 맞춰(도착 후 클램프 yank 없음) |
+| 보간 감쇠 | `k = 1 − exp(−dt·4)` | 모드 전환 비행과 같은 ease, 목표까지 `< 0.5`면 정차 |
+
+중심·반경·거리 계산은 **순수 함수**(`features/wayfinding/model/frame.ts`, three/DOM 미의존)고, 위젯 컨트롤러가 라이브 좌표를 읽어 적용한다(좌표는 읽기만 — 헌법3).
+
+### near/far 가드 — 근접=단일 엔그램만
+
+일기 전체 조망(frame-all)은 **far(`nebula`)에서만** 일어난다. `recall`(근접)에서 조망을 요청하면 먼저 `nebula`로 전환하고 단일 포커스(`select`)를 풀고서 프레이밍한다. 반대로 카메라가 `recall`로 진입하면 일기 하이라이트는 해제된다 — **근접에서는 엔그램(단일 별) 단위만** 본다. 단일 엔그램 fly-to(`focusStar`)는 어느 모드에서나 허용된다.
+
 ## 불변식 (invariants)
 
 - **3D 씬 안 DOM(`<Html>`) 금지.** 카메라·항행 컨트롤러는 씬 안에 DOM을 만들지 않는다(헌법8 — 모바일 이식성).
@@ -75,3 +92,4 @@
 - fly-to 보간(`k=1−exp(−dt·3)`, 오프셋 12, 임계 0.6)·잠든 별 도달·`focusStarId`/`focusStar`: 구현 plan 12 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FlyToController`/`FocusController`), `frontend/src/pages/dormant`.
 - 라이브 좌표 버퍼 단일 출처(네 reader 동기·fibonacci 폴백·`readBufferPosition`): 구현 plan 08·22 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController`), `frontend/src/shared/lib/force-sim/`, `frontend/src/shared/lib/layout.ts`.
 - 별 반지름 이동(거리=강함)·fly-to/focus 매 프레임 라이브 추적: 구현 plan 38 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`radiusOf`·`FlyToController`/`FocusController`의 버퍼 재독), `frontend/src/shared/lib/layout.ts`(`targetRadius`).
+- 조망 프레이밍(frame-all 거리·반경·`FRAME_MARGIN`/`FRAME_MIN_DISTANCE`)·near/far 가드(근접=단일만): 구현 plan 28 · `frontend/src/features/wayfinding/model/frame.ts`(순수 `frameTarget`)·`model/store.ts`, `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`).

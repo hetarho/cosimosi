@@ -11,6 +11,8 @@ export {
   SynapseSchema,
   GetUniverseResponseSchema,
   ListDormantResponseSchema,
+  ListRecordsResponseSchema,
+  RecordSummarySchema,
   GetSettingsResponseSchema,
 } from './gen/cosimosi/v1/memory_pb'
 export type {
@@ -20,6 +22,8 @@ export type {
   AmbientMood,
   GetUniverseResponse,
   ListDormantResponse,
+  RecordSummary,
+  ListRecordsResponse,
   EvolutionSnapshot,
   GetEvolutionHistoryResponse,
   Settings,
