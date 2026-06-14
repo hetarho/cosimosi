@@ -2,10 +2,19 @@
 // 굽는다 — 데이터(타임스탬프)는 그대로라 refetch가 아니라 스토어 재파생이 맞다.
 // 스킵은 한 번에 점프하지 않고 **짧은 트윈(~0.9s, ease-in-out)** 으로 시계를 흘려보내
 // 밝기가 뚝 끊기지 않고 서서히 저무는 것처럼 보이게 한다(사용자 피드백). 틱마다
-// 재파생(setStars/setEdges)이 돌지만 데모 우주 규모(별 ~30·엣지 ~30)에서만 쓰인다.
+// 재파생(setStars/setEdges)이 돌지만 데모 우주 규모(별 ~50~90·엣지 ~200~370)에서만 쓰인다.
 // model 계층: three/React/DOM 미의존(헌법 §4); zustand·QueryClient·타이머는 RN-safe.
 import type { QueryClient } from '@tanstack/react-query'
-import { demoConsolidate, enterDemoMode, exitDemoMode, resetDemo, skipDemoDays } from '@/shared/lib/demo'
+import {
+  demoConsolidate,
+  enterDemoMode,
+  exitDemoMode,
+  getDemoPersona,
+  resetDemo,
+  setDemoPersona,
+  skipDemoDays,
+  type DemoPersona,
+} from '@/shared/lib/demo'
 import { dormantInvalidateKey, refreshActivation, universeInvalidateKey } from '@/entities/memory'
 
 const SKIP_TWEEN_MS = 900
@@ -29,7 +38,8 @@ export function runTimeSkip(queryClient: QueryClient, days: number, onSettled?: 
   active?.cancel(true) // 연타: 이전 스킵의 잔여분을 즉시 적용하고 새 스킵을 시작(합산)
   const start = Date.now()
   let applied = 0
-  const finishDormant = () => void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
+  const finishDormant = () =>
+    void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
 
   const tick = () => {
     const p = Math.min(1, (Date.now() - start) / SKIP_TWEEN_MS)
@@ -82,4 +92,14 @@ export function resetDemoExperience(): void {
   exitDemoMode()
   resetDemo()
   enterDemoMode()
+}
+
+/** 페르소나 전환 — 우주의 주인공(데이터 출처)을 바꾼다. 새 페르소나를 영속한 뒤 "처음으로"와
+ *  같은 검증된 리셋 경로를 탄다: 모드 리스너(app의 reset-universe-data)가 캐시·렌더 스토어를
+ *  비우고, 다음 GetUniverse가 새 페르소나의 코퍼스로 base 우주를 재시드한다(ensureSeeded가
+ *  getDemoPersona를 읽는다). 시간 머신 진행분·체험 중 추가한 별도 함께 정리된다. */
+export function switchDemoPersona(id: DemoPersona): void {
+  if (id === getDemoPersona()) return // 같은 페르소나면 무변(불필요한 teardown/reseed 방지)
+  setDemoPersona(id) // 영속만(동기 게터 일관) — 실제 재시드/캐시 리셋은 아래 resetDemoExperience가
+  resetDemoExperience()
 }

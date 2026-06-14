@@ -9,6 +9,12 @@
 // API 함수가 await 없이 분기할 수 있어야 하기 때문.
 
 const KEY = 'cosimosi:demo'
+const PERSONA_KEY = 'cosimosi:demo-persona'
+
+/** 체험 우주의 주인공. 같은 화면 코드가 페르소나마다 다른 일기 흐름(personas.ts)을 시드한다. */
+export type DemoPersona = 'student' | 'worker' | 'homemaker'
+const PERSONA_IDS: DemoPersona[] = ['student', 'worker', 'homemaker']
+const DEFAULT_PERSONA: DemoPersona = 'student' // 가장 조밀·밝은 우주 — 첫인상 쇼케이스
 
 function readPersisted(): boolean {
   try {
@@ -18,7 +24,17 @@ function readPersisted(): boolean {
   }
 }
 
+function readPersona(): DemoPersona {
+  try {
+    const v = sessionStorage.getItem(PERSONA_KEY)
+    return PERSONA_IDS.includes(v as DemoPersona) ? (v as DemoPersona) : DEFAULT_PERSONA
+  } catch {
+    return DEFAULT_PERSONA
+  }
+}
+
 let demo = readPersisted()
+let persona = readPersona()
 
 // 모드가 실제로 바뀔 때 호출되는 콜백. 데이터 출처(체험 더미 ↔ 실서버)가 바뀌면 쿼리
 // 캐시·렌더 스토어를 리셋해야 하는데(16 — 둘은 같은 쿼리 키를 공유한다), 그 리셋은 app
@@ -58,4 +74,22 @@ export function exitDemoMode(): void {
     /* noop */
   }
   onModeChange?.()
+}
+
+/** 현재 체험 페르소나. ensureSeeded가 동기로 읽어 해당 코퍼스를 시드한다. */
+export function getDemoPersona(): DemoPersona {
+  return persona
+}
+
+/** 페르소나 전환 — sessionStorage에만 반영한다(동기 게터 일관). 데이터 출처가 바뀌므로
+ *  실제 우주 재시드/캐시 리셋은 호출자(스위처)가 resetDemo + 모드 리스너 경유로 처리한다
+ *  (여기서 onModeChange를 직접 부르면 base를 비우기 전에 refetch가 옛 페르소나를 읽는다). */
+export function setDemoPersona(next: DemoPersona): void {
+  if (persona === next) return
+  persona = next
+  try {
+    sessionStorage.setItem(PERSONA_KEY, next)
+  } catch {
+    /* 저장 실패해도 메모리 플래그로 이번 세션은 동작 */
+  }
 }

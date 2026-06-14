@@ -30,6 +30,16 @@ const RADIAL_MIN_DIST = 1e-3
 // Spring strength multiplier applied on top of each edge's weight.
 const LINK_STRENGTH = 1.0
 
+// Per-tick displacement (speed) ceiling, as a multiple of linkDistance. Hooke springs are
+// LINEAR in distance, so a far or high-degree node can receive a huge one-tick kick; with
+// explicit-Euler that overshoots, and on a dense/strong-spring graph the overshoot compounds
+// tick-over-tick until coordinates run away to non-finite (which then makes the octree's
+// bounding half-width Infinity and recurse forever — a hard crash). Clamping the per-tick step
+// bounds that runaway. A settling layout moves far less than this per tick, so a normal graph
+// is unaffected — this only bites the pathological stiff case (acceptance: dense universes stay
+// finite and on-screen). 2×linkDistance ≈ never reached by a well-conditioned layout.
+const MAX_SPEED_FACTOR = 2
+
 /** Opaque simulation state. Coordinates live in `px` (flat [x,y,z]); node order
  *  matches the input `nodes` array 1:1 (index = InstancedMesh instance index — the
  *  08 contract). */
@@ -156,6 +166,9 @@ export function tick(state: SimState, steps = 1): Float32Array {
 function step(state: SimState): void {
   const { px, vx, free, radius, edges, params, n, alpha } = state
   const { theta, repulsion, linkDistance, centerGravity, velocityDecay, radialStrength } = params
+  // 발산 방지 상한(틱당 변위 크기). linkDistance에 비례 — 정상 레이아웃은 훨씬 작게 움직인다.
+  const maxSpeed = linkDistance * MAX_SPEED_FACTOR
+  const maxSpeed2 = maxSpeed * maxSpeed
 
   // Repulsion (Barnes-Hut). All nodes — incl. fixed — are sources, so a new star is
   // pushed by the existing cluster; only free nodes receive the force.
@@ -223,6 +236,15 @@ function step(state: SimState): void {
     vx[xi] *= velocityDecay
     vx[xi + 1] *= velocityDecay
     vx[xi + 2] *= velocityDecay
+
+    // 틱당 변위를 상한으로 클램프(발산 방지). 정상 레이아웃은 이 상한 아래라 무영향.
+    const sp2 = vx[xi] * vx[xi] + vx[xi + 1] * vx[xi + 1] + vx[xi + 2] * vx[xi + 2]
+    if (sp2 > maxSpeed2) {
+      const k = maxSpeed / Math.sqrt(sp2)
+      vx[xi] *= k
+      vx[xi + 1] *= k
+      vx[xi + 2] *= k
+    }
 
     px[xi] += vx[xi]
     px[xi + 1] += vx[xi + 1]

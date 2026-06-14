@@ -7,6 +7,12 @@ const EPS = 1e-6
 // Stop subdividing below this cell half-width so coincident/near-coincident points
 // can't recurse forever; such a cell is treated as one approximate mass.
 const MIN_HALF = 1e-4
+// Hard subdivision-depth backstop. MIN_HALF normally stops recursion, but if a coordinate
+// is non-finite the bounding half can be Infinity (Infinity/2 = Infinity never reaches
+// MIN_HALF) → infinite recursion → stack overflow. The sim clamps positions so this should
+// never trigger; the cap guarantees the tree build can't crash even if a NaN/Infinity slips
+// through. 2^48 dynamic range dwarfs any real layout, so a valid tree is never truncated.
+const MAX_DEPTH = 48
 // Distance floor for the inverse-square law. Clamping dist² to this (not EPS)
 // bounds the force when bodies are ~coincident — without it, dist²→0 makes
 // repulsion explode, and a body sharing a sub-MIN_HALF bucket would repel itself
@@ -70,11 +76,11 @@ export function buildOctree(px: Float32Array, count: number): Octree {
   if (!(half > 0)) half = 1
 
   const root = makeCell(cx, cy, cz, half)
-  for (let i = 0; i < count; i++) insert(root, i, px)
+  for (let i = 0; i < count; i++) insert(root, i, px, 0)
   return { root, px }
 }
 
-function insert(cell: Cell, bi: number, px: Float32Array): void {
+function insert(cell: Cell, bi: number, px: Float32Array, depth: number): void {
   const x = px[bi * 3]
   const y = px[bi * 3 + 1]
   const z = px[bi * 3 + 2]
@@ -83,8 +89,10 @@ function insert(cell: Cell, bi: number, px: Float32Array): void {
   cell.my += y
   cell.mz += z
 
-  // Below the floor: keep as an approximate bucket (don't subdivide further).
-  if (cell.half < MIN_HALF) {
+  // Below the floor (or at the depth backstop): keep as an approximate bucket — don't
+  // subdivide further. The depth cap protects against a non-finite half that MIN_HALF
+  // can't catch (Infinity/2 stays Infinity), so a stray NaN/Infinity can't blow the stack.
+  if (cell.half < MIN_HALF || depth >= MAX_DEPTH) {
     if (cell.body === -1 && cell.children === null) cell.body = bi
     return
   }
@@ -98,12 +106,12 @@ function insert(cell: Cell, bi: number, px: Float32Array): void {
     cell.children = [null, null, null, null, null, null, null, null]
     const existing = cell.body
     cell.body = -1
-    insertIntoChild(cell, existing, px)
+    insertIntoChild(cell, existing, px, depth)
   }
-  insertIntoChild(cell, bi, px)
+  insertIntoChild(cell, bi, px, depth)
 }
 
-function insertIntoChild(cell: Cell, bi: number, px: Float32Array): void {
+function insertIntoChild(cell: Cell, bi: number, px: Float32Array, depth: number): void {
   const x = px[bi * 3]
   const y = px[bi * 3 + 1]
   const z = px[bi * 3 + 2]
@@ -119,7 +127,7 @@ function insertIntoChild(cell: Cell, bi: number, px: Float32Array): void {
     )
     cell.children![oct] = child
   }
-  insert(child, bi, px)
+  insert(child, bi, px, depth + 1)
 }
 
 /** Accumulate the Barnes-Hut repulsion on body `bi` into `out` (vx/vy/vz deltas).

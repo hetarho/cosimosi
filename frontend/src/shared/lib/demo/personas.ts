@@ -1,0 +1,1773 @@
+// 데모("체험") 페르소나 일기 코퍼스 — 우주의 주인공별 일기 흐름(별·시냅스의 원천).
+// 자동 생성: scripts/gen-personas.mjs <- scripts/persona-corpora.json. 손으로 고치지 말고
+// JSON을 고친 뒤 `node scripts/gen-personas.mjs`로 다시 찍는다(일기 본문 escape 안전).
+//
+// 한 일기는 여러 조각(fragment)으로 나뉘고 조각 하나가 별 하나가 된다. 같은 일기 조각들이
+// 서로 다른 주제를 담으면 그 일내 결속선이 주제 성단 사이의 다리가 된다(simulate.ts). 그래프
+// (별·시냅스)는 simulate가 이 코퍼스에서 파생한다 — 여기엔 "쓴 것"만 두고 "이어진 것"은 안 둔다.
+import { Mood } from '@/shared/api'
+import type { DemoPersona } from './flag'
+import type { PersonaCorpus } from './simulate'
+
+// 20대 대학생 — 사소한 것에 크게 흔들리는 밤 · 일기 30편 / 별(조각) 80개 / 회상 7회
+const STUDENT: PersonaCorpus = {
+  id: 'student',
+  label: '20대 대학생',
+  tagline: '사소한 것에 크게 흔들리는 밤',
+  diaries: [
+    {
+      key: 'd01',
+      entryDaysAgo: 3,
+      fragments: [
+        {
+          topics: ['career', 'self'],
+          mood: Mood.FEAR,
+          intensity: 0.82,
+          text: '자소서 빈 화면을 한 시간 봤다. 커서만 깜빡인다. 나라는 사람을 한 문단으로 줄이라는데, 줄일 게 없어서 무서웠다. 다들 어디서 그 많은 경험을 길어 오는 걸까.',
+        },
+        {
+          topics: ['living'],
+          mood: Mood.TIRED,
+          intensity: 0.5,
+          text: '냉장고에 계란 두 개. 하나는 금이 가 있었다. 깨진 걸 먼저 먹는 게 맞나, 한참 들고 서 있었다. 이런 데서 못 고르는 내가 우습다.',
+        },
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.33,
+          text: '새벽 두 시, 창문 열었더니 비 냄새. 아직 안 오는데 흙이 먼저 젖은 냄새를 냈다. 잠깐, 아무것도 안 무서웠다.',
+        },
+      ],
+    },
+    {
+      key: 'd02',
+      entryDaysAgo: 5,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.EXCITEMENT,
+          intensity: 0.85,
+          text: '도서관 4층, 늘 앉던 자리 옆에 그 애가 앉았다. 굴러간 펜을 주워줬을 뿐인데 손끝이 스쳤다. 그 다음 두 시간 동안 책 한 줄도 못 읽었다.',
+        },
+        {
+          topics: ['study'],
+          mood: Mood.STRESS,
+          intensity: 0.66,
+          text: '통계 과제 마감이 내일인데 절반도 못 했다. R 콘솔이 자꾸 빨간 줄을 토한다. 세미콜론 하나 빠진 걸 새벽 한 시에 찾았다. 화면을 노려보다 보니 눈이 뻑뻑했다.',
+        },
+        {
+          topics: ['self'],
+          mood: Mood.JOY,
+          intensity: 0.55,
+          text: '집에 오는 길, 괜히 편의점에서 제일 비싼 아이스크림을 골랐다. 오늘 같은 날엔 나한테 좀 너그러워도 되지 않나.',
+        },
+      ],
+    },
+    {
+      key: 'd03',
+      entryDaysAgo: 8,
+      fragments: [
+        {
+          topics: ['family'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.72,
+          text: "택배 상자에 김치통, 멸치볶음, 그리고 엄마 손글씨 쪽지. '밥 굶지 말고.' 다섯 글자에 콧날이 시큰했다. 전화는 일주일에 한 번도 안 하면서.",
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.68,
+          text: '동아리방에서 라면 끓여 먹었다. 누가 김치 가져왔고, 누가 컵을 떨어뜨렸고, 다 같이 웃다가 조교한테 혼났다. 별것도 아닌데 배가 아프게 웃었다.',
+        },
+        {
+          topics: ['family'],
+          mood: Mood.SAD,
+          intensity: 0.5,
+          text: '밤에 그 쪽지를 다시 폈다. 엄마 글씨가 예전보다 작아진 것 같았다. 나만 자라고 엄마는 늙는 중이라는 게, 갑자기 미안했다.',
+        },
+      ],
+    },
+    {
+      key: 'd04',
+      entryDaysAgo: 11,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.LOVE,
+          intensity: 0.8,
+          text: "같이 밥 먹자고 먼저 말했다. 목소리가 떨려서 들켰을 거다. 그 애는 웃으면서 그래, 했다. 그 '그래' 하나가 하루 종일 귓가에 맴돌았다.",
+        },
+        {
+          topics: ['study', 'career'],
+          mood: Mood.ANGER,
+          intensity: 0.62,
+          text: "교수님이 출석부 보면서 '요즘 애들은 취업만 생각해서 공부를 안 한다'고 했다. 우리가 왜 취업을 생각하게 됐는지는 안 궁금한 모양이다. 책상 밑에서 주먹을 쥐었다.",
+        },
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.32,
+          text: '교정 벚나무가 다 졌다. 바닥이 분홍이라 밟기 미안했는데 다들 그냥 밟고 지나갔다. 나도 결국 한 발 디뎠다.',
+        },
+      ],
+    },
+    {
+      key: 'd05',
+      entryDaysAgo: 13,
+      fragments: [
+        {
+          topics: ['living'],
+          mood: Mood.STRESS,
+          intensity: 0.7,
+          text: '월세 날. 통장에 든 돈을 세 번 셌다. 셀 때마다 줄어드는 기분. 알바 시급으로 이 방값을 메우려면 몇 시간을 서 있어야 하는지 계산하다가 그만뒀다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.RELIEF,
+          intensity: 0.6,
+          text: "선배가 밥 사줬다. 갚겠다니까 '나도 그때 얻어먹었어' 한다. 그 말이 묘하게 든든했다. 갚을 데가 위가 아니라 아래라는 거, 처음 알았다.",
+        },
+        {
+          topics: ['self'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.55,
+          text: '집에 오니 또 혼자다. 불 켜진 방이 더 텅 비어 보일 때가 있다. 오늘이 그랬다.',
+        },
+      ],
+    },
+    {
+      key: 'd06',
+      entryDaysAgo: 14,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.EXCITEMENT,
+          intensity: 0.91,
+          text: '첫 데이트. 라기엔 그냥 학식 먹고 산책한 게 다지만. 운동장 트랙을 두 바퀴 돌면서 무슨 얘기를 그렇게 했는지 기억이 안 난다. 다만 헤어질 때 그 애가 한 번 더 돌아봤다.',
+        },
+        {
+          topics: ['art'],
+          mood: Mood.JOY,
+          intensity: 0.65,
+          text: '그 애가 좋아한다는 밴드 노래를 밤새 들었다. 가사 하나하나가 다 내 얘기 같았다. 음악이 사람을 이렇게 바보로 만든다.',
+        },
+      ],
+    },
+    {
+      key: 'd07',
+      entryDaysAgo: 15,
+      fragments: [
+        {
+          topics: ['study'],
+          mood: Mood.STRESS,
+          intensity: 0.75,
+          text: '중간고사 첫날. 전공 시험지를 받자마자 머리가 하얘졌다. 분명 외운 건데 손이 안 움직였다. 옆자리는 벌써 두 장째 넘기고 있었다.',
+        },
+        {
+          topics: ['self'],
+          mood: Mood.SAD,
+          intensity: 0.7,
+          text: '시험 끝나고 화장실에서 잠깐 울었다. 못 봐서가 아니라, 이 정도밖에 안 되는 나한테 화가 나서. 거울 속 얼굴이 낯설었다.',
+        },
+        {
+          topics: ['love'],
+          mood: Mood.RELIEF,
+          intensity: 0.6,
+          text: "'시험 잘 봤어?' 카톡 한 줄. 안 잘 봤다고 솔직히 썼더니 '고생했어'가 왔다. 누가 내 고생을 알아준다는 게, 그게 별건가 싶다가도 별거였다.",
+        },
+      ],
+    },
+    {
+      key: 'd08',
+      entryDaysAgo: 22,
+      fragments: [
+        {
+          topics: ['family'],
+          mood: Mood.TIRED,
+          intensity: 0.58,
+          text: "엄마 전화. 시험 얘기, 밥 얘기, 그리고 '아빠가 요즘 무릎이 안 좋다'는 얘기. 듣다가 나도 모르게 짧게 끊었다. 끊고 나서 한참 후회했다.",
+        },
+        {
+          topics: ['career'],
+          mood: Mood.FEAR,
+          intensity: 0.72,
+          text: '동기가 대기업 인턴 붙었다고 단톡에 올렸다. 축하한다고 이모티콘 보내놓고, 폰을 엎어놨다. 나만 제자리걸음 같은 이 느낌, 익숙해지질 않는다.',
+        },
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.4,
+          text: '밤 산책. 가로등 밑에서 날벌레가 떼로 돌고 있었다. 빛이 좋아서 저러는 건지, 못 빠져나가는 건지. 한참 서서 봤다.',
+        },
+      ],
+    },
+    {
+      key: 'd09',
+      entryDaysAgo: 26,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.LOVE,
+          intensity: 0.85,
+          text: '비 오는 날 한 우산. 어깨가 자꾸 닿아서 나도 모르게 우산을 그 애 쪽으로 기울였다. 내 한쪽 어깨는 다 젖었는데 하나도 안 추웠다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.EXCITEMENT,
+          intensity: 0.6,
+          text: '동아리 술자리에서 다들 내가 연애하는 거 눈치챘다. 아니라고 잡아뗐는데 얼굴이 다 말했단다. 놀림받는데 왜 이렇게 기분이 좋지.',
+        },
+      ],
+    },
+    {
+      key: 'd10',
+      entryDaysAgo: 29,
+      fragments: [
+        {
+          topics: ['living'],
+          mood: Mood.ANGER,
+          intensity: 0.65,
+          text: '윗집이 새벽 두 시까지 쿵쿵거린다. 천장을 노려봤다. 항의하러 올라갈 용기는 없고, 그렇다고 잠도 안 오고. 결국 이어폰을 꽂고 음악을 키웠다.',
+        },
+        {
+          topics: ['art'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: "잠 안 와서 예전에 사둔 시집을 폈다. 접어둔 페이지에 '슬픔이 기쁨에게'라고 적혀 있었다. 스무 살의 내가 왜 거기 줄을 쳤는지 이제야 알 것 같다.",
+        },
+        {
+          topics: ['self'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.55,
+          text: '새벽 네 시. 잠은 안 오고, 내일은 오고. 이 시간엔 늘 내가 어디로 가는 중인지 알 수가 없다.',
+        },
+      ],
+    },
+    {
+      key: 'd11',
+      entryDaysAgo: 32,
+      fragments: [
+        {
+          topics: ['study', 'friend'],
+          mood: Mood.STRESS,
+          intensity: 0.7,
+          text: '팀플 시작. 첫 회의부터 한 명이 카톡을 읽씹한다. 나머지 셋이서 눈만 마주쳤다. 이번에도 끄는 사람이 또 나일 것 같아서 벌써 어깨가 무거웠다.',
+        },
+        {
+          topics: ['career'],
+          mood: Mood.TIRED,
+          intensity: 0.6,
+          text: "진로 상담 신청해놓고 막상 가니 할 말이 없었다. 교수님이 '하고 싶은 게 뭐냐'고 묻는데, 그 질문이 제일 무섭다. 모르겠다는 말을 삼켰다.",
+        },
+        {
+          topics: ['love'],
+          mood: Mood.JOY,
+          intensity: 0.68,
+          text: "지친 하루 끝에 그 애가 '집 앞이야'라며 호빵을 들고 왔다. 추운데 손이 빨갰다. 호빵보다 그 손이 더 따뜻해 보였다.",
+        },
+      ],
+    },
+    {
+      key: 'd12',
+      entryDaysAgo: 35,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.ANGER,
+          intensity: 0.6,
+          text: '처음으로 다퉜다. 별거 아닌 일이었는데, 말이 자꾸 엇나갔다. 미안하다고 먼저 말하기 싫어서 둘 다 입을 다물었다. 자존심이 뭐라고.',
+        },
+        {
+          topics: ['self'],
+          mood: Mood.SAD,
+          intensity: 0.65,
+          text: '싸우고 나니 내가 얼마나 옹졸한 사람인지 다 보였다. 좋아하면서 왜 자꾸 상처를 주려고 할까. 이게 나의 가장 못난 부분이다.',
+        },
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.42,
+          text: '창밖에 모란이 한 송이 폈다. 어제까진 봉오리였는데. 다툰 줄도 모르고 꽃은 제 할 일을 한다.',
+        },
+      ],
+    },
+    {
+      key: 'd13',
+      entryDaysAgo: 38,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.RELIEF,
+          intensity: 0.75,
+          text: "그 애가 먼저 연락했다. '아까 내가 심했어.' 그 한 문장 받고 침대에서 발버둥을 쳤다. 화해라는 게 이렇게 사람을 가볍게 만드는구나.",
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.6,
+          text: '팀플 읽씹하던 애가 결국 자료를 다 만들어 왔다. 알고 보니 아버지가 입원 중이었다. 함부로 미워했던 게 부끄러웠다.',
+        },
+      ],
+    },
+    {
+      key: 'd14',
+      entryDaysAgo: 45,
+      fragments: [
+        {
+          topics: ['living'],
+          mood: Mood.TIRED,
+          intensity: 0.7,
+          text: '카페 마감조. 닫기 십 분 전에 들어온 손님이 음료 다섯 잔을 시켰다. 웃으면서 받았다. 셔터 내리고 보니 입꼬리가 아직 올라가 있었다.',
+        },
+        {
+          topics: ['self'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.6,
+          text: '마감하고 나오니 거리에 아무도 없었다. 내 발소리만 났다. 누구를 위해 이렇게 사는 건지, 가끔 통째로 모르겠다.',
+        },
+        {
+          topics: ['art', 'season'],
+          mood: Mood.CALM,
+          intensity: 0.48,
+          text: '버스 정류장 라디오에서 옛날 노래가 흘러나왔다. 가사 한 줄에 갑자기 눈가가 뜨거웠다. 피곤할 때 듣는 노래는 왜 다 슬프게 들릴까.',
+        },
+      ],
+    },
+    {
+      key: 'd15',
+      entryDaysAgo: 52,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.LOVE,
+          intensity: 0.82,
+          text: '한 달 됐다고 그 애가 작은 케이크를 사 왔다. 초도 안 켜고 둘이서 포크로 떠먹었다. 거창한 것 하나 없는데 이 사람이랑은 별게 다 사건이 된다.',
+        },
+        {
+          topics: ['study'],
+          mood: Mood.STRESS,
+          intensity: 0.55,
+          text: '발표 자료 만들다 보니 새벽 세 시. 슬라이드 마흔 장. 내일 입을 옷도 안 정했다. 좋은 일과 급한 일은 왜 늘 같은 주에 겹치는지.',
+        },
+      ],
+    },
+    {
+      key: 'd16',
+      entryDaysAgo: 60,
+      fragments: [
+        {
+          topics: ['study', 'career'],
+          mood: Mood.JOY,
+          intensity: 0.7,
+          text: "발표 끝났다. 교수님이 '이번 학기 제일 좋았다'고 했다. 손이 다 떨렸는데 끝나니 박수 소리만 남았다. 처음으로 내가 뭔가 해냈다는 기분.",
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.EXCITEMENT,
+          intensity: 0.72,
+          text: "팀원들이랑 뒤풀이. 그 읽씹하던 애가 술잔 들고 '고생했다'고 했다. 미워했다 좋아했다, 한 학기 동안 한 사람한테 별 감정을 다 느꼈다.",
+        },
+        {
+          topics: ['self'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.55,
+          text: '집에 오는 막차에서 창에 비친 내 얼굴을 봤다. 며칠 못 잤는데 웃고 있었다. 가끔은 나도 나를 봐줄 만하다.',
+        },
+      ],
+    },
+    {
+      key: 'd17',
+      entryDaysAgo: 67,
+      fragments: [
+        {
+          topics: ['family'],
+          mood: Mood.SAD,
+          intensity: 0.68,
+          text: "할머니가 입원하셨다는 소식. 엄마는 '별거 아니다'라고 했는데 목소리가 떨렸다. 내려가야 하나, 시험은 어쩌나. 효도조차 일정을 따져야 하는 내가 싫었다.",
+        },
+        {
+          topics: ['family'],
+          mood: Mood.FEAR,
+          intensity: 0.6,
+          text: '어릴 때 할머니가 해주던 호박죽 냄새가 갑자기 났다. 나는 그 냄새를 다시 못 맡게 될까 봐 무서운 거였다. 사라지는 것들이 너무 많다.',
+        },
+      ],
+    },
+    {
+      key: 'd18',
+      entryDaysAgo: 74,
+      fragments: [
+        {
+          topics: ['family'],
+          mood: Mood.RELIEF,
+          intensity: 0.65,
+          text: "주말에 내려갔다. 병실 침대에서 할머니가 내 손을 잡고 '많이 컸다'고 했다. 손이 종잇장 같았다. 가길 잘했다, 그 생각만 들었다.",
+        },
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '고향 집 마당에 상추가 한 뼘이나 자라 있었다. 아빠가 심었단다. 무릎 아픈 사람이 쪼그려 앉아 흙을 만졌을 걸 생각하니 마음이 이상했다.',
+        },
+        {
+          topics: ['love'],
+          mood: Mood.LOVE,
+          intensity: 0.62,
+          text: "기차에서 그 애한테 할머니 얘기를 다 했다. '말해줘서 고마워' 한 줄이 왔다. 창밖이 자꾸 뒤로 흘렀고, 폰을 오래 쥐고 있었다.",
+        },
+      ],
+    },
+    {
+      key: 'd19',
+      entryDaysAgo: 82,
+      fragments: [
+        {
+          topics: ['career'],
+          mood: Mood.STRESS,
+          intensity: 0.78,
+          text: '취업 설명회. 정장 입은 사람들 사이에서 후드티 입은 내가 너무 어려 보였다. 명함을 받아도 뭘 물어봐야 할지 몰라서 그냥 웃기만 했다. 어른 흉내가 이렇게 어렵다.',
+        },
+        {
+          topics: ['self'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.65,
+          text: '집에 와서 받아온 팸플릿을 다 버렸다. 어차피 못 갈 회사들. 버리는 손이 너무 안 망설여져서 그게 무서웠다.',
+        },
+      ],
+    },
+    {
+      key: 'd20',
+      entryDaysAgo: 89,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.TIRED,
+          intensity: 0.55,
+          text: '요즘 연락이 뜸하다. 둘 다 바쁜 거라고 생각하면서도, 답장이 한 박자씩 늦어지는 걸 자꾸 센다. 설렘이 식는 건 이렇게 조용히 오는구나.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.65,
+          text: '오랜만에 고등학교 친구를 만났다. 십 년을 아는 사이라 설명할 게 없다. 그냥 떡볶이 먹으면서 욕하고 웃었다. 이런 편한 관계가 그리웠다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.CALM,
+          intensity: 0.45,
+          text: "친구가 '너 많이 어른스러워졌다'고 했다. 칭찬 같기도 한데 웃음이 안 나왔다. 떡볶이 그릇 바닥의 국물을 괜히 더 긁었다.",
+        },
+      ],
+    },
+    {
+      key: 'd21',
+      entryDaysAgo: 99,
+      fragments: [
+        {
+          topics: ['living'],
+          mood: Mood.ANGER,
+          intensity: 0.7,
+          text: "보일러가 고장 났다. 집주인한테 전화하니 '며칠만 참으라'고 한다. 찬물로 머리 감으면서 욕이 절로 나왔다. 세입자한테 참으라는 말은 왜 이렇게 쉬울까.",
+        },
+        {
+          topics: ['living'],
+          mood: Mood.TIRED,
+          intensity: 0.6,
+          text: '젖은 머리로 책상에 앉았다. 추워서 손가락이 곱는다. 이런 날엔 자취가 무슨 독립이 아니라 그냥 버려진 기분이다.',
+        },
+      ],
+    },
+    {
+      key: 'd22',
+      entryDaysAgo: 106,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.ANGER,
+          intensity: 0.72,
+          text: '결국 또 다퉜다. 이번엔 별것도 아닌 일에 내가 폭발했다. 사실은 연락 뜸한 게 서운했던 거면서, 엉뚱한 데서 터뜨렸다. 나도 내가 왜 이러는지 모르겠다.',
+        },
+        {
+          topics: ['self'],
+          mood: Mood.SAD,
+          intensity: 0.68,
+          text: '싸우고 나면 늘 내 쪽이 더 못났다. 좋아하면서 왜 굳이 그 애 약한 데만 골라 찔렀을까. 다 보냈다 지운 메시지가 열두 개였다.',
+        },
+        {
+          topics: ['art'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.55,
+          text: '영화관에 혼자 갔다. 무슨 내용인지도 모르고 끝까지 앉아 있었다. 어두운 데 혼자 앉아 있는 게 좋아서. 아무도 내 표정을 안 보니까.',
+        },
+      ],
+    },
+    {
+      key: 'd23',
+      entryDaysAgo: 114,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.FEAR,
+          intensity: 0.65,
+          text: '사흘째 연락이 없다. 먼저 할까 백 번 폰을 들었다 놨다. 이 침묵이 끝이라는 신호일까 봐, 확인하는 게 무섭다.',
+        },
+        {
+          topics: ['season'],
+          mood: Mood.SAD,
+          intensity: 0.5,
+          text: '장마가 시작됐다. 창문에 빗줄기가 사선으로 긋는다. 비 오는 날엔 같이 우산 쓰던 그날만 생각난다. 그땐 어깨가 젖어도 안 추웠는데.',
+        },
+      ],
+    },
+    {
+      key: 'd24',
+      entryDaysAgo: 121,
+      fragments: [
+        {
+          topics: ['love'],
+          mood: Mood.SAD,
+          intensity: 0.93,
+          text: "헤어졌다. 카페에서 마주 앉아, 둘 다 커피를 다 식혔다. '우리 너무 지쳤나 봐.' 그 말에 반박할 말이 없어서 그냥 고개만 끄덕였다.",
+        },
+        {
+          topics: ['self'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.78,
+          text: '집에 와 침대에 누웠는데 눈물도 안 났다. 슬픈 게 아니라 그냥 텅 빈 거다. 베개 옆자리가 평소보다 넓었다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.RELIEF,
+          intensity: 0.55,
+          text: '친구가 다 듣고 아무 말도 안 했다. 그냥 옆에서 같이 라면을 끓여줬다. 위로한답시고 떠드는 것보다 그게 나았다.',
+        },
+      ],
+    },
+    {
+      key: 'd25',
+      entryDaysAgo: 131,
+      fragments: [
+        {
+          topics: ['self', 'art'],
+          mood: Mood.SAD,
+          intensity: 0.7,
+          text: '그 애가 좋아하던 밴드 노래가 카페에서 나왔다. 든 컵이 멈췄다. 헤어진 사람은 노래 속에 끈질기게 살아 있다. 결국 자리를 옮겨 앉았다.',
+        },
+        {
+          topics: ['study'],
+          mood: Mood.TIRED,
+          intensity: 0.5,
+          text: '기말 준비를 시작해야 하는데 책이 안 펴진다. 글자가 떠다닌다. 슬픈 와중에도 시험은 봐야 한다는 게, 삶의 가장 잔인한 부분 같다.',
+        },
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.42,
+          text: '비 그친 저녁, 하늘이 묽은 주황이었다. 한참 올려다봤다. 마음 무너진 날 노을은 곱지 말았으면 싶은데, 곱다.',
+        },
+      ],
+    },
+    {
+      key: 'd26',
+      entryDaysAgo: 138,
+      fragments: [
+        {
+          topics: ['family'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.68,
+          text: "엄마가 '목소리가 안 좋다'며 전화했다. 헤어진 건 말 안 했는데 다 아는 눈치였다. '밥은 잘 챙겨 먹고.' 그 뻔한 말이 오늘은 안 뻔했다.",
+        },
+        {
+          topics: ['living'],
+          mood: Mood.RELIEF,
+          intensity: 0.55,
+          text: '전화 끊고 오랜만에 밥을 해 먹었다. 계란 두 개 풀어 밥에 비볐다. 별것 아닌데, 누가 챙기라니까 챙기게 되는 게 사람인가 보다.',
+        },
+      ],
+    },
+    {
+      key: 'd27',
+      entryDaysAgo: 151,
+      fragments: [
+        {
+          topics: ['career', 'self'],
+          mood: Mood.FEAR,
+          intensity: 0.72,
+          text: '스물넷, 졸업까지 일 년. 친구들은 하나둘 길을 정하는데 나만 안개 속이다. 진로를 못 정한 게 아니라, 정할 자격이 없는 사람 같다는 생각이 자꾸 든다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: "선배가 '나도 너만 할 때 매일 무서웠다'고 했다. 지금은 어떠냐니까 '지금도 무섭지'라며 웃었다. 다들 무서운 채로 그냥 사는 거구나, 조금 안심됐다.",
+        },
+        {
+          topics: ['art'],
+          mood: Mood.JOY,
+          intensity: 0.6,
+          text: '도서관에서 우연히 집은 책이 너무 좋았다. 마지막 장 덮고도 한참 못 일어났다. 옆 사람이 다 나간 줄도 몰랐다.',
+        },
+      ],
+    },
+    {
+      key: 'd28',
+      entryDaysAgo: 163,
+      fragments: [
+        {
+          topics: ['study'],
+          mood: Mood.STRESS,
+          intensity: 0.75,
+          text: '기말 첫 시험. 밤새운 머리로 답안을 갈겨썼다. 펜을 놓는 순간 손이 저렸다. 잘 봤는지 못 봤는지도 모르겠고, 그냥 끝났다는 사실에만 매달렸다.',
+        },
+        {
+          topics: ['self'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.6,
+          text: '시험 끝나고 운동장에 누웠다. 풀냄새, 흙냄새. 머릿속이 텅 비니 오히려 편했다. 하늘만 보고 한참 누워 있었다.',
+        },
+        {
+          topics: ['season'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.3,
+          text: '올해 첫 매미 소리. 7월 2일. 한 학기 전엔 벚꽃이 졌는데 이젠 매미가 운다. 그냥 기록해 둔다.',
+        },
+      ],
+    },
+    {
+      key: 'd29',
+      entryDaysAgo: 175,
+      fragments: [
+        {
+          topics: ['self'],
+          mood: Mood.CALM,
+          intensity: 0.55,
+          text: "오래된 일기장을 폈다. 입학 첫날 쓴 글에 '뭐든 다 할 수 있을 것 같다'고 적혀 있었다. 그 애가 좀 부럽고, 좀 가엾고, 그래도 미워할 순 없었다.",
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.6,
+          text: '한 학기 동안 별일이 다 있었다. 사랑하고 다투고 헤어지고, 시험 보고 울고. 그래도 옆에 한 명은 남아 있다는 게, 결국 제일 중요한 건 그건가 싶다.',
+        },
+      ],
+    },
+    {
+      key: 'd30',
+      entryDaysAgo: 185,
+      fragments: [
+        {
+          topics: ['career'],
+          mood: Mood.FEAR,
+          intensity: 0.6,
+          text: '방학 첫날인데 하나도 안 후련하다. 빈 시간이 통째로 주어지니 오히려 무섭다. 이 두 달 동안 또 뭘 못 하면 어쩌나, 시작도 전에 자책부터 한다.',
+        },
+        {
+          topics: ['season', 'living'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '창문 다 열고 방을 쓸었다. 먼지 사이로 햇빛이 가로질렀다. 텅 빈 방 한가운데 앉아 보리차를 마셨다. 새로 시작되는 것 같은 묘한 고요함.',
+        },
+        {
+          topics: ['family'],
+          mood: Mood.LOVE,
+          intensity: 0.62,
+          text: "엄마한테 먼저 전화했다. 별일 없으면서 그냥 했다. '왜 전화했냐'고 물어서 '그냥'이라고 했더니 한참 웃었다. 그 웃음이 오래 남았다.",
+        },
+      ],
+    },
+  ],
+  recalls: [
+    { daysAgo: 2, keys: ['d01', 'd19', 'd08'] },
+    { daysAgo: 12, keys: ['d06', 'd16'] },
+    { daysAgo: 6, keys: ['d03', 'd17'] },
+    { daysAgo: 13, keys: ['d07', 'd16'] },
+    { daysAgo: 3, keys: ['d02', 'd12'] },
+    { daysAgo: 27, keys: ['d10', 'd22'] },
+    { daysAgo: 11, keys: ['d05', 'd14', 'd20'] },
+  ],
+}
+
+// 30대 직장인 — 관성으로 굴러가는 평일들 · 일기 27편 / 별(조각) 54개 / 회상 3회
+const WORKER: PersonaCorpus = {
+  id: 'worker',
+  label: '30대 직장인',
+  tagline: '관성으로 굴러가는 평일들',
+  diaries: [
+    {
+      key: 'd01',
+      entryDaysAgo: 3,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.TIRED,
+          intensity: 0.5,
+          text: '퇴근하고 현관에 가방을 던졌다. 불도 안 켜고 한참 앉아 있었다. 오늘 뭐 했더라, 회의 세 개 말곤 기억이 없다.',
+        },
+        {
+          topics: ['weekend'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.3,
+          text: '냉장고 문을 열었다 닫았다. 계란 두 알. 내일도 편의점 신세겠지.',
+        },
+      ],
+    },
+    {
+      key: 'd02',
+      entryDaysAgo: 6,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.STRESS,
+          intensity: 0.55,
+          text: '마감 이틀 남았는데 팀장이 방향을 또 틀었다. 처음부터 다시. 키보드 위에 손만 올려두고 커서 깜빡이는 걸 봤다.',
+        },
+        {
+          topics: ['health'],
+          mood: Mood.TIRED,
+          intensity: 0.4,
+          text: '새벽 두 시에 눈이 떠져서 천장을 봤다. 잠은 안 오고 내일 일만 머릿속에서 돌아간다. 다시 눈 감았다.',
+        },
+      ],
+    },
+    {
+      key: 'd03',
+      entryDaysAgo: 10,
+      fragments: [
+        {
+          topics: ['colleague'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.35,
+          text: '회식. 1차 끝나고 슬쩍 빠져나왔다. 막차 핑계가 제일 깔끔하다.',
+        },
+        {
+          topics: ['colleague'],
+          mood: Mood.CALM,
+          intensity: 0.4,
+          text: '옆자리 김대리가 따라 나와 같이 걸었다. 별말 없이 편의점에서 캔커피 하나씩 까 마시고 헤어졌다. 가끔은 그런 침묵이 회식보다 낫다.',
+        },
+      ],
+    },
+    {
+      key: 'd04',
+      entryDaysAgo: 13,
+      fragments: [
+        {
+          topics: ['money'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.45,
+          text: '월급날. 카드값 빠지고 적금 들어가니 통장이 다시 평평해졌다. 숫자가 잠깐 늘었다 줄어드는 걸 멍하니 봤다.',
+        },
+        {
+          topics: ['family'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.45,
+          text: '엄마 통장에 용돈 보내고 나니 좀 멋쩍었다. 어릴 땐 받기만 했는데. 입금 완료 화면을 괜히 한 번 더 봤다.',
+        },
+      ],
+    },
+    {
+      key: 'd05',
+      entryDaysAgo: 17,
+      fragments: [
+        {
+          topics: ['health'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.35,
+          text: '헬스장 3개월 끊었다. 운동화 새로 사고 단백질 보충제까지 결제했다. 이번엔 나흘은 가보자.',
+        },
+        {
+          topics: ['work'],
+          mood: Mood.TIRED,
+          intensity: 0.45,
+          text: '퇴근하면 손가락 까딱할 힘도 없다. 운동가방은 현관에 세워만 뒀다. 발끝에 걸릴 때마다 못 본 척한다.',
+        },
+      ],
+    },
+    {
+      key: 'd06',
+      entryDaysAgo: 20,
+      fragments: [
+        {
+          topics: ['family'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.55,
+          text: '엄마한테 전화가 왔다. 밥은 챙겨 먹냐는 말에 먹는다고 대충 답했다. 끊고 나서 냉장고 열었더니 계란 두 알.',
+        },
+        {
+          topics: ['weekend'],
+          mood: Mood.CALM,
+          intensity: 0.4,
+          text: '오랜만에 라면 말고 밥을 안쳤다. 계란 풀어 간장에 비볐다. 별거 아닌데 그릇 바닥까지 긁어 먹었다.',
+        },
+      ],
+    },
+    {
+      key: 'd07',
+      entryDaysAgo: 23,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.5,
+          text: '프로젝트 하나 끝냈다. 다들 수고했다고 하는데 후련하지도 기쁘지도 않다. 메일함엔 다음 게 벌써 와 있다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.RELIEF,
+          intensity: 0.4,
+          text: '고등학교 친구가 밤에 뜬금없이 전화했다. 용건도 없이 십 분쯤 시답잖은 얘기. 끊고 나니 어깨가 좀 가벼웠다.',
+        },
+      ],
+    },
+    {
+      key: 'd08',
+      entryDaysAgo: 26,
+      fragments: [
+        {
+          topics: ['weekend'],
+          mood: Mood.CALM,
+          intensity: 0.45,
+          text: '토요일 정오에 일어났다. 빨래 돌려 베란다에 널면서 햇볕 냄새를 맡았다. 이불에서 나는 그 냄새, 일주일 중 제일 멀쩡한 순간.',
+        },
+        {
+          topics: ['money'],
+          mood: Mood.STRESS,
+          intensity: 0.45,
+          text: '가계부 앱을 오랜만에 켰다. 배달비로만 한 달에 십만 원 넘게 썼다. 다음 주문 화면에서 잠깐 멈췄다가 결국 결제 버튼을 눌렀다.',
+        },
+      ],
+    },
+    {
+      key: 'd09',
+      entryDaysAgo: 29,
+      fragments: [
+        {
+          topics: ['money'],
+          mood: Mood.STRESS,
+          intensity: 0.5,
+          text: '점심에 다들 주식 얘기. 누구는 얼마 벌었다는데 나는 들고 있던 게 반토막이다. 들으면서 김치찌개만 떴다.',
+        },
+        {
+          topics: ['colleague'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.35,
+          text: '막내가 메뉴 고민하길래 그냥 따라 시켰다. 김치찌개 두 개요. 회사 점심은 고르는 것도 일이다.',
+        },
+      ],
+    },
+    {
+      key: 'd10',
+      entryDaysAgo: 32,
+      fragments: [
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.5,
+          text: '대학 동기 청첩장이 왔다. 단톡방이 오랜만에 시끄러웠다. 다들 안부 묻다가 결국 누가 제일 살쪘나로 흘러갔다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.4,
+          text: '예전엔 매주 보던 애들인데 이젠 청첩장이나 부고 아니면 안 모인다. 단톡방도 알림이 끊기니 다시 조용해졌다.',
+        },
+      ],
+    },
+    {
+      key: 'd11',
+      entryDaysAgo: 36,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.STRESS,
+          intensity: 0.6,
+          text: '야근. 사무실에 나만 남았다. 자판기 커피 뽑아 들고 창밖을 봤다. 맞은편 빌딩에도 불 켜진 칸이 두엇. 누군지 궁금하지도 않은데 괜히 오래 봤다.',
+        },
+        {
+          topics: ['family'],
+          mood: Mood.LOVE,
+          intensity: 0.45,
+          text: '집에 오니 동생한테 카톡. 조카 첫 걸음마 영상이다. 열 번쯤 돌려 봤다. 피곤한 게 좀 가셨다.',
+        },
+      ],
+    },
+    {
+      key: 'd12',
+      entryDaysAgo: 39,
+      fragments: [
+        {
+          topics: ['colleague', 'work'],
+          mood: Mood.ANGER,
+          intensity: 0.55,
+          text: '내가 다 만든 자료인데 팀장 보고 자리에서 옆 팀 과장이 자기 공처럼 떠들었다. 회의 끝나고 화장실 가서 손만 박박 씻었다.',
+        },
+        {
+          topics: ['work'],
+          mood: Mood.TIRED,
+          intensity: 0.5,
+          text: '화도 길게 안 간다. 그냥 피곤하다. 예전 같으면 며칠 갔을 텐데.',
+        },
+      ],
+    },
+    {
+      key: 'd13',
+      entryDaysAgo: 49,
+      fragments: [
+        {
+          topics: ['work', 'money'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.4,
+          text: '이직 사이트에 이력서를 슬쩍 업데이트했다. 올리진 않았다. 그냥 내가 시장에서 얼마짜리인지 가끔 확인하고 싶을 뿐이다.',
+        },
+        {
+          topics: ['health'],
+          mood: Mood.CALM,
+          intensity: 0.35,
+          text: '퇴근길에 한 정거장 먼저 내려 걸었다. 별 이유는 없고 지하철 환승 통로가 싫어서. 바람이 선선했다.',
+        },
+      ],
+    },
+    {
+      key: 'd14',
+      entryDaysAgo: 57,
+      fragments: [
+        {
+          topics: ['weekend'],
+          mood: Mood.CALM,
+          intensity: 0.45,
+          text: '오랜만에 한강 나갔다. 자전거 빌려 한 바퀴. 다리에 힘이 풀려서 중간에 벤치에 앉아 한참 강만 봤다. 바람이 아직 차다.',
+        },
+        {
+          topics: ['health'],
+          mood: Mood.RELIEF,
+          intensity: 0.4,
+          text: '종아리가 뻐근한 게 오히려 반가웠다. 몸을 쓴 게 며칠 만인지. 집 와서 샤워하고 일찍 잤다.',
+        },
+      ],
+    },
+    {
+      key: 'd15',
+      entryDaysAgo: 66,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.55,
+          text: '월요일 아침 지하철. 사람들 얼굴이 다 비슷하게 무표정이다. 유리창에 비친 내 얼굴도 그중 하나였다.',
+        },
+        {
+          topics: ['family'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.5,
+          text: "퇴근하니 택배. 엄마가 보낸 반찬통이다. 멸치볶음 위에 '아껴 먹지 말고' 쪽지. 아껴 먹게 되더라.",
+        },
+      ],
+    },
+    {
+      key: 'd16',
+      entryDaysAgo: 75,
+      fragments: [
+        {
+          topics: ['colleague'],
+          mood: Mood.RELIEF,
+          intensity: 0.45,
+          text: '팀에 신입이 들어왔다. 뭐든 묻는 눈빛이 예전 나 같다. 모르는 거 물어보라고 했더니 진짜 다 물어본다. 귀찮은데 싫진 않다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.45,
+          text: '퇴근하고 오랜만에 친구랑 술 한잔. 회사 욕 한참 하다가 둘 다 별수 없다고 웃었다. 안주는 거의 안 줄었다.',
+        },
+      ],
+    },
+    {
+      key: 'd17',
+      entryDaysAgo: 86,
+      fragments: [
+        {
+          topics: ['weekend'],
+          mood: Mood.TIRED,
+          intensity: 0.4,
+          text: '주말 내내 침대에서 안 나왔다. 일어나서 밥, 누워서 폰, 다시 잠. 월요일 출근이 무서운 게 아니라 이 주말이 통째로 사라진 게 좀 그렇다.',
+        },
+        {
+          topics: ['health'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.35,
+          text: '커튼 한 번을 안 열었더니 방이 어둑하다. 저녁 돼서야 창문 열었더니 바깥은 벌써 깜깜했다.',
+        },
+      ],
+    },
+    {
+      key: 'd18',
+      entryDaysAgo: 98,
+      fragments: [
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.55,
+          text: '동기 결혼식 다녀왔다. 식장에서 십 년 만에 본 얼굴들. 다들 배 나오고 머리 빠지고. 신랑 입장할 때 옆에서 누가 훌쩍이는데 그게 또 옮는다.',
+        },
+        {
+          topics: ['friend', 'money'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.35,
+          text: '축의금 봉투 두께를 두고 한참 고민했다. 친한 정도와 통장 잔고 사이 어디쯤.',
+        },
+      ],
+    },
+    {
+      key: 'd19',
+      entryDaysAgo: 107,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.STRESS,
+          intensity: 0.5,
+          text: '분기 마감. 숫자가 안 맞아서 새벽 한 시까지 엑셀이랑 씨름했다. 셀 하나 잘못 잡은 거였다. 허탈해서 웃음이 났다.',
+        },
+        {
+          topics: ['weekend'],
+          mood: Mood.EXCITEMENT,
+          intensity: 0.4,
+          text: '택시 안에서 다음 주 연차 쓸 날짜를 달력에 찍어 뒀다. 갈 데도 없으면서 그것만으로 좀 설렜다.',
+        },
+      ],
+    },
+    {
+      key: 'd20',
+      entryDaysAgo: 118,
+      fragments: [
+        {
+          topics: ['health'],
+          mood: Mood.FEAR,
+          intensity: 0.45,
+          text: "회사 건강검진. 위내시경 결과에 작은 용종 하나. 떼면 된다는데 '하나'라는 말이 며칠 머릿속에 남는다.",
+        },
+        {
+          topics: ['health'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.4,
+          text: '의사가 술 줄이고 잠 좀 자라고 했다. 알겠다고 했다. 집 오는 길에 편의점에서 맥주 두 캔을 샀다.',
+        },
+      ],
+    },
+    {
+      key: 'd21',
+      entryDaysAgo: 127,
+      fragments: [
+        {
+          topics: ['weekend'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '동네 카페 구석에서 책 펼쳤다가 세 페이지 읽고 덮었다. 대신 창밖으로 지나가는 사람들 구경. 이상하게 그게 더 쉬어지더라.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.4,
+          text: '옆 테이블 꼬마가 빨대 포장지를 불어서 날렸다. 엄마가 줍는 사이 또 분다. 혼자 보면서 피식했다.',
+        },
+      ],
+    },
+    {
+      key: 'd22',
+      entryDaysAgo: 139,
+      fragments: [
+        {
+          topics: ['colleague'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.5,
+          text: '옆 팀 차장이 갑자기 사직서 냈다는 소식. 십오 년 다닌 사람이다. 점심시간 내내 그 얘기. 다들 남 일 같지 않은 표정이었다.',
+        },
+        {
+          topics: ['money'],
+          mood: Mood.STRESS,
+          intensity: 0.45,
+          text: '오후 내내 일이 손에 안 잡혔다. 퇴직금이 얼마쯤 될까, 계산기 앱을 켰다가 그냥 껐다.',
+        },
+      ],
+    },
+    {
+      key: 'd23',
+      entryDaysAgo: 150,
+      fragments: [
+        {
+          topics: ['money'],
+          mood: Mood.STRESS,
+          intensity: 0.45,
+          text: '전세 만기 통보. 집주인이 올려달란다. 부동산 앱을 한참 들여다봤다. 내가 살 수 있는 동네가 점점 멀어진다.',
+        },
+        {
+          topics: ['money'],
+          mood: Mood.TIRED,
+          intensity: 0.5,
+          text: '전셋집 옮길 때마다 이삿짐이 줄어드는 것도 아닌데, 매번 잠깐 빌려 사는 기분이다. 박스째 안 푼 짐이 아직도 베란다에 있다.',
+        },
+      ],
+    },
+    {
+      key: 'd24',
+      entryDaysAgo: 159,
+      fragments: [
+        {
+          topics: ['family'],
+          mood: Mood.SAD,
+          intensity: 0.5,
+          text: '아빠가 무릎 수술한다고 한다. 별거 아니라는데 전화 너머 목소리가 전보다 한 박자 느렸다. 끊고 나서 한참 휴대폰만 들고 있었다.',
+        },
+        {
+          topics: ['family', 'health'],
+          mood: Mood.FEAR,
+          intensity: 0.45,
+          text: '수술 날짜에 연차를 쓸 수 있나 달력을 봤다. 그 주에 마감이 겹친다. 한참 보다가 일단 휴가 신청서를 저장만 해뒀다.',
+        },
+      ],
+    },
+    {
+      key: 'd25',
+      entryDaysAgo: 171,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.35,
+          text: '입사 만 5년 알림이 떴다. 인사팀에서 소소한 기프티콘이 왔다. 커피 한 잔 값으로 5년이 정산됐다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.45,
+          text: '저녁에 입사 동기랑 통화. 걘 작년에 나갔다. 잘 지내냐 묻는데 둘 다 웃기만 했다. 끊고 명함 지갑을 열어봤더니 옛날 명함이 그대로 끼워져 있었다.',
+        },
+      ],
+    },
+    {
+      key: 'd26',
+      entryDaysAgo: 179,
+      fragments: [
+        {
+          topics: ['weekend'],
+          mood: Mood.JOY,
+          intensity: 0.5,
+          text: '큰맘 먹고 새벽 등산. 정상에서 김밥 까먹는데 옆 아저씨가 막걸리 한 잔 건넸다. 거절했다. 거절하고 좀 후회했다.',
+        },
+        {
+          topics: ['health'],
+          mood: Mood.RELIEF,
+          intensity: 0.45,
+          text: '내려오는 길에 무릎이 좀 시큰했다. 아빠 무릎 생각이 잠깐 스쳤다. 계단을 평소보다 천천히 내려왔다.',
+        },
+      ],
+    },
+    {
+      key: 'd27',
+      entryDaysAgo: 185,
+      fragments: [
+        {
+          topics: ['work'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.55,
+          text: '새해도 아니고 그냥 어느 화요일에 다짐 비슷한 걸 적어둔다. 올해는 좀 다르게 살자고. 작년에도 똑같이 적었던 것 같다.',
+        },
+        {
+          topics: ['weekend'],
+          mood: Mood.CALM,
+          intensity: 0.35,
+          text: '그래도 가끔 이렇게 적어두는 건 나쁘지 않다. 적는 동안은 손이 폰 말고 다른 걸 한다.',
+        },
+      ],
+    },
+  ],
+  recalls: [
+    { daysAgo: 14, keys: ['d09', 'd06', 'd16'] },
+    { daysAgo: 21, keys: ['d07', 'd18'] },
+    { daysAgo: 72, keys: ['d20', 'd24', 'd26'] },
+  ],
+}
+
+// 50대 주부 — 밤이 깊어야 하루가 보인다 · 일기 30편 / 별(조각) 61개 / 회상 7회
+const HOMEMAKER: PersonaCorpus = {
+  id: 'homemaker',
+  label: '50대 주부',
+  tagline: '밤이 깊어야 하루가 보인다',
+  diaries: [
+    {
+      key: 'd01',
+      entryDaysAgo: 3,
+      fragments: [
+        {
+          topics: ['children'],
+          mood: Mood.JOY,
+          intensity: 0.6,
+          text: '딸한테서 영상통화. 화면 너머로 자취방 부엌이 보였다. 냄비 두 개, 그릇 몇 개. 그걸로도 끼니를 챙겨 먹는다니 어쩐지 대견하고 짠하다.',
+        },
+        {
+          topics: ['household'],
+          mood: Mood.CALM,
+          intensity: 0.4,
+          text: '통화 끊고 마늘을 깠다. 손끝이 알싸하다. 라디오에선 옛날 노래가 흘렀다. 한 통 다 까고 나니 손에 냄새가 배었다.',
+        },
+      ],
+    },
+    {
+      key: 'd02',
+      entryDaysAgo: 5,
+      fragments: [
+        {
+          topics: ['garden'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '베란다 화분에 물을 줬다. 스킨답서스 새 잎이 돌돌 말려 나오는 중. 작은 게 꼭 아기 주먹 같다.',
+        },
+        {
+          topics: ['husband'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.35,
+          text: '남편은 뉴스를 보다 그대로 잠들었다. 텔레비전 소리만 거실을 메운다. 리모컨을 빼서 끄고, 무릎에 얇은 이불을 덮어줬다. 깨우진 않았다.',
+        },
+      ],
+    },
+    {
+      key: 'd03',
+      entryDaysAgo: 8,
+      fragments: [
+        {
+          topics: ['health'],
+          mood: Mood.FEAR,
+          intensity: 0.55,
+          text: '무릎이 계단에서 시큰했다. 내려갈 때가 더 무섭다. 엄마도 이맘때 무릎 얘길 자주 했는데, 그땐 흘려들었다.',
+        },
+        {
+          topics: ['memory', 'parents'],
+          mood: Mood.SAD,
+          intensity: 0.5,
+          text: '그래서 엄마가 늘 손잡이를 붙들고 다녔구나. 그땐 왜 저러나 했는데. 이제는 내가 손잡이를 잡는다.',
+        },
+      ],
+    },
+    {
+      key: 'd04',
+      entryDaysAgo: 11,
+      fragments: [
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.6,
+          text: '동창 모임. 순자가 염색을 했다고 한참 머리 자랑을 했다. 다들 늙었는데 웃을 땐 그대로 열일곱이다.',
+        },
+        {
+          topics: ['health'],
+          mood: Mood.CALM,
+          intensity: 0.4,
+          text: '헤어질 때 영숙이가 무릎에 좋다는 약을 손에 쥐여줬다. 받아 넣으면서, 우리 이제 이런 걸 주고받는 나이가 됐네 싶었다.',
+        },
+      ],
+    },
+    {
+      key: 'd05',
+      entryDaysAgo: 14,
+      fragments: [
+        {
+          topics: ['household'],
+          mood: Mood.TIRED,
+          intensity: 0.45,
+          text: '장을 봐 왔는데 양손이 무거워 엘리베이터 앞에서 한 번 내려놓았다. 예전엔 이만한 짐쯤 가뿐했는데.',
+        },
+        {
+          topics: ['children'],
+          mood: Mood.LOVE,
+          intensity: 0.55,
+          text: '아들 좋아하던 고등어를 두 손 샀다. 와서 먹을 사람도 없는데 손이 먼저 집었다. 냉동실에 넣으며 혼자 웃었다.',
+        },
+      ],
+    },
+    {
+      key: 'd06',
+      entryDaysAgo: 18,
+      fragments: [
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '아침 공기가 달라졌다. 창을 여니 마당 쪽에서 흙냄새가 올라온다. 봄은 늘 코로 먼저 온다.',
+        },
+        {
+          topics: ['garden'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.55,
+          text: '텃밭 한 귀퉁이에 상추 씨를 뿌렸다. 흙을 다독이는 손이 따뜻했다. 호스로 물을 한 번 뿌려두고 들어왔다.',
+        },
+      ],
+    },
+    {
+      key: 'd07',
+      entryDaysAgo: 21,
+      fragments: [
+        {
+          topics: ['husband'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.5,
+          text: '남편이 말도 없이 싱크대 수전을 고쳐놨다. 졸졸 새던 물이 딱 멎었다. 고맙단 말 대신 저녁에 부침개를 부쳤다. 그이도 안다, 그게 내 말이라는 걸.',
+        },
+        {
+          topics: ['memory'],
+          mood: Mood.LOVE,
+          intensity: 0.45,
+          text: '젊을 땐 무뚝뚝한 게 그렇게 답답했는데. 이제는 그 입 다문 옆모습이 외려 편하다. 부침개 한 장을 그이 앞으로 밀어놨다.',
+        },
+      ],
+    },
+    {
+      key: 'd08',
+      entryDaysAgo: 24,
+      fragments: [
+        {
+          topics: ['children'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.6,
+          text: '딸 방을 치웠다. 책상 서랍에서 고등학교 때 쓰던 다이어리가 나왔다. 한참 들여다보다 도로 넣어뒀다. 그 방은 아직도 딸 냄새가 난다.',
+        },
+        {
+          topics: ['household'],
+          mood: Mood.NEUTRAL,
+          intensity: 0.3,
+          text: '이불 빨래를 널었다. 햇볕에 마른 이불에서 나는 냄새가 좋다. 딸 방 창문도 활짝 열어 두었다.',
+        },
+      ],
+    },
+    {
+      key: 'd09',
+      entryDaysAgo: 27,
+      fragments: [
+        {
+          topics: ['faith'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '새벽 기도. 별일 없게 해달라는 말만 반복했다. 자식 셋 이름을 부르다 보면 기도가 길어진다.',
+        },
+        {
+          topics: ['children'],
+          mood: Mood.RELIEF,
+          intensity: 0.45,
+          text: '돌아오는 길에 막내가 시험 잘 봤다고 문자를 보냈다. 기도가 닿은 것 같아 괜히 하늘을 한 번 봤다.',
+        },
+      ],
+    },
+    {
+      key: 'd10',
+      entryDaysAgo: 30,
+      fragments: [
+        {
+          topics: ['health'],
+          mood: Mood.FEAR,
+          intensity: 0.65,
+          text: '건강검진 결과지가 왔다. 작은 글씨로 빼곡한데 한 줄에 동그라미가 쳐 있다. 재검사. 그 세 글자가 종일 머리에 맴돌았다.',
+        },
+        {
+          topics: ['husband'],
+          mood: Mood.RELIEF,
+          intensity: 0.4,
+          text: '남편한테 보여주니 별말 없이 달력에 병원 날짜를 적었다. 별것 아닐 거란 말도, 걱정 말란 말도 없이. 그 등을 보고 있으니 종일 맴돌던 세 글자가 조금 작아졌다.',
+        },
+      ],
+    },
+    {
+      key: 'd11',
+      entryDaysAgo: 34,
+      fragments: [
+        {
+          topics: ['memory', 'parents'],
+          mood: Mood.SAD,
+          intensity: 0.6,
+          text: '엄마 기일이 다가온다. 제사상에 올릴 나물을 미리 떠올려 본다. 도라지, 고사리, 시금치. 엄마는 늘 도라지를 제일 정성 들여 무쳤다.',
+        },
+        {
+          topics: ['faith'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.45,
+          text: '엄마 생각하면 기도가 절로 나온다. 거기선 무릎도 안 아프시길. 그게 내 유일한 부탁이다.',
+        },
+      ],
+    },
+    {
+      key: 'd12',
+      entryDaysAgo: 37,
+      fragments: [
+        {
+          topics: ['garden'],
+          mood: Mood.JOY,
+          intensity: 0.55,
+          text: '상추가 떡잎을 밀어 올렸다. 손톱만 한 게 흙을 뚫고 나왔다. 매일 아침 베란다부터 들여다본다.',
+        },
+        {
+          topics: ['friend'],
+          mood: Mood.CALM,
+          intensity: 0.45,
+          text: '옆 동 정희 엄마가 고추 모종을 나눠줬다. 화분 두 개 들고 엘리베이터를 탔다. 흙 묻은 손이 부끄럽지 않은 사이다.',
+        },
+      ],
+    },
+    {
+      key: 'd13',
+      entryDaysAgo: 42,
+      fragments: [
+        {
+          topics: ['children'],
+          mood: Mood.SAD,
+          intensity: 0.55,
+          text: '아들 전화가 뜸하다. 바쁜 거겠지. 먼저 걸까 하고 번호까지 띄웠다가, 통화중일까 봐 그냥 주머니에 도로 넣었다.',
+        },
+        {
+          topics: ['household'],
+          mood: Mood.TIRED,
+          intensity: 0.4,
+          text: '혼자 먹는 저녁상은 자꾸 단출해진다. 밥 한 공기, 김치, 계란프라이. 차리는 데 오 분이면 된다.',
+        },
+      ],
+    },
+    {
+      key: 'd14',
+      entryDaysAgo: 48,
+      fragments: [
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '비가 왔다. 베란다 문을 열어두니 빗소리가 집 안까지 들어온다. 빗소리 듣는 밤은 마음이 조용해진다.',
+        },
+        {
+          topics: ['memory', 'children'],
+          mood: Mood.LOVE,
+          intensity: 0.5,
+          text: '아이들 어릴 때, 비 오면 셋이 한 우산에 매달려 학교에 갔다. 우산은 작은데 다 들어가겠다고 어깨를 비집던 그 작은 등들.',
+        },
+      ],
+    },
+    {
+      key: 'd15',
+      entryDaysAgo: 57,
+      fragments: [
+        {
+          topics: ['health'],
+          mood: Mood.RELIEF,
+          intensity: 0.6,
+          text: '재검사 결과, 큰 이상은 없단다. 의사가 별것 아니라고 했을 때 다리에 힘이 풀렸다. 병원 복도 의자에 한참 앉아 있었다.',
+        },
+        {
+          topics: ['faith'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.55,
+          text: '집에 와 제일 먼저 한 일이 손을 모은 것. 별말은 안 나왔다. 그저 고맙습니다, 고맙습니다, 그 말만 자꾸 나왔다.',
+        },
+      ],
+    },
+    {
+      key: 'd16',
+      entryDaysAgo: 65,
+      fragments: [
+        {
+          topics: ['husband'],
+          mood: Mood.ANGER,
+          intensity: 0.4,
+          text: '또 양말을 뒤집어 벗어 놨다. 삼십 년을 말해도 똑같다. 빨래 바구니 앞에서 혼자 양말을 뒤집으며 괜히 한숨이 났다.',
+        },
+        {
+          topics: ['memory', 'household'],
+          mood: Mood.CALM,
+          intensity: 0.35,
+          text: '그러다 옛날 신혼 때 빨래판에 그이 작업복 비비던 게 떠올라 피식했다. 저녁엔 같이 사과를 깎아 먹었다. 한 쪽을 내 앞으로 밀어주는 걸 보고 양말 일은 그냥 삼켰다.',
+        },
+      ],
+    },
+    {
+      key: 'd17',
+      entryDaysAgo: 74,
+      fragments: [
+        {
+          topics: ['friend'],
+          mood: Mood.SAD,
+          intensity: 0.6,
+          text: '동창 하나가 상을 당했다는 연락. 부고 문자를 한참 들여다봤다. 우리 나이가 이제 그런 소식이 더 잦은 나이다.',
+        },
+        {
+          topics: ['parents', 'memory'],
+          mood: Mood.SAD,
+          intensity: 0.55,
+          text: '장례식장 앞에서 친구가 영정을 보고 무너졌다. 부축하는데 손이 떨렸다. 엄마 보내던 날 나를 부축하던 손도 이렇게 떨렸을까.',
+        },
+      ],
+    },
+    {
+      key: 'd18',
+      entryDaysAgo: 82,
+      fragments: [
+        {
+          topics: ['children'],
+          mood: Mood.JOY,
+          intensity: 0.7,
+          text: '딸이 주말에 내려온단다. 전화 끊자마자 냉장고부터 열어봤다. 뭘 해 먹일까. 벌써부터 마음이 분주하다.',
+        },
+        {
+          topics: ['household'],
+          mood: Mood.EXCITEMENT,
+          intensity: 0.55,
+          text: '장 볼 목록을 적는 손이 신났다. 갈비, 잡채 재료, 딸 좋아하는 가지나물. 종이 한 장이 금세 가득 찼다.',
+        },
+      ],
+    },
+    {
+      key: 'd19',
+      entryDaysAgo: 88,
+      fragments: [
+        {
+          topics: ['children'],
+          mood: Mood.LOVE,
+          intensity: 0.65,
+          text: '딸이 왔다. 현관에 들어서는 얼굴이 좀 야위었다. 밥은 챙겨 먹냐고 묻기도 전에 안아봤다. 품이 예전보다 가볍다.',
+        },
+        {
+          topics: ['household', 'memory'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.5,
+          text: '온 식구가 둘러앉은 밥상이 오랜만이다. 그릇 부딪는 소리, 반찬 집어 가는 손들. 이 소란이 그렇게 그리웠다.',
+        },
+      ],
+    },
+    {
+      key: 'd20',
+      entryDaysAgo: 95,
+      fragments: [
+        {
+          topics: ['children'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.65,
+          text: '딸이 다시 올라갔다. 반찬통을 한가득 싸 보냈다. 차가 모퉁이를 돌 때까지 손을 흔들었다. 들어오니 집이 또 텅 비었다.',
+        },
+        {
+          topics: ['household'],
+          mood: Mood.SAD,
+          intensity: 0.5,
+          text: '설거지를 하는데 그릇이 평소의 두 배다. 거품 묻은 접시를 하나씩 헹구는데 자꾸 손이 느려졌다.',
+        },
+      ],
+    },
+    {
+      key: 'd21',
+      entryDaysAgo: 103,
+      fragments: [
+        {
+          topics: ['garden'],
+          mood: Mood.JOY,
+          intensity: 0.6,
+          text: '상추를 처음 뜯었다. 한 소쿠리. 저녁에 쌈을 싸 먹으며 남편이 달다고 했다. 사 먹는 거랑 다르긴 다르단다.',
+        },
+        {
+          topics: ['husband'],
+          mood: Mood.LOVE,
+          intensity: 0.45,
+          text: '그이가 상추쌈을 크게 싸서 내 입에 넣어줬다. 입이 미어지게 우물거리는 나를 보고 웃는다.',
+        },
+      ],
+    },
+    {
+      key: 'd22',
+      entryDaysAgo: 111,
+      fragments: [
+        {
+          topics: ['memory'],
+          mood: Mood.SAD,
+          intensity: 0.55,
+          text: '옛날 사진첩을 꺼냈다. 결혼식 날 한복 입은 내가 어색하게 웃고 있다. 그 옆 엄마는 울고 있었다. 그땐 왜 우는지 몰랐다.',
+        },
+        {
+          topics: ['parents'],
+          mood: Mood.LOVE,
+          intensity: 0.6,
+          text: '이제는 안다. 딸을 떠나보내는 엄마 마음을. 사진 속 엄마 손을 손가락으로 가만히 짚어봤다.',
+        },
+      ],
+    },
+    {
+      key: 'd23',
+      entryDaysAgo: 120,
+      fragments: [
+        {
+          topics: ['health'],
+          mood: Mood.TIRED,
+          intensity: 0.5,
+          text: '밤에 자꾸 깬다. 새벽 세 시에 눈이 떠지면 다시 잠들기가 어렵다. 갱년기라더니, 이게 그건가 보다.',
+        },
+        {
+          topics: ['faith'],
+          mood: Mood.CALM,
+          intensity: 0.45,
+          text: '잠이 안 오면 거실에 나와 앉아 기도를 한다. 냉장고 돌아가는 소리만 크게 들리는 시간. 그 적막 속에 혼자 깨어 자식들 이름을 하나씩 불러본다.',
+        },
+      ],
+    },
+    {
+      key: 'd24',
+      entryDaysAgo: 128,
+      fragments: [
+        {
+          topics: ['friend'],
+          mood: Mood.JOY,
+          intensity: 0.6,
+          text: '영숙이랑 둘이 벚꽃 구경을 갔다. 사람이 많아 떠밀리듯 걸었는데, 꽃잎이 머리에 내려앉을 때마다 둘 다 소녀처럼 웃었다.',
+        },
+        {
+          topics: ['season'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '벤치에 앉아 김밥을 나눠 먹었다. 바람에 꽃잎이 김밥 위로 떨어졌다. 영숙이가 그냥 먹으라며 꽃잎째 입에 넣었다.',
+        },
+      ],
+    },
+    {
+      key: 'd25',
+      entryDaysAgo: 137,
+      fragments: [
+        {
+          topics: ['parents'],
+          mood: Mood.SAD,
+          intensity: 0.65,
+          text: '엄마 제사를 지냈다. 향 냄새가 집에 배었다. 절을 하는데 무릎이 시려, 엄마가 옆에서 천천히 하라고 하는 것 같았다.',
+        },
+        {
+          topics: ['household'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.45,
+          text: '남은 나물로 비빔밥을 비벼 식구끼리 둘러앉아 먹었다. 제삿밥은 늘 더 맛있다. 한 그릇씩 싹싹 비웠다.',
+        },
+      ],
+    },
+    {
+      key: 'd26',
+      entryDaysAgo: 145,
+      fragments: [
+        {
+          topics: ['children'],
+          mood: Mood.FEAR,
+          intensity: 0.55,
+          text: '막내가 감기에 심하게 걸렸다고 목소리가 다 잠겼다. 멀리 있으니 끓여다 줄 수도 없다. 전화기 너머 기침 소리에 가슴이 내려앉았다.',
+        },
+        {
+          topics: ['children', 'memory'],
+          mood: Mood.LOVE,
+          intensity: 0.5,
+          text: '어릴 땐 밤새 이마를 짚어주면 됐는데. 그 작은 손을 잡고 밤을 새우던 시절이 새삼 사무친다.',
+        },
+      ],
+    },
+    {
+      key: 'd27',
+      entryDaysAgo: 156,
+      fragments: [
+        {
+          topics: ['household', 'season'],
+          mood: Mood.TIRED,
+          intensity: 0.5,
+          text: '겨우내 묵은 김장 김치를 마지막으로 꺼냈다. 통을 비우니 김치냉장고가 휑하다. 한 철이 또 이렇게 간다.',
+        },
+        {
+          topics: ['memory'],
+          mood: Mood.CALM,
+          intensity: 0.45,
+          text: '예전엔 시어머니랑 마당에서 백 포기씩 절였다. 허리가 끊어질 듯해도 그 북적임이 좋았다. 이젠 다 옛날이야기.',
+        },
+      ],
+    },
+    {
+      key: 'd28',
+      entryDaysAgo: 166,
+      fragments: [
+        {
+          topics: ['husband'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.55,
+          text: '남편이 퇴직하고 처음 맞는 봄. 종일 집에 있어 서로 어색했는데, 오늘은 둘이 동네 한 바퀴를 걸었다. 말없이 걷는 길이 길었지만 싫지 않았다.',
+        },
+        {
+          topics: ['memory'],
+          mood: Mood.LOVE,
+          intensity: 0.5,
+          text: '연애할 때도 이 사람은 말이 없었다. 그땐 손을 잡고 걸었는데, 오늘은 둘 다 뒷짐을 지고 걸었다. 그래도 보폭은 여태 맞는다.',
+        },
+      ],
+    },
+    {
+      key: 'd29',
+      entryDaysAgo: 177,
+      fragments: [
+        {
+          topics: ['garden'],
+          mood: Mood.CALM,
+          intensity: 0.5,
+          text: '베란다 화분들을 봄볕에 다 내놨다. 겨우내 시들했던 군자란이 꽃대를 쑥 올렸다. 물 한 번 더 줬다.',
+        },
+        {
+          topics: ['children'],
+          mood: Mood.EMPTINESS,
+          intensity: 0.55,
+          text: '막내까지 집을 떠난 첫봄이다. 식탁 의자 네 개 중 두 개만 쓴다. 빈 의자에 햇살만 와 앉는다.',
+        },
+      ],
+    },
+    {
+      key: 'd30',
+      entryDaysAgo: 185,
+      fragments: [
+        {
+          topics: ['season', 'memory'],
+          mood: Mood.SAD,
+          intensity: 0.5,
+          text: '올겨울 마지막 눈이 내렸다. 창에 붙은 눈송이가 녹아 흐르는 걸 한참 봤다. 아이들 다 키워 보낸 집은 눈도 소리 없이 쌓인다.',
+        },
+        {
+          topics: ['faith'],
+          mood: Mood.CALM,
+          intensity: 0.45,
+          text: '눈 그친 새벽, 손을 모았다. 떠난 것들 잘 있게, 남은 것들 무탈하게. 기도는 늘 그 두 줄로 끝난다.',
+        },
+        {
+          topics: ['household'],
+          mood: Mood.GRATITUDE,
+          intensity: 0.4,
+          text: '따뜻한 차를 한 잔 끓였다. 두 손으로 잔을 감싸니 손이 녹는다. 이만하면 됐다, 하고 불을 껐다.',
+        },
+      ],
+    },
+  ],
+  recalls: [
+    { daysAgo: 4, keys: ['d22', 'd28', 'd14'] },
+    { daysAgo: 6, keys: ['d03', 'd04'] },
+    { daysAgo: 22, keys: ['d08', 'd20', 'd18'] },
+    { daysAgo: 25, keys: ['d14', 'd09'] },
+    { daysAgo: 32, keys: ['d17', 'd11'] },
+    { daysAgo: 16, keys: ['d27', 'd28', 'd06'] },
+    { daysAgo: 98, keys: ['d30', 'd29', 'd24'] },
+  ],
+}
+
+/** 페르소나 id → 코퍼스. ensureSeeded가 활성 페르소나로 골라 우주를 시드한다. */
+export const CORPORA: Record<DemoPersona, PersonaCorpus> = {
+  student: STUDENT,
+  worker: WORKER,
+  homemaker: HOMEMAKER,
+}
+
+/** 스위처 표시 순서(조밀→성김). */
+export const PERSONA_ORDER: DemoPersona[] = ['student', 'worker', 'homemaker']
+
+export interface DemoPersonaMeta {
+  id: DemoPersona
+  label: string
+  tagline: string
+}
+
+/** 스위처용 메타 목록 — 라벨·태그라인은 코퍼스 단일 출처에서 읽는다(중복 없음). */
+export function demoPersonaList(): DemoPersonaMeta[] {
+  return PERSONA_ORDER.map((id) => ({ id, label: CORPORA[id].label, tagline: CORPORA[id].tagline }))
+}

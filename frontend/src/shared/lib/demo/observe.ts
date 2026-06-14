@@ -1,39 +1,42 @@
 // 데모 우주 관찰 셀렉터(spec 19) — 시뮬레이션 패널이 가리킬 대표 별/엣지를 고른다.
-// 기존 DEMO_ENTRIES/DEMO_EDGES에서 파생만 하고(새 데이터·새 로직 없음), id만 노출한다
-// (좌표·three 의존 없음 — 순수, 헌법 §4).
-import { DEMO_ENTRIES, DEMO_EDGES } from './data'
+// 활성 페르소나로 시드된 별·시냅스(demoStars/demoSynapses)에서 파생만 한다(새 데이터·새 로직
+// 없음, id만 노출). 좌표·three 의존 없음(순수, 헌법 §4). 별이 없으면 안전 폴백.
+import { demoStars, demoSynapses } from './data'
 
-/** 가장 최근(daysAgo 최소) = 가장 밝은 별 — "엔그램=별" 앵커. */
+const ageOf = (iso: string): number => {
+  const ms = Date.parse(iso)
+  return Number.isFinite(ms) ? ms : 0
+}
+
+/** 가장 최근(lastRecalled 최신) = 가장 밝은 별 — "엔그램=별" 앵커. */
 export function brightestStarId(): string {
-  return DEMO_ENTRIES.reduce((min, e) => (e.daysAgo < min.daysAgo ? e : min)).id
+  const stars = demoStars()
+  if (stars.length === 0) return ''
+  return stars.reduce((best, s) =>
+    ageOf(s.lastRecalledAt) > ageOf(best.lastRecalledAt) ? s : best,
+  ).memoryId
 }
 
 /** weight 최대 엣지 — 헵 강화 앵커("이 두 별을 오가 보세요"). */
 export function thickestEdge(): { aId: string; bId: string } {
-  const e = DEMO_EDGES.reduce((max, ed) => (ed.weight > max.weight ? ed : max))
-  return { aId: e.a, bId: e.b }
+  const edges = demoSynapses()
+  if (edges.length === 0) return { aId: '', bId: '' }
+  const e = edges.reduce((max, ed) => (ed.weight > max.weight ? ed : max))
+  return { aId: e.aId, bId: e.bId }
 }
 
-/** 시냅스 시간창 앵커 — temporal 엣지 중 두 일기의 작성 시점이 가장 가까운 페어. */
+/** 시냅스 시간창 앵커 — 같은 일기에서 태어난 조각 쌍(intra_entry = 같은 날). 가장 강한 것. */
 export function sameDayPair(): { aId: string; bId: string } | null {
-  const dayOf = new Map(DEMO_ENTRIES.map((e) => [e.id, e.daysAgo]))
-  let best: { aId: string; bId: string } | null = null
-  let bestGap = Infinity
-  for (const e of DEMO_EDGES) {
-    if (e.linkType !== 'temporal') continue
-    const a = dayOf.get(e.a)
-    const b = dayOf.get(e.b)
-    if (a == null || b == null) continue
-    const gap = Math.abs(a - b)
-    if (gap < bestGap) {
-      bestGap = gap
-      best = { aId: e.a, bId: e.b }
-    }
-  }
-  return best
+  const intra = demoSynapses().filter((e) => e.linkType === 'intra_entry')
+  if (intra.length === 0) return null
+  const e = intra.reduce((max, ed) => (ed.weight > max.weight ? ed : max))
+  return { aId: e.aId, bId: e.bId }
 }
 
-/** 가장 오래된(daysAgo 최대) 잠든 별 — 침묵 엔그램 앵커. */
+/** 가장 오래된(lastRecalled 가장 옛날) 잠든 별 — 침묵 엔그램 앵커. */
 export function dormantStarId(): string {
-  return DEMO_ENTRIES.reduce((max, e) => (e.daysAgo > max.daysAgo ? e : max)).id
+  const stars = demoStars()
+  if (stars.length === 0) return ''
+  return stars.reduce((old, s) => (ageOf(s.lastRecalledAt) < ageOf(old.lastRecalledAt) ? s : old))
+    .memoryId
 }
