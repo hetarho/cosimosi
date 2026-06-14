@@ -1281,6 +1281,12 @@ function ModeTransitionController() {
     const pos = posRef.current
     const tgt = tgtRef.current
     if (!pos || !tgt) return
+    // 비행 중 fly-to/조망 요청이 끼면 nav가 modeTransition을 떠난다 → 양보(FlyTo/FrameAll과 대칭).
+    if (!navigationActor.getSnapshot().matches('modeTransition')) {
+      posRef.current = null
+      tgtRef.current = null
+      return
+    }
     const k = 1 - Math.exp(-dt * 4) // frame-rate-independent ease
     camera.position.lerp(pos, k)
     if (controls) {

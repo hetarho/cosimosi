@@ -5,6 +5,8 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
 import { transport } from '@/shared/api'
 import { setDemoModeListener } from '@/shared/lib/demo'
+import { composeActor, scheduleSynapseSync } from '@/features/record-memory'
+import { universeInvalidateKey, recordsInvalidateKey } from '@/entities/memory'
 import { resetUniverseData } from './model/reset-universe-data'
 import { queryClient } from './query-client'
 import { router } from './router'
@@ -17,6 +19,18 @@ export function App() {
   useEffect(() => {
     setDemoModeListener(resetUniverseData)
     return () => setDemoModeListener(null)
+  }, [])
+
+  // 별 띄우기 성공(compose 머신 'submitted') → 우주·일기목록 무효화 + 시냅스 지연 refetch. App 루트에
+  // 두어 라우트 이동/HomePage 언마운트와 무관하게 항상 동작한다(머신은 순수·앱 queryClient는 여기 단일
+  // 출처). composeActor는 모듈 싱글턴이라 제출 invoke가 페이지 언마운트 뒤에도 완주해 emit한다.
+  useEffect(() => {
+    const sub = composeActor.on('submitted', () => {
+      void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+      void queryClient.invalidateQueries({ queryKey: recordsInvalidateKey() })
+      scheduleSynapseSync(queryClient)
+    })
+    return () => sub.unsubscribe()
   }, [])
 
   // 전역 바운더리(17): 라우터 폴백조차 못 그린 크래시의 마지막 그물. Sentry init이 안 된

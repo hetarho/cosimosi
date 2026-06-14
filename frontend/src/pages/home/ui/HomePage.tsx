@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useSelector } from '@xstate/react'
 import * as Sentry from '@sentry/react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { errorMessage, reportUniverseData } from '@/shared/lib'
 import { isDemoMode } from '@/shared/lib/demo'
@@ -15,7 +15,7 @@ import {
   useViewport,
 } from '@/widgets/universe-canvas'
 import { DemoSimPanel } from '@/widgets/demo-sim'
-import { MemoryForm, composeActor, scheduleSynapseSync } from '@/features/record-memory'
+import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, recallFlushActor } from '@/features/recall'
 import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
 import { DiaryCard, DiarySheet } from '@/features/diary-list'
@@ -25,8 +25,6 @@ import { AppearanceSwitcher } from '@/features/switch-appearance'
 import {
   applyUniverse,
   universeQueryOptions,
-  universeInvalidateKey,
-  recordsInvalidateKey,
   useMemoryStore,
   focusActor,
   selectHighlightedRecordId,
@@ -246,7 +244,6 @@ export function HomePage() {
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
   const { sim, panel: urlPanel } = useSearch({ from: '/universe' })
   const navigate = useNavigate({ from: '/universe' })
-  const queryClient = useQueryClient()
 
   // 우주 셸 패널 상태(spec 31) — 영속 캔버스 위에 어떤 탐색/리스트 오버레이가 떠 있는지의 단일
   // 출처. 탐색은 라우트가 아니라 패널 상태다 — `?panel=`로만 딥링크/뒤로가기를 동기화하고 캔버스는
@@ -332,18 +329,6 @@ export function HomePage() {
   // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
   // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4) — 제출 중 temp 별,
   // 기존 별 슬롯/좌표, 로컬이 앞선 타임스탬프를 깨지 않는다.
-  // 별 띄우기 성공(compose 머신 'submitted') → 우주·일기목록 즉시 무효화로 새 별이 바로 도착하고
-  // 시냅스(비동기 임베딩)는 지연 refetch로 따라온다. 머신은 순수(queryClient는 React 컨텍스트)라 이
-  // 부수효과는 페이지가 소유한다 — 구 use-record-memory의 제출 성공 분기를 머신 emit + 여기로 분리.
-  useEffect(() => {
-    const sub = composeActor.on('submitted', () => {
-      void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
-      void queryClient.invalidateQueries({ queryKey: recordsInvalidateKey() })
-      scheduleSynapseSync(queryClient)
-    })
-    return () => sub.unsubscribe()
-  }, [queryClient])
-
   const universe = useQuery(universeQueryOptions())
   const { data: universeData } = universe
   useEffect(() => {

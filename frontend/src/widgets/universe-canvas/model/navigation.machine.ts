@@ -46,6 +46,11 @@ type Ev =
 
 const NO_MOVE: Move = { x: 0, y: 0, z: 0 }
 
+// 비행 안전 타임아웃 — flyingToStar/framingDiary는 컨트롤러가 타깃(별/일기 좌표)을 못 풀면(우주 미로드·
+// GetUniverse 실패·id 부재) ARRIVED를 못 보내 transitioning에 영영 갇힌다(클램프 완화·카메라 동결). 정상
+// 비행은 ~수초 내 도착하므로, 이 시간이 지나도 안 끝나면 강제로 settled로 빠져나간다(카메라 동결 방지).
+const FLIGHT_TIMEOUT_MS = 10_000
+
 export const navigationMachine = setup({
   types: { context: {} as Ctx, events: {} as Ev },
   actions: {
@@ -83,6 +88,8 @@ export const navigationMachine = setup({
     },
     flyingToStar: {
       tags: 'transitioning',
+      // 타깃 미해결로 ARRIVED가 영영 안 오는 경우의 안전망(동결 방지) — 정상 비행은 훨씬 빨리 도착해 이탈.
+      after: { [FLIGHT_TIMEOUT_MS]: 'recall' },
       on: {
         // 근접 안착. stopMove로 끊지 않는다 — fly-to 동안 NavPad가 떠 있어(selectHeadingMode→recall)
         // 눌려 있던 D-pad가 도착 후에도 이어진다(연속 제어). 멈춤이 필요한 "recall 떠나기"는 toNebula가 처리.
@@ -93,6 +100,7 @@ export const navigationMachine = setup({
     },
     framingDiary: {
       tags: 'transitioning',
+      after: { [FLIGHT_TIMEOUT_MS]: 'nebula' }, // 안전망(동결 방지)
       on: {
         ARRIVED: 'nebula', // 조망은 far(nebula)에서 끝난다
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame', reenter: true }, // 같은/다른 일기 재조망
@@ -101,11 +109,16 @@ export const navigationMachine = setup({
     },
     modeTransition: {
       tags: 'transitioning',
+      // ModeTransitionController는 항상 포즈를 arm하므로 자체 타임아웃 불요. 단 비행 중 fly-to/조망 요청은
+      // 흘리지 않고 해당 비행으로 전환한다(예: 토글 비행 중 "이 일기의 다른 별들" → 조망). 컨트롤러는
+      // nav 상태 가드로 양보.
       on: {
         ARRIVED: [
           { guard: ({ context }) => context.transitionTo === 'recall', target: 'recall' },
           { target: 'nebula', actions: 'stopMove' },
         ],
+        FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly' },
+        FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
       },
     },
   },

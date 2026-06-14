@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { createActor } from 'xstate'
 import {
   navigationMachine,
@@ -95,5 +95,31 @@ describe('navigationMachine', () => {
     a.send({ type: 'FLY_TO_STAR', id: 's1' })
     expect(selectHeadingMode(a.getSnapshot())).toBe('recall') // flyingToStar는 recall로 향함
     a.stop()
+  })
+
+  it('modeTransition 인터럽트: 토글 비행 중 FRAME_DIARY → framingDiary(요청 유실 없음)', () => {
+    const a = start()
+    a.send({ type: 'TOGGLE_MODE' }) // → modeTransition
+    expect(a.getSnapshot().matches('modeTransition')).toBe(true)
+    a.send({ type: 'FRAME_DIARY', recordId: 'r1' }) // 비행 중 조망 요청
+    expect(a.getSnapshot().matches('framingDiary')).toBe(true) // 흘리지 않고 전환
+    expect(selectFrameRecordId(a.getSnapshot())).toBe('r1')
+    a.stop()
+  })
+
+  it('안전 타임아웃: 타깃 미해결로 ARRIVED가 안 와도 flyingToStar가 영영 갇히지 않는다', () => {
+    vi.useFakeTimers()
+    try {
+      const a = start()
+      a.send({ type: 'FLY_TO_STAR', id: 'never' }) // 컨트롤러가 타깃을 못 풀어 ARRIVED 미발송 가정
+      expect(a.getSnapshot().matches('flyingToStar')).toBe(true)
+      expect(selectTransitioning(a.getSnapshot())).toBe(true)
+      vi.advanceTimersByTime(10_000) // FLIGHT_TIMEOUT_MS
+      expect(a.getSnapshot().matches('recall')).toBe(true) // 안전망으로 settled 복귀
+      expect(selectTransitioning(a.getSnapshot())).toBe(false) // 클램프 복원(동결 해제)
+      a.stop()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
