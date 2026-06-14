@@ -1,6 +1,7 @@
 // Evolution-history fetch (spec 24). unary only (constitution §6); demo branches to the
 // in-memory dummy log (recall.ts is the blueprint). READ-ONLY — never writes.
-import { memoryClient, type EvolutionSnapshot } from '@/shared/api'
+import { createConnectQueryKey } from '@connectrpc/connect-query'
+import { MemoryService, memoryClient, type EvolutionSnapshot } from '@/shared/api'
 import { A_MIN } from '@/entities/memory'
 import { isDemoMode, demoEvolution } from '@/shared/lib/demo'
 import type { EvolutionSnapshotVM } from '../model'
@@ -29,6 +30,17 @@ export function toSnapshotVM(s: EvolutionSnapshot): EvolutionSnapshotVM {
     dir: s.dir,
     createdAt: s.createdAt,
   }
+}
+
+/** GetEvolutionHistory 쿼리 키 — 별별 변천사 fetch 키이자 (장차) invalidate 키. 손 배열
+ *  대신 스키마 파생으로 두면 키 모양이 바뀌어도 fetch·invalidate가 함께 움직여 무효화가
+ *  조용히 no-op이 되지 않는다(universe/dormant 키 규약과 동일). input까지 넣어 별마다 분리. */
+export function evolutionQueryKey(memoryId: string) {
+  return createConnectQueryKey({
+    schema: MemoryService.method.getEvolutionHistory,
+    input: { memoryId },
+    cardinality: 'finite',
+  })
 }
 
 /** A star's variant log, version ascending. Empty is valid (a never-reshaped star). */

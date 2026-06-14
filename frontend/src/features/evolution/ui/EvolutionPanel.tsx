@@ -13,7 +13,7 @@ import { moodFromProto, recordQueryKey, reshapedSeed, seedFromId } from '@/entit
 import { VizStar } from '@/entities/star'
 import { useAppearance } from '@/entities/appearance'
 import { moodLabel, resolveMoodRgb, type RGB } from '@/shared/config'
-import { getEvolutionHistory } from '../api/evolution'
+import { evolutionQueryKey, getEvolutionHistory } from '../api/evolution'
 import { clampIndex, toEvolutionSteps, useEvolutionStore } from '../model'
 
 /** RGB tuple (0..1) → "#RRGGBB" for VizStar's hex color prop. */
@@ -45,7 +45,7 @@ function EvolutionView({ memoryId }: { memoryId: string }) {
   const record = queryClient.getQueryData<RecordMsg>(recordQueryKey(memoryId)) ?? null
 
   const { data, isPending, isError } = useQuery({
-    queryKey: ['evolution', memoryId],
+    queryKey: evolutionQueryKey(memoryId),
     queryFn: () => getEvolutionHistory(memoryId),
   })
   const steps = useMemo(() => toEvolutionSteps(data ?? []), [data])
