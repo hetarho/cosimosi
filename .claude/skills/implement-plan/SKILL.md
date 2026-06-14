@@ -114,6 +114,14 @@ implementation ("한 단계를 건너뛰지 않는다"): Step 4's automated chec
      flag makes it run as a Claude background task with no bg/fg prompt; if you ever invoke it without the flag
      and it asks "Wait / Run in background", **choose Run in background**. Either way the SAME `/codex:review`
      command runs the Codex CLI reviewer.
+   - ⚠️ **Model (this machine): run Codex with `-m gpt-5.5`.** This box's codex CLI runs under a ChatGPT account
+     that rejects **every `*-codex` model** (`gpt-5.5-codex`/`5.4-codex`/… → `400 … not supported when using Codex
+     with a ChatGPT account`), and the CLI's *default* is an unsupported `-codex` model — so a bare `codex exec`
+     fails. The general `gpt-5.5` model works (5.4 is the fallback if 5.5 ever stops). If `/codex:review` isn't an
+     invocable command in the session, run Codex directly as a background **Bash** task (NOT via `codex:rescue`):
+     `codex exec --skip-git-repo-check --sandbox read-only -m gpt-5.5 - < prompt.txt > review.txt 2>&1`, feeding it
+     the `git diff HEAD` + new untracked files; then `TaskOutput(block=true)` on it. Re-probe the model first if
+     it errors — don't guess *older* versions, use the current general model. ([[codex-review-model]])
    - ⚠️ **Do NOT route codex through the `codex:rescue` agent or any sub-agent.** That's the **double-background**
      trap (spec 16) — and worse, a sub-agent can silently *substitute its own (non-Codex) review* when the CLI
      hiccups, so you think you got a cross-engine pass when you didn't (happened on spec 26). `/codex:review` runs
