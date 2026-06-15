@@ -43,4 +43,10 @@ type Repository interface {
 	// ResonancePartnerUserID returns the owner of the star on the OTHER side of memoryID's
 	// resonance (if memoryID is one of the caller's resonant stars). ok=false = not resonant.
 	ResonancePartnerUserID(ctx context.Context, memoryID, userID string) (partnerUserID string, ok bool, err error)
+
+	// ResonancesBetween returns every resonance pair whose two ends belong to caller and owner
+	// respectively (spec 37 overlay bridges). MyMemoryID = caller's star, TheirMemoryID =
+	// owner's. Empty when the two never resonated (and so for a third party — both user_id
+	// guards must match), so the existence of a resonance is never disclosed (acceptance 2.2).
+	ResonancesBetween(ctx context.Context, callerUserID, ownerUserID string) ([]ResonancePair, error)
 }

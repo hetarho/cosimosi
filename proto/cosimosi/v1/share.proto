@@ -99,12 +99,40 @@ message RotateShareSlugResponse {
   string display_name = 3;
 }
 
+// --- Universe overlay (spec 37) — resonance bridges ---
+
+message GetResonanceBridgesRequest {
+  string slug = 1; // the universe being overlaid (the owner)
+}
+
+// ResonanceBridge is ONE resonance (spec 36) between the caller and the slug's owner — the
+// only cross-universe datum the overlay exposes. It carries NO content: my_memory_id is the
+// caller's OWN star (they already hold its text), and their_star_index is the partner star's
+// position in THIS slug's GetSharedUniverse response array (so the client can place a bridge
+// endpoint without ever learning the partner's memory id — content-zero stays intact, 35).
+message ResonanceBridge {
+  string my_memory_id = 1;
+  int32 their_star_index = 2;
+}
+
+// Only the resonance PARTY ever gets a non-empty list — a third-party visitor always gets
+// [] (acceptance 2.2), so a resonance's existence is never disclosed to anyone but the two
+// people who share it (spec 36 비노출).
+message GetResonanceBridgesResponse {
+  repeated ResonanceBridge bridges = 1;
+}
+
 // ShareService is the AUTHENTICATED owner surface — same auth chain as MemoryService. Each
-// rpc reads/writes only the caller's own row (user_id = JWT sub; acceptance 3.2).
+// rpc reads/writes only the caller's own row (user_id = JWT sub; acceptance 3.2). The overlay
+// bridge read is here (NOT on VisitService) because it needs the caller's identity to match
+// resonances — the public surface stays content-zero (spec 37 설계 요점).
 service ShareService {
   rpc GetShareSettings(GetShareSettingsRequest) returns (GetShareSettingsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc UpdateShareSettings(UpdateShareSettingsRequest) returns (UpdateShareSettingsResponse);
   rpc RotateShareSlug(RotateShareSlugRequest) returns (RotateShareSlugResponse);
+  rpc GetResonanceBridges(GetResonanceBridgesRequest) returns (GetResonanceBridgesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }

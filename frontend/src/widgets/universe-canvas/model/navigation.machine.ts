@@ -35,6 +35,12 @@ interface Ctx {
   transitionTo: CameraMode
   /** recall 항해 입력(D-pad): x=yaw, y=pitch, z=thrust. press/release로만 변한다. */
   move: Move
+  /** 겹쳐보기(spec 37) framingPair 대상: 내 별 id + 상대 별 id(각 우주의 별 id). 오버레이의
+   *  쌍-프레이밍 컨트롤러가 양 우주 버퍼에서 두 끝점을 풀어 한 프레임에 담는다. */
+  pairMyId: string | null
+  pairTheirId: string | null
+  /** framingPair 재발화 카운터(같은 다리를 다시 눌러도 재프레이밍 — frameSeq와 동형). */
+  pairSeq: number
 }
 
 type Ev =
@@ -43,6 +49,9 @@ type Ev =
   | { type: 'FRAME_DIARY'; recordId: string } // 포커스가 일기로 진입 → 조망(focus→nav 브리지)
   | { type: 'ARRIVED' } // 비행 컨트롤러가 도착 시 송신
   | { type: 'SET_MOVE'; move: Partial<Move> } // D-pad 입력(부분 병합)
+  | { type: 'ENTER_OVERLAY' } // 겹쳐보기 켜기(spec 37) → overlay 상태(nebula/recall과 배타·쓰기 게이트)
+  | { type: 'EXIT_OVERLAY' } // 겹쳐보기 끄기 → nebula 복귀(친구 우주만 보는 원래 화면)
+  | { type: 'FRAME_PAIR'; myId: string; theirId: string } // 공명 다리 클릭/근접 → 두 별 동시 프레이밍
 
 const NO_MOVE: Move = { x: 0, y: 0, z: 0 }
 
@@ -64,10 +73,26 @@ export const navigationMachine = setup({
     // recall을 떠나면 눌려 있던 이동을 0으로(모드가 D-pad 밑에서 빠져 pointerup을 잃어도 안 멈춤 방지).
     stopMove: assign({ move: { ...NO_MOVE } }),
     applyMove: assign({ move: ({ context, event }) => (event.type === 'SET_MOVE' ? { ...context.move, ...event.move } : context.move) }),
+    // 겹쳐보기(spec 37): 다리 프레이밍 대상을 잡고 재발화 카운터를 올린다(frameSeq와 동형).
+    setPair: assign({
+      pairMyId: ({ event }) => (event.type === 'FRAME_PAIR' ? event.myId : null),
+      pairTheirId: ({ event }) => (event.type === 'FRAME_PAIR' ? event.theirId : null),
+      pairSeq: ({ context }) => context.pairSeq + 1,
+    }),
+    clearPair: assign({ pairMyId: null, pairTheirId: null, move: { ...NO_MOVE } }),
   },
 }).createMachine({
   id: 'navigation',
-  context: { flyStarId: null, frameRecordId: null, frameSeq: 0, transitionTo: 'nebula', move: { ...NO_MOVE } },
+  context: {
+    flyStarId: null,
+    frameRecordId: null,
+    frameSeq: 0,
+    transitionTo: 'nebula',
+    move: { ...NO_MOVE },
+    pairMyId: null,
+    pairTheirId: null,
+    pairSeq: 0,
+  },
   initial: 'nebula',
   // SET_MOVE는 어느 상태에서든 받아 context.move만 갱신(상태 전이 없음 — 비활성 상태에선 컨트롤러가 무시).
   on: { SET_MOVE: { actions: 'applyMove' } },
@@ -77,6 +102,7 @@ export const navigationMachine = setup({
         TOGGLE_MODE: { target: 'modeTransition', actions: 'toRecall' },
         FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly' },
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
+        ENTER_OVERLAY: { target: 'overlay', actions: 'clearPair' },
       },
     },
     recall: {
@@ -84,6 +110,7 @@ export const navigationMachine = setup({
         TOGGLE_MODE: { target: 'modeTransition', actions: 'toNebula' },
         FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly' },
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
+        ENTER_OVERLAY: { target: 'overlay', actions: 'clearPair' },
       },
     },
     flyingToStar: {
@@ -121,6 +148,27 @@ export const navigationMachine = setup({
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
       },
     },
+    // 겹쳐보기(spec 37) — 두 우주를 한 씬에 띄우는 순수 뷰 상태(nebula/recall과 배타). 이 상태에선
+    // 회상 강화 등 쓰기 RPC가 게이트로 막힌다(boolean 플래그가 아니라 상태로 단순화 — 설계 요점).
+    // 단일 우주 카메라 컨트롤러(UniverseCanvas)는 오버레이가 뜨면 언마운트되고, 오버레이 위젯의 전용
+    // 컨트롤러가 viewing/framingPair를 읽어 카메라를 몬다.
+    overlay: {
+      initial: 'viewing',
+      on: { EXIT_OVERLAY: { target: 'nebula', actions: 'clearPair' } },
+      states: {
+        viewing: {
+          on: { FRAME_PAIR: { target: 'framingPair', actions: 'setPair' } },
+        },
+        framingPair: {
+          tags: 'transitioning',
+          after: { [FLIGHT_TIMEOUT_MS]: 'viewing' }, // 타깃 미해결 안전망(동결 방지 — 다른 비행과 동일)
+          on: {
+            ARRIVED: 'viewing',
+            FRAME_PAIR: { target: 'framingPair', actions: 'setPair', reenter: true }, // 같은/다른 다리 재프레이밍
+          },
+        },
+      },
+    },
   },
 })
 
@@ -141,6 +189,17 @@ export const selectFrameRecordId = (s: Snap): string | null => (s.matches('frami
 export const selectFrameSeq = (s: Snap): number => s.context.frameSeq
 export const selectInModeTransition = (s: Snap): boolean => s.matches('modeTransition')
 export const selectTransitionTo = (s: Snap): CameraMode => s.context.transitionTo
+// 겹쳐보기(spec 37). overlay 부모 매치는 viewing·framingPair 둘 다 true(오버레이 위젯 마운트 게이트).
+export const selectIsOverlay = (s: Snap): boolean => s.matches('overlay')
+export const selectIsFramingPair = (s: Snap): boolean => s.matches({ overlay: 'framingPair' })
+/** framingPair 대상(내 별 id + 상대 별 인덱스) + 재발화 seq — 오버레이 쌍-프레이밍 컨트롤러가
+ *  새 요청만 소비한다(같은 다리 재클릭도 seq로 구분). framingPair가 아니면 null. */
+export const selectFramingPair = (
+  s: Snap,
+): { myId: string; theirId: string; seq: number } | null =>
+  s.matches({ overlay: 'framingPair' }) && s.context.pairMyId != null && s.context.pairTheirId != null
+    ? { myId: s.context.pairMyId, theirId: s.context.pairTheirId, seq: s.context.pairSeq }
+    : null
 /** HUD 라벨/NavPad 가시성용 "현재 또는 향하는" 모드 — 비행 중엔 도착 모드를 보여준다. */
 export const selectHeadingMode = (s: Snap): CameraMode => {
   if (s.matches('recall') || s.matches('flyingToStar')) return 'recall'

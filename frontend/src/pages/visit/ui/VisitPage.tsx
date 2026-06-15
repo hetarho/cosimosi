@@ -1,18 +1,39 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Sentry from '@sentry/react'
 import { Code, ConnectError } from '@connectrpc/connect'
 import { create } from '@bufbuild/protobuf'
 import { errorMessage } from '@/shared/lib'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
 import { primaryButtonCls } from '@/shared/ui'
-import { GetSettingsResponseSchema } from '@/shared/api'
-import { UniverseCanvas, UniverseGrain } from '@/widgets/universe-canvas'
-import { focusActor, useMemoryStore } from '@/entities/memory'
-import { useSynapseStore } from '@/entities/synapse'
+import { GetSettingsResponseSchema, supabase } from '@/shared/api'
+import {
+  UniverseCanvas,
+  UniverseGrain,
+  UniverseOverlay,
+  OverlayComparePanel,
+  navigationActor,
+  type Bridge,
+} from '@/widgets/universe-canvas'
+import {
+  focusActor,
+  fragmentTextQueryKey,
+  mapStar,
+  moodFromProto,
+  universeQueryOptions,
+  useMemoryStore,
+  type StarNode,
+} from '@/entities/memory'
+import { toSynapseEdge, useSynapseStore } from '@/entities/synapse'
+import { STAR_OBJECTS, type StarObject } from '@/entities/star'
 import { applySettings, useAppearance } from '@/entities/appearance'
-import { applySharedUniverse, sharedUniverseQueryOptions } from '../api/visit-queries'
+import {
+  applySharedUniverse,
+  mapSharedUniverse,
+  resonanceBridgesQueryOptions,
+  sharedUniverseQueryOptions,
+} from '../api/visit-queries'
 
 /** 공개 우주 영역 풀오버레이 카드 chrome — NotFound·로드 실패·렌더러 불가가 공유. */
 function VisitCard({ children }: { children: React.ReactNode }) {
@@ -62,6 +83,27 @@ export function VisitPage() {
   const { slug } = useParams({ from: '/u/$slug' })
   const query = useQuery(sharedUniverseQueryOptions(slug))
   const { data } = query
+  const queryClient = useQueryClient()
+
+  // 겹쳐보기(spec 37) — 로그인 사용자 한정 토글. 비로그인엔 토글 자체를 노출하지 않는다(1.2).
+  const [overlayOn, setOverlayOn] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(false)
+  useEffect(() => {
+    let alive = true
+    void supabase.auth.getSession().then(({ data: s }) => {
+      if (alive) setLoggedIn(!!s.session)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setLoggedIn(!!session))
+    return () => {
+      alive = false
+      sub.subscription.unsubscribe()
+    }
+  }, [])
+
+  // 내 우주(겹칠 때만 로드) — GetUniverse(인증). 스토어엔 싣지 않는다(스토어는 친구 우주를 들고 있다);
+  // 겹쳐보기는 두 우주를 PROPS로 받는다. 다리(GetResonanceBridges)는 당사자만 비어있지 않다(2.2).
+  const myUniverse = useQuery({ ...universeQueryOptions(), enabled: overlayOn && loggedIn })
+  const bridgesQuery = useQuery(resonanceBridgesQueryOptions(slug, overlayOn && loggedIn))
 
   // 공유 store(memory·synapse·appearance·focus)는 인증 우주와 한 싱글턴이다. 방문자의 appearance를
   // *첫 렌더에 단 한 번* 캡처한다(lazy init은 effect/소유자 적용보다 먼저 실행되므로 항상 순수한
@@ -71,8 +113,56 @@ export function VisitPage() {
     return { theme: ap.theme, object: ap.object, emotionColors: ap.emotionColors }
   })
 
+  // 친구 우주(겹쳐보기용) — 스냅샷을 PURE 매핑(스토어 미경유). 친구 시각 설정은 data.appearance에서.
+  const theirSide = useMemo(() => {
+    if (!data) return null
+    const { stars, edges } = mapSharedUniverse(data)
+    const appearance = data.appearance
+    const object = STAR_OBJECTS.some((o) => o.id === appearance?.starObject)
+      ? (appearance!.starObject as StarObject)
+      : undefined
+    const emotionColors: Record<string, string> = {}
+    for (const c of appearance?.emotionColors ?? []) emotionColors[moodFromProto(c.mood)] = c.color
+    return { stars, edges, object, emotionColors }
+  }, [data])
+
+  // 내 우주(겹쳐보기용) — GetUniverse 응답을 PURE 매핑(merge/store 경유 없음). 내 시각 설정은 방문자 값.
+  const mySide = useMemo(() => {
+    const d = myUniverse.data
+    if (!d) return null
+    const stars: StarNode[] = d.stars.map((s, i) => mapStar(s, i))
+    const edges = d.synapses.map(toSynapseEdge)
+    return { stars, edges, object: visitorAppearance.object, emotionColors: visitorAppearance.emotionColors }
+  }, [myUniverse.data, visitorAppearance])
+
+  // 서버는 상대 별을 *공개 스냅샷 인덱스*로 준다(콘텐츠 제로 — id 비노출). 친구 우주의 StarNode id는
+  // mapSharedUniverse 규약대로 `shared-N`이므로 여기서 인덱스를 그 id로 환원해 다리에 넘긴다(스냅샷
+  // 인덱스 규약은 이 페이지에만 — 다리 컴포넌트는 순수 두-id 쌍).
+  const bridges: Bridge[] = useMemo(
+    () =>
+      (bridgesQuery.data?.bridges ?? []).map((b) => ({
+        myId: b.myMemoryId,
+        theirId: `shared-${b.theirStarIndex}`,
+      })),
+    [bridgesQuery.data],
+  )
+
+  const overlayReady = overlayOn && mySide != null && theirSide != null
+  // 겹쳐보기 진입/이탈을 navigation 머신에 반영(overlay 상태 = 쓰기 게이트·전용 카메라). 양쪽 우주가
+  // 준비됐을 때 진입하고, 끄거나 떠날 때 nebula로 복귀 + 쌍 선택 해제.
+  useEffect(() => {
+    if (overlayReady) {
+      navigationActor.send({ type: 'ENTER_OVERLAY' })
+      return () => {
+        navigationActor.send({ type: 'EXIT_OVERLAY' })
+        focusActor.send({ type: 'DISMISS' })
+      }
+    }
+  }, [overlayReady])
+
   // 보는 우주(slug)가 바뀌면 렌더 store를 비운다(직전 소유자의 별·강조가 남지 않게). loadedEmpty도
-  // 초기화해 빈/비어있지 않은 우주 전환 시 birth 연출이 잘못 트리거되지 않게 한다.
+  // 초기화해 빈/비어있지 않은 우주 전환 시 birth 연출이 잘못 트리거되지 않게 한다. (겹쳐보기 토글은
+  // 그대로 둔다 — theirSide/다리가 새 slug로 재파생되고, 준비 전까지 단일 뷰로 폴백한다.)
   useEffect(() => {
     focusActor.send({ type: 'DISMISS' })
     const m = useMemoryStore.getState()
@@ -133,9 +223,44 @@ export function VisitPage() {
   return (
     <div className="universe-page fixed inset-0" data-lenis-prevent>
       <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
-        <UniverseCanvas />
+        {/* 겹쳐보기(spec 37): 두 우주가 준비되면 단일 우주 캔버스 대신 오버레이를 마운트한다(두 WebGPU
+            컨텍스트 공존 방지 — 조건부 렌더로 하나만). 준비 전엔 단일 친구 우주를 그대로 보여준다. */}
+        {overlayReady && mySide && theirSide ? (
+          <UniverseOverlay mine={mySide} theirs={theirSide} bridges={bridges} />
+        ) : (
+          <UniverseCanvas />
+        )}
       </Sentry.ErrorBoundary>
       <UniverseGrain />
+
+      {/* 겹쳐보기 비교 패널(spec 37) — 공명 다리를 누르면 두 기억을 나란히. 상대 쪽은 시각 정보만. */}
+      {overlayReady && mySide && theirSide && (
+        <OverlayComparePanel
+          myStars={mySide.stars}
+          theirStars={theirSide.stars}
+          myEmotionColors={mySide.emotionColors}
+          theirEmotionColors={theirSide.emotionColors}
+          // 내 별 텍스트는 *읽기 전용* 캐시에서만(이번 세션에 내 우주에서 회상해 시드됐으면) — 겹침 뷰는
+          // 쓰기 RPC 금지(3.1)라 RecallMemory를 부르지 않는다.
+          resolveMyText={(id) => {
+            const c = queryClient.getQueryData(fragmentTextQueryKey(id))
+            return typeof c === 'string' ? c : undefined
+          }}
+        />
+      )}
+
+      {/* 겹쳐보기 토글(로그인 한정, 1.2). 비로그인엔 노출하지 않는다. */}
+      {loggedIn && data && (
+        <div className="absolute right-[calc(1rem+env(safe-area-inset-right))] top-[calc(1rem+env(safe-area-inset-top))] z-30">
+          <button
+            type="button"
+            onClick={() => setOverlayOn((v) => !v)}
+            className="rounded-full border border-white/15 bg-black/55 px-4 py-1.5 text-xs font-medium text-white/85 backdrop-blur transition-colors hover:bg-black/70"
+          >
+            {overlayOn ? '겹치기 끄기' : '내 우주와 겹쳐보기'}
+          </button>
+        </div>
+      )}
 
       {/* 헤더 — 소유자 표시명("○○의 우주" / 익명이면 "어느 우주"). 읽기 전용 안내 한 줄. */}
       {data && (
@@ -143,7 +268,20 @@ export function VisitPage() {
           <h1 className="rounded-full border border-white/10 bg-black/40 px-4 py-1.5 text-sm font-medium text-white/85 backdrop-blur">
             {title}
           </h1>
-          <p className="text-[11px] text-white/40">풍경만 공개된 우주예요 — 일기 내용은 비공개입니다</p>
+          <p className="text-[11px] text-white/40">
+            {overlayOn
+              ? '내 우주와 겹쳐 보는 중 — 공명한 별이 빛의 다리로 이어져요'
+              : '풍경만 공개된 우주예요 — 일기 내용은 비공개입니다'}
+          </p>
+        </div>
+      )}
+
+      {/* 겹쳐보기 로딩 — 내 우주/다리를 가져오는 동안. */}
+      {overlayOn && !overlayReady && !notFound && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <p className="animate-pulse rounded-full border border-white/10 bg-black/40 px-4 py-2 text-sm text-white/70 backdrop-blur">
+            두 우주를 겹치는 중…
+          </p>
         </div>
       )}
 

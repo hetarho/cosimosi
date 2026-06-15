@@ -37,6 +37,8 @@ export {
   selectIsDiaryFocus,
   selectIsFocused,
   selectFrameNonce,
+  selectIsPairFocus,
+  selectPairFocus,
 } from './model/focus.machine'
 export { parseEpochMs } from './model/time'
 export {

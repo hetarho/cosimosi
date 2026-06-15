@@ -10,8 +10,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { modulatedBrightness, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore } from '@/entities/memory/@x/star'
-import { degreeNormById, useSynapseStore } from '@/entities/synapse/@x/star'
+import { modulatedBrightness, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
+import { degreeNormById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
 import { DEFAULT_OBJECT } from '../model/kinds'
@@ -136,6 +136,12 @@ export interface StarFieldProps {
   selectedId?: string | null
   /** 별 탭 → 그 별 선택(위젯이 focus.SELECT_STAR로 배선). 드래그(우주 회전)는 제외(e.delta 가드). */
   onSelect?: (id: string) => void
+  /** 외부 별 소스(spec 37 겹쳐보기) — 주어지면 useMemoryStore 대신 이 배열을 그린다(한 씬에 두 우주를
+   *  동시 렌더하려면 싱글턴 스토어로는 불가). 미지정 시 스토어 구독(기존 단일 우주 경로 — 동작 불변).
+   *  외부 소스는 정적 스냅샷이라 탄생 연출을 켜지 않는다(우주가 일괄로 펑펑 터지는 소음 방지). */
+  stars?: StarNode[]
+  /** 외부 엣지 소스 — 변조 감쇠(spec 26) R_conn(degree) 입력. 외부 stars와 함께 쓴다. */
+  edges?: SynapseEdge[]
 }
 
 export function StarField({
@@ -145,8 +151,13 @@ export function StarField({
   highlightedRecordId = null,
   selectedId = null,
   onSelect,
+  stars: externalStars,
+  edges: externalEdges,
 }: StarFieldProps) {
-  const stars = useMemoryStore((s) => s.stars)
+  const storeStars = useMemoryStore((s) => s.stars)
+  // 외부 소스(겹쳐보기)면 그것을, 아니면 스토어를 그린다. external=true면 탄생 연출·loadedEmpty 게이트를 끈다.
+  const stars = externalStars ?? storeStars
+  const external = externalStars !== undefined
   const count = stars.length
   // 강조 일기의 별 id 집합 — record_id로 그룹(spec 28). 선택 변경/별 집합 변경 시에만 재계산.
   const highlightedIds = useMemo(
@@ -160,7 +171,8 @@ export function StarField({
   // 어떤 PAIR가 존재하느냐(토폴로지)에만 의존하므로 토폴로지 시그니처로 메모해, 시간 머신의
   // refreshActivation이 밝기 재파생만을 위해 엣지 배열을 갈아끼우는 동안(spec 19) 아래 빌드
   // 효과가 헛돌지 않게 한다(같은 pair 집합 → 같은 맵 identity → rebuild 미발화).
-  const edges = useSynapseStore((s) => s.edges)
+  const storeEdges = useSynapseStore((s) => s.edges)
+  const edges = externalEdges ?? storeEdges
   const edgeTopo = useMemo(() => edges.map((e) => `${e.aId}~${e.bId}`).join(','), [edges])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the pair set, not the array identity
   const degreeNorm = useMemo(() => degreeNormById(edges), [edgeTopo])
@@ -245,7 +257,8 @@ export function StarField({
     // 새로 생긴 별만 탄생 대상으로 표시. 첫 시드(seen 비어 있음)는 제외하되, "빈 우주를
     // 이미 확인한"(loadedEmpty) 뒤의 첫 도착 — 신규 유저의 첫 일기 — 은 진짜 탄생이다.
     const seen = seenRef.current
-    if (seen.size > 0 || useMemoryStore.getState().loadedEmpty) {
+    // 외부 소스(겹쳐보기)는 정적 스냅샷 — 탄생 연출을 켜지 않는다(seen만 채워 정리 로직은 유지).
+    if (!external && (seen.size > 0 || useMemoryStore.getState().loadedEmpty)) {
       for (const s of stars) {
         if (!seen.has(s.id)) {
           spawnRef.current.set(s.id, -1)
@@ -320,7 +333,7 @@ export function StarField({
     resonantIdxRef.current = resonantIdx
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
-  }, [stars, count, geometry, emotionColors, degreeNorm])
+  }, [stars, count, geometry, emotionColors, degreeNorm, external])
 
   // Focus spotlight: re-weight aBrightness when the selection (or star set / form) changes —
   // selected boosted, all others dimmed; full brightness restored when nothing is selected. Reads

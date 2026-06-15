@@ -96,6 +96,29 @@ func (a giftShareAdapter) DisplayInfo(ctx context.Context, userID string) (strin
 	return st.DisplayName, st.Slug, st.Enabled, nil
 }
 
+// shareResonanceAdapter maps gift.Service onto share's ResonanceReader port (spec 37): the
+// overlay's resonance bridges come from spec-36 resonances, but internal/share must not import
+// internal/gift (and gift already depends on share via giftShareAdapter — a direct import either
+// way is a cycle). So the composition root adapts gift here. It's a POINTER with a settable
+// `inner` because the two services form a wiring cycle (share needs gift's resonances; gift needs
+// share's display names): share is built first with this adapter, then gift, then inner is bound.
+// The method is only ever called at request time (long after wiring), so inner is set by then.
+type shareResonanceAdapter struct {
+	inner *gift.Service
+}
+
+func (a *shareResonanceAdapter) ResonancesBetween(ctx context.Context, callerUserID, ownerUserID string) ([]share.ResonancePair, error) {
+	pairs, err := a.inner.ResonancesBetween(ctx, callerUserID, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]share.ResonancePair, len(pairs))
+	for i, p := range pairs {
+		out[i] = share.ResonancePair{MyMemoryID: p.MyMemoryID, TheirMemoryID: p.TheirMemoryID}
+	}
+	return out, nil
+}
+
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
@@ -173,14 +196,19 @@ func main() {
 	// Universe sharing (spec 35): owner ShareService + public VisitService, one Handler. The
 	// public snapshot folds in the owner's spec-30 appearance, so share follows settings through
 	// shareSettingsAdapter (settings.Service → share.SettingsReader) — share never imports settings.
-	shareSvc := share.NewService(share.NewRepository(db), shareSettingsAdapter{inner: settingsSvc})
+	// The spec-37 overlay's resonance bridges come from gift via shareResonanceAdapter, bound below
+	// once gift exists (the two services form a wiring cycle).
+	resonanceAdapter := &shareResonanceAdapter{}
+	shareSvc := share.NewService(share.NewRepository(db), shareSettingsAdapter{inner: settingsSvc}, resonanceAdapter)
 	shareHandler := share.NewHandler(shareSvc)
 
 	// Shared-memory resonance (spec 36): send a star → friend accepts by rewriting → a new star
 	// is born in the friend's universe + the two are linked by a resonance. The gift service
 	// reuses the spec-35 display name (giftShareAdapter: share.Service → gift.ShareReader) so it
 	// never imports share. GiftService is fully authenticated (both parties are users).
-	giftHandler := gift.NewHandler(gift.NewService(gift.NewRepository(db), giftShareAdapter{inner: shareSvc}))
+	giftSvc := gift.NewService(gift.NewRepository(db), giftShareAdapter{inner: shareSvc})
+	resonanceAdapter.inner = giftSvc // close the share↔gift cycle (spec 37 overlay bridges)
+	giftHandler := gift.NewHandler(giftSvc)
 
 	// Async extraction + embedding worker (specs 05/21): consumes the extract job
 	// the RecordMemory transaction enqueues, fans the diary out into fragment

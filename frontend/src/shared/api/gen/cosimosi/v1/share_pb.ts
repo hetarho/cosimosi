@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/v1/share.proto.
  */
 export const file_cosimosi_v1_share: GenFile = /*@__PURE__*/
-  fileDesc("Chdjb3NpbW9zaS92MS9zaGFyZS5wcm90bxILY29zaW1vc2kudjEicAoKU2hhcmVkU3RhchIfCgRtb29kGAEgASgOMhEuY29zaW1vc2kudjEuTW9vZBIRCglpbnRlbnNpdHkYAiABKAESGQoRbGFzdF9yZWNhbGxlZF9kYXkYAyABKAMSEwoLY3JlYXRlZF9kYXkYBCABKAMiNQoNU2hhcmVkU3luYXBzZRIJCgFhGAEgASgFEgkKAWIYAiABKAUSDgoGd2VpZ2h0GAMgASgBIigKGEdldFNoYXJlZFVuaXZlcnNlUmVxdWVzdBIMCgRzbHVnGAEgASgJIt0BChlHZXRTaGFyZWRVbml2ZXJzZVJlc3BvbnNlEhQKDGRpc3BsYXlfbmFtZRgBIAEoCRImCgVzdGFycxgCIAMoCzIXLmNvc2ltb3NpLnYxLlNoYXJlZFN0YXISLAoIc3luYXBzZXMYAyADKAsyGi5jb3NpbW9zaS52MS5TaGFyZWRTeW5hcHNlEikKCmFwcGVhcmFuY2UYBCABKAsyFS5jb3NpbW9zaS52MS5TZXR0aW5ncxIpCgdhbWJpZW50GAUgASgLMhguY29zaW1vc2kudjEuQW1iaWVudE1vb2QiGQoXR2V0U2hhcmVTZXR0aW5nc1JlcXVlc3QiTwoYR2V0U2hhcmVTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDAoEc2x1ZxgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkiQwoaVXBkYXRlU2hhcmVTZXR0aW5nc1JlcXVlc3QSDwoHZW5hYmxlZBgBIAEoCBIUCgxkaXNwbGF5X25hbWUYAiABKAkiUgobVXBkYXRlU2hhcmVTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDAoEc2x1ZxgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkiGAoWUm90YXRlU2hhcmVTbHVnUmVxdWVzdCJOChdSb3RhdGVTaGFyZVNsdWdSZXNwb25zZRIPCgdlbmFibGVkGAEgASgIEgwKBHNsdWcYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJMncKDFZpc2l0U2VydmljZRJnChFHZXRTaGFyZWRVbml2ZXJzZRIlLmNvc2ltb3NpLnYxLkdldFNoYXJlZFVuaXZlcnNlUmVxdWVzdBomLmNvc2ltb3NpLnYxLkdldFNoYXJlZFVuaXZlcnNlUmVzcG9uc2UiA5ACATK8AgoMU2hhcmVTZXJ2aWNlEmQKEEdldFNoYXJlU2V0dGluZ3MSJC5jb3NpbW9zaS52MS5HZXRTaGFyZVNldHRpbmdzUmVxdWVzdBolLmNvc2ltb3NpLnYxLkdldFNoYXJlU2V0dGluZ3NSZXNwb25zZSIDkAIBEmgKE1VwZGF0ZVNoYXJlU2V0dGluZ3MSJy5jb3NpbW9zaS52MS5VcGRhdGVTaGFyZVNldHRpbmdzUmVxdWVzdBooLmNvc2ltb3NpLnYxLlVwZGF0ZVNoYXJlU2V0dGluZ3NSZXNwb25zZRJcCg9Sb3RhdGVTaGFyZVNsdWcSIy5jb3NpbW9zaS52MS5Sb3RhdGVTaGFyZVNsdWdSZXF1ZXN0GiQuY29zaW1vc2kudjEuUm90YXRlU2hhcmVTbHVnUmVzcG9uc2VCQVo/Z2l0aHViLmNvbS9jb3NpbW9zaS9iYWNrZW5kL2ludGVybmFsL2dlbi9jb3NpbW9zaS92MTtjb3NpbW9zaXYxYgZwcm90bzM", [file_cosimosi_v1_memory]);
+  fileDesc("Chdjb3NpbW9zaS92MS9zaGFyZS5wcm90bxILY29zaW1vc2kudjEicAoKU2hhcmVkU3RhchIfCgRtb29kGAEgASgOMhEuY29zaW1vc2kudjEuTW9vZBIRCglpbnRlbnNpdHkYAiABKAESGQoRbGFzdF9yZWNhbGxlZF9kYXkYAyABKAMSEwoLY3JlYXRlZF9kYXkYBCABKAMiNQoNU2hhcmVkU3luYXBzZRIJCgFhGAEgASgFEgkKAWIYAiABKAUSDgoGd2VpZ2h0GAMgASgBIigKGEdldFNoYXJlZFVuaXZlcnNlUmVxdWVzdBIMCgRzbHVnGAEgASgJIt0BChlHZXRTaGFyZWRVbml2ZXJzZVJlc3BvbnNlEhQKDGRpc3BsYXlfbmFtZRgBIAEoCRImCgVzdGFycxgCIAMoCzIXLmNvc2ltb3NpLnYxLlNoYXJlZFN0YXISLAoIc3luYXBzZXMYAyADKAsyGi5jb3NpbW9zaS52MS5TaGFyZWRTeW5hcHNlEikKCmFwcGVhcmFuY2UYBCABKAsyFS5jb3NpbW9zaS52MS5TZXR0aW5ncxIpCgdhbWJpZW50GAUgASgLMhguY29zaW1vc2kudjEuQW1iaWVudE1vb2QiGQoXR2V0U2hhcmVTZXR0aW5nc1JlcXVlc3QiTwoYR2V0U2hhcmVTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDAoEc2x1ZxgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkiQwoaVXBkYXRlU2hhcmVTZXR0aW5nc1JlcXVlc3QSDwoHZW5hYmxlZBgBIAEoCBIUCgxkaXNwbGF5X25hbWUYAiABKAkiUgobVXBkYXRlU2hhcmVTZXR0aW5nc1Jlc3BvbnNlEg8KB2VuYWJsZWQYASABKAgSDAoEc2x1ZxgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkiGAoWUm90YXRlU2hhcmVTbHVnUmVxdWVzdCJOChdSb3RhdGVTaGFyZVNsdWdSZXNwb25zZRIPCgdlbmFibGVkGAEgASgIEgwKBHNsdWcYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJIioKGkdldFJlc29uYW5jZUJyaWRnZXNSZXF1ZXN0EgwKBHNsdWcYASABKAkiQQoPUmVzb25hbmNlQnJpZGdlEhQKDG15X21lbW9yeV9pZBgBIAEoCRIYChB0aGVpcl9zdGFyX2luZGV4GAIgASgFIkwKG0dldFJlc29uYW5jZUJyaWRnZXNSZXNwb25zZRItCgdicmlkZ2VzGAEgAygLMhwuY29zaW1vc2kudjEuUmVzb25hbmNlQnJpZGdlMncKDFZpc2l0U2VydmljZRJnChFHZXRTaGFyZWRVbml2ZXJzZRIlLmNvc2ltb3NpLnYxLkdldFNoYXJlZFVuaXZlcnNlUmVxdWVzdBomLmNvc2ltb3NpLnYxLkdldFNoYXJlZFVuaXZlcnNlUmVzcG9uc2UiA5ACATKrAwoMU2hhcmVTZXJ2aWNlEmQKEEdldFNoYXJlU2V0dGluZ3MSJC5jb3NpbW9zaS52MS5HZXRTaGFyZVNldHRpbmdzUmVxdWVzdBolLmNvc2ltb3NpLnYxLkdldFNoYXJlU2V0dGluZ3NSZXNwb25zZSIDkAIBEmgKE1VwZGF0ZVNoYXJlU2V0dGluZ3MSJy5jb3NpbW9zaS52MS5VcGRhdGVTaGFyZVNldHRpbmdzUmVxdWVzdBooLmNvc2ltb3NpLnYxLlVwZGF0ZVNoYXJlU2V0dGluZ3NSZXNwb25zZRJcCg9Sb3RhdGVTaGFyZVNsdWcSIy5jb3NpbW9zaS52MS5Sb3RhdGVTaGFyZVNsdWdSZXF1ZXN0GiQuY29zaW1vc2kudjEuUm90YXRlU2hhcmVTbHVnUmVzcG9uc2USbQoTR2V0UmVzb25hbmNlQnJpZGdlcxInLmNvc2ltb3NpLnYxLkdldFJlc29uYW5jZUJyaWRnZXNSZXF1ZXN0GiguY29zaW1vc2kudjEuR2V0UmVzb25hbmNlQnJpZGdlc1Jlc3BvbnNlIgOQAgFCQVo/Z2l0aHViLmNvbS9jb3NpbW9zaS9iYWNrZW5kL2ludGVybmFsL2dlbi9jb3NpbW9zaS92MTtjb3NpbW9zaXYxYgZwcm90bzM", [file_cosimosi_v1_memory]);
 
 /**
  * SharedStar is the PUBLIC projection of a star: emotion (→ color), intensity (→ size),
@@ -293,6 +293,74 @@ export const RotateShareSlugResponseSchema: GenMessage<RotateShareSlugResponse> 
   messageDesc(file_cosimosi_v1_share, 9);
 
 /**
+ * @generated from message cosimosi.v1.GetResonanceBridgesRequest
+ */
+export type GetResonanceBridgesRequest = Message<"cosimosi.v1.GetResonanceBridgesRequest"> & {
+  /**
+   * the universe being overlaid (the owner)
+   *
+   * @generated from field: string slug = 1;
+   */
+  slug: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.GetResonanceBridgesRequest.
+ * Use `create(GetResonanceBridgesRequestSchema)` to create a new message.
+ */
+export const GetResonanceBridgesRequestSchema: GenMessage<GetResonanceBridgesRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_share, 10);
+
+/**
+ * ResonanceBridge is ONE resonance (spec 36) between the caller and the slug's owner — the
+ * only cross-universe datum the overlay exposes. It carries NO content: my_memory_id is the
+ * caller's OWN star (they already hold its text), and their_star_index is the partner star's
+ * position in THIS slug's GetSharedUniverse response array (so the client can place a bridge
+ * endpoint without ever learning the partner's memory id — content-zero stays intact, 35).
+ *
+ * @generated from message cosimosi.v1.ResonanceBridge
+ */
+export type ResonanceBridge = Message<"cosimosi.v1.ResonanceBridge"> & {
+  /**
+   * @generated from field: string my_memory_id = 1;
+   */
+  myMemoryId: string;
+
+  /**
+   * @generated from field: int32 their_star_index = 2;
+   */
+  theirStarIndex: number;
+};
+
+/**
+ * Describes the message cosimosi.v1.ResonanceBridge.
+ * Use `create(ResonanceBridgeSchema)` to create a new message.
+ */
+export const ResonanceBridgeSchema: GenMessage<ResonanceBridge> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_share, 11);
+
+/**
+ * Only the resonance PARTY ever gets a non-empty list — a third-party visitor always gets
+ * [] (acceptance 2.2), so a resonance's existence is never disclosed to anyone but the two
+ * people who share it (spec 36 비노출).
+ *
+ * @generated from message cosimosi.v1.GetResonanceBridgesResponse
+ */
+export type GetResonanceBridgesResponse = Message<"cosimosi.v1.GetResonanceBridgesResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.v1.ResonanceBridge bridges = 1;
+   */
+  bridges: ResonanceBridge[];
+};
+
+/**
+ * Describes the message cosimosi.v1.GetResonanceBridgesResponse.
+ * Use `create(GetResonanceBridgesResponseSchema)` to create a new message.
+ */
+export const GetResonanceBridgesResponseSchema: GenMessage<GetResonanceBridgesResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_share, 12);
+
+/**
  * VisitService is the ENTIRE unauthenticated surface (acceptance 3.1). ⚠️ Adding an rpc here
  * publishes it to the anonymous internet — only ever add reads that are safe with no caller
  * identity, and that carry NO private content.
@@ -313,7 +381,9 @@ export const VisitService: GenService<{
 
 /**
  * ShareService is the AUTHENTICATED owner surface — same auth chain as MemoryService. Each
- * rpc reads/writes only the caller's own row (user_id = JWT sub; acceptance 3.2).
+ * rpc reads/writes only the caller's own row (user_id = JWT sub; acceptance 3.2). The overlay
+ * bridge read is here (NOT on VisitService) because it needs the caller's identity to match
+ * resonances — the public surface stays content-zero (spec 37 설계 요점).
  *
  * @generated from service cosimosi.v1.ShareService
  */
@@ -341,6 +411,14 @@ export const ShareService: GenService<{
     methodKind: "unary";
     input: typeof RotateShareSlugRequestSchema;
     output: typeof RotateShareSlugResponseSchema;
+  },
+  /**
+   * @generated from rpc cosimosi.v1.ShareService.GetResonanceBridges
+   */
+  getResonanceBridges: {
+    methodKind: "unary";
+    input: typeof GetResonanceBridgesRequestSchema;
+    output: typeof GetResonanceBridgesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_v1_share, 1);

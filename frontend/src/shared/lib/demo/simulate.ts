@@ -124,11 +124,15 @@ interface WorkFragment {
 }
 
 /** topic 집합 위 코사인(임베딩 유사도의 대역). 공유 주제가 많을수록 1에 가깝다. */
-function sim(a: WorkFragment, b: WorkFragment): number {
-  if (a.topics.length === 0 || b.topics.length === 0) return 0
+function topicCosine(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0
   let shared = 0
-  for (const t of a.topics) if (b.topics.includes(t)) shared += 1
-  return shared / Math.sqrt(a.topics.length * b.topics.length)
+  for (const t of a) if (b.includes(t)) shared += 1
+  return shared / Math.sqrt(a.length * b.length)
+}
+
+function sim(a: WorkFragment, b: WorkFragment): number {
+  return topicCosine(a.topics, b.topics)
 }
 
 function temporalBonus(a: WorkFragment, b: WorkFragment): number {
@@ -302,4 +306,50 @@ export function simulate(corpus: PersonaCorpus): SimUniverse {
   }))
 
   return { stars, edges: [...edges.values()] }
+}
+
+/** 한 페르소나의 조각을 {id, topics, intensity}로 펼친다(crossResonances 입력 — 별 id 규약은 simulate와 동일). */
+function flattenFragments(c: PersonaCorpus): { id: string; topics: string[]; intensity: number }[] {
+  return c.diaries.flatMap((d) => {
+    const recordId = `${c.id}-${d.key}`
+    const single = d.fragments.length === 1
+    return d.fragments.map((f, i) => ({
+      id: single ? recordId : `${recordId}-f${i}`,
+      topics: f.topics,
+      intensity: f.intensity,
+    }))
+  })
+}
+
+/** 두 우주 사이의 *공명 쌍*(spec 37 데모): 서로 다른 두 삶에서 주제가 가장 닿는 기억끼리 잇는다 —
+ *  데모엔 별 보내기/수락(gift) 흐름이 없으므로(서버 없음) "이미 공명된 두 우주"를 코퍼스에서 파생한다.
+ *  페르소나 내부 simulate의 의미 링크와 같은 topic-cosine을 두 코퍼스 *사이*에 적용하고, 강도가 센
+ *  쌍을 살짝 우대해 1:1 매칭으로 최대 max쌍을 고른다(각 별은 한 다리에만 — 시각적으로 또렷하게).
+ *  결정론적(난수 없음) — 같은 두 코퍼스면 늘 같은 다리. aId는 a 우주, bId는 b 우주의 별 id. */
+export function crossResonances(
+  a: PersonaCorpus,
+  b: PersonaCorpus,
+  max = 4,
+): { aId: string; bId: string }[] {
+  const fa = flattenFragments(a)
+  const fb = flattenFragments(b)
+  const cands: { aId: string; bId: string; s: number }[] = []
+  for (const x of fa) {
+    for (const y of fb) {
+      const cos = topicCosine(x.topics, y.topics)
+      if (cos >= SIM_TAU) cands.push({ aId: x.id, bId: y.id, s: cos + (x.intensity + y.intensity) * 0.05 })
+    }
+  }
+  cands.sort((p, q) => q.s - p.s || (p.aId < q.aId ? -1 : 1)) // 점수 desc, 동점은 id로 안정 정렬
+  const usedA = new Set<string>()
+  const usedB = new Set<string>()
+  const out: { aId: string; bId: string }[] = []
+  for (const c of cands) {
+    if (out.length >= max) break
+    if (usedA.has(c.aId) || usedB.has(c.bId)) continue // 1:1 매칭 — 한 별은 한 다리에만
+    usedA.add(c.aId)
+    usedB.add(c.bId)
+    out.push({ aId: c.aId, bId: c.bId })
+  }
+  return out
 }

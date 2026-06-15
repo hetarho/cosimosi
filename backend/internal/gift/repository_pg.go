@@ -228,6 +228,21 @@ func (r *pgRepository) ListReceived(ctx context.Context, userID string) ([]GiftR
 	return out, nil
 }
 
+func (r *pgRepository) ResonancesBetween(ctx context.Context, callerUserID, ownerUserID string) ([]ResonancePair, error) {
+	rows, err := gen.New(r.pool).ListResonanceBridges(ctx, gen.ListResonanceBridgesParams{
+		CallerUserID: callerUserID,
+		OwnerUserID:  ownerUserID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list resonance bridges: %w", err)
+	}
+	out := make([]ResonancePair, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ResonancePair{MyMemoryID: row.MyMemoryID, TheirMemoryID: row.TheirMemoryID})
+	}
+	return out, nil
+}
+
 func (r *pgRepository) ResonancePartnerUserID(ctx context.Context, memoryID, userID string) (string, bool, error) {
 	partnerID, err := gen.New(r.pool).GetResonancePartner(ctx, gen.GetResonancePartnerParams{MemoryID: memoryID, UserID: userID})
 	if errors.Is(err, pgx.ErrNoRows) {

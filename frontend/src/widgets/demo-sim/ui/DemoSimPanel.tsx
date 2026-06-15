@@ -14,6 +14,7 @@ import {
   demoPersonaList,
   demoToday,
   getDemoPersona,
+  useDemoOverlay,
   type DemoPersona,
 } from '@/shared/lib/demo'
 import { Dropdown, MorningDiffNote } from '@/shared/ui'
@@ -159,6 +160,15 @@ function ControlsPanel({
         <p className="text-[11px] leading-relaxed text-amber-200/60">
           고르면 그 사람이 쌓아온 우주로 새로 그려져요 — 시간 머신과 띄운 별은 처음으로 돌아가요.
         </p>
+        {/* 겹쳐보기(spec 37) — 두 페르소나 우주를 한 화면에 겹쳐, 공명한 별을 빛의 다리로 잇는다.
+            서버 없이 (b) 겹침 공간을 시연하는 쇼케이스(36 공명의 가장 강한 그림). */}
+        <button
+          type="button"
+          onClick={() => useDemoOverlay.getState().setOn(true)}
+          className="rounded-md border border-amber-300/40 bg-amber-400/15 px-3 py-2 text-xs font-medium text-amber-50 transition hover:bg-amber-400/25"
+        >
+          ✶ 다른 우주와 겹쳐보기
+        </button>
       </div>
 
       {/* 컨트롤러 1 — 시간 머신: 실제 감쇠 수식이 그대로 도는 시간 전진(연출 아님). */}

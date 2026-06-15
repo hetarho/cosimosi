@@ -148,6 +148,21 @@ func (f *fakeRepo) ResonancePartnerUserID(_ context.Context, memoryID, userID st
 	return "", false, nil
 }
 
+func (f *fakeRepo) ResonancesBetween(_ context.Context, callerUserID, ownerUserID string) ([]ResonancePair, error) {
+	var out []ResonancePair
+	for _, r := range f.res {
+		so := f.stars[r.senderMem].owner
+		ro := f.stars[r.recipientMem].owner
+		switch {
+		case so == callerUserID && ro == ownerUserID:
+			out = append(out, ResonancePair{MyMemoryID: r.senderMem, TheirMemoryID: r.recipientMem})
+		case so == ownerUserID && ro == callerUserID:
+			out = append(out, ResonancePair{MyMemoryID: r.recipientMem, TheirMemoryID: r.senderMem})
+		}
+	}
+	return out, nil
+}
+
 // fakeShare resolves a fixed display name / slug for any user.
 type fakeShare struct {
 	name    string

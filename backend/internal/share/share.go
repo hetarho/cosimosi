@@ -130,6 +130,30 @@ type SettingsReader interface {
 	Appearance(ctx context.Context, userID string) (Appearance, error)
 }
 
+// ResonancePair is one caller↔owner resonance (spec 36) as the gift context reports it:
+// MyMemoryID is the CALLER's star, TheirMemoryID the owner's. The share service maps
+// TheirMemoryID to a public-snapshot index (the owner's id never leaves the server).
+type ResonancePair struct {
+	MyMemoryID    string
+	TheirMemoryID string
+}
+
+// ResonanceReader is the consumer port for spec-36 resonances (spec 37 overlay bridges) —
+// adapted from gift.Service by the composition root so share never imports gift (the
+// SettingsReader precedent). Returns the pairs whose two ends belong to caller and owner;
+// empty for a non-party caller (the existence of a resonance is never disclosed).
+type ResonanceReader interface {
+	ResonancesBetween(ctx context.Context, callerUserID, ownerUserID string) ([]ResonancePair, error)
+}
+
+// ResonanceBridge is the PUBLIC overlay datum (spec 37): the caller's own star id + the
+// partner star's INDEX in this slug's GetSharedUniverse response array. No partner id, no
+// content — the client places a bridge endpoint by index without learning anything private.
+type ResonanceBridge struct {
+	MyMemoryID     string
+	TheirStarIndex int
+}
+
 // newSlug returns 128 bits of crypto entropy as 22 base64url chars (acceptance 1.4). Raw
 // (unpadded) URL encoding keeps it path-safe with no '=' to escape.
 func newSlug() (string, error) {

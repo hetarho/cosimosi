@@ -285,6 +285,51 @@ func (q *Queries) ListReceivedGifts(ctx context.Context, userID *string) ([]List
 	return items, nil
 }
 
+const listResonanceBridges = `-- name: ListResonanceBridges :many
+SELECT
+    (CASE WHEN sm.user_id = $1 THEN res.sender_memory_id ELSE res.recipient_memory_id END)::text AS my_memory_id,
+    (CASE WHEN sm.user_id = $2  THEN res.sender_memory_id ELSE res.recipient_memory_id END)::text AS their_memory_id
+FROM resonances res
+JOIN memories sm ON sm.id = res.sender_memory_id
+JOIN memories rm ON rm.id = res.recipient_memory_id
+WHERE (sm.user_id = $1 AND rm.user_id = $2)
+   OR (sm.user_id = $2  AND rm.user_id = $1)
+`
+
+type ListResonanceBridgesParams struct {
+	CallerUserID string `json:"caller_user_id"`
+	OwnerUserID  string `json:"owner_user_id"`
+}
+
+type ListResonanceBridgesRow struct {
+	MyMemoryID    string `json:"my_memory_id"`
+	TheirMemoryID string `json:"their_memory_id"`
+}
+
+// 두 사용자(호출자·우주 주인) 사이의 공명 쌍(spec 37 겹쳐보기). 한 끝점은 호출자 별, 다른 끝점은
+// 주인 별 — my_memory_id는 호출자 쪽, their_memory_id는 주인 쪽으로 가린다(무방향: 누가 보낸/받은
+// 쪽이든 CASE로 정규화). 양쪽 user_id 가드로 두 끝점이 정확히 그 두 사람의 별일 때만 매칭한다 —
+// 제3자나 무관한 공명은 절대 잡히지 않는다(당사자 한정, acceptance 2.2). 삭제 쿼리는 없다(헌법2).
+func (q *Queries) ListResonanceBridges(ctx context.Context, arg ListResonanceBridgesParams) ([]ListResonanceBridgesRow, error) {
+	rows, err := q.db.Query(ctx, listResonanceBridges, arg.CallerUserID, arg.OwnerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListResonanceBridgesRow
+	for rows.Next() {
+		var i ListResonanceBridgesRow
+		if err := rows.Scan(&i.MyMemoryID, &i.TheirMemoryID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSentGifts = `-- name: ListSentGifts :many
 SELECT id, token, status, recipient_user_id, message, created_at, responded_at, expires_at
 FROM star_gifts

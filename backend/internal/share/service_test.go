@@ -72,8 +72,18 @@ func (f fakeSettings) Appearance(context.Context, string) (Appearance, error) {
 	return f.appearance, f.err
 }
 
+// fakeResonance models the gift context's caller↔owner resonance lookup, keyed "caller|owner".
+// An absent key returns nil — exactly what a non-party caller (or no resonance yet) yields.
+type fakeResonance struct {
+	pairs map[string][]ResonancePair
+}
+
+func (f fakeResonance) ResonancesBetween(_ context.Context, caller, owner string) ([]ResonancePair, error) {
+	return f.pairs[caller+"|"+owner], nil
+}
+
 func newService(repo Repository) *Service {
-	return NewService(repo, fakeSettings{appearance: Appearance{Theme: "calm"}})
+	return NewService(repo, fakeSettings{appearance: Appearance{Theme: "calm"}}, fakeResonance{})
 }
 
 // 1.4: the first enable mints a 128-bit (22-char base64url) slug; toggling off→on keeps it.
@@ -240,7 +250,7 @@ func TestSnapshot_SynapseEndpointsMappedToIndices(t *testing.T) {
 // the snapshot (the landscape graph still renders).
 func TestSnapshot_AppearanceDegradesOnError(t *testing.T) {
 	repo := newFakeRepo()
-	svc := NewService(repo, fakeSettings{err: errors.New("settings down")})
+	svc := NewService(repo, fakeSettings{err: errors.New("settings down")}, fakeResonance{})
 	ctx := context.Background()
 	repo.stars["u1"] = []StarLandscape{{ID: "a", Mood: "joy"}}
 	st, _ := svc.UpdateSettings(ctx, "u1", true, "u")
@@ -260,4 +270,94 @@ func errSnapshot(t *testing.T, svc *Service, slug string) error {
 	t.Helper()
 	_, err := svc.Snapshot(context.Background(), slug)
 	return err
+}
+
+// enable turns on sharing for a user and returns the minted slug (test helper).
+func enableShare(t *testing.T, svc *Service, user string) string {
+	t.Helper()
+	st, err := svc.UpdateSettings(context.Background(), user, true, "")
+	if err != nil {
+		t.Fatalf("enable %s: %v", user, err)
+	}
+	return st.Slug
+}
+
+// 2.1 (spec 37): a resonance party gets a bridge carrying their OWN star id + the partner star's
+// index in the public snapshot. The index uses the SAME ORDER BY m.id as ListStars/the snapshot,
+// so "b" (the 2nd of a,b,c) maps to index 1 — aligned with the GetSharedUniverse array.
+func TestResonanceBridges_PartyGetsSnapshotIndex(t *testing.T) {
+	repo := newFakeRepo()
+	repo.stars["u1"] = []StarLandscape{{ID: "a"}, {ID: "b"}, {ID: "c"}} // owner's snapshot order
+	svc := NewService(repo, fakeSettings{}, fakeResonance{pairs: map[string][]ResonancePair{
+		"u2|u1": {{MyMemoryID: "mine-1", TheirMemoryID: "b"}},
+	}})
+	slug := enableShare(t, svc, "u1")
+
+	bridges, err := svc.ResonanceBridges(context.Background(), "u2", slug)
+	if err != nil {
+		t.Fatalf("bridges: %v", err)
+	}
+	if len(bridges) != 1 {
+		t.Fatalf("want 1 bridge, got %d", len(bridges))
+	}
+	if bridges[0].MyMemoryID != "mine-1" || bridges[0].TheirStarIndex != 1 {
+		t.Fatalf("want {mine-1, index 1 (= star b)}, got %+v", bridges[0])
+	}
+}
+
+// 2.2: a non-party caller (no caller↔owner resonance) gets an EMPTY list — the existence of any
+// resonance between the owner and someone else is never disclosed.
+func TestResonanceBridges_NonPartyGetsEmpty(t *testing.T) {
+	repo := newFakeRepo()
+	repo.stars["u1"] = []StarLandscape{{ID: "a"}, {ID: "b"}}
+	svc := NewService(repo, fakeSettings{}, fakeResonance{pairs: map[string][]ResonancePair{
+		"u2|u1": {{MyMemoryID: "mine-1", TheirMemoryID: "a"}}, // u2 is a party; u3 is not
+	}})
+	slug := enableShare(t, svc, "u1")
+
+	bridges, err := svc.ResonanceBridges(context.Background(), "u3", slug)
+	if err != nil {
+		t.Fatalf("bridges: %v", err)
+	}
+	if len(bridges) != 0 {
+		t.Fatalf("a non-party caller must get 0 bridges, got %d", len(bridges))
+	}
+}
+
+// 3.2: when the owner turns sharing OFF, the slug stops resolving, so the overlay bridge read is
+// blocked by the SAME uniform NotFound as a visit — overlay dies the instant sharing does.
+func TestResonanceBridges_ShareOffIsNotFound(t *testing.T) {
+	repo := newFakeRepo()
+	repo.stars["u1"] = []StarLandscape{{ID: "a"}}
+	svc := NewService(repo, fakeSettings{}, fakeResonance{pairs: map[string][]ResonancePair{
+		"u2|u1": {{MyMemoryID: "mine-1", TheirMemoryID: "a"}},
+	}})
+	slug := enableShare(t, svc, "u1")
+	if _, err := svc.UpdateSettings(context.Background(), "u1", false, ""); err != nil {
+		t.Fatalf("disable: %v", err)
+	}
+	if _, err := svc.ResonanceBridges(context.Background(), "u2", slug); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("want ErrNotFound after share off, got %v", err)
+	}
+}
+
+// An owner-end memory that isn't in the current snapshot is dropped — never emit a stray index.
+func TestResonanceBridges_UnknownPartnerStarDropped(t *testing.T) {
+	repo := newFakeRepo()
+	repo.stars["u1"] = []StarLandscape{{ID: "a"}, {ID: "b"}}
+	svc := NewService(repo, fakeSettings{}, fakeResonance{pairs: map[string][]ResonancePair{
+		"u2|u1": {
+			{MyMemoryID: "mine-1", TheirMemoryID: "b"},     // in snapshot → index 1
+			{MyMemoryID: "mine-2", TheirMemoryID: "ghost"}, // not in snapshot → dropped
+		},
+	}})
+	slug := enableShare(t, svc, "u1")
+
+	bridges, err := svc.ResonanceBridges(context.Background(), "u2", slug)
+	if err != nil {
+		t.Fatalf("bridges: %v", err)
+	}
+	if len(bridges) != 1 || bridges[0].TheirStarIndex != 1 {
+		t.Fatalf("want only the in-snapshot bridge (index 1), got %+v", bridges)
+	}
 }

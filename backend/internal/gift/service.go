@@ -182,6 +182,17 @@ func (s *Service) GetResonanceInfo(ctx context.Context, userID, memoryID string)
 	return info, nil
 }
 
+// ResonancesBetween returns the caller↔owner resonance pairs for the overlay (spec 37). A
+// pure pass-through to the repo: the share context owns the index mapping + party policy, so
+// gift just supplies which of the caller's stars resonate with which of the owner's. Self
+// (caller == owner) yields none — a resonance always spans two users (self-accept is rejected).
+func (s *Service) ResonancesBetween(ctx context.Context, callerUserID, ownerUserID string) ([]ResonancePair, error) {
+	if callerUserID == ownerUserID {
+		return nil, nil
+	}
+	return s.repo.ResonancesBetween(ctx, callerUserID, ownerUserID)
+}
+
 // toSummaries folds effective status (expiry) + the counterpart display name onto raw gift
 // rows. names caches lookups within the call so a counterpart appearing twice costs one read.
 func (s *Service) toSummaries(ctx context.Context, recs []GiftRecord, now time.Time, names map[string]string) []GiftSummary {

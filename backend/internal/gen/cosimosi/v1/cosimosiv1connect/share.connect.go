@@ -47,6 +47,9 @@ const (
 	// ShareServiceRotateShareSlugProcedure is the fully-qualified name of the ShareService's
 	// RotateShareSlug RPC.
 	ShareServiceRotateShareSlugProcedure = "/cosimosi.v1.ShareService/RotateShareSlug"
+	// ShareServiceGetResonanceBridgesProcedure is the fully-qualified name of the ShareService's
+	// GetResonanceBridges RPC.
+	ShareServiceGetResonanceBridgesProcedure = "/cosimosi.v1.ShareService/GetResonanceBridges"
 )
 
 // VisitServiceClient is a client for the cosimosi.v1.VisitService service.
@@ -126,6 +129,7 @@ type ShareServiceClient interface {
 	GetShareSettings(context.Context, *connect.Request[v1.GetShareSettingsRequest]) (*connect.Response[v1.GetShareSettingsResponse], error)
 	UpdateShareSettings(context.Context, *connect.Request[v1.UpdateShareSettingsRequest]) (*connect.Response[v1.UpdateShareSettingsResponse], error)
 	RotateShareSlug(context.Context, *connect.Request[v1.RotateShareSlugRequest]) (*connect.Response[v1.RotateShareSlugResponse], error)
+	GetResonanceBridges(context.Context, *connect.Request[v1.GetResonanceBridgesRequest]) (*connect.Response[v1.GetResonanceBridgesResponse], error)
 }
 
 // NewShareServiceClient constructs a client for the cosimosi.v1.ShareService service. By default,
@@ -158,6 +162,13 @@ func NewShareServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(shareServiceMethods.ByName("RotateShareSlug")),
 			connect.WithClientOptions(opts...),
 		),
+		getResonanceBridges: connect.NewClient[v1.GetResonanceBridgesRequest, v1.GetResonanceBridgesResponse](
+			httpClient,
+			baseURL+ShareServiceGetResonanceBridgesProcedure,
+			connect.WithSchema(shareServiceMethods.ByName("GetResonanceBridges")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -166,6 +177,7 @@ type shareServiceClient struct {
 	getShareSettings    *connect.Client[v1.GetShareSettingsRequest, v1.GetShareSettingsResponse]
 	updateShareSettings *connect.Client[v1.UpdateShareSettingsRequest, v1.UpdateShareSettingsResponse]
 	rotateShareSlug     *connect.Client[v1.RotateShareSlugRequest, v1.RotateShareSlugResponse]
+	getResonanceBridges *connect.Client[v1.GetResonanceBridgesRequest, v1.GetResonanceBridgesResponse]
 }
 
 // GetShareSettings calls cosimosi.v1.ShareService.GetShareSettings.
@@ -183,11 +195,17 @@ func (c *shareServiceClient) RotateShareSlug(ctx context.Context, req *connect.R
 	return c.rotateShareSlug.CallUnary(ctx, req)
 }
 
+// GetResonanceBridges calls cosimosi.v1.ShareService.GetResonanceBridges.
+func (c *shareServiceClient) GetResonanceBridges(ctx context.Context, req *connect.Request[v1.GetResonanceBridgesRequest]) (*connect.Response[v1.GetResonanceBridgesResponse], error) {
+	return c.getResonanceBridges.CallUnary(ctx, req)
+}
+
 // ShareServiceHandler is an implementation of the cosimosi.v1.ShareService service.
 type ShareServiceHandler interface {
 	GetShareSettings(context.Context, *connect.Request[v1.GetShareSettingsRequest]) (*connect.Response[v1.GetShareSettingsResponse], error)
 	UpdateShareSettings(context.Context, *connect.Request[v1.UpdateShareSettingsRequest]) (*connect.Response[v1.UpdateShareSettingsResponse], error)
 	RotateShareSlug(context.Context, *connect.Request[v1.RotateShareSlugRequest]) (*connect.Response[v1.RotateShareSlugResponse], error)
+	GetResonanceBridges(context.Context, *connect.Request[v1.GetResonanceBridgesRequest]) (*connect.Response[v1.GetResonanceBridgesResponse], error)
 }
 
 // NewShareServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -216,6 +234,13 @@ func NewShareServiceHandler(svc ShareServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(shareServiceMethods.ByName("RotateShareSlug")),
 		connect.WithHandlerOptions(opts...),
 	)
+	shareServiceGetResonanceBridgesHandler := connect.NewUnaryHandler(
+		ShareServiceGetResonanceBridgesProcedure,
+		svc.GetResonanceBridges,
+		connect.WithSchema(shareServiceMethods.ByName("GetResonanceBridges")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.v1.ShareService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ShareServiceGetShareSettingsProcedure:
@@ -224,6 +249,8 @@ func NewShareServiceHandler(svc ShareServiceHandler, opts ...connect.HandlerOpti
 			shareServiceUpdateShareSettingsHandler.ServeHTTP(w, r)
 		case ShareServiceRotateShareSlugProcedure:
 			shareServiceRotateShareSlugHandler.ServeHTTP(w, r)
+		case ShareServiceGetResonanceBridgesProcedure:
+			shareServiceGetResonanceBridgesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -243,4 +270,8 @@ func (UnimplementedShareServiceHandler) UpdateShareSettings(context.Context, *co
 
 func (UnimplementedShareServiceHandler) RotateShareSlug(context.Context, *connect.Request[v1.RotateShareSlugRequest]) (*connect.Response[v1.RotateShareSlugResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.ShareService.RotateShareSlug is not implemented"))
+}
+
+func (UnimplementedShareServiceHandler) GetResonanceBridges(context.Context, *connect.Request[v1.GetResonanceBridgesRequest]) (*connect.Response[v1.GetResonanceBridgesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.ShareService.GetResonanceBridges is not implemented"))
 }

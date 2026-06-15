@@ -10,14 +10,16 @@ import (
 // the public snapshot assembly (timestamp day-quantization, synapse-endpoint → index mapping,
 // owner-appearance fold, uniform NotFound). It depends only on ports — no transport, no db.
 type Service struct {
-	repo     Repository
-	settings SettingsReader
+	repo      Repository
+	settings  SettingsReader
+	resonance ResonanceReader
 }
 
-// NewService wires the share service over its persistence Repository and a SettingsReader
-// (the owner's spec-30 visual overrides, adapted from settings.Service by the composition root).
-func NewService(repo Repository, settings SettingsReader) *Service {
-	return &Service{repo: repo, settings: settings}
+// NewService wires the share service over its persistence Repository, a SettingsReader (the
+// owner's spec-30 visual overrides) and a ResonanceReader (spec-36 resonances for the spec-37
+// overlay) — both adapted from their owning services by the composition root.
+func NewService(repo Repository, settings SettingsReader, resonance ResonanceReader) *Service {
+	return &Service{repo: repo, settings: settings, resonance: resonance}
 }
 
 // GetSettings returns the owner's share configuration; a user who never shared gets the zero
@@ -124,4 +126,51 @@ func (s *Service) Snapshot(ctx context.Context, slug string) (Snapshot, error) {
 		Synapses:    synapses,
 		Appearance:  appearance,
 	}, nil
+}
+
+// ResonanceBridges returns the caller↔owner resonance bridges for the overlay (spec 37). The
+// slug must resolve to an ENABLED share (else ErrNotFound — uniform, so overlay is blocked the
+// instant the owner stops sharing, acceptance 3.2). Each partner-end memory id is mapped to its
+// index in the SAME star ordering the public snapshot uses (ListStars → ORDER BY m.id), so the
+// returned their_star_index lines up with the GetSharedUniverse array the client already holds
+// (no index drift; 설계 요점). A non-party caller gets [] (the resonance read returns none), so a
+// resonance is never disclosed to a third party (acceptance 2.2). The partner's memory id never
+// leaves the server — only its public index does (content-zero intact, spec 35).
+func (s *Service) ResonanceBridges(ctx context.Context, callerUserID, slug string) ([]ResonanceBridge, error) {
+	ownerUserID, _, ok, err := s.repo.UserBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotFound // unknown / disabled / rotated slug — uniform (3.2)
+	}
+
+	pairs, err := s.resonance.ResonancesBetween(ctx, callerUserID, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	if len(pairs) == 0 {
+		return nil, nil // not a resonance party (or none yet) — no bridges, nothing disclosed
+	}
+
+	// Map the owner's memory id → its snapshot index. ListStars uses the SAME ORDER BY m.id as
+	// the public snapshot assembly above, so these indices match the GetSharedUniverse array.
+	ownerStars, err := s.repo.ListStars(ctx, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	indexByID := make(map[string]int, len(ownerStars))
+	for i, st := range ownerStars {
+		indexByID[st.ID] = i
+	}
+
+	bridges := make([]ResonanceBridge, 0, len(pairs))
+	for _, p := range pairs {
+		idx, ok := indexByID[p.TheirMemoryID]
+		if !ok {
+			continue // owner star not in the current snapshot (shouldn't happen) — never emit a stray index
+		}
+		bridges = append(bridges, ResonanceBridge{MyMemoryID: p.MyMemoryID, TheirStarIndex: idx})
+	}
+	return bridges, nil
 }

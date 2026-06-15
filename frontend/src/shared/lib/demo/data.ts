@@ -21,9 +21,9 @@ import {
 } from '@/shared/api'
 import { mulberry32 } from '../prng'
 import { virtualNowMs, resetDemoClock } from './clock'
-import { getDemoPersona } from './flag'
+import { getDemoPersona, type DemoPersona } from './flag'
 import { CORPORA } from './personas'
-import { simulate, type SimStar } from './simulate'
+import { crossResonances, simulate, type SimStar } from './simulate'
 
 const DAY_MS = 86_400_000
 
@@ -163,6 +163,53 @@ export function demoStars(): Star[] {
 export function demoSynapses(): Synapse[] {
   ensureSeeded()
   return [...baseSynapses, ...addedEdges]
+}
+
+// ── 겹쳐보기(spec 37) 데모: 두 페르소나 우주 + 그 사이 공명 다리 ──
+export interface DemoOverlaySide {
+  persona: DemoPersona
+  label: string
+  stars: Star[]
+  synapses: Synapse[]
+}
+
+/** 한 페르소나 코퍼스를 proto 우주(별·시냅스)로 빚는다 — 활성 페르소나 런타임 상태(addedStars)와
+ *  무관한 *순수 코퍼스 스냅샷*이라, 활성 우주와 별개로 친구 우주를 동시에 띄울 수 있다(겹쳐보기). */
+function buildPersonaUniverse(persona: DemoPersona, now: number): DemoOverlaySide {
+  const uni = simulate(CORPORA[persona])
+  return {
+    persona,
+    label: CORPORA[persona].label,
+    stars: uni.stars.map((s) => toStar(now, s)),
+    synapses: uni.edges.map((ed) =>
+      create(SynapseSchema, {
+        aId: ed.a,
+        bId: ed.b,
+        weight: ed.weight,
+        linkType: ed.linkType,
+        lastActivatedAt: isoFrom(now, ed.daysAgo),
+      }),
+    ),
+  }
+}
+
+/** 겹쳐보기(spec 37) 데모 데이터: 활성 페르소나 우주 + 다른 페르소나 우주 + 두 우주 사이 공명 다리
+ *  (crossResonances). 서버 없이 (b) 겹침 공간을 시연 — 두 페르소나 우주가 한 화면에 떠 빛의 다리로
+ *  이어진다(36 공명의 쇼케이스). bridges.aId는 mine 우주, bId는 theirs 우주의 별 id. */
+export function demoOverlayData(): {
+  mine: DemoOverlaySide
+  theirs: DemoOverlaySide
+  bridges: { aId: string; bId: string }[]
+} {
+  const now = virtualNowMs()
+  const minePersona = getDemoPersona()
+  const order = Object.keys(CORPORA) as DemoPersona[]
+  const theirsPersona = order.find((p) => p !== minePersona) ?? minePersona
+  return {
+    mine: buildPersonaUniverse(minePersona, now),
+    theirs: buildPersonaUniverse(theirsPersona, now),
+    bridges: crossResonances(CORPORA[minePersona], CORPORA[theirsPersona], 4),
+  }
 }
 
 /** RecallMemory 대체: 원본 일기. 없는 id면 undefined(패널이 에러 처리). */

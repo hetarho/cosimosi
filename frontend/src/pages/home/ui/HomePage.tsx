@@ -1,20 +1,31 @@
-import { useCallback, useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useSelector } from '@xstate/react'
 import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { errorMessage, reportUniverseData } from '@/shared/lib'
-import { isDemoMode } from '@/shared/lib/demo'
+import {
+  isDemoMode,
+  getDemoPersona,
+  demoOverlayData,
+  demoFragmentText,
+  demoRecall,
+  useDemoOverlay,
+} from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
 import { Backdrop, MorningDiffNote, OverlayHost, primaryButtonCls } from '@/shared/ui'
 import {
   UniverseCanvas,
   UniverseGrain,
+  UniverseOverlay,
+  OverlayComparePanel,
   navigationActor,
   selectHeadingMode,
   useViewport,
+  type Bridge,
 } from '@/widgets/universe-canvas'
 import { DemoSimPanel } from '@/widgets/demo-sim'
+import { toSynapseEdge } from '@/entities/synapse'
 import { MemoryForm } from '@/features/record-memory'
 import { MemoryPanel, recallFlushActor } from '@/features/recall'
 import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
@@ -26,6 +37,7 @@ import { ShareUniverseButton } from '@/features/share-universe'
 import { SendStarModal, StarGiftsButton } from '@/features/send-star'
 import {
   applyUniverse,
+  mapStar,
   universeQueryOptions,
   useMemoryStore,
   focusActor,
@@ -242,6 +254,32 @@ function NavPad() {
 export function HomePage() {
   const mode = useSelector(navigationActor, selectHeadingMode)
   const starCount = useMemoryStore((s) => s.stars.length)
+
+  // 겹쳐보기(spec 37) 데모 — DemoSimPanel의 토글이 켜면 두 페르소나 우주를 한 씬에 띄운다(서버 없이
+  // (b) 겹침 공간 시연). 활성 페르소나가 mine, 다른 페르소나가 theirs, crossResonances가 그 사이 다리를
+  // 파생한다. proto → StarNode/SynapseEdge로 매핑(겹침 위젯은 PROPS 구동). 활성 페르소나가 바뀌면 재계산.
+  const demoOverlayOn = useDemoOverlay((s) => s.on)
+  const demoPersona = isDemoMode() ? getDemoPersona() : null
+  const demoOverlaySides = useMemo(() => {
+    if (!demoOverlayOn || !isDemoMode()) return null
+    const d = demoOverlayData()
+    return {
+      mine: { stars: d.mine.stars.map((s, i) => mapStar(s, i)), edges: d.mine.synapses.map(toSynapseEdge) },
+      theirs: { stars: d.theirs.stars.map((s, i) => mapStar(s, i)), edges: d.theirs.synapses.map(toSynapseEdge) },
+      bridges: d.bridges.map((b): Bridge => ({ myId: b.aId, theirId: b.bId })),
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 활성 페르소나(값) 변경 시 재시뮬
+  }, [demoOverlayOn, demoPersona])
+  const demoOverlayReady = demoOverlaySides != null
+  // 겹쳐보기 진입/이탈을 navigation 머신에 반영(overlay 상태 = 쓰기 게이트·전용 카메라).
+  useEffect(() => {
+    if (!demoOverlayReady) return
+    navigationActor.send({ type: 'ENTER_OVERLAY' })
+    return () => {
+      navigationActor.send({ type: 'EXIT_OVERLAY' })
+      focusActor.send({ type: 'DISMISS' })
+    }
+  }, [demoOverlayReady])
   // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
   // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
@@ -411,6 +449,45 @@ export function HomePage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // 겹쳐보기(spec 37) 데모 — 두 페르소나 우주 + 빛의 다리만 띄우는 전용 뷰(단일 우주 HUD와 분리해
+  // 충돌 방지). 다리를 누르면 비교 패널이 두 기억을 나란히 보여준다. "겹쳐보기 끄기"로 복귀.
+  if (demoOverlaySides) {
+    return (
+      <div className="universe-page fixed inset-0" data-lenis-prevent>
+        <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
+          <UniverseOverlay
+            mine={demoOverlaySides.mine}
+            theirs={demoOverlaySides.theirs}
+            bridges={demoOverlaySides.bridges}
+          />
+        </Sentry.ErrorBoundary>
+        <UniverseGrain />
+        {focused && <Backdrop className="z-10" />}
+        <OverlayComparePanel
+          myStars={demoOverlaySides.mine.stars}
+          theirStars={demoOverlaySides.theirs.stars}
+          // 데모는 내 별 텍스트를 페르소나 일기에서 직접 보여준다(내 우주라 비공개 이슈 없음).
+          resolveMyText={(id) => demoFragmentText(id) || demoRecall(id)?.body}
+        />
+        <div className="pointer-events-none absolute inset-x-0 top-[calc(1rem+env(safe-area-inset-top))] z-30 flex flex-col items-center gap-1 px-4 text-center">
+          <h1 className="rounded-full border border-white/10 bg-black/40 px-4 py-1.5 text-sm font-medium text-white/85 backdrop-blur">
+            두 우주 겹쳐보기
+          </h1>
+          <p className="text-[11px] text-white/40">공명한 별이 빛의 다리로 이어져요 — 다리를 눌러 비교해보세요</p>
+        </div>
+        <div className="absolute right-[calc(1rem+env(safe-area-inset-right))] top-[calc(1rem+env(safe-area-inset-top))] z-30">
+          <button
+            type="button"
+            onClick={() => useDemoOverlay.getState().setOn(false)}
+            className="rounded-full border border-white/15 bg-black/55 px-4 py-1.5 text-xs font-medium text-white/85 backdrop-blur transition-colors hover:bg-black/70"
+          >
+            겹쳐보기 끄기
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="universe-page fixed inset-0" data-lenis-prevent>

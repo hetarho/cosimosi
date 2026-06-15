@@ -589,6 +589,154 @@ func (x *RotateShareSlugResponse) GetDisplayName() string {
 	return ""
 }
 
+type GetResonanceBridgesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"` // the universe being overlaid (the owner)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetResonanceBridgesRequest) Reset() {
+	*x = GetResonanceBridgesRequest{}
+	mi := &file_cosimosi_v1_share_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetResonanceBridgesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetResonanceBridgesRequest) ProtoMessage() {}
+
+func (x *GetResonanceBridgesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_share_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetResonanceBridgesRequest.ProtoReflect.Descriptor instead.
+func (*GetResonanceBridgesRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_share_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetResonanceBridgesRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+// ResonanceBridge is ONE resonance (spec 36) between the caller and the slug's owner — the
+// only cross-universe datum the overlay exposes. It carries NO content: my_memory_id is the
+// caller's OWN star (they already hold its text), and their_star_index is the partner star's
+// position in THIS slug's GetSharedUniverse response array (so the client can place a bridge
+// endpoint without ever learning the partner's memory id — content-zero stays intact, 35).
+type ResonanceBridge struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MyMemoryId     string                 `protobuf:"bytes,1,opt,name=my_memory_id,json=myMemoryId,proto3" json:"my_memory_id,omitempty"`
+	TheirStarIndex int32                  `protobuf:"varint,2,opt,name=their_star_index,json=theirStarIndex,proto3" json:"their_star_index,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ResonanceBridge) Reset() {
+	*x = ResonanceBridge{}
+	mi := &file_cosimosi_v1_share_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResonanceBridge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResonanceBridge) ProtoMessage() {}
+
+func (x *ResonanceBridge) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_share_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResonanceBridge.ProtoReflect.Descriptor instead.
+func (*ResonanceBridge) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_share_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ResonanceBridge) GetMyMemoryId() string {
+	if x != nil {
+		return x.MyMemoryId
+	}
+	return ""
+}
+
+func (x *ResonanceBridge) GetTheirStarIndex() int32 {
+	if x != nil {
+		return x.TheirStarIndex
+	}
+	return 0
+}
+
+// Only the resonance PARTY ever gets a non-empty list — a third-party visitor always gets
+// [] (acceptance 2.2), so a resonance's existence is never disclosed to anyone but the two
+// people who share it (spec 36 비노출).
+type GetResonanceBridgesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Bridges       []*ResonanceBridge     `protobuf:"bytes,1,rep,name=bridges,proto3" json:"bridges,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetResonanceBridgesResponse) Reset() {
+	*x = GetResonanceBridgesResponse{}
+	mi := &file_cosimosi_v1_share_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetResonanceBridgesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetResonanceBridgesResponse) ProtoMessage() {}
+
+func (x *GetResonanceBridgesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_share_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetResonanceBridgesResponse.ProtoReflect.Descriptor instead.
+func (*GetResonanceBridgesResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_share_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetResonanceBridgesResponse) GetBridges() []*ResonanceBridge {
+	if x != nil {
+		return x.Bridges
+	}
+	return nil
+}
+
 var File_cosimosi_v1_share_proto protoreflect.FileDescriptor
 
 const file_cosimosi_v1_share_proto_rawDesc = "" +
@@ -631,13 +779,22 @@ const file_cosimosi_v1_share_proto_rawDesc = "" +
 	"\x17RotateShareSlugResponse\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12!\n" +
-	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName2w\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\"0\n" +
+	"\x1aGetResonanceBridgesRequest\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\"]\n" +
+	"\x0fResonanceBridge\x12 \n" +
+	"\fmy_memory_id\x18\x01 \x01(\tR\n" +
+	"myMemoryId\x12(\n" +
+	"\x10their_star_index\x18\x02 \x01(\x05R\x0etheirStarIndex\"U\n" +
+	"\x1bGetResonanceBridgesResponse\x126\n" +
+	"\abridges\x18\x01 \x03(\v2\x1c.cosimosi.v1.ResonanceBridgeR\abridges2w\n" +
 	"\fVisitService\x12g\n" +
-	"\x11GetSharedUniverse\x12%.cosimosi.v1.GetSharedUniverseRequest\x1a&.cosimosi.v1.GetSharedUniverseResponse\"\x03\x90\x02\x012\xbc\x02\n" +
+	"\x11GetSharedUniverse\x12%.cosimosi.v1.GetSharedUniverseRequest\x1a&.cosimosi.v1.GetSharedUniverseResponse\"\x03\x90\x02\x012\xab\x03\n" +
 	"\fShareService\x12d\n" +
 	"\x10GetShareSettings\x12$.cosimosi.v1.GetShareSettingsRequest\x1a%.cosimosi.v1.GetShareSettingsResponse\"\x03\x90\x02\x01\x12h\n" +
 	"\x13UpdateShareSettings\x12'.cosimosi.v1.UpdateShareSettingsRequest\x1a(.cosimosi.v1.UpdateShareSettingsResponse\x12\\\n" +
-	"\x0fRotateShareSlug\x12#.cosimosi.v1.RotateShareSlugRequest\x1a$.cosimosi.v1.RotateShareSlugResponseBAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
+	"\x0fRotateShareSlug\x12#.cosimosi.v1.RotateShareSlugRequest\x1a$.cosimosi.v1.RotateShareSlugResponse\x12m\n" +
+	"\x13GetResonanceBridges\x12'.cosimosi.v1.GetResonanceBridgesRequest\x1a(.cosimosi.v1.GetResonanceBridgesResponse\"\x03\x90\x02\x01BAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
 
 var (
 	file_cosimosi_v1_share_proto_rawDescOnce sync.Once
@@ -651,7 +808,7 @@ func file_cosimosi_v1_share_proto_rawDescGZIP() []byte {
 	return file_cosimosi_v1_share_proto_rawDescData
 }
 
-var file_cosimosi_v1_share_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_cosimosi_v1_share_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_cosimosi_v1_share_proto_goTypes = []any{
 	(*SharedStar)(nil),                  // 0: cosimosi.v1.SharedStar
 	(*SharedSynapse)(nil),               // 1: cosimosi.v1.SharedSynapse
@@ -663,29 +820,35 @@ var file_cosimosi_v1_share_proto_goTypes = []any{
 	(*UpdateShareSettingsResponse)(nil), // 7: cosimosi.v1.UpdateShareSettingsResponse
 	(*RotateShareSlugRequest)(nil),      // 8: cosimosi.v1.RotateShareSlugRequest
 	(*RotateShareSlugResponse)(nil),     // 9: cosimosi.v1.RotateShareSlugResponse
-	(Mood)(0),                           // 10: cosimosi.v1.Mood
-	(*Settings)(nil),                    // 11: cosimosi.v1.Settings
-	(*AmbientMood)(nil),                 // 12: cosimosi.v1.AmbientMood
+	(*GetResonanceBridgesRequest)(nil),  // 10: cosimosi.v1.GetResonanceBridgesRequest
+	(*ResonanceBridge)(nil),             // 11: cosimosi.v1.ResonanceBridge
+	(*GetResonanceBridgesResponse)(nil), // 12: cosimosi.v1.GetResonanceBridgesResponse
+	(Mood)(0),                           // 13: cosimosi.v1.Mood
+	(*Settings)(nil),                    // 14: cosimosi.v1.Settings
+	(*AmbientMood)(nil),                 // 15: cosimosi.v1.AmbientMood
 }
 var file_cosimosi_v1_share_proto_depIdxs = []int32{
-	10, // 0: cosimosi.v1.SharedStar.mood:type_name -> cosimosi.v1.Mood
+	13, // 0: cosimosi.v1.SharedStar.mood:type_name -> cosimosi.v1.Mood
 	0,  // 1: cosimosi.v1.GetSharedUniverseResponse.stars:type_name -> cosimosi.v1.SharedStar
 	1,  // 2: cosimosi.v1.GetSharedUniverseResponse.synapses:type_name -> cosimosi.v1.SharedSynapse
-	11, // 3: cosimosi.v1.GetSharedUniverseResponse.appearance:type_name -> cosimosi.v1.Settings
-	12, // 4: cosimosi.v1.GetSharedUniverseResponse.ambient:type_name -> cosimosi.v1.AmbientMood
-	2,  // 5: cosimosi.v1.VisitService.GetSharedUniverse:input_type -> cosimosi.v1.GetSharedUniverseRequest
-	4,  // 6: cosimosi.v1.ShareService.GetShareSettings:input_type -> cosimosi.v1.GetShareSettingsRequest
-	6,  // 7: cosimosi.v1.ShareService.UpdateShareSettings:input_type -> cosimosi.v1.UpdateShareSettingsRequest
-	8,  // 8: cosimosi.v1.ShareService.RotateShareSlug:input_type -> cosimosi.v1.RotateShareSlugRequest
-	3,  // 9: cosimosi.v1.VisitService.GetSharedUniverse:output_type -> cosimosi.v1.GetSharedUniverseResponse
-	5,  // 10: cosimosi.v1.ShareService.GetShareSettings:output_type -> cosimosi.v1.GetShareSettingsResponse
-	7,  // 11: cosimosi.v1.ShareService.UpdateShareSettings:output_type -> cosimosi.v1.UpdateShareSettingsResponse
-	9,  // 12: cosimosi.v1.ShareService.RotateShareSlug:output_type -> cosimosi.v1.RotateShareSlugResponse
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	14, // 3: cosimosi.v1.GetSharedUniverseResponse.appearance:type_name -> cosimosi.v1.Settings
+	15, // 4: cosimosi.v1.GetSharedUniverseResponse.ambient:type_name -> cosimosi.v1.AmbientMood
+	11, // 5: cosimosi.v1.GetResonanceBridgesResponse.bridges:type_name -> cosimosi.v1.ResonanceBridge
+	2,  // 6: cosimosi.v1.VisitService.GetSharedUniverse:input_type -> cosimosi.v1.GetSharedUniverseRequest
+	4,  // 7: cosimosi.v1.ShareService.GetShareSettings:input_type -> cosimosi.v1.GetShareSettingsRequest
+	6,  // 8: cosimosi.v1.ShareService.UpdateShareSettings:input_type -> cosimosi.v1.UpdateShareSettingsRequest
+	8,  // 9: cosimosi.v1.ShareService.RotateShareSlug:input_type -> cosimosi.v1.RotateShareSlugRequest
+	10, // 10: cosimosi.v1.ShareService.GetResonanceBridges:input_type -> cosimosi.v1.GetResonanceBridgesRequest
+	3,  // 11: cosimosi.v1.VisitService.GetSharedUniverse:output_type -> cosimosi.v1.GetSharedUniverseResponse
+	5,  // 12: cosimosi.v1.ShareService.GetShareSettings:output_type -> cosimosi.v1.GetShareSettingsResponse
+	7,  // 13: cosimosi.v1.ShareService.UpdateShareSettings:output_type -> cosimosi.v1.UpdateShareSettingsResponse
+	9,  // 14: cosimosi.v1.ShareService.RotateShareSlug:output_type -> cosimosi.v1.RotateShareSlugResponse
+	12, // 15: cosimosi.v1.ShareService.GetResonanceBridges:output_type -> cosimosi.v1.GetResonanceBridgesResponse
+	11, // [11:16] is the sub-list for method output_type
+	6,  // [6:11] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_v1_share_proto_init() }
@@ -700,7 +863,7 @@ func file_cosimosi_v1_share_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_v1_share_proto_rawDesc), len(file_cosimosi_v1_share_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

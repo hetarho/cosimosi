@@ -168,6 +168,15 @@ type ResonanceInfo struct {
 	PartnerSlug        string
 }
 
+// ResonancePair is one resonance (spec 36) between two specific users (spec 37 overlay):
+// MyMemoryID is the CALLER's star, TheirMemoryID the partner's. Both are server-side memory
+// ids — the share context maps TheirMemoryID to a public snapshot INDEX before it ever leaves
+// the server (the overlay never exposes the partner's id; spec 35 content-zero stays intact).
+type ResonancePair struct {
+	MyMemoryID    string
+	TheirMemoryID string
+}
+
 // ShareReader is the consumer port for the partner/sender public identity (spec 35
 // universe_shares). The composition root adapts share.Service so gift never imports share —
 // the segmenterAdapter / shareSettingsAdapter precedent. An anonymous / never-shared user

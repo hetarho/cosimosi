@@ -87,6 +87,20 @@ FROM star_gifts
 WHERE recipient_user_id = @user_id
 ORDER BY responded_at DESC;
 
+-- name: ListResonanceBridges :many
+-- 두 사용자(호출자·우주 주인) 사이의 공명 쌍(spec 37 겹쳐보기). 한 끝점은 호출자 별, 다른 끝점은
+-- 주인 별 — my_memory_id는 호출자 쪽, their_memory_id는 주인 쪽으로 가린다(무방향: 누가 보낸/받은
+-- 쪽이든 CASE로 정규화). 양쪽 user_id 가드로 두 끝점이 정확히 그 두 사람의 별일 때만 매칭한다 —
+-- 제3자나 무관한 공명은 절대 잡히지 않는다(당사자 한정, acceptance 2.2). 삭제 쿼리는 없다(헌법2).
+SELECT
+    (CASE WHEN sm.user_id = @caller_user_id THEN res.sender_memory_id ELSE res.recipient_memory_id END)::text AS my_memory_id,
+    (CASE WHEN sm.user_id = @owner_user_id  THEN res.sender_memory_id ELSE res.recipient_memory_id END)::text AS their_memory_id
+FROM resonances res
+JOIN memories sm ON sm.id = res.sender_memory_id
+JOIN memories rm ON rm.id = res.recipient_memory_id
+WHERE (sm.user_id = @caller_user_id AND rm.user_id = @owner_user_id)
+   OR (sm.user_id = @owner_user_id  AND rm.user_id = @caller_user_id);
+
 -- name: GetResonancePartner :one
 -- 별 상세의 "○○의 우주와 공명 중"(GetResonanceInfo): 내 별 memory_id가 공명의 어느 끝점이든,
 -- 반대편 별의 소유자(상대 user_id)를 돌린다. user_id 가드로 그 끝점이 정말 내 별인지 확인한다.

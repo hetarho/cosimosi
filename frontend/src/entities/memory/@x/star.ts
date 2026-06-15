@@ -3,3 +3,5 @@
 export { useMemoryStore, starsOfRecord } from '../model/store'
 export { starBrightness, modulatedBrightness } from '../model/activation'
 export { reshapedBrightness, reshapedSeed } from '../model/reshape'
+// 겹쳐보기(spec 37): StarField가 스토어 대신 외부 별 소스를 그릴 때(두 우주 동시 렌더) prop 타입.
+export type { StarNode } from '../model/types'

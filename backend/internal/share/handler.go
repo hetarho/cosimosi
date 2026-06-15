@@ -93,6 +93,25 @@ func (h *Handler) RotateShareSlug(ctx context.Context, _ *connect.Request[cosimo
 	}), nil
 }
 
+func (h *Handler) GetResonanceBridges(ctx context.Context, req *connect.Request[cosimosiv1.GetResonanceBridgesRequest]) (*connect.Response[cosimosiv1.GetResonanceBridgesResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	bridges, err := h.svc.ResonanceBridges(ctx, userID, req.Msg.GetSlug())
+	switch {
+	case errors.Is(err, ErrNotFound):
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("not found")) // uniform — owner stopped sharing (3.2)
+	case err != nil:
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	out := make([]*cosimosiv1.ResonanceBridge, len(bridges))
+	for i, b := range bridges {
+		out[i] = &cosimosiv1.ResonanceBridge{MyMemoryId: b.MyMemoryID, TheirStarIndex: int32(b.TheirStarIndex)}
+	}
+	return connect.NewResponse(&cosimosiv1.GetResonanceBridgesResponse{Bridges: out}), nil
+}
+
 // --- VisitService (UNAUTHENTICATED public read) ---
 
 // GetSharedUniverse returns the public landscape for a slug. NO auth — the slug IS the

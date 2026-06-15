@@ -23,8 +23,10 @@ export {
   demoReshape,
   demoConsolidate,
   demoEvolution,
+  demoOverlayData,
   resetDemo,
 } from './data'
-export type { EvolutionSnap } from './data'
+export type { EvolutionSnap, DemoOverlaySide } from './data'
+export { useDemoOverlay } from './overlay-mode'
 export { virtualNowMs, skipDemoDays, demoOffsetDays, resetDemoClock } from './clock'
 export { brightestStarId, thickestEdge, sameDayPair, dormantStarId } from './observe'

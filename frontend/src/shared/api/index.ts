@@ -38,6 +38,9 @@ export type {
   GetShareSettingsResponse,
   UpdateShareSettingsResponse,
   RotateShareSlugResponse,
+  // 겹쳐보기(spec 37) — 공명 다리(인증 ShareService).
+  ResonanceBridge,
+  GetResonanceBridgesResponse,
 } from './gen/cosimosi/v1/share_pb'
 // 함께한 기억 — 공명 계약(spec 36) — GiftService(전부 인증): 별 보내기·열기·수락·거절·취소·목록·공명정보.
 export { GiftService, GiftStatus } from './gen/cosimosi/v1/gift_pb'
