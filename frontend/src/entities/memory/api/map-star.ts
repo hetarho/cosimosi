@@ -51,6 +51,8 @@ export function mapStar(star: Star, index: number): StarNode {
     hueShift: star.hueShift,
     formSeedDelta: star.formSeedDelta,
     version: star.version,
+    // 공명(spec 36) — 다른 우주의 별과 이어졌는지. 데모/구 응답은 false.
+    resonant: star.resonant,
   }
   return { id, memory, index }
 }

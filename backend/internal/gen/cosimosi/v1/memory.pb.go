@@ -440,9 +440,13 @@ type Star struct {
 	Version          int32                  `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty"`                                            // 23: 재성형 횟수(=변천사 길이)
 	// 28: 별이 어느 원본 일기(불변 record)의 몇 번째 조각인지. 클라가 GetUniverse 응답을
 	// record_id로 그룹해 "일기 단위"로 조망/하이라이팅한다(별-그룹핑엔 신규 쿼리 불필요).
-	RecordId      string  `protobuf:"bytes,9,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`                  // 일기 단위 그룹/조망 키 (21이 채운 memories.record_id)
-	FragmentIndex int32   `protobuf:"varint,10,opt,name=fragment_index,json=fragmentIndex,proto3" json:"fragment_index,omitempty"` // 일기 내 조각 순서 (21이 채운 memories.fragment_index)
-	Valence       float64 `protobuf:"fixed64,12,opt,name=valence,proto3" json:"valence,omitempty"`                                 // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
+	RecordId      string `protobuf:"bytes,9,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`                  // 일기 단위 그룹/조망 키 (21이 채운 memories.record_id)
+	FragmentIndex int32  `protobuf:"varint,10,opt,name=fragment_index,json=fragmentIndex,proto3" json:"fragment_index,omitempty"` // 일기 내 조각 순서 (21이 채운 memories.fragment_index)
+	// 36: 이 별이 공명(resonance)으로 다른 우주의 별과 이어져 있는지. GetUniverse가 resonances
+	// 조인으로 채운다(보낸 별·수락으로 태어난 별 양쪽). 공개 우주(35 SharedStar)엔 이 필드가
+	// 없다 — 제3자에게 관계 비노출(비목표). FE가 은은한 공명 마커를 그리는 트리거.
+	Resonant bool    `protobuf:"varint,11,opt,name=resonant,proto3" json:"resonant,omitempty"`
+	Valence  float64 `protobuf:"fixed64,12,opt,name=valence,proto3" json:"valence,omitempty"` // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
 	// 26: 0..1 별 임베딩 ↔ "요즘 토픽 중심 벡터"의 cos 정합도. 서버가 GetUniverse에서
 	// 계산(weight처럼 의미 그래프 파생값 — 헌법3 위반 아님; 밝기 자체는 여전히 클라가
 	// exp(-λ_eff·Δt)로 계산). 임베딩 미생성 별·데모(서버 없음)에선 0=중립.
@@ -549,6 +553,13 @@ func (x *Star) GetFragmentIndex() int32 {
 		return x.FragmentIndex
 	}
 	return 0
+}
+
+func (x *Star) GetResonant() bool {
+	if x != nil {
+		return x.Resonant
+	}
+	return false
 }
 
 func (x *Star) GetValence() float64 {
@@ -1903,7 +1914,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x14RecordMemoryResponse\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x1d\n" +
 	"\n" +
-	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\x9a\x03\n" +
+	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xb6\x03\n" +
 	"\x04Star\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\x12%\n" +
 	"\x04mood\x18\x02 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x1c\n" +
@@ -1915,7 +1926,8 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\aversion\x18\b \x01(\x05R\aversion\x12\x1b\n" +
 	"\trecord_id\x18\t \x01(\tR\brecordId\x12%\n" +
 	"\x0efragment_index\x18\n" +
-	" \x01(\x05R\rfragmentIndex\x12\x18\n" +
+	" \x01(\x05R\rfragmentIndex\x12\x1a\n" +
+	"\bresonant\x18\v \x01(\bR\bresonant\x12\x18\n" +
 	"\avalence\x18\f \x01(\x01R\avalence\x12\x1c\n" +
 	"\trelevance\x18\r \x01(\x01R\trelevance\"\xc0\x01\n" +
 	"\aSynapse\x12\x11\n" +

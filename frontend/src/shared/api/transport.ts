@@ -43,3 +43,11 @@ export const transport = createConnectTransport({
 
 /** Typed client for cosimosi.v1.MemoryService (single service, unary RPCs). */
 export const memoryClient = createClient(MemoryService, transport)
+
+// 함께한 기억 — 공명(spec 36) 전용 전송. gift 읽기는 상태가 바뀌므로(pending→accepted/declined/
+// expired) HTTP GET 캐시에 갇히면 옛 상태가 그려질 수 있다(35 방문 페이지의 교훈, codex HIGH와 동일).
+// useHttpGet을 끄고(=POST) 매 요청을 서버가 권위로 검증하게 한다. 인증은 동일(양쪽이 사용자).
+export const giftTransport = createConnectTransport({
+  baseUrl,
+  interceptors: [authHeaderInterceptor],
+})

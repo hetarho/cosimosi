@@ -29,11 +29,13 @@ const universeRoute = createRoute({
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31). 라우트를 늘리지 않고
   // (별도 /dormant·/diary 없음) 셸 패널 상태를 search param으로만 동기화한다(딥링크·뒤로가기).
   // 알 수 없는 값은 무시. (변천사는 별 id가 필요해 URL 딥링크 대상이 아님 — 회상에서 열린다.)
+  // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
   validateSearch: (
     search: Record<string, unknown>,
-  ): { sim?: string; panel?: 'dormant' | 'diary' } => ({
+  ): { sim?: string; panel?: 'dormant' | 'diary'; fly?: string } => ({
     sim: typeof search.sim === 'string' ? search.sim : undefined,
     panel: search.panel === 'dormant' || search.panel === 'diary' ? search.panel : undefined,
+    fly: typeof search.fly === 'string' ? search.fly : undefined,
   }),
   component: function UniverseRoute() {
     return (
@@ -81,12 +83,29 @@ const visitRoute = createRoute({
   component: LazyVisitPage,
 })
 
+// /gift/$token = 받은 별 수락/거절(spec 36). SessionGate **안** — 양쪽이 cosimosi 사용자여야 한다
+// (비로그인은 사인인으로 막고, 사인인 후 같은 링크로 돌아온다). lazy 코드 스플릿(수신 전용 화면이
+// 메인 번들에 실리지 않게).
+const LazyGiftPage = lazyRouteComponent(() => import('@/pages/gift'), 'GiftPage')
+const giftRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/gift/$token',
+  component: function GiftRoute() {
+    return (
+      <SessionGate>
+        <LazyGiftPage />
+      </SessionGate>
+    )
+  },
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   universeRoute,
   dormantRedirectRoute,
   adminRoute,
   visitRoute,
+  giftRoute,
 ])
 
 export const router = createRouter({

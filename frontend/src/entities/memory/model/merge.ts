@@ -49,7 +49,8 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
       m.brightnessOffset === node.memory.brightnessOffset &&
       m.hueShift === node.memory.hueShift &&
       m.formSeedDelta === node.memory.formSeedDelta &&
-      m.version === node.memory.version
+      m.version === node.memory.version &&
+      m.resonant === node.memory.resonant
     ) {
       return node
     }
@@ -64,6 +65,8 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
         hueShift: m.hueShift,
         formSeedDelta: m.formSeedDelta,
         version: m.version,
+        // 공명(spec 36)도 서버 권위 신호 — refetch가 새로 맺힌 공명(친구가 수락)을 반영한다.
+        resonant: m.resonant,
       },
     }
   })

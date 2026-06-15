@@ -119,6 +119,27 @@ type Record struct {
 	Valence        *float32           `json:"valence"`
 }
 
+type Resonance struct {
+	ID                string             `json:"id"`
+	GiftID            string             `json:"gift_id"`
+	SenderMemoryID    string             `json:"sender_memory_id"`
+	RecipientMemoryID string             `json:"recipient_memory_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+type StarGift struct {
+	ID              string             `json:"id"`
+	Token           string             `json:"token"`
+	SenderUserID    string             `json:"sender_user_id"`
+	SenderMemoryID  string             `json:"sender_memory_id"`
+	Message         string             `json:"message"`
+	Status          string             `json:"status"`
+	RecipientUserID *string            `json:"recipient_user_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	RespondedAt     pgtype.Timestamptz `json:"responded_at"`
+}
+
 type UniverseShare struct {
 	UserID      string             `json:"user_id"`
 	Slug        string             `json:"slug"`

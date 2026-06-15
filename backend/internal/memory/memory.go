@@ -122,6 +122,11 @@ type Memory struct {
 	// is a server-derived semantic-graph quantity, so sending it doesn't break constitution
 	// §3 (brightness itself stays a client render computation).
 	Relevance float64
+	// Resonant (spec 36): true when this star is linked to a star in ANOTHER universe by a
+	// resonance (a gift this user sent and a friend accepted, or a star born from accepting a
+	// friend's gift). GetUniverse joins resonances to fill it; ListDormant leaves it false
+	// (dormant search is per-star, no resonance join). The client draws a faint resonance marker.
+	Resonant bool
 }
 
 // EvolutionSnapshot is one append-only reshaping event of a star (spec 23): the

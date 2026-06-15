@@ -23,6 +23,7 @@ import { DormantSheet } from '@/features/dormant-search'
 import { useShellStore } from '@/features/universe'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { ShareUniverseButton } from '@/features/share-universe'
+import { SendStarModal, StarGiftsButton } from '@/features/send-star'
 import {
   applyUniverse,
   universeQueryOptions,
@@ -243,8 +244,12 @@ export function HomePage() {
   const starCount = useMemoryStore((s) => s.stars.length)
   // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
-  const { sim, panel: urlPanel } = useSearch({ from: '/universe' })
+  // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
+  const { sim, panel: urlPanel, fly } = useSearch({ from: '/universe' })
   const navigate = useNavigate({ from: '/universe' })
+
+  // 별 보내기 모달(spec 36) — 회상 패널의 "이 별 보내기"가 memoryId를 넘겨 연다. 데모엔 서버가 없어 끈다.
+  const [sendMemoryId, setSendMemoryId] = useState<string | null>(null)
 
   // 우주 셸 패널 상태(spec 31) — 영속 캔버스 위에 어떤 탐색/리스트 오버레이가 떠 있는지의 단일
   // 출처. 탐색은 라우트가 아니라 패널 상태다 — `?panel=`로만 딥링크/뒤로가기를 동기화하고 캔버스는
@@ -363,6 +368,16 @@ export function HomePage() {
     return () => cancelAnimationFrame(id)
   }, [universe.isSuccess, starCount])
 
+  // 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to. 새 별은 GetUniverse refetch로 도착하므로
+  // (수락이 우주 캐시를 무효화함) 스토어에 실릴 때까지 기다렸다 한 번만 날아가고 ?fly를 지운다(?sim·
+  // 모닝디프와 같은 일회성 패턴). 도착 시 FlyToController가 그 별을 회상 포커스로 연다.
+  useEffect(() => {
+    if (!fly) return
+    if (!useMemoryStore.getState().stars.some((s) => s.id === fly)) return // 아직 안 실림 — refetch 대기
+    navigationActor.send({ type: 'FLY_TO_STAR', id: fly })
+    void navigate({ search: (prev) => ({ ...prev, fly: undefined }), replace: true })
+  }, [fly, starCount, navigate])
+
   // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3). The
   // model store is DOM-free (1.9); the window listeners live here in the page layer.
   // visibilitychange(hidden) fires more reliably than beforeunload (esp. on mobile),
@@ -467,6 +482,8 @@ export function HomePage() {
       <div className="absolute right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 max-h-[calc(100dvh-12rem)] overflow-y-auto overscroll-contain sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:max-h-[calc(100dvh-2rem)] sm:overflow-y-auto">
         <MemoryPanel
           onOpenEvolution={(id) => useEvolutionStore.getState().open(id)}
+          // "이 별 보내기"(spec 36) — 데모엔 서버가 없어 진입점을 숨긴다(onSendStar 미전달).
+          onSendStar={isDemoMode() ? undefined : (id) => setSendMemoryId(id)}
           // "이 일기의 다른 별들 보기"(spec 28·39): 일기 목록 클릭(SELECT_DIARY)과 동일한 SEE_DIARY_STARS를
           // 보낸다 — 둘 다 focus 머신의 diary 상태로 수렴해 같은 일기 카드 + 조망을 보인다(구버전은 한쪽만
           // 동작하던 불일치). 일기 목록이 열려 있었다면 peek로 잦아들게 해 프레이밍된 별을 가리지 않는다.
@@ -503,6 +520,8 @@ export function HomePage() {
         </button>
         {/* 우주 공개(spec 35) — 풍경만 공개하는 URL 토글·표시명·복사·회전 모달. 데모에선 숨김(자체 처리). */}
         <ShareUniverseButton />
+        {/* 주고받은 별(spec 36) — 보낸/받은 목록 + 대기 중 보낸 별 취소. 데모에선 숨김. */}
+        <StarGiftsButton />
         <button
           type="button"
           onClick={() => navigationActor.send({ type: 'TOGGLE_MODE' })}
@@ -562,6 +581,9 @@ export function HomePage() {
 
       {/* 테마·오브제 스위처 — 우상단 컨트롤 스택 아래(safe-area로 노치 아래). FAB은 z-50(전역 chrome). */}
       <AppearanceSwitcher className="top-[calc(7rem+env(safe-area-inset-top))] right-4" />
+
+      {/* 별 보내기 모달(spec 36) — 회상 패널의 "이 별 보내기"가 열고, 발급된 토큰 URL을 복사해 전달한다. */}
+      {sendMemoryId && <SendStarModal memoryId={sendMemoryId} onClose={() => setSendMemoryId(null)} />}
 
       {/* 시뮬레이션 패널(spec 19) — 데모에서만, 좌하단(데스크톱)/하단 시트(모바일).
           데모의 기록은 이 패널의 "별 띄우기" 컨트롤러가 담당한다(작성 폼은 데모에서 숨김). */}

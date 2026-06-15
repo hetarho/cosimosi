@@ -105,6 +105,10 @@ message Star {
   // record_id로 그룹해 "일기 단위"로 조망/하이라이팅한다(별-그룹핑엔 신규 쿼리 불필요).
   string record_id = 9;        // 일기 단위 그룹/조망 키 (21이 채운 memories.record_id)
   int32 fragment_index = 10;   // 일기 내 조각 순서 (21이 채운 memories.fragment_index)
+  // 36: 이 별이 공명(resonance)으로 다른 우주의 별과 이어져 있는지. GetUniverse가 resonances
+  // 조인으로 채운다(보낸 별·수락으로 태어난 별 양쪽). 공개 우주(35 SharedStar)엔 이 필드가
+  // 없다 — 제3자에게 관계 비노출(비목표). FE가 은은한 공명 마커를 그리는 트리거.
+  bool resonant = 11;
   double valence = 12;         // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
   // 26: 0..1 별 임베딩 ↔ "요즘 토픽 중심 벡터"의 cos 정합도. 서버가 GetUniverse에서
   // 계산(weight처럼 의미 그래프 파생값 — 헌법3 위반 아님; 밝기 자체는 여전히 클라가

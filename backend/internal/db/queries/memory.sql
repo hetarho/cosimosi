@@ -91,9 +91,15 @@ ORDER BY r.entry_date DESC;
 -- records JOIN anymore. The reshaping state (spec 23) rides the same row.
 -- spec 28: record_id/fragment_index ride along so the client can GROUP stars by
 -- their original diary (일기 단위 조망/하이라이팅) without a separate query.
+-- spec 36: resonant — 이 별이 공명(다른 우주의 별)으로 이어져 있는지(보낸 별·수락으로 태어난
+-- 별 양쪽). resonances의 어느 끝점이든 이 별이면 true → 클라가 은은한 공명 마커를 그린다.
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
        m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version,
-       m.record_id, m.fragment_index
+       m.record_id, m.fragment_index,
+       EXISTS (
+           SELECT 1 FROM resonances res
+           WHERE res.sender_memory_id = m.id OR res.recipient_memory_id = m.id
+       ) AS resonant
 FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index;

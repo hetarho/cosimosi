@@ -1,0 +1,101 @@
+-- 함께한 기억 — 공명(spec 36). 토큰 링크(star_gifts)·상태 머신·수락 트랜잭션(record+memory+
+-- resonance)·목록·공명 조회. 토큰 생성(crypto/rand)은 서비스가 한다 — 여기엔 CRUD·상태 전이만.
+-- 보낸이/상대 표시명은 universe_shares(35)에서 ShareReader 포트로 합치므로 여기서 JOIN하지 않는다
+-- (컨텍스트 분리 — 35의 SettingsReader 선례). 만료는 expires_at로 지연 판정(스위퍼 없음, 35 패턴).
+
+-- name: CreateGift :one
+-- 별 보내기. 보낸이가 그 별의 소유자일 때만 INSERT한다(WHERE EXISTS 소유 가드) — 남의 별은
+-- 보낼 수 없다. 0행(소유 아님/없는 별)이면 pgx.ErrNoRows → 서비스가 NotFound로 변환. 만료는
+-- 서비스가 계산한 expires_at(now+30일)을 받는다(테스트 가능·단일 출처).
+INSERT INTO star_gifts (id, token, sender_user_id, sender_memory_id, message, expires_at)
+SELECT @id, @token, @sender_user_id, @sender_memory_id, @message, @expires_at
+WHERE EXISTS (
+    SELECT 1 FROM memories m WHERE m.id = @sender_memory_id AND m.user_id = @sender_user_id
+)
+RETURNING id, token;
+
+-- name: GetGiftViewByToken :one
+-- 받은 링크 열기(GetStarGift) + 수락/거절 사전 판정. 보낸 *조각 하나의 텍스트*만 싣는다: m.fragment_text가
+-- 그 조각의 글이다. ⚠️ r.body 폴백은 record가 조각 1개일 때만(=본문이 곧 그 조각) 쓴다 — 다조각 record의
+-- 한 조각이 fragment_text NULL이라 해도 r.body(=원본 일기 전문, 다른 조각 포함)는 절대 새 나가면 안 되므로
+-- '' 로 떨어진다(다조각 NULL은 사실상 불가하나 방어적; acceptance 1.2/codex Critical). 보낸이의 다른 조각·
+-- 다른 일기·원본 전문은 절대 나가지 않는다. 표시명은 서비스가 ShareReader로 붙이고, status/expires_at으로
+-- 유효 상태(만료 포함)를 판정한다.
+SELECT g.id, g.token, g.sender_user_id, g.sender_memory_id, g.message, g.status,
+       g.recipient_user_id, g.created_at, g.expires_at, g.responded_at,
+       m.mood,
+       COALESCE(
+           m.fragment_text,
+           CASE WHEN (SELECT count(*) FROM memories m2 WHERE m2.record_id = m.record_id) = 1
+                THEN r.body ELSE '' END
+       ) AS fragment_text
+FROM star_gifts g
+JOIN memories m ON m.id = g.sender_memory_id
+JOIN records r ON r.id = m.record_id
+WHERE g.token = @token;
+
+-- name: GetGiftForUpdate :one
+-- 수락 트랜잭션 안에서 gift 행을 잠그고 다시 읽는다(FOR UPDATE) — 동시 수락/취소를 직렬화해
+-- 이중 수락(record/memory 고아 생성)을 막는다. 서비스가 잠근 상태에서 pending·미만료를 재확인한다.
+SELECT id, sender_user_id, sender_memory_id, status, expires_at
+FROM star_gifts
+WHERE token = @token
+FOR UPDATE;
+
+-- name: MarkGiftAccepted :execrows
+-- 수락 확정(트랜잭션 끝). FOR UPDATE로 이미 잠겨 있지만 status='pending' 가드로 한 번 더 방어.
+-- 반환 행 수로 실제 전이 여부를 확인(0이면 그 사이 다른 응답이 끼어든 것).
+UPDATE star_gifts
+SET status = 'accepted', recipient_user_id = @recipient_user_id, responded_at = now()
+WHERE id = @id AND status = 'pending';
+
+-- name: DeclineGift :execrows
+-- 거절(사유 무 — 상태만). 단일 UPDATE가 그 자체로 원자적이라 트랜잭션 불필요. pending·미만료에
+-- 한해 전이; 0행이면 이미 응답됨/만료/취소(서비스가 사전 읽기로 정확한 사유를 가린다).
+UPDATE star_gifts
+SET status = 'declined', recipient_user_id = @recipient_user_id, responded_at = now()
+WHERE token = @token AND status = 'pending' AND expires_at > now();
+
+-- name: CancelGift :execrows
+-- 보낸 쪽 취소(유효-pending에 한함, acceptance 1.4). 자기 gift만(sender_user_id 가드) + 미만료
+-- (expires_at>now() — 이미 만료된 gift는 effective 상태가 expired라 취소 대상이 아니다; DeclineGift와
+-- 동일한 가드로 상태 머신 일관성 유지, codex). 0행이면 남의 것/이미 응답됨/만료/없음 → 서비스가
+-- FailedPrecondition. 취소 즉시 수신 링크는 무효가 된다.
+UPDATE star_gifts
+SET status = 'canceled', responded_at = now()
+WHERE id = @gift_id AND sender_user_id = @sender_user_id AND status = 'pending' AND expires_at > now();
+
+-- name: InsertResonance :exec
+-- 공명 쌍(memory↔memory) 생성 — 수락 트랜잭션의 일부. gift_id UNIQUE라 한 gift당 1쌍.
+-- 삭제 쿼리는 없다(헌법2의 정신 — 별이 잠들어도 공명은 남는다).
+INSERT INTO resonances (id, gift_id, sender_memory_id, recipient_memory_id)
+VALUES (@id, @gift_id, @sender_memory_id, @recipient_memory_id);
+
+-- name: ListSentGifts :many
+-- 보낸 목록(ListStarGifts 보낸 탭). 모든 상태 포함, 최신 생성 먼저. 상대(수신자) 표시명은
+-- 서비스가 recipient_user_id로 ShareReader에서 붙인다(pending이면 NULL = 아직 모름).
+SELECT id, token, status, recipient_user_id, message, created_at, responded_at, expires_at
+FROM star_gifts
+WHERE sender_user_id = @user_id
+ORDER BY created_at DESC;
+
+-- name: ListReceivedGifts :many
+-- 받은 목록(받은 탭) — 내가 수락/거절한 gift(pending은 수신자 미확정이라 안 잡힌다). 응답 최신 먼저.
+-- 상대(보낸이) 표시명은 서비스가 sender_user_id로 ShareReader에서 붙인다.
+SELECT id, token, status, sender_user_id, message, created_at, responded_at, expires_at
+FROM star_gifts
+WHERE recipient_user_id = @user_id
+ORDER BY responded_at DESC;
+
+-- name: GetResonancePartner :one
+-- 별 상세의 "○○의 우주와 공명 중"(GetResonanceInfo): 내 별 memory_id가 공명의 어느 끝점이든,
+-- 반대편 별의 소유자(상대 user_id)를 돌린다. user_id 가드로 그 끝점이 정말 내 별인지 확인한다.
+-- 여러 공명이면 가장 최근 것(LIMIT 1) — MVP 상세 패널은 상대 하나만 표시.
+SELECT (CASE WHEN res.sender_memory_id = @memory_id THEN rm.user_id ELSE sm.user_id END)::text AS partner_user_id
+FROM resonances res
+JOIN memories sm ON sm.id = res.sender_memory_id
+JOIN memories rm ON rm.id = res.recipient_memory_id
+WHERE (res.sender_memory_id = @memory_id AND sm.user_id = @user_id)
+   OR (res.recipient_memory_id = @memory_id AND rm.user_id = @user_id)
+ORDER BY res.created_at DESC
+LIMIT 1;

@@ -175,3 +175,31 @@ CREATE TABLE universe_shares (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     rotated_at   TIMESTAMPTZ
 );
+
+-- 함께한 기억 — 공명(spec 36, 00008): 별 하나를 친구에게 토큰 링크로 보내고(star_gifts),
+-- 친구가 수락=재작성하면 친구 우주에 새 별이 태어나 두 별이 공명으로 이어진다(resonances).
+-- 토큰은 base64url 22자(128bit)·UNIQUE, 생성 +30일 만료. 공명은 삭제하지 않는다(헌법2 정신).
+CREATE TABLE star_gifts (
+    id                TEXT PRIMARY KEY,
+    token             TEXT NOT NULL UNIQUE,
+    sender_user_id    TEXT NOT NULL,
+    sender_memory_id  TEXT NOT NULL REFERENCES memories(id),
+    message           TEXT NOT NULL DEFAULT '',
+    status            TEXT NOT NULL DEFAULT 'pending',
+    recipient_user_id TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at        TIMESTAMPTZ NOT NULL,
+    responded_at      TIMESTAMPTZ
+);
+CREATE INDEX star_gifts_sender_idx ON star_gifts (sender_user_id);
+CREATE INDEX star_gifts_recipient_idx ON star_gifts (recipient_user_id);
+
+CREATE TABLE resonances (
+    id                  TEXT PRIMARY KEY,
+    gift_id             TEXT NOT NULL UNIQUE REFERENCES star_gifts(id),
+    sender_memory_id    TEXT NOT NULL REFERENCES memories(id),
+    recipient_memory_id TEXT NOT NULL REFERENCES memories(id),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX resonances_sender_memory_idx ON resonances (sender_memory_id);
+CREATE INDEX resonances_recipient_memory_idx ON resonances (recipient_memory_id);

@@ -21,6 +21,7 @@ import (
 
 	"github.com/cosimosi/backend/internal/admin"
 	"github.com/cosimosi/backend/internal/ai"
+	"github.com/cosimosi/backend/internal/gift"
 	"github.com/cosimosi/backend/internal/job"
 	"github.com/cosimosi/backend/internal/link"
 	"github.com/cosimosi/backend/internal/llm"
@@ -77,6 +78,22 @@ func (a shareSettingsAdapter) Appearance(ctx context.Context, userID string) (sh
 		colors = append(colors, share.EmotionColor{Mood: c.Mood, Color: c.Color})
 	}
 	return share.Appearance{Theme: s.Theme, StarObject: s.StarObject, EmotionColors: colors}, nil
+}
+
+// giftShareAdapter maps share.Service onto gift's ShareReader port (spec 36): a gift's
+// sender/partner display name + visit slug come from the spec-35 universe_shares row, but
+// internal/gift must not import internal/share — so the composition root adapts GetSettings
+// here (the shareSettingsAdapter precedent). A never-shared user → name "" + enabled=false.
+type giftShareAdapter struct {
+	inner *share.Service
+}
+
+func (a giftShareAdapter) DisplayInfo(ctx context.Context, userID string) (string, string, bool, error) {
+	st, err := a.inner.GetSettings(ctx, userID)
+	if err != nil {
+		return "", "", false, err
+	}
+	return st.DisplayName, st.Slug, st.Enabled, nil
 }
 
 func main() {
@@ -156,7 +173,14 @@ func main() {
 	// Universe sharing (spec 35): owner ShareService + public VisitService, one Handler. The
 	// public snapshot folds in the owner's spec-30 appearance, so share follows settings through
 	// shareSettingsAdapter (settings.Service → share.SettingsReader) — share never imports settings.
-	shareHandler := share.NewHandler(share.NewService(share.NewRepository(db), shareSettingsAdapter{inner: settingsSvc}))
+	shareSvc := share.NewService(share.NewRepository(db), shareSettingsAdapter{inner: settingsSvc})
+	shareHandler := share.NewHandler(shareSvc)
+
+	// Shared-memory resonance (spec 36): send a star → friend accepts by rewriting → a new star
+	// is born in the friend's universe + the two are linked by a resonance. The gift service
+	// reuses the spec-35 display name (giftShareAdapter: share.Service → gift.ShareReader) so it
+	// never imports share. GiftService is fully authenticated (both parties are users).
+	giftHandler := gift.NewHandler(gift.NewService(gift.NewRepository(db), giftShareAdapter{inner: shareSvc}))
 
 	// Async extraction + embedding worker (specs 05/21): consumes the extract job
 	// the RecordMemory transaction enqueues, fans the diary out into fragment
@@ -198,7 +222,7 @@ func main() {
 	// The one share.Handler implements both services — auth is enforced by the chain each is
 	// mounted with (rpcserver), so the SAME handler is passed for the owner (ShareService) and
 	// public (VisitService) surfaces.
-	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, adminHandler, shareHandler, shareHandler, panicCapture)
+	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, adminHandler, shareHandler, shareHandler, giftHandler, panicCapture)
 
 	// The sentryhttp wrap still earns its keep after 17: it attaches the
 	// request-scoped hub the capture hook reads, and catches panics from non-RPC

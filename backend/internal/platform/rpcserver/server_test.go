@@ -26,13 +26,14 @@ type stubMemory struct{ cosimosiv1connect.UnimplementedMemoryServiceHandler }
 type stubSettings struct{ cosimosiv1connect.UnimplementedSettingsServiceHandler }
 type stubAdmin struct{ cosimosiv1connect.UnimplementedAdminServiceHandler }
 type stubShare struct{ cosimosiv1connect.UnimplementedShareServiceHandler }
+type stubGift struct{ cosimosiv1connect.UnimplementedGiftServiceHandler }
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	// A non-empty secret arms the HS256 auth interceptor so a missing token is Unauthenticated
 	// (not the "auth not configured" path). db is nil — only /health touches it, never hit here.
 	cfg := &config.Config{SupabaseJWTSecret: "test-secret-0123456789", CORSOrigin: "http://localhost", Port: "0"}
-	srv := rpcserver.New(cfg, nil, "test", stubMemory{}, stubSettings{}, stubAdmin{}, stubShare{}, stubVisit{}, nil)
+	srv := rpcserver.New(cfg, nil, "test", stubMemory{}, stubSettings{}, stubAdmin{}, stubShare{}, stubVisit{}, stubGift{}, nil)
 	ts := httptest.NewServer(srv.Handler)
 	t.Cleanup(ts.Close)
 	return ts
@@ -64,6 +65,12 @@ func TestUnauthBoundary(t *testing.T) {
 	t.Run("share settings rejected", func(t *testing.T) {
 		c := cosimosiv1connect.NewShareServiceClient(hc, ts.URL)
 		_, err := c.GetShareSettings(ctx, connect.NewRequest(&cosimosiv1.GetShareSettingsRequest{}))
+		assertUnauthenticated(t, err)
+	})
+	t.Run("gift rejected", func(t *testing.T) {
+		// spec 36: GiftService has NO public surface — even its NO_SIDE_EFFECTS read needs auth.
+		c := cosimosiv1connect.NewGiftServiceClient(hc, ts.URL)
+		_, err := c.GetStarGift(ctx, connect.NewRequest(&cosimosiv1.GetStarGiftRequest{Token: "x"}))
 		assertUnauthenticated(t, err)
 	})
 

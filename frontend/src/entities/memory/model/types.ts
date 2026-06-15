@@ -35,6 +35,9 @@ export interface Memory {
   formSeedDelta: number
   /** 재성형 횟수(=변천사 길이, spec 23). */
   version: number
+  /** 공명(spec 36): 다른 우주의 별과 이어진 별인지(보낸 별·수락으로 태어난 별 양쪽). 서버
+   *  GetUniverse가 채운다(데모·공개 방문·구 응답엔 false). StarField가 은은한 공명 마커를 그린다. */
+  resonant: boolean
 }
 
 /** A star in the render set; `index` is its InstancedMesh instance slot. */

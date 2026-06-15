@@ -49,6 +49,38 @@ function easeOutCubic(x: number): number {
   return 1 - Math.pow(1 - x, 3)
 }
 
+// 공명 마커(spec 36): 공명으로 이어진 별 둘레의 은은한 링이 천천히 맥동한다 — "두 우주에 걸친
+// 하나의 사건"의 시각 신호. BloomPass가 nodeFrame을 우회해 TSL time 노드가 동결되므로(메모), 맥동은
+// useFrame의 수동 시간으로 스케일·밝기를 직접 움직인다(time 노드 금지). reduced-motion이면 정지(고정값).
+const RING_BASE_SCALE = 2.6 // 별 스케일 대비 링 크기
+const RING_PULSE_SCALE = 0.12 // 맥동 크기 변동폭(은은하게)
+const RING_SPEED = 1.4 // 맥동 각속도(rad/s) — 느리게
+const RING_OPACITY_MIN = 0.22
+const RING_OPACITY_AMP = 0.42
+const MAX_RINGS = 64 // 동시 공명 마커 상한(초과분은 마커만 생략 — 별 자체는 정상)
+
+// 부드러운 헤일로 링 텍스처(중심 투명) — 모듈 싱글턴. shadowBlur로 가장자리를 번지게 해 또렷한 선이
+// 아니라 은은한 빛 고리로 읽히게 한다.
+let ringTexture: THREE.CanvasTexture | null = null
+function getRingTexture(): THREE.CanvasTexture | null {
+  if (ringTexture || typeof document === 'undefined') return ringTexture
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const g = c.getContext('2d')
+  if (!g) return null
+  g.strokeStyle = 'rgba(255,255,255,0.95)'
+  g.lineWidth = size * 0.06
+  g.shadowColor = 'rgba(255,255,255,0.9)'
+  g.shadowBlur = size * 0.09
+  g.beginPath()
+  g.arc(size / 2, size / 2, size * 0.4, 0, Math.PI * 2)
+  g.stroke()
+  ringTexture = new THREE.CanvasTexture(c)
+  return ringTexture
+}
+
 // 방사형 글로우(중심 코어) + 얇은 링(충격파) 텍스처 — 모듈 싱글턴(재생성 방지).
 let burstTexture: THREE.CanvasTexture | null = null
 function getBurstTexture(): THREE.CanvasTexture | null {
@@ -145,6 +177,10 @@ export function StarField({
   const burstsRef = useRef<Map<string, number>>(new Map())
   const moodsRef = useRef<Float32Array>(new Float32Array(0))
   const indexByIdRef = useRef<Map<string, number>>(new Map())
+  // 공명 마커(spec 36): 공명 별의 인스턴스 슬롯 목록(레이아웃 효과가 채움 — 매 프레임 전체 스캔 방지)
+  // + 빌보드 링 메시.
+  const ringRef = useRef<THREE.InstancedMesh>(null)
+  const resonantIdxRef = useRef<number[]>([])
 
   // 선택된 형태(object)별 공유 지오메트리 + TSL 머티리얼. 모든 인스턴스가 하나를 공유하므로
   // 형태 변경은 O(1)(메시 1개 재구성) — 드로우콜은 그대로다(constitution §8). 머티리얼은
@@ -173,6 +209,25 @@ export function StarField({
     burst.geometry.dispose()
     burst.material.dispose()
   }, [burst])
+
+  // 공명 마커용 빌보드 쿼드 + additive 머티리얼(컴포넌트 수명 동안 1회). 색은 per-instance
+  // instanceColor로 mood 색을 입혀 맥동시킨다(별색 = 그 별의 감정색).
+  const ring = useMemo(
+    () => ({
+      geometry: new THREE.PlaneGeometry(1, 1),
+      material: new THREE.MeshBasicMaterial({
+        map: getRingTexture(),
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    }),
+    [],
+  )
+  useEffect(() => () => {
+    ring.geometry.dispose()
+    ring.material.dispose()
+  }, [ring])
 
   // (Re)build per-instance attributes + base matrices when the star set changes.
   // useLayoutEffect runs in the commit phase (before the first R3F frame), so the
@@ -205,6 +260,10 @@ export function StarField({
     for (const id of spawnRef.current.keys()) if (!seenRef.current.has(id)) spawnRef.current.delete(id)
     for (const id of burstsRef.current.keys()) if (!seenRef.current.has(id)) burstsRef.current.delete(id)
 
+    // 공명 별 슬롯 목록을 다시 만든다(매 프레임 전체 스캔 대신 이 작은 배열만 순회). 공명은 드물어
+    // 대개 빈 배열 → 링 루프가 사실상 무비용.
+    const resonantIdx: number[] = []
+
     const moodArr = new Float32Array(count * 3)
     const seedArr = new Float32Array(count)
     const brightArr = new Float32Array(count)
@@ -220,6 +279,7 @@ export function StarField({
 
     for (let i = 0; i < count; i++) {
       const m = stars[i].memory
+      if (m.resonant) resonantIdx.push(i) // 36: 공명 마커 대상
       const rgb = resolveMoodRgb(m.mood, emotionColors)
       moodArr[i * 3] = rgb[0]
       moodArr[i * 3 + 1] = rgb[1]
@@ -257,6 +317,7 @@ export function StarField({
     scalesRef.current = scales
     dummyRef.current = dummy
     moodsRef.current = moodArr
+    resonantIdxRef.current = resonantIdx
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
   }, [stars, count, geometry, emotionColors, degreeNorm])
@@ -296,6 +357,9 @@ export function StarField({
   // 버스트 전용 스크래치 — scratch와 분리(빌보드가 쿼터니언을 만지므로 별 행렬이 오염되지 않게).
   const burstScratch = useMemo(() => new THREE.Object3D(), [])
   const burstColor = useMemo(() => new THREE.Color(), [])
+  // 공명 링 전용 스크래치(빌보드 쿼터니언을 만지므로 별 행렬과 분리).
+  const ringScratch = useMemo(() => new THREE.Object3D(), [])
+  const ringColor = useMemo(() => new THREE.Color(), [])
   const reduceMotion = useMemo(
     () =>
       typeof window !== 'undefined' &&
@@ -332,8 +396,11 @@ export function StarField({
     const wob = reduceMotion ? 0 : WOBBLE_AMP
     const bursts = burstsRef.current
     if (reduceMotion) bursts.clear() // 모션 축소: 탄생 버스트도 생략
-    // 움직일 것이 하나도 없으면(모션 축소 + 라이브 버퍼·탄생 없음) 정적 유지.
-    if (wob === 0 && !live && spawns.size === 0 && bursts.size === 0) return
+    // 움직일 것이 하나도 없으면(모션 축소 + 라이브 버퍼·탄생·공명 마커 없음) 정적 유지. ⚠️ 공명
+    // 마커가 있으면 일찍 빠지지 않는다 — 아래 링 루프가 마커를 (reduced-motion이면 정지값으로라도)
+    // 그리고 count/visible을 갱신해야 하므로(라이브 버퍼 발행 전 프레임에 마커가 누락·잔류하지 않게).
+    if (wob === 0 && !live && spawns.size === 0 && bursts.size === 0 && resonantIdxRef.current.length === 0)
+      return
 
     for (let i = 0; i < count; i++) {
       const m = stars[i].memory
@@ -348,6 +415,43 @@ export function StarField({
       mesh.setMatrixAt(i, scratch.matrix)
     }
     mesh.instanceMatrix.needsUpdate = true
+
+    // 공명 마커(spec 36): 공명 별 둘레에 mood 색 링을 빌보드로 그리고 천천히 맥동시킨다(수동 시간 —
+    // time 노드 금지). reduced-motion이면 맥동 정지(고정값). 공명 별은 드물어 대개 0개 = 무비용.
+    const ringMesh = ringRef.current
+    if (ringMesh) {
+      const resonant = resonantIdxRef.current
+      const moods = moodsRef.current
+      let slot = 0
+      if (resonant.length > 0 && moods.length >= count * 3) {
+        for (const i of resonant) {
+          if (slot >= MAX_RINGS) break
+          if (i >= count) continue
+          const m = stars[i].memory
+          // per-star 위상(seed)로 별마다 어긋난 맥동 — 한꺼번에 깜빡이지 않게.
+          const pulse = reduceMotion ? 0.6 : 0.5 + 0.5 * Math.sin(t * RING_SPEED + m.seed * Math.PI * 2)
+          ringScratch.position.set(
+            base[i * 3] + wobbleUnit(m.seed, t, 0) * wob,
+            base[i * 3 + 1] + wobbleUnit(m.seed, t, 1) * wob,
+            base[i * 3 + 2] + wobbleUnit(m.seed, t, 2) * wob,
+          )
+          ringScratch.quaternion.copy(state.camera.quaternion) // billboard
+          ringScratch.scale.setScalar(scales[i] * RING_BASE_SCALE * (1 + RING_PULSE_SCALE * pulse))
+          ringScratch.updateMatrix()
+          ringMesh.setMatrixAt(slot, ringScratch.matrix)
+          const op = RING_OPACITY_MIN + RING_OPACITY_AMP * pulse
+          ringColor.setRGB(moods[i * 3] * op, moods[i * 3 + 1] * op, moods[i * 3 + 2] * op)
+          ringMesh.setColorAt(slot, ringColor)
+          slot++
+        }
+      }
+      ringMesh.count = slot
+      ringMesh.visible = slot > 0
+      if (slot > 0) {
+        ringMesh.instanceMatrix.needsUpdate = true
+        if (ringMesh.instanceColor) ringMesh.instanceColor.needsUpdate = true
+      }
+    }
 
     // 탄생 버스트: 활성 버스트만(전체 별이 아니라) 빌보드 슬롯에 채운다 — 별과 같은
     // 좌표(wobble 포함)에서 mood 색 글로우가 퍼지며 (1-age)²로 사그라든다(additive라
@@ -430,6 +534,16 @@ export function StarField({
       <instancedMesh
         ref={burstRef}
         args={[burst.geometry, burst.material, MAX_BURSTS]}
+        dispose={null}
+        visible={false}
+        frustumCulled={false}
+        raycast={NOOP_RAYCAST}
+      />
+      {/* 공명 마커 레이어(spec 36) — 빌보드 링. 별 클릭을 가리지 않게 raycast를 끄고, 매 프레임
+          갱신되는 빌보드라 frustumCulled를 끈다. */}
+      <instancedMesh
+        ref={ringRef}
+        args={[ring.geometry, ring.material, MAX_RINGS]}
         dispose={null}
         visible={false}
         frustumCulled={false}

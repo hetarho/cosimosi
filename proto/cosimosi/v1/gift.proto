@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package cosimosi.v1;
+
+option go_package = "github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1";
+
+// gift.proto is the shared-memory resonance contract (spec 36): a user SENDS one
+// fragment star to a friend over a token link, the friend ACCEPTS by REWRITING the
+// event from their own perspective — which births a new star in the friend's universe —
+// and the two stars are linked by a RESONANCE (one event, two engrams across two brains).
+//
+// Sending = a 1:1 opt-in disclosure of THAT ONE fragment's text (nothing else). There is
+// NO friend graph / search / follow (the recipient is named by the token link), NO
+// notifications (acceptance is read from the sender's list status), and the resonance is
+// NEVER exposed on the public universe (spec 35) — relationships stay private to the two
+// parties (see 비목표).
+//
+// Like the other contracts this is a DTO layer only (constitution §5) and unary only
+// (constitution §6). Reuses Mood from memory.proto. Every rpc is AUTHENTICATED (mounted on
+// the same auth chain as MemoryService) — both parties must be cosimosi users.
+
+import "cosimosi/v1/memory.proto";
+
+// GiftStatus is the gift link's state machine. pending → accepted | declined (by the
+// recipient) | canceled (by the sender) | expired (lazily, 30 days after creation — the
+// stored row may still read 'pending' but reads project it to expired once past expires_at).
+enum GiftStatus {
+  GIFT_STATUS_UNSPECIFIED = 0;
+  GIFT_STATUS_PENDING = 1;
+  GIFT_STATUS_ACCEPTED = 2;
+  GIFT_STATUS_DECLINED = 3;
+  GIFT_STATUS_CANCELED = 4;
+  GIFT_STATUS_EXPIRED = 5;
+}
+
+// --- SendStarGift ---
+
+message SendStarGiftRequest {
+  string memory_id = 1; // the sender's OWN fragment star to send (ownership enforced server-side)
+  string message = 2;   // optional one-line note shown to the recipient ("" = none)
+}
+
+message SendStarGiftResponse {
+  string token = 1; // base64url 22-char (128-bit) — the recipient link is /gift/:token
+}
+
+// --- GetStarGift (idempotent read — the recipient opens the link) ---
+
+message GetStarGiftRequest {
+  string token = 1;
+}
+
+// GetStarGiftResponse shows ONLY the sent fragment: its text + emotion, plus the sender's
+// display name (reused from spec 35 universe_shares; "" → "어느 우주") and the optional
+// message. ⚠️ fragment_text carries the ONE sent fragment ONLY — never the sender's other
+// fragments, never the whole original diary (acceptance 1.2). It is populated ONLY when the
+// gift is still actionable (pending & not expired); a terminal state returns status alone so
+// the recipient sees "이미 응답한/취소된/만료된 초대" and no content.
+message GetStarGiftResponse {
+  GiftStatus status = 1;
+  string sender_display_name = 2; // 35 display name; "" = anonymous ("어느 우주")
+  string message = 3;
+  string fragment_text = 4;       // ONLY the sent fragment; "" when not actionable
+  Mood mood = 5;                  // the sent fragment's emotion → card color
+  string expires_at = 6;          // RFC3339 (when this link stops being actionable)
+}
+
+// --- AcceptStarGift (accept = rewrite) ---
+
+// The recipient rewrites the event in THEIR words with THEIR emotion. The server creates,
+// in one transaction, the recipient's immutable record + a single fragment star (no extract
+// — one event, one memory) + the resonance + the embed job (acceptance 2.1).
+message AcceptStarGiftRequest {
+  string token = 1;
+  string text = 2;       // the recipient's rewrite (non-empty)
+  Mood mood = 3;         // the recipient's own emotion
+  double intensity = 4;  // 0..1
+  double valence = 5;    // -1..1 signed affect
+}
+
+message AcceptStarGiftResponse {
+  string record_id = 1; // the recipient's new immutable original
+  string memory_id = 2; // the new fragment star — the universe flies to it
+}
+
+// --- DeclineStarGift (recipient declines; reason-free, status only) ---
+
+message DeclineStarGiftRequest {
+  string token = 1;
+}
+
+message DeclineStarGiftResponse {}
+
+// --- CancelStarGift (sender cancels a still-pending gift; the link goes dead at once) ---
+
+message CancelStarGiftRequest {
+  string gift_id = 1; // from the sender's ListStarGifts (sent tab)
+}
+
+message CancelStarGiftResponse {}
+
+// --- ListStarGifts (idempotent — sent/received tabs) ---
+
+message ListStarGiftsRequest {}
+
+// GiftSummary is one gift in a list. The only cross-user info is the counterpart's display
+// name (acceptance 3.3 — "상대의 다른 정보는 표시명뿐"): for a SENT gift the recipient's
+// (empty until accepted/declined), for a RECEIVED gift the sender's. token lets the sender
+// re-copy the link; gift_id is the CancelStarGift handle.
+message GiftSummary {
+  string gift_id = 1;
+  string token = 2;
+  GiftStatus status = 3;
+  string counterpart_display_name = 4; // "" = anonymous / not yet known
+  string message = 5;
+  string created_at = 6;   // RFC3339
+  string responded_at = 7; // RFC3339; "" while pending
+  string expires_at = 8;   // RFC3339
+}
+
+message ListStarGiftsResponse {
+  repeated GiftSummary sent = 1;     // gifts I sent (any status)
+  repeated GiftSummary received = 2; // gifts I accepted/declined (a pending gift has no recipient yet)
+}
+
+// --- GetResonanceInfo (star-detail panel: "○○의 우주와 공명 중") ---
+
+message GetResonanceInfoRequest {
+  string memory_id = 1; // one of the caller's stars
+}
+
+// GetResonanceInfoResponse tells the star-detail panel whether this star resonates with a
+// partner universe and, if the partner shares publicly (spec 35), the slug to visit it. The
+// only partner info is the display name + (optional) slug — never the partner's content.
+message GetResonanceInfoResponse {
+  bool resonant = 1;
+  string partner_display_name = 2; // 35 display name; "" = anonymous ("어느 우주")
+  string partner_slug = 3;         // "" unless the partner shares (35) → visit link /u/:slug
+}
+
+// GiftService is AUTHENTICATED in full — same auth chain as MemoryService (user_id = JWT
+// sub). There is no public surface here (unlike VisitService): a gift link is opened by a
+// signed-in recipient, so every rpc has a caller identity. unary only (constitution §6).
+service GiftService {
+  rpc SendStarGift(SendStarGiftRequest) returns (SendStarGiftResponse);
+  rpc GetStarGift(GetStarGiftRequest) returns (GetStarGiftResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc AcceptStarGift(AcceptStarGiftRequest) returns (AcceptStarGiftResponse);
+  rpc DeclineStarGift(DeclineStarGiftRequest) returns (DeclineStarGiftResponse);
+  rpc CancelStarGift(CancelStarGiftRequest) returns (CancelStarGiftResponse);
+  rpc ListStarGifts(ListStarGiftsRequest) returns (ListStarGiftsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetResonanceInfo(GetResonanceInfoRequest) returns (GetResonanceInfoResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

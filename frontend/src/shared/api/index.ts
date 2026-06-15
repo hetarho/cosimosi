@@ -1,6 +1,6 @@
 // shared/api Public API — 명시 export만 (배럴 `export *` 금지, FSD 공개 API 규칙).
 export { supabase, getAccessToken } from './supabase'
-export { memoryClient, transport } from './transport'
+export { memoryClient, transport, giftTransport } from './transport'
 // proto 계약 타입/값 — gen/은 슬라이스 내부이므로 소비처는 이 공개 API로만 가져온다(FSD §2.5).
 export {
   Mood,
@@ -39,6 +39,16 @@ export type {
   UpdateShareSettingsResponse,
   RotateShareSlugResponse,
 } from './gen/cosimosi/v1/share_pb'
+// 함께한 기억 — 공명 계약(spec 36) — GiftService(전부 인증): 별 보내기·열기·수락·거절·취소·목록·공명정보.
+export { GiftService, GiftStatus } from './gen/cosimosi/v1/gift_pb'
+export type {
+  SendStarGiftResponse,
+  GetStarGiftResponse,
+  AcceptStarGiftResponse,
+  ListStarGiftsResponse,
+  GiftSummary,
+  GetResonanceInfoResponse,
+} from './gen/cosimosi/v1/gift_pb'
 // 관리자 콘솔 계약(spec 34) — AdminService는 서버 allowlist 게이트 뒤에 있다.
 export { AdminService } from './gen/cosimosi/v1/admin_pb'
 export type {

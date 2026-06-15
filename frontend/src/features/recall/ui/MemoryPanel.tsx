@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useSelector } from '@xstate/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Record as RecordMsg } from '@/shared/api'
 import { capture, EVENTS } from '@/shared/lib'
 import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
@@ -25,6 +25,7 @@ import {
 } from '@/entities/memory'
 import { moodLabel } from '@/shared/config'
 import { recallMemory } from '../api/recall'
+import { resonanceInfoQueryOptions } from '../api/resonance'
 import { DWELL_MS } from '../model'
 import { recallFlushActor } from '../model/recall-flush.machine'
 import { NeighborNav } from './NeighborNav'
@@ -39,15 +40,25 @@ function RecallView({
   memoryId,
   onOpenEvolution,
   onSeeDiaryStars,
+  onSendStar,
 }: {
   memoryId: string
   onOpenEvolution?: (memoryId: string) => void
   onSeeDiaryStars?: (recordId: string) => void
+  onSendStar?: (memoryId: string) => void
 }) {
   const queryClient = useQueryClient()
   // 이 별이 가리키는 원본 일기 id(spec 28) — "이 일기의 다른 별들 보기"의 그룹 키. 별이 사라지지
   // 않는 한(헌법2) 안정적이라 selector가 값으로 비교해 불필요한 리렌더는 없다.
   const recordId = useMemoryStore((s) => s.stars.find((st) => st.id === memoryId)?.memory.recordId ?? '')
+  // 공명 여부(spec 36) — 우주 스냅샷의 resonant 플래그. true일 때만 상대 정보를 조회한다(비공명 별엔
+  // RPC 미발사). 데모엔 서버가 없어 조회 자체를 끈다.
+  const resonant = useMemoryStore((s) => s.stars.find((st) => st.id === memoryId)?.memory.resonant ?? false)
+  const resonanceQuery = useQuery({
+    ...resonanceInfoQueryOptions(memoryId),
+    enabled: resonant && !isDemoMode(),
+  })
+  const resonance = resonanceQuery.data
   // 재열람 = 캐시에서 즉시 본문(스피너 없음, 1.5). 원본은 불변(헌법 §1)이라 안전하다.
   const [record, setRecord] = useState<RecordMsg | null>(
     () => queryClient.getQueryData<RecordMsg>(recordQueryKey(memoryId)) ?? null,
@@ -198,6 +209,38 @@ function RecallView({
         </article>
       )}
 
+      {/* 공명 정보 + 별 보내기(spec 36). 공명 중이면 상대 표시명("○○의 우주와 공명 중")과, 상대가
+          우주를 공개(35) 중이면 방문 링크를 보인다. "이 별 보내기"는 친구에게 토큰 링크로 보낸다. */}
+      {(resonant || onSendStar) && (
+        <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
+          {resonant && (
+            <p className="flex flex-wrap items-center gap-1.5 text-xs text-indigo-200/80">
+              <span aria-hidden>✦</span>
+              <span>{resonance ? `${resonance.partnerDisplayName || '어느'} 우주와 공명 중` : '다른 우주와 공명 중'}</span>
+              {resonance?.partnerSlug && (
+                <a
+                  href={`/u/${resonance.partnerSlug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-indigo-200 underline-offset-2 hover:underline"
+                >
+                  방문
+                </a>
+              )}
+            </p>
+          )}
+          {onSendStar && (
+            <button
+              type="button"
+              onClick={() => onSendStar(memoryId)}
+              className="w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-indigo-400/60 hover:text-white"
+            >
+              ✦ 이 별 보내기
+            </button>
+          )}
+        </div>
+      )}
+
       <NeighborNav />
     </div>
   )
@@ -206,9 +249,11 @@ function RecallView({
 export function MemoryPanel({
   onOpenEvolution,
   onSeeDiaryStars,
+  onSendStar,
 }: {
   onOpenEvolution?: (memoryId: string) => void
   onSeeDiaryStars?: (recordId: string) => void
+  onSendStar?: (memoryId: string) => void
 } = {}) {
   const selectedId = useSelector(focusActor, selectFocusedStarId)
   if (!selectedId) return null
@@ -218,6 +263,7 @@ export function MemoryPanel({
       memoryId={selectedId}
       onOpenEvolution={onOpenEvolution}
       onSeeDiaryStars={onSeeDiaryStars}
+      onSendStar={onSendStar}
     />
   )
 }

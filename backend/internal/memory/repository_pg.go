@@ -148,6 +148,7 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 			Version:          int(row.Version),
 			RecordID:         row.RecordID,         // 28: 일기 단위 그룹 키
 			FragmentIndex:    int(row.FragmentIndex), // 28: 일기 내 조각 순서
+			Resonant:         row.Resonant,           // 36: 공명으로 다른 우주의 별과 이어졌는지
 		})
 	}
 	return out, nil

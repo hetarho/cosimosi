@@ -35,6 +35,21 @@
 | 클레임 순서 | 워커는 extract job을 embed보다 먼저 claim한다(조각이 있어야 embed가 생긴다) |
 | 응답 계약 | `RecordMemoryResponse{record_id, repeated memory_ids}` — `memory_ids`는 보통 빈 배열(조각은 다음 `GetUniverse` refetch로 도착, 헌법6). 멱등 재호출이면 이미 fan-out된 조각 id들 |
 
+### 공명 별 생성 경로 (gift 수락 = 재작성, 36)
+
+일반 일기(21)는 **원본→AI 추출→N 조각 별**의 경로지만, 친구의 별을 수락(재작성)할 때 태어나는 별은 **다른 경로**다 — 한 사건의 한 기억이므로 추출(분절) 없이 **단일 조각 별**로 저장한다.
+
+| 항목 | 일반 일기(21) | 공명 별(36, gift 수락) |
+|---|---|---|
+| 진입 | `RecordMemory`(extract job→비동기 fan-out) | `AcceptStarGift`(동기, 한 트랜잭션) |
+| 조각 분절 | AI 추출 1~N조각 | **추출 생략** — 항상 단일 조각(`fragment_index=0`) |
+| 트랜잭션 | record + extract job | record(불변) + **단일 조각 별** + `resonances` 쌍 + embed job — 부분 실패 전체 롤백 |
+| 코어 재사용 | `db/fragment.FanOutTx` | **같은 `FanOutTx`**(조각 1개 — InsertMemory + embed job, 일내 시냅스 없음) → 일반 경로와 그래프 토폴로지가 절대 어긋나지 않음 |
+| 감정 | AI 감지 | **수신자가 직접 입력**(13감정·강도·정서가) — record 힌트 + 조각 양쪽에 둔다 |
+
+- 수신자의 재작성 텍스트는 그의 **불변 record body**(헌법1)이자 그 단일 조각의 `fragment_text`다.
+- 두 별(보낸 별·태어난 별)은 `resonances`(memory↔memory, gift당 1쌍·UNIQUE)로 이어지되 **상태는 비전파** — 각자의 우주에서 따로 회상·재성형되고 따로 변천사를 쌓는다(공명 규칙 상세는 [sharing](sharing.md)).
+
 ### 감정 입력 (AI 감지 기본 + 수동 힌트 fallback, 21)
 
 | 값 | 출처 | 저장 |
@@ -45,7 +60,7 @@
 - 폼의 기본은 **감정 입력 없음**(본문+날짜만). 수동 토글이 켜졌을 때만 힌트가 전송된다.
 - 힌트는 **추출이 단일-중립-조각 폴백 형태로 강등됐을 때만** 조각에 적용된다(`applyManualHint`: 1조각 ∧ mood neutral/빈 값 ∧ valence 0). 실제 다조각·정동 감지 결과를 힌트가 덮어쓰지 않는다.
 - 도메인 `Mood`는 13종(29) + 빈 값(MoodUnspecified). 핸들러가 proto `Mood` enum ↔ 도메인 문자열을 매핑하고, 빈 Mood는 NULL로 저장한다.
-- `Star` DTO는 `valence`(double, 필드 12)를 실어 나른다(26이 λ_eff에 소비). 필드 5–8=재성형(23)·**9·10=`record_id`/`fragment_index`(28)**·11=공명(36 예약)·13=relevance(26).
+- `Star` DTO는 `valence`(double, 필드 12)를 실어 나른다(26이 λ_eff에 소비). 필드 5–8=재성형(23)·**9·10=`record_id`/`fragment_index`(28)**·**11=`resonant`(bool, 36 — `GetUniverse`가 `resonances` 조인으로 채움; 공개 우주엔 부재)**·13=relevance(26).
 
 ### 3겹 주소: 원본 ↔ 조각 ↔ 별 (28)
 

@@ -25,6 +25,7 @@ function star(id: string, index: number, lastRecalledAt = NOW, relevance = 0): S
       hueShift: 0,
       formSeedDelta: 0,
       version: 0,
+      resonant: false,
     },
   }
 }

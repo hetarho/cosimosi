@@ -45,7 +45,7 @@ const (
 // logging→auth interceptors, a /health endpoint that reports DB reachability, all
 // wrapped in CORS and h2c. panicCapture (nil-safe) forwards recovered RPC panics
 // to the composition root's tracker. The caller owns the listen/shutdown lifecycle.
-func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, settingsSvc cosimosiv1connect.SettingsServiceHandler, adminSvc cosimosiv1connect.AdminServiceHandler, shareSvc cosimosiv1connect.ShareServiceHandler, visitSvc cosimosiv1connect.VisitServiceHandler, panicCapture PanicCapture) *http.Server {
+func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, settingsSvc cosimosiv1connect.SettingsServiceHandler, adminSvc cosimosiv1connect.AdminServiceHandler, shareSvc cosimosiv1connect.ShareServiceHandler, visitSvc cosimosiv1connect.VisitServiceHandler, giftSvc cosimosiv1connect.GiftServiceHandler, panicCapture PanicCapture) *http.Server {
 	mux := http.NewServeMux()
 
 	// Logging is outermost, auth innermost (onion order): every request — even
@@ -67,6 +67,10 @@ func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimos
 	// ShareService is owner-only — same authenticated chain (user_id = JWT sub; spec 35, 3.2).
 	sharePath, shareHTTP := cosimosiv1connect.NewShareServiceHandler(shareSvc, opts...)
 	mux.Handle(sharePath, shareHTTP)
+	// GiftService (spec 36) is fully authenticated — both parties are cosimosi users, so every
+	// rpc has a caller identity (no public surface like VisitService). Same auth chain.
+	giftPath, giftHTTP := cosimosiv1connect.NewGiftServiceHandler(giftSvc, opts...)
+	mux.Handle(giftPath, giftHTTP)
 
 	// AdminService gets the same chain PLUS the allowlist gate (spec 34) —
 	// WithInterceptors accumulates, so the gate runs after logging→auth and

@@ -68,6 +68,8 @@ export function applySharedUniverse(res: GetSharedUniverseResponse): void {
         hueShift: 0,
         formSeedDelta: 0,
         version: 0,
+        // 공개 우주(35)엔 공명을 절대 노출하지 않는다(제3자에게 관계 비노출, spec 36 비목표).
+        resonant: false,
       },
     }
   })
