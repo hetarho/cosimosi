@@ -29,6 +29,7 @@ import (
 	"github.com/cosimosi/backend/internal/platform/postgres"
 	"github.com/cosimosi/backend/internal/platform/rpcserver"
 	"github.com/cosimosi/backend/internal/settings"
+	"github.com/cosimosi/backend/internal/share"
 )
 
 const version = "0.0.1"
@@ -56,6 +57,26 @@ func (a segmenterAdapter) Extract(ctx context.Context, body string) ([]memory.Se
 		})
 	}
 	return out, nil
+}
+
+// shareSettingsAdapter maps settings.Service onto share's SettingsReader port (spec 35): the
+// public snapshot includes the owner's spec-30 visual settings, but internal/share must not
+// import internal/settings — so the composition root adapts it here (the segmenterAdapter
+// precedent above).
+type shareSettingsAdapter struct {
+	inner *settings.Service
+}
+
+func (a shareSettingsAdapter) Appearance(ctx context.Context, userID string) (share.Appearance, error) {
+	s, err := a.inner.Get(ctx, userID)
+	if err != nil {
+		return share.Appearance{}, err
+	}
+	colors := make([]share.EmotionColor, 0, len(s.EmotionColors))
+	for _, c := range s.EmotionColors {
+		colors = append(colors, share.EmotionColor{Mood: c.Mood, Color: c.Color})
+	}
+	return share.Appearance{Theme: s.Theme, StarObject: s.StarObject, EmotionColors: colors}, nil
 }
 
 func main() {
@@ -129,7 +150,13 @@ func main() {
 	linkSvc := link.NewService(link.NewRepository(db))
 	memorySvc := memory.NewService(memory.NewRepository(db), linkSvc, segmenterAdapter{inner: extractor})
 	memoryHandler := memory.NewHandler(memorySvc)
-	settingsHandler := settings.NewHandler(settings.NewService(settings.NewRepository(db)))
+	settingsSvc := settings.NewService(settings.NewRepository(db))
+	settingsHandler := settings.NewHandler(settingsSvc)
+
+	// Universe sharing (spec 35): owner ShareService + public VisitService, one Handler. The
+	// public snapshot folds in the owner's spec-30 appearance, so share follows settings through
+	// shareSettingsAdapter (settings.Service → share.SettingsReader) — share never imports settings.
+	shareHandler := share.NewHandler(share.NewService(share.NewRepository(db), shareSettingsAdapter{inner: settingsSvc}))
 
 	// Async extraction + embedding worker (specs 05/21): consumes the extract job
 	// the RecordMemory transaction enqueues, fans the diary out into fragment
@@ -168,7 +195,10 @@ func main() {
 			hub.RecoverWithContext(ctx, p)
 		}
 	}
-	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, adminHandler, panicCapture)
+	// The one share.Handler implements both services — auth is enforced by the chain each is
+	// mounted with (rpcserver), so the SAME handler is passed for the owner (ShareService) and
+	// public (VisitService) surfaces.
+	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, adminHandler, shareHandler, shareHandler, panicCapture)
 
 	// The sentryhttp wrap still earns its keep after 17: it attaches the
 	// request-scoped hub the capture hook reads, and catches panics from non-RPC

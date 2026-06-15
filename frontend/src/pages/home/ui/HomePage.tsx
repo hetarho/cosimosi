@@ -22,6 +22,7 @@ import { DiaryCard, DiarySheet } from '@/features/diary-list'
 import { DormantSheet } from '@/features/dormant-search'
 import { useShellStore } from '@/features/universe'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
+import { ShareUniverseButton } from '@/features/share-universe'
 import {
   applyUniverse,
   universeQueryOptions,
@@ -500,6 +501,8 @@ export function HomePage() {
         >
           잠든 별
         </button>
+        {/* 우주 공개(spec 35) — 풍경만 공개하는 URL 토글·표시명·복사·회전 모달. 데모에선 숨김(자체 처리). */}
+        <ShareUniverseButton />
         <button
           type="button"
           onClick={() => navigationActor.send({ type: 'TOGGLE_MODE' })}

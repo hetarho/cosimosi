@@ -163,3 +163,15 @@ CREATE TABLE llm_usage_daily (
     output_tokens BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (day, provider, model, kind)
 );
+
+-- 우주 공개(spec 35, 00007): 사용자당 1행 overrides-only. slug(base64url 22자·UNIQUE)로 무인증
+-- 방문 라우트(/u/:slug)가 풍경만 공개한다. enabled=false·회전 시 옛 slug는 즉시 NotFound.
+-- 원본 일기·조각 텍스트는 어떤 컬럼으로도 담지 않는다(콘텐츠 제로 — 풍경만).
+CREATE TABLE universe_shares (
+    user_id      TEXT PRIMARY KEY,
+    slug         TEXT NOT NULL UNIQUE,
+    enabled      BOOLEAN NOT NULL DEFAULT false,
+    display_name TEXT NOT NULL DEFAULT '',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    rotated_at   TIMESTAMPTZ
+);

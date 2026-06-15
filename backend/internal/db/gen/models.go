@@ -119,6 +119,15 @@ type Record struct {
 	Valence        *float32           `json:"valence"`
 }
 
+type UniverseShare struct {
+	UserID      string             `json:"user_id"`
+	Slug        string             `json:"slug"`
+	Enabled     bool               `json:"enabled"`
+	DisplayName string             `json:"display_name"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	RotatedAt   pgtype.Timestamptz `json:"rotated_at"`
+}
+
 type UserEmotionColor struct {
 	UserID string `json:"user_id"`
 	Mood   string `json:"mood"`

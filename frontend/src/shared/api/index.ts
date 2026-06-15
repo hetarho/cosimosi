@@ -29,6 +29,16 @@ export type {
   Settings,
   GetSettingsResponse,
 } from './gen/cosimosi/v1/memory_pb'
+// 우주 공개 계약(spec 35) — ShareService(인증, 소유자 설정) + VisitService(무인증 공개 방문).
+export { VisitService, ShareService, GetShareSettingsResponseSchema } from './gen/cosimosi/v1/share_pb'
+export type {
+  SharedStar,
+  SharedSynapse,
+  GetSharedUniverseResponse,
+  GetShareSettingsResponse,
+  UpdateShareSettingsResponse,
+  RotateShareSlugResponse,
+} from './gen/cosimosi/v1/share_pb'
 // 관리자 콘솔 계약(spec 34) — AdminService는 서버 allowlist 게이트 뒤에 있다.
 export { AdminService } from './gen/cosimosi/v1/admin_pb'
 export type {

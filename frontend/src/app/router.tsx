@@ -71,11 +71,22 @@ const adminRoute = createRoute({
   },
 })
 
+// /u/$slug = 공개 우주 방문(spec 35). SessionGate **밖**의 무인증 공개 라우트 — 누구나 링크로
+// 읽기 전용 우주를 거닌다. lazy 코드 스플릿(방문 전용 화면이 메인 번들에 실리지 않게). 일기 내용은
+// 어떤 경로로도 나가지 않고(전용 VisitService·SharedStar DTO), 페이지는 풍경만 렌더한다.
+const LazyVisitPage = lazyRouteComponent(() => import('@/pages/visit'), 'VisitPage')
+const visitRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/u/$slug',
+  component: LazyVisitPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   universeRoute,
   dormantRedirectRoute,
   adminRoute,
+  visitRoute,
 ])
 
 export const router = createRouter({
