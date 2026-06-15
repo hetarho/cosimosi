@@ -3,7 +3,7 @@
 // 백엔드 Resolver가 무재시작으로 새 선택을 사용한다.
 import { useState } from 'react'
 import { errorMessage } from '@/shared/lib'
-import { GlassCard, primaryButtonCls } from '@/shared/ui'
+import { Dropdown, GlassCard, primaryButtonCls } from '@/shared/ui'
 import type { GetLLMConfigResponse } from '@/shared/api'
 import { useSetActiveLLM } from '../api/admin-queries'
 
@@ -28,39 +28,32 @@ export function ActiveLLMCard({ config }: { config: GetLLMConfigResponse }) {
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <label className="flex-1 space-y-1 text-xs text-white/45">
+        {/* 커스텀 다크 드롭다운(shared/ui) — 네이티브 select의 흰 OS 목록 대신. */}
+        <div className="flex-1 space-y-1 text-xs text-white/45">
           공급자
-          <select
-            className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/85 outline-none focus:border-white/30"
+          <Dropdown
+            ariaLabel="공급자"
             value={provider}
-            onChange={(e) => setEdited({ provider: e.target.value, model: '' })} // 공급자 변경 시 모델은 기본으로
-          >
-            {config.providers.map((p) => (
-              <option key={p.provider} value={p.provider} className="bg-[#0a0a18]">
-                {p.provider}
-                {p.keySet ? '' : ' (키 없음)'}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(p) => setEdited({ provider: p, model: '' })} // 공급자 변경 시 모델은 기본으로
+            options={config.providers.map((p) => ({
+              value: p.provider,
+              label: `${p.provider}${p.keySet ? '' : ' (키 없음)'}`,
+            }))}
+          />
+        </div>
 
-        <label className="flex-1 space-y-1 text-xs text-white/45">
+        <div className="flex-1 space-y-1 text-xs text-white/45">
           모델
-          <select
-            className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/85 outline-none focus:border-white/30"
+          <Dropdown
+            ariaLabel="모델"
             value={model}
-            onChange={(e) => setEdited({ provider, model: e.target.value })}
-          >
-            <option value="" className="bg-[#0a0a18]">
-              기본 ({card?.defaultModel ?? '—'})
-            </option>
-            {models.map((m) => (
-              <option key={m} value={m} className="bg-[#0a0a18]">
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(m) => setEdited({ provider, model: m })}
+            options={[
+              { value: '', label: `기본 (${card?.defaultModel ?? '—'})` },
+              ...models.map((m) => ({ value: m, label: m })),
+            ]}
+          />
+        </div>
 
         <button
           type="button"

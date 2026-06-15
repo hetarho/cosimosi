@@ -9,6 +9,7 @@ import { useSelector } from '@xstate/react'
 import { Mood } from '@/shared/api'
 import { moodFromProto } from '@/entities/memory'
 import { useAppearance } from '@/entities/appearance'
+import { Dropdown } from '@/shared/ui'
 import { MOOD_AFFECT, moodLabel, resolveMoodRgb } from '@/shared/config'
 import { MAX_FRAGMENTS, type DraftFragment } from '../api/record-memory'
 import {
@@ -54,38 +55,30 @@ function moodCss(mood: Mood, overrides?: Record<string, string>): string {
  *  성공 reset에 조용히 증발하지 않게 입력을 잠근다. */
 function FragmentCard({ fragment, disabled }: { fragment: DraftFragment; disabled: boolean }) {
   const emotionColors = useAppearance((s) => s.emotionColors)
-  const color = moodCss(fragment.mood, emotionColors)
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-2.5">
       <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="h-3 w-3 shrink-0 rounded-full"
-          style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }}
-        />
-        <select
-          aria-label="조각 감정"
-          className={`${inputCls} flex-1 py-1 text-xs`}
-          value={String(fragment.mood)}
+        {/* 커스텀 다크 드롭다운(shared/ui) — 네이티브 select의 흰 OS 목록 대신. 감정 색 점 포함. */}
+        <Dropdown
+          ariaLabel="조각 감정"
+          className="flex-1"
+          value={fragment.mood}
           disabled={disabled}
-          onChange={(e) => {
-            const mood = Number(e.target.value) as Mood
-            // 감정을 바꾸면 AI가 매겼던 valence는 옛 감정의 것 — 새 감정의 circumplex
-            // 근사값(MOOD_AFFECT)으로 함께 갱신해 별의 물리(감쇠 λ_eff)와 색이 어긋나지
-            // 않게 한다. 강도는 사용자가 슬라이더로 직접 다듬는 값이라 보존.
+          // 감정을 바꾸면 valence도 새 감정의 circumplex 근사값(MOOD_AFFECT)으로 함께 갱신해 별의
+          // 물리(감쇠 λ_eff)·색이 어긋나지 않게 한다. 강도는 슬라이더로 다듬는 값이라 보존.
+          onChange={(mood) =>
             composeActor.send({
               type: 'UPDATE_FRAGMENT',
               id: fragment.id,
               patch: { mood, valence: MOOD_AFFECT[moodFromProto(mood)].valence },
             })
-          }}
-        >
-          {MOOD_OPTIONS.map((m) => (
-            <option key={m} value={String(m)}>
-              {moodLabel(moodFromProto(m))}
-            </option>
-          ))}
-        </select>
+          }
+          options={MOOD_OPTIONS.map((m) => ({
+            value: m,
+            label: moodLabel(moodFromProto(m)),
+            color: moodCss(m, emotionColors),
+          }))}
+        />
         <label className="flex flex-1 items-center gap-1.5 text-[10px] text-white/45">
           강도
           <input

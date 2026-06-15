@@ -16,8 +16,9 @@ import {
   getDemoPersona,
   type DemoPersona,
 } from '@/shared/lib/demo'
-import { MorningDiffNote } from '@/shared/ui'
-import { universeInvalidateKey } from '@/entities/memory'
+import { Dropdown, MorningDiffNote } from '@/shared/ui'
+import { resolveMoodRgb } from '@/shared/config'
+import { moodFromProto, universeInvalidateKey } from '@/entities/memory'
 import { THEORIES, TheoryDemo } from '@/entities/theory'
 import {
   resetDemoExperience,
@@ -45,6 +46,12 @@ const MOODS: { value: Mood; label: string }[] = [
   { value: Mood.LOVE, label: '사랑' },
   { value: Mood.NEUTRAL, label: '중립' },
 ]
+
+/** mood → CSS 색 — 커스텀 드롭다운 선택지의 색 점(gift·기록 폼과 같은 시각 언어). */
+function moodCss(m: Mood): string {
+  const [r, g, b] = resolveMoodRgb(moodFromProto(m))
+  return `rgb(${Math.round(r * 255)} ${Math.round(g * 255)} ${Math.round(b * 255)})`
+}
 
 const SWIPE_PX = 40 // 이 이상 가로로 끌면 페이지 넘김(터치/마우스 공통)
 
@@ -186,20 +193,16 @@ function ControlsPanel({
       <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-3">
         <span className="text-xs font-medium text-white/85">✦ 별 띄우기</span>
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1 text-[11px] text-white/50">
+          <div className="flex flex-col gap-1 text-[11px] text-white/50">
             감정
-            <select
-              className={inputCls}
-              value={String(mood)}
-              onChange={(e) => setMood(Number(e.target.value) as Mood)}
-            >
-              {MOODS.map((m) => (
-                <option key={m.value} value={String(m.value)}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            {/* 커스텀 다크 드롭다운(shared/ui) — 네이티브 select의 흰 OS 목록 대신. 감정 색 점 포함. */}
+            <Dropdown
+              ariaLabel="감정"
+              value={mood}
+              onChange={(m) => setMood(m)}
+              options={MOODS.map((m) => ({ value: m.value, label: m.label, color: moodCss(m.value) }))}
+            />
+          </div>
           <label className="flex flex-col gap-1 text-[11px] text-white/50">
             날짜
             <input
