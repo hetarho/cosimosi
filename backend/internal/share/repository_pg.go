@@ -93,6 +93,14 @@ func (r *pgRepository) ListStars(ctx context.Context, userID string) ([]StarLand
 	return out, nil
 }
 
+func (r *pgRepository) ListStarIDs(ctx context.Context, userID string) ([]string, error) {
+	ids, err := gen.New(r.pool).ListSharedStarIDs(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list shared star ids: %w", err)
+	}
+	return ids, nil
+}
+
 func (r *pgRepository) ListSynapses(ctx context.Context, userID string) ([]SynapseLandscape, error) {
 	rows, err := gen.New(r.pool).ListSharedSynapses(ctx, userID)
 	if err != nil {

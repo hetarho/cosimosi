@@ -40,8 +40,11 @@ const HANDLE_RADIUS = 1.6 // clickable node at each bridge midpoint
 function flowPacket(s: number, t: number): number {
   const phase = s - t * FLOW_SPEED
   const frac = phase - Math.floor(phase)
+  // 봉우리꼴: 0→0.5 상승, 0.5→1 하강. three의 smoothstep(x,min,max)은 min>max 역방향을 지원하지
+  // 않고 x<=min이면 0을 돌려주므로(예전 smoothstep(frac,1,0.5)는 frac<1이라 항상 0 → 흐름 정지),
+  // 하강은 정방향 smoothstep(frac,0.5,1)을 1에서 빼서 만든다.
   const up = THREE.MathUtils.smoothstep(frac, 0, 0.5)
-  const down = THREE.MathUtils.smoothstep(frac, 1, 0.5)
+  const down = 1 - THREE.MathUtils.smoothstep(frac, 0.5, 1)
   return up * down
 }
 

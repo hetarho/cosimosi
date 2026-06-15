@@ -158,13 +158,20 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>, opts?: C
   return { ids, px, vx, fbuf, free, radius, edges, params: p, alpha: 1, alphaDecay, n }
 }
 
-/** Advance the layout by `steps` ticks; returns the current positions snapshot. */
-export function tick(state: SimState, steps = 1): Float32Array {
+/** Advance the layout by `steps` ticks IN PLACE — mutates state.px, allocates nothing. For
+ *  main-thread per-frame consumers that read state.px directly (spec 37 overlay), avoiding the
+ *  per-frame positions() copy (GC churn on the star-2x scene). */
+export function advance(state: SimState, steps = 1): void {
   for (let s = 0; s < steps; s++) {
     if (state.alpha <= state.params.alphaMin) break // settled — stop moving (1.8)
     step(state)
     state.alpha += (0 - state.alpha) * state.alphaDecay
   }
+}
+
+/** Advance the layout by `steps` ticks; returns the current positions snapshot (a fresh copy). */
+export function tick(state: SimState, steps = 1): Float32Array {
+  advance(state, steps)
   return positions(state)
 }
 

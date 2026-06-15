@@ -9,25 +9,20 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { StarField } from '@/entities/star'
 import { SynapseFilaments, type SynapseEdge } from '@/entities/synapse'
-import { activation, A_MIN, type StarNode } from '@/entities/memory'
+import { type StarNode } from '@/entities/memory'
 import type { StarObject } from '@/entities/star'
 import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
-import {
-  fibonacciStarPosition,
-  scatterDirection,
-  strength as memoryStrength,
-  targetRadius,
-} from '@/shared/lib'
+import { fibonacciStarPosition, scatterDirection } from '@/shared/lib'
 import {
   createSim,
   isSettled,
-  positions as simPositions,
-  tick,
+  advance,
   type SimEdge,
   type SimNode,
   type SimState,
 } from '@/shared/lib/force-sim'
 import { virtualNowMs } from '@/shared/lib/demo'
+import { radiusOf, atRadius, RADIAL_SIM_PARAMS } from '../../model/radial-layout'
 import type { OverlayHandle } from './types'
 
 /** id → settled coord snapshot (what the filaments bake against). */
@@ -36,18 +31,17 @@ type LayoutMap = Map<string, [number, number, number]>
 const TICKS_PER_FRAME = 2
 const EMPTY_LAYOUT: LayoutMap = new Map() // stable identity for the empty publish
 
-/** Distance from this universe's centre by strength (spec 38 radadial shell) — strong/fresh near,
- *  faded outer. Activation floored at A_MIN so the most dormant don't all collapse onto one shell. */
-function radiusOf(mem: { lastRecalledAt: number; intensity: number }, now: number): number {
-  return targetRadius(memoryStrength(Math.max(A_MIN, activation(mem.lastRecalledAt, now)), mem.intensity))
-}
+// "남의 하늘"(spec 37 친구 틴트): 별 색은 소유자의 spec-30 감정색을 유지하되, 우주별 공통 atmosphere
+// 색 쪽으로 이만큼만 끌어당겨 두 하늘이 살짝 다른 결로 읽히게 한다(틴트는 채도/색을 약하게 보정만 —
+// 감정 정보는 보존). faint sphere만으로는 머리맞댄 각도에서 두 우주가 구분 안 되던 문제를 별 레벨에서 해소.
+const TINT_STRENGTH = 0.16
 
-/** Scale a seed direction onto a target-radius shell, keeping its direction. */
-function atRadius(pos: readonly [number, number, number], r: number): [number, number, number] {
-  const len = Math.hypot(pos[0], pos[1], pos[2])
-  if (len < 1e-3) return [r, 0, 0]
-  const k = r / len
-  return [pos[0] * k, pos[1] * k, pos[2] * k]
+/** "#RRGGBB" → linear-ish RGB(0..1). 형식이 아니면 undefined(틴트 없음). */
+function hexToRgb(hex: string): [number, number, number] | undefined {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim())
+  if (!m) return undefined
+  const n = parseInt(m[1], 16)
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
 export interface OverlayUniverseProps {
@@ -76,6 +70,8 @@ export function OverlayUniverse({
   const positionsRef = useRef<Float32Array | null>(null)
   const simRef = useRef<SimState | null>(null)
   const settledRef = useRef(true)
+  // 별 색을 atmosphere 색 쪽으로 살짝 끌어당기는 틴트(spec 37 친구 틴트) — atmosphere가 없으면 무틴트.
+  const tint = useMemo(() => (atmosphere ? hexToRgb(atmosphere) : undefined), [atmosphere])
   // 빌드 effect는 sim만 세팅하고, 레이아웃 발행(setState)은 useFrame이 맡는다('seed' 첫 발행 / 'empty'
   // 비우기) — effect 내 동기 setState 금지 규칙 회피(LiveLayoutController가 onLayout을 useFrame에서
   // 부르는 것과 같은 결). useFrame은 React effect가 아니라 발행이 허용된다.
@@ -85,12 +81,13 @@ export function OverlayUniverse({
   // id → buffer row (stars order == sim.ids order == buffer order) — shared with the bridge.
   const idIndex = useMemo(() => new Map(stars.map((s, i) => [s.id, i] as const)), [stars])
 
-  // 현 sim의 좌표를 layout 스냅샷으로 발행(filaments가 bake) + 라이브 버퍼 갱신.
+  // 현 sim의 좌표를 layout 스냅샷으로 발행(filaments가 bake) + 라이브 버퍼 노출. positionsRef는
+  // sim 내부 버퍼(sim.px)를 가리키므로 매 프레임 복사 없이 advance가 제자리 갱신한 좌표를 바로 읽는다.
   const publishLayout = (sim: SimState) => {
-    const buf = simPositions(sim)
-    positionsRef.current = buf
+    positionsRef.current = sim.px
+    const px = sim.px
     const next: LayoutMap = new Map()
-    sim.ids.forEach((id, i) => next.set(id, [buf[i * 3], buf[i * 3 + 1], buf[i * 3 + 2]]))
+    sim.ids.forEach((id, i) => next.set(id, [px[i * 3], px[i * 3 + 1], px[i * 3 + 2]]))
     setLayout(next)
   }
 
@@ -131,19 +128,16 @@ export function OverlayUniverse({
       return { id: s.id, pinned: false, x, y, z, radius: r }
     })
     const simEdges: SimEdge[] = edges.map((e) => ({ source: e.aId, target: e.bId, weight: e.weight }))
-    const sim = createSim(
-      { nodes, edges: simEdges },
-      { repulsion: -18, linkDistance: 14, radialStrength: 0.1 },
-      { seedNewNodes: false },
-    )
+    const sim = createSim({ nodes, edges: simEdges }, RADIAL_SIM_PARAMS, { seedNewNodes: false })
     simRef.current = sim
-    positionsRef.current = simPositions(sim)
+    positionsRef.current = sim.px // 라이브 내부 버퍼(매 프레임 복사 없음)
     settledRef.current = false // 다음 프레임에 seed 레이아웃 발행
     pendingRef.current = 'seed'
   }, [stars, edges])
 
   // Pump the sim each frame until it settles; publish the layout (seed → 매 settle) so the filaments
   // reconnect at the emergent coordinates (the overlay is a static view — no per-frame re-kick).
+  // advance는 sim.px를 제자리 갱신(복사 0)하고 positionsRef가 그 버퍼를 가리켜 별/다리가 라이브로 따라온다.
   // setState는 effect가 아니라 여기(useFrame)서만 — LiveLayoutController의 onLayout 패턴과 동형.
   useFrame(() => {
     const pending = pendingRef.current
@@ -168,7 +162,7 @@ export function OverlayUniverse({
       return
     }
     settledRef.current = false
-    positionsRef.current = tick(sim, TICKS_PER_FRAME)
+    advance(sim, TICKS_PER_FRAME) // sim.px 제자리 갱신(positionsRef가 이 버퍼를 가리킴 — 복사 없음)
   })
 
   // Filament lookups (mirror UniverseSynapses): coords from the published layout, colors/seeds
@@ -215,6 +209,8 @@ export function OverlayUniverse({
         positionsRef={positionsRef}
         stars={stars}
         edges={edges}
+        tint={tint}
+        tintStrength={TINT_STRENGTH}
       />
     </group>
   )

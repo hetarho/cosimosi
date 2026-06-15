@@ -204,11 +204,14 @@ export function demoOverlayData(): {
   const now = virtualNowMs()
   const minePersona = getDemoPersona()
   const order = Object.keys(CORPORA) as DemoPersona[]
-  const theirsPersona = order.find((p) => p !== minePersona) ?? minePersona
+  const other = order.find((p) => p !== minePersona)
+  // 다른 페르소나가 없으면(코퍼스가 1개뿐인 축소 빌드) 같은 우주를 두 번 띄우지 않고 친구 쪽을 비운다 —
+  // 같은 코퍼스끼리는 crossResonances가 자기 별을 잇는 무의미한 다리를 만들 수 있으므로 다리도 없다.
+  const theirsPersona = other ?? minePersona
   return {
     mine: buildPersonaUniverse(minePersona, now),
     theirs: buildPersonaUniverse(theirsPersona, now),
-    bridges: crossResonances(CORPORA[minePersona], CORPORA[theirsPersona], 4),
+    bridges: other ? crossResonances(CORPORA[minePersona], CORPORA[theirsPersona], 4) : [],
   }
 }
 

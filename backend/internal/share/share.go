@@ -122,6 +122,10 @@ type Repository interface {
 	// ListStars / ListSynapses read only the landscape columns for the public snapshot.
 	ListStars(ctx context.Context, userID string) ([]StarLandscape, error)
 	ListSynapses(ctx context.Context, userID string) ([]SynapseLandscape, error)
+	// ListStarIDs reads ONLY the star ids in the SAME order as ListStars (ORDER BY m.id) — the
+	// spec-37 bridge index mapping needs only ids, so this avoids reading the unused landscape
+	// columns. MUST share ListStars' ordering so the index lines up with the public snapshot array.
+	ListStarIDs(ctx context.Context, userID string) ([]string, error)
 }
 
 // SettingsReader is the consumer port for the owner's spec-30 visual overrides — adapted from

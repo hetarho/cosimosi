@@ -20,8 +20,6 @@ import { StarField } from '@/entities/star'
 import { SynapseFilaments, SynapseDust, useSynapseStore, edgesWithin } from '@/entities/synapse'
 import {
   useMemoryStore,
-  activation,
-  A_MIN,
   starsOfRecord,
   focusActor,
   selectFocusedStarId,
@@ -40,11 +38,10 @@ import {
   scatterDirection,
   applyAngularDrift,
   reportUniverseRenderer,
-  strength as memoryStrength,
-  targetRadius,
 } from '@/shared/lib'
 import { AmbientNebula } from './AmbientNebula'
 import { SelfStar } from './SelfStar'
+import { radiusOf, atRadius, RADIAL_SIM_PARAMS } from '../model/radial-layout'
 import {
   createSim,
   isSettled,
@@ -118,24 +115,8 @@ const DAY_MS = 86_400_000
 const REKICK_THRESHOLD = 0.5
 const REKICK_ALPHA = 0.3
 
-/** A memory's target distance from the central self star (spec 38): strength (activation =
- *  recency, 12 + emotional intensity) → radius. Strong/fresh → near centre, faded → outer.
- *  Activation is floored at A_MIN (the same floor as brightness, 12) so the most dormant
- *  stars don't all collapse onto one identical outer shell — intensity still spreads them. */
-function radiusOf(mem: { lastRecalledAt: number; intensity: number }, now: number): number {
-  const act = Math.max(A_MIN, activation(mem.lastRecalledAt, now))
-  return targetRadius(memoryStrength(act, mem.intensity))
-}
-
-/** Scale a seed position onto a target-radius shell, keeping its direction (so a new star
- *  rises at its cluster's angle but at its strength's distance). Origin-degenerate → fall
- *  back to a fixed axis so normalize is stable. */
-function atRadius(pos: readonly [number, number, number], r: number): [number, number, number] {
-  const len = Math.hypot(pos[0], pos[1], pos[2])
-  if (len < 1e-3) return [r, 0, 0]
-  const k = r / len
-  return [pos[0] * k, pos[1] * k, pos[2] * k]
-}
+// radiusOf / atShell layout helpers live in model/radial-layout (shared with the spec-37 overlay
+// so both canvases place stars on identical strength shells — single source of the layout math).
 
 /** Faint ambient point cloud — the "star dust" backdrop (acceptance 1.3). Always
  *  present, independent of the graph, so an empty universe still renders (1.10).
@@ -835,11 +816,7 @@ function LiveLayoutController({
     // length so connected stars pull into tight constellations (not a sprawling line), and a
     // firmer radial spring so each still hugs its strength-shell (distance = strength).
     // seedNewNodes:false → keep the resume / dir·radius placement instead of a neighbor average.
-    const sim = createSim(
-      { nodes, edges: simEdges },
-      { repulsion: -18, linkDistance: 14, radialStrength: 0.1 },
-      { seedNewNodes: false },
-    )
+    const sim = createSim({ nodes, edges: simEdges }, RADIAL_SIM_PARAMS, { seedNewNodes: false })
     simRef.current = sim
     const buf = simPositions(sim)
     positionsRef.current = buf

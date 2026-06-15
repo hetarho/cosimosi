@@ -53,6 +53,36 @@ func (q *Queries) GetShareUserBySlug(ctx context.Context, slug string) (GetShare
 	return i, err
 }
 
+const listSharedStarIDs = `-- name: ListSharedStarIDs :many
+SELECT m.id
+FROM memories m
+WHERE m.user_id = $1
+ORDER BY m.id
+`
+
+// 겹쳐보기(spec 37) 공명 다리 인덱스 매핑 전용: id만 읽는다(풍경 컬럼 불필요). ⚠️ WHERE·ORDER BY는
+// ListSharedStars와 **반드시 동일**해야 한다 — 공개 스냅샷이 ListSharedStars로 만든 배열 순서와 같은
+// 인덱스를 줘야 클라가 그 배열에 다리 끝점을 정확히 얹는다(순서가 갈리면 엉뚱한 별을 가리킨다).
+func (q *Queries) ListSharedStarIDs(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listSharedStarIDs, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSharedStars = `-- name: ListSharedStars :many
 SELECT m.id AS memory_id, m.mood, m.intensity, m.last_recalled_at, m.created_at
 FROM memories m

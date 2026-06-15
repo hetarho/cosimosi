@@ -9,6 +9,7 @@ export {
   resetAnalyticsIdentity,
 } from './analytics'
 export { cn } from './utils'
+export { setOverlayWriteBlocked, isWriteBlocked } from './write-gate'
 export { clamp01 } from './num'
 export { errorMessage } from './error'
 export { mulberry32 } from './prng'

@@ -346,6 +346,7 @@ export function crossResonances(
   const out: { aId: string; bId: string }[] = []
   for (const c of cands) {
     if (out.length >= max) break
+    if (c.aId === c.bId) continue // 자기 자신과의 다리 금지(같은 코퍼스를 두 번 넘기면 id가 겹친다)
     if (usedA.has(c.aId) || usedB.has(c.bId)) continue // 1:1 매칭 — 한 별은 한 다리에만
     usedA.add(c.aId)
     usedB.add(c.bId)

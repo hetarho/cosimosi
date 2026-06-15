@@ -142,6 +142,11 @@ export interface StarFieldProps {
   stars?: StarNode[]
   /** 외부 엣지 소스 — 변조 감쇠(spec 26) R_conn(degree) 입력. 외부 stars와 함께 쓴다. */
   edges?: SynapseEdge[]
+  /** 별 색을 이 색 쪽으로 tintStrength만큼 블렌드(spec 37 겹쳐보기 "남의 하늘" 공통 틴트) — 감정색을
+   *  지우지 않고 살짝 보정만 한다. 미지정이면 무틴트(기본 단일 우주 경로는 동작 불변). */
+  tint?: readonly [number, number, number]
+  /** tint 블렌드 강도(0..1) — tint가 있을 때만 의미. */
+  tintStrength?: number
 }
 
 export function StarField({
@@ -153,6 +158,8 @@ export function StarField({
   onSelect,
   stars: externalStars,
   edges: externalEdges,
+  tint,
+  tintStrength = 0,
 }: StarFieldProps) {
   const storeStars = useMemoryStore((s) => s.stars)
   // 외부 소스(겹쳐보기)면 그것을, 아니면 스토어를 그린다. external=true면 탄생 연출·loadedEmpty 게이트를 끈다.
@@ -294,9 +301,12 @@ export function StarField({
       const m = stars[i].memory
       if (m.resonant) resonantIdx.push(i) // 36: 공명 마커 대상
       const rgb = resolveMoodRgb(m.mood, emotionColors)
-      moodArr[i * 3] = rgb[0]
-      moodArr[i * 3 + 1] = rgb[1]
-      moodArr[i * 3 + 2] = rgb[2]
+      // spec 37 겹쳐보기 틴트: 감정색을 공통 atmosphere 색 쪽으로 tintStrength만큼만 끌어당긴다(보정).
+      // tint 미지정(기본 단일 우주)이면 ts=0 → 원색 그대로.
+      const ts = tint ? tintStrength : 0
+      moodArr[i * 3] = rgb[0] + (tint ? (tint[0] - rgb[0]) * ts : 0)
+      moodArr[i * 3 + 1] = rgb[1] + (tint ? (tint[1] - rgb[1]) * ts : 0)
+      moodArr[i * 3 + 2] = rgb[2] + (tint ? (tint[2] - rgb[2]) * ts : 0)
       // 재성형 합성(spec 23): 형태 시드·밝기는 누적 재공고화 상태를 더한 유효값으로,
       // 색조는 라디안 attribute로 머티리얼에 넘긴다. 기본 0이면 기존 별과 동일.
       // 밝기는 변조 감쇠(spec 26): 연결(R_conn)·요즘 관련성(R_recent)·감정(R_emo)으로 별마다
@@ -333,7 +343,7 @@ export function StarField({
     resonantIdxRef.current = resonantIdx
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
-  }, [stars, count, geometry, emotionColors, degreeNorm, external])
+  }, [stars, count, geometry, emotionColors, degreeNorm, external, tint, tintStrength])
 
   // Focus spotlight: re-weight aBrightness when the selection (or star set / form) changes —
   // selected boosted, all others dimmed; full brightness restored when nothing is selected. Reads

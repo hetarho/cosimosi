@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/react'
 import { Code, ConnectError } from '@connectrpc/connect'
 import { create } from '@bufbuild/protobuf'
 import { errorMessage } from '@/shared/lib'
+import { virtualNowMs } from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
 import { primaryButtonCls } from '@/shared/ui'
 import { GetSettingsResponseSchema, supabase } from '@/shared/api'
@@ -21,6 +22,9 @@ import {
   fragmentTextQueryKey,
   mapStar,
   moodFromProto,
+  parseEpochMs,
+  recordsQueryOptions,
+  starBrightness,
   universeQueryOptions,
   useMemoryStore,
   type StarNode,
@@ -104,6 +108,10 @@ export function VisitPage() {
   // 겹쳐보기는 두 우주를 PROPS로 받는다. 다리(GetResonanceBridges)는 당사자만 비어있지 않다(2.2).
   const myUniverse = useQuery({ ...universeQueryOptions(), enabled: overlayOn && loggedIn })
   const bridgesQuery = useQuery(resonanceBridgesQueryOptions(slug, overlayOn && loggedIn))
+  // 내 일기 목록(읽기 전용 ListRecords, NO_SIDE_EFFECTS) — 비교 패널의 "내 별" 텍스트 폴백 소스다.
+  // overlay는 쓰기 금지(3.1)라 RecallMemory(재점화)를 못 부르므로, 회상 캐시가 비어 있을 때 이 발췌로
+  // 내 쪽 텍스트를 보인다(친구 쪽은 콘텐츠 제로라 텍스트가 절대 없다 — 비대칭은 설계, 2.3).
+  const myRecords = useQuery({ ...recordsQueryOptions(), enabled: overlayOn && loggedIn })
 
   // 공유 store(memory·synapse·appearance·focus)는 인증 우주와 한 싱글턴이다. 방문자의 appearance를
   // *첫 렌더에 단 한 번* 캡처한다(lazy init은 effect/소유자 적용보다 먼저 실행되므로 항상 순수한
@@ -130,22 +138,39 @@ export function VisitPage() {
   const mySide = useMemo(() => {
     const d = myUniverse.data
     if (!d) return null
+    // 별 밝기와 같은 시각 기준을 쓴다(mapStar도 virtualNowMs를 읽는다). 방문은 비데모라 = Date.now().
+    const now = virtualNowMs()
     const stars: StarNode[] = d.stars.map((s, i) => mapStar(s, i))
-    const edges = d.synapses.map(toSynapseEdge)
+    // 엣지 밝기는 applyUniverse와 같게 활성 시각에서 시간 감쇠로 파생한다 — toSynapseEdge의 brightness=1
+    // 기본값을 그대로 쓰면 내 우주에선 흐릿한 휴면 링크가 겹침 뷰에선 풀밝기로 떠 같은 우주가 달라 보인다.
+    const edges = d.synapses.map((s) => {
+      const lastActivatedAt = parseEpochMs(s.lastActivatedAt, now)
+      return { ...toSynapseEdge(s), lastActivatedAt, brightness: starBrightness(lastActivatedAt, now) }
+    })
     return { stars, edges, object: visitorAppearance.object, emotionColors: visitorAppearance.emotionColors }
   }, [myUniverse.data, visitorAppearance])
 
   // 서버는 상대 별을 *공개 스냅샷 인덱스*로 준다(콘텐츠 제로 — id 비노출). 친구 우주의 StarNode id는
   // mapSharedUniverse 규약대로 `shared-N`이므로 여기서 인덱스를 그 id로 환원해 다리에 넘긴다(스냅샷
   // 인덱스 규약은 이 페이지에만 — 다리 컴포넌트는 순수 두-id 쌍).
-  const bridges: Bridge[] = useMemo(
-    () =>
-      (bridgesQuery.data?.bridges ?? []).map((b) => ({
-        myId: b.myMemoryId,
-        theirId: `shared-${b.theirStarIndex}`,
-      })),
-    [bridgesQuery.data],
-  )
+  // ⚠️ 스냅샷-인덱스 정합: their_star_index는 *같은 시점의* GetSharedUniverse 배열 인덱스를 가정한다.
+  // 두 RPC는 따로 페치되므로(이론상 그 찰나에 소유자가 별을 추가하면 인덱스가 밀릴 수 있다), 친구 우주
+  // 별 수 범위 밖 인덱스는 버린다 — 끝점 없는(분리된) 다리가 그려지지 않게 한다(3.3). 범위 안이면 같은
+  // `shared-N` 규약으로 환원해 다리에 넘긴다(다리 컴포넌트는 순수 두-id 쌍).
+  const bridges: Bridge[] = useMemo(() => {
+    const count = theirSide?.stars.length ?? 0
+    return (bridgesQuery.data?.bridges ?? [])
+      .filter((b) => b.theirStarIndex >= 0 && b.theirStarIndex < count)
+      .map((b) => ({ myId: b.myMemoryId, theirId: `shared-${b.theirStarIndex}` }))
+  }, [bridgesQuery.data, theirSide])
+
+  // 내 record_id → 일기 발췌(읽기 전용) — 비교 패널 "내 별" 텍스트 폴백. mapStar가 별의 recordId를
+  // 보존하므로 별 → record_id → 발췌로 잇는다(겹침이 첫 화면이라 회상 캐시가 비어도 내 글이 보인다).
+  const myRecordExcerpt = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of myRecords.data?.records ?? []) m.set(r.recordId, r.bodyExcerpt)
+    return m
+  }, [myRecords.data])
 
   const overlayReady = overlayOn && mySide != null && theirSide != null
   // 겹쳐보기 진입/이탈을 navigation 머신에 반영(overlay 상태 = 쓰기 게이트·전용 카메라). 양쪽 우주가
@@ -240,11 +265,14 @@ export function VisitPage() {
           theirStars={theirSide.stars}
           myEmotionColors={mySide.emotionColors}
           theirEmotionColors={theirSide.emotionColors}
-          // 내 별 텍스트는 *읽기 전용* 캐시에서만(이번 세션에 내 우주에서 회상해 시드됐으면) — 겹침 뷰는
-          // 쓰기 RPC 금지(3.1)라 RecallMemory를 부르지 않는다.
+          // 내 별 텍스트(겹침 뷰는 쓰기 RPC 금지 3.1 — RecallMemory 안 부른다): 먼저 *읽기 전용* 회상
+          // 캐시(이번 세션에 내 우주에서 회상해 시드됐으면 조각 텍스트), 없으면 내 일기 목록(읽기 전용
+          // ListRecords)의 원본 발췌로 폴백한다. 둘 다 쓰기 없이 내 쪽 텍스트를 채운다(친구 쪽은 비노출).
           resolveMyText={(id) => {
-            const c = queryClient.getQueryData(fragmentTextQueryKey(id))
-            return typeof c === 'string' ? c : undefined
+            const cached = queryClient.getQueryData(fragmentTextQueryKey(id))
+            if (typeof cached === 'string' && cached.trim() !== '') return cached
+            const recId = mySide?.stars.find((s) => s.id === id)?.memory.recordId
+            return recId ? myRecordExcerpt.get(recId) : undefined
           }}
         />
       )}

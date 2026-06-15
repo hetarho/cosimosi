@@ -41,6 +41,15 @@ FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.id;
 
+-- name: ListSharedStarIDs :many
+-- 겹쳐보기(spec 37) 공명 다리 인덱스 매핑 전용: id만 읽는다(풍경 컬럼 불필요). ⚠️ WHERE·ORDER BY는
+-- ListSharedStars와 **반드시 동일**해야 한다 — 공개 스냅샷이 ListSharedStars로 만든 배열 순서와 같은
+-- 인덱스를 줘야 클라가 그 배열에 다리 끝점을 정확히 얹는다(순서가 갈리면 엉뚱한 별을 가리킨다).
+SELECT m.id
+FROM memories m
+WHERE m.user_id = $1
+ORDER BY m.id;
+
 -- name: ListSharedSynapses :many
 -- 공개 스냅샷 풍경(시냅스): 끝점 id + weight만. 활성 시각·co_activation 등 행동 신호는 보내지 않는다.
 -- 서비스가 a_id/b_id를 별 인덱스로 환원한다(SharedSynapse.a/b).

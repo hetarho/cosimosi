@@ -1,5 +1,6 @@
 import { setup, assign, createActor, type SnapshotFrom } from 'xstate'
 import type { CameraMode } from '@/shared/lib/r3f'
+import { setOverlayWriteBlocked } from '@/shared/lib'
 
 // 항행(카메라) 머신(widgets/universe-canvas/model) — 구 use-camera-mode(zustand) + UniverseCanvas의
 // 비행 컨트롤러들(FlyTo·FrameAll·ModeTransition)의 흩어진 플래그를 하나의 명시적 FSM으로. 우주를
@@ -41,6 +42,9 @@ interface Ctx {
   pairTheirId: string | null
   /** framingPair 재발화 카운터(같은 다리를 다시 눌러도 재프레이밍 — frameSeq와 동형). */
   pairSeq: number
+  /** 겹쳐보기 진입 직전 모드 — EXIT_OVERLAY가 nebula로 일괄 복귀하지 않고 떠나온 모드(nebula/recall)로
+   *  되돌리기 위해 ENTER_OVERLAY 시 기록한다(비행 중 진입은 그 비행의 자연 도착 모드를 쓴다). */
+  overlayReturn: CameraMode
 }
 
 type Ev =
@@ -80,6 +84,19 @@ export const navigationMachine = setup({
       pairSeq: ({ context }) => context.pairSeq + 1,
     }),
     clearPair: assign({ pairMyId: null, pairTheirId: null, move: { ...NO_MOVE } }),
+    // 겹쳐보기 진입: 복귀 모드를 기록하고(어느 상태에서 들어왔는지) 쌍/이동을 비운다. 비행(transitioning)
+    // 중 진입은 그 비행의 자연 도착 모드(fly-to→recall, frame-diary→nebula, mode→transitionTo)를 복귀로 쓴다.
+    enterFromNebula: assign({ overlayReturn: 'nebula' as CameraMode, pairMyId: null, pairTheirId: null, move: { ...NO_MOVE } }),
+    enterFromRecall: assign({ overlayReturn: 'recall' as CameraMode, pairMyId: null, pairTheirId: null, move: { ...NO_MOVE } }),
+    enterFromTransition: assign({
+      overlayReturn: ({ context }) => context.transitionTo,
+      pairMyId: null,
+      pairTheirId: null,
+      move: { ...NO_MOVE },
+    }),
+    // overlay는 쓰기 RPC 0건(3.1) — 진입/이탈에 shared 쓰기 게이트를 켜고/끈다(쓰기 경로가 읽어 막는다).
+    blockWrites: () => setOverlayWriteBlocked(true),
+    unblockWrites: () => setOverlayWriteBlocked(false),
   },
 }).createMachine({
   id: 'navigation',
@@ -92,6 +109,7 @@ export const navigationMachine = setup({
     pairMyId: null,
     pairTheirId: null,
     pairSeq: 0,
+    overlayReturn: 'nebula',
   },
   initial: 'nebula',
   // SET_MOVE는 어느 상태에서든 받아 context.move만 갱신(상태 전이 없음 — 비활성 상태에선 컨트롤러가 무시).
@@ -102,7 +120,7 @@ export const navigationMachine = setup({
         TOGGLE_MODE: { target: 'modeTransition', actions: 'toRecall' },
         FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly' },
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
-        ENTER_OVERLAY: { target: 'overlay', actions: 'clearPair' },
+        ENTER_OVERLAY: { target: 'overlay', actions: 'enterFromNebula' },
       },
     },
     recall: {
@@ -110,7 +128,7 @@ export const navigationMachine = setup({
         TOGGLE_MODE: { target: 'modeTransition', actions: 'toNebula' },
         FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly' },
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
-        ENTER_OVERLAY: { target: 'overlay', actions: 'clearPair' },
+        ENTER_OVERLAY: { target: 'overlay', actions: 'enterFromRecall' },
       },
     },
     flyingToStar: {
@@ -123,6 +141,8 @@ export const navigationMachine = setup({
         ARRIVED: 'recall',
         FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly', reenter: true }, // 다른 별 재지정
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
+        // 비행 중 겹쳐보기 토글 — 흘리지 않고 overlay로 전환한다(fly-to는 recall로 끝나므로 복귀도 recall).
+        ENTER_OVERLAY: { target: 'overlay', actions: 'enterFromRecall' },
       },
     },
     framingDiary: {
@@ -132,6 +152,8 @@ export const navigationMachine = setup({
         ARRIVED: 'nebula', // 조망은 far(nebula)에서 끝난다
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame', reenter: true }, // 같은/다른 일기 재조망
         FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly' },
+        // 조망 비행 중 겹쳐보기 토글 — 조망은 nebula로 끝나므로 복귀도 nebula.
+        ENTER_OVERLAY: { target: 'overlay', actions: 'enterFromNebula' },
       },
     },
     modeTransition: {
@@ -146,6 +168,8 @@ export const navigationMachine = setup({
         ],
         FLY_TO_STAR: { target: 'flyingToStar', actions: 'setFly' },
         FRAME_DIARY: { target: 'framingDiary', actions: 'setFrame' },
+        // 모드 전환 비행 중 겹쳐보기 토글 — 향하던 모드(transitionTo)를 복귀 모드로.
+        ENTER_OVERLAY: { target: 'overlay', actions: 'enterFromTransition' },
       },
     },
     // 겹쳐보기(spec 37) — 두 우주를 한 씬에 띄우는 순수 뷰 상태(nebula/recall과 배타). 이 상태에선
@@ -154,7 +178,17 @@ export const navigationMachine = setup({
     // 컨트롤러가 viewing/framingPair를 읽어 카메라를 몬다.
     overlay: {
       initial: 'viewing',
-      on: { EXIT_OVERLAY: { target: 'nebula', actions: 'clearPair' } },
+      // 진입/이탈에 쓰기 게이트를 켜고/끈다(3.1 — overlay에선 쓰기 RPC 0건). 부모 entry/exit는
+      // viewing↔framingPair 내부 전이엔 재실행되지 않고 overlay 경계를 넘을 때만 발화한다.
+      entry: 'blockWrites',
+      exit: 'unblockWrites',
+      // 이탈은 떠나온 모드로 복귀한다(recall에서 켰으면 recall로, 아니면 nebula) — 항해 모드 유실 방지.
+      on: {
+        EXIT_OVERLAY: [
+          { guard: ({ context }) => context.overlayReturn === 'recall', target: 'recall', actions: 'clearPair' },
+          { target: 'nebula', actions: 'clearPair' },
+        ],
+      },
       states: {
         viewing: {
           on: { FRAME_PAIR: { target: 'framingPair', actions: 'setPair' } },

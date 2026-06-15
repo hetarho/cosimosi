@@ -3,6 +3,7 @@ package share
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 )
@@ -55,8 +56,24 @@ func (f *fakeRepo) UserBySlug(_ context.Context, slug string) (string, string, b
 	return "", "", false, nil
 }
 
+// ListStars mirrors the production query's ORDER BY m.id (a FAITHFUL fake: the bridge/snapshot index
+// parity hinges on this ordering, so the fake sorts rather than leaning on insertion order — that
+// way the tests exercise the sort, not a pre-sorted fixture).
 func (f *fakeRepo) ListStars(_ context.Context, userID string) ([]StarLandscape, error) {
-	return f.stars[userID], nil
+	out := append([]StarLandscape(nil), f.stars[userID]...)
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+// ListStarIDs shares ListStars' ORDER BY m.id (the share.sql invariant) so the bridge index lines up
+// with the snapshot array — derived from the SAME sorted ids.
+func (f *fakeRepo) ListStarIDs(_ context.Context, userID string) ([]string, error) {
+	ids := make([]string, 0, len(f.stars[userID]))
+	for _, s := range f.stars[userID] {
+		ids = append(ids, s.ID)
+	}
+	sort.Strings(ids)
+	return ids, nil
 }
 
 func (f *fakeRepo) ListSynapses(_ context.Context, userID string) ([]SynapseLandscape, error) {
@@ -287,7 +304,9 @@ func enableShare(t *testing.T, svc *Service, user string) string {
 // so "b" (the 2nd of a,b,c) maps to index 1 — aligned with the GetSharedUniverse array.
 func TestResonanceBridges_PartyGetsSnapshotIndex(t *testing.T) {
 	repo := newFakeRepo()
-	repo.stars["u1"] = []StarLandscape{{ID: "a"}, {ID: "b"}, {ID: "c"}} // owner's snapshot order
+	// 삽입 순서를 일부러 섞는다(c,a,b) — 인덱스가 *정렬*(ORDER BY m.id: a,b,c)에서 나오는지 확인하기
+	// 위함이다. 픽스처가 이미 정렬돼 있으면 정렬 로직을 안 거쳐도 통과해 ORDER BY drift를 못 잡는다.
+	repo.stars["u1"] = []StarLandscape{{ID: "c"}, {ID: "a"}, {ID: "b"}}
 	svc := NewService(repo, fakeSettings{}, fakeResonance{pairs: map[string][]ResonancePair{
 		"u2|u1": {{MyMemoryID: "mine-1", TheirMemoryID: "b"}},
 	}})
@@ -300,8 +319,40 @@ func TestResonanceBridges_PartyGetsSnapshotIndex(t *testing.T) {
 	if len(bridges) != 1 {
 		t.Fatalf("want 1 bridge, got %d", len(bridges))
 	}
+	// 정렬 순서 a,b,c → b는 인덱스 1(삽입 순서 2가 아니라).
 	if bridges[0].MyMemoryID != "mine-1" || bridges[0].TheirStarIndex != 1 {
-		t.Fatalf("want {mine-1, index 1 (= star b)}, got %+v", bridges[0])
+		t.Fatalf("want {mine-1, index 1 (= star b in sorted a,b,c)}, got %+v", bridges[0])
+	}
+}
+
+// 설계 요점(spec 37): ResonanceBridges의 their_star_index는 GetSharedUniverse(Snapshot) 배열의 같은
+// 인덱스여야 한다 — 두 경로(ListStarIDs vs ListStars)가 같은 ORDER BY m.id를 공유하므로 같은 별은 같은
+// 자리에 놓인다. 시냅스로 Snapshot의 별 인덱스를 들여다봐 다리 인덱스와 일치하는지 교차 검증한다(한쪽
+// 경로만 정렬이 갈리면 잡힌다 — 순서 drift = 엉뚱한 별 하이라이트 = 프라이버시/정합 버그).
+func TestResonanceBridges_IndexMatchesSnapshotOrder(t *testing.T) {
+	repo := newFakeRepo()
+	repo.stars["u1"] = []StarLandscape{{ID: "c"}, {ID: "a"}, {ID: "b"}} // 비정렬 삽입
+	repo.syn["u1"] = []SynapseLandscape{{AID: "b", BID: "c", Weight: 0.5}} // b↔c — Snapshot이 b,c에 준 인덱스를 들여다본다
+	svc := NewService(repo, fakeSettings{}, fakeResonance{pairs: map[string][]ResonancePair{
+		"u2|u1": {{MyMemoryID: "mine-1", TheirMemoryID: "b"}},
+	}})
+	slug := enableShare(t, svc, "u1")
+
+	snap, err := svc.Snapshot(context.Background(), slug)
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	bridges, err := svc.ResonanceBridges(context.Background(), "u2", slug)
+	if err != nil {
+		t.Fatalf("bridges: %v", err)
+	}
+	if len(snap.Synapses) != 1 || len(bridges) != 1 {
+		t.Fatalf("want 1 synapse + 1 bridge, got %d / %d", len(snap.Synapses), len(bridges))
+	}
+	// Snapshot 시냅스 끝점 A = 별 b의 인덱스(AID="b"). 다리의 their_star_index도 b를 가리키므로 같아야 한다.
+	if bridges[0].TheirStarIndex != snap.Synapses[0].A {
+		t.Fatalf("bridge index %d must equal snapshot index of star b %d (shared ORDER BY m.id)",
+			bridges[0].TheirStarIndex, snap.Synapses[0].A)
 	}
 }
 

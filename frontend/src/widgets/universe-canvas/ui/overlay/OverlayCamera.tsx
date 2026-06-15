@@ -15,6 +15,11 @@ import type { OverlayHandle } from './types'
 const MIN_FRAME_DIST = 40
 const SEP_MARGIN = 1.4 // vantage distance ≈ separation·margin + pad, so both stars fit comfortably
 const FRAME_PAD = 26
+// 쌍 프레이밍 비행 중엔 거리 클램프를 푼다(단일 우주 CameraRig가 transitioning에서 하는 것과 동형):
+// 근접 쌍은 목표 거리가 minDistance(40)에 딱 걸려, 매 프레임 controls.update()의 재클램프가 도착
+// 판정(distanceTo<0.5)을 흔들어 비행이 지터/지연된다. 비행 동안 풀고 도착(viewing)하면 다시 조인다.
+const FLY_MIN_DIST = 0.01
+const FLY_MAX_DIST = 100_000
 
 export interface OverlayCameraProps {
   mineRef: MutableRefObject<OverlayHandle | null>
@@ -97,13 +102,15 @@ export function OverlayCamera({ mineRef, theirsRef }: OverlayCameraProps) {
     }
   })
 
+  // framingPair 비행 중(framing 비null)엔 클램프를 풀어 근접 쌍에서도 카메라가 목표 시점에 안착한다.
+  const flying = framing != null
   return (
     <OrbitControls
       makeDefault
       enableDamping
       enablePan={false}
-      minDistance={MIN_FRAME_DIST}
-      maxDistance={2000}
+      minDistance={flying ? FLY_MIN_DIST : MIN_FRAME_DIST}
+      maxDistance={flying ? FLY_MAX_DIST : 2000}
     />
   )
 }

@@ -8,6 +8,7 @@ import {
   isDemoMode,
   getDemoPersona,
   demoOverlayData,
+  demoOffsetDays,
   demoFragmentText,
   demoRecall,
   useDemoOverlay,
@@ -260,6 +261,10 @@ export function HomePage() {
   // 파생한다. proto → StarNode/SynapseEdge로 매핑(겹침 위젯은 PROPS 구동). 활성 페르소나가 바뀌면 재계산.
   const demoOverlayOn = useDemoOverlay((s) => s.on)
   const demoPersona = isDemoMode() ? getDemoPersona() : null
+  // 가상 시계(spec 19) 경과일 — 시간 머신이 시간을 흘리면 별 밝기/반지름이 그만큼 늙어야 하므로
+  // 겹쳐보기도 재시뮬 대상이다(demoOverlayData가 virtualNowMs를 읽는다). 비반응형 모듈 시계라
+  // 값으로 환원해 deps에 넣는다 — 클럭이 바뀐 채 리렌더되면 두 우주를 새 now로 다시 빚는다.
+  const demoClockDay = isDemoMode() ? demoOffsetDays() : 0
   const demoOverlaySides = useMemo(() => {
     if (!demoOverlayOn || !isDemoMode()) return null
     const d = demoOverlayData()
@@ -268,8 +273,8 @@ export function HomePage() {
       theirs: { stars: d.theirs.stars.map((s, i) => mapStar(s, i)), edges: d.theirs.synapses.map(toSynapseEdge) },
       bridges: d.bridges.map((b): Bridge => ({ myId: b.aId, theirId: b.bId })),
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 활성 페르소나(값) 변경 시 재시뮬
-  }, [demoOverlayOn, demoPersona])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 활성 페르소나(값)·가상 시계 변경 시 재시뮬
+  }, [demoOverlayOn, demoPersona, demoClockDay])
   const demoOverlayReady = demoOverlaySides != null
   // 겹쳐보기 진입/이탈을 navigation 머신에 반영(overlay 상태 = 쓰기 게이트·전용 카메라).
   useEffect(() => {

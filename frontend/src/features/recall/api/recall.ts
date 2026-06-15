@@ -1,6 +1,7 @@
 // Recall RPCs via the single shared Connect client (02). unary only (constitution §6).
 // ⚠️ reinforceLinks (flush 경로)는 16에서 변경 금지 — keepalive 명령형 호출 유지(헌법 §6).
 import { memoryClient } from '@/shared/api'
+import { isWriteBlocked } from '@/shared/lib'
 import { isDemoMode, demoRecall, demoFragmentText, demoMarkRecalled, demoReshape } from '@/shared/lib/demo'
 import type { Record as RecordMsg } from '@/shared/api'
 
@@ -14,6 +15,9 @@ export interface RecallResult {
 /** Re-ignite a star and read its immutable original Record + fragment text (read-only panel).
  *  Returns undefined when the star/record is absent. */
 export async function recallMemory(memoryId: string): Promise<RecallResult | undefined> {
+  // 겹쳐보기(spec 37)는 순수 읽기 뷰 — 회상 재점화(쓰기)를 게이트로 막는다(3.1). 구조적으로도
+  // overlay엔 회상 패널이 안 뜨지만, 어떤 UI가 붙든 쓰기 경로에서 한 번 더 차단한다(상태가 출처).
+  if (isWriteBlocked()) return undefined
   if (isDemoMode()) {
     const record = demoRecall(memoryId) // 체험: 더미 원본 일기 반환
     // 재점화(spec 19): 서버의 last_recalled_at=now를 데모 데이터에 재현 — 잠든 별이
@@ -36,6 +40,7 @@ export async function reinforceLinks(
   items: { aId: string; bId: string; deltaWeight: number }[],
   batchId: string,
 ): Promise<void> {
+  if (isWriteBlocked()) return // 겹쳐보기(3.1): 공명 강화 쓰기도 게이트로 막는다(상태가 출처)
   if (isDemoMode()) return // 체험: 강화 영속화 없음(no-op)
   await memoryClient.reinforceLinks({ items, batchId })
 }

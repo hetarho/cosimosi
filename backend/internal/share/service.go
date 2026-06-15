@@ -153,15 +153,16 @@ func (s *Service) ResonanceBridges(ctx context.Context, callerUserID, slug strin
 		return nil, nil // not a resonance party (or none yet) — no bridges, nothing disclosed
 	}
 
-	// Map the owner's memory id → its snapshot index. ListStars uses the SAME ORDER BY m.id as
-	// the public snapshot assembly above, so these indices match the GetSharedUniverse array.
-	ownerStars, err := s.repo.ListStars(ctx, ownerUserID)
+	// Map the owner's memory id → its snapshot index. ListStarIDs uses the SAME ORDER BY m.id as
+	// the public snapshot assembly (ListStars) above, so these indices match the GetSharedUniverse
+	// array — but reads only the ids (the landscape columns are unused for the index mapping).
+	ownerIDs, err := s.repo.ListStarIDs(ctx, ownerUserID)
 	if err != nil {
 		return nil, err
 	}
-	indexByID := make(map[string]int, len(ownerStars))
-	for i, st := range ownerStars {
-		indexByID[st.ID] = i
+	indexByID := make(map[string]int, len(ownerIDs))
+	for i, id := range ownerIDs {
+		indexByID[id] = i
 	}
 
 	bridges := make([]ResonanceBridge, 0, len(pairs))
