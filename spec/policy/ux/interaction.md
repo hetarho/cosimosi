@@ -18,8 +18,8 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | 회상 패널은 **읽기 전용 원본 `Record`** — 본문·`entry_date`·`mood`·`intensity` 표시, 편집·삭제 컨트롤 없음 | read-only |
 | **재열람** — 원본이 캐시에 있으면(불변, [data-sync](../domain/data-sync.md)) 본문을 **즉시 표시**(스피너 없음); touch(`RecallMemory`)는 ≥2초 dwell 후 백그라운드로 매번 발사 | 캐시 우선 |
 | 이웃 항해 — 선택 별 시냅스 이웃을 `neighborsOf(edges, selectedId)`로 weight 내림차순 렌더, 최대 표시 수 | `MAX_NEIGHBORS = 8` |
-| 이웃 클릭 = 선택 전환만(`select(id)`) — 패널이 재-dwell. **카메라 fly-to 아님**(NeighborNav는 카메라 타깃을 만들지 않는다) | 선택 전환 |
-| **포커스 해제(배경 탭)** — 별을 고르면 은은한 딤(`Backdrop`)으로 집중을 알리고, 회상 패널 ✕ **또는 빈 우주 탭**(캔버스 `onPointerMissed`→`select(null)`)으로 해제·복귀. 별 탭(선택 전환)·드래그(회전)는 통과(해제 아님 — R3F가 클릭 delta로 구분) | 배경 탭=복귀 |
+| 이웃 클릭 = 선택 전환만(`focusActor.send({type:'SELECT_STAR', id})` — 39) — 패널이 재-dwell. **카메라 fly-to 아님**(NeighborNav는 카메라 타깃을 만들지 않는다) | 선택 전환 |
+| **포커스 해제(배경 탭)** — 별을 고르면 은은한 딤(`Backdrop`)으로 집중을 알리고, 회상 패널 ✕ **또는 빈 우주 탭**(캔버스 `onPointerMissed`→`focusActor.send({type:'DISMISS'})` — 39)으로 해제·복귀. 별 탭(선택 전환)·드래그(회전)는 통과(해제 아님 — R3F가 클릭 delta로 구분) | 배경 탭=복귀 |
 
 ### 2. 공동 회상 (co-recall)
 
@@ -40,7 +40,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 
 | 규칙 | 값 |
 | --- | --- |
-| 입력 항목 — 본문 textarea + **감정 `<select>`(7종)** + 강도 슬라이더 + 날짜(`YYYY-MM-DD`, 기본 오늘 로컬) | 4개 입력 |
+| 입력 항목 — 본문 textarea + **감정 `Dropdown`(13종, spec 29 — Russell 4사분면 순서)** + 강도 슬라이더 + 날짜(`YYYY-MM-DD`, 기본 오늘 로컬) | 4개 입력 |
 | 제출 → 임시 별(`temp-` id, `seed = seedFromId(tempId)`) 낙관적 `addStar` → `RecordMemory` 호출 | 단일 별 즉시 등장 |
 | 성공 → `memory_id`+폼 값으로 확정 별 `replaceStar(tempId, …)`(`seed = seedFromId(memory_id)`) | 서버 id 교체 |
 | 실패 → `removeStar(tempId)`(임시 별만), 한국어 에러 카피 노출 | 임시 별만 롤백 |
@@ -55,7 +55,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | 데이터 출처 — `isDemoMode()`이면 API 래퍼가 백엔드 대신 더미데이터로 분기(`demoStars`/`demoSynapses`/`demoRecall`/`demoAddRecord`) | 더미 우주 |
 | **가상 시계** — 데모의 밝기·잠듦 파생 "현재 시각"은 `virtualNowMs() = Date.now() + offset`(offset은 데모에서만 ≠0). 시뮬 패널 "하루/한 달 지나기"가 offset을 전진시키고 별·엣지 밝기를 재파생 — 실제 감쇠 수식([star](../domain/star.md) 반감기 30일·바닥 5%)이 그대로 돈다(연출 없음). 비데모는 항상 `Date.now()`와 동일값 | `skipDemoDays` |
 | **데모 재점화** — 데모 회상(≥2초)도 그 별의 `lastRecalledAt`을 가상 now로 전진(`demoMarkRecalled`) + universe 쿼리 무효화 → 잠든 별이 다시 밝아지는 루프가 데모에서 완결 | 서버 대칭 |
-| **데모 별 띄우기** — 데모의 기록은 작성 폼이 아니라 패널의 "별 띄우기" 컨트롤러: 감정(7종)·날짜만 고르면 그 감정으로 미리 써 둔 일기 중 무작위 본문으로 별이 태어난다(`demoAddStar`). 같은 (가상)날 별과 temporal, 같은 mood 최신 별과 semantic 연결을 로컬 생성(실서버 임베딩 τ=0.75·top-8·같은날+0.3의 **근사** — 패널이 명시) | 근사 시연 |
+| **데모 별 띄우기** — 데모의 기록은 작성 폼이 아니라 패널의 "별 띄우기" 컨트롤러: 감정(13종)·날짜만 고르면 그 감정으로 미리 써 둔 일기 중 무작위 본문으로 별이 태어난다(`demoAddStar`). 같은 (가상)날 별과 temporal, 같은 mood 최신 별과 semantic 연결을 로컬 생성(실서버 임베딩 τ=0.75·top-8·같은날+0.3의 **근사** — 패널이 명시) | 근사 시연 |
 | **헵 로컬 미리보기** — 데모에서 공동 회상 페어가 확정되는 즉시 그 엣지 weight를 로컬 +0.05(상한 1.0, 없던 페어는 `co_recall` 로컬 생성) → 굵어짐이 바로 보인다. `reinforceLinks`는 여전히 no-op, 서버/proto 미기록 | no server write |
 | **시뮬레이션 HUD** — 데모에서만, 좌하단 진입 칩 2개로 **서로 다른 모달**을 연다: ① "🧪 기억 실험실" 컨트롤러 패널(시간 머신·별 띄우기), ② "❕ 엔그램 이론" 안내 모달 — 이론을 나열하지 않고 **한 번에 하나씩** 점 탭·‹›·방향키·스와이프 페이지네이션으로 넘기며, 이론↔컨트롤 1:1 버튼 없이 howTo(어떤 컨트롤러로 어떤 행위)만 적는다(`SIM_ENTRIES` — 항목 추가만으로 확장, plan 20–27 소비). `?sim=<id>` 진입은 이론 모달이 그 페이지로 열린 채 시작. 시간 스킵은 ~0.9s ease 트윈으로 흐른다(밝기 뚝 끊김 방지). "처음으로" = exit→reset→enter 경로로 초기 우주 복귀 | `widgets/demo-sim` |
 | 새로고침 시 모듈 리로드 → base 더미만 재생성, 체험 중 추가한 별·연결·가상 시계 offset 소멸 | 세션 한정 |
@@ -64,7 +64,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 
 ### 5. 변천사 보기 (evolution timelapse, 24)
 
-회상 패널(`phase==='shown'`)의 **"변천사 보기"** 진입점으로 그 별이 변해 온 길을 연다 — 우주 캔버스 위 오버레이(별도 라우트 없음, 우주는 뒤에 영속; 31 셸 도입 전까지 페이지가 합성). 23이 쌓은 `evolution_history`를 **읽기 전용**으로 스크럽하는 타임랩스다.
+회상 패널(`phase==='shown'`)의 **"변천사 보기"** 진입점으로 그 별이 변해 온 길을 연다 — 우주 캔버스 위 오버레이(별도 라우트 없음, 우주는 뒤에 영속; overlay 셸(tech/overlay-shell.md) 도입 전까지 페이지가 합성). 23이 쌓은 `evolution_history`를 **읽기 전용**으로 스크럽하는 타임랩스다.
 
 | 규칙 | 값 / 조건 |
 |---|---|
@@ -108,10 +108,10 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 ## 구현 근거
 
 - **회상:** 구현: plan 11 · `frontend/src/features/recall/ui/MemoryPanel.tsx`(dwell 타이머·read-only 패널)·`ui/NeighborNav.tsx`(이웃 항해, 선택 전환만)·`api/recall.ts`(`RecallMemory`).
-- **공동 회상:** 구현: plan 11 · `frontend/src/features/recall/model/co-recall.ts`(`CO_RECALL_DELTA`·`DWELL_MS`·`DEBOUNCE_IDLE_MS`·`pairKey`)·`model/store.ts`(디바운스·재시도·in-flight 직렬화)·`pages/home/ui/HomePage.tsx`(`beforeunload`/`visibilitychange` flush)·`shared/api/transport.ts`(keepalive).
-- **기록:** 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`(본문+감정 select+강도+날짜)·`model/draft-store.ts`(기본 오늘·7종 mood)·`model/use-record-memory.ts`(낙관적 add/replace/remove).
-- **잠든 별 재점화 동선:** 구현: plan 12·31 · `frontend/src/features/dormant-search`(`ListDormant`·`DormantSheet`)·`entities/memory/model/activation.ts`(`isDormant`). 잠든 별 탐색은 별도 `/dormant` 페이지가 아니라 우주 셸 위 오버레이다(모바일 바텀시트/데스크톱 사이드 패널, 비차단; 별 선택 시 시트 peek + 뒤 우주 fly-to — [navigation](../domain/navigation.md) 우주 셸 영속). 일기 목록(아래 §6)과 같은 `OverlayHost`(`shared/ui`)를 쓴다.
+- **공동 회상:** 구현: plan 11 · `frontend/src/features/recall/model/co-recall.ts`(`CO_RECALL_DELTA`·`DWELL_MS`·`DEBOUNCE_IDLE_MS`·`pairKey`·`spacingBoost`)·`model/recall-flush.machine.ts`(XState — 디바운스·재시도·flush 직렬화 — tech/state-machines.md)·`pages/home/ui/HomePage.tsx`(`beforeunload`/`visibilitychange` flush)·`shared/api/transport.ts`(keepalive).
+- **기록:** 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`(본문+감정 `Dropdown`+강도+날짜)·`model/draft-store.ts`(기본 오늘·13종 mood, spec 29)·`model/use-record-memory.ts`(낙관적 add/replace/remove).
+- **잠든 별 재점화 동선:** 구현: plan 12 + overlay 셸(tech/overlay-shell.md) · `frontend/src/features/dormant-search`(`ListDormant`·`DormantSheet`)·`entities/memory/model/activation.ts`(`isDormant`). 잠든 별 탐색은 별도 `/dormant` 페이지가 아니라 우주 셸 위 오버레이다(모바일 바텀시트/데스크톱 사이드 패널, 비차단; 별 선택 시 시트 peek + 뒤 우주 fly-to — [navigation](../domain/navigation.md) 우주 셸 영속). 일기 목록(아래 §6)과 같은 `OverlayHost`(`shared/ui`)를 쓴다.
 - **변천사 보기:** 구현: plan 24 · `frontend/src/features/evolution/{api/evolution.ts,model/{history.ts,store.ts},ui/EvolutionPanel.tsx}`(unary read·순수 model·스크럽 타임랩스+불변 원본 병치)·`features/recall/ui/MemoryPanel.tsx`("변천사 보기" 진입점)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선)·`shared/lib/demo/data.ts`(`demoEvolution`). BE read RPC는 plan 23(`GetEvolutionHistory`).
 - **길찾기(원본 일기·엔그램·별):** 구현: plan 28 · `frontend/src/features/diary-list/ui/DiarySheet.tsx`(일기 목록·검색 오버레이)·`entities/memory/api/records-query.ts`(`recordsQueryOptions`/`recordsInvalidateKey` — 소비처가 두 레이어라 dormant/universe처럼 entity 소유; record 성공 시 무효화)·`features/wayfinding/{model/frame.ts,model/store.ts}`(순수 frame-all·강조/프레임 상태)·`features/recall/ui/MemoryPanel.tsx`(조각 텍스트+원본 전체+다른 별 동선)·`entities/star/ui/StarField.tsx`·`entities/synapse/model/store.ts`(`edgesWithin`)·`widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`·강조 렌더)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선·`?panel=diary`). BE는 `ListRecords` rpc + `Star.record_id`/`fragment_index` + `RecallMemoryResponse.fragment_text`.
-- **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/store.ts`(데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).
+- **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/recall-flush.machine.ts`(accumulate에서 데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).
 - **불변식:** 헌법 1·2·3·6·8(`spec/plan/00.overview.md`).

@@ -40,7 +40,7 @@ that — don't build on an unfinished foundation. Ask whether to proceed or do t
 Read the target `NN.*.md` in full: 목적 · 범위(**특히 비목표**) · 참고 · 설계 요점 · **영향 파일** ·
 수용 기준(EARS) · 작업(Tasks) · 완료 정의(DoD). Then read the grounding it points to:
 
-- The 참고 section's `spec/Architecture.md §N` and `spec/concept.md §N` — these carry the *why* and the
+- The 참고 section's `spec/tech/architecture.md §N` and `spec/concept.md §N` — these carry the *why* and the
   exact contracts. Implementing without them is how you drift.
 - The **8 불변 원칙 (constitution)** at the bottom of 00.overview. These are non-negotiable across every
   spec — e.g. original diary text is immutable, stars/synapses are never row-deleted (decay is brightness

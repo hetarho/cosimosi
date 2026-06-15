@@ -11,7 +11,7 @@
 | 문서 | 내용 |
 |---|---|
 | [spec/concept.md](spec/concept.md) | **무엇을 / 왜** — 엔그램 우주 비전(별·시냅스·망각·생성 오브젝트·소셜) |
-| [spec/Architecture.md](spec/Architecture.md) | **어떻게** — FSD 프론트 / package-by-feature 백엔드 / 스택 결정·근거 |
+| [spec/tech/architecture.md](spec/tech/architecture.md) | **어떻게** — FSD 프론트 / package-by-feature 백엔드 / 스택 결정·근거 |
 | [spec/plan/](spec/plan/) | **지금 무엇을** — 번호별 작업 스펙(체크박스). [00.overview](spec/plan/00.overview.md)가 색인 |
 
 ## 상태
@@ -32,7 +32,7 @@
 | 인증·호스팅 | **Supabase**(Auth+PG+pgvector) + **AWS Lightsail**(Go) + **Cloudflare Workers**(웹 정적 자산) | |
 | 모바일 | **React Native** (deferred) | 웹과 도메인·셰이더·API 공유. 렌더러 타깃 `react-native-webgpu`+TSL |
 
-스택 선택 근거는 [spec/Architecture.md](spec/Architecture.md)의 각 절(§2 FSD · §3 렌더링 · §4 백엔드).
+스택 선택 근거는 [spec/tech/architecture.md](spec/tech/architecture.md)의 각 절(§2 FSD · §3 렌더링 · §4 백엔드).
 
 ## 사전 요구
 
@@ -78,7 +78,7 @@ cosimosi/
 └── backend/         ← Go: cmd/{api,worker} · internal/{memory,link,ai,job,platform,db}
 ```
 
-상세 레이아웃·의존 방향은 [spec/Architecture.md §1](spec/Architecture.md).
+상세 레이아웃·의존 방향은 [spec/tech/architecture.md §1](spec/tech/architecture.md).
 
 ## 개발 방식 (spec-driven)
 
@@ -99,7 +99,7 @@ cosimosi/
 
 ## 배포 (계획)
 
-웹 = **Cloudflare Workers**(정적 자산), 백엔드(api + worker) = **AWS Lightsail VPS**(서울, Docker Compose), DB·인증 = **Supabase**(서울 — Lightsail과 리전 코로케이션). 실제 프로비저닝은 MVP 안정화 후 — [spec/Architecture.md §7](spec/Architecture.md), CI/CD는 [spec/plan/14](spec/plan/14.deploy-cicd.md), 운영 절차는 [DEPLOY.md](DEPLOY.md).
+웹 = **Cloudflare Workers**(정적 자산), 백엔드(api + worker) = **AWS Lightsail VPS**(서울, Docker Compose), DB·인증 = **Supabase**(서울 — Lightsail과 리전 코로케이션). 실제 프로비저닝은 MVP 안정화 후 — [spec/tech/architecture.md §7](spec/tech/architecture.md), CI/CD는 [spec/ops/deploy-cicd.md](spec/ops/deploy-cicd.md), 운영 절차는 [DEPLOY.md](DEPLOY.md).
 
 ## 비-목표
 

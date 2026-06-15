@@ -14,7 +14,7 @@ cosimosi의 스펙 문서는 **역할**로 나뉜다. 충돌하면 위에서 아
 | 문서 | 역할 | 질문 |
 |---|---|---|
 | [concept.md](../concept.md) | **비전(헌법)** | *왜* 만드는가 (엔그램 우주) |
-| [Architecture.md](../Architecture.md) | **구조** | *어떻게* 쌓는가 (FSD·WebGPU/TSL·Connect·sqlc) |
+| [architecture.md](../tech/architecture.md) | **구조** | *어떻게* 쌓는가 (FSD·WebGPU/TSL·Connect·sqlc) |
 | [plan/](../plan/) | **구현 과정** | *언제·어떤 단계로* 만들었나 (번호별 태스크·체크박스) |
 | **policy/ (이 디렉터리)** | **최종 결과 정의** | *무엇이 참이어야 하는가* (도메인 규칙·UX 규칙·정전 파라미터) |
 

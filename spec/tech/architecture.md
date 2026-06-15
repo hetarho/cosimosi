@@ -1,7 +1,7 @@
 # cosimosi Architecture
 
 이 문서는 cosimosi 프로젝트의 코드 구조와 그 결정 근거를 정리한다.
-[concept.md](concept.md)가 "무엇을 만드는가(엔그램 우주)"라면, 이 문서는 **"어떻게 만드는가"**다. 작업 진행 상태와 단계별 체크리스트는 [plan/](plan/)의 번호별 스펙.
+[concept.md](../concept.md)가 "무엇을 만드는가(엔그램 우주)"라면, 이 문서는 **"어떻게 만드는가"**다. 작업 진행 상태와 단계별 체크리스트는 [plan/](../plan/)의 번호별 스펙.
 
 요지는 세 줄이다.
 
@@ -9,7 +9,7 @@
 - **백엔드**: Go의 **package-by-feature + 헥사고날 규율**. 데이터는 **sqlc + pgvector + 가중치 그래프(memory_links)**, API는 **Connect RPC + Protobuf**, AI는 **공급자 추상화 + 비동기 워커**.
 - **모바일**: **React Native** 트랙(deferred). 웹과 도메인·상태·시뮬레이션·셰이더·API 클라이언트를 공유하도록 지금부터 구조를 격리한다.
 
-> 이 문서는 **결정 사항의 기록**이다. 실제 인프라 구성·마이그레이션·코드 작성은 [plan/](plan/)의 번호별 스펙(체크박스)을 따라 진행한다.
+> 이 문서는 **결정 사항의 기록**이다. 실제 인프라 구성·마이그레이션·코드 작성은 [plan/](../plan/)의 번호별 스펙(체크박스)을 따라 진행한다.
 
 ---
 
@@ -133,7 +133,7 @@ cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 
 - **R3F per-frame:** WebGPU 루프는 React 렌더가 아니라 `actorRef.getSnapshot()`로 매 프레임 읽고, 임계 도달 시 `send`. 컨트롤러에서 `useMachine` 금지(§3.2 "60fps에 React state 금지"와 정합).
 - **핵심 머신:** 항행(camera, widget) · 포커스(interaction, feature) 두 Core + 세션(app)·작성(record-memory)·회상 flush(recall) lifecycle.
 
-> 상세 — 전체 카탈로그·두 Core 상태도·나브↔포커스 계약은 **[state-machines.md](state-machines.md)**, 작성 규약·v5 API·테스트·안티패턴은 **[xstate-guide.md](xstate-guide.md)**, 단계적 전환 작업은 **[plan/39](plan/39.state-machine-refactor.md)**.
+> 상세 — 전체 카탈로그·두 Core 상태도·나브↔포커스 계약은 **[state-machines.md](state-machines.md)**, 작성 규약·v5 API·테스트·안티패턴은 **[xstate-guide.md](xstate-guide.md)**.
 
 ---
 
@@ -335,7 +335,7 @@ type Extractor interface { // v1: 일화/의미 분류·인물·장소·주제·
 
 concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔그램)** 을 다음과 같이 구현한다. **데이터도 우주의 별·시냅스도 절대 삭제·제거하지 않는다.** 감쇠는 **렌더 시 계산되는 밝기 상태**일 뿐이다.
 
-> **MVP 범위(의도적 단순화).** MVP는 **순수 시간 감쇠**(`exp(-λ·Δt)`, 반감기 30일, 단일 λ)만 구현한다. concept.md가 요구하는 **관련성 가중 감쇠**(연결 많은/요즘 관련 별은 천천히, 고립된 일회성은 빨리)·**감정 강도 가중**(초기 연결 강도·감쇠 저항)·**양방향 재공고화**(회상이 별을 밝히기도 흐리기도 하며 재성형)는 **v1+(#23, #20·#21)로 연기**한다. MVP의 강화는 `weight += 0.05` 단조 증가, intensity는 별 크기 `f(intensity)`에만 쓴다(감쇠/연결강도 항 없음). 잠든 별 탐색(`ListDormant`)만 MVP. 별 재성형·변천사(append-only 로그)는 v1+(§9).
+> **구현 단계.** 아래 순수 시간 감쇠(`exp(-λ·Δt)`, 반감기 30일, 단일 λ)가 코어이며, concept.md가 요구하는 확장은 모두 구현됐다: **관련성·감정 가중 감쇠**(`λ_eff = λ_base·R_conn·R_recent·R_emo` — plan 26), **양방향 재공고화·재성형**(PE 게이트·append-only 변천사 — plan 23·24), **일기 분할·조각별 감정·valence**(plan 20·21·29). 강화는 `weight += 0.05` 단조 증가(상한 1.0), intensity·valence는 별 크기·연결·감쇠 저항에 가중된다. 캐노니컬 수치의 단일 출처는 [policy/domain/star.md](../policy/domain/star.md)·[synapse.md](../policy/domain/synapse.md).
 
 - **활성도 감쇠:** `activation(Δt) = exp(-λ · Δt_days)`, **반감기 30일** → `λ = ln2/30 ≈ 0.0231/day`. `Δt`는 `now - last_recalled_at`(별) / `last_activated_at`(연결).
 - **최소 밝기 바닥(floor):** 유효 밝기는 **`a_min = 0.05`로 바닥을 둔다 — 0이 되어 사라지지 않는다.** `a_min`까지 내려간 별·시냅스는 **"잠든(dormant) 상태"로 어둡게 계속 렌더링**되며(우주에서 제거하지 않음, `GetUniverse`는 전체 그래프 반환), 항해·클릭으로 접근 가능. 잠든 별은 별도 탐색(`ListDormant`)으로도 찾는다.
@@ -350,7 +350,7 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 
 ## 7. 인프라 (구성은 추후, 문서엔 결정만)
 
-> 구현(CI/CD 파이프라인·prod Dockerfile·compose·Caddy·Actions·배포 절차)은 [plan/14 deploy-cicd](plan/14.deploy-cicd.md) + [DEPLOY.md](../DEPLOY.md).
+> 구현(CI/CD 파이프라인·prod Dockerfile·compose·Caddy·Actions·배포 절차)은 [ops/deploy-cicd](../ops/deploy-cicd.md) + [DEPLOY.md](../../DEPLOY.md).
 
 | 레이어 | 선택 | 비고 |
 |---|---|---|
@@ -360,7 +360,7 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 | 로컬 개발 | Docker Compose | postgres 이미지를 **pgvector 포함**(예: `pgvector/pgvector:pg16`)으로 교체. |
 | 로깅/에러 | Structured logging + Sentry | |
 
-> 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Lightsail 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계). **CI/CD·실배포(develop→스테이징, main→프로덕션 자동 배포)는 [plan/14.deploy-cicd.md](plan/14.deploy-cicd.md)** 에서 전개한다.
+> 이 표는 **결정의 기록**이다. Supabase 프로젝트 생성·Lightsail 프로비저닝·Cloudflare 연결 등 실제 구성은 하지 않는다(plan/ 스펙의 별도 단계). **CI/CD·실배포(develop→스테이징, main→프로덕션 자동 배포)는 [ops/deploy-cicd.md](../ops/deploy-cicd.md)** 에서 전개한다.
 
 ---
 
@@ -380,17 +380,11 @@ concept.md의 **"기억은 사라지지 않는다, 빛이 꺼질 뿐"(침묵 엔
 | 항목 | 이유 |
 |---|---|
 | Connect server-streaming | RN 미지원. 회상 강화는 unary 배치로. 필요 시 웹 전용 SSE/WS 별도 채널. |
-| LLM 추출(Extractor 구현) | MVP는 임베딩만으로 연결. 비주얼은 결정론적. v1에서 같은 포트로 슬롯인. |
 | 모바일 렌더러 확정 | RN 렌더러 생태계 과도기. 트랙(RN)만 확정, 렌더러는 착수 시점에. |
 | 모노레포(`packages/core`) | 현재 단일 frontend. 모바일 추가 시 승격(FSD 격리로 비용 낮음). |
-| 인증 — **사인인은 MVP에 포함(ON)** | MVP = **Supabase Auth 단일 계정 사인인 ON**(혼자 쓰지만 로그인은 한다). **모든 쿼리는 `user_id`로 스코프**(인터셉터 주입, §5·§4.4). **OFF인 것은 다중 사용자 공유/소셜 로그인뿐** — 그것이 다중 사용자 단계로 연기됨. |
-| 우주 공유 · 함께한 기억(공명) | 소셜 레이어. 인증·다중 사용자·교차 사용자 참조 필요. v1+ (concept.md "우주 공유와 함께한 기억"). 일기 본문은 비공개, 공유는 우주 풍경만. |
-| 생성 오브젝트 고도화 | MVP는 기본 형상 + 감정 색(인스턴싱). 시드 기반 고유 형태 생성은 v1 (§3.3 per-instance 시드 방식). |
-| 별 재성형 · 변천사(Evolution History) | MVP는 순수 시간 감쇠만(별 형태 `f(intensity)` 고정, §6). 회상이 별을 양방향 재성형하는 재공고화·변천사 append-only 로그는 v1+ (#20·#21·#23, concept.md). |
-| 관련성/감정 가중 감쇠 | MVP는 단일 λ 순수 시간 감쇠(§6). 연결 수·관련성·감정 강도를 감쇠율/초기 연결강도에 가중하는 모델은 v1+ (#23). |
-| 우주 배경 = 요즘 상태 | MVP는 단순 배경. 최근 감정 종합으로 앰비언트 색·분위기를 바꾸는 건 v1. |
-| 좌표 서버 캐싱 | 우선 클라 force-sim. 규모 커지면 안정화 좌표 캐싱 도입. |
-| eslint-plugin-boundaries / steiger | 솔로 단계는 컨벤션으로 충분. CI/팀 생기면. |
+| 다중 사용자 실시간 협업 | 우주 공유·공명(plan 35–37)은 비동기·단방향이다. 실시간 동시 편집·프레즌스·공개 피드는 도입하지 않는다(concept.md 비-목표). |
+
+> 이전 표에서 "지금 안 함"으로 두었던 항목들은 이후 plan으로 구현됐다: LLM 추출(20)·일기 분할(21)·관련성/감정 가중 감쇠(26)·별 재성형·변천사(23·24)·우주 배경=요즘 상태(25)·시드 기반 별 형태(08·23·38)·소셜 공유/공명(35–37)·안정 좌표 캐시(27)·구조 린트(steiger·eslint-plugin-boundaries). 인증은 MVP부터 ON(Supabase Auth 단일 계정, 모든 쿼리 `user_id` 스코프)이고, 다중 사용자 공유까지 구현됐다(35–37).
 
 ---
 

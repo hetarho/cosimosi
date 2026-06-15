@@ -1,8 +1,8 @@
 # 상태 머신 아키텍처 (state-machines)
 
 > cosimosi의 **유한 상태(finite state)**를 어디서·어떻게 모델링하는지 정한다.
-> [Architecture.md](Architecture.md)가 "코드를 어떻게 나누나(레이어)"라면, 이 문서는 **"상태를 어떻게 나누나(머신)"**다.
-> 작성 패턴·API 규약은 [xstate-guide.md](xstate-guide.md), 단계별 전환 작업은 [plan/39](plan/39.state-machine-refactor.md).
+> [architecture.md](architecture.md)가 "코드를 어떻게 나누나(레이어)"라면, 이 문서는 **"상태를 어떻게 나누나(머신)"**다.
+> 작성 패턴·API 규약은 [xstate-guide.md](xstate-guide.md).
 
 cosimosi는 일반적인 일기 앱이 아니라 **우주를 항해하는 게임**에 가깝다. 카메라는 성운 조망(nebula)·근접 회상(recall)·별로의 비행(fly-to)·일기 조망(frame-all) 사이를 오가고, "지금 무엇에 집중하나"(별 한 개 / 일기 한 편 / 리스트 / 변천사)는 **서로 배타적인 모드**로 갈린다. 이런 "모드·단계·수명주기"를 nullable 필드 + 동기화 이펙트로 흩뜨리면 **같은 논리 상태를 두 곳이 다른 변수로 표현해 불일치**가 난다(실제로 "일기로 별 보기"를 두 진입점이 다른 변수로 다뤄 한쪽만 동작했다).
 
@@ -201,4 +201,4 @@ selectIsStarFocus / selectIsDiaryFocus / selectIsFocused / selectFrameNonce
 - 각 머신은 **순수 단위테스트**(`createActor` + `send` + `getSnapshot` 단언, React 없이) — `model`이 순수하므로 vitest로 직접.
 - 분기가 많은 머신(포커스·항행)은 **모델 기반 경로 테스트**(`@xstate/graph` `createTestModel`)로 도달 가능 상태를 커버.
 - 작성·규약·금지사항·R3F 연동·테스트 상세는 **[xstate-guide.md](xstate-guide.md)** 가 단일 출처. 새 머신은 거기 템플릿을 그대로 따른다.
-- 단계별 전환·영향 파일·DoD는 **[plan/39](plan/39.state-machine-refactor.md)**.
+- 단계별 머신은 각 구현 스펙이 기술한다(세션 01·항행 06·작성 10·회상 11·포커스는 회상/길찾기 경로).

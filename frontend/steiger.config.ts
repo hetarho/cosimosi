@@ -12,7 +12,7 @@ export default defineConfig([
   },
   {
     rules: {
-      // 프로젝트 정책이 steiger 기본값보다 우선(우리 권위는 Architecture.md):
+      // 프로젝트 정책이 steiger 기본값보다 우선(우리 권위는 spec/tech/architecture.md):
       // recall·record-memory는 §2.2가 명시한 핵심 feature라 단일 참조여도 유지한다.
       'fsd/insignificant-slice': 'off',
       // app/ui(SessionGate·SignInScreen)는 앱 셸 UI로 의도적으로 둔다(아키텍처 검토에서도 위반 아님).

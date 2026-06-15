@@ -23,8 +23,8 @@
 ## 참고
 
 - [DEPLOY.md](../../DEPLOY.md) §1(Cloudflare 프론트)·§2(Supabase 2프로젝트)·§3(Lightsail 2스택)·§4(GitHub 환경) — 본 스펙이 수행·정정하는 단일 운영 문서.
-- spec/plan/14.deploy-cicd.md — 배포 파이프라인(develop→스테이징·main→프로덕션) 산출물.
-- spec/Architecture.md §7(인프라 결정·리전 코로케이션).
+- deploy-cicd.md(같은 ops/) — 배포 파이프라인(develop→스테이징·main→프로덕션) 산출물.
+- spec/tech/architecture.md §7(인프라 결정·리전 코로케이션).
 - 코드 기준점: 루트 `wrangler.jsonc`(정적 자산·SPA 폴백, `name: cosimosi`), `frontend/vite.config.*`(빌드), `.env.example`/`.env.production.example`, `.github/workflows/{ci.yml,deploy-backend.yml}`, `frontend/src/shared/config`(`VITE_*` 소비처).
 - 확인 사실(공식 문서): Workers Builds 대시보드는 **빌드 변수 목록 1개**(Production/Preview 분리 없음)이고, `WORKERS_CI_BRANCH`·`WORKERS_CI_COMMIT_SHA` 등이 빌드에 기본 주입된다. `VITE_*`는 **빌드 타임에 번들에 박히는 공개값**이라 환경마다 별도 빌드가 필요하다.
 - ⚠️ Windows: 빌드는 Cloudflare/Linux에서 도므로 `.exe` 제약 무관. 로컬 검증 시 `go`/`sqlc`는 Docker/WSL.
