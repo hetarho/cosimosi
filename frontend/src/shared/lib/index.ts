@@ -15,6 +15,9 @@ export { mulberry32 } from './prng'
 export { blobPath, type BlobOptions } from './svg-blob'
 export {
   fibonacciStarPosition,
+  scatterDirection,
+  applyAngularDrift,
+  DRIFT_STEP_RAD,
   strength,
   targetRadius,
   R_MIN,

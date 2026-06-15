@@ -92,7 +92,7 @@
 - **3D 씬 안 DOM(`<Html>`) 금지.** 카메라·항행 컨트롤러는 씬 안에 DOM을 만들지 않는다(헌법8 — 모바일 이식성).
 - **좌표는 클라 창발·서버는 그래프만.** 카메라는 좌표를 **읽기만** 하고 만들지 않는다. fly-to·focus·별 렌더·시냅스 렌더의 모든 reader가 같은 라이브 좌표 버퍼·같은 인덱싱(슬롯 = `stars` 배열 인덱스)을 공유한다 — 한 reader라도 옛 정적 fibonacci에 남으면 카메라가 렌더된 별을 놓친다(헌법3). fibonacci는 버퍼 미준비 시 폴백으로만 쓴다.
 - **별은 삭제되지 않는다.** 잠든 별도 우주에 남아 클릭·항해로 접근 가능하다(헌법2). 항행은 별을 숨기거나 제거하지 않는다.
-- **별은 거리로 움직인다(38).** 별은 고정이 아니라 강함(활성도+감정강도)에 따라 중심에서 멀어지고/가까워진다(회상→중앙·시간→바깥). fly-to·focus는 타깃을 **매 프레임 라이브 버퍼에서** 다시 읽으므로 아직 미끄러지는 별도 정확히 따라간다(고정 캡처 금지).
+- **별은 거리로, 그리고 방향으로 움직인다(38·40).** 별은 고정이 아니라 강함(활성도+감정강도)에 따라 중심에서 멀어지고/가까워지고(회상→중앙·시간→바깥, 38), **방향(각도)도 시간이 흐르면 천천히 표류한다**(표상 부동, 40 — 데모 타임머신이 밤 경계마다 한 스텝 시연; 고립 별이 더, 연결 별이 덜; 프로덕션은 좌표 비영속이라 세션마다 재창발). 그래서 항행은 *고정 좌표*가 아니라 **검색·회상 fly-to로 별을 다시 찾는 행위**가 보장한다. fly-to·focus는 타깃을 **매 프레임 라이브 버퍼에서** 다시 읽으므로 거리·각도로 미끄러지는 별도 정확히 따라간다(고정 캡처 금지).
 - **매 프레임 React state 구동 금지.** 카메라는 `useFrame`에서 ref/uniform으로만 갱신한다(헌법4 — 리렌더 폭발 방지).
 
 ## 구현 근거
@@ -102,4 +102,5 @@
 - 우주 셸 영속·탐색=패널 상태(`?panel=` 동기화·캔버스 비재초기화): 구현 plan 31 · `frontend/src/pages/home/ui/HomePage.tsx`(셸 합성·URL↔스토어 거울 이펙트), `frontend/src/features/universe/model/shell-store.ts`(`useShellStore`), `frontend/src/shared/ui/{OverlayHost,BottomSheet,SidePanel}.tsx`, `frontend/src/app/router.tsx`(`/dormant`→`/universe?panel=dormant` redirect).
 - 라이브 좌표 버퍼 단일 출처(네 reader 동기·fibonacci 폴백·`readBufferPosition`): 구현 plan 08·22 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController`), `frontend/src/shared/lib/force-sim/`, `frontend/src/shared/lib/layout.ts`.
 - 별 반지름 이동(거리=강함)·fly-to/focus 매 프레임 라이브 추적: 구현 plan 38 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`radiusOf`·`FlyToController`/`FocusController`의 버퍼 재독), `frontend/src/shared/lib/layout.ts`(`targetRadius`).
+- 별 각도 표류(표상 부동 — 밤마다 한 스텝)·항행=다시 찾기: 구현 plan 40 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController` `useFrame` 밤 경계 드리프트·`nightRef`), `frontend/src/shared/lib/layout.ts`(`applyAngularDrift`·`DRIFT_STEP_RAD`).
 - 조망 프레이밍(frame-all 거리·반경·`FRAME_MARGIN`/`FRAME_MIN_DISTANCE`)·near/far 가드(근접=단일만): 구현 plan 28 · `frontend/src/features/wayfinding/model/frame.ts`(순수 `frameTarget`)·`model/store.ts`, `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`).

@@ -37,6 +37,8 @@ import {
   cn,
   mulberry32,
   fibonacciStarPosition,
+  scatterDirection,
+  applyAngularDrift,
   reportUniverseRenderer,
   strength as memoryStrength,
   targetRadius,
@@ -54,7 +56,7 @@ import {
   type SimNode,
   type SimState,
 } from '@/shared/lib/force-sim'
-import { virtualNowMs } from '@/shared/lib/demo'
+import { virtualNowMs, isDemoMode } from '@/shared/lib/demo'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
 import {
   navigationActor,
@@ -100,6 +102,10 @@ const EMPTY_ID_SET: ReadonlySet<string> = new Set()
 // mirroring the server's tauExc (spec 22) — a star recalled within ~6h is "hot".
 const LAYOUT_TICKS_PER_FRAME = 2
 const HOT_TAU_MS = 6 * 60 * 60 * 1000
+// Representational drift (spec 40): one angular drift step per NIGHT the clock crosses. A day in
+// ms — the night index is floor(virtualNow / DAY_MS), so drift advances on day boundaries (and a
+// multi-day demo skip applies the steps at once), never continuously in real time.
+const DAY_MS = 86_400_000
 
 // Self-anchored radial layout (spec 38). Each star's target shell radius = f(strength);
 // the radius is recomputed each frame from the current time so a star glides outward as it
@@ -713,6 +719,10 @@ function LiveLayoutController({
   const topoRef = useRef('')
   // Reused scratch for the per-frame target radii (avoids a per-frame allocation).
   const targetScratchRef = useRef<Float32Array>(new Float32Array(0))
+  // Last night index (floor(virtualNow/DAY_MS)) a representational-drift step was applied for
+  // (spec 40). null = not yet established for the current sim → the next frame sets the baseline
+  // without drifting. Survives sim rebuilds (drift accumulates across them); reset on empty.
+  const nightRef = useRef<number | null>(null)
   // Memory facts by id (lastRecalledAt + intensity) for the per-frame radius recompute —
   // memoized so it's not rebuilt every frame, only when the star set changes.
   const memoryById = useMemo(
@@ -742,6 +752,7 @@ function LiveLayoutController({
       simRef.current = null
       positionsRef.current = null
       topoRef.current = ''
+      nightRef.current = null // re-arm drift baseline so the next universe doesn't jump-drift
       onLayout(new Map())
       // A genuinely-empty universe has nothing to place — reveal immediately. Otherwise it's
       // "not loaded yet" (initial pending) OR a mid-session reset: re-arm the veil so the next
@@ -766,7 +777,6 @@ function LiveLayoutController({
     topoRef.current = topo
 
     const now = virtualNowMs()
-    const count = stars.length
 
     // The OUTGOING sim's live positions by id — so a star still moving when this rebuild
     // fires resumes from where it currently is (angular continuity, no jump). spec 38: all
@@ -800,7 +810,7 @@ function LiveLayoutController({
     }
     const prevPosOf = (id: string): readonly [number, number, number] | null => prevPos.get(id) ?? null
 
-    const nodes: SimNode[] = stars.map((s, i) => {
+    const nodes: SimNode[] = stars.map((s) => {
       const r = radiusOf(s.memory, now)
       // Angular continuity: resume from the live position if it was already placed.
       const resume = prevPos.get(s.id)
@@ -811,7 +821,10 @@ function LiveLayoutController({
         id: nid,
         heat: heatById.get(nid) ?? 0,
       }))
-      const fallback = fibonacciStarPosition(i, count, s.memory.seed)
+      // No placed neighbor → a per-id SCATTERED direction on the strength shell, NOT the
+      // golden-angle-by-index fibonacci spiral (adding stars one by one used to trace a spiral
+      // arc — spec 40 1.4). atRadius pins the final distance to the strength shell either way.
+      const fallback = atRadius(scatterDirection(s.memory.seed), r)
       const seeded = seedNearCluster(s.id, seedNbrs, prevPosOf, fallback)
       const [x, y, z] = atRadius(seeded, r)
       return { id: s.id, pinned: false, x, y, z, radius: r }
@@ -849,6 +862,43 @@ function LiveLayoutController({
     // repulsion relax together to a new balance); otherwise stay settled. Synapses publish on
     // settle, so they reconnect at the relaxed coordinates — never mid-relaxation.
     const now = virtualNowMs()
+
+    // Representational drift (spec 40): each NIGHT the clock crosses, every star's DIRECTION rotates
+    // one step about its fixed per-seed axis — |p| (= strength) preserved, nothing moves between
+    // boundaries (no real-time motion). DEMO-ONLY: the time machine ("하루/한 달 지나기") is where
+    // time visibly passes, so this is the showcase of drift; in production coordinates re-emerge
+    // fresh each session (헌법3 — not persisted) so there's nothing to animate mid-session, and the
+    // user shouldn't see the layout lurch while watching. The axis is fixed (layout.applyAngularDrift)
+    // so the rotations compose — a multi-day skip lands the same whether the clock jumps or tweens.
+    // The re-kick lets links partly restore well-connected clusters → isolated stars drift more.
+    if (isDemoMode()) {
+      const night = Math.floor(now / DAY_MS)
+      if (nightRef.current === null || night < nightRef.current) {
+        nightRef.current = night // establish, or on a clock rewind re-establish, the baseline (no drift)
+      } else if (night > nightRef.current) {
+        const dn = night - nightRef.current
+        nightRef.current = night
+        const px = sim.px
+        const vx = sim.vx
+        for (let i = 0; i < sim.n; i++) {
+          if (!sim.free[i]) continue
+          const seed = memoryById.get(sim.ids[i])?.seed ?? 0
+          const xi = i * 3
+          const [dx, dy, dz] = applyAngularDrift([px[xi], px[xi + 1], px[xi + 2]], seed, dn)
+          px[xi] = dx
+          px[xi + 1] = dy
+          px[xi + 2] = dz
+          // Discrete reorientation → old velocity now aims wrong; clear it so a mid-relaxation
+          // skip doesn't carry stale momentum into the rotated frame.
+          vx[xi] = 0
+          vx[xi + 1] = 0
+          vx[xi + 2] = 0
+        }
+        if (sim.alpha < REKICK_ALPHA) sim.alpha = REKICK_ALPHA
+        settledRef.current = false
+      }
+    }
+
     let targets = targetScratchRef.current
     if (targets.length !== sim.n) {
       targets = new Float32Array(sim.n)

@@ -83,6 +83,30 @@ describe('force-sim radial shell (spec 38)', () => {
     expect(minPair).toBeGreaterThan(5) // angular spread on the shell
   })
 
+  it('a shelled node linked to a far-out neighbor holds its shell, not dragged out (spec 40, 1.1/1.2)', () => {
+    // The spec-38 gap: a fresh star (small strength-radius) linked to an OLD, far-out star
+    // (large radius) got dragged toward it by the link spring — settling near `Rn − linkDistance`
+    // (~24 for a neighbor at 40) instead of its own R_MIN shell. spec 40 makes links tangential,
+    // so the link only swings the new star AROUND its shell; the radial-shell spring keeps |p|≈6.
+    const graph: SimGraph = {
+      nodes: [
+        { id: 'far', pinned: true, x: 40, y: 0, z: 0 }, // old neighbor, fixed far out
+        { id: 'new', pinned: false, x: 6, y: 1, z: 0, radius: 6 }, // fresh star, near-centre shell
+      ],
+      edges: [{ source: 'far', target: 'new', weight: 0.7 }], // a strong-ish semantic link
+    }
+    const state = createSim(graph, undefined, { seedNewNodes: false })
+    // createSim frees a pinned node's 1-hop neighbors; hard-pin 'far' (free=0) so it truly stays
+    // at radius 40 — otherwise it (no radius → origin gravity) drifts inward and the test could
+    // pass without proving the link no longer drags 'new' out.
+    state.free[state.ids.indexOf('far')] = 0
+    settle(state)
+    const i = state.ids.indexOf('new')
+    expect(len(positions(state), 0)).toBeCloseTo(40, 0) // 'far' stayed fixed far out…
+    expect(len(positions(state), i)).toBeCloseTo(6, 0) // …and 'new' holds its strength-shell…
+    expect(len(positions(state), i)).toBeLessThan(12) // …not dragged out toward the neighbor (~24)
+  })
+
   it('the radius target can be mutated between ticks → node glides to the new shell', () => {
     const state = createSim({ nodes: [node('a', 3, 0, 0, 15)], edges: [] })
     settle(state)

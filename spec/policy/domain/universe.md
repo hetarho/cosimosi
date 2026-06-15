@@ -6,7 +6,7 @@
 
 우주는 별(기억)과 시냅스(연결)의 그래프를 3D 공간에 형상화한 것이다. 개별 별·시냅스의 규칙은 각 도메인 정책(star/synapse)에 두고, **이 문서는 그것들이 모인 전체 차원**만 정의한다: (1) 별 좌표가 어떻게 배치되는가, (2) 좌표의 권위가 어디 있는가, (3) 배경이 무엇을 비추는가, (4) 무엇이 절대 사라지지 않는가.
 
-별 좌표는 클라의 **라이브 force-sim**(순수 Barnes-Hut, `shared/lib/force-sim`)에서 창발한다(22). `UniverseCanvas`의 `LiveLayoutController`가 별·시냅스 그래프로 단일 좌표 버퍼를 펌프하고 네 readers 전부에 공급한다. **좌표는 두 축으로 나뉜다(38): 거리(반지름)는 강함, 방향(각도)은 연결.** 우주 중심에는 **자아("나") 별**이 떠 있고(그래프 비참여), 각 기억은 강함(`activation`(최근성, 12) + 감정 강도)에 따라 그 중심에서 떨어진다 — 자주·최근 떠올린 강렬한 기억일수록 가깝고, 잊혀갈수록 바깥. 회상하면 강함↑로 **중앙으로**, 시간이 지나면 강함↓로 **바깥으로** 미끄러지고, 새 기억은 가장 강하므로 **중앙 근처에서 태어난다**. 방향(각도·이웃)은 여전히 그래프 스프링·척력과 22의 흥분성 편향이 정한다. 새 조각은 가장 뜨거운 성단의 *각도* 근처에 시드된다(`seedNearCluster`). 버퍼가 아직 없는 초기 프레임은 `fibonacciStarPosition`(방향)으로 폴백한다. 우주의 배경은 테마 깊은 베이스색 위에 **요즘 상태(ambient)** 가 여러 넓은 광원으로 번지는 한 겹을 더한다(25 — 아래 §요즘 상태 배경). 밤마다 **야간 공고화**가 우주를 한 번 정돈한다(27 — 아래 §야간 공고화).
+별 좌표는 클라의 **라이브 force-sim**(순수 Barnes-Hut, `shared/lib/force-sim`)에서 창발한다(22). `UniverseCanvas`의 `LiveLayoutController`가 별·시냅스 그래프로 단일 좌표 버퍼를 펌프하고 네 readers 전부에 공급한다. **좌표는 두 축으로 나뉜다(38): 거리(반지름)는 강함, 방향(각도)은 연결.** 우주 중심에는 **자아("나") 별**이 떠 있고(그래프 비참여), 각 기억은 강함(`activation`(최근성, 12) + 감정 강도)에 따라 그 중심에서 떨어진다 — 자주·최근 떠올린 강렬한 기억일수록 가깝고, 잊혀갈수록 바깥. 회상하면 강함↑로 **중앙으로**, 시간이 지나면 강함↓로 **바깥으로** 미끄러지고, 새 기억은 가장 강하므로 **중앙 근처에서 태어난다**. 방향(각도·이웃)은 그래프 스프링·척력과 22의 흥분성 편향이 정하되, 이 힘들은 **접선(각도)만** 바꾸고 거리(반지름)는 반지름 셸 힘이 독점한다(40 — 연결이 새 별을 바깥 이웃 셸로 끌어내지 못한다). 새 조각은 가장 뜨거운 성단의 *각도* 근처에 시드되고(`seedNearCluster`), 이웃이 아직 없으면 **분산 방향**(`scatterDirection` — 황금각 나선 아님)으로 떨어진다(40). 게다가 **데모**에선 별의 방향이 밤 경계마다 한 스텝씩 천천히 표류한다(표상 부동, 40 — 고정축 회전·반지름 보존; 프로덕션은 좌표 비영속(헌법3)이라 세션 중 정적). 버퍼가 아직 없는 초기 프레임 렌더는 `fibonacciStarPosition`(방향)으로 폴백한다. 우주의 배경은 테마 깊은 베이스색 위에 **요즘 상태(ambient)** 가 여러 넓은 광원으로 번지는 한 겹을 더한다(25 — 아래 §요즘 상태 배경). 밤마다 **야간 공고화**가 우주를 한 번 정돈한다(27 — 아래 §야간 공고화).
 
 ## 규칙 · 파라미터
 
@@ -15,10 +15,11 @@
 | 규칙 | 값 / 조건 |
 |---|---|
 | 별 좌표 | 클라 라이브 force-sim이 펌프하는 단일 `Float32Array` 버퍼. 슬롯 = `stars` 배열 인덱스 = InstancedMesh 인스턴스 인덱스(1:1). 폴백/초기 시드 *방향* 은 `fibonacciStarPosition(i, n, seed)` |
-| 반지름 = 강함 (38) | 중심 거리 `targetRadius = lerp(R_MIN 8, R_MAX 60, 1 − strength)`, `strength = clamp(W_ACT 0.7·activation + W_INT 0.3·intensity, 0, 1)`. force-sim **반지름 셸 힘**(`SimNode.radius`·`SimParams.radialStrength`)이 각 별을 그 셸로 당기고, 척력이 같은 셸 위에서 각도로 흩는다 |
-| 각도 = 연결 (38) | 방향은 그래프 스프링·척력 + 22 흥분성 편향(`seedNearCluster`)이 정한다. 모든 기억 별은 free(반지름으로 호흡)지만 `prevPos` resume으로 각도 연속성 보존 — 회상·시간으로 *반지름만* 미끄러지고 방향은 유지 |
+| 반지름 = 강함 (38) | 중심 거리 `targetRadius = lerp(R_MIN 6, R_MAX 40, 1 − strength)`, `strength = clamp(W_ACT 0.7·activation + W_INT 0.3·intensity, 0, 1)`. force-sim **반지름 셸 힘**(`SimNode.radius`·`SimParams.radialStrength 0.1`)이 거리(반지름)를 **독점**하고, 연결·척력은 거리를 못 바꾼다(40 — 아래 접선/radial 분리) |
+| 각도 = 연결 (38·40) | 방향은 그래프 스프링·척력 + 22 흥분성 편향(`seedNearCluster`)이 정한다. **접선/radial 분리(40):** `radius>0` free 노드는 연결·척력의 **방사 성분을 제거**해 셸 위에서 *각도만* 바꾸고, 거리는 셸 힘이 정한다 — 새 별(강함↑)이 바깥 이웃 셸로 안 끌려간다(연결 weight 0.6~0.8 ≫ radialStrength 0.1이던 38 갭 해소). 새 별 시드 fallback은 **분산 방향**(`scatterDirection` — 나선 아님). `prevPos` resume으로 각도 연속성 보존 |
+| 표상 부동 (40·데모) | 별의 *방향* 이 **밤 경계마다 한 스텝**(`DRIFT_STEP_RAD 0.08`·**고정 per-seed 축** 회전·반지름(거리) 보존) 표류한다 — **데모 모드**에서 `floor(virtualNow/DAY)` 증가 시 컨트롤러가 각 free 별을 회전(+vx 0)·re-kick(시계 역행 시 baseline 재설정). 축이 pos-무관·고정이라 회전군(`drift(N)=N×drift(1)` → 스킵=대기). **밤 미교차엔 정적.** 연결 스프링이 성단을 부분 복원해 **고립 별이 더, 잘 연결된(도식) 별이 덜** 흐른다(차등 — 동역학 창발). **프로덕션은 좌표 비영속(헌법3)이라 세션 중 드리프트 없음** — 데모 타임머신이 시간 경과·표상 부동의 쇼케이스 |
 | 자아 별 (38) | 우주 중심의 단일 앵커("나"). **그래프 비참여**(연결·KNN·시냅스 없음), `selfObject` 폼 2–3종(기본 nebula-heart). 강한 기억이 그 곁에 모인다 |
-| 재이완 정책 | settle 후 정적. 새 별·회상·시간감쇠로 목표 반지름이 임계(0.5) 넘게 변하면 `alpha` 재상승(re-kick)해 부드럽게 활강, 그 외엔 매 프레임 재계산 없음 |
+| 재이완 정책 | settle 후 정적. 새 별·회상·시간감쇠로 목표 반지름이 임계(0.5) 넘게 변하거나 **밤 경계를 넘으면(각도 드리프트, 40)** `alpha` 재상승(re-kick)해 부드럽게 활강, 그 외엔 매 프레임 재계산 없음 |
 | 좌표 일치 | StarField·UniverseSynapses·FlyToController·FocusController **네 readers**가 동일한 라이브 버퍼·동일 인덱싱을 읽어 fly-to/focus가 렌더된 바로 그 별에 도달한다(어긋남 0). StarField·FlyTo·Focus는 버퍼를 직접 읽고, 시냅스는 settle 시 발행되는 좌표 스냅샷에 굽는다 |
 | 좌표 권위 | 서버는 좌표를 저장하지 않는다 — **가중치 그래프만** 권위. 좌표(반지름·각도 모두)는 클라가 산출한다 |
 | 별 먼지(star dust) | 마운트 시 `mulberry32` 시드로 1회 생성한 정적 포인트 클라우드(count=1500, 반지름 35~145); 그래프와 독립이라 빈 우주(별 0개)에서도 배경·먼지만 렌더되고 크래시하지 않는다 |
@@ -57,7 +58,7 @@
 | ④ 가지치기 (prune) | `weight < weakEdgeThreshold=0.2` 이고 `last_activated_at`이 `weakEdgeIdleDays=14`보다 과거인 선의 `weight`를 `weakEdgeFloor=0.05`로 **LEAST**(밝기만↓). 행은 남고 클릭 가능 — **DELETE 0(헌법2)** |
 | ⑤ 흥분성 리셋 (24h 회전) | 성단 흥분성 `e(c,t)`(22)는 타임스탬프 파생(τ=6h)이라 **영속 컬럼이 없다** — 잡이 활동 수시간 뒤(야간) 돌므로 아침엔 이미 ≈0. 리셋은 시간 감쇠로 **내재**하며 별도 UPDATE가 없다(00.overview 공유 결정) |
 | 실패 안전 | 어떤 패스가 실패해도 기존 `failWithBackoff`로 재시도/보존(`failed`). 모든 패스 멱등(좌표 재캐시·`form_seed_delta` GREATEST·`weight` LEAST·요지 history는 RETURNING 집합에 키잉)이라 재실행이 삭제·손상 없음(헌법1·2) |
-| morning diff (FE) | 갱신된 `form_seed_delta`(요지 형태)·어두워진 약한 선이 다음 `GetUniverse` refetch로 자연히 반영된다. 라이브는 **하루 첫 접속 1회** "밤사이 우주가 한 번 정리됐어요" 노트(localStorage 일자 스탬프·`MorningDiffNote`). 데모는 별도 버튼 없이 **"하루/한 달 지나기"가 밤사이 정리(4패스)를 함께** 돌려(트윈 정착 후 1회) 같은 노트를 띄운다 — "하루가 지났으면 밤도 지났다". 안정 좌표는 클라에 안 가므로 좌표 자체는 클라 force-sim 재창발(헌법3) |
+| morning diff (FE) | 갱신된 `form_seed_delta`(요지 형태)·어두워진 약한 선이 다음 `GetUniverse` refetch로 자연히 반영된다. 라이브는 **하루 첫 접속 1회** "밤사이 우주가 한 번 정리됐어요" 노트(localStorage 일자 스탬프·`MorningDiffNote`). 데모는 별도 버튼 없이 **"하루/한 달 지나기"가 밤사이 정리(4패스)를 함께** 돌려(트윈 정착 후 1회) 같은 노트를 띄운다 — "하루가 지났으면 밤도 지났다". 안정 좌표는 클라에 안 가므로 좌표 자체는 클라 force-sim 재창발(헌법3). 데모의 "하루/한 달 지나기"는 추가로 **별 방향을 밤 수만큼 표류**시킨다(표상 부동, 40); 라이브 morning-diff는 형태·밝기 변화만 보이고 좌표는 세션마다 재창발한다 |
 
 ### 삭제 없음 (no deletion)
 
@@ -79,6 +80,7 @@
 
 - 라이브 force-sim 좌표 구동 · 네 reader 단일 버퍼 · 별 먼지: 구현 plan 06·07·22 · `frontend/src/shared/lib/force-sim/`(`createSim`·`tick`·`seedNearCluster`), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController`·`readBufferPosition`·StarDust·UniverseSynapses·FlyTo/FocusController), `frontend/src/entities/star/ui/StarField.tsx`
 - 반지름=강함·각도=연결 · 자아 별 · 재이완: 구현 plan 38 · `frontend/src/shared/lib/layout.ts`(`strength`·`targetRadius`·`R_MIN`/`R_MAX`), `frontend/src/shared/lib/force-sim/{types.ts,sim.ts}`(`radius`·`radialStrength`·셸 힘), `frontend/src/widgets/universe-canvas/ui/{UniverseCanvas.tsx,SelfStar.tsx}`(`radiusOf`·re-kick·자아 별), `frontend/src/entities/appearance/model/self-objects.ts`(`SELF_OBJECTS`)
+- 접선/radial 분리(거리=강함 강제) · 분산 시드(나선 제거) · 표상 부동(야간 각도 드리프트): 구현 plan 40 · `frontend/src/shared/lib/force-sim/sim.ts`(`step()` 외력 `fbuf`→셸 노드 접선 투영), `frontend/src/shared/lib/layout.ts`(`scatterDirection`·`applyAngularDrift`·`DRIFT_STEP_RAD`), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController` — 새 별 fallback `scatterDirection`·`useFrame` 밤 경계 드리프트·`nightRef`)
 - 좌표 권위 = 서버 그래프만 · fibonacci 폴백: 구현 plan 07·22 · `frontend/src/shared/lib/force-sim/types.ts`(순수 입출력 계약, 좌표 미저장), `frontend/src/shared/lib/layout.ts`
 - 우주 배경색 · 테마 분리: 구현 plan 06 · `frontend/src/entities/appearance/model/themes.ts`(`themeBg`), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`
 - 요즘 상태(ambient) 배경 · 다중 광원 · 흥분성 게인: 구현 plan 25 · `backend/internal/memory/memory.go`(`AmbientMood`·`AggregateAmbient`·`ExcitabilityGain`·`moodRGB`·`rgbToHueSat`)·`service.go`(`GetUniverse`)·`db/queries/memory.sql`(`ListRecentForAmbient`), `frontend/src/entities/memory/model/ambient.ts`(`deriveAmbient`·`ambientLights`·`ambientToRgb`·`excitabilityGain`), `frontend/src/widgets/universe-canvas/ui/AmbientNebula.tsx`, `backend/internal/job/worker.go`(W_EXC 배선 지점 주석)

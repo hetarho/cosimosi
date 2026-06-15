@@ -49,6 +49,10 @@ export interface SimState {
   // transferable for the worker (TS 6.0 typed-array buffer generics).
   px: Float32Array<ArrayBuffer>
   vx: Float32Array<ArrayBuffer>
+  // Per-tick external-force accumulator (repulsion + links), reused each step so a shelled
+  // node can keep only the TANGENTIAL part of those forces (spec 40 — links/repulsion move a
+  // star AROUND its strength-shell, never change its distance). Not transferred — internal.
+  fbuf: Float32Array
   free: Uint8Array // 1 = may move, 0 = fixed
   // Per-node target shell radius (spec 38); 0 → classic centerGravity origin pull. The
   // caller may mutate entries between ticks (e.g. as a memory's strength changes on recall
@@ -78,6 +82,7 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>, opts?: C
   const index = new Map<string, number>()
   const px = new Float32Array(n * 3)
   const vx = new Float32Array(n * 3)
+  const fbuf = new Float32Array(n * 3) // external-force scratch (repulsion+links), zeroed per tick
   const radius = new Float32Array(n) // target shell radius per node; 0 = origin gravity
   for (let i = 0; i < n; i++) {
     const node = nodes[i]
@@ -150,7 +155,7 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>, opts?: C
   // d3-style alpha decay so the layout settles toward alphaMin over ~300 ticks.
   const alphaDecay = 1 - Math.pow(p.alphaMin, 1 / 300)
 
-  return { ids, px, vx, free, radius, edges, params: p, alpha: 1, alphaDecay, n }
+  return { ids, px, vx, fbuf, free, radius, edges, params: p, alpha: 1, alphaDecay, n }
 }
 
 /** Advance the layout by `steps` ticks; returns the current positions snapshot. */
@@ -164,11 +169,18 @@ export function tick(state: SimState, steps = 1): Float32Array {
 }
 
 function step(state: SimState): void {
-  const { px, vx, free, radius, edges, params, n, alpha } = state
+  const { px, vx, fbuf, free, radius, edges, params, n, alpha } = state
   const { theta, repulsion, linkDistance, centerGravity, velocityDecay, radialStrength } = params
   // 발산 방지 상한(틱당 변위 크기). linkDistance에 비례 — 정상 레이아웃은 훨씬 작게 움직인다.
   const maxSpeed = linkDistance * MAX_SPEED_FACTOR
   const maxSpeed2 = maxSpeed * maxSpeed
+
+  // External forces (repulsion + links) accumulate in fbuf, kept OUT of vx so the radial-shell
+  // spring below can own the distance axis (spec 40): for a shelled node (radius>0) we add only
+  // the TANGENTIAL part of fbuf to vx — links/repulsion move it around its shell (angle), never
+  // change |p|. Without this the link spring (coeff = weight ≈ 0.6–0.8) overpowers the shell
+  // spring (radialStrength ≈ 0.1) and drags a new star out to its neighbor's shell (spec 38 gap).
+  fbuf.fill(0)
 
   // Repulsion (Barnes-Hut). All nodes — incl. fixed — are sources, so a new star is
   // pushed by the existing cluster; only free nodes receive the force.
@@ -180,9 +192,9 @@ function step(state: SimState): void {
     acc.fy = 0
     acc.fz = 0
     accumulateRepulsion(tree, i, theta, repulsion, acc)
-    vx[i * 3] += acc.fx * alpha
-    vx[i * 3 + 1] += acc.fy * alpha
-    vx[i * 3 + 2] += acc.fz * alpha
+    fbuf[i * 3] += acc.fx * alpha
+    fbuf[i * 3 + 1] += acc.fy * alpha
+    fbuf[i * 3 + 2] += acc.fz * alpha
   }
 
   // Attraction along edges (spring toward linkDistance, scaled by weight). Fixed
@@ -196,20 +208,21 @@ function step(state: SimState): void {
     const dist = Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz), MIN_DIST)
     const f = ((dist - linkDistance) / dist) * e.weight * LINK_STRENGTH * alpha
     if (free[e.a]) {
-      vx[ai] += dx * f
-      vx[ai + 1] += dy * f
-      vx[ai + 2] += dz * f
+      fbuf[ai] += dx * f
+      fbuf[ai + 1] += dy * f
+      fbuf[ai + 2] += dz * f
     }
     if (free[e.b]) {
-      vx[bi] -= dx * f
-      vx[bi + 1] -= dy * f
-      vx[bi + 2] -= dz * f
+      fbuf[bi] -= dx * f
+      fbuf[bi + 1] -= dy * f
+      fbuf[bi + 2] -= dz * f
     }
   }
 
   // Positioning pull + integrate (velocity damp → move). Fixed nodes never move.
-  // radius>0 → spring toward that shell (|p|=radius) so distance-from-centre encodes
-  // strength (spec 38); radius 0 → classic centerGravity origin pull (07 behavior).
+  // radius>0 → external forces tangential-only + radial-shell spring owns |p|=radius so
+  // distance-from-centre encodes strength (spec 38/40); radius 0 → external forces + classic
+  // centerGravity origin pull (07 behavior).
   for (let i = 0; i < n; i++) {
     if (!free[i]) continue
     const xi = i * 3
@@ -217,20 +230,33 @@ function step(state: SimState): void {
     if (r > 0) {
       const len = Math.sqrt(px[xi] * px[xi] + px[xi + 1] * px[xi + 1] + px[xi + 2] * px[xi + 2])
       if (len > RADIAL_MIN_DIST) {
+        // Unit radial r̂ = p/len. Strip the radial component of the external force, leaving the
+        // tangential part (links/repulsion only swing the node AROUND its shell — spec 40 1.2).
+        const ux = px[xi] / len
+        const uy = px[xi + 1] / len
+        const uz = px[xi + 2] / len
+        const fdot = fbuf[xi] * ux + fbuf[xi + 1] * uy + fbuf[xi + 2] * uz
+        vx[xi] += fbuf[xi] - fdot * ux
+        vx[xi + 1] += fbuf[xi + 1] - fdot * uy
+        vx[xi + 2] += fbuf[xi + 2] - fdot * uz
+        // Radial-shell spring owns the distance (accumulates in vx → momentum, fast convergence).
         // f>0 pushes outward when inside the shell, inward when outside → settles at |p|=r.
-        const f = ((r - len) / len) * radialStrength * alpha
-        vx[xi] += px[xi] * f
-        vx[xi + 1] += px[xi + 1] * f
-        vx[xi + 2] += px[xi + 2] * f
+        // (r−len) along the unit radial == the old px·((r−len)/len).
+        const f = (r - len) * radialStrength * alpha
+        vx[xi] += ux * f
+        vx[xi + 1] += uy * f
+        vx[xi + 2] += uz * f
       } else {
-        // At the origin there's no radial direction → nudge along +x so a node that drifted
-        // exactly to centre (rare repulsion cancellation) still escapes to its shell.
-        vx[xi] += r * radialStrength * alpha
+        // At the origin there's no radial direction → take the full external force (so a node
+        // that drifted exactly to centre moves off it) plus a +x nudge toward its shell.
+        vx[xi] += fbuf[xi] + r * radialStrength * alpha
+        vx[xi + 1] += fbuf[xi + 1]
+        vx[xi + 2] += fbuf[xi + 2]
       }
     } else {
-      vx[xi] += -px[xi] * centerGravity * alpha
-      vx[xi + 1] += -px[xi + 1] * centerGravity * alpha
-      vx[xi + 2] += -px[xi + 2] * centerGravity * alpha
+      vx[xi] += fbuf[xi] - px[xi] * centerGravity * alpha
+      vx[xi + 1] += fbuf[xi + 1] - px[xi + 1] * centerGravity * alpha
+      vx[xi + 2] += fbuf[xi + 2] - px[xi + 2] * centerGravity * alpha
     }
 
     vx[xi] *= velocityDecay
