@@ -1,3 +1,4 @@
+export { VALUES } from './values.gen' // GENERATED from spec/values.yaml (balance-patch source)
 export { MOOD, MOOD_KEYS, SPACE, type MoodKey } from './palette'
 export {
   MOOD_PALETTE,

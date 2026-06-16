@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"math"
 	"time"
+
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // Nightly consolidation — "the universe's sleep" (spec 27). Once a night the ticker
@@ -21,22 +23,19 @@ import (
 //  ④ prune        : weak, long-idle synapses dim to a floor (weight only — kept, clickable)
 //  ⑤ excitability : reset — no-op (derived from timestamps, τ=6h; see note at the call site)
 
-// 4-pass consolidation constants (single source — spec 27 설계 요점).
+// 4-pass consolidation tuning — single source is spec/values.yaml (consolidation:), generated
+// into the values package. gistDedupeWindow stays here (a Duration, not a balance knob).
 const (
-	redistributeLerp = 0.6  // ② host-cluster centroid pull
-	schemaBonus      = 0.15 // ② extra pull for schema-fit stars (recurring cluster + well-connected)
-	// schemaMinCluster: a cluster this large reads as a recurring "schema" (place/person/theme),
-	// so well-connected members are pulled a little harder toward it (schema-accelerated gist).
-	schemaMinCluster     = 3
-	schemaMinDegree      = 2    // a "well-connected" member: ≥2 incident synapses
-	gistAgeDays          = 30.0 // ③ older than this AND…
-	gistRecallCutoffDays = 14.0 // ③ …un-recalled since this → gist candidate
-	gistFormSimplify     = 0.4  // ③ monotonic form_seed_delta increase (one abstraction step)
-	weakEdgeThreshold    = 0.2  // ④ weight below this AND…
-	weakEdgeIdleDays     = 14.0 // ④ …un-activated since this → pruned
-	// weakEdgeFloor: pruned links drop to this weight — dim, not gone (A_MIN spirit, 26/§2).
-	// Below weakEdgeThreshold so a normal link is never raised by the LEAST().
-	weakEdgeFloor = 0.05
+	redistributeLerp     = values.ConsolidationRedistributeLerp     // ② host-cluster centroid pull
+	schemaBonus          = values.ConsolidationSchemaBonus          // ② extra pull for schema-fit stars
+	schemaMinCluster     = values.ConsolidationSchemaMinCluster     // ② recurring-"schema" min cluster size
+	schemaMinDegree      = values.ConsolidationSchemaMinDegree      // ② "well-connected": ≥2 incident synapses
+	gistAgeDays          = values.ConsolidationGistAgeDays          // ③ older than this AND…
+	gistRecallCutoffDays = values.ConsolidationGistRecallCutoffDays // ③ …un-recalled since this → gist candidate
+	gistFormSimplify     = values.ConsolidationGistFormSimplify     // ③ monotonic form_seed_delta increase
+	weakEdgeThreshold    = values.ConsolidationWeakEdgeThreshold    // ④ weight below this AND…
+	weakEdgeIdleDays     = values.ConsolidationWeakEdgeIdleDays     // ④ …un-activated since this → pruned
+	weakEdgeFloor        = values.ConsolidationWeakEdgeFloor        // ④ pruned links drop here — dim, not gone (§2)
 	// gistDedupeWindow: a star nightly-gisted within this window is skipped by the next gist
 	// pass — so a lease-reclaimed or re-run consolidate job (huge graph exceeding the 120s
 	// claim lease, or multiple workers) doesn't double-advance form_seed_delta for the same
@@ -58,8 +57,8 @@ const (
 	layoutVelocityDecay = 0.6
 	layoutAlphaMin      = 0.001
 	layoutLinkStrength  = 1.0
-	layoutMinDist       = 1.0  // spring distance floor (coincident linked nodes can't divide to ∞)
-	layoutMinDist2      = 1.0  // repulsion dist² floor (mirrors octree MIN_DIST2)
+	layoutMinDist       = 1.0   // spring distance floor (coincident linked nodes can't divide to ∞)
+	layoutMinDist2      = 1.0   // repulsion dist² floor (mirrors octree MIN_DIST2)
 	layoutMaxTicks      = 600   // bounded; alpha decays to alphaMin in ~300 ticks, then we early-stop
 	layoutSeedRadius    = 30.0  // deterministic fibonacci shell for un-cached stars (≈ linkDistance)
 	layoutSeedJitter    = 0.001 // per-index symmetry-break so coincident seeds still repel (≪ radius)

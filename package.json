@@ -8,10 +8,14 @@
     "dev": "concurrently -n web,api -c cyan,magenta \"pnpm --filter ./frontend dev\" \"pnpm run dev:api\"",
     "dev:api": "docker compose --profile dev up backend",
     "dev:web": "pnpm --filter ./frontend dev",
-    "gen": "node scripts/gen.mjs",
+    "gen": "node scripts/gen-values.mjs && node scripts/gen.mjs",
+    "gen:values": "node scripts/gen-values.mjs",
     "gen:proto": "node scripts/gen.mjs proto",
     "buf:gen": "node scripts/gen.mjs proto",
     "gen:sql": "node scripts/gen.mjs sql",
+    "spec:plan": "node scripts/new-plan.mjs",
+    "spec:change": "node scripts/new-change.mjs",
+    "spec:job": "node scripts/new-job.mjs",
     "db:migrate": "node scripts/db.mjs up",
     "db:status": "node scripts/db.mjs status",
     "db:down": "node scripts/db.mjs down",
@@ -24,7 +28,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "yaml": "^2.9.0"
   },
   "packageManager": "pnpm@10.26.0",
   "engines": {

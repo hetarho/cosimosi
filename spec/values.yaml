@@ -1,0 +1,37 @@
+# cosimosi — 정전 수치의 단일 출처 (canonical values · "밸런스 패치" 파일)
+#
+# 이 파일이 진짜 출처다. FE(TypeScript)·BE(Go) 상수는 여기서 "생성"된다 — 코드를 직접 고치지 말고
+# 이 숫자를 고친 뒤 `pnpm gen:values`를 돌려라(게임 밸런스 패치처럼). 생성물(둘 다 커밋, GENERATED):
+#   - frontend/src/shared/config/values.gen.ts   (DO NOT EDIT)
+#   - backend/internal/values/values_gen.go       (DO NOT EDIT)
+#
+# 규칙:
+#   - 여기엔 *튜닝 노브(스칼라)* 만 둔다. 공식·알고리즘(λ_eff 식, force 적분)과 배열 콘텐츠
+#     (테마 CSS·mood 색표)는 코드/스펙에 남긴다.
+#   - 카운트(테마 수·mood 수)는 여기 선언하지 않는다 — 배열 길이에서 파생한다.
+#   - proto enum·DB 스키마는 buf/sqlc가 출처다(여기서 안 다룬다).
+#   - 그룹·키는 snake_case. 생성기가 FE는 camelCase(VALUES.decay.aMin),
+#     BE는 PascalCase const(values.DecayAMin)로 펼친다.
+
+# ── 망각·감쇠 (decay) — FE 클라이언트 렌더 계산 (헌법3). spec 12·26 ────────────────
+decay:
+  a_min: 0.05 #            밝기 바닥 — 별은 0으로 꺼지지 않는다(헌법2). 잠든 별 잔광.
+  half_life_days: 30 #     시간 감쇠 반감기: activation(Δt)=exp(-ln2/30·Δt), 30일 → 0.5
+  # spec 26 변조 감쇠 계수 — 각 R∈(0,1]이라 감쇠를 늦추기만 한다(가속 없음)
+  alpha_conn: 0.6 #        R_conn: 연결(degree) 많을수록 저항↑
+  beta_recent: 0.5 #       R_recent: 요즘 토픽과 가까울수록(relevance↑) 저항↑
+  gamma_emo: 0.7 #         R_emo: 각성(intensity) 저항
+  delta_val: 0.4 #         R_emo: 강한 부정 정서가 추가 저항(Kensinger & Corkin 2004)
+
+# ── 야간 공고화 (consolidation) — BE 서버 그래프 4패스. spec 27 ────────────────────
+consolidation:
+  redistribute_lerp: 0.6 #        ② 호스트 성단 centroid로 끌어들이는 비율
+  schema_bonus: 0.15 #            ② 도식 적합 별 추가 끌림(반복 성단 + 잘 연결됨)
+  schema_min_cluster: 3 #         ② "도식"으로 읽히는 최소 성단 크기
+  schema_min_degree: 2 #          ② "잘 연결됨" 최소 차수(시냅스 ≥2)
+  gist_age_days: 30 #             ③ 이보다 오래된 별이 요지 후보
+  gist_recall_cutoff_days: 14 #   ③ 이보다 오래 안 떠올린 별이 요지 후보
+  gist_form_simplify: 0.4 #       ③ form_seed_delta 단조 증가폭(추상화 한 단계)
+  weak_edge_threshold: 0.2 #      ④ weight 이보다 낮고…
+  weak_edge_idle_days: 14 #       ④ …이만큼(일) 안 쓰인 선은 가지치기 대상
+  weak_edge_floor: 0.05 #         ④ 가지친 선이 내려가는 바닥(밝기만↓, 삭제 없음 — 헌법2)

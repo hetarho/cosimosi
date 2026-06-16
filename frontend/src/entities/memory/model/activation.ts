@@ -1,9 +1,12 @@
+import { VALUES } from '@/shared/config'
+
 // Forgetting model (Architecture §6, concept §망각). Pure, unit-tested. MVP is pure
-// time decay (single λ); relevance/emotion-weighted decay is v1+ (#23).
-export const HALF_LIFE_DAYS = 30
+// time decay (single λ); relevance/emotion-weighted decay is v1+ (#23). Tuning numbers
+// (A_MIN, half-life, spec-26 coefficients) are canonical in spec/values.yaml (generated).
+export const HALF_LIFE_DAYS = VALUES.decay.halfLifeDays
 export const LAMBDA = Math.LN2 / HALF_LIFE_DAYS // ≈ 0.0231 /day
 /** Minimum brightness floor — a star never goes dark / disappears (constitution §2). */
-export const A_MIN = 0.05
+export const A_MIN = VALUES.decay.aMin
 const DAY_MS = 86_400_000
 
 /** activation(Δt) = exp(-λ·Δt_days) ∈ (0,1]; Δt=0 → 1, 30 days → 0.5. */
@@ -39,15 +42,15 @@ export function isDormant(lastRecalledAt: number, now: number, threshold = 2 * A
 // landing card's 0.12 was a demo value, not a second floor).
 
 /** R_conn coefficient: more connections (degree) → more decay resistance. */
-export const ALPHA_CONN = 0.6
+export const ALPHA_CONN = VALUES.decay.alphaConn
 /** R_recent coefficient: closer to the "요즘 토픽" (relevance↑) → more decay resistance. */
-export const BETA_RECENT = 0.5
+export const BETA_RECENT = VALUES.decay.betaRecent
 /** R_emo coefficient on arousal (intensity): stronger emotion → more decay resistance
  *  (amygdala-mediated consolidation — concept.md). */
-export const GAMMA_EMO = 0.7
+export const GAMMA_EMO = VALUES.decay.gammaEmo
 /** R_emo coefficient on negative valence: a strong NEGATIVE affect resists decay extra
  *  (Kensinger & Corkin 2004 — negative events are remembered more durably). */
-export const DELTA_VAL = 0.4
+export const DELTA_VAL = VALUES.decay.deltaVal
 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
 

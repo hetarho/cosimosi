@@ -69,7 +69,7 @@
 
 ## 구현 근거
 
-- 4 테마·SVG 배경·`VizStar`/`VizSynapse`·곡선 시냅스·Lenis 스크롤·reduced-motion: 구현 plan 15 · `pages/landing/ui/{LandingPage,section/*}.tsx` · `pages/landing/lib/scroll.ts`.
+- 3 테마·SVG 배경·`VizStar`/`VizSynapse`·곡선 시냅스·Lenis 스크롤·reduced-motion: 구현 plan 15 · `pages/landing/ui/{LandingPage,section/*}.tsx` · `pages/landing/lib/scroll.ts`.
 - 테마(3)·오브제(4) 2축 분리·`AppearanceSwitcher`·`localStorage` 지속: 구현 plan 15(이후 FSD 정리로 이전) · `entities/appearance/model/{types,themes,store}.ts` · `features/switch-appearance/ui/AppearanceSwitcher.tsx`.
 - `VizStar`/`VizSynapse` 프리미티브·곡선 헬퍼: 구현 plan 15 · `entities/star/ui/VizStar.tsx` · `entities/synapse/ui/VizSynapse.tsx` · `entities/synapse/lib/curve.ts`.
 - 데모 진입: 구현 plan 15 · `pages/landing/ui/section/{HeroSection,CtaFooterSection}.tsx` · `shared/lib/demo`.

@@ -4,11 +4,11 @@
 
 ## 정의
 
-**별(star) = 하나의 기억 흔적(엔그램)을 표상하는 가변 오브젝트.** 현재 구현에서는 **일기 1편 = record 1개(불변 원본) = memory 1개(별)** 의 1:1 관계다 — record 1개를 쓰면 별 1개가 생긴다. 사용자가 쓴 **원본 일기(record)는 별이 아니다**: record는 불변·영구 보관되는 별도 레이어(`records`)이고, 별은 그 record를 가리키는(`memories.record_id`) 가변 표상(`memories`)이다(헌법1).
+**별(star) = 하나의 기억 흔적(엔그램)을 표상하는 가변 오브젝트.** 별 1개 = `memories` 1행 = 일기 조각 1개의 1:1 관계다. 일기 한 편(record)은 사건 경계로 나뉘어 **N개의 조각 별**로 fan-out된다(1일기 → N별, 21 — 상세는 [memory](memory.md) 정책). 사용자가 쓴 **원본 일기(record)는 별이 아니다**: record는 불변·영구 보관되는 별도 레이어(`records`)이고, 별은 그 record를 가리키는(`memories.record_id`, non-unique FK) 가변 표상(`memories`)이다(헌법1).
 
-별의 *지금 모습*은 결정론적 시드와 사용자가 고른 감정에서 나온다 — 색은 감정(mood)에서, 크기는 강도(intensity)에서, 형태는 시드에서 정해지고, 밝기는 회상 최근성으로 감쇠한다. 감정·강도는 **사용자가 기록 폼에서 직접 고른다**(AI 감정 감지가 아니다). 좌표는 별의 속성이 아니라 클라이언트가 결정론적으로 배치하며 서버는 좌표를 저장하지 않는다(헌법3 — navigation 정책 소관).
+별의 *지금 모습*은 결정론적 시드와 조각의 감정에서 나온다 — 색은 감정(mood)에서, 크기는 강도(intensity)에서, 형태는 시드에서 정해지고, 밝기는 회상 최근성으로 감쇠한다. 별의 감정·강도는 **AI가 일기 조각마다 감지하며**, 기록 폼의 수동 입력은 선택적 전체-일기 힌트로만 남는다(상세는 [memory](memory.md) 정책). 좌표는 별의 속성이 아니라 클라이언트가 결정론적으로 배치하며 서버는 좌표를 저장하지 않는다(헌법3 — navigation 정책 소관).
 
-> 일기 1편 → N 조각 별 분할·조각별 AI 감정 감지는 plan 20·21에서 다룬다([memory](memory.md) 정책). 야간 요지화는 아래 §요지화(27).
+> 조각 fan-out·조각별 AI 감정 감지의 데이터 모델·extract 워커 상세는 [memory](memory.md) 정책. 야간 요지화는 아래 §요지화(27).
 
 ## 규칙 · 파라미터
 
@@ -16,16 +16,16 @@
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| 일기 1개 = 별 1개 | record 1개 → memory 1개 (1:1); `RecordMemory`가 record·memory·embed job을 한 트랜잭션으로 생성 |
+| 일기 1편 → N 조각 별 | `RecordMemory`가 불변 record 1행 + extract job을 만들고, extract 워커가 사건 경계로 나눈 조각마다 별(`memories`) 1행 + embed job을 fan-out한다(1일기→N별, 21 — [memory](memory.md) 정책) |
 | record는 별이 아니다 | record는 불변·영구(`records`, UPDATE/DELETE 금지); 별은 `memories.record_id`로 record를 가리키는 가변 행 |
-| 낙관적 별 등장 | 제출 즉시 `temp-` id로 별 1개를 띄우고, 서버 확정 `memory_id`로 교체(seed 재파생) — 실패 시 임시 별만 롤백 |
+| 별 등장 = refetch | 작성은 `SegmentMemory` 조각 미리보기 → 검토 → `RecordMemory`(확정 조각) 동기 fan-out. 성공 시 temp 별을 직접 넣지 않고 universe 쿼리 invalidate→refetch로 확정 별이 들어온다(10) |
 
 ### 감정 입력 (emotion)
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| mood·intensity는 사용자 입력 | 기록 폼의 mood `<select>` + intensity 슬라이더(0..1); `records.mood`/`records.intensity`에 저장 |
-| 7 moods | `JOY`/`CALM`/`SAD`/`ANGER`/`FEAR`/`LOVE`/`NEUTRAL` (proto `enum Mood`와 단일 출처) |
+| mood·intensity·valence는 AI 감지 | 조각마다 AI 추출이 감지해 가변 별(`memories`)에 저장. 기록 폼의 수동 입력은 선택적 전체-일기 힌트로 `records`에만 남고, 추출이 단일-중립-조각으로 강등됐을 때만 fallback 적용(상세는 [memory](memory.md) 정책) |
+| mood 13종 | 4사분면 정동 모델 13종(기존 7 + 추가 6, 29). 색·UX 레이어이며 단일 출처는 proto `enum Mood`·`shared/config/mood.ts`(29) — star 정책은 그 값을 색에 소비만 |
 
 ### 시각 규칙 (appearance)
 
@@ -98,7 +98,7 @@
 
 - 형태 4종·InstancedMesh·TSL·색=mood·크기=f(intensity)·`seedFromId`·`activation`·`A_MIN`: 구현 plan 08 · `entities/star/ui/forms.ts` · `entities/star/ui/StarField.tsx` · `entities/star/model/{kinds,types}.ts` · `entities/memory/model/{activation,seed,types}.ts` · `shared/config/mood.ts`.
 - 시간 감쇠 운영·`starBrightness=max(A_MIN, activation)`·dormant `≤2·A_MIN`·서버 `ListDormant` cutoff: 구현 plan 12 · `entities/memory/model/activation.ts`.
-- 사용자 감정·강도 입력(mood select + intensity 슬라이더) → `records`: 구현 plan 04 · `features/record-memory/ui/MemoryForm.tsx` · `features/record-memory/model/use-record-memory.ts`.
+- 조각 감정 AI 감지(→ `memories`)·수동 힌트(→ `records`)·13 mood: 구현 plan 20·21·29 · `backend/internal/ai/extractor.go` · `backend/internal/job/worker.go`(`applyManualHint`) · `frontend/src/shared/config/mood.ts` · `features/record-memory/ui/MemoryForm.tsx`(수동 감정 토글).
 - record(불변)/memory(별) 분리·낙관적 단일 별: 구현 plan 03·04·10 · `backend/internal/db/migrations/00001_engram_schema.sql` · `features/record-memory/model/use-record-memory.ts`.
 - 재공고화 재성형(PE 게이트·강도 의존·양방향 경계·직접 이웃 한정·간격 효과·렌더 합성): 구현 plan 23 · `backend/internal/db/migrations/00005_reconsolidation.sql` · `backend/internal/memory/service.go`(`reconsolidate`·`reshapeState`·`strengthOf`·`cosineSim`·`directionFor`) · `entities/memory/model/reshape.ts` · `entities/star/ui/{StarField.tsx,forms.ts}` · `features/recall/model/co-recall.ts`.
 - 요지화(form_seed_delta 단조 증가·요지 대상 판정·변천사 append): 구현 plan 27 · `backend/internal/job/consolidate.go`(`handleConsolidate` ③) · `backend/internal/db/queries/memory.sql`(`GistSimplifyStars`·`AppendGistHistory`) · `aSeed=seed+form_seed_delta`는 23의 `reshapedSeed`(`entities/memory/model/reshape.ts`)·`entities/star/ui/StarField.tsx`가 이미 배선.
