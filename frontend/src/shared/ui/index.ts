@@ -6,9 +6,11 @@ export { StarFieldCanvas } from './StarFieldCanvas'
 export { NebulaBackground } from './NebulaBackground'
 export { primaryButtonCls, ghostButtonCls } from './button-styles'
 export { Dropdown, type DropdownOption, type DropdownProps } from './Dropdown'
-// 우주 셸 오버레이 프리미티브(spec 31) — 영속 캔버스 위 리스트/탐색 오버레이 + 포커스 딤.
+// 우주 셸 오버레이 프리미티브(spec 31 · home-ia revamp) — 영속 캔버스 위 비차단 오버레이 + 포커스 딤.
+// OverlayHost=브라우즈 리스트(peek), Surface=결과/액션(비차단 한 문법; 메뉴·기능 표면도 이걸로).
 export { Backdrop, type BackdropProps } from './Backdrop'
 export { OverlayHost, type OverlayHostProps } from './OverlayHost'
+export { Surface, type SurfaceProps } from './Surface'
 export { BottomSheet, type BottomSheetProps } from './BottomSheet'
-export { SidePanel, type SidePanelProps } from './SidePanel'
+export { FloatingCard, type FloatingCardProps } from './FloatingCard'
 export { useCoarsePointer } from './use-coarse-pointer'

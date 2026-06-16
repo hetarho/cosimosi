@@ -86,8 +86,12 @@ export function BottomSheet({ title, onClose, children }: BottomSheetProps) {
           ✕
         </button>
       </header>
-      {/* pb: safe-area로 마지막 항목·스크롤 끝이 홈 인디케이터/제스처 바에 가리지 않게. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</div>
+      {/* min-h-0 + overflow so a long body (recall/share/…) scrolls inside the sheet; a content
+          list with its own flex-1 overflow nests safely. pb: safe-area로 마지막 항목·스크롤 끝이
+          홈 인디케이터/제스처 바에 가리지 않게. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        {children}
+      </div>
     </motion.section>
   )
 }

@@ -43,6 +43,7 @@ spec/policy/
 └── ux/                  ← 사용자 경험 규칙
     ├── interaction.md   ← 회상·기록·공동회상·체험(demo) 상호작용
     ├── landing.md       ← 랜딩 비전 showcase·이론 카드·내러티브
+    ├── voice-tone.md    ← 보이스·톤: 카피 문학성·시각 절제(장식 이모지 금지)·상시 버튼 최소화·AI 티 회피
     ├── motion-accessibility.md  ← 모션·reduced-motion·접근성·glow
     ├── error-feedback.md ← 실패 상태 UX: 바운더리 3겹·폴백 카피·검증 메시지(흰 화면 금지)
     └── analytics-privacy.md ← 분석·관측: 이벤트 설계표·본문 금지·마스킹·Sentry·큐 요약 로그

@@ -88,25 +88,76 @@ function SwatchRadioGroup({
   )
 }
 
-export interface AppearanceSwitcherProps {
-  /** 고정 위치 유틸리티 클래스(미지정 시 우하단). 라우트마다 HUD와 안 겹치게 배치한다. */
-  className?: string
-}
-
 /**
- * 플로팅 시각 설정 스위처. 두 축을 각각 라디오그룹으로 고른다(appearance entity):
+ * 시각 설정 컨트롤 본문 — 두 축을 라디오그룹으로 고른다(appearance entity):
  *   · 테마(3) — 색·분위기(vast/lively/calm). 배경·글래스·accent가 함께 전환.
  *   · 오브제(4) — 별의 형태(deepfield/aurora/liquid/ember). 3D·2D 공통.
- * 선택은 localStorage에 지속되어 새로고침해도 유지된다. 기본은 접힌 FAB. 랜딩·우주 양쪽에서 띄운다.
+ *   · 나(자아 별) — 우주 중심 앵커 형태(spec 38).
+ * 선택은 localStorage·서버(인증 시)에 지속된다. Body-only — 우주 메인은 메뉴에서 비차단 Surface로,
+ * 랜딩은 `AppearanceSwitcher` FAB가 이 본문을 감싼다.
  */
-export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
-  const reduce = useReducedMotion()
+export function AppearanceControls() {
   const theme = useAppearance((s) => s.theme)
   const setTheme = useAppearance((s) => s.setTheme)
   const object = useAppearance((s) => s.object)
   const setObject = useAppearance((s) => s.setObject)
   const selfObject = useAppearance((s) => s.selfObject)
   const setSelfObject = useAppearance((s) => s.setSelfObject)
+
+  return (
+    <>
+      <SwatchRadioGroup
+        label="테마 — 색·분위기"
+        groupLabel="색 테마"
+        items={THEMES}
+        value={theme}
+        onChange={(id) => {
+          if (id === theme) return // 같은 테마 재클릭은 전환이 아니다 — 이벤트 오염 방지
+          setTheme(id as (typeof THEMES)[number]['id'])
+          void pushSettings({ theme: id }) // 서버 영속(인증 시; 미인증·체험은 로컬만) — spec 30
+          capture(EVENTS.appearanceSwitch, { theme: id }) // 외형 기능 사용률(18)
+        }}
+      />
+
+      <div className="h-px bg-white/10" />
+
+      <SwatchRadioGroup
+        label="오브제 — 별의 형태"
+        groupLabel="별 오브제 형태"
+        items={STAR_OBJECTS}
+        value={object}
+        onChange={(id) => {
+          const obj = id as (typeof STAR_OBJECTS)[number]['id']
+          setObject(obj)
+          void pushSettings({ starObject: obj }) // 서버 영속(인증 시) — spec 30
+        }}
+      />
+
+      <div className="h-px bg-white/10" />
+
+      {/* 자아 별(나) 형태 — 우주 중심 앵커(spec 38). 기기 로컬 선호(서버 동기는 후속). */}
+      <SwatchRadioGroup
+        label="나 — 중심 별의 형태"
+        groupLabel="자아 별 형태"
+        items={SELF_OBJECTS}
+        value={selfObject}
+        onChange={(id) => setSelfObject(id as (typeof SELF_OBJECTS)[number]['id'])}
+      />
+    </>
+  )
+}
+
+export interface AppearanceSwitcherProps {
+  /** 고정 위치 유틸리티 클래스(미지정 시 우하단). 라우트마다 HUD와 안 겹치게 배치한다. */
+  className?: string
+}
+
+/**
+ * 플로팅 시각 설정 스위처(랜딩 전용 진입) — 접힌 FAB을 누르면 `AppearanceControls`가 펼쳐진다.
+ * 우주 메인(`/universe`)은 이 FAB 대신 "메뉴"의 "테마·외형" 항목이 같은 본문을 비차단 Surface로 띄운다.
+ */
+export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
+  const reduce = useReducedMotion()
   const [open, setOpen] = useState(false)
 
   return (
@@ -139,44 +190,7 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
                 <X className="size-3.5" />
               </button>
             </div>
-
-            <SwatchRadioGroup
-              label="테마 — 색·분위기"
-              groupLabel="색 테마"
-              items={THEMES}
-              value={theme}
-              onChange={(id) => {
-                if (id === theme) return // 같은 테마 재클릭은 전환이 아니다 — 이벤트 오염 방지
-                setTheme(id as (typeof THEMES)[number]['id'])
-                void pushSettings({ theme: id }) // 서버 영속(인증 시; 미인증·체험은 로컬만) — spec 30
-                capture(EVENTS.appearanceSwitch, { theme: id }) // 외형 기능 사용률(18)
-              }}
-            />
-
-            <div className="h-px bg-white/10" />
-
-            <SwatchRadioGroup
-              label="오브제 — 별의 형태"
-              groupLabel="별 오브제 형태"
-              items={STAR_OBJECTS}
-              value={object}
-              onChange={(id) => {
-                const obj = id as (typeof STAR_OBJECTS)[number]['id']
-                setObject(obj)
-                void pushSettings({ starObject: obj }) // 서버 영속(인증 시) — spec 30
-              }}
-            />
-
-            <div className="h-px bg-white/10" />
-
-            {/* 자아 별(나) 형태 — 우주 중심 앵커(spec 38). 기기 로컬 선호(서버 동기는 후속). */}
-            <SwatchRadioGroup
-              label="나 — 중심 별의 형태"
-              groupLabel="자아 별 형태"
-              items={SELF_OBJECTS}
-              value={selfObject}
-              onChange={(id) => setSelfObject(id as (typeof SELF_OBJECTS)[number]['id'])}
-            />
+            <AppearanceControls />
           </motion.div>
         ) : (
           <motion.button

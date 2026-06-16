@@ -38,7 +38,7 @@ export function MorningDiffNote({
       )}
     >
       <p className="rounded-full border border-mood-violet/30 bg-black/55 px-4 py-2 text-xs text-white/80 backdrop-blur">
-        ✦ 밤사이 우주가 한 번 정리됐어요
+        밤사이 우주가 한 번 정리됐어요
       </p>
     </div>
   )

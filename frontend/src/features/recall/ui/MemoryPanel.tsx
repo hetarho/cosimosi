@@ -124,20 +124,10 @@ function RecallView({
     }
   }, [memoryId, queryClient])
 
+  // Body-only (home-ia revamp): the page hosts this inside a Surface (bottom sheet / floating
+  // card), which owns the container, "회상 — 원본 일기" title and close (→ focusActor DISMISS).
   return (
-    <div className="flex w-96 max-w-[90vw] flex-col gap-3 rounded-xl border border-white/10 bg-black/50 p-4 backdrop-blur">
-      <header className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-white/80">회상 — 원본 일기</h2>
-        <button
-          type="button"
-          onClick={() => focusActor.send({ type: 'DISMISS' })}
-          aria-label="닫기"
-          className="rounded-md px-2 text-white/50 transition hover:text-white/90"
-        >
-          ✕
-        </button>
-      </header>
-
+    <>
       {phase === 'dwelling' && (
         <p className="text-sm text-white/50">별을 바라보는 중… (2초간 머무르면 회상됩니다)</p>
       )}
@@ -215,7 +205,6 @@ function RecallView({
         <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
           {resonant && (
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-indigo-200/80">
-              <span aria-hidden>✦</span>
               <span>{resonance ? `${resonance.partnerDisplayName || '어느'} 우주와 공명 중` : '다른 우주와 공명 중'}</span>
               {resonance?.partnerSlug && (
                 <a
@@ -235,14 +224,14 @@ function RecallView({
               onClick={() => onSendStar(memoryId)}
               className="w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-indigo-400/60 hover:text-white"
             >
-              ✦ 이 별 보내기
+              이 별 보내기
             </button>
           )}
         </div>
       )}
 
       <NeighborNav />
-    </div>
+    </>
   )
 }
 

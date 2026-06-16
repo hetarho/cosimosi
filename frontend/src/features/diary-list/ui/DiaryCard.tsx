@@ -30,7 +30,7 @@ export function DiaryCard({ recordId, onExpand, onClose }: DiaryCardProps) {
             onClick={onExpand}
             className="rounded-md px-2.5 py-1.5 text-xs text-white/70 transition hover:bg-white/10 hover:text-white"
           >
-            📖 목록
+            목록
           </button>
           <button
             type="button"

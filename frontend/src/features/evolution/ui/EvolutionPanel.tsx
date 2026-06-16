@@ -34,7 +34,6 @@ export function EvolutionPanel() {
 }
 
 function EvolutionView({ memoryId }: { memoryId: string }) {
-  const close = useEvolutionStore((s) => s.close)
   const concept = useAppearance((s) => s.object)
   const emotionColors = useAppearance((s) => s.emotionColors)
   const queryClient = useQueryClient()
@@ -60,20 +59,10 @@ function EvolutionView({ memoryId }: { memoryId: string }) {
   const moodStr = record ? moodFromProto(record.mood) : 'neutral'
   const color = rgbToHex(resolveMoodRgb(moodStr, emotionColors))
 
+  // Body-only (home-ia revamp): the page hosts this inside a Surface (place=center, width=lg),
+  // which owns the container, title ("별 변천사 — 변한 것과 변하지 않은 것") and close (→ store close).
   return (
-    <div className="pointer-events-auto flex w-[40rem] max-w-[92vw] flex-col gap-4 rounded-2xl border border-white/10 bg-black/60 p-5 backdrop-blur">
-      <header className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-white/80">별 변천사 — 변한 것과 변하지 않은 것</h2>
-        <button
-          type="button"
-          onClick={close}
-          aria-label="닫기"
-          className="rounded-md px-2 text-white/50 transition hover:text-white/90"
-        >
-          ✕
-        </button>
-      </header>
-
+    <>
       {isPending && <p className="text-sm text-white/50">변천사를 불러오는 중…</p>}
       {isError && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-300">⚠ 변천사를 불러오지 못했어요.</p>
@@ -183,6 +172,6 @@ function EvolutionView({ memoryId }: { memoryId: string }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

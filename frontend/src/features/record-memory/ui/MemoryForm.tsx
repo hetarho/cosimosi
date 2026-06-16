@@ -125,9 +125,11 @@ export function MemoryForm() {
   const segmenting = useSelector(composeActor, selectIsSegmenting)
   const submitting = useSelector(composeActor, selectIsSubmitting)
 
+  // Body-only (home-ia revamp): the page hosts this inside a Surface (title reflects the phase),
+  // so the form drops its own card chrome and phase headings.
   return (
     <form
-      className="flex w-full flex-col gap-3 rounded-xl border border-white/10 bg-black/40 p-4 backdrop-blur"
+      className="flex w-full flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault()
         composeActor.send({ type: phase === 'compose' ? 'SEGMENT' : 'SUBMIT' })
@@ -135,7 +137,6 @@ export function MemoryForm() {
     >
       {phase === 'compose' ? (
         <>
-          <h2 className="text-sm font-medium text-white/80">새 일기 — 별 띄우기</h2>
           {/* ph-no-capture: 일기 본문 입력 — PostHog autocapture가 이 요소를 아예 건드리지
               않게 한다(스펙 18 프라이버시 헌법 3; mask_all_text 위의 이중 가드).
               분해 중에는 잠근다 — 분해는 클릭 시점의 본문 스냅샷으로 돌아가므로, 그동안
@@ -160,7 +161,7 @@ export function MemoryForm() {
 
           {segmenting && (
             <p className="rounded-md bg-indigo-500/10 px-2 py-1 text-xs text-indigo-200/90">
-              ✦ 기억을 조각내는 중… 장면마다 별이 될 조각으로 나눠요.
+              기억을 조각내는 중… 장면마다 별이 될 조각으로 나눠요.
             </p>
           )}
           {errorText && (
@@ -171,14 +172,11 @@ export function MemoryForm() {
             disabled={segmenting}
             className="rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
           >
-            {segmenting ? '조각내는 중…' : '✦ 별로 분해'}
+            {segmenting ? '조각내는 중…' : '별로 분해'}
           </button>
         </>
       ) : (
         <>
-          <h2 className="text-sm font-medium text-white/80">
-            조각 확인 — 별 {fragments.length}개
-          </h2>
           <p className="text-xs text-white/45">
             감정과 내용을 다듬고, 필요하면 조각을 추가하거나 지운 뒤 별을 띄워 주세요.
           </p>
@@ -213,7 +211,7 @@ export function MemoryForm() {
               disabled={submitting || fragments.length === 0}
               className="flex-1 rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
             >
-              {submitting ? '별 띄우는 중…' : `✦ 별 띄우기 (${fragments.length})`}
+              {submitting ? '별 띄우는 중…' : `별 띄우기 (${fragments.length})`}
             </button>
           </div>
         </>

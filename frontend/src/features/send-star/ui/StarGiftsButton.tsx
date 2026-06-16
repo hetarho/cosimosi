@@ -4,7 +4,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorMessage } from '@/shared/lib'
-import { isDemoMode } from '@/shared/lib/demo'
 import { GiftStatus, type GiftSummary } from '@/shared/api'
 import { ghostButtonCls } from '@/shared/ui'
 import { cancelStarGift, listStarGiftsInvalidateKey, listStarGiftsQueryOptions } from '../api/gift-queries'
@@ -83,7 +82,12 @@ function ReceivedRow({ g }: { g: GiftSummary }) {
   )
 }
 
-function StarGiftsModal({ onClose }: { onClose: () => void }) {
+/**
+ * 보낸/받은 별 목록(spec 36) — 보낸 탭은 상태(대기/수락/거절/취소/만료)로 친구 수락 여부를 보는 곳(대기 중은
+ * 링크 재복사·취소), 받은 탭은 수락/거절 이력. Body-only(home-ia revamp): 페이지가 비차단 Surface(제목
+ * "주고받은 별")로 호스팅한다 — 구 `fixed inset-0` 차단 모달을 셸 한 문법으로 흡수(A4).
+ */
+export function StarGiftsBody() {
   const qc = useQueryClient()
   const query = useQuery(listStarGiftsQueryOptions())
   const [tab, setTab] = useState<'sent' | 'received'>('sent')
@@ -109,72 +113,30 @@ function StarGiftsModal({ onClose }: { onClose: () => void }) {
     }`
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-      role="presentation"
-    >
-      <div
-        className="flex max-h-[80vh] w-88 max-w-[90vw] flex-col gap-3 rounded-2xl border border-white/10 bg-zinc-950/95 p-5 text-white/85 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="주고받은 별"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium">주고받은 별</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="닫기"
-            className="grid h-8 w-8 place-items-center rounded-md text-white/45 transition hover:text-white/90"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-          <button type="button" className={tabCls(tab === 'sent')} onClick={() => setTab('sent')}>
-            보낸 별 ({sent.length})
-          </button>
-          <button type="button" className={tabCls(tab === 'received')} onClick={() => setTab('received')}>
-            받은 별 ({received.length})
-          </button>
-        </div>
-
-        {query.isPending && <p className="text-sm text-white/50">불러오는 중…</p>}
-        {!query.isPending && list.length === 0 && (
-          <p className="py-6 text-center text-sm text-white/40">
-            {tab === 'sent' ? '아직 보낸 별이 없어요.' : '아직 받은 별이 없어요.'}
-          </p>
-        )}
-
-        <ul className="flex flex-col gap-2 overflow-y-auto overscroll-contain">
-          {tab === 'sent'
-            ? sent.map((g) => <SentRow key={g.giftId} g={g} onCancel={(id) => void cancel(id)} />)
-            : received.map((g) => <ReceivedRow key={g.giftId} g={g} />)}
-        </ul>
-
-        {err && <p className="text-xs break-all text-rose-300/90">{err}</p>}
-      </div>
-    </div>
-  )
-}
-
-/** 주고받은 별 진입점(spec 36) — home 컨트롤 스택의 버튼 + 목록 모달. 데모엔 서버가 없어 숨긴다. */
-export function StarGiftsButton({ className = '' }: { className?: string }) {
-  const [open, setOpen] = useState(false)
-  if (isDemoMode()) return null
-  return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`rounded-md bg-white/10 px-3 py-2 text-sm text-white/80 backdrop-blur transition hover:bg-white/20 ${className}`}
-      >
-        주고받은 별
-      </button>
-      {open && <StarGiftsModal onClose={() => setOpen(false)} />}
+      <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+        <button type="button" className={tabCls(tab === 'sent')} onClick={() => setTab('sent')}>
+          보낸 별 ({sent.length})
+        </button>
+        <button type="button" className={tabCls(tab === 'received')} onClick={() => setTab('received')}>
+          받은 별 ({received.length})
+        </button>
+      </div>
+
+      {query.isPending && <p className="text-sm text-white/50">불러오는 중…</p>}
+      {!query.isPending && list.length === 0 && (
+        <p className="py-6 text-center text-sm text-white/40">
+          {tab === 'sent' ? '아직 보낸 별이 없어요.' : '아직 받은 별이 없어요.'}
+        </p>
+      )}
+
+      <ul className="flex flex-col gap-2 overscroll-contain">
+        {tab === 'sent'
+          ? sent.map((g) => <SentRow key={g.giftId} g={g} onCancel={(id) => void cancel(id)} />)
+          : received.map((g) => <ReceivedRow key={g.giftId} g={g} />)}
+      </ul>
+
+      {err && <p className="text-xs break-all text-rose-300/90">{err}</p>}
     </>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Backdrop } from './Backdrop'
 import { BottomSheet } from './BottomSheet'
-import { SidePanel } from './SidePanel'
+import { FloatingCard } from './FloatingCard'
 import { useCoarsePointer } from './use-coarse-pointer'
 
 export interface OverlayHostProps {
@@ -11,7 +11,7 @@ export interface OverlayHostProps {
   peek: boolean
   /** Header title (expanded) — also the dialog's accessible name. */
   title: string
-  /** Label on the peek handle (e.g. "📖 일기 목록 펼치기"). */
+  /** Label on the peek handle (e.g. "일기 목록 펼치기"). */
   peekLabel: string
   /** Dismiss the overlay entirely. */
   onClose: () => void
@@ -26,9 +26,11 @@ export interface OverlayHostProps {
 /**
  * Responsive overlay host (spec 31) — the single shell for list/explore overlays that float
  * OVER the persistent universe canvas (concept §우주 탐험: "전환은 별개 화면이 아니라 같은 우주의
- * 다른 시점… 언제나 우주 안에 머무는 느낌"). Coarse pointer → BottomSheet, fine → SidePanel
- * (헌법4 — 플랫폼 분기는 ui 레이어). NON-blocking: no backdrop, so the universe stays visible
- * and interactive behind it (1.3); a blocking dim is reserved for confirm modals only. Esc
+ * 다른 시점… 언제나 우주 안에 머무는 느낌"). Coarse pointer → BottomSheet, fine → FloatingCard
+ * (헌법4 — 플랫폼 분기는 ui 레이어). This is the BROWSE-list host (peek semantics — pick an item,
+ * the universe flies to it). Detail/action surfaces use Surface (no peek). While expanded a dim
+ * Backdrop catches outside taps to close (you're browsing, not focusing the universe); peek drops
+ * it so star taps pass through (1.3). Esc
  * closes (no focus trap — the canvas behind must stay reachable). Each spec provides only the
  * CONTENT (`…Sheet`); this host owns the container, the peek handle, snap, and reduced-motion.
  */
@@ -93,9 +95,9 @@ export function OverlayHost({
           {children}
         </BottomSheet>
       ) : (
-        <SidePanel title={title} onClose={onClose}>
+        <FloatingCard title={title} onClose={onClose} place="top">
           {children}
-        </SidePanel>
+        </FloatingCard>
       )}
     </>
   )
