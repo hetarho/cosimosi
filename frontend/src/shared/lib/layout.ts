@@ -1,5 +1,6 @@
 // Deterministic Fibonacci-sphere star layout. Pure math (no three/React/DOM) so the
 // star renderer and the camera fly-to read the SAME formula and agree on each star's position.
+import { VALUES } from '@/shared/config'
 import { clamp01 } from './num'
 import { mulberry32 } from './prng'
 
@@ -9,13 +10,13 @@ const GOLDEN = Math.PI * (3 - Math.sqrt(5))
 // encodes its STRENGTH; its DIRECTION still emerges from the connection graph. Pure math
 // (no three/React/DOM) so the layout controller and the renderer agree.
 /** Strongest memory shell — sits just outside the self star, near the centre. */
-export const R_MIN = 6
+export const R_MIN = VALUES.radialLayout.rMin
 /** Weakest (dormant) memory shell — the outer reaches of the universe. Kept inside the
  *  camera's star-shell framing (~46) so the cloud reads tight, not sprawling. */
-export const R_MAX = 40
+export const R_MAX = VALUES.radialLayout.rMax
 /** Strength = W_ACT·activation + W_INT·intensity: recency leads, emotional intensity tempers. */
-export const W_ACT = 0.7
-export const W_INT = 0.3
+export const W_ACT = VALUES.radialLayout.wActivation
+export const W_INT = VALUES.radialLayout.wIntensity
 
 /** A memory's strength ∈ [0,1]: a blend of activation (recency, 0..1 — spec 12) and
  *  emotional intensity (0..1). Higher = more alive → drawn closer to the self star. */
@@ -41,7 +42,7 @@ export function fibonacciStarPosition(i: number, n: number, seed: number): [numb
 
 /** Per-night tangential rotation of a star's DIRECTION (representational drift, spec 40).
  *  ~0.08 rad ≈ 4.6° per night — slow enough to read as drift, not spin. Hand-tuned. */
-export const DRIFT_STEP_RAD = 0.08
+export const DRIFT_STEP_RAD = VALUES.radialLayout.driftStepRad
 
 /** Deterministic unit-sphere direction from a star's own seed. Unlike fibonacciStarPosition's
  *  golden-angle-by-INDEX placement (successive stars march along a spiral arc), this maps the

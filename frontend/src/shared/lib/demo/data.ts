@@ -24,6 +24,7 @@ import { virtualNowMs, resetDemoClock } from './clock'
 import { getDemoPersona, type DemoPersona } from './flag'
 import { CORPORA } from './personas'
 import { crossResonances, simulate, type SimStar } from './simulate'
+import { VALUES } from '@/shared/config'
 
 const DAY_MS = 86_400_000
 
@@ -257,10 +258,10 @@ export function demoListRecords(): RecordSummary[] {
 }
 
 // 새 별이 만드는 데모 연결 수 상한 — 우주를 어지럽히지 않는 선에서 "연결이 생긴다"를 보인다.
-const ADD_SAME_DAY_LINKS = 2
-const ADD_SAME_MOOD_LINKS = 1
+const ADD_SAME_DAY_LINKS = VALUES.demoLinking.addSameDayLinks
+const ADD_SAME_MOOD_LINKS = VALUES.demoLinking.addSameMoodLinks
 // 흥분성 시간 창(~6h, 서버 tauExc와 동일) — 이 안에 회상된 별만 새 기억을 끌어당긴다(spec 22).
-const HOT_WINDOW_MS = 6 * 60 * 60 * 1000
+const HOT_WINDOW_MS = VALUES.excitability.tauHours * 60 * 60 * 1000
 
 /** a<b 무방향 규약으로 데모 엣지를 추가한다(방금 생긴 연결 → lastActivatedAt = 가상 now). */
 function pushAddedEdge(idA: string, idB: string, weight: number, linkType: string, nowIso: string) {
@@ -368,7 +369,7 @@ export function demoAddRecord(input: {
   // 일내 결속(within-event binding): 모든 조각 쌍을 강한 고정 가중치로.
   for (let i = 0; i < ids.length; i++) {
     for (let k = i + 1; k < ids.length; k++) {
-      pushAddedEdge(ids[i], ids[k], 0.8, 'intra_entry', nowIso)
+      pushAddedEdge(ids[i], ids[k], VALUES.connection.intraEntryWeight, 'intra_entry', nowIso)
     }
   }
 
@@ -380,7 +381,7 @@ export function demoAddRecord(input: {
     .filter((r) => r.entryDate === input.entryDate)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, ADD_SAME_DAY_LINKS)
-  for (const r of sameDay) pushAddedEdge(first, r.memoryId, 0.55, 'temporal', nowIso)
+  for (const r of sameDay) pushAddedEdge(first, r.memoryId, VALUES.demoLinking.addTemporalWeight, 'temporal', nowIso)
 
   // 의미 근사: 첫 조각과 같은 mood의 최신 일기와 잇는다(같은 날로 이미 이어진 별은 제외).
   const firstMood = records.get(first)?.mood
@@ -389,7 +390,7 @@ export function demoAddRecord(input: {
     .filter((r) => r.mood === firstMood && !linkedIds.has(r.memoryId))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, ADD_SAME_MOOD_LINKS)
-  for (const r of sameMood) pushAddedEdge(first, r.memoryId, 0.6, 'semantic', nowIso)
+  for (const r of sameMood) pushAddedEdge(first, r.memoryId, VALUES.demoLinking.addSemanticWeight, 'semantic', nowIso)
   for (const r of sameMood) linkedIds.add(r.memoryId)
 
   // 흥분성 편향 할당(spec 22) 데모 근사: 방금(~6h 내) 회상해 "뜨거운" 별이 있으면 새 조각을
@@ -401,7 +402,7 @@ export function demoAddRecord(input: {
     .map((s) => ({ id: s.memoryId, recalled: Date.parse(s.lastRecalledAt) }))
     .filter((s) => Number.isFinite(s.recalled) && now - s.recalled <= HOT_WINDOW_MS)
     .sort((a, b) => b.recalled - a.recalled)[0]
-  if (hot) pushAddedEdge(first, hot.id, 0.66, 'semantic', nowIso)
+  if (hot) pushAddedEdge(first, hot.id, VALUES.demoLinking.addExcitabilityWeight, 'semantic', nowIso)
 
   return ids
 }
@@ -538,15 +539,15 @@ export function demoMarkRecalled(memoryId: string): void {
   replaceStar(memoryId, (s) => renewStar(s, nowIso))
 }
 
-// 재공고화 재성형 파라미터(spec 23 데모 — 서버 service.go·랜딩 카드와 같은 결).
-const DEMO_PE_THRESHOLD = 0.15
-const HUE_MAX_DEG = 28
-const FORM_DELTA_MAX = 0.6
+// 재공고화 재성형 파라미터(spec 23 데모 — 서버 service.go·랜딩 카드와 같은 결, VALUES.reshape 출처).
+const DEMO_PE_THRESHOLD = VALUES.reshape.peThreshold
+const HUE_MAX_DEG = VALUES.reshape.hueMaxDeg
+const FORM_DELTA_MAX = VALUES.reshape.formDeltaMax
 const clampDemo = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
 /** 회상 거듭될수록(version↑) 별이 굳어 변화폭이 작아진다(강도 의존 — strength↑ ⇒ magnitude↓). */
 function demoStrength(version: number): number {
-  return clampDemo(0.22 * Math.log2(1 + version), 0, 0.85)
+  return clampDemo(VALUES.reshape.baseStep * Math.log2(1 + version), 0, 0.85)
 }
 
 /** id → PRNG 시드(FNV-1a 32-bit). seedFromId(entities)의 데모 로컬 판 — shared는 entities를
@@ -584,13 +585,13 @@ export function demoReshape(memoryId: string): void {
   // 같은 폭으로 다시 빚어지게 한다(데모는 실 렌더러를 그대로 탄다 — 같은 aHueShift 경로).
   const next: DemoReshape = {
     brightnessOffset: clampDemo(
-      prev.brightnessOffset + dir * clampDemo(magnitude, 0.1, 0.22),
+      prev.brightnessOffset + dir * clampDemo(magnitude, VALUES.reshape.minBrightStep, VALUES.reshape.maxBrightStep),
       -1,
       1,
     ),
-    hueShift: clampDemo(prev.hueShift + dir * magnitude * 60, -HUE_MAX_DEG, HUE_MAX_DEG),
+    hueShift: clampDemo(prev.hueShift + dir * magnitude * VALUES.reshape.hueGainDeg, -HUE_MAX_DEG, HUE_MAX_DEG),
     formSeedDelta: clampDemo(
-      prev.formSeedDelta + dir * magnitude * 0.5,
+      prev.formSeedDelta + dir * magnitude * VALUES.reshape.formGain,
       -FORM_DELTA_MAX,
       FORM_DELTA_MAX,
     ),
@@ -606,11 +607,11 @@ export function demoReshape(memoryId: string): void {
 // 지우지 않는다(헌법2): 개수는 그대로 두고 ③ 요지(오래된 별의 형태를 한 단계 단순화)와
 // ④ 가지치기(약하고 안 쓰인 선의 weight를 바닥으로 — 어둑하게만)만 데이터에 반영한다.
 // ①②(재안정화·재분배)는 좌표 변환이라 라이브 force-sim이 refetch에서 다시 안정화하며 보인다.
-const DEMO_GIST_AGE_DAYS = 30 // 마지막 회상 후 이보다 오래된 별이 요지 대상(서버 gistAgeDays와 동일)
-const DEMO_GIST_SIMPLIFY = 0.18 // 요지 1회의 form_seed_delta 단조 증가폭
-const DEMO_WEAK_THRESHOLD = 0.7 // 데모 우주는 선이 촘촘·강해 상대적 약함 기준(서버 0.2의 데모 근사)
-const DEMO_IDLE_DAYS = 14 // 이보다 오래 안 쓰인 선이 가지치기 대상(서버 weakEdgeIdleDays와 동일)
-const DEMO_PRUNE_FLOOR = 0.12 // 가지치기 후 선이 가닿는 최소 weight(0 아님 — 어둑하게 남는다)
+const DEMO_GIST_AGE_DAYS = VALUES.consolidation.gistAgeDays // 마지막 회상 후 이보다 오래된 별이 요지 대상(서버와 동일)
+const DEMO_GIST_SIMPLIFY = VALUES.demoConsolidation.gistFormSimplify // 요지 1회의 form_seed_delta 단조 증가폭(데모 전용)
+const DEMO_WEAK_THRESHOLD = VALUES.demoConsolidation.weakEdgeThreshold // 데모 우주는 선이 촘촘·강해 상대적 약함 기준(서버 0.2의 데모 근사)
+const DEMO_IDLE_DAYS = VALUES.consolidation.weakEdgeIdleDays // 이보다 오래 안 쓰인 선이 가지치기 대상(서버와 동일)
+const DEMO_PRUNE_FLOOR = VALUES.demoConsolidation.weakEdgeFloor // 가지치기 후 선이 가닿는 최소 weight(0 아님 — 데모 전용)
 
 /** RecordMemory처럼 데모 우주를 제자리에서 변환한다 — "밤 보내기"(spec 27): 오래된 별의
  *  형태를 한 단계 요지화하고(③), 약하고 안 쓰인 선은 빛만 바닥으로 낮춘다(④). 별·선 개수는
@@ -695,7 +696,7 @@ export function demoEvolution(memoryId: string): EvolutionSnap[] {
     snaps.push({
       version: i,
       brightness: clampDemo(prev.brightness + dir * step, 0.4, 1),
-      hueShift: clampDemo(prev.hueShift + dir * step * 60, -HUE_MAX_DEG, HUE_MAX_DEG),
+      hueShift: clampDemo(prev.hueShift + dir * step * VALUES.reshape.hueGainDeg, -HUE_MAX_DEG, HUE_MAX_DEG),
       formSeedDelta: clampDemo(
         prev.formSeedDelta + dir * step * 1.4,
         -FORM_DELTA_MAX,

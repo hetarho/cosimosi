@@ -16,6 +16,7 @@ import * as THREE from 'three'
 import { AMBIENT_LIGHTS_K, ambientLights, useMemoryStore, type AmbientLight } from '@/entities/memory'
 import { mulberry32 } from '@/shared/lib'
 import { virtualNowMs } from '@/shared/lib/demo'
+import { VALUES } from '@/shared/config'
 
 // Pools sit far outside the star shell (~46) so they read as a deep background and parallax.
 const RADIUS_MIN = 120
@@ -25,12 +26,12 @@ const SCALE_MIN = 60
 const SCALE_MAX = 120
 // Color magnitude (additive) = BASE + AROUSAL·arousal, kept low so a vivid "요즘" glows without
 // washing out the stars; a calm/empty one fades to almost nothing.
-const BASE_BRIGHT = 0.06
-const AROUSAL_BRIGHT = 0.2
-const CROSSFADE_S = 0.8 // ambient change → 0.8s color/size crossfade (acceptance 1.7)
-const DRIFT_SPEED = 0.05 // very slow position/scale drift (phase units per second)
-const DRIFT_AMP = 16 // world-unit wobble of each pool's center
-const SHIMMER = 0.06 // ±6% size pulse
+const BASE_BRIGHT = VALUES.ambientNebula.baseBright
+const AROUSAL_BRIGHT = VALUES.ambientNebula.arousalBright
+const CROSSFADE_S = VALUES.ambientNebula.crossfadeS // ambient change → 0.8s color/size crossfade (acceptance 1.7)
+const DRIFT_SPEED = VALUES.ambientNebula.driftSpeed // very slow position/scale drift (phase units per second)
+const DRIFT_AMP = VALUES.ambientNebula.driftAmp // world-unit wobble of each pool's center
+const SHIMMER = VALUES.ambientNebula.shimmer // ±6% size pulse
 
 /** A soft radial glow sprite (no hard ring) — the pool's falloff. Module singleton. */
 let glowTexture: THREE.CanvasTexture | null = null

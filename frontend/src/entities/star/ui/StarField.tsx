@@ -17,12 +17,13 @@ import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
 import { DEFAULT_OBJECT } from '../model/kinds'
 import type { StarObject } from '../model/types'
 import { resolveMoodRgb } from '@/shared/config'
+import { VALUES } from '@/shared/config'
 import { fibonacciStarPosition } from '@/shared/lib'
 import { buildStarForm } from './forms'
 
 /** intensity (0..1) → instance scale. */
 function sizeFor(intensity: number): number {
-  return 0.6 + Math.max(0, Math.min(1, intensity)) * 1.4
+  return VALUES.starRender.sizeBase + Math.max(0, Math.min(1, intensity)) * VALUES.starRender.sizeRange
 }
 
 /** 버스트 레이어는 클릭 대상이 아니다 — raycast 무력화로 별 클릭이 가려지지 않게. */
@@ -31,7 +32,7 @@ const NOOP_RAYCAST = () => undefined
 // 별 탄생 애니메이션: 새로 생긴 별은 한 점에서 살짝 튀어 오르며(easeOutBack) 정상 크기로
 // 자라난다 — 뚝 나타나는 등장을 "태어나는" 등장으로 바꾼다. 첫 로드/출처 리셋의 일괄
 // 시드는 애니메이션하지 않는다(우주 전체가 펑펑 터지면 소음이다).
-const BIRTH_DUR_S = 1.2
+const BIRTH_DUR_S = VALUES.starRender.birthDurS
 function easeOutBack(x: number): number {
   const c1 = 1.70158
   const c3 = c1 + 1
@@ -41,10 +42,10 @@ function easeOutBack(x: number): number {
 // 탄생 버스트: 새 별 자리에서 mood 색의 발광 디스크+링이 빠르게 퍼지며 사그라든다
 // (additive — 색이 검정으로 가면 투명과 같다). 스케일 탄생 애니메이션과 함께 "별이
 // 태어났다"를 한눈에 알린다. 빌보드 인스턴스 메시 1개 = 추가 드로우콜 1개(헌법 §8).
-const BURST_DUR_S = 1.6
+const BURST_DUR_S = VALUES.starRender.burstDurS
 const MAX_BURSTS = 32 // 동시 탄생 상한(초과분은 버스트만 생략 — 별 자체는 정상 탄생)
-const BURST_BASE_SCALE = 2.5 // 시작 크기(별 스케일 배수)
-const BURST_GROW = 16 // 수명 동안 추가로 퍼지는 배수
+const BURST_BASE_SCALE = VALUES.starRender.burstBaseScale // 시작 크기(별 스케일 배수)
+const BURST_GROW = VALUES.starRender.burstGrow // 수명 동안 추가로 퍼지는 배수
 function easeOutCubic(x: number): number {
   return 1 - Math.pow(1 - x, 3)
 }
@@ -52,11 +53,11 @@ function easeOutCubic(x: number): number {
 // 공명 마커(spec 36): 공명으로 이어진 별 둘레의 은은한 링이 천천히 맥동한다 — "두 우주에 걸친
 // 하나의 사건"의 시각 신호. BloomPass가 nodeFrame을 우회해 TSL time 노드가 동결되므로(메모), 맥동은
 // useFrame의 수동 시간으로 스케일·밝기를 직접 움직인다(time 노드 금지). reduced-motion이면 정지(고정값).
-const RING_BASE_SCALE = 2.6 // 별 스케일 대비 링 크기
-const RING_PULSE_SCALE = 0.12 // 맥동 크기 변동폭(은은하게)
-const RING_SPEED = 1.4 // 맥동 각속도(rad/s) — 느리게
-const RING_OPACITY_MIN = 0.22
-const RING_OPACITY_AMP = 0.42
+const RING_BASE_SCALE = VALUES.resonanceRing.baseScale // 별 스케일 대비 링 크기
+const RING_PULSE_SCALE = VALUES.resonanceRing.pulseScale // 맥동 크기 변동폭(은은하게)
+const RING_SPEED = VALUES.resonanceRing.pulseSpeed // 맥동 각속도(rad/s) — 느리게
+const RING_OPACITY_MIN = VALUES.resonanceRing.opacityMin
+const RING_OPACITY_AMP = VALUES.resonanceRing.opacityAmp
 const MAX_RINGS = 64 // 동시 공명 마커 상한(초과분은 마커만 생략 — 별 자체는 정상)
 
 // 부드러운 헤일로 링 텍스처(중심 투명) — 모듈 싱글턴. shadowBlur로 가장자리를 번지게 해 또렷한 선이
@@ -118,8 +119,8 @@ function getBurstTexture(): THREE.CanvasTexture | null {
 // Diary highlight (spec 28, 원본 일기로 별 찾기) reuses the SAME re-weighting at the same
 // strengths: the chosen diary's stars boost, the rest dim — only the SET (one star vs many)
 // differs. (Focus takes precedence: framing a diary clears any single selection.)
-const FOCUS_DIM = 0.12
-const FOCUS_BOOST = 1.3
+const FOCUS_DIM = VALUES.focus.dim
+const FOCUS_BOOST = VALUES.focus.boost
 
 export interface StarFieldProps {
   /** force-sim positions buffer (07/10). When absent, a dev dummy cluster is used. */

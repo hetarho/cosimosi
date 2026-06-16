@@ -4,6 +4,7 @@
 // both in lock-step (no silent divergence between "내 우주" and the overlay's copy of it). Pure TS —
 // composes shared/lib (strength·targetRadius); no three/React/DOM (헌법4).
 import { activation, A_MIN } from '@/entities/memory'
+import { VALUES } from '@/shared/config'
 import { strength as memoryStrength, targetRadius } from '@/shared/lib'
 import type { SimParams } from '@/shared/lib/force-sim'
 
@@ -26,4 +27,4 @@ export function atRadius(pos: readonly [number, number, number], r: number): [nu
 }
 
 /** Force-sim params tuned for the strength-shelled universe (spec 38/40) — shared by both canvases. */
-export const RADIAL_SIM_PARAMS: Partial<SimParams> = { repulsion: -18, linkDistance: 14, radialStrength: 0.1 }
+export const RADIAL_SIM_PARAMS: Partial<SimParams> = { repulsion: VALUES.radialLayout.repulsion, linkDistance: VALUES.radialLayout.linkDistance, radialStrength: VALUES.radialLayout.radialStrength }

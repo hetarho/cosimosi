@@ -12,6 +12,7 @@ import { SynapseFilaments, type SynapseEdge } from '@/entities/synapse'
 import { type StarNode } from '@/entities/memory'
 import type { StarObject } from '@/entities/star'
 import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
+import { VALUES } from '@/shared/config'
 import { fibonacciStarPosition, scatterDirection } from '@/shared/lib'
 import {
   createSim,
@@ -34,7 +35,7 @@ const EMPTY_LAYOUT: LayoutMap = new Map() // stable identity for the empty publi
 // "남의 하늘"(spec 37 친구 틴트): 별 색은 소유자의 spec-30 감정색을 유지하되, 우주별 공통 atmosphere
 // 색 쪽으로 이만큼만 끌어당겨 두 하늘이 살짝 다른 결로 읽히게 한다(틴트는 채도/색을 약하게 보정만 —
 // 감정 정보는 보존). faint sphere만으로는 머리맞댄 각도에서 두 우주가 구분 안 되던 문제를 별 레벨에서 해소.
-const TINT_STRENGTH = 0.16
+const TINT_STRENGTH = VALUES.overlay.tintStrength
 
 /** "#RRGGBB" → linear-ish RGB(0..1). 형식이 아니면 undefined(틴트 없음). */
 function hexToRgb(hex: string): [number, number, number] | undefined {

@@ -26,10 +26,11 @@ import {
   mx_noise_float,
 } from 'three/tsl'
 import { useAppearance, themeAccent, type SelfObject } from '@/entities/appearance'
+import { VALUES } from '@/shared/config'
 
 // Sits just inside the strongest memory shell (R_MIN=6, shared/lib/layout) so the closest
 // memories ring it without being swallowed.
-const SELF_RADIUS = 5
+const SELF_RADIUS = VALUES.selfStar.radius
 
 /** Build the self star's geometry + TSL material for the chosen form + color. One mesh, so
  *  cost is trivial; the variety is all in the emissive colorNode/opacityNode. */

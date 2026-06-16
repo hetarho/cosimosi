@@ -51,17 +51,17 @@ const (
 // the octree's approximation buys nothing. The coordinates are a re-entry CACHE only —
 // the client still emerges its own layout (constitution §3); they are never sent over proto.
 const (
-	layoutRepulsion     = -30.0
-	layoutLinkDistance  = 30.0
-	layoutCenterGravity = 0.01
-	layoutVelocityDecay = 0.6
-	layoutAlphaMin      = 0.001
-	layoutLinkStrength  = 1.0
-	layoutMinDist       = 1.0   // spring distance floor (coincident linked nodes can't divide to ∞)
-	layoutMinDist2      = 1.0   // repulsion dist² floor (mirrors octree MIN_DIST2)
-	layoutMaxTicks      = 600   // bounded; alpha decays to alphaMin in ~300 ticks, then we early-stop
-	layoutSeedRadius    = 30.0  // deterministic fibonacci shell for un-cached stars (≈ linkDistance)
-	layoutSeedJitter    = 0.001 // per-index symmetry-break so coincident seeds still repel (≪ radius)
+	layoutRepulsion     = values.ForceSimRepulsion
+	layoutLinkDistance  = values.ForceSimLinkDistance
+	layoutCenterGravity = values.ForceSimCenterGravity
+	layoutVelocityDecay = values.ForceSimVelocityDecay
+	layoutAlphaMin      = values.ForceSimAlphaMin
+	layoutLinkStrength  = values.ForceSimLinkStrength
+	layoutMinDist       = values.ForceSimMinDist    // spring distance floor (coincident linked nodes can't divide to ∞)
+	layoutMinDist2      = values.ForceSimMinDist2   // repulsion dist² floor (mirrors octree MIN_DIST2)
+	layoutMaxTicks      = 600                       // bounded; alpha decays to alphaMin in ~300 ticks, then we early-stop
+	layoutSeedRadius    = values.ForceSimSeedRadius // deterministic fibonacci shell for un-cached stars (≈ linkDistance)
+	layoutSeedJitter    = 0.001                     // per-index symmetry-break so coincident seeds still repel (≪ radius)
 )
 
 // handleConsolidate runs the four ordered passes for one claimed consolidate job. Each
@@ -167,7 +167,7 @@ func consolidateLayout(graph ConsolidateGraph) map[string]vec3 {
 	}
 
 	alpha := 1.0
-	alphaDecay := 1 - math.Pow(layoutAlphaMin, 1.0/300.0)
+	alphaDecay := 1 - math.Pow(layoutAlphaMin, 1.0/values.ForceSimAlphaDecayTicks)
 	for t := 0; t < layoutMaxTicks && alpha > layoutAlphaMin; t++ {
 		// Repulsion (exact O(N²)): every pair pushes apart, w = repulsion / dist² (dist² floored).
 		for i := 0; i < n; i++ {

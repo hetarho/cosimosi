@@ -8,7 +8,7 @@
 // derived HERE from the loaded stars (coordinates/render inputs are client authority — §3).
 // The math mirrors the backend AggregateAmbient (internal/memory/memory.go) so the served
 // summary and this fallback agree on the color of "요즘".
-import { moodRgb, type RGB } from '@/shared/config'
+import { moodRgb, VALUES, type RGB } from '@/shared/config'
 
 /** The coarse recent-mood summary — matches proto AmbientMood (spec 25). */
 export interface Ambient {
@@ -39,12 +39,12 @@ export interface AmbientStar {
   lastRecalledAt: number
 }
 
-export const TAU_MOOD_DAYS = 7
-export const AROUSAL_GAIN = 0.3
+export const TAU_MOOD_DAYS = VALUES.ambient.tauMoodDays
+export const AROUSAL_GAIN = VALUES.ambient.arousalGain
 /** Upper bound on light pools (only the top dominant moods become their own light). */
-export const AMBIENT_LIGHTS_K = 6
+export const AMBIENT_LIGHTS_K = VALUES.ambient.lightsK
 /** A mood below this relative weight isn't its own pool (avoids faint stragglers). */
-const LIGHT_MIN_SHARE = 0.04
+const LIGHT_MIN_SHARE = VALUES.ambient.lightMinShare
 const DAY_MS = 86_400_000
 
 /** g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]). Mirrors memory.ExcitabilityGain. */
@@ -120,12 +120,12 @@ export function ambientLights(stars: readonly AmbientStar[], now: number): Ambie
 /** Warm/cool + saturate/desaturate a meaning-color by valence (spec 1.8): positive →
  *  warmer & more saturated (gold/rose), negative → cooler & duller (teal/violet). Subtle. */
 function correctByValence(rgb: RGB, v: number): RGB {
-  const warm = 0.12 * v
+  const warm = VALUES.ambient.valenceWarmGain * v
   const r = clamp01(rgb[0] + warm)
   const b = clamp01(rgb[2] - warm)
   const g = rgb[1]
   const lum = 0.3 * r + 0.59 * g + 0.11 * b
-  const satK = 1 + 0.25 * v
+  const satK = 1 + VALUES.ambient.valenceSatGain * v
   return [clamp01(lum + (r - lum) * satK), clamp01(lum + (g - lum) * satK), clamp01(lum + (b - lum) * satK)]
 }
 

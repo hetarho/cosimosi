@@ -9,6 +9,8 @@ import (
 	"errors"
 	"math"
 	"time"
+
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // Validation sentinels for the write path. records are append-only (constitution
@@ -229,9 +231,9 @@ type Universe struct {
 const (
 	// TauMoodDays is the slow mood envelope (spec 25): far slower than the 6h
 	// excitability window (22's tauExc) — "요즘" tints over days, not hours.
-	TauMoodDays = 7.0
+	TauMoodDays = values.AmbientTauMoodDays
 	// arousalGainCoef: g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]).
-	arousalGainCoef = 0.3
+	arousalGainCoef = values.AmbientArousalGain
 )
 
 // ExcitabilityGain is the global gain the recent mood exposes to the competitive

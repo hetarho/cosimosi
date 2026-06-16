@@ -3,7 +3,7 @@
 // 연결은 남는다(backend worker buildLinks의 거울 시연).
 import { useId, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
-import { MOOD } from '@/shared/config'
+import { MOOD, VALUES } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance/@x/theory'
 import { VizStar } from '@/entities/star/@x/theory'
 import { VizSynapse } from '@/entities/synapse/@x/theory'
@@ -20,7 +20,7 @@ const sliderToHours = (t: number) => Math.exp(logMin + (logMax - logMin) * t)
 // 실제 우주의 규칙(spec 05): 연결은 의미 유사도로 생기고(τ=0.75·top-8), 같은 날이면
 // +0.3 보너스. base는 "의미가 꽤 비슷한 두 기억"의 예시 강도.
 const SEMANTIC_BASE = 0.45
-const SAME_DAY_BONUS = 0.3
+const SAME_DAY_BONUS = VALUES.connection.temporalBonusMax
 const WINDOW_HOURS = 24
 const weightOf = (gapHours: number) =>
   Math.min(1, SEMANTIC_BASE + (gapHours < WINDOW_HOURS ? SAME_DAY_BONUS : 0))

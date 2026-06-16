@@ -1,15 +1,16 @@
 // Pure weight·brightness → visual-parameter mapping. Testable, three-free.
 // Line2NodeMaterial has no per-edge width, so strength is carried by emissive/alpha/pulse, not thickness.
+import { VALUES } from '@/shared/config'
 import type { SynapseEdge } from './types'
 
-export const A_MIN = 0.05
+export const A_MIN = VALUES.decay.aMin
 
 // Thickness buckets (a 2-step global scalar — Line2NodeMaterial can't vary width per edge).
-export const WIDTH_THIN_PX = 1
-export const WIDTH_THICK_PX = 4
-export const THICK_THRESHOLD = 0.5 // weight ≥ 0.5 → thick bucket
+export const WIDTH_THIN_PX = VALUES.synapse.widthThinPx
+export const WIDTH_THICK_PX = VALUES.synapse.widthThickPx
+export const THICK_THRESHOLD = VALUES.synapse.thickThreshold // weight ≥ 0.5 → thick bucket
 
-export const ALPHA_MIN = 0.15 // weak/dormant edges still glow faintly
+export const ALPHA_MIN = VALUES.synapse.alphaMin // weak/dormant edges still glow faintly
 export const ALPHA_MAX = 1
 
 export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
@@ -29,7 +30,8 @@ export const alpha = (e: SynapseEdge): number => lerp(ALPHA_MIN, ALPHA_MAX, visu
  *  log 압축으로 0..~0.12에 bounded — 처음 몇 번이 가장 크게 기여하고 이후 완만해진다.
  *  서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일하다. */
 export const vitality = (e: SynapseEdge): number =>
-  0.12 * Math.min(1, Math.log2(1 + Math.max(0, e.coActivationCount)) / 4)
+  VALUES.synapse.vitalityCap *
+  Math.min(1, Math.log2(1 + Math.max(0, e.coActivationCount)) / VALUES.synapse.vitalityLogDiv)
 
 /** Pulse amplitude for sin(time·f)·amp — recently-reinforced edges pulse stronger; an
  *  often-co-recalled (vital) link keeps a faint baseline pulse even when not just reinforced. */
@@ -59,12 +61,14 @@ export interface StrandStyle {
   opacity: number
 }
 
-/** 강도 단계표 — [상한(미만), 스타일]. 마지막 단계가 그 이상 전부를 받는다. */
+/** 강도 단계표 — [상한(미만), 스타일]. 마지막 단계가 그 이상 전부를 받는다(경계 없음 → Infinity).
+ *  수치는 spec/values.yaml(synapse.strand_*) 평행 배열에서 조립한다. */
+const S = VALUES.synapse
 export const STRAND_TIERS: readonly (readonly [number, StrandStyle])[] = [
-  [0.35, { strands: 2, radius: 0.01, bright: 0.2, opacity: 0.5 }], // 옅은 인연 — 실 한두 가닥
-  [0.6, { strands: 4, radius: 0.018, bright: 0.32, opacity: 0.62 }], // 보통
-  [0.85, { strands: 6, radius: 0.028, bright: 0.45, opacity: 0.72 }], // 강함
-  [Infinity, { strands: 9, radius: 0.04, bright: 0.6, opacity: 0.82 }], // 가장 또렷한 인연
+  [S.strandBounds[0], { strands: S.strandCount[0], radius: S.strandRadius[0], bright: S.strandBright[0], opacity: S.strandOpacity[0] }], // 옅은 인연 — 실 한두 가닥
+  [S.strandBounds[1], { strands: S.strandCount[1], radius: S.strandRadius[1], bright: S.strandBright[1], opacity: S.strandOpacity[1] }], // 보통
+  [S.strandBounds[2], { strands: S.strandCount[2], radius: S.strandRadius[2], bright: S.strandBright[2], opacity: S.strandOpacity[2] }], // 강함
+  [Infinity, { strands: S.strandCount[3], radius: S.strandRadius[3], bright: S.strandBright[3], opacity: S.strandOpacity[3] }], // 가장 또렷한 인연
 ]
 
 /** visualIntensity → 단계별 스타일. */

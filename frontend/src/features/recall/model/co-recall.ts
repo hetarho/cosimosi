@@ -3,18 +3,20 @@
 // view" (≥2s dwell, confirmed by the caller) paired with the PREVIOUS active view
 // adds one co-recall increment (+0.05) to that normalized pair; same pair within a
 // window sums.
+import { VALUES } from '@/shared/config'
+
 export type Pair = `${string}|${string}`
 
-export const CO_RECALL_DELTA = 0.05
-export const DWELL_MS = 2000
+export const CO_RECALL_DELTA = VALUES.recall.coRecallDelta
+export const DWELL_MS = VALUES.recall.dwellMs
 export const DEBOUNCE_IDLE_MS = 5000
 
 // Spacing effect (spec 23, Katz 2021): re-viewing a pair after a LONGER gap reinforces
 // it more than massing it in one session. The boost scales the base increment from 1×
 // (just seen together) up to 1+SPACING_GAIN at a full SPACING_REF_DAYS gap. The server's
 // ReinforceLinks still caps the summed weight at 1.0 — this only shapes the increment.
-export const SPACING_GAIN = 1.0
-export const SPACING_REF_DAYS = 1
+export const SPACING_GAIN = VALUES.recall.spacingGain
+export const SPACING_REF_DAYS = VALUES.recall.spacingRefDays
 const DAY_MS = 86_400_000
 
 export interface RecallSession {

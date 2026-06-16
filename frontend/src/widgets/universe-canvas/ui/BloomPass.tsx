@@ -8,6 +8,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { RenderPipeline, type WebGPURenderer } from 'three/webgpu'
 import { pass } from 'three/tsl'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
+import { VALUES } from '@/shared/config'
 
 /** Owns the final output: composes scene → bloom and renders it. With useFrame
  *  priority > 0, R3F stops its automatic gl.render, so pipeline.render() becomes
@@ -24,7 +25,7 @@ export function BloomPass() {
     const scenePass = pass(scene, camera)
     // bloom(input, strength, radius, threshold) — low threshold so bright (HDR,
     // toneMapped=false) stars glow.
-    const bloomNode = bloom(scenePass, 0.9, 0.5, 0.1)
+    const bloomNode = bloom(scenePass, VALUES.bloom.strength, VALUES.bloom.radius, VALUES.bloom.threshold)
     const p = new RenderPipeline(gl)
     p.outputNode = scenePass.add(bloomNode)
     return { pipeline: p, nodes: [scenePass, bloomNode] }

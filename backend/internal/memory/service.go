@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // Dormancy threshold (spec 12): a star is "dormant" once its RAW activation
@@ -18,8 +20,8 @@ import (
 // one side requires changing the other. The server converts the threshold to an
 // equivalent time cutoff so the SQL compares last_recalled_at only (no decay math).
 const (
-	halfLifeDays      = 30.0
-	dormancyThreshold = 2 * 0.05 // 2·A_MIN
+	halfLifeDays      = values.DecayHalfLifeDays
+	dormancyThreshold = values.DecayDormantFactor * values.DecayAMin // dormant_factor·A_MIN
 )
 
 // Reconsolidation reshaping parameters (spec 23). A recall only reshapes a star when
@@ -30,34 +32,34 @@ const (
 const (
 	// peThreshold gates the soft window: below it a recall is a plain re-ignition
 	// (spec 11), no reshape, no evolution row (acceptance 1.1).
-	peThreshold = 0.15
+	peThreshold = values.ReshapePeThreshold
 	// baseStep is the magnitude ceiling at pe=1, strength=0 — magnitude =
 	// baseStep·pe·(1-strength) (acceptance 1.3).
-	baseStep = 0.22
+	baseStep = values.ReshapeBaseStep
 	// brightness offset moves one bounded step per reshape: dir·clamp(magnitude, 0.10,
 	// 0.22) (acceptance 1.2).
-	minBrightStep = 0.10
-	maxBrightStep = 0.22
+	minBrightStep = values.ReshapeMinBrightStep
+	maxBrightStep = values.ReshapeMaxBrightStep
 	// brightnessOffsetMax bounds the CUMULATIVE offset so the stored value (and the
 	// evolution_history snapshot 24 reads) can't grow without limit across many recalls.
 	// Effective brightness = clamp(base+offset, A_MIN, 1) with base∈[A_MIN,1], so ±1
 	// already saturates both ends — beyond it the offset would be meaningless.
-	brightnessOffsetMax = 1.0
+	brightnessOffsetMax = values.ReshapeBrightnessOffsetMax
 	// neighborFactor scales the step applied to direct neighbors — smaller than the
 	// recalled star's (acceptance 1.5).
-	neighborFactor = 0.4
+	neighborFactor = values.ReshapeNeighborFactor
 	// hue jitter is magnitude·hueGainDeg degrees per step, accumulated within ±28°
 	// of the emotion-anchored color (acceptance 1.2).
-	hueGainDeg = 60.0
-	hueMaxDeg  = 28.0
+	hueGainDeg = values.ReshapeHueGainDeg
+	hueMaxDeg  = values.ReshapeHueMaxDeg
 	// form-seed jitter is magnitude·formGain per step, accumulated within ±formDeltaMax.
-	formGain     = 0.5
-	formDeltaMax = 0.6
+	formGain     = values.ReshapeFormGain
+	formDeltaMax = values.ReshapeFormDeltaMax
 	// strength = clamp(strengthRecallGain·log2(1+co_recall) + ageGain·age_norm, 0, 1):
 	// stars recalled more often / older read as more consolidated and reshape less.
-	strengthRecallGain = 0.15
-	ageGain            = 0.30
-	ageRefDays         = 90.0
+	strengthRecallGain = values.ReshapeStrengthRecallGain
+	ageGain            = values.ReshapeAgeGain
+	ageRefDays         = values.ReshapeAgeRefDays
 )
 
 // dormantCutoff converts the dormancy threshold (RAW activation) into a time cutoff:
@@ -165,7 +167,7 @@ func (s *Service) RecordMemory(ctx context.Context, in RecordInput) (string, []s
 
 // ambientWindowFactor caps the recent-emotion query at now-TauMoodDays·k: beyond ~3·τ
 // the exp decay weight is negligible (exp(-3)≈0.05), so a wider window only costs rows.
-const ambientWindowFactor = 3.0
+const ambientWindowFactor = values.AmbientWindowTauFactor
 
 // GetUniverse composes the full authoritative graph for one user: every star and
 // every synapse, dormant ones included. It also folds the recent fragment emotions into

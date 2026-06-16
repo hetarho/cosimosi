@@ -4,6 +4,8 @@ import (
 	"context"
 	"math"
 	"strings"
+
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // Extractor is the LLM extraction port (spec 20): split a diary into 1..N
@@ -21,7 +23,7 @@ type Extractor interface {
 // (concept §4.6). Overflow segments are MERGED into the last kept one, never
 // dropped — every word of the diary stays in exactly one segment, so spec 21's
 // embedding fan-out never loses text (and the count stays ≤5, under the cap).
-const maxSegments = 5
+const maxSegments = values.ExtractionMaxSegments
 
 // NoopExtractor returns the whole text as a single neutral segment — the
 // fallback shape itself. It lets the pipeline depend on the Extractor port

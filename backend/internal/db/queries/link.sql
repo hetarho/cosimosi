@@ -31,12 +31,13 @@ SET weight = GREATEST(memory_links.weight, EXCLUDED.weight);
 
 -- name: BatchUpsertIntraEntryLinks :exec
 -- Within-event binding (spec 21): fragments of the SAME diary entry are bound
--- with a strong fixed weight (0.8, always above the capped cross-entry semantic
--- links). a<b is normalized HERE with LEAST/GREATEST under the DB collation
--- (same reasoning as BatchUpsertLinks above). GREATEST on conflict keeps a
--- re-run from weakening anything.
+-- with a strong fixed weight (the caller passes values.ConnectionIntraEntryWeight =
+-- spec/values.yaml connection.intra_entry_weight, kept always above the capped
+-- cross-entry semantic links). a<b is normalized HERE with LEAST/GREATEST under the
+-- DB collation (same reasoning as BatchUpsertLinks above). GREATEST on conflict keeps
+-- a re-run from weakening anything.
 INSERT INTO memory_links (a_id, b_id, weight, user_id, link_type)
-SELECT LEAST(a, b), GREATEST(a, b), 0.8, u, 'intra_entry'
+SELECT LEAST(a, b), GREATEST(a, b), sqlc.arg(weight)::float4, u, 'intra_entry'
 FROM (
     SELECT
         unnest(@a_ids::text[])    AS a,

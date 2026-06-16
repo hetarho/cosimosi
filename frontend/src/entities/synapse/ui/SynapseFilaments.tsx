@@ -39,6 +39,7 @@ import {
   positionLocal,
 } from 'three/tsl'
 import { mulberry32 } from '@/shared/lib'
+import { VALUES } from '@/shared/config'
 import { WOBBLE_AMP, WOBBLE_FREQ, WOBBLE_PHASE } from '@/entities/star/@x/synapse'
 import { visualIntensity, pulseAmp, strandStyle } from '../model/mapping'
 import type { SynapseEdge } from '../model/types'
@@ -46,7 +47,7 @@ import type { SynapseEdge } from '../model/types'
 const RADIAL = 6 // tube cross-section segments (round enough under bloom, cheap)
 const MAX_EDGES = 300 // hard cap; beyond this keep the strongest edges
 const EPS = 1e-4
-const TWIST_TURNS = 2.5 // helical turns of the braid over the edge length
+const TWIST_TURNS = VALUES.synapse.twistTurns // helical turns of the braid over the edge length
 
 /** Deterministic 32-bit FNV-1a hash of a string (pure — no Math.random). */
 function hashId(s: string): number {
@@ -335,7 +336,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
 
     // FLOW: a packet of light slides A→B (energy moving between two memories). The
     // per-strand seed offsets the phase so the braid's strands don't pulse in lockstep.
-    const flow = fract(along.mul(2.0).sub(uTime.mul(0.22)).add(seed.mul(6.2831)))
+    const flow = fract(along.mul(2.0).sub(uTime.mul(VALUES.synapse.flowSpeed)).add(seed.mul(6.2831)))
     const flowGlow = smoothstep(float(0.0), float(0.5), flow).mul(
       smoothstep(float(1.0), float(0.5), flow),
     )

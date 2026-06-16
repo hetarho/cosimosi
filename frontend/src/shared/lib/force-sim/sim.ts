@@ -4,22 +4,23 @@
 // and its 1-hop neighbors move (partial placement), so adding a memory doesn't
 // rearrange the whole universe (concept §결정1).
 import { mulberry32 } from '../prng'
+import { VALUES } from '@/shared/config'
 import type { SimGraph, SimParams } from './types'
 import { accumulateRepulsion, buildOctree } from './octree'
 
 // Distance floor for the spring force: clamps `dist` so coincident linked nodes
 // can't divide toward zero and blow up (mirrors octree's MIN_DIST2). Below the
 // cluster scale (linkDistance≈30), so a normal layout is unaffected.
-const MIN_DIST = 1
+const MIN_DIST = VALUES.forceSim.minDist
 
 const DEFAULTS: SimParams = {
-  theta: 0.9,
-  repulsion: -30,
-  linkDistance: 30,
-  centerGravity: 0.01,
-  velocityDecay: 0.6,
-  alphaMin: 0.001,
-  radialStrength: 0.08,
+  theta: VALUES.forceSim.theta,
+  repulsion: VALUES.forceSim.repulsion,
+  linkDistance: VALUES.forceSim.linkDistance,
+  centerGravity: VALUES.forceSim.centerGravity,
+  velocityDecay: VALUES.forceSim.velocityDecay,
+  alphaMin: VALUES.forceSim.alphaMin,
+  radialStrength: VALUES.forceSim.radialStrength,
 }
 
 // Distance floor for the radial-shell spring: below this a node is treated as "at the
@@ -28,7 +29,7 @@ const DEFAULTS: SimParams = {
 const RADIAL_MIN_DIST = 1e-3
 
 // Spring strength multiplier applied on top of each edge's weight.
-const LINK_STRENGTH = 1.0
+const LINK_STRENGTH = VALUES.forceSim.linkStrength
 
 // Per-tick displacement (speed) ceiling, as a multiple of linkDistance. Hooke springs are
 // LINEAR in distance, so a far or high-degree node can receive a huge one-tick kick; with
@@ -38,7 +39,7 @@ const LINK_STRENGTH = 1.0
 // bounds that runaway. A settling layout moves far less than this per tick, so a normal graph
 // is unaffected — this only bites the pathological stiff case (acceptance: dense universes stay
 // finite and on-screen). 2×linkDistance ≈ never reached by a well-conditioned layout.
-const MAX_SPEED_FACTOR = 2
+const MAX_SPEED_FACTOR = VALUES.forceSim.maxSpeedFactor
 
 /** Opaque simulation state. Coordinates live in `px` (flat [x,y,z]); node order
  *  matches the input `nodes` array 1:1 (index = InstancedMesh instance index — the
@@ -153,7 +154,7 @@ export function createSim(graph: SimGraph, params?: Partial<SimParams>, opts?: C
   }
 
   // d3-style alpha decay so the layout settles toward alphaMin over ~300 ticks.
-  const alphaDecay = 1 - Math.pow(p.alphaMin, 1 / 300)
+  const alphaDecay = 1 - Math.pow(p.alphaMin, 1 / VALUES.forceSim.alphaDecayTicks)
 
   return { ids, px, vx, fbuf, free, radius, edges, params: p, alpha: 1, alphaDecay, n }
 }

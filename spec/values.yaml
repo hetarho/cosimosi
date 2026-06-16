@@ -6,17 +6,29 @@
 #   - backend/internal/values/values_gen.go       (DO NOT EDIT)
 #
 # 규칙:
-#   - 여기엔 *튜닝 노브(스칼라)* 만 둔다. 공식·알고리즘(λ_eff 식, force 적분)과 배열 콘텐츠
-#     (테마 CSS·mood 색표)는 코드/스펙에 남긴다.
-#   - 카운트(테마 수·mood 수)는 여기 선언하지 않는다 — 배열 길이에서 파생한다.
-#   - proto enum·DB 스키마는 buf/sqlc가 출처다(여기서 안 다룬다).
+#   - 여기엔 *튜닝 노브* 만 둔다 — 유한 스칼라, 또는 숫자 배열(평평/중첩, 예: 축별 [base, gain]).
+#     공식·알고리즘(λ_eff 식, force 적분, HSV 변환)은 코드/스펙에 남긴다.
+#   - 콘텐츠 표는 코드/스펙이 출처다: 테마 CSS, mood 색표(palette MOOD/SPACE)·mood 무드원형 좌표
+#     (MOOD_AFFECT) 등 — 문자열·분류 표는 여기서 안 다룬다(생성기는 숫자만 받는다).
+#   - 카운트라도 *배열 길이에서 파생*되는 것(테마 수·mood 수)은 선언하지 않는다. 다만 튜닝용 상한
+#     (knn_k·lights_k·max_segments 같은 cap)은 노브이므로 여기 둔다.
+#   - 비유한값(Infinity/NaN) 금지 — "그 이상 전부" 단계는 유한 경계 배열로 표현한다(synapse strand).
+#   - proto enum·DB 스키마는 buf/sqlc가 출처다. 인프라(포트·타임아웃·재시도·crypto·캐시 TTL)는
+#     env/config.go가 출처다 — 여기 두지 않는다.
 #   - 그룹·키는 snake_case. 생성기가 FE는 camelCase(VALUES.decay.aMin),
-#     BE는 PascalCase const(values.DecayAMin)로 펼친다.
+#     BE는 PascalCase const/var(values.DecayAMin)로 펼친다. 배열은 FE readonly tuple,
+#     BE []float64 / [][]float64 (var)로 나간다.
 
-# ── 망각·감쇠 (decay) — FE 클라이언트 렌더 계산 (헌법3). spec 12·26 ────────────────
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+#  1) 엔진·도메인 — 두 런타임이 같은 수를 써야 하는 노브 (여기가 유일한 cross-language 출처).
+#     예전엔 FE·BE에 같은 숫자를 따로 하드코딩하고 "함께 바뀌어야 함" 주석으로 버텼다 → 드리프트 위험.
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+
+# ── 망각·감쇠 (decay) — FE 클라이언트 렌더 계산 + BE 휴면 컷오프 (헌법3). spec 12·26 ──────────
 decay:
   a_min: 0.05 #            밝기 바닥 — 별은 0으로 꺼지지 않는다(헌법2). 잠든 별 잔광.
   half_life_days: 30 #     시간 감쇠 반감기: activation(Δt)=exp(-ln2/30·Δt), 30일 → 0.5
+  dormant_factor: 2 #      휴면 컷오프 = dormant_factor·a_min (raw activation 기준). FE isDormant·BE dormancyThreshold 공유.
   # spec 26 변조 감쇠 계수 — 각 R∈(0,1]이라 감쇠를 늦추기만 한다(가속 없음)
   alpha_conn: 0.6 #        R_conn: 연결(degree) 많을수록 저항↑
   beta_recent: 0.5 #       R_recent: 요즘 토픽과 가까울수록(relevance↑) 저항↑
@@ -35,3 +47,217 @@ consolidation:
   weak_edge_threshold: 0.2 #      ④ weight 이보다 낮고…
   weak_edge_idle_days: 14 #       ④ …이만큼(일) 안 쓰인 선은 가지치기 대상
   weak_edge_floor: 0.05 #         ④ 가지친 선이 내려가는 바닥(밝기만↓, 삭제 없음 — 헌법2)
+
+# ── 포스 레이아웃 (force_sim) — FE force-sim(sim.ts/octree.ts/seed.ts) ＝ BE 야간 재배치
+#    (consolidate.go layout*). 같은 force 모델이라 서버 캐시 좌표가 클라가 정착하는 좌표와 동치여야
+#    한다(spec 27 수용 2.1). spec 07·22·38 ───────────────────────────────────────────────
+force_sim:
+  theta: 0.9 #              Barnes-Hut 근사 임계(s/d) — 클수록 거칠고 빠른 반발 근사 (FE 전용)
+  repulsion: -30 #          반발 전하(음수): 별끼리 밀어내는 세기
+  link_distance: 30 #       스프링 안식 거리(성단 스케일): 연결된 별을 이 거리로 당김
+  center_gravity: 0.01 #    원점 인력(radius=0 노드) — 레이아웃이 멀리 떠내려가지 않게
+  velocity_decay: 0.6 #     틱당 속도 감쇠(마찰): 작을수록 빨리 정착
+  alpha_min: 0.001 #        수렴 바닥: alpha가 이 아래면 정착으로 보고 멈춤
+  radial_strength: 0.08 #   각 노드의 목표 강도-쉘 반지름으로 당기는 스프링 계수(spec 38) (FE 전용)
+  link_strength: 1.0 #      각 간선 weight 위에 곱하는 스프링 강도 배수
+  max_speed_factor: 2 #     틱당 변위 상한 = max_speed_factor·link_distance (발산 방지) (FE 전용)
+  alpha_decay_ticks: 300 #  d3식 alpha 감쇠 지평: ~이 틱 수에 alpha_min으로 정착 (양쪽 1/300 동일)
+  min_dist: 1 #             스프링 거리 바닥: 겹친 노드가 0으로 나눠 폭주하는 것 방지
+  min_dist2: 1 #            반발 거리² 바닥(역제곱 법칙): ~겹친 두 물체의 힘 상한
+  seed_radius: 30 #         BE 미캐시 별의 피보나치 시딩 쉘 반지름(≈ link_distance) (BE 전용)
+  seed_heat_floor: 0.1 #    FE 새 별 시드: 모든 연결 성단이 조금씩 당기는 바닥 weight(가장 hot한 곳이 지배, spec 22) (FE 전용)
+
+# ── 연결 규칙 (connection) — BE 링크 형성(worker.go) ＝ FE 데모 시뮬(simulate.ts)·TimeWindowDemo.
+#    intra_entry_weight는 link.sql(sqlc)에도 리터럴로 박혀 있다 — SQL은 생성 const를 import 못 하니
+#    그쪽은 주석으로 동기 표시. spec 05·21 ─────────────────────────────────────────────────
+connection:
+  knn_k: 8 #                  링크 후보로 보는 top-k 최근접(candidateK = knn_k·2 파생)
+  weight_alpha: 1.0 #         w0 = clamp(α·cos_sim + temporal_bonus, 0, 1) 의 α
+  temporal_bonus_max: 0.3 #   같은 날 두 글에 더하는 시간 보너스 최대치(window 끝에서 0)
+  temporal_window_days: 7 #   시간 보너스가 0으로 선형 감쇠하는 창(일)
+  semantic_weight_cap: 0.79 # 교차-글 의미 링크 weight 상한 — intra_entry(0.8) 바로 아래로 유지
+  intra_entry_weight: 0.8 #   한 일기 내 조각끼리 묶는 고정 weight(같은 사건이 가장 강한 결속)
+
+# ── 흥분성·경쟁 할당 (excitability) — BE worker.go. FE는 tau_hours만 미러(hot 창). spec 22 ──────
+excitability:
+  tau_hours: 6 #         흥분성 시간상수 τ: e(c,t)=Σ exp(-Δt/τ). ~6h 할당 창(반감기 ≈4h). FE hot 창도 이 값.
+  w_exc: 0.25 #          score = cos_sim + w_exc·norm_e 의 흥분성 편향 가중치
+  biased_k: 5 #          흥분성 재랭킹 뒤 최종 유지 링크 수(≤ candidate_k)
+  inhibit_decay: 0.5 #   소프트 억제: 한 성단이 조각을 흡수할 때마다 그 e에 곱함(독점 방지)
+
+# ── 재공고화 리셰이핑 (reshape) — BE memory/service.go. FE 데모(data.ts)가 같은 수를 미러. spec 23 ──
+reshape:
+  pe_threshold: 0.15 #         예측오차 게이트: 이 미만 회상은 단순 재점화(리셰이프 없음)
+  base_step: 0.22 #            pe=1·strength=0에서의 리셰이프 강도 천장(magnitude = base_step·pe·(1-strength))
+  min_bright_step: 0.10 #      리셰이프당 밝기 오프셋 스텝 하한 clamp
+  max_bright_step: 0.22 #      리셰이프당 밝기 오프셋 스텝 상한 clamp
+  brightness_offset_max: 1.0 # 누적 밝기 오프셋 경계(±) — clamp(base+offset, a_min, 1) 끝을 이미 포화
+  neighbor_factor: 0.4 #       1-hop 이웃에 적용하는 리셰이프 스텝 배율(회상 별보다 작게)
+  hue_gain_deg: 60 #           스텝당 색상 지터 = magnitude·hue_gain_deg(도)
+  hue_max_deg: 28 #            감정 정박 색에서 벗어날 수 있는 누적 색상 경계(±도)
+  form_gain: 0.5 #             스텝당 form-seed 지터 = magnitude·form_gain
+  form_delta_max: 0.6 #        누적 form_seed_delta 경계(±)
+  strength_recall_gain: 0.15 # 공고화 strength 계수(log2(1+co_recall)): 자주 회상될수록 덜 변형
+  age_gain: 0.30 #             공고화 strength 계수(정규화 나이): 오래될수록 덜 변형
+  age_ref_days: 90 #           별 나이를 [0,1]로 정규화하는 기준 나이(일)
+
+# ── 환경 무드 (ambient) — FE ambient.ts(렌더 색·빛) + BE memory.go(요즘 정서 요약). spec 25 ───────
+ambient:
+  tau_mood_days: 7 #         느린 무드 봉투 시간상수(일): 오래된 조각일수록 exp(-Δt/τ) 가중↓ (FE·BE 공유)
+  arousal_gain: 0.3 #        흥분성 게인 g = 1 + arousal_gain·arousal (gain∈[1,1.3]) (FE·BE 공유)
+  window_tau_factor: 3.0 #   ambient 쿼리 창 = now - tau_mood_days·factor (BE 전용; exp(-3)≈0.05 무시)
+  lights_k: 6 #              네뷸라 빛 풀 상한 — 상위 K 무드만 가산광이 된다 (FE 전용)
+  light_min_share: 0.04 #    무드가 자기 빛 풀이 되는 최소 상대 비중(약한 잔여 제거) (FE 전용)
+  valence_warm_gain: 0.12 #  valence→따뜻함 이동 계수(+v 따뜻, -v 차갑게) (FE 전용)
+  valence_sat_gain: 0.25 #   valence→채도 이동 계수(+v 채도↑) (FE 전용)
+
+# ── 회상 강화 (recall) — FE 전용(co-recall.ts). 서버 ReinforceLinks는 delta를 payload로 받는다. spec 11·23 ──
+recall:
+  co_recall_delta: 0.05 #   공동 회상 1회당 링크 weight 증가분(상한 1.0). HebbianDemo도 이 값.
+  dwell_ms: 2000 #          능동 보기 dwell 임계(ms): 이만큼 봐야 회상/공동회상 누적
+  spacing_gain: 1.0 #       간격 효과 상한: 완전한 간격 후 재회상은 기본 증가분의 1+spacing_gain배 (Katz 2021)
+  spacing_ref_days: 1 #     간격 효과가 최대 배수에 도달하는 기준 간격(일)
+
+# ── 분절 추출 (extraction) — BE ai/extractor.go. 프롬프트 루브릭의 "1~5"도 함께 바뀜. spec 20 ──────
+extraction:
+  max_segments: 5 #   한 일기를 쪼개는 사건 분절(별) 최대 수. 초과분은 마지막 분절에 병합. 분절 [1,5].
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+#  2) 렌더 — FE 전용 3D 우주 표현 노브. BE 생성물(values_gen.go)에도 나가지만 서버는 안 쓴다.
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+
+# ── 자기-정박 방사 레이아웃 (radial_layout) — 강도-쉘 우주(live + overlay 공유). spec 38·40 ─────
+radial_layout:
+  repulsion: -18 #          강도-쉘 우주용 force-sim 반발 오버라이드
+  link_distance: 14 #       스프링 안식 거리 오버라이드(촘촘한 별자리)
+  radial_strength: 0.1 #    방사-쉘 스프링 강도 오버라이드(거리=강도)
+  r_min: 6 #                가장 안쪽(가장 강한 기억) 쉘 반지름 — 자기 별 바로 바깥
+  r_max: 40 #               가장 바깥(휴면) 쉘 반지름 — 카메라 프레임 안에 유지
+  w_activation: 0.7 #       강도 혼합에서 활성(최근성) 가중 (strength = w_act·act + w_int·intensity)
+  w_intensity: 0.3 #        강도 혼합에서 감정 강도 가중
+  drift_step_rad: 0.08 #    별 방향의 밤당 접선 회전(~4.6°/밤 표상 드리프트, 수작업 튜닝)
+
+# ── 별 렌더 (star_render) — StarField 인스턴스. spec 08 ──────────────────────────────────────
+star_render:
+  size_base: 0.6 #          별 인스턴스 스케일 기준 (final = size_base + intensity·size_range)
+  size_range: 1.4 #         intensity가 더하는 스케일 폭
+  birth_dur_s: 1.2 #        별 탄생 스케일-인 애니 길이(s, easeOutBack 팝)
+  burst_dur_s: 1.6 #        탄생 버스트(글로우 디스크) 수명(s)
+  burst_base_scale: 2.5 #   탄생 버스트 시작 스케일(별 스케일 배수)
+  burst_grow: 16 #          탄생 버스트가 수명 동안 퍼지는 추가 배율
+
+# ── 공명 링 (resonance_ring) — 공유 우주 공명 마커. spec 36 ───────────────────────────────────
+resonance_ring:
+  base_scale: 2.6 #     별 스케일 대비 공명 마커 링 크기
+  pulse_scale: 0.12 #   공명 링 맥동 크기 진폭
+  pulse_speed: 1.4 #    공명 링 맥동 각속도(rad/s)
+  opacity_min: 0.22 #   공명 링 최소 불투명도(맥동 바닥)
+  opacity_amp: 0.42 #   공명 링 불투명도 맥동 진폭
+
+# ── 포커스 스포트라이트 (focus) — 별 강조 시 밝기/시냅스 디밍. spec 11·28 ────────────────────────
+focus:
+  dim: 0.12 #                포커스 중 비-포커스 별 밝기 배수
+  boost: 1.3 #               포커스/강조 별 밝기 배수
+  synapse_dim_star: 0.1 #    별 포커스 중 전역 시냅스 웹 디밍 배수
+  synapse_dim_diary: 0.12 #  일기 프레이밍 중 전역 시냅스 웹 디밍 배수
+
+# ── 시냅스 시각 (synapse) — mapping.ts(순수 매핑) + SynapseLines/Filaments. spec 19·26 ──────────
+synapse:
+  width_thin_px: 1 #       얇은 버킷 선폭(px, Line2 전역 폭)
+  width_thick_px: 4 #      굵은 버킷 선폭(px)
+  thick_threshold: 0.5 #   굵은 버킷 weight 컷오프
+  alpha_min: 0.15 #        최소 시냅스 불투명도(약한/휴면 간선도 보인다)
+  vitality_cap: 0.12 #     링크 활력 상한(공동 회상 누적의 log 압축 천장)
+  vitality_log_div: 4 #    활력 log2 정규화 분모
+  pulse_freq: 3.0 #        시냅스 선 맥동 주파수 sin(t·freq) (강화된 간선 반짝임)
+  line_width_px: 2 #       단순 시냅스-라인 렌더러의 전역 LineSegments2 선폭(px)
+  twist_turns: 2.5 #       필라멘트 다발이 간선 길이 동안 꼬이는 나선 회전 수
+  flow_speed: 0.22 #       빛 패킷이 A→B 필라멘트를 따라 흐르는 속도
+  # 유사도(연결 강도) 단계별 필라멘트 스타일 표(spec 19). 마지막 단계는 strand_bounds 이상 전부.
+  # 평행 배열: tier i = (count[i], radius[i], bright[i], opacity[i]); bounds[i]는 tier i의 상한(미만).
+  strand_bounds: [0.35, 0.6, 0.85] #            상한(미만) 경계 3개 → 4단계(마지막은 "그 이상 전부")
+  strand_count: [2, 4, 6, 9] #                  단계별 빛가닥 수
+  strand_radius: [0.01, 0.018, 0.028, 0.04] #   단계별 가닥 기본 반지름(world units)
+  strand_bright: [0.2, 0.32, 0.45, 0.6] #       단계별 발광 베이스(0..1)
+  strand_opacity: [0.5, 0.62, 0.72, 0.82] #     단계별 불투명도 베이스(0..1)
+
+# ── 씬 블룸 (bloom) — 밝은 HDR 별/필라멘트를 확산광으로. ─────────────────────────────────────────
+bloom:
+  strength: 0.9 #    블룸 세기
+  radius: 0.5 #      블룸 반경
+  threshold: 0.1 #   블룸 임계(이 이상 밝기만 번진다)
+
+# ── 환경 네뷸라 (ambient_nebula) — 무드 가산광 풀. spec 25 ─────────────────────────────────────
+ambient_nebula:
+  base_bright: 0.06 #     무드 네뷸라 베이스 색 크기(가산 바닥)
+  arousal_bright: 0.2 #   arousal당 네뷸라 밝기 게인
+  crossfade_s: 0.8 #      무드 변경 시 색/크기 크로스페이드 길이(s)
+  drift_speed: 0.05 #     네뷸라 느린 드리프트 속도(phase/s)
+  drift_amp: 16 #         네뷸라 풀 중심 흔들림 진폭(world units)
+  shimmer: 0.06 #         네뷸라 크기 맥동 진폭(±6%)
+
+# ── 중앙 자기-별 (self_star) — 가장 강한 기억 쉘 바로 안쪽. spec 38 ───────────────────────────────
+self_star:
+  radius: 5 #   중앙 자기-별 스케일/반지름
+
+# ── 캔버스 거동 (layout) — 강도 드리프트 재-킥. spec 38 ───────────────────────────────────────────
+layout:
+  rekick_threshold: 0.5 #   sim 재-킥을 트리거하는 목표-반지름 드리프트(world units)
+  rekick_alpha: 0.3 #       쉘이 드리프트할 때 sim을 재-킥하는 alpha
+
+# ── 성진(星塵) (star_dust) — 주변 별먼지 불투명도. ──────────────────────────────────────────────
+star_dust:
+  opacity_dimmed: 0.14 #   포커스 중 디밍 불투명도
+  opacity_normal: 0.5 #    평상 불투명도
+
+# ── 우주 오버레이 (overlay) — 두 하늘 겹쳐보기. spec 37 ──────────────────────────────────────────
+overlay:
+  tint_strength: 0.16 #   친구 하늘 공통 틴트 블렌드 강도
+  sky_offset: 66 #        겹친 두 하늘의 수직 분리(world units)
+
+# ── 공명 다리 (resonance_bridge) — 두 우주 사이 빛-다리. spec 37 ────────────────────────────────
+resonance_bridge:
+  flow_speed: 0.16 #     공명 다리 빛-패킷 흐름 속도(packets/s)
+  base_glow: 0.5 #       공명 다리 기본 글로우
+  peak_glow: 1.0 #       이동 패킷 위치의 추가 밝기
+  focus_boost: 1.7 #     선택된 공명 쌍 다리 밝기 배수
+  line_width_px: 3 #     공명 다리 선폭(px)
+
+# ── 길찾기 카메라 (wayfinding) — "이 일기 별들 보기" 플라이-투. spec 28 ───────────────────────────
+wayfinding:
+  frame_margin: 1.3 #         프레임-올 카메라 여백 배수(바깥 별이 화면 끝에 붙지 않게)
+  frame_min_distance: 12 #    단일 별 프레이밍 시 카메라가 머무는 거리(bounding radius≈0 퇴화 바닥)
+
+# ── 별 미세 부유 (wobble) — StarField 행렬 + SynapseFilaments 셰이더 공유 수식. spec 19 ────────────
+#    배열 노브: freq는 축별 [base, seedGain], phase는 축별 위상 배수(x,y,z 순).
+wobble:
+  amp: 1.0 #                       부유 진폭 — 별이 떠다니는 거리
+  freq: [[0.24, 0.2], [0.2, 0.26], [0.16, 0.32]] #   축별 [base, seedGain] 각주파수(rad/s), freq = base + seed·gain
+  phase: [1.7, 3.1, 5.3] #         축별 위상 배수 — phase = seed·2π·multiplier
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+#  3) 데모 — 랜딩/교육용 시뮬(shared/lib/demo). 의도적으로 엔진과 다른 근사값이다(드리프트 아님).
+#     주석의 "vs 엔진" 은 일부러 갈라놓은 값임을 표시. 엔진과 같아야 하는 데모 상수는 위 1)을 import 한다.
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+
+# ── 데모 링크 빌드 (demo_linking) — simulate.ts/data.ts. spec 05·19·22 ─────────────────────────
+demo_linking:
+  knn_k: 5 #                    데모 이웃 링크 top-k (vs 엔진 connection.knn_k=8 — 일부러 작게)
+  sim_tau: 0.4 #               데모 이웃 최소 토픽-코사인 (vs 엔진 tau=0.75 — topic-cosine≠embedding-cosine이라 갈라짐)
+  co_recall_bump: 0.1 #        데모 회상 세션이 기존 간선 weight에 더하는 양
+  co_recall_base: 0.5 #        데모 회상 세션이 새로 놓는 co_recall 다리 weight(연결-안전망 다리에도 재사용)
+  add_same_day_links: 2 #      새 데모 별이 같은-날 일기에 긋는 시간 링크 최대 수
+  add_same_mood_links: 1 #     새 데모 별이 같은-무드 일기에 긋는 의미 링크 최대 수
+  add_temporal_weight: 0.55 #  새 데모 별의 같은-날 시간 링크 weight
+  add_semantic_weight: 0.6 #   새 데모 별의 같은-무드 의미 링크 weight
+  add_excitability_weight: 0.66 # 새 데모 별이 최근-회상 hot 별에 긋는 링크 weight(흥분성 편향 데모)
+
+# ── 데모 공고화 (demo_consolidation) — data.ts. spec 27 ─────────────────────────────────────────
+demo_consolidation:
+  gist_form_simplify: 0.18 #   밤당 요지화 form_seed_delta 증가폭 (vs 엔진 0.4 — 데모는 완만하게)
+  weak_edge_threshold: 0.7 #   가지치기 weight 임계 (vs 엔진 0.2 — 데모 간선이 더 강해서 높게)
+  weak_edge_floor: 0.12 #      가지친 데모 간선이 내려가는 바닥 (vs 엔진 0.05)
+
+# ── 데모 오버레이 (demo_overlay) — simulate.ts/data.ts. spec 37 ─────────────────────────────────
+demo_overlay:
+  max_bridges: 4 #   두 데모 우주 사이 공명 빛-다리 최대 수

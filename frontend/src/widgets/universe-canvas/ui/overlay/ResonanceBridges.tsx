@@ -15,6 +15,7 @@ import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 import { Line2NodeMaterial } from 'three/webgpu'
 import { focusActor, selectPairFocus } from '@/entities/memory'
+import { VALUES } from '@/shared/config'
 import { navigationActor } from '../../model/navigation.machine'
 import type { OverlayHandle } from './types'
 
@@ -28,11 +29,11 @@ export interface Bridge {
 }
 
 const SEG = 22 // segments per bridge → a smooth arc the flow packet can travel along
-const FLOW_SPEED = 0.16 // packets/sec along the bridge (slow — "느린 빛 흐름")
-const BASE_GLOW = 0.5
-const PEAK_GLOW = 1.0 // extra brightness at the travelling packet
-const FOCUS_BOOST = 1.7 // the selected pair's bridge burns brighter
-const LINE_WIDTH_PX = 3
+const FLOW_SPEED = VALUES.resonanceBridge.flowSpeed // packets/sec along the bridge (slow — "느린 빛 흐름")
+const BASE_GLOW = VALUES.resonanceBridge.baseGlow
+const PEAK_GLOW = VALUES.resonanceBridge.peakGlow // extra brightness at the travelling packet
+const FOCUS_BOOST = VALUES.resonanceBridge.focusBoost // the selected pair's bridge burns brighter
+const LINE_WIDTH_PX = VALUES.resonanceBridge.lineWidthPx
 const RESONANCE_RGB: readonly [number, number, number] = [1.0, 0.86, 0.62] // warm gold — shared light
 const HANDLE_RADIUS = 1.6 // clickable node at each bridge midpoint
 

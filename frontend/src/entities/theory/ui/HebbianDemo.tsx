@@ -1,7 +1,7 @@
 // 헵 강화 인터랙티브 데모 — 랜딩 HebbianCard의 시연 원본을 entity로 이식(spec 19).
 // "함께 떠올리기"를 누를 때마다 실제 규칙(+0.05·상한 1.0)으로 단조 강화된다.
 import { useState } from 'react'
-import { MOOD } from '@/shared/config'
+import { MOOD, VALUES } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance/@x/theory'
 import { VizStar } from '@/entities/star/@x/theory'
 import { VizSynapse } from '@/entities/synapse/@x/theory'
@@ -10,7 +10,7 @@ const TEAL = MOOD.teal
 
 // 실제 우주의 규칙 그대로(spec 11). DELTA는 features/recall CO_RECALL_DELTA(0.05)의
 // 거울값 — entity는 features를 import할 수 없어(FSD 단방향) 값으로 둔다. 바뀌면 함께.
-const DELTA = 0.05
+const DELTA = VALUES.recall.coRecallDelta
 const BASE = 0.3 // 이미 옅게 이어져 있는 두 기억에서 시작
 
 export function HebbianDemo() {

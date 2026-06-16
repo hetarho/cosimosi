@@ -22,6 +22,7 @@ import type { StarNode } from '@/entities/memory'
 import type { StarObject } from '@/entities/star'
 import { mulberry32, reportUniverseRenderer } from '@/shared/lib'
 import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
+import { VALUES } from '@/shared/config'
 import { BloomPass } from '../BloomPass'
 import { OverlayUniverse } from './OverlayUniverse'
 import { ResonanceBridges, type Bridge } from './ResonanceBridges'
@@ -30,7 +31,7 @@ import type { OverlayHandle } from './types'
 
 // The two skies sit this far apart on the vertical axis — a clear gap above the ~46-radius clouds,
 // so they read as two distinct universes with the bridges arcing between (spec 37 이격 배치).
-const OVERLAY_OFFSET = 66
+const OVERLAY_OFFSET = VALUES.overlay.skyOffset
 
 export interface OverlaySide {
   stars: StarNode[]

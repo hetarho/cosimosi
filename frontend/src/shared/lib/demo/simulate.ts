@@ -11,6 +11,7 @@
 //
 // 순수 모듈 — three/React/DOM 미의존(헌법 §4). Mood는 proto enum 값을 그대로 통과시킨다.
 import type { Mood } from '@/shared/api'
+import { VALUES } from '@/shared/config'
 
 /** 코퍼스의 한 조각 = 한 별이 될 장면. topics가 유사도(성단)를, mood가 색을 정한다. */
 export interface PersonaFragment {
@@ -81,15 +82,16 @@ export interface SimUniverse {
   edges: SimEdge[]
 }
 
-// 연결 규칙 상수 — 실서버 worker.go(KNN·temporal·weight cap)와 같은 결의 데모 근사.
-const KNN_K = 5 // 한 조각이 이을 수 있는 의미 이웃 top-k
-const SIM_TAU = 0.4 // 이웃 자격을 얻는 유사도 바닥(topic-cosine)
-const SEM_CAP = 0.79 // 일기 간 의미 weight 상한(< intra 0.8)
-const INTRA_WEIGHT = 0.8 // 같은 일기 조각끼리의 고정 결속
-const TEMPORAL_DAYS = 7 // 같은 주(週) temporal 보너스 창
-const TEMPORAL_MAX = 0.3
-const CO_RECALL_BUMP = 0.1 // 회상이 기존 선을 더하는 양
-const CO_RECALL_BASE = 0.5 // 회상이 처음 놓는 다리의 weight
+// 연결 규칙 상수 — 일부는 실서버 connection 노브와 동일(VALUES.connection), 일부는 데모 전용
+// 근사(VALUES.demoLinking; KNN_K·SIM_TAU는 일부러 서버와 다름). 모두 spec/values.yaml 출처.
+const KNN_K = VALUES.demoLinking.knnK // 한 조각이 이을 수 있는 의미 이웃 top-k (vs 서버 8)
+const SIM_TAU = VALUES.demoLinking.simTau // 이웃 자격을 얻는 유사도 바닥(topic-cosine, vs 서버 0.75)
+const SEM_CAP = VALUES.connection.semanticWeightCap // 일기 간 의미 weight 상한(< intra 0.8)
+const INTRA_WEIGHT = VALUES.connection.intraEntryWeight // 같은 일기 조각끼리의 고정 결속
+const TEMPORAL_DAYS = VALUES.connection.temporalWindowDays // 같은 주(週) temporal 보너스 창
+const TEMPORAL_MAX = VALUES.connection.temporalBonusMax
+const CO_RECALL_BUMP = VALUES.demoLinking.coRecallBump // 회상이 기존 선을 더하는 양
+const CO_RECALL_BASE = VALUES.demoLinking.coRecallBase // 회상이 처음 놓는 다리의 weight
 
 // 사람·개체 주제 — 두 조각이 이 중 하나를 공유하면 'entity' 링크(관계의 별자리).
 const ENTITY_TOPICS = new Set([
@@ -329,7 +331,7 @@ function flattenFragments(c: PersonaCorpus): { id: string; topics: string[]; int
 export function crossResonances(
   a: PersonaCorpus,
   b: PersonaCorpus,
-  max = 4,
+  max = VALUES.demoOverlay.maxBridges,
 ): { aId: string; bId: string }[] {
   const fa = flattenFragments(a)
   const fb = flattenFragments(b)

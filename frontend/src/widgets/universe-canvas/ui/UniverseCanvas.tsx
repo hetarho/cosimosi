@@ -30,7 +30,7 @@ import {
 } from '@/entities/memory'
 import { frameTarget } from '@/features/wayfinding'
 import { useAppearance, themeBg } from '@/entities/appearance'
-import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
+import { resolveMoodRgb, NEUTRAL_RGB, VALUES } from '@/shared/config'
 import {
   cn,
   mulberry32,
@@ -98,7 +98,7 @@ const EMPTY_ID_SET: ReadonlySet<string> = new Set()
 // Live force-sim pumping budget. ~6h excitability window for the FE hot-cluster seed,
 // mirroring the server's tauExc (spec 22) — a star recalled within ~6h is "hot".
 const LAYOUT_TICKS_PER_FRAME = 2
-const HOT_TAU_MS = 6 * 60 * 60 * 1000
+const HOT_TAU_MS = VALUES.excitability.tauHours * 60 * 60 * 1000
 // Representational drift (spec 40): one angular drift step per NIGHT the clock crosses. A day in
 // ms — the night index is floor(virtualNow / DAY_MS), so drift advances on day boundaries (and a
 // multi-day demo skip applies the steps at once), never continuously in real time.
@@ -112,8 +112,8 @@ const DAY_MS = 86_400_000
 // some star's target radius drifts past REKICK_THRESHOLD (a recall jump always crosses it;
 // slow time-decay crosses it occasionally → stepwise glide). The whole sim (radial + links +
 // repulsion) relaxes together to a new balance; synapses publish on settle, never mid-relax.
-const REKICK_THRESHOLD = 0.5
-const REKICK_ALPHA = 0.3
+const REKICK_THRESHOLD = VALUES.layout.rekickThreshold
+const REKICK_ALPHA = VALUES.layout.rekickAlpha
 
 // radiusOf / atShell layout helpers live in model/radial-layout (shared with the spec-37 overlay
 // so both canvases place stars on identical strength shells — single source of the layout math).
@@ -152,7 +152,7 @@ function StarDust({ count = 1500 }: { count?: number }) {
         sizeAttenuation
         color="#9fb4ff"
         transparent
-        opacity={dimmed ? 0.14 : 0.5}
+        opacity={dimmed ? VALUES.starDust.opacityDimmed : VALUES.starDust.opacityNormal}
         depthWrite={false}
       />
     </points>
@@ -946,7 +946,7 @@ function UniverseSynapses({
   const highlightActive = !selectedId && highlightedIds.size > 0
   // Spotlight/조망: fade the whole synapse web while a star is focused OR a diary is framed,
   // so the foregrounded connections stand alone. 조망일 땐 그 일기의 일내(intra) 선만 위에 또렷이.
-  const dim = selectedId ? 0.1 : highlightActive ? 0.12 : 1
+  const dim = selectedId ? VALUES.focus.synapseDimStar : highlightActive ? VALUES.focus.synapseDimDiary : 1
   const { positionOf, colorOf, seedOf } = useMemo(() => {
     const colById = new Map(stars.map((s) => [s.id, resolveMoodRgb(s.memory.mood, emotionColors)] as const))
     const seedById = new Map(stars.map((s) => [s.id, s.memory.seed] as const))

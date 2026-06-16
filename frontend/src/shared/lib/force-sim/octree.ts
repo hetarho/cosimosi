@@ -2,6 +2,7 @@
 // 설계 요점, acceptance 1.5). Pure: no three / React / DOM. Bodies are referenced
 // by index into a flat positions buffer [x0,y0,z0, x1,y1,z1, …]; every body has
 // unit mass.
+import { VALUES } from '@/shared/config'
 
 const EPS = 1e-6
 // Stop subdividing below this cell half-width so coincident/near-coincident points
@@ -19,7 +20,7 @@ const MAX_DEPTH = 48
 // with a near-infinite kick. At the floor the direction (com−pos) is ~0 anyway, so
 // the net force on coincident bodies stays negligible. Below the cluster scale
 // (linkDistance≈30), so it never perturbs a normal layout.
-const MIN_DIST2 = 1
+const MIN_DIST2 = VALUES.forceSim.minDist2
 
 interface Cell {
   cx: number

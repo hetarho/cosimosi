@@ -10,19 +10,20 @@ import (
 	"time"
 
 	"github.com/cosimosi/backend/internal/ai"
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // Connection-rule constants (Architecture §6, specs 05/21). τ is also enforced
 // in the KnnNearest SQL; it is repeated here only for documentation.
 const (
-	knnK               = 8   // top-k nearest neighbors to consider
-	weightAlpha        = 1.0 // α in w0 = clamp(α·cos_sim + temporal_bonus, 0, 1)
-	temporalBonusMax   = 0.3 // +0.3 when the two entries share a day…
-	temporalWindowDays = 7.0 // …decaying linearly to 0 at 7 days apart
+	knnK               = values.ConnectionKnnK               // top-k nearest neighbors to consider
+	weightAlpha        = values.ConnectionWeightAlpha        // α in w0 = clamp(α·cos_sim + temporal_bonus, 0, 1)
+	temporalBonusMax   = values.ConnectionTemporalBonusMax   // +0.3 when the two entries share a day…
+	temporalWindowDays = values.ConnectionTemporalWindowDays // …decaying linearly to 0 at 7 days apart
 	// semanticWeightCap keeps every cross-entry semantic link strictly below the
 	// intra-entry binding weight 0.8 (spec 21, acceptance 1.3): same-event
 	// fragments must always read as the strongest bond.
-	semanticWeightCap = 0.79
+	semanticWeightCap = values.ConnectionSemanticWeightCap
 )
 
 // Competitive-allocation / excitability constants (spec 22). A new fragment's KNN
@@ -33,7 +34,7 @@ const (
 	// tauExc is the excitability time constant: e(c,t)=Σ exp(-Δt/tauExc). With τ=6h the
 	// half-life is ≈4h, so a cluster active 3h ago biases strongly while one active 24h
 	// ago contributes ≈0 — the ~6h allocation window (acceptance 1.2).
-	tauExc = 6 * time.Hour
+	tauExc = values.ExcitabilityTauHours * time.Hour
 	// wExc weights the excitability bias in score = cos_sim + wExc·norm_e. Bias only —
 	// the link WEIGHT still comes from initialWeight(cos, temporal) (spec 22, 1.1).
 	//
@@ -45,9 +46,9 @@ const (
 	// 종합하기보다 27(야간 공고화)의 주기적 재계산에서 흘려보내는 게 자연스럽다. 그래서
 	// 25는 게인 헬퍼(memory.ExcitabilityGain)·단위테스트·proto·배경만 제공하고, 라이브
 	// 배선은 27의 seam으로 남긴다 — 이 상수를 g로 곱하면 그대로 활성화된다.
-	wExc = 0.25
+	wExc = values.ExcitabilityWExc
 	// biasedK is the final number of links kept after the excitability re-rank (≤ candidateK).
-	biasedK = 5
+	biasedK = values.ExcitabilityBiasedK
 	// candidateK is the KNN candidate ceiling: a wider pool gives the re-rank room to prefer
 	// a hotter cluster over a marginally-closer-but-cold one. Derived as knnK*2 so tuning
 	// knnK keeps the pool proportional.
@@ -55,7 +56,7 @@ const (
 	// inhibitDecay is the soft-inhibition factor: each time a cluster absorbs a fragment its
 	// e is multiplied by this, so one hot cluster can't monopolize every candidate
 	// (Delamare/Clopath synaptic competition term — acceptance 1.3).
-	inhibitDecay = 0.5
+	inhibitDecay = values.ExcitabilityInhibitDecay
 )
 
 // Worker-loop defaults.

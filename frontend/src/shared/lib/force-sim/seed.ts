@@ -6,6 +6,7 @@
 // cluster (worker biasedLinks); this seeds the starting position the same way so the
 // force relaxation reads as a pull toward "요즘의 나", not a slow drift from the origin.
 import { mulberry32 } from '../prng'
+import { VALUES } from '@/shared/config'
 
 /** Deterministic 32-bit FNV-1a hash (shared idiom — keeps seeding pure/reproducible). */
 function hashId(s: string): number {
@@ -52,8 +53,8 @@ export function seedNearCluster(
   for (const n of neighbors) {
     const p = positionOf(n.id)
     if (!p) continue
-    // floor 0.1 so every linked cluster pulls a bit; the hottest neighbor dominates.
-    const w = 0.1 + Math.max(0, n.heat)
+    // floor so every linked cluster pulls a bit; the hottest neighbor dominates.
+    const w = VALUES.forceSim.seedHeatFloor + Math.max(0, n.heat)
     wsum += w
     sx += p[0] * w
     sy += p[1] * w

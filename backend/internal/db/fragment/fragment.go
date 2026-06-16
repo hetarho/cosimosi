@@ -15,6 +15,7 @@ import (
 	"fmt"
 
 	"github.com/cosimosi/backend/internal/db/gen"
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // Segment is one event-boundary fragment to persist as a star (spec 21):
@@ -60,7 +61,8 @@ func FanOutTx(ctx context.Context, q *gen.Queries, recordID, userID string, segs
 		ids = append(ids, memoryID)
 	}
 
-	// Within-event binding: every fragment pair, w=0.8 (a<b normalized in SQL).
+	// Within-event binding: every fragment pair, w=connection.intra_entry_weight
+	// (a<b normalized in SQL). Weight sourced from spec/values.yaml (generated).
 	if len(ids) >= 2 {
 		var aIDs, bIDs, userIDs []string
 		for i := 0; i < len(ids); i++ {
@@ -71,7 +73,7 @@ func FanOutTx(ctx context.Context, q *gen.Queries, recordID, userID string, segs
 			}
 		}
 		if err := q.BatchUpsertIntraEntryLinks(ctx, gen.BatchUpsertIntraEntryLinksParams{
-			AIds: aIDs, BIds: bIDs, UserIds: userIDs,
+			Weight: values.ConnectionIntraEntryWeight, AIds: aIDs, BIds: bIDs, UserIds: userIDs,
 		}); err != nil {
 			return nil, fmt.Errorf("upsert intra-entry links: %w", err)
 		}

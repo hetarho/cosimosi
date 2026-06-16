@@ -29,7 +29,11 @@ export function synapseBrightness(weight: number, lastActivatedAt: number, now: 
 /** Dormant when RAW activation (before the brightness floor) has fallen to/below the
  *  threshold (default 2·A_MIN). Threshold is on raw activation, not floored brightness,
  *  so it stays meaningful below A_MIN. The server mirrors this in dormantCutoff. */
-export function isDormant(lastRecalledAt: number, now: number, threshold = 2 * A_MIN): boolean {
+export function isDormant(
+  lastRecalledAt: number,
+  now: number,
+  threshold = VALUES.decay.dormantFactor * A_MIN,
+): boolean {
   return activation(lastRecalledAt, now) <= threshold
 }
 

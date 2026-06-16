@@ -13,14 +13,15 @@ import * as THREE from 'three'
 import { LineSegments2 } from 'three/addons/lines/webgpu/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 import { Line2NodeMaterial } from 'three/webgpu'
+import { VALUES } from '@/shared/config'
 import { alpha as edgeAlpha, pulseAmp } from '../model/mapping'
 import type { SynapseEdge } from '../model/types'
 
 // Cool blue-white base; per-edge magnitude scales it (dark space bg + additive →
 // weak edges faint, strong edges bright).
 const SYNAPSE_RGB: readonly [number, number, number] = [0.55, 0.7, 1.0]
-const PULSE_FREQ = 3.0
-const LINE_WIDTH_PX = 2
+const PULSE_FREQ = VALUES.synapse.pulseFreq
+const LINE_WIDTH_PX = VALUES.synapse.lineWidthPx
 
 export interface SynapseLinesProps {
   edges: SynapseEdge[]

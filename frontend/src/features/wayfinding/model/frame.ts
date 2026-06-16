@@ -1,3 +1,5 @@
+import { VALUES } from '@/shared/config'
+
 // Frame-all camera geometry (spec 28) — the PURE half of "원본 일기로 별 찾기": given the
 // LIVE star coordinates (the single source — force-sim buffer, 헌법3) and the slots of one
 // diary's stars, compute the vantage that fits them ALL on screen. No three/React/DOM
@@ -15,11 +17,11 @@ export interface FrameTarget {
 }
 
 // Breathing room so the outermost star isn't flush against the screen edge.
-export const FRAME_MARGIN = 1.3
+export const FRAME_MARGIN = VALUES.wayfinding.frameMargin
 // Degenerate floor (acceptance 1.8): a single-star diary has radius≈0, so the fit distance
 // collapses to 0 — floor it at the same 12-unit offset the single-star fly-to parks at
 // (UniverseCanvas FlyToController), so frame-all converges to the single-focus look.
-export const FRAME_MIN_DISTANCE = 12
+export const FRAME_MIN_DISTANCE = VALUES.wayfinding.frameMinDistance
 
 /** Compute the frame-all target for the stars at `slots` (indices into the force-sim
  *  positions buffer, x/y/z interleaved). fovRad is the LIMITING field of view (the smaller
