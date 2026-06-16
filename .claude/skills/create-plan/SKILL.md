@@ -34,6 +34,9 @@ original diary, server-side coords), flag it and resolve with the user before wr
 ## Step 2 — Scaffold + fill
 
 - `pnpm spec:plan "<title>"` → creates `spec/plan/NN.slug.md` (next number, stable-ID — never reuse/renumber).
+- **파일명 슬러그는 반드시 영어 kebab-case** (기존 `plan/` 파일과 동일 — `diary-wayfinding`, `universe-canvas`).
+  스캐폴드는 `<title>` 슬러그를 그대로 파일명으로 쓰므로, 영어 제목을 넘겨 영어 파일을 만든 뒤 H1·본문에 한국어 설명을
+  채우거나, 한국어 제목으로 만들었다면 생성 직후 영어 슬러그로 rename한다(`NN.` 번호 접두는 유지).
 - Fill every section from the interview, concretely enough to re-implement on another client (e.g. Flutter).
 - Leave it as a plan (no checkboxes / no implementation) — implementation is a separate job.
 

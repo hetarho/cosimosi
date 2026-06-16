@@ -18,7 +18,8 @@ WHAT to verify) and **구현 체크리스트** (the STEPS to do). This skill cre
 1. **Target** — the plan number NN (`spec/plan/NN.*.md`). Confirm it exists and is the right one.
 2. **Scaffold** — `pnpm spec:job plan NN` → creates `spec/jobs/MM.slug.md` (next job number, independent sequence)
    with frontmatter `type: new`, `source: plan/NN`, `plan: plan/NN`, `status: todo`, and the plan's **수용 기준
-   auto-copied** into the 인수 조건 section.
+   auto-copied** into the 인수 조건 section. **파일명 슬러그는 반드시 영어 kebab-case** — 스캐폴드가 `<title>` 슬러그를
+   그대로 파일명으로 쓰므로, 한국어 제목으로 만들어졌으면 생성 직후 영어 슬러그로 rename한다(`MM.` 번호 접두는 유지).
 3. **Fill the 구현 체크리스트** — derive ordered `- [ ] T001 …` from the plan's 설계 요점 (the HOW). `[P]` for
    parallel (different files, no dep); flag `(gen)`/`(migrate)`/`(gen:values)` where a contract/schema/tuning number
    moves. **Any config/tuning number the plan calls for → a `spec/values.yaml` + `pnpm gen:values` task; code imports

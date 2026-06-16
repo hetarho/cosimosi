@@ -26,7 +26,10 @@ but a delta. Authoring it by interview (not a one-liner) is the safety gate: the
    - **수용 기준** — testable criteria for the change (become the job's 인수 조건).
    Honor the 8 불변 원칙 — a change never breaks an invariant.
 3. **Scaffold + fill** — `pnpm spec:change <planNN> "<title>"` → `spec/changes/NN.slug.md` (frontmatter
-   `change`/`plan`/`status`/`title`). Fill the sections from the interview. Note affected `policy/**`/`tech/**`; **any config/tuning number the change
+   `change`/`plan`/`status`/`title`). **파일명 슬러그는 반드시 영어 kebab-case** (기존 `plan/` 파일과 동일 —
+   `diary-wayfinding`, `universe-canvas`). 스캐폴드는 `<title>` 슬러그를 그대로 파일명으로 쓰므로, 영어 제목을 넘겨
+   영어 파일을 만든 뒤 frontmatter `title`·H1에 한국어 설명을 채우거나, 한국어 제목으로 만들었다면 생성 직후 영어 슬러그로
+   rename한다(`NN.` 번호 접두는 유지). Fill the sections from the interview. Note affected `policy/**`/`tech/**`; **any config/tuning number the change
    adds or tweaks goes in `spec/values.yaml`** (never hardcoded in FE/BE) — list it so the job adds it there.
 4. **Register** — in 00.overview 진행 현황, note the in-flight change against plan NN.
 5. Report the change path + "다음: `/create-change-job NN`". Do NOT implement or commit.

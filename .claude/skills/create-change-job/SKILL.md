@@ -20,6 +20,8 @@ regression boundary. The job frontmatter records `type: change` and the `plan:` 
    (it should be, from /create-change). If it's still a bare template, send the user back to /create-change first.
 2. **Scaffold** — `pnpm spec:job change NN` → `spec/jobs/MM.slug.md` with `type: change`, `source: changes/NN`,
    `plan: <modified plan>` (read from the change's frontmatter), and the change's **수용 기준 auto-copied** into 인수 조건.
+   **파일명 슬러그는 반드시 영어 kebab-case** — 스캐폴드가 `<title>` 슬러그를 그대로 파일명으로 쓰므로, 한국어 제목으로
+   만들어졌으면 생성 직후 영어 슬러그로 rename한다(`MM.` 번호 접두는 유지).
 3. **Fill the 구현 체크리스트** — ordered `- [ ] T001 …` for the **delta only** (현재→목표 차이), `[P]`/`(gen)`/
    `(migrate)`/`(gen:values)` flags. **Config/tuning numbers the change adds or tweaks → a `spec/values.yaml` +
    `(gen:values)` task; import the generated constant, no hardcoding.** Fill **영향 파일** by grepping the as-is code (the blast radius). The job's DoD
