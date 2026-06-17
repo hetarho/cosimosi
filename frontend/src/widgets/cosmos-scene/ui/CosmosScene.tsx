@@ -196,7 +196,9 @@ function BackdropLayer({
       buildFluidMaterial(
         front
           ? { dark: true, palette, octaves: VALUES.cosmos.fluidOctaves }
-          : { radial: true, palette, brightness: VALUES.cosmos.backBrightness, octaves: VALUES.cosmos.fluidOctaves },
+          : // 뒤 nebula: radial 페이드 없이 **풀블리드**(화면 전체 고루) + 어둡게(딥스페이스). radial을 쓰면
+            // 별필드 배경과 fluid 사이에 원형 경계가 생긴다(박스 한정에서만 radial을 쓴다).
+            { palette, brightness: VALUES.cosmos.backBrightness, octaves: VALUES.cosmos.fluidOctaves },
       ),
     [front, palette],
   )

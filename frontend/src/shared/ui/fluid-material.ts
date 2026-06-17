@@ -127,12 +127,12 @@ export function buildFluidMaterial(opts?: FluidMaterialOptions) {
   const edge = smoothstep(float(1.0), float(0.35), length(uv().sub(0.5)).mul(2.0))
 
   if (opts?.dark) {
-    // 어두운 구름 — 별 앞을 안개처럼 지나며 가린다(normal alpha, 가산 아님). 색은 깊은 base보다 더 어둡게,
-    // opacity는 노이즈가 높은 곳만(드문드문한 짙은 덩어리)으로 별을 부분적으로만 덮는다.
+    // 어두운 구름 — 화면 전체에 드문드문(noise patch) 짙은 덩어리가 별 앞을 안개처럼 지난다(normal alpha,
+    // 가산 아님 — 별을 가린다). 풀스크린이라 가장자리 페이드(edge) 없이 끝까지 채운다(박스 한정이 아님).
     m.colorNode = cBase.mul(0.5)
     m.transparent = true
     const patch = smoothstep(float(0.5), float(0.85), n.mul(n2.mul(0.5).add(0.6)))
-    m.opacityNode = edge.mul(patch).mul(0.72)
+    m.opacityNode = patch.mul(0.7)
     return { material: m, update }
   }
 
