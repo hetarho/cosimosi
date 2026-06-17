@@ -21,4 +21,6 @@
 - `changes/NN.slug.md` — 진행 중 변경 제안.
 - `changes/archive/` — 완료된 제안(기록). 완료 시 `/implement-job`이 옮긴다(없으면 생성).
 
+번호는 **`archive/`까지 세어 단조 증가**한다(`pnpm spec:change`가 `live + archive`의 max+1) — 완료 제안을 아카이브해도 번호가 재사용되지 않는다. job frontmatter `source: changes/NN`이 번호로 참조하므로 충돌하면 안 된다.
+
 신규(미구현) 기능은 여기가 아니라 `/create-plan`(plan/).

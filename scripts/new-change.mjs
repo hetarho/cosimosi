@@ -28,6 +28,8 @@ writeFileSync(out, fill(readFileSync(tpl, 'utf8'), { NN: nn, TITLE: title, PLAN:
 console.log(`Created spec/changes/${nn}.${slugify(title)}.md  (targets ${planRef})`)
 console.log('Next: /create-change fills 현재→목표·범위·수용기준 via interview, then /create-change-job ' + nn + '.')
 
-function nextNum(dir) { const m = readdirSync(dir).map((f) => parseInt((f.match(/^(\d+)/) || [])[1], 10)).filter((n) => !isNaN(n)); return String((m.length ? Math.max(...m) : 0) + 1).padStart(2, '0') }
+// Monotonic across live + archive/: completed proposals move to archive/ but their numbers must never be reused
+// (jobs reference changes by number via frontmatter `source`). Scanning only the live dir re-issues numbers.
+function nextNum(dir) { const archive = join(dir, 'archive'); const files = existsSync(archive) ? [...readdirSync(dir), ...readdirSync(archive)] : readdirSync(dir); const m = files.map((f) => parseInt((f.match(/^(\d+)/) || [])[1], 10)).filter((n) => !isNaN(n)); return String((m.length ? Math.max(...m) : 0) + 1).padStart(2, '0') }
 function slugify(s) { return s.toLowerCase().replace(/[\\/:*?"<>|.]+/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'untitled' }
 function fill(t, m) { return Object.entries(m).reduce((a, [k, v]) => a.replaceAll(`{{${k}}}`, v), t) }

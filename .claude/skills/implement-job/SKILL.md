@@ -92,6 +92,7 @@ A job is done when the **docs are true again**, not just when code builds:
 3. **`spec/values.yaml`** — if a tuned scalar was set/changed, edit it there and `pnpm gen:values` (never hand-edit the generated constant).
 4. **If `type: change`** — move the `source` `spec/changes/NN.*.md` → `spec/changes/archive/NN.*.md` (create `archive/` if absent).
 5. **Close out** — job frontmatter `status: done`, all checkboxes ✅; 00.overview 진행 현황 for the `plan` → ✅ (clear the 🟡 claim).
+6. **Archive the job** — move this `spec/jobs/NN.*.md` → `spec/jobs/archive/NN.*.md` (create `archive/` if absent), so `jobs/` lists only todo/doing work. The archived doc is a historical record — its relative links may go stale (no depth fix needed); only its frontmatter `source`/`plan` numbers must stay correct. Numbering stays safe: `pnpm spec:job` counts `archive/` too (monotonic), so the next job never reuses NN.
 
 Report:
 
@@ -103,6 +104,7 @@ Report:
 - 검증: build ✅ · lint ✅ · 인수 조건 <항목별 ✅> (+ change면 회귀 없음 ✅)
 - 리뷰: /code-review <반영 N·기각 M+이유> (+ codex <합산> 또는 "생략")
 - SSOT 반영: plan <갱신> · policy/tech <갱신/없음> · values.yaml <갱신/없음> (+ change면 changes/ archive)
+- 정리: job → jobs/archive/ 이동 (jobs/엔 todo/doing만)
 - 커밋: 안 함 — 변경 파일 준비됨. 커밋은 직접 (Conventional Commits, 영문 제목/한글 본문).
 ```
 

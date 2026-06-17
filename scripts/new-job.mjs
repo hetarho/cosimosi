@@ -58,6 +58,8 @@ function extractAcceptance(t) {
   const items = sec[1].split('\n').map((l) => l.replace(/^\s*(?:\d+\.|[-*])\s+/, '').trim()).filter((l) => l && !l.startsWith('<!--'))
   return items.length ? items.map((it, i) => `- [ ] A${i + 1} ${it}`).join('\n') : null
 }
-function nextNum(dir) { const m = readdirSync(dir).map((f) => parseInt((f.match(/^(\d+)/) || [])[1], 10)).filter((n) => !isNaN(n)); return String((m.length ? Math.max(...m) : 0) + 1).padStart(2, '0') }
+// Monotonic across live + archive/: done docs move to archive/ but their numbers must never be reused (job/change
+// numbers are load-bearing refs). Scanning only the live dir would re-issue numbers after archiving.
+function nextNum(dir) { const archive = join(dir, 'archive'); const files = existsSync(archive) ? [...readdirSync(dir), ...readdirSync(archive)] : readdirSync(dir); const m = files.map((f) => parseInt((f.match(/^(\d+)/) || [])[1], 10)).filter((n) => !isNaN(n)); return String((m.length ? Math.max(...m) : 0) + 1).padStart(2, '0') }
 function slugify(s) { return s.toLowerCase().replace(/[\\/:*?"<>|.]+/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'untitled' }
 function fill(t, m) { return Object.entries(m).reduce((a, [k, v]) => a.replaceAll(`{{${k}}}`, v), t) }
