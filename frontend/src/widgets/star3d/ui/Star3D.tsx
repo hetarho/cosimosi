@@ -1,13 +1,15 @@
-// 공유 StarCanvas 안에 박히는 별 하나(캔버스 측 합성). 별 몸체·halo는 star 엔티티에서 불러오고
-// (buildSingleStar / buildHalo), 여기선 그 둘을 각각 mesh로 얹는다 — 별=form, halo=캔버스가
-// 입히는 효과. 논리 좌표 (x,y,r)로 위치/크기를 지정하면(부모 박스 기준, y-down) 월드 좌표로 변환해
-// 배치한다. halo는 자전하지 않고 별 코어만 천천히 돈다. brightness/active 변화는 demand 모드에서도
-// 보이도록 invalidate로 한 프레임을 깨운다.
+// 공유 StarCanvas 안에 박히는 별 하나(캔버스 측 합성). 별 몸체는 star 엔티티의 별-바디 프리미티브
+// (buildStarBody)를 **uniform 바인딩**으로 소비하고, halo는 캔버스가 입히는 글로우 — 여기선 둘을 각각
+// mesh로 얹는다. mood색·밝기·time uniform은 이 컴포넌트가 소유해 useFrame에서 .value를 올린다(우주
+// StarField가 attribute로 바인딩하는 것과 대비되는 단일 소비 경로). 논리 좌표 (x,y,r)로 위치/크기를
+// 지정하면(부모 박스 기준, y-down) 월드 좌표로 변환해 배치한다. halo는 자전하지 않고 별 코어만 천천히
+// 돈다. brightness/active 변화는 demand 모드에서도 보이도록 invalidate로 한 프레임을 깨운다.
 import { useContext, useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useReducedMotion } from 'motion/react'
-import type { Group } from 'three'
-import { buildSingleStar, type StarObject } from '@/entities/star'
+import { Color, type Group } from 'three'
+import { float, uniform } from 'three/tsl'
+import { buildStarBody, STAR_FORM_SPIN, type StarObject } from '@/entities/star'
 import { buildHalo } from './halo'
 import { StarCanvasContext } from './star-canvas-context'
 
@@ -33,9 +35,30 @@ export function Star3D({ concept, color, x, y, r, seed = 1, brightness = 1, acti
   const spinRef = useRef<Group>(null)
   const inited = useRef(false)
 
-  // 별 몸체(form)는 엔티티에서, halo는 랜딩의 글로우 효과 — 캔버스가 둘을 각각 얹는다. 둘 다
-  // self-contained(자체 유니폼 + update)라, 매 프레임 같은 밝기로 함께 갱신해 동기로 맥동한다.
-  const body = useMemo(() => buildSingleStar(concept, color, seed, brightness), [concept, color, seed, brightness])
+  // 별 몸체(form)는 엔티티 별-바디 프리미티브를 uniform 바인딩으로, halo는 랜딩의 글로우 효과 — 캔버스가
+  // 둘을 각각 얹는다. mood·밝기·time uniform은 여기서 만들어 소유하고(A7: 소비처가 uniform 소유·갱신),
+  // update 클로저로 매 프레임 time·밝기를 올려 halo와 동기로 맥동한다. hueShift는 단일 별엔 0(고정).
+  const body = useMemo(() => {
+    const moodU = uniform(new Color(color))
+    const brightU = uniform(brightness)
+    const timeU = uniform(0)
+    const built = buildStarBody(concept, {
+      mood: moodU,
+      brightness: brightU,
+      seed: float(seed),
+      hueShift: float(0),
+      time: timeU,
+    })
+    return {
+      geometry: built.geometry,
+      material: built.material,
+      spin: STAR_FORM_SPIN[concept],
+      update: (t: number, b: number) => {
+        timeU.value = t
+        brightU.value = b
+      },
+    }
+  }, [concept, color, seed, brightness])
   const halo = useMemo(() => buildHalo(color, brightness), [color, brightness])
   useEffect(
     () => () => {

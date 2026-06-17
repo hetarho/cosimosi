@@ -1,19 +1,19 @@
-// 별(기억) 오브제의 형태별 인스턴스 머티리얼 — StarField가 선택된 appearance.object로 dispatch한다.
-// 단일 쇼케이스 별(showcase.ts)의 4형태를 InstancedMesh로 이식한 판: 모든 인스턴스가 지오메트리·
-// 머티리얼 하나를 공유하므로(드로우콜 그대로) 색은 uniform이 아니라 per-instance attribute에서 온다
-//   - aMood(vec3)      → mood 색(감정 의미색, 보존)
-//   - aBrightness(float)→ 회상 최근성 기반 밝기
-//   - aSeed(float)      → 노이즈 오프셋(별마다 고유한 무늬)
-// 표면 "무늬"는 모두 자가발광(emissive)·뷰의존(fresnel)·변위로 만든다 — 우주 씬엔 directional 광이
-// 없어(ambient만) diffuse 면음영을 못 쓰기 때문. 애니메이션은 공유 uTime(useFrame이 .value를 올림 —
-// BloomPass가 nodeFrame을 우회해 TSL time 노드가 멈추는 문제 회피, materials.ts와 동일 원칙).
+// 별(기억) 오브제의 시각 정체성 — form별 geometry + TSL 셰이딩을 *소비 방식과 분리한* 단일 프리미티브.
+// 셰이더가 필요로 하는 입력(mood색·밝기·seed·hueShift·time)을 `StarShadeInputs` **노드**로 받으므로, 소비처가
+// 그 노드를 per-instance `attribute()`로 만들지(우주 StarField) `uniform()`로 만들지(단일 Star3D) 자유롭게
+// 바인딩한다 — 같은 셰이더, 다른 입력원. 이 한 벌이 예전 forms.ts(인스턴스)+single.ts(단일)의 중복을 대체한다.
+//
+// 표면 "무늬"는 모두 자가발광(emissive)·뷰의존(fresnel)·변위로 만든다 — 별을 씬의 광원과 무관하게 보이게 해
+// (ambient-only 우주든 directional 쇼케이스든 동일) 어디에 꽂아도 일관된다.
+//
+// 순수 함수: uniform을 만들지도, .value를 돌리지도 않는다. time조차 inputs로 받는다 — uniform 소유와 매 프레임
+// 갱신은 소비처 몫이다(StarField/Star3D의 useFrame). frozen-time 관용구(BloomPass가 TSL `time` 노드를 멈추므로
+// 수동 uTime)는 유지하되, 그 uTime을 소비처가 소유한다. (위치·자전·wobble 등 움직임도 전부 소비처가 주입한다.)
 import * as THREE from 'three'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
 import {
-  attribute,
-  float,
   vec3,
-  uniform,
+  float,
   positionLocal,
   normalLocal,
   positionWorld,
@@ -34,7 +34,36 @@ import {
 } from 'three/tsl'
 import type { StarObject } from '../model/types'
 
-/** Rodrigues 회전 — 단위축 k를 중심으로 노드 v를 angle(rad)만큼 돈다. 셰이더에서 자전을 만든다.
+/** 셰이더 입력 계약 — 전부 TSL 노드. 소비처가 attribute()(인스턴스) 또는 uniform()/상수(단일)로 공급한다.
+ *  (TSL 노드 타입엔 .mul/.add가 없어 빌더 안에서 vec3()/float()로 감싸 체이닝하므로 여기선 unknown으로 받는다.) */
+export interface StarShadeInputs {
+  /** 의미색(linear RGB) — vec3 노드. */
+  mood: unknown
+  /** 밝기 — float 노드. */
+  brightness: unknown
+  /** 노이즈 오프셋(별마다 고유 무늬) — float 노드. */
+  seed: unknown
+  /** 재공고화 색조(spec 23, rad) — float 노드. 0이면 회전 없음. */
+  hueShift: unknown
+  /** 공유 시간 — float 노드. 소비처가 매 프레임 .value를 올린다. */
+  time: unknown
+}
+
+export interface StarBodyBuild {
+  geometry: THREE.BufferGeometry
+  material: THREE.Material
+}
+
+/** form별 mesh-레벨 자전 각속도(rad/s) — 메시 그룹을 통째로 도는 단일 소비처(Star3D)용 메타데이터.
+ *  (우주는 crystal을 셰이더 안에서 돌리고 인스턴스를 mesh-spin하지 않는다.) 자전의 *적용*은 소비처 몫. */
+export const STAR_FORM_SPIN: Record<StarObject, number> = {
+  deepfield: 0,
+  aurora: 0.05,
+  liquid: 0.4,
+  ember: 0.16,
+}
+
+/** Rodrigues 회전 — 단위축 k를 중심으로 노드 v를 angle(rad)만큼 돈다. 셰이더에서 자전·색조 회전을 만든다.
  *  입력은 내부에서 vec3()/float()로 감싼다(TS 타입엔 .mul/.add가 없어 감싸야 체이닝 가능 — 파일 관용구). */
 function rotateAroundAxis(vIn: unknown, kIn: unknown, angleIn: unknown) {
   const v = vec3(vIn as never)
@@ -47,29 +76,15 @@ function rotateAroundAxis(vIn: unknown, kIn: unknown, angleIn: unknown) {
   return v.mul(c).add(cr.mul(s)).add(k.mul(kv.mul(float(1).sub(c))))
 }
 
-export interface StarFormBuild {
-  geometry: THREE.BufferGeometry
-  material: THREE.Material
-  /** 매 프레임 시간 갱신(메서드 — 유니폼 .value 변경은 이 모듈 안에서만; 호출부는 메서드만 부른다). */
-  update: (time: number) => void
-}
-
-/** appearance.object → 별 인스턴스의 {지오메트리, 머티리얼, uTime}. mood 색은 attribute로 보존. */
-export function buildStarForm(object: StarObject): StarFormBuild {
-  // attribute()/uniform()의 TS 타입엔 .mul/.add가 없어 vec3()/float()로 감싸(as never) 체이닝 가능 노드를 얻는다.
-  const moodRaw = vec3(attribute('aMood', 'vec3') as never)
-  // 재공고화 색조(spec 23): mood 색을 회색축(1,1,1) 둘레로 aHueShift(rad)만큼 돌린다 —
-  // 휘도(성분 합)는 보존되는 좁은 색조 갱신. 기본 0 → 회전 없음(기존 별 색 그대로).
-  const hueShift = float(attribute('aHueShift', 'float') as never)
+/** object(형태) + 입력 노드 → 별 본체 {geometry, material}. mood 색은 hueShift로 회색축 둘레를 돌려 보존한다. */
+export function buildStarBody(object: StarObject, inputs: StarShadeInputs): StarBodyBuild {
+  const moodRaw = vec3(inputs.mood as never)
+  // 재공고화 색조(spec 23): mood 색을 회색축(1,1,1) 둘레로 hueShift(rad)만큼 돌린다 — 휘도(성분 합) 보존.
+  const hueShift = float(inputs.hueShift as never)
   const mood = vec3(rotateAroundAxis(moodRaw, normalize(vec3(1, 1, 1)), hueShift) as never)
-  const bright = float(attribute('aBrightness', 'float') as never)
-  const seed = float(attribute('aSeed', 'float') as never)
-  const uTime = uniform(0)
-  const t = float(uTime as never)
-  // 유니폼 .value 갱신은 이 클로저 안에서만 — 호출부(StarField)는 메서드만 불러 react-hooks/immutability를 피한다.
-  const update = (time: number) => {
-    uTime.value = time
-  }
+  const bright = float(inputs.brightness as never)
+  const seed = float(inputs.seed as never)
+  const t = float(inputs.time as never)
 
   const m = new MeshStandardNodeMaterial()
   m.metalness = 0.0
@@ -77,8 +92,8 @@ export function buildStarForm(object: StarObject): StarFormBuild {
 
   switch (object) {
     case 'aurora': {
-      // 성운 — 도메인 워핑 fbm 빛구름이 대기처럼 순환한다: 위로 흐르면서 좌우로 천천히 휘젓고,
-      // 도메인 워프 자체가 시간에 따라 진화해 무늬가 휘돌며 섞인다. (instanced 정렬 회피 위해 불투명+자가발광.)
+      // 성운 — 도메인 워핑 fbm 빛구름이 대기처럼 순환한다: 위로 흐르며 좌우로 천천히 휘젓고, 도메인 워프
+      // 자체가 시간에 따라 진화해 무늬가 휘돌며 섞인다. (instanced 정렬 회피 위해 불투명+자가발광.)
       const geometry = new THREE.IcosahedronGeometry(1, 4)
       m.roughness = 0.9
       const flow = vec3(0, 1, 0).mul(t.mul(0.2)).add(vec3(1, 0, 0).mul(sin(t.mul(0.3).add(seed)).mul(0.28)))
@@ -87,11 +102,10 @@ export function buildStarForm(object: StarObject): StarFormBuild {
       const pw = p.add(vec3(warp).mul(0.7))
       const n = mx_fractal_noise_float(pw, 5).mul(0.5).add(0.5)
       const n2 = mx_fractal_noise_float(pw.mul(2.3).add(vec3(7.1)), 4).mul(0.5).add(0.5)
-      // base는 mood, 결(n) 따라 더 밝게 — 흰색 클리핑은 약하게(1.4) 묶어 hue 보존.
       const cloud = mix(mood.mul(0.55), mood.mul(1.4), pow(n, float(1.2)))
       m.colorNode = mood.mul(0.3)
       m.emissiveNode = cloud.mul(n2.mul(0.4).add(0.7)).mul(bright)
-      return { geometry, material: m, update }
+      return { geometry, material: m }
     }
     case 'liquid': {
       // 액체 구슬 — 2중 노이즈로 표면이 출렁이고(변위), 넓은 림 sheen + 좁은 스페큘러가 광택을 준다.
@@ -107,7 +121,7 @@ export function buildStarForm(object: StarObject): StarFormBuild {
       const spec = pow(clamp(float(1).sub(ndv), float(0), float(1)), float(4.0))
       m.colorNode = mood.mul(0.5)
       m.emissiveNode = mood.mul(0.3).add(mood.mul(rim.mul(0.5))).add(vec3(1).mul(spec.mul(0.6))).mul(bright)
-      return { geometry, material: m, update }
+      return { geometry, material: m }
     }
     case 'ember': {
       // 잉걸불 — 각진 8면 결정. 저주파 fbm '달궈진 면'이 표면을 따라 천천히 흘러 순환하고(시간 드리프트),
@@ -123,18 +137,17 @@ export function buildStarForm(object: StarObject): StarFormBuild {
       const lava = mood.mul(1.6).add(vec3(0.4, 0.14, 0))
       m.colorNode = crust
       m.emissiveNode = mix(crust, lava, heat).mul(flicker).mul(bright)
-      return { geometry, material: m, update }
+      return { geometry, material: m }
     }
     case 'deepfield':
     default: {
-      // 크리스털 — 저폴리 보석(20면 flatShading). directional 광이 없으니 면 음영을 뷰의존(ndv)으로
+      // 크리스털 — 저폴리 보석(20면 flatShading). directional 광이 없어도 면 음영을 뷰의존(ndv)으로
       // 자가발광시켜 페이싯이 드러나게 하고, 가장자리엔 흰빛 회절 스파클을 올린다.
       const geometry = new THREE.IcosahedronGeometry(1, 0)
       m.flatShading = true
       m.roughness = 0.34
-      // 천천히 자전하되 방향이 부드럽게 바뀐다 — 별마다 seed로 회전축·위상이 달라 제각각 돈다.
-      // 인스턴스마다 상태를 들 수 없어, 주파수가 다른 sin들을 겹쳐 시간 함수만으로 방향 전환을 만든다.
-      // 각속도(=d(angle)/dt)가 ~2~3초마다 부호를 바꿔 방향이 천천히 뒤집힌다.
+      // 천천히 자전하되 방향이 부드럽게 바뀐다 — 별마다 seed로 회전축·위상이 달라 제각각 돈다. 각속도가
+      // ~2~3초마다 부호를 바꿔 방향이 천천히 뒤집힌다. seed가 상수든(단일) attribute든(인스턴스) 동일하게 동작.
       const axis = normalize(vec3(sin(seed.mul(1.7)).add(0.3), cos(seed.mul(1.1)), sin(seed.mul(2.3)).sub(0.2)))
       const angle = t
         .mul(0.1)
@@ -152,7 +165,7 @@ export function buildStarForm(object: StarObject): StarFormBuild {
         .mul(bright)
         .mul(facet)
         .add(vec3(0.9, 0.95, 1.0).mul(edge.mul(bright).mul(0.45)))
-      return { geometry, material: m, update }
+      return { geometry, material: m }
     }
   }
 }

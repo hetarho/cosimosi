@@ -10,6 +10,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { attribute, uniform } from 'three/tsl'
 import { modulatedBrightness, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
 import { degreeNormById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
@@ -19,7 +20,7 @@ import type { StarObject } from '../model/types'
 import { resolveMoodRgb } from '@/shared/config'
 import { VALUES } from '@/shared/config'
 import { fibonacciStarPosition } from '@/shared/lib'
-import { buildStarForm } from './forms'
+import { buildStarBody } from './star-body'
 
 /** intensity (0..1) → instance scale. */
 function sizeFor(intensity: number): number {
@@ -203,9 +204,25 @@ export function StarField({
   const resonantIdxRef = useRef<number[]>([])
 
   // 선택된 형태(object)별 공유 지오메트리 + TSL 머티리얼. 모든 인스턴스가 하나를 공유하므로
-  // 형태 변경은 O(1)(메시 1개 재구성) — 드로우콜은 그대로다(constitution §8). 머티리얼은
-  // per-instance attribute(aMood/aBrightness/aSeed)를 읽어 mood 색을 보존한다(forms.ts).
-  const { geometry, material, update } = useMemo(() => buildStarForm(object), [object])
+  // 형태 변경은 O(1)(메시 1개 재구성) — 드로우콜은 그대로다(constitution §8). 입력을 per-instance
+  // attribute(aMood/aBrightness/aSeed/aHueShift)로 바인딩해 별-바디 프리미티브(star-body)를 소비하고,
+  // 공유 시간 uniform은 StarField가 소유해 useFrame에서 .value를 올린다(form 애니메이션 구동).
+  // 시간 갱신은 update 클로저로 감싼다 — uniform .value 변경을 클로저 안에 두어 useFrame이 render-local을
+  // 직접 만지지 않게 한다(react-hooks 룰; Star3D와 동일 관용구). uniform 소유는 여전히 소비처(StarField).
+  const { geometry, material, update } = useMemo(() => {
+    const t = uniform(0)
+    const built = buildStarBody(object, {
+      mood: attribute('aMood', 'vec3'),
+      brightness: attribute('aBrightness', 'float'),
+      seed: attribute('aSeed', 'float'),
+      hueShift: attribute('aHueShift', 'float'),
+      time: t,
+    })
+    const update = (time: number) => {
+      t.value = time
+    }
+    return { geometry: built.geometry, material: built.material, update }
+  }, [object])
   // 형태가 바뀌면 직전 지오메트리·머티리얼을 해제(GPU 누수 방지).
   useEffect(() => () => {
     geometry.dispose()
