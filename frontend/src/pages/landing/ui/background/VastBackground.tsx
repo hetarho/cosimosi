@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react'
-import { StarFieldCanvas } from '@/shared/ui'
-import { GrainOverlay } from './GrainOverlay'
+import { StarFieldCanvas, GrainOverlay } from '@/shared/ui'
 
 /**
  * 광활한 우주(vast) 배경 — 망원경이 담은 깊은 인디고 심연. 아주 어둡고, 고밀도 별 필드가

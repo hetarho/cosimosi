@@ -45,6 +45,8 @@ services:
       # Admin console (spec 34) — allowlist + LLM key envelope master key.
       ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}
       LLM_KEY_ENCRYPTION_KEY: ${LLM_KEY_ENCRYPTION_KEY:-}
+      # Invite membership gate (spec 41). Default on; set false in .env to retire the beta gate.
+      INVITE_GATE_ENABLED: ${INVITE_GATE_ENABLED:-true}
     ports:
       - "8080:8080"
     volumes:

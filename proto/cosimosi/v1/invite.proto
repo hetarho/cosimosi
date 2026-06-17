@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package cosimosi.v1;
+
+option go_package = "github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1";
+
+// invite.proto is the invite-code membership gate (spec 41): a closed-beta gate layered
+// ON TOP of real auth (spec 01). A user must redeem a valid invite code once to become a
+// MEMBER before the core universe RPCs (Memory/Settings/Share/Gift) accept their calls.
+//
+// Two services with DELIBERATELY different exposure (the spec-35 share/visit precedent):
+//   - InviteService       — AUTHENTICATED, but NO membership required. This is the surface a
+//                           not-yet-member uses to pass the gate (validate + redeem) and the
+//                           one the client gate reads (membership status). Mounted on the
+//                           auth chain WITHOUT the membership interceptor.
+//   - InviteAdminService  — AUTHENTICATED + the spec-34 ADMIN allowlist. Issue/list/revoke
+//                           codes. Mounted on the admin chain (no membership — the bootstrap
+//                           admin issues the first codes before anyone is a member).
+//
+// DTO layer only (constitution §5), unary only (constitution §6). The whole contract +
+// internal/invite + the two tables are a removable unit (INVITE_GATE_ENABLED toggles
+// enforcement; deleting them removes the beta gate).
+
+// InviteReason is why a validate/redeem succeeded or failed. The handler returns it as a
+// RESPONSE FIELD (not an RPC error) so the client can render reason-specific copy without a
+// failed call — an invalid code is a normal 200 with ok=false.
+enum InviteReason {
+  INVITE_REASON_UNSPECIFIED = 0;
+  INVITE_REASON_OK = 1;        // valid (and redeemed, for RedeemInviteCode)
+  INVITE_REASON_NOT_FOUND = 2; // no such code
+  INVITE_REASON_EXPIRED = 3;   // past expires_at
+  INVITE_REASON_EXHAUSTED = 4; // used_count reached max_uses
+  INVITE_REASON_REVOKED = 5;   // admin revoked it
+}
+
+// InviteCodeStatus is the admin-list lifecycle state, derived server-side from
+// revoked_at / expires_at / used_count vs max_uses at read time.
+enum InviteCodeStatus {
+  INVITE_CODE_STATUS_UNSPECIFIED = 0;
+  INVITE_CODE_STATUS_ACTIVE = 1;
+  INVITE_CODE_STATUS_EXPIRED = 2;
+  INVITE_CODE_STATUS_EXHAUSTED = 3;
+  INVITE_CODE_STATUS_REVOKED = 4;
+}
+
+// --- InviteService (authenticated, NO membership) ---
+
+message GetMembershipStatusRequest {}
+
+// is_member=true once the caller has redeemed any code. Also true for EVERY authenticated
+// caller when the gate is disabled (INVITE_GATE_ENABLED=false) — so the client never routes
+// to /invite when the beta gate is off (removability).
+message GetMembershipStatusResponse {
+  bool is_member = 1;
+}
+
+message ValidateInviteCodeRequest {
+  string code = 1;
+}
+
+// Non-consuming pre-check for the /invite inline UX (enable the confirm button / pre-gate the
+// celebration). NOT authoritative — RedeemInviteCode re-checks atomically.
+message ValidateInviteCodeResponse {
+  bool valid = 1;
+  InviteReason reason = 2;
+}
+
+message RedeemInviteCodeRequest {
+  string code = 1;
+}
+
+// Atomic consume + membership grant. Idempotent: an already-member caller gets ok=true with
+// no extra consumption. ok=false carries the reason (not_found/expired/exhausted/revoked) and
+// nothing is consumed.
+message RedeemInviteCodeResponse {
+  bool ok = 1;
+  InviteReason reason = 2;
+}
+
+service InviteService {
+  rpc GetMembershipStatus(GetMembershipStatusRequest) returns (GetMembershipStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ValidateInviteCode(ValidateInviteCodeRequest) returns (ValidateInviteCodeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc RedeemInviteCode(RedeemInviteCodeRequest) returns (RedeemInviteCodeResponse);
+}
+
+// --- InviteAdminService (authenticated + admin allowlist) ---
+
+// InviteCode is the admin-facing view of one code. The orthogonal model is two independent
+// axes: max_uses (0 = unlimited) and expires_at (0 = never). The UI presets (one-time /
+// timed / unlimited) are just combinations of these.
+message InviteCode {
+  string id = 1;
+  string code = 2;                 // the human-enterable code (unambiguous uppercase alphanumerics)
+  string label = 3;                // issuance memo ("" = none)
+  string created_by = 4;           // issuer user_id (admin sub now; user sub later)
+  int64 created_at = 5;            // unix seconds
+  int64 expires_at = 6;            // unix seconds; 0 = never
+  int32 max_uses = 7;              // 0 = unlimited; otherwise the use cap
+  int32 used_count = 8;
+  InviteCodeStatus status = 9;     // server-derived at read time
+}
+
+message IssueInviteCodeRequest {
+  string label = 1;
+  optional int32 max_uses = 2;     // absent = unlimited (1 = one-time)
+  optional int64 ttl_seconds = 3;  // absent = never expires; else expires_at = now + ttl
+}
+
+message IssueInviteCodeResponse {
+  InviteCode code = 1;
+}
+
+message ListInviteCodesRequest {}
+
+message ListInviteCodesResponse {
+  repeated InviteCode codes = 1;   // newest first
+}
+
+message RevokeInviteCodeRequest {
+  string id = 1;
+}
+
+message RevokeInviteCodeResponse {
+  InviteCode code = 1;             // the updated (revoked) row
+}
+
+// ⚠️ Every rpc here is behind the spec-34 admin allowlist (same gate as AdminService),
+// independent of membership. Opening user-issuance later = move Issue/List(own) onto
+// InviteService with an issuer-quota policy; the domain service stays the same.
+service InviteAdminService {
+  rpc IssueInviteCode(IssueInviteCodeRequest) returns (IssueInviteCodeResponse);
+  rpc ListInviteCodes(ListInviteCodesRequest) returns (ListInviteCodesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc RevokeInviteCode(RevokeInviteCodeRequest) returns (RevokeInviteCodeResponse);
+}

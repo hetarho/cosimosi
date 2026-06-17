@@ -69,6 +69,12 @@ type Config struct {
 	// Lives ONLY in the server env — a DB dump alone cannot decrypt the keys.
 	// Empty = key writes are rejected with FailedPrecondition.
 	LLMKeyEncryptionKey string
+	// InviteGateEnabled toggles the closed-beta invite membership gate (spec 41).
+	// true (default): the membership interceptor guards the core universe services and
+	// non-members are routed to /invite to redeem a code. false: the gate is transparent
+	// (every authenticated user is a member) — the removable beta gate is switched off
+	// without deleting its code/tables.
+	InviteGateEnabled bool
 }
 
 func Load() (*Config, error) {
@@ -93,6 +99,7 @@ func Load() (*Config, error) {
 		SentryEnvironment:   getEnv("SENTRY_ENVIRONMENT", "development"),
 		AdminUserIDs:        splitCSV(getEnv("ADMIN_USER_IDS", "")),
 		LLMKeyEncryptionKey: getEnv("LLM_KEY_ENCRYPTION_KEY", ""),
+		InviteGateEnabled:   getEnvBool("INVITE_GATE_ENABLED", true),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -104,6 +111,20 @@ func Load() (*Config, error) {
 func getEnv(key, fallback string) string {
 	if v, ok := os.LookupEnv(key); ok && v != "" {
 		return v
+	}
+	return fallback
+}
+
+// getEnvBool parses a boolean env var (1/true/yes/on vs 0/false/no/off, case-insensitive);
+// an unset or unrecognized value yields the fallback.
+func getEnvBool(key string, fallback bool) bool {
+	if v, ok := os.LookupEnv(key); ok && v != "" {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		}
 	}
 	return fallback
 }

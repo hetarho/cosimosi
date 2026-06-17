@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { enterDemoMode, exitDemoMode, resetDemo } from '@/shared/lib/demo'
 import { useScrollToSection } from '../../lib/scroll'
 import { themeAccent, useAppearance } from '@/entities/appearance'
-import { ThemedStar } from '../star3d'
+import { ThemedStar } from '@/widgets/star3d'
 
 export function HeroSection() {
   const reduced = useReducedMotion()

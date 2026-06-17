@@ -30,7 +30,8 @@ function noiseUrl(baseFrequency: number, numOctaves: number, size: number) {
  *     중간회색 노이즈의 평균 밝기를 보존하므로 색을 뜨거나 탁하게 만들지 않고 계단만 깬다.)
  *  2) **필름 그레인** — 굵은 노이즈를 `screen`(기본)으로 합성해 사진 같은 빛 알갱이 질감을 더한다.
  * 둘 다 자산 없이 SVG/CSS라 가볍고, 모션 허용 시 미세 지터, reduced-motion이면 정적이다.
- * 세기는 테마 토큰 --ld-deband-opacity / --ld-grain-opacity가 결정한다. (-z 영역, pointer-events none)
+ * 세기는 테마 토큰 --ld-deband-opacity / --ld-grain-opacity가 결정한다(미설정 시 .ld-grain의
+ * 폴백 — 랜딩 밖 표면(사인인·초대)에서도 과하지 않게). (-z 영역, pointer-events none)
  */
 export function GrainOverlay({ baseFrequency = 0.85, blendMode = 'screen', className }: GrainOverlayProps) {
   const reduce = useReducedMotion()

@@ -203,3 +203,27 @@ CREATE TABLE resonances (
 );
 CREATE INDEX resonances_sender_memory_idx ON resonances (sender_memory_id);
 CREATE INDEX resonances_recipient_memory_idx ON resonances (recipient_memory_id);
+
+-- 초대 코드 멤버십 게이트(spec 41, 00009): 코드 직교 모델(max_uses NULL=무제한 × expires_at NULL=만료없음),
+-- invite_redemptions는 사용자당 1행 = 멤버십 마커 겸 사용 내역. 원본/별/좌표와 무관한 독립 테이블(헌법1·2·3
+-- 무관). 게이트는 제거 가능한 한 겹 — 제거 시 두 테이블을 통째로 DROP.
+CREATE TABLE invite_codes (
+    id          TEXT PRIMARY KEY,
+    code        TEXT NOT NULL UNIQUE,
+    label       TEXT NOT NULL DEFAULT '',
+    created_by  TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at  TIMESTAMPTZ,
+    max_uses    INTEGER,
+    used_count  INTEGER NOT NULL DEFAULT 0,
+    revoked_at  TIMESTAMPTZ,
+    CONSTRAINT invite_codes_max_uses_pos CHECK (max_uses IS NULL OR max_uses > 0)
+);
+CREATE INDEX invite_codes_created_by_idx ON invite_codes (created_by);
+
+CREATE TABLE invite_redemptions (
+    user_id        TEXT PRIMARY KEY,
+    invite_code_id TEXT NOT NULL REFERENCES invite_codes(id),
+    redeemed_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX invite_redemptions_code_idx ON invite_redemptions (invite_code_id);

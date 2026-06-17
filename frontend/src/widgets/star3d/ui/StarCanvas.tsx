@@ -7,7 +7,7 @@ import { Canvas, useThree, type GLProps } from '@react-three/fiber'
 import { useReducedMotion } from 'motion/react'
 import { OrthographicCamera } from 'three'
 import { createRenderer } from '@/shared/lib/r3f'
-import { useInView } from '../../lib/use-in-view'
+import { useInView } from './use-in-view'
 import { StarCanvasContext } from './star-canvas-context'
 
 // 투명 캔버스를 위해 alpha:true 강제(R3F가 promise를 await).

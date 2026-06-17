@@ -22,6 +22,7 @@ import (
 	"github.com/cosimosi/backend/internal/admin"
 	"github.com/cosimosi/backend/internal/ai"
 	"github.com/cosimosi/backend/internal/gift"
+	"github.com/cosimosi/backend/internal/invite"
 	"github.com/cosimosi/backend/internal/job"
 	"github.com/cosimosi/backend/internal/link"
 	"github.com/cosimosi/backend/internal/llm"
@@ -210,6 +211,14 @@ func main() {
 	resonanceAdapter.inner = giftSvc // close the share↔gift cycle (spec 37 overlay bridges)
 	giftHandler := gift.NewHandler(giftSvc)
 
+	// Invite membership gate (spec 41): a removable closed-beta gate on top of auth. The repo is
+	// both the InviteService/InviteAdminService backend AND the MembershipChecker the rpcserver
+	// membership interceptor consults. The one Handler implements both invite services (the
+	// spec-35 share Handler precedent); cfg.InviteGateEnabled makes the gate transparent when off.
+	inviteRepo := invite.NewRepository(db)
+	inviteSvc := invite.NewService(inviteRepo, cfg.InviteGateEnabled)
+	inviteHandler := invite.NewHandler(inviteSvc, cfg.AdminUserIDs)
+
 	// Async extraction + embedding worker (specs 05/21): consumes the extract job
 	// the RecordMemory transaction enqueues, fans the diary out into fragment
 	// stars, then embeds each fragment and writes initial semantic synapses.
@@ -250,7 +259,7 @@ func main() {
 	// The one share.Handler implements both services — auth is enforced by the chain each is
 	// mounted with (rpcserver), so the SAME handler is passed for the owner (ShareService) and
 	// public (VisitService) surfaces.
-	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, adminHandler, shareHandler, shareHandler, giftHandler, panicCapture)
+	server := rpcserver.New(cfg, db, version, memoryHandler, settingsHandler, adminHandler, shareHandler, shareHandler, giftHandler, inviteHandler, inviteHandler, inviteRepo, panicCapture)
 
 	// The sentryhttp wrap still earns its keep after 17: it attaches the
 	// request-scoped hub the capture hook reads, and catches panics from non-RPC

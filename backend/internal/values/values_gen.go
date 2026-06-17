@@ -108,6 +108,17 @@ const (
 	ExtractionMaxSegments = 5
 )
 
+// invite
+const (
+	InviteCodeLength         = 8
+	InviteValidateDebounceMs = 400
+	InviteCharStaggerMs      = 60
+	InviteCelebrateMs        = 1200
+)
+var (
+	InviteTimedPresetHours = []float64{24, 168, 720}
+)
+
 // radial_layout
 const (
 	RadialLayoutRepulsion      = -18

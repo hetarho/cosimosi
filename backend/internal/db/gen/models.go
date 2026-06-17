@@ -30,6 +30,24 @@ type EvolutionHistory struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
+type InviteCode struct {
+	ID        string             `json:"id"`
+	Code      string             `json:"code"`
+	Label     string             `json:"label"`
+	CreatedBy string             `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	MaxUses   *int32             `json:"max_uses"`
+	UsedCount int32              `json:"used_count"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type InviteRedemption struct {
+	UserID       string             `json:"user_id"`
+	InviteCodeID string             `json:"invite_code_id"`
+	RedeemedAt   pgtype.Timestamptz `json:"redeemed_at"`
+}
+
 type Job struct {
 	ID        string             `json:"id"`
 	MemoryID  *string            `json:"memory_id"`

@@ -18,24 +18,36 @@ import (
 // opt-in per environment. Unauthenticated requests never reach this gate (auth
 // already rejected them), so a denial here is always PermissionDenied, which
 // the client renders as a NotFound screen (the surface stays unadvertised).
-func NewAdminGateInterceptor(allowlist []string) connect.UnaryInterceptorFunc {
-	allowed := make(map[string]bool, len(allowlist))
+// IsAllowlistedAdmin reports whether the caller (verified JWT sub or email, case-insensitive) is
+// in the ADMIN_USER_IDS allowlist. Shared by the admin gate AND the invite membership exemption
+// (spec 41 — admins enter without redeeming a code). Empty allowlist = nobody (fail-closed).
+func IsAllowlistedAdmin(ctx context.Context, allowlist []string) bool {
+	userID, _ := UserIDFromContext(ctx)
+	email, _ := UserEmailFromContext(ctx)
+	if userID == "" && email == "" {
+		return false
+	}
+	uid := strings.ToLower(userID)
+	em := strings.ToLower(email)
 	for _, entry := range allowlist {
-		if e := strings.ToLower(strings.TrimSpace(entry)); e != "" {
-			allowed[e] = true
+		e := strings.ToLower(strings.TrimSpace(entry))
+		if e == "" {
+			continue
+		}
+		if (userID != "" && uid == e) || (email != "" && em == e) {
+			return true
 		}
 	}
+	return false
+}
 
+func NewAdminGateInterceptor(allowlist []string) connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			if req.Spec().IsClient {
 				return next(ctx, req)
 			}
-			userID, _ := UserIDFromContext(ctx)
-			email, _ := UserEmailFromContext(ctx)
-			if len(allowed) > 0 &&
-				((userID != "" && allowed[strings.ToLower(userID)]) ||
-					(email != "" && allowed[strings.ToLower(email)])) {
+			if IsAllowlistedAdmin(ctx, allowlist) {
 				return next(ctx, req)
 			}
 			// One opaque message for every rejection (unknown caller, empty

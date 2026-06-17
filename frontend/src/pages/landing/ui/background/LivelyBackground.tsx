@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react'
-import { StarFieldCanvas } from '@/shared/ui'
-import { GrainOverlay } from './GrainOverlay'
+import { StarFieldCanvas, GrainOverlay } from '@/shared/ui'
 
 interface Blob {
   className: string

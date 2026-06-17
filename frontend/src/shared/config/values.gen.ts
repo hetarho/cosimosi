@@ -84,6 +84,13 @@ export const VALUES = {
   extraction: {
     maxSegments: 5,
   },
+  invite: {
+    codeLength: 8,
+    timedPresetHours: [24,168,720],
+    validateDebounceMs: 400,
+    charStaggerMs: 60,
+    celebrateMs: 1200,
+  },
   radialLayout: {
     repulsion: -18,
     linkDistance: 14,

@@ -1,63 +1,53 @@
-// 관리자 콘솔 /admin (spec 34): 활성 LLM 선택 + 공급자 5카드 + 운영 대시보드.
-// 비관리자는 첫 쿼리의 PermissionDenied를 받고 NotFound 화면을 본다(3.3) —
-// admin 표면의 존재를 광고하지 않는다(콘솔 에러도 없음: 정상 처리된 쿼리 에러다).
+// 관리자 콘솔 /admin 셸(spec 34 + 41): "LLM 관리"·"초대 코드" 두 탭으로 가른다. 탭은 ?tab= 로
+// 딥링크된다(기본 llm). 비관리자는 첫 쿼리의 PermissionDenied를 받고 NotFound 화면을 본다(3.3) —
+// admin 표면의 존재를 광고하지 않는다(콘솔 에러도 없음). 권한 프로브는 LlmTab과 같은 쿼리 키라 디듑된다.
 import { useQuery } from '@tanstack/react-query'
-import { GlassCard, NotFoundScreen } from '@/shared/ui'
+import { useNavigate, useSearch } from '@tanstack/react-router'
+import { NotFoundScreen } from '@/shared/ui'
 import { isPermissionDenied, llmConfigQueryOptions } from '../api/admin-queries'
-import { ActiveLLMCard } from './ActiveLLMCard'
-import { ErrorNotice } from './ErrorNotice'
-import { ProviderCard } from './ProviderCard'
-import { OverviewSection } from './OverviewSection'
+import { LlmTab } from './LlmTab'
+import { InviteCodesTab } from './InviteCodesTab'
+
+const TABS = [
+  { value: 'llm', label: 'LLM 관리' },
+  { value: 'invite', label: '초대 코드' },
+] as const
 
 export function AdminPage() {
-  const { data, isPending, isError, error, refetch } = useQuery(llmConfigQueryOptions())
-
-  if (isError && isPermissionDenied(error)) return <NotFoundScreen />
+  const { tab } = useSearch({ from: '/admin' })
+  const active = tab ?? 'llm'
+  const navigate = useNavigate()
+  // 권한 프로브 — 비관리자는 PermissionDenied → NotFound(표면 비노출). LlmTab과 같은 쿼리 키라 디듑.
+  const gate = useQuery(llmConfigQueryOptions())
+  if (gate.isError && isPermissionDenied(gate.error)) return <NotFoundScreen />
 
   return (
     <div className="min-h-screen bg-[#050510] px-6 py-10 text-white/90">
       <div className="mx-auto max-w-3xl space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-light tracking-wide">관리자 콘솔</h1>
-          <p className="text-sm text-white/45">
-            LLM 공급자·키 운영과 서비스 현황. 키는 서버에서 암호화되어 다시 표시되지 않아요.
-          </p>
+          <p className="text-sm text-white/45">LLM 운영과 초대 코드 관리.</p>
         </header>
 
-        {isPending && <p className="text-sm text-white/40">불러오는 중…</p>}
+        <div className="flex gap-1 border-b border-white/10">
+          {TABS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => void navigate({ to: '/admin', search: { tab: t.value } })}
+              className={[
+                'px-3 py-2 text-sm transition',
+                active === t.value
+                  ? 'border-b-2 border-indigo-400 text-white/90'
+                  : 'text-white/45 hover:text-white/70',
+              ].join(' ')}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        {isError && !isPermissionDenied(error) && (
-          <ErrorNotice error={error} onRetry={() => void refetch()} />
-        )}
-
-        {data && (
-          <>
-            {!data.encryptionReady && (
-              <GlassCard className="border border-amber-300/20 p-4">
-                <p className="text-sm text-amber-200/90">
-                  서버에 <code className="text-amber-100">LLM_KEY_ENCRYPTION_KEY</code>가 설정되지
-                  않아 키 저장이 막혀 있어요.
-                </p>
-                <p className="mt-1 text-xs text-amber-200/50">
-                  <code>openssl rand -base64 32</code>로 생성해 서버 env에 넣고 재시작하세요.
-                </p>
-              </GlassCard>
-            )}
-
-            <ActiveLLMCard config={data} />
-
-            <section className="space-y-3">
-              <h2 className="text-base font-light tracking-wide">공급자</h2>
-              <div className="space-y-3">
-                {data.providers.map((p) => (
-                  <ProviderCard key={p.provider} provider={p} />
-                ))}
-              </div>
-            </section>
-
-            <OverviewSection />
-          </>
-        )}
+        {active === 'invite' ? <InviteCodesTab /> : <LlmTab />}
       </div>
     </div>
   )

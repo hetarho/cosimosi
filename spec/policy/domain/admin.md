@@ -74,6 +74,15 @@
   없다). `to_regclass('auth.users')` 존재 시에만 `auth.users` 카운트로 대체 — auth 스키마가
   없는 로컬 도커 pg에서도 무에러.
 
+## 콘솔 탭 구성 (LLM 관리 + 초대 코드)
+
+- `/admin`은 두 탭으로 나뉜다(`?tab=llm|invite`, 기본 llm): **LLM 관리**(이 문서 — 키·모델·활성
+  선택·운영 대시보드)와 **초대 코드**(발행·목록·취소). 두 탭의 권한 게이트는 동일한 admin
+  allowlist다 — 셸이 `GetLLMConfig` PermissionDenied로 비관리자를 NotFound로 가른다.
+- 초대 코드 발행·목록·취소는 `InviteAdminService`(spec 41)가 담당하며 admin allowlist 뒤에 있다
+  (멤버십과 무관 — 부트스트랩 관리자가 멤버 되기 전 첫 코드를 발행해야 하므로). 규칙·발행 모델·
+  제거성은 [policy/domain/access.md](access.md)가 단일 출처다(이 문서는 LLM 운영만 소유).
+
 ## FE 표면
 
 - `/admin`은 `lazyRouteComponent` 코드 스플릿(메인 번들 영향 0) + SessionGate(인증) 뒤.

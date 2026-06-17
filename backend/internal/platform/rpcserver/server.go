@@ -45,7 +45,7 @@ const (
 // logging→auth interceptors, a /health endpoint that reports DB reachability, all
 // wrapped in CORS and h2c. panicCapture (nil-safe) forwards recovered RPC panics
 // to the composition root's tracker. The caller owns the listen/shutdown lifecycle.
-func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, settingsSvc cosimosiv1connect.SettingsServiceHandler, adminSvc cosimosiv1connect.AdminServiceHandler, shareSvc cosimosiv1connect.ShareServiceHandler, visitSvc cosimosiv1connect.VisitServiceHandler, giftSvc cosimosiv1connect.GiftServiceHandler, panicCapture PanicCapture) *http.Server {
+func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimosiv1connect.MemoryServiceHandler, settingsSvc cosimosiv1connect.SettingsServiceHandler, adminSvc cosimosiv1connect.AdminServiceHandler, shareSvc cosimosiv1connect.ShareServiceHandler, visitSvc cosimosiv1connect.VisitServiceHandler, giftSvc cosimosiv1connect.GiftServiceHandler, inviteSvc cosimosiv1connect.InviteServiceHandler, inviteAdminSvc cosimosiv1connect.InviteAdminServiceHandler, membership MembershipChecker, panicCapture PanicCapture) *http.Server {
 	mux := http.NewServeMux()
 
 	// Logging is outermost, auth innermost (onion order): every request — even
@@ -60,17 +60,32 @@ func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimos
 		),
 		connect.WithRecover(newRecoverHandler(slog.Default(), panicCapture)),
 	}
-	memoryPath, memoryHandler := cosimosiv1connect.NewMemoryServiceHandler(memorySvc, opts...)
+	// Core universe services (Memory/Settings/Share/Gift) additionally require MEMBERSHIP when the
+	// invite gate is on (spec 41): the membership interceptor accumulates after logging→auth.
+	// Cloned so the shared opts slice is never aliased (the spec-34 admin-gate precedent). With the
+	// gate OFF, coreOpts == opts — the gate is fully transparent (no interceptor, no overhead).
+	coreOpts := opts
+	if cfg.InviteGateEnabled {
+		coreOpts = append(append([]connect.HandlerOption{}, opts...),
+			connect.WithInterceptors(NewMembershipGateInterceptor(membership, cfg.AdminUserIDs)))
+	}
+	memoryPath, memoryHandler := cosimosiv1connect.NewMemoryServiceHandler(memorySvc, coreOpts...)
 	mux.Handle(memoryPath, memoryHandler)
-	settingsPath, settingsHandler := cosimosiv1connect.NewSettingsServiceHandler(settingsSvc, opts...)
+	settingsPath, settingsHandler := cosimosiv1connect.NewSettingsServiceHandler(settingsSvc, coreOpts...)
 	mux.Handle(settingsPath, settingsHandler)
-	// ShareService is owner-only — same authenticated chain (user_id = JWT sub; spec 35, 3.2).
-	sharePath, shareHTTP := cosimosiv1connect.NewShareServiceHandler(shareSvc, opts...)
+	// ShareService is owner-only — auth + membership (user_id = JWT sub; spec 35, 3.2).
+	sharePath, shareHTTP := cosimosiv1connect.NewShareServiceHandler(shareSvc, coreOpts...)
 	mux.Handle(sharePath, shareHTTP)
 	// GiftService (spec 36) is fully authenticated — both parties are cosimosi users, so every
-	// rpc has a caller identity (no public surface like VisitService). Same auth chain.
-	giftPath, giftHTTP := cosimosiv1connect.NewGiftServiceHandler(giftSvc, opts...)
+	// rpc has a caller identity (no public surface like VisitService). Auth + membership.
+	giftPath, giftHTTP := cosimosiv1connect.NewGiftServiceHandler(giftSvc, coreOpts...)
 	mux.Handle(giftPath, giftHTTP)
+
+	// InviteService is the gate-passing surface (spec 41): AUTHENTICATED but NOT membership-gated
+	// (plain opts), so a not-yet-member can validate + redeem a code and the client can read its
+	// membership status. Adding membership here would lock everyone out of the only way IN.
+	invitePath, inviteHTTP := cosimosiv1connect.NewInviteServiceHandler(inviteSvc, opts...)
+	mux.Handle(invitePath, inviteHTTP)
 
 	// AdminService gets the same chain PLUS the allowlist gate (spec 34) —
 	// WithInterceptors accumulates, so the gate runs after logging→auth and
@@ -79,6 +94,12 @@ func New(cfg *config.Config, db *pgxpool.Pool, version string, memorySvc cosimos
 		connect.WithInterceptors(NewAdminGateInterceptor(cfg.AdminUserIDs)))
 	adminPath, adminHandler := cosimosiv1connect.NewAdminServiceHandler(adminSvc, adminOpts...)
 	mux.Handle(adminPath, adminHandler)
+
+	// InviteAdminService (spec 41) shares the admin allowlist chain — issuing/listing/revoking
+	// codes is admin-only — and is independent of membership (the bootstrap admin issues the first
+	// codes before anyone is a member). Same adminOpts; a fresh handler mount.
+	inviteAdminPath, inviteAdminHTTP := cosimosiv1connect.NewInviteAdminServiceHandler(inviteAdminSvc, adminOpts...)
+	mux.Handle(inviteAdminPath, inviteAdminHTTP)
 
 	// VisitService is the ONLY public surface (spec 35, 3.1): a SEPARATE chain WITHOUT the auth
 	// interceptor — logging + recover + the 256KB read cap (17 still bounds the anonymous
