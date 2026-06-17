@@ -16,18 +16,18 @@ export function HeroSection() {
   const accent = themeAccent(useAppearance((s) => s.theme))
 
   // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 데모 우주로 바로 보낸다.
-  // (로그인/DB 없이 더미 우주 진입 — CtaFooterSection의 tryDemo와 동일 경로.)
+  // (로그인/DB 없이 루트 우주 `/` 진입 — CtaFooterSection의 tryDemo와 동일 경로.)
   const tryDemo = () => {
     enterDemoMode()
-    void navigate({ to: '/universe' })
+    void navigate({ to: '/' })
   }
 
-  // 로그인: /universe로 가면 SessionGate가 사인인 화면을 띄운다. 데모 플래그가 남아 있으면
-  // 게이트를 그냥 통과해 더미 우주가 떠 버리므로, 플래그와 더미 별을 비우고 이동한다.
+  // 로그인: 사인인 페이지로. 데모 플래그가 남아 있으면 보호 라우트(`/`)를 그냥 통과해 더미 우주가
+  // 떠 버리므로, 플래그와 더미 별을 비우고 `/sign-in`으로 이동한다.
   const goSignIn = () => {
     exitDemoMode()
     resetDemo()
-    void navigate({ to: '/universe' })
+    void navigate({ to: '/sign-in' })
   }
 
   const container = {

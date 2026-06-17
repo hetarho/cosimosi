@@ -1,10 +1,10 @@
 # 랜딩 (policy/ux/landing)
 
-> 현재 구현된 랜딩 페이지(`/`)의 사실 정의 — 테마·시각화·진입의 규칙·정전 파라미터·불변식.
+> 현재 구현된 랜딩 페이지(`/landing`)의 사실 정의 — 테마·시각화·진입의 규칙·정전 파라미터·불변식.
 
 ## 정의
 
-랜딩(`/`)은 cosimosi가 무엇을 지향하는지 한 화면으로 보여주는 비전 showcase다. 방문자는 Lenis 관성 스크롤을 따라 히어로 → 8개 장(章)을 내려가며, 각 장의 이론 카드가 2D SVG 프리미티브 `VizStar`/`VizSynapse`로 별·시냅스 메타포를 시연한다. 카드는 `useAppearance((s) => s.object)`(전역 별 형태)를 구독해 3D 우주와 같은 시각 언어를 쓴다.
+랜딩(`/landing`)은 cosimosi가 무엇을 지향하는지 한 화면으로 보여주는 비전 showcase다. 방문자는 Lenis 관성 스크롤을 따라 히어로 → 8개 장(章)을 내려가며, 각 장의 이론 카드가 2D SVG 프리미티브 `VizStar`/`VizSynapse`로 별·시냅스 메타포를 시연한다. 카드는 `useAppearance((s) => s.object)`(전역 별 형태)를 구독해 3D 우주와 같은 시각 언어를 쓴다.
 
 시각 설정은 두 독립 축이다 — **테마**(색·분위기, 3종)와 **오브제**(별 형태, 4종). 둘 다 플로팅 `AppearanceSwitcher`로 고르며 `localStorage`에 지속된다. 카드가 시연하는 일부 메커니즘(요즘 상태·재공고화·야간 공고화·공명 등)의 백엔드 동작은 plan 20–30에서 다룬다(아직 정책 아님 — 카드의 🚧 배지가 이를 표기). 랜딩은 그 비전을 SVG로 보여줄 뿐, 카드가 곧 그 기능의 정책은 아니다.
 
@@ -38,13 +38,13 @@
 
 - 챕터 순서는 뇌과학 이론 흐름(plan 19–27: 엔그램→연결·강화→재공고화→망각→요즘 상태→야간)과 정합한다. 조각화(plan 21) 카드 자리는 II와 III 사이로 예약(21의 T-landing이 신설).
 - **상태 배지(`TheoryBadge`)** — 각 이론 카드는 ✅(지금 우주에서 동작 + plan NN) 또는 🚧(계획된 비전 + plan NN)을 표기한다: Concept/Engram/Hebbian/TimeWindow/SilentEngram = ✅(08·09/08·11/11/05/12), PresentSelf = 🚧22·25, Reconsolidation = 🚧23·24, Nightly = 🚧27, Resonance = 🚧30.
-- **"이 카드 체험하기"(`TryInUniverse`)** — 구현된 이론 카드 5개(Concept·Engram·Hebbian·TimeWindow·SilentEngram)는 `enterDemoMode()` 후 `/universe?sim=<id>`로 진입해 시뮬레이션 패널([interaction](interaction.md) §체험)이 그 이론을 펼친 채 맞이한다. 계획 카드에는 체험 버튼이 없다(아직 체험할 동작이 없음 — 각 스펙 T-landing이 단다).
+- **"이 카드 체험하기"(`TryInUniverse`)** — 구현된 이론 카드 5개(Concept·Engram·Hebbian·TimeWindow·SilentEngram)는 `enterDemoMode()` 후 `/?sim=<id>`로 진입해 시뮬레이션 패널([interaction](interaction.md) §체험)이 그 이론을 펼친 채 맞이한다. 계획 카드에는 체험 버튼이 없다(아직 체험할 동작이 없음 — 각 스펙 T-landing이 단다).
 - 각 카드는 `useAppearance((s) => s.object)`를 구독해 별·시냅스를 같은 4 형태로 그리고, 버튼·슬라이더·hover·토글 등 인터랙션을 유지한다.
 - 구현된 이론 카드의 시연 수치는 정전 상수를 import해 표류를 막는다(`A_MIN`·`HALF_LIFE_DAYS` ← entities/memory, `CO_RECALL_DELTA` ← features/recall). `TimeWindowCard`의 의미 base 0.45는 예시 값(백엔드 임베딩 유사도는 FE 정전 상수가 없음 — 카드가 근사임을 문구로 밝힘).
 
 ### 진입 (데모)
 
-- 히어로 1차 CTA("우주 만들어보기")·CtaFooter("가입 없이 들어가 보기")는 `enterDemoMode()` 후 `/universe`로 이동 — 로그인/DB 없이 더미 우주를 본다.
+- 히어로 1차 CTA("우주 만들어보기")·CtaFooter("가입 없이 들어가 보기")는 `enterDemoMode()` 후 `/`로 이동 — 로그인/DB 없이 더미 우주를 본다.
 - 이론 카드의 "이 카드 체험하기"는 같은 경로에 `?sim=<id>`를 더해 **엔그램 이론 모달이 그 이론 페이지로 열린 채** 시작한다(레지스트리에 없는 id는 무시). 이미 데모 중이던 탭에서는 진행 상태(가상 시계·추가 별)가 유지된다 — 초기화는 컨트롤러 "처음으로" 또는 "체험 종료"가 담당.
 - 히어로 "천천히 둘러보기"·스크롤 힌트는 `useScrollToSection('concept')`로 `concept` 섹션에 안착(Lenis 우선, 없으면 네이티브 폴백).
 - 히어로 엠블럼은 3D `ThemedStar`(오브제 형태 + 테마 accent 색). 이론 카드 본문 시각화는 2D SVG다.

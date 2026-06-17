@@ -38,7 +38,7 @@
 
 ### 우주 셸 (페이지) — `pages/home/ui/HomePage.tsx`
 
-`/universe`가 영속 셸이다. 한 페이지가 `UniverseCanvas`(한 번 마운트, 절대 언마운트 안 됨) + 상시 버튼 둘(카메라 토글·메뉴 런처) + 결과 표면(`Surface`들) + 브라우즈 목록 호스트(`OverlayHost`)를 함께 든다. 어떤 진입/결과 전환에도 캔버스는 재init되지 않는다.
+루트 `/`가 영속 우주 셸이다. 한 페이지가 `UniverseCanvas`(한 번 마운트, 절대 언마운트 안 됨) + 상시 버튼 둘(카메라 토글·메뉴 런처) + 결과 표면(`Surface`들) + 브라우즈 목록 호스트(`OverlayHost`)를 함께 든다. 어떤 진입/결과 전환에도 캔버스는 재init되지 않는다.
 
 **IA 큰 틀(home-ia revamp).** 화면을 비워 우주에 집중시킨다 — 상시 노출은 **버튼 둘**뿐:
 
@@ -76,9 +76,8 @@
 
 ### 라우트 — `app/router.tsx`
 
-- `/universe`: 보호 라우트(`SessionGate`), `validateSearch`가 `panel`을 `'dormant' | 'diary'`로만 좁힌다(알 수 없는 값 무시). 같은 라우트가 `sim`(19)·`fly`(36) search param도 검증한다.
-- `/dormant`: 별도 페이지가 아니라 `/universe?panel=dormant`로 영구 redirect(`beforeLoad`에서 `throw redirect`). 옛 링크/북마크 보존, 라우트 비증가. 인증 게이트는 목적지의 `SessionGate`가 건다.
-- 별도 `/diary`·`/evolution` 라우트는 없다.
+- `/`(index): 보호 라우트(`SessionGate`), `validateSearch`가 `panel`을 `'dormant' | 'diary'`로만 좁힌다(알 수 없는 값 무시). 같은 라우트가 `sim`(19)·`fly`(36) search param도 검증한다.
+- 별도 `/dormant`·`/diary`·`/evolution` 라우트는 없다. 옛 `/dormant`·`/universe` 라우트는 제거됐다(change 01) — 잠든 별은 `/?panel=dormant`로 연다.
 
 ### z-index 레이어 (셸 통일)
 
@@ -120,8 +119,7 @@
   - `DiarySheet`, `DiarySheetProps` (`onSelectDiary(recordId)`)
   - `DiaryCard`, `DiaryCardProps`
 - `frontend/src/app/router.tsx`
-  - `/universe` search 스키마: `{ sim?, panel?: 'dormant' | 'diary', fly? }`
-  - `/dormant` → `/universe?panel=dormant` redirect
+  - `/`(index) search 스키마: `{ sim?, panel?: 'dormant' | 'diary', fly? }`
 
 ## Flutter 동등성 기준
 
@@ -139,8 +137,8 @@
 3. 오버레이가 열려 있어도(peek 또는 펼침) 뒤 우주가 보이고 별 탭·회전 등 상호작용이 가능하다(차단 backdrop 없음).
 4. 목록 항목을 고르면 오버레이가 peek(핸들/카드)로 낮아지고 뒤 우주에서 카메라가 그 별로 fly-to한다.
 5. 탐색을 여러 번 열고 닫아도 WebGPU 캔버스가 재초기화되지 않는다(영속 셸, 한 번만 마운트).
-6. `/universe?panel=dormant`(또는 `=diary`)로 진입하면 캔버스 위에 그 오버레이가 열린 채 렌더되고, 뒤로가기로 닫힌다(라우트 증가 없이 `?panel=` 동기화).
-7. `/dormant`로 진입하면 `/universe?panel=dormant`로 영구 redirect된다.
+6. `/?panel=dormant`(또는 `=diary`)로 진입하면 캔버스 위에 그 오버레이가 열린 채 렌더되고, 뒤로가기로 닫힌다(라우트 증가 없이 `?panel=` 동기화).
+7. 옛 `/dormant`·`/universe` 경로로 진입하면 NotFound(404)다(change 01 — redirect 제거).
 8. `?panel=`의 알 수 없는 값은 무시되어 어떤 오버레이도 열리지 않는다.
 9. `prefers-reduced-motion`이면 시트 슬라이드/스프링과 max-height 전환이 즉시로 떨어진다.
 10. Esc로 펼친 오버레이가 닫히고, 오버레이가 열려 있지 않으면 Esc가 포커스(별 회상·일기 조망)를 해제한다.

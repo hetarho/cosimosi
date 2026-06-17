@@ -10,10 +10,10 @@ export function NotFoundScreen() {
         <h1 className="text-lg font-light tracking-wide">이 좌표에는 아무것도 없어요</h1>
         <p className="text-sm text-white/45">주소가 바뀌었거나, 처음부터 없던 페이지예요.</p>
         <div className="flex justify-center gap-2">
-          <a href="/universe" className={primaryButtonCls}>
+          <a href="/" className={primaryButtonCls}>
             내 우주로
           </a>
-          <a href="/" className={ghostButtonCls}>
+          <a href="/landing" className={ghostButtonCls}>
             처음으로
           </a>
         </div>

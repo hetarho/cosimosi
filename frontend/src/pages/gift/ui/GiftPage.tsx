@@ -115,7 +115,7 @@ export function GiftPage() {
       const res = await acceptStarGift(token, text.trim(), mood, intensity, valence)
       // 새 별이 다음 GetUniverse에 실리도록 우주 캐시를 무효화하고, ?fly로 그 별에 fly-to를 건다.
       await qc.invalidateQueries({ queryKey: universeInvalidateKey() })
-      void navigate({ to: '/universe', search: { fly: res.memoryId } })
+      void navigate({ to: '/', search: { fly: res.memoryId } })
     } catch (e) {
       setErr(errorMessage(e))
       setBusy(false)
@@ -127,7 +127,7 @@ export function GiftPage() {
     setErr(null)
     try {
       await declineStarGift(token)
-      void navigate({ to: '/universe' })
+      void navigate({ to: '/' })
     } catch (e) {
       setErr(errorMessage(e))
       setBusy(false)
@@ -150,7 +150,7 @@ export function GiftPage() {
         <p className="text-sm text-white/60">
           {notFound ? '유효하지 않거나 만료된 링크예요.' : errorMessage(query.error)}
         </p>
-        <button type="button" onClick={() => void navigate({ to: '/universe' })} className={primaryButtonCls}>
+        <button type="button" onClick={() => void navigate({ to: '/' })} className={primaryButtonCls}>
           내 우주로
         </button>
       </PageShell>
@@ -163,7 +163,7 @@ export function GiftPage() {
       <PageShell>
         <h1 className="text-base font-medium">함께한 기억</h1>
         <p className="text-sm text-white/60">{statusMessage(gift.status)}</p>
-        <button type="button" onClick={() => void navigate({ to: '/universe' })} className={primaryButtonCls}>
+        <button type="button" onClick={() => void navigate({ to: '/' })} className={primaryButtonCls}>
           내 우주로
         </button>
       </PageShell>

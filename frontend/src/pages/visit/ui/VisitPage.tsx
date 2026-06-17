@@ -50,10 +50,10 @@ function VisitCard({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** 비로그인 방문자가 자기 우주를 만들도록 이끄는 CTA(2.3) — 랜딩/사인인으로. */
+/** 비로그인 방문자가 자기 우주를 만들도록 이끄는 CTA(2.3) — 마케팅 랜딩으로(루트 `/`는 보호 우주). */
 function CreateUniverseCTA() {
   return (
-    <Link to="/" className={primaryButtonCls}>
+    <Link to="/landing" className={primaryButtonCls}>
       나의 우주 만들기
     </Link>
   )

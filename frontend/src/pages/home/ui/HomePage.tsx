@@ -293,8 +293,8 @@ export function HomePage() {
   // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
   // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
-  const { sim, panel: urlPanel, fly } = useSearch({ from: '/universe' })
-  const navigate = useNavigate({ from: '/universe' })
+  const { sim, panel: urlPanel, fly } = useSearch({ from: '/' })
+  const navigate = useNavigate({ from: '/' })
 
   // 별 보내기(spec 36) — 회상 패널의 "이 별 보내기"가 memoryId를 넘겨 연다(비차단 Surface). 데모엔 서버가 없어 끈다.
   const [sendMemoryId, setSendMemoryId] = useState<string | null>(null)

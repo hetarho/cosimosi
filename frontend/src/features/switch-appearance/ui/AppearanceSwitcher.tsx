@@ -154,7 +154,7 @@ export interface AppearanceSwitcherProps {
 
 /**
  * 플로팅 시각 설정 스위처(랜딩 전용 진입) — 접힌 FAB을 누르면 `AppearanceControls`가 펼쳐진다.
- * 우주 메인(`/universe`)은 이 FAB 대신 "메뉴"의 "테마·외형" 항목이 같은 본문을 비차단 Surface로 띄운다.
+ * 우주 메인(`/`)은 이 FAB 대신 "메뉴"의 "테마·외형" 항목이 같은 본문을 비차단 Surface로 띄운다.
  */
 export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
   const reduce = useReducedMotion()

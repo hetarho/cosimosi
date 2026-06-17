@@ -7,7 +7,9 @@ import { sessionMachine } from '../model/session.machine'
 // app/model/session.machine.ts(순수). Provider는 App이 RouterProvider 바깥에 마운트한다.
 export const SessionContext = createActorContext(sessionMachine)
 
-const universeRedirect = () => `${window.location.origin}/universe`
+// Google OAuth 복귀 주소 — 우주는 이제 루트(`/`)다. 풀페이지 라운드트립이라 `/sign-in`의
+// redirect param은 여기로 못 실린다(복귀는 항상 `/`; 인증 후 SessionGate가 우주 셸을 띄운다).
+const oauthRedirectTo = () => `${window.location.origin}/`
 
 /**
  * 사인인 액션 — supabase 직접 호출. 성공은 onAuthStateChange 구독이 머신에 반영하므로
@@ -28,11 +30,11 @@ export function useAuthActions() {
         const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
         if (error) throw error
       },
-      // Google OAuth(1.8). 동의 화면으로 redirect → /universe 복귀 시 세션 수립.
+      // Google OAuth(1.8). 동의 화면으로 redirect → `/` 복귀 시 세션 수립.
       signInWithGoogle: async () => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
-          options: { redirectTo: universeRedirect() },
+          options: { redirectTo: oauthRedirectTo() },
         })
         if (error) throw error
       },

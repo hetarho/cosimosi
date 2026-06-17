@@ -29,7 +29,7 @@ import {
 } from '../model/time-travel'
 
 export interface DemoSimPanelProps {
-  /** `/universe?sim=<id>` 진입 포커스 — 이론 모달을 그 이론 페이지로 연다(없는 id는 무시). */
+  /** `/?sim=<id>` 진입 포커스 — 이론 모달을 그 이론 페이지로 연다(없는 id는 무시). */
   initialSimId?: string
   /** 기억 실험실 시트의 열림 상태를 페이지 HUD에 알린다 — 모바일에서 캔버스가 별들을
    *  화면 위쪽으로 올리고 줌아웃하게(ViewOffsetController). */

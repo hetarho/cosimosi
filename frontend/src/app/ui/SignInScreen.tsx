@@ -3,9 +3,9 @@ import { GlassCard } from '@/shared/ui'
 import { useAuthActions } from './session-context'
 
 /**
- * 사인인 화면 — 미인증 상태의 /universe 보호 라우트에서 렌더된다 (1.1). 두 방식:
+ * 사인인 화면 — `/sign-in` 라우트(미인증)의 폼 본체 (1.1). 두 방식:
  *  ① 이메일 OTP 코드 — 2단계(이메일 → 코드), 같은 탭에서 검증·세션 (1.2/1.2b)
- *  ② Google OAuth — redirect 후 /universe 복귀 시 세션 수립 (1.8)
+ *  ② Google OAuth — redirect 후 `/` 복귀 시 세션 수립 (1.8)
  */
 export function SignInScreen() {
   const { signInWithOtp, verifyOtp, signInWithGoogle } = useAuthActions()
@@ -51,7 +51,7 @@ export function SignInScreen() {
     setPending(true)
     setError(null)
     try {
-      // 성공 시 Google로 풀페이지 redirect → 이후 코드는 실행되지 않는다(복귀는 /universe).
+      // 성공 시 Google로 풀페이지 redirect → 이후 코드는 실행되지 않는다(복귀는 `/`).
       await signInWithGoogle()
     } catch (err) {
       console.error('[signInWithGoogle]', err)

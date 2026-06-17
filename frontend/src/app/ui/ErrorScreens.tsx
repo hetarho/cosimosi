@@ -42,7 +42,7 @@ export function RouteErrorScreen({ error, reset }: ErrorComponentProps) {
         <button type="button" className={primaryButtonCls} onClick={() => reset()}>
           다시 시도
         </button>
-        <a href="/" className={ghostButtonCls}>
+        <a href="/landing" className={ghostButtonCls}>
           처음으로
         </a>
       </div>

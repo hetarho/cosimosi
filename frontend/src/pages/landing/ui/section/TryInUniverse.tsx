@@ -21,7 +21,7 @@ export function TryInUniverse({
   const navigate = useNavigate()
   const go = () => {
     enterDemoMode()
-    void navigate({ to: '/universe', search: { sim } })
+    void navigate({ to: '/', search: { sim } })
   }
   return (
     <button

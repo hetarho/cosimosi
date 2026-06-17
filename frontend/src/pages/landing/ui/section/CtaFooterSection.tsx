@@ -22,18 +22,18 @@ export function CtaFooterSection() {
   const [submitted, setSubmitted] = useState(false)
 
   // 체험("demo") 모드 진입: 로그인/DB 없이 더미 우주로 바로 들어간다. 플래그를 먼저
-  // 켜고 /universe로 이동하면 세션 게이트가 통과시키고 API들이 더미데이터를 돌려준다.
+  // 켜고 루트 우주 `/`로 이동하면 세션 게이트가 통과시키고 API들이 더미데이터를 돌려준다.
   const tryDemo = () => {
     enterDemoMode()
-    void navigate({ to: '/universe' })
+    void navigate({ to: '/' })
   }
 
-  // 로그인: /universe로 가면 SessionGate가 사인인 화면을 띄운다. 데모 플래그가 남아 있으면
-  // 게이트를 그냥 통과해 더미 우주가 떠 버리므로, 플래그와 더미 별을 비우고 이동한다.
+  // 로그인: 사인인 페이지로. 데모 플래그가 남아 있으면 보호 라우트(`/`)를 그냥 통과해 더미 우주가
+  // 떠 버리므로, 플래그와 더미 별을 비우고 `/sign-in`으로 이동한다.
   const goSignIn = () => {
     exitDemoMode()
     resetDemo()
-    void navigate({ to: '/universe' })
+    void navigate({ to: '/sign-in' })
   }
 
   const {

@@ -1,5 +1,5 @@
 // Dormant-star search (spec 12, 셸 오버레이로 전환 spec 31) — CONTENT ONLY for the universe
-// shell's OverlayHost (shared/ui). Picking a star flies the camera to it in /universe and
+// shell's OverlayHost (shared/ui). Picking a star flies the camera to it in the universe (`/`) and
 // re-ignites it (recall, 11) WITHOUT leaving the universe (the page wires onSelect →
 // camera.focusStar + shell setPeek; this feature never imports the widget/page). The dormant
 // list is a search aid — GetUniverse still renders the whole graph (these stars are NOT

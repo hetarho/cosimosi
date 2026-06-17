@@ -3,28 +3,23 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
-  redirect,
 } from '@tanstack/react-router'
 import { LandingPage } from '@/pages/landing'
 import { HomePage } from '@/pages/home'
 import { RootLayout } from './RootLayout'
 import { NotFoundScreen, RouteErrorScreen } from './ui/ErrorScreens'
 import { SessionGate } from './ui/SessionGate'
+import { SignInRoute } from './ui/SignInRoute'
 
 const rootRoute = createRootRoute({ component: RootLayout })
 
 // 코드 기반 라우팅. 라우트는 app 레이어가 소유하고, 화면 UI는 pages 레이어에 위임한다(FSD).
+
+// `/` = 우주 셸(보호 라우트). 게이트는 라우트가 소유한다 — 미인증이면 SessionGate가 `/sign-in`으로
+// 리다이렉트하고, 마케팅 랜딩은 게이트 없는 `/landing` 공개 표면에 둔다 (01).
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: LandingPage,
-})
-
-// /universe = 우주 셸(보호 라우트). 게이트는 라우트가 소유한다 — 미인증이면 SessionGate가
-// 사인인 화면으로 막고, `/` 랜딩은 게이트 없이 공개로 둔다 (01).
-const universeRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/universe',
   // ?sim=<id> — 데모 시뮬레이션 패널의 진입 포커스(spec 19, 랜딩 카드 "이 카드 체험하기").
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31). 라우트를 늘리지 않고
   // (별도 /dormant·/diary 없음) 셸 패널 상태를 search param으로만 동기화한다(딥링크·뒤로가기).
@@ -46,15 +41,27 @@ const universeRoute = createRoute({
   },
 })
 
-// /dormant — 잠든 별 탐색은 더 이상 별도 풀페이지가 아니라 우주 셸 위 오버레이다(spec 31).
-// 옛 링크/북마크 보존을 위해 `/universe?panel=dormant`로 영구 리다이렉트한다(라우트 비증가;
-// 인증 게이트는 목적지 /universe의 SessionGate가 건다).
-const dormantRedirectRoute = createRoute({
+// /landing = 공개 마케팅 랜딩(인증 게이트 없음, spec 15). 루트가 우주로 옮겨가며 랜딩은 직접
+// 진입 전용 표면이 됐다.
+const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/dormant',
-  beforeLoad: () => {
-    throw redirect({ to: '/universe', search: { panel: 'dormant' } })
+  path: '/landing',
+  component: LandingPage,
+})
+
+// /sign-in = 독립 공개 사인인 페이지(01). 보호 라우트의 SessionGate가 미인증을 여기로 보내며,
+// ?redirect=<내부 경로>로 인증 후 복귀 대상을 싣는다. redirect는 내부 경로만 통과시킨다(오픈
+// 리다이렉트 방지) — `/`로 시작하고 `//`·`/\`(프로토콜 상대) 가 아닌 값만. 그 외엔 비운다(→ `/` 폴백).
+const signInRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sign-in',
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const r = search.redirect
+    const safe =
+      typeof r === 'string' && r.startsWith('/') && !r.startsWith('//') && !r.startsWith('/\\')
+    return { redirect: safe ? r : undefined }
   },
+  component: SignInRoute,
 })
 
 // /admin = 관리자 콘솔(spec 34). lazy 코드 스플릿 — 관리자 1인용 화면이 메인 번들에
@@ -101,8 +108,8 @@ const giftRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  universeRoute,
-  dormantRedirectRoute,
+  landingRoute,
+  signInRoute,
   adminRoute,
   visitRoute,
   giftRoute,

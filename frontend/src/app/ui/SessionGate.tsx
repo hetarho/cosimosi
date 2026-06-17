@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { Navigate, useLocation, useNavigate } from '@tanstack/react-router'
 import { exitDemoMode, isDemoMode, resetDemo } from '@/shared/lib/demo'
 import { SessionContext, useAuthActions } from './session-context'
-import { SignInScreen } from './SignInScreen'
 
 /**
- * 세션 게이트. /universe 보호 라우트의 element로 쓰인다.
- * loading → 스플래시(깜빡임 방지 1.7), anon → 사인인 화면(1.1), authed → 우주 셸 + 로그아웃(1.4).
+ * 세션 게이트. 보호 라우트(`/` 우주·`/admin`·`/gift/$token`)의 element로 쓰인다.
+ * loading → 스플래시(깜빡임 방지 1.7), anon → `/sign-in`으로 리다이렉트(1.1), authed → 셸 + 로그아웃(1.4).
+ * 미인증은 인라인 사인인이 아니라 `/sign-in?redirect=<원래 경로>`로 보내고, 인증 후 그 경로로 복귀한다.
  * 체험("demo") 모드면 로그인 없이 통과시키고, 로그아웃 대신 "체험 종료" 핀을 띄운다 —
  * 같은 우주 셸을 더미데이터로 그대로 둘러보게 한다.
  */
@@ -15,12 +15,14 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const status = SessionContext.useSelector((s) => s.value as 'loading' | 'authed' | 'anon')
   const { signOut } = useAuthActions()
   const navigate = useNavigate()
+  const location = useLocation()
 
   if (isDemoMode()) {
     const leave = () => {
       exitDemoMode()
       resetDemo() // 추가했던 더미 별 비우기 → 다음 진입은 깨끗하게
-      void navigate({ to: '/' })
+      // `/`는 이제 보호 라우트(우주)라 미인증이면 사인인으로 튕긴다 — 마케팅 랜딩으로 보낸다.
+      void navigate({ to: '/landing' })
     }
     return (
       <>
@@ -48,7 +50,9 @@ export function SessionGate({ children }: { children: ReactNode }) {
     )
   }
 
-  if (status === 'anon') return <SignInScreen />
+  // 미인증 → 사인인 라우트로. 원래 가려던 경로(pathname+search)를 redirect로 실어 인증 후 복귀시킨다.
+  if (status === 'anon')
+    return <Navigate to="/sign-in" search={{ redirect: location.href }} replace />
 
   return (
     <>
