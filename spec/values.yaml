@@ -196,6 +196,15 @@ bloom:
   radius: 0.5 #      블룸 반경
   threshold: 0.1 #   블룸 임계(이 이상 밝기만 번진다)
 
+# ── 공유 우주 씬 (cosmos) — CosmosScene 배경 합성 노브(사인인·초대·랜딩). spec 43 ────────────────
+cosmos:
+  scene_dpr: 1.5 #            CosmosScene 캔버스 렌더 배율 상한([1,n] 클램프; 별 선명도 vs 부하)
+  fps_cap: 30 #              배경 애니메이션 프레임 상한(오로라가 느려 60fps 불필요 — 셰이더 평가 절반)
+  fluid_octaves: 3 #         fluid fbm 옥타브 수(미세 디테일 vs 비용)
+  back_brightness: 0.5 #     뒤 nebula 명도 배율(<1 — 배경답고 깊은 우주 느낌; 별이 묻히지 않게)
+  twinkle_count: 90 #        3D 트윙클 별먼지 개수(엠블럼/사인인 기본)
+  quality_low_max_cores: 4 # navigator.hardwareConcurrency ≤ 이 값(또는 WebGL2 폴백)이면 quality=low 자동
+
 # ── 환경 네뷸라 (ambient_nebula) — 무드 가산광 풀. spec 25 ─────────────────────────────────────
 ambient_nebula:
   base_bright: 0.06 #     무드 네뷸라 베이스 색 크기(가산 바닥)

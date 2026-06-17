@@ -186,6 +186,16 @@ const (
 	BloomThreshold = 0.1
 )
 
+// cosmos
+const (
+	CosmosSceneDpr           = 1.5
+	CosmosFpsCap             = 30
+	CosmosFluidOctaves       = 3
+	CosmosBackBrightness     = 0.5
+	CosmosTwinkleCount       = 90
+	CosmosQualityLowMaxCores = 4
+)
+
 // ambient_nebula
 const (
 	AmbientNebulaBaseBright    = 0.06

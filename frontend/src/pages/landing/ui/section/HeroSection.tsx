@@ -3,17 +3,12 @@ import { ArrowDown, LogIn } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { enterDemoMode, exitDemoMode, resetDemo } from '@/shared/lib/demo'
 import { useScrollToSection } from '../../lib/scroll'
-import { themeAccent, useAppearance } from '@/entities/appearance'
-import { ThemedStar } from '@/widgets/star3d'
 
 export function HeroSection() {
   const reduced = useReducedMotion()
   const scrollTo = useScrollToSection()
   const navigate = useNavigate()
-  // 형태는 오브제(object)를, 색은 테마(theme)의 accent를 따른다 — 테마를 바꾸면 히어로 별의 색도
-  // 그 우주색(violet/amber/teal)으로 함께 전환된다.
-  const object = useAppearance((s) => s.object)
-  const accent = themeAccent(useAppearance((s) => s.theme))
+  // 히어로 엠블럼 별은 페이지 전역 우주 씬(LandingPage의 CosmosScene)이 배경에 띄운다 — 여기선 워드마크만.
 
   // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 데모 우주로 바로 보낸다.
   // (로그인/DB 없이 루트 우주 `/` 진입 — CtaFooterSection의 tryDemo와 동일 경로.)
@@ -56,15 +51,8 @@ export function HeroSection() {
         animate="show"
         className="relative z-10 flex max-w-3xl flex-col items-center gap-7"
       >
-        {/* cosimosi + 바로 뒤 별 엠블럼 — 별을 글자에 고정(absolute, 글자 중심)해 아래 간격을 어떻게
-            바꾸든 cosimosi와 별이 늘 같은 자리에 정렬된다. 별 박스는 크게 잡아 글로우가 안 잘린다. */}
+        {/* cosimosi 워드마크 — 별 엠블럼은 페이지 배경 우주 씬이 이 위치(앵커)에 띄운다. */}
         <motion.div variants={item} className="relative flex items-center justify-center">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-          >
-            <ThemedStar concept={object} color={accent} seed={7} size={320} />
-          </div>
           <span
             className="relative text-xs uppercase tracking-[0.35em]"
             style={{ color: 'var(--ld-accent-soft)' }}

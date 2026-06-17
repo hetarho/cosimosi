@@ -1,7 +1,8 @@
 import { MOOD } from '@/shared/config'
-import { useAppearance } from '@/entities/appearance'
+import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
+import { paletteForTheme } from '@/shared/ui'
+import { themeAccent, useAppearance } from '@/entities/appearance'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
-import { LandingBackground } from './background/LandingBackground'
 import { JourneyAct } from './JourneyAct'
 import { HeroSection } from './section/HeroSection'
 import { ConceptSection } from './section/ConceptSection'
@@ -27,10 +28,16 @@ export function LandingPage() {
   // data-theme(코스모스 색)은 RootLayout이 <html>에 앱 전역으로 박는다(appearance entity 구독).
   // 여기선 index.css의 --ld-* 글래스·히어로 크롬을 랜딩 안으로 한정하는 data-landing-theme만 둔다.
   const theme = useAppearance((s) => s.theme)
+  const object = useAppearance((s) => s.object)
+  // 히어로 엠블럼 별 — 페이지 전역 우주 씬(fixed)에 떠 있어 스크롤해도 배경에 남는다. 코어 작게, glow=halo.
+  const heroStar: StarVisual = { concept: object, color: themeAccent(theme), anchor: [0.5, 0.32], size: 0.14, seed: 7 }
 
   return (
     <div className="relative" data-landing-theme={theme}>
-      <LandingBackground theme={theme} />
+      {/* 페이지 전역 우주 배경(테마별 팔레트) — 구 LandingBackground(CSS+2D) 대체. 히어로 별 포함. */}
+      <div className="fixed inset-0 -z-10">
+        <CosmosScene stars={[heroStar]} palette={paletteForTheme(theme)} />
+      </div>
       <AppearanceSwitcher />
       <main className="relative z-0">
         <HeroSection />

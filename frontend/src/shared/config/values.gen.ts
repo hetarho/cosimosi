@@ -144,6 +144,14 @@ export const VALUES = {
     radius: 0.5,
     threshold: 0.1,
   },
+  cosmos: {
+    sceneDpr: 1.5,
+    fpsCap: 30,
+    fluidOctaves: 3,
+    backBrightness: 0.5,
+    twinkleCount: 90,
+    qualityLowMaxCores: 4,
+  },
   ambientNebula: {
     baseBright: 0.06,
     arousalBright: 0.2,

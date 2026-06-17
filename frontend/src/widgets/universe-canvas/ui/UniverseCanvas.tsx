@@ -67,7 +67,7 @@ import {
   selectTransitionTo,
 } from '../model/navigation.machine'
 import { useViewport } from '../model/use-viewport'
-import { BloomPass } from './BloomPass'
+import { BloomPass } from '@/shared/ui'
 
 /** A star's live (or settled) position by `stars`-array slot. The single source of star
  *  coordinates (constitution §3): read the force-sim buffer when it's ready, else the

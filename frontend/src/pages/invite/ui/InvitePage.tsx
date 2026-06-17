@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { CosmosBackdrop } from '@/shared/ui'
-import { BrandMark } from '@/widgets/star3d'
+import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
+import { paletteForTheme } from '@/shared/ui'
+import { themeAccent, useAppearance } from '@/entities/appearance'
+import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { InviteReason, supabase } from '@/shared/api'
 import { VALUES } from '@/shared/config'
 import { useRedeemInviteCode, validateInviteCode } from '../api/invite-queries'
@@ -39,6 +41,12 @@ export function InvitePage() {
   const navigate = useNavigate()
   const { redirect } = useSearch({ from: '/invite' })
   const target = redirect ?? '/'
+
+  // 브랜드 별 — 형태=오브제, 색=테마 accent. 한 캔버스 우주 씬(CosmosScene)에 띄운다. 코어는 작게, 글로우는 halo.
+  const object = useAppearance((s) => s.object)
+  const theme = useAppearance((s) => s.theme)
+  const accent = themeAccent(theme)
+  const stars: StarVisual[] = [{ concept: object, color: accent, anchor: [0.5, 0.3], size: 0.12, seed: 7 }]
 
   const [code, setCode] = useState('')
   const [reason, setReason] = useState<InviteReason | null>(null) // 사전 검증/redeem 실패 사유
@@ -103,10 +111,16 @@ export function InvitePage() {
 
   return (
     <>
-      <CosmosBackdrop starCount={110} />
+      {/* 한 캔버스 우주 씬(dim nebula + 트윙클 + 브랜드 별·halo + 어두운 구름). 풀스크린 고정 배경. */}
+      <div className="fixed inset-0 -z-10">
+        <CosmosScene stars={stars} palette={paletteForTheme(theme)} twinkle={110} />
+      </div>
       <div className="relative grid min-h-dvh w-full place-items-center px-6 py-12">
         <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">
-          <BrandMark size={200} />
+          {/* 별은 배경 씬에 떠 있다 — 자리(엠블럼 footprint)를 비워두고 워드마크만 얹는다. */}
+          <div className="pointer-events-none relative flex h-50 w-50 max-w-[88vw] items-end justify-center">
+            <span className="text-sm uppercase tracking-[0.4em] text-white/85">cosimosi</span>
+          </div>
 
           <div className="w-full">
             <motion.h1
@@ -231,6 +245,9 @@ export function InvitePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 테마·외형 플로팅 스위처(우하단) — 로컬 선호(테마 색·별 형태) 즉시 반영. */}
+      <AppearanceSwitcher />
     </>
   )
 }
