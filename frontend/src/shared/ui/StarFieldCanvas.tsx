@@ -76,7 +76,15 @@ export function StarFieldCanvas({
       }))
     }
 
+    // 트윙클·시차는 시간 기반이라 30fps로 솎아도 속도·모양이 그대로다 — 저사양 CPU의 메인스레드
+    // 경합을 줄이려 ~30fps로 스로틀한다(rAF는 매 틱 돌되 실제 그리기만 건너뛴다).
+    const FRAME_MS = 1000 / 30
+    let lastDraw = 0
+
     const draw = (t: number) => {
+      if (!reduce && document.visibilityState === 'visible') raf = requestAnimationFrame(draw)
+      if (!reduce && t - lastDraw < FRAME_MS) return
+      lastDraw = t
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       px += (tpx - px) * 0.06
       py += (tpy - py) * 0.06
@@ -91,7 +99,6 @@ export function StarFieldCanvas({
         ctx.fill()
       }
       ctx.globalAlpha = 1
-      if (!reduce && document.visibilityState === 'visible') raf = requestAnimationFrame(draw)
     }
 
     const start = () => {
