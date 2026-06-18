@@ -38,14 +38,14 @@
 
 - 챕터 순서는 뇌과학 이론 흐름(plan 19–27: 엔그램→연결·강화→재공고화→망각→요즘 상태→야간)과 정합한다. 조각화(plan 21) 카드 자리는 II와 III 사이로 예약(21의 T-landing이 신설).
 - **상태 배지(`TheoryBadge`)** — 각 이론 카드는 ✅(지금 우주에서 동작 + plan NN) 또는 🚧(계획된 비전 + plan NN)을 표기한다: Concept/Engram/Hebbian/TimeWindow/SilentEngram = ✅(08·09/08·11/11/05/12), PresentSelf = 🚧22·25, Reconsolidation = 🚧23·24, Nightly = 🚧27, Resonance = 🚧30.
-- **"이 카드 체험하기"(`TryInUniverse`)** — 구현된 이론 카드 5개(Concept·Engram·Hebbian·TimeWindow·SilentEngram)는 `enterDemoMode()` 후 `/?sim=<id>`로 진입해 시뮬레이션 패널([interaction](interaction.md) §체험)이 그 이론을 펼친 채 맞이한다. 계획 카드에는 체험 버튼이 없다(아직 체험할 동작이 없음 — 각 스펙 T-landing이 단다).
+- **"체험 우주에서 해보기"(`TryInUniverse`)** — 구현된 이론 카드 5개(Concept·Engram·Hebbian·TimeWindow·SilentEngram)는 `enterDemoMode()` 후 `/?sim=<id>`로 체험 우주에 진입해 기억 실험실/이론 모달([interaction](interaction.md) §체험)이 그 이론을 펼친 채 맞이한다. 계획 카드에는 체험 버튼이 없다(아직 체험할 동작이 없음 — 각 스펙 T-landing이 단다).
 - 각 카드는 `useAppearance((s) => s.object)`를 구독해 별·시냅스를 같은 4 형태로 그리고, 버튼·슬라이더·hover·토글 등 인터랙션을 유지한다.
 - 구현된 이론 카드의 시연 수치는 정전 상수를 import해 표류를 막는다(`A_MIN`·`HALF_LIFE_DAYS` ← entities/memory, `CO_RECALL_DELTA` ← features/recall). `TimeWindowCard`의 의미 base 0.45는 예시 값(백엔드 임베딩 유사도는 FE 정전 상수가 없음 — 카드가 근사임을 문구로 밝힘).
 
-### 진입 (데모)
+### 진입 (체험 우주)
 
-- 히어로 1차 CTA("우주 만들어보기")·CtaFooter("가입 없이 들어가 보기")는 `enterDemoMode()` 후 `/`로 이동 — 로그인/DB 없이 더미 우주를 본다.
-- 이론 카드의 "이 카드 체험하기"는 같은 경로에 `?sim=<id>`를 더해 **엔그램 이론 모달이 그 이론 페이지로 열린 채** 시작한다(레지스트리에 없는 id는 무시). 이미 데모 중이던 탭에서는 진행 상태(가상 시계·추가 별)가 유지된다 — 초기화는 컨트롤러 "처음으로" 또는 "체험 종료"가 담당.
+- 히어로 1차 CTA("체험 우주 시작하기")·CtaFooter("체험 우주 시작하기")는 `enterDemoMode()` 후 `/`로 이동 — 로그인/DB 없이 체험 우주를 본다.
+- 이론 카드의 "체험 우주에서 해보기"는 같은 경로에 `?sim=<id>`를 더해 **엔그램 이론 모달이 그 이론 페이지로 열린 채** 시작한다(레지스트리에 없는 id는 무시). 이미 체험 우주에 있던 탭에서는 진행 상태(가상 시계·추가 별)가 유지된다 — 초기화는 기억 실험실 "처음" 또는 세션 종료가 담당.
 - 히어로 "천천히 둘러보기"·스크롤 힌트는 `useScrollToSection('concept')`로 `concept` 섹션에 안착(Lenis 우선, 없으면 네이티브 폴백).
 - 히어로 엠블럼은 3D `ThemedStar`(오브제 형태 + 테마 accent 색). 이론 카드 본문 시각화는 2D SVG다.
 
@@ -73,5 +73,5 @@
 - 테마(3)·오브제(4) 2축 분리·`AppearanceSwitcher`·`localStorage` 지속: 구현 plan 15(이후 FSD 정리로 이전) · `entities/appearance/model/{types,themes,store}.ts` · `features/switch-appearance/ui/AppearanceSwitcher.tsx`.
 - `VizStar`/`VizSynapse` 프리미티브·곡선 헬퍼: 구현 plan 15 · `entities/star/ui/VizStar.tsx` · `entities/synapse/ui/VizSynapse.tsx` · `entities/synapse/lib/curve.ts`.
 - 데모 진입: 구현 plan 15 · `pages/landing/ui/section/{HeroSection,CtaFooterSection}.tsx` · `shared/lib/demo`.
-- 상태 배지·"이 카드 체험하기"·정확성 정합(헵 단조·시간창 보너스·바닥 5%)·챕터 순서: 구현 plan 19 · `pages/landing/ui/section/{TheoryBadge,TryInUniverse}.tsx` · 카드별 수정 · `LandingPage.tsx`.
+- 상태 배지·"체험 우주에서 해보기"·정확성 정합(헵 단조·시간창 보너스·바닥 5%)·챕터 순서: 구현 plan 19 · `pages/landing/ui/section/{TheoryBadge,TryInUniverse}.tsx` · 카드별 수정 · `LandingPage.tsx`.
 - 히어로 3D 엠블럼: 구현 plan 15 · `pages/landing/ui/star3d/ThemedStar.tsx`.

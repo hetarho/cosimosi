@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { demoStars } from './data'
-import { resetDemo } from './data'
+import { Mood } from '@/shared/api'
+import {
+  demoAddMultiSceneStar,
+  demoAddStar,
+  demoApplyDayBatch,
+  demoStars,
+  demoSynapses,
+  demoToday,
+  resetDemo,
+} from './data'
+import { demoOffsetDays } from './clock'
 import { enterDemoMode, exitDemoMode, getDemoPersona, setDemoPersona } from './flag'
 import { CORPORA } from './personas'
 
@@ -50,5 +59,38 @@ describe('demo persona data switch', () => {
     const before = demoStars().length
     setDemoPersona('worker') // 영속만, reset 안 함
     expect(demoStars().length).toBe(before) // seededAt 가드로 옛 우주 유지(전환 로직이 reset을 부르는 이유)
+  })
+
+  it('30일 배치는 하루 단위 공고화를 반복하되 별·선 개수를 삭제하지 않는다', () => {
+    enterDemoMode()
+    setDemoPersona('student')
+    resetDemo()
+    const starsBefore = demoStars().length
+    const synapsesBefore = demoSynapses().length
+
+    expect(demoApplyDayBatch(30)).toBe(30)
+
+    expect(demoOffsetDays()).toBe(30)
+    expect(demoStars().length).toBe(starsBefore)
+    expect(demoSynapses().length).toBe(synapsesBefore)
+  })
+
+  it('별 추가와 다감정 하루 추가는 새 별과 연결을 만든다', () => {
+    enterDemoMode()
+    setDemoPersona('student')
+    resetDemo()
+    const starsBefore = demoStars().length
+    const synapsesBefore = demoSynapses().length
+
+    const id = demoAddStar(Mood.JOY, demoToday())
+    expect(demoStars().some((s) => s.memoryId === id)).toBe(true)
+    expect(demoStars().length).toBe(starsBefore + 1)
+    expect(demoSynapses().some((e) => e.aId === id || e.bId === id)).toBe(true)
+
+    const ids = demoAddMultiSceneStar(demoToday())
+    expect(ids.length).toBeGreaterThan(1)
+    expect(demoStars().length).toBe(starsBefore + 1 + ids.length)
+    expect(demoSynapses().length).toBeGreaterThan(synapsesBefore)
+    expect(demoSynapses().some((e) => ids.includes(e.aId) && ids.includes(e.bId))).toBe(true)
   })
 })

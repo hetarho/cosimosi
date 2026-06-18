@@ -20,7 +20,7 @@ import {
   type Synapse,
 } from '@/shared/api'
 import { mulberry32 } from '../prng'
-import { virtualNowMs, resetDemoClock } from './clock'
+import { skipDemoDays, virtualNowMs, resetDemoClock } from './clock'
 import { getDemoPersona, type DemoPersona } from './flag'
 import { CORPORA } from './personas'
 import { crossResonances, simulate, type SimStar } from './simulate'
@@ -661,6 +661,17 @@ export function demoConsolidate(): void {
   }
   prune(baseSynapses)
   prune(addedEdges)
+}
+
+/** 체험 우주의 하루 배치 근사. 하루씩 시계를 전진한 뒤 야간 공고화를 적용해,
+ *  `한 달 지나기`가 30일치 배치 결과를 밟도록 한다. 별·선 개수는 삭제하지 않는다. */
+export function demoApplyDayBatch(days: number): number {
+  const wholeDays = Math.max(0, Math.floor(days))
+  for (let i = 0; i < wholeDays; i++) {
+    skipDemoDays(1)
+    demoConsolidate()
+  }
+  return wholeDays
 }
 
 // 변천사 타임랩스(24) 체험용 합성. 한 별을 여러 번 novelty 회상한 결과를 결정론적으로 빚어,

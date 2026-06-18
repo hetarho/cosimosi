@@ -22,6 +22,7 @@ export {
   demoMarkRecalled,
   demoReshape,
   demoConsolidate,
+  demoApplyDayBatch,
   demoEvolution,
   demoOverlayData,
   resetDemo,

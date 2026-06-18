@@ -261,7 +261,7 @@ export function HomePage() {
   const mode = useSelector(navigationActor, selectHeadingMode)
   const starCount = useMemoryStore((s) => s.stars.length)
 
-  // 겹쳐보기(spec 37) 데모 — DemoSimPanel의 토글이 켜면 두 페르소나 우주를 한 씬에 띄운다(서버 없이
+  // 겹쳐보기(spec 37) 체험 우주 — DemoSimPanel의 토글이 켜면 두 페르소나 우주를 한 씬에 띄운다(서버 없이
   // (b) 겹침 공간 시연). 활성 페르소나가 mine, 다른 페르소나가 theirs, crossResonances가 그 사이 다리를
   // 파생한다. proto → StarNode/SynapseEdge로 매핑(겹침 위젯은 PROPS 구동). 활성 페르소나가 바뀌면 재계산.
   const demoOverlayOn = useDemoOverlay((s) => s.on)
@@ -290,7 +290,7 @@ export function HomePage() {
       focusActor.send({ type: 'DISMISS' })
     }
   }, [demoOverlayReady])
-  // ?sim=<id> — 랜딩 카드 "이 카드 체험하기"가 넘긴 시뮬 포커스(spec 19, 라우트가 검증).
+  // ?sim=<id> — 랜딩 카드 "체험 우주에서 해보기"가 넘긴 이론 포커스(spec 19, 라우트가 검증).
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
   // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
   const { sim, panel: urlPanel, fly } = useSearch({ from: '/' })
@@ -421,12 +421,14 @@ export function HomePage() {
   // Morning diff (6.1) — live universe only; demo's "밤 보내기" owns its own note.
   const [morningDiff, setMorningDiff] = useState(false)
   const setSheetOpen = useViewport((s) => s.setSheetOpen)
+  const requestQuietSettle = useViewport((s) => s.requestQuietSettle)
+  const demoHudSuppressed = focused || panel != null
   useEffect(() => {
     // compose는 탐색 오버레이가 열리면 숨으므로(panel != null) view-offset도 그 *실제 표시 여부*를
     // 따라야 한다 — 안 그러면 패널을 열어 둔 채 우주가 위로 밀리고 줌된 상태로 남는다(셸 시트 뒤 오정렬).
-    setSheetOpen((composeOpen && panel == null) || demoSheetOpen)
+    setSheetOpen((composeOpen && panel == null) || (!demoHudSuppressed && demoSheetOpen))
     return () => setSheetOpen(false)
-  }, [composeOpen, panel, demoSheetOpen, setSheetOpen])
+  }, [composeOpen, panel, demoHudSuppressed, demoSheetOpen, setSheetOpen])
 
   // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
   // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4) — 제출 중 temp 별,
@@ -753,7 +755,14 @@ export function HomePage() {
 
       {/* 시뮬레이션 패널(spec 19) — 데모에서만, 좌하단(데스크톱)/하단 시트(모바일).
           데모의 기록은 이 패널의 "별 띄우기" 컨트롤러가 담당한다(작성 폼은 데모에서 숨김). */}
-      {isDemoMode() && <DemoSimPanel initialSimId={sim} onSheetChange={setDemoSheetOpen} />}
+      {isDemoMode() && (
+        <DemoSimPanel
+          initialSimId={sim}
+          onSheetChange={setDemoSheetOpen}
+          suppressed={demoHudSuppressed}
+          onQuietSettle={requestQuietSettle}
+        />
+      )}
 
       {/* 우주 로딩 — 응답 전의 빈 캔버스를 "별이 없다"로 오인시키지 않는다(1.1). */}
       {universe.isPending && (

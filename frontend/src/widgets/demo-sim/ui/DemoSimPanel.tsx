@@ -6,6 +6,7 @@
 // 어떤 행위)만 안내한다. 랜딩 카드의 `?sim=<id>` 진입은 그 이론 페이지로 열린 채 시작한다.
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { BookOpen, CalendarDays, Clock3, Layers3, RotateCcw, Sparkles, UserRound, X } from 'lucide-react'
 import { Mood } from '@/shared/api'
 import {
   demoAddMultiSceneStar,
@@ -23,7 +24,6 @@ import { moodFromProto, universeInvalidateKey } from '@/entities/memory'
 import { THEORIES, TheoryDemo } from '@/entities/theory'
 import {
   resetDemoExperience,
-  runConsolidate,
   runTimeSkip,
   switchDemoPersona,
 } from '../model/time-travel'
@@ -34,6 +34,10 @@ export interface DemoSimPanelProps {
   /** 기억 실험실 시트의 열림 상태를 페이지 HUD에 알린다 — 모바일에서 캔버스가 별들을
    *  화면 위쪽으로 올리고 줌아웃하게(ViewOffsetController). */
   onSheetChange?: (open: boolean) => void
+  /** 회상 패널·목록 오버레이처럼 더 중요한 표면이 열릴 때 체험 HUD를 숨긴다. */
+  suppressed?: boolean
+  /** 시간 이동 후 캔버스가 중간 요동 없이 정착 좌표를 내보내도록 요청한다. */
+  onQuietSettle?: () => void
 }
 
 // 데모의 "별 띄우기" 컨트롤러가 기록 폼을 대신한다. 기록 폼은 13종(spec 29)이지만
@@ -66,15 +70,35 @@ const inputCls =
 function ControlsPanel({
   onClose,
   onConsolidated,
+  onQuietSettle,
 }: {
   onClose: () => void
   onConsolidated: () => void
+  onQuietSettle?: () => void
 }) {
   const queryClient = useQueryClient()
   const [elapsed, setElapsed] = useState(demoOffsetDays)
   const [mood, setMood] = useState<Mood>(Mood.JOY)
   const [date, setDate] = useState(demoToday)
   const [persona, setPersona] = useState<DemoPersona>(getDemoPersona)
+  const [traveling, setTraveling] = useState(false)
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const settleTimerRef = useRef<number | null>(null)
+  const feedbackTimerRef = useRef<number | null>(null)
+
+  useEffect(
+    () => () => {
+      if (settleTimerRef.current != null) window.clearTimeout(settleTimerRef.current)
+      if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current)
+    },
+    [],
+  )
+
+  const flash = (message: string) => {
+    setFeedback(message)
+    if (feedbackTimerRef.current != null) window.clearTimeout(feedbackTimerRef.current)
+    feedbackTimerRef.current = window.setTimeout(() => setFeedback(null), 1800)
+  }
 
   // "누구의 우주": 페르소나를 바꾸면 데이터 출처가 통째로 바뀐다 — 우주를 새 사람의 일기로
   // 재시드하고(switchDemoPersona), 시간 머신·날짜도 처음 상태로 되돌린다(같은 리셋 경로).
@@ -87,14 +111,17 @@ function ControlsPanel({
   }
 
   const skip = (days: number) => {
-    // 하루가 지났으면 그 밤사이 야간 공고화(spec 27)도 일어난다 — 트윈이 정착하면(onSettled)
-    // 4패스를 흘려보내고 morning diff 노트를 띄운다(별도 "밤 보내기" 버튼 없이 합쳐진 경험).
+    if (traveling) return
+    setTraveling(true)
     runTimeSkip(queryClient, days, () => {
-      runConsolidate(queryClient)
       onConsolidated()
     })
-    // 스킵은 ~0.9s 트윈으로 흐르므로(time-travel) 시계를 읽지 않고 목표 경과일을 바로 표시.
+    onQuietSettle?.()
     setElapsed((e) => e + days)
+    setDate(demoToday())
+    flash(days >= 30 ? '한 달치 밤 배치를 지나왔어요.' : '하루가 지나 우주가 정돈됐어요.')
+    if (settleTimerRef.current != null) window.clearTimeout(settleTimerRef.current)
+    settleTimerRef.current = window.setTimeout(() => setTraveling(false), 280)
   }
   const restart = () => {
     resetDemoExperience()
@@ -106,34 +133,137 @@ function ControlsPanel({
   const spawnStar = () => {
     demoAddStar(mood, date)
     void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+    flash('새 별이 태어났어요.')
   }
   // "다감정 하루 띄우기"(spec 21): 여러 감정이 담긴 일기 한 편 → 색이 다른 N개 조각
   // 별이 강한 일내(intra_entry) 선으로 묶여 태어난다(기억 분할 체험).
   const spawnMultiScene = () => {
-    demoAddMultiSceneStar(date)
+    const ids = demoAddMultiSceneStar(date)
     void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+    flash(`${ids.length}개의 조각 별이 이어졌어요.`)
   }
 
   return (
     <section
       aria-label="기억 실험실 컨트롤러"
-      className="absolute inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-30 flex max-h-[70dvh] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-black/60 p-4 backdrop-blur sm:inset-x-auto sm:bottom-14 sm:left-4 sm:z-20 sm:max-h-[55dvh] sm:w-80"
+      className="absolute inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-30 flex max-h-[70dvh] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-zinc-950/70 p-4 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-14 sm:left-4 sm:z-20 sm:max-h-[58dvh] sm:w-[22rem]"
     >
       <header className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-white/85">🧪 기억 실험실</h2>
+        <h2 className="inline-flex items-center gap-2 text-sm font-medium text-white/85">
+          <Sparkles className="size-4 text-indigo-200" aria-hidden />
+          기억 실험실
+        </h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="접기"
-          className="rounded-md px-2 text-white/50 transition hover:text-white/90"
+          className="grid size-7 place-items-center rounded-md text-white/50 transition hover:bg-white/10 hover:text-white/90"
         >
-          ✕
+          <X className="size-4" aria-hidden />
         </button>
       </header>
 
-      {/* 컨트롤러 0 — 누구의 우주: 페르소나마다 다른 일기 흐름(밀도·색·연결)이 시드된다(체험 전용). */}
-      <div className="flex flex-col gap-2 rounded-lg border border-amber-300/20 bg-amber-500/10 p-3">
-        <span className="text-xs font-medium text-amber-100/90">🪐 누구의 우주</span>
+      {feedback && (
+        <p
+          aria-live="polite"
+          className="rounded-md border border-indigo-200/20 bg-indigo-300/10 px-3 py-2 text-xs text-indigo-50"
+        >
+          {feedback}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-2.5 rounded-lg border border-white/10 bg-white/5 p-3">
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white/85">
+            <Sparkles className="size-3.5 text-indigo-200" aria-hidden />
+            우주 키우기
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-1 text-[11px] text-white/50">
+            감정
+            <Dropdown
+              ariaLabel="감정"
+              value={mood}
+              onChange={(m) => setMood(m)}
+              options={MOODS.map((m) => ({ value: m.value, label: m.label, color: moodCss(m.value) }))}
+            />
+          </div>
+          <label className="flex flex-col gap-1 text-[11px] text-white/50">
+            날짜
+            <input
+              type="date"
+              className={inputCls}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button type="button" onClick={spawnStar} className={`${chipBtn} inline-flex items-center justify-center gap-1.5`}>
+            <Sparkles className="size-3.5" aria-hidden />
+            별 추가
+          </button>
+          <button
+            type="button"
+            onClick={spawnMultiScene}
+            className={`${chipBtn} inline-flex items-center justify-center gap-1.5`}
+          >
+            <Layers3 className="size-3.5" aria-hidden />
+            다감정 하루
+          </button>
+        </div>
+        <p className="text-[11px] leading-relaxed text-white/40">
+          별은 바로 태어나고, 같은 날·비슷한 감정의 별과 연결돼요.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2.5 rounded-lg border border-indigo-300/20 bg-indigo-500/10 p-3">
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-100/90">
+            <Clock3 className="size-3.5" aria-hidden />
+            시간 보내기
+          </span>
+          <span className="text-xs text-indigo-200/70">{elapsed > 0 ? `+${elapsed}일째` : '오늘'}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => skip(1)}
+            disabled={traveling}
+            className={`${chipBtn} inline-flex items-center justify-center gap-1.5 disabled:cursor-wait disabled:opacity-50`}
+          >
+            <CalendarDays className="size-3.5" aria-hidden />
+            하루
+          </button>
+          <button
+            type="button"
+            onClick={() => skip(30)}
+            disabled={traveling}
+            className={`${chipBtn} inline-flex items-center justify-center gap-1.5 disabled:cursor-wait disabled:opacity-50`}
+          >
+            <Clock3 className="size-3.5" aria-hidden />
+            한 달
+          </button>
+          <button
+            type="button"
+            onClick={restart}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-white/50 transition hover:bg-white/10 hover:text-white/85"
+          >
+            <RotateCcw className="size-3.5" aria-hidden />
+            처음
+          </button>
+        </div>
+        <p className="text-[11px] leading-relaxed text-indigo-200/60">
+          누른 뒤엔 밤 배치가 끝난 우주를 바로 보여줘요.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2.5 rounded-lg border border-amber-300/20 bg-amber-500/10 p-3">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-100/90">
+          <UserRound className="size-3.5" aria-hidden />
+          다른 삶 보기
+        </span>
         <div className="flex flex-col gap-1.5">
           {demoPersonaList().map((p) => {
             const on = p.id === persona
@@ -157,85 +287,17 @@ function ControlsPanel({
             )
           })}
         </div>
-        <p className="text-[11px] leading-relaxed text-amber-200/60">
-          고르면 그 사람이 쌓아온 우주로 새로 그려져요 — 시간 머신과 띄운 별은 처음으로 돌아가요.
-        </p>
-        {/* 겹쳐보기(spec 37) — 두 페르소나 우주를 한 화면에 겹쳐, 공명한 별을 빛의 다리로 잇는다.
-            서버 없이 (b) 겹침 공간을 시연하는 쇼케이스(36 공명의 가장 강한 그림). */}
         <button
           type="button"
           onClick={() => useDemoOverlay.getState().setOn(true)}
-          className="rounded-md border border-amber-300/40 bg-amber-400/15 px-3 py-2 text-xs font-medium text-amber-50 transition hover:bg-amber-400/25"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-amber-300/40 bg-amber-400/15 px-3 py-2 text-xs font-medium text-amber-50 transition hover:bg-amber-400/25"
         >
-          ✶ 다른 우주와 겹쳐보기
+          <Layers3 className="size-3.5" aria-hidden />
+          우주 겹쳐보기
         </button>
       </div>
 
-      {/* 컨트롤러 1 — 시간 머신: 실제 감쇠 수식이 그대로 도는 시간 전진(연출 아님). */}
-      <div className="flex flex-col gap-2 rounded-lg border border-indigo-300/20 bg-indigo-500/10 p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-indigo-100/90">⏩ 시간 머신</span>
-          <span className="text-xs text-indigo-200/70">
-            {elapsed > 0 ? `가상 +${elapsed}일째` : '현재'}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => skip(1)} className={chipBtn}>
-            하루 지나기
-          </button>
-          <button type="button" onClick={() => skip(30)} className={chipBtn}>
-            한 달 지나기
-          </button>
-          <button
-            type="button"
-            onClick={restart}
-            className="rounded-md px-2 py-1.5 text-xs text-white/45 transition hover:text-white/80"
-          >
-            처음으로
-          </button>
-        </div>
-        <p className="text-[11px] leading-relaxed text-indigo-200/60">
-          하루를 넘기면 별이 시간만큼 어두워지고, 그 밤사이 우주가 한 번 정리돼요(요지·가지치기).
-        </p>
-      </div>
-
-      {/* 컨트롤러 2 — 별 띄우기: 감정·날짜만 고르면 미리 쓴 일기로 별이 태어난다. */}
-      <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-3">
-        <span className="text-xs font-medium text-white/85">✦ 별 띄우기</span>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1 text-[11px] text-white/50">
-            감정
-            {/* 커스텀 다크 드롭다운(shared/ui) — 네이티브 select의 흰 OS 목록 대신. 감정 색 점 포함. */}
-            <Dropdown
-              ariaLabel="감정"
-              value={mood}
-              onChange={(m) => setMood(m)}
-              options={MOODS.map((m) => ({ value: m.value, label: m.label, color: moodCss(m.value) }))}
-            />
-          </div>
-          <label className="flex flex-col gap-1 text-[11px] text-white/50">
-            날짜
-            <input
-              type="date"
-              className={inputCls}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </label>
-        </div>
-        <button type="button" onClick={spawnStar} className={chipBtn}>
-          이 감정으로 별 띄우기
-        </button>
-        <button type="button" onClick={spawnMultiScene} className={chipBtn}>
-          ✨ 다감정 하루 띄우기 — 일기 1편 → 별 여럿
-        </button>
-        <p className="text-[11px] leading-relaxed text-white/40">
-          내용은 미리 써 둔 일기에서 골라요 — 같은 날·비슷한 감정의 기억과 이어지고, 여러 감정이
-          담긴 하루는 장면마다 조각 별로 갈라져요.
-        </p>
-      </div>
-
-      <p className="text-[11px] text-white/35">체험 전용 시뮬레이션 — 새로고침하면 초기화돼요.</p>
+      <p className="text-[11px] text-white/35">체험 우주는 새로고침하면 처음으로 돌아가요.</p>
     </section>
   )
 }
@@ -407,13 +469,18 @@ function TheoryModal({ initialPage, onClose }: { initialPage: number; onClose: (
   )
 }
 
-export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps) {
+export function DemoSimPanel({
+  initialSimId,
+  onSheetChange,
+  suppressed = false,
+  onQuietSettle,
+}: DemoSimPanelProps) {
   const focusedIdx = THEORIES.findIndex((e) => e.id === initialSimId)
   // 데스크톱은 컨트롤러를 펼친 채, 모바일은 칩으로 접어 시작(우주를 가리지 않게).
   const [controlsOpen, setControlsOpen] = useState(
     () => window.matchMedia('(min-width: 640px)').matches,
   )
-  // ?sim= 진입(랜딩 "이 카드 체험하기")은 그 이론 페이지가 떠 있는 채로 시작한다.
+  // ?sim= 진입(랜딩 "체험 우주에서 해보기")은 그 이론 페이지가 떠 있는 채로 시작한다.
   const [theoryOpen, setTheoryOpen] = useState(focusedIdx >= 0)
   // "밤 보내기" 후 morning diff 노트(spec 27, 8.1/6.1).
   const [morningDiff, setMorningDiff] = useState(false)
@@ -421,9 +488,11 @@ export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps)
 
   // 기억 실험실 시트가 하단을 덮는 동안 페이지에 알린다(모바일 카메라 시프트용).
   useEffect(() => {
-    onSheetChange?.(controlsOpen)
+    onSheetChange?.(!suppressed && controlsOpen)
     return () => onSheetChange?.(false)
-  }, [controlsOpen, onSheetChange])
+  }, [controlsOpen, onSheetChange, suppressed])
+
+  if (suppressed) return null
 
   return (
     <>
@@ -440,14 +509,20 @@ export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps)
               : 'border-indigo-300/30 bg-indigo-500/20 text-indigo-100/90 hover:bg-indigo-500/30'
           }`}
         >
-          🧪 기억 실험실{elapsed > 0 ? ` · +${elapsed}일` : ''}
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className="size-3.5" aria-hidden />
+            기억 실험실{elapsed > 0 ? ` · +${elapsed}일` : ''}
+          </span>
         </button>
         <button
           type="button"
           onClick={() => setTheoryOpen(true)}
           className={`${entryChip} border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white/90`}
         >
-          ❕ 뇌과학 이론
+          <span className="inline-flex items-center gap-1.5">
+            <BookOpen className="size-3.5" aria-hidden />
+            뇌과학 이론
+          </span>
         </button>
       </div>
 
@@ -457,6 +532,7 @@ export function DemoSimPanel({ initialSimId, onSheetChange }: DemoSimPanelProps)
         <ControlsPanel
           onClose={() => setControlsOpen(false)}
           onConsolidated={() => setMorningDiff(true)}
+          onQuietSettle={onQuietSettle}
         />
       )}
       {theoryOpen && (

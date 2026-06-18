@@ -4,13 +4,13 @@ import { enterDemoMode } from '@/shared/lib/demo'
 import { cn } from '@/shared/lib'
 
 /**
- * "이 카드 체험하기"(spec 19) — 랜딩 카드를 라이브 데모로 잇는다. HeroSection의
- * tryDemo()와 같은 진입 경로에, 그 카드의 이론에 해당하는 시뮬 항목(?sim=<id>)을
- * 포커스해 우주의 시뮬레이션 패널이 그 이론을 펼친 채 맞이하게 한다.
+ * "체험 우주에서 해보기"(spec 19) — 랜딩 카드를 체험 우주로 잇는다. HeroSection의
+ * tryDemo()와 같은 `/` 진입 경로에, 그 카드의 이론에 해당하는 `?sim=<id>`를 더해
+ * 기억 실험실/이론 모달이 그 이론을 펼친 채 맞이하게 한다.
  */
 export function TryInUniverse({
   sim,
-  label = '이 카드 체험하기',
+  label = '체험 우주에서 해보기',
   className,
 }: {
   /** widgets/demo-sim 레지스트리의 SimEntry id. */

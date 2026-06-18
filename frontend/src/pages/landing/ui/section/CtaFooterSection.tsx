@@ -21,7 +21,7 @@ export function CtaFooterSection() {
   const navigate = useNavigate()
   const [submitted, setSubmitted] = useState(false)
 
-  // 체험("demo") 모드 진입: 로그인/DB 없이 더미 우주로 바로 들어간다. 플래그를 먼저
+  // 체험("demo") 모드 진입: 로그인/DB 없이 체험 우주로 바로 들어간다. 플래그를 먼저
   // 켜고 루트 우주 `/`로 이동하면 세션 게이트가 통과시키고 API들이 더미데이터를 돌려준다.
   const tryDemo = () => {
     enterDemoMode()
@@ -69,7 +69,7 @@ export function CtaFooterSection() {
           가장 먼저 만나봐요.
         </p>
 
-        {/* 가입 없이 바로 둘러보기 — 더미 우주를 띄워 별 추가·회상·잠든 별까지 체험한다. */}
+        {/* 가입 없이 바로 둘러보기 — 체험 우주를 띄워 별 추가·회상·잠든 별까지 체험한다. */}
         <div className="flex flex-col items-center gap-2">
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
             <motion.button
@@ -79,7 +79,7 @@ export function CtaFooterSection() {
               className="inline-flex items-center justify-center gap-2 rounded-full border border-mood-teal/40 bg-mood-teal/15 px-6 py-3 text-sm font-medium text-mood-teal transition hover:bg-mood-teal/25 sm:text-base"
             >
               <Rocket size={18} aria-hidden />
-              가입 없이 들어가 보기
+              체험 우주 시작하기
               <ArrowRight size={16} aria-hidden />
             </motion.button>
             <motion.button
@@ -92,7 +92,7 @@ export function CtaFooterSection() {
               로그인하기
             </motion.button>
           </div>
-          <span className="text-xs text-white/40">로그인 없이 둘러볼 수 있어요. 새로고침하면 처음으로 돌아가요.</span>
+          <span className="text-xs text-white/40">로그인 없이 체험할 수 있어요. 새로고침하면 처음으로 돌아가요.</span>
         </div>
       </div>
 

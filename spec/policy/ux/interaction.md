@@ -51,15 +51,15 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 
 | 규칙 | 값 |
 | --- | --- |
-| 진입 — 랜딩의 데모 버튼/카드 "이 카드 체험하기" → `enterDemoMode()` → `sessionStorage('cosimosi:demo'='1')` → `/universe`(카드는 `?sim=<id>`로 해당 시뮬 항목 포커스, 잘못된 id 무시) | 세션 플래그 |
-| 데이터 출처 — `isDemoMode()`이면 API 래퍼가 백엔드 대신 더미데이터로 분기(`demoStars`/`demoSynapses`/`demoRecall`/`demoAddRecord`) | 더미 우주 |
-| **가상 시계** — 데모의 밝기·잠듦 파생 "현재 시각"은 `virtualNowMs() = Date.now() + offset`(offset은 데모에서만 ≠0). 시뮬 패널 "하루/한 달 지나기"가 offset을 전진시키고 별·엣지 밝기를 재파생 — 실제 감쇠 수식([star](../domain/star.md) 반감기 30일·바닥 5%)이 그대로 돈다(연출 없음). 비데모는 항상 `Date.now()`와 동일값 | `skipDemoDays` |
-| **데모 재점화** — 데모 회상(≥2초)도 그 별의 `lastRecalledAt`을 가상 now로 전진(`demoMarkRecalled`) + universe 쿼리 무효화 → 잠든 별이 다시 밝아지는 루프가 데모에서 완결 | 서버 대칭 |
-| **데모 별 띄우기** — 데모의 기록은 작성 폼이 아니라 패널의 "별 띄우기" 컨트롤러: 감정(13종)·날짜만 고르면 그 감정으로 미리 써 둔 일기 중 무작위 본문으로 별이 태어난다(`demoAddStar`). 같은 (가상)날 별과 temporal, 같은 mood 최신 별과 semantic 연결을 로컬 생성(실서버 임베딩 τ=0.75·top-8·같은날+0.3의 **근사** — 패널이 명시) | 근사 시연 |
-| **헵 로컬 미리보기** — 데모에서 공동 회상 페어가 확정되는 즉시 그 엣지 weight를 로컬 +0.05(상한 1.0, 없던 페어는 `co_recall` 로컬 생성) → 굵어짐이 바로 보인다. `reinforceLinks`는 여전히 no-op, 서버/proto 미기록 | no server write |
-| **시뮬레이션 HUD** — 데모에서만, 좌하단 진입 칩 2개로 **서로 다른 모달**을 연다: ① "🧪 기억 실험실" 컨트롤러 패널(시간 머신·별 띄우기), ② "❕ 엔그램 이론" 안내 모달 — 이론을 나열하지 않고 **한 번에 하나씩** 점 탭·‹›·방향키·스와이프 페이지네이션으로 넘기며, 이론↔컨트롤 1:1 버튼 없이 howTo(어떤 컨트롤러로 어떤 행위)만 적는다(`SIM_ENTRIES` — 항목 추가만으로 확장, plan 20–27 소비). `?sim=<id>` 진입은 이론 모달이 그 페이지로 열린 채 시작. 시간 스킵은 ~0.9s ease 트윈으로 흐른다(밝기 뚝 끊김 방지). "처음으로" = exit→reset→enter 경로로 초기 우주 복귀 | `widgets/demo-sim` |
+| 진입 — 랜딩의 "체험 우주 시작하기" 또는 카드 "체험 우주에서 해보기" → `enterDemoMode()` → `sessionStorage('cosimosi:demo'='1')` → `/`(카드는 `?sim=<id>`로 해당 이론 포커스, 잘못된 id 무시) | 세션 플래그 |
+| 데이터 출처 — `isDemoMode()`이면 API 래퍼가 백엔드 대신 더미데이터로 분기(`demoStars`/`demoSynapses`/`demoRecall`/`demoAddRecord`) | 체험 우주 |
+| **가상 시계** — 체험 우주의 밝기·잠듦 파생 "현재 시각"은 `virtualNowMs() = Date.now() + offset`(offset은 demo에서만 ≠0). 기억 실험실 "하루/한 달"이 하루 단위 배치(`skipDemoDays(1)` → `demoConsolidate()`)를 반복하고 별·엣지 밝기를 재파생 — 실제 감쇠 수식([star](../domain/star.md) 반감기 30일·바닥 5%)이 그대로 돈다. 비demo는 항상 `Date.now()`와 동일값 | `demoApplyDayBatch` |
+| **체험 재점화** — 체험 우주 회상(≥2초)도 그 별의 `lastRecalledAt`을 가상 now로 전진(`demoMarkRecalled`) + universe 쿼리 무효화 → 잠든 별이 다시 밝아지는 루프가 체험 우주에서 완결 | 서버 대칭 |
+| **체험 별 띄우기** — 체험 우주의 기록은 작성 폼이 아니라 기억 실험실의 "우주 키우기": 감정·날짜만 고르면 그 감정으로 미리 써 둔 일기 중 무작위 본문으로 별이 태어난다(`demoAddStar`). 같은 (가상)날 별과 temporal, 같은 mood 최신 별과 semantic 연결을 로컬 생성 | 근사 시연 |
+| **헵 로컬 미리보기** — 체험 우주에서 공동 회상 페어가 확정되는 즉시 그 엣지 weight를 로컬 +0.05(상한 1.0, 없던 페어는 `co_recall` 로컬 생성) → 굵어짐이 바로 보인다. `reinforceLinks`는 여전히 no-op, 서버/proto 미기록 | no server write |
+| **기억 실험실 HUD** — 체험 우주에서만, 좌하단 진입 칩 2개로 **서로 다른 모달**을 연다: ① "기억 실험실" 컨트롤러 패널(우주 키우기·시간 보내기·다른 삶 보기), ② "뇌과학 이론" 안내 모달. `?sim=<id>` 진입은 이론 모달이 그 페이지로 열린 채 시작. 회상 패널·일기/잠든 별 오버레이가 열리면 기억 실험실은 숨고, 시간 이동은 데이터 배치와 force-sim 조용한 재안정화 후 최종 좌표를 보여준다. "처음" = exit→reset→enter 경로로 초기 우주 복귀 | `widgets/demo-sim` |
 | 새로고침 시 모듈 리로드 → base 더미만 재생성, 체험 중 추가한 별·연결·가상 시계 offset 소멸 | 세션 한정 |
-| 화면 코드 동일 — 회상·이웃·잠든 별 동선은 일반 모드와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기). 예외: **기록 폼은 데모에서 숨김**(위 "별 띄우기" 컨트롤러가 대체) | 기록만 대체 |
+| 화면 코드 동일 — 회상·이웃·잠든 별 동선은 메인 우주와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기). 예외: **기록 폼은 체험 우주에서 숨김**(기억 실험실이 대체) | 기록만 대체 |
 | 모드 전환(enter/exit) = 데이터 출처 전환 → 쿼리 캐시·렌더 스토어 전체 리셋([data-sync](../domain/data-sync.md) 출처 경계) — 체험 별이 실계정 우주에 섞이지 않는다 | 경계 리셋 |
 
 ### 5. 변천사 보기 (evolution timelapse, 24)

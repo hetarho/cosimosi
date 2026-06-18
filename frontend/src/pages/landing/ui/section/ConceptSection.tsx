@@ -167,7 +167,7 @@ export function ConceptSection() {
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <TheoryBadge status="done" plan="08·09" />
-        <TryInUniverse sim="engram" label="체험으로 보기" />
+        <TryInUniverse sim="engram" />
       </div>
     </div>
   )

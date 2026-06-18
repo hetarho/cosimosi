@@ -7,9 +7,14 @@ interface ViewportState {
   /** 모바일에서 하단 시트가 하단을 가리는 동안 true → 캔버스가 별을 화면 위 1/3로 올린다. */
   sheetOpen: boolean
   setSheetOpen: (sheetOpen: boolean) => void
+  /** 체험 우주의 시간 이동 후 live force-sim을 중간 애니메이션 없이 정착 좌표로 밀어 넣는 신호. */
+  quietSettleSeq: number
+  requestQuietSettle: () => void
 }
 
 export const useViewport = create<ViewportState>((set) => ({
   sheetOpen: false,
   setSheetOpen: (sheetOpen) => set({ sheetOpen }),
+  quietSettleSeq: 0,
+  requestQuietSettle: () => set((s) => ({ quietSettleSeq: s.quietSettleSeq + 1 })),
 }))

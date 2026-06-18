@@ -27,12 +27,13 @@ function safeRedirect(r: unknown, reject: readonly string[]): string | undefined
 
 // 코드 기반 라우팅. 라우트는 app 레이어가 소유하고, 화면 UI는 pages 레이어에 위임한다(FSD).
 
-// `/` = 우주 셸(보호 라우트). 게이트는 라우트가 소유한다 — 미인증이면 SessionGate가 `/sign-in`으로
-// 리다이렉트하고, 마케팅 랜딩은 게이트 없는 `/landing` 공개 표면에 둔다 (01).
+// `/` = 메인 우주 셸(보호 라우트). 체험 우주도 같은 셸을 demo 데이터로 연다.
+// 게이트는 라우트가 소유한다 — 미인증이면 SessionGate가 `/sign-in`으로 리다이렉트하고,
+// 마케팅 랜딩은 게이트 없는 `/landing` 공개 표면에 둔다 (01).
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  // ?sim=<id> — 데모 시뮬레이션 패널의 진입 포커스(spec 19, 랜딩 카드 "이 카드 체험하기").
+  // ?sim=<id> — 체험 우주의 이론 진입 포커스(spec 19, 랜딩 카드 "체험 우주에서 해보기").
   // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31). 라우트를 늘리지 않고
   // (별도 /dormant·/diary 없음) 셸 패널 상태를 search param으로만 동기화한다(딥링크·뒤로가기).
   // 알 수 없는 값은 무시. (변천사는 별 id가 필요해 URL 딥링크 대상이 아님 — 회상에서 열린다.)

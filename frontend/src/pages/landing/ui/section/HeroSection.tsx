@@ -10,7 +10,7 @@ export function HeroSection() {
   const navigate = useNavigate()
   // 히어로 엠블럼 별은 페이지 전역 우주 씬(LandingPage의 CosmosScene)이 배경에 띄운다 — 여기선 워드마크만.
 
-  // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 데모 우주로 바로 보낸다.
+  // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 체험 우주로 바로 보낸다.
   // (로그인/DB 없이 루트 우주 `/` 진입 — CtaFooterSection의 tryDemo와 동일 경로.)
   const tryDemo = () => {
     enterDemoMode()
@@ -87,7 +87,7 @@ export function HeroSection() {
                 boxShadow: '0 16px 46px -18px var(--ld-accent)',
               }}
             >
-              우주 만들어보기
+              체험 우주 시작하기
             </button>
             <button
               type="button"
@@ -97,7 +97,7 @@ export function HeroSection() {
               천천히 둘러보기
             </button>
           </div>
-          <span className="text-xs text-white/45">로그인 없이 바로 둘러볼 수 있어요</span>
+          <span className="text-xs text-white/45">로그인 없이 체험 우주를 둘러볼 수 있어요</span>
         </motion.div>
       </motion.div>
 

@@ -44,6 +44,7 @@ import { SelfStar } from './SelfStar'
 import { radiusOf, atRadius, RADIAL_SIM_PARAMS } from '../model/radial-layout'
 import {
   createSim,
+  advance,
   isSettled,
   positions as simPositions,
   tick,
@@ -691,9 +692,11 @@ function LiveLayoutController({
   const stars = useMemoryStore((s) => s.stars)
   const edges = useSynapseStore((s) => s.edges)
   const loadedEmpty = useMemoryStore((s) => s.loadedEmpty)
+  const quietSettleSeq = useViewport((s) => s.quietSettleSeq)
   const simRef = useRef<SimState | null>(null)
   const settledRef = useRef(true)
   const readyRef = useRef(false) // fire onReady exactly once
+  const quietSeqRef = useRef(quietSettleSeq)
   // Last graph topology (star ids + edge pairs) the sim was built for — so a stars/edges
   // array-ref change that DIDN'T change the graph (the demo skip's refreshActivation replaces
   // both arrays ~12×/tween just to recompute brightness) does NOT rebuild the sim.
@@ -746,12 +749,10 @@ function LiveLayoutController({
       return
     }
     // Rebuild the sim only when the graph TOPOLOGY changes (a star or edge added/removed) —
-    // NOT on every stars/edges array-ref change. The demo time-skip's refreshActivation
-    // replaces both arrays ~12×/tween (SKIP_TICK_MS) just to recompute time-decayed
-    // brightness; without this guard each replacement rebuilt the sim from seed and re-kicked,
-    // producing the star churn + synapse-stretch "chaos" on every skip. Elapsed-time radius
-    // drift is handled by the per-frame re-kick below, so a same-topology refresh keeps the
-    // live sim running smoothly (stars just dim; synapses re-bake at the same coordinates).
+    // NOT on every stars/edges array-ref change. Demo time-skip refreshes activation for the
+    // same topology; without this guard that refresh rebuilt the sim from seed and re-kicked,
+    // producing star churn + stretched synapses. Elapsed-time radius drift is handled by the
+    // per-frame re-kick below, so a same-topology refresh keeps the live sim continuity.
     const topo =
       stars.map((s) => s.id).join(',') + '|' + edges.map((e) => `${e.aId}~${e.bId}`).join(',')
     if (topo === topoRef.current && simRef.current) return
@@ -893,6 +894,23 @@ function LiveLayoutController({
       sim.radius.set(targets) // commit the new shells (recall pull-in / accumulated decay)
       if (sim.alpha < REKICK_ALPHA) sim.alpha = REKICK_ALPHA
       settledRef.current = false
+    }
+
+    // 체험 우주 시간 이동은 데이터 배치를 한 번에 끝낸 뒤 최종 좌표만 보여준다. 좌표는 여전히
+    // 클라이언트 force-sim에서 창발하지만, 중간 tick을 화면에 내보내지 않아 별이 튀어 보이지 않는다.
+    if (quietSettleSeq !== quietSeqRef.current) {
+      quietSeqRef.current = quietSettleSeq
+      if (!isSettled(sim)) {
+        if (sim.alpha < REKICK_ALPHA) sim.alpha = REKICK_ALPHA
+        advance(sim, VALUES.forceSim.alphaDecayTicks)
+      }
+      sim.vx.fill(0)
+      const buf = simPositions(sim)
+      positionsRef.current = buf
+      publish(sim, buf)
+      settledRef.current = true
+      markReady()
+      return
     }
 
     if (isSettled(sim)) {
