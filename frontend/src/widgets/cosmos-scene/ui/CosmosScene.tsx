@@ -12,12 +12,15 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 
 import { Canvas, useFrame, useThree, type GLProps } from '@react-three/fiber'
 import { useReducedMotion } from 'motion/react'
 import * as THREE from 'three'
-import { uniform, float, vec3 } from 'three/tsl'
+import { uniform, float, vec3, uv, fract, smoothstep, clamp } from 'three/tsl'
+import { MeshBasicNodeMaterial } from 'three/webgpu'
 import { createRenderer } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
 import { cn } from '@/shared/lib'
 import { BloomPass, GrainOverlay, buildFluidMaterial, buildHalo, type CosmosPalette } from '@/shared/ui'
 import { buildStarBody, STAR_FORM_SPIN, type StarObject } from '@/entities/star'
+import { buildSelfForm, type SelfObject } from '@/entities/appearance'
+import { DEFAULT_SYNAPSE_STYLE, type SynapseStyle } from '@/entities/synapse'
 
 // 투명 캔버스(뒤 페이지/베이스색 비침) — StarCanvas/FluidGradient와 동일한 alpha 강제.
 const glFactory = ((props: Parameters<typeof createRenderer>[0]) =>
@@ -46,11 +49,44 @@ export interface StarVisual {
   seed?: number
 }
 
+/** 자아("나") 앵커 미리보기(plain data) — 플레이그라운드 미니 코스모스(spec 44 A12). 형태=concept,
+ *  색=소비처 제공(미인증은 배경 accent placeholder). 위치는 정규화 스크린 앵커. */
+export interface SelfVisual {
+  concept: SelfObject
+  color: string
+  anchor: [number, number]
+  size: number
+  seed?: number
+}
+
+/** 시냅스 표본(plain data) — 두 앵커를 잇는 한 가닥. 색=양끝 mood 블렌드(소비처 제공), 스타일=synapse 축. */
+export interface SynapseVisual {
+  a: [number, number]
+  b: [number, number]
+  colorA: string
+  colorB: string
+  weight: number
+  style?: SynapseStyle
+}
+
+/** 배경 텍스처/요소 슬롯(plain data — 위젯 decoupled, entity 미import). 소비처(페이지 어댑터)가 배경
+ *  번들의 texture를 그대로 넘긴다(spec 44 A9). veilColor 없으면 미적용 → 기존 렌더와 동일. */
+export interface BackdropTexture {
+  veilColor?: string
+  veilOpacity?: number
+}
+
 export interface CosmosSceneProps {
   /** 별들(0개면 순수 배경). */
   stars?: StarVisual[]
+  /** 자아 "나" 앵커(선택) — 플레이그라운드 미니 코스모스의 4축 중 '나'(spec 44). */
+  self?: SelfVisual
+  /** 시냅스 표본(선택) — 미니 코스모스의 '시냅스' 축 표본 가닥들(spec 44). */
+  synapses?: SynapseVisual[]
   /** 배경 fluid 팔레트(테마별). 미지정 시 기본(vast) 팔레트. */
   palette?: CosmosPalette
+  /** 배경 텍스처/요소 번들(선택). 색 베일 한 겹을 fluid 뒤에 깐다(spec 44). */
+  texture?: BackdropTexture
   /** 트윙클 별먼지 개수(기본 VALUES.cosmos.twinkleCount). */
   twinkle?: number
   /** 별 앞 어두운 구름(안개) 표시(기본 true; quality='low'면 자동 off). */
@@ -227,6 +263,44 @@ function BackdropLayer({
   )
 }
 
+// ── 배경 텍스처 슬롯(spec 44 A9): 배경 번들에 texture가 있으면 fluid 뒤(z·renderOrder 최하)에 풀스크린 색
+//    베일 한 겹. 별 mood 색은 불간섭(별보다 뒤). 텍스처 없으면 null(기존 렌더 동일). 비주얼은 디자인 반복용. ──
+function VeilLayer({ texture }: { texture?: BackdropTexture }) {
+  const size = useThree((s) => s.size)
+  const aspect = size.width / size.height
+  const geom = useMemo(() => new THREE.PlaneGeometry(2, 2), [])
+  const material = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(texture?.veilColor ?? '#000000'),
+        transparent: true,
+        opacity: texture?.veilOpacity ?? 0.15,
+        depthWrite: false,
+        depthTest: false,
+        toneMapped: false,
+      }),
+    [texture?.veilColor, texture?.veilOpacity],
+  )
+  useEffect(
+    () => () => {
+      geom.dispose()
+      material.dispose()
+    },
+    [geom, material],
+  )
+  if (!texture?.veilColor) return null
+  return (
+    <mesh
+      geometry={geom}
+      material={material}
+      scale={[aspect, 1, 1]}
+      position={[0, 0, -1.5]}
+      renderOrder={-20}
+      frustumCulled={false}
+    />
+  )
+}
+
 // ── 별 한 개: buildStarBody(uniform 바인딩) + halo(또렷한 소프트 글로우)를 앵커 위치에 얹는다. 위치·자전·
 //    시간은 여기서 주입(프리미티브 밖). ────────────────────────────────────────────────────────────────
 function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number; animated: boolean }) {
@@ -296,6 +370,100 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
   )
 }
 
+// ── 자아 "나" 앵커: entity 소유 self-form 빌더(buildSelfForm, StarMesh 미러)를 앵커 위치에 얹는다.
+//    색은 소비처 제공(미인증 플레이그라운드는 배경 accent placeholder). ─────────────────────────────
+function SelfMesh({ self, aspect, animated }: { self: SelfVisual; aspect: number; animated: boolean }) {
+  const built = useMemo(() => buildSelfForm(self.concept), [self.concept])
+  useEffect(() => {
+    built.setColor(new THREE.Color(self.color))
+  }, [built, self.color])
+  useEffect(
+    () => () => {
+      built.geometry.dispose()
+      built.material.dispose()
+    },
+    [built],
+  )
+  useFrame((s) => {
+    built.update(animated ? s.clock.elapsedTime : 0)
+  })
+  const wx = (self.anchor[0] * 2 - 1) * aspect
+  const wy = 1 - self.anchor[1] * 2
+  return <mesh geometry={built.geometry} material={built.material} position={[wx, wy, 0]} scale={self.size} />
+}
+
+// ── 시냅스 표본 가닥: 두 앵커를 잇는 살짝 휜 튜브 한 줄. 색=양끝 mood 블렌드(uv.x 그라디언트), 스타일은
+//    선의 표현(흐름/빔/입자)만 바꾼다(SynapseFilaments 불변식과 동형 — 색은 mood 보존). ────────────────
+function SampleStrand({ syn, aspect, animated }: { syn: SynapseVisual; aspect: number; animated: boolean }) {
+  const style = syn.style ?? DEFAULT_SYNAPSE_STYLE
+  const built = useMemo(() => {
+    const A = new THREE.Vector3((syn.a[0] * 2 - 1) * aspect, 1 - syn.a[1] * 2, 0)
+    const B = new THREE.Vector3((syn.b[0] * 2 - 1) * aspect, 1 - syn.b[1] * 2, 0)
+    const dir = B.clone().sub(A)
+    const len = dir.length() || 1
+    // 스타일별 형태(우주 SynapseFilaments와 동형): beam=거의 직선·두껍게, flow=크게 휜 사행, particle=가는 점선, filament=완만.
+    const bowMag = style === 'beam' ? len * 0.02 : style === 'flow' ? len * 0.3 : len * 0.12
+    const bow = new THREE.Vector3(-dir.y, dir.x, 0).normalize().multiplyScalar(bowMag)
+    const mid = A.clone().lerp(B, 0.5).add(bow)
+    const curve = new THREE.CatmullRomCurve3([A, mid, B])
+    const radius =
+      (0.004 + syn.weight * 0.01) *
+      (style === 'beam' ? 2.2 : style === 'flow' ? 1.4 : style === 'particle' ? 0.9 : 1)
+    const geometry = new THREE.TubeGeometry(curve, 40, radius, 6, false)
+
+    const material = new MeshBasicNodeMaterial()
+    const cA = vec3(uniform(new THREE.Color(syn.colorA)) as never)
+    const cB = vec3(uniform(new THREE.Color(syn.colorB)) as never)
+    const uTime = uniform(0)
+    const along = uv().x
+    const around = uv().y
+    const color = cA.add(cB.sub(cA).mul(along)) // endpoint mood blend (preserved across styles)
+    const speed = VALUES.synapse.flowSpeed * (style === 'flow' ? 1.8 : style === 'particle' ? 1.3 : 1)
+    const flow = fract(along.mul(2.0).sub(uTime.mul(speed)))
+    const flowGlow = smoothstep(float(0.0), float(0.5), flow).mul(smoothstep(float(1.0), float(0.5), flow))
+    let glow
+    if (style === 'beam') {
+      glow = float(0.9).add(flowGlow.mul(0.2))
+    } else if (style === 'flow') {
+      glow = float(0.4).add(flowGlow.mul(1.0))
+    } else if (style === 'particle') {
+      const cell = fract(along.mul(6.0).sub(uTime.mul(speed)))
+      glow = float(0.4).add(smoothstep(float(0.16), float(0.0), cell).mul(1.1))
+    } else {
+      glow = float(0.6).add(flowGlow.mul(0.6))
+    }
+    material.colorNode = color.mul(glow)
+    const coreBand = smoothstep(float(1.0), float(0.0), around.sub(0.5).abs().mul(2.0))
+    const ends = smoothstep(float(0.0), float(0.1), along).mul(smoothstep(float(1.0), float(0.9), along))
+    // particle만 점선: 비드 사이를 불투명도로 끊는다(바닥 0.16).
+    const opacShape =
+      style === 'particle'
+        ? smoothstep(float(0.3), float(0.0), fract(along.mul(6.0).sub(uTime.mul(speed)))).mul(0.84).add(0.16)
+        : float(1)
+    material.opacityNode = clamp(coreBand.mul(0.6).add(0.4).mul(ends).mul(0.7).mul(opacShape), float(0.0), float(1.0))
+    material.transparent = true
+    material.depthWrite = false
+    material.blending = THREE.AdditiveBlending
+    material.toneMapped = false
+    material.side = THREE.DoubleSide
+    const update = (t: number) => {
+      uTime.value = t
+    }
+    return { geometry, material, update }
+  }, [syn.a, syn.b, syn.colorA, syn.colorB, syn.weight, style, aspect])
+  useEffect(
+    () => () => {
+      built.geometry.dispose()
+      built.material.dispose()
+    },
+    [built],
+  )
+  useFrame((s) => {
+    built.update(animated ? s.clock.elapsedTime : 0)
+  })
+  return <mesh geometry={built.geometry} material={built.material} frustumCulled={false} />
+}
+
 /** 풀스크린 fit ortho 카메라 — 뷰를 [-aspect,aspect]×[-1,1]로 매핑(별 왜곡 없음, 배경 풀블리드).
  *  manual=true로 R3F의 리사이즈 frustum 덮어쓰기를 막고, size 변화에 직접 재설정한다. */
 function FullscreenCamera() {
@@ -348,14 +516,20 @@ function FrameDriver({ fps }: { fps: number }) {
 
 function Scene({
   stars,
+  self,
+  synapses,
   palette,
+  texture,
   twinkleN,
   bloomOn,
   frontOn,
   animated,
 }: {
   stars: StarVisual[]
+  self?: SelfVisual
+  synapses?: SynapseVisual[]
   palette?: CosmosPalette
+  texture?: BackdropTexture
   twinkleN: number
   bloomOn: boolean
   frontOn: boolean
@@ -367,11 +541,17 @@ function Scene({
     <>
       <FullscreenCamera />
       {animated && <FrameDriver fps={VALUES.cosmos.fpsCap} />}
+      <VeilLayer texture={texture} />
       <BackdropLayer kind="back" palette={palette} animated={animated} />
       {twinkleN > 0 && <Twinkle count={twinkleN} animated={animated} />}
+      {/* 시냅스 표본은 별 뒤에(연결이 별을 가리지 않게) — StarMesh 앞 렌더. */}
+      {synapses?.map((syn, i) => (
+        <SampleStrand key={`syn-${i}`} syn={syn} aspect={aspect} animated={animated} />
+      ))}
       {stars.map((star, i) => (
         <StarMesh key={i} star={star} aspect={aspect} animated={animated} />
       ))}
+      {self && <SelfMesh self={self} aspect={aspect} animated={animated} />}
       {frontOn && <BackdropLayer kind="front" palette={palette} animated={animated} />}
       {bloomOn && <BloomPass />}
     </>
@@ -384,7 +564,10 @@ function Scene({
  */
 export function CosmosScene({
   stars = [],
+  self,
+  synapses,
   palette,
+  texture,
   twinkle,
   frontClouds = true,
   bloom = false,
@@ -421,7 +604,10 @@ export function CosmosScene({
       >
         <Scene
           stars={stars}
+          self={self}
+          synapses={synapses}
           palette={palette}
+          texture={texture}
           twinkleN={resolvedTwinkle}
           bloomOn={bloomOn}
           frontOn={frontOn}

@@ -118,7 +118,13 @@ export function VisitPage() {
   // 방문자 값이다 — 소유자 색이 섞인 뒤 다시 캡처될 위험이 구조적으로 없다).
   const [visitorAppearance] = useState(() => {
     const ap = useAppearance.getState()
-    return { theme: ap.theme, object: ap.object, emotionColors: ap.emotionColors }
+    return {
+      theme: ap.theme,
+      object: ap.object,
+      selfObject: ap.selfObject,
+      synapseStyle: ap.synapseStyle,
+      emotionColors: ap.emotionColors,
+    }
   })
 
   // 친구 우주(겹쳐보기용) — 스냅샷을 PURE 매핑(스토어 미경유). 친구 시각 설정은 data.appearance에서.
@@ -208,9 +214,14 @@ export function VisitPage() {
       const a = useAppearance.getState()
       a.setTheme(visitorAppearance.theme)
       a.setObject(visitorAppearance.object)
+      // 나·시냅스 두 축도 방문자 값으로 복원 — 소유자 선택이 방문자 store·localStorage에 새지 않게(T048).
+      a.setSelfObject(visitorAppearance.selfObject)
+      a.setSynapseStyle(visitorAppearance.synapseStyle)
       a.applyServerSettings({
         theme: undefined,
         object: undefined,
+        selfObject: undefined,
+        synapseStyle: undefined,
         emotionColors: visitorAppearance.emotionColors,
       })
     }

@@ -18,7 +18,7 @@
 | 반지름 = 강함 (38) | 중심 거리 `targetRadius = lerp(R_MIN 6, R_MAX 40, 1 − strength)`, `strength = clamp(W_ACT 0.7·activation + W_INT 0.3·intensity, 0, 1)`. force-sim **반지름 셸 힘**(`SimNode.radius`·`SimParams.radialStrength 0.1`)이 거리(반지름)를 **독점**하고, 연결·척력은 거리를 못 바꾼다(38 — 아래 접선/radial 분리) |
 | 각도 = 연결 (38) | 방향은 그래프 스프링·척력 + 22 흥분성 편향(`seedNearCluster`)이 정한다. **접선/radial 분리(38):** `radius>0` free 노드는 연결·척력의 **방사 성분을 제거**해 셸 위에서 *각도만* 바꾸고, 거리는 셸 힘이 정한다 — 새 별(강함↑)이 바깥 이웃 셸로 안 끌려간다(연결 weight 0.6~0.8 ≫ radialStrength 0.1이던 38 갭 해소). 새 별 시드 fallback은 **분산 방향**(`scatterDirection` — 나선 아님). `prevPos` resume으로 각도 연속성 보존 |
 | 표상 부동 (40·데모) | 별의 *방향* 이 **밤 경계마다 한 스텝**(`DRIFT_STEP_RAD 0.08`·**고정 per-seed 축** 회전·반지름(거리) 보존) 표류한다 — **데모 모드**에서 `floor(virtualNow/DAY)` 증가 시 컨트롤러가 각 free 별을 회전(+vx 0)·re-kick(시계 역행 시 baseline 재설정). 축이 pos-무관·고정이라 회전군(`drift(N)=N×drift(1)` → 스킵=대기). **밤 미교차엔 정적.** 연결 스프링이 성단을 부분 복원해 **고립 별이 더, 잘 연결된(도식) 별이 덜** 흐른다(차등 — 동역학 창발). **프로덕션은 좌표 비영속(헌법3)이라 세션 중 드리프트 없음** — 데모 타임머신이 시간 경과·표상 부동의 쇼케이스 |
-| 자아 별 (38) | 우주 중심의 단일 앵커("나"). **그래프 비참여**(연결·KNN·시냅스 없음), `selfObject` 폼 2–3종(기본 nebula-heart). 강한 기억이 그 곁에 모인다 |
+| 자아 별 (38·44) | 우주 중심의 단일 앵커("나"). **그래프 비참여**(연결·KNN·시냅스 없음), `selfObject` 폼(기본 nebula-heart·유료 core/well — 커스터마이즈 '나' 축). 강한 기억이 그 곁에 모인다. **몸체 색 = 요즘 감정(ambient mood) 파생**(테마/배경 무관; 데이터 없음·미인증이면 중립/배경 accent 폴백). 단 자아 별이 **다른 별에 던지는 빛(self-light 반사)은 중립** 유지(spec 03 — mood 색 소유권은 AmbientNebula 풀, 이중 주입 금지). 상세 [customization](customization.md) |
 | 재이완 정책 | settle 후 정적. 새 별·회상·시간감쇠로 목표 반지름이 임계(0.5) 넘게 변하거나 **밤 경계를 넘으면(각도 드리프트, 38)** `alpha` 재상승(re-kick)해 부드럽게 활강, 그 외엔 매 프레임 재계산 없음 |
 | 좌표 일치 | StarField·UniverseSynapses·FlyToController·FocusController **네 readers**가 동일한 라이브 버퍼·동일 인덱싱을 읽어 fly-to/focus가 렌더된 바로 그 별에 도달한다(어긋남 0). StarField·FlyTo·Focus는 버퍼를 직접 읽고, 시냅스는 settle 시 발행되는 좌표 스냅샷에 굽는다 |
 | 좌표 권위 | 서버는 좌표를 저장하지 않는다 — **가중치 그래프만** 권위. 좌표(반지름·각도 모두)는 클라가 산출한다 |
@@ -28,8 +28,10 @@
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| 우주 배경색 | 선택한 테마의 깊은 배경색 한 겹 — `themeBg(theme)`(vast `#070b1e` / lively `#120617` / calm `#04140f`) |
-| 테마 ↔ 별색 분리 | 배경은 테마(깊이), 별색은 mood(13색 의미 팔레트)로 독립. 테마 변경이 별의 mood 색을 바꾸지 않는다 |
+| 배경(Background) 번들 (44) | "테마"를 **배경(Background)** 으로 정명. 배경은 색만이 아니라 **깊은 clear color + fluid 팔레트 + 텍스처/요소 슬롯** 번들이다(`themeBg`/`paletteForBackground`/optional veil). 무료 `vast` + 유료 `lively`·`calm`·`aurora-veil`. 와이어/store id는 호환 위해 `theme` 유지(커스터마이즈 '배경' 축). 상세 [customization](customization.md) |
+| 몽환 성운 워시 (44) | 선택 배경의 **fluid 팔레트**를 사방을 감싸는 큰 안쪽 구(`UniverseNebula`)에 도메인워프 오로라로 칠해 우주에 몽환 깊이를 준다(랜딩/사인인 `CosmosScene`과 같은 결, **방향(normalize(position)) 도메인** 노이즈라 uv 극 핀칭 없음 · draw call 1개). 모든 것 뒤(renderOrder<`AmbientNebula`)·`depthWrite/depthTest=false` → 별 mood 색·깊이 불간섭, 낮은 밝기로 별을 씻지 않음. reduced-motion이면 정지 |
+| 배경 ↔ 별색 분리 | 배경은 배경 자체 색, 별색은 mood(13색 의미 팔레트)로 독립. **배경 변경이 별의 mood 색을 바꾸지 않는다**(StarField는 emotionColors/mood만 읽음) |
+| 별먼지 vs 별가루 | 배경 점구름 "별먼지"(cosmic dust, count 1500)는 화폐가 아니다 — 커스터마이즈 화폐는 별개의 "별가루"(Stardust, [customization](customization.md)) |
 | 먼지 디밍 | 별 선택(focus) 시 별 먼지 불투명도 0.5 → 0.14로 낮춰 선택 별만 밝게(스포트라이트) |
 
 ### 요즘 상태 배경 (ambient mood, 25)

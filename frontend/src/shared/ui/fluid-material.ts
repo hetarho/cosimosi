@@ -26,40 +26,12 @@ import {
   length,
   mx_fractal_noise_float,
 } from 'three/tsl'
+import { type CosmosPalette, DEFAULT_PALETTE } from '@/shared/config'
 
-/** 6-slot fluid palette: 깊은 base → 4 중간 톤(c1..c4) → 밝은 하이라이트(hi). 테마별로 갈아끼운다. */
-export interface CosmosPalette {
-  base: string
-  c1: string
-  c2: string
-  c3: string
-  c4: string
-  hi: string
-}
-
-// 기본(vast) 팔레트 — 깊은 violet base, 소프트 magenta/pink/violet/lavender, 따뜻한 cream 하이라이트.
-const DEFAULT_PALETTE: CosmosPalette = {
-  base: '#0b0b1c',
-  c1: '#3a2b6b',
-  c2: '#8d5bd6',
-  c3: '#d479c6',
-  c4: '#b9a7ef',
-  hi: '#f3e6d0',
-}
-
-/** 테마 키 — appearance 엔티티의 Theme와 구조적으로 같지만(문자열 유니온) 이 모듈은 엔티티를 import하지
- *  않는다(디커플드 유지). 소비처가 자기 theme을 그대로 넘긴다. */
-export type CosmosThemeKey = 'vast' | 'lively' | 'calm'
-
-// 테마별 fluid 팔레트(themes.ts의 색 성격을 따른다): vast=인디고 violet, lively=따뜻한 자홍, calm=청록.
-const THEME_PALETTES: Record<CosmosThemeKey, CosmosPalette> = {
-  vast: DEFAULT_PALETTE,
-  lively: { base: '#120617', c1: '#4a1f3a', c2: '#c75ba0', c3: '#ff7a8f', c4: '#ffb27a', hi: '#ffe6c8' },
-  calm: { base: '#04140f', c1: '#0e3b38', c2: '#1d9e75', c3: '#3fd6b5', c4: '#9fe6cf', hi: '#e6f3ea' },
-}
-
-/** 테마 → fluid 팔레트. 소비처(사인인·초대·랜딩)가 appearance theme을 넘겨 배경색을 테마에 맞춘다. */
-export const paletteForTheme = (t: CosmosThemeKey): CosmosPalette => THEME_PALETTES[t] ?? DEFAULT_PALETTE
+// CosmosPalette/DEFAULT_PALETTE의 단일 출처는 shared/config(순수 shape) — 배경별 팔레트 *목록* 소유권은
+// entities/appearance(BACKGROUNDS.palette)로 이전했다(spec 44). 이 모듈은 머티리얼만 빌드하고, 소비처가
+// 자기 배경의 palette를 넘긴다(paletteForBackground). 타입은 back-compat 위해 여기서도 재노출한다.
+export { type CosmosPalette, DEFAULT_PALETTE }
 
 /** fluid 머티리얼 옵션.
  *  - `palette`: 테마별 6색(기본 vast).

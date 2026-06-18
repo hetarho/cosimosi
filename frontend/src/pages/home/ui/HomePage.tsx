@@ -14,7 +14,7 @@ import {
   useDemoOverlay,
 } from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
-import { Menu } from 'lucide-react'
+import { Menu, Palette, Sparkles } from 'lucide-react'
 import { Backdrop, MorningDiffNote, OverlayHost, Surface, primaryButtonCls } from '@/shared/ui'
 import {
   UniverseCanvas,
@@ -34,7 +34,7 @@ import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
 import { DiaryCard, DiarySheet } from '@/features/diary-list'
 import { DormantSheet } from '@/features/dormant-search'
 import { useShellStore } from '@/features/universe'
-import { AppearanceControls } from '@/features/switch-appearance'
+import { AppearanceControls, AppearanceSaveBar } from '@/features/switch-appearance'
 import { ShareUniverseBody } from '@/features/share-universe'
 import { SendStarBody, StarGiftsBody } from '@/features/send-star'
 import {
@@ -47,7 +47,13 @@ import {
   selectIsStarFocus,
   selectIsFocused,
 } from '@/entities/memory'
-import { applySettings, settingsQueryOptions } from '@/entities/appearance'
+import {
+  applySettings,
+  settingsQueryOptions,
+  applyInventory,
+  inventoryQueryOptions,
+  useAppearance,
+} from '@/entities/appearance'
 
 // The universe shell (spec 10, extended by 11): full-screen <UniverseCanvas/> (renders
 // the stars from the memory store) + 2D HUD overlays (compose form, camera toggle,
@@ -454,6 +460,15 @@ export function HomePage() {
     if (settingsData) applySettings(settingsData)
   }, [settingsData])
 
+  // 커스터마이즈 인벤토리(spec 44): 별가루 잔액 + 소유 아이템을 시드한다(GetInventory 첫 호출에서
+  // 잔액 100 멱등 시드, A1). 데모/미인증 가드는 inventoryQueryOptions queryFn에 있다(빈 인벤토리).
+  const { data: inventoryData } = useQuery(inventoryQueryOptions())
+  useEffect(() => {
+    if (inventoryData) applyInventory(inventoryData)
+  }, [inventoryData])
+  // 좌상단 알약에 보일 별가루 잔액(서버 권위·store 동기). 실로그인만 잔액 노출(데모는 팔레트 아이콘만).
+  const stardust = useAppearance((s) => s.stardust)
+
   // First universe open of a new local day → the morning-diff note once (6.1). Gated to a
   // non-empty live universe (a brand-new user with no stars sees nothing to "정리"). The
   // claim+show is deferred to a rAF (so the setState isn't synchronous in the effect) and
@@ -604,8 +619,29 @@ export function HomePage() {
           <Menu className="size-5" />
         </button>
       </div>
+      {/* === 좌상단 별가루·테마 알약 — 누르면 테마·외형 편집기(드래프트). 실로그인은 잔액+팔레트, 데모는
+          팔레트만(데모엔 실제 화폐 경제 없음). 우주에 들어오면 바로 보이는 외형 진입점. === */}
+      <button
+        type="button"
+        onClick={openAppearance}
+        aria-label="테마·외형 열기"
+        className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-30 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-sm text-white/85 backdrop-blur transition hover:bg-black/60"
+      >
+        {!isDemoMode() && (
+          <span className="flex items-center gap-1 tabular-nums">
+            <Sparkles className="size-3.5 text-amber-200/90" aria-hidden />
+            {stardust}
+          </span>
+        )}
+        <Palette className="size-4 text-white/80" aria-hidden />
+      </button>
+
       {/* 이동 D-pad — 회상 모드 전용, 화면 가장자리(엄지 구역). 상시 버튼이 아니라 모드별 비행 컨트롤. */}
       <NavPad />
+
+      {/* 외형 드래프트 저장 바(플로팅) — 외형을 바꾸면(미저장) 떠서 변화를 보고 한 번에 저장한다(미구매
+          아이템은 그때 일괄 구매). 드래프트 없음·데모면 스스로 숨는다. */}
+      <AppearanceSaveBar />
 
       {/* === 메뉴 — "나머지 기능" 런처가 여는 비차단 Surface. 항목을 고르면 그 기능 표면으로 전환된다
           (opener가 메뉴를 닫고 연다). 데모엔 서버 없는 작성·소셜을 빼고 탐색·테마만. === */}
@@ -640,9 +676,10 @@ export function HomePage() {
         </nav>
       </Surface>
 
-      {/* 테마·외형 — 메뉴 항목이 여는 비차단 Surface(랜딩 FAB과 같은 본문 `AppearanceControls`). */}
+      {/* 테마·외형 — 좌상단 알약/메뉴가 여는 비차단 Surface. 홈은 드래프트 모드: 잠긴 아이템도 미리보기로
+          고를 수 있고, 변화를 보고 플로팅 저장 바로 커밋한다(자동 저장 안 함). */}
       <Surface open={appearanceOpen} title="테마·외형" onClose={() => setAppearanceOpen(false)} place="center" width="sm">
-        <AppearanceControls />
+        <AppearanceControls draft />
       </Surface>
 
       {/* === 결과/액션 표면 — 통일 비차단 Surface(모바일 바텀시트 / 데스크톱 떠있는 카드). 한 문법(A4·A5):

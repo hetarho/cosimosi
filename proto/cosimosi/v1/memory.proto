@@ -275,11 +275,16 @@ message EmotionColor {
 }
 
 // Settings is the user's stored visual overrides (not a complete config — the
-// client merges these over its defaults).
+// client merges these over its defaults). The four selection axes (spec 44):
+// theme = background, star_object = star, self_object = self, synapse_style =
+// synapse. Field numbers are append-only (4·5 added; theme keeps its wire name
+// even though the domain term is now "background" — a stable identifier).
 message Settings {
-  string theme = 1;                          // "" = client default (vast)
-  string star_object = 2;                    // "" = client default (deepfield)
+  string theme = 1;                          // "" = client default (background vast)
+  string star_object = 2;                    // "" = client default (star deepfield)
   repeated EmotionColor emotion_colors = 3;  // only moods the user overrode (0..13)
+  string self_object = 4;                    // "" = client default (self nebula-heart)
+  string synapse_style = 5;                  // "" = client default (synapse filament)
 }
 
 message GetSettingsRequest {}
@@ -289,23 +294,55 @@ message GetSettingsResponse {
 }
 
 // Partial update: only present fields are upserted; omitted fields are preserved.
-// Sending emotion_colors upserts that subset — it never deletes the others.
+// Sending emotion_colors upserts that subset — it never deletes the others. A
+// present axis selecting a NOT-OWNED (and not-free) paid item → FailedPrecondition
+// (ErrNotOwned) — a locked item can't be selected via the API (spec 44).
 message UpdateSettingsRequest {
   optional string theme = 1;
   optional string star_object = 2;
   repeated EmotionColor emotion_colors = 3;
+  optional string self_object = 4;
+  optional string synapse_style = 5;
 }
 
 message UpdateSettingsResponse {
   Settings settings = 1;                     // the stored overrides after the update
 }
 
-// SettingsService owns per-user visual personalization — a separate bounded
-// context from MemoryService (the star graph). unary only (constitution §6);
-// GetSettings is idempotent (exposed as HTTP GET).
+// --- Inventory / purchase (별가루 wallet + ownership, spec 44) ---
+
+// Stardust balance + the set of OWNED paid item ids. Free kinds are NOT listed
+// (implicit ownership — the client knows them from its catalog). item ids are the
+// stable "<axis>:<kind>" identifiers (e.g. "star:aurora").
+message GetInventoryRequest {}
+
+message GetInventoryResponse {
+  int64 stardust = 1;
+  repeated string owned_item_ids = 2;        // paid items the user has bought (free kinds excluded)
+}
+
+message PurchaseItemRequest {
+  string item_id = 1;                        // a known PAID item id ("<axis>:<kind>")
+}
+
+// The new inventory state after a successful purchase (balance debited, item granted).
+message PurchaseItemResponse {
+  int64 stardust = 1;
+  repeated string owned_item_ids = 2;
+}
+
+// SettingsService owns per-user visual personalization + the customization economy
+// (wallet/ownership/purchase, spec 44) — a separate bounded context from
+// MemoryService (the star graph). unary only (constitution §6); GetSettings and
+// GetInventory are idempotent (exposed as HTTP GET). PurchaseItem mutates (no
+// NO_SIDE_EFFECTS). All RPCs require auth.
 service SettingsService {
   rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+  rpc GetInventory(GetInventoryRequest) returns (GetInventoryResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc PurchaseItem(PurchaseItemRequest) returns (PurchaseItemResponse);
 }

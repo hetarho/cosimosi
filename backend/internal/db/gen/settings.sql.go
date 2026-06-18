@@ -9,25 +9,110 @@ import (
 	"context"
 )
 
+const debitWallet = `-- name: DebitWallet :execrows
+UPDATE user_wallet SET stardust = stardust - $1, updated_at = now()
+WHERE user_id = $2 AND stardust >= $1
+`
+
+type DebitWalletParams struct {
+	Amount int32  `json:"amount"`
+	UserID string `json:"user_id"`
+}
+
+// 구매 차감(spec 44, A2c/A3): 잔액 ≥ 가격일 때만 차감 — affected=0이면 잔액 부족(음수 방지 가드).
+// 트랜잭션 안에서 호출, affected 행 수로 잔액 부족을 원자 판정한다.
+func (q *Queries) DebitWallet(ctx context.Context, arg DebitWalletParams) (int64, error) {
+	result, err := q.db.Exec(ctx, debitWallet, arg.Amount, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getUserSettings = `-- name: GetUserSettings :one
 
-SELECT theme, star_object FROM user_settings WHERE user_id = $1
+SELECT theme, star_object, self_object, synapse_style FROM user_settings WHERE user_id = $1
 `
 
 type GetUserSettingsRow struct {
-	Theme      *string `json:"theme"`
-	StarObject *string `json:"star_object"`
+	Theme        *string `json:"theme"`
+	StarObject   *string `json:"star_object"`
+	SelfObject   *string `json:"self_object"`
+	SynapseStyle *string `json:"synapse_style"`
 }
 
-// 시각 개인 설정(spec 30). 서버는 사용자 오버라이드만 저장한다 — 행/엔트리가 없으면
-// GetUserSettings는 pgx.ErrNoRows, ListUserEmotionColors는 빈 슬라이스이고, 클라가
-// 기본값(테마/오브젝트/MOOD_PALETTE) 위에 머지한다. 사용자 행을 미리 시드하지 않는다.
-// 단일값 오버라이드(테마·오브젝트). 둘 다 nullable — NULL이면 클라 기본값.
+// 시각 개인 설정(spec 30) + 커스터마이즈 소유권·지갑(spec 44). 서버는 사용자 오버라이드만 저장한다 —
+// 행/엔트리가 없으면 GetUserSettings는 pgx.ErrNoRows, ListUserEmotionColors는 빈 슬라이스이고, 클라가
+// 기본값(테마/오브젝트/MOOD_PALETTE) 위에 머지한다. 사용자 행을 미리 시드하지 않는다. 지갑은 인벤토리
+// 첫 조회에서만 시드(SeedWallet, 멱등). 잔액은 구매 차감(DebitWallet)으로만 줄고 음수 불가(가드 WHERE).
+// 단일값 오버라이드(4축 선택). 전부 nullable — NULL이면 클라 기본값(축별 무료 종).
 func (q *Queries) GetUserSettings(ctx context.Context, userID string) (GetUserSettingsRow, error) {
 	row := q.db.QueryRow(ctx, getUserSettings, userID)
 	var i GetUserSettingsRow
-	err := row.Scan(&i.Theme, &i.StarObject)
+	err := row.Scan(
+		&i.Theme,
+		&i.StarObject,
+		&i.SelfObject,
+		&i.SynapseStyle,
+	)
 	return i, err
+}
+
+const getWallet = `-- name: GetWallet :one
+SELECT stardust FROM user_wallet WHERE user_id = $1
+`
+
+// 잔액 조회(시드하지 않음). 행이 없으면 pgx.ErrNoRows → 서비스가 SeedWallet으로 시드한다.
+func (q *Queries) GetWallet(ctx context.Context, userID string) (int32, error) {
+	row := q.db.QueryRow(ctx, getWallet, userID)
+	var stardust int32
+	err := row.Scan(&stardust)
+	return stardust, err
+}
+
+const grantItem = `-- name: GrantItem :execrows
+INSERT INTO user_owned_items (user_id, item_id) VALUES ($1, $2)
+ON CONFLICT (user_id, item_id) DO NOTHING
+`
+
+type GrantItemParams struct {
+	UserID string `json:"user_id"`
+	ItemID string `json:"item_id"`
+}
+
+// 소유 부여(spec 44, A2b): 멱등 — 이미 소유면 ON CONFLICT DO NOTHING으로 affected=0이라
+// 서비스가 "이미 소유"로 판정(이중 차감 방지, 트랜잭션 안에서 차감 직후 호출).
+func (q *Queries) GrantItem(ctx context.Context, arg GrantItemParams) (int64, error) {
+	result, err := q.db.Exec(ctx, grantItem, arg.UserID, arg.ItemID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const listOwnedItems = `-- name: ListOwnedItems :many
+SELECT item_id FROM user_owned_items WHERE user_id = $1 ORDER BY item_id
+`
+
+// 소유한 유료 아이템 id(무료 종은 행 없음 — 묵시 소유). 인벤토리·구매 응답에 실린다.
+func (q *Queries) ListOwnedItems(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listOwnedItems, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var item_id string
+		if err := rows.Scan(&item_id); err != nil {
+			return nil, err
+		}
+		items = append(items, item_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUserEmotionColors = `-- name: ListUserEmotionColors :many
@@ -60,6 +145,28 @@ func (q *Queries) ListUserEmotionColors(ctx context.Context, userID string) ([]L
 	return items, nil
 }
 
+const seedWallet = `-- name: SeedWallet :one
+INSERT INTO user_wallet (user_id, stardust)
+VALUES ($1, $2)
+ON CONFLICT (user_id) DO UPDATE SET user_id = user_wallet.user_id
+RETURNING stardust
+`
+
+type SeedWalletParams struct {
+	UserID   string `json:"user_id"`
+	Stardust int32  `json:"stardust"`
+}
+
+// 인벤토리 첫 조회 시 멱등 시드(spec 44, A1): 행이 없으면 starting_stardust(@stardust, values)로 INSERT,
+// 이미 있으면 잔액을 *건드리지 않고*(DO UPDATE SET user_id=자기자신 — no-op) 현재 잔액을 RETURNING.
+// DO NOTHING은 충돌 시 RETURNING이 0행이라 못 쓴다 — no-op UPDATE라야 항상 현재 잔액 1행을 돌려준다.
+func (q *Queries) SeedWallet(ctx context.Context, arg SeedWalletParams) (int32, error) {
+	row := q.db.QueryRow(ctx, seedWallet, arg.UserID, arg.Stardust)
+	var stardust int32
+	err := row.Scan(&stardust)
+	return stardust, err
+}
+
 const upsertUserEmotionColor = `-- name: UpsertUserEmotionColor :exec
 INSERT INTO user_emotion_colors (user_id, mood, color)
 VALUES ($1, $2, $3)
@@ -79,22 +186,32 @@ func (q *Queries) UpsertUserEmotionColor(ctx context.Context, arg UpsertUserEmot
 }
 
 const upsertUserSettings = `-- name: UpsertUserSettings :exec
-INSERT INTO user_settings (user_id, theme, star_object, updated_at)
-VALUES ($1, $2, $3, now())
+INSERT INTO user_settings (user_id, theme, star_object, self_object, synapse_style, updated_at)
+VALUES ($1, $2, $3, $4, $5, now())
 ON CONFLICT (user_id) DO UPDATE SET
-    theme       = COALESCE(EXCLUDED.theme, user_settings.theme),
-    star_object = COALESCE(EXCLUDED.star_object, user_settings.star_object),
-    updated_at  = now()
+    theme         = COALESCE(EXCLUDED.theme, user_settings.theme),
+    star_object   = COALESCE(EXCLUDED.star_object, user_settings.star_object),
+    self_object   = COALESCE(EXCLUDED.self_object, user_settings.self_object),
+    synapse_style = COALESCE(EXCLUDED.synapse_style, user_settings.synapse_style),
+    updated_at    = now()
 `
 
 type UpsertUserSettingsParams struct {
-	UserID     string  `json:"user_id"`
-	Theme      *string `json:"theme"`
-	StarObject *string `json:"star_object"`
+	UserID       string  `json:"user_id"`
+	Theme        *string `json:"theme"`
+	StarObject   *string `json:"star_object"`
+	SelfObject   *string `json:"self_object"`
+	SynapseStyle *string `json:"synapse_style"`
 }
 
-// 부분 갱신: NULL로 들어온 필드는 기존 값을 보존(COALESCE)해 "보낸 필드만 덮어쓰기".
+// 부분 갱신: NULL로 들어온 필드는 기존 값을 보존(COALESCE)해 "보낸 필드만 덮어쓰기"(4축 전부).
 func (q *Queries) UpsertUserSettings(ctx context.Context, arg UpsertUserSettingsParams) error {
-	_, err := q.db.Exec(ctx, upsertUserSettings, arg.UserID, arg.Theme, arg.StarObject)
+	_, err := q.db.Exec(ctx, upsertUserSettings,
+		arg.UserID,
+		arg.Theme,
+		arg.StarObject,
+		arg.SelfObject,
+		arg.SynapseStyle,
+	)
 	return err
 }

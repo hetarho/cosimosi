@@ -173,10 +173,25 @@ type UserEmotionColor struct {
 	Color  string `json:"color"`
 }
 
-type UserSetting struct {
+type UserOwnedItem struct {
 	UserID     string             `json:"user_id"`
-	Theme      *string            `json:"theme"`
-	StarObject *string            `json:"star_object"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ItemID     string             `json:"item_id"`
+	AcquiredAt pgtype.Timestamptz `json:"acquired_at"`
+}
+
+type UserSetting struct {
+	UserID       string             `json:"user_id"`
+	Theme        *string            `json:"theme"`
+	StarObject   *string            `json:"star_object"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	SelfObject   *string            `json:"self_object"`
+	SynapseStyle *string            `json:"synapse_style"`
+}
+
+type UserWallet struct {
+	UserID    string             `json:"user_id"`
+	Stardust  int32              `json:"stardust"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

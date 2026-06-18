@@ -29,7 +29,7 @@ import {
   selectFrameNonce,
 } from '@/entities/memory'
 import { frameTarget } from '@/features/wayfinding'
-import { useAppearance, themeBg } from '@/entities/appearance'
+import { useAppearance, backgroundMeta, type BackgroundTexture } from '@/entities/appearance'
 import { resolveMoodRgb, NEUTRAL_RGB, VALUES } from '@/shared/config'
 import {
   cn,
@@ -40,6 +40,7 @@ import {
   reportUniverseRenderer,
 } from '@/shared/lib'
 import { AmbientNebula } from './AmbientNebula'
+import { UniverseNebula } from './UniverseNebula'
 import { SelfStar } from './SelfStar'
 import { radiusOf, atRadius, RADIAL_SIM_PARAMS } from '../model/radial-layout'
 import {
@@ -123,6 +124,26 @@ const REKICK_ALPHA = VALUES.layout.rekickAlpha
  *  present, independent of the graph, so an empty universe still renders (1.10).
  *  mulberry32 (not Math.random) keeps generation pure during render
  *  (react-hooks/purity) and the layout stable across re-renders. */
+// 배경 번들의 텍스처/요소 슬롯(spec 44 A9): 선택된 배경에 texture가 있으면 장면을 감싸는 큰 안쪽 구
+// 한 겹으로 은은한 색 베일을 깐다(별보다 멀고 renderOrder<0·depthWrite 없음 → 별 mood 색·깊이 불간섭).
+// 텍스처 없는 배경(vast/lively/calm)은 null → 기존 렌더와 동일. 비주얼 디테일은 디자인 반복용 슬롯.
+function BackgroundVeil({ texture }: { texture?: BackgroundTexture }) {
+  if (!texture?.veilColor) return null
+  return (
+    <mesh renderOrder={-2}>
+      <sphereGeometry args={[800, 24, 16]} />
+      <meshBasicMaterial
+        color={texture.veilColor}
+        side={THREE.BackSide}
+        transparent
+        opacity={texture.veilOpacity ?? 0.15}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
 function StarDust({ count = 1500 }: { count?: number }) {
   // Dim the ambient dust while a star is focused (spotlight) OR a diary is highlighted
   // (원본 일기 조망, spec 28) so only the foregrounded stars read bright. (focus 머신, spec 39)
@@ -951,6 +972,10 @@ function UniverseSynapses({
   const edges = useSynapseStore((s) => s.edges)
   const stars = useMemoryStore((s) => s.stars)
   const emotionColors = useAppearance((s) => s.emotionColors)
+  // 시냅스 스타일(spec 44): 선택값을 그대로 적용(store가 알 수 없는 스타일은 default로 검증·폴백). 소유권은
+  // 스위처 선택 시점 + 서버 UpdateSettings(A4)에서 강제 — 렌더 폴백은 공유 우주 방문 시 소유자 선택을
+  // 방문자 소유로 가려 회귀하므로 하지 않는다. 색·weight 시각·삭제금지 불변식은 SynapseFilaments가 유지.
+  const synapseStyle = useAppearance((s) => s.synapseStyle)
   const selectedId = useSelector(focusActor, selectFocusedStarId)
   // 강조 일기의 별 id 집합 — record_id로 그룹(spec 28). 별 집합/강조 record 변경 시에만 재계산.
   const highlightedIds = useMemo(
@@ -994,6 +1019,7 @@ function UniverseSynapses({
         positionsRef={positionsRef}
         idIndex={idIndex}
         dim={dim}
+        style={synapseStyle}
       />
       <SynapseDust
         edges={edges}
@@ -1013,6 +1039,7 @@ function UniverseSynapses({
           positionsRef={positionsRef}
           idIndex={idIndex}
           dim={1}
+          style={synapseStyle}
         />
       )}
     </>
@@ -1583,13 +1610,17 @@ export function UniverseCanvas() {
   )
   if (initError != null) throw initError
 
-  // 우주의 색 = 선택한 테마(appearance entity)의 깊은 배경색. 별(기억) 색은 mood(감정 의미색)라 보존.
-  const bg = themeBg(useAppearance((s) => s.theme))
+  // 우주의 배경 = 선택한 배경(Background) 번들(spec 44): 깊은 clear color + 선택적 텍스처(veil) 결.
+  // 별(기억) 색은 mood(감정 의미색)라 배경과 무관하게 보존된다(A9 — StarField는 emotionColors/mood만 읽음).
+  const background = backgroundMeta(useAppearance((s) => s.theme))
+  const bg = background.bg
   // 별(기억) 오브제의 형태 = 선택한 object. StarField가 형태별 지오메트리·재질로 그린다(색은 mood 유지).
   const object = useAppearance((s) => s.object)
   // 감정색 사용자 오버라이드(spec 30) — 별·시냅스 색에 기본 팔레트 대신 우선 적용(빈 맵=기본).
   const emotionColors = useAppearance((s) => s.emotionColors)
-  // 중심 "나" 별 형태(spec 38) — 우주 중심 앵커. 강한 기억이 그 곁에 모인다.
+  // 중심 "나" 별 형태(spec 38·44) — 우주 중심 앵커. 선택값을 그대로 그린다(store가 알 수 없는 id를 이미
+  // 축 기본값으로 폴백·검증). 소유권은 *선택 시점*(스위처)과 서버(UpdateSettings A4)에서 강제한다 —
+  // 렌더에서 소유권으로 다시 폴백하면 공유 우주(방문)에서 소유자 선택을 방문자 소유로 가려 깨진다(회귀).
   const selfObject = useAppearance((s) => s.selfObject)
   // 포커스 상태(focus 머신, spec 39) — 강조 일기 record_id + 선택 별 id. StarField/UniverseSynapses에
   // prop으로 내려 record_id로 자기 별 집합을 파생해 강조/dim하고, 별 탭은 onSelect로 머신에 보낸다.
@@ -1661,6 +1692,12 @@ export function UniverseCanvas() {
       }}
     >
       <color attach="background" args={[bg]} />
+      {/* 몽환 성운 워시(spec 44): 선택한 배경 팔레트로 사방을 감싸는 도메인워프 오로라 한 겹(랜딩과 같은 결).
+          모든 것 뒤(renderOrder -11)·depthWrite/Test 없음 → 별 mood 색·깊이 불간섭. reduced-motion이면 정지. */}
+      <UniverseNebula palette={background.palette} />
+      {/* 배경 번들의 텍스처/요소 슬롯(spec 44 A9): 선택적 색 베일 한 겹을 모든 것 뒤(renderOrder<0)에 깐다.
+          별 mood 색은 불간섭(별보다 뒤·depthWrite 없음). 텍스처 없는 배경(vast/lively/calm)은 렌더 동일. */}
+      <BackgroundVeil texture={background.texture} />
       {/* 어두운 반구 채움광(spec 03 — 하드코딩 0.4를 values로 이전). 반사(emissiveNode 내 계산)와 albedo
           이중계상 시 하향 재튜닝 대상. StarField는 자아-별이 원점이라 selfLightPos 기본(원점·점광)으로 충분. */}
       <ambientLight intensity={VALUES.starLighting.ambientFill} />

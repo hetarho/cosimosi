@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/v1/memory.proto.
  */
 export const file_cosimosi_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxImEKDFNlZ21lbnREcmFmdBIMCgR0ZXh0GAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIPCgd2YWxlbmNlGAQgASgBIiQKFFNlZ21lbnRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkiRAoVU2VnbWVudE1lbW9yeVJlc3BvbnNlEisKCHNlZ21lbnRzGAEgAygLMhkuY29zaW1vc2kudjEuU2VnbWVudERyYWZ0IsIBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEg8KB3ZhbGVuY2UYBiABKAESKwoIc2VnbWVudHMYByADKAsyGS5jb3NpbW9zaS52MS5TZWdtZW50RHJhZnQiPQoUUmVjb3JkTWVtb3J5UmVzcG9uc2USEQoJcmVjb3JkX2lkGAEgASgJEhIKCm1lbW9yeV9pZHMYAiADKAkioAIKBFN0YXISEQoJbWVtb3J5X2lkGAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIYChBsYXN0X3JlY2FsbGVkX2F0GAQgASgJEhkKEWJyaWdodG5lc3Nfb2Zmc2V0GAUgASgBEhEKCWh1ZV9zaGlmdBgGIAEoARIXCg9mb3JtX3NlZWRfZGVsdGEYByABKAESDwoHdmVyc2lvbhgIIAEoBRIRCglyZWNvcmRfaWQYCSABKAkSFgoOZnJhZ21lbnRfaW5kZXgYCiABKAUSEAoIcmVzb25hbnQYCyABKAgSDwoHdmFsZW5jZRgMIAEoARIRCglyZWxldmFuY2UYDSABKAEigAEKB1N5bmFwc2USDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEg4KBndlaWdodBgDIAEoARIRCglsaW5rX3R5cGUYBCABKAkSGQoRbGFzdF9hY3RpdmF0ZWRfYXQYBSABKAkSGwoTY29fYWN0aXZhdGlvbl9jb3VudBgGIAEoBSIUChJHZXRVbml2ZXJzZVJlcXVlc3QiSQoLQW1iaWVudE1vb2QSCwoDaHVlGAEgASgBEgsKA3NhdBgCIAEoARIPCgdhcm91c2FsGAMgASgBEg8KB3ZhbGVuY2UYBCABKAEiigEKE0dldFVuaXZlcnNlUmVzcG9uc2USIAoFc3RhcnMYASADKAsyES5jb3NpbW9zaS52MS5TdGFyEiYKCHN5bmFwc2VzGAIgAygLMhQuY29zaW1vc2kudjEuU3luYXBzZRIpCgdhbWJpZW50GAMgASgLMhguY29zaW1vc2kudjEuQW1iaWVudE1vb2QiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIlIKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZBIVCg1mcmFnbWVudF90ZXh0GAIgASgJImAKDVJlY29yZFN1bW1hcnkSEQoJcmVjb3JkX2lkGAEgASgJEhIKCmVudHJ5X2RhdGUYAiABKAkSFAoMYm9keV9leGNlcnB0GAMgASgJEhIKCnN0YXJfY291bnQYBCABKAUiFAoSTGlzdFJlY29yZHNSZXF1ZXN0IkIKE0xpc3RSZWNvcmRzUmVzcG9uc2USKwoHcmVjb3JkcxgBIAMoCzIaLmNvc2ltb3NpLnYxLlJlY29yZFN1bW1hcnkiogEKEUV2b2x1dGlvblNuYXBzaG90Eg8KB3ZlcnNpb24YASABKAUSEgoKYnJpZ2h0bmVzcxgCIAEoARIRCglodWVfc2hpZnQYAyABKAESFwoPZm9ybV9zZWVkX2RlbHRhGAQgASgBEg8KB3RyaWdnZXIYBSABKAkSCgoCcGUYBiABKAESCwoDZGlyGAcgASgFEhIKCmNyZWF0ZWRfYXQYCCABKAkiLwoaR2V0RXZvbHV0aW9uSGlzdG9yeVJlcXVlc3QSEQoJbWVtb3J5X2lkGAEgASgJIlAKG0dldEV2b2x1dGlvbkhpc3RvcnlSZXNwb25zZRIxCglzbmFwc2hvdHMYASADKAsyHi5jb3NpbW9zaS52MS5Fdm9sdXRpb25TbmFwc2hvdCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJImEKCFNldHRpbmdzEg0KBXRoZW1lGAEgASgJEhMKC3N0YXJfb2JqZWN0GAIgASgJEjEKDmVtb3Rpb25fY29sb3JzGAMgAygLMhkuY29zaW1vc2kudjEuRW1vdGlvbkNvbG9yIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MikgEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3JCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdCJBChZVcGRhdGVTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3MqtQEKBE1vb2QSFAoQTU9PRF9VTlNQRUNJRklFRBAAEgcKA0pPWRABEggKBENBTE0QAhIHCgNTQUQQAxIJCgVBTkdFUhAEEggKBEZFQVIQBRIICgRMT1ZFEAYSCwoHTkVVVFJBTBAHEg4KCkVYQ0lURU1FTlQQCBINCglHUkFUSVRVREUQCRIKCgZSRUxJRUYQChIKCgZTVFJFU1MQCxIJCgVUSVJFRBAMEg0KCUVNUFRJTkVTUxANMuAFCg1NZW1vcnlTZXJ2aWNlElYKDVNlZ21lbnRNZW1vcnkSIS5jb3NpbW9zaS52MS5TZWdtZW50TWVtb3J5UmVxdWVzdBoiLmNvc2ltb3NpLnYxLlNlZ21lbnRNZW1vcnlSZXNwb25zZRJTCgxSZWNvcmRNZW1vcnkSIC5jb3NpbW9zaS52MS5SZWNvcmRNZW1vcnlSZXF1ZXN0GiEuY29zaW1vc2kudjEuUmVjb3JkTWVtb3J5UmVzcG9uc2USVQoLR2V0VW5pdmVyc2USHy5jb3NpbW9zaS52MS5HZXRVbml2ZXJzZVJlcXVlc3QaIC5jb3NpbW9zaS52MS5HZXRVbml2ZXJzZVJlc3BvbnNlIgOQAgESWQoOUmVpbmZvcmNlTGlua3MSIi5jb3NpbW9zaS52MS5SZWluZm9yY2VMaW5rc1JlcXVlc3QaIy5jb3NpbW9zaS52MS5SZWluZm9yY2VMaW5rc1Jlc3BvbnNlElMKDFJlY2FsbE1lbW9yeRIgLmNvc2ltb3NpLnYxLlJlY2FsbE1lbW9yeVJlcXVlc3QaIS5jb3NpbW9zaS52MS5SZWNhbGxNZW1vcnlSZXNwb25zZRJVCgtMaXN0RG9ybWFudBIfLmNvc2ltb3NpLnYxLkxpc3REb3JtYW50UmVxdWVzdBogLmNvc2ltb3NpLnYxLkxpc3REb3JtYW50UmVzcG9uc2UiA5ACARJtChNHZXRFdm9sdXRpb25IaXN0b3J5EicuY29zaW1vc2kudjEuR2V0RXZvbHV0aW9uSGlzdG9yeVJlcXVlc3QaKC5jb3NpbW9zaS52MS5HZXRFdm9sdXRpb25IaXN0b3J5UmVzcG9uc2UiA5ACARJVCgtMaXN0UmVjb3JkcxIfLmNvc2ltb3NpLnYxLkxpc3RSZWNvcmRzUmVxdWVzdBogLmNvc2ltb3NpLnYxLkxpc3RSZWNvcmRzUmVzcG9uc2UiA5ACATLDAQoPU2V0dGluZ3NTZXJ2aWNlElUKC0dldFNldHRpbmdzEh8uY29zaW1vc2kudjEuR2V0U2V0dGluZ3NSZXF1ZXN0GiAuY29zaW1vc2kudjEuR2V0U2V0dGluZ3NSZXNwb25zZSIDkAIBElkKDlVwZGF0ZVNldHRpbmdzEiIuY29zaW1vc2kudjEuVXBkYXRlU2V0dGluZ3NSZXF1ZXN0GiMuY29zaW1vc2kudjEuVXBkYXRlU2V0dGluZ3NSZXNwb25zZUJBWj9naXRodWIuY29tL2Nvc2ltb3NpL2JhY2tlbmQvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3YxO2Nvc2ltb3NpdjFiBnByb3RvMw");
+  fileDesc("Chhjb3NpbW9zaS92MS9tZW1vcnkucHJvdG8SC2Nvc2ltb3NpLnYxImEKDFNlZ21lbnREcmFmdBIMCgR0ZXh0GAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIPCgd2YWxlbmNlGAQgASgBIiQKFFNlZ21lbnRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkiRAoVU2VnbWVudE1lbW9yeVJlc3BvbnNlEisKCHNlZ21lbnRzGAEgAygLMhkuY29zaW1vc2kudjEuU2VnbWVudERyYWZ0IsIBChNSZWNvcmRNZW1vcnlSZXF1ZXN0EgwKBGJvZHkYASABKAkSHwoEbW9vZBgCIAEoDjIRLmNvc2ltb3NpLnYxLk1vb2QSEQoJaW50ZW5zaXR5GAMgASgBEhIKCmVudHJ5X2RhdGUYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJEg8KB3ZhbGVuY2UYBiABKAESKwoIc2VnbWVudHMYByADKAsyGS5jb3NpbW9zaS52MS5TZWdtZW50RHJhZnQiPQoUUmVjb3JkTWVtb3J5UmVzcG9uc2USEQoJcmVjb3JkX2lkGAEgASgJEhIKCm1lbW9yeV9pZHMYAiADKAkioAIKBFN0YXISEQoJbWVtb3J5X2lkGAEgASgJEh8KBG1vb2QYAiABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgDIAEoARIYChBsYXN0X3JlY2FsbGVkX2F0GAQgASgJEhkKEWJyaWdodG5lc3Nfb2Zmc2V0GAUgASgBEhEKCWh1ZV9zaGlmdBgGIAEoARIXCg9mb3JtX3NlZWRfZGVsdGEYByABKAESDwoHdmVyc2lvbhgIIAEoBRIRCglyZWNvcmRfaWQYCSABKAkSFgoOZnJhZ21lbnRfaW5kZXgYCiABKAUSEAoIcmVzb25hbnQYCyABKAgSDwoHdmFsZW5jZRgMIAEoARIRCglyZWxldmFuY2UYDSABKAEigAEKB1N5bmFwc2USDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEg4KBndlaWdodBgDIAEoARIRCglsaW5rX3R5cGUYBCABKAkSGQoRbGFzdF9hY3RpdmF0ZWRfYXQYBSABKAkSGwoTY29fYWN0aXZhdGlvbl9jb3VudBgGIAEoBSIUChJHZXRVbml2ZXJzZVJlcXVlc3QiSQoLQW1iaWVudE1vb2QSCwoDaHVlGAEgASgBEgsKA3NhdBgCIAEoARIPCgdhcm91c2FsGAMgASgBEg8KB3ZhbGVuY2UYBCABKAEiigEKE0dldFVuaXZlcnNlUmVzcG9uc2USIAoFc3RhcnMYASADKAsyES5jb3NpbW9zaS52MS5TdGFyEiYKCHN5bmFwc2VzGAIgAygLMhQuY29zaW1vc2kudjEuU3luYXBzZRIpCgdhbWJpZW50GAMgASgLMhguY29zaW1vc2kudjEuQW1iaWVudE1vb2QiKAoTUmVjYWxsTWVtb3J5UmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkihQEKBlJlY29yZBIRCgltZW1vcnlfaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgplbnRyeV9kYXRlGAMgASgJEh8KBG1vb2QYBCABKA4yES5jb3NpbW9zaS52MS5Nb29kEhEKCWludGVuc2l0eRgFIAEoARISCgpjcmVhdGVkX2F0GAYgASgJIlIKFFJlY2FsbE1lbW9yeVJlc3BvbnNlEiMKBnJlY29yZBgBIAEoCzITLmNvc2ltb3NpLnYxLlJlY29yZBIVCg1mcmFnbWVudF90ZXh0GAIgASgJImAKDVJlY29yZFN1bW1hcnkSEQoJcmVjb3JkX2lkGAEgASgJEhIKCmVudHJ5X2RhdGUYAiABKAkSFAoMYm9keV9leGNlcnB0GAMgASgJEhIKCnN0YXJfY291bnQYBCABKAUiFAoSTGlzdFJlY29yZHNSZXF1ZXN0IkIKE0xpc3RSZWNvcmRzUmVzcG9uc2USKwoHcmVjb3JkcxgBIAMoCzIaLmNvc2ltb3NpLnYxLlJlY29yZFN1bW1hcnkiogEKEUV2b2x1dGlvblNuYXBzaG90Eg8KB3ZlcnNpb24YASABKAUSEgoKYnJpZ2h0bmVzcxgCIAEoARIRCglodWVfc2hpZnQYAyABKAESFwoPZm9ybV9zZWVkX2RlbHRhGAQgASgBEg8KB3RyaWdnZXIYBSABKAkSCgoCcGUYBiABKAESCwoDZGlyGAcgASgFEhIKCmNyZWF0ZWRfYXQYCCABKAkiLwoaR2V0RXZvbHV0aW9uSGlzdG9yeVJlcXVlc3QSEQoJbWVtb3J5X2lkGAEgASgJIlAKG0dldEV2b2x1dGlvbkhpc3RvcnlSZXNwb25zZRIxCglzbmFwc2hvdHMYASADKAsyHi5jb3NpbW9zaS52MS5Fdm9sdXRpb25TbmFwc2hvdCI9CglMaW5rRGVsdGESDAoEYV9pZBgBIAEoCRIMCgRiX2lkGAIgASgJEhQKDGRlbHRhX3dlaWdodBgDIAEoASJQChVSZWluZm9yY2VMaW5rc1JlcXVlc3QSJQoFaXRlbXMYASADKAsyFi5jb3NpbW9zaS52MS5MaW5rRGVsdGESEAoIYmF0Y2hfaWQYAiABKAkiGAoWUmVpbmZvcmNlTGlua3NSZXNwb25zZSIUChJMaXN0RG9ybWFudFJlcXVlc3QiNwoTTGlzdERvcm1hbnRSZXNwb25zZRIgCgVzdGFycxgBIAMoCzIRLmNvc2ltb3NpLnYxLlN0YXIiPgoMRW1vdGlvbkNvbG9yEh8KBG1vb2QYASABKA4yES5jb3NpbW9zaS52MS5Nb29kEg0KBWNvbG9yGAIgASgJIo0BCghTZXR0aW5ncxINCgV0aGVtZRgBIAEoCRITCgtzdGFyX29iamVjdBgCIAEoCRIxCg5lbW90aW9uX2NvbG9ycxgDIAMoCzIZLmNvc2ltb3NpLnYxLkVtb3Rpb25Db2xvchITCgtzZWxmX29iamVjdBgEIAEoCRIVCg1zeW5hcHNlX3N0eWxlGAUgASgJIhQKEkdldFNldHRpbmdzUmVxdWVzdCI+ChNHZXRTZXR0aW5nc1Jlc3BvbnNlEicKCHNldHRpbmdzGAEgASgLMhUuY29zaW1vc2kudjEuU2V0dGluZ3Mi6gEKFVVwZGF0ZVNldHRpbmdzUmVxdWVzdBISCgV0aGVtZRgBIAEoCUgAiAEBEhgKC3N0YXJfb2JqZWN0GAIgASgJSAGIAQESMQoOZW1vdGlvbl9jb2xvcnMYAyADKAsyGS5jb3NpbW9zaS52MS5FbW90aW9uQ29sb3ISGAoLc2VsZl9vYmplY3QYBCABKAlIAogBARIaCg1zeW5hcHNlX3N0eWxlGAUgASgJSAOIAQFCCAoGX3RoZW1lQg4KDF9zdGFyX29iamVjdEIOCgxfc2VsZl9vYmplY3RCEAoOX3N5bmFwc2Vfc3R5bGUiQQoWVXBkYXRlU2V0dGluZ3NSZXNwb25zZRInCghzZXR0aW5ncxgBIAEoCzIVLmNvc2ltb3NpLnYxLlNldHRpbmdzIhUKE0dldEludmVudG9yeVJlcXVlc3QiQAoUR2V0SW52ZW50b3J5UmVzcG9uc2USEAoIc3RhcmR1c3QYASABKAMSFgoOb3duZWRfaXRlbV9pZHMYAiADKAkiJgoTUHVyY2hhc2VJdGVtUmVxdWVzdBIPCgdpdGVtX2lkGAEgASgJIkAKFFB1cmNoYXNlSXRlbVJlc3BvbnNlEhAKCHN0YXJkdXN0GAEgASgDEhYKDm93bmVkX2l0ZW1faWRzGAIgAygJKrUBCgRNb29kEhQKEE1PT0RfVU5TUEVDSUZJRUQQABIHCgNKT1kQARIICgRDQUxNEAISBwoDU0FEEAMSCQoFQU5HRVIQBBIICgRGRUFSEAUSCAoETE9WRRAGEgsKB05FVVRSQUwQBxIOCgpFWENJVEVNRU5UEAgSDQoJR1JBVElUVURFEAkSCgoGUkVMSUVGEAoSCgoGU1RSRVNTEAsSCQoFVElSRUQQDBINCglFTVBUSU5FU1MQDTLgBQoNTWVtb3J5U2VydmljZRJWCg1TZWdtZW50TWVtb3J5EiEuY29zaW1vc2kudjEuU2VnbWVudE1lbW9yeVJlcXVlc3QaIi5jb3NpbW9zaS52MS5TZWdtZW50TWVtb3J5UmVzcG9uc2USUwoMUmVjb3JkTWVtb3J5EiAuY29zaW1vc2kudjEuUmVjb3JkTWVtb3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLlJlY29yZE1lbW9yeVJlc3BvbnNlElUKC0dldFVuaXZlcnNlEh8uY29zaW1vc2kudjEuR2V0VW5pdmVyc2VSZXF1ZXN0GiAuY29zaW1vc2kudjEuR2V0VW5pdmVyc2VSZXNwb25zZSIDkAIBElkKDlJlaW5mb3JjZUxpbmtzEiIuY29zaW1vc2kudjEuUmVpbmZvcmNlTGlua3NSZXF1ZXN0GiMuY29zaW1vc2kudjEuUmVpbmZvcmNlTGlua3NSZXNwb25zZRJTCgxSZWNhbGxNZW1vcnkSIC5jb3NpbW9zaS52MS5SZWNhbGxNZW1vcnlSZXF1ZXN0GiEuY29zaW1vc2kudjEuUmVjYWxsTWVtb3J5UmVzcG9uc2USVQoLTGlzdERvcm1hbnQSHy5jb3NpbW9zaS52MS5MaXN0RG9ybWFudFJlcXVlc3QaIC5jb3NpbW9zaS52MS5MaXN0RG9ybWFudFJlc3BvbnNlIgOQAgESbQoTR2V0RXZvbHV0aW9uSGlzdG9yeRInLmNvc2ltb3NpLnYxLkdldEV2b2x1dGlvbkhpc3RvcnlSZXF1ZXN0GiguY29zaW1vc2kudjEuR2V0RXZvbHV0aW9uSGlzdG9yeVJlc3BvbnNlIgOQAgESVQoLTGlzdFJlY29yZHMSHy5jb3NpbW9zaS52MS5MaXN0UmVjb3Jkc1JlcXVlc3QaIC5jb3NpbW9zaS52MS5MaXN0UmVjb3Jkc1Jlc3BvbnNlIgOQAgEy8gIKD1NldHRpbmdzU2VydmljZRJVCgtHZXRTZXR0aW5ncxIfLmNvc2ltb3NpLnYxLkdldFNldHRpbmdzUmVxdWVzdBogLmNvc2ltb3NpLnYxLkdldFNldHRpbmdzUmVzcG9uc2UiA5ACARJZCg5VcGRhdGVTZXR0aW5ncxIiLmNvc2ltb3NpLnYxLlVwZGF0ZVNldHRpbmdzUmVxdWVzdBojLmNvc2ltb3NpLnYxLlVwZGF0ZVNldHRpbmdzUmVzcG9uc2USWAoMR2V0SW52ZW50b3J5EiAuY29zaW1vc2kudjEuR2V0SW52ZW50b3J5UmVxdWVzdBohLmNvc2ltb3NpLnYxLkdldEludmVudG9yeVJlc3BvbnNlIgOQAgESUwoMUHVyY2hhc2VJdGVtEiAuY29zaW1vc2kudjEuUHVyY2hhc2VJdGVtUmVxdWVzdBohLmNvc2ltb3NpLnYxLlB1cmNoYXNlSXRlbVJlc3BvbnNlQkFaP2dpdGh1Yi5jb20vY29zaW1vc2kvYmFja2VuZC9pbnRlcm5hbC9nZW4vY29zaW1vc2kvdjE7Y29zaW1vc2l2MWIGcHJvdG8z");
 
 /**
  * SegmentDraft is one PROPOSED fragment star: the AI's split of a diary into a
@@ -814,20 +814,23 @@ export const EmotionColorSchema: GenMessage<EmotionColor> = /*@__PURE__*/
 
 /**
  * Settings is the user's stored visual overrides (not a complete config — the
- * client merges these over its defaults).
+ * client merges these over its defaults). The four selection axes (spec 44):
+ * theme = background, star_object = star, self_object = self, synapse_style =
+ * synapse. Field numbers are append-only (4·5 added; theme keeps its wire name
+ * even though the domain term is now "background" — a stable identifier).
  *
  * @generated from message cosimosi.v1.Settings
  */
 export type Settings = Message<"cosimosi.v1.Settings"> & {
   /**
-   * "" = client default (vast)
+   * "" = client default (background vast)
    *
    * @generated from field: string theme = 1;
    */
   theme: string;
 
   /**
-   * "" = client default (deepfield)
+   * "" = client default (star deepfield)
    *
    * @generated from field: string star_object = 2;
    */
@@ -839,6 +842,20 @@ export type Settings = Message<"cosimosi.v1.Settings"> & {
    * @generated from field: repeated cosimosi.v1.EmotionColor emotion_colors = 3;
    */
   emotionColors: EmotionColor[];
+
+  /**
+   * "" = client default (self nebula-heart)
+   *
+   * @generated from field: string self_object = 4;
+   */
+  selfObject: string;
+
+  /**
+   * "" = client default (synapse filament)
+   *
+   * @generated from field: string synapse_style = 5;
+   */
+  synapseStyle: string;
 };
 
 /**
@@ -880,7 +897,9 @@ export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__P
 
 /**
  * Partial update: only present fields are upserted; omitted fields are preserved.
- * Sending emotion_colors upserts that subset — it never deletes the others.
+ * Sending emotion_colors upserts that subset — it never deletes the others. A
+ * present axis selecting a NOT-OWNED (and not-free) paid item → FailedPrecondition
+ * (ErrNotOwned) — a locked item can't be selected via the API (spec 44).
  *
  * @generated from message cosimosi.v1.UpdateSettingsRequest
  */
@@ -899,6 +918,16 @@ export type UpdateSettingsRequest = Message<"cosimosi.v1.UpdateSettingsRequest">
    * @generated from field: repeated cosimosi.v1.EmotionColor emotion_colors = 3;
    */
   emotionColors: EmotionColor[];
+
+  /**
+   * @generated from field: optional string self_object = 4;
+   */
+  selfObject?: string | undefined;
+
+  /**
+   * @generated from field: optional string synapse_style = 5;
+   */
+  synapseStyle?: string | undefined;
 };
 
 /**
@@ -926,6 +955,90 @@ export type UpdateSettingsResponse = Message<"cosimosi.v1.UpdateSettingsResponse
  */
 export const UpdateSettingsResponseSchema: GenMessage<UpdateSettingsResponse> = /*@__PURE__*/
   messageDesc(file_cosimosi_v1_memory, 29);
+
+/**
+ * Stardust balance + the set of OWNED paid item ids. Free kinds are NOT listed
+ * (implicit ownership — the client knows them from its catalog). item ids are the
+ * stable "<axis>:<kind>" identifiers (e.g. "star:aurora").
+ *
+ * @generated from message cosimosi.v1.GetInventoryRequest
+ */
+export type GetInventoryRequest = Message<"cosimosi.v1.GetInventoryRequest"> & {
+};
+
+/**
+ * Describes the message cosimosi.v1.GetInventoryRequest.
+ * Use `create(GetInventoryRequestSchema)` to create a new message.
+ */
+export const GetInventoryRequestSchema: GenMessage<GetInventoryRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 30);
+
+/**
+ * @generated from message cosimosi.v1.GetInventoryResponse
+ */
+export type GetInventoryResponse = Message<"cosimosi.v1.GetInventoryResponse"> & {
+  /**
+   * @generated from field: int64 stardust = 1;
+   */
+  stardust: bigint;
+
+  /**
+   * paid items the user has bought (free kinds excluded)
+   *
+   * @generated from field: repeated string owned_item_ids = 2;
+   */
+  ownedItemIds: string[];
+};
+
+/**
+ * Describes the message cosimosi.v1.GetInventoryResponse.
+ * Use `create(GetInventoryResponseSchema)` to create a new message.
+ */
+export const GetInventoryResponseSchema: GenMessage<GetInventoryResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 31);
+
+/**
+ * @generated from message cosimosi.v1.PurchaseItemRequest
+ */
+export type PurchaseItemRequest = Message<"cosimosi.v1.PurchaseItemRequest"> & {
+  /**
+   * a known PAID item id ("<axis>:<kind>")
+   *
+   * @generated from field: string item_id = 1;
+   */
+  itemId: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.PurchaseItemRequest.
+ * Use `create(PurchaseItemRequestSchema)` to create a new message.
+ */
+export const PurchaseItemRequestSchema: GenMessage<PurchaseItemRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 32);
+
+/**
+ * The new inventory state after a successful purchase (balance debited, item granted).
+ *
+ * @generated from message cosimosi.v1.PurchaseItemResponse
+ */
+export type PurchaseItemResponse = Message<"cosimosi.v1.PurchaseItemResponse"> & {
+  /**
+   * @generated from field: int64 stardust = 1;
+   */
+  stardust: bigint;
+
+  /**
+   * @generated from field: repeated string owned_item_ids = 2;
+   */
+  ownedItemIds: string[];
+};
+
+/**
+ * Describes the message cosimosi.v1.PurchaseItemResponse.
+ * Use `create(PurchaseItemResponseSchema)` to create a new message.
+ */
+export const PurchaseItemResponseSchema: GenMessage<PurchaseItemResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_memory, 33);
 
 /**
  * Mood is the single source of truth for the 13 moods (4 affective quadrants ×3 +
@@ -1103,9 +1216,11 @@ export const MemoryService: GenService<{
   serviceDesc(file_cosimosi_v1_memory, 0);
 
 /**
- * SettingsService owns per-user visual personalization — a separate bounded
- * context from MemoryService (the star graph). unary only (constitution §6);
- * GetSettings is idempotent (exposed as HTTP GET).
+ * SettingsService owns per-user visual personalization + the customization economy
+ * (wallet/ownership/purchase, spec 44) — a separate bounded context from
+ * MemoryService (the star graph). unary only (constitution §6); GetSettings and
+ * GetInventory are idempotent (exposed as HTTP GET). PurchaseItem mutates (no
+ * NO_SIDE_EFFECTS). All RPCs require auth.
  *
  * @generated from service cosimosi.v1.SettingsService
  */
@@ -1125,6 +1240,22 @@ export const SettingsService: GenService<{
     methodKind: "unary";
     input: typeof UpdateSettingsRequestSchema;
     output: typeof UpdateSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc cosimosi.v1.SettingsService.GetInventory
+   */
+  getInventory: {
+    methodKind: "unary";
+    input: typeof GetInventoryRequestSchema;
+    output: typeof GetInventoryResponseSchema;
+  },
+  /**
+   * @generated from rpc cosimosi.v1.SettingsService.PurchaseItem
+   */
+  purchaseItem: {
+    methodKind: "unary";
+    input: typeof PurchaseItemRequestSchema;
+    output: typeof PurchaseItemResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_v1_memory, 1);

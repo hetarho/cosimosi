@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
-import { paletteForTheme } from '@/shared/ui'
-import { themeAccent, useAppearance } from '@/entities/appearance'
-import { AppearanceSwitcher } from '@/features/switch-appearance'
+import { themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
+import { AppearanceSwitcher, usePlaygroundExtras } from '@/features/switch-appearance'
 import { InviteReason, supabase } from '@/shared/api'
 import { VALUES } from '@/shared/config'
 import { useRedeemInviteCode, validateInviteCode } from '../api/invite-queries'
@@ -47,6 +46,8 @@ export function InvitePage() {
   const theme = useAppearance((s) => s.theme)
   const accent = themeAccent(theme)
   const stars: StarVisual[] = [{ concept: object, color: accent, anchor: [0.5, 0.3], size: 0.12, seed: 7 }]
+  // 미니 코스모스 4축(spec 44 A12): 나 앵커·시냅스 표본·배경 텍스처는 공유 어댑터에서.
+  const extras = usePlaygroundExtras()
 
   const [code, setCode] = useState('')
   const [reason, setReason] = useState<InviteReason | null>(null) // 사전 검증/redeem 실패 사유
@@ -113,7 +114,14 @@ export function InvitePage() {
     <>
       {/* 한 캔버스 우주 씬(dim nebula + 트윙클 + 브랜드 별·halo + 어두운 구름). 풀스크린 고정 배경. */}
       <div className="fixed inset-0 -z-10">
-        <CosmosScene stars={stars} palette={paletteForTheme(theme)} twinkle={110} />
+        <CosmosScene
+          stars={stars}
+          self={extras.self}
+          synapses={extras.synapses}
+          texture={extras.texture}
+          palette={paletteForBackground(theme)}
+          twinkle={110}
+        />
       </div>
       <div className="relative grid min-h-dvh w-full place-items-center px-6 py-12">
         <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">

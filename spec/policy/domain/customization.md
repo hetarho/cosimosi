@@ -1,0 +1,81 @@
+# 커스터마이즈 (customization) 도메인 정책 (policy/domain/customization)
+
+> 현재 구현된 4축 외형 커스터마이즈 + 소유권·별가루(화폐) 모델의 사실 정의. spec 44.
+
+## 정의
+
+우주의 외형은 **4개의 독립 축**으로 커스터마이즈한다. 각 축은 같은 *아이템/소유권/선택* 모델을 따른다:
+
+| 축(axis) | 영문 식별자 | 판매 대상 | 색의 출처 | 무료 1종(기본) |
+|---|---|---|---|---|
+| 배경 | `background` | 색 + 텍스처/요소 **번들** | 배경 자체의 색(별색 불간섭) | `vast` |
+| 별 | `star` | **모양(form)** | mood(13감정) — **불변** | `deepfield` |
+| 나 | `self` | **모양(form)** | ambient mood(요즘 감정) **파생** | `nebula-heart` |
+| 시냅스 | `synapse` | **스타일(style)** | 양끝 별 mood 블렌드 — **불변** | `filament` |
+
+- **아이템 = (축, 종류 kind).** 안정 식별자 `"<axis>:<kind>"`(예 `star:aurora`·`background:aurora-veil`). id는 소유권·proto·values 키이므로 재명명/재배치 금지(별 시드 재현성과 동급 규율).
+- **축마다 정확히 1종 무료**(묵시 소유 — 소유 행 없이 누구나 선택). 나머지는 유료(별가루 구매로 unlock 전엔 선택 불가). 무료 1종 매핑은 `spec/values.yaml`의 `customization.free`가 단일 출처다.
+- **별가루(Stardust)** = 유일한 화폐. 시작 잔액 100, **차감만**(음수 불가), 충전·결제·재설정 경로 없음. 배경 점구름 "별먼지"(cosmic dust)는 화폐가 아니다(별개 개념).
+- **"모양/스타일만 판매."** 색은 의미(감정)라 팔지 않는다 — 별·시냅스 색은 mood 불변, 나는 ambient 파생(자동), 배경은 배경 자체 색.
+
+## 권위 분리
+
+| 무엇 | 권위 | 어디 |
+|---|---|---|
+| 별가루 잔액·소유권·선택(4축) | **서버**(클라가 못 속인다) | `user_wallet`·`user_owned_items`·`user_settings`(DB) |
+| 각 아이템의 시각 정의(셰이더·형태·스타일·swatch·이름·태그라인) | **코드 카탈로그**(id로 키잉) | FE `entities/{appearance,star,synapse}` |
+| 가격·무료여부·시작 잔액 | **values.yaml**(FE/BE 생성) | `spec/values.yaml` `customization` |
+
+아이템 *종류의 enumeration*은 코드 카탈로그가 가지며, BE는 "유효 id 화이트리스트"만 미러한다 — 그 화이트리스트 = `customization.price` 키 ∪ `customization.free`의 `axis:kind`(생성 상수에서 파생, 손코딩 금지).
+
+## 규칙 · 파라미터
+
+### 별가루·소유권·구매
+
+| 규칙 | 값 / 조건 |
+|---|---|
+| 시작 잔액 | `customization.starting_stardust = 100`. 인증 사용자가 **인벤토리를 처음 조회**할 때(또는 첫 구매 시) 지갑 행이 없으면 1회 멱등 시드(없을 때만 INSERT; 기존 잔액 불변) |
+| 잔액 변화 | **구매 차감만.** `stardust >= price`일 때만 차감(가드 WHERE) → 음수 불가. 충전·증가 수단 없음(비목표) |
+| 소유 집합 | **구매한 유료 아이템 id만** `user_owned_items`에 1행. 무료 종은 행 없음(묵시 소유) |
+| 구매 검증(한 트랜잭션, 부분 적용 금지) | (a) 알 수 없거나 무료인 id → `InvalidArgument`. (b) 이미 소유 → `FailedPrecondition`(이중 차감 금지). (c) 잔액 < 가격 → `FailedPrecondition`. 통과 시 `stardust -= price` + 소유 부여, 새 인벤토리 반환. 실패 시 어떤 행도 안 바뀐다(차감 후 grant 실패면 rollback이 차감을 되돌림) |
+| 선택(UpdateSettings) | 선택하려는 아이템이 **소유(또는 무료)** 가 아니면 `FailedPrecondition`(ErrNotOwned)로 거부 — 잠긴 아이템을 API로 우회 선택 못 한다. 알 수 없는 id는 `InvalidArgument`. **거부 시 어떤 행도 안 바뀐다**(소유 조회는 지갑을 시드하지 않는 read-only) |
+
+### 선택(4축)·영속
+
+| 규칙 | 값 / 조건 |
+|---|---|
+| 선택 저장 | 4축 전부 `user_settings`에 영속(`theme`=배경·`star_object`·`self_object`·`synapse_style`). null = 클라 기본(축별 무료 종). 새로고침·타 기기에서 같은 선택 로드 |
+| 클라 영속 규율 | **선택(기기 선호)** 은 localStorage 유지. **별가루·소유권은 메모리 전용**(공용 PC에 개인 자산 영속 금지) — 시드는 GetInventory. 출처 경계 리셋(로그아웃·계정 전환·체험 enter/exit)에서 지갑·소유·감정색 초기화 |
+| 렌더 폴백 | 선택값을 **그대로 렌더**하되 카탈로그에 없는(알 수 없는·손상) id는 **축 기본값**으로 폴백(렌더 안 깨짐). 소유권은 **저장 시점(드래프트 저장 = 미구매분 일괄 구매)과 서버(UpdateSettings)** 에서 강제하고 렌더에서 다시 폴백하지 않는다 — 그래야 공유 우주(방문)가 *소유자* 선택을 방문자 소유로 가리지 않는다 |
+| 홈 드래프트·저장 | 홈(우주 메인) 외형 편집은 **드래프트(라이브 미리보기)** 다 — 잠긴 유료 아이템도 골라 우주에 즉시 미리보고, 자동 저장하지 않는다. 라이브 선택이 마지막 저장(`savedSelection`)과 다르면 **플로팅 저장 바**가 떠서 한 번에 커밋: 드래프트에 미구매 유료 아이템이 있으면 라벨이 `저장 · N 별가루`(합계가)·없으면 `저장`, 저장 시 그 아이템들을 먼저 구매(원자)한 뒤 4축 선택을 `UpdateSettings`로 영속한다. 잔액 < N이면 저장이 막힌다. "되돌리기"는 드래프트를 버리고 마지막 저장 상태로 되돌린다. 좌상단 별가루·테마 알약이 편집기 진입점 |
+| 체험(데모) 홈 | **같은 드래프트·저장 경험**을 주되 전부 잠금 해제·무상이다 — 구매 대상이 없어 저장 바 라벨은 항상 `저장`이고, 저장은 로컬 확정만(서버·차감 없음). 좌상단 알약은 잔액 없이 팔레트만. (랜딩/사인인 플레이그라운드 FAB는 저장 바 없이 로컬 즉시 확정 — 별개) |
+| 플레이그라운드(미인증·체험) | 4축 전부 **잠금 해제·선택 자유**, 별가루/구매 UI 억제, 서버 쓰기·차감 0(로컬 미리보기만). **사인인·초대(+우하단 외형 스위처)** 가 미니 코스모스로 4축(배경+별+나 앵커+시냅스 표본)을 라이브 미리보인다. **랜딩은 배경 + 별(히어로 엠블럼)만** 띄운다 — 나·시냅스 표본은 제외(순수 마케팅 백드롭, 완성도) |
+
+### 색 규율(축별)
+
+- **별**: 색 = mood(13감정) 팔레트. 어떤 모양을 골라도 색은 감정을 따른다(모양만 바뀐다).
+- **시냅스**: 색 = 양끝 별 mood 블렌드. 스타일은 선의 *생김새*(지오메트리 + 셰이더 표현)를 바꾼다 — `filament`=꼬인 가닥 다발 · `beam`=곧고 두꺼운 한 줄기 · `flow`=크게 휜 흐름(엄청 곡률) · `particle`=가는 점선. `weight`→밝기/alpha/펄스 시각·삭제금지(헌법2; 점선도 비드 사이 바닥 불투명 유지) 불변식·Line2 전역 스칼라 한계(per-edge 셰이더 두께 없음·스타일당 단일 머지 드로우·정점 attribute ≤8·수동 uniform time)는 유지.
+- **나**: 몸체 색 = **요즘 감정(ambient mood)** 파생(테마/배경 귀속 없음). 데이터 없음·미인증·빈 우주면 중립/배경 accent 폴백. **자아 별이 다른 별에 던지는 빛(self-light 반사 채널)은 중립 유지**(spec 03 — mood 색 소유권은 AmbientNebula 풀, 이중 주입 금지). 몸체 색만 ambient. 형태는 축별로 실루엣이 또렷이 갈린다(지오메트리 자체가 다름 — `nebula-heart`=울퉁불퉁 성운 덩어리 · `core`=발광 구 · `well`=고리(torus)).
+- **배경**: 색 + 텍스처/요소 번들. 배경 변경은 **별의 mood 색을 바꾸지 않는다**(StarField는 emotionColors/mood만 읽음). 배경 번들의 **fluid 팔레트는 우주 배경을 사방으로 감싸는 몽환 성운 워시(`UniverseNebula`)로도 칠한다**(랜딩/사인인과 같은 결, 별색·깊이 불간섭).
+
+## RPC 계약 (SettingsService, 전부 인증·unary — 헌법6)
+
+| RPC | 멱등 | 동작 |
+|---|---|---|
+| `GetSettings` / `UpdateSettings` | Get만 NO_SIDE_EFFECTS | 4축 선택 read/부분 upsert. Update는 선택-소유권 강제(ErrNotOwned) |
+| `GetInventory` | NO_SIDE_EFFECTS(HTTP GET) | 지갑 없으면 `starting_stardust` 시드 후 `{stardust, owned_item_ids}` 반환. 무료 종은 owned에 없다(묵시) |
+| `PurchaseItem` | (쓰기) | `item_id`(유료) → 원자 차감+부여 → 새 인벤토리. 위 구매 검증 |
+
+## 데이터 모델 (마이그레이션 00010)
+
+- `user_wallet(user_id PK, stardust INT NOT NULL, …)` — 잔액. 시작 100은 시드 시 값으로 채움(DB 기본값 아님).
+- `user_owned_items(user_id, item_id, …, PK(user_id,item_id))` — 유료 소유분만.
+- `user_settings`에 `self_object TEXT`·`synapse_style TEXT` 추가(nullable=클라 기본). 기존 `theme`·`star_object` 유지.
+
+## 가격 (values.yaml `customization`)
+
+가격·무료·시작 잔액은 `spec/values.yaml`이 단일 출처다(FE/BE 생성 상수, 코드 하드코딩 금지). 현재 균형: 시작 100으로 가장 싼 조합 2~3개 구매 가능. 유료 아이템 = `customization.price` 키 전체(배경 `lively`·`calm`·`aurora-veil`, 별 `aurora`·`liquid`·`ember`, 나 `core`·`well`, 시냅스 `beam`·`flow`·`particle`). 기존 무료였던 배경 lively/calm·별 aurora/liquid/ember는 이 plan에서 유료로 편입됐다(소유 전엔 스위처에서 잠금·구매 대상; 기존 선택은 렌더로 보존하되 서버 재선택은 구매 필요).
+
+## 비목표(현재 미구현)
+
+충전(top-up)·결제(PG/인앱)·환불·정산. 별·시냅스 "색" 판매. 감정색(`MOOD_PALETTE`) 자체 판매/커스텀. 관리자 콘솔 아이템/가격 편집(가격은 values.yaml 단일 출처). 공유/선물 우주에서 타인 커스텀 적용 변경(공유 우주는 소유자 Settings 스냅샷 — 축만 4개로 늘었다).

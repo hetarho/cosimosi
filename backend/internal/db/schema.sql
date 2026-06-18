@@ -120,12 +120,15 @@ CREATE TABLE evolution_history (
 CREATE INDEX evolution_history_memory_idx ON evolution_history (memory_id, version);
 
 -- 시각 개인 설정(spec 30, 00002): 서버는 사용자 오버라이드만 저장(기본값은 클라 소유).
+-- 4축 선택(spec 44, 00010): self_object·synapse_style 인라인 추가(나·시냅스 축 서버화, NULL=클라 기본).
 CREATE TABLE user_settings (
-    user_id     TEXT PRIMARY KEY,
-    theme       TEXT,
-    star_object TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    user_id       TEXT PRIMARY KEY,
+    theme         TEXT,
+    star_object   TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    self_object   TEXT,                             -- 00010(spec 44) 나 축 선택
+    synapse_style TEXT                              -- 00010(spec 44) 시냅스 축 선택
 );
 
 -- 감정색 오버라이드 — 정규화 행(미래 "xx%가 골랐어요" GROUP BY (mood,color) 집계).
@@ -227,3 +230,20 @@ CREATE TABLE invite_redemptions (
     redeemed_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX invite_redemptions_code_idx ON invite_redemptions (invite_code_id);
+
+-- 커스터마이즈 소유권·별가루(spec 44, 00010): 4축 외형에 지갑+소유권을 얹은 유료화 골격.
+-- user_wallet=사용자당 1행 별가루 잔액(시작 100은 시드 시 값으로 채움). user_owned_items=유료 소유분만
+-- (무료 종은 행 없이 묵시 소유). 잔액은 구매 차감만(음수 불가), 충전·결제는 비목표. 원본/별/좌표 무관(헌법1·2·3).
+CREATE TABLE user_wallet (
+    user_id    TEXT PRIMARY KEY,
+    stardust   INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE user_owned_items (
+    user_id     TEXT NOT NULL,
+    item_id     TEXT NOT NULL,
+    acquired_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, item_id)
+);

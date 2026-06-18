@@ -1,27 +1,45 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
-import { Palette, X } from 'lucide-react'
+import { Lock, Palette, Sparkles, X } from 'lucide-react'
 import { capture, cn, EVENTS } from '@/shared/lib'
-import { THEMES, SELF_OBJECTS, useAppearance, pushSettings } from '@/entities/appearance'
-import { STAR_OBJECTS } from '@/entities/star'
+import { isDemoMode } from '@/shared/lib/demo'
+import { itemId, isOwned, priceOf, type Axis } from '@/shared/config'
+import {
+  THEMES,
+  SELF_OBJECTS,
+  useAppearance,
+  type Theme,
+  type SelfObject,
+} from '@/entities/appearance'
+import { STAR_OBJECTS, type StarObject } from '@/entities/star'
+import { SYNAPSE_STYLES, type SynapseStyle } from '@/entities/synapse'
 
+/** 인벤토리 칩 — 시각 미리보기(swatch) + 소유/잠금/가격 상태. */
 interface ChipItem {
+  /** kind id(축 접두 없이) — store 선택값과 같다. */
   id: string
   name: string
   tagline: string
   swatch: string
+  /** 미소유 유료 아이템(잠금 배지). */
+  locked: boolean
+  /** 유료 아이템 가격(별가루). 무료면 undefined. */
+  price?: number
 }
 
 /**
- * WAI-ARIA radiogroup. 칩들이 role="radio"이므로 키보드 계약(화살표로 이동·선택, 그룹은 단일 Tab
- * 정지점)을 지킨다: roving tabindex(선택된 칩만 tabIndex 0) + 화살표 키 핸들러로 선택+포커스 이동.
+ * WAI-ARIA radiogroup(인벤토리). 칩들이 role="radio"이므로 키보드 계약(화살표로 이동, 그룹은 단일 Tab
+ * 정지점)을 지킨다: roving tabindex + 화살표 핸들러. 드래프트(홈)·플레이그라운드에선 잠긴 칩도 선택(미리보기)
+ * 가능하고, 잠긴 칩엔 자물쇠 배지를 띄워 "유료(저장 시 구매)"임을 알린다 — 구매는 플로팅 저장 버튼이 한 번에.
  */
-function SwatchRadioGroup({
+function InventoryRadioGroup({
   label,
   groupLabel,
   items,
   value,
-  onChange,
+  unlocked,
+  draft,
+  onSelect,
 }: {
   /** 그룹 위에 보이는 텍스트 라벨. */
   label: string
@@ -29,11 +47,37 @@ function SwatchRadioGroup({
   groupLabel: string
   items: ChipItem[]
   value: string
-  onChange: (id: string) => void
+  /** 플레이그라운드(미인증·체험): 전부 선택 가능, 잠금/가격 배지 억제. */
+  unlocked: boolean
+  /** 드래프트(홈 실로그인): 잠긴 아이템도 미리보기로 선택 가능(자물쇠 배지는 보임). 저장은 플로팅 버튼이. */
+  draft: boolean
+  /** 선택(미리보기). */
+  onSelect: (kind: string) => void
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([])
-  const active = items.find((i) => i.id === value) ?? items[0]
+  const selectedIdx = Math.max(
+    0,
+    items.findIndex((i) => i.id === value),
+  )
+  const [focusIdx, setFocusIdx] = useState(selectedIdx)
+  // 선택값이 밖에서 바뀌면(서버 설정 동기·구매 자동선택) roving 탭 정지점을 선택 칩으로 재동기해, Tab으로
+  // 그룹에 들어올 때 포커스가 aria-checked 칩에 안착하게 한다(렌더 중 보정 — effect-setState 회피).
+  const [lastValue, setLastValue] = useState(value)
+  if (value !== lastValue) {
+    setLastValue(value)
+    setFocusIdx(selectedIdx)
+  }
+  const idx = focusIdx < items.length ? focusIdx : 0
+  const described = items[idx] ?? items[0]
+  const selectable = (it: ChipItem) => unlocked || draft || !it.locked
 
+  const move = (dir: number) => {
+    const next = (idx + dir + items.length) % items.length
+    setFocusIdx(next)
+    const it = items[next]
+    if (selectable(it)) onSelect(it.id)
+    refs.current[next]?.focus()
+  }
   const onKeyDown = (e: React.KeyboardEvent) => {
     const dir =
       e.key === 'ArrowRight' || e.key === 'ArrowDown'
@@ -43,18 +87,21 @@ function SwatchRadioGroup({
           : 0
     if (!dir) return
     e.preventDefault()
-    const idx = items.findIndex((i) => i.id === value)
-    const next = (idx + dir + items.length) % items.length
-    onChange(items[next].id)
-    refs.current[next]?.focus()
+    move(dir)
   }
 
   return (
     <div className="flex flex-col gap-2">
       <span className="text-[11px] text-white/45">{label}</span>
-      <div className="flex items-center gap-2.5" role="radiogroup" aria-label={groupLabel} onKeyDown={onKeyDown}>
+      <div
+        className="flex flex-wrap items-center gap-2.5"
+        role="radiogroup"
+        aria-label={groupLabel}
+        onKeyDown={onKeyDown}
+      >
         {items.map((it, i) => {
           const isActive = it.id === value
+          const locked = !unlocked && it.locked
           return (
             <button
               key={it.id}
@@ -64,85 +111,161 @@ function SwatchRadioGroup({
               type="button"
               role="radio"
               aria-checked={isActive}
-              aria-label={`${it.name} — ${it.tagline}`}
+              aria-label={`${it.name} — ${it.tagline}${locked ? ` · 잠김 · ${it.price} 별가루` : ''}`}
               title={`${it.name} — ${it.tagline}`}
-              tabIndex={isActive ? 0 : -1}
-              onClick={() => onChange(it.id)}
+              tabIndex={i === idx ? 0 : -1}
+              onClick={() => {
+                setFocusIdx(i)
+                if (selectable(it)) onSelect(it.id)
+              }}
+              onFocus={() => setFocusIdx(i)}
               className={cn(
-                'size-8 rounded-full outline-none ring-offset-2 ring-offset-transparent transition',
+                'relative grid size-8 place-items-center rounded-full outline-none ring-offset-2 ring-offset-transparent transition',
                 'focus-visible:ring-2 focus-visible:ring-white/70',
                 isActive
                   ? 'ring-2 ring-white/90 scale-110'
                   : 'opacity-70 ring-1 ring-white/10 hover:opacity-100 hover:scale-105',
+                locked && 'opacity-50',
               )}
               style={{ background: it.swatch }}
-            />
+            >
+              {locked && <Lock className="size-3 text-white/90 drop-shadow" aria-hidden />}
+            </button>
           )
         })}
       </div>
       <p className="leading-tight">
-        <span className="font-display text-sm text-white/90">{active.name}</span>
-        <span className="block text-[11px] text-white/45">{active.tagline}</span>
+        <span className="font-display text-sm text-white/90">{described.name}</span>
+        <span className="block text-[11px] text-white/45">{described.tagline}</span>
+        {!unlocked && described.locked && described.price != null && (
+          <span className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-200/80">
+            <Sparkles className="size-3" aria-hidden />
+            잠김 · 저장 시 {described.price} 별가루
+          </span>
+        )}
       </p>
     </div>
   )
 }
 
+/** axis 설정 — 라벨·카탈로그·store 선택값/세터를 한 곳에. */
+type AxisConfig = {
+  axis: Axis
+  label: string
+  groupLabel: string
+  metas: readonly { id: string; name: string; tagline: string; swatch: string }[]
+  value: string
+  setX: (kind: string) => void
+}
+
 /**
- * 시각 설정 컨트롤 본문 — 두 축을 라디오그룹으로 고른다(appearance entity):
- *   · 테마(3) — 색·분위기(vast/lively/calm). 배경·글래스·accent가 함께 전환.
- *   · 오브제(4) — 별의 형태(deepfield/aurora/liquid/ember). 3D·2D 공통.
- *   · 나(자아 별) — 우주 중심 앵커 형태(spec 38).
- * 선택은 localStorage·서버(인증 시)에 지속된다. Body-only — 우주 메인은 메뉴에서 비차단 Surface로,
- * 랜딩은 `AppearanceSwitcher` FAB가 이 본문을 감싼다.
+ * 4축 인벤토리 컨트롤 본문(appearance + synapse entity): 배경·별·나·시냅스를 라디오그룹으로 고른다.
+ * 선택은 라이브로 우주에 미리보인다. 플레이그라운드(미인증·체험)는 전부 잠금 해제·로컬 즉시 확정.
+ * 드래프트(홈 실로그인): 잠긴 아이템도 미리보기로 고를 수 있고 자동 저장하지 않는다 — 변화를 보고
+ * 플로팅 저장 버튼(`AppearanceSaveBar`)이 선택을 서버에 커밋(미구매 아이템은 그때 일괄 구매)한다.
+ * Body-only — 우주 메인은 메뉴/좌상단 알약 Surface로, 랜딩은 FAB가 감싼다.
  */
-export function AppearanceControls() {
+export function AppearanceControls({
+  playground = false,
+  draft = false,
+}: {
+  playground?: boolean
+  /** 드래프트 모드(홈 실로그인): 모든 칩 미리보기 선택·자동 저장 안 함(플로팅 저장 버튼이 커밋). */
+  draft?: boolean
+}) {
+  const unlocked = playground || isDemoMode()
+
   const theme = useAppearance((s) => s.theme)
   const setTheme = useAppearance((s) => s.setTheme)
   const object = useAppearance((s) => s.object)
   const setObject = useAppearance((s) => s.setObject)
   const selfObject = useAppearance((s) => s.selfObject)
   const setSelfObject = useAppearance((s) => s.setSelfObject)
+  const synapseStyle = useAppearance((s) => s.synapseStyle)
+  const setSynapseStyle = useAppearance((s) => s.setSynapseStyle)
+  const stardust = useAppearance((s) => s.stardust)
+  const ownedItemIds = useAppearance((s) => s.ownedItemIds)
+  const commitSelection = useAppearance((s) => s.commitSelection)
+
+  const axes: AxisConfig[] = [
+    {
+      axis: 'background',
+      label: '배경 — 색·텍스처',
+      groupLabel: '배경',
+      metas: THEMES,
+      value: theme,
+      setX: (k) => setTheme(k as Theme),
+    },
+    {
+      axis: 'star',
+      label: '별 — 형태',
+      groupLabel: '별 형태',
+      metas: STAR_OBJECTS,
+      value: object,
+      setX: (k) => setObject(k as StarObject),
+    },
+    {
+      axis: 'self',
+      label: '나 — 중심 별의 형태',
+      groupLabel: '자아 별 형태',
+      metas: SELF_OBJECTS,
+      value: selfObject,
+      setX: (k) => setSelfObject(k as SelfObject),
+    },
+    {
+      axis: 'synapse',
+      label: '시냅스 — 연결선 스타일',
+      groupLabel: '시냅스 스타일',
+      metas: SYNAPSE_STYLES,
+      value: synapseStyle,
+      setX: (k) => setSynapseStyle(k as SynapseStyle),
+    },
+  ]
+
+  const buildItems = (cfg: AxisConfig): ChipItem[] =>
+    cfg.metas.map((m) => {
+      const id = itemId(cfg.axis, m.id)
+      return {
+        id: m.id,
+        name: m.name,
+        tagline: m.tagline,
+        swatch: m.swatch,
+        locked: !isOwned(id, ownedItemIds),
+        price: priceOf(id),
+      }
+    })
+
+  const onSelect = (cfg: AxisConfig) => (kind: string) => {
+    if (kind === cfg.value) return // 같은 선택 재클릭은 전환이 아니다 — 이벤트 오염 방지
+    cfg.setX(kind) // 라이브 선택 갱신 = 우주 즉시 미리보기
+    // 플레이그라운드(랜딩/사인인 FAB)는 저장 바가 없으니 로컬로 즉시 확정. 드래프트(홈 — 실로그인·체험
+    // 모두)는 미리보기만 두고 플로팅 저장 바가 커밋한다(체험은 전부 잠금 해제라 무상 저장).
+    if (!draft) commitSelection()
+    capture(EVENTS.appearanceSwitch, { axis: cfg.axis, kind }) // 외형 기능 사용률(18)
+  }
 
   return (
     <>
-      <SwatchRadioGroup
-        label="테마 — 색·분위기"
-        groupLabel="색 테마"
-        items={THEMES}
-        value={theme}
-        onChange={(id) => {
-          if (id === theme) return // 같은 테마 재클릭은 전환이 아니다 — 이벤트 오염 방지
-          setTheme(id as (typeof THEMES)[number]['id'])
-          void pushSettings({ theme: id }) // 서버 영속(인증 시; 미인증·체험은 로컬만) — spec 30
-          capture(EVENTS.appearanceSwitch, { theme: id }) // 외형 기능 사용률(18)
-        }}
-      />
-
-      <div className="h-px bg-white/10" />
-
-      <SwatchRadioGroup
-        label="오브제 — 별의 형태"
-        groupLabel="별 오브제 형태"
-        items={STAR_OBJECTS}
-        value={object}
-        onChange={(id) => {
-          const obj = id as (typeof STAR_OBJECTS)[number]['id']
-          setObject(obj)
-          void pushSettings({ starObject: obj }) // 서버 영속(인증 시) — spec 30
-        }}
-      />
-
-      <div className="h-px bg-white/10" />
-
-      {/* 자아 별(나) 형태 — 우주 중심 앵커(spec 38). 기기 로컬 선호(서버 동기는 후속). */}
-      <SwatchRadioGroup
-        label="나 — 중심 별의 형태"
-        groupLabel="자아 별 형태"
-        items={SELF_OBJECTS}
-        value={selfObject}
-        onChange={(id) => setSelfObject(id as (typeof SELF_OBJECTS)[number]['id'])}
-      />
+      {!unlocked && (
+        <div className="flex items-center gap-1.5 self-start rounded-full bg-white/10 px-3 py-1 text-[11px] text-white/80">
+          <Sparkles className="size-3 text-amber-200/90" aria-hidden />
+          별가루 {stardust}
+        </div>
+      )}
+      {axes.map((cfg, i) => (
+        <div key={cfg.axis} className="flex flex-col gap-4">
+          {i > 0 && <div className="h-px bg-white/10" />}
+          <InventoryRadioGroup
+            label={cfg.label}
+            groupLabel={cfg.groupLabel}
+            items={buildItems(cfg)}
+            value={cfg.value}
+            unlocked={unlocked}
+            draft={draft}
+            onSelect={onSelect(cfg)}
+          />
+        </div>
+      ))}
     </>
   )
 }
@@ -153,8 +276,9 @@ export interface AppearanceSwitcherProps {
 }
 
 /**
- * 플로팅 시각 설정 스위처(랜딩 전용 진입) — 접힌 FAB을 누르면 `AppearanceControls`가 펼쳐진다.
- * 우주 메인(`/`)은 이 FAB 대신 "메뉴"의 "테마·외형" 항목이 같은 본문을 비차단 Surface로 띄운다.
+ * 플로팅 시각 설정 스위처(랜딩·사인인·초대 = 플레이그라운드 진입) — 접힌 FAB을 누르면 4축 인벤토리
+ * `AppearanceControls`가 펼쳐진다. 미인증 진입점이라 항상 playground(전부 잠금 해제·미저장). 우주
+ * 메인(`/`)은 이 FAB 대신 "메뉴"의 "테마·외형" 항목이 같은 본문을 비차단 Surface로 띄운다(인증·실잠금).
  */
 export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
   const reduce = useReducedMotion()
@@ -177,10 +301,10 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduce ? undefined : { opacity: 0, y: 12, scale: 0.96 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="glass flex w-60 flex-col gap-4 rounded-3xl p-4"
+            className="glass flex max-h-[80vh] w-64 flex-col gap-4 overflow-y-auto rounded-3xl p-4"
           >
             <div className="flex items-center justify-between gap-6">
-              <span className="text-[11px] uppercase tracking-[0.2em] text-white/55">테마 · 오브제</span>
+              <span className="text-[11px] uppercase tracking-[0.2em] text-white/55">외형</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -190,14 +314,14 @@ export function AppearanceSwitcher({ className }: AppearanceSwitcherProps) {
                 <X className="size-3.5" />
               </button>
             </div>
-            <AppearanceControls />
+            <AppearanceControls playground />
           </motion.div>
         ) : (
           <motion.button
             key="fab"
             type="button"
             onClick={() => setOpen(true)}
-            aria-label="테마·오브제 스위처 열기"
+            aria-label="외형 스위처 열기"
             initial={reduce ? false : { opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={reduce ? undefined : { opacity: 0, scale: 0.8 }}

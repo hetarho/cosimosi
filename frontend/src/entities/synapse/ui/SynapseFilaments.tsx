@@ -43,6 +43,7 @@ import { VALUES } from '@/shared/config'
 import { WOBBLE_AMP, WOBBLE_FREQ, WOBBLE_PHASE } from '@/entities/star/@x/synapse'
 import { visualIntensity, pulseAmp, strandStyle } from '../model/mapping'
 import type { SynapseEdge } from '../model/types'
+import { DEFAULT_SYNAPSE_STYLE, type SynapseStyle } from '../model/styles'
 
 const RADIAL = 6 // tube cross-section segments (round enough under bloom, cheap)
 const MAX_EDGES = 300 // hard cap; beyond this keep the strongest edges
@@ -107,7 +108,14 @@ function buildFilamentGeometry(
   positionOf: (id: string) => [number, number, number] | null,
   colorOf: (id: string) => readonly [number, number, number],
   seedOf: (id: string) => number,
+  styleKind: SynapseStyle,
 ): FilamentBuild | null {
+  // 스타일별 *형태* 분기(spec 44 시냅스 축) — 셰이더(표현)뿐 아니라 지오메트리 자체가 다르다:
+  //   filament = 여러 가닥이 꼬인 다발(현재) · beam = 단단한 곧은 한 줄기 · flow = 크게 휜 한 가닥 사행(舍行)
+  //   · particle = 가는 한 줄(셰이더가 점선으로). 색=양끝 mood 블렌드·weight 시각·삭제금지 floor는 모두 유지.
+  const isBeam = styleKind === 'beam'
+  const isFlow = styleKind === 'flow'
+  const isParticle = styleKind === 'particle'
   // Keep the strongest edges when over the cap (sort copy — never mutate the store array).
   const list =
     edges.length > MAX_EDGES
@@ -146,17 +154,29 @@ function buildFilamentGeometry(
     // 유사도 단계별 스타일(model/mapping STRAND_TIERS — 단일 조절점): 가닥 수·굵기·
     // 밝기·불투명도가 강도 구간으로 정해지고, 방금 강화된 엣지(pulse=reinforcedRecency)는
     // 가닥 +3·굵기 ×1.5로 한 단계 위처럼 읽혀 회상 강화(+0.05)가 즉시 보인다.
-    const style = strandStyle(e)
-    const strandCount = Math.min(14, style.strands + Math.round(pulse * 3))
+    const tier = strandStyle(e)
+    // 가닥 수: filament=강도 티어 다발(+pulse), flow=2(넓은 사행 한 가닥), beam·particle=1(단일 줄).
+    const strandCount =
+      isBeam || isParticle ? 1 : isFlow ? 2 : Math.min(14, tier.strands + Math.round(pulse * 3))
     // Per-edge NATURAL variation (deterministic): brightness/opacity/thickness each get an
     // independent jitter so no two filaments read identically.
-    const brightVal = Math.min(1, Math.max(0.1, style.bright + (jBright * 2 - 1) * 0.12))
-    const opacityVal = Math.min(1, Math.max(0.3, style.opacity + (jOpacity * 2 - 1) * 0.15))
+    const brightVal = Math.min(1, Math.max(0.1, tier.bright + (jBright * 2 - 1) * 0.12))
+    const opacityVal = Math.min(1, Math.max(0.3, tier.opacity + (jOpacity * 2 - 1) * 0.15))
     const widthJitter = 0.7 + jWidth * 0.65 // 0.7..1.35
-    const bowMag = len * (0.05 + 0.08 * h)
-    const helixR = 0.35 + h * 0.3 + inten * 0.25 + pulse * 0.15
-    // Hair-thin strands — they read mostly via bloom, wrapped in the SynapseDust mist.
-    const baseR = style.radius * widthJitter * (1 + pulse * 0.5)
+    // 곡률: beam=거의 직선, flow=크게 휜 사행(엄청 곡률), filament/particle=완만한 보우.
+    const bowMag = isBeam
+      ? len * 0.015
+      : isFlow
+        ? len * (0.28 + 0.14 * h)
+        : isParticle
+          ? len * 0.04
+          : len * (0.05 + 0.08 * h)
+    // 헬릭스(꼬임): filament만 다발로 꼬고, flow는 약하게, beam·particle은 한 줄(꼬임 없음).
+    const helixR =
+      isBeam || isParticle ? 0 : (0.35 + h * 0.3 + inten * 0.25 + pulse * 0.15) * (isFlow ? 0.4 : 1)
+    // 굵기: beam=두꺼운 줄기, flow=넓은 띠, particle=가는 실(셰이더가 점선으로), filament=기본.
+    const baseR =
+      tier.radius * widthJitter * (1 + pulse * 0.5) * (isBeam ? 2.4 : isFlow ? 1.5 : isParticle ? 1.1 : 1)
     const tubular = Math.min(56, Math.max(20, Math.round(len)))
 
     // Bowed centre curve: arc the bundle off the straight chord (a dust lane, not a wire).
@@ -284,14 +304,17 @@ export interface SynapseFilamentsProps {
   idIndex?: Map<string, number>
   /** Global dim multiplier (0..1): 1 normally, <1 to fade the whole web while a star is focused. */
   dim?: number
+  /** 시냅스 스타일(spec 44). 색=양끝 mood 블렌드·weight 시각·삭제금지 불변식은 유지하고, 선의 *표현*
+   *  (가닥/빔/흐름/입자)만 바꾼다. unknown/locked는 호출자가 default(filament)로 폴백해 넘긴다. */
+  style?: SynapseStyle
 }
 
-export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positionsRef, idIndex, dim = 1 }: SynapseFilamentsProps) {
+export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positionsRef, idIndex, dim = 1, style = DEFAULT_SYNAPSE_STYLE }: SynapseFilamentsProps) {
   // Geometry is baked from the published layout snapshot; rebuilt only when the edge set or
   // lookups change. Per frame the endpoints are TRANSLATED to follow the live force-sim
   // buffer (live-follow below) so synapses track moving stars without a geometry rebuild.
   const built = useMemo(() => {
-    const fb = buildFilamentGeometry(edges, positionOf, colorOf, seedOf)
+    const fb = buildFilamentGeometry(edges, positionOf, colorOf, seedOf, style)
     if (!fb) return null
     const geometry = fb.geometry
 
@@ -336,7 +359,11 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
 
     // FLOW: a packet of light slides A→B (energy moving between two memories). The
     // per-strand seed offsets the phase so the braid's strands don't pulse in lockstep.
-    const flow = fract(along.mul(2.0).sub(uTime.mul(VALUES.synapse.flowSpeed)).add(seed.mul(6.2831)))
+    // Style varies BOTH the geometry (built above: braid/rod/sweep/thread) and this LINE
+    // EXPRESSION (flow speed/packet/dot shape) — color always stays the endpoint mood blend, and
+    // every style keeps a non-zero floor so dormant edges stay visible (삭제금지 헌법2).
+    const flowSpeed = VALUES.synapse.flowSpeed * (style === 'flow' ? 1.8 : style === 'particle' ? 1.3 : 1)
+    const flow = fract(along.mul(2.0).sub(uTime.mul(flowSpeed)).add(seed.mul(6.2831)))
     const flowGlow = smoothstep(float(0.0), float(0.5), flow).mul(
       smoothstep(float(1.0), float(0.5), flow),
     )
@@ -361,24 +388,57 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
     // Soft cross-section: bright core band, no fully-dark seam (floor 0.45). Taper the
     // opacity into each star so the open tube ends vanish (no hard caps).
     const coreBand = smoothstep(float(1.0), float(0.0), around.sub(0.5).abs().mul(2.0))
-    const widthFade = coreBand.mul(0.55).add(0.45)
     const ends = smoothstep(float(0.0), float(0.1), along).mul(
       smoothstep(float(1.0), float(0.9), along),
     )
-    // colorNode = emitted HDR color. Per-edge aBright sets the level + line-to-line spread;
-    // flowTerm is the traveling light packet; nGlow adds the irregular along-length texture.
-    // Brightness lives in ONE factor (colorNode) so additive blending doesn't square it; the
-    // level is kept modest so dense areas don't wash out.
-    const flowTerm = float(0.6).add(flowGlow.mul(0.55))
-    const glowVar = float(0.55).add(nGlow.mul(0.85)) // ~0.55..1.4 down the strand
-    const glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)
+    // colorNode = emitted HDR color. Per-edge aBright sets the level + line-to-line spread; the
+    // style's term modulates the traveling-light expression; nGlow adds along-length texture.
+    // Brightness lives in ONE factor (colorNode) so additive blending doesn't square it. Each
+    // style keeps a non-zero floor so weak/dormant edges stay VISIBLE (deletion-floor, 헌법2).
+    let widthFade = coreBand.mul(0.55).add(0.45)
+    let glow
+    if (style === 'beam') {
+      // 빔: 단단한 밝은 코어 한 줄기 — 좁고 또렷, packet 흐름 약함, 균일한 발광.
+      widthFade = coreBand.mul(coreBand).mul(0.7).add(0.3) // narrower bright core
+      const glowVar = float(0.85).add(nGlow.mul(0.3)) // steadier down the length
+      const flowTerm = float(0.8).add(flowGlow.mul(0.2)) // packet barely visible
+      glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(1.15).mul(uDim)
+    } else if (style === 'flow') {
+      // 흐름: 빛이 한 방향으로 흐르는 물결 — 이동 packet 강조, 빠르고 또렷.
+      const glowVar = float(0.5).add(nGlow.mul(0.7))
+      const flowTerm = float(0.4).add(flowGlow.mul(1.0)) // strong traveling packet (floor 0.4)
+      glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)
+    } else if (style === 'particle') {
+      // 입자: 점점이 흐르는 빛 알갱이 — 이산 비드 + 연속 dim 바닥(약한 간선도 보이게 — 삭제금지).
+      const cell = fract(along.mul(6.0).sub(uTime.mul(flowSpeed)).add(seed.mul(6.2831)))
+      const bead = smoothstep(float(0.16), float(0.0), cell) // bright dot at each 1/6 cell start
+      const glowVar = float(0.5).add(nGlow.mul(0.6))
+      const beadTerm = float(0.4).add(bead.mul(1.1)) // floor 0.4 → 비드는 또렷, 색은 안 꺼짐
+      glow = bright.mul(breath).mul(beadTerm).mul(glowVar).mul(uDim)
+    } else {
+      // filament(기본, 현재 렌더): 가닥 다발 + 흐르는 packet + along 텍스처.
+      const flowTerm = float(0.6).add(flowGlow.mul(0.55))
+      const glowVar = float(0.55).add(nGlow.mul(0.85)) // ~0.55..1.4 down the strand
+      glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)
+    }
     material.colorNode = color.mul(glow)
 
     // opacityNode = cross-section shape × end-taper × per-edge opacity × the along-length
     // opacity texture (nOpac) — so transparency drifts as the line progresses, not fixed.
     const opacVar = float(0.5).add(nOpac.mul(0.75)) // ~0.5..1.25 down the strand
+    // particle만 진짜 점선: 비드 사이를 불투명도로 끊는다(바닥 0.16 — 잠든 간선도 옅은 점으로 남아 삭제금지 충족).
+    const opacShape =
+      style === 'particle'
+        ? smoothstep(
+            float(0.3),
+            float(0.0),
+            fract(along.mul(6.0).sub(uTime.mul(flowSpeed)).add(seed.mul(6.2831))),
+          )
+            .mul(0.84)
+            .add(0.16)
+        : float(1)
     material.opacityNode = clamp(
-      widthFade.mul(ends).mul(opac).mul(opacVar),
+      widthFade.mul(ends).mul(opac).mul(opacVar).mul(opacShape),
       float(0.0),
       float(1.0),
     )
@@ -404,7 +464,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
       bakedPositions: fb.bakedPositions,
       alongPerVertex: fb.alongPerVertex,
     }
-  }, [edges, positionOf, colorOf, seedOf])
+  }, [edges, positionOf, colorOf, seedOf, style])
 
   // Hold the time uniform in a ref so the per-frame write targets a mutable ref (exempt
   // from the hook-immutability lint) rather than the useMemo return value directly — the

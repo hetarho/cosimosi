@@ -23,8 +23,10 @@ export const EVENTS = {
   reinforceFlush: 'reinforce_flush',
   /** 잠든 별 페이지 방문 — 기능 발견율. */
   dormantVisit: 'dormant_visit',
-  /** 테마 전환 — 외형 기능 사용률. */
+  /** 외형 축 전환 — 4축(배경·별·나·시냅스) 사용률. */
   appearanceSwitch: 'appearance_switch',
+  /** 유료 외형 아이템 구매(별가루 차감) — 유료화 퍼널(spec 44). */
+  appearancePurchase: 'appearance_purchase',
 } as const
 
 export type BodyLengthBucket = 'short' | 'medium' | 'long'
@@ -49,7 +51,10 @@ interface EventProps {
   recall_open: { is_dormant: boolean }
   reinforce_flush: { pair_count: number }
   dormant_visit: { dormant_count: number }
-  appearance_switch: { theme: string }
+  // 4축 외형 전환. axis = background|star|self|synapse, kind = 선택한 종류 id(아이템 콘텐츠 아님).
+  appearance_switch: { axis: string; kind: string }
+  // 유료 아이템 구매 — id/축/가격만(아이템 콘텐츠·잔액은 싣지 않는다).
+  appearance_purchase: { item_id: string; axis: string; price: number }
 }
 
 type EventName = keyof EventProps

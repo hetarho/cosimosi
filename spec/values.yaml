@@ -131,6 +131,35 @@ invite:
   char_stagger_ms: 60 #                코드 셀 등장/입력 stagger(ms) (FE 전용)
   celebrate_ms: 1200 #                 redeem 성공 환영 연출 길이(ms) (FE 전용)
 
+# ── 커스터마이즈 — 4축 외형 소유권·별가루 경제 config(spec 44). 가격·무료여부·시작 잔액은 *config*라
+#    여기 단일 출처를 둔다 — FE는 가격/잠금 표시에, BE는 구매 검증에 같은 수를 쓴다(FE/BE 하드코딩·표류
+#    금지, A14). 아이템 *시각 정의*(셰이더/형태/swatch/이름)는 코드 카탈로그(entities) 소관이라 여기 없다.
+#    별가루(Stardust)는 시작 잔액만 있고 충전·결제는 비목표 — 차감만, 음수 불가(A3). ──────────────────
+customization:
+  starting_stardust: 100 #   신규 사용자 시작 별가루(GetInventory 첫 호출에서 멱등 시드, A1).
+  # 유료 아이템 가격(별가루). 키 = 아이템 안정 id `"<axis>:<kind>"` — 콜론은 의도적 식별자라 YAML에서
+  # 반드시 따옴표. 이 맵의 키 집합 = BE "유효 유료 id 화이트리스트"(코드 카탈로그가 시각을 정의, 가격이
+  # 판매 여부를 정의). 균형: 시작 100으로 가장 싼 조합 2~3개 구매 가능(30+30+30=90).
+  price:
+    'background:lively': 30
+    'background:calm': 30
+    'background:aurora-veil': 45
+    'star:aurora': 30
+    'star:liquid': 35
+    'star:ember': 40
+    'self:core': 30
+    'self:well': 35
+    'synapse:beam': 30
+    'synapse:flow': 35
+    'synapse:particle': 40
+  # 축별 무료 1종 kind(묵시 소유 — 소유 행 없이 누구나 선택). itemId = `"<axis>:<kind>"`로 조립.
+  # 이 4개가 무료 1종 매핑의 단일 출처(A11): 배경 vast·별 deepfield·나 nebula-heart·시냅스 filament.
+  free:
+    background: vast
+    star: deepfield
+    self: nebula-heart
+    synapse: filament
+
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 #  2) 렌더 — FE 전용 3D 우주 표현 노브. BE 생성물(values_gen.go)에도 나가지만 서버는 안 쓴다.
 # ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -161,7 +190,7 @@ star_render:
 #    진짜 THREE.PointLight 객체가 아니라 buildStarBody의 emissiveNode TSL 그래프 안에서 self-position
 #    uniform + per-instance 좌표로 N·L·falloff를 직접 계산(헌법8 단일 InstancedMesh 보존).
 star_lighting:
-  self_intensity: 1.0 #         자아-별 반사광 세기(우주 reflection 채널 기본 광도)
+  self_intensity: 0.9 #         자아-별 반사광 세기(우주 reflection 채널 기본 광도) — 나에게서 나오는 빛이 과해 10% 하향
   self_distance: 50 #           거리 falloff 기준(쉘 r_max=40 밖 여유 — r_max 별도 완전 흑색 아니게, 헌법2)
   self_decay: 0.7 #             거리 falloff 지수(물리 1/d² 아님 — 완만; recency를 r_min~r_max 동적 범위에 가시화)
   lit_albedo_gain: 0.4 #        반사가 self-glow를 못 이기게 cap + bloom threshold(0.1) 아래로 묶어 'lit은 bloom 안 함' 자연 분리

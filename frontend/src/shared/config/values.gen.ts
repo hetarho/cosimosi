@@ -91,6 +91,11 @@ export const VALUES = {
     charStaggerMs: 60,
     celebrateMs: 1200,
   },
+  customization: {
+    startingStardust: 100,
+    price: {"background:lively":30,"background:calm":30,"background:aurora-veil":45,"star:aurora":30,"star:liquid":35,"star:ember":40,"self:core":30,"self:well":35,"synapse:beam":30,"synapse:flow":35,"synapse:particle":40},
+    free: {"background":"vast","star":"deepfield","self":"nebula-heart","synapse":"filament"},
+  },
   radialLayout: {
     repulsion: -18,
     linkDistance: 14,
@@ -111,7 +116,7 @@ export const VALUES = {
     burstFadeGain: 1.2,
   },
   starLighting: {
-    selfIntensity: 1,
+    selfIntensity: 0.9,
     selfDistance: 50,
     selfDecay: 0.7,
     litAlbedoGain: 0.4,

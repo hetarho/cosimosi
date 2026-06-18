@@ -14,6 +14,7 @@ export {
   ListRecordsResponseSchema,
   RecordSummarySchema,
   GetSettingsResponseSchema,
+  GetInventoryResponseSchema,
 } from './gen/cosimosi/v1/memory_pb'
 export type {
   Star,
@@ -28,6 +29,8 @@ export type {
   GetEvolutionHistoryResponse,
   Settings,
   GetSettingsResponse,
+  GetInventoryResponse,
+  PurchaseItemResponse,
 } from './gen/cosimosi/v1/memory_pb'
 // 우주 공개 계약(spec 35) — ShareService(인증, 소유자 설정) + VisitService(무인증 공개 방문).
 export { VisitService, ShareService, GetShareSettingsResponseSchema } from './gen/cosimosi/v1/share_pb'

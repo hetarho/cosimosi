@@ -119,6 +119,32 @@ var (
 	InviteTimedPresetHours = []float64{24, 168, 720}
 )
 
+// customization
+const (
+	CustomizationStartingStardust = 100
+)
+var (
+	CustomizationPrice = map[string]int{
+		"background:lively":      30,
+		"background:calm":        30,
+		"background:aurora-veil": 45,
+		"star:aurora":            30,
+		"star:liquid":            35,
+		"star:ember":             40,
+		"self:core":              30,
+		"self:well":              35,
+		"synapse:beam":           30,
+		"synapse:flow":           35,
+		"synapse:particle":       40,
+	}
+	CustomizationFree = map[string]string{
+		"background": "vast",
+		"star":       "deepfield",
+		"self":       "nebula-heart",
+		"synapse":    "filament",
+	}
+)
+
 // radial_layout
 const (
 	RadialLayoutRepulsion      = -18
@@ -144,7 +170,7 @@ const (
 
 // star_lighting
 const (
-	StarLightingSelfIntensity          = 1
+	StarLightingSelfIntensity          = 0.9
 	StarLightingSelfDistance           = 50
 	StarLightingSelfDecay              = 0.7
 	StarLightingLitAlbedoGain          = 0.4

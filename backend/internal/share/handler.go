@@ -156,7 +156,13 @@ func toProtoSettings(a Appearance) *cosimosiv1.Settings {
 	for _, c := range a.EmotionColors {
 		colors = append(colors, &cosimosiv1.EmotionColor{Mood: moodToProto(c.Mood), Color: c.Color})
 	}
-	return &cosimosiv1.Settings{Theme: a.Theme, StarObject: a.StarObject, EmotionColors: colors}
+	return &cosimosiv1.Settings{
+		Theme:         a.Theme,
+		StarObject:    a.StarObject,
+		SelfObject:    a.SelfObject,
+		SynapseStyle:  a.SynapseStyle,
+		EmotionColors: colors,
+	}
 }
 
 // moodToProto maps a lowercase domain mood name → the Mood enum; unknown/"" → MOOD_UNSPECIFIED.

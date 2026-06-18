@@ -65,6 +65,12 @@ const (
 	// SettingsServiceUpdateSettingsProcedure is the fully-qualified name of the SettingsService's
 	// UpdateSettings RPC.
 	SettingsServiceUpdateSettingsProcedure = "/cosimosi.v1.SettingsService/UpdateSettings"
+	// SettingsServiceGetInventoryProcedure is the fully-qualified name of the SettingsService's
+	// GetInventory RPC.
+	SettingsServiceGetInventoryProcedure = "/cosimosi.v1.SettingsService/GetInventory"
+	// SettingsServicePurchaseItemProcedure is the fully-qualified name of the SettingsService's
+	// PurchaseItem RPC.
+	SettingsServicePurchaseItemProcedure = "/cosimosi.v1.SettingsService/PurchaseItem"
 )
 
 // MemoryServiceClient is a client for the cosimosi.v1.MemoryService service.
@@ -331,6 +337,8 @@ func (UnimplementedMemoryServiceHandler) ListRecords(context.Context, *connect.R
 type SettingsServiceClient interface {
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
+	GetInventory(context.Context, *connect.Request[v1.GetInventoryRequest]) (*connect.Response[v1.GetInventoryResponse], error)
+	PurchaseItem(context.Context, *connect.Request[v1.PurchaseItemRequest]) (*connect.Response[v1.PurchaseItemResponse], error)
 }
 
 // NewSettingsServiceClient constructs a client for the cosimosi.v1.SettingsService service. By
@@ -357,6 +365,19 @@ func NewSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(settingsServiceMethods.ByName("UpdateSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getInventory: connect.NewClient[v1.GetInventoryRequest, v1.GetInventoryResponse](
+			httpClient,
+			baseURL+SettingsServiceGetInventoryProcedure,
+			connect.WithSchema(settingsServiceMethods.ByName("GetInventory")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		purchaseItem: connect.NewClient[v1.PurchaseItemRequest, v1.PurchaseItemResponse](
+			httpClient,
+			baseURL+SettingsServicePurchaseItemProcedure,
+			connect.WithSchema(settingsServiceMethods.ByName("PurchaseItem")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -364,6 +385,8 @@ func NewSettingsServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 type settingsServiceClient struct {
 	getSettings    *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
 	updateSettings *connect.Client[v1.UpdateSettingsRequest, v1.UpdateSettingsResponse]
+	getInventory   *connect.Client[v1.GetInventoryRequest, v1.GetInventoryResponse]
+	purchaseItem   *connect.Client[v1.PurchaseItemRequest, v1.PurchaseItemResponse]
 }
 
 // GetSettings calls cosimosi.v1.SettingsService.GetSettings.
@@ -376,10 +399,22 @@ func (c *settingsServiceClient) UpdateSettings(ctx context.Context, req *connect
 	return c.updateSettings.CallUnary(ctx, req)
 }
 
+// GetInventory calls cosimosi.v1.SettingsService.GetInventory.
+func (c *settingsServiceClient) GetInventory(ctx context.Context, req *connect.Request[v1.GetInventoryRequest]) (*connect.Response[v1.GetInventoryResponse], error) {
+	return c.getInventory.CallUnary(ctx, req)
+}
+
+// PurchaseItem calls cosimosi.v1.SettingsService.PurchaseItem.
+func (c *settingsServiceClient) PurchaseItem(ctx context.Context, req *connect.Request[v1.PurchaseItemRequest]) (*connect.Response[v1.PurchaseItemResponse], error) {
+	return c.purchaseItem.CallUnary(ctx, req)
+}
+
 // SettingsServiceHandler is an implementation of the cosimosi.v1.SettingsService service.
 type SettingsServiceHandler interface {
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error)
+	GetInventory(context.Context, *connect.Request[v1.GetInventoryRequest]) (*connect.Response[v1.GetInventoryResponse], error)
+	PurchaseItem(context.Context, *connect.Request[v1.PurchaseItemRequest]) (*connect.Response[v1.PurchaseItemResponse], error)
 }
 
 // NewSettingsServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -402,12 +437,29 @@ func NewSettingsServiceHandler(svc SettingsServiceHandler, opts ...connect.Handl
 		connect.WithSchema(settingsServiceMethods.ByName("UpdateSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	settingsServiceGetInventoryHandler := connect.NewUnaryHandler(
+		SettingsServiceGetInventoryProcedure,
+		svc.GetInventory,
+		connect.WithSchema(settingsServiceMethods.ByName("GetInventory")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	settingsServicePurchaseItemHandler := connect.NewUnaryHandler(
+		SettingsServicePurchaseItemProcedure,
+		svc.PurchaseItem,
+		connect.WithSchema(settingsServiceMethods.ByName("PurchaseItem")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.v1.SettingsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SettingsServiceGetSettingsProcedure:
 			settingsServiceGetSettingsHandler.ServeHTTP(w, r)
 		case SettingsServiceUpdateSettingsProcedure:
 			settingsServiceUpdateSettingsHandler.ServeHTTP(w, r)
+		case SettingsServiceGetInventoryProcedure:
+			settingsServiceGetInventoryHandler.ServeHTTP(w, r)
+		case SettingsServicePurchaseItemProcedure:
+			settingsServicePurchaseItemHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -423,4 +475,12 @@ func (UnimplementedSettingsServiceHandler) GetSettings(context.Context, *connect
 
 func (UnimplementedSettingsServiceHandler) UpdateSettings(context.Context, *connect.Request[v1.UpdateSettingsRequest]) (*connect.Response[v1.UpdateSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.SettingsService.UpdateSettings is not implemented"))
+}
+
+func (UnimplementedSettingsServiceHandler) GetInventory(context.Context, *connect.Request[v1.GetInventoryRequest]) (*connect.Response[v1.GetInventoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.SettingsService.GetInventory is not implemented"))
+}
+
+func (UnimplementedSettingsServiceHandler) PurchaseItem(context.Context, *connect.Request[v1.PurchaseItemRequest]) (*connect.Response[v1.PurchaseItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.SettingsService.PurchaseItem is not implemented"))
 }

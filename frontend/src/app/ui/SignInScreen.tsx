@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
-import { paletteForTheme } from '@/shared/ui'
-import { themeAccent, useAppearance } from '@/entities/appearance'
-import { AppearanceSwitcher } from '@/features/switch-appearance'
+import { themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
+import { AppearanceSwitcher, usePlaygroundExtras } from '@/features/switch-appearance'
 import { useAuthActions } from './session-context'
 
 /**
@@ -24,6 +23,8 @@ export function SignInScreen() {
   const accent = themeAccent(theme)
   // 코어는 작게(size), 글로우는 halo가 — 예전 또렷한 구슬 느낌. 앵커는 폼 상단 엠블럼 자리(육안 튜닝 대상).
   const stars: StarVisual[] = [{ concept: object, color: accent, anchor: [0.5, 0.37], size: 0.13, seed: 7 }]
+  // 미니 코스모스 4축(spec 44 A12·H): 나 앵커·시냅스 표본·배경 텍스처를 공유 어댑터에서. 가입하면 그대로 적용.
+  const extras = usePlaygroundExtras()
 
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')
@@ -79,7 +80,13 @@ export function SignInScreen() {
     <>
       {/* 한 캔버스 우주 씬(dim nebula + 트윙클 + 브랜드 별·halo + 어두운 구름). 풀스크린 고정 배경. */}
       <div className="fixed inset-0 -z-10">
-        <CosmosScene stars={stars} palette={paletteForTheme(theme)} />
+        <CosmosScene
+          stars={stars}
+          self={extras.self}
+          synapses={extras.synapses}
+          texture={extras.texture}
+          palette={paletteForBackground(theme)}
+        />
       </div>
       {/* 좌상단 "cosimosi란?" — 게이트 없는 마케팅 랜딩(/landing)으로. 처음 온 사람이 로그인 전 우리가 뭔지
           볼 수 있게(우하단 외형 스위처와 대칭, 같은 반투명 블러 톤). */}
@@ -197,9 +204,14 @@ export function SignInScreen() {
               </button>
             </form>
           )}
+
+          {/* 플레이그라운드 → 가입 연결(plan H): 지금 고른 외형이 가입 후 내 우주에 그대로 적용됨을 알린다. */}
+          <p className="text-xs leading-relaxed text-white/35">
+            지금 고른 외형은 가입하면 내 우주에 그대로 적용돼요.
+          </p>
         </div>
       </div>
-      {/* 테마·외형 플로팅 스위처(우하단) — 미인증이라 로컬 선호만 바뀐다(테마 색·별 형태가 즉시 반영). */}
+      {/* 외형 플로팅 스위처(우하단) — 미인증 플레이그라운드라 4축 전부 잠금 해제·로컬만 바뀐다(미저장). */}
       <AppearanceSwitcher />
     </>
   )

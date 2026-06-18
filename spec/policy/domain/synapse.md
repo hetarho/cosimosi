@@ -85,6 +85,7 @@
 | 펄스 | `sin(time·f)·amp`, `amp = clamp(reinforcedRecency + vitality, 0, 1)` — 최근 강화 + 누적 공동 회상 활력 |
 | 두께 | per-edge 변조 불가(Line2NodeMaterial 전역 스칼라) → 선택적 2버킷(`thin=1px`/`thick=4px`, 임계 `weight ≥ 0.5`) |
 | 렌더 | Line2(fat-line) 배칭 + TSL, `useFrame` 수동 갱신(React state 리렌더 없음) |
+| 스타일 (44) | **커스터마이즈 '시냅스' 축 아이템**(무료 `filament` + 유료 `beam`/`flow`/`particle`). `SynapseFilaments`가 선택 스타일로 **선의 생김새(지오메트리 + 셰이더 표현)** 를 분기한다 — `filament`=꼬인 가닥 다발 · `beam`=곧고 두꺼운 한 줄기 · `flow`=크게 휜 흐름 · `particle`=가는 점선. 색=양끝 mood 블렌드·`weight`→밝기/alpha/펄스·삭제금지(`A_MIN`/`ALPHA_MIN` 바닥; 점선도 비드 사이 바닥 불투명) **불변식 유지**. Line2 전역 스칼라 한계(per-edge 셰이더 두께 없음·**스타일당** 단일 머지 드로우·정점 attribute ≤8·수동 uniform time) 안에서만 변형. [customization](customization.md) |
 
 ## 불변식 (invariants)
 

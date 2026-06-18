@@ -78,7 +78,13 @@ func (a shareSettingsAdapter) Appearance(ctx context.Context, userID string) (sh
 	for _, c := range s.EmotionColors {
 		colors = append(colors, share.EmotionColor{Mood: c.Mood, Color: c.Color})
 	}
-	return share.Appearance{Theme: s.Theme, StarObject: s.StarObject, EmotionColors: colors}, nil
+	return share.Appearance{
+		Theme:         s.Theme,
+		StarObject:    s.StarObject,
+		SelfObject:    s.SelfObject,
+		SynapseStyle:  s.SynapseStyle,
+		EmotionColors: colors,
+	}, nil
 }
 
 // giftShareAdapter maps share.Service onto gift's ShareReader port (spec 36): a gift's

@@ -54,10 +54,15 @@ type EmotionColor struct {
 	Color string // "#RRGGBB"
 }
 
-// Appearance is the owner's visual landscape (part of what's shared — spec 35 참고/30).
+// Appearance is the owner's visual landscape (part of what's shared — spec 35 참고/30). All four
+// selection axes ride along (spec 44): Theme = background, StarObject = star, SelfObject = self,
+// SynapseStyle = synapse. The shared universe is the owner's Settings snapshot as-is — adding
+// axes only widens it (plan 44 비목표: no per-visitor customization change).
 type Appearance struct {
 	Theme         string
 	StarObject    string
+	SelfObject    string
+	SynapseStyle  string
 	EmotionColors []EmotionColor
 }
 

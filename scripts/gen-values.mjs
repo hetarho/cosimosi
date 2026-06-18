@@ -26,14 +26,27 @@ const pascal = (s) => s.replace(/(^|_)([a-z0-9])/g, (_, __, c) => c.toUpperCase(
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v)
 const isNumArray = (v) => Array.isArray(v) && v.every((x) => isNum(x) || isNumArray(x))
+const isStr = (v) => typeof v === 'string'
+// A scalar map is a one-level object whose values are ALL finite numbers or ALL strings (e.g.
+// customization.price / .free) — an item-id → price / axis → free-kind table. Keys are stable
+// identifiers (item ids like "star:aurora") and are emitted VERBATIM (never camel/pascal-cased).
+const isScalarMap = (v) =>
+  v !== null &&
+  typeof v === 'object' &&
+  !Array.isArray(v) &&
+  Object.values(v).length > 0 &&
+  (Object.values(v).every(isNum) || Object.values(v).every(isStr))
 
-// Validate + classify each value. Throws on anything that isn't a finite number or a (possibly
-// nested) array of finite numbers — keeps the generated consts to pure tuning numbers.
+// Validate + classify each value. Tuning scalars stay numbers/numeric-arrays; the customization
+// economy (spec 44) also allows string scalars and one-level scalar maps (price/free config).
 const assertValue = (g, k, v) => {
   if (isNum(v)) return 'scalar'
   if (isNumArray(v)) return 'array'
+  if (isStr(v)) return 'string'
+  if (isScalarMap(v)) return 'map'
   throw new Error(
-    `values.yaml: ${g}.${k} must be a finite number or a numeric array (got ${JSON.stringify(v)})`,
+    `values.yaml: ${g}.${k} must be a finite number, a numeric array, a string, or a one-level ` +
+      `scalar map (got ${JSON.stringify(v)})`,
   )
 }
 
@@ -65,13 +78,31 @@ ${tsGroups}
 `
 
 // ── Go: package `values`. Scalars → one untyped const block per group; arrays → var block. ──
+const goMapLit = (v) => {
+  const valType = Object.values(v).every(isNum) ? 'int' : 'string'
+  // gofmt aligns map values into a column: pad each "key": to the widest, then one space.
+  const rows = Object.entries(v).map(([mk, mv]) => ({
+    key: `${JSON.stringify(mk)}:`,
+    val: valType === 'string' ? JSON.stringify(mv) : String(mv),
+  }))
+  const w = Math.max(...rows.map((r) => r.key.length))
+  const pairs = rows.map((r) => `\t\t${r.key.padEnd(w)} ${r.val},`)
+  return `map[string]${valType}{\n${pairs.join('\n')}\n\t}`
+}
 const goBlocks = groups
   .map(([g, kv]) => {
-    const scalars = Object.entries(kv).filter(([, v]) => isNum(v))
-    const arrays = Object.entries(kv).filter(([, v]) => !isNum(v))
+    // Number + string scalars share one untyped `const (…)` block (numbers byte-identical to
+    // before — string consts only appear in groups that declare them); numeric arrays and scalar
+    // maps each get a `var (…)` block.
+    const scalars = Object.entries(kv).filter(([, v]) => isNum(v) || isStr(v))
+    const arrays = Object.entries(kv).filter(([, v]) => isNumArray(v))
+    const maps = Object.entries(kv).filter(([, v]) => isScalarMap(v))
     const parts = [`// ${g}`]
     if (scalars.length) {
-      const entries = scalars.map(([k, v]) => ({ name: pascal(g) + pascal(k), val: String(v) }))
+      const entries = scalars.map(([k, v]) => ({
+        name: pascal(g) + pascal(k),
+        val: isStr(v) ? JSON.stringify(v) : String(v),
+      }))
       const w = Math.max(...entries.map((e) => e.name.length))
       const lines = entries.map((e) => `\t${e.name.padEnd(w)} = ${e.val}`)
       parts.push(`const (\n${lines.join('\n')}\n)`)
@@ -83,6 +114,12 @@ const goBlocks = groups
       }))
       const w = Math.max(...entries.map((e) => e.name.length))
       const lines = entries.map((e) => `\t${e.name.padEnd(w)} = ${e.decl}`)
+      parts.push(`var (\n${lines.join('\n')}\n)`)
+    }
+    if (maps.length) {
+      // Stable-id keys (e.g. "star:aurora") can't be Go identifiers — emit one `map[string]…`
+      // var per table with the raw keys verbatim (NO per-key const, NO key transform).
+      const lines = maps.map(([k, v]) => `\t${pascal(g) + pascal(k)} = ${goMapLit(v)}`)
       parts.push(`var (\n${lines.join('\n')}\n)`)
     }
     return parts.join('\n')

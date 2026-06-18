@@ -1641,12 +1641,17 @@ func (x *EmotionColor) GetColor() string {
 }
 
 // Settings is the user's stored visual overrides (not a complete config — the
-// client merges these over its defaults).
+// client merges these over its defaults). The four selection axes (spec 44):
+// theme = background, star_object = star, self_object = self, synapse_style =
+// synapse. Field numbers are append-only (4·5 added; theme keeps its wire name
+// even though the domain term is now "background" — a stable identifier).
 type Settings struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Theme         string                 `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`                                      // "" = client default (vast)
-	StarObject    string                 `protobuf:"bytes,2,opt,name=star_object,json=starObject,proto3" json:"star_object,omitempty"`          // "" = client default (deepfield)
+	Theme         string                 `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`                                      // "" = client default (background vast)
+	StarObject    string                 `protobuf:"bytes,2,opt,name=star_object,json=starObject,proto3" json:"star_object,omitempty"`          // "" = client default (star deepfield)
 	EmotionColors []*EmotionColor        `protobuf:"bytes,3,rep,name=emotion_colors,json=emotionColors,proto3" json:"emotion_colors,omitempty"` // only moods the user overrode (0..13)
+	SelfObject    string                 `protobuf:"bytes,4,opt,name=self_object,json=selfObject,proto3" json:"self_object,omitempty"`          // "" = client default (self nebula-heart)
+	SynapseStyle  string                 `protobuf:"bytes,5,opt,name=synapse_style,json=synapseStyle,proto3" json:"synapse_style,omitempty"`    // "" = client default (synapse filament)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1700,6 +1705,20 @@ func (x *Settings) GetEmotionColors() []*EmotionColor {
 		return x.EmotionColors
 	}
 	return nil
+}
+
+func (x *Settings) GetSelfObject() string {
+	if x != nil {
+		return x.SelfObject
+	}
+	return ""
+}
+
+func (x *Settings) GetSynapseStyle() string {
+	if x != nil {
+		return x.SynapseStyle
+	}
+	return ""
 }
 
 type GetSettingsRequest struct {
@@ -1783,12 +1802,16 @@ func (x *GetSettingsResponse) GetSettings() *Settings {
 }
 
 // Partial update: only present fields are upserted; omitted fields are preserved.
-// Sending emotion_colors upserts that subset — it never deletes the others.
+// Sending emotion_colors upserts that subset — it never deletes the others. A
+// present axis selecting a NOT-OWNED (and not-free) paid item → FailedPrecondition
+// (ErrNotOwned) — a locked item can't be selected via the API (spec 44).
 type UpdateSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Theme         *string                `protobuf:"bytes,1,opt,name=theme,proto3,oneof" json:"theme,omitempty"`
 	StarObject    *string                `protobuf:"bytes,2,opt,name=star_object,json=starObject,proto3,oneof" json:"star_object,omitempty"`
 	EmotionColors []*EmotionColor        `protobuf:"bytes,3,rep,name=emotion_colors,json=emotionColors,proto3" json:"emotion_colors,omitempty"`
+	SelfObject    *string                `protobuf:"bytes,4,opt,name=self_object,json=selfObject,proto3,oneof" json:"self_object,omitempty"`
+	SynapseStyle  *string                `protobuf:"bytes,5,opt,name=synapse_style,json=synapseStyle,proto3,oneof" json:"synapse_style,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1844,6 +1867,20 @@ func (x *UpdateSettingsRequest) GetEmotionColors() []*EmotionColor {
 	return nil
 }
 
+func (x *UpdateSettingsRequest) GetSelfObject() string {
+	if x != nil && x.SelfObject != nil {
+		return *x.SelfObject
+	}
+	return ""
+}
+
+func (x *UpdateSettingsRequest) GetSynapseStyle() string {
+	if x != nil && x.SynapseStyle != nil {
+		return *x.SynapseStyle
+	}
+	return ""
+}
+
 type UpdateSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Settings      *Settings              `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"` // the stored overrides after the update
@@ -1884,6 +1921,194 @@ func (*UpdateSettingsResponse) Descriptor() ([]byte, []int) {
 func (x *UpdateSettingsResponse) GetSettings() *Settings {
 	if x != nil {
 		return x.Settings
+	}
+	return nil
+}
+
+// Stardust balance + the set of OWNED paid item ids. Free kinds are NOT listed
+// (implicit ownership — the client knows them from its catalog). item ids are the
+// stable "<axis>:<kind>" identifiers (e.g. "star:aurora").
+type GetInventoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInventoryRequest) Reset() {
+	*x = GetInventoryRequest{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInventoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInventoryRequest) ProtoMessage() {}
+
+func (x *GetInventoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInventoryRequest.ProtoReflect.Descriptor instead.
+func (*GetInventoryRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{30}
+}
+
+type GetInventoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stardust      int64                  `protobuf:"varint,1,opt,name=stardust,proto3" json:"stardust,omitempty"`
+	OwnedItemIds  []string               `protobuf:"bytes,2,rep,name=owned_item_ids,json=ownedItemIds,proto3" json:"owned_item_ids,omitempty"` // paid items the user has bought (free kinds excluded)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInventoryResponse) Reset() {
+	*x = GetInventoryResponse{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInventoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInventoryResponse) ProtoMessage() {}
+
+func (x *GetInventoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInventoryResponse.ProtoReflect.Descriptor instead.
+func (*GetInventoryResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *GetInventoryResponse) GetStardust() int64 {
+	if x != nil {
+		return x.Stardust
+	}
+	return 0
+}
+
+func (x *GetInventoryResponse) GetOwnedItemIds() []string {
+	if x != nil {
+		return x.OwnedItemIds
+	}
+	return nil
+}
+
+type PurchaseItemRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ItemId        string                 `protobuf:"bytes,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"` // a known PAID item id ("<axis>:<kind>")
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PurchaseItemRequest) Reset() {
+	*x = PurchaseItemRequest{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PurchaseItemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PurchaseItemRequest) ProtoMessage() {}
+
+func (x *PurchaseItemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PurchaseItemRequest.ProtoReflect.Descriptor instead.
+func (*PurchaseItemRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *PurchaseItemRequest) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+// The new inventory state after a successful purchase (balance debited, item granted).
+type PurchaseItemResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stardust      int64                  `protobuf:"varint,1,opt,name=stardust,proto3" json:"stardust,omitempty"`
+	OwnedItemIds  []string               `protobuf:"bytes,2,rep,name=owned_item_ids,json=ownedItemIds,proto3" json:"owned_item_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PurchaseItemResponse) Reset() {
+	*x = PurchaseItemResponse{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PurchaseItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PurchaseItemResponse) ProtoMessage() {}
+
+func (x *PurchaseItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PurchaseItemResponse.ProtoReflect.Descriptor instead.
+func (*PurchaseItemResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *PurchaseItemResponse) GetStardust() int64 {
+	if x != nil {
+		return x.Stardust
+	}
+	return 0
+}
+
+func (x *PurchaseItemResponse) GetOwnedItemIds() []string {
+	if x != nil {
+		return x.OwnedItemIds
 	}
 	return nil
 }
@@ -2000,24 +2225,41 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x05stars\x18\x01 \x03(\v2\x11.cosimosi.v1.StarR\x05stars\"K\n" +
 	"\fEmotionColor\x12%\n" +
 	"\x04mood\x18\x01 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x14\n" +
-	"\x05color\x18\x02 \x01(\tR\x05color\"\x83\x01\n" +
+	"\x05color\x18\x02 \x01(\tR\x05color\"\xc9\x01\n" +
 	"\bSettings\x12\x14\n" +
 	"\x05theme\x18\x01 \x01(\tR\x05theme\x12\x1f\n" +
 	"\vstar_object\x18\x02 \x01(\tR\n" +
 	"starObject\x12@\n" +
-	"\x0eemotion_colors\x18\x03 \x03(\v2\x19.cosimosi.v1.EmotionColorR\remotionColors\"\x14\n" +
+	"\x0eemotion_colors\x18\x03 \x03(\v2\x19.cosimosi.v1.EmotionColorR\remotionColors\x12\x1f\n" +
+	"\vself_object\x18\x04 \x01(\tR\n" +
+	"selfObject\x12#\n" +
+	"\rsynapse_style\x18\x05 \x01(\tR\fsynapseStyle\"\x14\n" +
 	"\x12GetSettingsRequest\"H\n" +
 	"\x13GetSettingsResponse\x121\n" +
-	"\bsettings\x18\x01 \x01(\v2\x15.cosimosi.v1.SettingsR\bsettings\"\xb4\x01\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.cosimosi.v1.SettingsR\bsettings\"\xa6\x02\n" +
 	"\x15UpdateSettingsRequest\x12\x19\n" +
 	"\x05theme\x18\x01 \x01(\tH\x00R\x05theme\x88\x01\x01\x12$\n" +
 	"\vstar_object\x18\x02 \x01(\tH\x01R\n" +
 	"starObject\x88\x01\x01\x12@\n" +
-	"\x0eemotion_colors\x18\x03 \x03(\v2\x19.cosimosi.v1.EmotionColorR\remotionColorsB\b\n" +
+	"\x0eemotion_colors\x18\x03 \x03(\v2\x19.cosimosi.v1.EmotionColorR\remotionColors\x12$\n" +
+	"\vself_object\x18\x04 \x01(\tH\x02R\n" +
+	"selfObject\x88\x01\x01\x12(\n" +
+	"\rsynapse_style\x18\x05 \x01(\tH\x03R\fsynapseStyle\x88\x01\x01B\b\n" +
 	"\x06_themeB\x0e\n" +
-	"\f_star_object\"K\n" +
+	"\f_star_objectB\x0e\n" +
+	"\f_self_objectB\x10\n" +
+	"\x0e_synapse_style\"K\n" +
 	"\x16UpdateSettingsResponse\x121\n" +
-	"\bsettings\x18\x01 \x01(\v2\x15.cosimosi.v1.SettingsR\bsettings*\xb5\x01\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.cosimosi.v1.SettingsR\bsettings\"\x15\n" +
+	"\x13GetInventoryRequest\"X\n" +
+	"\x14GetInventoryResponse\x12\x1a\n" +
+	"\bstardust\x18\x01 \x01(\x03R\bstardust\x12$\n" +
+	"\x0eowned_item_ids\x18\x02 \x03(\tR\fownedItemIds\".\n" +
+	"\x13PurchaseItemRequest\x12\x17\n" +
+	"\aitem_id\x18\x01 \x01(\tR\x06itemId\"X\n" +
+	"\x14PurchaseItemResponse\x12\x1a\n" +
+	"\bstardust\x18\x01 \x01(\x03R\bstardust\x12$\n" +
+	"\x0eowned_item_ids\x18\x02 \x03(\tR\fownedItemIds*\xb5\x01\n" +
 	"\x04Mood\x12\x14\n" +
 	"\x10MOOD_UNSPECIFIED\x10\x00\x12\a\n" +
 	"\x03JOY\x10\x01\x12\b\n" +
@@ -2045,10 +2287,12 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\fRecallMemory\x12 .cosimosi.v1.RecallMemoryRequest\x1a!.cosimosi.v1.RecallMemoryResponse\x12U\n" +
 	"\vListDormant\x12\x1f.cosimosi.v1.ListDormantRequest\x1a .cosimosi.v1.ListDormantResponse\"\x03\x90\x02\x01\x12m\n" +
 	"\x13GetEvolutionHistory\x12'.cosimosi.v1.GetEvolutionHistoryRequest\x1a(.cosimosi.v1.GetEvolutionHistoryResponse\"\x03\x90\x02\x01\x12U\n" +
-	"\vListRecords\x12\x1f.cosimosi.v1.ListRecordsRequest\x1a .cosimosi.v1.ListRecordsResponse\"\x03\x90\x02\x012\xc3\x01\n" +
+	"\vListRecords\x12\x1f.cosimosi.v1.ListRecordsRequest\x1a .cosimosi.v1.ListRecordsResponse\"\x03\x90\x02\x012\xf2\x02\n" +
 	"\x0fSettingsService\x12U\n" +
 	"\vGetSettings\x12\x1f.cosimosi.v1.GetSettingsRequest\x1a .cosimosi.v1.GetSettingsResponse\"\x03\x90\x02\x01\x12Y\n" +
-	"\x0eUpdateSettings\x12\".cosimosi.v1.UpdateSettingsRequest\x1a#.cosimosi.v1.UpdateSettingsResponseBAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
+	"\x0eUpdateSettings\x12\".cosimosi.v1.UpdateSettingsRequest\x1a#.cosimosi.v1.UpdateSettingsResponse\x12X\n" +
+	"\fGetInventory\x12 .cosimosi.v1.GetInventoryRequest\x1a!.cosimosi.v1.GetInventoryResponse\"\x03\x90\x02\x01\x12S\n" +
+	"\fPurchaseItem\x12 .cosimosi.v1.PurchaseItemRequest\x1a!.cosimosi.v1.PurchaseItemResponseBAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
 
 var (
 	file_cosimosi_v1_memory_proto_rawDescOnce sync.Once
@@ -2063,7 +2307,7 @@ func file_cosimosi_v1_memory_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_v1_memory_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_cosimosi_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_cosimosi_v1_memory_proto_goTypes = []any{
 	(Mood)(0),                           // 0: cosimosi.v1.Mood
 	(*SegmentDraft)(nil),                // 1: cosimosi.v1.SegmentDraft
@@ -2096,6 +2340,10 @@ var file_cosimosi_v1_memory_proto_goTypes = []any{
 	(*GetSettingsResponse)(nil),         // 28: cosimosi.v1.GetSettingsResponse
 	(*UpdateSettingsRequest)(nil),       // 29: cosimosi.v1.UpdateSettingsRequest
 	(*UpdateSettingsResponse)(nil),      // 30: cosimosi.v1.UpdateSettingsResponse
+	(*GetInventoryRequest)(nil),         // 31: cosimosi.v1.GetInventoryRequest
+	(*GetInventoryResponse)(nil),        // 32: cosimosi.v1.GetInventoryResponse
+	(*PurchaseItemRequest)(nil),         // 33: cosimosi.v1.PurchaseItemRequest
+	(*PurchaseItemResponse)(nil),        // 34: cosimosi.v1.PurchaseItemResponse
 }
 var file_cosimosi_v1_memory_proto_depIdxs = []int32{
 	0,  // 0: cosimosi.v1.SegmentDraft.mood:type_name -> cosimosi.v1.Mood
@@ -2127,18 +2375,22 @@ var file_cosimosi_v1_memory_proto_depIdxs = []int32{
 	15, // 26: cosimosi.v1.MemoryService.ListRecords:input_type -> cosimosi.v1.ListRecordsRequest
 	27, // 27: cosimosi.v1.SettingsService.GetSettings:input_type -> cosimosi.v1.GetSettingsRequest
 	29, // 28: cosimosi.v1.SettingsService.UpdateSettings:input_type -> cosimosi.v1.UpdateSettingsRequest
-	3,  // 29: cosimosi.v1.MemoryService.SegmentMemory:output_type -> cosimosi.v1.SegmentMemoryResponse
-	5,  // 30: cosimosi.v1.MemoryService.RecordMemory:output_type -> cosimosi.v1.RecordMemoryResponse
-	10, // 31: cosimosi.v1.MemoryService.GetUniverse:output_type -> cosimosi.v1.GetUniverseResponse
-	22, // 32: cosimosi.v1.MemoryService.ReinforceLinks:output_type -> cosimosi.v1.ReinforceLinksResponse
-	13, // 33: cosimosi.v1.MemoryService.RecallMemory:output_type -> cosimosi.v1.RecallMemoryResponse
-	24, // 34: cosimosi.v1.MemoryService.ListDormant:output_type -> cosimosi.v1.ListDormantResponse
-	19, // 35: cosimosi.v1.MemoryService.GetEvolutionHistory:output_type -> cosimosi.v1.GetEvolutionHistoryResponse
-	16, // 36: cosimosi.v1.MemoryService.ListRecords:output_type -> cosimosi.v1.ListRecordsResponse
-	28, // 37: cosimosi.v1.SettingsService.GetSettings:output_type -> cosimosi.v1.GetSettingsResponse
-	30, // 38: cosimosi.v1.SettingsService.UpdateSettings:output_type -> cosimosi.v1.UpdateSettingsResponse
-	29, // [29:39] is the sub-list for method output_type
-	19, // [19:29] is the sub-list for method input_type
+	31, // 29: cosimosi.v1.SettingsService.GetInventory:input_type -> cosimosi.v1.GetInventoryRequest
+	33, // 30: cosimosi.v1.SettingsService.PurchaseItem:input_type -> cosimosi.v1.PurchaseItemRequest
+	3,  // 31: cosimosi.v1.MemoryService.SegmentMemory:output_type -> cosimosi.v1.SegmentMemoryResponse
+	5,  // 32: cosimosi.v1.MemoryService.RecordMemory:output_type -> cosimosi.v1.RecordMemoryResponse
+	10, // 33: cosimosi.v1.MemoryService.GetUniverse:output_type -> cosimosi.v1.GetUniverseResponse
+	22, // 34: cosimosi.v1.MemoryService.ReinforceLinks:output_type -> cosimosi.v1.ReinforceLinksResponse
+	13, // 35: cosimosi.v1.MemoryService.RecallMemory:output_type -> cosimosi.v1.RecallMemoryResponse
+	24, // 36: cosimosi.v1.MemoryService.ListDormant:output_type -> cosimosi.v1.ListDormantResponse
+	19, // 37: cosimosi.v1.MemoryService.GetEvolutionHistory:output_type -> cosimosi.v1.GetEvolutionHistoryResponse
+	16, // 38: cosimosi.v1.MemoryService.ListRecords:output_type -> cosimosi.v1.ListRecordsResponse
+	28, // 39: cosimosi.v1.SettingsService.GetSettings:output_type -> cosimosi.v1.GetSettingsResponse
+	30, // 40: cosimosi.v1.SettingsService.UpdateSettings:output_type -> cosimosi.v1.UpdateSettingsResponse
+	32, // 41: cosimosi.v1.SettingsService.GetInventory:output_type -> cosimosi.v1.GetInventoryResponse
+	34, // 42: cosimosi.v1.SettingsService.PurchaseItem:output_type -> cosimosi.v1.PurchaseItemResponse
+	31, // [31:43] is the sub-list for method output_type
+	19, // [19:31] is the sub-list for method input_type
 	19, // [19:19] is the sub-list for extension type_name
 	19, // [19:19] is the sub-list for extension extendee
 	0,  // [0:19] is the sub-list for field type_name
@@ -2156,7 +2408,7 @@ func file_cosimosi_v1_memory_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_v1_memory_proto_rawDesc), len(file_cosimosi_v1_memory_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   30,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
