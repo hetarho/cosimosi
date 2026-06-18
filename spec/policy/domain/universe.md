@@ -40,7 +40,7 @@
 |---|---|
 | 종합 요약 (서버) | `GetUniverse`가 최근 7일(`TAU_MOOD=7d`) 윈도의 조각 감정(`mood·intensity·valence·last_recalled_at`)을 가중치 `w = intensity·exp(-Δt/τ)`로 종합해 `AmbientMood{hue,sat,arousal,valence}`로 응답. `arousal = 1−exp(-Σw)` ∈ [0,1), `valence = Σ(w·v)/Σw`, `hue/sat` = 강도가중 mood-RGB 블렌드의 HSV. 쿼리 `since = now − τ·3`(≈21일, exp 무시 가능 지점). 빈 우주 → 중립 0값. **좌표·광원 위치 필드 없음**(헌법3) |
 | 다중 광원 배경 (클라) | `AmbientNebula`가 로드된 별에서 우세 감정 **top-K(≤6, 상대 비중 <0.04 버림)** 를 각각 하나의 넓고 부드러운 **가산(additive) 빌보드**로, `mulberry32` 시드 불규칙 배치(반경 120~200 구면, 별 구름 밖)·`depthWrite/depthTest=false`·`renderOrder<0`로 별·시냅스 뒤에 둔다. 카메라가 움직이면 3D 시차로 깊이가 산다 |
-| 광원 색 | 각 풀 색 = `moodRgb(mood)`(테마 무관 13색 의미 팔레트)를 **valence로 온도·채도 보정**(양→따뜻·채도↑(금/장미), 음→차갑·탁(청록/보라)). 풀 밝기·크기 = `arousal`·상대 비중. 색의 의미는 테마와 무관하게 유지(테마=깊이, mood=요즘색) |
+| 광원 색 | 각 풀 색 = `moodRgb(mood)`(테마 무관 13색 의미 팔레트)를 **valence로 온도·채도 보정**(양→따뜻·채도↑(금/장미), 음→차갑·탁(청록/보라)). 풀 밝기·크기 = `arousal`·상대 비중. 색의 의미는 테마와 무관하게 유지(테마=깊이, mood=요즘색). (spec 03: 자아-별 self-light는 **중립색** — 우주의 "무드 색" 소유권은 여전히 이 AmbientNebula 풀이 가진다, 광원 틴트로 이중 주입 안 함) |
 | 색 분포 권위 | 서버는 **요약(ambient)만**, 다중 광원의 **색 분포는 클라가 별에서 파생**(`ambientLights`/`deriveAmbient` — 좌표·렌더 입력은 클라 권위, 헌법3). 서버 `ambient` 미수신(데모·구버전)이면 클라가 같은 7일 종합으로 폴백 |
 | 애니메이션 | BloomPass(`RenderPipeline`)가 내장 TSL `time` 노드를 진전시키지 않으므로, ambient 변경 시 **~0.8s 색 크로스페이드**·느린 드리프트·일렁임을 `useFrame` **수동 uniform**으로 구동(`StarField.update`·`Synapse uTime`과 같은 관용). `prefers-reduced-motion`이면 드리프트·일렁임 정지, 색만 유지 |
 | 흥분성 게인 | `g = 1 + 0.3·arousal`(arousal만; ∈[1,1.3])을 도메인 헬퍼(`memory.ExcitabilityGain` / `entities/memory excitabilityGain`)로 정의. 현재 할당 바이어스 `W_EXC`(22)에는 배선돼 있지 않다 — `worker.go`에 배선 지점 주석만(라이브 스케일은 27 야간 공고화 seam) |
@@ -64,7 +64,7 @@
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| 별 | 시간 감쇠해도 유효 밝기 `A_MIN=0.05` 바닥 위 유지, 행 삭제 0건(밝기만 낮춤) |
+| 별 | 시간 감쇠해도 유효 밝기 `A_MIN=0.05` 바닥 위 유지, 행 삭제 0건(밝기만 낮춤). (spec 03: 이 바닥은 별 빛 3채널 중 **self-glow(자가발광)** 채널이 단독 보증 — star.md §밝기·감쇠) |
 | 시냅스 | 밝기 = `weight·max(A_MIN, activation)`로 낮추되 행 삭제 0건 |
 | 기존 별 안정 (38 정제) | 기존 별의 **각도(방향)** 는 `prevPos` resume으로 보존되어 새 별 추가가 그 방향을 흔들지 않는다. **반지름** 만 강함(활성도·감정강도)에 따라 변한다 — "내 기억이 그 방향에 있다"는 유지되고, 거리만 호흡한다(헌법3 정제) |
 

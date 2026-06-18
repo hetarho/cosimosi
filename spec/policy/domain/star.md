@@ -39,17 +39,24 @@
 
 ### 밝기 · 감쇠 (brightness · decay)
 
+> **별 빛 3채널 (self-light, spec 03).** 별의 겉보기 밝기는 한 값이 아니라 셋으로 갈린다 —
+> 1. **반사(reflection, lit) = 최근성.** 중앙 자아-별(우주) 또는 우상단 평행광(배경)이 별을 비춘 밝기. 가까운(=최근/회상된) 별이 더 밝게 반사된다 — 위치(spec 38)의 광학적 읽기이지 새 자유도가 아니다. `activation`(아래)이 그 per-instance 입력(`aRecency`). **bloom 안 함.**
+> 2. **자가발광(self-glow, emissive) = 연결성 = 의미.** 스스로 빛나는 세기 = 시냅스 degree + Σweight(연결성). 아래 **변조 감쇠 `λ_eff`가 이 채널로 통째 이주**(`λ_glow`) — 연결·관련성·감정이 글로우의 *지속*을 늦춘다. `StarField`의 `aGlow`. **bloom 함. A_MIN 밝기 바닥은 이 채널이 단독 보증.**
+> 3. **색(color) = 감정.** mood hue(+ hue_shift, spec 23) + R_emo durability(λ_glow 안에 잔존).
+>
+> 반사는 진짜 `THREE.PointLight` 객체가 아니라 `buildStarBody`의 emissiveNode TSL 그래프 안에서 self-position uniform + per-instance 좌표로 N·L·falloff를 직접 계산한다 — 단일 InstancedMesh·per-instance attribute 유지(헌법8). focus 디밍(`aFocus`)은 두 채널 공통. 튜닝 스칼라는 `spec/values.yaml` `star_lighting`·`self_glow`. 아래 `activation`·시간 감쇠 식은 그대로다.
+
 | 규칙 | 값 / 식 |
 |---|---|
-| 시간 감쇠 `activation` | `activation(Δt) = exp(-λ_base·Δt_days)`, `λ_base = ln2/30` (`HALF_LIFE_DAYS=30` → ≈0.0231/day); Δt=0 → 1, 30일 → 0.5. 변조 감쇠(아래)의 기준 λ |
-| 밝기 바닥 `A_MIN` | **0.05** — 별은 0으로 꺼지거나 삭제되지 않는다(헌법2). 변조 감쇠도 같은 바닥을 쓴다(랜딩 카드의 0.12는 시연용 값일 뿐 두 번째 바닥이 아니다) |
+| 시간 감쇠 `activation` | `activation(Δt) = exp(-λ_base·Δt_days)`, `λ_base = ln2/30` (`HALF_LIFE_DAYS=30` → ≈0.0231/day); Δt=0 → 1, 30일 → 0.5. 변조 감쇠(아래)의 기준 λ. spec 03 이후 **반사 채널의 per-instance recency 입력**이기도 하다(`aRecency`) |
+| 밝기 바닥 `A_MIN` | **0.05** — 별은 0으로 꺼지거나 삭제되지 않는다(헌법2). spec 03 이후 이 바닥은 **self-glow(emissive) 채널이 단독 보증**한다(반사는 bloom 안 하는 물리광·floor 없음). 단일 바닥(랜딩 카드의 0.12는 시연용·둘째 바닥 아님) |
 | 별 유효 밝기(잠든 별 탐색) | `starBrightness = max(A_MIN, activation)`(단일 λ — `ListDormant` cutoff 환산·dormant 판정의 기준) |
 | 잠든(dormant) 판정 | raw activation `≤ 2·A_MIN`. 바닥 적용 *전* raw 값 기준. 서버 `ListDormant`는 동등한 시각 cutoff로 환산 |
 | 계산 위치 | 밝기·activation은 **클라이언트가 렌더 시 계산**; 서버는 `last_recalled_at`/`last_activated_at` + (변조 감쇠의) `relevance`만 권위(밝기 컬럼 없음) |
 
 #### 관련성·감정 가중 변조 감쇠 (modulated decay, spec 26)
 
-우주에 그려지는 별 밝기(`StarField`의 `aBrightness`)는 단일 λ가 아니라 **별마다 변조된 `λ_eff`** 로 감쇠한다 — 연결 많고·요즘의 나와 닿고·감정 강한 별은 천천히, 고립된 저강도·요즘 무관 별은 빨리 어두워지되 바닥(`A_MIN`) 아래로는 내려가지 않는다. "망각은 시간만이 아니라 관련성의 함수다"(concept.md §망각).
+우주에 그려지는 별의 **self-glow 채널**(spec 03; `StarField`의 `aGlow`)은 단일 λ가 아니라 **별마다 변조된 `λ_eff`**(= self-light의 `λ_glow`)로 감쇠한다 — 연결 많고·요즘의 나와 닿고·감정 강한 별은 천천히, 고립된 저강도·요즘 무관 별은 빨리 어두워지되 바닥(`A_MIN`) 아래로는 내려가지 않는다. "망각은 시간만이 아니라 관련성의 함수다"(concept.md §망각). **spec 03 이후 *겉보기* 밝기엔 반사(최근성)·색(감정)이 더해지지만, "밝기=의미"(연결·관련성·감정 지속)는 이 self-glow 채널이 보존한다** — λ_eff는 폐기가 아니라 이 채널로 이주했다.
 
 | 규칙 | 값 / 식 |
 |---|---|
@@ -57,7 +64,7 @@
 | `R_conn` (연결) | `1/(1 + 0.6·degree_norm)`, `ALPHA_CONN=0.6`. `degree_norm = 별 degree / 우주 degree 중앙값`(중앙값 0 → 1 폴백). 연결 많을수록 저항↑ |
 | `R_recent` (요즘 관련성) | `1/(1 + 0.5·relevance)`, `BETA_RECENT=0.5`. `relevance = clamp(cos(별 임베딩, 요즘 토픽 중심 벡터), 0, 1)` — **서버가 `GetUniverse`에서 계산**(weight처럼 의미 그래프 파생값이므로 헌법3 위반 아님; 밝기 자체는 여전히 클라가 계산). 요즘 토픽 = 최근 별 임베딩의 시간가중 평균(`intensity·exp(-Δt/7d)`, `AggregateAmbient`와 같은 envelope). 임베딩 미생성 별·데모(서버 없음) → `relevance=0`(중립) |
 | `R_emo` (감정) | `1/(1 + 0.7·intensity + 0.4·max(0,-valence))`, `GAMMA_EMO=0.7`·`DELTA_VAL=0.4`. 각성(intensity)과 강한 **부정** 정서가일수록 저항↑(편도체 매개 — Kensinger & Corkin 2004) |
-| 변조 유효 밝기 | `modulatedBrightness = A_MIN + (1-A_MIN)·exp(-λ_eff·Δt_days)` ∈ `[A_MIN, 1]`. 재성형 합성(`+brightness_offset`)·focus 가중은 그 위에 그대로 얹힌다 |
+| 변조 유효 밝기 → self-glow | `modulatedBrightness = A_MIN + (1-A_MIN)·exp(-λ_eff·Δt_days)` ∈ `[A_MIN, 1]`. **spec 03**: self-glow 세기 `selfGlow = A_MIN + (modulatedBrightness − A_MIN)·connectedness`(연결성 0이어도 ≥A_MIN; `connectedness = clamp01(gain·(degreeNorm + weightTerm·weightedDegreeNorm))`, `self_glow.*` values). 재성형 `+brightness_offset`은 `aGlow`에 합성(바닥 OUTERMOST clamp), focus(`aFocus`)는 반사+self-glow 양채널 공통 |
 | 고립 vs 연결 | 고립·저강도·요즘 무관 별은 연결·고강도·요즘 관련 별보다 **~2~3배 빠르게** 어두워진다(둘 다 `A_MIN`에서 멈춤, 삭제 없음) |
 | 계산 위치 | `λ_eff`·`modulatedBrightness`는 **클라가 렌더 시 계산**(`entities/memory/model/activation.ts`, 순수). 서버가 주는 건 `relevance` 입력 하나뿐(헌법3) |
 
@@ -72,7 +79,7 @@
 | 재성형 크기 | `magnitude = 0.22·pe·(1 - strength)` → strength↑ ⇒ magnitude↓(공고화될수록 덜 흔들림) |
 | 양방향 적용 | 방향(±)은 `회상 별 id 해시 + version`에서 결정론적. `brightness_offset += dir·clamp(magnitude, 0.10, 0.22)`; `hue_shift`는 ±28°(도) 안에서 누적; `form_seed_delta`는 ±0.6 안에서 누적; `version++` |
 | 내용 한정적 범위 | 회상 별 + **직접 이웃(memory_links 1-홉)** 만 재성형; 이웃은 `NEIGHBOR_FACTOR=0.4` 축소 크기. 간접 이웃·나머지 우주는 불변 |
-| 렌더 합성 | `aBrightness = clamp(starBrightness + brightness_offset, A_MIN, 1)`(바닥 보존); `aSeed = seed + form_seed_delta`; `aHueShift`(rad)로 mood 색을 회색축(1,1,1) 둘레로 회전(휘도 보존). 회상 직후 갱신은 GetUniverse refetch로 반영(낙관 갱신 아님) |
+| 렌더 합성 | (spec 03) `aGlow = clamp(selfGlow(...) + brightness_offset, A_MIN, 1)`(self-glow 채널·바닥 OUTERMOST 보존); `aSeed = seed + form_seed_delta`; `aHueShift`(rad)로 mood 색을 회색축(1,1,1) 둘레로 회전(휘도 보존). brightness_offset은 self-glow에만(반사는 점광 물리량). 회상 직후 갱신은 GetUniverse refetch로 반영(낙관 갱신 아님) |
 | 간격 효과 | 공동 회상 강화 delta는 FE `co-recall`에서 `CO_RECALL_DELTA·(1 + SPACING_GAIN·clamp(gapDays/SPACING_REF,0,1))`로 키운다(간격 둔 인출이 더 큰 강화); 서버 `ReinforceLinks`는 클라 delta를 1.0 cap으로 멱등 업서트(변경 없음) |
 
 ### 요지화 (gist, 27)
@@ -87,12 +94,12 @@
 
 ## 불변식 (invariants)
 
-- **별은 삭제되지 않는다(헌법2).** 감쇠는 밝기만 낮추며, 유효 밝기는 `A_MIN=0.05` 바닥 위로 유지된다. 잠든 별도 `A_MIN` 잔광으로 계속 렌더되고 클릭 가능하다 — 물리 삭제·소멸이 없다.
+- **별은 삭제되지 않는다(헌법2).** 감쇠는 밝기만 낮추며, 유효 밝기는 `A_MIN=0.05` 바닥 위로 유지된다(spec 03: 이 바닥은 **self-glow 채널**이 단독 보증 — 연결성 0·먼 별도 ≥A_MIN 자가발광). 잠든 별도 `A_MIN` 잔광으로 계속 렌더되고 클릭(geometry raycast, 밝기 무관) 가능하다 — 물리 삭제·소멸이 없다.
 - **원본 record는 불변·영구다(헌법1).** 별의 색·크기·밝기·재성형 상태는 모두 가변 별 레이어(`memories`)·클라 렌더 계산에서만 결정되고, `records`는 UPDATE/DELETE되지 않는다. 재공고화가 누적돼도 유효 밝기는 `A_MIN` 바닥 위로 유지된다(헌법2).
 - **시드 재현성(헌법3).** 같은 `memory_id`는 항상 `seedFromId`로 같은 시드 → 같은 형태. 새로고침·재진입 후에도 같은 별 모양. 별은 좌표를 속성으로 갖지 않는다(좌표는 클라 결정·서버 비저장).
 - **model 순수성(헌법4).** `entities/memory/model/**`·`shared/config/mood.ts`의 도메인 식(`activation`·`starBrightness`·`isDormant`·`lambdaEff`·`modulatedBrightness`·`seedFromId`·`MOOD_PALETTE`)은 three/React/DOM을 import하지 않는다(모바일 재사용).
 - **relevance만 서버 권위(헌법3).** 변조 감쇠의 `relevance`는 서버가 임베딩 cos로 계산해 `Star.relevance`로 보내는 의미 그래프 파생값이다(weight와 동급). `degree`(연결)·`intensity`/`valence`(감정)는 클라가 이미 가진 값이고, `λ_eff`·밝기 합성은 전부 클라 렌더 계산 — 서버는 좌표도 밝기도 저장하지 않는다.
-- **렌더 권위(헌법8).** 수천 별은 단일 `InstancedMesh`로 그려 draw call이 별 수에 비례하지 않는다. 색·밝기·시드는 uniform이 아니라 per-instance attribute에서 온다.
+- **렌더 권위(헌법8).** 수천 별은 단일 `InstancedMesh`로 그려 draw call이 별 수에 비례하지 않는다. 색·밝기·시드는 uniform이 아니라 per-instance attribute(`aMood`/`aGlow`/`aRecency`/`aFocus`/`aSeed`/`aHueShift`)에서 온다. (spec 03) 자아 광원 반사도 진짜 `THREE.PointLight`가 아니라 `buildStarBody`의 emissiveNode TSL 그래프 안에서 self-position uniform으로 계산 — per-instance attribute·focus와 합성되고 단일 InstancedMesh를 유지한다.
 
 ## 구현 근거
 

@@ -81,7 +81,7 @@
 | 밝기 입력 brightness | `= max(A_MIN, activation)`(별 시간 감쇠 결과를 받는 입력값) |
 | 밝기 바닥 | `A_MIN = 0.05`, alpha 바닥 `ALPHA_MIN = 0.15`(약/잠든 엣지도 잔존) |
 | emissive · alpha | `emissive = visualIntensity`, `alpha = lerp(ALPHA_MIN, ALPHA_MAX, visualIntensity)` |
-| 링크 활력 vitality (26) | `vitality = 0.12·min(1, log2(1 + co_activation_count)/4)` ∈ `[0, 0.12]` — 자주 함께 떠올린 연결일수록 또렷. 서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일 |
+| 링크 활력 vitality (26) | `vitality = 0.12·min(1, log2(1 + co_activation_count)/4)` ∈ `[0, 0.12]` — 자주 함께 떠올린 연결일수록 또렷. 서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일. (spec 03: `co_activation_count`는 **간선(edge) 활력 전용** — **노드(별) self-glow**는 degree+Σweight(`weightedDegreeById`=connectedness)를 따로 쓴다. 분리해 이중계상 회피.) |
 | 펄스 | `sin(time·f)·amp`, `amp = clamp(reinforcedRecency + vitality, 0, 1)` — 최근 강화 + 누적 공동 회상 활력 |
 | 두께 | per-edge 변조 불가(Line2NodeMaterial 전역 스칼라) → 선택적 2버킷(`thin=1px`/`thick=4px`, 임계 `weight ≥ 0.5`) |
 | 렌더 | Line2(fat-line) 배칭 + TSL, `useFrame` 수동 갱신(React state 리렌더 없음) |
