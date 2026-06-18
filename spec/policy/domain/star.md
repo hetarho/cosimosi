@@ -33,6 +33,7 @@
 |---|---|
 | 형태 4종 (generative form) | `deepfield`(Crystal) · `aurora`(Nebula) · `liquid`(Liquid) · `ember`(Ember); 기본값 `deepfield`. 단일 `InstancedMesh` + TSL 노드 머티리얼(소수 draw call). **커스터마이즈 '별' 축 아이템**(무료 `deepfield` + 유료 `aurora`/`liquid`/`ember` — 별가루 구매로 unlock). **색은 mood 불변**(모양만 판매). [customization](customization.md) |
 | 색 = mood 팔레트 | mood → RGB 튜플 색; 팔레트 밖 값 → `NEUTRAL_RGB`(=`[0.6,0.6,0.6]`) 폴백(throw 금지). per-instance `aMood` attribute로 보존, 랜딩 테마와 독립 |
+| 감정색 확정 게이트 (45) | **인증 개인 우주는 13 mood 감정색이 모두 확정된 뒤 렌더**된다 — `EmotionColorGate`가 `GetSettings`의 `user_emotion_colors` 13색 완성 여부(유효 `#RRGGBB`)로 판정해 미완료면 `/emotion-colors`로 보낸다(최초 로그인 여부 아님, *서버 내용*으로만). 렌더는 `resolveMoodRgb(mood, emotionColors)`로 사용자 색 우선·미설정/공개·체험은 기본 팔레트. **색=mood·추천=`MOOD_PALETTE` 파생** 불변(감정색은 판매/잠금 대상 아님 — 무료 필수 설정). [customization](customization.md) |
 | 크기 = f(intensity) | `sizeFor(intensity) = 0.6 + clamp(intensity,0,1)·1.4` → 인스턴스 행렬 scale에 baked |
 | 형태 시드 = 결정론적 | `seedFromId(memory_id)`(FNV-1a 32-bit → `[0,1)`); 같은 id → 같은 seed → 같은 형태. per-instance `aSeed`로 표면 무늬 변형 |
 | 애니메이션 | 형태별 자가발광·뷰의존(fresnel)·변위; 공유 `uTime` uniform을 `useFrame`이 수동 갱신(BloomPass가 TSL `time` 노드를 우회하므로) |

@@ -71,8 +71,11 @@
 - **최초 로그인(비멤버):** `MembershipGate`(코어 라우트 `/`·`/gift/$token`을 `SessionGate` 안쪽에서 감쌈)가
   `GetMembershipStatus`를 보고 비멤버를 `/invite?redirect=<원래경로>`로 보낸다. redeem 성공 시 멤버십
   쿼리 캐시를 **제거**(invalidate 아님)해 stale `false`가 복귀 직후 다시 게이트를 튕기지 않게 한다.
-- **`/invite`:** `SessionGate` 안·`MembershipGate` 밖. 코드를 redeem하면 우주가 열린다. 계정을 잘못
-  골랐으면 로그아웃(`supabase.auth.signOut()`)해 다른 계정으로 — 세션 anon → `SessionGate`가 `/sign-in`으로.
+- **`/invite`:** `MembershipGate` 밖. 라우트는 `app/ui/InviteRoute`가 세션으로 분기한다(`SessionGate` 래퍼 대신 — 미인증도 코드가 있으면 통과해야 하므로). 코드를 redeem하면 우주가 열린다. 계정을 잘못 골랐으면 로그아웃(`supabase.auth.signOut()`)해 다른 계정으로 — 세션 anon → `/sign-in`으로.
+- **초대 URL 온보딩(change 05):** `/invite?code=<code>`가 초대장 진입 표면이다.
+  - **미인증 + 코드:** 사인인으로 즉시 튕기지 않고 초대장 카피 + `회원가입하기`를 먼저 본다(코드 없는 미인증만 `/sign-in`으로). `회원가입하기`는 `/sign-in?redirect=/invite?code=<code>`로 가며, 코드를 sessionStorage(`cosimosi:invite`)에 stash해 **풀페이지 Google OAuth(→`/` 복귀, `?redirect` 소실)에서도 코드가 보존**된다.
+  - **인증 + 비멤버:** 수동 입력 없이 코드(URL 또는 stash)를 **자동 redeem**. 성공 시 멤버십 캐시 제거·환영 연출 후 redirect(없으면 `/`). 실패는 코드 무소비 + 사유별 카피로 수동 입력 폴백. **이미 멤버**면 무소비로 redirect. stash는 소비·실패 시 비운다.
+  - redirect는 내부 경로만(`safeRedirect`), `//`·`/\`·게이트/인증 라우트 자기 재귀 거부. 서버 발송(이메일·문자)은 없다 — 관리자가 복사/공유한 URL을 채널에 붙이는 모델.
 - **사인인·초대 비주얼:** 랜딩(spec 15)과 같은 우주 백드롭(`shared/ui/CosmosBackdrop`) 위에 우리 3D 별
   로고(`widgets/star3d/BrandMark` — 오브제 형태 + 테마 accent 색)와 입력·버튼이 **카드 없이** 떠 있다.
   `prefers-reduced-motion`이면 글로우 드리프트·트윙클이 멎는다.

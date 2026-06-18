@@ -3,7 +3,7 @@
 // 사용자 오버라이드·자산만 주고받고, store가 기본값(4축/MOOD_PALETTE) 위에 머지한다. no three/React/DOM
 // (헌법4) — 옵션 빌더 + 순수 매핑. 별가루 잔액·소유권은 서버 권위(클라가 못 속인다).
 import { callUnaryMethod, createQueryOptions } from '@connectrpc/connect-query'
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions, type QueryClient } from '@tanstack/react-query'
 import { create } from '@bufbuild/protobuf'
 import {
   GetSettingsResponseSchema,
@@ -19,6 +19,7 @@ import {
 import { VALUES } from '@/shared/config'
 import { isDemoMode } from '@/shared/lib/demo'
 import { useAppearance, type ServerAppearance } from '../model/store'
+import { isCompleteEmotionColors, normalizeHex } from '../model/emotion-colors'
 
 // 단일 작성자 + per-user 설정: 이벤트(변경 시 직접 store 갱신)가 갱신을 끌고, focus refetch는
 // 멀티 디바이스 드리프트만 커버하는 안전망(universe-query와 동일 정책).
@@ -98,6 +99,16 @@ export function applySettings(res: GetSettingsResponse): void {
   useAppearance.getState().applyServerSettings(toServerAppearance(res.settings))
 }
 
+/** GetSettings 응답 → mood(소문자)→"#RRGGBB" 맵(없으면 빈 맵). 감정색 편집 페이지 draft 시드용(spec 45). */
+export function emotionColorsOf(res: GetSettingsResponse | undefined): Record<string, string> {
+  return toServerAppearance(res?.settings).emotionColors
+}
+
+/** GetSettings 응답이 13 mood 감정색을 모두 유효한 #RRGGBB로 담고 있나(spec 45 완료 판정 — EmotionColorGate가 소비). */
+export function isEmotionColorComplete(res: GetSettingsResponse | undefined): boolean {
+  return isCompleteEmotionColors(emotionColorsOf(res))
+}
+
 /** GetInventory 성공 → appearance store에 잔액·소유권 적용(서버 권위). */
 export function applyInventory(res: GetInventoryResponse): void {
   useAppearance.getState().applyInventory({
@@ -127,6 +138,29 @@ export async function pushSettings(patch: {
     // 낙관적 로컬 변경은 그대로 두고, 다음 GetSettings 시드가 서버와 재동기화한다.
     console.error('[settings.push]', e)
     return false
+  }
+}
+
+/** 감정색 13색 일괄 저장(spec 45) — draft(mood→#RRGGBB)를 `UpdateSettings.emotion_colors`로 한 번에 보낸다.
+ *  성공 응답으로 store(applyServerSettings) + settings query cache를 같은 응답으로 즉시 갱신해, 저장 직후
+ *  redirect한 곳에서 게이트가 stale empty settings로 다시 `/emotion-colors`로 튕기지 않게 한다(A9). 서버가
+ *  invalid mood/color를 거부하면 throw — 호출 페이지가 부분저장 없이 draft 유지 + 오류를 보여준다(A8). */
+export async function saveEmotionColors(
+  queryClient: QueryClient,
+  draft: Record<string, string>,
+): Promise<void> {
+  const emotionColors = Object.entries(draft).flatMap(([mood, color]) => {
+    const m = Mood[mood.toUpperCase() as keyof typeof Mood]
+    const hex = normalizeHex(color)
+    return m != null && m !== Mood.MOOD_UNSPECIFIED && hex ? [{ mood: m, color: hex }] : []
+  })
+  const res = await callUnaryMethod(transport, SettingsService.method.updateSettings, { emotionColors }, {})
+  if (res.settings) {
+    useAppearance.getState().applyServerSettings(toServerAppearance(res.settings))
+    queryClient.setQueryData(
+      settingsQueryOptions().queryKey,
+      create(GetSettingsResponseSchema, { settings: res.settings }),
+    )
   }
 }
 

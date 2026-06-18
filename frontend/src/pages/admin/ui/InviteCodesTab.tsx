@@ -40,6 +40,10 @@ function fmtDate(unixSec: bigint): string {
   return new Date(Number(unixSec) * 1000).toLocaleDateString()
 }
 
+// Web Share API 지원 여부(1회 평가) + 초대 URL 빌더(현재 origin 기준, change 05).
+const CAN_SHARE = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+const inviteUrl = (code: string) => `${window.location.origin}/invite?code=${encodeURIComponent(code)}`
+
 export function InviteCodesTab() {
   const { data, isPending, isError, error, refetch } = useQuery(inviteCodesQueryOptions())
   const issue = useIssueInviteCode()
@@ -49,6 +53,7 @@ export function InviteCodesTab() {
   const [hours, setHours] = useState<number>(VALUES.invite.timedPresetHours[0])
   const [label, setLabel] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedUrlId, setCopiedUrlId] = useState<string | null>(null)
 
   function submit() {
     const input: IssueInput = { label: label.trim() }
@@ -65,6 +70,31 @@ export function InviteCodesTab() {
     } catch {
       /* 클립보드 거부(권한·비보안 컨텍스트) — 조용히 무시. */
     }
+  }
+
+  // 초대 URL 복사(change 05) — `${origin}/invite?code=<code>`. 코드 문자열 복사와 별개 상태.
+  async function copyUrl(code: string, id: string) {
+    try {
+      await navigator.clipboard.writeText(inviteUrl(code))
+      setCopiedUrlId(id)
+      window.setTimeout(() => setCopiedUrlId((c) => (c === id ? null : c)), 1500)
+    } catch {
+      /* 무시 */
+    }
+  }
+
+  // 초대 URL 공유 — Web Share API(있으면 OS 공유 시트). 사용자가 취소하면 그대로 두고, 미지원·실패면 복사 폴백.
+  async function shareUrl(code: string, id: string) {
+    if (CAN_SHARE) {
+      try {
+        await navigator.share({ title: 'cosimosi 초대', text: '초대장을 보내요.', url: inviteUrl(code) })
+        return
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return // 사용자가 취소 — 폴백하지 않음
+        /* 그 외 실패 → 복사 폴백 */
+      }
+    }
+    await copyUrl(code, id)
   }
 
   return (
@@ -147,7 +177,11 @@ export function InviteCodesTab() {
                 key={c.id}
                 code={c}
                 copied={copiedId === c.id}
+                urlCopied={copiedUrlId === c.id}
+                canShare={CAN_SHARE}
                 onCopy={() => void copy(c.code, c.id)}
+                onCopyUrl={() => void copyUrl(c.code, c.id)}
+                onShare={() => void shareUrl(c.code, c.id)}
                 onRevoke={() => revoke.mutate(c.id)}
                 revoking={revoke.isPending && revoke.variables === c.id}
               />
@@ -162,13 +196,21 @@ export function InviteCodesTab() {
 function InviteRow({
   code,
   copied,
+  urlCopied,
+  canShare,
   onCopy,
+  onCopyUrl,
+  onShare,
   onRevoke,
   revoking,
 }: {
   code: InviteCode
   copied: boolean
+  urlCopied: boolean
+  canShare: boolean
   onCopy: () => void
+  onCopyUrl: () => void
+  onShare: () => void
   onRevoke: () => void
   revoking: boolean
 }) {
@@ -187,8 +229,16 @@ function InviteRow({
         발행 {code.createdBy.slice(0, 8)}…
       </span>
       <button type="button" onClick={onCopy} className={`${ghostButtonCls} px-2.5 py-1 text-xs`}>
-        {copied ? '복사됨' : '복사'}
+        {copied ? '복사됨' : '코드'}
       </button>
+      <button type="button" onClick={onCopyUrl} className={`${ghostButtonCls} px-2.5 py-1 text-xs`}>
+        {urlCopied ? '복사됨' : 'URL'}
+      </button>
+      {canShare && (
+        <button type="button" onClick={onShare} className={`${ghostButtonCls} px-2.5 py-1 text-xs`}>
+          공유
+        </button>
+      )}
       {!revoked && (
         <button
           type="button"

@@ -82,6 +82,7 @@
 - 초대 코드 발행·목록·취소는 `InviteAdminService`(spec 41)가 담당하며 admin allowlist 뒤에 있다
   (멤버십과 무관 — 부트스트랩 관리자가 멤버 되기 전 첫 코드를 발행해야 하므로). 규칙·발행 모델·
   제거성은 [policy/domain/access.md](access.md)가 단일 출처다(이 문서는 LLM 운영만 소유).
+- 초대 코드 행은 **코드 문자열 복사 + 초대 URL(`${origin}/invite?code=<code>`) 복사 + 공유**(Web Share API 지원 시 OS 공유 시트, 미지원·실패 시 URL 복사 폴백)를 제공한다(change 05). 서버 발송 RPC는 없다 — 관리자가 복사/공유한 URL을 원하는 채널에 붙이는 모델.
 
 ## FE 표면
 

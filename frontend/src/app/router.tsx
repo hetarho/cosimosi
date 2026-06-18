@@ -6,11 +6,13 @@ import {
 } from '@tanstack/react-router'
 import { LandingPage } from '@/pages/landing'
 import { HomePage } from '@/pages/home'
-import { InvitePage } from '@/pages/invite'
+import { EmotionColorPage } from '@/pages/emotion-colors'
 import { RootLayout } from './RootLayout'
 import { NotFoundScreen, RouteErrorScreen } from './ui/ErrorScreens'
 import { SessionGate } from './ui/SessionGate'
 import { MembershipGate } from './ui/MembershipGate'
+import { EmotionColorGate } from './ui/EmotionColorGate'
+import { InviteRoute } from './ui/InviteRoute'
 import { SignInRoute } from './ui/SignInRoute'
 
 const rootRoute = createRootRoute({ component: RootLayout })
@@ -46,11 +48,14 @@ const indexRoute = createRoute({
     fly: typeof search.fly === 'string' ? search.fly : undefined,
   }),
   component: function UniverseRoute() {
-    // 인증(SessionGate) → 멤버십(MembershipGate, spec 41) → 우주. 비멤버는 /invite로.
+    // 인증(SessionGate) → 멤버십(MembershipGate, spec 41) → 감정색 완료(EmotionColorGate, spec 45) → 우주.
+    // 비멤버는 /invite로, 감정색 미완료는 /emotion-colors로. HomePage는 셋 다 통과해야 마운트된다.
     return (
       <SessionGate>
         <MembershipGate>
-          <HomePage />
+          <EmotionColorGate>
+            <HomePage />
+          </EmotionColorGate>
         </MembershipGate>
       </SessionGate>
     )
@@ -87,14 +92,33 @@ const signInRoute = createRoute({
 const inviteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/invite',
-  // redirect가 `/invite`·`/sign-in`(게이트/인증 라우트)을 가리키면 버린다(재귀 루프 차단).
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+  // ?code=<초대코드> — 초대 URL 진입(change 05): 미인증도 이 코드가 있으면 초대장 화면을 먼저 본다(InviteRoute가
+  // 세션으로 분기). redirect가 `/invite`·`/sign-in`(게이트/인증 라우트)을 가리키면 버린다(재귀 루프 차단).
+  validateSearch: (search: Record<string, unknown>): { code?: string; redirect?: string } => ({
+    // 코드는 영숫자만 통과(초대 코드 alphabet) — `&`/`/` 섞인 값으로 redirect param을 주입하지 못하게(이중 방어).
+    code:
+      typeof search.code === 'string' && /^[A-Za-z0-9]+$/.test(search.code) ? search.code : undefined,
     redirect: safeRedirect(search.redirect, ['/invite', '/sign-in']),
   }),
-  component: function InviteRoute() {
+  component: InviteRoute,
+})
+
+// /emotion-colors = 감정색 필수 설정/편집(spec 45). SessionGate·MembershipGate 안이되 EmotionColorGate
+// **밖** — 미완료 사용자가 루프 없이 13색을 저장할 수 있어야 한다(A3). 정적 import(appearance 슬라이스가
+// 이미 메인 번들). redirect는 내부 경로만 통과하고, 게이트/인증 라우트 자신(`/emotion-colors`·`/invite`·
+// `/sign-in`)을 가리키면 버려 루프를 막는다.
+const emotionColorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/emotion-colors',
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+    redirect: safeRedirect(search.redirect, ['/emotion-colors', '/invite', '/sign-in']),
+  }),
+  component: function EmotionColorsRoute() {
     return (
       <SessionGate>
-        <InvitePage />
+        <MembershipGate>
+          <EmotionColorPage />
+        </MembershipGate>
       </SessionGate>
     )
   },
@@ -139,11 +163,14 @@ const giftRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/gift/$token',
   component: function GiftRoute() {
-    // 별 수락도 멤버여야 한다(spec 41) — 비멤버는 /invite로(redeem 후 같은 링크로 복귀).
+    // 별 수락도 멤버여야 한다(spec 41) — 비멤버는 /invite로(redeem 후 같은 링크로 복귀). 받은 별을 내 우주에
+    // 띄우는 경로라 감정색도 확정돼 있어야 한다(spec 45) — 미완료면 /emotion-colors로.
     return (
       <SessionGate>
         <MembershipGate>
-          <LazyGiftPage />
+          <EmotionColorGate>
+            <LazyGiftPage />
+          </EmotionColorGate>
         </MembershipGate>
       </SessionGate>
     )
@@ -155,6 +182,7 @@ const routeTree = rootRoute.addChildren([
   landingRoute,
   signInRoute,
   inviteRoute,
+  emotionColorsRoute,
   adminRoute,
   visitRoute,
   giftRoute,

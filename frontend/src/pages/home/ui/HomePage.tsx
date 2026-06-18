@@ -34,7 +34,7 @@ import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
 import { DiaryCard, DiarySheet } from '@/features/diary-list'
 import { DormantSheet } from '@/features/dormant-search'
 import { useShellStore } from '@/features/universe'
-import { AppearanceControls, AppearanceSaveBar } from '@/features/switch-appearance'
+import { AppearanceModal } from './AppearanceModal'
 import { ShareUniverseBody } from '@/features/share-universe'
 import { SendStarBody, StarGiftsBody } from '@/features/send-star'
 import {
@@ -578,9 +578,14 @@ export function HomePage() {
       {/* 바운더리는 Canvas에만(17): R3F 트리의 throw·렌더러 init 실패(위젯이 state→render
           throw로 표면화)가 흰 화면이 되지 않게 폴백을 그리되, 형제인 HUD(작성 폼·패널)는
           살린다. resetError → 캔버스 리마운트. */}
-      <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
-        <UniverseCanvas />
-      </Sentry.ErrorBoundary>
+      {/* 외형 모달이 열리면 우주 캔버스를 언마운트한다(change 06): 집중 모달이 화면을 덮어 안 보이고,
+          모달의 고정 프리뷰 + 항목 썸네일(라이브 미니 3D)에 WebGPU 컨텍스트를 양보한다. 닫으면 다시
+          마운트되며 레이아웃이 베일 뒤에서 재정착한다. */}
+      {!appearanceOpen && (
+        <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
+          <UniverseCanvas />
+        </Sentry.ErrorBoundary>
+      )}
       {/* Film grain over the canvas (DOM overlay, not the bloom pipeline) — sits above the
           canvas but before the HUD, and is pointer-events:none, so HUD stays interactive. */}
       <UniverseGrain />
@@ -639,10 +644,6 @@ export function HomePage() {
       {/* 이동 D-pad — 회상 모드 전용, 화면 가장자리(엄지 구역). 상시 버튼이 아니라 모드별 비행 컨트롤. */}
       <NavPad />
 
-      {/* 외형 드래프트 저장 바(플로팅) — 외형을 바꾸면(미저장) 떠서 변화를 보고 한 번에 저장한다(미구매
-          아이템은 그때 일괄 구매). 드래프트 없음·데모면 스스로 숨는다. */}
-      <AppearanceSaveBar />
-
       {/* === 메뉴 — "나머지 기능" 런처가 여는 비차단 Surface. 항목을 고르면 그 기능 표면으로 전환된다
           (opener가 메뉴를 닫고 연다). 데모엔 서버 없는 작성·소셜을 빼고 탐색·테마만. === */}
       <Surface open={menuOpen} title="메뉴" onClose={() => setMenuOpen(false)} place="top" width="sm">
@@ -673,14 +674,26 @@ export function HomePage() {
           <button type="button" className={menuItemCls} onClick={openAppearance}>
             테마·외형
           </button>
+          {/* 감정색 재설정(spec 45) — 완료 후에도 13감정 색을 다시 고르러 간다(데모는 서버가 없어 숨김). */}
+          {!isDemoMode() && (
+            <button
+              type="button"
+              className={menuItemCls}
+              onClick={() => {
+                closeSurfaces()
+                void navigate({ to: '/emotion-colors', search: { redirect: '/' } })
+              }}
+            >
+              감정색
+            </button>
+          )}
         </nav>
       </Surface>
 
-      {/* 테마·외형 — 좌상단 알약/메뉴가 여는 비차단 Surface. 홈은 드래프트 모드: 잠긴 아이템도 미리보기로
-          고를 수 있고, 변화를 보고 플로팅 저장 바로 커밋한다(자동 저장 안 함). */}
-      <Surface open={appearanceOpen} title="테마·외형" onClose={() => setAppearanceOpen(false)} place="center" width="sm">
-        <AppearanceControls draft />
-      </Surface>
+      {/* 테마·외형 — 좌상단 알약/메뉴가 여는 집중 모달(고정 프리뷰 + 탭 + 실모형 썸네일, change 06). 홈은
+          드래프트 모드: 잠긴 아이템도 미리보기로 고르고, 변화를 보고 플로팅 저장 바로 커밋(자동 저장 안 함).
+          모달이 열리면 위 UniverseCanvas는 언마운트돼(WebGPU 컨텍스트를 프리뷰+썸네일로 양보) 모달 뒤가 빈다. */}
+      <AppearanceModal open={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
 
       {/* === 결과/액션 표면 — 통일 비차단 Surface(모바일 바텀시트 / 데스크톱 떠있는 카드). 한 문법(A4·A5):
           진입과 달리 코너에 고정되지 않고, 열려 있어도 뒤 우주가 보이고 별 탭/회전이 가능하다(비차단·A7). === */}
