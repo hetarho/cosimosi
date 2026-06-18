@@ -139,6 +139,27 @@ const (
 	StarRenderBurstDurS      = 1.6
 	StarRenderBurstBaseScale = 2.5
 	StarRenderBurstGrow      = 16
+	StarRenderBurstFadeGain  = 1.2
+)
+
+// star_lighting
+const (
+	StarLightingSelfIntensity          = 1
+	StarLightingSelfDistance           = 50
+	StarLightingSelfDecay              = 0.7
+	StarLightingLitAlbedoGain          = 0.4
+	StarLightingLitMix                 = 1
+	StarLightingAmbientFill            = 0.4
+	StarLightingBackdropLightIntensity = 0.7
+)
+var (
+	StarLightingBackdropLightDir = []float64{0.6, 0.7, 0.4}
+)
+
+// self_glow
+const (
+	SelfGlowConnectednessGain = 0.6
+	SelfGlowWeightTerm        = 0.5
 )
 
 // resonance_ring

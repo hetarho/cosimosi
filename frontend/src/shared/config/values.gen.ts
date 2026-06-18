@@ -108,6 +108,21 @@ export const VALUES = {
     burstDurS: 1.6,
     burstBaseScale: 2.5,
     burstGrow: 16,
+    burstFadeGain: 1.2,
+  },
+  starLighting: {
+    selfIntensity: 1,
+    selfDistance: 50,
+    selfDecay: 0.7,
+    litAlbedoGain: 0.4,
+    litMix: 1,
+    ambientFill: 0.4,
+    backdropLightDir: [0.6,0.7,0.4],
+    backdropLightIntensity: 0.7,
+  },
+  selfGlow: {
+    connectednessGain: 0.6,
+    weightTerm: 0.5,
   },
   resonanceRing: {
     baseScale: 2.6,

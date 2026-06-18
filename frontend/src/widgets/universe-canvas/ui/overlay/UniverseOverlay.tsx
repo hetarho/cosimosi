@@ -137,7 +137,7 @@ export function UniverseOverlay({ mine, theirs, bridges, bg = '#05060d' }: Unive
       }}
     >
       <color attach="background" args={[bg]} />
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={VALUES.starLighting.ambientFill} />
       <OverlayDust />
       {/* 내 우주(아래) — 내 시각 설정·따뜻한 기운. */}
       <OverlayUniverse

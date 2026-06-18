@@ -12,7 +12,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 
 import { Canvas, useFrame, useThree, type GLProps } from '@react-three/fiber'
 import { useReducedMotion } from 'motion/react'
 import * as THREE from 'three'
-import { uniform, float } from 'three/tsl'
+import { uniform, float, vec3 } from 'three/tsl'
 import { createRenderer } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
 import { cn } from '@/shared/lib'
@@ -191,7 +191,7 @@ function BackdropLayer({
   const front = kind === 'front'
   const size = useThree((s) => s.size)
   const aspect = size.width / size.height
-  const { material, update } = useMemo(
+  const { material, update, setAspect } = useMemo(
     () =>
       buildFluidMaterial(
         front
@@ -202,6 +202,11 @@ function BackdropLayer({
       ),
     [front, palette],
   )
+  // plane이 scale=[aspect,1]로 늘어나므로 셰이더 노이즈 도메인도 같은 aspect로 보정 → 무늬가 화면 비율에
+  // 따라 안 늘어난다(리사이즈마다 동기; useLayoutEffect로 첫 페인트 전에 설정해 깜빡임 방지).
+  useLayoutEffect(() => {
+    setAspect(aspect)
+  }, [aspect, setAspect])
   const geom = useMemo(() => new THREE.PlaneGeometry(2, 2), [])
   useEffect(() => () => {
     geom.dispose()
@@ -228,15 +233,31 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
   const spinRef = useRef<THREE.Group>(null)
   const body = useMemo(() => {
     const moodU = uniform(new THREE.Color(star.color))
-    const brightU = uniform(1)
     const timeU = uniform(0)
-    const built = buildStarBody(star.concept, {
-      mood: moodU,
-      brightness: brightU,
-      seed: float(star.seed ?? 7),
-      hueShift: float(0),
-      time: timeU,
-    })
+    // 배경 씬엔 자아-별·그래프가 없다(spec 03 3겹 미적용) — 브랜드 별은 자가발광 full(오늘 룩)에
+    // 우상단 평행광(positional=0, 화면-비대칭 없음 = 태양) 반사를 더해 crystal 면/엣지를 드러낸다.
+    const dir = VALUES.starLighting.backdropLightDir
+    const built = buildStarBody(
+      star.concept,
+      {
+        mood: moodU,
+        glow: float(1), // 그래프 없음 → 연결성 대신 자가발광 full
+        recency: float(1), // 평행광이라 거리 무관 — 반사 full
+        seed: float(star.seed ?? 7),
+        hueShift: float(0),
+        time: timeU,
+        selfLightPos: vec3(dir[0], dir[1], dir[2]), // 우상단 방향(평행광)
+        lightPositional: float(0), // 0 = directional
+        litMix: float(1),
+        focus: float(1),
+      },
+      {
+        intensity: VALUES.starLighting.backdropLightIntensity,
+        distance: VALUES.starLighting.selfDistance,
+        decay: VALUES.starLighting.selfDecay,
+        gain: VALUES.starLighting.litAlbedoGain,
+      },
+    )
     return {
       geometry: built.geometry,
       material: built.material,

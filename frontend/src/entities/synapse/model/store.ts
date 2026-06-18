@@ -92,23 +92,34 @@ export function edgesWithin(edges: SynapseEdge[], ids: ReadonlySet<string>): Syn
   return edges.filter((e) => ids.has(e.aId) && ids.has(e.bId))
 }
 
-/** Pure: star id → degree normalized by the universe's MEDIAN degree (spec 26's R_conn
- *  input). degree = incident-edge count (= neighborsOf(...).length, computed in one pass);
- *  degreeNorm = degree / median, so the typical star sits at ~1 and a hub rises above it.
- *  A median of 0 (no edges) falls back to 1 so the ratio is finite. Stars with no edges are
- *  absent from the map → callers read 0 (no connection bonus). three/DOM-free (헌법4). */
-export function degreeNormById(edges: SynapseEdge[]): Map<string, number> {
-  const degree = new Map<string, number>()
+/** Pure: per-node value map normalized by the universe MEDIAN (median 0 → 1 fallback so the
+ *  ratio stays finite). Each edge contributes `edgeValue(e)` to BOTH endpoints in one pass; the
+ *  typical node sits at ~1 and a hub rises above it. Nodes with no edges are absent from the map →
+ *  callers read 0. three/DOM-free (헌법4). degree·weighted-degree share this(중복 제거). */
+function normalizedNodeMap(edges: SynapseEdge[], edgeValue: (e: SynapseEdge) => number): Map<string, number> {
+  const acc = new Map<string, number>()
   for (const e of edges) {
-    degree.set(e.aId, (degree.get(e.aId) ?? 0) + 1)
-    degree.set(e.bId, (degree.get(e.bId) ?? 0) + 1)
+    const v = edgeValue(e)
+    acc.set(e.aId, (acc.get(e.aId) ?? 0) + v)
+    acc.set(e.bId, (acc.get(e.bId) ?? 0) + v)
   }
-  if (degree.size === 0) return degree
-  const sorted = [...degree.values()].sort((x, y) => x - y)
+  if (acc.size === 0) return acc
+  const sorted = [...acc.values()].sort((x, y) => x - y)
   const mid = Math.floor(sorted.length / 2)
   const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
   const denom = median > 0 ? median : 1
   const out = new Map<string, number>()
-  for (const [id, d] of degree) out.set(id, d / denom)
+  for (const [id, d] of acc) out.set(id, d / denom)
   return out
+}
+
+/** star id → degree(인접 간선 수)를 median으로 정규화(spec 26 R_conn 입력). 보통 별 ~1, 허브는 그 위. */
+export function degreeNormById(edges: SynapseEdge[]): Map<string, number> {
+  return normalizedNodeMap(edges, () => 1)
+}
+
+/** star id → Σ(인접 링크 weight)를 median으로 정규화(spec 03 self-glow 연결성 입력). 강한 링크 허브가
+ *  약한 허브보다 무겁고, 가지친 링크(weight→floor)도 작게 잔존 기여(헌법2·LTD). 보통 별 ~1. */
+export function weightedDegreeById(edges: SynapseEdge[]): Map<string, number> {
+  return normalizedNodeMap(edges, (e) => e.weight)
 }

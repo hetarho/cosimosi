@@ -212,6 +212,9 @@ export function OverlayUniverse({
         edges={edges}
         tint={tint}
         tintStrength={TINT_STRENGTH}
+        // 이 하늘의 자아 광원(spec 03 반사) = 그 하늘의 중심(월드). 별은 <group position={offset}> 안이라
+        // positionWorld = offset + local → 광원도 월드 offset으로 줘야 각 하늘이 제 중심에서 비춰진다.
+        selfLightPos={offset}
       />
     </group>
   )

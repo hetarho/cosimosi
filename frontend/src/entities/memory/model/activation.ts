@@ -95,3 +95,46 @@ export function modulatedBrightness(
   const le = lambdaEff(degreeNorm, relevance, intensityNorm, valence)
   return A_MIN + (1 - A_MIN) * Math.exp(-le * dtDays)
 }
+
+// ── Self-light 3-channel split (spec 03) ──────────────────────────────────────────────
+// The single modulated brightness above (spec 26) is split for RENDERING into three signals;
+// the decay model itself is unchanged (λ_glow below IS λ_eff — same formula), the migration is
+// in how the consumer (StarField) reads it:
+//   reflection = recency  → `activation()` above, read per-instance: the self-light in star-body
+//                           lights the star brighter the closer (=more recent) it sits to centre.
+//   self-glow  = meaning  → `selfGlow()` below: emissive intensity driven by CONNECTEDNESS
+//                           (degree + weighted degree), fading at the adaptive rate λ_glow (= λ_eff,
+//                           slowed by connection/relevance/emotion — spec 26 adaptive forgetting).
+//   color      = emotion  → mood hue (shared/config) + R_emo durability kept INSIDE λ_glow below.
+
+/** Self-glow "connectedness" ∈ [0,1] (spec 03): how woven a memory is into the graph.
+ *  degreeNorm (link count / median) + weight_term·weightedDegreeNorm (Σweight / median), scaled by
+ *  connectedness_gain and saturated. weight_term=0 → pure count. Drives self-glow base intensity —
+ *  a hub glows brighter; an isolated star sits near 0 (visible only via the reflection channel). */
+export function connectedness(degreeNorm: number, weightedDegreeNorm: number): number {
+  const combined = Math.max(0, degreeNorm) + VALUES.selfGlow.weightTerm * Math.max(0, weightedDegreeNorm)
+  return clamp01(VALUES.selfGlow.connectednessGain * combined)
+}
+
+/** Self-glow brightness (spec 03 emissive channel) ∈ [A_MIN, 1]:
+ *    selfGlow = A_MIN + (1-A_MIN)·connectedness·exp(-λ_glow·Δt)
+ *  Intensity = connectedness (well-woven memories shine on their own); fades over time at the
+ *  adaptive rate λ_glow (= spec-26 λ_eff: connection/relevance/emotion slow the fade, so R_emo keeps
+ *  emotion's durability role). Floored at A_MIN so an isolated/old star never goes dark (헌법2) — its
+ *  presence then comes from reflection (recency). spec-23 brightness_offset is composited at the
+ *  call site (StarField), floored OUTERMOST. Pure, three/DOM-free (헌법4). */
+export function selfGlow(
+  lastRecalledAt: number,
+  now: number,
+  degreeNorm: number,
+  weightedDegreeNorm: number,
+  relevance: number,
+  intensityNorm: number,
+  valence: number,
+): number {
+  const conn = connectedness(degreeNorm, weightedDegreeNorm)
+  // self-glow = (spec-26 변조 감쇠 밝기) × 연결성, 바닥 보존: A_MIN + (mb − A_MIN)·conn ∈ [A_MIN, mb] ⊆ [A_MIN,1].
+  // mb가 이미 λ_glow(=λ_eff)·Δt 감쇠를 접고 있으므로 dtDays/lambdaEff를 다시 풀지 않고 그대로 재사용(중복 제거).
+  const mb = modulatedBrightness(lastRecalledAt, now, degreeNorm, relevance, intensityNorm, valence)
+  return A_MIN + (mb - A_MIN) * conn
+}

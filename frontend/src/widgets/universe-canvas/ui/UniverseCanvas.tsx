@@ -1643,7 +1643,9 @@ export function UniverseCanvas() {
       }}
     >
       <color attach="background" args={[bg]} />
-      <ambientLight intensity={0.4} />
+      {/* 어두운 반구 채움광(spec 03 — 하드코딩 0.4를 values로 이전). 반사(emissiveNode 내 계산)와 albedo
+          이중계상 시 하향 재튜닝 대상. StarField는 자아-별이 원점이라 selfLightPos 기본(원점·점광)으로 충분. */}
+      <ambientLight intensity={VALUES.starLighting.ambientFill} />
       {/* 테마 깊은 베이스색(위) 위에 요즘 상태(spec 25)를 여러 넓은 광원으로 가산한다 — 단일
           톤이 아니라 군데군데 번지는 불규칙 그라디언트. 별·시냅스보다 뒤(renderOrder<0). */}
       <AmbientNebula />

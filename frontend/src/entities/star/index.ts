@@ -6,6 +6,6 @@
 export type { StarObject, StarObjectMeta } from './model/types'
 export { STAR_OBJECTS, DEFAULT_OBJECT } from './model/kinds'
 export { StarField, type StarFieldProps } from './ui/StarField'
-export { buildStarBody, STAR_FORM_SPIN, type StarShadeInputs, type StarBodyBuild } from './ui/star-body'
+export { buildStarBody, STAR_FORM_SPIN, type StarShadeInputs, type StarLightParams, type StarBodyBuild } from './ui/star-body'
 export { VizStar, type VizStarProps } from './ui/VizStar'
 export type { StarVisualProps } from './ui/svg/types'

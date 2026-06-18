@@ -89,6 +89,14 @@ export function buildFluidMaterial(opts?: FluidMaterialOptions) {
   const update = (time: number) => {
     uTime.value = time
   }
+  // 화면 aspect(=width/height) — 소비처가 setAspect로 갱신. 배경 plane은 scale=[aspect,1]로 늘어나므로,
+  // 노이즈 도메인 x도 aspect로 같이 늘려 무늬가 화면 비율에 따라 *늘어나지 않게* 한다(어떤 width에서도
+  // 형태 비율 고정 — 모바일 세로든 와이드든 구름이 안 찌그러짐). 기본 1.6 = 옛 고정 가로 바이어스(안 set하면 그대로).
+  const uAspect = uniform(1.6)
+  const aspectN = float(uAspect as never)
+  const setAspect = (a: number) => {
+    uAspect.value = a
+  }
 
   // Palette as linear-space colors (flat renderer → no tone mapping; mirrors halo.ts uniform Color).
   const cBase = vec3(uniform(new THREE.Color(pal.base)) as never)
@@ -98,9 +106,10 @@ export function buildFluidMaterial(opts?: FluidMaterialOptions) {
   const cC4 = vec3(uniform(new THREE.Color(pal.c4)) as never)
   const cHi = vec3(uniform(new THREE.Color(pal.hi)) as never)
 
-  // uv() is 0..1 across the quad. Bias toward landscape so the bands read horizontally; the exact
-  // aspect doesn't matter for an organic cloud, so a fixed stretch keeps it resolution-independent.
-  const p = vec2(uv().x.mul(1.6), uv().y.mul(1.0))
+  // uv() is 0..1 across the quad; the plane is scaled [aspect,1]. Scale the noise domain's x by the
+  // SAME aspect (setAspect) so a cloud feature keeps its shape at any viewport ratio — a wider window
+  // reveals MORE cloud horizontally instead of stretching it (default 1.6 ≈ the old landscape bias).
+  const p = vec2(uv().x.mul(aspectN), uv().y)
 
   // Slow flow — the whole field drifts up/right while the warp field itself evolves, so the pattern
   // churns instead of merely sliding (the forms.ts aurora trick).
@@ -133,7 +142,7 @@ export function buildFluidMaterial(opts?: FluidMaterialOptions) {
     m.transparent = true
     const patch = smoothstep(float(0.5), float(0.85), n.mul(n2.mul(0.5).add(0.6)))
     m.opacityNode = patch.mul(0.7)
-    return { material: m, update }
+    return { material: m, update, setAspect }
   }
 
   // Layer the palette: deep base → c1 → c2 → c3 → c4, each fading in over a noise band via smoothstep
@@ -159,5 +168,5 @@ export function buildFluidMaterial(opts?: FluidMaterialOptions) {
       : float(0.9)
     m.opacityNode = edge.mul(base)
   }
-  return { material: m, update }
+  return { material: m, update, setAspect }
 }

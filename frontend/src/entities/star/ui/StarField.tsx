@@ -11,8 +11,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { attribute, uniform } from 'three/tsl'
-import { modulatedBrightness, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
-import { degreeNormById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
+import { selfGlow, activation, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
+import { degreeNormById, weightedDegreeById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
 import { DEFAULT_OBJECT } from '../model/kinds'
@@ -47,6 +47,7 @@ const BURST_DUR_S = VALUES.starRender.burstDurS
 const MAX_BURSTS = 32 // 동시 탄생 상한(초과분은 버스트만 생략 — 별 자체는 정상 탄생)
 const BURST_BASE_SCALE = VALUES.starRender.burstBaseScale // 시작 크기(별 스케일 배수)
 const BURST_GROW = VALUES.starRender.burstGrow // 수명 동안 추가로 퍼지는 배수
+const BURST_FADE_GAIN = VALUES.starRender.burstFadeGain // 페이드 게인((1-age)²·gain) — 별 본체가 self-light로 어두워져 하향(spec 03)
 function easeOutCubic(x: number): number {
   return 1 - Math.pow(1 - x, 3)
 }
@@ -114,14 +115,19 @@ function getBurstTexture(): THREE.CanvasTexture | null {
 // SynapseFilaments의 정점 셰이더가 같은 수식으로 끝점을 움직여 연결이 별 중앙을
 // 정확히 따라간다. prefers-reduced-motion이면 정지.
 
-// Focus spotlight (11): while a star is selected, every OTHER star dims to FOCUS_DIM of its
-// brightness and the selected one is nudged up by FOCUS_BOOST — applied by re-weighting the
-// per-instance aBrightness the forms read (each form multiplies emissive by it). No rebuild.
-// Diary highlight (spec 28, 원본 일기로 별 찾기) reuses the SAME re-weighting at the same
-// strengths: the chosen diary's stars boost, the rest dim — only the SET (one star vs many)
-// differs. (Focus takes precedence: framing a diary clears any single selection.)
+// Focus spotlight (11): while a star is selected, every OTHER star dims to FOCUS_DIM and the
+// selected one is nudged up by FOCUS_BOOST — written to the per-instance `aFocus` factor, which
+// the shader multiplies onto BOTH channels (self-glow + reflection) so dimming can't be bypassed
+// (spec 03). The brightness base now lives in aGlow/aRecency, so this effect is a pure factor (no
+// base recompute). Diary highlight (spec 28) reuses the SAME factor at the same strengths: the
+// chosen diary's stars boost, the rest dim — only the SET (one star vs many) differs. (Focus takes
+// precedence: framing a diary clears any single selection.)
 const FOCUS_DIM = VALUES.focus.dim
 const FOCUS_BOOST = VALUES.focus.boost
+
+// 자아 광원(spec 03 반사 채널) 기본 위치 — 우주는 자아-별이 UniverseDrift 원점이라 [0,0,0].
+// 안정 참조(매 렌더 새 배열 방지 — 아래 uniform 동기 효과의 deps 튐 방지).
+const STAR_LIGHT_ORIGIN = [0, 0, 0] as const
 
 export interface StarFieldProps {
   /** force-sim positions buffer (07/10). When absent, a dev dummy cluster is used. */
@@ -149,6 +155,13 @@ export interface StarFieldProps {
   tint?: readonly [number, number, number]
   /** tint 블렌드 강도(0..1) — tint가 있을 때만 의미. */
   tintStrength?: number
+  /** 자아 광원(spec 03 반사 채널)의 월드 위치(점광·우주=원점) 또는 방향(평행광·배경). 기본 원점.
+   *  positional=1이면 위치, 0이면 방향. overlay는 그 하늘의 중심(offset)을 넘긴다. */
+  selfLightPos?: readonly [number, number, number]
+  /** 1=점광(거리 감쇠·자아-별), 0=평행광(우상단·배경). 기본 1(우주). */
+  lightPositional?: number
+  /** 반사 항 게이트(0|1) — 저사양/WebGL2는 0으로 광 연산 분기 제거. 기본 1. */
+  litMix?: number
 }
 
 export function StarField({
@@ -162,6 +175,9 @@ export function StarField({
   edges: externalEdges,
   tint,
   tintStrength = 0,
+  selfLightPos = STAR_LIGHT_ORIGIN,
+  lightPositional = 1,
+  litMix = 1,
 }: StarFieldProps) {
   const storeStars = useMemoryStore((s) => s.stars)
   // 외부 소스(겹쳐보기)면 그것을, 아니면 스토어를 그린다. external=true면 탄생 연출·loadedEmpty 게이트를 끈다.
@@ -185,6 +201,11 @@ export function StarField({
   const edgeTopo = useMemo(() => edges.map((e) => `${e.aId}~${e.bId}`).join(','), [edges])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the pair set, not the array identity
   const degreeNorm = useMemo(() => degreeNormById(edges), [edgeTopo])
+  // self-glow 연결성(spec 03) Σweight 항: degree와 달리 weight에도 의존하므로 weight 포함 시그니처로 메모
+  // (회상 강화로 weight가 바뀌면 글로우도 갱신). 2자리 양자화로 미세 변동에 헛돌지 않게.
+  const edgeWTopo = useMemo(() => edges.map((e) => `${e.aId}~${e.bId}:${e.weight.toFixed(2)}`).join(','), [edges])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the weight-inclusive signature
+  const weightedDegreeNorm = useMemo(() => weightedDegreeById(edges), [edgeWTopo])
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const scalesRef = useRef<Float32Array>(new Float32Array(0))
   // 탄생 추적: 더미 좌표 보존(버퍼 없는 셸에서 탄생 중 별의 행렬을 다시 쓰기 위해) +
@@ -209,20 +230,50 @@ export function StarField({
   // 공유 시간 uniform은 StarField가 소유해 useFrame에서 .value를 올린다(form 애니메이션 구동).
   // 시간 갱신은 update 클로저로 감싼다 — uniform .value 변경을 클로저 안에 두어 useFrame이 render-local을
   // 직접 만지지 않게 한다(react-hooks 룰; Star3D와 동일 관용구). uniform 소유는 여전히 소비처(StarField).
-  const { geometry, material, update } = useMemo(() => {
+  const { geometry, material, update, setLight } = useMemo(() => {
     const t = uniform(0)
-    const built = buildStarBody(object, {
-      mood: attribute('aMood', 'vec3'),
-      brightness: attribute('aBrightness', 'float'),
-      seed: attribute('aSeed', 'float'),
-      hueShift: attribute('aHueShift', 'float'),
-      time: t,
-    })
+    // 자아 광원 uniform(전 인스턴스 공유): 위치/방향 · positional · litMix. 값은 props에서 아래 효과가 동기.
+    const selfPosU = uniform(new THREE.Vector3(0, 0, 0))
+    const positionalU = uniform(1)
+    const litMixU = uniform(1)
+    const built = buildStarBody(
+      object,
+      {
+        mood: attribute('aMood', 'vec3'),
+        glow: attribute('aGlow', 'float'), // 자가발광=연결성(selfGlow, A_MIN 바닥은 attribute 계산에서)
+        recency: attribute('aRecency', 'float'), // 반사 변조=최근성
+        seed: attribute('aSeed', 'float'),
+        hueShift: attribute('aHueShift', 'float'),
+        time: t,
+        selfLightPos: selfPosU,
+        lightPositional: positionalU,
+        litMix: litMixU,
+        focus: attribute('aFocus', 'float'), // 포커스 디밍/부스트(두 채널 공통)
+      },
+      {
+        intensity: VALUES.starLighting.selfIntensity,
+        distance: VALUES.starLighting.selfDistance,
+        decay: VALUES.starLighting.selfDecay,
+        gain: VALUES.starLighting.litAlbedoGain,
+      },
+    )
     const update = (time: number) => {
       t.value = time
     }
-    return { geometry: built.geometry, material: built.material, update }
+    // 광원 uniform 변경도 클로저 안에 둔다(update와 동일 관용구) — effect가 메모된 uniform을 직접 만지지
+    // 않게(react-compiler 규칙). 정적이라 매 프레임 아닌 prop 동기 effect에서 호출.
+    const setLight = (pos: readonly [number, number, number], positional: number, mix: number) => {
+      selfPosU.value.set(pos[0], pos[1], pos[2])
+      positionalU.value = positional
+      litMixU.value = mix
+    }
+    return { geometry: built.geometry, material: built.material, update, setLight }
   }, [object])
+  // 자아 광원 uniform을 props로 동기(씬마다 위치/방향·점광/평행광·게이트가 다름). 정적이라 effect로 충분.
+  useEffect(() => {
+    setLight(selfLightPos, lightPositional, litMix)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 배열 원소로 분해 의존(참조 변동 무시)
+  }, [setLight, selfLightPos[0], selfLightPos[1], selfLightPos[2], lightPositional, litMix])
   // 형태가 바뀌면 직전 지오메트리·머티리얼을 해제(GPU 누수 방지).
   useEffect(() => () => {
     geometry.dispose()
@@ -304,7 +355,9 @@ export function StarField({
 
     const moodArr = new Float32Array(count * 3)
     const seedArr = new Float32Array(count)
-    const brightArr = new Float32Array(count)
+    const glowArr = new Float32Array(count) // 자가발광=연결성(selfGlow, A_MIN 바닥)
+    const recencyArr = new Float32Array(count) // 반사 변조=최근성(activation)
+    const focusArr = new Float32Array(count).fill(1) // 포커스 배율(아래 focus effect가 갱신; 기본 1)
     // 재공고화 색조(spec 23): hueShift(도)를 라디안으로 — 머티리얼이 mood 색을 회색축
     // 둘레로 그만큼 돌린다. 기본 0 → 회전 없음(기존 별 무변).
     const hueArr = new Float32Array(count)
@@ -330,10 +383,22 @@ export function StarField({
       // 밝기는 변조 감쇠(spec 26): 연결(R_conn)·요즘 관련성(R_recent)·감정(R_emo)으로 별마다
       // λ_eff가 달라 — 연결 많고 요즘과 닿고 감정 강한 별일수록 천천히 어두워진다.
       seedArr[i] = reshapedSeed(m.seed, m.formSeedDelta)
-      brightArr[i] = reshapedBrightness(
-        modulatedBrightness(m.lastRecalledAt, now, degreeNorm.get(stars[i].id) ?? 0, m.relevance, m.intensity, m.valence),
+      // 자가발광(spec 03): 연결성(degree + Σweight) 구동 self-glow가 λ_glow로 감쇠, +reshape offset,
+      // A_MIN 바닥(reshapedBrightness가 clamp(.,A_MIN,1)로 OUTERMOST 적용). 연결 0이어도 ≥A_MIN 잔광(헌법2).
+      glowArr[i] = reshapedBrightness(
+        selfGlow(
+          m.lastRecalledAt,
+          now,
+          degreeNorm.get(stars[i].id) ?? 0,
+          weightedDegreeNorm.get(stars[i].id) ?? 0,
+          m.relevance,
+          m.intensity,
+          m.valence,
+        ),
         m.brightnessOffset,
       )
+      // 반사 변조(spec 03): 최근성 — 가까운(중앙=최근/회상) 별일수록 자아광 반사가 밝다(위치=spec 38 광학 읽기).
+      recencyArr[i] = activation(m.lastRecalledAt, now)
       hueArr[i] = (m.hueShift * Math.PI) / 180
       scales[i] = sizeFor(m.intensity)
 
@@ -353,7 +418,9 @@ export function StarField({
 
     geometry.setAttribute('aMood', new THREE.InstancedBufferAttribute(moodArr, 3))
     geometry.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seedArr, 1))
-    geometry.setAttribute('aBrightness', new THREE.InstancedBufferAttribute(brightArr, 1))
+    geometry.setAttribute('aGlow', new THREE.InstancedBufferAttribute(glowArr, 1))
+    geometry.setAttribute('aRecency', new THREE.InstancedBufferAttribute(recencyArr, 1))
+    geometry.setAttribute('aFocus', new THREE.InstancedBufferAttribute(focusArr, 1))
     geometry.setAttribute('aHueShift', new THREE.InstancedBufferAttribute(hueArr, 1))
     scalesRef.current = scales
     dummyRef.current = dummy
@@ -361,35 +428,32 @@ export function StarField({
     resonantIdxRef.current = resonantIdx
     mesh.count = count
     mesh.instanceMatrix.needsUpdate = true
-  }, [stars, count, geometry, emotionColors, degreeNorm, external, tint, tintStrength])
+  }, [stars, count, geometry, emotionColors, degreeNorm, weightedDegreeNorm, external, tint, tintStrength])
 
   // Focus spotlight: re-weight aBrightness when the selection (or star set / form) changes —
   // selected boosted, all others dimmed; full brightness restored when nothing is selected. Reads
   // the attribute the layout effect built (so it re-applies after a rebuild) and re-uploads only
   // that one buffer; if a form's attr layout ever lacks it, this safely no-ops.
   useEffect(() => {
-    const attr = geometry.getAttribute('aBrightness') as THREE.InstancedBufferAttribute | undefined
+    const attr = geometry.getAttribute('aFocus') as THREE.InstancedBufferAttribute | undefined
     if (!attr || count === 0) return
     const selIdx = selectedId ? stars.findIndex((s) => s.id === selectedId) : -1
     // 일기 조망 강조(spec 28): 단일 선택이 없을 때만 적용(선택=근접 포커스가 우선). 강조 집합의
     // 별은 FOCUS_BOOST로 밝히고 나머지는 FOCUS_DIM(잠든 별 dust dimming과 같은 시각 언어).
     const hi = selIdx < 0 && highlightedIds && highlightedIds.size > 0 ? highlightedIds : null
-    const now = virtualNowMs()
     const arr = attr.array as Float32Array
     for (let i = 0; i < count; i++) {
-      // Focus 재가중도 재성형(spec 23)·변조 감쇠(spec 26)를 거친 같은 유효 밝기에서 출발한다.
-      const m = stars[i].memory
-      const base = reshapedBrightness(
-        modulatedBrightness(m.lastRecalledAt, now, degreeNorm.get(stars[i].id) ?? 0, m.relevance, m.intensity, m.valence),
-        m.brightnessOffset,
-      )
+      // 순수 배율만(밝기 base는 aGlow/aRecency가 소유 — 셰이더가 (self-glow+reflection)·aFocus로 합성).
       let factor = 1
       if (selIdx >= 0) factor = i === selIdx ? FOCUS_BOOST : FOCUS_DIM
       else if (hi) factor = hi.has(stars[i].id) ? FOCUS_BOOST : FOCUS_DIM
-      arr[i] = base * factor
+      arr[i] = factor
     }
     attr.needsUpdate = true
-  }, [selectedId, highlightedIds, stars, count, geometry, degreeNorm])
+    // deps에 layout 효과의 재빌드 트리거(emotionColors·degreeNorm·weightedDegreeNorm·external·tint·
+    // tintStrength)도 포함 — layout 효과가 재빌드 시 aFocus를 1로 리셋하므로, 그 뒤 디밍/부스트를 다시
+    // 적용해야 한다(선택 변경뿐 아니라 어떤 재빌드 후에도). 안 그러면 선택 중 가중치/색 변경 시 포커스가 풀린다.
+  }, [selectedId, highlightedIds, stars, count, geometry, emotionColors, degreeNorm, weightedDegreeNorm, external, tint, tintStrength])
 
   // Per-frame matrix write: LIVE force-sim positions (07/10) 또는 더미 좌표 위에 별 미세
   // 부유(WOBBLE_AMP)와 탄생 스케일을 얹는다. No setState → no re-render (1.6).
@@ -532,7 +596,7 @@ export function StarField({
           )
           burstScratch.updateMatrix()
           burstMesh.setMatrixAt(slot, burstScratch.matrix)
-          const fade = (1 - age) * (1 - age) * 1.6
+          const fade = (1 - age) * (1 - age) * BURST_FADE_GAIN
           burstColor.setRGB(moods[i * 3] * fade, moods[i * 3 + 1] * fade, moods[i * 3 + 2] * fade)
           burstMesh.setColorAt(slot, burstColor)
           slot++

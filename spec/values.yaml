@@ -26,7 +26,7 @@
 
 # ── 망각·감쇠 (decay) — FE 클라이언트 렌더 계산 + BE 휴면 컷오프 (헌법3). spec 12·26 ──────────
 decay:
-  a_min: 0.05 #            밝기 바닥 — 별은 0으로 꺼지지 않는다(헌법2). 잠든 별 잔광.
+  a_min: 0.05 #            밝기 바닥 — 별은 0으로 꺼지지 않는다(헌법2). 잠든 별 잔광. spec 03 이후 이 바닥은 self-glow(emissive) 채널이 단독 보증(반사光은 bloom 안 하는 물리광·floor 없음). 단일 출처 — 둘째 floor 금지.
   half_life_days: 30 #     시간 감쇠 반감기: activation(Δt)=exp(-ln2/30·Δt), 30일 → 0.5
   dormant_factor: 2 #      휴면 컷오프 = dormant_factor·a_min (raw activation 기준). FE isDormant·BE dormancyThreshold 공유.
   # spec 26 변조 감쇠 계수 — 각 R∈(0,1]이라 감쇠를 늦추기만 한다(가속 없음)
@@ -154,6 +154,28 @@ star_render:
   burst_dur_s: 1.6 #        탄생 버스트(글로우 디스크) 수명(s)
   burst_base_scale: 2.5 #   탄생 버스트 시작 스케일(별 스케일 배수)
   burst_grow: 16 #          탄생 버스트가 수명 동안 퍼지는 추가 배율
+  burst_fade_gain: 1.2 #    탄생 버스트 페이드 게인((1-age)²·gain). 별 본체가 self-light로 어두워져 상대적으로 도드라지므로 1.6→1.2 하향(spec 43/03)
+
+# ── 별 조명 (star_lighting) — 자아-별 광원(반사=최근성) + 배경 평행광. spec 03·38·42 ──────────────
+#    별 빛 3겹 중 "반사(lit)" 채널: 중앙 자아-별(우주) 또는 우상단 평행광(배경)으로 별 면/엣지를 드러낸다.
+#    진짜 THREE.PointLight 객체가 아니라 buildStarBody의 emissiveNode TSL 그래프 안에서 self-position
+#    uniform + per-instance 좌표로 N·L·falloff를 직접 계산(헌법8 단일 InstancedMesh 보존).
+star_lighting:
+  self_intensity: 1.0 #         자아-별 반사광 세기(우주 reflection 채널 기본 광도)
+  self_distance: 50 #           거리 falloff 기준(쉘 r_max=40 밖 여유 — r_max 별도 완전 흑색 아니게, 헌법2)
+  self_decay: 0.7 #             거리 falloff 지수(물리 1/d² 아님 — 완만; recency를 r_min~r_max 동적 범위에 가시화)
+  lit_albedo_gain: 0.4 #        반사가 self-glow를 못 이기게 cap + bloom threshold(0.1) 아래로 묶어 'lit은 bloom 안 함' 자연 분리
+  lit_mix: 1.0 #                반사 항 게이트(우주·배경 1, 저사양/WebGL2는 소비처가 0으로 광 연산 분기 제거)
+  ambient_fill: 0.4 #           카메라 반대편(어두운 반구) 채움광(하드코딩 ambientLight 0.4 이전; reflection과 이중계상 시 하향)
+  backdrop_light_dir: [0.6, 0.7, 0.4] # 배경 CosmosScene 우상단 평행광 방향(positional=0, 화면-비대칭 없음 = 태양)
+  backdrop_light_intensity: 0.7 #       배경 평행광 세기(은은하게 — 면/엣지 드러내되 오늘 룩 안 깨게)
+
+# ── 자가발광 글로우 (self_glow) — 별 빛 3겹 중 "자가발광(emissive)=연결성=의미" 채널. spec 03·26 ──────
+#    λ_eff가 이 채널로 이주(λ_glow). self-glow 세기 = 연결성(degree + Σweight). A_MIN 바닥은 decay.a_min
+#    재사용(둘째 floor 신설 금지). selfGlow = a_min + (1-a_min)·g(connectedness, exp(-λ_glow·Δt)).
+self_glow:
+  connectedness_gain: 0.6 #   연결성(degreeNorm + weight_term·ΣweightNorm)을 글로우 세기로 매핑하는 게인(허브만 도드라지게)
+  weight_term: 0.5 #          Σweight 보조 항 가중(degree count 대비). 0이면 순수 count 폴백(가지치기가 글로우에 안 보임)
 
 # ── 공명 링 (resonance_ring) — 공유 우주 공명 마커. spec 36 ───────────────────────────────────
 resonance_ring:
