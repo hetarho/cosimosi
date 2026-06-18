@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from '@tanstack/react-router'
 import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
 import { paletteForTheme } from '@/shared/ui'
 import { themeAccent, useAppearance } from '@/entities/appearance'
@@ -80,6 +81,20 @@ export function SignInScreen() {
       <div className="fixed inset-0 -z-10">
         <CosmosScene stars={stars} palette={paletteForTheme(theme)} />
       </div>
+      {/* 좌상단 "cosimosi란?" — 게이트 없는 마케팅 랜딩(/landing)으로. 처음 온 사람이 로그인 전 우리가 뭔지
+          볼 수 있게(우하단 외형 스위처와 대칭, 같은 반투명 블러 톤). */}
+      <Link
+        to="/landing"
+        className="fixed left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-white/60 backdrop-blur-md transition hover:-translate-y-px hover:bg-white/10 hover:text-white/90 sm:left-6 sm:top-6"
+      >
+        <span
+          aria-hidden
+          className="grid size-4 place-items-center rounded-full border border-white/25 text-[10px] leading-none"
+        >
+          ?
+        </span>
+        cosimosi란?
+      </Link>
       <div className="relative grid min-h-dvh w-full place-items-center px-6 py-12">
         <div className="flex w-full max-w-sm flex-col items-center gap-14 text-center">
           {/* 별은 배경 씬에 떠 있다 — 여기선 그 자리(엠블럼 footprint)를 비워두고 워드마크만 얹는다. */}
