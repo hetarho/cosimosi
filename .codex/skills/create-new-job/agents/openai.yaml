@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create New Job"
+  short_description: "Turn a plan into a build job"
+  default_prompt: "Use $create-new-job to create an implementation job from a cosymosy plan."
