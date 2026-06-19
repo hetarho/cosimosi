@@ -341,7 +341,8 @@ function NebulaOrbitController() {
   const lastCentroid = useRef({ x: 0, y: 0 }) // 직전 2-finger centroid(pan delta 산출)
   const lastTap = useRef<{ t: number; x: number; y: number } | null>(null) // double-tap 판정용 직전 탭
   const zoomScrub = useRef(false) // double-tap-hold 세로 스크럽 lock 중
-  const scrubLastY = useRef(0) // 스크럽 직전 Y
+  const scrubOriginY = useRef(0) // 스크럽 시작 Y(고정 기준점 — deadzone은 여기서 한 번만 차감)
+  const scrubApplied = useRef(0) // 지금까지 zoom에 반영한 누적 fraction(증분만 더하려고 추적)
 
   useEffect(() => {
     if (!active) return
@@ -361,7 +362,8 @@ function NebulaOrbitController() {
     const cen = lastCentroid
     const tap = lastTap
     const scrub = zoomScrub
-    const scrubY = scrubLastY
+    const scrubOrigin = scrubOriginY
+    const scrubApp = scrubApplied
     const DRAG_DEADZONE = VALUES.gesture.dragDeadzonePx // px — below this a 1-finger press is a tap (→ star select), not an orbit
     const twoFingerDist = () => {
       const it = pts.values()
@@ -407,7 +409,8 @@ function NebulaOrbitController() {
           )
         ) {
           scrub.current = true
-          scrubY.current = e.clientY
+          scrubOrigin.current = e.clientY
+          scrubApp.current = 0
           tap.current = null
           setGestureActive(true)
           markSuppressClick()
@@ -445,12 +448,16 @@ function NebulaOrbitController() {
       if (scrub.current) {
         // double-tap-hold vertical zoom scrub (change 08): vertical drag → dolly; pan/rotate locked out
         // (this whole branch returns before the orbit accumulation). Up = zoom in, down = zoom out.
-        zoom.current += zoomScrubDelta(
-          e.clientY - scrubY.current,
+        // zoomScrubDelta는 스크럽 시작점부터의 누적 이동량을 받아 deadzone을 한 번만 차감한다(rest에서
+        // 시작 → 점프 없음). 프레임 간 델타를 넘기면 매번 deadzone에 못 미쳐 0이 되므로(줌이 거의 안 됨),
+        // 고정 origin부터의 총 fraction을 구해 직전 반영분과의 증분만 누적한다.
+        const totalFrac = zoomScrubDelta(
+          e.clientY - scrubOrigin.current,
           VALUES.gesture.farZoomScrubDeadzonePx,
           VALUES.gesture.farZoomScrubSpeed,
         )
-        scrubY.current = e.clientY
+        zoom.current += totalFrac - scrubApp.current
+        scrubApp.current = totalFrac
         return
       }
       if (!drag.current) {
