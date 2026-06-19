@@ -283,6 +283,41 @@ func (q *Queries) GetRecordByMemory(ctx context.Context, arg GetRecordByMemoryPa
 	return i, err
 }
 
+const getRecordByRecord = `-- name: GetRecordByRecord :one
+SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at
+FROM records r
+WHERE r.id = $1 AND r.user_id = $2
+`
+
+type GetRecordByRecordParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+type GetRecordByRecordRow struct {
+	Body      string             `json:"body"`
+	EntryDate pgtype.Date        `json:"entry_date"`
+	Mood      *string            `json:"mood"`
+	Intensity *float32           `json:"intensity"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+// 원본 일기 읽기(spec 28, change 09): record_id로 원본 전문을 읽는다 — 부작용 없음(별 layer를
+// 절대 건드리지 않음: RecallMemoryTouch 없음). user_id 가드라 남의 record면 ErrNoRows → NotFound.
+// records는 읽기만(헌법1). fragment_text 같은 별 컬럼은 없다 — 독립 일기 페이지는 원본 전체만 본다.
+func (q *Queries) GetRecordByRecord(ctx context.Context, arg GetRecordByRecordParams) (GetRecordByRecordRow, error) {
+	row := q.db.QueryRow(ctx, getRecordByRecord, arg.ID, arg.UserID)
+	var i GetRecordByRecordRow
+	err := row.Scan(
+		&i.Body,
+		&i.EntryDate,
+		&i.Mood,
+		&i.Intensity,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getRecordForExtract = `-- name: GetRecordForExtract :one
 SELECT r.user_id, r.body, r.entry_date, r.mood, r.intensity, r.valence
 FROM records r
@@ -739,7 +774,8 @@ func (q *Queries) ListMemoryIDsByRecord(ctx context.Context, recordID string) ([
 }
 
 const listRecords = `-- name: ListRecords :many
-SELECT r.id AS record_id, r.entry_date, left(r.body, 80) AS body_excerpt, count(m.id)::int AS star_count
+SELECT r.id AS record_id, r.entry_date, left(r.body, 80) AS body_excerpt, count(m.id)::int AS star_count,
+       array_remove(array_agg(DISTINCT m.mood), NULL)::text[] AS moods
 FROM records r JOIN memories m ON m.record_id = r.id
 WHERE r.user_id = $1
 GROUP BY r.id, r.entry_date, r.body
@@ -751,11 +787,14 @@ type ListRecordsRow struct {
 	EntryDate   pgtype.Date `json:"entry_date"`
 	BodyExcerpt string      `json:"body_excerpt"`
 	StarCount   int32       `json:"star_count"`
+	Moods       []string    `json:"moods"`
 }
 
 // 원본 일기로 별 찾기(spec 28) 진입 목록: 호출 user의 원본 일기 + 일기별 조각 별 개수.
 // records는 읽기만(헌법1 — UPDATE/DELETE 없음). body는 전체가 아니라 excerpt(left 80)만
-// 보낸다(원본 전체는 RecallMemory). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
+// 보낸다(원본 전체는 RecallMemory/GetRecord). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
+// change 09: moods — 그 일기 조각 별들의 감정 facet(중복 제거, NULL 제거). array_agg(DISTINCT)로
+// 한 일기의 여러 조각이 같은 감정을 가져도 한 번만 나오게 한다(일기 목록 감정 필터 입력).
 func (q *Queries) ListRecords(ctx context.Context, userID string) ([]ListRecordsRow, error) {
 	rows, err := q.db.Query(ctx, listRecords, userID)
 	if err != nil {
@@ -770,6 +809,7 @@ func (q *Queries) ListRecords(ctx context.Context, userID string) ([]ListRecords
 			&i.EntryDate,
 			&i.BodyExcerpt,
 			&i.StarCount,
+			&i.Moods,
 		); err != nil {
 			return nil, err
 		}

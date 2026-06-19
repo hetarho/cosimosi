@@ -81,7 +81,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 
 | 갈래 | 동선 |
 |---|---|
-| **원본 일기로 별 찾기** (조망·하이라이팅) | 우주 셸 위 오버레이로 원본 일기 목록(`ListRecords` — 작성일 내림차순·일기별 별 개수·본문 발췌)·검색 → 일기 하나 선택 → 그 일기(`record_id`)의 **모든 별**을 담는 far 조망으로 fly-to([navigation](../domain/navigation.md) frame-all) + 그 별·일내 시냅스 강조·나머지 dim. 시트는 peek로 잦아든다 |
+| **원본 일기로 별 찾기** (조망·하이라이팅) | 우주 탐색기(망원경) **일기 탭**으로 원본 일기 목록(`ListRecords` — 작성일 내림차순·일기별 별 개수·본문 발췌)·검색·감정·날짜 필터 → 일기 하나 선택 → 탐색기 닫힘 + 그 일기(`record_id`)의 **모든 별**을 담는 far 조망으로 fly-to([navigation](../domain/navigation.md) frame-all) + 그 별·일내 시냅스 강조·나머지 dim |
 | **엔그램으로 별 찾기** (근접 단일) | 조각(엔그램) 하나 → 그 **단일 별**로 근접 fly-to(`focusStar` 재사용). 근접(`recall`)에서는 단일 엔그램 단위만 — 일기 전체 조망은 far 전환 후([navigation](../domain/navigation.md) near/far 가드) |
 | **별 → 조각 → 원본** (3겹 연결) | 별 클릭 회상 패널에 그 별의 **조각 텍스트(`fragment_text`)** 를 기본 표시 + **"원본 일기 전체 보기"**(불변 `Record` body 펼침) + **"이 일기의 다른 별들 보기"**(같은 `record_id` 조망 프레이밍). 편집·삭제 없음(헌법1) |
 
@@ -90,10 +90,25 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | 강조(하이라이팅) | 선택 일기 별 `aBrightness` 부스트(`FOCUS_BOOST=1.3`)·비강조 별·먼지 dim(`FOCUS_DIM=0.12`, 잠든 별 dust dimming 재사용)·그 일기의 일내(intra) 시냅스만 또렷·나머지 웹 dim. 선택 변경 시에만 재기록(매 프레임 React state 금지) |
 | 단일 선택 우선 | 단일 별 포커스(`select`)가 있으면 일기 강조는 적용하지 않는다(근접 포커스 우선); 강조는 far 조망의 상태 |
 | 조각 텍스트 캐시 | `fragment_text`도 원본과 같은 불변·영구 캐시(`['record', id, 'fragment']`)에 시드 → 재열람 즉시 표시. 단일 조각/구 데이터는 `""` → 본문으로 폴백(토글 숨김) |
-| 딥링크 | `/universe?panel=diary`로 진입하면 일기 목록 오버레이가 열린 채 시작(별도 `/diary` 라우트 없음 — 우주 셸 위 오버레이) |
-| 일기 카드(선택 후) | 일기를 고르면 잦아든 손잡이 대신 **그 일기 카드**(날짜·발췌·별 개수·"목록"/닫기)를 하단에 띄우고, 카메라는 그 일기 별들을 화면 위쪽으로(view offset, frame-all 위에 시선만↑) 올려 카드에 가리지 않게 한다 |
-| 해제(배경 탭) | 별·일기 조망은 은은한 딤(`Backdrop`)으로 집중을 알린다. **빈 우주를 탭하면**(캔버스 `onPointerMissed`) 강조 해제 + 일기 패널까지 닫혀 우주로 **완전 복귀**; 별을 탭하면 그 조각 회상으로 전환(near/far 가드). 목록 펼침 상태에선 시트 뒤 차단형 딤(바깥 탭=닫기) |
+| 딥링크 | `?panel=diary`(레거시 일회성)로 진입하면 우주 탐색기가 일기 탭으로 한 번 열리고 param이 비워진다(`dormant`→별 탭). 별도 `/diary` 라우트 없음 — 우주 셸 위 표면 |
+| 일기 카드(선택 후) | 일기를 고르면 탐색기가 닫히고 **그 일기 카드**(날짜·발췌·별 개수·"목록"/닫기)를 하단에 띄운다. "목록"은 탐색기 일기 탭을 다시 연다. 카메라는 그 일기 별들을 화면 위쪽으로(view offset, frame-all 위에 시선만↑) 올려 카드에 가리지 않게 한다 |
+| 해제(배경 탭) | 별·일기 조망은 은은한 딤(`Backdrop`)으로 집중을 알린다. **빈 우주를 탭하면**(캔버스 `onPointerMissed`) 강조 해제 + 일기 패널까지 닫혀 우주로 **완전 복귀**; 별을 탭하면 그 조각 회상으로 전환(near/far 가드) |
 | 체험(demo) | `demoListRecords`가 더미 별을 `record_id`로 묶어 목록을 만들고, 다조각 일기(흩어진 `demo-rec-scatter` 포함)로 조망+강조를 네트워크 없이 체험 |
+
+### 7. 우주 셸 내비게이션 크롬 (universe-mode UX rework, change 09)
+
+우주 셸(루트 `/`)의 HUD 진입점을 화면 가장자리로 분산해 우주에 집중시킨다. 상세 합성은 [tech/overlay-shell](../tech/overlay-shell.md). 모든 HUD는 캔버스 밖 2D DOM이라 어떤 토글/표면도 WebGPU 캔버스를 언마운트하지 않는다(헌법8).
+
+| 갈래 | 규칙 / 동선 |
+|---|---|
+| **우상단 세로 컨트롤 스택** | 위에서부터 ① 햄버거(Menu)→사이드바, ② 카메라 시점 토글(Orbit — 멀리서 내 우주 보기↔별들 가까이서 탐험하기, `TOGGLE_MODE` change 08), ③ 망원경(Telescope)→우주 탐색기. 표면이 아니라 상시 노출 버튼 |
+| **사이드바 (햄버거)** | 우측에서 슬라이드인하는 **차단형** 드로어(`SideDrawer`) — 딤 backdrop·탭/Esc/✕로 닫힘·열릴 때 포커스 진입·reduced-motion. 항목 순서: 로그아웃(데모면 "체험 종료") · 마이페이지 · 구분선 · 우주 공개 · 주고받은 별 · 구분선 · 일기. 데모는 마이페이지·우주 공개·주고받은 별을 숨긴다. **작성 항목 없음**(작성은 하단 중앙 버튼). 로그아웃이 여기로 수렴하므로 우주 셸에선 `SessionGate` 우상단 로그아웃 pin을 억제한다 |
+| **우주 탐색기 (망원경)** | 비차단 표면(모바일 바텀시트/데스크톱 떠있는 카드). 탭 둘 — **일기**(원본 일기 목록 + 검색·감정·날짜 범위 필터; 선택 → 일기 조망 §6) · **별**(AWAKE+DORMANT 별을 `lastRecalledAt` 오름차순 한 목록으로 + 검색·감정·날짜·잠듦(전체/깨어있는/잠든 별) 필터 + "N일 전 회상"; 선택 → 그 별로 fly-to). **잠든 별 전용 진입점은 폐기**되어 별 탭에 흡수됐다 |
+| **UI 숨기기 토글 (상단 중앙)** | Eye/EyeOff. "UI 숨기기"는 모든 표면을 닫고 포커스·변천사를 해제한 뒤, 토글 자신을 뺀 모든 HUD를 숨긴다(캔버스는 그대로 — 우주만 남김). "UI 보이기"로 기본 HUD 복구 |
+| **새 별 띄우기 (하단 중앙)** | 떠있는 Plus 버튼 → 작성 `MemoryForm` 표면. **데모에선 숨김**(기억 실험실의 "우주 키우기"가 기록 담당 — §4) |
+| **테마 pill (좌상단)** | 위치 불변. 커스터마이즈 표면(`AppearanceModal`)을 연다 — `스킨`/`감정 색` 두 갈래(별도 `외형` 헤더 텍스트 없음) |
+| **NavPad 억제** | 근접 모드 비행 D-pad는 `suppressed`면 숨긴다 — 사이드바·탐색기·임의 표면이 열렸거나 UI가 숨겨졌을 때. 숨기는 순간 이동을 0으로 정지(pointerup 유실로 우주가 계속 전진/회전 방지) |
+| 체험(demo) | 사이드바·탐색기·뷰 컨트롤은 동일하되, 사이드바에서 마이페이지·소셜이 빠지고 로그아웃이 "체험 종료"로, 하단 중앙 작성 버튼이 숨는다 |
 
 ## 불변식 (invariants)
 
@@ -110,8 +125,8 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 - **회상:** 구현: plan 11 · `frontend/src/features/recall/ui/MemoryPanel.tsx`(dwell 타이머·read-only 패널)·`ui/NeighborNav.tsx`(이웃 항해, 선택 전환만)·`api/recall.ts`(`RecallMemory`).
 - **공동 회상:** 구현: plan 11 · `frontend/src/features/recall/model/co-recall.ts`(`CO_RECALL_DELTA`·`DWELL_MS`·`DEBOUNCE_IDLE_MS`·`pairKey`·`spacingBoost`)·`model/recall-flush.machine.ts`(XState — 디바운스·재시도·flush 직렬화 — tech/state-machines.md)·`pages/home/ui/HomePage.tsx`(`beforeunload`/`visibilitychange` flush)·`shared/api/transport.ts`(keepalive).
 - **기록:** 구현: plan 10 · `frontend/src/features/record-memory/ui/MemoryForm.tsx`(본문+감정 `Dropdown`+강도+날짜)·`model/draft-store.ts`(기본 오늘·13종 mood, spec 29)·`model/use-record-memory.ts`(낙관적 add/replace/remove).
-- **잠든 별 재점화 동선:** 구현: plan 12 + overlay 셸(tech/overlay-shell.md) · `frontend/src/features/dormant-search`(`ListDormant`·`DormantSheet`)·`entities/memory/model/activation.ts`(`isDormant`). 잠든 별 탐색은 별도 `/dormant` 페이지가 아니라 우주 셸 위 오버레이다(모바일 바텀시트/데스크톱 떠있는 카드, 비차단; 별 선택 시 시트 peek + 뒤 우주 fly-to — [navigation](../domain/navigation.md) 우주 셸 영속). 일기 목록(아래 §6)과 같은 `OverlayHost`(`shared/ui`)를 쓴다.
+- **잠든 별 재점화 동선:** 구현: plan 12 + overlay 셸(tech/overlay-shell.md) · `frontend/src/features/star-explorer`(`StarExplorerList`)·`features/dormant-search`(`ListDormant`·`dormantStarsQueryOptions`)·`entities/memory/model/activation.ts`(`isDormant`). 잠든 별 탐색은 별도 진입점이 아니라 우주 탐색기(망원경) **별 탭**에 흡수됐다 — AWAKE+DORMANT 별을 `lastRecalledAt` 오름차순 한 목록으로 보여주고 잠듦(전체/깨어있는/잠든 별)·감정·날짜·검색 필터를 제공한다. 별 선택 시 뒤 우주 fly-to([navigation](../domain/navigation.md) 우주 셸 영속). 옛 `DormantSheet`는 진입점 없는 레거시.
 - **변천사 보기:** 구현: plan 24 · `frontend/src/features/evolution/{api/evolution.ts,model/{history.ts,store.ts},ui/EvolutionPanel.tsx}`(unary read·순수 model·스크럽 타임랩스+불변 원본 병치)·`features/recall/ui/MemoryPanel.tsx`("변천사 보기" 진입점)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선)·`shared/lib/demo/data.ts`(`demoEvolution`). BE read RPC는 plan 23(`GetEvolutionHistory`).
-- **길찾기(원본 일기·엔그램·별):** 구현: plan 28 · `frontend/src/features/diary-list/ui/DiarySheet.tsx`(일기 목록·검색 오버레이)·`entities/memory/api/records-query.ts`(`recordsQueryOptions`/`recordsInvalidateKey` — 소비처가 두 레이어라 dormant/universe처럼 entity 소유; record 성공 시 무효화)·`features/wayfinding/{model/frame.ts,model/store.ts}`(순수 frame-all·강조/프레임 상태)·`features/recall/ui/MemoryPanel.tsx`(조각 텍스트+원본 전체+다른 별 동선)·`entities/star/ui/StarField.tsx`·`entities/synapse/model/store.ts`(`edgesWithin`)·`widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`·강조 렌더)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선·`?panel=diary`). BE는 `ListRecords` rpc + `Star.record_id`/`fragment_index` + `RecallMemoryResponse.fragment_text`.
+- **길찾기(원본 일기·엔그램·별):** 구현: plan 28 · `frontend/src/features/diary-list/ui/DiarySheet.tsx`(우주 탐색기 일기 탭·검색·감정·날짜 필터)·`entities/memory/api/records-query.ts`(`recordsQueryOptions`/`recordsInvalidateKey` — 소비처가 두 레이어라 dormant/universe처럼 entity 소유; record 성공 시 무효화)·`features/wayfinding/{model/frame.ts,model/store.ts}`(순수 frame-all·강조/프레임 상태)·`features/recall/ui/MemoryPanel.tsx`(조각 텍스트+원본 전체+다른 별 동선)·`entities/star/ui/StarField.tsx`·`entities/synapse/model/store.ts`(`edgesWithin`)·`widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`·강조 렌더)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선·`?panel=diary`). BE는 `ListRecords` rpc + `Star.record_id`/`fragment_index` + `RecallMemoryResponse.fragment_text`.
 - **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/recall-flush.machine.ts`(accumulate에서 데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).
 - **불변식:** 헌법 1·2·3·6·8(`spec/plan/00.overview.md`).

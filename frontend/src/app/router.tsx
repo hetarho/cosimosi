@@ -5,7 +5,7 @@ import {
   lazyRouteComponent,
 } from '@tanstack/react-router'
 import { LandingPage } from '@/pages/landing'
-import { HomePage } from '@/pages/home'
+import { DiaryPage } from '@/pages/diary'
 import { EmotionColorPage } from '@/pages/emotion-colors'
 import { RootLayout } from './RootLayout'
 import { NotFoundScreen, RouteErrorScreen } from './ui/ErrorScreens'
@@ -14,6 +14,8 @@ import { MembershipGate } from './ui/MembershipGate'
 import { EmotionColorGate } from './ui/EmotionColorGate'
 import { InviteRoute } from './ui/InviteRoute'
 import { SignInRoute } from './ui/SignInRoute'
+import { UniverseShell } from './ui/UniverseShell'
+import { MyPageRoute } from './ui/MyPageRoute'
 
 const rootRoute = createRootRoute({ component: RootLayout })
 
@@ -36,26 +38,66 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   // ?sim=<id> — 체험 우주의 이론 진입 포커스(spec 19, 랜딩 카드 "체험 우주에서 해보기").
-  // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31). 라우트를 늘리지 않고
-  // (별도 /dormant·/diary 없음) 셸 패널 상태를 search param으로만 동기화한다(딥링크·뒤로가기).
-  // 알 수 없는 값은 무시. (변천사는 별 id가 필요해 URL 딥링크 대상이 아님 — 회상에서 열린다.)
+  // ?panel=dormant|diary — 구 셸 딥링크(change 09 이전). 신규 UI는 망원경 탐색 시트로 흡수하므로,
+  //   호환을 위해 값만 통과시키고 HomePage가 진입 시 1회 소비해 탐색 시트(일기/별 탭)를 연 뒤 비운다
+  //   (legacy redirect — dormant는 별 탭으로). 알 수 없는 값은 무시.
+  // ?record=<recordId> — 독립 일기 페이지 "우주에서 보기" 핸드오프(change 09): 그 record의 별을 frame-all.
+  //   HomePage가 1회 소비해 제거한다(?fly와 같은 일회성 패턴).
   // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
   validateSearch: (
     search: Record<string, unknown>,
-  ): { sim?: string; panel?: 'dormant' | 'diary'; fly?: string } => ({
+  ): { sim?: string; panel?: 'dormant' | 'diary'; record?: string; fly?: string } => ({
     sim: typeof search.sim === 'string' ? search.sim : undefined,
     panel: search.panel === 'dormant' || search.panel === 'diary' ? search.panel : undefined,
+    record: typeof search.record === 'string' ? search.record : undefined,
     fly: typeof search.fly === 'string' ? search.fly : undefined,
   }),
   component: function UniverseRoute() {
     // 인증(SessionGate) → 멤버십(MembershipGate, spec 41) → 감정색 완료(EmotionColorGate, spec 45) → 우주.
-    // 비멤버는 /invite로, 감정색 미완료는 /emotion-colors로. HomePage는 셋 다 통과해야 마운트된다.
+    // 비멤버는 /invite로, 감정색 미완료는 /emotion-colors로. UniverseShell은 셋 다 통과해야 마운트된다.
+    // change 09: 우주 셸은 사이드바에 로그아웃을 수렴 → SessionGate chrome(우상단 로그아웃 핀)을 끈다.
     return (
-      <SessionGate>
+      <SessionGate showChrome={false}>
         <MembershipGate>
           <EmotionColorGate>
-            <HomePage />
+            <UniverseShell />
           </EmotionColorGate>
+        </MembershipGate>
+      </SessionGate>
+    )
+  },
+})
+
+// /diary = 독립 보호 일기 페이지(change 09, A10). 우주 셸과 같은 게이트 체인(인증·멤버십·감정색) 안에
+// 두되 자체 헤더(우주로)에 chrome을 둔다 → SessionGate 로그아웃 핀은 끈다. 정적 import(diary 슬라이스가
+// recordsQueryOptions를 우주 셸과 공유 — lazy로 갈라도 메인에 끌려와 무의미).
+const diaryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/diary',
+  component: function DiaryRoute() {
+    return (
+      <SessionGate showChrome={false}>
+        <MembershipGate>
+          <EmotionColorGate>
+            <DiaryPage />
+          </EmotionColorGate>
+        </MembershipGate>
+      </SessionGate>
+    )
+  },
+})
+
+// /my-page = 최소 마이페이지(change 09). 인증·멤버십만 요구(감정색 게이트 없음 — 계정 표면이라 우주
+// 진입 전제와 무관). 자체 헤더/로그아웃이 chrome을 가지므로 SessionGate 핀은 끈다. MyPageRoute(앱 래퍼)가
+// session-context의 이메일·signOut을 resolve해 MyPage에 내려준다(FSD — pages는 session-context 미import).
+const myPageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/my-page',
+  component: function MyPageRouteComponent() {
+    return (
+      <SessionGate showChrome={false}>
+        <MembershipGate>
+          <MyPageRoute />
         </MembershipGate>
       </SessionGate>
     )
@@ -186,6 +228,8 @@ const giftRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  diaryRoute,
+  myPageRoute,
   landingRoute,
   signInRoute,
   inviteRoute,

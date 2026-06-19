@@ -92,15 +92,21 @@
 
 ### 잠든 별 fly-to
 
-잠든 별 오버레이(우주 셸 위, `?panel=dormant`) 항목 클릭 → `focusStar(memory_id)` → 위 fly-to 메커니즘으로 그 별로 이동(라우트 이동 없음 — 캔버스 영속) + 시트는 peek로 잦아듦 → 도달 후 회상으로 재점화. 잠든 별이라고 별도 카메라 경로를 쓰지 않는다.
+잠든 별(망원경 탐색기 별 탭) 항목 클릭 → `focusStar(memory_id)` → 위 fly-to 메커니즘으로 그 별로 이동(라우트 이동 없음 — 캔버스 영속) + 시트는 peek로 잦아듦 → 도달 후 회상으로 재점화. 잠든 별이라고 별도 카메라 경로를 쓰지 않는다.
+
+### 일기 페이지 → 우주 handoff (`?record=`)
+
+독립 일기 페이지(`/diary`)의 "우주에서 보기"는 `/`로 `?record=<recordId>` 검색 파라미터를 달아 이동한다. 우주 셸(HomePage)이 이를 **1회 소비**한다 — 그 record의 별이 로드되면(`starsOfRecord`) `focusActor` `SELECT_DIARY`로 그 별들을 frame-all하고, **소비 후 파라미터를 지운다**. `?fly=`(잠든 별 딥링크)와 동일한 one-time-consume + clear 패턴이라 뒤로가기·새로고침이 frame-all을 무한 재발화하지 않는다. 좌표 권위는 여전히 클라 force-sim(헌법3).
 
 ### 우주 셸 영속 — 탐색은 라우트가 아니라 패널 상태
 
-리스트·탐색(잠든 별·원본 일기·변천사)은 **별도 페이지로 우주를 떠나지 않는다**. 우주(`/`)의 WebGPU 캔버스는 **영속 셸**로 한 번만 마운트되고, 목록은 그 위 2D 오버레이로 떠오른다(모바일=바텀시트/데스크톱=떠있는 카드, 캔버스 밖 DOM). 화면 상시 버튼은 둘(카메라 시점 토글 + "메뉴" 런처)이고, 나머지 기능(만들기·일기·잠든 별·우주 공개·주고받은 별·테마)은 메뉴 뒤에 접는다. 결과·메뉴·기능은 모두 비차단 `Surface`로 띄운다(home-ia revamp). 오버레이를 여닫아도 캔버스·렌더러는 **재초기화되지 않는다**. 탐색은 라우트가 아니라 **셸 패널 상태**(`useShellStore{panel,peek}`)이며, 딥링크·뒤로가기는 `?panel=dormant|diary` search param으로만 동기화한다 — URL이 단일 출처이고 거울 이펙트 1개가 스토어에 반영한다(라우트 비증가; 옛 `/dormant`·`/universe` 라우트는 제거 — change 01). 항목을 고르면 시트가 peek(핸들)로 낮아지고 뒤 우주에서 fly-to/frame-all로 그 별(들)로 이동한다.
+우주 내 탐색(잠든 별·일기 길찾기·변천사)은 **별도 페이지로 우주를 떠나지 않는다**. 우주(`/`)의 WebGPU 캔버스는 **영속 셸**로 한 번만 마운트되고, 망원경 탐색기는 그 위 2D 오버레이로 떠오른다(모바일=바텀시트/데스크톱=떠있는 카드, 캔버스 밖 DOM). 화면 상시 버튼은 둘(카메라 시점 토글 + "메뉴" 런처)이고, 나머지 기능(만들기·일기·잠든 별·우주 공개·주고받은 별·테마)은 메뉴 뒤에 접는다. 결과·메뉴·기능은 모두 비차단 `Surface`로 띄운다(home-ia revamp). 오버레이를 여닫아도 캔버스·렌더러는 **재초기화되지 않는다**. 탐색은 라우트가 아니라 **셸 상태**(`useShellStore`)이며 항목을 고르면 시트가 peek(핸들)로 낮아지고 뒤 우주에서 fly-to/frame-all로 그 별(들)로 이동한다.
+
+- **레거시 `?panel=` 딥링크(1회 리다이렉트).** 옛 `?panel=dormant|diary` search param은 더는 영속 셸 상태가 아니라 망원경 탐색기로 진입하는 **1회 리다이렉트**다 — `?panel=dormant`는 탐색기 별 탭으로, `?panel=diary`는 탐색기 일기 탭으로 보낸 뒤 파라미터를 지운다. (원본 일기를 모두 읽는 표면은 이제 독립 라우트 `/diary`다 — 거기서 "우주에서 보기"로 `?record=` handoff. 옛 `/dormant`·`/universe` 라우트는 제거 — change 01.)
 
 ### 조망 프레이밍(frame-all) — 원본 일기의 모든 별
 
-원본 일기 하나(`record_id`)를 고르면 그 일기에서 태어난 **모든 조각 별을 한 화면에 담는** far 자세로 카메라를 보간 이동한다(fly-to의 별 집합 확장). 별 집합의 라이브 좌표에서 **중심(centroid)·바운딩 반경 R** 을 매번 새로 구하고(흩어진 별도 그 순간 좌표로), 그 구를 화면에 채우는 거리 `d = R / sin(fov/2) · MARGIN`을 잡는다. `fov`는 세로·가로 화각 중 **작은 쪽**(세로·가로 모두 들어오게). 카메라 = 중심 + 방사 방향·`d`, `lookAt` = 중심.
+원본 일기 하나(`record_id`)를 고르면(망원경 탐색기 일기 탭, 또는 `/diary` 페이지에서 `?record=` handoff) 그 일기에서 태어난 **모든 조각 별을 한 화면에 담는** far 자세로 카메라를 보간 이동한다(fly-to의 별 집합 확장). 별 집합의 라이브 좌표에서 **중심(centroid)·바운딩 반경 R** 을 매번 새로 구하고(흩어진 별도 그 순간 좌표로), 그 구를 화면에 채우는 거리 `d = R / sin(fov/2) · MARGIN`을 잡는다. `fov`는 세로·가로 화각 중 **작은 쪽**(세로·가로 모두 들어오게). 카메라 = 중심 + 방사 방향·`d`, `lookAt` = 중심.
 
 | 파라미터 | 값 | 의미 |
 |---|---|---|
@@ -130,7 +136,7 @@
 - 카메라 모드·줌 클램프(`OBSERVE_MIN_DIST`/`SHIP_BOUNDARY`)·비행 물리(가속·관성·벽 반동)·아크볼 회전: 구현 plan 06 · `frontend/src/widgets/universe-canvas/model/navigation.machine.ts`(카메라 모드 FSM — tech/state-machines.md), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`CameraRig`/`NavController`/`NebulaOrbitController`/`ModeTransitionController`).
 - 제스처 항행(change 08 — `touch-action:none`·pan·zoom scrub·근접 look/thrust·이동 광원·NavPad fallback·onPointerMissed 가드): 구현 plan 06·change 08 · `frontend/src/widgets/universe-canvas/model/{navigation-input.ts,navigation-gesture.ts}`(순수 ref 버퍼 + 제스처 수학·단위 테스트), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`NebulaOrbitController` pan/zoom scrub·`CloseGestureController`·`NavController` 합성·`selfLightRef`), `frontend/src/entities/star/ui/StarField.tsx`(`selfLightRef` per-frame uniform), `frontend/src/pages/home/ui/HomePage.tsx`(용어·`NavPad` 터치 fallback), `spec/values.yaml` `gesture`.
 - fly-to 보간(`k=1−exp(−dt·3)`, 오프셋 12, 임계 0.6)·잠든 별 도달·항행 머신 `FLY_TO_STAR`·포커스 머신 `SELECT_STAR`: 구현 plan 12 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FlyToController`/`FocusController`), `frontend/src/features/dormant-search`.
-- 우주 셸 영속·탐색=패널 상태(`?panel=` 동기화·캔버스 비재초기화): 구현 tech/overlay-shell.md · `frontend/src/pages/home/ui/HomePage.tsx`(셸 합성·URL↔스토어 거울 이펙트), `frontend/src/features/universe/model/shell-store.ts`(`useShellStore`), `frontend/src/shared/ui/{OverlayHost,Surface,BottomSheet,FloatingCard}.tsx`, `frontend/src/app/router.tsx`(index 라우트 `?panel=` 검증·동기화).
+- 우주 셸 영속·탐색=셸 상태(캔버스 비재초기화)·`?panel=` 레거시 1회 리다이렉트·`?record=` 일기 페이지 handoff(1회 소비+clear): 구현 tech/overlay-shell.md · `frontend/src/pages/home/ui/HomePage.tsx`(셸 합성·`?record=`/`?fly=` 1회 소비), `frontend/src/pages/diary/`(`/diary` 페이지·"우주에서 보기"), `frontend/src/features/universe/model/shell-store.ts`(`useShellStore`), `frontend/src/shared/ui/{OverlayHost,Surface,BottomSheet,FloatingCard}.tsx`, `frontend/src/app/router.tsx`(index 라우트 검증·`?panel=` 레거시 리다이렉트·`/diary` 보호 라우트).
 - 라이브 좌표 버퍼 단일 출처(네 reader 동기·fibonacci 폴백·`readBufferPosition`): 구현 plan 08·22 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController`), `frontend/src/shared/lib/force-sim/`, `frontend/src/shared/lib/layout.ts`.
 - 별 반지름 이동(거리=강함)·fly-to/focus 매 프레임 라이브 추적: 구현 plan 38 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`radiusOf`·`FlyToController`/`FocusNavBridge`의 버퍼 재독), `frontend/src/shared/lib/layout.ts`(`targetRadius`).
 - 별 각도 표류(표상 부동 — 밤마다 한 스텝)·항행=다시 찾기: 구현 plan 40 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController` `useFrame` 밤 경계 드리프트·`nightRef`), `frontend/src/shared/lib/layout.ts`(`applyAngularDrift`·`DRIFT_STEP_RAD`).

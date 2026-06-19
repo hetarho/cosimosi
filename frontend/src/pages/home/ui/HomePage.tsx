@@ -11,11 +11,13 @@ import {
   demoOffsetDays,
   demoFragmentText,
   demoRecall,
+  exitDemoMode,
+  resetDemo,
   useDemoOverlay,
 } from '@/shared/lib/demo'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
-import { Menu, Palette, Sparkles } from 'lucide-react'
-import { Backdrop, MorningDiffNote, OverlayHost, Surface, primaryButtonCls } from '@/shared/ui'
+import { Eye, EyeOff, Menu, Orbit, Palette, Plus, Sparkles, Telescope } from 'lucide-react'
+import { Backdrop, MorningDiffNote, Surface, primaryButtonCls } from '@/shared/ui'
 import {
   UniverseCanvas,
   UniverseGrain,
@@ -31,15 +33,16 @@ import { toSynapseEdge } from '@/entities/synapse'
 import { MemoryForm, composeActor, selectPhase } from '@/features/record-memory'
 import { MemoryPanel, recallFlushActor } from '@/features/recall'
 import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
-import { DiaryCard, DiarySheet } from '@/features/diary-list'
-import { DormantSheet } from '@/features/dormant-search'
-import { useShellStore } from '@/features/universe'
+import { DiaryCard } from '@/features/diary-list'
 import { AppearanceModal } from './AppearanceModal'
+import { UniverseSidebar } from './UniverseSidebar'
+import { UniverseExplorerSheet, type ExplorerTab } from './UniverseExplorerSheet'
 import { ShareUniverseBody } from '@/features/share-universe'
 import { SendStarBody, StarGiftsBody } from '@/features/send-star'
 import {
   applyUniverse,
   mapStar,
+  starsOfRecord,
   universeQueryOptions,
   useMemoryStore,
   focusActor,
@@ -55,10 +58,12 @@ import {
   useAppearance,
 } from '@/entities/appearance'
 
-// The universe shell (spec 10, extended by 11): full-screen <UniverseCanvas/> (renders
-// the stars from the memory store) + 2D HUD overlays (compose form, camera toggle,
-// recall panel) OUTSIDE the R3F scene (Architecture §3.1). The universe loads via the
-// GetUniverse query (16) — loading/error/retry UI here, merge-sync into the stores.
+// The universe shell (spec 10, extended by 11; IA re-laid-out by change 09): full-screen
+// <UniverseCanvas/> (renders the stars from the memory store) + 2D HUD overlays OUTSIDE the R3F
+// scene (Architecture §3.1). The universe loads via the GetUniverse query (16) — loading/error/
+// retry UI here, merge-sync into the stores. change 09 IA: a top-right hamburger sidebar + vertical
+// view controls (camera toggle · telescope), a top-center HUD hide toggle, a bottom-center floating
+// 새 별 button, and a telescope explorer sheet (일기/별 tabs) that replaces the old menu + panels.
 /** Maps keyboard codes → a move axis + value. WASD/Arrows so multiple keys chord
  *  naturally (forward + turn at once) — the single-pointer mouse can't. x = yaw, y =
  *  pitch (look), z = forward/back. */
@@ -147,8 +152,9 @@ function isTypingTarget() {
 /** Floating D-pad + keyboard for recall ("근접 항해") mode — fly through the universe.
  *  Press-and-hold (touch/mouse) or WASD/Arrow keys set the move axes in the store;
  *  NavController (inside the canvas) applies them each frame (x/y rotate the look, z
- *  thrusts forward/back). Hidden in nebula mode (there you zoom/orbit freely). */
-function NavPad() {
+ *  thrusts forward/back). Hidden in nebula mode (there you zoom/orbit freely) and whenever a
+ *  HUD surface (sidebar/explorer) is up or the HUD is hidden (change 09 — passed as `suppressed`). */
+function NavPad({ suppressed }: { suppressed: boolean }) {
   const mode = useSelector(navigationActor, selectHeadingMode)
   // D-pad 입력 → 항행 머신 SET_MOVE(부분 병합). 안정 참조(useCallback)로 아래 effect 의존성 안전.
   const setMove = useCallback(
@@ -159,9 +165,6 @@ function NavPad() {
   // On mobile the recall panel (bottom sheet) overlaps the bottom-center D-pad — hide the pad
   // there while a star's info is open (desktop keeps it: the pad is left, the panel is right). (focus 머신)
   const infoOpen = useSelector(focusActor, selectIsStarFocus)
-  // A shell overlay (dormant/diary) covers the lower screen on mobile and the left on desktop —
-  // hide the pad entirely while one is open so it isn't buried under the sheet/panel (spec 31).
-  const panelOpen = useShellStore((s) => s.panel != null)
   // change 08(A7): 터치 지원 기기에서는 D-pad를 기본 조작 표면으로 고정 노출하지 않는다 — 캔버스 제스처
   // (한 손가락 look·두 손가락 전후진)가 주 입력이다. 데스크톱(비터치)은 키보드 + 버튼 fallback 유지.
   // 키보드 effect는 아래에서 항상 돈다(이 분기는 *렌더*만 끈다 — 데스크톱 키보드는 보존).
@@ -207,11 +210,11 @@ function NavPad() {
     }
   }, [mode, setMove])
 
-  // 패널이 열려 pad가 `hidden`이 되면 누르고 있던 버튼의 pointerup이 영영 안 와 move가 멈춰버린다
-  // (시트 뒤에서 우주가 계속 전진/회전) — 패널이 열리는 순간 이동을 0으로 정지시킨다.
+  // 표면이 떠 pad가 `hidden`이 되면 누르고 있던 버튼의 pointerup이 영영 안 와 move가 멈춰버린다
+  // (시트 뒤에서 우주가 계속 전진/회전) — 표면이 열리는 순간 이동을 0으로 정지시킨다.
   useEffect(() => {
-    if (panelOpen) setMove({ x: 0, y: 0, z: 0 })
-  }, [panelOpen, setMove])
+    if (suppressed) setMove({ x: 0, y: 0, z: 0 })
+  }, [suppressed, setMove])
 
   // 근접 모드가 아니거나(원거리/전환) 터치 기기면 D-pad를 렌더하지 않는다. 위 키보드 effect는 이미 돌아
   // 데스크톱 키보드 항행은 유지된다(A7). 터치는 캔버스 제스처(CloseGestureController)가 주 입력.
@@ -235,7 +238,7 @@ function NavPad() {
   // one side — the "전진하며 시선 회전" chord works one-handed and the center stays clear to see
   // stars (spec 31 4a). Desktop (sm+): both groups sit together at left-center, out of the HUD.
   // bottom lifts above the home-indicator (safe-area) and the compose trigger.
-  const visibility = panelOpen ? 'hidden' : infoOpen ? 'hidden sm:flex' : 'flex'
+  const visibility = suppressed ? 'hidden' : infoOpen ? 'hidden sm:flex' : 'flex'
   return (
     <div
       className={`absolute inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 ${visibility} items-end justify-between sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-4 sm:-translate-y-1/2 sm:items-center sm:justify-start sm:gap-3`}
@@ -268,25 +271,31 @@ function NavPad() {
   )
 }
 
-/** "메뉴" 런처가 여는 기능 목록의 한 줄 — 절제된 텍스트 행(장식 이모지 없음, policy/ux/ui-tone). */
-const menuItemCls =
-  'w-full rounded-lg px-3 py-2.5 text-left text-sm text-white/80 transition hover:bg-white/10 hover:text-white'
+/** 우상단 세로 컨트롤의 아이콘 버튼 — 안정적인 고정 크기 + tooltip/aria-label(A5·A11). */
+const verticalBtnCls =
+  'grid size-9 place-items-center rounded-md bg-white/10 text-white/80 backdrop-blur transition hover:bg-white/20'
 
-export function HomePage() {
+export interface HomePageProps {
+  /** 실로그아웃 — 앱(session-context)이 내려준다(pages는 session-context를 직접 import하지 않음, FSD). */
+  onSignOut: () => void
+}
+
+export function HomePage({ onSignOut }: HomePageProps) {
   const mode = useSelector(navigationActor, selectHeadingMode)
   const starCount = useMemoryStore((s) => s.stars.length)
+  const demoMode = isDemoMode()
 
   // 겹쳐보기(spec 37) 체험 우주 — DemoSimPanel의 토글이 켜면 두 페르소나 우주를 한 씬에 띄운다(서버 없이
   // (b) 겹침 공간 시연). 활성 페르소나가 mine, 다른 페르소나가 theirs, crossResonances가 그 사이 다리를
   // 파생한다. proto → StarNode/SynapseEdge로 매핑(겹침 위젯은 PROPS 구동). 활성 페르소나가 바뀌면 재계산.
   const demoOverlayOn = useDemoOverlay((s) => s.on)
-  const demoPersona = isDemoMode() ? getDemoPersona() : null
+  const demoPersona = demoMode ? getDemoPersona() : null
   // 가상 시계(spec 19) 경과일 — 시간 머신이 시간을 흘리면 별 밝기/반지름이 그만큼 늙어야 하므로
   // 겹쳐보기도 재시뮬 대상이다(demoOverlayData가 virtualNowMs를 읽는다). 비반응형 모듈 시계라
   // 값으로 환원해 deps에 넣는다 — 클럭이 바뀐 채 리렌더되면 두 우주를 새 now로 다시 빚는다.
-  const demoClockDay = isDemoMode() ? demoOffsetDays() : 0
+  const demoClockDay = demoMode ? demoOffsetDays() : 0
   const demoOverlaySides = useMemo(() => {
-    if (!demoOverlayOn || !isDemoMode()) return null
+    if (!demoOverlayOn || !demoMode) return null
     const d = demoOverlayData()
     return {
       mine: { stars: d.mine.stars.map((s, i) => mapStar(s, i)), edges: d.mine.synapses.map(toSynapseEdge) },
@@ -306,155 +315,177 @@ export function HomePage() {
     }
   }, [demoOverlayReady])
   // ?sim=<id> — 랜딩 카드 "체험 우주에서 해보기"가 넘긴 이론 포커스(spec 19, 라우트가 검증).
-  // ?panel=dormant|diary — 우주 셸 위 탐색/리스트 오버레이 딥링크(spec 31).
+  // ?panel=dormant|diary — 구 셸 딥링크(change 09 이전). 신규 UI는 망원경 탐색 시트로 흡수 →
+  //   진입 시 1회 소비해 탐색 시트(별/일기 탭)를 열고 param을 비운다(legacy redirect).
+  // ?record=<recordId> — 독립 일기 페이지 "우주에서 보기" 핸드오프(change 09): 그 record의 별을 frame-all.
   // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
-  const { sim, panel: urlPanel, fly } = useSearch({ from: '/' })
+  const { sim, panel: urlPanel, record: urlRecord, fly } = useSearch({ from: '/' })
   const navigate = useNavigate({ from: '/' })
 
-  // 별 보내기(spec 36) — 회상 패널의 "이 별 보내기"가 memoryId를 넘겨 연다(비차단 Surface). 데모엔 서버가 없어 끈다.
-  const [sendMemoryId, setSendMemoryId] = useState<string | null>(null)
-  // 화면 상시 버튼은 둘뿐 — 카메라 시점 토글 + "메뉴" 런처. 나머지 기능(만들기·일기·잠든별·공유·선물·
-  // 테마)은 메뉴 뒤에 접는다(home-ia revamp). 메뉴·각 기능은 비차단 Surface(구 차단 모달 대체).
-  const [menuOpen, setMenuOpen] = useState(false)
+  // change 09 IA 상태 — 우상단 햄버거 사이드바, 망원경 탐색 시트(일기/별 탭), 상단 중앙 HUD 숨김 토글,
+  // 그리고 기존 결과/액션 표면(작성·공유·선물·보내기·꾸미기). 한 번에 하나의 표면만 띄운다(prepareOpen).
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [explorerOpen, setExplorerOpen] = useState(false)
+  const [explorerTab, setExplorerTab] = useState<ExplorerTab>('diary')
+  const [uiHidden, setUiHidden] = useState(false)
+  const [composeOpen, setComposeOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [giftsOpen, setGiftsOpen] = useState(false)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
+  // 별 보내기(spec 36) — 회상 패널의 "이 별 보내기"가 memoryId를 넘겨 연다(비차단 Surface). 데모엔 서버가 없어 끈다.
+  const [sendMemoryId, setSendMemoryId] = useState<string | null>(null)
 
-  // 우주 셸 패널 상태(spec 31) — 영속 캔버스 위에 어떤 탐색/리스트 오버레이가 떠 있는지의 단일
-  // 출처. 탐색은 라우트가 아니라 패널 상태다 — `?panel=`로만 딥링크/뒤로가기를 동기화하고 캔버스는
-  // 절대 언마운트하지 않는다(1.5/1.6).
-  const panel = useShellStore((s) => s.panel)
-  const peek = useShellStore((s) => s.peek)
-  const openPanel = useShellStore((s) => s.openPanel)
-  const closePanel = useShellStore((s) => s.closePanel)
-  const setPeek = useShellStore((s) => s.setPeek)
-
-  // 포커스 상태(focus 머신, spec 39) — 별 회상 선택 / 일기 조망. 은은한 딤으로 "집중 중"을 알리고,
-  // 빈 우주를 탭하면(캔버스 onPointerMissed → focus DISMISS) 해제·복귀한다(spec 31). highlightedRecordId는
-  // 일기 카드 렌더 + diary-close 이펙트에, focused는 포커스 딤에 쓴다.
+  // 포커스 상태(focus 머신, spec 39) — 별 회상 선택 / 일기 조망. highlightedRecordId는 일기 카드
+  // 렌더에, focused는 포커스 딤에, isStarFocus는 회상 표면 게이트에 쓴다.
   const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
   const focused = useSelector(focusActor, selectIsFocused)
-  // 별 회상(focus 머신 star)·변천사(자체 스토어)·작성 단계 — 결과 표면을 통일 Surface로 호스팅하는 게이트.
   const isStarFocus = useSelector(focusActor, selectIsStarFocus)
   const evolutionOpen = useEvolutionStore((s) => s.openFor != null)
   const composePhase = useSelector(composeActor, selectPhase)
 
-  // URL이 딥링크 가능한 패널(dormant/diary)의 단일 출처다 — 한 개의 거울 이펙트만 `?panel=`을
-  // 셸 스토어에 반영하고, UI의 열기/닫기는 navigate만 한다. 가드는 렌더 클로저의 stale `panel`이
-  // 아니라 `getState()`(현재값)로 비교해 ① 두 이펙트가 stale 스냅샷으로 레이스하지 않고(딥링크가
-  // `?panel=`을 스스로 지우거나 뒤로가기를 삼키지 않게) ② 항목 선택 시 setPeek(true)가 보존되게
-  // 한다(openPanel은 peek를 리셋하므로 패널이 실제로 바뀔 때만 호출). 변천사는 URL 딥링크 대상이
-  // 아니다(별 id 필요 — features/evolution이 자체 스토어로 연다).
-  useEffect(() => {
-    const next = urlPanel ?? null
-    if (useShellStore.getState().panel === next) return
-    if (next === null) closePanel()
-    else openPanel(next)
-  }, [urlPanel, openPanel, closePanel])
-
-  // 일기 조망 중 강조가 풀리면 일기 패널도 닫아 완전히 복귀한다(배경 탭=onPointerMissed→wayfinding.clear,
-  // 또는 근접 진입 시 NearFarHighlightGuard.clear). "배경 누르면 돌아오기"의 일기 쪽 마무리(spec 31).
-  useEffect(() => {
-    if (panel === 'diary' && peek && highlightedRecordId == null) {
-      void navigate({ search: (prev) => ({ ...prev, panel: undefined }), replace: true })
-    }
-  }, [panel, peek, highlightedRecordId, navigate])
-
-  // 리스트/탐색 패널 열기 — 뒤로가기로 닫히도록 history에 push한다. 새 목록은 깨끗이 시작하도록
-  // 직전 일기 강조를 해제하고(시각 전용 — records/memories 불변), 같은 패널 재진입이면 peek를 펼친다.
-  function showPanel(p: 'dormant' | 'diary') {
-    closeSurfaces() // 한 번에 하나 — 작성/공유/선물/보내기 표면을 정리하고 목록을 연다
-    focusActor.send({ type: 'DISMISS' }) // 새 목록은 깨끗이 — 직전 포커스(별/일기) 해제
-    setPeek(false)
-    void navigate({ search: (prev) => ({ ...prev, panel: p }) })
-  }
-  // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(focus 머신 diary) 시트는 peek로
-  // 잦아든다 — 뒤 우주에서 frame-all fly-to(28). 시각 전용(records/memories 불변, 헌법1·2).
-  function frameDiary(recordId: string) {
-    focusActor.send({ type: 'SELECT_DIARY', recordId })
-    setPeek(true)
-  }
-  // 잠든 별을 고르면 그 별로 fly-to(항행 FLY_TO_STAR) + 시트는 peek로 — 우주를 떠나지 않는다(1.2).
-  // 포커스(별)는 fly-to 도착 시 FlyToController가 SELECT_STAR로 연다.
-  function focusDormant(memoryId: string) {
-    navigationActor.send({ type: 'FLY_TO_STAR', id: memoryId })
-    setPeek(true)
-  }
-  // 패널 닫기 = 포커스 해제(focus DISMISS) + `?panel=` 제거. replace로 history를 더럽히지 않아(닫기
-  // 직후 뒤로가기가 패널을 되살리지 않음) 거울 이펙트가 스토어를 닫는다.
-  function closeShellPanel() {
-    focusActor.send({ type: 'DISMISS' })
-    void navigate({ search: (prev) => ({ ...prev, panel: undefined }), replace: true })
-  }
-  // 작성 폼 표면 가시성(home-ia revamp) — 메뉴의 "새 일기 쓰기"가 연다. 두 플랫폼 공통(모바일 바텀시트 /
-  // 데스크톱 떠있는 카드). 우주는 기본적으로 가리지 않고, 열 때만 비차단 Surface로 뜬다.
-  const [composeOpen, setComposeOpen] = useState(false)
-
   // 한 번에 하나의 표면만 — 새 표면을 열기 전에 나머지를 정리한다(특히 모바일 바텀시트 중첩 방지).
   // 변천사·별 보내기는 회상 위에서 의도적으로 겹치므로 여기서 닫지 않는다(회상에서 파생).
-  function closeSurfaces() {
-    setMenuOpen(false)
+  const closeSurfaces = useCallback(() => {
+    setSidebarOpen(false)
+    setExplorerOpen(false)
     setComposeOpen(false)
     setShareOpen(false)
     setGiftsOpen(false)
     setAppearanceOpen(false)
     setSendMemoryId(null)
-  }
-  // 메뉴/기능 진입 — 정리 후 연다. 열려 있던 별 회상/일기 조망·목록 오버레이도 함께 정리해 우주를
-  // 떠나지 않으면서 한 표면만 남긴다. 메뉴에서 한 항목을 고르면 그 opener가 다시 정리(=메뉴 닫힘)하고 연다.
-  function prepareOpen() {
+  }, [])
+  // 기능 진입 — 정리 후 연다. 열려 있던 별 회상/일기 조망도 함께 풀어 한 표면만 남긴다(우주는 떠나지 않음).
+  const prepareOpen = useCallback(() => {
     closeSurfaces()
-    if (useShellStore.getState().panel) closeShellPanel()
-    else focusActor.send({ type: 'DISMISS' })
-  }
-  function openMenu() {
+    focusActor.send({ type: 'DISMISS' })
+  }, [closeSurfaces])
+
+  const openSidebar = () => {
     prepareOpen()
-    setMenuOpen(true)
+    setSidebarOpen(true)
   }
-  function openCompose() {
+  const openExplorer = (tab: ExplorerTab) => {
+    prepareOpen()
+    setExplorerTab(tab)
+    setExplorerOpen(true)
+  }
+  const openCompose = () => {
     prepareOpen()
     setComposeOpen(true)
   }
-  function openShare() {
+  const openShare = () => {
     prepareOpen()
     setShareOpen(true)
   }
-  function openGifts() {
+  const openGifts = () => {
     prepareOpen()
     setGiftsOpen(true)
   }
-  function openAppearance() {
+  const openAppearance = () => {
     prepareOpen()
     setAppearanceOpen(true)
   }
 
-  // 페이지 HUD의 하단 시트(작성 폼·기억 실험실)가 열려 있는 동안 캔버스에 알린다 —
-  // 모바일에선 별들이 화면 중앙에 있어 시트에 가려지므로, 캔버스가 view offset+줌아웃으로
-  // 우주를 화면 위 1/3 지점에 띄운다(ViewOffsetController; sm 미만에서만이라 데스크톱은
-  // 무변화). 회상 패널(선택된 별)은 컨트롤러가 memory store에서 직접 구독한다.
+  // 사이드바 항목 — 마이페이지/일기는 라우트 이동, 공유/선물은 표면 전환. 모두 진입 전에 정리한다.
+  const goMyPage = () => {
+    closeSurfaces()
+    void navigate({ to: '/my-page' })
+  }
+  const goDiary = () => {
+    closeSurfaces()
+    void navigate({ to: '/diary' })
+  }
+  // 체험 종료(데모) — 기존 SessionGate 핀과 같은 동선(더미 별 비우기 → 마케팅 랜딩).
+  const leaveDemo = () => {
+    exitDemoMode()
+    resetDemo()
+    void navigate({ to: '/landing' })
+  }
+
+  // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(focus 머신 diary) 탐색 시트는 닫는다 —
+  // 뒤 우주에서 frame-all fly-to(28). 시각 전용(records/memories 불변, 헌법1·2). DiaryCard가 하단에 뜬다.
+  const frameDiary = (recordId: string) => {
+    focusActor.send({ type: 'SELECT_DIARY', recordId })
+    setExplorerOpen(false)
+  }
+  // 별을 고르면 그 별로 fly-to(항행 FLY_TO_STAR) — 우주를 떠나지 않는다. 포커스(별)는 도착 시
+  // FlyToController가 SELECT_STAR로 연다. 탐색 시트는 닫아 프레이밍 별을 가리지 않는다.
+  const flyToStar = (memoryId: string) => {
+    navigationActor.send({ type: 'FLY_TO_STAR', id: memoryId })
+    setExplorerOpen(false)
+  }
+
+  // HUD 숨김 토글(A13·A14) — 숨길 때 토글을 제외한 모든 HUD와 열린 표면/포커스를 정리한다. 캔버스는
+  // 언마운트하지 않는다(uiHidden은 HUD DOM만 가린다). 보이기를 누르면 기본 HUD가 복귀한다.
+  const toggleUiHidden = () => {
+    setUiHidden((prev) => {
+      const next = !prev
+      if (next) {
+        closeSurfaces()
+        focusActor.send({ type: 'DISMISS' })
+        useEvolutionStore.getState().close()
+      }
+      return next
+    })
+  }
+
+  // 어떤 표면/사이드바가 떠 있거나 HUD가 숨겨졌으면 NavPad·데모 HUD를 억제한다(구 panel!=null 대체).
+  const surfaceUp = sidebarOpen || explorerOpen || composeOpen || shareOpen || giftsOpen || appearanceOpen || sendMemoryId != null
+  const navSuppressed = surfaceUp || uiHidden
+  const demoHudSuppressed = focused || surfaceUp || uiHidden
+  // 모달형 표면(탐색·작성·공유·선물·보내기·변천사)이 뜨면 배경을 딤 백드롭으로 가린다 — 이 백드롭은
+  // HUD 크롬(우상단 컨트롤·테마·하단 새 별·상단 중앙 UI 숨기기 토글, 전부 z-20)보다 위(z-30), 모달 표면
+  // (z-30, DOM 뒤라 위)보다 아래에 깔려 크롬·토글까지 함께 흐려진다. 탭하면 모달을 닫는다. 사이드바는
+  // 자체 백드롭(z-40)을 가지고, 회상(별 포커스)은 의도적으로 비차단(z-10 포커스 딤만)이라 제외한다.
+  const modalUp = explorerOpen || composeOpen || shareOpen || giftsOpen || sendMemoryId != null || evolutionOpen
+  const closeModalSurfaces = useCallback(() => {
+    closeSurfaces()
+    useEvolutionStore.getState().close()
+  }, [closeSurfaces])
+
+  // 구 셸 딥링크(?panel=dormant|diary) 1회 소비 → 망원경 탐색 시트로 흡수(잠든 별 → 별 탭). param은 비운다.
+  // setState는 rAF로 미뤄 effect 동기 setState(cascading render)를 피한다(모닝디프와 같은 패턴).
+  useEffect(() => {
+    if (!urlPanel) return
+    const tab: ExplorerTab = urlPanel === 'dormant' ? 'star' : 'diary'
+    // 열기(setState) 후 같은 프레임에서 param을 비운다 — navigate를 rAF 밖에 두면 panel 변경이 effect를
+    // 재실행해 cleanup이 rAF를 취소(open 유실)한다. 둘을 rAF 안에 묶어 레이스를 없앤다.
+    const id = requestAnimationFrame(() => {
+      setExplorerTab(tab)
+      setExplorerOpen(true)
+      void navigate({ search: (prev) => ({ ...prev, panel: undefined }), replace: true })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [urlPanel, navigate])
+
+  // 독립 일기 페이지 "우주에서 보기" 핸드오프(?record=) — 그 record의 별이 스토어에 실리면(GetUniverse
+  // 도착) 1회 frame-all 하고 param을 비운다(?fly와 같은 일회성 패턴). 좌표 권위는 클라 force-sim(헌법3).
+  useEffect(() => {
+    if (!urlRecord) return
+    if (starsOfRecord(useMemoryStore.getState().stars, urlRecord).length === 0) return // 아직 안 실림 — 대기
+    focusActor.send({ type: 'SELECT_DIARY', recordId: urlRecord })
+    void navigate({ search: (prev) => ({ ...prev, record: undefined }), replace: true })
+  }, [urlRecord, starCount, navigate])
+
+  // 페이지 HUD의 하단 시트(작성 폼·기억 실험실)가 열려 있는 동안 캔버스에 알린다 — 모바일에선 별들이
+  // 화면 중앙에 있어 시트에 가려지므로, 캔버스가 view offset+줌아웃으로 우주를 위로 올린다(sm 미만만).
   const [demoSheetOpen, setDemoSheetOpen] = useState(false)
   // Morning diff (6.1) — live universe only; demo's "밤 보내기" owns its own note.
   const [morningDiff, setMorningDiff] = useState(false)
   const setSheetOpen = useViewport((s) => s.setSheetOpen)
   const requestQuietSettle = useViewport((s) => s.requestQuietSettle)
-  const demoHudSuppressed = focused || panel != null
   useEffect(() => {
-    // compose는 탐색 오버레이가 열리면 숨으므로(panel != null) view-offset도 그 *실제 표시 여부*를
-    // 따라야 한다 — 안 그러면 패널을 열어 둔 채 우주가 위로 밀리고 줌된 상태로 남는다(셸 시트 뒤 오정렬).
-    setSheetOpen((composeOpen && panel == null) || (!demoHudSuppressed && demoSheetOpen))
+    setSheetOpen((composeOpen && !uiHidden) || (!demoHudSuppressed && demoSheetOpen))
     return () => setSheetOpen(false)
-  }, [composeOpen, panel, demoHudSuppressed, demoSheetOpen, setSheetOpen])
+  }, [composeOpen, uiHidden, demoHudSuppressed, demoSheetOpen, setSheetOpen])
 
   // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
-  // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4) — 제출 중 temp 별,
-  // 기존 별 슬롯/좌표, 로컬이 앞선 타임스탬프를 깨지 않는다.
+  // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4).
   const universe = useQuery(universeQueryOptions())
   const { data: universeData } = universe
   useEffect(() => {
     if (universeData) {
       applyUniverse(universeData)
-      // universe_loaded의 데이터 쪽(18, 3.3) — 렌더러 쪽(캔버스 onCreated)과 합류해
-      // 1회만 전송된다. 본문 없는 카운트만.
       reportUniverseData({
         star_count: universeData.stars.length,
         synapse_count: universeData.synapses.length,
@@ -462,37 +493,29 @@ export function HomePage() {
     }
   }, [universeData])
 
-  // 개인 시각 설정(spec 30): 인증된 우주에서 GetSettings로 appearance store를 시드한다(서버
-  // 오버라이드를 기본값 위에 머지). 데모는 빈 응답 → 기본값. 미인증 랜딩은 이 페이지를 안 그린다.
+  // 개인 시각 설정(spec 30): 인증된 우주에서 GetSettings로 appearance store를 시드한다.
   const { data: settingsData } = useQuery(settingsQueryOptions())
   useEffect(() => {
     if (settingsData) applySettings(settingsData)
   }, [settingsData])
 
-  // 커스터마이즈 인벤토리(spec 44): 별가루 잔액 + 소유 아이템을 시드한다(GetInventory 첫 호출에서
-  // 잔액 100 멱등 시드, A1). 데모/미인증 가드는 inventoryQueryOptions queryFn에 있다(빈 인벤토리).
+  // 커스터마이즈 인벤토리(spec 44): 별가루 잔액 + 소유 아이템을 시드한다.
   const { data: inventoryData } = useQuery(inventoryQueryOptions())
   useEffect(() => {
     if (inventoryData) applyInventory(inventoryData)
   }, [inventoryData])
-  // 좌상단 알약에 보일 별가루 잔액(서버 권위·store 동기). 실로그인만 잔액 노출(데모는 팔레트 아이콘만).
   const stardust = useAppearance((s) => s.stardust)
 
-  // First universe open of a new local day → the morning-diff note once (6.1). Gated to a
-  // non-empty live universe (a brand-new user with no stars sees nothing to "정리"). The
-  // claim+show is deferred to a rAF (so the setState isn't synchronous in the effect) and
-  // the claim runs INSIDE it — a re-render that cancels the frame never burns the day-stamp.
+  // First universe open of a new local day → the morning-diff note once (6.1).
   useEffect(() => {
-    if (isDemoMode() || !universe.isSuccess || starCount === 0) return
+    if (demoMode || !universe.isSuccess || starCount === 0) return
     const id = requestAnimationFrame(() => {
       if (claimMorningDiffForToday()) setMorningDiff(true)
     })
     return () => cancelAnimationFrame(id)
-  }, [universe.isSuccess, starCount])
+  }, [universe.isSuccess, starCount, demoMode])
 
-  // 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to. 새 별은 GetUniverse refetch로 도착하므로
-  // (수락이 우주 캐시를 무효화함) 스토어에 실릴 때까지 기다렸다 한 번만 날아가고 ?fly를 지운다(?sim·
-  // 모닝디프와 같은 일회성 패턴). 도착 시 FlyToController가 그 별을 회상 포커스로 연다.
+  // 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to. 스토어에 실릴 때까지 기다렸다 한 번만 날아가고 ?fly를 지운다.
   useEffect(() => {
     if (!fly) return
     if (!useMemoryStore.getState().stars.some((s) => s.id === fly)) return // 아직 안 실림 — refetch 대기
@@ -500,10 +523,7 @@ export function HomePage() {
     void navigate({ search: (prev) => ({ ...prev, fly: undefined }), replace: true })
   }, [fly, starCount, navigate])
 
-  // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3). The
-  // model store is DOM-free (1.9); the window listeners live here in the page layer.
-  // visibilitychange(hidden) fires more reliably than beforeunload (esp. on mobile),
-  // and the transport uses keepalive so the request survives teardown.
+  // Flush any pending co-recall reinforcement when the tab is hidden/closed (1.3).
   useEffect(() => {
     const flush = () => {
       recallFlushActor.send({ type: 'FLUSH' })
@@ -519,32 +539,28 @@ export function HomePage() {
     }
   }, [])
 
-  // Esc → 포커스 해제(별 회상·일기 조망)로 복귀(배경 탭과 동일). 구버전은 일기 조망의 Esc를
-  // OverlayHost가 처리했는데 일기 카드가 호스트 밖으로 나오며 사라졌다 — 여기서 되살린다. 리스트가
-  // 펼쳐져 있으면(panel!=null && !peek) OverlayHost의 Esc가 목록 닫기를 맡으므로 양보한다(이중 처리 방지).
-  // 단일 Esc 라우터(home-ia revamp): 펼친 목록은 OverlayHost가 맡고(양보), 그 외엔 위에 뜬 결과/액션
-  // 표면을 위에서부터 닫은 뒤(보내기→변천사→공유→선물→작성), 마지막으로 포커스(별 회상·일기 조망)를 푼다.
+  // 단일 Esc 라우터(change 09): 위에 뜬 표면을 위에서부터 닫은 뒤(보내기→변천사→꾸미기→공유→선물→
+  // 작성→탐색→사이드바), 마지막으로 포커스(별 회상·일기 조망)를 푼다. SideDrawer는 자체 Esc도 잡지만
+  // (stopPropagation) 여기서도 사이드바를 닫아 일관되게 라우팅한다.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || isTypingTarget()) return
-      const shell = useShellStore.getState()
-      if (shell.panel != null && !shell.peek) return
       if (sendMemoryId) return void setSendMemoryId(null)
       if (useEvolutionStore.getState().openFor) return void useEvolutionStore.getState().close()
       if (appearanceOpen) return void setAppearanceOpen(false)
       if (shareOpen) return void setShareOpen(false)
       if (giftsOpen) return void setGiftsOpen(false)
       if (composeOpen) return void setComposeOpen(false)
-      if (menuOpen) return void setMenuOpen(false)
+      if (explorerOpen) return void setExplorerOpen(false)
+      if (sidebarOpen) return void setSidebarOpen(false)
       if (focusActor.getSnapshot().matches('idle')) return
       focusActor.send({ type: 'DISMISS' })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sendMemoryId, appearanceOpen, shareOpen, giftsOpen, composeOpen, menuOpen])
+  }, [sendMemoryId, appearanceOpen, shareOpen, giftsOpen, composeOpen, explorerOpen, sidebarOpen])
 
-  // 겹쳐보기(spec 37) 데모 — 두 페르소나 우주 + 빛의 다리만 띄우는 전용 뷰(단일 우주 HUD와 분리해
-  // 충돌 방지). 다리를 누르면 비교 패널이 두 기억을 나란히 보여준다. "겹쳐보기 끄기"로 복귀.
+  // 겹쳐보기(spec 37) 데모 — 두 페르소나 우주 + 빛의 다리만 띄우는 전용 뷰(단일 우주 HUD와 분리).
   if (demoOverlaySides) {
     return (
       <div className="universe-page fixed inset-0" data-lenis-prevent>
@@ -560,7 +576,6 @@ export function HomePage() {
         <OverlayComparePanel
           myStars={demoOverlaySides.mine.stars}
           theirStars={demoOverlaySides.theirs.stars}
-          // 데모는 내 별 텍스트를 페르소나 일기에서 직접 보여준다(내 우주라 비공개 이슈 없음).
           resolveMyText={(id) => demoFragmentText(id) || demoRecall(id)?.body}
         />
         <div className="pointer-events-none absolute inset-x-0 top-[calc(1rem+env(safe-area-inset-top))] z-30 flex flex-col items-center gap-1 px-4 text-center">
@@ -584,136 +599,138 @@ export function HomePage() {
 
   return (
     <div className="universe-page fixed inset-0" data-lenis-prevent>
-      {/* 바운더리는 Canvas에만(17): R3F 트리의 throw·렌더러 init 실패(위젯이 state→render
-          throw로 표면화)가 흰 화면이 되지 않게 폴백을 그리되, 형제인 HUD(작성 폼·패널)는
-          살린다. resetError → 캔버스 리마운트. */}
-      {/* 외형 모달이 열리면 우주 캔버스를 언마운트한다(change 06): 집중 모달이 화면을 덮어 안 보이고,
-          모달의 고정 프리뷰 + 항목 썸네일(라이브 미니 3D)에 WebGPU 컨텍스트를 양보한다. 닫으면 다시
-          마운트되며 레이아웃이 베일 뒤에서 재정착한다. */}
+      {/* 바운더리는 Canvas에만(17). 외형 모달이 열리면 캔버스를 언마운트해(change 06) WebGPU 컨텍스트를
+          모달 프리뷰/썸네일에 양보한다. HUD 숨김은 캔버스를 언마운트하지 않는다(A14) — HUD DOM만 가린다. */}
       {!appearanceOpen && (
         <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
           <UniverseCanvas />
         </Sentry.ErrorBoundary>
       )}
-      {/* Film grain over the canvas (DOM overlay, not the bloom pipeline) — sits above the
-          canvas but before the HUD, and is pointer-events:none, so HUD stays interactive. */}
+      {/* Film grain over the canvas — above the canvas, below the HUD, pointer-events:none. */}
       <UniverseGrain />
 
-      {/* 포커스 딤(spec 31) — 별 회상·일기 조망 중 은은히 어둡혀 집중을 알린다. pointer-events-none이라
-          별 탭·드래그는 그대로 캔버스로 통과하고, 빈 곳 탭은 캔버스 onPointerMissed가 해제로 받는다. */}
-      {focused && <Backdrop className="z-10" />}
+      {/* 포커스 딤 — 별 회상·일기 조망 중 은은히 어둡힌다. pointer-events-none이라 별 탭은 통과. */}
+      {focused && !uiHidden && <Backdrop className="z-10" />}
 
-      {/* HUD: 영속 캔버스 밖 2D DOM. 화면 상시 버튼은 둘뿐 — 카메라 시점 토글 + "메뉴" 런처.
-          나머지 기능은 메뉴 뒤에. 결과는 비차단 Surface. (home-ia revamp) */}
-
-      {/* 야간 공고화 morning diff(spec 27, 6.1) — 하루 첫 접속 1회. 데모는 자체 "밤 보내기"가 띄운다. */}
-      {!isDemoMode() && (
-        <MorningDiffNote show={morningDiff} onDismiss={() => setMorningDiff(false)} />
-      )}
-
-      {/* === 상시 버튼 둘 (우상단, 로그아웃 pill 아래) — 카메라 시점 토글 + 메뉴 런처. === */}
-      <div className="absolute top-[calc(4rem+env(safe-area-inset-top))] right-4 z-30 flex items-center gap-2">
+      {/* === 상단 중앙 HUD 숨김/보이기 토글(A13) — 숨김 상태에서도 보이는 유일한 컨트롤. 모달이 뜨면
+          z-30 백드롭이 이 토글까지 덮어 함께 흐려진다(z-20). === */}
+      <div className="absolute left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-20 -translate-x-1/2">
         <button
           type="button"
-          onClick={() => navigationActor.send({ type: 'TOGGLE_MODE' })}
-          className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
-          // change 08(A1): 사용자-facing 카메라 모드 용어 — '성운/회상' 제거. 버튼은 현재 모드를 보이고,
-          // title/aria-label은 누르면 갈 모드를 안내한다.
-          title={mode === 'nebula' ? '별들 가까이서 탐험하기로 전환' : '멀리서 내 우주 보기로 전환'}
-          aria-label={mode === 'nebula' ? '별들 가까이서 탐험하기로 전환' : '멀리서 내 우주 보기로 전환'}
+          onClick={toggleUiHidden}
+          aria-pressed={uiHidden}
+          title={uiHidden ? 'UI 보이기' : 'UI 숨기기'}
+          aria-label={uiHidden ? 'UI 보이기' : 'UI 숨기기'}
+          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur transition hover:bg-black/60"
         >
-          <span className="sm:hidden">{mode === 'nebula' ? '멀리서 보기' : '가까이 탐험'}</span>
-          <span className="hidden sm:inline">
-            {mode === 'nebula' ? '멀리서 내 우주 보기' : '별들 가까이서 탐험하기'}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={openMenu}
-          aria-label="메뉴"
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          className="grid size-9 place-items-center rounded-md bg-white/10 text-white/80 backdrop-blur transition hover:bg-white/20"
-        >
-          <Menu className="size-5" />
+          {uiHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+          <span>{uiHidden ? 'UI 보이기' : 'UI 숨기기'}</span>
         </button>
       </div>
-      {/* === 좌상단 별가루·테마 알약 — 누르면 테마·외형 편집기(드래프트). 실로그인은 잔액+팔레트, 데모는
-          팔레트만(데모엔 실제 화폐 경제 없음). 우주에 들어오면 바로 보이는 외형 진입점. === */}
-      <button
-        type="button"
-        onClick={openAppearance}
-        aria-label="테마·외형 열기"
-        className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-30 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-sm text-white/85 backdrop-blur transition hover:bg-black/60"
-      >
-        {!isDemoMode() && (
-          <span className="flex items-center gap-1 tabular-nums">
-            <Sparkles className="size-3.5 text-amber-200/90" aria-hidden />
-            {stardust}
-          </span>
-        )}
-        <Palette className="size-4 text-white/80" aria-hidden />
-      </button>
 
-      {/* 이동 D-pad — 회상 모드 전용, 화면 가장자리(엄지 구역). 상시 버튼이 아니라 모드별 비행 컨트롤. */}
-      <NavPad />
+      {!uiHidden && (
+        <>
+          {/* 야간 공고화 morning diff(spec 27, 6.1) — 하루 첫 접속 1회. 데모는 자체 "밤 보내기"가 띄운다. */}
+          {!demoMode && <MorningDiffNote show={morningDiff} onDismiss={() => setMorningDiff(false)} />}
 
-      {/* === 메뉴 — "나머지 기능" 런처가 여는 비차단 Surface. 항목을 고르면 그 기능 표면으로 전환된다
-          (opener가 메뉴를 닫고 연다). 데모엔 서버 없는 작성·소셜을 빼고 탐색·테마만. === */}
-      <Surface open={menuOpen} title="메뉴" onClose={() => setMenuOpen(false)} place="top" width="sm">
-        <nav className="flex flex-col gap-1">
-          {!isDemoMode() && (
-            <button type="button" className={menuItemCls} onClick={openCompose}>
-              새 일기 쓰기
-            </button>
-          )}
-          <button type="button" className={menuItemCls} onClick={() => showPanel('diary')}>
-            일기
-          </button>
-          <button type="button" className={menuItemCls} onClick={() => showPanel('dormant')}>
-            잠든 별
-          </button>
-          {!isDemoMode() && (
-            <>
-              <div className="my-1 h-px bg-white/10" />
-              <button type="button" className={menuItemCls} onClick={openShare}>
-                우주 공개
-              </button>
-              <button type="button" className={menuItemCls} onClick={openGifts}>
-                주고받은 별
-              </button>
-            </>
-          )}
-          <div className="my-1 h-px bg-white/10" />
-          <button type="button" className={menuItemCls} onClick={openAppearance}>
-            테마·외형
-          </button>
-          {/* 감정색 재설정(spec 45) — 완료 후에도 13감정 색을 다시 고르러 간다(데모는 서버가 없어 숨김). */}
-          {!isDemoMode() && (
+          {/* === 우상단 세로 컨트롤(A5) — 햄버거 · 시점 전환 · 망원경. (모달 백드롭 z-30 아래 z-20) === */}
+          <div className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 flex flex-col items-center gap-2">
             <button
               type="button"
-              className={menuItemCls}
-              onClick={() => {
-                closeSurfaces()
-                void navigate({ to: '/emotion-colors', search: { redirect: '/' } })
-              }}
+              onClick={openSidebar}
+              aria-label="메뉴"
+              aria-haspopup="menu"
+              aria-expanded={sidebarOpen}
+              className={verticalBtnCls}
             >
-              감정색
+              <Menu className="size-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigationActor.send({ type: 'TOGGLE_MODE' })}
+              className={verticalBtnCls}
+              // change 08(A1): 사용자-facing 카메라 모드 용어. title/aria-label은 누르면 갈 모드를 안내한다.
+              title={mode === 'nebula' ? '별들 가까이서 탐험하기로 전환' : '멀리서 내 우주 보기로 전환'}
+              aria-label={mode === 'nebula' ? '별들 가까이서 탐험하기로 전환' : '멀리서 내 우주 보기로 전환'}
+            >
+              <Orbit className="size-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => openExplorer('diary')}
+              aria-label="탐색 — 일기·별 찾기"
+              title="탐색 — 일기·별 찾기"
+              aria-expanded={explorerOpen}
+              className={verticalBtnCls}
+            >
+              <Telescope className="size-5" />
+            </button>
+          </div>
+
+          {/* === 좌상단 별가루·테마 알약 — 누르면 꾸미기 표면(스킨/감정 색). 실로그인은 잔액+팔레트, 데모는 팔레트만. === */}
+          <button
+            type="button"
+            onClick={openAppearance}
+            aria-label="테마·외형 열기"
+            className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-sm text-white/85 backdrop-blur transition hover:bg-black/60"
+          >
+            {!demoMode && (
+              <span className="flex items-center gap-1 tabular-nums">
+                <Sparkles className="size-3.5 text-amber-200/90" aria-hidden />
+                {stardust}
+              </span>
+            )}
+            <Palette className="size-4 text-white/80" aria-hidden />
+          </button>
+
+          {/* 이동 D-pad — 회상 모드 전용, 화면 가장자리. 표면/숨김 시 억제. */}
+          <NavPad suppressed={navSuppressed} />
+
+          {/* === 하단 중앙 floating 새 별 띄우기(A17) — 작성 폼(데모 제외 — DemoSimPanel이 기록 담당). === */}
+          {!demoMode && (
+            <button
+              type="button"
+              onClick={openCompose}
+              className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-indigo-500/80 px-5 py-3 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-indigo-500"
+            >
+              <Plus className="size-4" aria-hidden />새 별 띄우기
             </button>
           )}
-        </nav>
-      </Surface>
+        </>
+      )}
 
-      {/* 테마·외형 — 좌상단 알약/메뉴가 여는 집중 모달(고정 프리뷰 + 탭 + 실모형 썸네일, change 06). 홈은
-          드래프트 모드: 잠긴 아이템도 미리보기로 고르고, 변화를 보고 플로팅 저장 바로 커밋(자동 저장 안 함).
-          모달이 열리면 위 UniverseCanvas는 언마운트돼(WebGPU 컨텍스트를 프리뷰+썸네일로 양보) 모달 뒤가 빈다. */}
+      {/* 모달 딤 백드롭 — 모달형 표면(탐색·작성·공유·선물·보내기·변천사) 뒤에 깔려 배경 + HUD 크롬
+          (토글 포함, z-20)을 함께 흐린다. z-30 + DOM상 표면보다 앞 → 표면(z-30, 뒤)이 위에 또렷이 뜬다.
+          탭하면 모달을 닫는다. 사이드바(자체 백드롭)·회상(비차단 포커스 딤)은 제외. */}
+      {modalUp && <Backdrop className="z-30 backdrop-blur-sm" onDismiss={closeModalSurfaces} />}
+
+      {/* === 사이드바·탐색·결과 표면 — HUD 숨김 시엔 모두 닫혀 있다(toggle이 정리). === */}
+      <UniverseSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        isDemo={demoMode}
+        onSignOut={onSignOut}
+        onLeaveDemo={leaveDemo}
+        onMyPage={goMyPage}
+        onShare={openShare}
+        onGifts={openGifts}
+        onDiary={goDiary}
+      />
+
+      <UniverseExplorerSheet
+        open={explorerOpen}
+        tab={explorerTab}
+        onTab={setExplorerTab}
+        onClose={() => setExplorerOpen(false)}
+        onSelectDiary={frameDiary}
+        onSelectStar={flyToStar}
+      />
+
+      {/* 꾸미기 — 좌상단 알약이 여는 집중 모달(스킨/감정 색, change 09). 모달이 열리면 UniverseCanvas는 언마운트된다. */}
       <AppearanceModal open={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
 
-      {/* === 결과/액션 표면 — 통일 비차단 Surface(모바일 바텀시트 / 데스크톱 떠있는 카드). 한 문법(A4·A5):
-          진입과 달리 코너에 고정되지 않고, 열려 있어도 뒤 우주가 보이고 별 탭/회전이 가능하다(비차단·A7). === */}
-
       {/* 만들기 — 작성 폼(데모 제외). 제목은 작성/검토 단계를 반영한다. */}
-      {!isDemoMode() && (
+      {!demoMode && (
         <Surface
           open={composeOpen}
           title={composePhase === 'compose' ? '새 일기 — 별 띄우기' : '조각 확인 — 별 다듬기'}
@@ -726,28 +743,24 @@ export function HomePage() {
 
       {/* 회상 — 별 클릭(focus 머신 star). 별 → 조각 → 원본 + 변천사/보내기/다른 별들 동선(11·28·36). */}
       <Surface
-        open={isStarFocus}
+        open={isStarFocus && !uiHidden}
         title="회상 — 원본 일기"
         onClose={() => focusActor.send({ type: 'DISMISS' })}
         place="top"
       >
         <MemoryPanel
           onOpenEvolution={(id) => useEvolutionStore.getState().open(id)}
-          // "이 별 보내기"(spec 36) — 데모엔 서버가 없어 진입점을 숨긴다(onSendStar 미전달).
-          onSendStar={isDemoMode() ? undefined : (id) => setSendMemoryId(id)}
-          // "이 일기의 다른 별들 보기"(spec 28·39): SELECT_DIARY와 같은 SEE_DIARY_STARS → focus 머신 diary로
-          // 수렴(같은 일기 카드 + 조망). 일기 목록이 열려 있었다면 peek로 잦아들게 해 프레이밍 별을 가리지 않는다.
+          onSendStar={demoMode ? undefined : (id) => setSendMemoryId(id)}
+          // "이 일기의 다른 별들 보기"(spec 28·39): SEE_DIARY_STARS → focus 머신 diary로 수렴(같은 일기 카드 + 조망).
           onSeeDiaryStars={(recordId) => {
             focusActor.send({ type: 'SEE_DIARY_STARS', recordId })
-            if (panel === 'diary') setPeek(true)
           }}
         />
       </Surface>
 
-      {/* 변천사 타임랩스(24) — 회상의 "변천사 보기"가 useEvolutionStore.open으로 연다. 회상 위에 의도적으로
-          겹친다(중앙·넓게). 우주 캔버스는 뒤에 영속한다(언마운트 없음). */}
+      {/* 변천사 타임랩스(24) — 회상의 "변천사 보기"가 useEvolutionStore.open으로 연다(회상 위에 겹침). */}
       <Surface
-        open={evolutionOpen}
+        open={evolutionOpen && !uiHidden}
         title="별 변천사 — 변한 것과 변하지 않은 것"
         onClose={() => useEvolutionStore.getState().close()}
         place="center"
@@ -755,71 +768,35 @@ export function HomePage() {
       >
         <EvolutionPanel />
       </Surface>
-      {/* 소셜 — 우주 공개(35)·주고받은 별(36). "메뉴"의 소셜 항목이 열고, 비차단 Surface로 뜬다(데모 제외). */}
-      {!isDemoMode() && (
+      {/* 소셜 — 우주 공개(35)·주고받은 별(36). 사이드바가 열고, 비차단 Surface로 뜬다(데모 제외). */}
+      {!demoMode && (
         <Surface open={shareOpen} title="우주 공개" onClose={() => setShareOpen(false)} place="center" width="sm">
           <ShareUniverseBody />
         </Surface>
       )}
-      {!isDemoMode() && (
+      {!demoMode && (
         <Surface open={giftsOpen} title="주고받은 별" onClose={() => setGiftsOpen(false)} place="center" width="sm">
           <StarGiftsBody />
         </Surface>
       )}
-      {/* 별 보내기(36) — 회상의 "이 별 보내기"가 연다(회상 위에 겹침). 발급 후 토큰 URL을 복사해 전달. */}
-      {sendMemoryId && (
+      {/* 별 보내기(36) — 회상의 "이 별 보내기"가 연다(회상 위에 겹침). */}
+      {sendMemoryId && !uiHidden && (
         <Surface open title="별 보내기" onClose={() => setSendMemoryId(null)} place="center" width="sm">
           <SendStarBody memoryId={sendMemoryId} onClose={() => setSendMemoryId(null)} />
         </Surface>
       )}
 
-      {/* === 브라우즈 목록(OverlayHost, peek) — 일기·잠든 별. ?panel= 딥링크 대상(A8). 각 feature는
-          콘텐츠(`…Sheet`)만 제공하고 호스트가 컨테이너·peek·스냅·reduced-motion을 맡는다. 캔버스는
-          절대 재init되지 않는다(1.5). === */}
-      {panel === 'dormant' && (
-        <OverlayHost
-          open
-          peek={peek}
-          title="잠든 별"
-          peekLabel="잠든 별 목록 펼치기"
-          onClose={closeShellPanel}
-          onExpand={() => setPeek(false)}
-        >
-          <DormantSheet onSelect={focusDormant} />
-        </OverlayHost>
-      )}
-      {/* 일기 목록(spec 31) — 펼친 상태에서만 호스트로 띄운다. 일기를 고르면 peek=true가 되어 목록은
-          사라지고, 아래의 포커스 구동 DiaryCard가 그 자리를 대신한다(목록≠조망 — orthogonal, spec 39). */}
-      {panel === 'diary' && !peek && (
-        <OverlayHost
-          open
-          peek={false}
-          title="원본 일기 — 별 찾기"
-          peekLabel="일기 목록 펼치기"
-          onClose={closeShellPanel}
-          onExpand={() => setPeek(false)}
-        >
-          <DiarySheet onSelectDiary={frameDiary} />
-        </OverlayHost>
-      )}
-      {/* 조망 중인 일기 카드(spec 31·39) — 포커스=일기면 어느 경로(목록 선택·"이 일기의 다른 별들")로든
-          하단에 뜬다(구버전은 panel==='diary'에 묶여 회상 패널 경로에선 카드가 안 떴다). 단 일기 목록이
-          펼쳐져 있을 땐(panel='diary' && !peek 위 호스트가 떠 있음) 카드를 숨겨 겹치지 않게 한다. "목록"은
-          목록을 펼치고(카드는 위 가드로 숨음), ✕·배경 탭·Esc는 복귀. */}
-      {highlightedRecordId && (panel !== 'diary' || peek) && (
+      {/* 조망 중인 일기 카드(spec 31·39) — 포커스=일기면 하단에 뜬다. "목록"은 탐색 시트(일기 탭)를 다시 연다. */}
+      {highlightedRecordId && !uiHidden && (
         <DiaryCard
           recordId={highlightedRecordId}
-          onExpand={() => {
-            setPeek(false)
-            void navigate({ search: (prev) => ({ ...prev, panel: 'diary' }) })
-          }}
-          onClose={closeShellPanel}
+          onExpand={() => openExplorer('diary')}
+          onClose={() => focusActor.send({ type: 'DISMISS' })}
         />
       )}
 
-      {/* 시뮬레이션 패널(spec 19) — 데모에서만, 좌하단(데스크톱)/하단 시트(모바일).
-          데모의 기록은 이 패널의 "별 띄우기" 컨트롤러가 담당한다(작성 폼은 데모에서 숨김). */}
-      {isDemoMode() && (
+      {/* 시뮬레이션 패널(spec 19) — 데모에서만. 데모의 기록은 이 패널의 "별 띄우기"가 담당한다. */}
+      {demoMode && !uiHidden && (
         <DemoSimPanel
           initialSimId={sim}
           onSheetChange={setDemoSheetOpen}
@@ -837,24 +814,19 @@ export function HomePage() {
         </div>
       )}
 
-      {/* 첫 로드 실패 — 침묵 금지(1.2): 에러 카드 + 재시도. (데이터가 이미 있으면 백그라운드
-          refetch 실패여도 마지막 우주를 그대로 두는 편이 낫다 — 카드로 가리지 않는다.) */}
+      {/* 첫 로드 실패 — 침묵 금지(1.2): 에러 카드 + 재시도. */}
       {universe.isError && universeData === undefined && (
         <UniverseErrorCard>
           <p className="text-sm text-white/85">우주를 불러오지 못했어요.</p>
           <p className="text-xs break-all text-white/40">{errorMessage(universe.error)}</p>
-          <button
-            type="button"
-            onClick={() => void universe.refetch()}
-            className={primaryButtonCls}
-          >
+          <button type="button" onClick={() => void universe.refetch()} className={primaryButtonCls}>
             다시 시도
           </button>
         </UniverseErrorCard>
       )}
 
-      {universe.isSuccess && starCount === 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-12 z-10 text-center">
+      {universe.isSuccess && starCount === 0 && !uiHidden && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-10 text-center">
           <p className="text-sm text-white/55">
             아직 별이 없어요. 첫 일기를 적어 첫 별을 띄워보세요.
           </p>

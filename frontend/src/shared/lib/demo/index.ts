@@ -15,6 +15,7 @@ export {
   demoRecall,
   demoFragmentText,
   demoListRecords,
+  demoGetRecord,
   demoAddRecord,
   demoAddStar,
   demoAddMultiSceneStar,

@@ -170,6 +170,7 @@ func (r *pgRepository) ListRecords(ctx context.Context, userID string) ([]Record
 			EntryDate:   row.EntryDate.Time,
 			BodyExcerpt: row.BodyExcerpt,
 			StarCount:   int(row.StarCount),
+			Moods:       moodsFromDB(row.Moods), // change 09: 일기 감정 facet(중복 제거)
 		})
 	}
 	return out, nil
@@ -258,6 +259,29 @@ func (r *pgRepository) GetRecord(ctx context.Context, userID, memoryID string) (
 	}, nil
 }
 
+// GetRecordByID reads the immutable original by record_id directly (spec 28, change 09 —
+// standalone diary page). Owner-guarded query → ErrNoRows (another user's / missing record)
+// maps to ErrNotFound. Side-effect free: the star layer is never touched (no recall bump).
+func (r *pgRepository) GetRecordByID(ctx context.Context, userID, recordID string) (Record, error) {
+	row, err := gen.New(r.pool).GetRecordByRecord(ctx, gen.GetRecordByRecordParams{
+		ID: recordID, UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Record{}, ErrNotFound
+	}
+	if err != nil {
+		return Record{}, fmt.Errorf("get record by id: %w", err)
+	}
+	return Record{
+		Body:      row.Body,
+		EntryDate: row.EntryDate.Time,
+		Mood:      moodFromDB(row.Mood),
+		Intensity: intensityFromDB(row.Intensity),
+		CreatedAt: row.CreatedAt.Time,
+		// FragmentText stays "" — the standalone page shows the whole original (헌법1).
+	}, nil
+}
+
 // fragmentTextFromDB maps the nullable memories.fragment_text to "" (single-fragment /
 // pre-21 stars store NULL → the client falls back to the whole-record body, spec 28).
 func fragmentTextFromDB(s *string) string {
@@ -265,6 +289,23 @@ func fragmentTextFromDB(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// moodsFromDB maps the ListRecords mood facet (text[], NULLs already removed in SQL) to
+// the domain Mood slice (change 09). nil/empty → nil. Defensive: a stray empty string
+// (shouldn't occur — array_remove drops NULL, and stored moods are non-empty) is skipped.
+func moodsFromDB(ss []string) []Mood {
+	if len(ss) == 0 {
+		return nil
+	}
+	out := make([]Mood, 0, len(ss))
+	for _, s := range ss {
+		if s == "" {
+			continue
+		}
+		out = append(out, Mood(s))
+	}
+	return out
 }
 
 // GetReshapeContext reads the PE/strength input for one recalled star (spec 23).

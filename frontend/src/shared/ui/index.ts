@@ -15,4 +15,8 @@ export { OverlayHost, type OverlayHostProps } from './OverlayHost'
 export { Surface, type SurfaceProps } from './Surface'
 export { BottomSheet, type BottomSheetProps } from './BottomSheet'
 export { FloatingCard, type FloatingCardProps } from './FloatingCard'
+// 우측 햄버거 사이드바(change 09) — 비peek 슬라이드 드로어(계정·소셜·일기 진입점).
+export { SideDrawer, type SideDrawerProps } from './SideDrawer'
+// 감정 facet 필터 칩(change 09) — 일기/별 탐색 탭·일기 페이지 공용 다중 선택.
+export { MoodChips, type MoodChipsProps } from './MoodChips'
 export { useCoarsePointer } from './use-coarse-pointer'

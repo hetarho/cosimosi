@@ -13,6 +13,7 @@ export {
   ListDormantResponseSchema,
   ListRecordsResponseSchema,
   RecordSummarySchema,
+  GetRecordResponseSchema,
   GetSettingsResponseSchema,
   GetInventoryResponseSchema,
 } from './gen/cosimosi/v1/memory_pb'
@@ -24,6 +25,7 @@ export type {
   ListDormantResponse,
   RecordSummary,
   ListRecordsResponse,
+  GetRecordResponse,
   EvolutionSnapshot,
   GetEvolutionHistoryResponse,
   Settings,

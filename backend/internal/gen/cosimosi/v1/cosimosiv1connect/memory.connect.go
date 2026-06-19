@@ -50,6 +50,8 @@ const (
 	// MemoryServiceRecallMemoryProcedure is the fully-qualified name of the MemoryService's
 	// RecallMemory RPC.
 	MemoryServiceRecallMemoryProcedure = "/cosimosi.v1.MemoryService/RecallMemory"
+	// MemoryServiceGetRecordProcedure is the fully-qualified name of the MemoryService's GetRecord RPC.
+	MemoryServiceGetRecordProcedure = "/cosimosi.v1.MemoryService/GetRecord"
 	// MemoryServiceListDormantProcedure is the fully-qualified name of the MemoryService's ListDormant
 	// RPC.
 	MemoryServiceListDormantProcedure = "/cosimosi.v1.MemoryService/ListDormant"
@@ -80,6 +82,7 @@ type MemoryServiceClient interface {
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
 	ReinforceLinks(context.Context, *connect.Request[v1.ReinforceLinksRequest]) (*connect.Response[v1.ReinforceLinksResponse], error)
 	RecallMemory(context.Context, *connect.Request[v1.RecallMemoryRequest]) (*connect.Response[v1.RecallMemoryResponse], error)
+	GetRecord(context.Context, *connect.Request[v1.GetRecordRequest]) (*connect.Response[v1.GetRecordResponse], error)
 	ListDormant(context.Context, *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error)
 	GetEvolutionHistory(context.Context, *connect.Request[v1.GetEvolutionHistoryRequest]) (*connect.Response[v1.GetEvolutionHistoryResponse], error)
 	ListRecords(context.Context, *connect.Request[v1.ListRecordsRequest]) (*connect.Response[v1.ListRecordsResponse], error)
@@ -127,6 +130,13 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(memoryServiceMethods.ByName("RecallMemory")),
 			connect.WithClientOptions(opts...),
 		),
+		getRecord: connect.NewClient[v1.GetRecordRequest, v1.GetRecordResponse](
+			httpClient,
+			baseURL+MemoryServiceGetRecordProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("GetRecord")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		listDormant: connect.NewClient[v1.ListDormantRequest, v1.ListDormantResponse](
 			httpClient,
 			baseURL+MemoryServiceListDormantProcedure,
@@ -158,6 +168,7 @@ type memoryServiceClient struct {
 	getUniverse         *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
 	reinforceLinks      *connect.Client[v1.ReinforceLinksRequest, v1.ReinforceLinksResponse]
 	recallMemory        *connect.Client[v1.RecallMemoryRequest, v1.RecallMemoryResponse]
+	getRecord           *connect.Client[v1.GetRecordRequest, v1.GetRecordResponse]
 	listDormant         *connect.Client[v1.ListDormantRequest, v1.ListDormantResponse]
 	getEvolutionHistory *connect.Client[v1.GetEvolutionHistoryRequest, v1.GetEvolutionHistoryResponse]
 	listRecords         *connect.Client[v1.ListRecordsRequest, v1.ListRecordsResponse]
@@ -188,6 +199,11 @@ func (c *memoryServiceClient) RecallMemory(ctx context.Context, req *connect.Req
 	return c.recallMemory.CallUnary(ctx, req)
 }
 
+// GetRecord calls cosimosi.v1.MemoryService.GetRecord.
+func (c *memoryServiceClient) GetRecord(ctx context.Context, req *connect.Request[v1.GetRecordRequest]) (*connect.Response[v1.GetRecordResponse], error) {
+	return c.getRecord.CallUnary(ctx, req)
+}
+
 // ListDormant calls cosimosi.v1.MemoryService.ListDormant.
 func (c *memoryServiceClient) ListDormant(ctx context.Context, req *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error) {
 	return c.listDormant.CallUnary(ctx, req)
@@ -210,6 +226,7 @@ type MemoryServiceHandler interface {
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
 	ReinforceLinks(context.Context, *connect.Request[v1.ReinforceLinksRequest]) (*connect.Response[v1.ReinforceLinksResponse], error)
 	RecallMemory(context.Context, *connect.Request[v1.RecallMemoryRequest]) (*connect.Response[v1.RecallMemoryResponse], error)
+	GetRecord(context.Context, *connect.Request[v1.GetRecordRequest]) (*connect.Response[v1.GetRecordResponse], error)
 	ListDormant(context.Context, *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error)
 	GetEvolutionHistory(context.Context, *connect.Request[v1.GetEvolutionHistoryRequest]) (*connect.Response[v1.GetEvolutionHistoryResponse], error)
 	ListRecords(context.Context, *connect.Request[v1.ListRecordsRequest]) (*connect.Response[v1.ListRecordsResponse], error)
@@ -253,6 +270,13 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(memoryServiceMethods.ByName("RecallMemory")),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceGetRecordHandler := connect.NewUnaryHandler(
+		MemoryServiceGetRecordProcedure,
+		svc.GetRecord,
+		connect.WithSchema(memoryServiceMethods.ByName("GetRecord")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	memoryServiceListDormantHandler := connect.NewUnaryHandler(
 		MemoryServiceListDormantProcedure,
 		svc.ListDormant,
@@ -286,6 +310,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceReinforceLinksHandler.ServeHTTP(w, r)
 		case MemoryServiceRecallMemoryProcedure:
 			memoryServiceRecallMemoryHandler.ServeHTTP(w, r)
+		case MemoryServiceGetRecordProcedure:
+			memoryServiceGetRecordHandler.ServeHTTP(w, r)
 		case MemoryServiceListDormantProcedure:
 			memoryServiceListDormantHandler.ServeHTTP(w, r)
 		case MemoryServiceGetEvolutionHistoryProcedure:
@@ -319,6 +345,10 @@ func (UnimplementedMemoryServiceHandler) ReinforceLinks(context.Context, *connec
 
 func (UnimplementedMemoryServiceHandler) RecallMemory(context.Context, *connect.Request[v1.RecallMemoryRequest]) (*connect.Response[v1.RecallMemoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.MemoryService.RecallMemory is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) GetRecord(context.Context, *connect.Request[v1.GetRecordRequest]) (*connect.Response[v1.GetRecordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.MemoryService.GetRecord is not implemented"))
 }
 
 func (UnimplementedMemoryServiceHandler) ListDormant(context.Context, *connect.Request[v1.ListDormantRequest]) (*connect.Response[v1.ListDormantResponse], error) {

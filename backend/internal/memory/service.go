@@ -201,6 +201,14 @@ func (s *Service) ListRecords(ctx context.Context, userID string) ([]RecordSumma
 	return s.repo.ListRecords(ctx, userID)
 }
 
+// GetRecordByID reads one immutable original diary by its record_id (spec 28, change 09 —
+// the standalone read-only diary page). Side-effect free: unlike RecallMemory it performs
+// NO TouchRecall — reading a diary in the journal must not re-ignite its stars. Owner
+// isolation + NotFound mapping live in the repository (records stays read-only, 헌법1).
+func (s *Service) GetRecordByID(ctx context.Context, userID, recordID string) (Record, error) {
+	return s.repo.GetRecordByID(ctx, userID, recordID)
+}
+
 // ReinforceLinks applies co-recall reinforcement increments — delegates to
 // the link service, which normalizes/sums and persists idempotently by batch_id.
 func (s *Service) ReinforceLinks(ctx context.Context, userID, batchID string, deltas []LinkDelta) error {

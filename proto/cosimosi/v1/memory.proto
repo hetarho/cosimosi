@@ -151,7 +151,12 @@ message RecallMemoryRequest {
   string memory_id = 1;
 }
 
-// Record is the immutable original (sourced from the records table).
+// Record is the immutable original (sourced from the records table). Reached two
+// ways: by a star (RecallMemory, keyed by memory_id) and by the diary id directly
+// (GetRecord, keyed by record_id — the standalone read-only diary page, spec 28).
+// On the record-id read memory_id is empty (no star context); on the recall read
+// record_id is empty (the star already knows its memory_id). Field numbers are
+// append-only — record_id appended as 7 (memory_id keeps 1).
 message Record {
   string memory_id = 1;
   string body = 2;
@@ -159,6 +164,7 @@ message Record {
   Mood mood = 4;
   double intensity = 5;
   string created_at = 6;
+  string record_id = 7;        // 일기 단위 키 (GetRecord 응답에서 채움; RecallMemory 응답에선 "")
 }
 
 message RecallMemoryResponse {
@@ -167,6 +173,21 @@ message RecallMemoryResponse {
   // 여기엔 그 별이 가리키는 fragment(memories.fragment_text)만 싣는다. 단일 조각/구
   // 데이터(fragment_text NULL)면 빈 문자열(클라가 record.body로 폴백).
   string fragment_text = 2;
+}
+
+// --- GetRecord (idempotent original-diary read by record id, spec 28) ---
+
+// GetRecord reads one immutable original diary by its record_id (the Star.record_id
+// group key / RecordSummary.record_id), for the standalone read-only diary page
+// (change 09). NO_SIDE_EFFECTS — unlike RecallMemory it never touches the star
+// layer (no last_recalled_at / recall_count bump): reading a diary in the journal
+// must not re-ignite its stars. Owner-guarded — another user's record → NotFound.
+message GetRecordRequest {
+  string record_id = 1;
+}
+
+message GetRecordResponse {
+  Record record = 1;
 }
 
 // --- ListRecords (original-diary list for 원본 일기로 별 찾기, spec 28) ---
@@ -179,6 +200,9 @@ message RecordSummary {
   string entry_date = 2;     // YYYY-MM-DD
   string body_excerpt = 3;   // 일부(excerpt)만 — 본문 전체 아님
   int32 star_count = 4;      // 그 일기에서 태어난 조각 별 개수
+  // change 09: 이 일기에서 태어난 조각 별들의 감정 facet(중복 제거). 일기 목록의 감정 필터가
+  // 서버 round-trip 없이 클라에서 걸 수 있게 함께 싣는다. 빈 배열 = 감정 미설정 조각만.
+  repeated Mood moods = 5;
 }
 
 message ListRecordsRequest {}
@@ -248,6 +272,9 @@ service MemoryService {
   }
   rpc ReinforceLinks(ReinforceLinksRequest) returns (ReinforceLinksResponse);    // batch upsert
   rpc RecallMemory(RecallMemoryRequest) returns (RecallMemoryResponse);          // reconsolidation
+  rpc GetRecord(GetRecordRequest) returns (GetRecordResponse) {                  // 원본 일기 읽기(28) — 부작용 없음
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ListDormant(ListDormantRequest) returns (ListDormantResponse) {            // dormant stars
     option idempotency_level = NO_SIDE_EFFECTS;
   }

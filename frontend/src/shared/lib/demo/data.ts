@@ -232,19 +232,42 @@ export function demoFragmentText(memoryId: string): string {
   return fragmentTextsById.get(memoryId) ?? ''
 }
 
+/** GetRecord 대체(spec 28, change 09): record_id로 원본 전문을 읽는다 — 그 record를 공유하는
+ *  아무 별의 records 항목을 찾아 record_id를 채워 돌려준다(단일 조각은 memory_id == record_id).
+ *  없으면 undefined(독립 일기 페이지가 NotFound 처리). 부작용 없음(데모도 별 layer 미변경). */
+export function demoGetRecord(recordId: string): RecordMsg | undefined {
+  ensureSeeded()
+  for (const s of [...baseStars, ...addedStars]) {
+    if ((s.recordId || s.memoryId) !== recordId) continue
+    const rec = records.get(s.memoryId)
+    if (rec) return create(RecordSchema, { ...rec, recordId })
+  }
+  return undefined
+}
+
 /** ListRecords 대체(spec 28): 더미 우주의 별을 record_id로 묶어 원본 일기 목록을 만든다 —
  *  일기별 조각 별 개수 + 본문 발췌(80자) + 작성일 내림차순(서버 ListRecords와 같은 모양).
  *  body/entry_date는 그 record를 공유하는 조각의 records 항목에서 읽는다(모두 동일). */
 export function demoListRecords(): RecordSummary[] {
   ensureSeeded()
-  const byRecord = new Map<string, { entryDate: string; body: string; count: number }>()
+  const byRecord = new Map<
+    string,
+    { entryDate: string; body: string; count: number; moods: Set<Mood> }
+  >()
   for (const s of [...baseStars, ...addedStars]) {
     const recordId = s.recordId || s.memoryId // 구 데이터/단일 조각은 자기 id가 곧 record
     const rec = records.get(s.memoryId)
     const existing = byRecord.get(recordId)
-    if (existing) existing.count++
-    else
-      byRecord.set(recordId, { entryDate: rec?.entryDate ?? '', body: rec?.body ?? '', count: 1 })
+    if (existing) {
+      existing.count++
+      if (s.mood !== Mood.MOOD_UNSPECIFIED) existing.moods.add(s.mood)
+    } else
+      byRecord.set(recordId, {
+        entryDate: rec?.entryDate ?? '',
+        body: rec?.body ?? '',
+        count: 1,
+        moods: s.mood !== Mood.MOOD_UNSPECIFIED ? new Set([s.mood]) : new Set(),
+      })
   }
   return [...byRecord.entries()]
     .sort((a, b) =>
@@ -256,6 +279,7 @@ export function demoListRecords(): RecordSummary[] {
         entryDate: v.entryDate,
         bodyExcerpt: v.body.slice(0, 80),
         starCount: v.count,
+        moods: [...v.moods], // change 09: 일기 감정 facet(데모 — 서버 ListRecords와 동형)
       }),
     )
 }

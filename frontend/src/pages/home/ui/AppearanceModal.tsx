@@ -9,6 +9,7 @@ import { ArrowLeft, Lock, Sparkles } from 'lucide-react'
 import { CosmosScene, type StarVisual, type SynapseVisual } from '@/widgets/cosmos-scene'
 import { isDemoMode } from '@/shared/lib/demo'
 import { capture, cn, EVENTS } from '@/shared/lib'
+import { EmotionColorEditor } from '@/features/pick-emotion-colors'
 import { MOOD, itemId, isFree, isOwned, priceOf, type Axis } from '@/shared/config'
 import {
   THEMES,
@@ -129,7 +130,12 @@ export interface AppearanceModalProps {
 }
 
 /** 외형 편집기 모달. HomePage가 좌상단 알약/메뉴로 연다. 열리는 동안 HomePage는 우주 캔버스를 언마운트한다. */
+// 꾸미기 표면 상단 분기(change 09, A15·A16): `스킨`(4축 외형 — 구매/저장 규칙 유지) / `감정 색`(13 mood
+// full-set). 단독 `외형` 헤더 텍스트는 제거(A15).
+type Section = 'skin' | 'emotion'
+
 export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
+  const [section, setSection] = useState<Section>('skin')
   const [tab, setTab] = useState<Axis>('background')
   const theme = useAppearance((s) => s.theme)
   const setTheme = useAppearance((s) => s.setTheme)
@@ -231,7 +237,7 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
 
   return (
     <div className="fixed inset-0 z-60 flex flex-col bg-[#05060f]/95 backdrop-blur-md">
-      {/* 헤더: 뒤로(좌). 저장은 우상단 SessionGate 칩(체험 종료/로그아웃, z-50)과 겹치지 않게 하단 command bar로. */}
+      {/* 헤더: 뒤로(좌) + 스킨/감정 색 세그먼트(중앙). 단독 `외형` 헤더 텍스트는 제거(A15). */}
       <header className="flex items-center gap-3 px-4 pb-3 pt-[calc(1rem+env(safe-area-inset-top))]">
         <button
           type="button"
@@ -241,16 +247,56 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
           <ArrowLeft className="size-4" aria-hidden />
           뒤로
         </button>
-        <span className="text-sm uppercase tracking-[0.2em] text-white/45">외형</span>
+        <div role="tablist" aria-label="꾸미기 종류" className="ml-auto flex gap-1 rounded-full bg-white/5 p-1 text-sm">
+          {(
+            [
+              ['skin', '스킨'],
+              ['emotion', '감정 색'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={section === key}
+              onClick={() => setSection(key)}
+              className={cn(
+                'rounded-full px-4 py-1.5 transition',
+                section === key ? 'bg-white/15 text-white' : 'text-white/55 hover:text-white/85',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </header>
 
+      {/* === 감정 색 — 13 mood full-set 편집(게이트 페이지와 같은 재사용 editor, A16). === */}
+      {/* 감정 색 저장으로 모달을 닫을 때 미커밋 스킨 드래프트는 되돌린다(revertSelection). 스킨 픽은
+          저장 전에도 라이브 store를 바꾸므로, 되돌리지 않으면 미구매 유료 스킨이 그대로 활성화돼
+          구매/저장 게이트를 우회한다(스킨은 스킨 저장으로만 커밋). 변경 없으면 revert는 무해(no-op). */}
+      {section === 'emotion' && (
+        <div className="flex-1 overflow-y-auto px-5 pb-8 pt-4">
+          <EmotionColorEditor
+            onSaved={() => {
+              revertSelection()
+              onClose()
+            }}
+            saveLabel="감정 색 저장"
+          />
+        </div>
+      )}
+
+      {/* === 스킨 — 4축 외형(배경·별·광원·시냅스). 구매/저장 규칙 유지(A16). === */}
+      {section === 'skin' && (
+        <>
       {/* 고정 라이브 프리뷰 */}
       <div className="relative h-[32vh] min-h-45 w-full shrink-0 overflow-hidden">
         <FixedPreview />
       </div>
 
       {/* 탭 */}
-      <div role="tablist" aria-label="외형 축" className="flex gap-1 border-b border-white/10 px-4">
+      <div role="tablist" aria-label="스킨 축" className="flex gap-1 border-b border-white/10 px-4">
         {TABS.map((t) => {
           const active = t.key === tab
           return (
@@ -333,8 +379,10 @@ export function AppearanceModal({ open, onClose }: AppearanceModalProps) {
           {saveLabel}
         </button>
       </div>
+        </>
+      )}
 
-      {/* 미저장 경고 — 뒤로가기 시 드래프트가 마지막 저장과 다르면. "나가기"는 드래프트를 버리고 마지막 저장으로 복원. */}
+      {/* 미저장 경고(스킨 드래프트) — 뒤로가기 시 드래프트가 마지막 저장과 다르면. "나가기"는 드래프트를 버리고 마지막 저장으로 복원. */}
       {confirmExit && (
         <div className="absolute inset-0 z-10 grid place-items-center bg-black/65 p-6">
           <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#0c0e1c] p-5 text-center">

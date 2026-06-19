@@ -58,6 +58,10 @@ export const MOOD_LABEL: Record<Mood, string> = {
   emptiness: '공허함',
 }
 
+/** The 13 moods in display order — the single source for emotion-filter chips / pickers
+ *  (don't re-list per component). Derived from MOOD_LABEL so it can never drift from the labels. */
+export const MOODS = Object.keys(MOOD_LABEL) as Mood[]
+
 /** Mood → Korean label with neutral fallback; never throws on an unknown string. */
 export function moodLabel(mood: string): string {
   return MOOD_LABEL[mood as Mood] ?? '중립'

@@ -1,35 +1,57 @@
-// Original-diary list/search (spec 28, 원본 일기로 별 찾기) — CONTENT ONLY for the universe
-// shell's OverlayHost (shared/ui, spec 31). Picking a diary frames ALL of its stars and
-// highlights them (the page wires onSelectDiary → wayfinding.frameRecord + shell setPeek); the
-// host then collapses to a peek handle so the framed stars are visible. We never leave the
-// universe (Architecture §3.1 — canvas-outside DOM). Read-only: the body shown is a short
-// EXCERPT (the immutable original opens via recall — 헌법1). The chrome (header/peek/snap) is
-// the OverlayHost's job; this component emits only the intro + search + list.
+// Original-diary list/search (spec 28, 원본 일기로 별 찾기; filters extended in change 09) —
+// CONTENT ONLY for the universe shell's telescope 일기 탭 (OverlayHost / explorer sheet). Picking
+// a diary frames ALL of its stars and highlights them (the page wires onSelectDiary →
+// focus SELECT_DIARY + shell setPeek); the host then collapses to a peek handle so the framed
+// stars are visible. We never leave the universe (Architecture §3.1 — canvas-outside DOM).
+// Read-only: the body shown is a short EXCERPT (the immutable original opens via recall — 헌법1).
+// The chrome (header/peek/snap) is the OverlayHost's job; this emits intro + filters + list.
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { errorMessage } from '@/shared/lib'
+import { MoodChips } from '@/shared/ui'
+import { type Mood } from '@/shared/config'
 // 쿼리 정체성은 entities/memory가 소유한다(dormant/universe와 동일) — 소비처가 두 레이어
 // (DiarySheet 읽기 + record-memory 무효화)에 걸쳐 있어, feature가 아니라 entity에 둔다(spec 28).
-import { recordsQueryOptions } from '@/entities/memory'
+import { recordsQueryOptions, moodFromProto } from '@/entities/memory'
+import { filterDiaries, type DiaryFilterEntry } from '../model/filters'
 
 export interface DiarySheetProps {
-  /** A diary was chosen — frame + highlight its stars (page wires to wayfinding + peek). */
+  /** A diary was chosen — frame + highlight its stars (page wires to focus + peek). */
   onSelectDiary: (recordId: string) => void
 }
 
 export function DiarySheet({ onSelectDiary }: DiarySheetProps) {
   const { data, isPending, isError, error, refetch } = useQuery(recordsQueryOptions())
   const [query, setQuery] = useState('')
+  const [moods, setMoods] = useState<Mood[]>([])
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
-  const records = data?.records
-  const filtered = useMemo(() => {
-    if (!records) return []
-    const q = query.trim().toLowerCase()
-    if (!q) return records
-    return records.filter(
-      (r) => r.bodyExcerpt.toLowerCase().includes(q) || r.entryDate.includes(q),
-    )
-  }, [records, query])
+  // RecordSummary(proto) → 순수 필터 입력(감정 enum → 도메인 문자열). change 09: moods facet.
+  // starCount는 표시 전용(필터는 무시) — 제네릭 filterDiaries가 행 타입을 보존한다.
+  const entries = useMemo<(DiaryFilterEntry & { starCount: number })[]>(
+    () =>
+      (data?.records ?? []).map((r) => ({
+        recordId: r.recordId,
+        entryDate: r.entryDate,
+        bodyExcerpt: r.bodyExcerpt,
+        moods: r.moods.map(moodFromProto),
+        starCount: r.starCount,
+      })),
+    [data],
+  )
+  // 데이터에 실제로 있는 감정만 칩으로 — 빈 facet 칩을 줄인다.
+  const available = useMemo(() => {
+    const set = new Set<Mood>()
+    for (const e of entries) for (const m of e.moods) set.add(m)
+    return [...set]
+  }, [entries])
+  const filtered = useMemo(
+    () => filterDiaries(entries, { query, moods, from: from || undefined, to: to || undefined }),
+    [entries, query, moods, from, to],
+  )
+  const toggleMood = (m: Mood) =>
+    setMoods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]))
 
   return (
     <>
@@ -39,10 +61,32 @@ export function DiarySheet({ onSelectDiary }: DiarySheetProps) {
 
       <input
         className="w-full shrink-0 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/30"
-        placeholder="날짜·내용으로 검색…"
+        placeholder="날짜·내용·감정으로 검색…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+
+      {available.length > 0 && (
+        <MoodChips selected={moods} onToggle={toggleMood} available={available} />
+      )}
+
+      <div className="flex shrink-0 items-center gap-2 text-xs text-white/50">
+        <input
+          type="date"
+          aria-label="시작 날짜"
+          className="min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 outline-none focus:border-white/30"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+        />
+        <span aria-hidden>—</span>
+        <input
+          type="date"
+          aria-label="끝 날짜"
+          className="min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 outline-none focus:border-white/30"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+        />
+      </div>
 
       {isError && (
         <div className="flex shrink-0 items-center justify-between gap-3 rounded-md bg-red-500/10 px-3 py-2">
@@ -59,13 +103,13 @@ export function DiarySheet({ onSelectDiary }: DiarySheetProps) {
 
       {isPending && <p className="text-sm text-white/40">불러오는 중…</p>}
 
-      {records && records.length === 0 && (
+      {data?.records && data.records.length === 0 && (
         <p className="rounded-md border border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-white/45">
           아직 일기가 없어요. 첫 일기를 적으면 여기 모여요.
         </p>
       )}
 
-      {records && records.length > 0 && filtered.length === 0 && (
+      {data?.records && data.records.length > 0 && filtered.length === 0 && (
         <p className="text-sm text-white/40">검색 결과가 없어요.</p>
       )}
 

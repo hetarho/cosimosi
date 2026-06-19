@@ -12,6 +12,7 @@ export { MOOD, MOOD_KEYS, SPACE, type MoodKey } from './palette'
 export {
   MOOD_PALETTE,
   MOOD_LABEL,
+  MOODS,
   MOOD_AFFECT,
   NEUTRAL_RGB,
   moodRgb,

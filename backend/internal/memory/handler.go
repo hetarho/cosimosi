@@ -206,6 +206,35 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 	}), nil
 }
 
+// GetRecord reads one immutable original diary by its record_id (spec 28, change 09 — the
+// standalone read-only diary page). NO_SIDE_EFFECTS: it never bumps last_recalled_at /
+// recall_count (unlike RecallMemory). NotFound when the (user, record) pair is absent
+// (owner guard in the query → another user's record reads as NotFound, not Forbidden).
+func (h *Handler) GetRecord(ctx context.Context, req *connect.Request[cosimosiv1.GetRecordRequest]) (*connect.Response[cosimosiv1.GetRecordResponse], error) {
+	userID, ok := rpcserver.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	recordID := req.Msg.GetRecordId()
+	rec, err := h.svc.GetRecordByID(ctx, userID, recordID)
+	if errors.Is(err, ErrNotFound) {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&cosimosiv1.GetRecordResponse{
+		Record: &cosimosiv1.Record{
+			RecordId:  recordID, // 일기 단위 키 (memory_id는 빈 문자열 — 별 컨텍스트 없음)
+			Body:      rec.Body,
+			EntryDate: rec.EntryDate.UTC().Format("2006-01-02"),
+			Mood:      moodToProto(rec.Mood),
+			Intensity: rec.Intensity,
+			CreatedAt: formatTime(&rec.CreatedAt),
+		},
+	}), nil
+}
+
 // ListDormant returns the caller's long-unrecalled stars as Star (no body;
 // the original is fetched on recall). The full graph is unaffected
 // (GetUniverse still returns everything — constitution §2). An empty list is valid.
@@ -267,11 +296,16 @@ func (h *Handler) ListRecords(ctx context.Context, req *connect.Request[cosimosi
 	}
 	out := make([]*cosimosiv1.RecordSummary, 0, len(records))
 	for _, r := range records {
+		moods := make([]cosimosiv1.Mood, 0, len(r.Moods))
+		for _, m := range r.Moods {
+			moods = append(moods, moodToProto(m))
+		}
 		out = append(out, &cosimosiv1.RecordSummary{
 			RecordId:    r.RecordID,
 			EntryDate:   r.EntryDate.UTC().Format("2006-01-02"),
 			BodyExcerpt: r.BodyExcerpt,
 			StarCount:   int32(r.StarCount),
+			Moods:       moods, // change 09: 일기 감정 facet
 		})
 	}
 	return connect.NewResponse(&cosimosiv1.ListRecordsResponse{Records: out}), nil

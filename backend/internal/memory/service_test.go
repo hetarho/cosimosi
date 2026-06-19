@@ -9,9 +9,13 @@ import (
 	"time"
 )
 
-// stubRepo records the last RecordMemory input; reads are unused by these tests.
+// stubRepo records the last RecordMemory input + how many times TouchRecall ran (the
+// no-side-effect check for GetRecordByID); reads are otherwise unused by these tests.
 type stubRepo struct {
-	lastInput *RecordInput
+	lastInput     *RecordInput
+	touchCalls    int
+	recordByID    Record
+	recordByIDErr error
 }
 
 func (s *stubRepo) RecordMemory(_ context.Context, in RecordInput) (string, []string, error) {
@@ -28,9 +32,12 @@ func (s *stubRepo) ListDormant(context.Context, string, time.Time) ([]Memory, er
 func (s *stubRepo) ListStarVectorsByUser(context.Context, string) ([]StarVector, error) {
 	return nil, nil
 }
-func (s *stubRepo) TouchRecall(context.Context, string, string) error { return nil }
+func (s *stubRepo) TouchRecall(context.Context, string, string) error { s.touchCalls++; return nil }
 func (s *stubRepo) GetRecord(context.Context, string, string) (Record, error) {
 	return Record{}, ErrNotFound
+}
+func (s *stubRepo) GetRecordByID(context.Context, string, string) (Record, error) {
+	return s.recordByID, s.recordByIDErr
 }
 func (s *stubRepo) GetReshapeContext(context.Context, string, string) (ReshapeContext, error) {
 	return ReshapeContext{}, ErrNotFound
@@ -143,6 +150,9 @@ func (r *reshapeRepo) ListStarVectorsByUser(context.Context, string) ([]StarVect
 func (r *reshapeRepo) TouchRecall(context.Context, string, string) error { return nil }
 func (r *reshapeRepo) GetRecord(context.Context, string, string) (Record, error) {
 	return Record{Body: "original", Mood: MoodJoy, Intensity: 0.5}, nil
+}
+func (r *reshapeRepo) GetRecordByID(context.Context, string, string) (Record, error) {
+	return Record{}, ErrNotFound
 }
 func (r *reshapeRepo) GetReshapeContext(_ context.Context, _, memoryID string) (ReshapeContext, error) {
 	rc, ok := r.ctxByID[memoryID]
@@ -321,6 +331,35 @@ func TestDirectionForDeterministic(t *testing.T) {
 		if d != 1 && d != -1 {
 			t.Fatalf("direction = %d, want ±1", d)
 		}
+	}
+}
+
+// change 09: GetRecordByID surfaces the repository's owner-guard NotFound (another
+// user's / missing record reads as NotFound, mapped to connect NotFound in the handler).
+func TestGetRecordByIDNotFound(t *testing.T) {
+	svc, repo := newTestService()
+	repo.recordByIDErr = ErrNotFound
+	_, err := svc.GetRecordByID(context.Background(), "u1", "missing-or-foreign")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetRecordByID err = %v, want ErrNotFound", err)
+	}
+}
+
+// change 09 (A11): reading a diary by record_id is SIDE-EFFECT FREE — it must NOT
+// re-ignite the star (no TouchRecall → no last_recalled_at / recall_count bump), unlike
+// RecallMemory. Pins the journal-page read to never mutate the star layer.
+func TestGetRecordByIDDoesNotTouchRecall(t *testing.T) {
+	svc, repo := newTestService()
+	repo.recordByID = Record{Body: "원본 일기 전문", Mood: MoodCalm}
+	rec, err := svc.GetRecordByID(context.Background(), "u1", "rec-1")
+	if err != nil {
+		t.Fatalf("GetRecordByID = %v, want nil", err)
+	}
+	if rec.Body != "원본 일기 전문" {
+		t.Fatalf("body = %q, want the immutable original", rec.Body)
+	}
+	if repo.touchCalls != 0 {
+		t.Fatalf("GetRecordByID called TouchRecall %d times — must be 0 (no recall bump, A11)", repo.touchCalls)
 	}
 }
 

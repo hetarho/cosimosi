@@ -9,8 +9,18 @@ import { SessionContext, useAuthActions } from './session-context'
  * 미인증은 인라인 사인인이 아니라 `/sign-in?redirect=<원래 경로>`로 보내고, 인증 후 그 경로로 복귀한다.
  * 체험("demo") 모드면 로그인 없이 통과시키고, 로그아웃 대신 "체험 종료" 핀을 띄운다 —
  * 같은 우주 셸을 더미데이터로 그대로 둘러보게 한다.
+ *
+ * `showChrome`(기본 true)는 우상단 로그아웃/체험-종료 핀의 노출을 제어한다. 우주 셸(`/`)·독립
+ * 일기/마이페이지는 자체 chrome(사이드바·페이지 헤더)에 로그아웃을 수렴시키므로 false로 끈다
+ * (change 09 — 우주 셸에 별도 로그아웃 핀 비노출). /admin·/gift 등은 기본 핀을 유지한다.
  */
-export function SessionGate({ children }: { children: ReactNode }) {
+export function SessionGate({
+  children,
+  showChrome = true,
+}: {
+  children: ReactNode
+  showChrome?: boolean
+}) {
   // 머신 상태값(flat) → 'loading' | 'authed' | 'anon'. 그 슬라이스만 구독(전환마다 리렌더 X).
   const status = SessionContext.useSelector((s) => s.value as 'loading' | 'authed' | 'anon')
   const { signOut } = useAuthActions()
@@ -18,6 +28,8 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   if (isDemoMode()) {
+    // chrome 숨김(우주 셸) — 체험 종료 동선은 셸의 사이드바가 onLeaveDemo로 가진다(동선 유지).
+    if (!showChrome) return <>{children}</>
     const leave = () => {
       exitDemoMode()
       resetDemo() // 추가했던 더미 별 비우기 → 다음 진입은 깨끗하게
@@ -53,6 +65,9 @@ export function SessionGate({ children }: { children: ReactNode }) {
   // 미인증 → 사인인 라우트로. 원래 가려던 경로(pathname+search)를 redirect로 실어 인증 후 복귀시킨다.
   if (status === 'anon')
     return <Navigate to="/sign-in" search={{ redirect: location.href }} replace />
+
+  // chrome 숨김(우주 셸·독립 일기/마이페이지) — 로그아웃은 그 화면 자체(사이드바/헤더)가 가진다.
+  if (!showChrome) return <>{children}</>
 
   return (
     <>

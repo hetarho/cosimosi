@@ -49,6 +49,8 @@ export {
   dormantInvalidateKey,
   recordsQueryOptions,
   recordsInvalidateKey,
+  recordDetailQueryOptions,
+  recordDetailInvalidateKey,
   applyUniverse,
   refreshActivation,
   RECORD_QUERY_ROOT,

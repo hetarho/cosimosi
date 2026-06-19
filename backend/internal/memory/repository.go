@@ -55,6 +55,12 @@ type Repository interface {
 	// returns ErrNotFound when the (user, memory) pair is absent.
 	GetRecord(ctx context.Context, userID, memoryID string) (Record, error)
 
+	// GetRecordByID reads the immutable original by its record_id directly (spec 28,
+	// change 09 — the standalone read-only diary page). Owner-guarded: ErrNotFound when
+	// the (user, record) pair is absent. Read-only and side-effect free — it never
+	// touches the star layer (no last_recalled_at / recall_count bump, unlike a recall).
+	GetRecordByID(ctx context.Context, userID, recordID string) (Record, error)
+
 	// GetReshapeContext reads the PE/strength input for a reconsolidation step
 	// (spec 23): the star's current reshaping state, embedding, co-recall total and
 	// age. Returns ErrNotFound when the (user, memory) pair has no star+embedding.

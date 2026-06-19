@@ -810,7 +810,12 @@ func (x *RecallMemoryRequest) GetMemoryId() string {
 	return ""
 }
 
-// Record is the immutable original (sourced from the records table).
+// Record is the immutable original (sourced from the records table). Reached two
+// ways: by a star (RecallMemory, keyed by memory_id) and by the diary id directly
+// (GetRecord, keyed by record_id — the standalone read-only diary page, spec 28).
+// On the record-id read memory_id is empty (no star context); on the recall read
+// record_id is empty (the star already knows its memory_id). Field numbers are
+// append-only — record_id appended as 7 (memory_id keeps 1).
 type Record struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MemoryId      string                 `protobuf:"bytes,1,opt,name=memory_id,json=memoryId,proto3" json:"memory_id,omitempty"`
@@ -819,6 +824,7 @@ type Record struct {
 	Mood          Mood                   `protobuf:"varint,4,opt,name=mood,proto3,enum=cosimosi.v1.Mood" json:"mood,omitempty"`
 	Intensity     float64                `protobuf:"fixed64,5,opt,name=intensity,proto3" json:"intensity,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	RecordId      string                 `protobuf:"bytes,7,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"` // 일기 단위 키 (GetRecord 응답에서 채움; RecallMemory 응답에선 "")
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -895,6 +901,13 @@ func (x *Record) GetCreatedAt() string {
 	return ""
 }
 
+func (x *Record) GetRecordId() string {
+	if x != nil {
+		return x.RecordId
+	}
+	return ""
+}
+
 type RecallMemoryResponse struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Record *Record                `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
@@ -950,22 +963,118 @@ func (x *RecallMemoryResponse) GetFragmentText() string {
 	return ""
 }
 
+// GetRecord reads one immutable original diary by its record_id (the Star.record_id
+// group key / RecordSummary.record_id), for the standalone read-only diary page
+// (change 09). NO_SIDE_EFFECTS — unlike RecallMemory it never touches the star
+// layer (no last_recalled_at / recall_count bump): reading a diary in the journal
+// must not re-ignite its stars. Owner-guarded — another user's record → NotFound.
+type GetRecordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RecordId      string                 `protobuf:"bytes,1,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecordRequest) Reset() {
+	*x = GetRecordRequest{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecordRequest) ProtoMessage() {}
+
+func (x *GetRecordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecordRequest.ProtoReflect.Descriptor instead.
+func (*GetRecordRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetRecordRequest) GetRecordId() string {
+	if x != nil {
+		return x.RecordId
+	}
+	return ""
+}
+
+type GetRecordResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Record        *Record                `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRecordResponse) Reset() {
+	*x = GetRecordResponse{}
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRecordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRecordResponse) ProtoMessage() {}
+
+func (x *GetRecordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRecordResponse.ProtoReflect.Descriptor instead.
+func (*GetRecordResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetRecordResponse) GetRecord() *Record {
+	if x != nil {
+		return x.Record
+	}
+	return nil
+}
+
 // RecordSummary is one immutable original diary as a wayfinding entry point: its id
 // (the Star.record_id group key), the entry date, a short body EXCERPT (never the full
 // body — that's RecallMemory's Record), and how many fragment stars (조각 별) it spawned.
 type RecordSummary struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RecordId      string                 `protobuf:"bytes,1,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`
-	EntryDate     string                 `protobuf:"bytes,2,opt,name=entry_date,json=entryDate,proto3" json:"entry_date,omitempty"`       // YYYY-MM-DD
-	BodyExcerpt   string                 `protobuf:"bytes,3,opt,name=body_excerpt,json=bodyExcerpt,proto3" json:"body_excerpt,omitempty"` // 일부(excerpt)만 — 본문 전체 아님
-	StarCount     int32                  `protobuf:"varint,4,opt,name=star_count,json=starCount,proto3" json:"star_count,omitempty"`      // 그 일기에서 태어난 조각 별 개수
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	RecordId    string                 `protobuf:"bytes,1,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`
+	EntryDate   string                 `protobuf:"bytes,2,opt,name=entry_date,json=entryDate,proto3" json:"entry_date,omitempty"`       // YYYY-MM-DD
+	BodyExcerpt string                 `protobuf:"bytes,3,opt,name=body_excerpt,json=bodyExcerpt,proto3" json:"body_excerpt,omitempty"` // 일부(excerpt)만 — 본문 전체 아님
+	StarCount   int32                  `protobuf:"varint,4,opt,name=star_count,json=starCount,proto3" json:"star_count,omitempty"`      // 그 일기에서 태어난 조각 별 개수
+	// change 09: 이 일기에서 태어난 조각 별들의 감정 facet(중복 제거). 일기 목록의 감정 필터가
+	// 서버 round-trip 없이 클라에서 걸 수 있게 함께 싣는다. 빈 배열 = 감정 미설정 조각만.
+	Moods         []Mood `protobuf:"varint,5,rep,packed,name=moods,proto3,enum=cosimosi.v1.Mood" json:"moods,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RecordSummary) Reset() {
 	*x = RecordSummary{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[12]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -977,7 +1086,7 @@ func (x *RecordSummary) String() string {
 func (*RecordSummary) ProtoMessage() {}
 
 func (x *RecordSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[12]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -990,7 +1099,7 @@ func (x *RecordSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordSummary.ProtoReflect.Descriptor instead.
 func (*RecordSummary) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{12}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RecordSummary) GetRecordId() string {
@@ -1021,6 +1130,13 @@ func (x *RecordSummary) GetStarCount() int32 {
 	return 0
 }
 
+func (x *RecordSummary) GetMoods() []Mood {
+	if x != nil {
+		return x.Moods
+	}
+	return nil
+}
+
 type ListRecordsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1029,7 +1145,7 @@ type ListRecordsRequest struct {
 
 func (x *ListRecordsRequest) Reset() {
 	*x = ListRecordsRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[13]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1041,7 +1157,7 @@ func (x *ListRecordsRequest) String() string {
 func (*ListRecordsRequest) ProtoMessage() {}
 
 func (x *ListRecordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[13]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1054,7 +1170,7 @@ func (x *ListRecordsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecordsRequest.ProtoReflect.Descriptor instead.
 func (*ListRecordsRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{13}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{15}
 }
 
 type ListRecordsResponse struct {
@@ -1066,7 +1182,7 @@ type ListRecordsResponse struct {
 
 func (x *ListRecordsResponse) Reset() {
 	*x = ListRecordsResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[14]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1078,7 +1194,7 @@ func (x *ListRecordsResponse) String() string {
 func (*ListRecordsResponse) ProtoMessage() {}
 
 func (x *ListRecordsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[14]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1091,7 +1207,7 @@ func (x *ListRecordsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecordsResponse.ProtoReflect.Descriptor instead.
 func (*ListRecordsResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{14}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListRecordsResponse) GetRecords() []*RecordSummary {
@@ -1120,7 +1236,7 @@ type EvolutionSnapshot struct {
 
 func (x *EvolutionSnapshot) Reset() {
 	*x = EvolutionSnapshot{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[15]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1132,7 +1248,7 @@ func (x *EvolutionSnapshot) String() string {
 func (*EvolutionSnapshot) ProtoMessage() {}
 
 func (x *EvolutionSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[15]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1145,7 +1261,7 @@ func (x *EvolutionSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvolutionSnapshot.ProtoReflect.Descriptor instead.
 func (*EvolutionSnapshot) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{15}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *EvolutionSnapshot) GetVersion() int32 {
@@ -1213,7 +1329,7 @@ type GetEvolutionHistoryRequest struct {
 
 func (x *GetEvolutionHistoryRequest) Reset() {
 	*x = GetEvolutionHistoryRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[16]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1341,7 @@ func (x *GetEvolutionHistoryRequest) String() string {
 func (*GetEvolutionHistoryRequest) ProtoMessage() {}
 
 func (x *GetEvolutionHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[16]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1354,7 @@ func (x *GetEvolutionHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEvolutionHistoryRequest.ProtoReflect.Descriptor instead.
 func (*GetEvolutionHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{16}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetEvolutionHistoryRequest) GetMemoryId() string {
@@ -1257,7 +1373,7 @@ type GetEvolutionHistoryResponse struct {
 
 func (x *GetEvolutionHistoryResponse) Reset() {
 	*x = GetEvolutionHistoryResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[17]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1269,7 +1385,7 @@ func (x *GetEvolutionHistoryResponse) String() string {
 func (*GetEvolutionHistoryResponse) ProtoMessage() {}
 
 func (x *GetEvolutionHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[17]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1282,7 +1398,7 @@ func (x *GetEvolutionHistoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEvolutionHistoryResponse.ProtoReflect.Descriptor instead.
 func (*GetEvolutionHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{17}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetEvolutionHistoryResponse) GetSnapshots() []*EvolutionSnapshot {
@@ -1305,7 +1421,7 @@ type LinkDelta struct {
 
 func (x *LinkDelta) Reset() {
 	*x = LinkDelta{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[18]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1317,7 +1433,7 @@ func (x *LinkDelta) String() string {
 func (*LinkDelta) ProtoMessage() {}
 
 func (x *LinkDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[18]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1330,7 +1446,7 @@ func (x *LinkDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkDelta.ProtoReflect.Descriptor instead.
 func (*LinkDelta) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{18}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *LinkDelta) GetAId() string {
@@ -1364,7 +1480,7 @@ type ReinforceLinksRequest struct {
 
 func (x *ReinforceLinksRequest) Reset() {
 	*x = ReinforceLinksRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[19]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1376,7 +1492,7 @@ func (x *ReinforceLinksRequest) String() string {
 func (*ReinforceLinksRequest) ProtoMessage() {}
 
 func (x *ReinforceLinksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[19]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1389,7 +1505,7 @@ func (x *ReinforceLinksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReinforceLinksRequest.ProtoReflect.Descriptor instead.
 func (*ReinforceLinksRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{19}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ReinforceLinksRequest) GetItems() []*LinkDelta {
@@ -1414,7 +1530,7 @@ type ReinforceLinksResponse struct {
 
 func (x *ReinforceLinksResponse) Reset() {
 	*x = ReinforceLinksResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[20]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1426,7 +1542,7 @@ func (x *ReinforceLinksResponse) String() string {
 func (*ReinforceLinksResponse) ProtoMessage() {}
 
 func (x *ReinforceLinksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[20]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1439,7 +1555,7 @@ func (x *ReinforceLinksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReinforceLinksResponse.ProtoReflect.Descriptor instead.
 func (*ReinforceLinksResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{20}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{22}
 }
 
 type ListDormantRequest struct {
@@ -1450,7 +1566,7 @@ type ListDormantRequest struct {
 
 func (x *ListDormantRequest) Reset() {
 	*x = ListDormantRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[21]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1462,7 +1578,7 @@ func (x *ListDormantRequest) String() string {
 func (*ListDormantRequest) ProtoMessage() {}
 
 func (x *ListDormantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[21]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1475,7 +1591,7 @@ func (x *ListDormantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDormantRequest.ProtoReflect.Descriptor instead.
 func (*ListDormantRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{21}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{23}
 }
 
 type ListDormantResponse struct {
@@ -1487,7 +1603,7 @@ type ListDormantResponse struct {
 
 func (x *ListDormantResponse) Reset() {
 	*x = ListDormantResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[22]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1499,7 +1615,7 @@ func (x *ListDormantResponse) String() string {
 func (*ListDormantResponse) ProtoMessage() {}
 
 func (x *ListDormantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[22]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1512,7 +1628,7 @@ func (x *ListDormantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDormantResponse.ProtoReflect.Descriptor instead.
 func (*ListDormantResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{22}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListDormantResponse) GetStars() []*Star {
@@ -1533,7 +1649,7 @@ type EmotionColor struct {
 
 func (x *EmotionColor) Reset() {
 	*x = EmotionColor{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[23]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1545,7 +1661,7 @@ func (x *EmotionColor) String() string {
 func (*EmotionColor) ProtoMessage() {}
 
 func (x *EmotionColor) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[23]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1558,7 +1674,7 @@ func (x *EmotionColor) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmotionColor.ProtoReflect.Descriptor instead.
 func (*EmotionColor) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{23}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *EmotionColor) GetMood() Mood {
@@ -1593,7 +1709,7 @@ type Settings struct {
 
 func (x *Settings) Reset() {
 	*x = Settings{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[24]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1605,7 +1721,7 @@ func (x *Settings) String() string {
 func (*Settings) ProtoMessage() {}
 
 func (x *Settings) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[24]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1618,7 +1734,7 @@ func (x *Settings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Settings.ProtoReflect.Descriptor instead.
 func (*Settings) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{24}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *Settings) GetTheme() string {
@@ -1664,7 +1780,7 @@ type GetSettingsRequest struct {
 
 func (x *GetSettingsRequest) Reset() {
 	*x = GetSettingsRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[25]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1676,7 +1792,7 @@ func (x *GetSettingsRequest) String() string {
 func (*GetSettingsRequest) ProtoMessage() {}
 
 func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[25]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1689,7 +1805,7 @@ func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{25}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{27}
 }
 
 type GetSettingsResponse struct {
@@ -1701,7 +1817,7 @@ type GetSettingsResponse struct {
 
 func (x *GetSettingsResponse) Reset() {
 	*x = GetSettingsResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[26]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1713,7 +1829,7 @@ func (x *GetSettingsResponse) String() string {
 func (*GetSettingsResponse) ProtoMessage() {}
 
 func (x *GetSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[26]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1726,7 +1842,7 @@ func (x *GetSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{26}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetSettingsResponse) GetSettings() *Settings {
@@ -1753,7 +1869,7 @@ type UpdateSettingsRequest struct {
 
 func (x *UpdateSettingsRequest) Reset() {
 	*x = UpdateSettingsRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[27]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1765,7 +1881,7 @@ func (x *UpdateSettingsRequest) String() string {
 func (*UpdateSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[27]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1778,7 +1894,7 @@ func (x *UpdateSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{27}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *UpdateSettingsRequest) GetTheme() string {
@@ -1825,7 +1941,7 @@ type UpdateSettingsResponse struct {
 
 func (x *UpdateSettingsResponse) Reset() {
 	*x = UpdateSettingsResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[28]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1837,7 +1953,7 @@ func (x *UpdateSettingsResponse) String() string {
 func (*UpdateSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[28]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1850,7 +1966,7 @@ func (x *UpdateSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{28}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UpdateSettingsResponse) GetSettings() *Settings {
@@ -1871,7 +1987,7 @@ type GetInventoryRequest struct {
 
 func (x *GetInventoryRequest) Reset() {
 	*x = GetInventoryRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[29]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1883,7 +1999,7 @@ func (x *GetInventoryRequest) String() string {
 func (*GetInventoryRequest) ProtoMessage() {}
 
 func (x *GetInventoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[29]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1896,7 +2012,7 @@ func (x *GetInventoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInventoryRequest.ProtoReflect.Descriptor instead.
 func (*GetInventoryRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{29}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{31}
 }
 
 type GetInventoryResponse struct {
@@ -1909,7 +2025,7 @@ type GetInventoryResponse struct {
 
 func (x *GetInventoryResponse) Reset() {
 	*x = GetInventoryResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[30]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1921,7 +2037,7 @@ func (x *GetInventoryResponse) String() string {
 func (*GetInventoryResponse) ProtoMessage() {}
 
 func (x *GetInventoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[30]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1934,7 +2050,7 @@ func (x *GetInventoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInventoryResponse.ProtoReflect.Descriptor instead.
 func (*GetInventoryResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{30}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetInventoryResponse) GetStardust() int64 {
@@ -1960,7 +2076,7 @@ type PurchaseItemRequest struct {
 
 func (x *PurchaseItemRequest) Reset() {
 	*x = PurchaseItemRequest{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[31]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1972,7 +2088,7 @@ func (x *PurchaseItemRequest) String() string {
 func (*PurchaseItemRequest) ProtoMessage() {}
 
 func (x *PurchaseItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[31]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1985,7 +2101,7 @@ func (x *PurchaseItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchaseItemRequest.ProtoReflect.Descriptor instead.
 func (*PurchaseItemRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{31}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *PurchaseItemRequest) GetItemId() string {
@@ -2006,7 +2122,7 @@ type PurchaseItemResponse struct {
 
 func (x *PurchaseItemResponse) Reset() {
 	*x = PurchaseItemResponse{}
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[32]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2018,7 +2134,7 @@ func (x *PurchaseItemResponse) String() string {
 func (*PurchaseItemResponse) ProtoMessage() {}
 
 func (x *PurchaseItemResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_memory_proto_msgTypes[32]
+	mi := &file_cosimosi_v1_memory_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2031,7 +2147,7 @@ func (x *PurchaseItemResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurchaseItemResponse.ProtoReflect.Descriptor instead.
 func (*PurchaseItemResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{32}
+	return file_cosimosi_v1_memory_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *PurchaseItemResponse) GetStardust() int64 {
@@ -2103,7 +2219,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x05stars\x18\x01 \x03(\v2\x11.cosimosi.v1.StarR\x05stars\x120\n" +
 	"\bsynapses\x18\x02 \x03(\v2\x14.cosimosi.v1.SynapseR\bsynapsesJ\x04\b\x03\x10\x04R\aambient\"2\n" +
 	"\x13RecallMemoryRequest\x12\x1b\n" +
-	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\"\xbc\x01\n" +
+	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\"\xd9\x01\n" +
 	"\x06Record\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1d\n" +
@@ -2112,17 +2228,23 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x04mood\x18\x04 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x1c\n" +
 	"\tintensity\x18\x05 \x01(\x01R\tintensity\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"h\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1b\n" +
+	"\trecord_id\x18\a \x01(\tR\brecordId\"h\n" +
 	"\x14RecallMemoryResponse\x12+\n" +
 	"\x06record\x18\x01 \x01(\v2\x13.cosimosi.v1.RecordR\x06record\x12#\n" +
-	"\rfragment_text\x18\x02 \x01(\tR\ffragmentText\"\x8d\x01\n" +
+	"\rfragment_text\x18\x02 \x01(\tR\ffragmentText\"/\n" +
+	"\x10GetRecordRequest\x12\x1b\n" +
+	"\trecord_id\x18\x01 \x01(\tR\brecordId\"@\n" +
+	"\x11GetRecordResponse\x12+\n" +
+	"\x06record\x18\x01 \x01(\v2\x13.cosimosi.v1.RecordR\x06record\"\xb6\x01\n" +
 	"\rRecordSummary\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x1d\n" +
 	"\n" +
 	"entry_date\x18\x02 \x01(\tR\tentryDate\x12!\n" +
 	"\fbody_excerpt\x18\x03 \x01(\tR\vbodyExcerpt\x12\x1d\n" +
 	"\n" +
-	"star_count\x18\x04 \x01(\x05R\tstarCount\"\x14\n" +
+	"star_count\x18\x04 \x01(\x05R\tstarCount\x12'\n" +
+	"\x05moods\x18\x05 \x03(\x0e2\x11.cosimosi.v1.MoodR\x05moods\"\x14\n" +
 	"\x12ListRecordsRequest\"K\n" +
 	"\x13ListRecordsResponse\x124\n" +
 	"\arecords\x18\x01 \x03(\v2\x1a.cosimosi.v1.RecordSummaryR\arecords\"\xed\x01\n" +
@@ -2208,13 +2330,14 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\n" +
 	"\x06STRESS\x10\v\x12\t\n" +
 	"\x05TIRED\x10\f\x12\r\n" +
-	"\tEMPTINESS\x10\r2\xe0\x05\n" +
+	"\tEMPTINESS\x10\r2\xb1\x06\n" +
 	"\rMemoryService\x12V\n" +
 	"\rSegmentMemory\x12!.cosimosi.v1.SegmentMemoryRequest\x1a\".cosimosi.v1.SegmentMemoryResponse\x12S\n" +
 	"\fRecordMemory\x12 .cosimosi.v1.RecordMemoryRequest\x1a!.cosimosi.v1.RecordMemoryResponse\x12U\n" +
 	"\vGetUniverse\x12\x1f.cosimosi.v1.GetUniverseRequest\x1a .cosimosi.v1.GetUniverseResponse\"\x03\x90\x02\x01\x12Y\n" +
 	"\x0eReinforceLinks\x12\".cosimosi.v1.ReinforceLinksRequest\x1a#.cosimosi.v1.ReinforceLinksResponse\x12S\n" +
-	"\fRecallMemory\x12 .cosimosi.v1.RecallMemoryRequest\x1a!.cosimosi.v1.RecallMemoryResponse\x12U\n" +
+	"\fRecallMemory\x12 .cosimosi.v1.RecallMemoryRequest\x1a!.cosimosi.v1.RecallMemoryResponse\x12O\n" +
+	"\tGetRecord\x12\x1d.cosimosi.v1.GetRecordRequest\x1a\x1e.cosimosi.v1.GetRecordResponse\"\x03\x90\x02\x01\x12U\n" +
 	"\vListDormant\x12\x1f.cosimosi.v1.ListDormantRequest\x1a .cosimosi.v1.ListDormantResponse\"\x03\x90\x02\x01\x12m\n" +
 	"\x13GetEvolutionHistory\x12'.cosimosi.v1.GetEvolutionHistoryRequest\x1a(.cosimosi.v1.GetEvolutionHistoryResponse\"\x03\x90\x02\x01\x12U\n" +
 	"\vListRecords\x12\x1f.cosimosi.v1.ListRecordsRequest\x1a .cosimosi.v1.ListRecordsResponse\"\x03\x90\x02\x012\xf2\x02\n" +
@@ -2237,7 +2360,7 @@ func file_cosimosi_v1_memory_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_v1_memory_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_cosimosi_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_cosimosi_v1_memory_proto_goTypes = []any{
 	(Mood)(0),                           // 0: cosimosi.v1.Mood
 	(*SegmentDraft)(nil),                // 1: cosimosi.v1.SegmentDraft
@@ -2252,27 +2375,29 @@ var file_cosimosi_v1_memory_proto_goTypes = []any{
 	(*RecallMemoryRequest)(nil),         // 10: cosimosi.v1.RecallMemoryRequest
 	(*Record)(nil),                      // 11: cosimosi.v1.Record
 	(*RecallMemoryResponse)(nil),        // 12: cosimosi.v1.RecallMemoryResponse
-	(*RecordSummary)(nil),               // 13: cosimosi.v1.RecordSummary
-	(*ListRecordsRequest)(nil),          // 14: cosimosi.v1.ListRecordsRequest
-	(*ListRecordsResponse)(nil),         // 15: cosimosi.v1.ListRecordsResponse
-	(*EvolutionSnapshot)(nil),           // 16: cosimosi.v1.EvolutionSnapshot
-	(*GetEvolutionHistoryRequest)(nil),  // 17: cosimosi.v1.GetEvolutionHistoryRequest
-	(*GetEvolutionHistoryResponse)(nil), // 18: cosimosi.v1.GetEvolutionHistoryResponse
-	(*LinkDelta)(nil),                   // 19: cosimosi.v1.LinkDelta
-	(*ReinforceLinksRequest)(nil),       // 20: cosimosi.v1.ReinforceLinksRequest
-	(*ReinforceLinksResponse)(nil),      // 21: cosimosi.v1.ReinforceLinksResponse
-	(*ListDormantRequest)(nil),          // 22: cosimosi.v1.ListDormantRequest
-	(*ListDormantResponse)(nil),         // 23: cosimosi.v1.ListDormantResponse
-	(*EmotionColor)(nil),                // 24: cosimosi.v1.EmotionColor
-	(*Settings)(nil),                    // 25: cosimosi.v1.Settings
-	(*GetSettingsRequest)(nil),          // 26: cosimosi.v1.GetSettingsRequest
-	(*GetSettingsResponse)(nil),         // 27: cosimosi.v1.GetSettingsResponse
-	(*UpdateSettingsRequest)(nil),       // 28: cosimosi.v1.UpdateSettingsRequest
-	(*UpdateSettingsResponse)(nil),      // 29: cosimosi.v1.UpdateSettingsResponse
-	(*GetInventoryRequest)(nil),         // 30: cosimosi.v1.GetInventoryRequest
-	(*GetInventoryResponse)(nil),        // 31: cosimosi.v1.GetInventoryResponse
-	(*PurchaseItemRequest)(nil),         // 32: cosimosi.v1.PurchaseItemRequest
-	(*PurchaseItemResponse)(nil),        // 33: cosimosi.v1.PurchaseItemResponse
+	(*GetRecordRequest)(nil),            // 13: cosimosi.v1.GetRecordRequest
+	(*GetRecordResponse)(nil),           // 14: cosimosi.v1.GetRecordResponse
+	(*RecordSummary)(nil),               // 15: cosimosi.v1.RecordSummary
+	(*ListRecordsRequest)(nil),          // 16: cosimosi.v1.ListRecordsRequest
+	(*ListRecordsResponse)(nil),         // 17: cosimosi.v1.ListRecordsResponse
+	(*EvolutionSnapshot)(nil),           // 18: cosimosi.v1.EvolutionSnapshot
+	(*GetEvolutionHistoryRequest)(nil),  // 19: cosimosi.v1.GetEvolutionHistoryRequest
+	(*GetEvolutionHistoryResponse)(nil), // 20: cosimosi.v1.GetEvolutionHistoryResponse
+	(*LinkDelta)(nil),                   // 21: cosimosi.v1.LinkDelta
+	(*ReinforceLinksRequest)(nil),       // 22: cosimosi.v1.ReinforceLinksRequest
+	(*ReinforceLinksResponse)(nil),      // 23: cosimosi.v1.ReinforceLinksResponse
+	(*ListDormantRequest)(nil),          // 24: cosimosi.v1.ListDormantRequest
+	(*ListDormantResponse)(nil),         // 25: cosimosi.v1.ListDormantResponse
+	(*EmotionColor)(nil),                // 26: cosimosi.v1.EmotionColor
+	(*Settings)(nil),                    // 27: cosimosi.v1.Settings
+	(*GetSettingsRequest)(nil),          // 28: cosimosi.v1.GetSettingsRequest
+	(*GetSettingsResponse)(nil),         // 29: cosimosi.v1.GetSettingsResponse
+	(*UpdateSettingsRequest)(nil),       // 30: cosimosi.v1.UpdateSettingsRequest
+	(*UpdateSettingsResponse)(nil),      // 31: cosimosi.v1.UpdateSettingsResponse
+	(*GetInventoryRequest)(nil),         // 32: cosimosi.v1.GetInventoryRequest
+	(*GetInventoryResponse)(nil),        // 33: cosimosi.v1.GetInventoryResponse
+	(*PurchaseItemRequest)(nil),         // 34: cosimosi.v1.PurchaseItemRequest
+	(*PurchaseItemResponse)(nil),        // 35: cosimosi.v1.PurchaseItemResponse
 }
 var file_cosimosi_v1_memory_proto_depIdxs = []int32{
 	0,  // 0: cosimosi.v1.SegmentDraft.mood:type_name -> cosimosi.v1.Mood
@@ -2284,44 +2409,48 @@ var file_cosimosi_v1_memory_proto_depIdxs = []int32{
 	7,  // 6: cosimosi.v1.GetUniverseResponse.synapses:type_name -> cosimosi.v1.Synapse
 	0,  // 7: cosimosi.v1.Record.mood:type_name -> cosimosi.v1.Mood
 	11, // 8: cosimosi.v1.RecallMemoryResponse.record:type_name -> cosimosi.v1.Record
-	13, // 9: cosimosi.v1.ListRecordsResponse.records:type_name -> cosimosi.v1.RecordSummary
-	16, // 10: cosimosi.v1.GetEvolutionHistoryResponse.snapshots:type_name -> cosimosi.v1.EvolutionSnapshot
-	19, // 11: cosimosi.v1.ReinforceLinksRequest.items:type_name -> cosimosi.v1.LinkDelta
-	6,  // 12: cosimosi.v1.ListDormantResponse.stars:type_name -> cosimosi.v1.Star
-	0,  // 13: cosimosi.v1.EmotionColor.mood:type_name -> cosimosi.v1.Mood
-	24, // 14: cosimosi.v1.Settings.emotion_colors:type_name -> cosimosi.v1.EmotionColor
-	25, // 15: cosimosi.v1.GetSettingsResponse.settings:type_name -> cosimosi.v1.Settings
-	24, // 16: cosimosi.v1.UpdateSettingsRequest.emotion_colors:type_name -> cosimosi.v1.EmotionColor
-	25, // 17: cosimosi.v1.UpdateSettingsResponse.settings:type_name -> cosimosi.v1.Settings
-	2,  // 18: cosimosi.v1.MemoryService.SegmentMemory:input_type -> cosimosi.v1.SegmentMemoryRequest
-	4,  // 19: cosimosi.v1.MemoryService.RecordMemory:input_type -> cosimosi.v1.RecordMemoryRequest
-	8,  // 20: cosimosi.v1.MemoryService.GetUniverse:input_type -> cosimosi.v1.GetUniverseRequest
-	20, // 21: cosimosi.v1.MemoryService.ReinforceLinks:input_type -> cosimosi.v1.ReinforceLinksRequest
-	10, // 22: cosimosi.v1.MemoryService.RecallMemory:input_type -> cosimosi.v1.RecallMemoryRequest
-	22, // 23: cosimosi.v1.MemoryService.ListDormant:input_type -> cosimosi.v1.ListDormantRequest
-	17, // 24: cosimosi.v1.MemoryService.GetEvolutionHistory:input_type -> cosimosi.v1.GetEvolutionHistoryRequest
-	14, // 25: cosimosi.v1.MemoryService.ListRecords:input_type -> cosimosi.v1.ListRecordsRequest
-	26, // 26: cosimosi.v1.SettingsService.GetSettings:input_type -> cosimosi.v1.GetSettingsRequest
-	28, // 27: cosimosi.v1.SettingsService.UpdateSettings:input_type -> cosimosi.v1.UpdateSettingsRequest
-	30, // 28: cosimosi.v1.SettingsService.GetInventory:input_type -> cosimosi.v1.GetInventoryRequest
-	32, // 29: cosimosi.v1.SettingsService.PurchaseItem:input_type -> cosimosi.v1.PurchaseItemRequest
-	3,  // 30: cosimosi.v1.MemoryService.SegmentMemory:output_type -> cosimosi.v1.SegmentMemoryResponse
-	5,  // 31: cosimosi.v1.MemoryService.RecordMemory:output_type -> cosimosi.v1.RecordMemoryResponse
-	9,  // 32: cosimosi.v1.MemoryService.GetUniverse:output_type -> cosimosi.v1.GetUniverseResponse
-	21, // 33: cosimosi.v1.MemoryService.ReinforceLinks:output_type -> cosimosi.v1.ReinforceLinksResponse
-	12, // 34: cosimosi.v1.MemoryService.RecallMemory:output_type -> cosimosi.v1.RecallMemoryResponse
-	23, // 35: cosimosi.v1.MemoryService.ListDormant:output_type -> cosimosi.v1.ListDormantResponse
-	18, // 36: cosimosi.v1.MemoryService.GetEvolutionHistory:output_type -> cosimosi.v1.GetEvolutionHistoryResponse
-	15, // 37: cosimosi.v1.MemoryService.ListRecords:output_type -> cosimosi.v1.ListRecordsResponse
-	27, // 38: cosimosi.v1.SettingsService.GetSettings:output_type -> cosimosi.v1.GetSettingsResponse
-	29, // 39: cosimosi.v1.SettingsService.UpdateSettings:output_type -> cosimosi.v1.UpdateSettingsResponse
-	31, // 40: cosimosi.v1.SettingsService.GetInventory:output_type -> cosimosi.v1.GetInventoryResponse
-	33, // 41: cosimosi.v1.SettingsService.PurchaseItem:output_type -> cosimosi.v1.PurchaseItemResponse
-	30, // [30:42] is the sub-list for method output_type
-	18, // [18:30] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	11, // 9: cosimosi.v1.GetRecordResponse.record:type_name -> cosimosi.v1.Record
+	0,  // 10: cosimosi.v1.RecordSummary.moods:type_name -> cosimosi.v1.Mood
+	15, // 11: cosimosi.v1.ListRecordsResponse.records:type_name -> cosimosi.v1.RecordSummary
+	18, // 12: cosimosi.v1.GetEvolutionHistoryResponse.snapshots:type_name -> cosimosi.v1.EvolutionSnapshot
+	21, // 13: cosimosi.v1.ReinforceLinksRequest.items:type_name -> cosimosi.v1.LinkDelta
+	6,  // 14: cosimosi.v1.ListDormantResponse.stars:type_name -> cosimosi.v1.Star
+	0,  // 15: cosimosi.v1.EmotionColor.mood:type_name -> cosimosi.v1.Mood
+	26, // 16: cosimosi.v1.Settings.emotion_colors:type_name -> cosimosi.v1.EmotionColor
+	27, // 17: cosimosi.v1.GetSettingsResponse.settings:type_name -> cosimosi.v1.Settings
+	26, // 18: cosimosi.v1.UpdateSettingsRequest.emotion_colors:type_name -> cosimosi.v1.EmotionColor
+	27, // 19: cosimosi.v1.UpdateSettingsResponse.settings:type_name -> cosimosi.v1.Settings
+	2,  // 20: cosimosi.v1.MemoryService.SegmentMemory:input_type -> cosimosi.v1.SegmentMemoryRequest
+	4,  // 21: cosimosi.v1.MemoryService.RecordMemory:input_type -> cosimosi.v1.RecordMemoryRequest
+	8,  // 22: cosimosi.v1.MemoryService.GetUniverse:input_type -> cosimosi.v1.GetUniverseRequest
+	22, // 23: cosimosi.v1.MemoryService.ReinforceLinks:input_type -> cosimosi.v1.ReinforceLinksRequest
+	10, // 24: cosimosi.v1.MemoryService.RecallMemory:input_type -> cosimosi.v1.RecallMemoryRequest
+	13, // 25: cosimosi.v1.MemoryService.GetRecord:input_type -> cosimosi.v1.GetRecordRequest
+	24, // 26: cosimosi.v1.MemoryService.ListDormant:input_type -> cosimosi.v1.ListDormantRequest
+	19, // 27: cosimosi.v1.MemoryService.GetEvolutionHistory:input_type -> cosimosi.v1.GetEvolutionHistoryRequest
+	16, // 28: cosimosi.v1.MemoryService.ListRecords:input_type -> cosimosi.v1.ListRecordsRequest
+	28, // 29: cosimosi.v1.SettingsService.GetSettings:input_type -> cosimosi.v1.GetSettingsRequest
+	30, // 30: cosimosi.v1.SettingsService.UpdateSettings:input_type -> cosimosi.v1.UpdateSettingsRequest
+	32, // 31: cosimosi.v1.SettingsService.GetInventory:input_type -> cosimosi.v1.GetInventoryRequest
+	34, // 32: cosimosi.v1.SettingsService.PurchaseItem:input_type -> cosimosi.v1.PurchaseItemRequest
+	3,  // 33: cosimosi.v1.MemoryService.SegmentMemory:output_type -> cosimosi.v1.SegmentMemoryResponse
+	5,  // 34: cosimosi.v1.MemoryService.RecordMemory:output_type -> cosimosi.v1.RecordMemoryResponse
+	9,  // 35: cosimosi.v1.MemoryService.GetUniverse:output_type -> cosimosi.v1.GetUniverseResponse
+	23, // 36: cosimosi.v1.MemoryService.ReinforceLinks:output_type -> cosimosi.v1.ReinforceLinksResponse
+	12, // 37: cosimosi.v1.MemoryService.RecallMemory:output_type -> cosimosi.v1.RecallMemoryResponse
+	14, // 38: cosimosi.v1.MemoryService.GetRecord:output_type -> cosimosi.v1.GetRecordResponse
+	25, // 39: cosimosi.v1.MemoryService.ListDormant:output_type -> cosimosi.v1.ListDormantResponse
+	20, // 40: cosimosi.v1.MemoryService.GetEvolutionHistory:output_type -> cosimosi.v1.GetEvolutionHistoryResponse
+	17, // 41: cosimosi.v1.MemoryService.ListRecords:output_type -> cosimosi.v1.ListRecordsResponse
+	29, // 42: cosimosi.v1.SettingsService.GetSettings:output_type -> cosimosi.v1.GetSettingsResponse
+	31, // 43: cosimosi.v1.SettingsService.UpdateSettings:output_type -> cosimosi.v1.UpdateSettingsResponse
+	33, // 44: cosimosi.v1.SettingsService.GetInventory:output_type -> cosimosi.v1.GetInventoryResponse
+	35, // 45: cosimosi.v1.SettingsService.PurchaseItem:output_type -> cosimosi.v1.PurchaseItemResponse
+	33, // [33:46] is the sub-list for method output_type
+	20, // [20:33] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_v1_memory_proto_init() }
@@ -2329,14 +2458,14 @@ func file_cosimosi_v1_memory_proto_init() {
 	if File_cosimosi_v1_memory_proto != nil {
 		return
 	}
-	file_cosimosi_v1_memory_proto_msgTypes[27].OneofWrappers = []any{}
+	file_cosimosi_v1_memory_proto_msgTypes[29].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_v1_memory_proto_rawDesc), len(file_cosimosi_v1_memory_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   33,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

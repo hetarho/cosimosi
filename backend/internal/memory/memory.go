@@ -314,6 +314,10 @@ type RecordSummary struct {
 	EntryDate   time.Time
 	BodyExcerpt string
 	StarCount   int
+	// Moods is the de-duplicated set of moods across this diary's fragment stars
+	// (change 09) — the emotion facet the journal list filters on client-side
+	// without a server round-trip. Empty when no fragment carries a mood.
+	Moods []Mood
 }
 
 // LinkService is the consumer-defined synapse port the memory service needs: read
