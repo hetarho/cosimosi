@@ -243,4 +243,8 @@ export const VALUES = {
   demoOverlay: {
     maxBridges: 4,
   },
+  demoFreeMode: {
+    randomStarMin: 1,
+    randomStarMax: 5,
+  },
 } as const

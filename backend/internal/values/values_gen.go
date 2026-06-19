@@ -341,3 +341,9 @@ const (
 const (
 	DemoOverlayMaxBridges = 4
 )
+
+// demo_free_mode
+const (
+	DemoFreeModeRandomStarMin = 1
+	DemoFreeModeRandomStarMax = 5
+)

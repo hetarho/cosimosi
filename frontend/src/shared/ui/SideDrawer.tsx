@@ -75,6 +75,7 @@ export function SideDrawer({ open, title, onClose, children }: SideDrawerProps) 
                 type="button"
                 onClick={onClose}
                 aria-label="닫기"
+                data-tour-id="sidebar-close"
                 className="rounded-md px-2 text-white/50 transition hover:text-white/90"
               >
                 ✕

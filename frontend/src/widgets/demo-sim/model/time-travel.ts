@@ -8,9 +8,13 @@ import {
   demoConsolidate,
   enterDemoMode,
   exitDemoMode,
+  getDemoFlow,
   getDemoPersona,
+  getTutorialStep,
   resetDemo,
+  setDemoFlow,
   setDemoPersona,
+  setTutorialStep,
   type DemoPersona,
 } from '@/shared/lib/demo'
 import { dormantInvalidateKey, refreshActivation, universeInvalidateKey } from '@/entities/memory'
@@ -34,11 +38,18 @@ export function runConsolidate(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
 }
 
-/** "처음으로": 체험의 휘발성 상태를 즉시 다시 들어오는 결과와 동일한 경로로 초기화한다. */
+/** "처음으로": 체험의 휘발성 상태를 즉시 다시 들어오는 결과와 동일한 경로로 초기화한다.
+ *  진입 흐름(free·tutorial)과 튜토리얼 step을 보존한다 — exit/enter는 데이터 출처 리셋(캐시·스토어
+ *  비우기)을 위한 것이지 온보딩/튜토리얼 진행을 되돌리는 게 아니다(plan 47·48: 처음으로/페르소나
+ *  전환은 모드·진행을 유지). exitDemoMode가 flow·step을 비우므로 캡처 후 복원한다. */
 export function resetDemoExperience(): void {
+  const flow = getDemoFlow()
+  const step = getTutorialStep()
   exitDemoMode()
   resetDemo()
   enterDemoMode()
+  setDemoFlow(flow)
+  setTutorialStep(step)
 }
 
 /** 페르소나 전환 시 우주의 주인공(데이터 출처)을 바꾼다. 전환은 "처음으로"와 같은 리셋

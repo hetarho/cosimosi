@@ -6,7 +6,16 @@ export {
   setDemoModeListener,
   getDemoPersona,
   setDemoPersona,
+  getDemoFlow,
+  setDemoFlow,
+  resetDemoFlow,
+  getTutorialStep,
+  setTutorialStep,
+  enterTutorialMode,
+  completeTutorial,
+  restartTutorial,
   type DemoPersona,
+  type DemoFlow,
 } from './flag'
 export { demoPersonaList, type DemoPersonaMeta } from './personas'
 export {
@@ -19,6 +28,7 @@ export {
   demoAddRecord,
   demoAddStar,
   demoAddMultiSceneStar,
+  demoAddRandomStars,
   demoToday,
   demoMarkRecalled,
   demoReshape,
@@ -29,6 +39,7 @@ export {
   resetDemo,
 } from './data'
 export type { EvolutionSnap, DemoOverlaySide } from './data'
+export { startDemoSession } from './session'
 export { useDemoOverlay } from './overlay-mode'
 export { virtualNowMs, skipDemoDays, demoOffsetDays, resetDemoClock } from './clock'
 export { brightestStarId, thickestEdge, sameDayPair, dormantStarId } from './observe'

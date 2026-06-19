@@ -8,7 +8,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Sparkles, ArrowRight, Mail, Rocket, LogIn } from 'lucide-react'
 import { GlassCard, Section } from '@/shared/ui'
 import { MOOD } from '@/shared/config'
-import { enterDemoMode, exitDemoMode, resetDemo } from '@/shared/lib/demo'
+import { startDemoSession, exitDemoMode, resetDemo } from '@/shared/lib/demo'
 
 // 대기자 등록 폼 스키마 (zod v4)
 const schema = z.object({
@@ -24,7 +24,7 @@ export function CtaFooterSection() {
   // 체험("demo") 모드 진입: 로그인/DB 없이 체험 우주로 바로 들어간다. 플래그를 먼저
   // 켜고 루트 우주 `/`로 이동하면 세션 게이트가 통과시키고 API들이 더미데이터를 돌려준다.
   const tryDemo = () => {
-    enterDemoMode()
+    startDemoSession()
     void navigate({ to: '/' })
   }
 

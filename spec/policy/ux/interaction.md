@@ -4,7 +4,7 @@
 
 ## 정의
 
-cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 동작한다. 사용자가 별을 일정 시간 이상 *바라보는* 행위만이 회상·공동 회상으로 카운트되고, 그보다 짧은 스침은 아무 것도 바꾸지 않는다. 현재 구현된 갈래는 네 가지다: (1) **회상** — 별 클릭 → ≥2초 능동 열람 → 읽기 전용 원본 패널, (2) **공동 회상** — 직전 능동 열람 별과의 페어 연결 강화, (3) **기록** — 본문+감정+강도+날짜 폼 제출 → 단일 별 낙관적 등장, (4) **체험(demo)** — 비로그인 더미 우주 + **기억 시뮬레이션 패널**(가상 시계·시간 머신·이론별 체험 액션). AI 감정 감지·기억 조각화는 plan 20·21에서 다룬다(아직 정책 아님).
+cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 동작한다. 사용자가 별을 일정 시간 이상 *바라보는* 행위만이 회상·공동 회상으로 카운트되고, 그보다 짧은 스침은 아무 것도 바꾸지 않는다. 현재 구현된 갈래는 네 가지다: (1) **회상** — 별 클릭 → ≥2초 능동 열람 → 읽기 전용 원본 패널, (2) **공동 회상** — 직전 능동 열람 별과의 페어 연결 강화, (3) **기록** — 본문+감정+강도+날짜 폼 제출 → 단일 별 낙관적 등장, (4) **체험(demo)** — 비로그인 더미 우주. 온보딩(페르소나 → 모드 선택)을 거쳐 자유모드로 들어가고(plan 47), 자유모드는 우주 셸 HUD에 데모 페르소나/시간 버튼·가상 시계·랜덤 별 생성을 얹는다(기능 안내 투어는 plan 48). AI 감정 감지·기억 조각화는 plan 20·21에서 다룬다(아직 정책 아님).
 
 ## 규칙 · 파라미터
 
@@ -51,15 +51,17 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 
 | 규칙 | 값 |
 | --- | --- |
-| 진입 — 랜딩의 "체험 우주 시작하기" 또는 카드 "체험 우주에서 해보기" → `enterDemoMode()` → `sessionStorage('cosimosi:demo'='1')` → `/`(카드는 `?sim=<id>`로 해당 이론 포커스, 잘못된 id 무시) | 세션 플래그 |
+| 진입 — 랜딩의 "체험 우주 시작하기" 또는 카드 "체험 우주에서 해보기" → `startDemoSession()`(더미 우주·진입 흐름 리셋 + `enterDemoMode()`) → `sessionStorage('cosimosi:demo'='1')` → `/`. 매 진입은 온보딩부터 시작한다(아래) | 세션 플래그 |
+| **온보딩 → 자유모드(plan 47)** — `/` 진입이 데모이고 진입 흐름(`cosimosi:demo-flow`)이 `free`가 아니면 우주 HUD 대신 선택 화면을 먼저 띄운다: ① "누구의 우주를 탐험해볼까요?" 세 페르소나, ② "기능 하나하나 알아보기"(plan 48 튜토리얼) / "자유롭게 탐험해보기"(`free`). 흐름은 데모 세션에만 저장되고 새로고침에도 `free`는 유지된다(온보딩으로 다시 안 튕김). 캔버스는 뒤에서 계속 돈다 | `cosimosi:demo-flow` |
 | 데이터 출처 — `isDemoMode()`이면 API 래퍼가 백엔드 대신 더미데이터로 분기(`demoStars`/`demoSynapses`/`demoRecall`/`demoAddRecord`) | 체험 우주 |
-| **가상 시계** — 체험 우주의 밝기·잠듦 파생 "현재 시각"은 `virtualNowMs() = Date.now() + offset`(offset은 demo에서만 ≠0). 기억 실험실 "하루/한 달"이 하루 단위 배치(`skipDemoDays(1)` → `demoConsolidate()`)를 반복하고 별·엣지 밝기를 재파생 — 실제 감쇠 수식([star](../domain/star.md) 반감기 30일·바닥 5%)이 그대로 돈다. 비demo는 항상 `Date.now()`와 동일값 | `demoApplyDayBatch` |
+| **가상 시계** — 체험 우주의 밝기·잠듦 파생 "현재 시각"은 `virtualNowMs() = Date.now() + offset`(offset은 demo에서만 ≠0). 자유모드 시간 버튼 "하루/한 달 후로 이동"이 하루 단위 배치(`skipDemoDays(1)` → `demoConsolidate()`)를 반복하고 별·엣지 밝기를 재파생 — 실제 감쇠 수식([star](../domain/star.md) 반감기 30일·바닥 5%)이 그대로 돈다. 비demo는 항상 `Date.now()`와 동일값 | `demoApplyDayBatch` |
 | **체험 재점화** — 체험 우주 회상(≥2초)도 그 별의 `lastRecalledAt`을 가상 now로 전진(`demoMarkRecalled`) + universe 쿼리 무효화 → 잠든 별이 다시 밝아지는 루프가 체험 우주에서 완결 | 서버 대칭 |
-| **체험 별 띄우기** — 체험 우주의 기록은 작성 폼이 아니라 기억 실험실의 "우주 키우기": 감정·날짜만 고르면 그 감정으로 미리 써 둔 일기 중 무작위 본문으로 별이 태어난다(`demoAddStar`). 같은 (가상)날 별과 temporal, 같은 mood 최신 별과 semantic 연결을 로컬 생성 | 근사 시연 |
+| **체험 별 띄우기** — 자유모드 하단 중앙 `새 별 띄우기`는 작성 폼·날짜/감정 선택 없이 즉시 랜덤 별을 만든다(`demoAddRandomStars`): 1회 클릭에 1~5개(`values.yaml demo_free_mode`), 각 별은 13종 canonical mood 중 무작위, 날짜는 `demoToday()`. 같은 (가상)날 별과 temporal, 같은 mood 최신 별과 semantic, 최근 회상 hot 별과 흥분성 연결을 로컬 생성(`demoAddRecord` 재사용) | 근사 시연 |
 | **헵 로컬 미리보기** — 체험 우주에서 공동 회상 페어가 확정되는 즉시 그 엣지 weight를 로컬 +0.05(상한 1.0, 없던 페어는 `co_recall` 로컬 생성) → 굵어짐이 바로 보인다. `reinforceLinks`는 여전히 no-op, 서버/proto 미기록 | no server write |
-| **기억 실험실 HUD** — 체험 우주에서만, 좌하단 진입 칩 2개로 **서로 다른 모달**을 연다: ① "기억 실험실" 컨트롤러 패널(우주 키우기·시간 보내기·다른 삶 보기), ② "뇌과학 이론" 안내 모달. `?sim=<id>` 진입은 이론 모달이 그 페이지로 열린 채 시작. 회상 패널·일기/잠든 별 오버레이가 열리면 기억 실험실은 숨고, 시간 이동은 데이터 배치와 force-sim 조용한 재안정화 후 최종 좌표를 보여준다. "처음" = exit→reset→enter 경로로 초기 우주 복귀 | `widgets/demo-sim` |
-| 새로고침 시 모듈 리로드 → base 더미만 재생성, 체험 중 추가한 별·연결·가상 시계 offset 소멸 | 세션 한정 |
-| 화면 코드 동일 — 회상·이웃·잠든 별 동선은 메인 우주와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기). 예외: **기록 폼은 체험 우주에서 숨김**(기억 실험실이 대체) | 기록만 대체 |
+| **자유모드 컨트롤(plan 47)** — 좌상단 테마 pill 아래 데모 전용 아이콘 버튼 두 개: ① 페르소나 팝오버(세 페르소나 — 고르면 `switchDemoPersona`로 그 우주 재시드, 가상 시계·추가 별 0, 자유모드 유지), ② 시간 팝오버("하루 후"/"한 달 후"/"처음으로"). "처음으로"는 현재 페르소나·자유모드를 유지한 채 시계·추가 별 0으로 복귀(온보딩으로 안 돌아감). 한 번에 하나만 열리고 다른 표면이 열리면 닫힌다. 좌하단 `기억 실험실`/`뇌과학 이론` 칩·컨트롤러는 자유모드에 없다(이론·기능 안내는 plan 48 튜토리얼) | `DemoFreeModeControls` |
+| **튜토리얼모드(plan 48)** — 모드 선택 `기능 하나하나 알아보기` → flow=`tutorial`. 자유모드 셸 위에 투어 overlay(`widgets/demo-tour`)를 얹어 HUD 버튼을 순서대로(UI 숨김·테마·페르소나·시간·메뉴·시점·망원경·일기/별 탭·새 별·별 클릭) 짚는다. **행동 안내형**: 단계는 phase로 나뉘어 사용자가 실제 버튼을 눌러 진행한다(UI 숨김 토글·팝오버 열림 관찰; 페르소나/시간은 버튼→팝오버 순으로 하이라이트가 옮겨가 카드가 팝오버를 안 가림). `다음`으로 건너뛸 수도 있다. 강조는 현재 target만 남기고 나머지를 어둡게 덮어 클릭을 막는 **딤 + 구멍** + 둘레의 **빛나는 glow 테두리**(하이라이트된 버튼만 누를 수 있다). target은 `data-tour-id`로 찾고, 못 찾는 단계(캔버스 안 별·시작/끝)는 딤이 클릭을 막지 않고 중앙 안내 카드만 띄운다. coach card(제목/문구/진행 점/이전/다음/건너뛰기). step은 데모 세션에 저장(새로고침 시 이어감). `건너뛰기`/마지막 `자유롭게 탐험하기`→`free`, 사이드바 `둘러보기 다시 보기`로 재진입 | `DemoGuidedTour` |
+| 새로고침 시 모듈 리로드 → base 더미만 재생성, 체험 중 추가한 별·연결·가상 시계 offset 소멸(진입 흐름·튜토리얼 step은 sessionStorage라 유지) | 세션 한정 |
+| 화면 코드 동일 — 회상·이웃·잠든 별 동선은 메인 우주와 같은 컴포넌트(데이터 출처는 쿼리 queryFn 안에서 분기). 차이: 하단 `새 별 띄우기`가 실계정은 작성 폼, 데모는 랜덤 별 생성으로 분기 | 기록만 분기 |
 | 모드 전환(enter/exit) = 데이터 출처 전환 → 쿼리 캐시·렌더 스토어 전체 리셋([data-sync](../domain/data-sync.md) 출처 경계) — 체험 별이 실계정 우주에 섞이지 않는다 | 경계 리셋 |
 
 ### 5. 변천사 보기 (evolution timelapse, 24)
@@ -105,10 +107,10 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | **사이드바 (햄버거)** | 우측에서 슬라이드인하는 **차단형** 드로어(`SideDrawer`) — 딤 backdrop·탭/Esc/✕로 닫힘·열릴 때 포커스 진입·reduced-motion. 항목 순서: 로그아웃(데모면 "체험 종료") · 마이페이지 · 구분선 · 우주 공개 · 주고받은 별 · 구분선 · 일기. 데모는 마이페이지·우주 공개·주고받은 별을 숨긴다. **작성 항목 없음**(작성은 하단 중앙 버튼). 로그아웃이 여기로 수렴하므로 우주 셸에선 `SessionGate` 우상단 로그아웃 pin을 억제한다 |
 | **우주 탐색기 (망원경)** | 비차단 표면(모바일 바텀시트/데스크톱 떠있는 카드). 탭 둘 — **일기**(원본 일기 목록 + 검색·감정·날짜 범위 필터; 선택 → 일기 조망 §6) · **별**(AWAKE+DORMANT 별을 `lastRecalledAt` 오름차순 한 목록으로 + 검색·감정·날짜·잠듦(전체/깨어있는/잠든 별) 필터 + "N일 전 회상"; 선택 → 그 별로 fly-to). **잠든 별 전용 진입점은 폐기**되어 별 탭에 흡수됐다 |
 | **UI 숨기기 토글 (상단 중앙)** | Eye/EyeOff. "UI 숨기기"는 모든 표면을 닫고 포커스·변천사를 해제한 뒤, 토글 자신을 뺀 모든 HUD를 숨긴다(캔버스는 그대로 — 우주만 남김). "UI 보이기"로 기본 HUD 복구 |
-| **새 별 띄우기 (하단 중앙)** | 떠있는 Plus 버튼 → 작성 `MemoryForm` 표면. **데모에선 숨김**(기억 실험실의 "우주 키우기"가 기록 담당 — §4) |
+| **새 별 띄우기 (하단 중앙)** | 떠있는 Plus 버튼. 실계정은 작성 `MemoryForm` 표면을 열고, **데모 자유모드는 랜덤 별 즉시 생성**(`demoAddRandomStars` — §4). UI 숨김 시 함께 숨는다 |
 | **테마 pill (좌상단)** | 위치 불변. 커스터마이즈 표면(`AppearanceModal`)을 연다 — `스킨`/`감정 색` 두 갈래(별도 `외형` 헤더 텍스트 없음) |
 | **NavPad 억제** | 근접 모드 비행 D-pad는 `suppressed`면 숨긴다 — 사이드바·탐색기·임의 표면이 열렸거나 UI가 숨겨졌을 때. 숨기는 순간 이동을 0으로 정지(pointerup 유실로 우주가 계속 전진/회전 방지) |
-| 체험(demo) | 사이드바·탐색기·뷰 컨트롤은 동일하되, 사이드바에서 마이페이지·소셜이 빠지고 로그아웃이 "체험 종료"로, 하단 중앙 작성 버튼이 숨는다 |
+| 체험(demo) | 사이드바·탐색기·뷰 컨트롤은 동일하되, 사이드바에서 마이페이지·소셜이 빠지고 로그아웃이 "체험 종료"로, 하단 중앙 버튼이 랜덤 별 생성으로 분기한다. 좌상단 테마 아래에 데모 페르소나/시간 버튼이 더해진다(plan 47). 자유모드(free) 전에는 온보딩 오버레이가 HUD를 가린다 |
 
 ## 불변식 (invariants)
 
@@ -128,5 +130,5 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 - **잠든 별 재점화 동선:** 구현: plan 12 + overlay 셸(tech/overlay-shell.md) · `frontend/src/features/star-explorer`(`StarExplorerList`)·`features/dormant-search`(`ListDormant`·`dormantStarsQueryOptions`)·`entities/memory/model/activation.ts`(`isDormant`). 잠든 별 탐색은 별도 진입점이 아니라 우주 탐색기(망원경) **별 탭**에 흡수됐다 — AWAKE+DORMANT 별을 `lastRecalledAt` 오름차순 한 목록으로 보여주고 잠듦(전체/깨어있는/잠든 별)·감정·날짜·검색 필터를 제공한다. 별 선택 시 뒤 우주 fly-to([navigation](../domain/navigation.md) 우주 셸 영속). 옛 `DormantSheet`는 진입점 없는 레거시.
 - **변천사 보기:** 구현: plan 24 · `frontend/src/features/evolution/{api/evolution.ts,model/{history.ts,store.ts},ui/EvolutionPanel.tsx}`(unary read·순수 model·스크럽 타임랩스+불변 원본 병치)·`features/recall/ui/MemoryPanel.tsx`("변천사 보기" 진입점)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선)·`shared/lib/demo/data.ts`(`demoEvolution`). BE read RPC는 plan 23(`GetEvolutionHistory`).
 - **길찾기(원본 일기·엔그램·별):** 구현: plan 28 · `frontend/src/features/diary-list/ui/DiarySheet.tsx`(우주 탐색기 일기 탭·검색·감정·날짜 필터)·`entities/memory/api/records-query.ts`(`recordsQueryOptions`/`recordsInvalidateKey` — 소비처가 두 레이어라 dormant/universe처럼 entity 소유; record 성공 시 무효화)·`features/wayfinding/{model/frame.ts,model/store.ts}`(순수 frame-all·강조/프레임 상태)·`features/recall/ui/MemoryPanel.tsx`(조각 텍스트+원본 전체+다른 별 동선)·`entities/star/ui/StarField.tsx`·`entities/synapse/model/store.ts`(`edgesWithin`)·`widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FrameAllController`/`NearFarHighlightGuard`·강조 렌더)·`pages/home/ui/HomePage.tsx`(오버레이 합성·콜백 배선·`?panel=diary`). BE는 `ListRecords` rpc + `Star.record_id`/`fragment_index` + `RecallMemoryResponse.fragment_text`.
-- **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/recall-flush.machine.ts`(accumulate에서 데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`SIM_ENTRIES`·`DemoSimPanel`·`runTimeSkip`)·`pages/home/ui/HomePage.tsx`(데모 한정 마운트·`?sim=` 파서).
+- **체험:** 구현: plan 11·12 데모 분기 + plan 19 시뮬레이션 + plan 47 자유모드 온보딩 + plan 48 스포트라이트 투어 · `frontend/src/shared/lib/demo/flag.ts`(`enterDemoMode`/`isDemoMode`·진입 흐름 `getDemoFlow`/`setDemoFlow`/`resetDemoFlow`·튜토리얼 `getTutorialStep`/`setTutorialStep`/`enterTutorialMode`/`completeTutorial`/`restartTutorial`)·`shared/lib/demo/session.ts`(`startDemoSession`)·`widgets/demo-tour`(`DemoGuidedTour`·순수 `TOUR_STEPS`·`use-tour-target`)·`shared/lib/demo/data.ts`(더미 우주·`demoMarkRecalled`·`demoAddRandomStars`·데모 연결 생성)·`shared/lib/demo/clock.ts`(`virtualNowMs`/`skipDemoDays`)·`shared/lib/demo/observe.ts`(관찰 셀렉터)·`features/recall/api/recall.ts`(demo no-op/recall)·`features/recall/model/recall-flush.machine.ts`(accumulate에서 데모 헵 로컬 bump)·`entities/synapse/model/store.ts`(`bumpEdgeWeight`)·`entities/memory/api/universe-query.ts`(`refreshActivation`)·`widgets/demo-sim`(`runTimeSkip`·`switchDemoPersona`·`resetDemoExperience`; `DemoSimPanel`은 보존되나 자유모드 미마운트)·`pages/home/ui/{HomePage,DemoOnboarding,DemoFreeModeControls}.tsx`(데모 흐름 게이트·자유모드 컨트롤·랜덤 별).
 - **불변식:** 헌법 1·2·3·6·8(`spec/plan/00.overview.md`).

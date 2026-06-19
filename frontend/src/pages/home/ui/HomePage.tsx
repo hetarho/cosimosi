@@ -1,20 +1,33 @@
 import { useCallback, useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useSelector } from '@xstate/react'
 import * as Sentry from '@sentry/react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { errorMessage, reportUniverseData } from '@/shared/lib'
 import {
   isDemoMode,
   getDemoPersona,
+  getDemoFlow,
+  setDemoFlow,
+  getTutorialStep,
+  setTutorialStep,
+  enterTutorialMode,
+  completeTutorial,
+  restartTutorial,
+  demoPersonaList,
   demoOverlayData,
   demoOffsetDays,
   demoFragmentText,
   demoRecall,
+  demoAddRandomStars,
+  demoToday,
   exitDemoMode,
   resetDemo,
   useDemoOverlay,
+  type DemoPersona,
+  type DemoFlow,
 } from '@/shared/lib/demo'
+import { VALUES } from '@/shared/config'
 import { RendererUnavailableError } from '@/shared/lib/r3f'
 import { Eye, EyeOff, Menu, Orbit, Palette, Plus, Sparkles, Telescope } from 'lucide-react'
 import { Backdrop, MorningDiffNote, Surface, primaryButtonCls } from '@/shared/ui'
@@ -28,7 +41,7 @@ import {
   useViewport,
   type Bridge,
 } from '@/widgets/universe-canvas'
-import { DemoSimPanel } from '@/widgets/demo-sim'
+import { runTimeSkip, resetDemoExperience, switchDemoPersona } from '@/widgets/demo-sim'
 import { toSynapseEdge } from '@/entities/synapse'
 import { MemoryForm, composeActor, selectPhase } from '@/features/record-memory'
 import { MemoryPanel, recallFlushActor } from '@/features/recall'
@@ -37,6 +50,9 @@ import { DiaryCard } from '@/features/diary-list'
 import { AppearanceModal } from './AppearanceModal'
 import { UniverseSidebar } from './UniverseSidebar'
 import { UniverseExplorerSheet, type ExplorerTab } from './UniverseExplorerSheet'
+import { DemoOnboarding } from './DemoOnboarding'
+import { DemoFreeModeControls, type DemoPopover } from './DemoFreeModeControls'
+import { DemoGuidedTour, TOUR_STEPS } from '@/widgets/demo-tour'
 import { ShareUniverseBody } from '@/features/share-universe'
 import { SendStarBody, StarGiftsBody } from '@/features/send-star'
 import {
@@ -44,6 +60,9 @@ import {
   mapStar,
   starsOfRecord,
   universeQueryOptions,
+  universeInvalidateKey,
+  dormantInvalidateKey,
+  recordsInvalidateKey,
   useMemoryStore,
   focusActor,
   selectHighlightedRecordId,
@@ -288,8 +307,28 @@ export function HomePage({ onSignOut }: HomePageProps) {
   // 겹쳐보기(spec 37) 체험 우주 — DemoSimPanel의 토글이 켜면 두 페르소나 우주를 한 씬에 띄운다(서버 없이
   // (b) 겹침 공간 시연). 활성 페르소나가 mine, 다른 페르소나가 theirs, crossResonances가 그 사이 다리를
   // 파생한다. proto → StarNode/SynapseEdge로 매핑(겹침 위젯은 PROPS 구동). 활성 페르소나가 바뀌면 재계산.
+  const queryClient = useQueryClient()
+  const requestQuietSettle = useViewport((s) => s.requestQuietSettle)
   const demoOverlayOn = useDemoOverlay((s) => s.on)
-  const demoPersona = demoMode ? getDemoPersona() : null
+  // 데모 진입 흐름·페르소나·팝오버는 온보딩↔자유모드 전환마다 리렌더가 필요해 상태로 둔다(flag의
+  // 동기 게터는 비반응형). 비데모면 flow=free로 둬 일반 우주 셸이 게이트 없이 그대로 렌더된다.
+  const [demoFlow, setDemoFlowState] = useState<DemoFlow>(() => (demoMode ? getDemoFlow() : 'free'))
+  // 항상 유효한 페르소나(비데모는 기본값 — 안 쓰임)라 null 분기가 없다.
+  const [demoPersona, setDemoPersonaState] = useState<DemoPersona>(() => getDemoPersona())
+  const [demoPopover, setDemoPopover] = useState<DemoPopover>(null)
+  // 튜토리얼 단계 index(plan 48) — flow가 'tutorial'일 때만 의미. 새로고침 시 이어가도록 flag에서 시드하되
+  // 단계 수가 줄어든 stale 값에 대비해 범위 안으로 clamp한다.
+  const [tourStep, setTourStepState] = useState<number>(() =>
+    demoMode ? Math.min(getTutorialStep(), TOUR_STEPS.length - 1) : 0,
+  )
+  // 세션 내 불변인 페르소나 메타(라벨·태그라인) — 매 렌더 재생성 않게 1회 만든다(두 표면이 공유).
+  const personaList = useMemo(() => demoPersonaList(), [])
+  // 온보딩(선택 화면)은 not_started/persona_selected/tutorial_tbd에서만 HUD 대신 뜬다(plan 47 A1).
+  // 'tutorial'·'free'는 자유모드 HUD를 그대로 띄우고, tutorial은 그 위에 스포트라이트 투어를 얹는다(plan 48).
+  const demoOnboarding =
+    demoMode &&
+    (demoFlow === 'not_started' || demoFlow === 'persona_selected' || demoFlow === 'tutorial_tbd')
+  const demoTutorial = demoMode && demoFlow === 'tutorial'
   // 가상 시계(spec 19) 경과일 — 시간 머신이 시간을 흘리면 별 밝기/반지름이 그만큼 늙어야 하므로
   // 겹쳐보기도 재시뮬 대상이다(demoOverlayData가 virtualNowMs를 읽는다). 비반응형 모듈 시계라
   // 값으로 환원해 deps에 넣는다 — 클럭이 바뀐 채 리렌더되면 두 우주를 새 now로 다시 빚는다.
@@ -319,7 +358,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
   //   진입 시 1회 소비해 탐색 시트(별/일기 탭)를 열고 param을 비운다(legacy redirect).
   // ?record=<recordId> — 독립 일기 페이지 "우주에서 보기" 핸드오프(change 09): 그 record의 별을 frame-all.
   // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
-  const { sim, panel: urlPanel, record: urlRecord, fly } = useSearch({ from: '/' })
+  const { panel: urlPanel, record: urlRecord, fly } = useSearch({ from: '/' })
   const navigate = useNavigate({ from: '/' })
 
   // change 09 IA 상태 — 우상단 햄버거 사이드바, 망원경 탐색 시트(일기/별 탭), 상단 중앙 HUD 숨김 토글,
@@ -353,6 +392,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
     setGiftsOpen(false)
     setAppearanceOpen(false)
     setSendMemoryId(null)
+    setDemoPopover(null) // 데모 페르소나/시간 팝오버도 다른 표면이 열리면 닫는다(plan 47 — transient surface)
   }, [])
   // 기능 진입 — 정리 후 연다. 열려 있던 별 회상/일기 조망도 함께 풀어 한 표면만 남긴다(우주는 떠나지 않음).
   const prepareOpen = useCallback(() => {
@@ -402,6 +442,99 @@ export function HomePage({ onSignOut }: HomePageProps) {
     void navigate({ to: '/landing' })
   }
 
+  // ── 데모 자유모드 흐름·컨트롤(plan 47) ──────────────────────────────────────────────
+  // flow 전환은 sessionStorage(setDemoFlow)와 렌더 상태를 함께 옮긴다(새로고침에도 유지).
+  const setFlow = useCallback((next: DemoFlow) => {
+    setDemoFlow(next)
+    setDemoFlowState(next)
+  }, [])
+  // 온보딩 1단계 페르소나 선택 → 그 우주로 전환(switchDemoPersona: 같은 id면 no-op, 아니면
+  // 데이터 출처 리셋) 후 모드 선택 단계로. flow는 switchDemoPersona가 보존한다.
+  const selectOnboardingPersona = (id: DemoPersona) => {
+    switchDemoPersona(id)
+    setDemoPersonaState(id)
+    setFlow('persona_selected')
+  }
+  const chooseFree = () => setFlow('free')
+  // 모드 선택 "기능 하나하나 알아보기" → 스포트라이트 투어 진입(plan 48): flow=tutorial, step 0.
+  const chooseTutorial = () => {
+    enterTutorialMode()
+    setTourStepState(0)
+    setDemoFlowState('tutorial')
+  }
+  const backToModeSelect = () => setFlow('persona_selected')
+
+  // ── 튜토리얼 스포트라이트 투어(plan 48) ─────────────────────────────────────────────
+  const setTourStep = useCallback((n: number) => {
+    const next = Math.min(Math.max(n, 0), TOUR_STEPS.length - 1)
+    setTutorialStep(next)
+    setTourStepState(next)
+  }, [])
+  const tourPrev = () => setTourStep(tourStep - 1)
+  const tourNext = () => setTourStep(tourStep + 1)
+  // 건너뛰기 / 마지막 "자유롭게 탐험하기" → 자유모드로 수렴, 열린 표면·UI 숨김 정리.
+  const tourExit = useCallback(() => {
+    completeTutorial()
+    setDemoFlowState('free')
+    setTourStepState(0)
+    closeSurfaces()
+    setUiHidden(false)
+  }, [closeSurfaces])
+  // "다시 보기"(사이드바) — 자유모드에서 명시적으로 투어를 처음부터 다시 본다.
+  const replayTour = () => {
+    restartTutorial()
+    setTourStepState(0)
+    closeSurfaces()
+    setDemoFlowState('tutorial')
+  }
+
+  // 자유모드 좌상단 페르소나 전환 — 같은 리셋 경로, 자유모드 유지. 팝오버는 닫는다.
+  // 같은 페르소나면 switchDemoPersona가 no-op(원천 getDemoPersona 기준 판정)이라 리셋이 안 일어난다.
+  const switchFreePersona = (id: DemoPersona) => {
+    setDemoPopover(null)
+    switchDemoPersona(id)
+    setDemoPersonaState(id)
+  }
+  // 시간 이동(하루/한 달) — 기존 하루 단위 배치 + 조용한 재안정화. 시간 이동은 별·선을 삭제하지 않는다(헌법2).
+  const skipDemoDays = (days: number) => {
+    setDemoPopover(null)
+    runTimeSkip(queryClient, days, requestQuietSettle)
+  }
+  // 처음으로 — 현재 페르소나·자유모드 유지, 가상 시계·추가 별 0(온보딩으로 돌아가지 않는다).
+  const resetDemoToStart = () => {
+    setDemoPopover(null)
+    resetDemoExperience()
+  }
+  // 자유모드 하단 "새 별 띄우기" — 폼/날짜·감정 선택 없이 랜덤 별 1~5개(values)를 즉시 추가하고
+  // 우주·잠든 별·일기 목록 쿼리를 무효화해 즉시 반영한다(서버 쓰기 없음 — 헌법 데모 경계).
+  const addDemoRandomStars = () => {
+    const { randomStarMin, randomStarMax } = VALUES.demoFreeMode
+    const count = randomStarMin + Math.floor(Math.random() * (randomStarMax - randomStarMin + 1))
+    demoAddRandomStars(count, demoToday())
+    void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+    void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
+    void queryClient.invalidateQueries({ queryKey: recordsInvalidateKey() })
+  }
+
+  // 튜토리얼 단계 진입 시 표면 오케스트레이션(plan 48): 망원경 탭 단계만 탐색 시트를 자동으로 열고,
+  // 나머지는 모든 표면을 닫는다. 페르소나/시간 팝오버는 사용자가 직접 버튼을 눌러 연다(행동 안내 —
+  // 투어가 그 열림을 관찰해 다음 phase로 넘어간다). HUD 숨김도 풀어 다음 target이 보이게 복구한다(A8).
+  useEffect(() => {
+    if (!demoTutorial) return
+    const surface = TOUR_STEPS[tourStep]?.surface ?? 'none'
+    // setState는 rAF로 미뤄 effect 동기 setState(cascading render)를 피한다(이 페이지의 딥링크 effect와 같은 패턴).
+    const id = requestAnimationFrame(() => {
+      setUiHidden(false)
+      closeSurfaces() // 팝오버·사이드바·시트 정리 후, 이 단계에 필요한 것만 다시 연다
+      // 별 탭 단계만 페이지가 시트를 자동으로 연다(다른 표면은 사용자가 직접 버튼을 눌러 연다 — 행동 안내).
+      if (surface === 'telescope-star') {
+        setExplorerTab('star')
+        setExplorerOpen(true)
+      }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [demoTutorial, tourStep, closeSurfaces])
+
   // 일기를 고르면 그 일기(record_id) 별들을 조망 프레이밍+강조하고(focus 머신 diary) 탐색 시트는 닫는다 —
   // 뒤 우주에서 frame-all fly-to(28). 시각 전용(records/memories 불변, 헌법1·2). DiaryCard가 하단에 뜬다.
   const frameDiary = (recordId: string) => {
@@ -429,10 +562,9 @@ export function HomePage({ onSignOut }: HomePageProps) {
     })
   }
 
-  // 어떤 표면/사이드바가 떠 있거나 HUD가 숨겨졌으면 NavPad·데모 HUD를 억제한다(구 panel!=null 대체).
+  // 어떤 표면/사이드바가 떠 있거나 HUD가 숨겨졌으면 NavPad를 억제한다(구 panel!=null 대체).
   const surfaceUp = sidebarOpen || explorerOpen || composeOpen || shareOpen || giftsOpen || appearanceOpen || sendMemoryId != null
   const navSuppressed = surfaceUp || uiHidden
-  const demoHudSuppressed = focused || surfaceUp || uiHidden
   // 모달형 표면(탐색·작성·공유·선물·보내기·변천사)이 뜨면 배경을 딤 백드롭으로 가린다 — 이 백드롭은
   // HUD 크롬(우상단 컨트롤·테마·하단 새 별·상단 중앙 UI 숨기기 토글, 전부 z-20)보다 위(z-30), 모달 표면
   // (z-30, DOM 뒤라 위)보다 아래에 깔려 크롬·토글까지 함께 흐려진다. 탭하면 모달을 닫는다. 사이드바는
@@ -467,17 +599,15 @@ export function HomePage({ onSignOut }: HomePageProps) {
     void navigate({ search: (prev) => ({ ...prev, record: undefined }), replace: true })
   }, [urlRecord, starCount, navigate])
 
-  // 페이지 HUD의 하단 시트(작성 폼·기억 실험실)가 열려 있는 동안 캔버스에 알린다 — 모바일에선 별들이
-  // 화면 중앙에 있어 시트에 가려지므로, 캔버스가 view offset+줌아웃으로 우주를 위로 올린다(sm 미만만).
-  const [demoSheetOpen, setDemoSheetOpen] = useState(false)
+  // 작성 폼(하단 시트)이 열려 있는 동안 캔버스에 알린다 — 모바일에선 별들이 화면 중앙에 있어 시트에
+  // 가려지므로, 캔버스가 view offset+줌아웃으로 우주를 위로 올린다(sm 미만만).
   // Morning diff (6.1) — live universe only; demo's "밤 보내기" owns its own note.
   const [morningDiff, setMorningDiff] = useState(false)
   const setSheetOpen = useViewport((s) => s.setSheetOpen)
-  const requestQuietSettle = useViewport((s) => s.requestQuietSettle)
   useEffect(() => {
-    setSheetOpen((composeOpen && !uiHidden) || (!demoHudSuppressed && demoSheetOpen))
+    setSheetOpen(composeOpen && !uiHidden)
     return () => setSheetOpen(false)
-  }, [composeOpen, uiHidden, demoHudSuppressed, demoSheetOpen, setSheetOpen])
+  }, [composeOpen, uiHidden, setSheetOpen])
 
   // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
   // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4).
@@ -613,22 +743,25 @@ export function HomePage({ onSignOut }: HomePageProps) {
       {focused && !uiHidden && <Backdrop className="z-10" />}
 
       {/* === 상단 중앙 HUD 숨김/보이기 토글(A13) — 숨김 상태에서도 보이는 유일한 컨트롤. 모달이 뜨면
-          z-30 백드롭이 이 토글까지 덮어 함께 흐려진다(z-20). === */}
-      <div className="absolute left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-20 -translate-x-1/2">
-        <button
-          type="button"
-          onClick={toggleUiHidden}
-          aria-pressed={uiHidden}
-          title={uiHidden ? 'UI 보이기' : 'UI 숨기기'}
-          aria-label={uiHidden ? 'UI 보이기' : 'UI 숨기기'}
-          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur transition hover:bg-black/60"
-        >
-          {uiHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-          <span>{uiHidden ? 'UI 보이기' : 'UI 숨기기'}</span>
-        </button>
-      </div>
+          z-30 백드롭이 이 토글까지 덮어 함께 흐려진다(z-20). 데모 온보딩(자유모드 전) 중에는 숨긴다. === */}
+      {!demoOnboarding && (
+        <div className="absolute left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-20 -translate-x-1/2">
+          <button
+            type="button"
+            onClick={toggleUiHidden}
+            data-tour-id="ui-toggle"
+            aria-pressed={uiHidden}
+            title={uiHidden ? 'UI 보이기' : 'UI 숨기기'}
+            aria-label={uiHidden ? 'UI 보이기' : 'UI 숨기기'}
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white/70 backdrop-blur transition hover:bg-black/60"
+          >
+            {uiHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+            <span>{uiHidden ? 'UI 보이기' : 'UI 숨기기'}</span>
+          </button>
+        </div>
+      )}
 
-      {!uiHidden && (
+      {!uiHidden && !demoOnboarding && (
         <>
           {/* 야간 공고화 morning diff(spec 27, 6.1) — 하루 첫 접속 1회. 데모는 자체 "밤 보내기"가 띄운다. */}
           {!demoMode && <MorningDiffNote show={morningDiff} onDismiss={() => setMorningDiff(false)} />}
@@ -638,6 +771,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
             <button
               type="button"
               onClick={openSidebar}
+              data-tour-id="menu"
               aria-label="메뉴"
               aria-haspopup="menu"
               aria-expanded={sidebarOpen}
@@ -648,6 +782,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
             <button
               type="button"
               onClick={() => navigationActor.send({ type: 'TOGGLE_MODE' })}
+              data-tour-id="view"
               className={verticalBtnCls}
               // change 08(A1): 사용자-facing 카메라 모드 용어. title/aria-label은 누르면 갈 모드를 안내한다.
               title={mode === 'nebula' ? '별들 가까이서 탐험하기로 전환' : '멀리서 내 우주 보기로 전환'}
@@ -658,6 +793,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
             <button
               type="button"
               onClick={() => openExplorer('diary')}
+              data-tour-id="telescope"
               aria-label="탐색 — 일기·별 찾기"
               title="탐색 — 일기·별 찾기"
               aria-expanded={explorerOpen}
@@ -671,6 +807,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
           <button
             type="button"
             onClick={openAppearance}
+            data-tour-id="theme"
             aria-label="테마·외형 열기"
             className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-sm text-white/85 backdrop-blur transition hover:bg-black/60"
           >
@@ -683,26 +820,46 @@ export function HomePage({ onSignOut }: HomePageProps) {
             <Palette className="size-4 text-white/80" aria-hidden />
           </button>
 
+          {/* === 데모 자유모드 좌상단 컨트롤(plan 47) — 테마 알약 아래 페르소나·시간 버튼(팝오버). === */}
+          {demoMode && (
+            <DemoFreeModeControls
+              open={demoPopover}
+              onOpen={setDemoPopover}
+              persona={demoPersona}
+              personaList={personaList}
+              onSelectPersona={switchFreePersona}
+              onSkipDays={skipDemoDays}
+              onResetToStart={resetDemoToStart}
+            />
+          )}
+
           {/* 이동 D-pad — 회상 모드 전용, 화면 가장자리. 표면/숨김 시 억제. */}
           <NavPad suppressed={navSuppressed} />
 
-          {/* === 하단 중앙 floating 새 별 띄우기(A17) — 작성 폼(데모 제외 — DemoSimPanel이 기록 담당). === */}
-          {!demoMode && (
-            <button
-              type="button"
-              onClick={openCompose}
-              className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-indigo-500/80 px-5 py-3 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-indigo-500"
-            >
-              <Plus className="size-4" aria-hidden />새 별 띄우기
-            </button>
-          )}
+          {/* === 하단 중앙 floating 새 별 띄우기(A17) — 실로그인은 작성 폼, 데모 자유모드는 랜덤 별 즉시 추가. === */}
+          <button
+            type="button"
+            onClick={demoMode ? addDemoRandomStars : openCompose}
+            data-tour-id="new-star"
+            className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-indigo-500/80 px-5 py-3 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-indigo-500"
+          >
+            <Plus className="size-4" aria-hidden />새 별 띄우기
+          </button>
         </>
       )}
 
       {/* 모달 딤 백드롭 — 모달형 표면(탐색·작성·공유·선물·보내기·변천사) 뒤에 깔려 배경 + HUD 크롬
           (토글 포함, z-20)을 함께 흐린다. z-30 + DOM상 표면보다 앞 → 표면(z-30, 뒤)이 위에 또렷이 뜬다.
           탭하면 모달을 닫는다. 사이드바(자체 백드롭)·회상(비차단 포커스 딤)은 제외. */}
-      {modalUp && <Backdrop className="z-30 backdrop-blur-sm" onDismiss={closeModalSurfaces} />}
+      {/* 튜토리얼 중 tour가 연 시트(망원경 일기/별 탭)는 바깥 탭으로 닫히지 않게 한다 — dim이
+          pointer-events-none이라 빈 곳 탭이 이 백드롭에 닿아 시트를 닫으면 하이라이트 대상이 사라진다.
+          onDismiss 없는 백드롭은 시각 전용(pointer-events-none)이라 탭이 통과한다. */}
+      {modalUp && (
+        <Backdrop
+          className="z-30 backdrop-blur-sm"
+          onDismiss={demoTutorial ? undefined : closeModalSurfaces}
+        />
+      )}
 
       {/* === 사이드바·탐색·결과 표면 — HUD 숨김 시엔 모두 닫혀 있다(toggle이 정리). === */}
       <UniverseSidebar
@@ -711,6 +868,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
         isDemo={demoMode}
         onSignOut={onSignOut}
         onLeaveDemo={leaveDemo}
+        onReplayTour={replayTour}
         onMyPage={goMyPage}
         onShare={openShare}
         onGifts={openGifts}
@@ -795,13 +953,34 @@ export function HomePage({ onSignOut }: HomePageProps) {
         />
       )}
 
-      {/* 시뮬레이션 패널(spec 19) — 데모에서만. 데모의 기록은 이 패널의 "별 띄우기"가 담당한다. */}
-      {demoMode && !uiHidden && (
-        <DemoSimPanel
-          initialSimId={sim}
-          onSheetChange={setDemoSheetOpen}
-          suppressed={demoHudSuppressed}
-          onQuietSettle={requestQuietSettle}
+      {/* 데모 최초 온보딩(plan 47) — 자유모드(free) 전이면 우주 HUD 대신 페르소나/모드 선택을 먼저
+          보인다. 캔버스는 뒤에서 계속 돈다. 자유모드로 들어가면 위 HUD가 그대로 살아난다. */}
+      {demoOnboarding && (
+        <DemoOnboarding
+          flow={demoFlow}
+          persona={demoPersona}
+          personaList={personaList}
+          onSelectPersona={selectOnboardingPersona}
+          onChooseFree={chooseFree}
+          onChooseTutorial={chooseTutorial}
+          onBackToModeSelect={backToModeSelect}
+        />
+      )}
+
+      {/* 데모 튜토리얼 스포트라이트 투어(plan 48) — 자유모드 HUD 위에 얹히는 안내 레이어.
+          캔버스·HUD는 그대로 살아 있고(언마운트 안 함), 단계마다 버튼을 하나씩 짚는다. */}
+      {demoTutorial && (
+        <DemoGuidedTour
+          stepIndex={tourStep}
+          uiHidden={uiHidden}
+          popover={demoPopover}
+          persona={demoPersona}
+          clockDay={demoClockDay}
+          sidebarOpen={sidebarOpen}
+          explorerOpen={explorerOpen}
+          onPrev={tourPrev}
+          onNext={tourNext}
+          onExit={tourExit}
         />
       )}
 

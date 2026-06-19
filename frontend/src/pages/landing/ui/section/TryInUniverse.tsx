@@ -1,12 +1,13 @@
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
-import { enterDemoMode } from '@/shared/lib/demo'
+import { startDemoSession } from '@/shared/lib/demo'
 import { cn } from '@/shared/lib'
 
 /**
  * "체험 우주에서 해보기"(spec 19) — 랜딩 카드를 체험 우주로 잇는다. HeroSection의
- * tryDemo()와 같은 `/` 진입 경로에, 그 카드의 이론에 해당하는 `?sim=<id>`를 더해
- * 기억 실험실/이론 모달이 그 이론을 펼친 채 맞이하게 한다.
+ * tryDemo()와 같은 `/` 진입 경로다(plan 47 이후 데모는 온보딩부터 시작 — 페르소나/모드 선택).
+ * `?sim=<id>`는 그 카드의 이론 식별자로 함께 싣되, 자유모드 셸에서는 더 이상 이론 모달을 자동으로
+ * 열지 않는다(기억 실험실/이론 표면은 후속 튜토리얼 plan 소관).
  */
 export function TryInUniverse({
   sim,
@@ -20,7 +21,7 @@ export function TryInUniverse({
 }) {
   const navigate = useNavigate()
   const go = () => {
-    enterDemoMode()
+    startDemoSession()
     void navigate({ to: '/', search: { sim } })
   }
   return (

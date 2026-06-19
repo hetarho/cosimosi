@@ -490,12 +490,47 @@ const QUICK_ENTRIES: { mood: Mood; intensity: number; body: string }[] = [
   },
 ]
 
+// 자유모드 랜덤 별이 고르는 canonical 감정 13종(spec 29) — 데모 mood valence 표와 같은 집합.
+const ALL_MOODS: Mood[] = [
+  Mood.JOY,
+  Mood.EXCITEMENT,
+  Mood.LOVE,
+  Mood.CALM,
+  Mood.GRATITUDE,
+  Mood.RELIEF,
+  Mood.SAD,
+  Mood.ANGER,
+  Mood.FEAR,
+  Mood.STRESS,
+  Mood.TIRED,
+  Mood.EMPTINESS,
+  Mood.NEUTRAL,
+]
+
+// QUICK_ENTRIES에 미리 쓴 일기가 없는 확장 감정(spec 29 6종)용 짧은 본문 — 랜덤 별이 어떤
+// 감정을 골라도 본문 없는 별이 생기지 않게 한다. 내용은 시연용일 뿐(별 탄생·연결 생성 showcase).
+const MOOD_FALLBACK_ENTRY: Partial<Record<Mood, { body: string; intensity: number }>> = {
+  [Mood.EXCITEMENT]: { body: '내일 떠날 생각에 짐을 몇 번이나 다시 쌌다. 가슴이 자꾸 두근거린다.', intensity: 0.8 },
+  [Mood.GRATITUDE]: { body: '바쁜데도 시간을 내준 사람에게 오래 마음을 전했다. 받은 게 참 많은 하루.', intensity: 0.6 },
+  [Mood.RELIEF]: { body: '결과를 확인하고 나서야 참았던 숨이 길게 나왔다. 이제야 어깨가 내려간다.', intensity: 0.55 },
+  [Mood.STRESS]: { body: '할 일이 한꺼번에 몰렸다. 머릿속이 꽉 차서 어디부터 손대야 할지 모르겠다.', intensity: 0.7 },
+  [Mood.TIRED]: { body: '하루 종일 서 있었더니 집에 오자마자 그대로 누워버렸다. 손가락 하나 움직이기 싫다.', intensity: 0.5 },
+  [Mood.EMPTINESS]: { body: '할 일을 다 했는데도 마음 한구석이 텅 빈 것 같다. 무엇으로도 잘 채워지지 않는다.', intensity: 0.5 },
+}
+
+/** 한 감정의 데모 일기 본문을 고른다 — 미리 쓴 일기(QUICK_ENTRIES)가 있으면 그중 무작위,
+ *  없으면 그 감정의 fallback 문장. 단일 문단이라 호출자가 mood를 그대로 별에 새긴다. */
+function entryForMood(mood: Mood): { body: string; intensity: number } {
+  const pool = QUICK_ENTRIES.filter((q) => q.mood === mood)
+  if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)]
+  return MOOD_FALLBACK_ENTRY[mood] ?? { body: '오늘의 한 조각을 별로 띄운다.', intensity: 0.5 }
+}
+
 /** 시뮬 패널 "별 띄우기": 고른 감정·날짜로 별을 만든다(spec 19 — 데모의 기록 컨트롤러).
  *  본문은 그 감정으로 미리 써 둔 일기 중 무작위 — 체험에서 내용은 시연용일 뿐이다.
  *  새 별 id를 돌려준다(단일 문단 일기 → 항상 별 1개). */
 export function demoAddStar(mood: Mood, entryDate: string): string {
-  const pool = QUICK_ENTRIES.filter((q) => q.mood === mood)
-  const pick = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : QUICK_ENTRIES[0]
+  const pick = entryForMood(mood)
   return demoAddRecord({ body: pick.body, mood, intensity: pick.intensity, entryDate })[0]
 }
 
@@ -520,6 +555,21 @@ const MULTI_SCENE_ENTRIES: string[] = [
 export function demoAddMultiSceneStar(entryDate: string): string[] {
   const body = MULTI_SCENE_ENTRIES[Math.floor(Math.random() * MULTI_SCENE_ENTRIES.length)]
   return demoAddRecord({ body, mood: Mood.MOOD_UNSPECIFIED, intensity: 0, entryDate })
+}
+
+/** 자유모드 "새 별 띄우기"(plan 47): 폼·날짜/감정 선택 없이 랜덤 별 `count`개를 즉시 띄운다.
+ *  각 별의 감정은 13종 canonical mood에서 무작위로 고르고, 본문은 그 감정의 미리 쓴 일기나
+ *  fallback이다(내용은 시연용). 날짜는 호출자가 가상 시계 기준 오늘(demoToday())을 주입한다.
+ *  내부적으로 기존 demoAddRecord를 재사용하므로 같은 날·같은 mood·hot 별 연결 규칙(spec 19·22)이
+ *  그대로 적용된다. 만든 모든 조각 id를 돌려준다(서버 쓰기 없음 — 헌법 데모 경계). */
+export function demoAddRandomStars(count: number, entryDate: string): string[] {
+  const ids: string[] = []
+  for (let i = 0; i < count; i++) {
+    const mood = ALL_MOODS[Math.floor(Math.random() * ALL_MOODS.length)]
+    const entry = entryForMood(mood)
+    ids.push(...demoAddRecord({ body: entry.body, mood, intensity: entry.intensity, entryDate }))
+  }
+  return ids
 }
 
 /** 별 띄우기 날짜 입력의 기본값 — 오늘(가상 시계 기준), YYYY-MM-DD. */

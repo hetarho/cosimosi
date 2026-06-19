@@ -10,11 +10,23 @@
 
 const KEY = 'cosimosi:demo'
 const PERSONA_KEY = 'cosimosi:demo-persona'
+const FLOW_KEY = 'cosimosi:demo-flow'
+const TOUR_STEP_KEY = 'cosimosi:demo-tour-step'
 
 /** 체험 우주의 주인공. 같은 화면 코드가 페르소나마다 다른 일기 흐름(personas.ts)을 시드한다. */
 export type DemoPersona = 'student' | 'worker' | 'homemaker'
 const PERSONA_IDS: DemoPersona[] = ['student', 'worker', 'homemaker']
 const DEFAULT_PERSONA: DemoPersona = 'student' // 가장 조밀·밝은 우주 — 첫인상 쇼케이스
+
+/** 체험 진입 흐름(plan 47·48). 데모 세션에만 저장하고 실계정·서버엔 안 남긴다.
+ *  - not_started: 데모는 켜졌지만 온보딩 미완료(누구의 우주를 볼지 고르기 전).
+ *  - persona_selected: 페르소나는 골랐고 모드(튜토리얼/자유) 선택 대기.
+ *  - free: 자유모드 — change09 우주 셸을 그대로 둘러본다.
+ *  - tutorial_tbd: (plan 47) 튜토리얼 버튼을 눌렀지만 준비 중 안내만(자유모드로 복귀 가능).
+ *  - tutorial: (plan 48) 스포트라이트 투어 진행 중. */
+export type DemoFlow = 'not_started' | 'persona_selected' | 'free' | 'tutorial_tbd' | 'tutorial'
+const FLOW_VALUES: DemoFlow[] = ['not_started', 'persona_selected', 'free', 'tutorial_tbd', 'tutorial']
+const DEFAULT_FLOW: DemoFlow = 'not_started'
 
 function readPersisted(): boolean {
   try {
@@ -33,8 +45,28 @@ function readPersona(): DemoPersona {
   }
 }
 
+function readFlow(): DemoFlow {
+  try {
+    const v = sessionStorage.getItem(FLOW_KEY)
+    return FLOW_VALUES.includes(v as DemoFlow) ? (v as DemoFlow) : DEFAULT_FLOW
+  } catch {
+    return DEFAULT_FLOW
+  }
+}
+
+function readTourStep(): number {
+  try {
+    const n = Number(sessionStorage.getItem(TOUR_STEP_KEY))
+    return Number.isInteger(n) && n >= 0 ? n : 0
+  } catch {
+    return 0
+  }
+}
+
 let demo = readPersisted()
 let persona = readPersona()
+let flow = readFlow()
+let tourStep = readTourStep()
 
 // 모드가 실제로 바뀔 때 호출되는 콜백. 데이터 출처(체험 더미 ↔ 실서버)가 바뀌면 쿼리
 // 캐시·렌더 스토어를 리셋해야 하는데(16 — 둘은 같은 쿼리 키를 공유한다), 그 리셋은 app
@@ -64,12 +96,17 @@ export function enterDemoMode(): void {
   onModeChange?.()
 }
 
-/** 체험 종료(랜딩 복귀). 추가했던 더미 별도 함께 비운다. */
+/** 체험 종료(랜딩 복귀). 추가했던 더미 별도 함께 비운다. 온보딩/튜토리얼 흐름 상태도 함께
+ *  지운다 — 다음 체험 진입이 처음(온보딩)부터 시작하도록(plan 47·48). */
 export function exitDemoMode(): void {
   if (!demo) return
   demo = false
+  flow = DEFAULT_FLOW
+  tourStep = 0
   try {
     sessionStorage.removeItem(KEY)
+    sessionStorage.removeItem(FLOW_KEY)
+    sessionStorage.removeItem(TOUR_STEP_KEY)
   } catch {
     /* noop */
   }
@@ -92,4 +129,63 @@ export function setDemoPersona(next: DemoPersona): void {
   } catch {
     /* 저장 실패해도 메모리 플래그로 이번 세션은 동작 */
   }
+}
+
+/** 현재 체험 진입 흐름. 우주 셸이 자유모드/온보딩/튜토리얼을 가른다(동기 게터). */
+export function getDemoFlow(): DemoFlow {
+  return flow
+}
+
+/** 체험 흐름 전환 — sessionStorage에 반영해 같은 세션 새로고침에도 유지된다(예: free는
+ *  다시 온보딩으로 튕기지 않는다). 데이터 출처는 안 바꾸므로 onModeChange를 부르지 않는다. */
+export function setDemoFlow(next: DemoFlow): void {
+  if (flow === next) return
+  flow = next
+  try {
+    sessionStorage.setItem(FLOW_KEY, next)
+  } catch {
+    /* 저장 실패해도 메모리 플래그로 이번 세션은 동작 */
+  }
+}
+
+/** 체험 흐름을 처음(온보딩)으로 되돌린다 — 랜딩에서 새 체험을 시작할 때 매번 온보딩부터
+ *  보이게 한다(plan 47). 데모 플래그 자체는 건드리지 않는다. */
+export function resetDemoFlow(): void {
+  setDemoFlow(DEFAULT_FLOW)
+}
+
+// ── 튜토리얼 스포트라이트 투어(plan 48) — 진행 step index를 데모 세션에 보관(새로고침 시 이어감) ──
+
+/** 현재 튜토리얼 단계 index(0-based). flow가 'tutorial'일 때만 의미가 있다. */
+export function getTutorialStep(): number {
+  return tourStep
+}
+
+/** 튜토리얼 단계 index를 저장한다(새로고침에도 같은 데모 세션이면 이어진다). */
+export function setTutorialStep(n: number): void {
+  const next = Number.isInteger(n) && n >= 0 ? n : 0
+  if (tourStep === next) return
+  tourStep = next
+  try {
+    sessionStorage.setItem(TOUR_STEP_KEY, String(next))
+  } catch {
+    /* noop */
+  }
+}
+
+/** 튜토리얼 진입(모드 선택 "기능 하나하나 알아보기") — flow=tutorial, step 0부터. */
+export function enterTutorialMode(): void {
+  setTutorialStep(0)
+  setDemoFlow('tutorial')
+}
+
+/** 튜토리얼 완료/건너뛰기 — 자유모드로 수렴하고 step을 비운다(자동 재시작 방지). */
+export function completeTutorial(): void {
+  setTutorialStep(0)
+  setDemoFlow('free')
+}
+
+/** "다시 보기" — 자유모드에서 사용자가 명시적으로 튜토리얼을 처음부터 다시 본다. */
+export function restartTutorial(): void {
+  enterTutorialMode()
 }

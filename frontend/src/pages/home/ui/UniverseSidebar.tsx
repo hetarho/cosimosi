@@ -13,6 +13,8 @@ export interface UniverseSidebarProps {
   onSignOut: () => void
   /** 체험 종료(데모) — 기존 동선 유지. */
   onLeaveDemo: () => void
+  /** 둘러보기 다시 보기(데모) — 튜토리얼 투어를 처음부터(plan 48). */
+  onReplayTour: () => void
   onMyPage: () => void
   onShare: () => void
   onGifts: () => void
@@ -28,6 +30,7 @@ export function UniverseSidebar({
   isDemo,
   onSignOut,
   onLeaveDemo,
+  onReplayTour,
   onMyPage,
   onShare,
   onGifts,
@@ -43,6 +46,11 @@ export function UniverseSidebar({
         ) : (
           <button type="button" className={itemCls} onClick={onSignOut}>
             로그아웃
+          </button>
+        )}
+        {isDemo && (
+          <button type="button" className={itemCls} onClick={onReplayTour}>
+            둘러보기 다시 보기
           </button>
         )}
         {!isDemo && (

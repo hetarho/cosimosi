@@ -40,6 +40,7 @@ export function UniverseExplorerSheet({
             key={t.key}
             type="button"
             role="tab"
+            data-tour-id={t.key === 'diary' ? 'explorer-diary-tab' : 'explorer-star-tab'}
             aria-selected={tab === t.key}
             onClick={() => onTab(t.key)}
             className={`flex-1 rounded-md px-3 py-1.5 transition ${

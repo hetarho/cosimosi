@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { ArrowDown, LogIn } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { enterDemoMode, exitDemoMode, resetDemo } from '@/shared/lib/demo'
+import { startDemoSession, exitDemoMode, resetDemo } from '@/shared/lib/demo'
 import { useScrollToSection } from '../../lib/scroll'
 
 export function HeroSection() {
@@ -11,9 +11,9 @@ export function HeroSection() {
   // 히어로 엠블럼 별은 페이지 전역 우주 씬(LandingPage의 CosmosScene)이 배경에 띄운다 — 여기선 워드마크만.
 
   // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 체험 우주로 바로 보낸다.
-  // (로그인/DB 없이 루트 우주 `/` 진입 — CtaFooterSection의 tryDemo와 동일 경로.)
+  // (로그인/DB 없이 루트 우주 `/` 진입 — 매 진입을 온보딩부터 시작하도록 흐름·더미 우주를 리셋한다.)
   const tryDemo = () => {
-    enterDemoMode()
+    startDemoSession()
     void navigate({ to: '/' })
   }
 

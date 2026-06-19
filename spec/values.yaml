@@ -354,3 +354,8 @@ demo_consolidation:
 # ── 데모 오버레이 (demo_overlay) — simulate.ts/data.ts. spec 37 ─────────────────────────────────
 demo_overlay:
   max_bridges: 4 #   두 데모 우주 사이 공명 빛-다리 최대 수
+
+# ── 데모 자유모드 (demo_free_mode) — data.ts/HomePage. plan 47 ───────────────────────────────────
+demo_free_mode:
+  random_star_min: 1 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최소 개수
+  random_star_max: 5 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최대 개수

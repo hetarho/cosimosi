@@ -47,8 +47,10 @@
 - **우주 탐색기(`UniverseExplorerSheet`, `pages/home/ui`).** 망원경이 여는 비차단 `Surface`. 탭 둘: **일기**(`DiarySheet` — 검색·감정 facet·날짜 범위 필터) · **별**(`StarExplorerList` — AWAKE+DORMANT 별을 `lastRecalledAt` 오름차순 한 목록으로, 검색·감정·날짜·잠듦(전체/깨어있는/잠든 별) 필터 + "N일 전 회상"). 옛 잠든 별 전용 진입점은 사라지고 별 탭에 흡수됐다.
 - **결과 — 통일 비차단 `Surface`.** 회상·변천사·우주 공개·주고받은 별·별 보내기·작성·테마가 전부 한 idiom(모바일 바텀시트 / 데스크톱 떠있는 카드)으로 열린다. 코너에 고정되지 않고, 열려 있어도 뒤 우주가 보이고 별 탭/회전이 된다(차단 모달 없음).
 - **상단 중앙 UI 숨기기 토글(Eye/EyeOff).** "UI 숨기기"는 모든 표면을 닫고 포커스·변천사를 해제한 뒤, 토글 자신을 뺀 모든 HUD를 숨긴다(WebGPU 캔버스는 그대로 — HUD는 캔버스 밖 DOM). "UI 보이기"로 기본 HUD를 복구한다.
-- **하단 중앙 `새 별 띄우기`(Plus).** 작성 `MemoryForm` `Surface`를 연다(데모에선 숨김 — `DemoSimPanel`이 기록 담당).
+- **하단 중앙 `새 별 띄우기`(Plus).** 실계정은 작성 `MemoryForm` `Surface`를 열고, 데모 자유모드는 랜덤 별을 즉시 만든다(`demoAddRandomStars` — 표면 없음, plan 47).
 - **좌상단 테마 pill.** 위치 불변. 커스터마이즈 표면(`AppearanceModal`)을 연다 — `스킨`/`감정 색`으로 분할(별도 `외형` 헤더 텍스트 없음).
+- **데모 자유모드 컨트롤(`DemoFreeModeControls`, `pages/home/ui`).** 데모에서만, 좌상단 테마 pill 아래 아이콘 버튼 두 개(페르소나·시간)가 각각 버튼 옆에 뜨는 작은 transient 팝오버(`PopoverButton`)를 연다 — 바텀시트가 아니다. 한 번에 하나만 열리고 사이드바·탐색기 등 다른 표면이 열리면 페이지가 닫는다(`closeSurfaces`). 진입 흐름(plan 47)이 `free`가 아니면 페이지가 `DemoOnboarding` 풀스크린 선택 오버레이(z-40)를 HUD 위에 띄우고 그동안 HUD 컨트롤은 마운트하지 않는다.
+- **데모 튜토리얼 투어(`DemoGuidedTour`, `widgets/demo-tour`, plan 48).** 진입 흐름이 `tutorial`일 때만, 자유모드 HUD 위에 z-50 overlay를 얹는다 — 현재 target만 남기고 나머지를 어둡게 덮는 **딤(box-shadow spread, 둥근 구멍) + 투명 클릭 차단 패널 4개** + 구멍 둘레의 **빛나는 glow 테두리**(target rect를 `use-tour-target`가 rAF로 추적)와 coach card. 하이라이트된 버튼만 누를 수 있고 coach card만 입력을 받는다. **행동 안내형**: 단계는 phase로 나뉘어 UI 숨김 토글·팝오버 열림·페르소나 전환·시간 이동·사이드바/망원경 열림을 관찰해 진행하고(버튼을 누르면 하이라이트가 팝오버·시트·✕로 옮겨가거나 결과 안내를 띄움), `다음`으로 건너뛸 수 있다. 별 탭 단계만 페이지가 탐색 시트를 자동으로 연다. 단계 전환 시 페이지가 표면을 정리하고 UI 숨김도 복구한다. 투어 중에는 모달 백드롭의 바깥-탭-닫기를 끈다. 캔버스 안 별·시작/끝 단계는 DOM rect가 없어 딤이 클릭을 막지 않고 중앙 안내 카드만 띄운다(3D 씬 안 `<Html>` 없음 — 헌법8).
 - **이동 `NavPad`.** 회상 모드 전용 비행 D-pad(상시 버튼이 아니라 모드별 컨트롤) — 화면 가장자리.
 
 페이지 핸들:
@@ -86,7 +88,9 @@
 - z-10: 포커스 딤 `Backdrop`(pointer-events-none)·우주 로딩/빈 우주/에러 카드.
 - z-20: `NavPad`.
 - z-30: 결과·탐색 표면(`Surface` 시트/카드)·`DiaryCard`·우상단 컨트롤 스택(햄버거·카메라 토글·망원경)·상단 중앙 UI 토글·하단 중앙 `새 별 띄우기`·좌상단 테마 pill·(레거시 `OverlayHost` 시트/카드·peek 핸들).
-- z-40: 사이드바 `SideDrawer`(차단형 딤 backdrop + 우측 드로어 — 메뉴 동선이라 뒤 우주를 의도적으로 막는다).
+- z-40: 사이드바 `SideDrawer`(차단형 딤 backdrop + 우측 드로어 — 메뉴 동선이라 뒤 우주를 의도적으로 막는다)·데모 온보딩 `DemoOnboarding`(자유모드 전 풀스크린 선택 오버레이 — 캔버스만 뒤에 두고 HUD는 미마운트).
+- 데모 자유모드 컨트롤(`DemoFreeModeControls`)은 좌상단 HUD 레이어(버튼 z-20·팝오버 z-30)에 얹힌다.
+- z-50: 데모 튜토리얼 투어(`DemoGuidedTour`) — 딤 + 구멍 + target glow 테두리 + coach card. 자유모드 HUD·표면 위에 떠 단계를 안내한다(딤 패널이 바깥 클릭을 막고 하이라이트된 버튼·coach card만 입력).
 - z-50: 전역 chrome(랜딩 외형 스위처 FAB). 결과/액션 차단 모달 없음(모두 비차단 `Surface`); 사이드바만 차단형이다.
 
 ## Public Interfaces
