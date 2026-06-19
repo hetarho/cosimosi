@@ -3,8 +3,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useQuery } from '@tanstack/react-query'
 import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
-import { themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
-import { AppearanceSwitcher, usePlaygroundExtras } from '@/features/switch-appearance'
+import { backgroundMeta, themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
+import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { InviteReason, supabase } from '@/shared/api'
 import { VALUES } from '@/shared/config'
 import { useRedeemInviteCode, validateInviteCode, membershipStatusQueryOptions } from '../api/invite-queries'
@@ -37,15 +37,13 @@ function InviteShell({ children }: { children: React.ReactNode }) {
   const theme = useAppearance((s) => s.theme)
   const accent = themeAccent(theme)
   const stars: StarVisual[] = [{ concept: object, color: accent, anchor: [0.5, 0.3], size: 0.12, seed: 7 }]
-  const extras = usePlaygroundExtras()
+  const texture = backgroundMeta(theme).texture
   return (
     <>
       <div className="fixed inset-0 -z-10">
         <CosmosScene
           stars={stars}
-          self={extras.self}
-          synapses={extras.synapses}
-          texture={extras.texture}
+          texture={texture}
           palette={paletteForBackground(theme)}
           twinkle={110}
         />

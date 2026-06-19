@@ -1,7 +1,7 @@
 import { MOOD } from '@/shared/config'
 import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
-import { themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
-import { AppearanceSwitcher, usePlaygroundExtras } from '@/features/switch-appearance'
+import { backgroundMeta, themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
+import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { JourneyAct } from './JourneyAct'
 import { HeroSection } from './section/HeroSection'
 import { ConceptSection } from './section/ConceptSection'
@@ -30,10 +30,8 @@ export function LandingPage() {
   const object = useAppearance((s) => s.object)
   // 히어로 엠블럼 별 — 페이지 전역 우주 씬(fixed)에 떠 있어 스크롤해도 배경에 남는다. 코어 작게, glow=halo.
   const heroStar: StarVisual = { concept: object, color: themeAccent(theme), anchor: [0.5, 0.32], size: 0.14, seed: 7 }
-  // 랜딩 배경 텍스처(배경 번들의 veil 슬롯)만 어댑터에서 가져온다. 나(self)·시냅스 표본은 랜딩에선
-  // 빼서(완성도 이슈) 순수 마케팅 백드롭으로 둔다 — 배경 + 히어로 엠블럼 별만. 외형 미리보기는 외형
-  // 스위처(우하단)·사인인 플레이그라운드에서 한다.
-  const texture = usePlaygroundExtras().texture
+  // 랜딩은 배경 + 히어로 엠블럼 별만 그린다. 배경 결은 배경 번들의 veil 슬롯에서 바로 가져온다.
+  const texture = backgroundMeta(theme).texture
 
   return (
     <div className="relative" data-landing-theme={theme}>

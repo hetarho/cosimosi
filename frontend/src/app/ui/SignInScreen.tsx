@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
-import { themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
-import { AppearanceSwitcher, usePlaygroundExtras } from '@/features/switch-appearance'
+import { backgroundMeta, themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
+import { AppearanceSwitcher } from '@/features/switch-appearance'
 import { useAuthActions } from './session-context'
 
 /**
@@ -21,11 +21,9 @@ export function SignInScreen() {
   const object = useAppearance((s) => s.object)
   const theme = useAppearance((s) => s.theme)
   const accent = themeAccent(theme)
+  const texture = backgroundMeta(theme).texture
   // 코어는 작게(size), 글로우는 halo가 — 예전 또렷한 구슬 느낌. 앵커는 폼 상단 엠블럼 자리(육안 튜닝 대상).
   const stars: StarVisual[] = [{ concept: object, color: accent, anchor: [0.5, 0.37], size: 0.13, seed: 7 }]
-  // 미니 코스모스 4축(spec 44 A12·H): 나 앵커·시냅스 표본·배경 텍스처를 공유 어댑터에서. 가입하면 그대로 적용.
-  const extras = usePlaygroundExtras()
-
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
@@ -82,9 +80,7 @@ export function SignInScreen() {
       <div className="fixed inset-0 -z-10">
         <CosmosScene
           stars={stars}
-          self={extras.self}
-          synapses={extras.synapses}
-          texture={extras.texture}
+          texture={texture}
           palette={paletteForBackground(theme)}
         />
       </div>
@@ -211,7 +207,7 @@ export function SignInScreen() {
           </p>
         </div>
       </div>
-      {/* 외형 플로팅 스위처(우하단) — 미인증 플레이그라운드라 4축 전부 잠금 해제·로컬만 바뀐다(미저장). */}
+      {/* 외형 플로팅 스위처(우하단) — 미인증 진입점이라 잠금 없이 로컬 선택만 바뀐다(미저장). */}
       <AppearanceSwitcher />
     </>
   )
