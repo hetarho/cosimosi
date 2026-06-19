@@ -131,7 +131,10 @@ function BackgroundVeil({ texture }: { texture?: BackgroundTexture }) {
   if (!texture?.veilColor) return null
   return (
     <mesh renderOrder={-2}>
-      <sphereGeometry args={[800, 24, 16]} />
+      {/* 반경은 nebula 자유 궤도 최대 거리(1500)보다 커야 한다 — 안 그러면 줌아웃 시 카메라가 베일
+          구를 빠져나가 BackSide 근접면이 컬링되며 먼 반구가 화면 중앙에 뭉쳐 보인다("백드롭 풀림").
+          UniverseNebula(1800)와 같은 안전 반경. */}
+      <sphereGeometry args={[1800, 24, 16]} />
       <meshBasicMaterial
         color={texture.veilColor}
         side={THREE.BackSide}
