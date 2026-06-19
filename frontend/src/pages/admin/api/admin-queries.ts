@@ -30,6 +30,21 @@ export function adminOverviewQueryOptions() {
   })
 }
 
+/**
+ * ListAdminUsers 쿼리 옵션(spec 46) — user_id 검색 + keyset 페이지. 검색어/페이지 토큰마다 별도
+ * 쿼리 키라 다음 페이지가 누적 캐시된다. page_size는 서버가 admin values로 클램프(미지정=0).
+ */
+export function adminUsersQueryOptions(input: { userIdQuery?: string; pageToken?: string }) {
+  return queryOptions({
+    ...createQueryOptions(
+      AdminService.method.listAdminUsers,
+      { userIdQuery: input.userIdQuery ?? '', pageSize: 0, pageToken: input.pageToken ?? '' },
+      { transport },
+    ),
+    staleTime: ADMIN_STALE_MS,
+  })
+}
+
 /** 비관리자 판별: 서버 게이트의 PermissionDenied → NotFound 위장 렌더(3.3). */
 export function isPermissionDenied(error: unknown): boolean {
   return error instanceof ConnectError && error.code === Code.PermissionDenied
@@ -39,6 +54,24 @@ function llmConfigKey() {
   return createConnectQueryKey({
     schema: AdminService.method.getLLMConfig,
     cardinality: 'finite',
+  })
+}
+
+// 입력(검색어/토큰) 없이 만든 부분 키 — invalidateQueries가 모든 ListAdminUsers 페이지를 prefix 매칭으로 무효화.
+function adminUsersKey() {
+  return createConnectQueryKey({
+    schema: AdminService.method.listAdminUsers,
+    cardinality: 'finite',
+  })
+}
+
+/** 별가루 보정 지급(spec 46) — 성공 시 모든 사용자 목록 페이지 invalidate(잔액 즉시 갱신). */
+export function useGrantUserStardust() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { targetUserId: string; amount: bigint }) =>
+      callUnaryMethod(transport, AdminService.method.grantUserStardust, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminUsersKey() }),
   })
 }
 

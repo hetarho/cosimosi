@@ -109,3 +109,15 @@ Report:
 ```
 
 **Don't run `git commit`.** The user commits.
+
+## Refactor jobs
+
+If frontmatter says `type: refactor`, read `source: code-review/NN.slug` instead of a plan or change document.
+Treat the linked report as evidence and scope, then implement only the job checklist. Refactor jobs are normally
+behavior-preserving:
+
+- verify the targeted structure, boundary, duplication, or documentation problem is improved
+- verify user-facing behavior, APIs, data semantics, and policy remain unchanged unless the job explicitly says otherwise
+- do not archive a `code-review/` source report automatically; it is a historical audit record
+- reflect only true as-built changes into `plan/`, `policy/`, `tech/`, or `values.yaml`
+- clear the job status and archive the completed job the same way as other job types

@@ -81,6 +81,9 @@ function toStar(now: number, s: SimStar): Star {
     hueShift: r?.hueShift ?? 0,
     formSeedDelta: r?.formSeedDelta ?? 0,
     version: r?.version ?? 0,
+    // spec 07: 데모 별에 회상 횟수 부여 — 정서적인 별일수록 더 자주 떠올린 것으로(같은 Bjork R 경로 미러).
+    // 회상 세션(renewStar)이 +1 한다. 실서버와 같은 R-순위·배경 짜임 경로를 데모도 그대로 탄다.
+    recallCount: BigInt(1 + Math.round(s.intensity * 3)),
   })
 }
 
@@ -359,6 +362,7 @@ export function demoAddRecord(input: {
         lastRecalledAt: nowIso, // 방금 만든 별 → 가장 밝게
         recordId: baseId, // spec 28: 같은 일기의 조각은 baseId로 묶인다(단일 조각이면 id===baseId)
         fragmentIndex: i,
+        recallCount: 1n, // spec 07: 막 만든 별 → 회상 1회(부호화)
       }),
     )
     // 다조각이면 그 장면이 조각 텍스트(별 → 조각); 단일 문단이면 본문==조각이라 미등록("" 폴백).
@@ -519,6 +523,7 @@ function renewStar(s: Star, lastRecalledAt: string): Star {
     hueShift: r?.hueShift ?? s.hueShift,
     formSeedDelta: r?.formSeedDelta ?? s.formSeedDelta,
     version: r?.version ?? s.version,
+    recallCount: s.recallCount + 1n, // spec 07: 회상 재점화마다 +1(서버 RecallMemoryTouch 미러 — R↑·중앙 당김)
   })
 }
 

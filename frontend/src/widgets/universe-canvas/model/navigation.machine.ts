@@ -8,9 +8,13 @@ import { setOverlayWriteBlocked } from '@/shared/lib'
 // 매 프레임 getSnapshot으로 읽고(React 리렌더 없이 60fps 구동 금지 — Architecture §3.2), 도착 시
 // ARRIVED를 보낸다. 연속 보간(lerp)은 컨트롤러 useFrame에 남고, 머신은 이산 상태·타깃만 든다.
 //
+// 용어(change 08): nebula/recall은 *내부 개발자 식별자*다. 사용자-facing 이름은 nebula="멀리서 내
+// 우주 보기", recall="별들 가까이서 탐험하기". recall은 카메라 모드일 뿐 도메인 행위 RecallMemory(회상,
+// 2초 dwell 인출)와 별개다 — 화면/정책은 새 이름, 이 식별자는 dev 전용으로 안정 유지(이벤트명 불변).
+//
 // 상태:
-//  - nebula        조망 궤도(자유 관찰) — settled
-//  - recall        근접 비행(우주선, D-pad) — settled
+//  - nebula        조망 궤도(멀리서 내 우주 보기: orbit·pan·zoom) — settled
+//  - recall        근접 항행(별들 가까이서 탐험하기: look·thrust, 이동 광원) — settled
 //  - flyingToStar  특정 별로 fly-to(잠든 별 선택) — #transitioning → ARRIVED → recall
 //  - framingDiary  일기의 모든 별 조망(frame-all) — #transitioning → ARRIVED → nebula
 //  - modeTransition 토글 시 모드 시그니처 포즈로 비행 — #transitioning → ARRIVED → transitionTo

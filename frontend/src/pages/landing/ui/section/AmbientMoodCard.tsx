@@ -10,8 +10,8 @@ import { TheoryBadge } from './TheoryBadge'
 const VW = 100
 const VH = 60
 
-/** 하나의 광원(nebula 풀) — 의미색·자리·크기·세기. 여러 개가 screen-가산으로 겹쳐
- *  단일 톤이 아닌 불규칙 그라디언트를 만든다(우주 3D AmbientNebula의 2D 대응). */
+/** 배경 결에 짜인 한 감정색 — 의미색·자리·번짐 폭·세기. 여러 색이 screen-가산으로 겹쳐 배경
+ *  텍스처에 녹아든다(별개의 떠 있는 오브가 아니라 배경 자체의 결, spec 07). */
 interface Orb {
   color: string
   x: number // %
@@ -20,13 +20,13 @@ interface Orb {
   alpha: number
 }
 
-/** 요즘의 한 상태 = 최근 감정 분포의 7일 종합 결과. 같은 별들 위에 다른 하늘이 깔린다. */
+/** 요즘의 한 상태 = 최근 기억의 인출 강도(R) 순위 결과. 같은 별들 위에 다른 배경 결이 짜인다. */
 interface MoodState {
   key: string
   label: string
-  /** 0..1 종합 각성도 → 흥분성 게인 g = 1 + 0.3·arousal. */
+  /** 0..1 Σ R 도출 각성도 → 배경 전역 생동 + 흥분성 게인 g = 1 + 0.3·arousal. */
   arousal: number
-  /** 정서가 부호 — 양이면 따뜻한 하늘, 음이면 차가운 하늘. */
+  /** 정서가 부호 — 양이면 따뜻한 결, 음이면 차가운 결. */
   warm: boolean
   orbs: Orb[]
   blurb: string
@@ -43,7 +43,7 @@ const STATES: MoodState[] = [
       { color: MOOD.teal, x: 42, y: 46, size: 78, alpha: 0.5 },
       { color: MOOD.amber, x: 64, y: 40, size: 52, alpha: 0.18 },
     ],
-    blurb: '며칠째 평온하면, 하늘은 한 색으로 잦아들어요. 광원 한둘이 넓게 번질 뿐.',
+    blurb: '며칠째 평온하면, 배경은 주요 감정 한 색으로 잦아들어요 — 결이 잔잔하고 한 톤으로 번질 뿐.',
   },
   {
     key: 'tender',
@@ -55,7 +55,7 @@ const STATES: MoodState[] = [
       { color: MOOD.pink, x: 64, y: 33, size: 54, alpha: 0.44 },
       { color: MOOD.violet, x: 50, y: 64, size: 50, alpha: 0.3 },
     ],
-    blurb: '설렘이 번지면 금빛과 장미빛 광원이 여럿, 따뜻한 쪽으로 채도가 올라요.',
+    blurb: '설렘이 번지면 금빛·장미빛 감정색이 배경 결에 여럿 짜이고, 따뜻한 쪽으로 채도가 올라요.',
   },
   {
     key: 'turbulent',
@@ -68,7 +68,7 @@ const STATES: MoodState[] = [
       { color: MOOD.pink, x: 48, y: 66, size: 54, alpha: 0.42 },
       { color: MOOD.teal, x: 78, y: 62, size: 42, alpha: 0.28 },
     ],
-    blurb: '격동하면 여러 색 광원이 불규칙하게 겹쳐 강렬해지고, 차가운 쪽으로 탁해져요.',
+    blurb: '격동하면 여러 감정색이 배경 결마다 불규칙하게 짜여 강렬해지고, 결의 움직임도 거세져요.',
   },
 ]
 
@@ -82,11 +82,11 @@ const STARS = [
 ]
 
 /**
- * "요즘 상태 — 같은 별들도 오늘의 하늘색이 다르면 다르게 보인다" (spec 25).
- * 최근 며칠의 감정을 7일 시간가중으로 종합하면, 우세한 감정 몇이 각각 하나의 넓은 광원이
- * 되어 우주의 배경을 물들여요 — 단일 톤이 아니라 군데군데 번지는 불규칙한 빛이에요. 별은
- * 그대로인데 하늘이 달라지면 우주의 인상이 달라지죠. 그리고 격동한 요즘일수록(높은 각성)
- * 새 기억을 끌어당기는 힘이 커져요 — 끌림 = 의미 + 0.25 × 흥분성, 흥분성은 g = 1 + 0.3 × 각성.
+ * "요즘 상태 — 같은 별들도 배경 결이 다르면 다르게 보인다" (spec 25·07).
+ * 최근 기억일수록·자주 떠올린 기억일수록 인출 강도 R이 높고, 그 R로 감정 순위를 매겨 상위 감정의
+ * 색을 배경 스킨 텍스처에 직접 짜 넣어요 — 떠 있는 별개의 빛이 아니라 배경 자체의 결이에요. 별은
+ * 그대로인데 배경 결이 달라지면 우주의 인상이 달라지죠. 격동한 요즘일수록(높은 각성 = Σ R) 배경이
+ * 더 생동하고, 새 기억을 끌어당기는 힘도 커져요 — 흥분성 g = 1 + 0.3 × 각성.
  */
 export function AmbientMoodCard() {
   const reduce = useReducedMotion()
@@ -98,8 +98,8 @@ export function AmbientMoodCard() {
   return (
     <div className="flex flex-col gap-5">
       <figure className="relative aspect-[16/9] overflow-hidden rounded-3xl border border-white/10 bg-space-900/60">
-        {/* 다중 광원 배경 — 상태마다 한 겹씩 깔고 opacity로 ~0.8s 크로스페이드. 광원들은
-            screen-가산으로 겹쳐 불규칙한 그라디언트가 된다(우주 AmbientNebula의 2D 대응). */}
+        {/* 배경 결에 짜인 감정색 — 상태마다 한 겹씩 깔고 opacity로 크로스페이드. 감정색들은
+            screen-가산으로 겹쳐 배경 텍스처에 녹아든다(우주 UniverseNebula 감정 weave의 2D 대응). */}
         {STATES.map((st, i) => (
           <motion.div
             key={st.key}
@@ -200,10 +200,10 @@ export function AmbientMoodCard() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-white/30">
-        최근 며칠의 감정을 7일로 천천히 종합해, 우세한 감정 몇을 각각 하나의 넓은 광원으로 흩뿌려요 —
-        배경은 단일 톤이 아니라 군데군데 번지는 불규칙한 빛이에요. 격동한 요즘일수록 새 기억을
-        끌어당기는 힘이 세져요 — <span className="text-white/45">끌림 = 의미 + 0.25 × 흥분성</span>,
-        흥분성은 <span className="text-white/45">g = 1 + 0.3 × 각성</span>이라 각성이 오르면 끌림도 함께 커져요.
+        최근일수록·자주 떠올릴수록 인출 강도 R이 높고, 그 R로 감정 순위를 매겨 상위 감정의 색을 배경
+        스킨 텍스처에 직접 짜 넣어요 — 배경 자체의 결이지 떠 있는 빛이 아니에요. 격동한 요즘일수록(Σ R↑)
+        배경이 더 생동하고 새 기억의 끌림도 세져요 —
+        <span className="text-white/45"> g = 1 + 0.3 × 각성</span>.
       </p>
 
       <TheoryBadge status="done" plan="25" />

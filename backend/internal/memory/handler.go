@@ -151,17 +151,11 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 		})
 	}
 
+	// spec 07: no ambient summary — the client derives the "요즘" emotion ranking + arousal
+	// from the loaded stars (+recall_count) via the Bjork retrieval strength R.
 	return connect.NewResponse(&cosimosiv1.GetUniverseResponse{
 		Stars:    stars,
 		Synapses: synapses,
-		// Ambient is the recent-mood summary (spec 25), not a coordinate (constitution §3);
-		// an empty universe yields the neutral zero value (hue/sat/arousal/valence all 0).
-		Ambient: &cosimosiv1.AmbientMood{
-			Hue:     uni.Ambient.Hue,
-			Sat:     uni.Ambient.Sat,
-			Arousal: uni.Ambient.Arousal,
-			Valence: uni.Ambient.Valence,
-		},
 	}), nil
 }
 
@@ -301,6 +295,7 @@ func toStar(m Memory) *cosimosiv1.Star {
 		FragmentIndex:    int32(m.FragmentIndex), // 28: 일기 내 조각 순서
 		Relevance:        m.Relevance, // 26: 0 outside GetUniverse (ListDormant doesn't score it)
 		Resonant:         m.Resonant,  // 36: GetUniverse만 채움 (ListDormant은 false — 공명 조인 없음)
+		RecallCount:      int64(m.RecallCount), // 07: 누적 회상 횟수(클라 S/R 파생; 기존 별 1 백필)
 	}
 }
 

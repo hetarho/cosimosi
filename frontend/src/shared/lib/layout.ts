@@ -14,20 +14,14 @@ export const R_MIN = VALUES.radialLayout.rMin
 /** Weakest (dormant) memory shell — the outer reaches of the universe. Kept inside the
  *  camera's star-shell framing (~46) so the cloud reads tight, not sprawling. */
 export const R_MAX = VALUES.radialLayout.rMax
-/** Strength = W_ACT·activation + W_INT·intensity: recency leads, emotional intensity tempers. */
-export const W_ACT = VALUES.radialLayout.wActivation
-export const W_INT = VALUES.radialLayout.wIntensity
 
-/** A memory's strength ∈ [0,1]: a blend of activation (recency, 0..1 — spec 12) and
- *  emotional intensity (0..1). Higher = more alive → drawn closer to the self star. */
-export function strength(activation: number, intensity: number): number {
-  return clamp01(W_ACT * clamp01(activation) + W_INT * clamp01(intensity))
-}
-
-/** Strength → distance from the centre: strength 1 → R_MIN (beside the self star),
- *  strength 0 → R_MAX (the dormant outer reaches), linear in between. */
-export function targetRadius(strength: number): number {
-  return R_MIN + (R_MAX - R_MIN) * (1 - clamp01(strength))
+/** Bjork retrieval strength R ∈ [0,1] → distance from the centre: R 1 → R_MIN (beside the
+ *  self star), R 0 → R_MAX (the dormant outer reaches), linear in between. "Distance =
+ *  strength" preserved (spec 38); spec 07 swapped the old activation·intensity blend for the
+ *  single retrieval strength R (entities/memory weight.ts) — a recalled memory is pulled in,
+ *  a forgotten one drifts out, and an often-recalled one stays central longer (τ grows with S). */
+export function targetRadius(r: number): number {
+  return R_MIN + (R_MAX - R_MIN) * (1 - clamp01(r))
 }
 
 /** Fibonacci-sphere position for star i of n; the radius varies by the star's seed so

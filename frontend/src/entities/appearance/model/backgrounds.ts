@@ -9,21 +9,25 @@ export const BACKGROUNDS: BackgroundMeta[] = [
   {
     id: 'vast',
     name: '광활한 우주',
-    tagline: '깊은 인디고 심연 · 차분하고 웅장',
+    tagline: '깊은 인디고 심연 · 주요 감정 한 줄기',
     swatch: 'radial-gradient(circle at 50% 38%, #6b5cff 0%, #1b1640 52%, #07060f 100%)',
     accent: '#7f77dd', // MOOD.violet
     bg: '#070b1e', // 깊은 인디고
-    palette: DEFAULT_PALETTE, // vast = 기본 violet 팔레트
+    palette: DEFAULT_PALETTE, // vast = 기본 violet 팔레트(절제된 받침색)
+    emotionSlots: 1, // 주요 감정 1색만 은은히 — 차분하고 웅장
+    pattern: { warp: 0.4, freq: 1.1, detail: 0.4 }, // 크고 고른 결(잔잔한 대성운)
   },
   {
     id: 'lively',
     name: '경쾌한 우주',
-    tagline: '따뜻한 자홍 · 채도 높고 생동',
+    tagline: '따뜻한 자홍 · 여러 감정이 휘몰아치는 결',
     // 색 무드(채움) — 형태를 나타내는 오브제 conic swatch와 헷갈리지 않게 linear로.
     swatch: 'linear-gradient(135deg, #ffc27a 0%, #ff6fae 50%, #c77bff 100%)',
     accent: '#ef9f27', // MOOD.amber
     bg: '#120617', // 깊은 자홍
-    palette: { base: '#120617', c1: '#4a1f3a', c2: '#c75ba0', c3: '#ff7a8f', c4: '#ffb27a', hi: '#ffe6c8' },
+    palette: { base: '#120617', c1: '#4a1f3a', c2: '#a85488', c3: '#d76f86', c4: '#d9a173', hi: '#f0dcc4' },
+    emotionSlots: 3, // 상위 3개 감정을 비중대로 — 생동
+    pattern: { warp: 0.85, freq: 1.6, detail: 0.85 }, // 휘몰아치는 거친 결(turbulent)
   },
   {
     id: 'calm',
@@ -32,16 +36,20 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     swatch: 'radial-gradient(circle at 50% 40%, #3fd6b5 0%, #114a44 58%, #06120f 100%)',
     accent: '#1d9e75', // MOOD.teal
     bg: '#04140f', // 깊은 청록
-    palette: { base: '#04140f', c1: '#0e3b38', c2: '#1d9e75', c3: '#3fd6b5', c4: '#9fe6cf', hi: '#e6f3ea' },
+    palette: { base: '#04140f', c1: '#0e3b38', c2: '#1d8068', c3: '#3aa890', c4: '#7fc4b2', hi: '#cfe6dd' },
+    emotionSlots: 1, // 주요 감정 1색만 — 평온
+    pattern: { warp: 0.3, freq: 0.85, detail: 0.3 }, // 부드럽고 느슨한 큰 결(soft low-freq)
   },
   {
     id: 'aurora-veil',
     name: '오로라 장막',
-    tagline: '극광이 흐르는 베일 · 청보라 결',
+    tagline: '극광이 흐르는 베일 · 모든 감정이 결마다',
     swatch: 'linear-gradient(150deg, #0a1830 0%, #2f7fb0 38%, #6fe0c0 64%, #b9a7ef 100%)',
     accent: '#5fd0c0',
     bg: '#04101c', // 깊은 청록빛 남색
     palette: { base: '#04101c', c1: '#143a52', c2: '#2f8fb0', c3: '#5fd0c0', c4: '#9fb8ef', hi: '#e8f6f0' },
+    emotionSlots: 13, // 모든 감정을 비중대로 결마다 짜 넣음(전부)
+    pattern: { warp: 1.1, freq: 1.9, detail: 0.6 }, // 흐르는 줄무늬 베일(streaky high-warp)
     // 텍스처/요소 슬롯(번들) — 은은한 극광 베일 한 겹(별 mood 색 불간섭). 비주얼은 디자인 반복.
     texture: { veilColor: '#1f5f7a', veilOpacity: 0.16 },
   },

@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/cosimosi/backend/internal/llm"
 	"github.com/cosimosi/backend/internal/platform/config"
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // usageKindExtract is the only metered kind for now (embedding usage is an
@@ -232,6 +234,45 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		JobsPending: jobs.Pending, JobsProcessing: jobs.Processing, JobsFailed: jobs.Failed, JobsDone24h: jobs.Done24h,
 		RecordSeries: series, Usage: usage,
 	}, nil
+}
+
+// ListUsers returns one page of users (spec 46). The service owns the page-size
+// policy (default/cap from admin values) and the search/token normalization; the
+// repo owns the auth.users-vs-fallback data. It over-fetches one row (page_size+1)
+// so a full page yields a next_page_token (the last in-page user_id) and trims it.
+func (s *Service) ListUsers(ctx context.Context, in ListUsersInput) (ListUsersResult, error) {
+	size := in.PageSize
+	if size <= 0 {
+		size = values.AdminUserListDefaultPageSize
+	}
+	if size > values.AdminUserListMaxPageSize {
+		size = values.AdminUserListMaxPageSize
+	}
+	users, err := s.repo.ListUsers(ctx, strings.TrimSpace(in.Query), in.PageToken, size+1, values.CustomizationStartingStardust)
+	if err != nil {
+		return ListUsersResult{}, err
+	}
+	next := ""
+	if len(users) > size {
+		next = users[size-1].UserID // keyset cursor = last user_id of this page
+		users = users[:size]
+	}
+	return ListUsersResult{Users: users, NextPageToken: next}, nil
+}
+
+// GrantStardust validates the amount and delegates the seed→add→audit transaction
+// to the repo (spec 46). amount must be a positive integer (A10); an amount that
+// can't fit the wallet's int range is rejected as overflow up front so the int32
+// cast in the repo is always safe.
+func (s *Service) GrantStardust(ctx context.Context, in GrantStardustInput) (AdminUser, error) {
+	// Both a non-positive amount and one that can't fit the wallet's int range are
+	// bad input (InvalidArgument). A valid amount the current balance can't absorb
+	// is the repo's ErrStardustOverflow (FailedPrecondition). The range check here
+	// also keeps the int32 cast in the repo always safe.
+	if in.Amount <= 0 || in.Amount > math.MaxInt32 {
+		return AdminUser{}, ErrInvalidGrantAmount
+	}
+	return s.repo.GrantStardust(ctx, in, values.CustomizationStartingStardust)
 }
 
 // ActiveLLM implements llm.ConfigSource: the Resolver's DB read (selection +

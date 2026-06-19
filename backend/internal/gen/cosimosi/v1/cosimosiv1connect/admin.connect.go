@@ -54,6 +54,12 @@ const (
 	// AdminServiceGetAdminOverviewProcedure is the fully-qualified name of the AdminService's
 	// GetAdminOverview RPC.
 	AdminServiceGetAdminOverviewProcedure = "/cosimosi.v1.AdminService/GetAdminOverview"
+	// AdminServiceListAdminUsersProcedure is the fully-qualified name of the AdminService's
+	// ListAdminUsers RPC.
+	AdminServiceListAdminUsersProcedure = "/cosimosi.v1.AdminService/ListAdminUsers"
+	// AdminServiceGrantUserStardustProcedure is the fully-qualified name of the AdminService's
+	// GrantUserStardust RPC.
+	AdminServiceGrantUserStardustProcedure = "/cosimosi.v1.AdminService/GrantUserStardust"
 )
 
 // AdminServiceClient is a client for the cosimosi.v1.AdminService service.
@@ -65,6 +71,12 @@ type AdminServiceClient interface {
 	SetActiveLLM(context.Context, *connect.Request[v1.SetActiveLLMRequest]) (*connect.Response[v1.SetActiveLLMResponse], error)
 	TestProviderKey(context.Context, *connect.Request[v1.TestProviderKeyRequest]) (*connect.Response[v1.TestProviderKeyResponse], error)
 	GetAdminOverview(context.Context, *connect.Request[v1.GetAdminOverviewRequest]) (*connect.Response[v1.GetAdminOverviewResponse], error)
+	// ListAdminUsers (spec 46): all users (auth.users on Supabase, app-table union
+	// locally), user_id contains-search, keyset pagination. Read-only.
+	ListAdminUsers(context.Context, *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.ListAdminUsersResponse], error)
+	// GrantUserStardust (spec 46): admin corrective stardust grant — seed wallet
+	// then add amount, in one transaction, with an admin_stardust_grants audit row.
+	GrantUserStardust(context.Context, *connect.Request[v1.GrantUserStardustRequest]) (*connect.Response[v1.GrantUserStardustResponse], error)
 }
 
 // NewAdminServiceClient constructs a client for the cosimosi.v1.AdminService service. By default,
@@ -122,6 +134,19 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		listAdminUsers: connect.NewClient[v1.ListAdminUsersRequest, v1.ListAdminUsersResponse](
+			httpClient,
+			baseURL+AdminServiceListAdminUsersProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ListAdminUsers")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		grantUserStardust: connect.NewClient[v1.GrantUserStardustRequest, v1.GrantUserStardustResponse](
+			httpClient,
+			baseURL+AdminServiceGrantUserStardustProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("GrantUserStardust")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -134,6 +159,8 @@ type adminServiceClient struct {
 	setActiveLLM         *connect.Client[v1.SetActiveLLMRequest, v1.SetActiveLLMResponse]
 	testProviderKey      *connect.Client[v1.TestProviderKeyRequest, v1.TestProviderKeyResponse]
 	getAdminOverview     *connect.Client[v1.GetAdminOverviewRequest, v1.GetAdminOverviewResponse]
+	listAdminUsers       *connect.Client[v1.ListAdminUsersRequest, v1.ListAdminUsersResponse]
+	grantUserStardust    *connect.Client[v1.GrantUserStardustRequest, v1.GrantUserStardustResponse]
 }
 
 // GetLLMConfig calls cosimosi.v1.AdminService.GetLLMConfig.
@@ -171,6 +198,16 @@ func (c *adminServiceClient) GetAdminOverview(ctx context.Context, req *connect.
 	return c.getAdminOverview.CallUnary(ctx, req)
 }
 
+// ListAdminUsers calls cosimosi.v1.AdminService.ListAdminUsers.
+func (c *adminServiceClient) ListAdminUsers(ctx context.Context, req *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.ListAdminUsersResponse], error) {
+	return c.listAdminUsers.CallUnary(ctx, req)
+}
+
+// GrantUserStardust calls cosimosi.v1.AdminService.GrantUserStardust.
+func (c *adminServiceClient) GrantUserStardust(ctx context.Context, req *connect.Request[v1.GrantUserStardustRequest]) (*connect.Response[v1.GrantUserStardustResponse], error) {
+	return c.grantUserStardust.CallUnary(ctx, req)
+}
+
 // AdminServiceHandler is an implementation of the cosimosi.v1.AdminService service.
 type AdminServiceHandler interface {
 	GetLLMConfig(context.Context, *connect.Request[v1.GetLLMConfigRequest]) (*connect.Response[v1.GetLLMConfigResponse], error)
@@ -180,6 +217,12 @@ type AdminServiceHandler interface {
 	SetActiveLLM(context.Context, *connect.Request[v1.SetActiveLLMRequest]) (*connect.Response[v1.SetActiveLLMResponse], error)
 	TestProviderKey(context.Context, *connect.Request[v1.TestProviderKeyRequest]) (*connect.Response[v1.TestProviderKeyResponse], error)
 	GetAdminOverview(context.Context, *connect.Request[v1.GetAdminOverviewRequest]) (*connect.Response[v1.GetAdminOverviewResponse], error)
+	// ListAdminUsers (spec 46): all users (auth.users on Supabase, app-table union
+	// locally), user_id contains-search, keyset pagination. Read-only.
+	ListAdminUsers(context.Context, *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.ListAdminUsersResponse], error)
+	// GrantUserStardust (spec 46): admin corrective stardust grant — seed wallet
+	// then add amount, in one transaction, with an admin_stardust_grants audit row.
+	GrantUserStardust(context.Context, *connect.Request[v1.GrantUserStardustRequest]) (*connect.Response[v1.GrantUserStardustResponse], error)
 }
 
 // NewAdminServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -233,6 +276,19 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceListAdminUsersHandler := connect.NewUnaryHandler(
+		AdminServiceListAdminUsersProcedure,
+		svc.ListAdminUsers,
+		connect.WithSchema(adminServiceMethods.ByName("ListAdminUsers")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceGrantUserStardustHandler := connect.NewUnaryHandler(
+		AdminServiceGrantUserStardustProcedure,
+		svc.GrantUserStardust,
+		connect.WithSchema(adminServiceMethods.ByName("GrantUserStardust")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.v1.AdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminServiceGetLLMConfigProcedure:
@@ -249,6 +305,10 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceTestProviderKeyHandler.ServeHTTP(w, r)
 		case AdminServiceGetAdminOverviewProcedure:
 			adminServiceGetAdminOverviewHandler.ServeHTTP(w, r)
+		case AdminServiceListAdminUsersProcedure:
+			adminServiceListAdminUsersHandler.ServeHTTP(w, r)
+		case AdminServiceGrantUserStardustProcedure:
+			adminServiceGrantUserStardustHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -284,4 +344,12 @@ func (UnimplementedAdminServiceHandler) TestProviderKey(context.Context, *connec
 
 func (UnimplementedAdminServiceHandler) GetAdminOverview(context.Context, *connect.Request[v1.GetAdminOverviewRequest]) (*connect.Response[v1.GetAdminOverviewResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.AdminService.GetAdminOverview is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ListAdminUsers(context.Context, *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.ListAdminUsersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.AdminService.ListAdminUsers is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) GrantUserStardust(context.Context, *connect.Request[v1.GrantUserStardustRequest]) (*connect.Response[v1.GrantUserStardustResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.v1.AdminService.GrantUserStardust is not implemented"))
 }

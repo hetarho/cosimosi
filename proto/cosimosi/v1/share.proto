@@ -17,8 +17,8 @@ option go_package = "github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimo
 //                     public surface (acceptance 3.1).
 //
 // Like the other contracts this is a DTO layer only (constitution §5) and unary only
-// (constitution §6). Reuses Mood / Settings / AmbientMood from memory.proto (the visual
-// landscape is the owner's spec-30 appearance + spec-25 sky).
+// (constitution §6). Reuses Mood / Settings from memory.proto (the visual landscape is the
+// owner's spec-30 appearance; 07로 요즘-감정 sky 종합은 은퇴 — 방문자가 별에서 직접 파생).
 
 import "cosimosi/v1/memory.proto";
 
@@ -51,11 +51,13 @@ message GetSharedUniverseRequest {
 }
 
 message GetSharedUniverseResponse {
+  reserved 5;
+  reserved "ambient";
   string display_name = 1;         // owner-chosen name ("" = anonymous, client renders "어느 우주")
   repeated SharedStar stars = 2;
   repeated SharedSynapse synapses = 3;
   Settings appearance = 4;         // 30: owner visual overrides (background theme · object · emotion colors)
-  AmbientMood ambient = 5;         // 25: 요즘 하늘색 summary (zero value = neutral)
+  // 07: 요즘-감정 sky 종합(옛 ambient=5)은 은퇴 — 방문자가 SharedStar 분포에서 직접 파생한다.
 }
 
 // VisitService is the ENTIRE unauthenticated surface (acceptance 3.1). ⚠️ Adding an rpc here

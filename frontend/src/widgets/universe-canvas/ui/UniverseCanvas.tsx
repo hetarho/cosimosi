@@ -21,6 +21,9 @@ import { SynapseFilaments, SynapseDust, useSynapseStore, edgesWithin } from '@/e
 import {
   useMemoryStore,
   starsOfRecord,
+  rankedEmotions,
+  arousalOf,
+  type AmbientStar,
   focusActor,
   selectFocusedStarId,
   selectHighlightedRecordId,
@@ -39,10 +42,19 @@ import {
   applyAngularDrift,
   reportUniverseRenderer,
 } from '@/shared/lib'
-import { AmbientNebula } from './AmbientNebula'
 import { UniverseNebula } from './UniverseNebula'
 import { SelfStar } from './SelfStar'
 import { radiusOf, atRadius, RADIAL_SIM_PARAMS } from '../model/radial-layout'
+import {
+  navigationInput,
+  addLookDelta,
+  consumeLookDelta,
+  setThrust,
+  setGestureActive,
+  markSuppressClick,
+  resetGestureInput,
+} from '../model/navigation-input'
+import { passedDeadzone, isDoubleTap, thrustRamp, zoomScrubDelta } from '../model/navigation-gesture'
 import {
   createSim,
   advance,
@@ -201,9 +213,10 @@ const NEBULA_FRAME_DIST = 110 // fallback reframe distance (only when there's no
 // camera basis each frame — so there's no world-up alignment and no [0,PI] phi clamp to get
 // stuck on. Distance (radius from target) is dollied by wheel/pinch, clamped to the same
 // 58/1500 range OrbitControls used.
-const NEBULA_ROTATE_SPEED = 2.4 // radians of orbit per full-canvas-width drag
-const NEBULA_DAMP = 9 // 1/s — angular-velocity decay (inertial spin-down on release)
-const NEBULA_ZOOM_SPEED = 0.12 // wheel dolly sensitivity (fraction of radius per notch)
+// 원거리("멀리서 내 우주 보기") gesture 튜닝 — values 단일 출처(change 08, A14). 옛 NEBULA_* 상수 이전.
+const NEBULA_ROTATE_SPEED = VALUES.gesture.farRotateSpeed // radians of orbit per full-canvas-width drag
+const NEBULA_DAMP = VALUES.gesture.farDamp // 1/s — angular-velocity decay (inertial spin-down on release)
+const NEBULA_ZOOM_SPEED = VALUES.gesture.farZoomSpeed // wheel dolly sensitivity (fraction of radius per notch)
 
 // Recall-mode flight feel. Forward/back thrust uses a world-space VELOCITY → inertia (coasts on
 // release) plus acceleration (eases up to BASE_SPEED·boost while held). Shake is a tiny rig wobble.
@@ -323,6 +336,12 @@ function NebulaOrbitController() {
   const up = useRef(new THREE.Vector3())
   const offset = useRef(new THREE.Vector3())
   const q = useRef(new THREE.Quaternion())
+  // change 08 — 두 손가락 pan(centroid 이동 → controls.target 평면 이동) + double-tap-hold 세로 zoom scrub.
+  const pendingPan = useRef({ x: 0, y: 0 }) // 프레임 사이 누적 pan(스크린 px)
+  const lastCentroid = useRef({ x: 0, y: 0 }) // 직전 2-finger centroid(pan delta 산출)
+  const lastTap = useRef<{ t: number; x: number; y: number } | null>(null) // double-tap 판정용 직전 탭
+  const zoomScrub = useRef(false) // double-tap-hold 세로 스크럽 lock 중
+  const scrubLastY = useRef(0) // 스크럽 직전 Y
 
   useEffect(() => {
     if (!active) return
@@ -338,12 +357,23 @@ function NebulaOrbitController() {
     const last = lastXY
     const arm = armedPointer
     const dwn = downXY
-    const DRAG_DEADZONE = 8 // px — below this, a 1-finger press is a tap (→ star select), not an orbit
+    const pan = pendingPan
+    const cen = lastCentroid
+    const tap = lastTap
+    const scrub = zoomScrub
+    const scrubY = scrubLastY
+    const DRAG_DEADZONE = VALUES.gesture.dragDeadzonePx // px — below this a 1-finger press is a tap (→ star select), not an orbit
     const twoFingerDist = () => {
       const it = pts.values()
       const a = it.next().value
       const b = it.next().value
       return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0
+    }
+    const twoFingerCentroid = () => {
+      const it = pts.values()
+      const a = it.next().value
+      const b = it.next().value
+      return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : { x: 0, y: 0 }
     }
 
     const onDown = (e: PointerEvent) => {
@@ -365,10 +395,34 @@ function NebulaOrbitController() {
         vRef.current.pitch = 0
         pend.current.yaw = 0
         pend.current.pitch = 0
+        // double-tap-hold → vertical zoom scrub (change 08): a second tap close in time/space to the
+        // first ARMS the scrub; vertical drag then zooms and pan/rotate stay locked out.
+        const prev = tap.current
+        if (
+          isDoubleTap(
+            prev ? { t: prev.t, pt: { x: prev.x, y: prev.y } } : null,
+            { t: e.timeStamp, pt: { x: e.clientX, y: e.clientY } },
+            VALUES.gesture.doubleTapMs,
+            VALUES.gesture.doubleTapMaxDistPx,
+          )
+        ) {
+          scrub.current = true
+          scrubY.current = e.clientY
+          tap.current = null
+          setGestureActive(true)
+          markSuppressClick()
+        } else {
+          scrub.current = false
+          tap.current = { t: e.timeStamp, x: e.clientX, y: e.clientY }
+        }
       } else if (pts.size === 2) {
-        drag.current = false // two fingers → pinch-zoom, suspend rotate
+        drag.current = false // two fingers → pan + pinch-zoom, suspend rotate/scrub
         arm.current = null
+        scrub.current = false
         pinch.current = twoFingerDist()
+        cen.current = twoFingerCentroid()
+        setGestureActive(true)
+        markSuppressClick()
       }
     }
     const onMove = (e: PointerEvent) => {
@@ -377,10 +431,26 @@ function NebulaOrbitController() {
       p.x = e.clientX
       p.y = e.clientY
       if (pts.size >= 2) {
-        // PINCH: spreading fingers (distance grows) zooms IN (radius shrinks).
+        // PINCH zoom + two-finger PAN (change 08): distance change → dolly, centroid move → screen-plane
+        // pan of controls.target so the orbit pivot follows the fingers (조망 기준점이 중앙에 안 묶인다).
         const d = twoFingerDist()
         if (pinch.current > 0 && d > 0) zoom.current += pinch.current / d - 1
         pinch.current = d
+        const c = twoFingerCentroid()
+        pan.current.x += c.x - cen.current.x
+        pan.current.y += c.y - cen.current.y
+        cen.current = c
+        return
+      }
+      if (scrub.current) {
+        // double-tap-hold vertical zoom scrub (change 08): vertical drag → dolly; pan/rotate locked out
+        // (this whole branch returns before the orbit accumulation). Up = zoom in, down = zoom out.
+        zoom.current += zoomScrubDelta(
+          e.clientY - scrubY.current,
+          VALUES.gesture.farZoomScrubDeadzonePx,
+          VALUES.gesture.farZoomScrubSpeed,
+        )
+        scrubY.current = e.clientY
         return
       }
       if (!drag.current) {
@@ -388,9 +458,11 @@ function NebulaOrbitController() {
         // once the armed finger travels past the threshold, and capture ONLY then so a sub-deadzone
         // tap is never stolen from the star raycast.
         if (arm.current !== e.pointerId) return
-        if (Math.hypot(e.clientX - dwn.current.x, e.clientY - dwn.current.y) < DRAG_DEADZONE) return
+        if (!passedDeadzone(dwn.current, { x: e.clientX, y: e.clientY }, DRAG_DEADZONE)) return
         drag.current = true // promote past the deadzone (already captured on down)
         last.current = { x: e.clientX, y: e.clientY } // orbit starts here — no jump for the deadzone travel
+        setGestureActive(true) // a drag, not a tap — guard onPointerMissed dismiss
+        markSuppressClick()
       }
       // Accumulate the raw pointer delta (handles multiple moves per frame) into a 1:1 orbit.
       const s = span()
@@ -405,6 +477,7 @@ function NebulaOrbitController() {
         // dropped from pinch back to one finger → resume rotate from the survivor (no jump). It's a
         // confirmed drag (post-pinch), not a fresh tap, so no deadzone re-arm.
         pinch.current = 0
+        scrub.current = false
         const survivor = pts.values().next().value
         if (survivor) last.current = { x: survivor.x, y: survivor.y }
         drag.current = true
@@ -413,6 +486,12 @@ function NebulaOrbitController() {
         drag.current = false
         pinch.current = 0
         arm.current = null
+        scrub.current = false
+        pan.current.x = 0
+        pan.current.y = 0
+        // Clear gestureActive on a microtask so it OUTLASTS R3F's synchronous onPointerMissed for this
+        // up — a drag/pan/scrub/pinch never fires the empty-tap dismiss; a true tap (never set it) does.
+        queueMicrotask(() => setGestureActive(false))
       }
     }
     const onWheel = (e: WheelEvent) => {
@@ -440,6 +519,11 @@ function NebulaOrbitController() {
       vRef.current.pitch = 0
       pend.current.yaw = 0
       pend.current.pitch = 0
+      pan.current.x = 0
+      pan.current.y = 0
+      scrub.current = false
+      tap.current = null
+      setGestureActive(false)
       // RE-LEVEL: shed any roll the free arcball accrued so the guided flights + recall (which read
       // camera.up via OrbitControls.update()→lookAt) start upright.
       camera.up.set(0, 1, 0)
@@ -493,12 +577,153 @@ function NebulaOrbitController() {
       pendingZoom.current = 0
     }
 
+    // PAN (change 08) — two-finger centroid move shifts controls.target on the screen plane, so the
+    // orbit pivot follows the fingers (camera rides along via the solve below). Scaled by radius so
+    // far views pan proportionally. right*(-dx) + up*(+dy): the scene grabs and follows the fingers.
+    if (pendingPan.current.x !== 0 || pendingPan.current.y !== 0) {
+      const h = Math.max(1, gl.domElement.clientHeight || gl.domElement.height)
+      const panScale = (VALUES.gesture.farPanSpeed * offset.current.length()) / h
+      right.current.setFromMatrixColumn(camera.matrix, 0).normalize()
+      up.current.setFromMatrixColumn(camera.matrix, 1).normalize()
+      target.addScaledVector(right.current, -pendingPan.current.x * panScale)
+      target.addScaledVector(up.current, pendingPan.current.y * panScale)
+      pendingPan.current.x = 0
+      pendingPan.current.y = 0
+    }
+
     // Drive the camera directly — OrbitControls is disabled in nebula, so no update() is needed
     // (calling it would only re-solve the same pose). We own position + up + aim here.
     camera.position.copy(target).add(offset.current)
     camera.up.normalize()
     camera.lookAt(target)
   })
+
+  return null
+}
+
+/** Close-mode ("별들 가까이서 탐험하기") canvas gestures (change 08): one-finger drag → look
+ *  (yaw/pitch into navigation-input.lookDelta), two fingers → thrust (centroid vertical, deadzone→
+ *  full ramp; left/right wobble ignored). 1↔2 transitions lock cleanly — look ends when the 2nd
+ *  finger lands; thrust holds while two are down; on 2→1 look stays suspended until a fresh deadzone.
+ *  Writes the ref-based navigation-input buffer (NO React state per pointermove — A15); NavController
+ *  composes it with the keyboard `move`. A no-op outside settled recall AND during a star focus
+ *  (FocusController owns the aim then) — so it never fights the guided flights / focus (A13). */
+function CloseGestureController() {
+  const isRecall = useSelector(navigationActor, selectIsRecall)
+  const starFocused = useSelector(focusActor, selectIsStarFocus)
+  const gl = useThree((s) => s.gl)
+  const active = isRecall && !starFocused
+
+  useEffect(() => {
+    if (!active) return
+    const el = gl.domElement
+    const span = () => Math.max(1, el.clientWidth || el.width)
+    const pts = new Map<number, { x: number; y: number }>()
+    let mode: 'idle' | 'look' | 'thrust' = 'idle'
+    let armed: number | null = null
+    let downX = 0
+    let downY = 0
+    let lastX = 0
+    let lastY = 0
+    let thrustStartY = 0
+    const centroidY = () => {
+      let y = 0
+      for (const p of pts.values()) y += p.y
+      return pts.size ? y / pts.size : 0
+    }
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      el.setPointerCapture?.(e.pointerId)
+      if (pts.size === 1) {
+        armed = e.pointerId
+        mode = 'idle'
+        downX = e.clientX
+        downY = e.clientY
+        lastX = e.clientX
+        lastY = e.clientY
+      } else if (pts.size === 2) {
+        // 1→2: end look, lock thrust. centroid baseline so the ramp starts from rest.
+        mode = 'thrust'
+        armed = null
+        thrustStartY = centroidY()
+        setThrust(0)
+        setGestureActive(true)
+        markSuppressClick()
+      }
+    }
+    const onMove = (e: PointerEvent) => {
+      const p = pts.get(e.pointerId)
+      if (!p) return
+      p.x = e.clientX
+      p.y = e.clientY
+      if (pts.size >= 2) {
+        // THRUST: centroid vertical delta → −1..1 (up = forward). 좌우 흔들림은 무시(세로 성분만).
+        setThrust(
+          thrustRamp(
+            centroidY() - thrustStartY,
+            VALUES.gesture.closeThrustDeadzonePx,
+            VALUES.gesture.closeThrustFullPx,
+          ),
+        )
+        return
+      }
+      if (mode === 'idle') {
+        if (armed !== e.pointerId) return
+        if (!passedDeadzone({ x: downX, y: downY }, { x: e.clientX, y: e.clientY }, VALUES.gesture.dragDeadzonePx))
+          return
+        mode = 'look'
+        lastX = e.clientX
+        lastY = e.clientY
+        setGestureActive(true)
+        markSuppressClick()
+      }
+      if (mode === 'look') {
+        const s = span()
+        const sens = VALUES.gesture.closeLookSensitivity
+        // drag right → turn right (same sign sense as the D/→ key), drag up → look up.
+        addLookDelta((-(e.clientX - lastX) / s) * sens, (-(e.clientY - lastY) / s) * sens)
+        lastX = e.clientX
+        lastY = e.clientY
+      }
+    }
+    const onUp = (e: PointerEvent) => {
+      pts.delete(e.pointerId)
+      if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture?.(e.pointerId)
+      if (pts.size === 1) {
+        // 2→1: stop thrust; do NOT resume look until a fresh deadzone (re-arm the survivor).
+        setThrust(0)
+        const survivor = pts.entries().next().value
+        if (survivor) {
+          armed = survivor[0]
+          downX = survivor[1].x
+          downY = survivor[1].y
+          lastX = survivor[1].x
+          lastY = survivor[1].y
+        }
+        mode = 'idle'
+      } else if (pts.size === 0) {
+        mode = 'idle'
+        armed = null
+        setThrust(0)
+        queueMicrotask(() => setGestureActive(false))
+      }
+    }
+
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointercancel', onUp)
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      pts.clear()
+      resetGestureInput() // mode exit / focus → drop any held look/thrust (stand down, A13)
+    }
+  }, [active, gl])
 
   return null
 }
@@ -516,7 +741,11 @@ function NebulaOrbitController() {
  *    inertia, and fires a jolt → "hit a wall" feel.
  *  - Shake: a tiny screen-space rig wobble (same offset on camera+target → heading/radius kept;
  *    reverted next frame so it never drifts). Always on (idle hum), stronger with speed + jolts. */
-function NavController() {
+function NavController({
+  selfLightRef,
+}: {
+  selfLightRef: MutableRefObject<readonly [number, number, number] | null>
+}) {
   // 항행·포커스 머신은 매 프레임 getSnapshot으로 읽는다(NavController는 useFrame만 — 구독 불필요).
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
@@ -536,6 +765,7 @@ function NavController() {
   const shakePhase = useRef(0) // accumulated shake phase (its rate varies with speed/impact)
   const shakeImpulse = useRef(0) // decaying wall jolt
   const shakeOffset = useRef(new THREE.Vector3()) // last frame's wobble (reverted next frame)
+  const lightArr = useRef<[number, number, number]>([0, 0, 0]) // reused → no per-frame allocation
 
   useFrame((_, dt) => {
     // GATE: settled recall에서만 D-pd 항해(matches('recall')는 transitioning 태그가 없어 fly-to/모드전환
@@ -557,6 +787,9 @@ function NavController() {
       lookBoost.current = 1
       shakeImpulse.current = 0
       onWall.current = false
+      // Outside recall → no moving light: defer to the static center self-light (A3 — 원거리 중심
+      // 자아 광원 규칙 유지). StarField falls back to its static selfLightPos when the ref is null.
+      selfLightRef.current = null
       return
     }
 
@@ -564,7 +797,10 @@ function NavController() {
     camera.position.sub(shakeOffset.current)
     controls.target.sub(shakeOffset.current)
 
-    const { x, y, z } = navSnap.context.move
+    const { x, y } = navSnap.context.move
+    // 추력 z = 키보드(move.z) + 제스처 thrust(두 손가락 세로, change 08), −1..1 클램프 — 둘 다 같은
+    // 가속·관성·벽 물리를 탄다. 손을 떼면 thrust 0 → 기존 관성/제동으로 멈춘다(A6).
+    const z = Math.max(-1, Math.min(1, navSnap.context.move.z + navigationInput().thrust))
     let changed = false
 
     // 전진/후진 — ACCELERATION + INERTIA. boost ramps 1→2 while held (resets on release); the
@@ -608,8 +844,11 @@ function NavController() {
     // Snap the tiny coasting tail to a dead stop once released (no endless sub-pixel drift).
     if (x === 0 && Math.abs(lookVel.current.yaw) < 1e-3) lookVel.current.yaw = 0
     if (y === 0 && Math.abs(lookVel.current.pitch) < 1e-3) lookVel.current.pitch = 0
-    const dYaw = lookVel.current.yaw * dt
-    const dPitch = lookVel.current.pitch * dt
+    // 키보드 look(가속·관성) + 제스처 look(한 손가락 드래그 — 매 프레임 누적분을 소비). consume는 매
+    // 프레임 호출해 버퍼를 비운다(recall 밖에선 컨트롤러가 비활성이라 누적 자체가 없다).
+    const gLook = consumeLookDelta()
+    const dYaw = lookVel.current.yaw * dt + gLook.yaw
+    const dPitch = lookVel.current.pitch * dt + gLook.pitch
     if (dYaw !== 0 || dPitch !== 0) {
       const dist = camera.position.distanceTo(controls.target)
       if (dist > 0) {
@@ -658,6 +897,14 @@ function NavController() {
     }
 
     if (changed) controls.update()
+
+    // 근접 이동 광원(A3·A4): shake 적용 전의 실제 항행 기준 위치를 자아 광원으로 — idle shake가 별 반사를
+    // 흔들지 않게(A3 단서). StarField가 매 프레임 ref.current로 반사 채널 uniform만 갱신(채널 경계 — A4:
+    // selfGlow/activation/λ_eff/별 색·좌표·A_MIN 불변).
+    lightArr.current[0] = camera.position.x
+    lightArr.current[1] = camera.position.y
+    lightArr.current[2] = camera.position.z
+    selfLightRef.current = lightArr.current
 
     // SHIP SHAKE — a tiny screen-space rig wobble. Always on (engine idle), and its SPEED varies:
     // slow gentle sway when stationary, faster vibration with speed, a quick rattle on a wall jolt.
@@ -1625,6 +1872,20 @@ export function UniverseCanvas() {
   // 축 기본값으로 폴백·검증). 소유권은 *선택 시점*(스위처)과 서버(UpdateSettings A4)에서 강제한다 —
   // 렌더에서 소유권으로 다시 폴백하면 공유 우주(방문)에서 소유자 선택을 방문자 소유로 가려 깨진다(회귀).
   const selfObject = useAppearance((s) => s.selfObject)
+  // 요즘 감정 짜임(spec 07): 로드된 별 + 사용자 감정색 + Bjork R로 감정 순위·전역 생동(arousal)을 파생해
+  // 배경 스킨(UniverseNebula)이 직접 짜 넣는다(떠 있던 무드 오브 제거). 매 별/감정색 변경 시에만 재계산.
+  const stars = useMemoryStore((s) => s.stars)
+  const { ranked, arousal } = useMemo(() => {
+    const now = virtualNowMs()
+    const ambientStars: AmbientStar[] = stars.map((s) => ({
+      mood: s.memory.mood,
+      intensity: s.memory.intensity,
+      valence: s.memory.valence,
+      lastRecalledAt: s.memory.lastRecalledAt,
+      recallCount: s.memory.recallCount,
+    }))
+    return { ranked: rankedEmotions(ambientStars, emotionColors, now), arousal: arousalOf(ambientStars, now) }
+  }, [stars, emotionColors])
   // 포커스 상태(focus 머신, spec 39) — 강조 일기 record_id + 선택 별 id. StarField/UniverseSynapses에
   // prop으로 내려 record_id로 자기 별 집합을 파생해 강조/dim하고, 별 탭은 onSelect로 머신에 보낸다.
   const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
@@ -1634,6 +1895,9 @@ export function UniverseCanvas() {
   // StarField + FlyTo + Focus read it directly (per-frame / at capture); the synapse renderers
   // bake against the `layout` snapshot published whenever the layout settles.
   const positionsRef = useRef<Float32Array | null>(null)
+  // 동적 자아 광원 위치(change 08): 근접 탐험 중 NavController가 매 프레임 항행 기준 위치로 갱신하고,
+  // 원거리/포커스에선 null로 둬 StarField가 정적 중심 광원(원점)으로 폴백한다(A3). StarField·NavController가 공유.
+  const selfLightRef = useRef<readonly [number, number, number] | null>(null)
   const [layout, setLayout] = useState<LayoutMap>(() => new Map())
   const onLayout = useCallback((next: LayoutMap) => setLayout(next), [])
   // Hide the stars/synapses until the FIRST layout settles, then reveal them in place — so
@@ -1671,13 +1935,22 @@ export function UniverseCanvas() {
       // WebGPURenderer 고유 파라미터/반환 타입을 R3F의 명목 GLProps로 잇는 것뿐.
       gl={glFactory as unknown as GLProps}
       flat
-      camera={{ position: [0, 0, 110], fov: 72, near: 0.1, far: 2000 }}
+      // change 08(A12): 우주 캔버스 표면에만 touch-action:none — 브라우저 스크롤/핀치가 커스텀 제스처
+      // (pan·zoom scrub·look·thrust)와 충돌하지 않게. 차단은 이 캔버스에 한정(전역 페이지 제스처 보존).
+      style={{ touchAction: 'none' }}
+      // far는 성운/베일 구의 *먼 쪽 벽*까지 담아야 한다 — 그 벽은 카메라가 구 안에 있어도 반경+카메라거리
+      // 까지 멀어진다. 줌아웃 최대(1500) + 구 반경(1800) = 3300이 화면 중앙(원점 너머)에서 far에 닿으므로,
+      // far가 그보다 작으면 중앙이 잘려 배경색이 원형으로 드러난다("백드롭 풀림"). 여유를 둬 4000.
+      camera={{ position: [0, 0, 110], fov: 72, near: 0.1, far: 4000 }}
       // 빈 우주를 톡 치면 포커스 해제·복귀(은은한 딤도 함께 사라진다 — spec 31). R3F는 클릭 delta로
       // 드래그(회전)를 걸러 onPointerMissed는 '탭'에만 온다. 우선순위: 선택된 별 → 해제, 아니면 일기
       // 조망 → 강조 해제(페이지가 그 해제를 보고 일기 패널을 닫아 완전히 복귀시킨다). 별 탭은 onClick.
       onPointerMissed={() => {
         // 빈 우주를 톡 치면 포커스를 통째로 비워 복귀한다(focus 머신 DISMISS — 별/일기 한 번에, idle이면
-        // 무해). 드래그(회전)는 R3F가 delta로 걸러 여기로 오지 않는다(탭만).
+        // 무해). 드래그(회전)는 R3F가 delta로 걸러 여기로 오지 않는다(탭만). change 08(A11): 제스처
+        // (드래그·두 손가락·pan·zoom scrub)가 active면 dismiss하지 않는다 — gestureActive는 up 후
+        // microtask까지 살아 이 동기 콜백을 넘긴다(진짜 탭은 한 번도 set 안 돼 통과).
+        if (navigationInput().gestureActive) return
         focusActor.send({ type: 'DISMISS' })
       }}
       onCreated={(state) => {
@@ -1695,18 +1968,23 @@ export function UniverseCanvas() {
       }}
     >
       <color attach="background" args={[bg]} />
-      {/* 몽환 성운 워시(spec 44): 선택한 배경 팔레트로 사방을 감싸는 도메인워프 오로라 한 겹(랜딩과 같은 결).
+      {/* 몽환 성운 워시(spec 44·07): 선택한 배경 스킨(받침색·무늬)으로 사방을 감싸는 도메인워프 오로라 한 겹.
+          그 위에 요즘 감정색(상위 emotionSlots개·R-비중)을 짜 넣고, arousal이 전역 생동(밝기·움직임)을 정한다.
           모든 것 뒤(renderOrder -11)·depthWrite/Test 없음 → 별 mood 색·깊이 불간섭. reduced-motion이면 정지. */}
-      <UniverseNebula palette={background.palette} />
+      <UniverseNebula
+        palette={background.palette}
+        pattern={background.pattern}
+        emotionSlots={background.emotionSlots}
+        emotions={ranked}
+        arousal={arousal}
+      />
       {/* 배경 번들의 텍스처/요소 슬롯(spec 44 A9): 선택적 색 베일 한 겹을 모든 것 뒤(renderOrder<0)에 깐다.
           별 mood 색은 불간섭(별보다 뒤·depthWrite 없음). 텍스처 없는 배경(vast/lively/calm)은 렌더 동일. */}
       <BackgroundVeil texture={background.texture} />
       {/* 어두운 반구 채움광(spec 03 — 하드코딩 0.4를 values로 이전). 반사(emissiveNode 내 계산)와 albedo
           이중계상 시 하향 재튜닝 대상. StarField는 자아-별이 원점이라 selfLightPos 기본(원점·점광)으로 충분. */}
       <ambientLight intensity={VALUES.starLighting.ambientFill} />
-      {/* 테마 깊은 베이스색(위) 위에 요즘 상태(spec 25)를 여러 넓은 광원으로 가산한다 — 단일
-          톤이 아니라 군데군데 번지는 불규칙 그라디언트. 별·시냅스보다 뒤(renderOrder<0). */}
-      <AmbientNebula />
+      {/* spec 07: 떠 있던 무드 오브(AmbientNebula)는 제거 — 요즘 감정은 위 UniverseNebula 배경 텍스처에 녹는다. */}
       <StarDust count={1500} />
       {/* 별과 시냅스는 함께 부유(연결이 떨어지지 않게); StarDust는 밖에 두어 시차가 생긴다.
           자아 별(나)도 같은 그룹에서 부유해 강한 기억과의 거리감이 유지된다(spec 38).
@@ -1727,6 +2005,7 @@ export function UniverseCanvas() {
             highlightedRecordId={highlightedRecordId}
             selectedId={selectedId}
             onSelect={(id) => focusActor.send({ type: 'SELECT_STAR', id })}
+            selfLightRef={selfLightRef}
           />
         </UniverseDrift>
       </group>
@@ -1738,7 +2017,8 @@ export function UniverseCanvas() {
       />
       <CameraRig />
       <NebulaOrbitController />
-      <NavController />
+      <CloseGestureController />
+      <NavController selfLightRef={selfLightRef} />
       <FlyToController positionsRef={positionsRef} />
       <FocusController positionsRef={positionsRef} />
       <FrameAllController positionsRef={positionsRef} />

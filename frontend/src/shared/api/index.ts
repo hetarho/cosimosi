@@ -20,7 +20,6 @@ export type {
   Star,
   Record,
   Synapse,
-  AmbientMood,
   GetUniverseResponse,
   ListDormantResponse,
   RecordSummary,
@@ -64,6 +63,7 @@ export type {
   TestProviderKeyResponse,
   UsageRow,
   DayCount,
+  AdminUser,
 } from './gen/cosimosi/v1/admin_pb'
 // 초대 멤버십 게이트 계약(spec 41) — InviteService(인증, 멤버십 불필요: validate·redeem·멤버십 상태) +
 // InviteAdminService(인증 + admin allowlist: 발행·목록·취소). 제거 가능한 베타 게이트 묶음.

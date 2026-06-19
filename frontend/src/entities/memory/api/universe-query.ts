@@ -14,21 +14,10 @@ import {
 import { demoStars, demoSynapses, isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import { toSynapseEdge, useSynapseStore } from '@/entities/synapse/@x/memory'
 import { starBrightness } from '../model/activation'
-import { deriveAmbient, type AmbientStar } from '../model/ambient'
 import { mergeEdges, mergeStars } from '../model/merge'
 import { useMemoryStore } from '../model/store'
 import { parseEpochMs } from '../model/time'
 import { mapStar } from './map-star'
-
-/** StarNode[] → the affect-only shape the ambient derivations read. */
-function ambientStarsOf(stars: { memory: AmbientStar }[]): AmbientStar[] {
-  return stars.map((s) => ({
-    mood: s.memory.mood,
-    intensity: s.memory.intensity,
-    valence: s.memory.valence,
-    lastRecalledAt: s.memory.lastRecalledAt,
-  }))
-}
 
 // 단일 작성자 우주(spec 16 §캐싱 전략): 시간 만료가 아니라 이벤트(record +10s)가 갱신을
 // 끈다. staleTime 5m + focus refetch는 멀티 디바이스 드리프트만 커버하는 안전망.
@@ -91,14 +80,9 @@ export function applyUniverse(res: GetUniverseResponse): void {
   // (StarField는 이 플래그 없이는 첫 도착 배치를 '첫 로드 시드'로 보고 연출을 건너뛴다).
   if (stars.length === 0 && !memory.loadedEmpty) memory.setLoadedEmpty(true)
 
-  // 요즘 상태(spec 25): 서버 ambient 요약이 있으면 그걸, 없으면(데모·구버전) 로드된 별에서
-  // 7일 가중 종합으로 파생한다(1.9). 다중 광원의 색 분포는 어느 경우든 클라가 별에서 따로
-  // 만든다(AmbientNebula의 ambientLights — 좌표·렌더 입력은 클라 권위, 원칙3).
-  memory.setAmbient(
-    res.ambient
-      ? { hue: res.ambient.hue, sat: res.ambient.sat, arousal: res.ambient.arousal, valence: res.ambient.valence }
-      : deriveAmbient(ambientStarsOf(stars), now),
-  )
+  // 요즘 상태(spec 07): 서버 ambient 요약은 은퇴 — 배경 weave·자아 색·arousal을 렌더 시점에
+  // 로드된 별(+recall_count)에서 직접 파생한다(rankedEmotions·arousalOf·deriveAmbient). 스토어는
+  // 더는 ambient를 들지 않는다(매 렌더 파생, 좌표·렌더 입력은 클라 권위 — 원칙3).
 
   const synapse = useSynapseStore.getState()
   const incoming = res.synapses.map((s) => {
@@ -120,11 +104,10 @@ export function applyUniverse(res: GetUniverseResponse): void {
 export function refreshActivation(): void {
   const now = virtualNowMs()
   const memory = useMemoryStore.getState()
+  // 가상 시계가 흐르면 별 배열 identity만 갱신 — 배경 weave·arousal·자아 색은 렌더 시점에 새 now로
+  // 다시 파생되므로(rankedEmotions·arousalOf·deriveAmbient는 별+now에서 직접 계산), 여기서 따로
+  // ambient를 다시 굽지 않아도 배경이 그만큼 잔잔해지고 색이 옮겨간다(spec 07).
   if (memory.stars.length > 0) memory.setStars([...memory.stars])
-  // 가상 시계가 흐르면 요즘 상태도 식는다 — 데모 시간 머신 경로 전용(refreshActivation의
-  // 유일 호출처)이라 서버 요약을 덮어쓰지 않는다. 별에서 새 now로 다시 종합해 배경이 그만큼
-  // 잔잔해지고(arousal↓) 색이 옮겨간다(1.11).
-  if (memory.stars.length > 0) memory.setAmbient(deriveAmbient(ambientStarsOf(memory.stars), now))
   const synapse = useSynapseStore.getState()
   if (synapse.edges.length > 0) {
     synapse.setEdges(

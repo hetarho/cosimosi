@@ -867,6 +867,278 @@ func (x *UsageRow) GetOutputTokens() int64 {
 	return 0
 }
 
+// AdminUser is one row of the operator user list (spec 46): the user id plus the
+// effective stardust balance and whether the wallet row exists yet.
+type AdminUser struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Stardust      int64                  `protobuf:"varint,2,opt,name=stardust,proto3" json:"stardust,omitempty"`                             // effective balance: wallet row value, or starting_stardust when unseeded
+	WalletSeeded  bool                   `protobuf:"varint,3,opt,name=wallet_seeded,json=walletSeeded,proto3" json:"wallet_seeded,omitempty"` // true if a user_wallet row exists
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminUser) Reset() {
+	*x = AdminUser{}
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminUser) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminUser) ProtoMessage() {}
+
+func (x *AdminUser) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminUser.ProtoReflect.Descriptor instead.
+func (*AdminUser) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AdminUser) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AdminUser) GetStardust() int64 {
+	if x != nil {
+		return x.Stardust
+	}
+	return 0
+}
+
+func (x *AdminUser) GetWalletSeeded() bool {
+	if x != nil {
+		return x.WalletSeeded
+	}
+	return false
+}
+
+type ListAdminUsersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserIdQuery   string                 `protobuf:"bytes,1,opt,name=user_id_query,json=userIdQuery,proto3" json:"user_id_query,omitempty"` // optional, case-insensitive contains filter on user_id
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`           // 0 = default; capped from values (admin.user_list_*_page_size)
+	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`         // last user_id from the previous page (keyset, user_id ASC)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdminUsersRequest) Reset() {
+	*x = ListAdminUsersRequest{}
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdminUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdminUsersRequest) ProtoMessage() {}
+
+func (x *ListAdminUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdminUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListAdminUsersRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListAdminUsersRequest) GetUserIdQuery() string {
+	if x != nil {
+		return x.UserIdQuery
+	}
+	return ""
+}
+
+func (x *ListAdminUsersRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListAdminUsersRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListAdminUsersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Users         []*AdminUser           `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"` // "" when no further page
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdminUsersResponse) Reset() {
+	*x = ListAdminUsersResponse{}
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdminUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdminUsersResponse) ProtoMessage() {}
+
+func (x *ListAdminUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdminUsersResponse.ProtoReflect.Descriptor instead.
+func (*ListAdminUsersResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListAdminUsersResponse) GetUsers() []*AdminUser {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *ListAdminUsersResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+// GrantUserStardust is the ONLY admin-side balance-increase path (spec 46): seed
+// the target wallet to starting_stardust if absent, then add amount and audit it.
+type GrantUserStardustRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TargetUserId  string                 `protobuf:"bytes,1,opt,name=target_user_id,json=targetUserId,proto3" json:"target_user_id,omitempty"`
+	Amount        int64                  `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"` // positive integer
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GrantUserStardustRequest) Reset() {
+	*x = GrantUserStardustRequest{}
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantUserStardustRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantUserStardustRequest) ProtoMessage() {}
+
+func (x *GrantUserStardustRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantUserStardustRequest.ProtoReflect.Descriptor instead.
+func (*GrantUserStardustRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GrantUserStardustRequest) GetTargetUserId() string {
+	if x != nil {
+		return x.TargetUserId
+	}
+	return ""
+}
+
+func (x *GrantUserStardustRequest) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+type GrantUserStardustResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *AdminUser             `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"` // target's post-grant state
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GrantUserStardustResponse) Reset() {
+	*x = GrantUserStardustResponse{}
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantUserStardustResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantUserStardustResponse) ProtoMessage() {}
+
+func (x *GrantUserStardustResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantUserStardustResponse.ProtoReflect.Descriptor instead.
+func (*GrantUserStardustResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GrantUserStardustResponse) GetUser() *AdminUser {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
 type GetAdminOverviewRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -875,7 +1147,7 @@ type GetAdminOverviewRequest struct {
 
 func (x *GetAdminOverviewRequest) Reset() {
 	*x = GetAdminOverviewRequest{}
-	mi := &file_cosimosi_v1_admin_proto_msgTypes[15]
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -887,7 +1159,7 @@ func (x *GetAdminOverviewRequest) String() string {
 func (*GetAdminOverviewRequest) ProtoMessage() {}
 
 func (x *GetAdminOverviewRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_admin_proto_msgTypes[15]
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -900,7 +1172,7 @@ func (x *GetAdminOverviewRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminOverviewRequest.ProtoReflect.Descriptor instead.
 func (*GetAdminOverviewRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{15}
+	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{20}
 }
 
 type GetAdminOverviewResponse struct {
@@ -921,7 +1193,7 @@ type GetAdminOverviewResponse struct {
 
 func (x *GetAdminOverviewResponse) Reset() {
 	*x = GetAdminOverviewResponse{}
-	mi := &file_cosimosi_v1_admin_proto_msgTypes[16]
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -933,7 +1205,7 @@ func (x *GetAdminOverviewResponse) String() string {
 func (*GetAdminOverviewResponse) ProtoMessage() {}
 
 func (x *GetAdminOverviewResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_v1_admin_proto_msgTypes[16]
+	mi := &file_cosimosi_v1_admin_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -946,7 +1218,7 @@ func (x *GetAdminOverviewResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAdminOverviewResponse.ProtoReflect.Descriptor instead.
 func (*GetAdminOverviewResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{16}
+	return file_cosimosi_v1_admin_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetAdminOverviewResponse) GetUsers() int64 {
@@ -1076,7 +1348,24 @@ const file_cosimosi_v1_admin_proto_rawDesc = "" +
 	"\x04kind\x18\x04 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05calls\x18\x05 \x01(\x03R\x05calls\x12!\n" +
 	"\finput_tokens\x18\x06 \x01(\x03R\vinputTokens\x12#\n" +
-	"\routput_tokens\x18\a \x01(\x03R\foutputTokens\"\x19\n" +
+	"\routput_tokens\x18\a \x01(\x03R\foutputTokens\"e\n" +
+	"\tAdminUser\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
+	"\bstardust\x18\x02 \x01(\x03R\bstardust\x12#\n" +
+	"\rwallet_seeded\x18\x03 \x01(\bR\fwalletSeeded\"w\n" +
+	"\x15ListAdminUsersRequest\x12\"\n" +
+	"\ruser_id_query\x18\x01 \x01(\tR\vuserIdQuery\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\"n\n" +
+	"\x16ListAdminUsersResponse\x12,\n" +
+	"\x05users\x18\x01 \x03(\v2\x16.cosimosi.v1.AdminUserR\x05users\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"X\n" +
+	"\x18GrantUserStardustRequest\x12$\n" +
+	"\x0etarget_user_id\x18\x01 \x01(\tR\ftargetUserId\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\x03R\x06amount\"G\n" +
+	"\x19GrantUserStardustResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.cosimosi.v1.AdminUserR\x04user\"\x19\n" +
 	"\x17GetAdminOverviewRequest\"\x83\x03\n" +
 	"\x18GetAdminOverviewResponse\x12\x14\n" +
 	"\x05users\x18\x01 \x01(\x03R\x05users\x12\x18\n" +
@@ -1090,7 +1379,7 @@ const file_cosimosi_v1_admin_proto_rawDesc = "" +
 	"\rjobs_done_24h\x18\b \x01(\x03R\vjobsDone24h\x12:\n" +
 	"\rrecord_series\x18\t \x03(\v2\x15.cosimosi.v1.DayCountR\frecordSeries\x122\n" +
 	"\tllm_usage\x18\n" +
-	" \x03(\v2\x15.cosimosi.v1.UsageRowR\bllmUsage2\xad\x05\n" +
+	" \x03(\v2\x15.cosimosi.v1.UsageRowR\bllmUsage2\xf1\x06\n" +
 	"\fAdminService\x12X\n" +
 	"\fGetLLMConfig\x12 .cosimosi.v1.GetLLMConfigRequest\x1a!.cosimosi.v1.GetLLMConfigResponse\"\x03\x90\x02\x01\x12Y\n" +
 	"\x0eSetProviderKey\x12\".cosimosi.v1.SetProviderKeyRequest\x1a#.cosimosi.v1.SetProviderKeyResponse\x12b\n" +
@@ -1098,7 +1387,9 @@ const file_cosimosi_v1_admin_proto_rawDesc = "" +
 	"\x14UpdateProviderModels\x12(.cosimosi.v1.UpdateProviderModelsRequest\x1a).cosimosi.v1.UpdateProviderModelsResponse\x12S\n" +
 	"\fSetActiveLLM\x12 .cosimosi.v1.SetActiveLLMRequest\x1a!.cosimosi.v1.SetActiveLLMResponse\x12\\\n" +
 	"\x0fTestProviderKey\x12#.cosimosi.v1.TestProviderKeyRequest\x1a$.cosimosi.v1.TestProviderKeyResponse\x12d\n" +
-	"\x10GetAdminOverview\x12$.cosimosi.v1.GetAdminOverviewRequest\x1a%.cosimosi.v1.GetAdminOverviewResponse\"\x03\x90\x02\x01BAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
+	"\x10GetAdminOverview\x12$.cosimosi.v1.GetAdminOverviewRequest\x1a%.cosimosi.v1.GetAdminOverviewResponse\"\x03\x90\x02\x01\x12^\n" +
+	"\x0eListAdminUsers\x12\".cosimosi.v1.ListAdminUsersRequest\x1a#.cosimosi.v1.ListAdminUsersResponse\"\x03\x90\x02\x01\x12b\n" +
+	"\x11GrantUserStardust\x12%.cosimosi.v1.GrantUserStardustRequest\x1a&.cosimosi.v1.GrantUserStardustResponseBAZ?github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1b\x06proto3"
 
 var (
 	file_cosimosi_v1_admin_proto_rawDescOnce sync.Once
@@ -1112,7 +1403,7 @@ func file_cosimosi_v1_admin_proto_rawDescGZIP() []byte {
 	return file_cosimosi_v1_admin_proto_rawDescData
 }
 
-var file_cosimosi_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_cosimosi_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_cosimosi_v1_admin_proto_goTypes = []any{
 	(*ProviderConfig)(nil),               // 0: cosimosi.v1.ProviderConfig
 	(*GetLLMConfigRequest)(nil),          // 1: cosimosi.v1.GetLLMConfigRequest
@@ -1129,35 +1420,46 @@ var file_cosimosi_v1_admin_proto_goTypes = []any{
 	(*TestProviderKeyResponse)(nil),      // 12: cosimosi.v1.TestProviderKeyResponse
 	(*DayCount)(nil),                     // 13: cosimosi.v1.DayCount
 	(*UsageRow)(nil),                     // 14: cosimosi.v1.UsageRow
-	(*GetAdminOverviewRequest)(nil),      // 15: cosimosi.v1.GetAdminOverviewRequest
-	(*GetAdminOverviewResponse)(nil),     // 16: cosimosi.v1.GetAdminOverviewResponse
+	(*AdminUser)(nil),                    // 15: cosimosi.v1.AdminUser
+	(*ListAdminUsersRequest)(nil),        // 16: cosimosi.v1.ListAdminUsersRequest
+	(*ListAdminUsersResponse)(nil),       // 17: cosimosi.v1.ListAdminUsersResponse
+	(*GrantUserStardustRequest)(nil),     // 18: cosimosi.v1.GrantUserStardustRequest
+	(*GrantUserStardustResponse)(nil),    // 19: cosimosi.v1.GrantUserStardustResponse
+	(*GetAdminOverviewRequest)(nil),      // 20: cosimosi.v1.GetAdminOverviewRequest
+	(*GetAdminOverviewResponse)(nil),     // 21: cosimosi.v1.GetAdminOverviewResponse
 }
 var file_cosimosi_v1_admin_proto_depIdxs = []int32{
 	0,  // 0: cosimosi.v1.GetLLMConfigResponse.providers:type_name -> cosimosi.v1.ProviderConfig
 	0,  // 1: cosimosi.v1.SetProviderKeyResponse.provider:type_name -> cosimosi.v1.ProviderConfig
 	0,  // 2: cosimosi.v1.DeleteProviderKeyResponse.provider:type_name -> cosimosi.v1.ProviderConfig
 	0,  // 3: cosimosi.v1.UpdateProviderModelsResponse.provider:type_name -> cosimosi.v1.ProviderConfig
-	13, // 4: cosimosi.v1.GetAdminOverviewResponse.record_series:type_name -> cosimosi.v1.DayCount
-	14, // 5: cosimosi.v1.GetAdminOverviewResponse.llm_usage:type_name -> cosimosi.v1.UsageRow
-	1,  // 6: cosimosi.v1.AdminService.GetLLMConfig:input_type -> cosimosi.v1.GetLLMConfigRequest
-	3,  // 7: cosimosi.v1.AdminService.SetProviderKey:input_type -> cosimosi.v1.SetProviderKeyRequest
-	5,  // 8: cosimosi.v1.AdminService.DeleteProviderKey:input_type -> cosimosi.v1.DeleteProviderKeyRequest
-	7,  // 9: cosimosi.v1.AdminService.UpdateProviderModels:input_type -> cosimosi.v1.UpdateProviderModelsRequest
-	9,  // 10: cosimosi.v1.AdminService.SetActiveLLM:input_type -> cosimosi.v1.SetActiveLLMRequest
-	11, // 11: cosimosi.v1.AdminService.TestProviderKey:input_type -> cosimosi.v1.TestProviderKeyRequest
-	15, // 12: cosimosi.v1.AdminService.GetAdminOverview:input_type -> cosimosi.v1.GetAdminOverviewRequest
-	2,  // 13: cosimosi.v1.AdminService.GetLLMConfig:output_type -> cosimosi.v1.GetLLMConfigResponse
-	4,  // 14: cosimosi.v1.AdminService.SetProviderKey:output_type -> cosimosi.v1.SetProviderKeyResponse
-	6,  // 15: cosimosi.v1.AdminService.DeleteProviderKey:output_type -> cosimosi.v1.DeleteProviderKeyResponse
-	8,  // 16: cosimosi.v1.AdminService.UpdateProviderModels:output_type -> cosimosi.v1.UpdateProviderModelsResponse
-	10, // 17: cosimosi.v1.AdminService.SetActiveLLM:output_type -> cosimosi.v1.SetActiveLLMResponse
-	12, // 18: cosimosi.v1.AdminService.TestProviderKey:output_type -> cosimosi.v1.TestProviderKeyResponse
-	16, // 19: cosimosi.v1.AdminService.GetAdminOverview:output_type -> cosimosi.v1.GetAdminOverviewResponse
-	13, // [13:20] is the sub-list for method output_type
-	6,  // [6:13] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	15, // 4: cosimosi.v1.ListAdminUsersResponse.users:type_name -> cosimosi.v1.AdminUser
+	15, // 5: cosimosi.v1.GrantUserStardustResponse.user:type_name -> cosimosi.v1.AdminUser
+	13, // 6: cosimosi.v1.GetAdminOverviewResponse.record_series:type_name -> cosimosi.v1.DayCount
+	14, // 7: cosimosi.v1.GetAdminOverviewResponse.llm_usage:type_name -> cosimosi.v1.UsageRow
+	1,  // 8: cosimosi.v1.AdminService.GetLLMConfig:input_type -> cosimosi.v1.GetLLMConfigRequest
+	3,  // 9: cosimosi.v1.AdminService.SetProviderKey:input_type -> cosimosi.v1.SetProviderKeyRequest
+	5,  // 10: cosimosi.v1.AdminService.DeleteProviderKey:input_type -> cosimosi.v1.DeleteProviderKeyRequest
+	7,  // 11: cosimosi.v1.AdminService.UpdateProviderModels:input_type -> cosimosi.v1.UpdateProviderModelsRequest
+	9,  // 12: cosimosi.v1.AdminService.SetActiveLLM:input_type -> cosimosi.v1.SetActiveLLMRequest
+	11, // 13: cosimosi.v1.AdminService.TestProviderKey:input_type -> cosimosi.v1.TestProviderKeyRequest
+	20, // 14: cosimosi.v1.AdminService.GetAdminOverview:input_type -> cosimosi.v1.GetAdminOverviewRequest
+	16, // 15: cosimosi.v1.AdminService.ListAdminUsers:input_type -> cosimosi.v1.ListAdminUsersRequest
+	18, // 16: cosimosi.v1.AdminService.GrantUserStardust:input_type -> cosimosi.v1.GrantUserStardustRequest
+	2,  // 17: cosimosi.v1.AdminService.GetLLMConfig:output_type -> cosimosi.v1.GetLLMConfigResponse
+	4,  // 18: cosimosi.v1.AdminService.SetProviderKey:output_type -> cosimosi.v1.SetProviderKeyResponse
+	6,  // 19: cosimosi.v1.AdminService.DeleteProviderKey:output_type -> cosimosi.v1.DeleteProviderKeyResponse
+	8,  // 20: cosimosi.v1.AdminService.UpdateProviderModels:output_type -> cosimosi.v1.UpdateProviderModelsResponse
+	10, // 21: cosimosi.v1.AdminService.SetActiveLLM:output_type -> cosimosi.v1.SetActiveLLMResponse
+	12, // 22: cosimosi.v1.AdminService.TestProviderKey:output_type -> cosimosi.v1.TestProviderKeyResponse
+	21, // 23: cosimosi.v1.AdminService.GetAdminOverview:output_type -> cosimosi.v1.GetAdminOverviewResponse
+	17, // 24: cosimosi.v1.AdminService.ListAdminUsers:output_type -> cosimosi.v1.ListAdminUsersResponse
+	19, // 25: cosimosi.v1.AdminService.GrantUserStardust:output_type -> cosimosi.v1.GrantUserStardustResponse
+	17, // [17:26] is the sub-list for method output_type
+	8,  // [8:17] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_v1_admin_proto_init() }
@@ -1171,7 +1473,7 @@ func file_cosimosi_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_v1_admin_proto_rawDesc), len(file_cosimosi_v1_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

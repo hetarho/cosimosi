@@ -3,18 +3,20 @@
 // Both place stars on strength shells and run the same force-sim params, so a tuning change here moves
 // both in lock-step (no silent divergence between "내 우주" and the overlay's copy of it). Pure TS —
 // composes shared/lib (strength·targetRadius); no three/React/DOM (헌법4).
-import { activation, A_MIN } from '@/entities/memory'
+import { memoryR } from '@/entities/memory'
 import { VALUES } from '@/shared/config'
-import { strength as memoryStrength, targetRadius } from '@/shared/lib'
+import { targetRadius } from '@/shared/lib'
 import type { SimParams } from '@/shared/lib/force-sim'
 
-/** A memory's target distance from the central self star (spec 38): strength (activation = recency,
- *  12 + emotional intensity) → radius. Strong/fresh → near centre, faded → outer. Activation is
- *  floored at A_MIN (the same floor as brightness, 12) so the most dormant stars don't all collapse
- *  onto one identical outer shell — intensity still spreads them. */
-export function radiusOf(mem: { lastRecalledAt: number; intensity: number }, now: number): number {
-  const act = Math.max(A_MIN, activation(mem.lastRecalledAt, now))
-  return targetRadius(memoryStrength(act, mem.intensity))
+/** A memory's target distance from the central self star (spec 38·07): the single Bjork
+ *  retrieval strength R (from recall_count + intensity + lastRecalledAt) → radius. Strong/fresh
+ *  → near centre, faded → outer; an often-recalled memory stays central longer (τ grows with the
+ *  storage strength S). Angle/direction is still the connection graph — only the radius is R. */
+export function radiusOf(
+  mem: { lastRecalledAt: number; intensity: number; recallCount: number },
+  now: number,
+): number {
+  return targetRadius(memoryR(mem.recallCount, mem.intensity, mem.lastRecalledAt, now))
 }
 
 /** Scale a seed position onto a target-radius shell, keeping its direction (so a star rises at its

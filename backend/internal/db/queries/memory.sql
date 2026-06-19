@@ -53,9 +53,11 @@ JOIN records r ON r.id = m.record_id
 WHERE m.id = $1;
 
 -- name: RecallMemoryTouch :exec
--- Re-ignite a star on recall: only memories.last_recalled_at changes (the
--- star is mutable; the original record is NOT — constitution §1). No RETURNING.
-UPDATE memories SET last_recalled_at = now() WHERE id = @id AND user_id = @user_id;
+-- Re-ignite a star on recall: last_recalled_at = now() AND recall_count += 1 (spec 07 —
+-- the cumulative Bjork storage-strength signal). The star is mutable; the original record
+-- is NOT (constitution §1). No RETURNING.
+UPDATE memories SET last_recalled_at = now(), recall_count = recall_count + 1
+WHERE id = @id AND user_id = @user_id;
 
 -- name: ListLastRecalled :many
 -- The candidate stars' last_recalled_at (spec 22): the per-star excitability event
@@ -95,7 +97,7 @@ ORDER BY r.entry_date DESC;
 -- 별 양쪽). resonances의 어느 끝점이든 이 별이면 true → 클라가 은은한 공명 마커를 그린다.
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
        m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version,
-       m.record_id, m.fragment_index,
+       m.record_id, m.fragment_index, m.recall_count,
        EXISTS (
            SELECT 1 FROM resonances res
            WHERE res.sender_memory_id = m.id OR res.recipient_memory_id = m.id
@@ -104,16 +106,8 @@ FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index;
 
--- name: ListRecentForAmbient :many
--- 요즘 상태(ambient) 종합 입력(spec 25): 7일 윈도 안에서 회상/생성된 조각 별의 감정만.
--- 가중 종합(exp 감쇠·정규화·HSV)은 도메인(AggregateAmbient)에서 한다 — SQL엔 감쇠 수식을
--- 넣지 않는다(ListDormant·12와 같은 패턴: sargable·결정론). last_recalled_at은 생성 시
--- now() 기본값이라 "막 적어 둔" 조각도, 회상으로 끌어올린 조각도 자연히 무게를 받는다.
--- mood/intensity/valence 출처는 memories(가변 별 레이어, spec 21); fragment_index 무관.
-SELECT m.mood, m.intensity, m.valence, m.last_recalled_at
-FROM memories m
-WHERE m.user_id = $1
-  AND m.last_recalled_at >= sqlc.arg(since)::timestamptz; -- since = now - TauMoodDays·k
+-- (spec 07) ListRecentForAmbient는 은퇴 — 서버 요즘-감정 종합(AggregateAmbient)을 제거하고
+-- 클라가 로드된 별(+recall_count)의 Bjork 인출 강도 Σ R에서 감정 순위·arousal을 직접 파생한다.
 
 -- name: ListStarVectorsByUser :many
 -- 관련성 가중 망각(spec 26) 입력: 모든 별의 의미 임베딩 + 최근성·강도 가중치. 서버가
@@ -136,7 +130,7 @@ WHERE m.user_id = $1;
 -- fetched on recall, spec 11). Same column shape as ListMemoriesByUser so it maps to
 -- the same domain Memory (reshaping state included, spec 23).
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
-       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version, m.recall_count
 FROM memories m
 WHERE m.user_id = $1
   AND m.last_recalled_at < sqlc.arg(cutoff)::timestamptz

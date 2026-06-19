@@ -210,7 +210,6 @@ type GetSharedUniverseResponse struct {
 	Stars         []*SharedStar          `protobuf:"bytes,2,rep,name=stars,proto3" json:"stars,omitempty"`
 	Synapses      []*SharedSynapse       `protobuf:"bytes,3,rep,name=synapses,proto3" json:"synapses,omitempty"`
 	Appearance    *Settings              `protobuf:"bytes,4,opt,name=appearance,proto3" json:"appearance,omitempty"` // 30: owner visual overrides (background theme · object · emotion colors)
-	Ambient       *AmbientMood           `protobuf:"bytes,5,opt,name=ambient,proto3" json:"ambient,omitempty"`       // 25: 요즘 하늘색 summary (zero value = neutral)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -269,13 +268,6 @@ func (x *GetSharedUniverseResponse) GetSynapses() []*SharedSynapse {
 func (x *GetSharedUniverseResponse) GetAppearance() *Settings {
 	if x != nil {
 		return x.Appearance
-	}
-	return nil
-}
-
-func (x *GetSharedUniverseResponse) GetAmbient() *AmbientMood {
-	if x != nil {
-		return x.Ambient
 	}
 	return nil
 }
@@ -754,15 +746,14 @@ const file_cosimosi_v1_share_proto_rawDesc = "" +
 	"\x01b\x18\x02 \x01(\x05R\x01b\x12\x16\n" +
 	"\x06weight\x18\x03 \x01(\x01R\x06weight\".\n" +
 	"\x18GetSharedUniverseRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\"\x90\x02\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\"\xeb\x01\n" +
 	"\x19GetSharedUniverseResponse\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12-\n" +
 	"\x05stars\x18\x02 \x03(\v2\x17.cosimosi.v1.SharedStarR\x05stars\x126\n" +
 	"\bsynapses\x18\x03 \x03(\v2\x1a.cosimosi.v1.SharedSynapseR\bsynapses\x125\n" +
 	"\n" +
 	"appearance\x18\x04 \x01(\v2\x15.cosimosi.v1.SettingsR\n" +
-	"appearance\x122\n" +
-	"\aambient\x18\x05 \x01(\v2\x18.cosimosi.v1.AmbientMoodR\aambient\"\x19\n" +
+	"appearanceJ\x04\b\x05\x10\x06R\aambient\"\x19\n" +
 	"\x17GetShareSettingsRequest\"k\n" +
 	"\x18GetShareSettingsResponse\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x12\n" +
@@ -825,30 +816,28 @@ var file_cosimosi_v1_share_proto_goTypes = []any{
 	(*GetResonanceBridgesResponse)(nil), // 12: cosimosi.v1.GetResonanceBridgesResponse
 	(Mood)(0),                           // 13: cosimosi.v1.Mood
 	(*Settings)(nil),                    // 14: cosimosi.v1.Settings
-	(*AmbientMood)(nil),                 // 15: cosimosi.v1.AmbientMood
 }
 var file_cosimosi_v1_share_proto_depIdxs = []int32{
 	13, // 0: cosimosi.v1.SharedStar.mood:type_name -> cosimosi.v1.Mood
 	0,  // 1: cosimosi.v1.GetSharedUniverseResponse.stars:type_name -> cosimosi.v1.SharedStar
 	1,  // 2: cosimosi.v1.GetSharedUniverseResponse.synapses:type_name -> cosimosi.v1.SharedSynapse
 	14, // 3: cosimosi.v1.GetSharedUniverseResponse.appearance:type_name -> cosimosi.v1.Settings
-	15, // 4: cosimosi.v1.GetSharedUniverseResponse.ambient:type_name -> cosimosi.v1.AmbientMood
-	11, // 5: cosimosi.v1.GetResonanceBridgesResponse.bridges:type_name -> cosimosi.v1.ResonanceBridge
-	2,  // 6: cosimosi.v1.VisitService.GetSharedUniverse:input_type -> cosimosi.v1.GetSharedUniverseRequest
-	4,  // 7: cosimosi.v1.ShareService.GetShareSettings:input_type -> cosimosi.v1.GetShareSettingsRequest
-	6,  // 8: cosimosi.v1.ShareService.UpdateShareSettings:input_type -> cosimosi.v1.UpdateShareSettingsRequest
-	8,  // 9: cosimosi.v1.ShareService.RotateShareSlug:input_type -> cosimosi.v1.RotateShareSlugRequest
-	10, // 10: cosimosi.v1.ShareService.GetResonanceBridges:input_type -> cosimosi.v1.GetResonanceBridgesRequest
-	3,  // 11: cosimosi.v1.VisitService.GetSharedUniverse:output_type -> cosimosi.v1.GetSharedUniverseResponse
-	5,  // 12: cosimosi.v1.ShareService.GetShareSettings:output_type -> cosimosi.v1.GetShareSettingsResponse
-	7,  // 13: cosimosi.v1.ShareService.UpdateShareSettings:output_type -> cosimosi.v1.UpdateShareSettingsResponse
-	9,  // 14: cosimosi.v1.ShareService.RotateShareSlug:output_type -> cosimosi.v1.RotateShareSlugResponse
-	12, // 15: cosimosi.v1.ShareService.GetResonanceBridges:output_type -> cosimosi.v1.GetResonanceBridgesResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	11, // 4: cosimosi.v1.GetResonanceBridgesResponse.bridges:type_name -> cosimosi.v1.ResonanceBridge
+	2,  // 5: cosimosi.v1.VisitService.GetSharedUniverse:input_type -> cosimosi.v1.GetSharedUniverseRequest
+	4,  // 6: cosimosi.v1.ShareService.GetShareSettings:input_type -> cosimosi.v1.GetShareSettingsRequest
+	6,  // 7: cosimosi.v1.ShareService.UpdateShareSettings:input_type -> cosimosi.v1.UpdateShareSettingsRequest
+	8,  // 8: cosimosi.v1.ShareService.RotateShareSlug:input_type -> cosimosi.v1.RotateShareSlugRequest
+	10, // 9: cosimosi.v1.ShareService.GetResonanceBridges:input_type -> cosimosi.v1.GetResonanceBridgesRequest
+	3,  // 10: cosimosi.v1.VisitService.GetSharedUniverse:output_type -> cosimosi.v1.GetSharedUniverseResponse
+	5,  // 11: cosimosi.v1.ShareService.GetShareSettings:output_type -> cosimosi.v1.GetShareSettingsResponse
+	7,  // 12: cosimosi.v1.ShareService.UpdateShareSettings:output_type -> cosimosi.v1.UpdateShareSettingsResponse
+	9,  // 13: cosimosi.v1.ShareService.RotateShareSlug:output_type -> cosimosi.v1.RotateShareSlugResponse
+	12, // 14: cosimosi.v1.ShareService.GetResonanceBridges:output_type -> cosimosi.v1.GetResonanceBridgesResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_v1_share_proto_init() }

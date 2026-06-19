@@ -1,65 +1,91 @@
-// Ambient "요즘 상태" model (spec 25): the recent fragment emotions, time-weighted over a
-// 7-day envelope, summarized into a background tint + a multi-light color distribution.
-// Pure — no rendering, no platform import (constitution §4·1.10): the universe canvas (a
-// platform layer) consumes these to build the nebula pools; mobile can reuse them as-is.
+// Ambient "요즘 상태" model (spec 07, was 25): the recent emotions ranked by the SINGLE Bjork
+// retrieval strength R (weight.ts) — the same weight that drives the self-proximity radius (38).
+// rankedEmotions feeds the BACKGROUND weave (top-N user emotion colors woven into the skin),
+// arousalOf drives the background's global liveliness, and deriveAmbient/ambientToRgb still give
+// the SELF body color (spec 44 J3). Pure — no rendering, no platform import (constitution §4·1.10).
 //
-// This is the client fallback / distribution authority. The server sends only the coarse
-// `Ambient` summary (hue/sat/arousal/valence); the multi-light color DISTRIBUTION is always
-// derived HERE from the loaded stars (coordinates/render inputs are client authority — §3).
-// The math mirrors the backend AggregateAmbient (internal/memory/memory.go) so the served
-// summary and this fallback agree on the color of "요즘".
-import { moodRgb, VALUES, type RGB } from '@/shared/config'
+// spec 07 retired the server ambient summary AND the floating mood-orb light pools (ambientLights):
+// the client derives everything HERE from the loaded stars (+recall_count). No fixed moodRgb in the
+// background path — the woven colors are the USER's emotion colors (resolveMoodRgb, spec 45).
+import { moodRgb, resolveMoodRgb, VALUES, type RGB } from '@/shared/config'
+import { memoryR } from './weight'
 
-/** The coarse recent-mood summary — matches proto AmbientMood (spec 25). */
+/** The coarse recent-mood summary — drives the SELF body color (spec 44 J3). */
 export interface Ambient {
-  /** 0..360 representative hue (HSV of the intensity-weighted mood blend). */
+  /** 0..360 representative hue (HSV of the R-weighted mood blend). */
   hue: number
   /** 0..1 saturation (one dominant emotion → vivid; mixed → washed out). */
   sat: number
-  /** 0..1 arousal (recency·intensity) — the excitability-gain input. */
+  /** 0..1 arousal (Σ R) — the excitability-gain + background-liveliness input. */
   arousal: number
-  /** -1..1 time-weighted mean signed affect — warms/cools the background color. */
+  /** -1..1 R-weighted mean signed affect — warms/cools the self body color. */
   valence: number
 }
 
-/** One nebula light pool: a dominant mood's meaning-color (valence-corrected) + its
- *  relative weight (pool brightness/size). The canvas scatters one additive orb per pool. */
-export interface AmbientLight {
-  rgb: RGB
-  /** relative share 0..1 — bigger = brighter/larger pool. */
-  weight: number
-  mood: string
-}
-
-/** A loaded star's affect, the input to the derivations. lastRecalledAt is epoch ms. */
+/** A loaded star's affect + the raw recall datum, the input to the R derivations.
+ *  lastRecalledAt is epoch ms; recallCount is the spec-07 cumulative count. */
 export interface AmbientStar {
   mood: string
   intensity: number
   valence: number
   lastRecalledAt: number
+  recallCount: number
 }
 
-export const TAU_MOOD_DAYS = VALUES.ambient.tauMoodDays
-export const AROUSAL_GAIN = VALUES.ambient.arousalGain
-/** Upper bound on light pools (only the top dominant moods become their own light). */
-export const AMBIENT_LIGHTS_K = VALUES.ambient.lightsK
-/** A mood below this relative weight isn't its own pool (avoids faint stragglers). */
-const LIGHT_MIN_SHARE = VALUES.ambient.lightMinShare
-const DAY_MS = 86_400_000
+/** One ranked emotion for the background weave: the user's emotion color + its share of the
+ *  total Bjork retrieval strength (R). The background skin weaves the top-N (skin emotionSlots). */
+export interface RankedEmotion {
+  mood: string
+  rgb: RGB
+  /** relative share 0..1 of Σ R across moods (bigger = more present in the weave). */
+  weight: number
+}
 
-/** g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]). Mirrors memory.ExcitabilityGain. */
+export const AROUSAL_GAIN = VALUES.ambient.arousalGain
+
+/** g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]). Mirrors memory.ExcitabilityGain (22 seam). */
 export const excitabilityGain = (a: Ambient): number => 1 + AROUSAL_GAIN * a.arousal
 
-/** Time-weighted emotional weight of one star: intensity·exp(-Δt/τ). An older/fainter
- *  fragment weighs monotonically less; the 7-day envelope is slow (days, not hours). */
-function weightOf(star: AmbientStar, now: number): number {
-  const dtDays = Math.max(0, (now - star.lastRecalledAt) / DAY_MS)
-  const intensity = Math.max(0, star.intensity)
-  return intensity * Math.exp(-dtDays / TAU_MOOD_DAYS)
+/** A star's Bjork retrieval strength R — the single weight for radius AND background ranking. */
+function rOf(star: AmbientStar, now: number): number {
+  return memoryR(star.recallCount, star.intensity, star.lastRecalledAt, now)
 }
 
-/** Fold loaded stars into the coarse summary (the client fallback for a missing/empty
- *  server `ambient`). Empty/zero-weight input → neutral (all-zero) → gain 1.0. */
+/** Total Σ R over the loaded stars → arousal ∈ [0,1): a vivid, recent "요즘" reads as more
+ *  aroused. Empty/dormant universe → ≈0. Drives the background skin's global liveliness (07). */
+export function arousalOf(stars: readonly AmbientStar[], now: number): number {
+  let sum = 0
+  for (const s of stars) sum += rOf(s, now)
+  return 1 - Math.exp(-sum)
+}
+
+/** Emotion ranking for the background weave (spec 07): each mood's Σ R, descending, with the
+ *  USER's emotion color (resolveMoodRgb — spec 45) and its relative share of the total Σ R. The
+ *  background skin weaves the top-N by its `emotionSlots`. `emotionColors` is injected (mood →
+ *  "#RRGGBB") so this stays a pure entity module (no settings cross-import). Empty universe → []. */
+export function rankedEmotions(
+  stars: readonly AmbientStar[],
+  emotionColors: Record<string, string> | undefined,
+  now: number,
+): RankedEmotion[] {
+  const byMood = new Map<string, number>()
+  let total = 0
+  for (const s of stars) {
+    const r = rOf(s, now)
+    if (r <= 0) continue
+    byMood.set(s.mood, (byMood.get(s.mood) ?? 0) + r)
+    total += r
+  }
+  if (total <= 0) return []
+  return [...byMood.entries()]
+    .map(([mood, r]) => ({ mood, rgb: resolveMoodRgb(mood, emotionColors), weight: r / total }))
+    .sort((a, b) => b.weight - a.weight)
+}
+
+/** Fold loaded stars into the coarse summary that gives the SELF body color (spec 44 J3). The
+ *  weight is the Bjork retrieval strength R (spec 07) instead of the old intensity·exp(-Δt/τ).
+ *  Self color stays on the fixed mood meaning-palette (moodRgb), NOT the user colors — the body
+ *  reads emotion, while the background weaves the user's chosen colors. Empty → neutral (gain 1.0). */
 export function deriveAmbient(stars: readonly AmbientStar[], now: number): Ambient {
   let sumW = 0
   let sumWV = 0
@@ -67,7 +93,7 @@ export function deriveAmbient(stars: readonly AmbientStar[], now: number): Ambie
   let g = 0
   let b = 0
   for (const s of stars) {
-    const w = weightOf(s, now)
+    const w = rOf(s, now)
     if (w <= 0) continue
     const rgb = moodRgb(s.mood)
     r += w * rgb[0]
@@ -87,34 +113,9 @@ export function deriveAmbient(stars: readonly AmbientStar[], now: number): Ambie
 }
 
 /** Representative single color of the summary (moodRgb space + valence correction).
- *  Theme-independent: mood meaning-color is preserved regardless of the chosen theme. */
+ *  Theme-independent: mood meaning-color is preserved regardless of the chosen background. */
 export function ambientToRgb(a: Ambient): RGB {
   return correctByValence(hsvToRgb(a.hue, a.sat, 1), a.valence)
-}
-
-/** Top-K dominant moods → light pools. Each mood accumulates a time-weighted share and a
- *  weighted valence; pools below LIGHT_MIN_SHARE are dropped and the rest sorted desc and
- *  capped at K. A single-mood "요즘" collapses to one pool; an empty universe → [] (the
- *  background is then the theme base only). Pool color = moodRgb valence-corrected. */
-export function ambientLights(stars: readonly AmbientStar[], now: number): AmbientLight[] {
-  const byMood = new Map<string, { w: number; wv: number }>()
-  let total = 0
-  for (const s of stars) {
-    const w = weightOf(s, now)
-    if (w <= 0) continue
-    const cur = byMood.get(s.mood) ?? { w: 0, wv: 0 }
-    cur.w += w
-    cur.wv += w * s.valence
-    byMood.set(s.mood, cur)
-    total += w
-  }
-  if (total <= 0) return []
-  return [...byMood.entries()]
-    .map(([mood, { w, wv }]) => ({ mood, share: w / total, valence: clamp(wv / w, -1, 1) }))
-    .filter((l) => l.share >= LIGHT_MIN_SHARE)
-    .sort((a, b) => b.share - a.share)
-    .slice(0, AMBIENT_LIGHTS_K)
-    .map((l) => ({ rgb: correctByValence(moodRgb(l.mood), l.valence), weight: l.share, mood: l.mood }))
 }
 
 /** Warm/cool + saturate/desaturate a meaning-color by valence (spec 1.8): positive →

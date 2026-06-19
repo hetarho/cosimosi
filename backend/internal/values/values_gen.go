@@ -84,15 +84,22 @@ const (
 	ReshapeAgeRefDays          = 90
 )
 
+// memory_weight
+const (
+	MemoryWeightStorageBase      = 1
+	MemoryWeightEmoConsolidation = 0.6
+	MemoryWeightTau0Days         = 14
+	MemoryWeightTauStorageGain   = 0.8
+)
+
 // ambient
 const (
-	AmbientTauMoodDays     = 7
-	AmbientArousalGain     = 0.3
-	AmbientWindowTauFactor = 3
-	AmbientLightsK         = 6
-	AmbientLightMinShare   = 0.04
-	AmbientValenceWarmGain = 0.12
-	AmbientValenceSatGain  = 0.25
+	AmbientTauMoodDays      = 7
+	AmbientArousalGain      = 0.3
+	AmbientBgBrightnessGain = 0.35
+	AmbientBgMotionGain     = 0.6
+	AmbientValenceWarmGain  = 0.12
+	AmbientValenceSatGain   = 0.25
 )
 
 // recall
@@ -145,6 +152,12 @@ var (
 	}
 )
 
+// admin
+const (
+	AdminUserListDefaultPageSize = 50
+	AdminUserListMaxPageSize     = 100
+)
+
 // radial_layout
 const (
 	RadialLayoutRepulsion      = -18
@@ -152,8 +165,6 @@ const (
 	RadialLayoutRadialStrength = 0.1
 	RadialLayoutRMin           = 6
 	RadialLayoutRMax           = 40
-	RadialLayoutWActivation    = 0.7
-	RadialLayoutWIntensity     = 0.3
 	RadialLayoutDriftStepRad   = 0.08
 )
 
@@ -243,16 +254,6 @@ const (
 	CosmosQualityLowMaxCores = 4
 )
 
-// ambient_nebula
-const (
-	AmbientNebulaBaseBright    = 0.06
-	AmbientNebulaArousalBright = 0.2
-	AmbientNebulaCrossfadeS    = 0.8
-	AmbientNebulaDriftSpeed    = 0.05
-	AmbientNebulaDriftAmp      = 16
-	AmbientNebulaShimmer       = 0.06
-)
-
 // self_star
 const (
 	SelfStarRadius = 5
@@ -283,6 +284,22 @@ const (
 	ResonanceBridgePeakGlow    = 1
 	ResonanceBridgeFocusBoost  = 1.7
 	ResonanceBridgeLineWidthPx = 3
+)
+
+// gesture
+const (
+	GestureDragDeadzonePx         = 8
+	GestureCloseThrustDeadzonePx  = 6
+	GestureCloseThrustFullPx      = 90
+	GestureCloseLookSensitivity   = 2.2
+	GestureFarPanSpeed            = 1
+	GestureFarZoomScrubDeadzonePx = 8
+	GestureFarZoomScrubSpeed      = 0.004
+	GestureDoubleTapMs            = 300
+	GestureDoubleTapMaxDistPx     = 24
+	GestureFarRotateSpeed         = 2.4
+	GestureFarDamp                = 9
+	GestureFarZoomSpeed           = 0.12
 )
 
 // wayfinding

@@ -7,7 +7,7 @@
 // (constitution §3, acceptance 1.6); when the buffer isn't ready yet a deterministic
 // fibonacci dummy stands in (same formula → no flicker). This is the only place
 // three/TSL appears; the model layer stays pure.
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { attribute, uniform } from 'three/tsl'
@@ -162,6 +162,11 @@ export interface StarFieldProps {
   lightPositional?: number
   /** 반사 항 게이트(0|1) — 저사양/WebGL2는 0으로 광 연산 분기 제거. 기본 1. */
   litMix?: number
+  /** spec 06(change 08): 매 프레임 갱신되는 동적 자아 광원 위치. 주어지면 useFrame이 ref.current로
+   *  반사 채널 uniform만 갱신한다(React rerender 없음) — 근접 탐험에서 광원이 탐험자를 따라온다.
+   *  null/미전달이면 정적 selfLightPos를 쓴다(원거리=중심 자아 광원·오버레이·배경 동일). 반사 채널만
+   *  바꾸고 selfGlow/activation/λ_eff/별 색·좌표는 불변. */
+  selfLightRef?: MutableRefObject<readonly [number, number, number] | null>
 }
 
 export function StarField({
@@ -178,6 +183,7 @@ export function StarField({
   selfLightPos = STAR_LIGHT_ORIGIN,
   lightPositional = 1,
   litMix = 1,
+  selfLightRef,
 }: StarFieldProps) {
   const storeStars = useMemoryStore((s) => s.stars)
   // 외부 소스(겹쳐보기)면 그것을, 아니면 스토어를 그린다. external=true면 탄생 연출·loadedEmpty 게이트를 끈다.
@@ -475,6 +481,9 @@ export function StarField({
     // 형태 애니메이션용 시간 전진(liquid 출렁임 / ember 깜빡임 / aurora 흐름). 위치 버퍼가 없어도
     // 매 프레임 올려야 하므로 아래 early-return보다 먼저 둔다.
     update(state.clock.elapsedTime)
+    // spec 06(change 08): 동적 자아 광원 — 주어지면 매 프레임 반사 채널 uniform만 갱신(근접 탐험에서
+    // 광원이 탐험자를 따라온다). 반사 항만 바뀌고 selfGlow/activation/별 색·좌표는 불변(채널 경계).
+    if (selfLightRef?.current) setLight(selfLightRef.current, lightPositional, litMix)
     const mesh = meshRef.current
     if (!mesh || count === 0) return
     const scales = scalesRef.current

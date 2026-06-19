@@ -7,10 +7,12 @@ import { NotFoundScreen } from '@/shared/ui'
 import { isPermissionDenied, llmConfigQueryOptions } from '../api/admin-queries'
 import { LlmTab } from './LlmTab'
 import { InviteCodesTab } from './InviteCodesTab'
+import { UsersTab } from './UsersTab'
 
 const TABS = [
   { value: 'llm', label: 'LLM 관리' },
   { value: 'invite', label: '초대 코드' },
+  { value: 'users', label: '사용자' },
 ] as const
 
 export function AdminPage() {
@@ -26,7 +28,7 @@ export function AdminPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-light tracking-wide">관리자 콘솔</h1>
-          <p className="text-sm text-white/45">LLM 운영과 초대 코드 관리.</p>
+          <p className="text-sm text-white/45">LLM 운영·초대 코드·사용자 별가루 관리.</p>
         </header>
 
         <div className="flex gap-1 border-b border-white/10">
@@ -47,7 +49,7 @@ export function AdminPage() {
           ))}
         </div>
 
-        {active === 'invite' ? <InviteCodesTab /> : <LlmTab />}
+        {active === 'invite' ? <InviteCodesTab /> : active === 'users' ? <UsersTab /> : <LlmTab />}
       </div>
     </div>
   )

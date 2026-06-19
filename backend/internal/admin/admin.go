@@ -22,6 +22,15 @@ var (
 	// own suffix would otherwise be echoed back in full as key_last4.
 	ErrKeyTooShort = errors.New("admin: api key is implausibly short (min 8 chars)")
 	ErrNoStoredKey = errors.New("admin: no key stored for this provider")
+
+	// User-list / stardust-grant surface (spec 46).
+	// ErrInvalidGrantAmount covers BOTH a non-positive amount and one too large to
+	// fit the wallet's integer range — both are bad client input (InvalidArgument).
+	// ErrStardustOverflow is reserved for the server-state case: a valid amount the
+	// target's current balance can't absorb without overflowing (FailedPrecondition).
+	ErrInvalidGrantAmount = errors.New("admin: grant amount must be a positive integer within range")
+	ErrUserNotFound       = errors.New("admin: target user not found")
+	ErrStardustOverflow   = errors.New("admin: grant would overflow the wallet balance")
 )
 
 // ProviderConfig is one provider card: the code matrix's read-only default
@@ -117,6 +126,38 @@ type Totals struct {
 	Synapses int64
 }
 
+// AdminUser is one row of the operator user list (spec 46): the user id, the
+// effective stardust balance (the wallet row value, or starting_stardust when no
+// wallet row exists yet), and whether the wallet row has been seeded.
+type AdminUser struct {
+	UserID       string
+	Stardust     int64
+	WalletSeeded bool
+}
+
+// ListUsersInput is the user-list query (keyset pagination, user_id ASC). The
+// service clamps PageSize against the admin values before it reaches the repo.
+type ListUsersInput struct {
+	Query     string // case-insensitive contains filter on user_id ("" = all)
+	PageSize  int    // 0 = default; capped by the service
+	PageToken string // last user_id from the previous page ("" = first page)
+}
+
+// ListUsersResult is one page of users plus the keyset cursor for the next page
+// ("" when the page is the last).
+type ListUsersResult struct {
+	Users         []AdminUser
+	NextPageToken string
+}
+
+// GrantStardustInput is one admin corrective stardust grant. AdminUserID is the
+// acting admin's verified JWT sub (audit), recorded in admin_stardust_grants.
+type GrantStardustInput struct {
+	AdminUserID  string
+	TargetUserID string
+	Amount       int64
+}
+
 // Repository is the persistence port (pgx/sqlc impl in repository_pg.go).
 type Repository interface {
 	// ListProviderRows returns only the providers with stored overrides.
@@ -136,4 +177,20 @@ type Repository interface {
 	Totals(ctx context.Context) (Totals, error)
 	JobCounts(ctx context.Context) (JobCounts, error)
 	RecordDaySeries(ctx context.Context) ([]DayCount, error)
+
+	// ListUsers returns one page of users — auth.users on a Supabase DB, the
+	// app-domain table user_id union locally (acceptance A2/A3) — filtered by a
+	// case-insensitive user_id contains match, keyset-paginated by user_id ASC.
+	// startingStardust is the effective balance shown for unseeded wallets;
+	// limit is page_size+1 so the service can detect a following page.
+	ListUsers(ctx context.Context, query, pageToken string, limit, startingStardust int) ([]AdminUser, error)
+	// UserExists reports whether target is a real user (auth.users on Supabase,
+	// the app-domain union locally) — the production NotFound guard (A10).
+	UserExists(ctx context.Context, target string) (bool, error)
+	// GrantStardust seeds the target wallet to startingStardust if absent, adds
+	// amount (overflow-guarded), and writes the admin_stardust_grants audit row —
+	// all in one transaction (A7/A8/A9). Returns ErrUserNotFound when the target
+	// is unknown and ErrStardustOverflow when the add would exceed the wallet's
+	// integer range, leaving wallet + audit untouched (A10).
+	GrantStardust(ctx context.Context, in GrantStardustInput, startingStardust int) (AdminUser, error)
 }

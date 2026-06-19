@@ -537,7 +537,7 @@ func (q *Queries) ListDirectNeighbors(ctx context.Context, arg ListDirectNeighbo
 
 const listDormant = `-- name: ListDormant :many
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
-       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version, m.recall_count
 FROM memories m
 WHERE m.user_id = $1
   AND m.last_recalled_at < $2::timestamptz
@@ -559,6 +559,7 @@ type ListDormantRow struct {
 	HueShift         float32            `json:"hue_shift"`
 	FormSeedDelta    float32            `json:"form_seed_delta"`
 	Version          int32              `json:"version"`
+	RecallCount      int32              `json:"recall_count"`
 }
 
 // Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
@@ -588,6 +589,7 @@ func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]Lis
 			&i.HueShift,
 			&i.FormSeedDelta,
 			&i.Version,
+			&i.RecallCount,
 		); err != nil {
 			return nil, err
 		}
@@ -640,7 +642,7 @@ func (q *Queries) ListLastRecalled(ctx context.Context, arg ListLastRecalledPara
 const listMemoriesByUser = `-- name: ListMemoriesByUser :many
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
        m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version,
-       m.record_id, m.fragment_index,
+       m.record_id, m.fragment_index, m.recall_count,
        EXISTS (
            SELECT 1 FROM resonances res
            WHERE res.sender_memory_id = m.id OR res.recipient_memory_id = m.id
@@ -662,6 +664,7 @@ type ListMemoriesByUserRow struct {
 	Version          int32              `json:"version"`
 	RecordID         string             `json:"record_id"`
 	FragmentIndex    int32              `json:"fragment_index"`
+	RecallCount      int32              `json:"recall_count"`
 	Resonant         bool               `json:"resonant"`
 }
 
@@ -693,6 +696,7 @@ func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]List
 			&i.Version,
 			&i.RecordID,
 			&i.FragmentIndex,
+			&i.RecallCount,
 			&i.Resonant,
 		); err != nil {
 			return nil, err
@@ -727,55 +731,6 @@ func (q *Queries) ListMemoryIDsByRecord(ctx context.Context, recordID string) ([
 			return nil, err
 		}
 		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRecentForAmbient = `-- name: ListRecentForAmbient :many
-SELECT m.mood, m.intensity, m.valence, m.last_recalled_at
-FROM memories m
-WHERE m.user_id = $1
-  AND m.last_recalled_at >= $2::timestamptz
-`
-
-type ListRecentForAmbientParams struct {
-	UserID string             `json:"user_id"`
-	Since  pgtype.Timestamptz `json:"since"`
-}
-
-type ListRecentForAmbientRow struct {
-	Mood           *string            `json:"mood"`
-	Intensity      *float32           `json:"intensity"`
-	Valence        *float32           `json:"valence"`
-	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
-}
-
-// 요즘 상태(ambient) 종합 입력(spec 25): 7일 윈도 안에서 회상/생성된 조각 별의 감정만.
-// 가중 종합(exp 감쇠·정규화·HSV)은 도메인(AggregateAmbient)에서 한다 — SQL엔 감쇠 수식을
-// 넣지 않는다(ListDormant·12와 같은 패턴: sargable·결정론). last_recalled_at은 생성 시
-// now() 기본값이라 "막 적어 둔" 조각도, 회상으로 끌어올린 조각도 자연히 무게를 받는다.
-// mood/intensity/valence 출처는 memories(가변 별 레이어, spec 21); fragment_index 무관.
-func (q *Queries) ListRecentForAmbient(ctx context.Context, arg ListRecentForAmbientParams) ([]ListRecentForAmbientRow, error) {
-	rows, err := q.db.Query(ctx, listRecentForAmbient, arg.UserID, arg.Since)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListRecentForAmbientRow
-	for rows.Next() {
-		var i ListRecentForAmbientRow
-		if err := rows.Scan(
-			&i.Mood,
-			&i.Intensity,
-			&i.Valence,
-			&i.LastRecalledAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -841,7 +796,8 @@ type ListStarVectorsByUserRow struct {
 	Embedding      *pgvector.Vector   `json:"embedding"`
 }
 
-// since = now - TauMoodDays·k
+// (spec 07) ListRecentForAmbient는 은퇴 — 서버 요즘-감정 종합(AggregateAmbient)을 제거하고
+// 클라가 로드된 별(+recall_count)의 Bjork 인출 강도 Σ R에서 감정 순위·arousal을 직접 파생한다.
 // 관련성 가중 망각(spec 26) 입력: 모든 별의 의미 임베딩 + 최근성·강도 가중치. 서버가
 // "요즘 토픽 중심 벡터"(최근 별 임베딩 시간가중 평균)를 만들고 별마다 cos 정합도를 계산해
 // GetUniverse에 relevance로 싣는다. LEFT JOIN이라 임베딩이 아직 없는 별(embed 잡 대기 중)도
@@ -919,7 +875,8 @@ func (q *Queries) ListStarsForConsolidate(ctx context.Context, userID string) ([
 }
 
 const recallMemoryTouch = `-- name: RecallMemoryTouch :exec
-UPDATE memories SET last_recalled_at = now() WHERE id = $1 AND user_id = $2
+UPDATE memories SET last_recalled_at = now(), recall_count = recall_count + 1
+WHERE id = $1 AND user_id = $2
 `
 
 type RecallMemoryTouchParams struct {
@@ -927,8 +884,9 @@ type RecallMemoryTouchParams struct {
 	UserID string `json:"user_id"`
 }
 
-// Re-ignite a star on recall: only memories.last_recalled_at changes (the
-// star is mutable; the original record is NOT — constitution §1). No RETURNING.
+// Re-ignite a star on recall: last_recalled_at = now() AND recall_count += 1 (spec 07 —
+// the cumulative Bjork storage-strength signal). The star is mutable; the original record
+// is NOT (constitution §1). No RETURNING.
 func (q *Queries) RecallMemoryTouch(ctx context.Context, arg RecallMemoryTouchParams) error {
 	_, err := q.db.Exec(ctx, recallMemoryTouch, arg.ID, arg.UserID)
 	return err

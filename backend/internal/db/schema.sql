@@ -43,7 +43,8 @@ CREATE TABLE memories (
     version          INT NOT NULL DEFAULT 0,           -- 00005 재성형 횟수(=변천사 길이)
     stable_x         REAL,                             -- 00006(spec 27) 야간 재안정화 안정 좌표 캐시(권위 아님 — 헌법3)
     stable_y         REAL,                             -- 00006 클라/서버가 force-sim 재진입 시드로만 재사용(proto 미노출)
-    stable_z         REAL                              -- 00006 NULL이면 처음부터 산출
+    stable_z         REAL,                             -- 00006 NULL이면 처음부터 산출
+    recall_count     INT NOT NULL DEFAULT 1             -- 00012(spec 07) 누적 회상 횟수(Bjork 저장강도 S 신호; 회상마다 +1, 기존 별 1 백필)
 );
 CREATE INDEX memories_user_idx ON memories (user_id);
 CREATE UNIQUE INDEX memories_record_fragment_idx ON memories (record_id, fragment_index);
@@ -247,3 +248,18 @@ CREATE TABLE user_owned_items (
     acquired_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, item_id)
 );
+
+-- 관리자 별가루 보정 지급 감사(spec 46, 00011): 운영자가 사용자 지갑에 별가루를 지급할 때마다 1행 append.
+-- 별가루 증가 경로는 시작 잔액 시드 + 이 관리자 지급뿐(사용자 직접 충전·결제·환불은 비목표). 잔액 컬럼은
+-- user_wallet.stardust와 같은 INTEGER 범위. UI는 이력을 노출하지 않지만 사고 복구·운영 추적용 내부 기록.
+CREATE TABLE admin_stardust_grants (
+    id             TEXT PRIMARY KEY,
+    admin_user_id  TEXT NOT NULL,
+    target_user_id TEXT NOT NULL,
+    amount         INTEGER NOT NULL,
+    balance_before INTEGER NOT NULL,
+    balance_after  INTEGER NOT NULL,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX admin_stardust_grants_target_idx ON admin_stardust_grants (target_user_id, created_at DESC);
+CREATE INDEX admin_stardust_grants_admin_idx ON admin_stardust_grants (admin_user_id, created_at DESC);

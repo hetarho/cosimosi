@@ -165,15 +165,11 @@ func (s *Service) RecordMemory(ctx context.Context, in RecordInput) (string, []s
 	return s.repo.RecordMemory(ctx, in)
 }
 
-// ambientWindowFactor caps the recent-emotion query at now-TauMoodDays·k: beyond ~3·τ
-// the exp decay weight is negligible (exp(-3)≈0.05), so a wider window only costs rows.
-const ambientWindowFactor = values.AmbientWindowTauFactor
-
 // GetUniverse composes the full authoritative graph for one user: every star and
-// every synapse, dormant ones included. It also folds the recent fragment emotions into
-// the ambient "요즘" summary (spec 25). Brightness/coordinates are not computed here
-// (client renders them — constitution §2·§3); the multi-light color distribution is
-// also the client's (server sends only this summary).
+// every synapse, dormant ones included. Brightness/coordinates are not computed here
+// (client renders them — constitution §2·§3). spec 07: the server no longer folds a
+// "요즘" ambient summary — the client derives the emotion ranking + arousal from the
+// loaded stars (+recall_count) via the Bjork retrieval-strength R itself.
 func (s *Service) GetUniverse(ctx context.Context, userID string) (Universe, error) {
 	memories, err := s.repo.ListByUser(ctx, userID)
 	if err != nil {
@@ -183,26 +179,19 @@ func (s *Service) GetUniverse(ctx context.Context, userID string) (Universe, err
 	if err != nil {
 		return Universe{}, err
 	}
-	// Ambient is a decorative, ADDITIVE tint with a client-side fallback (deriveAmbient
-	// from the loaded stars), so a recent-emotion read failure must never deny the core
-	// graph — degrade to the neutral AmbientMood{} (gain 1.0) instead of failing the read.
-	now := time.Now().UTC()
-	ambient := AmbientMood{}
-	if samples, aerr := s.repo.ListRecentForAmbient(ctx, userID, now.Add(-TauMoodDays*ambientWindowFactor*24*time.Hour)); aerr == nil {
-		ambient = AggregateAmbient(samples, now)
-	}
 	// Relevance (spec 26): each star's cos alignment with the "요즘 토픽" centroid → the
-	// client's R_recent decay-resistance term. Like ambient it is a best-effort, additive
-	// signal with a neutral default (0 = no resistance), so a vector-read failure degrades to
-	// all-neutral relevance rather than failing the core graph. Folded onto the stars here so
-	// the handler maps it straight onto Star.relevance.
+	// client's R_recent decay-resistance term. A best-effort, additive signal with a neutral
+	// default (0 = no resistance), so a vector-read failure degrades to all-neutral relevance
+	// rather than failing the core graph. Folded onto the stars here so the handler maps it
+	// straight onto Star.relevance.
+	now := time.Now().UTC()
 	if vectors, verr := s.repo.ListStarVectorsByUser(ctx, userID); verr == nil {
 		rel := RelevanceByStar(vectors, now)
 		for i := range memories {
 			memories[i].Relevance = rel[memories[i].ID]
 		}
 	}
-	return Universe{Memories: memories, Synapses: synapses, Ambient: ambient}, nil
+	return Universe{Memories: memories, Synapses: synapses}, nil
 }
 
 // ListRecords returns the caller's original diaries as wayfinding entry points

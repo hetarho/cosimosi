@@ -89,3 +89,52 @@ FROM records
 WHERE created_at >= now() - interval '30 days'
 GROUP BY 1
 ORDER BY 1;
+
+-- ── 사용자 목록 + 별가루 지급(spec 46) ──────────────────────────────────────────────
+-- ⚠️ production Supabase는 auth.users가 1차 출처라 repository가 to_regclass 가드 + raw SQL로
+-- 대체한다(sqlc는 auth 스키마를 모델링하지 않는다 — AdminTotals와 같은 패턴). 아래 쿼리는
+-- auth.users가 없는 로컬/fallback 경로: 앱 도메인 테이블의 user_id 합집합을 1차 출처로 쓴다.
+
+-- name: AdminListUsersFallback :many
+-- 앱 도메인 테이블 user_id 합집합 keyset 페이지네이션(user_id ASC). query는 대소문자 무시 부분 일치
+-- (position으로 ILIKE 와일드카드 주입 회피). 유효 잔액 = COALESCE(지갑, starting_stardust) — 목록 조회는
+-- 지갑을 시드하지 않는다(wallet_seeded=false면 아직 행 없음). page_limit = page_size + 1(다음 페이지 탐지).
+WITH all_users AS (
+    SELECT user_id AS uid FROM records
+    UNION SELECT user_id FROM memories
+    UNION SELECT user_id FROM user_settings
+    UNION SELECT user_id FROM user_wallet
+    UNION SELECT user_id FROM user_owned_items
+    UNION SELECT user_id FROM user_emotion_colors
+    UNION SELECT user_id FROM universe_shares
+    UNION SELECT user_id FROM invite_redemptions
+)
+SELECT u.uid AS user_id,
+       COALESCE(w.stardust, @starting_stardust::int)::int AS stardust,
+       (w.user_id IS NOT NULL)::bool AS wallet_seeded
+FROM all_users u
+LEFT JOIN user_wallet w ON w.user_id = u.uid
+WHERE (@query::text = '' OR position(lower(@query::text) IN lower(u.uid)) > 0)
+  AND (@page_token::text = '' OR u.uid > @page_token::text)
+ORDER BY u.uid ASC
+LIMIT @page_limit::int;
+
+-- target 존재 확인(production auth.users / 로컬 fallback 합집합)은 repository_pg가 raw SQL로 처리한다
+-- (sqlc 분석기가 auth 스키마를 모델링하지 않고, 다중-테이블 UNION EXISTS의 param 타입도 해석하지 못함 —
+-- AdminTotals의 auth.users 가드와 같은 정책).
+
+-- name: AdminAddStardust :one
+-- 관리자 지급 증가(spec 46): SeedWallet(settings.sql, 멱등)로 행 보장 후 호출. overflow 가드 —
+-- 잔액+지급액이 INT4 상한을 넘으면 0행(pgx.ErrNoRows) → 서비스가 ErrStardustOverflow로 거부.
+-- bigint 산술로 비교해 int4 연산 자체의 오버플로를 피한다. RETURNING으로 지급 후 잔액을 돌려준다.
+UPDATE user_wallet
+SET stardust = stardust + @amount::int, updated_at = now()
+WHERE user_id = @user_id
+  AND stardust::bigint + @amount::bigint <= 2147483647
+RETURNING stardust;
+
+-- name: InsertStardustGrant :exec
+-- 지급 감사 행 append(같은 트랜잭션). UI 비노출이지만 운영 추적·사고 복구용 내부 기록.
+INSERT INTO admin_stardust_grants
+    (id, admin_user_id, target_user_id, amount, balance_before, balance_after)
+VALUES (@id, @admin_user_id, @target_user_id, @amount, @balance_before, @balance_after);

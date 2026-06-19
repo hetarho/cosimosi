@@ -15,6 +15,7 @@
     "gen:sql": "node scripts/gen.mjs sql",
     "spec:plan": "node scripts/new-plan.mjs",
     "spec:change": "node scripts/new-change.mjs",
+    "spec:code-review": "node scripts/new-refactor-report.mjs",
     "spec:job": "node scripts/new-job.mjs",
     "db:migrate": "node scripts/db.mjs up",
     "db:status": "node scripts/db.mjs status",

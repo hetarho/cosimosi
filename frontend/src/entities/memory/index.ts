@@ -15,17 +15,18 @@ export {
   GAMMA_EMO,
   DELTA_VAL,
 } from './model/activation'
+export { storageStrength, retrievalStrength, memoryR } from './model/weight'
 export { seedFromId } from './model/seed'
 export { reshapedBrightness, reshapedSeed } from './model/reshape'
 export {
   deriveAmbient,
-  ambientLights,
   ambientToRgb,
   excitabilityGain,
-  AMBIENT_LIGHTS_K,
+  rankedEmotions,
+  arousalOf,
   type Ambient,
-  type AmbientLight,
   type AmbientStar,
+  type RankedEmotion,
 } from './model/ambient'
 export { useMemoryStore, starsOfRecord } from './model/store'
 // 포커스 머신(구 memory.selectedId + wayfinding.highlightedRecordId/frameRequest의 단일 출처).

@@ -114,6 +114,10 @@ message Star {
   // 계산(weight처럼 의미 그래프 파생값 — 헌법3 위반 아님; 밝기 자체는 여전히 클라가
   // exp(-λ_eff·Δt)로 계산). 임베딩 미생성 별·데모(서버 없음)에선 0=중립.
   double relevance = 13;
+  // 07: 누적 회상 횟수(서버 권위 원자료, RecallMemoryTouch마다 +1). 클라가 Bjork 저장강도
+  // S=(storage_base+recall_count)·(1+emo·intensity)와 인출강도 R=exp(-Δt/τ(S))를 파생해
+  // 자기근접 반지름(38)+배경 감정 순위를 함께 구동한다. 기존 별은 1로 백필(relevance와 동급의 원자료).
+  int64 recall_count = 14;
 }
 
 // Synapse is a weighted, undirected (a < b) link. Only weight is authoritative;
@@ -131,20 +135,14 @@ message Synapse {
 
 message GetUniverseRequest {}
 
-// AmbientMood = "지금의 나"의 색조 요약 (spec 25): 최근 7일 조각 감정의 시간가중 종합.
-// 별 좌표가 아닌 전역 배경 한 겹(서버 권위는 가중 그래프뿐 — 헌법3). 다중 광원의
-// 위치/풀 색은 proto에 없다 — 클라가 이 요약 + 로드된 별 분포 + 시드로 결정론 생성한다.
-message AmbientMood {
-  double hue = 1;      // 0..360 대표 색조(HSV) — moodRgb 팔레트 가중합에서 환산
-  double sat = 2;      // 0..1 채도(감정의 또렷함)
-  double arousal = 3;  // 0..1 각성도(최근성·강도가 높을수록 ↑) — 흥분성 게인 입력
-  double valence = 4;  // -1..1 시간가중 평균 정서가(배경 색 온도·채도 보정; 20·21이 추출·영속)
-}
-
+// 07: AmbientMood(서버 요즘-감정 종합)는 은퇴했다. 클라가 로드된 별(+recall_count)에서 Bjork
+// 인출 강도 R의 mood별 Σ R로 감정 순위·arousal을 직접 파생하므로 서버 종합이 불필요하다.
+// 필드 3은 reserved(재사용 금지) — 옛 클라가 보내도 무시된다.
 message GetUniverseResponse {
+  reserved 3;
+  reserved "ambient";
   repeated Star stars = 1;
   repeated Synapse synapses = 2;
-  AmbientMood ambient = 3;  // 25 추가 — 비면 클라가 별에서 폴백 파생
 }
 
 // --- RecallMemory (reconsolidation) ---

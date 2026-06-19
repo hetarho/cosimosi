@@ -132,9 +132,16 @@ const LazyAdminPage = lazyRouteComponent(() => import('@/pages/admin'), 'AdminPa
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin',
-  // ?tab=llm|invite — 콘솔 탭 딥링크(spec 41). 알 수 없는 값은 비워 셸이 기본(llm)으로 떨어진다.
-  validateSearch: (search: Record<string, unknown>): { tab?: 'llm' | 'invite' } => ({
-    tab: search.tab === 'invite' ? 'invite' : search.tab === 'llm' ? 'llm' : undefined,
+  // ?tab=llm|invite|users — 콘솔 탭 딥링크(spec 41·46). 알 수 없는 값은 비워 셸이 기본(llm)으로 떨어진다.
+  validateSearch: (search: Record<string, unknown>): { tab?: 'llm' | 'invite' | 'users' } => ({
+    tab:
+      search.tab === 'invite'
+        ? 'invite'
+        : search.tab === 'users'
+          ? 'users'
+          : search.tab === 'llm'
+            ? 'llm'
+            : undefined,
   }),
   component: function AdminRoute() {
     return (

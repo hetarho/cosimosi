@@ -144,8 +144,9 @@ func (h *Handler) GetSharedUniverse(ctx context.Context, req *connect.Request[co
 		Stars:       stars,
 		Synapses:    synapses,
 		Appearance:  toProtoSettings(snap.Appearance),
-		// Ambient intentionally unset — the client derives 요즘 하늘색 from these stars (spec 25
-		// deriveAmbient, the demo/fallback path), keeping this context decoupled from memory.
+		// spec 07: no ambient field — the visitor derives the 요즘 emotion ranking from these
+		// SharedStars themselves (the same client weave path as the owner), so this context
+		// stays decoupled from any server-side emotion aggregation.
 	}), nil
 }
 

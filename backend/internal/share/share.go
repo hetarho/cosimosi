@@ -83,10 +83,10 @@ type SharedSynapse struct {
 	Weight float64
 }
 
-// Snapshot is the assembled public landscape for one shared universe. Ambient (요즘 하늘색,
-// spec 25) is intentionally NOT computed here — the client derives it from these same stars
-// (deriveAmbient, the demo/fallback path), keeping this context decoupled from memory's
-// ambient aggregation; the proto Ambient field stays unset for forward server-side use.
+// Snapshot is the assembled public landscape for one shared universe. spec 07: the 요즘
+// emotion ranking is NOT computed here — the visitor derives it from these same SharedStars
+// (the client weave path), keeping this context decoupled from any server-side aggregation
+// (the proto ambient field was retired).
 type Snapshot struct {
 	DisplayName string
 	Stars       []SharedStar

@@ -15,7 +15,7 @@
 
 - **아이템 = (축, 종류 kind).** 안정 식별자 `"<axis>:<kind>"`(예 `star:aurora`·`background:aurora-veil`). id는 소유권·proto·values 키이므로 재명명/재배치 금지(별 시드 재현성과 동급 규율).
 - **축마다 정확히 1종 무료**(묵시 소유 — 소유 행 없이 누구나 선택). 나머지는 유료(별가루 구매로 unlock 전엔 선택 불가). 무료 1종 매핑은 `spec/values.yaml`의 `customization.free`가 단일 출처다.
-- **별가루(Stardust)** = 유일한 화폐. 시작 잔액 100, **차감만**(음수 불가), 충전·결제·재설정 경로 없음. 배경 점구름 "별먼지"(cosmic dust)는 화폐가 아니다(별개 개념).
+- **별가루(Stardust)** = 유일한 화폐. 시작 잔액 100. 증가 경로는 **시작 잔액 시드 + 관리자 보정 지급(spec 46)** 뿐 — 사용자 직접 충전·결제·환불은 없다. 구매로는 **차감만**(음수 불가). 배경 점구름 "별먼지"(cosmic dust)는 화폐가 아니다(별개 개념).
 - **"모양/스타일만 판매."** 색은 의미(감정)라 팔지 않는다 — 별·시냅스 색은 mood 불변, 나는 ambient 파생(자동), 배경은 배경 자체 색.
 
 ## 권위 분리
@@ -35,7 +35,7 @@
 | 규칙 | 값 / 조건 |
 |---|---|
 | 시작 잔액 | `customization.starting_stardust = 100`. 인증 사용자가 **인벤토리를 처음 조회**할 때(또는 첫 구매 시) 지갑 행이 없으면 1회 멱등 시드(없을 때만 INSERT; 기존 잔액 불변) |
-| 잔액 변화 | **구매 차감만.** `stardust >= price`일 때만 차감(가드 WHERE) → 음수 불가. 충전·증가 수단 없음(비목표) |
+| 잔액 변화 | **구매 차감**(`stardust >= price`일 때만, 가드 WHERE → 음수 불가) + **관리자 보정 지급**(spec 46, `GrantUserStardust` — 서버 권위 지갑에 한 트랜잭션으로 증가 + 감사). 사용자 직접 충전·결제·환불은 비목표 |
 | 소유 집합 | **구매한 유료 아이템 id만** `user_owned_items`에 1행. 무료 종은 행 없음(묵시 소유) |
 | 구매 검증(한 트랜잭션, 부분 적용 금지) | (a) 알 수 없거나 무료인 id → `InvalidArgument`. (b) 이미 소유 → `FailedPrecondition`(이중 차감 금지). (c) 잔액 < 가격 → `FailedPrecondition`. 통과 시 `stardust -= price` + 소유 부여, 새 인벤토리 반환. 실패 시 어떤 행도 안 바뀐다(차감 후 grant 실패면 rollback이 차감을 되돌림) |
 | 선택(UpdateSettings) | 선택하려는 아이템이 **소유(또는 무료)** 가 아니면 `FailedPrecondition`(ErrNotOwned)로 거부 — 잠긴 아이템을 API로 우회 선택 못 한다. 알 수 없는 id는 `InvalidArgument`. **거부 시 어떤 행도 안 바뀐다**(소유 조회는 지갑을 시드하지 않는 read-only) |
@@ -56,7 +56,7 @@
 - **별**: 색 = mood(13감정) 팔레트. 어떤 모양을 골라도 색은 감정을 따른다(모양만 바뀐다).
 - **시냅스**: 색 = 양끝 별 mood 블렌드. 스타일은 선의 *생김새*(지오메트리 + 셰이더 표현)를 바꾼다 — `filament`=꼬인 가닥 다발 · `beam`=곧고 두꺼운 한 줄기 · `flow`=크게 휜 흐름(엄청 곡률) · `particle`=가는 점선. `weight`→밝기/alpha/펄스 시각·삭제금지(헌법2; 점선도 비드 사이 바닥 불투명 유지) 불변식·Line2 전역 스칼라 한계(per-edge 셰이더 두께 없음·스타일당 단일 머지 드로우·정점 attribute ≤8·수동 uniform time)는 유지.
 - **나**: 몸체 색 = **요즘 감정(ambient mood)** 파생(테마/배경 귀속 없음). 데이터 없음·미인증·빈 우주면 중립/배경 accent 폴백. **자아 별이 다른 별에 던지는 빛(self-light 반사 채널)은 중립 유지**(spec 03 — mood 색 소유권은 AmbientNebula 풀, 이중 주입 금지). 몸체 색만 ambient. 형태는 축별로 실루엣이 또렷이 갈린다(지오메트리 자체가 다름 — `nebula-heart`=울퉁불퉁 성운 덩어리 · `core`=발광 구 · `well`=고리(torus)).
-- **배경**: 색 + 텍스처/요소 번들. 배경 변경은 **별의 mood 색을 바꾸지 않는다**(StarField는 emotionColors/mood만 읽음). 배경 번들의 **fluid 팔레트는 우주 배경을 사방으로 감싸는 몽환 성운 워시(`UniverseNebula`)로도 칠한다**(랜딩/사인인과 같은 결, 별색·깊이 불간섭).
+- **배경**: 받침색 + 무늬/질감 + **감정색 슬롯 N** 번들(spec 07). 배경 변경은 **별의 mood 색을 바꾸지 않는다**(StarField는 emotionColors/mood만 읽음). 배경 번들의 **fluid 팔레트(받침색)는 우주 배경을 사방으로 감싸는 몽환 성운 워시(`UniverseNebula`)로 칠하고**(랜딩/사인인과 같은 결, 별색·깊이 불간섭), 그 위에 **요즘 감정색을 짜 넣는다**: 스킨별 `emotionSlots`개 상위 감정(Bjork R 순위)을 **사용자 감정색(`resolveMoodRgb`, 45)**·R-비중으로 텍스처에 합성하고, 무늬는 스킨마다 다른 `BackgroundPattern{warp,freq,detail}`이며(A6), `arousal`(Σ R)이 배경 전역 생동을 정한다. `emotionSlots`(vast·calm `1`·lively `3`·aurora-veil `13`·`0`=감정 무관)·패턴은 **코드 카탈로그 시각 정의**(가격은 values 그대로). 색=감정 보존(별색·자아 반사 중립 불변, spec 25·03·07).
 
 ## RPC 계약 (SettingsService, 전부 인증·unary — 헌법6)
 
@@ -78,4 +78,4 @@
 
 ## 비목표(현재 미구현)
 
-충전(top-up)·결제(PG/인앱)·환불·정산. 별·시냅스 "색" 판매. 감정색(`MOOD_PALETTE`) 자체 판매/커스텀. 관리자 콘솔 아이템/가격 편집(가격은 values.yaml 단일 출처). 공유/선물 우주에서 타인 커스텀 적용 변경(공유 우주는 소유자 Settings 스냅샷 — 축만 4개로 늘었다).
+사용자 직접 충전(top-up)·결제(PG/인앱)·환불·정산(관리자 보정 지급 spec 46은 별개 — 사용자 비노출 운영 경로). 별·시냅스 "색" 판매. 감정색(`MOOD_PALETTE`) 자체 판매/커스텀. 관리자 콘솔 아이템/가격 편집(가격은 values.yaml 단일 출처). 공유/선물 우주에서 타인 커스텀 적용 변경(공유 우주는 소유자 Settings 스냅샷 — 축만 4개로 늘었다).

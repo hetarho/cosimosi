@@ -19,10 +19,7 @@ export {
   scatterDirection,
   applyAngularDrift,
   DRIFT_STEP_RAD,
-  strength,
   targetRadius,
   R_MIN,
   R_MAX,
-  W_ACT,
-  W_INT,
 } from './layout'

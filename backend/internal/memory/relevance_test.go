@@ -73,7 +73,7 @@ func TestRelevanceByStarAlignment(t *testing.T) {
 	}
 }
 
-// Recency·intensity weighting (mirrors AggregateAmbient): the topic centroid leans toward
+// Recency·intensity weighting (intensity·exp(-Δt/τ)): the topic centroid leans toward
 // the recent/strong star, so a star aligned with TODAY's theme scores higher than one aligned
 // only with a faint, long-ago theme.
 func TestRelevanceByStarRecencyWeighted(t *testing.T) {

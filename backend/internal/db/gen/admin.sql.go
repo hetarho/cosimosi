@@ -44,6 +44,33 @@ func (q *Queries) AddLLMUsage(ctx context.Context, arg AddLLMUsageParams) error 
 	return err
 }
 
+const adminAddStardust = `-- name: AdminAddStardust :one
+
+UPDATE user_wallet
+SET stardust = stardust + $1::int, updated_at = now()
+WHERE user_id = $2
+  AND stardust::bigint + $1::bigint <= 2147483647
+RETURNING stardust
+`
+
+type AdminAddStardustParams struct {
+	Amount int32  `json:"amount"`
+	UserID string `json:"user_id"`
+}
+
+// target 존재 확인(production auth.users / 로컬 fallback 합집합)은 repository_pg가 raw SQL로 처리한다
+// (sqlc 분석기가 auth 스키마를 모델링하지 않고, 다중-테이블 UNION EXISTS의 param 타입도 해석하지 못함 —
+// AdminTotals의 auth.users 가드와 같은 정책).
+// 관리자 지급 증가(spec 46): SeedWallet(settings.sql, 멱등)로 행 보장 후 호출. overflow 가드 —
+// 잔액+지급액이 INT4 상한을 넘으면 0행(pgx.ErrNoRows) → 서비스가 ErrStardustOverflow로 거부.
+// bigint 산술로 비교해 int4 연산 자체의 오버플로를 피한다. RETURNING으로 지급 후 잔액을 돌려준다.
+func (q *Queries) AdminAddStardust(ctx context.Context, arg AdminAddStardustParams) (int32, error) {
+	row := q.db.QueryRow(ctx, adminAddStardust, arg.Amount, arg.UserID)
+	var stardust int32
+	err := row.Scan(&stardust)
+	return stardust, err
+}
+
 const adminJobCounts = `-- name: AdminJobCounts :one
 SELECT
     count(*) FILTER (WHERE status = 'pending')::int8 AS pending,
@@ -71,6 +98,74 @@ func (q *Queries) AdminJobCounts(ctx context.Context) (AdminJobCountsRow, error)
 		&i.Done24h,
 	)
 	return i, err
+}
+
+const adminListUsersFallback = `-- name: AdminListUsersFallback :many
+
+WITH all_users AS (
+    SELECT user_id AS uid FROM records
+    UNION SELECT user_id FROM memories
+    UNION SELECT user_id FROM user_settings
+    UNION SELECT user_id FROM user_wallet
+    UNION SELECT user_id FROM user_owned_items
+    UNION SELECT user_id FROM user_emotion_colors
+    UNION SELECT user_id FROM universe_shares
+    UNION SELECT user_id FROM invite_redemptions
+)
+SELECT u.uid AS user_id,
+       COALESCE(w.stardust, $1::int)::int AS stardust,
+       (w.user_id IS NOT NULL)::bool AS wallet_seeded
+FROM all_users u
+LEFT JOIN user_wallet w ON w.user_id = u.uid
+WHERE ($2::text = '' OR position(lower($2::text) IN lower(u.uid)) > 0)
+  AND ($3::text = '' OR u.uid > $3::text)
+ORDER BY u.uid ASC
+LIMIT $4::int
+`
+
+type AdminListUsersFallbackParams struct {
+	StartingStardust int32  `json:"starting_stardust"`
+	Query            string `json:"query"`
+	PageToken        string `json:"page_token"`
+	PageLimit        int32  `json:"page_limit"`
+}
+
+type AdminListUsersFallbackRow struct {
+	UserID       string `json:"user_id"`
+	Stardust     int32  `json:"stardust"`
+	WalletSeeded bool   `json:"wallet_seeded"`
+}
+
+// ── 사용자 목록 + 별가루 지급(spec 46) ──────────────────────────────────────────────
+// ⚠️ production Supabase는 auth.users가 1차 출처라 repository가 to_regclass 가드 + raw SQL로
+// 대체한다(sqlc는 auth 스키마를 모델링하지 않는다 — AdminTotals와 같은 패턴). 아래 쿼리는
+// auth.users가 없는 로컬/fallback 경로: 앱 도메인 테이블의 user_id 합집합을 1차 출처로 쓴다.
+// 앱 도메인 테이블 user_id 합집합 keyset 페이지네이션(user_id ASC). query는 대소문자 무시 부분 일치
+// (position으로 ILIKE 와일드카드 주입 회피). 유효 잔액 = COALESCE(지갑, starting_stardust) — 목록 조회는
+// 지갑을 시드하지 않는다(wallet_seeded=false면 아직 행 없음). page_limit = page_size + 1(다음 페이지 탐지).
+func (q *Queries) AdminListUsersFallback(ctx context.Context, arg AdminListUsersFallbackParams) ([]AdminListUsersFallbackRow, error) {
+	rows, err := q.db.Query(ctx, adminListUsersFallback,
+		arg.StartingStardust,
+		arg.Query,
+		arg.PageToken,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminListUsersFallbackRow
+	for rows.Next() {
+		var i AdminListUsersFallbackRow
+		if err := rows.Scan(&i.UserID, &i.Stardust, &i.WalletSeeded); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const adminRecordDaySeries = `-- name: AdminRecordDaySeries :many
@@ -176,6 +271,34 @@ func (q *Queries) GetLLMSelection(ctx context.Context) (GetLLMSelectionRow, erro
 	var i GetLLMSelectionRow
 	err := row.Scan(&i.Provider, &i.Model)
 	return i, err
+}
+
+const insertStardustGrant = `-- name: InsertStardustGrant :exec
+INSERT INTO admin_stardust_grants
+    (id, admin_user_id, target_user_id, amount, balance_before, balance_after)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertStardustGrantParams struct {
+	ID            string `json:"id"`
+	AdminUserID   string `json:"admin_user_id"`
+	TargetUserID  string `json:"target_user_id"`
+	Amount        int32  `json:"amount"`
+	BalanceBefore int32  `json:"balance_before"`
+	BalanceAfter  int32  `json:"balance_after"`
+}
+
+// 지급 감사 행 append(같은 트랜잭션). UI 비노출이지만 운영 추적·사고 복구용 내부 기록.
+func (q *Queries) InsertStardustGrant(ctx context.Context, arg InsertStardustGrantParams) error {
+	_, err := q.db.Exec(ctx, insertStardustGrant,
+		arg.ID,
+		arg.AdminUserID,
+		arg.TargetUserID,
+		arg.Amount,
+		arg.BalanceBefore,
+		arg.BalanceAfter,
+	)
+	return err
 }
 
 const listLLMProviderConfigs = `-- name: ListLLMProviderConfigs :many

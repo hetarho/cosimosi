@@ -9,6 +9,16 @@ import (
 	"github.com/pgvector/pgvector-go"
 )
 
+type AdminStardustGrant struct {
+	ID            string             `json:"id"`
+	AdminUserID   string             `json:"admin_user_id"`
+	TargetUserID  string             `json:"target_user_id"`
+	Amount        int32              `json:"amount"`
+	BalanceBefore int32              `json:"balance_before"`
+	BalanceAfter  int32              `json:"balance_after"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type Embedding struct {
 	MemoryID  string           `json:"memory_id"`
 	UserID    string           `json:"user_id"`
@@ -106,6 +116,7 @@ type Memory struct {
 	StableX          *float32           `json:"stable_x"`
 	StableY          *float32           `json:"stable_y"`
 	StableZ          *float32           `json:"stable_z"`
+	RecallCount      int32              `json:"recall_count"`
 }
 
 type MemoryLink struct {

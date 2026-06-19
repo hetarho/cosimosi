@@ -15,7 +15,7 @@
 | 겹 | 테이블 | 가변성 | 보유 컬럼 |
 |---|---|---|---|
 | 원본 record | `records` | 불변·영구(UPDATE/DELETE 쿼리 없음) | `body`·`entry_date`·`idempotency_key` + 선택 힌트 `mood`·`intensity`·`valence` |
-| 조각 별 memory | `memories` | 가변 | `record_id`(NOT NULL non-unique FK)·`fragment_index`(0-based)·`fragment_text`·`mood`·`intensity`·`valence`·`last_recalled_at` + 재성형 상태 `brightness_offset`·`hue_shift`·`form_seed_delta`·`version`(23) |
+| 조각 별 memory | `memories` | 가변 | `record_id`(NOT NULL non-unique FK)·`fragment_index`(0-based)·`fragment_text`·`mood`·`intensity`·`valence`·`last_recalled_at`·`recall_count`(07, 회상마다 +1) + 재성형 상태 `brightness_offset`·`hue_shift`·`form_seed_delta`·`version`(23) |
 | 변천사 snapshot | `evolution_history` | **append-only**(INSERT 전용·UPDATE/DELETE 없음) | `memory_id`·`user_id`·`version`·`brightness`·`hue_shift`·`form_seed_delta`·`trigger`·`pe`·`dir`·`created_at`(23) |
 
 - 참조 방향은 **`memories.record_id → records.id` 단방향**이다(별이 원본을 가리키며, records에 memory_id 컬럼은 없다). `UNIQUE (record_id, fragment_index)` — 같은 일기의 같은 조각은 정확히 1행(이중 fan-out 펜스).
@@ -109,14 +109,15 @@
 |---|---|---|
 | `RecordMemory` | 단일 트랜잭션 record→extract job: `records` 1행(불변) + `jobs` 1행(`kind='extract'`, `status='pending'`) → `{record_id, memory_ids}` 반환(`memory_ids`는 보통 빈 배열 — 조각은 비동기 도착) | `(user_id, idempotency_key)` 부분 UNIQUE — 재호출 시 기존 record id + 이미 fan-out된 조각 id들 |
 | `GetUniverse` | 사용자의 모든 별 + 모든 시냅스 반환(잠든 것 포함), `last_recalled_at`/`last_activated_at`은 raw 값 | — |
-| `RecallMemory` | 별 재점화(`memories.last_recalled_at = now()`) + PE 게이트 재성형(통과 시 회상 별+직접 이웃의 재성형 상태 갱신 + 변천사 append, [star](star.md) 정책) + 불변 원본 Record + 그 별의 `fragment_text`(28, 별→조각) 반환. 원본 records는 불변(헌법1) | — |
+| `RecallMemory` | 별 재점화(`memories.last_recalled_at = now()` **+ `recall_count += 1`**, 07) + PE 게이트 재성형(통과 시 회상 별+직접 이웃의 재성형 상태 갱신 + 변천사 append, [star](star.md) 정책) + 불변 원본 Record + 그 별의 `fragment_text`(28, 별→조각) 반환. 원본 records는 불변(헌법1) | — |
 | `ListDormant` | 오래 회상 안 한 별만 반환(검색 보조용, 전체 그래프는 GetUniverse가 그대로 반환) | — |
 | `GetEvolutionHistory` | 한 별의 변천사를 `version` 오름차순 반환(읽기; UI는 24) | — |
 | `ListRecords` | 원본 일기 목록 — `records JOIN memories` GROUP BY(읽기 전용, 헌법1): `record_id`·`entry_date`·body 발췌·조각 별 개수, `entry_date` DESC, user_id 격리(28; 원본 일기로 별 찾기 진입) | — |
 
 - 서버 권위 ID: `record_id`/`memory_id`는 서버가 생성한다(클라는 ID를 만들지 않는다).
 - `entry_date`가 비면 service가 `now()`(UTC)로 기본 채운다. 클라 폼 기본값은 로컬 오늘 날짜.
-- 응답은 별의 `last_recalled_at`·시냅스의 `weight`/`last_activated_at`을 raw로만 싣는다 — 밝기·활성도·좌표는 서버가 계산하지 않는다(헌법2·3).
+- 응답은 별의 `last_recalled_at`·`recall_count`·시냅스의 `weight`/`last_activated_at`을 raw로만 싣는다 — 밝기·활성도·좌표는 서버가 계산하지 않는다(헌법2·3).
+- **단일 기억 가중치 = Bjork 인출 강도 R(07).** 서버는 `recall_count`를 원자료로 영속·전달할 뿐, "요즘 감정" 종합(옛 ambient)을 더는 하지 않는다. 클라가 `recall_count`+`intensity`+`last_recalled_at`에서 저장강도 S와 인출강도 R을 파생해(`entities/memory/model/weight.ts`) **자기근접 반지름(38)과 배경 감정 순위(25)를 함께** 구동한다. R은 별 밝기(26 λ_eff)와는 **별개 채널**이다(R은 반지름·배경 순위만). `relevance`처럼 R 입력(`recall_count`)은 서버 파생 원자료라 헌법3과 충돌하지 않는다(밝기·좌표는 여전히 클라 계산).
 
 ### RecordMemory 입력 검증 (17)
 

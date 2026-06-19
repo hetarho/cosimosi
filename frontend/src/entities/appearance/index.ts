@@ -1,6 +1,13 @@
 // Public API for the appearance entity — 유저가 고른 4축 시각 선호(spec 44). 별 종류(StarObject)·시냅스
 // 스타일(SynapseStyle)은 각 entity 소유 — 여기선 store가 그 '선택'만 운반한다. 배경(Background)은 여기 소유.
-export type { Background, BackgroundMeta, BackgroundTexture, SelfObject, SelfObjectMeta } from './model/types'
+export type {
+  Background,
+  BackgroundMeta,
+  BackgroundTexture,
+  BackgroundPattern,
+  SelfObject,
+  SelfObjectMeta,
+} from './model/types'
 // 정명(Background) + 옛 이름(Theme) alias — 점진 정리용.
 export type { Theme, ThemeMeta } from './model/types'
 export {

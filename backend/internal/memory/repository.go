@@ -31,11 +31,8 @@ type Repository interface {
 	// short excerpt only. records is read-only (constitution §1).
 	ListRecords(ctx context.Context, userID string) ([]RecordSummary, error)
 
-	// ListRecentForAmbient returns the user's recent fragment emotions within the 7-day
-	// ambient window (last_recalled_at >= since): mood/intensity/valence + activity time,
-	// the raw input AggregateAmbient time-weights into the "요즘" summary (spec 25). The
-	// service derives `since` from TauMoodDays; the query carries no decay math (12 pattern).
-	ListRecentForAmbient(ctx context.Context, userID string, since time.Time) ([]EmotionSample, error)
+	// (spec 07) ListRecentForAmbient retired — the server no longer aggregates "요즘" emotion;
+	// the client derives the ranking + arousal from the loaded stars (+recall_count) via R.
 
 	// ListStarVectorsByUser returns every star's semantic embedding + recency/intensity
 	// weights (spec 26) — the input to the "요즘 토픽" centroid + per-star relevance. A star

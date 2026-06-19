@@ -12,7 +12,6 @@ import {
   type GetSharedUniverseResponse,
 } from '@/shared/api'
 import {
-  deriveAmbient,
   moodFromProto,
   seedFromId,
   useMemoryStore,
@@ -69,6 +68,8 @@ export function mapSharedUniverse(res: GetSharedUniverseResponse): {
         valence: 0,
         relevance: 0,
         lastRecalledAt: Number(s.lastRecalledDay) * DAY_MS,
+        // 공개 스냅샷엔 recall_count가 없다(content-zero) — 막 부호화된 별로 기본 1(클라 R 파생 입력).
+        recallCount: 1,
         recordId: '', // 원본 일기 그룹 키 없음(방문은 일기 접근 불가)
         fragmentIndex: 0,
         seed: seedFromId(id),
@@ -102,12 +103,11 @@ export function mapSharedUniverse(res: GetSharedUniverseResponse): {
   return { stars, edges }
 }
 
-/** 공개 스냅샷 → 우주 store(별·시냅스·요즘 하늘색)에 *전체 교체*로 반영한다(병합 아님 — 방문은
- *  소유자 우주의 스냅샷 1장이라 누적이 없다). 요즘 하늘색(spec 25)은 서버가 보내지 않으므로 로드된
- *  별에서 클라가 파생한다(deriveAmbient — 데모/폴백과 같은 경로). 소유자의 시각 설정(appearance)은
- *  페이지가 별도로 appearance store에 적용한다(방문자 설정 보존을 위해). */
+/** 공개 스냅샷 → 우주 store(별·시냅스)에 *전체 교체*로 반영한다(병합 아님 — 방문은 소유자 우주의
+ *  스냅샷 1장이라 누적이 없다). 요즘 하늘색(spec 07)은 스토어에 싣지 않는다 — 배경 weave·자아 색은
+ *  렌더 시점에 로드된 별에서 직접 파생한다(rankedEmotions·deriveAmbient). 소유자의 시각 설정
+ *  (appearance)은 페이지가 별도로 appearance store에 적용한다(방문자 설정 보존을 위해). */
 export function applySharedUniverse(res: GetSharedUniverseResponse): void {
-  const now = Date.now() // 방문 페이지는 데모가 아니다 — 실제 현재 시각으로 밝기 파생
   const { stars, edges } = mapSharedUniverse(res)
 
   const memory = useMemoryStore.getState()
@@ -115,17 +115,6 @@ export function applySharedUniverse(res: GetSharedUniverseResponse): void {
   // 스냅샷은 완결된 집합 — 빈 우주면 캔버스가 즉시 드러나게 true, 비어있지 않으면 명시적으로 false로
   // (이전 인증 세션/직전 슬러그의 loadedEmpty가 새 우주의 birth 연출을 잘못 트리거하지 않게 — codex MED).
   memory.setLoadedEmpty(stars.length === 0)
-  memory.setAmbient(
-    deriveAmbient(
-      stars.map((s) => ({
-        mood: s.memory.mood,
-        intensity: s.memory.intensity,
-        valence: s.memory.valence,
-        lastRecalledAt: s.memory.lastRecalledAt,
-      })),
-      now,
-    ),
-  )
 
   useSynapseStore.getState().setEdges(edges)
 }

@@ -4,12 +4,13 @@
 // selectable forms (appearance.selfObject), each a self-emissive TSL glow the BloomPass blooms
 // (no scene directional light → emissive only, the StarField/forms idiom).
 //
-// Body color = AMBIENT mood (요즘 감정, spec 25): "나 = 지금의 나". It is THEME-INDEPENDENT —
-// derived from the loaded stars' affect, NOT the chosen background (spec 44 A7). No data / unauth /
-// empty universe → background accent fallback. ⚠️ spec-03: this changes ONLY the self star's own
-// BODY color (buildSelfForm colorNode). The light the self star CASTS on other stars (StarField's
-// reflection channel, star_lighting.self_intensity) stays NEUTRAL — mood color ownership belongs to
-// AmbientNebula's pool (no double injection). raycast off; reduced-motion freezes the internal flow.
+// Body color = AMBIENT mood (요즘 감정, spec 25·07): "나 = 지금의 나". It is THEME-INDEPENDENT —
+// derived from the loaded stars' affect (now R-weighted, spec 07), NOT the chosen background (spec
+// 44 A7). No data / unauth / empty universe → background accent fallback. ⚠️ spec-03: this changes
+// ONLY the self star's own BODY color (buildSelfForm colorNode). The light the self star CASTS on
+// other stars (StarField's reflection channel, star_lighting.self_intensity) stays NEUTRAL — and the
+// woven emotion colors live in the background skin (UniverseNebula), not here (no double injection).
+// raycast off; reduced-motion freezes the internal flow.
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -29,15 +30,19 @@ const SELF_RADIUS = VALUES.selfStar.radius
 
 const NOOP_RAYCAST = () => undefined
 
-/** StarNode[] → the affect-only shape deriveAmbient reads (mirrors AmbientNebula). */
+/** StarNode[] → the affect-only shape deriveAmbient reads (spec 07: includes recall_count, the
+ *  Bjork retrieval-strength R input). The body color derives from the loaded stars directly. */
 function ambientStars(
-  stars: { memory: { mood: string; intensity: number; valence: number; lastRecalledAt: number } }[],
+  stars: {
+    memory: { mood: string; intensity: number; valence: number; lastRecalledAt: number; recallCount: number }
+  }[],
 ): AmbientStar[] {
   return stars.map((s) => ({
     mood: s.memory.mood,
     intensity: s.memory.intensity,
     valence: s.memory.valence,
     lastRecalledAt: s.memory.lastRecalledAt,
+    recallCount: s.memory.recallCount,
   }))
 }
 

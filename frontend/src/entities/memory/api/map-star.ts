@@ -42,6 +42,8 @@ export function mapStar(star: Star, index: number): StarNode {
     relevance: star.relevance,
     // 폴백 now도 가상 시계(spec 19)로 — 파싱 불가 타임스탬프가 데모 시간과 어긋나지 않게.
     lastRecalledAt: parseEpochMs(star.lastRecalledAt, virtualNowMs()),
+    // 누적 회상 횟수(spec 07). 서버 미수신(데모·구 응답)이면 0 → 클라가 S 바닥(storage_base)으로 처리.
+    recallCount: Number(star.recallCount),
     // 일기 단위 그룹/조망 키(spec 28). 구 응답/데모엔 ""·0 — 그룹 셀렉터가 빈 키를 무시한다.
     recordId: star.recordId,
     fragmentIndex: star.fragmentIndex,

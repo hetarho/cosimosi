@@ -149,6 +149,7 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 			RecordID:         row.RecordID,         // 28: 일기 단위 그룹 키
 			FragmentIndex:    int(row.FragmentIndex), // 28: 일기 내 조각 순서
 			Resonant:         row.Resonant,           // 36: 공명으로 다른 우주의 별과 이어졌는지
+			RecallCount:      int(row.RecallCount),   // 07: 누적 회상 횟수(클라 S/R 파생)
 		})
 	}
 	return out, nil
@@ -217,37 +218,16 @@ func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff ti
 			HueShift:         float64(row.HueShift),
 			FormSeedDelta:    float64(row.FormSeedDelta),
 			Version:          int(row.Version),
+			RecallCount:      int(row.RecallCount), // 07: 누적 회상 횟수
 		})
 	}
 	return out, nil
 }
 
-// ListRecentForAmbient reads the user's recent fragment emotions (last_recalled_at >=
-// since) for the ambient summary (spec 25). The query's WHERE guarantees a non-null
-// last_recalled_at, so the timestamp maps directly; nullable mood/intensity/valence
-// reuse the same domain mappers as the star reads.
-func (r *pgRepository) ListRecentForAmbient(ctx context.Context, userID string, since time.Time) ([]EmotionSample, error) {
-	rows, err := gen.New(r.pool).ListRecentForAmbient(ctx, gen.ListRecentForAmbientParams{
-		UserID: userID,
-		Since:  pgtype.Timestamptz{Time: since, Valid: true},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("list recent for ambient: %w", err)
-	}
-	out := make([]EmotionSample, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, EmotionSample{
-			Mood:           moodFromDB(row.Mood),
-			Intensity:      intensityFromDB(row.Intensity),
-			Valence:        valenceFromDB(row.Valence),
-			LastRecalledAt: row.LastRecalledAt.Time,
-		})
-	}
-	return out, nil
-}
+// (spec 07) ListRecentForAmbient retired — server no longer aggregates "요즘" emotion.
 
-// TouchRecall sets memories.last_recalled_at=now for the user's star (no-op if
-// absent — the original record is never touched, constitution §1).
+// TouchRecall sets memories.last_recalled_at=now (+ recall_count += 1, spec 07) for the
+// user's star (no-op if absent — the original record is never touched, constitution §1).
 func (r *pgRepository) TouchRecall(ctx context.Context, userID, memoryID string) error {
 	if err := gen.New(r.pool).RecallMemoryTouch(ctx, gen.RecallMemoryTouchParams{
 		ID: memoryID, UserID: userID,

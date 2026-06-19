@@ -5,13 +5,17 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"math"
 	"net/http"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/cosimosi/backend/internal/llm"
 	"github.com/cosimosi/backend/internal/platform/config"
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // fakeRepo is an in-memory Repository for service policy tests.
@@ -24,10 +28,15 @@ type fakeRepo struct {
 	totals Totals
 	jobs   JobCounts
 	series []DayCount
+
+	// User-list / stardust-grant surface (spec 46).
+	users   []string         // known user ids (existence + listing source)
+	wallets map[string]int64 // seeded balances (absent key = no wallet row)
+	grants  []GrantStardustInput
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{rows: map[string]*ProviderRow{}, keys: map[string][]byte{}}
+	return &fakeRepo{rows: map[string]*ProviderRow{}, keys: map[string][]byte{}, wallets: map[string]int64{}}
 }
 
 func (r *fakeRepo) row(provider string) *ProviderRow {
@@ -91,6 +100,57 @@ func (r *fakeRepo) ListUsageSince(context.Context, time.Time) ([]UsageRow, error
 func (r *fakeRepo) Totals(context.Context) (Totals, error)              { return r.totals, nil }
 func (r *fakeRepo) JobCounts(context.Context) (JobCounts, error)        { return r.jobs, nil }
 func (r *fakeRepo) RecordDaySeries(context.Context) ([]DayCount, error) { return r.series, nil }
+
+// ListUsers mirrors the pg keyset semantics: contains filter, user_id ASC, keyset
+// after pageToken, limited to the requested limit (= page_size+1 from the service).
+func (r *fakeRepo) ListUsers(_ context.Context, query, pageToken string, limit, startingStardust int) ([]AdminUser, error) {
+	ids := append([]string(nil), r.users...)
+	sort.Strings(ids)
+	out := make([]AdminUser, 0, limit)
+	for _, id := range ids {
+		if query != "" && !strings.Contains(strings.ToLower(id), strings.ToLower(query)) {
+			continue
+		}
+		if pageToken != "" && id <= pageToken {
+			continue
+		}
+		bal := int64(startingStardust)
+		seeded := false
+		if w, ok := r.wallets[id]; ok {
+			bal, seeded = w, true
+		}
+		out = append(out, AdminUser{UserID: id, Stardust: bal, WalletSeeded: seeded})
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (r *fakeRepo) UserExists(_ context.Context, target string) (bool, error) {
+	if _, ok := r.wallets[target]; ok {
+		return true, nil
+	}
+	return slices.Contains(r.users, target), nil
+}
+
+func (r *fakeRepo) GrantStardust(_ context.Context, in GrantStardustInput, startingStardust int) (AdminUser, error) {
+	exists, _ := r.UserExists(context.Background(), in.TargetUserID)
+	if !exists {
+		return AdminUser{}, ErrUserNotFound
+	}
+	before, ok := r.wallets[in.TargetUserID]
+	if !ok {
+		before = int64(startingStardust) // idempotent seed
+	}
+	if before+in.Amount > math.MaxInt32 {
+		return AdminUser{}, ErrStardustOverflow
+	}
+	after := before + in.Amount
+	r.wallets[in.TargetUserID] = after
+	r.grants = append(r.grants, in)
+	return AdminUser{UserID: in.TargetUserID, Stardust: after, WalletSeeded: true}, nil
+}
 
 func newTestService(t *testing.T, repo Repository) *Service {
 	t.Helper()
@@ -346,6 +406,132 @@ func TestRecordUsageAccumulatesExtractKind(t *testing.T) {
 	if row.Day.Hour() != 0 || row.Day.Location() != time.UTC {
 		t.Fatalf("day not truncated to UTC midnight: %v", row.Day)
 	}
+}
+
+func TestListUsersPageSizeDefaultAndCap(t *testing.T) {
+	repo := newFakeRepo()
+	svc := newTestService(t, repo)
+	ctx := context.Background()
+
+	// Default applies when page_size <= 0; the service over-fetches size+1.
+	var gotLimit int
+	probe := &limitProbeRepo{fakeRepo: repo, gotLimit: &gotLimit}
+	probeSvc := NewService(probe, svc.cipher, svc.cfg)
+
+	if _, err := probeSvc.ListUsers(ctx, ListUsersInput{PageSize: 0}); err != nil {
+		t.Fatalf("ListUsers default: %v", err)
+	}
+	if want := values.AdminUserListDefaultPageSize + 1; gotLimit != want {
+		t.Fatalf("default over-fetch limit = %d, want %d", gotLimit, want)
+	}
+
+	if _, err := probeSvc.ListUsers(ctx, ListUsersInput{PageSize: 10_000}); err != nil {
+		t.Fatalf("ListUsers cap: %v", err)
+	}
+	if want := values.AdminUserListMaxPageSize + 1; gotLimit != want {
+		t.Fatalf("capped over-fetch limit = %d, want %d", gotLimit, want)
+	}
+}
+
+func TestListUsersKeysetTokenAndTrim(t *testing.T) {
+	repo := newFakeRepo()
+	repo.users = []string{"u1", "u2", "u3", "u4", "u5"}
+	repo.wallets["u2"] = 250 // seeded wallet shows its real balance
+	svc := newTestService(t, repo)
+	ctx := context.Background()
+
+	page, err := svc.ListUsers(ctx, ListUsersInput{PageSize: 2})
+	if err != nil {
+		t.Fatalf("ListUsers: %v", err)
+	}
+	if len(page.Users) != 2 || page.Users[0].UserID != "u1" || page.Users[1].UserID != "u2" {
+		t.Fatalf("page 1 = %+v", page.Users)
+	}
+	if page.NextPageToken != "u2" {
+		t.Fatalf("next token = %q, want u2", page.NextPageToken)
+	}
+	// Unseeded user shows starting_stardust without a wallet row; seeded shows real.
+	if page.Users[0].WalletSeeded || page.Users[0].Stardust != int64(values.CustomizationStartingStardust) {
+		t.Fatalf("u1 effective balance = %+v", page.Users[0])
+	}
+	if !page.Users[1].WalletSeeded || page.Users[1].Stardust != 250 {
+		t.Fatalf("u2 seeded balance = %+v", page.Users[1])
+	}
+
+	// Continue from the token; the last page yields no further token.
+	last, err := svc.ListUsers(ctx, ListUsersInput{PageSize: 50, PageToken: page.NextPageToken})
+	if err != nil {
+		t.Fatalf("ListUsers page 2: %v", err)
+	}
+	if len(last.Users) != 3 || last.NextPageToken != "" {
+		t.Fatalf("page 2 = %+v token=%q", last.Users, last.NextPageToken)
+	}
+}
+
+func TestGrantStardustValidatesAmount(t *testing.T) {
+	repo := newFakeRepo()
+	repo.users = []string{"target"}
+	svc := newTestService(t, repo)
+	ctx := context.Background()
+
+	for _, amt := range []int64{0, -5} {
+		if _, err := svc.GrantStardust(ctx, GrantStardustInput{TargetUserID: "target", Amount: amt}); !errors.Is(err, ErrInvalidGrantAmount) {
+			t.Fatalf("amount %d: err = %v, want ErrInvalidGrantAmount", amt, err)
+		}
+	}
+	// An amount that can't fit the wallet's int range is bad input (InvalidArgument).
+	if _, err := svc.GrantStardust(ctx, GrantStardustInput{TargetUserID: "target", Amount: math.MaxInt32 + 1}); !errors.Is(err, ErrInvalidGrantAmount) {
+		t.Fatalf("oversized amount: err = %v, want ErrInvalidGrantAmount", err)
+	}
+	// No grant should have been recorded for any rejected request.
+	if len(repo.grants) != 0 {
+		t.Fatalf("rejected grants recorded: %+v", repo.grants)
+	}
+}
+
+func TestGrantStardustSeedsAndAdds(t *testing.T) {
+	repo := newFakeRepo()
+	repo.users = []string{"fresh", "rich"}
+	repo.wallets["rich"] = 1000
+	svc := newTestService(t, repo)
+	ctx := context.Background()
+
+	// Unseeded target: starting_stardust + amount.
+	u, err := svc.GrantStardust(ctx, GrantStardustInput{AdminUserID: "admin-1", TargetUserID: "fresh", Amount: 50})
+	if err != nil {
+		t.Fatalf("grant fresh: %v", err)
+	}
+	if want := int64(values.CustomizationStartingStardust) + 50; u.Stardust != want || !u.WalletSeeded {
+		t.Fatalf("fresh post-grant = %+v, want %d", u, want)
+	}
+
+	// Seeded target: existing balance + amount.
+	u, err = svc.GrantStardust(ctx, GrantStardustInput{AdminUserID: "admin-1", TargetUserID: "rich", Amount: 50})
+	if err != nil {
+		t.Fatalf("grant rich: %v", err)
+	}
+	if u.Stardust != 1050 {
+		t.Fatalf("rich post-grant = %+v, want 1050", u)
+	}
+}
+
+func TestGrantStardustUnknownTarget(t *testing.T) {
+	repo := newFakeRepo()
+	svc := newTestService(t, repo)
+	if _, err := svc.GrantStardust(context.Background(), GrantStardustInput{TargetUserID: "ghost", Amount: 10}); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("unknown target: err = %v, want ErrUserNotFound", err)
+	}
+}
+
+// limitProbeRepo wraps fakeRepo to capture the limit the service passes to ListUsers.
+type limitProbeRepo struct {
+	*fakeRepo
+	gotLimit *int
+}
+
+func (r *limitProbeRepo) ListUsers(ctx context.Context, query, pageToken string, limit, startingStardust int) ([]AdminUser, error) {
+	*r.gotLimit = limit
+	return r.fakeRepo.ListUsers(ctx, query, pageToken, limit, startingStardust)
 }
 
 func TestOverviewAssembles(t *testing.T) {

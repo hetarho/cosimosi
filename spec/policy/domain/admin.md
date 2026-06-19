@@ -74,15 +74,41 @@
   없다). `to_regclass('auth.users')` 존재 시에만 `auth.users` 카운트로 대체 — auth 스키마가
   없는 로컬 도커 pg에서도 무에러.
 
-## 콘솔 탭 구성 (LLM 관리 + 초대 코드)
+## 콘솔 탭 구성 (LLM 관리 + 초대 코드 + 사용자)
 
-- `/admin`은 두 탭으로 나뉜다(`?tab=llm|invite`, 기본 llm): **LLM 관리**(이 문서 — 키·모델·활성
-  선택·운영 대시보드)와 **초대 코드**(발행·목록·취소). 두 탭의 권한 게이트는 동일한 admin
-  allowlist다 — 셸이 `GetLLMConfig` PermissionDenied로 비관리자를 NotFound로 가른다.
+- `/admin`은 세 탭으로 나뉜다(`?tab=llm|invite|users`, 기본 llm): **LLM 관리**(이 문서 — 키·모델·활성
+  선택·운영 대시보드)·**초대 코드**(발행·목록·취소)·**사용자**(spec 46 — 사용자 목록·`user_id`
+  검색·별가루 보정 지급). 세 탭의 권한 게이트는 동일한 admin allowlist다 — 셸이 `GetLLMConfig`
+  PermissionDenied로 비관리자를 NotFound로 가른다.
 - 초대 코드 발행·목록·취소는 `InviteAdminService`(spec 41)가 담당하며 admin allowlist 뒤에 있다
   (멤버십과 무관 — 부트스트랩 관리자가 멤버 되기 전 첫 코드를 발행해야 하므로). 규칙·발행 모델·
   제거성은 [policy/domain/access.md](access.md)가 단일 출처다(이 문서는 LLM 운영만 소유).
 - 초대 코드 행은 **코드 문자열 복사 + 초대 URL(`${origin}/invite?code=<code>`) 복사 + 공유**(Web Share API 지원 시 OS 공유 시트, 미지원·실패 시 URL 복사 폴백)를 제공한다(change 05). 서버 발송 RPC는 없다 — 관리자가 복사/공유한 URL을 원하는 채널에 붙이는 모델.
+
+## 사용자 탭 — 목록 + 별가루 보정 지급 (spec 46)
+
+- 같은 admin allowlist 게이트 뒤의 `AdminService` RPC 2종: **`ListAdminUsers`**(`NO_SIDE_EFFECTS`,
+  사용자 목록·검색)와 **`GrantUserStardust`**(보정 지급). 둘 다 unary(헌법6).
+- **목록의 "모두":** production Supabase는 `auth.users`가 1차 출처라 **일기·지갑·설정 행이 아직
+  없는 계정도** 나온다. `auth.users`가 없는 로컬은 앱 도메인 테이블(`records`·`memories`·
+  `user_settings`·`user_wallet`·`user_owned_items`·`user_emotion_colors`·`universe_shares`·
+  `invite_redemptions`)의 `user_id` 합집합으로 fallback한다(대시보드 가입자 수의 `to_regclass`
+  가드와 같은 정책 — auth 스키마는 sqlc 미모델링이라 그 경로만 raw SQL).
+- **행 정보(최소):** `user_id` · 별가루 **유효 잔액**(`user_wallet` 행이 있으면 그 값, 없으면
+  `customization.starting_stardust` 읽기 전용) · 지갑 시드 여부. **목록 조회는 지갑을 시드하지
+  않는다**(`wallet_seeded=false` = 아직 행 없음, 첫 인벤토리/지급에서 시작 잔액으로 시드될 사용자).
+- **검색·페이지네이션:** `user_id` 부분 일치(대소문자 무시, 서버 필터) + `user_id` 오름차순
+  **keyset pagination**(`next_page_token` = 직전 페이지 마지막 `user_id`). page size 기본/상한은
+  `spec/values.yaml` `admin.user_list_default_page_size`/`user_list_max_page_size`(FE/BE 공유 상수).
+- **별가루 지급(한 트랜잭션):** target 존재 확인 → 지갑 멱등 시드(`starting_stardust`) → overflow
+  가드 잔액 증가 → `admin_stardust_grants` 감사 행 insert → post-grant 상태 반환. 하나라도 실패하면
+  지갑·감사 행 모두 롤백(부분 적용 금지). 감사 행 = `admin_user_id`(JWT sub)·`target_user_id`·
+  `amount`·`balance_before/after`·`created_at`. UI는 이력을 노출하지 않지만 DB엔 남는다.
+- **거부 매핑:** amount ≤ 0 또는 INT 범위 초과 → `InvalidArgument`(`ErrInvalidGrantAmount`) ·
+  production에서 없는 target → `NotFound`(`ErrUserNotFound`) · 잔액이 흡수 못 할 양(현재 잔액 +
+  amount가 INT4 상한 초과) → `FailedPrecondition`(`ErrStardustOverflow`). 거부 시 어떤 행도 안 바뀐다.
+- **범위 밖:** 사용자 삭제·정지·멤버십 변경·프로필/이메일 편집·별/일기 열람·지급 이력 화면·
+  이메일 검색. 별가루 증가 경로는 시작 잔액 시드 + 이 관리자 지급뿐(사용자 직접 충전·결제·환불 없음).
 
 ## FE 표면
 

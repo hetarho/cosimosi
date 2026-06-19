@@ -20,6 +20,9 @@ export interface Memory {
   relevance: number
   /** epoch ms; input to activation/brightness. */
   lastRecalledAt: number
+  /** 누적 회상 횟수(spec 07; 서버 권위 원자료, 회상마다 +1). Bjork 저장강도 S→인출강도 R 파생의 입력.
+   *  데모·공개 방문·구 응답엔 합리적 기본값 1(막 한 번 부호화된 별). */
+  recallCount: number
   /** 이 별이 가리키는 불변 원본 일기 id (spec 28). 클라가 record_id로 별을 일기 단위로
    *  그룹해 조망/하이라이팅한다(원본 일기로 별 찾기). 빈 문자열 = 그룹 키 없음(구 데이터). */
   recordId: string

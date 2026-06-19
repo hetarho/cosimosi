@@ -103,6 +103,36 @@ message UsageRow {
   int64 output_tokens = 7;
 }
 
+// AdminUser is one row of the operator user list (spec 46): the user id plus the
+// effective stardust balance and whether the wallet row exists yet.
+message AdminUser {
+  string user_id = 1;
+  int64 stardust = 2;     // effective balance: wallet row value, or starting_stardust when unseeded
+  bool wallet_seeded = 3; // true if a user_wallet row exists
+}
+
+message ListAdminUsersRequest {
+  string user_id_query = 1; // optional, case-insensitive contains filter on user_id
+  int32 page_size = 2;      // 0 = default; capped from values (admin.user_list_*_page_size)
+  string page_token = 3;    // last user_id from the previous page (keyset, user_id ASC)
+}
+
+message ListAdminUsersResponse {
+  repeated AdminUser users = 1;
+  string next_page_token = 2; // "" when no further page
+}
+
+// GrantUserStardust is the ONLY admin-side balance-increase path (spec 46): seed
+// the target wallet to starting_stardust if absent, then add amount and audit it.
+message GrantUserStardustRequest {
+  string target_user_id = 1;
+  int64 amount = 2; // positive integer
+}
+
+message GrantUserStardustResponse {
+  AdminUser user = 1; // target's post-grant state
+}
+
 message GetAdminOverviewRequest {}
 
 message GetAdminOverviewResponse {
@@ -133,4 +163,12 @@ service AdminService {
   rpc GetAdminOverview(GetAdminOverviewRequest) returns (GetAdminOverviewResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // ListAdminUsers (spec 46): all users (auth.users on Supabase, app-table union
+  // locally), user_id contains-search, keyset pagination. Read-only.
+  rpc ListAdminUsers(ListAdminUsersRequest) returns (ListAdminUsersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // GrantUserStardust (spec 46): admin corrective stardust grant — seed wallet
+  // then add amount, in one transaction, with an admin_stardust_grants audit row.
+  rpc GrantUserStardust(GrantUserStardustRequest) returns (GrantUserStardustResponse);
 }

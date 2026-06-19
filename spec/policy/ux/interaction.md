@@ -19,7 +19,7 @@ cosimosi의 상호작용은 **능동 인출(active retrieval)**을 중심으로 
 | **재열람** — 원본이 캐시에 있으면(불변, [data-sync](../domain/data-sync.md)) 본문을 **즉시 표시**(스피너 없음); touch(`RecallMemory`)는 ≥2초 dwell 후 백그라운드로 매번 발사 | 캐시 우선 |
 | 이웃 항해 — 선택 별 시냅스 이웃을 `neighborsOf(edges, selectedId)`로 weight 내림차순 렌더, 최대 표시 수 | `MAX_NEIGHBORS = 8` |
 | 이웃 클릭 = 선택 전환만(`focusActor.send({type:'SELECT_STAR', id})` — 39) — 패널이 재-dwell. **카메라 fly-to 아님**(NeighborNav는 카메라 타깃을 만들지 않는다) | 선택 전환 |
-| **포커스 해제(배경 탭)** — 별을 고르면 은은한 딤(`Backdrop`)으로 집중을 알리고, 회상 패널 ✕ **또는 빈 우주 탭**(캔버스 `onPointerMissed`→`focusActor.send({type:'DISMISS'})` — 39)으로 해제·복귀. 별 탭(선택 전환)·드래그(회전)는 통과(해제 아님 — R3F가 클릭 delta로 구분) | 배경 탭=복귀 |
+| **포커스 해제(배경 탭)** — 별을 고르면 은은한 딤(`Backdrop`)으로 집중을 알리고, 회상 패널 ✕ **또는 빈 우주 탭**(캔버스 `onPointerMissed`→`focusActor.send({type:'DISMISS'})` — 39)으로 해제·복귀. 별 탭(선택 전환)·드래그(회전)는 통과(해제 아님 — R3F가 클릭 delta로 구분). **change 08(A11):** 캔버스 제스처(드래그·두 손가락 pan/thrust·double-tap-hold zoom scrub)가 active면 dismiss하지 않는다(`navigation-input.gestureActive` 가드). 짧은 탭만 별 선택/dismiss를 발생시킨다 | 배경 탭=복귀 |
 
 ### 2. 공동 회상 (co-recall)
 

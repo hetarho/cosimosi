@@ -162,6 +162,13 @@ function NavPad() {
   // A shell overlay (dormant/diary) covers the lower screen on mobile and the left on desktop —
   // hide the pad entirely while one is open so it isn't buried under the sheet/panel (spec 31).
   const panelOpen = useShellStore((s) => s.panel != null)
+  // change 08(A7): 터치 지원 기기에서는 D-pad를 기본 조작 표면으로 고정 노출하지 않는다 — 캔버스 제스처
+  // (한 손가락 look·두 손가락 전후진)가 주 입력이다. 데스크톱(비터치)은 키보드 + 버튼 fallback 유지.
+  // 키보드 effect는 아래에서 항상 돈다(이 분기는 *렌더*만 끈다 — 데스크톱 키보드는 보존).
+  const isTouch = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches,
+    [],
+  )
 
   // Keyboard: track the set of held keys and recompute move from it, so chords work and
   // releasing one key of an axis correctly falls back to the other still-held one. Active
@@ -206,7 +213,9 @@ function NavPad() {
     if (panelOpen) setMove({ x: 0, y: 0, z: 0 })
   }, [panelOpen, setMove])
 
-  if (mode !== 'recall') return null
+  // 근접 모드가 아니거나(원거리/전환) 터치 기기면 D-pad를 렌더하지 않는다. 위 키보드 effect는 이미 돌아
+  // 데스크톱 키보드 항행은 유지된다(A7). 터치는 캔버스 제스처(CloseGestureController)가 주 입력.
+  if (mode !== 'recall' || isTouch) return null
 
   const btn =
     'flex h-11 w-11 touch-none items-center justify-center rounded-lg border border-white/10 bg-white/10 text-white/80 backdrop-blur transition select-none hover:bg-white/20 active:bg-indigo-500/70'
@@ -608,10 +617,15 @@ export function HomePage() {
           type="button"
           onClick={() => navigationActor.send({ type: 'TOGGLE_MODE' })}
           className="rounded-md bg-white/10 px-3 py-2 text-sm text-white/80 backdrop-blur transition hover:bg-white/20"
-          title={mode === 'nebula' ? '회상(근접 항해)으로 전환' : '성운(전체 조망)으로 전환'}
+          // change 08(A1): 사용자-facing 카메라 모드 용어 — '성운/회상' 제거. 버튼은 현재 모드를 보이고,
+          // title/aria-label은 누르면 갈 모드를 안내한다.
+          title={mode === 'nebula' ? '별들 가까이서 탐험하기로 전환' : '멀리서 내 우주 보기로 전환'}
+          aria-label={mode === 'nebula' ? '별들 가까이서 탐험하기로 전환' : '멀리서 내 우주 보기로 전환'}
         >
-          <span className="sm:hidden">{mode === 'nebula' ? '성운' : '회상'}</span>
-          <span className="hidden sm:inline">{mode === 'nebula' ? '성운 — 전체 조망' : '회상 — 근접 항해'}</span>
+          <span className="sm:hidden">{mode === 'nebula' ? '멀리서 보기' : '가까이 탐험'}</span>
+          <span className="hidden sm:inline">
+            {mode === 'nebula' ? '멀리서 내 우주 보기' : '별들 가까이서 탐험하기'}
+          </span>
         </button>
         <button
           type="button"

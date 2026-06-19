@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/v1/admin.proto.
  */
 export const file_cosimosi_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("Chdjb3NpbW9zaS92MS9hZG1pbi5wcm90bxILY29zaW1vc2kudjEihQEKDlByb3ZpZGVyQ29uZmlnEhAKCHByb3ZpZGVyGAEgASgJEhUKDWRlZmF1bHRfbW9kZWwYAiABKAkSDgoGbW9kZWxzGAMgAygJEg8KB2tleV9zZXQYBCABKAgSEQoJa2V5X2xhc3Q0GAUgASgJEhYKDmtleV91cGRhdGVkX2F0GAYgASgJIhUKE0dldExMTUNvbmZpZ1JlcXVlc3QijwEKFEdldExMTUNvbmZpZ1Jlc3BvbnNlEi4KCXByb3ZpZGVycxgBIAMoCzIbLmNvc2ltb3NpLnYxLlByb3ZpZGVyQ29uZmlnEhcKD2FjdGl2ZV9wcm92aWRlchgCIAEoCRIUCgxhY3RpdmVfbW9kZWwYAyABKAkSGAoQZW5jcnlwdGlvbl9yZWFkeRgEIAEoCCI6ChVTZXRQcm92aWRlcktleVJlcXVlc3QSEAoIcHJvdmlkZXIYASABKAkSDwoHYXBpX2tleRgCIAEoCSJHChZTZXRQcm92aWRlcktleVJlc3BvbnNlEi0KCHByb3ZpZGVyGAEgASgLMhsuY29zaW1vc2kudjEuUHJvdmlkZXJDb25maWciLAoYRGVsZXRlUHJvdmlkZXJLZXlSZXF1ZXN0EhAKCHByb3ZpZGVyGAEgASgJIkoKGURlbGV0ZVByb3ZpZGVyS2V5UmVzcG9uc2USLQoIcHJvdmlkZXIYASABKAsyGy5jb3NpbW9zaS52MS5Qcm92aWRlckNvbmZpZyI/ChtVcGRhdGVQcm92aWRlck1vZGVsc1JlcXVlc3QSEAoIcHJvdmlkZXIYASABKAkSDgoGbW9kZWxzGAIgAygJIk0KHFVwZGF0ZVByb3ZpZGVyTW9kZWxzUmVzcG9uc2USLQoIcHJvdmlkZXIYASABKAsyGy5jb3NpbW9zaS52MS5Qcm92aWRlckNvbmZpZyI2ChNTZXRBY3RpdmVMTE1SZXF1ZXN0EhAKCHByb3ZpZGVyGAEgASgJEg0KBW1vZGVsGAIgASgJIkUKFFNldEFjdGl2ZUxMTVJlc3BvbnNlEhcKD2FjdGl2ZV9wcm92aWRlchgBIAEoCRIUCgxhY3RpdmVfbW9kZWwYAiABKAkiSgoWVGVzdFByb3ZpZGVyS2V5UmVxdWVzdBIQCghwcm92aWRlchgBIAEoCRINCgVtb2RlbBgCIAEoCRIPCgdhcGlfa2V5GAMgASgJIkoKF1Rlc3RQcm92aWRlcktleVJlc3BvbnNlEgoKAm9rGAEgASgIEg8KB21lc3NhZ2UYAiABKAkSEgoKbGF0ZW5jeV9tcxgDIAEoAyImCghEYXlDb3VudBILCgNkYXkYASABKAkSDQoFY291bnQYAiABKAMiggEKCFVzYWdlUm93EgsKA2RheRgBIAEoCRIQCghwcm92aWRlchgCIAEoCRINCgVtb2RlbBgDIAEoCRIMCgRraW5kGAQgASgJEg0KBWNhbGxzGAUgASgDEhQKDGlucHV0X3Rva2VucxgGIAEoAxIVCg1vdXRwdXRfdG9rZW5zGAcgASgDIhkKF0dldEFkbWluT3ZlcnZpZXdSZXF1ZXN0IpECChhHZXRBZG1pbk92ZXJ2aWV3UmVzcG9uc2USDQoFdXNlcnMYASABKAMSDwoHcmVjb3JkcxgCIAEoAxIQCghtZW1vcmllcxgDIAEoAxIQCghzeW5hcHNlcxgEIAEoAxIUCgxqb2JzX3BlbmRpbmcYBSABKAMSFwoPam9ic19wcm9jZXNzaW5nGAYgASgDEhMKC2pvYnNfZmFpbGVkGAcgASgDEhUKDWpvYnNfZG9uZV8yNGgYCCABKAMSLAoNcmVjb3JkX3NlcmllcxgJIAMoCzIVLmNvc2ltb3NpLnYxLkRheUNvdW50EigKCWxsbV91c2FnZRgKIAMoCzIVLmNvc2ltb3NpLnYxLlVzYWdlUm93Mq0FCgxBZG1pblNlcnZpY2USWAoMR2V0TExNQ29uZmlnEiAuY29zaW1vc2kudjEuR2V0TExNQ29uZmlnUmVxdWVzdBohLmNvc2ltb3NpLnYxLkdldExMTUNvbmZpZ1Jlc3BvbnNlIgOQAgESWQoOU2V0UHJvdmlkZXJLZXkSIi5jb3NpbW9zaS52MS5TZXRQcm92aWRlcktleVJlcXVlc3QaIy5jb3NpbW9zaS52MS5TZXRQcm92aWRlcktleVJlc3BvbnNlEmIKEURlbGV0ZVByb3ZpZGVyS2V5EiUuY29zaW1vc2kudjEuRGVsZXRlUHJvdmlkZXJLZXlSZXF1ZXN0GiYuY29zaW1vc2kudjEuRGVsZXRlUHJvdmlkZXJLZXlSZXNwb25zZRJrChRVcGRhdGVQcm92aWRlck1vZGVscxIoLmNvc2ltb3NpLnYxLlVwZGF0ZVByb3ZpZGVyTW9kZWxzUmVxdWVzdBopLmNvc2ltb3NpLnYxLlVwZGF0ZVByb3ZpZGVyTW9kZWxzUmVzcG9uc2USUwoMU2V0QWN0aXZlTExNEiAuY29zaW1vc2kudjEuU2V0QWN0aXZlTExNUmVxdWVzdBohLmNvc2ltb3NpLnYxLlNldEFjdGl2ZUxMTVJlc3BvbnNlElwKD1Rlc3RQcm92aWRlcktleRIjLmNvc2ltb3NpLnYxLlRlc3RQcm92aWRlcktleVJlcXVlc3QaJC5jb3NpbW9zaS52MS5UZXN0UHJvdmlkZXJLZXlSZXNwb25zZRJkChBHZXRBZG1pbk92ZXJ2aWV3EiQuY29zaW1vc2kudjEuR2V0QWRtaW5PdmVydmlld1JlcXVlc3QaJS5jb3NpbW9zaS52MS5HZXRBZG1pbk92ZXJ2aWV3UmVzcG9uc2UiA5ACAUJBWj9naXRodWIuY29tL2Nvc2ltb3NpL2JhY2tlbmQvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3YxO2Nvc2ltb3NpdjFiBnByb3RvMw");
+  fileDesc("Chdjb3NpbW9zaS92MS9hZG1pbi5wcm90bxILY29zaW1vc2kudjEihQEKDlByb3ZpZGVyQ29uZmlnEhAKCHByb3ZpZGVyGAEgASgJEhUKDWRlZmF1bHRfbW9kZWwYAiABKAkSDgoGbW9kZWxzGAMgAygJEg8KB2tleV9zZXQYBCABKAgSEQoJa2V5X2xhc3Q0GAUgASgJEhYKDmtleV91cGRhdGVkX2F0GAYgASgJIhUKE0dldExMTUNvbmZpZ1JlcXVlc3QijwEKFEdldExMTUNvbmZpZ1Jlc3BvbnNlEi4KCXByb3ZpZGVycxgBIAMoCzIbLmNvc2ltb3NpLnYxLlByb3ZpZGVyQ29uZmlnEhcKD2FjdGl2ZV9wcm92aWRlchgCIAEoCRIUCgxhY3RpdmVfbW9kZWwYAyABKAkSGAoQZW5jcnlwdGlvbl9yZWFkeRgEIAEoCCI6ChVTZXRQcm92aWRlcktleVJlcXVlc3QSEAoIcHJvdmlkZXIYASABKAkSDwoHYXBpX2tleRgCIAEoCSJHChZTZXRQcm92aWRlcktleVJlc3BvbnNlEi0KCHByb3ZpZGVyGAEgASgLMhsuY29zaW1vc2kudjEuUHJvdmlkZXJDb25maWciLAoYRGVsZXRlUHJvdmlkZXJLZXlSZXF1ZXN0EhAKCHByb3ZpZGVyGAEgASgJIkoKGURlbGV0ZVByb3ZpZGVyS2V5UmVzcG9uc2USLQoIcHJvdmlkZXIYASABKAsyGy5jb3NpbW9zaS52MS5Qcm92aWRlckNvbmZpZyI/ChtVcGRhdGVQcm92aWRlck1vZGVsc1JlcXVlc3QSEAoIcHJvdmlkZXIYASABKAkSDgoGbW9kZWxzGAIgAygJIk0KHFVwZGF0ZVByb3ZpZGVyTW9kZWxzUmVzcG9uc2USLQoIcHJvdmlkZXIYASABKAsyGy5jb3NpbW9zaS52MS5Qcm92aWRlckNvbmZpZyI2ChNTZXRBY3RpdmVMTE1SZXF1ZXN0EhAKCHByb3ZpZGVyGAEgASgJEg0KBW1vZGVsGAIgASgJIkUKFFNldEFjdGl2ZUxMTVJlc3BvbnNlEhcKD2FjdGl2ZV9wcm92aWRlchgBIAEoCRIUCgxhY3RpdmVfbW9kZWwYAiABKAkiSgoWVGVzdFByb3ZpZGVyS2V5UmVxdWVzdBIQCghwcm92aWRlchgBIAEoCRINCgVtb2RlbBgCIAEoCRIPCgdhcGlfa2V5GAMgASgJIkoKF1Rlc3RQcm92aWRlcktleVJlc3BvbnNlEgoKAm9rGAEgASgIEg8KB21lc3NhZ2UYAiABKAkSEgoKbGF0ZW5jeV9tcxgDIAEoAyImCghEYXlDb3VudBILCgNkYXkYASABKAkSDQoFY291bnQYAiABKAMiggEKCFVzYWdlUm93EgsKA2RheRgBIAEoCRIQCghwcm92aWRlchgCIAEoCRINCgVtb2RlbBgDIAEoCRIMCgRraW5kGAQgASgJEg0KBWNhbGxzGAUgASgDEhQKDGlucHV0X3Rva2VucxgGIAEoAxIVCg1vdXRwdXRfdG9rZW5zGAcgASgDIkUKCUFkbWluVXNlchIPCgd1c2VyX2lkGAEgASgJEhAKCHN0YXJkdXN0GAIgASgDEhUKDXdhbGxldF9zZWVkZWQYAyABKAgiVQoVTGlzdEFkbWluVXNlcnNSZXF1ZXN0EhUKDXVzZXJfaWRfcXVlcnkYASABKAkSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkiWAoWTGlzdEFkbWluVXNlcnNSZXNwb25zZRIlCgV1c2VycxgBIAMoCzIWLmNvc2ltb3NpLnYxLkFkbWluVXNlchIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkiQgoYR3JhbnRVc2VyU3RhcmR1c3RSZXF1ZXN0EhYKDnRhcmdldF91c2VyX2lkGAEgASgJEg4KBmFtb3VudBgCIAEoAyJBChlHcmFudFVzZXJTdGFyZHVzdFJlc3BvbnNlEiQKBHVzZXIYASABKAsyFi5jb3NpbW9zaS52MS5BZG1pblVzZXIiGQoXR2V0QWRtaW5PdmVydmlld1JlcXVlc3QikQIKGEdldEFkbWluT3ZlcnZpZXdSZXNwb25zZRINCgV1c2VycxgBIAEoAxIPCgdyZWNvcmRzGAIgASgDEhAKCG1lbW9yaWVzGAMgASgDEhAKCHN5bmFwc2VzGAQgASgDEhQKDGpvYnNfcGVuZGluZxgFIAEoAxIXCg9qb2JzX3Byb2Nlc3NpbmcYBiABKAMSEwoLam9ic19mYWlsZWQYByABKAMSFQoNam9ic19kb25lXzI0aBgIIAEoAxIsCg1yZWNvcmRfc2VyaWVzGAkgAygLMhUuY29zaW1vc2kudjEuRGF5Q291bnQSKAoJbGxtX3VzYWdlGAogAygLMhUuY29zaW1vc2kudjEuVXNhZ2VSb3cy8QYKDEFkbWluU2VydmljZRJYCgxHZXRMTE1Db25maWcSIC5jb3NpbW9zaS52MS5HZXRMTE1Db25maWdSZXF1ZXN0GiEuY29zaW1vc2kudjEuR2V0TExNQ29uZmlnUmVzcG9uc2UiA5ACARJZCg5TZXRQcm92aWRlcktleRIiLmNvc2ltb3NpLnYxLlNldFByb3ZpZGVyS2V5UmVxdWVzdBojLmNvc2ltb3NpLnYxLlNldFByb3ZpZGVyS2V5UmVzcG9uc2USYgoRRGVsZXRlUHJvdmlkZXJLZXkSJS5jb3NpbW9zaS52MS5EZWxldGVQcm92aWRlcktleVJlcXVlc3QaJi5jb3NpbW9zaS52MS5EZWxldGVQcm92aWRlcktleVJlc3BvbnNlEmsKFFVwZGF0ZVByb3ZpZGVyTW9kZWxzEiguY29zaW1vc2kudjEuVXBkYXRlUHJvdmlkZXJNb2RlbHNSZXF1ZXN0GikuY29zaW1vc2kudjEuVXBkYXRlUHJvdmlkZXJNb2RlbHNSZXNwb25zZRJTCgxTZXRBY3RpdmVMTE0SIC5jb3NpbW9zaS52MS5TZXRBY3RpdmVMTE1SZXF1ZXN0GiEuY29zaW1vc2kudjEuU2V0QWN0aXZlTExNUmVzcG9uc2USXAoPVGVzdFByb3ZpZGVyS2V5EiMuY29zaW1vc2kudjEuVGVzdFByb3ZpZGVyS2V5UmVxdWVzdBokLmNvc2ltb3NpLnYxLlRlc3RQcm92aWRlcktleVJlc3BvbnNlEmQKEEdldEFkbWluT3ZlcnZpZXcSJC5jb3NpbW9zaS52MS5HZXRBZG1pbk92ZXJ2aWV3UmVxdWVzdBolLmNvc2ltb3NpLnYxLkdldEFkbWluT3ZlcnZpZXdSZXNwb25zZSIDkAIBEl4KDkxpc3RBZG1pblVzZXJzEiIuY29zaW1vc2kudjEuTGlzdEFkbWluVXNlcnNSZXF1ZXN0GiMuY29zaW1vc2kudjEuTGlzdEFkbWluVXNlcnNSZXNwb25zZSIDkAIBEmIKEUdyYW50VXNlclN0YXJkdXN0EiUuY29zaW1vc2kudjEuR3JhbnRVc2VyU3RhcmR1c3RSZXF1ZXN0GiYuY29zaW1vc2kudjEuR3JhbnRVc2VyU3RhcmR1c3RSZXNwb25zZUJBWj9naXRodWIuY29tL2Nvc2ltb3NpL2JhY2tlbmQvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3YxO2Nvc2ltb3NpdjFiBnByb3RvMw");
 
 /**
  * ProviderConfig is one provider card: the code matrix's read-only default
@@ -424,6 +424,143 @@ export const UsageRowSchema: GenMessage<UsageRow> = /*@__PURE__*/
   messageDesc(file_cosimosi_v1_admin, 14);
 
 /**
+ * AdminUser is one row of the operator user list (spec 46): the user id plus the
+ * effective stardust balance and whether the wallet row exists yet.
+ *
+ * @generated from message cosimosi.v1.AdminUser
+ */
+export type AdminUser = Message<"cosimosi.v1.AdminUser"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * effective balance: wallet row value, or starting_stardust when unseeded
+   *
+   * @generated from field: int64 stardust = 2;
+   */
+  stardust: bigint;
+
+  /**
+   * true if a user_wallet row exists
+   *
+   * @generated from field: bool wallet_seeded = 3;
+   */
+  walletSeeded: boolean;
+};
+
+/**
+ * Describes the message cosimosi.v1.AdminUser.
+ * Use `create(AdminUserSchema)` to create a new message.
+ */
+export const AdminUserSchema: GenMessage<AdminUser> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_admin, 15);
+
+/**
+ * @generated from message cosimosi.v1.ListAdminUsersRequest
+ */
+export type ListAdminUsersRequest = Message<"cosimosi.v1.ListAdminUsersRequest"> & {
+  /**
+   * optional, case-insensitive contains filter on user_id
+   *
+   * @generated from field: string user_id_query = 1;
+   */
+  userIdQuery: string;
+
+  /**
+   * 0 = default; capped from values (admin.user_list_*_page_size)
+   *
+   * @generated from field: int32 page_size = 2;
+   */
+  pageSize: number;
+
+  /**
+   * last user_id from the previous page (keyset, user_id ASC)
+   *
+   * @generated from field: string page_token = 3;
+   */
+  pageToken: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.ListAdminUsersRequest.
+ * Use `create(ListAdminUsersRequestSchema)` to create a new message.
+ */
+export const ListAdminUsersRequestSchema: GenMessage<ListAdminUsersRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_admin, 16);
+
+/**
+ * @generated from message cosimosi.v1.ListAdminUsersResponse
+ */
+export type ListAdminUsersResponse = Message<"cosimosi.v1.ListAdminUsersResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.v1.AdminUser users = 1;
+   */
+  users: AdminUser[];
+
+  /**
+   * "" when no further page
+   *
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+};
+
+/**
+ * Describes the message cosimosi.v1.ListAdminUsersResponse.
+ * Use `create(ListAdminUsersResponseSchema)` to create a new message.
+ */
+export const ListAdminUsersResponseSchema: GenMessage<ListAdminUsersResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_admin, 17);
+
+/**
+ * GrantUserStardust is the ONLY admin-side balance-increase path (spec 46): seed
+ * the target wallet to starting_stardust if absent, then add amount and audit it.
+ *
+ * @generated from message cosimosi.v1.GrantUserStardustRequest
+ */
+export type GrantUserStardustRequest = Message<"cosimosi.v1.GrantUserStardustRequest"> & {
+  /**
+   * @generated from field: string target_user_id = 1;
+   */
+  targetUserId: string;
+
+  /**
+   * positive integer
+   *
+   * @generated from field: int64 amount = 2;
+   */
+  amount: bigint;
+};
+
+/**
+ * Describes the message cosimosi.v1.GrantUserStardustRequest.
+ * Use `create(GrantUserStardustRequestSchema)` to create a new message.
+ */
+export const GrantUserStardustRequestSchema: GenMessage<GrantUserStardustRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_admin, 18);
+
+/**
+ * @generated from message cosimosi.v1.GrantUserStardustResponse
+ */
+export type GrantUserStardustResponse = Message<"cosimosi.v1.GrantUserStardustResponse"> & {
+  /**
+   * target's post-grant state
+   *
+   * @generated from field: cosimosi.v1.AdminUser user = 1;
+   */
+  user?: AdminUser | undefined;
+};
+
+/**
+ * Describes the message cosimosi.v1.GrantUserStardustResponse.
+ * Use `create(GrantUserStardustResponseSchema)` to create a new message.
+ */
+export const GrantUserStardustResponseSchema: GenMessage<GrantUserStardustResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_v1_admin, 19);
+
+/**
  * @generated from message cosimosi.v1.GetAdminOverviewRequest
  */
 export type GetAdminOverviewRequest = Message<"cosimosi.v1.GetAdminOverviewRequest"> & {
@@ -434,7 +571,7 @@ export type GetAdminOverviewRequest = Message<"cosimosi.v1.GetAdminOverviewReque
  * Use `create(GetAdminOverviewRequestSchema)` to create a new message.
  */
 export const GetAdminOverviewRequestSchema: GenMessage<GetAdminOverviewRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_admin, 15);
+  messageDesc(file_cosimosi_v1_admin, 20);
 
 /**
  * @generated from message cosimosi.v1.GetAdminOverviewResponse
@@ -502,7 +639,7 @@ export type GetAdminOverviewResponse = Message<"cosimosi.v1.GetAdminOverviewResp
  * Use `create(GetAdminOverviewResponseSchema)` to create a new message.
  */
 export const GetAdminOverviewResponseSchema: GenMessage<GetAdminOverviewResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_v1_admin, 16);
+  messageDesc(file_cosimosi_v1_admin, 21);
 
 /**
  * AdminService is gated by the ADMIN_USER_IDS allowlist interceptor (fail-closed:
@@ -567,6 +704,28 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof GetAdminOverviewRequestSchema;
     output: typeof GetAdminOverviewResponseSchema;
+  },
+  /**
+   * ListAdminUsers (spec 46): all users (auth.users on Supabase, app-table union
+   * locally), user_id contains-search, keyset pagination. Read-only.
+   *
+   * @generated from rpc cosimosi.v1.AdminService.ListAdminUsers
+   */
+  listAdminUsers: {
+    methodKind: "unary";
+    input: typeof ListAdminUsersRequestSchema;
+    output: typeof ListAdminUsersResponseSchema;
+  },
+  /**
+   * GrantUserStardust (spec 46): admin corrective stardust grant — seed wallet
+   * then add amount, in one transaction, with an admin_stardust_grants audit row.
+   *
+   * @generated from rpc cosimosi.v1.AdminService.GrantUserStardust
+   */
+  grantUserStardust: {
+    methodKind: "unary";
+    input: typeof GrantUserStardustRequestSchema;
+    output: typeof GrantUserStardustResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_v1_admin, 0);

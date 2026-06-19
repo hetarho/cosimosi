@@ -9,6 +9,7 @@ import (
 
 	cosimosiv1 "github.com/cosimosi/backend/internal/gen/cosimosi/v1"
 	"github.com/cosimosi/backend/internal/gen/cosimosi/v1/cosimosiv1connect"
+	"github.com/cosimosi/backend/internal/platform/rpcserver"
 )
 
 // Handler adapts proto ↔ domain for the AdminService RPCs. Thin: mapping +
@@ -128,6 +129,46 @@ func (h *Handler) GetAdminOverview(ctx context.Context, _ *connect.Request[cosim
 	return connect.NewResponse(res), nil
 }
 
+func (h *Handler) ListAdminUsers(ctx context.Context, req *connect.Request[cosimosiv1.ListAdminUsersRequest]) (*connect.Response[cosimosiv1.ListAdminUsersResponse], error) {
+	res, err := h.svc.ListUsers(ctx, ListUsersInput{
+		Query:     req.Msg.GetUserIdQuery(),
+		PageSize:  int(req.Msg.GetPageSize()),
+		PageToken: req.Msg.GetPageToken(),
+	})
+	if err != nil {
+		return nil, asConnectErr(err)
+	}
+	out := &cosimosiv1.ListAdminUsersResponse{NextPageToken: res.NextPageToken}
+	for _, u := range res.Users {
+		out.Users = append(out.Users, toProtoAdminUser(u))
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (h *Handler) GrantUserStardust(ctx context.Context, req *connect.Request[cosimosiv1.GrantUserStardustRequest]) (*connect.Response[cosimosiv1.GrantUserStardustResponse], error) {
+	// The acting admin's verified JWT sub is the audit's admin_user_id (the
+	// allowlist gate already proved the caller is an admin before this runs).
+	adminID, _ := rpcserver.UserIDFromContext(ctx)
+	user, err := h.svc.GrantStardust(ctx, GrantStardustInput{
+		AdminUserID:  adminID,
+		TargetUserID: req.Msg.GetTargetUserId(),
+		Amount:       req.Msg.GetAmount(),
+	})
+	if err != nil {
+		return nil, asConnectErr(err)
+	}
+	return connect.NewResponse(&cosimosiv1.GrantUserStardustResponse{User: toProtoAdminUser(user)}), nil
+}
+
+// toProtoAdminUser maps a user-list row (spec 46) — no key material involved.
+func toProtoAdminUser(u AdminUser) *cosimosiv1.AdminUser {
+	return &cosimosiv1.AdminUser{
+		UserId:       u.UserID,
+		Stardust:     u.Stardust,
+		WalletSeeded: u.WalletSeeded,
+	}
+}
+
 // toProtoProvider maps a merged card — key state only, never key material.
 func toProtoProvider(p ProviderConfig) *cosimosiv1.ProviderConfig {
 	out := &cosimosiv1.ProviderConfig{
@@ -149,9 +190,12 @@ func toProtoProvider(p ProviderConfig) *cosimosiv1.ProviderConfig {
 func asConnectErr(err error) *connect.Error {
 	switch {
 	case errors.Is(err, ErrUnknownProvider), errors.Is(err, ErrInvalidModel),
-		errors.Is(err, ErrEmptyKey), errors.Is(err, ErrKeyTooShort), errors.Is(err, ErrNoStoredKey):
+		errors.Is(err, ErrEmptyKey), errors.Is(err, ErrKeyTooShort), errors.Is(err, ErrNoStoredKey),
+		errors.Is(err, ErrInvalidGrantAmount):
 		return connect.NewError(connect.CodeInvalidArgument, err)
-	case errors.Is(err, ErrEncryptionKeyMissing):
+	case errors.Is(err, ErrUserNotFound):
+		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, ErrEncryptionKeyMissing), errors.Is(err, ErrStardustOverflow):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)

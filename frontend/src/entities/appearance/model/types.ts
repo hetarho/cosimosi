@@ -16,7 +16,18 @@ export interface BackgroundTexture {
   veilOpacity?: number
 }
 
-/** 배경 아이템 메타 — 색만이 아니라 팔레트·텍스처를 포함한 backdrop 번들(A9). */
+/** 배경 스킨의 무늬/질감 결(spec 07) — 색만이 아니라 *패턴 자체*가 스킨마다 다르게(같은 fbm·색만
+ *  다른 상태가 아니다, A6). UniverseNebula의 도메인워프 fbm 파라미터를 스킨별로 조율한다. */
+export interface BackgroundPattern {
+  /** 도메인워프 세기 — 클수록 무늬가 휘몰아치는 결(작으면 잔잔·고른 결). */
+  warp: number
+  /** 기본 노이즈 주파수 — 클수록 촘촘한 미세 결, 작으면 크고 느슨한 덩어리. */
+  freq: number
+  /** 미세 디테일 게인 — 2차 fbm이 밴드를 깨는 정도(질감의 거칠기). */
+  detail: number
+}
+
+/** 배경 아이템 메타 — 색만이 아니라 팔레트·무늬·감정색 슬롯을 포함한 backdrop 번들(spec 07·44 A9). */
 export interface BackgroundMeta {
   id: Background
   /** 스위처에 보이는 이름. */
@@ -29,8 +40,13 @@ export interface BackgroundMeta {
   accent: string
   /** 우주(universe) 캔버스의 깊은 배경색(THREE clear color). */
   bg: string
-  /** fluid(오로라) 배경 팔레트 — 비-우주 배경(CosmosScene) 색. 배경별 단일 출처. */
+  /** fluid(오로라) 배경 팔레트 — 비-우주 배경(CosmosScene) 색. 받침색(base/c1)은 절제된 톤. 배경별 단일 출처. */
   palette: CosmosPalette
+  /** 이 스킨이 짜 넣는 상위 감정색 수(spec 07). 0=감정 무관 순수 텍스처 · 1=주요 감정 1색 · N=비중대로 다색.
+   *  시각 정의(코드 카탈로그)라 values.yaml이 아니라 여기 둔다(A11). */
+  emotionSlots: number
+  /** 무늬/질감 결 — 스킨마다 다른 패턴(A6). */
+  pattern: BackgroundPattern
   /** 색 외의 텍스처/요소 번들(없으면 최소 배경 — vast). */
   texture?: BackgroundTexture
 }

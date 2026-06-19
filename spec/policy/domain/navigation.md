@@ -4,16 +4,18 @@
 
 ## 정의
 
-**항행(navigation)** 은 사용자가 자기 우주를 둘러보고 별에 다가가는 **카메라의 운동 규칙**이다. 두 시점(`nebula` 성운 조망 / `recall` 회상 근접)과 한 별로의 접근(fly-to)을 별개 화면이 아니라 **같은 우주의 다른 카메라 자세**로 잇는다. 카메라는 좌표를 만들지 않고 별의 좌표를 **읽어** 그 위를 날 뿐이다(헌법3). fly-to·focus가 읽는 별 좌표는 클라 **라이브 force-sim 좌표 버퍼**다(22) — `UniverseCanvas.LiveLayoutController`가 펌프하는 단일 `Float32Array`(슬롯 = `stars` 배열 인덱스)를 StarField·UniverseSynapses·FlyToController·FocusController 네 readers가 공유한다(`readBufferPosition`). 버퍼가 아직 없는 초기 프레임엔 `fibonacciStarPosition(i, n, seed)`(`shared/lib/layout.ts`)로 폴백한다. fly-to/focus는 버퍼를 직접(capture·매 프레임) 읽고, 시냅스는 settle 시 발행되는 좌표 스냅샷에 굽는다.
+**항행(navigation)** 은 사용자가 자기 우주를 둘러보고 별에 다가가는 **카메라의 운동 규칙**이다. 두 시점(`nebula`=**멀리서 내 우주 보기** / `recall`=**별들 가까이서 탐험하기**)과 한 별로의 접근(fly-to)을 별개 화면이 아니라 **같은 우주의 다른 카메라 자세**로 잇는다. (change 08: 사용자-facing 용어는 `성운/회상`을 버린다 — `nebula`/`recall`은 내부 식별자일 뿐이고, `recall`은 카메라 모드명이지 도메인 행위 `RecallMemory`(회상·2초 dwell)와 별개다.) 카메라는 좌표를 만들지 않고 별의 좌표를 **읽어** 그 위를 날 뿐이다(헌법3). fly-to·focus가 읽는 별 좌표는 클라 **라이브 force-sim 좌표 버퍼**다(22) — `UniverseCanvas.LiveLayoutController`가 펌프하는 단일 `Float32Array`(슬롯 = `stars` 배열 인덱스)를 StarField·UniverseSynapses·FlyToController·FocusController 네 readers가 공유한다(`readBufferPosition`). 버퍼가 아직 없는 초기 프레임엔 `fibonacciStarPosition(i, n, seed)`(`shared/lib/layout.ts`)로 폴백한다. fly-to/focus는 버퍼를 직접(capture·매 프레임) 읽고, 시냅스는 settle 시 발행되는 좌표 스냅샷에 굽는다.
 
 ## 규칙 · 파라미터
 
 ### 카메라 모드 — 2종
 
+> 사용자-facing 이름은 **멀리서 내 우주 보기**(`nebula`) / **별들 가까이서 탐험하기**(`recall`)다(change 08). 괄호 안 영문은 내부 식별자.
+
 | 모드 | 의미 | 카메라 거동 |
 |---|---|---|
-| `nebula` (성운 조망, 기본값) | 우주 전체를 밖에서 관찰 | 줌 범위 제한·아크볼 회전; 별 셸 안으로 못 들어옴 |
-| `recall` (회상 근접) | 별 사이를 비행선처럼 항해 | 자유 근접 비행; 경계 안에 갇힘 |
+| **멀리서 내 우주 보기** (`nebula`, 기본값) | 우주 전체를 밖에서 관찰 | 줌 범위 제한·아크볼 회전·두 손가락 pan·double-tap-hold zoom scrub; 별 셸 안으로 못 들어옴 |
+| **별들 가까이서 탐험하기** (`recall`) | 별 사이를 비행선처럼 항해, 사용자가 이동 광원 | 자유 근접 비행(한 손가락 look·두 손가락 전후진); 경계 안에 갇힘 |
 
 - 모드 전환(`toggle` → `resetNonce` 증가)은 화면 교체가 아니라 **카메라 fly 보간**으로 시그니처 자세로 이어진다: `recall`은 우주 중심(0,0,0)으로 진입, `nebula`는 직전 떠난 조망 자세(없으면 `NEBULA_FRAME_DIST=110` 전체 프레이밍)로 복귀.
 - 모드 전환 비행 보간 = `k = 1 − exp(−dt·4)`, 목표까지 `< 0.5`면 정차. 비행 중 줌 클램프·경계 클램프는 일시 해제(`transitioning`)된다.
@@ -47,14 +49,42 @@
 | 파라미터 | 값 | 의미 |
 |---|---|---|
 | 줌 범위 | `[OBSERVE_MIN_DIST=58, 1500]` | 별 셸 외곽(≈46) 밖에서만 관찰 |
-| 회전 속도 `NEBULA_ROTATE_SPEED` | `2.4` rad / 캔버스폭 드래그 | 로컬 축 아크볼(극점 없음) |
-| 회전 감쇠 `NEBULA_DAMP` | `9` /s | 릴리스 후 관성 회전 감쇠 |
-| 돌리 감도 `NEBULA_ZOOM_SPEED` | `0.12` | 휠/핀치 줌 한 노치당 반경 비율 |
-| 탭/드래그 데드존 | `8` px | 한 손가락이 이 미만 움직이면 **탭(=별 선택)**, 넘으면 **회전 드래그** — 탭하다 우주가 미끄러지거나, 끌어 돌리다 별이 잘못 선택되는 충돌을 가른다 |
+| 회전 속도 `gesture.far_rotate_speed` | `2.4` rad / 캔버스폭 드래그 | 로컬 축 아크볼(극점 없음) |
+| 회전 감쇠 `gesture.far_damp` | `9` /s | 릴리스 후 관성 회전 감쇠 |
+| 돌리 감도 `gesture.far_zoom_speed` | `0.12` | 휠/핀치 줌 한 노치당 반경 비율 |
+| pan 속도 `gesture.far_pan_speed` | `1.0` | 두 손가락 centroid 이동 → world pan(반경 비례) |
+| zoom scrub `gesture.far_zoom_scrub_*` | deadzone `8`px · speed `0.004` | double-tap-hold 세로 드래그 zoom |
+| 탭/드래그 데드존 `gesture.drag_deadzone_px` | `8` px | 한 손가락이 이 미만 움직이면 **탭(=별 선택)**, 넘으면 **회전 드래그** — 탭하다 우주가 미끄러지거나, 끌어 돌리다 별이 잘못 선택되는 충돌을 가른다 |
+
+> change 08(A14): 위 카메라 gesture 상수는 모두 `spec/values.yaml` `gesture` 그룹이 단일 출처다(옛 `NEBULA_*` 코드 상수 이전). 근접 모드 노브: `close_look_sensitivity 2.2`·`close_thrust_deadzone_px 6`·`close_thrust_full_px 90`·`double_tap_ms 300`·`double_tap_max_dist_px 24`.
 
 - 모드 이탈 시 `camera.up`을 월드업(0,1,0)으로 재정렬해 아크볼 롤이 다른 모드로 새지 않게 한다.
 - **탭 vs 회전(터치).** 포인터는 down 시점에 캡처해(업이 항상 캔버스로 돌아오게 — stale 포인터 방지) 두되, 회전은 데드존(8px)을 넘은 뒤에만 시작한다. 별 선택은 R3F `onClick`이되 `e.delta > 8`(드래그)면 무시한다 — 캡처는 별 `onClick`을 막지 않으므로, 탭=선택·드래그=회전이 양쪽 경로(카메라/선택)에서 함께 갈린다.
-- **모바일 NavPad 한 손 배치.** recall 비행 D-pad는 모바일에서 추력(전진/후진)을 좌하단, 시선 회전을 우하단으로 갈라(`justify-between`) 양 엄지가 각자 한쪽을 잡고 "전진하며 회전"을 한 손에 친다(데스크톱은 좌측 한 묶음). 탐색 오버레이가 열리면 pad를 숨기고 이동을 0으로 정지한다.
+- **NavPad fallback화(change 08, A7).** D-pad는 더는 기본 조작 표면이 아니다 — **터치 지원 기기(`pointer: coarse`)에서는 렌더하지 않는다**(캔버스 제스처가 주 입력). **데스크톱(비터치)은 D-pad + `W/S/A/D/Arrow` 키보드**를 유지하고, 키보드 핸들러는 터치 여부와 무관하게 recall에서 항상 동작한다(렌더만 끔). 탐색 오버레이가 열리면(데스크톱) pad를 숨기고 이동을 0으로 정지한다.
+
+### 제스처 문법 (Pointer Events, change 08)
+
+캔버스는 Pointer Events 기반이고 표면에 **`touch-action: none`**(우주 캔버스 한정 — 전역 페이지 스크롤/뒤로가기 보존)을 적용한다. 연속 입력은 React state를 거치지 않고 ref 버퍼(`navigation-input`)와 `useFrame`로 흐른다. 순수 판정(deadzone·double-tap·centroid/spread·thrust ramp·pan/zoom scrub)은 `navigation-gesture`(three/React/DOM 미의존, 단위 테스트).
+
+| 모드 | 입력 | 동작 |
+|---|---|---|
+| 멀리서 내 우주 보기 | 한 손가락 드래그 | 아크볼 회전(로컬 축, 극점 없음) — 데드존 넘은 뒤 시작 |
+| 멀리서 내 우주 보기 | 두 손가락 이동 | centroid 이동 → 화면 평면 pan(`controls.target` 이동, 조망 기준점이 중앙에 안 묶임) + 거리 변화 → pinch zoom |
+| 멀리서 내 우주 보기 | double-tap-hold + 세로 드래그 | zoom scrub(lock — 잠긴 동안 pan 없음). 위=zoom in, 아래=zoom out. wheel/pinch도 유지 |
+| 별들 가까이서 탐험하기 | 한 손가락 드래그 | 고개 회전(좌우=yaw, 상하=pitch; 화살표 키와 같은 방향 감각) |
+| 별들 가까이서 탐험하기 | 두 손가락 세로 쓸기 | 전진(위)/후진(아래). deadzone 이후 이동량 비례 ramp, 떼면 관성/제동으로 멈춤. 좌우 흔들림은 무시(세로 성분만) |
+
+- **lock 규칙(A11).** 손가락 1→2 전환 시 look을 끝내고 thrust로 lock, 2→1 복귀 시 새 deadzone 전까지 look 재개 안 함. 탭=별 선택(R3F `onClick`, 서브-데드존 통과), 드래그/두 손가락/zoom scrub은 `gestureActive`를 세워 캔버스 `onPointerMissed` dismiss를 막는다(up 후 microtask까지 유지 → 동기 콜백을 넘김; 진짜 탭은 set 안 돼 통과).
+- **stand down(A13).** `flyingToStar`·`framingDiary`·`modeTransition`·별 focus 중에는 제스처 컨트롤러가 비활성(useEffect 게이트) — 유도 비행/포커스 컨트롤러와 싸우지 않는다. 전환이 끝나면 해당 모드 제스처가 다시 붙는다.
+- **값 단일 출처(A14).** deadzone·sensitivity·double-tap 시간/거리·pan/zoom 속도·far rotate/damp/zoom은 `spec/values.yaml` `gesture` 그룹에서 생성된 `VALUES.gesture.*`. 새 하드코딩 튜닝 숫자 없음.
+
+### 이동 광원 — 별들 가까이서 탐험하기 (change 08)
+
+근접 탐험에서 사용자는 **빛을 들고 별 사이를 움직이는 존재**다. `StarField.selfLightRef`(매 프레임 갱신 ref)가 **반사 채널만** 갱신한다(uniform — React rerender 없음).
+
+- **멀리서 보기:** 광원 = 중심 자아 별(원점·정적 `selfLightPos`) — 거리=강함의 광학적 읽기 보존(`selfLightRef.current = null` → 정적 폴백).
+- **가까이서 탐험하기:** 광원 위치 = `NavController`의 **shake 적용 전 실제 항행 기준 카메라 위치**(idle shake가 반사를 흔들지 않게). 전진하면 가까운 별 표면 반사가 함께 이동한다.
+- **채널 경계(A4 불변).** 이동 광원은 **반사 채널만** 바꾼다 — `selfGlow`·`activation`·`λ_eff`·별 색·별 좌표·`A_MIN` 밝기 바닥은 불변. 진짜 `THREE.PointLight`를 별마다 만들지 않는다(헌법8 — TSL uniform 계산). 겹쳐보기(`UniverseOverlay`)는 각 우주의 기존 self-light 규칙 유지(이 변경 범위 밖).
 
 ### 별 포커스(focus)
 
@@ -98,6 +128,7 @@
 ## 구현 근거
 
 - 카메라 모드·줌 클램프(`OBSERVE_MIN_DIST`/`SHIP_BOUNDARY`)·비행 물리(가속·관성·벽 반동)·아크볼 회전: 구현 plan 06 · `frontend/src/widgets/universe-canvas/model/navigation.machine.ts`(카메라 모드 FSM — tech/state-machines.md), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`CameraRig`/`NavController`/`NebulaOrbitController`/`ModeTransitionController`).
+- 제스처 항행(change 08 — `touch-action:none`·pan·zoom scrub·근접 look/thrust·이동 광원·NavPad fallback·onPointerMissed 가드): 구현 plan 06·change 08 · `frontend/src/widgets/universe-canvas/model/{navigation-input.ts,navigation-gesture.ts}`(순수 ref 버퍼 + 제스처 수학·단위 테스트), `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`NebulaOrbitController` pan/zoom scrub·`CloseGestureController`·`NavController` 합성·`selfLightRef`), `frontend/src/entities/star/ui/StarField.tsx`(`selfLightRef` per-frame uniform), `frontend/src/pages/home/ui/HomePage.tsx`(용어·`NavPad` 터치 fallback), `spec/values.yaml` `gesture`.
 - fly-to 보간(`k=1−exp(−dt·3)`, 오프셋 12, 임계 0.6)·잠든 별 도달·항행 머신 `FLY_TO_STAR`·포커스 머신 `SELECT_STAR`: 구현 plan 12 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`FlyToController`/`FocusController`), `frontend/src/features/dormant-search`.
 - 우주 셸 영속·탐색=패널 상태(`?panel=` 동기화·캔버스 비재초기화): 구현 tech/overlay-shell.md · `frontend/src/pages/home/ui/HomePage.tsx`(셸 합성·URL↔스토어 거울 이펙트), `frontend/src/features/universe/model/shell-store.ts`(`useShellStore`), `frontend/src/shared/ui/{OverlayHost,Surface,BottomSheet,FloatingCard}.tsx`, `frontend/src/app/router.tsx`(index 라우트 `?panel=` 검증·동기화).
 - 라이브 좌표 버퍼 단일 출처(네 reader 동기·fibonacci 폴백·`readBufferPosition`): 구현 plan 08·22 · `frontend/src/widgets/universe-canvas/ui/UniverseCanvas.tsx`(`LiveLayoutController`), `frontend/src/shared/lib/force-sim/`, `frontend/src/shared/lib/layout.ts`.
