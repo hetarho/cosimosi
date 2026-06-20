@@ -308,7 +308,7 @@ message Settings {
   string theme = 1;                          // "" = client default (background vast)
   string star_object = 2;                    // "" = client default (star deepfield)
   repeated EmotionColor emotion_colors = 3;  // only moods the user overrode (0..13)
-  string self_object = 4;                    // "" = client default (self nebula-heart)
+  string self_object = 4;                    // "" = client default (self mirrorball)
   string synapse_style = 5;                  // "" = client default (synapse filament)
 }
 

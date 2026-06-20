@@ -110,12 +110,13 @@ function buildFilamentGeometry(
   seedOf: (id: string) => number,
   styleKind: SynapseStyle,
 ): FilamentBuild | null {
-  // 스타일별 *형태* 분기(spec 44 시냅스 축) — 셰이더(표현)뿐 아니라 지오메트리 자체가 다르다:
-  //   filament = 여러 가닥이 꼬인 다발(현재) · beam = 단단한 곧은 한 줄기 · flow = 크게 휜 한 가닥 사행(舍行)
-  //   · particle = 가는 한 줄(셰이더가 점선으로). 색=양끝 mood 블렌드·weight 시각·삭제금지 floor는 모두 유지.
-  const isBeam = styleKind === 'beam'
-  const isFlow = styleKind === 'flow'
+  // 스타일별 *형태* 분기(spec 44 시냅스 축, change 11) — 셰이더(표현)뿐 아니라 지오메트리 자체가 다르다:
+  //   filament = 여러 가닥이 꼬인 다발(현재·무료) · particle = 가는 한 줄(셰이더가 점선으로) · dendrite =
+  //   작은 가지가 갈라지는 신경 돌기형(다발 + 더 촘촘한 가닥). 색=양끝 mood 블렌드·weight 시각·삭제금지
+  //   floor·Line2/TSL 제약은 모두 유지. ⚠ dendrite의 진짜 *분기 가지* 지오메트리는 후속 비주얼 폴리시 대상 —
+  //   지금은 filament 다발에 가닥을 더 얹어 돌기 다발로 식별되게 한다(레거시 beam/flow는 filament로 정규화).
   const isParticle = styleKind === 'particle'
+  const isDendrite = styleKind === 'dendrite'
   // Keep the strongest edges when over the cap (sort copy — never mutate the store array).
   const list =
     edges.length > MAX_EDGES
@@ -155,28 +156,22 @@ function buildFilamentGeometry(
     // 밝기·불투명도가 강도 구간으로 정해지고, 방금 강화된 엣지(pulse=reinforcedRecency)는
     // 가닥 +3·굵기 ×1.5로 한 단계 위처럼 읽혀 회상 강화(+0.05)가 즉시 보인다.
     const tier = strandStyle(e)
-    // 가닥 수: filament=강도 티어 다발(+pulse), flow=2(넓은 사행 한 가닥), beam·particle=1(단일 줄).
-    const strandCount =
-      isBeam || isParticle ? 1 : isFlow ? 2 : Math.min(14, tier.strands + Math.round(pulse * 3))
+    // 가닥 수: particle=1(단일 줄), dendrite=티어 다발 + 가지 2가닥, filament=강도 티어 다발(+pulse).
+    const strandCount = isParticle
+      ? 1
+      : Math.min(14, tier.strands + Math.round(pulse * 3) + (isDendrite ? 2 : 0))
     // Per-edge NATURAL variation (deterministic): brightness/opacity/thickness each get an
     // independent jitter so no two filaments read identically.
     const brightVal = Math.min(1, Math.max(0.1, tier.bright + (jBright * 2 - 1) * 0.12))
     const opacityVal = Math.min(1, Math.max(0.3, tier.opacity + (jOpacity * 2 - 1) * 0.15))
     const widthJitter = 0.7 + jWidth * 0.65 // 0.7..1.35
-    // 곡률: beam=거의 직선, flow=크게 휜 사행(엄청 곡률), filament/particle=완만한 보우.
-    const bowMag = isBeam
-      ? len * 0.015
-      : isFlow
-        ? len * (0.28 + 0.14 * h)
-        : isParticle
-          ? len * 0.04
-          : len * (0.05 + 0.08 * h)
-    // 헬릭스(꼬임): filament만 다발로 꼬고, flow는 약하게, beam·particle은 한 줄(꼬임 없음).
-    const helixR =
-      isBeam || isParticle ? 0 : (0.35 + h * 0.3 + inten * 0.25 + pulse * 0.15) * (isFlow ? 0.4 : 1)
-    // 굵기: beam=두꺼운 줄기, flow=넓은 띠, particle=가는 실(셰이더가 점선으로), filament=기본.
+    // 곡률: particle=가는 완만한 보우, dendrite=완만(가지 다발), filament=완만한 보우.
+    const bowMag = isParticle ? len * 0.04 : len * (0.05 + 0.08 * h)
+    // 헬릭스(꼬임): particle은 한 줄(꼬임 없음), filament/dendrite는 다발로 꼰다.
+    const helixR = isParticle ? 0 : 0.35 + h * 0.3 + inten * 0.25 + pulse * 0.15
+    // 굵기: particle=가는 실(셰이더가 점선으로), dendrite=약간 가는 가지, filament=기본.
     const baseR =
-      tier.radius * widthJitter * (1 + pulse * 0.5) * (isBeam ? 2.4 : isFlow ? 1.5 : isParticle ? 1.1 : 1)
+      tier.radius * widthJitter * (1 + pulse * 0.5) * (isParticle ? 1.1 : isDendrite ? 0.85 : 1)
     const tubular = Math.min(56, Math.max(20, Math.round(len)))
 
     // Bowed centre curve: arc the bundle off the straight chord (a dust lane, not a wire).
@@ -362,7 +357,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
     // Style varies BOTH the geometry (built above: braid/rod/sweep/thread) and this LINE
     // EXPRESSION (flow speed/packet/dot shape) — color always stays the endpoint mood blend, and
     // every style keeps a non-zero floor so dormant edges stay visible (삭제금지 헌법2).
-    const flowSpeed = VALUES.synapse.flowSpeed * (style === 'flow' ? 1.8 : style === 'particle' ? 1.3 : 1)
+    const flowSpeed = VALUES.synapse.flowSpeed * (style === 'particle' ? 1.3 : 1)
     const flow = fract(along.mul(2.0).sub(uTime.mul(flowSpeed)).add(seed.mul(6.2831)))
     const flowGlow = smoothstep(float(0.0), float(0.5), flow).mul(
       smoothstep(float(1.0), float(0.5), flow),
@@ -395,20 +390,9 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
     // style's term modulates the traveling-light expression; nGlow adds along-length texture.
     // Brightness lives in ONE factor (colorNode) so additive blending doesn't square it. Each
     // style keeps a non-zero floor so weak/dormant edges stay VISIBLE (deletion-floor, 헌법2).
-    let widthFade = coreBand.mul(0.55).add(0.45)
+    const widthFade = coreBand.mul(0.55).add(0.45)
     let glow
-    if (style === 'beam') {
-      // 빔: 단단한 밝은 코어 한 줄기 — 좁고 또렷, packet 흐름 약함, 균일한 발광.
-      widthFade = coreBand.mul(coreBand).mul(0.7).add(0.3) // narrower bright core
-      const glowVar = float(0.85).add(nGlow.mul(0.3)) // steadier down the length
-      const flowTerm = float(0.8).add(flowGlow.mul(0.2)) // packet barely visible
-      glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(1.15).mul(uDim)
-    } else if (style === 'flow') {
-      // 흐름: 빛이 한 방향으로 흐르는 물결 — 이동 packet 강조, 빠르고 또렷.
-      const glowVar = float(0.5).add(nGlow.mul(0.7))
-      const flowTerm = float(0.4).add(flowGlow.mul(1.0)) // strong traveling packet (floor 0.4)
-      glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)
-    } else if (style === 'particle') {
+    if (style === 'particle') {
       // 입자: 점점이 흐르는 빛 알갱이 — 이산 비드 + 연속 dim 바닥(약한 간선도 보이게 — 삭제금지).
       const cell = fract(along.mul(6.0).sub(uTime.mul(flowSpeed)).add(seed.mul(6.2831)))
       const bead = smoothstep(float(0.16), float(0.0), cell) // bright dot at each 1/6 cell start
@@ -416,7 +400,8 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
       const beadTerm = float(0.4).add(bead.mul(1.1)) // floor 0.4 → 비드는 또렷, 색은 안 꺼짐
       glow = bright.mul(breath).mul(beadTerm).mul(glowVar).mul(uDim)
     } else {
-      // filament(기본, 현재 렌더): 가닥 다발 + 흐르는 packet + along 텍스처.
+      // filament(기본·무료) + dendrite(가지 다발, change 11): 가닥 다발 + 흐르는 packet + along 텍스처.
+      // dendrite는 지오메트리에서 가닥을 더 얹어 돌기 다발로 구별된다(진짜 분기 가지는 후속 비주얼 폴리시).
       const flowTerm = float(0.6).add(flowGlow.mul(0.55))
       const glowVar = float(0.55).add(nGlow.mul(0.85)) // ~0.55..1.4 down the strand
       glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)

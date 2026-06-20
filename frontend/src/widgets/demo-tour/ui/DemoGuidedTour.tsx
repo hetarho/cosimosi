@@ -5,8 +5,24 @@
 // 토글·팝오버 열림·페르소나 전환·시간 이동·사이드바/망원경 열림을 관찰). 캔버스 안 별처럼 DOM이
 // 없는 단계는 딤이 클릭을 막지 않아(별을 직접 눌러보게) 중앙 안내 카드만 띄운다.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { TOUR_STEPS, type TourAwait } from '../model/steps'
+import { VALUES } from '@/shared/config'
+import { useCoarsePointer } from '@/shared/ui/use-coarse-pointer'
+import { TOUR_STEPS, type TourAwait, type TourBody, type TourCameraMode } from '../model/steps'
 import { useTourTarget } from './use-tour-target'
+
+/** 항해 실습 신호의 rAF 샘플 — 페이지가 navigation-input 누적 카운터 + 현재 모드를 한 번에 읽어 준다. */
+export interface NavSample {
+  mode: TourCameraMode
+  travel: { look: number; thrust: number; orbit: number; zoom: number }
+}
+
+/** 항해 실습 await — ui 레이어가 navigation 신호를 rAF로 샘플링해 충족 판정한다(props로 관찰 불가). */
+const NAV_AWAITS = new Set<TourAwait>([
+  'nebula-rotated',
+  'nebula-zoomed',
+  'recall-looked',
+  'recall-thrusted',
+])
 
 export interface DemoGuidedTourProps {
   stepIndex: number
@@ -21,10 +37,19 @@ export interface DemoGuidedTourProps {
   sidebarOpen: boolean
   /** 망원경 탐색 시트 열림. */
   explorerOpen: boolean
+  /** 항해 실습 신호 샘플러(change 12) — 현재 카메라 모드 + 누적 항해 카운터를 즉시 읽는다(rAF 폴링용). */
+  sampleNav: () => NavSample
+  /** 현재 phase가 기대하는 카메라 모드(change 12) — 페이지가 nav를 이 모드로 맞춘다. undefined=모드 미관여. */
+  onPhaseMode?: (mode: TourCameraMode | undefined) => void
   onPrev: () => void
   onNext: () => void
   /** 건너뛰기 / 마지막 "자유롭게 탐험하기" — flow=free로 수렴한다. */
   onExit: () => void
+}
+
+/** 디바이스(터치/마우스)에 맞는 문구를 고른다(change 12). */
+function resolveBody(body: TourBody, coarse: boolean): string {
+  return typeof body === 'string' ? body : coarse ? body.touch : body.mouse
 }
 
 interface Observed {
@@ -90,6 +115,8 @@ function TourStepView({
   clockDay,
   sidebarOpen,
   explorerOpen,
+  sampleNav,
+  onPhaseMode,
   onPrev,
   onNext,
   onExit,
@@ -101,14 +128,30 @@ function TourStepView({
   const phase = step.phases[Math.min(phaseIndex, step.phases.length - 1)]
   const rect = useTourTarget(phase.target)
   const reduced = usePrefersReducedMotion()
+  const coarse = useCoarsePointer()
   const isLast = index === total - 1
+  const lastPhase = phaseIndex >= step.phases.length - 1
   const nextBtnRef = useRef<HTMLButtonElement | null>(null)
+
+  // `다음`/`이전`은 단계(step)가 아니라 **phase 단위**로 움직인다 — 멀티 phase 단계(예: '시점 전환' 항해 실습)의
+  // 중간 정보 phase(await=null)에서도 다음 phase로 넘어갈 수 있어야 실습이 가려지지 않는다. 마지막 phase에서만
+  // 다음 단계로 넘어가고, 마지막 단계의 마지막 phase면 자유모드로 종료한다. (실습 phase는 동작 시 자동 진행도 됨.)
+  const goNext = () => {
+    if (!lastPhase) setPhaseIndex((p) => Math.min(p + 1, step.phases.length - 1))
+    else if (isLast) onExit()
+    else onNext()
+  }
+  const goPrev = () => {
+    if (phaseIndex > 0) setPhaseIndex((p) => Math.max(p - 1, 0))
+    else onPrev()
+  }
 
   const obs: Observed = { uiHidden, popover, persona, clockDay, sidebarOpen, explorerOpen }
   // 단계 진입 시점의 상태 — 'persona-changed'/'time-moved' 같은 변화 기준 await의 기준선(remount마다 새로).
   const baseline = useRef(obs)
 
-  // 행동 안내: 현재 phase의 await가 충족되면 다음 phase로 진행(setState는 rAF로 미뤄 effect 동기 setState 회피).
+  // 행동 안내: 현재 phase의 await(DOM 관찰형)가 충족되면 다음 phase로 진행(setState는 rAF로 미뤄 effect
+  // 동기 setState 회피). 항해 실습(NAV_AWAITS)은 아래 rAF 샘플러가 따로 처리하므로 여기선 false로 빠진다.
   useEffect(() => {
     if (phase.await == null) return
     if (!isAwaitMet(phase.await, obs, baseline.current)) return
@@ -118,6 +161,48 @@ function TourStepView({
     // obs는 매 렌더 새 객체라 deps에 풀어 넣는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase.await, uiHidden, popover, persona, clockDay, sidebarOpen, explorerOpen, phaseIndex, step.phases.length])
+
+  // 페이지가 nav를 현재 phase의 기대 모드로 맞추도록 알린다(change 12 — 멀리서/가까이서 전환 구동, A7).
+  // phaseIndex로 키잉해 매 phase 진입마다 재확정 → 사용자가 도중에 시점을 임의로 바꿔도 다음 phase에서 교정.
+  useEffect(() => {
+    onPhaseMode?.(phase.mode)
+  }, [phaseIndex, phase.mode, onPhaseMode])
+
+  // 항해 실습 자동 진행(change 12, A4·A8): navigation 신호를 rAF로 샘플링해 phase 진입 baseline 대비 누적
+  // delta가 임계(VALUES.demoTour.*)를 넘는 순간에만 다음 phase로. 매 프레임 React state를 만들지 않는다(헌법4).
+  useEffect(() => {
+    const a = phase.await
+    if (a == null || !NAV_AWAITS.has(a)) return
+    if (phaseIndex >= step.phases.length - 1) return
+    const base = sampleNav().travel // 이 phase 진입 시점 누적값 기준
+    const t = VALUES.demoTour
+    let raf = 0
+    const tick = () => {
+      const s = sampleNav()
+      let met = false
+      switch (a) {
+        case 'nebula-rotated':
+          met = s.mode === 'nebula' && s.travel.orbit - base.orbit >= t.rotateThresholdRad
+          break
+        case 'nebula-zoomed':
+          met = s.mode === 'nebula' && s.travel.zoom - base.zoom >= t.zoomRatioThreshold
+          break
+        case 'recall-looked':
+          met = s.mode === 'recall' && s.travel.look - base.look >= t.lookThresholdRad
+          break
+        case 'recall-thrusted':
+          met = s.mode === 'recall' && s.travel.thrust - base.thrust >= t.thrustDistanceThreshold
+          break
+      }
+      if (met) {
+        setPhaseIndex((p) => Math.min(p + 1, step.phases.length - 1))
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [phase.await, phaseIndex, step.phases.length, sampleNav])
 
   // Esc = 건너뛰기. 캡처 단계 + stopImmediatePropagation으로 HomePage 전역 Esc 라우터보다 먼저 단독 처리.
   useEffect(() => {
@@ -210,7 +295,7 @@ function TourStepView({
             둘러보기 {index + 1} / {total}
           </span>
           <h2 className="font-display text-lg text-white/90">{step.title}</h2>
-          <p className="text-sm leading-relaxed text-white/60">{phase.body}</p>
+          <p className="text-sm leading-relaxed text-white/60">{resolveBody(phase.body, coarse)}</p>
         </div>
 
         <div className="flex flex-wrap gap-1.5" aria-hidden>
@@ -233,8 +318,8 @@ function TourStepView({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onPrev}
-              disabled={index === 0}
+              onClick={goPrev}
+              disabled={index === 0 && phaseIndex === 0}
               className="rounded-lg px-3 py-1.5 text-sm text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:text-white/20"
             >
               이전
@@ -242,10 +327,10 @@ function TourStepView({
             <button
               ref={nextBtnRef}
               type="button"
-              onClick={isLast ? onExit : onNext}
+              onClick={goNext}
               className="rounded-lg border border-white/15 bg-white/15 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-white/25"
             >
-              {isLast ? '자유롭게 탐험하기' : '다음'}
+              {isLast && lastPhase ? '자유롭게 탐험하기' : '다음'}
             </button>
           </div>
         </div>

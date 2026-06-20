@@ -132,22 +132,25 @@ const (
 )
 var (
 	CustomizationPrice = map[string]int{
-		"background:lively":      30,
-		"background:calm":        30,
-		"background:aurora-veil": 45,
-		"star:aurora":            30,
-		"star:liquid":            35,
-		"star:ember":             40,
-		"self:core":              30,
-		"self:well":              35,
-		"synapse:beam":           30,
-		"synapse:flow":           35,
-		"synapse:particle":       40,
+		"background:lively":        30,
+		"background:calm":          30,
+		"background:aurora-veil":   45,
+		"background:signal-noise":  35,
+		"background:abyssal-sea":   40,
+		"background:cosmic-cliffs": 45,
+		"star:aurora":              30,
+		"star:liquid":              35,
+		"star:ember":               40,
+		"star:pulsar":              45,
+		"self:prism-cube":          35,
+		"self:neuron-bloom":        45,
+		"synapse:particle":         40,
+		"synapse:dendrite":         40,
 	}
 	CustomizationFree = map[string]string{
 		"background": "vast",
 		"star":       "deepfield",
-		"self":       "nebula-heart",
+		"self":       "mirrorball",
 		"synapse":    "filament",
 	}
 )
@@ -188,6 +191,8 @@ const (
 	StarLightingLitMix                 = 1
 	StarLightingAmbientFill            = 0.4
 	StarLightingBackdropLightIntensity = 0.7
+	StarLightingRecallLightBackOffset  = 6
+	StarLightingRecallLightUpOffset    = 2
 )
 var (
 	StarLightingBackdropLightDir = []float64{0.6, 0.7, 0.4}
@@ -346,4 +351,12 @@ const (
 const (
 	DemoFreeModeRandomStarMin = 1
 	DemoFreeModeRandomStarMax = 5
+)
+
+// demo_tour
+const (
+	DemoTourRotateThresholdRad      = 0.9
+	DemoTourZoomRatioThreshold      = 0.25
+	DemoTourLookThresholdRad        = 0.9
+	DemoTourThrustDistanceThreshold = 8
 )

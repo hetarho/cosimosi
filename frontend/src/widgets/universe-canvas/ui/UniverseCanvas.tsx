@@ -53,6 +53,9 @@ import {
   setGestureActive,
   markSuppressClick,
   resetGestureInput,
+  addThrustTravel,
+  addOrbitTravel,
+  addZoomTravel,
 } from '../model/navigation-input'
 import { passedDeadzone, isDoubleTap, thrustRamp, zoomScrubDelta } from '../model/navigation-gesture'
 import {
@@ -229,6 +232,10 @@ const SPEED_REF = BASE_SPEED * MAX_BOOST // normaliser for the speed-scaled shak
 const RECOIL = 1.2 // inward bounce on wall contact ("hit a wall")
 const WALL_REARM = 3 // must drift this far back inside before another wall jolt can fire
 const HIT_SHAKE = 1 // jolt handed to the shake on impact
+// recall(근접 탐험)에서 자아 광원·아바타가 사는 어깨-너머 앵커 오프셋(spec 49). camPosBase에서 −forward로
+// BACK만큼, +up으로 UP만큼 — 정면 비행 시야 밖(뒤+위)이라 광원이 안 보이고 정면 별이 입체 음영을 받는다.
+const RECALL_LIGHT_BACK = VALUES.starLighting.recallLightBackOffset
+const RECALL_LIGHT_UP = VALUES.starLighting.recallLightUpOffset
 const IDLE_AMP = 0.09 // always-on engine wobble (present even when stationary)
 const SPEED_AMP = 0.13 // extra wobble scaled by current speed
 const IMPULSE_AMP = 0.9 // peak extra wobble from a wall jolt
@@ -564,6 +571,7 @@ function NebulaOrbitController() {
       if (Math.abs(vel.current.pitch) < 1e-4) vel.current.pitch = 0
     }
     if (yaw !== 0 || pitch !== 0) {
+      addOrbitTravel(Math.hypot(yaw, pitch)) // 데모 투어 회전 실습 관찰용(change 12, passive — 회전 불변)
       // LOCAL right/up from the live camera basis → true arcball, never re-aligns to world up.
       right.current.setFromMatrixColumn(camera.matrix, 0).normalize()
       up.current.setFromMatrixColumn(camera.matrix, 1).normalize()
@@ -577,6 +585,7 @@ function NebulaOrbitController() {
 
     // DOLLY (wheel / two-finger pinch), clamped to the nebula 58..1500 radius range.
     if (pendingZoom.current !== 0) {
+      addZoomTravel(Math.abs(pendingZoom.current)) // 데모 투어 줌 실습 관찰용(change 12, passive — 줌 불변)
       const r = offset.current.length()
       offset.current.setLength(
         THREE.MathUtils.clamp(r * (1 + pendingZoom.current), OBSERVE_MIN_DIST, 1500),
@@ -827,6 +836,9 @@ function NavController({
       camera.position.addScaledVector(vel.current, dt)
       controls.target.addScaledVector(vel.current, dt)
       changed = true
+      // 데모 투어 전진 실습 관찰용(change 12, passive): 사용자가 실제로 추력을 줄 때(z≠0)만 이동 거리 가산
+      // — 키보드·D-pad(move.z)·제스처 thrust가 모두 z로 통합되므로 한 곳에서 전 경로를 센다(A5). 물리 불변.
+      if (z !== 0) addThrustTravel(vel.current.length() * dt)
     }
 
     // 방향키: FREE-LOOK with ACCELERATION + INERTIA. A TARGET angular velocity from the input
@@ -905,12 +917,21 @@ function NavController({
 
     if (changed) controls.update()
 
-    // 근접 이동 광원(A3·A4): shake 적용 전의 실제 항행 기준 위치를 자아 광원으로 — idle shake가 별 반사를
-    // 흔들지 않게(A3 단서). StarField가 매 프레임 ref.current로 반사 채널 uniform만 갱신(채널 경계 — A4:
-    // selfGlow/activation/λ_eff/별 색·좌표·A_MIN 불변).
-    lightArr.current[0] = camera.position.x
-    lightArr.current[1] = camera.position.y
-    lightArr.current[2] = camera.position.z
+    // 근접 이동 광원·아바타 앵커(spec 49 A1·A2·A3): 카메라 위치가 아니라 **어깨 너머(뒤+위)** 한 점.
+    //   anchor = camPosBase − fwd·BACK_OFFSET + up·UP_OFFSET
+    // shake 적용 전의 깨끗한 항행 기준 위치(camera.position은 위에서 shakeOffset을 뺀 base)에서 계산해
+    // idle/벽 shake가 반사·아바타를 흔들지 않게 한다(A7). 같은 앵커를 SelfStar(나 아바타)도 공유하므로
+    // 광원이 곧 나 — 정면 별이 뒤+위에서 오는 빛을 받아 입체 음영으로 서고, 정면 비행 시야엔 안 들어온다.
+    // StarField가 매 프레임 ref.current로 반사 채널 uniform만 갱신(채널 경계 — A5: selfGlow/activation/
+    // λ_eff/별 색·좌표·A_MIN 불변).
+    fwd.current.subVectors(controls.target, camera.position).normalize()
+    upAxis.current.copy(camera.up).normalize()
+    lightArr.current[0] =
+      camera.position.x - fwd.current.x * RECALL_LIGHT_BACK + upAxis.current.x * RECALL_LIGHT_UP
+    lightArr.current[1] =
+      camera.position.y - fwd.current.y * RECALL_LIGHT_BACK + upAxis.current.y * RECALL_LIGHT_UP
+    lightArr.current[2] =
+      camera.position.z - fwd.current.z * RECALL_LIGHT_BACK + upAxis.current.z * RECALL_LIGHT_UP
     selfLightRef.current = lightArr.current
 
     // SHIP SHAKE — a tiny screen-space rig wobble. Always on (engine idle), and its SPEED varies:
@@ -1981,6 +2002,7 @@ export function UniverseCanvas() {
       <UniverseNebula
         palette={background.palette}
         pattern={background.pattern}
+        effect={background.effect}
         emotionSlots={background.emotionSlots}
         emotions={ranked}
         arousal={arousal}
@@ -1999,7 +2021,7 @@ export function UniverseCanvas() {
           과정을 숨기고 모두 제자리에 놓인 뒤 드러낸다(38). 컨트롤러는 게이트 밖에서 항상 돈다. */}
       <group visible={ready}>
         <UniverseDrift>
-          <SelfStar selfObject={selfObject} />
+          <SelfStar selfObject={selfObject} anchorRef={selfLightRef} />
           <UniverseSynapses
             layout={layout}
             positionsRef={positionsRef}

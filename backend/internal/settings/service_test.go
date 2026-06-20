@@ -93,8 +93,17 @@ func TestUpdateRejectsInvalidBeforeWrite(t *testing.T) {
 		{"unknown background", Patch{Theme: ptr("rainbow")}, ErrUnknownItem},
 		{"unknown object", Patch{StarObject: ptr("blob")}, ErrUnknownItem},
 		{"unknown synapse", Patch{SynapseStyle: ptr("zigzag")}, ErrUnknownItem},
+		// change 11 — removed catalog ids are no longer known (rejected before any write).
+		{"removed self core", Patch{SelfObject: ptr("core")}, ErrUnknownItem},
+		{"removed self well", Patch{SelfObject: ptr("well")}, ErrUnknownItem},
+		{"removed synapse beam", Patch{SynapseStyle: ptr("beam")}, ErrUnknownItem},
+		{"removed synapse flow", Patch{SynapseStyle: ptr("flow")}, ErrUnknownItem},
 		{"locked paid background", Patch{Theme: ptr("aurora-veil")}, ErrNotOwned}, // known paid, not owned
 		{"locked paid object", Patch{StarObject: ptr("ember")}, ErrNotOwned},
+		// change 11 — new paid ids are known but not owned (rejected as NotOwned, not Unknown).
+		{"new paid self prism-cube", Patch{SelfObject: ptr("prism-cube")}, ErrNotOwned},
+		{"new paid synapse dendrite", Patch{SynapseStyle: ptr("dendrite")}, ErrNotOwned},
+		{"new paid star pulsar", Patch{StarObject: ptr("pulsar")}, ErrNotOwned},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -119,6 +128,10 @@ func TestPurchaseRejectsUnknownAndFree(t *testing.T) {
 	}{
 		{"unknown", "star:does-not-exist", ErrUnknownItem},
 		{"free kind", "star:deepfield", ErrItemFree},
+		// change 11 — removed paid ids are no longer purchasable; new free default is mirrorball.
+		{"removed paid self core", "self:core", ErrUnknownItem},
+		{"removed paid synapse beam", "synapse:beam", ErrUnknownItem},
+		{"new free self mirrorball", "self:mirrorball", ErrItemFree},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

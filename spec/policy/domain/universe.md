@@ -18,7 +18,7 @@
 | 반지름 = 강함 (38·07) | 중심 거리 `targetRadius = lerp(R_MIN 6, R_MAX 40, 1 − R)`, **R = Bjork 인출 강도**(`memoryR(recall_count, intensity, lastRecalledAt, now)` — `R = exp(-Δt/τ(S))`, `S = (storage_base+recall_count)·(1+emo_consolidation·intensity)`, `τ(S)=tau0_days·(1+tau_storage_gain·ln(1+S))`). 옛 `strength(W_ACT·act+W_INT·int)` 혼합을 단일 R로 대체(spec 07) — 자주 떠올린 기억은 같은 Δt에서 더 중앙에 머문다. force-sim **반지름 셸 힘**(`SimNode.radius`·`SimParams.radialStrength 0.1`)이 거리를 **독점**하고, 연결·척력은 거리를 못 바꾼다(38) |
 | 각도 = 연결 (38) | 방향은 그래프 스프링·척력 + 22 흥분성 편향(`seedNearCluster`)이 정한다. **접선/radial 분리(38):** `radius>0` free 노드는 연결·척력의 **방사 성분을 제거**해 셸 위에서 *각도만* 바꾸고, 거리는 셸 힘이 정한다 — 새 별(강함↑)이 바깥 이웃 셸로 안 끌려간다(연결 weight 0.6~0.8 ≫ radialStrength 0.1이던 38 갭 해소). 새 별 시드 fallback은 **분산 방향**(`scatterDirection` — 나선 아님). `prevPos` resume으로 각도 연속성 보존 |
 | 표상 부동 (40·데모) | 별의 *방향* 이 **밤 경계마다 한 스텝**(`DRIFT_STEP_RAD 0.08`·**고정 per-seed 축** 회전·반지름(거리) 보존) 표류한다 — **데모 모드**에서 `floor(virtualNow/DAY)` 증가 시 컨트롤러가 각 free 별을 회전(+vx 0)·re-kick(시계 역행 시 baseline 재설정). 축이 pos-무관·고정이라 회전군(`drift(N)=N×drift(1)` → 스킵=대기). **밤 미교차엔 정적.** 연결 스프링이 성단을 부분 복원해 **고립 별이 더, 잘 연결된(도식) 별이 덜** 흐른다(차등 — 동역학 창발). **프로덕션은 좌표 비영속(헌법3)이라 세션 중 드리프트 없음** — 데모 타임머신이 시간 경과·표상 부동의 쇼케이스 |
-| 자아 별 (38·44) | 우주 중심의 단일 앵커("나"). **그래프 비참여**(연결·KNN·시냅스 없음), `selfObject` 폼(기본 nebula-heart·유료 core/well — 커스터마이즈 '나' 축). 강한 기억이 그 곁에 모인다. **몸체 색 = 요즘 감정(ambient mood) 파생**(테마/배경 무관; 데이터 없음·미인증이면 중립/배경 accent 폴백). 단 자아 별이 **다른 별에 던지는 빛(self-light 반사)은 중립** 유지(spec 03 — 요즘 감정색 소유권은 배경 스킨 weave, 이중 주입 금지). 상세 [customization](customization.md) |
+| 자아 별 (38·44·change 11·49) | 우주 중심의 단일 앵커("나"; `recall`에선 카메라 어깨앵커, spec 49). **그래프 비참여**(연결·KNN·시냅스 없음), `selfObject` 폼(기본 `mirrorball`·유료 `prism-cube`/`neuron-bloom` — 커스터마이즈 '나' 축; 레거시 nebula-heart/core/well은 mirrorball로 정규화). 강한 기억이 그 곁에 모인다. **몸체 색 = 요즘 감정(ambient mood) 파생**(테마/배경 무관; 데이터 없음·미인증이면 중립 accent 폴백). 단 자아 별이 **다른 별에 던지는 빛(self-light 반사)은 중립** 유지(spec 03 — 요즘 감정색 소유권은 배경 스킨 weave, 이중 주입 금지). 상세 [customization](customization.md) |
 | 재이완 정책 | settle 후 정적. 새 별·회상·시간감쇠로 목표 반지름이 임계(0.5) 넘게 변하거나 **밤 경계를 넘으면(각도 드리프트, 38)** `alpha` 재상승(re-kick)해 부드럽게 활강, 그 외엔 매 프레임 재계산 없음 |
 | 좌표 일치 | StarField·UniverseSynapses·FlyToController·FocusController **네 readers**가 동일한 라이브 버퍼·동일 인덱싱을 읽어 fly-to/focus가 렌더된 바로 그 별에 도달한다(어긋남 0). StarField·FlyTo·Focus는 버퍼를 직접 읽고, 시냅스는 settle 시 발행되는 좌표 스냅샷에 굽는다 |
 | 좌표 권위 | 서버는 좌표를 저장하지 않는다 — **가중치 그래프만** 권위. 좌표(반지름·각도 모두)는 클라가 산출한다 |
@@ -28,20 +28,20 @@
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| 배경(Background) 번들 (44) | "테마"를 **배경(Background)** 으로 정명. 배경은 색만이 아니라 **깊은 clear color + fluid 팔레트 + 텍스처/요소 슬롯** 번들이다(`themeBg`/`paletteForBackground`/optional veil). 무료 `vast` + 유료 `lively`·`calm`·`aurora-veil`. 와이어/store id는 호환 위해 `theme` 유지(커스터마이즈 '배경' 축). 상세 [customization](customization.md) |
-| 몽환 성운 워시 + 감정 weave (44·07) | 선택 배경 스킨(**받침색 팔레트 + 무늬 `BackgroundPattern{warp,freq,detail}`**)을 사방을 감싸는 큰 안쪽 구(`UniverseNebula`)에 도메인워프 오로라로 칠하고(랜딩/사인인 `CosmosScene`과 같은 결, **방향 도메인** 노이즈라 uv 극 핀칭 없음 · draw call 1개), 그 위에 **요즘 감정색을 짜 넣는다**(아래 §요즘 상태). 모든 것 뒤(renderOrder −11)·`depthWrite/depthTest=false` → 별 mood 색·깊이 불간섭, 낮은 밝기로 별을 씻지 않음. reduced-motion이면 모션 정지(색 유지) |
-| 배경 ↔ 별색 분리 | 배경은 배경 자체 색, 별색은 mood(13색 의미 팔레트)로 독립. **배경 변경이 별의 mood 색을 바꾸지 않는다**(StarField는 emotionColors/mood만 읽음) |
+| 배경(Background) 번들 (44·change 11) | "테마"를 **배경(Background)** 으로 정명. 배경은 *질감/구조*를 고르는 축이고 **고정 hue를 소유하지 않는다** — 모든 스킨이 **중립 딥스페이스 팔레트**를 공유하고(고정 색 정체성 제거), 보이는 색은 항상 요즘 mood/감정색에서 파생한다(change 11). 스킨이 정하는 것은 ① **효과(`BackgroundEffect`)**, ② 무늬 `BackgroundPattern{warp,freq,detail}`, ③ `emotionSlots`, ④ 선택적 veil. 무료 `vast` + 유료 `lively`·`calm`·`aurora-veil`·`signal-noise`·`abyssal-sea`·`cosmic-cliffs`. 와이어/store id는 호환 위해 `theme` 유지(커스터마이즈 '배경' 축). 상세 [customization](customization.md) |
+| 배경 효과 + 감정 weave (44·07·change 11) | `UniverseNebula`가 사방을 감싸는 큰 안쪽 구(**방향 도메인** 노이즈라 uv 극 핀칭 없음 · draw call 1개)에 **스킨별 서로 다른 절차적 효과**를 칠한다 — `haze`(검정+mood 안개, 기본) · `nebula`(격동 도메인워프 워시) · `waves`(느린 가로 파동) · `aurora`(검은 우주에 가끔 지나가는 mood 커튼 *선*) · `static`(강한 쿨 그레인+지지직 글리치 밴드) · `caustics`(심해 물빛 굴절) · `ridges`(성운 절벽 능선). 모두 **검은 우주 위에 요즘 감정색만** 칠하고(presence=0이면 거의 검정 = 안전한 빈 우주), 모든 것 뒤(renderOrder −11)·`depthWrite/depthTest=false` → 별 mood 색·깊이 불간섭, 낮은 밝기로 별을 씻지 않음. reduced-motion이면 모션 정지(색 유지). (self/star/synapse 신규 폼의 세밀한 셰이더 폴리시는 후속.) |
+| 배경 ↔ 별색 분리 | 배경 색은 **요즘 mood/감정색 파생**(스킨=질감/효과, 고정 색 없음), 별색은 mood(13색 의미 팔레트)로 독립. **배경 변경이 별의 mood 색을 바꾸지 않는다**(StarField는 emotionColors/mood만 읽음). 미인증·빈 우주·로딩은 중립 딥스페이스 fallback(별 mood 색·사용자 감정색 불오염) |
 | 별먼지 vs 별가루 | 배경 점구름 "별먼지"(cosmic dust, count 1500)는 화폐가 아니다 — 커스터마이즈 화폐는 별개의 "별가루"(Stardust, [customization](customization.md)) |
 | 먼지 디밍 | 별 선택(focus) 시 별 먼지 불투명도 0.5 → 0.14로 낮춰 선택 별만 밝게(스포트라이트) |
 
 ### 요즘 상태 배경 (ambient mood, 25·07)
 
-개별 별이 *과거의 한 순간*이라면 **배경은 "지금의 나"** 다. spec 07로 떠 있던 무드 오브를 없애고, **하나의 Bjork 인출 강도 R**(반지름과 같은 가중치)로 감정 순위를 매겨 **배경 스킨 텍스처에 사용자 감정색을 직접 짜 넣는다**. 별개의 빛이 아니라 배경 자체의 결이다.
+개별 별이 *과거의 한 순간*이라면 **배경은 "지금의 나"** 다. spec 07로 떠 있던 무드 오브를 없애고, **하나의 Bjork 인출 강도 R**(반지름과 같은 가중치)로 감정 순위를 매겨 **배경 효과에 사용자 감정색을 직접 칠한다**. change 11 이후 배경은 고정 색을 갖지 않으므로(검은 우주) 이 mood 색이 곧 배경의 주 색이다 — 별개의 빛이 아니라 배경 자체의 결이다.
 
 | 규칙 | 값 / 조건 |
 |---|---|
 | 감정 순위 (클라) | `rankedEmotions(stars, emotionColors, now)` = mood별 **Σ R** 내림차순(R = Bjork 인출 강도, weight.ts). 각 항목 색 = `resolveMoodRgb(mood, emotionColors)`(**사용자 감정색** 45·30), weight = 그 mood Σ R의 상대 비중. 서버는 종합을 주지 않는다 — 클라가 로드된 별(+`recall_count`)에서 파생(헌법3) |
-| 배경 weave (클라) | `UniverseNebula`가 받침색·무늬 위에 상위 **`emotionSlots`**개 감정색을 노이즈 밴드별 R-비중으로 합성(dominant=넓은 결, 차순위=밝은 결 액센트). `emotionSlots`(스킨별: vast·calm `1`·lively `3`·aurora-veil `13`·`0`=감정 무관 순수 텍스처)는 코드 카탈로그 시각 정의 |
+| 배경 weave (클라) | `UniverseNebula`가 검은 우주 위에 상위 **`emotionSlots`**개 감정색을 효과 결별 R-비중으로 칠한다(dominant=넓은 결, 차순위=밝은 결 액센트). `emotionSlots`(스킨별: vast·calm·abyssal-sea `1`·lively·signal-noise·cosmic-cliffs `3`·aurora-veil `13`·`0`=감정 무관)는 코드 카탈로그 시각 정의. presence(=dominant R-share)가 mood 칠 전체 강도 — 0이면 거의 검정 |
 | 전역 생동 (arousal) | `arousalOf(stars,now) = 1−exp(-Σ R)` ∈ [0,1)가 배경 스킨 밝기(`1+bg_brightness_gain·arousal`)·흐름 속도(`1+bg_motion_gain·arousal`)를 키운다 — 격동한 요즘=생동, 평온=잔잔 |
 | 별색 불간섭 | 짜 넣는 색은 배경 결이고 별 mood 색(`resolveMoodRgb`)·26 밝기·spec 03 반사 중립은 불변. 자아 몸체 색만 R-가중 `deriveAmbient`로 요즘 감정 파생(고정 의미 팔레트, 사용자 감정색 아님) |
 | 애니메이션 | BloomPass가 내장 TSL `time` 노드를 진전시키지 않으므로 `useFrame` **수동 uTime**으로 흐름 구동. 감정색·arousal은 유니폼 갱신(셰이더 재컴파일 없음), 받침색·무늬는 스킨 교체 시 재빌드. `prefers-reduced-motion`이면 모션 정지, 색·밝기 유지 |

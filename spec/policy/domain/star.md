@@ -31,7 +31,7 @@
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| 형태 4종 (generative form) | `deepfield`(Crystal) · `aurora`(Nebula) · `liquid`(Liquid) · `ember`(Ember); 기본값 `deepfield`. 단일 `InstancedMesh` + TSL 노드 머티리얼(소수 draw call). **커스터마이즈 '별' 축 아이템**(무료 `deepfield` + 유료 `aurora`/`liquid`/`ember` — 별가루 구매로 unlock). **색은 mood 불변**(모양만 판매). [customization](customization.md) |
+| 형태 5종 (generative form) | `deepfield`(Crystal) · `aurora`(Nebula) · `liquid`(Liquid) · `ember`(Ember) · `pulsar`(Pulsar, change 11 — 고밀도 코어·빠른 맥동, 회전 링/제트는 후속 비주얼 폴리시); 기본값 `deepfield`. 단일 `InstancedMesh` + TSL 노드 머티리얼(소수 draw call). **커스터마이즈 '별' 축 아이템**(무료 `deepfield` + 유료 `aurora`/`liquid`/`ember`/`pulsar` — 별가루 구매로 unlock). **색은 mood 불변**(모양만 판매 — `pulsar`도 mood 색·밝기·기억 데이터 계약 무변). [customization](customization.md) |
 | 색 = mood 팔레트 | mood → RGB 튜플 색; 팔레트 밖 값 → `NEUTRAL_RGB`(=`[0.6,0.6,0.6]`) 폴백(throw 금지). per-instance `aMood` attribute로 보존, 랜딩 테마와 독립 |
 | spec 07 경계 (불변) | 기억 가중치 R(`recall_count` 파생, spec 07)은 **자기근접 반지름(38)과 배경 감정 순위(25)만** 바꾼다 — **별 색(=mood)·밝기(26 λ_eff·self-glow)·spec 03 반사 중립은 R과 무관하게 불변**. 배경이 같은 감정색을 빌려 짜 넣어도(25) 별 자체 색 규칙은 그대로다 |
 | 감정색 확정 게이트 (45) | **인증 개인 우주는 13 mood 감정색이 모두 확정된 뒤 렌더**된다 — `EmotionColorGate`가 `GetSettings`의 `user_emotion_colors` 13색 완성 여부(유효 `#RRGGBB`)로 판정해 미완료면 `/emotion-colors`로 보낸다(최초 로그인 여부 아님, *서버 내용*으로만). 렌더는 `resolveMoodRgb(mood, emotionColors)`로 사용자 색 우선·미설정/공개·체험은 기본 팔레트. **색=mood·추천=`MOOD_PALETTE` 파생** 불변(감정색은 판매/잠금 대상 아님 — 무료 필수 설정). [customization](customization.md) |
@@ -42,7 +42,7 @@
 ### 밝기 · 감쇠 (brightness · decay)
 
 > **별 빛 3채널 (self-light, spec 03).** 별의 겉보기 밝기는 한 값이 아니라 셋으로 갈린다 —
-> 1. **반사(reflection, lit) = 최근성.** 중앙 자아-별(우주) 또는 우상단 평행광(배경)이 별을 비춘 밝기. 가까운(=최근/회상된) 별이 더 밝게 반사된다 — 위치(spec 38)의 광학적 읽기이지 새 자유도가 아니다. `activation`(아래)이 그 per-instance 입력(`aRecency`). **bloom 안 함.** **change 08: 메인 우주에서 자아 광원 위치가 카메라 모드에 따라 달라진다** — "멀리서 내 우주 보기"는 중심 자아 별(원점·정적), "별들 가까이서 탐험하기"는 **탐험자(카메라) 위치를 매 프레임 따라간다**(`StarField.selfLightRef` uniform). **이동 광원은 반사 채널만** 바꾼다 — self-glow·activation·λ_eff·별 색·좌표·`A_MIN` 바닥은 불변(채널 경계). 겹쳐보기는 각 우주 기존 규칙 유지.
+> 1. **반사(reflection, lit) = 최근성.** 중앙 자아-별(우주) 또는 우상단 평행광(배경)이 별을 비춘 밝기. 가까운(=최근/회상된) 별이 더 밝게 반사된다 — 위치(spec 38)의 광학적 읽기이지 새 자유도가 아니다. `activation`(아래)이 그 per-instance 입력(`aRecency`). **bloom 안 함.** **change 08·spec 49: 메인 우주에서 자아 광원 위치가 카메라 모드에 따라 달라진다** — "멀리서 내 우주 보기"는 중심 자아 별(원점·정적), "별들 가까이서 탐험하기"는 **카메라 어깨 너머(뒤+위) 앵커를 매 프레임 따라간다**(`StarField.selfLightRef` uniform; 같은 앵커를 `SelfStar` 아바타도 공유 → 광원이 곧 나, 정면 별이 입체 음영을 받고 광원은 정면 시야에 안 들어온다). **이동 광원은 반사 채널만** 바꾼다 — self-glow·activation·λ_eff·별 색·좌표·`A_MIN` 바닥은 불변(채널 경계). 반사는 **recency 곱 유지** — 다가가도 잠든 별은 은은, 최근 회상한 별만 확 타오른다. 겹쳐보기는 각 우주 기존 규칙 유지.
 > 2. **자가발광(self-glow, emissive) = 연결성 = 의미.** 스스로 빛나는 세기 = 시냅스 degree + Σweight(연결성). 아래 **변조 감쇠 `λ_eff`가 이 채널로 통째 이주**(`λ_glow`) — 연결·관련성·감정이 글로우의 *지속*을 늦춘다. `StarField`의 `aGlow`. **bloom 함. A_MIN 밝기 바닥은 이 채널이 단독 보증.**
 > 3. **색(color) = 감정.** mood hue(+ hue_shift, spec 23) + R_emo durability(λ_glow 안에 잔존).
 >

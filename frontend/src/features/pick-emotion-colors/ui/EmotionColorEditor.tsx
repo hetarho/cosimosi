@@ -1,8 +1,8 @@
-// 감정색 편집기(spec 45 · change 09) — 13개 mood 색을 추천값으로 시드해 한 번에 저장하는 재사용
-// 편집기. 두 곳이 공유한다: `/emotion-colors` 최초 설정 게이트(EmotionColorPage)와 우주 셸 꾸미기
-// 표면의 `감정 색` 섹션(AppearanceModal). 저장 전까지 DB를 바꾸지 않고, 저장은 기존
-// UpdateSettings.emotion_colors full-set 규칙(saveEmotionColors)을 따른다(A16). onSaved는 호스트가
-// 정한다 — 페이지는 redirect, 모달은 닫기. 스와치 그리드 + 큰 미리보기 + 커스텀 피커 + 인라인 command bar.
+// 감정색 편집기(spec 45 · change 09·10) — 13개 mood 색을 추천값으로 시드해 한 번에 저장하는 재사용
+// 편집기. 두 곳이 공유한다: `/emotion-colors` 최초 설정 게이트(EmotionColorPage)와 마이페이지(/my-page)의
+// `감정 색` 섹션(change 10 — 우주 꾸미기 패널은 스킨만 다루고 감정 색 편집은 마이페이지로 이동). 저장 전까지
+// DB를 바꾸지 않고, 저장은 기존 UpdateSettings.emotion_colors full-set 규칙(saveEmotionColors)을 따른다(A16).
+// onSaved는 호스트가 정한다 — 게이트는 redirect, 마이페이지는 저장 확인. 스와치 그리드 + 큰 미리보기 + 커스텀 피커 + 인라인 command bar.
 import { useCallback, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { MOOD_LABEL, type Mood } from '@/shared/config'

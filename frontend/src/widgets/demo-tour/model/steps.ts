@@ -27,7 +27,9 @@ export type TourTargetId =
 export type TourSurface = 'none' | 'telescope-star'
 
 /** 이 phase를 완료(다음 phase로)하기 위한 사용자 행동 신호. null이면 행동 없이 `다음`으로 진행한다.
- *  '*-changed'/'*-moved'는 단계 진입 시점 기준 변화(페르소나 전환·가상 시계 이동)를 관찰한다. */
+ *  '*-changed'/'*-moved'는 단계 진입 시점 기준 변화(페르소나 전환·가상 시계 이동)를 관찰한다.
+ *  'nebula-*'/'recall-*'(change 12)는 항해 실습 — navigation-input 누적 카운터·항해 FSM 모드를 ui
+ *  레이어가 rAF로 샘플링해 임계 도달 시 충족(매 프레임 React state 금지·헌법4). 모델은 이름만 안다. */
 export type TourAwait =
   | 'ui-hidden'
   | 'ui-shown'
@@ -37,15 +39,28 @@ export type TourAwait =
   | 'time-moved'
   | 'sidebar-open'
   | 'explorer-open'
+  | 'nebula-rotated'
+  | 'nebula-zoomed'
+  | 'recall-looked'
+  | 'recall-thrusted'
   | null
+
+/** 항해 실습 phase가 기대하는 카메라 모드(change 12). 페이지가 phase 진입 시 nav를 이 모드로 맞추고,
+ *  실습 segment를 벗어나면 기본(멀리서)으로 정리한다. 비-실습 phase는 undefined(모드 미관여). */
+export type TourCameraMode = 'nebula' | 'recall'
+
+/** 디바이스 분기 문구(change 12) — 비터치(웹)는 mouse, 터치(모바일)는 touch. 단일 string이면 공용. */
+export type TourBody = string | { mouse: string; touch: string }
 
 export interface TourPhase {
   /** 이 phase에서 하이라이트할 대상. null이면 중앙 안내 카드만(주변 딤은 클릭을 막지 않는다). */
   target: TourTargetId | null
-  /** 짧은 안내 문구. */
-  body: string
+  /** 짧은 안내 문구(디바이스 분기 가능). */
+  body: TourBody
   /** 이 행동이 일어나면 자동으로 다음 phase로 넘어간다(없으면 `다음` 버튼). */
   await: TourAwait
+  /** 항해 실습 phase가 기대하는 카메라 모드(change 12). 없으면 모드 미관여. */
+  mode?: TourCameraMode
 }
 
 export interface TourStep {
@@ -116,7 +131,67 @@ export const TOUR_STEPS: TourStep[] = [
     title: '시점 전환',
     surface: 'none',
     phases: [
-      { target: 'view', body: '멀리서 우주를 조망하거나, 별들 가까이서 탐험하는 시점을 오갈 수 있어요.', await: null },
+      // ① 안내(현행 유지) — 두 시점을 직접 오가며 항해를 익혀본다.
+      {
+        target: 'view',
+        body: '멀리서 우주를 조망하거나, 별들 가까이서 탐험하는 시점을 오갈 수 있어요. 직접 움직여볼까요?',
+        await: null,
+        mode: 'nebula',
+      },
+      // ② 멀리서 회전
+      {
+        target: null,
+        mode: 'nebula',
+        await: 'nebula-rotated',
+        body: {
+          mouse: '먼저 멀리서 봐요. 마우스로 우주를 잡고 끌어 돌려보세요.',
+          touch: '먼저 멀리서 봐요. 한 손가락으로 우주를 쓸어 돌려보세요.',
+        },
+      },
+      // ③ 멀리서 줌
+      {
+        target: null,
+        mode: 'nebula',
+        await: 'nebula-zoomed',
+        body: {
+          mouse: '이번엔 마우스 휠을 굴려 우주를 가까이 당겨보세요.',
+          touch: '이번엔 두 손가락을 오므렸다 펴서 우주를 당겨보세요.',
+        },
+      },
+      // ④ 가까이서로 전환(투어가 시점을 구동) — 정보 phase.
+      {
+        target: null,
+        mode: 'recall',
+        await: null,
+        body: '이제 별들 사이로 들어가 볼까요? 시점을 가까이서로 바꿨어요. 빛을 든 내가 별 사이에 섰어요.',
+      },
+      // ⑤ 가까이서 시선
+      {
+        target: null,
+        mode: 'recall',
+        await: 'recall-looked',
+        body: {
+          mouse: '마우스로 드래그해 주위를 둘러보세요.',
+          touch: '한 손가락으로 드래그해 주위를 둘러보세요.',
+        },
+      },
+      // ⑥ 가까이서 전진
+      {
+        target: null,
+        mode: 'recall',
+        await: 'recall-thrusted',
+        body: {
+          mouse: '앞으로 나아가 볼까요? 화면의 전진 버튼을 누르거나 W·↑ 키로 별 쪽으로 다가가요.',
+          touch: '두 손가락을 위로 쓸어 별 쪽으로 다가가 보세요.',
+        },
+      },
+      // ⑦ 마무리(전진 충족 시 자동 도달) — 다음 단계로는 `다음`으로.
+      {
+        target: null,
+        mode: 'recall',
+        await: null,
+        body: '좋아요! 이렇게 두 시점을 오가며 별 사이를 누벼요. 다음으로 가요.',
+      },
     ],
   },
   {

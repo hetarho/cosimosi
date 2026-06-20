@@ -78,13 +78,13 @@
 - **stand down(A13).** `flyingToStar`·`framingDiary`·`modeTransition`·별 focus 중에는 제스처 컨트롤러가 비활성(useEffect 게이트) — 유도 비행/포커스 컨트롤러와 싸우지 않는다. 전환이 끝나면 해당 모드 제스처가 다시 붙는다.
 - **값 단일 출처(A14).** deadzone·sensitivity·double-tap 시간/거리·pan/zoom 속도·far rotate/damp/zoom은 `spec/values.yaml` `gesture` 그룹에서 생성된 `VALUES.gesture.*`. 새 하드코딩 튜닝 숫자 없음.
 
-### 이동 광원 — 별들 가까이서 탐험하기 (change 08)
+### 이동 광원 — 별들 가까이서 탐험하기 (change 08 · spec 49)
 
-근접 탐험에서 사용자는 **빛을 들고 별 사이를 움직이는 존재**다. `StarField.selfLightRef`(매 프레임 갱신 ref)가 **반사 채널만** 갱신한다(uniform — React rerender 없음).
+근접 탐험에서 사용자는 **빛을 들고 별 사이를 움직이는 존재**다. `StarField.selfLightRef`(매 프레임 갱신 ref)가 **반사 채널만** 갱신한다(uniform — React rerender 없음). spec 49 이후 그 광원은 **카메라 어깨 너머(뒤+위) 앵커**이고, 같은 ref를 `SelfStar`(나 아바타)도 읽어 `recall`에서 함께 그 앵커로 항해한다(광원이 곧 나).
 
-- **멀리서 보기:** 광원 = 중심 자아 별(원점·정적 `selfLightPos`) — 거리=강함의 광학적 읽기 보존(`selfLightRef.current = null` → 정적 폴백).
-- **가까이서 탐험하기:** 광원 위치 = `NavController`의 **shake 적용 전 실제 항행 기준 카메라 위치**(idle shake가 반사를 흔들지 않게). 전진하면 가까운 별 표면 반사가 함께 이동한다.
-- **채널 경계(A4 불변).** 이동 광원은 **반사 채널만** 바꾼다 — `selfGlow`·`activation`·`λ_eff`·별 색·별 좌표·`A_MIN` 밝기 바닥은 불변. 진짜 `THREE.PointLight`를 별마다 만들지 않는다(헌법8 — TSL uniform 계산). 겹쳐보기(`UniverseOverlay`)는 각 우주의 기존 self-light 규칙 유지(이 변경 범위 밖).
+- **멀리서 보기:** 광원 = 중심 자아 별(원점·정적 `selfLightPos`) — 거리=강함의 광학적 읽기 보존(`selfLightRef.current = null` → 정적 폴백). `SelfStar`도 원점 고정(중심 닻, 헌법3).
+- **가까이서 탐험하기:** 광원·아바타 위치 = **카메라 어깨 너머 앵커** `anchor = camPosBase − fwd·BACK + up·UP`(`fwd = normalize(target − camPos)`, `up = camera.up`; `BACK`=`star_lighting.recall_light_back_offset`, `UP`=`recall_light_up_offset`). `NavController`의 **shake 적용 전 깨끗한 항행 기준 위치**(`camPosBase`)에서 계산 — idle/벽 shake가 반사·아바타를 흔들지 않는다. 광원이 시야 뒤+위에 있어 **정면 비행 화면엔 안 들어오고**, 정면 별은 *뒤에서 위로* 비추는 빛을 받아 정면광·터미네이터 음영(입체)으로 선다(머리 위 플래시 회귀 제거). 멀리 있던 별에 다가가면 거리 falloff로 반사가 강해지되 **recency 곱 유지** — 최근 회상한 별은 확 타오르고 잠든 별은 은은하게만 반응한다. 아바타는 `SelfStar`에서 ease-lerp로 앵커를 따라붙어(전이의 원점↔앵커 점프를 매끄럽게 잇고 화면 중앙으로 튀어 bloom을 덮지 않게), 부유 그룹(`UniverseDrift`) 안이라 world 앵커를 부모 로컬로 변환해 광원과 한 점에 둔다.
+- **채널 경계(불변).** 이동 광원·아바타 이동은 **반사 채널·렌더 위치만** 바꾼다 — `selfGlow`·`activation`·`λ_eff`·별 색·별 좌표·force-sim 권위·`A_MIN` 밝기 바닥은 불변. 진짜 `THREE.PointLight`를 별마다 만들지 않는다(헌법8 — TSL uniform 계산). 겹쳐보기(`UniverseOverlay`)는 각 우주의 기존 self-light 규칙 유지(이 변경 범위 밖).
 
 ### 별 포커스(focus)
 

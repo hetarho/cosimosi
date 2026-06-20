@@ -1701,7 +1701,7 @@ type Settings struct {
 	Theme         string                 `protobuf:"bytes,1,opt,name=theme,proto3" json:"theme,omitempty"`                                      // "" = client default (background vast)
 	StarObject    string                 `protobuf:"bytes,2,opt,name=star_object,json=starObject,proto3" json:"star_object,omitempty"`          // "" = client default (star deepfield)
 	EmotionColors []*EmotionColor        `protobuf:"bytes,3,rep,name=emotion_colors,json=emotionColors,proto3" json:"emotion_colors,omitempty"` // only moods the user overrode (0..13)
-	SelfObject    string                 `protobuf:"bytes,4,opt,name=self_object,json=selfObject,proto3" json:"self_object,omitempty"`          // "" = client default (self nebula-heart)
+	SelfObject    string                 `protobuf:"bytes,4,opt,name=self_object,json=selfObject,proto3" json:"self_object,omitempty"`          // "" = client default (self mirrorball)
 	SynapseStyle  string                 `protobuf:"bytes,5,opt,name=synapse_style,json=synapseStyle,proto3" json:"synapse_style,omitempty"`    // "" = client default (synapse filament)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -87,6 +87,7 @@ export const STAR_FORM_SPIN: Record<StarObject, number> = {
   aurora: 0.05,
   liquid: 0.4,
   ember: 0.16,
+  pulsar: 0.6, // 빠른 자전(pulsar)
 }
 
 /** Rodrigues 회전 — 단위축 k를 중심으로 노드 v를 angle(rad)만큼 돈다. 셰이더에서 자전·색조 회전을 만든다. */
@@ -185,6 +186,21 @@ export function buildStarBody(object: StarObject, inputs: StarShadeInputs, light
       const lava = mood.mul(1.6).add(vec3(0.4, 0.14, 0))
       const self = mix(crust, lava, heat).mul(flicker).mul(glow)
       m.colorNode = crust
+      m.emissiveNode = self.add(reflect(normalWorld)).mul(foc)
+      return { geometry, material: m }
+    }
+    case 'pulsar': {
+      // 펄사(change 11) — 고밀도 코어 orb. 색=mood 불변(별 색 규칙 무변). 매끈한 발광 코어(정면이 가장
+      // 밝음) + 빠른 맥동 + 자아광 N·L 반사. ⚠ 회전하는 얇은 링/양극 제트 실루엣은 후속 비주얼 폴리시 대상 —
+      // 지금은 형태 식별이 되는 매끈한 맥동 코어로 구현(faceted deepfield와 구별).
+      const geometry = new THREE.IcosahedronGeometry(1, 3)
+      m.roughness = 0.2
+      const viewDir = normalize(cameraPosition.sub(positionWorld))
+      const ndv = max(dot(normalWorld, viewDir), float(0))
+      const core = pow(clamp(ndv, float(0), float(1)), float(2.2)) // 정면이 가장 밝은 고밀도 코어
+      const pulse = sin(t.mul(3.0).add(seed)).mul(0.12).add(1) // 빠른 맥동(pulsar)
+      m.colorNode = mood.mul(0.2)
+      const self = mood.mul(float(0.5).add(core.mul(1.1))).mul(pulse).mul(glow)
       m.emissiveNode = self.add(reflect(normalWorld)).mul(foc)
       return { geometry, material: m }
     }

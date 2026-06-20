@@ -3,7 +3,7 @@ import { useSelector } from '@xstate/react'
 import * as Sentry from '@sentry/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { errorMessage, reportUniverseData } from '@/shared/lib'
+import { cn, errorMessage, reportUniverseData } from '@/shared/lib'
 import {
   isDemoMode,
   getDemoPersona,
@@ -38,6 +38,7 @@ import {
   OverlayComparePanel,
   navigationActor,
   selectHeadingMode,
+  navTravel,
   useViewport,
   type Bridge,
 } from '@/widgets/universe-canvas'
@@ -47,7 +48,8 @@ import { MemoryForm, composeActor, selectPhase } from '@/features/record-memory'
 import { MemoryPanel, recallFlushActor } from '@/features/recall'
 import { EvolutionPanel, useEvolutionStore } from '@/features/evolution'
 import { DiaryCard } from '@/features/diary-list'
-import { AppearanceModal } from './AppearanceModal'
+import { AppearancePanel } from './AppearancePanel'
+import { useCoarsePointer } from '@/shared/ui/use-coarse-pointer'
 import { UniverseSidebar } from './UniverseSidebar'
 import { UniverseExplorerSheet, type ExplorerTab } from './UniverseExplorerSheet'
 import { DemoOnboarding } from './DemoOnboarding'
@@ -371,6 +373,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
   const [shareOpen, setShareOpen] = useState(false)
   const [giftsOpen, setGiftsOpen] = useState(false)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
+  // 꾸미기 split layout 분기(change 10): 터치=하단 패널, 비터치(데스크톱)=좌측 사이드바.
+  const coarsePointer = useCoarsePointer()
   // 별 보내기(spec 36) — 회상 패널의 "이 별 보내기"가 memoryId를 넘겨 연다(비차단 Surface). 데모엔 서버가 없어 끈다.
   const [sendMemoryId, setSendMemoryId] = useState<string | null>(null)
 
@@ -472,6 +476,20 @@ export function HomePage({ onSignOut }: HomePageProps) {
   }, [])
   const tourPrev = () => setTourStep(tourStep - 1)
   const tourNext = () => setTourStep(tourStep + 1)
+  // 항해 실습 신호 샘플러(change 12) — 현재 카메라 모드 + 누적 항해 카운터를 한 번에 읽어 투어 rAF에 준다.
+  // 두 위젯(universe-canvas·demo-tour)을 페이지가 잇는다(FSD — sibling widget 직접 import 회피).
+  const sampleNav = useCallback(
+    () => ({ mode: selectHeadingMode(navigationActor.getSnapshot()), travel: navTravel() }),
+    [],
+  )
+  // 실습 phase가 기대하는 모드로 nav를 맞춘다(A7). heading(전환 중엔 향하는 모드)과 다를 때만 토글 →
+  // 전환 중 중복 토글이 없다(modeTransition은 TOGGLE_MODE를 받지 않고, selectHeadingMode는 목적 모드를 돌려줌).
+  const handleTourPhaseMode = useCallback((m: 'nebula' | 'recall' | undefined) => {
+    if (!m) return
+    if (selectHeadingMode(navigationActor.getSnapshot()) !== m) {
+      navigationActor.send({ type: 'TOGGLE_MODE' })
+    }
+  }, [])
   // 건너뛰기 / 마지막 "자유롭게 탐험하기" → 자유모드로 수렴, 열린 표면·UI 숨김 정리.
   const tourExit = useCallback(() => {
     completeTutorial()
@@ -479,6 +497,10 @@ export function HomePage({ onSignOut }: HomePageProps) {
     setTourStepState(0)
     closeSurfaces()
     setUiHidden(false)
+    // 항해 실습으로 가까이서에 들어가 있었다면 자유모드는 기본 멀리서로 시작(A7).
+    if (selectHeadingMode(navigationActor.getSnapshot()) === 'recall') {
+      navigationActor.send({ type: 'TOGGLE_MODE' })
+    }
   }, [closeSurfaces])
   // "다시 보기"(사이드바) — 자유모드에서 명시적으로 투어를 처음부터 다시 본다.
   const replayTour = () => {
@@ -530,6 +552,11 @@ export function HomePage({ onSignOut }: HomePageProps) {
       if (surface === 'telescope-star') {
         setExplorerTab('star')
         setExplorerOpen(true)
+      }
+      // 항해 실습(view) segment를 벗어나면 기본 멀리서(nebula)로 정리(change 12 A7) — 실습이 가까이서로
+      // 들여보낸 카메라를 다음 단계(망원경 등)에 맞게 되돌린다. view 단계의 모드는 phase 힌트가 구동한다.
+      if (TOUR_STEPS[tourStep]?.id !== 'view' && selectHeadingMode(navigationActor.getSnapshot()) === 'recall') {
+        navigationActor.send({ type: 'TOGGLE_MODE' })
       }
     })
     return () => cancelAnimationFrame(id)
@@ -729,22 +756,33 @@ export function HomePage({ onSignOut }: HomePageProps) {
 
   return (
     <div className="universe-page fixed inset-0" data-lenis-prevent>
-      {/* 바운더리는 Canvas에만(17). 외형 모달이 열리면 캔버스를 언마운트해(change 06) WebGPU 컨텍스트를
-          모달 프리뷰/썸네일에 양보한다. HUD 숨김은 캔버스를 언마운트하지 않는다(A14) — HUD DOM만 가린다. */}
-      {!appearanceOpen && (
-        <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
-          <UniverseCanvas />
-        </Sentry.ErrorBoundary>
-      )}
-      {/* Film grain over the canvas — above the canvas, below the HUD, pointer-events:none. */}
-      <UniverseGrain />
+      {/* 캔버스 + 꾸미기 패널 split layout(change 10). 꾸미기 패널이 열려도 `UniverseCanvas`는 언마운트되지
+          않는다 — 패널은 우주를 덮지 않고 레이아웃을 밀어내, 캔버스 컨테이너의 폭/높이만 줄인다. 데스크톱(fine
+          pointer)=좌측 사이드바 + 우측 캔버스, 모바일(coarse)=상단 캔버스 + 하단 패널. 캔버스는 기존
+          ResizeObserver로 새 컨테이너 크기에 맞춰 renderer size·camera aspect를 갱신한다(projection offset 미사용).
+          바운더리는 Canvas에만(17). HUD 숨김은 캔버스를 언마운트하지 않는다(A14) — HUD DOM만 가린다. */}
+      <div className={cn('absolute inset-0 flex', appearanceOpen && coarsePointer ? 'flex-col' : 'flex-row')}>
+        {appearanceOpen && !coarsePointer && (
+          <AppearancePanel placement="side" onClose={() => setAppearanceOpen(false)} />
+        )}
+        <div className="relative min-h-0 min-w-0 flex-1">
+          <Sentry.ErrorBoundary fallback={CanvasErrorFallback}>
+            <UniverseCanvas />
+          </Sentry.ErrorBoundary>
+          {/* Film grain over the canvas — above the canvas, below the HUD, pointer-events:none. */}
+          <UniverseGrain />
+        </div>
+        {appearanceOpen && coarsePointer && (
+          <AppearancePanel placement="bottom" onClose={() => setAppearanceOpen(false)} />
+        )}
+      </div>
 
       {/* 포커스 딤 — 별 회상·일기 조망 중 은은히 어둡힌다. pointer-events-none이라 별 탭은 통과. */}
       {focused && !uiHidden && <Backdrop className="z-10" />}
 
       {/* === 상단 중앙 HUD 숨김/보이기 토글(A13) — 숨김 상태에서도 보이는 유일한 컨트롤. 모달이 뜨면
-          z-30 백드롭이 이 토글까지 덮어 함께 흐려진다(z-20). 데모 온보딩(자유모드 전) 중에는 숨긴다. === */}
-      {!demoOnboarding && (
+          z-30 백드롭이 이 토글까지 덮어 함께 흐려진다(z-20). 데모 온보딩(자유모드 전)·꾸미기 패널 중에는 숨긴다. === */}
+      {!demoOnboarding && !appearanceOpen && (
         <div className="absolute left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-20 -translate-x-1/2">
           <button
             type="button"
@@ -761,7 +799,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
         </div>
       )}
 
-      {!uiHidden && !demoOnboarding && (
+      {!uiHidden && !demoOnboarding && !appearanceOpen && (
         <>
           {/* 야간 공고화 morning diff(spec 27, 6.1) — 하루 첫 접속 1회. 데모는 자체 "밤 보내기"가 띄운다. */}
           {!demoMode && <MorningDiffNote show={morningDiff} onDismiss={() => setMorningDiff(false)} />}
@@ -884,8 +922,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
         onSelectStar={flyToStar}
       />
 
-      {/* 꾸미기 — 좌상단 알약이 여는 집중 모달(스킨/감정 색, change 09). 모달이 열리면 UniverseCanvas는 언마운트된다. */}
-      <AppearanceModal open={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
+      {/* 꾸미기 패널은 위 split layout(캔버스 sibling)으로 렌더된다 — 전면 모달 아님(change 10). 감정 색은 /my-page. */}
 
       {/* 만들기 — 작성 폼(데모 제외). 제목은 작성/검토 단계를 반영한다. */}
       {!demoMode && (
@@ -978,6 +1015,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
           clockDay={demoClockDay}
           sidebarOpen={sidebarOpen}
           explorerOpen={explorerOpen}
+          sampleNav={sampleNav}
+          onPhaseMode={handleTourPhaseMode}
           onPrev={tourPrev}
           onNext={tourNext}
           onExit={tourExit}

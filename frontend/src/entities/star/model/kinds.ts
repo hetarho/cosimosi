@@ -26,6 +26,13 @@ export const STAR_OBJECTS: StarObjectMeta[] = [
     tagline: '용암 균열 · 백열 코어',
     swatch: 'radial-gradient(circle at 38% 38%, #ef7a3a 0%, #5a2a14 45%, #0a0707 100%)',
   },
+  {
+    id: 'pulsar',
+    name: 'Pulsar',
+    tagline: '고밀도 코어 · 회전하는 얇은 링/제트',
+    swatch:
+      'radial-gradient(circle at 50% 50%, #ffffff 0 2px, transparent 3px), radial-gradient(ellipse 80% 18% at 50% 50%, #cdbcff 0%, transparent 70%), #0a0e1e',
+  },
 ]
 
 export const DEFAULT_OBJECT: StarObject = 'deepfield'

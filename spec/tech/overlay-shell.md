@@ -48,7 +48,7 @@
 - **결과 — 통일 비차단 `Surface`.** 회상·변천사·우주 공개·주고받은 별·별 보내기·작성·테마가 전부 한 idiom(모바일 바텀시트 / 데스크톱 떠있는 카드)으로 열린다. 코너에 고정되지 않고, 열려 있어도 뒤 우주가 보이고 별 탭/회전이 된다(차단 모달 없음).
 - **상단 중앙 UI 숨기기 토글(Eye/EyeOff).** "UI 숨기기"는 모든 표면을 닫고 포커스·변천사를 해제한 뒤, 토글 자신을 뺀 모든 HUD를 숨긴다(WebGPU 캔버스는 그대로 — HUD는 캔버스 밖 DOM). "UI 보이기"로 기본 HUD를 복구한다.
 - **하단 중앙 `새 별 띄우기`(Plus).** 실계정은 작성 `MemoryForm` `Surface`를 열고, 데모 자유모드는 랜덤 별을 즉시 만든다(`demoAddRandomStars` — 표면 없음, plan 47).
-- **좌상단 테마 pill.** 위치 불변. 커스터마이즈 표면(`AppearanceModal`)을 연다 — `스킨`/`감정 색`으로 분할(별도 `외형` 헤더 텍스트 없음).
+- **좌상단 테마 pill.** 위치 불변. 꾸미기 표면(`AppearancePanel`, change 10)을 연다 — **전면 모달/비차단 `Surface`가 아니라 캔버스 sibling split panel**이다. 우주를 덮지 않고 레이아웃을 밀어내, `UniverseCanvas`는 언마운트되지 않고 컨테이너 폭/높이만 줄어든다(데스크톱 fine pointer=좌측 사이드바 + 우측 캔버스, 모바일 coarse=상단 캔버스 + 하단 패널). 스킨 4축만 다루고(감정 색은 `/my-page`), `ViewOffsetController`/`sheetOpen`을 쓰지 않는다 — 우주 이동은 projection offset이 아니라 캔버스 컨테이너 resize(기존 `ResizeObserver`)로만 일어난다. 패널이 열리면 페이지는 상단 토글·우상단 컨트롤·테마 pill 등 HUD를 숨긴다.
 - **데모 자유모드 컨트롤(`DemoFreeModeControls`, `pages/home/ui`).** 데모에서만, 좌상단 테마 pill 아래 아이콘 버튼 두 개(페르소나·시간)가 각각 버튼 옆에 뜨는 작은 transient 팝오버(`PopoverButton`)를 연다 — 바텀시트가 아니다. 한 번에 하나만 열리고 사이드바·탐색기 등 다른 표면이 열리면 페이지가 닫는다(`closeSurfaces`). 진입 흐름(plan 47)이 `free`가 아니면 페이지가 `DemoOnboarding` 풀스크린 선택 오버레이(z-40)를 HUD 위에 띄우고 그동안 HUD 컨트롤은 마운트하지 않는다.
 - **데모 튜토리얼 투어(`DemoGuidedTour`, `widgets/demo-tour`, plan 48).** 진입 흐름이 `tutorial`일 때만, 자유모드 HUD 위에 z-50 overlay를 얹는다 — 현재 target만 남기고 나머지를 어둡게 덮는 **딤(box-shadow spread, 둥근 구멍) + 투명 클릭 차단 패널 4개** + 구멍 둘레의 **빛나는 glow 테두리**(target rect를 `use-tour-target`가 rAF로 추적)와 coach card. 하이라이트된 버튼만 누를 수 있고 coach card만 입력을 받는다. **행동 안내형**: 단계는 phase로 나뉘어 UI 숨김 토글·팝오버 열림·페르소나 전환·시간 이동·사이드바/망원경 열림을 관찰해 진행하고(버튼을 누르면 하이라이트가 팝오버·시트·✕로 옮겨가거나 결과 안내를 띄움), `다음`으로 건너뛸 수 있다. 별 탭 단계만 페이지가 탐색 시트를 자동으로 연다. 단계 전환 시 페이지가 표면을 정리하고 UI 숨김도 복구한다. 투어 중에는 모달 백드롭의 바깥-탭-닫기를 끈다. 캔버스 안 별·시작/끝 단계는 DOM rect가 없어 딤이 클릭을 막지 않고 중앙 안내 카드만 띄운다(3D 씬 안 `<Html>` 없음 — 헌법8).
 - **이동 `NavPad`.** 회상 모드 전용 비행 D-pad(상시 버튼이 아니라 모드별 컨트롤) — 화면 가장자리.
@@ -60,7 +60,7 @@
 - 탐색기 별 선택 → `navigationActor.FLY_TO_STAR`. fly-to 도착 시 `FlyToController`가 `focusActor.SELECT_STAR`로 회상을 연다.
 - 결과 표면 렌더(전부 `Surface`): 작성(`composeOpen`, 제목은 단계 반영, place top)·회상(`isStarFocus`, place top)·변천사(`evolutionOpen`, place center·width lg)·공유(`shareOpen`, center·sm)·선물(`giftsOpen`, center·sm)·보내기(`sendMemoryId`, center·sm)·탐색기(`explorerOpen`). 각 `open` 게이트와 콘텐츠의 자체 null-가드는 같은 store/actor를 읽어 빈 chrome이 뜨지 않는다.
 - `NavPad`는 `suppressed` prop으로 숨긴다 — 사이드바·탐색기·임의 표면이 열렸거나 UI가 숨겨졌으면(`uiHidden`) true(옛 `panel != null` 기반 대체). 숨기는 순간 이동을 0으로 정지시킨다(pointerup 유실로 우주가 계속 전진/회전하는 것 방지).
-- view-offset(`setSheetOpen`)은 작성 표면 또는 데모 시트를 따른다(모바일에서 하단 시트가 가릴 때 우주를 위로 올림). 회상 시트의 lift는 컨트롤러가 memory store 선택 별을 직접 구독한다.
+- view-offset(`ViewOffsetController`)은 **꾸미기 패널에는 쓰이지 않는다**(change 10 — 꾸미기는 캔버스 컨테이너 resize로만 이동). 여전히 유지되는 사용처는 ① 작성 표면(`setSheetOpen(composeOpen)` — 모바일에서 작성 시트가 하단을 가릴 때 우주를 위로), ② 회상 포커스(컨트롤러가 `focusActor` 선택 별을 직접 구독), ③ 일기 조망 카드(`diaryFramed` — 모바일·데스크톱 공통 시선↑)다. 이 세 표면이 남아 있어 `ViewOffsetController`·`sheetOpen`은 제거하지 않는다.
 - **레거시 딥링크.** `?panel=dormant|diary`는 일회성 소비다 — 진입 시 탐색기를 한 번 열고(dormant→별 탭, 그 외→일기 탭) param을 비운다(`replace`). 뒤로가기 동기화는 더 이상 하지 않는다.
 - Esc 단일 라우팅: 사이드바·탐색기는 각 호스트가 닫고, 그 외엔 위에 뜬 표면을 위에서부터 닫은 뒤(보내기→변천사→테마→공유→선물→작성) 마지막으로 `focusActor.DISMISS`(포커스 복귀). 페이지 상태 표면은 effect deps, 변천사는 `getState()`로 읽어 최신.
 
@@ -114,7 +114,7 @@
 - `frontend/src/shared/ui/OverlayHost.tsx` (레거시)
   - `OverlayHost({ open, peek, title, peekLabel, onClose, onExpand, peekSlot?, children })` — coarse=BottomSheet / fine=FloatingCard
 - `frontend/src/features/switch-appearance/index.ts`
-  - `AppearanceControls`(테마 pill이 `AppearanceModal` Surface로 호스팅 — `스킨`/`감정 색`) · `AppearanceSwitcher`(랜딩 FAB)
+  - `AppearanceControls`(홈은 `pages/home/ui/AppearancePanel`이 `draft` 모드로 호스팅 — 스킨 4축 split panel, change 10; 감정 색은 `/my-page`) · `AppearanceSwitcher`(랜딩/사인인/초대 FAB — `playground` 모드)
 - `frontend/src/shared/ui/Backdrop.tsx`
   - `Backdrop({ onDismiss?, className? })`
 - `frontend/src/shared/ui/use-coarse-pointer.ts`

@@ -153,20 +153,23 @@ customization:
     'background:lively': 30
     'background:calm': 30
     'background:aurora-veil': 45
+    'background:signal-noise': 35
+    'background:abyssal-sea': 40
+    'background:cosmic-cliffs': 45
     'star:aurora': 30
     'star:liquid': 35
     'star:ember': 40
-    'self:core': 30
-    'self:well': 35
-    'synapse:beam': 30
-    'synapse:flow': 35
+    'star:pulsar': 45
+    'self:prism-cube': 35
+    'self:neuron-bloom': 45
     'synapse:particle': 40
+    'synapse:dendrite': 40
   # 축별 무료 1종 kind(묵시 소유 — 소유 행 없이 누구나 선택). itemId = `"<axis>:<kind>"`로 조립.
-  # 이 4개가 무료 1종 매핑의 단일 출처(A11): 배경 vast·별 deepfield·나 nebula-heart·시냅스 filament.
+  # 이 4개가 무료 1종 매핑의 단일 출처(A11): 배경 vast·별 deepfield·나 mirrorball·시냅스 filament.
   free:
     background: vast
     star: deepfield
-    self: nebula-heart
+    self: mirrorball
     synapse: filament
 
 # ── 관리자 콘솔 (admin) — 사용자 목록 keyset 페이지네이션 노브(spec 46). FE는 다음-페이지 요청에,
@@ -212,6 +215,8 @@ star_lighting:
   ambient_fill: 0.4 #           카메라 반대편(어두운 반구) 채움광(하드코딩 ambientLight 0.4 이전; reflection과 이중계상 시 하향)
   backdrop_light_dir: [0.6, 0.7, 0.4] # 배경 CosmosScene 우상단 평행광 방향(positional=0, 화면-비대칭 없음 = 태양)
   backdrop_light_intensity: 0.7 #       배경 평행광 세기(은은하게 — 면/엣지 드러내되 오늘 룩 안 깨게)
+  recall_light_back_offset: 6 #  recall(근접 탐험)에서 자아 광원·아바타가 카메라 뒤로 물러나는 거리(world, −forward) — 어깨 너머(spec 49)
+  recall_light_up_offset: 2 #    recall에서 카메라 위로 들리는 거리(world, +up) — 정면 별이 뒤+위 빛으로 입체 음영(spec 49)
 
 # ── 자가발광 글로우 (self_glow) — 별 빛 3겹 중 "자가발광(emissive)=연결성=의미" 채널. spec 03·26 ──────
 #    λ_eff가 이 채널로 이주(λ_glow). self-glow 세기 = 연결성(degree + Σweight). A_MIN 바닥은 decay.a_min
@@ -359,3 +364,11 @@ demo_overlay:
 demo_free_mode:
   random_star_min: 1 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최소 개수
   random_star_max: 5 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최대 개수
+
+# ── 데모 투어 항해 실습 (demo_tour) — DemoGuidedTour 실습 phase 자동 진행 임계값. plan 48·change 12 ──
+#    투어가 navigation-input 누적 카운터·항해 FSM 모드를 rAF로 샘플링해 임계 도달 순간에만 다음 phase로.
+demo_tour:
+  rotate_threshold_rad: 0.9 #       멀리서 회전 실습: nebula 궤도 회전 누적 각(rad) 임계
+  zoom_ratio_threshold: 0.25 #      멀리서 줌 실습: nebula 줌 반경 변화 누적 비율(|fraction| 합) 임계
+  look_threshold_rad: 0.9 #         가까이서 시선 실습: recall look 회전 누적 각(rad) 임계
+  thrust_distance_threshold: 8 #    가까이서 전진 실습: recall 전진 누적 거리(world 단위) 임계

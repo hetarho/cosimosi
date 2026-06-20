@@ -401,14 +401,13 @@ function SampleStrand({ syn, aspect, animated }: { syn: SynapseVisual; aspect: n
     const B = new THREE.Vector3((syn.b[0] * 2 - 1) * aspect, 1 - syn.b[1] * 2, 0)
     const dir = B.clone().sub(A)
     const len = dir.length() || 1
-    // 스타일별 형태(우주 SynapseFilaments와 동형): beam=거의 직선·두껍게, flow=크게 휜 사행, particle=가는 점선, filament=완만.
-    const bowMag = style === 'beam' ? len * 0.02 : style === 'flow' ? len * 0.3 : len * 0.12
+    // 스타일별 형태(우주 SynapseFilaments와 동형, change 11): particle=가는 점선, dendrite=가는 가지 다발, filament=완만.
+    const bowMag = style === 'particle' ? len * 0.08 : len * 0.12
     const bow = new THREE.Vector3(-dir.y, dir.x, 0).normalize().multiplyScalar(bowMag)
     const mid = A.clone().lerp(B, 0.5).add(bow)
     const curve = new THREE.CatmullRomCurve3([A, mid, B])
     const radius =
-      (0.004 + syn.weight * 0.01) *
-      (style === 'beam' ? 2.2 : style === 'flow' ? 1.4 : style === 'particle' ? 0.9 : 1)
+      (0.004 + syn.weight * 0.01) * (style === 'particle' ? 0.9 : style === 'dendrite' ? 0.85 : 1)
     const geometry = new THREE.TubeGeometry(curve, 40, radius, 6, false)
 
     const material = new MeshBasicNodeMaterial()
@@ -418,18 +417,15 @@ function SampleStrand({ syn, aspect, animated }: { syn: SynapseVisual; aspect: n
     const along = uv().x
     const around = uv().y
     const color = cA.add(cB.sub(cA).mul(along)) // endpoint mood blend (preserved across styles)
-    const speed = VALUES.synapse.flowSpeed * (style === 'flow' ? 1.8 : style === 'particle' ? 1.3 : 1)
+    const speed = VALUES.synapse.flowSpeed * (style === 'particle' ? 1.3 : 1)
     const flow = fract(along.mul(2.0).sub(uTime.mul(speed)))
     const flowGlow = smoothstep(float(0.0), float(0.5), flow).mul(smoothstep(float(1.0), float(0.5), flow))
     let glow
-    if (style === 'beam') {
-      glow = float(0.9).add(flowGlow.mul(0.2))
-    } else if (style === 'flow') {
-      glow = float(0.4).add(flowGlow.mul(1.0))
-    } else if (style === 'particle') {
+    if (style === 'particle') {
       const cell = fract(along.mul(6.0).sub(uTime.mul(speed)))
       glow = float(0.4).add(smoothstep(float(0.16), float(0.0), cell).mul(1.1))
     } else {
+      // filament(기본) + dendrite(가지 다발, change 11) — 완만한 다발 발광.
       glow = float(0.6).add(flowGlow.mul(0.6))
     }
     material.colorNode = color.mul(glow)

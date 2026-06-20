@@ -160,9 +160,10 @@ type AxisConfig = {
 
 /**
  * 4축 인벤토리 컨트롤 본문(appearance + synapse entity): 배경·별·나·시냅스를 라디오그룹으로 고른다.
- * 선택은 라이브로 우주에 미리보인다. **미인증 플레이그라운드(랜딩·사인인·초대 FAB) 전용** — 전부 잠금
- * 해제·로컬 즉시 확정. (홈 우주의 편집기는 집중 모달 `pages/home/AppearanceModal`이 따로 소유한다.)
- * `draft` 모드는 잠긴 아이템도 미리보기로 고르되 자동 저장하지 않는 진입점용 옵션이다.
+ * 선택은 라이브로 우주에 미리보인다. 미인증 플레이그라운드(랜딩·사인인·초대 FAB)는 `playground`로 전부
+ * 잠금 해제·로컬 즉시 확정하고, 홈 우주 편집 패널(`pages/home/ui/AppearancePanel`, change 10)은 `draft`로
+ * 이 본문을 그대로 호스팅한다 — `draft` 모드는 잠긴 아이템도 미리보기로 고르되 자동 저장하지 않고(패널의
+ * 저장 바가 구매·커밋), 선택 결과는 별도 샘플이 아니라 실제 메인 우주에서 라이브로 확인된다.
  */
 export function AppearanceControls({
   playground = false,

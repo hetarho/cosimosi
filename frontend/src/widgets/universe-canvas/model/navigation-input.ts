@@ -14,6 +14,22 @@ export interface NavigationInput {
   /** Bumped whenever a pointer sequence should NOT count as a star-select tap (drag / two-finger /
    *  zoom scrub). The Canvas onPointerMissed guard reads it so a gesture never fires a dismiss. */
   suppressClickSeq: number
+  /** Monotonic PASSIVE travel counters (change 12 — 데모 투어 항해 실습 관찰 전용). 입력 의미·consume
+   *  경로 불변: 읽기 전용 가산만 한다. 투어가 rAF로 샘플링해 phase 진입 baseline 대비 임계 도달을 본다.
+   *  세션 단조 누적(리셋 안 함) — 절대값이 아니라 delta로 판정하므로 reset 불요. */
+  travel: NavTravel
+}
+
+/** 항해 실습 관찰용 단조 누적 카운터(모드별 배타 — orbit/zoom=nebula, look/thrust=recall). */
+export interface NavTravel {
+  /** recall 시선 누적 각(rad) — CloseGestureController가 addLookDelta로 가산. */
+  look: number
+  /** recall 전진 누적 거리(world) — NavController가 매 프레임 가산(키보드·D-pad·제스처 thrust 통합). */
+  thrust: number
+  /** nebula 궤도 회전 누적 각(rad) — NebulaOrbitController가 가산. */
+  orbit: number
+  /** nebula 줌 반경 변화 누적 비율(|fraction| 합) — NebulaOrbitController가 가산. */
+  zoom: number
 }
 
 const state: NavigationInput = {
@@ -21,6 +37,7 @@ const state: NavigationInput = {
   thrust: 0,
   gestureActive: false,
   suppressClickSeq: 0,
+  travel: { look: 0, thrust: 0, orbit: 0, zoom: 0 },
 }
 
 /** The shared singleton (read snapshot fields; mutate via the helpers below). */
@@ -32,6 +49,29 @@ export function navigationInput(): NavigationInput {
 export function addLookDelta(yaw: number, pitch: number): void {
   state.lookDelta.yaw += yaw
   state.lookDelta.pitch += pitch
+  state.travel.look += Math.hypot(yaw, pitch) // passive — 투어 시선 실습 관찰용(consume 경로 불변)
+}
+
+/** 항해 실습 관찰용 단조 카운터 스냅샷(투어 rAF 샘플러 read-only). 매번 *복사본*을 돌려준다 — 투어가
+ *  phase 진입 baseline을 떠놓고 이후 delta를 보므로, 라이브 객체 참조를 주면 baseline이 같이 흘러 delta가
+ *  항상 0이 된다(앨리어싱 방지). 4필드 복사라 비용 무시 가능. */
+export function navTravel(): NavTravel {
+  return { ...state.travel }
+}
+
+/** recall 전진 누적 거리 가산(NavController가 매 프레임, 키보드·D-pad·제스처 thrust 통합 — passive). */
+export function addThrustTravel(dist: number): void {
+  state.travel.thrust += dist
+}
+
+/** nebula 궤도 회전 누적 각 가산(NebulaOrbitController — passive). */
+export function addOrbitTravel(rad: number): void {
+  state.travel.orbit += rad
+}
+
+/** nebula 줌 반경 변화 누적 비율 가산(NebulaOrbitController — passive). */
+export function addZoomTravel(ratio: number): void {
+  state.travel.zoom += ratio
 }
 
 /** Read AND clear the accumulated look delta — NavController calls once per frame. */

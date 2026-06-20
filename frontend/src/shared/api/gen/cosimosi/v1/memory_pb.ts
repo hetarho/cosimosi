@@ -866,7 +866,7 @@ export type Settings = Message<"cosimosi.v1.Settings"> & {
   emotionColors: EmotionColor[];
 
   /**
-   * "" = client default (self nebula-heart)
+   * "" = client default (self mirrorball)
    *
    * @generated from field: string self_object = 4;
    */

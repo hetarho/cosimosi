@@ -5,6 +5,7 @@ export type {
   BackgroundMeta,
   BackgroundTexture,
   BackgroundPattern,
+  BackgroundEffect,
   SelfObject,
   SelfObjectMeta,
 } from './model/types'

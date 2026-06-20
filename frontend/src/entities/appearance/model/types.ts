@@ -6,8 +6,17 @@
 // 색(mood)은 축과 무관하게 보존된다(감정 의미색). 배경 변경은 별의 mood 색을 바꾸지 않는다(A9).
 import type { CosmosPalette } from '@/shared/config'
 
-/** 배경(Background) kind — 옛 Theme의 정명. 무료 vast + 유료(lively·calm·aurora-veil). */
-export type Background = 'vast' | 'lively' | 'calm' | 'aurora-veil'
+/** 배경(Background) kind — 옛 Theme의 정명. 무료 vast + 유료(lively·calm·aurora-veil·signal-noise·
+ *  abyssal-sea·cosmic-cliffs). 배경은 고정 hue가 아니라 *질감/구조*를 고르는 축이고, 색은 항상 요즘
+ *  mood/감정색에서 파생한다(change 11). 레거시 id 없음(추가만 — 기존 4종 id 호환 유지). */
+export type Background =
+  | 'vast'
+  | 'lively'
+  | 'calm'
+  | 'aurora-veil'
+  | 'signal-noise'
+  | 'abyssal-sea'
+  | 'cosmic-cliffs'
 
 /** 배경의 텍스처/요소 슬롯(번들) — 색 외의 배경 결. 비주얼 디테일은 디자인 반복(slot minimal).
  *  veilColor/veilOpacity = 장면 뒤에 깔리는 은은한 색 베일(별 mood 색은 불간섭 — 별 앞이 아닌 배경 결). */
@@ -16,8 +25,26 @@ export interface BackgroundTexture {
   veilOpacity?: number
 }
 
+/** 배경 효과 종류(change 11) — 스킨마다 *서로 다른 절차적 셰이더 경로*를 고른다(같은 fbm의 계수만 바꾸는
+ *  게 아니라, A2/A6). 모두 검은 우주를 유지한 채 요즘 mood 색만 칠한다(emotionSlots/presence로):
+ *   • haze    — 검정 + mood 색 뿌연 안개(기본, 가장 조용).
+ *   • nebula  — 도메인워프 성운 워시(격동·와류).
+ *   • waves   — 느린 가로 mood 파동.
+ *   • aurora  — 검정 우주에 가끔씩 지나가는 오로라 커튼 *선*(전면 확산 아님).
+ *   • static  — 강한 쿨 그레인 + 지지직 글리치 밴드(지직거리는 쿨한 인상).
+ *   • caustics— 심해 물빛 굴절 일렁임(underwater shimmer).
+ *   • ridges  — 성운 절벽 능선/기둥 구조(ridged structure). */
+export type BackgroundEffect =
+  | 'haze'
+  | 'nebula'
+  | 'waves'
+  | 'aurora'
+  | 'static'
+  | 'caustics'
+  | 'ridges'
+
 /** 배경 스킨의 무늬/질감 결(spec 07) — 색만이 아니라 *패턴 자체*가 스킨마다 다르게(같은 fbm·색만
- *  다른 상태가 아니다, A6). UniverseNebula의 도메인워프 fbm 파라미터를 스킨별로 조율한다. */
+ *  다른 상태가 아니다, A6). UniverseNebula의 절차적 셰이더 파라미터를 스킨별로 조율한다. */
 export interface BackgroundPattern {
   /** 도메인워프 세기 — 클수록 무늬가 휘몰아치는 결(작으면 잔잔·고른 결). */
   warp: number
@@ -45,7 +72,9 @@ export interface BackgroundMeta {
   /** 이 스킨이 짜 넣는 상위 감정색 수(spec 07). 0=감정 무관 순수 텍스처 · 1=주요 감정 1색 · N=비중대로 다색.
    *  시각 정의(코드 카탈로그)라 values.yaml이 아니라 여기 둔다(A11). */
   emotionSlots: number
-  /** 무늬/질감 결 — 스킨마다 다른 패턴(A6). */
+  /** 배경 효과 종류 — UniverseNebula가 이 값으로 *다른 셰이더 경로*를 고른다(change 11, A2/A6). */
+  effect: BackgroundEffect
+  /** 무늬/질감 결 — 효과 안에서 warp/freq/detail로 미세 조율(A6). */
   pattern: BackgroundPattern
   /** 색 외의 텍스처/요소 번들(없으면 최소 배경 — vast). */
   texture?: BackgroundTexture
@@ -56,8 +85,10 @@ export type Theme = Background
 /** @deprecated 정명은 BackgroundMeta. */
 export type ThemeMeta = BackgroundMeta
 
-/** 중심 "나" 별(self anchor)의 형태(spec 38·44). 우주에 단 하나, 중심에 고정되어 강한 기억을 곁에 둔다. */
-export type SelfObject = 'nebula-heart' | 'core' | 'well'
+/** 중심 "나" 별(self anchor)의 형태(spec 38·44·change 11). 우주에 단 하나, 중심(또는 recall 어깨앵커)에서
+ *  강한 기억을 곁에 둔다. 노출 카탈로그 3종 — mirrorball(무료·반사구)·prism-cube(굴절 큐브)·neuron-bloom
+ *  (soma+dendrite). 레거시 nebula-heart·core·well은 union에 없고, 로드/렌더 경계에서 mirrorball로 정규화한다. */
+export type SelfObject = 'mirrorball' | 'prism-cube' | 'neuron-bloom'
 
 export interface SelfObjectMeta {
   id: SelfObject

@@ -98,8 +98,8 @@ export const VALUES = {
   },
   customization: {
     startingStardust: 100,
-    price: {"background:lively":30,"background:calm":30,"background:aurora-veil":45,"star:aurora":30,"star:liquid":35,"star:ember":40,"self:core":30,"self:well":35,"synapse:beam":30,"synapse:flow":35,"synapse:particle":40},
-    free: {"background":"vast","star":"deepfield","self":"nebula-heart","synapse":"filament"},
+    price: {"background:lively":30,"background:calm":30,"background:aurora-veil":45,"background:signal-noise":35,"background:abyssal-sea":40,"background:cosmic-cliffs":45,"star:aurora":30,"star:liquid":35,"star:ember":40,"star:pulsar":45,"self:prism-cube":35,"self:neuron-bloom":45,"synapse:particle":40,"synapse:dendrite":40},
+    free: {"background":"vast","star":"deepfield","self":"mirrorball","synapse":"filament"},
   },
   admin: {
     userListDefaultPageSize: 50,
@@ -131,6 +131,8 @@ export const VALUES = {
     ambientFill: 0.4,
     backdropLightDir: [0.6,0.7,0.4],
     backdropLightIntensity: 0.7,
+    recallLightBackOffset: 6,
+    recallLightUpOffset: 2,
   },
   selfGlow: {
     connectednessGain: 0.6,
@@ -246,5 +248,11 @@ export const VALUES = {
   demoFreeMode: {
     randomStarMin: 1,
     randomStarMax: 5,
+  },
+  demoTour: {
+    rotateThresholdRad: 0.9,
+    zoomRatioThreshold: 0.25,
+    lookThresholdRad: 0.9,
+    thrustDistanceThreshold: 8,
   },
 } as const
