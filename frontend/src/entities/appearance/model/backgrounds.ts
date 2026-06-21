@@ -27,7 +27,7 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     id: 'vast',
     effect: 'haze',
     name: '광활한 우주',
-    tagline: '가장 조용한 깊이 · 넓은 공간감 · 주요 감정 한 줄기',
+    tagline: '가장 조용한 깊이 · 넓은 공간감 · 은은한 한 줄기 감정빛',
     swatch: 'radial-gradient(circle at 50% 38%, #2a3150 0%, #11142a 55%, #05060f 100%)',
     accent: NEUTRAL_ACCENT,
     bg: NEUTRAL_BG,
@@ -39,7 +39,7 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     id: 'lively',
     effect: 'nebula',
     name: '경쾌한 우주',
-    tagline: '격동하는 입자·와류 · 여러 감정이 휘몰아치는 결',
+    tagline: '격동하는 리퀴드 마블 · 감정의 거친 와류와 실선',
     swatch: 'repeating-conic-gradient(from 0deg at 50% 50%, #2a3150 0deg 14deg, #11142a 14deg 28deg)',
     accent: NEUTRAL_ACCENT,
     bg: NEUTRAL_BG,
@@ -51,7 +51,7 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     id: 'calm',
     effect: 'waves',
     name: '잔잔한 우주',
-    tagline: '느린 저주파 파동 · 부드럽고 평온',
+    tagline: '느린 저주파 파동 · 부드럽고 평온한 추상 그라데이션',
     swatch: 'radial-gradient(ellipse 120% 80% at 50% 50%, #232a45 0%, #0d1022 60%, #05060f 100%)',
     accent: NEUTRAL_ACCENT,
     bg: NEUTRAL_BG,
@@ -63,12 +63,12 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     id: 'aurora-veil',
     effect: 'aurora',
     name: '오로라 장막',
-    tagline: '길게 흐르는 베일·커튼 · 여러 감정이 줄무늬로',
+    tagline: '액체 크로매틱 베일 · 빛의 실크 리본이 감기는 장막',
     swatch: 'repeating-linear-gradient(115deg, #2a3150 0px 3px, #11142a 3px 9px, #05060f 9px 15px)',
     accent: NEUTRAL_ACCENT,
     bg: NEUTRAL_BG,
     palette: NEUTRAL_PALETTE,
-    emotionSlots: 13, // 모든 감정을 비중대로 결마다 짜 넣음(전부)
+    emotionSlots: 4, // 주감정은 최대 4개로 제한
     pattern: { warp: 1.1, freq: 1.9, detail: 0.6 }, // 흐르는 줄무늬 베일(streaky high-warp)
     texture: { veilColor: '#3a4258', veilOpacity: 0.14 }, // 은은한 중립 베일 한 겹(mood 색 불간섭)
   },
@@ -76,7 +76,7 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     id: 'signal-noise',
     effect: 'static',
     name: '신호와 잡음',
-    tagline: '고입자 노이즈·디더 · 감정 색이 흩뿌려지는 결',
+    tagline: '레트로 홀로그램 디더 · 리소그래피 입자와 미세 별빛 매트릭스',
     swatch:
       'radial-gradient(circle at 25% 30%, #3a4163 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, #2a3150 0 1px, transparent 2px), #0a0d1c',
     accent: NEUTRAL_ACCENT,
@@ -89,7 +89,7 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     id: 'abyssal-sea',
     effect: 'caustics',
     name: '심해',
-    tagline: '수평선 없는 깊이 · 느린 파동 · 물빛으로 굴절되는 감정',
+    tagline: '심해 프리즘 caustics · 무지개빛 굴절 광학 예술',
     swatch: 'radial-gradient(ellipse 140% 100% at 50% 120%, #1a2438 0%, #0a1020 55%, #05060f 100%)',
     accent: NEUTRAL_ACCENT,
     bg: NEUTRAL_BG,
@@ -102,7 +102,7 @@ export const BACKGROUNDS: BackgroundMeta[] = [
     id: 'cosmic-cliffs',
     effect: 'ridges',
     name: '성운 절벽',
-    tagline: '먼지 능선·기둥 · 깎인 구름층이 감정 색으로 빛나는 지형',
+    tagline: '추상 등고선 능선 · 먼지 절벽이 빚어낸 지형도',
     swatch:
       'repeating-linear-gradient(80deg, #2a3150 0px 4px, #161b30 4px 11px, #0a0d1c 11px 18px)',
     accent: NEUTRAL_ACCENT,

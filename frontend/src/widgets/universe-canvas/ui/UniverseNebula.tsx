@@ -25,6 +25,7 @@ import {
   abs,
   pow,
   sin,
+  floor,
   mx_noise_float,
   mx_fractal_noise_float,
 } from 'three/tsl'
@@ -55,10 +56,12 @@ function weaveSlots(
   fallback: THREE.Color,
 ): { c0: THREE.Color; c1: THREE.Color; c2: THREE.Color; presence: number } {
   const fb = () => fallback.clone()
-  if (emotionSlots <= 0 || emotions.length === 0) {
+  // 주감정은 최대 4개까지만 사용하도록 명시적 캡핑(4개 초과는 의미 없음)
+  const cappedSlots = Math.min(4, emotionSlots)
+  if (cappedSlots <= 0 || emotions.length === 0) {
     return { c0: fb(), c1: fb(), c2: fb(), presence: 0 }
   }
-  const used = emotions.slice(0, Math.max(1, emotionSlots))
+  const used = emotions.slice(0, Math.max(1, cappedSlots))
   const toColor = (e: RankedEmotion) => new THREE.Color(e.rgb[0], e.rgb[1], e.rgb[2])
   const c0 = toColor(used[0])
   const c1 = used.length > 1 ? toColor(used[1]) : c0.clone()
@@ -81,7 +84,7 @@ function weaveSlots(
     c2 = c1.clone()
   }
   // presence = how strongly the dominant emotion is present (its R-share), capped — a one-emotion
-  // 요즘 weaves boldly, a scattered one stays subtle. emotionSlots>0 here so it's always >0.
+  // 요즘 weaves boldly, a scattered one stays subtle. cappedSlots>0 here so it's always >0.
   const presence = Math.min(1, used[0].weight * 1.6 + 0.25)
   return { c0, c1, c2, presence }
 }
@@ -141,38 +144,31 @@ export function UniverseNebula({
     // 칠하고(전면 안개 아님), **기본 우주(haze)만** navy↔mood 블렌드로 하늘 전체가 요즘 감정색으로 물든다(아주
     // 예전 초기 3D 우주의 결 — 흰색 대체가 아니라 navy↔mood mix). 색=mood·받침=어둠, 별 mood 색·깊이 불간섭.
     const deep = vec3(uniform(new THREE.Color(palette.base)) as never)
-    const NAVY = vec3(0.09, 0.12, 0.28) // haze 받침 — 검정에 가까운 남청색(선형값; BRIGHTNESS로 near-black navy)
+    const NAVY = vec3(0.015, 0.02, 0.05) // haze 받침 — 깊고 짙은 딥스페이스 남청색(감정이 깔릴 때 짙은 어둠이 유지되게 하향)
     let col
 
     if (effect === 'aurora') {
-      // 오로라 커튼(reactbits Aurora/Threads 영감): 어두운 우주에 얇은 mood 색 *선*들이 걸리고, 느린 sweep이
-      // 그 선들을 가끔씩 지나간다(전면 확산 아님). 가로 phase + fbm 흔들림으로 굽이치는 커튼, 능선 crest만 발광.
-      const wob = mx_fractal_noise_float(dir.mul(1.4).add(vec3(t.mul(0.03).mul(speed))), oct, 2.0, 0.5)
-      const hphase = dir.x.mul(2.2).add(dir.z.mul(1.6)).add(wob.mul(1.8))
-      const ribbon = sin(hphase.mul(float(2.4).add(freq))) // -1..1 굽이치는 커튼
-      const line = pow(smoothstep(float(0.55), float(1.0), abs(ribbon)), float(2.2)) // crest만 얇게
-      const vfall = smoothstep(float(0.95), float(0.1), abs(dir.y)) // 극 쪽으로 사그라듦
-      const sweep = smoothstep(
-        float(0.35),
-        float(1.0),
-        sin(hphase.mul(0.6).sub(t.mul(0.18).mul(speed))).mul(0.5).add(0.5),
-      ) // 가끔씩 지나가는 빛 흐름
-      const curtain = line.mul(vfall).mul(sweep.mul(0.75).add(0.25))
-      const moodCol = mix(e0, e2, sin(hphase).mul(0.5).add(0.5))
-      // 어두운 우주 + 선에만 mood 가산(전면 확산 아님).
-      col = deep.mul(0.5).add(moodCol.mul(curtain).mul(presence.mul(1.15).add(0.05)))
+      // 예술적 개편: "Cosmic Filament Web" (우주 실선 은하망)
+      // 두꺼운 리본이 아닌, 아주 얇은 수천 가닥의 미세 실선(Fibrils)들이 가닥가닥 엉켜 흐르는 신경망/Cosmic Web 룩.
+      // 일렁이는 미감을 위해 시간 계수 uMotion/speed의 가중치를 0.03 -> 0.07로 늘려 실선의 출렁임 움직임 강화.
+      const wob = mx_fractal_noise_float(dir.mul(1.5).add(vec3(t.mul(0.07).mul(speed))), oct, 2.0, 0.5)
+      const hphase = dir.x.mul(1.8).add(dir.z.mul(1.2)).add(wob.mul(1.6))
+      // hphase에 높은 주파수를 가해 아주 촘촘한 실선들을 만들고, pow 승수를 높여 극도의 실선으로 깎음
+      const line = pow(float(1.0).sub(abs(sin(hphase.mul(10.0).add(t.mul(0.08).mul(speed))))), float(28.0))
+      const vfall = smoothstep(float(0.95), float(0.2), abs(dir.y)) // 극 부근 사그라짐
+      const web = line.mul(vfall)
+      const moodCol = mix(e0, e2, sin(hphase.mul(0.5)).mul(0.5).add(0.5))
+      col = deep.mul(0.88).add(moodCol.mul(web).mul(presence.mul(0.6).add(0.05)))
     } else if (effect === 'static') {
-      // 지지직 정적(reactbits 그레인/글리치 영감): 어두운 화면에 강한 쿨 그레인(시간에 흐르는 고주파 노이즈) +
-      // 드물게 번뜩이는 가로 글리치 밴드 + 스캔라인. 쿨하고 거친 인상. mood 색이 그레인에 흩뿌려진다.
-      const grain = mx_noise_float(dir.mul(70.0).add(vec3(t.mul(2.5)))).mul(0.5).add(0.5)
-      const grain2 = mx_noise_float(dir.mul(140.0).add(vec3(t.mul(-3.7)))).mul(0.5).add(0.5)
-      const fuzz = grain.mul(0.6).add(grain2.mul(0.4))
-      const rowN = mx_noise_float(vec3(dir.y.mul(22.0), t.mul(0.7), float(0.0))).mul(0.5).add(0.5)
-      const glitch = smoothstep(float(0.82), float(1.0), rowN) // 소수의 번뜩이는 행
-      const scan = sin(dir.y.mul(90.0).add(t.mul(2.0))).mul(0.5).add(0.5) // 스캔라인 깜빡임
-      const moodCol = mix(e0, e1, fuzz)
-      const tex = fuzz.mul(float(0.22).add(detail * 0.12)).add(glitch.mul(0.9)).add(scan.mul(0.06))
-      col = deep.mul(0.5).add(moodCol.mul(tex).mul(presence.mul(0.9).add(0.12)))
+      // 예술적 개편: "Space Particle Drift" (은하수 입자 표류)
+      // 화면이 깜빡이며 멈춰 있는 듯한 초고주파(280)를 눈이 편안한 은하 모래알 크기(120)로 톤다운하고,
+      // 입자들이 우측 사선 방향으로 부드럽고 우아하게 흘러가도록(Drifting dust storm) 유기적인 움직임 부여.
+      const drift = vec3(t.mul(0.08).mul(speed), t.mul(-0.05).mul(speed), t.mul(0.03).mul(speed))
+      const grain = mx_noise_float(dir.mul(120.0).add(drift)).mul(0.5).add(0.5) // 흐르는 미세 입자
+      const dots = sin(dir.x.mul(100.0).add(t.mul(0.15))).mul(sin(dir.y.mul(100.0).sub(t.mul(0.12)))).mul(0.5).add(0.5) // 흐르는 홀로그램 격자
+      const moodCol = mix(e0, e1, grain.mul(0.6).add(dots.mul(0.4)))
+      const tex = grain.mul(0.15).add(dots.mul(0.05))
+      col = deep.mul(0.85).add(moodCol.mul(tex).mul(presence.mul(0.65).add(0.08)))
     } else if (effect === 'waves') {
       // 느린 파동(잔잔): 가로 결의 부드러운 mood 파동. 저주파 fbm로 굽이만 주고 sin으로 큰 물결.
       const wn = mx_fractal_noise_float(dir.mul(float(0.7).add(freq * 0.3)).add(flow.mul(0.5)), oct, 2.0, 0.5)
@@ -180,40 +176,48 @@ export function UniverseNebula({
       const wave = sin(wph).mul(0.5).add(0.5)
       const moodCol = mix(e0, e1, wave)
       const band = smoothstep(float(0.25), float(0.9), wave)
-      col = deep.mul(0.6).add(moodCol.mul(band).mul(presence.mul(0.85).add(0.07)))
+      col = deep.mul(0.85).add(moodCol.mul(band.mul(0.35)).mul(presence.mul(0.55).add(0.05)))
     } else if (effect === 'caustics') {
-      // 심해 물빛 굴절: 두 겹 노이즈의 abs(sin) 곱으로 얽히는 caustic 망. 느리게 일렁인다.
-      const cp = dir.mul(float(2.2).add(freq)).add(flow.mul(1.4))
-      const w1 = mx_fractal_noise_float(cp, oct, 2.0, 0.5)
-      const w2 = mx_fractal_noise_float(cp.mul(1.7).add(vec3(t.mul(0.05).mul(speed))), oct, 2.0, 0.5)
-      const c1n = abs(sin(w1.mul(6.0).add(t.mul(0.2).mul(speed))))
-      const c2n = abs(sin(w2.mul(5.0).sub(t.mul(0.15).mul(speed))))
-      const moodCol = mix(e0, e2, w1.mul(0.5).add(0.5))
-      const caustic = pow(c1n.mul(c2n), float(2.0))
-      col = deep.mul(0.7).add(moodCol.mul(caustic.mul(1.3).add(0.04)).mul(presence.mul(0.95).add(0.06)))
+      // 예술적 개편: "Directional Abyssal Waves" (엇갈리는 규칙적 파도 결)
+      // 눈의 피로를 최소화하기 위해 대비를 크게 톤다운하고, 여러 방향의 규칙적인 파도 면이 엇갈리며 그물처럼 빛나는 잔잔한 caustics.
+      // 물결의 흐름을 멈추지 않고 생동감 있게 전파하기 위해 flow 배율을 0.4 -> 0.75로 상승.
+      const coord = dir.mul(float(3.2).add(freq)).add(flow.mul(0.75))
+      const wave1 = sin(coord.x.mul(1.6).add(coord.y.mul(0.8)).add(t.mul(0.1).mul(speed)))
+      const wave2 = sin(coord.z.mul(1.3).sub(coord.y.mul(1.0)).add(t.mul(0.08).mul(speed)))
+      const wave3 = sin(coord.x.mul(-0.8).add(coord.z.mul(1.5)).sub(t.mul(0.12).mul(speed)))
+      // 엇갈린 파동 결을 눈이 아프지 않고 부드럽게 믹싱 (pow 승수를 쓰지 않아 자극적인 섬광 제거)
+      const caustMesh = smoothstep(float(0.15), float(0.85), wave1.add(wave2).add(wave3).mul(0.33).add(0.5))
+      const moodCol = mix(e0, e2, wave1.mul(0.5).add(0.5))
+      const caustic = vec3(caustMesh).mul(0.22) // 자극적이지 않게 배율을 0.22로 크게 낮춰 부드럽게 톤다운
+      col = deep.mul(0.9).add(moodCol.mul(caustic).mul(presence.mul(0.55).add(0.04)))
     } else if (effect === 'ridges') {
-      // 성운 절벽 능선: ridged noise(1-|fbm|)로 날카로운 먼지 능선/기둥. detail이 능선 날카로움을 키운다.
-      const rp = dir.mul(float(1.6).add(freq * 0.4)).add(flow.mul(0.6))
+      // 예술적 개편: "Geometrical Contour Ridges" (기하학적 등고선 능선)
+      // 둥근 곡선 안개 대신, 마치 지형도나 모래사구 등고선처럼 계단식(Stepped)으로 쪼개져 겹겹이 층을 이룬 기하학적 패턴.
+      // 등고선 층들이 눈에 띄게 살아 움직이도록 flow 배율을 0.5 -> 0.9로 크게 확대.
+      const rp = dir.mul(float(1.5).add(freq * 0.4)).add(flow.mul(0.9))
       const f = mx_fractal_noise_float(rp, oct, 2.0, 0.5) // -1..1
-      const f2 = mx_fractal_noise_float(rp.mul(2.3).add(vec3(4.0, 1.0, 2.0)), oct, 2.0, 0.5).mul(0.5).add(0.5)
+      const stepped = floor(f.mul(7.0)).mul(1.0 / 7.0) // 7단계 등고선으로 기하학적 쪼개기
+      const contour = pow(float(1.0).sub(abs(f.sub(stepped)).mul(7.0)), float(3.0)) // 경계 능선층 강조
+      const f2 = mx_fractal_noise_float(rp.mul(2.0), oct, 2.0, 0.5).mul(0.5).add(0.5)
       const moodCol = mix(e0, e1, f2)
-      const ridge = pow(clamp(float(1).sub(abs(f)), float(0), float(1)), float(3.0).add(detail * 2.0))
-      col = deep.mul(0.6).add(moodCol.mul(ridge.mul(1.15).add(0.05)).mul(presence.mul(0.95).add(0.06)))
+      col = deep.mul(0.85).add(moodCol.mul(contour.mul(0.35).add(0.02)).mul(presence.mul(0.55).add(0.05)))
     } else if (effect === 'nebula') {
-      // 격동 성운 워시(도메인워프 fbm) — 휘몰아치는 와류. mood가 결을 따라 칠해지고 봉우리에 액센트.
+      // 예술적 개편: "Cosmic Vortex Marble" (코스믹 마블 와류)
+      // 소용돌이치는 대리석 결처럼, 강한 도메인 워핑(Domain Warping)을 가해 날카롭게 교차하는 액체 성운.
       const p = vec3(dir).mul(freq).add(flow)
       const wx = mx_fractal_noise_float(p, oct, 2.0, 0.5)
       const wy = mx_fractal_noise_float(p.add(vec3(5.2, 1.3, 2.7)), oct, 2.0, 0.5)
-      const warped = p.add(vec3(wx, wy, wx).mul(warp * 1.4))
-      const n = mx_fractal_noise_float(warped, oct, 2.0, 0.55).mul(0.5).add(0.5)
+      const warped = p.add(vec3(wx, wy, wx).mul(warp * 2.8)) // 뒤틀림 크게
+      const n = mx_fractal_noise_float(warped, oct, 2.2, 0.65).mul(0.5).add(0.5)
       const n2 = mx_fractal_noise_float(warped.mul(float(1.6).add(detail)).add(vec3(11.7, 3.1, 7.3)), oct, 2.0, 0.5)
         .mul(0.5)
         .add(0.5)
       const accentS = pow(clamp(n.mul(n2), float(0), float(1)), float(3.0))
       const moodCol = mix(e0, e1, n)
-      const accent = e2.mul(accentS) // 봉우리는 액센트 mood로
-      const body = smoothstep(float(0.32), float(0.95), n)
-      col = deep.mul(0.6).add(moodCol.mul(body).add(accent.mul(0.6)).mul(presence.mul(0.95).add(0.05)))
+      const accent = e2.mul(accentS)
+      // 날카로운 리퀴드 마블 라인 도출
+      const marbleLines = pow(clamp(float(1.0).sub(abs(n.sub(0.5)).mul(2.0)), float(0), float(1)), float(4.0))
+      col = deep.mul(0.85).add(moodCol.mul(marbleLines).add(accent.mul(accentS)).mul(presence.mul(0.65).add(0.05)))
     } else {
       // haze(기본): **검정에 가까운 남청색(NAVY)이 요즘 mood 색으로 블렌딩**되는 뿌연 안개(흰색 대체가 아니라
       // navy↔mood mix — 아주 예전 초기 3D 우주의 결). 저주파 fbm로 크고 부드러운 안개가 천천히 흐르며 하늘
@@ -225,8 +229,8 @@ export function UniverseNebula({
       const n2 = mx_fractal_noise_float(hp.mul(2.1).add(vec3(7.0, 3.0, 1.0)), oct, 2.0, 0.5).mul(0.5).add(0.5)
       const tone = mix(e0, e1, n2)
       const dens = smoothstep(float(0.25), float(0.95), n)
-      const tint = clamp(presence.mul(float(0.45).add(dens.mul(0.7))), float(0), float(1))
-      col = mix(NAVY, tone, tint.mul(0.9)).add(tone.mul(dens.mul(0.35).mul(presence).mul(0.45)))
+      const tint = clamp(presence.mul(float(0.18).add(dens.mul(0.32))), float(0), float(1)) // 감정 틴트 강도를 낮춰 짙은 네이비가 깔리게 함
+      col = mix(NAVY, tone, tint.mul(0.75)).add(tone.mul(dens.mul(0.12).mul(presence).mul(0.3))) // 감정색의 가산 강도도 톤다운
     }
 
     material.colorNode = col.mul(BRIGHTNESS).mul(float(uBright as never))

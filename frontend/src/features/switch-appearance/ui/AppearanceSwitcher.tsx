@@ -25,6 +25,8 @@ interface ChipItem {
   locked: boolean
   /** 유료 아이템 가격(별가루). 무료면 undefined. */
   price?: number
+  /** 감정 슬롯 수(배경의 주 감정 표시 개수용) */
+  slots?: number
 }
 
 /**
@@ -135,7 +137,14 @@ function InventoryRadioGroup({
         })}
       </div>
       <p className="leading-tight">
-        <span className="font-display text-sm text-white/90">{described.name}</span>
+        <span className="font-display text-sm text-white/90">
+          {described.name}
+          {described.slots !== undefined && (
+            <span className="ml-1.5 inline-flex items-center rounded-md bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300 ring-1 ring-inset ring-indigo-500/20">
+              주 감정 {described.slots}개
+            </span>
+          )}
+        </span>
         <span className="block text-[11px] text-white/45">{described.tagline}</span>
         {!unlocked && described.locked && described.price != null && (
           <span className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-200/80">
@@ -232,6 +241,7 @@ export function AppearanceControls({
         swatch: m.swatch,
         locked: !isOwned(id, ownedItemIds),
         price: priceOf(id),
+        slots: 'emotionSlots' in m ? (m as unknown as { emotionSlots?: number }).emotionSlots : undefined,
       }
     })
 
