@@ -78,7 +78,7 @@ export function moodRgb(mood: string): RGB {
 /** "#RRGGBB" → linear-RGB tuple (0..1). Direct 8-bit mapping (no gamma) so it is the
  *  inverse of how the palette tuples are authored — a default round-trips within 8-bit.
  *  Returns null on a malformed string (caller falls back to the palette). */
-export function hexToRgb(hex: string): RGB | null {
+function hexToRgb(hex: string): RGB | null {
   const m = /^#([0-9a-fA-F]{6})$/.exec(hex)
   if (!m) return null
   const n = parseInt(m[1], 16)
@@ -126,3 +126,6 @@ export const MOOD_AFFECT: Record<Mood, Affect> = {
   emptiness: { quadrant: 'LAN', arousal: 0.2, valence: -0.5 },
   neutral: { quadrant: 'center', arousal: 0, valence: 0 },
 }
+
+/** The 13 moods in affect-quadrant order: HAP → LAP → HAN → LAN → neutral. */
+export const MOODS_BY_QUADRANT = Object.keys(MOOD_AFFECT) as Mood[]

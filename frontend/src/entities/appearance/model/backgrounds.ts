@@ -124,14 +124,5 @@ export const backgroundMeta = (id: Background): BackgroundMeta =>
 /** 배경 → accent hex(히어로 엠블럼 등). */
 export const themeAccent = (bg: Background): string => backgroundMeta(bg).accent
 
-/** 배경 → 우주(universe) 캔버스 배경색(THREE clear color). */
-export const themeBg = (bg: Background): string => backgroundMeta(bg).bg
-
 /** 배경 → fluid(오로라) 팔레트 — 비-우주 배경(CosmosScene)이 소비. 단일 출처(옛 paletteForTheme 대체). */
 export const paletteForBackground = (bg: Background): CosmosPalette => backgroundMeta(bg).palette
-
-// ── 정명 전 호환 alias(옛 themes.ts API) — 점진 정리용. ──────────────────────────────────────
-/** @deprecated 정명은 BACKGROUNDS. */
-export const THEMES = BACKGROUNDS
-/** @deprecated 정명은 DEFAULT_BACKGROUND. */
-export const DEFAULT_THEME = DEFAULT_BACKGROUND

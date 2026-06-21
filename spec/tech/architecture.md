@@ -159,7 +159,7 @@ cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 
 1. **시뮬레이션을 렌더에서 분리.** `shared/lib/force-sim`에 **순수 `tick(dt)` 모듈**로 둔다. 입력=노드/엣지 배열, 출력=좌표 `Float32Array`. 내부에 `requestAnimationFrame`/`useFrame`을 넣지 않는다. 수천 노드는 O(N²)을 피해 **Barnes-Hut quadtree** 사용. 웹은 **Web Worker**, 추후 모바일은 worklet/WebGPU compute로 호출만 바꾼다.
 2. **렌더는 좌표를 받아 그리기만.** `useFrame`에서 `InstancedMesh.matrix`/셰이더 uniform만 갱신한다. **React state로 60fps 구동 금지**(리렌더 폭발).
 3. **인스턴싱·배칭 우선.** 별 = `InstancedMesh`(수천 노드를 소수 draw call), 시냅스 = `Line2`/배칭(가변 두께 fat-line). 처음부터 이 전제로 설계.
-4. **렌더러 추상화 경계(port).** `shared`에 도메인 중립 그래프 모델(`StarNode`/`SynapseEdge`)과 `GraphRenderer` 포트를 정의하고, R3F 구현은 `widgets/universe-canvas`·`entities/*/ui`에만 가둔다. **도메인 코드가 `three`/R3F 타입을 직접 import하지 않게** 한다 → 모바일에서 WebGPU/Filament로 바꿔도 포트 구현만 교체.
+4. **렌더러 경계.** 도메인 그래프 타입은 각 entity(`entities/memory`, `entities/synapse`)가 소유하고, R3F 구현은 `widgets/universe-canvas`·`entities/*/ui`에만 가둔다. 현재 제품 경로가 쓰지 않는 추상 렌더러 포트는 제거됐다. **도메인 코드가 `three`/R3F 타입을 직접 import하지 않게** 한다 → 모바일에서 WebGPU/Filament로 바꿔도 UI 구현만 교체.
 
 ### 3.3 R3F 컴포넌트 배치 (엔그램)
 
@@ -169,7 +169,7 @@ cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 
 | 별 인스턴스 렌더 + TSL 머티리얼 | **entities** — `entities/star/ui/StarField.tsx` | 도메인 시각화. **생성 오브젝트의 고유함은 per-instance 시드(감정·강도·임베딩 파생)를 TSL에서 변형**해 표현 — 공유 지오메트리 + 인스턴싱을 유지하면서도 별마다 다른 형태·색(수천 노드 성능). 별 본체 셰이딩은 아래 프리미티브를 attribute 바인딩으로 소비 |
 | 별 본체 시각 정의(form별 geometry + TSL 셰이딩) | **entities** — `entities/star/ui/star-body.ts` (`buildStarBody`, plan 42) | 입력 바인딩(attribute/uniform)이 추상화된 **단일 별-바디 프리미티브**(순수: geometry+material만 반환). 위치·움직임·time uniform 소유는 소비처(우주 `StarField`=attribute, 단일 `widgets/star3d/Star3D`=uniform). 자가발광 셰이딩이라 조명 환경과 무관. `three`만 의존 → 라이브러리 추출 가능. 소비처가 자기 씬에 꽂으므로 배경과 한 캔버스 합성도 가능(아래 `CosmosScene`이 fluid 뒤/앞 레이어 + 별을 renderOrder로 쌓음, plan 43) |
 | 공유 배경 합성(배경 fluid 앞/뒤 + 트윙클 + 별 + Bloom 한 씬) | **widgets** — `widgets/cosmos-scene/ui/CosmosScene.tsx` (plan 43) | 사인인·초대·랜딩이 공유하는 **디커플드 재사용 씬**. prop(별·팔레트·품질)만 주입 — appearance/FSM 미의존(라이브러리화 토대). 별 본체는 `buildStarBody`(uniform 바인딩) 소비, glow는 `BloomPass`(공유). fullscreen fit ortho(`manual=true`), demand+fps 스로틀·quality 다운그레이드 |
-| 시냅스(fat-line) 렌더 + 가중치→두께/밝기 TSL | **entities** — `entities/synapse/ui/SynapseLines.tsx` | 도메인 시각화 |
+| 시냅스 렌더 + 가중치→가닥 수/밝기/펄스 TSL | **entities** — `entities/synapse/ui/SynapseFilaments.tsx` + `SynapseDust.tsx` | 도메인 시각화 |
 | 별 회상·강화, 근접 항해 | **features** — `features/recall/` | 사용자 가치 행동 |
 | force-sim, 셰이더 소스, 렌더러 셋업 | **shared/lib/{force-sim,shaders,r3f}** | 도메인 무관 |
 

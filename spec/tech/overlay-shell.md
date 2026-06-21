@@ -4,7 +4,7 @@
 
 ## 목적
 
-리스트/탐색을 별도 라우트로 두면(`/dormant`) 진입 시 `/universe`의 WebGPU 우주 캔버스가 통째로 언마운트되고 "우주를 떠나는" 단절감과 재초기화 비용이 생긴다. concept §우주 탐험의 *"전환은 별개 화면이 아니라 같은 우주의 다른 시점"* 원칙을 리스트/탐색까지 확장한다: 우주 캔버스를 `/universe`에 한 번 마운트되는 영속 셸로 두고, 목록은 그 위에 비차단 오버레이(모바일=바텀시트 / 데스크톱=떠있는 카드)로 떠오르며, 항목을 고르면 시트가 핸들(peek)만 남기고 잦아들고 뒤 우주에서 카메라가 그 별로 fly-to한다. 탐색은 라우트가 아니라 셸 패널 상태이며 `?panel=`로만 딥링크/뒤로가기를 동기화한다.
+리스트/탐색을 별도 라우트로 두면 진입 시 루트(`/`)의 WebGPU 우주 캔버스가 통째로 언마운트되고 "우주를 떠나는" 단절감과 재초기화 비용이 생긴다. concept §우주 탐험의 *"전환은 별개 화면이 아니라 같은 우주의 다른 시점"* 원칙을 리스트/탐색까지 확장한다: 우주 캔버스를 영속 셸로 두고, 목록은 그 위에 비차단 오버레이(모바일=바텀시트 / 데스크톱=떠있는 카드)로 떠오른다. 탐색은 라우트가 아니라 페이지 로컬 표면 상태이며 `?panel=`은 레거시 1회 진입 신호로만 소비한다.
 
 ## 현재 구현
 
@@ -12,17 +12,11 @@
 
 플랫폼 분기는 ui 레이어가 맡는다(헌법4). 3D 씬 안 `<Html>`을 만들지 않는다(헌법8).
 
-두 호스트가 한 비차단 idiom(coarse=바텀시트 / fine=떠있는 카드)을 공유한다 — `Surface`는 **결과/액션·탐색 표면**(peek 없음), `OverlayHost`는 옛 브라우즈 리스트(peek) 호스트로 이제 레거시(제품 진입점 없음)다. 진입은 우상단 컨트롤 스택(햄버거→`SideDrawer`, 카메라 토글, 망원경→탐색기 `Surface`)·상단 중앙 UI 숨기기 토글·하단 중앙 `새 별 띄우기` 버튼으로 분산되고, 탐색·결과·액션 표면은 모두 `Surface`다.
-
-- `OverlayHost`(`shared/ui/OverlayHost.tsx`) — **레거시.** 옛 브라우즈 리스트(일기·잠든 별) peek 호스트. 탐색이 망원경 탐색기 `Surface`(아래)로 옮겨가며 제품 진입점이 사라졌고, 프리미티브 자체는 남아 있다. coarse pointer면 `BottomSheet`, fine이면 `FloatingCard`(place=top)를 렌더한다(`useCoarsePointer` 분기). peek 의미를 가진다 — 항목을 고르면 핸들/카드로 잦아들고 뒤 우주가 그 별로 fly-to한다.
-  - props: `open`, `peek`, `title`(다이얼로그 접근명), `peekLabel`(핸들 라벨), `onClose`, `onExpand`(peek→펼침), `peekSlot?`(기본 핸들 pill 대체), `children`(콘텐츠).
-  - 펼친 상태: `Backdrop`(z-20, 배경 탭=닫기)을 깐 위에 시트/카드. 목록 탐색 중엔 우주가 포커스가 아니므로 backdrop이 바깥 탭을 받아 닫는다.
-  - peek 상태: `peekSlot`이 있으면 그것을, 없으면 좌하단 핸들 pill(z-30, "펼치기" + "✕")을 그린다. 이때는 차단 backdrop을 두지 않는다 — 뒤 별 탭(회상)을 막지 않기 위해(배경 딤은 페이지의 포커스 딤이 맡음).
-  - Esc로 닫힌다. 포커스 트랩은 두지 않는다 — 캔버스 뒤가 계속 도달 가능해야 하므로(비차단 원칙).
+한 비차단 idiom(coarse=바텀시트 / fine=떠있는 카드)을 `Surface`가 소유한다. 진입은 우상단 컨트롤 스택(햄버거→`SideDrawer`, 카메라 토글, 망원경→탐색기 `Surface`)·상단 중앙 UI 숨기기 토글·하단 중앙 `새 별 띄우기` 버튼으로 분산되고, 탐색·결과·액션 표면은 모두 `Surface`다. 옛 peek 호스트와 universe 셸 스토어는 제거됐다.
 - `Surface`(`shared/ui/Surface.tsx`) — 결과/액션 표면의 단일 비차단 호스트(회상·변천사·우주 공개·주고받은 별·별 보내기·작성). coarse면 `BottomSheet`, fine이면 `FloatingCard`(`useCoarsePointer` 분기). peek 없음, **차단 backdrop 없음** — 열려 있어도 뒤 우주가 보이고 별 탭/회전이 가능하다. `fixed inset-0` 차단 모달을 이 한 문법으로 흡수했다(공유/선물/보내기 모달 폐지). Esc·빈 곳 탭 닫기는 페이지(focusActor/페이지 상태)가 단일 라우팅한다(여기선 Esc 안 잡음).
   - props: `open`, `title`, `onClose`, `width?`(`sm`/`md`/`lg`), `place?`(`top`/`center`), `children`. coarse는 항상 풀폭 시트라 width/place는 fine에서만 쓴다.
-- `BottomSheet`(`shared/ui/BottomSheet.tsx`) — coarse pointer 오버레이(OverlayHost·Surface 공용). `role="dialog" aria-modal="false"`. 스냅은 `half`(maxHeight 56dvh)·`full`(88dvh) 두 단계(peek는 한 단계 위 `OverlayHost`가 소유). 본문은 `overflow-y-auto`라 긴 결과(회상 등)가 시트 안에서 스크롤된다. 드래그는 그랩 핸들에서만 시작한다(`useDragControls` + `dragListener={false}`). 핸들 탭은 half↔full 토글, 아래로 충분히 끌면 full→half·half면 닫기(offset>120 또는 velocity>800), 위로 끌면 full. `prefers-reduced-motion`이면 슬라이드 스프링과 max-height transition을 즉시로 떨군다.
-- `FloatingCard`(`shared/ui/FloatingCard.tsx`) — fine pointer 오버레이(OverlayHost·Surface 공용; 구 `SidePanel` 대체). `role="dialog" aria-modal="false"`. **코너 비의존 떠있는 카드** — `place=top`(상단 중앙) 또는 `center`(정중앙). −50% 중앙 이동은 motion transform(x/y)으로 줘 pop 스케일과 충돌하지 않게 한다(Tailwind `-translate-*`가 motion transform을 덮는 함정 회피). `width` sm(22rem)/md(24rem)/lg(40rem), max-w 92vw, max-h calc(100dvh-2rem)+스크롤. reduced-motion이면 즉시.
+- `BottomSheet`(`shared/ui/BottomSheet.tsx`) — `Surface`의 coarse pointer 내부 구현. `role="dialog" aria-modal="false"`. 스냅은 `half`(maxHeight 56dvh)·`full`(88dvh) 두 단계. 본문은 `overflow-y-auto`라 긴 결과(회상 등)가 시트 안에서 스크롤된다. 드래그는 그랩 핸들에서만 시작한다(`useDragControls` + `dragListener={false}`). 핸들 탭은 half↔full 토글, 아래로 충분히 끌면 full→half·half면 닫기(offset>120 또는 velocity>800), 위로 끌면 full. `prefers-reduced-motion`이면 슬라이드 스프링과 max-height transition을 즉시로 떨군다.
+- `FloatingCard`(`shared/ui/FloatingCard.tsx`) — `Surface`의 fine pointer 내부 구현(구 `SidePanel` 대체). `role="dialog" aria-modal="false"`. **코너 비의존 떠있는 카드** — `place=top`(상단 중앙) 또는 `center`(정중앙). −50% 중앙 이동은 motion transform(x/y)으로 줘 pop 스케일과 충돌하지 않게 한다(Tailwind `-translate-*`가 motion transform을 덮는 함정 회피). `width` sm(22rem)/md(24rem)/lg(40rem), max-w 92vw, max-h calc(100dvh-2rem)+스크롤. reduced-motion이면 즉시.
 - `SideDrawer`(`shared/ui/SideDrawer.tsx`) — 우측에서 슬라이드인하는 **차단형 드로어**. 햄버거(Menu 아이콘)가 연다. 은은한 딤 backdrop(탭=닫기), Esc·✕로 닫힘, 열릴 때 첫 포커스 진입(focus-in), `prefers-reduced-motion`이면 슬라이드 즉시. 사이드바 항목은 절제된 텍스트 행이며 페이지가 콘텐츠를 합성한다. 탐색기·결과 `Surface`와 달리 이쪽은 차단형(메뉴 동선이라 뒤 우주 상호작용을 의도적으로 막는다).
   - props: `open`, `title`(다이얼로그 접근명), `onClose`, `children`.
 - 진입 셸은 별도 프리미티브가 아니다 — 페이지가 우상단에 **세로 컨트롤 스택**을 둔다: ① 햄버거(Menu) → `SideDrawer`, ② 카메라 시점 토글(Orbit 아이콘, `TOGGLE_MODE`), ③ 망원경(Telescope) → 탐색기 `Surface`. 작성·소셜·테마는 더 이상 메뉴 목록이 아니라 각자의 진입점(하단 중앙 `새 별 띄우기`·사이드바·좌상단 테마 pill)으로 흩어졌다. (옛 "메뉴" 런처 `Surface`와 그 기능 목록은 폐기.)
@@ -30,11 +24,10 @@
 - `useCoarsePointer`(`shared/ui/use-coarse-pointer.ts`) — `(pointer: coarse)` 매치. 초기값을 `matchMedia`로 시드한다(false 시작이면 모바일 딥링크가 데스크톱 카드를 그렸다 바텀시트로 깜빡임). SSR/matchMedia 부재는 false(데스크톱 가정).
 - 차단 모달 프리미티브는 `shared/ui`에 없다. 결과/액션은 전부 비차단 `Surface`로 띄운다(메인에 `fixed inset-0 bg-black/*` 차단 모달 없음). 차단형 확인이 꼭 필요한 곳은 각 feature가 자체 구현한다.
 
-### 셸 패널 스토어 (`features/universe/model`) — 보존·미사용
+### 표면 상태
 
-- `useShellStore`(`features/universe/model/shell-store.ts`) — 옛 리스트/탐색 오버레이 레지스트리(panel + peek). 탐색이 망원경 탐색기 `Surface`로 옮겨가며 `HomePage`는 더 이상 이 스토어를 구독하지 않는다 — 모듈은 남아 있으나 미사용이다. 순수 zustand(three/React/DOM 미의존, 헌법4).
-  - `panel: 'dormant' | 'diary' | 'evolution' | null` · `peek: boolean` · `openPanel`/`closePanel`/`setPeek`.
-- 변천사 오버레이는 여전히 `features/evolution`의 자체 스토어(`useEvolutionStore`)가 구동한다(별 id로 회상 패널에서 열려 URL 딥링크 불가) — 같은 z-30 오버레이 레이어만 공유한다.
+- `HomePage` 로컬 state가 탐색기·작성·공유·선물·보내기·사이드바·꾸미기 표면을 소유한다. 옛 universe shell store는 제거됐다.
+- 변천사 오버레이는 `features/evolution`의 자체 스토어(`useEvolutionStore`)가 구동한다(별 id로 회상 패널에서 열려 URL 딥링크 불가) — 같은 z-30 오버레이 레이어만 공유한다.
 
 ### 우주 셸 (페이지) — `pages/home/ui/HomePage.tsx`
 
@@ -50,7 +43,7 @@
 - **하단 중앙 `새 별 띄우기`(Plus).** 실계정은 작성 `MemoryForm` `Surface`를 열고, 데모 자유모드는 랜덤 별을 즉시 만든다(`demoAddRandomStars` — 표면 없음, plan 47).
 - **좌상단 테마 pill.** 위치 불변. 꾸미기 표면(`AppearancePanel`, change 10)을 연다 — **전면 모달/비차단 `Surface`가 아니라 캔버스 sibling split panel**이다. 우주를 덮지 않고 레이아웃을 밀어내, `UniverseCanvas`는 언마운트되지 않고 컨테이너 폭/높이만 줄어든다(데스크톱 fine pointer=좌측 사이드바 + 우측 캔버스, 모바일 coarse=상단 캔버스 + 하단 패널). 스킨 4축만 다루고(감정 색은 `/my-page`), `ViewOffsetController`/`sheetOpen`을 쓰지 않는다 — 우주 이동은 projection offset이 아니라 캔버스 컨테이너 resize(기존 `ResizeObserver`)로만 일어난다. 패널이 열리면 페이지는 상단 토글·우상단 컨트롤·테마 pill 등 HUD를 숨긴다.
 - **데모 자유모드 컨트롤(`DemoFreeModeControls`, `pages/home/ui`).** 데모에서만, 좌상단 테마 pill 아래 아이콘 버튼 두 개(페르소나·시간)가 각각 버튼 옆에 뜨는 작은 transient 팝오버(`PopoverButton`)를 연다 — 바텀시트가 아니다. 한 번에 하나만 열리고 사이드바·탐색기 등 다른 표면이 열리면 페이지가 닫는다(`closeSurfaces`). 진입 흐름(plan 47)이 `free`가 아니면 페이지가 `DemoOnboarding` 풀스크린 선택 오버레이(z-40)를 HUD 위에 띄우고 그동안 HUD 컨트롤은 마운트하지 않는다.
-- **데모 튜토리얼 투어(`DemoGuidedTour`, `widgets/demo-tour`, plan 48).** 진입 흐름이 `tutorial`일 때만, 자유모드 HUD 위에 z-50 overlay를 얹는다 — 현재 target만 남기고 나머지를 어둡게 덮는 **딤(box-shadow spread, 둥근 구멍) + 투명 클릭 차단 패널 4개** + 구멍 둘레의 **빛나는 glow 테두리**(target rect를 `use-tour-target`가 rAF로 추적)와 coach card. 하이라이트된 버튼만 누를 수 있고 coach card만 입력을 받는다. **행동 안내형**: 단계는 phase로 나뉘어 UI 숨김 토글·팝오버 열림·페르소나 전환·시간 이동·사이드바/망원경 열림을 관찰해 진행하고(버튼을 누르면 하이라이트가 팝오버·시트·✕로 옮겨가거나 결과 안내를 띄움), `다음`으로 건너뛸 수 있다. 별 탭 단계만 페이지가 탐색 시트를 자동으로 연다. 단계 전환 시 페이지가 표면을 정리하고 UI 숨김도 복구한다. 투어 중에는 모달 백드롭의 바깥-탭-닫기를 끈다. 캔버스 안 별·시작/끝 단계는 DOM rect가 없어 딤이 클릭을 막지 않고 중앙 안내 카드만 띄운다(3D 씬 안 `<Html>` 없음 — 헌법8).
+- **데모 튜토리얼 투어(`DemoGuidedTour`, `widgets/demo-tour`, plan 48).** 진입 흐름이 `tutorial`일 때만, 자유모드 HUD 위에 z-50 overlay를 얹는다 — 현재 target만 남기고 나머지를 어둡게 덮는 **딤(box-shadow spread, 둥근 구멍) + 투명 클릭 차단 패널 4개** + 구멍 둘레의 **빛나는 glow 테두리**(target rect를 `use-tour-target`가 rAF로 추적)와 coach card. 하이라이트된 버튼만 누를 수 있고 coach card만 입력을 받는다. **행동 안내형**: 단계는 phase로 나뉘어 UI 숨김 토글·팝오버 열림·페르소나 전환·시간 이동·망원경 열림을 관찰해 진행하고(버튼을 누르면 하이라이트가 팝오버·시트로 옮겨가거나 결과 안내를 띄움), **행동 phase는 그 행동으로만 진행하며 `다음`이 없다**(정보 phase만 `다음`; `건너뛰기`로 종료). 시점 전환 항해 실습 구간은 딤·카드를 거의 투명하게 비워 우주가 보인다. 별 탭 단계만 페이지가 탐색 시트를 자동으로 연다. 단계 전환 시 페이지가 표면을 정리하고 UI 숨김도 복구한다. 투어 중에는 모달 백드롭의 바깥-탭-닫기를 끈다. 캔버스 안 별·시작/끝 단계는 DOM rect가 없어 딤이 클릭을 막지 않고 중앙 안내 카드만 띄운다(3D 씬 안 `<Html>` 없음 — 헌법8).
 - **이동 `NavPad`.** 회상 모드 전용 비행 D-pad(상시 버튼이 아니라 모드별 컨트롤) — 화면 가장자리.
 
 페이지 핸들:
@@ -71,7 +64,7 @@
 - `DiarySheet`(`features/diary-list/ui/DiarySheet.tsx`, 28) — 일기 탭. 검색·감정 facet·날짜 범위 필터 + 목록. `recordsQueryOptions`(`entities/memory` 소유 — DiarySheet 읽기 + record-memory 무효화 두 레이어 소비)로 조회. 항목은 `entryDate`·별 개수·본문 발췌(`bodyExcerpt`, `ph-no-capture`로 PostHog autocapture 차단). 클릭 → `onSelectDiary(recordId)`. 읽기 전용 — 원본 전문은 회상(11)에서 열린다(헌법1).
 - `StarExplorerList`(`features/star-explorer`) — 별 탭. AWAKE+DORMANT 별을 `lastRecalledAt` 오름차순 한 목록으로 보여준다 + 검색·감정·날짜·잠듦(전체/깨어있는/잠든 별) 필터 + "N일 전 회상" 라벨. 별 밝기 dot은 클라 `starBrightness`(08, A_MIN 바닥), `daysAgo`는 가상 시계(`virtualNowMs`, 19) 기준. 항목 클릭 → `onSelect(memoryId)` → `FLY_TO_STAR`. 옛 잠든 별 전용 시트를 흡수했다.
 - `DiaryCard`(`features/diary-list/ui/DiaryCard.tsx`) — 조망 중인 일기 카드(z-30 하단). 선택한 일기를 보여주고 "목록"(탐색기 일기 탭 재열기)·✕(닫기) 제공.
-- `DormantSheet`(`features/dormant-search/ui/DormantSheet.tsx`) — **레거시(고아).** 별 탭이 잠든 별 탐색을 흡수하며 제품 진입점이 없어졌다. `dormantStarsQueryOptions`/`DormantStar`는 별 탐색기가 계속 쓴다.
+옛 잠든 별 전용 시트/쿼리 모듈은 제거됐다. 잠든 별의 재활성화 트리거 무효화 키(`dormantInvalidateKey`)만 `entities/memory`에 남아, 별이 깨어날 때 관련 캐시를 갱신한다.
 
 ### 변천사 (24) — 같은 레이어, 별도 스토어
 
@@ -87,7 +80,7 @@
 
 - z-10: 포커스 딤 `Backdrop`(pointer-events-none)·우주 로딩/빈 우주/에러 카드.
 - z-20: `NavPad`.
-- z-30: 결과·탐색 표면(`Surface` 시트/카드)·`DiaryCard`·우상단 컨트롤 스택(햄버거·카메라 토글·망원경)·상단 중앙 UI 토글·하단 중앙 `새 별 띄우기`·좌상단 테마 pill·(레거시 `OverlayHost` 시트/카드·peek 핸들).
+- z-30: 결과·탐색 표면(`Surface` 시트/카드)·`DiaryCard`·우상단 컨트롤 스택(햄버거·카메라 토글·망원경)·상단 중앙 UI 토글·하단 중앙 `새 별 띄우기`·좌상단 테마 pill.
 - z-40: 사이드바 `SideDrawer`(차단형 딤 backdrop + 우측 드로어 — 메뉴 동선이라 뒤 우주를 의도적으로 막는다)·데모 온보딩 `DemoOnboarding`(자유모드 전 풀스크린 선택 오버레이 — 캔버스만 뒤에 두고 HUD는 미마운트).
 - 데모 자유모드 컨트롤(`DemoFreeModeControls`)은 좌상단 HUD 레이어(버튼 z-20·팝오버 z-30)에 얹힌다.
 - z-50: 데모 튜토리얼 투어(`DemoGuidedTour`) — 딤 + 구멍 + target glow 테두리 + coach card. 자유모드 HUD·표면 위에 떠 단계를 안내한다(딤 패널이 바깥 클릭을 막고 하이라이트된 버튼·coach card만 입력).
@@ -98,11 +91,7 @@
 - `frontend/src/shared/ui/index.ts`
   - `Surface`, `SurfaceProps`
   - `SideDrawer`, `SideDrawerProps`
-  - `BottomSheet`, `BottomSheetProps`
-  - `FloatingCard`, `FloatingCardProps`
   - `Backdrop`, `BackdropProps`
-  - `useCoarsePointer`
-  - `OverlayHost`, `OverlayHostProps` (레거시 — 제품 진입점 없음)
 - `frontend/src/shared/ui/Surface.tsx`
   - `Surface({ open, title, onClose, width?, place?, children })` — 비차단 결과/탐색 호스트(coarse=BottomSheet / fine=FloatingCard)
 - `frontend/src/shared/ui/SideDrawer.tsx`
@@ -111,22 +100,14 @@
   - `BottomSheet({ title, onClose, children })` — 스냅 `half`/`full`, 본문 overflow 스크롤
 - `frontend/src/shared/ui/FloatingCard.tsx`
   - `FloatingCard({ title, onClose, width?, place?, children })` — 코너 비의존 떠있는 카드(구 SidePanel 대체)
-- `frontend/src/shared/ui/OverlayHost.tsx` (레거시)
-  - `OverlayHost({ open, peek, title, peekLabel, onClose, onExpand, peekSlot?, children })` — coarse=BottomSheet / fine=FloatingCard
 - `frontend/src/features/switch-appearance/index.ts`
   - `AppearanceControls`(홈은 `pages/home/ui/AppearancePanel`이 `draft` 모드로 호스팅 — 스킨 4축 split panel, change 10; 감정 색은 `/my-page`) · `AppearanceSwitcher`(랜딩/사인인/초대 FAB — `playground` 모드)
 - `frontend/src/shared/ui/Backdrop.tsx`
   - `Backdrop({ onDismiss?, className? })`
 - `frontend/src/shared/ui/use-coarse-pointer.ts`
   - `useCoarsePointer(): boolean`
-- `frontend/src/features/universe/index.ts` / `model/shell-store.ts` (보존·미사용)
-  - `useShellStore` — `{ panel, peek, openPanel, closePanel, setPeek }`
-  - `type Panel = 'dormant' | 'diary' | 'evolution' | null`
 - `frontend/src/features/star-explorer`
   - `StarExplorerList` (`onSelect(memoryId)`) — AWAKE+DORMANT 통합 목록·필터
-- `frontend/src/features/dormant-search/index.ts`
-  - `dormantStarsQueryOptions`, `type DormantStar` (별 탐색기가 소비)
-  - `DormantSheet`, `DormantSheetProps` (레거시 — 진입점 없음)
 - `frontend/src/features/diary-list/index.ts`
   - `DiarySheet`, `DiarySheetProps` (`onSelectDiary(recordId)` — 검색·감정·날짜 범위 필터)
   - `DiaryCard`, `DiaryCardProps`

@@ -19,7 +19,7 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 /** proto EvolutionSnapshot → viewer VM (offset → display brightness). */
-export function toSnapshotVM(s: EvolutionSnapshot): EvolutionSnapshotVM {
+function toSnapshotVM(s: EvolutionSnapshot): EvolutionSnapshotVM {
   return {
     version: s.version,
     brightness: clamp(NOMINAL_BRIGHTNESS + s.brightness, A_MIN, 1),

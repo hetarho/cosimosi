@@ -3,7 +3,6 @@ package share
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"connectrpc.com/connect"
 
@@ -40,9 +39,9 @@ var (
 // --- ShareService (authenticated owner) ---
 
 func (h *Handler) GetShareSettings(ctx context.Context, _ *connect.Request[cosimosiv1.GetShareSettingsRequest]) (*connect.Response[cosimosiv1.GetShareSettingsResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	st, err := h.svc.GetSettings(ctx, userID)
 	if err != nil {
@@ -56,9 +55,9 @@ func (h *Handler) GetShareSettings(ctx context.Context, _ *connect.Request[cosim
 }
 
 func (h *Handler) UpdateShareSettings(ctx context.Context, req *connect.Request[cosimosiv1.UpdateShareSettingsRequest]) (*connect.Response[cosimosiv1.UpdateShareSettingsResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	st, err := h.svc.UpdateSettings(ctx, userID, req.Msg.GetEnabled(), req.Msg.GetDisplayName())
 	switch {
@@ -75,9 +74,9 @@ func (h *Handler) UpdateShareSettings(ctx context.Context, req *connect.Request[
 }
 
 func (h *Handler) RotateShareSlug(ctx context.Context, _ *connect.Request[cosimosiv1.RotateShareSlugRequest]) (*connect.Response[cosimosiv1.RotateShareSlugResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	st, err := h.svc.RotateSlug(ctx, userID)
 	switch {
@@ -94,9 +93,9 @@ func (h *Handler) RotateShareSlug(ctx context.Context, _ *connect.Request[cosimo
 }
 
 func (h *Handler) GetResonanceBridges(ctx context.Context, req *connect.Request[cosimosiv1.GetResonanceBridgesRequest]) (*connect.Response[cosimosiv1.GetResonanceBridgesResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	bridges, err := h.svc.ResonanceBridges(ctx, userID, req.Msg.GetSlug())
 	switch {
@@ -129,7 +128,7 @@ func (h *Handler) GetSharedUniverse(ctx context.Context, req *connect.Request[co
 	stars := make([]*cosimosiv1.SharedStar, len(snap.Stars))
 	for i, s := range snap.Stars {
 		stars[i] = &cosimosiv1.SharedStar{
-			Mood:            moodToProto(s.Mood),
+			Mood:            rpcserver.MoodToProto(s.Mood),
 			Intensity:       s.Intensity,
 			LastRecalledDay: s.LastRecalledDay,
 			CreatedDay:      s.CreatedDay,
@@ -155,7 +154,7 @@ func (h *Handler) GetSharedUniverse(ctx context.Context, req *connect.Request[co
 func toProtoSettings(a Appearance) *cosimosiv1.Settings {
 	colors := make([]*cosimosiv1.EmotionColor, 0, len(a.EmotionColors))
 	for _, c := range a.EmotionColors {
-		colors = append(colors, &cosimosiv1.EmotionColor{Mood: moodToProto(c.Mood), Color: c.Color})
+		colors = append(colors, &cosimosiv1.EmotionColor{Mood: rpcserver.MoodToProto(c.Mood), Color: c.Color})
 	}
 	return &cosimosiv1.Settings{
 		Theme:         a.Theme,
@@ -164,12 +163,4 @@ func toProtoSettings(a Appearance) *cosimosiv1.Settings {
 		SynapseStyle:  a.SynapseStyle,
 		EmotionColors: colors,
 	}
-}
-
-// moodToProto maps a lowercase domain mood name → the Mood enum; unknown/"" → MOOD_UNSPECIFIED.
-func moodToProto(mood string) cosimosiv1.Mood {
-	if num, ok := cosimosiv1.Mood_value[strings.ToUpper(mood)]; ok {
-		return cosimosiv1.Mood(num)
-	}
-	return cosimosiv1.Mood_MOOD_UNSPECIFIED
 }

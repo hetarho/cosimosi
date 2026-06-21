@@ -90,7 +90,7 @@
 4. 등장 — `GetUniverse`가 좌표 없는 별/시냅스 렌더 입력을 반환하고, 클라 force-sim이 위치를 창발시킨다(06·07·08·09, 원칙3).
 5. 회상 강화 — 한 화면에서 함께 본 별 쌍의 시냅스 weight를 클라 로컬에서 누적해 `ReinforceLinks` unary 배치로 보낸다(11, 원칙6). 회상 flush 상태관리는 39의 `features/recall` `recall-flush.machine.ts`(XState)가 소유한다.
 6. 감쇠 — 오래 안 본 별은 클라가 `last_recalled_at` 경과로 밝기를 낮추되 A_MIN 바닥에서 잔존한다(12·26, 원칙2). 별 row는 절대 지워지지 않는다.
-7. 재점화 — 잠든 별은 풀페이지가 아니라 우주 셸 위 오버레이에서 탐색·재점화한다. `/dormant`는 `/universe?panel=dormant`로 영구 리다이렉트되고(31, `frontend/src/app/router.tsx`), `features/dormant-search`의 `DormantSheet`가 패널을 렌더한다. 재점화는 다시 회상 강화 경로로 합류한다.
+7. 재점화 — 잠든 별은 풀페이지가 아니라 우주 셸 위 망원경 탐색기 별 탭에서 탐색·재점화한다. 레거시 `?panel=dormant`는 루트 진입 시 별 탭을 한 번 열고 제거된다. 별 탭은 `features/star-explorer`가 렌더하고, 재점화는 다시 회상 강화 경로로 합류한다.
 
 수동 브라우저 E2E(로그인·작성·시각 확인)는 자동화하지 않는다. 데이터·API 계층 등가물은 각 스펙 테스트(memory·ai·job·link·activation)로 검증됨이 전제다.
 

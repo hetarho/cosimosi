@@ -2,8 +2,6 @@ package gift
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -12,8 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	dbutil "github.com/cosimosi/backend/internal/db"
 	"github.com/cosimosi/backend/internal/db/fragment"
 	"github.com/cosimosi/backend/internal/db/gen"
+	"github.com/cosimosi/backend/internal/platform/id"
 )
 
 // pgRepository is the pgx/sqlc-backed Repository. It maps sqlc row types ↔ the pure domain
@@ -28,12 +28,12 @@ func NewRepository(pool *pgxpool.Pool) Repository {
 }
 
 func (r *pgRepository) CreateGift(ctx context.Context, in CreateGiftInput) error {
-	id, err := newID()
+	giftID, err := id.New()
 	if err != nil {
 		return err
 	}
 	_, err = gen.New(r.pool).CreateGift(ctx, gen.CreateGiftParams{
-		ID:             id,
+		ID:             giftID,
 		Token:          in.Token,
 		SenderUserID:   in.SenderUserID,
 		SenderMemoryID: in.SenderMemoryID,
@@ -65,13 +65,13 @@ func (r *pgRepository) GetByToken(ctx context.Context, token string) (Gift, erro
 		SenderMemoryID:  row.SenderMemoryID,
 		Message:         row.Message,
 		Status:          GiftStatus(row.Status),
-		RecipientUserID: strFromPtr(row.RecipientUserID),
+		RecipientUserID: dbutil.StringValue(row.RecipientUserID),
 		// COALESCE(…, CASE…)이라 sqlc가 nullable로 추론 — 실제론 항상 non-null('' 폴백). 빈 문자열로.
-		FragmentText: strFromPtr(row.FragmentText),
-		Mood:         strFromPtr(row.Mood),
-		CreatedAt:       row.CreatedAt.Time,
-		ExpiresAt:       row.ExpiresAt.Time,
-		RespondedAt:     timeFromDB(row.RespondedAt),
+		FragmentText: dbutil.StringValue(row.FragmentText),
+		Mood:         dbutil.StringValue(row.Mood),
+		CreatedAt:    row.CreatedAt.Time,
+		ExpiresAt:    row.ExpiresAt.Time,
+		RespondedAt:  dbutil.TimePtr(row.RespondedAt),
 	}, nil
 }
 
@@ -104,7 +104,7 @@ func (r *pgRepository) AcceptGift(ctx context.Context, token, recipientUserID st
 		return AcceptResult{}, err
 	}
 
-	recordID, err := newID()
+	recordID, err := id.New()
 	if err != nil {
 		return AcceptResult{}, err
 	}
@@ -113,9 +113,9 @@ func (r *pgRepository) AcceptGift(ctx context.Context, token, recipientUserID st
 		UserID:    recipientUserID,
 		Body:      rw.Text,
 		EntryDate: pgtype.Date{Time: now, Valid: true},
-		Mood:      moodToDB(rw.Mood),
-		Intensity: f32ToDB(rw.Intensity),
-		Valence:   valenceToDB(rw.Valence),
+		Mood:      dbutil.StringPtr(rw.Mood),
+		Intensity: dbutil.Float32Ptr(rw.Intensity),
+		Valence:   dbutil.NonZeroFloat32Ptr(rw.Valence),
 		// no idempotency key — the gift's pending-status guard is the idempotency fence.
 	}); err != nil {
 		return AcceptResult{}, fmt.Errorf("insert rewrite record: %w", err)
@@ -139,7 +139,7 @@ func (r *pgRepository) AcceptGift(ctx context.Context, token, recipientUserID st
 	}
 	recipientMemoryID := memoryIDs[0]
 
-	resID, err := newID()
+	resID, err := id.New()
 	if err != nil {
 		return AcceptResult{}, err
 	}
@@ -197,10 +197,10 @@ func (r *pgRepository) ListSent(ctx context.Context, userID string) ([]GiftRecor
 			GiftID:            row.ID,
 			Token:             row.Token,
 			Status:            GiftStatus(row.Status),
-			CounterpartUserID: strFromPtr(row.RecipientUserID), // recipient ("" while pending)
+			CounterpartUserID: dbutil.StringValue(row.RecipientUserID), // recipient ("" while pending)
 			Message:           row.Message,
 			CreatedAt:         row.CreatedAt.Time,
-			RespondedAt:       timeFromDB(row.RespondedAt),
+			RespondedAt:       dbutil.TimePtr(row.RespondedAt),
 			ExpiresAt:         row.ExpiresAt.Time,
 		})
 	}
@@ -221,7 +221,7 @@ func (r *pgRepository) ListReceived(ctx context.Context, userID string) ([]GiftR
 			CounterpartUserID: row.SenderUserID, // sender
 			Message:           row.Message,
 			CreatedAt:         row.CreatedAt.Time,
-			RespondedAt:       timeFromDB(row.RespondedAt),
+			RespondedAt:       dbutil.TimePtr(row.RespondedAt),
 			ExpiresAt:         row.ExpiresAt.Time,
 		})
 	}
@@ -254,52 +254,4 @@ func (r *pgRepository) ResonancePartnerUserID(ctx context.Context, memoryID, use
 	return partnerID, true, nil
 }
 
-// newID is the server-authoritative id source (same recipe as the memory/fragment
-// repositories): 16 bytes of crypto entropy, base64url without padding.
-func newID() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", fmt.Errorf("generate id: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
-}
-
 // --- domain ↔ db (nullable) mappers ---
-
-func strFromPtr(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
-func timeFromDB(ts pgtype.Timestamptz) *time.Time {
-	if !ts.Valid {
-		return nil
-	}
-	t := ts.Time
-	return &t
-}
-
-// moodToDB stores "" as NULL ("" = unspecified mood, mirrors the memory/fragment mappers).
-func moodToDB(m string) *string {
-	if m == "" {
-		return nil
-	}
-	return &m
-}
-
-// f32ToDB stores the value as-is (a confirmed 0 intensity is a real value, not "unset").
-func f32ToDB(v float64) *float32 {
-	f := float32(v)
-	return &f
-}
-
-// valenceToDB mirrors the memory record-hint mapper: 0 = unset → NULL.
-func valenceToDB(v float64) *float32 {
-	if v == 0 {
-		return nil
-	}
-	f := float32(v)
-	return &f
-}

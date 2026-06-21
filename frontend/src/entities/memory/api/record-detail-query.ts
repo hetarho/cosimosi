@@ -4,7 +4,7 @@
 // reading a diary in the journal must NOT re-ignite its stars. The query identity lives in
 // the entity (its consumer — pages/diary — is above; the entity is the shared lower layer).
 // Read-only: records is immutable (헌법1). No three/React/DOM (헌법4 — RN reusable).
-import { callUnaryMethod, createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-query'
+import { callUnaryMethod, createQueryOptions } from '@connectrpc/connect-query'
 import { queryOptions } from '@tanstack/react-query'
 import { create } from '@bufbuild/protobuf'
 import {
@@ -33,9 +33,4 @@ export function recordDetailQueryOptions(recordId: string) {
     gcTime: RECORD_DETAIL_GC_MS,
     enabled: recordId.length > 0,
   })
-}
-
-/** GetRecord 부분 키 — invalidate 전용(거의 안 쓰임: 원본은 불변이라 무효화 사유가 드물다). */
-export function recordDetailInvalidateKey() {
-  return createConnectQueryKey({ schema: MemoryService.method.getRecord, cardinality: 'finite' })
 }

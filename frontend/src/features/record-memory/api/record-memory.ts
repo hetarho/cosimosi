@@ -109,8 +109,8 @@ export interface RecordMemoryResult {
 
 /** Records a diary entry with its user-confirmed fragments; the stars are
  *  persisted in the same transaction (synapses still arrive on a later refetch
- *  — embedding is async). 체험 모드는 이 폼 자체가 숨겨지고 DemoSimPanel이
- *  demoAddRecord로 직접 기록하므로, 여기에 데모 분기는 없다. */
+ *  — embedding is async). 체험 모드는 이 폼 자체가 숨겨지고 자유모드 컨트롤이
+ *  shared/lib/demo의 별 생성 경로를 쓰므로, 여기에 데모 분기는 없다. */
 export async function recordMemory(input: RecordMemoryInput): Promise<RecordMemoryResult> {
   const res = await memoryClient.recordMemory({
     body: input.body,

@@ -42,9 +42,9 @@ var (
 // --- InviteService (authenticated, NO membership) ---
 
 func (h *Handler) GetMembershipStatus(ctx context.Context, _ *connect.Request[cosimosiv1.GetMembershipStatusRequest]) (*connect.Response[cosimosiv1.GetMembershipStatusResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	// 관리자는 초대 코드 없이도 멤버다(spec 41) — 서버 멤버십 인터셉터의 면제와 같은 판정.
 	if rpcserver.IsAllowlistedAdmin(ctx, h.adminUserIDs) {
@@ -69,9 +69,9 @@ func (h *Handler) ValidateInviteCode(ctx context.Context, req *connect.Request[c
 }
 
 func (h *Handler) RedeemInviteCode(ctx context.Context, req *connect.Request[cosimosiv1.RedeemInviteCodeRequest]) (*connect.Response[cosimosiv1.RedeemInviteCodeResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	out, err := h.svc.Redeem(ctx, req.Msg.GetCode(), userID, time.Now())
 	if err != nil {
@@ -86,9 +86,9 @@ func (h *Handler) RedeemInviteCode(ctx context.Context, req *connect.Request[cos
 // --- InviteAdminService (authenticated + admin allowlist) ---
 
 func (h *Handler) IssueInviteCode(ctx context.Context, req *connect.Request[cosimosiv1.IssueInviteCodeRequest]) (*connect.Response[cosimosiv1.IssueInviteCodeResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	now := time.Now()
 	p := IssueParams{Label: req.Msg.GetLabel(), CreatedBy: userID}

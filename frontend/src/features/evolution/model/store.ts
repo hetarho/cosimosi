@@ -1,7 +1,7 @@
 // Evolution-overlay open state (spec 24). A minimal stand-in for spec 31's overlay shell
 // (`panel='evolution'`) — which isn't built yet — so the timelapse opens OVER the live
 // universe canvas (no route change, universe persists behind) from the recall panel's
-// "변천사 보기". When 31 lands, this folds into its shell-store. Pure (no three/DOM):
+// "변천사 보기". Pure (no three/DOM):
 // zustand only — the recall feature triggers it via a page-wired callback (FSD: features
 // don't import features; the page composes).
 import { create } from 'zustand'

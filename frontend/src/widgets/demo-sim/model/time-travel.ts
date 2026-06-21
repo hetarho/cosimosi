@@ -5,7 +5,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import {
   demoApplyDayBatch,
-  demoConsolidate,
   enterDemoMode,
   exitDemoMode,
   getDemoFlow,
@@ -28,14 +27,6 @@ export function runTimeSkip(queryClient: QueryClient, days: number, onSettled?: 
   void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
   void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
   onSettled?.()
-}
-
-/** 야간 공고화 4패스(spec 27)를 체험 우주에 적용한다. 개별 호출 경로를 위해 남겨두되,
- *  시간 이동은 `demoApplyDayBatch` 안에서 하루마다 이 함수를 이미 적용한다. */
-export function runConsolidate(queryClient: QueryClient): void {
-  demoConsolidate()
-  void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
-  void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
 }
 
 /** "처음으로": 체험의 휘발성 상태를 즉시 다시 들어오는 결과와 동일한 경로로 초기화한다.

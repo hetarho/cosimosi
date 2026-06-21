@@ -135,7 +135,7 @@ actors: {
 **전역/기능 단위 = `createActorContext`(권장).**
 
 ```tsx
-// features/universe/ui/focus-context.tsx  (ui — createActorContext는 React)
+// entities/memory/ui/focus-context.tsx  (ui — createActorContext는 React)
 import { createActorContext } from '@xstate/react'
 import { focusMachine } from '../model/focus.machine'
 export const FocusContext = createActorContext(focusMachine)

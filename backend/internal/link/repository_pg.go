@@ -3,11 +3,10 @@ package link
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	dbutil "github.com/cosimosi/backend/internal/db"
 	"github.com/cosimosi/backend/internal/db/gen"
 	"github.com/cosimosi/backend/internal/memory"
 )
@@ -37,7 +36,7 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]memory.
 			Weight:            float64(row.Weight),
 			LinkType:          row.LinkType,
 			CoActivationCount: int(row.CoActivationCount),
-			LastActivatedAt:   timeFromDB(row.LastActivatedAt),
+			LastActivatedAt:   dbutil.TimePtr(row.LastActivatedAt),
 		})
 	}
 	return out, nil
@@ -70,12 +69,4 @@ func (r *pgRepository) ReinforceLinks(ctx context.Context, userID, batchID strin
 		}
 	}
 	return tx.Commit(ctx)
-}
-
-func timeFromDB(ts pgtype.Timestamptz) *time.Time {
-	if !ts.Valid {
-		return nil
-	}
-	t := ts.Time
-	return &t
 }

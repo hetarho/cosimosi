@@ -12,7 +12,6 @@ package invite
 import (
 	"context"
 	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"math/big"
 	"strings"
@@ -29,10 +28,6 @@ var (
 	// ErrNotFound is returned when revoking a code that does not exist.
 	ErrNotFound = errors.New("invite: code not found")
 )
-
-// idBytes is 16 bytes = 128 bits of entropy → 22 base64url chars for the internal row id (the
-// spec-35 slug convention). Distinct from the human-enterable `code`.
-const idBytes = 16
 
 // codeAlphabet is the human-enterable code charset: uppercase letters + digits with the visually
 // ambiguous ones removed (no 0/O, 1/I/L) so a code is easy to read aloud and type. This is code
@@ -155,15 +150,6 @@ func normalize(code string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
-}
-
-// newID returns 128 bits of crypto entropy as 22 base64url chars (the spec-35 slug convention).
-func newID() (string, error) {
-	var b [idBytes]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
 }
 
 // newCode returns an n-char human-enterable code drawn uniformly from codeAlphabet via crypto/rand

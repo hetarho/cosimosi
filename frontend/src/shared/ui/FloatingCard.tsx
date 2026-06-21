@@ -33,8 +33,7 @@ export interface FloatingCardProps {
  * the old left-pinned SidePanel. The universe stays visible AND interactive behind it (no
  * backdrop — 1.3). Canvas-outside DOM (헌법8). Pops with scale/opacity; the −50% centering is a
  * motion transform (x/y) so it doesn't fight the scale; prefers-reduced-motion makes it instant (1.7).
- * OverlayHost (lists) and Surface (recall/evolution/share/gift/send/compose) both render it on fine
- * pointers, so every result wears one idiom.
+ * Surface renders it on fine pointers, so every result wears one idiom.
  */
 export function FloatingCard({ title, onClose, width = 'md', place = 'top', children }: FloatingCardProps) {
   const reduce = useReducedMotion()

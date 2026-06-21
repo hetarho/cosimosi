@@ -98,7 +98,7 @@
 
 ## 구현 근거
 
-- 의미 생성(τ/k/w0/temporal_bonus·UNNEST 배치): plan 05 · `backend/internal/job/worker.go`(`buildLinks`·`initialWeight`·`temporalBonus`), `backend/internal/db/queries/embedding.sql`(`KnnNearest`), `backend/internal/db/queries/link.sql`(`BatchUpsertLinks`).
+- 의미 생성(τ/k/w0/temporal_bonus·UNNEST 배치): plan 05·22 · `backend/internal/job/excitability.go`(`biasedLinks`·`initialWeight`·`temporalBonus`) + `backend/internal/job/worker.go`(embed orchestration), `backend/internal/db/queries/embedding.sql`(`KnnNearest`), `backend/internal/db/queries/link.sql`(`BatchUpsertLinks`).
 - 경쟁적 할당 편향(흥분성 `e(c,t)`·TAU_EXC 6h·W_EXC 0.25·inhibitDecay 0.5·candidateK 16·biasedK 5): plan 22 · `backend/internal/job/worker.go`(`excitability`·`deriveClusters`·`clusterExcitability`·`biasedLinks`), `backend/internal/db/queries/link.sql`(`ListLinksForCluster`)·`memory.sql`(`ListLastRecalled`), `backend/internal/job/repository_pg.go`(`LoadExcitabilityInputs`).
 - 일내 결속·semantic 캡(0.8/`semanticWeightCap` 0.79): plan 21 · `backend/internal/db/queries/link.sql`(`BatchUpsertIntraEntryLinks`), `backend/internal/job/{worker.go,repository_pg.go}`(`FanOutFragments`).
 - 헵 강화·멱등(+0.05 cap 1.0·co_activation_count·batch_id): plan 11 · `backend/internal/db/queries/link.sql`(`ReinforceLinks`·`ClaimBatch`), `frontend/src/features/recall/model/co-recall.ts`.

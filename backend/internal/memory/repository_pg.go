@@ -2,8 +2,6 @@ package memory
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -13,8 +11,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
+	dbutil "github.com/cosimosi/backend/internal/db"
 	"github.com/cosimosi/backend/internal/db/fragment"
 	"github.com/cosimosi/backend/internal/db/gen"
+	"github.com/cosimosi/backend/internal/platform/id"
 )
 
 // pgRepository is the pgx/sqlc-backed Repository. It maps sqlc row types ↔ the
@@ -68,7 +68,7 @@ func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string
 		}
 	}
 
-	recordID, err := newID()
+	recordID, err := id.New()
 	if err != nil {
 		return "", nil, err
 	}
@@ -78,8 +78,8 @@ func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string
 		Body:           in.Body,
 		EntryDate:      pgtype.Date{Time: in.EntryDate, Valid: true},
 		Mood:           moodToDB(in.Mood),
-		Intensity:      intensityToDB(in.Intensity),
-		Valence:        valenceToDB(in.Valence),
+		Intensity:      dbutil.Float32Ptr(in.Intensity),
+		Valence:        dbutil.NonZeroFloat32Ptr(in.Valence),
 		IdempotencyKey: keyToDB(in.IdempotencyKey),
 	}); err != nil {
 		return "", nil, fmt.Errorf("insert record: %w", err)
@@ -109,7 +109,7 @@ func (r *pgRepository) RecordMemory(ctx context.Context, in RecordInput) (string
 		return recordID, memoryIDs, nil
 	}
 
-	jobID, err := newID()
+	jobID, err := id.New()
 	if err != nil {
 		return "", nil, err
 	}
@@ -139,14 +139,14 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 		out = append(out, Memory{
 			ID:               row.MemoryID,
 			Mood:             moodFromDB(row.Mood),
-			Intensity:        intensityFromDB(row.Intensity),
-			Valence:          valenceFromDB(row.Valence),
-			LastRecalledAt:   timeFromDB(row.LastRecalledAt),
+			Intensity:        dbutil.Float64Value(row.Intensity),
+			Valence:          dbutil.Float64Value(row.Valence),
+			LastRecalledAt:   dbutil.TimePtr(row.LastRecalledAt),
 			BrightnessOffset: float64(row.BrightnessOffset),
 			HueShift:         float64(row.HueShift),
 			FormSeedDelta:    float64(row.FormSeedDelta),
 			Version:          int(row.Version),
-			RecordID:         row.RecordID,         // 28: 일기 단위 그룹 키
+			RecordID:         row.RecordID,           // 28: 일기 단위 그룹 키
 			FragmentIndex:    int(row.FragmentIndex), // 28: 일기 내 조각 순서
 			Resonant:         row.Resonant,           // 36: 공명으로 다른 우주의 별과 이어졌는지
 			RecallCount:      int(row.RecallCount),   // 07: 누적 회상 횟수(클라 S/R 파생)
@@ -190,7 +190,7 @@ func (r *pgRepository) ListStarVectorsByUser(ctx context.Context, userID string)
 		out = append(out, StarVector{
 			ID:             row.MemoryID,
 			Embedding:      embeddingToDomain(row.Embedding),
-			Intensity:      intensityFromDB(row.Intensity),
+			Intensity:      dbutil.Float64Value(row.Intensity),
 			LastRecalledAt: row.LastRecalledAt.Time,
 		})
 	}
@@ -212,9 +212,9 @@ func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff ti
 		out = append(out, Memory{
 			ID:               row.MemoryID,
 			Mood:             moodFromDB(row.Mood),
-			Intensity:        intensityFromDB(row.Intensity),
-			Valence:          valenceFromDB(row.Valence),
-			LastRecalledAt:   timeFromDB(row.LastRecalledAt),
+			Intensity:        dbutil.Float64Value(row.Intensity),
+			Valence:          dbutil.Float64Value(row.Valence),
+			LastRecalledAt:   dbutil.TimePtr(row.LastRecalledAt),
 			BrightnessOffset: float64(row.BrightnessOffset),
 			HueShift:         float64(row.HueShift),
 			FormSeedDelta:    float64(row.FormSeedDelta),
@@ -253,7 +253,7 @@ func (r *pgRepository) GetRecord(ctx context.Context, userID, memoryID string) (
 		Body:         row.Body,
 		EntryDate:    row.EntryDate.Time,
 		Mood:         moodFromDB(row.Mood),
-		Intensity:    intensityFromDB(row.Intensity),
+		Intensity:    dbutil.Float64Value(row.Intensity),
 		CreatedAt:    row.CreatedAt.Time,
 		FragmentText: fragmentTextFromDB(row.FragmentText), // 28: 별 → 조각(NULL → "")
 	}, nil
@@ -276,7 +276,7 @@ func (r *pgRepository) GetRecordByID(ctx context.Context, userID, recordID strin
 		Body:      row.Body,
 		EntryDate: row.EntryDate.Time,
 		Mood:      moodFromDB(row.Mood),
-		Intensity: intensityFromDB(row.Intensity),
+		Intensity: dbutil.Float64Value(row.Intensity),
 		CreatedAt: row.CreatedAt.Time,
 		// FragmentText stays "" — the standalone page shows the whole original (헌법1).
 	}, nil
@@ -355,7 +355,7 @@ func (r *pgRepository) ListDirectNeighbors(ctx context.Context, userID, memoryID
 // with no matching evolution_history row (the append-only log would drift from version).
 // Only the mutable star + the log change; the record is never touched (constitution §1).
 func (r *pgRepository) ReshapeStar(ctx context.Context, userID, memoryID string, st ReshapeState, snap EvolutionSnapshot) error {
-	evoID, err := newID()
+	evoID, err := id.New()
 	if err != nil {
 		return err
 	}
@@ -432,24 +432,13 @@ func embeddingToDomain(v *pgvector.Vector) []float64 {
 	return out
 }
 
-// newID is the server-authoritative id source: clients never supply ids
-// (constitution §3/§8). 16 bytes of crypto entropy, base64url without padding.
-func newID() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", fmt.Errorf("generate id: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
-}
-
 // --- domain ↔ db (nullable) mappers ---
 
 func moodToDB(m Mood) *string {
 	if m == MoodUnspecified {
 		return nil
 	}
-	s := string(m)
-	return &s
+	return dbutil.StringPtr(string(m))
 }
 
 func moodFromDB(s *string) Mood {
@@ -459,48 +448,6 @@ func moodFromDB(s *string) Mood {
 	return Mood(*s)
 }
 
-func intensityToDB(v float64) *float32 {
-	f := float32(v)
-	return &f
-}
-
-// valenceToDB stores the optional hint; 0 means "unset" (proto double default —
-// documented on RecordMemoryRequest.valence) and maps to NULL.
-func valenceToDB(v float64) *float32 {
-	if v == 0 {
-		return nil
-	}
-	f := float32(v)
-	return &f
-}
-
-func intensityFromDB(f *float32) float64 {
-	if f == nil {
-		return 0
-	}
-	return float64(*f)
-}
-
-// valenceFromDB is intensityFromDB's valence twin — separate name because the
-// ranges differ (valence -1..1 vs intensity 0..1) and may diverge later.
-func valenceFromDB(f *float32) float64 {
-	if f == nil {
-		return 0
-	}
-	return float64(*f)
-}
-
 func keyToDB(k string) *string {
-	if k == "" {
-		return nil
-	}
-	return &k
-}
-
-func timeFromDB(ts pgtype.Timestamptz) *time.Time {
-	if !ts.Valid {
-		return nil
-	}
-	t := ts.Time
-	return &t
+	return dbutil.StringPtr(k)
 }

@@ -23,6 +23,15 @@ func UserIDFromContext(ctx context.Context) (string, bool) {
 	return v, ok
 }
 
+// RequireUserID returns the authenticated user id or a Connect Unauthenticated error.
+func RequireUserID(ctx context.Context) (string, error) {
+	userID, ok := UserIDFromContext(ctx)
+	if !ok {
+		return "", connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	}
+	return userID, nil
+}
+
 // UserEmailFromContext returns the verified JWT "email" claim (Supabase includes
 // it in access tokens). Consumed by the admin gate so the ADMIN_USER_IDS
 // allowlist can name admins by email as well as UUID; may be absent ("") on

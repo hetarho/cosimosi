@@ -36,7 +36,7 @@ export function fibonacciStarPosition(i: number, n: number, seed: number): [numb
 
 /** Per-night tangential rotation of a star's DIRECTION (representational drift, spec 40).
  *  ~0.08 rad ≈ 4.6° per night — slow enough to read as drift, not spin. Hand-tuned. */
-export const DRIFT_STEP_RAD = VALUES.radialLayout.driftStepRad
+const DRIFT_STEP_RAD = VALUES.radialLayout.driftStepRad
 
 /** Deterministic unit-sphere direction from a star's own seed. Unlike fibonacciStarPosition's
  *  golden-angle-by-INDEX placement (successive stars march along a spiral arc), this maps the

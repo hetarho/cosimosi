@@ -5,7 +5,7 @@
 // universe's group offset (constitution §3 — two sims, never a shared coordinate). A click on a
 // bridge sends FRAME_PAIR (camera frames the two stars) + SELECT_PAIR (the compare panel).
 //
-// WebGPU path: LineSegments2 + Line2NodeMaterial (the SynapseLines idiom). The built-in TSL `time`
+// WebGPU path: LineSegments2 + Line2NodeMaterial (same bright-line idiom as synapse rendering). The built-in TSL `time`
 // node is frozen under BloomPass, so the flowing packet is baked into per-vertex colors each frame
 // from a manual time accumulator (NOT `time`). Bloom turns the thin bright arc into a glowing bridge.
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'

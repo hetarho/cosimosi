@@ -3,13 +3,13 @@
 
 const clampByte = (n: number) => Math.max(0, Math.min(255, Math.round(n)))
 
-export function hexToRgb(hex: string): [number, number, number] {
+function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '')
   const v = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
   return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)]
 }
 
-export function rgbToHex(r: number, g: number, b: number): string {
+function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [r, g, b].map((x) => clampByte(x).toString(16).padStart(2, '0')).join('')
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	dbutil "github.com/cosimosi/backend/internal/db"
 	"github.com/cosimosi/backend/internal/db/gen"
 )
 
@@ -31,10 +32,10 @@ func (r *pgRepository) Get(ctx context.Context, userID string) (Settings, error)
 	row, err := q.GetUserSettings(ctx, userID)
 	switch {
 	case err == nil:
-		s.Theme = derefStr(row.Theme)
-		s.StarObject = derefStr(row.StarObject)
-		s.SelfObject = derefStr(row.SelfObject)
-		s.SynapseStyle = derefStr(row.SynapseStyle)
+		s.Theme = dbutil.StringValue(row.Theme)
+		s.StarObject = dbutil.StringValue(row.StarObject)
+		s.SelfObject = dbutil.StringValue(row.SelfObject)
+		s.SynapseStyle = dbutil.StringValue(row.SynapseStyle)
 	case errors.Is(err, pgx.ErrNoRows):
 		// No single-value overrides yet — leave empty (client uses its defaults).
 	default:
@@ -164,11 +165,4 @@ func (r *pgRepository) Purchase(ctx context.Context, userID, itemID string, pric
 		return Inventory{}, fmt.Errorf("commit: %w", err)
 	}
 	return Inventory{Stardust: int(stardust), OwnedItemIDs: owned}, nil
-}
-
-func derefStr(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }

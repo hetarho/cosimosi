@@ -7,27 +7,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { errorMessage } from '@/shared/lib'
 import { Mood, GiftStatus } from '@/shared/api'
-import { MOOD_AFFECT, moodLabel, resolveMoodRgb } from '@/shared/config'
+import { MOOD_AFFECT, MOODS_BY_QUADRANT, moodLabel, resolveMoodRgb } from '@/shared/config'
 import { moodFromProto, universeInvalidateKey } from '@/entities/memory'
 import { Dropdown, ghostButtonCls, primaryButtonCls } from '@/shared/ui'
 import { acceptStarGift, declineStarGift, getStarGiftQueryOptions } from '../api/gift-queries'
 
-// 13 moods in quadrant order (spec 29) — mirrors record-memory/MemoryForm (단일 출처는 MOOD_LABEL).
-const MOOD_OPTIONS: Mood[] = [
-  Mood.JOY,
-  Mood.EXCITEMENT,
-  Mood.LOVE,
-  Mood.CALM,
-  Mood.GRATITUDE,
-  Mood.RELIEF,
-  Mood.ANGER,
-  Mood.FEAR,
-  Mood.STRESS,
-  Mood.SAD,
-  Mood.TIRED,
-  Mood.EMPTINESS,
-  Mood.NEUTRAL,
-]
+const MOOD_OPTIONS = MOODS_BY_QUADRANT.map((m) => Mood[m.toUpperCase() as keyof typeof Mood])
 
 const inputCls =
   'rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 outline-none focus:border-indigo-400/50'

@@ -342,7 +342,7 @@ function detectSceneMood(text: string, index: number, prev: Mood | null): Mood {
  *  강하게 묶이고(같은 record body 공유), 단일 문단이면 기존처럼 별 1개다.
  *  연결 생성(spec 19)의 데모 근사도 유지한다 — 첫 조각이 같은 날 별과 temporal,
  *  같은 mood 최신 별과 semantic으로 이어진다(임베딩 없는 근사임은 패널이 밝힌다). */
-export function demoAddRecord(input: {
+function demoAddRecord(input: {
   body: string
   mood: Mood
   intensity: number
@@ -526,7 +526,7 @@ function entryForMood(mood: Mood): { body: string; intensity: number } {
   return MOOD_FALLBACK_ENTRY[mood] ?? { body: '오늘의 한 조각을 별로 띄운다.', intensity: 0.5 }
 }
 
-/** 시뮬 패널 "별 띄우기": 고른 감정·날짜로 별을 만든다(spec 19 — 데모의 기록 컨트롤러).
+/** 데모 전용 "별 띄우기": 고른 감정·날짜로 별을 만든다(spec 19 — 테스트와 내부 시뮬레이션 경로).
  *  본문은 그 감정으로 미리 써 둔 일기 중 무작위 — 체험에서 내용은 시연용일 뿐이다.
  *  새 별 id를 돌려준다(단일 문단 일기 → 항상 별 1개). */
 export function demoAddStar(mood: Mood, entryDate: string): string {
@@ -534,7 +534,7 @@ export function demoAddStar(mood: Mood, entryDate: string): string {
   return demoAddRecord({ body: pick.body, mood, intensity: pick.intensity, entryDate })[0]
 }
 
-// 시뮬 패널 "다감정 하루 띄우기"(spec 21)용 — 장면(문단)마다 감정이 갈리는 미리 쓴
+// 데모 전용 "다감정 하루 띄우기"(spec 21)용 — 장면(문단)마다 감정이 갈리는 미리 쓴
 // 다감정 일기들. 빈 줄 문단이 사건 경계로 읽혀 demoAddRecord가 N개 별로 fan-out한다.
 const MULTI_SCENE_ENTRIES: string[] = [
   [
@@ -549,7 +549,7 @@ const MULTI_SCENE_ENTRIES: string[] = [
   ].join('\n\n'),
 ]
 
-/** 시뮬 패널 "다감정 하루 띄우기"(spec 21): 여러 감정이 담긴 미리 쓴 일기 한 편을
+/** 데모 전용 "다감정 하루 띄우기"(spec 21): 여러 감정이 담긴 미리 쓴 일기 한 편을
  *  조각 별 fan-out으로 띄운다 — 색이 다른 N개 별이 강한 일내 선으로 묶여 등장한다.
  *  태어난 조각 id들을 돌려준다. */
 export function demoAddMultiSceneStar(entryDate: string): string[] {
@@ -695,7 +695,7 @@ const DEMO_PRUNE_FLOOR = VALUES.demoConsolidation.weakEdgeFloor // 가지치기 
 /** RecordMemory처럼 데모 우주를 제자리에서 변환한다 — "밤 보내기"(spec 27): 오래된 별의
  *  형태를 한 단계 요지화하고(③), 약하고 안 쓰인 선은 빛만 바닥으로 낮춘다(④). 별·선 개수는
  *  그대로(삭제 0 — 헌법2). 불변 교체로 새 객체를 만들어 쿼리 캐시가 변경을 감지하게 한다. */
-export function demoConsolidate(): void {
+function demoConsolidate(): void {
   ensureSeeded()
   const now = virtualNowMs()
   // ③ 요지: 오래되고 저회상인 별의 form_seed_delta 단조 증가 + version++(형태가 한 단계 가라앉는다).

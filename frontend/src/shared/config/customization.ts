@@ -29,11 +29,6 @@ export function priceOf(id: string): number | undefined {
   return PRICE[id]
 }
 
-/** 알려진 아이템인가 — 무료 kind 또는 가격표에 있는 유료 아이템(BE 화이트리스트와 동형). */
-export function isKnownItem(id: string): boolean {
-  return isFree(id) || id in PRICE
-}
-
 /** 선택 가능한가 — 무료이거나 소유 집합에 든 유료 아이템(A4 선택-소유권 규칙). */
 export function isOwned(id: string, ownedItemIds: ReadonlySet<string>): boolean {
   return isFree(id) || ownedItemIds.has(id)

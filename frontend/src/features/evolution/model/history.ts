@@ -17,14 +17,14 @@ export interface EvolutionSnapshotVM {
 }
 
 /** trigger → Korean label (acceptance 1.3). Unknown triggers fall back to the raw value. */
-export const TRIGGER_LABEL: Record<string, string> = {
+const TRIGGER_LABEL: Record<string, string> = {
   recall: '회상',
   new_neighbor: '새 이웃',
   nightly_gist: '야간 요지',
 }
 
 /** One scrub step: a snapshot plus its resolved label and normalized direction. */
-export interface EvolutionStep {
+interface EvolutionStep {
   version: number
   brightness: number
   hueShift: number

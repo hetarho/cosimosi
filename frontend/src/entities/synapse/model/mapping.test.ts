@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   A_MIN,
-  ALPHA_MIN,
-  alpha,
   bucketWidthPx,
   emissive,
   pulseAmp,
@@ -29,13 +27,6 @@ describe('synapse mapping', () => {
   it('emissive equals visualIntensity (1.2)', () => {
     expect(emissive(edge(1, 1))).toBe(1)
     expect(emissive(edge(0, 1))).toBe(0)
-  })
-
-  it('alpha floors weak/dormant edges at ALPHA_MIN, tops at 1 (1.2/1.4)', () => {
-    expect(alpha(edge(0, 0))).toBeCloseTo(ALPHA_MIN, 10) // intensity 0 → floor
-    expect(alpha(edge(1, 1))).toBeCloseTo(1, 10) // intensity 1 → max
-    expect(alpha(edge(0.5, 1))).toBeCloseTo(ALPHA_MIN + (1 - ALPHA_MIN) * 0.5, 10)
-    expect(alpha(edge(0, 0))).toBeGreaterThan(0) // never fully invisible
   })
 
   it('pulseAmp is reinforcedRecency (1.3)', () => {

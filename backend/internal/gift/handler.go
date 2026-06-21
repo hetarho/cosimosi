@@ -3,7 +3,6 @@ package gift
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -30,9 +29,9 @@ func NewHandler(svc *Service) *Handler {
 var _ cosimosiv1connect.GiftServiceHandler = (*Handler)(nil)
 
 func (h *Handler) SendStarGift(ctx context.Context, req *connect.Request[cosimosiv1.SendStarGiftRequest]) (*connect.Response[cosimosiv1.SendStarGiftResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, errUnauthenticated()
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	token, err := h.svc.SendGift(ctx, userID, req.Msg.GetMemoryId(), req.Msg.GetMessage())
 	if err != nil {
@@ -42,8 +41,8 @@ func (h *Handler) SendStarGift(ctx context.Context, req *connect.Request[cosimos
 }
 
 func (h *Handler) GetStarGift(ctx context.Context, req *connect.Request[cosimosiv1.GetStarGiftRequest]) (*connect.Response[cosimosiv1.GetStarGiftResponse], error) {
-	if _, ok := rpcserver.UserIDFromContext(ctx); !ok {
-		return nil, errUnauthenticated()
+	if _, err := rpcserver.RequireUserID(ctx); err != nil {
+		return nil, err
 	}
 	v, err := h.svc.GetGift(ctx, req.Msg.GetToken())
 	if err != nil {
@@ -54,20 +53,20 @@ func (h *Handler) GetStarGift(ctx context.Context, req *connect.Request[cosimosi
 		SenderDisplayName: v.SenderDisplayName,
 		Message:           v.Message,
 		FragmentText:      v.FragmentText, // "" unless actionable — terminal states reveal no content
-		Mood:              moodToProto(v.Mood),
+		Mood:              rpcserver.MoodToProto(v.Mood),
 		ExpiresAt:         formatTime(v.ExpiresAt),
 	}), nil
 }
 
 func (h *Handler) AcceptStarGift(ctx context.Context, req *connect.Request[cosimosiv1.AcceptStarGiftRequest]) (*connect.Response[cosimosiv1.AcceptStarGiftResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, errUnauthenticated()
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	msg := req.Msg
 	res, err := h.svc.AcceptGift(ctx, userID, msg.GetToken(), Rewrite{
 		Text:      msg.GetText(),
-		Mood:      moodFromProto(msg.GetMood()),
+		Mood:      rpcserver.MoodFromProto(msg.GetMood()),
 		Intensity: msg.GetIntensity(),
 		Valence:   msg.GetValence(),
 	})
@@ -81,9 +80,9 @@ func (h *Handler) AcceptStarGift(ctx context.Context, req *connect.Request[cosim
 }
 
 func (h *Handler) DeclineStarGift(ctx context.Context, req *connect.Request[cosimosiv1.DeclineStarGiftRequest]) (*connect.Response[cosimosiv1.DeclineStarGiftResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, errUnauthenticated()
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := h.svc.DeclineGift(ctx, userID, req.Msg.GetToken()); err != nil {
 		return nil, toConnectErr(err)
@@ -92,9 +91,9 @@ func (h *Handler) DeclineStarGift(ctx context.Context, req *connect.Request[cosi
 }
 
 func (h *Handler) CancelStarGift(ctx context.Context, req *connect.Request[cosimosiv1.CancelStarGiftRequest]) (*connect.Response[cosimosiv1.CancelStarGiftResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, errUnauthenticated()
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := h.svc.CancelGift(ctx, userID, req.Msg.GetGiftId()); err != nil {
 		return nil, toConnectErr(err)
@@ -103,9 +102,9 @@ func (h *Handler) CancelStarGift(ctx context.Context, req *connect.Request[cosim
 }
 
 func (h *Handler) ListStarGifts(ctx context.Context, _ *connect.Request[cosimosiv1.ListStarGiftsRequest]) (*connect.Response[cosimosiv1.ListStarGiftsResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, errUnauthenticated()
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	list, err := h.svc.ListGifts(ctx, userID)
 	if err != nil {
@@ -118,9 +117,9 @@ func (h *Handler) ListStarGifts(ctx context.Context, _ *connect.Request[cosimosi
 }
 
 func (h *Handler) GetResonanceInfo(ctx context.Context, req *connect.Request[cosimosiv1.GetResonanceInfoRequest]) (*connect.Response[cosimosiv1.GetResonanceInfoResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, errUnauthenticated()
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	info, err := h.svc.GetResonanceInfo(ctx, userID, req.Msg.GetMemoryId())
 	if err != nil {
@@ -148,11 +147,6 @@ func toSummaryProtos(items []GiftSummary) []*cosimosiv1.GiftSummary {
 		})
 	}
 	return out
-}
-
-// errUnauthenticated mirrors the other handlers' missing-user response.
-func errUnauthenticated() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
 }
 
 // toConnectErr maps domain sentinels → Connect codes (spec 17). Unknown token is a UNIFORM
@@ -192,24 +186,6 @@ func statusToProto(s GiftStatus) cosimosiv1.GiftStatus {
 	default:
 		return cosimosiv1.GiftStatus_GIFT_STATUS_UNSPECIFIED
 	}
-}
-
-// moodToProto maps a lowercase domain mood name → the Mood enum (mirrors share.moodToProto);
-// unknown/"" → MOOD_UNSPECIFIED.
-func moodToProto(mood string) cosimosiv1.Mood {
-	if num, ok := cosimosiv1.Mood_value[strings.ToUpper(mood)]; ok {
-		return cosimosiv1.Mood(num)
-	}
-	return cosimosiv1.Mood_MOOD_UNSPECIFIED
-}
-
-// moodFromProto maps the Mood enum → its lowercase name; UNSPECIFIED/unknown → "".
-func moodFromProto(m cosimosiv1.Mood) string {
-	name, ok := cosimosiv1.Mood_name[int32(m)]
-	if !ok || m == cosimosiv1.Mood_MOOD_UNSPECIFIED {
-		return ""
-	}
-	return strings.ToLower(name)
 }
 
 // formatTime renders an instant as RFC3339 UTC, or "" for the zero time.

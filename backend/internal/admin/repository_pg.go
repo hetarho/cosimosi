@@ -2,8 +2,6 @@ package admin
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -13,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/cosimosi/backend/internal/db/gen"
+	"github.com/cosimosi/backend/internal/platform/id"
 )
 
 // rowQuerier is the subset of pgx shared by *pgxpool.Pool and pgx.Tx — lets the
@@ -277,12 +276,6 @@ func (r *pgRepository) ListUsers(ctx context.Context, query, pageToken string, l
 	return out, nil
 }
 
-// UserExists reports whether target is a real user — auth.users on Supabase, the
-// app-domain union locally (A10 production NotFound guard). Both raw SQL.
-func (r *pgRepository) UserExists(ctx context.Context, target string) (bool, error) {
-	return r.userExists(ctx, r.pool, target)
-}
-
 // userExists runs the auth-aware existence probe on the pool or inside a tx.
 func (r *pgRepository) userExists(ctx context.Context, q rowQuerier, target string) (bool, error) {
 	hasAuth, err := r.hasAuthUsers(ctx, q)
@@ -336,12 +329,12 @@ func (r *pgRepository) GrantStardust(ctx context.Context, in GrantStardustInput,
 	if err != nil {
 		return AdminUser{}, fmt.Errorf("add stardust: %w", err)
 	}
-	id, err := newID()
+	grantID, err := id.New()
 	if err != nil {
 		return AdminUser{}, err
 	}
 	if err := q.InsertStardustGrant(ctx, gen.InsertStardustGrantParams{
-		ID:            id,
+		ID:            grantID,
 		AdminUserID:   in.AdminUserID,
 		TargetUserID:  in.TargetUserID,
 		Amount:        int32(in.Amount),
@@ -354,14 +347,4 @@ func (r *pgRepository) GrantStardust(ctx context.Context, in GrantStardustInput,
 		return AdminUser{}, fmt.Errorf("commit: %w", err)
 	}
 	return AdminUser{UserID: in.TargetUserID, Stardust: int64(after), WalletSeeded: true}, nil
-}
-
-// newID is the server-authoritative id source (same recipe as the gift/fragment
-// repositories): 16 bytes of crypto entropy, base64url without padding.
-func newID() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", fmt.Errorf("generate id: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
 }

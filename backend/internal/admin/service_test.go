@@ -127,16 +127,8 @@ func (r *fakeRepo) ListUsers(_ context.Context, query, pageToken string, limit, 
 	return out, nil
 }
 
-func (r *fakeRepo) UserExists(_ context.Context, target string) (bool, error) {
-	if _, ok := r.wallets[target]; ok {
-		return true, nil
-	}
-	return slices.Contains(r.users, target), nil
-}
-
 func (r *fakeRepo) GrantStardust(_ context.Context, in GrantStardustInput, startingStardust int) (AdminUser, error) {
-	exists, _ := r.UserExists(context.Background(), in.TargetUserID)
-	if !exists {
+	if _, ok := r.wallets[in.TargetUserID]; !ok && !slices.Contains(r.users, in.TargetUserID) {
 		return AdminUser{}, ErrUserNotFound
 	}
 	before, ok := r.wallets[in.TargetUserID]

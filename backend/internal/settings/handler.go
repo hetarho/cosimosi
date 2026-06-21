@@ -29,9 +29,9 @@ var _ cosimosiv1connect.SettingsServiceHandler = (*Handler)(nil)
 // GetSettings returns the caller's stored visual overrides — the client merges its
 // defaults over them, so the server does not send defaults.
 func (h *Handler) GetSettings(ctx context.Context, _ *connect.Request[cosimosiv1.GetSettingsRequest]) (*connect.Response[cosimosiv1.GetSettingsResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	s, err := h.svc.Get(ctx, userID)
 	if err != nil {
@@ -44,9 +44,9 @@ func (h *Handler) GetSettings(ctx context.Context, _ *connect.Request[cosimosiv1
 // mood/item or a malformed color → InvalidArgument; selecting a not-owned paid item →
 // FailedPrecondition (ErrNotOwned). No partial write on any rejection.
 func (h *Handler) UpdateSettings(ctx context.Context, req *connect.Request[cosimosiv1.UpdateSettingsRequest]) (*connect.Response[cosimosiv1.UpdateSettingsResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	msg := req.Msg
@@ -74,9 +74,9 @@ func (h *Handler) UpdateSettings(ctx context.Context, req *connect.Request[cosim
 // GetInventory returns the caller's 별가루 balance + owned paid items, seeding the wallet on first
 // read (spec 44, A1). Auth required (A15).
 func (h *Handler) GetInventory(ctx context.Context, _ *connect.Request[cosimosiv1.GetInventoryRequest]) (*connect.Response[cosimosiv1.GetInventoryResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	inv, err := h.svc.GetInventory(ctx, userID)
 	if err != nil {
@@ -88,9 +88,9 @@ func (h *Handler) GetInventory(ctx context.Context, _ *connect.Request[cosimosiv
 // PurchaseItem buys a paid item: debit + grant atomically (spec 44, A2). Unknown/free item →
 // InvalidArgument; already owned / insufficient funds → FailedPrecondition. Auth required (A15).
 func (h *Handler) PurchaseItem(ctx context.Context, req *connect.Request[cosimosiv1.PurchaseItemRequest]) (*connect.Response[cosimosiv1.PurchaseItemResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	inv, err := h.svc.PurchaseItem(ctx, userID, req.Msg.GetItemId())
 	switch {

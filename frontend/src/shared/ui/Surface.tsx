@@ -20,8 +20,7 @@ export interface SurfaceProps {
 /**
  * The single NON-BLOCKING result host (home-ia revamp) — one idiom for every result/action
  * surface: recall, evolution, share, gift, send, compose. Coarse pointer → BottomSheet, fine →
- * FloatingCard (헌법4 — 플랫폼 분기는 ui 레이어). No peek (that's OverlayHost's job for browse
- * lists) and no backdrop: the universe stays visible AND interactive behind it (A7), and there is
+ * FloatingCard (헌법4 — 플랫폼 분기는 ui 레이어). No peek and no backdrop: the universe stays visible AND interactive behind it (A7), and there is
  * NO `fixed inset-0` blocking modal (A4 — the share/gift/send modals fold into this). Esc/empty-tap
  * dismissal is owned by the page (focusActor / page state), not here, to keep one Esc router.
  * Each feature provides body-only CONTENT; this host (via BottomSheet/FloatingCard) owns the

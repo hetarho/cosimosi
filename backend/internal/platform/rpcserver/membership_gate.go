@@ -30,10 +30,10 @@ func NewMembershipGateInterceptor(checker MembershipChecker, adminAllowlist []st
 			if req.Spec().IsClient {
 				return next(ctx, req)
 			}
-			userID, ok := UserIDFromContext(ctx)
-			if !ok {
+			userID, err := RequireUserID(ctx)
+			if err != nil {
 				// Defensive: auth runs first and would have rejected a token-less request.
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+				return nil, err
 			}
 			// Admins (ADMIN_USER_IDS) enter without redeeming a code (spec 41) — they bootstrap the
 			// gate (issue the first invites) and shouldn't be locked out of their own universe.

@@ -1,5 +1,5 @@
 // Pure weight·brightness → visual-parameter mapping. Testable, three-free.
-// Line2NodeMaterial has no per-edge width, so strength is carried by emissive/alpha/pulse, not thickness.
+// SynapseFilaments carries strength by emissive filament brightness/pulse, not per-edge Line2 width.
 import { VALUES } from '@/shared/config'
 import type { SynapseEdge } from './types'
 
@@ -8,12 +8,7 @@ export const A_MIN = VALUES.decay.aMin
 // Thickness buckets (a 2-step global scalar — Line2NodeMaterial can't vary width per edge).
 export const WIDTH_THIN_PX = VALUES.synapse.widthThinPx
 export const WIDTH_THICK_PX = VALUES.synapse.widthThickPx
-export const THICK_THRESHOLD = VALUES.synapse.thickThreshold // weight ≥ 0.5 → thick bucket
-
-export const ALPHA_MIN = VALUES.synapse.alphaMin // weak/dormant edges still glow faintly
-export const ALPHA_MAX = 1
-
-export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
+const THICK_THRESHOLD = VALUES.synapse.thickThreshold // weight ≥ 0.5 → thick bucket
 
 /** Effective visual strength = weight · max(a_min, brightness), clamped to [0,1] so a stray
  *  weight/brightness > 1 can't blow out alpha/color on the additive material. */
@@ -23,13 +18,10 @@ export const visualIntensity = (e: SynapseEdge): number =>
 /** Emissive brightness driver. */
 export const emissive = (e: SynapseEdge): number => visualIntensity(e)
 
-/** Opacity driver, floored at ALPHA_MIN so weak/dormant edges remain visible. */
-export const alpha = (e: SynapseEdge): number => lerp(ALPHA_MIN, ALPHA_MAX, visualIntensity(e))
-
 /** 링크 활력(spec 26): 누적 공동 회상(co_activation_count)이 많을수록 "살아있는" 연결.
  *  log 압축으로 0..~0.12에 bounded — 처음 몇 번이 가장 크게 기여하고 이후 완만해진다.
  *  서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일하다. */
-export const vitality = (e: SynapseEdge): number =>
+const vitality = (e: SynapseEdge): number =>
   VALUES.synapse.vitalityCap *
   Math.min(1, Math.log2(1 + Math.max(0, e.coActivationCount)) / VALUES.synapse.vitalityLogDiv)
 
@@ -64,7 +56,7 @@ export interface StrandStyle {
 /** 강도 단계표 — [상한(미만), 스타일]. 마지막 단계가 그 이상 전부를 받는다(경계 없음 → Infinity).
  *  수치는 spec/values.yaml(synapse.strand_*) 평행 배열에서 조립한다. */
 const S = VALUES.synapse
-export const STRAND_TIERS: readonly (readonly [number, StrandStyle])[] = [
+const STRAND_TIERS: readonly (readonly [number, StrandStyle])[] = [
   [S.strandBounds[0], { strands: S.strandCount[0], radius: S.strandRadius[0], bright: S.strandBright[0], opacity: S.strandOpacity[0] }], // 옅은 인연 — 실 한두 가닥
   [S.strandBounds[1], { strands: S.strandCount[1], radius: S.strandRadius[1], bright: S.strandBright[1], opacity: S.strandOpacity[1] }], // 보통
   [S.strandBounds[2], { strands: S.strandCount[2], radius: S.strandRadius[2], bright: S.strandBright[2], opacity: S.strandOpacity[2] }], // 강함

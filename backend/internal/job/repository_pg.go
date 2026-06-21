@@ -2,8 +2,6 @@ package job
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -14,8 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
+	dbutil "github.com/cosimosi/backend/internal/db"
 	"github.com/cosimosi/backend/internal/db/fragment"
 	"github.com/cosimosi/backend/internal/db/gen"
+	"github.com/cosimosi/backend/internal/platform/id"
 )
 
 // claimLeaseSeconds is the visibility timeout: a job left 'running' longer than
@@ -58,9 +58,9 @@ func (r *pgRepository) Claim(ctx context.Context, kind Kind) (Job, error) {
 	return Job{
 		ID:       row.ID,
 		Kind:     kind,
-		MemoryID: strFromDB(row.MemoryID),
-		RecordID: strFromDB(row.RecordID),
-		UserID:   strFromDB(row.UserID),
+		MemoryID: dbutil.StringValue(row.MemoryID),
+		RecordID: dbutil.StringValue(row.RecordID),
+		UserID:   dbutil.StringValue(row.UserID),
 		Attempts: int(row.Attempts),
 	}, nil
 }
@@ -109,9 +109,9 @@ func (r *pgRepository) GetRecordForExtract(ctx context.Context, recordID string)
 		UserID:        row.UserID,
 		Body:          row.Body,
 		EntryDate:     row.EntryDate.Time,
-		HintMood:      strFromDB(row.Mood),
-		HintIntensity: f32FromDB(row.Intensity),
-		HintValence:   f32FromDB(row.Valence),
+		HintMood:      dbutil.StringValue(row.Mood),
+		HintIntensity: dbutil.Float64Value(row.Intensity),
+		HintValence:   dbutil.Float64Value(row.Valence),
 	}, nil
 }
 
@@ -286,9 +286,9 @@ func (r *pgRepository) LoadConsolidateGraph(ctx context.Context, userID string) 
 		stars = append(stars, ConsolidateStar{
 			ID:             row.MemoryID,
 			LastRecalledAt: row.LastRecalledAt.Time,
-			StableX:        f64Ptr(row.StableX),
-			StableY:        f64Ptr(row.StableY),
-			StableZ:        f64Ptr(row.StableZ),
+			StableX:        dbutil.Float64Ptr(row.StableX),
+			StableY:        dbutil.Float64Ptr(row.StableY),
+			StableZ:        dbutil.Float64Ptr(row.StableZ),
 		})
 	}
 	linkRows, err := q.ListLinksByUser(ctx, userID)
@@ -359,11 +359,11 @@ func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID strin
 		hueShifts := make([]float32, len(gisted))
 		formSeedDeltas := make([]float32, len(gisted))
 		for i, row := range gisted {
-			id, err := newID()
+			historyID, err := id.New()
 			if err != nil {
 				return 0, fmt.Errorf("gist history id: %w", err)
 			}
-			histIDs[i] = id
+			histIDs[i] = historyID
 			memoryIDs[i] = row.MemoryID
 			versions[i] = row.Version
 			brightnesses[i] = row.BrightnessOffset // brightness_offset snapshot at this version (23)
@@ -417,13 +417,13 @@ func (s *pgScheduler) ActiveUserIDs(ctx context.Context) ([]string, error) {
 }
 
 func (s *pgScheduler) EnqueueConsolidate(ctx context.Context, userID string) (bool, error) {
-	id, err := newID()
+	jobID, err := id.New()
 	if err != nil {
 		return false, err
 	}
 	uid := userID
 	n, err := gen.New(s.pool).EnqueueConsolidateJob(ctx, gen.EnqueueConsolidateJobParams{
-		ID:     id,
+		ID:     jobID,
 		UserID: &uid,
 	})
 	if err != nil {
@@ -432,45 +432,9 @@ func (s *pgScheduler) EnqueueConsolidate(ctx context.Context, userID string) (bo
 	return n > 0, nil
 }
 
-// f64Ptr lifts a nullable REAL (sqlc *float32) into the pure domain's *float64
-// (a NULL stable coordinate = never cached → cold seed; constitution §5/§3).
-func f64Ptr(f *float32) *float64 {
-	if f == nil {
-		return nil
-	}
-	v := float64(*f)
-	return &v
-}
-
 // isUniqueViolation reports a Postgres 23505 (unique_violation) — the fan-out
 // fence on UNIQUE (record_id, fragment_index).
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
-}
-
-// newID is the server-authoritative id source (same recipe as the memory
-// repository): 16 bytes of crypto entropy, base64url without padding.
-func newID() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", fmt.Errorf("generate id: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
-}
-
-// --- domain ↔ db (nullable) mappers ---
-
-func strFromDB(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
-func f32FromDB(f *float32) float64 {
-	if f == nil {
-		return 0
-	}
-	return float64(*f)
 }

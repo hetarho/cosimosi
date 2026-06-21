@@ -3,4 +3,3 @@
 // universe canvas and wires the recall panel's "변천사 보기" to useEvolutionStore.open.
 export { EvolutionPanel } from './ui'
 export { useEvolutionStore } from './model'
-export { getEvolutionHistory } from './api/evolution'

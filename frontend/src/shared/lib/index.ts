@@ -18,8 +18,5 @@ export {
   fibonacciStarPosition,
   scatterDirection,
   applyAngularDrift,
-  DRIFT_STEP_RAD,
   targetRadius,
-  R_MIN,
-  R_MAX,
 } from './layout'

@@ -10,11 +10,11 @@ package fragment
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 
+	dbutil "github.com/cosimosi/backend/internal/db"
 	"github.com/cosimosi/backend/internal/db/gen"
+	"github.com/cosimosi/backend/internal/platform/id"
 	"github.com/cosimosi/backend/internal/values"
 )
 
@@ -35,7 +35,7 @@ type Segment struct {
 func FanOutTx(ctx context.Context, q *gen.Queries, recordID, userID string, segs []Segment) ([]string, error) {
 	ids := make([]string, 0, len(segs))
 	for _, s := range segs {
-		memoryID, err := newID()
+		memoryID, err := id.New()
 		if err != nil {
 			return nil, err
 		}
@@ -43,15 +43,15 @@ func FanOutTx(ctx context.Context, q *gen.Queries, recordID, userID string, segs
 			ID:            memoryID,
 			UserID:        userID,
 			RecordID:      recordID,
-			Mood:          strToDB(s.Mood),
-			Intensity:     f32ToDB(s.Intensity),
+			Mood:          dbutil.StringPtr(s.Mood),
+			Intensity:     dbutil.Float32Ptr(s.Intensity),
 			FragmentIndex: int32(s.Index),
-			FragmentText:  strToDB(s.Text),
-			Valence:       f32ToDB(s.Valence),
+			FragmentText:  dbutil.StringPtr(s.Text),
+			Valence:       dbutil.Float32Ptr(s.Valence),
 		}); err != nil {
 			return nil, fmt.Errorf("insert fragment %d: %w", s.Index, err)
 		}
-		jobID, err := newID()
+		jobID, err := id.New()
 		if err != nil {
 			return nil, err
 		}
@@ -79,29 +79,4 @@ func FanOutTx(ctx context.Context, q *gen.Queries, recordID, userID string, segs
 		}
 	}
 	return ids, nil
-}
-
-// newID is the server-authoritative id source (same recipe as the memory/job
-// repositories): 16 bytes of crypto entropy, base64url without padding.
-func newID() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", fmt.Errorf("generate id: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
-}
-
-// strToDB stores "" as NULL ("" = unset mood / no fragment text → r.body fallback).
-func strToDB(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-// f32ToDB stores the value as-is — a confirmed/extracted 0 is a real value here,
-// not "unset" (unlike the record-level hint mappers).
-func f32ToDB(v float64) *float32 {
-	f := float32(v)
-	return &f
 }

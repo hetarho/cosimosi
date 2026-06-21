@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cosimosi/backend/internal/platform/id"
 	"github.com/cosimosi/backend/internal/values"
 )
 
@@ -60,7 +61,7 @@ func (s *Service) Issue(ctx context.Context, p IssueParams, now time.Time) (Invi
 	if p.TTL != nil && *p.TTL <= 0 {
 		return InviteCode{}, ErrInvalidTTL
 	}
-	id, err := newID()
+	inviteID, err := id.New()
 	if err != nil {
 		return InviteCode{}, err
 	}
@@ -74,7 +75,7 @@ func (s *Service) Issue(ctx context.Context, p IssueParams, now time.Time) (Invi
 		expiresAt = &t
 	}
 	return s.repo.Issue(ctx, InviteCode{
-		ID:        id,
+		ID:        inviteID,
 		Code:      code,
 		Label:     strings.TrimSpace(p.Label),
 		CreatedBy: p.CreatedBy,

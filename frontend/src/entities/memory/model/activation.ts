@@ -46,15 +46,15 @@ export function isDormant(
 // landing card's 0.12 was a demo value, not a second floor).
 
 /** R_conn coefficient: more connections (degree) → more decay resistance. */
-export const ALPHA_CONN = VALUES.decay.alphaConn
+const ALPHA_CONN = VALUES.decay.alphaConn
 /** R_recent coefficient: closer to the "요즘 토픽" (relevance↑) → more decay resistance. */
-export const BETA_RECENT = VALUES.decay.betaRecent
+const BETA_RECENT = VALUES.decay.betaRecent
 /** R_emo coefficient on arousal (intensity): stronger emotion → more decay resistance
  *  (amygdala-mediated consolidation — concept.md). */
-export const GAMMA_EMO = VALUES.decay.gammaEmo
+const GAMMA_EMO = VALUES.decay.gammaEmo
 /** R_emo coefficient on negative valence: a strong NEGATIVE affect resists decay extra
  *  (Kensinger & Corkin 2004 — negative events are remembered more durably). */
-export const DELTA_VAL = VALUES.decay.deltaVal
+const DELTA_VAL = VALUES.decay.deltaVal
 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
 
@@ -111,7 +111,7 @@ export function modulatedBrightness(
  *  degreeNorm (link count / median) + weight_term·weightedDegreeNorm (Σweight / median), scaled by
  *  connectedness_gain and saturated. weight_term=0 → pure count. Drives self-glow base intensity —
  *  a hub glows brighter; an isolated star sits near 0 (visible only via the reflection channel). */
-export function connectedness(degreeNorm: number, weightedDegreeNorm: number): number {
+function connectedness(degreeNorm: number, weightedDegreeNorm: number): number {
   const combined = Math.max(0, degreeNorm) + VALUES.selfGlow.weightTerm * Math.max(0, weightedDegreeNorm)
   return clamp01(VALUES.selfGlow.connectednessGain * combined)
 }

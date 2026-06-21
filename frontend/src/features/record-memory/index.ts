@@ -5,11 +5,5 @@ export { MemoryForm } from './ui/MemoryForm'
 export {
   composeActor,
   selectPhase,
-  selectBody,
-  selectEntryDate,
-  selectFragments,
-  selectErrorText,
-  selectIsSegmenting,
-  selectIsSubmitting,
 } from './model/compose.machine'
 export { scheduleSynapseSync } from './api/record-memory'

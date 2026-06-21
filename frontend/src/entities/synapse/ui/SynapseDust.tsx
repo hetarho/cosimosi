@@ -12,22 +12,13 @@ import * as THREE from 'three'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
 import { attribute, vec3, float, uniform, sin } from 'three/tsl'
 import { mulberry32 } from '@/shared/lib'
+import { hashId } from '../lib/hash'
 import { visualIntensity } from '../model/mapping'
 import type { SynapseEdge } from '../model/types'
 
 const MAX_EDGES = 300 // match SynapseFilaments
 const MAX_DUST = 14000 // hard cap on total motes (one InstancedMesh)
 const EPS = 1e-4
-
-/** Deterministic 32-bit FNV-1a hash (same as SynapseFilaments, so dust shares the bow). */
-function hashId(s: string): number {
-  let h = 2166136261 >>> 0
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return h >>> 0
-}
 
 function perpBasis(dir: THREE.Vector3, out1: THREE.Vector3, out2: THREE.Vector3): void {
   const up = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)

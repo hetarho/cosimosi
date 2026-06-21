@@ -90,7 +90,7 @@
 | 견고성 | 응답은 파싱→화이트리스트→클램프(intensity `[0,1]`·valence `[-1,1]`·NaN→0)→Index 0-based 재부여; **어떤 깨짐이든 단일 조각 폴백**(전체 원문·neutral·valence 0) — 에러가 아닌 정상 경로. 전송 실패만 에러(워커 백오프) |
 | 어댑터 선택 | env 노브 없음(34) — admin 콘솔의 활성 LLM 선택을 따른다: 활성이면 실 LLM, 없으면 키리스 mock(결정론적 문단/문장 분절·neutral). admin 배선 없는 단독 도구·테스트는 mock 고정 |
 | LLM 공급자 추상화 | `internal/llm`의 단일 `llm.Client` 포트 뒤에서 공급자(openai\|gemini\|claude\|deepseek\|grok)·모델·키를 admin 콘솔에서 교체(헌법7·34). 기본 모델 gpt-5.4-mini / gemini-3.5-flash / claude-opus-4-8 / deepseek-v4-flash / grok-4.3, 모델 오버라이드는 콘솔 selection |
-| 조각 시드 | `ai.SegmentSeed(diaryID, fragmentIndex, text) = FNV64a(diary_id:idx:sha1(normalize(text)))` — 결정론적(21이 별 형태/좌표 시드로 소비) |
+| 조각 시드 | 실서버 조각 형태/방향 시드는 저장된 별 id와 조각 index에서 파생한다. 은퇴한 AI 시드 헬퍼는 호출 경로가 없어 제거됐다. |
 | 비용 가드 | 입력 4000 runes 절단(임베더 캡 미러)·텍스트 해시 캐시·`ExtractMetrics`(임베딩 `Metrics`와 분리 계측) |
 
 ### 변천사 (evolution_history — append-only, 23)

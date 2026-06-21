@@ -8,7 +8,6 @@ export {
   setDemoPersona,
   getDemoFlow,
   setDemoFlow,
-  resetDemoFlow,
   getTutorialStep,
   setTutorialStep,
   enterTutorialMode,
@@ -25,14 +24,10 @@ export {
   demoFragmentText,
   demoListRecords,
   demoGetRecord,
-  demoAddRecord,
-  demoAddStar,
-  demoAddMultiSceneStar,
   demoAddRandomStars,
   demoToday,
   demoMarkRecalled,
   demoReshape,
-  demoConsolidate,
   demoApplyDayBatch,
   demoEvolution,
   demoOverlayData,
@@ -41,5 +36,4 @@ export {
 export type { EvolutionSnap, DemoOverlaySide } from './data'
 export { startDemoSession } from './session'
 export { useDemoOverlay } from './overlay-mode'
-export { virtualNowMs, skipDemoDays, demoOffsetDays, resetDemoClock } from './clock'
-export { brightestStarId, thickestEdge, sameDayPair, dormantStarId } from './observe'
+export { virtualNowMs, demoOffsetDays } from './clock'

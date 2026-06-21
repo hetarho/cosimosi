@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosimosi/backend/internal/platform/id"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -45,9 +46,9 @@ func TestRepository_Integration(t *testing.T) {
 
 	issue := func(c InviteCode) InviteCode {
 		t.Helper()
-		id, _ := newID()
+		inviteID, _ := id.New()
 		code, _ := newCode(10)
-		c.ID, c.Code, c.CreatedBy = id, code, "test-admin"
+		c.ID, c.Code, c.CreatedBy = inviteID, code, "test-admin"
 		out, err := repo.Issue(ctx, c)
 		if err != nil {
 			t.Fatalf("issue: %v", err)
@@ -56,8 +57,8 @@ func TestRepository_Integration(t *testing.T) {
 		return out
 	}
 	newUser := func() string {
-		id, _ := newID()
-		u := "test-invite-" + id
+		userID, _ := id.New()
+		u := "test-invite-" + userID
 		userIDs = append(userIDs, u)
 		return u
 	}
@@ -129,7 +130,7 @@ func TestRepository_Integration(t *testing.T) {
 	if m, _ := repo.IsMember(ctx, uA); !m {
 		t.Fatalf("IsMember(redeemed user) = false, want true")
 	}
-	if m, _ := repo.IsMember(ctx, "test-invite-nobody-"+func() string { id, _ := newID(); return id }()); m {
+	if m, _ := repo.IsMember(ctx, "test-invite-nobody-"+func() string { unknownID, _ := id.New(); return unknownID }()); m {
 		t.Fatalf("IsMember(unknown) = true, want false")
 	}
 

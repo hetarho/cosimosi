@@ -5,7 +5,7 @@ import { capture, cn, EVENTS } from '@/shared/lib'
 import { isDemoMode } from '@/shared/lib/demo'
 import { itemId, isOwned, priceOf, type Axis } from '@/shared/config'
 import {
-  THEMES,
+  BACKGROUNDS,
   SELF_OBJECTS,
   useAppearance,
   type Theme,
@@ -192,7 +192,7 @@ export function AppearanceControls({
       axis: 'background',
       label: '배경 — 색·텍스처',
       groupLabel: '배경',
-      metas: THEMES,
+      metas: BACKGROUNDS,
       value: theme,
       setX: (k) => setTheme(k as Theme),
     },

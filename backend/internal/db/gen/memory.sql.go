@@ -597,7 +597,7 @@ type ListDormantRow struct {
 	RecallCount      int32              `json:"recall_count"`
 }
 
-// Long-unrecalled (dormant) stars for the dormant-search page. A search aid,
+// Long-unrecalled (dormant) stars for search/explorer surfaces. A search aid,
 // NOT a delete/filter — GetUniverse still returns the full graph (constitution §2). The WHERE
 // compares only the last_recalled_at time cutoff (sargable; NO exp()/decay math in SQL —
 // brightness is computed client-side from this same value). The service converts the

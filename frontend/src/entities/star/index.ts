@@ -1,10 +1,10 @@
 // Public API for the star entity — 별의 도메인 단일 출처: 고를 수 있는 종류 + 종류별 렌더(3D/2D).
-//  - 종류:    StarObject(type), STAR_OBJECTS(목록), DEFAULT_OBJECT
+//  - 종류:    StarObject(type), STAR_OBJECTS(목록)
 //  - 3D:     StarField(인스턴스, 우주), buildStarBody(별-바디 프리미티브) + STAR_FORM_SPIN — 입력 바인딩
 //            (attribute/uniform)은 소비처가, halo·캔버스·배치·움직임도 소비처 몫
 //  - 2D:     VizStar(SVG), StarVisualProps
 export type { StarObject, StarObjectMeta } from './model/types'
-export { STAR_OBJECTS, DEFAULT_OBJECT } from './model/kinds'
+export { STAR_OBJECTS } from './model/kinds'
 export { StarField, type StarFieldProps } from './ui/StarField'
 export { buildStarBody, STAR_FORM_SPIN, type StarShadeInputs, type StarLightParams, type StarBodyBuild } from './ui/star-body'
 export { VizStar, type VizStarProps } from './ui/VizStar'

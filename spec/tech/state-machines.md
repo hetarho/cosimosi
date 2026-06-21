@@ -47,7 +47,7 @@ cosimosi는 일반적인 일기 앱이 아니라 **우주를 항해하는 게임
 | **항행(navigation)** | `use-camera-mode`(mode·transitioning·focusStarId·resetNonce) + `UniverseCanvas`의 FlyTo·FrameAll·ModeTransition 컨트롤러(useRef 암묵 상태) | `navigation.machine` | `widgets/universe-canvas/model` | **P2** |
 | **포커스(focus)** | `memory.selectedId` + `wayfinding.highlightedRecordId/frameRequest` + `NearFarHighlightGuard`(배타 강제 이펙트) | `focus.machine` | **`entities/memory/model`** | **P1 ✅** |
 
-> **배치 정정(P1 구현 결과):** focus 머신은 `entities/memory/model`에 둔다(스펙 초안의 `features/universe`가 아니라). 이유 — 포커스는 `widgets/universe-canvas`(카메라 컨트롤러)와 `features/recall`·`features/diary-list`가 **모두 단방향으로 읽어야** 하는데, 그 둘의 공통 하위 레이어는 `entities`뿐이고, `selectedId`가 원래 거기 살았다(FSD 위반 없이 모두가 import). 모듈 싱글턴 액터(`focusActor`)로 노출 — 구 zustand 싱글턴과 동형 수명이라 `resetUniverseData`가 `DISMISS`를 보낼 수 있다.
+> **배치 정정(P1 구현 결과):** focus 머신은 `entities/memory/model`에 둔다(스펙 초안의 옛 universe feature 위치가 아니라). 이유 — 포커스는 `widgets/universe-canvas`(카메라 컨트롤러)와 `features/recall`·`features/diary-list`가 **모두 단방향으로 읽어야** 하는데, 그 둘의 공통 하위 레이어는 `entities`뿐이고, `selectedId`가 원래 거기 살았다(FSD 위반 없이 모두가 import). 모듈 싱글턴 액터(`focusActor`)로 노출 — 구 zustand 싱글턴과 동형 수명이라 `resetUniverseData`가 `DISMISS`를 보낼 수 있다.
 >
 > **범위 정정:** focus 머신은 `idle | star | diary`만 — `shell.panel/peek`(리스트 오버레이)와 `evolution.openFor`는 포커스와 **직교**(아래 §3)라 흡수하지 않고 깨끗한 zustand로 둔다. 변환 가치가 낮은 단순 스토어는 그대로(triage 원칙).
 
@@ -58,6 +58,7 @@ cosimosi는 일반적인 일기 앱이 아니라 **우주를 항해하는 게임
 | **세션(session)** | `app/model/auth-store` `status: loading\|authed\|anon` + 모듈 `syncIdentity` | `session.machine` | `app/model` | **P0(레퍼런스)** |
 | **작성(compose)** | `record-memory/draft-store` `phase(compose\|review)` × `status(idle\|segmenting\|submitting\|error)` | `compose.machine` | `features/record-memory/model` | **P3** |
 | **회상 flush(recall)** | `recall/store` `session{deltas,batchId}` + 모듈 `inFlight` + 디바운스 타이머 | `recall-flush.machine` | `features/recall/model` | **P4** |
+| **둘러보기 진행(tour)** | 구 `DemoGuidedTour` `useState(phaseIndex)` + DOM 관찰·rAF 항해 샘플링 `useEffect` 다발 + flag `tourStep` | `tour.machine` | `widgets/demo-tour/model` | **change 13** |
 
 ### Leaf — 평가 후 대부분 유지 (승격은 가치가 증명될 때만)
 
@@ -65,13 +66,13 @@ cosimosi는 일반적인 일기 앱이 아니라 **우주를 항해하는 게임
 |---|---|---|
 | 변천사 오버레이 | `features/evolution/model/store` `openFor` | **focus 머신의 `evolution(memoryId)` 상태로 흡수**(P1) |
 | 시간여행 트윈 | `widgets/demo-sim/model/time-travel.ts`(모듈 가변) | (선택) `fromCallback` 액터 — demo 전용, 저우선 **P5** |
-| MemoryPanel phase, SignIn step, BottomSheet snap, DemoSimPanel(carousel·모달), 랜딩 카드 데모(NightlyConsolidation `stage 0–4` 등) | 각 컴포넌트 `useState` | **로컬 유지.** 명시적 다단계·재시도·교차 동기화가 생기면 그때 승격 |
+| MemoryPanel phase, SignIn step, BottomSheet snap, 데모 자유모드 팝오버, 랜딩 카드 데모(NightlyConsolidation `stage 0–4` 등) | 각 컴포넌트 `useState` | **로컬 유지.** 명시적 다단계·재시도·교차 동기화가 생기면 그때 승격 |
 
 ### 데이터로 남기는 것 (머신 아님)
 
 `memory.stars / loadedEmpty / ambient`, `synapse.edges`, `appearance.theme / object / selfObject / emotionColors`, force-sim 좌표 `Float32Array` 버퍼 — 전부 **값/컬렉션**이라 zustand/Query/ref 유지. 머신은 이들을 `id`로 참조만 한다.
 
-> **요약:** 7개를 머신으로 승격(2 Core + 3 Lifecycle + evolution 흡수 + 선택적 time-skip), 나머지는 로컬 유지. 데이터는 절대 머신으로 옮기지 않는다.
+> **요약:** 8개를 머신으로 승격(2 Core + 4 Lifecycle + evolution 흡수 + 선택적 time-skip), 나머지는 로컬 유지. 데이터는 절대 머신으로 옮기지 않는다.
 
 ---
 
@@ -113,10 +114,10 @@ selectIsStarFocus / selectIsDiaryFocus / selectIsFocused / selectFrameNonce
 
 ### 3.1 포커스 ⊥ 패널 — 왜 셸은 흡수하지 않았나
 
-리스트 오버레이(`shell.panel/peek` — 잠든 별·일기 목록)와 변천사(`evolution.openFor`)는 포커스와 **직교**한다: 일기 목록을 peek한 채 그 일기를 조망(`diary`)할 수 있고, 별을 회상(`star`)하면서 변천사를 열 수 있다. 즉 "무엇에 집중하나"와 "어떤 리스트/오버레이가 떠 있나"는 동시에 성립하는 두 축이다. 그래서:
+탐색기/표면 상태와 변천사(`evolution.openFor`)는 포커스와 **직교**한다: 일기 목록을 열어 그 일기를 조망(`diary`)할 수 있고, 별을 회상(`star`)하면서 변천사를 열 수 있다. 즉 "무엇에 집중하나"와 "어떤 표면이 떠 있나"는 동시에 성립하는 두 축이다. 그래서:
 
 - **focus 머신은 `idle|star|diary`만** 다룬다.
-- `shell.panel/peek`(`features/universe`)와 `evolution.openFor`(`features/evolution`)는 이미 깨끗한 단순 zustand라 **그대로 둔다**(triage: 변환 가치 낮음).
+- 탐색기/표면은 `HomePage` 로컬 state로 두고, `evolution.openFor`(`features/evolution`)는 단순 zustand라 **그대로 둔다**(triage: 변환 가치 낮음).
 - **일기 카드(DiaryCard)는 `focus=diary`에 묶는다**(패널이 아니라). 구버전 버그의 진짜 원인이 카드를 `panel==='diary'`에 묶어 회상-패널 경로(panel=null)에선 안 떴던 것 — 이제 포커스로 렌더하므로 어느 진입점이든 뜬다.
 
 **나브로 보내는 이벤트** — [§5 계약](#5-나브--포커스-계약). P1 단계(나브 머신 P2 도착 전)에서는 카메라 컨트롤러가 focus selector를 `getSnapshot`으로 읽고, fly-to 도착 시 `focusActor.send(SELECT_STAR)`로 패널을 연다(나브→포커스). P2에서 `star.entry → sendTo(nav, FLY_TO_STAR)` 등 양방향 계약으로 정식화한다.

@@ -89,8 +89,6 @@ export const selectIsStarFocus = (s: Snap): boolean => s.matches('star')
 export const selectIsDiaryFocus = (s: Snap): boolean => s.matches('diary')
 export const selectIsFocused = (s: Snap): boolean => s.matches('star') || s.matches('diary')
 export const selectFrameNonce = (s: Snap): number => s.context.frameNonce
-// 겹쳐보기 쌍 포커스(spec 37). 비교 패널·다리 강조의 단일 출처.
-export const selectIsPairFocus = (s: Snap): boolean => s.matches('pair')
 export const selectPairFocus = (s: Snap): { myId: string; theirId: string } | null =>
   s.matches('pair') && s.context.pairMyId != null && s.context.pairTheirId != null
     ? { myId: s.context.pairMyId, theirId: s.context.pairTheirId }

@@ -1,6 +1,6 @@
 // 시냅스 시간 창 인터랙티브 데모 — 랜딩 TimeWindowCard의 시연 원본을 entity로 이식(spec 19).
 // 실제 규칙대로 의미 base에 같은 날(24h 창) +0.3 보너스가 더해지고, 창이 닫혀도 의미
-// 연결은 남는다(backend worker buildLinks의 거울 시연).
+// 연결은 남는다(backend worker link selection의 거울 시연).
 import { useId, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { MOOD, VALUES } from '@/shared/config'

@@ -14,8 +14,8 @@ export interface BottomSheetProps {
  * 1.1/1.4) — a bottom sheet that snaps between `half` and `full` and drags down to dismiss.
  * NON-blocking: no backdrop, so the universe stays visible AND interactive behind it (1.3).
  * Canvas-outside DOM only (헌법8 — no `<Html>` in the 3D scene). `prefers-reduced-motion`
- * drops BOTH the slide/spring AND the max-height transition to instant (1.7). The `peek`
- * (handle-only) state lives one level up in OverlayHost — this renders only the expanded sheet.
+ * drops BOTH the slide/spring AND the max-height transition to instant (1.7). Higher-level
+ * hosts decide when it is open; this renders only the expanded sheet.
  *
  * Drag is started ONLY from the grab handle (useDragControls + dragListener={false}) so a
  * vertical swipe in the scrollable list scrolls the list natively instead of dragging/dismissing

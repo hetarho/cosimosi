@@ -184,9 +184,6 @@ type Repository interface {
 	// startingStardust is the effective balance shown for unseeded wallets;
 	// limit is page_size+1 so the service can detect a following page.
 	ListUsers(ctx context.Context, query, pageToken string, limit, startingStardust int) ([]AdminUser, error)
-	// UserExists reports whether target is a real user (auth.users on Supabase,
-	// the app-domain union locally) — the production NotFound guard (A10).
-	UserExists(ctx context.Context, target string) (bool, error)
 	// GrantStardust seeds the target wallet to startingStardust if absent, adds
 	// amount (overflow-guarded), and writes the admin_stardust_grants audit row —
 	// all in one transaction (A7/A8/A9). Returns ErrUserNotFound when the target

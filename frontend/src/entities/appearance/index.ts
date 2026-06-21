@@ -9,20 +9,15 @@ export type {
   SelfObject,
   SelfObjectMeta,
 } from './model/types'
-// 정명(Background) + 옛 이름(Theme) alias — 점진 정리용.
-export type { Theme, ThemeMeta } from './model/types'
+// Theme is a legacy type alias kept while store state still names the background field `theme`.
+export type { Theme } from './model/types'
 export {
   BACKGROUNDS,
-  DEFAULT_BACKGROUND,
   backgroundMeta,
   paletteForBackground,
   themeAccent,
-  themeBg,
-  // 옛 이름 alias.
-  THEMES,
-  DEFAULT_THEME,
 } from './model/backgrounds'
-export { SELF_OBJECTS, DEFAULT_SELF_OBJECT } from './model/self-objects'
+export { SELF_OBJECTS } from './model/self-objects'
 // 자아 별 형태 TSL 빌더(spec 38·44) — 우주 캔버스·플레이그라운드 미리보기 공용(buildStarBody 동형).
 export { buildSelfForm, type SelfFormBuild } from './ui/self-form'
 export { useAppearance, type ServerInventory } from './model/store'
@@ -43,9 +38,6 @@ export {
 export {
   MOOD_ORDER,
   recommendedEmotionColors,
-  isCompleteEmotionColors,
   mergeEmotionColorDraft,
-  rgbToHex,
   normalizeHex,
-  isHexColor,
 } from './model/emotion-colors'

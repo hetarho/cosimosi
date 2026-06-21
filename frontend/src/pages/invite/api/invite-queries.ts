@@ -20,7 +20,7 @@ export function membershipStatusQueryOptions() {
 }
 
 /** 멤버십 쿼리 키 — redeem 성공 시 invalidate해 게이트가 즉시 통과로 재평가되게 한다. */
-export function membershipStatusKey() {
+function membershipStatusKey() {
   return createConnectQueryKey({
     schema: InviteService.method.getMembershipStatus,
     cardinality: 'finite',

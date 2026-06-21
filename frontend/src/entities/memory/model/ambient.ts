@@ -41,7 +41,7 @@ export interface RankedEmotion {
   weight: number
 }
 
-export const AROUSAL_GAIN = VALUES.ambient.arousalGain
+const AROUSAL_GAIN = VALUES.ambient.arousalGain
 
 /** g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]). Mirrors memory.ExcitabilityGain (22 seam). */
 export const excitabilityGain = (a: Ambient): number => 1 + AROUSAL_GAIN * a.arousal

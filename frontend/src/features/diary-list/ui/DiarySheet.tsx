@@ -1,10 +1,9 @@
 // Original-diary list/search (spec 28, 원본 일기로 별 찾기; filters extended in change 09) —
-// CONTENT ONLY for the universe shell's telescope 일기 탭 (OverlayHost / explorer sheet). Picking
+// CONTENT ONLY for the universe shell's telescope 일기 탭 (explorer Surface). Picking
 // a diary frames ALL of its stars and highlights them (the page wires onSelectDiary →
-// focus SELECT_DIARY + shell setPeek); the host then collapses to a peek handle so the framed
-// stars are visible. We never leave the universe (Architecture §3.1 — canvas-outside DOM).
+// focus SELECT_DIARY + closes the explorer). We never leave the universe (Architecture §3.1 — canvas-outside DOM).
 // Read-only: the body shown is a short EXCERPT (the immutable original opens via recall — 헌법1).
-// The chrome (header/peek/snap) is the OverlayHost's job; this emits intro + filters + list.
+// The chrome (header/sheet/card) is the Surface host's job; this emits intro + filters + list.
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { errorMessage } from '@/shared/lib'

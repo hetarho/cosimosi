@@ -1,4 +1,4 @@
-import { setup, assign, fromPromise, createActor, type SnapshotFrom } from 'xstate'
+import { setup, assign, fromPromise, createActor } from 'xstate'
 import { capture, EVENTS } from '@/shared/lib'
 import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
 import { useSynapseStore } from '@/entities/synapse'
@@ -135,6 +135,3 @@ export const recallFlushMachine = setup({
 
 export const recallFlushActor = createActor(recallFlushMachine)
 recallFlushActor.start()
-
-type Snap = SnapshotFrom<typeof recallFlushMachine>
-export const selectIsFlushing = (s: Snap): boolean => s.matches('flushing')

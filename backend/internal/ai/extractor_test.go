@@ -94,26 +94,6 @@ func TestNoopExtractorAlwaysOneSegment(t *testing.T) {
 	assertSingleFallback(t, ext)
 }
 
-func TestSegmentSeedDeterministicAndNormalized(t *testing.T) {
-	a := SegmentSeed("diary-1", 0, "아침에 커피를 마셨다")
-	if b := SegmentSeed("diary-1", 0, "아침에 커피를 마셨다"); b != a {
-		t.Fatal("same input produced different seeds")
-	}
-	// Cosmetic edits (case, whitespace runs) must not move the star.
-	if b := SegmentSeed("diary-1", 0, "  아침에   커피를 마셨다 "); b != a {
-		t.Fatal("whitespace normalization not applied to seed")
-	}
-	if SegmentSeed("diary-1", 1, "아침에 커피를 마셨다") == a {
-		t.Fatal("different fragment index produced the same seed")
-	}
-	if SegmentSeed("diary-2", 0, "아침에 커피를 마셨다") == a {
-		t.Fatal("different diary produced the same seed")
-	}
-	if SegmentSeed("MixedCase", 0, "Latin Text") != SegmentSeed("MixedCase", 0, "latin text") {
-		t.Fatal("lowercasing not applied to seed text")
-	}
-}
-
 // stubLLM is a canned llm.Client for exercising LLMExtractor without HTTP.
 type stubLLM struct {
 	text string

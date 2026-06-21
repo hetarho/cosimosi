@@ -227,9 +227,6 @@ export const selectFrameRecordId = (s: Snap): string | null => (s.matches('frami
 export const selectFrameSeq = (s: Snap): number => s.context.frameSeq
 export const selectInModeTransition = (s: Snap): boolean => s.matches('modeTransition')
 export const selectTransitionTo = (s: Snap): CameraMode => s.context.transitionTo
-// 겹쳐보기(spec 37). overlay 부모 매치는 viewing·framingPair 둘 다 true(오버레이 위젯 마운트 게이트).
-export const selectIsOverlay = (s: Snap): boolean => s.matches('overlay')
-export const selectIsFramingPair = (s: Snap): boolean => s.matches({ overlay: 'framingPair' })
 /** framingPair 대상(내 별 id + 상대 별 인덱스) + 재발화 seq — 오버레이 쌍-프레이밍 컨트롤러가
  *  새 요청만 소비한다(같은 다리 재클릭도 seq로 구분). framingPair가 아니면 null. */
 export const selectFramingPair = (

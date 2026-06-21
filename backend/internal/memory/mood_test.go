@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	cosimosiv1 "github.com/cosimosi/backend/internal/gen/cosimosi/v1"
+	"github.com/cosimosi/backend/internal/platform/rpcserver"
 )
 
 // allMoods is the canonical 13 (spec 29): 4 affective quadrants ×3 + neutral.
@@ -15,8 +16,9 @@ var allMoods = []Mood{
 // 1.2 — every domain mood round-trips losslessly through the proto enum.
 func TestMoodProtoRoundTrip(t *testing.T) {
 	for _, m := range allMoods {
-		if got := moodFromProto(moodToProto(m)); got != m {
-			t.Errorf("round trip %q → %v → %q (want %q)", m, moodToProto(m), got, m)
+		p := rpcserver.MoodToProto(string(m))
+		if got := Mood(rpcserver.MoodFromProto(p)); got != m {
+			t.Errorf("round trip %q → %v → %q (want %q)", m, p, got, m)
 		}
 	}
 }
@@ -25,7 +27,7 @@ func TestMoodProtoRoundTrip(t *testing.T) {
 func TestMoodProtoDistinctAndComplete(t *testing.T) {
 	seen := map[cosimosiv1.Mood]bool{}
 	for _, m := range allMoods {
-		p := moodToProto(m)
+		p := rpcserver.MoodToProto(string(m))
 		if p == cosimosiv1.Mood_MOOD_UNSPECIFIED {
 			t.Errorf("mood %q maps to UNSPECIFIED", m)
 		}
@@ -49,12 +51,12 @@ func TestEveryProtoMoodRoundTrips(t *testing.T) {
 			continue
 		}
 		p := cosimosiv1.Mood(num)
-		d := moodFromProto(p)
+		d := Mood(rpcserver.MoodFromProto(p))
 		if d == MoodUnspecified {
 			t.Errorf("proto Mood %s (%d) has no domain mapping", name, num)
 			continue
 		}
-		if back := moodToProto(d); back != p {
+		if back := rpcserver.MoodToProto(string(d)); back != p {
 			t.Errorf("proto %s → domain %q → proto %v (not a round-trip)", name, d, back)
 		}
 	}
@@ -72,7 +74,7 @@ func TestMoodLegacyProtoNumbersFrozen(t *testing.T) {
 		MoodNeutral: cosimosiv1.Mood_NEUTRAL,
 	}
 	for m, p := range want {
-		if got := moodToProto(m); got != p {
+		if got := rpcserver.MoodToProto(string(m)); got != p {
 			t.Errorf("legacy mood %q proto changed: got %v want %v", m, got, p)
 		}
 	}
@@ -80,10 +82,10 @@ func TestMoodLegacyProtoNumbersFrozen(t *testing.T) {
 
 // 1.2 — UNSPECIFIED and out-of-range proto values fall back to the empty mood.
 func TestMoodFromProtoUnknownFallsBack(t *testing.T) {
-	if got := moodFromProto(cosimosiv1.Mood_MOOD_UNSPECIFIED); got != MoodUnspecified {
+	if got := Mood(rpcserver.MoodFromProto(cosimosiv1.Mood_MOOD_UNSPECIFIED)); got != MoodUnspecified {
 		t.Errorf("UNSPECIFIED → %q, want empty", got)
 	}
-	if got := moodFromProto(cosimosiv1.Mood(999)); got != MoodUnspecified {
+	if got := Mood(rpcserver.MoodFromProto(cosimosiv1.Mood(999))); got != MoodUnspecified {
 		t.Errorf("unknown proto value → %q, want empty", got)
 	}
 }

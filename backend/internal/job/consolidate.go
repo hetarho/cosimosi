@@ -297,47 +297,15 @@ func redistribute(coords map[string]vec3, graph ConsolidateGraph) {
 // Union by rank so the root is stable regardless of link iteration order (DB row order
 // is unspecified) — the centroid a star is pulled toward doesn't flip between runs.
 func consolidateClusters(graph ConsolidateGraph) map[string]string {
-	parent := make(map[string]string, len(graph.Stars))
-	rank := make(map[string]int, len(graph.Stars))
+	ids := make([]string, 0, len(graph.Stars))
 	for _, s := range graph.Stars {
-		parent[s.ID] = s.ID
+		ids = append(ids, s.ID)
 	}
-	var find func(string) string
-	find = func(x string) string {
-		p, ok := parent[x]
-		if !ok {
-			return x
-		}
-		if p != x {
-			parent[x] = find(p)
-		}
-		return parent[x]
-	}
-	union := func(a, b string) {
-		ra, rb := find(a), find(b)
-		if ra == rb {
-			return
-		}
-		if rank[ra] < rank[rb] {
-			ra, rb = rb, ra
-		}
-		parent[rb] = ra
-		if rank[ra] == rank[rb] {
-			rank[ra]++
-		}
-	}
+	pairs := make([][2]string, 0, len(graph.Links))
 	for _, l := range graph.Links {
-		_, okA := parent[l.AID]
-		_, okB := parent[l.BID]
-		if okA && okB {
-			union(l.AID, l.BID)
-		}
+		pairs = append(pairs, [2]string{l.AID, l.BID})
 	}
-	out := make(map[string]string, len(graph.Stars))
-	for _, s := range graph.Stars {
-		out[s.ID] = find(s.ID)
-	}
-	return out
+	return clusterByUnionFind(ids, pairs)
 }
 
 // daysBefore is now minus `days` days (the gist/prune time cutoffs).

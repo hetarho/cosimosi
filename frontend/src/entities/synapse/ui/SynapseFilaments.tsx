@@ -11,7 +11,7 @@
 // + TSL nodes from 'three/tsl'. Two facts verified against three@0.184 drive the design:
 //  • The built-in TSL `time` node is FROZEN here — BloomPass renders via
 //    RenderPipeline.render(), which never advances the renderer's nodeFrame. So we drive
-//    animation with a manual uniform(0) bumped in useFrame (the SynapseLines/StarField
+//    animation with a manual uniform(0) bumped in useFrame (the StarField
 //    idiom), NOT `time`.
 //  • MeshBasicNodeMaterial has NO emissiveNode — for additive glow the colorNode IS the
 //    emitted HDR color and bloom (threshold 0.1) picks it up from the scene buffer.
@@ -41,6 +41,7 @@ import {
 import { mulberry32 } from '@/shared/lib'
 import { VALUES } from '@/shared/config'
 import { WOBBLE_AMP, WOBBLE_FREQ, WOBBLE_PHASE } from '@/entities/star/@x/synapse'
+import { hashId } from '../lib/hash'
 import { visualIntensity, pulseAmp, strandStyle } from '../model/mapping'
 import type { SynapseEdge } from '../model/types'
 import { DEFAULT_SYNAPSE_STYLE, type SynapseStyle } from '../model/styles'
@@ -49,16 +50,6 @@ const RADIAL = 6 // tube cross-section segments (round enough under bloom, cheap
 const MAX_EDGES = 300 // hard cap; beyond this keep the strongest edges
 const EPS = 1e-4
 const TWIST_TURNS = VALUES.synapse.twistTurns // helical turns of the braid over the edge length
-
-/** Deterministic 32-bit FNV-1a hash of a string (pure — no Math.random). */
-function hashId(s: string): number {
-  let h = 2166136261 >>> 0
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return h >>> 0
-}
 
 /** Orthonormal basis perpendicular to a unit direction (deterministic up choice). */
 function perpBasis(dir: THREE.Vector3, out1: THREE.Vector3, out2: THREE.Vector3): void {
@@ -437,7 +428,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
 
     const mesh = new THREE.Mesh(geometry, material)
     // Baked bounds are computed from the merged buffer; the bundle spans the universe, so
-    // skip culling (same rationale as SynapseLines / StarField).
+    // skip culling (same rationale as StarField).
     mesh.frustumCulled = false
     return {
       mesh,
@@ -453,7 +444,7 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
 
   // Hold the time uniform in a ref so the per-frame write targets a mutable ref (exempt
   // from the hook-immutability lint) rather than the useMemo return value directly — the
-  // same escape hatch SynapseLines uses for its per-frame buffer writes.
+  // same escape hatch StarField uses for its per-frame buffer writes.
   const uTimeRef = useRef<{ value: number } | null>(null)
   const uDimRef = useRef<{ value: number } | null>(null)
   // Live-follow handle held in a ref (the same escape hatch the uniforms use) so the per-frame

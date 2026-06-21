@@ -15,7 +15,7 @@ export interface SideDrawerProps {
  * shell's 햄버거 사이드바 (account / social / journal entry points). Canvas-outside DOM (헌법8).
  * Unlike the non-blocking Surface, the sidebar is a focused MENU: it dims the universe behind a
  * tap-to-close backdrop. Esc closes; the panel takes focus on open; prefers-reduced-motion drops
- * the slide to instant. No peek/snap — a plain drawer (lists use OverlayHost, results use Surface).
+ * the slide to instant. No peek/snap — a plain drawer (results and explorer use Surface).
  */
 export function SideDrawer({ open, title, onClose, children }: SideDrawerProps) {
   const reduce = useReducedMotion()
@@ -75,7 +75,6 @@ export function SideDrawer({ open, title, onClose, children }: SideDrawerProps) 
                 type="button"
                 onClick={onClose}
                 aria-label="닫기"
-                data-tour-id="sidebar-close"
                 className="rounded-md px-2 text-white/50 transition hover:text-white/90"
               >
                 ✕

@@ -11,8 +11,6 @@ export type { Bridge } from './ui/overlay/ResonanceBridges'
 export {
   navigationActor,
   selectHeadingMode,
-  selectIsOverlay,
-  selectIsFramingPair,
 } from './model/navigation.machine'
 export { useViewport } from './model/use-viewport'
 // 데모 투어(plan 48·change 12) 항해 실습 관찰용 단조 누적 카운터 — 페이지가 sampler로 감싸 투어에 넘긴다.

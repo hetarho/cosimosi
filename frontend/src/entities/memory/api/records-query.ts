@@ -1,5 +1,5 @@
 // ListRecords query (spec 28, queried via 16's connect-query layer): the original-diary list
-// that powers "원본 일기로 별 찾기". Like dormantQueryOptions, the query IDENTITY lives in the
+// that powers "원본 일기로 별 찾기". The query IDENTITY lives in the
 // entity (not the feature) because its consumers span layers — DiarySheet (features/diary-list)
 // READS it, and record-memory INVALIDATES it on a successful write (features can't import each
 // other). Read-only: records is immutable (헌법1); the body is a short excerpt only (the whole

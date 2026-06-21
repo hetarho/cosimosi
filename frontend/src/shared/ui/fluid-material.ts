@@ -31,7 +31,7 @@ import { type CosmosPalette, DEFAULT_PALETTE } from '@/shared/config'
 // CosmosPalette/DEFAULT_PALETTE의 단일 출처는 shared/config(순수 shape) — 배경별 팔레트 *목록* 소유권은
 // entities/appearance(BACKGROUNDS.palette)로 이전했다(spec 44). 이 모듈은 머티리얼만 빌드하고, 소비처가
 // 자기 배경의 palette를 넘긴다(paletteForBackground). 타입은 back-compat 위해 여기서도 재노출한다.
-export { type CosmosPalette, DEFAULT_PALETTE }
+export type { CosmosPalette }
 
 /** fluid 머티리얼 옵션.
  *  - `palette`: 테마별 6색(기본 vast).

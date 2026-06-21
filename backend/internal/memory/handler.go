@@ -41,9 +41,8 @@ const segmentTimeout = 25 * time.Second
 // InvalidArgument; an extraction failure is Unavailable (retryable — nothing
 // was written).
 func (h *Handler) SegmentMemory(ctx context.Context, req *connect.Request[cosimosiv1.SegmentMemoryRequest]) (*connect.Response[cosimosiv1.SegmentMemoryResponse], error) {
-	_, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	if _, err := rpcserver.RequireUserID(ctx); err != nil {
+		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, segmentTimeout)
 	defer cancel()
@@ -58,7 +57,7 @@ func (h *Handler) SegmentMemory(ctx context.Context, req *connect.Request[cosimo
 	for _, s := range segs {
 		out = append(out, &cosimosiv1.SegmentDraft{
 			Text:      s.Text,
-			Mood:      moodToProto(s.Mood),
+			Mood:      rpcserver.MoodToProto(string(s.Mood)),
 			Intensity: s.Intensity,
 			Valence:   s.Valence,
 		})
@@ -73,9 +72,9 @@ func (h *Handler) SegmentMemory(ctx context.Context, req *connect.Request[cosimo
 // empty. Requires an authenticated caller; an unset/invalid entry_date maps to
 // InvalidArgument.
 func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecordMemoryRequest]) (*connect.Response[cosimosiv1.RecordMemoryResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	msg := req.Msg
@@ -88,7 +87,7 @@ func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimos
 	for _, s := range msg.GetSegments() {
 		segments = append(segments, SegmentInput{
 			Text:      s.GetText(),
-			Mood:      moodFromProto(s.GetMood()),
+			Mood:      Mood(rpcserver.MoodFromProto(s.GetMood())),
 			Intensity: s.GetIntensity(),
 			Valence:   s.GetValence(),
 		})
@@ -98,7 +97,7 @@ func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimos
 		UserID:         userID,
 		Body:           msg.GetBody(),
 		EntryDate:      entryDate,
-		Mood:           moodFromProto(msg.GetMood()),
+		Mood:           Mood(rpcserver.MoodFromProto(msg.GetMood())),
 		Intensity:      msg.GetIntensity(),
 		Valence:        msg.GetValence(),
 		IdempotencyKey: msg.GetIdempotencyKey(),
@@ -124,9 +123,9 @@ func (h *Handler) RecordMemory(ctx context.Context, req *connect.Request[cosimos
 // with last_*_at as raw values — brightness/coordinates are computed client-side
 // (constitution §2·§3).
 func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosiv1.GetUniverseRequest]) (*connect.Response[cosimosiv1.GetUniverseResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	uni, err := h.svc.GetUniverse(ctx, userID)
@@ -162,9 +161,9 @@ func (h *Handler) GetUniverse(ctx context.Context, req *connect.Request[cosimosi
 // ReinforceLinks applies a co-recall reinforcement batch. unary, idempotent
 // by batch_id; pairs are normalized + summed in the service.
 func (h *Handler) ReinforceLinks(ctx context.Context, req *connect.Request[cosimosiv1.ReinforceLinksRequest]) (*connect.Response[cosimosiv1.ReinforceLinksResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	msg := req.Msg
 	deltas := make([]LinkDelta, 0, len(msg.GetItems()))
@@ -181,9 +180,9 @@ func (h *Handler) ReinforceLinks(ctx context.Context, req *connect.Request[cosim
 // JOIN). NotFound when the (user, memory) pair doesn't exist; never mutates the
 // original (constitution §1).
 func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecallMemoryRequest]) (*connect.Response[cosimosiv1.RecallMemoryResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	memoryID := req.Msg.GetMemoryId()
 	rec, err := h.svc.RecallMemory(ctx, userID, memoryID)
@@ -198,7 +197,7 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 			MemoryId:  memoryID,
 			Body:      rec.Body,
 			EntryDate: rec.EntryDate.UTC().Format("2006-01-02"),
-			Mood:      moodToProto(rec.Mood),
+			Mood:      rpcserver.MoodToProto(string(rec.Mood)),
 			Intensity: rec.Intensity,
 			CreatedAt: formatTime(&rec.CreatedAt),
 		},
@@ -211,9 +210,9 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 // recall_count (unlike RecallMemory). NotFound when the (user, record) pair is absent
 // (owner guard in the query → another user's record reads as NotFound, not Forbidden).
 func (h *Handler) GetRecord(ctx context.Context, req *connect.Request[cosimosiv1.GetRecordRequest]) (*connect.Response[cosimosiv1.GetRecordResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	recordID := req.Msg.GetRecordId()
 	rec, err := h.svc.GetRecordByID(ctx, userID, recordID)
@@ -228,7 +227,7 @@ func (h *Handler) GetRecord(ctx context.Context, req *connect.Request[cosimosiv1
 			RecordId:  recordID, // 일기 단위 키 (memory_id는 빈 문자열 — 별 컨텍스트 없음)
 			Body:      rec.Body,
 			EntryDate: rec.EntryDate.UTC().Format("2006-01-02"),
-			Mood:      moodToProto(rec.Mood),
+			Mood:      rpcserver.MoodToProto(string(rec.Mood)),
 			Intensity: rec.Intensity,
 			CreatedAt: formatTime(&rec.CreatedAt),
 		},
@@ -239,9 +238,9 @@ func (h *Handler) GetRecord(ctx context.Context, req *connect.Request[cosimosiv1
 // the original is fetched on recall). The full graph is unaffected
 // (GetUniverse still returns everything — constitution §2). An empty list is valid.
 func (h *Handler) ListDormant(ctx context.Context, req *connect.Request[cosimosiv1.ListDormantRequest]) (*connect.Response[cosimosiv1.ListDormantResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	memories, err := h.svc.ListDormant(ctx, userID)
 	if err != nil {
@@ -258,9 +257,9 @@ func (h *Handler) ListDormant(ctx context.Context, req *connect.Request[cosimosi
 // (spec 23; the timelapse UI is spec 24). An empty list is valid (a star never
 // reshaped). user_id isolation is enforced in the query.
 func (h *Handler) GetEvolutionHistory(ctx context.Context, req *connect.Request[cosimosiv1.GetEvolutionHistoryRequest]) (*connect.Response[cosimosiv1.GetEvolutionHistoryResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	snaps, err := h.svc.GetEvolutionHistory(ctx, userID, req.Msg.GetMemoryId())
 	if err != nil {
@@ -286,9 +285,9 @@ func (h *Handler) GetEvolutionHistory(ctx context.Context, req *connect.Request[
 // 28, 원본 일기로 별 찾기): id + entry date + body excerpt + fragment-star count, entry-date
 // descending. An empty list is valid (no diaries yet). records is read-only (constitution §1).
 func (h *Handler) ListRecords(ctx context.Context, req *connect.Request[cosimosiv1.ListRecordsRequest]) (*connect.Response[cosimosiv1.ListRecordsResponse], error) {
-	userID, ok := rpcserver.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authenticated user"))
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 	records, err := h.svc.ListRecords(ctx, userID)
 	if err != nil {
@@ -298,7 +297,7 @@ func (h *Handler) ListRecords(ctx context.Context, req *connect.Request[cosimosi
 	for _, r := range records {
 		moods := make([]cosimosiv1.Mood, 0, len(r.Moods))
 		for _, m := range r.Moods {
-			moods = append(moods, moodToProto(m))
+			moods = append(moods, rpcserver.MoodToProto(string(m)))
 		}
 		out = append(out, &cosimosiv1.RecordSummary{
 			RecordId:    r.RecordID,
@@ -317,7 +316,7 @@ func (h *Handler) ListRecords(ctx context.Context, req *connect.Request[cosimosi
 func toStar(m Memory) *cosimosiv1.Star {
 	return &cosimosiv1.Star{
 		MemoryId:         m.ID,
-		Mood:             moodToProto(m.Mood),
+		Mood:             rpcserver.MoodToProto(string(m.Mood)),
 		Intensity:        m.Intensity,
 		Valence:          m.Valence,
 		LastRecalledAt:   formatTime(m.LastRecalledAt),
@@ -325,11 +324,11 @@ func toStar(m Memory) *cosimosiv1.Star {
 		HueShift:         m.HueShift,
 		FormSeedDelta:    m.FormSeedDelta,
 		Version:          int32(m.Version),
-		RecordId:         m.RecordID,         // 28: 일기 단위 그룹 키 (ListDormant은 "" — 그룹 불필요)
+		RecordId:         m.RecordID,             // 28: 일기 단위 그룹 키 (ListDormant은 "" — 그룹 불필요)
 		FragmentIndex:    int32(m.FragmentIndex), // 28: 일기 내 조각 순서
-		Relevance:        m.Relevance, // 26: 0 outside GetUniverse (ListDormant doesn't score it)
-		Resonant:         m.Resonant,  // 36: GetUniverse만 채움 (ListDormant은 false — 공명 조인 없음)
-		RecallCount:      int64(m.RecallCount), // 07: 누적 회상 횟수(클라 S/R 파생; 기존 별 1 백필)
+		Relevance:        m.Relevance,            // 26: 0 outside GetUniverse (ListDormant doesn't score it)
+		Resonant:         m.Resonant,             // 36: GetUniverse만 채움 (ListDormant은 false — 공명 조인 없음)
+		RecallCount:      int64(m.RecallCount),   // 07: 누적 회상 횟수(클라 S/R 파생; 기존 별 1 백필)
 	}
 }
 
@@ -351,70 +350,4 @@ func formatTime(t *time.Time) string {
 		return ""
 	}
 	return t.UTC().Format(time.RFC3339)
-}
-
-func moodFromProto(m cosimosiv1.Mood) Mood {
-	switch m {
-	case cosimosiv1.Mood_JOY:
-		return MoodJoy
-	case cosimosiv1.Mood_CALM:
-		return MoodCalm
-	case cosimosiv1.Mood_SAD:
-		return MoodSad
-	case cosimosiv1.Mood_ANGER:
-		return MoodAnger
-	case cosimosiv1.Mood_FEAR:
-		return MoodFear
-	case cosimosiv1.Mood_LOVE:
-		return MoodLove
-	case cosimosiv1.Mood_NEUTRAL:
-		return MoodNeutral
-	case cosimosiv1.Mood_EXCITEMENT:
-		return MoodExcitement
-	case cosimosiv1.Mood_GRATITUDE:
-		return MoodGratitude
-	case cosimosiv1.Mood_RELIEF:
-		return MoodRelief
-	case cosimosiv1.Mood_STRESS:
-		return MoodStress
-	case cosimosiv1.Mood_TIRED:
-		return MoodTired
-	case cosimosiv1.Mood_EMPTINESS:
-		return MoodEmptiness
-	default:
-		return MoodUnspecified
-	}
-}
-
-func moodToProto(m Mood) cosimosiv1.Mood {
-	switch m {
-	case MoodJoy:
-		return cosimosiv1.Mood_JOY
-	case MoodCalm:
-		return cosimosiv1.Mood_CALM
-	case MoodSad:
-		return cosimosiv1.Mood_SAD
-	case MoodAnger:
-		return cosimosiv1.Mood_ANGER
-	case MoodFear:
-		return cosimosiv1.Mood_FEAR
-	case MoodLove:
-		return cosimosiv1.Mood_LOVE
-	case MoodNeutral:
-		return cosimosiv1.Mood_NEUTRAL
-	case MoodExcitement:
-		return cosimosiv1.Mood_EXCITEMENT
-	case MoodGratitude:
-		return cosimosiv1.Mood_GRATITUDE
-	case MoodRelief:
-		return cosimosiv1.Mood_RELIEF
-	case MoodStress:
-		return cosimosiv1.Mood_STRESS
-	case MoodTired:
-		return cosimosiv1.Mood_TIRED
-	case MoodEmptiness:
-		return cosimosiv1.Mood_EMPTINESS
-	default:
-		return cosimosiv1.Mood_MOOD_UNSPECIFIED
-	}
 }

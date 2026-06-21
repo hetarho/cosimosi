@@ -8,11 +8,3 @@ export const MOOD = {
 } as const
 
 export type MoodKey = keyof typeof MOOD
-export const MOOD_KEYS = Object.keys(MOOD) as MoodKey[]
-
-/** 깊은 우주 배경 톤. */
-export const SPACE = {
-  bg: '#050510',
-  bg2: '#0a0a1f',
-  star: '#dfe3ff',
-} as const
