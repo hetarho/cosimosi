@@ -38,7 +38,6 @@ import {
   OverlayComparePanel,
   navigationActor,
   selectHeadingMode,
-  navTravel,
   useViewport,
   type Bridge,
 } from '@/widgets/universe-canvas'
@@ -54,7 +53,15 @@ import { UniverseSidebar } from './UniverseSidebar'
 import { UniverseExplorerSheet, type ExplorerTab } from './UniverseExplorerSheet'
 import { DemoOnboarding } from './DemoOnboarding'
 import { DemoFreeModeControls, type DemoPopover } from './DemoFreeModeControls'
-import { DemoGuidedTour, TOUR_STEPS } from '@/widgets/demo-tour'
+import {
+  DemoGuidedTour,
+  TOUR_STEPS,
+  selectStepIndex,
+  selectPhaseIndex,
+  selectPhaseMode,
+  selectIsDone,
+} from '@/widgets/demo-tour'
+import { tourActor } from './tour-actor'
 import { ShareUniverseBody } from '@/features/share-universe'
 import { SendStarBody, StarGiftsBody } from '@/features/send-star'
 import {
@@ -306,7 +313,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
   const starCount = useMemoryStore((s) => s.stars.length)
   const demoMode = isDemoMode()
 
-  // 겹쳐보기(spec 37) 체험 우주 — DemoSimPanel의 토글이 켜면 두 페르소나 우주를 한 씬에 띄운다(서버 없이
+  // 겹쳐보기(spec 37) 체험 우주 — demo overlay flag가 켜지면 두 페르소나 우주를 한 씬에 띄운다(서버 없이
   // (b) 겹침 공간 시연). 활성 페르소나가 mine, 다른 페르소나가 theirs, crossResonances가 그 사이 다리를
   // 파생한다. proto → StarNode/SynapseEdge로 매핑(겹침 위젯은 PROPS 구동). 활성 페르소나가 바뀌면 재계산.
   const queryClient = useQueryClient()
@@ -320,9 +327,12 @@ export function HomePage({ onSignOut }: HomePageProps) {
   const [demoPopover, setDemoPopover] = useState<DemoPopover>(null)
   // 튜토리얼 단계 index(plan 48) — flow가 'tutorial'일 때만 의미. 새로고침 시 이어가도록 flag에서 시드하되
   // 단계 수가 줄어든 stale 값에 대비해 범위 안으로 clamp한다.
-  const [tourStep, setTourStepState] = useState<number>(() =>
-    demoMode ? Math.min(getTutorialStep(), TOUR_STEPS.length - 1) : 0,
-  )
+  // 튜토리얼 진행은 tour.machine(change 13)이 단일 출처 — 페이지는 노출 상태를 구독해 표면/모드/지속성
+  // 부수효과만 파생한다. flag의 step은 지속성 경계로 유지(새로고침 재개·다시 보기).
+  const tourStep = useSelector(tourActor, selectStepIndex)
+  const tourPhaseIndex = useSelector(tourActor, selectPhaseIndex)
+  const tourPhaseMode = useSelector(tourActor, selectPhaseMode)
+  const tourDone = useSelector(tourActor, selectIsDone)
   // 세션 내 불변인 페르소나 메타(라벨·태그라인) — 매 렌더 재생성 않게 1회 만든다(두 표면이 공유).
   const personaList = useMemo(() => demoPersonaList(), [])
   // 온보딩(선택 화면)은 not_started/persona_selected/tutorial_tbd에서만 HUD 대신 뜬다(plan 47 A1).
@@ -463,52 +473,66 @@ export function HomePage({ onSignOut }: HomePageProps) {
   // 모드 선택 "기능 하나하나 알아보기" → 스포트라이트 투어 진입(plan 48): flow=tutorial, step 0.
   const chooseTutorial = () => {
     enterTutorialMode()
-    setTourStepState(0)
     setDemoFlowState('tutorial')
   }
   const backToModeSelect = () => setFlow('persona_selected')
 
-  // ── 튜토리얼 스포트라이트 투어(plan 48) ─────────────────────────────────────────────
-  const setTourStep = useCallback((n: number) => {
-    const next = Math.min(Math.max(n, 0), TOUR_STEPS.length - 1)
-    setTutorialStep(next)
-    setTourStepState(next)
-  }, [])
-  const tourPrev = () => setTourStep(tourStep - 1)
-  const tourNext = () => setTourStep(tourStep + 1)
-  // 항해 실습 신호 샘플러(change 12) — 현재 카메라 모드 + 누적 항해 카운터를 한 번에 읽어 투어 rAF에 준다.
-  // 두 위젯(universe-canvas·demo-tour)을 페이지가 잇는다(FSD — sibling widget 직접 import 회피).
-  const sampleNav = useCallback(
-    () => ({ mode: selectHeadingMode(navigationActor.getSnapshot()), travel: navTravel() }),
-    [],
-  )
-  // 실습 phase가 기대하는 모드로 nav를 맞춘다(A7). heading(전환 중엔 향하는 모드)과 다를 때만 토글 →
-  // 전환 중 중복 토글이 없다(modeTransition은 TOGGLE_MODE를 받지 않고, selectHeadingMode는 목적 모드를 돌려줌).
-  const handleTourPhaseMode = useCallback((m: 'nebula' | 'recall' | undefined) => {
-    if (!m) return
-    if (selectHeadingMode(navigationActor.getSnapshot()) !== m) {
-      navigationActor.send({ type: 'TOGGLE_MODE' })
-    }
-  }, [])
-  // 건너뛰기 / 마지막 "자유롭게 탐험하기" → 자유모드로 수렴, 열린 표면·UI 숨김 정리.
-  const tourExit = useCallback(() => {
-    completeTutorial()
-    setDemoFlowState('free')
-    setTourStepState(0)
-    closeSurfaces()
-    setUiHidden(false)
-    // 항해 실습으로 가까이서에 들어가 있었다면 자유모드는 기본 멀리서로 시작(A7).
-    if (selectHeadingMode(navigationActor.getSnapshot()) === 'recall') {
-      navigationActor.send({ type: 'TOGGLE_MODE' })
-    }
-  }, [closeSurfaces])
-  // "다시 보기"(사이드바) — 자유모드에서 명시적으로 투어를 처음부터 다시 본다.
+  // ── 둘러보기 진행(plan 48·change 13) ─ 진행은 tourActor가 소유, 페이지는 노출 상태를 구독해 부수효과만 ──
+  // "다시 보기"(사이드바) — 자유모드에서 명시적으로 투어를 처음부터. flow=tutorial 진입이 아래 RESET으로
+  // 머신을 step 0에 맞춘다.
   const replayTour = () => {
     restartTutorial()
-    setTourStepState(0)
     closeSurfaces()
     setDemoFlowState('tutorial')
   }
+  // 튜토리얼 진입/재시작 시 머신을 저장된 step으로 맞춘다(새로고침 재개·다시 보기).
+  useEffect(() => {
+    if (demoTutorial) tourActor.send({ type: 'RESET', step: getTutorialStep() })
+  }, [demoTutorial])
+  // 자유모드 HUD의 관찰 상태를 머신에 이산 이벤트로 흘린다 — domAction phase가 이 값으로 진행을 판정한다.
+  // 데모에서만 보낸다(실계정 우주에선 투어 머신을 건드리지 않는다 — plan 48). demoMode를 deps에 둬 데모
+  // 진입 시 즉시 동기화하고, 비데모에선 싱글턴을 무변동으로 둔다.
+  useEffect(() => {
+    if (demoMode) tourActor.send({ type: 'UI_TOGGLED', hidden: uiHidden })
+  }, [demoMode, uiHidden])
+  useEffect(() => {
+    if (demoMode) tourActor.send({ type: 'POPOVER_CHANGED', popover: demoPopover })
+  }, [demoMode, demoPopover])
+  useEffect(() => {
+    if (demoMode) tourActor.send({ type: 'PERSONA_CHANGED', persona: demoPersona })
+  }, [demoMode, demoPersona])
+  useEffect(() => {
+    if (demoMode) tourActor.send({ type: 'CLOCK_CHANGED', day: demoClockDay })
+  }, [demoMode, demoClockDay])
+  useEffect(() => {
+    if (demoMode) tourActor.send({ type: 'EXPLORER_TOGGLED', open: explorerOpen })
+  }, [demoMode, explorerOpen])
+  // 진행 step을 데모 세션에 저장(새로고침 재개) — done이면 completeTutorial이 0으로 비우므로 건너뛴다.
+  useEffect(() => {
+    if (demoTutorial && !tourDone) setTutorialStep(tourStep)
+  }, [demoTutorial, tourStep, tourDone])
+  // phase가 기대하는 모드로 nav를 맞춘다(A7) — phase마다 재확정해 사용자가 도중에 시점을 바꿔도 교정한다.
+  // heading(전환 중엔 향하는 모드)과 다를 때만 토글(중복 토글 없음).
+  useEffect(() => {
+    if (!demoTutorial || !tourPhaseMode) return
+    if (selectHeadingMode(navigationActor.getSnapshot()) !== tourPhaseMode) {
+      navigationActor.send({ type: 'TOGGLE_MODE' })
+    }
+  }, [demoTutorial, tourStep, tourPhaseIndex, tourPhaseMode])
+  // 건너뛰기(EXIT)·마지막 단계 진행 → done. 자유모드로 수렴하고 열린 표면·UI 숨김·가까이서를 정리한다(A7).
+  useEffect(() => {
+    if (!demoTutorial || !tourDone) return
+    const id = requestAnimationFrame(() => {
+      completeTutorial()
+      setDemoFlowState('free')
+      closeSurfaces()
+      setUiHidden(false)
+      if (selectHeadingMode(navigationActor.getSnapshot()) === 'recall') {
+        navigationActor.send({ type: 'TOGGLE_MODE' })
+      }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [demoTutorial, tourDone, closeSurfaces])
 
   // 자유모드 좌상단 페르소나 전환 — 같은 리셋 경로, 자유모드 유지. 팝오버는 닫는다.
   // 같은 페르소나면 switchDemoPersona가 no-op(원천 getDemoPersona 기준 판정)이라 리셋이 안 일어난다.
@@ -809,7 +833,6 @@ export function HomePage({ onSignOut }: HomePageProps) {
             <button
               type="button"
               onClick={openSidebar}
-              data-tour-id="menu"
               aria-label="메뉴"
               aria-haspopup="menu"
               aria-expanded={sidebarOpen}
@@ -1007,20 +1030,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
       {/* 데모 튜토리얼 스포트라이트 투어(plan 48) — 자유모드 HUD 위에 얹히는 안내 레이어.
           캔버스·HUD는 그대로 살아 있고(언마운트 안 함), 단계마다 버튼을 하나씩 짚는다. */}
       {demoTutorial && (
-        <DemoGuidedTour
-          stepIndex={tourStep}
-          uiHidden={uiHidden}
-          popover={demoPopover}
-          persona={demoPersona}
-          clockDay={demoClockDay}
-          sidebarOpen={sidebarOpen}
-          explorerOpen={explorerOpen}
-          sampleNav={sampleNav}
-          onPhaseMode={handleTourPhaseMode}
-          onPrev={tourPrev}
-          onNext={tourNext}
-          onExit={tourExit}
-        />
+        <DemoGuidedTour actor={tourActor} />
       )}
 
       {/* 우주 로딩 — 응답 전의 빈 캔버스를 "별이 없다"로 오인시키지 않는다(1.1). */}

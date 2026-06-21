@@ -1,64 +1,37 @@
-// 데모 튜토리얼 스포트라이트 투어 overlay(plan 48). 우주 캔버스 밖 DOM 레이어다 — 3D 씬 안
-// <Html>을 넣지 않는다(헌법 §8). 현재 target만 남기고 나머지는 어둡게 가려(딤) 클릭을 막고,
-// target 둘레는 별빛처럼 빛나는 테두리(glow)로 강조한다 — 그래서 사용자는 하이라이트된 버튼만
-// 누를 수 있다. 행동 안내형: 단계는 phase로 나뉘어, 사용자가 실제 버튼을 눌러 진행한다(UI 숨김
-// 토글·팝오버 열림·페르소나 전환·시간 이동·사이드바/망원경 열림을 관찰). 캔버스 안 별처럼 DOM이
-// 없는 단계는 딤이 클릭을 막지 않아(별을 직접 눌러보게) 중앙 안내 카드만 띄운다.
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { VALUES } from '@/shared/config'
+// 데모 둘러보기 스포트라이트 투어 overlay(plan 48·change 13). 우주 캔버스 밖 DOM 레이어다 — 3D 씬 안
+// <Html>을 넣지 않는다(헌법 §8). 진행 로직(어느 phase로·언제)은 전부 tour.machine이 소유하고, 이 컴포넌트는
+// 스냅샷에서 파생한 값으로 렌더하고 사용자 입력(다음/이전/건너뛰기·Esc)을 이벤트로 보내기만 한다.
+// 현재 target만 남기고 나머지는 어둡게 가려(딤) 클릭을 막고, target 둘레는 별빛 테두리(glow)로 강조한다 —
+// 사용자는 하이라이트된 버튼만 누른다. `다음`은 머신이 그 phase에서 NEXT를 받을 때만(=정보 phase) 보인다
+// (snapshot.can('NEXT') — 행동 phase는 행동으로만 진행). 시점 전환 항해 실습(nav-practice 태그)은 딤·카드를
+// 거의 투명하게 비워 우주를 보며 시점을 직접 움직이게 한다. 캔버스 안 별처럼 DOM이 없는 단계는 딤이 클릭을
+// 막지 않아(별을 직접 눌러보게) 중앙 안내 카드만 띄운다.
+import { useEffect, useMemo, useRef } from 'react'
+import { useSelector } from '@xstate/react'
+import type { ActorRefFrom } from 'xstate'
 import { useCoarsePointer } from '@/shared/ui/use-coarse-pointer'
-import { TOUR_STEPS, type TourAwait, type TourBody, type TourCameraMode } from '../model/steps'
+import { TOUR_STEPS, type TourBody } from '../model/steps'
+import {
+  tourMachine,
+  selectCanNext,
+  selectCanPrev,
+  selectIsFinalPhase,
+  selectIsNavPractice,
+  selectPhase,
+  selectPhaseIndex,
+  selectStepIndex,
+  selectTitle,
+} from '../model/tour.machine'
 import { useTourTarget } from './use-tour-target'
 
-/** 항해 실습 신호의 rAF 샘플 — 페이지가 navigation-input 누적 카운터 + 현재 모드를 한 번에 읽어 준다. */
-export interface NavSample {
-  mode: TourCameraMode
-  travel: { look: number; thrust: number; orbit: number; zoom: number }
-}
-
-/** 항해 실습 await — ui 레이어가 navigation 신호를 rAF로 샘플링해 충족 판정한다(props로 관찰 불가). */
-const NAV_AWAITS = new Set<TourAwait>([
-  'nebula-rotated',
-  'nebula-zoomed',
-  'recall-looked',
-  'recall-thrusted',
-])
-
 export interface DemoGuidedTourProps {
-  stepIndex: number
-  uiHidden: boolean
-  /** 현재 열린 좌상단 데모 팝오버. */
-  popover: 'persona' | 'time' | null
-  /** 현재 데모 페르소나(전환 관찰용). */
-  persona: string
-  /** 가상 시계 경과일(시간 이동 관찰용). */
-  clockDay: number
-  /** 햄버거 사이드바 열림. */
-  sidebarOpen: boolean
-  /** 망원경 탐색 시트 열림. */
-  explorerOpen: boolean
-  /** 항해 실습 신호 샘플러(change 12) — 현재 카메라 모드 + 누적 항해 카운터를 즉시 읽는다(rAF 폴링용). */
-  sampleNav: () => NavSample
-  /** 현재 phase가 기대하는 카메라 모드(change 12) — 페이지가 nav를 이 모드로 맞춘다. undefined=모드 미관여. */
-  onPhaseMode?: (mode: TourCameraMode | undefined) => void
-  onPrev: () => void
-  onNext: () => void
-  /** 건너뛰기 / 마지막 "자유롭게 탐험하기" — flow=free로 수렴한다. */
-  onExit: () => void
+  /** 둘러보기 진행 머신 액터(change 13) — 페이지가 navSampler를 provide해 만든 모듈 싱글턴을 내려준다. */
+  actor: ActorRefFrom<typeof tourMachine>
 }
 
-/** 디바이스(터치/마우스)에 맞는 문구를 고른다(change 12). */
+/** 디바이스(터치/마우스)에 맞는 문구를 고른다. */
 function resolveBody(body: TourBody, coarse: boolean): string {
   return typeof body === 'string' ? body : coarse ? body.touch : body.mouse
-}
-
-interface Observed {
-  uiHidden: boolean
-  popover: 'persona' | 'time' | null
-  persona: string
-  clockDay: number
-  sidebarOpen: boolean
-  explorerOpen: boolean
 }
 
 function usePrefersReducedMotion(): boolean {
@@ -78,148 +51,40 @@ const GAP = 18 // target과 card 사이 간격(px)
 const GLOW =
   '0 0 0 2px rgba(255,255,255,0.92), 0 0 12px 2px rgba(190,205,255,0.85), 0 0 26px 8px rgba(150,180,255,0.55)'
 
-/** phase의 await가 (단계 진입 시점 baseline 대비) 현재 상태로 충족됐는지. */
-function isAwaitMet(await_: TourAwait, obs: Observed, baseline: Observed): boolean {
-  switch (await_) {
-    case 'ui-hidden':
-      return obs.uiHidden
-    case 'ui-shown':
-      return !obs.uiHidden
-    case 'persona-open':
-      return obs.popover === 'persona'
-    case 'persona-changed':
-      return obs.persona !== baseline.persona
-    case 'time-open':
-      return obs.popover === 'time'
-    case 'time-moved':
-      return obs.clockDay !== baseline.clockDay
-    case 'sidebar-open':
-      return obs.sidebarOpen
-    case 'explorer-open':
-      return obs.explorerOpen
-    default:
-      return false
-  }
-}
-
-/** stepIndex로 key를 줘 단계가 바뀌면 phase·baseline을 리셋(remount)한다. */
 export function DemoGuidedTour(props: DemoGuidedTourProps) {
-  return <TourStepView key={props.stepIndex} {...props} />
-}
-
-function TourStepView({
-  stepIndex,
-  uiHidden,
-  popover,
-  persona,
-  clockDay,
-  sidebarOpen,
-  explorerOpen,
-  sampleNav,
-  onPhaseMode,
-  onPrev,
-  onNext,
-  onExit,
-}: DemoGuidedTourProps) {
+  const { actor } = props
+  const index = useSelector(actor, selectStepIndex)
+  const phaseIndex = useSelector(actor, selectPhaseIndex)
+  const phase = useSelector(actor, selectPhase)
+  const title = useSelector(actor, selectTitle)
+  const canNext = useSelector(actor, selectCanNext)
+  const canPrev = useSelector(actor, selectCanPrev)
+  const isFinal = useSelector(actor, selectIsFinalPhase)
+  // 항해 실습 phase에선 target이 없으니 nav-practice 태그만으로 충분(투명 처리용).
+  const navPractice = useSelector(actor, selectIsNavPractice)
   const total = TOUR_STEPS.length
-  const index = Math.min(Math.max(stepIndex, 0), total - 1)
-  const step = TOUR_STEPS[index]
-  const [phaseIndex, setPhaseIndex] = useState(0)
-  const phase = step.phases[Math.min(phaseIndex, step.phases.length - 1)]
-  const rect = useTourTarget(phase.target)
+
+  const rect = useTourTarget(phase?.target ?? null)
   const reduced = usePrefersReducedMotion()
   const coarse = useCoarsePointer()
-  const isLast = index === total - 1
-  const lastPhase = phaseIndex >= step.phases.length - 1
   const nextBtnRef = useRef<HTMLButtonElement | null>(null)
-
-  // `다음`/`이전`은 단계(step)가 아니라 **phase 단위**로 움직인다 — 멀티 phase 단계(예: '시점 전환' 항해 실습)의
-  // 중간 정보 phase(await=null)에서도 다음 phase로 넘어갈 수 있어야 실습이 가려지지 않는다. 마지막 phase에서만
-  // 다음 단계로 넘어가고, 마지막 단계의 마지막 phase면 자유모드로 종료한다. (실습 phase는 동작 시 자동 진행도 됨.)
-  const goNext = () => {
-    if (!lastPhase) setPhaseIndex((p) => Math.min(p + 1, step.phases.length - 1))
-    else if (isLast) onExit()
-    else onNext()
-  }
-  const goPrev = () => {
-    if (phaseIndex > 0) setPhaseIndex((p) => Math.max(p - 1, 0))
-    else onPrev()
-  }
-
-  const obs: Observed = { uiHidden, popover, persona, clockDay, sidebarOpen, explorerOpen }
-  // 단계 진입 시점의 상태 — 'persona-changed'/'time-moved' 같은 변화 기준 await의 기준선(remount마다 새로).
-  const baseline = useRef(obs)
-
-  // 행동 안내: 현재 phase의 await(DOM 관찰형)가 충족되면 다음 phase로 진행(setState는 rAF로 미뤄 effect
-  // 동기 setState 회피). 항해 실습(NAV_AWAITS)은 아래 rAF 샘플러가 따로 처리하므로 여기선 false로 빠진다.
-  useEffect(() => {
-    if (phase.await == null) return
-    if (!isAwaitMet(phase.await, obs, baseline.current)) return
-    if (phaseIndex >= step.phases.length - 1) return
-    const id = requestAnimationFrame(() => setPhaseIndex((p) => Math.min(p + 1, step.phases.length - 1)))
-    return () => cancelAnimationFrame(id)
-    // obs는 매 렌더 새 객체라 deps에 풀어 넣는다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase.await, uiHidden, popover, persona, clockDay, sidebarOpen, explorerOpen, phaseIndex, step.phases.length])
-
-  // 페이지가 nav를 현재 phase의 기대 모드로 맞추도록 알린다(change 12 — 멀리서/가까이서 전환 구동, A7).
-  // phaseIndex로 키잉해 매 phase 진입마다 재확정 → 사용자가 도중에 시점을 임의로 바꿔도 다음 phase에서 교정.
-  useEffect(() => {
-    onPhaseMode?.(phase.mode)
-  }, [phaseIndex, phase.mode, onPhaseMode])
-
-  // 항해 실습 자동 진행(change 12, A4·A8): navigation 신호를 rAF로 샘플링해 phase 진입 baseline 대비 누적
-  // delta가 임계(VALUES.demoTour.*)를 넘는 순간에만 다음 phase로. 매 프레임 React state를 만들지 않는다(헌법4).
-  useEffect(() => {
-    const a = phase.await
-    if (a == null || !NAV_AWAITS.has(a)) return
-    if (phaseIndex >= step.phases.length - 1) return
-    const base = sampleNav().travel // 이 phase 진입 시점 누적값 기준
-    const t = VALUES.demoTour
-    let raf = 0
-    const tick = () => {
-      const s = sampleNav()
-      let met = false
-      switch (a) {
-        case 'nebula-rotated':
-          met = s.mode === 'nebula' && s.travel.orbit - base.orbit >= t.rotateThresholdRad
-          break
-        case 'nebula-zoomed':
-          met = s.mode === 'nebula' && s.travel.zoom - base.zoom >= t.zoomRatioThreshold
-          break
-        case 'recall-looked':
-          met = s.mode === 'recall' && s.travel.look - base.look >= t.lookThresholdRad
-          break
-        case 'recall-thrusted':
-          met = s.mode === 'recall' && s.travel.thrust - base.thrust >= t.thrustDistanceThreshold
-          break
-      }
-      if (met) {
-        setPhaseIndex((p) => Math.min(p + 1, step.phases.length - 1))
-        return
-      }
-      raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [phase.await, phaseIndex, step.phases.length, sampleNav])
 
   // Esc = 건너뛰기. 캡처 단계 + stopImmediatePropagation으로 HomePage 전역 Esc 라우터보다 먼저 단독 처리.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopImmediatePropagation()
-        onExit()
+        actor.send({ type: 'EXIT' })
       }
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [onExit])
+  }, [actor])
 
-  // phase가 바뀌면 기본 동작 버튼에 포커스 — 키보드 사용자가 바로 Enter로 진행.
+  // phase가 바뀌면 기본 동작 버튼에 포커스 — 키보드 사용자가 바로 Enter로 진행(행동 phase면 버튼이 없어 no-op).
   useEffect(() => {
     nextBtnRef.current?.focus()
-  }, [phaseIndex])
+  }, [index, phaseIndex])
 
   const motion = reduced ? '' : 'transition-all duration-300 ease-out'
 
@@ -227,7 +92,10 @@ function TourStepView({
   const vh = typeof window !== 'undefined' ? window.innerHeight : 768
   const maxH = 'calc(100dvh - 24px)'
 
-  // coach card 위치 — target이 있으면 그 아래(공간 없으면 위), 없으면 화면 중앙.
+  if (!phase) return null
+
+  // coach card 위치 — target이 있으면 그 아래(공간 없으면 위), 항해 실습은 상단 중앙(화면 중앙·항해 버튼을
+  // 가리지 않게), 그 외 target 없음은 화면 중앙.
   let cardStyle: React.CSSProperties
   if (rect) {
     const below = rect.top + rect.height / 2 < vh / 2
@@ -236,6 +104,16 @@ function TourStepView({
     const rawLeft = rect.left + rect.width / 2 - CARD_W / 2
     const left = Math.min(Math.max(rawLeft, 12), vw - CARD_W - 12)
     cardStyle = { position: 'fixed', top, bottom, left, width: CARD_W, maxHeight: maxH, overflowY: 'auto' }
+  } else if (navPractice) {
+    cardStyle = {
+      position: 'fixed',
+      top: 16,
+      left: '50%',
+      width: CARD_W,
+      maxHeight: maxH,
+      overflowY: 'auto',
+      transform: 'translateX(-50%)',
+    }
   } else {
     cardStyle = {
       position: 'fixed',
@@ -279,7 +157,8 @@ function TourStepView({
         </>
       ) : (
         // target이 없는 단계(인사·별 클릭)는 딤이 클릭을 막지 않는다 — 캔버스의 별을 직접 눌러볼 수 있게.
-        <div aria-hidden className="absolute inset-0 bg-black/45" />
+        // 항해 실습 구간은 딤을 거의 투명하게(bg-black/10) 비워 우주를 보며 시점을 직접 움직이게 한다.
+        <div aria-hidden className={`absolute inset-0 ${navPractice ? 'bg-black/10' : 'bg-black/45'}`} />
       )}
 
       {/* coach card — 유일하게 입력을 받는 표면(pointer-events-auto). */}
@@ -287,14 +166,14 @@ function TourStepView({
         role="dialog"
         aria-modal="false"
         aria-label="둘러보기 안내"
-        className={`pointer-events-auto flex flex-col gap-3 rounded-2xl border border-white/12 bg-black/85 p-4 text-left shadow-2xl backdrop-blur ${motion}`}
+        className={`pointer-events-auto flex flex-col gap-3 rounded-2xl border border-white/12 ${navPractice ? 'bg-black/55' : 'bg-black/85'} p-4 text-left shadow-2xl backdrop-blur ${motion}`}
         style={cardStyle}
       >
         <div aria-live="polite" className="flex flex-col gap-1">
           <span className="text-[11px] tracking-wide text-white/40">
             둘러보기 {index + 1} / {total}
           </span>
-          <h2 className="font-display text-lg text-white/90">{step.title}</h2>
+          <h2 className="font-display text-lg text-white/90">{title}</h2>
           <p className="text-sm leading-relaxed text-white/60">{resolveBody(phase.body, coarse)}</p>
         </div>
 
@@ -310,7 +189,7 @@ function TourStepView({
         <div className="mt-1 flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={onExit}
+            onClick={() => actor.send({ type: 'EXIT' })}
             className="rounded-lg px-2.5 py-1.5 text-xs text-white/45 transition hover:text-white/75"
           >
             건너뛰기
@@ -318,19 +197,23 @@ function TourStepView({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={goPrev}
-              disabled={index === 0 && phaseIndex === 0}
+              onClick={() => actor.send({ type: 'PREV' })}
+              disabled={!canPrev}
               className="rounded-lg px-3 py-1.5 text-sm text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:text-white/20"
             >
               이전
             </button>
+            {/* `다음`은 정보 phase에서만 활성. 행동 phase에선 invisible로 자리만 지켜 `이전` 버튼이 오른쪽으로 밀리지 않게 한다(위치 고정). */}
             <button
               ref={nextBtnRef}
               type="button"
-              onClick={goNext}
-              className="rounded-lg border border-white/15 bg-white/15 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-white/25"
+              onClick={() => actor.send({ type: 'NEXT' })}
+              disabled={!canNext}
+              aria-hidden={!canNext}
+              tabIndex={canNext ? undefined : -1}
+              className={`rounded-lg border border-white/15 bg-white/15 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-white/25 ${canNext ? '' : 'invisible'}`}
             >
-              {isLast && lastPhase ? '자유롭게 탐험하기' : '다음'}
+              {isFinal ? '자유롭게 탐험하기' : '다음'}
             </button>
           </div>
         </div>

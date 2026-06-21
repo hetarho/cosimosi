@@ -13,8 +13,6 @@ export type TourTargetId =
   | 'persona-popover'
   | 'time'
   | 'time-skip-month'
-  | 'menu'
-  | 'sidebar-close'
   | 'view'
   | 'telescope'
   | 'explorer-diary-tab'
@@ -115,15 +113,6 @@ export const TOUR_STEPS: TourStep[] = [
         body: '한 달 뒤로 이동했어요. 오래 떠올리지 않은 별은 그만큼 빛이 바래고, 어떤 별은 잠들어요. 다음으로 넘어가요.',
         await: null,
       },
-    ],
-  },
-  {
-    id: 'menu',
-    title: '메뉴',
-    surface: 'none',
-    phases: [
-      { target: 'menu', body: '체험 종료와 일기 같은 메뉴가 여기 모여 있어요. 눌러볼까요?', await: 'sidebar-open' },
-      { target: 'sidebar-close', body: '✕ 버튼을 눌러 다시 닫을 수 있어요.', await: null },
     ],
   },
   {
