@@ -46,6 +46,15 @@ the matching regen when something ripples:
 `spec/values.yaml`에 두고 `pnpm gen:values`로 생성된 FE(TS)·BE(Go) 상수를 import한다 — config의 단일 출처는 values.yaml다.
 (공식·배열 콘텐츠(테마 CSS·mood 색표)·proto/DB 스키마는 제외 — 코드/proto/sqlc 소관.) 작업 중 기존 하드코딩 config를 만나면 이 기회에 values.yaml로 옮긴다.
 
+**주석 규칙 — 미래 독자를 위한 "왜"만 (대화·이력 기록 금지):** 주석은 *지금 코드를 처음 보는 사람*이 코드만으로는 알 수
+없는 것에만 단다. 비용 대비 가치로 판단한다 — 좋은 주석은 코드 추적 수천 토큰을 줄여주지만, 나쁜 주석은 토큰만 먹고
+금세 거짓이 된다.
+- **달 가치 O:** 코드에 없는 외부 제약(`camera far=4000`이라 `RADIUS`는 이래야 함, BloomPass가 time 안 굴림 등),
+  비자명한 설계 의도("왜 이 효과만 navy↔mood mix인가"), spec/불변 원칙 연결, 함정·불간섭 보장(depthWrite/raycast 이유).
+- **달지 말 것 X:** 변경 이력(`0.4 -> 0.75로 상승`, `예전엔 280이었다` — git이 기억), 코드를 그대로 옮긴 동어반복
+  (`// time을 bump`), 리팩터/대화 과정 서사(`예술적 개편:`, `튜닝했다`), 현재 값에서 자명한 것. 과거 값·작업 동기는 코드에 남기지 말고 커밋 메시지로.
+- 새 코드는 이 기준으로 달고, **손대는 파일에서 위 X 류 기존 주석을 만나면 "왜"만 남기고 정리**한다 (스코프 밖 파일은 건드리지 않음).
+
 **Windows toolchain (this machine):** unsigned `.exe` in the user dir is blocked, so `go`/`sqlc`/`buf`/`goose`
 **never run on the host** — always Docker; the `pnpm` scripts already do this. Ad-hoc Go:
 `docker run --rm -v ${PWD}/backend:/app -w /app golang:1.26 sh -c "go build ./..."`. `pnpm db:migrate` needs
@@ -81,7 +90,10 @@ Fix and re-run any red check before reporting.
      non-Codex review as codex.
    - Run `/code-review` while codex runs (~25 min); **don't end the turn waiting** — block in-turn
      (`TaskOutput(block=true, timeout=600000)` ~3×), then merge (dedupe + severity-rank).
-3. Re-verify (Step 3) if the review changed code.
+3. **주석 패스 — diff의 신규/수정 주석을 Step 2 주석 규칙으로 훑는다.** 변경 이력·동어반복·`예술적 개편:` 류
+   리팩터 서사는 "왜"만 남기고 쳐낸다. 외부 제약·비자명한 설계 의도가 *빠진* 비자명 코드엔 한 줄 보탠다. (별도 패스가
+   부담이면 `/code-review`에 "주석 품질도 봐줘"를 끼워 한 번에.)
+4. Re-verify (Step 3) if the review changed code.
 
 ## Step 5 — Reflect into the SSOT, finish (and do NOT commit)
 
