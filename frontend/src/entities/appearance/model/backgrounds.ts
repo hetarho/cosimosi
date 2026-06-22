@@ -116,6 +116,15 @@ export const BACKGROUNDS: BackgroundMeta[] = [
 export const DEFAULT_BACKGROUND: Background = 'vast'
 
 const fallbackBackground = BACKGROUNDS[0]
+const BACKGROUND_IDS = new Set<string>(BACKGROUNDS.map((b) => b.id))
+
+export function isBackground(value: unknown): value is Background {
+  return typeof value === 'string' && BACKGROUND_IDS.has(value)
+}
+
+export function parseBackground(value: unknown, fallback: Background = DEFAULT_BACKGROUND): Background {
+  return isBackground(value) ? value : fallback
+}
 
 /** 배경 메타 조회(알 수 없는 id면 기본 vast로 폴백, A13). */
 export const backgroundMeta = (id: Background): BackgroundMeta =>

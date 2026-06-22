@@ -11,7 +11,7 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from 'react'
-import { Canvas, type GLProps, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { useSelector } from '@xstate/react'
 import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
@@ -36,7 +36,7 @@ import { UniverseNebula } from './UniverseNebula'
 import { SelfStar } from './SelfStar'
 import { navigationInput } from '../model/navigation-input'
 import { virtualNowMs } from '@/shared/lib/demo'
-import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
+import { asWebGPURenderer, createRendererFactory, rendererBackend } from '@/shared/lib/r3f'
 import {
   CameraRig,
   NebulaOrbitController,
@@ -285,15 +285,14 @@ export function UniverseCanvas() {
     }
   }, [])
 
-  // 렌더러 init 실패 표면화(17, 2.2): R3F는 async gl 팩토리의 reject를 fire-and-forget
+  // 렌더러 init 실패 표면화: R3F는 async gl 팩토리의 reject를 fire-and-forget
   // 으로 삼킨다(.catch 없는 내부 run()) — 바운더리가 영영 못 받는다. 그래서 실패를
   // state로 받아 "렌더 중 throw"로 바꿔 페이지의 에러 바운더리에 전달한다.
   const [initError, setInitError] = useState<unknown>(null)
-  const glFactory = useCallback(
-    (props: Parameters<typeof createRenderer>[0]) =>
-      createRenderer(props).catch((e: unknown) => {
-        setInitError(e)
-        throw e // R3F 내부 진행도 멈춘다(거부 그대로 — 콘솔의 unhandled rejection은 진짜 장애 신호)
+  const glFactory = useMemo(
+    () =>
+      createRendererFactory({
+        onError: (e) => setInitError(e),
       }),
     [],
   )
@@ -330,12 +329,12 @@ export function UniverseCanvas() {
   const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
   const selectedId = useSelector(focusActor, selectFocusedStarId)
 
-  // The ONE live force-sim positions buffer all four readers share (spec 22, acceptance 1.7):
+  // The ONE live force-sim positions buffer all four readers share:
   // StarField + FlyTo + Focus read it directly (per-frame / at capture); the synapse renderers
   // bake against the `layout` snapshot published whenever the layout settles.
   const positionsRef = useRef<Float32Array | null>(null)
-  // 동적 자아 광원 위치(change 08): 근접 탐험 중 NavController가 매 프레임 항행 기준 위치로 갱신하고,
-  // 원거리/포커스에선 null로 둬 StarField가 정적 중심 광원(원점)으로 폴백한다(A3). StarField·NavController가 공유.
+  // 동적 자아 광원 위치: 근접 탐험 중 NavController가 매 프레임 항행 기준 위치로 갱신하고,
+  // 원거리/포커스에선 null로 둬 StarField가 정적 중심 광원(원점)으로 폴백한다. StarField·NavController가 공유.
   const selfLightRef = useRef<readonly [number, number, number] | null>(null)
   const [layout, setLayout] = useState<LayoutMap>(() => new Map())
   const onLayout = useCallback((next: LayoutMap) => setLayout(next), [])
@@ -370,30 +369,29 @@ export function UniverseCanvas() {
         </p>
       </div>
       <Canvas
-      // gl = async WebGPU factory (WebGL2 auto-fallback) + init 실패 표면화 래퍼. 캐스트는
-      // WebGPURenderer 고유 파라미터/반환 타입을 R3F의 명목 GLProps로 잇는 것뿐.
-      gl={glFactory as unknown as GLProps}
+      // gl = async WebGPU factory (WebGL2 auto-fallback) + init 실패 표면화 래퍼.
+      gl={glFactory}
       flat
-      // change 08(A12): 우주 캔버스 표면에만 touch-action:none — 브라우저 스크롤/핀치가 커스텀 제스처
+      // 우주 캔버스 표면에만 touch-action:none — 브라우저 스크롤/핀치가 커스텀 제스처
       // (pan·zoom scrub·look·thrust)와 충돌하지 않게. 차단은 이 캔버스에 한정(전역 페이지 제스처 보존).
       style={{ touchAction: 'none' }}
       // far는 성운/베일 구의 *먼 쪽 벽*까지 담아야 한다 — 그 벽은 카메라가 구 안에 있어도 반경+카메라거리
       // 까지 멀어진다. 줌아웃 최대(1500) + 구 반경(1800) = 3300이 화면 중앙(원점 너머)에서 far에 닿으므로,
       // far가 그보다 작으면 중앙이 잘려 배경색이 원형으로 드러난다("백드롭 풀림"). 여유를 둬 4000.
       camera={{ position: [0, 0, 110], fov: 72, near: 0.1, far: 4000 }}
-      // 빈 우주를 톡 치면 포커스 해제·복귀(은은한 딤도 함께 사라진다 — spec 31). R3F는 클릭 delta로
+      // 빈 우주를 톡 치면 포커스 해제·복귀(은은한 딤도 함께 사라진다). R3F는 클릭 delta로
       // 드래그(회전)를 걸러 onPointerMissed는 '탭'에만 온다. 우선순위: 선택된 별 → 해제, 아니면 일기
       // 조망 → 강조 해제(페이지가 그 해제를 보고 일기 패널을 닫아 완전히 복귀시킨다). 별 탭은 onClick.
       onPointerMissed={() => {
         // 빈 우주를 톡 치면 포커스를 통째로 비워 복귀한다(focus 머신 DISMISS — 별/일기 한 번에, idle이면
-        // 무해). 드래그(회전)는 R3F가 delta로 걸러 여기로 오지 않는다(탭만). change 08(A11): 제스처
+        // 무해). 드래그(회전)는 R3F가 delta로 걸러 여기로 오지 않는다(탭만). 제스처
         // (드래그·두 손가락·pan·zoom scrub)가 active면 dismiss하지 않는다 — gestureActive는 up 후
         // microtask까지 살아 이 동기 콜백을 넘긴다(진짜 탭은 한 번도 set 안 돼 통과).
         if (navigationInput().gestureActive) return
         focusActor.send({ type: 'DISMISS' })
       }}
       onCreated={(state) => {
-        const gl = state.gl as unknown as WebGPURenderer
+        const gl = asWebGPURenderer(state.gl)
         glRef.current = gl
         const container = gl.domElement.parentElement ?? gl.domElement
         const ro = new ResizeObserver(() => syncSize(gl, state.camera, container))
@@ -421,8 +419,8 @@ export function UniverseCanvas() {
       {/* 배경 번들의 텍스처/요소 슬롯(spec 44 A9): 선택적 색 베일 한 겹을 모든 것 뒤(renderOrder<0)에 깐다.
           별 mood 색은 불간섭(별보다 뒤·depthWrite 없음). 텍스처 없는 배경(vast/lively/calm)은 렌더 동일. */}
       <BackgroundVeil texture={background.texture} />
-      {/* 어두운 반구 채움광(spec 03 — 하드코딩 0.4를 values로 이전). 반사(emissiveNode 내 계산)와 albedo
-          이중계상 시 하향 재튜닝 대상. StarField는 자아-별이 원점이라 selfLightPos 기본(원점·점광)으로 충분. */}
+      {/* 어두운 반구 채움광(spec 03). 반사(emissiveNode 내 계산)와 albedo가 이중계상되지 않게
+          values 출처의 낮은 ambient fill만 둔다. StarField는 자아-별이 원점이라 selfLightPos 기본으로 충분. */}
       <ambientLight intensity={VALUES.starLighting.ambientFill} />
       {/* spec 07: 떠 있던 무드 오브(AmbientNebula)는 제거 — 요즘 감정은 위 UniverseNebula 배경 텍스처에 녹는다. */}
       <StarDust count={1500} />

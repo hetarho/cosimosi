@@ -10,6 +10,7 @@ import { OrbitControls } from '@react-three/drei'
 import { useSelector } from '@xstate/react'
 import * as THREE from 'three'
 import { navigationActor, selectFramingPair } from '../../model/navigation.machine'
+import { useOrbitControls } from '@/shared/lib/r3f'
 import type { OverlayHandle } from './types'
 
 const MIN_FRAME_DIST = 40
@@ -29,9 +30,7 @@ export interface OverlayCameraProps {
 export function OverlayCamera({ mineRef, theirsRef }: OverlayCameraProps) {
   const framing = useSelector(navigationActor, selectFramingPair)
   const camera = useThree((s) => s.camera)
-  const controls = useThree((s) => s.controls) as
-    | { target: THREE.Vector3; update: () => void }
-    | null
+  const controls = useOrbitControls()
   const lastSeqRef = useRef(0)
   const posRef = useRef<THREE.Vector3 | null>(null)
   const tgtRef = useRef<THREE.Vector3 | null>(null)

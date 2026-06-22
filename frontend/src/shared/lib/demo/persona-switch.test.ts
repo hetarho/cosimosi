@@ -10,7 +10,14 @@ import {
   resetDemo,
 } from './data'
 import { demoOffsetDays } from './clock'
-import { enterDemoMode, exitDemoMode, getDemoPersona, setDemoPersona } from './flag'
+import {
+  enterDemoMode,
+  exitDemoMode,
+  getDemoPersona,
+  parseDemoFlow,
+  parseDemoPersona,
+  setDemoPersona,
+} from './flag'
 import { CORPORA } from './personas'
 
 // 페르소나 전환의 데이터 경로(스토어 재시드)만 본다(three/refetch는 별도). switchDemoPersona의
@@ -31,6 +38,15 @@ describe('demo persona data switch', () => {
     resetDemo()
     expect(getDemoPersona()).toBe('student')
     expect(demoStars().length).toBe(starCountOf('student'))
+  })
+
+  it('parser는 알 수 없는 persona/flow를 안전 기본값으로 돌린다', () => {
+    expect(parseDemoPersona('worker')).toBe('worker')
+    expect(parseDemoPersona('unknown')).toBe('student')
+    expect(parseDemoPersona(null)).toBe('student')
+    expect(parseDemoFlow('tutorial')).toBe('tutorial')
+    expect(parseDemoFlow('unknown')).toBe('not_started')
+    expect(parseDemoFlow(null)).toBe('not_started')
   })
 
   it('페르소나를 바꾸면 다음 시드가 그 우주로 바뀐다', () => {

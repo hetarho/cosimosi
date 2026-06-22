@@ -21,7 +21,7 @@ import {
 } from '@/shared/api'
 import { mulberry32 } from '../prng'
 import { skipDemoDays, virtualNowMs, resetDemoClock } from './clock'
-import { getDemoPersona, type DemoPersona } from './flag'
+import { getDemoPersona, isDemoPersona, type DemoPersona } from './flag'
 import { CORPORA } from './personas'
 import { crossResonances, simulate, type SimStar } from './simulate'
 import { VALUES } from '@/shared/config'
@@ -50,7 +50,7 @@ const MOOD_VALENCE: Partial<Record<Mood, number>> = {
 const valenceOf = (mood: Mood): number => MOOD_VALENCE[mood] ?? 0
 
 // ── 페르소나 우주 — personas.ts의 일기 코퍼스를 simulate가 별·시냅스로 빚는다 ──
-// 손으로 엔트리·엣지를 박지 않고(옛 DEMO_ENTRIES/DEMO_EDGES 폐기), 활성 페르소나(flag)의 코퍼스를
+// 손으로 엔트리·엣지를 박지 않고, 활성 페르소나(flag)의 코퍼스를
 // fragment 단위 연결 규칙으로 시뮬레이션한다 — 한 일기가 여러 별로 나뉘고(다조각), 일내 결속·의미
 // 링크·회상 다리가 주제 성단을 가로질러 얽힌다(simulate.ts).
 function activeUniverse() {
@@ -207,7 +207,7 @@ export function demoOverlayData(): {
 } {
   const now = virtualNowMs()
   const minePersona = getDemoPersona()
-  const order = Object.keys(CORPORA) as DemoPersona[]
+  const order = Object.keys(CORPORA).filter(isDemoPersona)
   const other = order.find((p) => p !== minePersona)
   // 다른 페르소나가 없으면(코퍼스가 1개뿐인 축소 빌드) 같은 우주를 두 번 띄우지 않고 친구 쪽을 비운다 —
   // 같은 코퍼스끼리는 crossResonances가 자기 별을 잇는 무의미한 다리를 만들 수 있으므로 다리도 없다.
@@ -225,14 +225,14 @@ export function demoRecall(memoryId: string): RecordMsg | undefined {
   return records.get(memoryId)
 }
 
-/** RecallMemory.fragment_text 대체(spec 28): 그 별의 조각 텍스트. 단일 조각/미등록이면 ""
+/** RecallMemory.fragment_text 대체: 그 별의 조각 텍스트. 단일 조각/미등록이면 ""
  *  (패널이 원본 본문으로 폴백). */
 export function demoFragmentText(memoryId: string): string {
   ensureSeeded()
   return fragmentTextsById.get(memoryId) ?? ''
 }
 
-/** GetRecord 대체(spec 28, change 09): record_id로 원본 전문을 읽는다 — 그 record를 공유하는
+/** GetRecord 대체: record_id로 원본 전문을 읽는다 — 그 record를 공유하는
  *  아무 별의 records 항목을 찾아 record_id를 채워 돌려준다(단일 조각은 memory_id == record_id).
  *  없으면 undefined(독립 일기 페이지가 NotFound 처리). 부작용 없음(데모도 별 layer 미변경). */
 export function demoGetRecord(recordId: string): RecordMsg | undefined {
@@ -245,7 +245,7 @@ export function demoGetRecord(recordId: string): RecordMsg | undefined {
   return undefined
 }
 
-/** ListRecords 대체(spec 28): 더미 우주의 별을 record_id로 묶어 원본 일기 목록을 만든다 —
+/** ListRecords 대체: 더미 우주의 별을 record_id로 묶어 원본 일기 목록을 만든다 —
  *  일기별 조각 별 개수 + 본문 발췌(80자) + 작성일 내림차순(서버 ListRecords와 같은 모양).
  *  body/entry_date는 그 record를 공유하는 조각의 records 항목에서 읽는다(모두 동일). */
 export function demoListRecords(): RecordSummary[] {
@@ -255,7 +255,7 @@ export function demoListRecords(): RecordSummary[] {
     { entryDate: string; body: string; count: number; moods: Set<Mood> }
   >()
   for (const s of [...baseStars, ...addedStars]) {
-    const recordId = s.recordId || s.memoryId // 구 데이터/단일 조각은 자기 id가 곧 record
+    const recordId = s.recordId || s.memoryId // 단일 조각은 자기 id가 곧 record
     const rec = records.get(s.memoryId)
     const existing = byRecord.get(recordId)
     if (existing) {
@@ -279,7 +279,7 @@ export function demoListRecords(): RecordSummary[] {
         entryDate: v.entryDate,
         bodyExcerpt: v.body.slice(0, 80),
         starCount: v.count,
-        moods: [...v.moods], // change 09: 일기 감정 facet(데모 — 서버 ListRecords와 동형)
+        moods: [...v.moods], // 일기 감정 facet(데모 — 서버 ListRecords와 동형)
       }),
     )
 }
@@ -287,7 +287,7 @@ export function demoListRecords(): RecordSummary[] {
 // 새 별이 만드는 데모 연결 수 상한 — 우주를 어지럽히지 않는 선에서 "연결이 생긴다"를 보인다.
 const ADD_SAME_DAY_LINKS = VALUES.demoLinking.addSameDayLinks
 const ADD_SAME_MOOD_LINKS = VALUES.demoLinking.addSameMoodLinks
-// 흥분성 시간 창(~6h, 서버 tauExc와 동일) — 이 안에 회상된 별만 새 기억을 끌어당긴다(spec 22).
+// 흥분성 시간 창(~6h, 서버 tauExc와 동일) — 이 안에 회상된 별만 새 기억을 끌어당긴다.
 const HOT_WINDOW_MS = VALUES.excitability.tauHours * 60 * 60 * 1000
 
 /** a<b 무방향 규약으로 데모 엣지를 추가한다(방금 생긴 연결 → lastActivatedAt = 가상 now). */

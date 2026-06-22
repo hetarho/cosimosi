@@ -7,12 +7,12 @@ import { itemId, isOwned, priceOf, type Axis } from '@/shared/config'
 import {
   BACKGROUNDS,
   SELF_OBJECTS,
+  parseBackground,
+  parseSelfObject,
   useAppearance,
-  type Theme,
-  type SelfObject,
 } from '@/entities/appearance'
-import { STAR_OBJECTS, type StarObject } from '@/entities/star'
-import { SYNAPSE_STYLES, type SynapseStyle } from '@/entities/synapse'
+import { parseStarObject, STAR_OBJECTS } from '@/entities/star'
+import { parseSynapseStyle, SYNAPSE_STYLES } from '@/entities/synapse'
 
 /** 인벤토리 칩 — 시각 미리보기(swatch) + 소유/잠금/가격 상태. */
 interface ChipItem {
@@ -162,7 +162,7 @@ type AxisConfig = {
   axis: Axis
   label: string
   groupLabel: string
-  metas: readonly { id: string; name: string; tagline: string; swatch: string }[]
+  metas: readonly { id: string; name: string; tagline: string; swatch: string; emotionSlots?: number }[]
   value: string
   setX: (kind: string) => void
 }
@@ -203,7 +203,7 @@ export function AppearanceControls({
       groupLabel: '배경',
       metas: BACKGROUNDS,
       value: theme,
-      setX: (k) => setTheme(k as Theme),
+      setX: (k) => setTheme(parseBackground(k, theme)),
     },
     {
       axis: 'star',
@@ -211,7 +211,7 @@ export function AppearanceControls({
       groupLabel: '별 형태',
       metas: STAR_OBJECTS,
       value: object,
-      setX: (k) => setObject(k as StarObject),
+      setX: (k) => setObject(parseStarObject(k, object)),
     },
     {
       axis: 'self',
@@ -219,7 +219,7 @@ export function AppearanceControls({
       groupLabel: '자아 별 형태',
       metas: SELF_OBJECTS,
       value: selfObject,
-      setX: (k) => setSelfObject(k as SelfObject),
+      setX: (k) => setSelfObject(parseSelfObject(k, selfObject)),
     },
     {
       axis: 'synapse',
@@ -227,7 +227,7 @@ export function AppearanceControls({
       groupLabel: '시냅스 스타일',
       metas: SYNAPSE_STYLES,
       value: synapseStyle,
-      setX: (k) => setSynapseStyle(k as SynapseStyle),
+      setX: (k) => setSynapseStyle(parseSynapseStyle(k, synapseStyle)),
     },
   ]
 
@@ -241,7 +241,7 @@ export function AppearanceControls({
         swatch: m.swatch,
         locked: !isOwned(id, ownedItemIds),
         price: priceOf(id),
-        slots: 'emotionSlots' in m ? (m as unknown as { emotionSlots?: number }).emotionSlots : undefined,
+        slots: m.emotionSlots,
       }
     })
 

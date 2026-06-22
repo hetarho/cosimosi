@@ -30,7 +30,7 @@ import {
   type StarNode,
 } from '@/entities/memory'
 import { toSynapseEdge, useSynapseStore } from '@/entities/synapse'
-import { STAR_OBJECTS, type StarObject } from '@/entities/star'
+import { isStarObject } from '@/entities/star'
 import { applySettings, useAppearance } from '@/entities/appearance'
 import {
   applySharedUniverse,
@@ -132,9 +132,7 @@ export function VisitPage() {
     if (!data) return null
     const { stars, edges } = mapSharedUniverse(data)
     const appearance = data.appearance
-    const object = STAR_OBJECTS.some((o) => o.id === appearance?.starObject)
-      ? (appearance!.starObject as StarObject)
-      : undefined
+    const object = isStarObject(appearance?.starObject) ? appearance.starObject : undefined
     const emotionColors: Record<string, string> = {}
     for (const c of appearance?.emotionColors ?? []) emotionColors[moodFromProto(c.mood)] = c.color
     return { stars, edges, object, emotionColors }

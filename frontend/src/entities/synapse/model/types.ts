@@ -3,6 +3,16 @@
 
 export type LinkType = 'semantic' | 'temporal' | 'entity' | 'co_recall'
 
+const LINK_TYPES = new Set<string>(['semantic', 'temporal', 'entity', 'co_recall'])
+
+export function isLinkType(value: unknown): value is LinkType {
+  return typeof value === 'string' && LINK_TYPES.has(value)
+}
+
+export function parseLinkType(value: unknown, fallback: LinkType = 'semantic'): LinkType {
+  return isLinkType(value) ? value : fallback
+}
+
 export interface SynapseEdge {
   /** normalized a_id < b_id (one undirected row). */
   aId: string

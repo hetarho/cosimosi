@@ -7,8 +7,8 @@
 // uniform bumped via the returned `update(t)` — NOT three's built-in TSL `time` node (BloomPass's
 // RenderPipeline doesn't advance it). Consumers own when to call update (reduced-motion → never).
 //
-// Used by FluidGradient (fullscreen clip-space quad, legacy sign-in/invite backdrop) and CosmosScene
-// (spec 43 — reused on regular planes as soft back nebula + DARK drifting front clouds; theme palette
+// Used by FluidGradient (fullscreen clip-space quad, sign-in/invite backdrop) and CosmosScene
+// (regular planes as soft back nebula + DARK drifting front clouds; theme palette
 // + brightness make it a dim, deep-space background rather than a bright wash).
 import * as THREE from 'three'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
@@ -26,10 +26,11 @@ import {
   length,
   mx_fractal_noise_float,
 } from 'three/tsl'
+import { asFloatNode, uniformColorNode } from '@/shared/lib/r3f'
 import { type CosmosPalette, DEFAULT_PALETTE } from '@/shared/config'
 
 // CosmosPalette/DEFAULT_PALETTE의 단일 출처는 shared/config(순수 shape) — 배경별 팔레트 *목록* 소유권은
-// entities/appearance(BACKGROUNDS.palette)로 이전했다(spec 44). 이 모듈은 머티리얼만 빌드하고, 소비처가
+// entities/appearance(BACKGROUNDS.palette)에 있다. 이 모듈은 머티리얼만 빌드하고, 소비처가
 // 자기 배경의 palette를 넘긴다(paletteForBackground). 타입은 back-compat 위해 여기서도 재노출한다.
 export type { CosmosPalette }
 
@@ -40,7 +41,7 @@ export type { CosmosPalette }
  *  - `radial`: 중심→가장자리 원형 소프트 페이드(투명) — 박스 경계 숨김.
  *  - `dark`: **어두운 구름**(normal alpha, 가산 아님) — 별 *앞*에 깔아 안개처럼 가린다. radial 페이드 + 노이즈
  *    패치 opacity. (foreground와 배타 — dark가 우선.)
- *  - `foreground`: (구) 밝은 additive wisp. 어두운 구름(dark)으로 대체 권장.
+ *  - `foreground`: 밝은 additive wisp. 어두운 구름(dark)이 필요한 표면은 `dark`를 우선 사용한다.
  */
 export interface FluidMaterialOptions {
   palette?: CosmosPalette
@@ -57,26 +58,26 @@ export function buildFluidMaterial(opts?: FluidMaterialOptions) {
   const pal = opts?.palette ?? DEFAULT_PALETTE
   const bMul = opts?.brightness ?? 1
   const uTime = uniform(0)
-  const t = float(uTime as never)
+  const t = asFloatNode(uTime)
   const update = (time: number) => {
     uTime.value = time
   }
   // 화면 aspect(=width/height) — 소비처가 setAspect로 갱신. 배경 plane은 scale=[aspect,1]로 늘어나므로,
   // 노이즈 도메인 x도 aspect로 같이 늘려 무늬가 화면 비율에 따라 *늘어나지 않게* 한다(어떤 width에서도
-  // 형태 비율 고정 — 모바일 세로든 와이드든 구름이 안 찌그러짐). 기본 1.6 = 옛 고정 가로 바이어스(안 set하면 그대로).
+  // 형태 비율 고정 — 모바일 세로든 와이드든 구름이 안 찌그러짐. 기본 1.6은 aspect 미동기 소비처의 안전값.
   const uAspect = uniform(1.6)
-  const aspectN = float(uAspect as never)
+  const aspectN = asFloatNode(uAspect)
   const setAspect = (a: number) => {
     uAspect.value = a
   }
 
   // Palette as linear-space colors (flat renderer → no tone mapping; mirrors halo.ts uniform Color).
-  const cBase = vec3(uniform(new THREE.Color(pal.base)) as never)
-  const cC1 = vec3(uniform(new THREE.Color(pal.c1)) as never)
-  const cC2 = vec3(uniform(new THREE.Color(pal.c2)) as never)
-  const cC3 = vec3(uniform(new THREE.Color(pal.c3)) as never)
-  const cC4 = vec3(uniform(new THREE.Color(pal.c4)) as never)
-  const cHi = vec3(uniform(new THREE.Color(pal.hi)) as never)
+  const cBase = uniformColorNode(pal.base)
+  const cC1 = uniformColorNode(pal.c1)
+  const cC2 = uniformColorNode(pal.c2)
+  const cC3 = uniformColorNode(pal.c3)
+  const cC4 = uniformColorNode(pal.c4)
+  const cHi = uniformColorNode(pal.hi)
 
   // uv() is 0..1 across the quad; the plane is scaled [aspect,1]. Scale the noise domain's x by the
   // SAME aspect (setAspect) so a cloud feature keeps its shape at any viewport ratio — a wider window

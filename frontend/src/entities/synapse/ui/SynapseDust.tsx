@@ -10,7 +10,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
-import { attribute, vec3, float, uniform, sin } from 'three/tsl'
+import { uniform, sin } from 'three/tsl'
+import { attributeFloatNode, attributeVec3Node } from '@/shared/lib/r3f'
 import { mulberry32 } from '@/shared/lib'
 import { hashId } from '../lib/hash'
 import { visualIntensity } from '../model/mapping'
@@ -147,9 +148,9 @@ export function SynapseDust({ edges, positionOf, colorOf, positionsRef, idIndex,
 
     const geometry = new THREE.IcosahedronGeometry(1, 0)
     const material = new MeshBasicNodeMaterial()
-    const color = vec3(attribute('aColor', 'vec3') as never)
-    const seed = float(attribute('aSeed', 'float') as never)
-    const bright = float(attribute('aBright', 'float') as never)
+    const color = attributeVec3Node('aColor')
+    const seed = attributeFloatNode('aSeed')
+    const bright = attributeFloatNode('aBright')
     const uTime = uniform(0)
     const uDim = uniform(1) // focus spotlight: 1 normally, <1 fades the mist while a star is focused
     const twinkle = sin(uTime.mul(1.6).add(seed.mul(6.2831))).mul(0.4).add(0.7) // 0.3..1.1

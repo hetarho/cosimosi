@@ -9,12 +9,12 @@
 // 성능: frameloop='demand' + 스로틀 rAF로 fps 상한(VALUES.cosmos.fpsCap). dpr는 [1, sceneDpr] 클램프.
 // reduced-motion이면 정적 한 장(rAF 없음). quality='low'(또는 기기 등급)이면 앞 구름·트윙클 축소·dpr 1.
 import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
-import { Canvas, useFrame, useThree, type GLProps } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useReducedMotion } from 'motion/react'
 import * as THREE from 'three'
 import { uniform, float, vec3, uv, fract, smoothstep, clamp } from 'three/tsl'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
-import { createRenderer } from '@/shared/lib/r3f'
+import { createRendererFactory, uniformColorNode } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
 import { cn } from '@/shared/lib'
 import { BloomPass, GrainOverlay, buildFluidMaterial, buildHalo, type CosmosPalette } from '@/shared/ui'
@@ -23,8 +23,7 @@ import { buildSelfForm, type SelfObject } from '@/entities/appearance'
 import { DEFAULT_SYNAPSE_STYLE, type SynapseStyle } from '@/entities/synapse'
 
 // 투명 캔버스(뒤 페이지/베이스색 비침) — StarCanvas/FluidGradient와 동일한 alpha 강제.
-const glFactory = ((props: Parameters<typeof createRenderer>[0]) =>
-  createRenderer({ ...props, alpha: true })) as unknown as GLProps
+const glFactory = createRendererFactory({ alpha: true })
 
 export type CosmosQuality = 'high' | 'low'
 
@@ -411,8 +410,8 @@ function SampleStrand({ syn, aspect, animated }: { syn: SynapseVisual; aspect: n
     const geometry = new THREE.TubeGeometry(curve, 40, radius, 6, false)
 
     const material = new MeshBasicNodeMaterial()
-    const cA = vec3(uniform(new THREE.Color(syn.colorA)) as never)
-    const cB = vec3(uniform(new THREE.Color(syn.colorB)) as never)
+    const cA = uniformColorNode(syn.colorA)
+    const cB = uniformColorNode(syn.colorB)
     const uTime = uniform(0)
     const along = uv().x
     const around = uv().y

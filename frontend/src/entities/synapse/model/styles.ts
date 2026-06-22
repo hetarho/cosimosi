@@ -39,3 +39,16 @@ export const SYNAPSE_STYLES: SynapseStyleMeta[] = [
 ]
 
 export const DEFAULT_SYNAPSE_STYLE: SynapseStyle = 'filament'
+
+const SYNAPSE_STYLE_IDS = new Set<string>(SYNAPSE_STYLES.map((s) => s.id))
+
+export function isSynapseStyle(value: unknown): value is SynapseStyle {
+  return typeof value === 'string' && SYNAPSE_STYLE_IDS.has(value)
+}
+
+export function parseSynapseStyle(
+  value: unknown,
+  fallback: SynapseStyle = DEFAULT_SYNAPSE_STYLE,
+): SynapseStyle {
+  return isSynapseStyle(value) ? value : fallback
+}

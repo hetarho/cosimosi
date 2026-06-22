@@ -4,12 +4,11 @@
 // 끝난다. 자가발광 emissive(MeshBasicNodeMaterial colorNode) → BloomPass가 글로우로 번지게 한다.
 //
 // ⚠ 형태는 셰이더만이 아니라 *지오메트리 자체*가 다르다(buildStarBody가 형태별 Icosahedron/Octahedron을
-// 쓰는 것과 동형) — "나"가 별처럼 각자 개성 있는 실루엣을 갖도록(change 11 카탈로그):
+// 쓰는 것과 동형) — "나"가 별처럼 각자 개성 있는 실루엣을 갖도록 카탈로그가 정의한다:
 //   • mirrorball(기본·무료): 각진 면이 빛을 되비추는 *반사구* — flatShading 면 + 면별 글린트.
 //   • prism-cube(유료): 굴절·색분산이 있는 *구조적 큐브* — Box 실루엣 + 엣지 색분산 힌트.
 //   • neuron-bloom(유료): soma에서 dendrite가 뻗는 *유기적 덩어리* — 노이즈 변위 구름.
-// ⚠ 위 세 폼의 실루엣은 식별되되, 진짜 반사/굴절/dendrite 분기 셰이더는 후속 비주얼 폴리시 대상이다.
-// 레거시 nebula-heart/core/well은 union에서 제거됐고 else(mirrorball)로 폴백한다.
+// 세 폼은 서로 다른 실루엣을 먼저 보장한다. 알 수 없는 저장값은 렌더 경계에서 mirrorball로 폴백한다.
 import * as THREE from 'three'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
 import {
@@ -33,6 +32,7 @@ import {
   mix,
   mx_noise_float,
 } from 'three/tsl'
+import { asFloatNode, asVec3Node } from '@/shared/lib/r3f'
 import type { SelfObject } from '../model/types'
 
 export interface SelfFormBuild {
@@ -58,8 +58,8 @@ export function buildSelfForm(form: SelfObject): SelfFormBuild {
   const setColor = (color: THREE.Color) => {
     uColor.value.copy(color)
   }
-  const t = float(uTime as never)
-  const base = vec3(uColor as never)
+  const t = asFloatNode(uTime)
+  const base = asVec3Node(uColor)
 
   // View-facing fresnel rim: 0 facing the camera, 1 at the silhouette.
   const viewDir = normalize(sub(cameraPosition, positionWorld))
@@ -94,12 +94,12 @@ export function buildSelfForm(form: SelfObject): SelfFormBuild {
     geometry = new THREE.IcosahedronGeometry(1, 4)
     const drift = vec3(t.mul(0.12), t.mul(-0.09), t.mul(0.1))
     const np = positionLocal.mul(1.25).add(drift)
-    const lump = float(mx_noise_float(vec3(np as never) as never) as never) // -1..1
+    const lump = asFloatNode(mx_noise_float(asVec3Node(np))) // -1..1
     material.positionNode = positionLocal.add(normalLocal.mul(lump.mul(0.34)))
 
-    const flow = float(
-      mx_noise_float(vec3(np.add(vec3(3.1, 1.7, 5.2)) as never) as never) as never,
-    ).mul(0.5).add(0.5) // 0..1 drifting
+    const flow = asFloatNode(mx_noise_float(asVec3Node(np.add(vec3(3.1, 1.7, 5.2)))))
+      .mul(0.5)
+      .add(0.5) // 0..1 drifting
 
     const shellMask = smoothstep(float(-0.15), float(0.3), lump) // 튀어나온 돌기부 외피 마스크
     const coreGlow = base.mul(float(1.5).add(flow.mul(0.5))) // 틈새 핵광

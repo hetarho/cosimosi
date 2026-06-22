@@ -5,6 +5,7 @@ import { useSelector } from '@xstate/react'
 import * as THREE from 'three'
 import { focusActor, selectIsStarFocus } from '@/entities/memory'
 import { VALUES } from '@/shared/config'
+import { useOrbitControls } from '@/shared/lib/r3f'
 import {
   addLookDelta,
   consumeLookDelta,
@@ -116,9 +117,7 @@ export function NebulaOrbitController() {
   const isNebula = useSelector(navigationActor, selectIsNebula)
   const camera = useThree((s) => s.camera)
   const gl = useThree((s) => s.gl)
-  const controls = useThree((s) => s.controls) as
-    | { target: THREE.Vector3; update: () => void }
-    | null
+  const controls = useOrbitControls()
 
   const pending = useRef({ yaw: 0, pitch: 0 }) // drag delta accumulated since last frame (radians)
   const vel = useRef({ yaw: 0, pitch: 0 }) // inertial angular velocity (rad/s) after release
@@ -137,7 +136,7 @@ export function NebulaOrbitController() {
   const up = useRef(new THREE.Vector3())
   const offset = useRef(new THREE.Vector3())
   const q = useRef(new THREE.Quaternion())
-  // change 08 — 두 손가락 pan(centroid 이동 → controls.target 평면 이동) + double-tap-hold 세로 zoom scrub.
+  // 두 손가락 pan(centroid 이동 → controls.target 평면 이동) + double-tap-hold 세로 zoom scrub.
   const pendingPan = useRef({ x: 0, y: 0 }) // 프레임 사이 누적 pan(스크린 px)
   const lastCentroid = useRef({ x: 0, y: 0 }) // 직전 2-finger centroid(pan delta 산출)
   const lastTap = useRef<{ t: number; x: number; y: number } | null>(null) // double-tap 판정용 직전 탭
@@ -198,7 +197,7 @@ export function NebulaOrbitController() {
         vRef.current.pitch = 0
         pend.current.yaw = 0
         pend.current.pitch = 0
-        // double-tap-hold → vertical zoom scrub (change 08): a second tap close in time/space to the
+        // double-tap-hold → vertical zoom scrub: a second tap close in time/space to the
         // first ARMS the scrub; vertical drag then zooms and pan/rotate stay locked out.
         const prev = tap.current
         if (
@@ -235,7 +234,7 @@ export function NebulaOrbitController() {
       p.x = e.clientX
       p.y = e.clientY
       if (pts.size >= 2) {
-        // PINCH zoom + two-finger PAN (change 08): distance change → dolly, centroid move → screen-plane
+        // PINCH zoom + two-finger PAN: distance change → dolly, centroid move → screen-plane
         // pan of controls.target so the orbit pivot follows the fingers (조망 기준점이 중앙에 안 묶인다).
         const d = twoFingerDist()
         if (pinch.current > 0 && d > 0) zoom.current += pinch.current / d - 1
@@ -247,7 +246,7 @@ export function NebulaOrbitController() {
         return
       }
       if (scrub.current) {
-        // double-tap-hold vertical zoom scrub (change 08): vertical drag → dolly; pan/rotate locked out
+        // double-tap-hold vertical zoom scrub: vertical drag → dolly; pan/rotate locked out
         // (this whole branch returns before the orbit accumulation). Up = zoom in, down = zoom out.
         // zoomScrubDelta는 스크럽 시작점부터의 누적 이동량을 받아 deadzone을 한 번만 차감한다(rest에서
         // 시작 → 점프 없음). 프레임 간 델타를 넘기면 매번 deadzone에 못 미쳐 0이 되므로(줌이 거의 안 됨),
@@ -365,7 +364,7 @@ export function NebulaOrbitController() {
       if (Math.abs(vel.current.pitch) < 1e-4) vel.current.pitch = 0
     }
     if (yaw !== 0 || pitch !== 0) {
-      addOrbitTravel(Math.hypot(yaw, pitch)) // 데모 투어 회전 실습 관찰용(change 12, passive — 회전 불변)
+      addOrbitTravel(Math.hypot(yaw, pitch)) // 데모 투어 회전 실습 관찰용(passive — 회전 불변)
       // LOCAL right/up from the live camera basis → true arcball, never re-aligns to world up.
       right.current.setFromMatrixColumn(camera.matrix, 0).normalize()
       up.current.setFromMatrixColumn(camera.matrix, 1).normalize()
@@ -379,7 +378,7 @@ export function NebulaOrbitController() {
 
     // DOLLY (wheel / two-finger pinch), clamped to the nebula 58..1500 radius range.
     if (pendingZoom.current !== 0) {
-      addZoomTravel(Math.abs(pendingZoom.current)) // 데모 투어 줌 실습 관찰용(change 12, passive — 줌 불변)
+      addZoomTravel(Math.abs(pendingZoom.current)) // 데모 투어 줌 실습 관찰용(passive — 줌 불변)
       const r = offset.current.length()
       offset.current.setLength(
         THREE.MathUtils.clamp(r * (1 + pendingZoom.current), OBSERVE_MIN_DIST, 1500),
@@ -387,7 +386,7 @@ export function NebulaOrbitController() {
       pendingZoom.current = 0
     }
 
-    // PAN (change 08) — two-finger centroid move shifts controls.target on the screen plane, so the
+    // PAN — two-finger centroid move shifts controls.target on the screen plane, so the
     // orbit pivot follows the fingers (camera rides along via the solve below). Scaled by radius so
     // far views pan proportionally. right*(-dx) + up*(+dy): the scene grabs and follows the fingers.
     if (pendingPan.current.x !== 0 || pendingPan.current.y !== 0) {
@@ -411,7 +410,7 @@ export function NebulaOrbitController() {
   return null
 }
 
-/** Close-mode ("별들 가까이서 탐험하기") canvas gestures (change 08): one-finger drag → look
+/** Close-mode ("별들 가까이서 탐험하기") canvas gestures: one-finger drag → look
  *  (yaw/pitch into navigation-input.lookDelta), two fingers → thrust (centroid vertical, deadzone→
  *  full ramp; left/right wobble ignored). 1↔2 transitions lock cleanly — look ends when the 2nd
  *  finger lands; thrust holds while two are down; on 2→1 look stays suspended until a fresh deadzone.
@@ -558,9 +557,7 @@ export function NavController({
 }) {
   // 항행·포커스 머신은 매 프레임 getSnapshot으로 읽는다(NavController는 useFrame만 — 구독 불필요).
   const camera = useThree((s) => s.camera)
-  const controls = useThree((s) => s.controls) as
-    | { target: THREE.Vector3; update: () => void }
-    | null
+  const controls = useOrbitControls()
 
   const right = useRef(new THREE.Vector3())
   const upAxis = useRef(new THREE.Vector3())
@@ -608,7 +605,7 @@ export function NavController({
     controls.target.sub(shakeOffset.current)
 
     const { x, y } = navSnap.context.move
-    // 추력 z = 키보드(move.z) + 제스처 thrust(두 손가락 세로, change 08), −1..1 클램프 — 둘 다 같은
+    // 추력 z = 키보드(move.z) + 제스처 thrust(두 손가락 세로), −1..1 클램프 — 둘 다 같은
     // 가속·관성·벽 물리를 탄다. 손을 떼면 thrust 0 → 기존 관성/제동으로 멈춘다(A6).
     const z = Math.max(-1, Math.min(1, navSnap.context.move.z + navigationInput().thrust))
     let changed = false
@@ -630,7 +627,7 @@ export function NavController({
       camera.position.addScaledVector(vel.current, dt)
       controls.target.addScaledVector(vel.current, dt)
       changed = true
-      // 데모 투어 전진 실습 관찰용(change 12, passive): 사용자가 실제로 추력을 줄 때(z≠0)만 이동 거리 가산
+      // 데모 투어 전진 실습 관찰용(passive): 사용자가 실제로 추력을 줄 때(z≠0)만 이동 거리 가산
       // — 키보드·D-pad(move.z)·제스처 thrust가 모두 z로 통합되므로 한 곳에서 전 경로를 센다(A5). 물리 불변.
       if (z !== 0) addThrustTravel(vel.current.length() * dt)
     }

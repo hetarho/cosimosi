@@ -16,6 +16,7 @@ import { fibonacciStarPosition } from '@/shared/lib'
 import { navigationActor, selectFlyStarId, selectFrameRecordId, selectFrameSeq, selectInModeTransition, selectTransitionTo, selectIsNebula, selectIsRecall, selectTransitioning } from '../../model/navigation.machine'
 import { useViewport } from '../../model/use-viewport'
 import { readBufferPosition } from '../../model/layout-position'
+import { useOrbitControls } from '@/shared/lib/r3f'
 import {
   FOCUS_K,
   NEBULA_FRAME_DIST,
@@ -38,9 +39,7 @@ export function FlyToController({ positionsRef }: { positionsRef: MutableRefObje
   const flyStarId = useSelector(navigationActor, selectFlyStarId)
   const stars = useMemoryStore((s) => s.stars)
   const camera = useThree((s) => s.camera)
-  const controls = useThree((s) => s.controls) as
-    | { target: THREE.Vector3; update: () => void }
-    | null
+  const controls = useOrbitControls()
   const targetRef = useRef<THREE.Vector3 | null>(null)
   const flyingIdRef = useRef<string | null>(null)
 
@@ -122,9 +121,7 @@ export function FrameAllController({ positionsRef }: { positionsRef: MutableRefO
   const frameSeq = useSelector(navigationActor, selectFrameSeq)
   const stars = useMemoryStore((s) => s.stars)
   const camera = useThree((s) => s.camera)
-  const controls = useThree((s) => s.controls) as
-    | { target: THREE.Vector3; update: () => void }
-    | null
+  const controls = useOrbitControls()
   const lastSeqRef = useRef(0)
   const posRef = useRef<THREE.Vector3 | null>(null)
   const tgtRef = useRef<THREE.Vector3 | null>(null)
@@ -258,9 +255,7 @@ export function ModeTransitionController() {
   const inModeTransition = useSelector(navigationActor, selectInModeTransition)
   const transitionTo = useSelector(navigationActor, selectTransitionTo)
   const camera = useThree((s) => s.camera)
-  const controls = useThree((s) => s.controls) as
-    | { target: THREE.Vector3; update: () => void }
-    | null
+  const controls = useOrbitControls()
   const posRef = useRef<THREE.Vector3 | null>(null)
   const tgtRef = useRef<THREE.Vector3 | null>(null)
   const dir = useRef(new THREE.Vector3())
@@ -416,9 +411,7 @@ export function FocusController({ positionsRef }: { positionsRef: MutableRefObje
   // 그 프레이밍을 끌어내리지 않게 한다(아래 deselect 분기에서 가드). (focus 머신, spec 39)
   const highlightedRecordId = useSelector(focusActor, selectHighlightedRecordId)
   const camera = useThree((s) => s.camera)
-  const controls = useThree((s) => s.controls) as
-    | { target: THREE.Vector3; update: () => void }
-    | null
+  const controls = useOrbitControls()
   // The selected star's buffer slot + seed (pure derivation). Its position is read LIVE from
   // the force-sim buffer each frame, so focus tracks the star even while it's still relaxing.
   const sel = useMemo(() => {

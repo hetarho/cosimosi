@@ -14,14 +14,14 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Canvas, type GLProps } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
 import type { SynapseEdge } from '@/entities/synapse'
 import type { StarNode } from '@/entities/memory'
 import type { StarObject } from '@/entities/star'
 import { mulberry32, reportUniverseRenderer } from '@/shared/lib'
-import { createRenderer, rendererBackend } from '@/shared/lib/r3f'
+import { asWebGPURenderer, createRendererFactory, rendererBackend } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
 import { BloomPass } from '@/shared/ui'
 import { OverlayUniverse } from './OverlayUniverse'
@@ -105,11 +105,10 @@ export function UniverseOverlay({ mine, theirs, bridges, bg = '#05060d' }: Unive
   }, [])
 
   const [initError, setInitError] = useState<unknown>(null)
-  const glFactory = useCallback(
-    (props: Parameters<typeof createRenderer>[0]) =>
-      createRenderer(props).catch((e: unknown) => {
-        setInitError(e)
-        throw e
+  const glFactory = useMemo(
+    () =>
+      createRendererFactory({
+        onError: (e) => setInitError(e),
       }),
     [],
   )
@@ -123,11 +122,11 @@ export function UniverseOverlay({ mine, theirs, bridges, bg = '#05060d' }: Unive
 
   return (
     <Canvas
-      gl={glFactory as unknown as GLProps}
+      gl={glFactory}
       flat
       camera={{ position: [0, 0, 250], fov: 60, near: 0.1, far: 3000 }}
       onCreated={(state) => {
-        const gl = state.gl as unknown as WebGPURenderer
+        const gl = asWebGPURenderer(state.gl)
         glRef.current = gl
         const container = gl.domElement.parentElement ?? gl.domElement
         const ro = new ResizeObserver(() => syncSize(gl, state.camera, container))

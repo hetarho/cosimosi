@@ -33,15 +33,14 @@ function safeRedirect(r: unknown, reject: readonly string[]): string | undefined
 
 // `/` = 메인 우주 셸(보호 라우트). 체험 우주도 같은 셸을 demo 데이터로 연다.
 // 게이트는 라우트가 소유한다 — 미인증이면 SessionGate가 `/sign-in`으로 리다이렉트하고,
-// 마케팅 랜딩은 게이트 없는 `/landing` 공개 표면에 둔다 (01).
+// 마케팅 랜딩은 게이트 없는 `/landing` 공개 표면에 둔다.
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  // ?sim=<id> — 체험 우주의 이론 진입 포커스(spec 19, 랜딩 카드 "체험 우주에서 해보기").
-  // ?panel=dormant|diary — 구 셸 딥링크(change 09 이전). 신규 UI는 망원경 탐색 시트로 흡수하므로,
-  //   호환을 위해 값만 통과시키고 HomePage가 진입 시 1회 소비해 탐색 시트(일기/별 탭)를 연 뒤 비운다
-  //   (legacy redirect — dormant는 별 탭으로). 알 수 없는 값은 무시.
-  // ?record=<recordId> — 독립 일기 페이지 "우주에서 보기" 핸드오프(change 09): 그 record의 별을 frame-all.
+  // ?sim=<id> — 체험 우주의 이론 진입 포커스(랜딩 카드 "체험 우주에서 해보기").
+  // ?panel=dormant|diary — 호환 딥링크. HomePage가 진입 시 1회 소비해 탐색 시트(일기/별 탭)를
+  //   연 뒤 비운다(dormant는 별 탭). 알 수 없는 값은 무시.
+  // ?record=<recordId> — 독립 일기 페이지 "우주에서 보기" 핸드오프: 그 record의 별을 frame-all.
   //   HomePage가 1회 소비해 제거한다(?fly와 같은 일회성 패턴).
   // ?fly=<memoryId> — 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to할 대상.
   validateSearch: (
@@ -53,9 +52,9 @@ const indexRoute = createRoute({
     fly: typeof search.fly === 'string' ? search.fly : undefined,
   }),
   component: function UniverseRoute() {
-    // 인증(SessionGate) → 멤버십(MembershipGate, spec 41) → 감정색 완료(EmotionColorGate, spec 45) → 우주.
+    // 인증(SessionGate) → 멤버십(MembershipGate) → 감정색 완료(EmotionColorGate) → 우주.
     // 비멤버는 /invite로, 감정색 미완료는 /emotion-colors로. UniverseShell은 셋 다 통과해야 마운트된다.
-    // change 09: 우주 셸은 사이드바에 로그아웃을 수렴 → SessionGate chrome(우상단 로그아웃 핀)을 끈다.
+    // 우주 셸은 사이드바에 로그아웃을 수렴 → SessionGate chrome(우상단 로그아웃 핀)을 끈다.
     return (
       <SessionGate showChrome={false}>
         <MembershipGate>
@@ -68,7 +67,7 @@ const indexRoute = createRoute({
   },
 })
 
-// /diary = 독립 보호 일기 페이지(change 09, A10). 우주 셸과 같은 게이트 체인(인증·멤버십·감정색) 안에
+// /diary = 독립 보호 일기 페이지. 우주 셸과 같은 게이트 체인(인증·멤버십·감정색) 안에
 // 두되 자체 헤더(우주로)에 chrome을 둔다 → SessionGate 로그아웃 핀은 끈다. 정적 import(diary 슬라이스가
 // recordsQueryOptions를 우주 셸과 공유 — lazy로 갈라도 메인에 끌려와 무의미).
 const diaryRoute = createRoute({
@@ -87,7 +86,7 @@ const diaryRoute = createRoute({
   },
 })
 
-// /my-page = 최소 마이페이지(change 09). 인증·멤버십만 요구(감정색 게이트 없음 — 계정 표면이라 우주
+// /my-page = 최소 마이페이지. 인증·멤버십만 요구(감정색 게이트 없음 — 계정 표면이라 우주
 // 진입 전제와 무관). 자체 헤더/로그아웃이 chrome을 가지므로 SessionGate 핀은 끈다. MyPageRoute(앱 래퍼)가
 // session-context의 이메일·signOut을 resolve해 MyPage에 내려준다(FSD — pages는 session-context 미import).
 const myPageRoute = createRoute({
@@ -134,7 +133,7 @@ const signInRoute = createRoute({
 const inviteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/invite',
-  // ?code=<초대코드> — 초대 URL 진입(change 05): 미인증도 이 코드가 있으면 초대장 화면을 먼저 본다(InviteRoute가
+  // ?code=<초대코드> — 초대 URL 진입: 미인증도 이 코드가 있으면 초대장 화면을 먼저 본다(InviteRoute가
   // 세션으로 분기). redirect가 `/invite`·`/sign-in`(게이트/인증 라우트)을 가리키면 버린다(재귀 루프 차단).
   validateSearch: (search: Record<string, unknown>): { code?: string; redirect?: string } => ({
     // 코드는 영숫자만 통과(초대 코드 alphabet) — `&`/`/` 섞인 값으로 redirect param을 주입하지 못하게(이중 방어).

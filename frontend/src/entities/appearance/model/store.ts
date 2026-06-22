@@ -5,21 +5,16 @@
 // 위치 근거: object(StarObject)·synapseStyle(SynapseStyle)가 도메인-비주얼이라 4축을 한 묶음으로 여기 둔다.
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { type StarObject, STAR_OBJECTS, DEFAULT_OBJECT } from '@/entities/star/@x/appearance'
+import { type StarObject, DEFAULT_OBJECT, parseStarObject } from '@/entities/star/@x/appearance'
 import {
   type SynapseStyle,
-  SYNAPSE_STYLES,
   DEFAULT_SYNAPSE_STYLE,
+  parseSynapseStyle,
 } from '@/entities/synapse/@x/appearance'
 import { priceOf } from '@/shared/config'
 import type { Background, SelfObject } from './types'
-import { BACKGROUNDS, DEFAULT_BACKGROUND } from './backgrounds'
-import { SELF_OBJECTS, DEFAULT_SELF_OBJECT } from './self-objects'
-
-const THEME_IDS = new Set<Background>(BACKGROUNDS.map((b) => b.id))
-const OBJECT_IDS = new Set<StarObject>(STAR_OBJECTS.map((o) => o.id))
-const SELF_OBJECT_IDS = new Set<SelfObject>(SELF_OBJECTS.map((o) => o.id))
-const SYNAPSE_STYLE_IDS = new Set<SynapseStyle>(SYNAPSE_STYLES.map((s) => s.id))
+import { DEFAULT_BACKGROUND, parseBackground } from './backgrounds'
+import { DEFAULT_SELF_OBJECT, parseSelfObject } from './self-objects'
 
 const STORAGE_KEY = 'cosimosi.appearance'
 const LEGACY_KEY = 'cosimosi.landing.theme' // 레거시 마이그레이션용 구 저장 키
@@ -98,13 +93,8 @@ function legacyInitial(): { theme: Background; object: StarObject } {
     const raw = localStorage.getItem(LEGACY_KEY)
     if (!raw) return base
     const s = (JSON.parse(raw)?.state ?? {}) as { theme?: string; object?: string }
-    const theme = s.theme && THEME_IDS.has(s.theme as Background) ? (s.theme as Background) : DEFAULT_BACKGROUND
-    const object =
-      s.object && OBJECT_IDS.has(s.object as StarObject)
-        ? (s.object as StarObject)
-        : s.theme && OBJECT_IDS.has(s.theme as StarObject)
-          ? (s.theme as StarObject)
-          : DEFAULT_OBJECT
+    const theme = parseBackground(s.theme, DEFAULT_BACKGROUND)
+    const object = parseStarObject(s.object, parseStarObject(s.theme, DEFAULT_OBJECT))
     return { theme, object }
   } catch {
     return base
@@ -140,17 +130,10 @@ export const useAppearance = create<AppearanceState>()(
         set((s) => {
           // 서버 = 커밋된 진실: 4축을 해석해 라이브 선택과 savedSelection(저장 기준선) 둘 다에 반영한다 →
           // 서버 시드 직후엔 드래프트(미저장)가 없다(dirty=false). 저장은 이 응답으로 재동기화된다.
-          const theme = sv.theme && THEME_IDS.has(sv.theme as Background) ? (sv.theme as Background) : s.theme
-          const object =
-            sv.object && OBJECT_IDS.has(sv.object as StarObject) ? (sv.object as StarObject) : s.object
-          const selfObject =
-            sv.selfObject && SELF_OBJECT_IDS.has(sv.selfObject as SelfObject)
-              ? (sv.selfObject as SelfObject)
-              : s.selfObject
-          const synapseStyle =
-            sv.synapseStyle && SYNAPSE_STYLE_IDS.has(sv.synapseStyle as SynapseStyle)
-              ? (sv.synapseStyle as SynapseStyle)
-              : s.synapseStyle
+          const theme = parseBackground(sv.theme, s.theme)
+          const object = parseStarObject(sv.object, s.object)
+          const selfObject = parseSelfObject(sv.selfObject, s.selfObject)
+          const synapseStyle = parseSynapseStyle(sv.synapseStyle, s.synapseStyle)
           // 색 내용이 그대로면 참조를 유지 — 4축만 바뀐 쓰기/재시드에서 별·시냅스 색
           // 전체 재베이킹(StarField aMood·UniverseSynapses colById)을 피한다.
           const keys = Object.keys(sv.emotionColors)
@@ -212,14 +195,10 @@ export const useAppearance = create<AppearanceState>()(
       // 인증 사용자의 진실로 둘 다 덮어쓴다(applyServerSettings).
       merge: (persisted, current) => {
         const p = persisted as Partial<AppearanceState> | undefined
-        const theme = p?.theme && THEME_IDS.has(p.theme) ? p.theme : current.theme
-        const object = p?.object && OBJECT_IDS.has(p.object) ? p.object : current.object
-        const selfObject =
-          p?.selfObject && SELF_OBJECT_IDS.has(p.selfObject) ? p.selfObject : current.selfObject
-        const synapseStyle =
-          p?.synapseStyle && SYNAPSE_STYLE_IDS.has(p.synapseStyle)
-            ? p.synapseStyle
-            : current.synapseStyle
+        const theme = parseBackground(p?.theme, current.theme)
+        const object = parseStarObject(p?.object, current.object)
+        const selfObject = parseSelfObject(p?.selfObject, current.selfObject)
+        const synapseStyle = parseSynapseStyle(p?.synapseStyle, current.synapseStyle)
         return {
           ...current,
           theme,

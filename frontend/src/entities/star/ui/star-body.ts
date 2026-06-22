@@ -36,6 +36,7 @@ import {
   mx_noise_float,
   mx_fractal_noise_float,
 } from 'three/tsl'
+import { asFloatNode, asVec3Node } from '@/shared/lib/r3f'
 import type { StarObject } from '../model/types'
 
 /** 셰이더 입력 계약 — 전부 TSL 노드. 소비처가 attribute()(인스턴스) 또는 uniform()/상수(단일·배경)로 공급한다.
@@ -92,31 +93,31 @@ export const STAR_FORM_SPIN: Record<StarObject, number> = {
 
 /** Rodrigues 회전 — 단위축 k를 중심으로 노드 v를 angle(rad)만큼 돈다. 셰이더에서 자전·색조 회전을 만든다. */
 function rotateAroundAxis(vIn: unknown, kIn: unknown, angleIn: unknown) {
-  const v = vec3(vIn as never)
-  const k = vec3(kIn as never)
-  const angle = float(angleIn as never)
+  const v = asVec3Node(vIn)
+  const k = asVec3Node(kIn)
+  const angle = asFloatNode(angleIn)
   const c = cos(angle)
   const s = sin(angle)
-  const cr = vec3(cross(k, v) as never)
-  const kv = float(dot(k, v) as never)
+  const cr = asVec3Node(cross(k, v))
+  const kv = asFloatNode(dot(k, v))
   return v.mul(c).add(cr.mul(s)).add(k.mul(kv.mul(float(1).sub(c))))
 }
 
 /** object(형태) + 입력 노드 + 조명 스칼라 → 별 본체 {geometry, material}. mood 색은 hueShift로 회색축 둘레를
  *  돌려 보존한다. emissive = self-glow(연결성·glow) + reflection(자아광 N·L·falloff·recency), 둘 다 focus 곱. */
 export function buildStarBody(object: StarObject, inputs: StarShadeInputs, light: StarLightParams): StarBodyBuild {
-  const moodRaw = vec3(inputs.mood as never)
+  const moodRaw = asVec3Node(inputs.mood)
   // 재공고화 색조(spec 23): mood 색을 회색축(1,1,1) 둘레로 hueShift(rad)만큼 돌린다 — 휘도(성분 합) 보존.
-  const hueShift = float(inputs.hueShift as never)
-  const mood = vec3(rotateAroundAxis(moodRaw, normalize(vec3(1, 1, 1)), hueShift) as never)
-  const glow = float(inputs.glow as never) // 자가발광 세기(연결성, A_MIN 바닥은 소비처 selfGlow에서 보장)
-  const rec = float(inputs.recency as never) // 반사 변조(최근성)
-  const foc = float(inputs.focus as never) // 포커스 디밍/부스트
-  const litMix = float(inputs.litMix as never)
-  const selfPos = vec3(inputs.selfLightPos as never)
-  const positional = float(inputs.lightPositional as never)
-  const seed = float(inputs.seed as never)
-  const t = float(inputs.time as never)
+  const hueShift = asFloatNode(inputs.hueShift)
+  const mood = asVec3Node(rotateAroundAxis(moodRaw, normalize(vec3(1, 1, 1)), hueShift))
+  const glow = asFloatNode(inputs.glow) // 자가발광 세기(연결성, A_MIN 바닥은 소비처 selfGlow에서 보장)
+  const rec = asFloatNode(inputs.recency) // 반사 변조(최근성)
+  const foc = asFloatNode(inputs.focus) // 포커스 디밍/부스트
+  const litMix = asFloatNode(inputs.litMix)
+  const selfPos = asVec3Node(inputs.selfLightPos)
+  const positional = asFloatNode(inputs.lightPositional)
+  const seed = asFloatNode(inputs.seed)
+  const t = asFloatNode(inputs.time)
 
   // 반사(lit) 항 — 자아광 방향 N·L · 거리 falloff(점광만) · gain cap · 최근성 · litMix. albedo=회전된 mood를
   // 비춘다. bloom 안 하게 gain으로 낮게 cap(threshold 아래). 평행광(positional=0)은 감쇠 없음(태양). 진짜
@@ -128,7 +129,7 @@ export function buildStarBody(object: StarObject, inputs: StarShadeInputs, light
     const dist = length(toPoint)
     const attenPoint = float(1).div(float(1).add(float(light.decay).mul(dist.div(float(light.distance)))))
     const atten = mix(float(1), attenPoint, positional).mul(float(light.intensity))
-    const ndl = max(dot(vec3(nrm as never), lightDir), float(0))
+    const ndl = max(dot(asVec3Node(nrm), lightDir), float(0))
     return mood.mul(ndl).mul(atten).mul(float(light.gain)).mul(rec).mul(litMix)
   }
 
@@ -190,9 +191,8 @@ export function buildStarBody(object: StarObject, inputs: StarShadeInputs, light
       return { geometry, material: m }
     }
     case 'pulsar': {
-      // 펄사(change 11) — 고밀도 코어 orb. 색=mood 불변(별 색 규칙 무변). 매끈한 발광 코어(정면이 가장
-      // 밝음) + 빠른 맥동 + 자아광 N·L 반사. ⚠ 회전하는 얇은 링/양극 제트 실루엣은 후속 비주얼 폴리시 대상 —
-      // 지금은 형태 식별이 되는 매끈한 맥동 코어로 구현(faceted deepfield와 구별).
+      // 펄사 — 고밀도 코어 orb. 색=mood 불변(별 색 규칙 무변). 매끈한 발광 코어(정면이 가장
+      // 밝음) + 빠른 맥동 + 자아광 N·L 반사로 faceted deepfield와 구별한다.
       const geometry = new THREE.IcosahedronGeometry(1, 3)
       m.roughness = 0.2
       const viewDir = normalize(cameraPosition.sub(positionWorld))

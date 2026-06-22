@@ -14,10 +14,12 @@ export type { Theme } from './model/types'
 export {
   BACKGROUNDS,
   backgroundMeta,
+  isBackground,
   paletteForBackground,
+  parseBackground,
   themeAccent,
 } from './model/backgrounds'
-export { SELF_OBJECTS } from './model/self-objects'
+export { SELF_OBJECTS, isSelfObject, parseSelfObject } from './model/self-objects'
 // 자아 별 형태 TSL 빌더(spec 38·44) — 우주 캔버스·플레이그라운드 미리보기 공용(buildStarBody 동형).
 export { buildSelfForm, type SelfFormBuild } from './ui/self-form'
 export { useAppearance, type ServerInventory } from './model/store'

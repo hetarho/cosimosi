@@ -5,10 +5,11 @@
 // its constructor emits a console warnOnce). Re-check this name on any three upgrade.
 import { useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { RenderPipeline, type WebGPURenderer } from 'three/webgpu'
+import { RenderPipeline } from 'three/webgpu'
 import { pass } from 'three/tsl'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { VALUES } from '@/shared/config'
+import { useWebGPURenderer } from '@/shared/lib/r3f'
 
 /** Owns the final output: composes scene → bloom and renders it. With useFrame
  *  priority > 0, R3F stops its automatic gl.render, so pipeline.render() becomes
@@ -17,7 +18,7 @@ import { VALUES } from '@/shared/config'
  *  size automatically (no setSize). Works on WebGPU and the WebGL2 fallback (TSL
  *  compiles to both). */
 export function BloomPass() {
-  const gl = useThree((s) => s.gl) as unknown as WebGPURenderer
+  const gl = useWebGPURenderer()
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera)
 

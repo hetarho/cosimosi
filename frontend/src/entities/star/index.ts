@@ -4,7 +4,7 @@
 //            (attribute/uniform)은 소비처가, halo·캔버스·배치·움직임도 소비처 몫
 //  - 2D:     VizStar(SVG), StarVisualProps
 export type { StarObject, StarObjectMeta } from './model/types'
-export { STAR_OBJECTS } from './model/kinds'
+export { STAR_OBJECTS, isStarObject, parseStarObject } from './model/kinds'
 export { StarField, type StarFieldProps } from './ui/StarField'
 export { buildStarBody, STAR_FORM_SPIN, type StarShadeInputs, type StarLightParams, type StarBodyBuild } from './ui/star-body'
 export { VizStar, type VizStarProps } from './ui/VizStar'

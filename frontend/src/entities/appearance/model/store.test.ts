@@ -62,6 +62,30 @@ describe('appearance store — change 11 카탈로그 정규화', () => {
     expect(s.object).toBe('pulsar')
   })
 
+  it('알 수 없는 4축 id는 현재 유효 선택을 유지한다', () => {
+    useAppearance.getState().applyServerSettings({
+      selfObject: 'prism-cube',
+      synapseStyle: 'dendrite',
+      theme: 'signal-noise',
+      object: 'pulsar',
+      emotionColors: {},
+    })
+
+    useAppearance.getState().applyServerSettings({
+      selfObject: 'unknown-self',
+      synapseStyle: 'unknown-synapse',
+      theme: 'unknown-background',
+      object: 'unknown-star',
+      emotionColors: {},
+    })
+
+    const s = useAppearance.getState()
+    expect(s.selfObject).toBe('prism-cube')
+    expect(s.synapseStyle).toBe('dendrite')
+    expect(s.theme).toBe('signal-noise')
+    expect(s.object).toBe('pulsar')
+  })
+
   it('신규 카탈로그 id(prism-cube·neuron-bloom·dendrite·signal-noise 등)는 그대로 수락', () => {
     useAppearance.getState().applyServerSettings({
       selfObject: 'prism-cube',

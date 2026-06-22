@@ -162,7 +162,7 @@ export interface StarFieldProps {
   lightPositional?: number
   /** 반사 항 게이트(0|1) — 저사양/WebGL2는 0으로 광 연산 분기 제거. 기본 1. */
   litMix?: number
-  /** spec 06(change 08): 매 프레임 갱신되는 동적 자아 광원 위치. 주어지면 useFrame이 ref.current로
+  /** 매 프레임 갱신되는 동적 자아 광원 위치. 주어지면 useFrame이 ref.current로
    *  반사 채널 uniform만 갱신한다(React rerender 없음) — 근접 탐험에서 광원이 탐험자를 따라온다.
    *  null/미전달이면 정적 selfLightPos를 쓴다(원거리=중심 자아 광원·오버레이·배경 동일). 반사 채널만
    *  바꾸고 selfGlow/activation/λ_eff/별 색·좌표는 불변. */
@@ -481,7 +481,7 @@ export function StarField({
     // 형태 애니메이션용 시간 전진(liquid 출렁임 / ember 깜빡임 / aurora 흐름). 위치 버퍼가 없어도
     // 매 프레임 올려야 하므로 아래 early-return보다 먼저 둔다.
     update(state.clock.elapsedTime)
-    // spec 06(change 08): 동적 자아 광원 — 주어지면 매 프레임 반사 채널 uniform만 갱신(근접 탐험에서
+    // 동적 자아 광원 — 주어지면 매 프레임 반사 채널 uniform만 갱신(근접 탐험에서
     // 광원이 탐험자를 따라온다). 반사 항만 바뀌고 selfGlow/activation/별 색·좌표는 불변(채널 경계).
     if (selfLightRef?.current) setLight(selfLightRef.current, lightPositional, litMix)
     const mesh = meshRef.current

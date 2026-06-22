@@ -9,7 +9,7 @@ import {
   WIDTH_THIN_PX,
   widthBucket,
 } from './mapping'
-import type { LinkType, SynapseEdge } from './types'
+import { parseLinkType, type LinkType, type SynapseEdge } from './types'
 
 function edge(weight: number, brightness: number, recency = 0, linkType: LinkType = 'semantic'): SynapseEdge {
   return { aId: 'a', bId: 'b', weight, brightness, reinforcedRecency: recency, coActivationCount: 0, linkType }
@@ -39,5 +39,12 @@ describe('synapse mapping', () => {
     expect(widthBucket(edge(0.5, 1))).toBe('thick')
     expect(bucketWidthPx('thin')).toBe(WIDTH_THIN_PX)
     expect(bucketWidthPx('thick')).toBe(WIDTH_THICK_PX)
+  })
+
+  it('parseLinkType keeps known values and falls back to semantic', () => {
+    expect(parseLinkType('temporal')).toBe('temporal')
+    expect(parseLinkType('co_recall')).toBe('co_recall')
+    expect(parseLinkType('intra_entry')).toBe('semantic')
+    expect(parseLinkType(null)).toBe('semantic')
   })
 })

@@ -36,3 +36,13 @@ export const STAR_OBJECTS: StarObjectMeta[] = [
 ]
 
 export const DEFAULT_OBJECT: StarObject = 'deepfield'
+
+const STAR_OBJECT_IDS = new Set<string>(STAR_OBJECTS.map((o) => o.id))
+
+export function isStarObject(value: unknown): value is StarObject {
+  return typeof value === 'string' && STAR_OBJECT_IDS.has(value)
+}
+
+export function parseStarObject(value: unknown, fallback: StarObject = DEFAULT_OBJECT): StarObject {
+  return isStarObject(value) ? value : fallback
+}

@@ -150,6 +150,8 @@ cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 
 - **셰이더는 TSL(Three Shading Language)로 작성한다.** TSL은 한 번 작성하면 WebGPU(WGSL)·WebGL2(GLSL) 양쪽으로 자동 컴파일 → **웹↔모바일 셰이더 공유**, GLSL→TSL 재작업 없음.
 - **포스트프로세싱(Bloom):** WebGL 전용인 `@react-three/postprocessing` 대신 **three.js 노드 기반 후처리(WebGPU 진입점)** 를 쓴다. ⚠️ **버전 고정:** 채택 three **0.184** 기준. 후처리 클래스명은 three 최신(r183+)에서 **`PostProcessing` → `RenderPipeline`로 리네임 진행 중**이라, plan/ 스펙은 핀 버전(0.184)의 정확한 명칭을 확인해 고정한다(버전 변동 시 명칭 바뀔 수 있음). `bloom` 노드 import 경로 = **`three/addons/tsl/display/BloomNode.js`**, 렌더러/클래스는 `three/webgpu`. (`@react-three/postprocessing`은 WebGL 전용이라 의존성에서 제거 대상 — plan/ 스펙에서 처리)
 - **R3F 연결:** `<Canvas>`의 `gl`에 비동기로 `WebGPURenderer`를 생성·`await renderer.init()` 후 반환한다.
+- **TSL/R3F 타입 경계:** three/R3F의 런타임 그래프 API가 공개 TS 오버로드보다 넓은 곳은 `shared/lib/r3f`가 경계를 소유한다. `createRendererFactory`·`asWebGPURenderer`·`useWebGPURenderer`·`useOrbitControls`가 renderer/controls narrowing을, `asFloatNode`·`asVec3Node`·`uniformColorNode`·`attribute*Node`가 TSL node conversion을 담당한다. 호출부에는 `as never`나 반복 `as unknown as GLProps`를 두지 않는다.
+- **코드 주석 정책:** 렌더링 코드는 현재 invariant, 플랫폼 제약, FSD 경계, 보안/세션/연기 게이트처럼 유지보수자가 즉시 알아야 할 사실만 남긴다. 변경 번호·과거 수치 조정·구현 일지는 `spec/changes`·`spec/jobs`에 둔다.
 - **drei 갭:** 일부 WebGL 전제 헬퍼·`Html`/`Loader`는 WebGPU/모바일에서 제약이 있다. **씬 안에 DOM `Html`을 넣지 않는다** — 라벨/HUD는 three 오브젝트(Sprite/Troika 텍스트) 또는 별도 2D HUD widget으로 분리(모바일 이식성).
 
 ### 3.2 성능 아키텍처 — 시뮬레이션 분리 · 렌더러 격리 · 인스턴싱
@@ -167,7 +169,7 @@ cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 
 |---|---|---|
 | `<Canvas>` + WebGPU 렌더러 + 조명·카메라·Bloom 노드 (후처리는 `RenderPipeline`/`PostProcessing` — three 0.184 핀 기준 명칭 확인, §3.1) | **widgets** — `widgets/universe-canvas/ui/UniverseCanvas.tsx` | 자족적 큰 UI 블록. **Bloom 패스(`BloomPass`, RenderPipeline)는 `shared/ui/BloomPass.tsx`로 분리**해 universe-canvas와 CosmosScene(plan 43)이 공유 |
 | 별 인스턴스 렌더 + TSL 머티리얼 | **entities** — `entities/star/ui/StarField.tsx` | 도메인 시각화. **생성 오브젝트의 고유함은 per-instance 시드(감정·강도·임베딩 파생)를 TSL에서 변형**해 표현 — 공유 지오메트리 + 인스턴싱을 유지하면서도 별마다 다른 형태·색(수천 노드 성능). 별 본체 셰이딩은 아래 프리미티브를 attribute 바인딩으로 소비 |
-| 별 본체 시각 정의(form별 geometry + TSL 셰이딩) | **entities** — `entities/star/ui/star-body.ts` (`buildStarBody`, plan 42) | 입력 바인딩(attribute/uniform)이 추상화된 **단일 별-바디 프리미티브**(순수: geometry+material만 반환). 위치·움직임·time uniform 소유는 소비처(우주 `StarField`=attribute, 단일 `widgets/star3d/Star3D`=uniform). 자가발광 셰이딩이라 조명 환경과 무관. `three`만 의존 → 라이브러리 추출 가능. 소비처가 자기 씬에 꽂으므로 배경과 한 캔버스 합성도 가능(아래 `CosmosScene`이 fluid 뒤/앞 레이어 + 별을 renderOrder로 쌓음, plan 43) |
+| 별 본체 시각 정의(form별 geometry + TSL 셰이딩) | **entities** — `entities/star/ui/star-body.ts` (`buildStarBody`, plan 42) | 입력 바인딩(attribute/uniform)이 추상화된 **단일 별-바디 프리미티브**(순수: geometry+material만 반환). 위치·움직임·time uniform 소유는 소비처(우주 `StarField`=attribute, 단일 `widgets/star3d/Star3D`=uniform). TSL node conversion은 `shared/lib/r3f` helper를 통해 표현한다. 자가발광 셰이딩이라 조명 환경과 무관. `three`만 의존 → 라이브러리 추출 가능. 소비처가 자기 씬에 꽂으므로 배경과 한 캔버스 합성도 가능(아래 `CosmosScene`이 fluid 뒤/앞 레이어 + 별을 renderOrder로 쌓음, plan 43) |
 | 공유 배경 합성(배경 fluid 앞/뒤 + 트윙클 + 별 + Bloom 한 씬) | **widgets** — `widgets/cosmos-scene/ui/CosmosScene.tsx` (plan 43) | 사인인·초대·랜딩이 공유하는 **디커플드 재사용 씬**. prop(별·팔레트·품질)만 주입 — appearance/FSM 미의존(라이브러리화 토대). 별 본체는 `buildStarBody`(uniform 바인딩) 소비, glow는 `BloomPass`(공유). fullscreen fit ortho(`manual=true`), demand+fps 스로틀·quality 다운그레이드 |
 | 시냅스 렌더 + 가중치→가닥 수/밝기/펄스 TSL | **entities** — `entities/synapse/ui/SynapseFilaments.tsx` + `SynapseDust.tsx` | 도메인 시각화 |
 | 별 회상·강화, 근접 항해 | **features** — `features/recall/` | 사용자 가치 행동 |

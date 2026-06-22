@@ -30,6 +30,7 @@ import {
   mx_fractal_noise_float,
 } from 'three/tsl'
 import { VALUES, type CosmosPalette, DEFAULT_PALETTE } from '@/shared/config'
+import { asFloatNode, asVec3Node, uniformColorNode } from '@/shared/lib/r3f'
 import type { BackgroundEffect, BackgroundPattern } from '@/entities/appearance'
 import type { RankedEmotion } from '@/entities/memory'
 
@@ -111,7 +112,7 @@ export function UniverseNebula({
     [],
   )
 
-  // 배경 효과(change 11)는 스킨마다 *다른 절차적 셰이더 경로*를 만든다 — 모두 검은 우주 위에 요즘 mood 색만
+  // 배경 효과는 스킨마다 *다른 절차적 셰이더 경로*를 만든다 — 모두 검은 우주 위에 요즘 mood 색만
   // 칠한다(presence=0이면 거의 검정 = 안전한 빈 우주). 효과/패턴/팔레트가 바뀔 때만 재빌드, 감정색·presence·
   // arousal은 유니폼으로 갱신(재컴파일 없음). EMO_WEAVE_MAX는 효과별 mood 칠 강도 안에 녹였다.
   const built = useMemo(() => {
@@ -124,7 +125,7 @@ export function UniverseNebula({
     const uE0 = uniform(new THREE.Color(palette.c2))
     const uE1 = uniform(new THREE.Color(palette.c2))
     const uE2 = uniform(new THREE.Color(palette.c2))
-    const t = float(uTime as never)
+    const t = asFloatNode(uTime)
     const oct = VALUES.cosmos.fluidOctaves
     const warp = pattern.warp
     const freq = pattern.freq
@@ -133,24 +134,23 @@ export function UniverseNebula({
     // 공통 노드: 구 표면 방향(uv 극 핀칭 회피) + arousal로 빨라지는 흐름 + 요즘 mood 색 3슬롯 + 아주 옅은
     // 딥스페이스 받침(검정에 가깝게 — 별을 씻지 않게). presence가 mood 칠 전체 강도.
     const dir = normalize(positionLocal)
-    const speed = float(uMotion as never)
+    const speed = asFloatNode(uMotion)
     const flow = vec3(t.mul(0.006), t.mul(-0.009), t.mul(0.004)).mul(speed)
-    const e0 = vec3(uE0 as never)
-    const e1 = vec3(uE1 as never)
-    const e2 = vec3(uE2 as never)
-    const presence = float(uPresence as never)
+    const e0 = asVec3Node(uE0)
+    const e1 = asVec3Node(uE1)
+    const e2 = asVec3Node(uE2)
+    const presence = asFloatNode(uPresence)
 
     // 받침은 검정에 가까운 딥스페이스(palette.base). 효과 대부분은 그 위에 mood 하이라이트를 *가산*해 또렷하게
     // 칠하고(전면 안개 아님), **기본 우주(haze)만** navy↔mood 블렌드로 하늘 전체가 요즘 감정색으로 물든다(아주
     // 예전 초기 3D 우주의 결 — 흰색 대체가 아니라 navy↔mood mix). 색=mood·받침=어둠, 별 mood 색·깊이 불간섭.
-    const deep = vec3(uniform(new THREE.Color(palette.base)) as never)
+    const deep = uniformColorNode(palette.base)
     const NAVY = vec3(0.015, 0.02, 0.05) // haze 받침 — 깊고 짙은 딥스페이스 남청색(감정이 깔릴 때 짙은 어둠이 유지되게 하향)
     let col
 
     if (effect === 'aurora') {
-      // 예술적 개편: "Cosmic Filament Web" (우주 실선 은하망)
-      // 두꺼운 리본이 아닌, 아주 얇은 수천 가닥의 미세 실선(Fibrils)들이 가닥가닥 엉켜 흐르는 신경망/Cosmic Web 룩.
-      // 일렁이는 미감을 위해 시간 계수 uMotion/speed의 가중치를 0.03 -> 0.07로 늘려 실선의 출렁임 움직임 강화.
+      // Cosmic Filament Web: 얇은 미세 실선들이 가닥가닥 엉켜 흐르는 신경망/Cosmic Web 룩.
+      // uMotion이 실선의 느린 출렁임을 조절한다.
       const wob = mx_fractal_noise_float(dir.mul(1.5).add(vec3(t.mul(0.07).mul(speed))), oct, 2.0, 0.5)
       const hphase = dir.x.mul(1.8).add(dir.z.mul(1.2)).add(wob.mul(1.6))
       // hphase에 높은 주파수를 가해 아주 촘촘한 실선들을 만들고, pow 승수를 높여 극도의 실선으로 깎음
@@ -160,9 +160,7 @@ export function UniverseNebula({
       const moodCol = mix(e0, e2, sin(hphase.mul(0.5)).mul(0.5).add(0.5))
       col = deep.mul(0.88).add(moodCol.mul(web).mul(presence.mul(0.6).add(0.05)))
     } else if (effect === 'static') {
-      // 예술적 개편: "Space Particle Drift" (은하수 입자 표류)
-      // 화면이 깜빡이며 멈춰 있는 듯한 초고주파(280)를 눈이 편안한 은하 모래알 크기(120)로 톤다운하고,
-      // 입자들이 우측 사선 방향으로 부드럽고 우아하게 흘러가도록(Drifting dust storm) 유기적인 움직임 부여.
+      // Space Particle Drift: 은하 모래알 크기의 미세 입자가 우측 사선 방향으로 부드럽게 표류한다.
       const drift = vec3(t.mul(0.08).mul(speed), t.mul(-0.05).mul(speed), t.mul(0.03).mul(speed))
       const grain = mx_noise_float(dir.mul(120.0).add(drift)).mul(0.5).add(0.5) // 흐르는 미세 입자
       const dots = sin(dir.x.mul(100.0).add(t.mul(0.15))).mul(sin(dir.y.mul(100.0).sub(t.mul(0.12)))).mul(0.5).add(0.5) // 흐르는 홀로그램 격자
@@ -178,9 +176,8 @@ export function UniverseNebula({
       const band = smoothstep(float(0.25), float(0.9), wave)
       col = deep.mul(0.85).add(moodCol.mul(band.mul(0.35)).mul(presence.mul(0.55).add(0.05)))
     } else if (effect === 'caustics') {
-      // 예술적 개편: "Directional Abyssal Waves" (엇갈리는 규칙적 파도 결)
-      // 눈의 피로를 최소화하기 위해 대비를 크게 톤다운하고, 여러 방향의 규칙적인 파도 면이 엇갈리며 그물처럼 빛나는 잔잔한 caustics.
-      // 물결의 흐름을 멈추지 않고 생동감 있게 전파하기 위해 flow 배율을 0.4 -> 0.75로 상승.
+      // Directional Abyssal Waves: 여러 방향의 규칙적인 파도 면이 엇갈리며 그물처럼 빛나는 잔잔한 caustics.
+      // 대비는 낮게 묶어 배경이 별을 압도하지 않게 한다.
       const coord = dir.mul(float(3.2).add(freq)).add(flow.mul(0.75))
       const wave1 = sin(coord.x.mul(1.6).add(coord.y.mul(0.8)).add(t.mul(0.1).mul(speed)))
       const wave2 = sin(coord.z.mul(1.3).sub(coord.y.mul(1.0)).add(t.mul(0.08).mul(speed)))
@@ -191,9 +188,8 @@ export function UniverseNebula({
       const caustic = vec3(caustMesh).mul(0.22) // 자극적이지 않게 배율을 0.22로 크게 낮춰 부드럽게 톤다운
       col = deep.mul(0.9).add(moodCol.mul(caustic).mul(presence.mul(0.55).add(0.04)))
     } else if (effect === 'ridges') {
-      // 예술적 개편: "Geometrical Contour Ridges" (기하학적 등고선 능선)
-      // 둥근 곡선 안개 대신, 마치 지형도나 모래사구 등고선처럼 계단식(Stepped)으로 쪼개져 겹겹이 층을 이룬 기하학적 패턴.
-      // 등고선 층들이 눈에 띄게 살아 움직이도록 flow 배율을 0.5 -> 0.9로 크게 확대.
+      // Geometrical Contour Ridges: 지형도나 모래사구 등고선처럼 계단식으로 겹겹이 층을 이룬 패턴.
+      // flow가 등고선 층의 살아 있는 움직임을 만든다.
       const rp = dir.mul(float(1.5).add(freq * 0.4)).add(flow.mul(0.9))
       const f = mx_fractal_noise_float(rp, oct, 2.0, 0.5) // -1..1
       const stepped = floor(f.mul(7.0)).mul(1.0 / 7.0) // 7단계 등고선으로 기하학적 쪼개기
@@ -202,8 +198,7 @@ export function UniverseNebula({
       const moodCol = mix(e0, e1, f2)
       col = deep.mul(0.85).add(moodCol.mul(contour.mul(0.35).add(0.02)).mul(presence.mul(0.55).add(0.05)))
     } else if (effect === 'nebula') {
-      // 예술적 개편: "Cosmic Vortex Marble" (코스믹 마블 와류)
-      // 소용돌이치는 대리석 결처럼, 강한 도메인 워핑(Domain Warping)을 가해 날카롭게 교차하는 액체 성운.
+      // Cosmic Vortex Marble: 소용돌이치는 대리석 결처럼 강한 도메인 워핑이 교차하는 액체 성운.
       const p = vec3(dir).mul(freq).add(flow)
       const wx = mx_fractal_noise_float(p, oct, 2.0, 0.5)
       const wy = mx_fractal_noise_float(p.add(vec3(5.2, 1.3, 2.7)), oct, 2.0, 0.5)
@@ -233,7 +228,7 @@ export function UniverseNebula({
       col = mix(NAVY, tone, tint.mul(0.75)).add(tone.mul(dens.mul(0.12).mul(presence).mul(0.3))) // 감정색의 가산 강도도 톤다운
     }
 
-    material.colorNode = col.mul(BRIGHTNESS).mul(float(uBright as never))
+    material.colorNode = col.mul(BRIGHTNESS).mul(asFloatNode(uBright))
 
     material.side = THREE.BackSide // 안쪽에서 보이게(카메라가 구 안)
     material.depthWrite = false

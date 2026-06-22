@@ -1,7 +1,6 @@
 // 데모 둘러보기(plan 48) 진행 상태 머신 — step·phase 전이·게이팅·항해 실습 자동진행을 하나의
-// 순수 FSM으로(change 13). 구버전은 DemoGuidedTour의 useState(phaseIndex)+여러 useEffect(DOM await
-// 관찰·rAF 항해 샘플링)와 flag.ts의 tourStep이 같은 논리 상태를 두 곳에 표현해, `다음`으로 행동 phase를
-// 건너뛰면 다음 phase가 깨진 맥락을 가리키는 엣지버그가 구조적으로 가능했다(tech/state-machines 경고).
+// 순수 FSM으로 둔다. DOM 관찰·항해 샘플링·tourStep 커서를 한 상태에 모아, `다음`으로 행동 phase를
+// 건너뛰어도 다음 phase가 깨진 맥락을 가리키지 않게 한다(tech/state-machines 경고).
 //
 // 순수 TS(three/React/DOM 미의존, 헌법4) — TOUR_STEPS를 데이터로 두고 (stepIndex, phaseIndex) 커서를
 // context로 든다. phase 종류별 상태로 진행을 모델링한다:

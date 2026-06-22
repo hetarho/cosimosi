@@ -26,8 +26,6 @@ import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
 import {
-  attribute,
-  vec2,
   vec3,
   float,
   uniform,
@@ -38,6 +36,7 @@ import {
   clamp,
   positionLocal,
 } from 'three/tsl'
+import { attributeFloatNode, attributeVec2Node, attributeVec3Node } from '@/shared/lib/r3f'
 import { mulberry32 } from '@/shared/lib'
 import { VALUES } from '@/shared/config'
 import { WOBBLE_AMP, WOBBLE_FREQ, WOBBLE_PHASE } from '@/entities/star/@x/synapse'
@@ -101,11 +100,10 @@ function buildFilamentGeometry(
   seedOf: (id: string) => number,
   styleKind: SynapseStyle,
 ): FilamentBuild | null {
-  // 스타일별 *형태* 분기(spec 44 시냅스 축, change 11) — 셰이더(표현)뿐 아니라 지오메트리 자체가 다르다:
+  // 스타일별 *형태* 분기(spec 44 시냅스 축) — 셰이더(표현)뿐 아니라 지오메트리 자체가 다르다:
   //   filament = 여러 가닥이 꼬인 다발(현재·무료) · particle = 가는 한 줄(셰이더가 점선으로) · dendrite =
   //   작은 가지가 갈라지는 신경 돌기형(다발 + 더 촘촘한 가닥). 색=양끝 mood 블렌드·weight 시각·삭제금지
-  //   floor·Line2/TSL 제약은 모두 유지. ⚠ dendrite의 진짜 *분기 가지* 지오메트리는 후속 비주얼 폴리시 대상 —
-  //   지금은 filament 다발에 가닥을 더 얹어 돌기 다발로 식별되게 한다(레거시 beam/flow는 filament로 정규화).
+  //   floor·Line2/TSL 제약은 모두 유지한다.
   const isParticle = styleKind === 'particle'
   const isDendrite = styleKind === 'dendrite'
   // Keep the strongest edges when over the cap (sort copy — never mutate the store array).
@@ -305,15 +303,13 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
     const geometry = fb.geometry
 
     const material = new MeshBasicNodeMaterial()
-    // attribute()'s TS type doesn't carry its value type → wrap in vec3()/float() (the
-    // StarField idiom) for typed nodes that carry .mul/.add/etc.
-    const color = vec3(attribute('aColor', 'vec3') as never)
-    const seed = float(attribute('aSeed', 'float') as never)
-    const bright = float(attribute('aBright', 'float') as never) // per-edge brightness (±jitter)
-    const opac = float(attribute('aOpacity', 'float') as never) // per-edge opacity (±jitter)
-    const pulse = float(attribute('aPulse', 'float') as never)
+    const color = attributeVec3Node('aColor')
+    const seed = attributeFloatNode('aSeed')
+    const bright = attributeFloatNode('aBright') // per-edge brightness (±jitter)
+    const opac = attributeFloatNode('aOpacity') // per-edge opacity (±jitter)
+    const pulse = attributeFloatNode('aPulse')
     // 양 끝 별의 부유 seed — vec2 하나로 패킹(WebGPU 정점 버퍼 한도 8 안에 머물기).
-    const wobSeed = vec2(attribute('aWob', 'vec2') as never)
+    const wobSeed = attributeVec2Node('aWob')
     const wobA = float(wobSeed.x)
     const wobB = float(wobSeed.y)
     const uTime = uniform(0) // manual clock — the built-in `time` node is frozen here
@@ -391,8 +387,8 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
       const beadTerm = float(0.4).add(bead.mul(1.1)) // floor 0.4 → 비드는 또렷, 색은 안 꺼짐
       glow = bright.mul(breath).mul(beadTerm).mul(glowVar).mul(uDim)
     } else {
-      // filament(기본·무료) + dendrite(가지 다발, change 11): 가닥 다발 + 흐르는 packet + along 텍스처.
-      // dendrite는 지오메트리에서 가닥을 더 얹어 돌기 다발로 구별된다(진짜 분기 가지는 후속 비주얼 폴리시).
+      // filament(기본·무료) + dendrite(가지 다발): 가닥 다발 + 흐르는 packet + along 텍스처.
+      // dendrite는 지오메트리에서 가닥을 더 얹어 돌기 다발로 구별된다.
       const flowTerm = float(0.6).add(flowGlow.mul(0.55))
       const glowVar = float(0.55).add(nGlow.mul(0.85)) // ~0.55..1.4 down the strand
       glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)

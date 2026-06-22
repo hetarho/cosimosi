@@ -7,6 +7,8 @@ export type { SynapseEdge } from './model/types'
 export {
   SYNAPSE_STYLES,
   DEFAULT_SYNAPSE_STYLE,
+  isSynapseStyle,
+  parseSynapseStyle,
   type SynapseStyle,
 } from './model/styles'
 export {

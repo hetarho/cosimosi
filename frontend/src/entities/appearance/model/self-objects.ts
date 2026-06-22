@@ -29,3 +29,13 @@ export const SELF_OBJECTS: SelfObjectMeta[] = [
 ]
 
 export const DEFAULT_SELF_OBJECT: SelfObject = 'mirrorball'
+
+const SELF_OBJECT_IDS = new Set<string>(SELF_OBJECTS.map((o) => o.id))
+
+export function isSelfObject(value: unknown): value is SelfObject {
+  return typeof value === 'string' && SELF_OBJECT_IDS.has(value)
+}
+
+export function parseSelfObject(value: unknown, fallback: SelfObject = DEFAULT_SELF_OBJECT): SelfObject {
+  return isSelfObject(value) ? value : fallback
+}

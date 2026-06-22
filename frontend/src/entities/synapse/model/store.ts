@@ -2,7 +2,7 @@
 // (RN-compatible); no three/DOM. brightness/reinforcedRecency default until real activation is wired.
 import { create } from 'zustand'
 import { virtualNowMs } from '@/shared/lib/demo'
-import type { LinkType, SynapseEdge } from './types'
+import { parseLinkType, type SynapseEdge } from './types'
 
 /** The subset of proto GetUniverse Synapse we map. */
 export interface UniverseSynapse {
@@ -15,8 +15,6 @@ export interface UniverseSynapse {
   coActivationCount?: number
 }
 
-const LINK_TYPES: LinkType[] = ['semantic', 'temporal', 'entity', 'co_recall']
-
 /** proto synapse → domain SynapseEdge. brightness defaults to 1 and
  *  reinforcedRecency to 0 until real activation derives them; coActivationCount
  *  rides through from the server (0 when absent — demo/older responses). */
@@ -28,7 +26,7 @@ export function toSynapseEdge(s: UniverseSynapse): SynapseEdge {
     brightness: 1,
     reinforcedRecency: 0,
     coActivationCount: s.coActivationCount ?? 0,
-    linkType: (LINK_TYPES as string[]).includes(s.linkType) ? (s.linkType as LinkType) : 'semantic',
+    linkType: parseLinkType(s.linkType),
   }
 }
 

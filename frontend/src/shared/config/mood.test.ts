@@ -3,14 +3,18 @@ import {
   MOOD_AFFECT,
   MOOD_LABEL,
   MOOD_PALETTE,
+  MOODS as CANONICAL_MOODS,
+  MOODS_BY_QUADRANT,
+  isMood,
   moodLabel,
   moodRgb,
   NEUTRAL_RGB,
+  parseMood,
   type Mood,
 } from './mood'
 
 // The canonical 13 (spec 29): 4 affective quadrants ×3 + neutral.
-const MOODS: Mood[] = [
+const EXPECTED_MOODS: Mood[] = [
   'joy',
   'calm',
   'sad',
@@ -28,10 +32,12 @@ const MOODS: Mood[] = [
 
 describe('mood taxonomy (spec 29 — 13 moods)', () => {
   it('palette/label/affect key exactly the 13 moods (1.3)', () => {
-    const sorted = [...MOODS].sort()
+    const sorted = [...EXPECTED_MOODS].sort()
     expect(Object.keys(MOOD_PALETTE).sort()).toEqual(sorted)
     expect(Object.keys(MOOD_LABEL).sort()).toEqual(sorted)
     expect(Object.keys(MOOD_AFFECT).sort()).toEqual(sorted)
+    expect([...CANONICAL_MOODS].sort()).toEqual(sorted)
+    expect([...MOODS_BY_QUADRANT].sort()).toEqual(sorted)
   })
 
   it('keeps the original 7 colors byte-for-byte (1.4 backward-compat)', () => {
@@ -55,7 +61,7 @@ describe('mood taxonomy (spec 29 — 13 moods)', () => {
   })
 
   it('every mood has a label and an in-gamut linear-RGB color', () => {
-    for (const m of MOODS) {
+    for (const m of EXPECTED_MOODS) {
       expect(MOOD_LABEL[m]).toBeTruthy()
       const rgb = MOOD_PALETTE[m]
       expect(rgb).toHaveLength(3)
@@ -68,7 +74,7 @@ describe('mood taxonomy (spec 29 — 13 moods)', () => {
 
   it('places each mood in a valid quadrant with in-range coords (1.5)', () => {
     const quadrants = new Set(['HAP', 'LAP', 'HAN', 'LAN', 'center'])
-    for (const m of MOODS) {
+    for (const m of EXPECTED_MOODS) {
       const a = MOOD_AFFECT[m]
       expect(quadrants.has(a.quadrant)).toBe(true)
       expect(a.arousal).toBeGreaterThanOrEqual(0)
@@ -85,7 +91,7 @@ describe('mood taxonomy (spec 29 — 13 moods)', () => {
   })
 
   it('keeps quadrant↔valence signs coherent', () => {
-    for (const m of MOODS) {
+    for (const m of EXPECTED_MOODS) {
       const a = MOOD_AFFECT[m]
       if (a.quadrant === 'HAP' || a.quadrant === 'LAP') expect(a.valence).toBeGreaterThan(0)
       if (a.quadrant === 'HAN' || a.quadrant === 'LAN') expect(a.valence).toBeLessThan(0)
@@ -98,5 +104,13 @@ describe('mood taxonomy (spec 29 — 13 moods)', () => {
     expect(moodRgb('tired')).toEqual(MOOD_PALETTE.tired)
     expect(moodLabel('nope')).toBe('중립')
     expect(moodLabel('stress')).toBe('스트레스')
+  })
+
+  it('parseMood/isMood narrow known strings and fall back to neutral', () => {
+    expect(isMood('gratitude')).toBe(true)
+    expect(isMood('mystery')).toBe(false)
+    expect(parseMood('gratitude')).toBe('gratitude')
+    expect(parseMood('mystery')).toBe('neutral')
+    expect(parseMood(null)).toBe('neutral')
   })
 })

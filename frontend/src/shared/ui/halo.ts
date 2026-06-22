@@ -3,7 +3,8 @@
 // 밝기는 자체 uniform으로 들고 update로 갱신해 별 몸체와 같은 박자로 맥동한다(호출부는 메서드만 부른다).
 import * as THREE from 'three'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
-import { vec3, float, uniform, uv, smoothstep, pow, length } from 'three/tsl'
+import { float, uniform, uv, smoothstep, pow, length } from 'three/tsl'
+import { asFloatNode, uniformColorNode } from '@/shared/lib/r3f'
 
 export interface HaloBuild {
   geometry: THREE.BufferGeometry
@@ -23,10 +24,10 @@ export function buildHalo(hex: string, brightness: number): HaloBuild {
   m.transparent = true
   m.depthWrite = false
   m.blending = THREE.AdditiveBlending
-  const col = vec3(uniform(new THREE.Color(hex)) as never)
+  const col = uniformColorNode(hex)
   const d = length(uv().sub(0.5)).mul(2.0) // 0(중심)~1.41(모서리)
   const a = smoothstep(float(1.0), float(0.0), d) // 중심 1 → 가장자리 0
   m.colorNode = col
-  m.opacityNode = pow(a, float(2.2)).mul(float(bright as never)).mul(0.65)
+  m.opacityNode = pow(a, float(2.2)).mul(asFloatNode(bright)).mul(0.65)
   return { geometry, material: m, update }
 }

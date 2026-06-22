@@ -60,11 +60,21 @@ export const MOOD_LABEL: Record<Mood, string> = {
 
 /** The 13 moods in display order — the single source for emotion-filter chips / pickers
  *  (don't re-list per component). Derived from MOOD_LABEL so it can never drift from the labels. */
-export const MOODS = Object.keys(MOOD_LABEL) as Mood[]
+const MOOD_IDS = new Set<string>(Object.keys(MOOD_LABEL))
+
+export function isMood(value: unknown): value is Mood {
+  return typeof value === 'string' && MOOD_IDS.has(value)
+}
+
+export function parseMood(value: unknown, fallback: Mood = 'neutral'): Mood {
+  return isMood(value) ? value : fallback
+}
+
+export const MOODS = Object.keys(MOOD_LABEL).filter(isMood)
 
 /** Mood → Korean label with neutral fallback; never throws on an unknown string. */
 export function moodLabel(mood: string): string {
-  return MOOD_LABEL[mood as Mood] ?? '중립'
+  return MOOD_LABEL[parseMood(mood)]
 }
 
 /** Fallback for an unknown/out-of-range mood (defends acceptance 1.5). */
@@ -72,7 +82,7 @@ export const NEUTRAL_RGB: RGB = [0.6, 0.6, 0.6]
 
 /** Mood → RGB with safe fallback; never throws on an unknown string (1.5). */
 export function moodRgb(mood: string): RGB {
-  return MOOD_PALETTE[mood as Mood] ?? NEUTRAL_RGB
+  return MOOD_PALETTE[parseMood(mood)]
 }
 
 /** "#RRGGBB" → linear-RGB tuple (0..1). Direct 8-bit mapping (no gamma) so it is the
@@ -128,4 +138,4 @@ export const MOOD_AFFECT: Record<Mood, Affect> = {
 }
 
 /** The 13 moods in affect-quadrant order: HAP → LAP → HAN → LAN → neutral. */
-export const MOODS_BY_QUADRANT = Object.keys(MOOD_AFFECT) as Mood[]
+export const MOODS_BY_QUADRANT = Object.keys(MOOD_AFFECT).filter(isMood)
