@@ -53,9 +53,9 @@ func TestGetEmpty(t *testing.T) {
 
 // 1.2 — a valid partial patch (a FREE axis kind needs no ownership) is forwarded.
 func TestUpdateValidPatchWrites(t *testing.T) {
-	repo := &fakeRepo{stored: Settings{Theme: "vast"}}
+	repo := &fakeRepo{stored: Settings{Theme: "galaxy"}}
 	got, err := NewService(repo).Update(context.Background(), "u1", Patch{
-		Theme:         ptr("vast"), // free background — selectable without ownership
+		Theme:         ptr("galaxy"), // free background — selectable without ownership
 		EmotionColors: []EmotionColor{{Mood: "joy", Color: "#ffd64d"}},
 	})
 	if err != nil {
@@ -64,8 +64,8 @@ func TestUpdateValidPatchWrites(t *testing.T) {
 	if repo.captured == nil {
 		t.Fatal("expected repo.Update to be called")
 	}
-	if got.Theme != "vast" {
-		t.Errorf("merged Theme = %q, want vast", got.Theme)
+	if got.Theme != "galaxy" {
+		t.Errorf("merged Theme = %q, want galaxy", got.Theme)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestUpdateRejectsInvalidBeforeWrite(t *testing.T) {
 		{"removed self well", Patch{SelfObject: ptr("well")}, ErrUnknownItem},
 		{"removed synapse beam", Patch{SynapseStyle: ptr("beam")}, ErrUnknownItem},
 		{"removed synapse flow", Patch{SynapseStyle: ptr("flow")}, ErrUnknownItem},
-		{"locked paid background", Patch{Theme: ptr("aurora-veil")}, ErrNotOwned}, // known paid, not owned
+		{"locked paid background", Patch{Theme: ptr("vortex")}, ErrNotOwned}, // known paid, not owned
 		{"locked paid object", Patch{StarObject: ptr("ember")}, ErrNotOwned},
 		// change 11 — new paid ids are known but not owned (rejected as NotOwned, not Unknown).
 		{"new paid self prism-cube", Patch{SelfObject: ptr("prism-cube")}, ErrNotOwned},

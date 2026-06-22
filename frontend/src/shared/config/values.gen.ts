@@ -98,8 +98,8 @@ export const VALUES = {
   },
   customization: {
     startingStardust: 100,
-    price: {"background:lively":30,"background:calm":30,"background:aurora-veil":45,"background:signal-noise":35,"background:abyssal-sea":40,"background:cosmic-cliffs":45,"star:aurora":30,"star:liquid":35,"star:ember":40,"star:pulsar":45,"self:prism-cube":35,"self:neuron-bloom":45,"synapse:particle":40,"synapse:dendrite":40},
-    free: {"background":"vast","star":"deepfield","self":"mirrorball","synapse":"filament"},
+    price: {"background:vortex":30,"background:crystal":30,"background:mandala":40,"star:aurora":30,"star:liquid":35,"star:ember":40,"star:pulsar":45,"self:prism-cube":35,"self:neuron-bloom":45,"synapse:particle":40,"synapse:dendrite":40},
+    free: {"background":"galaxy","star":"deepfield","self":"mirrorball","synapse":"filament"},
   },
   admin: {
     userListDefaultPageSize: 50,

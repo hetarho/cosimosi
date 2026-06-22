@@ -6,17 +6,11 @@
 // 색(mood)은 축과 무관하게 보존된다(감정 의미색). 배경 변경은 별의 mood 색을 바꾸지 않는다(A9).
 import type { CosmosPalette } from '@/shared/config'
 
-/** 배경(Background) kind — 옛 Theme의 정명. 무료 vast + 유료(lively·calm·aurora-veil·signal-noise·
- *  abyssal-sea·cosmic-cliffs). 배경은 고정 hue가 아니라 *질감/구조*를 고르는 축이고, 색은 항상 요즘
- *  mood/감정색에서 파생한다(change 11). 레거시 id 없음(추가만 — 기존 4종 id 호환 유지). */
-export type Background =
-  | 'vast'
-  | 'lively'
-  | 'calm'
-  | 'aurora-veil'
-  | 'signal-noise'
-  | 'abyssal-sea'
-  | 'cosmic-cliffs'
+/** 배경(Background) kind — 옛 Theme의 정명. 무료 galaxy + 유료(vortex·crystal·mandala). 배경은 고정 hue가
+ *  아니라 *질감/구조*를 고르는 축이고, 색은 항상 요즘 mood/감정색에서 파생한다(change 11). 시각 조립은
+ *  `entities/appearance/ui/background-form`이 shared 툴킷(plan 50)을 조합해 만들고, 위젯은 N-제네릭(plan 51).
+ *  알 수 없는 id(레거시 vast 등)는 parseBackground 경계에서 galaxy로 폴백한다. */
+export type Background = 'galaxy' | 'vortex' | 'crystal' | 'mandala'
 
 /** 배경의 텍스처/요소 슬롯(번들) — 색 외의 배경 결. 비주얼 디테일은 디자인 반복(slot minimal).
  *  veilColor/veilOpacity = 장면 뒤에 깔리는 은은한 색 베일(별 mood 색은 불간섭 — 별 앞이 아닌 배경 결). */
@@ -25,23 +19,14 @@ export interface BackgroundTexture {
   veilOpacity?: number
 }
 
-/** 배경 효과 종류(change 11) — 스킨마다 *서로 다른 절차적 셰이더 경로*를 고른다(같은 fbm의 계수만 바꾸는
- *  게 아니라, A2/A6). 모두 검은 우주를 유지한 채 요즘 mood 색만 칠한다(emotionSlots/presence로):
- *   • haze    — 검정 + mood 색 뿌연 안개(기본, 가장 조용).
- *   • nebula  — 도메인워프 성운 워시(격동·와류).
- *   • waves   — 느린 가로 mood 파동.
- *   • aurora  — 검정 우주에 가끔씩 지나가는 오로라 커튼 *선*(전면 확산 아님).
- *   • static  — 강한 쿨 그레인 + 지지직 글리치 밴드(지직거리는 쿨한 인상).
- *   • caustics— 심해 물빛 굴절 일렁임(underwater shimmer).
- *   • ridges  — 성운 절벽 능선/기둥 구조(ridged structure). */
-export type BackgroundEffect =
-  | 'haze'
-  | 'nebula'
-  | 'waves'
-  | 'aurora'
-  | 'static'
-  | 'caustics'
-  | 'ridges'
+/** 배경 효과 종류 — 카탈로그 kind와 1:1. `UniverseNebula` 셸이 이 값으로 `BACKGROUND_FORMS` registry에서
+ *  조립 함수를 골라 색 노드를 받는다(plan 51 A3 — `satisfies Record<BackgroundEffect, …>`로 총괄성 강제).
+ *  모두 검은 우주를 유지한 채 요즘 mood 색만 칠한다(emotionSlots/presence로):
+ *   • galaxy  — 적도 은하면에 log-spiral 나선팔 + fbm 먼지(은하 백드롭, 무료/기본).
+ *   • vortex  — +y 극 어두운 중심 + 도메인워프 강착원반 와류(블랙홀).
+ *   • crystal — Worley 셀 경계선이 빛나는 결정/세포망.
+ *   • mandala — kaleido 거울 대칭 + 등고선 층의 방사 신성기하. */
+export type BackgroundEffect = 'galaxy' | 'vortex' | 'crystal' | 'mandala'
 
 /** 배경 스킨의 무늬/질감 결(spec 07) — 색만이 아니라 *패턴 자체*가 스킨마다 다르게(같은 fbm·색만
  *  다른 상태가 아니다, A6). UniverseNebula의 절차적 셰이더 파라미터를 스킨별로 조율한다. */
@@ -76,7 +61,10 @@ export interface BackgroundMeta {
   effect: BackgroundEffect
   /** 무늬/질감 결 — 효과 안에서 warp/freq/detail로 미세 조율(A6). */
   pattern: BackgroundPattern
-  /** 색 외의 텍스처/요소 번들(없으면 최소 배경 — vast). */
+  /** 효과별 튜닝 수치(주석 달린 데이터, plan 51) — `background-form` 조립 함수가 읽는다(예: galaxy arms·coreGlow).
+   *  셰이더 계수는 코드/카탈로그 소관(values.yaml 아님, plan 44). 사용자가 여기서 직접 미감을 조율한다. */
+  params: Readonly<Record<string, number>>
+  /** 색 외의 텍스처/요소 번들(없으면 최소 배경). */
   texture?: BackgroundTexture
 }
 

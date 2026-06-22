@@ -41,7 +41,7 @@
 | 규칙 | 값 / 조건 |
 |---|---|
 | 감정 순위 (클라) | `rankedEmotions(stars, emotionColors, now)` = mood별 **Σ R** 내림차순(R = Bjork 인출 강도, weight.ts). 각 항목 색 = `resolveMoodRgb(mood, emotionColors)`(**사용자 감정색** 45·30), weight = 그 mood Σ R의 상대 비중. 서버는 종합을 주지 않는다 — 클라가 로드된 별(+`recall_count`)에서 파생(헌법3) |
-| 배경 weave (클라) | `UniverseNebula`가 검은 우주 위에 상위 **`emotionSlots`**개 감정색을 효과 결별 R-비중으로 칠한다(dominant=넓은 결, 차순위=밝은 결 액센트). `emotionSlots`(스킨별: vast·calm·abyssal-sea `1`·lively·signal-noise·cosmic-cliffs `3`·aurora-veil `13`·`0`=감정 무관)는 코드 카탈로그 시각 정의. presence(=dominant R-share)가 mood 칠 전체 강도 — 0이면 거의 검정 |
+| 배경 weave (클라) | 배경 셸(`UniverseNebula`) + 효과별 조립(`entities/appearance/ui/background-form`, plan 50·51)이 검은 우주 위에 상위 **`emotionSlots`**개 감정색을 효과 결별 R-비중으로 칠한다(dominant=넓은 결, 차순위=밝은 결 액센트). `emotionSlots`(스킨별: galaxy·vortex·crystal `3`·mandala `4`·`0`=감정 무관)는 코드 카탈로그 시각 정의. presence(=dominant R-share)가 mood 칠 전체 강도 — 0이면 거의 검정 |
 | 전역 생동 (arousal) | `arousalOf(stars,now) = 1−exp(-Σ R)` ∈ [0,1)가 배경 스킨 밝기(`1+bg_brightness_gain·arousal`)·흐름 속도(`1+bg_motion_gain·arousal`)를 키운다 — 격동한 요즘=생동, 평온=잔잔 |
 | 별색 불간섭 | 짜 넣는 색은 배경 결이고 별 mood 색(`resolveMoodRgb`)·26 밝기·spec 03 반사 중립은 불변. 자아 몸체 색만 R-가중 `deriveAmbient`로 요즘 감정 파생(고정 의미 팔레트, 사용자 감정색 아님) |
 | 애니메이션 | BloomPass가 내장 TSL `time` 노드를 진전시키지 않으므로 `useFrame` **수동 uTime**으로 흐름 구동. 감정색·arousal은 유니폼 갱신(셰이더 재컴파일 없음), 받침색·무늬는 스킨 교체 시 재빌드. `prefers-reduced-motion`이면 모션 정지, 색·밝기 유지 |

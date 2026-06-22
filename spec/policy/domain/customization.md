@@ -8,7 +8,7 @@
 
 | 축(axis) | 영문 식별자 | 판매 대상 | 색의 출처 | 무료 1종(기본) |
 |---|---|---|---|---|
-| 배경 | `background` | **효과/질감 번들** | 요즘 mood/감정색 **파생**(고정 hue 없음·검은 우주, change 11; 별색 불간섭) | `vast` |
+| 배경 | `background` | **효과/질감 번들** | 요즘 mood/감정색 **파생**(고정 hue 없음·검은 우주, change 11; 별색 불간섭) | `galaxy` |
 | 별 | `star` | **모양(form)** | mood(13감정) — **불변** | `deepfield` |
 | 나 | `self` | **모양(form)** | ambient mood(요즘 감정) **파생** | `mirrorball` |
 | 시냅스 | `synapse` | **스타일(style)** | 양끝 별 mood 블렌드 — **불변** | `filament` |

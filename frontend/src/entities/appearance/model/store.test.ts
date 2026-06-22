@@ -40,10 +40,10 @@ describe('appearance store — change 11 카탈로그 정규화', () => {
     })
   })
 
-  it('무료 기본값은 mirrorball / filament / vast / deepfield', () => {
+  it('무료 기본값은 mirrorball / filament / galaxy / deepfield', () => {
     expect(DEFAULT_SELF_OBJECT).toBe('mirrorball')
     expect(DEFAULT_SYNAPSE_STYLE).toBe('filament')
-    expect(DEFAULT_BACKGROUND).toBe('vast')
+    expect(DEFAULT_BACKGROUND).toBe('galaxy')
     expect(DEFAULT_OBJECT).toBe('deepfield')
   })
 
@@ -51,14 +51,14 @@ describe('appearance store — change 11 카탈로그 정규화', () => {
     useAppearance.getState().applyServerSettings({
       selfObject: 'nebula-heart', // 제거됨 → 무시
       synapseStyle: 'beam', // 제거됨 → 무시
-      theme: 'calm', // 유효 신규 → 수락
+      theme: 'vortex', // 유효 신규 → 수락
       object: 'pulsar', // 유효 신규 → 수락
       emotionColors: {},
     })
     const s = useAppearance.getState()
     expect(s.selfObject).toBe('mirrorball') // 레거시 nebula-heart 폴백
     expect(s.synapseStyle).toBe('filament') // 레거시 beam 폴백
-    expect(s.theme).toBe('calm')
+    expect(s.theme).toBe('vortex')
     expect(s.object).toBe('pulsar')
   })
 
@@ -66,7 +66,7 @@ describe('appearance store — change 11 카탈로그 정규화', () => {
     useAppearance.getState().applyServerSettings({
       selfObject: 'prism-cube',
       synapseStyle: 'dendrite',
-      theme: 'signal-noise',
+      theme: 'crystal',
       object: 'pulsar',
       emotionColors: {},
     })
@@ -82,22 +82,22 @@ describe('appearance store — change 11 카탈로그 정규화', () => {
     const s = useAppearance.getState()
     expect(s.selfObject).toBe('prism-cube')
     expect(s.synapseStyle).toBe('dendrite')
-    expect(s.theme).toBe('signal-noise')
+    expect(s.theme).toBe('crystal')
     expect(s.object).toBe('pulsar')
   })
 
-  it('신규 카탈로그 id(prism-cube·neuron-bloom·dendrite·signal-noise 등)는 그대로 수락', () => {
+  it('신규 카탈로그 id(prism-cube·neuron-bloom·dendrite·crystal 등)는 그대로 수락', () => {
     useAppearance.getState().applyServerSettings({
       selfObject: 'prism-cube',
       synapseStyle: 'dendrite',
-      theme: 'signal-noise',
+      theme: 'crystal',
       object: 'pulsar',
       emotionColors: {},
     })
     const s = useAppearance.getState()
     expect(s.selfObject).toBe('prism-cube')
     expect(s.synapseStyle).toBe('dendrite')
-    expect(s.theme).toBe('signal-noise')
+    expect(s.theme).toBe('crystal')
 
     useAppearance.getState().applyServerSettings({ selfObject: 'neuron-bloom', emotionColors: {} })
     expect(useAppearance.getState().selfObject).toBe('neuron-bloom')

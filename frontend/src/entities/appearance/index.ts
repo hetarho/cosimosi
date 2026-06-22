@@ -22,6 +22,8 @@ export {
 export { SELF_OBJECTS, isSelfObject, parseSelfObject } from './model/self-objects'
 // 자아 별 형태 TSL 빌더(spec 38·44) — 우주 캔버스·플레이그라운드 미리보기 공용(buildStarBody 동형).
 export { buildSelfForm, type SelfFormBuild } from './ui/self-form'
+// 배경 스킨 조립 registry(spec 51) — shared 툴킷 조합으로 효과별 색 노드 생성. UniverseNebula 셸이 N-제네릭 소비.
+export { BACKGROUND_FORMS, type BackgroundForm, type BackgroundFieldContext } from './ui/background-form'
 export { useAppearance, type ServerInventory } from './model/store'
 export {
   settingsQueryOptions,

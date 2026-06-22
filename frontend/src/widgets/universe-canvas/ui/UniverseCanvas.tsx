@@ -412,6 +412,7 @@ export function UniverseCanvas() {
         palette={background.palette}
         pattern={background.pattern}
         effect={background.effect}
+        params={background.params}
         emotionSlots={background.emotionSlots}
         emotions={ranked}
         arousal={arousal}
