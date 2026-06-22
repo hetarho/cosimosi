@@ -31,7 +31,7 @@
 | 흥분성 `e(c,t)` | `Σ exp(-Δt/TAU_EXC)` — 성단 멤버 별 `last_recalled_at` + 멤버 간 시냅스 `last_activated_at`을 이벤트로 누적 |
 | 시간 상수 TAU_EXC | `6h`(반감기 ≈4h) — 3h 전 활성 성단은 강하게 편향, **24h 전 성단은 사실상 0** |
 | 성단 도출 | 후보 별들의 기존 시냅스로 **연결성분(union-find)** 파생, cluster 컬럼 없음(`ListLinksForCluster` 입력). 정밀 군집은 27 소관 |
-| 편향 점수 | `score = cos_sim + W_EXC·norm_e(neighbor_cluster)`, `W_EXC = 0.25`, `norm_e = e / max_e`(후보 성단 중 최대, 0..1) |
+| 편향 점수 | `score = cos_sim + (W_EXC·ExcitabilityGain(arousal))·norm_e(neighbor_cluster)`, `W_EXC = 0.25`, `norm_e = e / max_e`(후보 성단 중 최대, 0..1), arousal은 사용자 전체 별의 Bjork R envelope에서 파생 |
 | 소프트 억제 | 한 성단에 조각이 할당될 때마다 그 성단 `e × inhibitDecay`(`0.5`) → 한 성단 독식 방지(Delamare/Clopath 경쟁 항) |
 | 폴백 | 후보 성단이 하나거나 흥분성이 전부 0이면 순수 `cos_sim` 정렬(기존 동작)로 자연 폴백, throw 없음 |
 | 좌표 시드(클라) | 새 조각은 라이브 force-sim에서 **argmax-e 성단 centroid 근처**에 시드(navigation 정책 — `seedNearCluster`) |
@@ -99,7 +99,7 @@
 ## 구현 근거
 
 - 의미 생성(τ/k/w0/temporal_bonus·UNNEST 배치): plan 05·22 · `backend/internal/job/excitability.go`(`biasedLinks`·`initialWeight`·`temporalBonus`) + `backend/internal/job/worker.go`(embed orchestration), `backend/internal/db/queries/embedding.sql`(`KnnNearest`), `backend/internal/db/queries/link.sql`(`BatchUpsertLinks`).
-- 경쟁적 할당 편향(흥분성 `e(c,t)`·TAU_EXC 6h·W_EXC 0.25·inhibitDecay 0.5·candidateK 16·biasedK 5): plan 22 · `backend/internal/job/worker.go`(`excitability`·`deriveClusters`·`clusterExcitability`·`biasedLinks`), `backend/internal/db/queries/link.sql`(`ListLinksForCluster`)·`memory.sql`(`ListLastRecalled`), `backend/internal/job/repository_pg.go`(`LoadExcitabilityInputs`).
+- 경쟁적 할당 편향(흥분성 `e(c,t)`·TAU_EXC 6h·W_EXC 0.25·arousal gain·inhibitDecay 0.5·candidateK 16·biasedK 5): plan 22·25 · `backend/internal/job/{worker.go,excitability.go}`(`excitability`·`deriveClusters`·`clusterExcitability`·`biasedLinks`), `backend/internal/db/queries/link.sql`(`ListLinksForCluster`)·`memory.sql`(`ListLastRecalled`·`ListArousalInputs`), `backend/internal/job/repository_pg.go`(`LoadExcitabilityInputs`).
 - 일내 결속·semantic 캡(0.8/`semanticWeightCap` 0.79): plan 21 · `backend/internal/db/queries/link.sql`(`BatchUpsertIntraEntryLinks`), `backend/internal/job/{worker.go,repository_pg.go}`(`FanOutFragments`).
 - 헵 강화·멱등(+0.05 cap 1.0·co_activation_count·batch_id): plan 11 · `backend/internal/db/queries/link.sql`(`ReinforceLinks`·`ClaimBatch`), `frontend/src/features/recall/model/co-recall.ts`.
 - link_type 4종 정의: plan 09 · `frontend/src/entities/synapse/model/types.ts`.

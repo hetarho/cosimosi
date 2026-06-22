@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { animate, motion, useReducedMotion } from 'motion/react'
 import { GlassCard } from '@/shared/ui'
 import { cn } from '@/shared/lib'
-import { MOOD } from '@/shared/config'
+import { MOOD, VALUES } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
 import { VizStar } from '@/entities/star'
 import { VizSynapse } from '@/entities/synapse'
@@ -84,10 +84,13 @@ export function NightlyConsolidationCard() {
     setStage(1)
     ;[2, 3, 4].forEach((next, i) => {
       timers.current.push(
-        setTimeout(() => {
-          setStage(next)
-          if (next === 4) setRunning(false)
-        }, (i + 1) * 1200),
+        setTimeout(
+          () => {
+            setStage(next)
+            if (next === 4) setRunning(false)
+          },
+          (i + 1) * 1200,
+        ),
       )
     })
   }
@@ -108,11 +111,24 @@ export function NightlyConsolidationCard() {
 
   return (
     <GlassCard className="flex flex-col gap-4 p-6 sm:p-8" style={{ borderColor: `${ACCENT}33` }}>
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-space-900/60">
-        <svg viewBox="0 0 160 112" className="block w-full" role="img" aria-label="야간 공고화 시뮬레이션">
+      <div className="bg-space-900/60 overflow-hidden rounded-2xl border border-white/10">
+        <svg
+          viewBox="0 0 160 112"
+          className="block w-full"
+          role="img"
+          aria-label="야간 공고화 시뮬레이션"
+        >
           {/* '더 큰 자리' — 모이기 시작하면 중심에 옅은 자리빛이 떠올라, 별들이 어디로 합쳐지는지 보여준다. */}
           <circle cx={CX} cy={CY} r={28} fill={ACCENT} opacity={gather * 0.07} />
-          <circle cx={CX} cy={CY} r={28} fill="none" stroke={ACCENT} strokeOpacity={gather * 0.2} strokeDasharray="2 3.5" />
+          <circle
+            cx={CX}
+            cy={CY}
+            r={28}
+            fill="none"
+            stroke={ACCENT}
+            strokeOpacity={gather * 0.2}
+            strokeDasharray="2 3.5"
+          />
 
           {/* 시냅스 — positions 공유. 약한 선은 가지치기에서 부드럽게 사라진다. */}
           {LINKS.map((l, i) => {
@@ -139,7 +155,11 @@ export function NightlyConsolidationCard() {
           {/* 별 — positions 공유. 재활성화 때 그룹이 함께 깜빡이고, 요지화로 작아지며 약한 별은 흐려진다. */}
           <motion.g
             animate={pulse && !reduce ? { opacity: [0.55, 1, 0.55] } : { opacity: 1 }}
-            transition={pulse && !reduce ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+            transition={
+              pulse && !reduce
+                ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' }
+                : { duration: 0.3 }
+            }
           >
             {positions.map((p, i) => (
               <g key={`s-${i}`} opacity={p.dim}>
@@ -158,11 +178,11 @@ export function NightlyConsolidationCard() {
         </svg>
       </div>
 
-      {/* 4단계 뒤 생물학적 근거: 잠들기 전 쌓인 성단 흥분성을 매일 0으로 되돌려, 다음 낮의
-          기억 할당이 새로 시작된다(24시간 주기의 엔그램 회전 — Cho et al. 2022). */}
+      {/* 4단계 뒤 생물학적 근거: 성단 흥분성은 저장 컬럼을 쓰지 않고 최근 활성 시각에서 자연 감쇠한다. */}
       <p className="text-[11px] leading-relaxed text-white/35">
-        그리고 밤마다 성단의 흥분성을 0으로 되돌려요 — 다음 날의 기억이 어제에 눌리지 않고 새로
-        자리를 얻도록. 24시간을 주기로 도는 <span className="text-white/50">엔그램 회전</span>이에요.
+        그리고 성단 흥분성은 별과 시냅스의 최근 활성 시각에서 τ≈{VALUES.excitability.tauHours}h로
+        자연 감쇠해요 — 다음 날의 기억이 어제에 눌리지 않고 새로 자리를 얻도록. 24시간을 주기로 도는{' '}
+        <span className="text-white/50">엔그램 회전</span>이에요.
       </p>
 
       <div className="flex items-center justify-between gap-3">
@@ -173,8 +193,10 @@ export function NightlyConsolidationCard() {
           onClick={runNight}
           disabled={running}
           className={cn(
-            'shrink-0 rounded-full border border-mood-violet/40 px-4 py-1.5 text-xs font-medium text-white/90 transition',
-            running ? 'cursor-default opacity-50' : 'hover:border-mood-violet/70 hover:bg-mood-violet/10',
+            'border-mood-violet/40 shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium text-white/90 transition',
+            running
+              ? 'cursor-default opacity-50'
+              : 'hover:border-mood-violet/70 hover:bg-mood-violet/10',
           )}
         >
           {stage === 0 ? '밤 보내기' : running ? STAGES[stage].tag : '다시'}

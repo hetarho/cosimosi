@@ -66,6 +66,14 @@ WHERE id = @id AND user_id = @user_id;
 SELECT m.id, m.last_recalled_at FROM memories m
 WHERE m.user_id = @user_id AND m.id = ANY(@ids::text[]);
 
+-- name: ListArousalInputs :many
+-- User-level "요즘" arousal inputs for the allocation gain (spec 25): the same raw
+-- star fields the client uses for Bjork R. The domain computes arousal; SQL only
+-- isolates the user's mutable star layer.
+SELECT m.intensity, m.recall_count, m.last_recalled_at
+FROM memories m
+WHERE m.user_id = @user_id;
+
 -- name: GetRecordByMemory :one
 -- Read the immutable original for the recall panel (records JOIN). body/entry_date/
 -- mood live on records; never mutated, never RETURNING * from memories (no body there).
@@ -148,12 +156,21 @@ WHERE m.user_id = $1
 ORDER BY m.last_recalled_at ASC;
 
 -- name: GetReshapeContext :one
--- PE/strength inputs for one recalled star (spec 23): the cumulative reshaping
--- state + version, the star's embedding (PE = 1-cos(recall_ctx, last_consolidated);
--- embeddings filled by 03/05), the co-recall total (strength = how consolidated),
--- and created_at (age term). Star-only read — never touches the immutable record.
+-- PE/strength inputs for one recalled star (spec 23): cumulative reshaping state,
+-- a server-derived recall-context centroid from co-recalled neighbors, the star's
+-- own embedding as the consolidated baseline, co-recall total, and created_at. If
+-- no co-recall context exists, recall_embedding falls back to the star embedding
+-- so isolated/no-context recalls stay a plain re-ignition.
 SELECT m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta,
-       e.embedding,
+       COALESCE((
+           SELECT AVG(ne.embedding)
+           FROM memory_links ml
+           JOIN embeddings ne ON ne.memory_id = CASE WHEN ml.a_id = m.id THEN ml.b_id ELSE ml.a_id END
+           WHERE ml.user_id = m.user_id
+             AND (ml.a_id = m.id OR ml.b_id = m.id)
+             AND ml.co_activation_count > 0
+       ), e.embedding) AS recall_embedding,
+       e.embedding AS consolidated_embedding,
        COALESCE((SELECT SUM(ml.co_activation_count) FROM memory_links ml
                  WHERE (ml.a_id = m.id OR ml.b_id = m.id) AND ml.user_id = m.user_id), 0)::int AS co_recall_total,
        m.created_at

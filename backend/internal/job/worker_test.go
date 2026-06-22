@@ -66,7 +66,7 @@ func TestBiasedLinksExcludesSelfAndComputesWeight(t *testing.T) {
 		{MemoryID: "zzz", CosSim: 0.9, EntryDate: date},
 		{MemoryID: "mmm", CosSim: 1.0, EntryDate: date}, // self → dropped
 	}
-	links := biasedLinks(self, "user-1", date, now, neighbors, map[string]string{}, map[string]float64{})
+	links := biasedLinks(self, "user-1", date, now, neighbors, map[string]string{}, map[string]float64{}, 0)
 	if len(links) != 2 {
 		t.Fatalf("got %d links, want 2 (self excluded)", len(links))
 	}
@@ -95,12 +95,12 @@ func TestBiasedLinksExcludesSelfAndComputesWeight(t *testing.T) {
 func TestBiasedLinksCapsBelowIntraEntryWeight(t *testing.T) {
 	date := day("2026-06-04")
 	now := date.Add(2 * time.Hour)
-	links := biasedLinks("self", "u", date, now, []Neighbor{{MemoryID: "n", CosSim: 1.0, EntryDate: date}}, map[string]string{}, map[string]float64{})
+	links := biasedLinks("self", "u", date, now, []Neighbor{{MemoryID: "n", CosSim: 1.0, EntryDate: date}}, map[string]string{}, map[string]float64{}, 0)
 	if len(links) != 1 || links[0].Weight >= 0.8 {
 		t.Fatalf("semantic weight %v, want < 0.8", links)
 	}
 	// Below the cap the weight is untouched (30-day gap → temporalBonus 0 → w0 = cos_sim).
-	links = biasedLinks("self", "u", date.AddDate(0, 0, 30), now, []Neighbor{{MemoryID: "n", CosSim: 0.75, EntryDate: date}}, map[string]string{}, map[string]float64{})
+	links = biasedLinks("self", "u", date.AddDate(0, 0, 30), now, []Neighbor{{MemoryID: "n", CosSim: 0.75, EntryDate: date}}, map[string]string{}, map[string]float64{}, 0)
 	if links[0].Weight != 0.75 {
 		t.Fatalf("uncapped weight = %f, want 0.75", links[0].Weight)
 	}

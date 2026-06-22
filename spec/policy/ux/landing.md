@@ -37,7 +37,7 @@
 | VIII 공명 | `ResonanceSection` | 두 미니 우주의 두 별 — 토글 시 가운데 곡선 시냅스로 이어짐 |
 
 - 챕터 순서는 뇌과학 이론 흐름(plan 19–27: 엔그램→연결·강화→재공고화→망각→요즘 상태→야간)과 정합한다. 조각화(plan 21) 카드 자리는 II와 III 사이로 예약(21의 T-landing이 신설).
-- **상태 배지(`TheoryBadge`)** — 각 이론 카드는 ✅(지금 우주에서 동작 + plan NN) 또는 🚧(계획된 비전 + plan NN)을 표기한다: Concept/Engram/Hebbian/TimeWindow/SilentEngram = ✅(08·09/08·11/11/05/12), PresentSelf = 🚧22·25, Reconsolidation = 🚧23·24, Nightly = 🚧27, Resonance = 🚧30.
+- **상태 배지(`TheoryBadge`)** — 각 이론 카드는 ✅(지금 우주에서 동작 + plan NN) 또는 🚧(계획된 비전 + plan NN)을 표기한다: Concept/Engram/Hebbian/TimeWindow/SilentEngram = ✅(08·09/08·11/11/05/12), PresentSelf = ✅22·25, Reconsolidation = ✅23·24, Nightly = ✅27, Resonance = ✅36·37.
 - **"체험 우주에서 해보기"(`TryInUniverse`)** — 구현된 이론 카드 5개(Concept·Engram·Hebbian·TimeWindow·SilentEngram)는 `enterDemoMode()` 후 `/?sim=<id>`로 체험 우주에 진입해 기억 실험실/이론 모달([interaction](interaction.md) §체험)이 그 이론을 펼친 채 맞이한다. 계획 카드에는 체험 버튼이 없다(아직 체험할 동작이 없음 — 각 스펙 T-landing이 단다).
 - 각 카드는 `useAppearance((s) => s.object)`를 구독해 별·시냅스를 같은 4 형태로 그리고, 버튼·슬라이더·hover·토글 등 인터랙션을 유지한다.
 - 구현된 이론 카드의 시연 수치는 정전 상수를 import해 표류를 막는다(`A_MIN`·`HALF_LIFE_DAYS` ← entities/memory, `CO_RECALL_DELTA` ← features/recall). `TimeWindowCard`의 의미 base 0.45는 예시 값(백엔드 임베딩 유사도는 FE 정전 상수가 없음 — 카드가 근사임을 문구로 밝힘).

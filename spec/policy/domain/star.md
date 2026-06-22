@@ -76,7 +76,7 @@
 
 | 규칙 | 값 / 식 |
 |---|---|
-| PE 게이트 | `pe = clamp(1 - cos(recall_ctx_emb, last_consolidated_emb), 0, 1)`; `pe < 0.15`면 재성형·변천사 append 없음(단순 재점화). MVP는 회상 별 임베딩 = 마지막 공고화 임베딩이라 `pe=0`(서버 무변) — 미래의 회상 맥락/야간 gist 임베딩이 같은 게이트를 연다 |
+| PE 게이트 | `pe = clamp(1 - cos(recall_ctx_emb, last_consolidated_emb), 0, 1)`; `pe < 0.15`면 재성형·변천사 append 없음(단순 재점화). `recall_ctx_emb`는 `co_activation_count>0` 직접 이웃 임베딩 centroid(없으면 자기 임베딩 fallback), `last_consolidated_emb`는 회상 별 자신의 임베딩 baseline이라 co-recall 맥락이 있을 때 pe>0이 가능하다 |
 | 강도 의존 | `strength = clamp(0.15·log2(1+co_recall_total) + 0.30·clamp(age/90d,0,1), 0, 1)`; 자주·오래 공고화될수록 1에 가까워진다 |
 | 재성형 크기 | `magnitude = 0.22·pe·(1 - strength)` → strength↑ ⇒ magnitude↓(공고화될수록 덜 흔들림) |
 | 양방향 적용 | 방향(±)은 `회상 별 id 해시 + version`에서 결정론적. `brightness_offset += dir·clamp(magnitude, 0.10, 0.22)`; `hue_shift`는 ±28°(도) 안에서 누적; `form_seed_delta`는 ±0.6 안에서 누적; `version++` |

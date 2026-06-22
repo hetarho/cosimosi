@@ -43,8 +43,9 @@ export interface RankedEmotion {
 
 const AROUSAL_GAIN = VALUES.ambient.arousalGain
 
-/** g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]). Mirrors memory.ExcitabilityGain (22 seam). */
-export const excitabilityGain = (a: Ambient): number => 1 + AROUSAL_GAIN * a.arousal
+/** Generated arousal_gain scales the allocation bias. Mirrors memory.ExcitabilityGain (22/25). */
+export const excitabilityGain = (a: Ambient | Pick<Ambient, 'arousal'>): number =>
+  1 + AROUSAL_GAIN * a.arousal
 
 /** A star's Bjork retrieval strength R — the single weight for radius AND background ranking. */
 function rOf(star: AmbientStar, now: number): number {
@@ -127,7 +128,11 @@ function correctByValence(rgb: RGB, v: number): RGB {
   const g = rgb[1]
   const lum = 0.3 * r + 0.59 * g + 0.11 * b
   const satK = 1 + VALUES.ambient.valenceSatGain * v
-  return [clamp01(lum + (r - lum) * satK), clamp01(lum + (g - lum) * satK), clamp01(lum + (b - lum) * satK)]
+  return [
+    clamp01(lum + (r - lum) * satK),
+    clamp01(lum + (g - lum) * satK),
+    clamp01(lum + (b - lum) * satK),
+  ]
 }
 
 /** Linear RGB → [hue 0..360, sat 0..1]. Value dropped (brightness comes from arousal). */

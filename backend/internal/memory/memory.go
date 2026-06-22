@@ -166,15 +166,14 @@ type ReshapeState struct {
 // prediction error, the co-recall total (strength = how consolidated the star is) and
 // its age. Pure domain.
 //
-// PE = clamp(1 - cos(RecallEmbedding, ConsolidatedEmbedding), 0, 1). In MVP there is no
-// stored consolidation snapshot, so the repository fills BOTH from the star's own
-// embedding column — cos=1, pe=0 — and reshaping stays a no-op in production (acceptance
-// 1.1). The two fields are a seam: a future recall-context / nightly-gist embedding (27)
-// drives pe>0 without touching the gate, and unit tests inject differing vectors.
+// PE = clamp(1 - cos(RecallEmbedding, ConsolidatedEmbedding), 0, 1). The repository
+// derives RecallEmbedding from the co-recalled neighbor context and uses the star's
+// own embedding as the consolidated baseline; isolated/no-context stars fall back to
+// equal embeddings and stay a plain re-ignition.
 type ReshapeContext struct {
 	State                 ReshapeState
 	RecallEmbedding       []float64 // recall_ctx_emb
-	ConsolidatedEmbedding []float64 // last_consolidated_emb (= recall_ctx_emb in MVP)
+	ConsolidatedEmbedding []float64 // last_consolidated_emb baseline
 	CoRecall              int       // Σ co_activation_count over incident links → strength
 	CreatedAt             time.Time
 }
@@ -225,11 +224,41 @@ const (
 )
 
 // ExcitabilityGain is the global gain "요즘" arousal exposes to the competitive allocation
-// bias (spec 22/25 seam, concept §결정2): a more aroused "요즘" pulls new fragments harder
+// bias (spec 22/25, concept §결정2): a more aroused "요즘" pulls new fragments harder
 // toward hot clusters (W_EXC ← W_EXC·g). spec 07 retired the server ambient summary, so the
-// arousal input is re-derived from the recall data at the 27 nightly seam (live wiring TODO).
-// arousal∈[0,1] → gain 1.0 at rest. Kept as a helper so 27 can switch it on by multiplying.
+// worker derives arousal from the same star recall data the client uses for Bjork R.
+// arousal∈[0,1] → gain 1.0 at rest.
 func ExcitabilityGain(arousal float64) float64 { return 1 + arousalGainCoef*arousal }
+
+// ArousalSample is one star's raw Bjork R input. It is intentionally small and
+// transport/storage-agnostic so the worker can derive the user-level "요즘" arousal
+// without reintroducing a server ambient summary.
+type ArousalSample struct {
+	RecallCount    int
+	Intensity      float64
+	LastRecalledAt time.Time
+}
+
+// ArousalFromSamples mirrors the client ambient.arousalOf formula: arousal =
+// 1-exp(-ΣR), where R is Bjork retrieval strength from recall_count, intensity,
+// and last_recalled_at. Empty universes settle at rest (0).
+func ArousalFromSamples(samples []ArousalSample, now time.Time) float64 {
+	var sum float64
+	for _, s := range samples {
+		sum += retrievalStrength(storageStrength(s.RecallCount, s.Intensity), now.Sub(s.LastRecalledAt).Hours()/24)
+	}
+	return 1 - math.Exp(-sum)
+}
+
+func storageStrength(recallCount int, intensity float64) float64 {
+	n := math.Max(0, float64(recallCount))
+	return (values.MemoryWeightStorageBase + n) * (1 + values.MemoryWeightEmoConsolidation*clampf(intensity, 0, 1))
+}
+
+func retrievalStrength(storage, dtDays float64) float64 {
+	tau := values.MemoryWeightTau0Days * (1 + values.MemoryWeightTauStorageGain*math.Log1p(math.Max(0, storage)))
+	return math.Exp(-math.Max(0, dtDays) / tau)
+}
 
 // RelevanceByStar scores each star's alignment with the user's "요즘 토픽" (spec 26):
 // it folds the star embeddings into a time-weighted centroid using the same per-fragment

@@ -82,7 +82,7 @@ export const NEUTRAL_RGB: RGB = [0.6, 0.6, 0.6]
 
 /** Mood → RGB with safe fallback; never throws on an unknown string (1.5). */
 export function moodRgb(mood: string): RGB {
-  return MOOD_PALETTE[parseMood(mood)]
+  return isMood(mood) ? MOOD_PALETTE[mood] : NEUTRAL_RGB
 }
 
 /** "#RRGGBB" → linear-RGB tuple (0..1). Direct 8-bit mapping (no gamma) so it is the

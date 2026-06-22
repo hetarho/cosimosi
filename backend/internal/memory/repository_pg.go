@@ -321,10 +321,6 @@ func (r *pgRepository) GetReshapeContext(ctx context.Context, userID, memoryID s
 	if err != nil {
 		return ReshapeContext{}, fmt.Errorf("get reshape context: %w", err)
 	}
-	// No consolidation snapshot exists yet (no column), so both embeddings are the
-	// star's own — cos=1, pe=0 (acceptance 1.1). The seam lets a future snapshot feed
-	// a real prediction error without changing the service gate.
-	emb := embeddingToDomain(row.Embedding)
 	return ReshapeContext{
 		State: ReshapeState{
 			BrightnessOffset: float64(row.BrightnessOffset),
@@ -332,8 +328,8 @@ func (r *pgRepository) GetReshapeContext(ctx context.Context, userID, memoryID s
 			FormSeedDelta:    float64(row.FormSeedDelta),
 			Version:          int(row.Version),
 		},
-		RecallEmbedding:       emb,
-		ConsolidatedEmbedding: emb,
+		RecallEmbedding:       embeddingToDomain(row.RecallEmbedding),
+		ConsolidatedEmbedding: embeddingToDomain(row.ConsolidatedEmbedding),
 		CoRecall:              int(row.CoRecallTotal),
 		CreatedAt:             row.CreatedAt.Time,
 	}, nil

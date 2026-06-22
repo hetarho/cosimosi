@@ -50,7 +50,7 @@ func TestBiasedLinksPrefersHotCluster(t *testing.T) {
 	clusterOf := map[string]string{"hot": "C_hot", "cold": "C_cold"}
 	clusterE := map[string]float64{"C_hot": 1.0, "C_cold": 0.0}
 
-	links := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE)
+	links := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE, 0)
 	if len(links) != 2 {
 		t.Fatalf("got %d links, want 2", len(links))
 	}
@@ -75,7 +75,7 @@ func TestBiasedLinksSoftInhibitionSpreads(t *testing.T) {
 	clusterOf := map[string]string{"h1": "HOT", "h2": "HOT", "h3": "HOT", "c1": "COLD"}
 	clusterE := map[string]float64{"HOT": 1.0, "COLD": 0.0}
 
-	withInhibition := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE)
+	withInhibition := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE, 0)
 	picked := map[string]bool{}
 	for _, l := range withInhibition {
 		picked[l.BID] = true
@@ -100,7 +100,7 @@ func TestBiasedLinksFallbackToCosSim(t *testing.T) {
 	clusterOf := map[string]string{"a": "A", "b": "B", "c": "C"}
 	clusterE := map[string]float64{} // all zero
 
-	links := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE)
+	links := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE, 0)
 	want := []string{"a", "b", "c"}
 	if len(links) != len(want) {
 		t.Fatalf("got %d links, want %d", len(links), len(want))
@@ -123,9 +123,32 @@ func TestBiasedLinksCapsAtBiasedK(t *testing.T) {
 		cands = append(cands, Neighbor{MemoryID: id, CosSim: 0.9 - float64(i)*0.01, EntryDate: date})
 		clusterOf[id] = id
 	}
-	links := biasedLinks("self", "u", date, now, cands, clusterOf, map[string]float64{})
+	links := biasedLinks("self", "u", date, now, cands, clusterOf, map[string]float64{}, 0)
 	if len(links) != biasedK {
 		t.Fatalf("got %d links, want biasedK=%d", len(links), biasedK)
+	}
+}
+
+// spec 25 wiring — user-level arousal scales only the excitability term:
+// W_EXC becomes W_EXC·ExcitabilityGain(arousal), so a hot cluster can outrank a
+// slightly closer cold neighbor when the user's "요즘" is highly aroused.
+func TestBiasedLinksArousalScalesExcitabilityTerm(t *testing.T) {
+	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
+	date := day("2026-06-13")
+	cands := []Neighbor{
+		{MemoryID: "hot", CosSim: 0.72, EntryDate: date},
+		{MemoryID: "cold", CosSim: 0.98, EntryDate: date},
+	}
+	clusterOf := map[string]string{"hot": "HOT", "cold": "COLD"}
+	clusterE := map[string]float64{"HOT": 1.0, "COLD": 0.0}
+
+	rest := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE, 0)
+	aroused := biasedLinks("self", "u", date, now, cands, clusterOf, clusterE, 1)
+	if rest[0].BID != "cold" {
+		t.Fatalf("at rest first link = %q, want cold semantic winner", rest[0].BID)
+	}
+	if aroused[0].BID != "hot" {
+		t.Fatalf("with arousal first link = %q, want hot-cluster winner", aroused[0].BID)
 	}
 }
 

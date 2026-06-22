@@ -37,7 +37,15 @@ function MiniUniverse({
       {dust.map((d, i) => (
         <circle key={i} cx={d.x} cy={d.y} r={d.r} fill="#dfe3ff" fillOpacity={0.35} />
       ))}
-      <VizStar cx={50} cy={50} r={18} color={mood} concept={concept} seed={seed} brightness={bright ? 1 : 0.5} />
+      <VizStar
+        cx={50}
+        cy={50}
+        r={18}
+        color={mood}
+        concept={concept}
+        seed={seed}
+        brightness={bright ? 1 : 0.5}
+      />
     </svg>
   )
 }
@@ -49,79 +57,88 @@ export function ResonanceSection() {
 
   return (
     <GlassCard className="flex flex-col gap-6 p-6 sm:p-8">
-        <div className="relative">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
-            <figure className="flex flex-col items-center gap-2">
-              <div className="aspect-square w-full max-w-[160px]">
-                <MiniUniverse seed={ME.seed} mood={ME.mood} bright concept={concept} />
-              </div>
-              <figcaption className="text-xs text-white/50">{ME.label}</figcaption>
-            </figure>
+      <div className="relative">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
+          <figure className="flex flex-col items-center gap-2">
+            <div className="aspect-square w-full max-w-[160px]">
+              <MiniUniverse seed={ME.seed} mood={ME.mood} bright concept={concept} />
+            </div>
+            <figcaption className="text-xs text-white/50">{ME.label}</figcaption>
+          </figure>
 
-            {/* 가운데 공명 선: resonant일 때 이어짐. 빛알갱이가 오간다(모션 줄이면 정적). */}
-            <div className="relative flex h-24 w-16 items-center justify-center sm:w-28">
-              {/* 공명할 때 join에 번지는 숨쉬는 빛무리. */}
-              {resonant && (
-                <motion.div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 rounded-full"
-                  style={{ background: `radial-gradient(circle, ${MOOD.amber}44 0%, transparent 70%)` }}
-                  initial={{ opacity: 0 }}
-                  animate={reduce ? { opacity: 0.5 } : { opacity: [0.3, 0.6, 0.3] }}
-                  transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+          {/* 가운데 공명 선: resonant일 때 이어짐. 빛알갱이가 오간다(모션 줄이면 정적). */}
+          <div className="relative flex h-24 w-16 items-center justify-center sm:w-28">
+            {/* 공명할 때 join에 번지는 숨쉬는 빛무리. */}
+            {resonant && (
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle, ${MOOD.amber}44 0%, transparent 70%)`,
+                }}
+                initial={{ opacity: 0 }}
+                animate={reduce ? { opacity: 0.5 } : { opacity: [0.3, 0.6, 0.3] }}
+                transition={
+                  reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }
+                }
+              />
+            )}
+            <svg viewBox="0 0 100 40" className="h-full w-full" aria-hidden>
+              <VizSynapse
+                x1={6}
+                y1={20}
+                x2={94}
+                y2={20}
+                color={MOOD.amber}
+                strength={resonant ? 0.85 : 0.14}
+                arc={0.05}
+                active={resonant}
+                concept={concept}
+              />
+              {resonant && !reduce && (
+                <motion.circle
+                  r="2.6"
+                  fill={MOOD.amber}
+                  cy="20"
+                  initial={{ cx: 6, opacity: 0 }}
+                  animate={{ cx: [6, 94], opacity: [0, 1, 0] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                 />
               )}
-              <svg viewBox="0 0 100 40" className="h-full w-full" aria-hidden>
-                <VizSynapse
-                  x1={6}
-                  y1={20}
-                  x2={94}
-                  y2={20}
-                  color={MOOD.amber}
-                  strength={resonant ? 0.85 : 0.14}
-                  arc={0.05}
-                  active={resonant}
-                  concept={concept}
-                />
-                {resonant && !reduce && (
-                  <motion.circle
-                    r="2.6"
-                    fill={MOOD.amber}
-                    cy="20"
-                    initial={{ cx: 6, opacity: 0 }}
-                    animate={{ cx: [6, 94], opacity: [0, 1, 0] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                  />
-                )}
-                {resonant && reduce && <circle cx="50" cy="20" r="2.6" fill={MOOD.amber} />}
-              </svg>
-            </div>
-
-            <figure className="flex flex-col items-center gap-2">
-              <div className="aspect-square w-full max-w-[160px]">
-                <MiniUniverse seed={FRIEND.seed} mood={FRIEND.mood} bright={resonant} concept={concept} />
-              </div>
-              <figcaption className="text-xs text-white/50">{FRIEND.label}</figcaption>
-            </figure>
+              {resonant && reduce && <circle cx="50" cy="20" r="2.6" fill={MOOD.amber} />}
+            </svg>
           </div>
-        </div>
 
-        <div className="flex flex-col items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setResonant((v) => !v)}
-            className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-sm text-white/80 transition hover:bg-white/10"
-            aria-pressed={resonant}
-          >
-            {resonant ? '공명 풀기' : '친구가 같은 날을 다시 쓰다'}
-          </button>
-          <p className="text-xs text-white/40">
-            {resonant
-              ? '두 별이 공명해요. 같은 밤을 함께 떠올릴수록 빛줄기가 또렷해져요.'
-              : '아직 두 별은 각자의 우주에서 따로 빛나요.'}
-          </p>
-          <TheoryBadge status="planned" plan="30" />
+          <figure className="flex flex-col items-center gap-2">
+            <div className="aspect-square w-full max-w-[160px]">
+              <MiniUniverse
+                seed={FRIEND.seed}
+                mood={FRIEND.mood}
+                bright={resonant}
+                concept={concept}
+              />
+            </div>
+            <figcaption className="text-xs text-white/50">{FRIEND.label}</figcaption>
+          </figure>
         </div>
-      </GlassCard>
+      </div>
+
+      <div className="flex flex-col items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setResonant((v) => !v)}
+          className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-sm text-white/80 transition hover:bg-white/10"
+          aria-pressed={resonant}
+        >
+          {resonant ? '공명 풀기' : '친구가 같은 날을 다시 쓰다'}
+        </button>
+        <p className="text-xs text-white/40">
+          {resonant
+            ? '두 별이 공명해요. 같은 밤을 함께 떠올릴수록 빛줄기가 또렷해져요.'
+            : '아직 두 별은 각자의 우주에서 따로 빛나요.'}
+        </p>
+        <TheoryBadge status="done" plan="36·37" />
+      </div>
+    </GlassCard>
   )
 }

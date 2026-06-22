@@ -50,10 +50,14 @@ function RecallView({
   const queryClient = useQueryClient()
   // 이 별이 가리키는 원본 일기 id(spec 28) — "이 일기의 다른 별들 보기"의 그룹 키. 별이 사라지지
   // 않는 한(헌법2) 안정적이라 selector가 값으로 비교해 불필요한 리렌더는 없다.
-  const recordId = useMemoryStore((s) => s.stars.find((st) => st.id === memoryId)?.memory.recordId ?? '')
+  const recordId = useMemoryStore(
+    (s) => s.stars.find((st) => st.id === memoryId)?.memory.recordId ?? '',
+  )
   // 공명 여부(spec 36) — 우주 스냅샷의 resonant 플래그. true일 때만 상대 정보를 조회한다(비공명 별엔
   // RPC 미발사). 데모엔 서버가 없어 조회 자체를 끈다.
-  const resonant = useMemoryStore((s) => s.stars.find((st) => st.id === memoryId)?.memory.resonant ?? false)
+  const resonant = useMemoryStore(
+    (s) => s.stars.find((st) => st.id === memoryId)?.memory.resonant ?? false,
+  )
   const resonanceQuery = useQuery({
     ...resonanceInfoQueryOptions(memoryId),
     enabled: resonant && !isDemoMode(),
@@ -99,11 +103,9 @@ function RecallView({
             queryClient.setQueryData(fragmentTextQueryKey(memoryId), r.fragmentText)
             // 회상된 별은 잠에서 깸 → 잠든 별 목록 무효화(1.6).
             void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
-            // 데모 재점화(spec 19): demoMarkRecalled가 전진시킨 lastRecalledAt을 우주에
-            // 반영(refetch→mergeStars max 통과→별이 다시 밝아짐). 비데모는 staleTime이 소유.
-            if (isDemoMode()) {
-              void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
-            }
+            // 회상 재점화/재성형은 별 레이어를 바꾸므로 우주 쿼리를 즉시 무효화한다.
+            // 데모는 demoMarkRecalled, 프로덕션은 TouchRecall/reconsolidate 결과를 refetch로 받는다.
+            void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
             setRecord(r.record)
             setFragmentText(r.fragmentText)
             setPhase('shown')
@@ -158,7 +160,7 @@ function RecallView({
             const shownText = hasFragment && !showFull ? fragmentText : record.body
             return (
               <>
-                <p className="selectable whitespace-pre-wrap text-sm leading-relaxed text-white/85">
+                <p className="selectable text-sm leading-relaxed whitespace-pre-wrap text-white/85">
                   {shownText}
                 </p>
                 {hasFragment && (
@@ -180,7 +182,7 @@ function RecallView({
               <button
                 type="button"
                 onClick={() => onOpenEvolution(memoryId)}
-                className="w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-mood-pink/60 hover:text-white"
+                className="hover:border-mood-pink/60 w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:text-white"
               >
                 변천사 보기
               </button>
@@ -190,7 +192,7 @@ function RecallView({
               <button
                 type="button"
                 onClick={() => onSeeDiaryStars(recordId)}
-                className="w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-mood-pink/60 hover:text-white"
+                className="hover:border-mood-pink/60 w-fit rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:text-white"
               >
                 이 일기의 다른 별들 보기
               </button>
@@ -205,7 +207,11 @@ function RecallView({
         <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
           {resonant && (
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-indigo-200/80">
-              <span>{resonance ? `${resonance.partnerDisplayName || '어느'} 우주와 공명 중` : '다른 우주와 공명 중'}</span>
+              <span>
+                {resonance
+                  ? `${resonance.partnerDisplayName || '어느'} 우주와 공명 중`
+                  : '다른 우주와 공명 중'}
+              </span>
               {resonance?.partnerSlug && (
                 <a
                   href={`/u/${resonance.partnerSlug}`}

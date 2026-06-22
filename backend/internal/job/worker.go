@@ -34,17 +34,10 @@ const (
 	// half-life is ≈4h, so a cluster active 3h ago biases strongly while one active 24h
 	// ago contributes ≈0 — the ~6h allocation window (acceptance 1.2).
 	tauExc = values.ExcitabilityTauHours * time.Hour
-	// wExc weights the excitability bias in score = cos_sim + wExc·norm_e. Bias only —
-	// the link WEIGHT still comes from initialWeight(cos, temporal) (spec 22, 1.1).
-	//
-	// spec 25 흥분성 게인 배선 지점: 요즘 상태가 격동할수록(높은 arousal) 새 조각을 hot
-	// 성단으로 더 강하게 끌어당기도록 이 wExc를 g = memory.ExcitabilityGain(ambient) =
-	// 1+0.3·arousal 로 스케일하는 것이 최종 형태다(W_EXC ← W_EXC·g). 25의 영향 파일은
-	// worker.go 한 파일로 한정돼 있고(별도 GraphStore 포트·쿼리 추가는 그 범위 밖),
-	// ambient는 6h 흥분성 창과 달리 느린 7일 봉투라 매 embed 잡마다 사용자 단위로 다시
-	// 종합하기보다 27(야간 공고화)의 주기적 재계산에서 흘려보내는 게 자연스럽다. 그래서
-	// 25는 게인 헬퍼(memory.ExcitabilityGain)·단위테스트·proto·배경만 제공하고, 라이브
-	// 배선은 27의 seam으로 남긴다 — 이 상수를 g로 곱하면 그대로 활성화된다.
+	// wExc weights the excitability bias in score = cos_sim + (wExc·g)·norm_e.
+	// g = memory.ExcitabilityGain(arousal), where arousal is derived from the user's
+	// current Bjork R envelope. Bias only — the link WEIGHT still comes from
+	// initialWeight(cos, temporal) (spec 22, 1.1).
 	wExc = values.ExcitabilityWExc
 	// biasedK is the final number of links kept after the excitability re-rank (≤ candidateK).
 	biasedK = values.ExcitabilityBiasedK
@@ -314,7 +307,7 @@ func (w *Worker) handle(ctx context.Context, j Job) error {
 		now := time.Now().UTC()
 		clusterOf := deriveClusters(neighbors, exc.Links)
 		clusterE := clusterExcitability(now, clusterOf, exc.Recalled, exc.Links)
-		links = biasedLinks(j.MemoryID, m.UserID, m.EntryDate, now, neighbors, clusterOf, clusterE)
+		links = biasedLinks(j.MemoryID, m.UserID, m.EntryDate, now, neighbors, clusterOf, clusterE, exc.Arousal)
 	}
 	if len(links) > 0 {
 		if err := w.store.BatchUpsertLinks(ctx, links); err != nil {

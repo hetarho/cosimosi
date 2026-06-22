@@ -347,10 +347,9 @@ func (s *Service) RecallMemory(ctx context.Context, userID, memoryID string) (Re
 // star plus its DIRECT neighbors (content-limited; indirect neighbors stay frozen,
 // acceptance 1.5), appending each change to the variant log. A star with no embedding
 // yet (extract/embed still pending) has no PE basis, so reshaping is skipped — the
-// recall is then the plain re-ignition of spec 11. In MVP the recall context IS the
-// star's own embedding (no stored consolidation snapshot), so pe is structurally 0 and
-// the gate keeps this a no-op in production; the helpers are exercised by unit tests
-// and the demo simulates novelty (T-체험).
+// recall is then the plain re-ignition of spec 11. The repository supplies a
+// co-recall-context embedding when available; otherwise both embeddings match and
+// the gate remains closed for isolated/no-context recalls.
 func (s *Service) reconsolidate(ctx context.Context, userID, memoryID string) error {
 	rc, err := s.repo.GetReshapeContext(ctx, userID, memoryID)
 	if errors.Is(err, ErrNotFound) {
@@ -359,11 +358,9 @@ func (s *Service) reconsolidate(ctx context.Context, userID, memoryID string) er
 	if err != nil {
 		return err
 	}
-	// PE gate. MVP: both embeddings are the star's own (no stored snapshot), so cos=1
-	// and pe=0 (acceptance 1.1). A future recall-context / gist embedding feeds the
-	// same gate without changing it. A degenerate (empty/zero-norm) embedding can't
-	// measure novelty → pe 0 (no reshape), NOT pe 1 — cosineSim returns 0 for a
-	// zero-norm vector, and "can't compare" must read as "no novelty".
+	// PE gate. A degenerate (empty/zero-norm) embedding can't measure novelty →
+	// pe 0 (no reshape), NOT pe 1 — cosineSim returns 0 for a zero-norm vector,
+	// and "can't compare" must read as "no novelty".
 	pe := peGate(rc.RecallEmbedding, rc.ConsolidatedEmbedding)
 	if pe < peThreshold {
 		return nil // novelty 없음 → 단순 재점화만(spec 11과 동일)

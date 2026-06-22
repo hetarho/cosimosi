@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { cn } from '@/shared/lib'
-import { MOOD } from '@/shared/config'
+import { MOOD, VALUES } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
+import { excitabilityGain } from '@/entities/memory'
 import { VizStar } from '@/entities/star'
 import { TheoryBadge } from './TheoryBadge'
 
@@ -24,7 +25,7 @@ interface Orb {
 interface MoodState {
   key: string
   label: string
-  /** 0..1 Σ R 도출 각성도 → 배경 전역 생동 + 흥분성 게인 g = 1 + 0.3·arousal. */
+  /** 0..1 Σ R 도출 각성도 → 배경 전역 생동 + 흥분성 게인. */
   arousal: number
   /** 정서가 부호 — 양이면 따뜻한 결, 음이면 차가운 결. */
   warm: boolean
@@ -43,7 +44,8 @@ const STATES: MoodState[] = [
       { color: MOOD.teal, x: 42, y: 46, size: 78, alpha: 0.5 },
       { color: MOOD.amber, x: 64, y: 40, size: 52, alpha: 0.18 },
     ],
-    blurb: '며칠째 평온하면, 배경은 주요 감정 한 색으로 잦아들어요 — 결이 잔잔하고 한 톤으로 번질 뿐.',
+    blurb:
+      '며칠째 평온하면, 배경은 주요 감정 한 색으로 잦아들어요 — 결이 잔잔하고 한 톤으로 번질 뿐.',
   },
   {
     key: 'tender',
@@ -53,7 +55,7 @@ const STATES: MoodState[] = [
     orbs: [
       { color: MOOD.amber, x: 32, y: 38, size: 60, alpha: 0.5 },
       { color: MOOD.pink, x: 64, y: 33, size: 54, alpha: 0.44 },
-      { color: MOOD.violet, x: 50, y: 64, size: 50, alpha: 0.3 },
+      { color: MOOD.violet, x: 50, y: 64, size: 50, alpha: 0.29 },
     ],
     blurb: '설렘이 번지면 금빛·장미빛 감정색이 배경 결에 여럿 짜이고, 따뜻한 쪽으로 채도가 올라요.',
   },
@@ -86,18 +88,19 @@ const STARS = [
  * 최근 기억일수록·자주 떠올린 기억일수록 인출 강도 R이 높고, 그 R로 감정 순위를 매겨 상위 감정의
  * 색을 배경 스킨 텍스처에 직접 짜 넣어요 — 떠 있는 별개의 빛이 아니라 배경 자체의 결이에요. 별은
  * 그대로인데 배경 결이 달라지면 우주의 인상이 달라지죠. 격동한 요즘일수록(높은 각성 = Σ R) 배경이
- * 더 생동하고, 새 기억을 끌어당기는 힘도 커져요 — 흥분성 g = 1 + 0.3 × 각성.
+ * 더 생동하고, 새 기억을 끌어당기는 힘도 커져요 — 흥분성 게인은 생성 값에서 파생돼요.
  */
 export function AmbientMoodCard() {
   const reduce = useReducedMotion()
   const concept = useAppearance((s) => s.object)
   const [state, setState] = useState(0)
   const cur = STATES[state]
-  const gain = 1 + 0.3 * cur.arousal
+  const gain = excitabilityGain(cur)
+  const gainFormula = `g = 1 + ${VALUES.ambient.arousalGain.toFixed(1)} × 각성`
 
   return (
     <div className="flex flex-col gap-5">
-      <figure className="relative aspect-[16/9] overflow-hidden rounded-3xl border border-white/10 bg-space-900/60">
+      <figure className="bg-space-900/60 relative aspect-[16/9] overflow-hidden rounded-3xl border border-white/10">
         {/* 배경 결에 짜인 감정색 — 상태마다 한 겹씩 깔고 opacity로 크로스페이드. 감정색들은
             screen-가산으로 겹쳐 배경 텍스처에 녹아든다(우주 UniverseNebula 감정 weave의 2D 대응). */}
         {STATES.map((st, i) => (
@@ -152,7 +155,7 @@ export function AmbientMoodCard() {
         </svg>
 
         {/* 따뜻↔차가움 라벨 — valence 부호가 하늘의 온도를 정한다. */}
-        <span className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] text-white/55">
+        <span className="absolute top-3 right-3 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[10px] text-white/55">
           {cur.warm ? '따뜻한 하늘 · valence +' : '차가운 하늘 · valence −'}
         </span>
       </figure>
@@ -186,7 +189,7 @@ export function AmbientMoodCard() {
           <span className="text-[11px] text-white/40">각성도</span>
           <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
             <motion.div
-              className="h-full rounded-full bg-mood-amber/80"
+              className="bg-mood-amber/80 h-full rounded-full"
               initial={false}
               animate={{ width: `${cur.arousal * 100}%` }}
               transition={{ duration: reduce ? 0 : 0.6, ease: 'easeInOut' }}
@@ -201,9 +204,9 @@ export function AmbientMoodCard() {
 
       <p className="text-[11px] leading-relaxed text-white/30">
         최근일수록·자주 떠올릴수록 인출 강도 R이 높고, 그 R로 감정 순위를 매겨 상위 감정의 색을 배경
-        스킨 텍스처에 직접 짜 넣어요 — 배경 자체의 결이지 떠 있는 빛이 아니에요. 격동한 요즘일수록(Σ R↑)
-        배경이 더 생동하고 새 기억의 끌림도 세져요 —
-        <span className="text-white/45"> g = 1 + 0.3 × 각성</span>.
+        스킨 텍스처에 직접 짜 넣어요 — 배경 자체의 결이지 떠 있는 빛이 아니에요. 격동한 요즘일수록(Σ
+        R↑) 배경이 더 생동하고 새 기억의 끌림도 세져요 —
+        <span className="text-white/45"> {gainFormula}</span>.
       </p>
 
       <TheoryBadge status="done" plan="25" />

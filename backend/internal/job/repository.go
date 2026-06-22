@@ -101,8 +101,8 @@ type ConsolidationWrite struct {
 	RecallCutoff     time.Time     // ③ …and un-recalled since this
 	GistDedupeCutoff time.Time     // ③ …and not already nightly-gisted since this (reclaim idempotency)
 	WeakThreshold    float64       // ④ prune links weaker than this
-	Floor         float64       // ④ …down to this weight (dim, never deleted)
-	IdleCutoff    time.Time     // ④ …and un-activated since this
+	Floor            float64       // ④ …down to this weight (dim, never deleted)
+	IdleCutoff       time.Time     // ④ …and un-activated since this
 }
 
 // Scheduler is the nightly ticker's PRODUCER port (spec 27). It is deliberately
@@ -163,6 +163,9 @@ type ExcitabilityInputs struct {
 	// Links are the synapses touching any candidate (a_id/b_id + last_activated_at): the
 	// union-find input for cluster derivation and a co-activation excitability event.
 	Links []ClusterLink
+	// Arousal is the user-level "요즘" envelope derived from all stars' Bjork R; it
+	// scales W_EXC through memory.ExcitabilityGain.
+	Arousal float64
 }
 
 // ClusterLink is one synapse the cluster derivation walks: an undirected (a,b) pair

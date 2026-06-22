@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { Lock } from 'lucide-react'
 import { GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
-import { MOOD } from '@/shared/config'
+import { MOOD, VALUES } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
 import { VizStar } from '@/entities/star'
 import { TheoryBadge } from './TheoryBadge'
@@ -14,7 +14,7 @@ const ORIGINAL_TEXT = '비 오는 날, 오래된 노래를 들었다.'
 const BASE_COLOR = MOOD.pink
 
 /** 예측 오차 게이트(spec 23 PE_THRESHOLD): 새로운 맥락이 이만큼은 돼야 별이 말랑해진다. */
-const PE_THRESHOLD = 0.15
+const PE_THRESHOLD = VALUES.reshape.peThreshold
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
@@ -37,7 +37,7 @@ interface Memory {
 
 /** 회상이 거듭될수록(version↑) 별이 더 굳어 변화폭이 작아진다(강도 의존 — strength↑ ⇒ magnitude↓). */
 function strengthFor(version: number): number {
-  return clamp(0.22 * Math.log2(1 + version), 0, 0.85)
+  return clamp(VALUES.reshape.strengthRecallGain * Math.log2(1 + version), 0, 1)
 }
 
 /** 한 번의 회상 시도. PE 게이트를 통과(novelty 충분)할 때만 별을 다시 빚고, 아니면 prev 그대로(무변).
@@ -46,14 +46,33 @@ function attemptRecall(prev: Memory, attempt: number): { next: Memory; changed: 
   const rand = mulberry32(BASE_SEED + attempt * 2654435761)
   const pe = rand() // 0..1 — 이번 회상이 담은 새 맥락의 크기
   if (pe < PE_THRESHOLD) return { next: prev, changed: false } // novelty 없음 → 단순 재점화(무변)
-  const magnitude = (0.1 + 0.12 * pe) * (1 - strengthFor(prev.version)) // strength↑ ⇒ 작아짐
+  const magnitude = VALUES.reshape.baseStep * pe * (1 - strengthFor(prev.version)) // strength↑ ⇒ 작아짐
   const goesUp = rand() < 0.5
   const dirSign = goesUp ? 1 : -1
-  const brightness = clamp(prev.brightness + dirSign * Math.max(0.04, magnitude), 0.4, 1)
-  const hueShift = clamp(prev.hueShift + dirSign * magnitude * 120, -28, 28)
-  const formSeedDelta = clamp(prev.formSeedDelta + dirSign * magnitude * 2, -0.6, 0.6)
+  const brightnessStep = clamp(
+    magnitude,
+    VALUES.reshape.minBrightStep,
+    VALUES.reshape.maxBrightStep,
+  )
+  const brightness = clamp(prev.brightness + dirSign * brightnessStep, 0.4, 1)
+  const hueShift = clamp(
+    prev.hueShift + dirSign * magnitude * VALUES.reshape.hueGainDeg,
+    -VALUES.reshape.hueMaxDeg,
+    VALUES.reshape.hueMaxDeg,
+  )
+  const formSeedDelta = clamp(
+    prev.formSeedDelta + dirSign * magnitude * VALUES.reshape.formGain,
+    -VALUES.reshape.formDeltaMax,
+    VALUES.reshape.formDeltaMax,
+  )
   return {
-    next: { version: prev.version + 1, brightness, hueShift, formSeedDelta, dir: goesUp ? 'up' : 'down' },
+    next: {
+      version: prev.version + 1,
+      brightness,
+      hueShift,
+      formSeedDelta,
+      dir: goesUp ? 'up' : 'down',
+    },
     changed: true,
   }
 }
@@ -81,10 +100,10 @@ export function ReconsolidationCard() {
     <GlassCard className="flex flex-col gap-5 p-6 sm:p-8">
       <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* 원본 일기 — 불변 */}
-        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-space-900/50 p-4">
-          <div className="flex items-center gap-2 text-mood-pink/80">
+        <div className="bg-space-900/50 flex flex-col gap-3 rounded-2xl border border-white/10 p-4">
+          <div className="text-mood-pink/80 flex items-center gap-2">
             <Lock className="size-4" aria-hidden />
-            <span className="text-xs uppercase tracking-widest">원본 · 바뀌지 않음</span>
+            <span className="text-xs tracking-widest uppercase">원본 · 바뀌지 않음</span>
           </div>
           <p className="font-display text-base leading-relaxed text-white/85">{ORIGINAL_TEXT}</p>
           <p className="text-xs leading-relaxed text-white/40">
@@ -93,7 +112,7 @@ export function ReconsolidationCard() {
         </div>
 
         {/* 별 — 가변, 회상마다 재성형 */}
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-space-800/40 p-4">
+        <div className="bg-space-800/40 flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 p-4">
           <div
             className="relative size-32"
             style={{ filter: `hue-rotate(${current.hueShift}deg)`, transition: 'filter 0.5s ease' }}
@@ -106,7 +125,9 @@ export function ReconsolidationCard() {
                 key={current.version}
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-full"
-                style={{ background: `radial-gradient(circle, ${BASE_COLOR}66 0%, transparent 62%)` }}
+                style={{
+                  background: `radial-gradient(circle, ${BASE_COLOR}66 0%, transparent 62%)`,
+                }}
                 initial={{ opacity: 0.6, scale: 0.7 }}
                 animate={{ opacity: 0, scale: 1.7 }}
                 transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -114,13 +135,22 @@ export function ReconsolidationCard() {
             )}
             <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden>
               {/* 형태 시드에 formSeedDelta를 합성 — 밝기·색조뿐 아니라 형태까지 다시 빚어진다(spec 23). */}
-              <VizStar cx={50} cy={50} r={30} color={BASE_COLOR} concept={concept} seed={BASE_SEED + current.formSeedDelta * 6} brightness={current.brightness} active />
+              <VizStar
+                cx={50}
+                cy={50}
+                r={30}
+                color={BASE_COLOR}
+                concept={concept}
+                seed={BASE_SEED + current.formSeedDelta * 6}
+                brightness={current.brightness}
+                active
+              />
             </svg>
           </div>
           <button
             type="button"
             onClick={recall}
-            className="rounded-full border border-white/15 px-5 py-2 text-sm text-white/80 transition-colors hover:border-mood-pink/60 hover:text-white"
+            className="hover:border-mood-pink/60 rounded-full border border-white/15 px-5 py-2 text-sm text-white/80 transition-colors hover:text-white"
             style={{ boxShadow: `0 0 24px -8px ${BASE_COLOR}` }}
           >
             다시 떠올리기
@@ -137,11 +167,15 @@ export function ReconsolidationCard() {
 
       {/* 변천사 — 누적 */}
       <div className="flex flex-col gap-2">
-        <span className="text-xs uppercase tracking-widest text-white/40">변천사 · 남는 길</span>
+        <span className="text-xs tracking-widest text-white/40 uppercase">변천사 · 남는 길</span>
         <div className="flex items-end gap-3 overflow-x-auto pb-1">
           {history.map((m) => (
             <div key={m.version} className="flex shrink-0 flex-col items-center gap-1">
-              <svg viewBox="0 0 100 100" className="size-10" style={{ filter: `hue-rotate(${m.hueShift}deg)` }}>
+              <svg
+                viewBox="0 0 100 100"
+                className="size-10"
+                style={{ filter: `hue-rotate(${m.hueShift}deg)` }}
+              >
                 <VizStar
                   cx={50}
                   cy={50}
@@ -160,7 +194,9 @@ export function ReconsolidationCard() {
         </div>
       </div>
 
-      <p className="text-xs leading-relaxed text-white/40">원본은 그대로, 별은 변하고, 변천사는 차곡차곡 쌓여가요.</p>
+      <p className="text-xs leading-relaxed text-white/40">
+        원본은 그대로, 별은 변하고, 변천사는 차곡차곡 쌓여가요.
+      </p>
 
       {/* PE 게이트 양방향 재성형 + append-only 변천사는 plan 23이 구현했다(타임랩스 UI는 24). */}
       <TheoryBadge status="done" plan="23" />

@@ -27,8 +27,8 @@
 
 > spec/policy엔 있고 코드 골격도 있으나, 런타임에서 **실제로 작동하지 않는** 것들. 기능을 마저 배선할지, 아니면 문서를 "비활성(seam)"으로 정직하게 적을지 결정해야 한다.
 
-- [ ] **B1 — 흥분성 게인 미배선.** `g = 1 + 0.3·arousal`(spec 25)이 헬퍼·테스트·proto·배경까지 있으나, 경쟁 할당 점수식은 여전히 상수 `wExc=0.25`만 쓴다(`worker.go:542` `score = CosSim + wExc·norm_e`). `ExcitabilityGain`은 `worker.go`에 **주석(seam)으로만** 존재. → "요즘 흥분되면 새 기억이 더 강하게 끌린다"는 아직 미작동. (배선 형태: `wExc ← wExc·g`.)
-- [ ] **B2 — 회상 재성형이 inert.** 재공고화 PE 게이트(spec 23)는 완성됐으나 MVP는 회상 임베딩 = 마지막 공고화 임베딩이라 **`pe=0` → 회상 시 무변형**(`service.go:364–368`, `peGate`). 즉 **실제로 도는 재성형은 야간 요지(`nightly_gist`)뿐**이고, *회상으로* 별이 다시 빚어지진 않는다. concept §"회상은 별을 다시 빚는다"는 아직 **관찰 불가**. → "recall-context 임베딩"을 배선해야 활성화(service.go 주석이 그 seam을 명시).
+- [x] **B1 — 흥분성 게인 배선 완료.** `g = 1 + 0.3·arousal`(spec 25)이 worker 경쟁 할당에 `wExc·ExcitabilityGain(arousal)`로 배선됐다. arousal은 서버 ambient summary 없이 사용자 전체 별의 Bjork R envelope(`ListArousalInputs` → `ArousalFromSamples`)에서 재도출한다.
+- [x] **B2 — 회상 재성형 활성.** `GetReshapeContext`가 `RecallEmbedding`을 co-recall 이웃 centroid로, `ConsolidatedEmbedding`을 회상 별 자기 임베딩으로 반환한다. co-recall 맥락이 있으면 pe>0이 가능하고, 맥락이 없으면 자기 임베딩 fallback으로 pe=0 단순 재점화다.
 - [ ] **B3 — 개체(entity) 기반 연결·도식 보너스 없음.** concept 결정2는 "공유 개체(같은 인물·장소·주제) 겹치면 연결 보너스 + 도식 적합 통합"을 명시하나, 실제 시냅스 생성은 **의미(semantic)+시간+흥분성**뿐이다. `link_type`의 `'entity'`·`'temporal'`은 **타입에만 정의, 생성 경로 없음**(synapse.md). 개체는 추출기(spec 20 `Entities{people,places,topics}`)가 뽑지만 **연결 가중에 미사용**(저장 여부도 확인 필요). 도식 보너스는 genesis가 아니라 야간 재분배(spec 27)에만 있음.
 
 ---
@@ -37,12 +37,12 @@
 
 > concept.md는 MVP 시점에 쓰여, 여러 곳에 "(MVP는 X만; v1+ #N으로 연기)"라는 괄호가 달려 있다. 그 기능들이 **지금은 구현돼** 그 괄호가 거짓이 됐다. (concept의 `#20~#25`는 구 번호 — overview의 재배치 매핑으로 읽는다: 구#20=신23, 구#21=신24, 구#22=신27, 구#23=신26 등.)
 
-- [ ] **C1 — 결정3(line 85).** "*v1+ #20·#21로 연기 — MVP에서 별은 시드 기반 1회 생성, 회상은 last_recalled_at만*" → 재성형(23)·변천사 UI(24) 구현됨. (단 회상 재성형은 [B2](#b-의도했으나-비활성미배선--구현은-했는데-실제론-안-도는-것-결정-필요)대로 inert임을 반영.)
+- [ ] **C1 — 결정3(line 85).** "*v1+ #20·#21로 연기 — MVP에서 별은 시드 기반 1회 생성, 회상은 last_recalled_at만*" → 재성형(23)·변천사 UI(24) 구현됨. 회상 재성형도 [B2](#b-의도했으나-비활성미배선--구현은-했는데-실제론-안-도는-것-결정-필요) 배선으로 co-recall 맥락에서 활성화됨.
 - [ ] **C2 — 망각 모델(line 134).** "*MVP는 순수 시간 감쇠(반감기 30일)만; 관련성/감정 가중은 v1+ #23으로 연기*" → `λ_eff`(spec 26) 구현됨.
 - [ ] **C3 — 요지화(line 135).** "*MVP는 밝기 감쇠만; 형태 추상화/요지화는 v1+로 연기, 별 형태는 f(intensity) 고정*" → 야간 요지화(spec 27, `form_seed_delta`) 구현됨.
 - [ ] **C4 — 야간 공고화(line 144).** "## 야간 공고화 *(전체 v1+ #22 — MVP 비목표)*" → spec 27 4패스 구현됨.
 - [ ] **C5 — 별 변천사(line 167).** "*v1+ #21로 연기 — 변천사 UI는 MVP 범위 밖*" → spec 24 구현됨.
-- [ ] **C6 — 회상 재성형(line 214·215).** "*v1+ #20으로 연기*"·"MVP 회상은 last_recalled_at만" → 골격은 23, 단 [B2](#b-의도했으나-비활성미배선--구현은-했는데-실제론-안-도는-것-결정-필요) inert 상태 정직하게.
+- [ ] **C6 — 회상 재성형(line 214·215).** "*v1+ #20으로 연기*"·"MVP 회상은 last_recalled_at만" → 23 구현 및 [B2](#b-의도했으나-비활성미배선--구현은-했는데-실제론-안-도는-것-결정-필요) 배선으로 co-recall 맥락에서 회상 재성형이 활성화됨.
 - [ ] **C7 — 의사결정 로그(line 322–328).** "중심 거리 = 망각 축" 결정이 "구현 plan 신설 대기"로 남아 있으나 **spec 38로 구현됨**. → 로그에서 본문(결정1·망각 모델)으로 승격하고 "각도=안정·반지름=강함"으로 개정.
 - [ ] **C8 — 구 번호 표기 일괄 정리.** overview line 228이 이미 명시: "concept.md·Architecture.md·specs 04·05·07·10·11·12의 'v1 #20–#25' 표기는 추후 일괄 정리 대상." `Architecture.md`도 같은 정리 필요(이번에 미확인).
 
@@ -68,7 +68,7 @@
 - **재공고화:** `peThreshold=0.15`·`baseStep=0.22`·`maxBrightStep=0.22`·`neighborFactor=0.4`·`strengthRecallGain=0.15`·`ageGain=0.30`·`ageRefDays=90` (`service.go`).
 - **야간 4패스:** `redistributeLerp=0.6`·`schemaBonus=0.15`(max 0.95)·gist `30/14/0.4`·prune `0.2/14/0.05`·`consolidateHourUTC=18` (`consolidate.go`).
 - **시냅스 생성:** `τ=0.75`(`embedding.sql`)·`knnK=8`·시간창 `7일·+0.3`·일내결속 `0.8`·`semanticWeightCap=0.79` (`worker.go`/`link.sql`).
-- **ambient(25):** `TAU_MOOD_DAYS=7`·`AROUSAL_GAIN=0.3`·`AMBIENT_LIGHTS_K=6`·`ExcitabilityGain=1+0.3·arousal` (FE `ambient.ts`/BE `memory.go`) — *값은 맞으나 [B1](#b-의도했으나-비활성미배선--구현은-했는데-실제론-안-도는-것-결정-필요)대로 게인은 미배선*.
+- **ambient(25):** `TAU_MOOD_DAYS=7`·`AROUSAL_GAIN=0.3`·`ExcitabilityGain=1+0.3·arousal` (FE `ambient.ts`/BE `memory.go`) — [B1](#b-의도했으나-비활성미배선--구현은-했는데-실제론-안-도는-것-결정-필요) 배선으로 worker 할당 점수의 흥분성 항을 스케일.
 - **감정(29):** mood 13종·4사분면(HAP/LAP/HAN/LAN) 메타·proto enum `JOY=1…EMPTINESS=13` (`mood.ts`/`memory.proto`).
 - **분할(20/21):** `maxSegments=5`·하드캡 8 (`extractor.go`).
 - **시냅스 시각:** `ALPHA_MIN=0.15`·`THICK_THRESHOLD=0.5`·`vitality=0.12·min(1,log2(1+n)/4)` (`synapse mapping.ts`).

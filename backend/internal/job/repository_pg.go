@@ -15,6 +15,7 @@ import (
 	dbutil "github.com/cosimosi/backend/internal/db"
 	"github.com/cosimosi/backend/internal/db/fragment"
 	"github.com/cosimosi/backend/internal/db/gen"
+	"github.com/cosimosi/backend/internal/memory"
 	"github.com/cosimosi/backend/internal/platform/id"
 )
 
@@ -245,7 +246,27 @@ func (r *pgRepository) LoadExcitabilityInputs(ctx context.Context, userID string
 	for _, row := range linkRows {
 		links = append(links, ClusterLink{AID: row.AID, BID: row.BID, LastActivatedAt: row.LastActivatedAt.Time})
 	}
-	return ExcitabilityInputs{Recalled: recalled, Links: links}, nil
+	arousalRows, err := q.ListArousalInputs(ctx, userID)
+	if err != nil {
+		return ExcitabilityInputs{}, fmt.Errorf("list arousal inputs: %w", err)
+	}
+	samples := make([]memory.ArousalSample, 0, len(arousalRows))
+	for _, row := range arousalRows {
+		var intensity float64
+		if row.Intensity != nil {
+			intensity = float64(*row.Intensity)
+		}
+		samples = append(samples, memory.ArousalSample{
+			RecallCount:    int(row.RecallCount),
+			Intensity:      intensity,
+			LastRecalledAt: row.LastRecalledAt.Time,
+		})
+	}
+	return ExcitabilityInputs{
+		Recalled: recalled,
+		Links:    links,
+		Arousal:  memory.ArousalFromSamples(samples, time.Now().UTC()),
+	}, nil
 }
 
 func (r *pgRepository) BatchUpsertLinks(ctx context.Context, links []LinkUpsert) error {

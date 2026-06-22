@@ -3,6 +3,8 @@ package job
 import (
 	"math"
 	"time"
+
+	"github.com/cosimosi/backend/internal/memory"
 )
 
 // excitability is e(c,t)=Σ exp(-Δt/tauExc) over a cluster's event timestamps (spec
@@ -67,7 +69,7 @@ func clusterExcitability(now time.Time, clusterOf map[string]string, recalled ma
 }
 
 // biasedLinks re-ranks KNN candidates by competitive allocation (spec 22).
-func biasedLinks(selfID, userID string, selfDate, now time.Time, cands []Neighbor, clusterOf map[string]string, clusterE map[string]float64) []LinkUpsert {
+func biasedLinks(selfID, userID string, selfDate, now time.Time, cands []Neighbor, clusterOf map[string]string, clusterE map[string]float64, arousal float64) []LinkUpsert {
 	_ = now
 	pool := make([]Neighbor, 0, len(cands))
 	for _, c := range cands {
@@ -85,11 +87,12 @@ func biasedLinks(selfID, userID string, selfDate, now time.Time, cands []Neighbo
 	for k, v := range clusterE {
 		e[k] = v
 	}
+	wExcGain := wExc * memory.ExcitabilityGain(arousal)
 	score := func(n Neighbor) float64 {
 		if maxE <= 0 {
 			return n.CosSim
 		}
-		return n.CosSim + wExc*(e[clusterOf[n.MemoryID]]/maxE)
+		return n.CosSim + wExcGain*(e[clusterOf[n.MemoryID]]/maxE)
 	}
 
 	limit := biasedK

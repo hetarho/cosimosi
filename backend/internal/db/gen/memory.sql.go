@@ -352,7 +352,15 @@ func (q *Queries) GetRecordForExtract(ctx context.Context, id string) (GetRecord
 
 const getReshapeContext = `-- name: GetReshapeContext :one
 SELECT m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta,
-       e.embedding,
+       COALESCE((
+           SELECT AVG(ne.embedding)
+           FROM memory_links ml
+           JOIN embeddings ne ON ne.memory_id = CASE WHEN ml.a_id = m.id THEN ml.b_id ELSE ml.a_id END
+           WHERE ml.user_id = m.user_id
+             AND (ml.a_id = m.id OR ml.b_id = m.id)
+             AND ml.co_activation_count > 0
+       ), e.embedding) AS recall_embedding,
+       e.embedding AS consolidated_embedding,
        COALESCE((SELECT SUM(ml.co_activation_count) FROM memory_links ml
                  WHERE (ml.a_id = m.id OR ml.b_id = m.id) AND ml.user_id = m.user_id), 0)::int AS co_recall_total,
        m.created_at
@@ -366,19 +374,21 @@ type GetReshapeContextParams struct {
 }
 
 type GetReshapeContextRow struct {
-	Version          int32              `json:"version"`
-	BrightnessOffset float32            `json:"brightness_offset"`
-	HueShift         float32            `json:"hue_shift"`
-	FormSeedDelta    float32            `json:"form_seed_delta"`
-	Embedding        *pgvector.Vector   `json:"embedding"`
-	CoRecallTotal    int32              `json:"co_recall_total"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	Version               int32              `json:"version"`
+	BrightnessOffset      float32            `json:"brightness_offset"`
+	HueShift              float32            `json:"hue_shift"`
+	FormSeedDelta         float32            `json:"form_seed_delta"`
+	RecallEmbedding       *pgvector.Vector   `json:"recall_embedding"`
+	ConsolidatedEmbedding *pgvector.Vector   `json:"consolidated_embedding"`
+	CoRecallTotal         int32              `json:"co_recall_total"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
 }
 
-// PE/strength inputs for one recalled star (spec 23): the cumulative reshaping
-// state + version, the star's embedding (PE = 1-cos(recall_ctx, last_consolidated);
-// embeddings filled by 03/05), the co-recall total (strength = how consolidated),
-// and created_at (age term). Star-only read — never touches the immutable record.
+// PE/strength inputs for one recalled star (spec 23): cumulative reshaping state,
+// a server-derived recall-context centroid from co-recalled neighbors, the star's
+// own embedding as the consolidated baseline, co-recall total, and created_at. If
+// no co-recall context exists, recall_embedding falls back to the star embedding
+// so isolated/no-context recalls stay a plain re-ignition.
 func (q *Queries) GetReshapeContext(ctx context.Context, arg GetReshapeContextParams) (GetReshapeContextRow, error) {
 	row := q.db.QueryRow(ctx, getReshapeContext, arg.ID, arg.UserID)
 	var i GetReshapeContextRow
@@ -387,7 +397,8 @@ func (q *Queries) GetReshapeContext(ctx context.Context, arg GetReshapeContextPa
 		&i.BrightnessOffset,
 		&i.HueShift,
 		&i.FormSeedDelta,
-		&i.Embedding,
+		&i.RecallEmbedding,
+		&i.ConsolidatedEmbedding,
 		&i.CoRecallTotal,
 		&i.CreatedAt,
 	)
@@ -535,6 +546,41 @@ func (q *Queries) InsertRecord(ctx context.Context, arg InsertRecordParams) erro
 		arg.IdempotencyKey,
 	)
 	return err
+}
+
+const listArousalInputs = `-- name: ListArousalInputs :many
+SELECT m.intensity, m.recall_count, m.last_recalled_at
+FROM memories m
+WHERE m.user_id = $1
+`
+
+type ListArousalInputsRow struct {
+	Intensity      *float32           `json:"intensity"`
+	RecallCount    int32              `json:"recall_count"`
+	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+}
+
+// User-level "요즘" arousal inputs for the allocation gain (spec 25): the same raw
+// star fields the client uses for Bjork R. The domain computes arousal; SQL only
+// isolates the user's mutable star layer.
+func (q *Queries) ListArousalInputs(ctx context.Context, userID string) ([]ListArousalInputsRow, error) {
+	rows, err := q.db.Query(ctx, listArousalInputs, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListArousalInputsRow
+	for rows.Next() {
+		var i ListArousalInputsRow
+		if err := rows.Scan(&i.Intensity, &i.RecallCount, &i.LastRecalledAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDirectNeighbors = `-- name: ListDirectNeighbors :many
