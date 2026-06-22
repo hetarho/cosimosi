@@ -81,7 +81,7 @@
 | 밝기 입력 brightness | `= max(A_MIN, activation)`(별 시간 감쇠 결과를 받는 입력값) |
 | 밝기 바닥 | `A_MIN = 0.05`, alpha 바닥 `ALPHA_MIN = 0.15`(약/잠든 엣지도 잔존) |
 | emissive · alpha | `emissive = visualIntensity`, `alpha = lerp(ALPHA_MIN, ALPHA_MAX, visualIntensity)` |
-| 링크 활력 vitality (26) | `vitality = 0.12·min(1, log2(1 + co_activation_count)/4)` ∈ `[0, 0.12]` — 자주 함께 떠올린 연결일수록 또렷. 서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일. (spec 03: `co_activation_count`는 **간선(edge) 활력 전용** — **노드(별) self-glow**는 degree+Σweight(`weightedDegreeById`=connectedness)를 따로 쓴다. 분리해 이중계상 회피.) |
+| 링크 활력 vitality (26) | `vitality = 0.12·min(1, log2(1 + co_activation_count)/4)` ∈ `[0, 0.12]` — 자주 함께 떠올린 연결일수록 또렷. 서버 미노출(데모/구버전 → 0)이면 0이라 기존 시각과 동일. (`co_activation_count`는 **간선(edge) 활력 전용** — **노드(별)의 degree+Σweight**(`degreeNormById`/`weightedDegreeById`)는 별 *반지름*(연결 가중 차등 표류, change 18)을 늦추는 입력으로 따로 쓴다. 분리해 이중계상 회피.) |
 | 펄스 | `sin(time·f)·amp`, `amp = clamp(reinforcedRecency + vitality, 0, 1)` — 최근 강화 + 누적 공동 회상 활력 |
 | 두께 | per-edge 변조 불가(Line2NodeMaterial 전역 스칼라) → 선택적 2버킷(`thin=1px`/`thick=4px`, 임계 `weight ≥ 0.5`) |
 | 렌더 | Line2(fat-line) 배칭 + TSL, `useFrame` 수동 갱신(React state 리렌더 없음) |
@@ -104,6 +104,6 @@
 - 헵 강화·멱등(+0.05 cap 1.0·co_activation_count·batch_id): plan 11 · `backend/internal/db/queries/link.sql`(`ReinforceLinks`·`ClaimBatch`), `frontend/src/features/recall/model/co-recall.ts`.
 - link_type 4종 정의: plan 09 · `frontend/src/entities/synapse/model/types.ts`.
 - 시각(weight·max(A_MIN,brightness)→emissive/alpha/펄스): plan 09 · `frontend/src/entities/synapse/model/mapping.ts`(`visualIntensity`·`A_MIN`·`ALPHA_MIN`), 별 감쇠 입력 plan 12.
-- `co_activation_count` DTO 노출 + 링크 활력(`vitality`→펄스): plan 26 · `proto/cosimosi/v1/memory.proto`(`Synapse.co_activation_count`), `backend/internal/memory/handler.go`(GetUniverse 매핑), `frontend/src/entities/synapse/model/{store.ts,mapping.ts,types.ts}`(`toSynapseEdge`·`vitality`·`pulseAmp`). degree 정규화(`degreeNormById`)는 별 변조 감쇠 `R_conn` 입력([star](star.md)).
+- `co_activation_count` DTO 노출 + 링크 활력(`vitality`→펄스): plan 26 · `proto/cosimosi/v1/memory.proto`(`Synapse.co_activation_count`), `backend/internal/memory/handler.go`(GetUniverse 매핑), `frontend/src/entities/synapse/model/{store.ts,mapping.ts,types.ts}`(`toSynapseEdge`·`vitality`·`pulseAmp`). degree·Σweight 정규화(`degreeNormById`/`weightedDegreeById`)는 별 *반지름*(연결 가중 차등 표류, change 18) 입력([universe](universe.md)·[star](star.md)).
 - 삭제 금지 전체 반환: plan 05/11 · `backend/internal/db/queries/link.sql`(`ListLinksByUser`).
 - 가지치기(약·idle 선 weight→FLOOR 0.05·삭제 없음): plan 27 · `backend/internal/db/queries/link.sql`(`PruneWeakLinks`), `backend/internal/job/consolidate.go`(`handleConsolidate` ④·`weakEdgeThreshold`/`weakEdgeIdleDays`/`weakEdgeFloor`).

@@ -5,10 +5,11 @@
 // `StarShadeInputs` **노드**로 받아, 소비처가 per-instance attribute()(우주 StarField)든 uniform()/상수(단일·
 // 배경)든 자유로이 바인딩한다.
 //
-// **별 빛 3겹(spec 03 self-light).** (1) 자가발광(emissive)=연결성(`glow`=selfGlow, A_MIN 바닥, bloom 함).
-// (2) 반사(reflection)=중앙 자아-별/평행광이 별 albedo를 비춰 면/엣지를 드러냄(최근성 `recency`로 변조,
-// gain으로 낮게 cap해 bloom 안 번지게). 정확 법선 form은 N·L 반사, 변위/구름 form(법선 부정확)은 무방향
-// 최근성 글로우로 recency를 살린다(무연결 신생 별이 어두워지는 회귀 방지). (3) 색=mood(hueShift 회전).
+// **별 빛(spec 03 self-light).** (1) 자가발광(emissive) 세기 `glow` — 우주 소비처는 거리 밝기를 넘긴다
+// (brightnessFromRadius, A_MIN 바닥, bloom 함; spec 38 change 19). 빌더는 의미를 모르고 float 노드로만 받는다.
+// (2) 반사(reflection)=중앙 자아-별/평행광이 별 albedo를 비춰 면/엣지를 드러냄(`recency`로 변조, gain으로
+// 낮게 cap해 bloom 안 번지게). 정확 법선 form은 N·L 반사, 변위/구름 form(법선 부정확)은 무방향 글로우로
+// recency를 살린다(가까운=강한 별일수록 밝게). (3) 색=mood(hueShift 회전).
 // 진짜 PointLight가 아니라 emissive 그래프 안 self-position uniform + per-instance 좌표로 N·L·falloff를 직접
 // 계산한다(헌법8 단일 InstancedMesh 보존). `focus`가 self-glow·reflection 양쪽에 곱해진다.
 //
@@ -51,9 +52,9 @@ type Vec3Node = ReturnType<typeof asVec3Node>
 export interface StarShadeInputs {
   /** 의미색(linear RGB) — vec3 노드. */
   mood: unknown
-  /** 자가발광(self-glow) 세기 = 연결성(selfGlow ∈ [A_MIN,1], +reshape offset) — float 노드. emissive에 곱한다. */
+  /** 자가발광 세기 — float 노드. 우주는 거리 밝기(∈[A_MIN,1], +reshape offset, spec 38 change 19)를 넘긴다. emissive에 곱한다. */
   glow: unknown
-  /** 최근성(reflection 변조, [0,1]) — float 노드. 중앙 광원 반사가 이 값으로 변조된다(가까운=최근=밝게). */
+  /** 반사 변조([0,1]) — float 노드. 중앙 광원 반사가 이 값으로 변조된다(우주는 거리 밝기 → 가까운=강한 별일수록 밝게). */
   recency: unknown
   /** 노이즈 오프셋(별마다 고유 무늬) — float 노드. */
   seed: unknown

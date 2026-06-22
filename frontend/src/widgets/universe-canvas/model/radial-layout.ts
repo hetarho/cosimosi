@@ -3,20 +3,26 @@
 // Both place stars on strength shells and run the same force-sim params, so a tuning change here moves
 // both in lock-step (no silent divergence between "내 우주" and the overlay's copy of it). Pure TS —
 // composes shared/lib (strength·targetRadius); no three/React/DOM (헌법4).
-import { memoryR } from '@/entities/memory'
+import { memoryRadiusR, radiusConnectedness } from '@/entities/memory'
 import { VALUES } from '@/shared/config'
 import { targetRadius } from '@/shared/lib'
 import type { SimParams } from '@/shared/lib/force-sim'
 
-/** A memory's target distance from the central self star (spec 38·07): the single Bjork
- *  retrieval strength R (from recall_count + intensity + lastRecalledAt) → radius. Strong/fresh
- *  → near centre, faded → outer; an often-recalled memory stays central longer (τ grows with the
- *  storage strength S). Angle/direction is still the connection graph — only the radius is R. */
+/** A memory's target distance from the central self star (spec 38·07, change 18): the Bjork
+ *  retrieval strength R → radius. Strong/fresh → near centre, faded → outer; an often-recalled
+ *  memory stays central longer (τ grows with the storage strength S). CONNECTIVITY (degreeNorm +
+ *  Σweight, from the synapse graph) extends τ so well-connected memories drift out more slowly —
+ *  links pull toward the centre, never push out (connectedness=0 → pure time-decay radius). The
+ *  caller supplies the normalized degree/Σweight (degreeNormById/weightedDegreeById); the angle/
+ *  direction is still the connection graph — only the radius reads strength + connectivity. */
 export function radiusOf(
   mem: { lastRecalledAt: number; intensity: number; recallCount: number },
   now: number,
+  degreeNorm = 0,
+  weightedDegreeNorm = 0,
 ): number {
-  return targetRadius(memoryR(mem.recallCount, mem.intensity, mem.lastRecalledAt, now))
+  const conn = radiusConnectedness(degreeNorm, weightedDegreeNorm)
+  return targetRadius(memoryRadiusR(mem.recallCount, mem.intensity, mem.lastRecalledAt, now, conn))
 }
 
 /** Scale a seed position onto a target-radius shell, keeping its direction (so a star rises at its

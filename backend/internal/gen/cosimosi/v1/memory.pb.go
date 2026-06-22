@@ -427,7 +427,8 @@ func (x *RecordMemoryResponse) GetMemoryIds() []string {
 // last_recalled_at.
 // Field number 11 = 36 resonance (RESERVED); 5–8 are the spec 23 reshaping
 // state (mutable star layer); 9–10 = 28 wayfinding; valence takes 12;
-// relevance (26) takes 13. (00.overview 공유 설계 결정 — Star 필드 번호 할당)
+// 13 is RESERVED — was relevance (26), retired by spec 38 change 19 (밝기=자기-거리).
+// (00.overview 공유 설계 결정 — Star 필드 번호 할당)
 type Star struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	MemoryId         string                 `protobuf:"bytes,1,opt,name=memory_id,json=memoryId,proto3" json:"memory_id,omitempty"`
@@ -446,14 +447,10 @@ type Star struct {
 	// 조인으로 채운다(보낸 별·수락으로 태어난 별 양쪽). 공개 우주(35 SharedStar)엔 이 필드가
 	// 없다 — 제3자에게 관계 비노출(비목표). FE가 은은한 공명 마커를 그리는 트리거.
 	Resonant bool    `protobuf:"varint,11,opt,name=resonant,proto3" json:"resonant,omitempty"`
-	Valence  float64 `protobuf:"fixed64,12,opt,name=valence,proto3" json:"valence,omitempty"` // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
-	// 26: 0..1 별 임베딩 ↔ "요즘 토픽 중심 벡터"의 cos 정합도. 서버가 GetUniverse에서
-	// 계산(weight처럼 의미 그래프 파생값 — 헌법3 위반 아님; 밝기 자체는 여전히 클라가
-	// exp(-λ_eff·Δt)로 계산). 임베딩 미생성 별·데모(서버 없음)에선 0=중립.
-	Relevance float64 `protobuf:"fixed64,13,opt,name=relevance,proto3" json:"relevance,omitempty"`
+	Valence  float64 `protobuf:"fixed64,12,opt,name=valence,proto3" json:"valence,omitempty"` // -1..1 signed affect (spec 21)
 	// 07: 누적 회상 횟수(서버 권위 원자료, RecallMemoryTouch마다 +1). 클라가 Bjork 저장강도
 	// S=(storage_base+recall_count)·(1+emo·intensity)와 인출강도 R=exp(-Δt/τ(S))를 파생해
-	// 자기근접 반지름(38)+배경 감정 순위를 함께 구동한다. 기존 별은 1로 백필(relevance와 동급의 원자료).
+	// 자기근접 반지름(38)+배경 감정 순위를 함께 구동한다. 기존 별은 1로 백필.
 	RecallCount   int64 `protobuf:"varint,14,opt,name=recall_count,json=recallCount,proto3" json:"recall_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -569,13 +566,6 @@ func (x *Star) GetResonant() bool {
 func (x *Star) GetValence() float64 {
 	if x != nil {
 		return x.Valence
-	}
-	return 0
-}
-
-func (x *Star) GetRelevance() float64 {
-	if x != nil {
-		return x.Relevance
 	}
 	return 0
 }
@@ -2190,7 +2180,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x14RecordMemoryResponse\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x1d\n" +
 	"\n" +
-	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xd9\x03\n" +
+	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xcc\x03\n" +
 	"\x04Star\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\x12%\n" +
 	"\x04mood\x18\x02 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x1c\n" +
@@ -2204,9 +2194,8 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x0efragment_index\x18\n" +
 	" \x01(\x05R\rfragmentIndex\x12\x1a\n" +
 	"\bresonant\x18\v \x01(\bR\bresonant\x12\x18\n" +
-	"\avalence\x18\f \x01(\x01R\avalence\x12\x1c\n" +
-	"\trelevance\x18\r \x01(\x01R\trelevance\x12!\n" +
-	"\frecall_count\x18\x0e \x01(\x03R\vrecallCount\"\xc0\x01\n" +
+	"\avalence\x18\f \x01(\x01R\avalence\x12!\n" +
+	"\frecall_count\x18\x0e \x01(\x03R\vrecallCountJ\x04\b\r\x10\x0eR\trelevance\"\xc0\x01\n" +
 	"\aSynapse\x12\x11\n" +
 	"\x04a_id\x18\x01 \x01(\tR\x03aId\x12\x11\n" +
 	"\x04b_id\x18\x02 \x01(\tR\x03bId\x12\x16\n" +

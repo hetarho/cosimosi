@@ -91,8 +91,11 @@ message RecordMemoryResponse {
 // last_recalled_at.
 // Field number 11 = 36 resonance (RESERVED); 5–8 are the spec 23 reshaping
 // state (mutable star layer); 9–10 = 28 wayfinding; valence takes 12;
-// relevance (26) takes 13. (00.overview 공유 설계 결정 — Star 필드 번호 할당)
+// 13 is RESERVED — was relevance (26), retired by spec 38 change 19 (밝기=자기-거리).
+// (00.overview 공유 설계 결정 — Star 필드 번호 할당)
 message Star {
+  reserved 13;
+  reserved "relevance";
   string memory_id = 1;
   Mood mood = 2;
   double intensity = 3;
@@ -109,14 +112,10 @@ message Star {
   // 조인으로 채운다(보낸 별·수락으로 태어난 별 양쪽). 공개 우주(35 SharedStar)엔 이 필드가
   // 없다 — 제3자에게 관계 비노출(비목표). FE가 은은한 공명 마커를 그리는 트리거.
   bool resonant = 11;
-  double valence = 12;         // -1..1 signed affect (spec 21; 26 consumes in λ_eff)
-  // 26: 0..1 별 임베딩 ↔ "요즘 토픽 중심 벡터"의 cos 정합도. 서버가 GetUniverse에서
-  // 계산(weight처럼 의미 그래프 파생값 — 헌법3 위반 아님; 밝기 자체는 여전히 클라가
-  // exp(-λ_eff·Δt)로 계산). 임베딩 미생성 별·데모(서버 없음)에선 0=중립.
-  double relevance = 13;
+  double valence = 12;         // -1..1 signed affect (spec 21)
   // 07: 누적 회상 횟수(서버 권위 원자료, RecallMemoryTouch마다 +1). 클라가 Bjork 저장강도
   // S=(storage_base+recall_count)·(1+emo·intensity)와 인출강도 R=exp(-Δt/τ(S))를 파생해
-  // 자기근접 반지름(38)+배경 감정 순위를 함께 구동한다. 기존 별은 1로 백필(relevance와 동급의 원자료).
+  // 자기근접 반지름(38)+배경 감정 순위를 함께 구동한다. 기존 별은 1로 백필.
   int64 recall_count = 14;
 }
 

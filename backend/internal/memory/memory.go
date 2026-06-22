@@ -118,12 +118,6 @@ type Memory struct {
 	HueShift         float64
 	FormSeedDelta    float64
 	Version          int
-	// Relevance (spec 26): 0..1 cosine alignment of the star's embedding with the "요즘
-	// 토픽" centroid, computed in GetUniverse (0 elsewhere — ListDormant doesn't score it).
-	// A λ_eff input the client folds into modulated decay; NOT a coordinate. Like weight it
-	// is a server-derived semantic-graph quantity, so sending it doesn't break constitution
-	// §3 (brightness itself stays a client render computation).
-	Relevance float64
 	// Resonant (spec 36): true when this star is linked to a star in ANOTHER universe by a
 	// resonance (a gift this user sent and a friend accepted, or a star born from accepting a
 	// friend's gift). GetUniverse joins resonances to fill it; ListDormant leaves it false
@@ -132,8 +126,8 @@ type Memory struct {
 	// RecallCount (spec 07): cumulative recall count — server-authoritative raw datum
 	// (RecallMemoryTouch bumps it). The client derives Bjork storage strength S and retrieval
 	// strength R from it to drive self-proximity radius (38) + the background emotion ranking.
-	// Existing stars backfill to 1 (migration default). Not a coordinate — like Relevance it is
-	// a server-derived datum the client folds into a render computation (constitution §3 intact).
+	// Existing stars backfill to 1 (migration default). Not a coordinate — a server-derived datum
+	// the client folds into a render computation (constitution §3 intact).
 	RecallCount int
 }
 
@@ -194,17 +188,6 @@ type Synapse struct {
 // longer summarizes "요즘" emotion. The client derives the emotion ranking + arousal from
 // the loaded stars (+recall_count) via the Bjork retrieval strength R itself.
 
-// StarVector is one star's semantic embedding plus the recency/intensity weights
-// that build the "요즘 토픽" centroid (spec 26). Embedding is empty when the embed job
-// hasn't run yet (→ that star scores relevance 0). Pure domain — the repository maps
-// the sqlc row into this.
-type StarVector struct {
-	ID             string
-	Embedding      []float64
-	Intensity      float64
-	LastRecalledAt time.Time
-}
-
 // Universe is the whole authoritative graph for one user: every star and every
 // synapse, dormant ones included (no brightness filter — constitution §2). spec 07: the
 // server no longer carries an ambient summary — the client derives the "요즘" emotion
@@ -214,14 +197,8 @@ type Universe struct {
 	Synapses []Synapse
 }
 
-const (
-	// TauMoodDays is the slow "요즘 토픽" envelope (spec 26 RelevanceByStar centroid weight):
-	// far slower than the 6h excitability window (22's tauExc) — relevance reads over days.
-	// (spec 07 retired the ambient-mood aggregation that also used it; relevance keeps it.)
-	TauMoodDays = values.AmbientTauMoodDays
-	// arousalGainCoef: g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]).
-	arousalGainCoef = values.AmbientArousalGain
-)
+// arousalGainCoef: g = 1 + 0.3·arousal (arousal∈[0,1] → gain∈[1,1.3]).
+const arousalGainCoef = values.AmbientArousalGain
 
 // ExcitabilityGain is the global gain "요즘" arousal exposes to the competitive allocation
 // bias (spec 22/25, concept §결정2): a more aroused "요즘" pulls new fragments harder
@@ -258,62 +235,6 @@ func storageStrength(recallCount int, intensity float64) float64 {
 func retrievalStrength(storage, dtDays float64) float64 {
 	tau := values.MemoryWeightTau0Days * (1 + values.MemoryWeightTauStorageGain*math.Log1p(math.Max(0, storage)))
 	return math.Exp(-math.Max(0, dtDays) / tau)
-}
-
-// RelevanceByStar scores each star's alignment with the user's "요즘 토픽" (spec 26):
-// it folds the star embeddings into a time-weighted centroid using the same per-fragment
-// intensity·exp(-Δt/τ) weight AggregateAmbient uses (decay makes old stars negligible, so
-// "요즘" agrees with the mood color — though this scores over ALL stars, not just a window),
-// then relevance = clamp(cos(star_emb, centroid), 0, 1) per star. The centroid INCLUDES the
-// star being scored (a recent/intense star reads as on-topic — it IS the topic; that's fine,
-// since it is already bright and the term mainly governs older stars, which weigh negligibly
-// in the centroid — leave-one-out is a possible spec-27 refinement). A star whose embed job
-// hasn't run (empty embedding) scores 0; an empty universe or zero-norm centroid yields all-0,
-// so the client's R_recent folds to the no-op 1.0. Cosine is scale-invariant, so the centroid
-// is left un-normalized. now is injected (testable).
-func RelevanceByStar(vectors []StarVector, now time.Time) map[string]float64 {
-	out := make(map[string]float64, len(vectors))
-	if len(vectors) == 0 {
-		return out
-	}
-	var centroid []float64
-	var sumW float64
-	for _, v := range vectors {
-		if len(v.Embedding) == 0 {
-			continue
-		}
-		if centroid == nil {
-			centroid = make([]float64, len(v.Embedding))
-		} else if len(v.Embedding) != len(centroid) {
-			continue // defensive: skip a stray mismatched dimension
-		}
-		dtDays := now.Sub(v.LastRecalledAt).Hours() / 24
-		if dtDays < 0 {
-			dtDays = 0 // future timestamp (clock skew) → treat as now
-		}
-		intensity := v.Intensity
-		if intensity < 0 {
-			intensity = 0
-		}
-		w := intensity * math.Exp(-dtDays/TauMoodDays)
-		if w <= 0 {
-			continue
-		}
-		for i, x := range v.Embedding {
-			centroid[i] += w * x
-		}
-		sumW += w
-	}
-	if sumW <= 0 || centroid == nil {
-		return out // nothing to compare against → every star neutral (relevance 0)
-	}
-	for _, v := range vectors {
-		if len(v.Embedding) != len(centroid) {
-			continue // embeddingless / mismatched stars stay relevance 0
-		}
-		out[v.ID] = clampf(cosineSim(v.Embedding, centroid), 0, 1)
-	}
-	return out
 }
 
 // LinkDelta is one co-recall reinforcement increment for a star pair.

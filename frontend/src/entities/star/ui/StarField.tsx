@@ -11,7 +11,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } fr
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { attribute, uniform } from 'three/tsl'
-import { selfGlow, activation, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
+import { starGlow, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
 import { degreeNormById, weightedDegreeById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
@@ -164,8 +164,8 @@ export interface StarFieldProps {
   litMix?: number
   /** 매 프레임 갱신되는 동적 자아 광원 위치. 주어지면 useFrame이 ref.current로
    *  반사 채널 uniform만 갱신한다(React rerender 없음) — 근접 탐험에서 광원이 탐험자를 따라온다.
-   *  null/미전달이면 정적 selfLightPos를 쓴다(원거리=중심 자아 광원·오버레이·배경 동일). 반사 채널만
-   *  바꾸고 selfGlow/activation/λ_eff/별 색·좌표는 불변. */
+   *  null/미전달이면 정적 selfLightPos를 쓴다(원거리=중심 자아 광원·오버레이·배경 동일). 반사 채널 광원
+   *  위치만 바꾸고 거리 밝기(aGlow/aRecency)·별 색·좌표는 불변. */
   selfLightRef?: MutableRefObject<readonly [number, number, number] | null>
   /** 광원이 매 프레임 카메라 위치를 따라간다(헤드램프) — 시점을 돌려도 카메라 보이는 면이 늘 비쳐 "역광 떡짐"이
    *  없다. 메인 우주 far-view만 켠다(overlay·배경·단일 별은 끔). `selfLightRef`(근접 탐험)가 있으면 그게 우선. */
@@ -202,17 +202,17 @@ export function StarField({
         : null,
     [highlightedRecordId, stars],
   )
-  // 변조 감쇠(spec 26)의 R_conn 입력: 별별 degree를 우주 중앙값으로 정규화한 맵. degree는
-  // 어떤 PAIR가 존재하느냐(토폴로지)에만 의존하므로 토폴로지 시그니처로 메모해, 시간 머신의
-  // refreshActivation이 밝기 재파생만을 위해 엣지 배열을 갈아끼우는 동안(spec 19) 아래 빌드
-  // 효과가 헛돌지 않게 한다(같은 pair 집합 → 같은 맵 identity → rebuild 미발화).
+  // 연결 가중 차등 표류(spec 38 change 18)의 degree 입력: 별별 degree를 우주 중앙값으로 정규화한 맵.
+  // 거리(반지름)→밝기(change 19)를 통해 연결 강한 별이 가깝고 밝게 읽힌다. degree는 어떤 PAIR가
+  // 존재하느냐(토폴로지)에만 의존하므로 토폴로지 시그니처로 메모해, 시간 머신의 refreshActivation이
+  // 밝기 재파생만을 위해 엣지 배열을 갈아끼우는 동안(spec 19) 아래 빌드 효과가 헛돌지 않게 한다.
   const storeEdges = useSynapseStore((s) => s.edges)
   const edges = externalEdges ?? storeEdges
   const edgeTopo = useMemo(() => edges.map((e) => `${e.aId}~${e.bId}`).join(','), [edges])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the pair set, not the array identity
   const degreeNorm = useMemo(() => degreeNormById(edges), [edgeTopo])
-  // self-glow 연결성(spec 03) Σweight 항: degree와 달리 weight에도 의존하므로 weight 포함 시그니처로 메모
-  // (회상 강화로 weight가 바뀌면 글로우도 갱신). 2자리 양자화로 미세 변동에 헛돌지 않게.
+  // 연결성 Σweight 항(change 18): degree와 달리 weight에도 의존하므로 weight 포함 시그니처로 메모
+  // (회상 강화로 weight가 바뀌면 반지름·밝기도 갱신). 2자리 양자화로 미세 변동에 헛돌지 않게.
   const edgeWTopo = useMemo(() => edges.map((e) => `${e.aId}~${e.bId}:${e.weight.toFixed(2)}`).join(','), [edges])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the weight-inclusive signature
   const weightedDegreeNorm = useMemo(() => weightedDegreeById(edges), [edgeWTopo])
@@ -256,8 +256,8 @@ export function StarField({
       surface,
       {
         mood: attribute('aMood', 'vec3'),
-        glow: attribute('aGlow', 'float'), // 자가발광=연결성(selfGlow, A_MIN 바닥은 attribute 계산에서)
-        recency: attribute('aRecency', 'float'), // 반사 변조=최근성
+        glow: attribute('aGlow', 'float'), // 자가발광=거리 밝기(brightnessFromRadius, A_MIN 바닥은 attribute 계산에서)
+        recency: attribute('aRecency', 'float'), // 반사 변조=거리 밝기(가까운 별일수록 자아광 반사 밝음)
         seed: attribute('aSeed', 'float'),
         hueShift: attribute('aHueShift', 'float'),
         time: t,
@@ -381,8 +381,8 @@ export function StarField({
 
     const moodArr = new Float32Array(count * 3)
     const seedArr = new Float32Array(count)
-    const glowArr = new Float32Array(count) // 자가발광=연결성(selfGlow, A_MIN 바닥)
-    const recencyArr = new Float32Array(count) // 반사 변조=최근성(activation)
+    const glowArr = new Float32Array(count) // 자가발광=거리 밝기(brightnessFromRadius, A_MIN 바닥)
+    const recencyArr = new Float32Array(count) // 반사 변조=거리 밝기
     const focusArr = new Float32Array(count).fill(1) // 포커스 배율(아래 focus effect가 갱신; 기본 1)
     // 재공고화 색조(spec 23): hueShift(도)를 라디안으로 — 머티리얼이 mood 색을 회색축
     // 둘레로 그만큼 돌린다. 기본 0 → 회전 없음(기존 별 무변).
@@ -406,25 +406,21 @@ export function StarField({
       moodArr[i * 3 + 2] = rgb[2] + (tint ? (tint[2] - rgb[2]) * ts : 0)
       // 재성형 합성(spec 23): 형태 시드·밝기는 누적 재공고화 상태를 더한 유효값으로,
       // 색조는 라디안 attribute로 머티리얼에 넘긴다. 기본 0이면 기존 별과 동일.
-      // 밝기는 변조 감쇠(spec 26): 연결(R_conn)·요즘 관련성(R_recent)·감정(R_emo)으로 별마다
-      // λ_eff가 달라 — 연결 많고 요즘과 닿고 감정 강한 별일수록 천천히 어두워진다.
       seedArr[i] = reshapedSeed(m.seed, m.formSeedDelta)
-      // 자가발광(spec 03): 연결성(degree + Σweight) 구동 self-glow가 λ_glow로 감쇠, +reshape offset,
-      // A_MIN 바닥(reshapedBrightness가 clamp(.,A_MIN,1)로 OUTERMOST 적용). 연결 0이어도 ≥A_MIN 잔광(헌법2).
-      glowArr[i] = reshapedBrightness(
-        selfGlow(
-          m.lastRecalledAt,
-          now,
-          degreeNorm.get(stars[i].id) ?? 0,
-          weightedDegreeNorm.get(stars[i].id) ?? 0,
-          m.relevance,
-          m.intensity,
-          m.valence,
-        ),
-        m.brightnessOffset,
+      // 밝기 = 자기-거리(반지름)를 빛으로 읽기(spec 38 change 19): 가까운 별이 밝고 먼(휴면) 별은 A_MIN
+      // 바닥. 연결·회상·최근성은 반지름을 통해서만 밝기에 닿는다(별도 채널 없음). 한 값으로 두 렌더 채널을
+      // 함께 구동 — aGlow(자가발광)는 +reshape offset(A_MIN 바닥 OUTERMOST), aRecency(반사 변조)는 그대로.
+      const b = starGlow(
+        m.recallCount,
+        m.intensity,
+        m.lastRecalledAt,
+        now,
+        degreeNorm.get(stars[i].id) ?? 0,
+        weightedDegreeNorm.get(stars[i].id) ?? 0,
       )
-      // 반사 변조(spec 03): 최근성 — 가까운(중앙=최근/회상) 별일수록 자아광 반사가 밝다(위치=spec 38 광학 읽기).
-      recencyArr[i] = activation(m.lastRecalledAt, now)
+      glowArr[i] = reshapedBrightness(b, m.brightnessOffset)
+      // 반사 변조: 거리 밝기로 — 가까운(중앙=강함) 별일수록 자아광 반사가 밝다(위치=spec 38 광학 읽기).
+      recencyArr[i] = b
       hueArr[i] = (m.hueShift * Math.PI) / 180
       scales[i] = sizeFor(m.intensity)
 
@@ -501,7 +497,7 @@ export function StarField({
     // 형태 애니메이션용 시간 전진(liquid 출렁임 / ember 깜빡임 / aurora 흐름). 위치 버퍼가 없어도
     // 매 프레임 올려야 하므로 아래 early-return보다 먼저 둔다.
     update(state.clock.elapsedTime, state.camera)
-    // 반사 채널 광원 갱신(반사 항만 바뀌고 selfGlow/activation/별 색·좌표는 불변 — 채널 경계). 우선순위:
+    // 반사 채널 광원 갱신(반사 항만 바뀌고 거리 밝기·별 색·좌표는 불변 — 채널 경계). 우선순위:
     //   ① selfLightRef(근접 탐험: 어깨 너머 앵커, 점광) → ② cameraLight(far-view: 셰이더 viewDir 헤드램프 —
     //   카메라를 돌리면 보이는 면이 늘 비춰진다, 4번째 인자=1) → ③ 정적 selfLightPos(overlay·배경·단일 별).
     if (selfLightRef?.current) {

@@ -11,10 +11,6 @@ const (
 	DecayAMin          = 0.05
 	DecayHalfLifeDays  = 30
 	DecayDormantFactor = 2
-	DecayAlphaConn     = 0.6
-	DecayBetaRecent    = 0.5
-	DecayGammaEmo      = 0.7
-	DecayDeltaVal      = 0.4
 )
 
 // consolidation
@@ -94,7 +90,6 @@ const (
 
 // ambient
 const (
-	AmbientTauMoodDays      = 7
 	AmbientArousalGain      = 0.3
 	AmbientBgBrightnessGain = 0.35
 	AmbientBgMotionGain     = 0.6
@@ -175,7 +170,10 @@ const (
 	RadialLayoutLinkDistance   = 14
 	RadialLayoutRadialStrength = 0.1
 	RadialLayoutRMin           = 6
-	RadialLayoutRMax           = 40
+	RadialLayoutRMax           = 80
+	RadialLayoutConnDriftAlpha = 0.6
+	RadialLayoutConnWeightTerm = 0.5
+	RadialLayoutSatGamma       = 0.6
 	RadialLayoutDriftStepRad   = 0.08
 )
 
@@ -204,12 +202,6 @@ const (
 )
 var (
 	StarLightingBackdropLightDir = []float64{0.6, 0.7, 0.4}
-)
-
-// self_glow
-const (
-	SelfGlowConnectednessGain = 0.6
-	SelfGlowWeightTerm        = 0.5
 )
 
 // resonance_ring

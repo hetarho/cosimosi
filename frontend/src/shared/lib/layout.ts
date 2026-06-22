@@ -15,13 +15,19 @@ export const R_MIN = VALUES.radialLayout.rMin
  *  camera's star-shell framing (~46) so the cloud reads tight, not sprawling. */
 export const R_MAX = VALUES.radialLayout.rMax
 
-/** Bjork retrieval strength R ∈ [0,1] → distance from the centre: R 1 → R_MIN (beside the
- *  self star), R 0 → R_MAX (the dormant outer reaches), linear in between. "Distance =
- *  strength" preserved (spec 38); spec 07 swapped the old activation·intensity blend for the
- *  single retrieval strength R (entities/memory weight.ts) — a recalled memory is pulled in,
- *  a forgotten one drifts out, and an often-recalled one stays central longer (τ grows with S). */
+/** Saturation-remap exponent (spec 38 change 18): radius = R_MIN+(R_MAX−R_MIN)·(1−R^γ). γ<1
+ *  steepens the mapping where R→0, so the far (old) shells keep travelling outward instead of
+ *  pinning to R_MAX early — months read as continued drift, not a frozen edge. γ=1 = old linear. */
+const SAT_GAMMA = VALUES.radialLayout.satGamma
+
+/** Bjork retrieval strength R ∈ [0,1] → distance from the centre: R 1 → R_MIN (beside the self
+ *  star), R 0 → R_MAX (the dormant outer reaches). "Distance = strength" preserved (spec 38);
+ *  spec 07 swapped the old activation·intensity blend for the single retrieval strength R
+ *  (entities/memory weight.ts) — a recalled memory is pulled in, a forgotten one drifts out, an
+ *  often-recalled one stays central longer (τ grows with S). The 1−R^γ remap (γ<1) de-saturates
+ *  the outer reaches so old stars keep drifting under the doubled R_MAX rather than freezing. */
 export function targetRadius(r: number): number {
-  return R_MIN + (R_MAX - R_MIN) * (1 - clamp01(r))
+  return R_MIN + (R_MAX - R_MIN) * (1 - Math.pow(clamp01(r), SAT_GAMMA))
 }
 
 /** Fibonacci-sphere position for star i of n; the radius varies by the star's seed so

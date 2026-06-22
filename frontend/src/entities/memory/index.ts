@@ -1,7 +1,7 @@
 // Public API for the memory entity (named exports only — no wildcard).
 export type { Memory, StarNode, Mood } from './model/types'
 export { starBrightness, isDormant, A_MIN } from './model/activation'
-export { memoryR } from './model/weight'
+export { memoryR, memoryRadiusR, radiusConnectedness } from './model/weight'
 export { seedFromId } from './model/seed'
 export { reshapedSeed } from './model/reshape'
 export {

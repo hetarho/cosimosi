@@ -713,8 +713,8 @@ export function NavController({
     // shake 적용 전의 깨끗한 항행 기준 위치(camera.position은 위에서 shakeOffset을 뺀 base)에서 계산해
     // idle/벽 shake가 반사·아바타를 흔들지 않게 한다(A7). 같은 앵커를 SelfStar(나 아바타)도 공유하므로
     // 광원이 곧 나 — 정면 별이 뒤+위에서 오는 빛을 받아 입체 음영으로 서고, 정면 비행 시야엔 안 들어온다.
-    // StarField가 매 프레임 ref.current로 반사 채널 uniform만 갱신(채널 경계 — A5: selfGlow/activation/
-    // λ_eff/별 색·좌표·A_MIN 불변).
+    // StarField가 매 프레임 ref.current로 반사 채널 광원 uniform만 갱신(채널 경계 — A5: 거리 밝기·별
+    // 색·좌표·A_MIN 불변).
     fwd.current.subVectors(controls.target, camera.position).normalize()
     upAxis.current.copy(camera.up).normalize()
     lightArr.current[0] =

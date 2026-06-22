@@ -179,18 +179,6 @@ func (s *Service) GetUniverse(ctx context.Context, userID string) (Universe, err
 	if err != nil {
 		return Universe{}, err
 	}
-	// Relevance (spec 26): each star's cos alignment with the "요즘 토픽" centroid → the
-	// client's R_recent decay-resistance term. A best-effort, additive signal with a neutral
-	// default (0 = no resistance), so a vector-read failure degrades to all-neutral relevance
-	// rather than failing the core graph. Folded onto the stars here so the handler maps it
-	// straight onto Star.relevance.
-	now := time.Now().UTC()
-	if vectors, verr := s.repo.ListStarVectorsByUser(ctx, userID); verr == nil {
-		rel := RelevanceByStar(vectors, now)
-		for i := range memories {
-			memories[i].Relevance = rel[memories[i].ID]
-		}
-	}
 	return Universe{Memories: memories, Synapses: synapses}, nil
 }
 

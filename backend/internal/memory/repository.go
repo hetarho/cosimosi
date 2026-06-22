@@ -33,12 +33,7 @@ type Repository interface {
 
 	// (spec 07) ListRecentForAmbient retired — the server no longer aggregates "요즘" emotion;
 	// the client derives the ranking + arousal from the loaded stars (+recall_count) via R.
-
-	// ListStarVectorsByUser returns every star's semantic embedding + recency/intensity
-	// weights (spec 26) — the input to the "요즘 토픽" centroid + per-star relevance. A star
-	// whose embed job hasn't run yet appears with an empty embedding (relevance 0). user_id
-	// = isolation. (GetUniverse degrades to all-neutral relevance if this read fails.)
-	ListStarVectorsByUser(ctx context.Context, userID string) ([]StarVector, error)
+	// (spec 38 change 19) ListStarVectorsByUser retired — relevance is gone (밝기=자기-거리).
 
 	// ListDormant returns the user's stars whose last_recalled_at is before cutoff
 	// (long unrecalled), ascending. The cutoff is derived in the service from the

@@ -176,27 +176,6 @@ func (r *pgRepository) ListRecords(ctx context.Context, userID string) ([]Record
 	return out, nil
 }
 
-// ListStarVectorsByUser returns every star's embedding + recency/intensity weights for
-// the spec-26 relevance centroid. The LEFT JOIN yields a nil embedding for stars whose
-// embed job hasn't run yet → empty []float64 (that star scores relevance 0). The query's
-// WHERE guarantees a non-null last_recalled_at, so the timestamp maps directly.
-func (r *pgRepository) ListStarVectorsByUser(ctx context.Context, userID string) ([]StarVector, error) {
-	rows, err := gen.New(r.pool).ListStarVectorsByUser(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("list star vectors: %w", err)
-	}
-	out := make([]StarVector, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, StarVector{
-			ID:             row.MemoryID,
-			Embedding:      embeddingToDomain(row.Embedding),
-			Intensity:      dbutil.Float64Value(row.Intensity),
-			LastRecalledAt: row.LastRecalledAt.Time,
-		})
-	}
-	return out, nil
-}
-
 // ListDormant returns the user's long-unrecalled stars (last_recalled_at < cutoff),
 // ascending — same column shape as ListByUser, so it maps to the same domain Memory.
 func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff time.Time) ([]Memory, error) {

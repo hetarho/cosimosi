@@ -26,14 +26,9 @@
 
 # ── 망각·감쇠 (decay) — FE 클라이언트 렌더 계산 + BE 휴면 컷오프 (헌법3). spec 12·26 ──────────
 decay:
-  a_min: 0.05 #            밝기 바닥 — 별은 0으로 꺼지지 않는다(헌법2). 잠든 별 잔광. spec 03 이후 이 바닥은 self-glow(emissive) 채널이 단독 보증(반사光은 bloom 안 하는 물리광·floor 없음). 단일 출처 — 둘째 floor 금지.
-  half_life_days: 30 #     시간 감쇠 반감기: activation(Δt)=exp(-ln2/30·Δt), 30일 → 0.5
+  a_min: 0.05 #            밝기 바닥 — 별은 0으로 꺼지지 않는다(헌법2). 잠든 별 잔광. 별 밝기=자기-거리(R_MAX→a_min)·시냅스 밝기·휴면 컷오프의 단일 바닥. 둘째 floor 금지.
+  half_life_days: 30 #     시간 감쇠 반감기: activation(Δt)=exp(-ln2/30·Δt), 30일 → 0.5. 시냅스 밝기(spec 12)·휴면 판정 입력(별 밝기는 거리 함수 — spec 38 change 19)
   dormant_factor: 2 #      휴면 컷오프 = dormant_factor·a_min (raw activation 기준). FE isDormant·BE dormancyThreshold 공유.
-  # spec 26 변조 감쇠 계수 — 각 R∈(0,1]이라 감쇠를 늦추기만 한다(가속 없음)
-  alpha_conn: 0.6 #        R_conn: 연결(degree) 많을수록 저항↑
-  beta_recent: 0.5 #       R_recent: 요즘 토픽과 가까울수록(relevance↑) 저항↑
-  gamma_emo: 0.7 #         R_emo: 각성(intensity) 저항
-  delta_val: 0.4 #         R_emo: 강한 부정 정서가 추가 저항(Kensinger & Corkin 2004)
 
 # ── 야간 공고화 (consolidation) — BE 서버 그래프 4패스. spec 27 ────────────────────
 consolidation:
@@ -109,11 +104,10 @@ memory_weight:
   tau0_days: 14 #            기본 인출 반감기상수(일): R=exp(-Δt/τ(S)), 회상 0·정서 0의 별 τ 바닥
   tau_storage_gain: 0.8 #    저장강도→τ 성장 계수: τ(S)=tau0_days·(1+tau_storage_gain·ln(1+S)) (분산효과: 잘 공고화된 기억은 천천히 잊힘)
 
-# ── 환경 무드 (ambient) — arousal seam(흥분성 게인·배경 전역 생동). spec 22·25·07 ─────────────────
+# ── 환경 무드 (ambient) — arousal seam(흥분성 게인). spec 22·25·07 ─────────────────────────────────
 #    spec 07로 mood 종합(tau_mood_days·lights_k·light_min_share·window_tau_factor)은 은퇴 — 클라가 Σ R에서
-#    감정 순위·arousal을 파생한다. arousal_gain(22 흥분성 seam) + 배경 생동 계수만 남는다.
+#    감정 순위·arousal을 파생한다. spec 38 change 19로 relevance(요즘 토픽 중심벡터)도 폐기. arousal_gain만 남는다.
 ambient:
-  tau_mood_days: 7 #           "요즘 토픽" 시간상수(일) — spec 26 RelevanceByStar 중심벡터 가중(BE 전용). spec 07로 ambient mood 종합 용도는 은퇴, 26 관련성만 남아 유지.
   arousal_gain: 0.3 #          흥분성 게인 g = 1 + arousal_gain·arousal (gain∈[1,1.3]) — 22 seam 보존 (FE·BE 공유)
   bg_brightness_gain: 0.35 #   arousal→배경 스킨 전역 밝기 게인(격동한 요즘=밝게, 평온=잔잔) (FE 전용)
   bg_motion_gain: 0.6 #        arousal→배경 스킨 휘젓는 움직임 세기 게인 (FE 전용)
@@ -202,8 +196,12 @@ radial_layout:
   link_distance: 14 #       스프링 안식 거리 오버라이드(촘촘한 별자리)
   radial_strength: 0.1 #    방사-쉘 스프링 강도 오버라이드(거리=강도)
   r_min: 6 #                가장 안쪽(가장 강한 기억) 쉘 반지름 — 자기 별 바로 바깥
-  r_max: 40 #               가장 바깥(휴면) 쉘 반지름 — 카메라 프레임 안에 유지
+  r_max: 80 #               가장 바깥(휴면) 쉘 반지름 — 표류 여유(40→80). 경계는 유지(무한 표류 아님), 가장자리 별은 각도 드리프트로 회전
   # (spec 07) 옛 strength 혼합(w_activation·w_intensity)은 은퇴 — targetRadius가 Bjork 인출 강도 R을 직접 받는다.
+  # 연결 가중 차등 표류(spec 38): 연결성(degree+Σweight)이 인출 τ를 늘려 감쇠를 늦추기만 한다(λ_eff와 같은 방향, 절대 가속 안 함). conn=0이면 memoryR와 동일.
+  conn_drift_alpha: 0.6 #   연결성→τ 성장 계수: τ_conn = τ(S)·(1 + conn_drift_alpha·connectedness). 연결 강할수록 천천히 멀어짐
+  conn_weight_term: 0.5 #   연결성 합성에서 Σweight 항 가중(degree count 대비). 0이면 순수 count 폴백
+  sat_gamma: 0.6 #          포화 재매핑 지수: radius = r_min + (r_max-r_min)·(1 - R^sat_gamma). <1이면 먼 구간(R→0)이 R_MAX에 일찍 안 붙고 계속 표류. 1이면 옛 선형
   drift_step_rad: 0.08 #    별 방향의 밤당 접선 회전(~4.6°/밤 표상 드리프트, 수작업 튜닝)
 
 # ── 별 렌더 (star_render) — StarField 인스턴스. spec 08 ──────────────────────────────────────
@@ -231,13 +229,6 @@ star_lighting:
   backdrop_light_intensity: 0.7 #       배경 평행광 세기(은은하게 — 면/엣지 드러내되 오늘 룩 안 깨게)
   recall_light_back_offset: 6 #  recall(근접 탐험)에서 자아 광원·아바타가 카메라 뒤로 물러나는 거리(world, −forward) — 어깨 너머(spec 49)
   recall_light_up_offset: 2 #    recall에서 카메라 위로 들리는 거리(world, +up) — 정면 별이 뒤+위 빛으로 입체 음영(spec 49)
-
-# ── 자가발광 글로우 (self_glow) — 별 빛 3겹 중 "자가발광(emissive)=연결성=의미" 채널. spec 03·26 ──────
-#    λ_eff가 이 채널로 이주(λ_glow). self-glow 세기 = 연결성(degree + Σweight). A_MIN 바닥은 decay.a_min
-#    재사용(둘째 floor 신설 금지). selfGlow = a_min + (1-a_min)·g(connectedness, exp(-λ_glow·Δt)).
-self_glow:
-  connectedness_gain: 0.6 #   연결성(degreeNorm + weight_term·ΣweightNorm)을 글로우 세기로 매핑하는 게인(허브만 도드라지게)
-  weight_term: 0.5 #          Σweight 보조 항 가중(degree count 대비). 0이면 순수 count 폴백(가지치기가 글로우에 안 보임)
 
 # ── 공명 링 (resonance_ring) — 공유 우주 공명 마커. spec 36 ───────────────────────────────────
 resonance_ring:

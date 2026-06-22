@@ -64,9 +64,8 @@ export function mapSharedUniverse(res: GetSharedUniverseResponse): {
         id,
         mood: moodFromProto(s.mood),
         intensity: s.intensity,
-        // valence/relevance/조각·재성형 메타는 공개 스냅샷에 없다 — 중립값(풍경만 공개).
+        // valence/조각·재성형 메타는 공개 스냅샷에 없다 — 중립값(풍경만 공개).
         valence: 0,
-        relevance: 0,
         lastRecalledAt: Number(s.lastRecalledDay) * DAY_MS,
         // 공개 스냅샷엔 recall_count가 없다(content-zero) — 막 부호화된 별로 기본 1(클라 R 파생 입력).
         recallCount: 1,

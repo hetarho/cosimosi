@@ -12,12 +12,8 @@ export interface Memory {
   mood: Mood
   /** 0..1 emotional intensity → size/presence. */
   intensity: number
-  /** -1..1 signed affect of the fragment (spec 21; 26 consumes in λ_eff). */
+  /** -1..1 signed affect of the fragment (spec 21). */
   valence: number
-  /** 0..1 alignment with the "요즘 토픽" centroid (spec 26) — server-computed in GetUniverse
-   *  (cos of this star's embedding vs the recent-weighted centroid), the R_recent input to
-   *  λ_eff. 0 outside GetUniverse / in demo (no server) → R_recent folds to the no-op 1.0. */
-  relevance: number
   /** epoch ms; input to activation/brightness. */
   lastRecalledAt: number
   /** 누적 회상 횟수(spec 07; 서버 권위 원자료, 회상마다 +1). Bjork 저장강도 S→인출강도 R 파생의 입력.

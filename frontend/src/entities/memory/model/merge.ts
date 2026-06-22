@@ -19,10 +19,6 @@ function edgeKey(e: SynapseEdge): string {
  * Merge an incoming (server) star set into the local render set, keyed by memory id.
  * - Existing stars keep their OBJECT IDENTITY (slot `index`, seed, emergent position)
  *   unless the server's lastRecalledAt is ahead — then only that field advances (max).
- * - `relevance` (spec 26) is taken from the server UNCONDITIONALLY: it is a server-computed
- *   signal (cos vs the "요즘 토픽" centroid) that shifts between fetches as the centroid moves,
- *   and the client never advances it locally — so a max()/keep-local merge would freeze it at
- *   the first-load value. Forwarding it keeps decay-resistance current as 요즘 evolves.
  * - The reshaping state (`brightnessOffset`/`hueShift`/`formSeedDelta`/`version`, specs 23·27)
  *   is ALSO taken from the server unconditionally, for the same reason: it is server-authoritative
  *   (reconsolidation reshapes on recall, the nightly gist simplifies form — both server-side) and
@@ -45,7 +41,6 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
     const m = inc.memory // server-authoritative signals (never advanced locally): forward as-is
     if (
       lastRecalledAt === node.memory.lastRecalledAt &&
-      m.relevance === node.memory.relevance &&
       m.brightnessOffset === node.memory.brightnessOffset &&
       m.hueShift === node.memory.hueShift &&
       m.formSeedDelta === node.memory.formSeedDelta &&
@@ -60,7 +55,6 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
       memory: {
         ...node.memory,
         lastRecalledAt,
-        relevance: m.relevance,
         brightnessOffset: m.brightnessOffset,
         hueShift: m.hueShift,
         formSeedDelta: m.formSeedDelta,

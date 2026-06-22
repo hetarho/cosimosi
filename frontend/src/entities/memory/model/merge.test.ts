@@ -7,7 +7,7 @@ import type { StarNode } from './types'
 const NOW = 1_700_000_000_000
 const DAY_MS = 86_400_000
 
-function star(id: string, index: number, lastRecalledAt = NOW, relevance = 0): StarNode {
+function star(id: string, index: number, lastRecalledAt = NOW): StarNode {
   return {
     id,
     index,
@@ -16,7 +16,6 @@ function star(id: string, index: number, lastRecalledAt = NOW, relevance = 0): S
       mood: 'joy',
       intensity: 0.5,
       valence: 0,
-      relevance,
       lastRecalledAt,
       recallCount: 1,
       recordId: id,
@@ -91,19 +90,7 @@ describe('mergeStars (spec 16, 1.4)', () => {
     expect(merged.map((s) => s.id)).toEqual(['a', 'b', 'c'])
   })
 
-  it('forwards server relevance even when lastRecalledAt is unchanged (spec 26)', () => {
-    // relevance is server-computed (요즘 토픽 cos) and shifts between fetches; the client never
-    // advances it locally, so the merge must take the incoming value or it freezes at first load.
-    const local = [star('a', 0, NOW, 0.2)]
-    const merged = mergeStars(local, [star('a', 9, NOW, 0.8)]) // same recall time, fresher relevance
-    expect(merged).not.toBe(local) // changed → re-rendered
-    expect(merged[0].memory.relevance).toBe(0.8)
-    expect(merged[0].index).toBe(0) // slot/identity rules still hold
-    // unchanged relevance + unchanged recall → identity preserved (no needless rebuild).
-    expect(mergeStars(merged, [star('a', 9, NOW, 0.8)])).toBe(merged)
-  })
-
-  it('forwards server reshaping state (specs 23·27) even when recall/relevance are unchanged', () => {
+  it('forwards server reshaping state (specs 23·27) even when recall is unchanged', () => {
     // brightnessOffset/hueShift/formSeedDelta/version are server-authoritative (recall reshape,
     // nightly gist) and never advanced locally — so a recalled-reshaped or night-gisted star must
     // adopt the incoming shape, or it freezes at first load.

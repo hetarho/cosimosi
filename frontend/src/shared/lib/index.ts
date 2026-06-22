@@ -19,4 +19,6 @@ export {
   scatterDirection,
   applyAngularDrift,
   targetRadius,
+  R_MIN,
+  R_MAX,
 } from './layout'

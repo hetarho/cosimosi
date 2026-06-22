@@ -24,12 +24,22 @@ describe('targetRadius (spec 38·07 — Bjork retrieval strength R)', () => {
 
   it('is monotonically decreasing in R (stronger = closer)', () => {
     expect(targetRadius(0.25)).toBeGreaterThan(targetRadius(0.75))
-    expect(targetRadius(0.5)).toBeCloseTo((R_MIN + R_MAX) / 2)
   })
 
   it('clamps out-of-range R', () => {
     expect(targetRadius(2)).toBeCloseTo(R_MIN)
     expect(targetRadius(-1)).toBeCloseTo(R_MAX)
+  })
+
+  it('de-saturates the outer reaches: as R→0 the radius keeps climbing toward R_MAX (change 18)', () => {
+    // The 1−R^γ (γ<1) remap means a faded star (small R) is NOT yet pinned to R_MAX — months of
+    // further decay still travel (acceptance A4·A5). Between two small R values the radius moves
+    // meaningfully and stays strictly below R_MAX until R reaches 0.
+    const farish = targetRadius(0.1)
+    const fartherStill = targetRadius(0.02)
+    expect(fartherStill).toBeGreaterThan(farish)
+    expect(farish).toBeLessThan(R_MAX) // not glued to the edge at R=0.1
+    expect(fartherStill - farish).toBeGreaterThan(1) // visibly continues outward
   })
 })
 

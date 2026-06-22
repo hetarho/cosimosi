@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useMemoryStore } from '@/entities/memory'
-import { useSynapseStore } from '@/entities/synapse'
+import { useSynapseStore, degreeNormById, weightedDegreeById } from '@/entities/synapse'
 import { VALUES } from '@/shared/config'
 import { scatterDirection, applyAngularDrift } from '@/shared/lib'
 import {
@@ -78,6 +78,15 @@ export function LiveLayoutController({
   const memoryById = useMemo(
     () => new Map(stars.map((s) => [s.id, s.memory] as const)),
     [stars],
+  )
+  // Connectivity per star (degree count + Σweight, median-normalized) → feeds radiusOf so
+  // well-connected stars drift out more slowly (spec 38 change 18). Rebuilt only when edges
+  // change (the radius re-kick below reads the current closure each frame).
+  const degreeNorm = useMemo(() => degreeNormById(edges), [edges])
+  const weightedDegreeNorm = useMemo(() => weightedDegreeById(edges), [edges])
+  const connOf = useCallback(
+    (id: string): [number, number] => [degreeNorm.get(id) ?? 0, weightedDegreeNorm.get(id) ?? 0],
+    [degreeNorm, weightedDegreeNorm],
   )
 
   // Publish a positions snapshot (id → coord) for the synapse renderers to bake against.
@@ -159,7 +168,8 @@ export function LiveLayoutController({
     const prevPosOf = (id: string): readonly [number, number, number] | null => prevPos.get(id) ?? null
 
     const nodes: SimNode[] = stars.map((s) => {
-      const r = radiusOf(s.memory, now)
+      const [dn, wdn] = connOf(s.id)
+      const r = radiusOf(s.memory, now, dn, wdn)
       // Angular continuity: resume from the live position if it was already placed.
       const resume = prevPos.get(s.id)
       if (resume) return { id: s.id, pinned: false, x: resume[0], y: resume[1], z: resume[2], radius: r }
@@ -191,7 +201,7 @@ export function LiveLayoutController({
     publish(sim, buf) // synapses get the seed layout now; they reconnect on each settle
     if (isSettled(sim)) markReady() // already settled (e.g. a single star) → reveal now
     // edges are part of the graph; rebuilding on an edge change keeps the springs current.
-  }, [stars, edges, positionsRef, onLayout, publish, loadedEmpty, markReady, onReset])
+  }, [stars, edges, connOf, positionsRef, onLayout, publish, loadedEmpty, markReady, onReset])
 
   useFrame(() => {
     const sim = simRef.current
@@ -251,7 +261,8 @@ export function LiveLayoutController({
     let maxDelta = 0
     for (let i = 0; i < sim.n; i++) {
       const mem = memoryById.get(sim.ids[i])
-      const r = mem ? radiusOf(mem, now) : sim.radius[i]
+      const [dn, wdn] = connOf(sim.ids[i])
+      const r = mem ? radiusOf(mem, now, dn, wdn) : sim.radius[i]
       targets[i] = r
       const d = Math.abs(r - sim.radius[i])
       if (d > maxDelta) maxDelta = d

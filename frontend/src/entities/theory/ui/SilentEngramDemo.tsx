@@ -1,11 +1,11 @@
-// 관련성·감정 가중 망각 인터랙티브 데모 — 랜딩 SilentEngramCard의 시연 본체이자 데모
-// 모달의 'dormant' 카드(spec 19에서 공유). 실제 변조 망각 모델(modulatedBrightness, spec 26)이
-// 그대로 돈다: 같은 시간이 흘러도 연결 많고·요즘과 닿고·감정 강한 별은 천천히, 고립된 옅은
-// 별은 ~2~3배 빨리 어두워지되 둘 다 A_MIN(5%) 바닥 아래로는 꺼지지 않는다(헌법2).
+// 망각 인터랙티브 데모 — 랜딩 SilentEngramCard의 시연 본체이자 데모 모달의 'dormant' 카드(spec 19에서
+// 공유). 실제 망각 모델(밝기=자기-거리, spec 38 change 19)이 그대로 돈다: 연결 많고·자주 떠올리고·감정
+// 강한 별은 천천히 멀어지며 밝게 머물고, 고립된 옅은 별은 더 빨리 멀어져 어두워지되 둘 다 A_MIN(5%)
+// 바닥 아래로는 꺼지지 않는다(헌법2). 밝기는 거리를 통해서만 정해진다 — 연결·회상·감정이 거리를 늦춘다.
 import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { MOOD } from '@/shared/config'
-import { A_MIN, modulatedBrightness } from '@/entities/memory/@x/theory'
+import { A_MIN, starGlow } from '@/entities/memory/@x/theory'
 import { useAppearance } from '@/entities/appearance/@x/theory'
 import { VizStar } from '@/entities/star/@x/theory'
 
@@ -14,14 +14,14 @@ const MAX_DAYS = 180
 const DAY_MS = 86_400_000
 const NOW = 1_700_000_000_000
 
-// 두 별의 λ_eff 입력(SilentEngramCard 보정 앵커: 고립이 연결보다 ~2~3배 빠른 감쇠).
-//  - 연결·감정 별: degree↑·요즘 관련성↑·감정 강도↑(부정 정서가) → R_conn·R_recent·R_emo로 감쇠 저항.
-//  - 고립·옅은 별: 무연결·요즘과 무관·옅은 감정 → 거의 순수 시간 감쇠.
-const CONNECTED = { degreeNorm: 1.2, relevance: 0.4, intensity: 0.75, valence: -0.2 }
-const ISOLATED = { degreeNorm: 0, relevance: 0, intensity: 0.15, valence: 0 }
+// 두 별의 거리(반지름) 입력(SilentEngramCard 보정 앵커: 고립이 연결보다 빠르게 멀어져 어두워진다).
+//  - 연결·감정 별: degree↑·Σweight↑·회상↑·감정 강도↑ → τ가 길어 천천히 멀어진다(가깝고 밝게 머묾).
+//  - 고립·옅은 별: 무연결·드문 회상·옅은 감정 → 거의 순수 시간 감쇠로 빠르게 외곽으로.
+const CONNECTED = { degreeNorm: 1.2, weightedDegreeNorm: 1.2, recallCount: 4, intensity: 0.75 }
+const ISOLATED = { degreeNorm: 0, weightedDegreeNorm: 0, recallCount: 1, intensity: 0.15 }
 
 const brightnessAt = (days: number, s: typeof CONNECTED) =>
-  modulatedBrightness(NOW - days * DAY_MS, NOW, s.degreeNorm, s.relevance, s.intensity, s.valence)
+  starGlow(s.recallCount, s.intensity, NOW - days * DAY_MS, NOW, s.degreeNorm, s.weightedDegreeNorm)
 
 export function SilentEngramDemo() {
   const concept = useAppearance((s) => s.object)
@@ -74,8 +74,8 @@ export function SilentEngramDemo() {
       </div>
 
       <p className="text-xs leading-relaxed text-white/40">
-        망각은 시간만의 함수가 아니에요 — <span className="text-white/60">연결이 많고, 요즘의 나와 닿아
-        있고, 감정이 강한 별</span>일수록 천천히 어두워져요. 같은 시간이 흘러도 고립된 옅은 별이{' '}
+        망각은 시간만의 함수가 아니에요 — <span className="text-white/60">연결이 많고, 자주 떠올리고,
+        감정이 강한 별</span>일수록 천천히 멀어지며 밝게 머물러요. 같은 시간이 흘러도 고립된 옅은 별이{' '}
         <span className="text-white/60">두세 배 빨리</span> 저물죠. 그래도 아무리 오래 둬도 빛은{' '}
         {Math.round(A_MIN * 100)}% 아래로 꺼지지 않고, 회상 한 번이면 다시 깨어나요.
       </p>

@@ -326,7 +326,6 @@ func toStar(m Memory) *cosimosiv1.Star {
 		Version:          int32(m.Version),
 		RecordId:         m.RecordID,             // 28: 일기 단위 그룹 키 (ListDormant은 "" — 그룹 불필요)
 		FragmentIndex:    int32(m.FragmentIndex), // 28: 일기 내 조각 순서
-		Relevance:        m.Relevance,            // 26: 0 outside GetUniverse (ListDormant doesn't score it)
 		Resonant:         m.Resonant,             // 36: GetUniverse만 채움 (ListDormant은 false — 공명 조인 없음)
 		RecallCount:      int64(m.RecallCount),   // 07: 누적 회상 횟수(클라 S/R 파생; 기존 별 1 백필)
 	}

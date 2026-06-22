@@ -4,10 +4,6 @@ export const VALUES = {
     aMin: 0.05,
     halfLifeDays: 30,
     dormantFactor: 2,
-    alphaConn: 0.6,
-    betaRecent: 0.5,
-    gammaEmo: 0.7,
-    deltaVal: 0.4,
   },
   consolidation: {
     redistributeLerp: 0.6,
@@ -73,7 +69,6 @@ export const VALUES = {
     tauStorageGain: 0.8,
   },
   ambient: {
-    tauMoodDays: 7,
     arousalGain: 0.3,
     bgBrightnessGain: 0.35,
     bgMotionGain: 0.6,
@@ -110,7 +105,10 @@ export const VALUES = {
     linkDistance: 14,
     radialStrength: 0.1,
     rMin: 6,
-    rMax: 40,
+    rMax: 80,
+    connDriftAlpha: 0.6,
+    connWeightTerm: 0.5,
+    satGamma: 0.6,
     driftStepRad: 0.08,
   },
   starRender: {
@@ -133,10 +131,6 @@ export const VALUES = {
     backdropLightIntensity: 0.7,
     recallLightBackOffset: 6,
     recallLightUpOffset: 2,
-  },
-  selfGlow: {
-    connectednessGain: 0.6,
-    weightTerm: 0.5,
   },
   resonanceRing: {
     baseScale: 2.6,

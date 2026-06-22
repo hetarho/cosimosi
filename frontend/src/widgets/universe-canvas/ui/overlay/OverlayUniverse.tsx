@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'rea
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { StarField } from '@/entities/star'
-import { SynapseFilaments, type SynapseEdge } from '@/entities/synapse'
+import { SynapseFilaments, type SynapseEdge, degreeNormById, weightedDegreeById } from '@/entities/synapse'
 import { type StarNode } from '@/entities/memory'
 import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
 import { VALUES } from '@/shared/config'
@@ -115,8 +115,12 @@ export function OverlayUniverse({
       neighbors.set(e.aId, (neighbors.get(e.aId) ?? 0) + 1)
       neighbors.set(e.bId, (neighbors.get(e.bId) ?? 0) + 1)
     }
+    // Connectivity per star (degree + Σweight, median-normalized) → radiusOf slows the drift of
+    // well-connected stars, same as the live canvas (spec 38 change 18; single source radiusOf).
+    const degreeNorm = degreeNormById(edges)
+    const weightedDegreeNorm = weightedDegreeById(edges)
     const nodes: SimNode[] = stars.map((s, i) => {
-      const r = radiusOf(s.memory, now)
+      const r = radiusOf(s.memory, now, degreeNorm.get(s.id) ?? 0, weightedDegreeNorm.get(s.id) ?? 0)
       const [x, y, z] = atRadius(
         fibonacciStarPosition(i, stars.length, s.memory.seed),
         r,

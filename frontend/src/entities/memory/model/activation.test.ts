@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { moodRgb, NEUTRAL_RGB } from '@/shared/config'
+import { R_MIN, R_MAX } from '@/shared/lib'
 import {
   A_MIN,
   activation,
+  brightnessFromRadius,
   HALF_LIFE_DAYS,
   isDormant,
-  LAMBDA,
-  lambdaEff,
-  modulatedBrightness,
   starBrightness,
+  starGlow,
   synapseBrightness,
 } from './activation'
 
@@ -81,75 +81,51 @@ describe('isDormant (spec 12)', () => {
   })
 })
 
-describe('modulatedBrightness / lambdaEff (spec 26)', () => {
+describe('brightnessFromRadius (spec 38 change 19 — 밝기=자기-거리)', () => {
+  it('R_MIN → full brightness, R_MAX → exactly the A_MIN floor (A1·A3)', () => {
+    expect(brightnessFromRadius(R_MIN)).toBeCloseTo(1, 10)
+    expect(brightnessFromRadius(R_MAX)).toBeCloseTo(A_MIN, 10)
+  })
+
+  it('is monotone decreasing in radius — a nearer star is brighter (A1)', () => {
+    const near = brightnessFromRadius(R_MIN + (R_MAX - R_MIN) * 0.25)
+    const far = brightnessFromRadius(R_MIN + (R_MAX - R_MIN) * 0.75)
+    expect(near).toBeGreaterThan(far)
+  })
+
+  it('clamps out-of-range radius and never drops below A_MIN (헌법2)', () => {
+    expect(brightnessFromRadius(R_MIN - 100)).toBeCloseTo(1, 10)
+    expect(brightnessFromRadius(R_MAX + 100)).toBeCloseTo(A_MIN, 10)
+    expect(brightnessFromRadius(R_MAX + 100)).toBeGreaterThanOrEqual(A_MIN)
+  })
+})
+
+describe('starGlow (spec 38 change 19 — brightness through the radius, no separate decay)', () => {
   const now = 1_700_000_000_000
-  const d30 = now - 30 * DAY_MS
-  // (degreeNorm, relevance, intensity, valence) → brightness at Δt=30d, all else equal.
-  const at30 = (deg: number, rel: number, int: number, val: number) =>
-    modulatedBrightness(d30, now, deg, rel, int, val)
+  const d60 = now - 60 * DAY_MS
 
-  it('(a) more connections (degree↑) keep a star brighter at the same Δt (1.2)', () => {
-    expect(at30(2, 0, 0.3, 0)).toBeGreaterThan(at30(0, 0, 0.3, 0))
+  it('a just-recalled star is full brightness; a long-dormant one bottoms at A_MIN (A4)', () => {
+    expect(starGlow(1, 0.5, now, now, 0, 0)).toBeCloseTo(1, 5)
+    expect(starGlow(1, 0.5, now - 100_000 * DAY_MS, now, 0, 0)).toBeCloseTo(A_MIN, 5)
   })
 
-  it('(b) stronger emotion (intensity↑) keeps a star brighter (1.3)', () => {
-    expect(at30(0, 0, 0.9, 0)).toBeGreaterThan(at30(0, 0, 0.1, 0))
+  it('connectivity keeps a star brighter at the same Δt — through the radius (A5·A2)', () => {
+    const lonely = starGlow(1, 0.5, d60, now, 0, 0)
+    const hub = starGlow(1, 0.5, d60, now, 3, 3)
+    expect(hub).toBeGreaterThan(lonely)
   })
 
-  it('(c) higher relevance to 요즘 토픽 keeps a star brighter (1.4)', () => {
-    expect(at30(0, 0.9, 0.3, 0)).toBeGreaterThan(at30(0, 0, 0.3, 0))
+  it('recall (smaller Δt) brightens; recall/intensity reach brightness via the radius', () => {
+    const faded = starGlow(1, 0.5, d60, now, 0, 0)
+    const recalled = starGlow(1, 0.5, now - 5 * DAY_MS, now, 0, 0)
+    expect(recalled).toBeGreaterThan(faded)
+    // an often-recalled, intense star stays brighter than a once-recalled flat one at the same Δt
+    expect(starGlow(20, 0.9, d60, now, 0, 0)).toBeGreaterThan(starGlow(1, 0.1, d60, now, 0, 0))
   })
 
-  it('(d) strong NEGATIVE valence resists decay extra (Kensinger & Corkin — DELTA_VAL)', () => {
-    // same arousal; negative affect adds resistance, positive affect adds none.
-    expect(at30(0, 0, 0.5, -0.8)).toBeGreaterThan(at30(0, 0, 0.5, 0.8))
-  })
-
-  it('(e) isolated·flat star decays ~2–3× faster than a connected·emotional one', () => {
-    const connected = lambdaEff(1.2, 0.4, 0.75, -0.2)
-    const isolated = lambdaEff(0, 0, 0.15, 0)
-    const ratio = isolated / connected
-    expect(ratio).toBeGreaterThanOrEqual(2)
-    expect(ratio).toBeLessThanOrEqual(3.5)
-    // …and the gap is visible: the connected star is clearly brighter at 30 and 90 days.
-    expect(at30(1.2, 0.4, 0.75, -0.2)).toBeGreaterThan(at30(0, 0, 0.15, 0))
-    const d90 = now - 90 * DAY_MS
-    expect(modulatedBrightness(d90, now, 1.2, 0.4, 0.75, -0.2)).toBeGreaterThan(
-      modulatedBrightness(d90, now, 0, 0, 0.15, 0),
-    )
-  })
-
-  it('(f) floors at A_MIN for huge Δt — never below, never 0, never deleted (2.2, 헌법2)', () => {
-    // Strongest resistance decays slowest, so it only reaches the floor for an enormous Δt;
-    // both converge to EXACTLY A_MIN (not 0), and neither ever dips below it.
-    const longAgo = now - 1_000_000 * DAY_MS
-    const conn = modulatedBrightness(longAgo, now, 5, 1, 1, -1) // strongest resistance
-    const iso = modulatedBrightness(longAgo, now, 0, 0, 0, 0) // weakest
-    expect(conn).toBeCloseTo(A_MIN, 6)
-    expect(iso).toBeCloseTo(A_MIN, 6)
-    expect(iso).toBeGreaterThan(0)
-    // Floor invariant at a moderate Δt too: a fast-decaying star never drops below A_MIN.
-    expect(modulatedBrightness(now - 300 * DAY_MS, now, 0, 0, 0, 0)).toBeGreaterThanOrEqual(A_MIN)
-  })
-
-  it('(g) clamps stray inputs — λ_eff ≤ λ_base, brightness ≤ 1 (4.2)', () => {
-    // negative degree, relevance>1, intensity>1, valence<-1 must not accelerate decay or
-    // overshoot brightness. Δt=0 → exactly 1.0 (the (1-A_MIN)·exp ceiling), never above.
-    expect(lambdaEff(-5, 2, 1.5, -3)).toBeLessThanOrEqual(LAMBDA + 1e-12)
-    expect(modulatedBrightness(now, now, -5, 2, 1.5, -3)).toBeCloseTo(1, 10)
-    expect(modulatedBrightness(now + DAY_MS, now, 2, 0.5, 0.5, -0.5)).toBeLessThanOrEqual(1)
-  })
-
-  it('(h) every R ∈ (0,1] so modulation only SLOWS decay (λ_eff ≤ λ_base = ln2/30)', () => {
-    for (const [deg, rel, int, val] of [
-      [0, 0, 0, 0],
-      [3, 1, 1, -1],
-      [0.5, 0.5, 0.5, 0.5],
-    ] as const) {
-      expect(lambdaEff(deg, rel, int, val)).toBeLessThanOrEqual(LAMBDA + 1e-12)
-    }
-    // all-neutral inputs leave λ_base untouched (the modulation ceiling).
-    expect(lambdaEff(0, 0, 0, 0)).toBeCloseTo(LAMBDA, 12)
+  it('never exceeds 1 nor drops below A_MIN for any input (헌법2)', () => {
+    expect(starGlow(50, 1, now, now, 50, 50)).toBeLessThanOrEqual(1)
+    expect(starGlow(0, 0, now - 1_000_000 * DAY_MS, now, 0, 0)).toBeGreaterThanOrEqual(A_MIN)
   })
 })
 

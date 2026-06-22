@@ -589,7 +589,6 @@ function renewStar(s: Star, lastRecalledAt: string): Star {
     mood: s.mood,
     intensity: s.intensity,
     valence: s.valence, // 회상 재점화에도 부호 정동 보존(spec 25 배경 온도)
-    relevance: s.relevance, // 관련성(spec 26)도 보존 — 불변 교체가 서버 파생값을 0으로 지우지 않게
     recordId: s.recordId, // 일기 단위 그룹 키(spec 28)도 보존
     fragmentIndex: s.fragmentIndex,
     lastRecalledAt,

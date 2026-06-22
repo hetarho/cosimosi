@@ -34,4 +34,6 @@ export {
   toSynapseEdge,
   neighborsOf,
   edgesWithin,
+  degreeNormById,
+  weightedDegreeById,
 } from './model/store'

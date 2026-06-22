@@ -127,17 +127,7 @@ ORDER BY m.created_at, m.fragment_index;
 
 -- (spec 07) ListRecentForAmbient는 은퇴 — 서버 요즘-감정 종합(AggregateAmbient)을 제거하고
 -- 클라가 로드된 별(+recall_count)의 Bjork 인출 강도 Σ R에서 감정 순위·arousal을 직접 파생한다.
-
--- name: ListStarVectorsByUser :many
--- 관련성 가중 망각(spec 26) 입력: 모든 별의 의미 임베딩 + 최근성·강도 가중치. 서버가
--- "요즘 토픽 중심 벡터"(최근 별 임베딩 시간가중 평균)를 만들고 별마다 cos 정합도를 계산해
--- GetUniverse에 relevance로 싣는다. LEFT JOIN이라 임베딩이 아직 없는 별(embed 잡 대기 중)도
--- NULL 임베딩으로 함께 나온다 → relevance 0(중립). 감쇠/cos 수식은 도메인(RelevanceByStar)에서
--- 하고 SQL엔 넣지 않는다(12·25와 같은 패턴). user_id = isolation.
-SELECT m.id AS memory_id, m.intensity, m.last_recalled_at, e.embedding
-FROM memories m
-LEFT JOIN embeddings e ON e.memory_id = m.id
-WHERE m.user_id = $1;
+-- (spec 38 change 19) ListStarVectorsByUser도 은퇴 — relevance(요즘 토픽 정합도)를 폐기했다(밝기=자기-거리).
 
 -- name: ListDormant :many
 -- Long-unrecalled (dormant) stars for search/explorer surfaces. A search aid,
