@@ -7,6 +7,7 @@ export { buildFluidMaterial, type FluidMaterialOptions, type CosmosPalette } fro
 export { buildHalo } from './halo'
 export { BloomPass } from './BloomPass'
 export { primaryButtonCls, ghostButtonCls } from './button-styles'
+export { DebugTuner } from './DebugTuner' // dev 라이브 셰이더 튜너 패널
 export { Dropdown, type DropdownOption, type DropdownProps } from './Dropdown'
 // 우주 셸 표면 프리미티브 — 영속 캔버스 위 비차단 표면 + 포커스 딤.
 // Surface=탐색/결과/액션 표면(모바일 바텀시트, 데스크톱 떠있는 카드).

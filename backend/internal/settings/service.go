@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"regexp"
+	"strings"
 
 	"github.com/cosimosi/backend/internal/values"
 )
@@ -48,6 +49,58 @@ func isOwned(itemID string, owned map[string]bool) bool {
 	return isFree(itemID) || owned[itemID]
 }
 
+// legacyOwnedSubItems maps a pre-spec-52 paid item id to the form/surface sub-items it now grants,
+// so a past purchase keeps unlocking the same skin after the form×surface split — WITHOUT a DB
+// migration (ownership values are expanded on read). Frozen: these legacy ids never change (the
+// catalog id is the historical purchase record). Background ids were not split, so they aren't here.
+var legacyOwnedSubItems = map[string][]string{
+	"star:aurora":       {"star:form:cloudy", "star:surface:cloud"},
+	"star:liquid":       {"star:form:liquid", "star:surface:glossy"},
+	"star:ember":        {"star:form:octa", "star:surface:lava"},
+	"star:pulsar":       {"star:form:smooth", "star:surface:pulse"},
+	"self:prism-cube":   {"self:form:cube", "self:surface:prism"},
+	"self:neuron-bloom": {"self:form:bloom", "self:surface:neuron"},
+	"synapse:particle":  {"synapse:form:dotted", "synapse:surface:beads"},
+	"synapse:dendrite":  {"synapse:form:branched"}, // surface flow is free
+}
+
+// expandLegacyOwned returns the owned ids plus the form/surface sub-items any legacy paid id now
+// grants (deduped, order-stable). Applied on both inventory reads so a past buyer's selection
+// validates and the FE shows the sub-items as owned (no double-charge on the new pickers).
+func expandLegacyOwned(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+	add := func(id string) {
+		if !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
+	}
+	for _, id := range ids {
+		add(id)
+		for _, sub := range legacyOwnedSubItems[id] {
+			add(sub)
+		}
+	}
+	return out
+}
+
+// selectionSubItems resolves an axis selection to the item ids it must own (spec 52). Background is
+// single ("background:<kind>"); the object axes (star/self/synapse) serialize a composite
+// "<form>+<surface>" into one wire field, so a selection owns TWO sub-items
+// ("<axis>:form:<f>", "<axis>:surface:<s>") — both must be known + owned. A non-composite value on
+// an object axis (legacy/tampered) yields one unknown sub-item so validation rejects it (A2/A4/A9).
+func selectionSubItems(axis, kind string) []string {
+	if axis == "background" {
+		return []string{axis + ":" + kind}
+	}
+	form, surface, ok := strings.Cut(kind, "+")
+	if !ok {
+		return []string{axis + ":form:" + kind}
+	}
+	return []string{axis + ":form:" + form, axis + ":surface:" + surface}
+}
+
 // Service holds the settings policy: validation + partial-update orchestration + the purchase /
 // inventory economy (spec 44). Ownership/balance live in the Repository (server-authoritative).
 type Service struct {
@@ -79,10 +132,16 @@ func (s *Service) Update(ctx context.Context, userID string, p Patch) (Settings,
 		{"synapse", p.SynapseStyle},
 	}
 	// 1) Pure checks first (no DB) so an unknown item / bad color is rejected WITHOUT touching any
-	//    row — a rejected patch must change nothing (A2/A4), including never seeding the wallet.
+	//    row — a rejected patch must change nothing (A2/A4), including never seeding the wallet. Object
+	//    axes decode their composite "<form>+<surface>" into two sub-items; both must be known (spec 52).
 	for _, sel := range sels {
-		if sel.kind != nil && !isKnownItem(sel.axis+":"+*sel.kind) {
-			return Settings{}, ErrUnknownItem
+		if sel.kind == nil {
+			continue
+		}
+		for _, id := range selectionSubItems(sel.axis, *sel.kind) {
+			if !isKnownItem(id) {
+				return Settings{}, ErrUnknownItem
+			}
 		}
 	}
 	for _, c := range p.EmotionColors {
@@ -98,8 +157,14 @@ func (s *Service) Update(ctx context.Context, userID string, p Patch) (Settings,
 			return Settings{}, err
 		}
 		for _, sel := range sels {
-			if sel.kind != nil && !isOwned(sel.axis+":"+*sel.kind, owned) {
-				return Settings{}, ErrNotOwned
+			if sel.kind == nil {
+				continue
+			}
+			// 합성 선택의 소유 = 양쪽 sub-item 소유(또는 무료) — 한쪽이라도 미소유면 거부(A5).
+			for _, id := range selectionSubItems(sel.axis, *sel.kind) {
+				if !isOwned(id, owned) {
+					return Settings{}, ErrNotOwned
+				}
 			}
 		}
 	}
@@ -110,9 +175,15 @@ func (s *Service) Update(ctx context.Context, userID string, p Patch) (Settings,
 }
 
 // GetInventory seeds the wallet on first read (starting balance) and returns balance + owned
-// items (A1). Seeding is idempotent in the repository.
+// items (A1). Owned ids are expanded so a legacy paid purchase reports the form/surface sub-items it
+// now grants (spec 52 — the FE pickers show them as owned, no double-charge). Seeding is idempotent.
 func (s *Service) GetInventory(ctx context.Context, userID string) (Inventory, error) {
-	return s.repo.GetInventory(ctx, userID, values.CustomizationStartingStardust)
+	inv, err := s.repo.GetInventory(ctx, userID, values.CustomizationStartingStardust)
+	if err != nil {
+		return Inventory{}, err
+	}
+	inv.OwnedItemIDs = expandLegacyOwned(inv.OwnedItemIDs)
+	return inv, nil
 }
 
 // PurchaseItem validates the item is a KNOWN PAID item, then delegates the atomic debit+grant to
@@ -136,8 +207,11 @@ func (s *Service) ownedSet(ctx context.Context, userID string) (map[string]bool,
 	if err != nil {
 		return nil, err
 	}
-	owned := make(map[string]bool, len(ids))
-	for _, id := range ids {
+	// Expand legacy paid ids → their form/surface sub-items so a past purchase still satisfies the
+	// composite ownership check (spec 52). Mirrors GetInventory so FE and validation agree.
+	expanded := expandLegacyOwned(ids)
+	owned := make(map[string]bool, len(expanded))
+	for _, id := range expanded {
 		owned[id] = true
 	}
 	return owned, nil

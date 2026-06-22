@@ -43,7 +43,7 @@ import { WOBBLE_AMP, WOBBLE_FREQ, WOBBLE_PHASE } from '@/entities/star/@x/synaps
 import { hashId } from '../lib/hash'
 import { visualIntensity, pulseAmp, strandStyle } from '../model/mapping'
 import type { SynapseEdge } from '../model/types'
-import { DEFAULT_SYNAPSE_STYLE, type SynapseStyle } from '../model/styles'
+import { DEFAULT_SYNAPSE_SELECTION, decodeSynapseSelection, type SynapseForm } from '../model/forms'
 
 const RADIAL = 6 // tube cross-section segments (round enough under bloom, cheap)
 const MAX_EDGES = 300 // hard cap; beyond this keep the strongest edges
@@ -98,14 +98,13 @@ function buildFilamentGeometry(
   positionOf: (id: string) => [number, number, number] | null,
   colorOf: (id: string) => readonly [number, number, number],
   seedOf: (id: string) => number,
-  styleKind: SynapseStyle,
+  form: SynapseForm,
 ): FilamentBuild | null {
-  // 스타일별 *형태* 분기(spec 44 시냅스 축) — 셰이더(표현)뿐 아니라 지오메트리 자체가 다르다:
-  //   filament = 여러 가닥이 꼬인 다발(현재·무료) · particle = 가는 한 줄(셰이더가 점선으로) · dendrite =
-  //   작은 가지가 갈라지는 신경 돌기형(다발 + 더 촘촘한 가닥). 색=양끝 mood 블렌드·weight 시각·삭제금지
-  //   floor·Line2/TSL 제약은 모두 유지한다.
-  const isParticle = styleKind === 'particle'
-  const isDendrite = styleKind === 'dendrite'
+  // form별 *선 구조* 분기(spec 52 시냅스 form 축) — 지오메트리 자체가 다르다(표면 셰이더와 독립):
+  //   strands = 여러 가닥이 꼬인 다발(무료) · dotted = 가는 한 줄 · branched = 작은 가지가 갈라지는 돌기
+  //   다발(다발 + 더 촘촘한 가닥). 색=양끝 mood 블렌드·weight 시각·삭제금지 floor·Line2/TSL 제약은 유지한다.
+  const isDotted = form === 'dotted'
+  const isBranched = form === 'branched'
   // Keep the strongest edges when over the cap (sort copy — never mutate the store array).
   const list =
     edges.length > MAX_EDGES
@@ -145,22 +144,24 @@ function buildFilamentGeometry(
     // 밝기·불투명도가 강도 구간으로 정해지고, 방금 강화된 엣지(pulse=reinforcedRecency)는
     // 가닥 +3·굵기 ×1.5로 한 단계 위처럼 읽혀 회상 강화(+0.05)가 즉시 보인다.
     const tier = strandStyle(e)
-    // 가닥 수: particle=1(단일 줄), dendrite=티어 다발 + 가지 2가닥, filament=강도 티어 다발(+pulse).
-    const strandCount = isParticle
+    // 가닥 수: dotted=1(단일 줄), branched=티어 다발 + 가지 2가닥, strands=강도 티어 다발(+pulse).
+    const strandCount = isDotted
       ? 1
-      : Math.min(14, tier.strands + Math.round(pulse * 3) + (isDendrite ? 2 : 0))
+      : Math.min(14, tier.strands + Math.round(pulse * 3) + (isBranched ? 2 : 0))
     // Per-edge NATURAL variation (deterministic): brightness/opacity/thickness each get an
     // independent jitter so no two filaments read identically.
     const brightVal = Math.min(1, Math.max(0.1, tier.bright + (jBright * 2 - 1) * 0.12))
     const opacityVal = Math.min(1, Math.max(0.3, tier.opacity + (jOpacity * 2 - 1) * 0.15))
     const widthJitter = 0.7 + jWidth * 0.65 // 0.7..1.35
-    // 곡률: particle=가는 완만한 보우, dendrite=완만(가지 다발), filament=완만한 보우.
-    const bowMag = isParticle ? len * 0.04 : len * (0.05 + 0.08 * h)
-    // 헬릭스(꼬임): particle은 한 줄(꼬임 없음), filament/dendrite는 다발로 꼰다.
-    const helixR = isParticle ? 0 : 0.35 + h * 0.3 + inten * 0.25 + pulse * 0.15
-    // 굵기: particle=가는 실(셰이더가 점선으로), dendrite=약간 가는 가지, filament=기본.
+    // 곡률: dotted=가는 완만한 보우, branched=크게 휜 부채꼴(strands와 또렷이 구별), strands=완만한 보우.
+    const bowMag = isDotted ? len * 0.04 : isBranched ? len * (0.16 + 0.12 * h) : len * (0.05 + 0.08 * h)
+    // 다발 폭: dotted=한 줄, branched=넓게 벌어진 부채(꼬임 없이 펼쳐짐), strands=좁은 나선 다발.
+    const helixR = isDotted ? 0 : isBranched ? 0.75 + h * 0.45 + inten * 0.35 : 0.35 + h * 0.3 + inten * 0.25 + pulse * 0.15
+    // 꼬임(스크류): strands만 나선으로 꼰다. branched는 꼬지 않고 평행하게 펼쳐 "갈라지는 가지"로, dotted는 한 줄이라 무의미.
+    const twistTurns = isBranched ? 0 : TWIST_TURNS
+    // 굵기: dotted=가는 실(표면이 점선/비드로), branched=약간 가는 가지, strands=기본.
     const baseR =
-      tier.radius * widthJitter * (1 + pulse * 0.5) * (isParticle ? 1.1 : isDendrite ? 0.85 : 1)
+      tier.radius * widthJitter * (1 + pulse * 0.5) * (isDotted ? 1.1 : isBranched ? 0.85 : 1)
     const tubular = Math.min(56, Math.max(20, Math.round(len)))
 
     // Bowed centre curve: arc the bundle off the straight chord (a dust lane, not a wire).
@@ -194,7 +195,7 @@ function buildFilamentGeometry(
       // widest mid-span → a spindle braid that emerges from A and converges into B.
       const pts: THREE.Vector3[] = centrePts.map((p, k) => {
         const t = k / tubular
-        const ang = phase + TWIST_TURNS * Math.PI * 2 * t
+        const ang = phase + twistTurns * Math.PI * 2 * t
         const env = Math.sin(Math.PI * t) * helixR
         off
           .copy(s1)
@@ -288,17 +289,19 @@ export interface SynapseFilamentsProps {
   idIndex?: Map<string, number>
   /** Global dim multiplier (0..1): 1 normally, <1 to fade the whole web while a star is focused. */
   dim?: number
-  /** 시냅스 스타일(spec 44). 색=양끝 mood 블렌드·weight 시각·삭제금지 불변식은 유지하고, 선의 *표현*
-   *  (가닥/빔/흐름/입자)만 바꾼다. unknown/locked는 호출자가 default(filament)로 폴백해 넘긴다. */
-  style?: SynapseStyle
+  /** 시냅스 스킨 선택(spec 52) — 합성 wire id "<form>+<surface>"(레거시 단일 id도 허용). 색=양끝 mood
+   *  블렌드·weight 시각·삭제금지 불변식은 유지하고, form(선 구조)·surface(움직임/질감)만 바꾼다. */
+  style?: string
 }
 
-export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positionsRef, idIndex, dim = 1, style = DEFAULT_SYNAPSE_STYLE }: SynapseFilamentsProps) {
+export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positionsRef, idIndex, dim = 1, style = DEFAULT_SYNAPSE_SELECTION }: SynapseFilamentsProps) {
   // Geometry is baked from the published layout snapshot; rebuilt only when the edge set or
   // lookups change. Per frame the endpoints are TRANSLATED to follow the live force-sim
   // buffer (live-follow below) so synapses track moving stars without a geometry rebuild.
   const built = useMemo(() => {
-    const fb = buildFilamentGeometry(edges, positionOf, colorOf, seedOf, style)
+    // 합성 wire id → form(선 구조)×surface(움직임/질감)으로 디코드(spec 52). form=지오메트리, surface=셰이더.
+    const { form, surface } = decodeSynapseSelection(style)
+    const fb = buildFilamentGeometry(edges, positionOf, colorOf, seedOf, form)
     if (!fb) return null
     const geometry = fb.geometry
 
@@ -341,10 +344,10 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
 
     // FLOW: a packet of light slides A→B (energy moving between two memories). The
     // per-strand seed offsets the phase so the braid's strands don't pulse in lockstep.
-    // Style varies BOTH the geometry (built above: braid/rod/sweep/thread) and this LINE
-    // EXPRESSION (flow speed/packet/dot shape) — color always stays the endpoint mood blend, and
-    // every style keeps a non-zero floor so dormant edges stay visible (삭제금지 헌법2).
-    const flowSpeed = VALUES.synapse.flowSpeed * (style === 'particle' ? 1.3 : 1)
+    // form은 지오메트리(다발/줄/가지), surface는 이 LINE EXPRESSION(흐름 패킷/비드/잔잔)을 가른다 — 색은
+    // 항상 양끝 mood 블렌드, 모든 표면은 0이 아닌 바닥을 둬 잠든 간선도 보이게 한다(삭제금지 헌법2).
+    const isBeads = surface === 'beads'
+    const flowSpeed = VALUES.synapse.flowSpeed * (isBeads ? 1.3 : 1)
     const flow = fract(along.mul(2.0).sub(uTime.mul(flowSpeed)).add(seed.mul(6.2831)))
     const flowGlow = smoothstep(float(0.0), float(0.5), flow).mul(
       smoothstep(float(1.0), float(0.5), flow),
@@ -379,18 +382,21 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
     // style keeps a non-zero floor so weak/dormant edges stay VISIBLE (deletion-floor, 헌법2).
     const widthFade = coreBand.mul(0.55).add(0.45)
     let glow
-    if (style === 'particle') {
-      // 입자: 점점이 흐르는 빛 알갱이 — 이산 비드 + 연속 dim 바닥(약한 간선도 보이게 — 삭제금지).
+    if (isBeads) {
+      // beads: 점점이 흐르는 빛 알갱이 — 더 밝게(비드 또렷·바닥도 올림). 약한 간선도 보이게(삭제금지).
       const cell = fract(along.mul(6.0).sub(uTime.mul(flowSpeed)).add(seed.mul(6.2831)))
       const bead = smoothstep(float(0.16), float(0.0), cell) // bright dot at each 1/6 cell start
-      const glowVar = float(0.5).add(nGlow.mul(0.6))
-      const beadTerm = float(0.4).add(bead.mul(1.1)) // floor 0.4 → 비드는 또렷, 색은 안 꺼짐
+      const glowVar = float(0.6).add(nGlow.mul(0.7))
+      const beadTerm = float(0.55).add(bead.mul(1.7)) // floor 0.55 + 더 밝은 비드
       glow = bright.mul(breath).mul(beadTerm).mul(glowVar).mul(uDim)
+    } else if (surface === 'steady') {
+      // steady: 흐름 없이 잔잔히 — 흐르는 packet 없이 어둡게 깔린다(flow와 또렷이 구별). 바닥은 유지.
+      const glowVar = float(0.4).add(nGlow.mul(0.5))
+      glow = bright.mul(breath).mul(float(0.5)).mul(glowVar).mul(uDim)
     } else {
-      // filament(기본·무료) + dendrite(가지 다발): 가닥 다발 + 흐르는 packet + along 텍스처.
-      // dendrite는 지오메트리에서 가닥을 더 얹어 돌기 다발로 구별된다.
-      const flowTerm = float(0.6).add(flowGlow.mul(0.55))
-      const glowVar = float(0.55).add(nGlow.mul(0.85)) // ~0.55..1.4 down the strand
+      // flow(기본·무료): A→B로 흐르는 packet을 훨씬 밝고 반짝이게(steady와 대비). 가닥 다발 + along 텍스처.
+      const flowTerm = float(0.7).add(flowGlow.mul(1.1)) // 흐르는 빛 패킷이 확 반짝
+      const glowVar = float(0.7).add(nGlow.mul(1.0)) // ~0.7..1.7 down the strand
       glow = bright.mul(breath).mul(flowTerm).mul(glowVar).mul(uDim)
     }
     material.colorNode = color.mul(glow)
@@ -398,9 +404,9 @@ export function SynapseFilaments({ edges, positionOf, colorOf, seedOf, positions
     // opacityNode = cross-section shape × end-taper × per-edge opacity × the along-length
     // opacity texture (nOpac) — so transparency drifts as the line progresses, not fixed.
     const opacVar = float(0.5).add(nOpac.mul(0.75)) // ~0.5..1.25 down the strand
-    // particle만 진짜 점선: 비드 사이를 불투명도로 끊는다(바닥 0.16 — 잠든 간선도 옅은 점으로 남아 삭제금지 충족).
+    // beads만 진짜 점선: 비드 사이를 불투명도로 끊는다(바닥 0.16 — 잠든 간선도 옅은 점으로 남아 삭제금지 충족).
     const opacShape =
-      style === 'particle'
+      isBeads
         ? smoothstep(
             float(0.3),
             float(0.0),

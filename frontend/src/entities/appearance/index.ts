@@ -8,6 +8,7 @@ export type {
   BackgroundEffect,
   SelfObject,
   SelfObjectMeta,
+  SelfSkinMeta,
 } from './model/types'
 // Theme is a legacy type alias kept while store state still names the background field `theme`.
 export type { Theme } from './model/types'
@@ -20,8 +21,25 @@ export {
   themeAccent,
 } from './model/backgrounds'
 export { SELF_OBJECTS, isSelfObject, parseSelfObject } from './model/self-objects'
-// 자아 별 형태 TSL 빌더(spec 38·44) — 우주 캔버스·플레이그라운드 미리보기 공용(buildStarBody 동형).
-export { buildSelfForm, type SelfFormBuild } from './ui/self-form'
+// 자아 형태×표면 2축 스킨(spec 52) — 카탈로그·디컴포지션·합성 인코딩.
+export {
+  type SelfForm,
+  type SelfSurface,
+  type SelfSelection,
+  SELF_FORMS,
+  SELF_SURFACES,
+  SELF_PRESETS,
+  DEFAULT_SELF_FORM,
+  DEFAULT_SELF_SURFACE,
+  DEFAULT_SELF_SELECTION,
+  parseSelfForm,
+  parseSelfSurface,
+  encodeSelfSelection,
+  decodeSelfSelection,
+  normalizeSelfSelection,
+} from './model/self-forms'
+// 자아 별 형태×표면 TSL 빌더(spec 38·44·52) — 우주 캔버스·플레이그라운드 미리보기 공용(buildStarBody 동형).
+export { buildSelfForm, type SelfFormBuild, SELF_FORM_BUILDERS, SELF_SURFACE_BUILDERS } from './ui/self-form'
 // 배경 스킨 조립 registry(spec 51) — shared 툴킷 조합으로 효과별 색 노드 생성. UniverseNebula 셸이 N-제네릭 소비.
 export { BACKGROUND_FORMS, type BackgroundForm, type BackgroundFieldContext } from './ui/background-form'
 export { useAppearance, type ServerInventory } from './model/store'

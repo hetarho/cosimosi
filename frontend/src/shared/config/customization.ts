@@ -14,9 +14,19 @@ const FREE_ITEM_IDS: ReadonlySet<string> = new Set(
   Object.entries(VALUES.customization.free).map(([axis, kind]) => `${axis}:${kind}`),
 )
 
-/** 안정 아이템 id 조립 — `"<axis>:<kind>"`(A14). */
+/** 안정 아이템 id 조립 — `"<axis>:<kind>"`(A14). 형태×표면 sub-item은 kind에 슬롯을 넣어
+ *  `itemId('star', 'form:lowpoly')` = `"star:form:lowpoly"`로 만든다. */
 export function itemId(axis: Axis, kind: string): string {
   return `${axis}:${kind}`
+}
+
+/** 한 축 선택이 소유를 요구하는 sub-item id 목록(spec 52). 배경은 단일 id, 형태 있는 3축(별·나·시냅스)은
+ *  합성 선택 "<form>+<surface>"를 두 sub-item(`"<axis>:form:<f>"`·`"<axis>:surface:<s>"`)으로 분해한다 —
+ *  합성 선택의 소유 = 양쪽 sub-item 소유(또는 무료). 순수 문자열 연산(entity 미import). */
+export function subItemIds(axis: Axis, selection: string): string[] {
+  if (axis === 'background') return [itemId(axis, selection)]
+  const [form, surface] = selection.split('+')
+  return [`${axis}:form:${form}`, `${axis}:surface:${surface}`]
 }
 
 /** 무료(묵시 소유) 아이템인가. */

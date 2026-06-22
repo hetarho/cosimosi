@@ -10,7 +10,6 @@ import * as THREE from 'three'
 import { StarField } from '@/entities/star'
 import { SynapseFilaments, type SynapseEdge } from '@/entities/synapse'
 import { type StarNode } from '@/entities/memory'
-import type { StarObject } from '@/entities/star'
 import { resolveMoodRgb, NEUTRAL_RGB } from '@/shared/config'
 import { VALUES } from '@/shared/config'
 import { fibonacciStarPosition, scatterDirection } from '@/shared/lib'
@@ -50,7 +49,8 @@ export interface OverlayUniverseProps {
   edges: SynapseEdge[]
   /** world-space offset for this universe's <group> (the two skies sit apart). */
   offset: [number, number, number]
-  object?: StarObject
+  /** 별 스킨 합성 선택(spec 52) — StarField가 디코드. 레거시 단일 id도 허용. */
+  object?: string
   emotionColors?: Record<string, string>
   /** faint enclosing atmosphere color (hex) — gives the friend's sky a "남의 하늘" wash without
    *  recoloring its stars (spec 37 친구 틴트: keep the owner's spec-30 colors, add a common tint). */

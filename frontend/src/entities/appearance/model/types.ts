@@ -87,3 +87,11 @@ export interface SelfObjectMeta {
   /** 스위처 칩 미리보기 그라디언트(CSS background 값). */
   swatch: string
 }
+
+/** 자아 스킨 축(form/surface) 한 항목의 메타(spec 52) — 스위처 피커가 소비. */
+export interface SelfSkinMeta<T> {
+  id: T
+  name: string
+  tagline: string
+  swatch: string
+}

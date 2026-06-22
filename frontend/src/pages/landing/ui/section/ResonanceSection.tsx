@@ -4,7 +4,7 @@ import { GlassCard } from '@/shared/ui'
 import { mulberry32 } from '@/shared/lib'
 import { MOOD } from '@/shared/config'
 import { useAppearance } from '@/entities/appearance'
-import { VizStar, type StarObject } from '@/entities/star'
+import { VizStar } from '@/entities/star'
 import { VizSynapse } from '@/entities/synapse'
 import { TheoryBadge } from './TheoryBadge'
 
@@ -22,7 +22,8 @@ function MiniUniverse({
   seed: number
   mood: string
   bright: boolean
-  concept: StarObject
+  /** 별 스킨 합성 선택(레거시 단일 id도 허용) — VizStar/VizSynapse가 디코드. */
+  concept: string
 }) {
   const rand = mulberry32(seed)
   const dust = Array.from({ length: 7 }, () => ({

@@ -18,9 +18,9 @@ import { createRendererFactory, uniformColorNode } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
 import { cn } from '@/shared/lib'
 import { BloomPass, GrainOverlay, buildFluidMaterial, buildHalo, type CosmosPalette } from '@/shared/ui'
-import { buildStarBody, STAR_FORM_SPIN, type StarObject } from '@/entities/star'
-import { buildSelfForm, type SelfObject } from '@/entities/appearance'
-import { DEFAULT_SYNAPSE_STYLE, type SynapseStyle } from '@/entities/synapse'
+import { buildStarBody, STAR_FORM_SPIN, decodeStarSelection } from '@/entities/star'
+import { buildSelfForm, decodeSelfSelection } from '@/entities/appearance'
+import { DEFAULT_SYNAPSE_SELECTION, decodeSynapseSelection } from '@/entities/synapse'
 
 // 투명 캔버스(뒤 페이지/베이스색 비침) — StarCanvas/FluidGradient와 동일한 alpha 강제.
 const glFactory = createRendererFactory({ alpha: true })
@@ -37,8 +37,8 @@ function autoQuality(): CosmosQuality {
 
 /** 장식용 별 하나 — 우주의 StarNode와 별개의 단순 prop 모델(위치는 정규화 스크린 앵커). */
 export interface StarVisual {
-  /** 형태(deepfield/aurora/liquid/ember). */
-  concept: StarObject
+  /** 스킨 선택 — 합성 wire id "<form>+<surface>"(레거시 단일 id도 허용). 내부에서 디코드(spec 52). */
+  concept: string
   /** mood/accent hex(의미색). 별 + halo 색. */
   color: string
   /** 정규화 스크린 앵커 [x, y] ∈ [0,1]. (0,0)=좌상, (0.5,0.5)=정중앙. */
@@ -51,7 +51,8 @@ export interface StarVisual {
 /** 자아("나") 앵커 미리보기(plain data) — 플레이그라운드 미니 코스모스(spec 44 A12). 형태=concept,
  *  색=소비처 제공(미인증은 배경 accent placeholder). 위치는 정규화 스크린 앵커. */
 export interface SelfVisual {
-  concept: SelfObject
+  /** 자아 스킨 선택 — 합성 wire id(레거시 단일 id도 허용). 내부 디코드(spec 52). */
+  concept: string
   color: string
   anchor: [number, number]
   size: number
@@ -65,7 +66,8 @@ export interface SynapseVisual {
   colorA: string
   colorB: string
   weight: number
-  style?: SynapseStyle
+  /** 시냅스 스킨 선택 — 합성 wire id(레거시 단일 id도 허용). 내부 디코드(spec 52). */
+  style?: string
 }
 
 /** 배경 텍스처/요소 슬롯(plain data — 위젯 decoupled, entity 미import). 소비처(페이지 어댑터)가 배경
@@ -307,11 +309,15 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
   const body = useMemo(() => {
     const moodU = uniform(new THREE.Color(star.color))
     const timeU = uniform(0)
+    // 카메라 월드 위치 uniform(빌트인 cameraPosition 노드는 BloomPass가 동결 — StarField와 동일 회피). 매 프레임 update()가 갱신.
+    const camPosU = uniform(new THREE.Vector3())
     // 배경 씬엔 자아-별·그래프가 없다(spec 03 3겹 미적용) — 브랜드 별은 자가발광 full(오늘 룩)에
     // 우상단 평행광(positional=0, 화면-비대칭 없음 = 태양) 반사를 더해 crystal 면/엣지를 드러낸다.
     const dir = VALUES.starLighting.backdropLightDir
+    const { form, surface } = decodeStarSelection(star.concept)
     const built = buildStarBody(
-      star.concept,
+      form,
+      surface,
       {
         mood: moodU,
         glow: float(1), // 그래프 없음 → 연결성 대신 자가발광 full
@@ -319,6 +325,7 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
         seed: float(star.seed ?? 7),
         hueShift: float(0),
         time: timeU,
+        cameraPos: camPosU,
         selfLightPos: vec3(dir[0], dir[1], dir[2]), // 우상단 방향(평행광)
         lightPositional: float(0), // 0 = directional
         litMix: float(1),
@@ -334,9 +341,10 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
     return {
       geometry: built.geometry,
       material: built.material,
-      spin: STAR_FORM_SPIN[star.concept],
-      update: (t: number) => {
+      spin: STAR_FORM_SPIN[form],
+      update: (t: number, camera: THREE.Camera) => {
         timeU.value = t
+        camera.getWorldPosition(camPosU.value)
       },
     }
   }, [star.concept, star.color, star.seed])
@@ -350,7 +358,7 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
 
   useFrame((s) => {
     const t = animated ? s.clock.elapsedTime : 0
-    body.update(t)
+    body.update(t, s.camera)
     halo.update(1)
     const g = spinRef.current
     if (g && animated) g.rotation.y = t * body.spin
@@ -372,7 +380,10 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
 // ── 자아 "나" 앵커: entity 소유 self-form 빌더(buildSelfForm, StarMesh 미러)를 앵커 위치에 얹는다.
 //    색은 소비처 제공(미인증 플레이그라운드는 배경 accent placeholder). ─────────────────────────────
 function SelfMesh({ self, aspect, animated }: { self: SelfVisual; aspect: number; animated: boolean }) {
-  const built = useMemo(() => buildSelfForm(self.concept), [self.concept])
+  const built = useMemo(() => {
+    const { form, surface } = decodeSelfSelection(self.concept)
+    return buildSelfForm(form, surface)
+  }, [self.concept])
   useEffect(() => {
     built.setColor(new THREE.Color(self.color))
   }, [built, self.color])
@@ -384,7 +395,7 @@ function SelfMesh({ self, aspect, animated }: { self: SelfVisual; aspect: number
     [built],
   )
   useFrame((s) => {
-    built.update(animated ? s.clock.elapsedTime : 0)
+    built.update(animated ? s.clock.elapsedTime : 0, s.camera)
   })
   const wx = (self.anchor[0] * 2 - 1) * aspect
   const wy = 1 - self.anchor[1] * 2
@@ -394,19 +405,22 @@ function SelfMesh({ self, aspect, animated }: { self: SelfVisual; aspect: number
 // ── 시냅스 표본 가닥: 두 앵커를 잇는 살짝 휜 튜브 한 줄. 색=양끝 mood 블렌드(uv.x 그라디언트), 스타일은
 //    선의 표현(흐름/빔/입자)만 바꾼다(SynapseFilaments 불변식과 동형 — 색은 mood 보존). ────────────────
 function SampleStrand({ syn, aspect, animated }: { syn: SynapseVisual; aspect: number; animated: boolean }) {
-  const style = syn.style ?? DEFAULT_SYNAPSE_STYLE
   const built = useMemo(() => {
+    // 합성 wire id → form(선 구조)×surface(움직임/질감) 디코드(spec 52, 우주 SynapseFilaments와 동형).
+    const { form, surface } = decodeSynapseSelection(syn.style ?? DEFAULT_SYNAPSE_SELECTION)
+    const isDotted = form === 'dotted'
+    const isBranched = form === 'branched'
+    const isBeads = surface === 'beads'
     const A = new THREE.Vector3((syn.a[0] * 2 - 1) * aspect, 1 - syn.a[1] * 2, 0)
     const B = new THREE.Vector3((syn.b[0] * 2 - 1) * aspect, 1 - syn.b[1] * 2, 0)
     const dir = B.clone().sub(A)
     const len = dir.length() || 1
-    // 스타일별 형태(우주 SynapseFilaments와 동형, change 11): particle=가는 점선, dendrite=가는 가지 다발, filament=완만.
-    const bowMag = style === 'particle' ? len * 0.08 : len * 0.12
+    // form별 형태: dotted=가는 점선, branched=가는 가지 다발, strands=완만한 다발.
+    const bowMag = isDotted ? len * 0.08 : len * 0.12
     const bow = new THREE.Vector3(-dir.y, dir.x, 0).normalize().multiplyScalar(bowMag)
     const mid = A.clone().lerp(B, 0.5).add(bow)
     const curve = new THREE.CatmullRomCurve3([A, mid, B])
-    const radius =
-      (0.004 + syn.weight * 0.01) * (style === 'particle' ? 0.9 : style === 'dendrite' ? 0.85 : 1)
+    const radius = (0.004 + syn.weight * 0.01) * (isDotted ? 0.9 : isBranched ? 0.85 : 1)
     const geometry = new THREE.TubeGeometry(curve, 40, radius, 6, false)
 
     const material = new MeshBasicNodeMaterial()
@@ -415,26 +429,29 @@ function SampleStrand({ syn, aspect, animated }: { syn: SynapseVisual; aspect: n
     const uTime = uniform(0)
     const along = uv().x
     const around = uv().y
-    const color = cA.add(cB.sub(cA).mul(along)) // endpoint mood blend (preserved across styles)
-    const speed = VALUES.synapse.flowSpeed * (style === 'particle' ? 1.3 : 1)
+    const color = cA.add(cB.sub(cA).mul(along)) // endpoint mood blend (preserved across skins)
+    const speed = VALUES.synapse.flowSpeed * (isBeads ? 1.3 : 1)
     const flow = fract(along.mul(2.0).sub(uTime.mul(speed)))
     const flowGlow = smoothstep(float(0.0), float(0.5), flow).mul(smoothstep(float(1.0), float(0.5), flow))
     let glow
-    if (style === 'particle') {
+    if (isBeads) {
+      // beads: 더 밝은 비드(우주 SynapseFilaments와 동형).
       const cell = fract(along.mul(6.0).sub(uTime.mul(speed)))
-      glow = float(0.4).add(smoothstep(float(0.16), float(0.0), cell).mul(1.1))
+      glow = float(0.55).add(smoothstep(float(0.16), float(0.0), cell).mul(1.7))
+    } else if (surface === 'steady') {
+      // steady: 흐름 없이 어둡게 깔린다(flow와 대비).
+      glow = float(0.5)
     } else {
-      // filament(기본) + dendrite(가지 다발, change 11) — 완만한 다발 발광.
-      glow = float(0.6).add(flowGlow.mul(0.6))
+      // flow(기본): 훨씬 밝게 반짝이는 흐르는 packet.
+      glow = float(0.7).add(flowGlow.mul(1.1))
     }
     material.colorNode = color.mul(glow)
     const coreBand = smoothstep(float(1.0), float(0.0), around.sub(0.5).abs().mul(2.0))
     const ends = smoothstep(float(0.0), float(0.1), along).mul(smoothstep(float(1.0), float(0.9), along))
-    // particle만 점선: 비드 사이를 불투명도로 끊는다(바닥 0.16).
-    const opacShape =
-      style === 'particle'
-        ? smoothstep(float(0.3), float(0.0), fract(along.mul(6.0).sub(uTime.mul(speed)))).mul(0.84).add(0.16)
-        : float(1)
+    // beads만 점선: 비드 사이를 불투명도로 끊는다(바닥 0.16).
+    const opacShape = isBeads
+      ? smoothstep(float(0.3), float(0.0), fract(along.mul(6.0).sub(uTime.mul(speed)))).mul(0.84).add(0.16)
+      : float(1)
     material.opacityNode = clamp(coreBand.mul(0.6).add(0.4).mul(ends).mul(0.7).mul(opacShape), float(0.0), float(1.0))
     material.transparent = true
     material.depthWrite = false
@@ -445,7 +462,7 @@ function SampleStrand({ syn, aspect, animated }: { syn: SynapseVisual; aspect: n
       uTime.value = t
     }
     return { geometry, material, update }
-  }, [syn.a, syn.b, syn.colorA, syn.colorB, syn.weight, style, aspect])
+  }, [syn.a, syn.b, syn.colorA, syn.colorB, syn.weight, syn.style, aspect])
   useEffect(
     () => () => {
       built.geometry.dispose()

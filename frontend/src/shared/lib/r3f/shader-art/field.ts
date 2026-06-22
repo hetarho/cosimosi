@@ -1,6 +1,6 @@
 // 공간 변환 — 같은 노이즈도 좌표를 바꾸면 전혀 다른 무늬가 된다. 나선·소용돌이·대칭·와류의 베이스.
 // 전부 순수: 좌표 노드를 받아 변환된 좌표/스칼라 노드를 돌려준다(plan 50 A2).
-import { vec2, vec3, float, atan, asin, cos, sin, mod, log, length, clamp, abs, max } from 'three/tsl'
+import { vec2, vec3, float, atan, asin, cos, sin, mod, log, length, clamp, abs, max, cross, dot } from 'three/tsl'
 import { asFloatNode, asVec2Node, asVec3Node } from '../tsl'
 import { fbm } from './noise'
 
@@ -50,6 +50,19 @@ export function logSpiral(angle: unknown, radius: unknown, { arms = 5, twist = 1
 export function kaleido(angle: unknown, segments = 6) {
   const seg = float((Math.PI * 2) / segments)
   return abs(mod(asFloatNode(angle), seg).sub(seg.mul(0.5)))
+}
+
+/** Rodrigues 축 회전 — 단위축 k를 중심으로 vec3 노드 v를 angle(rad)만큼 돈다. 저폴리 결정의 면 음영·반사가
+ *  자전을 따라오게 위치·법선을 같은 식으로 함께 돌릴 때 쓴다(오브젝트 패밀리 — 폼의 in-shader 변형). */
+export function rotateAroundAxis(vIn: unknown, kIn: unknown, angleIn: unknown) {
+  const v = asVec3Node(vIn)
+  const k = asVec3Node(kIn)
+  const angle = asFloatNode(angleIn)
+  const c = cos(angle)
+  const s = sin(angle)
+  const cr = asVec3Node(cross(k, v))
+  const kv = asFloatNode(dot(k, v))
+  return v.mul(c).add(cr.mul(s)).add(k.mul(kv.mul(float(1).sub(c))))
 }
 
 /** 2D 회전 — 시간 등으로 무늬를 돌린다. */

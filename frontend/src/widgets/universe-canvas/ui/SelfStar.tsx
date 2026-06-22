@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useAppearance, themeAccent, buildSelfForm, type SelfObject } from '@/entities/appearance'
+import { useAppearance, themeAccent, buildSelfForm, decodeSelfSelection } from '@/entities/appearance'
 import {
   deriveAmbient,
   ambientToRgb,
@@ -55,7 +55,8 @@ export function SelfStar({
   selfObject,
   anchorRef,
 }: {
-  selfObject: SelfObject
+  /** 자아 스킨 선택 — 합성 wire id "<form>+<surface>"(레거시 단일 id도 허용). 내부에서 디코드(spec 52). */
+  selfObject: string
   // recall에서 NavController가 매 프레임 채우는 어깨-너머 앵커(광원 위치와 공유). null이면 nebula/전이 →
   // 원점 폴백(중심 닻 유지, 헌법3). 광원과 같은 ref라 "광원이 곧 나"(spec 49 A1·A3).
   anchorRef: MutableRefObject<readonly [number, number, number] | null>
@@ -75,7 +76,10 @@ export function SelfStar({
     }
     return c
   }, [stars, theme])
-  const built = useMemo(() => buildSelfForm(selfObject), [selfObject])
+  const built = useMemo(() => {
+    const { form, surface } = decodeSelfSelection(selfObject)
+    return buildSelfForm(form, surface)
+  }, [selfObject])
   // Push the (possibly ambient) color into the material uniform whenever it changes — no rebuild.
   useEffect(() => {
     built.setColor(color)
@@ -89,7 +93,7 @@ export function SelfStar({
     [built],
   )
 
-  const updateRef = useRef<((t: number) => void) | null>(null)
+  const updateRef = useRef<((t: number, camera: THREE.Camera) => void) | null>(null)
   useEffect(() => {
     updateRef.current = built.update
     return () => {
@@ -107,7 +111,7 @@ export function SelfStar({
   const targetPos = useRef(new THREE.Vector3())
   useFrame((state, dt) => {
     // Freeze the internal flow under reduced-motion (still rendered, just static).
-    updateRef.current?.(reduceMotion ? 0 : state.clock.elapsedTime)
+    updateRef.current?.(reduceMotion ? 0 : state.clock.elapsedTime, state.camera)
     // spec 49: recall이면 어깨-너머 앵커로 항해(원점을 떠나 카메라와 함께), 아니면 원점 폴백(중심 닻).
     const mesh = meshRef.current
     if (!mesh) return

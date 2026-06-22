@@ -15,8 +15,7 @@ import { selfGlow, activation, reshapedBrightness, reshapedSeed, starsOfRecord, 
 import { degreeNormById, weightedDegreeById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
-import { DEFAULT_OBJECT } from '../model/kinds'
-import type { StarObject } from '../model/types'
+import { DEFAULT_STAR_SELECTION, decodeStarSelection } from '../model/forms'
 import { resolveMoodRgb } from '@/shared/config'
 import { VALUES } from '@/shared/config'
 import { fibonacciStarPosition } from '@/shared/lib'
@@ -132,8 +131,9 @@ const STAR_LIGHT_ORIGIN = [0, 0, 0] as const
 export interface StarFieldProps {
   /** force-sim positions buffer (07/10). When absent, a dev dummy cluster is used. */
   positionsRef?: { readonly current: Float32Array | null }
-  /** 별(기억) 오브제 형태(appearance.object) — 형태별 지오메트리·머티리얼로 dispatch. 기본 deepfield. */
-  object?: StarObject
+  /** 별(기억) 스킨 선택(appearance.object) — 합성 wire id "<form>+<surface>"(레거시 단일 id도 허용).
+   *  형태(geometry)×표면(emissive)으로 디코드해 dispatch한다(spec 52). 기본 lowpoly+facet. */
+  object?: string
   /** 감정색 사용자 오버라이드(mood→"#RRGGBB", spec 30). 없는 mood는 기본 팔레트(MOOD_PALETTE). */
   emotionColors?: Record<string, string>
   /** 강조할 원본 일기 id(spec 28) — 그 일기의 별만 밝히고 나머지는 dim한다(원본 일기로 별 찾기).
@@ -167,11 +167,14 @@ export interface StarFieldProps {
    *  null/미전달이면 정적 selfLightPos를 쓴다(원거리=중심 자아 광원·오버레이·배경 동일). 반사 채널만
    *  바꾸고 selfGlow/activation/λ_eff/별 색·좌표는 불변. */
   selfLightRef?: MutableRefObject<readonly [number, number, number] | null>
+  /** 광원이 매 프레임 카메라 위치를 따라간다(헤드램프) — 시점을 돌려도 카메라 보이는 면이 늘 비쳐 "역광 떡짐"이
+   *  없다. 메인 우주 far-view만 켠다(overlay·배경·단일 별은 끔). `selfLightRef`(근접 탐험)가 있으면 그게 우선. */
+  cameraLight?: boolean
 }
 
 export function StarField({
   positionsRef,
-  object = DEFAULT_OBJECT,
+  object = DEFAULT_STAR_SELECTION,
   emotionColors,
   highlightedRecordId = null,
   selectedId = null,
@@ -184,6 +187,7 @@ export function StarField({
   lightPositional = 1,
   litMix = 1,
   selfLightRef,
+  cameraLight = false,
 }: StarFieldProps) {
   const storeStars = useMemoryStore((s) => s.stars)
   // 외부 소스(겹쳐보기)면 그것을, 아니면 스토어를 그린다. external=true면 탄생 연출·loadedEmpty 게이트를 끈다.
@@ -238,12 +242,18 @@ export function StarField({
   // 직접 만지지 않게 한다(react-hooks 룰; Star3D와 동일 관용구). uniform 소유는 여전히 소비처(StarField).
   const { geometry, material, update, setLight } = useMemo(() => {
     const t = uniform(0)
-    // 자아 광원 uniform(전 인스턴스 공유): 위치/방향 · positional · litMix. 값은 props에서 아래 효과가 동기.
+    // 카메라 월드 위치 uniform — 매 프레임 update()가 갱신. 셰이더 viewDir/ndv/헤드램프가 이걸 쓴다(빌트인
+    // cameraPosition 노드는 BloomPass가 동결시켜 쓰면 안 된다 — time과 같은 함정, star-body StarShadeInputs.cameraPos 참조).
+    const camPosU = uniform(new THREE.Vector3())
+    // 자아 광원 uniform(전 인스턴스 공유): 위치/방향 · positional · litMix · 카메라 헤드램프 플래그. 값은 props에서 아래 효과가 동기.
     const selfPosU = uniform(new THREE.Vector3(0, 0, 0))
     const positionalU = uniform(1)
     const litMixU = uniform(1)
+    const camHeadlightU = uniform(0) // 1=far-view 헤드램프(셰이더 viewDir 광원), 0=selfLightPos 경로
+    const { form, surface } = decodeStarSelection(object)
     const built = buildStarBody(
-      object,
+      form,
+      surface,
       {
         mood: attribute('aMood', 'vec3'),
         glow: attribute('aGlow', 'float'), // 자가발광=연결성(selfGlow, A_MIN 바닥은 attribute 계산에서)
@@ -251,10 +261,12 @@ export function StarField({
         seed: attribute('aSeed', 'float'),
         hueShift: attribute('aHueShift', 'float'),
         time: t,
+        cameraPos: camPosU,
         selfLightPos: selfPosU,
         lightPositional: positionalU,
         litMix: litMixU,
         focus: attribute('aFocus', 'float'), // 포커스 디밍/부스트(두 채널 공통)
+        cameraHeadlight: camHeadlightU,
       },
       {
         intensity: VALUES.starLighting.selfIntensity,
@@ -263,15 +275,23 @@ export function StarField({
         gain: VALUES.starLighting.litAlbedoGain,
       },
     )
-    const update = (time: number) => {
+    const update = (time: number, camera: THREE.Camera) => {
       t.value = time
+      // 카메라 월드 위치를 직접 먹인다(빌트인 cameraPosition 노드 동결 회피 — 위 camPosU 주석).
+      camera.getWorldPosition(camPosU.value)
     }
     // 광원 uniform 변경도 클로저 안에 둔다(update와 동일 관용구) — effect가 메모된 uniform을 직접 만지지
     // 않게(react-compiler 규칙). 정적이라 매 프레임 아닌 prop 동기 effect에서 호출.
-    const setLight = (pos: readonly [number, number, number], positional: number, mix: number) => {
+    const setLight = (
+      pos: readonly [number, number, number],
+      positional: number,
+      mix: number,
+      headlight = 0,
+    ) => {
       selfPosU.value.set(pos[0], pos[1], pos[2])
       positionalU.value = positional
       litMixU.value = mix
+      camHeadlightU.value = headlight
     }
     return { geometry: built.geometry, material: built.material, update, setLight }
   }, [object])
@@ -480,10 +500,17 @@ export function StarField({
   useFrame((state) => {
     // 형태 애니메이션용 시간 전진(liquid 출렁임 / ember 깜빡임 / aurora 흐름). 위치 버퍼가 없어도
     // 매 프레임 올려야 하므로 아래 early-return보다 먼저 둔다.
-    update(state.clock.elapsedTime)
-    // 동적 자아 광원 — 주어지면 매 프레임 반사 채널 uniform만 갱신(근접 탐험에서
-    // 광원이 탐험자를 따라온다). 반사 항만 바뀌고 selfGlow/activation/별 색·좌표는 불변(채널 경계).
-    if (selfLightRef?.current) setLight(selfLightRef.current, lightPositional, litMix)
+    update(state.clock.elapsedTime, state.camera)
+    // 반사 채널 광원 갱신(반사 항만 바뀌고 selfGlow/activation/별 색·좌표는 불변 — 채널 경계). 우선순위:
+    //   ① selfLightRef(근접 탐험: 어깨 너머 앵커, 점광) → ② cameraLight(far-view: 셰이더 viewDir 헤드램프 —
+    //   카메라를 돌리면 보이는 면이 늘 비춰진다, 4번째 인자=1) → ③ 정적 selfLightPos(overlay·배경·단일 별).
+    if (selfLightRef?.current) {
+      setLight(selfLightRef.current, lightPositional, litMix, 0)
+    } else if (cameraLight) {
+      // 헤드램프 플래그만 1로. 광원 방향은 셰이더 viewDir(= cameraPos uniform − positionWorld)로 잡는다 — 그
+      // cameraPos는 위 update()가 매 프레임 카메라 월드 위치로 갱신하므로 시점을 돌리면 따라온다. pos는 무시되므로 원점을 넘긴다.
+      setLight(STAR_LIGHT_ORIGIN, 0, litMix, 1)
+    }
     const mesh = meshRef.current
     if (!mesh || count === 0) return
     const scales = scalesRef.current

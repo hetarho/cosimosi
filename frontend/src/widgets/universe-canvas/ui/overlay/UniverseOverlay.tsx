@@ -19,7 +19,6 @@ import * as THREE from 'three'
 import { type WebGPURenderer } from 'three/webgpu'
 import type { SynapseEdge } from '@/entities/synapse'
 import type { StarNode } from '@/entities/memory'
-import type { StarObject } from '@/entities/star'
 import { mulberry32, reportUniverseRenderer } from '@/shared/lib'
 import { asWebGPURenderer, createRendererFactory, rendererBackend } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
@@ -36,7 +35,8 @@ const OVERLAY_OFFSET = VALUES.overlay.skyOffset
 export interface OverlaySide {
   stars: StarNode[]
   edges: SynapseEdge[]
-  object?: StarObject
+  /** 별 스킨 합성 선택(spec 52) — StarField가 디코드. 레거시 단일 id도 허용. */
+  object?: string
   emotionColors?: Record<string, string>
 }
 

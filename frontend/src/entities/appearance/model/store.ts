@@ -1,26 +1,27 @@
-// 앱 전역 시각 설정 store(spec 30·44). 4축 선택(배경=theme·별=object·나=selfObject·시냅스=synapseStyle)은
-// *기기* 선호라 localStorage에 지속한다. 감정색 오버라이드(emotionColors)와 **별가루 잔액·소유권**은
-// per-user 자산이라 메모리에만 둔다(공용 PC에 개인 데이터·자산 영속 금지 — domain/data-sync + spec 44).
+// 앱 전역 시각 설정 store(spec 30·44·52). 4축 선택(배경=theme·별=object·나=selfObject·시냅스=synapseStyle)은
+// *기기* 선호라 localStorage에 지속한다. 배경은 단일 id, 별·나·시냅스는 **형태×표면 합성 id "<form>+<surface>"**
+// 다(spec 52) — wire 필드 이름·proto·DB는 그대로, 값만 합성 문자열이다. 정규화(normalizeXSelection)가 합성·
+// 레거시 단일 id·미지를 전부 유효 합성으로 폴백한다(A9). 감정색 오버라이드(emotionColors)와 **별가루 잔액·
+// 소유권**은 per-user 자산이라 메모리에만 둔다(공용 PC에 개인 데이터·자산 영속 금지 — domain/data-sync + spec 44).
 // 인증 세션이면 GetSettings·GetInventory로 시드되고, 로그아웃·계정 전환·체험 전환 시 출처 리셋이 비운다.
-// 위치 근거: object(StarObject)·synapseStyle(SynapseStyle)가 도메인-비주얼이라 4축을 한 묶음으로 여기 둔다.
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { type StarObject, DEFAULT_OBJECT, parseStarObject } from '@/entities/star/@x/appearance'
+import { DEFAULT_STAR_SELECTION, normalizeStarSelection } from '@/entities/star/@x/appearance'
 import {
-  type SynapseStyle,
-  DEFAULT_SYNAPSE_STYLE,
-  parseSynapseStyle,
+  DEFAULT_SYNAPSE_SELECTION,
+  normalizeSynapseSelection,
 } from '@/entities/synapse/@x/appearance'
 import { priceOf } from '@/shared/config'
-import type { Background, SelfObject } from './types'
+import type { Background } from './types'
 import { DEFAULT_BACKGROUND, parseBackground } from './backgrounds'
-import { DEFAULT_SELF_OBJECT, parseSelfObject } from './self-objects'
+import { DEFAULT_SELF_SELECTION, normalizeSelfSelection } from './self-forms'
 
 const STORAGE_KEY = 'cosimosi.appearance'
 const LEGACY_KEY = 'cosimosi.landing.theme' // 레거시 마이그레이션용 구 저장 키
 
 /** 서버가 내려준 시각 오버라이드(spec 30·44). 4축 선택 중 빈 값은 기존(기본)을 유지하고,
- *  emotionColors는 사용자가 바꾼 mood만 담는다(빈 맵 = 전부 기본 팔레트). */
+ *  emotionColors는 사용자가 바꾼 mood만 담는다(빈 맵 = 전부 기본 팔레트). object/selfObject/synapseStyle은
+ *  합성 wire id(또는 레거시 단일 id) 문자열 — 정규화 경계가 유효 합성으로 폴백한다. */
 export interface ServerAppearance {
   theme?: string
   object?: string
@@ -36,21 +37,22 @@ export interface ServerInventory {
 }
 
 /** 커밋된 4축 선택 스냅샷(저장 기준선). 라이브 선택이 이것과 다르면 "미저장(드래프트)"이다 — 홈
- *  편집기는 라이브를 미리보기로 바꾸고, 플로팅 저장 버튼이 차이를 커밋한다(spec 44). */
+ *  편집기는 라이브를 미리보기로 바꾸고, 플로팅 저장 버튼이 차이를 커밋한다(spec 44). 별·나·시냅스는 합성 id. */
 export interface SelectionSnapshot {
   theme: Background
-  object: StarObject
-  selfObject: SelfObject
-  synapseStyle: SynapseStyle
+  object: string
+  selfObject: string
+  synapseStyle: string
 }
 
 interface AppearanceState {
   theme: Background
-  object: StarObject
-  /** 중심 "나" 별의 형태(spec 38·44). 서버 동기 선택 축(나). */
-  selfObject: SelfObject
-  /** 시냅스 연결선 스타일(spec 44). 서버 동기 선택 축(시냅스). */
-  synapseStyle: SynapseStyle
+  /** 별 스킨 합성 선택 "<form>+<surface>"(spec 52). 서버 동기 선택 축(별). */
+  object: string
+  /** 중심 "나" 별의 합성 선택(spec 38·52). 서버 동기 선택 축(나). */
+  selfObject: string
+  /** 시냅스 연결선 합성 선택(spec 52). 서버 동기 선택 축(시냅스). */
+  synapseStyle: string
   /** mood(소문자) → "#RRGGBB" 사용자 오버라이드. 서버 시드·메모리 전용. 빈 맵 = 전부 기본 팔레트. */
   emotionColors: Record<string, string>
   /** 별가루 잔액(spec 44). 서버 권위·메모리 전용(영속 금지). 시드 전엔 0. */
@@ -61,9 +63,10 @@ interface AppearanceState {
    *  갱신된다. 홈 편집기는 라이브를 미리보기로만 바꾸고, 저장 시 commitSelection으로 여기에 확정한다. */
   savedSelection: SelectionSnapshot
   setTheme: (id: Background) => void
-  setObject: (id: StarObject) => void
-  setSelfObject: (id: SelfObject) => void
-  setSynapseStyle: (id: SynapseStyle) => void
+  /** 별 합성 선택을 정규화해 설정(form·surface 어느 한쪽만 바꾸려면 호출자가 합성 id를 만들어 넘긴다). */
+  setObject: (id: string) => void
+  setSelfObject: (id: string) => void
+  setSynapseStyle: (id: string) => void
   setEmotionColor: (mood: string, color: string) => void
   /** GetSettings 응답(오버라이드만)을 store에 머지 — 인증 세션에서 서버가 단일 진실(4축). */
   applyServerSettings: (s: ServerAppearance) => void
@@ -80,13 +83,13 @@ interface AppearanceState {
 }
 
 /**
- * 구 키(cosimosi.landing.theme)에서 1회 승계한다. 구 저장본은 {theme:'deepfield'|...}로
- * 색+형태를 함께 담았고 그 값이 StarObject id(deepfield/aurora/liquid/ember)와 같으므로,
- * theme이 그 4-값이면 object로 승계하고 theme은 vast로 폴백한다.
+ * 구 키(cosimosi.landing.theme)에서 1회 승계한다. 구 저장본은 {theme:'deepfield'|...}로 색+형태를 함께
+ * 담았고 그 값이 레거시 StarObject id와 같으므로, object/theme 중 별 형태로 보이는 값을 합성 선택으로
+ * 정규화(normalizeStarSelection이 레거시 단일 id를 (form,surface)로 디컴포지션)하고 theme은 배경으로 폴백한다.
  * 새 키가 이미 있으면 건드리지 않는다.
  */
-function legacyInitial(): { theme: Background; object: StarObject } {
-  const base = { theme: DEFAULT_BACKGROUND, object: DEFAULT_OBJECT }
+function legacyInitial(): { theme: Background; object: string } {
+  const base = { theme: DEFAULT_BACKGROUND, object: DEFAULT_STAR_SELECTION }
   try {
     if (typeof localStorage === 'undefined') return base
     if (localStorage.getItem(STORAGE_KEY)) return base
@@ -94,7 +97,7 @@ function legacyInitial(): { theme: Background; object: StarObject } {
     if (!raw) return base
     const s = (JSON.parse(raw)?.state ?? {}) as { theme?: string; object?: string }
     const theme = parseBackground(s.theme, DEFAULT_BACKGROUND)
-    const object = parseStarObject(s.object, parseStarObject(s.theme, DEFAULT_OBJECT))
+    const object = normalizeStarSelection(s.object ?? s.theme)
     return { theme, object }
   } catch {
     return base
@@ -107,78 +110,80 @@ export const useAppearance = create<AppearanceState>()(
     (set, get) => {
       const init = legacyInitial()
       return {
-      theme: init.theme,
-      object: init.object,
-      selfObject: DEFAULT_SELF_OBJECT,
-      synapseStyle: DEFAULT_SYNAPSE_STYLE,
-      savedSelection: {
         theme: init.theme,
         object: init.object,
-        selfObject: DEFAULT_SELF_OBJECT,
-        synapseStyle: DEFAULT_SYNAPSE_STYLE,
-      },
-      emotionColors: {},
-      stardust: 0,
-      ownedItemIds: new Set<string>(),
-      setTheme: (id) => set({ theme: id }),
-      setObject: (id) => set({ object: id }),
-      setSelfObject: (id) => set({ selfObject: id }),
-      setSynapseStyle: (id) => set({ synapseStyle: id }),
-      setEmotionColor: (mood, color) =>
-        set((s) => ({ emotionColors: { ...s.emotionColors, [mood]: color } })),
-      applyServerSettings: (sv) =>
-        set((s) => {
-          // 서버 = 커밋된 진실: 4축을 해석해 라이브 선택과 savedSelection(저장 기준선) 둘 다에 반영한다 →
-          // 서버 시드 직후엔 드래프트(미저장)가 없다(dirty=false). 저장은 이 응답으로 재동기화된다.
-          const theme = parseBackground(sv.theme, s.theme)
-          const object = parseStarObject(sv.object, s.object)
-          const selfObject = parseSelfObject(sv.selfObject, s.selfObject)
-          const synapseStyle = parseSynapseStyle(sv.synapseStyle, s.synapseStyle)
-          // 색 내용이 그대로면 참조를 유지 — 4축만 바뀐 쓰기/재시드에서 별·시냅스 색
-          // 전체 재베이킹(StarField aMood·UniverseSynapses colById)을 피한다.
-          const keys = Object.keys(sv.emotionColors)
-          const sameColors =
-            keys.length === Object.keys(s.emotionColors).length &&
-            keys.every((k) => sv.emotionColors[k] === s.emotionColors[k])
-          return {
-            theme,
-            object,
-            selfObject,
-            synapseStyle,
-            savedSelection: { theme, object, selfObject, synapseStyle },
-            emotionColors: sameColors ? s.emotionColors : sv.emotionColors,
-          }
-        }),
-      applyInventory: (inv) => set({ stardust: inv.stardust, ownedItemIds: new Set(inv.ownedItemIds) }),
-      purchaseItem: (itemId) => {
-        const prev = get()
-        const prevStardust = prev.stardust
-        const prevOwned = prev.ownedItemIds
-        const price = priceOf(itemId) ?? 0
-        const nextOwned = new Set(prevOwned)
-        nextOwned.add(itemId)
-        // 낙관적: 잔액 차감(0 바닥 — 음수 금지, A3) + 소유 추가. RPC 응답이 권위로 덮어쓴다.
-        set({ stardust: Math.max(0, prevStardust - price), ownedItemIds: nextOwned })
-        return () => set({ stardust: prevStardust, ownedItemIds: prevOwned })
-      },
-      commitSelection: () =>
-        set((s) => ({
-          savedSelection: {
-            theme: s.theme,
-            object: s.object,
-            selfObject: s.selfObject,
-            synapseStyle: s.synapseStyle,
-          },
-        })),
-      revertSelection: () =>
-        set((s) => ({
-          theme: s.savedSelection.theme,
-          object: s.savedSelection.object,
-          selfObject: s.savedSelection.selfObject,
-          synapseStyle: s.savedSelection.synapseStyle,
-        })),
-      resetServerSettings: () =>
-        set({ emotionColors: {}, stardust: 0, ownedItemIds: new Set<string>() }),
+        selfObject: DEFAULT_SELF_SELECTION,
+        synapseStyle: DEFAULT_SYNAPSE_SELECTION,
+        savedSelection: {
+          theme: init.theme,
+          object: init.object,
+          selfObject: DEFAULT_SELF_SELECTION,
+          synapseStyle: DEFAULT_SYNAPSE_SELECTION,
+        },
+        emotionColors: {},
+        stardust: 0,
+        ownedItemIds: new Set<string>(),
+        setTheme: (id) => set({ theme: id }),
+        setObject: (id) => set({ object: normalizeStarSelection(id) }),
+        setSelfObject: (id) => set({ selfObject: normalizeSelfSelection(id) }),
+        setSynapseStyle: (id) => set({ synapseStyle: normalizeSynapseSelection(id) }),
+        setEmotionColor: (mood, color) =>
+          set((s) => ({ emotionColors: { ...s.emotionColors, [mood]: color } })),
+        applyServerSettings: (sv) =>
+          set((s) => {
+            // 서버 = 커밋된 진실: 4축을 해석해 라이브 선택과 savedSelection(저장 기준선) 둘 다에 반영한다 →
+            // 서버 시드 직후엔 드래프트(미저장)가 없다(dirty=false). 저장은 이 응답으로 재동기화된다. 값이
+            // 있으면 정규화(미지·레거시 → 유효 합성 폴백, A9), 없으면 현재 유효 선택을 유지한다.
+            const theme = parseBackground(sv.theme, s.theme)
+            const object = sv.object != null ? normalizeStarSelection(sv.object) : s.object
+            const selfObject = sv.selfObject != null ? normalizeSelfSelection(sv.selfObject) : s.selfObject
+            const synapseStyle =
+              sv.synapseStyle != null ? normalizeSynapseSelection(sv.synapseStyle) : s.synapseStyle
+            // 색 내용이 그대로면 참조를 유지 — 4축만 바뀐 쓰기/재시드에서 별·시냅스 색
+            // 전체 재베이킹(StarField aMood·UniverseSynapses colById)을 피한다.
+            const keys = Object.keys(sv.emotionColors)
+            const sameColors =
+              keys.length === Object.keys(s.emotionColors).length &&
+              keys.every((k) => sv.emotionColors[k] === s.emotionColors[k])
+            return {
+              theme,
+              object,
+              selfObject,
+              synapseStyle,
+              savedSelection: { theme, object, selfObject, synapseStyle },
+              emotionColors: sameColors ? s.emotionColors : sv.emotionColors,
+            }
+          }),
+        applyInventory: (inv) => set({ stardust: inv.stardust, ownedItemIds: new Set(inv.ownedItemIds) }),
+        purchaseItem: (itemId) => {
+          const prev = get()
+          const prevStardust = prev.stardust
+          const prevOwned = prev.ownedItemIds
+          const price = priceOf(itemId) ?? 0
+          const nextOwned = new Set(prevOwned)
+          nextOwned.add(itemId)
+          // 낙관적: 잔액 차감(0 바닥 — 음수 금지, A3) + 소유 추가. RPC 응답이 권위로 덮어쓴다.
+          set({ stardust: Math.max(0, prevStardust - price), ownedItemIds: nextOwned })
+          return () => set({ stardust: prevStardust, ownedItemIds: prevOwned })
+        },
+        commitSelection: () =>
+          set((s) => ({
+            savedSelection: {
+              theme: s.theme,
+              object: s.object,
+              selfObject: s.selfObject,
+              synapseStyle: s.synapseStyle,
+            },
+          })),
+        revertSelection: () =>
+          set((s) => ({
+            theme: s.savedSelection.theme,
+            object: s.savedSelection.object,
+            selfObject: s.savedSelection.selfObject,
+            synapseStyle: s.savedSelection.synapseStyle,
+          })),
+        resetServerSettings: () =>
+          set({ emotionColors: {}, stardust: 0, ownedItemIds: new Set<string>() }),
       }
     },
     {
@@ -190,15 +195,16 @@ export const useAppearance = create<AppearanceState>()(
         selfObject: s.selfObject,
         synapseStyle: s.synapseStyle,
       }),
-      // 알 수 없는/손상된 값이 저장돼 있어도 각 축의 기본값으로 폴백. 하이드레이트된 라이브 선택을
-      // savedSelection에도 그대로 실어 로드 직후엔 드래프트(미저장)가 없게 한다 — 이후 서버 시드가
+      // 알 수 없는/손상된/레거시 값이 저장돼 있어도 각 축의 유효 합성으로 정규화(A9). 하이드레이트된 라이브
+      // 선택을 savedSelection에도 그대로 실어 로드 직후엔 드래프트(미저장)가 없게 한다 — 이후 서버 시드가
       // 인증 사용자의 진실로 둘 다 덮어쓴다(applyServerSettings).
       merge: (persisted, current) => {
         const p = persisted as Partial<AppearanceState> | undefined
         const theme = parseBackground(p?.theme, current.theme)
-        const object = parseStarObject(p?.object, current.object)
-        const selfObject = parseSelfObject(p?.selfObject, current.selfObject)
-        const synapseStyle = parseSynapseStyle(p?.synapseStyle, current.synapseStyle)
+        const object = p?.object != null ? normalizeStarSelection(p.object) : current.object
+        const selfObject = p?.selfObject != null ? normalizeSelfSelection(p.selfObject) : current.selfObject
+        const synapseStyle =
+          p?.synapseStyle != null ? normalizeSynapseSelection(p.synapseStyle) : current.synapseStyle
         return {
           ...current,
           theme,

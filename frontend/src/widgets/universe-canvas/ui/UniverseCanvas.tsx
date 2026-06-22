@@ -36,7 +36,7 @@ import { UniverseNebula } from './UniverseNebula'
 import { SelfStar } from './SelfStar'
 import { navigationInput } from '../model/navigation-input'
 import { virtualNowMs } from '@/shared/lib/demo'
-import { asWebGPURenderer, createRendererFactory, rendererBackend } from '@/shared/lib/r3f'
+import { asWebGPURenderer, createRendererFactory, rendererBackend, getTune } from '@/shared/lib/r3f'
 import {
   CameraRig,
   NebulaOrbitController,
@@ -222,6 +222,16 @@ function UniverseSynapses({
  *  별에서 떨어지지 않고, 진폭(≤0.9)이 작아 fly-to/포커스의 고정 좌표 타깃과의 오차는
  *  체감되지 않는다. 별이 선택(포커스)되면 진폭을 0으로 풀어 조준이 흔들리지 않게 하고,
  *  prefers-reduced-motion이면 아예 움직이지 않는다(정책: motion-accessibility). */
+// dev 라이브 튜너용 ambient — 채움광 세기를 매 프레임 TUNE.ambientFill로 갱신(슬라이더로 평면 바닥을 즉시 조절).
+// 프로덕션은 아래 정적 <ambientLight>를 그대로 쓴다(이 컴포넌트는 import.meta.env.DEV에서만 렌더).
+function TunedAmbient() {
+  const ref = useRef<THREE.AmbientLight>(null)
+  useFrame(() => {
+    if (ref.current) ref.current.intensity = getTune('ambientFill')
+  })
+  return <ambientLight ref={ref} intensity={getTune('ambientFill')} />
+}
+
 function UniverseDrift({ children }: { children: ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   const amp = useRef(1) // 선택 중 0으로, 해제 후 1로 부드럽게 복귀
@@ -422,7 +432,11 @@ export function UniverseCanvas() {
       <BackgroundVeil texture={background.texture} />
       {/* 어두운 반구 채움광(spec 03). 반사(emissiveNode 내 계산)와 albedo가 이중계상되지 않게
           values 출처의 낮은 ambient fill만 둔다. StarField는 자아-별이 원점이라 selfLightPos 기본으로 충분. */}
-      <ambientLight intensity={VALUES.starLighting.ambientFill} />
+      {import.meta.env.DEV ? (
+        <TunedAmbient />
+      ) : (
+        <ambientLight intensity={VALUES.starLighting.ambientFill} />
+      )}
       {/* spec 07: 떠 있던 무드 오브(AmbientNebula)는 제거 — 요즘 감정은 위 UniverseNebula 배경 텍스처에 녹는다. */}
       <StarDust count={1500} />
       {/* 별과 시냅스는 함께 부유(연결이 떨어지지 않게); StarDust는 밖에 두어 시차가 생긴다.
@@ -445,6 +459,7 @@ export function UniverseCanvas() {
             selectedId={selectedId}
             onSelect={(id) => focusActor.send({ type: 'SELECT_STAR', id })}
             selfLightRef={selfLightRef}
+            cameraLight
           />
         </UniverseDrift>
       </group>

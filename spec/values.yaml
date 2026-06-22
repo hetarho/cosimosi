@@ -146,28 +146,45 @@ invite:
 #    별가루(Stardust)는 시작 잔액만 있고 충전·결제는 비목표 — 차감만, 음수 불가(A3). ──────────────────
 customization:
   starting_stardust: 100 #   신규 사용자 시작 별가루(GetInventory 첫 호출에서 멱등 시드, A1).
-  # 유료 아이템 가격(별가루). 키 = 아이템 안정 id `"<axis>:<kind>"` — 콜론은 의도적 식별자라 YAML에서
-  # 반드시 따옴표. 이 맵의 키 집합 = BE "유효 유료 id 화이트리스트"(코드 카탈로그가 시각을 정의, 가격이
-  # 판매 여부를 정의). 균형: 시작 100으로 유료 배경 3종(30+30+40=100)을 모두 사거나 다른 축과 섞어 산다.
+  # 유료 아이템 가격(별가루). 키 = 아이템 안정 id — 배경은 `"background:<kind>"`, 형태 있는 3축(별·나·
+  # 시냅스)은 **형태·표면을 따로 판다**(spec 52): `"<axis>:form:<id>"`·`"<axis>:surface:<id>"`. 콜론은
+  # 의도적 식별자라 YAML에서 반드시 따옴표. 이 맵의 키 집합 = BE "유효 유료 id 화이트리스트"(코드 카탈로그가
+  # 시각을 정의, 가격이 판매 여부를 정의). 합성 선택은 양쪽 sub-item을 소유(또는 무료)해야 저장된다(BE 검증).
   price:
     'background:vortex': 30
     'background:crystal': 30
     'background:mandala': 40
-    'star:aurora': 30
-    'star:liquid': 35
-    'star:ember': 40
-    'star:pulsar': 45
-    'self:prism-cube': 35
-    'self:neuron-bloom': 45
-    'synapse:particle': 40
-    'synapse:dendrite': 40
-  # 축별 무료 1종 kind(묵시 소유 — 소유 행 없이 누구나 선택). itemId = `"<axis>:<kind>"`로 조립.
-  # 이 4개가 무료 1종 매핑의 단일 출처(A11): 배경 vast·별 deepfield·나 mirrorball·시냅스 filament.
+    # 별 — 형태(form)
+    'star:form:octa': 25
+    'star:form:smooth': 25
+    'star:form:cloudy': 30
+    'star:form:liquid': 30
+    # 별 — 표면(surface)
+    'star:surface:glossy': 25
+    'star:surface:lava': 30
+    'star:surface:cloud': 30
+    'star:surface:pulse': 30
+    # 나 — 형태/표면
+    'self:form:cube': 25
+    'self:form:bloom': 30
+    'self:surface:prism': 25
+    'self:surface:neuron': 30
+    # 시냅스 — 형태/표면
+    'synapse:form:branched': 25
+    'synapse:form:dotted': 25
+    'synapse:surface:beads': 30
+    'synapse:surface:steady': 25
+  # 축별/슬롯별 무료 1종 kind(묵시 소유 — 소유 행 없이 누구나 선택). itemId = `"<키>:<kind>"`로 조립되므로
+  # 배경은 키 `background`, 형태 3축은 슬롯 키 `"<axis>:form"`·`"<axis>:surface"`로 둔다(A5). 무료 합성 프리셋:
+  # 별 lowpoly+facet · 나 orb+mirror · 시냅스 strands+flow · 배경 galaxy. 무료 매핑의 단일 출처(A11).
   free:
     background: galaxy
-    star: deepfield
-    self: mirrorball
-    synapse: filament
+    'star:form': lowpoly
+    'star:surface': facet
+    'self:form': orb
+    'self:surface': mirror
+    'synapse:form': strands
+    'synapse:surface': flow
 
 # ── 관리자 콘솔 (admin) — 사용자 목록 keyset 페이지네이션 노브(spec 46). FE는 다음-페이지 요청에,
 #    BE는 page size 기본/상한 클램프에 같은 수를 쓴다(FE/BE 하드코딩·표류 금지, A12). ──────────────

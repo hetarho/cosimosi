@@ -6,7 +6,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { cn, errorMessage, reportUniverseData } from '@/shared/lib'
 import { demoFragmentText, demoRecall, useDemoOverlay } from '@/shared/lib/demo'
 import { Eye, EyeOff, Menu, Orbit, Palette, Plus, Sparkles, Telescope } from 'lucide-react'
-import { Backdrop, MorningDiffNote, Surface, primaryButtonCls } from '@/shared/ui'
+import { Backdrop, DebugTuner, MorningDiffNote, Surface, primaryButtonCls } from '@/shared/ui'
 import {
   UniverseCanvas,
   UniverseGrain,
@@ -316,6 +316,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
 
   return (
     <div className="universe-page fixed inset-0" data-lenis-prevent>
+      {/* dev 라이브 셰이더 튜너(스캐폴딩) — 별/나 셰이더 상수를 슬라이더로 즉시 조절. 프로덕션 빌드엔 미포함. */}
+      {import.meta.env.DEV && <DebugTuner />}
       {/* 캔버스 + 꾸미기 패널 split layout(change 10). 꾸미기 패널이 열려도 `UniverseCanvas`는 언마운트되지
           않는다 — 패널은 우주를 덮지 않고 레이아웃을 밀어내, 캔버스 컨테이너의 폭/높이만 줄인다. 데스크톱(fine
           pointer)=좌측 사이드바 + 우측 캔버스, 모바일(coarse)=상단 캔버스 + 하단 패널. 캔버스는 기존

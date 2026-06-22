@@ -30,7 +30,7 @@ import {
   type StarNode,
 } from '@/entities/memory'
 import { toSynapseEdge, useSynapseStore } from '@/entities/synapse'
-import { isStarObject } from '@/entities/star'
+import { normalizeStarSelection } from '@/entities/star'
 import { applySettings, useAppearance } from '@/entities/appearance'
 import {
   applySharedUniverse,
@@ -132,7 +132,8 @@ export function VisitPage() {
     if (!data) return null
     const { stars, edges } = mapSharedUniverse(data)
     const appearance = data.appearance
-    const object = isStarObject(appearance?.starObject) ? appearance.starObject : undefined
+    // 소유자 별 스킨(합성 또는 레거시 단일 id) → 유효 합성으로 정규화(미설정이면 기본, spec 52).
+    const object = appearance?.starObject ? normalizeStarSelection(appearance.starObject) : undefined
     const emotionColors: Record<string, string> = {}
     for (const c of appearance?.emotionColors ?? []) emotionColors[moodFromProto(c.mood)] = c.color
     return { stars, edges, object, emotionColors }

@@ -6,13 +6,31 @@ import { isDemoMode } from '@/shared/lib/demo'
 import { itemId, isOwned, priceOf, type Axis } from '@/shared/config'
 import {
   BACKGROUNDS,
-  SELF_OBJECTS,
+  SELF_FORMS,
+  SELF_SURFACES,
   parseBackground,
-  parseSelfObject,
+  parseSelfForm,
+  parseSelfSurface,
+  encodeSelfSelection,
+  decodeSelfSelection,
   useAppearance,
 } from '@/entities/appearance'
-import { parseStarObject, STAR_OBJECTS } from '@/entities/star'
-import { parseSynapseStyle, SYNAPSE_STYLES } from '@/entities/synapse'
+import {
+  STAR_FORMS,
+  STAR_SURFACES,
+  parseStarForm,
+  parseStarSurface,
+  encodeStarSelection,
+  decodeStarSelection,
+} from '@/entities/star'
+import {
+  SYNAPSE_FORMS,
+  SYNAPSE_SURFACES,
+  parseSynapseForm,
+  parseSynapseSurface,
+  encodeSynapseSelection,
+  decodeSynapseSelection,
+} from '@/entities/synapse'
 
 /** 인벤토리 칩 — 시각 미리보기(swatch) + 소유/잠금/가격 상태. */
 interface ChipItem {
@@ -157,9 +175,15 @@ function InventoryRadioGroup({
   )
 }
 
-/** axis 설정 — 라벨·카탈로그·store 선택값/세터를 한 곳에. */
-type AxisConfig = {
+/** 피커 설정 — 한 라디오그룹(축의 한 슬롯). 배경은 단일 슬롯, 형태 있는 3축은 form·surface 2 피커(spec 52).
+ *  slot=''(배경)이면 itemId=`"<axis>:<kind>"`, slot 있으면 `"<axis>:<slot>:<kind>"`(form/surface sub-item). */
+type PickerConfig = {
+  key: string
   axis: Axis
+  /** 슬롯('' = 배경 단일 · 'form'·'surface' = 형태/표면 sub-item). */
+  slot: '' | 'form' | 'surface'
+  /** 새 객체 그룹의 시작(위에 구분선)인가 — 배경·별·나·시냅스 그룹 경계. */
+  groupStart: boolean
   label: string
   groupLabel: string
   metas: readonly { id: string; name: string; tagline: string; swatch: string; emotionSlots?: number }[]
@@ -168,11 +192,11 @@ type AxisConfig = {
 }
 
 /**
- * 4축 인벤토리 컨트롤 본문(appearance + synapse entity): 배경·별·나·시냅스를 라디오그룹으로 고른다.
- * 선택은 라이브로 우주에 미리보인다. 미인증 플레이그라운드(랜딩·사인인·초대 FAB)는 `playground`로 전부
- * 잠금 해제·로컬 즉시 확정하고, 홈 우주 편집 패널(`pages/home/ui/AppearancePanel`, change 10)은 `draft`로
- * 이 본문을 그대로 호스팅한다 — `draft` 모드는 잠긴 아이템도 미리보기로 고르되 자동 저장하지 않고(패널의
- * 저장 바가 구매·커밋), 선택 결과는 별도 샘플이 아니라 실제 메인 우주에서 라이브로 확인된다.
+ * 외형 인벤토리 컨트롤 본문(appearance + star/synapse entity): 배경 1 피커 + 별·나·시냅스 각 form·surface
+ * 2 피커를 라디오그룹으로 고른다(spec 52 — 형태와 표면을 따로). 선택은 라이브로 우주에 미리보인다. 미인증
+ * 플레이그라운드(랜딩·사인인·초대 FAB)는 `playground`로 전부 잠금 해제·로컬 즉시 확정하고, 홈 우주 편집
+ * 패널(`pages/home/ui/AppearancePanel`)은 `draft`로 이 본문을 호스팅한다 — `draft`는 잠긴 아이템도 미리보기로
+ * 고르되 자동 저장하지 않고(저장 바가 구매·커밋), 결과는 별도 샘플이 아니라 실제 메인 우주에서 라이브 확인.
  */
 export function AppearanceControls({
   playground = false,
@@ -196,9 +220,17 @@ export function AppearanceControls({
   const ownedItemIds = useAppearance((s) => s.ownedItemIds)
   const commitSelection = useAppearance((s) => s.commitSelection)
 
-  const axes: AxisConfig[] = [
+  // 객체 축은 합성 선택을 디코드해 form·surface 두 피커가 각 슬롯만 바꿔 재인코딩한다(다른 슬롯 보존, A1).
+  const star = decodeStarSelection(object)
+  const self = decodeSelfSelection(selfObject)
+  const syn = decodeSynapseSelection(synapseStyle)
+
+  const pickers: PickerConfig[] = [
     {
+      key: 'background',
       axis: 'background',
+      slot: '',
+      groupStart: false,
       label: '배경 — 색·텍스처',
       groupLabel: '배경',
       metas: BACKGROUNDS,
@@ -206,34 +238,76 @@ export function AppearanceControls({
       setX: (k) => setTheme(parseBackground(k, theme)),
     },
     {
+      key: 'star-form',
       axis: 'star',
+      slot: 'form',
+      groupStart: true,
       label: '별 — 형태',
       groupLabel: '별 형태',
-      metas: STAR_OBJECTS,
-      value: object,
-      setX: (k) => setObject(parseStarObject(k, object)),
+      metas: STAR_FORMS,
+      value: star.form,
+      setX: (k) => setObject(encodeStarSelection(parseStarForm(k, star.form), star.surface)),
     },
     {
+      key: 'star-surface',
+      axis: 'star',
+      slot: 'surface',
+      groupStart: false,
+      label: '별 — 표면',
+      groupLabel: '별 표면',
+      metas: STAR_SURFACES,
+      value: star.surface,
+      setX: (k) => setObject(encodeStarSelection(star.form, parseStarSurface(k, star.surface))),
+    },
+    {
+      key: 'self-form',
       axis: 'self',
-      label: '나 — 중심 별의 형태',
-      groupLabel: '자아 별 형태',
-      metas: SELF_OBJECTS,
-      value: selfObject,
-      setX: (k) => setSelfObject(parseSelfObject(k, selfObject)),
+      slot: 'form',
+      groupStart: true,
+      label: '나 — 형태',
+      groupLabel: '자아 형태',
+      metas: SELF_FORMS,
+      value: self.form,
+      setX: (k) => setSelfObject(encodeSelfSelection(parseSelfForm(k, self.form), self.surface)),
     },
     {
+      key: 'self-surface',
+      axis: 'self',
+      slot: 'surface',
+      groupStart: false,
+      label: '나 — 표면',
+      groupLabel: '자아 표면',
+      metas: SELF_SURFACES,
+      value: self.surface,
+      setX: (k) => setSelfObject(encodeSelfSelection(self.form, parseSelfSurface(k, self.surface))),
+    },
+    {
+      key: 'synapse-form',
       axis: 'synapse',
-      label: '시냅스 — 연결선 스타일',
-      groupLabel: '시냅스 스타일',
-      metas: SYNAPSE_STYLES,
-      value: synapseStyle,
-      setX: (k) => setSynapseStyle(parseSynapseStyle(k, synapseStyle)),
+      slot: 'form',
+      groupStart: true,
+      label: '시냅스 — 형태',
+      groupLabel: '시냅스 형태',
+      metas: SYNAPSE_FORMS,
+      value: syn.form,
+      setX: (k) => setSynapseStyle(encodeSynapseSelection(parseSynapseForm(k, syn.form), syn.surface)),
+    },
+    {
+      key: 'synapse-surface',
+      axis: 'synapse',
+      slot: 'surface',
+      groupStart: false,
+      label: '시냅스 — 표면',
+      groupLabel: '시냅스 표면',
+      metas: SYNAPSE_SURFACES,
+      value: syn.surface,
+      setX: (k) => setSynapseStyle(encodeSynapseSelection(syn.form, parseSynapseSurface(k, syn.surface))),
     },
   ]
 
-  const buildItems = (cfg: AxisConfig): ChipItem[] =>
+  const buildItems = (cfg: PickerConfig): ChipItem[] =>
     cfg.metas.map((m) => {
-      const id = itemId(cfg.axis, m.id)
+      const id = itemId(cfg.axis, cfg.slot ? `${cfg.slot}:${m.id}` : m.id)
       return {
         id: m.id,
         name: m.name,
@@ -245,13 +319,14 @@ export function AppearanceControls({
       }
     })
 
-  const onSelect = (cfg: AxisConfig) => (kind: string) => {
+  const onSelect = (cfg: PickerConfig) => (kind: string) => {
     if (kind === cfg.value) return // 같은 선택 재클릭은 전환이 아니다 — 이벤트 오염 방지
     cfg.setX(kind) // 라이브 선택 갱신 = 우주 즉시 미리보기
     // 플레이그라운드(랜딩/사인인 FAB)는 저장 바가 없으니 로컬로 즉시 확정. 드래프트(홈 — 실로그인·체험
     // 모두)는 미리보기만 두고 플로팅 저장 바가 커밋한다(체험은 전부 잠금 해제라 무상 저장).
     if (!draft) commitSelection()
-    capture(EVENTS.appearanceSwitch, { axis: cfg.axis, kind }) // 외형 기능 사용률(18)
+    // 이벤트 kind에 슬롯을 접두(form:/surface:)해 형태·표면 전환을 구분(18 외형 기능 사용률).
+    capture(EVENTS.appearanceSwitch, { axis: cfg.axis, kind: cfg.slot ? `${cfg.slot}:${kind}` : kind })
   }
 
   return (
@@ -262,9 +337,9 @@ export function AppearanceControls({
           별가루 {stardust}
         </div>
       )}
-      {axes.map((cfg, i) => (
-        <div key={cfg.axis} className="flex flex-col gap-4">
-          {i > 0 && <div className="h-px bg-white/10" />}
+      {pickers.map((cfg) => (
+        <div key={cfg.key} className="flex flex-col gap-4">
+          {cfg.groupStart && <div className="h-px bg-white/10" />}
           <InventoryRadioGroup
             label={cfg.label}
             groupLabel={cfg.groupLabel}

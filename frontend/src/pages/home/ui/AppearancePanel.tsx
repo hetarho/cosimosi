@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { isDemoMode } from '@/shared/lib/demo'
 import { capture, cn, EVENTS } from '@/shared/lib'
-import { itemId, isFree, isOwned, priceOf, type Axis } from '@/shared/config'
+import { subItemIds, isFree, isOwned, priceOf, type Axis } from '@/shared/config'
 import { useAppearance, pushSettings, purchaseItem } from '@/entities/appearance'
 import { AppearanceControls } from '@/features/switch-appearance'
 
@@ -46,10 +46,11 @@ export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
     ['self', selfObject],
     ['synapse', synapseStyle],
   ]
+  // 합성 선택은 sub-item(form·surface)으로 분해 — 잠긴 sub-item마다 저장 시 구매한다(spec 52 A5).
   const pending = unlocked
     ? []
     : selected
-        .map(([ax, k]) => ({ axis: ax, id: itemId(ax, k) }))
+        .flatMap(([ax, sel]) => subItemIds(ax, sel).map((id) => ({ axis: ax, id })))
         .filter((p) => !isFree(p.id) && !isOwned(p.id, ownedItemIds))
   const pendingCost = pending.reduce((s, p) => s + (priceOf(p.id) ?? 0), 0)
   const affordable = stardust >= pendingCost
