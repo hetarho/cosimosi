@@ -16,6 +16,22 @@ const BASE_COLOR = MOOD.pink
 /** 예측 오차 게이트(spec 23 PE_THRESHOLD): 새로운 맥락이 이만큼은 돼야 별이 말랑해진다. */
 const PE_THRESHOLD = VALUES.reshape.peThreshold
 
+// 회상이 옅게 다시 쓰는 "지금 떠오르는 이야기"(spec 54). 원본(ORIGINAL_TEXT)은 불변이고,
+// 회상이 거듭돼 추상화가 깊어질수록 회상의 *이야기*만 디테일을 덜어내 줄거리(요지)에 가까워진다.
+// 높은 단계일수록 더 일반적 인상만 남는다 — append-only 변천사에 쌓이는 별도 레이어다(원본 records 아님, 헌법1).
+const RETELLINGS = [
+  '비 오는 날, 오래된 노래를 들었다.', // 0 — 아직 원본 그대로
+  '비 오던 그날, 익숙한 노래가 가만히 흘렀다.', // 1
+  '비 오는 날이면 떠오르는 노래가 있었다.', // 2
+  '비와 음악에 젖어들던, 어떤 날.', // 3 — 줄거리만 남은 요지
+] as const
+
+/** 회상 횟수(version)가 깊어질수록 회상의 이야기가 줄거리 쪽으로. 변형은 2회째부터(추상화 단계 임계 — 그 전엔 원본 그대로). */
+function retellingFor(version: number): { text: string; rewritten: boolean } {
+  const level = Math.min(RETELLINGS.length - 1, Math.max(0, Math.floor(version / 2)))
+  return { text: RETELLINGS[level], rewritten: level > 0 }
+}
+
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
 /**
@@ -87,6 +103,7 @@ export function ReconsolidationCard() {
   /** 직전 클릭이 게이트에 막혀 변화가 없었는지 — 안내 문구로 보인다. */
   const [lastBlocked, setLastBlocked] = useState(false)
   const current = history[history.length - 1]
+  const retelling = retellingFor(current.version)
 
   const recall = () => {
     const attempt = attempts + 1
@@ -165,6 +182,17 @@ export function ReconsolidationCard() {
         </div>
       </div>
 
+      {/* 회상이 옅게 다시 쓰는 이야기(spec 54) — 원본은 위에서 그대로, 회상의 이야기만 추상화될수록 줄거리에 가까워진다. */}
+      <div className="bg-space-900/40 flex flex-col gap-1.5 rounded-2xl border border-white/10 p-4">
+        <span className="text-xs tracking-widest text-white/40 uppercase">지금 떠오르는 이야기 · 회상이 옅게 다시 써요</span>
+        <p className="font-display text-sm leading-relaxed text-white/75">{retelling.text}</p>
+        <p className="text-[11px] leading-relaxed text-white/40">
+          {retelling.rewritten
+            ? '여러 번 떠올려 추상화가 깊어지자, 회상의 이야기가 줄거리 쪽으로 옅게 다시 쓰였어요 — 위 원본은 한 글자도 그대로예요.'
+            : '아직은 원본 그대로 떠올라요. 추상화가 깊어지면 회상의 이야기만 줄거리 쪽으로 옅게 다시 쓰여요(원본은 불변).'}
+        </p>
+      </div>
+
       {/* 변천사 — 누적 */}
       <div className="flex flex-col gap-2">
         <span className="text-xs tracking-widest text-white/40 uppercase">변천사 · 남는 길</span>
@@ -195,7 +223,7 @@ export function ReconsolidationCard() {
       </div>
 
       <p className="text-xs leading-relaxed text-white/40">
-        원본은 그대로, 별은 변하고, 변천사는 차곡차곡 쌓여가요.
+        원본은 그대로, 별의 빛도 형태도 회상의 이야기도 조금씩 변하고, 변천사는 차곡차곡 쌓여가요.
       </p>
 
       {/* PE 게이트 양방향 재성형 + append-only 변천사는 plan 23이 구현했다(타임랩스 UI는 24). */}
