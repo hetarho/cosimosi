@@ -1,0 +1,620 @@
+---
+import * as blogMarkdown from "../../../spec/blog.md";
+
+const raw = await blogMarkdown.rawContent();
+const compiled = await blogMarkdown.compiledContent();
+const title = raw.match(/^#\s+(.+)$/m)?.[1] ?? "cosimosi blog";
+const description =
+  raw
+    .split("\n")
+    .find((line) => line.startsWith("> cosimosi"))
+    ?.replace(/^>\s*/, "") ??
+  "cosimosi의 기억 우주를 뇌과학으로 풀어내는 정적 블로그입니다.";
+
+const articles = Array.from(raw.matchAll(/^##\s+(\d+)\.\s+(.+)$/gm)).map((match) => ({
+  number: match[1],
+  title: match[2],
+  id: `article-${match[1]}`,
+}));
+
+const contentHtml = compiled.replaceAll(/<h2 id="[^"]*">(\d+)\.\s+/g, (_match, number) => {
+  return `<h2 id="article-${number}">${number}. `;
+});
+
+const siteUrl = "https://cosimosi.haeram.me";
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  name: title,
+  description,
+  inLanguage: "ko-KR",
+  url: siteUrl,
+  publisher: {
+    "@type": "Organization",
+    name: "cosimosi",
+    logo: {
+      "@type": "ImageObject",
+      url: `${siteUrl}/favicon.svg`,
+    },
+  },
+  blogPost: articles.map((article) => ({
+    "@type": "BlogPosting",
+    headline: article.title,
+    url: `${siteUrl}/#${article.id}`,
+  })),
+};
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href={siteUrl} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" href="/rss.xml" type="application/rss+xml" title="cosimosi blog RSS" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="cosimosi blog" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={siteUrl} />
+    <meta property="og:image" content={`${siteUrl}/og.svg`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={`${siteUrl}/og.svg`} />
+    <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+  </head>
+  <body>
+    <div class="cosmos" aria-hidden="true">
+      <span class="star s1"></span>
+      <span class="star s2"></span>
+      <span class="star s3"></span>
+      <span class="star s4"></span>
+      <span class="orbit orbit-a"></span>
+      <span class="orbit orbit-b"></span>
+    </div>
+
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="cosimosi blog home">
+        <svg class="mark" viewBox="0 0 72 72" aria-hidden="true">
+          <path d="M36 5 61 20v32L36 67 11 52V20L36 5Z" />
+          <path d="M36 5v62M11 20l50 32M61 20 11 52M11 20l25 18 25-18M11 52l25-14 25 14" />
+          <circle cx="36" cy="38" r="4" />
+        </svg>
+        <span>
+          <strong>cosimosi</strong>
+          <small>memory universe notes</small>
+        </span>
+      </a>
+      <nav aria-label="Blog links">
+        <a href="#articles">글 목록</a>
+        <a href="/rss.xml">RSS</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">engram field journal</p>
+          <h1 id="hero-title">기억은 별이 되고, 연결은 별자리가 됩니다.</h1>
+          <p class="lede">
+            cosimosi의 우주적 인터랙션 뒤에 있는 뇌과학을 한 편씩 풀어내는 정적 블로그입니다.
+            글은 지금 하나의 <code>blog.md</code>에서 읽어와 빌드 시점에 HTML로 고정됩니다.
+          </p>
+        </div>
+
+        <div class="hero-visual" aria-label="정20면체 로고와 기억 별자리">
+          <svg class="icosahedron" viewBox="0 0 320 320" role="img" aria-labelledby="logo-title">
+            <title id="logo-title">cosimosi 정20면체 로고</title>
+            <defs>
+              <radialGradient id="core" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#fff4c0" />
+                <stop offset="58%" stop-color="#66f2d5" />
+                <stop offset="100%" stop-color="#101725" />
+              </radialGradient>
+            </defs>
+            <path class="face" d="M160 16 282 88v144L160 304 38 232V88L160 16Z" />
+            <path class="edge gold" d="M160 16v288M38 88l244 144M282 88 38 232M38 88l122 86 122-86M38 232l122-58 122 58" />
+            <path class="edge teal" d="M160 16 98 160 160 304 222 160 160 16M38 88l60 72-60 72M282 88l-60 72 60 72M98 160h124" />
+            <circle class="core" cx="160" cy="174" r="21" />
+          </svg>
+        </div>
+      </section>
+
+      <section class="article-index" id="articles" aria-labelledby="articles-title">
+        <div>
+          <p class="eyebrow">reading path</p>
+          <h2 id="articles-title">글 목록</h2>
+        </div>
+        <ol>
+          {
+            articles.map((article) => (
+              <li>
+                <a href={`#${article.id}`}>
+                  <span>{article.number.padStart(2, "0")}</span>
+                  {article.title}
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+
+      <article class="markdown-body">
+        <Fragment set:html={contentHtml} />
+      </article>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: dark;
+    --bg: #04050a;
+    --panel: rgba(9, 15, 24, 0.82);
+    --panel-strong: rgba(13, 24, 33, 0.94);
+    --line: rgba(141, 241, 216, 0.24);
+    --text: #f7f1e5;
+    --muted: #b7b0a1;
+    --soft: #8fa6a2;
+    --teal: #66f2d5;
+    --gold: #f7c76c;
+    --coral: #f0756f;
+    --ink: #05070d;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--bg);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-width: 320px;
+    margin: 0;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 24% 14%, rgba(102, 242, 213, 0.18), transparent 27rem),
+      radial-gradient(circle at 86% 10%, rgba(240, 117, 111, 0.15), transparent 28rem),
+      radial-gradient(circle at 56% 48%, rgba(247, 199, 108, 0.09), transparent 34rem),
+      linear-gradient(145deg, #04050a 0%, #08101b 48%, #03040a 100%);
+    line-height: 1.7;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  .cosmos {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .cosmos::before {
+    position: absolute;
+    inset: 0;
+    content: "";
+    background-image:
+      radial-gradient(circle, rgba(255, 248, 219, 0.7) 0 1px, transparent 1.5px),
+      radial-gradient(circle, rgba(102, 242, 213, 0.45) 0 1px, transparent 1.4px);
+    background-position:
+      0 0,
+      22px 32px;
+    background-size:
+      118px 118px,
+      182px 182px;
+    opacity: 0.36;
+  }
+
+  .star {
+    position: absolute;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--gold);
+    box-shadow: 0 0 28px currentColor;
+    color: var(--gold);
+  }
+
+  .s1 {
+    top: 18%;
+    left: 12%;
+  }
+
+  .s2 {
+    top: 58%;
+    left: 8%;
+    color: var(--teal);
+    background: var(--teal);
+  }
+
+  .s3 {
+    top: 20%;
+    right: 14%;
+    color: #fff4c0;
+    background: #fff4c0;
+  }
+
+  .s4 {
+    right: 22%;
+    bottom: 16%;
+    color: var(--coral);
+    background: var(--coral);
+  }
+
+  .orbit {
+    position: absolute;
+    border: 1px solid rgba(102, 242, 213, 0.13);
+    border-radius: 999px;
+    transform: rotate(-18deg);
+  }
+
+  .orbit-a {
+    top: 8rem;
+    right: -12rem;
+    width: 44rem;
+    height: 18rem;
+  }
+
+  .orbit-b {
+    bottom: 8rem;
+    left: -16rem;
+    width: 50rem;
+    height: 21rem;
+    border-color: rgba(247, 199, 108, 0.13);
+    transform: rotate(24deg);
+  }
+
+  .site-header {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    width: min(1120px, calc(100% - 2rem));
+    margin: 0 auto;
+    padding: 1rem 0;
+    backdrop-filter: blur(16px);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+  }
+
+  .brand span {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .brand strong {
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .brand small {
+    color: var(--soft);
+    font-size: 0.72rem;
+    line-height: 1.1;
+  }
+
+  .mark {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+  }
+
+  .mark path:first-child {
+    fill: rgba(12, 19, 32, 0.95);
+    stroke: var(--teal);
+    stroke-width: 2.2;
+  }
+
+  .mark path:nth-child(2) {
+    fill: none;
+    stroke: var(--gold);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+  }
+
+  .mark circle {
+    fill: var(--coral);
+  }
+
+  nav {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  nav a {
+    min-height: 2.4rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: #dff9f2;
+    font-size: 0.84rem;
+    text-decoration: none;
+  }
+
+  main {
+    width: min(1120px, calc(100% - 2rem));
+    margin: 0 auto;
+    padding: 4.5rem 0 7rem;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 28rem);
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: center;
+    min-height: 78vh;
+    padding: 1rem 0 5rem;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.9rem;
+    color: var(--teal);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+    line-height: 1.15;
+    letter-spacing: 0;
+  }
+
+  h1 {
+    max-width: 12em;
+    font-size: clamp(2.9rem, 7vw, 6.4rem);
+  }
+
+  .lede {
+    max-width: 42rem;
+    margin: 1.5rem 0 0;
+    color: #d8d0bf;
+    font-size: clamp(1rem, 2vw, 1.18rem);
+  }
+
+  code {
+    padding: 0.08rem 0.32rem;
+    border: 1px solid rgba(247, 199, 108, 0.22);
+    border-radius: 0.35rem;
+    background: rgba(247, 199, 108, 0.08);
+    color: #ffe3a2;
+    font-size: 0.9em;
+  }
+
+  .hero-visual {
+    display: grid;
+    place-items: center;
+    min-height: 26rem;
+  }
+
+  .icosahedron {
+    width: min(100%, 28rem);
+    aspect-ratio: 1;
+    filter: drop-shadow(0 0 44px rgba(102, 242, 213, 0.26));
+  }
+
+  .face {
+    fill: rgba(7, 14, 23, 0.84);
+    stroke: rgba(102, 242, 213, 0.78);
+    stroke-width: 4;
+  }
+
+  .edge {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3.2;
+  }
+
+  .gold {
+    stroke: rgba(247, 199, 108, 0.9);
+  }
+
+  .teal {
+    stroke: rgba(102, 242, 213, 0.42);
+  }
+
+  .core {
+    fill: url("#core");
+  }
+
+  .article-index {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+    margin: 0 0 3rem;
+    padding: 1.25rem 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .article-index h2 {
+    font-size: 1.55rem;
+  }
+
+  .article-index ol {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .article-index a {
+    display: grid;
+    min-height: 6.1rem;
+    padding: 0.9rem;
+    border: 1px solid rgba(143, 166, 162, 0.2);
+    border-radius: 0.5rem;
+    background: rgba(5, 9, 15, 0.52);
+    color: #f7f1e5;
+    font-weight: 700;
+    line-height: 1.35;
+    text-decoration: none;
+  }
+
+  .article-index a:hover,
+  .article-index a:focus-visible {
+    border-color: rgba(102, 242, 213, 0.72);
+    outline: none;
+  }
+
+  .article-index span {
+    color: var(--gold);
+    font-size: 0.76rem;
+  }
+
+  .markdown-body {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem clamp(1rem, 4vw, 3rem);
+    border: 1px solid rgba(143, 166, 162, 0.16);
+    border-radius: 0.5rem;
+    background: linear-gradient(180deg, var(--panel-strong), rgba(6, 8, 14, 0.9));
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.32);
+  }
+
+  .markdown-body h1 {
+    font-size: clamp(2rem, 5vw, 3.35rem);
+  }
+
+  .markdown-body h2 {
+    margin-top: 5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(247, 199, 108, 0.28);
+    color: #fff3cf;
+    font-size: clamp(1.6rem, 4vw, 2.45rem);
+    scroll-margin-top: 6rem;
+  }
+
+  .markdown-body h2:first-of-type {
+    margin-top: 2.4rem;
+  }
+
+  .markdown-body p,
+  .markdown-body li,
+  .markdown-body blockquote {
+    color: #ded7ca;
+    font-size: 1.03rem;
+  }
+
+  .markdown-body blockquote {
+    margin: 1.5rem 0 2rem;
+    padding: 1rem 1.2rem;
+    border-left: 3px solid var(--teal);
+    background: rgba(102, 242, 213, 0.07);
+  }
+
+  .markdown-body strong {
+    color: #fff4c0;
+  }
+
+  .markdown-body hr {
+    height: 1px;
+    margin: 3rem 0;
+    border: 0;
+    background: linear-gradient(90deg, transparent, rgba(102, 242, 213, 0.5), transparent);
+  }
+
+  .markdown-body ul {
+    padding-left: 1.25rem;
+  }
+
+  .markdown-body li + li {
+    margin-top: 0.45rem;
+  }
+
+  .markdown-body a {
+    color: var(--teal);
+    text-decoration-color: rgba(102, 242, 213, 0.42);
+    text-underline-offset: 0.18em;
+  }
+
+  @media (max-width: 860px) {
+    .site-header {
+      position: static;
+      align-items: flex-start;
+    }
+
+    .hero {
+      grid-template-columns: 1fr;
+      min-height: auto;
+      padding-top: 2rem;
+    }
+
+    .hero-visual {
+      min-height: 18rem;
+    }
+
+    .icosahedron {
+      width: min(82vw, 23rem);
+    }
+
+    .article-index {
+      grid-template-columns: 1fr;
+    }
+
+    .article-index ol {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .site-header {
+      flex-direction: column;
+    }
+
+    nav {
+      width: 100%;
+    }
+
+    nav a {
+      flex: 1;
+      text-align: center;
+    }
+
+    main {
+      width: min(100% - 1rem, 1120px);
+      padding-top: 1.5rem;
+    }
+
+    h1 {
+      font-size: 2.75rem;
+    }
+
+    .article-index ol {
+      grid-template-columns: 1fr;
+    }
+
+    .markdown-body {
+      padding: 2rem 1rem;
+    }
+  }
+</style>

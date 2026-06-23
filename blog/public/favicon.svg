@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="cosimosi icosahedron mark">
+  <rect width="64" height="64" rx="14" fill="#06070d"/>
+  <path d="M32 6 53 20v25L32 58 11 45V20L32 6Z" fill="#0c1320" stroke="#66f2d5" stroke-width="2.4"/>
+  <path d="M32 6v52M11 20l42 25M53 20 11 45M11 20l21 15 21-15M11 45l21-10 21 10" fill="none" stroke="#f7c76c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="35" r="3.4" fill="#f0756f"/>
+</svg>

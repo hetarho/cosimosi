@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="44%" r="70%">
+      <stop offset="0%" stop-color="#1d3240"/>
+      <stop offset="46%" stop-color="#090b13"/>
+      <stop offset="100%" stop-color="#03040a"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <g opacity=".65">
+    <circle cx="180" cy="120" r="2.5" fill="#f7c76c"/>
+    <circle cx="270" cy="470" r="2" fill="#66f2d5"/>
+    <circle cx="980" cy="180" r="2.2" fill="#fff8dc"/>
+    <circle cx="1080" cy="510" r="1.8" fill="#f0756f"/>
+    <circle cx="760" cy="88" r="2.4" fill="#d7fff6"/>
+    <circle cx="101" cy="540" r="1.8" fill="#d7fff6"/>
+  </g>
+  <g transform="translate(820 146) scale(2.25)" filter="url(#glow)">
+    <path d="M100 8 181 61v96l-81 51-81-51V61L100 8Z" fill="#0c1320" stroke="#66f2d5" stroke-width="5"/>
+    <path d="M100 8v200M19 61l162 96M181 61 19 157M19 61l81 58 81-58M19 157l81-38 81 38" fill="none" stroke="#f7c76c" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="100" cy="119" r="9" fill="#f0756f"/>
+  </g>
+  <text x="92" y="232" fill="#f8f3e7" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="76" font-weight="700">cosimosi blog</text>
+  <text x="96" y="304" fill="#9ee8db" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="34">뇌과학으로 읽는 기억의 우주</text>
+  <text x="96" y="390" fill="#d8d0bf" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="27">기억은 별이 되고, 연결은 별자리가 됩니다.</text>
+</svg>
