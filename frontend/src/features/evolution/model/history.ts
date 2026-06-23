@@ -14,6 +14,8 @@ export interface EvolutionSnapshotVM {
   pe: number
   dir: number
   createdAt: string
+  /** AI 내용 변형 텍스트(spec 54) — trigger='ai_rewrite' 스냅샷만 비어있지 않다. 시각 reshape/gist 행은 "". */
+  content: string
 }
 
 /** trigger → Korean label (acceptance 1.3). Unknown triggers fall back to the raw value. */
@@ -21,6 +23,7 @@ const TRIGGER_LABEL: Record<string, string> = {
   recall: '회상',
   new_neighbor: '새 이웃',
   nightly_gist: '야간 요지',
+  ai_rewrite: '내용 변형', // spec 54: 재공고화 AI 내용 변형
 }
 
 /** One scrub step: a snapshot plus its resolved label and normalized direction. */
@@ -32,6 +35,8 @@ interface EvolutionStep {
   triggerLabel: string
   /** +1 강화 / -1 약화 / 0 중립. */
   dir: 1 | -1 | 0
+  /** 이 시점의 흐려진 내용(spec 54) — 변형 스냅샷만 비어있지 않다. */
+  content: string
 }
 
 /** snapshots (version ASC) → scrubbable steps. Form/color drift comes only from the
@@ -44,6 +49,7 @@ export function toEvolutionSteps(snapshots: EvolutionSnapshotVM[]): EvolutionSte
     formSeedDelta: s.formSeedDelta,
     triggerLabel: TRIGGER_LABEL[s.trigger] ?? s.trigger,
     dir: s.dir > 0 ? 1 : s.dir < 0 ? -1 : 0,
+    content: s.content,
   }))
 }
 

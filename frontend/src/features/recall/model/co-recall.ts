@@ -1,8 +1,9 @@
 // Pure co-recall session accumulation (spec 11). No three/React/DOM (constitution
 // §4, acceptance 1.9 — mobile reusable). The operational definition: an "active
 // view" (≥2s dwell, confirmed by the caller) paired with the PREVIOUS active view
-// adds one co-recall increment (+0.05) to that normalized pair; same pair within a
-// window sums.
+// adds one fixed co-recall increment (+CO_RECALL_DELTA) to that normalized pair; the
+// same pair within a window sums. The reinforcement is a flat amount regardless of how
+// long since the pair was last seen (change 22 — no spacing effect: 몰아보기 1× = 하루 띄움 1×).
 import { VALUES } from '@/shared/config'
 
 export type Pair = `${string}|${string}`
@@ -11,26 +12,14 @@ export const CO_RECALL_DELTA = VALUES.recall.coRecallDelta
 export const DWELL_MS = VALUES.recall.dwellMs
 export const DEBOUNCE_IDLE_MS = 5000
 
-// Spacing effect (spec 23, Katz 2021): re-viewing a pair after a LONGER gap reinforces
-// it more than massing it in one session. The boost scales the base increment from 1×
-// (just seen together) up to 1+SPACING_GAIN at a full SPACING_REF_DAYS gap. The server's
-// ReinforceLinks still caps the summed weight at 1.0 — this only shapes the increment.
-export const SPACING_GAIN = VALUES.recall.spacingGain
-export const SPACING_REF_DAYS = VALUES.recall.spacingRefDays
-const DAY_MS = 86_400_000
-
 export interface RecallSession {
   deltas: Map<Pair, number>
   lastViewedId: string | null
-  /** epoch ms of each pair's last co-recall increment — the spacing-effect baseline.
-   *  Survives a flush (the session is spread, not recreated) so spacing persists across
-   *  batches; cleared only by a source-boundary reset (new session). */
-  pairLastSeen: Map<Pair, number>
   batchId: string
 }
 
 export function createSession(batchId: string): RecallSession {
-  return { deltas: new Map(), lastViewedId: null, pairLastSeen: new Map(), batchId }
+  return { deltas: new Map(), lastViewedId: null, batchId }
 }
 
 /** Normalized undirected key (a<b byte order; the server re-normalizes per collation). */
@@ -38,24 +27,13 @@ export function pairKey(a: string, b: string): Pair {
   return (a < b ? `${a}|${b}` : `${b}|${a}`) as Pair
 }
 
-/** Spacing multiplier for a co-recall increment: 1 when the pair was just seen together,
- *  rising to 1+SPACING_GAIN once the gap reaches SPACING_REF_DAYS (acceptance 2.1). */
-export function spacingBoost(gapDays: number): number {
-  const g = Math.max(0, Math.min(1, gapDays / SPACING_REF_DAYS))
-  return 1 + SPACING_GAIN * g
-}
-
-/** Record one confirmed active view at nowMs; if it differs from the previous one, the
- *  pair gains +CO_RECALL_DELTA scaled by the spacing boost (gap since the pair was last
- *  reinforced). Same-id (re-view) just refreshes lastViewedId. nowMs is injected (the
- *  caller passes the virtual clock) — this stays pure (constitution §4). */
-export function onActiveView(s: RecallSession, id: string, nowMs: number): void {
+/** Record one confirmed active view; if it differs from the previous one, the pair gains a
+ *  fixed +CO_RECALL_DELTA (server caps the summed weight at 1.0). Same-id (re-view) just
+ *  refreshes lastViewedId. Pure (constitution §4). */
+export function onActiveView(s: RecallSession, id: string): void {
   if (s.lastViewedId && s.lastViewedId !== id) {
     const k = pairKey(s.lastViewedId, id)
-    const last = s.pairLastSeen.get(k)
-    const gapDays = last == null ? 0 : (nowMs - last) / DAY_MS
-    s.deltas.set(k, (s.deltas.get(k) ?? 0) + CO_RECALL_DELTA * spacingBoost(gapDays))
-    s.pairLastSeen.set(k, nowMs)
+    s.deltas.set(k, (s.deltas.get(k) ?? 0) + CO_RECALL_DELTA)
   }
   s.lastViewedId = id
 }

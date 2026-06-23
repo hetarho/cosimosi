@@ -5,7 +5,7 @@
 import { Mood as ProtoMood, type Star } from '@/shared/api'
 import type { Mood } from '@/shared/config'
 import { virtualNowMs } from '@/shared/lib/demo'
-import { seedFromId } from '../model/seed'
+import { seedComponents } from '../model/seed'
 import { parseEpochMs } from '../model/time'
 import type { Memory, StarNode } from '../model/types'
 
@@ -33,6 +33,7 @@ export function moodFromProto(m: ProtoMood): Mood {
 /** Maps a proto Star to a domain StarNode at the given instance slot. */
 export function mapStar(star: Star, index: number): StarNode {
   const id = star.memoryId
+  const shapeSeed = seedComponents(id)
   const memory: Memory = {
     id,
     mood: moodFromProto(star.mood),
@@ -45,7 +46,10 @@ export function mapStar(star: Star, index: number): StarNode {
     // 일기 단위 그룹/조망 키(spec 28). 구 응답/데모엔 ""·0 — 그룹 셀렉터가 빈 키를 무시한다.
     recordId: star.recordId,
     fragmentIndex: star.fragmentIndex,
-    seed: seedFromId(id),
+    seed: shapeSeed[0], // = seedFromId(id) — 기존 wobble/fibonacci/surface 무늬와 동일(A5)
+    shapeSeed, // 53: 형태(geometry) 변형 3축
+    // 53: 야간 요지가 승급한 추상화 단계(0~4). proto 기본값 0이면 또렷(데모·구 응답·미요지 별).
+    abstractionStage: star.abstractionStage,
     // 재공고화 상태(spec 23) — proto 기본값 0이면 무변형(기존 별과 동일).
     brightnessOffset: star.brightnessOffset,
     hueShift: star.hueShift,

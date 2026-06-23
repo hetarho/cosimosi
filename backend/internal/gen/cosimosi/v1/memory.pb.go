@@ -427,7 +427,8 @@ func (x *RecordMemoryResponse) GetMemoryIds() []string {
 // last_recalled_at.
 // Field number 11 = 36 resonance (RESERVED); 5–8 are the spec 23 reshaping
 // state (mutable star layer); 9–10 = 28 wayfinding; valence takes 12;
-// 13 is RESERVED — was relevance (26), retired by spec 38 change 19 (밝기=자기-거리).
+// 13 is RESERVED — was relevance (26), retired by spec 38 change 19 (밝기=자기-거리);
+// 15 = 53 abstraction_stage (야간 요지가 영속·승급, 클라가 형태로 소비; 23 form_seed_delta와 별개 채널).
 // (00.overview 공유 설계 결정 — Star 필드 번호 할당)
 type Star struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -451,9 +452,13 @@ type Star struct {
 	// 07: 누적 회상 횟수(서버 권위 원자료, RecallMemoryTouch마다 +1). 클라가 Bjork 저장강도
 	// S=(storage_base+recall_count)·(1+emo·intensity)와 인출강도 R=exp(-Δt/τ(S))를 파생해
 	// 자기근접 반지름(38)+배경 감정 순위를 함께 구동한다. 기존 별은 1로 백필.
-	RecallCount   int64 `protobuf:"varint,14,opt,name=recall_count,json=recallCount,proto3" json:"recall_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RecallCount int64 `protobuf:"varint,14,opt,name=recall_count,json=recallCount,proto3" json:"recall_count,omitempty"`
+	// 53: 추상화 단계 0~4(memories.abstraction_stage). 야간 요지(27 change 20)가 별 반지름으로
+	// 단조 승급·영속하고, 클라가 형태(geometry)를 단계적으로 단순/추상화하는 데 쓴다(plan 53).
+	// 23의 form_seed_delta(연속 재성형)와 별개 채널. GetUniverse·ListDormant 양쪽이 채운다.
+	AbstractionStage int32 `protobuf:"varint,15,opt,name=abstraction_stage,json=abstractionStage,proto3" json:"abstraction_stage,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Star) Reset() {
@@ -573,6 +578,13 @@ func (x *Star) GetValence() float64 {
 func (x *Star) GetRecallCount() int64 {
 	if x != nil {
 		return x.RecallCount
+	}
+	return 0
+}
+
+func (x *Star) GetAbstractionStage() int32 {
+	if x != nil {
+		return x.AbstractionStage
 	}
 	return 0
 }
@@ -904,7 +916,11 @@ type RecallMemoryResponse struct {
 	// 28: 이 별(조각)의 텍스트 — 별 → 조각. records.body는 원본 일기 전체로 유지하고,
 	// 여기엔 그 별이 가리키는 fragment(memories.fragment_text)만 싣는다. 단일 조각/구
 	// 데이터(fragment_text NULL)면 빈 문자열(클라가 record.body로 폴백).
-	FragmentText  string `protobuf:"bytes,2,opt,name=fragment_text,json=fragmentText,proto3" json:"fragment_text,omitempty"`
+	FragmentText string `protobuf:"bytes,2,opt,name=fragment_text,json=fragmentText,proto3" json:"fragment_text,omitempty"`
+	// 54: 재공고화 AI 내용 변형의 현재 파생 텍스트(evolution_history 최신 content). 추상화 단계 ≥2
+	// 별이 다시 빚어졌을 때만 비어있지 않다 — 클라는 이게 있으면 '흐려진 기억'으로 보이고 원본(record.body)을
+	// 병치한다("내 기억은 흐려졌지만 그날 쓴 말은 그대로"). 빈 문자열 = 변형 없음(클라가 fragment_text/body 폴백).
+	DerivedText   string `protobuf:"bytes,3,opt,name=derived_text,json=derivedText,proto3" json:"derived_text,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -949,6 +965,13 @@ func (x *RecallMemoryResponse) GetRecord() *Record {
 func (x *RecallMemoryResponse) GetFragmentText() string {
 	if x != nil {
 		return x.FragmentText
+	}
+	return ""
+}
+
+func (x *RecallMemoryResponse) GetDerivedText() string {
+	if x != nil {
+		return x.DerivedText
 	}
 	return ""
 }
@@ -1216,10 +1239,13 @@ type EvolutionSnapshot struct {
 	Brightness    float64                `protobuf:"fixed64,2,opt,name=brightness,proto3" json:"brightness,omitempty"` // brightness_offset snapshot at this version
 	HueShift      float64                `protobuf:"fixed64,3,opt,name=hue_shift,json=hueShift,proto3" json:"hue_shift,omitempty"`
 	FormSeedDelta float64                `protobuf:"fixed64,4,opt,name=form_seed_delta,json=formSeedDelta,proto3" json:"form_seed_delta,omitempty"`
-	Trigger       string                 `protobuf:"bytes,5,opt,name=trigger,proto3" json:"trigger,omitempty"` // 'recall' | 'new_neighbor' | 'nightly_gist'(27)
+	Trigger       string                 `protobuf:"bytes,5,opt,name=trigger,proto3" json:"trigger,omitempty"` // 'recall' | 'new_neighbor' | 'nightly_gist'(27) | 'ai_rewrite'(54)
 	Pe            float64                `protobuf:"fixed64,6,opt,name=pe,proto3" json:"pe,omitempty"`         // prediction error that opened the soft window
 	Dir           int32                  `protobuf:"varint,7,opt,name=dir,proto3" json:"dir,omitempty"`        // +1 강화 / -1 약화
 	CreatedAt     string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// 54: AI 내용 변형 스냅샷 텍스트(trigger='ai_rewrite' 행만 비어있지 않다). 시각 reshape/gist 행은 ""
+	// (내용 변형 아님). 변천사 타임랩스(24)가 단계별로 흐려진 내용 이력을 원본과 병치해 되짚게 한다(A4).
+	Content       string `protobuf:"bytes,9,opt,name=content,proto3" json:"content,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1306,6 +1332,13 @@ func (x *EvolutionSnapshot) GetDir() int32 {
 func (x *EvolutionSnapshot) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *EvolutionSnapshot) GetContent() string {
+	if x != nil {
+		return x.Content
 	}
 	return ""
 }
@@ -2180,7 +2213,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x14RecordMemoryResponse\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\x12\x1d\n" +
 	"\n" +
-	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xcc\x03\n" +
+	"memory_ids\x18\x02 \x03(\tR\tmemoryIds\"\xf9\x03\n" +
 	"\x04Star\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\x12%\n" +
 	"\x04mood\x18\x02 \x01(\x0e2\x11.cosimosi.v1.MoodR\x04mood\x12\x1c\n" +
@@ -2195,7 +2228,8 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	" \x01(\x05R\rfragmentIndex\x12\x1a\n" +
 	"\bresonant\x18\v \x01(\bR\bresonant\x12\x18\n" +
 	"\avalence\x18\f \x01(\x01R\avalence\x12!\n" +
-	"\frecall_count\x18\x0e \x01(\x03R\vrecallCountJ\x04\b\r\x10\x0eR\trelevance\"\xc0\x01\n" +
+	"\frecall_count\x18\x0e \x01(\x03R\vrecallCount\x12+\n" +
+	"\x11abstraction_stage\x18\x0f \x01(\x05R\x10abstractionStageJ\x04\b\r\x10\x0eR\trelevance\"\xc0\x01\n" +
 	"\aSynapse\x12\x11\n" +
 	"\x04a_id\x18\x01 \x01(\tR\x03aId\x12\x11\n" +
 	"\x04b_id\x18\x02 \x01(\tR\x03bId\x12\x16\n" +
@@ -2218,10 +2252,11 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\tintensity\x18\x05 \x01(\x01R\tintensity\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1b\n" +
-	"\trecord_id\x18\a \x01(\tR\brecordId\"h\n" +
+	"\trecord_id\x18\a \x01(\tR\brecordId\"\x8b\x01\n" +
 	"\x14RecallMemoryResponse\x12+\n" +
 	"\x06record\x18\x01 \x01(\v2\x13.cosimosi.v1.RecordR\x06record\x12#\n" +
-	"\rfragment_text\x18\x02 \x01(\tR\ffragmentText\"/\n" +
+	"\rfragment_text\x18\x02 \x01(\tR\ffragmentText\x12!\n" +
+	"\fderived_text\x18\x03 \x01(\tR\vderivedText\"/\n" +
 	"\x10GetRecordRequest\x12\x1b\n" +
 	"\trecord_id\x18\x01 \x01(\tR\brecordId\"@\n" +
 	"\x11GetRecordResponse\x12+\n" +
@@ -2236,7 +2271,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x05moods\x18\x05 \x03(\x0e2\x11.cosimosi.v1.MoodR\x05moods\"\x14\n" +
 	"\x12ListRecordsRequest\"K\n" +
 	"\x13ListRecordsResponse\x124\n" +
-	"\arecords\x18\x01 \x03(\v2\x1a.cosimosi.v1.RecordSummaryR\arecords\"\xed\x01\n" +
+	"\arecords\x18\x01 \x03(\v2\x1a.cosimosi.v1.RecordSummaryR\arecords\"\x87\x02\n" +
 	"\x11EvolutionSnapshot\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x05R\aversion\x12\x1e\n" +
 	"\n" +
@@ -2248,7 +2283,8 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x02pe\x18\x06 \x01(\x01R\x02pe\x12\x10\n" +
 	"\x03dir\x18\a \x01(\x05R\x03dir\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"9\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x18\n" +
+	"\acontent\x18\t \x01(\tR\acontent\"9\n" +
 	"\x1aGetEvolutionHistoryRequest\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\"[\n" +
 	"\x1bGetEvolutionHistoryResponse\x12<\n" +

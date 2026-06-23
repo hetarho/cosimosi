@@ -13,7 +13,7 @@ import {
 } from '@/shared/api'
 import {
   moodFromProto,
-  seedFromId,
+  seedComponents,
   useMemoryStore,
   type StarNode,
 } from '@/entities/memory'
@@ -57,6 +57,7 @@ export function mapSharedUniverse(res: GetSharedUniverseResponse): {
 } {
   const stars: StarNode[] = res.stars.map((s, i) => {
     const id = `shared-${i}`
+    const shapeSeed = seedComponents(id)
     return {
       id,
       index: i,
@@ -71,7 +72,9 @@ export function mapSharedUniverse(res: GetSharedUniverseResponse): {
         recallCount: 1,
         recordId: '', // 원본 일기 그룹 키 없음(방문은 일기 접근 불가)
         fragmentIndex: 0,
-        seed: seedFromId(id),
+        seed: shapeSeed[0],
+        shapeSeed, // 53: 형태 변형 3축(공개 스냅샷도 별마다 고유 실루엣)
+        abstractionStage: 0, // 공개 스냅샷엔 추상화 단계 없음 — 또렷(content-zero)
         brightnessOffset: 0,
         hueShift: 0,
         formSeedDelta: 0,

@@ -21,6 +21,8 @@ backend/internal/llm
 
 추출은 **admin 콘솔의 활성 LLM 선택을 따른다**(spec 34): 활성 선택이 있으면 실제 추출, 없으면 키리스 mock. AI를 켜고 끄는 것은 콘솔 액션이지 env 변경이 아니며, 이를 위한 env 변수는 존재하지 않는다. (admin 배선 없이 뜨는 단독 도구·테스트는 키리스 mock으로 고정된다 — `ai.NewExtractor`에 src=nil.)
 
+재공고화 AI 내용 변형(spec 54)도 같은 스위치를 따른다 — `ai.NewRewriter`(SwitchingRewriter, 같은 30s TTL): 활성이면 LLM 재서술, 아니면 **no-op**(내용 변형 없이 기존 텍스트 유지, graceful — 데모·키리스 포함). 변형 프롬프트는 `ai/rewriter.go`가 소유하고(추상화 단계로 변형 폭 조절, 사실 추가 금지), 비용은 추출과 같은 `llm.Client` 경로(UsageSink)로 계측된다 — 비동기 rewrite 잡당 1콜이라 추출보다 호출 빈도가 낮다(별당 디바운스).
+
 ## API 키 넣는 곳
 
 키는 **admin 콘솔로만** 들어간다 — env 파일·코드·리포에 두지 않는다.

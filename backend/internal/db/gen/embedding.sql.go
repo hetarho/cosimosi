@@ -16,7 +16,9 @@ const knnNearest = `-- name: KnnNearest :many
 SELECT
     e.memory_id,
     (1 - (e.embedding <=> $1::vector))::float8 AS cos_sim,
-    r.entry_date
+    r.entry_date,
+    m.valence,
+    m.intensity
 FROM embeddings e
 JOIN memories m ON m.id = e.memory_id
 JOIN records r ON r.id = m.record_id
@@ -38,6 +40,8 @@ type KnnNearestRow struct {
 	MemoryID  string      `json:"memory_id"`
 	CosSim    float64     `json:"cos_sim"`
 	EntryDate pgtype.Date `json:"entry_date"`
+	Valence   *float32    `json:"valence"`
+	Intensity *float32    `json:"intensity"`
 }
 
 // Top-k nearest same-user neighbors (excluding self), cosine similarity ≥ τ=0.75,
@@ -59,7 +63,13 @@ func (q *Queries) KnnNearest(ctx context.Context, arg KnnNearestParams) ([]KnnNe
 	var items []KnnNearestRow
 	for rows.Next() {
 		var i KnnNearestRow
-		if err := rows.Scan(&i.MemoryID, &i.CosSim, &i.EntryDate); err != nil {
+		if err := rows.Scan(
+			&i.MemoryID,
+			&i.CosSim,
+			&i.EntryDate,
+			&i.Valence,
+			&i.Intensity,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

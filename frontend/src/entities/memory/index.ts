@@ -2,8 +2,8 @@
 export type { Memory, StarNode, Mood } from './model/types'
 export { starBrightness, isDormant, A_MIN } from './model/activation'
 export { memoryR, memoryRadiusR, radiusConnectedness } from './model/weight'
-export { seedFromId } from './model/seed'
-export { reshapedSeed } from './model/reshape'
+export { seedFromId, seedComponents } from './model/seed'
+export { reshapedSeed, reshapedShapeSeed } from './model/reshape'
 export {
   deriveAmbient,
   ambientToRgb,

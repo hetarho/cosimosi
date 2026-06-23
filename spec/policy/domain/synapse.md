@@ -17,8 +17,9 @@
 | 의미 KNN 임계 τ | `cos_sim ≥ 0.75`, 미만은 미연결 — **조각 임베딩** 기준(조각마다 따로 임베딩, 21) |
 | 후보 상한 candidateK | `KnnNearest LIMIT = 16`(=`knnK·2`), `embedding <=> query` 오름차순 — 흥분성 재정렬 여지 확보(22) |
 | 최종 링크 수 biasedK | 후보를 흥분성 편향으로 재정렬해 상위 **`5`** 만 링크(22) |
-| 초기 가중치 w0 | `min(clamp(α·cos_sim + temporal_bonus, 0, 1), 0.79)`, `α = 1.0` — **semantic 캡 0.79**(21: 교차 링크는 일내 결속 0.8보다 항상 약하다). 흥분성은 **선택만** 편향하고 가중치는 의미·시간이 정한다 |
+| 초기 가중치 w0 | `min(clamp(α·cos_sim + temporal_bonus + emo_alpha·emoSim, 0, 1), 0.79)`, `α = 1.0` — **semantic 캡 0.79**(21: 교차 링크는 일내 결속 0.8보다 항상 약하다). 흥분성은 **선택만** 편향하고 가중치는 의미·시간·감정이 정한다 |
 | temporal_bonus | 같은 날 `+0.3` → 7일에 `0` 선형 감소(`본인 record entry_date` vs 후보 `entry_date`) |
+| 감정 유사도 항 (change 21) | `emo_alpha·emoSim` 가산(`emo_alpha=0.1`). `emoSim ∈ [0,1]` = 두 별 정동 원형(valence×intensity-as-arousal) 거리 → 가까운 감정일수록 1(`1 − 거리/√5`). 후보 게이트(`cos≥0.75`)·`semanticWeightCap`은 불변 — 감정은 *이미 의미로 후보가 된* 링크 weight만 미세 조정(상한이 일내 결속 0.8 < 보장). `emo_alpha=0`이면 기존 동작. 감정 미감지 별은 (0,0) 중립으로 읽힘 |
 | link_type | 리터럴 `'semantic'` |
 | 업서트 | UNNEST 배치, `ON CONFLICT (a_id,b_id) DO UPDATE SET weight = GREATEST(기존, 신규)` — 형제 조각이 KNN에 잡혀도 GREATEST가 일내 0.8을 유지 |
 

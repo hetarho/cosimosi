@@ -3,6 +3,6 @@
 export { useMemoryStore, starsOfRecord } from '../model/store'
 // 별 밝기 = 자기-거리(반지름)를 빛으로 읽기(spec 38 change 19) — 별도 시간·연결 감쇠 채널 없음. color=mood.
 export { starGlow } from '../model/activation'
-export { reshapedBrightness, reshapedSeed } from '../model/reshape'
+export { reshapedBrightness, reshapedSeed, reshapedShapeSeed } from '../model/reshape'
 // 겹쳐보기(spec 37): StarField가 스토어 대신 외부 별 소스를 그릴 때(두 우주 동시 렌더) prop 타입.
 export type { StarNode } from '../model/types'

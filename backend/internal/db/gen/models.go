@@ -38,6 +38,7 @@ type EvolutionHistory struct {
 	Pe            float32            `json:"pe"`
 	Dir           int32              `json:"dir"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	Content       *string            `json:"content"`
 }
 
 type InviteCode struct {

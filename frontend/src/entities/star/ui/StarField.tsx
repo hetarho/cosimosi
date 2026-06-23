@@ -11,7 +11,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } fr
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { attribute, uniform } from 'three/tsl'
-import { starGlow, reshapedBrightness, reshapedSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
+import { asVec4Node } from '@/shared/lib/r3f'
+import { starGlow, reshapedBrightness, reshapedShapeSeed, starsOfRecord, useMemoryStore, type StarNode } from '@/entities/memory/@x/star'
 import { degreeNormById, weightedDegreeById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
@@ -251,6 +252,10 @@ export function StarField({
     const litMixU = uniform(1)
     const camHeadlightU = uniform(0) // 1=far-view 헤드램프(셰이더 viewDir 광원), 0=selfLightPos 경로
     const { form, surface } = decodeStarSelection(object)
+    // 53: 형태 변형 시드·단계를 **단일 vec4** aShape(s0, s1, s2, stage)에 묶는다 — WebGPU는 파이프라인당
+    // 정점 버퍼 ≤8이라(헌법8 단일 InstancedMesh) 별도 attribute를 더 늘리면 한도를 넘는다. .x는 옛 aSeed와
+    // 같은 값(s0+formSeedDelta)이라 surface 무늬가 그대로 쓴다.
+    const aShape = asVec4Node(attribute('aShape', 'vec4'))
     const built = buildStarBody(
       form,
       surface,
@@ -258,7 +263,9 @@ export function StarField({
         mood: attribute('aMood', 'vec3'),
         glow: attribute('aGlow', 'float'), // 자가발광=거리 밝기(brightnessFromRadius, A_MIN 바닥은 attribute 계산에서)
         recency: attribute('aRecency', 'float'), // 반사 변조=거리 밝기(가까운 별일수록 자아광 반사 밝음)
-        seed: attribute('aSeed', 'float'),
+        seed: aShape.x, // 형태/표면 무늬 시드(s0 = 옛 aSeed)
+        shape: aShape.xyz, // 53: 형태 변형 3축 시드(별마다 다른 실루엣)
+        stage: aShape.w, // 53: 추상화 단계(0~4, 요지화 단순화 구동)
         hueShift: attribute('aHueShift', 'float'),
         time: t,
         cameraPos: camPosU,
@@ -273,6 +280,14 @@ export function StarField({
         distance: VALUES.starLighting.selfDistance,
         decay: VALUES.starLighting.selfDecay,
         gain: VALUES.starLighting.litAlbedoGain,
+      },
+      {
+        // 53: 형태 변형 스칼라. stageMax는 야간 요지 임계 개수(gist_stage_radii 길이)에서 파생 — 단계 0~N.
+        displaceAmp: VALUES.starForm.displaceAmp,
+        detailAmp: VALUES.starForm.detailAmp,
+        asymmetry: VALUES.starForm.asymmetry,
+        stageSimplify: VALUES.starForm.stageSimplify,
+        stageMax: VALUES.consolidation.gistStageRadii.length,
       },
     )
     const update = (time: number, camera: THREE.Camera) => {
@@ -380,7 +395,9 @@ export function StarField({
     const resonantIdx: number[] = []
 
     const moodArr = new Float32Array(count * 3)
-    const seedArr = new Float32Array(count)
+    // 53: 형태 시드·단계를 단일 vec4 aShape(s0, s1, s2, stage)에 묶는다(WebGPU 정점 버퍼 ≤8 — 별도
+    // attribute를 더 늘리면 파이프라인 한도 초과로 별이 안 그려진다). .x는 옛 aSeed(s0+formSeedDelta).
+    const shapeArr = new Float32Array(count * 4)
     const glowArr = new Float32Array(count) // 자가발광=거리 밝기(brightnessFromRadius, A_MIN 바닥)
     const recencyArr = new Float32Array(count) // 반사 변조=거리 밝기
     const focusArr = new Float32Array(count).fill(1) // 포커스 배율(아래 focus effect가 갱신; 기본 1)
@@ -404,9 +421,14 @@ export function StarField({
       moodArr[i * 3] = rgb[0] + (tint ? (tint[0] - rgb[0]) * ts : 0)
       moodArr[i * 3 + 1] = rgb[1] + (tint ? (tint[1] - rgb[1]) * ts : 0)
       moodArr[i * 3 + 2] = rgb[2] + (tint ? (tint[2] - rgb[2]) * ts : 0)
-      // 재성형 합성(spec 23): 형태 시드·밝기는 누적 재공고화 상태를 더한 유효값으로,
-      // 색조는 라디안 attribute로 머티리얼에 넘긴다. 기본 0이면 기존 별과 동일.
-      seedArr[i] = reshapedSeed(m.seed, m.formSeedDelta)
+      // 재성형 합성(spec 23·53): aShape vec4 = (s0,s1,s2,stage). 형태 3축 시드는 회상/요지가 누적한
+      // form_seed_delta를 각 축에 더해 다시 빚어지고(A4), .x(s0)는 옛 aSeed처럼 표면 무늬에도 쓰인다.
+      // 색조(hueShift)는 별도 라디안 attribute. 기본값(델타 0·stage 0)이면 기존 별과 동일.
+      const shapeSeed = reshapedShapeSeed(m.shapeSeed, m.formSeedDelta)
+      shapeArr[i * 4] = shapeSeed[0]
+      shapeArr[i * 4 + 1] = shapeSeed[1]
+      shapeArr[i * 4 + 2] = shapeSeed[2]
+      shapeArr[i * 4 + 3] = m.abstractionStage // 추상화 단계(0~4) — 높을수록 형태 단순/추상(요지)
       // 밝기 = 자기-거리(반지름)를 빛으로 읽기(spec 38 change 19): 가까운 별이 밝고 먼(휴면) 별은 A_MIN
       // 바닥. 연결·회상·최근성은 반지름을 통해서만 밝기에 닿는다(별도 채널 없음). 한 값으로 두 렌더 채널을
       // 함께 구동 — aGlow(자가발광)는 +reshape offset(A_MIN 바닥 OUTERMOST), aRecency(반사 변조)는 그대로.
@@ -439,7 +461,7 @@ export function StarField({
     }
 
     geometry.setAttribute('aMood', new THREE.InstancedBufferAttribute(moodArr, 3))
-    geometry.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seedArr, 1))
+    geometry.setAttribute('aShape', new THREE.InstancedBufferAttribute(shapeArr, 4)) // 53: (s0,s1,s2,stage) — 옛 aSeed 흡수
     geometry.setAttribute('aGlow', new THREE.InstancedBufferAttribute(glowArr, 1))
     geometry.setAttribute('aRecency', new THREE.InstancedBufferAttribute(recencyArr, 1))
     geometry.setAttribute('aFocus', new THREE.InstancedBufferAttribute(focusArr, 1))

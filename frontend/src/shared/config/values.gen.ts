@@ -41,6 +41,7 @@ export const VALUES = {
     temporalWindowDays: 7,
     semanticWeightCap: 0.79,
     intraEntryWeight: 0.8,
+    emoAlpha: 0.1,
   },
   excitability: {
     tauHours: 6,
@@ -69,6 +70,10 @@ export const VALUES = {
     tau0Days: 14,
     tauStorageGain: 0.8,
   },
+  rewrite: {
+    stageThreshold: 2,
+    debounceHours: 24,
+  },
   ambient: {
     arousalGain: 0.3,
     bgBrightnessGain: 0.35,
@@ -79,8 +84,6 @@ export const VALUES = {
   recall: {
     coRecallDelta: 0.05,
     dwellMs: 2000,
-    spacingGain: 1,
-    spacingRefDays: 1,
   },
   extraction: {
     maxSegments: 5,
@@ -120,6 +123,12 @@ export const VALUES = {
     burstBaseScale: 2.5,
     burstGrow: 16,
     burstFadeGain: 1.2,
+  },
+  starForm: {
+    displaceAmp: 0.13,
+    detailAmp: 0.06,
+    asymmetry: 0.22,
+    stageSimplify: 0.75,
   },
   starLighting: {
     selfIntensity: 0.9,

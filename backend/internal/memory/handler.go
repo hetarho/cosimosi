@@ -202,6 +202,7 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 			CreatedAt: formatTime(&rec.CreatedAt),
 		},
 		FragmentText: rec.FragmentText, // 28: 별 → 조각(NULL이면 ""; 클라가 body로 폴백)
+		DerivedText:  rec.DerivedText, // 54: 최신 AI 내용 변형 텍스트(없으면 ""; 클라가 fragment/body 폴백)
 	}), nil
 }
 
@@ -276,6 +277,7 @@ func (h *Handler) GetEvolutionHistory(ctx context.Context, req *connect.Request[
 			Pe:            s.PE,
 			Dir:           int32(s.Dir),
 			CreatedAt:     formatTime(&s.CreatedAt),
+			Content:       s.Content, // 54: AI 내용 변형 텍스트(ai_rewrite 행만; 그 외 "")
 		})
 	}
 	return connect.NewResponse(&cosimosiv1.GetEvolutionHistoryResponse{Snapshots: out}), nil
@@ -328,6 +330,7 @@ func toStar(m Memory) *cosimosiv1.Star {
 		FragmentIndex:    int32(m.FragmentIndex), // 28: 일기 내 조각 순서
 		Resonant:         m.Resonant,             // 36: GetUniverse만 채움 (ListDormant은 false — 공명 조인 없음)
 		RecallCount:      int64(m.RecallCount),   // 07: 누적 회상 횟수(클라 S/R 파생; 기존 별 1 백필)
+		AbstractionStage: int32(m.AbstractionStage), // 53: 야간 요지 단계(클라 형태 단순화 구동)
 	}
 }
 

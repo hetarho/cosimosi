@@ -29,6 +29,7 @@ function toSnapshotVM(s: EvolutionSnapshot): EvolutionSnapshotVM {
     pe: s.pe,
     dir: s.dir,
     createdAt: s.createdAt,
+    content: s.content, // 54: AI 내용 변형 텍스트(그 외 트리거는 "")
   }
 }
 
@@ -45,7 +46,8 @@ export function evolutionQueryKey(memoryId: string) {
 
 /** A star's variant log, version ascending. Empty is valid (a never-reshaped star). */
 export async function getEvolutionHistory(memoryId: string): Promise<EvolutionSnapshotVM[]> {
-  if (isDemoMode()) return demoEvolution(memoryId) // 체험: 더미 변천사(백엔드 호출 없음)
+  // 체험: 더미 변천사(백엔드 호출 없음). 데모는 내용 변형(spec 54)을 하지 않으니 content는 ""(형태/색 변주만).
+  if (isDemoMode()) return demoEvolution(memoryId).map((s) => ({ ...s, content: '' }))
   const res = await memoryClient.getEvolutionHistory({ memoryId })
   return res.snapshots.map(toSnapshotVM)
 }

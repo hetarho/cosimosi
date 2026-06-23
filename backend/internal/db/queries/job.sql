@@ -30,6 +30,29 @@ WHERE NOT EXISTS (
 -- 야간 티커가 consolidate 잡을 돌릴 대상 — 별이 하나라도 있는 사용자(베타 규모엔 distinct로 충분).
 SELECT DISTINCT user_id FROM memories;
 
+-- name: EnqueueRewriteIfDue :execrows
+-- 재공고화 AI 내용 변형(spec 54) 잡 enqueue — 별 열람(RecallMemory) 시 best-effort. 게이트(전부 SQL에서):
+--   ① 추상화 단계 ≥ 임계(stage_threshold) — 또렷한 별(단계<2)은 내용 안 바뀜(A1).
+--   ② 디바운스(A6) + 중복 방지: 이 별의 rewrite 잡이 대기/실행 중이거나 debounce_cutoff 이후에 처리된 적
+--      있으면 skip. updated_at으로 판정하므로 실제 변형이 일어난 잡뿐 아니라 *무변(no-op)으로 끝난 잡*도
+--      디바운스에 든다 — AI 꺼짐/동일 출력이라 변천사 행이 안 쌓여도 연속 열람이 잡을 무한 재적재하지 않게.
+--      잡은 삭제 안 됨(done 보존)이라 done 잡의 updated_at = 처리 시각 → 시간 창 판정에 그대로 쓸 수 있다.
+-- 반환 행 수로 실제 적재 여부를 안다(로그용). 임계·디바운스는 values.yaml(rewrite.*)에서 service가 넘긴다.
+-- ON CONFLICT DO NOTHING + jobs_one_active_rewrite_idx(00014): 동시 회상 둘이 NOT EXISTS를 같이 통과해도
+-- (READ COMMITTED, 서로의 미커밋 INSERT 미관측) 두 번째 INSERT는 부분 유니크 인덱스에 막혀 조용히 0행 — 별당
+-- 활성 rewrite 잡은 정확히 1개. 레이스 패자는 에러 아닌 no-op(best-effort enqueue 계약과 정합).
+INSERT INTO jobs (id, memory_id, user_id, kind, status)
+SELECT @id, m.id, m.user_id, 'rewrite', 'pending'
+FROM memories m
+WHERE m.id = @memory_id AND m.user_id = @user_id
+  AND m.abstraction_stage >= sqlc.arg(stage_threshold)::int
+  AND NOT EXISTS (
+    SELECT 1 FROM jobs j
+    WHERE j.memory_id = m.id AND j.kind = 'rewrite'
+      AND (j.status IN ('pending', 'running') OR j.updated_at >= sqlc.arg(debounce_cutoff)::timestamptz)
+  )
+ON CONFLICT DO NOTHING;
+
 -- name: ClaimJob :one
 -- Atomically claim one job of the kind and mark it running. FOR UPDATE SKIP LOCKED
 -- makes concurrent workers safe. Two cases are claimable:

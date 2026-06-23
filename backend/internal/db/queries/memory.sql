@@ -45,9 +45,10 @@ WHERE r.id = $1;
 
 -- name: GetMemoryForEmbed :one
 -- Loads what the embedding worker needs: the star's owner, the FRAGMENT text
--- (NULL → whole-diary body fallback), and entry_date (for the temporal_bonus
--- baseline). Each fragment embeds separately (spec 21).
-SELECT m.user_id, COALESCE(m.fragment_text, r.body) AS text, r.entry_date
+-- (NULL → whole-diary body fallback), entry_date (for the temporal_bonus baseline),
+-- and the fragment's affect (valence·intensity) for the link emotion-similarity term
+-- (change 21). Each fragment embeds separately (spec 21).
+SELECT m.user_id, COALESCE(m.fragment_text, r.body) AS text, r.entry_date, m.valence, m.intensity
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = $1;
@@ -80,7 +81,14 @@ WHERE m.user_id = @user_id;
 -- spec 28: m.fragment_text rides along (별 → 조각) so the recall panel can show the
 -- star's own fragment text; records.body stays the WHOLE original (원본 일기 전체 보기).
 -- fragment_text is NULL for single-fragment / pre-21 stars → the handler emits "".
-SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at, m.fragment_text
+-- spec 54: derived_text = 최신 AI 내용 변형 텍스트(evolution_history content, version DESC). 변형이 없으면
+-- NULL → 핸들러가 "" 방출(클라가 fragment_text/body 폴백). 원본 record.body는 불변(헌법1) — 병치용.
+SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at, m.fragment_text,
+       COALESCE(
+         (SELECT eh.content FROM evolution_history eh
+          WHERE eh.memory_id = m.id AND eh.content IS NOT NULL
+          ORDER BY eh.version DESC LIMIT 1),
+         '')::text AS derived_text
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = @id AND m.user_id = @user_id;
@@ -116,7 +124,7 @@ WHERE r.id = @id AND r.user_id = @user_id;
 -- 별 양쪽). resonances의 어느 끝점이든 이 별이면 true → 클라가 은은한 공명 마커를 그린다.
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
        m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version,
-       m.record_id, m.fragment_index, m.recall_count,
+       m.record_id, m.fragment_index, m.recall_count, m.abstraction_stage,
        EXISTS (
            SELECT 1 FROM resonances res
            WHERE res.sender_memory_id = m.id OR res.recipient_memory_id = m.id
@@ -139,7 +147,7 @@ ORDER BY m.created_at, m.fragment_index;
 -- fetched on recall, spec 11). Same column shape as ListMemoriesByUser so it maps to
 -- the same domain Memory (reshaping state included, spec 23).
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
-       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version, m.recall_count
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version, m.recall_count, m.abstraction_stage
 FROM memories m
 WHERE m.user_id = $1
   AND m.last_recalled_at < sqlc.arg(cutoff)::timestamptz
@@ -190,8 +198,39 @@ VALUES (@id, @memory_id, @user_id, @version, @brightness, @hue_shift, @form_seed
 
 -- name: GetEvolutionHistory :many
 -- A star's variant log, version ascending (spec 23; UI is spec 24). user_id = isolation.
-SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at
+-- spec 54: content rides along — 'ai_rewrite' 행은 변형 텍스트, 시각 reshape/gist 행은 NULL.
+SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at, content
 FROM evolution_history WHERE memory_id = @memory_id AND user_id = @user_id ORDER BY version ASC;
+
+-- ── 재공고화 AI 내용 변형(spec 54) ──
+
+-- name: GetMemoryForRewrite :one
+-- 비동기 rewrite 워커 입력: 현재 표시 내용(최신 content → fragment_text → 원본 body 폴백), 추상화 단계
+-- (변형 폭 구동), 현재 version, 소유자. 직전 변형 위에 다시 변형되도록 최신 content를 입력으로 준다("흐려지고 또
+-- 흐려진다"). 원본 record.body는 폴백일 뿐 절대 수정되지 않는다(헌법1).
+SELECT m.user_id, m.abstraction_stage,
+  COALESCE(
+    (SELECT eh.content FROM evolution_history eh
+     WHERE eh.memory_id = m.id AND eh.content IS NOT NULL
+     ORDER BY eh.version DESC LIMIT 1),
+    m.fragment_text, r.body
+  ) AS text
+FROM memories m JOIN records r ON r.id = m.record_id
+WHERE m.id = @id;
+
+-- name: BumpVersionForRewrite :one
+-- 변형 적용 1/2(가변 별 layer만 — 원본 record 불변, 헌법1): version++ 하고 그 시점 시각 상태를 RETURNING해
+-- AppendRewriteEvolution이 같은 version의 변천사 행을 INSERT한다(둘이 한 tx → version·로그 정합). 시각 상태
+-- (brightness/hue/form)는 안 바뀌고 스냅샷으로만 실린다(이 변형은 *내용*만 바꾼다).
+UPDATE memories SET version = version + 1
+WHERE id = @id AND user_id = @user_id
+RETURNING version, brightness_offset, hue_shift, form_seed_delta;
+
+-- name: AppendRewriteEvolution :exec
+-- 변형 적용 2/2: 변형 텍스트 1행 append(INSERT 전용 — 헌법1·2). trigger='ai_rewrite', pe=0(예측오차 무관),
+-- dir=-1(기억이 한 단계 흐려짐). content=변형 텍스트. 시각 필드는 BumpVersionForRewrite RETURNING 스냅샷.
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, content)
+VALUES (@id, @memory_id, @user_id, @version, @brightness, @hue_shift, @form_seed_delta, 'ai_rewrite', 0, -1, @content);
 
 -- ── 야간 공고화(spec 27) ──
 

@@ -56,6 +56,7 @@ const (
 	ConnectionTemporalWindowDays = 7
 	ConnectionSemanticWeightCap  = 0.79
 	ConnectionIntraEntryWeight   = 0.8
+	ConnectionEmoAlpha           = 0.1
 )
 
 // excitability
@@ -91,6 +92,12 @@ const (
 	MemoryWeightTauStorageGain   = 0.8
 )
 
+// rewrite
+const (
+	RewriteStageThreshold = 2
+	RewriteDebounceHours  = 24
+)
+
 // ambient
 const (
 	AmbientArousalGain      = 0.3
@@ -102,10 +109,8 @@ const (
 
 // recall
 const (
-	RecallCoRecallDelta  = 0.05
-	RecallDwellMs        = 2000
-	RecallSpacingGain    = 1
-	RecallSpacingRefDays = 1
+	RecallCoRecallDelta = 0.05
+	RecallDwellMs       = 2000
 )
 
 // extraction
@@ -189,6 +194,14 @@ const (
 	StarRenderBurstBaseScale = 2.5
 	StarRenderBurstGrow      = 16
 	StarRenderBurstFadeGain  = 1.2
+)
+
+// star_form
+const (
+	StarFormDisplaceAmp   = 0.13
+	StarFormDetailAmp     = 0.06
+	StarFormAsymmetry     = 0.22
+	StarFormStageSimplify = 0.75
 )
 
 // star_lighting

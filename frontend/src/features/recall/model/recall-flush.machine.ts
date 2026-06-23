@@ -1,6 +1,6 @@
 import { setup, assign, fromPromise, createActor } from 'xstate'
 import { capture, EVENTS } from '@/shared/lib'
-import { isDemoMode, virtualNowMs } from '@/shared/lib/demo'
+import { isDemoMode } from '@/shared/lib/demo'
 import { useSynapseStore } from '@/entities/synapse'
 import { reinforceLinks } from '../api/recall'
 import {
@@ -22,7 +22,7 @@ import {
 // get().session===s 가드를 구조로 대체). 순수 TS(three/React/DOM 미의존, 헌법4) — setTimeout/crypto는
 // RN-safe, beforeunload flush는 ui(페이지). 모듈 싱글턴(구 useRecallStore 동형 수명).
 //
-// context.session은 누적/간격 효과 Map(deltas/pairLastSeen)을 담는 "내부 가변 버퍼"다 — flush로 비워지고
+// context.session은 누적 Map(deltas)을 담는 "내부 가변 버퍼"다 — flush로 비워지고
 // 반응형 select 대상이 아니라, 고빈도 누적은 in-place 변형(assign 불변 모델 밖, 구 zustand와 동일)으로
 // 둔다. 수명주기 의미가 있는 변경(batchId 회전·리셋·inFlight)만 assign.
 
@@ -50,11 +50,11 @@ export const recallFlushMachine = setup({
   },
   actions: {
     // 능동 열람 1건 누적(≥2s dwell은 호출자가 확정). 직전 열람과 다른 별이면 페어 +CO_RECALL_DELTA(간격
-    // 보정). 데모면 그 엣지 weight를 로컬로 올려 굵어짐을 즉시 보인다(영속은 flush 경로 — 데모는 no-op).
+    // 무관 고정 — change 22). 데모면 그 엣지 weight를 로컬로 올려 굵어짐을 즉시 보인다(영속은 flush 경로 — 데모는 no-op).
     accumulate: ({ context, event }) => {
       if (event.type !== 'RECORD_VIEW') return
       const prev = context.session.lastViewedId
-      onActiveView(context.session, event.id, virtualNowMs()) // session in-place(누적 버퍼)
+      onActiveView(context.session, event.id) // session in-place(누적 버퍼)
       if (prev && prev !== event.id && isDemoMode()) {
         useSynapseStore.getState().bumpEdgeWeight(prev, event.id, CO_RECALL_DELTA)
       }

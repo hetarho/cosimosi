@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/cosimosi/backend/internal/ai"
@@ -23,6 +24,10 @@ const (
 	// intra-entry binding weight 0.8 (spec 21, acceptance 1.3): same-event
 	// fragments must always read as the strongest bond.
 	semanticWeightCap = values.ConnectionSemanticWeightCap
+	// emoAlpha weights the emotion-similarity term in w0 = clamp(α·cos + temporal + emoAlpha·emoSim,
+	// 0, 1) (change 21): two stars closer in affect link a touch stronger. The candidate gate
+	// (cos ≥ 0.75) and semanticWeightCap are unchanged — emotion only fine-tunes the weight.
+	emoAlpha = values.ConnectionEmoAlpha
 )
 
 // Competitive-allocation / excitability constants (spec 22). A new fragment's KNN
@@ -71,6 +76,7 @@ type Worker struct {
 	store     GraphStore
 	embedder  ai.Embedder
 	extractor ai.Extractor
+	rewriter  ai.Rewriter
 	logger    *slog.Logger
 
 	pollInterval    time.Duration
@@ -83,19 +89,24 @@ type Worker struct {
 
 // NewWorker wires the worker over its ports. A nil logger falls back to the
 // default; a nil extractor falls back to NoopExtractor (whole diary = one
-// neutral segment), keeping keyless environments functional.
-func NewWorker(jobs Repository, store GraphStore, embedder ai.Embedder, extractor ai.Extractor, logger *slog.Logger) *Worker {
+// neutral segment) and a nil rewriter to NoopRewriter (no content change —
+// spec 54 A5), keeping keyless environments functional.
+func NewWorker(jobs Repository, store GraphStore, embedder ai.Embedder, extractor ai.Extractor, rewriter ai.Rewriter, logger *slog.Logger) *Worker {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	if extractor == nil {
 		extractor = ai.NoopExtractor{}
 	}
+	if rewriter == nil {
+		rewriter = ai.NoopRewriter{}
+	}
 	return &Worker{
 		jobs:            jobs,
 		store:           store,
 		embedder:        embedder,
 		extractor:       extractor,
+		rewriter:        rewriter,
 		logger:          logger,
 		pollInterval:    defaultPollInterval,
 		maxAttempts:     defaultMaxAttempts,
@@ -171,6 +182,11 @@ func (w *Worker) processOne(ctx context.Context) bool {
 	if errors.Is(err, ErrNoJob) {
 		j, err = w.jobs.Claim(ctx, KindEmbed)
 	}
+	// Rewrite (spec 54) drains after the interactive arrival pipeline but BEFORE the heavy
+	// nightly consolidate batch, so a user-triggered content rewrite isn't starved by the night pass.
+	if errors.Is(err, ErrNoJob) {
+		j, err = w.jobs.Claim(ctx, KindRewrite)
+	}
 	if errors.Is(err, ErrNoJob) {
 		j, err = w.jobs.Claim(ctx, KindConsolidate)
 	}
@@ -215,9 +231,48 @@ func (w *Worker) safeHandle(ctx context.Context, j Job) (err error) {
 		return w.handleExtract(ctx, j)
 	case KindConsolidate:
 		return w.handleConsolidate(ctx, j)
+	case KindRewrite:
+		return w.handleRewrite(ctx, j)
 	default:
 		return w.handle(ctx, j)
 	}
+}
+
+// handleRewrite re-tells one star's displayed content (spec 54): load the current text +
+// abstraction stage, ask the Rewriter to blur it proportional to the stage, and — only when the
+// text ACTUALLY changed — append it as an 'ai_rewrite' variant (version++). An unchanged result
+// (AI off / unusable output) completes the job as a graceful no-op (A5): no version bump, no
+// variant row. A transport error propagates so the worker backs off and retries. The original
+// record is never touched (헌법1); the variant log is INSERT-only (§2).
+func (w *Worker) handleRewrite(ctx context.Context, j Job) error {
+	in, err := w.store.GetRewriteInput(ctx, j.MemoryID)
+	if err != nil {
+		return fmt.Errorf("load rewrite input: %w", err)
+	}
+	raw, err := w.rewriter.Rewrite(ctx, in.Text, in.AbstractionStage)
+	if err != nil {
+		return fmt.Errorf("rewrite: %w", err)
+	}
+	// Compare trimmed both sides: NoopRewriter echoes in.Text verbatim, LLMRewriter returns a
+	// trimmed string — without trimming, a whitespace-only delta would read as a real change.
+	out := strings.TrimSpace(raw)
+	// No change (AI off / unusable output / echo) → graceful no-op: complete WITHOUT writing (A5),
+	// so no spurious version bump or empty variant accumulates.
+	if out == "" || out == strings.TrimSpace(in.Text) {
+		if err := w.jobs.Complete(ctx, j.ID); err != nil {
+			return fmt.Errorf("complete (rewrite no-op): %w", err)
+		}
+		w.logger.Info("rewrite no-op", "job", j.ID, "memory", j.MemoryID, "stage", in.AbstractionStage)
+		return nil
+	}
+	// Apply the variant AND complete the job in ONE transaction (exactly-once): if it commits the
+	// job is done, so a retry after a crash-before-complete can never re-blur the already-blurred
+	// text into a second variant (ApplyRewrite is otherwise not idempotent — unlike embed upserts).
+	if err := w.store.ApplyRewrite(ctx, j.ID, j.MemoryID, in.UserID, out); err != nil {
+		return fmt.Errorf("apply rewrite: %w", err)
+	}
+	w.logger.Info("rewrite done", "job", j.ID, "memory", j.MemoryID, "stage", in.AbstractionStage)
+	return nil
 }
 
 // handleExtract runs the fragmentation pipeline for one claimed extract job
@@ -307,7 +362,7 @@ func (w *Worker) handle(ctx context.Context, j Job) error {
 		now := time.Now().UTC()
 		clusterOf := deriveClusters(neighbors, exc.Links)
 		clusterE := clusterExcitability(now, clusterOf, exc.Recalled, exc.Links)
-		links = biasedLinks(j.MemoryID, m.UserID, m.EntryDate, now, neighbors, clusterOf, clusterE, exc.Arousal)
+		links = biasedLinks(j.MemoryID, m.UserID, m.EntryDate, now, neighbors, clusterOf, clusterE, exc.Arousal, m.Valence, m.Intensity)
 	}
 	if len(links) > 0 {
 		if err := w.store.BatchUpsertLinks(ctx, links); err != nil {

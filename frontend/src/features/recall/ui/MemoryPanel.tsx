@@ -71,6 +71,9 @@ function RecallView({
   const [fragmentText, setFragmentText] = useState<string>(
     () => queryClient.getQueryData<string>(fragmentTextQueryKey(memoryId)) ?? '',
   )
+  // 재공고화 AI 내용 변형(spec 54)의 현재 파생 텍스트 — 추상화 단계 ≥2 별이 다시 빚어졌을 때만 비어있지
+  // 않다. 매 회상 응답에서 받는다(캐시 안 함 — 서버가 흐릴 수 있어 항상 최신을 본다). ""면 조각/원본 폴백.
+  const [derivedText, setDerivedText] = useState<string>('')
   // 기본은 조각만; 사용자가 "원본 일기 전체 보기"를 누르면 불변 원본 전체로 펼친다.
   const [showFull, setShowFull] = useState(false)
   const [phase, setPhase] = useState<Phase>(record ? 'shown' : 'dwelling')
@@ -108,6 +111,7 @@ function RecallView({
             void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
             setRecord(r.record)
             setFragmentText(r.fragmentText)
+            setDerivedText(r.derivedText) // 54: 흐려진 현재 내용(없으면 ""→폴백)
             setPhase('shown')
           } else if (!hasCached) {
             setPhase('error')
@@ -153,23 +157,35 @@ function RecallView({
             <span>강도 {record.intensity.toFixed(2)}</span>
           </div>
           {(() => {
-            // 별 → 조각 → 원본 3겹(spec 28): 기본은 이 별의 조각 텍스트(있을 때), "원본 일기
-            // 전체 보기"를 누르면 불변 Record 전체로 펼친다. 조각이 없거나(단일 조각) 본문과
-            // 같으면 그냥 원본 전체만 보인다(토글 숨김).
+            // 별 → 조각/흐려진 기억 → 원본 3겹(spec 28·54): 기본 표시는 "흐려진 현재 내용"(AI 내용 변형,
+            // 있을 때) > 이 별의 조각 텍스트 > 원본. "원본 일기 전체 보기"를 누르면 불변 Record 전체로 펼친다.
+            // 흐려진 내용이 있으면 "내 기억은 흐려졌지만 그날 쓴 말은 그대로"를 토글로 병치한다(헌법1).
+            const hasDerived = derivedText !== '' && derivedText !== record.body
             const hasFragment = fragmentText !== '' && fragmentText !== record.body
-            const shownText = hasFragment && !showFull ? fragmentText : record.body
+            const fadedText = hasDerived ? derivedText : hasFragment ? fragmentText : record.body
+            const shownText = showFull ? record.body : fadedText
+            const canToggle = fadedText !== record.body
             return (
               <>
+                {hasDerived && !showFull && (
+                  <p className="text-xs text-white/40">✎ 떠올릴 때마다 조금씩 다시 쓰인 기억</p>
+                )}
                 <p className="selectable text-sm leading-relaxed whitespace-pre-wrap text-white/85">
                   {shownText}
                 </p>
-                {hasFragment && (
+                {canToggle && (
                   <button
                     type="button"
                     onClick={() => setShowFull((v) => !v)}
                     className="w-fit text-xs text-white/50 underline-offset-2 transition hover:text-white/80 hover:underline"
                   >
-                    {showFull ? '조각만 보기' : '원본 일기 전체 보기'}
+                    {showFull
+                      ? hasDerived
+                        ? '흐려진 기억 보기'
+                        : '조각만 보기'
+                      : hasDerived
+                        ? '그날 쓴 원본 보기'
+                        : '원본 일기 전체 보기'}
                   </button>
                 )}
               </>

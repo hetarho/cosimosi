@@ -108,6 +108,15 @@ function EvolutionView({ memoryId }: { memoryId: string }) {
               )}
             </div>
 
+            {/* AI 내용 변형(spec 54): 이 시점의 흐려진 내용. 'ai_rewrite' 스냅샷만 content가 있다(시각
+                변주 행은 "" → 미표시). 오른쪽 불변 원본과 병치돼 "흐려진 기억 vs 그날 쓴 말"을 보여준다.
+                ph-no-capture: 일기 파생 텍스트 — PostHog autocapture 차단(프라이버시 헌법). */}
+            {step.content && (
+              <p className="ph-no-capture max-h-32 w-full overflow-y-auto rounded-md bg-space-900/40 px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap text-white/55 italic">
+                {step.content}
+              </p>
+            )}
+
             {/* 스크럽 슬라이더 */}
             {steps.length > 1 && (
               <input

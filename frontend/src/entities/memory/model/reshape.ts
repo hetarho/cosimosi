@@ -17,3 +17,15 @@ export function reshapedBrightness(base: number, offset: number): number {
 export function reshapedSeed(seed: number, delta: number): number {
   return seed + delta
 }
+
+/**
+ * 다축 형태 시드 = 각 축 + formSeedDelta(StarField aShape 입력, spec 53). 회상/재공고화가 누적한
+ * form_seed_delta(spec 23·야간 요지)를 3개 형태 축에 똑같이 더해 — 별을 다시 떠올릴 때마다 실루엣이
+ * 미세하게 다시 빚어진다(A4). 누적 캡은 form_seed_delta 자체(reshape.form_delta_max, ±0.6)가 보증한다.
+ */
+export function reshapedShapeSeed(
+  shape: readonly [number, number, number],
+  delta: number,
+): [number, number, number] {
+  return [shape[0] + delta, shape[1] + delta, shape[2] + delta]
+}

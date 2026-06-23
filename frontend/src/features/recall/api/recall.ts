@@ -6,10 +6,13 @@ import { isDemoMode, demoRecall, demoFragmentText, demoMarkRecalled, demoReshape
 import type { Record as RecordMsg } from '@/shared/api'
 
 /** A recall result: the immutable original Record + this star's own fragment text (spec 28;
- *  "" when single-fragment / pre-21 → the panel falls back to the whole body). */
+ *  "" when single-fragment / pre-21 → the panel falls back to the whole body) + the current
+ *  AI-rewritten display text (spec 54; "" when never rewritten → the panel falls back to
+ *  fragment/body). The immutable original always stays in `record.body` (헌법1). */
 export interface RecallResult {
   record: RecordMsg
   fragmentText: string
+  derivedText: string
 }
 
 /** Re-ignite a star and read its immutable original Record + fragment text (read-only panel).
@@ -27,12 +30,15 @@ export async function recallMemory(memoryId: string): Promise<RecallResult | und
     if (record) {
       demoMarkRecalled(memoryId)
       demoReshape(memoryId)
-      return { record, fragmentText: demoFragmentText(memoryId) }
+      // 데모는 내용 변형(spec 54)을 하지 않는다 — derivedText "" → 기존 내용으로 정상 렌더(A5, 형태만 변함).
+      return { record, fragmentText: demoFragmentText(memoryId), derivedText: '' }
     }
     return undefined
   }
   const res = await memoryClient.recallMemory({ memoryId })
-  return res.record ? { record: res.record, fragmentText: res.fragmentText } : undefined
+  return res.record
+    ? { record: res.record, fragmentText: res.fragmentText, derivedText: res.derivedText }
+    : undefined
 }
 
 /** Persist a co-recall reinforcement batch (idempotent by batchId). */

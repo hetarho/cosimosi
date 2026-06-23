@@ -62,6 +62,15 @@ const (
 	ageRefDays         = values.ReshapeAgeRefDays
 )
 
+// Reconsolidation AI content rewrite (spec 54): a re-viewed star whose abstraction stage has
+// reached rewriteStageThreshold gets its DISPLAYED text re-told by AI (asynchronously, via the
+// job worker), at most once per rewriteDebounce. These are the single source; values.yaml
+// rewrite.* mirrors them. The original record is never rewritten (헌법1) — only the variant log.
+const (
+	rewriteStageThreshold = values.RewriteStageThreshold
+	rewriteDebounce       = time.Duration(values.RewriteDebounceHours) * time.Hour
+)
+
 // dormantCutoff converts the dormancy threshold (RAW activation) into a time cutoff:
 // activation = exp(-λ·Δt_days) ≤ threshold  ⟺  Δt ≥ ln(1/threshold)/λ
 // = HALF_LIFE_DAYS·log2(1/threshold) days. A star last recalled before this is dormant.
@@ -327,6 +336,11 @@ func (s *Service) RecallMemory(ctx context.Context, userID, memoryID string) (Re
 	// reshape write/read) degrades this recall to plain re-ignition — the record read
 	// below is the authority on existence and is what the caller actually requested.
 	_ = s.reconsolidate(ctx, userID, memoryID)
+	// AI content rewrite (spec 54): best-effort enqueue a rewrite job when the star is
+	// abstracted enough (the SQL gate enforces stage ≥ threshold, the debounce, and no
+	// duplicate). Async — the AI call + the variant-log write happen in the worker, so a
+	// failure here never denies the immutable original returned below (헌법1).
+	_ = s.repo.EnqueueRewriteIfDue(ctx, userID, memoryID, rewriteStageThreshold, time.Now().UTC().Add(-rewriteDebounce))
 	return s.repo.GetRecord(ctx, userID, memoryID)
 }
 

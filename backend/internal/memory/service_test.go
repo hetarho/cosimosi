@@ -12,10 +12,11 @@ import (
 // stubRepo records the last RecordMemory input + how many times TouchRecall ran (the
 // no-side-effect check for GetRecordByID); reads are otherwise unused by these tests.
 type stubRepo struct {
-	lastInput     *RecordInput
-	touchCalls    int
-	recordByID    Record
-	recordByIDErr error
+	lastInput       *RecordInput
+	touchCalls      int
+	rewriteEnqueued int
+	recordByID      Record
+	recordByIDErr   error
 }
 
 func (s *stubRepo) RecordMemory(_ context.Context, in RecordInput) (string, []string, error) {
@@ -47,6 +48,10 @@ func (s *stubRepo) ReshapeStar(context.Context, string, string, ReshapeState, Ev
 }
 func (s *stubRepo) GetEvolutionHistory(context.Context, string, string) ([]EvolutionSnapshot, error) {
 	return nil, nil
+}
+func (s *stubRepo) EnqueueRewriteIfDue(context.Context, string, string, int, time.Time) error {
+	s.rewriteEnqueued++
+	return nil
 }
 
 func newTestService() (*Service, *stubRepo) {
@@ -168,6 +173,9 @@ func (r *reshapeRepo) ReshapeStar(_ context.Context, _, memoryID string, st Resh
 }
 func (r *reshapeRepo) GetEvolutionHistory(context.Context, string, string) ([]EvolutionSnapshot, error) {
 	return nil, nil
+}
+func (r *reshapeRepo) EnqueueRewriteIfDue(context.Context, string, string, int, time.Time) error {
+	return nil
 }
 
 // 1.1: a recall with no novelty (pe < threshold; here both embeddings equal → pe 0)

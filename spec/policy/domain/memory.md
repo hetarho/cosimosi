@@ -16,7 +16,7 @@
 |---|---|---|---|
 | 원본 record | `records` | 불변·영구(UPDATE/DELETE 쿼리 없음) | `body`·`entry_date`·`idempotency_key` + 선택 힌트 `mood`·`intensity`·`valence` |
 | 조각 별 memory | `memories` | 가변 | `record_id`(NOT NULL non-unique FK)·`fragment_index`(0-based)·`fragment_text`·`mood`·`intensity`·`valence`·`last_recalled_at`·`recall_count`(07, 회상마다 +1) + 재성형 상태 `brightness_offset`·`hue_shift`·`form_seed_delta`·`version`(23) |
-| 변천사 snapshot | `evolution_history` | **append-only**(INSERT 전용·UPDATE/DELETE 없음) | `memory_id`·`user_id`·`version`·`brightness`·`hue_shift`·`form_seed_delta`·`trigger`·`pe`·`dir`·`created_at`(23) |
+| 변천사 snapshot | `evolution_history` | **append-only**(INSERT 전용·UPDATE/DELETE 없음) | `memory_id`·`user_id`·`version`·`brightness`·`hue_shift`·`form_seed_delta`·`trigger`·`pe`·`dir`·`created_at`(23) + `content`(54, AI 내용 변형 텍스트 — `'ai_rewrite'` 행만 채움) |
 
 - 참조 방향은 **`memories.record_id → records.id` 단방향**이다(별이 원본을 가리키며, records에 memory_id 컬럼은 없다). `UNIQUE (record_id, fragment_index)` — 같은 일기의 같은 조각은 정확히 1행(이중 fan-out 펜스).
 - **조각별 감정(`mood`·`intensity`·`valence`)과 조각 텍스트(`fragment_text`)는 가변 `memories`에 산다**(불변 record에 조각 데이터를 두면 헌법1 위반). 별 투영(GetUniverse·ListDormant)은 memories만 읽고, 원본 열람(RecallMemory)만 records JOIN으로 body를 읽는다.
@@ -60,7 +60,7 @@
 - 폼의 기본은 **감정 입력 없음**(본문+날짜만). 수동 토글이 켜졌을 때만 힌트가 전송된다.
 - 힌트는 **추출이 단일-중립-조각 폴백 형태로 강등됐을 때만** 조각에 적용된다(`applyManualHint`: 1조각 ∧ mood neutral/빈 값 ∧ valence 0). 실제 다조각·정동 감지 결과를 힌트가 덮어쓰지 않는다.
 - 도메인 `Mood`는 13종(29) + 빈 값(MoodUnspecified). 핸들러가 proto `Mood` enum ↔ 도메인 문자열을 매핑하고, 빈 Mood는 NULL로 저장한다.
-- `Star` DTO는 `valence`(double, 필드 12)를 실어 나른다(26이 λ_eff에 소비). 필드 5–8=재성형(23)·**9·10=`record_id`/`fragment_index`(28)**·**11=`resonant`(bool, 36 — `GetUniverse`가 `resonances` 조인으로 채움; 공개 우주엔 부재)**·13=relevance(26).
+- `Star` DTO는 `valence`(double, 필드 12)를 실어 나른다(26이 λ_eff에 소비). 필드 5–8=재성형(23)·**9·10=`record_id`/`fragment_index`(28)**·**11=`resonant`(bool, 36 — `GetUniverse`가 `resonances` 조인으로 채움; 공개 우주엔 부재)**·14=`recall_count`(07)·**15=`abstraction_stage`(53, 야간 요지가 승급·클라가 형태로 소비)**. 필드 13은 reserved(옛 relevance, spec 38 change 19로 폐기).
 
 ### 3겹 주소: 원본 ↔ 조각 ↔ 별 (28)
 
@@ -99,10 +99,11 @@
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| append-only | INSERT 전용 — `evolution_history` 행을 UPDATE/DELETE하는 쿼리·메서드를 일절 두지 않는다(헌법1·2). `AppendEvolution`이 유일한 쓰기 |
+| append-only | INSERT 전용 — `evolution_history` 행을 UPDATE/DELETE하는 쿼리·메서드를 일절 두지 않는다(헌법1·2). `AppendEvolution`(23)·`AppendGistHistory`(27)·`AppendRewriteEvolution`(54)이 유일한 쓰기 |
 | 한 회상 = 변형된 별마다 1행 | 회상 별 + 직접 이웃이 재성형될 때 각자 `{version, brightness, hue_shift, form_seed_delta, trigger='recall', pe, dir}` 1행. PE 미달(novelty 없음)이면 0행 |
 | 정렬·격리 | `GetEvolutionHistory`는 `(memory_id, user_id)`로 `version` 오름차순 반환(`evolution_history_memory_idx`); user_id 격리 |
-| trigger 종류 | `'recall'`(23) · `'new_neighbor'`/`'nightly_gist'`는 예약(야간 요지화는 27) |
+| trigger 종류 | `'recall'`(23) · `'nightly_gist'`(27 야간 요지) · `'ai_rewrite'`(54 AI 내용 변형) · `'new_neighbor'`는 예약 |
+| AI 내용 변형 (54) | `abstraction_stage ≥ rewrite.stage_threshold`(2)인 별을 다시 열람하면 비동기 rewrite 잡(`KindRewrite`, memory_id 키)을 best-effort 큐잉 — AI(`ai.Rewriter`: admin 활성 시 LLM, 아니면 no-op)가 표시 내용을 단계만큼 흐리게 다시 쓴다. 단계 높을수록 변형 폭↑(프롬프트). 결과가 *실제로 바뀌었을 때만* `content` 담은 `'ai_rewrite'` 행 append + `version++`(워커가 한 tx에서 잡 완료까지 — 정확히 1회). **원본 record 불변(헌법1)** — 변형 텍스트는 별 파생 레이어(변천사)에만. **빈도 제한(A6)**: 별당 최근 rewrite 잡(`jobs.updated_at ≥ debounce_cutoff`, no-op 포함)이 있으면 재적재 안 함 + 별당 활성 rewrite 잡 1개(부분 유니크 인덱스). AI 꺼짐/실패/echo → no-op(기존 내용 정상 렌더, graceful). 별 현재 표시 내용 = 최신 `content`(없으면 fragment/body 폴백) |
 | 서버 ID | `evolution_history.id`는 서버 생성(클라는 ID를 만들지 않는다) |
 | 읽기·타임랩스 표현(24) | `GetEvolutionHistory(memory_id)` read-only(`version` ASC)로 한 별의 변천사를 읽어 스크럽 타임랩스로 그린다. 각 버전은 같은 별의 **변주**로 재현된다 — `form_seed_delta`(형태)·`hue_shift`(색조)·`brightness`(밝기)만 변하고 base seed·감정색은 고정. 저장된 `brightness`는 누적 오프셋이라(시점별 절대 밝기는 로그에 없음) 뷰어가 표시 밝기로 환산한다. 슬라이더와 무관하게 불변 원본(`RecallMemory` `Record`)을 병치한다([ux/interaction](../ux/interaction.md) 변천사 보기) |
 
@@ -112,7 +113,7 @@
 |---|---|---|
 | `RecordMemory` | 단일 트랜잭션 record→extract job: `records` 1행(불변) + `jobs` 1행(`kind='extract'`, `status='pending'`) → `{record_id, memory_ids}` 반환(`memory_ids`는 보통 빈 배열 — 조각은 비동기 도착) | `(user_id, idempotency_key)` 부분 UNIQUE — 재호출 시 기존 record id + 이미 fan-out된 조각 id들 |
 | `GetUniverse` | 사용자의 모든 별 + 모든 시냅스 반환(잠든 것 포함), `last_recalled_at`/`last_activated_at`은 raw 값 | — |
-| `RecallMemory` | 별 재점화(`memories.last_recalled_at = now()` **+ `recall_count += 1`**, 07) + PE 게이트 재성형(통과 시 회상 별+직접 이웃의 재성형 상태 갱신 + 변천사 append, [star](star.md) 정책) + 불변 원본 Record + 그 별의 `fragment_text`(28, 별→조각) 반환. 원본 records는 불변(헌법1) | — |
+| `RecallMemory` | 별 재점화(`memories.last_recalled_at = now()` **+ `recall_count += 1`**, 07) + PE 게이트 재성형(통과 시 회상 별+직접 이웃의 재성형 상태 갱신 + 변천사 append, [star](star.md) 정책) + AI 내용 변형 잡 best-effort 큐잉(단계≥2, 54) + 불변 원본 Record·그 별의 `fragment_text`(28, 별→조각)·`derived_text`(54, 최신 AI 변형 — 없으면 "") 반환. 원본 records는 불변(헌법1) | — |
 | `ListDormant` | 오래 회상 안 한 별만 반환(검색 보조용, 전체 그래프는 GetUniverse가 그대로 반환) | — |
 | `GetEvolutionHistory` | 한 별의 변천사를 `version` 오름차순 반환(읽기; UI는 24) | — |
 | `ListRecords` | 원본 일기 목록 — `records JOIN memories` GROUP BY(읽기 전용, 헌법1): `record_id`·`entry_date`·body 발췌·조각 별 개수·`moods`(de-dup 감정 패싯), `entry_date` DESC, user_id 격리(28; 원본 일기로 별 찾기 진입) | `NO_SIDE_EFFECTS` |

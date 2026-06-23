@@ -145,6 +145,38 @@ func (q *Queries) AppendGistHistory(ctx context.Context, arg AppendGistHistoryPa
 	return err
 }
 
+const appendRewriteEvolution = `-- name: AppendRewriteEvolution :exec
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, content)
+VALUES ($1, $2, $3, $4, $5, $6, $7, 'ai_rewrite', 0, -1, $8)
+`
+
+type AppendRewriteEvolutionParams struct {
+	ID            string  `json:"id"`
+	MemoryID      string  `json:"memory_id"`
+	UserID        string  `json:"user_id"`
+	Version       int32   `json:"version"`
+	Brightness    float32 `json:"brightness"`
+	HueShift      float32 `json:"hue_shift"`
+	FormSeedDelta float32 `json:"form_seed_delta"`
+	Content       *string `json:"content"`
+}
+
+// 변형 적용 2/2: 변형 텍스트 1행 append(INSERT 전용 — 헌법1·2). trigger='ai_rewrite', pe=0(예측오차 무관),
+// dir=-1(기억이 한 단계 흐려짐). content=변형 텍스트. 시각 필드는 BumpVersionForRewrite RETURNING 스냅샷.
+func (q *Queries) AppendRewriteEvolution(ctx context.Context, arg AppendRewriteEvolutionParams) error {
+	_, err := q.db.Exec(ctx, appendRewriteEvolution,
+		arg.ID,
+		arg.MemoryID,
+		arg.UserID,
+		arg.Version,
+		arg.Brightness,
+		arg.HueShift,
+		arg.FormSeedDelta,
+		arg.Content,
+	)
+	return err
+}
+
 const applyReshape = `-- name: ApplyReshape :exec
 UPDATE memories
 SET brightness_offset = $1, hue_shift = $2,
@@ -171,6 +203,39 @@ func (q *Queries) ApplyReshape(ctx context.Context, arg ApplyReshapeParams) erro
 		arg.UserID,
 	)
 	return err
+}
+
+const bumpVersionForRewrite = `-- name: BumpVersionForRewrite :one
+UPDATE memories SET version = version + 1
+WHERE id = $1 AND user_id = $2
+RETURNING version, brightness_offset, hue_shift, form_seed_delta
+`
+
+type BumpVersionForRewriteParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+type BumpVersionForRewriteRow struct {
+	Version          int32   `json:"version"`
+	BrightnessOffset float32 `json:"brightness_offset"`
+	HueShift         float32 `json:"hue_shift"`
+	FormSeedDelta    float32 `json:"form_seed_delta"`
+}
+
+// 변형 적용 1/2(가변 별 layer만 — 원본 record 불변, 헌법1): version++ 하고 그 시점 시각 상태를 RETURNING해
+// AppendRewriteEvolution이 같은 version의 변천사 행을 INSERT한다(둘이 한 tx → version·로그 정합). 시각 상태
+// (brightness/hue/form)는 안 바뀌고 스냅샷으로만 실린다(이 변형은 *내용*만 바꾼다).
+func (q *Queries) BumpVersionForRewrite(ctx context.Context, arg BumpVersionForRewriteParams) (BumpVersionForRewriteRow, error) {
+	row := q.db.QueryRow(ctx, bumpVersionForRewrite, arg.ID, arg.UserID)
+	var i BumpVersionForRewriteRow
+	err := row.Scan(
+		&i.Version,
+		&i.BrightnessOffset,
+		&i.HueShift,
+		&i.FormSeedDelta,
+	)
+	return i, err
 }
 
 const cacheStableCoords = `-- name: CacheStableCoords :exec
@@ -228,7 +293,7 @@ func (q *Queries) FindRecordByIdempotencyKey(ctx context.Context, arg FindRecord
 }
 
 const getEvolutionHistory = `-- name: GetEvolutionHistory :many
-SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at
+SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at, content
 FROM evolution_history WHERE memory_id = $1 AND user_id = $2 ORDER BY version ASC
 `
 
@@ -246,9 +311,11 @@ type GetEvolutionHistoryRow struct {
 	Pe            float32            `json:"pe"`
 	Dir           int32              `json:"dir"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	Content       *string            `json:"content"`
 }
 
 // A star's variant log, version ascending (spec 23; UI is spec 24). user_id = isolation.
+// spec 54: content rides along — 'ai_rewrite' 행은 변형 텍스트, 시각 reshape/gist 행은 NULL.
 func (q *Queries) GetEvolutionHistory(ctx context.Context, arg GetEvolutionHistoryParams) ([]GetEvolutionHistoryRow, error) {
 	rows, err := q.db.Query(ctx, getEvolutionHistory, arg.MemoryID, arg.UserID)
 	if err != nil {
@@ -267,6 +334,7 @@ func (q *Queries) GetEvolutionHistory(ctx context.Context, arg GetEvolutionHisto
 			&i.Pe,
 			&i.Dir,
 			&i.CreatedAt,
+			&i.Content,
 		); err != nil {
 			return nil, err
 		}
@@ -279,7 +347,7 @@ func (q *Queries) GetEvolutionHistory(ctx context.Context, arg GetEvolutionHisto
 }
 
 const getMemoryForEmbed = `-- name: GetMemoryForEmbed :one
-SELECT m.user_id, COALESCE(m.fragment_text, r.body) AS text, r.entry_date
+SELECT m.user_id, COALESCE(m.fragment_text, r.body) AS text, r.entry_date, m.valence, m.intensity
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = $1
@@ -289,20 +357,64 @@ type GetMemoryForEmbedRow struct {
 	UserID    string      `json:"user_id"`
 	Text      string      `json:"text"`
 	EntryDate pgtype.Date `json:"entry_date"`
+	Valence   *float32    `json:"valence"`
+	Intensity *float32    `json:"intensity"`
 }
 
 // Loads what the embedding worker needs: the star's owner, the FRAGMENT text
-// (NULL → whole-diary body fallback), and entry_date (for the temporal_bonus
-// baseline). Each fragment embeds separately (spec 21).
+// (NULL → whole-diary body fallback), entry_date (for the temporal_bonus baseline),
+// and the fragment's affect (valence·intensity) for the link emotion-similarity term
+// (change 21). Each fragment embeds separately (spec 21).
 func (q *Queries) GetMemoryForEmbed(ctx context.Context, id string) (GetMemoryForEmbedRow, error) {
 	row := q.db.QueryRow(ctx, getMemoryForEmbed, id)
 	var i GetMemoryForEmbedRow
-	err := row.Scan(&i.UserID, &i.Text, &i.EntryDate)
+	err := row.Scan(
+		&i.UserID,
+		&i.Text,
+		&i.EntryDate,
+		&i.Valence,
+		&i.Intensity,
+	)
+	return i, err
+}
+
+const getMemoryForRewrite = `-- name: GetMemoryForRewrite :one
+
+SELECT m.user_id, m.abstraction_stage,
+  COALESCE(
+    (SELECT eh.content FROM evolution_history eh
+     WHERE eh.memory_id = m.id AND eh.content IS NOT NULL
+     ORDER BY eh.version DESC LIMIT 1),
+    m.fragment_text, r.body
+  ) AS text
+FROM memories m JOIN records r ON r.id = m.record_id
+WHERE m.id = $1
+`
+
+type GetMemoryForRewriteRow struct {
+	UserID           string `json:"user_id"`
+	AbstractionStage int16  `json:"abstraction_stage"`
+	Text             string `json:"text"`
+}
+
+// ── 재공고화 AI 내용 변형(spec 54) ──
+// 비동기 rewrite 워커 입력: 현재 표시 내용(최신 content → fragment_text → 원본 body 폴백), 추상화 단계
+// (변형 폭 구동), 현재 version, 소유자. 직전 변형 위에 다시 변형되도록 최신 content를 입력으로 준다("흐려지고 또
+// 흐려진다"). 원본 record.body는 폴백일 뿐 절대 수정되지 않는다(헌법1).
+func (q *Queries) GetMemoryForRewrite(ctx context.Context, id string) (GetMemoryForRewriteRow, error) {
+	row := q.db.QueryRow(ctx, getMemoryForRewrite, id)
+	var i GetMemoryForRewriteRow
+	err := row.Scan(&i.UserID, &i.AbstractionStage, &i.Text)
 	return i, err
 }
 
 const getRecordByMemory = `-- name: GetRecordByMemory :one
-SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at, m.fragment_text
+SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at, m.fragment_text,
+       COALESCE(
+         (SELECT eh.content FROM evolution_history eh
+          WHERE eh.memory_id = m.id AND eh.content IS NOT NULL
+          ORDER BY eh.version DESC LIMIT 1),
+         '')::text AS derived_text
 FROM memories m
 JOIN records r ON r.id = m.record_id
 WHERE m.id = $1 AND m.user_id = $2
@@ -320,6 +432,7 @@ type GetRecordByMemoryRow struct {
 	Intensity    *float32           `json:"intensity"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	FragmentText *string            `json:"fragment_text"`
+	DerivedText  string             `json:"derived_text"`
 }
 
 // Read the immutable original for the recall panel (records JOIN). body/entry_date/
@@ -327,6 +440,8 @@ type GetRecordByMemoryRow struct {
 // spec 28: m.fragment_text rides along (별 → 조각) so the recall panel can show the
 // star's own fragment text; records.body stays the WHOLE original (원본 일기 전체 보기).
 // fragment_text is NULL for single-fragment / pre-21 stars → the handler emits "".
+// spec 54: derived_text = 최신 AI 내용 변형 텍스트(evolution_history content, version DESC). 변형이 없으면
+// NULL → 핸들러가 "" 방출(클라가 fragment_text/body 폴백). 원본 record.body는 불변(헌법1) — 병치용.
 func (q *Queries) GetRecordByMemory(ctx context.Context, arg GetRecordByMemoryParams) (GetRecordByMemoryRow, error) {
 	row := q.db.QueryRow(ctx, getRecordByMemory, arg.ID, arg.UserID)
 	var i GetRecordByMemoryRow
@@ -337,6 +452,7 @@ func (q *Queries) GetRecordByMemory(ctx context.Context, arg GetRecordByMemoryPa
 		&i.Intensity,
 		&i.CreatedAt,
 		&i.FragmentText,
+		&i.DerivedText,
 	)
 	return i, err
 }
@@ -603,7 +719,7 @@ func (q *Queries) ListDirectNeighbors(ctx context.Context, arg ListDirectNeighbo
 const listDormant = `-- name: ListDormant :many
 
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
-       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version, m.recall_count
+       m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version, m.recall_count, m.abstraction_stage
 FROM memories m
 WHERE m.user_id = $1
   AND m.last_recalled_at < $2::timestamptz
@@ -626,6 +742,7 @@ type ListDormantRow struct {
 	FormSeedDelta    float32            `json:"form_seed_delta"`
 	Version          int32              `json:"version"`
 	RecallCount      int32              `json:"recall_count"`
+	AbstractionStage int16              `json:"abstraction_stage"`
 }
 
 // (spec 07) ListRecentForAmbient는 은퇴 — 서버 요즘-감정 종합(AggregateAmbient)을 제거하고
@@ -659,6 +776,7 @@ func (q *Queries) ListDormant(ctx context.Context, arg ListDormantParams) ([]Lis
 			&i.FormSeedDelta,
 			&i.Version,
 			&i.RecallCount,
+			&i.AbstractionStage,
 		); err != nil {
 			return nil, err
 		}
@@ -711,7 +829,7 @@ func (q *Queries) ListLastRecalled(ctx context.Context, arg ListLastRecalledPara
 const listMemoriesByUser = `-- name: ListMemoriesByUser :many
 SELECT m.id AS memory_id, m.mood, m.intensity, m.valence, m.last_recalled_at,
        m.brightness_offset, m.hue_shift, m.form_seed_delta, m.version,
-       m.record_id, m.fragment_index, m.recall_count,
+       m.record_id, m.fragment_index, m.recall_count, m.abstraction_stage,
        EXISTS (
            SELECT 1 FROM resonances res
            WHERE res.sender_memory_id = m.id OR res.recipient_memory_id = m.id
@@ -734,6 +852,7 @@ type ListMemoriesByUserRow struct {
 	RecordID         string             `json:"record_id"`
 	FragmentIndex    int32              `json:"fragment_index"`
 	RecallCount      int32              `json:"recall_count"`
+	AbstractionStage int16              `json:"abstraction_stage"`
 	Resonant         bool               `json:"resonant"`
 }
 
@@ -766,6 +885,7 @@ func (q *Queries) ListMemoriesByUser(ctx context.Context, userID string) ([]List
 			&i.RecordID,
 			&i.FragmentIndex,
 			&i.RecallCount,
+			&i.AbstractionStage,
 			&i.Resonant,
 		); err != nil {
 			return nil, err

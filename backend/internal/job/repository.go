@@ -97,6 +97,31 @@ type GraphStore interface {
 	// so a re-run never double-advances. Returns the number of stars advanced (for the log).
 	// Never deletes rows (constitution §2) and never touches records (§1).
 	RunConsolidation(ctx context.Context, jobID, userID string, w ConsolidationWrite) (advanced int, err error)
+
+	// --- reconsolidation content rewrite (spec 54) ---
+
+	// GetRewriteInput loads what the rewrite worker needs for one star: its current displayed
+	// text (latest variant content → fragment_text → whole-diary body fallback), abstraction
+	// stage (drives the rewrite strength), owner, and current version. The original record is
+	// never read for mutation — only as the text fallback (헌법1).
+	GetRewriteInput(ctx context.Context, memoryID string) (RewriteInput, error)
+	// ApplyRewrite persists one content rewrite AND completes the job in ONE transaction:
+	// version++ on the mutable star + an append-only 'ai_rewrite' variant row carrying the new
+	// text + mark the job done (so version, log, and completion can never diverge — same
+	// exactly-once atomicity as RunConsolidation). The visual reshaping state is snapshotted
+	// unchanged (this variant only changes *content*); the immutable record is never touched
+	// (헌법1·§2 — INSERT-only log, no row deletes). Atomic completion is what makes a retry safe:
+	// ApplyRewrite is not idempotent, so committing the job done in the same tx prevents a
+	// crash-before-complete from re-blurring the already-blurred text on the next claim.
+	ApplyRewrite(ctx context.Context, jobID, memoryID, userID, content string) error
+}
+
+// RewriteInput is the rewrite worker's per-star input (spec 54): the current displayed text
+// to re-tell, the abstraction stage that scales the blur, and the owner for the write guard.
+type RewriteInput struct {
+	UserID           string
+	Text             string
+	AbstractionStage int
 }
 
 // ConsolidationWrite is the nightly pass's write payload (spec 27 change 20), applied
@@ -224,18 +249,24 @@ type RecordForExtract struct {
 type Segment = fragment.Segment
 
 // MemoryForEmbed is the input the worker embeds. Text is the fragment's own
-// text (or the whole diary body when fragment_text is NULL).
+// text (or the whole diary body when fragment_text is NULL). Valence/Intensity are the
+// fragment's affect (change 21) — the new star's side of the link emotion-similarity term.
 type MemoryForEmbed struct {
 	UserID    string
 	Text      string
 	EntryDate time.Time
+	Valence   float64
+	Intensity float64
 }
 
-// Neighbor is one KNN candidate returned by GraphStore.KnnNearest.
+// Neighbor is one KNN candidate returned by GraphStore.KnnNearest. Valence/Intensity are the
+// candidate's affect (change 21) — the neighbor's side of the link emotion-similarity term.
 type Neighbor struct {
 	MemoryID  string
 	CosSim    float64
 	EntryDate time.Time
+	Valence   float64
+	Intensity float64
 }
 
 // LinkUpsert is one normalized (a_id < b_id) semantic synapse to persist.

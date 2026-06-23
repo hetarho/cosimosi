@@ -187,6 +187,8 @@ func (r *pgRepository) GetMemoryForEmbed(ctx context.Context, memoryID string) (
 		UserID:    row.UserID,
 		Text:      row.Text,
 		EntryDate: row.EntryDate.Time,
+		Valence:   dbutil.Float64Value(row.Valence),   // change 21: 감정 유사도 항 입력(NULL→0 중립)
+		Intensity: dbutil.Float64Value(row.Intensity), // change 21: 각성(arousal)
 	}, nil
 }
 
@@ -220,6 +222,8 @@ func (r *pgRepository) KnnNearest(ctx context.Context, userID string, vec []floa
 			MemoryID:  row.MemoryID,
 			CosSim:    row.CosSim,
 			EntryDate: row.EntryDate.Time,
+			Valence:   dbutil.Float64Value(row.Valence),   // change 21: 감정 유사도 항 입력(NULL→0 중립)
+			Intensity: dbutil.Float64Value(row.Intensity), // change 21: 각성(arousal)
 		})
 	}
 	return out, nil
@@ -479,6 +483,65 @@ func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID strin
 		return 0, fmt.Errorf("commit consolidation: %w", err)
 	}
 	return advanced, nil
+}
+
+// --- reconsolidation content rewrite (spec 54) ---
+
+// GetRewriteInput loads the star's current displayed text (latest variant content →
+// fragment_text → whole-diary body fallback, all in one query), abstraction stage and owner.
+// The record body is read only as the text fallback — never for mutation (헌법1).
+func (r *pgRepository) GetRewriteInput(ctx context.Context, memoryID string) (RewriteInput, error) {
+	row, err := gen.New(r.pool).GetMemoryForRewrite(ctx, memoryID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RewriteInput{}, fmt.Errorf("rewrite input %s: %w", memoryID, err)
+	}
+	if err != nil {
+		return RewriteInput{}, fmt.Errorf("load rewrite input: %w", err)
+	}
+	return RewriteInput{
+		UserID:           row.UserID,
+		Text:             row.Text,
+		AbstractionStage: int(row.AbstractionStage),
+	}, nil
+}
+
+// ApplyRewrite persists one content rewrite atomically (spec 54): version++ on the mutable
+// star + an append-only 'ai_rewrite' variant row carrying the new text, snapshotting the
+// unchanged visual reshaping state at that version (this variant changes only *content*). One
+// transaction so version and the log can never diverge; the immutable record is never touched
+// (헌법1) and nothing is deleted (§2 — INSERT-only log).
+func (r *pgRepository) ApplyRewrite(ctx context.Context, jobID, memoryID, userID, content string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin rewrite tx: %w", err)
+	}
+	defer tx.Rollback(ctx) // no-op once committed
+	q := gen.New(tx)
+
+	row, err := q.BumpVersionForRewrite(ctx, gen.BumpVersionForRewriteParams{ID: memoryID, UserID: userID})
+	if err != nil {
+		return fmt.Errorf("bump version: %w", err)
+	}
+	histID, err := id.New()
+	if err != nil {
+		return fmt.Errorf("rewrite history id: %w", err)
+	}
+	if err := q.AppendRewriteEvolution(ctx, gen.AppendRewriteEvolutionParams{
+		ID: histID, MemoryID: memoryID, UserID: userID, Version: row.Version,
+		Brightness: row.BrightnessOffset, HueShift: row.HueShift, FormSeedDelta: row.FormSeedDelta,
+		Content: &content, // nullable column; the worker only calls ApplyRewrite with non-empty content
+	}); err != nil {
+		return fmt.Errorf("append rewrite evolution: %w", err)
+	}
+	// Complete the job in the SAME tx → exactly-once: if this commits the job is done, so a retry
+	// can't re-blur the already-blurred text into a second variant (ApplyRewrite isn't idempotent).
+	if err := q.CompleteJob(ctx, jobID); err != nil {
+		return fmt.Errorf("complete rewrite job: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit rewrite: %w", err)
+	}
+	return nil
 }
 
 // --- nightly scheduler (producer, spec 27) ---

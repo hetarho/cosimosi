@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { attribute, float, uniform, vec2, vec3 } from 'three/tsl'
+import { attribute, float, uniform, vec2, vec3, vec4 } from 'three/tsl'
 
 // Three TSL accepts Node-like values across its DSL, but the published TS
 // overloads are narrower than the runtime graph API. Keep that mismatch here.
@@ -15,6 +15,10 @@ export function asVec2Node(value: unknown) {
 
 export function asVec3Node(value: unknown) {
   return vec3(tslInput(value))
+}
+
+export function asVec4Node(value: unknown) {
+  return vec4(tslInput(value))
 }
 
 export function attributeFloatNode(name: string) {

@@ -19,12 +19,12 @@ function edgeKey(e: SynapseEdge): string {
  * Merge an incoming (server) star set into the local render set, keyed by memory id.
  * - Existing stars keep their OBJECT IDENTITY (slot `index`, seed, emergent position)
  *   unless the server's lastRecalledAt is ahead — then only that field advances (max).
- * - The reshaping state (`brightnessOffset`/`hueShift`/`formSeedDelta`/`version`, specs 23·27)
- *   is ALSO taken from the server unconditionally, for the same reason: it is server-authoritative
- *   (reconsolidation reshapes on recall, the nightly gist simplifies form — both server-side) and
- *   the client never advances it optimistically ("낙관 갱신 아님"). A keep-local merge would freeze
- *   the star's shape at its first-load version, so a recalled-reshaped or night-gisted star would
- *   never visibly change on an in-session refetch. Forwarding makes those re-shapes land.
+ * - The reshaping state (`brightnessOffset`/`hueShift`/`formSeedDelta`/`version`/`abstractionStage`,
+ *   specs 23·27·53) is ALSO taken from the server unconditionally, for the same reason: it is
+ *   server-authoritative (reconsolidation reshapes on recall, the nightly gist simplifies form +
+ *   bumps abstraction_stage — both server-side) and the client never advances it optimistically
+ *   ("낙관 갱신 아님"). A keep-local merge would freeze the star's shape at its first-load version, so a
+ *   recalled-reshaped or night-gisted star would never visibly change on an in-session refetch. Forwarding makes those re-shapes land.
  * - Local-only stars are kept: `temp-` optimistic stars (replaceStar owns their swap)
  *   and just-confirmed stars a stale response doesn't include yet.
  * - Server-only stars are appended at the end → next free instance slots.
@@ -45,6 +45,7 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
       m.hueShift === node.memory.hueShift &&
       m.formSeedDelta === node.memory.formSeedDelta &&
       m.version === node.memory.version &&
+      m.abstractionStage === node.memory.abstractionStage &&
       m.resonant === node.memory.resonant
     ) {
       return node
@@ -59,6 +60,8 @@ export function mergeStars(local: StarNode[], incoming: StarNode[]): StarNode[] 
         hueShift: m.hueShift,
         formSeedDelta: m.formSeedDelta,
         version: m.version,
+        // 야간 요지가 승급한 추상화 단계(spec 53)도 서버 권위 — refetch가 한 단계 더 요지화된 형태를 반영한다.
+        abstractionStage: m.abstractionStage,
         // 공명(spec 36)도 서버 권위 신호 — refetch가 새로 맺힌 공명(친구가 수락)을 반영한다.
         resonant: m.resonant,
       },

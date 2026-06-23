@@ -150,6 +150,7 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 			FragmentIndex:    int(row.FragmentIndex), // 28: 일기 내 조각 순서
 			Resonant:         row.Resonant,           // 36: 공명으로 다른 우주의 별과 이어졌는지
 			RecallCount:      int(row.RecallCount),   // 07: 누적 회상 횟수(클라 S/R 파생)
+			AbstractionStage: int(row.AbstractionStage), // 53: 야간 요지 단계(클라 형태 단순화)
 		})
 	}
 	return out, nil
@@ -198,7 +199,8 @@ func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff ti
 			HueShift:         float64(row.HueShift),
 			FormSeedDelta:    float64(row.FormSeedDelta),
 			Version:          int(row.Version),
-			RecallCount:      int(row.RecallCount), // 07: 누적 회상 횟수
+			RecallCount:      int(row.RecallCount),      // 07: 누적 회상 횟수
+			AbstractionStage: int(row.AbstractionStage), // 53: 야간 요지 단계(클라 형태 단순화)
 		})
 	}
 	return out, nil
@@ -235,6 +237,7 @@ func (r *pgRepository) GetRecord(ctx context.Context, userID, memoryID string) (
 		Intensity:    dbutil.Float64Value(row.Intensity),
 		CreatedAt:    row.CreatedAt.Time,
 		FragmentText: fragmentTextFromDB(row.FragmentText), // 28: 별 → 조각(NULL → "")
+		DerivedText:  row.DerivedText,                     // 54: 최신 AI 변형 텍스트(COALESCE '' → 없으면 클라 폴백)
 	}, nil
 }
 
@@ -388,9 +391,31 @@ func (r *pgRepository) GetEvolutionHistory(ctx context.Context, userID, memoryID
 			PE:            float64(row.Pe),
 			Dir:           int(row.Dir),
 			CreatedAt:     row.CreatedAt.Time,
+			Content:       fragmentTextFromDB(row.Content), // 54: AI 변형 텍스트(시각 reshape/gist 행은 "")
 		})
 	}
 	return out, nil
+}
+
+// EnqueueRewriteIfDue best-effort enqueues a content-rewrite job for the recalled star (spec 54).
+// The SQL gate (stage ≥ threshold, no recent 'ai_rewrite' since debounceCutoff, no duplicate
+// pending/running rewrite) makes this a no-op when not due — never blocks the recall (헌법1: the
+// async worker does the AI call + write; the original record is untouched).
+func (r *pgRepository) EnqueueRewriteIfDue(ctx context.Context, userID, memoryID string, stageThreshold int, debounceCutoff time.Time) error {
+	jobID, err := id.New()
+	if err != nil {
+		return err
+	}
+	if _, err := gen.New(r.pool).EnqueueRewriteIfDue(ctx, gen.EnqueueRewriteIfDueParams{
+		ID:             jobID,
+		MemoryID:       memoryID,
+		UserID:         userID,
+		StageThreshold: int32(stageThreshold),
+		DebounceCutoff: pgtype.Timestamptz{Time: debounceCutoff, Valid: true},
+	}); err != nil {
+		return fmt.Errorf("enqueue rewrite: %w", err)
+	}
+	return nil
 }
 
 // embeddingToDomain flattens a pgvector column into the pure-domain []float64 the

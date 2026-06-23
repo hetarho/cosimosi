@@ -36,7 +36,8 @@
 | spec 07 경계 | 기억 가중치 R(`recall_count` 파생, spec 07)은 **자기근접 반지름(38)과 배경 감정 순위(25)** 를 바꾼다. 별 밝기는 그 반지름을 빛으로 읽으므로 R을 통해 함께 움직이되(change 19), **별 색(=mood)·spec 03 반사 중립은 R과 무관하게 불변**. 배경이 같은 감정색을 빌려 짜 넣어도(25) 별 자체 색 규칙은 그대로다 |
 | 감정색 확정 게이트 (45) | **인증 개인 우주는 13 mood 감정색이 모두 확정된 뒤 렌더**된다 — `EmotionColorGate`가 `GetSettings`의 `user_emotion_colors` 13색 완성 여부(유효 `#RRGGBB`)로 판정해 미완료면 `/emotion-colors`로 보낸다(최초 로그인 여부 아님, *서버 내용*으로만). 렌더는 `resolveMoodRgb(mood, emotionColors)`로 사용자 색 우선·미설정/공개·체험은 기본 팔레트. **색=mood·추천=`MOOD_PALETTE` 파생** 불변(감정색은 판매/잠금 대상 아님 — 무료 필수 설정). [customization](customization.md) |
 | 크기 = f(intensity) | `sizeFor(intensity) = 0.6 + clamp(intensity,0,1)·1.4` → 인스턴스 행렬 scale에 baked |
-| 형태 시드 = 결정론적 | `seedFromId(memory_id)`(FNV-1a 32-bit → `[0,1)`); 같은 id → 같은 seed → 같은 형태. per-instance `aSeed`로 표면 무늬 변형 |
+| 형태 시드 = 결정론적 다축 (spec 53) | `seedComponents(memory_id)` = 3축 시드(축 0 = `seedFromId`(FNV-1a 32-bit → `[0,1)`); 축 1·2는 id에 접미사 덧대 재해시). 같은 id → 같은 3축 → 같은 형태(결정론, Math.random 비사용). per-instance `aSeed`(표면 무늬, 축 0)·`aShape`(vec3, 형태 변위). **형태(geometry)는 단일 `InstancedMesh`(헌법8)라 in-shader 정점 변위로 별마다 다른 실루엣**을 만든다(`star-body` seedShape): shape 방향 *평균 기준* 비대칭 스트레치(균일 확대 없음 — 크기는 intensity 단독) + 저주파 럼프 + 고주파 디테일. lowpoly/octa는 flatShading이라 변위 위 면 법선 자동 재계산, smooth는 스트레치만(법선 보존), cloudy/liquid는 기존 변위에 합성. 튜닝 `spec/values.yaml star_form`(displace_amp·detail_amp·asymmetry·stage_simplify) |
+| 형태 = f(추상화 단계) (spec 53) | `abstraction_stage`(0~`gist_stage_radii` 길이=4)가 오를수록 변위·비대칭이 `stage_simplify` 비율만큼 줄고 디테일이 먼저 녹아 일반적 인상만 남는다(요지화, 단조). per-instance `aStage`. 색·크기·밝기 규칙은 불변(이 변형은 *형태*만) |
 | 애니메이션 | 형태별 자가발광·뷰의존(fresnel)·변위; 공유 `uTime` uniform을 `useFrame`이 수동 갱신(BloomPass가 TSL `time` 노드를 우회하므로) |
 
 ### 밝기 · 감쇠 (brightness · decay)
@@ -81,7 +82,7 @@
 | 양방향 적용 | 방향(±)은 `회상 별 id 해시 + version`에서 결정론적. `brightness_offset += dir·clamp(magnitude, 0.10, 0.22)`; `hue_shift`는 ±28°(도) 안에서 누적; `form_seed_delta`는 ±0.6 안에서 누적; `version++` |
 | 내용 한정적 범위 | 회상 별 + **직접 이웃(memory_links 1-홉)** 만 재성형; 이웃은 `NEIGHBOR_FACTOR=0.4` 축소 크기. 간접 이웃·나머지 우주는 불변 |
 | 렌더 합성 | `aGlow = clamp(starGlow(...) + brightness_offset, A_MIN, 1)`(거리 밝기·바닥 OUTERMOST 보존); `aRecency = starGlow(...)`(반사 변조); `aSeed = seed + form_seed_delta`; `aHueShift`(rad)로 mood 색을 회색축(1,1,1) 둘레로 회전(휘도 보존). brightness_offset은 self-glow에만(반사는 점광 물리량). 회상 직후 갱신은 GetUniverse refetch로 반영(낙관 갱신 아님) |
-| 간격 효과 | 공동 회상 강화 delta는 FE `co-recall`에서 `CO_RECALL_DELTA·(1 + SPACING_GAIN·clamp(gapDays/SPACING_REF,0,1))`로 키운다(간격 둔 인출이 더 큰 강화); 서버 `ReinforceLinks`는 클라 delta를 1.0 cap으로 멱등 업서트(변경 없음) |
+| 공동 회상 강화 | delta는 FE `co-recall`에서 **간격 무관 고정** `CO_RECALL_DELTA`(change 22 — 간격 효과 제거; 몰아보기 1× = 하루 띄움 1×); 서버 `ReinforceLinks`는 클라 delta를 1.0 cap으로 멱등 업서트(변경 없음) |
 
 ### 요지화 (gist, 27 change 20)
 
@@ -91,7 +92,7 @@
 |---|---|
 | 요지 트리거 | 별 반지름(서버가 change 18 공식으로 근사)이 `GIST_STAGE_RADII=[40,55,68,78]`의 임계를 넘긴 수 = target stage(0~4). 나이/회상 트리거·`form_seed_delta < 1` 조건은 폐기 |
 | 단계 승급 | `abstraction_stage = GREATEST(현재, target)`(target > 현재인 별만 승급 → 단조·≤4·멱등), `version++`. 멀어질수록 단계가 오른다 |
-| 형태 배선 | `abstraction_stage`가 형태(plan 53)·재공고화 AI 변형(plan 54)의 입력. 아직 proto 미노출 — 야간 요지의 형태 표면 효과는 plan 53부터. (23 재공고화의 `form_seed_delta`→`aSeed` 배선은 그대로, 야간 요지는 더는 그 경로를 안 쓴다) |
+| 형태 배선 | `abstraction_stage`는 proto `Star`(필드 15)로 노출되어 클라가 형태(plan 53)·재공고화 AI 내용 변형(plan 54)에 소비한다. 형태: `aStage` attribute → in-shader 정점 변위 단순화(요지화, plan 53). (23 재공고화의 `form_seed_delta`→`aSeed`/`aShape` 배선은 그대로, 야간 요지는 더는 그 경로를 안 쓴다) |
 | 변천사 | 각 단계 승급은 `evolution_history`에 `trigger='nightly_gist'`(pe 0·dir −1) **append**(23 테이블 재사용, INSERT 전용 — [memory](memory.md) 정책). 24 변천사 타임랩스가 그대로 보여준다 |
 
 ## 불변식 (invariants)

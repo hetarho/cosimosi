@@ -26,6 +26,12 @@ export interface Memory {
   fragmentIndex: number
   /** deterministic hash of the memory id (seedFromId) → per-instance shape variation. */
   seed: number
+  /** 형태(geometry) 고유성 3축 시드(spec 53, seedComponents). 축 0 = seed. lowpoly/octa 등 고정
+   *  지오메트리도 이 시드로 정점을 변위·비대칭화해 별마다 실루엣이 다르다(회전만 다른 게 아님, A1). */
+  shapeSeed: readonly [number, number, number]
+  /** 추상화 단계 0~4(spec 27 change 20 야간 요지가 영속·승급, spec 53이 형태로 소비). 높을수록
+   *  형태가 단계적으로 단순/추상화된다(요지화, A2 단조). 서버 미수신(데모·구 응답)이면 0(또렷). */
+  abstractionStage: number
   /** 재공고화 누적 ±밝기 오프셋(spec 23) — reshapedBrightness가 별 밝기에 합성. */
   brightnessOffset: number
   /** 감정 기준 색 ±28° 색조(도, spec 23) — StarField가 aHueShift로 머티리얼에 합성. */

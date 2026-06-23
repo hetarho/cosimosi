@@ -97,6 +97,9 @@ CREATE INDEX jobs_claim_idx ON jobs (status, next_run_at);
 -- 사용자당 활성(대기/실행) consolidate 잡 최대 1개(27 — 야간 티커 중복 적재 방지 백스톱).
 CREATE UNIQUE INDEX jobs_one_active_consolidate_idx ON jobs (user_id)
     WHERE kind = 'consolidate' AND status IN ('pending', 'running');
+-- 별당 활성(대기/실행) rewrite 잡 최대 1개(54 00014 — 동시 회상 이중 적재 레이스 백스톱; ON CONFLICT DO NOTHING과 짝).
+CREATE UNIQUE INDEX jobs_one_active_rewrite_idx ON jobs (memory_id)
+    WHERE kind = 'rewrite' AND status IN ('pending', 'running');
 
 -- 회상 강화 배치 멱등성
 CREATE TABLE processed_batches (
@@ -118,7 +121,8 @@ CREATE TABLE evolution_history (
     trigger         TEXT NOT NULL,
     pe              REAL NOT NULL,
     dir             INT  NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    content         TEXT                              -- 00014(spec 54) AI 내용 변형 텍스트(trigger='ai_rewrite'만 채움; 시각 reshape/gist 행은 NULL)
 );
 CREATE INDEX evolution_history_memory_idx ON evolution_history (memory_id, version);
 

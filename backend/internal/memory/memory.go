@@ -129,6 +129,11 @@ type Memory struct {
 	// Existing stars backfill to 1 (migration default). Not a coordinate — a server-derived datum
 	// the client folds into a render computation (constitution §3 intact).
 	RecallCount int
+	// AbstractionStage (spec 53): discrete 0..4 gist stage the nightly consolidation (27 change 20)
+	// monotonically bumps by the star's radius (00013 column). The client folds it into the star's
+	// FORM (geometry simplification — plan 53), a separate channel from the spec-23 reshaping state.
+	// 0 = vivid (demo / pre-gist / public snapshots). Server-derived datum, not a coordinate.
+	AbstractionStage int
 }
 
 // EvolutionSnapshot is one append-only reshaping event of a star (spec 23): the
@@ -139,10 +144,13 @@ type EvolutionSnapshot struct {
 	Brightness    float64 // brightness_offset snapshot at this version
 	HueShift      float64
 	FormSeedDelta float64
-	Trigger       string // 'recall' | 'new_neighbor' | 'nightly_gist'
+	Trigger       string // 'recall' | 'new_neighbor' | 'nightly_gist' | 'ai_rewrite'(54)
 	PE            float64
 	Dir           int // +1 강화 / -1 약화
 	CreatedAt     time.Time
+	// Content (spec 54) is the AI-rewritten text snapshot — non-empty only on 'ai_rewrite'
+	// rows; visual reshape/gist rows leave it "". The timelapse (24) traces the content history.
+	Content string
 }
 
 // ReshapeState is the cumulative reshaping state of one star, the input/output of a
@@ -254,6 +262,11 @@ type Record struct {
 	Intensity    float64
 	CreatedAt    time.Time
 	FragmentText string
+	// DerivedText (spec 54) is the star's CURRENT AI-rewritten display text (latest
+	// evolution_history content) — empty when the star was never rewritten (stage < threshold
+	// or AI off). The recall panel shows it as the "흐려진 기억" and juxtaposes the immutable
+	// Body. It lives only on the mutable star's variant log; Body (the original) never changes (헌법1).
+	DerivedText string
 }
 
 // RecordSummary is one original diary as a wayfinding entry point (spec 28): id (the

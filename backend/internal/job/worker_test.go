@@ -43,16 +43,16 @@ func TestTemporalBonus(t *testing.T) {
 }
 
 func TestInitialWeightClamp(t *testing.T) {
-	// cos_sim 0.9 + bonus 0.3 = 1.2 → clamped to 1.0
-	if got := initialWeight(0.9, 0.3); got != 1.0 {
+	// cos_sim 0.9 + bonus 0.3 = 1.2 → clamped to 1.0 (no emotion term: emoSim 0)
+	if got := initialWeight(0.9, 0.3, 0); got != 1.0 {
 		t.Fatalf("initialWeight over 1 = %f, want 1.0", got)
 	}
-	// cos_sim 0.75, no temporal bonus
-	if got := initialWeight(0.75, 0.0); math.Abs(got-0.75) > 1e-9 {
+	// cos_sim 0.75, no temporal bonus, no emotion term
+	if got := initialWeight(0.75, 0.0, 0); math.Abs(got-0.75) > 1e-9 {
 		t.Fatalf("initialWeight = %f, want 0.75", got)
 	}
 	// never negative
-	if got := initialWeight(-0.5, 0.0); got != 0.0 {
+	if got := initialWeight(-0.5, 0.0, 0); got != 0.0 {
 		t.Fatalf("initialWeight negative = %f, want 0.0", got)
 	}
 }
@@ -66,7 +66,7 @@ func TestBiasedLinksExcludesSelfAndComputesWeight(t *testing.T) {
 		{MemoryID: "zzz", CosSim: 0.9, EntryDate: date},
 		{MemoryID: "mmm", CosSim: 1.0, EntryDate: date}, // self → dropped
 	}
-	links := biasedLinks(self, "user-1", date, now, neighbors, map[string]string{}, map[string]float64{}, 0)
+	links := biasedLinks(self, "user-1", date, now, neighbors, map[string]string{}, map[string]float64{}, 0, 0, 0)
 	if len(links) != 2 {
 		t.Fatalf("got %d links, want 2 (self excluded)", len(links))
 	}
@@ -95,14 +95,53 @@ func TestBiasedLinksExcludesSelfAndComputesWeight(t *testing.T) {
 func TestBiasedLinksCapsBelowIntraEntryWeight(t *testing.T) {
 	date := day("2026-06-04")
 	now := date.Add(2 * time.Hour)
-	links := biasedLinks("self", "u", date, now, []Neighbor{{MemoryID: "n", CosSim: 1.0, EntryDate: date}}, map[string]string{}, map[string]float64{}, 0)
+	links := biasedLinks("self", "u", date, now, []Neighbor{{MemoryID: "n", CosSim: 1.0, EntryDate: date}}, map[string]string{}, map[string]float64{}, 0, 0, 0)
 	if len(links) != 1 || links[0].Weight >= 0.8 {
 		t.Fatalf("semantic weight %v, want < 0.8", links)
 	}
-	// Below the cap the weight is untouched (30-day gap → temporalBonus 0 → w0 = cos_sim).
-	links = biasedLinks("self", "u", date.AddDate(0, 0, 30), now, []Neighbor{{MemoryID: "n", CosSim: 0.75, EntryDate: date}}, map[string]string{}, map[string]float64{}, 0)
+	// Below the cap the weight is untouched (30-day gap → temporalBonus 0; opposite affect →
+	// emoSim 0 → no emotion term → w0 = cos_sim). self=(1,1) vs neighbor=(-1,0) is max affect distance.
+	links = biasedLinks("self", "u", date.AddDate(0, 0, 30), now, []Neighbor{{MemoryID: "n", CosSim: 0.75, EntryDate: date, Valence: -1, Intensity: 0}}, map[string]string{}, map[string]float64{}, 0, 1, 1)
 	if links[0].Weight != 0.75 {
 		t.Fatalf("uncapped weight = %f, want 0.75", links[0].Weight)
+	}
+}
+
+// change 21 — emotion similarity raises a link's weight (A1) but never past the
+// semanticWeightCap (A2). Two candidates with identical cos_sim and time, differing only in
+// affect: the one closer to the new star's emotion links a touch stronger.
+func TestBiasedLinksEmotionSimilarityRaisesWeight(t *testing.T) {
+	date := day("2026-06-04")
+	d30 := date.AddDate(0, 0, 30) // 30-day gap → temporalBonus 0, isolating the emotion term
+	now := date.Add(2 * time.Hour)
+	selfV, selfI := 0.8, 0.7 // the new star's affect (joy-ish)
+
+	near := biasedLinks("self", "u", d30, now,
+		[]Neighbor{{MemoryID: "near", CosSim: 0.75, EntryDate: date, Valence: 0.8, Intensity: 0.7}},
+		map[string]string{}, map[string]float64{}, 0, selfV, selfI)[0].Weight
+	far := biasedLinks("self", "u", d30, now,
+		[]Neighbor{{MemoryID: "far", CosSim: 0.75, EntryDate: date, Valence: -0.8, Intensity: 0.1}},
+		map[string]string{}, map[string]float64{}, 0, selfV, selfI)[0].Weight
+
+	if !(near > far) {
+		t.Fatalf("emotion-closer weight %f should exceed farther %f (A1)", near, far)
+	}
+	if near > semanticWeightCap {
+		t.Fatalf("emotion term pushed weight %f past cap %f (A2)", near, semanticWeightCap)
+	}
+}
+
+// emotionSimilarity is the affect-circumplex closeness in [0,1]: identical = 1, opposite
+// corners = 0, symmetric (change 21).
+func TestEmotionSimilarity(t *testing.T) {
+	if got := emotionSimilarity(0.5, 0.5, 0.5, 0.5); math.Abs(got-1) > 1e-9 {
+		t.Fatalf("identical affect = %f, want 1", got)
+	}
+	if got := emotionSimilarity(1, 1, -1, 0); math.Abs(got) > 1e-9 {
+		t.Fatalf("opposite corners = %f, want 0", got)
+	}
+	if emotionSimilarity(0.2, 0.3, -0.6, 0.9) != emotionSimilarity(-0.6, 0.9, 0.2, 0.3) {
+		t.Fatal("emotionSimilarity must be symmetric")
 	}
 }
 
@@ -226,6 +265,10 @@ func (stubStore) ReknnCandidates(context.Context, string, time.Time, float64) ([
 func (stubStore) RunConsolidation(context.Context, string, string, ConsolidationWrite) (int, error) {
 	return 0, nil
 }
+func (stubStore) GetRewriteInput(context.Context, string) (RewriteInput, error) {
+	return RewriteInput{}, nil
+}
+func (stubStore) ApplyRewrite(context.Context, string, string, string, string) error { return nil }
 
 // panicEmbedder simulates an adapter blowing up mid-pipeline.
 type panicEmbedder struct{}
@@ -238,7 +281,7 @@ func (panicEmbedder) Model() string                                    { return 
 // it becomes a normal backoff failure (pending retry on the first attempt).
 func TestProcessOneRecoversFromPanic(t *testing.T) {
 	jobs := &stubJobs{}
-	w := NewWorker(jobs, stubStore{}, panicEmbedder{}, ai.NoopExtractor{}, slog.New(slog.DiscardHandler))
+	w := NewWorker(jobs, stubStore{}, panicEmbedder{}, ai.NoopExtractor{}, ai.NoopRewriter{}, slog.New(slog.DiscardHandler))
 	if claimed := w.processOne(context.Background()); !claimed {
 		t.Fatal("processOne = false, want true (a job was claimed)")
 	}

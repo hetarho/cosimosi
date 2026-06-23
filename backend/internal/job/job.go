@@ -30,6 +30,11 @@ const (
 	// consolidation (re-stabilize → redistribute → gist → prune) over that user's
 	// whole graph. Keyed by UserID (no per-star memory_id).
 	KindConsolidate Kind = "consolidate"
+	// KindRewrite is the reconsolidation content-rewrite job (spec 54): RecallMemory
+	// enqueues one (best-effort, gated by abstraction_stage ≥ threshold + debounce) when a
+	// sufficiently-abstracted star is re-viewed, and the worker re-tells its displayed text
+	// via ai.Rewriter, appending the result to the append-only variant log. Keyed by MemoryID.
+	KindRewrite Kind = "rewrite"
 )
 
 // Job is a claimed unit of work. Keying follows jobs' columns: an embed job

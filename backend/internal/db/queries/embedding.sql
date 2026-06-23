@@ -20,7 +20,9 @@ SET embedding = EXCLUDED.embedding,
 SELECT
     e.memory_id,
     (1 - (e.embedding <=> @query::vector))::float8 AS cos_sim,
-    r.entry_date
+    r.entry_date,
+    m.valence,
+    m.intensity
 FROM embeddings e
 JOIN memories m ON m.id = e.memory_id
 JOIN records r ON r.id = m.record_id

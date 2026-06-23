@@ -58,6 +58,8 @@ func main() {
 	}
 	adminSvc := admin.NewService(admin.NewRepository(db), adminCipher, cfg)
 	extractor := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
+	// Reconsolidation content rewriter (spec 54) — same admin-followed switch as the extractor.
+	rewriter := ai.NewRewriter(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
 
 	// Nightly consolidation ticker (spec 27): once a day enqueue a consolidate job
 	// per active user; the worker below claims/runs them. Shares the signal-cancelled
@@ -69,7 +71,7 @@ func main() {
 		close(tickerDone)
 	}()
 
-	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, slog.Default())
+	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, rewriter, slog.Default())
 	worker.Run(ctx) // blocks until ctx is cancelled by a signal
 
 	// ctx is cancelled (signal) by the time Run returns. Wait for the ticker to observe it

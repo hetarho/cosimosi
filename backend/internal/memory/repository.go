@@ -74,4 +74,11 @@ type Repository interface {
 	// GetEvolutionHistory reads a star's variant log, version ascending (spec 23; UI
 	// is spec 24).
 	GetEvolutionHistory(ctx context.Context, userID, memoryID string) ([]EvolutionSnapshot, error)
+
+	// EnqueueRewriteIfDue best-effort enqueues a content-rewrite job (spec 54) for the recalled
+	// star, gated ENTIRELY in SQL: only when abstraction_stage ≥ stageThreshold (A1), no
+	// 'ai_rewrite' variant since debounceCutoff (A6), and no pending/running rewrite job already
+	// exists for it (no duplicates). A no-op otherwise — never blocks the recall, never errors on
+	// "not due". The async worker does the AI call + the write (헌법1: record untouched).
+	EnqueueRewriteIfDue(ctx context.Context, userID, memoryID string, stageThreshold int, debounceCutoff time.Time) error
 }

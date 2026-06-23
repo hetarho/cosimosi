@@ -79,7 +79,7 @@ func TestWorkerPipelineIntegration(t *testing.T) {
 	// is still open) — t.Cleanup would instead run after Close and silently no-op.
 	defer cleanup(ctx, pool, userA, userB)
 
-	w := NewWorker(NewRepository(pool), NewGraphStore(pool), ai.NewMockEmbedder(config.EmbedDim), ai.NoopExtractor{}, slog.Default())
+	w := NewWorker(NewRepository(pool), NewGraphStore(pool), ai.NewMockEmbedder(config.EmbedDim), ai.NoopExtractor{}, ai.NoopRewriter{}, slog.Default())
 
 	// Drain the whole queue (our 3 jobs plus any pre-existing pending ones).
 	for i := 0; i < 1000; i++ {
@@ -160,7 +160,7 @@ func TestExtractFanOutIntegration(t *testing.T) {
 	}
 	defer cleanup(ctx, pool, user)
 
-	w := NewWorker(NewRepository(pool), NewGraphStore(pool), ai.NewMockEmbedder(config.EmbedDim), ai.NewMockExtractor(), slog.Default())
+	w := NewWorker(NewRepository(pool), NewGraphStore(pool), ai.NewMockEmbedder(config.EmbedDim), ai.NewMockExtractor(), ai.NoopRewriter{}, slog.Default())
 	for i := 0; i < 1000; i++ {
 		if !w.processOne(ctx) {
 			break

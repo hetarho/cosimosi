@@ -1,20 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { VALUES } from '@/shared/config'
 import {
   CO_RECALL_DELTA,
+  DWELL_MS,
   createSession,
   drainDeltas,
   hasPending,
   onActiveView,
   pairKey,
-  spacingBoost,
-  SPACING_GAIN,
-  SPACING_REF_DAYS,
 } from './co-recall'
 
-const T0 = 1_000_000_000_000 // fixed virtual now for deterministic spacing
-const DAY = 86_400_000
-
-describe('co-recall session', () => {
+describe('co-recall session (change 22 — no spacing effect)', () => {
   it('pairKey normalizes order (undirected)', () => {
     expect(pairKey('b', 'a')).toBe('a|b')
     expect(pairKey('a', 'b')).toBe('a|b')
@@ -22,61 +18,43 @@ describe('co-recall session', () => {
 
   it('a single active view records no delta', () => {
     const s = createSession('batch-1')
-    onActiveView(s, 'a', T0)
+    onActiveView(s, 'a')
     expect(hasPending(s)).toBe(false)
   })
 
-  it('two distinct active views add one increment to the pair (1.11/1.3)', () => {
+  it('two distinct active views add one fixed increment to the pair', () => {
     const s = createSession('batch-1')
-    onActiveView(s, 'a', T0)
-    onActiveView(s, 'b', T0)
+    onActiveView(s, 'a')
+    onActiveView(s, 'b')
     const { items, batchId } = drainDeltas(s)
     expect(batchId).toBe('batch-1')
-    // First-ever co-recall of the pair (no prior gap) → base increment (boost 1×).
     expect(items).toEqual([{ aId: 'a', bId: 'b', deltaWeight: CO_RECALL_DELTA }])
   })
 
-  it('oscillating A→B→A in one session sums the same pair twice (no spacing)', () => {
+  it('oscillating A→B→A sums the same pair twice — interval-independent (A1: 몰아보기 1× = 하루 띄움 1×)', () => {
     const s = createSession('batch-1')
-    onActiveView(s, 'a', T0)
-    onActiveView(s, 'b', T0)
-    onActiveView(s, 'a', T0)
+    onActiveView(s, 'a')
+    onActiveView(s, 'b')
+    onActiveView(s, 'a')
     const { items } = drainDeltas(s)
     expect(items).toHaveLength(1)
+    // Always exactly 2× the base delta — onActiveView takes no time input, so a gap can't change it.
     expect(items[0]).toEqual({ aId: 'a', bId: 'b', deltaWeight: CO_RECALL_DELTA * 2 })
   })
 
   it('re-viewing the same star adds nothing (no self-pair)', () => {
     const s = createSession('batch-1')
-    onActiveView(s, 'a', T0)
-    onActiveView(s, 'a', T0)
+    onActiveView(s, 'a')
+    onActiveView(s, 'a')
     expect(hasPending(s)).toBe(false)
   })
-})
 
-describe('spacing effect (spec 23, Katz 2021)', () => {
-  it('spacingBoost rises from 1× (massed) to 1+gain (spaced)', () => {
-    expect(spacingBoost(0)).toBe(1)
-    expect(spacingBoost(SPACING_REF_DAYS)).toBe(1 + SPACING_GAIN)
-    expect(spacingBoost(SPACING_REF_DAYS * 10)).toBe(1 + SPACING_GAIN) // clamped
-    expect(spacingBoost(-5)).toBe(1) // clamped
+  it('dwell gate retained at 2s (A3 regression boundary)', () => {
+    expect(DWELL_MS).toBe(2000)
   })
 
-  it('a pair re-viewed after a gap gains a BIGGER increment than massed (2.1)', () => {
-    // Massed: A↔B twice within the same instant.
-    const massed = createSession('m')
-    onActiveView(massed, 'a', T0)
-    onActiveView(massed, 'b', T0)
-    onActiveView(massed, 'a', T0)
-    const massedDelta = drainDeltas(massed).items[0].deltaWeight
-
-    // Spaced: the second A↔B co-recall happens a full reference day later.
-    const spaced = createSession('s')
-    onActiveView(spaced, 'a', T0)
-    onActiveView(spaced, 'b', T0)
-    onActiveView(spaced, 'a', T0 + SPACING_REF_DAYS * DAY)
-    const spacedDelta = drainDeltas(spaced).items[0].deltaWeight
-
-    expect(spacedDelta).toBeGreaterThan(massedDelta)
+  it('spacing knobs removed from values (A2)', () => {
+    expect('spacingGain' in VALUES.recall).toBe(false)
+    expect('spacingRefDays' in VALUES.recall).toBe(false)
   })
 })

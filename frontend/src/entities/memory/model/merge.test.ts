@@ -21,6 +21,8 @@ function star(id: string, index: number, lastRecalledAt = NOW): StarNode {
       recordId: id,
       fragmentIndex: 0,
       seed: index * 0.1,
+      shapeSeed: [index * 0.1, index * 0.2, index * 0.3],
+      abstractionStage: 0,
       brightnessOffset: 0,
       hueShift: 0,
       formSeedDelta: 0,

@@ -12,6 +12,7 @@ export {
   asFloatNode,
   asVec2Node,
   asVec3Node,
+  asVec4Node,
   attributeFloatNode,
   attributeVec2Node,
   attributeVec3Node,

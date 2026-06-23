@@ -189,6 +189,9 @@ func main() {
 	// Shared by the worker (async extract jobs) AND the memory service
 	// (synchronous SegmentMemory preview).
 	extractor := ai.NewExtractor(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
+	// Reconsolidation content rewriter (spec 54) — same admin-followed switch as the extractor;
+	// consumed by the in-process worker below (async rewrite jobs).
+	rewriter := ai.NewRewriter(cfg, llm.NewResolver(adminSvc, cfg, adminSvc), adminSvc)
 
 	// Compose the feature graph: link read service feeds the memory service's
 	// GetUniverse; the memory handler is the real MemoryService implementation
@@ -230,7 +233,7 @@ func main() {
 	// stars, then embeds each fragment and writes initial semantic synapses.
 	// It runs as a goroutine in this process and shares the
 	// signal-cancelled ctx so it stops on shutdown.
-	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, slog.Default())
+	worker := job.NewWorker(job.NewRepository(db), job.NewGraphStore(db), embedder, extractor, rewriter, slog.Default())
 	workerDone := make(chan struct{})
 	go func() {
 		worker.Run(ctx)

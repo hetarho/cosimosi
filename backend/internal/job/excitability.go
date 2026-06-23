@@ -68,8 +68,11 @@ func clusterExcitability(now time.Time, clusterOf map[string]string, recalled ma
 	return out
 }
 
-// biasedLinks re-ranks KNN candidates by competitive allocation (spec 22).
-func biasedLinks(selfID, userID string, selfDate, now time.Time, cands []Neighbor, clusterOf map[string]string, clusterE map[string]float64, arousal float64) []LinkUpsert {
+// biasedLinks re-ranks KNN candidates by competitive allocation (spec 22) and folds an
+// emotion-similarity term into each kept link's weight (change 21): selfValence/selfIntensity
+// are the new star's affect; each neighbor carries its own. emoSim biases WEIGHT only — the
+// candidate gate (cos ≥ 0.75, in KnnNearest) and the excitability re-rank score are unchanged.
+func biasedLinks(selfID, userID string, selfDate, now time.Time, cands []Neighbor, clusterOf map[string]string, clusterE map[string]float64, arousal, selfValence, selfIntensity float64) []LinkUpsert {
 	_ = now
 	pool := make([]Neighbor, 0, len(cands))
 	for _, c := range cands {
@@ -118,7 +121,10 @@ func biasedLinks(selfID, userID string, selfDate, now time.Time, cands []Neighbo
 		used[best] = true
 		n := pool[best]
 		e[clusterOf[n.MemoryID]] *= inhibitDecay
-		w := math.Min(initialWeight(n.CosSim, temporalBonus(selfDate, n.EntryDate)), semanticWeightCap)
+		// 감정 유사도 항(change 21)을 weight에 더하되, semanticWeightCap 상한은 그대로 — 감정을 더해도
+		// 교차 의미 링크가 일내 결속(0.8)을 넘지 못한다(A2). emoSim은 두 별 정동 원형 거리(∈[0,1]).
+		emoSim := emotionSimilarity(selfValence, selfIntensity, n.Valence, n.Intensity)
+		w := math.Min(initialWeight(n.CosSim, temporalBonus(selfDate, n.EntryDate), emoSim), semanticWeightCap)
 		out = append(out, LinkUpsert{AID: selfID, BID: n.MemoryID, Weight: w, UserID: userID})
 	}
 	return out
@@ -132,8 +138,21 @@ func temporalBonus(self, other time.Time) float64 {
 	return temporalBonusMax * (1 - days/temporalWindowDays)
 }
 
-func initialWeight(cosSim, tBonus float64) float64 {
-	return clamp(weightAlpha*cosSim+tBonus, 0, 1)
+func initialWeight(cosSim, tBonus, emoSim float64) float64 {
+	return clamp(weightAlpha*cosSim+tBonus+emoAlpha*emoSim, 0, 1)
+}
+
+// emoMaxDist is the diameter of the affect plane (valence∈[-1,1] span 2, intensity/arousal∈[0,1]
+// span 1): √(2²+1²). emotionSimilarity normalizes the two stars' circumplex distance by it.
+var emoMaxDist = math.Hypot(2, 1)
+
+// emotionSimilarity ∈ [0,1] (change 21): how close two stars feel, from their affect-circumplex
+// distance (valence × intensity-as-arousal). 1 = identical affect, →0 as they reach opposite
+// corners. valence/intensity default to 0 (neutral, no arousal) when a star has no detected
+// emotion, so a missing emotion never throws — it just reads as the neutral center.
+func emotionSimilarity(v1, i1, v2, i2 float64) float64 {
+	d := math.Hypot(v1-v2, i1-i2)
+	return clamp(1-d/emoMaxDist, 0, 1)
 }
 
 func clamp(v, lo, hi float64) float64 {

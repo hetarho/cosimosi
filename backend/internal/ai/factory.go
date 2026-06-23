@@ -42,3 +42,17 @@ func NewExtractor(cfg *config.Config, client llm.Client, src llm.ConfigSource) E
 	}
 	return NewSwitchingExtractor(src, NewLLMExtractor(client), NewMockExtractor())
 }
+
+// NewRewriter wires the admin-controlled reconsolidation content rewriter (spec 54),
+// exactly like NewExtractor: rewriting is real while the admin console has an ACTIVE LLM
+// selection and degrades to a no-op (no content change — spec 54 A5) otherwise. src=nil
+// (standalone tooling / tests) pins the no-op, so no env without admin wiring ever rewrites.
+func NewRewriter(cfg *config.Config, client llm.Client, src llm.ConfigSource) Rewriter {
+	if src == nil {
+		return NoopRewriter{}
+	}
+	if client == nil {
+		client = llm.NewResolver(src, cfg, nil)
+	}
+	return NewSwitchingRewriter(src, NewLLMRewriter(client), NoopRewriter{})
+}
