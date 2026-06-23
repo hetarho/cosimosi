@@ -89,6 +89,9 @@ export function HomePage({ onSignOut }: HomePageProps) {
     demoOnboarding,
     demoTutorial,
     demoClockDay,
+    genesisActive,
+    genesisWelcome,
+    dismissGenesisWelcome,
     personaList,
     demoOverlaySides,
     selectOnboardingPersona,
@@ -443,6 +446,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
               speed={clockSpeed}
               onSelectSpeed={selectClockSpeed}
               onResetToStart={resetDemoToStart}
+              genesisActive={genesisActive}
             />
           )}
 
@@ -450,9 +454,11 @@ export function HomePage({ onSignOut }: HomePageProps) {
           <NavPad suppressed={navSuppressed} />
 
           {/* === 하단 중앙 floating 새 별 띄우기(A17) — 실로그인·데모 모두 작성 폼을 연다. 데모는
-              프리셋 일기를 주입(read-only)한 뒤 같은 폼을 띄운다(change 25). === */}
+              프리셋 일기를 주입(read-only)한 뒤 같은 폼을 띄운다(change 25). genesis 관전 중(change 28)엔
+              잠긴다 — 30일을 마쳐야 자유 작성이 열린다(읽기·회상·카메라는 그대로 허용). === */}
           <button
             type="button"
+            disabled={genesisActive}
             onClick={
               demoMode
                 ? () => {
@@ -462,7 +468,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
                 : openCompose
             }
             data-tour-id="new-star"
-            className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-indigo-500/80 px-5 py-3 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-indigo-500"
+            title={genesisActive ? '30일 genesis 관전 중 — 곧 직접 별을 띄울 수 있어요' : undefined}
+            className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-indigo-500/80 px-5 py-3 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-indigo-500/80"
           >
             <Plus className="size-4" aria-hidden />새 별 띄우기
           </button>
@@ -586,6 +593,38 @@ export function HomePage({ onSignOut }: HomePageProps) {
         />
       )}
 
+      {/* 30일 genesis 완료 환영(change 28) — 빈 우주에서 30일을 함께 산 뒤, 시계가 멈추고 이 안내가
+          뜬다. 닫으면 `새 별 띄우기`·배속 컨트롤이 열려 자유모드가 평소대로 동작한다(이미 풀려 있다). */}
+      {genesisWelcome && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="30일 genesis 완료"
+          className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm"
+        >
+          <div className="flex w-full max-w-sm flex-col items-center gap-6 rounded-2xl border border-white/10 bg-black/70 p-7 text-center">
+            <Sparkles className="size-7 text-amber-200/90" aria-hidden />
+            <header className="flex flex-col gap-2">
+              <h2 className="font-display text-2xl text-white/90">30일을 함께 보냈어요</h2>
+              <p className="text-sm text-white/55">
+                빈 하늘에서 시작한 우주가 하루하루 별로 채워졌어요. 이제 당신의 별을 띄워보세요.
+              </p>
+            </header>
+            <button
+              type="button"
+              onClick={() => {
+                dismissGenesisWelcome()
+                prepareDemoCompose() // genesis 종료로 genesisActive=false → 가드 통과, 프리셋 작성 폼 준비
+                openCompose()
+              }}
+              className={primaryButtonCls}
+            >
+              내 별 띄우기
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 데모 튜토리얼 스포트라이트 투어(plan 48) — 자유모드 HUD 위에 얹히는 안내 레이어.
           캔버스·HUD는 그대로 살아 있고(언마운트 안 함), 단계마다 버튼을 하나씩 짚는다. */}
       {demoTutorial && <DemoGuidedTour actor={tourActor} />}
@@ -610,7 +649,9 @@ export function HomePage({ onSignOut }: HomePageProps) {
         </UniverseErrorCard>
       )}
 
-      {universe.isSuccess && starCount === 0 && !uiHidden && (
+      {/* 빈 우주 안내 — genesis 관전 중엔 숨긴다(곧 별이 태어나고, 사용자가 쓸 수 없는 단계라 "첫 일기를
+          적어"가 어긋난다). genesis가 끝나면 환영 안내가 작성을 안내한다. */}
+      {universe.isSuccess && starCount === 0 && !uiHidden && !genesisActive && (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-10 text-center">
           <p className="text-sm text-white/55">
             아직 별이 없어요. 첫 일기를 적어 첫 별을 띄워보세요.

@@ -22,8 +22,21 @@ import {
 import { mulberry32 } from '../prng'
 import { abstractionStageForRadius, connectednessById, emotionSimilarity, starRadius } from '../memory-physics'
 import { virtualNowMs, resetDemoClock } from './clock'
-import { getDemoPersona, isDemoPersona, type DemoPersona } from './flag'
-import { activeDiaryPreset, clearActiveDiaryPreset, pickDiaryPreset, presetBody } from './diary-presets'
+import { getDemoFlow, getDemoPersona, isDemoPersona, type DemoPersona } from './flag'
+import {
+  activeDiaryPreset,
+  clearActiveDiaryPreset,
+  pickDiaryPreset,
+  presetBody,
+  type PresetFragment,
+} from './diary-presets'
+import {
+  genesisRoll,
+  isGenesisActive,
+  planNextGenesisDay,
+  resetGenesis,
+  startGenesis,
+} from './genesis'
 import { CORPORA } from './personas'
 import { crossResonances, simulate, type SimStar } from './simulate'
 import { VALUES } from '@/shared/config'
@@ -50,6 +63,15 @@ const MOOD_VALENCE: Partial<Record<Mood, number>> = {
   [Mood.NEUTRAL]: 0,
 }
 const valenceOf = (mood: Mood): number => MOOD_VALENCE[mood] ?? 0
+
+/** 프리셋 조각들을 production review/생성 입력 {text,mood,intensity,valence}로 변환한다 — valence는 mood에서
+ *  파생(서버는 조각별로 추출·영속). "별 나누기"(demoComposeSegments)와 genesis(advanceDemoGenesis)가 같은
+ *  변환을 공유해, 두 경로가 같은 모양의 별을 빚는다(분기 드리프트 방지). */
+function presetSegments(
+  fragments: PresetFragment[],
+): { text: string; mood: Mood; intensity: number; valence: number }[] {
+  return fragments.map((f) => ({ text: f.text, mood: f.mood, intensity: f.intensity, valence: valenceOf(f.mood) }))
+}
 
 // ── 페르소나 우주 — personas.ts의 일기 코퍼스를 simulate가 별·시냅스로 빚는다 ──
 // 손으로 엔트리·엣지를 박지 않고, 활성 페르소나(flag)의 코퍼스를
@@ -155,6 +177,16 @@ function ensureSeeded(): void {
   // 가상 now 기준 시드 — 진입 직후엔 offset=0이라 실제 now와 같고, 이후 시간 머신이
   // offset을 키우면 같은 데이터가 그만큼 "늙은" 것으로 파생된다(spec 19).
   seededAt = virtualNowMs()
+  // 자유모드(free)는 **빈 우주에서 출발해 30일 genesis로 자라난다**(change 28) — 정적 코퍼스 일괄
+  // 시드를 폐기하고 day 0엔 별이 없다. 별은 advanceDemoGenesis가 매 simulated day production 엔진으로
+  // 빚는다(addedStars). 튜토리얼(plan 48)·겹쳐보기(spec 37)는 회상·잠든 별·일기 목록을 시연하므로
+  // 성숙한 정적 코퍼스(simulate(CORPORA))를 그대로 시드한다(genesis 미적용 — 회귀 경계).
+  if (getDemoFlow() === 'free') {
+    baseStars = []
+    baseSynapses = []
+    startGenesis()
+    return
+  }
   // 활성 페르소나(flag)의 일기 코퍼스를 fragment 단위 연결 규칙으로 시뮬레이션한다 — 한 일기가
   // 여러 별로 나뉘고(다조각), 일내 결속·의미 링크·회상 다리가 주제 성단을 가로질러 얽힌다(simulate).
   const uni = activeUniverse()
@@ -193,6 +225,14 @@ function ensureSeeded(): void {
 export function demoStars(): Star[] {
   ensureSeeded()
   return [...baseStars, ...addedStars]
+}
+
+/** ensureSeeded를 강제 실행하고(자유모드면 빈 우주 + genesis 시작) genesis 활성 여부를 돌려준다 —
+ *  React 진입/재개(use-demo-flow)가 배속 자동재생·컨트롤 잠금을 켤지 판단하는 단일 신호. genesis가
+ *  꺼져 있으면(튜토리얼·30일 종료 후) false. */
+export function ensureDemoGenesisArmed(): boolean {
+  ensureSeeded()
+  return isGenesisActive()
 }
 
 /** GetUniverse 시냅스: base + 체험 중 추가한 별의 연결(spec 19 — 시냅스 생성 시연). */
@@ -463,13 +503,7 @@ export function beginDemoCompose(): { body: string; entryDate: string } {
  *  valence는 mood에서 파생(서버는 조각별로 추출·영속). 작성 폼이 안 열렸으면 빈 배열. */
 export function demoComposeSegments(): { text: string; mood: Mood; intensity: number; valence: number }[] {
   const preset = activeDiaryPreset()
-  if (!preset) return []
-  return preset.fragments.map((f) => ({
-    text: f.text,
-    mood: f.mood,
-    intensity: f.intensity,
-    valence: valenceOf(f.mood),
-  }))
+  return preset ? presetSegments(preset.fragments) : []
 }
 
 /** RecordMemory 대체(데모) — 검토를 마친 조각들을 별로 빚어 우주에 더한다(서버 미호출). 활성 프리셋을
@@ -597,6 +631,39 @@ export function demoAddMultiSceneStar(entryDate: string): string[] {
 /** 별 띄우기 날짜 입력의 기본값 — 오늘(가상 시계 기준), YYYY-MM-DD. */
 export function demoToday(): string {
   return dateFrom(virtualNowMs(), 0)
+}
+
+// ── 30일 genesis 오케스트레이터(change 28) — "빈 우주에서 하루씩 살아간다" ─────────────────────
+// 배속 시계 드라이버(use-demo-flow rAF)가 simulated 04:00 경계를 지날 때마다 1회 호출한다 — 그 날
+// genesis 입력(작성 여부·템플릿·회상)을 genesis.ts가 굴려 주면, 여기서 **production 엔진 그대로**
+// (createDemoDiary=change 25 조각화 fan-out·27 동치 생성/연결, demoMarkRecalled=회상 재점화) 별을 빚는다.
+// 난수는 genesis.ts가 쥐고(입력에만), 이 경로의 엔진 함수는 입력이 같으면 결정론이다(change 27 parity).
+// tickDemoClock이 이 호출 다음에 demoConsolidate를 발화해, 그 날 태어난 별이 그 밤 공고화를 함께 탄다.
+
+/** genesis 한 날 진행 — 비활성이면 무동작(튜토리얼·genesis 종료 후엔 안 돈다). 마지막 날을 처리하면
+ *  genesis.ts가 active를 내려 isGenesisActive()가 false가 된다(드라이버가 종료를 감지해 시계를 멈춘다). */
+export function advanceDemoGenesis(): void {
+  // genesis는 자유모드 전용이다 — 튜토리얼(plan 48)·겹쳐보기(spec 37)는 정적 코퍼스를 쓴다. flow가 free가
+  // 아니면(예: 자유모드에서 "둘러보기 다시 보기"로 튜토리얼 진입) 드라이버 틱이 닿아도 별을 빚지 않는다(회귀
+  // 경계). 튜토리얼 진입이 resetGenesis로 active를 내리지만, 그 전환 찰나의 틱까지 막는 이중 방어.
+  if (!isGenesisActive() || getDemoFlow() !== 'free') return
+  const plan = planNextGenesisDay()
+  if (!plan) return
+  if (plan.write) {
+    // 그 날 날짜로 일기 한 편을 production 조각화 fan-out으로 — 조각마다 별, 일내 결속, 대표 조각이
+    // 기존 일기와 의미/시간/감정으로 이어진다(createDemoDiary). 다음 밤 공고화가 이어 빚는다.
+    const entryDate = demoToday()
+    createDemoDiary(presetBody(plan.write), entryDate, presetSegments(plan.write.fragments))
+  }
+  if (plan.recall) {
+    // 과거 별 하나를 다시 떠올린다 — 재점화(lastRecalledAt 전진)로 거리/밝기 드리프트가 의미를 갖는다.
+    // 회상할 별이 아직 없으면(첫날 등) 건너뛴다. 대상 선택 난수도 genesis rng로 일원화(결정론).
+    const pool = [...baseStars, ...addedStars]
+    if (pool.length > 0) {
+      const idx = Math.min(pool.length - 1, Math.floor(genesisRoll() * pool.length))
+      demoMarkRecalled(pool[idx].memoryId)
+    }
+  }
 }
 
 /** RecallMemory의 재점화(서버 `last_recalled_at=now`)를 데모에서 재현한다(spec 19):
@@ -870,7 +937,9 @@ export function demoEvolution(memoryId: string): EvolutionSnap[] {
   return snaps
 }
 
-/** 체험 종료 시 추가분·가상 시계를 비워 다음 진입을 깨끗하게 한다(base는 다음 ensureSeeded에서 재생성). */
+/** 체험 종료/리셋 시 추가분·가상 시계·genesis 상태를 비워 다음 진입을 깨끗하게 한다(base는 다음
+ *  ensureSeeded에서 재생성 — 자유모드면 빈 우주 + genesis 재시작, 그 외면 정적 코퍼스). 페르소나
+ *  전환·`처음으로`·demo exit가 이 경계를 거쳐 genesis를 처음부터 다시 돌린다(가상 시계 0·추가 별 0). */
 export function resetDemo(): void {
   seededAt = 0
   baseStars = []
@@ -883,5 +952,6 @@ export function resetDemo(): void {
   reshapeAttempts.clear()
   abstractionStageById.clear()
   severedById.clear()
+  resetGenesis() // ensureSeeded가 자유모드면 startGenesis로 새 난수와 함께 다시 켠다
   resetDemoClock()
 }

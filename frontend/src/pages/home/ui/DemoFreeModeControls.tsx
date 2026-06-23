@@ -29,8 +29,11 @@ export interface DemoFreeModeControlsProps {
   speed: DemoClockSpeed
   /** 배속 선택 → 즉시 적용(가상 시계가 그 속도로 흐르거나 정지). */
   onSelectSpeed: (speed: DemoClockSpeed) => void
-  /** 처음으로 — 현재 페르소나·자유모드 유지, 가상 시계 0·추가 별 0. */
+  /** 처음으로 — 현재 페르소나·자유모드 유지, genesis 처음부터 재생(가상 시계 0·추가 별 0). */
   onResetToStart: () => void
+  /** 30일 genesis 관전 중(change 28)이면 배속 셀렉터를 잠근다 — genesis가 정해진 배속으로 자동 재생되고,
+   *  30일을 마쳐야 사용자 배속 조절이 열린다. 페르소나 전환·처음으로는 genesis를 다시 돌리므로 계속 허용. */
+  genesisActive?: boolean
 }
 
 const iconBtnCls =
@@ -93,6 +96,7 @@ export function DemoFreeModeControls({
   speed,
   onSelectSpeed,
   onResetToStart,
+  genesisActive = false,
 }: DemoFreeModeControlsProps) {
   return (
     <div className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top)+2.75rem)] z-20 flex flex-col items-start gap-2">
@@ -130,8 +134,11 @@ export function DemoFreeModeControls({
         expanded={open === 'time'}
         onToggle={() => onOpen(open === 'time' ? null : 'time')}
       >
-        {/* 배속 셀렉터(change 24) — 고른 속도로 가상 시계가 계속 흐른다(정지=멈춤). 이산 점프 대체. */}
-        <p className="px-3 pb-1 pt-1.5 text-xs text-white/45">배속 — 실제 1초에 흐르는 시간</p>
+        {/* 배속 셀렉터(change 24) — 고른 속도로 가상 시계가 계속 흐른다(정지=멈춤). 이산 점프 대체.
+            genesis 관전 중(change 28)엔 잠겨 있다 — 정해진 배속으로 자동 재생되고 30일 후 열린다. */}
+        <p className="px-3 pb-1 pt-1.5 text-xs text-white/45">
+          {genesisActive ? '30일 genesis 관전 중 — 배속은 30일 후 열려요' : '배속 — 실제 1초에 흐르는 시간'}
+        </p>
         <div data-tour-id="time-speed" role="group" aria-label="시간 배속" className="grid grid-cols-2 gap-1 px-1.5 pb-1">
           {SPEED_OPTIONS.map((o) => {
             const active = o.value === speed
@@ -141,8 +148,9 @@ export function DemoFreeModeControls({
                 type="button"
                 role="menuitemradio"
                 aria-checked={active}
+                disabled={genesisActive}
                 onClick={() => onSelectSpeed(o.value)}
-                className={`rounded-lg px-3 py-1.5 text-center text-white/80 transition hover:bg-white/10 hover:text-white ${active ? 'bg-white/20 text-white' : 'bg-white/5'}`}
+                className={`rounded-lg px-3 py-1.5 text-center text-white/80 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/5 disabled:hover:text-white/80 ${active ? 'bg-white/20 text-white' : 'bg-white/5'}`}
               >
                 {o.label}
               </button>

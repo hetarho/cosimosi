@@ -244,6 +244,12 @@ export const VALUES = {
     stepMs: 300,
     maxTickMs: 250,
   },
+  demoGenesis: {
+    days: 30,
+    dailyWriteProb: [0.7,0.45,0.85],
+    dailyRecallProb: [0.45,0.3,0.55],
+    hoursPerSecond: 24,
+  },
   demoTour: {
     rotateThresholdRad: 0.9,
     zoomRatioThreshold: 0.25,

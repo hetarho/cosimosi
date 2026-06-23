@@ -9,6 +9,7 @@ import {
   type DemoFlow,
 } from '@/shared/lib/demo'
 import { navigationActor, selectHeadingMode } from '@/widgets/universe-canvas'
+import { resetDemoExperience } from '@/widgets/demo-sim'
 import {
   TOUR_STEPS,
   selectStepIndex,
@@ -48,9 +49,13 @@ export function useTutorialTour({
   const tourDone = useSelector(tourActor, selectIsDone)
 
   // "다시 보기"(사이드바) — 자유모드에서 명시적으로 투어를 처음부터. flow=tutorial 진입이 아래 RESET으로
-  // 머신을 step 0에 맞춘다.
+  // 머신을 step 0에 맞춘다. 자유모드 우주는 genesis(빈/자라는 중)라, 튜토리얼이 회상·잠든 별·일기 목록을
+  // 시연할 성숙한 정적 코퍼스로 다시 시드해야 한다(change 28) — resetDemoExperience가 flow=tutorial을
+  // 보존하며 genesis를 멈추고(resetGenesis) 코퍼스를 다시 빚는다. restartTutorial(flow=tutorial)을 먼저 둬
+  // ensureSeeded가 코퍼스 분기를 타게 한다.
   const replayTour = () => {
     restartTutorial()
+    resetDemoExperience()
     closeSurfaces()
     setDemoFlowState('tutorial')
   }

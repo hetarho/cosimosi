@@ -360,6 +360,16 @@ var (
 	DemoClockHoursPerSecond = []float64{1, 6, 24}
 )
 
+// demo_genesis
+const (
+	DemoGenesisDays           = 30
+	DemoGenesisHoursPerSecond = 24
+)
+var (
+	DemoGenesisDailyWriteProb  = []float64{0.7, 0.45, 0.85}
+	DemoGenesisDailyRecallProb = []float64{0.45, 0.3, 0.55}
+)
+
 // demo_tour
 const (
 	DemoTourRotateThresholdRad      = 0.9

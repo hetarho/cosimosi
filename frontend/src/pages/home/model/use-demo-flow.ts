@@ -16,6 +16,9 @@ import {
   useDemoOverlay,
   getDemoClockSpeed,
   setDemoClockSpeed,
+  ensureDemoGenesisArmed,
+  isGenesisActive,
+  GENESIS_HOURS_PER_SECOND,
   type DemoClockSpeed,
   type DemoPersona,
   type DemoFlow,
@@ -23,7 +26,7 @@ import {
 import { VALUES } from '@/shared/config'
 import { tickDemoClock, resetDemoExperience, switchDemoPersona } from '@/widgets/demo-sim'
 import { toSynapseEdge } from '@/entities/synapse'
-import { mapStar, refreshActivation, focusActor } from '@/entities/memory'
+import { mapStar, refreshActivation, focusActor, universeInvalidateKey, dormantInvalidateKey } from '@/entities/memory'
 import { composeActor } from '@/features/record-memory'
 import { navigationActor, type Bridge } from '@/widgets/universe-canvas'
 import type { DemoPopover } from '../ui/DemoFreeModeControls'
@@ -45,6 +48,11 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
   // 가상 시계 배속(change 24) — 셀렉터 하이라이트용 React 상태. 실제 흐름은 모듈 시계가 들고,
   // 아래 rAF 드라이버가 굴린다. 비반응형 모듈이라 진입 시점 값으로 시드한다.
   const [clockSpeed, setClockSpeedState] = useState<DemoClockSpeed>(() => getDemoClockSpeed())
+  // 30일 genesis 관전(change 28) — 자유모드 진입 시 빈 우주가 배속으로 30일을 살아간다. genesisActive
+  // 동안 `새 별 띄우기`·배속 셀렉터가 잠기고(읽기/회상/카메라는 허용), 30일을 마치면 시계가 멈추고
+  // 환영 안내(genesisWelcome)가 뜬 뒤 컨트롤이 열린다. 모듈 genesis 상태(비반응형)를 React로 미러한다.
+  const [genesisActive, setGenesisActive] = useState(false)
+  const [genesisWelcome, setGenesisWelcome] = useState(false)
 
   // 온보딩(선택 화면)은 not_started/persona_selected/tutorial_tbd에서만 HUD 대신 뜬다(plan 47 A1).
   // 'tutorial'·'free'는 자유모드 HUD를 그대로 띄우고, tutorial은 그 위에 스포트라이트 투어를 얹는다(plan 48).
@@ -56,6 +64,30 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
   // 겹쳐보기도 재시뮬 대상이다(demoOverlayData가 virtualNowMs를 읽는다). 비반응형 모듈 시계라 정수 일이
   // 바뀔 때만 드라이버가 이 상태로 끌어올려(매 프레임 아님 — 헌법8) tour CLOCK_CHANGED·overlay 재시뮬을 친다.
   const [demoClockDay, setDemoClockDay] = useState(() => (demoMode ? demoOffsetDays() : 0))
+
+  // genesis 배속 자동재생을 켠다 — 빈 우주 시드 + startGenesis(ensureDemoGenesisArmed)가 켜졌으면
+  // 배속을 genesis 속도로 올리고 잠금 상태를 표면에 반영한다. 진입·리셋·새로고침 재개의 단일 경로.
+  // genesis가 안 켜졌으면(튜토리얼·종료 후) 아무것도 하지 않고 false를 돌려준다.
+  const armGenesisPlayback = useCallback((): boolean => {
+    if (!ensureDemoGenesisArmed()) return false
+    setDemoClockSpeed(GENESIS_HOURS_PER_SECOND)
+    setClockSpeedState(GENESIS_HOURS_PER_SECOND)
+    setGenesisActive(true)
+    setGenesisWelcome(false)
+    setDemoClockDay(0)
+    return true
+  }, [])
+
+  // 자유모드 진입/새로고침 재개 — flow가 free가 되면(또는 free로 새로고침) genesis가 켜져 있는지
+  // 보고 배속 재생을 무장한다. 튜토리얼→free(완료/건너뛰기)는 정적 코퍼스가 이미 시드돼 있어
+  // ensureDemoGenesisArmed가 false라 무장하지 않는다(투어 우주 보존 — 회귀 경계).
+  // setState는 rAF로 미뤄 effect 동기 setState(cascading render)를 피한다(HUD 모닝디프와 같은 패턴).
+  useEffect(() => {
+    if (!demoMode || demoFlow !== 'free') return
+    const id = requestAnimationFrame(() => armGenesisPlayback())
+    return () => cancelAnimationFrame(id)
+  }, [demoMode, demoFlow, armGenesisPlayback])
+
   const demoOverlaySides = useMemo(() => {
     if (!demoOverlayOn || !demoMode) return null
     const d = demoOverlayData()
@@ -103,9 +135,18 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
       lastStep = t
       const elapsed = accumMs
       accumMs = 0
-      tickDemoClock(queryClient, elapsed) // offset 전진 + 04:00 경계마다 공고화 + 데이터 바뀐 밤에만 무효화
+      const genesisBefore = isGenesisActive()
+      tickDemoClock(queryClient, elapsed) // offset 전진 + 04:00 경계마다 genesis 하루 + 공고화 + 무효화
       refreshActivation() // 새 now로 별·엣지 밝기·반지름 재파생
       pullClockDay() // 정수 일이 바뀌면 React 상태로(tour CLOCK_CHANGED·overlay 재시뮬)
+      // genesis 30일 완료 감지(change 28) — 마지막 밤을 지나며 isGenesisActive가 false로 내려가면 시계를
+      // 멈추고 환영 안내를 띄운다. 컨트롤(배속·새 별)은 genesisActive=false로 풀린다. 한 번만 발화한다.
+      if (genesisBefore && !isGenesisActive()) {
+        setDemoClockSpeed('paused')
+        setClockSpeedState('paused')
+        setGenesisActive(false)
+        setGenesisWelcome(true)
+      }
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
@@ -124,7 +165,18 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     setDemoPersonaState(id)
     setFlow('persona_selected')
   }
-  const chooseFree = () => setFlow('free')
+  // "자유롭게 탐험해보기" → 빈 우주에서 30일 genesis를 재생한다(change 28): 정적 코퍼스 시드를 비우고
+  // (resetDemo로 seededAt=0) flow=free로 두면, 위 free-진입 effect가 armGenesisPlayback으로 genesis를
+  // 켠다. 캔버스가 빈 우주(이후 자라나는 우주)를 그리도록 우주·잠든 별 쿼리를 무효화한다.
+  const chooseFree = () => {
+    resetDemo()
+    setFlow('free')
+    // 같은 핸들러에서 동기로 무장한다 — genesisActive(잠금)·배속을 즉시 켜, 진입 첫 프레임에 `새 별 띄우기`가
+    // 열려 보이는 레이스를 없앤다(effect의 rAF 무장은 새로고침 재개용 백스톱으로 남는다).
+    armGenesisPlayback()
+    void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+    void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
+  }
   // 모드 선택 "기능 하나하나 알아보기" → 스포트라이트 투어 진입(plan 48): flow=tutorial, step 0.
   const chooseTutorial = () => {
     enterTutorialMode()
@@ -141,8 +193,9 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     if (id === getDemoPersona()) return
     switchDemoPersona(id)
     setDemoPersonaState(id)
-    setClockSpeedState(getDemoClockSpeed()) // resetDemo가 배속을 기본으로 되돌리므로 셀렉터 동기화
-    setDemoClockDay(0)
+    // 새 페르소나로 genesis를 처음부터 다시 돌린다(A8) — switchDemoPersona가 리셋한 뒤 빈 우주 + 새
+    // 난수로 genesis 재무장. 배속·clockDay·잠금 상태는 armGenesisPlayback이 맞춘다.
+    armGenesisPlayback()
   }
   // 가상 시계 배속 선택(change 24) — 즉시 적용(모듈 시계가 다음 틱부터 그 속도로 흐르거나 정지).
   // 팝오버는 열어 둬 여러 배속을 바로 비교할 수 있게 한다(라이브 컨트롤).
@@ -150,18 +203,19 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     setDemoClockSpeed(speed)
     setClockSpeedState(speed)
   }
-  // 처음으로 — 현재 페르소나·자유모드 유지, 가상 시계·추가 별 0(온보딩으로 돌아가지 않는다).
+  // 처음으로 — 현재 페르소나·자유모드 유지, genesis를 처음부터 다시 돌린다(가상 시계·추가 별 0, 새
+  // 난수 — A8). 온보딩으로 돌아가지 않는다. armGenesisPlayback이 빈 우주 재시드·배속·잠금을 맞춘다.
   const resetDemoToStart = () => {
     setDemoPopover(null)
     resetDemoExperience()
-    setClockSpeedState(getDemoClockSpeed()) // resetDemoClock가 기본 배속으로 되돌린 값으로 동기화
-    setDemoClockDay(0)
+    armGenesisPlayback()
   }
   // 자유모드 하단 "새 별 띄우기"(change 25) — production 작성 폼을 read-only·프리셋으로 연다. 다음
   // 프리셋 일기를 골라(beginDemoCompose) 본문·날짜를 작성 머신에 주입한다(읽기전용). 이후 "별 나누기"
   // → 검토 → "별 띄우기"가 production과 같은 흐름으로 조각 별을 우주에 띄운다(데모는 서버 미호출 —
   // segment/submit 액터가 프리셋·demoRecordMemory로 분기). 폼 표면 열기는 HomePage가 openCompose로.
   const prepareDemoCompose = () => {
+    if (genesisActive) return // genesis 관전 중엔 새 별 띄우기 잠금(A5) — 버튼도 disabled, 방어적으로 무동작
     // 진행 중(segmenting/submitting)이면 머신이 SET_BODY/SET_DATE를 무시하므로 프리셋만 소비되고 폼이
     // 어긋난다 — 그 짧은 창에서는 새 프리셋을 고르지 않고 진행 중인 작성이 끝나게 둔다(이중 클릭 방어).
     const snap = composeActor.getSnapshot()
@@ -171,6 +225,8 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     composeActor.send({ type: 'SET_BODY', body })
     composeActor.send({ type: 'SET_DATE', date: entryDate })
   }
+  // 30일 genesis 완료 환영 안내를 닫는다 — 자유 작성·배속 컨트롤은 이미 genesisActive=false로 열려 있다.
+  const dismissGenesisWelcome = () => setGenesisWelcome(false)
   // 체험 종료(데모) — 기존 SessionGate 핀과 같은 동선(더미 별 비우기 → 마케팅 랜딩).
   const leaveDemo = () => {
     exitDemoMode()
@@ -186,6 +242,9 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     demoOnboarding,
     demoTutorial,
     demoClockDay,
+    genesisActive,
+    genesisWelcome,
+    dismissGenesisWelcome,
     personaList,
     demoOverlaySides,
     selectOnboardingPersona,

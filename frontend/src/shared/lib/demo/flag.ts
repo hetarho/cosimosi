@@ -16,6 +16,8 @@ const TOUR_STEP_KEY = 'cosimosi:demo-tour-step'
 /** 체험 우주의 주인공. 같은 화면 코드가 페르소나마다 다른 일기 흐름(personas.ts)을 시드한다. */
 const PERSONA_IDS = ['student', 'worker', 'homemaker'] as const
 export type DemoPersona = (typeof PERSONA_IDS)[number]
+/** 페르소나 정전 순서 — values.yaml의 페르소나별 배열(demo_genesis.daily_*_prob 등)이 이 순서를 따른다. */
+export const PERSONA_ORDER = PERSONA_IDS
 const PERSONA_ID_SET = new Set<string>(PERSONA_IDS)
 const DEFAULT_PERSONA: DemoPersona = 'student' // 가장 조밀·밝은 우주 — 첫인상 쇼케이스
 

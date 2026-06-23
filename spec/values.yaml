@@ -388,6 +388,18 @@ demo_clock:
   step_ms: 300 #                  가상 시계를 흘리는 간격(ms) — rAF 매 프레임이 아니라 이 간격마다 한 번에 offset을 전진시키고 재파생·공고화·무효화를 묶는다. 사이 프레임엔 시계가 멈춰 있어 force-sim이 자리를 잡고(settle) 카메라/입력에 메인스레드를 양보한다(부드러움의 핵심). 작을수록 흐름이 매끈하나 무거워진다.
   max_tick_ms: 250 #             한 프레임이 step에 보태는 실시간 상한(ms) — 탭이 가려졌다 돌아오거나 메인스레드가 길게 멎어도 한 step이 수십~수백 밤을 한 번에 발화하지 않게 막는다(가려진 동안은 사실상 정지)
 
+# ── 데모 우주 genesis (demo_genesis) — genesis.ts/data.ts. change 28 ───────────────────────────
+#    자유모드 진입 = 빈 우주에서 30일을 배속으로 살아가는 시뮬레이션(genesis). 매 simulated day
+#    페르소나별 확률로 일기를 쓸지 굴리고(하루 최대 1편), 쓰면 per-persona 프리셋 풀(diary-presets.ts)에서
+#    한 편을 뽑아 production 엔진(change 25 조각화 fan-out·27 동치 생성·연결·공고화)으로 별이 태어난다.
+#    난수는 입력(작성 여부·템플릿 선택·회상 대상)에만 — 엔진 함수는 입력이 같으면 결정론이라 change 27
+#    골든 parity가 안 깨진다. 배열 순서 = PERSONA_ORDER [student, worker, homemaker]. FE 데모 전용(서버 미사용).
+demo_genesis:
+  days: 30 #                              genesis 일수 — 빈 우주에서 며칠을 살아낸 뒤 자유 작성이 열리는지
+  daily_write_prob: [0.7, 0.45, 0.85] #   페르소나별 그 날 일기 쓸 확률(student 자주·worker 드물게·homemaker 가장 자주 — 다른 생활 리듬)
+  daily_recall_prob: [0.45, 0.3, 0.55] #  페르소나별 그 날 과거 별 회상 확률(0=비활성). 회상이 거리/밝기 드리프트를 살려 우주가 더 살아 있게 한다
+  hours_per_second: 24 #                  genesis 자동 재생 배속(실 1초당 가상 24시간 — 하루≈1초 관전, 30일≈30초). genesis 동안 사용자 배속 컨트롤은 잠긴다
+
 # ── 데모 투어 항해 실습 (demo_tour) — DemoGuidedTour 실습 phase 자동 진행 임계값. plan 48·change 12 ──
 #    투어가 navigation-input 누적 카운터·항해 FSM 모드를 rAF로 샘플링해 임계 도달 순간에만 다음 phase로.
 demo_tour:

@@ -19,6 +19,7 @@ export {
 export { demoPersonaList, type DemoPersonaMeta } from './personas'
 export {
   demoStars,
+  ensureDemoGenesisArmed,
   demoSynapses,
   demoRecall,
   demoFragmentText,
@@ -33,9 +34,16 @@ export {
   demoConsolidate,
   demoEvolution,
   demoOverlayData,
+  advanceDemoGenesis,
   resetDemo,
 } from './data'
 export type { EvolutionSnap, DemoOverlaySide } from './data'
+export {
+  isGenesisActive,
+  genesisDay,
+  genesisTotalDays,
+  GENESIS_HOURS_PER_SECOND,
+} from './genesis'
 export { startDemoSession } from './session'
 export { useDemoOverlay } from './overlay-mode'
 export {

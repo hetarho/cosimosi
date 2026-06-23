@@ -6,6 +6,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import {
   advanceDemoClock,
+  advanceDemoGenesis,
   demoConsolidate,
   enterDemoMode,
   exitDemoMode,
@@ -27,7 +28,13 @@ import { dormantInvalidateKey, universeInvalidateKey } from '@/entities/memory'
 export function tickDemoClock(queryClient: QueryClient, realElapsedMs: number): number {
   const boundaries = advanceDemoClock(realElapsedMs)
   if (boundaries > 0) {
-    for (let i = 0; i < boundaries; i++) demoConsolidate()
+    // 경계(밤)마다: ① genesis가 켜져 있으면 그 날 일기/회상을 production 엔진으로 빚고(change 28),
+    // ② 그 밤의 야간 공고화를 발화한다 — 막 태어난 별이 같은 밤 공고화를 함께 탄다. genesis 비활성
+    // (튜토리얼·30일 종료 후·실계정 시간흐름)이면 ①은 무동작이고 ②만 돈다(기존 동작 보존).
+    for (let i = 0; i < boundaries; i++) {
+      advanceDemoGenesis()
+      demoConsolidate()
+    }
     void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
     void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
   }
