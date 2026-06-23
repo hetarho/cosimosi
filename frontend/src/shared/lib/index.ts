@@ -22,3 +22,14 @@ export {
   R_MIN,
   R_MAX,
 } from './layout'
+export {
+  storageStrength,
+  retrievalStrength,
+  memoryR,
+  radiusConnectedness,
+  memoryRadiusR,
+  starRadius,
+  abstractionStageForRadius,
+  emotionSimilarity,
+  connectednessById,
+} from './memory-physics'

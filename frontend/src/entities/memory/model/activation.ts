@@ -1,6 +1,6 @@
 import { VALUES } from '@/shared/config'
-import { R_MIN, R_MAX, targetRadius } from '@/shared/lib'
-import { memoryRadiusR, radiusConnectedness } from './weight'
+import { R_MIN, R_MAX, starRadius } from '@/shared/lib'
+import { radiusConnectedness } from './weight'
 
 // Forgetting model (Architecture §6, concept §망각). Pure, unit-tested. `activation` is the
 // global time-decay factor that drives SYNAPSE brightness (spec 12) and the dormancy cutoff;
@@ -74,6 +74,6 @@ export function starGlow(
   weightedDegreeNorm: number,
 ): number {
   const conn = radiusConnectedness(degreeNorm, weightedDegreeNorm)
-  const radius = targetRadius(memoryRadiusR(recallCount, intensity, lastRecalledAt, now, conn))
+  const radius = starRadius(recallCount, intensity, lastRecalledAt, now, conn)
   return brightnessFromRadius(radius)
 }

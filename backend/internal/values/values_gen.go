@@ -340,23 +340,10 @@ var (
 
 // demo_linking
 const (
-	DemoLinkingKnnK                  = 5
-	DemoLinkingSimTau                = 0.4
-	DemoLinkingCoRecallBump          = 0.1
-	DemoLinkingCoRecallBase          = 0.5
-	DemoLinkingAddSameDayLinks       = 2
-	DemoLinkingAddSameMoodLinks      = 1
-	DemoLinkingAddTemporalWeight     = 0.55
-	DemoLinkingAddSemanticWeight     = 0.6
-	DemoLinkingAddExcitabilityWeight = 0.66
-)
-
-// demo_consolidation
-const (
-	DemoConsolidationGistAgeDays       = 30
-	DemoConsolidationGistFormSimplify  = 0.18
-	DemoConsolidationWeakEdgeThreshold = 0.7
-	DemoConsolidationWeakEdgeFloor     = 0.12
+	DemoLinkingKnnK         = 5
+	DemoLinkingSimTau       = 0.4
+	DemoLinkingCoRecallBump = 0.1
+	DemoLinkingCoRecallBase = 0.5
 )
 
 // demo_overlay
@@ -364,19 +351,13 @@ const (
 	DemoOverlayMaxBridges = 4
 )
 
-// demo_free_mode
-const (
-	DemoFreeModeRandomStarMin = 1
-	DemoFreeModeRandomStarMax = 5
-)
-
 // demo_clock
 const (
-	DemoClockRefreshThrottleMs = 200
-	DemoClockMaxTickMs         = 250
+	DemoClockStepMs    = 300
+	DemoClockMaxTickMs = 250
 )
 var (
-	DemoClockHoursPerSecond = []float64{1, 2, 4}
+	DemoClockHoursPerSecond = []float64{1, 6, 24}
 )
 
 // demo_tour

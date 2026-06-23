@@ -103,6 +103,8 @@ describe('demo persona data switch', () => {
     expect(demoOffsetDays()).toBe(30)
     expect(demoStars().length).toBe(starsBefore)
     expect(demoSynapses().length).toBe(synapsesBefore)
+    // change 20·27: 시간이 흐르면 멀어진 별의 추상화 단계가 0→상승한다(데모에 영영 0이던 버그 해소).
+    expect(demoStars().some((s) => s.abstractionStage > 0)).toBe(true)
   })
 
   it('별 추가와 다감정 하루 추가는 새 별과 연결을 만든다', () => {

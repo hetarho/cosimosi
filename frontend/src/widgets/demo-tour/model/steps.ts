@@ -18,6 +18,7 @@ export type TourTargetId =
   | 'explorer-diary-tab'
   | 'explorer-star-tab'
   | 'new-star'
+  | 'segment'
   | 'canvas-star'
 
 /** 단계가 진입할 때 페이지가 자동으로 열 표면(별 탭 단계만). 그 외 팝오버·사이드바·망원경은 사용자가
@@ -109,9 +110,15 @@ export const TOUR_STEPS: TourStep[] = [
       { target: 'time', body: '이번엔 시간 버튼이에요. 눌러볼까요?', await: 'time-open' },
       // 정보 phase(await=null) — 배속은 골라도 정지를 골라도 멈추지 않고 `다음`으로 진행한다.
       // (행동 게이트로 두면 '정지' 선택 시 가상 시계가 멈춰 time-moved가 영영 안 와 단계가 막힌다.)
+      // 배속을 올리면 시간이 흐르며 별이 멀어지고 어두워지는 변화가 우주에서 바로 보인다(거리=강함).
       {
         target: 'time-speed',
-        body: '여기서 시간이 흐르는 배속을 골라요. 시간이 흐르면 오래 떠올리지 않은 별은 빛이 바래고, 밤마다 우주가 스스로 정리돼요.',
+        body: '여기서 배속을 올려 시간을 흘려보세요. 오래 떠올리지 않은 별은 점점 멀어지고 어두워져요 — 거리가 곧 강함이라, 자주 함께 떠올린 별일수록 가까이 머물러요.',
+        await: null,
+      },
+      {
+        target: 'time-speed',
+        body: '밤이 오면 우주가 스스로 정리돼요 — 약한 연결은 빛을 낮추고, 멀어진 별은 형태가 한 단계씩 단순해져요.',
         await: null,
       },
     ],
@@ -210,7 +217,12 @@ export const TOUR_STEPS: TourStep[] = [
     title: '새 별 띄우기',
     surface: 'none',
     phases: [
-      { target: 'new-star', body: '눌러보세요 — 오늘 날짜의 별 몇 개가 바로 태어나 우주에 떠올라요.', await: null },
+      { target: 'new-star', body: '여기서 일기를 써요. 눌러보세요 — 미리 적어 둔 하루가 열려요.', await: null },
+      {
+        target: 'segment',
+        body: '하루는 한 감정이 아니에요. 별 나누기를 누르면 사건 조각마다 별이 나뉘어 태어나고, 비슷한 감정의 기억끼리는 더 굵게 이어져요.',
+        await: null,
+      },
     ],
   },
   {
@@ -219,6 +231,11 @@ export const TOUR_STEPS: TourStep[] = [
     surface: 'none',
     phases: [
       { target: 'canvas-star', body: '별 하나를 누르면 그 안의 기억 조각과 일기를 펼쳐 회상할 수 있어요.', await: null },
+      {
+        target: 'canvas-star',
+        body: '별을 누르면 모양이 조금씩 바뀌어요 — 떠올릴 때마다 기억이 다시 빚어져(재공고화) 형태와 빛이 달라지고, 오래 멀어진 별일수록 더 단순해져요.',
+        await: null,
+      },
     ],
   },
   {

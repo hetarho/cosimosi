@@ -1,6 +1,7 @@
 import { setup, assign, emit, fromPromise, createActor, type SnapshotFrom } from 'xstate'
 import { Mood } from '@/shared/api'
 import { bodyLengthBucket, capture, EVENTS } from '@/shared/lib'
+import { isDemoMode, demoComposeSegments, demoRecordMemory } from '@/shared/lib/demo'
 import {
   BODY_TOO_LONG_MSG,
   EMPTY_FRAGMENT_MSG,
@@ -87,9 +88,18 @@ export const composeMachine = setup({
     events: {} as Ev,
     emitted: {} as { type: 'submitted' },
   },
+  // 체험 모드(change 25)는 같은 UI·상태머신을 쓰되 AI/서버 대신 프리셋을 돌려준다 — segment는 활성
+  // 프리셋의 사전분절 조각을, submit은 데모 우주에 별을 빚는 demoRecordMemory를 (둘 다 서버 미호출).
+  // 실계정 경로(isDemoMode=false)는 그대로 SegmentMemory·RecordMemory RPC를 탄다.
   actors: {
-    segment: fromPromise(({ input }: { input: { body: string } }) => segmentMemory(input.body)),
-    submit: fromPromise(({ input }: { input: Parameters<typeof recordMemory>[0] }) => recordMemory(input)),
+    segment: fromPromise(({ input }: { input: { body: string } }) =>
+      isDemoMode()
+        ? Promise.resolve(demoComposeSegments().map((s) => ({ id: crypto.randomUUID(), ...s })))
+        : segmentMemory(input.body),
+    ),
+    submit: fromPromise(({ input }: { input: Parameters<typeof recordMemory>[0] }) =>
+      isDemoMode() ? Promise.resolve(demoRecordMemory(input)) : recordMemory(input),
+    ),
   },
   guards: {
     bodyOk: ({ context }) => bodyError(context.body) === null,

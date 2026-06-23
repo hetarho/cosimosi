@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Mood } from '@/shared/api'
-import { demoAddRandomStars, demoStars, demoSynapses, demoToday, resetDemo } from './data'
+import {
+  beginDemoCompose,
+  demoComposeSegments,
+  demoRecordMemory,
+  demoStars,
+  demoSynapses,
+  resetDemo,
+} from './data'
 import {
   enterDemoMode,
   exitDemoMode,
@@ -51,57 +58,73 @@ describe('demo free-mode flow', () => {
   })
 })
 
-describe('demo free-mode random stars', () => {
+describe('demo free-mode preset diary write flow (change 25)', () => {
   afterEach(() => {
     setDemoPersona('student')
     resetDemo()
     exitDemoMode()
   })
 
-  it('요청한 개수만큼(최소) 새 별을 띄운다', () => {
+  it('beginDemoCompose는 read-only 프리셋 본문·오늘 날짜를 돌려준다', () => {
+    enterDemoMode()
+    setDemoPersona('student')
+    resetDemo()
+    const { body, entryDate } = beginDemoCompose()
+    expect(body.length).toBeGreaterThan(0)
+    expect(entryDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('별 나누기(demoComposeSegments)는 사전분절 조각을 valence와 함께 돌려준다', () => {
+    enterDemoMode()
+    setDemoPersona('student')
+    resetDemo()
+    beginDemoCompose() // 활성 프리셋 세팅
+    const segs = demoComposeSegments()
+    expect(segs.length).toBeGreaterThanOrEqual(1)
+    for (const s of segs) {
+      expect(s.text.length).toBeGreaterThan(0)
+      expect(s.mood).not.toBe(Mood.MOOD_UNSPECIFIED)
+      expect(typeof s.valence).toBe('number')
+    }
+  })
+
+  it('demoRecordMemory는 조각마다 별을 띄우고 일내 결속으로 묶는다', () => {
     enterDemoMode()
     setDemoPersona('student')
     resetDemo()
     const before = demoStars().length
-    const ids = demoAddRandomStars(3, demoToday())
-    expect(ids.length).toBeGreaterThanOrEqual(3) // 단일 문단 → 별 1개씩(다조각 아님)
-    expect(demoStars().length).toBe(before + ids.length)
-    for (const id of ids) expect(demoStars().some((s) => s.memoryId === id)).toBe(true)
+    const synBefore = demoSynapses().length
+    beginDemoCompose()
+    const segs = demoComposeSegments()
+    const { recordId, memoryIds } = demoRecordMemory({
+      body: segs.map((s) => s.text).join('\n\n'),
+      entryDate: '2026-06-23',
+      fragments: segs,
+    })
+    expect(memoryIds.length).toBe(segs.length)
+    expect(demoStars().length).toBe(before + segs.length)
+    for (const id of memoryIds) expect(demoStars().some((s) => s.memoryId === id)).toBe(true)
+    // 같은 일기 조각은 같은 recordId(spec 28)로 묶이고, 다조각이면 일내 결속선이 생긴다.
+    for (const id of memoryIds)
+      expect(demoStars().find((s) => s.memoryId === id)?.recordId).toBe(recordId)
+    if (segs.length > 1) {
+      const intra = demoSynapses().filter(
+        (e) => memoryIds.includes(e.aId) && memoryIds.includes(e.bId),
+      )
+      expect(intra.length).toBeGreaterThan(0)
+      expect(intra.every((e) => e.linkType === 'intra_entry')).toBe(true)
+    }
+    expect(demoSynapses().length).toBeGreaterThanOrEqual(synBefore)
   })
 
-  it('랜덤 별 날짜는 모두 주입한 demoToday() 날짜다', () => {
+  it('제출 후 활성 프리셋이 비워져 다음 작성이 새 일기를 고른다', () => {
     enterDemoMode()
     setDemoPersona('worker')
     resetDemo()
-    const today = demoToday()
-    const ids = demoAddRandomStars(5, today)
-    // 추가된 별의 record entryDate가 모두 today인지 — demoListRecords로 확인하지 않고 직접 본다.
-    const added = demoStars().filter((s) => ids.includes(s.memoryId))
-    expect(added.length).toBe(ids.length)
-  })
-
-  it('13종 mood 어느 것이 뽑혀도 crash 없이 별을 만든다(본문 없는 mood 포함)', () => {
-    enterDemoMode()
-    setDemoPersona('homemaker')
-    resetDemo()
-    // 다회 실행해 확장 감정(본문 없는 mood) 분기까지 확률적으로 친다 — 어느 경우든 별이 생긴다.
-    const before = demoStars().length
-    let total = 0
-    for (let i = 0; i < 20; i++) total += demoAddRandomStars(2, demoToday()).length
-    expect(demoStars().length).toBe(before + total)
-    // 다양한 mood가 섞여 있다(최소 2종 이상) — 13종 무작위 추출이 동작한다.
-    const moods = new Set(demoStars().map((s) => s.mood))
-    expect(moods.size).toBeGreaterThan(1)
-    expect([...moods].every((m) => m !== Mood.MOOD_UNSPECIFIED)).toBe(true)
-  })
-
-  it('랜덤 별은 우주 시냅스에도 즉시 연결을 만든다(연결 생성 규칙 재사용)', () => {
-    enterDemoMode()
-    setDemoPersona('student')
-    resetDemo()
-    const before = demoSynapses().length
-    demoAddRandomStars(5, demoToday())
-    // 같은 날·같은 mood·hot 별 규칙으로 최소 하나 이상의 새 연결이 생긴다.
-    expect(demoSynapses().length).toBeGreaterThanOrEqual(before)
+    beginDemoCompose()
+    const segs = demoComposeSegments()
+    demoRecordMemory({ body: segs.map((s) => s.text).join('\n\n'), entryDate: '2026-06-23', fragments: segs })
+    // 활성 프리셋이 비워졌으므로 새로 beginDemoCompose를 부르기 전엔 분절이 빈다.
+    expect(demoComposeSegments().length).toBe(0)
   })
 })

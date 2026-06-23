@@ -24,7 +24,9 @@ export {
   demoFragmentText,
   demoListRecords,
   demoGetRecord,
-  demoAddRandomStars,
+  beginDemoCompose,
+  demoComposeSegments,
+  demoRecordMemory,
   demoToday,
   demoMarkRecalled,
   demoReshape,
@@ -39,6 +41,7 @@ export { useDemoOverlay } from './overlay-mode'
 export {
   virtualNowMs,
   demoOffsetDays,
+  demoClock,
   advanceDemoClock,
   getDemoClockSpeed,
   setDemoClockSpeed,

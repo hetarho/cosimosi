@@ -190,6 +190,8 @@ cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 
   - 모바일 추가 시 `pnpm workspace`로 `packages/core`(공유) · `apps/web` · `apps/mobile`로 승격. 핵심: `ui→model` import OK, `model→ui/three/react` import 금지.
 - ⚠️ **Connect 스트리밍은 RN 미지원**(connect-es가 RN fetch 한계로 unary만). 따라서 회상 강화 등 실시간 갱신을 **서버 푸시 스트리밍으로 설계하지 않는다** → 클라 로컬 시뮬레이션 + unary 배치 영속(§4.4).
 
+- **데모 parity 계약(change 27).** 체험 모드는 서버 없이 도는 클라 시뮬레이션이라 백엔드 비즈니스 로직(Go: `internal/job`·`internal/memory`)을 FE로 *충실히 포팅*한 거울이다 — "비슷해 보이는 별도 구현"이면 서버가 바뀔 때 조용히 드리프트한다(추상화 단계가 데모에서 영영 0이던 버그가 그 예). 드리프트를 막는 두 수단: **(a)** 공유 가능한 결정론 식(Bjork weight·자아 거리 반지름·추상화 단계·감쇠·재공고화 PE 재성형·감정 유사도)은 플랫폼 무관 순수 함수로 `shared/lib`(`memory-physics`)에 두고 **데모와 실렌더가 같은 함수를 import**한다(중복 구현 금지). **(b)** Go↔TS로 갈릴 수밖에 없는 핵심 로직(공고화 단계 승급·링크 가중치)은 **골든 픽스처 대조 테스트**(`memory-physics.test.ts`: 동일 입력→Go 식의 알려진 출력)로 동치를 못 박는다 — 서버 식이 바뀌면 테스트가 깨져 명시적으로 따라가게 한다. **환원 불가 경계:** 임베딩·LLM은 데모에 없어 의미 KNN(시드 그래프 topic-cosine)·조각화·감정 추출은 **명시적 근사·프리셋**으로 남고, 그 경계를 코드·문서에 표기한다(나머지 결정론 로직은 서버와 동치). FSD 주의: 데모(`shared/lib/demo`)는 `entities`를 import할 수 없으므로 공유 식은 반드시 `shared/lib`에 산다(`entities/memory`는 거기서 re-export).
+
 ---
 
 ## 4. 백엔드: Package-by-Feature + 헥사고날 규율

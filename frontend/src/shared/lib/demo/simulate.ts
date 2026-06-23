@@ -83,9 +83,16 @@ export interface SimUniverse {
 }
 
 // 연결 규칙 상수 — 일부는 실서버 connection 노브와 동일(VALUES.connection), 일부는 데모 전용
-// 근사(VALUES.demoLinking; KNN_K·SIM_TAU는 일부러 서버와 다름). 모두 spec/values.yaml 출처.
-const KNN_K = VALUES.demoLinking.knnK // 한 조각이 이을 수 있는 의미 이웃 top-k (vs 서버 8)
-const SIM_TAU = VALUES.demoLinking.simTau // 이웃 자격을 얻는 유사도 바닥(topic-cosine, vs 서버 0.75)
+// 근사(VALUES.demoLinking). 모두 spec/values.yaml 출처.
+//
+// ⚠ 환원 불가 경계(change 27 A6): 이 *시드 그래프*의 의미 링크는 **임베딩이 없는 명시적 근사**다.
+// 실서버는 조각을 임베딩해 cos≥0.75 KNN으로 잇지만, 코퍼스(personas.ts)엔 임베딩이 없어 topic-cosine
+// (공유 주제 태그)을 그 대역으로 쓴다 — KNN_K·SIM_TAU가 서버 8·0.75와 다른 이유다(topic-cosine ≠
+// embedding-cosine). 이건 드리프트가 아니라 데이터가 없는 층의 정직한 근사다. 런타임 새 별 연결
+// (data.ts linkNewDiary)·야간 공고화는 서버 식·정전 값을 그대로 쓴다(parity). 시드 자체는 change 28
+// (데모 우주=시뮬 genesis)이 실엔진 구동으로 대체할 예정이라, 여기선 근사를 유지한다.
+const KNN_K = VALUES.demoLinking.knnK // 시드 조각이 이을 수 있는 의미 이웃 top-k(임베딩 근사 — A6 경계)
+const SIM_TAU = VALUES.demoLinking.simTau // 시드 이웃 최소 topic-cosine(임베딩 cos의 데모 대역 — A6 경계)
 const SEM_CAP = VALUES.connection.semanticWeightCap // 일기 간 의미 weight 상한(< intra 0.8)
 const INTRA_WEIGHT = VALUES.connection.intraEntryWeight // 같은 일기 조각끼리의 고정 결속
 const TEMPORAL_DAYS = VALUES.connection.temporalWindowDays // 같은 주(週) temporal 보너스 창

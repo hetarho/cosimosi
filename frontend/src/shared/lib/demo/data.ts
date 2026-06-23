@@ -20,8 +20,10 @@ import {
   type Synapse,
 } from '@/shared/api'
 import { mulberry32 } from '../prng'
+import { abstractionStageForRadius, connectednessById, emotionSimilarity, starRadius } from '../memory-physics'
 import { virtualNowMs, resetDemoClock } from './clock'
 import { getDemoPersona, isDemoPersona, type DemoPersona } from './flag'
+import { activeDiaryPreset, clearActiveDiaryPreset, pickDiaryPreset, presetBody } from './diary-presets'
 import { CORPORA } from './personas'
 import { crossResonances, simulate, type SimStar } from './simulate'
 import { VALUES } from '@/shared/config'
@@ -65,10 +67,29 @@ function dateFrom(now: number, daysAgo: number): string {
   return new Date(now - daysAgo * DAY_MS).toISOString().slice(0, 10) // YYYY-MM-DD
 }
 
+// 별별 추상화 단계(change 20·spec 53) — 야간 요지가 반지름으로 트리거해 단조 승급(GREATEST)하는
+// 영속 상태. 서버는 memories.abstraction_stage에 영속하지만 데모는 모듈 맵에 들고, toStar/renewStar가
+// Star에 실어 렌더(aShape.w)가 형태 단순화로 소비한다. 데모 전엔 이 값이 안 실려 영영 0이던 버그를
+// 해소한다(job 43). 별 반지름에서 파생하므로(거리=강함) 멀어진 별일수록 단계가 높다.
+const abstractionStageById = new Map<string, number>()
+
+/** 별의 추상화 단계를 반지름 기준으로 단조 승급(GREATEST)하고 현재 값을 돌려준다 — 서버 nightly
+ *  abstraction_stage = GREATEST(현재, stageForRadius(radius))의 데모 미러. 줄지 않는다(append-only). */
+function raiseAbstractionStage(id: string, radius: number): number {
+  const next = Math.max(abstractionStageById.get(id) ?? 0, abstractionStageForRadius(radius))
+  abstractionStageById.set(id, next)
+  return next
+}
+
 // 한 별(=한 조각)을 proto Star로. recordId/fragmentIndex(spec 28)는 simulate가 박아 둔다 —
 // 단일 조각 일기는 id===recordId(자기 id가 곧 record), 다조각은 공유 recordId + 순서.
-function toStar(now: number, s: SimStar): Star {
+// connectedness는 그 별의 정규화 연결성(거리=강함 반지름 입력) — 호출자가 시냅스 그래프에서 파생해 준다.
+function toStar(now: number, s: SimStar, connectedness: number): Star {
   const r = reshapeState.get(s.id)
+  const recallCount = 1 + Math.round(s.intensity * 3)
+  const lastMs = now - s.daysAgo * DAY_MS
+  // 추상화 단계: 자아 거리 반지름에서 파생(서버 stageForRadius 미러). 멀어진 별일수록 높다.
+  const stage = raiseAbstractionStage(s.id, starRadius(recallCount, s.intensity, lastMs, now, connectedness))
   return create(StarSchema, {
     memoryId: s.id,
     mood: s.mood,
@@ -81,9 +102,10 @@ function toStar(now: number, s: SimStar): Star {
     hueShift: r?.hueShift ?? 0,
     formSeedDelta: r?.formSeedDelta ?? 0,
     version: r?.version ?? 0,
+    abstractionStage: stage, // change 20: 반지름 트리거 요지 단계(데모에 영영 0이던 버그 해소)
     // spec 07: 데모 별에 회상 횟수 부여 — 정서적인 별일수록 더 자주 떠올린 것으로(같은 Bjork R 경로 미러).
     // 회상 세션(renewStar)이 +1 한다. 실서버와 같은 R-순위·배경 짜임 경로를 데모도 그대로 탄다.
-    recallCount: BigInt(1 + Math.round(s.intensity * 3)),
+    recallCount: BigInt(recallCount),
   })
 }
 
@@ -95,6 +117,14 @@ const records = new Map<string, RecordMsg>() // base + 체험 중 추가분, rec
 const fragmentTextsById = new Map<string, string>() // memoryId → 그 조각 텍스트(spec 28; 단일 조각은 미등록 → "")
 const addedStars: Star[] = [] // 체험 중 추가한 별(라우트 이동에도 유지, 새로고침 시 소멸)
 const addedEdges: Synapse[] = [] // 체험 중 추가한 별의 연결(시냅스 생성 이론 시연, spec 19)
+// 가지친(severed) 선의 키 집합 — 서버 memory_links.severed의 데모 대응(change 20). 가지치기가 약하고
+// 안 쓰인 선을 바닥으로 낮추며 표시하고, 야간 재가중은 이 선을 건드리지 않으며(되살아나 0.79로 기어
+// 오르지 않게), re-KNN이 닮은 기억 재발견으로 되살린다(severed 해제). 연결성·보호·healthy degree 판정도
+// severed를 제외한다. 삭제는 아니다(선은 남고 어둑할 뿐 — 헌법2).
+const severedById = new Set<string>()
+
+/** a<b 무방향 쌍 키 — base·added 엣지 식별 단일 규약. */
+const pairKey = (aId: string, bId: string): string => (aId < bId ? `${aId}|${bId}` : `${bId}|${aId}`)
 
 // 재공고화 재성형(spec 23): 별별 누적 재성형 상태 + 회상 시도 횟수(PE 게이트의 결정론 입력).
 // toStar가 상태를 Star에 반영해 우주에서 별이 다시 빚어진다. 변천사 타임랩스(24)는
@@ -128,7 +158,7 @@ function ensureSeeded(): void {
   // 활성 페르소나(flag)의 일기 코퍼스를 fragment 단위 연결 규칙으로 시뮬레이션한다 — 한 일기가
   // 여러 별로 나뉘고(다조각), 일내 결속·의미 링크·회상 다리가 주제 성단을 가로질러 얽힌다(simulate).
   const uni = activeUniverse()
-  baseStars = uni.stars.map((s) => toStar(seededAt, s))
+  // 시냅스 먼저 — 별 반지름(거리=강함)·추상화 단계가 연결성을 입력으로 쓰므로 toStar 전에 그래프를 짠다.
   baseSynapses = uni.edges.map((ed) =>
     create(SynapseSchema, {
       aId: ed.a,
@@ -138,6 +168,8 @@ function ensureSeeded(): void {
       lastActivatedAt: isoFrom(seededAt, ed.daysAgo),
     }),
   )
+  const conn = connectednessById(baseSynapses)
+  baseStars = uni.stars.map((s) => toStar(seededAt, s, conn.get(s.id) ?? 0))
   // 원본 일기(record): 같은 일기의 모든 조각 별이 같은 본문을 공유한다(불변 1 record — 헌법1).
   // entry_date는 작성일(entryDaysAgo)이라 조각이 회상으로 흩어져도(daysAgo 달라도) 하나로 묶인다.
   for (const s of uni.stars) {
@@ -181,19 +213,21 @@ export interface DemoOverlaySide {
  *  무관한 *순수 코퍼스 스냅샷*이라, 활성 우주와 별개로 친구 우주를 동시에 띄울 수 있다(겹쳐보기). */
 function buildPersonaUniverse(persona: DemoPersona, now: number): DemoOverlaySide {
   const uni = simulate(CORPORA[persona])
+  const synapses = uni.edges.map((ed) =>
+    create(SynapseSchema, {
+      aId: ed.a,
+      bId: ed.b,
+      weight: ed.weight,
+      linkType: ed.linkType,
+      lastActivatedAt: isoFrom(now, ed.daysAgo),
+    }),
+  )
+  const conn = connectednessById(synapses)
   return {
     persona,
     label: CORPORA[persona].label,
-    stars: uni.stars.map((s) => toStar(now, s)),
-    synapses: uni.edges.map((ed) =>
-      create(SynapseSchema, {
-        aId: ed.a,
-        bId: ed.b,
-        weight: ed.weight,
-        linkType: ed.linkType,
-        lastActivatedAt: isoFrom(now, ed.daysAgo),
-      }),
-    ),
+    stars: uni.stars.map((s) => toStar(now, s, conn.get(s.id) ?? 0)),
+    synapses,
   }
 }
 
@@ -284,155 +318,170 @@ export function demoListRecords(): RecordSummary[] {
     )
 }
 
-// 새 별이 만드는 데모 연결 수 상한 — 우주를 어지럽히지 않는 선에서 "연결이 생긴다"를 보인다.
-const ADD_SAME_DAY_LINKS = VALUES.demoLinking.addSameDayLinks
-const ADD_SAME_MOOD_LINKS = VALUES.demoLinking.addSameMoodLinks
-// 흥분성 시간 창(~6h, 서버 tauExc와 동일) — 이 안에 회상된 별만 새 기억을 끌어당긴다.
-const HOT_WINDOW_MS = VALUES.excitability.tauHours * 60 * 60 * 1000
-
-/** a<b 무방향 규약으로 데모 엣지를 추가한다(방금 생긴 연결 → lastActivatedAt = 가상 now). */
-function pushAddedEdge(idA: string, idB: string, weight: number, linkType: string, nowIso: string) {
+/** a<b 무방향 규약으로 데모 엣지를 upsert한다 — 같은 쌍이 이미 있으면(base·added) weight를 GREATEST로
+ *  올리고 linkType·lastActivatedAt을 갱신하며 severed를 해제한다(서버 BatchUpsertLinks/ReknnUpsertLinks의
+ *  conflict upsert 대응 — 중복 행 금지·재발견 부활). 없으면 새 added 엣지를 만든다(방금 생긴 연결 → now). */
+function upsertEdge(idA: string, idB: string, weight: number, linkType: string, nowIso: string) {
   const [aId, bId] = idA < idB ? [idA, idB] : [idB, idA]
+  const key = pairKey(aId, bId)
+  const revive = (list: Synapse[]): boolean => {
+    const i = list.findIndex((e) => e.aId === aId && e.bId === bId)
+    if (i < 0) return false
+    list[i] = create(SynapseSchema, {
+      aId,
+      bId,
+      weight: Math.max(list[i].weight, weight),
+      linkType,
+      lastActivatedAt: nowIso,
+      coActivationCount: list[i].coActivationCount,
+    })
+    severedById.delete(key)
+    return true
+  }
+  if (revive(baseSynapses) || revive(addedEdges)) return
   addedEdges.push(create(SynapseSchema, { aId, bId, weight, linkType, lastActivatedAt: nowIso }))
 }
 
-// ── 데모 분절 근사(spec 21) — 실서버 ai.Extractor의 **데모 근사** ──
-// 실서버는 LLM이 사건 경계·조각 감정을 읽는다. 체험은 네트워크 없이: 빈 줄 문단을
-// 사건 경계로(MockExtractor와 같은 구조 신호), 감정은 한국어 단서어 매칭 + (실패 시)
-// 직전 조각과 다른 색 회전으로 근사한다 — "조각마다 색이 다르다"는 체험 보장(2.1).
-const DEMO_MAX_FRAGMENTS = 3
+// ── 새 일기 연결 생성 — production 식(데모 전용 가중치 제거, change 25) ──
+// 실서버는 새 별을 임베딩해 KNN 이웃(cos≥0.75)을 찾고 weight = α·cos + 시간보너스 + emoα·감정유사도
+// (캡 0.79)로 잇는다(connection.*, job 37). 데모엔 임베딩이 없어 의미 이웃을 같은 감정(mood)으로
+// 게이트하는 정직한 근사를 쓰되, weight 식·정전 값은 production 그대로다(데모 전용 add*/hot 가중치는
+// 폐기). 서버 식의 충실한 포트(KNN·흥분성 편향 할당·골든 대조)는 job 43이 마저 맞춘다.
+const TEMPORAL_DAYS = VALUES.connection.temporalWindowDays
+const TEMPORAL_MAX = VALUES.connection.temporalBonusMax
+// 감정 유사도(emotionSimilarity)는 shared/lib/memory-physics에서 import(데모·실렌더·시드 그래프 공유).
 
-const MOOD_KEYWORDS: [Mood, RegExp][] = [
-  [Mood.ANGER, /화가|짜증|분노|열받|뒤집혔|억울/],
-  [Mood.FEAR, /불안|걱정|두려|무서|떨렸|떨린/],
-  [Mood.SAD, /슬프|눈물|우울|서글|허전|그리웠/],
-  [Mood.RELIEF, /안도|다행|풀렸|후련/],
-  [Mood.LOVE, /사랑|고마|다정|따뜻|포옹/],
-  [Mood.JOY, /기쁘|행복|신나|즐겁|웃었|설레/],
-  [Mood.CALM, /평온|고요|차분|편안|맑았|잔잔/],
-]
-// 회전 폴백 — 사분면이 갈리는 순서라 인접 조각의 색이 항상 다르다.
-const MOOD_ROTATION: Mood[] = [Mood.CALM, Mood.ANGER, Mood.JOY, Mood.SAD, Mood.LOVE]
-
-/** 빈 줄 문단 분리(사건 경계의 구조 근사) — 문단이 하나면 분할하지 않는다. */
-function splitScenes(body: string): string[] {
-  const scenes = body
-    .split(/\n\s*\n/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (scenes.length <= 1) return [body]
-  if (scenes.length <= DEMO_MAX_FRAGMENTS) return scenes
-  // 초과분은 마지막 조각에 합친다(텍스트 유실 없음 — ai.normalizeExtraction과 동일 규칙).
-  return [
-    ...scenes.slice(0, DEMO_MAX_FRAGMENTS - 1),
-    scenes.slice(DEMO_MAX_FRAGMENTS - 1).join(' '),
-  ]
+/** 같은 주(週) temporal 보너스(서버 temporalBonus) — 며칠 차이가 창보다 작을수록 크다. 날짜를 못
+ *  읽으면(re-KNN의 빈 entryDate 등) 0(시간 보너스 없음 — 순수 의미 재연결). */
+function temporalBonusDays(diffDays: number): number {
+  if (!Number.isFinite(diffDays)) return 0
+  const d = Math.abs(diffDays)
+  return d >= TEMPORAL_DAYS ? 0 : TEMPORAL_MAX * (1 - d / TEMPORAL_DAYS)
 }
 
-/** 조각 감정 근사: 단서어 매칭 → 실패 시 직전 조각과 다른 색 회전. */
-function detectSceneMood(text: string, index: number, prev: Mood | null): Mood {
-  for (const [mood, re] of MOOD_KEYWORDS) if (re.test(text)) return mood
-  const fallback = MOOD_ROTATION[index % MOOD_ROTATION.length]
-  if (fallback !== prev) return fallback
-  return MOOD_ROTATION[(index + 1) % MOOD_ROTATION.length]
+/** 새 일기의 대표(첫) 조각을 기존 일기들과 production 식으로 잇는다 — 같은 감정(임베딩 없는 데모의
+ *  의미 근사) 또는 같은 날 후보만 게이트하고 weight = clamp(α·sem + 시간보너스 + emoα·감정유사도, 0,
+ *  캡)으로 점수를 매긴다. 한 기존 일기엔 가장 센 조각 하나로만(record 단위 중복 방지) 잇고, 상위
+ *  biasedK(서버 흥분성 편향 할당의 최종 링크 수)만 남긴다. 서버 KNN·흥분성 편향의 정직한 데모 근사다
+ *  (cos≥0.75 게이트의 충실한 포트·골든 대조는 job 43). */
+function linkNewDiary(
+  firstId: string,
+  mood: Mood,
+  valence: number,
+  intensity: number,
+  entryDate: string,
+  idSet: Set<string>,
+  nowIso: string,
+): void {
+  const best = new Map<string, { id: string; weight: number; linkType: string }>() // recordId → 최고 점수 후보
+  for (const s of [...baseStars, ...addedStars]) {
+    if (idSet.has(s.memoryId)) continue
+    const rec = records.get(s.memoryId)
+    const sameMood = s.mood === mood
+    const sameDay = rec?.entryDate === entryDate
+    if (!sameMood && !sameDay) continue
+    const emoSim = emotionSimilarity(valence, intensity, s.valence, s.intensity)
+    const diffDays = rec ? (Date.parse(entryDate) - Date.parse(rec.entryDate)) / DAY_MS : 0
+    const sem = sameMood ? 0.6 : 0 // 같은 감정 = 의미 근사(서버 cos 자리). 다른 감정은 시간만으로.
+    const weight = clampDemo(
+      VALUES.connection.weightAlpha * sem +
+        temporalBonusDays(diffDays) +
+        VALUES.connection.emoAlpha * emoSim,
+      0,
+      VALUES.connection.semanticWeightCap,
+    )
+    if (weight <= 0) continue
+    const recordId = s.recordId || s.memoryId
+    const cur = best.get(recordId)
+    if (!cur || weight > cur.weight)
+      best.set(recordId, { id: s.memoryId, weight, linkType: sameMood ? 'semantic' : 'temporal' })
+  }
+  const top = [...best.values()].sort((a, b) => b.weight - a.weight).slice(0, VALUES.excitability.biasedK)
+  for (const c of top) upsertEdge(firstId, c.id, c.weight, c.linkType, nowIso)
 }
 
-/** RecordMemory 대체(spec 21): 일기를 조각 별 fan-out으로 더미 우주에 추가하고 조각
- *  id들을 돌려준다(API 호출 없음). 문단이 여럿이면 N개 별이 태어나 intra_entry 0.8로
- *  강하게 묶이고(같은 record body 공유), 단일 문단이면 기존처럼 별 1개다.
- *  연결 생성(spec 19)의 데모 근사도 유지한다 — 첫 조각이 같은 날 별과 temporal,
- *  같은 mood 최신 별과 semantic으로 이어진다(임베딩 없는 근사임은 패널이 밝힌다). */
-function demoAddRecord(input: {
-  body: string
-  mood: Mood
-  intensity: number
-  entryDate: string
-}): string[] {
+/** 데모 우주에 새 일기를 조각 별 fan-out으로 더한다(서버 RecordMemory의 데모 거울) — 검토를
+ *  마친 조각들(text·mood·intensity·valence)을 그대로 별로 빚는다. 같은 일기의 조각은 같은 본문·
+ *  recordId(baseId)를 공유하고(불변 1 record — 헌법1), intra_entry 0.8로 묶이며, 대표 조각이
+ *  production 식으로 기존 일기와 이어진다(linkNewDiary). 데모 전용 분절·키워드 추정은 없다 —
+ *  조각은 프리셋이 미리 담아 온다(change 25). recordId(baseId)와 조각 id들을 돌려준다. */
+function createDemoDiary(
+  body: string,
+  entryDate: string,
+  frags: { text: string; mood: Mood; intensity: number; valence: number }[],
+): { recordId: string; memoryIds: string[] } {
   ensureSeeded()
-  const now = virtualNowMs()
-  const nowIso = new Date(now).toISOString()
-  const scenes = splitScenes(input.body)
+  const nowIso = new Date(virtualNowMs()).toISOString()
   const baseId = `demo-new-${crypto.randomUUID()}`
+  const multi = frags.length > 1
 
   const ids: string[] = []
-  let prevMood: Mood | null = null
-  scenes.forEach((scene, i) => {
-    const id = scenes.length === 1 ? baseId : `${baseId}-f${i}`
-    // 수동 힌트(첫 조각)가 있으면 그대로, 아니면 조각마다 감정을 근사 감지한다.
-    const mood =
-      scenes.length === 1 && input.mood !== Mood.MOOD_UNSPECIFIED
-        ? input.mood
-        : detectSceneMood(scene, i, prevMood)
-    prevMood = mood
-    const intensity = input.intensity > 0 ? input.intensity : 0.65
+  frags.forEach((fr, i) => {
+    const id = multi ? `${baseId}-f${i}` : baseId
+    const intensity = fr.intensity > 0 ? fr.intensity : 0.65
     // 원본은 공유(불변 1 record — 헌법1): 어느 조각 별을 열어도 같은 일기가 보인다.
     records.set(
       id,
-      create(RecordSchema, {
-        memoryId: id,
-        body: input.body,
-        entryDate: input.entryDate,
-        mood,
-        intensity,
-        createdAt: nowIso,
-      }),
+      create(RecordSchema, { memoryId: id, body, entryDate, mood: fr.mood, intensity, createdAt: nowIso }),
     )
     addedStars.push(
       create(StarSchema, {
         memoryId: id,
-        mood,
+        mood: fr.mood,
         intensity,
-        valence: valenceOf(mood), // spec 25: 새 조각도 요즘 상태 배경을 그쪽 색으로 끌어당긴다
+        valence: fr.valence, // production이 조각별로 추출·영속하는 정동(데모는 프리셋이 담아 온다)
         lastRecalledAt: nowIso, // 방금 만든 별 → 가장 밝게
         recordId: baseId, // spec 28: 같은 일기의 조각은 baseId로 묶인다(단일 조각이면 id===baseId)
         fragmentIndex: i,
         recallCount: 1n, // spec 07: 막 만든 별 → 회상 1회(부호화)
       }),
     )
-    // 다조각이면 그 장면이 조각 텍스트(별 → 조각); 단일 문단이면 본문==조각이라 미등록("" 폴백).
-    if (scenes.length > 1) fragmentTextsById.set(id, scene)
+    if (multi) fragmentTextsById.set(id, fr.text) // 다조각이면 별 → 조각 텍스트(단일은 본문 폴백)
     ids.push(id)
   })
 
-  // 일내 결속(within-event binding): 모든 조각 쌍을 강한 고정 가중치로.
-  for (let i = 0; i < ids.length; i++) {
-    for (let k = i + 1; k < ids.length; k++) {
-      pushAddedEdge(ids[i], ids[k], VALUES.connection.intraEntryWeight, 'intra_entry', nowIso)
-    }
-  }
+  // 일내 결속(within-event binding): 모든 조각 쌍을 production intra_entry 0.8로.
+  for (let i = 0; i < ids.length; i++)
+    for (let k = i + 1; k < ids.length; k++)
+      upsertEdge(ids[i], ids[k], VALUES.connection.intraEntryWeight, 'intra_entry', nowIso)
 
-  // 같은 날 시간창: entryDate가 같은 기존 일기와 잇는다(최신순 상한 ADD_SAME_DAY_LINKS).
-  const first = ids[0]
-  const idSet = new Set(ids)
-  const others = [...records.values()].filter((r) => !idSet.has(r.memoryId))
-  const sameDay = others
-    .filter((r) => r.entryDate === input.entryDate)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, ADD_SAME_DAY_LINKS)
-  for (const r of sameDay) pushAddedEdge(first, r.memoryId, VALUES.demoLinking.addTemporalWeight, 'temporal', nowIso)
+  // 교차 일기 연결: 대표(첫) 조각을 기존 일기와 production 식으로 잇는다.
+  linkNewDiary(ids[0], frags[0].mood, frags[0].valence, frags[0].intensity, entryDate, new Set(ids), nowIso)
 
-  // 의미 근사: 첫 조각과 같은 mood의 최신 일기와 잇는다(같은 날로 이미 이어진 별은 제외).
-  const firstMood = records.get(first)?.mood
-  const linkedIds = new Set(sameDay.map((r) => r.memoryId))
-  const sameMood = others
-    .filter((r) => r.mood === firstMood && !linkedIds.has(r.memoryId))
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, ADD_SAME_MOOD_LINKS)
-  for (const r of sameMood) pushAddedEdge(first, r.memoryId, VALUES.demoLinking.addSemanticWeight, 'semantic', nowIso)
-  for (const r of sameMood) linkedIds.add(r.memoryId)
+  return { recordId: baseId, memoryIds: ids }
+}
 
-  // 흥분성 편향 할당(spec 22) 데모 근사: 방금(~6h 내) 회상해 "뜨거운" 별이 있으면 새 조각을
-  // 그 별과도 잇는다 — 라이브 force-sim이 새 별을 그 hot 성단 곁으로 끌어간다(회상→새 기억).
-  // ~6h를 넘겨 식으면 후보에서 빠져 끌림이 사라진다(시간 창 시연, 1.11). 서버 biasedLinks의
-  // 흥분성 편향(semantic + W_EXC·e)을 네트워크 없이 흉내 낸 것이다.
-  const hot = [...baseStars, ...addedStars]
-    .filter((s) => !idSet.has(s.memoryId) && !linkedIds.has(s.memoryId))
-    .map((s) => ({ id: s.memoryId, recalled: Date.parse(s.lastRecalledAt) }))
-    .filter((s) => Number.isFinite(s.recalled) && now - s.recalled <= HOT_WINDOW_MS)
-    .sort((a, b) => b.recalled - a.recalled)[0]
-  if (hot) pushAddedEdge(first, hot.id, VALUES.demoLinking.addExcitabilityWeight, 'semantic', nowIso)
+/** 데모 작성 폼이 열 프리셋 일기를 고르고(페르소나별 회전) 본문·날짜를 돌려준다(change 25). 폼은 이
+ *  본문을 read-only로 채운다. "별 나누기"·제출은 활성 프리셋(diary-presets)을 읽는다. */
+export function beginDemoCompose(): { body: string; entryDate: string } {
+  ensureSeeded()
+  const preset = pickDiaryPreset(getDemoPersona())
+  return { body: presetBody(preset), entryDate: demoToday() }
+}
 
-  return ids
+/** SegmentMemory 대체(데모) — 활성 프리셋 일기의 사전분절 조각을 검토용으로 돌려준다(AI 없이 즉시).
+ *  valence는 mood에서 파생(서버는 조각별로 추출·영속). 작성 폼이 안 열렸으면 빈 배열. */
+export function demoComposeSegments(): { text: string; mood: Mood; intensity: number; valence: number }[] {
+  const preset = activeDiaryPreset()
+  if (!preset) return []
+  return preset.fragments.map((f) => ({
+    text: f.text,
+    mood: f.mood,
+    intensity: f.intensity,
+    valence: valenceOf(f.mood),
+  }))
+}
+
+/** RecordMemory 대체(데모) — 검토를 마친 조각들을 별로 빚어 우주에 더한다(서버 미호출). 활성 프리셋을
+ *  비워 다음 작성이 새 일기를 고르게 한다. {recordId, memoryIds}로 production RecordMemoryResult와 동형. */
+export function demoRecordMemory(input: {
+  body: string
+  entryDate: string
+  fragments: { text: string; mood: Mood; intensity: number; valence: number }[]
+}): { recordId: string; memoryIds: string[] } {
+  const result = createDemoDiary(input.body, input.entryDate, input.fragments)
+  clearActiveDiaryPreset()
+  return result
 }
 
 // 시뮬 패널 "별 띄우기"용 — 감정별로 미리 써 둔 짧은 일기 10개. 체험에서 내용 자체는
@@ -490,25 +539,8 @@ const QUICK_ENTRIES: { mood: Mood; intensity: number; body: string }[] = [
   },
 ]
 
-// 자유모드 랜덤 별이 고르는 canonical 감정 13종(spec 29) — 데모 mood valence 표와 같은 집합.
-const ALL_MOODS: Mood[] = [
-  Mood.JOY,
-  Mood.EXCITEMENT,
-  Mood.LOVE,
-  Mood.CALM,
-  Mood.GRATITUDE,
-  Mood.RELIEF,
-  Mood.SAD,
-  Mood.ANGER,
-  Mood.FEAR,
-  Mood.STRESS,
-  Mood.TIRED,
-  Mood.EMPTINESS,
-  Mood.NEUTRAL,
-]
-
-// QUICK_ENTRIES에 미리 쓴 일기가 없는 확장 감정(spec 29 6종)용 짧은 본문 — 랜덤 별이 어떤
-// 감정을 골라도 본문 없는 별이 생기지 않게 한다. 내용은 시연용일 뿐(별 탄생·연결 생성 showcase).
+// QUICK_ENTRIES에 미리 쓴 일기가 없는 확장 감정(spec 29 6종)용 짧은 본문 — demoAddStar가 어떤
+// 감정으로 불려도 본문 없는 별이 생기지 않게 한다. 내용은 시연용일 뿐(별 탄생·연결 생성 showcase).
 const MOOD_FALLBACK_ENTRY: Partial<Record<Mood, { body: string; intensity: number }>> = {
   [Mood.EXCITEMENT]: { body: '내일 떠날 생각에 짐을 몇 번이나 다시 쌌다. 가슴이 자꾸 두근거린다.', intensity: 0.8 },
   [Mood.GRATITUDE]: { body: '바쁜데도 시간을 내준 사람에게 오래 마음을 전했다. 받은 게 참 많은 하루.', intensity: 0.6 },
@@ -526,50 +558,40 @@ function entryForMood(mood: Mood): { body: string; intensity: number } {
   return MOOD_FALLBACK_ENTRY[mood] ?? { body: '오늘의 한 조각을 별로 띄운다.', intensity: 0.5 }
 }
 
-/** 데모 전용 "별 띄우기": 고른 감정·날짜로 별을 만든다(spec 19 — 테스트와 내부 시뮬레이션 경로).
- *  본문은 그 감정으로 미리 써 둔 일기 중 무작위 — 체험에서 내용은 시연용일 뿐이다.
- *  새 별 id를 돌려준다(단일 문단 일기 → 항상 별 1개). */
+/** 데모 전용 "별 띄우기"(테스트·내부 시뮬레이션 경로): 고른 감정·날짜로 단일 조각 별을 만든다.
+ *  본문은 그 감정으로 미리 써 둔 일기 중 무작위 — 내용은 시연용일 뿐. 새 별 id를 돌려준다. */
 export function demoAddStar(mood: Mood, entryDate: string): string {
   const pick = entryForMood(mood)
-  return demoAddRecord({ body: pick.body, mood, intensity: pick.intensity, entryDate })[0]
+  return createDemoDiary(pick.body, entryDate, [
+    { text: pick.body, mood, intensity: pick.intensity, valence: valenceOf(mood) },
+  ]).memoryIds[0]
 }
 
-// 데모 전용 "다감정 하루 띄우기"(spec 21)용 — 장면(문단)마다 감정이 갈리는 미리 쓴
-// 다감정 일기들. 빈 줄 문단이 사건 경계로 읽혀 demoAddRecord가 N개 별로 fan-out한다.
-const MULTI_SCENE_ENTRIES: string[] = [
+// 데모 전용 "다감정 하루 띄우기"(테스트·내부 시뮬레이션 경로) — 장면마다 감정이 갈리는 미리
+// 분절해 둔 다감정 일기들. createDemoDiary가 조각마다 색이 다른 별로 fan-out한다.
+const MULTI_SCENE_ENTRIES: { text: string; mood: Mood; intensity: number }[][] = [
   [
-    '늦잠을 자고 일어나 창을 여니 볕이 좋아서 괜히 웃었다. 오랜만에 느긋한 아침.',
-    '오후에 메일 하나로 일정이 전부 꼬였다. 짜증이 솟았지만 어디에 화를 내야 할지도 몰랐다.',
-    '저녁엔 좋아하는 노래를 틀어놓고 방을 정리했다. 마음이 조금씩 차분해졌다.',
-  ].join('\n\n'),
+    { text: '늦잠을 자고 일어나 창을 여니 볕이 좋아서 괜히 웃었다. 오랜만에 느긋한 아침.', mood: Mood.JOY, intensity: 0.6 },
+    { text: '오후에 메일 하나로 일정이 전부 꼬였다. 짜증이 솟았지만 어디에 화를 내야 할지도 몰랐다.', mood: Mood.ANGER, intensity: 0.65 },
+    { text: '저녁엔 좋아하는 노래를 틀어놓고 방을 정리했다. 마음이 조금씩 차분해졌다.', mood: Mood.CALM, intensity: 0.5 },
+  ],
   [
-    '발표 직전까지 손이 떨렸다. 실수하면 어쩌나 하는 걱정이 멈추지 않았다.',
-    '끝나고 나니 다행이라는 말밖에 안 나왔다. 어깨가 한꺼번에 풀렸다.',
-    '집에 오는 길, 고생했다며 친구가 사준 따뜻한 국밥. 고마워서 코끝이 찡했다.',
-  ].join('\n\n'),
+    { text: '발표 직전까지 손이 떨렸다. 실수하면 어쩌나 하는 걱정이 멈추지 않았다.', mood: Mood.FEAR, intensity: 0.65 },
+    { text: '끝나고 나니 다행이라는 말밖에 안 나왔다. 어깨가 한꺼번에 풀렸다.', mood: Mood.RELIEF, intensity: 0.6 },
+    { text: '집에 오는 길, 고생했다며 친구가 사준 따뜻한 국밥. 고마워서 코끝이 찡했다.', mood: Mood.GRATITUDE, intensity: 0.7 },
+  ],
 ]
 
-/** 데모 전용 "다감정 하루 띄우기"(spec 21): 여러 감정이 담긴 미리 쓴 일기 한 편을
- *  조각 별 fan-out으로 띄운다 — 색이 다른 N개 별이 강한 일내 선으로 묶여 등장한다.
- *  태어난 조각 id들을 돌려준다. */
+/** 데모 전용 "다감정 하루 띄우기": 여러 감정이 담긴 미리 분절한 일기 한 편을 조각 별 fan-out으로
+ *  띄운다 — 색이 다른 N개 별이 강한 일내 선으로 묶여 등장한다. 태어난 조각 id들을 돌려준다. */
 export function demoAddMultiSceneStar(entryDate: string): string[] {
-  const body = MULTI_SCENE_ENTRIES[Math.floor(Math.random() * MULTI_SCENE_ENTRIES.length)]
-  return demoAddRecord({ body, mood: Mood.MOOD_UNSPECIFIED, intensity: 0, entryDate })
-}
-
-/** 자유모드 "새 별 띄우기"(plan 47): 폼·날짜/감정 선택 없이 랜덤 별 `count`개를 즉시 띄운다.
- *  각 별의 감정은 13종 canonical mood에서 무작위로 고르고, 본문은 그 감정의 미리 쓴 일기나
- *  fallback이다(내용은 시연용). 날짜는 호출자가 가상 시계 기준 오늘(demoToday())을 주입한다.
- *  내부적으로 기존 demoAddRecord를 재사용하므로 같은 날·같은 mood·hot 별 연결 규칙(spec 19·22)이
- *  그대로 적용된다. 만든 모든 조각 id를 돌려준다(서버 쓰기 없음 — 헌법 데모 경계). */
-export function demoAddRandomStars(count: number, entryDate: string): string[] {
-  const ids: string[] = []
-  for (let i = 0; i < count; i++) {
-    const mood = ALL_MOODS[Math.floor(Math.random() * ALL_MOODS.length)]
-    const entry = entryForMood(mood)
-    ids.push(...demoAddRecord({ body: entry.body, mood, intensity: entry.intensity, entryDate }))
-  }
-  return ids
+  const frs = MULTI_SCENE_ENTRIES[Math.floor(Math.random() * MULTI_SCENE_ENTRIES.length)]
+  const body = frs.map((f) => f.text).join('\n\n')
+  return createDemoDiary(
+    body,
+    entryDate,
+    frs.map((f) => ({ ...f, valence: valenceOf(f.mood) })),
+  ).memoryIds
 }
 
 /** 별 띄우기 날짜 입력의 기본값 — 오늘(가상 시계 기준), YYYY-MM-DD. */
@@ -596,6 +618,7 @@ function renewStar(s: Star, lastRecalledAt: string): Star {
     hueShift: r?.hueShift ?? s.hueShift,
     formSeedDelta: r?.formSeedDelta ?? s.formSeedDelta,
     version: r?.version ?? s.version,
+    abstractionStage: abstractionStageById.get(s.memoryId) ?? s.abstractionStage, // 단조 요지 단계 보존(교체로 0 되지 않게)
     recallCount: s.recallCount + 1n, // spec 07: 회상 재점화마다 +1(서버 RecallMemoryTouch 미러 — R↑·중앙 당김)
   })
 }
@@ -681,66 +704,122 @@ export function demoReshape(memoryId: string): void {
   replaceStar(memoryId, (s) => renewStar(s, nowIso))
 }
 
-// 야간 공고화(spec 27) 체험 근사 — 서버 4패스의 데모 대응(네트워크 없이). 별·선은 절대
-// 지우지 않는다(헌법2): 개수는 그대로 두고 ③ 요지(오래된 별의 형태를 한 단계 단순화)와
-// ④ 가지치기(약하고 안 쓰인 선의 weight를 바닥으로 — 어둑하게만)만 데이터에 반영한다.
-// ①②(재안정화·재분배)는 좌표 변환이라 라이브 force-sim이 refetch에서 다시 안정화하며 보인다.
-const DEMO_GIST_AGE_DAYS = VALUES.demoConsolidation.gistAgeDays // 마지막 회상 후 이보다 오래된 별이 요지 대상(데모 전용 나이 근사 — 엔진은 change 20으로 반지름 트리거)
-const DEMO_GIST_SIMPLIFY = VALUES.demoConsolidation.gistFormSimplify // 요지 1회의 form_seed_delta 단조 증가폭(데모 전용)
-const DEMO_WEAK_THRESHOLD = VALUES.demoConsolidation.weakEdgeThreshold // 데모 우주는 선이 촘촘·강해 상대적 약함 기준(서버 0.2의 데모 근사)
-const DEMO_IDLE_DAYS = VALUES.consolidation.weakEdgeIdleDays // 이보다 오래 안 쓰인 선이 가지치기 대상(서버와 동일)
-const DEMO_PRUNE_FLOOR = VALUES.demoConsolidation.weakEdgeFloor // 가지치기 후 선이 가닿는 최소 weight(0 아님 — 데모 전용)
+// 야간 공고화(change 20) 충실한 데모 포트 — 서버 RunConsolidation 패스의 결정론 부분을 미러한다
+// (좌표 재안정화·재분배·spread는 라이브 force-sim이 refetch에서 도맡으므로 데이터엔 안 싣는다). 별·선은
+// 절대 지우지 않는다(헌법2): ① 추상화 단계 반지름 트리거 단조 승급(요지), ② 링크 재가중(시간링크 약화/
+// 의미링크 강화), ③ 약하고 안 쓰인 선 가지치기(빛만 바닥으로·마지막 연결 보호), ④ 고립 별 re-KNN 재연결.
+// 모두 서버 spec/values.yaml 정전 값을 그대로 쓴다(데모 전용 노브 폐기 — change 27). 옛 나이 트리거
+// formSeedDelta 요지 경로는 제거(이제 추상화 단계가 반지름으로 요지를 구동).
+const WEAK_THRESHOLD = VALUES.consolidation.weakEdgeThreshold // 가지치기 weight 임계(서버 0.2)
+const WEAK_IDLE_DAYS = VALUES.consolidation.weakEdgeIdleDays // 이보다 오래 안 쓰인 선이 가지치기 대상(서버 14)
+const WEAK_FLOOR = VALUES.consolidation.weakEdgeFloor // 가지친 선이 가닿는 바닥(서버 0.05 — 0 아님, 헌법2)
+const TEMPORAL_LINK_DECAY = VALUES.consolidation.temporalLinkDecay // 시간·일내 결속 밤당 약화(서버 0.97)
+const SEMANTIC_LINK_GAIN = VALUES.consolidation.semanticLinkGain // 의미 링크 밤당 강화(서버 +0.01)
+const SEM_CAP = VALUES.connection.semanticWeightCap // 의미 weight 상한(서버 0.79)
+const REKNN_MIN_AGE_DAYS = VALUES.consolidation.reknnMinAgeDays // re-KNN 대상 최소 나이(서버 7일)
 
-/** RecordMemory처럼 데모 우주를 제자리에서 변환한다 — "밤 보내기"(spec 27): 오래된 별의
- *  형태를 한 단계 요지화하고(③), 약하고 안 쓰인 선은 빛만 바닥으로 낮춘다(④). 별·선 개수는
- *  그대로(삭제 0 — 헌법2). 불변 교체로 새 객체를 만들어 쿼리 캐시가 변경을 감지하게 한다.
- *  배속 시계 드라이버가 simulated 04:00 KST 경계를 지날 때마다 1회씩 호출한다(change 24;
- *  production change 20 로직과의 패스 동치는 job 43이 마저 맞춘다). */
+const edgeKey = (e: Synapse): string => `${e.aId}|${e.bId}` // base·added 모두 a<b 정렬 규약
+const cloneEdge = (e: Synapse, weight: number): Synapse =>
+  create(SynapseSchema, {
+    aId: e.aId,
+    bId: e.bId,
+    weight,
+    linkType: e.linkType,
+    lastActivatedAt: e.lastActivatedAt,
+    coActivationCount: e.coActivationCount,
+  })
+
+/** 각 별의 가장 센 연결 한 개씩의 edgeKey 집합 — 가지치기에서 보호해 어떤 별도 고립되지 않게 한다
+ *  (degree≥1, 헌법2·서버 last-connection 보호). */
+function strongestEdgePerNode(edges: Synapse[]): Set<string> {
+  const best = new Map<string, { key: string; w: number }>()
+  for (const e of edges) {
+    const k = edgeKey(e)
+    for (const node of [e.aId, e.bId]) {
+      const cur = best.get(node)
+      if (!cur || e.weight > cur.w) best.set(node, { key: k, w: e.weight })
+    }
+  }
+  return new Set([...best.values()].map((v) => v.key))
+}
+
+/** RecordMemory처럼 데모 우주를 제자리에서 변환한다 — "밤 보내기"(change 20 포트). 별·선 개수는 그대로
+ *  (삭제 0 — 헌법2). 불변 교체로 새 객체를 만들어 쿼리 캐시가 변경을 감지하게 한다. 배속 시계 드라이버가
+ *  simulated 04:00 KST 경계를 지날 때마다 1회씩 호출한다(change 24·멱등). */
 export function demoConsolidate(): void {
   ensureSeeded()
   const now = virtualNowMs()
-  // ③ 요지: 오래되고 저회상인 별의 form_seed_delta 단조 증가 + version++(형태가 한 단계 가라앉는다).
+  // 가지친(severed) 선은 죽은 연결이라 연결성·반지름·요지에 기여하지 않는다(서버 radius도 살아있는
+  // 링크만 본다). 활성 선만으로 연결성을 잰다.
+  const isSevered = (e: Synapse) => severedById.has(edgeKey(e))
+  const active = [...baseSynapses, ...addedEdges].filter((e) => !isSevered(e))
+  const conn = connectednessById(active)
+
+  // ① 추상화 단계 반지름 트리거 승급(GREATEST) — 멀어진 별일수록 형태가 한 단계 단순(요지). 단계가
+  //    올라간 별만 불변 교체(요지는 회상 아님 → lastRecalledAt 보존).
   for (const s of [...baseStars, ...addedStars]) {
     const recalledMs = Date.parse(s.lastRecalledAt)
     if (!Number.isFinite(recalledMs)) continue
-    if ((now - recalledMs) / DAY_MS <= DEMO_GIST_AGE_DAYS) continue
-    const prev = reshapeState.get(s.memoryId) ?? {
-      brightnessOffset: 0,
-      hueShift: 0,
-      formSeedDelta: 0,
-      version: 0,
-    }
-    if (prev.formSeedDelta >= FORM_DELTA_MAX) continue // 이미 다 단순화 — 후퇴 없음(단조)
-    reshapeState.set(s.memoryId, {
-      ...prev,
-      formSeedDelta: clampDemo(prev.formSeedDelta + DEMO_GIST_SIMPLIFY, 0, FORM_DELTA_MAX),
-      version: prev.version + 1,
-    })
-    replaceStar(s.memoryId, (st) => renewStar(st, st.lastRecalledAt)) // lastRecalledAt 보존(요지는 회상 아님)
+    const radius = starRadius(Number(s.recallCount), s.intensity, recalledMs, now, conn.get(s.memoryId) ?? 0)
+    const before = abstractionStageById.get(s.memoryId) ?? 0
+    if (raiseAbstractionStage(s.memoryId, radius) !== before)
+      replaceStar(s.memoryId, (st) => renewStar(st, st.lastRecalledAt))
   }
-  // ④ 가지치기: 약하고(weight<임계) 안 쓰인(idle>14일) 선의 weight를 바닥으로 — 어둑하게만, 삭제 0.
+
+  // ② 링크 재가중: 시간·일내 결속은 약화(×0.97 — 시간 창이 녹는다, GREATEST(0,…)), 의미·개체·공동회상은
+  //    강화(+0.01, 캡 0.79). 가지친 선은 건드리지 않는다(서버 ReweightLinks가 severed=false만 — 되살아나
+  //    0.79로 기어오르거나 바닥 밑으로 내려가지 않게). weight만 바뀐다(lastActivatedAt·개수 불변 — 삭제 0).
+  const reweight = (list: Synapse[]) => {
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i]
+      if (isSevered(e)) continue
+      const temporal = e.linkType === 'temporal' || e.linkType === 'intra_entry'
+      const w = temporal
+        ? Math.max(0, e.weight * TEMPORAL_LINK_DECAY)
+        : Math.min(SEM_CAP, e.weight + SEMANTIC_LINK_GAIN)
+      list[i] = cloneEdge(e, w)
+    }
+  }
+  reweight(baseSynapses)
+  reweight(addedEdges)
+
+  // ③ 가지치기: 약하고(weight<0.2) 안 쓰인(idle>14일) 선의 weight를 바닥(0.05)으로 낮추고 severed 표시 —
+  //    어둑하게만, 삭제 0. 각 별의 가장 센 (활성) 연결은 보호(고립 방지, 헌법2). 재가중 후 weight 기준으로
+  //    보호 집합을 다시 잡는다.
+  const protectedEdges = strongestEdgePerNode(active)
   const prune = (list: Synapse[]) => {
     for (let i = 0; i < list.length; i++) {
       const e = list[i]
+      const key = edgeKey(e)
+      if (severedById.has(key) || protectedEdges.has(key)) continue
       const idleDays = (now - Date.parse(e.lastActivatedAt)) / DAY_MS
-      if (
-        e.weight < DEMO_WEAK_THRESHOLD &&
-        Number.isFinite(idleDays) &&
-        idleDays > DEMO_IDLE_DAYS
-      ) {
-        list[i] = create(SynapseSchema, {
-          aId: e.aId,
-          bId: e.bId,
-          weight: Math.min(e.weight, DEMO_PRUNE_FLOOR),
-          linkType: e.linkType,
-          lastActivatedAt: e.lastActivatedAt,
-          coActivationCount: e.coActivationCount,
-        })
+      if (e.weight < WEAK_THRESHOLD && Number.isFinite(idleDays) && idleDays > WEAK_IDLE_DAYS) {
+        list[i] = cloneEdge(e, WEAK_FLOOR)
+        severedById.add(key)
       }
     }
   }
   prune(baseSynapses)
   prune(addedEdges)
+
+  // ④ re-KNN: 살아있는 연결(severed 아님 + weight≥0.2)이 하나도 없고 오래된(>7일) 별을 의미 근사(같은
+  //    감정)로 재연결한다 — 서버 re-KNN 후보(살아있는 healthy 링크 없음)의 데모 대응. 닮은 기억을 다시
+  //    찾으면 upsertEdge가 끊겼던 선을 되살리거나(severed 해제) 새로 잇는다. 시드 우주는 연결돼 있어 거의
+  //    발화 안 한다(연결 안전망·임베딩 없는 근사).
+  const healthyDegree = new Map<string, number>()
+  for (const e of [...baseSynapses, ...addedEdges]) {
+    if (isSevered(e) || e.weight < WEAK_THRESHOLD) continue
+    healthyDegree.set(e.aId, (healthyDegree.get(e.aId) ?? 0) + 1)
+    healthyDegree.set(e.bId, (healthyDegree.get(e.bId) ?? 0) + 1)
+  }
+  const nowIso = new Date(now).toISOString()
+  for (const s of [...baseStars, ...addedStars]) {
+    if ((healthyDegree.get(s.memoryId) ?? 0) > 0) continue
+    const recalledMs = Date.parse(s.lastRecalledAt)
+    if (!Number.isFinite(recalledMs) || (now - recalledMs) / DAY_MS < REKNN_MIN_AGE_DAYS) continue
+    const rec = records.get(s.memoryId)
+    linkNewDiary(s.memoryId, s.mood, s.valence, s.intensity, rec?.entryDate ?? '', new Set([s.memoryId]), nowIso)
+  }
 }
 
 // 변천사 타임랩스(24) 체험용 합성. 한 별을 여러 번 novelty 회상한 결과를 결정론적으로 빚어,
@@ -802,5 +881,7 @@ export function resetDemo(): void {
   fragmentTextsById.clear()
   reshapeState.clear()
   reshapeAttempts.clear()
+  abstractionStageById.clear()
+  severedById.clear()
   resetDemoClock()
 }

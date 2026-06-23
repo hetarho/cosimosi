@@ -31,6 +31,22 @@ export function demoOffsetDays(): number {
   return Math.floor(offsetMs / DAY_MS)
 }
 
+// 표시용 "며칠째"의 기준 버킷 — 첫 demoClock() 호출(진입 직후) 시각의 04:00 버킷을 day 1로 잡는다.
+// 야간 공고화 경계(consolidationBoundariesCrossed)와 같은 버킷이라, 04:00을 지나는 순간 day가 +1
+// 되는 동시에 우주가 정리된다(밤↔날짜↔공고화가 한 박자). resetDemoClock가 비워 다음 진입에서 다시 잡는다.
+let dayAnchorBucket: number | null = null
+const consolidationBucket = (t: number): number => Math.floor((t - CONSOLIDATION_BOUNDARY_SHIFT_MS) / DAY_MS)
+
+/** 가상 시계 표시값 — 며칠째(04:00 경계 기준 1-indexed) + KST 시:분. 배속 흐름이 시간을 흘리면
+ *  시:분이 또렷이 움직이고, 04:00을 지날 때 day가 오르며 야간 공고화가 돈다. */
+export function demoClock(): { day: number; hour: number; minute: number } {
+  const now = virtualNowMs()
+  if (dayAnchorBucket === null) dayAnchorBucket = consolidationBucket(now)
+  const day = consolidationBucket(now) - dayAnchorBucket + 1
+  const kst = new Date(now + 9 * HOUR_MS) // KST = UTC+9; getUTC*로 시:분을 읽는다(로컬 타임존 무관)
+  return { day, hour: kst.getUTCHours(), minute: kst.getUTCMinutes() }
+}
+
 /** 현재 배속(UI 하이라이트·드라이버 게이트). */
 export function getDemoClockSpeed(): DemoClockSpeed {
   return speed
@@ -65,4 +81,7 @@ export function advanceDemoClock(realElapsedMs: number): number {
 export function resetDemoClock(): void {
   offsetMs = 0
   speed = DEFAULT_SPEED
+  // offset=0인 지금(진입/리셋 시점)의 04:00 버킷을 day 1 기준으로 박는다 — 이후 demoClock의 day는 이
+  // 기준 대비 경계 수다(첫 읽기가 늦어도 day가 1로 리셋되지 않게 lazy 대신 여기서 확정).
+  dayAnchorBucket = consolidationBucket(Date.now())
 }

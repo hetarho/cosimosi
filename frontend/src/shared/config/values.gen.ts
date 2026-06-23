@@ -235,28 +235,13 @@ export const VALUES = {
     simTau: 0.4,
     coRecallBump: 0.1,
     coRecallBase: 0.5,
-    addSameDayLinks: 2,
-    addSameMoodLinks: 1,
-    addTemporalWeight: 0.55,
-    addSemanticWeight: 0.6,
-    addExcitabilityWeight: 0.66,
-  },
-  demoConsolidation: {
-    gistAgeDays: 30,
-    gistFormSimplify: 0.18,
-    weakEdgeThreshold: 0.7,
-    weakEdgeFloor: 0.12,
   },
   demoOverlay: {
     maxBridges: 4,
   },
-  demoFreeMode: {
-    randomStarMin: 1,
-    randomStarMax: 5,
-  },
   demoClock: {
-    hoursPerSecond: [1,2,4],
-    refreshThrottleMs: 200,
+    hoursPerSecond: [1,6,24],
+    stepMs: 300,
     maxTickMs: 250,
   },
   demoTour: {

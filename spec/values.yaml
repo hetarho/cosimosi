@@ -362,42 +362,31 @@ wobble:
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 
 # ── 데모 링크 빌드 (demo_linking) — simulate.ts/data.ts. spec 05·19·22 ─────────────────────────
+#    런타임 새 별 연결(data.ts linkNewDiary)·야간 공고화는 production connection.*·consolidation.* 식을
+#    그대로 쓴다(데모 전용 add*/hot·공고화 노브 폐기 — change 25·27). 아래는 *시드 그래프*(simulate.ts)의
+#    **임베딩 없는 명시적 근사**만 남는다(change 27 A6 환원 불가 경계 — topic-cosine을 embedding-cosine
+#    대역으로). 이 시드는 change 28(데모=시뮬 genesis)이 실엔진 구동으로 대체할 예정이다.
 demo_linking:
-  knn_k: 5 #                    데모 이웃 링크 top-k (vs 엔진 connection.knn_k=8 — 일부러 작게)
-  sim_tau: 0.4 #               데모 이웃 최소 토픽-코사인 (vs 엔진 tau=0.75 — topic-cosine≠embedding-cosine이라 갈라짐)
-  co_recall_bump: 0.1 #        데모 회상 세션이 기존 간선 weight에 더하는 양
-  co_recall_base: 0.5 #        데모 회상 세션이 새로 놓는 co_recall 다리 weight(연결-안전망 다리에도 재사용)
-  add_same_day_links: 2 #      새 데모 별이 같은-날 일기에 긋는 시간 링크 최대 수
-  add_same_mood_links: 1 #     새 데모 별이 같은-무드 일기에 긋는 의미 링크 최대 수
-  add_temporal_weight: 0.55 #  새 데모 별의 같은-날 시간 링크 weight
-  add_semantic_weight: 0.6 #   새 데모 별의 같은-무드 의미 링크 weight
-  add_excitability_weight: 0.66 # 새 데모 별이 최근-회상 hot 별에 긋는 링크 weight(흥분성 편향 데모)
+  knn_k: 5 #                    시드 이웃 링크 top-k (임베딩 근사 — vs 엔진 connection.knn_k=8)
+  sim_tau: 0.4 #               시드 이웃 최소 topic-cosine (임베딩 cos의 데모 대역 — vs 엔진 0.75)
+  co_recall_bump: 0.1 #        시드 회상 세션이 기존 간선 weight에 더하는 양
+  co_recall_base: 0.5 #        시드 회상 세션이 새로 놓는 co_recall 다리 weight(연결-안전망 다리에도 재사용)
 
-# ── 데모 공고화 (demo_consolidation) — data.ts. spec 27 ─────────────────────────────────────────
-#    데모는 연속 form_seed_delta·나이 트리거로 요지를 근사한다(엔진은 change 20으로 반지름 트리거·이산 단계로 이행 —
-#    데모는 거리 모델이 없어 옛 나이 기반 근사를 유지). 엔진과 다른 근사값(드리프트 아님).
-demo_consolidation:
-  gist_age_days: 30 #          마지막 회상 후 이보다 오래된 데모 별이 요지 대상(엔진은 반지름 트리거로 이행 — 데모 전용 나이 근사)
-  gist_form_simplify: 0.18 #   밤당 요지화 form_seed_delta 증가폭 (vs 엔진 — 데모는 완만하게)
-  weak_edge_threshold: 0.7 #   가지치기 weight 임계 (vs 엔진 0.2 — 데모 간선이 더 강해서 높게)
-  weak_edge_floor: 0.12 #      가지친 데모 간선이 내려가는 바닥 (vs 엔진 0.05)
+# 데모 야간 공고화(data.ts demoConsolidate)는 서버 consolidation.* 정전 값을 그대로 쓴다 — 추상화 단계
+# 반지름 트리거 단조 승급·시간링크 약화/의미링크 강화·약한 선 가지치기·re-KNN(change 20·27 충실 포트). 데모
+# 전용 demo_consolidation 노브는 폐기(드리프트 방지 — 단일 출처).
 
 # ── 데모 오버레이 (demo_overlay) — simulate.ts/data.ts. spec 37 ─────────────────────────────────
 demo_overlay:
   max_bridges: 4 #   두 데모 우주 사이 공명 빛-다리 최대 수
 
-# ── 데모 자유모드 (demo_free_mode) — data.ts/HomePage. plan 47 ───────────────────────────────────
-demo_free_mode:
-  random_star_min: 1 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최소 개수
-  random_star_max: 5 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최대 개수
-
 # ── 데모 연속 시계·배속 (demo_clock) — clock.ts/use-demo-flow rAF 드라이버. change 24 ────────────────
 #    데모 가상 시계가 배속으로 계속 흐른다(정지는 배속 미적용 — UI 옵션이라 여기 없음). 04:00 KST 야간
 #    공고화 발화 시각은 엔진 consolidation.hour_utc를 재사용(드리프트 없음). FE 데모 전용(서버 미사용).
 demo_clock:
-  hours_per_second: [1, 2, 4] #   배속 옵션: 실제 1초당 흐르는 가상 시간(시). 첫 값(1)이 기본 배속.
-  refresh_throttle_ms: 200 #      배속 흐름 중 밝기·반지름 재파생(refreshActivation) 최소 간격(ms) — 매 프레임 setStars 금지(헌법8)
-  max_tick_ms: 250 #              한 rAF 틱이 누적하는 실시간 상한(ms) — 탭이 가려졌다 돌아오거나 메인스레드가 길게 멎으면 거대한 catch-up 틱이 한 번에 수십~수백 밤을 발화하는 걸 막는다(가려진 동안은 사실상 정지)
+  hours_per_second: [1, 6, 24] #  배속 옵션: 실제 1초당 흐르는 가상 시간(시). 첫 값(1)이 기본 배속. 24=하루가 1초.
+  step_ms: 300 #                  가상 시계를 흘리는 간격(ms) — rAF 매 프레임이 아니라 이 간격마다 한 번에 offset을 전진시키고 재파생·공고화·무효화를 묶는다. 사이 프레임엔 시계가 멈춰 있어 force-sim이 자리를 잡고(settle) 카메라/입력에 메인스레드를 양보한다(부드러움의 핵심). 작을수록 흐름이 매끈하나 무거워진다.
+  max_tick_ms: 250 #             한 프레임이 step에 보태는 실시간 상한(ms) — 탭이 가려졌다 돌아오거나 메인스레드가 길게 멎어도 한 step이 수십~수백 밤을 한 번에 발화하지 않게 막는다(가려진 동안은 사실상 정지)
 
 # ── 데모 투어 항해 실습 (demo_tour) — DemoGuidedTour 실습 phase 자동 진행 임계값. plan 48·change 12 ──
 #    투어가 navigation-input 누적 카운터·항해 FSM 모드를 rAF로 샘플링해 임계 도달 순간에만 다음 phase로.

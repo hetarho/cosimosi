@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { cn, errorMessage, reportUniverseData } from '@/shared/lib'
-import { demoFragmentText, demoRecall, useDemoOverlay } from '@/shared/lib/demo'
+import { demoFragmentText, demoRecall, isDemoMode, useDemoOverlay } from '@/shared/lib/demo'
 import { Eye, EyeOff, Menu, Orbit, Palette, Plus, Sparkles, Telescope } from 'lucide-react'
 import { Backdrop, DebugTuner, MorningDiffNote, Surface, primaryButtonCls } from '@/shared/ui'
 import {
@@ -26,6 +26,7 @@ import { UniverseSidebar } from './UniverseSidebar'
 import { UniverseExplorerSheet } from './UniverseExplorerSheet'
 import { DemoOnboarding } from './DemoOnboarding'
 import { DemoFreeModeControls } from './DemoFreeModeControls'
+import { DemoClockReadout } from './DemoClockReadout'
 import { DemoGuidedTour } from '@/widgets/demo-tour'
 import { tourActor } from '../model/tour-actor'
 import { ShareUniverseBody } from '@/features/share-universe'
@@ -98,7 +99,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
     clockSpeed,
     selectClockSpeed,
     resetDemoToStart,
-    addDemoRandomStars,
+    prepareDemoCompose,
     leaveDemo,
   } = demo
   // 둘러보기 진행(plan 48·change 13) — 머신이 소유, 페이지는 노출 상태를 구독해 부수효과만.
@@ -218,6 +219,15 @@ export function HomePage({ onSignOut }: HomePageProps) {
     setSheetOpen(composeOpen && !uiHidden)
     return () => setSheetOpen(false)
   }, [composeOpen, uiHidden, setSheetOpen])
+
+  // 데모: 별을 띄우면(compose 'submitted') 프리셋 작성 폼을 닫는다 — 한 편을 끝내면 우주로 돌아가
+  // 결과를 본다(실계정은 연속 작성을 위해 폼을 유지하므로 데모일 때만). 머신 싱글턴 이벤트 구독.
+  useEffect(() => {
+    const sub = composeActor.on('submitted', () => {
+      if (isDemoMode()) setComposeOpen(false)
+    })
+    return () => sub.unsubscribe()
+  }, [setComposeOpen])
 
   // GetUniverse as a declarative query (16): staleTime 5m·gcTime 30m·focus refetch는
   // 옵션이 소유. 응답은 전체 교체가 아니라 병합으로 스토어에 반영(1.4).
@@ -346,7 +356,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
       {/* === 상단 중앙 HUD 숨김/보이기 토글(A13) — 숨김 상태에서도 보이는 유일한 컨트롤. 모달이 뜨면
           z-30 백드롭이 이 토글까지 덮어 함께 흐려진다(z-20). 데모 온보딩(자유모드 전)·꾸미기 패널 중에는 숨긴다. === */}
       {!demoOnboarding && !appearanceOpen && (
-        <div className="absolute left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-20 -translate-x-1/2">
+        <div className="absolute left-1/2 top-[calc(1rem+env(safe-area-inset-top))] z-20 flex -translate-x-1/2 flex-col items-center gap-1.5">
           <button
             type="button"
             onClick={toggleUiHidden}
@@ -359,6 +369,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
             {uiHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
             <span>{uiHidden ? 'UI 보이기' : 'UI 숨기기'}</span>
           </button>
+          {/* 데모 가상 시계 읽기값 — 배속 흐름을 눈으로 확인(HUD 숨김 시 함께 숨는다). */}
+          {demoMode && !uiHidden && <DemoClockReadout />}
         </div>
       )}
 
@@ -437,10 +449,18 @@ export function HomePage({ onSignOut }: HomePageProps) {
           {/* 이동 D-pad — 회상 모드 전용, 화면 가장자리. 표면/숨김 시 억제. */}
           <NavPad suppressed={navSuppressed} />
 
-          {/* === 하단 중앙 floating 새 별 띄우기(A17) — 실로그인은 작성 폼, 데모 자유모드는 랜덤 별 즉시 추가. === */}
+          {/* === 하단 중앙 floating 새 별 띄우기(A17) — 실로그인·데모 모두 작성 폼을 연다. 데모는
+              프리셋 일기를 주입(read-only)한 뒤 같은 폼을 띄운다(change 25). === */}
           <button
             type="button"
-            onClick={demoMode ? addDemoRandomStars : openCompose}
+            onClick={
+              demoMode
+                ? () => {
+                    prepareDemoCompose()
+                    openCompose()
+                  }
+                : openCompose
+            }
             data-tour-id="new-star"
             className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-indigo-500/80 px-5 py-3 text-sm font-medium text-white shadow-lg backdrop-blur transition hover:bg-indigo-500"
           >
@@ -487,17 +507,16 @@ export function HomePage({ onSignOut }: HomePageProps) {
 
       {/* 꾸미기 패널은 위 split layout(캔버스 sibling)으로 렌더된다 — 전면 모달 아님(change 10). 감정 색은 /my-page. */}
 
-      {/* 만들기 — 작성 폼(데모 제외). 제목은 작성/검토 단계를 반영한다. */}
-      {!demoMode && (
-        <Surface
-          open={composeOpen}
-          title={composePhase === 'compose' ? '새 일기 — 별 띄우기' : '조각 확인 — 별 다듬기'}
-          onClose={() => setComposeOpen(false)}
-          place="top"
-        >
-          <MemoryForm />
-        </Surface>
-      )}
+      {/* 만들기 — 작성 폼. 실계정은 자유 입력, 데모는 read-only 프리셋 일기(change 25). 같은 폼·흐름.
+          제목은 작성/검토 단계를 반영한다. */}
+      <Surface
+        open={composeOpen}
+        title={composePhase === 'compose' ? '새 일기 — 별 띄우기' : '조각 확인 — 별 다듬기'}
+        onClose={() => setComposeOpen(false)}
+        place="top"
+      >
+        <MemoryForm />
+      </Surface>
 
       {/* 회상 — 별 클릭(focus 머신 star). 별 → 조각 → 원본 + 변천사/보내기/다른 별들 동선(11·28·36). */}
       <Surface

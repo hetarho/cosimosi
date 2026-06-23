@@ -7,6 +7,7 @@
 // 모듈 싱글턴 composeActor) — useSelector로 읽고 send로 의도를 보낸다.
 import { useSelector } from '@xstate/react'
 import { Mood } from '@/shared/api'
+import { isDemoMode } from '@/shared/lib/demo'
 import { moodFromProto } from '@/entities/memory'
 import { useAppearance } from '@/entities/appearance'
 import { Dropdown } from '@/shared/ui'
@@ -108,6 +109,9 @@ export function MemoryForm() {
   const errorText = useSelector(composeActor, selectErrorText)
   const segmenting = useSelector(composeActor, selectIsSegmenting)
   const submitting = useSelector(composeActor, selectIsSubmitting)
+  // 체험 모드(change 25): 본문·날짜는 프리셋이라 읽기전용 — 같은 폼·흐름으로 "별 나누기" 조각화만
+  // 직접 해본다(AI/서버 대신 프리셋이 조각을 돌려준다). 실계정은 그대로 자유 입력.
+  const demo = isDemoMode()
 
   // Body-only (home-ia revamp): the page hosts this inside a Surface (title reflects the phase),
   // so the form drops its own card chrome and phase headings.
@@ -126,10 +130,11 @@ export function MemoryForm() {
               분해 중에는 잠근다 — 분해는 클릭 시점의 본문 스냅샷으로 돌아가므로, 그동안
               덧붙인 문장은 조각이 되지 못한 채 기록 원본에만 남는 어긋남이 생긴다. */}
           <textarea
-            className={`${inputCls} ph-no-capture h-24 resize-none`}
+            className={`${inputCls} ph-no-capture h-24 resize-none ${demo ? 'opacity-80' : ''}`}
             placeholder="오늘의 기억을 적어보세요…"
             value={body}
             disabled={segmenting}
+            readOnly={demo}
             onChange={(e) => composeActor.send({ type: 'SET_BODY', body: e.target.value })}
           />
           <label className="flex flex-col gap-1 text-xs text-white/50">
@@ -138,10 +143,16 @@ export function MemoryForm() {
               type="date"
               className={inputCls}
               value={entryDate}
-              disabled={segmenting}
+              disabled={segmenting || demo}
               onChange={(e) => composeActor.send({ type: 'SET_DATE', date: e.target.value })}
             />
           </label>
+          {demo && (
+            <p className="rounded-md bg-white/5 px-2 py-1 text-xs text-white/55">
+              미리 적어 둔 하루예요. <b className="text-white/75">별 나누기</b>를 누르면 사건 조각마다
+              별이 나뉘어 태어나요.
+            </p>
+          )}
 
           {segmenting && (
             <p className="rounded-md bg-indigo-500/10 px-2 py-1 text-xs text-indigo-200/90">
@@ -154,9 +165,10 @@ export function MemoryForm() {
           <button
             type="submit"
             disabled={segmenting}
+            data-tour-id="segment"
             className="rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
           >
-            {segmenting ? '조각내는 중…' : '별로 분해'}
+            {segmenting ? '조각내는 중…' : demo ? '별 나누기' : '별로 분해'}
           </button>
         </>
       ) : (

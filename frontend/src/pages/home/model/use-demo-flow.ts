@@ -10,8 +10,7 @@ import {
   demoPersonaList,
   demoOverlayData,
   demoOffsetDays,
-  demoAddRandomStars,
-  demoToday,
+  beginDemoCompose,
   exitDemoMode,
   resetDemo,
   useDemoOverlay,
@@ -24,14 +23,8 @@ import {
 import { VALUES } from '@/shared/config'
 import { tickDemoClock, resetDemoExperience, switchDemoPersona } from '@/widgets/demo-sim'
 import { toSynapseEdge } from '@/entities/synapse'
-import {
-  mapStar,
-  refreshActivation,
-  universeInvalidateKey,
-  dormantInvalidateKey,
-  recordsInvalidateKey,
-  focusActor,
-} from '@/entities/memory'
+import { mapStar, refreshActivation, focusActor } from '@/entities/memory'
+import { composeActor } from '@/features/record-memory'
 import { navigationActor, type Bridge } from '@/widgets/universe-canvas'
 import type { DemoPopover } from '../ui/DemoFreeModeControls'
 
@@ -96,21 +89,23 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     const pullClockDay = () => setDemoClockDay((d) => (d === demoOffsetDays() ? d : demoOffsetDays()))
     let raf = 0
     let last = performance.now()
-    let lastRefresh = last
+    let lastStep = last
+    let accumMs = 0
     const loop = (t: number) => {
       raf = requestAnimationFrame(loop)
-      // 탭이 가려졌다 돌아오거나(rAF 멎음) 메인스레드가 길게 멎으면 한 틱 elapsed가 거대해져 수십~수백
-      // 밤을 한 번에 발화한다 — 상한으로 잘라 가려진 동안은 사실상 정지로 둔다(누적 폭주·UI 프리즈 방지).
-      const elapsed = Math.min(t - last, VALUES.demoClock.maxTickMs)
+      // 매 프레임은 경과 실시간만 누적하고(프레임당 max_tick_ms로 캡 — 탭 복귀/스톨의 catch-up 폭주
+      // 방지) 가상 시계는 멈춰 둔다. step_ms마다 한 번에 흘린다 — 사이 프레임엔 virtualNow가 고정이라
+      // force-sim이 자리를 잡고(settle) 카메라·입력이 메인스레드를 쓴다(흐름 중 인터랙션 끊김 해소).
+      // 매 프레임 시계를 전진시키면 별 반지름 목표가 매 프레임 바뀌어 force-sim이 영영 안 멎는다(렉).
+      accumMs += Math.min(t - last, VALUES.demoClock.maxTickMs)
       last = t
-      const boundaries = tickDemoClock(queryClient, elapsed)
-      if (t - lastRefresh >= VALUES.demoClock.refreshThrottleMs) {
-        lastRefresh = t
-        refreshActivation()
-        pullClockDay()
-      } else if (boundaries > 0) {
-        pullClockDay() // 밤이 지났으면(공고화로 데이터 변경) 정수 일을 바로 끌어올린다
-      }
+      if (t - lastStep < VALUES.demoClock.stepMs) return
+      lastStep = t
+      const elapsed = accumMs
+      accumMs = 0
+      tickDemoClock(queryClient, elapsed) // offset 전진 + 04:00 경계마다 공고화 + 데이터 바뀐 밤에만 무효화
+      refreshActivation() // 새 now로 별·엣지 밝기·반지름 재파생
+      pullClockDay() // 정수 일이 바뀌면 React 상태로(tour CLOCK_CHANGED·overlay 재시뮬)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
@@ -162,15 +157,19 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     setClockSpeedState(getDemoClockSpeed()) // resetDemoClock가 기본 배속으로 되돌린 값으로 동기화
     setDemoClockDay(0)
   }
-  // 자유모드 하단 "새 별 띄우기" — 폼/날짜·감정 선택 없이 랜덤 별 1~5개(values)를 즉시 추가하고
-  // 우주·잠든 별·일기 목록 쿼리를 무효화해 즉시 반영한다(서버 쓰기 없음 — 헌법 데모 경계).
-  const addDemoRandomStars = () => {
-    const { randomStarMin, randomStarMax } = VALUES.demoFreeMode
-    const count = randomStarMin + Math.floor(Math.random() * (randomStarMax - randomStarMin + 1))
-    demoAddRandomStars(count, demoToday())
-    void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
-    void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
-    void queryClient.invalidateQueries({ queryKey: recordsInvalidateKey() })
+  // 자유모드 하단 "새 별 띄우기"(change 25) — production 작성 폼을 read-only·프리셋으로 연다. 다음
+  // 프리셋 일기를 골라(beginDemoCompose) 본문·날짜를 작성 머신에 주입한다(읽기전용). 이후 "별 나누기"
+  // → 검토 → "별 띄우기"가 production과 같은 흐름으로 조각 별을 우주에 띄운다(데모는 서버 미호출 —
+  // segment/submit 액터가 프리셋·demoRecordMemory로 분기). 폼 표면 열기는 HomePage가 openCompose로.
+  const prepareDemoCompose = () => {
+    // 진행 중(segmenting/submitting)이면 머신이 SET_BODY/SET_DATE를 무시하므로 프리셋만 소비되고 폼이
+    // 어긋난다 — 그 짧은 창에서는 새 프리셋을 고르지 않고 진행 중인 작성이 끝나게 둔다(이중 클릭 방어).
+    const snap = composeActor.getSnapshot()
+    if (!snap.matches('composing') && !snap.matches('reviewing')) return
+    const { body, entryDate } = beginDemoCompose()
+    composeActor.send({ type: 'BACK_TO_COMPOSE' }) // reviewing 잔여 시 본문 단계로 (composing이면 무시)
+    composeActor.send({ type: 'SET_BODY', body })
+    composeActor.send({ type: 'SET_DATE', date: entryDate })
   }
   // 체험 종료(데모) — 기존 SessionGate 핀과 같은 동선(더미 별 비우기 → 마케팅 랜딩).
   const leaveDemo = () => {
@@ -197,7 +196,7 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     clockSpeed,
     selectClockSpeed,
     resetDemoToStart,
-    addDemoRandomStars,
+    prepareDemoCompose,
     leaveDemo,
   }
 }
