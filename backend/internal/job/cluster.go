@@ -1,7 +1,10 @@
 package job
 
-// clusterByUnionFind groups node ids into connected components over undirected links.
-// Union by rank keeps the root stable regardless of link iteration order.
+// clusterByUnionFind groups node ids into connected components over undirected links. The
+// GROUPING (which ids share a component) is independent of link iteration order, but the chosen
+// ROOT id is NOT — an equal-rank union keeps find(a), so it depends on which link came first.
+// Callers that need an order-stable per-cluster key must derive it from the members (e.g. min id),
+// not the root (redistribute is fine — a centroid is root-independent; spreadClusters uses min id).
 func clusterByUnionFind(ids []string, links [][2]string) map[string]string {
 	parent := make(map[string]string, len(ids))
 	rank := make(map[string]int, len(ids))

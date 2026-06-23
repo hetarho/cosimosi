@@ -15,16 +15,19 @@ const (
 
 // consolidation
 const (
-	ConsolidationRedistributeLerp     = 0.6
-	ConsolidationSchemaBonus          = 0.15
-	ConsolidationSchemaMinCluster     = 3
-	ConsolidationSchemaMinDegree      = 2
-	ConsolidationGistAgeDays          = 30
-	ConsolidationGistRecallCutoffDays = 14
-	ConsolidationGistFormSimplify     = 0.4
-	ConsolidationWeakEdgeThreshold    = 0.2
-	ConsolidationWeakEdgeIdleDays     = 14
-	ConsolidationWeakEdgeFloor        = 0.05
+	ConsolidationHourUtc           = 19
+	ConsolidationRedistributeLerp  = 0.6
+	ConsolidationRadiusScope       = 60
+	ConsolidationTemporalLinkDecay = 0.97
+	ConsolidationSemanticLinkGain  = 0.01
+	ConsolidationSpreadStrength    = 6
+	ConsolidationWeakEdgeThreshold = 0.2
+	ConsolidationWeakEdgeIdleDays  = 14
+	ConsolidationWeakEdgeFloor     = 0.05
+	ConsolidationReknnMinAgeDays   = 7
+)
+var (
+	ConsolidationGistStageRadii = []float64{40, 55, 68, 78}
 )
 
 // force_sim
@@ -337,6 +340,7 @@ const (
 
 // demo_consolidation
 const (
+	DemoConsolidationGistAgeDays       = 30
 	DemoConsolidationGistFormSimplify  = 0.18
 	DemoConsolidationWeakEdgeThreshold = 0.7
 	DemoConsolidationWeakEdgeFloor     = 0.12

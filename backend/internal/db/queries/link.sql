@@ -5,6 +5,14 @@ SELECT ml.a_id, ml.b_id, ml.weight, ml.link_type, ml.co_activation_count, ml.las
 FROM memory_links ml
 WHERE ml.user_id = $1;
 
+-- name: ListLinksForConsolidate :many
+-- 야간 패스 입력(spec 27): 재안정화 스프링·성단 도출·재가중·가지치기·반지름 연결성에 쓰는 전체 시냅스.
+-- ListLinksByUser와 달리 link_type(재가중 분류)과 severed(끊김 상태·재-KNN 되살림 대상)를 함께 싣는다.
+-- 삭제 없음(헌법2)이라 잠든/끊긴 선 포함 전체를 weight 필터 없이 반환. user_id = isolation.
+SELECT ml.a_id, ml.b_id, ml.weight, ml.link_type, ml.severed, ml.last_activated_at
+FROM memory_links ml
+WHERE ml.user_id = $1;
+
 -- name: BatchUpsertLinks :exec
 -- Initial semantic synapses from the embedding worker, one statement via
 -- UNNEST, with link_type literal 'semantic' (memory_links.link_type is NOT
@@ -79,16 +87,66 @@ FROM memory_links ml
 WHERE ml.user_id = @user_id
   AND (ml.a_id = ANY(@ids::text[]) OR ml.b_id = ANY(@ids::text[]));
 
--- name: PruneWeakLinks :exec
--- ④ 야간 가지치기(spec 27): 약하고(weight < weak_threshold) 안 쓰인(last_activated_at <
--- idle_cutoff) 선의 weight를 바닥으로(LEAST — 절대 올리지 않음). 밝기는 26 클라 모델이 weight로
--- 산출하므로 선이 어두워질 뿐 **사라지지 않는다** — 행은 남기고 클릭 가능(헌법2, DELETE 금지).
--- WHERE는 weight·시각 비교만(sargable). user_id = isolation.
+-- name: ReweightLinks :exec
+-- 야간 링크 재가중(spec 27 change 20): 시간 기반 연결은 약화, 의미 기반 연결은 강화. 과학 — 시간창
+-- (그때 같이 썼다)은 짧고 의미·도식 연결이 장기 보존된다. temporal 계열(같은-사건 결속 'intra_entry' +
+-- 정의만 있는 'temporal')은 weight × temporal_decay(<1)로 매일 조금씩 약화하고, 'semantic'은
+-- weight + semantic_gain 으로 semantic_cap까지 강화한다. 'co_recall'(능동 공동회상 헵)은 사용으로
+-- 강화되는 별개 신호라 건드리지 않는다. 절대 음수 없음(GREATEST 0). user_id = isolation.
 UPDATE memory_links
-SET weight = LEAST(weight, sqlc.arg(floor)::float4)
+SET weight = CASE
+    WHEN link_type IN ('intra_entry', 'temporal') THEN GREATEST(0, weight * sqlc.arg(temporal_decay)::float4)
+    WHEN link_type = 'semantic' THEN LEAST(sqlc.arg(semantic_cap)::float4, weight + sqlc.arg(semantic_gain)::float4)
+    ELSE weight END
 WHERE user_id = @user_id
-  AND weight < sqlc.arg(weak_threshold)::float4
-  AND last_activated_at < sqlc.arg(idle_cutoff)::timestamptz;
+  AND severed = false
+  AND link_type IN ('intra_entry', 'temporal', 'semantic');
+
+-- name: PruneWeakLinks :exec
+-- 야간 가지치기 + 마지막 1링크 보호(spec 27 change 20): 약하고(weight < weak_threshold) 안 쓰인
+-- (last_activated_at < idle_cutoff) 선의 weight를 바닥으로(LEAST) 낮추고 severed=true로 끊은 듯 처리한다.
+-- 단 **별마다 살아있는 가장 강한 링크 1개는 보호**(degree ≥ 1 — 완전 고립 금지): 보호·가지치기 모두
+-- 이미 끊긴(severed) 행은 빼고 **미severed 링크만** 본다 — 안 그러면 이미 끊긴 최강 행이 보호되어
+-- 노드의 마지막 *살아있는* 링크가 끊길 수 있다(degree 0). 각 노드 관점 weight 최강(동률은 a_id,b_id
+-- 결정론적 tie-break)이 어느 한쪽 끝에서라도 1순위면 제외한다. 삭제(DELETE) 없음 — 행은 남고 클릭
+-- 가능, severed는 재-KNN이 닮은 기억을 다시 찾으면 되살린다(헌법2). WHERE는 비교만(sargable).
+WITH incident AS (
+    SELECT a_id AS node, a_id, b_id, weight FROM memory_links WHERE user_id = @user_id AND severed = false
+    UNION ALL
+    SELECT b_id AS node, a_id, b_id, weight FROM memory_links WHERE user_id = @user_id AND severed = false
+),
+ranked AS (
+    SELECT node, a_id, b_id,
+           row_number() OVER (PARTITION BY node ORDER BY weight DESC, a_id, b_id) AS rn
+    FROM incident
+),
+protected AS (
+    SELECT DISTINCT a_id, b_id FROM ranked WHERE rn = 1
+)
+UPDATE memory_links ml
+SET weight = LEAST(ml.weight, sqlc.arg(floor)::float4), severed = true
+WHERE ml.user_id = @user_id
+  AND ml.severed = false
+  AND ml.weight < sqlc.arg(weak_threshold)::float4
+  AND ml.last_activated_at < sqlc.arg(idle_cutoff)::timestamptz
+  AND NOT EXISTS (SELECT 1 FROM protected p WHERE p.a_id = ml.a_id AND p.b_id = ml.b_id);
+
+-- name: ReknnUpsertLinks :exec
+-- 재-KNN 재연결(spec 27 change 20): 고립/끊긴 옛 별이 의미 KNN으로 다시 찾은 닮은 기억과 잇는다. 신규
+-- 행은 link_type='semantic', severed=false, last_activated_at=now. 기존 행은 weight=GREATEST(약화시키지
+-- 않음)·severed=false로 **되살린다**(끊겼던 선이 닮은 기억 재발견으로 부활). a_id<b_id는 BatchUpsertLinks와
+-- 같은 이유로 DB 콜레이션 LEAST/GREATEST로 정규화(Go 바이트 순서 스왑 금지). 삭제 없음(헌법2).
+INSERT INTO memory_links (a_id, b_id, weight, user_id, link_type, severed, last_activated_at)
+SELECT LEAST(a, b), GREATEST(a, b), w, u, 'semantic', false, now()
+FROM (
+    SELECT
+        unnest(@a_ids::text[])     AS a,
+        unnest(@b_ids::text[])     AS b,
+        unnest(@weights::float8[]) AS w,
+        unnest(@user_ids::text[])  AS u
+) AS pairs
+ON CONFLICT (a_id, b_id) DO UPDATE
+SET weight = GREATEST(memory_links.weight, EXCLUDED.weight), severed = false;
 
 -- name: ClaimBatch :execrows
 -- Idempotency CLAIM: insert the batch_id row FIRST, inside the

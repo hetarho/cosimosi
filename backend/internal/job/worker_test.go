@@ -220,6 +220,9 @@ func (stubStore) BatchUpsertLinks(context.Context, []LinkUpsert) error { return 
 func (stubStore) LoadConsolidateGraph(context.Context, string) (ConsolidateGraph, error) {
 	return ConsolidateGraph{}, nil
 }
+func (stubStore) ReknnCandidates(context.Context, string, time.Time, float64) ([]ReknnCandidate, error) {
+	return nil, nil
+}
 func (stubStore) RunConsolidation(context.Context, string, string, ConsolidationWrite) (int, error) {
 	return 0, nil
 }

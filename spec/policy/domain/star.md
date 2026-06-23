@@ -83,15 +83,16 @@
 | 렌더 합성 | `aGlow = clamp(starGlow(...) + brightness_offset, A_MIN, 1)`(거리 밝기·바닥 OUTERMOST 보존); `aRecency = starGlow(...)`(반사 변조); `aSeed = seed + form_seed_delta`; `aHueShift`(rad)로 mood 색을 회색축(1,1,1) 둘레로 회전(휘도 보존). brightness_offset은 self-glow에만(반사는 점광 물리량). 회상 직후 갱신은 GetUniverse refetch로 반영(낙관 갱신 아님) |
 | 간격 효과 | 공동 회상 강화 delta는 FE `co-recall`에서 `CO_RECALL_DELTA·(1 + SPACING_GAIN·clamp(gapDays/SPACING_REF,0,1))`로 키운다(간격 둔 인출이 더 큰 강화); 서버 `ReinforceLinks`는 클라 delta를 1.0 cap으로 멱등 업서트(변경 없음) |
 
-### 요지화 (gist, 27)
+### 요지화 (gist, 27 change 20)
 
-야간 공고화(27)는 오래되고 거의 안 떠올린 별의 형태를 한 단계 더 추상화한다 — 디테일이 녹고 일반적 인상만 남는 요지 추출(체계 공고화). **밝기가 아니라 형태 시드만** 단순화하므로 별은 어두워지지 않고 *모양이 가라앉는다*. 원본 `records`는 손대지 않는다(헌법1 — 가변 별의 형태 파라미터만).
+야간 공고화(27)는 멀리 표류한(거의 잊힌) 별을 한 단계 더 추상화한다 — 디테일이 녹고 일반적 인상만 남는 요지 추출(체계 공고화). 트리거가 나이/회상 → **별의 반지름**(중심 거리)으로, 단순화 신호가 연속 `form_seed_delta` → **이산 `abstraction_stage`(0~4)**로 바뀌었다(change 20). 원본 `records`는 손대지 않는다(헌법1 — 가변 별의 단계 컬럼만).
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| 요지 대상 | `created_at < now - GIST_AGE(30일)` 이고 `last_recalled_at < now - 14일`(저회상)이며 `form_seed_delta < 1` |
-| 단순화 | `form_seed_delta`를 `GIST_SIMPLIFY=0.4`만큼 **단조 증가**(`GREATEST(기존, LEAST(1, 기존+0.4))` — 후퇴·복잡화 금지), `version++`. `aSeed = seed + form_seed_delta`로 형태가 한 단계 추상화돼 재파생 |
-| 변천사 | 각 요지 변경은 `evolution_history`에 `trigger='nightly_gist'`(pe 0·dir −1) **append**(23 테이블 재사용, INSERT 전용 — [memory](memory.md) 정책). 24 변천사 타임랩스가 그대로 보여준다 |
+| 요지 트리거 | 별 반지름(서버가 change 18 공식으로 근사)이 `GIST_STAGE_RADII=[40,55,68,78]`의 임계를 넘긴 수 = target stage(0~4). 나이/회상 트리거·`form_seed_delta < 1` 조건은 폐기 |
+| 단계 승급 | `abstraction_stage = GREATEST(현재, target)`(target > 현재인 별만 승급 → 단조·≤4·멱등), `version++`. 멀어질수록 단계가 오른다 |
+| 형태 배선 | `abstraction_stage`가 형태(plan 53)·재공고화 AI 변형(plan 54)의 입력. 아직 proto 미노출 — 야간 요지의 형태 표면 효과는 plan 53부터. (23 재공고화의 `form_seed_delta`→`aSeed` 배선은 그대로, 야간 요지는 더는 그 경로를 안 쓴다) |
+| 변천사 | 각 단계 승급은 `evolution_history`에 `trigger='nightly_gist'`(pe 0·dir −1) **append**(23 테이블 재사용, INSERT 전용 — [memory](memory.md) 정책). 24 변천사 타임랩스가 그대로 보여준다 |
 
 ## 불변식 (invariants)
 
@@ -109,4 +110,4 @@
 - 조각 감정 AI 감지(→ `memories`)·수동 힌트(→ `records`)·13 mood: 구현 plan 20·21·29 · `backend/internal/ai/extractor.go` · `backend/internal/job/worker.go`(`applyManualHint`) · `frontend/src/shared/config/mood.ts` · `features/record-memory/ui/MemoryForm.tsx`(수동 감정 토글).
 - record(불변)/memory(별) 분리·낙관적 단일 별: 구현 plan 03·04·10 · `backend/internal/db/migrations/00001_engram_schema.sql` · `features/record-memory/model/use-record-memory.ts`.
 - 재공고화 재성형(PE 게이트·강도 의존·양방향 경계·직접 이웃 한정·간격 효과·렌더 합성): 구현 plan 23 · `backend/internal/db/migrations/00005_reconsolidation.sql` · `backend/internal/memory/service.go`(`reconsolidate`·`reshapeState`·`strengthOf`·`cosineSim`·`directionFor`) · `entities/memory/model/reshape.ts` · `entities/star/ui/{StarField.tsx,forms.ts}` · `features/recall/model/co-recall.ts`.
-- 요지화(form_seed_delta 단조 증가·요지 대상 판정·변천사 append): 구현 plan 27 · `backend/internal/job/consolidate.go`(`handleConsolidate` ③) · `backend/internal/db/queries/memory.sql`(`GistSimplifyStars`·`AppendGistHistory`) · `aSeed=seed+form_seed_delta`는 23의 `reshapedSeed`(`entities/memory/model/reshape.ts`)·`entities/star/ui/StarField.tsx`가 이미 배선.
+- 요지화(반지름 트리거·`abstraction_stage` 단조 승급·변천사 append): 구현 plan 27(change 20) · `backend/internal/job/consolidate.go`(`handleConsolidate`·`stageForRadius`)·`radius.go`(반지름 근사) · `backend/internal/db/queries/memory.sql`(`AbstractStarsByRadius`·`AppendGistHistory`) · `db/migrations/00013_nightly_rework.sql`(`memories.abstraction_stage`). 단계→형태/AI 배선은 plan 53·54 소관(23의 `form_seed_delta`→`aSeed` 경로는 재공고화 전용으로 보존).

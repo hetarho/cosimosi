@@ -44,7 +44,8 @@ CREATE TABLE memories (
     stable_x         REAL,                             -- 00006(spec 27) 야간 재안정화 안정 좌표 캐시(권위 아님 — 헌법3)
     stable_y         REAL,                             -- 00006 클라/서버가 force-sim 재진입 시드로만 재사용(proto 미노출)
     stable_z         REAL,                             -- 00006 NULL이면 처음부터 산출
-    recall_count     INT NOT NULL DEFAULT 1             -- 00012(spec 07) 누적 회상 횟수(Bjork 저장강도 S 신호; 회상마다 +1, 기존 별 1 백필)
+    recall_count     INT NOT NULL DEFAULT 1,            -- 00012(spec 07) 누적 회상 횟수(Bjork 저장강도 S 신호; 회상마다 +1, 기존 별 1 백필)
+    abstraction_stage SMALLINT NOT NULL DEFAULT 0       -- 00013(spec 27 change 20) 요지화 이산 단계 0~4(반지름 임계 초과마다 +1, 단조). plan 53 형태·54 AI 변형 입력
 );
 CREATE INDEX memories_user_idx ON memories (user_id);
 CREATE UNIQUE INDEX memories_record_fragment_idx ON memories (record_id, fragment_index);
@@ -69,6 +70,7 @@ CREATE TABLE memory_links (
     co_activation_count INT NOT NULL DEFAULT 0,
     last_activated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    severed             BOOLEAN NOT NULL DEFAULT false,  -- 00013(spec 27 change 20) 가지치기가 끊은 듯 처리(행 보존·헌법2; 재-KNN이 severed=false로 되살림)
     PRIMARY KEY (a_id, b_id),
     CONSTRAINT memory_links_order_chk CHECK (a_id < b_id)
 );

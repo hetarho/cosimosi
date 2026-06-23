@@ -117,6 +117,7 @@ type Memory struct {
 	StableY          *float32           `json:"stable_y"`
 	StableZ          *float32           `json:"stable_z"`
 	RecallCount      int32              `json:"recall_count"`
+	AbstractionStage int16              `json:"abstraction_stage"`
 }
 
 type MemoryLink struct {
@@ -128,6 +129,7 @@ type MemoryLink struct {
 	CoActivationCount int32              `json:"co_activation_count"`
 	LastActivatedAt   pgtype.Timestamptz `json:"last_activated_at"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	Severed           bool               `json:"severed"`
 }
 
 type ProcessedBatch struct {

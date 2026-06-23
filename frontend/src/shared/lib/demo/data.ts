@@ -685,7 +685,7 @@ export function demoReshape(memoryId: string): void {
 // 지우지 않는다(헌법2): 개수는 그대로 두고 ③ 요지(오래된 별의 형태를 한 단계 단순화)와
 // ④ 가지치기(약하고 안 쓰인 선의 weight를 바닥으로 — 어둑하게만)만 데이터에 반영한다.
 // ①②(재안정화·재분배)는 좌표 변환이라 라이브 force-sim이 refetch에서 다시 안정화하며 보인다.
-const DEMO_GIST_AGE_DAYS = VALUES.consolidation.gistAgeDays // 마지막 회상 후 이보다 오래된 별이 요지 대상(서버와 동일)
+const DEMO_GIST_AGE_DAYS = VALUES.demoConsolidation.gistAgeDays // 마지막 회상 후 이보다 오래된 별이 요지 대상(데모 전용 나이 근사 — 엔진은 change 20으로 반지름 트리거)
 const DEMO_GIST_SIMPLIFY = VALUES.demoConsolidation.gistFormSimplify // 요지 1회의 form_seed_delta 단조 증가폭(데모 전용)
 const DEMO_WEAK_THRESHOLD = VALUES.demoConsolidation.weakEdgeThreshold // 데모 우주는 선이 촘촘·강해 상대적 약함 기준(서버 0.2의 데모 근사)
 const DEMO_IDLE_DAYS = VALUES.consolidation.weakEdgeIdleDays // 이보다 오래 안 쓰인 선이 가지치기 대상(서버와 동일)

@@ -45,7 +45,7 @@ func TestRedistributePullsTowardCentroid(t *testing.T) {
 	}
 	g := ConsolidateGraph{
 		Stars: []ConsolidateStar{{ID: "A"}, {ID: "B"}, {ID: "S"}},
-		Links: []ConsolidateLink{{AID: "A", BID: "B", Weight: 0.8}}, // 2-node cluster < schemaMinCluster
+		Links: []ConsolidateLink{{AID: "A", BID: "B", Weight: 0.8}}, // A,B one cluster; S a singleton
 	}
 	redistribute(coords, g)
 	// centroid of {A,B} = origin; lerp 0.6 → A moves from 10 to 10+(0-10)*0.6 = 4.
@@ -61,23 +61,119 @@ func TestRedistributePullsTowardCentroid(t *testing.T) {
 	}
 }
 
-// A schema-fit star (cluster ≥ schemaMinCluster AND degree ≥ schemaMinDegree) is pulled
-// harder (redistributeLerp + schemaBonus) than a star in a small cluster.
-func TestRedistributeSchemaBonus(t *testing.T) {
-	coords := map[string]vec3{"A": {30, 0, 0}, "B": {-30, 0, 0}, "C": {0, 0, 0}}
-	// Triangle A-B-C: cluster size 3, each degree 2 → schema-fit.
+// stageForRadius counts how many ascending thresholds a radius exceeds (0..len) — the
+// abstraction stage a star's distance maps to (spec 27 change 20).
+func TestStageForRadius(t *testing.T) {
+	th := []float64{40, 55, 68, 78}
+	cases := []struct {
+		r    float64
+		want int
+	}{{10, 0}, {40, 0}, {41, 1}, {60, 2}, {70, 3}, {78, 3}, {79, 4}, {200, 4}}
+	for _, c := range cases {
+		if got := stageForRadius(c.r, th); got != c.want {
+			t.Errorf("stageForRadius(%g) = %d, want %d", c.r, got, c.want)
+		}
+	}
+}
+
+// Two stars identical except connectivity: the well-connected one (links extend τ → slower
+// decay → higher R) sits at a SMALLER radius. Connectivity only pulls inward (change 18).
+func TestStarRadiiConnectivityPullsInward(t *testing.T) {
+	old := time.Now().UTC().Add(-40 * 24 * time.Hour) // far enough out that R is well below 1
 	g := ConsolidateGraph{
-		Stars: []ConsolidateStar{{ID: "A"}, {ID: "B"}, {ID: "C"}},
+		Stars: []ConsolidateStar{
+			{ID: "hub", LastRecalledAt: old, RecallCount: 1},
+			{ID: "iso", LastRecalledAt: old, RecallCount: 1},
+			{ID: "n1", LastRecalledAt: old, RecallCount: 1},
+			{ID: "n2", LastRecalledAt: old, RecallCount: 1},
+		},
 		Links: []ConsolidateLink{
-			{AID: "A", BID: "B", Weight: 0.5},
-			{AID: "B", BID: "C", Weight: 0.5},
-			{AID: "A", BID: "C", Weight: 0.5},
+			{AID: "hub", BID: "n1", Weight: 0.8},
+			{AID: "hub", BID: "n2", Weight: 0.8},
 		},
 	}
-	redistribute(coords, g)
-	// centroid = (0,0,0); schema-fit lerp = 0.6+0.15 = 0.75 → A.x: 30 + (0-30)*0.75 = 7.5.
-	if math.Abs(coords["A"][0]-7.5) > 1e-9 {
-		t.Fatalf("A.x = %f, want 7.5 (lerp 0.75 with schemaBonus)", coords["A"][0])
+	radii := starRadii(g, float64(time.Now().UTC().Unix())/86400.0)
+	if radii["hub"] >= radii["iso"] {
+		t.Fatalf("connected hub radius %f should be < isolated radius %f", radii["hub"], radii["iso"])
+	}
+	// Connectivity never pushes a star past R_MIN inward nor outside R_MAX.
+	for id, r := range radii {
+		if r < 6 || r > 80 {
+			t.Fatalf("%s radius %f out of [R_MIN 6, R_MAX 80]", id, r)
+		}
+	}
+}
+
+// scopeSubgraph keeps only stars within the radius scope (+ links between them) — far-drifted
+// stars are excluded from the re-stabilize/redistribute passes (acceptance A2).
+func TestScopeSubgraphExcludesFarStars(t *testing.T) {
+	g := ConsolidateGraph{
+		Stars: []ConsolidateStar{{ID: "near"}, {ID: "mid"}, {ID: "far"}},
+		Links: []ConsolidateLink{{AID: "near", BID: "mid", Weight: 0.5}, {AID: "mid", BID: "far", Weight: 0.5}},
+	}
+	radii := map[string]float64{"near": 10, "mid": 50, "far": 75}
+	sub := scopeSubgraph(g, radii, 60)
+	if len(sub.Stars) != 2 {
+		t.Fatalf("want 2 in-scope stars (near,mid), got %d", len(sub.Stars))
+	}
+	// The near-mid link is kept (both in scope); mid-far is dropped (far is out).
+	if len(sub.Links) != 1 || sub.Links[0].AID != "near" {
+		t.Fatalf("want only the near-mid link in scope, got %+v", sub.Links)
+	}
+}
+
+// spread fans clusters out deterministically: same input → same output, and two coincident
+// singleton clusters get distinct offsets (no collapse to one point — acceptance A4).
+func TestSpreadClustersDeterministicAndSeparating(t *testing.T) {
+	mk := func() (map[string]vec3, ConsolidateGraph) {
+		coords := map[string]vec3{"A": {0, 0, 0}, "B": {0, 0, 0}}
+		g := ConsolidateGraph{Stars: []ConsolidateStar{{ID: "A"}, {ID: "B"}}} // no links → two singleton clusters
+		return coords, g
+	}
+	c1, g1 := mk()
+	c2, g2 := mk()
+	spreadClusters(c1, g1)
+	spreadClusters(c2, g2)
+	for _, id := range []string{"A", "B"} {
+		if dist3(c1[id], c2[id]) > 1e-12 {
+			t.Fatalf("spread not deterministic for %s: %v vs %v", id, c1[id], c2[id])
+		}
+	}
+	// The two singletons started coincident; distinct hash directions must separate them.
+	if dist3(c1["A"], c1["B"]) < 1e-6 {
+		t.Fatalf("spread left clusters coincident: A=%v B=%v", c1["A"], c1["B"])
+	}
+}
+
+// A multi-star cluster's spread offset must NOT depend on link iteration order — the offset is
+// keyed on the cluster's min member id, not the union-find root (whose identity is order-dependent).
+func TestSpreadClustersOrderIndependent(t *testing.T) {
+	stars := []ConsolidateStar{{ID: "a"}, {ID: "b"}, {ID: "c"}}
+	// Same triangle cluster, links in two different orders (union-find may pick a different root).
+	g1 := ConsolidateGraph{Stars: stars, Links: []ConsolidateLink{
+		{AID: "a", BID: "b", Weight: 0.5}, {AID: "b", BID: "c", Weight: 0.5}}}
+	g2 := ConsolidateGraph{Stars: stars, Links: []ConsolidateLink{
+		{AID: "b", BID: "c", Weight: 0.5}, {AID: "a", BID: "b", Weight: 0.5}}}
+	c1 := map[string]vec3{"a": {0, 0, 0}, "b": {0, 0, 0}, "c": {0, 0, 0}}
+	c2 := map[string]vec3{"a": {0, 0, 0}, "b": {0, 0, 0}, "c": {0, 0, 0}}
+	spreadClusters(c1, g1)
+	spreadClusters(c2, g2)
+	for _, id := range []string{"a", "b", "c"} {
+		if dist3(c1[id], c2[id]) > 1e-12 {
+			t.Fatalf("spread differs by link order for %s: %v vs %v", id, c1[id], c2[id])
+		}
+	}
+}
+
+// spreadDirection is a deterministic unit vector from the cluster's canonical key.
+func TestSpreadDirectionUnit(t *testing.T) {
+	d := spreadDirection("some-root-id")
+	r := math.Sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2])
+	if math.Abs(r-1) > 1e-9 {
+		t.Fatalf("spreadDirection not unit length: |d| = %f", r)
+	}
+	if dist3(spreadDirection("x"), spreadDirection("x")) != 0 {
+		t.Fatal("spreadDirection not deterministic")
 	}
 }
 

@@ -196,10 +196,12 @@ FROM evolution_history WHERE memory_id = @memory_id AND user_id = @user_id ORDER
 -- ── 야간 공고화(spec 27) ──
 
 -- name: ListStarsForConsolidate :many
--- ①② 입력: 야간 재안정화/재분배가 쓰는 별 목록 + 안정 좌표 캐시(있으면 다음 밤 force-sim
--- 시드). last_recalled_at은 흥분성·재분배 가중(22 파생)에, stable_*는 재진입 시드에 쓴다.
--- 좌표는 권위 아님(헌법3) — proto로 클라에 나가지 않는다. user_id = isolation.
-SELECT m.id AS memory_id, m.last_recalled_at, m.stable_x, m.stable_y, m.stable_z
+-- 야간 패스 입력: 별 목록 + 반지름 근사 원자료(intensity·recall_count·last_recalled_at — change 18
+-- Bjork R 공식)와 안정 좌표 캐시(stable_*, 있으면 다음 밤 force-sim 재진입 시드). 반지름은 재안정화/
+-- 재분배 스코프와 요지화 단계 트리거에 쓰고, last_recalled_at은 R의 시간 항이다. 좌표는 권위 아님
+-- (헌법3) — proto로 클라에 나가지 않는다. user_id = isolation.
+SELECT m.id AS memory_id, m.last_recalled_at, m.intensity, m.recall_count,
+       m.stable_x, m.stable_y, m.stable_z
 FROM memories m
 WHERE m.user_id = $1
 ORDER BY m.created_at, m.fragment_index;
@@ -211,35 +213,27 @@ FROM (SELECT unnest(@ids::text[]) AS id,
              unnest(@xs::float4[]) AS x, unnest(@ys::float4[]) AS y, unnest(@zs::float4[]) AS z) AS c
 WHERE m.id = c.id AND m.user_id = @user_id;
 
--- name: GistSimplifyStars :many
--- ③ 요지: 오래되고(created_at < age_cutoff) 저회상인(last_recalled_at < recall_cutoff) 별의
--- form_seed_delta를 단조 증가(GREATEST — 후퇴 금지, LEAST로 1.0 상한). 이미 1.0이면 제외
--- (여유 있는 별만 — 무변 스냅샷 방지). version++ 해 변천사 길이와 정합. WHERE는 시각·값 비교만
--- (exp()/감쇠식 금지 — sargable). RETURNING으로 갱신된 행을 그대로 AppendGistHistory에 넘겨
--- memories ↔ evolution_history 정합을 보장(스냅샷 의존·레이스 없음). 원본 record 불변(헌법1).
--- 최근(idle_cutoff~지금) nightly_gist 변천사가 이미 있는 별은 제외 — 이번 잡이 RunConsolidation
--- 트랜잭션으로 한 시도 안에선 원자적이지만, 잡 lease 만료로 재claim돼 *다시* 돌면(거대 그래프·
--- 다중 워커) 같은 밤 form_seed_delta가 두 번 진행될 수 있다. 직전 nightly_gist append를 보고
--- 건너뛰어 야간 1회 멱등을 보장한다(첫 시도의 history가 커밋돼 있으므로 재실행은 무변).
-UPDATE memories
-SET form_seed_delta = GREATEST(memories.form_seed_delta, LEAST(1.0::real, memories.form_seed_delta + sqlc.arg(simplify)::float4)),
-    version = memories.version + 1
-WHERE memories.user_id = @user_id
-  AND memories.created_at < sqlc.arg(age_cutoff)::timestamptz
-  AND memories.last_recalled_at < sqlc.arg(recall_cutoff)::timestamptz
-  AND memories.form_seed_delta < 1.0
-  AND NOT EXISTS (
-    SELECT 1 FROM evolution_history eh
-    WHERE eh.memory_id = memories.id AND eh.user_id = memories.user_id
-      AND eh.trigger = 'nightly_gist'
-      AND eh.created_at > sqlc.arg(gist_dedupe_cutoff)::timestamptz
-  )
-RETURNING memories.id AS memory_id, memories.version, memories.brightness_offset, memories.hue_shift, memories.form_seed_delta;
+-- name: AbstractStarsByRadius :many
+-- 요지: 별의 추상화 단계를 그 별 반지름이 넘긴 임계 수(target_stage, 서버가 change 18 공식으로 산출)로
+-- 올린다. abstraction_stage = GREATEST(현재, target)으로 단조(후퇴 금지·≤4), target_stage > 현재인 별만
+-- 갱신(=실제 승급한 별만 RETURNING) → version++ 해 변천사 길이와 정합. 트리거가 나이/회상 → 반지름이라
+-- 별도 dedupe 윈도가 필요 없다: GREATEST가 멱등이라 같은 밤 재실행이 target≤현재면 무변(승급 0행). 연속
+-- form_seed_delta는 더는 안 건드린다(23 소유로 보존 — 형태는 plan 53이 abstraction_stage로 빚는다).
+-- RETURNING으로 승급 행을 그대로 AppendGistHistory에 넘겨 memories ↔ evolution_history 정합 보장. 원본
+-- record 불변(헌법1).
+UPDATE memories AS m
+SET abstraction_stage = GREATEST(m.abstraction_stage, t.stage),
+    version = m.version + 1
+FROM (SELECT unnest(@ids::text[]) AS id, unnest(@stages::int[]) AS stage) AS t
+WHERE m.id = t.id AND m.user_id = @user_id
+  AND t.stage > m.abstraction_stage
+RETURNING m.id AS memory_id, m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta;
 
 -- name: AppendGistHistory :exec
--- ③ 요지 변천사 append(INSERT 전용 — UPDATE/DELETE 금지, 헌법1·2). trigger='nightly_gist',
--- pe=0(시간 기반·예측오차 무관), dir=-1(형태가 한 단계 가라앉음). GistSimplifyStars의 RETURNING
--- 값(version·brightness_offset 스냅샷·hue_shift·새 form_seed_delta)을 그대로 싣는다.
+-- 요지 변천사 append(INSERT 전용 — UPDATE/DELETE 금지, 헌법1·2). trigger='nightly_gist',
+-- pe=0(시간 기반·예측오차 무관), dir=-1(형태가 한 단계 가라앉음). AbstractStarsByRadius의 RETURNING
+-- 값(version·brightness_offset 스냅샷·hue_shift·form_seed_delta)을 그대로 싣는다 — form_seed_delta는
+-- 안 바뀌지만 그 버전 시점 스냅샷으로 24 타임랩스 정합을 유지한다.
 INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir)
 SELECT g.id, g.memory_id, @user_id, g.version, g.brightness, g.hue_shift, g.form_seed_delta, 'nightly_gist', 0, -1
 FROM (
@@ -250,3 +244,19 @@ FROM (
            unnest(@hue_shifts::float4[]) AS hue_shift,
            unnest(@form_seed_deltas::float4[]) AS form_seed_delta
 ) AS g;
+
+-- name: ListReknnCandidates :many
+-- 재-KNN 패스 입력: 오래됐고(created_at < age_cutoff) 건강한 링크가 하나도 없는(고립이거나 가지치기로
+-- 끊긴) 별 + 임베딩. "건강한 링크"는 severed=false 이고 weight ≥ active_threshold 인 행. 워커가 각 별의
+-- 임베딩으로 KnnNearest를 다시 돌려 그새 생긴 닮은 기억과 뒤늦게 잇는다(가지치기·끊김의 짝 — 재연결 안전망).
+-- 임베딩 없는 별은 JOIN으로 자연 제외. user_id = isolation.
+SELECT m.id AS memory_id, e.embedding
+FROM memories m
+JOIN embeddings e ON e.memory_id = m.id
+WHERE m.user_id = @user_id
+  AND m.created_at < sqlc.arg(age_cutoff)::timestamptz
+  AND NOT EXISTS (
+    SELECT 1 FROM memory_links ml
+    WHERE ml.user_id = m.user_id AND (ml.a_id = m.id OR ml.b_id = m.id)
+      AND ml.severed = false AND ml.weight >= sqlc.arg(active_threshold)::float4
+  );

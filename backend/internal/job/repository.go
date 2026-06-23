@@ -77,32 +77,56 @@ type GraphStore interface {
 	// --- nightly consolidation (spec 27) ---
 
 	// LoadConsolidateGraph reads the whole user graph the nightly pass operates on:
-	// every star (id + last_recalled_at + cached stable coords) and every synapse
-	// (a/b + weight + last_activated_at). The coords are a CACHE, not authority
+	// every star (id + last_recalled_at + the raw fields the change-18 radius needs:
+	// intensity, recall_count + cached stable coords) and every synapse (a/b + weight +
+	// link_type + severed + last_activated_at). The coords are a CACHE, not authority
 	// (constitution §3) — the server seeds its own re-layout from them.
 	LoadConsolidateGraph(ctx context.Context, userID string) (ConsolidateGraph, error)
-	// RunConsolidation applies passes ②–④ AND completes the job in ONE transaction:
-	// cache the re-stabilized coords, gist-simplify (RETURNING) + append a coherent
-	// nightly_gist history row per gisted star, prune weak links, then mark the job
-	// done. Atomic completion is what makes a retry exactly-once — a failure rolls back
-	// every write together so the next attempt re-runs from a clean slate (the gist step
-	// is monotonic but NOT idempotent if re-applied, so it must not commit without the
-	// job's completion). Returns the number of stars gisted (for the log). Never deletes
-	// rows (constitution §2) and never touches records (§1).
-	RunConsolidation(ctx context.Context, jobID, userID string, w ConsolidationWrite) (gisted int, err error)
+	// ReknnCandidates lists the old, isolated-or-severed stars the nightly re-KNN pass
+	// re-embeds against (spec 27 change 20): created before ageCutoff with no healthy link
+	// (weight ≥ activeThreshold AND not severed), each with its embedding vector. The worker
+	// re-runs KNN per candidate to late-link similar memories that appeared since.
+	ReknnCandidates(ctx context.Context, userID string, ageCutoff time.Time, activeThreshold float64) ([]ReknnCandidate, error)
+	// RunConsolidation applies the nightly write passes AND completes the job in ONE
+	// transaction: cache the re-stabilized in-scope coords, reweight links (temporal↓·
+	// semantic↑), abstract stars by radius (RETURNING) + append a coherent nightly_gist
+	// history row per advanced star, prune weak links (sever, last-link protected), revive/
+	// create the re-KNN links, then mark the job done. Atomic completion is what makes a retry
+	// exactly-once — a failure rolls back every write together so the next attempt re-runs from
+	// a clean slate. The radius-triggered abstraction is idempotent (GREATEST, target>current),
+	// so a re-run never double-advances. Returns the number of stars advanced (for the log).
+	// Never deletes rows (constitution §2) and never touches records (§1).
+	RunConsolidation(ctx context.Context, jobID, userID string, w ConsolidationWrite) (advanced int, err error)
 }
 
-// ConsolidationWrite is the nightly pass's write payload (spec 27) — the re-stabilized
-// coordinate cache plus the gist/prune thresholds, applied atomically by RunConsolidation.
+// ConsolidationWrite is the nightly pass's write payload (spec 27 change 20), applied
+// atomically by RunConsolidation: the re-stabilized in-scope coordinate cache, the link
+// reweight/prune knobs, the radius-derived abstraction targets, and the re-KNN links.
 type ConsolidationWrite struct {
-	Coords           []StableCoord // ①② re-stabilized coords to cache (re-entry only — §3)
-	Simplify         float64       // ③ form_seed_delta monotonic step
-	AgeCutoff        time.Time     // ③ gist only stars created before this
-	RecallCutoff     time.Time     // ③ …and un-recalled since this
-	GistDedupeCutoff time.Time     // ③ …and not already nightly-gisted since this (reclaim idempotency)
-	WeakThreshold    float64       // ④ prune links weaker than this
-	Floor            float64       // ④ …down to this weight (dim, never deleted)
-	IdleCutoff       time.Time     // ④ …and un-activated since this
+	Coords        []StableCoord // re-stabilized in-scope coords to cache (re-entry only — §3)
+	TemporalDecay float64       // reweight: temporal-class link weight ×= this (<1)
+	SemanticGain  float64       // reweight: semantic link weight += this…
+	SemanticCap   float64       // …capped here (connection.semantic_weight_cap)
+	GistStages    []StageTarget // abstraction targets (radius → stage); SQL bumps where target > current
+	WeakThreshold float64       // prune links weaker than this…
+	IdleCutoff    time.Time     // …and un-activated since this
+	Floor         float64       // …down to this weight (dim + severed, never deleted)
+	ReknnLinks    []LinkUpsert  // re-KNN reconnection links (revive severed / create new)
+}
+
+// StageTarget is one star's radius-derived abstraction stage (spec 27 change 20): the count
+// of gist_stage_radii thresholds its radius exceeds (0..4). RunConsolidation raises
+// abstraction_stage to GREATEST(current, Stage) for stars where Stage > current.
+type StageTarget struct {
+	ID    string
+	Stage int
+}
+
+// ReknnCandidate is one old isolated/severed star + its embedding for the nightly re-KNN
+// reconnection pass (spec 27 change 20).
+type ReknnCandidate struct {
+	ID  string
+	Vec []float32
 }
 
 // Scheduler is the nightly ticker's PRODUCER port (spec 27). It is deliberately
@@ -125,23 +149,29 @@ type ConsolidateGraph struct {
 	Links []ConsolidateLink
 }
 
-// ConsolidateStar is one node for the server-side re-layout: its recency (the
-// redistribution/excitability weight) plus the cached stable coordinate (nil =
-// never cached → cold seed). Coords are a re-entry cache, not authority (§3).
+// ConsolidateStar is one node for the server-side re-layout. Its raw Bjork fields
+// (Intensity, RecallCount, LastRecalledAt) feed the change-18 radius the night uses for
+// the re-stabilize/redistribute scope AND the abstraction-stage trigger; the cached stable
+// coordinate (nil = never cached → cold seed) is a re-entry cache, not authority (§3).
 type ConsolidateStar struct {
 	ID             string
 	LastRecalledAt time.Time
+	Intensity      float64 // change-18 radius: emotional consolidation term of storage strength S
+	RecallCount    int     // change-18 radius: cumulative recall term of storage strength S
 	StableX        *float64
 	StableY        *float64
 	StableZ        *float64
 }
 
-// ConsolidateLink is one weighted, undirected synapse for the re-layout springs +
-// cluster derivation. LastActivatedAt feeds the cluster excitability bias.
+// ConsolidateLink is one weighted, undirected synapse for the re-layout springs + cluster
+// derivation. LinkType drives the nightly reweight (temporal↓·semantic↑); Severed marks a
+// pruned/broken link (re-KNN revives it); LastActivatedAt feeds the prune idle cutoff.
 type ConsolidateLink struct {
 	AID             string
 	BID             string
 	Weight          float64
+	LinkType        string
+	Severed         bool
 	LastActivatedAt time.Time
 }
 

@@ -307,12 +307,14 @@ func (r *pgRepository) LoadConsolidateGraph(ctx context.Context, userID string) 
 		stars = append(stars, ConsolidateStar{
 			ID:             row.MemoryID,
 			LastRecalledAt: row.LastRecalledAt.Time,
+			Intensity:      dbutil.Float64Value(row.Intensity),
+			RecallCount:    int(row.RecallCount),
 			StableX:        dbutil.Float64Ptr(row.StableX),
 			StableY:        dbutil.Float64Ptr(row.StableY),
 			StableZ:        dbutil.Float64Ptr(row.StableZ),
 		})
 	}
-	linkRows, err := q.ListLinksByUser(ctx, userID)
+	linkRows, err := q.ListLinksForConsolidate(ctx, userID)
 	if err != nil {
 		return ConsolidateGraph{}, fmt.Errorf("list links for consolidate: %w", err)
 	}
@@ -322,23 +324,47 @@ func (r *pgRepository) LoadConsolidateGraph(ctx context.Context, userID string) 
 			AID:             row.AID,
 			BID:             row.BID,
 			Weight:          float64(row.Weight),
+			LinkType:        row.LinkType,
+			Severed:         row.Severed,
 			LastActivatedAt: row.LastActivatedAt.Time,
 		})
 	}
 	return ConsolidateGraph{Stars: stars, Links: links}, nil
 }
 
-// RunConsolidation applies passes ②–④ + job completion in ONE transaction (spec 27).
-// Two layers make a re-run safe, since the gist UPDATE advances form_seed_delta by a fixed
-// step (monotonic but NOT idempotent):
-//   - within an attempt: bundling gist + its history append + prune + stable-coord cache +
-//     CompleteJob in one tx means a mid-job failure rolls them ALL back together — never a
-//     half-applied (and re-appliable) consolidation.
-//   - across attempts: if the whole job exceeds the 120s claim lease (huge graph) or a worker
-//     crashes after committing, the reclaimed re-run's gist WHERE (gist_dedupe_cutoff) sees
-//     the prior committed nightly_gist history and skips those stars — so the same night never
-//     double-advances. The gist RETURNING rows feed the history insert in-tx, so memories ↔
-//     evolution_history can never drift. No DELETE (constitution §2); records untouched (§1).
+// ReknnCandidates lists old isolated/severed stars + their embedding for the nightly re-KNN
+// reconnection pass (spec 27 change 20). The vector is decoded to the domain's []float32.
+func (r *pgRepository) ReknnCandidates(ctx context.Context, userID string, ageCutoff time.Time, activeThreshold float64) ([]ReknnCandidate, error) {
+	rows, err := gen.New(r.pool).ListReknnCandidates(ctx, gen.ListReknnCandidatesParams{
+		UserID:          userID,
+		AgeCutoff:       pgtype.Timestamptz{Time: ageCutoff, Valid: true},
+		ActiveThreshold: float32(activeThreshold),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list re-knn candidates: %w", err)
+	}
+	out := make([]ReknnCandidate, 0, len(rows))
+	for _, row := range rows {
+		if row.Embedding == nil {
+			continue // no embedding yet → can't KNN; the JOIN normally excludes these
+		}
+		out = append(out, ReknnCandidate{ID: row.MemoryID, Vec: row.Embedding.Slice()})
+	}
+	return out, nil
+}
+
+// RunConsolidation applies the nightly write passes + job completion in ONE transaction (spec 27
+// change 20). Bundling cache → reweight → abstract(+history) → prune → re-KNN → CompleteJob in one
+// tx means a mid-job failure rolls them ALL back together — never a half-applied consolidation. Every
+// write is idempotent so a reclaimed re-run (huge graph past the 120s lease, or a crash after commit)
+// is safe: the abstraction UPDATE is monotonic GREATEST AND filtered to target > current (a re-run
+// advances nothing, so no duplicate nightly_gist rows), the reweight/prune/re-KNN are GREATEST/LEAST
+// idempotent. The abstraction RETURNING rows feed the history insert in-tx, so memories ↔
+// evolution_history can never drift. No DELETE (constitution §2); records untouched (§1).
+//
+// Pass order matters: reweight runs BEFORE prune so prune/last-link-protection see the reweighted
+// weights, and re-KNN runs AFTER prune so freshly revived links (last_activated_at=now) aren't
+// immediately re-pruned.
 func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID string, w ConsolidationWrite) (int, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -362,40 +388,55 @@ func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID strin
 		}
 	}
 
-	gisted, err := q.GistSimplifyStars(ctx, gen.GistSimplifyStarsParams{
-		Simplify:         float32(w.Simplify),
-		UserID:           userID,
-		AgeCutoff:        pgtype.Timestamptz{Time: w.AgeCutoff, Valid: true},
-		RecallCutoff:     pgtype.Timestamptz{Time: w.RecallCutoff, Valid: true},
-		GistDedupeCutoff: pgtype.Timestamptz{Time: w.GistDedupeCutoff, Valid: true},
-	})
-	if err != nil {
-		return 0, fmt.Errorf("gist simplify: %w", err)
+	if err := q.ReweightLinks(ctx, gen.ReweightLinksParams{
+		UserID:        userID,
+		TemporalDecay: float32(w.TemporalDecay),
+		SemanticGain:  float32(w.SemanticGain),
+		SemanticCap:   float32(w.SemanticCap),
+	}); err != nil {
+		return 0, fmt.Errorf("reweight links: %w", err)
 	}
-	if len(gisted) > 0 {
-		histIDs := make([]string, len(gisted))
-		memoryIDs := make([]string, len(gisted))
-		versions := make([]int32, len(gisted))
-		brightnesses := make([]float32, len(gisted))
-		hueShifts := make([]float32, len(gisted))
-		formSeedDeltas := make([]float32, len(gisted))
-		for i, row := range gisted {
-			historyID, err := id.New()
-			if err != nil {
-				return 0, fmt.Errorf("gist history id: %w", err)
-			}
-			histIDs[i] = historyID
-			memoryIDs[i] = row.MemoryID
-			versions[i] = row.Version
-			brightnesses[i] = row.BrightnessOffset // brightness_offset snapshot at this version (23)
-			hueShifts[i] = row.HueShift
-			formSeedDeltas[i] = row.FormSeedDelta
+
+	var advanced int
+	if len(w.GistStages) > 0 {
+		ids := make([]string, len(w.GistStages))
+		stages := make([]int32, len(w.GistStages))
+		for i, s := range w.GistStages {
+			ids[i] = s.ID
+			stages[i] = int32(s.Stage)
 		}
-		if err := q.AppendGistHistory(ctx, gen.AppendGistHistoryParams{
-			UserID: userID, Ids: histIDs, MemoryIds: memoryIDs, Versions: versions,
-			Brightnesses: brightnesses, HueShifts: hueShifts, FormSeedDeltas: formSeedDeltas,
-		}); err != nil {
-			return 0, fmt.Errorf("append gist history: %w", err)
+		gisted, err := q.AbstractStarsByRadius(ctx, gen.AbstractStarsByRadiusParams{
+			UserID: userID, Ids: ids, Stages: stages,
+		})
+		if err != nil {
+			return 0, fmt.Errorf("abstract stars: %w", err)
+		}
+		advanced = len(gisted)
+		if len(gisted) > 0 {
+			histIDs := make([]string, len(gisted))
+			memoryIDs := make([]string, len(gisted))
+			versions := make([]int32, len(gisted))
+			brightnesses := make([]float32, len(gisted))
+			hueShifts := make([]float32, len(gisted))
+			formSeedDeltas := make([]float32, len(gisted))
+			for i, row := range gisted {
+				historyID, err := id.New()
+				if err != nil {
+					return 0, fmt.Errorf("gist history id: %w", err)
+				}
+				histIDs[i] = historyID
+				memoryIDs[i] = row.MemoryID
+				versions[i] = row.Version
+				brightnesses[i] = row.BrightnessOffset // brightness_offset snapshot at this version (23)
+				hueShifts[i] = row.HueShift
+				formSeedDeltas[i] = row.FormSeedDelta
+			}
+			if err := q.AppendGistHistory(ctx, gen.AppendGistHistoryParams{
+				UserID: userID, Ids: histIDs, MemoryIds: memoryIDs, Versions: versions,
+				Brightnesses: brightnesses, HueShifts: hueShifts, FormSeedDeltas: formSeedDeltas,
+			}); err != nil {
+				return 0, fmt.Errorf("append gist history: %w", err)
+			}
 		}
 	}
 
@@ -408,13 +449,36 @@ func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID strin
 		return 0, fmt.Errorf("prune weak links: %w", err)
 	}
 
-	if err := q.CompleteJob(ctx, jobID); err != nil {
+	if len(w.ReknnLinks) > 0 {
+		aIDs := make([]string, len(w.ReknnLinks))
+		bIDs := make([]string, len(w.ReknnLinks))
+		weights := make([]float64, len(w.ReknnLinks))
+		userIDs := make([]string, len(w.ReknnLinks))
+		for i, l := range w.ReknnLinks {
+			aIDs[i], bIDs[i], weights[i], userIDs[i] = l.AID, l.BID, l.Weight, l.UserID
+		}
+		if err := q.ReknnUpsertLinks(ctx, gen.ReknnUpsertLinksParams{
+			AIds: aIDs, BIds: bIDs, Weights: weights, UserIds: userIDs,
+		}); err != nil {
+			return 0, fmt.Errorf("re-knn upsert links: %w", err)
+		}
+	}
+
+	// Guarded completion: 0 rows means another worker already completed this job (it outran the
+	// 120s lease and was reclaimed). The reweight is not idempotent, so we must NOT commit a second
+	// time — roll back our whole tx (defer) and report success (not failure: failWithBackoff would
+	// resurrect the already-done job). The first committer wins; the consolidation runs exactly once.
+	done, err := q.CompleteConsolidateJob(ctx, jobID)
+	if err != nil {
 		return 0, fmt.Errorf("complete consolidate: %w", err)
+	}
+	if done == 0 {
+		return 0, nil // already completed by another worker — discard our writes via deferred rollback
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return 0, fmt.Errorf("commit consolidation: %w", err)
 	}
-	return len(gisted), nil
+	return advanced, nil
 }
 
 // --- nightly scheduler (producer, spec 27) ---

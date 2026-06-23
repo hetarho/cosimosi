@@ -56,22 +56,38 @@
 | 영속 | 클라 증분 누적 → 디바운스 유휴 `5s`(`DEBOUNCE_IDLE_MS`) + `beforeunload` flush로 unary 배치 |
 | 멱등 | `batch_id`를 `processed_batches`에 먼저 CLAIM(같은 tx) — 재전송 이중 가산 방지 |
 
-### link_type
+### link_type · severed
 
 | 규칙 | 정전 값 |
 |---|---|
 | 정의된 값 | `'semantic'` \| `'temporal'` \| `'entity'` \| `'co_recall'` \| `'intra_entry'`(21) |
 | 실제 생성 경로 | 의미 생성 = `'semantic'`, 공동 회상 = `'co_recall'`, 일내 결속 = `'intra_entry'`(`'temporal'`·`'entity'`는 타입에만 정의, 생성하는 경로 없음) |
+| `severed`(00013, 27 change 20) | 가지치기가 끊은 듯 처리한 선의 플래그(`boolean`, 기본 false). 행은 보존(삭제 없음 — 헌법2)하되 끊김 상태를 표시한다. 재가중·가지치기는 `severed=false` 선만 보고, 재-KNN이 닮은 기억을 다시 찾으면 `severed=false`로 되살린다. proto 미노출(클라는 weight로만 밝기 산출 — severed 무관) |
 
-### 가지치기 (prune, 27)
+### 재가중 (reweight, 27 change 20)
 
-야간 공고화(27)는 약하고 거의 안 쓰인 선의 **`weight`를 바닥으로** 낮춘다 — 밝기는 클라가 `weight`로 산출하므로 선이 *어두워질 뿐 사라지지 않는다*. 행은 남고 클릭 가능(삭제 0 — 헌법2).
+야간 공고화는 link_type별로 weight를 다르게 민다 — **시간 기반 연결은 약화, 의미 기반은 강화**. 과학: 시간창("그때 같이 썼다")은 짧고 의미·도식 연결이 장기 보존된다. `severed`·`co_recall`은 제외.
 
 | 규칙 | 정전 값 |
 |---|---|
-| 가지치기 대상 | `weight < WEAK_THRESHOLD=0.2` 이고 `last_activated_at < now - WEAK_IDLE=14일` |
-| 적용 | `weight = LEAST(weight, FLOOR=0.05)` — 절대 올리지 않고, `DELETE` 없다(행 보존) |
-| WHERE 제약 | `weight`·시각 비교만(sargable) — `exp()`/감쇠식 금지(밝기 자체는 26 클라 모델 권위) |
+| temporal 계열(`intra_entry`·`temporal`) | `weight = GREATEST(0, weight × TEMPORAL_LINK_DECAY=0.97)` — 매일 조금씩 약화 |
+| `semantic` | `weight = LEAST(SEMANTIC_CAP=0.79, weight + SEMANTIC_LINK_GAIN=0.01)` — 상한까지 강화 |
+| 제외 | `co_recall`(능동 공동회상 헵 — 사용으로 강화되는 별개 신호), `severed`(끊긴 선 — 되살림은 오직 재-KNN) |
+
+### 가지치기 + 마지막-링크 보호 (prune, 27 change 20)
+
+야간 공고화는 약하고 거의 안 쓰인 선의 **`weight`를 바닥으로** 낮추고 `severed=true`로 끊은 듯 처리한다 — 밝기는 클라가 `weight`로 산출하므로 선이 *어두워질 뿐 사라지지 않는다*. 행은 남고 클릭 가능(삭제 0 — 헌법2). 단 **별마다 살아있는 최강 링크 1개는 보호**해 완전 고립을 막는다.
+
+| 규칙 | 정전 값 |
+|---|---|
+| 가지치기 대상 | `severed=false` 이고 `weight < WEAK_THRESHOLD=0.2` 이고 `last_activated_at < now - WEAK_IDLE=14일` |
+| 적용 | `weight = LEAST(weight, FLOOR=0.05)` + `severed=true` — 절대 올리지 않고, `DELETE` 없다(행 보존) |
+| 마지막-링크 보호 (degree ≥ 1) | 보호·대상 판정을 **`severed=false` 링크로만** 본다. 노드별 살아있는 최강 링크(동률은 a_id,b_id tie-break)가 어느 한쪽 끝에서라도 1순위면 제외 — 살아있는 링크가 있는 별은 최소 1개 미severed 링크를 유지(이미 끊긴 최강이 보호돼 마지막 살아있는 링크가 끊기는 일 방지) |
+| WHERE 제약 | `weight`·시각·`severed` 비교만(sargable) — `exp()`/감쇠식 금지(밝기 자체는 26 클라 모델 권위) |
+
+### 재-KNN 재연결 (reconnect, 27 change 20)
+
+오래됐고(`created_at < now - 7일`) 건강한 링크(`severed=false`·`weight ≥ 0.2`)가 없는 고립/끊긴 별의 임베딩으로 의미 KNN(τ=0.75)을 다시 돌려, 닮은 기억과 `semantic` 링크를 새로 만들거나 끊긴 링크를 `severed=false`로 되살린다(가지치기·끊김의 짝 — 재연결 안전망). weight = `min(cos_sim, SEMANTIC_CAP=0.79)`(시간 보너스 없음). 무방향 쌍은 dedupe 후 `ON CONFLICT … GREATEST` 업서트.
 
 ### 시각 (visual)
 
@@ -106,4 +122,4 @@
 - 시각(weight·max(A_MIN,brightness)→emissive/alpha/펄스): plan 09 · `frontend/src/entities/synapse/model/mapping.ts`(`visualIntensity`·`A_MIN`·`ALPHA_MIN`), 별 감쇠 입력 plan 12.
 - `co_activation_count` DTO 노출 + 링크 활력(`vitality`→펄스): plan 26 · `proto/cosimosi/v1/memory.proto`(`Synapse.co_activation_count`), `backend/internal/memory/handler.go`(GetUniverse 매핑), `frontend/src/entities/synapse/model/{store.ts,mapping.ts,types.ts}`(`toSynapseEdge`·`vitality`·`pulseAmp`). degree·Σweight 정규화(`degreeNormById`/`weightedDegreeById`)는 별 *반지름*(연결 가중 차등 표류, change 18) 입력([universe](universe.md)·[star](star.md)).
 - 삭제 금지 전체 반환: plan 05/11 · `backend/internal/db/queries/link.sql`(`ListLinksByUser`).
-- 가지치기(약·idle 선 weight→FLOOR 0.05·삭제 없음): plan 27 · `backend/internal/db/queries/link.sql`(`PruneWeakLinks`), `backend/internal/job/consolidate.go`(`handleConsolidate` ④·`weakEdgeThreshold`/`weakEdgeIdleDays`/`weakEdgeFloor`).
+- 재가중(temporal↓·semantic↑·co_recall/severed 제외) · 가지치기(약·idle 선 weight→FLOOR 0.05 + severed·마지막-링크 보호·삭제 없음) · 재-KNN 재연결(severed 되살림) · severed 컬럼: plan 27(change 20) · `backend/internal/db/queries/link.sql`(`ReweightLinks`·`PruneWeakLinks`·`ReknnUpsertLinks`·`ListLinksForConsolidate`)·`memory.sql`(`ListReknnCandidates`), `backend/internal/job/consolidate.go`(`handleConsolidate`·`collectReknnLinks`·`temporalLinkDecay`/`semanticLinkGain`/`weakEdge*`/`reknnMinAgeDays`), `db/migrations/00013_nightly_rework.sql`(`memory_links.severed`).

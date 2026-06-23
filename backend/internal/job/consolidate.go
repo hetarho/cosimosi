@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"math"
 	"time"
@@ -10,39 +11,41 @@ import (
 	"github.com/cosimosi/backend/internal/values"
 )
 
-// Nightly consolidation — "the universe's sleep" (spec 27). Once a night the ticker
-// enqueues one consolidate job per active user; the worker runs four ordered passes
-// over that user's whole graph, then leaves cluster excitability (spec 22) to its
-// natural time-decay so the next day's competitive allocation starts fresh (the 24h
-// engram-rotation cycle). NOTHING is deleted: stars/synapses are never row-removed
-// (constitution §2) and the original records are never touched (constitution §1).
+// Nightly consolidation — "the universe's sleep" (spec 27 change 20). Once a night the ticker
+// enqueues one consolidate job per active user; the worker runs ordered passes over that user's
+// graph, then leaves cluster excitability (spec 22) to its natural time-decay so the next day's
+// competitive allocation starts fresh (the 24h engram-rotation cycle). NOTHING is deleted:
+// stars/synapses are never row-removed (constitution §2); records are never touched (§1).
 //
-//  ① re-stabilize : full force-sim re-layout (pin policy released at night), cached
-//  ② redistribute : pull each star toward its host-cluster centroid (+schema bonus)
-//  ③ gist         : oldest, least-recalled stars' form simplifies one step (append-only history)
-//  ④ prune        : weak, long-idle synapses dim to a floor (weight only — kept, clickable)
-//  ⑤ excitability : reset — no-op (derived from timestamps, τ=6h; see note at the call site)
+// The passes work off each star's RADIUS (distance from centre), approximated server-side from
+// the raw Bjork fields (change-18 formula, radius.go) — the same radius the client renders:
+//  ① re-stabilize : server force-sim re-layout, SCOPED to stars within radiusScope (far-drifted
+//                    stars are left where they are — forgetting is respected, not undone)
+//  ② redistribute : pull each in-scope star toward its host-cluster centroid (no schema bonus)
+//  · spread       : nudge each cluster by a deterministic per-root displacement (no clumping)
+//  · reweight     : temporal-class links weaken, semantic links strengthen (time-window dissolves)
+//  ③ abstract     : radius crossing a stage threshold advances abstraction_stage (append-only history)
+//  ④ prune        : weak, long-idle synapses dim + sever, EXCEPT each star's strongest (degree ≥ 1)
+//  · re-KNN       : old isolated/severed stars re-link to newly-similar memories (reconnection net)
+//  ⑤ excitability : reset — no-op (derived from timestamps, τ=6h; see note at the RunConsolidation site)
 
-// 4-pass consolidation tuning — single source is spec/values.yaml (consolidation:), generated
-// into the values package. gistDedupeWindow stays here (a Duration, not a balance knob).
+// Nightly tuning — single source is spec/values.yaml (consolidation:), generated into the values
+// package. gistStageRadii is the array of radius thresholds; crossing each advances one stage (≤4).
 const (
-	redistributeLerp     = values.ConsolidationRedistributeLerp     // ② host-cluster centroid pull
-	schemaBonus          = values.ConsolidationSchemaBonus          // ② extra pull for schema-fit stars
-	schemaMinCluster     = values.ConsolidationSchemaMinCluster     // ② recurring-"schema" min cluster size
-	schemaMinDegree      = values.ConsolidationSchemaMinDegree      // ② "well-connected": ≥2 incident synapses
-	gistAgeDays          = values.ConsolidationGistAgeDays          // ③ older than this AND…
-	gistRecallCutoffDays = values.ConsolidationGistRecallCutoffDays // ③ …un-recalled since this → gist candidate
-	gistFormSimplify     = values.ConsolidationGistFormSimplify     // ③ monotonic form_seed_delta increase
-	weakEdgeThreshold    = values.ConsolidationWeakEdgeThreshold    // ④ weight below this AND…
-	weakEdgeIdleDays     = values.ConsolidationWeakEdgeIdleDays     // ④ …un-activated since this → pruned
-	weakEdgeFloor        = values.ConsolidationWeakEdgeFloor        // ④ pruned links drop here — dim, not gone (§2)
-	// gistDedupeWindow: a star nightly-gisted within this window is skipped by the next gist
-	// pass — so a lease-reclaimed or re-run consolidate job (huge graph exceeding the 120s
-	// claim lease, or multiple workers) doesn't double-advance form_seed_delta for the same
-	// night. Shorter than the 24h consolidation cadence (the next night gists normally),
-	// longer than any reclaim/backoff retry window.
-	gistDedupeWindow = 20 * time.Hour
+	redistributeLerp  = values.ConsolidationRedistributeLerp  // ② host-cluster centroid pull
+	radiusScope       = values.ConsolidationRadiusScope       // ①② only stars within this radius are re-stabilized/redistributed
+	temporalLinkDecay = values.ConsolidationTemporalLinkDecay // reweight: temporal-class link weight ×= this (<1)
+	semanticLinkGain  = values.ConsolidationSemanticLinkGain  // reweight: semantic link weight += this (capped at semanticWeightCap)
+	spreadStrength    = values.ConsolidationSpreadStrength    // spread: per-cluster deterministic displacement (world units)
+	weakEdgeThreshold = values.ConsolidationWeakEdgeThreshold // ④ weight below this AND…
+	weakEdgeIdleDays  = values.ConsolidationWeakEdgeIdleDays  // ④ …un-activated since this → pruned (last link protected)
+	weakEdgeFloor     = values.ConsolidationWeakEdgeFloor     // ④ pruned links drop here + severed — dim, not gone (§2)
+	reknnMinAgeDays   = values.ConsolidationReknnMinAgeDays   // re-KNN only stars older than this (and isolated/severed)
 )
+
+// gistStageRadii: ascending radius thresholds — a star's radius crossing each one is one step of
+// abstraction (abstraction_stage = count crossed, ≤4). A var (the generated value is a []float64).
+var gistStageRadii = values.ConsolidationGistStageRadii
 
 // Server-side force layout constants — the SAME force model as the client force-sim
 // (shared/lib/force-sim DEFAULTS, spec 07) so the cached coordinates are equivalent to
@@ -64,11 +67,10 @@ const (
 	layoutSeedJitter    = 0.001                     // per-index symmetry-break so coincident seeds still repel (≪ radius)
 )
 
-// handleConsolidate runs the four ordered passes for one claimed consolidate job. Each
-// pass is its own statement; a mid-pass failure backs the job off (failWithBackoff) and
-// re-runs — every pass is idempotent (coords re-cached, form_seed_delta monotonic via
-// GREATEST, weight floored via LEAST, history append keyed to the gist set), so a retry
-// never corrupts and never deletes (constitution §1·§2, acceptance 5.2).
+// handleConsolidate runs the ordered nightly passes for one claimed consolidate job. A mid-pass
+// failure backs the job off (failWithBackoff) and re-runs — every write is idempotent (coords
+// re-cached, abstraction_stage monotonic via GREATEST/target>current, weight floored via LEAST,
+// re-KNN links GREATEST-upserted), so a retry never corrupts and never deletes (§1·§2).
 func (w *Worker) handleConsolidate(ctx context.Context, j Job) error {
 	graph, err := w.store.LoadConsolidateGraph(ctx, j.UserID)
 	if err != nil {
@@ -83,39 +85,105 @@ func (w *Worker) handleConsolidate(ctx context.Context, j Job) error {
 		return nil
 	}
 	now := time.Now().UTC()
+	nowDays := float64(now.Unix()) / 86400.0
 
-	// ① re-stabilize + ② redistribute — pure, in-memory; result is a re-entry CACHE (§3).
-	coords := consolidateLayout(graph)
-	redistribute(coords, graph)
-	stable := make([]StableCoord, 0, len(graph.Stars))
-	for _, s := range graph.Stars {
+	// Each star's radius (change-18 formula, radius.go) drives BOTH the layout scope and the
+	// abstraction stage — the server approximates the client-rendered distance from raw fields.
+	radii := starRadii(graph, nowDays)
+
+	// ① re-stabilize + ② redistribute + spread — pure, in-memory, SCOPED to the near active region
+	// (radius ≤ radiusScope): far-drifted (nearly forgotten) stars are left where they are so the
+	// night doesn't keep hauling them back inward (acceptance A2). Result is a re-entry CACHE (§3).
+	sub := scopeSubgraph(graph, radii, radiusScope)
+	coords := consolidateLayout(sub)
+	redistribute(coords, sub)
+	spreadClusters(coords, sub)
+	stable := make([]StableCoord, 0, len(sub.Stars))
+	for _, s := range sub.Stars {
 		p := coords[s.ID]
 		stable = append(stable, StableCoord{ID: s.ID, X: p[0], Y: p[1], Z: p[2]})
 	}
 
-	// Passes ②(cache) → ③ gist (+nightly_gist history) → ④ prune → job complete, ALL in one
-	// transaction (RunConsolidation). Atomic completion is the retry fence: the gist step is
-	// monotonic but not idempotent, so a failure must roll back every write together rather
-	// than leave a half-applied (and re-appliable) consolidation. ⑤ excitability reset (24h
-	// rotation) is a NO-OP: e(c,t) (spec 22) is derived from last_recalled_at/last_activated_at
-	// with τ=6h and has no persistent column — by the time this runs (hours after the day's
-	// activity) morning's e is already ≈0 by time-decay, so the reset is intrinsic, not a write.
-	gisted, err := w.store.RunConsolidation(ctx, j.ID, j.UserID, ConsolidationWrite{
-		Coords:           stable,
-		Simplify:         gistFormSimplify,
-		AgeCutoff:        daysBefore(now, gistAgeDays),
-		RecallCutoff:     daysBefore(now, gistRecallCutoffDays),
-		GistDedupeCutoff: now.Add(-gistDedupeWindow),
-		WeakThreshold:    weakEdgeThreshold,
-		Floor:            weakEdgeFloor,
-		IdleCutoff:       daysBefore(now, weakEdgeIdleDays),
+	// Abstraction targets: each star's radius → the count of stage thresholds it has crossed.
+	// RunConsolidation raises abstraction_stage to GREATEST(current, target) where it advances.
+	stages := make([]StageTarget, 0, len(graph.Stars))
+	for _, s := range graph.Stars {
+		if st := stageForRadius(radii[s.ID], gistStageRadii); st > 0 {
+			stages = append(stages, StageTarget{ID: s.ID, Stage: st})
+		}
+	}
+
+	// Re-KNN reconnection (reads only — the writes ride RunConsolidation's tx): old isolated/severed
+	// stars get a fresh semantic KNN so memories that grew similar since are late-linked.
+	reknnLinks, err := w.collectReknnLinks(ctx, j.UserID, daysBefore(now, reknnMinAgeDays))
+	if err != nil {
+		return fmt.Errorf("re-knn: %w", err)
+	}
+
+	// cache(in-scope) → reweight → abstract(+nightly_gist history) → prune(sever, protect) →
+	// re-KNN revive/create → job complete, ALL in one transaction (RunConsolidation). Atomic
+	// completion is the retry fence: a failure rolls back every write together rather than leave a
+	// half-applied consolidation. ⑤ excitability reset (24h rotation) is a NO-OP: e(c,t) (spec 22) is
+	// derived from last_recalled_at/last_activated_at with τ=6h and has no persistent column — by the
+	// time this runs (hours after the day's activity) morning's e is already ≈0, so the reset is
+	// intrinsic, not a write.
+	advanced, err := w.store.RunConsolidation(ctx, j.ID, j.UserID, ConsolidationWrite{
+		Coords:        stable,
+		TemporalDecay: temporalLinkDecay,
+		SemanticGain:  semanticLinkGain,
+		SemanticCap:   semanticWeightCap,
+		GistStages:    stages,
+		WeakThreshold: weakEdgeThreshold,
+		IdleCutoff:    daysBefore(now, weakEdgeIdleDays),
+		Floor:         weakEdgeFloor,
+		ReknnLinks:    reknnLinks,
 	})
 	if err != nil {
 		return err
 	}
 	w.logger.Info("consolidate done",
-		"user", j.UserID, "stars", len(graph.Stars), "links", len(graph.Links), "gisted", gisted)
+		"user", j.UserID, "stars", len(graph.Stars), "links", len(graph.Links),
+		"in_scope", len(sub.Stars), "advanced", advanced, "reknn", len(reknnLinks))
 	return nil
+}
+
+// collectReknnLinks runs a fresh semantic KNN for each old isolated/severed star and returns the
+// reconnection links to revive/create (spec 27 change 20, acceptance A7). Reads only — the writes
+// happen inside RunConsolidation's transaction. Weight is the cosine similarity capped at the
+// semantic cap (a re-connection is semantic; no temporal bonus). a<b normalization is done in SQL.
+//
+// Pairs are deduped by their unordered {a,b} key (keeping the strongest weight): two mutually-near
+// candidates (m1→m2 AND m2→m1) would otherwise both reach ReknnUpsertLinks as the same normalized
+// row, and a single INSERT…ON CONFLICT cannot touch one row twice. The dedup key uses Go ordering;
+// it only needs to collapse the SAME unordered pair (which it does regardless of which end is "a"),
+// so it never disagrees with the SQL collation about pair IDENTITY.
+func (w *Worker) collectReknnLinks(ctx context.Context, userID string, ageCutoff time.Time) ([]LinkUpsert, error) {
+	cands, err := w.store.ReknnCandidates(ctx, userID, ageCutoff, weakEdgeThreshold)
+	if err != nil {
+		return nil, err
+	}
+	best := make(map[[2]string]float64)
+	for _, c := range cands {
+		neighbors, err := w.store.KnnNearest(ctx, userID, c.Vec, c.ID, knnK)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			key := [2]string{c.ID, n.MemoryID}
+			if key[0] > key[1] {
+				key[0], key[1] = key[1], key[0]
+			}
+			wgt := math.Min(n.CosSim, semanticWeightCap)
+			if cur, ok := best[key]; !ok || wgt > cur {
+				best[key] = wgt
+			}
+		}
+	}
+	out := make([]LinkUpsert, 0, len(best))
+	for key, wgt := range best {
+		out = append(out, LinkUpsert{AID: key[0], BID: key[1], Weight: wgt, UserID: userID})
+	}
+	return out, nil
 }
 
 // --- pure layout helpers (unit-tested) ---
@@ -252,11 +320,31 @@ func fibonacciSeed(i, n int) vec3 {
 	}
 }
 
-// redistribute pulls every star toward its host cluster's centroid (pass ②). A star in
-// a recurring "schema" cluster (≥schemaMinCluster members) that is itself well-connected
-// (≥schemaMinDegree synapses) is pulled a little harder (schemaBonus) — schema-fit
-// memories consolidate faster (Audrain & McAndrews 2022). Mutates `coords` in place.
-// Singletons (cluster of one) sit at their own centroid, so the pull is a no-op for them.
+// scopeSubgraph keeps only the stars within `scope` (the near, active region) and the links
+// between them — the re-stabilize/redistribute/spread passes run on this subgraph so far-drifted
+// stars keep their cached coords untouched and aren't hauled back inward (spec 27 change 20,
+// acceptance A2). Far stars stay out of the cache write too (RunConsolidation only caches these).
+func scopeSubgraph(graph ConsolidateGraph, radii map[string]float64, scope float64) ConsolidateGraph {
+	in := make(map[string]bool, len(graph.Stars))
+	stars := make([]ConsolidateStar, 0, len(graph.Stars))
+	for _, s := range graph.Stars {
+		if radii[s.ID] <= scope {
+			in[s.ID] = true
+			stars = append(stars, s)
+		}
+	}
+	links := make([]ConsolidateLink, 0, len(graph.Links))
+	for _, l := range graph.Links {
+		if in[l.AID] && in[l.BID] {
+			links = append(links, l)
+		}
+	}
+	return ConsolidateGraph{Stars: stars, Links: links}
+}
+
+// redistribute pulls every star toward its host cluster's centroid (pass ②) by redistributeLerp.
+// Mutates `coords` in place. Singletons (cluster of one) sit at their own centroid, so the pull is
+// a no-op for them. (Change 20 dropped the schema-fit bonus — every star is pulled the same.)
 func redistribute(coords map[string]vec3, graph ConsolidateGraph) {
 	cluster := consolidateClusters(graph)
 	sum := make(map[string]vec3)
@@ -267,11 +355,6 @@ func redistribute(coords map[string]vec3, graph ConsolidateGraph) {
 		sum[root] = vec3{s[0] + p[0], s[1] + p[1], s[2] + p[2]}
 		count[root]++
 	}
-	degree := make(map[string]int)
-	for _, l := range graph.Links {
-		degree[l.AID]++
-		degree[l.BID]++
-	}
 	for id := range coords {
 		root, ok := cluster[id]
 		if !ok {
@@ -279,17 +362,58 @@ func redistribute(coords map[string]vec3, graph ConsolidateGraph) {
 		}
 		c := count[root]
 		centroid := vec3{sum[root][0] / float64(c), sum[root][1] / float64(c), sum[root][2] / float64(c)}
-		lerp := redistributeLerp
-		if c >= schemaMinCluster && degree[id] >= schemaMinDegree {
-			lerp = math.Min(0.95, lerp+schemaBonus)
-		}
 		p := coords[id]
 		coords[id] = vec3{
-			p[0] + (centroid[0]-p[0])*lerp,
-			p[1] + (centroid[1]-p[1])*lerp,
-			p[2] + (centroid[2]-p[2])*lerp,
+			p[0] + (centroid[0]-p[0])*redistributeLerp,
+			p[1] + (centroid[1]-p[1])*redistributeLerp,
+			p[2] + (centroid[2]-p[2])*redistributeLerp,
 		}
 	}
+}
+
+// spreadClusters nudges each cluster by a small deterministic displacement so the redistributed
+// clusters don't all collapse toward the origin — they fan out across 3D (spec 27 change 20,
+// acceptance A4). The direction is an FNV hash of the cluster's CANONICAL key → a point on the unit
+// sphere, so it is reproducible (no RNG, no clock): same input graph → same spread. Mutates coords
+// in place. The canonical key is the cluster's MIN member id (order-independent) — NOT the union-find
+// root, whose identity depends on link iteration order (equal-rank ties keep find(a)); hashing the
+// root would drift the offset between otherwise-identical nightly runs.
+func spreadClusters(coords map[string]vec3, graph ConsolidateGraph) {
+	cluster := consolidateClusters(graph)
+	canon := make(map[string]string) // root → min member id (order-independent cluster key)
+	for id, root := range cluster {
+		if cur, ok := canon[root]; !ok || id < cur {
+			canon[root] = id
+		}
+	}
+	off := make(map[string]vec3)
+	for _, root := range cluster {
+		if _, ok := off[root]; !ok {
+			d := spreadDirection(canon[root])
+			off[root] = vec3{d[0] * spreadStrength, d[1] * spreadStrength, d[2] * spreadStrength}
+		}
+	}
+	for id := range coords {
+		if root, ok := cluster[id]; ok {
+			o := off[root]
+			p := coords[id]
+			coords[id] = vec3{p[0] + o[0], p[1] + o[1], p[2] + o[2]}
+		}
+	}
+}
+
+// spreadDirection maps a cluster root id to a deterministic point on the unit sphere via an FNV-1a
+// hash split into two uniforms (no RNG/clock — reproducible spread, acceptance A4).
+func spreadDirection(id string) vec3 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(id))
+	sum := h.Sum64()
+	u1 := float64(sum&0xffffffff) / float64(1<<32)
+	u2 := float64((sum>>32)&0xffffffff) / float64(1<<32)
+	theta := 2 * math.Pi * u1
+	z := 2*u2 - 1
+	r := math.Sqrt(math.Max(0, 1-z*z))
+	return vec3{r * math.Cos(theta), r * math.Sin(theta), z}
 }
 
 // consolidateClusters groups stars into connected components over their synapses
@@ -315,9 +439,9 @@ func daysBefore(now time.Time, days float64) time.Time {
 
 // --- nightly ticker (producer) ---
 
-// consolidateHourUTC is the daily wake-up hour (UTC). 18:00 UTC ≈ 03:00 KST (UTC+9) —
+// consolidateHourUTC is the daily wake-up hour (UTC). 19:00 UTC = 04:00 KST (UTC+9) —
 // deep night for the beta audience, when interactive embed/extract load is lowest.
-const consolidateHourUTC = 18
+const consolidateHourUTC = values.ConsolidationHourUtc
 
 // StartNightlyConsolidation blocks until ctx is cancelled, enqueuing one consolidate
 // job per active user once a day at consolidateHourUTC (spec 27, acceptance 1.1). It is

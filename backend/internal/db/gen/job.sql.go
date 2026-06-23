@@ -66,6 +66,24 @@ func (q *Queries) ClaimJob(ctx context.Context, arg ClaimJobParams) (ClaimJobRow
 	return i, err
 }
 
+const completeConsolidateJob = `-- name: CompleteConsolidateJob :execrows
+UPDATE jobs SET status = 'done', updated_at = now() WHERE id = $1 AND status = 'running'
+`
+
+// Guarded completion for the nightly pass (spec 27 change 20): only completes a job still
+// 'running'. Returns 0 rows if another worker already completed it — which happens when a job
+// outruns the 120s claim lease and a second worker reclaims it (ClaimJob case b). The nightly
+// reweight is NOT idempotent (multiplicative/additive), so unlike the extract/embed pipeline a
+// double commit would double-apply it; RunConsolidation rolls back its whole tx when this returns
+// 0, making the consolidation exactly-once (the first committer wins, the loser discards its writes).
+func (q *Queries) CompleteConsolidateJob(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, completeConsolidateJob, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const completeJob = `-- name: CompleteJob :exec
 UPDATE jobs SET status = 'done', updated_at = now() WHERE id = $1
 `

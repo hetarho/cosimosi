@@ -59,6 +59,15 @@ RETURNING id, memory_id, record_id, user_id, attempts;
 -- name: CompleteJob :exec
 UPDATE jobs SET status = 'done', updated_at = now() WHERE id = @id;
 
+-- name: CompleteConsolidateJob :execrows
+-- Guarded completion for the nightly pass (spec 27 change 20): only completes a job still
+-- 'running'. Returns 0 rows if another worker already completed it — which happens when a job
+-- outruns the 120s claim lease and a second worker reclaims it (ClaimJob case b). The nightly
+-- reweight is NOT idempotent (multiplicative/additive), so unlike the extract/embed pipeline a
+-- double commit would double-apply it; RunConsolidation rolls back its whole tx when this returns
+-- 0, making the consolidation exactly-once (the first committer wins, the loser discards its writes).
+UPDATE jobs SET status = 'done', updated_at = now() WHERE id = @id AND status = 'running';
+
 -- name: JobQueueStats :one
 -- 큐 백로그 가시화(spec 18): 상태별 카운트 + 최고령 pending의 나이(초). 워커가 주기
 -- 요약 로그 한 줄로 남긴다 — 백로그가 침묵 속에 쌓이는 걸 docker logs로 본다.
