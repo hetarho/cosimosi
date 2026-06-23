@@ -254,6 +254,11 @@ export const VALUES = {
     randomStarMin: 1,
     randomStarMax: 5,
   },
+  demoClock: {
+    hoursPerSecond: [1,2,4],
+    refreshThrottleMs: 200,
+    maxTickMs: 250,
+  },
   demoTour: {
     rotateThresholdRad: 0.9,
     zoomRatioThreshold: 0.25,

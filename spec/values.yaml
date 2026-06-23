@@ -391,6 +391,14 @@ demo_free_mode:
   random_star_min: 1 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최소 개수
   random_star_max: 5 #   "새 별 띄우기" 1회 클릭이 띄우는 랜덤 별 최대 개수
 
+# ── 데모 연속 시계·배속 (demo_clock) — clock.ts/use-demo-flow rAF 드라이버. change 24 ────────────────
+#    데모 가상 시계가 배속으로 계속 흐른다(정지는 배속 미적용 — UI 옵션이라 여기 없음). 04:00 KST 야간
+#    공고화 발화 시각은 엔진 consolidation.hour_utc를 재사용(드리프트 없음). FE 데모 전용(서버 미사용).
+demo_clock:
+  hours_per_second: [1, 2, 4] #   배속 옵션: 실제 1초당 흐르는 가상 시간(시). 첫 값(1)이 기본 배속.
+  refresh_throttle_ms: 200 #      배속 흐름 중 밝기·반지름 재파생(refreshActivation) 최소 간격(ms) — 매 프레임 setStars 금지(헌법8)
+  max_tick_ms: 250 #              한 rAF 틱이 누적하는 실시간 상한(ms) — 탭이 가려졌다 돌아오거나 메인스레드가 길게 멎으면 거대한 catch-up 틱이 한 번에 수십~수백 밤을 발화하는 걸 막는다(가려진 동안은 사실상 정지)
+
 # ── 데모 투어 항해 실습 (demo_tour) — DemoGuidedTour 실습 phase 자동 진행 임계값. plan 48·change 12 ──
 #    투어가 navigation-input 누적 카운터·항해 FSM 모드를 rAF로 샘플링해 임계 도달 순간에만 다음 phase로.
 demo_tour:

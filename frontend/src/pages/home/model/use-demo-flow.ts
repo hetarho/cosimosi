@@ -15,20 +15,24 @@ import {
   exitDemoMode,
   resetDemo,
   useDemoOverlay,
+  getDemoClockSpeed,
+  setDemoClockSpeed,
+  type DemoClockSpeed,
   type DemoPersona,
   type DemoFlow,
 } from '@/shared/lib/demo'
 import { VALUES } from '@/shared/config'
-import { runTimeSkip, resetDemoExperience, switchDemoPersona } from '@/widgets/demo-sim'
+import { tickDemoClock, resetDemoExperience, switchDemoPersona } from '@/widgets/demo-sim'
 import { toSynapseEdge } from '@/entities/synapse'
 import {
   mapStar,
+  refreshActivation,
   universeInvalidateKey,
   dormantInvalidateKey,
   recordsInvalidateKey,
   focusActor,
 } from '@/entities/memory'
-import { navigationActor, useViewport, type Bridge } from '@/widgets/universe-canvas'
+import { navigationActor, type Bridge } from '@/widgets/universe-canvas'
 import type { DemoPopover } from '../ui/DemoFreeModeControls'
 
 // 데모 진입 흐름(plan 47)·페르소나·겹쳐보기(spec 37)·자유모드 전환을 한 곳에 모은다. 비데모면 flow=free라
@@ -37,7 +41,6 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
   const demoMode = isDemoMode()
   const queryClient = useQueryClient()
   const navigate = useNavigate({ from: '/' })
-  const requestQuietSettle = useViewport((s) => s.requestQuietSettle)
   const demoOverlayOn = useDemoOverlay((s) => s.on)
 
   // 데모 진입 흐름·페르소나는 온보딩↔자유모드 전환마다 리렌더가 필요해 상태로 둔다(flag의 동기 게터는 비반응형).
@@ -46,6 +49,9 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
   const [demoPersona, setDemoPersonaState] = useState<DemoPersona>(() => getDemoPersona())
   // 세션 내 불변인 페르소나 메타(라벨·태그라인) — 매 렌더 재생성 않게 1회 만든다(두 표면이 공유).
   const personaList = useMemo(() => demoPersonaList(), [])
+  // 가상 시계 배속(change 24) — 셀렉터 하이라이트용 React 상태. 실제 흐름은 모듈 시계가 들고,
+  // 아래 rAF 드라이버가 굴린다. 비반응형 모듈이라 진입 시점 값으로 시드한다.
+  const [clockSpeed, setClockSpeedState] = useState<DemoClockSpeed>(() => getDemoClockSpeed())
 
   // 온보딩(선택 화면)은 not_started/persona_selected/tutorial_tbd에서만 HUD 대신 뜬다(plan 47 A1).
   // 'tutorial'·'free'는 자유모드 HUD를 그대로 띄우고, tutorial은 그 위에 스포트라이트 투어를 얹는다(plan 48).
@@ -53,10 +59,10 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     demoMode &&
     (demoFlow === 'not_started' || demoFlow === 'persona_selected' || demoFlow === 'tutorial_tbd')
   const demoTutorial = demoMode && demoFlow === 'tutorial'
-  // 가상 시계(spec 19) 경과일 — 시간 머신이 시간을 흘리면 별 밝기/반지름이 그만큼 늙어야 하므로
-  // 겹쳐보기도 재시뮬 대상이다(demoOverlayData가 virtualNowMs를 읽는다). 비반응형 모듈 시계라
-  // 값으로 환원해 deps에 넣는다 — 클럭이 바뀐 채 리렌더되면 두 우주를 새 now로 다시 빚는다.
-  const demoClockDay = demoMode ? demoOffsetDays() : 0
+  // 가상 시계(spec 19·change 24) 경과일 — 배속 흐름이 시간을 흘리면 별 밝기/반지름이 그만큼 늙고,
+  // 겹쳐보기도 재시뮬 대상이다(demoOverlayData가 virtualNowMs를 읽는다). 비반응형 모듈 시계라 정수 일이
+  // 바뀔 때만 드라이버가 이 상태로 끌어올려(매 프레임 아님 — 헌법8) tour CLOCK_CHANGED·overlay 재시뮬을 친다.
+  const [demoClockDay, setDemoClockDay] = useState(() => (demoMode ? demoOffsetDays() : 0))
   const demoOverlaySides = useMemo(() => {
     if (!demoOverlayOn || !demoMode) return null
     const d = demoOverlayData()
@@ -77,6 +83,38 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
       focusActor.send({ type: 'DISMISS' })
     }
   }, [demoOverlayReady])
+
+  // 배속 흐름 드라이버(change 24) — 데모 자유/튜토리얼에서 rAF로 가상 시계를 굴린다. 매 프레임 경과
+  // 실시간을 누적하고 04:00 경계마다 야간 공고화를 발화하되(tickDemoClock), 밝기·반지름 재파생
+  // (refreshActivation)은 throttle해 setStars 폭주를 막는다(헌법8). 정수 일이 바뀔 때만 React 상태로
+  // 끌어올려 tour CLOCK_CHANGED·overlay 재시뮬을 친다. 정지·겹쳐보기 중엔 루프를 멈춘다. rAF는 탭이
+  // 가려지면 자동으로 멎어 누적 폭주가 없다(setInterval 대비 이점).
+  useEffect(() => {
+    if (!demoMode || demoOverlayOn) return
+    if (demoFlow !== 'free' && demoFlow !== 'tutorial') return
+    if (clockSpeed === 'paused') return
+    const pullClockDay = () => setDemoClockDay((d) => (d === demoOffsetDays() ? d : demoOffsetDays()))
+    let raf = 0
+    let last = performance.now()
+    let lastRefresh = last
+    const loop = (t: number) => {
+      raf = requestAnimationFrame(loop)
+      // 탭이 가려졌다 돌아오거나(rAF 멎음) 메인스레드가 길게 멎으면 한 틱 elapsed가 거대해져 수십~수백
+      // 밤을 한 번에 발화한다 — 상한으로 잘라 가려진 동안은 사실상 정지로 둔다(누적 폭주·UI 프리즈 방지).
+      const elapsed = Math.min(t - last, VALUES.demoClock.maxTickMs)
+      last = t
+      const boundaries = tickDemoClock(queryClient, elapsed)
+      if (t - lastRefresh >= VALUES.demoClock.refreshThrottleMs) {
+        lastRefresh = t
+        refreshActivation()
+        pullClockDay()
+      } else if (boundaries > 0) {
+        pullClockDay() // 밤이 지났으면(공고화로 데이터 변경) 정수 일을 바로 끌어올린다
+      }
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [demoMode, demoFlow, demoOverlayOn, clockSpeed, queryClient])
 
   // ── 데모 자유모드 흐름·컨트롤(plan 47) ──────────────────────────────────────────────
   // flow 전환은 sessionStorage(setDemoFlow)와 렌더 상태를 함께 옮긴다(새로고침에도 유지).
@@ -103,18 +141,26 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
   // 같은 페르소나면 switchDemoPersona가 no-op(원천 getDemoPersona 기준 판정)이라 리셋이 안 일어난다.
   const switchFreePersona = (id: DemoPersona) => {
     setDemoPopover(null)
+    // 같은 페르소나면 switchDemoPersona가 no-op이라 시계도 리셋되지 않는다 — 시계 상태를 0으로
+    // 강제하면 모듈 시계(여전히 진행 중)와 어긋나 드라이버가 곧 되돌리며 깜빡인다. 실제 전환만 리셋.
+    if (id === getDemoPersona()) return
     switchDemoPersona(id)
     setDemoPersonaState(id)
+    setClockSpeedState(getDemoClockSpeed()) // resetDemo가 배속을 기본으로 되돌리므로 셀렉터 동기화
+    setDemoClockDay(0)
   }
-  // 시간 이동(하루/한 달) — 기존 하루 단위 배치 + 조용한 재안정화. 시간 이동은 별·선을 삭제하지 않는다(헌법2).
-  const skipDemoDays = (days: number) => {
-    setDemoPopover(null)
-    runTimeSkip(queryClient, days, requestQuietSettle)
+  // 가상 시계 배속 선택(change 24) — 즉시 적용(모듈 시계가 다음 틱부터 그 속도로 흐르거나 정지).
+  // 팝오버는 열어 둬 여러 배속을 바로 비교할 수 있게 한다(라이브 컨트롤).
+  const selectClockSpeed = (speed: DemoClockSpeed) => {
+    setDemoClockSpeed(speed)
+    setClockSpeedState(speed)
   }
   // 처음으로 — 현재 페르소나·자유모드 유지, 가상 시계·추가 별 0(온보딩으로 돌아가지 않는다).
   const resetDemoToStart = () => {
     setDemoPopover(null)
     resetDemoExperience()
+    setClockSpeedState(getDemoClockSpeed()) // resetDemoClock가 기본 배속으로 되돌린 값으로 동기화
+    setDemoClockDay(0)
   }
   // 자유모드 하단 "새 별 띄우기" — 폼/날짜·감정 선택 없이 랜덤 별 1~5개(values)를 즉시 추가하고
   // 우주·잠든 별·일기 목록 쿼리를 무효화해 즉시 반영한다(서버 쓰기 없음 — 헌법 데모 경계).
@@ -148,7 +194,8 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     chooseTutorial,
     backToModeSelect,
     switchFreePersona,
-    skipDemoDays,
+    clockSpeed,
+    selectClockSpeed,
     resetDemoToStart,
     addDemoRandomStars,
     leaveDemo,

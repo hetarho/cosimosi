@@ -20,7 +20,7 @@ import {
   type Synapse,
 } from '@/shared/api'
 import { mulberry32 } from '../prng'
-import { skipDemoDays, virtualNowMs, resetDemoClock } from './clock'
+import { virtualNowMs, resetDemoClock } from './clock'
 import { getDemoPersona, isDemoPersona, type DemoPersona } from './flag'
 import { CORPORA } from './personas'
 import { crossResonances, simulate, type SimStar } from './simulate'
@@ -693,8 +693,10 @@ const DEMO_PRUNE_FLOOR = VALUES.demoConsolidation.weakEdgeFloor // 가지치기 
 
 /** RecordMemory처럼 데모 우주를 제자리에서 변환한다 — "밤 보내기"(spec 27): 오래된 별의
  *  형태를 한 단계 요지화하고(③), 약하고 안 쓰인 선은 빛만 바닥으로 낮춘다(④). 별·선 개수는
- *  그대로(삭제 0 — 헌법2). 불변 교체로 새 객체를 만들어 쿼리 캐시가 변경을 감지하게 한다. */
-function demoConsolidate(): void {
+ *  그대로(삭제 0 — 헌법2). 불변 교체로 새 객체를 만들어 쿼리 캐시가 변경을 감지하게 한다.
+ *  배속 시계 드라이버가 simulated 04:00 KST 경계를 지날 때마다 1회씩 호출한다(change 24;
+ *  production change 20 로직과의 패스 동치는 job 43이 마저 맞춘다). */
+export function demoConsolidate(): void {
   ensureSeeded()
   const now = virtualNowMs()
   // ③ 요지: 오래되고 저회상인 별의 form_seed_delta 단조 증가 + version++(형태가 한 단계 가라앉는다).
@@ -739,17 +741,6 @@ function demoConsolidate(): void {
   }
   prune(baseSynapses)
   prune(addedEdges)
-}
-
-/** 체험 우주의 하루 배치 근사. 하루씩 시계를 전진한 뒤 야간 공고화를 적용해,
- *  `한 달 지나기`가 30일치 배치 결과를 밟도록 한다. 별·선 개수는 삭제하지 않는다. */
-export function demoApplyDayBatch(days: number): number {
-  const wholeDays = Math.max(0, Math.floor(days))
-  for (let i = 0; i < wholeDays; i++) {
-    skipDemoDays(1)
-    demoConsolidate()
-  }
-  return wholeDays
 }
 
 // 변천사 타임랩스(24) 체험용 합성. 한 별을 여러 번 novelty 회상한 결과를 결정론적으로 빚어,

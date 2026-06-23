@@ -28,7 +28,7 @@ export {
   demoToday,
   demoMarkRecalled,
   demoReshape,
-  demoApplyDayBatch,
+  demoConsolidate,
   demoEvolution,
   demoOverlayData,
   resetDemo,
@@ -36,4 +36,11 @@ export {
 export type { EvolutionSnap, DemoOverlaySide } from './data'
 export { startDemoSession } from './session'
 export { useDemoOverlay } from './overlay-mode'
-export { virtualNowMs, demoOffsetDays } from './clock'
+export {
+  virtualNowMs,
+  demoOffsetDays,
+  advanceDemoClock,
+  getDemoClockSpeed,
+  setDemoClockSpeed,
+  type DemoClockSpeed,
+} from './clock'

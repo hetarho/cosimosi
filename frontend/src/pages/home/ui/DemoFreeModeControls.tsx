@@ -4,10 +4,17 @@
 // 페이지(HomePage)가 페르소나/시간 액션을 소유하고 콜백으로 내려준다(FSD — widget 직접 호출 없음).
 import type { ReactNode } from 'react'
 import { Clock3, UserRound } from 'lucide-react'
-import type { DemoPersona } from '@/shared/lib/demo'
+import type { DemoClockSpeed, DemoPersona } from '@/shared/lib/demo'
 import type { DemoPersonaMeta } from '@/shared/lib/demo'
+import { VALUES } from '@/shared/config'
 
 export type DemoPopover = 'persona' | 'time' | null
+
+// 배속 셀렉터 옵션(change 24) — values의 배속 배열 + 정지. 첫 값이 기본 배속이다.
+const SPEED_OPTIONS: { value: DemoClockSpeed; label: string }[] = [
+  ...VALUES.demoClock.hoursPerSecond.map((h) => ({ value: h as DemoClockSpeed, label: `${h}시간` })),
+  { value: 'paused', label: '정지' },
+]
 
 export interface DemoFreeModeControlsProps {
   /** 현재 열린 데모 팝오버(없으면 null) — 페이지가 소유해 다른 표면과 배타로 만든다. */
@@ -18,8 +25,10 @@ export interface DemoFreeModeControlsProps {
   personaList: DemoPersonaMeta[]
   /** 페르소나 선택 → 그 우주로 전환(가상 시계·추가 별 초기화, 자유모드 유지). */
   onSelectPersona: (id: DemoPersona) => void
-  /** 하루/한 달 후로 이동(기존 하루 단위 배치). */
-  onSkipDays: (days: number) => void
+  /** 현재 가상 시계 배속(셀렉터 하이라이트). */
+  speed: DemoClockSpeed
+  /** 배속 선택 → 즉시 적용(가상 시계가 그 속도로 흐르거나 정지). */
+  onSelectSpeed: (speed: DemoClockSpeed) => void
   /** 처음으로 — 현재 페르소나·자유모드 유지, 가상 시계 0·추가 별 0. */
   onResetToStart: () => void
 }
@@ -81,7 +90,8 @@ export function DemoFreeModeControls({
   persona,
   personaList,
   onSelectPersona,
-  onSkipDays,
+  speed,
+  onSelectSpeed,
   onResetToStart,
 }: DemoFreeModeControlsProps) {
   return (
@@ -114,24 +124,31 @@ export function DemoFreeModeControls({
 
       <PopoverButton
         icon={<Clock3 className="size-5" aria-hidden />}
-        label="시간 — 가상 시계 이동"
+        label="시간 — 가상 시계 배속"
         tourId="time"
         popoverTourId="time-popover"
         expanded={open === 'time'}
         onToggle={() => onOpen(open === 'time' ? null : 'time')}
       >
-        <button type="button" role="menuitem" onClick={() => onSkipDays(1)} className={rowCls}>
-          하루 후로 이동
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          data-tour-id="time-skip-month"
-          onClick={() => onSkipDays(30)}
-          className={rowCls}
-        >
-          한 달 후로 이동
-        </button>
+        {/* 배속 셀렉터(change 24) — 고른 속도로 가상 시계가 계속 흐른다(정지=멈춤). 이산 점프 대체. */}
+        <p className="px-3 pb-1 pt-1.5 text-xs text-white/45">배속 — 실제 1초에 흐르는 시간</p>
+        <div data-tour-id="time-speed" role="group" aria-label="시간 배속" className="grid grid-cols-2 gap-1 px-1.5 pb-1">
+          {SPEED_OPTIONS.map((o) => {
+            const active = o.value === speed
+            return (
+              <button
+                key={String(o.value)}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => onSelectSpeed(o.value)}
+                className={`rounded-lg px-3 py-1.5 text-center text-white/80 transition hover:bg-white/10 hover:text-white ${active ? 'bg-white/20 text-white' : 'bg-white/5'}`}
+              >
+                {o.label}
+              </button>
+            )
+          })}
+        </div>
         <button type="button" role="menuitem" onClick={onResetToStart} className={rowCls}>
           처음으로
         </button>

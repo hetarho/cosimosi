@@ -370,6 +370,15 @@ const (
 	DemoFreeModeRandomStarMax = 5
 )
 
+// demo_clock
+const (
+	DemoClockRefreshThrottleMs = 200
+	DemoClockMaxTickMs         = 250
+)
+var (
+	DemoClockHoursPerSecond = []float64{1, 2, 4}
+)
+
 // demo_tour
 const (
 	DemoTourRotateThresholdRad      = 0.9

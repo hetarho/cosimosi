@@ -95,7 +95,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
     chooseTutorial,
     backToModeSelect,
     switchFreePersona,
-    skipDemoDays,
+    clockSpeed,
+    selectClockSpeed,
     resetDemoToStart,
     addDemoRandomStars,
     leaveDemo,
@@ -427,7 +428,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
               persona={demoPersona}
               personaList={personaList}
               onSelectPersona={switchFreePersona}
-              onSkipDays={skipDemoDays}
+              speed={clockSpeed}
+              onSelectSpeed={selectClockSpeed}
               onResetToStart={resetDemoToStart}
             />
           )}

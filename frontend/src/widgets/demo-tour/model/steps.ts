@@ -12,7 +12,7 @@ export type TourTargetId =
   | 'persona'
   | 'persona-popover'
   | 'time'
-  | 'time-skip-month'
+  | 'time-speed'
   | 'view'
   | 'telescope'
   | 'explorer-diary-tab'
@@ -107,10 +107,11 @@ export const TOUR_STEPS: TourStep[] = [
     surface: 'none',
     phases: [
       { target: 'time', body: '이번엔 시간 버튼이에요. 눌러볼까요?', await: 'time-open' },
-      { target: 'time-skip-month', body: '`한 달 후로 이동`을 눌러볼까요?', await: 'time-moved' },
+      // 정보 phase(await=null) — 배속은 골라도 정지를 골라도 멈추지 않고 `다음`으로 진행한다.
+      // (행동 게이트로 두면 '정지' 선택 시 가상 시계가 멈춰 time-moved가 영영 안 와 단계가 막힌다.)
       {
-        target: null,
-        body: '한 달 뒤로 이동했어요. 오래 떠올리지 않은 별은 그만큼 빛이 바래고, 어떤 별은 잠들어요. 다음으로 넘어가요.',
+        target: 'time-speed',
+        body: '여기서 시간이 흐르는 배속을 골라요. 시간이 흐르면 오래 떠올리지 않은 별은 빛이 바래고, 밤마다 우주가 스스로 정리돼요.',
         await: null,
       },
     ],
