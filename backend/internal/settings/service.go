@@ -150,9 +150,19 @@ func (s *Service) Update(ctx context.Context, userID string, p Patch) (Settings,
 			return Settings{}, ErrInvalidColor
 		}
 	}
+	// Per-emotion form override (change 30): each look must be a KNOWN star look item — same
+	// "star:look:<id>" id-space the global star axis uses, so ownership is one rule for both.
+	for _, ef := range p.EmotionForms {
+		for _, id := range selectionSubItems("star", ef.Look) {
+			if !isKnownItem(id) {
+				return Settings{}, ErrUnknownItem
+			}
+		}
+	}
 	// 2) Ownership check needs the owned set — read it WITHOUT seeding the wallet (ListOwned), and
-	//    only when an axis is present (a colors-only update needs no ownership round-trip).
-	if hasAxisSelection(p) {
+	//    only when a selection is present (a colors-only update needs no ownership round-trip; an
+	//    emotion-form override assigns a look so it needs one — A4).
+	if hasAxisSelection(p) || len(p.EmotionForms) > 0 {
 		owned, err := s.ownedSet(ctx, userID)
 		if err != nil {
 			return Settings{}, err
@@ -163,6 +173,14 @@ func (s *Service) Update(ctx context.Context, userID string, p Patch) (Settings,
 			}
 			// 합성 선택의 소유 = 양쪽 sub-item 소유(또는 무료) — 한쪽이라도 미소유면 거부(A5).
 			for _, id := range selectionSubItems(sel.axis, *sel.kind) {
+				if !isOwned(id, owned) {
+					return Settings{}, ErrNotOwned
+				}
+			}
+		}
+		// 감정별 형태 오버라이드도 룩을 *배정*하므로 소유(또는 무료)여야 한다 — 미소유면 거부(change 30, A4).
+		for _, ef := range p.EmotionForms {
+			for _, id := range selectionSubItems("star", ef.Look) {
 				if !isOwned(id, owned) {
 					return Settings{}, ErrNotOwned
 				}

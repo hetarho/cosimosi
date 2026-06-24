@@ -38,6 +38,7 @@ describe('appearance store — 형태×표면 합성 선택 정규화(spec 52)',
       selfObject: DEFAULT_SELF_SELECTION,
       synapseStyle: DEFAULT_SYNAPSE_SELECTION,
       emotionColors: {},
+      starFormByEmotion: {},
     })
   })
 
@@ -55,6 +56,7 @@ describe('appearance store — 형태×표면 합성 선택 정규화(spec 52)',
       synapseStyle: 'dendrite', // → branched+flow
       theme: 'vortex', // 배경은 단일 id 그대로
       emotionColors: {},
+      starFormByEmotion: {},
     })
     const s = useAppearance.getState()
     expect(s.object).toBe('polyhedron')
@@ -69,6 +71,7 @@ describe('appearance store — 형태×표면 합성 선택 정규화(spec 52)',
       selfObject: 'orb+neuron', // 무료 form에 유료 surface
       synapseStyle: 'dotted+beads',
       emotionColors: {},
+      starFormByEmotion: {},
     })
     const s = useAppearance.getState()
     expect(s.object).toBe('spiky')
@@ -82,6 +85,7 @@ describe('appearance store — 형태×표면 합성 선택 정규화(spec 52)',
       selfObject: 'orb+bogus', // surface만 미지 → orb+mirror
       synapseStyle: 'totally-unknown', // 합성 아님·레거시 아님 → strands+flow
       emotionColors: {},
+      starFormByEmotion: {},
     })
     const s = useAppearance.getState()
     expect(s.object).toBe('polyhedron')
@@ -94,5 +98,40 @@ describe('appearance store — 형태×표면 합성 선택 정규화(spec 52)',
     expect(useAppearance.getState().object).toBe('spiky')
     useAppearance.getState().setObject('garbage')
     expect(useAppearance.getState().object).toBe('polyhedron')
+  })
+
+  // change 30 — 감정별 별 형태 오버라이드(전역 기본 + per-mood).
+  it('starFormByEmotion: 서버 시드 + 미지 룩 폴백(A5)', () => {
+    useAppearance.getState().applyServerSettings({
+      emotionColors: {},
+      starFormByEmotion: { joy: 'spiky', sad: 'garbage' }, // 미지 룩 → 디폴트(polyhedron)로 정규화
+    })
+    const s = useAppearance.getState()
+    expect(s.starFormByEmotion.joy).toBe('spiky')
+    expect(s.starFormByEmotion.sad).toBe('polyhedron')
+  })
+
+  it('빈 맵 = 오버라이드 없음(전역 단일 룩과 동치)', () => {
+    useAppearance.getState().applyServerSettings({ emotionColors: {}, starFormByEmotion: {} })
+    expect(Object.keys(useAppearance.getState().starFormByEmotion)).toHaveLength(0)
+  })
+
+  it('setStarFormByEmotion은 룩을 정규화한다(미지는 디폴트 폴백)', () => {
+    useAppearance.getState().setStarFormByEmotion('joy', 'liquid')
+    expect(useAppearance.getState().starFormByEmotion.joy).toBe('liquid')
+    useAppearance.getState().setStarFormByEmotion('sad', 'nope')
+    expect(useAppearance.getState().starFormByEmotion.sad).toBe('polyhedron')
+  })
+
+  it('commit/revert가 감정별 룩 오버라이드를 드래프트로 다룬다', () => {
+    useAppearance.getState().applyServerSettings({ emotionColors: {}, starFormByEmotion: {} }) // 빈 베이스라인
+    useAppearance.getState().setStarFormByEmotion('joy', 'spiky') // 드래프트(미저장)
+    expect(useAppearance.getState().starFormByEmotion.joy).toBe('spiky')
+    expect(useAppearance.getState().savedSelection.starFormByEmotion.joy).toBeUndefined()
+    useAppearance.getState().revertSelection() // 드래프트 폐기 → 베이스라인 복원
+    expect(useAppearance.getState().starFormByEmotion.joy).toBeUndefined()
+    useAppearance.getState().setStarFormByEmotion('joy', 'spiky')
+    useAppearance.getState().commitSelection() // 저장 성공 후 기준선 확정
+    expect(useAppearance.getState().savedSelection.starFormByEmotion.joy).toBe('spiky')
   })
 })

@@ -103,6 +103,53 @@ func TestUpdateCompositeOwnership(t *testing.T) {
 	}
 }
 
+// change 30 / A3·A4 — per-emotion star FORM override mirrors emotion colors: a partial upsert (only
+// the moods sent, never deleting others) gated by the SAME "star:look:<id>" ownership rule as the
+// global star axis. A free look needs no ownership; an owned paid look is allowed; an unowned or
+// unknown look is rejected before any write.
+func TestUpdateEmotionForms(t *testing.T) {
+	// free look (polyhedron) assigned to a mood → allowed with nothing owned; the patch is forwarded.
+	free := &fakeRepo{}
+	if _, err := NewService(free).Update(context.Background(), "u1", Patch{
+		EmotionForms: []EmotionForm{{Mood: "joy", Look: "polyhedron"}},
+	}); err != nil {
+		t.Errorf("free look override should be allowed, got %v", err)
+	}
+	if free.captured == nil || len(free.captured.EmotionForms) != 1 {
+		t.Errorf("expected the emotion-form patch forwarded, got %+v", free.captured)
+	}
+
+	// owned paid look (spiky) assigned to a mood → allowed (look is owned even at zero balance).
+	owned := &fakeRepo{inv: Inventory{OwnedItemIDs: []string{"star:look:spiky"}}}
+	if _, err := NewService(owned).Update(context.Background(), "u1", Patch{
+		EmotionForms: []EmotionForm{{Mood: "sad", Look: "spiky"}},
+	}); err != nil {
+		t.Errorf("owned look override should be allowed, got %v", err)
+	}
+
+	// unowned paid look (liquid) assigned to a mood → ErrNotOwned, no write (A4).
+	locked := &fakeRepo{}
+	if _, err := NewService(locked).Update(context.Background(), "u1", Patch{
+		EmotionForms: []EmotionForm{{Mood: "joy", Look: "liquid"}},
+	}); !errors.Is(err, ErrNotOwned) {
+		t.Errorf("unowned look override: want ErrNotOwned, got %v", err)
+	}
+	if locked.captured != nil {
+		t.Error("repo.Update must not run for an unowned look override")
+	}
+
+	// unknown look id → ErrUnknownItem, no write.
+	bad := &fakeRepo{}
+	if _, err := NewService(bad).Update(context.Background(), "u1", Patch{
+		EmotionForms: []EmotionForm{{Mood: "joy", Look: "blob"}},
+	}); !errors.Is(err, ErrUnknownItem) {
+		t.Errorf("unknown look override: want ErrUnknownItem, got %v", err)
+	}
+	if bad.captured != nil {
+		t.Error("repo.Update must not run for an unknown look override")
+	}
+}
+
 // 1.3 / A4 — invalid or locked selections are rejected BEFORE any write (no partial application).
 func TestUpdateRejectsInvalidBeforeWrite(t *testing.T) {
 	cases := []struct {

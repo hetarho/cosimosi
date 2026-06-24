@@ -11,6 +11,10 @@ SELECT theme, star_object, self_object, synapse_style FROM user_settings WHERE u
 -- 감정색 오버라이드(0~13행). 없는 mood는 클라가 MOOD_PALETTE로 채운다.
 SELECT mood, color FROM user_emotion_colors WHERE user_id = $1 ORDER BY mood;
 
+-- name: ListUserEmotionForms :many
+-- 감정별 형태 오버라이드(0~13행, change 30). 없는 mood는 클라가 전역 기본 룩(star_object)으로 그린다.
+SELECT mood, look FROM user_emotion_forms WHERE user_id = $1 ORDER BY mood;
+
 -- name: UpsertUserSettings :exec
 -- 부분 갱신: NULL로 들어온 필드는 기존 값을 보존(COALESCE)해 "보낸 필드만 덮어쓰기"(4축 전부).
 INSERT INTO user_settings (user_id, theme, star_object, self_object, synapse_style, updated_at)
@@ -27,6 +31,12 @@ ON CONFLICT (user_id) DO UPDATE SET
 INSERT INTO user_emotion_colors (user_id, mood, color)
 VALUES (@user_id, @mood, @color)
 ON CONFLICT (user_id, mood) DO UPDATE SET color = EXCLUDED.color;
+
+-- name: UpsertUserEmotionForm :exec
+-- 감정별 형태 1건 upsert(change 30). (user_id, mood) 유일 — 한 mood당 한 룩. 보낸 mood만 갱신(부분 패치).
+INSERT INTO user_emotion_forms (user_id, mood, look)
+VALUES (@user_id, @mood, @look)
+ON CONFLICT (user_id, mood) DO UPDATE SET look = EXCLUDED.look;
 
 -- name: GetWallet :one
 -- 잔액 조회(시드하지 않음). 행이 없으면 pgx.ErrNoRows → 서비스가 SeedWallet으로 시드한다.

@@ -124,6 +124,7 @@ export function VisitPage() {
       selfObject: ap.selfObject,
       synapseStyle: ap.synapseStyle,
       emotionColors: ap.emotionColors,
+      starFormByEmotion: ap.starFormByEmotion,
     }
   })
 
@@ -136,7 +137,12 @@ export function VisitPage() {
     const object = appearance?.starObject ? normalizeStarLook(appearance.starObject) : undefined
     const emotionColors: Record<string, string> = {}
     for (const c of appearance?.emotionColors ?? []) emotionColors[moodFromProto(c.mood)] = c.color
-    return { stars, edges, object, emotionColors }
+    // 소유자 감정별 별 룩 오버라이드(change 30) — 룩은 시드 경계에서 정규화(미지 → 디폴트 폴백).
+    const starFormByEmotion: Record<string, string> = {}
+    for (const f of appearance?.emotionForms ?? []) {
+      if (f.look) starFormByEmotion[moodFromProto(f.mood)] = normalizeStarLook(f.look)
+    }
+    return { stars, edges, object, emotionColors, starFormByEmotion }
   }, [data])
 
   // 내 우주(겹쳐보기용) — GetUniverse 응답을 PURE 매핑(merge/store 경유 없음). 내 시각 설정은 방문자 값.
@@ -152,7 +158,13 @@ export function VisitPage() {
       const lastActivatedAt = parseEpochMs(s.lastActivatedAt, now)
       return { ...toSynapseEdge(s), lastActivatedAt, brightness: starBrightness(lastActivatedAt, now) }
     })
-    return { stars, edges, object: visitorAppearance.object, emotionColors: visitorAppearance.emotionColors }
+    return {
+      stars,
+      edges,
+      object: visitorAppearance.object,
+      starFormByEmotion: visitorAppearance.starFormByEmotion,
+      emotionColors: visitorAppearance.emotionColors,
+    }
   }, [myUniverse.data, visitorAppearance])
 
   // 서버는 상대 별을 *공개 스냅샷 인덱스*로 준다(콘텐츠 제로 — id 비노출). 친구 우주의 StarNode id는
@@ -222,6 +234,7 @@ export function VisitPage() {
         selfObject: undefined,
         synapseStyle: undefined,
         emotionColors: visitorAppearance.emotionColors,
+        starFormByEmotion: visitorAppearance.starFormByEmotion,
       })
     }
   }, [visitorAppearance])

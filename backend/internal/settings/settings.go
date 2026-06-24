@@ -36,6 +36,13 @@ type EmotionColor struct {
 	Color string
 }
 
+// EmotionForm is one mood→star-look override (change 30) — EmotionColor's parallel for shape.
+// Mood is the lowercase enum name; Look is a star look id ("star:look:<Look>" must be owned-or-free).
+type EmotionForm struct {
+	Mood string
+	Look string
+}
+
 // Settings is a user's stored visual overrides — NOT a complete config. Empty axis fields mean
 // "not overridden" (the client falls back to its axis default). The four axes (spec 44): Theme =
 // background, StarObject = star, SelfObject = self, SynapseStyle = synapse.
@@ -45,16 +52,18 @@ type Settings struct {
 	SelfObject    string
 	SynapseStyle  string
 	EmotionColors []EmotionColor
+	EmotionForms  []EmotionForm
 }
 
-// Patch is a partial update: a nil pointer means "field not sent — preserve it";
-// EmotionColors is the subset of moods to upsert (it never deletes the others).
+// Patch is a partial update: a nil pointer means "field not sent — preserve it"; EmotionColors and
+// EmotionForms are each the subset of moods to upsert (they never delete the others).
 type Patch struct {
 	Theme         *string
 	StarObject    *string
 	SelfObject    *string
 	SynapseStyle  *string
 	EmotionColors []EmotionColor
+	EmotionForms  []EmotionForm
 }
 
 // Wallet is the user's 별가루 balance (authoritative — the client never decides money).

@@ -85,13 +85,34 @@ function toServerAppearance(s: ProtoSettings | undefined): ServerAppearance {
     const name = Mood[ec.mood] // 숫자 enum 역매핑 → "JOY" 등
     if (name) emotionColors[name.toLowerCase()] = ec.color
   }
+  const starFormByEmotion: Record<string, string> = {}
+  for (const ef of s?.emotionForms ?? []) {
+    if (ef.mood === Mood.MOOD_UNSPECIFIED || !ef.look) continue
+    const name = Mood[ef.mood]
+    if (name) starFormByEmotion[name.toLowerCase()] = ef.look // 룩 정규화는 store 시드 경계가 한다(A5)
+  }
   return {
     theme: s?.theme || undefined,
     object: s?.starObject || undefined,
     selfObject: s?.selfObject || undefined,
     synapseStyle: s?.synapseStyle || undefined,
     emotionColors,
+    starFormByEmotion,
   }
+}
+
+/** mood 키(소문자) → 유효 proto Mood enum. 미지·UNSPECIFIED는 null(emotion_colors·emotion_forms 변환 공용). */
+function moodToProto(mood: string): Mood | null {
+  const m = Mood[mood.toUpperCase() as keyof typeof Mood]
+  return m != null && m !== Mood.MOOD_UNSPECIFIED ? m : null
+}
+
+/** mood→look 맵 → proto emotion_forms 배열(부분 업서트용, change 30). 미지 mood·빈 look은 제외. */
+function formMapToProto(map: Record<string, string>): { mood: Mood; look: string }[] {
+  return Object.entries(map).flatMap(([mood, look]) => {
+    const m = moodToProto(mood)
+    return m != null && look ? [{ mood: m, look }] : []
+  })
 }
 
 /** GetSettings 성공 → appearance store 시드(서버 오버라이드를 기본값 위에 머지). */
@@ -126,12 +147,16 @@ export async function pushSettings(patch: {
   selfObject?: string
   synapseStyle?: string
   emotionColors?: { mood: Mood; color: string }[]
+  /** 감정별 별 룩 오버라이드 맵(mood→look, change 30) — 부분 업서트로 proto emotion_forms로 변환해 보낸다. */
+  starFormByEmotion?: Record<string, string>
 }): Promise<boolean> {
   if (isDemoMode()) return false
   const token = await getAccessToken()
   if (!token) return false
+  const { starFormByEmotion, ...rest } = patch
+  const req = starFormByEmotion ? { ...rest, emotionForms: formMapToProto(starFormByEmotion) } : rest
   try {
-    const res = await callUnaryMethod(transport, SettingsService.method.updateSettings, patch, {})
+    const res = await callUnaryMethod(transport, SettingsService.method.updateSettings, req, {})
     if (res.settings) useAppearance.getState().applyServerSettings(toServerAppearance(res.settings))
     return true
   } catch (e) {
@@ -150,9 +175,9 @@ export async function saveEmotionColors(
   draft: Record<string, string>,
 ): Promise<void> {
   const emotionColors = Object.entries(draft).flatMap(([mood, color]) => {
-    const m = Mood[mood.toUpperCase() as keyof typeof Mood]
+    const m = moodToProto(mood)
     const hex = normalizeHex(color)
-    return m != null && m !== Mood.MOOD_UNSPECIFIED && hex ? [{ mood: m, color: hex }] : []
+    return m != null && hex ? [{ mood: m, color: hex }] : []
   })
   const res = await callUnaryMethod(transport, SettingsService.method.updateSettings, { emotionColors }, {})
   if (res.settings) {

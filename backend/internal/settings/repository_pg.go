@@ -49,12 +49,20 @@ func (r *pgRepository) Get(ctx context.Context, userID string) (Settings, error)
 	for _, c := range colors {
 		s.EmotionColors = append(s.EmotionColors, EmotionColor{Mood: c.Mood, Color: c.Color})
 	}
+
+	forms, err := q.ListUserEmotionForms(ctx, userID)
+	if err != nil {
+		return Settings{}, fmt.Errorf("list emotion forms: %w", err)
+	}
+	for _, f := range forms {
+		s.EmotionForms = append(s.EmotionForms, EmotionForm{Mood: f.Mood, Look: f.Look})
+	}
 	return s, nil
 }
 
 // Update upserts the patch in one transaction: the single-value row only when an axis selection
-// is present (so a colors-only update doesn't create an empty row), then each emotion color. A
-// failure leaves no partial rows.
+// is present (so a colors/forms-only update doesn't create an empty row), then each emotion color
+// and each emotion form override. A failure leaves no partial rows.
 func (r *pgRepository) Update(ctx context.Context, userID string, p Patch) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -81,6 +89,15 @@ func (r *pgRepository) Update(ctx context.Context, userID string, p Patch) error
 			Color:  c.Color,
 		}); err != nil {
 			return fmt.Errorf("upsert emotion color: %w", err)
+		}
+	}
+	for _, f := range p.EmotionForms {
+		if err := q.UpsertUserEmotionForm(ctx, gen.UpsertUserEmotionFormParams{
+			UserID: userID,
+			Mood:   f.Mood,
+			Look:   f.Look,
+		}); err != nil {
+			return fmt.Errorf("upsert emotion form: %w", err)
 		}
 	}
 	return tx.Commit(ctx)

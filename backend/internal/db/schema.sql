@@ -146,6 +146,14 @@ CREATE TABLE user_emotion_colors (
     PRIMARY KEY (user_id, mood)
 );
 
+-- 감정별 별 형태 오버라이드(change 30, 00015) — 색의 평행물. mood당 look 1행(부분 오버라이드).
+CREATE TABLE user_emotion_forms (
+    user_id TEXT NOT NULL,
+    mood    TEXT NOT NULL,
+    look    TEXT NOT NULL,
+    PRIMARY KEY (user_id, mood)
+);
+
 -- 관리자 콘솔 LLM 운영(spec 34, 00003): overrides-only — 코드 매트릭스가 SSOT, DB는
 -- 관리자가 바꾼 것(추가 모델·AES-256-GCM 암호화 키·활성 선택·사용량 누적)만 담는다.
 CREATE TABLE llm_provider_configs (

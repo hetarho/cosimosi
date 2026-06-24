@@ -49,8 +49,10 @@ export interface OverlayUniverseProps {
   edges: SynapseEdge[]
   /** world-space offset for this universe's <group> (the two skies sit apart). */
   offset: [number, number, number]
-  /** 별 스킨 합성 선택(spec 52) — StarField가 디코드. 레거시 단일 id도 허용. */
+  /** 전역 기본 별 룩(change 29). 레거시 단일 id도 허용(StarField가 폴백). */
   object?: string
+  /** 감정별 별 룩 오버라이드(mood→look, change 30). */
+  starFormByEmotion?: Record<string, string>
   emotionColors?: Record<string, string>
   /** faint enclosing atmosphere color (hex) — gives the friend's sky a "남의 하늘" wash without
    *  recoloring its stars (spec 37 친구 틴트: keep the owner's spec-30 colors, add a common tint). */
@@ -64,6 +66,7 @@ export function OverlayUniverse({
   edges,
   offset,
   object,
+  starFormByEmotion,
   emotionColors,
   atmosphere,
   handleRef,
@@ -210,6 +213,7 @@ export function OverlayUniverse({
       )}
       <StarField
         object={object}
+        starFormByEmotion={starFormByEmotion}
         emotionColors={emotionColors}
         positionsRef={positionsRef}
         stars={stars}

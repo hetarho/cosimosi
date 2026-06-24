@@ -310,10 +310,19 @@ message EmotionColor {
   string color = 2;
 }
 
+// EmotionForm overrides one mood's star LOOK (change 30) — parallel to EmotionColor
+// but for shape, not color. look is a star look id ("polyhedron"/"liquid"/"spiky",
+// change 29); a star whose mood has no override here falls back to the global
+// star_object default. The look must be an OWNED (or free) "star:look:<id>" item.
+message EmotionForm {
+  Mood mood = 1;
+  string look = 2;
+}
+
 // Settings is the user's stored visual overrides (not a complete config — the
 // client merges these over its defaults). The four selection axes (spec 44):
 // theme = background, star_object = star, self_object = self, synapse_style =
-// synapse. Field numbers are append-only (4·5 added; theme keeps its wire name
+// synapse. Field numbers are append-only (4·5·6 added; theme keeps its wire name
 // even though the domain term is now "background" — a stable identifier).
 message Settings {
   string theme = 1;                          // "" = client default (background vast)
@@ -321,6 +330,7 @@ message Settings {
   repeated EmotionColor emotion_colors = 3;  // only moods the user overrode (0..13)
   string self_object = 4;                    // "" = client default (self mirrorball)
   string synapse_style = 5;                  // "" = client default (synapse filament)
+  repeated EmotionForm emotion_forms = 6;    // only moods the user overrode the star look for (0..13, change 30)
 }
 
 message GetSettingsRequest {}
@@ -339,6 +349,7 @@ message UpdateSettingsRequest {
   repeated EmotionColor emotion_colors = 3;
   optional string self_object = 4;
   optional string synapse_style = 5;
+  repeated EmotionForm emotion_forms = 6;    // upserts that subset of mood→look overrides; never deletes the others (change 30)
 }
 
 message UpdateSettingsResponse {

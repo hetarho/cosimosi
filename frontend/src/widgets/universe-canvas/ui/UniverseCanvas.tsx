@@ -312,8 +312,10 @@ export function UniverseCanvas() {
   // 별(기억) 색은 mood(감정 의미색)라 배경과 무관하게 보존된다(A9 — StarField는 emotionColors/mood만 읽음).
   const background = backgroundMeta(useAppearance((s) => s.theme))
   const bg = background.bg
-  // 별(기억) 오브제의 형태 = 선택한 object. StarField가 형태별 지오메트리·재질로 그린다(색은 mood 유지).
+  // 별(기억) 오브제의 형태 = 선택한 object(전역 기본 룩). StarField가 형태별 지오메트리·재질로 그린다(색은 mood 유지).
   const object = useAppearance((s) => s.object)
+  // 감정별 별 룩 오버라이드(change 30) — 그 mood의 별은 이 룩으로, 없으면 object로 그린다(빈 맵=전부 전역 기본).
+  const starFormByEmotion = useAppearance((s) => s.starFormByEmotion)
   // 감정색 사용자 오버라이드(spec 30) — 별·시냅스 색에 기본 팔레트 대신 우선 적용(빈 맵=기본).
   const emotionColors = useAppearance((s) => s.emotionColors)
   // 중심 "나" 별 형태(spec 38·44) — 우주 중심 앵커. 선택값을 그대로 그린다(store가 알 수 없는 id를 이미
@@ -453,6 +455,7 @@ export function UniverseCanvas() {
           />
           <StarField
             object={object}
+            starFormByEmotion={starFormByEmotion}
             emotionColors={emotionColors}
             positionsRef={positionsRef}
             highlightedRecordId={highlightedRecordId}

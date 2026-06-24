@@ -145,6 +145,36 @@ func (q *Queries) ListUserEmotionColors(ctx context.Context, userID string) ([]L
 	return items, nil
 }
 
+const listUserEmotionForms = `-- name: ListUserEmotionForms :many
+SELECT mood, look FROM user_emotion_forms WHERE user_id = $1 ORDER BY mood
+`
+
+type ListUserEmotionFormsRow struct {
+	Mood string `json:"mood"`
+	Look string `json:"look"`
+}
+
+// 감정별 형태 오버라이드(0~13행, change 30). 없는 mood는 클라가 전역 기본 룩(star_object)으로 그린다.
+func (q *Queries) ListUserEmotionForms(ctx context.Context, userID string) ([]ListUserEmotionFormsRow, error) {
+	rows, err := q.db.Query(ctx, listUserEmotionForms, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserEmotionFormsRow
+	for rows.Next() {
+		var i ListUserEmotionFormsRow
+		if err := rows.Scan(&i.Mood, &i.Look); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const seedWallet = `-- name: SeedWallet :one
 INSERT INTO user_wallet (user_id, stardust)
 VALUES ($1, $2)
@@ -182,6 +212,24 @@ type UpsertUserEmotionColorParams struct {
 // 감정색 1건 upsert. (user_id, mood) 유일 — 한 mood당 한 색.
 func (q *Queries) UpsertUserEmotionColor(ctx context.Context, arg UpsertUserEmotionColorParams) error {
 	_, err := q.db.Exec(ctx, upsertUserEmotionColor, arg.UserID, arg.Mood, arg.Color)
+	return err
+}
+
+const upsertUserEmotionForm = `-- name: UpsertUserEmotionForm :exec
+INSERT INTO user_emotion_forms (user_id, mood, look)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, mood) DO UPDATE SET look = EXCLUDED.look
+`
+
+type UpsertUserEmotionFormParams struct {
+	UserID string `json:"user_id"`
+	Mood   string `json:"mood"`
+	Look   string `json:"look"`
+}
+
+// 감정별 형태 1건 upsert(change 30). (user_id, mood) 유일 — 한 mood당 한 룩. 보낸 mood만 갱신(부분 패치).
+func (q *Queries) UpsertUserEmotionForm(ctx context.Context, arg UpsertUserEmotionFormParams) error {
+	_, err := q.db.Exec(ctx, upsertUserEmotionForm, arg.UserID, arg.Mood, arg.Look)
 	return err
 }
 

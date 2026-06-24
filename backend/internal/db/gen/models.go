@@ -187,6 +187,12 @@ type UserEmotionColor struct {
 	Color  string `json:"color"`
 }
 
+type UserEmotionForm struct {
+	UserID string `json:"user_id"`
+	Mood   string `json:"mood"`
+	Look   string `json:"look"`
+}
+
 type UserOwnedItem struct {
 	UserID     string             `json:"user_id"`
 	ItemID     string             `json:"item_id"`

@@ -24,6 +24,7 @@ export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
   const object = useAppearance((s) => s.object)
   const selfObject = useAppearance((s) => s.selfObject)
   const synapseStyle = useAppearance((s) => s.synapseStyle)
+  const starFormByEmotion = useAppearance((s) => s.starFormByEmotion)
   const ownedItemIds = useAppearance((s) => s.ownedItemIds)
   const saved = useAppearance((s) => s.savedSelection)
   const stardust = useAppearance((s) => s.stardust)
@@ -34,24 +35,35 @@ export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
 
   const unlocked = isDemoMode()
 
-  // 드래프트 여부(라이브 ≠ 마지막 저장) + 저장 시 살 미구매 유료 아이템(체험은 전부 무상이라 없음).
+  // 드래프트 여부(라이브 ≠ 마지막 저장) — 4축 + 감정별 룩 오버라이드 맵(change 30)까지 비교한다.
+  const formDirty =
+    Object.keys(starFormByEmotion).length !== Object.keys(saved.starFormByEmotion).length ||
+    Object.keys(starFormByEmotion).some((m) => starFormByEmotion[m] !== saved.starFormByEmotion[m])
   const dirty =
     theme !== saved.theme ||
     object !== saved.object ||
     selfObject !== saved.selfObject ||
-    synapseStyle !== saved.synapseStyle
+    synapseStyle !== saved.synapseStyle ||
+    formDirty
   const selected: [Axis, string][] = [
     ['background', theme],
     ['star', object],
     ['self', selfObject],
     ['synapse', synapseStyle],
   ]
-  // 합성 선택은 sub-item(form·surface)으로 분해 — 잠긴 sub-item마다 저장 시 구매한다(spec 52 A5).
-  const pending = unlocked
-    ? []
-    : selected
-        .flatMap(([ax, sel]) => subItemIds(ax, sel).map((id) => ({ axis: ax, id })))
-        .filter((p) => !isFree(p.id) && !isOwned(p.id, ownedItemIds))
+  // 저장 시 살 미구매 유료 sub-item. 합성 선택은 form·surface로 분해(spec 52 A5)하고, 감정별 룩 오버라이드는
+  // 각 룩의 "star:look:<id>"를 더한다(change 30 — 룩은 한 번 사면 전역·여러 감정에 자유 배정). id로 중복 제거해
+  // 같은 룩(전역과 오버라이드가 같거나 두 감정이 같은 룩)을 두 번 사지 않는다.
+  const pending = (() => {
+    if (unlocked) return []
+    const byId = new Map<string, Axis>()
+    for (const [ax, sel] of selected) for (const id of subItemIds(ax, sel)) if (!byId.has(id)) byId.set(id, ax)
+    for (const look of Object.values(starFormByEmotion))
+      for (const id of subItemIds('star', look)) if (!byId.has(id)) byId.set(id, 'star')
+    return [...byId]
+      .filter(([id]) => !isFree(id) && !isOwned(id, ownedItemIds))
+      .map(([id, axis]) => ({ axis, id }))
+  })()
   const pendingCost = pending.reduce((s, p) => s + (priceOf(p.id) ?? 0), 0)
   const affordable = stardust >= pendingCost
 
@@ -68,7 +80,7 @@ export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
         await purchaseItem(p.id)
         capture(EVENTS.appearancePurchase, { item_id: p.id, axis: p.axis, price: priceOf(p.id) ?? 0 })
       }
-      const ok = await pushSettings({ theme, starObject: object, selfObject, synapseStyle })
+      const ok = await pushSettings({ theme, starObject: object, selfObject, synapseStyle, starFormByEmotion })
       if (ok || unlocked) commitSelection()
       onClose()
     } catch (e) {

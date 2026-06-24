@@ -9,12 +9,12 @@
 | 축(axis) | 영문 식별자 | 판매 대상 | 색의 출처 | 무료 1종(기본) |
 |---|---|---|---|---|
 | 배경 | `background` | **효과/질감 번들**(단일 effect) | 요즘 mood/감정색 **파생**(고정 hue 없음·검은 우주, change 11; 별색 불간섭) | `galaxy` |
-| 별 | `star` | **단일 룩(look)** (1 아이템, change 29) — 룩이 모양+질감+추상화 단계 변형을 묶는다 | mood(13감정) — **불변** | `polyhedron` |
+| 별 | `star` | **단일 룩(look)** (1 아이템, change 29) — 룩이 모양+질감+추상화 단계 변형을 묶는다. **전역 기본 + 감정(13 mood)별 오버라이드**(change 30) | mood(13감정) — **불변** | `polyhedron` |
 | 나 | `self` | **형태(form)×표면(surface)** (2 아이템, spec 52) | ambient mood(요즘 감정) **파생** | `orb`+`mirror` |
 | 시냅스 | `synapse` | **형태(form)×표면(surface)** | 양끝 별 mood 블렌드 — **불변** | `strands`+`flow` |
 
 - **아이템 = (축, 종류 kind).** 안정 식별자 `"<axis>:<kind>"`(예 `background:vortex`). id는 소유권·proto·values 키이므로 재명명/재배치 금지(별 시드 재현성과 동급 규율).
-- **별은 단일 축 룩(change 29), 나·시냅스는 form×surface 2축 분리(spec 52).** 별은 룩 3종(`polyhedron`·`liquid`·`spiky`) 중 하나를 고르며 아이템 = `"star:look:<id>"`(무료 1+유료 N), 선택 wire(`star_object`)는 룩 id 하나(레거시 합성·프리셋 폐기, 미지는 디폴트 룩 폴백). **나·시냅스**는 형태(form)와 표면(surface)을 독립 선택·독립 판매한다 — sub-item id `"<axis>:form:<id>"`·`"<axis>:surface:<id>"`, 선택은 합성 wire id `"<form>+<surface>"`로 *기존* 필드(`self_object`·`synapse_style`)에 직렬화 → **proto/DB 스키마 무변경**. 미지/레거시는 축 기본으로 폴백(크래시 없음). 배경은 단일 effect 그대로.
+- **별은 단일 축 룩(change 29) + 감정별 오버라이드(change 30), 나·시냅스는 form×surface 2축 분리(spec 52).** 별은 룩 3종(`polyhedron`·`liquid`·`spiky`) 중 하나를 고르며 아이템 = `"star:look:<id>"`(무료 1+유료 N), 선택 wire(`star_object`)는 **전역 기본** 룩 id 하나(레거시 합성·프리셋 폐기, 미지는 디폴트 룩 폴백). 그 위에 **감정(13 mood)별 룩 오버라이드**(`Settings.emotion_forms` 부분 맵, 색 오버라이드와 평행)를 얹어, 별 렌더 룩 = 그 별 mood의 오버라이드 ?? 전역 기본이다. 오버라이드 룩도 같은 `star:look:<id>` 소유 검증을 받고(미소유 배정 거부), 룩은 한 번 사면 어느 감정에든 자유 배정된다(감정별 별도 구매 아님). **나·시냅스**는 형태(form)와 표면(surface)을 독립 선택·독립 판매한다 — sub-item id `"<axis>:form:<id>"`·`"<axis>:surface:<id>"`, 선택은 합성 wire id `"<form>+<surface>"`로 *기존* 필드(`self_object`·`synapse_style`)에 직렬화 → **proto/DB 스키마 무변경**. 미지/레거시는 축 기본으로 폴백(크래시 없음). 배경은 단일 effect 그대로.
 - **축마다(형태 축은 슬롯마다) 정확히 1종 무료**(묵시 소유 — 소유 행 없이 누구나 선택). 나머지는 유료(별가루 구매로 unlock 전엔 선택 불가). 무료 매핑은 `spec/values.yaml`의 `customization.free`(키 `background`·`<axis>:form`·`<axis>:surface`)가 단일 출처다.
 - **합성 선택의 소유 = 양쪽 sub-item 소유(또는 무료).** BE가 합성을 디코드해 양쪽을 검증하고, 한쪽이라도 미소유면 거부한다. **레거시 소유 호환:** 분리 전 단일 paid id(`star:ember` 등) 구매는 BE가 읽기 시(`GetInventory`·선택 검증) 그 form/surface sub-item으로 확장(`settings.expandLegacyOwned`)해 재구매 없이 같은 스킨을 계속 해금한다(DB 마이그레이션 없음).
 - **별가루(Stardust)** = 유일한 화폐. 시작 잔액 100. 증가 경로는 **시작 잔액 시드 + 관리자 보정 지급(spec 46)** 뿐 — 사용자 직접 충전·결제·환불은 없다. 구매로는 **차감만**(음수 불가). 배경 점구름 "별먼지"(cosmic dust)는 화폐가 아니다(별개 개념).
@@ -65,15 +65,16 @@
 
 | RPC | 멱등 | 동작 |
 |---|---|---|
-| `GetSettings` / `UpdateSettings` | Get만 NO_SIDE_EFFECTS | 4축 선택 read/부분 upsert. Update는 선택-소유권 강제(ErrNotOwned) |
+| `GetSettings` / `UpdateSettings` | Get만 NO_SIDE_EFFECTS | 4축 선택 + 감정별 색(`emotion_colors`)·형태(`emotion_forms`, change 30) read/부분 upsert(바꾼 mood만). Update는 선택·오버라이드 룩 소유권 강제(ErrNotOwned) |
 | `GetInventory` | NO_SIDE_EFFECTS(HTTP GET) | 지갑 없으면 `starting_stardust` 시드 후 `{stardust, owned_item_ids}` 반환. 무료 종은 owned에 없다(묵시) |
 | `PurchaseItem` | (쓰기) | `item_id`(유료) → 원자 차감+부여 → 새 인벤토리. 위 구매 검증 |
 
-## 데이터 모델 (마이그레이션 00010)
+## 데이터 모델 (마이그레이션 00010·00015)
 
 - `user_wallet(user_id PK, stardust INT NOT NULL, …)` — 잔액. 시작 100은 시드 시 값으로 채움(DB 기본값 아님).
 - `user_owned_items(user_id, item_id, …, PK(user_id,item_id))` — 유료 소유분만.
 - `user_settings`에 `self_object TEXT`·`synapse_style TEXT` 추가(nullable=클라 기본). 기존 `theme`·`star_object` 유지.
+- `user_emotion_forms(user_id, mood, look, PK(user_id,mood))` — 감정별 별 형태 오버라이드(00015, change 30). 색의 `user_emotion_colors`(00002) 평행물, 바꾼 mood만 1행씩. 빈 행 = 전부 전역 기본 룩.
 
 ## 가격 (values.yaml `customization`)
 

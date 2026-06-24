@@ -1,8 +1,10 @@
-// Star visualization (spec 08 / change 29, Architecture §3.3): every star drawn by an InstancedMesh
-// per **abstraction-stage bucket** of the chosen look — constitution §8 (amended): not ONE mesh but a
-// small FIXED set (≤ look-count × stage-levels; here 1 global look × 5 stages = ≤5 meshes), so a star's
-// discrete stage geometry (polyhedron 20→12→8→4 faces, hedgehog spikes thinning, liquid→cloud) is real
-// geometry, not an in-shader fake — while draw calls stay bounded (independent of star count). Per-instance
+// Star visualization (spec 08 / change 29·30, Architecture §3.3): every star drawn by an InstancedMesh
+// per **(look × abstraction-stage) bucket** — constitution §8 (amended): not ONE mesh but a small FIXED
+// set (looks-in-use × stage-levels; no overrides → 1 look × 5 stages = ≤5 meshes, per-emotion form
+// overrides add a bucket row per extra look, ≤ 3 looks × 5 = 15), so a star's discrete stage geometry
+// (polyhedron 20→12→8→4 faces, hedgehog spikes thinning, liquid→cloud) is real geometry, not an in-shader
+// fake — while draw calls stay bounded (independent of star count). A star's look = its mood's override
+// (starFormByEmotion) or the global default (object), change 30. Per-instance
 // color/brightness/seed come from InstancedBufferAttributes; size (=f(intensity)) is baked into the
 // instance matrix scale. Coordinates update in useFrame from the live force-sim buffer (07/22) with NO
 // React re-render (constitution §3); a deterministic fibonacci dummy stands in before the buffer is ready.
@@ -17,7 +19,7 @@ import { starGlow, reshapedBrightness, reshapedShapeSeed, starsOfRecord, useMemo
 import { degreeNormById, weightedDegreeById, useSynapseStore, type SynapseEdge } from '@/entities/synapse/@x/star'
 import { virtualNowMs } from '@/shared/lib/demo'
 import { WOBBLE_AMP, wobbleUnit } from '../model/wobble'
-import { DEFAULT_STAR_SELECTION, parseStarLook } from '../model/forms'
+import { DEFAULT_STAR_SELECTION, parseStarLook, STAR_LOOKS, type StarLook } from '../model/forms'
 import { resolveMoodRgb } from '@/shared/config'
 import { VALUES } from '@/shared/config'
 import { fibonacciStarPosition } from '@/shared/lib'
@@ -28,9 +30,9 @@ function sizeFor(intensity: number): number {
   return VALUES.starRender.sizeBase + Math.max(0, Math.min(1, intensity)) * VALUES.starRender.sizeRange
 }
 
-// 추상화 단계(change 29): abstraction_stage ∈ 0..STAGE_MAX(= 야간 요지 임계 개수). 별을 단계별 버킷으로 나눠
-// 단계마다 다른 지오메트리(buildStarBody(look, stage))의 InstancedMesh로 렌더한다. 메시 수 = STAGE_LEVELS 상수
-// (별 수와 무관 — 헌법8 정신 보존). stageMax는 buildStarBody의 단계 정규화 분모로도 쓴다.
+// 추상화 단계(change 29): abstraction_stage ∈ 0..STAGE_MAX(= 야간 요지 임계 개수). 별을 (룩×단계) 버킷으로
+// 나눠 단계마다 다른 지오메트리(buildStarBody(look, stage))의 InstancedMesh로 렌더한다. 메시 수 = 사용 룩 수
+// × STAGE_LEVELS(별 수와 무관, 룩 ≤3 — 헌법8 정신 보존, change 30). stageMax는 buildStarBody의 단계 정규화 분모로도 쓴다.
 const STAGE_MAX = VALUES.consolidation.gistStageRadii.length // 4
 const STAGE_LEVELS = STAGE_MAX + 1 // 단계 0..STAGE_MAX = 5 버킷
 const sf = VALUES.starForm
@@ -150,8 +152,10 @@ const STAR_LIGHT_ORIGIN = [0, 0, 0] as const
 export interface StarFieldProps {
   /** force-sim positions buffer (07/10). When absent, a dev dummy cluster is used. */
   positionsRef?: { readonly current: Float32Array | null }
-  /** 별(기억) 스킨 선택(appearance.object) — 단일 축 룩 id(change 29). 미지/레거시는 디폴트 룩으로 폴백. */
+  /** 전역 기본 별 룩(appearance.object) — 단일 축 룩 id(change 29). 미지/레거시는 디폴트 룩으로 폴백. */
   object?: string
+  /** 감정별 별 룩 오버라이드(mood→look, change 30). 그 mood의 별은 이 룩으로, 없으면 object로 그린다. 미지 룩은 폴백. */
+  starFormByEmotion?: Record<string, string>
   /** 감정색 사용자 오버라이드(mood→"#RRGGBB", spec 30). */
   emotionColors?: Record<string, string>
   /** 강조할 원본 일기 id(spec 28) — 그 일기의 별만 밝히고 나머지는 dim한다. null = 강조 없음. */
@@ -183,6 +187,7 @@ export interface StarFieldProps {
 export function StarField({
   positionsRef,
   object = DEFAULT_STAR_SELECTION,
+  starFormByEmotion,
   emotionColors,
   highlightedRecordId = null,
   selectedId = null,
@@ -201,7 +206,16 @@ export function StarField({
   const stars = externalStars ?? storeStars
   const external = externalStars !== undefined
   const count = stars.length
-  const look = parseStarLook(object)
+  const look = parseStarLook(object) // 전역 기본 룩
+  // 사용 중인 룩 집합 = 전역 기본 ∪ 감정별 오버라이드 값(STAR_LOOKS 순서로 안정 직렬화, change 30). 이 키가
+  // 바뀔 때만 (룩×단계) 버킷 메시를 재구성한다 — 오버라이드가 없으면 전역 룩 하나라 기존 5메시와 동일(헌법8).
+  const looksKey = useMemo(() => {
+    const set = new Set<string>([look])
+    for (const v of Object.values(starFormByEmotion ?? {})) set.add(parseStarLook(v))
+    return STAR_LOOKS.filter((l) => set.has(l.id))
+      .map((l) => l.id)
+      .join(',')
+  }, [look, starFormByEmotion])
   const highlightedIds = useMemo(
     () =>
       highlightedRecordId
@@ -218,10 +232,10 @@ export function StarField({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the weight-inclusive signature
   const weightedDegreeNorm = useMemo(() => weightedDegreeById(edges), [edgeWTopo])
 
-  // 단계 버킷 메시 refs(STAGE_LEVELS개, 고정 길이). 탄생/좌표/공명 추적은 글로벌(별 인덱스 기준).
+  // (룩×단계) 버킷 메시 refs(buckets.length개). 탄생/좌표/공명 추적은 글로벌(별 인덱스 기준).
   const meshRefs = useRef<(THREE.InstancedMesh | null)[]>([])
-  // 별 글로벌 인덱스 → {stage 버킷, 그 버킷 내 slot}. focus·useFrame·raycast가 글로벌↔버킷 슬롯을 잇는다.
-  const placementRef = useRef<{ stage: number; slot: number }[]>([])
+  // 별 글로벌 인덱스 → {버킷 인덱스, 그 버킷 내 slot}. focus·useFrame·raycast가 글로벌↔버킷 슬롯을 잇는다.
+  const placementRef = useRef<{ bucket: number; slot: number }[]>([])
   // 버킷별 멤버 글로벌 인덱스 목록(slot → global i). useFrame이 버킷별로 좌표를 쓴다.
   const membersRef = useRef<number[][]>([])
   const scalesRef = useRef<Float32Array>(new Float32Array(0))
@@ -235,10 +249,10 @@ export function StarField({
   const ringRef = useRef<THREE.InstancedMesh>(null)
   const resonantIdxRef = useRef<number[]>([])
 
-  // 선택된 룩의 단계별(0..STAGE_MAX) 별-바디 프리미티브 + 공유 uniform. 모든 단계 머티리얼이 같은 uniform·
-  // attribute 노드를 공유하므로 update()/setLight()이 한 번에 전부를 구동한다(드로우콜 = 단계 수, 헌법8 개정).
-  // attribute는 버킷 지오메트리마다 따로 채워진다(layout 효과).
-  const { bodies, update, setLight } = useMemo(() => {
+  // 사용 중인 (룩×단계) 버킷마다 별-바디 프리미티브 + 공유 uniform. 모든 버킷 머티리얼이 같은 uniform·
+  // attribute 노드를 공유하므로 update()/setLight()이 한 번에 전부를 구동한다(드로우콜 = 버킷 수, 헌법8 개정).
+  // attribute는 버킷 지오메트리마다 따로 채워진다(layout 효과). lookIndexOf/buckets가 별→버킷 라우팅을 잇는다.
+  const { bodies, buckets, lookIndexOf, update, setLight } = useMemo(() => {
     const t = uniform(0)
     const camPosU = uniform(new THREE.Vector3())
     const selfPosU = uniform(new THREE.Vector3(0, 0, 0))
@@ -269,8 +283,18 @@ export function StarField({
       decay: VALUES.starLighting.selfDecay,
       gain: VALUES.starLighting.litAlbedoGain,
     }
-    const bodies = Array.from({ length: STAGE_LEVELS }, (_unused, stage) =>
-      buildStarBody(look, stage, sharedInputs, light, formParamsFor(stage)),
+    const looks = looksKey.split(',') as StarLook[]
+    const lookIndexOf: Record<string, number> = {}
+    looks.forEach((l, i) => {
+      lookIndexOf[l] = i
+    })
+    // 버킷 = 룩 × 단계(0..STAGE_MAX). bodies[b] ↔ buckets[b]; 별은 lookFor(mood)·stageBucket으로 버킷에 들어간다.
+    const buckets: { look: StarLook; stage: number }[] = []
+    const bodies = looks.flatMap((l) =>
+      Array.from({ length: STAGE_LEVELS }, (_unused, stage) => {
+        buckets.push({ look: l, stage })
+        return buildStarBody(l, stage, sharedInputs, light, formParamsFor(stage))
+      }),
     )
     const update = (time: number, camera: THREE.Camera) => {
       t.value = time
@@ -287,8 +311,8 @@ export function StarField({
       litMixU.value = mix
       camHeadlightU.value = headlight
     }
-    return { bodies, update, setLight }
-  }, [look])
+    return { bodies, buckets, lookIndexOf, update, setLight }
+  }, [looksKey])
   // 자아 광원 uniform을 props로 동기(씬마다 위치/방향·점광/평행광·게이트가 다름).
   useEffect(() => {
     setLight(selfLightPos, lightPositional, litMix)
@@ -364,9 +388,15 @@ export function StarField({
     for (const id of burstsRef.current.keys()) if (!seenRef.current.has(id)) burstsRef.current.delete(id)
 
     const now = virtualNowMs()
-    // 1) 글로벌 패스: mood(틴트 포함)·크기·더미 좌표·공명·단계 버킷 배치를 한 번에 계산한다.
-    const members: number[][] = Array.from({ length: STAGE_LEVELS }, () => [])
-    const placement: { stage: number; slot: number }[] = new Array(count)
+    // 1) 글로벌 패스: mood(틴트 포함)·크기·더미 좌표·공명·(룩×단계) 버킷 배치를 한 번에 계산한다.
+    const members: number[][] = Array.from({ length: bodies.length }, () => [])
+    const placement: { bucket: number; slot: number }[] = new Array(count)
+    // 별 → 버킷: 그 별 mood의 룩 오버라이드(없으면 전역 기본 object) × 추상화 단계. parseStarLook 결과는 looksKey가
+    // 항상 집합에 포함하므로 lookIndexOf가 맞지만, 만일을 위해 0(전역 기본 버킷 행)으로 폴백한다(A5 — 크래시 없음).
+    const bucketFor = (mood: string, stage: number): number => {
+      const li = lookIndexOf[parseStarLook(starFormByEmotion?.[mood] ?? object)] ?? 0
+      return li * STAGE_LEVELS + stageBucket(stage)
+    }
     const moodArrG = new Float32Array(count * 3) // 글로벌 mood(버스트·공명 빌보드용)
     const scales = new Float32Array(count)
     const dummy = new Float32Array(count * 3)
@@ -384,17 +414,17 @@ export function StarField({
       dummy[i * 3] = px
       dummy[i * 3 + 1] = py
       dummy[i * 3 + 2] = pz
-      const st = stageBucket(m.abstractionStage)
-      placement[i] = { stage: st, slot: members[st].length }
-      members[st].push(i)
+      const b = bucketFor(m.mood, m.abstractionStage)
+      placement[i] = { bucket: b, slot: members[b].length }
+      members[b].push(i)
     }
 
-    // 2) 버킷 패스: 단계 버킷마다 attribute(aMood/aShape/aGlow/aRecency/aFocus/aHueShift) + 초기 행렬을 채운다.
+    // 2) 버킷 패스: (룩×단계) 버킷마다 attribute(aMood/aShape/aGlow/aRecency/aFocus/aHueShift) + 초기 행렬을 채운다.
     const obj = new THREE.Object3D()
-    for (let st = 0; st < STAGE_LEVELS; st++) {
-      const mesh = meshRefs.current[st]
+    for (let b = 0; b < bodies.length; b++) {
+      const mesh = meshRefs.current[b]
       if (!mesh) continue
-      const idxs = members[st]
+      const idxs = members[b]
       const n = idxs.length
       const moodArr = new Float32Array(n * 3)
       // change 29: aShape vec4 = (s0,s1,s2, 예비). 형태 3축 시드는 회상/요지가 누적한 form_seed_delta를 각 축에
@@ -430,7 +460,7 @@ export function StarField({
         obj.updateMatrix()
         mesh.setMatrixAt(slot, obj.matrix)
       }
-      const geom = bodies[st].geometry
+      const geom = bodies[b].geometry
       geom.setAttribute('aMood', new THREE.InstancedBufferAttribute(moodArr, 3))
       geom.setAttribute('aShape', new THREE.InstancedBufferAttribute(shapeArr, 4))
       geom.setAttribute('aGlow', new THREE.InstancedBufferAttribute(glowArr, 1))
@@ -446,7 +476,7 @@ export function StarField({
     membersRef.current = members
     placementRef.current = placement
     resonantIdxRef.current = resonantIdx
-  }, [stars, count, bodies, emotionColors, degreeNorm, weightedDegreeNorm, external, tint, tintStrength])
+  }, [stars, count, bodies, lookIndexOf, object, starFormByEmotion, emotionColors, degreeNorm, weightedDegreeNorm, external, tint, tintStrength])
 
   // Focus spotlight: re-weight aFocus per stage-bucket when the selection (or star set / look) changes.
   useEffect(() => {
@@ -458,20 +488,20 @@ export function StarField({
     for (let i = 0; i < count; i++) {
       const p = placement[i]
       if (!p) continue
-      const attr = bodies[p.stage].geometry.getAttribute('aFocus') as THREE.InstancedBufferAttribute | undefined
+      const attr = bodies[p.bucket].geometry.getAttribute('aFocus') as THREE.InstancedBufferAttribute | undefined
       if (!attr) continue
       let factor = 1
       if (selIdx >= 0) factor = i === selIdx ? FOCUS_BOOST : FOCUS_DIM
       else if (hi) factor = hi.has(stars[i].id) ? FOCUS_BOOST : FOCUS_DIM
       ;(attr.array as Float32Array)[p.slot] = factor
-      touched.add(p.stage)
+      touched.add(p.bucket)
     }
-    for (const st of touched) {
-      const attr = bodies[st].geometry.getAttribute('aFocus') as THREE.InstancedBufferAttribute | undefined
+    for (const b of touched) {
+      const attr = bodies[b].geometry.getAttribute('aFocus') as THREE.InstancedBufferAttribute | undefined
       if (attr) attr.needsUpdate = true
     }
     // deps에 layout 재빌드 트리거 포함 — 재빌드가 aFocus를 1로 리셋하므로 그 뒤 디밍/부스트를 다시 적용한다.
-  }, [selectedId, highlightedIds, stars, count, bodies, emotionColors, degreeNorm, weightedDegreeNorm, external, tint, tintStrength])
+  }, [selectedId, highlightedIds, stars, count, bodies, object, starFormByEmotion, emotionColors, degreeNorm, weightedDegreeNorm, external, tint, tintStrength])
 
   // Per-frame matrix write: LIVE force-sim positions (07/10) 또는 더미 좌표 위에 별 미세 부유(WOBBLE_AMP)와
   // 탄생 스케일을 얹는다 — 단계 버킷마다. No setState → no re-render.
@@ -521,9 +551,9 @@ export function StarField({
       return
 
     const members = membersRef.current
-    for (let st = 0; st < STAGE_LEVELS; st++) {
-      const mesh = meshRefs.current[st]
-      const idxs = members[st]
+    for (let b = 0; b < members.length; b++) {
+      const mesh = meshRefs.current[b]
+      const idxs = members[b]
       if (!mesh || !idxs || idxs.length === 0) continue
       for (let slot = 0; slot < idxs.length; slot++) {
         const i = idxs[slot]
@@ -632,15 +662,16 @@ export function StarField({
   // 비례하는 드로우콜 없이 상수(STAGE_LEVELS)다.
   const capacity = Math.max(64, Math.ceil(count / 64) * 64)
   if (count === 0) return null
-  // 단계 버킷마다 InstancedMesh 1개(룩×단계 = 헌법8 개정의 소수 고정 메시). key는 look·stage만 — count는 args의
-  // capacity(청크)로 들어가 64 경계에서만 재생성된다. onClick → raycast 슬롯을 버킷 멤버로 매핑해 그 별 선택.
+  // (룩×단계) 버킷마다 InstancedMesh 1개(헌법8 개정의 소수 고정 메시). key는 룩·단계라 looksKey가 바뀌어
+  // 버킷이 줄/늘 때만 마운트/언마운트된다 — count는 args의 capacity(청크)로 들어가 64 경계에서만 재생성된다.
+  // onClick → raycast 슬롯을 그 버킷 멤버로 매핑해 그 별 선택.
   return (
     <>
-      {bodies.map((body, stage) => (
+      {bodies.map((body, b) => (
         <instancedMesh
-          key={`${look}-${stage}`}
+          key={`${buckets[b].look}-${buckets[b].stage}`}
           ref={(el) => {
-            meshRefs.current[stage] = el
+            meshRefs.current[b] = el
           }}
           args={[body.geometry, body.material, capacity]}
           dispose={null}
@@ -648,7 +679,7 @@ export function StarField({
             e.stopPropagation()
             if (e.delta > 8) return
             if (e.instanceId == null) return
-            const i = membersRef.current[stage]?.[e.instanceId]
+            const i = membersRef.current[b]?.[e.instanceId]
             if (i == null) return
             const node = stars[i]
             if (node) onSelect?.(node.id)

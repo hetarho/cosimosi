@@ -58,6 +58,13 @@ func (h *Handler) UpdateSettings(ctx context.Context, req *connect.Request[cosim
 		}
 		p.EmotionColors = append(p.EmotionColors, EmotionColor{Mood: mood, Color: ec.GetColor()})
 	}
+	for _, ef := range msg.GetEmotionForms() {
+		mood, ok := moodKey(ef.GetMood())
+		if !ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, ErrInvalidMood)
+		}
+		p.EmotionForms = append(p.EmotionForms, EmotionForm{Mood: mood, Look: ef.GetLook()})
+	}
 
 	s, err := h.svc.Update(ctx, userID, p)
 	switch {
@@ -121,6 +128,16 @@ func toProtoSettings(s Settings) *cosimosiv1.Settings {
 		out.EmotionColors = append(out.EmotionColors, &cosimosiv1.EmotionColor{
 			Mood:  cosimosiv1.Mood(num),
 			Color: c.Color,
+		})
+	}
+	for _, f := range s.EmotionForms {
+		num, ok := cosimosiv1.Mood_value[strings.ToUpper(f.Mood)]
+		if !ok {
+			continue
+		}
+		out.EmotionForms = append(out.EmotionForms, &cosimosiv1.EmotionForm{
+			Mood: cosimosiv1.Mood(num),
+			Look: f.Look,
 		})
 	}
 	return out
