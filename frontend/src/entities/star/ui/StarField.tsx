@@ -626,19 +626,23 @@ export function StarField({
     }
   })
 
+  // 버킷 메시 capacity — count를 64단위로 올림(한 단계에 전부 몰릴 최악 대비, 버킷당 capacity=count). count가
+  // 매일 1씩 늘어도 64 경계를 넘을 때만 args가 바뀌어 메시가 재생성된다(데모 genesis 렉 완화: 별 추가마다
+  // 5개 메시를 재생성하던 churn 제거 — mesh.count는 layout 효과가 매번 imperative하게 갱신). 정렬은 별 수에
+  // 비례하는 드로우콜 없이 상수(STAGE_LEVELS)다.
+  const capacity = Math.max(64, Math.ceil(count / 64) * 64)
   if (count === 0) return null
-  // 단계 버킷마다 InstancedMesh 1개(룩×단계 = 헌법8 개정의 소수 고정 메시). key에 look·stage·count를 넣어 룩
-  // 변경/개수 변동 시 깨끗이 다시 만든다. capacity=count(한 단계에 전부 몰릴 최악) — 메모리 STAGE_LEVELS배지만
-  // 상수배라 별 수 비례 드로우콜은 그대로다. onClick → raycast 슬롯을 버킷 멤버로 매핑해 그 별 선택.
+  // 단계 버킷마다 InstancedMesh 1개(룩×단계 = 헌법8 개정의 소수 고정 메시). key는 look·stage만 — count는 args의
+  // capacity(청크)로 들어가 64 경계에서만 재생성된다. onClick → raycast 슬롯을 버킷 멤버로 매핑해 그 별 선택.
   return (
     <>
       {bodies.map((body, stage) => (
         <instancedMesh
-          key={`${look}-${stage}-${count}`}
+          key={`${look}-${stage}`}
           ref={(el) => {
             meshRefs.current[stage] = el
           }}
-          args={[body.geometry, body.material, count]}
+          args={[body.geometry, body.material, capacity]}
           dispose={null}
           onClick={(e) => {
             e.stopPropagation()
