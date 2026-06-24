@@ -384,9 +384,11 @@ demo_overlay:
 #    데모 가상 시계가 배속으로 계속 흐른다(정지는 배속 미적용 — UI 옵션이라 여기 없음). 04:00 KST 야간
 #    공고화 발화 시각은 엔진 consolidation.hour_utc를 재사용(드리프트 없음). FE 데모 전용(서버 미사용).
 demo_clock:
-  hours_per_second: [1, 6, 24] #  배속 옵션: 실제 1초당 흐르는 가상 시간(시). 첫 값(1)이 기본 배속. 24=하루가 1초.
+  hours_per_second: [24, 48, 72] #  배속 셀렉터 옵션: 실제 1초당 흐르는 가상 시간(시). UI 시간 팝오버 버튼이 "N시간"으로 라벨된다(24=하루가 1초, 72=3일/초). 사용자가 명시 선택하는 빠른 관전 속도다.
+  default_hours_per_second: 1 #     기본/휴지 배속 — 셀렉터 옵션과 별개다(첫 옵션이 곧 기본이 아님). resetDemoClock 복귀값이자 튜토리얼의 잔잔한 우주 흐름 속도(사용자가 고배속을 고르기 전까지 우주가 천천히 늙는다). 셀렉터 옵션을 빠르게 바꿔도 휴지 흐름은 여기서 독립적으로 잔잔하게 유지.
   step_ms: 300 #                  가상 시계를 흘리는 간격(ms) — rAF 매 프레임이 아니라 이 간격마다 한 번에 offset을 전진시키고 재파생·공고화·무효화를 묶는다. 사이 프레임엔 시계가 멈춰 있어 force-sim이 자리를 잡고(settle) 카메라/입력에 메인스레드를 양보한다(부드러움의 핵심). 작을수록 흐름이 매끈하나 무거워진다.
   max_tick_ms: 250 #             한 프레임이 step에 보태는 실시간 상한(ms) — 탭이 가려졌다 돌아오거나 메인스레드가 길게 멎어도 한 step이 수십~수백 밤을 한 번에 발화하지 않게 막는다(가려진 동안은 사실상 정지)
+  refresh_ms: 500 #              밤(04:00 경계) 사이 별·시냅스 밝기 재파생(refreshActivation) 최소 실시간 간격(ms). 경계를 지난 step은 야간 공고화가 universe/dormant를 invalidate→refetch해 새 now로 밝기를 다시 굽으므로(applyUniverse) refreshActivation을 또 부르지 않고, 경계 없는 step에서만 이 간격으로 throttle한다 — 배속을 올려도 StarField 전면 재구성이 ≤2Hz로 묶여 렉을 막는다. 감쇠 반감기 30일이라 이 간격 안의 밝기 변화는 비가시(별 위치 드리프트는 layout이 매 프레임 따로 굴린다).
 
 # ── 데모 우주 genesis (demo_genesis) — genesis.ts/data.ts. change 28 ───────────────────────────
 #    자유모드 진입 = 빈 우주에서 30일을 배속으로 살아가는 시뮬레이션(genesis). 매 simulated day

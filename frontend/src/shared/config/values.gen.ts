@@ -240,9 +240,11 @@ export const VALUES = {
     maxBridges: 4,
   },
   demoClock: {
-    hoursPerSecond: [1,6,24],
+    hoursPerSecond: [24,48,72],
+    defaultHoursPerSecond: 1,
     stepMs: 300,
     maxTickMs: 250,
+    refreshMs: 500,
   },
   demoGenesis: {
     days: 30,

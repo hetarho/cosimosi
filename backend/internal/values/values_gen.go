@@ -353,11 +353,13 @@ const (
 
 // demo_clock
 const (
-	DemoClockStepMs    = 300
-	DemoClockMaxTickMs = 250
+	DemoClockDefaultHoursPerSecond = 1
+	DemoClockStepMs                = 300
+	DemoClockMaxTickMs             = 250
+	DemoClockRefreshMs             = 500
 )
 var (
-	DemoClockHoursPerSecond = []float64{1, 6, 24}
+	DemoClockHoursPerSecond = []float64{24, 48, 72}
 )
 
 // demo_genesis

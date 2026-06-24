@@ -16,7 +16,10 @@ const CONSOLIDATION_BOUNDARY_SHIFT_MS = VALUES.consolidation.hourUtc * HOUR_MS
 /** 배속: 실제 1초당 흐르는 가상 시간(시). 'paused'면 시계가 멈춘다(배속 미적용). */
 export type DemoClockSpeed = number | 'paused'
 
-const DEFAULT_SPEED: DemoClockSpeed = VALUES.demoClock.hoursPerSecond[0]
+// 기본/휴지 배속은 셀렉터 옵션(hoursPerSecond=[24,48,72])과 분리된 잔잔한 값이다 — 첫 옵션이 곧
+// 기본이 아니다. 자유모드는 진입 즉시 genesis 배속으로 덮이고, 튜토리얼은 사용자가 고배속을 고르기
+// 전까지 이 속도로 우주가 천천히 늙는다(셀렉터를 빠르게 바꿔도 휴지 흐름은 독립적으로 유지).
+const DEFAULT_SPEED: DemoClockSpeed = VALUES.demoClock.defaultHoursPerSecond
 
 let offsetMs = 0
 let speed: DemoClockSpeed = DEFAULT_SPEED

@@ -25,8 +25,8 @@ import {
 } from '@/shared/lib/demo'
 import { VALUES } from '@/shared/config'
 import { tickDemoClock, resetDemoExperience, switchDemoPersona } from '@/widgets/demo-sim'
-import { toSynapseEdge } from '@/entities/synapse'
-import { mapStar, refreshActivation, focusActor, universeInvalidateKey, dormantInvalidateKey } from '@/entities/memory'
+import { toSynapseEdge, useSynapseStore } from '@/entities/synapse'
+import { mapStar, refreshActivation, focusActor, universeInvalidateKey, dormantInvalidateKey, useMemoryStore } from '@/entities/memory'
 import { composeActor } from '@/features/record-memory'
 import { navigationActor, type Bridge } from '@/widgets/universe-canvas'
 import type { DemoPopover } from '../ui/DemoFreeModeControls'
@@ -111,9 +111,10 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
 
   // 배속 흐름 드라이버(change 24) — 데모 자유/튜토리얼에서 rAF로 가상 시계를 굴린다. 매 프레임 경과
   // 실시간을 누적하고 04:00 경계마다 야간 공고화를 발화하되(tickDemoClock), 밝기·반지름 재파생
-  // (refreshActivation)은 throttle해 setStars 폭주를 막는다(헌법8). 정수 일이 바뀔 때만 React 상태로
-  // 끌어올려 tour CLOCK_CHANGED·overlay 재시뮬을 친다. 정지·겹쳐보기 중엔 루프를 멈춘다. rAF는 탭이
-  // 가려지면 자동으로 멎어 누적 폭주가 없다(setInterval 대비 이점).
+  // (refreshActivation)은 두 경로로 나눠 setStars/setEdges 폭주를 막는다(헌법8, 렉 완화): 경계 step은
+  // 공고화 refetch가 새 now로 다시 굽고, 경계 없는 step만 refreshMs로 throttle한다(아래 상세). 정수 일이
+  // 바뀔 때만 React 상태로 끌어올려 tour CLOCK_CHANGED·overlay 재시뮬을 친다. 정지·겹쳐보기 중엔 루프를
+  // 멈춘다. rAF는 탭이 가려지면 자동으로 멎어 누적 폭주가 없다(setInterval 대비 이점).
   useEffect(() => {
     if (!demoMode || demoOverlayOn) return
     if (demoFlow !== 'free' && demoFlow !== 'tutorial') return
@@ -122,6 +123,7 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     let raf = 0
     let last = performance.now()
     let lastStep = last
+    let lastRefresh = last
     let accumMs = 0
     const loop = (t: number) => {
       raf = requestAnimationFrame(loop)
@@ -136,8 +138,17 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
       const elapsed = accumMs
       accumMs = 0
       const genesisBefore = isGenesisActive()
-      tickDemoClock(queryClient, elapsed) // offset 전진 + 04:00 경계마다 genesis 하루 + 공고화 + 무효화
-      refreshActivation() // 새 now로 별·엣지 밝기·반지름 재파생
+      const boundaries = tickDemoClock(queryClient, elapsed) // offset 전진 + 04:00 경계마다 genesis 하루 + 공고화 + 무효화
+      // 밝기 재파생을 두 경로로 나눠 setStars/setEdges 폭주를 막는다(렉 완화). ① 04:00 경계를 지난 step은
+      // 공고화가 universe/dormant를 invalidate→refetch하고 applyUniverse가 새 now로 밝기를 다시 굽는다 —
+      // 여기서 refreshActivation까지 부르면 같은 재파생을 한 step에 두 번 발화해 StarField·시냅스를 두 번
+      // 재구성한다(고배속일수록 경계 step이 잦아 이중 비용↑). 그래서 경계 step은 건너뛴다. ② 경계 없는
+      // step만 refreshActivation으로 밤 사이 밝기 드리프트를 굽되 refreshMs로 throttle한다(배속 무관 ≤2Hz —
+      // 반감기 30일이라 그 간격 안의 밝기 변화는 비가시, 별 위치 드리프트는 layout이 매 프레임 따로 굴린다).
+      if (boundaries === 0 && t - lastRefresh >= VALUES.demoClock.refreshMs) {
+        refreshActivation() // 밤 사이 별·엣지 밝기를 새 now로 재파생(경계 step은 공고화 refetch가 대신)
+        lastRefresh = t
+      }
       pullClockDay() // 정수 일이 바뀌면 React 상태로(tour CLOCK_CHANGED·overlay 재시뮬)
       // genesis 30일 완료 감지(change 28) — 마지막 밤을 지나며 isGenesisActive가 false로 내려가면 시계를
       // 멈추고 환영 안내를 띄운다. 컨트롤(배속·새 별)은 genesisActive=false로 풀린다. 한 번만 발화한다.
@@ -165,12 +176,21 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     setDemoPersonaState(id)
     setFlow('persona_selected')
   }
-  // "자유롭게 탐험해보기" → 빈 우주에서 30일 genesis를 재생한다(change 28): 정적 코퍼스 시드를 비우고
-  // (resetDemo로 seededAt=0) flow=free로 두면, 위 free-진입 effect가 armGenesisPlayback으로 genesis를
-  // 켠다. 캔버스가 빈 우주(이후 자라나는 우주)를 그리도록 우주·잠든 별 쿼리를 무효화한다.
+  // "자유롭게 탐험해보기" → 빈 우주에서 30일 genesis를 재생한다(change 28): 데이터 출처(정적 코퍼스→빈
+  // genesis)를 비우고 flow=free로 두면, 위 free-진입 effect가 armGenesisPlayback으로 genesis를 켠다.
   const chooseFree = () => {
     resetDemo()
     setFlow('free')
+    // 출처 경계 스토어 리셋(필수) — 온보딩 동안 우주 쿼리는 정적 코퍼스를 렌더 스토어에 이미 시드해 둔다
+    // (캔버스는 온보딩 오버레이 뒤에서도 마운트되고, flow≠free라 ensureSeeded가 성숙 코퍼스를 시드한다).
+    // resetDemo는 데이터 모듈(baseStars)만 비우고 렌더 스토어는 그대로라, merge(무삭제 — 헌법2)가 빈
+    // genesis로 refetch해도 그 정적 별들이 남아 "빈 우주에서 시작"이 깨진다(최초 진입에 디폴트 별이 보임).
+    // 페르소나 전환·처음으로는 resetDemoExperience의 demo enter/exit가 모드 리스너(resetUniverseData)로
+    // 스토어를 비우지만, chooseFree는 모드를 토글하지 않으므로 여기서 직접 비운다. applyUniverse가 빈
+    // 우주를 다시 판정(loadedEmpty)해 첫 genesis 별이 탄생 연출을 받는다.
+    useMemoryStore.getState().setStars([])
+    useMemoryStore.getState().setLoadedEmpty(false)
+    useSynapseStore.getState().setEdges([])
     // 같은 핸들러에서 동기로 무장한다 — genesisActive(잠금)·배속을 즉시 켜, 진입 첫 프레임에 `새 별 띄우기`가
     // 열려 보이는 레이스를 없앤다(effect의 rAF 무장은 새로고침 재개용 백스톱으로 남는다).
     armGenesisPlayback()

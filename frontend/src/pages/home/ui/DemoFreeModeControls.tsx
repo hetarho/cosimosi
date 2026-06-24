@@ -10,7 +10,8 @@ import { VALUES } from '@/shared/config'
 
 export type DemoPopover = 'persona' | 'time' | null
 
-// 배속 셀렉터 옵션(change 24) — values의 배속 배열 + 정지. 첫 값이 기본 배속이다.
+// 배속 셀렉터 옵션(change 24) — values의 배속 배열(24·48·72시간) + 정지. 휴지/기본 배속은 셀렉터와
+// 분리된 별도 값(defaultHoursPerSecond)이라 여기 옵션 첫 값이 기본은 아니다.
 const SPEED_OPTIONS: { value: DemoClockSpeed; label: string }[] = [
   ...VALUES.demoClock.hoursPerSecond.map((h) => ({ value: h as DemoClockSpeed, label: `${h}시간` })),
   { value: 'paused', label: '정지' },
