@@ -94,8 +94,8 @@ app  ──►  pages  ──►  widgets  ──►  features  ──►  entit
 > **현재 entities 간 교차는 모두 `@x` 적용 완료:**
 > - `entities/memory/@x/star.ts` → star의 `StarField`가 구독하는 `useMemoryStore`·`starBrightness`
 > - `entities/synapse/@x/memory.ts` → memory의 `getUniverse`가 동기화하는 `useSynapseStore`·`toSynapseEdge`
-> - `entities/star/@x/appearance.ts` → appearance store가 참조하는 `StarObject`·`STAR_OBJECTS`·`DEFAULT_OBJECT`
-> - `entities/star/@x/synapse.ts` → `VizSynapse`의 `concept`(`StarObject`) 타입
+> - `entities/star/@x/appearance.ts` → appearance store가 참조하는 `StarLook`·`STAR_LOOKS`·`parseStarLook`(change 29)
+> - `entities/star/@x/synapse.ts` → `VizSynapse`의 `concept`(`StarLook`) 타입
 >
 > 새 교차 참조가 필요하면 같은 식으로 제공자에 `@x/{소비자}.ts`를 두고 거기서만 가져온다. (widgets·features·pages가 entities를 쓰는 건 하위 레이어 import라 일반 `index.ts`를 쓴다 — `@x`는 entities 간에만.)
 
@@ -169,8 +169,8 @@ cosimosi는 일기 앱이 아니라 **우주를 항해하는 게임**이다 — 
 | 무엇 | 어디 | 이유 |
 |---|---|---|
 | `<Canvas>` + WebGPU 렌더러 + 조명·카메라·Bloom 노드 (후처리는 `RenderPipeline`/`PostProcessing` — three 0.184 핀 기준 명칭 확인, §3.1) | **widgets** — `widgets/universe-canvas/ui/UniverseCanvas.tsx` | 자족적 큰 UI 블록. **Bloom 패스(`BloomPass`, RenderPipeline)는 `shared/ui/BloomPass.tsx`로 분리**해 universe-canvas와 CosmosScene(plan 43)이 공유 |
-| 별 인스턴스 렌더 + TSL 머티리얼 | **entities** — `entities/star/ui/StarField.tsx` | 도메인 시각화. **생성 오브젝트의 고유함은 per-instance 시드(감정·강도·임베딩 파생)를 TSL에서 변형**해 표현 — 공유 지오메트리 + 인스턴싱을 유지하면서도 별마다 다른 형태·색(수천 노드 성능). 별 본체 셰이딩은 아래 프리미티브를 attribute 바인딩으로 소비 |
-| 별 본체 시각 정의(form별 geometry + TSL 셰이딩) | **entities** — `entities/star/ui/star-body.ts` (`buildStarBody`, plan 42) | 입력 바인딩(attribute/uniform)이 추상화된 **단일 별-바디 프리미티브**(순수: geometry+material만 반환). 위치·움직임·time uniform 소유는 소비처(우주 `StarField`=attribute, 단일 `widgets/star3d/Star3D`=uniform). TSL node conversion은 `shared/lib/r3f` helper를 통해 표현한다. 자가발광 셰이딩이라 조명 환경과 무관. `three`만 의존 → 라이브러리 추출 가능. 소비처가 자기 씬에 꽂으므로 배경과 한 캔버스 합성도 가능(아래 `CosmosScene`이 fluid 뒤/앞 레이어 + 별을 renderOrder로 쌓음, plan 43) |
+| 별 인스턴스 렌더 + TSL 머티리얼 | **entities** — `entities/star/ui/StarField.tsx` | 도메인 시각화. **(룩×추상화-단계) 버킷마다 InstancedMesh 1개**(change 29·헌법8 개정) — 단계별 실제 지오메트리(다면체 면 수·고슴도치 가시·액체→구름)를 그리되 메시 수는 별 수가 아니라 단계 수에 비례하는 상수. 같은 버킷 안 별의 고유함은 per-instance 시드를 TSL 변위로 표현. 모든 버킷이 같은 uniform(time·camera·self-light) 공유, capacity는 청크(64)라 별 추가마다 재생성 안 함. 좌표·focus·raycast·탄생/공명 빌보드는 글로벌↔버킷 슬롯 매핑으로 라우팅 |
+| 별 본체 시각 정의(룩×단계 geometry + TSL 셰이딩) | **entities** — `entities/star/ui/star-body.ts` (`buildStarBody(look, stage)`, plan 42·53) | 입력 바인딩(attribute/uniform)이 추상화된 **별-바디 프리미티브**(순수: geometry+material만 반환). 룩(`STAR_LOOK_BUILDERS`)×빌드타임 단계로 toolkit geometry(`polyhedronForStage`·`spikyGeometry`, plan 50) + emissive 셰이딩 조립. 위치·움직임·time uniform 소유는 소비처(우주 `StarField`=attribute·단계 버킷, 단일 `widgets/star3d/Star3D`=uniform). `three`만 의존 → 라이브러리 추출 가능. 소비처가 자기 씬에 꽂으므로 배경과 한 캔버스 합성도 가능(`CosmosScene`, plan 43) |
 | 공유 배경 합성(배경 fluid 앞/뒤 + 트윙클 + 별 + Bloom 한 씬) | **widgets** — `widgets/cosmos-scene/ui/CosmosScene.tsx` (plan 43) | 사인인·초대·랜딩이 공유하는 **디커플드 재사용 씬**. prop(별·팔레트·품질)만 주입 — appearance/FSM 미의존(라이브러리화 토대). 별 본체는 `buildStarBody`(uniform 바인딩) 소비, glow는 `BloomPass`(공유). fullscreen fit ortho(`manual=true`), demand+fps 스로틀·quality 다운그레이드 |
 | 시냅스 렌더 + 가중치→가닥 수/밝기/펄스 TSL | **entities** — `entities/synapse/ui/SynapseFilaments.tsx` + `SynapseDust.tsx` | 도메인 시각화 |
 | 별 회상·강화, 근접 항해 | **features** — `features/recall/` | 사용자 가치 행동 |

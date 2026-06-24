@@ -31,13 +31,13 @@
 
 | 규칙 | 값 / 조건 |
 |---|---|
-| 형태×표면 2축 스킨 (spec 52) | **형태(form)=geometry** `lowpoly`·`octa`·`smooth`·`cloudy`·`liquid` × **표면(surface)=발광 셰이딩** `facet`·`glossy`·`lava`·`cloud`·`pulse`를 독립 선택·조립한다(`buildStarBody(form, surface)`, shared toolkit plan 50 조각; `STAR_FORM_BUILDERS`×`STAR_SURFACE_BUILDERS` registry로 N-제네릭). 기본 무료 `lowpoly+facet`. 레거시 단일 id는 프리셋 디컴포지션(crystal=lowpoly+facet·ember=octa+lava·pulsar=smooth+pulse·liquid=liquid+glossy·nebula=cloudy+cloud)으로 시각 보존. 단일 `InstancedMesh` + TSL 노드 머티리얼(소수 draw call, 헌법8). **커스터마이즈 '별' 축 = form·surface 각각 판매**(무료 1+유료 N, 합성 wire id `"<form>+<surface>"`). **색은 mood 불변**(형태·질감만 바뀐다). [customization](customization.md) |
+| 단일 축 룩 + 단계 지오메트리 (spec 53, change 29) | 별 형태는 **단일 축 "룩" 3종**: `polyhedron`(다면체)·`liquid`(액체→구름)·`spiky`(고슴도치). 각 룩이 모양+질감+추상화 단계 변형을 한 덩어리로 정의한다(`buildStarBody(look, stage)`, `STAR_LOOK_BUILDERS`; shared toolkit plan 50 geometry 생성기 `polyhedronForStage`·`spikyGeometry` 조립). 기본 무료 `polyhedron`. **선택 wire(`star_object`)는 룩 id 하나** — 합성 `"form+surface"`·프리셋 디컴포지션 폐기(미지/레거시는 디폴트 룩 폴백, 호환 테이블 없음). 렌더는 **(룩×단계) 버킷별 `InstancedMesh` 집합**(단계마다 1개 — 메시 개수 = 별 수 무관 상수, 헌법8 개정) + TSL 노드 머티리얼. **커스터마이즈 '별' 축 = 단일 룩 판매**(무료 1+유료 N, 아이템 `star:look:<id>`). **색은 mood 불변**(형태·질감만). 나·시냅스는 form×surface 2축 유지(spec 52). [customization](customization.md) |
 | 색 = mood 팔레트 | mood → RGB 튜플 색; 팔레트 밖 값 → `NEUTRAL_RGB`(=`[0.6,0.6,0.6]`) 폴백(throw 금지). per-instance `aMood` attribute로 보존, 랜딩 테마와 독립 |
 | spec 07 경계 | 기억 가중치 R(`recall_count` 파생, spec 07)은 **자기근접 반지름(38)과 배경 감정 순위(25)** 를 바꾼다. 별 밝기는 그 반지름을 빛으로 읽으므로 R을 통해 함께 움직이되(change 19), **별 색(=mood)·spec 03 반사 중립은 R과 무관하게 불변**. 배경이 같은 감정색을 빌려 짜 넣어도(25) 별 자체 색 규칙은 그대로다 |
 | 감정색 확정 게이트 (45) | **인증 개인 우주는 13 mood 감정색이 모두 확정된 뒤 렌더**된다 — `EmotionColorGate`가 `GetSettings`의 `user_emotion_colors` 13색 완성 여부(유효 `#RRGGBB`)로 판정해 미완료면 `/emotion-colors`로 보낸다(최초 로그인 여부 아님, *서버 내용*으로만). 렌더는 `resolveMoodRgb(mood, emotionColors)`로 사용자 색 우선·미설정/공개·체험은 기본 팔레트. **색=mood·추천=`MOOD_PALETTE` 파생** 불변(감정색은 판매/잠금 대상 아님 — 무료 필수 설정). [customization](customization.md) |
 | 크기 = f(intensity) | `sizeFor(intensity) = 0.6 + clamp(intensity,0,1)·1.4` → 인스턴스 행렬 scale에 baked |
-| 형태 시드 = 결정론적 다축 (spec 53) | `seedComponents(memory_id)` = 3축 시드(축 0 = `seedFromId`(FNV-1a 32-bit → `[0,1)`); 축 1·2는 id에 접미사 덧대 재해시). 같은 id → 같은 3축 → 같은 형태(결정론, Math.random 비사용). per-instance `aSeed`(표면 무늬, 축 0)·`aShape`(vec3, 형태 변위). **형태(geometry)는 단일 `InstancedMesh`(헌법8)라 in-shader 정점 변위로 별마다 다른 실루엣**을 만든다(`star-body` seedShape): shape 방향 *평균 기준* 비대칭 스트레치(균일 확대 없음 — 크기는 intensity 단독) + 저주파 럼프 + 고주파 디테일. lowpoly/octa는 flatShading이라 변위 위 면 법선 자동 재계산, smooth는 스트레치만(법선 보존), cloudy/liquid는 기존 변위에 합성. 튜닝 `spec/values.yaml star_form`(displace_amp·detail_amp·asymmetry·stage_simplify) |
-| 형태 = f(추상화 단계) (spec 53) | `abstraction_stage`(0~`gist_stage_radii` 길이=4)가 오를수록 변위·비대칭이 `stage_simplify` 비율만큼 줄고 디테일이 먼저 녹아 일반적 인상만 남는다(요지화, 단조). per-instance `aStage`. 색·크기·밝기 규칙은 불변(이 변형은 *형태*만) |
+| 형태 시드 = 결정론적 다축 (spec 53) | `seedComponents(memory_id)` = 3축 시드(축 0 = `seedFromId`(FNV-1a 32-bit → `[0,1)`); 축 1·2는 id에 접미사 덧대 재해시). 같은 id → 같은 3축 → 같은 형태(결정론, Math.random 비사용). per-instance `aShape`(vec4: .xyz=3축 시드·.x=표면 무늬). **같은 룩·단계 버킷 안에서도 in-shader 정점 변위로 별마다 다른 실루엣**을 만든다(`star-body` seedDisplace): shape 방향 *평균 기준* 비대칭 스트레치(균일 확대 없음 — 크기는 intensity 단독) + 저주파 럼프 + 고주파 디테일(반지름 방향 변위라 비인덱스 다면체 면이 안 갈라짐). 튜닝 `spec/values.yaml star_form`(displace_amp·detail_amp·asymmetry·stage_simplify) |
+| 형태 = f(추상화 단계) (spec 53, change 29) | `abstraction_stage`(0~`gist_stage_radii` 길이=4)가 별을 **그 단계의 버킷 InstancedMesh로 배치**해 단계별 *실제 지오메트리*로 그린다(빌드타임 — in-shader 연속 약화 아님): `polyhedron` 면 수 20→12→8→4, `spiky` 가시 개수·높이↓→매끈 다각형, `liquid` 불투명→투명 구름화. per-star 변위 진폭도 빌드타임 `stage_simplify`로 단계↑에서 줄어 더 깔끔(요지화, 단조). 색·크기·밝기 규칙은 불변(이 변형은 *형태*만) |
 | 애니메이션 | 형태별 자가발광·뷰의존(fresnel)·변위; 공유 `uTime` uniform을 `useFrame`이 수동 갱신(BloomPass가 TSL `time` 노드를 우회하므로) |
 
 ### 밝기 · 감쇠 (brightness · decay)
@@ -92,7 +92,7 @@
 |---|---|
 | 요지 트리거 | 별 반지름(서버가 change 18 공식으로 근사)이 `GIST_STAGE_RADII=[40,55,68,78]`의 임계를 넘긴 수 = target stage(0~4). 나이/회상 트리거·`form_seed_delta < 1` 조건은 폐기 |
 | 단계 승급 | `abstraction_stage = GREATEST(현재, target)`(target > 현재인 별만 승급 → 단조·≤4·멱등), `version++`. 멀어질수록 단계가 오른다 |
-| 형태 배선 | `abstraction_stage`는 proto `Star`(필드 15)로 노출되어 클라가 형태(plan 53)·재공고화 AI 내용 변형(plan 54)에 소비한다. 형태: `aStage` attribute → in-shader 정점 변위 단순화(요지화, plan 53). (23 재공고화의 `form_seed_delta`→`aSeed`/`aShape` 배선은 그대로, 야간 요지는 더는 그 경로를 안 쓴다) |
+| 형태 배선 | `abstraction_stage`는 proto `Star`(필드 15)로 노출되어 클라가 형태(plan 53)·재공고화 AI 내용 변형(plan 54)에 소비한다. 형태: 단계가 **버킷 InstancedMesh**(룩×단계)를 정해 단계별 실제 지오메트리로 그린다(plan 53 change 29 — 옛 `aStage` in-shader 약화 폐기). (23 재공고화의 `form_seed_delta`→`aShape` 배선은 그대로) |
 | 변천사 | 각 단계 승급은 `evolution_history`에 `trigger='nightly_gist'`(pe 0·dir −1) **append**(23 테이블 재사용, INSERT 전용 — [memory](memory.md) 정책). 24 변천사 타임랩스가 그대로 보여준다 |
 
 ## 불변식 (invariants)
@@ -102,11 +102,11 @@
 - **시드 재현성(헌법3).** 같은 `memory_id`는 항상 `seedFromId`로 같은 시드 → 같은 형태. 새로고침·재진입 후에도 같은 별 모양. 별은 좌표를 속성으로 갖지 않는다(좌표는 클라 결정·서버 비저장).
 - **model 순수성(헌법4).** `entities/memory/model/**`·`shared/config/mood.ts`의 도메인 식(`activation`·`starBrightness`·`synapseBrightness`·`isDormant`·`brightnessFromRadius`·`starGlow`·`seedFromId`·`MOOD_PALETTE`)은 three/React/DOM을 import하지 않는다(모바일 재사용).
 - **밝기는 클라 계산(헌법3).** 별 밝기는 자기-거리(반지름)를 클라가 렌더 시 빛으로 읽은 값이다(`brightnessFromRadius`·`starGlow`). 연결성(`degree`·`Σweight`)은 클라 synapse 그래프에서 산출해 *반지름*에 먹이고, `intensity`/`valence`는 `Star`에서 읽는다 — 서버는 좌표도 밝기도 저장하지 않는다(relevance 폐기).
-- **렌더 권위(헌법8).** 수천 별은 단일 `InstancedMesh`로 그려 draw call이 별 수에 비례하지 않는다. 색·밝기·시드는 uniform이 아니라 per-instance attribute(`aMood`/`aGlow`/`aRecency`/`aFocus`/`aSeed`/`aHueShift`)에서 온다. (spec 03) 자아 광원 반사도 진짜 `THREE.PointLight`가 아니라 `buildStarBody`의 emissiveNode TSL 그래프 안에서 self-position uniform으로 계산 — per-instance attribute·focus와 합성되고 단일 InstancedMesh를 유지한다.
+- **렌더 권위(헌법8, change 29 개정).** 수천 별은 **(룩×단계) 버킷별 `InstancedMesh` 집합**(단계마다 1개 — 개수는 별 수가 아니라 단계 수에 비례하는 상수)으로 그려 draw call이 별 수에 비례하지 않는다. 색·밝기·시드는 uniform이 아니라 per-instance attribute(`aMood`/`aGlow`/`aRecency`/`aFocus`/`aShape`/`aHueShift`)에서 오고, 모든 버킷 메시가 같은 uniform(time·camera·self-light)을 공유한다. 메시 capacity는 청크(64단위)라 별 추가마다 재생성하지 않는다. (spec 03) 자아 광원 반사도 진짜 `THREE.PointLight`가 아니라 `buildStarBody`의 emissiveNode TSL 그래프 안에서 self-position uniform으로 계산 — per-instance attribute·focus와 합성된다.
 
 ## 구현 근거
 
-- 형태 4종·InstancedMesh·TSL·색=mood·크기=f(intensity)·`seedFromId`·`activation`·`A_MIN`: 구현 plan 08 · `entities/star/ui/forms.ts` · `entities/star/ui/StarField.tsx` · `entities/star/model/{kinds,types}.ts` · `entities/memory/model/{activation,seed,types}.ts` · `shared/config/mood.ts`.
+- 단일 축 룩 3종·(룩×단계) 버킷 InstancedMesh·TSL·색=mood·크기=f(intensity)·`seedFromId`·`activation`·`A_MIN`: 구현 plan 08·52·53(change 29) · `entities/star/model/forms.ts`(`StarLook`·`STAR_LOOKS`) · `entities/star/ui/star-body.ts`(`buildStarBody(look, stage)`·`STAR_LOOK_BUILDERS`) · `entities/star/ui/StarField.tsx`(버킷 메시·라우팅) · `shared/lib/r3f/shader-art/geometry.ts`(`polyhedronForStage`·`spikyGeometry`) · `entities/memory/model/{activation,seed,types}.ts` · `shared/config/mood.ts`.
 - 시간 감쇠 운영·`starBrightness=max(A_MIN, activation)`·dormant `≤2·A_MIN`·서버 `ListDormant` cutoff: 구현 plan 12 · `entities/memory/model/activation.ts`.
 - 조각 감정 AI 감지(→ `memories`)·수동 힌트(→ `records`)·13 mood: 구현 plan 20·21·29 · `backend/internal/ai/extractor.go` · `backend/internal/job/worker.go`(`applyManualHint`) · `frontend/src/shared/config/mood.ts` · `features/record-memory/ui/MemoryForm.tsx`(수동 감정 토글).
 - record(불변)/memory(별) 분리·낙관적 단일 별: 구현 plan 03·04·10 · `backend/internal/db/migrations/00001_engram_schema.sql` · `features/record-memory/model/use-record-memory.ts`.
