@@ -157,16 +157,9 @@ customization:
     'background:vortex': 30
     'background:crystal': 30
     'background:mandala': 40
-    # 별 — 형태(form)
-    'star:form:octa': 25
-    'star:form:smooth': 25
-    'star:form:cloudy': 30
-    'star:form:liquid': 30
-    # 별 — 표면(surface)
-    'star:surface:glossy': 25
-    'star:surface:lava': 30
-    'star:surface:cloud': 30
-    'star:surface:pulse': 30
+    # 별 — 형태(룩, 단일 축, change 29). 무료 = polyhedron. 액체→구름·고슴도치는 유료.
+    'star:look:liquid': 30
+    'star:look:spiky': 30
     # 나 — 형태/표면
     'self:form:cube': 25
     'self:form:bloom': 30
@@ -178,12 +171,11 @@ customization:
     'synapse:surface:beads': 30
     'synapse:surface:steady': 25
   # 축별/슬롯별 무료 1종 kind(묵시 소유 — 소유 행 없이 누구나 선택). itemId = `"<키>:<kind>"`로 조립되므로
-  # 배경은 키 `background`, 형태 3축은 슬롯 키 `"<axis>:form"`·`"<axis>:surface"`로 둔다(A5). 무료 합성 프리셋:
-  # 별 lowpoly+facet · 나 orb+mirror · 시냅스 strands+flow · 배경 galaxy. 무료 매핑의 단일 출처(A11).
+  # 배경은 키 `background`, 별은 슬롯 키 `"star:look"`(단일 축, change 29), 나·시냅스는 `"<axis>:form"`·
+  # `"<axis>:surface"`로 둔다(A5). 무료: 별 polyhedron · 나 orb+mirror · 시냅스 strands+flow · 배경 galaxy(A11).
   free:
     background: galaxy
-    'star:form': lowpoly
-    'star:surface': facet
+    'star:look': polyhedron
     'self:form': orb
     'self:surface': mirror
     'synapse:form': strands
@@ -223,14 +215,22 @@ star_render:
   burst_grow: 16 #          탄생 버스트가 수명 동안 퍼지는 추가 배율
   burst_fade_gain: 1.2 #    탄생 버스트 페이드 게인((1-age)²·gain). 별 본체가 self-light로 어두워져 상대적으로 도드라지므로 1.6→1.2 하향(spec 43/03)
 
-# ── 별 형태 (star_form) — 기억-상태가 굴리는 고유 실루엣 + 추상화 단계 단순화(spec 53). buildStarBody의
-#    form 빌더가 per-instance 3축 시드(seedComponents)·abstraction_stage로 정점을 변위/단순화한다. 색·크기·
-#    밝기 규칙은 불변(회귀 경계 A5). 단일 InstancedMesh(헌법8)라 정점 변위는 in-shader. FE 전용. ─────────
+# ── 별 형태 (star_form) — 단일 축 룩 3종 × 추상화 단계 변형(spec 53 / change 29). buildStarBody(look, stage)가
+#    룩별 단계 지오메트리(다면체 면 수·고슴도치 가시·액체→구름)를 만들고, per-instance 3축 시드로 같은 단계 내
+#    별마다 정점을 변위·비대칭화한다(랜덤성). 색·크기·밝기 규칙은 불변(회귀 경계 A5). 우주는 (룩×단계) 버킷별
+#    InstancedMesh(헌법8 개정). 배열 노브는 [단계0..stageMax] = gist_stage_radii 길이+1(=5)개. FE 전용. ────────
 star_form:
-  displace_amp: 0.13 #     저주파 정점 변위 진폭(별마다 다른 실루엣 럼프). 반지름 1 대비 작게 — 크기 규칙(f(intensity)) 보존(A5).
-  detail_amp: 0.06 #       고주파 디테일 변위 진폭 — 추상화가 진행되면 럼프보다 먼저 녹는다("디테일").
-  asymmetry: 0.22 #        seed 방향 비대칭 스트레치(평균 기준 편차라 균일 확대 없음 — 비율만 변형). 회전만이 아닌 형태 차이(A1).
+  displace_amp: 0.22 #     저주파 정점 변위 진폭(별마다 다른 실루엣 럼프). 반지름 1 대비 — 크기 규칙(f(intensity)) 보존(A5). change 29: 별마다 더 다르게 확대.
+  detail_amp: 0.1 #        고주파 디테일 변위 진폭 — 추상화가 진행되면 럼프보다 먼저 녹는다("디테일").
+  asymmetry: 0.42 #        seed 방향 비대칭 스트레치(평균 기준 편차라 균일 확대 없음 — 비율만 변형). 회전만이 아닌 형태 차이(A1). change 29: 확대.
   stage_simplify: 0.75 #   최대 추상화 단계에서 변위·비대칭이 줄어드는 비율(요지화 — 1이면 단계4에서 거의 일반형, A2 단조). stageMax는 consolidation.gist_stage_radii 길이에서 파생.
+  # 고슴도치(spiky) — 단계별 가시 개수·길이([단계0..4]). 단계가 오를수록 듬성→소멸(마지막=0 → 가시 없는 매끈 다각형, A2).
+  spiky_spikes: [54, 26, 12, 5, 0] # 구형 코어에 솟은 가시 개수(날카로운 바늘이라 약간 줄여 또렷이).
+  spiky_len: [0.7, 0.55, 0.4, 0.22, 0] # 가시 높이 비율(0..1) — 코어 반지름=1−len, 가시 끝=1. 0.7=몸통 작고(0.3) 가시 길다. 바깥 반지름은 1로 정규화돼 별이 안 커진다.
+  spiky_sharpness: 28 #    가시 뾰족함(클수록 좁고 날카로운 바늘; 작으면 둥근 혹). 높게 잡아 뾰족뾰족하게.
+  spiky_detail: 5 #        코어 분할(클수록 가시 끝이 뾰족·고밀도). 한 번만 빌드되는 공유 지오메트리라 고밀도 허용.
+  # 액체→구름(liquid) — 단계별 불투명 바닥([단계0..4]). 1=불투명 액체 구슬, 낮을수록 비쳐 구름처럼(A2). 깊은 우주에서 안 사라지게 바닥 유지.
+  liquid_opacity: [1, 0.7, 0.5, 0.35, 0.22]
 
 # ── 별 조명 (star_lighting) — 자아-별 광원(반사=최근성) + 배경 평행광. spec 03·38·42 ──────────────
 #    별 빛 3겹 중 "반사(lit)" 채널: 중앙 자아-별(우주) 또는 우상단 평행광(배경)으로 별 면/엣지를 드러낸다.

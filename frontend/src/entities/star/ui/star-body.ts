@@ -1,17 +1,19 @@
-// 별(기억) 오브제의 시각 정체성 — **형태(form, geometry)** × **표면(surface, emissive 셰이딩)** 2축 조립
-// (spec 52). 형태가 지오메트리/실루엣(+in-shader 변형)을, 표면이 색/질감 발광을 만들고, buildStarBody가
-// STAR_FORM_BUILDERS × STAR_SURFACE_BUILDERS registry에서 골라 합성한다 — per-form/surface if/else 없이
-// N-제네릭(새 form/surface 추가가 이 합성기 수정 없이 카탈로그 + 빌더 추가로 끝난다, A6). 셰이더 입력은
+// 별(기억) 오브제의 시각 정체성 — **형태(look) × 추상화 단계(stage)** 조립(change 29). 사용자가 고른 룩 3종
+// (polyhedron·liquid·spiky)이 모양+질감을, abstraction_stage(0~stageMax)가 단계별 **실제 지오메트리 변형**을
+// 정한다 — 단계가 오를수록 더 단순/추상(다면체 면↓·고슴도치 가시↓·액체→구름). buildStarBody(look, stage)가
+// 룩 빌더를 골라 지오메트리(toolkit polyhedronForStage·spikyGeometry 등) + emissive 셰이딩을 합성한다. 같은
+// 단계 내 별마다의 실루엣 차이(랜덤성)는 per-instance shape 시드로 in-shader 변위한다. 셰이더 입력은
 // `StarShadeInputs` **노드**로 받아, 소비처가 per-instance attribute()(우주 StarField)든 uniform()/상수(단일·
-// 배경)든 자유로이 바인딩한다.
+// 배경)든 자유로이 바인딩한다. ⚠️ 단계는 이제 **빌드 타임 number**(어느 지오메트리)이지 in-shader 노드가 아니다 —
+// 우주는 (룩×단계) 버킷별 InstancedMesh로 렌더한다(StarField, 헌법8 개정: 단일→소수 고정 메시).
 //
 // **별 빛(spec 03 self-light).** (1) 자가발광(emissive) 세기 `glow` — 우주 소비처는 거리 밝기를 넘긴다
 // (brightnessFromRadius, A_MIN 바닥, bloom 함; spec 38 change 19). 빌더는 의미를 모르고 float 노드로만 받는다.
 // (2) 반사(reflection)=중앙 자아-별/평행광이 별 albedo를 비춰 면/엣지를 드러냄(`recency`로 변조, gain으로
-// 낮게 cap해 bloom 안 번지게). 정확 법선 form은 N·L 반사, 변위/구름 form(법선 부정확)은 무방향 글로우로
+// 낮게 cap해 bloom 안 번지게). 정확 법선 룩은 N·L 반사, 변위/구름 룩(법선 부정확)은 무방향 글로우로
 // recency를 살린다(가까운=강한 별일수록 밝게). (3) 색=mood(hueShift 회전).
 // 진짜 PointLight가 아니라 emissive 그래프 안 self-position uniform + per-instance 좌표로 N·L·falloff를 직접
-// 계산한다(헌법8 단일 InstancedMesh 보존). `focus`가 self-glow·reflection 양쪽에 곱해진다.
+// 계산한다. `focus`가 self-glow·reflection 양쪽에 곱해진다.
 //
 // 순수 함수: uniform을 만들지도, .value를 돌리지도 않는다. time조차 inputs로 받는다 — uniform 소유와 매 프레임
 // 갱신은 소비처 몫(StarField/CosmosScene의 useFrame). 조명 스칼라(intensity/distance/decay/gain)는 plain
@@ -36,14 +38,19 @@ import {
   length,
   normalize,
 } from 'three/tsl'
-import { asFloatNode, asVec3Node, rotateAroundAxis, fbm, fbm01, gnoise, TUNE } from '@/shared/lib/r3f'
-// TUNE: dev 라이브 튜너 — uniform 기본값 = 아래 상수라 프로덕션 동작 불변(스캐폴딩, 확정 후 상수로 복원).
 import {
-  type StarForm,
-  type StarSurface,
-  DEFAULT_STAR_FORM,
-  DEFAULT_STAR_SURFACE,
-} from '../model/forms'
+  asFloatNode,
+  asVec3Node,
+  rotateAroundAxis,
+  fbm,
+  fbm01,
+  gnoise,
+  polyhedronForStage,
+  spikyGeometry,
+  TUNE,
+} from '@/shared/lib/r3f'
+// TUNE: dev 라이브 튜너 — uniform 기본값 = 아래 상수라 프로덕션 동작 불변(스캐폴딩, 확정 후 상수로 복원).
+import { type StarLook, DEFAULT_STAR_LOOK } from '../model/forms'
 
 type FloatNode = ReturnType<typeof asFloatNode>
 type Vec3Node = ReturnType<typeof asVec3Node>
@@ -58,12 +65,9 @@ export interface StarShadeInputs {
   recency: unknown
   /** 노이즈 오프셋(별마다 고유 무늬) — float 노드. surface 발광 무늬가 쓴다. */
   seed: unknown
-  /** 형태(geometry) 변형 3축 시드 — vec3 노드(선택, spec 53). form 빌더가 정점을 별마다 변위·비대칭화한다.
+  /** 형태(geometry) 변형 3축 시드(선택, change 29) — vec3 노드. 룩 빌더가 같은 단계 내 별마다 정점을 변위·비대칭화한다.
    *  미지정이면 seed 단일값에서 파생(단일 프리뷰·배경 장식 별은 per-star 변형 불필요). */
   shape?: unknown
-  /** 추상화 단계 0~stageMax — float 노드(선택, spec 53). 높을수록 form 변위·디테일이 녹아 요지로 수렴(A2).
-   *  미지정이면 0(또렷). */
-  stage?: unknown
   /** 재공고화 색조(spec 23, rad) — float 노드. 0이면 회전 없음. */
   hueShift: unknown
   /** 공유 시간 — float 노드. 소비처가 매 프레임 .value를 올린다. */
@@ -78,12 +82,10 @@ export interface StarShadeInputs {
   focus: unknown
   /** 카메라 월드 위치 — vec3 노드. 소비처가 매 프레임 uniform .value를 갱신한다(time과 동일 관용구). 표면→카메라
    *  viewDir(=ndv·헤드램프 광원 방향)을 여기서 만든다. ⚠️ three의 빌트인 cameraPosition 노드를 쓰면 안 된다 —
-   *  BloomPass(RenderPipeline)가 노드 프레임 갱신을 우회해 그 빌트인이 초기 카메라 위치에 동결되기 때문(time과
-   *  같은 함정). 그래서 카메라 위치를 CPU에서 직접 먹인다. */
+   *  BloomPass(RenderPipeline)가 노드 프레임 갱신을 우회해 그 빌트인이 초기 카메라 위치에 동결되기 때문. */
   cameraPos: unknown
-  /** 카메라 헤드램프(0|1) — float 노드(선택). 1이면 정확-법선 form의 반사 광원을 selfLightPos 대신 cameraPos에서
-   *  만든 viewDir(+ 살짝 위 틸트)로 잡는다 — 시점을 돌리면 보이는 면이 늘 비춰진다(far-view 헤드램프). 미지정/0이면
-   *  기존 selfLightPos 경로. */
+  /** 카메라 헤드램프(0|1) — float 노드(선택). 1이면 정확-법선 룩의 반사 광원을 selfLightPos 대신 cameraPos에서
+   *  만든 viewDir(+ 살짝 위 틸트)로 잡는다 — 시점을 돌리면 보이는 면이 늘 비춰진다(far-view 헤드램프). */
   cameraHeadlight?: unknown
 }
 
@@ -99,23 +101,33 @@ export interface StarLightParams {
   gain: number
 }
 
-/** 형태 변형 스칼라(spec 53) — plain number. 소비처가 VALUES.starForm.*를 넘긴다(조명 스칼라와 동일 관용구로
- *  이 파일은 three만 의존). 우주(StarField)만 실제 값을 넘기고, 단일 프리뷰·배경 장식 별은 기본(전부 0 = 변형 off)을
- *  쓴다 — 별이 하나뿐인 곳은 per-star 실루엣 차이가 필요 없다. */
+/** 형태 변형 스칼라(change 29) — plain number. 소비처가 VALUES.starForm.*를 넘긴다. 우주(StarField)만 실제 값을
+ *  넘기고, 단일 프리뷰·배경 장식 별은 기본(변형 약·단계 0)을 쓴다. 단계별 룩 파라미터(spikes·spikeLen·opacityFloor)는
+ *  소비처가 그 버킷의 stage로 배열을 인덱싱해 **이미 해석된 스칼라**로 넣는다(이 파일은 배열·values를 모른다). */
 export interface StarFormParams {
   /** 저주파 정점 변위 진폭(별마다 다른 실루엣 럼프). */
   displaceAmp: number
   /** 고주파 디테일 변위 진폭 — 추상화가 진행되면 가장 먼저 녹는다. */
   detailAmp: number
-  /** shape 방향 비대칭 스트레치(별마다 비율/실루엣 차이 — 회전만이 아닌 형태 차이, A1). */
+  /** shape 방향 비대칭 스트레치(별마다 비율/실루엣 차이 — 회전만이 아닌 형태 차이). */
   asymmetry: number
-  /** 최대 단계에서 변위·비대칭이 줄어드는 비율(요지화 — 높을수록 일반적 인상만, A2 단조). */
+  /** 최대 단계에서 변위·비대칭이 줄어드는 비율(요지화 — 높을수록 일반적 인상만). */
   stageSimplify: number
   /** 추상화 단계 정규화 분모(= consolidation.gist_stage_radii 길이, 보통 4). */
   stageMax: number
+  /** 고슴도치 — 이 단계의 가시 개수(소비처가 spikySpikes[stage]). 미지정 0. */
+  spikes?: number
+  /** 고슴도치 — 이 단계의 가시 길이(spikyLen[stage]). */
+  spikeLen?: number
+  /** 고슴도치 — 가시 뾰족함. */
+  spikeSharpness?: number
+  /** 고슴도치 — 코어 분할(가시 윤곽 매끈도). */
+  spikeDetail?: number
+  /** 액체→구름 — 이 단계의 불투명 바닥(liquidOpacity[stage]). 1=불투명 액체, 낮을수록 구름처럼 비침. */
+  opacityFloor?: number
 }
 
-/** 변형 off 기본값 — formParams 미지정 시. 전부 0이면 seedShape가 항등(변위·비대칭 없음)이라 기존 렌더와 동일. */
+/** 변형 off 기본값 — formParams 미지정 시(단일 프리뷰·배경). seedShape가 거의 항등이라 깔끔한 단계-0 룩. */
 const NO_FORM_VARIATION: StarFormParams = {
   displaceAmp: 0,
   detailAmp: 0,
@@ -129,68 +141,61 @@ export interface StarBodyBuild {
   material: THREE.Material
 }
 
-/** form 빌더 입력 — seed/time 노드(변위·자전 무늬용) + 카메라 월드 위치(뷰 의존 항용) + 형태 고유성 시드·단계. */
-interface StarFormCtx {
+/** 룩 빌더 입력 — seed/time 노드(변위·자전용) + 카메라 월드 위치(뷰 의존 항용) + 형태 고유성 시드 + 빌드타임 단계. */
+interface StarLookCtx {
   seed: FloatNode
   time: FloatNode
-  /** 카메라 월드 위치 — cloudy 등 form-자체 뷰 의존(facing) 계산용. buildStarBody의 viewDir과 동일 출처. */
   cameraPos: Vec3Node
-  /** 형태(geometry) 변형 3축 시드(spec 53) — 정점 변위·비대칭으로 별마다 다른 실루엣. */
+  /** 형태(geometry) 변형 3축 시드 — 같은 단계 내 별마다 다른 실루엣(in-shader 변위). */
   shape: Vec3Node
-  /** 추상화 단계 0~stageMax(spec 53) — 높을수록 단순/추상(요지화). */
-  stage: FloatNode
-  /** 변형 스칼라(displace/detail/asymmetry/stageSimplify/stageMax). */
+  /** 추상화 단계(빌드타임 number) — 어느 지오메트리·단순화. */
+  stage: number
+  /** 변형 스칼라 + 단계별 룩 파라미터(해석된 스칼라). */
   form: StarFormParams
 }
 
-/** 단계 정규화 + 단순화 계수: stageNorm = clamp(stage/stageMax, 0,1), simplify = 1 − stageNorm·stageSimplify.
- *  높은 단계일수록 simplify가 작아져 변위·비대칭이 함께 줄어든다(요지로 단조 수렴, A2). */
-function stageFactors({ stage, form }: StarFormCtx) {
-  const stageNorm = clamp(stage.div(float(Math.max(1, form.stageMax))), float(0), float(1))
-  const simplify = float(1).sub(stageNorm.mul(float(form.stageSimplify)))
-  return { stageNorm: asFloatNode(stageNorm), simplify: asFloatNode(simplify) }
+/** 단계 정규화·단순화(빌드타임 number). 높은 단계일수록 simplify↓ → 변위·비대칭이 함께 줄어든다(요지로 수렴). */
+function stageScalars(ctx: StarLookCtx) {
+  const stageNorm = Math.min(1, Math.max(0, ctx.stage / Math.max(1, ctx.form.stageMax)))
+  const simplify = 1 - stageNorm * ctx.form.stageSimplify
+  return { stageNorm, simplify }
 }
 
-/** shape 3축 방향 비대칭 스트레치 — 별마다 비율이 달라 회전만이 아닌 실루엣 차이(A1). k=비대칭 세기(단계 감쇠 포함).
- *  ⚠️ 평균 기준 편차로 스트레치한다(세 축 인자 합이 3 → 평균 1): 세 시드 성분이 같이 커도 별이 통째로 커지지
- *  않고 비율(축 간 차이)만 변한다 — 크기는 sizeFor(intensity)가 단독으로 정한다는 규칙을 보존(A5). */
-function anisoStretch(pos: Vec3Node, shape: Vec3Node, k: FloatNode): Vec3Node {
+/** shape 3축 방향 비대칭 스트레치 — 별마다 비율이 달라 회전만이 아닌 실루엣 차이. 평균 기준 편차로 스트레치해
+ *  세 시드가 같이 커도 통째로 커지지 않고 비율만 변한다(크기는 sizeFor(intensity)가 단독으로 정한다는 규칙 보존). */
+function anisoStretch(pos: Vec3Node, shape: Vec3Node, k: number): Vec3Node {
   const sx = asFloatNode(shape.x)
   const sy = asFloatNode(shape.y)
   const sz = asFloatNode(shape.z)
   const mean = asFloatNode(sx.add(sy).add(sz).div(3))
-  const f = (c: FloatNode) => float(1).add(c.sub(mean).mul(k))
+  const f = (c: FloatNode) => float(1).add(c.sub(mean).mul(float(k)))
   return asVec3Node(pos.mul(vec3(f(sx), f(sy), f(sz))))
 }
 
-// 별마다 고유 실루엣(A1) + 추상화 단계 단순화(A2) — 공유 지오메트리(헌법8) 위에서 per-instance shape 시드로
-// 정점을 변위·비대칭화한다. 인스턴스마다 지오메트리를 못 바꾸니(InstancedMesh 1개) in-shader 변위로 실루엣을
-// 가른다(liquid 변위 패턴 일반화). 시간 비의존 → 같은 shape·stage면 항상 같은 실루엣(결정론, A3). 변위는
-// 반지름 1 대비 작게 잡아 크기 규칙(f(intensity))을 보존한다(A5). 추상화가 오르면 디테일(고주파)이 먼저, 이어
-// 럼프·비대칭이 녹아 일반적 인상만 남는다(요지화). 반환: 변위된 positionLocal(normalLocal 방향 변위 + 비대칭 스트레치).
-function seedShape(ctx: StarFormCtx, mul: { amp: number; detail: number; asym: number; freq?: number }): Vec3Node {
-  const { stageNorm, simplify } = stageFactors(ctx)
+/** 같은 단계 내 별마다 고유 실루엣(랜덤성) — 공유 지오메트리(버킷) 위에서 per-instance shape 시드로 정점을 **반지름
+ *  방향**으로 변위·비대칭화한다(면 법선 방향이 아니라 — 비인덱스 다면체의 복제 정점이 갈라지지 않게). 시간 비의존
+ *  → 같은 shape면 항상 같은 실루엣(결정론). amp/detail/asym은 호출자가 이미 단계 simplify를 곱해 넘긴다. */
+function seedDisplace(
+  ctx: StarLookCtx,
+  mul: { amp: number; detail: number; asym: number; freq?: number },
+): Vec3Node {
+  const { stageNorm, simplify } = stageScalars(ctx)
   const stretched = anisoStretch(
     asVec3Node(positionLocal),
     ctx.shape,
-    asFloatNode(float(ctx.form.asymmetry * mul.asym).mul(simplify)),
+    ctx.form.asymmetry * mul.asym * simplify,
   )
   const np = asVec3Node(stretched.mul(float(mul.freq ?? 1.3)).add(ctx.shape))
-  const lump = asFloatNode(gnoise(np)).mul(float(ctx.form.displaceAmp * mul.amp))
-  // 디테일은 단계가 오르면 럼프보다 먼저 사라진다(추가로 (1−stageNorm) 곱).
+  const lump = asFloatNode(gnoise(np)).mul(float(ctx.form.displaceAmp * mul.amp * simplify))
+  // 디테일(고주파)은 단계가 오르면 럼프보다 먼저 사라진다.
   const fine = asFloatNode(gnoise(np.mul(3.1).add(vec3(4.7))))
-    .mul(float(ctx.form.detailAmp * mul.detail))
-    .mul(float(1).sub(stageNorm))
-  const disp = lump.add(fine).mul(simplify)
-  // 변위는 **반지름 방향**(normalize(stretched))으로 — 면 법선(normalLocal)으로 주면 lowpoly/octa의
-  // 비인덱스 지오메트리(PolyhedronGeometry: 면마다 정점 복제·각자 면 법선)에서 한 꼭짓점의 복제들이
-  // 서로 다른 방향으로 흩어져 면 사이가 벌어진다. 반지름 방향은 위치만의 함수라 같은 위치의 복제 정점이
-  // 같은 방향·같은 양으로 움직여 면이 붙어 있는 채 실루엣만 변한다.
+    .mul(float(ctx.form.detailAmp * mul.detail * simplify * (1 - stageNorm)))
+  const disp = lump.add(fine)
   return asVec3Node(stretched.add(normalize(stretched).mul(disp)))
 }
 
-/** form 빌더 출력 — 지오메트리 + 머티리얼 형태 설정. positionNode/normalNode는 in-shader 변형(있으면 적용). */
-interface StarFormBuild {
+/** 룩 빌더 출력 — 지오메트리 + 머티리얼 형태 설정 + emissive 셰이딩 함수. */
+interface StarLookBuild {
   geometry: THREE.BufferGeometry
   roughness: number
   metalness: number
@@ -199,160 +204,37 @@ interface StarFormBuild {
   accurateNormals: boolean
   positionNode?: Vec3Node
   normalNode?: Vec3Node
-  /** 반투명 폼(연기·구름). true면 alpha 블렌드 + depthWrite off, opacityNode로 가장자리를 얇게 사라지게 한다. */
+  /** 반투명 룩(구름화). true면 alpha 블렌드 + depthWrite off, opacityNode로 가장자리를 얇게 사라지게 한다. */
   transparent?: boolean
   opacityNode?: FloatNode
+  /** self/reflect emissive 비중(룩 정체성). */
+  mixSelf: number
+  mixReflect: number
+  shade: StarSurfaceFn
 }
 
-type StarFormFn = (ctx: StarFormCtx) => StarFormBuild
-
-/** surface 빌더 입력 — 색/발광 계산에 필요한 노드 묶음. */
+/** 셰이딩 입력 — 색/발광 계산 노드 묶음. */
 interface StarSurfaceCtx {
-  /** hueShift 회전된 mood(linear RGB). */
   mood: Vec3Node
-  /** 자가발광 세기(연결성). */
   glow: FloatNode
-  /** 최근성. */
   recency: FloatNode
   seed: FloatNode
   time: FloatNode
-  /** 반사 게이트(facet의 평탄 베이스 크로스페이드용). */
-  litMix: FloatNode
-  /** form의 법선 정확도(1|0). facet는 N·L 반사가 면을 담당하는 정확-법선 form에서만 평탄 베이스로 넘긴다 —
-   *  변위/구름 form(0)은 무방향 반사라 면이 안 생기므로 facet가 자체 뷰-면 음영을 유지한다(combo 미감 보존). */
-  accurate: FloatNode
-  /** 시선 방향. */
-  viewDir: Vec3Node
-  /** N·V(정면=1) — facet/glossy/pulse 뷰의존 항. */
+  /** N·V(정면=1) — 뷰의존 항(facet/glossy/pulse). */
   ndv: FloatNode
 }
-
-/** surface 빌더 출력 — colorNode(albedo) + self(반사·focus 적용 전 emissive). */
 interface StarSurfaceBuild {
   colorNode: Vec3Node
+  /** 자가발광(반사·focus 적용 전). */
   self: Vec3Node
 }
-
 type StarSurfaceFn = (ctx: StarSurfaceCtx) => StarSurfaceBuild
+type StarLookFn = (ctx: StarLookCtx) => StarLookBuild
 
-// ── 형태(form) 빌더 ─────────────────────────────────────────────────────────────────────────
-// lowpoly — 저폴리 보석(20면 flatShading). seedShape로 정점을 변위해 별마다 다른 비대칭 결정 실루엣을 만든
-// 뒤(flatShading이라 변위 위에서 면 법선이 자동 재계산 → 반사 N·L 정확) 위치·법선을 함께 돌려 면 음영(ndv)·
-// 반사가 자전을 따라온다.
-const lowpoly: StarFormFn = (ctx) => {
-  const { seed, time } = ctx
-  const axis = asVec3Node(
-    normalize(vec3(sin(seed.mul(1.7)).add(0.3), cos(seed.mul(1.1)), sin(seed.mul(2.3)).sub(0.2))),
-  )
-  const angle = time
-    .mul(0.1)
-    .add(sin(time.mul(1.2).add(seed)).mul(0.45))
-    .add(sin(time.mul(0.55).add(seed.mul(1.7))).mul(0.5))
-  const shaped = seedShape(ctx, { amp: 1, detail: 0.6, asym: 1, freq: 1.4 })
-  return {
-    geometry: new THREE.IcosahedronGeometry(1, 0),
-    roughness: 0.34,
-    metalness: 0,
-    flatShading: true,
-    accurateNormals: true,
-    positionNode: asVec3Node(rotateAroundAxis(shaped, axis, angle)),
-    normalNode: asVec3Node(rotateAroundAxis(normalLocal, axis, angle)),
-  }
-}
-
-// octa — 각진 8면체 결정(flatShading). seedShape 변위로 별마다 다른 각진 실루엣(flat 법선 자동 재계산).
-const octa: StarFormFn = (ctx) => ({
-  geometry: new THREE.OctahedronGeometry(1, 0),
-  roughness: 0.5,
-  metalness: 0,
-  flatShading: true,
-  accurateNormals: true,
-  positionNode: seedShape(ctx, { amp: 1, detail: 0.5, asym: 1, freq: 1.5 }),
-})
-
-// smooth — 고밀도 매끈 구(부드러운 셰이딩). 변위는 법선을 어긋나게 하므로(매끈 셰이딩) 비대칭 스트레치만 줘
-// 별마다 다른 타원체 실루엣을 만든다(럼프/디테일 0 — 완만한 타원체라 구 법선으로도 반사가 자연스럽다, A5 보존).
-const smooth: StarFormFn = (ctx) => ({
-  geometry: new THREE.IcosahedronGeometry(1, 3),
-  roughness: 0.2,
-  metalness: 0,
-  flatShading: false,
-  accurateNormals: true,
-  positionNode: seedShape(ctx, { amp: 0, detail: 0, asym: 1 }),
-})
-
-// cloudy — 연기/구름: 큰 저주파 fbm로 뭉게뭉게 부풀린 실루엣(매끈 구와 또렷이 구별) + 반투명. 정면(중심)은
-// 진하고 실루엣 가장자리·fbm 구멍은 얇게 사라져 연기처럼 읽힌다. 자가발광 구름이라 무방향 반사.
-const cloudy: StarFormFn = (ctx) => {
-  const { time, cameraPos, shape } = ctx
-  const { simplify } = stageFactors(ctx)
-  // shape로 비대칭 스트레치(별마다 다른 덩어리) + shape를 노이즈 필드 오프셋으로 — 같은 form이 별마다 다르게 뭉친다.
-  const stretched = anisoStretch(asVec3Node(positionLocal), shape, asFloatNode(float(ctx.form.asymmetry * 0.8).mul(simplify)))
-  const np = asVec3Node(stretched.mul(1.5).add(shape).add(vec3(0, 0, 1).mul(time.mul(0.18))))
-  const puff = asFloatNode(fbm(np, { octaves: 3 })).mul(0.5).add(0.5) // 0..1 큰 덩어리
-  const disp = asFloatNode(puff.mul(0.5).sub(0.14)).mul(simplify) // 단계가 오르면 뭉게구름 윤곽이 잦아든다(요지)
-  const viewDir = asVec3Node(normalize(cameraPos.sub(positionWorld)))
-  const facing = asFloatNode(max(dot(normalWorld, viewDir), float(0)))
-  const wisp = asFloatNode(fbm01(np.mul(2.4).add(vec3(5.1)), { octaves: 4 })) // 결 구멍
-  const opacity = asFloatNode(
-    clamp(facing.mul(0.65).add(0.12).mul(wisp.mul(0.7).add(0.45)), float(0), float(1)),
-  )
-  return {
-    geometry: new THREE.IcosahedronGeometry(1, 5),
-    roughness: 0.95,
-    metalness: 0,
-    flatShading: false,
-    accurateNormals: false,
-    positionNode: asVec3Node(stretched.add(normalLocal.mul(disp))),
-    transparent: true,
-    opacityNode: opacity,
-  }
-}
-
-// liquid — 2중 노이즈 변위 구. 변위 표면이라 재계산 법선이 없어 N·L 부정확 → 무방향 반사. seedShape의 일반화
-// 원형: shape로 비대칭 스트레치 + 노이즈 필드를 별마다 옮기고, 출렁임(time 변위)은 단계가 오르면 잦아든다.
-const liquid: StarFormFn = (ctx) => {
-  const { time, shape } = ctx
-  const { simplify } = stageFactors(ctx)
-  const stretched = anisoStretch(asVec3Node(positionLocal), shape, asFloatNode(float(ctx.form.asymmetry).mul(simplify)))
-  const np = asVec3Node(stretched.mul(1.1).add(shape).add(vec3(0, 0, 1).mul(time.mul(0.8))))
-  const disp = asFloatNode(gnoise(np).mul(0.18).add(gnoise(np.mul(2.6).add(vec3(3.7))).mul(0.06))).mul(simplify)
-  return {
-    geometry: new THREE.IcosahedronGeometry(1, 6),
-    roughness: 0.08,
-    metalness: 0.15,
-    flatShading: false,
-    accurateNormals: false,
-    positionNode: asVec3Node(stretched.add(normalLocal.mul(disp))),
-  }
-}
-
-/** form id → 빌더. `satisfies Record<StarForm, …>`로 총괄성 강제(카탈로그가 새 form을 허용하면 누락이
- *  컴파일 오류). buildStarBody가 이 registry만 lookup한다(A6). */
-export const STAR_FORM_BUILDERS = { lowpoly, octa, smooth, cloudy, liquid } satisfies Record<
-  StarForm,
-  StarFormFn
->
-
-/** form별 mesh-레벨 자전 각속도(rad/s) — 메시를 통째로 도는 단일 소비처(CosmosScene)용 메타데이터. 우주는
- *  셰이더 안에서 돌리고 인스턴스를 mesh-spin하지 않는다. 자전의 *적용*은 소비처 몫. */
-export const STAR_FORM_SPIN: Record<StarForm, number> = {
-  lowpoly: 0,
-  octa: 0.16,
-  smooth: 0.6,
-  cloudy: 0.05,
-  liquid: 0.4,
-}
-
-// ── 표면(surface) 빌더 ──────────────────────────────────────────────────────────────────────
-// facet — 면 음영 + 가장자리 회절 스파클. lit(litMix=1)이면 평탄 베이스(반사가 면 담당), unlit이면 ndv facet.
-const facet: StarSurfaceFn = ({ mood, glow, ndv }) => {
-  // 뷰-면 음영: 정면 면=밝고(≈1) 실루엣 면=어둡게(0.15). 바닥을 낮춰 면대면 대비를 강하게 — 각 flat 면은
-  // 법선이 상수라 면마다 한 단계로 끊겨 보석처럼 스텝진다. ndv는 카메라 상대라 시점을 어디로 돌려도 항상
-  // 중심→실루엣 그라데이션이 남아 평탄해지지 않는다(반사가 0인 광원 등진 쪽에서도 입체 유지). 반사(N·L)는
-  // emissive에 가산되어 이 위에 얹힌다 — 면을 반사에 의존시키지 않으므로 lit 평탄화를 두지 않는다.
-  const facetView = ndv.mul(asFloatNode(TUNE.starFacetGain)).add(asFloatNode(TUNE.starFacetFloor))
-  const facetTerm = facetView
+// ── 셰이딩 헬퍼(룩이 조합) ──────────────────────────────────────────────────────────────────
+// facet — 면 음영 + 가장자리 회절 스파클. 다면체 룩의 보석 면이 시점에 따라 스텝지게 음영진다.
+const facetShade: StarSurfaceFn = ({ mood, glow, ndv }) => {
+  const facetTerm = ndv.mul(asFloatNode(TUNE.starFacetGain)).add(asFloatNode(TUNE.starFacetFloor))
   const edge = pow(clamp(float(1).sub(ndv), float(0), float(1)), asFloatNode(TUNE.starFacetEdgePow))
   const self = mood
     .mul(glow)
@@ -361,32 +243,17 @@ const facet: StarSurfaceFn = ({ mood, glow, ndv }) => {
   return { colorNode: mood, self: asVec3Node(self) }
 }
 
-// glossy — 유리/물방울: 어두운 바디 + 가장자리 강한 림 + 정면의 좁고 강렬한 흰 스페큘러 핫스팟(facet의
-// 면 음영·pulse의 코어 맥동과 또렷이 구별되는 매끈 유리 질감).
-const glossy: StarSurfaceFn = ({ mood, glow, ndv }) => {
-  const rim = pow(clamp(float(1).sub(ndv), float(0), float(1)), float(2.2)) // 더 얇고 강한 림
-  const spec = pow(clamp(ndv, float(0), float(1)), float(14.0)) // 정면 좁은 거울 하이라이트
+// glossy — 어두운 바디 + 얇고 강한 림 + 정면 좁은 흰 스페큘러(매끈 유리/물방울).
+const glossyShade: StarSurfaceFn = ({ mood, glow, ndv }) => {
+  const rim = pow(clamp(float(1).sub(ndv), float(0), float(1)), float(2.2))
+  const spec = pow(clamp(ndv, float(0), float(1)), float(14.0))
   const self = mood.mul(0.16).add(mood.mul(rim.mul(1.2))).add(vec3(1).mul(spec.mul(1.8))).mul(glow)
   return { colorNode: asVec3Node(mood.mul(0.22)), self: asVec3Node(self) }
 }
 
-// lava — 달궈진 면 fbm + flicker. crust↔lava를 heat로 mix.
-const lava: StarSurfaceFn = ({ mood, glow, seed, time }) => {
-  const np = positionLocal.mul(1.4).add(vec3(seed)).add(vec3(0.6, 1, 0.2).mul(time.mul(0.12)))
-  const n = fbm01(np, { octaves: 3 })
-  const heat = smoothstep(float(0.5), float(0.92), n)
-  const flicker = sin(time.mul(2.4).add(seed)).mul(0.07).add(0.93)
-  const crust = asVec3Node(mood.mul(0.1))
-  const lavaCol = mood.mul(1.6).add(vec3(0.4, 0.14, 0))
-  const self = mix(crust, lavaCol, heat).mul(flicker).mul(glow)
-  return { colorNode: crust, self: asVec3Node(self) }
-}
-
-// cloud — 도메인워프 fbm 빛구름(자가발광).
-const cloud: StarSurfaceFn = ({ mood, glow, seed, time }) => {
-  const flow = vec3(0, 1, 0)
-    .mul(time.mul(0.2))
-    .add(vec3(1, 0, 0).mul(sin(time.mul(0.3).add(seed)).mul(0.28)))
+// cloud — 도메인워프 fbm 빛구름(자가발광·무방향). 액체가 잊혀 구름이 된 단계의 표면.
+const cloudShade: StarSurfaceFn = ({ mood, glow, seed, time }) => {
+  const flow = vec3(0, 1, 0).mul(time.mul(0.2)).add(vec3(1, 0, 0).mul(sin(time.mul(0.3).add(seed)).mul(0.28)))
   const p = positionLocal.mul(1.6).add(flow).add(vec3(seed))
   const warp = fbm(p.add(vec3(0, 0, 1).mul(time.mul(0.16))), { octaves: 3 })
   const pw = p.add(vec3(warp).mul(0.7))
@@ -397,40 +264,136 @@ const cloud: StarSurfaceFn = ({ mood, glow, seed, time }) => {
   return { colorNode: asVec3Node(mood.mul(0.3)), self: asVec3Node(self) }
 }
 
-// pulse — 어두운 바디 + 정면의 강렬한 고밀도 코어가 큰 진폭으로 두근거린다(0.55↔1.45). facet의 면·glossy의
-// 매끈 림과 달리 "맥동하는 심장" 으로 읽히게 코어를 크게 키우고 맥동을 과장한다.
-const pulse: StarSurfaceFn = ({ mood, glow, ndv, seed, time }) => {
-  const core = pow(clamp(ndv, float(0), float(1)), float(3.0)) // 더 좁고 진한 코어
-  const beat = sin(time.mul(3.2).add(seed)).mul(0.45).add(1) // 큰 진폭 맥동
-  const halo = pow(clamp(float(1).sub(ndv), float(0), float(1)), float(2.0)).mul(0.25) // 은은한 외곽 헤일로
-  const self = mood.mul(float(0.22).add(core.mul(1.9))).mul(beat).add(mood.mul(halo)).mul(glow)
-  return { colorNode: asVec3Node(mood.mul(0.14)), self: asVec3Node(self) }
+// spikeGlow — 가시 룩 표면: 백열 균열 fbm + flicker(달궈진 가시 끝) 위에 면 음영. 고슴도치의 "살아있는" 질감.
+const spikeShade: StarSurfaceFn = ({ mood, glow, seed, time, ndv }) => {
+  const np = positionLocal.mul(1.5).add(vec3(seed)).add(vec3(0.6, 1, 0.2).mul(time.mul(0.1)))
+  const n = fbm01(np, { octaves: 3 })
+  const heat = smoothstep(float(0.45), float(0.9), n)
+  const flicker = sin(time.mul(2.0).add(seed)).mul(0.06).add(0.94)
+  const facetTerm = ndv.mul(0.7).add(0.3)
+  const base = mood.mul(facetTerm)
+  const hot = mood.mul(1.5).add(vec3(0.35, 0.12, 0))
+  const self = mix(base, hot, heat).mul(flicker).mul(glow)
+  return { colorNode: asVec3Node(mood.mul(0.12)), self: asVec3Node(self) }
 }
 
-/** surface id → 빌더. `satisfies Record<StarSurface, …>`로 총괄성 강제. */
-export const STAR_SURFACE_BUILDERS = { facet, glossy, lava, cloud, pulse } satisfies Record<
-  StarSurface,
-  StarSurfaceFn
->
-
-/** surface별 emissive 합성 비중 — self(자가발광=연결성·표면 발광)와 reflect(반사=카메라 키라이트 N·L) 두 채널을
- *  표면 정체성에 맞춰 따로 가중한다. facet=자가발광 0·반사로만 면을 드러냄(키라이트가 빙 돌며 면을 모델링),
- *  lava=자가발광 위주(스스로 달궈진 면), glossy/구름/맥동=중간. buildStarBody가 emissive에 곱한다(전역 트림
- *  TUNE.starSelfMul/starReflectMul이 다시 ×, 기본 1 → 이 값 그대로). ⚠️ facet self=0이면 연결성·A_MIN 자가발광이
- *  사라져 회상이 오래된(recency≈0) 별은 반사도 0이라 어두워질 수 있다(spec 03 recency 변조 + 헌법2 A_MIN 잔광 고려). */
-export const STAR_SURFACE_MIX: Record<StarSurface, { self: number; reflect: number }> = {
-  facet: { self: 0, reflect: 3 },
-  glossy: { self: 0.5, reflect: 0.25 },
-  lava: { self: 1.7, reflect: 0.2 },
-  cloud: { self: 0.5, reflect: 0.5 },
-  pulse: { self: 0.5, reflect: 0.5 },
+// ── 룩(look) 빌더 ───────────────────────────────────────────────────────────────────────────
+// polyhedron — 단계별 다면체(20→12→8→4면, flatShading). seedDisplace로 같은 단계 내 별마다 다른 비대칭 결정
+// 실루엣 + seed 축으로 느린 자전(면이 빛을 받아 살아 있게). flat 법선 자동 재계산 → 반사 N·L 정확.
+const polyhedron: StarLookFn = (ctx) => {
+  const { seed, time } = ctx
+  const axis = asVec3Node(
+    normalize(vec3(sin(seed.mul(1.7)).add(0.3), cos(seed.mul(1.1)), sin(seed.mul(2.3)).sub(0.2))),
+  )
+  const angle = time.mul(0.1).add(sin(time.mul(0.55).add(seed.mul(1.7))).mul(0.5))
+  const shaped = seedDisplace(ctx, { amp: 1, detail: 0.6, asym: 1, freq: 1.4 })
+  return {
+    geometry: polyhedronForStage(ctx.stage),
+    roughness: 0.34,
+    metalness: 0,
+    flatShading: true,
+    accurateNormals: true,
+    positionNode: asVec3Node(rotateAroundAxis(shaped, axis, angle)),
+    normalNode: asVec3Node(rotateAroundAxis(normalLocal, axis, angle)),
+    mixSelf: 0,
+    mixReflect: 3,
+    shade: facetShade,
+  }
 }
 
-/** form × surface + 입력 노드 + 조명 스칼라 → 별 본체 {geometry, material}. mood 색은 hueShift로 회색축
- *  둘레로 돌려 보존한다. emissive = self-glow(연결성·surface 발광) + reflection(자아광), 둘 다 focus 곱. */
+// spiky — 고슴도치: 구형 코어 + 산처럼 솟은 가시(toolkit spikyGeometry). 단계가 오르면 가시 개수·길이↓ → 가시
+// 없는 다각형(요지). seed 축으로 느린 텀블(가시가 시점마다 다른 빛을 받음) + 약한 per-star 변위. 가시는 공유
+// 지오메트리에 구워지므로(버킷당 1개), 별별 차이는 자전·변위가 진다(랜덤성 v1). flatShading=true로 가시·면을
+// 또렷이 각지게(크리스털 가시) — 단계 끝 가시 0의 저폴리 구도 같은 면 음영이라 단계 간 셰이딩이 끊기지 않는다.
+const spiky: StarLookFn = (ctx) => {
+  const { seed, time, form } = ctx
+  const axis = asVec3Node(
+    normalize(vec3(cos(seed.mul(1.3)), sin(seed.mul(2.1)).add(0.2), cos(seed.mul(0.7)).sub(0.3))),
+  )
+  const angle = time.mul(0.14).add(sin(time.mul(0.4).add(seed)).mul(0.3))
+  // 코어 노이즈 럼프는 약하게(amp↓·detail↓) — 가시가 주인공이라 럼프가 세면 "뾰루지"처럼 뭉툭해진다. 비대칭만 살려
+  // 별마다 다른 실루엣을 준다(가시 배치 차이는 자전이 진다).
+  const shaped = seedDisplace(ctx, { amp: 0.12, detail: 0.04, asym: 0.5, freq: 1.2 })
+  return {
+    geometry: spikyGeometry({
+      spikes: Math.max(0, Math.round(form.spikes ?? 0)),
+      spikeLen: form.spikeLen ?? 0,
+      sharpness: form.spikeSharpness ?? 6,
+      detail: Math.max(1, Math.round(form.spikeDetail ?? 4)),
+    }),
+    roughness: 0.45,
+    metalness: 0,
+    flatShading: true,
+    accurateNormals: true,
+    positionNode: asVec3Node(rotateAroundAxis(shaped, axis, angle)),
+    normalNode: asVec3Node(rotateAroundAxis(normalLocal, axis, angle)),
+    mixSelf: 1.2,
+    mixReflect: 0.5,
+    shade: spikeShade,
+  }
+}
+
+// liquid — 액체 구슬 → 구름. 단계 0=불투명 출렁이는 변위 구(glossy), 단계가 오를수록 더 투명·뭉게(구름빛
+// 셰이딩으로 크로스페이드, opacityFloor로 바닥을 깔아 깊은 우주에서 안 사라지게). 변위/구름이라 무방향 반사.
+const liquid: StarLookFn = (ctx) => {
+  const { time, shape, cameraPos } = ctx
+  const { stageNorm, simplify } = stageScalars(ctx)
+  const cloudiness = stageNorm // 0=액체, 1=구름
+  const stretched = anisoStretch(asVec3Node(positionLocal), shape, ctx.form.asymmetry * simplify)
+  const np = asVec3Node(stretched.mul(1.1).add(shape).add(vec3(0, 0, 1).mul(time.mul(0.7))))
+  // 단계가 오르면 변위 진폭↑(출렁이는 구슬 → 뭉게뭉게 구름 윤곽).
+  const dispAmp = ctx.form.displaceAmp * (1 + cloudiness * 1.6)
+  const disp = asFloatNode(
+    gnoise(np).mul(dispAmp).add(gnoise(np.mul(2.6).add(vec3(3.7))).mul(ctx.form.detailAmp)),
+  )
+  const transparent = cloudiness > 0.01
+  // 정면(중심)은 진하고 실루엣 가장자리는 얇게 — 구름화될수록 더 비친다. opacityFloor가 최소 가시성 바닥.
+  const viewDir = asVec3Node(normalize(cameraPos.sub(positionWorld)))
+  const facing = asFloatNode(max(dot(normalWorld, viewDir), float(0)))
+  const floorOp = ctx.form.opacityFloor ?? 1
+  const opacity = asFloatNode(
+    clamp(mix(float(1), facing.mul(0.7).add(float(floorOp).mul(0.6)), float(cloudiness)), float(0.06), float(1)),
+  )
+  return {
+    geometry: new THREE.IcosahedronGeometry(1, 6),
+    roughness: 0.08 + cloudiness * 0.85,
+    metalness: 0.15 * (1 - cloudiness),
+    flatShading: false,
+    accurateNormals: false,
+    positionNode: asVec3Node(stretched.add(normalLocal.mul(disp))),
+    transparent,
+    opacityNode: transparent ? opacity : undefined,
+    mixSelf: 0.5,
+    mixReflect: 0.5,
+    // 액체(glossy) ↔ 구름(cloud)을 단계로 크로스페이드.
+    shade: (s) => {
+      const g = glossyShade(s)
+      const c = cloudShade(s)
+      return {
+        colorNode: asVec3Node(mix(g.colorNode, c.colorNode, float(cloudiness))),
+        self: asVec3Node(mix(g.self, c.self, float(cloudiness))),
+      }
+    },
+  }
+}
+
+/** look id → 빌더. `satisfies Record<StarLook, …>`로 총괄성 강제(카탈로그가 새 룩을 허용하면 누락이 컴파일 오류). */
+export const STAR_LOOK_BUILDERS = { polyhedron, liquid, spiky } satisfies Record<StarLook, StarLookFn>
+
+/** look별 mesh-레벨 자전 각속도(rad/s) — 메시를 통째로 도는 단일 소비처(CosmosScene)용 메타데이터. 우주는
+ *  셰이더 안에서 돌리고 인스턴스를 mesh-spin하지 않는다. */
+export const STAR_LOOK_SPIN: Record<StarLook, number> = {
+  polyhedron: 0,
+  liquid: 0.4,
+  spiky: 0.16,
+}
+
+/** look × stage + 입력 노드 + 조명 스칼라 → 별 본체 {geometry, material}. mood 색은 hueShift로 회색축 둘레로
+ *  돌려 보존한다. emissive = self-glow(연결성·표면 발광) + reflection(자아광), 둘 다 focus 곱. stage는 빌드타임
+ *  number(어느 지오메트리) — 우주는 (룩×단계) 버킷별로 이 함수를 호출해 메시를 만든다(헌법8 개정). */
 export function buildStarBody(
-  form: StarForm,
-  surface: StarSurface,
+  look: StarLook,
+  stage: number,
   inputs: StarShadeInputs,
   light: StarLightParams,
   formParams: StarFormParams = NO_FORM_VARIATION,
@@ -447,41 +410,34 @@ export function buildStarBody(
   const positional = asFloatNode(inputs.lightPositional)
   const seed = asFloatNode(inputs.seed)
   const t = asFloatNode(inputs.time)
-  // 카메라 월드 위치(빌트인 cameraPosition 노드 대신 — BloomPass가 그 빌트인을 동결시킨다, StarShadeInputs.cameraPos 참조).
   const camPos = asVec3Node(inputs.cameraPos)
-  // 형태(geometry) 변형 시드/단계(spec 53). 미지정이면 seed 단일값을 3축에 브로드캐스트(= 기존 vec3(seed)) —
-  // liquid/cloudy는 변형 off에서도 이 노이즈 필드를 쓰므로, 단일 프리뷰·배경 장식 별이 기존과 똑같이 보이게
-  // 한다(A5). 우주(StarField)는 inputs.shape로 진짜 3축 시드를 넘겨 별마다 실루엣이 갈린다.
+  // 형태 변형 3축 시드(change 29). 미지정이면 seed 단일값 브로드캐스트(단일 프리뷰·배경은 per-star 변형 불필요).
   const shapeNode = inputs.shape != null ? asVec3Node(inputs.shape) : asVec3Node(vec3(seed))
-  const stageNode = inputs.stage != null ? asFloatNode(inputs.stage) : float(0)
 
-  const formFn = STAR_FORM_BUILDERS[form] ?? STAR_FORM_BUILDERS[DEFAULT_STAR_FORM]
-  const surfaceFn = STAR_SURFACE_BUILDERS[surface] ?? STAR_SURFACE_BUILDERS[DEFAULT_STAR_SURFACE]
-  const shape = formFn({ seed, time: t, cameraPos: camPos, shape: shapeNode, stage: stageNode, form: formParams })
+  const lookFn = STAR_LOOK_BUILDERS[look] ?? STAR_LOOK_BUILDERS[DEFAULT_STAR_LOOK]
+  const built = lookFn({ seed, time: t, cameraPos: camPos, shape: shapeNode, stage, form: formParams })
 
   const m = new MeshStandardNodeMaterial()
-  m.metalness = shape.metalness
-  m.roughness = shape.roughness
-  m.flatShading = shape.flatShading
+  m.metalness = built.metalness
+  m.roughness = built.roughness
+  m.flatShading = built.flatShading
   m.toneMapped = false // emissive를 bloom이 집어가도록(HDR) 유지
-  if (shape.positionNode) m.positionNode = shape.positionNode
-  if (shape.normalNode) m.normalNode = shape.normalNode
-  // 반투명 폼(cloudy 연기) — alpha 블렌드 + depthWrite off로 가장자리가 얇게 사라진다(발광 구체라 정렬 깜빡임 허용).
-  if (shape.transparent) {
+  if (built.positionNode) m.positionNode = built.positionNode
+  if (built.normalNode) m.normalNode = built.normalNode
+  // 반투명 룩(구름) — alpha 블렌드 + depthWrite off로 가장자리가 얇게 사라진다(발광 구체라 정렬 깜빡임 허용).
+  if (built.transparent) {
     m.transparent = true
     m.depthWrite = false
-    if (shape.opacityNode) m.opacityNode = shape.opacityNode
+    if (built.opacityNode) m.opacityNode = built.opacityNode
   }
 
   const viewDir = asVec3Node(normalize(camPos.sub(positionWorld)))
   const ndv = asFloatNode(max(dot(normalWorld, viewDir), float(0)))
 
-  // 반사(lit) 항 — 정확 법선 form은 자아광 방향 N·L · 거리 falloff(점광만) · gain cap · 최근성 · litMix로
-  // 면/엣지를 드러낸다. 변위/구름 form(법선 부정확)은 무방향 최근성 글로우로 recency만 살린다(spec 03 회귀
-  // 방지). 진짜 PointLight가 아니라 self-position uniform으로 여기서 계산 → 단일 InstancedMesh 보존(헌법8).
-  // recEff = recency에 바닥(reflectRecencyFloor)을 깐 유효 최근성: 카메라 헤드램프는 면을 드러내는 "모델링 광"
-  // 이라 recency=0(오래된 별)이어도 완전히 꺼지면 안 된다(특히 facet은 자가발광 0이라 반사가 유일한 빛). 바닥
-  // 0이면 기존 동작(순수 recency 변조). bake 시 spec 03 recency-반사 변조가 전 form/surface에 완화됨에 유의.
+  // 반사(lit) 항 — 정확 법선 룩은 자아광 방향 N·L · 거리 falloff(점광만) · gain cap · 최근성 · litMix로 면/엣지를
+  // 드러낸다. 변위/구름 룩(법선 부정확)은 무방향 최근성 글로우로 recency만 살린다(spec 03 회귀 방지). recEff =
+  // recency에 바닥(reflectRecencyFloor)을 깐 유효 최근성: 헤드램프는 면을 드러내는 "모델링 광"이라 recency=0
+  // (오래된 별)이어도 완전히 꺼지면 안 된다(facet은 자가발광 0이라 반사가 유일한 빛).
   const recEff = asFloatNode(mix(asFloatNode(TUNE.reflectRecencyFloor), float(1), rec))
   const reflectNL = (nrm: unknown) => {
     const toPoint = selfPos.sub(positionWorld)
@@ -493,28 +449,22 @@ export function buildStarBody(
     const ndl = max(dot(asVec3Node(nrm), lightDir), float(0))
     return mood.mul(ndl).mul(atten).mul(float(light.gain)).mul(recEff).mul(litMix)
   }
-  // 카메라 헤드램프(far-view): 광원 방향 = viewDir(표면→카메라) + 살짝 위 틸트. viewDir은 cameraPos uniform
-  // (소비처가 매 프레임 카메라 월드 위치로 갱신 — facet ndv 음영과 동일 출처)으로 만들어 시점을 돌리면 보이는
-  // 면이 늘 비춰진다. ⚠️ three 빌트인 cameraPosition 노드를 쓰면 BloomPass가 그걸 동결시켜(time과 같은 함정)
-  // 광원이 초기 카메라 위치에 박히므로 쓰지 않는다. 거리 감쇠 없음(평행광·intensity만).
+  // 카메라 헤드램프(far-view): 광원 방향 = viewDir(표면→카메라) + 살짝 위 틸트. viewDir은 cameraPos uniform로
+  // 만들어 시점을 돌리면 보이는 면이 늘 비춰진다. 거리 감쇠 없음(평행광·intensity만).
   const camHeadlight = inputs.cameraHeadlight != null ? asFloatNode(inputs.cameraHeadlight) : float(0)
   const headDir = asVec3Node(normalize(viewDir.add(vec3(0, 1, 0).mul(0.45))))
   const ndlCam = max(dot(normalWorld, headDir), float(0))
   const reflectCam = mood.mul(ndlCam).mul(float(light.intensity)).mul(float(light.gain)).mul(recEff).mul(litMix)
   const reflectUndirected = mood.mul(recEff).mul(float(light.gain)).mul(litMix)
-  // 정확-법선 form은 헤드램프(camHeadlight=1) ↔ selfLightPos 반사를 크로스페이드, 변위/구름 form은 무방향.
-  const reflectBase = shape.accurateNormals
+  const reflectBase = built.accurateNormals
     ? asVec3Node(mix(reflectNL(normalWorld), reflectCam, camHeadlight))
     : reflectUndirected
-  // emissive 합성: surface별 self/reflect 비중(STAR_SURFACE_MIX) × 전역 트림(dev 튜너, 기본 1 → 무변).
-  const mixCfg = STAR_SURFACE_MIX[surface] ?? STAR_SURFACE_MIX[DEFAULT_STAR_SURFACE]
-  const reflect = reflectBase.mul(mixCfg.reflect).mul(asFloatNode(TUNE.starReflectMul))
+  const reflect = reflectBase.mul(built.mixReflect).mul(asFloatNode(TUNE.starReflectMul))
 
-  const accurate = float(shape.accurateNormals ? 1 : 0)
-  const shade = surfaceFn({ mood, glow, recency: rec, seed, time: t, litMix, accurate, viewDir, ndv })
+  const shade = built.shade({ mood, glow, recency: rec, seed, time: t, ndv })
   m.colorNode = shade.colorNode
   m.emissiveNode = asVec3Node(
-    shade.self.mul(mixCfg.self).mul(asFloatNode(TUNE.starSelfMul)).add(reflect).mul(foc),
+    shade.self.mul(built.mixSelf).mul(asFloatNode(TUNE.starSelfMul)).add(reflect).mul(foc),
   )
-  return { geometry: shape.geometry, material: m }
+  return { geometry: built.geometry, material: m }
 }

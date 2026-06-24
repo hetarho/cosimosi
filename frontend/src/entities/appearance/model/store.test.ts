@@ -41,59 +41,58 @@ describe('appearance store — 형태×표면 합성 선택 정규화(spec 52)',
     })
   })
 
-  it('무료 기본 합성: lowpoly+facet / orb+mirror / strands+flow / galaxy', () => {
-    expect(DEFAULT_STAR_SELECTION).toBe('lowpoly+facet')
+  it('무료 기본: 별 polyhedron(룩) / orb+mirror / strands+flow / galaxy', () => {
+    expect(DEFAULT_STAR_SELECTION).toBe('polyhedron')
     expect(DEFAULT_SELF_SELECTION).toBe('orb+mirror')
     expect(DEFAULT_SYNAPSE_SELECTION).toBe('strands+flow')
     expect(DEFAULT_BACKGROUND).toBe('galaxy')
   })
 
-  it('레거시 단일 id는 (form, surface) 프리셋으로 디컴포지션된다', () => {
+  it('나·시냅스 레거시 단일 id는 (form, surface) 프리셋으로 디컴포지션, 별 레거시는 룩 디폴트로 폴백', () => {
     useAppearance.getState().applyServerSettings({
-      object: 'pulsar', // → smooth+pulse
+      object: 'pulsar', // 레거시 별 id → 룩 디폴트(polyhedron) 폴백(change 29: 호환 불필요)
       selfObject: 'prism-cube', // → cube+prism
       synapseStyle: 'dendrite', // → branched+flow
       theme: 'vortex', // 배경은 단일 id 그대로
       emotionColors: {},
     })
     const s = useAppearance.getState()
-    expect(s.object).toBe('smooth+pulse')
+    expect(s.object).toBe('polyhedron')
     expect(s.selfObject).toBe('cube+prism')
     expect(s.synapseStyle).toBe('branched+flow')
     expect(s.theme).toBe('vortex')
   })
 
-  it('합성 id는 그대로 라운드트립한다(form/surface 독립 조합)', () => {
+  it('별 룩 id는 그대로 라운드트립, 나·시냅스 합성도 라운드트립', () => {
     useAppearance.getState().applyServerSettings({
-      object: 'octa+facet', // 다른 form에 무료 surface — 독립 조합
+      object: 'spiky', // 단일 축 룩
       selfObject: 'orb+neuron', // 무료 form에 유료 surface
       synapseStyle: 'dotted+beads',
       emotionColors: {},
     })
     const s = useAppearance.getState()
-    expect(s.object).toBe('octa+facet')
+    expect(s.object).toBe('spiky')
     expect(s.selfObject).toBe('orb+neuron')
     expect(s.synapseStyle).toBe('dotted+beads')
   })
 
-  it('미지 합성·sub-id는 축 기본 form/surface로 폴백한다(A9, 크래시 없음)', () => {
+  it('미지 값은 축 기본으로 폴백한다(A9, 크래시 없음)', () => {
     useAppearance.getState().applyServerSettings({
-      object: 'bogus+nope', // 양쪽 미지 → lowpoly+facet
+      object: 'bogus+nope', // 별: 미지 → polyhedron
       selfObject: 'orb+bogus', // surface만 미지 → orb+mirror
       synapseStyle: 'totally-unknown', // 합성 아님·레거시 아님 → strands+flow
       emotionColors: {},
     })
     const s = useAppearance.getState()
-    expect(s.object).toBe('lowpoly+facet')
+    expect(s.object).toBe('polyhedron')
     expect(s.selfObject).toBe('orb+mirror')
     expect(s.synapseStyle).toBe('strands+flow')
   })
 
-  it('한 슬롯만 바꾼 setObject는 다른 슬롯을 보존한다', () => {
-    useAppearance.getState().setObject('octa+lava')
-    expect(useAppearance.getState().object).toBe('octa+lava')
-    // 미지 입력은 setObject도 정규화한다(기본 폴백).
+  it('setObject는 룩을 정규화한다(미지는 디폴트 폴백)', () => {
+    useAppearance.getState().setObject('spiky')
+    expect(useAppearance.getState().object).toBe('spiky')
     useAppearance.getState().setObject('garbage')
-    expect(useAppearance.getState().object).toBe('lowpoly+facet')
+    expect(useAppearance.getState().object).toBe('polyhedron')
   })
 })

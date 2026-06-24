@@ -5,32 +5,24 @@
 //  - 2D:     VizStar(SVG), StarVisualProps
 export type { StarObject, StarObjectMeta } from './model/types'
 export { STAR_OBJECTS, isStarObject, parseStarObject } from './model/kinds'
-// 형태×표면 2축 스킨(spec 52) — 카탈로그·디컴포지션·합성 인코딩.
+// 단일 축 형태(룩) 카탈로그(spec 53 / change 29) — 사용자가 고르는 단위. 렌더 (form,surface) 프리미티브는 내부 전용.
 export {
-  type StarForm,
-  type StarSurface,
-  type StarSelection,
-  type StarSkinMeta,
-  STAR_FORMS,
-  STAR_SURFACES,
-  STAR_PRESETS,
-  DEFAULT_STAR_FORM,
-  DEFAULT_STAR_SURFACE,
+  type StarLook,
+  type StarLookMeta,
+  STAR_LOOKS,
+  DEFAULT_STAR_LOOK,
   DEFAULT_STAR_SELECTION,
-  parseStarForm,
-  parseStarSurface,
-  encodeStarSelection,
-  decodeStarSelection,
-  normalizeStarSelection,
+  parseStarLook,
+  normalizeStarLook,
 } from './model/forms'
 export { StarField, type StarFieldProps } from './ui/StarField'
 export {
   buildStarBody,
-  STAR_FORM_SPIN,
-  STAR_FORM_BUILDERS,
-  STAR_SURFACE_BUILDERS,
+  STAR_LOOK_SPIN,
+  STAR_LOOK_BUILDERS,
   type StarShadeInputs,
   type StarLightParams,
+  type StarFormParams,
   type StarBodyBuild,
 } from './ui/star-body'
 export { VizStar, type VizStarProps } from './ui/VizStar'

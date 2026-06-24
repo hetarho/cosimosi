@@ -20,11 +20,12 @@ export function itemId(axis: Axis, kind: string): string {
   return `${axis}:${kind}`
 }
 
-/** 한 축 선택이 소유를 요구하는 sub-item id 목록(spec 52). 배경은 단일 id, 형태 있는 3축(별·나·시냅스)은
- *  합성 선택 "<form>+<surface>"를 두 sub-item(`"<axis>:form:<f>"`·`"<axis>:surface:<s>"`)으로 분해한다 —
+/** 한 축 선택이 소유를 요구하는 sub-item id 목록. 배경은 단일 id, 별은 단일 룩 id(`"star:look:<id>"`, change 29),
+ *  나·시냅스는 합성 선택 "<form>+<surface>"를 두 sub-item(`"<axis>:form:<f>"`·`"<axis>:surface:<s>"`)으로 분해한다 —
  *  합성 선택의 소유 = 양쪽 sub-item 소유(또는 무료). 순수 문자열 연산(entity 미import). */
 export function subItemIds(axis: Axis, selection: string): string[] {
   if (axis === 'background') return [itemId(axis, selection)]
+  if (axis === 'star') return [`star:look:${selection}`]
   const [form, surface] = selection.split('+')
   return [`${axis}:form:${form}`, `${axis}:surface:${surface}`]
 }

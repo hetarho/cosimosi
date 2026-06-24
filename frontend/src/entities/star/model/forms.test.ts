@@ -1,65 +1,46 @@
-// 별 형태×표면 디컴포지션·합성 인코딩 단위 테스트(spec 52). 순수 model — three/DOM 미의존.
+// 별 형태(룩) 단일 축 모델 단위 테스트(change 29). 순수 model — three/DOM 미의존.
 import { describe, expect, it } from 'vitest'
 import { VALUES } from '@/shared/config'
 import {
-  STAR_FORMS,
-  STAR_SURFACES,
-  STAR_PRESETS,
-  DEFAULT_STAR_FORM,
-  DEFAULT_STAR_SURFACE,
+  STAR_LOOKS,
+  DEFAULT_STAR_LOOK,
   DEFAULT_STAR_SELECTION,
-  encodeStarSelection,
-  decodeStarSelection,
-  normalizeStarSelection,
+  parseStarLook,
+  normalizeStarLook,
 } from './forms'
 
-describe('star forms — 디컴포지션·합성 인코딩', () => {
-  it('encode/decode 라운드트립 — 모든 form×surface 조합', () => {
-    for (const f of STAR_FORMS) {
-      for (const s of STAR_SURFACES) {
-        const wire = encodeStarSelection(f.id, s.id)
-        expect(wire).toBe(`${f.id}+${s.id}`)
-        expect(decodeStarSelection(wire)).toEqual({ form: f.id, surface: s.id })
-      }
-    }
+describe('star looks — 단일 축 형태(change 29)', () => {
+  it('카탈로그 = 3종(polyhedron·liquid·spiky), 기본 = polyhedron', () => {
+    expect(STAR_LOOKS.map((l) => l.id)).toEqual(['polyhedron', 'liquid', 'spiky'])
+    expect(DEFAULT_STAR_LOOK).toBe('polyhedron')
+    expect(DEFAULT_STAR_SELECTION).toBe('polyhedron')
   })
 
-  it('레거시 단일 id는 프리셋으로 디컴포지션(crystal·liquid·ember 시각 보존)', () => {
-    expect(decodeStarSelection('deepfield')).toEqual({ form: 'lowpoly', surface: 'facet' })
-    expect(decodeStarSelection('liquid')).toEqual({ form: 'liquid', surface: 'glossy' })
-    expect(decodeStarSelection('ember')).toEqual({ form: 'octa', surface: 'lava' })
-    expect(decodeStarSelection('aurora')).toEqual({ form: 'cloudy', surface: 'cloud' })
-    expect(decodeStarSelection('pulsar')).toEqual({ form: 'smooth', surface: 'pulse' })
+  it('parse는 유효 룩만 통과, 미지/빈/비문자열은 디폴트로 폴백(크래시 없음)', () => {
+    expect(parseStarLook('liquid')).toBe('liquid')
+    expect(parseStarLook('spiky')).toBe('spiky')
+    expect(parseStarLook('nope')).toBe('polyhedron')
+    expect(parseStarLook(undefined)).toBe('polyhedron')
+    expect(parseStarLook('')).toBe('polyhedron')
+    // 레거시 합성 id(form+surface)는 폴백 — 호환 불필요(change 29)
+    expect(parseStarLook('lowpoly+facet')).toBe('polyhedron')
   })
 
-  it('미지/빈 값·반쪽 미지 sub-id는 축 기본으로 폴백(A9, 크래시 없음)', () => {
-    expect(decodeStarSelection('nope')).toEqual(STAR_PRESETS.deepfield)
-    expect(decodeStarSelection(undefined)).toEqual(STAR_PRESETS.deepfield)
-    expect(decodeStarSelection('')).toEqual(STAR_PRESETS.deepfield)
-    expect(decodeStarSelection('octa+bogus')).toEqual({ form: 'octa', surface: DEFAULT_STAR_SURFACE })
-    expect(decodeStarSelection('bogus+lava')).toEqual({ form: DEFAULT_STAR_FORM, surface: 'lava' })
+  it('normalize는 항상 유효 룩을 돌려준다', () => {
+    expect(normalizeStarLook('spiky')).toBe('spiky')
+    expect(normalizeStarLook('garbage')).toBe(DEFAULT_STAR_LOOK)
   })
 
-  it('normalize는 항상 유효 합성을 돌려준다', () => {
-    expect(normalizeStarSelection('pulsar')).toBe('smooth+pulse')
-    expect(normalizeStarSelection('garbage')).toBe(DEFAULT_STAR_SELECTION)
-    expect(DEFAULT_STAR_SELECTION).toBe('lowpoly+facet')
-  })
-
-  it('values 정합 — 무료 슬롯 기본이 카탈로그 기본과 같다', () => {
+  it('values 정합 — 무료 별 슬롯이 카탈로그 기본과 같다', () => {
     const free = VALUES.customization.free as Record<string, string>
-    expect(free['star:form']).toBe(DEFAULT_STAR_FORM)
-    expect(free['star:surface']).toBe(DEFAULT_STAR_SURFACE)
+    expect(free['star:look']).toBe(DEFAULT_STAR_LOOK)
   })
 
-  it('values 정합 — 모든 유료 star sub-item 가격 키가 실제 카탈로그 id를 가리킨다', () => {
+  it('values 정합 — 유료 star:look 가격 키가 실제 카탈로그 룩을 가리킨다', () => {
     const price = VALUES.customization.price as Record<string, number>
-    const formIds = new Set<string>(STAR_FORMS.map((f) => f.id))
-    const surfaceIds = new Set<string>(STAR_SURFACES.map((s) => s.id))
+    const lookIds = new Set<string>(STAR_LOOKS.map((l) => l.id))
     for (const key of Object.keys(price)) {
-      if (key.startsWith('star:form:')) expect(formIds.has(key.slice('star:form:'.length))).toBe(true)
-      if (key.startsWith('star:surface:'))
-        expect(surfaceIds.has(key.slice('star:surface:'.length))).toBe(true)
+      if (key.startsWith('star:look:')) expect(lookIds.has(key.slice('star:look:'.length))).toBe(true)
     }
   })
 })

@@ -97,8 +97,8 @@ export const VALUES = {
   },
   customization: {
     startingStardust: 100,
-    price: {"background:vortex":30,"background:crystal":30,"background:mandala":40,"star:form:octa":25,"star:form:smooth":25,"star:form:cloudy":30,"star:form:liquid":30,"star:surface:glossy":25,"star:surface:lava":30,"star:surface:cloud":30,"star:surface:pulse":30,"self:form:cube":25,"self:form:bloom":30,"self:surface:prism":25,"self:surface:neuron":30,"synapse:form:branched":25,"synapse:form:dotted":25,"synapse:surface:beads":30,"synapse:surface:steady":25},
-    free: {"background":"galaxy","star:form":"lowpoly","star:surface":"facet","self:form":"orb","self:surface":"mirror","synapse:form":"strands","synapse:surface":"flow"},
+    price: {"background:vortex":30,"background:crystal":30,"background:mandala":40,"star:look:liquid":30,"star:look:spiky":30,"self:form:cube":25,"self:form:bloom":30,"self:surface:prism":25,"self:surface:neuron":30,"synapse:form:branched":25,"synapse:form:dotted":25,"synapse:surface:beads":30,"synapse:surface:steady":25},
+    free: {"background":"galaxy","star:look":"polyhedron","self:form":"orb","self:surface":"mirror","synapse:form":"strands","synapse:surface":"flow"},
   },
   admin: {
     userListDefaultPageSize: 50,
@@ -125,10 +125,15 @@ export const VALUES = {
     burstFadeGain: 1.2,
   },
   starForm: {
-    displaceAmp: 0.13,
-    detailAmp: 0.06,
-    asymmetry: 0.22,
+    displaceAmp: 0.22,
+    detailAmp: 0.1,
+    asymmetry: 0.42,
     stageSimplify: 0.75,
+    spikySpikes: [54,26,12,5,0],
+    spikyLen: [0.7,0.55,0.4,0.22,0],
+    spikySharpness: 28,
+    spikyDetail: 5,
+    liquidOpacity: [1,0.7,0.5,0.35,0.22],
   },
   starLighting: {
     selfIntensity: 0.9,

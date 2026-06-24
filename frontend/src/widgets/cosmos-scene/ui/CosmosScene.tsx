@@ -18,7 +18,7 @@ import { createRendererFactory, uniformColorNode } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
 import { cn } from '@/shared/lib'
 import { BloomPass, GrainOverlay, buildFluidMaterial, buildHalo, type CosmosPalette } from '@/shared/ui'
-import { buildStarBody, STAR_FORM_SPIN, decodeStarSelection } from '@/entities/star'
+import { buildStarBody, STAR_LOOK_SPIN, parseStarLook } from '@/entities/star'
 import { buildSelfForm, decodeSelfSelection } from '@/entities/appearance'
 import { DEFAULT_SYNAPSE_SELECTION, decodeSynapseSelection } from '@/entities/synapse'
 
@@ -314,10 +314,11 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
     // 배경 씬엔 자아-별·그래프가 없다(spec 03 3겹 미적용) — 브랜드 별은 자가발광 full(오늘 룩)에
     // 우상단 평행광(positional=0, 화면-비대칭 없음 = 태양) 반사를 더해 crystal 면/엣지를 드러낸다.
     const dir = VALUES.starLighting.backdropLightDir
-    const { form, surface } = decodeStarSelection(star.concept)
+    const look = parseStarLook(star.concept)
+    // 장식·브랜드 별은 추상화가 없다 — 단계 0(가장 또렷한 룩)으로 그린다.
     const built = buildStarBody(
-      form,
-      surface,
+      look,
+      0,
       {
         mood: moodU,
         glow: float(1), // 그래프 없음 → 연결성 대신 자가발광 full
@@ -341,7 +342,7 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
     return {
       geometry: built.geometry,
       material: built.material,
-      spin: STAR_FORM_SPIN[form],
+      spin: STAR_LOOK_SPIN[look],
       update: (t: number, camera: THREE.Camera) => {
         timeU.value = t
         camera.getWorldPosition(camPosU.value)

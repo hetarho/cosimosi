@@ -138,14 +138,8 @@ var (
 		"background:vortex":      30,
 		"background:crystal":     30,
 		"background:mandala":     40,
-		"star:form:octa":         25,
-		"star:form:smooth":       25,
-		"star:form:cloudy":       30,
-		"star:form:liquid":       30,
-		"star:surface:glossy":    25,
-		"star:surface:lava":      30,
-		"star:surface:cloud":     30,
-		"star:surface:pulse":     30,
+		"star:look:liquid":       30,
+		"star:look:spiky":        30,
 		"self:form:cube":         25,
 		"self:form:bloom":        30,
 		"self:surface:prism":     25,
@@ -157,8 +151,7 @@ var (
 	}
 	CustomizationFree = map[string]string{
 		"background":      "galaxy",
-		"star:form":       "lowpoly",
-		"star:surface":    "facet",
+		"star:look":       "polyhedron",
 		"self:form":       "orb",
 		"self:surface":    "mirror",
 		"synapse:form":    "strands",
@@ -198,10 +191,17 @@ const (
 
 // star_form
 const (
-	StarFormDisplaceAmp   = 0.13
-	StarFormDetailAmp     = 0.06
-	StarFormAsymmetry     = 0.22
-	StarFormStageSimplify = 0.75
+	StarFormDisplaceAmp    = 0.22
+	StarFormDetailAmp      = 0.1
+	StarFormAsymmetry      = 0.42
+	StarFormStageSimplify  = 0.75
+	StarFormSpikySharpness = 28
+	StarFormSpikyDetail    = 5
+)
+var (
+	StarFormSpikySpikes   = []float64{54, 26, 12, 5, 0}
+	StarFormSpikyLen      = []float64{0.7, 0.55, 0.4, 0.22, 0}
+	StarFormLiquidOpacity = []float64{1, 0.7, 0.5, 0.35, 0.22}
 )
 
 // star_lighting

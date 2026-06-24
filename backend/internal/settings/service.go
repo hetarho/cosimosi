@@ -53,11 +53,9 @@ func isOwned(itemID string, owned map[string]bool) bool {
 // so a past purchase keeps unlocking the same skin after the form×surface split — WITHOUT a DB
 // migration (ownership values are expanded on read). Frozen: these legacy ids never change (the
 // catalog id is the historical purchase record). Background ids were not split, so they aren't here.
+// Star is excluded: change 29 collapsed it to a single-axis look (star:look:<id>) before launch, so
+// there are no legacy star purchases to preserve (no compat needed).
 var legacyOwnedSubItems = map[string][]string{
-	"star:aurora":       {"star:form:cloudy", "star:surface:cloud"},
-	"star:liquid":       {"star:form:liquid", "star:surface:glossy"},
-	"star:ember":        {"star:form:octa", "star:surface:lava"},
-	"star:pulsar":       {"star:form:smooth", "star:surface:pulse"},
 	"self:prism-cube":   {"self:form:cube", "self:surface:prism"},
 	"self:neuron-bloom": {"self:form:bloom", "self:surface:neuron"},
 	"synapse:particle":  {"synapse:form:dotted", "synapse:surface:beads"},
@@ -85,14 +83,17 @@ func expandLegacyOwned(ids []string) []string {
 	return out
 }
 
-// selectionSubItems resolves an axis selection to the item ids it must own (spec 52). Background is
-// single ("background:<kind>"); the object axes (star/self/synapse) serialize a composite
-// "<form>+<surface>" into one wire field, so a selection owns TWO sub-items
-// ("<axis>:form:<f>", "<axis>:surface:<s>") — both must be known + owned. A non-composite value on
-// an object axis (legacy/tampered) yields one unknown sub-item so validation rejects it (A2/A4/A9).
+// selectionSubItems resolves an axis selection to the item ids it must own. Background is single
+// ("background:<kind>"); star is a single-axis look ("star:look:<kind>", change 29); self/synapse
+// still serialize a composite "<form>+<surface>" into one wire field, so a selection owns TWO
+// sub-items ("<axis>:form:<f>", "<axis>:surface:<s>") — both must be known + owned. A non-composite
+// value on self/synapse (legacy/tampered) yields one unknown sub-item so validation rejects it (A2/A4/A9).
 func selectionSubItems(axis, kind string) []string {
 	if axis == "background" {
 		return []string{axis + ":" + kind}
+	}
+	if axis == "star" {
+		return []string{"star:look:" + kind}
 	}
 	form, surface, ok := strings.Cut(kind, "+")
 	if !ok {

@@ -15,14 +15,7 @@ import {
   decodeSelfSelection,
   useAppearance,
 } from '@/entities/appearance'
-import {
-  STAR_FORMS,
-  STAR_SURFACES,
-  parseStarForm,
-  parseStarSurface,
-  encodeStarSelection,
-  decodeStarSelection,
-} from '@/entities/star'
+import { STAR_LOOKS, parseStarLook } from '@/entities/star'
 import {
   SYNAPSE_FORMS,
   SYNAPSE_SURFACES,
@@ -180,8 +173,8 @@ function InventoryRadioGroup({
 type PickerConfig = {
   key: string
   axis: Axis
-  /** 슬롯('' = 배경 단일 · 'form'·'surface' = 형태/표면 sub-item). */
-  slot: '' | 'form' | 'surface'
+  /** 슬롯('' = 배경/별 단일 · 'look' = 별 룩(change 29) · 'form'·'surface' = 나·시냅스 형태/표면 sub-item). */
+  slot: '' | 'look' | 'form' | 'surface'
   /** 새 객체 그룹의 시작(위에 구분선)인가 — 배경·별·나·시냅스 그룹 경계. */
   groupStart: boolean
   label: string
@@ -220,8 +213,7 @@ export function AppearanceControls({
   const ownedItemIds = useAppearance((s) => s.ownedItemIds)
   const commitSelection = useAppearance((s) => s.commitSelection)
 
-  // 객체 축은 합성 선택을 디코드해 form·surface 두 피커가 각 슬롯만 바꿔 재인코딩한다(다른 슬롯 보존, A1).
-  const star = decodeStarSelection(object)
+  // 별은 단일 축 룩(change 29); 나·시냅스는 합성 선택을 디코드해 form·surface 두 피커가 각 슬롯만 재인코딩(다른 슬롯 보존, A1).
   const self = decodeSelfSelection(selfObject)
   const syn = decodeSynapseSelection(synapseStyle)
 
@@ -238,26 +230,15 @@ export function AppearanceControls({
       setX: (k) => setTheme(parseBackground(k, theme)),
     },
     {
-      key: 'star-form',
+      key: 'star-look',
       axis: 'star',
-      slot: 'form',
+      slot: 'look',
       groupStart: true,
       label: '별 — 형태',
       groupLabel: '별 형태',
-      metas: STAR_FORMS,
-      value: star.form,
-      setX: (k) => setObject(encodeStarSelection(parseStarForm(k, star.form), star.surface)),
-    },
-    {
-      key: 'star-surface',
-      axis: 'star',
-      slot: 'surface',
-      groupStart: false,
-      label: '별 — 표면',
-      groupLabel: '별 표면',
-      metas: STAR_SURFACES,
-      value: star.surface,
-      setX: (k) => setObject(encodeStarSelection(star.form, parseStarSurface(k, star.surface))),
+      metas: STAR_LOOKS,
+      value: object,
+      setX: (k) => setObject(parseStarLook(k)),
     },
     {
       key: 'self-form',

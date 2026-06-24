@@ -1,12 +1,12 @@
-// 앱 전역 시각 설정 store(spec 30·44·52). 4축 선택(배경=theme·별=object·나=selfObject·시냅스=synapseStyle)은
-// *기기* 선호라 localStorage에 지속한다. 배경은 단일 id, 별·나·시냅스는 **형태×표면 합성 id "<form>+<surface>"**
-// 다(spec 52) — wire 필드 이름·proto·DB는 그대로, 값만 합성 문자열이다. 정규화(normalizeXSelection)가 합성·
-// 레거시 단일 id·미지를 전부 유효 합성으로 폴백한다(A9). 감정색 오버라이드(emotionColors)와 **별가루 잔액·
+// 앱 전역 시각 설정 store(spec 30·44·52·53). 4축 선택(배경=theme·별=object·나=selfObject·시냅스=synapseStyle)은
+// *기기* 선호라 localStorage에 지속한다. 배경·별은 단일 id(별=룩 id, change 29), 나·시냅스는 형태×표면 합성 id
+// "<form>+<surface>"(spec 52) — wire 필드 이름·proto·DB는 그대로다. 정규화(normalizeXSelection)가 합성·레거시·
+// 미지를 전부 유효 선택으로 폴백한다(A9). 감정색 오버라이드(emotionColors)와 **별가루 잔액·
 // 소유권**은 per-user 자산이라 메모리에만 둔다(공용 PC에 개인 데이터·자산 영속 금지 — domain/data-sync + spec 44).
 // 인증 세션이면 GetSettings·GetInventory로 시드되고, 로그아웃·계정 전환·체험 전환 시 출처 리셋이 비운다.
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { DEFAULT_STAR_SELECTION, normalizeStarSelection } from '@/entities/star/@x/appearance'
+import { DEFAULT_STAR_SELECTION, normalizeStarLook } from '@/entities/star/@x/appearance'
 import {
   DEFAULT_SYNAPSE_SELECTION,
   normalizeSynapseSelection,
@@ -84,9 +84,8 @@ interface AppearanceState {
 
 /**
  * 구 키(cosimosi.landing.theme)에서 1회 승계한다. 구 저장본은 {theme:'deepfield'|...}로 색+형태를 함께
- * 담았고 그 값이 레거시 StarObject id와 같으므로, object/theme 중 별 형태로 보이는 값을 합성 선택으로
- * 정규화(normalizeStarSelection이 레거시 단일 id를 (form,surface)로 디컴포지션)하고 theme은 배경으로 폴백한다.
- * 새 키가 이미 있으면 건드리지 않는다.
+ * 담았으나, 별 형태는 이제 단일 축 룩이라(change 29) 레거시 값은 normalizeStarLook이 디폴트 룩으로 폴백하고
+ * theme은 배경으로 폴백한다. 새 키가 이미 있으면 건드리지 않는다.
  */
 function legacyInitial(): { theme: Background; object: string } {
   const base = { theme: DEFAULT_BACKGROUND, object: DEFAULT_STAR_SELECTION }
@@ -97,7 +96,7 @@ function legacyInitial(): { theme: Background; object: string } {
     if (!raw) return base
     const s = (JSON.parse(raw)?.state ?? {}) as { theme?: string; object?: string }
     const theme = parseBackground(s.theme, DEFAULT_BACKGROUND)
-    const object = normalizeStarSelection(s.object ?? s.theme)
+    const object = normalizeStarLook(s.object ?? s.theme)
     return { theme, object }
   } catch {
     return base
@@ -124,7 +123,7 @@ export const useAppearance = create<AppearanceState>()(
         stardust: 0,
         ownedItemIds: new Set<string>(),
         setTheme: (id) => set({ theme: id }),
-        setObject: (id) => set({ object: normalizeStarSelection(id) }),
+        setObject: (id) => set({ object: normalizeStarLook(id) }),
         setSelfObject: (id) => set({ selfObject: normalizeSelfSelection(id) }),
         setSynapseStyle: (id) => set({ synapseStyle: normalizeSynapseSelection(id) }),
         setEmotionColor: (mood, color) =>
@@ -135,7 +134,7 @@ export const useAppearance = create<AppearanceState>()(
             // 서버 시드 직후엔 드래프트(미저장)가 없다(dirty=false). 저장은 이 응답으로 재동기화된다. 값이
             // 있으면 정규화(미지·레거시 → 유효 합성 폴백, A9), 없으면 현재 유효 선택을 유지한다.
             const theme = parseBackground(sv.theme, s.theme)
-            const object = sv.object != null ? normalizeStarSelection(sv.object) : s.object
+            const object = sv.object != null ? normalizeStarLook(sv.object) : s.object
             const selfObject = sv.selfObject != null ? normalizeSelfSelection(sv.selfObject) : s.selfObject
             const synapseStyle =
               sv.synapseStyle != null ? normalizeSynapseSelection(sv.synapseStyle) : s.synapseStyle
@@ -201,7 +200,7 @@ export const useAppearance = create<AppearanceState>()(
       merge: (persisted, current) => {
         const p = persisted as Partial<AppearanceState> | undefined
         const theme = parseBackground(p?.theme, current.theme)
-        const object = p?.object != null ? normalizeStarSelection(p.object) : current.object
+        const object = p?.object != null ? normalizeStarLook(p.object) : current.object
         const selfObject = p?.selfObject != null ? normalizeSelfSelection(p.selfObject) : current.selfObject
         const synapseStyle =
           p?.synapseStyle != null ? normalizeSynapseSelection(p.synapseStyle) : current.synapseStyle

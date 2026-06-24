@@ -69,36 +69,37 @@ func TestUpdateValidPatchWrites(t *testing.T) {
 	}
 }
 
-// A4/A5 — a composite selection whose BOTH sub-items are owned is selectable; the patch is forwarded.
+// A4 — an owned paid star look (change 29: single-axis) is selectable; the patch is forwarded.
 func TestUpdateOwnedPaidWrites(t *testing.T) {
-	repo := &fakeRepo{inv: Inventory{Stardust: 70, OwnedItemIDs: []string{"star:form:octa", "star:surface:lava"}}}
-	_, err := NewService(repo).Update(context.Background(), "u1", Patch{StarObject: ptr("octa+lava")})
+	repo := &fakeRepo{inv: Inventory{Stardust: 70, OwnedItemIDs: []string{"star:look:spiky"}}}
+	_, err := NewService(repo).Update(context.Background(), "u1", Patch{StarObject: ptr("spiky")})
 	if err != nil {
-		t.Fatalf("owned composite selection should be selectable, got %v", err)
+		t.Fatalf("owned star look should be selectable, got %v", err)
 	}
 	if repo.captured == nil {
-		t.Fatal("expected repo.Update to be called for an owned composite")
+		t.Fatal("expected repo.Update to be called for an owned star look")
 	}
 }
 
-// A5 — a composite selection needs BOTH sub-items owned-or-free: a half-owned composite is rejected,
-// and an all-free composite (lowpoly+facet) needs no ownership round-trip (spec 52).
+// A5 — self/synapse composite needs BOTH sub-items owned-or-free: a half-owned composite is rejected,
+// and an all-free composite (orb+mirror) needs no ownership round-trip (spec 52). Star is single-axis
+// (change 29): a free look (polyhedron) is selectable with nothing owned.
 func TestUpdateCompositeOwnership(t *testing.T) {
-	// octa(paid) owned but surface lava(paid) NOT owned → rejected before any write.
-	half := &fakeRepo{inv: Inventory{Stardust: 70, OwnedItemIDs: []string{"star:form:octa"}}}
-	if _, err := NewService(half).Update(context.Background(), "u1", Patch{StarObject: ptr("octa+lava")}); !errors.Is(err, ErrNotOwned) {
+	// self cube(paid) owned but surface prism(paid) NOT owned → rejected before any write.
+	half := &fakeRepo{inv: Inventory{Stardust: 70, OwnedItemIDs: []string{"self:form:cube"}}}
+	if _, err := NewService(half).Update(context.Background(), "u1", Patch{SelfObject: ptr("cube+prism")}); !errors.Is(err, ErrNotOwned) {
 		t.Errorf("half-owned composite: want ErrNotOwned, got %v", err)
 	}
 	if half.captured != nil {
 		t.Error("repo.Update must not run for a half-owned composite")
 	}
-	// both free (default preset) → selectable with nothing owned.
+	// free star look (default) → selectable with nothing owned.
 	free := &fakeRepo{}
-	if _, err := NewService(free).Update(context.Background(), "u1", Patch{StarObject: ptr("lowpoly+facet")}); err != nil {
-		t.Errorf("all-free composite should be selectable, got %v", err)
+	if _, err := NewService(free).Update(context.Background(), "u1", Patch{StarObject: ptr("polyhedron")}); err != nil {
+		t.Errorf("free star look should be selectable, got %v", err)
 	}
 	if free.captured == nil {
-		t.Error("expected repo.Update for an all-free composite")
+		t.Error("expected repo.Update for a free star look")
 	}
 }
 
@@ -112,18 +113,17 @@ func TestUpdateRejectsInvalidBeforeWrite(t *testing.T) {
 		{"non-hex color", Patch{EmotionColors: []EmotionColor{{Mood: "joy", Color: "red"}}}, ErrInvalidColor},
 		{"short hex", Patch{EmotionColors: []EmotionColor{{Mood: "joy", Color: "#FFF"}}}, ErrInvalidColor},
 		{"unknown background", Patch{Theme: ptr("rainbow")}, ErrUnknownItem},
-		// spec 52 — object axes are composite "<form>+<surface>"; an unknown sub-id is rejected.
-		{"unknown star form", Patch{StarObject: ptr("blob+facet")}, ErrUnknownItem},
-		{"unknown star surface", Patch{StarObject: ptr("lowpoly+goo")}, ErrUnknownItem},
+		// star is a single-axis look (change 29); self/synapse stay composite "<form>+<surface>".
+		{"unknown star look", Patch{StarObject: ptr("blob")}, ErrUnknownItem},
+		{"legacy composite star id (tampered)", Patch{StarObject: ptr("lowpoly+facet")}, ErrUnknownItem},
 		{"unknown synapse form", Patch{SynapseStyle: ptr("zigzag+flow")}, ErrUnknownItem},
-		{"non-composite object (legacy/tampered)", Patch{StarObject: ptr("deepfield")}, ErrUnknownItem},
+		{"legacy star object id", Patch{StarObject: ptr("deepfield")}, ErrUnknownItem},
 		{"removed self core", Patch{SelfObject: ptr("core+mirror")}, ErrUnknownItem},
 		{"locked paid background", Patch{Theme: ptr("vortex")}, ErrNotOwned}, // known paid, not owned
-		// spec 52 — known paid sub-items not owned → NotOwned (not Unknown).
-		{"locked paid star form", Patch{StarObject: ptr("octa+lava")}, ErrNotOwned},
+		// known paid items not owned → NotOwned (not Unknown).
+		{"locked paid star look", Patch{StarObject: ptr("liquid")}, ErrNotOwned},
 		{"new paid self", Patch{SelfObject: ptr("cube+prism")}, ErrNotOwned},
 		{"new paid synapse", Patch{SynapseStyle: ptr("branched+beads")}, ErrNotOwned},
-		{"new paid star pulsar preset", Patch{StarObject: ptr("smooth+pulse")}, ErrNotOwned},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -140,12 +140,13 @@ func TestUpdateRejectsInvalidBeforeWrite(t *testing.T) {
 }
 
 // spec 52 — a legacy paid purchase still unlocks the skin after the form×surface split (no rebuy):
-// owning "star:ember" must satisfy the composite "octa+lava", and GetInventory reports the expanded
-// sub-items so the FE pickers show them owned (no double-charge).
+// owning "self:prism-cube" must satisfy the composite "cube+prism", and GetInventory reports the
+// expanded sub-items so the FE pickers show them owned (no double-charge). (Star has no legacy
+// purchases — change 29 collapsed it to a single look before launch.)
 func TestLegacyOwnershipHonored(t *testing.T) {
-	repo := &fakeRepo{inv: Inventory{Stardust: 0, OwnedItemIDs: []string{"star:ember"}}}
-	if _, err := NewService(repo).Update(context.Background(), "u1", Patch{StarObject: ptr("octa+lava")}); err != nil {
-		t.Errorf("legacy star:ember should unlock octa+lava, got %v", err)
+	repo := &fakeRepo{inv: Inventory{Stardust: 0, OwnedItemIDs: []string{"self:prism-cube"}}}
+	if _, err := NewService(repo).Update(context.Background(), "u1", Patch{SelfObject: ptr("cube+prism")}); err != nil {
+		t.Errorf("legacy self:prism-cube should unlock cube+prism, got %v", err)
 	}
 	inv, err := NewService(repo).GetInventory(context.Background(), "u1")
 	if err != nil {
@@ -155,7 +156,7 @@ func TestLegacyOwnershipHonored(t *testing.T) {
 	for _, id := range inv.OwnedItemIDs {
 		got[id] = true
 	}
-	if !got["star:ember"] || !got["star:form:octa"] || !got["star:surface:lava"] {
+	if !got["self:prism-cube"] || !got["self:form:cube"] || !got["self:surface:prism"] {
 		t.Errorf("expanded inventory missing legacy/sub ids: %v", inv.OwnedItemIDs)
 	}
 }
@@ -168,8 +169,8 @@ func TestPurchaseRejectsUnknownAndFree(t *testing.T) {
 		want   error
 	}{
 		{"unknown", "star:does-not-exist", ErrUnknownItem},
-		// spec 52 — free sub-items (slot defaults) are implicit ownership, not purchasable.
-		{"free star form", "star:form:lowpoly", ErrItemFree},
+		// free sub-items (slot defaults) are implicit ownership, not purchasable.
+		{"free star look", "star:look:polyhedron", ErrItemFree},
 		{"free self form", "self:form:orb", ErrItemFree},
 		{"free synapse surface", "synapse:surface:flow", ErrItemFree},
 		// legacy/removed single ids are no longer known.
@@ -193,11 +194,11 @@ func TestPurchaseRejectsUnknownAndFree(t *testing.T) {
 // A2 — a known paid sub-item is forwarded to the repository for the atomic debit+grant.
 func TestPurchasePaidDelegates(t *testing.T) {
 	repo := &fakeRepo{inv: Inventory{Stardust: 70}}
-	if _, err := NewService(repo).PurchaseItem(context.Background(), "u1", "star:form:liquid"); err != nil {
+	if _, err := NewService(repo).PurchaseItem(context.Background(), "u1", "star:look:liquid"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if repo.bought == nil || *repo.bought != "star:form:liquid" {
-		t.Errorf("expected Purchase(star:form:liquid), got %v", repo.bought)
+	if repo.bought == nil || *repo.bought != "star:look:liquid" {
+		t.Errorf("expected Purchase(star:look:liquid), got %v", repo.bought)
 	}
 }
 

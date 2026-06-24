@@ -1,5 +1,5 @@
 import { clamp01 } from '@/shared/lib'
-import { decodeStarSelection } from '@/entities/star/@x/synapse'
+import { parseStarLook } from '@/entities/star/@x/synapse'
 import { synapseCurve } from '../lib/curve'
 
 export interface VizSynapseProps {
@@ -11,7 +11,7 @@ export interface VizSynapseProps {
   color: string
   /** 0~1 시냅스 강도 → 굵기·밝기. */
   strength: number
-  /** 끝점 별 스킨 — 합성 wire id(레거시 단일 id도 허용). 표면으로 코어색/점선을 맞춘다. */
+  /** 끝점 별 룩(단일 축, change 29). 룩으로 코어색/점선을 맞춘다. */
   concept: string
   /** 곡률(직선의 지루함 제거). 기본 0.14. */
   arc?: number
@@ -40,9 +40,10 @@ export function VizSynapse({
   const s = clamp01(strength)
   const d = synapseCurve(x1, y1, x2, y2, arc)
   const boost = active ? 1.3 : 1
-  // 표면(surface)으로 끝점 별 룩을 맞춘다: lava(ember 계열)=mood 코어, facet(crystal 계열)=점선 별자리 선.
-  const { surface } = decodeStarSelection(concept)
-  const coreColor = surface === 'lava' ? color : '#eef1ff'
+  // 룩으로 끝점 별 연결선을 맞춘다: spiky=mood색 코어, polyhedron=점선 별자리 선, liquid=차가운 백색 코어.
+  const look = parseStarLook(concept)
+  const coreColor = look === 'spiky' ? color : '#eef1ff'
+  const dashed = look === 'polyhedron'
 
   return (
     <g className={className} fill="none" strokeLinecap="round">
@@ -54,7 +55,7 @@ export function VizSynapse({
         stroke={coreColor}
         strokeWidth={(0.35 + s * 1.1) * boost}
         strokeOpacity={(0.22 + s * 0.5) * boost}
-        strokeDasharray={surface === 'facet' ? '0.7 3' : undefined}
+        strokeDasharray={dashed ? '0.7 3' : undefined}
       />
     </g>
   )
