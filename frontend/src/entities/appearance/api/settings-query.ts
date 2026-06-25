@@ -125,6 +125,12 @@ export function emotionColorsOf(res: GetSettingsResponse | undefined): Record<st
   return toServerAppearance(res?.settings).emotionColors
 }
 
+/** GetSettings 응답 → mood(소문자)→look 맵(없으면 빈 맵). 감정별 별 스튜디오(change 33) 형태 draft 시드용 —
+ *  store가 아직 hydrate 안 된 직접 진입에서도 응답에서 바로 시드해 기존 오버라이드를 안 잃게 한다. */
+export function emotionFormsOf(res: GetSettingsResponse | undefined): Record<string, string> {
+  return toServerAppearance(res?.settings).starFormByEmotion
+}
+
 /** GetSettings 응답이 13 mood 감정색을 모두 유효한 #RRGGBB로 담고 있나(spec 45 완료 판정 — EmotionColorGate가 소비). */
 export function isEmotionColorComplete(res: GetSettingsResponse | undefined): boolean {
   return isCompleteEmotionColors(emotionColorsOf(res))

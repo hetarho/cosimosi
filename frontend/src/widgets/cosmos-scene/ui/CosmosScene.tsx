@@ -18,7 +18,7 @@ import { createRendererFactory, uniformColorNode } from '@/shared/lib/r3f'
 import { VALUES } from '@/shared/config'
 import { cn } from '@/shared/lib'
 import { BloomPass, GrainOverlay, buildFluidMaterial, buildHalo, type CosmosPalette } from '@/shared/ui'
-import { buildStarBody, STAR_LOOK_SPIN, parseStarLook } from '@/entities/star'
+import { buildStarBody, STAR_LOOK_SPIN, parseStarLook, stageBucket, formParamsFor } from '@/entities/star'
 import { buildSelfForm, decodeSelfSelection } from '@/entities/appearance'
 import { DEFAULT_SYNAPSE_SELECTION, decodeSynapseSelection } from '@/entities/synapse'
 
@@ -52,6 +52,9 @@ export interface StarVisual {
   emission?: number
   /** 외부 평행광(반사) 세기(기본 `VALUES.starLighting.backdropLightIntensity`). 높이면 면/엣지 대비가 강해진다(극적 조명). */
   lightIntensity?: number
+  /** 추상화 단계(0..STAGE_MAX, change 33 감정별 스튜디오 미리보기). 지정 시 그 단계 지오메트리(buildStarBody(look, stage)
+   *  + 단계별 형태 파라미터)로 그린다 — 잊혀가며 단순해지는 실루엣 미리보기. 미지정이면 단계 0·기본 형태(랜딩 등 무변). */
+  stage?: number
 }
 
 /** 자아("나") 앵커 미리보기(plain data) — 플레이그라운드 미니 코스모스(spec 44 A12). 형태=concept,
@@ -326,10 +329,13 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
     // 우상단 평행광(positional=0, 화면-비대칭 없음 = 태양) 반사를 더해 crystal 면/엣지를 드러낸다.
     const dir = VALUES.starLighting.backdropLightDir
     const look = parseStarLook(star.concept)
-    // 장식·브랜드 별은 추상화가 없다 — 단계 0(가장 또렷한 룩)으로 그린다.
+    // 단계 지정(감정별 스튜디오 미리보기, change 33)이면 그 단계 지오메트리·형태 파라미터로, 미지정(랜딩·브랜드 별)이면
+    // 단계 0·기본 형태(per-star 변형 없음)로 그린다 — 기존 소비처 동작 불변.
+    const hasStage = star.stage != null
+    const bucket = hasStage ? stageBucket(star.stage ?? 0) : 0
     const built = buildStarBody(
       look,
-      0,
+      bucket,
       {
         mood: moodU,
         glow: brightU.mul(float(emission)), // 자가발광 — 밝기 × emission(약하게 두면 반사가 극적으로 드러남)
@@ -350,6 +356,8 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
         // 강한 광원이면 반사 cap도 함께 올려 면/엣지 대비를 살린다(약한 self-glow를 못 이기게 묶던 기본 cap 해제).
         gain: Math.max(VALUES.starLighting.litAlbedoGain, lightIntensity * 0.55),
       },
+      // 단계 지정 시에만 단계별 형태 파라미터(요지화 단순화) — 미지정은 기본(NO_FORM_VARIATION, 기존 동작).
+      hasStage ? formParamsFor(bucket) : undefined,
     )
     return {
       geometry: built.geometry,
@@ -361,7 +369,7 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
         brightU.value = bright
       },
     }
-  }, [star.concept, star.color, star.seed, emission, lightIntensity])
+  }, [star.concept, star.color, star.seed, star.stage, emission, lightIntensity])
   const halo = useMemo(() => buildHalo(star.color, 1), [star.color])
   useEffect(() => () => {
     body.geometry.dispose()

@@ -5,6 +5,7 @@
 // 가벼운 swatch 토큰으로 보이고(항목마다 라이브 3D 우주를 띄우지 않음), 저장 규칙(미구매 일괄 구매·잔액
 // 가드·체험 무상)은 기존과 같다. 데스크톱=좌측 사이드바, 모바일=하단 패널(내용 동일, 위치/모서리만 다름).
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { isDemoMode } from '@/shared/lib/demo'
 import { capture, cn, EVENTS } from '@/shared/lib'
@@ -20,6 +21,7 @@ export interface AppearancePanelProps {
 
 /** 홈 전용 스킨 편집 패널. HomePage가 split layout의 좌측/하단 sibling으로 마운트한다(캔버스는 그 옆에서 계속 산다). */
 export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
+  const navigate = useNavigate()
   const theme = useAppearance((s) => s.theme)
   const object = useAppearance((s) => s.object)
   const selfObject = useAppearance((s) => s.selfObject)
@@ -35,31 +37,24 @@ export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
 
   const unlocked = isDemoMode()
 
-  // 드래프트 여부(라이브 ≠ 마지막 저장) — 4축 + 감정별 룩 오버라이드 맵(change 30)까지 비교한다.
-  const formDirty =
-    Object.keys(starFormByEmotion).length !== Object.keys(saved.starFormByEmotion).length ||
-    Object.keys(starFormByEmotion).some((m) => starFormByEmotion[m] !== saved.starFormByEmotion[m])
+  // 드래프트 여부(라이브 ≠ 마지막 저장) — 패널은 전역 4축만 다룬다(감정별 룩 편집은 스튜디오로 이전, change 33).
   const dirty =
     theme !== saved.theme ||
     object !== saved.object ||
     selfObject !== saved.selfObject ||
-    synapseStyle !== saved.synapseStyle ||
-    formDirty
+    synapseStyle !== saved.synapseStyle
   const selected: [Axis, string][] = [
     ['background', theme],
     ['star', object],
     ['self', selfObject],
     ['synapse', synapseStyle],
   ]
-  // 저장 시 살 미구매 유료 sub-item. 합성 선택은 form·surface로 분해(spec 52 A5)하고, 감정별 룩 오버라이드는
-  // 각 룩의 "star:look:<id>"를 더한다(change 30 — 룩은 한 번 사면 전역·여러 감정에 자유 배정). id로 중복 제거해
-  // 같은 룩(전역과 오버라이드가 같거나 두 감정이 같은 룩)을 두 번 사지 않는다.
+  // 저장 시 살 미구매 유료 sub-item — 전역 4축만. 합성 선택은 form·surface로 분해(spec 52 A5). 감정별 룩 구매는
+  // 스튜디오 저장이 책임진다(change 33). id로 중복 제거.
   const pending = (() => {
     if (unlocked) return []
     const byId = new Map<string, Axis>()
     for (const [ax, sel] of selected) for (const id of subItemIds(ax, sel)) if (!byId.has(id)) byId.set(id, ax)
-    for (const look of Object.values(starFormByEmotion))
-      for (const id of subItemIds('star', look)) if (!byId.has(id)) byId.set(id, 'star')
     return [...byId]
       .filter(([id]) => !isFree(id) && !isOwned(id, ownedItemIds))
       .map(([id, axis]) => ({ axis, id }))
@@ -80,6 +75,8 @@ export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
         await purchaseItem(p.id)
         capture(EVENTS.appearancePurchase, { item_id: p.id, axis: p.axis, price: priceOf(p.id) ?? 0 })
       }
+      // 전역 4축만 편집한다(감정별 룩은 스튜디오, change 33). starFormByEmotion은 현재 store 값(= 마지막 저장,
+      // 패널이 안 바꿈)을 그대로 패스 — BE emotion_forms는 upsert-only라 기존 오버라이드를 보존한다(덮어쓰지 않음).
       const ok = await pushSettings({ theme, starObject: object, selfObject, synapseStyle, starFormByEmotion })
       if (ok || unlocked) commitSelection()
       onClose()
@@ -141,7 +138,7 @@ export function AppearancePanel({ onClose, placement }: AppearancePanelProps) {
       {/* 4축 인벤토리(배경·별·광원·시냅스) — swatch 토큰 + 이름/설명/잠금/가격. draft=홈: 미리보기만, 저장 바가 커밋.
           선택 결과는 별도 샘플이 아니라 옆의 실제 우주에서 라이브로 확인한다(change 10). */}
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 pt-1">
-        <AppearanceControls draft />
+        <AppearanceControls draft onCustomizeEmotions={() => void navigate({ to: '/emotion-stars' })} />
       </div>
 
       {/* 저장(구매 포함) — 하단 command bar(잔액 부족이면 비활성). */}

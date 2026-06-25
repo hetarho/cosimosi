@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Lock, Palette, Sparkles, X } from 'lucide-react'
 import { capture, cn, EVENTS } from '@/shared/lib'
 import { isDemoMode } from '@/shared/lib/demo'
-import { itemId, isOwned, priceOf, MOODS, MOOD_LABEL, type Axis } from '@/shared/config'
+import { itemId, isOwned, priceOf, type Axis } from '@/shared/config'
 import {
   BACKGROUNDS,
   SELF_FORMS,
@@ -194,10 +194,14 @@ type PickerConfig = {
 export function AppearanceControls({
   playground = false,
   draft = false,
+  onCustomizeEmotions,
 }: {
   playground?: boolean
   /** 드래프트 모드(홈 실로그인): 모든 칩 미리보기 선택·자동 저장 안 함(플로팅 저장 버튼이 커밋). */
   draft?: boolean
+  /** 제공되면 별 형태 피커 아래 "감정별 별 커스텀하기" 텍스트 버튼을 띄운다(감정별 별 스튜디오로 이동, change 33).
+   *  미제공(플레이그라운드·미인증)이면 버튼 없음 — 감정별 편집은 보호 라우트라 도달 못 한다. */
+  onCustomizeEmotions?: () => void
 }) {
   const unlocked = playground || isDemoMode()
 
@@ -205,8 +209,6 @@ export function AppearanceControls({
   const setTheme = useAppearance((s) => s.setTheme)
   const object = useAppearance((s) => s.object)
   const setObject = useAppearance((s) => s.setObject)
-  const starFormByEmotion = useAppearance((s) => s.starFormByEmotion)
-  const setStarFormByEmotion = useAppearance((s) => s.setStarFormByEmotion)
   const selfObject = useAppearance((s) => s.selfObject)
   const setSelfObject = useAppearance((s) => s.setSelfObject)
   const synapseStyle = useAppearance((s) => s.synapseStyle)
@@ -215,17 +217,8 @@ export function AppearanceControls({
   const ownedItemIds = useAppearance((s) => s.ownedItemIds)
   const commitSelection = useAppearance((s) => s.commitSelection)
 
-  // 별 룩 피커의 적용 대상: 'global'(전역 기본 = object) 또는 mood 키(그 감정만 오버라이드, change 30). 대상이
-  // 특정 감정이면 그 감정 오버라이드(없으면 전역 기본을 미리보기 값으로)를 고치고, 'global'이면 전역 기본을 고친다.
-  const [starTarget, setStarTarget] = useState<string>('global')
-  const starLookValue = starTarget === 'global' ? object : (starFormByEmotion[starTarget] ?? object)
-  const setStarLook = (k: string) => {
-    const look = parseStarLook(k)
-    if (starTarget === 'global') setObject(look)
-    else setStarFormByEmotion(starTarget, look)
-  }
-
-  // 별은 단일 축 룩(change 29); 나·시냅스는 합성 선택을 디코드해 form·surface 두 피커가 각 슬롯만 재인코딩(다른 슬롯 보존, A1).
+  // 별 형태 피커는 **전역 기본 룩**(object)만 고친다(change 33 — 감정별 룩은 전용 스튜디오로 이전). 나·시냅스는
+  // 합성 선택을 디코드해 form·surface 두 피커가 각 슬롯만 재인코딩(다른 슬롯 보존, A1).
   const self = decodeSelfSelection(selfObject)
   const syn = decodeSynapseSelection(synapseStyle)
 
@@ -246,11 +239,11 @@ export function AppearanceControls({
       axis: 'star',
       slot: 'look',
       groupStart: true,
-      label: starTarget === 'global' ? '별 — 형태(전역 기본)' : `별 — 형태(${MOOD_LABEL[starTarget as keyof typeof MOOD_LABEL]})`,
+      label: '별 — 형태',
       groupLabel: '별 형태',
       metas: STAR_LOOKS,
-      value: starLookValue,
-      setX: setStarLook,
+      value: object,
+      setX: (k) => setObject(parseStarLook(k)),
     },
     {
       key: 'self-form',
@@ -333,26 +326,6 @@ export function AppearanceControls({
       {pickers.map((cfg) => (
         <div key={cfg.key} className="flex flex-col gap-4">
           {cfg.groupStart && <div className="h-px bg-white/10" />}
-          {/* 별 룩 적용 대상 드롭다운(change 30): 전역 기본 또는 13감정 중 하나 — 고른 대상의 룩을 아래 피커가 고친다. */}
-          {cfg.key === 'star-look' && (
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] text-white/45">어느 감정에 적용?</span>
-              <select
-                value={starTarget}
-                onChange={(e) => setStarTarget(e.target.value)}
-                aria-label="별 형태를 적용할 감정"
-                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-white/85 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-              >
-                <option value="global">전역 기본</option>
-                {MOODS.map((m) => (
-                  <option key={m} value={m}>
-                    {MOOD_LABEL[m]}
-                    {starFormByEmotion[m] ? ' ●' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <InventoryRadioGroup
             label={cfg.label}
             groupLabel={cfg.groupLabel}
@@ -362,6 +335,17 @@ export function AppearanceControls({
             draft={draft}
             onSelect={onSelect(cfg)}
           />
+          {/* 감정별 별 스튜디오 진입(change 33): 별 형태 피커는 전역만 — 감정별 색·형태는 전용 페이지에서. 보호 라우트라
+              호스트가 콜백을 줄 때만(홈 꾸미기 패널) 노출, 플레이그라운드(미인증)엔 안 보인다. */}
+          {cfg.key === 'star-look' && onCustomizeEmotions && (
+            <button
+              type="button"
+              onClick={onCustomizeEmotions}
+              className="w-fit text-[11px] text-white/55 underline-offset-2 transition hover:text-white/90 hover:underline"
+            >
+              감정별 별 커스텀하기 →
+            </button>
+          )}
         </div>
       ))}
     </>

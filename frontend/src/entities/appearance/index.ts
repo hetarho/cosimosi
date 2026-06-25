@@ -54,6 +54,7 @@ export {
   // 감정색 온보딩(spec 45) — 완료 판정·일괄 저장·draft 시드.
   isEmotionColorComplete,
   emotionColorsOf,
+  emotionFormsOf,
   saveEmotionColors,
 } from './api/settings-query'
 // 감정색 순수 helper(spec 45) — 추천 팔레트·완료 판정·draft 병합·hex 정규화.

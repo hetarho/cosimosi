@@ -7,6 +7,7 @@ import {
 import { LandingPage } from '@/pages/landing'
 import { DiaryPage } from '@/pages/diary'
 import { EmotionColorPage } from '@/pages/emotion-colors'
+import { EmotionStarStudio } from '@/pages/emotion-stars'
 import { RootLayout } from './RootLayout'
 import { NotFoundScreen, RouteErrorScreen } from './ui/ErrorScreens'
 import { SessionGate } from './ui/SessionGate'
@@ -97,6 +98,23 @@ const myPageRoute = createRoute({
       <SessionGate showChrome={false}>
         <MembershipGate>
           <MyPageRoute />
+        </MembershipGate>
+      </SessionGate>
+    )
+  },
+})
+
+// /emotion-stars = 감정별 별 스튜디오(change 33). 마이페이지와 같은 계정 표면 게이트(인증·멤버십)이되
+// 감정색 온보딩 게이트는 요구 안 함(진입 버튼/메뉴로만 도달 — redirect 불필요). 자체 헤더(우주로)에 chrome을
+// 두므로 SessionGate 핀은 끈다. 페이지가 session-context를 안 쓰므로 앱 래퍼 없이 직접 렌더.
+const emotionStarsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/emotion-stars',
+  component: function EmotionStarsRoute() {
+    return (
+      <SessionGate showChrome={false}>
+        <MembershipGate>
+          <EmotionStarStudio />
         </MembershipGate>
       </SessionGate>
     )
@@ -229,6 +247,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   diaryRoute,
   myPageRoute,
+  emotionStarsRoute,
   landingRoute,
   signInRoute,
   inviteRoute,
