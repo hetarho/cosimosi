@@ -147,6 +147,15 @@ export const VALUES = {
     recallLightBackOffset: 6,
     recallLightUpOffset: 2,
   },
+  starPortrait: {
+    lightDir: [0.18,1,0.55],
+    lightIntensity: 1.15,
+    selfEmission: 0.85,
+    cameraFov: 40,
+    cameraDistance: 4.2,
+    haloScale: 2.8,
+    fpsCap: 30,
+  },
   resonanceRing: {
     baseScale: 2.6,
     pulseScale: 0.12,
@@ -229,6 +238,7 @@ export const VALUES = {
   wayfinding: {
     frameMargin: 1.3,
     frameMinDistance: 12,
+    diaryExcerptChars: 280,
   },
   wobble: {
     amp: 1,

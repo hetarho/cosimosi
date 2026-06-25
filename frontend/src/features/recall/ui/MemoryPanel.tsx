@@ -23,12 +23,15 @@ import {
   universeInvalidateKey,
   useMemoryStore,
 } from '@/entities/memory'
-import { moodLabel } from '@/shared/config'
+import { parseStarLook } from '@/entities/star'
+import { useAppearance } from '@/entities/appearance'
+import { abstractionGauge, abstractionLabel, moodLabel, resolveMoodRgb, rgbToHex } from '@/shared/config'
 import { recallMemory } from '../api/recall'
 import { resonanceInfoQueryOptions } from '../api/resonance'
 import { DWELL_MS } from '../model'
 import { recallFlushActor } from '../model/recall-flush.machine'
 import { NeighborNav } from './NeighborNav'
+import { StarPortrait3D } from './StarPortrait3D'
 
 type Phase = 'dwelling' | 'loading' | 'shown' | 'error'
 
@@ -58,6 +61,22 @@ function RecallView({
   const resonant = useMemoryStore(
     (s) => s.stars.find((st) => st.id === memoryId)?.memory.resonant ?? false,
   )
+  // 상단 별 포트레이트(change 32) 입력 — 그 별의 정체성을 우주와 같은 경로로 재현한다. StarNode는 변형 전엔
+  // 참조가 안정해 불필요한 리렌더가 없다(merge가 무변경 노드 객체를 보존, §store). 변형되면 새 식별자로 다시 그린다.
+  const star = useMemoryStore((s) => s.stars.find((st) => st.id === memoryId))
+  const object = useAppearance((s) => s.object)
+  const starFormByEmotion = useAppearance((s) => s.starFormByEmotion)
+  const emotionColors = useAppearance((s) => s.emotionColors)
+  // 룩 = 그 별 mood의 감정 오버라이드(없으면 전역 기본), 우주 StarField와 동일 규칙(change 30). 색 = 감정색.
+  const portrait = star
+    ? {
+        look: parseStarLook(starFormByEmotion?.[star.memory.mood] ?? object),
+        colorHex: rgbToHex(resolveMoodRgb(star.memory.mood, emotionColors)),
+        stage: star.memory.abstractionStage,
+        seed: star.memory.seed,
+        shapeSeed: star.memory.shapeSeed,
+      }
+    : null
   const resonanceQuery = useQuery({
     ...resonanceInfoQueryOptions(memoryId),
     enabled: resonant && !isDemoMode(),
@@ -131,9 +150,24 @@ function RecallView({
   }, [memoryId, queryClient])
 
   // Body-only (home-ia revamp): the page hosts this inside a Surface (bottom sheet / floating
-  // card), which owns the container, "회상 — 원본 일기" title and close (→ focusActor DISMISS).
+  // card), which owns the container, "회상" title and close (→ focusActor DISMISS).
   return (
     <>
+      {/* 상단 별 포트레이트(change 32): 클릭한 별을 단일 3D로 크게 — 그 별의 룩·추상화 단계·시드·감정색을 우주와
+          같은 경로로 재현한다(요지화될수록 단순 실루엣). 패널이 닫히면 RecallView가 언마운트되며 캔버스도 함께 내려간다. */}
+      {portrait && (
+        // 포트레이트는 메인 우주와 별개의 두 번째 R3F 캔버스다. 렌더러 init 실패가 회상 패널 전체(메타·본문)를
+        // 날리거나 전역 앱 폴백으로 새지 않게 자체 경계로 가둔다 — 장식 캔버스라 실패 시 조용히 생략한다.
+        <Sentry.ErrorBoundary fallback={<></>}>
+          <StarPortrait3D
+            look={portrait.look}
+            colorHex={portrait.colorHex}
+            stage={portrait.stage}
+            seed={portrait.seed}
+            shapeSeed={portrait.shapeSeed}
+          />
+        </Sentry.ErrorBoundary>
+      )}
       {phase === 'dwelling' && (
         <p className="text-sm text-white/50">별을 바라보는 중… (2초간 머무르면 회상됩니다)</p>
       )}
@@ -149,12 +183,21 @@ function RecallView({
         // ph-no-capture: 일기 원문 영역 — PostHog autocapture가 이 서브트리를 아예
         // 건드리지 않게 한다(프라이버시 헌법 3; mask_all_text 위의 이중 가드).
         <article className="ph-no-capture flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-xs text-white/45">
+          {/* 메타: 날짜 · 기분 · 강도 · 추상화(라벨 + 점 게이지). 추상화 단계는 서버 권위(store) — 미수신(데모·구
+              응답)이면 0(또렷). 점 게이지로 흐려진 정도를 한눈에(예: 흐릿 ●●●○○). */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-white/45">
             <span>{record.entryDate}</span>
             <span>·</span>
             <span>{moodLabel(moodFromProto(record.mood))}</span>
             <span>·</span>
             <span>강도 {record.intensity.toFixed(2)}</span>
+            <span>·</span>
+            <span className="flex items-center gap-1">
+              {abstractionLabel(star?.memory.abstractionStage ?? 0)}
+              <span className="tracking-tight text-white/35">
+                {abstractionGauge(star?.memory.abstractionStage ?? 0)}
+              </span>
+            </span>
           </div>
           {(() => {
             // 별 → 조각/흐려진 기억 → 원본 3겹(spec 28·54): 기본 표시는 "흐려진 현재 내용"(AI 내용 변형,

@@ -15,6 +15,7 @@ import (
 	"github.com/cosimosi/backend/internal/db/fragment"
 	"github.com/cosimosi/backend/internal/db/gen"
 	"github.com/cosimosi/backend/internal/platform/id"
+	"github.com/cosimosi/backend/internal/values"
 )
 
 // pgRepository is the pgx/sqlc-backed Repository. It maps sqlc row types ↔ the
@@ -160,7 +161,11 @@ func (r *pgRepository) ListByUser(ctx context.Context, userID string) ([]Memory,
 // record with its fragment-star count, entry-date descending. records is read-only
 // (constitution §1 — the query is a GROUP BY SELECT, no UPDATE/DELETE).
 func (r *pgRepository) ListRecords(ctx context.Context, userID string) ([]RecordSummary, error) {
-	rows, err := gen.New(r.pool).ListRecords(ctx, userID)
+	// 발췌 길이는 values 단일 출처(change 32) — left(body, N). 여전히 발췌(원본 전체는 회상 경로 전용, 헌법1).
+	rows, err := gen.New(r.pool).ListRecords(ctx, gen.ListRecordsParams{
+		UserID:       userID,
+		ExcerptChars: int32(values.WayfindingDiaryExcerptChars),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list records: %w", err)
 	}
@@ -391,7 +396,8 @@ func (r *pgRepository) GetEvolutionHistory(ctx context.Context, userID, memoryID
 			PE:            float64(row.Pe),
 			Dir:           int(row.Dir),
 			CreatedAt:     row.CreatedAt.Time,
-			Content:       fragmentTextFromDB(row.Content), // 54: AI 변형 텍스트(시각 reshape/gist 행은 "")
+			Content:       fragmentTextFromDB(row.Content),  // 54: AI 변형 텍스트(시각 reshape/gist 행은 "")
+			AbstractionStage: int(row.AbstractionStage),     // 32: 'nightly_gist' 시점 단계(그 외 0)
 		})
 	}
 	return out, nil

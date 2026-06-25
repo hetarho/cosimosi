@@ -30,6 +30,7 @@ function toSnapshotVM(s: EvolutionSnapshot): EvolutionSnapshotVM {
     dir: s.dir,
     createdAt: s.createdAt,
     content: s.content, // 54: AI 내용 변형 텍스트(그 외 트리거는 "")
+    abstractionStage: s.abstractionStage, // 32: 'nightly_gist' 시점 단계(그 외 0)
   }
 }
 

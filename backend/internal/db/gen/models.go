@@ -27,18 +27,19 @@ type Embedding struct {
 }
 
 type EvolutionHistory struct {
-	ID            string             `json:"id"`
-	MemoryID      string             `json:"memory_id"`
-	UserID        string             `json:"user_id"`
-	Version       int32              `json:"version"`
-	Brightness    float32            `json:"brightness"`
-	HueShift      float32            `json:"hue_shift"`
-	FormSeedDelta float32            `json:"form_seed_delta"`
-	Trigger       string             `json:"trigger"`
-	Pe            float32            `json:"pe"`
-	Dir           int32              `json:"dir"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	Content       *string            `json:"content"`
+	ID               string             `json:"id"`
+	MemoryID         string             `json:"memory_id"`
+	UserID           string             `json:"user_id"`
+	Version          int32              `json:"version"`
+	Brightness       float32            `json:"brightness"`
+	HueShift         float32            `json:"hue_shift"`
+	FormSeedDelta    float32            `json:"form_seed_delta"`
+	Trigger          string             `json:"trigger"`
+	Pe               float32            `json:"pe"`
+	Dir              int32              `json:"dir"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	Content          *string            `json:"content"`
+	AbstractionStage int16              `json:"abstraction_stage"`
 }
 
 type InviteCode struct {

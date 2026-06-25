@@ -12,18 +12,9 @@ import type { Record as RecordMsg } from '@/shared/api'
 import { moodFromProto, recordQueryKey, reshapedSeed, seedFromId } from '@/entities/memory'
 import { VizStar } from '@/entities/star'
 import { useAppearance } from '@/entities/appearance'
-import { moodLabel, resolveMoodRgb, type RGB } from '@/shared/config'
+import { moodLabel, resolveMoodRgb, rgbToHex } from '@/shared/config'
 import { evolutionQueryKey, getEvolutionHistory } from '../api/evolution'
 import { clampIndex, toEvolutionSteps, useEvolutionStore } from '../model'
-
-/** RGB tuple (0..1) → "#RRGGBB" for VizStar's hex color prop. */
-function rgbToHex([r, g, b]: RGB): string {
-  const h = (c: number) =>
-    Math.round(Math.max(0, Math.min(1, c)) * 255)
-      .toString(16)
-      .padStart(2, '0')
-  return `#${h(r)}${h(g)}${h(b)}`
-}
 
 /** Mount point: render the timelapse for the open star, else nothing. Keyed by id so a
  *  new star opens fresh (scrub index resets without a setState-in-effect). */
@@ -96,14 +87,20 @@ function EvolutionView({ memoryId }: { memoryId: string }) {
               </svg>
             </div>
 
-            {/* 계기 라벨 + 강화/약화 */}
+            {/* 사건 라벨(change 32) — 강화/약화(방향) 폐기. version 0=최초, 요지화 행은 그 시점 단계 숫자,
+                그 외(재공고화)는 N번째. 재공고화엔 방향이 없고 망각은 이산 이벤트가 아니다. */}
             <div className="flex items-center gap-2 text-xs text-white/60">
-              <span className="rounded-full border border-white/15 px-2 py-0.5">{step.triggerLabel}</span>
               {step.version === 0 ? (
-                <span className="text-white/40">최초</span>
+                <span className="rounded-full border border-white/15 px-2 py-0.5">최초</span>
+              ) : step.trigger === 'nightly_gist' ? (
+                <span className="rounded-full border border-white/15 px-2 py-0.5 text-mood-amber/80">
+                  {/* 단계 미수신(컬럼 추가 전 옛 요지화 행은 0)이면 '요지화'만 — '요지화 · 0단계'는 의미 없으므로 숨긴다. */}
+                  {step.triggerLabel}
+                  {step.abstractionStage > 0 ? ` · ${step.abstractionStage}단계` : ''}
+                </span>
               ) : (
-                <span className={step.dir >= 0 ? 'text-mood-teal/80' : 'text-mood-coral/80'}>
-                  {step.dir >= 0 ? '강화 ↑' : '약화 ↓'} · {step.version}번째
+                <span className="rounded-full border border-white/15 px-2 py-0.5 text-mood-pink/80">
+                  {step.triggerLabel} · {step.version}번째
                 </span>
               )}
             </div>
@@ -152,7 +149,7 @@ function EvolutionView({ memoryId }: { memoryId: string }) {
                     />
                   </svg>
                   <span className="text-[10px] text-white/40">
-                    {s.version === 0 ? '최초' : `${s.version}${s.dir >= 0 ? '↑' : '↓'}`}
+                    {s.version === 0 ? '최초' : s.version}
                   </span>
                 </button>
               ))}

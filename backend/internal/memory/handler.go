@@ -278,6 +278,7 @@ func (h *Handler) GetEvolutionHistory(ctx context.Context, req *connect.Request[
 			Dir:           int32(s.Dir),
 			CreatedAt:     formatTime(&s.CreatedAt),
 			Content:       s.Content, // 54: AI 내용 변형 텍스트(ai_rewrite 행만; 그 외 "")
+			AbstractionStage: int32(s.AbstractionStage), // 32: 'nightly_gist' 시점 단계(그 외 0)
 		})
 	}
 	return connect.NewResponse(&cosimosiv1.GetEvolutionHistoryResponse{Snapshots: out}), nil

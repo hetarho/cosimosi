@@ -220,6 +220,19 @@ var (
 	StarLightingBackdropLightDir = []float64{0.6, 0.7, 0.4}
 )
 
+// star_portrait
+const (
+	StarPortraitLightIntensity = 1.15
+	StarPortraitSelfEmission   = 0.85
+	StarPortraitCameraFov      = 40
+	StarPortraitCameraDistance = 4.2
+	StarPortraitHaloScale      = 2.8
+	StarPortraitFpsCap         = 30
+)
+var (
+	StarPortraitLightDir = []float64{0.18, 1, 0.55}
+)
+
 // resonance_ring
 const (
 	ResonanceRingBaseScale  = 2.6
@@ -325,8 +338,9 @@ const (
 
 // wayfinding
 const (
-	WayfindingFrameMargin      = 1.3
-	WayfindingFrameMinDistance = 12
+	WayfindingFrameMargin       = 1.3
+	WayfindingFrameMinDistance  = 12
+	WayfindingDiaryExcerptChars = 280
 )
 
 // wobble

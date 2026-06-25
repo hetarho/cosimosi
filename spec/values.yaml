@@ -238,7 +238,7 @@ star_form:
 #    uniform + per-instance 좌표로 N·L·falloff를 직접 계산(헌법8 단일 InstancedMesh 보존).
 star_lighting:
   self_intensity: 0.9 #         자아-별 반사광 세기(우주 reflection 채널 기본 광도) — 나에게서 나오는 빛이 과해 10% 하향
-  self_distance: 50 #           거리 falloff 기준(쉘 r_max=40 밖 여유 — r_max 별도 완전 흑색 아니게, 헌법2)
+  self_distance: 50 #           거리 falloff 기준(쉘 r_max 표류 여유 안쪽 — 가장자리 별도 완전 흑색 아니게, 헌법2)
   self_decay: 0.7 #             거리 falloff 지수(물리 1/d² 아님 — 완만; recency를 r_min~r_max 동적 범위에 가시화)
   lit_albedo_gain: 0.4 #        반사가 self-glow를 못 이기게 cap + bloom threshold(0.1) 아래로 묶어 'lit은 bloom 안 함' 자연 분리
   lit_mix: 1.0 #                반사 항 게이트(우주·배경 1, 저사양/WebGL2는 소비처가 0으로 광 연산 분기 제거)
@@ -247,6 +247,18 @@ star_lighting:
   backdrop_light_intensity: 0.7 #       배경 평행광 세기(은은하게 — 면/엣지 드러내되 오늘 룩 안 깨게)
   recall_light_back_offset: 6 #  recall(근접 탐험)에서 자아 광원·아바타가 카메라 뒤로 물러나는 거리(world, −forward) — 어깨 너머(spec 49)
   recall_light_up_offset: 2 #    recall에서 카메라 위로 들리는 거리(world, +up) — 정면 별이 뒤+위 빛으로 입체 음영(spec 49)
+
+# ── 회상 별 포트레이트 (star_portrait) — change 32. 회상 패널 상단의 전용 미니 Canvas가 클릭한 별을 단일
+#    3D로 크게 다시 그릴 때의 무대 조명. buildStarBody의 reflection 채널을 상단 스포트라이트(위에서 쏘는
+#    평행광 positional=0)로 써 예술작품 같은 명암을 준다. 메인 우주/배경 캔버스와 별개(포트레이트 전용). ──
+star_portrait:
+  light_dir: [0.18, 1.0, 0.55] #   상단 스포트라이트 방향(위에서 약간 앞·옆 — 정수리 조명 같은 명암). positional=0 평행광.
+  light_intensity: 1.15 #          스포트라이트 반사 세기(배경 평행광보다 강하게 — 단일 별을 극적으로). gain은 starLighting.lit_albedo_gain과 이 값에서 파생(StarMesh 본보기).
+  self_emission: 0.85 #            자가발광 세기(낮춰 스포트라이트 반사가 면/엣지를 또렷이 드러나게)
+  camera_fov: 40 #                 포트레이트 perspective 카메라 화각(°) — camera_distance와 함께 프레임을 정한다
+  camera_distance: 4.2 #           카메라가 별(반지름 1)에서 떨어진 거리(world, camera_fov 기준) — 별+헤일로가 프레임에 여유 있게 들어오게
+  halo_scale: 2.8 #                헤일로 평면 크기(별 코어 대비 배수, CosmosScene 3.2 본보기). camera_distance와 함께 프레임 안에 들어오게.
+  fps_cap: 30 #                    포트레이트 미니 캔버스 rAF 상한(전용 캔버스 셰이더 평가 비용 가둠)
 
 # ── 공명 링 (resonance_ring) — 공유 우주 공명 마커. spec 36 ───────────────────────────────────
 resonance_ring:
@@ -348,6 +360,7 @@ gesture:
 wayfinding:
   frame_margin: 1.3 #         프레임-올 카메라 여백 배수(바깥 별이 화면 끝에 붙지 않게)
   frame_min_distance: 12 #    단일 별 프레이밍 시 카메라가 머무는 거리(bounding radius≈0 퇴화 바닥)
+  diary_excerpt_chars: 280 #  "이 일기의 다른 별들" DiaryCard 발췌 길이(서버 GetRecords left(body,N)) — change 32. 80자→확대해 토막 안 나게. 여전히 발췌(원본 전체는 회상 경로 전용, 헌법1).
 
 # ── 별 미세 부유 (wobble) — StarField 행렬 + SynapseFilaments 셰이더 공유 수식. spec 19 ────────────
 #    배열 노브: freq는 축별 [base, seedGain], phase는 축별 위상 배수(x,y,z 순).

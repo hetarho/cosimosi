@@ -106,6 +106,15 @@ export function resolveMoodRgb(mood: string, overrides?: Record<string, string>)
   return moodRgb(mood)
 }
 
+/** RGB(0..1) → "#RRGGBB". 별 3D 렌더(포트레이트·변천사)가 받는 hex 색 — resolveMoodRgb의 역방향. */
+export function rgbToHex([r, g, b]: RGB): string {
+  const h = (c: number) =>
+    Math.round(Math.max(0, Math.min(1, c)) * 255)
+      .toString(16)
+      .padStart(2, '0')
+  return `#${h(r)}${h(g)}${h(b)}`
+}
+
 /** Russell circumplex quadrant: high/low arousal × positive/negative valence, + center. */
 export type Quadrant = 'HAP' | 'LAP' | 'HAN' | 'LAN' | 'center'
 

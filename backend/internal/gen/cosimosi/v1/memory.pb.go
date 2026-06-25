@@ -1245,9 +1245,11 @@ type EvolutionSnapshot struct {
 	CreatedAt     string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// 54: AI 내용 변형 스냅샷 텍스트(trigger='ai_rewrite' 행만 비어있지 않다). 시각 reshape/gist 행은 ""
 	// (내용 변형 아님). 변천사 타임랩스(24)가 단계별로 흐려진 내용 이력을 원본과 병치해 되짚게 한다(A4).
-	Content       string `protobuf:"bytes,9,opt,name=content,proto3" json:"content,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Content string `protobuf:"bytes,9,opt,name=content,proto3" json:"content,omitempty"`
+	// 32: 'nightly_gist' 시점의 추상화 단계 숫자(변천사 '요지화 · N단계'). 그 외 트리거는 0(단계 안 바뀜).
+	AbstractionStage int32 `protobuf:"varint,10,opt,name=abstraction_stage,json=abstractionStage,proto3" json:"abstraction_stage,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EvolutionSnapshot) Reset() {
@@ -1341,6 +1343,13 @@ func (x *EvolutionSnapshot) GetContent() string {
 		return x.Content
 	}
 	return ""
+}
+
+func (x *EvolutionSnapshot) GetAbstractionStage() int32 {
+	if x != nil {
+		return x.AbstractionStage
+	}
+	return 0
 }
 
 type GetEvolutionHistoryRequest struct {
@@ -2343,7 +2352,7 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x05moods\x18\x05 \x03(\x0e2\x11.cosimosi.v1.MoodR\x05moods\"\x14\n" +
 	"\x12ListRecordsRequest\"K\n" +
 	"\x13ListRecordsResponse\x124\n" +
-	"\arecords\x18\x01 \x03(\v2\x1a.cosimosi.v1.RecordSummaryR\arecords\"\x87\x02\n" +
+	"\arecords\x18\x01 \x03(\v2\x1a.cosimosi.v1.RecordSummaryR\arecords\"\xb4\x02\n" +
 	"\x11EvolutionSnapshot\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x05R\aversion\x12\x1e\n" +
 	"\n" +
@@ -2356,7 +2365,9 @@ const file_cosimosi_v1_memory_proto_rawDesc = "" +
 	"\x03dir\x18\a \x01(\x05R\x03dir\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x18\n" +
-	"\acontent\x18\t \x01(\tR\acontent\"9\n" +
+	"\acontent\x18\t \x01(\tR\acontent\x12+\n" +
+	"\x11abstraction_stage\x18\n" +
+	" \x01(\x05R\x10abstractionStage\"9\n" +
 	"\x1aGetEvolutionHistoryRequest\x12\x1b\n" +
 	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\"[\n" +
 	"\x1bGetEvolutionHistoryResponse\x12<\n" +

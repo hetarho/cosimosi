@@ -95,11 +95,12 @@ WHERE m.id = @id AND m.user_id = @user_id;
 
 -- name: ListRecords :many
 -- 원본 일기로 별 찾기(spec 28) 진입 목록: 호출 user의 원본 일기 + 일기별 조각 별 개수.
--- records는 읽기만(헌법1 — UPDATE/DELETE 없음). body는 전체가 아니라 excerpt(left 80)만
--- 보낸다(원본 전체는 RecallMemory/GetRecord). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
+-- records는 읽기만(헌법1 — UPDATE/DELETE 없음). body는 전체가 아니라 excerpt(left N)만
+-- 보낸다(원본 전체는 RecallMemory/GetRecord). 발췌 길이 N = values.WayfindingDiaryExcerptChars(change 32 — 80→확대,
+-- DiaryCard 토막 방지; 여전히 발췌라 원본 전체는 회상 경로 전용). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
 -- change 09: moods — 그 일기 조각 별들의 감정 facet(중복 제거, NULL 제거). array_agg(DISTINCT)로
 -- 한 일기의 여러 조각이 같은 감정을 가져도 한 번만 나오게 한다(일기 목록 감정 필터 입력).
-SELECT r.id AS record_id, r.entry_date, left(r.body, 80) AS body_excerpt, count(m.id)::int AS star_count,
+SELECT r.id AS record_id, r.entry_date, left(r.body, sqlc.arg(excerpt_chars)::int) AS body_excerpt, count(m.id)::int AS star_count,
        array_remove(array_agg(DISTINCT m.mood), NULL)::text[] AS moods
 FROM records r JOIN memories m ON m.record_id = r.id
 WHERE r.user_id = $1
@@ -199,7 +200,7 @@ VALUES (@id, @memory_id, @user_id, @version, @brightness, @hue_shift, @form_seed
 -- name: GetEvolutionHistory :many
 -- A star's variant log, version ascending (spec 23; UI is spec 24). user_id = isolation.
 -- spec 54: content rides along — 'ai_rewrite' 행은 변형 텍스트, 시각 reshape/gist 행은 NULL.
-SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at, content
+SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at, content, abstraction_stage
 FROM evolution_history WHERE memory_id = @memory_id AND user_id = @user_id ORDER BY version ASC;
 
 -- ── 재공고화 AI 내용 변형(spec 54) ──
@@ -266,22 +267,24 @@ SET abstraction_stage = GREATEST(m.abstraction_stage, t.stage),
 FROM (SELECT unnest(@ids::text[]) AS id, unnest(@stages::int[]) AS stage) AS t
 WHERE m.id = t.id AND m.user_id = @user_id
   AND t.stage > m.abstraction_stage
-RETURNING m.id AS memory_id, m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta;
+RETURNING m.id AS memory_id, m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta, m.abstraction_stage;
 
 -- name: AppendGistHistory :exec
 -- 요지 변천사 append(INSERT 전용 — UPDATE/DELETE 금지, 헌법1·2). trigger='nightly_gist',
 -- pe=0(시간 기반·예측오차 무관), dir=-1(형태가 한 단계 가라앉음). AbstractStarsByRadius의 RETURNING
 -- 값(version·brightness_offset 스냅샷·hue_shift·form_seed_delta)을 그대로 싣는다 — form_seed_delta는
 -- 안 바뀌지만 그 버전 시점 스냅샷으로 24 타임랩스 정합을 유지한다.
-INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir)
-SELECT g.id, g.memory_id, @user_id, g.version, g.brightness, g.hue_shift, g.form_seed_delta, 'nightly_gist', 0, -1
+-- change 32: 승급 시점의 추상화 단계(abstraction_stage)도 함께 싣는다 — 변천사가 '요지화 · N단계'를 보일 수 있게.
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, abstraction_stage)
+SELECT g.id, g.memory_id, @user_id, g.version, g.brightness, g.hue_shift, g.form_seed_delta, 'nightly_gist', 0, -1, g.abstraction_stage
 FROM (
     SELECT unnest(@ids::text[]) AS id,
            unnest(@memory_ids::text[]) AS memory_id,
            unnest(@versions::int[]) AS version,
            unnest(@brightnesses::float4[]) AS brightness,
            unnest(@hue_shifts::float4[]) AS hue_shift,
-           unnest(@form_seed_deltas::float4[]) AS form_seed_delta
+           unnest(@form_seed_deltas::float4[]) AS form_seed_delta,
+           unnest(@abstraction_stages::int[]) AS abstraction_stage
 ) AS g;
 
 -- name: ListReknnCandidates :many

@@ -19,7 +19,7 @@ SET abstraction_stage = GREATEST(m.abstraction_stage, t.stage),
 FROM (SELECT unnest($2::text[]) AS id, unnest($3::int[]) AS stage) AS t
 WHERE m.id = t.id AND m.user_id = $1
   AND t.stage > m.abstraction_stage
-RETURNING m.id AS memory_id, m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta
+RETURNING m.id AS memory_id, m.version, m.brightness_offset, m.hue_shift, m.form_seed_delta, m.abstraction_stage
 `
 
 type AbstractStarsByRadiusParams struct {
@@ -34,6 +34,7 @@ type AbstractStarsByRadiusRow struct {
 	BrightnessOffset float32 `json:"brightness_offset"`
 	HueShift         float32 `json:"hue_shift"`
 	FormSeedDelta    float32 `json:"form_seed_delta"`
+	AbstractionStage int16   `json:"abstraction_stage"`
 }
 
 // 요지: 별의 추상화 단계를 그 별 반지름이 넘긴 임계 수(target_stage, 서버가 change 18 공식으로 산출)로
@@ -58,6 +59,7 @@ func (q *Queries) AbstractStarsByRadius(ctx context.Context, arg AbstractStarsBy
 			&i.BrightnessOffset,
 			&i.HueShift,
 			&i.FormSeedDelta,
+			&i.AbstractionStage,
 		); err != nil {
 			return nil, err
 		}
@@ -106,32 +108,35 @@ func (q *Queries) AppendEvolution(ctx context.Context, arg AppendEvolutionParams
 }
 
 const appendGistHistory = `-- name: AppendGistHistory :exec
-INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir)
-SELECT g.id, g.memory_id, $1, g.version, g.brightness, g.hue_shift, g.form_seed_delta, 'nightly_gist', 0, -1
+INSERT INTO evolution_history (id, memory_id, user_id, version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, abstraction_stage)
+SELECT g.id, g.memory_id, $1, g.version, g.brightness, g.hue_shift, g.form_seed_delta, 'nightly_gist', 0, -1, g.abstraction_stage
 FROM (
     SELECT unnest($2::text[]) AS id,
            unnest($3::text[]) AS memory_id,
            unnest($4::int[]) AS version,
            unnest($5::float4[]) AS brightness,
            unnest($6::float4[]) AS hue_shift,
-           unnest($7::float4[]) AS form_seed_delta
+           unnest($7::float4[]) AS form_seed_delta,
+           unnest($8::int[]) AS abstraction_stage
 ) AS g
 `
 
 type AppendGistHistoryParams struct {
-	UserID         string    `json:"user_id"`
-	Ids            []string  `json:"ids"`
-	MemoryIds      []string  `json:"memory_ids"`
-	Versions       []int32   `json:"versions"`
-	Brightnesses   []float32 `json:"brightnesses"`
-	HueShifts      []float32 `json:"hue_shifts"`
-	FormSeedDeltas []float32 `json:"form_seed_deltas"`
+	UserID            string    `json:"user_id"`
+	Ids               []string  `json:"ids"`
+	MemoryIds         []string  `json:"memory_ids"`
+	Versions          []int32   `json:"versions"`
+	Brightnesses      []float32 `json:"brightnesses"`
+	HueShifts         []float32 `json:"hue_shifts"`
+	FormSeedDeltas    []float32 `json:"form_seed_deltas"`
+	AbstractionStages []int32   `json:"abstraction_stages"`
 }
 
 // 요지 변천사 append(INSERT 전용 — UPDATE/DELETE 금지, 헌법1·2). trigger='nightly_gist',
 // pe=0(시간 기반·예측오차 무관), dir=-1(형태가 한 단계 가라앉음). AbstractStarsByRadius의 RETURNING
 // 값(version·brightness_offset 스냅샷·hue_shift·form_seed_delta)을 그대로 싣는다 — form_seed_delta는
 // 안 바뀌지만 그 버전 시점 스냅샷으로 24 타임랩스 정합을 유지한다.
+// change 32: 승급 시점의 추상화 단계(abstraction_stage)도 함께 싣는다 — 변천사가 '요지화 · N단계'를 보일 수 있게.
 func (q *Queries) AppendGistHistory(ctx context.Context, arg AppendGistHistoryParams) error {
 	_, err := q.db.Exec(ctx, appendGistHistory,
 		arg.UserID,
@@ -141,6 +146,7 @@ func (q *Queries) AppendGistHistory(ctx context.Context, arg AppendGistHistoryPa
 		arg.Brightnesses,
 		arg.HueShifts,
 		arg.FormSeedDeltas,
+		arg.AbstractionStages,
 	)
 	return err
 }
@@ -293,7 +299,7 @@ func (q *Queries) FindRecordByIdempotencyKey(ctx context.Context, arg FindRecord
 }
 
 const getEvolutionHistory = `-- name: GetEvolutionHistory :many
-SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at, content
+SELECT version, brightness, hue_shift, form_seed_delta, trigger, pe, dir, created_at, content, abstraction_stage
 FROM evolution_history WHERE memory_id = $1 AND user_id = $2 ORDER BY version ASC
 `
 
@@ -303,15 +309,16 @@ type GetEvolutionHistoryParams struct {
 }
 
 type GetEvolutionHistoryRow struct {
-	Version       int32              `json:"version"`
-	Brightness    float32            `json:"brightness"`
-	HueShift      float32            `json:"hue_shift"`
-	FormSeedDelta float32            `json:"form_seed_delta"`
-	Trigger       string             `json:"trigger"`
-	Pe            float32            `json:"pe"`
-	Dir           int32              `json:"dir"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	Content       *string            `json:"content"`
+	Version          int32              `json:"version"`
+	Brightness       float32            `json:"brightness"`
+	HueShift         float32            `json:"hue_shift"`
+	FormSeedDelta    float32            `json:"form_seed_delta"`
+	Trigger          string             `json:"trigger"`
+	Pe               float32            `json:"pe"`
+	Dir              int32              `json:"dir"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	Content          *string            `json:"content"`
+	AbstractionStage int16              `json:"abstraction_stage"`
 }
 
 // A star's variant log, version ascending (spec 23; UI is spec 24). user_id = isolation.
@@ -335,6 +342,7 @@ func (q *Queries) GetEvolutionHistory(ctx context.Context, arg GetEvolutionHisto
 			&i.Dir,
 			&i.CreatedAt,
 			&i.Content,
+			&i.AbstractionStage,
 		); err != nil {
 			return nil, err
 		}
@@ -928,13 +936,18 @@ func (q *Queries) ListMemoryIDsByRecord(ctx context.Context, recordID string) ([
 }
 
 const listRecords = `-- name: ListRecords :many
-SELECT r.id AS record_id, r.entry_date, left(r.body, 80) AS body_excerpt, count(m.id)::int AS star_count,
+SELECT r.id AS record_id, r.entry_date, left(r.body, $2::int) AS body_excerpt, count(m.id)::int AS star_count,
        array_remove(array_agg(DISTINCT m.mood), NULL)::text[] AS moods
 FROM records r JOIN memories m ON m.record_id = r.id
 WHERE r.user_id = $1
 GROUP BY r.id, r.entry_date, r.body
 ORDER BY r.entry_date DESC
 `
+
+type ListRecordsParams struct {
+	UserID       string `json:"user_id"`
+	ExcerptChars int32  `json:"excerpt_chars"`
+}
 
 type ListRecordsRow struct {
 	RecordID    string      `json:"record_id"`
@@ -945,12 +958,13 @@ type ListRecordsRow struct {
 }
 
 // 원본 일기로 별 찾기(spec 28) 진입 목록: 호출 user의 원본 일기 + 일기별 조각 별 개수.
-// records는 읽기만(헌법1 — UPDATE/DELETE 없음). body는 전체가 아니라 excerpt(left 80)만
-// 보낸다(원본 전체는 RecallMemory/GetRecord). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
+// records는 읽기만(헌법1 — UPDATE/DELETE 없음). body는 전체가 아니라 excerpt(left N)만
+// 보낸다(원본 전체는 RecallMemory/GetRecord). 발췌 길이 N = values.WayfindingDiaryExcerptChars(change 32 — 80→확대,
+// DiaryCard 토막 방지; 여전히 발췌라 원본 전체는 회상 경로 전용). entry_date 내림차순(최근 일기 먼저). user_id = 격리.
 // change 09: moods — 그 일기 조각 별들의 감정 facet(중복 제거, NULL 제거). array_agg(DISTINCT)로
 // 한 일기의 여러 조각이 같은 감정을 가져도 한 번만 나오게 한다(일기 목록 감정 필터 입력).
-func (q *Queries) ListRecords(ctx context.Context, userID string) ([]ListRecordsRow, error) {
-	rows, err := q.db.Query(ctx, listRecords, userID)
+func (q *Queries) ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error) {
+	rows, err := q.db.Query(ctx, listRecords, arg.UserID, arg.ExcerptChars)
 	if err != nil {
 		return nil, err
 	}

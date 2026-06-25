@@ -16,25 +16,32 @@ export interface EvolutionSnapshotVM {
   createdAt: string
   /** AI 내용 변형 텍스트(spec 54) — trigger='ai_rewrite' 스냅샷만 비어있지 않다. 시각 reshape/gist 행은 "". */
   content: string
+  /** 이 버전 시점의 추상화 단계(change 32) — 'nightly_gist' 행만 의미 있는 값(요지화 · N단계). 그 외 0. */
+  abstractionStage: number
 }
 
-/** trigger → Korean label (acceptance 1.3). Unknown triggers fall back to the raw value. */
+/** trigger → 사건 라벨(change 32). 변천사는 연속적 강화/약화가 아니라 **이산 변환 사건**만 보여준다:
+ *  요지화(추상화 단계 변경)·재공고화(회상하며 형태·내용이 변형됨). 'recall'·'new_neighbor'(형태 재성형)과
+ *  'ai_rewrite'(내용 변형, spec 54)는 모두 한 사건군 '재공고화'로 묶는다. 미지 trigger는 원값 폴백. */
 const TRIGGER_LABEL: Record<string, string> = {
-  recall: '회상',
-  new_neighbor: '새 이웃',
-  nightly_gist: '야간 요지',
-  ai_rewrite: '내용 변형', // spec 54: 재공고화 AI 내용 변형
+  recall: '재공고화',
+  new_neighbor: '재공고화',
+  ai_rewrite: '재공고화',
+  nightly_gist: '요지화',
 }
 
-/** One scrub step: a snapshot plus its resolved label and normalized direction. */
+/** One scrub step: a snapshot plus its resolved event label. dir(형태 지터 부호)은 UI에 노출하지 않는다
+ *  (change 32 — 재공고화엔 강화/약화 방향이 없고, 망각은 이산 이벤트가 아니다). */
 interface EvolutionStep {
   version: number
   brightness: number
   hueShift: number
   formSeedDelta: number
+  /** 원 trigger — UI가 요지화/재공고화 분기에 쓴다('nightly_gist'면 단계 숫자, 그 외 재공고화 N번째). */
+  trigger: string
   triggerLabel: string
-  /** +1 강화 / -1 약화 / 0 중립. */
-  dir: 1 | -1 | 0
+  /** 이 버전 시점의 추상화 단계(change 32) — 요지화 행의 '요지화 · N단계'. */
+  abstractionStage: number
   /** 이 시점의 흐려진 내용(spec 54) — 변형 스냅샷만 비어있지 않다. */
   content: string
 }
@@ -47,8 +54,9 @@ export function toEvolutionSteps(snapshots: EvolutionSnapshotVM[]): EvolutionSte
     brightness: s.brightness,
     hueShift: s.hueShift,
     formSeedDelta: s.formSeedDelta,
+    trigger: s.trigger,
     triggerLabel: TRIGGER_LABEL[s.trigger] ?? s.trigger,
-    dir: s.dir > 0 ? 1 : s.dir < 0 ? -1 : 0,
+    abstractionStage: s.abstractionStage,
     content: s.content,
   }))
 }

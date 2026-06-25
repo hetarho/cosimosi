@@ -23,43 +23,17 @@ import { DEFAULT_STAR_SELECTION, parseStarLook, STAR_LOOKS, type StarLook } from
 import { resolveMoodRgb } from '@/shared/config'
 import { VALUES } from '@/shared/config'
 import { fibonacciStarPosition } from '@/shared/lib'
-import { buildStarBody, type StarFormParams } from './star-body'
+import { buildStarBody } from './star-body'
+// 추상화 단계 버킷화·단계별 형태 파라미터(change 29) — 우주·회상 포트레이트(32)·스튜디오 미리보기(33) 공유.
+import { STAGE_LEVELS, stageBucket, formParamsFor } from './stage'
 
 /** intensity (0..1) → instance scale. */
 function sizeFor(intensity: number): number {
   return VALUES.starRender.sizeBase + Math.max(0, Math.min(1, intensity)) * VALUES.starRender.sizeRange
 }
 
-// 추상화 단계(change 29): abstraction_stage ∈ 0..STAGE_MAX(= 야간 요지 임계 개수). 별을 (룩×단계) 버킷으로
-// 나눠 단계마다 다른 지오메트리(buildStarBody(look, stage))의 InstancedMesh로 렌더한다. 메시 수 = 사용 룩 수
-// × STAGE_LEVELS(별 수와 무관, 룩 ≤3 — 헌법8 정신 보존, change 30). stageMax는 buildStarBody의 단계 정규화 분모로도 쓴다.
-const STAGE_MAX = VALUES.consolidation.gistStageRadii.length // 4
-const STAGE_LEVELS = STAGE_MAX + 1 // 단계 0..STAGE_MAX = 5 버킷
-const sf = VALUES.starForm
-const spikySpikes = sf.spikySpikes as readonly number[]
-const spikyLen = sf.spikyLen as readonly number[]
-const liquidOpacity = sf.liquidOpacity as readonly number[]
-/** 별 abstraction_stage → 단계 버킷 인덱스(0..STAGE_MAX). */
-function stageBucket(stage: number): number {
-  return Math.max(0, Math.min(STAGE_MAX, Math.round(stage)))
-}
-/** buildStarBody에 넘길 단계별 형태 파라미터 — 배열 노브를 그 단계로 인덱싱해 해석된 스칼라로 준다(별 빌더는
- *  배열·values를 모른다). 단계 범위를 벗어나면 마지막 값으로 클램프(가시 0·최저 투명). */
-function formParamsFor(stage: number): StarFormParams {
-  const at = (a: readonly number[]) => a[Math.min(stage, a.length - 1)] ?? 0
-  return {
-    displaceAmp: sf.displaceAmp,
-    detailAmp: sf.detailAmp,
-    asymmetry: sf.asymmetry,
-    stageSimplify: sf.stageSimplify,
-    stageMax: STAGE_MAX,
-    spikes: at(spikySpikes),
-    spikeLen: at(spikyLen),
-    spikeSharpness: sf.spikySharpness,
-    spikeDetail: sf.spikyDetail,
-    opacityFloor: at(liquidOpacity),
-  }
-}
+// 별을 (룩×단계) 버킷으로 나눠 단계마다 다른 지오메트리(buildStarBody(look, stage))의 InstancedMesh로 렌더한다.
+// 메시 수 = 사용 룩 수 × STAGE_LEVELS(별 수와 무관, 룩 ≤3 — 헌법8 정신 보존, change 30).
 
 /** 버스트 레이어는 클릭 대상이 아니다 — raycast 무력화로 별 클릭이 가려지지 않게. */
 const NOOP_RAYCAST = () => undefined
@@ -672,9 +646,19 @@ export function StarField({
           key={`${buckets[b].look}-${buckets[b].stage}`}
           ref={(el) => {
             meshRefs.current[b] = el
+            // three의 InstancedMesh.raycast는 this.boundingSphere로 broad-phase ray-sphere를 먼저 친다(three 0.184
+            // InstancedMesh.js:281). 그 구는 한 번만(최초 raycast 시) 계산되고 이후 매 프레임 좌표가 force-sim으로
+            // 움직여도 갱신되지 않아 stale해진다 — 초기 클러스터 시점에 잡힌 작은 구 밖(r_max=80까지 표류)으로 흘러간
+            // 별은 렌더는 되지만 클릭(raycast)이 broad-phase에서 탈락한다. 무한 반지름 구로 broad-phase 기각을 끄면
+            // per-instance 테스트(실 인스턴스 행렬)는 그대로라 정확한 히트는 유지된다.
+            if (el && el.boundingSphere == null) {
+              el.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), Infinity)
+            }
           }}
           args={[body.geometry, body.material, capacity]}
           dispose={null}
+          // 카메라가 원점을 벗어나도(회상 근접 탐험 spec 49) 원점 기준 컬링 구로 별필드 전체가 사라지지 않게.
+          frustumCulled={false}
           onClick={(e) => {
             e.stopPropagation()
             if (e.delta > 8) return

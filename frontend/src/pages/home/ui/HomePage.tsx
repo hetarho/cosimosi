@@ -525,10 +525,11 @@ export function HomePage({ onSignOut }: HomePageProps) {
         <MemoryForm />
       </Surface>
 
-      {/* 회상 — 별 클릭(focus 머신 star). 별 → 조각 → 원본 + 변천사/보내기/다른 별들 동선(11·28·36). */}
+      {/* 회상 — 별 클릭(focus 머신 star). 별 → 조각 → 원본 + 변천사/보내기/다른 별들 동선(11·28·36). 기본 표시는
+          별의 조각/흐려진 내용이라(원본 전체 아님) 제목은 "회상"만 — 원본 전체는 패널 안 "원본 일기 전체 보기"로 펼친다. */}
       <Surface
         open={isStarFocus && !uiHidden}
-        title="회상 — 원본 일기"
+        title="회상"
         onClose={() => focusActor.send({ type: 'DISMISS' })}
         place="top"
       >

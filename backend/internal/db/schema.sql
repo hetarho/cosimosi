@@ -122,7 +122,8 @@ CREATE TABLE evolution_history (
     pe              REAL NOT NULL,
     dir             INT  NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    content         TEXT                              -- 00014(spec 54) AI 내용 변형 텍스트(trigger='ai_rewrite'만 채움; 시각 reshape/gist 행은 NULL)
+    content         TEXT,                             -- 00014(spec 54) AI 내용 변형 텍스트(trigger='ai_rewrite'만 채움; 시각 reshape/gist 행은 NULL)
+    abstraction_stage SMALLINT NOT NULL DEFAULT 0     -- 00016(change 32) 'nightly_gist' 시점의 추상화 단계(변천사 '요지화 · N단계'). 그 외 트리거는 0(미표시)
 );
 CREATE INDEX evolution_history_memory_idx ON evolution_history (memory_id, version);
 

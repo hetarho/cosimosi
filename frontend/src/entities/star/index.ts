@@ -25,6 +25,8 @@ export {
   type StarFormParams,
   type StarBodyBuild,
 } from './ui/star-body'
+// 추상화 단계 버킷화 + buildStarBody용 단계별 형태 파라미터(change 29) — 우주·회상 포트레이트(32)·스튜디오 미리보기(33) 공유.
+export { STAGE_MAX, STAGE_LEVELS, stageBucket, formParamsFor } from './ui/stage'
 export { VizStar, type VizStarProps } from './ui/VizStar'
 export type { StarVisualProps } from './ui/svg/types'
 // 의미 색 보존 색 유틸 — 랜딩 무대 재공고화가 mood hue를 좁게 드리프트할 때 쓴다(색조만 이동, 계열 유지).

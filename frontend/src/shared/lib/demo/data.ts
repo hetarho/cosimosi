@@ -168,6 +168,8 @@ export interface EvolutionSnap {
   pe: number
   dir: number
   createdAt: string
+  /** 이 버전 시점의 추상화 단계(change 32) — 'nightly_gist' 행만 의미 있는 값(요지화 · N단계). 그 외 0. */
+  abstractionStage: number
 }
 const reshapeState = new Map<string, DemoReshape>()
 const reshapeAttempts = new Map<string, number>() // memoryId → 회상 시도 누계(변형 여부 무관)
@@ -351,7 +353,7 @@ export function demoListRecords(): RecordSummary[] {
       create(RecordSummarySchema, {
         recordId,
         entryDate: v.entryDate,
-        bodyExcerpt: v.body.slice(0, 80),
+        bodyExcerpt: v.body.slice(0, VALUES.wayfinding.diaryExcerptChars), // 발췌 길이 = 서버 ListRecords와 동일 출처(change 32)
         starCount: v.count,
         moods: [...v.moods], // 일기 감정 facet(데모 — 서버 ListRecords와 동형)
       }),
@@ -900,6 +902,9 @@ export function demoEvolution(memoryId: string): EvolutionSnap[] {
   const seed = hashId(memoryId)
   const dayMs = DAY_MS
   const now = virtualNowMs()
+  const stageMax = VALUES.consolidation.gistStageRadii.length // 요지화 단계 상한(0..stageMax)
+  // 요지화('nightly_gist')가 단조 승급하는 추상화 단계(change 32 — 변천사 '요지화 · N단계' 시연). 그 외 행은 0.
+  let gistStage = 0
   // v0 — 최초 모습(변형 없음).
   const snaps: EvolutionSnap[] = [
     {
@@ -911,6 +916,7 @@ export function demoEvolution(memoryId: string): EvolutionSnap[] {
       pe: 0,
       dir: 0,
       createdAt: new Date(now - DEMO_EVO_TRIGGERS.length * dayMs).toISOString(),
+      abstractionStage: 0,
     },
   ]
   for (let i = 1; i < DEMO_EVO_TRIGGERS.length; i++) {
@@ -918,7 +924,9 @@ export function demoEvolution(memoryId: string): EvolutionSnap[] {
     const rand = mulberry32(seed + i * 2654435761)
     const pe = 0.3 + rand() * 0.6 // novelty 충분(게이트 통과) — 표시 보조값
     const step = 0.08 + rand() * 0.1
-    const dir = rand() < 0.5 ? -1 : 1
+    const dir = rand() < 0.5 ? -1 : 1 // 형태/색 지터 방향(시각 변주만 — UI는 더 이상 강화/약화로 표시하지 않음, change 32)
+    const trigger = DEMO_EVO_TRIGGERS[i]
+    if (trigger === 'nightly_gist') gistStage = Math.min(stageMax, gistStage + 1 + Math.floor(rand() * 2))
     snaps.push({
       version: i,
       brightness: clampDemo(prev.brightness + dir * step, 0.4, 1),
@@ -928,10 +936,11 @@ export function demoEvolution(memoryId: string): EvolutionSnap[] {
         -FORM_DELTA_MAX,
         FORM_DELTA_MAX,
       ),
-      trigger: DEMO_EVO_TRIGGERS[i],
+      trigger,
       pe,
       dir,
       createdAt: new Date(now - (DEMO_EVO_TRIGGERS.length - i) * dayMs).toISOString(),
+      abstractionStage: trigger === 'nightly_gist' ? gistStage : 0,
     })
   }
   return snaps

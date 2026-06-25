@@ -151,6 +151,9 @@ type EvolutionSnapshot struct {
 	// Content (spec 54) is the AI-rewritten text snapshot — non-empty only on 'ai_rewrite'
 	// rows; visual reshape/gist rows leave it "". The timelapse (24) traces the content history.
 	Content string
+	// AbstractionStage (change 32) is the star's abstraction stage AT this version — set on
+	// 'nightly_gist' rows (the timelapse shows '요지화 · N단계'); 0 on other triggers (stage unchanged).
+	AbstractionStage int
 }
 
 // ReshapeState is the cumulative reshaping state of one star, the input/output of a

@@ -423,6 +423,7 @@ func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID strin
 			brightnesses := make([]float32, len(gisted))
 			hueShifts := make([]float32, len(gisted))
 			formSeedDeltas := make([]float32, len(gisted))
+			stages := make([]int32, len(gisted)) // change 32: 승급 후 단계(변천사 '요지화 · N단계')
 			for i, row := range gisted {
 				historyID, err := id.New()
 				if err != nil {
@@ -434,10 +435,12 @@ func (r *pgRepository) RunConsolidation(ctx context.Context, jobID, userID strin
 				brightnesses[i] = row.BrightnessOffset // brightness_offset snapshot at this version (23)
 				hueShifts[i] = row.HueShift
 				formSeedDeltas[i] = row.FormSeedDelta
+				stages[i] = int32(row.AbstractionStage) // 승급된 단계(RETURNING m.abstraction_stage)
 			}
 			if err := q.AppendGistHistory(ctx, gen.AppendGistHistoryParams{
 				UserID: userID, Ids: histIDs, MemoryIds: memoryIDs, Versions: versions,
 				Brightnesses: brightnesses, HueShifts: hueShifts, FormSeedDeltas: formSeedDeltas,
+				AbstractionStages: stages,
 			}); err != nil {
 				return 0, fmt.Errorf("append gist history: %w", err)
 			}
