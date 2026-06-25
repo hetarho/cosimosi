@@ -176,8 +176,10 @@ func (h *Handler) ReinforceLinks(ctx context.Context, req *connect.Request[cosim
 	return connect.NewResponse(&cosimosiv1.ReinforceLinksResponse{}), nil
 }
 
-// RecallMemory re-ignites a star and returns its immutable original Record (records
-// JOIN). NotFound when the (user, memory) pair doesn't exist; never mutates the
+// RecallMemory deliberately recalls a star and returns its immutable original Record
+// (records JOIN) plus whether the call actually recalled or was refused by the re-recall
+// cooldown (change 35 — recalled=false + cooldown_remaining_ms when blocked, no side
+// effects). NotFound when the (user, memory) pair doesn't exist; never mutates the
 // original (constitution §1).
 func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimosiv1.RecallMemoryRequest]) (*connect.Response[cosimosiv1.RecallMemoryResponse], error) {
 	userID, err := rpcserver.RequireUserID(ctx)
@@ -185,7 +187,7 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 		return nil, err
 	}
 	memoryID := req.Msg.GetMemoryId()
-	rec, err := h.svc.RecallMemory(ctx, userID, memoryID)
+	out, err := h.svc.RecallMemory(ctx, userID, memoryID)
 	if errors.Is(err, ErrNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
@@ -193,17 +195,50 @@ func (h *Handler) RecallMemory(ctx context.Context, req *connect.Request[cosimos
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&cosimosiv1.RecallMemoryResponse{
-		Record: &cosimosiv1.Record{
-			MemoryId:  memoryID,
-			Body:      rec.Body,
-			EntryDate: rec.EntryDate.UTC().Format("2006-01-02"),
-			Mood:      rpcserver.MoodToProto(string(rec.Mood)),
-			Intensity: rec.Intensity,
-			CreatedAt: formatTime(&rec.CreatedAt),
-		},
-		FragmentText: rec.FragmentText, // 28: 별 → 조각(NULL이면 ""; 클라가 body로 폴백)
-		DerivedText:  rec.DerivedText, // 54: 최신 AI 내용 변형 텍스트(없으면 ""; 클라가 fragment/body 폴백)
+		Record:              recordToProto(memoryID, out.Record),
+		FragmentText:        out.Record.FragmentText, // 28: 별 → 조각(NULL이면 ""; 클라가 body로 폴백)
+		DerivedText:         out.Record.DerivedText,  // 54: 최신 AI 내용 변형 텍스트(없으면 ""; 클라가 fragment/body 폴백)
+		Recalled:            out.Recalled,            // 35: 실제 회상(부작용)인지 — 쿨다운에 막혔으면 false
+		CooldownRemainingMs: out.CooldownRemainingMs, // 35: 막혔으면 남은 쿨다운(ms), 성사면 0
 	}), nil
+}
+
+// PeekMemory reads a star's content read-only (change 35): a bare star click opens the
+// panel through this, so browsing never re-ignites/reshapes a star. NO_SIDE_EFFECTS —
+// it delegates to the side-effect-free Peek (records JOIN). NotFound when the (user,
+// memory) pair is absent.
+func (h *Handler) PeekMemory(ctx context.Context, req *connect.Request[cosimosiv1.PeekMemoryRequest]) (*connect.Response[cosimosiv1.PeekMemoryResponse], error) {
+	userID, err := rpcserver.RequireUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	memoryID := req.Msg.GetMemoryId()
+	rec, err := h.svc.Peek(ctx, userID, memoryID)
+	if errors.Is(err, ErrNotFound) {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&cosimosiv1.PeekMemoryResponse{
+		Record:       recordToProto(memoryID, rec),
+		FragmentText: rec.FragmentText,
+		DerivedText:  rec.DerivedText,
+	}), nil
+}
+
+// recordToProto maps a recalled/peeked immutable Record to the proto Record (memory_id
+// keyed — record_id stays "" on this path; the star already knows its memory_id, unlike
+// GetRecord). Shared by RecallMemory and PeekMemory so the two read paths can't drift.
+func recordToProto(memoryID string, rec Record) *cosimosiv1.Record {
+	return &cosimosiv1.Record{
+		MemoryId:  memoryID,
+		Body:      rec.Body,
+		EntryDate: rec.EntryDate.UTC().Format("2006-01-02"),
+		Mood:      rpcserver.MoodToProto(string(rec.Mood)),
+		Intensity: rec.Intensity,
+		CreatedAt: formatTime(&rec.CreatedAt),
+	}
 }
 
 // GetRecord reads one immutable original diary by its record_id (spec 28, change 09 — the

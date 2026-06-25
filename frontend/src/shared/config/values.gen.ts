@@ -83,7 +83,7 @@ export const VALUES = {
   },
   recall: {
     coRecallDelta: 0.05,
-    dwellMs: 2000,
+    recallCooldownMs: 3600000,
   },
   extraction: {
     maxSegments: 5,

@@ -1,15 +1,14 @@
 // Pure co-recall session accumulation (spec 11). No three/React/DOM (constitution
-// §4, acceptance 1.9 — mobile reusable). The operational definition: an "active
-// view" (≥2s dwell, confirmed by the caller) paired with the PREVIOUS active view
-// adds one fixed co-recall increment (+CO_RECALL_DELTA) to that normalized pair; the
-// same pair within a window sums. The reinforcement is a flat amount regardless of how
-// long since the pair was last seen (change 22 — no spacing effect: 몰아보기 1× = 하루 띄움 1×).
+// §4, acceptance 1.9 — mobile reusable). The operational definition: a "recall" (the
+// deliberate 회상하기 button, change 35) paired with the PREVIOUS recall adds one fixed
+// co-recall increment (+CO_RECALL_DELTA) to that normalized pair; the same pair within a
+// window sums. The reinforcement is a flat amount regardless of how long since the pair was
+// last seen (change 22 — no spacing effect: 몰아보기 1× = 하루 띄움 1×).
 import { VALUES } from '@/shared/config'
 
 export type Pair = `${string}|${string}`
 
 export const CO_RECALL_DELTA = VALUES.recall.coRecallDelta
-export const DWELL_MS = VALUES.recall.dwellMs
 export const DEBOUNCE_IDLE_MS = 5000
 
 export interface RecallSession {
@@ -27,9 +26,9 @@ export function pairKey(a: string, b: string): Pair {
   return (a < b ? `${a}|${b}` : `${b}|${a}`) as Pair
 }
 
-/** Record one confirmed active view; if it differs from the previous one, the pair gains a
- *  fixed +CO_RECALL_DELTA (server caps the summed weight at 1.0). Same-id (re-view) just
- *  refreshes lastViewedId. Pure (constitution §4). */
+/** Record one confirmed recall (the 회상하기 button, change 35); if it differs from the
+ *  previous one, the pair gains a fixed +CO_RECALL_DELTA (server caps the summed weight at
+ *  1.0). Same-id (re-recall) just refreshes lastViewedId. Pure (constitution §4). */
 export function onActiveView(s: RecallSession, id: string): void {
   if (s.lastViewedId && s.lastViewedId !== id) {
     const k = pairKey(s.lastViewedId, id)

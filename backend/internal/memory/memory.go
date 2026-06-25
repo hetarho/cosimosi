@@ -272,6 +272,25 @@ type Record struct {
 	DerivedText string
 }
 
+// RecallGate is the cooldown-gate input read before a recall (change 35): the star's
+// last recall time and cumulative recall count. RecallCount ≤ 1 means the star was never
+// recalled (it defaults to 1 on creation and only TouchRecall bumps it), so its first
+// recall is always allowed; otherwise the gate blocks re-recall within recall_cooldown_ms.
+type RecallGate struct {
+	LastRecalledAt time.Time
+	RecallCount    int
+}
+
+// RecallOutcome is what RecallMemory returns: the immutable original Record plus whether
+// this call actually recalled (ran the side effects) or was refused by the cooldown gate
+// (change 35). When Recalled is false, CooldownRemainingMs > 0 tells the client how long
+// until the same star can be recalled again; it is 0 on a successful recall.
+type RecallOutcome struct {
+	Record              Record
+	Recalled            bool
+	CooldownRemainingMs int64
+}
+
 // RecordSummary is one original diary as a wayfinding entry point (spec 28): id (the
 // Star.RecordID group key), entry date, a short body excerpt (never the full body) and
 // how many fragment stars it spawned. Pure domain — no db/proto tags (constitution §5).

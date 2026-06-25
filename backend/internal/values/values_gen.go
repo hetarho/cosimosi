@@ -109,8 +109,8 @@ const (
 
 // recall
 const (
-	RecallCoRecallDelta = 0.05
-	RecallDwellMs       = 2000
+	RecallCoRecallDelta    = 0.05
+	RecallRecallCooldownMs = 3600000
 )
 
 // extraction

@@ -30,7 +30,14 @@ func (s *stubRepo) ListRecords(context.Context, string) ([]RecordSummary, error)
 func (s *stubRepo) ListDormant(context.Context, string, time.Time) ([]Memory, error) {
 	return nil, nil
 }
+func (s *stubRepo) GetRecallGate(context.Context, string, string) (RecallGate, error) {
+	return RecallGate{RecallCount: 1}, nil // never recalled → cooldown never blocks
+}
 func (s *stubRepo) TouchRecall(context.Context, string, string) error { s.touchCalls++; return nil }
+func (s *stubRepo) TouchRecallGated(context.Context, string, string, time.Time) (bool, error) {
+	s.touchCalls++
+	return true, nil
+}
 func (s *stubRepo) GetRecord(context.Context, string, string) (Record, error) {
 	return Record{}, ErrNotFound
 }
@@ -125,6 +132,11 @@ type reshapeRepo struct {
 	applied   map[string]ReshapeState
 	appended  map[string][]EvolutionSnapshot
 	reshapeErr error // when set, ReshapeStar fails (best-effort recall must still return the record)
+	// gate drives the change-35 cooldown gate. Zero value (RecallCount 0 ≤ 1) means
+	// "never recalled" → cooldown never blocks, so the reshape tests recall normally.
+	gate       RecallGate
+	touchCalls int  // how many times the star was touched (cooldown-blocked recall must not touch)
+	loseRace   bool // when set, TouchRecallGated returns false — simulates a concurrent recall winning first
 }
 
 func newReshapeRepo() *reshapeRepo {
@@ -146,7 +158,17 @@ func (r *reshapeRepo) ListRecords(context.Context, string) ([]RecordSummary, err
 func (r *reshapeRepo) ListDormant(context.Context, string, time.Time) ([]Memory, error) {
 	return nil, nil
 }
-func (r *reshapeRepo) TouchRecall(context.Context, string, string) error { return nil }
+func (r *reshapeRepo) GetRecallGate(context.Context, string, string) (RecallGate, error) {
+	return r.gate, nil
+}
+func (r *reshapeRepo) TouchRecall(context.Context, string, string) error { r.touchCalls++; return nil }
+func (r *reshapeRepo) TouchRecallGated(context.Context, string, string, time.Time) (bool, error) {
+	if r.loseRace {
+		return false, nil // a concurrent recall touched first — this call must do no side effects
+	}
+	r.touchCalls++
+	return true, nil
+}
 func (r *reshapeRepo) GetRecord(context.Context, string, string) (Record, error) {
 	return Record{Body: "original", Mood: MoodJoy, Intensity: 0.5}, nil
 }
@@ -239,12 +261,96 @@ func TestRecallReshapeFailureStillReturnsRecord(t *testing.T) {
 	repo.ctxByID["m1"] = ReshapeContext{RecallEmbedding: []float64{1, 0}, ConsolidatedEmbedding: []float64{0, 1}}
 	repo.reshapeErr = errors.New("transient db error")
 	svc := NewService(repo, nil, nil)
-	rec, err := svc.RecallMemory(context.Background(), "u1", "m1")
+	out, err := svc.RecallMemory(context.Background(), "u1", "m1")
 	if err != nil {
 		t.Fatalf("RecallMemory must succeed despite reshape failure, got %v", err)
 	}
+	if out.Record.Body != "original" {
+		t.Fatalf("expected the immutable original, got %q", out.Record.Body)
+	}
+	if !out.Recalled {
+		t.Fatal("recall on a never-recalled star must report Recalled=true")
+	}
+}
+
+// change 35: within the re-recall cooldown, RecallMemory does NO side effects (no touch,
+// no reshape) and reports Recalled=false + the remaining cooldown. A recall_count > 1 with
+// a recent last_recalled_at is "recalled, still cooling down".
+func TestRecallCooldownBlocksSideEffects(t *testing.T) {
+	repo := newReshapeRepo()
+	// Novel context — would reshape if the gate let the recall through.
+	repo.ctxByID["m1"] = ReshapeContext{RecallEmbedding: []float64{1, 0}, ConsolidatedEmbedding: []float64{0, 1}}
+	repo.gate = RecallGate{RecallCount: 2, LastRecalledAt: time.Now().UTC()} // just recalled
+	svc := NewService(repo, nil, nil)
+	out, err := svc.RecallMemory(context.Background(), "u1", "m1")
+	if err != nil {
+		t.Fatalf("RecallMemory = %v, want nil", err)
+	}
+	if out.Recalled {
+		t.Fatal("a recall inside the cooldown must report Recalled=false")
+	}
+	if out.CooldownRemainingMs <= 0 {
+		t.Fatalf("blocked recall must report remaining cooldown > 0, got %d", out.CooldownRemainingMs)
+	}
+	if repo.touchCalls != 0 || len(repo.applied) != 0 || len(repo.appended) != 0 {
+		t.Fatalf("cooldown-blocked recall must have NO side effects: touch=%d applied=%v appended=%v",
+			repo.touchCalls, repo.applied, repo.appended)
+	}
+}
+
+// change 35: once the cooldown has elapsed, the same star recalls normally (touch fires).
+func TestRecallAfterCooldownProceeds(t *testing.T) {
+	repo := newReshapeRepo()
+	repo.gate = RecallGate{RecallCount: 2, LastRecalledAt: time.Now().UTC().Add(-2 * recallCooldown)}
+	svc := NewService(repo, nil, nil)
+	out, err := svc.RecallMemory(context.Background(), "u1", "m1")
+	if err != nil {
+		t.Fatalf("RecallMemory = %v, want nil", err)
+	}
+	if !out.Recalled || out.CooldownRemainingMs != recallCooldown.Milliseconds() {
+		t.Fatalf("recall past cooldown must report Recalled=true + a fresh full cooldown; got %+v", out)
+	}
+	if repo.touchCalls != 1 {
+		t.Fatalf("recall past cooldown must touch once, got %d", repo.touchCalls)
+	}
+}
+
+// change 35: when a concurrent recall wins the atomic gated touch first, this call applies
+// NO side effects (no reshape/evolution) even though it passed the read-gate — the TOCTOU is
+// closed in SQL. It still returns the record + a fresh cooldown (the other call just recalled).
+func TestRecallLostRaceDoesNotDoubleApply(t *testing.T) {
+	repo := newReshapeRepo()
+	repo.ctxByID["m1"] = ReshapeContext{RecallEmbedding: []float64{1, 0}, ConsolidatedEmbedding: []float64{0, 1}} // novel
+	repo.gate = RecallGate{RecallCount: 1} // read-gate allows
+	repo.loseRace = true                   // but the gated touch reports another call won
+	svc := NewService(repo, nil, nil)
+	out, err := svc.RecallMemory(context.Background(), "u1", "m1")
+	if err != nil {
+		t.Fatalf("RecallMemory = %v, want nil", err)
+	}
+	if out.Recalled {
+		t.Fatal("a lost gated-touch race must report Recalled=false")
+	}
+	if repo.touchCalls != 0 || len(repo.applied) != 0 || len(repo.appended) != 0 {
+		t.Fatalf("lost race must apply NO side effects: touch=%d applied=%v appended=%v",
+			repo.touchCalls, repo.applied, repo.appended)
+	}
+}
+
+// change 35: Peek reads content WITHOUT any side effect — it never re-ignites the star
+// (no TouchRecall), unlike a recall. The bare-click read-only path.
+func TestPeekDoesNotTouchRecall(t *testing.T) {
+	repo := newReshapeRepo()
+	svc := NewService(repo, nil, nil)
+	rec, err := svc.Peek(context.Background(), "u1", "m1")
+	if err != nil {
+		t.Fatalf("Peek = %v, want nil", err)
+	}
 	if rec.Body != "original" {
-		t.Fatalf("expected the immutable original, got %q", rec.Body)
+		t.Fatalf("Peek must return the current content, got %q", rec.Body)
+	}
+	if repo.touchCalls != 0 {
+		t.Fatalf("Peek called TouchRecall %d times — must be 0 (no side effect)", repo.touchCalls)
 	}
 }
 

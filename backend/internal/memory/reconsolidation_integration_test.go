@@ -86,12 +86,12 @@ func TestReconsolidationContextIntegration(t *testing.T) {
 	}
 
 	svc := memory.NewService(repo, nil, nil)
-	rec, err := svc.RecallMemory(ctx, user, m1)
+	out, err := svc.RecallMemory(ctx, user, m1)
 	if err != nil {
 		t.Fatalf("recall memory: %v", err)
 	}
-	if rec.Body != body {
-		t.Fatalf("record body changed: %q", rec.Body)
+	if out.Record.Body != body {
+		t.Fatalf("record body changed: %q", out.Record.Body)
 	}
 	if got := countMemoryRows(ctx, t, pool, "SELECT count(*) FROM evolution_history WHERE user_id=$1", user); got == 0 {
 		t.Fatal("expected evolution_history rows after novel recall")

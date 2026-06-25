@@ -41,10 +41,22 @@ type Repository interface {
 	// §2). This is a search aid, not a delete/filter (GetUniverse stays whole).
 	ListDormant(ctx context.Context, userID string, cutoff time.Time) ([]Memory, error)
 
+	// GetRecallGate reads the cooldown-gate input for one star (change 35): its
+	// last_recalled_at and recall_count. Returns ErrNotFound when the (user, memory)
+	// pair is absent. Read-only — the service decides whether the cooldown blocks the recall.
+	GetRecallGate(ctx context.Context, userID, memoryID string) (RecallGate, error)
+
 	// TouchRecall re-ignites a star (sets memories.last_recalled_at=now); a no-op if
 	// the (user, memory) pair is absent. Only the star is mutable; the
 	// record is never touched (constitution §1).
 	TouchRecall(ctx context.Context, userID, memoryID string) error
+
+	// TouchRecallGated re-ignites a star ONLY if the re-recall cooldown has passed (change
+	// 35): gate + touch in one atomic UPDATE (no read-then-write TOCTOU). Returns true when it
+	// touched (never-recalled, or last_recalled_at ≤ cutoff = now − cooldown), false when the
+	// cooldown blocked it OR the (user, memory) pair is absent — the service then reads to tell
+	// the two apart and report the remaining cooldown. Only the star is mutable (constitution §1).
+	TouchRecallGated(ctx context.Context, userID, memoryID string, cutoff time.Time) (bool, error)
 
 	// GetRecord reads the immutable original (records JOIN) for the recall panel;
 	// returns ErrNotFound when the (user, memory) pair is absent.

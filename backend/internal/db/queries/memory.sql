@@ -60,6 +60,25 @@ WHERE m.id = $1;
 UPDATE memories SET last_recalled_at = now(), recall_count = recall_count + 1
 WHERE id = @id AND user_id = @user_id;
 
+-- name: RecallMemoryTouchGated :execrows
+-- Re-ignite a star ONLY if the re-recall cooldown has passed (change 35) — gate + touch in
+-- one atomic UPDATE so two concurrent recalls of the same star can't both pass a read-gate
+-- and double-apply side effects (no read-then-write TOCTOU). Touches (rows=1) when the star
+-- was never deliberately recalled (recall_count <= 1, first recall) OR last_recalled_at is
+-- at/before cutoff (= now − recall_cooldown, computed in the service from values); within the
+-- cooldown it matches no row (rows=0) and nothing changes. The original record is never
+-- touched (constitution §1).
+UPDATE memories SET last_recalled_at = now(), recall_count = recall_count + 1
+WHERE id = @id AND user_id = @user_id
+  AND (recall_count <= 1 OR last_recalled_at <= sqlc.arg(cutoff)::timestamptz);
+
+-- name: GetRecallGate :one
+-- 재회상 쿨다운 게이트 입력(change 35): 그 별의 last_recalled_at + recall_count. 서비스가
+-- recall_count>1(=이미 회상된 적 있음 — 기본 1, TouchRecall마다 +1)이고 now-last_recalled_at <
+-- recall_cooldown_ms면 회상 부작용을 전부 스킵한다. 별이 없으면 ErrNoRows → ErrNotFound. user_id 격리.
+SELECT last_recalled_at, recall_count FROM memories
+WHERE id = @id AND user_id = @user_id;
+
 -- name: ListLastRecalled :many
 -- The candidate stars' last_recalled_at (spec 22): the per-star excitability event
 -- feeding e(c,t). Derived from the existing timestamp — no excitability column

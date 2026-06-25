@@ -215,6 +215,25 @@ func (r *pgRepository) ListDormant(ctx context.Context, userID string, cutoff ti
 
 // TouchRecall sets memories.last_recalled_at=now (+ recall_count += 1, spec 07) for the
 // user's star (no-op if absent — the original record is never touched, constitution §1).
+// GetRecallGate reads last_recalled_at + recall_count for the cooldown gate (change 35).
+// ErrNoRows (absent star / not the owner) → ErrNotFound, which the service surfaces as a
+// recall NotFound. last_recalled_at is NOT NULL in the schema, so .Time is always valid.
+func (r *pgRepository) GetRecallGate(ctx context.Context, userID, memoryID string) (RecallGate, error) {
+	row, err := gen.New(r.pool).GetRecallGate(ctx, gen.GetRecallGateParams{
+		ID: memoryID, UserID: userID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return RecallGate{}, ErrNotFound
+	}
+	if err != nil {
+		return RecallGate{}, fmt.Errorf("get recall gate: %w", err)
+	}
+	return RecallGate{
+		LastRecalledAt: row.LastRecalledAt.Time,
+		RecallCount:    int(row.RecallCount),
+	}, nil
+}
+
 func (r *pgRepository) TouchRecall(ctx context.Context, userID, memoryID string) error {
 	if err := gen.New(r.pool).RecallMemoryTouch(ctx, gen.RecallMemoryTouchParams{
 		ID: memoryID, UserID: userID,
@@ -222,6 +241,19 @@ func (r *pgRepository) TouchRecall(ctx context.Context, userID, memoryID string)
 		return fmt.Errorf("touch recall: %w", err)
 	}
 	return nil
+}
+
+// TouchRecallGated atomically re-ignites the star iff the cooldown has passed (change 35).
+// rows==1 → recalled; rows==0 → blocked-by-cooldown or absent (caller distinguishes via a read).
+func (r *pgRepository) TouchRecallGated(ctx context.Context, userID, memoryID string, cutoff time.Time) (bool, error) {
+	rows, err := gen.New(r.pool).RecallMemoryTouchGated(ctx, gen.RecallMemoryTouchGatedParams{
+		ID: memoryID, UserID: userID,
+		Cutoff: pgtype.Timestamptz{Time: cutoff, Valid: true},
+	})
+	if err != nil {
+		return false, fmt.Errorf("touch recall gated: %w", err)
+	}
+	return rows > 0, nil
 }
 
 // GetRecord reads the immutable original (records JOIN) for the recall panel.

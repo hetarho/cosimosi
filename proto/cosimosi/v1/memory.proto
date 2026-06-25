@@ -181,6 +181,31 @@ message RecallMemoryResponse {
   // 별이 다시 빚어졌을 때만 비어있지 않다 — 클라는 이게 있으면 '흐려진 기억'으로 보이고 원본(record.body)을
   // 병치한다("내 기억은 흐려졌지만 그날 쓴 말은 그대로"). 빈 문자열 = 변형 없음(클라가 fragment_text/body 폴백).
   string derived_text = 3;
+  // change 35: 이번 호출이 실제 회상(부작용 — 재점화·재성형·공동회상)을 일으켰는지. 마지막 회상 후
+  // recall_cooldown_ms 미경과면 서버가 부작용을 전부 스킵하고 recalled=false를 돌린다(BE 권위 강제).
+  // 첫 회상(recall_count≤1)·쿨다운 경과면 recalled=true.
+  bool recalled = 4;
+  // 다음 회상까지 남은 쿨다운(ms). 회상 성사 시엔 방금 시작된 전체 쿨다운(클라가 버튼을 즉시 잠근다),
+  // 쿨다운에 막혔으면 그 시점의 잔여. 0 = 지금 회상 가능(클라 초기 표시는 store의 recall_count·last에서 파생).
+  int64 cooldown_remaining_ms = 5;
+}
+
+// --- PeekMemory (read-only star content, change 35) ---
+
+// PeekMemory reads one star's CURRENT content (immutable original Record + the star's
+// fragment_text + the latest AI-rewritten derived_text) WITHOUT any side effect — no
+// re-ignition (last_recalled_at/recall_count untouched), no reshape, no co-recall, no
+// rewrite job. A bare star click opens the read-only panel through this; the deliberate
+// "이 별 자세히 보고 회상하기" button is the only path to RecallMemory's side effects.
+// Same response shape as a recall read; NO_SIDE_EFFECTS (exposed as HTTP GET).
+message PeekMemoryRequest {
+  string memory_id = 1;
+}
+
+message PeekMemoryResponse {
+  Record record = 1;        // 불변 원본(records JOIN); RecallMemory와 동일 — 단 부작용 없음
+  string fragment_text = 2; // 28: 별 → 조각(NULL이면 ""; 클라가 record.body로 폴백)
+  string derived_text = 3;  // 54: 최신 AI 변형 텍스트(없으면 ""; 클라가 fragment/body 폴백)
 }
 
 // --- GetRecord (idempotent original-diary read by record id, spec 28) ---
@@ -284,7 +309,10 @@ service MemoryService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc ReinforceLinks(ReinforceLinksRequest) returns (ReinforceLinksResponse);    // batch upsert
-  rpc RecallMemory(RecallMemoryRequest) returns (RecallMemoryResponse);          // reconsolidation
+  rpc RecallMemory(RecallMemoryRequest) returns (RecallMemoryResponse);          // reconsolidation (쿨다운 게이트)
+  rpc PeekMemory(PeekMemoryRequest) returns (PeekMemoryResponse) {               // 별 클릭 = 읽기전용 열람(35) — 부작용 없음
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc GetRecord(GetRecordRequest) returns (GetRecordResponse) {                  // 원본 일기 읽기(28) — 부작용 없음
     option idempotency_level = NO_SIDE_EFFECTS;
   }

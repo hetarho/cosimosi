@@ -416,6 +416,31 @@ func (q *Queries) GetMemoryForRewrite(ctx context.Context, id string) (GetMemory
 	return i, err
 }
 
+const getRecallGate = `-- name: GetRecallGate :one
+SELECT last_recalled_at, recall_count FROM memories
+WHERE id = $1 AND user_id = $2
+`
+
+type GetRecallGateParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+type GetRecallGateRow struct {
+	LastRecalledAt pgtype.Timestamptz `json:"last_recalled_at"`
+	RecallCount    int32              `json:"recall_count"`
+}
+
+// 재회상 쿨다운 게이트 입력(change 35): 그 별의 last_recalled_at + recall_count. 서비스가
+// recall_count>1(=이미 회상된 적 있음 — 기본 1, TouchRecall마다 +1)이고 now-last_recalled_at <
+// recall_cooldown_ms면 회상 부작용을 전부 스킵한다. 별이 없으면 ErrNoRows → ErrNotFound. user_id 격리.
+func (q *Queries) GetRecallGate(ctx context.Context, arg GetRecallGateParams) (GetRecallGateRow, error) {
+	row := q.db.QueryRow(ctx, getRecallGate, arg.ID, arg.UserID)
+	var i GetRecallGateRow
+	err := row.Scan(&i.LastRecalledAt, &i.RecallCount)
+	return i, err
+}
+
 const getRecordByMemory = `-- name: GetRecordByMemory :one
 SELECT r.body, r.entry_date, r.mood, r.intensity, r.created_at, m.fragment_text,
        COALESCE(
@@ -1105,4 +1130,31 @@ type RecallMemoryTouchParams struct {
 func (q *Queries) RecallMemoryTouch(ctx context.Context, arg RecallMemoryTouchParams) error {
 	_, err := q.db.Exec(ctx, recallMemoryTouch, arg.ID, arg.UserID)
 	return err
+}
+
+const recallMemoryTouchGated = `-- name: RecallMemoryTouchGated :execrows
+UPDATE memories SET last_recalled_at = now(), recall_count = recall_count + 1
+WHERE id = $1 AND user_id = $2
+  AND (recall_count <= 1 OR last_recalled_at <= $3::timestamptz)
+`
+
+type RecallMemoryTouchGatedParams struct {
+	ID     string             `json:"id"`
+	UserID string             `json:"user_id"`
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+}
+
+// Re-ignite a star ONLY if the re-recall cooldown has passed (change 35) — gate + touch in
+// one atomic UPDATE so two concurrent recalls of the same star can't both pass a read-gate
+// and double-apply side effects (no read-then-write TOCTOU). Touches (rows=1) when the star
+// was never deliberately recalled (recall_count <= 1, first recall) OR last_recalled_at is
+// at/before cutoff (= now − recall_cooldown, computed in the service from values); within the
+// cooldown it matches no row (rows=0) and nothing changes. The original record is never
+// touched (constitution §1).
+func (q *Queries) RecallMemoryTouchGated(ctx context.Context, arg RecallMemoryTouchGatedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, recallMemoryTouchGated, arg.ID, arg.UserID, arg.Cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

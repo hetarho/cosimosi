@@ -56,7 +56,7 @@ export function HebbianDemo() {
       </div>
 
       <p className="text-xs leading-relaxed text-white/40">
-        실제 우주와 같은 규칙이에요 — 두 기억을 각각 2초 이상 머물러 연달아 회상할 때마다 +0.05,
+        실제 우주와 같은 규칙이에요 — 두 기억을 잇따라 회상할 때마다 +0.05,
         1.0에서 멈춰요. 옅어지는 쪽은 재공고화(plan 23)가 가져와요.
       </p>
     </div>

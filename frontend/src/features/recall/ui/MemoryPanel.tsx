@@ -1,11 +1,13 @@
-// Recall panel (spec 11, cached by 16) — a 2D HUD outside the R3F canvas (Architecture
-// §3.1). Clicking a star selects it; the panel opens in a "dwelling" state and only
-// after a ≥2s ACTIVE view (1.2/1.11) does it fire RecallMemory — which re-ignites the
-// star (last_recalled_at=now) AND returns the immutable original Record (read-only, no
-// edit path — constitution §1). The same 2s threshold accumulates the co-recall pair
-// (1.3). The Record is immutable → cached forever (['record', id]): a re-open shows the
-// body instantly from cache while the touch still fires in the background (16, 1.5).
-import { useEffect, useState } from 'react'
+// Recall panel (spec 11, cached by 16; change 35) — a 2D HUD outside the R3F canvas
+// (Architecture §3.1). Clicking a star opens this panel and reads its content READ-ONLY via
+// PeekMemory — NO side effect (no re-ignition/reshape/co-recall): browsing the universe must
+// not re-shape every star it touches. But the body stays VISUALLY VEILED (a blur over the text;
+// portrait + meta show) until the deliberate "이 별 자세히 보고 회상하기" button recalls it — you
+// must choose to remember to read it. That button is the ONLY path to RecallMemory's side effects
+// (re-ignition + PE-gated reshape + co-recall pair), gated by a cooldown (recall_cooldown_ms,
+// BE-authoritative). A star still within its cooldown (just recalled) opens already un-veiled.
+// The Record is immutable → cached forever (['record', id]): a re-open shows the body from cache.
+import { useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useSelector } from '@xstate/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -26,14 +28,14 @@ import {
 import { parseStarLook } from '@/entities/star'
 import { useAppearance } from '@/entities/appearance'
 import { abstractionGauge, abstractionLabel, moodLabel, resolveMoodRgb, rgbToHex } from '@/shared/config'
-import { recallMemory } from '../api/recall'
+import { peekMemory, recallMemory } from '../api/recall'
 import { resonanceInfoQueryOptions } from '../api/resonance'
-import { DWELL_MS } from '../model'
+import { recallCooldownRemainingMs } from '../model/cooldown'
 import { recallFlushActor } from '../model/recall-flush.machine'
 import { NeighborNav } from './NeighborNav'
 import { StarPortrait3D } from './StarPortrait3D'
 
-type Phase = 'dwelling' | 'loading' | 'shown' | 'error'
+type Phase = 'loading' | 'shown' | 'error'
 
 /** Inner panel for one selected star. Keyed by memoryId so a new selection remounts it
  *  fresh (state resets without a setState-in-effect). onOpenEvolution / onSeeDiaryStars are
@@ -91,63 +93,124 @@ function RecallView({
     () => queryClient.getQueryData<string>(fragmentTextQueryKey(memoryId)) ?? '',
   )
   // 재공고화 AI 내용 변형(spec 54)의 현재 파생 텍스트 — 추상화 단계 ≥2 별이 다시 빚어졌을 때만 비어있지
-  // 않다. 매 회상 응답에서 받는다(캐시 안 함 — 서버가 흐릴 수 있어 항상 최신을 본다). ""면 조각/원본 폴백.
+  // 않다. peek/회상 응답에서 받는다(캐시 안 함 — 서버가 흐릴 수 있어 항상 최신을 본다). ""면 조각/원본 폴백.
   const [derivedText, setDerivedText] = useState<string>('')
   // 기본은 조각만; 사용자가 "원본 일기 전체 보기"를 누르면 불변 원본 전체로 펼친다.
   const [showFull, setShowFull] = useState(false)
-  const [phase, setPhase] = useState<Phase>(record ? 'shown' : 'dwelling')
+  const [phase, setPhase] = useState<Phase>(record ? 'shown' : 'loading')
+  // 회상 진행 중(버튼 중복 발화 방지) + 남은 재회상 쿨다운(change 35). 초기값은 store의 회상 횟수·마지막
+  // 회상 시각으로 클라가 계산(보조 — 진짜 강제는 BE). 데모는 가상 시계 기준. 회상 응답이 서버 권위로 덮어쓴다.
+  const [recalling, setRecalling] = useState(false)
+  // 회상 응답이 도착하기 전 패널이 닫히면(언마운트) 늦은 콜백이 빈 캐시를 오염시키지 않게 막는다.
+  const cancelledRef = useRef(false)
+  useEffect(() => {
+    cancelledRef.current = false
+    return () => {
+      cancelledRef.current = true
+    }
+  }, [])
+  // 최초 1회만(lazy initializer — 렌더 중 Date.now 호출 회피) store의 회상 횟수·마지막 회상 시각으로 잔여
+  // 쿨다운을 파생한다. 별 전환=키 기반 remount라 마운트당 한 번이면 충분(서버 응답이 이후 권위로 덮어쓴다).
+  const [initialCooldownMs] = useState<number>(() =>
+    star
+      ? recallCooldownRemainingMs(
+          star.memory.recallCount,
+          star.memory.lastRecalledAt,
+          isDemoMode() ? virtualNowMs() : Date.now(),
+        )
+      : 0,
+  )
+  const [cooldownRemainingMs, setCooldownRemainingMs] = useState<number>(initialCooldownMs)
+  // 본문 공개 여부(change 35): 별 클릭만으론 본문이 블러로 가려지고, 회상해야 또렷해진다(포트레이트·메타는
+  // 항상 보임). 쿨다운이 남아 있는 별 = 방금 떠올린 기억이라 열자마자 또렷; 그 외(처음/오래 안 본 별)는
+  // 가려진 채 시작해 회상 버튼이 걷어낸다. cooldown 경과로 또렷함이 사라진 뒤 다시 열면 또 가려진다(리마운트).
+  const [revealed, setRevealed] = useState<boolean>(initialCooldownMs > 0)
 
+  // 패널이 열리면 PeekMemory로 내용을 **즉시 읽기전용** 표시한다 — 부작용 없음(재점화/재성형/공동회상 안 함,
+  // change 35). 캐시(불변 원본)가 있으면 본문을 바로 보이고, peek로 최신 derived_text를 채운다.
   useEffect(() => {
     let cancelled = false
-    // ≥2s active dwell → a real recall (1.2/1.11). A glance (<2s: closed or star
-    // switched) clears the timer → no touch, no co-recall. 캐시 히트여도 touch는 매번
-    // 발사한다(재점화 의미론, 16 — 캐시가 touch를 생략하면 감쇠 모델이 굶는다); 캐시를
-    // 보여주는 중의 touch 실패는 비차단(다음 열람에 재시도).
-    const timer = setTimeout(() => {
-      recallFlushActor.send({ type: 'RECORD_VIEW', id: memoryId }) // co-recall pair with previous active view (1.3)
-      // recall_open(18) — 회상 발화 시점(터치 직전)의 활성도로 잠든 별 재점화 여부를 판단.
-      const star = useMemoryStore.getState().stars.find((s) => s.id === memoryId)
-      capture(EVENTS.recallOpen, {
-        is_dormant: star ? isDormant(star.memory.lastRecalledAt, virtualNowMs()) : false,
+    // 초기 phase는 캐시 여부로 이미 'shown'/'loading'으로 정해진다(별 전환=키 기반 remount). 여기선 peek
+    // 결과만 반영한다 — 로딩 표시를 위한 동기 setState는 두지 않는다(효과 내 동기 setState 금지).
+    const hasCached = queryClient.getQueryData(recordQueryKey(memoryId)) != null
+    peekMemory(memoryId)
+      .then((r) => {
+        // cancelled 가드가 캐시 쓰기보다 먼저다: 로그아웃·출처 리셋(queryClient.clear) 뒤에 늦게
+        // 도착한 응답이 이전 사용자의 기록을 빈 캐시에 재주입하면 안 된다(언마운트 = cancelled).
+        if (cancelled) return
+        if (r) {
+          // 영구 시드(staleTime ∞ — app/query-client의 record 기본값): 다음 열람은 캐시로.
+          queryClient.setQueryData(recordQueryKey(memoryId), r.record)
+          queryClient.setQueryData(fragmentTextQueryKey(memoryId), r.fragmentText)
+          setRecord(r.record)
+          setFragmentText(r.fragmentText)
+          setDerivedText(r.derivedText) // 54: 흐려진 현재 내용(없으면 ""→폴백)
+          setPhase('shown')
+        } else if (!hasCached) {
+          setPhase('error')
+        }
       })
-      const hasCached = queryClient.getQueryData(recordQueryKey(memoryId)) != null
-      if (!hasCached) setPhase('loading')
-      recallMemory(memoryId)
-        .then((r) => {
-          // cancelled 가드가 캐시 쓰기보다 먼저다: 로그아웃·출처 리셋(queryClient.clear)
-          // 뒤에 늦게 도착한 응답이 이전 사용자의 기록을 빈 캐시에 재주입하면 안 된다
-          // (언마운트 = cancelled). 별 전환으로 잃는 시드는 다음 열람이 다시 채운다.
-          if (cancelled) return
-          if (r) {
-            // 영구 시드(staleTime ∞ — app/query-client의 record 기본값): 다음 열람은 캐시로.
-            // 조각 텍스트(spec 28)도 같은 불변·영구 캐시 prefix에 시드한다.
-            queryClient.setQueryData(recordQueryKey(memoryId), r.record)
-            queryClient.setQueryData(fragmentTextQueryKey(memoryId), r.fragmentText)
-            // 회상된 별은 잠에서 깸 → 잠든 별 목록 무효화(1.6).
-            void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
-            // 회상 재점화/재성형은 별 레이어를 바꾸므로 우주 쿼리를 즉시 무효화한다.
-            // 데모는 demoMarkRecalled, 프로덕션은 TouchRecall/reconsolidate 결과를 refetch로 받는다.
-            void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
-            setRecord(r.record)
-            setFragmentText(r.fragmentText)
-            setDerivedText(r.derivedText) // 54: 흐려진 현재 내용(없으면 ""→폴백)
-            setPhase('shown')
-          } else if (!hasCached) {
-            setPhase('error')
-          }
-        })
-        .catch((e: unknown) => {
-          // 캐시 표시 중의 touch 실패는 화면엔 비차단이지만 침묵하면 재점화 유실(감쇠 모델
-          // 굶주림)을 영영 모른다 → Sentry에 기록(스펙 §변이별; DSN 없으면 no-op).
-          Sentry.captureException(e)
-          if (!cancelled && !hasCached) setPhase('error')
-        })
-    }, DWELL_MS)
+      .catch((e: unknown) => {
+        Sentry.captureException(e)
+        if (!cancelled && !hasCached) setPhase('error')
+      })
     return () => {
       cancelled = true
-      clearTimeout(timer)
     }
   }, [memoryId, queryClient])
+
+  // "이 별 자세히 보고 회상하기"(change 35) — 의도적 회상. RecallMemory(부작용)를 발화하고, 성사 시
+  // 내용·별을 갱신하고 우주를 무효화한다. 쿨다운에 막히면(서버 권위) 부작용 없이 잔여만 받아 버튼을 잠근다.
+  const onRecall = () => {
+    if (recalling || cooldownRemainingMs > 0) return
+    setRecalling(true)
+    recallMemory(memoryId)
+      .then((r) => {
+        if (cancelledRef.current || !r) {
+          setRecalling(false)
+          return
+        }
+        // 응답 내용(불변 원본·조각·흐려진 현재)을 항상 반영한다 — 성사든 쿨다운에 막혔든 같은 읽기전용
+        // 내용을 싣고 오므로, 패널이 비어 있던(peek 실패) 경우에도 본문이 채워진다.
+        queryClient.setQueryData(recordQueryKey(memoryId), r.record)
+        queryClient.setQueryData(fragmentTextQueryKey(memoryId), r.fragmentText)
+        setRecord(r.record)
+        setFragmentText(r.fragmentText)
+        setDerivedText(r.derivedText)
+        setPhase('shown')
+        // 회상 성사든 쿨다운에 막혔든(=방금 떠올린 기억) 본문을 또렷이 공개한다 — 블러를 걷는다(change 35).
+        setRevealed(true)
+        if (r.recalled) {
+          // 공동 회상 쌍 누적은 이제 **버튼 회상** 시점에 발생한다(직전 회상 별과 페어 강화, change 35).
+          recallFlushActor.send({ type: 'RECORD_VIEW', id: memoryId })
+          // recall_open(18) — 회상 발화 시점의 활성도로 잠든 별 재점화 여부를 판단(우주 refetch 전 store 기준).
+          const cur = useMemoryStore.getState().stars.find((s) => s.id === memoryId)
+          capture(EVENTS.recallOpen, {
+            is_dormant: cur ? isDormant(cur.memory.lastRecalledAt, virtualNowMs()) : false,
+          })
+          // 회상된 별은 잠에서 깸 → 잠든 별 목록 무효화(1.6).
+          void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
+          // 회상 재점화/재성형은 별 레이어를 바꾸므로 우주 쿼리를 즉시 무효화한다.
+          // 데모는 demoMarkRecalled, 프로덕션은 TouchRecall/reconsolidate 결과를 refetch로 받는다.
+          void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+        }
+        // 서버 권위 쿨다운(성사면 방금 시작된 전체 쿨다운, 막혔으면 잔여) — 버튼 잠금/안내의 출처.
+        setCooldownRemainingMs(r.cooldownRemainingMs)
+        setRecalling(false)
+      })
+      .catch((e: unknown) => {
+        Sentry.captureException(e)
+        if (!cancelledRef.current) setRecalling(false)
+      })
+  }
+
+  // 쿨다운이 흐르는 동안 패널을 열어 둔 채 임계가 지나면 버튼을 다시 켠다(프로덕션 실시계 기준). 데모는
+  // 가상 시계(배속·빨리감기)라 실시간 타이머로 못 맞춘다 — 별 재선택/리마운트가 store에서 다시 계산한다.
+  useEffect(() => {
+    if (cooldownRemainingMs <= 0 || isDemoMode()) return
+    const t = setTimeout(() => setCooldownRemainingMs(0), cooldownRemainingMs)
+    return () => clearTimeout(t)
+  }, [cooldownRemainingMs])
 
   // Body-only (home-ia revamp): the page hosts this inside a Surface (bottom sheet / floating
   // card), which owns the container, "회상" title and close (→ focusActor DISMISS).
@@ -168,13 +231,10 @@ function RecallView({
           />
         </Sentry.ErrorBoundary>
       )}
-      {phase === 'dwelling' && (
-        <p className="text-sm text-white/50">별을 바라보는 중… (2초간 머무르면 회상됩니다)</p>
-      )}
       {phase === 'loading' && <p className="text-sm text-white/50">기억을 불러오는 중…</p>}
       {phase === 'error' && (
         <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-300">
-          ⚠ 이 기억을 회상하지 못했어요.
+          ⚠ 이 기억을 불러오지 못했어요.
         </p>
       )}
 
@@ -210,13 +270,32 @@ function RecallView({
             const canToggle = fadedText !== record.body
             return (
               <>
-                {hasDerived && !showFull && (
+                {revealed && hasDerived && !showFull && (
                   <p className="text-xs text-white/40">✎ 떠올릴 때마다 조금씩 다시 쓰인 기억</p>
                 )}
-                <p className="selectable text-sm leading-relaxed whitespace-pre-wrap text-white/85">
-                  {shownText}
-                </p>
-                {canToggle && (
+                {/* 회상 전엔 본문 글자 위에 블러를 올려 가린다(change 35) — placeholder가 아니라 '흐릿하게
+                    잠긴' 글자. 회상하면 filter가 0으로 풀리며 또렷이 떠오른다(transition으로 극적으로).
+                    가려진 동안은 select-none·pointer-events-none로 복사·상호작용을 막는다. */}
+                <div className="relative">
+                  <p
+                    aria-hidden={!revealed}
+                    className={`text-sm leading-relaxed whitespace-pre-wrap text-white/85 transition-[filter,opacity] duration-700 ${
+                      revealed
+                        ? 'selectable'
+                        : 'pointer-events-none blur-[7px] select-none opacity-60'
+                    }`}
+                  >
+                    {shownText}
+                  </p>
+                  {!revealed && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs text-white/60 backdrop-blur-sm">
+                        회상하면 이 기억이 떠올라요
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {revealed && canToggle && (
                   <button
                     type="button"
                     onClick={() => setShowFull((v) => !v)}
@@ -234,6 +313,24 @@ function RecallView({
               </>
             )
           })()}
+          {/* 의도적 회상(change 35): 클릭 열람은 부작용이 없고, 이 버튼만이 진짜 회상(재점화·재성형·공동회상)을
+              일으킨다. 마지막 회상 후 쿨다운 동안은 잠기고 다음 회상까지 남은 시간을 알린다(서버 권위, FE 보조). */}
+          <div className="mt-1 flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={onRecall}
+              disabled={recalling || cooldownRemainingMs > 0}
+              className="hover:border-mood-pink/60 w-fit rounded-full border border-mood-pink/40 px-3 py-1 text-xs text-white/85 transition hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/35"
+            >
+              {recalling ? '회상하는 중…' : '이 별 자세히 보고 회상하기'}
+            </button>
+            {cooldownRemainingMs > 0 && (
+              <p className="text-xs text-white/40">
+                방금 떠올린 기억이에요 · 약 {Math.max(1, Math.ceil(cooldownRemainingMs / 60000))}분 뒤 다시
+                회상할 수 있어요
+              </p>
+            )}
+          </div>
           {/* 동선 버튼 묶음: 변천사(24) / 이 일기의 다른 별들(28). 편집·삭제 없음(헌법1). */}
           <div className="mt-1 flex flex-wrap gap-2">
             {/* 변천사 보기(24): 이 별이 변해 온 길을 우주 위 오버레이로 연다(우주를 떠나지 않음). */}

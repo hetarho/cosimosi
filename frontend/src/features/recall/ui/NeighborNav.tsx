@@ -1,7 +1,8 @@
 // Neighbor navigation (spec 11, 1.12). Reads the edges incident to the selected star
-// from the 11-introduced edge store (neighborsOf), strongest first. Clicking a
-// neighbor selects it → MemoryPanel re-dwells → that ≥2s view pairs with this one
-// (co-recall, 1.3). Weight drives a width hint (thicker = stronger link).
+// from the 11-introduced edge store (neighborsOf), strongest first. Clicking a neighbor
+// selects it → MemoryPanel opens its READ-ONLY peek (no side effect); co-recall pairing
+// happens only when the user then presses 회상하기 on each (change 35). Weight drives a
+// width hint (thicker = stronger link).
 //
 // Selection-only: clicking a neighbor sends focus.SELECT_STAR (gaze-locks onto it in place,
 // no fly-to). Fly-to is reserved for the dormant-star pick (nav.FLY_TO_STAR). (spec 39)
@@ -14,7 +15,7 @@ import { moodLabel } from '@/shared/config'
 const MAX_NEIGHBORS = 8
 
 export function NeighborNav() {
-  // 선택된 별 = focus 머신(spec 39). 이웃 클릭 → focus.SELECT_STAR로 그 별로 전환(재dwell→공동회상).
+  // 선택된 별 = focus 머신(spec 39). 이웃 클릭 → focus.SELECT_STAR로 그 별로 전환(읽기전용 열람; 회상은 버튼).
   const selectedId = useSelector(focusActor, selectFocusedStarId)
   const stars = useMemoryStore((s) => s.stars)
   const edges = useSynapseStore((s) => s.edges)

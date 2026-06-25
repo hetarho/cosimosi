@@ -124,11 +124,14 @@ ambient:
   valence_warm_gain: 0.12 #    valence→따뜻함 이동 계수(+v 따뜻, -v 차갑게) — 자아 몸체색 보정 (FE 전용)
   valence_sat_gain: 0.25 #     valence→채도 이동 계수(+v 채도↑) — 자아 몸체색 보정 (FE 전용)
 
-# ── 회상 강화 (recall) — FE 전용(co-recall.ts). 서버 ReinforceLinks는 delta를 payload로 받는다. spec 11 ──
+# ── 회상 (recall) — co_recall_delta는 FE 전용(co-recall.ts; 서버 ReinforceLinks는 delta를 payload로
+#    받는다). recall_cooldown_ms는 BE 권위(service.go RecallMemory 게이트) + FE 버튼 비활성·데모 가상시계
+#    판정이 공유. spec 11 / change 35 ──
 #    간격 효과(spacing)는 change 22로 제거 — 강화량은 간격 무관 고정(co_recall_delta). 몰아보기 1× = 하루 띄움 1×.
 recall:
-  co_recall_delta: 0.05 #   공동 회상 1회당 링크 weight 증가분(상한 1.0, 간격 무관 고정). HebbianDemo도 이 값.
-  dwell_ms: 2000 #          능동 보기 dwell 임계(ms): 이만큼 봐야 회상/공동회상 누적
+  co_recall_delta: 0.05 #      공동 회상 1회당 링크 weight 증가분(상한 1.0, 간격 무관 고정). HebbianDemo도 이 값.
+  recall_cooldown_ms: 3600000 # 재회상 쿨다운(ms, 기본 1시간). 마지막 회상 후 이만큼 지나야 같은 별 재회상 가능
+                              # (첫 회상=recall_count≤1은 항상 허용). 하룻밤 공고화는 이보다 길어 자연 해제(change 35).
 
 # ── 분절 추출 (extraction) — BE ai/extractor.go. 프롬프트 루브릭의 "1~5"도 함께 바뀜. spec 20 ──────
 extraction:

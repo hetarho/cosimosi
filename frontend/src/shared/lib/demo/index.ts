@@ -31,6 +31,7 @@ export {
   demoRecordMemory,
   demoToday,
   demoMarkRecalled,
+  demoRecallGate,
   demoReshape,
   demoConsolidate,
   demoEvolution,

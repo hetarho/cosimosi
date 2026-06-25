@@ -71,6 +71,12 @@ const (
 	rewriteDebounce       = time.Duration(values.RewriteDebounceHours) * time.Hour
 )
 
+// Recall cooldown (change 35): a star can only be RE-recalled once recall_cooldown_ms has
+// passed since its last recall — deliberate recall, not a side effect of browsing. The
+// first recall of a never-recalled star (recall_count ≤ 1) is always allowed. values.yaml
+// recall.recall_cooldown_ms is the single source.
+const recallCooldown = time.Duration(values.RecallRecallCooldownMs) * time.Millisecond
+
 // dormantCutoff converts the dormancy threshold (RAW activation) into a time cutoff:
 // activation = exp(-λ·Δt_days) ≤ threshold  ⟺  Δt ≥ ln(1/threshold)/λ
 // = HALF_LIFE_DAYS·log2(1/threshold) days. A star last recalled before this is dormant.
@@ -321,16 +327,71 @@ func (s *Service) ListDormant(ctx context.Context, userID string) ([]Memory, err
 	return s.repo.ListDormant(ctx, userID, dormantCutoff(time.Now().UTC()))
 }
 
-// RecallMemory re-ignites a star (last_recalled_at=now), applies PE-gated
-// reconsolidation reshaping (spec 23), and returns its immutable original Record
-// (records JOIN). Touch is WHERE-guarded, so an absent memory leaves nothing changed
-// and GetRecord surfaces ErrNotFound (→ NotFound at the handler). The original record
-// is never mutated — only the star layer + the append-only variant log (constitution
-// §1·§2).
-func (s *Service) RecallMemory(ctx context.Context, userID, memoryID string) (Record, error) {
-	if err := s.repo.TouchRecall(ctx, userID, memoryID); err != nil {
-		return Record{}, err
+// Peek reads a star's CURRENT content (immutable original Record + fragment + latest AI
+// derived text) with NO side effect (change 35): a bare star click opens the read-only
+// panel this way — no re-ignition, no reshape, no co-recall, no rewrite job. GetRecord is
+// a pure SELECT (records JOIN), so the star layer is never touched. ErrNotFound when the
+// (user, memory) pair is absent (→ NotFound at the handler).
+func (s *Service) Peek(ctx context.Context, userID, memoryID string) (Record, error) {
+	return s.repo.GetRecord(ctx, userID, memoryID)
+}
+
+// recallCooldownRemaining is the cooldown gate (change 35), pure for testing: how long
+// until this star may be recalled again. A never-recalled star (recall_count ≤ 1) returns
+// 0 (first recall always allowed); otherwise it is recallCooldown minus the elapsed time
+// since the last recall, floored at 0 (0 = cooldown elapsed, recall allowed).
+func recallCooldownRemaining(recallCount int, lastRecalledAt, now time.Time) time.Duration {
+	if recallCount <= 1 {
+		return 0
 	}
+	remaining := recallCooldown - now.Sub(lastRecalledAt)
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// RecallMemory deliberately recalls a star — but only once the re-recall cooldown has
+// passed (change 35). Within the cooldown it refuses ALL side effects (no touch, reshape,
+// co-recall or rewrite) and returns Recalled=false + the remaining cooldown, so browsing
+// can't keep re-igniting/reshaping a star (the spec-11 problem this change fixes). Past
+// the cooldown (or on a never-recalled star) it re-ignites (last_recalled_at=now), applies
+// PE-gated reconsolidation reshaping (spec 23) and returns the immutable original Record
+// (records JOIN). The gate read is WHERE-guarded, so an absent memory surfaces ErrNotFound
+// (→ NotFound at the handler). The original record is never mutated — only the star layer +
+// the append-only variant log (constitution §1·§2).
+func (s *Service) RecallMemory(ctx context.Context, userID, memoryID string) (RecallOutcome, error) {
+	gate, err := s.repo.GetRecallGate(ctx, userID, memoryID)
+	if err != nil {
+		return RecallOutcome{}, err // ErrNotFound (absent star) or a real DB error
+	}
+	now := time.Now().UTC()
+	if remaining := recallCooldownRemaining(gate.RecallCount, gate.LastRecalledAt, now); remaining > 0 {
+		// Cooldown active: skip every side effect, return the current content read-only.
+		rec, err := s.repo.GetRecord(ctx, userID, memoryID)
+		if err != nil {
+			return RecallOutcome{}, err
+		}
+		return RecallOutcome{Record: rec, Recalled: false, CooldownRemainingMs: remaining.Milliseconds()}, nil
+	}
+
+	// Atomically confirm the cooldown and re-ignite in one UPDATE (change 35): the read above
+	// handles NotFound + the remaining-cooldown reply, but two concurrent recalls could both
+	// pass it — the gated touch lets only ONE win, so the reshape/rewrite below never
+	// double-apply. A lost race reads as "just recalled by the other call": no side effects,
+	// fresh full cooldown.
+	recalled, err := s.repo.TouchRecallGated(ctx, userID, memoryID, now.Add(-recallCooldown))
+	if err != nil {
+		return RecallOutcome{}, err
+	}
+	if !recalled {
+		rec, err := s.repo.GetRecord(ctx, userID, memoryID)
+		if err != nil {
+			return RecallOutcome{}, err
+		}
+		return RecallOutcome{Record: rec, Recalled: false, CooldownRemainingMs: recallCooldown.Milliseconds()}, nil
+	}
+
 	// Reconsolidation is BEST-EFFORT: it must never deny the user their immutable
 	// original (the spec-11 recall contract). A reshape failure (DB hiccup on a
 	// reshape write/read) degrades this recall to plain re-ignition — the record read
@@ -340,8 +401,14 @@ func (s *Service) RecallMemory(ctx context.Context, userID, memoryID string) (Re
 	// abstracted enough (the SQL gate enforces stage ≥ threshold, the debounce, and no
 	// duplicate). Async — the AI call + the variant-log write happen in the worker, so a
 	// failure here never denies the immutable original returned below (헌법1).
-	_ = s.repo.EnqueueRewriteIfDue(ctx, userID, memoryID, rewriteStageThreshold, time.Now().UTC().Add(-rewriteDebounce))
-	return s.repo.GetRecord(ctx, userID, memoryID)
+	_ = s.repo.EnqueueRewriteIfDue(ctx, userID, memoryID, rewriteStageThreshold, now.Add(-rewriteDebounce))
+	rec, err := s.repo.GetRecord(ctx, userID, memoryID)
+	if err != nil {
+		return RecallOutcome{}, err
+	}
+	// On success the fresh cooldown starts now — report the full cooldown as "time until the
+	// next recall" so the client can disable the button immediately (no re-enable flicker).
+	return RecallOutcome{Record: rec, Recalled: true, CooldownRemainingMs: recallCooldown.Milliseconds()}, nil
 }
 
 // reconsolidate runs the spec-23 soft-window model: read the star's PE/strength

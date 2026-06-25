@@ -736,6 +736,18 @@ export function demoMarkRecalled(memoryId: string): void {
   replaceStar(memoryId, (s) => renewStar(s, nowIso))
 }
 
+/** 재회상 쿨다운 게이트 입력(change 35): 그 별의 누적 회상 횟수 + 마지막 회상 시각(epoch ms).
+ *  features/recall가 가상 시계(virtualNowMs)와 함께 recallCooldownRemainingMs로 판정한다 —
+ *  서버 GetRecallGate의 데모 대응. 없는 id면 undefined(첫 회상 취급). */
+export function demoRecallGate(
+  memoryId: string,
+): { recallCount: number; lastRecalledAtMs: number } | undefined {
+  ensureSeeded()
+  const s = [...baseStars, ...addedStars].find((st) => st.memoryId === memoryId)
+  if (!s) return undefined
+  return { recallCount: Number(s.recallCount), lastRecalledAtMs: Date.parse(s.lastRecalledAt) }
+}
+
 // 재공고화 재성형 파라미터(spec 23 데모 — 서버 service.go·랜딩 카드와 같은 결, VALUES.reshape 출처).
 const DEMO_PE_THRESHOLD = VALUES.reshape.peThreshold
 const HUE_MAX_DEG = VALUES.reshape.hueMaxDeg

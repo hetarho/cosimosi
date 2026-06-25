@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { VALUES } from '@/shared/config'
 import {
   CO_RECALL_DELTA,
-  DWELL_MS,
   createSession,
   drainDeltas,
   hasPending,
@@ -49,8 +48,8 @@ describe('co-recall session (change 22 — no spacing effect)', () => {
     expect(hasPending(s)).toBe(false)
   })
 
-  it('dwell gate retained at 2s (A3 regression boundary)', () => {
-    expect(DWELL_MS).toBe(2000)
+  it('dwell gate retired — recall is the deliberate button now (change 35)', () => {
+    expect('dwellMs' in VALUES.recall).toBe(false)
   })
 
   it('spacing knobs removed from values (A2)', () => {

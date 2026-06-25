@@ -49,8 +49,8 @@ export const recallFlushMachine = setup({
     pending: ({ context }) => hasPending(context.session),
   },
   actions: {
-    // 능동 열람 1건 누적(≥2s dwell은 호출자가 확정). 직전 열람과 다른 별이면 페어 +CO_RECALL_DELTA(간격
-    // 무관 고정 — change 22). 데모면 그 엣지 weight를 로컬로 올려 굵어짐을 즉시 보인다(영속은 flush 경로 — 데모는 no-op).
+    // 버튼 회상 1건 누적(의도적 회상 — change 35; RECORD_VIEW는 회상 성사 시에만 보낸다). 직전 회상과 다른
+    // 별이면 페어 +CO_RECALL_DELTA(간격 무관 고정 — change 22). 데모면 그 엣지 weight를 로컬로 올려 굵어짐을 즉시 보인다(영속은 flush 경로 — 데모는 no-op).
     accumulate: ({ context, event }) => {
       if (event.type !== 'RECORD_VIEW') return
       const prev = context.session.lastViewedId
