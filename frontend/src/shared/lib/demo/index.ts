@@ -17,6 +17,7 @@ export {
   type DemoFlow,
 } from './flag'
 export { demoPersonaList, type DemoPersonaMeta } from './personas'
+export { tutorialFixture, type TutorialFixture } from './tutorial-fixture'
 export {
   demoStars,
   ensureDemoGenesisArmed,

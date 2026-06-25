@@ -10,12 +10,18 @@ export {
   selectPhaseIndex,
   selectPhaseMode,
   selectIsDone,
+  selectStepId,
+  selectSurface,
+  selectCameraLocked,
 } from './model/tour.machine'
 export {
   TOUR_STEPS,
+  activeSteps,
   type TourStep,
   type TourPhase,
   type TourTargetId,
   type TourSurface,
   type TourAwait,
+  type TourContext,
+  type TourKind,
 } from './model/steps'

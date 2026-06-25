@@ -15,3 +15,5 @@ export {
 export { useViewport } from './model/use-viewport'
 // 데모 투어(plan 48·change 12) 항해 실습 관찰용 단조 누적 카운터 — 페이지가 sampler로 감싸 투어에 넘긴다.
 export { navTravel, type NavTravel } from './model/navigation-input'
+// 첫 별 튜토리얼(change 34·job 50) 카메라 lock — 페이지가 set, NavPad 키보드가 read. 캔버스 컨트롤러는 직접 read.
+export { setTourCameraLocked, isTourCameraLocked } from './model/navigation-input'

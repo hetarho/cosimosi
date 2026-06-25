@@ -393,3 +393,9 @@ const (
 	DemoTourLookThresholdRad        = 0.9
 	DemoTourThrustDistanceThreshold = 8
 )
+
+// tutorial
+const (
+	TutorialStarTargetPadPx = 16
+	TutorialStarRectMinPx   = 44
+)

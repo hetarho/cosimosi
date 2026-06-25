@@ -197,10 +197,18 @@ export function useDemoFlow({ setDemoPopover }: { setDemoPopover: (p: DemoPopove
     void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
     void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
   }
-  // 모드 선택 "기능 하나하나 알아보기" → 스포트라이트 투어 진입(plan 48): flow=tutorial, step 0.
+  // 모드 선택 "기능 하나하나 알아보기" → 첫 별 튜토리얼 진입(plan 48·change 34): flow=tutorial, step 0.
+  // 튜토리얼은 **빈 우주에서 출발한다**(A1) — 온보딩 배경 캔버스가 시드해 둔 정적 코퍼스를 데이터 모듈·렌더
+  // 스토어에서 모두 비운다(chooseFree와 동형). 첫 별은 튜토리얼이 안내하는 `별 띄우기`가 고정 fixture로 빚는다.
   const chooseTutorial = () => {
+    resetDemo()
     enterTutorialMode()
     setDemoFlowState('tutorial')
+    useMemoryStore.getState().setStars([])
+    useMemoryStore.getState().setLoadedEmpty(false)
+    useSynapseStore.getState().setEdges([])
+    void queryClient.invalidateQueries({ queryKey: universeInvalidateKey() })
+    void queryClient.invalidateQueries({ queryKey: dormantInvalidateKey() })
   }
   const backToModeSelect = () => setFlow('persona_selected')
 

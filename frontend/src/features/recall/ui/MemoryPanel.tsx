@@ -311,13 +311,17 @@ export function MemoryPanel({
 } = {}) {
   const selectedId = useSelector(focusActor, selectFocusedStarId)
   if (!selectedId) return null
+  // 첫 별 튜토리얼(change 34): 회상 패널 전체를 정보 하이라이트 target으로 감싼다(A11). 래퍼는 셸 콘텐츠
+  // 컬럼의 flex-1 자식이라 긴 본문의 자체 스크롤이 그대로 동작한다.
   return (
-    <RecallView
-      key={selectedId}
-      memoryId={selectedId}
-      onOpenEvolution={onOpenEvolution}
-      onSeeDiaryStars={onSeeDiaryStars}
-      onSendStar={onSendStar}
-    />
+    <div data-tour-id="recall-panel" className="flex min-h-0 flex-1 flex-col gap-2">
+      <RecallView
+        key={selectedId}
+        memoryId={selectedId}
+        onOpenEvolution={onOpenEvolution}
+        onSeeDiaryStars={onSeeDiaryStars}
+        onSendStar={onSendStar}
+      />
+    </div>
   )
 }

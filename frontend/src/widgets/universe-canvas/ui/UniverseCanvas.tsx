@@ -50,6 +50,7 @@ import {
   ModeTransitionController,
   ViewOffsetController,
   FocusController,
+  TourStarProjector,
 } from './controllers'
 import { BloomPass } from '@/shared/ui'
 import type { LayoutMap } from '../model/layout-position'
@@ -483,6 +484,9 @@ export function UniverseCanvas() {
       <RecallDismissGuard />
       <ModeTransitionController />
       <ViewOffsetController />
+      {/* 첫 별 튜토리얼(change 34): 페이지가 가리킨 생성/fixture 별의 live 좌표를 화면 rect로 투영해 tour
+          spotlight target 레지스트리에 싣는다(씬 안 <Html> 없이 — 헌법8). target이 없으면 무동작. */}
+      <TourStarProjector positionsRef={positionsRef} />
       <BloomPass />
       </Canvas>
     </>

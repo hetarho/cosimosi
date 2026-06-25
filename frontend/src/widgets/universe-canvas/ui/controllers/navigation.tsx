@@ -17,6 +17,7 @@ import {
   addOrbitTravel,
   addZoomTravel,
   navigationInput,
+  isTourCameraLocked,
 } from '../../model/navigation-input'
 import { passedDeadzone, isDoubleTap, thrustRamp, zoomScrubDelta } from '../../model/navigation-gesture'
 import { navigationActor, selectIsNebula, selectIsRecall, selectTransitioning } from '../../model/navigation.machine'
@@ -179,6 +180,7 @@ export function NebulaOrbitController() {
     }
 
     const onDown = (e: PointerEvent) => {
+      if (isTourCameraLocked()) return // 튜토리얼 카메라 lock 중엔 궤도 회전/줌 stand down(A9)
       if (e.pointerType === 'mouse' && e.button !== 0) return // mouse: left-drag only
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
       // Capture on down so THIS pointer's up/cancel ALWAYS returns to us — even if the finger lifts
@@ -302,6 +304,7 @@ export function NebulaOrbitController() {
       }
     }
     const onWheel = (e: WheelEvent) => {
+      if (isTourCameraLocked()) return // 튜토리얼 카메라 lock 중엔 줌 stand down(A9)
       e.preventDefault()
       zoom.current += Math.sign(e.deltaY) * NEBULA_ZOOM_SPEED
     }
@@ -339,6 +342,14 @@ export function NebulaOrbitController() {
 
   useFrame((_, dt) => {
     if (!active || !controls) return
+    // 튜토리얼 카메라 lock 중엔 궤도를 굴리지 않고 누적 관성·드래그 델타를 비운다(잠금 해제 후 점프 방지, A9).
+    if (isTourCameraLocked()) {
+      vel.current.yaw = 0
+      vel.current.pitch = 0
+      pending.current.yaw = 0
+      pending.current.pitch = 0
+      return
+    }
     const target = controls.target
     offset.current.subVectors(camera.position, target)
 
@@ -442,6 +453,7 @@ export function CloseGestureController() {
     }
 
     const onDown = (e: PointerEvent) => {
+      if (isTourCameraLocked()) return // 튜토리얼 카메라 lock 중엔 시선/추력 제스처 stand down(A9)
       if (e.pointerType === 'mouse' && e.button !== 0) return
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
       el.setPointerCapture?.(e.pointerId)
@@ -580,7 +592,8 @@ export function NavController({
     const navSnap = navigationActor.getSnapshot()
     const recall = navSnap.matches('recall')
     const starFocused = focusActor.getSnapshot().matches('star')
-    if (!recall || !controls || starFocused) {
+    // 튜토리얼 카메라 lock 중엔 D-pad·키보드·제스처 추력/시선 항해를 stand down한다(A9 — 별 click·폼은 불간섭).
+    if (!recall || !controls || starFocused || isTourCameraLocked()) {
       if (shakeOffset.current.lengthSq() > 0) {
         camera.position.sub(shakeOffset.current)
         controls?.target.sub(shakeOffset.current)

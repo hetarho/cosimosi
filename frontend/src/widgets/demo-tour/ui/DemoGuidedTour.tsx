@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useSelector } from '@xstate/react'
 import type { ActorRefFrom } from 'xstate'
 import { useCoarsePointer } from '@/shared/ui/use-coarse-pointer'
-import { TOUR_STEPS, type TourBody } from '../model/steps'
+import { type TourBody } from '../model/steps'
 import {
   tourMachine,
   selectCanNext,
@@ -21,6 +21,7 @@ import {
   selectPhaseIndex,
   selectStepIndex,
   selectTitle,
+  selectTotal,
 } from '../model/tour.machine'
 import { useTourTarget } from './use-tour-target'
 
@@ -62,7 +63,7 @@ export function DemoGuidedTour(props: DemoGuidedTourProps) {
   const isFinal = useSelector(actor, selectIsFinalPhase)
   // 항해 실습 phase에선 target이 없으니 nav-practice 태그만으로 충분(투명 처리용).
   const navPractice = useSelector(actor, selectIsNavPractice)
-  const total = TOUR_STEPS.length
+  const total = useSelector(actor, selectTotal)
 
   const rect = useTourTarget(phase?.target ?? null)
   const reduced = usePrefersReducedMotion()
@@ -178,9 +179,9 @@ export function DemoGuidedTour(props: DemoGuidedTourProps) {
         </div>
 
         <div className="flex flex-wrap gap-1.5" aria-hidden>
-          {TOUR_STEPS.map((s, i) => (
+          {Array.from({ length: total }, (_, i) => (
             <span
-              key={s.id}
+              key={i}
               className={`h-1.5 rounded-full transition-all ${i === index ? 'w-4 bg-white/80' : 'w-1.5 bg-white/25'}`}
             />
           ))}

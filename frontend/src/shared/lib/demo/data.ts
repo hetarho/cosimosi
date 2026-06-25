@@ -30,6 +30,7 @@ import {
   presetBody,
   type PresetFragment,
 } from './diary-presets'
+import { tutorialFixture, type TutorialFixture } from './tutorial-fixture'
 import {
   genesisRoll,
   isGenesisActive,
@@ -181,12 +182,20 @@ function ensureSeeded(): void {
   seededAt = virtualNowMs()
   // 자유모드(free)는 **빈 우주에서 출발해 30일 genesis로 자라난다**(change 28) — 정적 코퍼스 일괄
   // 시드를 폐기하고 day 0엔 별이 없다. 별은 advanceDemoGenesis가 매 simulated day production 엔진으로
-  // 빚는다(addedStars). 튜토리얼(plan 48)·겹쳐보기(spec 37)는 회상·잠든 별·일기 목록을 시연하므로
-  // 성숙한 정적 코퍼스(simulate(CORPORA))를 그대로 시드한다(genesis 미적용 — 회귀 경계).
+  // 빚는다(addedStars). 첫 별 튜토리얼(change 34)도 빈 우주에서 출발한다(위 분기). 남은 흐름(온보딩 중
+  // 배경 캔버스·겹쳐보기 spec 37)만 성숙한 정적 코퍼스(simulate(CORPORA))를 그대로 시드한다(genesis 미적용).
   if (getDemoFlow() === 'free') {
     baseStars = []
     baseSynapses = []
     startGenesis()
+    return
+  }
+  // 첫 별 튜토리얼(change 34)도 **빈 우주에서 출발한다**(A1) — 자유모드 genesis도, 정적 코퍼스도 시드하지
+  // 않는다. 첫 별은 튜토리얼이 안내하는 `별 띄우기` 제출이 고정 fixture로 빚는다(demoRecordMemory →
+  // addedStars). genesis는 켜지 않는다(튜토리얼 우주는 시간이 흐르며 자라는 게 아니라 사용자가 직접 띄운다).
+  if (getDemoFlow() === 'tutorial') {
+    baseStars = []
+    baseSynapses = []
     return
   }
   // 활성 페르소나(flag)의 일기 코퍼스를 fragment 단위 연결 규칙으로 시뮬레이션한다 — 한 일기가
@@ -451,10 +460,12 @@ function createDemoDiary(
   body: string,
   entryDate: string,
   frags: { text: string; mood: Mood; intensity: number; valence: number }[],
+  fixedBaseId?: string,
 ): { recordId: string; memoryIds: string[] } {
   ensureSeeded()
   const nowIso = new Date(virtualNowMs()).toISOString()
-  const baseId = `demo-new-${crypto.randomUUID()}`
+  // 첫 별 튜토리얼은 고정 fixture id로 빚어 카메라/하이라이트가 결정론적으로 그 별을 잡는다(A7). 그 외는 랜덤.
+  const baseId = fixedBaseId ?? `demo-new-${crypto.randomUUID()}`
   const multi = frags.length > 1
 
   const ids: string[] = []
@@ -493,29 +504,45 @@ function createDemoDiary(
   return { recordId: baseId, memoryIds: ids }
 }
 
-/** 데모 작성 폼이 열 프리셋 일기를 고르고(페르소나별 회전) 본문·날짜를 돌려준다(change 25). 폼은 이
- *  본문을 read-only로 채운다. "별 나누기"·제출은 활성 프리셋(diary-presets)을 읽는다. */
+// 첫 별 튜토리얼(change 34)이 작성 중인 고정 fixture — beginDemoCompose가 세우고, segment/submit이 읽는다.
+// 프리셋 회전(active)과 별개 경로다(튜토리얼은 늘 같은 fixture·고정 id로 빚는다, A1·A7).
+let activeTutorialFixture: TutorialFixture | null = null
+
+/** 데모 작성 폼이 열 일기를 고르고 본문·날짜를 돌려준다(change 25). 폼은 이 본문을 read-only로 채운다.
+ *  튜토리얼(change 34)은 페르소나별 **고정 fixture**를, 그 외(자유모드)는 프리셋 회전을 쓴다(A1).
+ *  "별 나누기"·제출은 세워진 fixture/프리셋을 읽는다. */
 export function beginDemoCompose(): { body: string; entryDate: string } {
   ensureSeeded()
+  if (getDemoFlow() === 'tutorial') {
+    const fixture = tutorialFixture(getDemoPersona())
+    activeTutorialFixture = fixture
+    clearActiveDiaryPreset() // 프리셋 회전과 섞이지 않게(튜토리얼은 fixture 경로 단독)
+    return { body: fixture.body, entryDate: demoToday() }
+  }
+  activeTutorialFixture = null // 비-튜토리얼 작성은 fixture를 타지 않는다(튜토리얼 건너뛰기 후 잔여 fixture 방지)
   const preset = pickDiaryPreset(getDemoPersona())
   return { body: presetBody(preset), entryDate: demoToday() }
 }
 
-/** SegmentMemory 대체(데모) — 활성 프리셋 일기의 사전분절 조각을 검토용으로 돌려준다(AI 없이 즉시).
- *  valence는 mood에서 파생(서버는 조각별로 추출·영속). 작성 폼이 안 열렸으면 빈 배열. */
+/** SegmentMemory 대체(데모) — 활성 일기의 사전분절 조각을 검토용으로 돌려준다(AI 없이 즉시). 튜토리얼은
+ *  fixture 조각을, 그 외는 활성 프리셋을. valence는 mood에서 파생(서버는 조각별로 추출·영속). 없으면 빈 배열. */
 export function demoComposeSegments(): { text: string; mood: Mood; intensity: number; valence: number }[] {
+  if (activeTutorialFixture) return presetSegments(activeTutorialFixture.fragments)
   const preset = activeDiaryPreset()
   return preset ? presetSegments(preset.fragments) : []
 }
 
-/** RecordMemory 대체(데모) — 검토를 마친 조각들을 별로 빚어 우주에 더한다(서버 미호출). 활성 프리셋을
- *  비워 다음 작성이 새 일기를 고르게 한다. {recordId, memoryIds}로 production RecordMemoryResult와 동형. */
+/** RecordMemory 대체(데모) — 검토를 마친 조각들을 별로 빚어 우주에 더한다(서버 미호출). 튜토리얼은 고정
+ *  fixture id(A7)로, 그 외는 랜덤 id로 빚는다. 활성 fixture/프리셋을 비워 다음 작성이 새로 고르게 한다.
+ *  {recordId, memoryIds}로 production RecordMemoryResult와 동형. */
 export function demoRecordMemory(input: {
   body: string
   entryDate: string
   fragments: { text: string; mood: Mood; intensity: number; valence: number }[]
 }): { recordId: string; memoryIds: string[] } {
-  const result = createDemoDiary(input.body, input.entryDate, input.fragments)
+  const fixedBaseId = activeTutorialFixture?.recordId
+  const result = createDemoDiary(input.body, input.entryDate, input.fragments, fixedBaseId)
+  activeTutorialFixture = null
   clearActiveDiaryPreset()
   return result
 }
@@ -961,6 +988,7 @@ export function resetDemo(): void {
   reshapeAttempts.clear()
   abstractionStageById.clear()
   severedById.clear()
+  activeTutorialFixture = null
   resetGenesis() // ensureSeeded가 자유모드면 startGenesis로 새 난수와 함께 다시 켠다
   resetDemoClock()
 }

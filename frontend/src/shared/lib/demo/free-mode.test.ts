@@ -10,6 +10,7 @@ import {
   ensureDemoGenesisArmed,
   resetDemo,
 } from './data'
+import { tutorialFixture } from './tutorial-fixture'
 import { genesisDay, genesisTotalDays, isGenesisActive } from './genesis'
 import {
   enterDemoMode,
@@ -170,13 +171,13 @@ describe('demo genesis (change 28)', () => {
     expect(demoStars().length).toBe(after)
   })
 
-  it('튜토리얼·온보딩(비 free)은 정적 코퍼스를 그대로 시드한다 — genesis 미적용(회귀 경계)', () => {
+  it('온보딩(persona_selected — 비 free·비 tutorial)은 정적 코퍼스를 그대로 시드한다 — genesis 미적용(회귀 경계)', () => {
     enterDemoMode()
     setDemoPersona('student')
     setDemoFlow('persona_selected')
     resetDemo()
     expect(ensureDemoGenesisArmed()).toBe(false)
-    expect(demoStars().length).toBeGreaterThan(0) // 성숙한 코퍼스 우주(회상·잠든 별·일기 목록 시연용)
+    expect(demoStars().length).toBeGreaterThan(0) // 온보딩 배경 캔버스용 성숙 코퍼스 우주
   })
 
   it('튜토리얼로 전환되면 genesis가 더 별을 빚지 않는다(회귀 경계 — flow≠free 가드)', () => {
@@ -203,5 +204,40 @@ describe('demo genesis (change 28)', () => {
     resetDemo() // 처음으로/페르소나 전환 경계
     expect(ensureDemoGenesisArmed()).toBe(true)
     expect(demoStars().length).toBe(0)
+  })
+})
+
+// change 34 첫 별 튜토리얼: 데모 튜토리얼은 빈 우주에서 출발하고(A1), 제출은 고정 fixture 별/id로 빚는다(A7).
+describe('demo tutorial fixture (change 34)', () => {
+  afterEach(() => {
+    setDemoPersona('student')
+    resetDemo()
+    exitDemoMode()
+  })
+
+  it('튜토리얼 flow는 빈 우주에서 시작한다 — genesis도 정적 코퍼스도 아니다(A1)', () => {
+    enterDemoMode()
+    setDemoPersona('student')
+    setDemoFlow('tutorial')
+    resetDemo()
+    expect(demoStars().length).toBe(0)
+    expect(demoSynapses().length).toBe(0)
+    expect(ensureDemoGenesisArmed()).toBe(false) // genesis 미적용
+  })
+
+  it('튜토리얼 작성은 고정 fixture 본문·조각·id로 별을 빚는다(A7)', () => {
+    enterDemoMode()
+    setDemoPersona('student')
+    setDemoFlow('tutorial')
+    resetDemo()
+    const fixture = tutorialFixture('student')
+    const { body } = beginDemoCompose()
+    expect(body).toBe(fixture.body)
+    const segs = demoComposeSegments()
+    expect(segs.length).toBe(fixture.fragments.length)
+    const { recordId, memoryIds } = demoRecordMemory({ body, entryDate: '2026-06-23', fragments: segs })
+    expect(recordId).toBe(fixture.recordId) // 랜덤 id가 아니라 고정 fixture id
+    expect(memoryIds).toEqual(fixture.memoryIds)
+    for (const id of memoryIds) expect(demoStars().some((s) => s.memoryId === id)).toBe(true)
   })
 })

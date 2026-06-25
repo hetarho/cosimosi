@@ -74,6 +74,26 @@ export function addZoomTravel(ratio: number): void {
   state.travel.zoom += ratio
 }
 
+// ── 첫 별 튜토리얼 카메라 lock(change 34·job 50) — 순수 모듈 플래그 ──────────────────────────────
+// 튜토리얼 시작부터 첫 별 클릭/회상 설명 전까지 마우스·터치·키보드 카메라 조작을 잠근다(A9). 제스처
+// 컨트롤러·NavController·NavPad 키보드가 매 프레임/이벤트에서 이 플래그를 읽어 stand down한다. 별 click
+// raycast·HUD/폼 pointer event는 막지 않는다(이 플래그는 *카메라 입력*에만 관여). 페이지가 tour 단계에
+// 맞춰 set한다. 비반응형(컨트롤러가 핸들러/프레임에서 직접 읽는다 — React 구독 불요).
+let tourCameraLocked = false
+
+/** 튜토리얼 카메라 lock을 켜고/끈다. 켤 때 누적 제스처 입력을 비워(resetGestureInput) 잠금 직전의 관성·
+ *  눌림이 새지 않게 한다. */
+export function setTourCameraLocked(locked: boolean): void {
+  if (tourCameraLocked === locked) return
+  tourCameraLocked = locked
+  if (locked) resetGestureInput()
+}
+
+/** 카메라 조작이 튜토리얼로 잠겨 있는가(컨트롤러·키보드가 매 프레임/이벤트 read-only로 본다). */
+export function isTourCameraLocked(): boolean {
+  return tourCameraLocked
+}
+
 /** Read AND clear the accumulated look delta — NavController calls once per frame. */
 export function consumeLookDelta(): { yaw: number; pitch: number } {
   const out = { yaw: state.lookDelta.yaw, pitch: state.lookDelta.pitch }

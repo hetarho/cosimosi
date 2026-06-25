@@ -86,7 +86,9 @@ export const composeMachine = setup({
   types: {
     context: {} as Ctx,
     events: {} as Ev,
-    emitted: {} as { type: 'submitted' },
+    // submitted payload(job 50): 방금 태어난 별의 recordId + 조각 memoryId들. 첫 별 튜토리얼이 이 id로
+    // 생성 별을 프레이밍/하이라이트한다(A8). 페이로드를 무시하는 기존 구독자(HomePage 데모 폼 닫기)는 회귀 없다.
+    emitted: {} as { type: 'submitted'; recordId: string; memoryIds: string[] },
   },
   // 체험 모드(change 25)는 같은 UI·상태머신을 쓰되 AI/서버 대신 프리셋을 돌려준다 — segment는 활성
   // 프리셋의 사전분절 조각을, submit은 데모 우주에 별을 빚는 demoRecordMemory를 (둘 다 서버 미호출).
@@ -202,7 +204,16 @@ export const composeMachine = setup({
         // 순서를 바꾸면 metric이 비워진 context(fragment_count=0)를 읽는다(구 코드는 reset 전에 capture).
         onDone: {
           target: 'composing',
-          actions: ['captureSuccess', 'resetDraft', emit({ type: 'submitted' })],
+          actions: [
+            'captureSuccess',
+            'resetDraft',
+            // emit은 event.output(submit 액터 결과 — context 아님)을 싣는다 → resetDraft 뒤여도 payload는 온전.
+            emit(({ event }) => ({
+              type: 'submitted' as const,
+              recordId: event.output.recordId,
+              memoryIds: event.output.memoryIds,
+            })),
+          ],
         },
         // 실패: 서버 검증 메시지로 표면화(2.8). nonce 유지(순수 재시도 = 같은 키 → 서버 dedup).
         onError: {

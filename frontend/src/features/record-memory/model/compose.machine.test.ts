@@ -94,6 +94,10 @@ describe('composeMachine', () => {
     a.send({ type: 'SUBMIT' })
     await waitFor(a, (s) => s.matches('composing'))
     expect(onSubmitted).toHaveBeenCalledTimes(1) // 페이지가 이걸 받아 쿼리 무효화
+    // submitted payload(job 50): 첫 별 튜토리얼이 이 id로 생성 별을 프레이밍/하이라이트한다(A8).
+    expect(onSubmitted).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'submitted', recordId: 'r', memoryIds: ['m'] }),
+    )
     expect(selectBody(a.getSnapshot())).toBe('') // 드래프트 리셋
     expect(selectFragments(a.getSnapshot())).toHaveLength(0)
     // 분석은 리셋 "전" context로 — fragment_count가 0이 아니어야(captureSuccess가 resetDraft보다 먼저).

@@ -51,10 +51,16 @@ export function UniverseExplorerSheet({
           </button>
         ))}
       </div>
+      {/* 첫 별 튜토리얼(change 34): 탭 버튼과 별개로 콘텐츠 영역 전체를 정보 하이라이트 target으로 감싼다
+          (A13 일기 패널·A14 별 패널). 래퍼는 셸 콘텐츠 컬럼의 flex-1 자식이라 내부 목록의 자체 스크롤이 그대로 동작한다. */}
       {tab === 'diary' ? (
-        <DiarySheet onSelectDiary={onSelectDiary} />
+        <div data-tour-id="explorer-diary-panel" className="flex min-h-0 flex-1 flex-col gap-3">
+          <DiarySheet onSelectDiary={onSelectDiary} />
+        </div>
       ) : (
-        <StarExplorerList onSelect={onSelectStar} />
+        <div data-tour-id="explorer-star-panel" className="flex min-h-0 flex-1 flex-col gap-3">
+          <StarExplorerList onSelect={onSelectStar} />
+        </div>
       )}
     </Surface>
   )

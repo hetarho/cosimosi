@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { cn, errorMessage, reportUniverseData } from '@/shared/lib'
 import { demoFragmentText, demoRecall, isDemoMode, useDemoOverlay } from '@/shared/lib/demo'
+import { isFirstStarTourDone } from '@/shared/lib/tutorial'
 import { Eye, EyeOff, Menu, Orbit, Palette, Plus, Sparkles, Telescope } from 'lucide-react'
 import { Backdrop, DebugTuner, MorningDiffNote, Surface, primaryButtonCls } from '@/shared/ui'
 import {
@@ -71,11 +72,16 @@ const verticalBtnCls =
 export interface HomePageProps {
   /** 실로그아웃 — 앱(session-context)이 내려준다(pages는 session-context를 직접 import하지 않음, FSD). */
   onSignOut: () => void
+  /** 현재 인증된 사용자 id(데모는 null) — 첫 별 튜토리얼 per-user 완료 키(change 34). */
+  userId?: string | null
 }
 
-export function HomePage({ onSignOut }: HomePageProps) {
+export function HomePage({ onSignOut, userId = null }: HomePageProps) {
   const mode = useSelector(navigationActor, selectHeadingMode)
   const starCount = useMemoryStore((s) => s.stars.length)
+  // 실계정 첫 별 튜토리얼 활성 latch(change 34) — 빈 우주·미완료에서 켜지고, 첫 별을 만들어 starCount가
+  // 올라도 끄지 않는다(튜토리얼 도중 자기-언마운트 방지). 완료/건너뛰기 또는 다시 보기에서만 토글된다.
+  const [accountTourActive, setAccountTourActive] = useState(false)
 
   // 표면(작성·탐색·공유·선물·꾸미기·사이드바·HUD 숨김·팝오버) + 단일 Esc 라우터.
   const surfaces = useUniverseSurfaces()
@@ -109,9 +115,12 @@ export function HomePage({ onSignOut }: HomePageProps) {
   const { replayTour } = useTutorialTour({
     demoMode,
     demoTutorial,
+    accountTutorial: accountTourActive,
+    userId,
     demoPersona,
     demoClockDay,
     setDemoFlowState,
+    setAccountTourActive,
     surfaces,
   })
   const {
@@ -266,6 +275,17 @@ export function HomePage({ onSignOut }: HomePageProps) {
     })
     return () => cancelAnimationFrame(id)
   }, [universe.isSuccess, starCount, demoMode])
+
+  // 실계정 첫 별 튜토리얼 자동 시작(change 34) — 인증·게이트를 지나 `/`에 처음 들어왔고(우주 로드 완료),
+  // 개인 우주에 별이 없으며, per-user 완료 상태가 없으면 켠다(A2). universe.isPending 동안은 시작하지 않는다
+  // (isSuccess 가드). 한 번 켜지면 첫 별을 만들어 starCount가 올라도 끄지 않는다(latch) — 완료/건너뛰기에서만
+  // 꺼진다(A3). 데모는 자체 flow가 튜토리얼을 모니므로 제외.
+  useEffect(() => {
+    if (demoMode || !universe.isSuccess || starCount !== 0 || isFirstStarTourDone(userId)) return
+    // setState는 rAF로 미뤄 effect 동기 setState(cascading render)를 피한다(모닝디프와 같은 패턴).
+    const id = requestAnimationFrame(() => setAccountTourActive(true))
+    return () => cancelAnimationFrame(id)
+  }, [demoMode, universe.isSuccess, starCount, userId])
 
   // 별 수락(spec 36) 후 내 우주로 돌아오며 새 별로 fly-to. 스토어에 실릴 때까지 기다렸다 한 번만 날아가고 ?fly를 지운다.
   useEffect(() => {
@@ -485,7 +505,7 @@ export function HomePage({ onSignOut }: HomePageProps) {
       {modalUp && (
         <Backdrop
           className="z-30 backdrop-blur-sm"
-          onDismiss={demoTutorial ? undefined : closeModalSurfaces}
+          onDismiss={demoTutorial || accountTourActive ? undefined : closeModalSurfaces}
         />
       )}
 
@@ -626,9 +646,10 @@ export function HomePage({ onSignOut }: HomePageProps) {
         </div>
       )}
 
-      {/* 데모 튜토리얼 스포트라이트 투어(plan 48) — 자유모드 HUD 위에 얹히는 안내 레이어.
-          캔버스·HUD는 그대로 살아 있고(언마운트 안 함), 단계마다 버튼을 하나씩 짚는다. */}
-      {demoTutorial && <DemoGuidedTour actor={tourActor} />}
+      {/* 첫 별 튜토리얼 스포트라이트 투어(plan 48·change 34) — 데모 우주(demoTutorial)와 실계정 최초 빈
+          우주(accountTourActive) 위에 얹히는 안내 레이어. 캔버스·HUD는 그대로 살아 있고(언마운트 안 함),
+          단계마다 버튼·별·패널을 하나씩 짚는다. `new-star`는 첫 행동 phase일 때만 하이라이트된다(머신 phase target). */}
+      {(demoTutorial || accountTourActive) && <DemoGuidedTour actor={tourActor} />}
 
       {/* 우주 로딩 — 응답 전의 빈 캔버스를 "별이 없다"로 오인시키지 않는다(1.1). */}
       {universe.isPending && (
@@ -652,7 +673,8 @@ export function HomePage({ onSignOut }: HomePageProps) {
 
       {/* 빈 우주 안내 — genesis 관전 중엔 숨긴다(곧 별이 태어나고, 사용자가 쓸 수 없는 단계라 "첫 일기를
           적어"가 어긋난다). genesis가 끝나면 환영 안내가 작성을 안내한다. */}
-      {universe.isSuccess && starCount === 0 && !uiHidden && !genesisActive && (
+      {/* 첫 별 튜토리얼 중엔 이 안내를 숨긴다(change 34) — 투어 카드가 같은 안내를 직접 한다(중복 방지). */}
+      {universe.isSuccess && starCount === 0 && !uiHidden && !genesisActive && !accountTourActive && (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-10 text-center">
           <p className="text-sm text-white/55">
             아직 별이 없어요. 첫 일기를 적어 첫 별을 띄워보세요.

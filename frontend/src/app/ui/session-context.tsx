@@ -7,6 +7,12 @@ import { sessionMachine } from '../model/session.machine'
 // app/model/session.machine.ts(순수). Provider는 App이 RouterProvider 바깥에 마운트한다.
 export const SessionContext = createActorContext(sessionMachine)
 
+/** 현재 인증된 사용자 id(없으면 null) — 첫 별 튜토리얼 per-user 완료 상태 키(change 34). 셸이 HomePage로
+ *  내려준다(pages는 session-context를 직접 import하지 않는다 — FSD 단방향). */
+export function useSessionUserId(): string | null {
+  return SessionContext.useSelector((s) => s.context.session?.user?.id ?? null)
+}
+
 // Google OAuth 복귀 주소 — 우주는 이제 루트(`/`)다. 풀페이지 라운드트립이라 `/sign-in`의
 // redirect param은 여기로 못 실린다(복귀는 항상 `/`; 인증 후 SessionGate가 우주 셸을 띄운다).
 const oauthRedirectTo = () => `${window.location.origin}/`

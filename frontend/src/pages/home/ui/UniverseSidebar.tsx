@@ -48,11 +48,11 @@ export function UniverseSidebar({
             로그아웃
           </button>
         )}
-        {isDemo && (
-          <button type="button" className={itemCls} onClick={onReplayTour}>
-            둘러보기 다시 보기
-          </button>
-        )}
+        {/* 둘러보기 다시 보기(plan 48·change 34) — 데모는 고정 fixture로 첫 별 흐름을 다시, 실계정은 현재
+            우주를 삭제하지 않는 비파괴 둘러보기로 다시 시작한다(A18). 두 모드 모두 제공한다. */}
+        <button type="button" className={itemCls} onClick={onReplayTour}>
+          둘러보기 다시 보기
+        </button>
         {!isDemo && (
           <button type="button" className={itemCls} onClick={onMyPage}>
             마이페이지

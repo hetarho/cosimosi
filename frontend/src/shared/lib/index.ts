@@ -15,6 +15,14 @@ export { errorMessage } from './error'
 export { mulberry32 } from './prng'
 export { blobPath, type BlobOptions } from './svg-blob'
 export {
+  subscribeTourStarRect,
+  setTourStarTarget,
+  getTourStarTarget,
+  publishTourStarRect,
+  getTourStarRect,
+  type TourStarRect,
+} from './tour-target'
+export {
   fibonacciStarPosition,
   scatterDirection,
   applyAngularDrift,

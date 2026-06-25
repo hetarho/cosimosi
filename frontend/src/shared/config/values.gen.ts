@@ -273,4 +273,8 @@ export const VALUES = {
     lookThresholdRad: 0.9,
     thrustDistanceThreshold: 8,
   },
+  tutorial: {
+    starTargetPadPx: 16,
+    starRectMinPx: 44,
+  },
 } as const

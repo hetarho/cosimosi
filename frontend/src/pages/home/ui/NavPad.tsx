@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
 import { useSelector } from '@xstate/react'
-import { navigationActor, selectHeadingMode } from '@/widgets/universe-canvas'
+import { navigationActor, selectHeadingMode, isTourCameraLocked } from '@/widgets/universe-canvas'
 import { focusActor, selectIsStarFocus } from '@/entities/memory'
 import { isTypingTarget } from '../lib/keyboard'
 
@@ -61,7 +61,7 @@ export function NavPad({ suppressed }: { suppressed: boolean }) {
       setMove({ x, y, z })
     }
     const onDown = (e: KeyboardEvent) => {
-      if (e.repeat || !(e.code in KEY_MOVE) || isTypingTarget()) return
+      if (e.repeat || !(e.code in KEY_MOVE) || isTypingTarget() || isTourCameraLocked()) return // 튜토리얼 lock 중 키보드 항해 stand down(A9)
       e.preventDefault()
       held.add(e.code)
       recompute()

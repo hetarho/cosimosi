@@ -118,6 +118,7 @@ export function MemoryForm() {
   return (
     <form
       className="flex w-full flex-col gap-3"
+      data-tour-id="compose-form"
       onSubmit={(e) => {
         e.preventDefault()
         composeActor.send({ type: phase === 'compose' ? 'SEGMENT' : 'SUBMIT' })
@@ -131,6 +132,7 @@ export function MemoryForm() {
               덧붙인 문장은 조각이 되지 못한 채 기록 원본에만 남는 어긋남이 생긴다. */}
           <textarea
             className={`${inputCls} ph-no-capture h-24 resize-none ${demo ? 'opacity-80' : ''}`}
+            data-tour-id="compose-body"
             placeholder="오늘의 기억을 적어보세요…"
             value={body}
             disabled={segmenting}
@@ -176,7 +178,10 @@ export function MemoryForm() {
           <p className="text-xs text-white/45">
             감정과 내용을 다듬고, 필요하면 조각을 추가하거나 지운 뒤 별을 띄워 주세요.
           </p>
-          <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto overscroll-contain">
+          <ul
+            data-tour-id="review-panel"
+            className="flex max-h-60 flex-col gap-2 overflow-y-auto overscroll-contain"
+          >
             {fragments.map((f) => (
               <FragmentCard key={f.id} fragment={f} disabled={submitting} />
             ))}
@@ -205,6 +210,7 @@ export function MemoryForm() {
             <button
               type="submit"
               disabled={submitting || fragments.length === 0}
+              data-tour-id="submit-stars"
               className="flex-1 rounded-md bg-indigo-500/80 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
             >
               {submitting ? '별 띄우는 중…' : `별 띄우기 (${fragments.length})`}

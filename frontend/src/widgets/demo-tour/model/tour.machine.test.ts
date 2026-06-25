@@ -1,98 +1,122 @@
-// tour.machine 순수 단위 테스트(change 13) — React 없이 createActor+send+getSnapshot로 진행 시퀀스와
-// 게이팅을 고정한다. 항해 실습 navSampler는 placeholder(noop)라 자동 진행하지 않으므로 테스트가
-// PRACTICE_MET를 직접 보내 실습 충족을 흉내 낸다.
+// tour.machine 순수 단위 테스트(change 34) — React 없이 createActor+send+getSnapshot로 첫 별 흐름의 진행
+// 시퀀스·게이팅·맥락 필터를 고정한다. 항해 실습 navSampler는 placeholder(noop)라 테스트가 PRACTICE_MET를
+// 직접 보내 충족을 흉내 낸다.
 import { createActor } from 'xstate'
 import { describe, expect, test } from 'vitest'
-import { TOUR_STEPS } from './steps'
-import { tourMachine, selectCanNext, selectIsDone, selectIsNavPractice } from './tour.machine'
+import { activeSteps, type TourContext } from './steps'
+import {
+  tourMachine,
+  selectCanNext,
+  selectIsDone,
+  selectIsNavPractice,
+  selectCameraLocked,
+  selectStepId,
+  selectTotal,
+} from './tour.machine'
 
-function start(step = 0) {
-  const a = createActor(tourMachine, { input: { startStep: step } })
+function start(context: TourContext = 'demo', step = 0) {
+  const a = createActor(tourMachine, { input: { context, startStep: step } })
   a.start()
   return a
 }
 const stepIdx = (a: ReturnType<typeof start>) => a.getSnapshot().context.stepIndex
 const phaseIdx = (a: ReturnType<typeof start>) => a.getSnapshot().context.phaseIndex
 
-describe('tour.machine 진행·게이팅', () => {
-  test('정보 phase는 can(NEXT)=true이고 NEXT로 다음 step으로 진행한다', () => {
-    const a = start(1) // 'theme' — 단일 정보 phase
+describe('tour.machine 첫 별 흐름·게이팅(change 34)', () => {
+  test('첫 단계는 action(빈 우주 안내 + 새 별 띄우기) — can(NEXT)=false, 작성 폼 열림으로 진행한다(A4)', () => {
+    const a = start('demo', 0)
+    expect(selectStepId(a.getSnapshot())).toBe('empty-intro')
+    expect(selectCanNext(a.getSnapshot())).toBe(false)
+    a.send({ type: 'NEXT' }) // 무시되어야 한다(action)
+    expect(stepIdx(a)).toBe(0)
+    a.send({ type: 'COMPOSE_CHANGED', open: true, phase: 'compose' }) // compose-open 충족
+    expect(selectStepId(a.getSnapshot())).toBe('compose')
+    expect(phaseIdx(a)).toBe(0)
+  })
+
+  test('작성 단계: 정보→별 나누기(action)→정보→별 띄우기(action)→생성 별 단계(A5·A6)', () => {
+    const a = start('demo', 1) // compose
+    expect(selectCanNext(a.getSnapshot())).toBe(true) // compose-body 정보 phase
+    a.send({ type: 'NEXT' })
+    expect(phaseIdx(a)).toBe(1) // segment 행동 phase
+    expect(selectCanNext(a.getSnapshot())).toBe(false)
+    a.send({ type: 'COMPOSE_CHANGED', open: true, phase: 'review' }) // segmented 충족
+    expect(phaseIdx(a)).toBe(2) // review-panel 정보 phase
     expect(selectCanNext(a.getSnapshot())).toBe(true)
     a.send({ type: 'NEXT' })
-    expect(stepIdx(a)).toBe(2) // 마지막 phase였으니 다음 step(persona)
-    expect(phaseIdx(a)).toBe(0)
-  })
-
-  test('행동 phase는 can(NEXT)=false — NEXT는 무시되고 관찰 이벤트로만 진행한다', () => {
-    const a = start(2) // persona: phase0 = persona-open(행동)
+    expect(phaseIdx(a)).toBe(3) // submit-stars 행동 phase
     expect(selectCanNext(a.getSnapshot())).toBe(false)
-    a.send({ type: 'NEXT' }) // 무시되어야 한다
-    expect(phaseIdx(a)).toBe(0)
-    a.send({ type: 'POPOVER_CHANGED', popover: 'persona' }) // persona-open 충족
-    expect(phaseIdx(a)).toBe(1) // persona-changed phase
+    a.send({ type: 'SUBMITTED' }) // submitted 충족 → 다음 단계
+    expect(selectStepId(a.getSnapshot())).toBe('generated-star')
   })
 
-  test('persona-changed는 진입 baseline과 다를 때만 진행한다', () => {
-    const a = start(2)
-    a.send({ type: 'PERSONA_CHANGED', persona: 'student' }) // 현재 관찰 페르소나
-    a.send({ type: 'POPOVER_CHANGED', popover: 'persona' }) // phase0 → phase1(baseline=student)
-    expect(phaseIdx(a)).toBe(1)
-    a.send({ type: 'PERSONA_CHANGED', persona: 'student' }) // 같음 → 진행 안 함
-    expect(phaseIdx(a)).toBe(1)
-    a.send({ type: 'PERSONA_CHANGED', persona: 'worker' }) // 다름 → 진행
-    expect(phaseIdx(a)).toBe(2) // 마무리 정보 phase
+  test('생성 별 단계는 action — 별 클릭(STAR_FOCUSED)으로 회상 패널 단계로 진행한다(A10)', () => {
+    const a = start('demo', 2) // generated-star
+    expect(selectCanNext(a.getSnapshot())).toBe(false)
+    a.send({ type: 'STAR_FOCUSED', id: 'demo-tutorial-student-f0' })
+    expect(selectStepId(a.getSnapshot())).toBe('recall-panel')
   })
 
-  test('UI 숨김/보이기 행동 phase를 차례로 충족하면 정보 phase로, 그다음 NEXT로 다음 step', () => {
-    const a = start(0) // ui-toggle: ui-hidden → ui-shown → 정보
-    a.send({ type: 'UI_TOGGLED', hidden: true }) // ui-hidden 충족
-    expect(stepIdx(a)).toBe(0)
-    expect(phaseIdx(a)).toBe(1)
-    a.send({ type: 'UI_TOGGLED', hidden: false }) // ui-shown 충족
-    expect(phaseIdx(a)).toBe(2)
-    expect(selectCanNext(a.getSnapshot())).toBe(true) // 정보 phase
+  test('회상 패널은 정보 2 phase → 망원경 단계로(`다음`으로 진행)', () => {
+    const a = start('demo', 3) // recall-panel
+    expect(selectCanNext(a.getSnapshot())).toBe(true)
     a.send({ type: 'NEXT' })
-    expect(stepIdx(a)).toBe(1) // theme
+    expect(phaseIdx(a)).toBe(1)
+    a.send({ type: 'NEXT' })
+    expect(selectStepId(a.getSnapshot())).toBe('telescope')
   })
 
-  test('항해 실습 phase는 nav-practice 태그·can(NEXT)=false, PRACTICE_MET로 진행한다', () => {
-    const a = start(4) // 시점 전환: phase0 = 정보(nebula)
+  test('카메라 lock: 빈 우주~회상은 잠기고, 망원경부터 풀린다(A9·A12)', () => {
+    for (const [step, locked] of [
+      [0, true], // empty-intro
+      [2, true], // generated-star
+      [3, true], // recall-panel
+      [4, false], // telescope
+      [5, false], // view
+    ] as const) {
+      expect(selectCameraLocked(start('demo', step).getSnapshot())).toBe(locked)
+    }
+  })
+
+  test('망원경: 일기 패널(정보) → 별 탭(action, 탭 전환으로 진행) → 별 패널(정보)(A13·A14)', () => {
+    const a = start('demo', 4) // telescope
+    a.send({ type: 'EXPLORER_TOGGLED', open: true }) // explorer-open 충족(망원경 버튼)
+    expect(phaseIdx(a)).toBe(1) // 일기 패널 정보 phase
+    expect(selectCanNext(a.getSnapshot())).toBe(true)
+    a.send({ type: 'NEXT' })
+    expect(phaseIdx(a)).toBe(2) // 별 탭 행동 phase
+    expect(selectCanNext(a.getSnapshot())).toBe(false)
+    a.send({ type: 'EXPLORER_TAB_CHANGED', tab: 'star' }) // explorer-star-selected 충족
+    expect(phaseIdx(a)).toBe(3) // 별 패널 정보 phase
+  })
+
+  test('항해 실습은 nav-practice 태그·can(NEXT)=false, PRACTICE_MET로 진행한다', () => {
+    const a = start('demo', 5) // view: phase0 정보(nebula)
     expect(selectIsNavPractice(a.getSnapshot())).toBe(false)
-    a.send({ type: 'NEXT' }) // 정보 → phase1(nebula-rotated, 실습)
+    a.send({ type: 'NEXT' }) // → phase1 nebula-rotated(실습)
     expect(selectIsNavPractice(a.getSnapshot())).toBe(true)
     expect(selectCanNext(a.getSnapshot())).toBe(false)
     a.send({ type: 'PRACTICE_MET' })
     expect(phaseIdx(a)).toBe(2) // nebula-zoomed(실습)
-    expect(selectIsNavPractice(a.getSnapshot())).toBe(true)
   })
 
-  test('PREV는 step 경계를 넘어 이전 step 마지막 phase로 돌아간다', () => {
-    const a = start(1) // theme phase0
-    a.send({ type: 'PREV' })
-    expect(stepIdx(a)).toBe(0) // ui-toggle
-    expect(phaseIdx(a)).toBe(TOUR_STEPS[0].phases.length - 1) // 마지막 phase
+  test('account 맥락은 데모 페르소나/시간 단계가 없다(A16)', () => {
+    const accountIds = activeSteps('account').map((s) => s.id)
+    expect(accountIds).not.toContain('persona')
+    expect(accountIds).not.toContain('time')
+    expect(activeSteps('demo')).toContainEqual(expect.objectContaining({ id: 'persona' }))
+    // 총 단계 수도 맥락별로 다르다(데모 = account + 페르소나·시간 2단계).
+    expect(selectTotal(start('account').getSnapshot())).toBe(activeSteps('account').length)
+    expect(selectTotal(start('demo').getSnapshot())).toBe(activeSteps('account').length + 2)
   })
 
-  test('EXIT은 done으로 수렴한다', () => {
-    const a = start(1)
+  test('EXIT은 done으로, RESET은 done에서도 맥락+커서를 맞춰 재진입한다(다시 보기)', () => {
+    const a = start('demo', 3)
     a.send({ type: 'EXIT' })
     expect(selectIsDone(a.getSnapshot())).toBe(true)
-  })
-
-  test('마지막 단계의 마지막 phase에서 NEXT는 done으로 수렴한다', () => {
-    const a = start(TOUR_STEPS.length - 1) // 'end' — 단일 정보 phase
-    expect(selectCanNext(a.getSnapshot())).toBe(true)
-    a.send({ type: 'NEXT' })
-    expect(selectIsDone(a.getSnapshot())).toBe(true)
-  })
-
-  test('RESET은 done에서도 커서를 맞춰 재진입한다(다시 보기)', () => {
-    const a = start(3)
-    a.send({ type: 'EXIT' })
-    expect(selectIsDone(a.getSnapshot())).toBe(true)
-    a.send({ type: 'RESET', step: 0 })
+    a.send({ type: 'RESET', step: 0, context: 'account' })
     expect(selectIsDone(a.getSnapshot())).toBe(false)
     expect(stepIdx(a)).toBe(0)
-    expect(phaseIdx(a)).toBe(0)
+    expect(selectStepId(a.getSnapshot())).toBe('empty-intro')
   })
 })

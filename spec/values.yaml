@@ -422,3 +422,9 @@ demo_tour:
   zoom_ratio_threshold: 0.25 #      멀리서 줌 실습: nebula 줌 반경 변화 누적 비율(|fraction| 합) 임계
   look_threshold_rad: 0.9 #         가까이서 시선 실습: recall look 회전 누적 각(rad) 임계
   thrust_distance_threshold: 8 #    가까이서 전진 실습: recall 전진 누적 거리(world 단위) 임계
+
+# ── 첫 별 튜토리얼 (tutorial) — change 34·job 50. 캔버스 별 spotlight·카메라 lock 해제 타이밍 ──
+#    데모/실계정 공통 첫 별 흐름의 조절 가능한 스칼라. 고정 일기/조각 콘텐츠·fixture 배열은 콘텐츠라 코드에 둔다.
+tutorial:
+  star_target_pad_px: 16 #          생성된 별 spotlight 구멍이 화면 투영 별 중심에서 갖는 반경(px) — 캔버스 별엔 DOM rect가 없어 투영점 둘레로 직접 친다
+  star_rect_min_px: 44 #            투영 별 spotlight 최소 변(px) — 멀리 있어 화면상 작아도 누를 수 있는 최소 히트 영역
