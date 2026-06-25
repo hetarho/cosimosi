@@ -1,0 +1,8 @@
+{
+  "name": "cosimosi",
+  "description": "Cosimosi spec workflow: plan / change / code-review authoring, job generation, and end-to-end implementation.",
+  "version": "1.0.0",
+  "author": {
+    "name": "cosimosi"
+  }
+}

@@ -70,8 +70,8 @@ writeFileSync(out, doc, 'utf8')
 console.log(`Created spec/jobs/${jobnn}.${slugify(title)}.md  (type=${type}, source=${sourceRef}, plan=${planRef})`)
 console.log(
   type === 'refactor'
-    ? `Next: /create-refactor-job ${nn} fills job ${jobnn}, then /implement-job ${jobnn} implements it.`
-    : `Next: /implement-job ${jobnn} fills the implementation checklist, builds, verifies, and reflects to SSOT.`,
+    ? `Next: /cosimosi:create-refactor-job ${nn} fills job ${jobnn}, then /cosimosi:implement-job ${jobnn} implements it.`
+    : `Next: /cosimosi:implement-job ${jobnn} fills the implementation checklist, builds, verifies, and reflects to SSOT.`,
 )
 
 function frontmatterTitle(t) {

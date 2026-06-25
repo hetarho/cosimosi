@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cosimosi-local",
+  "description": "Local cosimosi project plugins.",
+  "owner": {
+    "name": "cosimosi"
+  },
+  "plugins": [
+    {
+      "name": "cosimosi",
+      "description": "Cosimosi spec workflow skills.",
+      "source": "./.claude/plugins/cosimosi",
+      "version": "1.0.0"
+    }
+  ]
+}

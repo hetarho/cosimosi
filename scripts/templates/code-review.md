@@ -6,10 +6,10 @@ created: {{DATE}}
 scope: code-quality
 ---
 
-# Refactor Report {{NN}}: {{TITLE}}
+# Code Review {{NN}}: {{TITLE}}
 
 > Read-only code-quality and architecture review. This report records refactor
-> opportunities only; implementation belongs in `spec/jobs/`.
+> opportunities only; implementation belongs in `spec/jobs/`. Write it in English.
 
 ## Scope
 <!-- What was reviewed: full codebase, frontend, backend, specific modules, or current diff. -->
@@ -44,6 +44,5 @@ scope: code-quality
 <!-- Commands that passed, failed, or were blocked. Include blockers honestly. -->
 
 ## Candidate Jobs
-<!-- Each item should be a coherent implementation job candidate for /create-refactor-job. -->
-1. 
-
+<!-- Each item should be a coherent implementation job candidate for /cosimosi:create-refactor-job. -->
+1.

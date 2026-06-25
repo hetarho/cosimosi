@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Scaffold the next change proposal (targets an existing plan).
 // Usage: node new-change.mjs <planNN> "<title>"  (pnpm spec:change <planNN> "<title>")
-// /create-change interviews the user, then fills 현재→목표·범위·수용기준 (WHAT delta). STEPS live in the job.
+// /cosimosi:create-change interviews the user, then fills as-is→to-be · scope · acceptance criteria (WHAT delta). STEPS live in the job.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
@@ -14,7 +14,7 @@ const tpl = join(root, 'scripts', 'templates', 'change.md')
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const planArg = args[0]
 const title = args.slice(1).join(' ').trim()
-if (!planArg || !title) { console.error('Usage: pnpm spec:change <planNN> "<title>"  (e.g. pnpm spec:change 15 "테마 DB 관리")'); process.exit(1) }
+if (!planArg || !title) { console.error('Usage: pnpm spec:change <planNN> "<title>"  (e.g. pnpm spec:change 15 "manage themes in DB")'); process.exit(1) }
 
 const pnn = String(planArg).replace(/[^0-9]/g, '').padStart(2, '0')
 const planFile = readdirSync(planDir).find((f) => f.startsWith(pnn + '.') && f.endsWith('.md'))
@@ -26,7 +26,7 @@ const out = join(changesDir, `${nn}.${slugify(title)}.md`)
 if (existsSync(out)) { console.error(`${out} exists`); process.exit(1) }
 writeFileSync(out, fill(readFileSync(tpl, 'utf8'), { NN: nn, TITLE: title, PLAN: planRef }), 'utf8')
 console.log(`Created spec/changes/${nn}.${slugify(title)}.md  (targets ${planRef})`)
-console.log('Next: /create-change fills 현재→목표·범위·수용기준 via interview, then /create-change-job ' + nn + '.')
+console.log('Next: /cosimosi:create-change fills as-is→to-be · scope · acceptance criteria via interview, then /cosimosi:create-change-job ' + nn + '.')
 
 // Monotonic across live + archive/: completed proposals move to archive/ but their numbers must never be reused
 // (jobs reference changes by number via frontmatter `source`). Scanning only the live dir re-issues numbers.

@@ -1,6 +1,6 @@
 # spec/jobs — 구현 작업 문서 (jobs)
 
-> plan(신규)·changes(수정)의 WHAT을 **구현하는 작업 문서**. 시퀀셜 넘버링. `/implement-job NN`이 이걸 보고 구현한다.
+> plan(신규)·changes(수정)의 WHAT을 **구현하는 작업 문서**. 시퀀셜 넘버링. `/cosimosi:implement-job NN`이 이걸 보고 구현한다.
 
 ## 무엇
 
@@ -22,19 +22,19 @@ title: ...
 
 ## 흐름
 
-- **신규:** `/create-plan` → `/create-new-job NN`(`pnpm spec:job plan NN`) → `/implement-job MM`
-- **수정:** `/create-change` → `/create-change-job NN`(`pnpm spec:job change NN`) → `/implement-job MM`
+- **신규:** `/cosimosi:create-plan` → `/cosimosi:create-plan-job NN`(`pnpm spec:job plan NN`) → `/cosimosi:implement-job MM`
+- **수정:** `/cosimosi:create-change` → `/cosimosi:create-change-job NN`(`pnpm spec:job change NN`) → `/cosimosi:implement-job MM`
 
-`/implement-job`은 frontmatter의 `type`으로 분기하고, 끝나면 바뀐 현실을 SSOT(plan/policy/tech/values)에 반영한다. 변경(`type: change`)은 출처 `changes/` 문서를 `changes/archive/`로 옮긴다. 그리고 **완료된 job 자체도 `jobs/archive/`로 옮겨** `jobs/`엔 진행 중(todo/doing)만 남긴다(changes와 같은 방식).
+`/cosimosi:implement-job`은 frontmatter의 `type`으로 분기하고, 끝나면 바뀐 현실을 SSOT(plan/policy/tech/values)에 반영한다. 변경(`type: change`)은 출처 `changes/` 문서를 `changes/archive/`로 옮긴다. 그리고 **완료된 job 자체도 `jobs/archive/`로 옮겨** `jobs/`엔 진행 중(todo/doing)만 남긴다(changes와 같은 방식).
 
 ## 구조
 
 - `jobs/NN.slug.md` — 진행 중(todo/doing) 작업 문서.
-- `jobs/archive/` — 완료된 작업(기록). 완료 시 `/implement-job`이 옮긴다(없으면 생성). 아카이브 문서는 **역사 기록**이라 본문 상대 링크는 stale될 수 있고(깊이 보정 안 함), frontmatter `source`/`plan` 번호만 정확히 유지한다.
+- `jobs/archive/` — 완료된 작업(기록). 완료 시 `/cosimosi:implement-job`이 옮긴다(없으면 생성). 아카이브 문서는 **역사 기록**이라 본문 상대 링크는 stale될 수 있고(깊이 보정 안 함), frontmatter `source`/`plan` 번호만 정확히 유지한다.
 
 ## 번호
 
-`jobs/NN.slug.md` — job 자체의 시퀀셜 번호(plan/change 번호와 독립). `/implement-job NN`에 이 번호를 넘긴다. `pnpm spec:job`은 **`archive/`까지 세어 단조 증가**(`live + archive`의 max+1)하므로, 완료 job을 아카이브해도 번호가 재사용되지 않는다 — job 번호는 `/implement-job`·frontmatter가 참조하는 load-bearing 값이라 충돌하면 안 된다.
+`jobs/NN.slug.md` — job 자체의 시퀀셜 번호(plan/change 번호와 독립). `/cosimosi:implement-job NN`에 이 번호를 넘긴다. `pnpm spec:job`은 **`archive/`까지 세어 단조 증가**(`live + archive`의 max+1)하므로, 완료 job을 아카이브해도 번호가 재사용되지 않는다 — job 번호는 `/cosimosi:implement-job`·frontmatter가 참조하는 load-bearing 값이라 충돌하면 안 된다.
 
 ## 동시 작업 (멀티 에이전트)
 

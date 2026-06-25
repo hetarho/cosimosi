@@ -9,36 +9,37 @@ title: {{TITLE}}
 
 # Job {{JOB}}: {{TITLE}}  ({{TYPE}})
 
-> 구현 작업 문서. 출처 스펙: [{{SOURCE}}](../{{SOURCE}}.md).
-> `/implement-job {{JOB}}`이 아래 두 체크리스트로 구현한다. 끝나면 SSOT(plan/policy/values) 반영, status: done.
+> Implementation work doc. Source spec: [{{SOURCE}}](../{{SOURCE}}.md).
+> /cosimosi:implement-job {{JOB}} builds it via the two checklists below. When done, reflect the result into the
+> SSOT (plan/policy/values) and set status: done. Write it in English.
 
-## 인수 조건 (acceptance — 기획 관점, {{SOURCE}}에서)
-<!-- 출처 스펙의 수용 기준. 구현 후 각 항목이 코드에서 참인지 검증한다. -->
+## Acceptance Criteria (from {{SOURCE}})
+<!-- The source spec's acceptance criteria. After building, verify each is true in the running code. -->
 - [ ] A1 …
 
-## 구현 체크리스트 (implementation — 구현 관점)
-<!-- 어떻게 만드나. 위→아래 순서. [P]=서로 다른 파일·의존 없는 병렬. (gen)/(migrate)/(gen:values) 표시.
-     config·튜닝 수치는 코드 하드코딩 금지 — spec/values.yaml에 추가 후 (gen:values)로 생성 상수 import. -->
+## Implementation Checklist
+<!-- How to build it, top to bottom. [P] = parallel (different files, no dependency). Flag (gen)/(migrate)/(gen:values).
+     Config/tuning numbers are never hardcoded — add them to spec/values.yaml, then import the (gen:values) constant. -->
 - [ ] T001 …
 
-## 참고 (grounding)
-- 헌법(불변 원칙): [00.overview](../plan/00.overview.md) §불변 원칙
-- 건드리는 tech/policy/values: <!-- -->
+## Grounding
+- Constitution (the 8 invariants): [00.overview](../plan/00.overview.md) §불변 원칙
+- tech / policy / values touched: <!-- -->
 
-## 영향 파일 (blast radius)
-<!-- 출처 스펙·코드 grep으로 찾은 정확한 경로 — 이 범위 밖은 안 건드린다. -->
+## Affected files (blast radius)
+<!-- Exact paths found from the source spec + a code grep — nothing outside this scope is touched. -->
 
-## 검증 / DoD
-- [ ] 위 **인수 조건** 전 항목이 현재 코드에서 참
-- [ ] (type=change면) 기존 plan 수용 기준 회귀 없음
-- [ ] 코드젠/마이그레이션/values 적용(해당 시): `pnpm gen` / `pnpm db:migrate` / `pnpm gen:values`
-- [ ] FE `--filter @cosimosi/web build`·`lint` / BE `go vet ./... && go build ./...`(Docker) 통과(해당 시)
-- [ ] 헌법 sanity: `records`/`memories`/`memory_links` 행 삭제·`records` 본문 UPDATE 없음
+## Verification / DoD
+- [ ] Every **Acceptance Criteria** item above is true in the current code
+- [ ] (if type=change) no regression of the existing plan's acceptance criteria
+- [ ] Codegen / migration / values applied (if any): `pnpm gen` / `pnpm db:migrate` / `pnpm gen:values`
+- [ ] FE `--filter @cosimosi/web build`·`lint` / BE `go vet ./... && go build ./...` (Docker) pass (if any)
+- [ ] Constitution sanity: no row deletes on `records`/`memories`/`memory_links`, no body UPDATE on `records`
 
-## 리뷰
-- [ ] `/code-review` 반영(기각은 이유) · 비자명 시 `/codex:review --background`
+## Review
+- [ ] `/code-review` applied (rejections noted with reason) · for non-trivial logic, `/codex:review --background`
 
-## 완료 후 — SSOT 반영
-- [ ] `plan/`을 새 현실로 갱신 · 영향받은 `policy/**`·`tech/**` · 튜닝 수치는 `spec/values.yaml`(+`pnpm gen:values`)
-- [ ] (type=change면) `changes/` 출처 문서를 `changes/archive/`로 이동
-- [ ] 00.overview 진행 현황 ✅ · 이 문서 frontmatter `status: done`
+## After completion — reflect into the SSOT
+- [ ] Update `plan/` to the new reality · update affected `policy/**`·`tech/**` · tuned numbers → `spec/values.yaml` (+`pnpm gen:values`)
+- [ ] (if type=change) move the `changes/` source doc to `changes/archive/`
+- [ ] 00.overview progress board ✅ · this doc's frontmatter `status: done`

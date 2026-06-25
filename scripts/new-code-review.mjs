@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Scaffold the next refactor/code-quality report.
-// Usage: node new-refactor-report.mjs "<title>"  (pnpm spec:code-review "<title>")
-// /create-refactor-report performs the read-only audit, then fills spec/code-review/NN.slug.md.
+// Scaffold the next code-quality / code-review report.
+// Usage: node new-code-review.mjs "<title>"  (pnpm spec:code-review "<title>")
+// /cosimosi:create-code-review performs the read-only audit, then fills spec/code-review/NN.slug.md.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const reportDir = join(root, 'spec', 'code-review')
-const tpl = join(root, 'scripts', 'templates', 'refactor-report.md')
+const tpl = join(root, 'scripts', 'templates', 'code-review.md')
 
 const title = process.argv.slice(2).filter((a) => !a.startsWith('--')).join(' ').trim()
 if (!title) {
@@ -26,7 +26,7 @@ if (existsSync(out)) {
 
 writeFileSync(out, fill(readFileSync(tpl, 'utf8'), { NN: nn, TITLE: title, DATE: localDate() }), 'utf8')
 console.log(`Created spec/code-review/${nn}.${slug}.md`)
-console.log(`Next: /create-refactor-report fills the read-only report, then /create-refactor-job ${nn} creates an implementation job from selected findings.`)
+console.log(`Next: /cosimosi:create-code-review fills the read-only report, then /cosimosi:create-refactor-job ${nn} creates an implementation job from selected findings.`)
 
 function nextNum(dir) {
   const archive = join(dir, 'archive')

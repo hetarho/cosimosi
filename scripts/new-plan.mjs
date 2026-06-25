@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Scaffold the next sequential plan doc. Usage: node new-plan.mjs "<title>"  (pnpm spec:plan "<title>")
-// /create-plan interviews the user, then lays down spec/plan/NN.slug.md from the template + fills it.
+// /cosimosi:create-plan interviews the user, then lays down spec/plan/NN.slug.md from the template + fills it.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
@@ -17,7 +17,7 @@ const out = join(planDir, `${nn}.${slugify(title)}.md`)
 if (existsSync(out)) { console.error(`${out} exists`); process.exit(1) }
 writeFileSync(out, fill(readFileSync(tpl, 'utf8'), { NN: nn, TITLE: title }), 'utf8')
 console.log(`Created spec/plan/${nn}.${slugify(title)}.md`)
-console.log('Next: /create-plan fills it via interview (목적·범위·설계요점·수용기준 + 필요한 policy/ux), then adds it to 00.overview.')
+console.log('Next: /cosimosi:create-plan fills it via interview (purpose · scope · design · acceptance criteria + the policy/ux it needs), then adds it to 00.overview.')
 
 function nextNum(dir) { const m = readdirSync(dir).map((f) => parseInt((f.match(/^(\d+)/) || [])[1], 10)).filter((n) => !isNaN(n)); return String((m.length ? Math.max(...m) : 0) + 1).padStart(2, '0') }
 function slugify(s) { return s.toLowerCase().replace(/[\\/:*?"<>|.]+/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'untitled' }

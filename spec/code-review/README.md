@@ -21,9 +21,9 @@ into buildable checklist work.
 
 ## Flow
 
-1. `/create-refactor-report` -> `pnpm spec:code-review "title"`
-2. `/create-refactor-job NN` -> `pnpm spec:job refactor NN "job title"`
-3. `/implement-job MM` or an equivalent implementation flow executes the job.
+1. `/cosimosi:create-code-review` -> `pnpm spec:code-review "title"`
+2. `/cosimosi:create-refactor-job NN` -> `pnpm spec:job refactor NN "job title"`
+3. `/cosimosi:implement-job MM` or an equivalent implementation flow executes the job.
 
 ## Numbering
 

@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "cosimosi@cosimosi-local": true
+  },
+  "extraKnownMarketplaces": {
+    "cosimosi-local": {
+      "source": {
+        "source": "file",
+        "path": "./.claude-plugin/marketplace.json"
+      }
+    }
+  }
+}

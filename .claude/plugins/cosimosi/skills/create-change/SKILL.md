@@ -6,7 +6,7 @@ description: >-
   NN behavior", "extend/refactor this feature", "let's manage X in the DB instead". It interrogates the user for the
   delta (as-is → to-be · scope/non-goals · acceptance criteria) — NOT a one-line prompt — scaffolds the next
   sequential change with `pnpm spec:change <planNN> "<title>"`, fills it, and notes affected policy/tech/values.
-  It does NOT implement — that's /create-change-job then /implement-job. All docs are written in
+  It does NOT implement — that's /cosimosi:create-change-job then /cosimosi:implement-job. All docs are written in
   English. Do NOT auto-commit.
 ---
 
@@ -33,6 +33,6 @@ but a delta. Authoring it by interview (not a one-liner) is the safety gate: the
    interview. Note affected `policy/**`/`tech/**`; **any config/tuning number the change adds or tweaks goes in
    `spec/values.yaml`** (never hardcoded in FE/BE) — list it so the job adds it there.
 4. **Register** — in the 00.overview progress board, note the in-flight change against plan NN.
-5. Report the change path + "Next: `/create-change-job NN`". Do NOT implement or commit.
+5. Report the change path + "Next: `/cosimosi:create-change-job NN`". Do NOT implement or commit.
 
-For a brand-new (unbuilt) feature, use /create-plan instead.
+For a brand-new (unbuilt) feature, use /cosimosi:create-plan instead.
