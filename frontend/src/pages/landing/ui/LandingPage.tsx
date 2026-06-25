@@ -1,56 +1,69 @@
 import { MOOD } from '@/shared/config'
-import { CosmosScene, type StarVisual } from '@/widgets/cosmos-scene'
-import { backgroundMeta, themeAccent, paletteForBackground, useAppearance } from '@/entities/appearance'
+import { CosmosScene } from '@/widgets/cosmos-scene'
+import { backgroundMeta, paletteForBackground, useAppearance } from '@/entities/appearance'
 import { AppearanceSwitcher } from '@/features/switch-appearance'
+import { useStage } from '../model/stage'
+import { useStageProgress } from '../lib/use-stage-progress'
+import { useStageCosmos } from '../lib/stage-projection'
 import { JourneyAct } from './JourneyAct'
+import { StageLayer } from './StageLayer'
 import { HeroSection } from './section/HeroSection'
 import { ConceptSection } from './section/ConceptSection'
-import { EngramCard } from './section/EngramCard'
 import { FragmentationCard } from './section/FragmentationCard'
 import { HebbianCard } from './section/HebbianCard'
-import { TimeWindowCard } from './section/TimeWindowCard'
-import { AmbientMoodCard } from './section/AmbientMoodCard'
-import { PresentSelfCard } from './section/PresentSelfCard'
 import { ReconsolidationCard } from './section/ReconsolidationCard'
 import { SilentEngramCard } from './section/SilentEngramCard'
+import { PresentSelfCard } from './section/PresentSelfCard'
 import { NightlyConsolidationCard } from './section/NightlyConsolidationCard'
 import { ResonanceSection } from './section/ResonanceSection'
 import { CtaFooterSection } from './section/CtaFooterSection'
 
 /**
- * 랜딩 = 별 하나가 태어나 살아가는 한 줄기 여정. 히어로에서 시작해 장(章)을 따라 내려가며
- * 엔그램 이론을 차례로 만진다 — 탄생(엔그램) → 분할(사건 경계, 21) → 연결·강화(헵·시간 창)
- * → 재공고화 → 망각(침묵) → 요즘의 나(경쟁적 할당) → 야간 공고화 → 공명. 19–27 이론
- * 흐름과 같은 순서다(spec 19). 각 장은 JourneyAct가 같은 계층으로 그린다.
+ * 랜딩 = 상단 고정 "무대(stage)" 1개 + 그 아래로 흐르는 스크롤 콘텐츠(change 31). 콘텐츠 장(章)의
+ * 트리거(버튼/일기 UI)가 무대를 조작해 전체 뇌과학 아크를 시연한다 — 엔그램(뇌=우주) → 일기→별 분할 →
+ * 헵·시간 창 → 재공고화 → 망각 → 요즘의 나(전역 물듦) → 야간 공고화 → 공명. 무대는 화면 밖으로 사라지지
+ * 않으므로 인터랙션 결과가 늘 보인다. 테마 시스템(data-landing-theme·AppearanceSwitcher)은 현행 유지.
  */
 export function LandingPage() {
-  // data-theme(코스모스 색)은 RootLayout이 <html>에 앱 전역으로 박는다(appearance entity 구독).
-  // 여기선 index.css의 --ld-* 글래스·히어로 크롬을 랜딩 안으로 한정하는 data-landing-theme만 둔다.
   const theme = useAppearance((s) => s.theme)
   const object = useAppearance((s) => s.object)
-  // 히어로 엠블럼 별 — 페이지 전역 우주 씬(fixed)에 떠 있어 스크롤해도 배경에 남는다. 코어 작게, glow=halo.
-  const heroStar: StarVisual = { concept: object, color: themeAccent(theme), anchor: [0.5, 0.32], size: 0.14, seed: 7 }
-  // 랜딩은 배경 + 히어로 엠블럼 별만 그린다. 배경 결은 배경 번들의 veil 슬롯에서 바로 가져온다.
+  // 요즘의 나(present) 장이 고른 마음 — 랜딩 전역 배경을 그 감정으로 물들인다(장 벗어나면 null로 복귀).
+  const bgMood = useStage((s) => s.bgMood)
   const texture = backgroundMeta(theme).texture
+  // 무대 = 배경 CosmosScene에 떠 있는 진짜 3D 별 오브제(현재 룩). 히어로 진행도가 엠블럼을 중앙→상단으로 띄운다.
+  const progress = useStageProgress()
+  const { stars, synapses } = useStageCosmos(object, progress)
 
   return (
     <div className="relative" data-landing-theme={theme}>
-      {/* 페이지 전역 우주 배경(테마별 팔레트) — 구 LandingBackground(CSS+2D) 대체. 배경 + 히어로 별만. */}
+      {/* 페이지 전역 우주 배경 + 무대 별/시냅스(상단 띠). 히어로 엠블럼·무대 별 모두 3D StarMesh로 그려진다. */}
       <div className="fixed inset-0 -z-10">
-        <CosmosScene
-          stars={[heroStar]}
-          texture={texture}
-          palette={paletteForBackground(theme)}
-        />
+        <CosmosScene stars={stars} synapses={synapses} texture={texture} palette={paletteForBackground(theme)} />
       </div>
+      {/* 요즘의 나 전역 물듦 — mood 색 한 겹을 배경 위에 올린다(무대 밖·루트까지). 장을 벗어나면 페이드아웃. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 transition-opacity duration-700"
+        style={{
+          opacity: bgMood ? 1 : 0,
+          background: bgMood
+            ? `radial-gradient(120% 90% at 50% 18%, ${bgMood}38 0%, ${bgMood}14 42%, transparent 72%)`
+            : undefined,
+        }}
+      />
+
+      {/* 상단 고정 무대 + 히어로 엠블럼 전환. */}
+      <StageLayer />
+
       <AppearanceSwitcher />
+
       <main className="relative z-0">
         <HeroSection />
 
         <JourneyAct
           id="concept"
           chapter="I"
-          eyebrow="여는 이야기"
+          eyebrow="엔그램 · ENGRAM"
           heading="뇌가 곧 우주예요"
           lead="기억 하나가 별이 되고, 닮은 기억끼리 빛의 선으로 이어져 작은 성단이 돼요. 머릿속에만 펼쳐지던 풍경을, 눈에 보이는 우주로 옮겨 놓았어요."
         >
@@ -58,87 +71,66 @@ export function LandingPage() {
         </JourneyAct>
 
         <JourneyAct
-          id="engram"
+          id="diary"
           chapter="II"
-          eyebrow="엔그램 · ENGRAM"
-          heading="쓰는 순간, 별 하나가 태어나요"
-          lead="뇌는 기억을 뉴런 다발에 새기고, 그 다발을 시냅스로 이어요. cosimosi에선 일기 한 편이 별이 되고, 별과 별을 잇는 빛의 선이 그 시냅스예요."
-          accent={MOOD.violet}
-          layout="split"
-        >
-          <EngramCard />
-        </JourneyAct>
-
-        <JourneyAct
-          id="fragmentation"
-          chapter="III"
-          eyebrow="사건 분할 · SEGMENTATION"
-          heading="기억은 조각나요 — 하루가 여러 별로"
-          lead="하루는 한 가지 감정이 아니에요. 아침의 평온, 낮의 분노, 밤의 안도 — AI가 일기를 사건의 경계에서 나누면, 조각마다 자기 감정을 가진 별이 태어나요. 같은 하루에서 갈라진 별들은 가장 강한 빛의 선으로 묶여요. 그리고 내가 쓴 원본은, 한 글자도 바뀌지 않은 채 그대로예요."
+          eyebrow="부호화 · 사건 분할"
+          heading="일기를 별로 나눠 우주에 띄워요"
+          lead="하루는 한 가지 감정이 아니에요. AI가 일기를 사건의 경계에서 나누면, 조각마다 자기 감정을 가진 별이 태어나요. 같은 하루에서 갈라진 별들은 가장 굵은 빛의 선으로 묶이고, 내가 쓴 원본은 한 글자도 그대로예요."
           accent={MOOD.coral}
-          layout="split"
-          flip
         >
           <FragmentationCard />
         </JourneyAct>
 
         <JourneyAct
-          id="connect"
-          chapter="IV"
+          id="hebbian"
+          chapter="III"
           eyebrow="헵 가소성 · 기억의 시간 창"
-          heading="별과 별이, 빛으로 이어져요"
-          lead="함께 떠올린 기억일수록 둘을 잇는 선이 굵어지고, 그렇게 자주 함께 떠올린 별은 서로 더 가까이 머물러요 — 거리가 곧 연결의 힘이에요. 같은 하루 안에 맺어진 인연은 한층 더 또렷하고, 의미가 닿은 별들 사이에선 닮은 감정일수록 조금 더 굵게 이어져요. 날이 지나면 그 시간의 창은 닫혀요."
+          heading="함께 떠올린 기억은 단단해져요"
+          lead="함께 떠올린 기억일수록 둘을 잇는 선이 굵어지고, 자주 함께 떠올린 별은 서로 더 가까이 머물러요 — 거리가 곧 연결의 힘이에요. 같은 하루 안에 맺어진 인연은 시간 창이 열려 한층 또렷하고, 날이 지나면 그 창은 닫혀요."
           accent={MOOD.teal}
         >
-          <div className="grid gap-6 md:grid-cols-2">
-            <HebbianCard />
-            <TimeWindowCard />
-          </div>
+          <HebbianCard />
         </JourneyAct>
 
         <JourneyAct
           id="reconsolidation"
-          chapter="V"
+          chapter="IV"
           eyebrow="재공고화 · RECONSOLIDATION"
           heading="떠올릴 때마다, 다시 빚어져요"
-          lead="회상은 기억을 잠시 말랑하게 풀었다가 다시 굳혀요. 그 짧은 사이에 기억은 짙어지기도, 옅어지기도 해요. 그래서 cosimosi의 기억은 세 겹이에요 — 내가 쓴 원본은 그대로, 별은 회상마다 다시 빚어지고, 변천사가 그 길을 남겨요."
+          lead="회상은 기억을 잠시 말랑하게 풀었다가 다시 굳혀요. 그 짧은 사이에 기억은 짙어지기도, 옅어지기도 해요. 내가 쓴 원본은 그대로, 별은 회상마다 다시 빚어지고, 변천사가 그 길을 남겨요."
           accent={MOOD.pink}
         >
           <ReconsolidationCard />
         </JourneyAct>
 
         <JourneyAct
-          id="silent"
-          chapter="VI"
+          id="forgetting"
+          chapter="V"
           eyebrow="침묵 엔그램 · 망각"
           heading="잊어도, 사라지지 않아요"
           lead="오래 떠올리지 않은 기억은 어두워질 뿐, 연결을 품은 채 그 자리에 남아요. 잊는다는 건 지우는 게 아니라 길을 잃는 일이에요. 어두워진 별도 회상 한 번이면 다시 깨어나요."
           accent={MOOD.coral}
-          layout="split"
-          flip
         >
           <SilentEngramCard />
         </JourneyAct>
 
         <JourneyAct
           id="present"
-          chapter="VII"
+          chapter="VI"
           eyebrow="요즘의 나 · 경쟁적 할당"
           heading="지금의 내가, 우주를 물들여요"
-          lead="별은 제자리에 머물지만, 그 별을 비추는 빛은 요즘의 나를 따라 달라져요. 같은 별들도 오늘의 하늘색이 다르면 다르게 보이죠. 그리고 새로 쓴 기억은 빈 곳이 아니라 요즘 자주 머문 별무리 곁으로 끌려가 자리를 잡아요 — 어디 놓일지는 연결이 정해요."
+          lead="별은 제자리에 머물지만, 그 별을 비추는 빛은 요즘의 나를 따라 달라져요. 마음을 고르면 우주 전체가 그 감정으로 물들고, 새로 쓴 기억은 요즘 자주 머문 별무리 곁으로 끌려가 자리를 잡아요 — 어디 놓일지는 연결이 정해요."
+          accent={MOOD.amber}
         >
-          <div className="grid gap-6 md:grid-cols-2">
-            <AmbientMoodCard />
-            <PresentSelfCard />
-          </div>
+          <PresentSelfCard />
         </JourneyAct>
 
         <JourneyAct
           id="nightly"
-          chapter="VIII"
+          chapter="VII"
           eyebrow="야간 공고화 · 우주의 수면"
-          heading="밤이 오면, 우주가 자리를 골라요"
-          lead="잠든 사이 뇌는 낮의 별들을 다시 깜빡이며 정돈해요 — 가까운 별무리만 손보고(멀리 잊혀간 별은 그대로), 시간으로 맺힌 선은 옅어지고 의미로 닿은 선은 굵어져요. 잊혀가는 별은 줄거리만 남기고, 약한 선은 빛만 낮추되 별마다 하나는 지켜요. 끊긴 외톨이 별은 닮은 기억과 다시 이어주고요. 원본은 그대로 둔 채, 별자리만 다시 정돈되는 밤이에요."
+          heading="밤마다, 우주가 정리돼요"
+          lead="잠든 사이 뇌는 낮의 별들을 다시 깜빡이며 정돈해요 — 가까운 별무리를 손보고, 잊혀가는 별은 줄거리만 남기고, 약한 선은 빛만 낮추되 별마다 하나는 지켜요. 원본은 그대로 둔 채, 별자리만 다시 정돈되는 밤이에요."
           accent={MOOD.violet}
         >
           <NightlyConsolidationCard />
@@ -146,7 +138,7 @@ export function LandingPage() {
 
         <JourneyAct
           id="resonance"
-          chapter="IX"
+          chapter="VIII"
           eyebrow="공명 · RESONANCE"
           heading="같은 밤, 두 개의 별"
           lead="같은 일도 두 사람의 우주엔 저마다의 별로 남아요. 친구가 그날을 자기 말로 다시 쓰면, 따로 빛나던 두 별이 하나의 빛줄기로 이어져요. 우리는 그걸 공명이라 불러요."

@@ -1,14 +1,22 @@
+import { useRef } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { ArrowDown, LogIn } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import { startDemoSession, exitDemoMode, resetDemo } from '@/shared/lib/demo'
 import { useScrollToSection } from '../../lib/scroll'
+import { useScrollMask } from '../../lib/use-scroll-mask'
+import { useStage } from '../../model/stage'
 
 export function HeroSection() {
   const reduced = useReducedMotion()
   const scrollTo = useScrollToSection()
   const navigate = useNavigate()
-  // 히어로 엠블럼 별은 페이지 전역 우주 씬(LandingPage의 CosmosScene)이 배경에 띄운다 — 여기선 워드마크만.
+  const setActiveAct = useStage((s) => s.setActiveAct)
+  // 히어로 카피·CTA도 위로 밀려나며 상단 무대 띠에서 위에서부터 마스킹돼 사라진다(별만 또렷하게).
+  const contentRef = useRef<HTMLDivElement>(null)
+  const mask = useScrollMask(contentRef)
+  // 히어로 엠블럼 별은 무대(StageLayer)가 진행도에 따라 띄운다 — 중앙 큰 별에서 상단 무대로 떠올라 고정.
+  // 여기선 워드마크·CTA·스크롤 힌트만. (change 31)
 
   // 1차 CTA: 가장 강한 의도의 클릭을 이메일 폼이 아니라 체험 우주로 바로 보낸다.
   // (로그인/DB 없이 루트 우주 `/` 진입 — 매 진입을 온보딩부터 시작하도록 흐름·더미 우주를 리셋한다.)
@@ -36,6 +44,13 @@ export function HeroSection() {
 
   return (
     <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
+      {/* 무대 활성 센티넬 — 히어로가 화면 중앙 띠에 오면 무대를 'hero'로(장면 비움 → 엠블럼만). */}
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-1/2 h-px"
+        onViewportEnter={() => setActiveAct('hero')}
+        viewport={{ margin: '-45% 0px -45% 0px' }}
+      />
       {/* 페이지 최상단 로그인 진입 — 우하단 고정인 AppearanceSwitcher와 겹치지 않게 우상단에 둔다. */}
       <button
         type="button"
@@ -46,9 +61,11 @@ export function HeroSection() {
         로그인하기
       </button>
       <motion.div
+        ref={contentRef}
         variants={container}
         initial="hidden"
         animate="show"
+        style={{ WebkitMaskImage: mask, maskImage: mask }}
         className="relative z-10 flex max-w-3xl flex-col items-center gap-7"
       >
         {/* cosimosi 워드마크 — 별 엠블럼은 페이지 배경 우주 씬이 이 위치(앵커)에 띄운다. */}

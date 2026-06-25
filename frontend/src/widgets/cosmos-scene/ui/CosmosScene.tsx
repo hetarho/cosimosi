@@ -46,6 +46,12 @@ export interface StarVisual {
   /** 별 코어 반지름(월드 단위 — 뷰 높이 [-1,1] 기준). halo는 이 값의 ~3.2배. */
   size: number
   seed?: number
+  /** 유효 밝기 [0,1] — 자가발광·반사·halo를 함께 낮춘다. 바닥(A_MIN)에서도 사라지지 않는다(헌법 §2). 기본 1. */
+  brightness?: number
+  /** 자가발광 세기(기본 1). 낮추면 외부 광원 셰이딩이 더 극적으로 드러난다(self-glow·halo에 곱). brightness와 곱해진다. */
+  emission?: number
+  /** 외부 평행광(반사) 세기(기본 `VALUES.starLighting.backdropLightIntensity`). 높이면 면/엣지 대비가 강해진다(극적 조명). */
+  lightIntensity?: number
 }
 
 /** 자아("나") 앵커 미리보기(plain data) — 플레이그라운드 미니 코스모스(spec 44 A12). 형태=concept,
@@ -306,11 +312,16 @@ function VeilLayer({ texture }: { texture?: BackdropTexture }) {
 //    시간은 여기서 주입(프리미티브 밖). ────────────────────────────────────────────────────────────────
 function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number; animated: boolean }) {
   const spinRef = useRef<THREE.Group>(null)
+  // 자가발광은 약하게, 외부 광원(반사)은 강하게 둘 수 있다(소비처 지정 — 랜딩 무대는 극적 셰이딩). 기본은 종전과 동일.
+  const emission = star.emission ?? 1
+  const lightIntensity = star.lightIntensity ?? VALUES.starLighting.backdropLightIntensity
   const body = useMemo(() => {
     const moodU = uniform(new THREE.Color(star.color))
     const timeU = uniform(0)
     // 카메라 월드 위치 uniform(빌트인 cameraPosition 노드는 BloomPass가 동결 — StarField와 동일 회피). 매 프레임 update()가 갱신.
     const camPosU = uniform(new THREE.Vector3())
+    // 밝기 uniform — 자가발광(glow)·반사(recency)를 함께 낮춘다(별을 다시 빌드하지 않고 매 프레임 갱신). 망각·재공고화 무대가 구동.
+    const brightU = uniform(1)
     // 배경 씬엔 자아-별·그래프가 없다(spec 03 3겹 미적용) — 브랜드 별은 자가발광 full(오늘 룩)에
     // 우상단 평행광(positional=0, 화면-비대칭 없음 = 태양) 반사를 더해 crystal 면/엣지를 드러낸다.
     const dir = VALUES.starLighting.backdropLightDir
@@ -321,8 +332,8 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
       0,
       {
         mood: moodU,
-        glow: float(1), // 그래프 없음 → 연결성 대신 자가발광 full
-        recency: float(1), // 평행광이라 거리 무관 — 반사 full
+        glow: brightU.mul(float(emission)), // 자가발광 — 밝기 × emission(약하게 두면 반사가 극적으로 드러남)
+        recency: brightU, // 평행광이라 거리 무관 — 반사를 밝기로 낮춘다(망각이면 어두워짐)
         seed: float(star.seed ?? 7),
         hueShift: float(0),
         time: timeU,
@@ -333,22 +344,24 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
         focus: float(1),
       },
       {
-        intensity: VALUES.starLighting.backdropLightIntensity,
+        intensity: lightIntensity,
         distance: VALUES.starLighting.selfDistance,
         decay: VALUES.starLighting.selfDecay,
-        gain: VALUES.starLighting.litAlbedoGain,
+        // 강한 광원이면 반사 cap도 함께 올려 면/엣지 대비를 살린다(약한 self-glow를 못 이기게 묶던 기본 cap 해제).
+        gain: Math.max(VALUES.starLighting.litAlbedoGain, lightIntensity * 0.55),
       },
     )
     return {
       geometry: built.geometry,
       material: built.material,
       spin: STAR_LOOK_SPIN[look],
-      update: (t: number, camera: THREE.Camera) => {
+      update: (t: number, camera: THREE.Camera, bright: number) => {
         timeU.value = t
         camera.getWorldPosition(camPosU.value)
+        brightU.value = bright
       },
     }
-  }, [star.concept, star.color, star.seed])
+  }, [star.concept, star.color, star.seed, emission, lightIntensity])
   const halo = useMemo(() => buildHalo(star.color, 1), [star.color])
   useEffect(() => () => {
     body.geometry.dispose()
@@ -359,8 +372,9 @@ function StarMesh({ star, aspect, animated }: { star: StarVisual; aspect: number
 
   useFrame((s) => {
     const t = animated ? s.clock.elapsedTime : 0
-    body.update(t, s.camera)
-    halo.update(1)
+    const bright = star.brightness ?? 1
+    body.update(t, s.camera, bright)
+    halo.update(bright * emission) // 자가발광 약하면 halo 글로우도 옅게(외부 광원 셰이딩이 주연)
     const g = spinRef.current
     if (g && animated) g.rotation.y = t * body.spin
   })

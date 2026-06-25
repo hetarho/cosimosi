@@ -27,3 +27,5 @@ export {
 } from './ui/star-body'
 export { VizStar, type VizStarProps } from './ui/VizStar'
 export type { StarVisualProps } from './ui/svg/types'
+// 의미 색 보존 색 유틸 — 랜딩 무대 재공고화가 mood hue를 좁게 드리프트할 때 쓴다(색조만 이동, 계열 유지).
+export { shiftHue } from './lib/color'
