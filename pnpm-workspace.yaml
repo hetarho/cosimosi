@@ -1,3 +1,4 @@
 packages:
-  - "frontend"
-  - "blog"
+  - "apps/web"
+  - "apps/blog"
+  - "packages/*"

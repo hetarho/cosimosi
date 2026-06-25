@@ -28,7 +28,7 @@ DB/Auth: Supabase 프로젝트 behdksjirevqcqbfajqc (서울 ap-northeast-2)
 
 ## 2. 일상 배포 (자동 — 키 없이 동작)
 
-**백엔드** — `develop`/`main`에 백엔드 경로(`backend/**`, `docker-compose.prod.yml`, 워크플로)가
+**백엔드** — `develop`/`main`에 백엔드 경로(`apps/api/**`, `docker-compose.prod.yml`, 워크플로)가
 바뀐 push가 가면 `deploy-backend.yml`이: 이미지 빌드 → GHCR push → VPS에 SSH(repo secret
 `SSH_KEY` 사용 — 로컬 pem 불필요) → **goose 마이그레이션(5432 직접 연결) 먼저** → 스택 `.env`에
 `IMAGE_TAG=<sha>` 기록 → `compose pull && up -d --remove-orphans`. 마이그레이션이 실패하면 api는
@@ -123,7 +123,7 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 8. **기동**: 각 스택에서 `docker compose -f docker-compose.prod.yml up -d`, `/srv/edge`에서
    `docker compose up -d`. 이후는 머지가 알아서 배포한다(§2).
 9. **Cloudflare Worker**(프론트): 리포 import(이름 `cosimosi` = `wrangler.jsonc`의 name),
-   production 브랜치 `main`, build `pnpm --filter ./frontend build`, deploy `npx wrangler deploy`,
+   production 브랜치 `main`, build `pnpm --filter @cosimosi/web build`, deploy `npx wrangler deploy`,
    version `npx wrangler versions upload`, 변수 3종(§3) 입력, 커스텀 도메인 `cosimosi.haeram.me` 연결.
 10. **Supabase Auth**: Google provider(Client ID/Secret — GCP 리디렉션 URI에
     `https://<ref>.supabase.co/auth/v1/callback`), URL Configuration의 Site URL

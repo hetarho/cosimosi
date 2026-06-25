@@ -1,4 +1,4 @@
-import * as blogMarkdown from "../../../spec/blog.md";
+import * as blogMarkdown from "../../../../spec/blog.md";
 
 export const prerender = true;
 

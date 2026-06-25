@@ -41,8 +41,8 @@ export const pnpm = (args) =>
 export const COMPOSE_NETWORK = 'cosimosi_default'
 
 // --- sentinels: a step runs only once its tool's config is present ---
-export const hasBufConfig = () => existsSync(`${repoRoot}/backend/buf.gen.yaml`)
-export const hasDbSchema = () => existsSync(`${repoRoot}/backend/internal/db/schema.sql`)
+export const hasBufConfig = () => existsSync(`${repoRoot}/proto/buf.gen.yaml`)
+export const hasDbSchema = () => existsSync(`${repoRoot}/apps/api/internal/db/schema.sql`)
 
 // --- console output ---
 export const section = (t) => console.log(`\n\x1b[36m▶ ${t}\x1b[0m`)

@@ -1,4 +1,4 @@
-# CI gate (spec 14, 2.1): frontend lint + build and backend vet + build must pass.
+# CI gate (spec 14, 2.1): web lint + build, blog build, and api vet + build must pass.
 # Runs on PRs (merge gate) AND on direct pushes to develop/main (solo-dev validation —
 # no PR needed to catch a break). Linux runners, so the Windows .exe block (§8) doesn't
 # apply — Go runs natively here. No secrets needed, so this is safe to run anytime.
@@ -11,7 +11,7 @@ on:
     branches: [develop, main]
 
 jobs:
-  frontend:
+  web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,19 +21,31 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter ./frontend lint
-      - run: pnpm --filter ./frontend build
+      - run: pnpm --filter @cosimosi/web lint
+      - run: pnpm --filter @cosimosi/web build
 
-  backend:
+  blog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cosimosi/blog build
+
+  api:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: apps/api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
       - run: go vet ./...
       - run: go build ./...

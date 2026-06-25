@@ -32,7 +32,7 @@ title: {{TITLE}}
 - [ ] 위 **인수 조건** 전 항목이 현재 코드에서 참
 - [ ] (type=change면) 기존 plan 수용 기준 회귀 없음
 - [ ] 코드젠/마이그레이션/values 적용(해당 시): `pnpm gen` / `pnpm db:migrate` / `pnpm gen:values`
-- [ ] FE `--filter ./frontend build`·`lint` / BE `go vet ./... && go build ./...`(Docker) 통과(해당 시)
+- [ ] FE `--filter @cosimosi/web build`·`lint` / BE `go vet ./... && go build ./...`(Docker) 통과(해당 시)
 - [ ] 헌법 sanity: `records`/`memories`/`memory_links` 행 삭제·`records` 본문 UPDATE 없음
 
 ## 리뷰

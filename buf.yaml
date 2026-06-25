@@ -1,6 +1,6 @@
 # buf v2 workspace. The single proto module lives in proto/ (path is relative to
 # this file, so this must sit at the repo root for `modules: [{ path: proto }]`).
-# Codegen runs `buf generate --template backend/buf.gen.yaml proto` (see scripts/gen.mjs).
+# Codegen runs `buf generate --template proto/buf.gen.yaml proto` (see scripts/gen.mjs).
 version: v2
 modules:
   - path: proto

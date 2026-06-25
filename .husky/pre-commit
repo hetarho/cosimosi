@@ -4,6 +4,6 @@
 #  3) build   : tsc -b + vite build (타입 + 프로덕션 번들)
 # 우회가 꼭 필요하면 `git commit --no-verify`.
 echo "▶ pre-commit: architecture lint (eslint + steiger) + build"
-pnpm --filter ./frontend run lint || exit 1
-pnpm --filter ./frontend run lint:fsd || exit 1
-pnpm --filter ./frontend run build || exit 1
+pnpm --filter @cosimosi/web run lint || exit 1
+pnpm --filter @cosimosi/web run lint:fsd || exit 1
+pnpm --filter @cosimosi/web run build || exit 1

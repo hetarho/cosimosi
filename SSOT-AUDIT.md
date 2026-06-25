@@ -13,7 +13,7 @@
 
 > 코드가 진실. 아래는 **policy 문서가 틀린** 경우다.
 
-- [ ] **A1 — `domain/universe.md` 자아 반지름.** 문서 `R_MIN 8 / R_MAX 60`(line 18) ↔ 코드 `R_MIN 6 / R_MAX 40`(`frontend/src/shared/lib/layout.ts`). grep으로 8/60 변종이 코드에 없음 확인 → **문서를 6/40으로 수정.**
+- [ ] **A1 — `domain/universe.md` 자아 반지름.** 문서 `R_MIN 8 / R_MAX 60`(line 18) ↔ 코드 `R_MIN 6 / R_MAX 40`(`apps/web/src/shared/lib/layout.ts`). grep으로 8/60 변종이 코드에 없음 확인 → **문서를 6/40으로 수정.**
 - [ ] **A2 — `domain/star.md` 별 카디널리티.** 문서 "일기 1편 = memory 1개 (1:1)"(line 7·19) ↔ 실제 **1 record → N memories**(spec 21 fan-out, `UNIQUE(record_id, fragment_index)`). memory.md는 1:N으로 갱신됐으나 star.md는 안 됨.
 - [ ] **A3 — `domain/star.md` 감정 출처.** 문서 "감정·강도는 사용자가 기록 폼에서 직접 고른다(**AI 감정 감지가 아니다**)"(line 9·27) ↔ 실제 **AI가 조각마다 감지**(spec 20/21), 수동은 선택적 힌트. memory.md와 모순.
 - [ ] **A4 — `domain/star.md` mood 개수.** 문서 "7 moods: JOY/CALM/SAD/ANGER/FEAR/LOVE/NEUTRAL"(line 28) ↔ 실제 **13종**(spec 29, `mood.ts`·proto enum 1–13). memory.md·proto와 단일 출처 불일치.

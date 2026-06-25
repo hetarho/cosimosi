@@ -3,7 +3,7 @@
   // 별도 Worker 스크립트("main") 없이 빌드 산출물만 올린다. Cloudflare가 리포를 Workers로
   // import하는 경우 `npx wrangler deploy`가 이 파일을 읽는다.
   //
-  // Build command(대시보드): pnpm --filter ./frontend build  → frontend/dist 생성
+  // Build command(대시보드): pnpm --filter @cosimosi/web build  → apps/web/dist 생성
   // Deploy command(대시보드): npx wrangler deploy            → 아래 assets 업로드
   //
   // ⚠️ VITE_* 환경변수는 빌드 타임에 박히므로 대시보드 Variables에 넣어야 한다
@@ -13,7 +13,7 @@
   "compatibility_date": "2025-06-01",
   "assets": {
     // 빌드 산출물 디렉터리 (wrangler.jsonc 기준 상대 경로 = 리포 루트 기준).
-    "directory": "./frontend/dist",
+    "directory": "./apps/web/dist",
     // SPA: 매칭되는 파일이 없는 경로(/universe, /dormant, 새로고침)는 200으로 index.html을
     // 돌려준다 — 없으면 딥링크가 404가 난다.
     "not_found_handling": "single-page-application"

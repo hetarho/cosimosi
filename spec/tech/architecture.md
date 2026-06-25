@@ -21,25 +21,29 @@ cosimosi/
 │   ├── concept.md             ← 비전(엔그램 우주) — 무엇을/왜
 │   ├── Architecture.md        ← 이 문서 — 어떻게
 │   └── plan/                  ← 번호별 작업 스펙(체크박스). 00.overview.md가 색인
-├── proto/                     ← .proto 단일 계약 (Connect RPC) — 신설 예정
-├── frontend/                  ← React 19 + Vite 8 + R3F 9 (WebGPU+TSL) + Zustand (FSD)
-│   └── src/
-│       ├── app/               ← 진입점·프로바이더·전역 스타일
-│       ├── pages/             ← 라우트 단위 화면
-│       ├── widgets/           ← 자족적 큰 UI 블록 (예: universe-canvas)
-│       ├── features/          ← 사용자 행동 (예: record-memory, recall)
-│       ├── entities/          ← 도메인 객체 (memory, star, synapse)
-│       └── shared/            ← 도메인 무관 공용 (ui, lib/force-sim, lib/shaders, lib/r3f, api, config)
-└── backend/                   ← Go 1.26 + connect-go + pgx + sqlc + pgvector (package-by-feature)
-    ├── cmd/api/               ← 컴포지션 루트 (HTTP/RPC 서버)
-    ├── cmd/worker/            ← 비동기 AI 파이프라인 워커 — 신설 예정
-    └── internal/
-        ├── memory/            ← 기능: 기억(별) — 일기 원본·분류·비주얼
-        ├── link/              ← 기능: 시냅스(가중치 그래프)
-        ├── ai/                ← 공급자 추상화 (Embedder, Extractor 포트 + 어댑터)
-        ├── job/               ← 비동기 작업 큐
-        ├── platform/          ← config, postgres, rpcserver (인프라)
-        └── db/                ← sqlc 입력(queries, migrations) + 출력(gen)
+├── proto/                     ← .proto 단일 계약 (Connect RPC) + buf.gen.yaml — 신설 예정
+├── packages/                  ← 공유 패키지 경계 (promote-on-reuse, 빈 패키지는 두지 않음)
+└── apps/
+    ├── web/                   ← React 19 + Vite 8 + R3F 9 (WebGPU+TSL) + Zustand (FSD)
+    │   └── src/
+    │       ├── app/           ← 진입점·프로바이더·전역 스타일
+    │       ├── pages/         ← 라우트 단위 화면
+    │       ├── widgets/       ← 자족적 큰 UI 블록 (예: universe-canvas)
+    │       ├── features/      ← 사용자 행동 (예: record-memory, recall)
+    │       ├── entities/      ← 도메인 객체 (memory, star, synapse)
+    │       └── shared/        ← 도메인 무관 공용 (ui, lib/force-sim, lib/shaders, lib/r3f, api, config)
+    ├── blog/                  ← Astro 정적 블로그 (spec/blog.md 읽음)
+    ├── mobile/                ← 미래 모바일 (React Native) — placeholder
+    └── api/                   ← Go 1.26 + connect-go + pgx + sqlc + pgvector (package-by-feature)
+        ├── cmd/api/           ← 컴포지션 루트 (HTTP/RPC 서버)
+        ├── cmd/worker/        ← 비동기 AI 파이프라인 워커 — 신설 예정
+        └── internal/
+            ├── memory/        ← 기능: 기억(별) — 일기 원본·분류·비주얼
+            ├── link/          ← 기능: 시냅스(가중치 그래프)
+            ├── ai/            ← 공급자 추상화 (Embedder, Extractor 포트 + 어댑터)
+            ├── job/           ← 비동기 작업 큐
+            ├── platform/      ← config, postgres, rpcserver (인프라)
+            └── db/            ← sqlc 입력(queries, migrations) + 출력(gen)
 ```
 
 **의존 방향은 양쪽 모두 한쪽으로만 흐른다.** 프론트는 `app → pages → widgets → features → entities → shared`, 백엔드는 `RPC 핸들러 → service → repository(인터페이스) → 도메인`으로 안쪽으로만.
@@ -209,7 +213,7 @@ Go 커뮤니티 2025–2026 합의대로 풀 Clean Architecture/ORM 대신 **pac
 ### 4.2 디렉터리 레이아웃
 
 ```
-backend/
+apps/api/
 ├── cmd/
 │   ├── api/main.go            ← 컴포지션 루트(RPC/HTTP 서버). 와이어링은 여기서만.
 │   └── worker/main.go         ← 비동기 AI 파이프라인 워커 (신설 예정)
@@ -225,8 +229,8 @@ backend/
 │   ├── job/                   ← 비동기 작업 큐 (enqueue/claim/complete)
 │   ├── platform/              ← config, postgres(pgxpool+pgvector 등록), rpcserver
 │   └── db/                    ← migrations(.up/.down), queries(*.sql), gen(sqlc 출력, 손대지 않음)
-├── proto/ 또는 ../proto       ← .proto 단일 계약 (Connect RPC)
-├── sqlc.yaml · buf.gen.yaml   ← 코드젠 설정
+├── ../../proto/              ← .proto 단일 계약 (Connect RPC) + buf.gen.yaml (리포 루트)
+├── sqlc.yaml                 ← 코드젠 설정
 └── go.mod
 ```
 

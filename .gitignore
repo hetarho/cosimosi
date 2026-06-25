@@ -6,8 +6,8 @@ dist/
 *.log
 
 # Go
-backend/bin/
-backend/tmp/
+apps/api/bin/
+apps/api/tmp/
 *.exe
 
 # Editor

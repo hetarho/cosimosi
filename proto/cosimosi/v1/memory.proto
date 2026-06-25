@@ -4,7 +4,7 @@ package cosimosi.v1;
 
 // Import path matches the source-relative output dir (proto path cosimosi/v1/);
 // the part after ';' sets the Go package name (cosimosiv1) + connect subpackage
-// (cosimosiv1connect). See backend/buf.gen.yaml (paths=source_relative).
+// (cosimosiv1connect). See proto/buf.gen.yaml (paths=source_relative).
 option go_package = "github.com/cosimosi/backend/internal/gen/cosimosi/v1;cosimosiv1";
 
 // memory.proto is the single transport contract shared by web + React Native.

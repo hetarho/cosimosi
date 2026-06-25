@@ -2,8 +2,8 @@
 // Generate FE (TypeScript) + BE (Go) constants from spec/values.yaml — the single canonical
 // source of tuning numbers ("balance patch" file). Run via `pnpm gen:values` (or `pnpm gen`).
 // Outputs (both committed, both marked GENERATED — DO NOT EDIT):
-//   frontend/src/shared/config/values.gen.ts
-//   backend/internal/values/values_gen.go
+//   apps/web/src/shared/config/values.gen.ts
+//   apps/api/internal/values/values_gen.go
 //
 // A value is either a finite number (a tuning scalar) or a numeric array — flat (e.g. phase
 // multipliers) or nested (e.g. per-axis [base, gain] pairs). Scalars become FE `as const`
@@ -18,8 +18,8 @@ import { parse } from 'yaml'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const srcPath = join(root, 'spec', 'values.yaml')
-const tsOut = join(root, 'frontend', 'src', 'shared', 'config', 'values.gen.ts')
-const goOut = join(root, 'backend', 'internal', 'values', 'values_gen.go')
+const tsOut = join(root, 'apps', 'web', 'src', 'shared', 'config', 'values.gen.ts')
+const goOut = join(root, 'apps', 'api', 'internal', 'values', 'values_gen.go')
 
 const camel = (s) => s.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase())
 const pascal = (s) => s.replace(/(^|_)([a-z0-9])/g, (_, __, c) => c.toUpperCase())

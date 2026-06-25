@@ -18,7 +18,7 @@ const DBSTRING = 'postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=di
 const goose = (command) =>
   run('docker', [
     'run', '--rm', '--network', COMPOSE_NETWORK,
-    '-v', mount('backend/internal/db/migrations', '/migrations'),
+    '-v', mount('apps/api/internal/db/migrations', '/migrations'),
     '-e', 'GOOSE_DRIVER=postgres',
     '-e', `GOOSE_DBSTRING=${DBSTRING}`,
     '-e', `GOOSE_COMMAND=${command}`,

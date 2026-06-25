@@ -17,7 +17,7 @@ import (
 // §1), so rejecting invalid input BEFORE the transaction is the only defense —
 // there is no cleanup path afterwards. The handler maps these to InvalidArgument.
 // ⚠️ The FE substring-matches these MESSAGE TEXTS to pick Korean copy
-// (frontend/src/features/record-memory/api/record-memory.ts) — rewording one
+// (apps/web/src/features/record-memory/api/record-memory.ts) — rewording one
 // breaks that mapping silently; service_test.go pins the matched substrings.
 var (
 	ErrEmptyBody       = errors.New("memory: body is empty")

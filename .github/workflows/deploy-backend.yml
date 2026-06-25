@@ -1,4 +1,4 @@
-# Backend deploy (spec 14). On push to develop|main (backend paths), the `build` job
+# Backend deploy (spec 14). On push to develop|main (apps/api paths), the `build` job
 # always BUILDS the static image (validates the Dockerfile in CI) and PUSHES it to GHCR
 # only when deploy is enabled. The `rollout` job (migrate → swap the API over SSH) only
 # runs once the VPS is ready: set repo variable DEPLOY_ENABLED=true + the SSH/DB secrets.
@@ -10,7 +10,7 @@ on:
   push:
     branches: [develop, main]
     paths:
-      - 'backend/**'
+      - 'apps/api/**'
       - 'docker-compose.prod.yml'
       - '.github/workflows/deploy-backend.yml'
   # Manual redeploy from the Actions tab (deploys the selected branch's environment).
@@ -45,8 +45,8 @@ jobs:
       - name: Build image (push to GHCR only when deploy is enabled)
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
           push: ${{ vars.DEPLOY_ENABLED == 'true' }}
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
@@ -73,9 +73,9 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: 'backend/internal/db/migrations/*'
+          source: 'apps/api/internal/db/migrations/*'
           target: '/srv/cosimosi-${{ env.ENV_NAME }}/migrations'
-          strip_components: 4
+          strip_components: 5
 
       - name: Migrate (direct 5432) → set IMAGE_TAG → roll out
         uses: appleboy/ssh-action@v1.2.0

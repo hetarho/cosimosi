@@ -5,10 +5,10 @@
   "description": "Engram universe diary — your memories as a living 3D cosmos",
   "scripts": {
     "setup": "node scripts/setup.mjs",
-    "dev": "concurrently -n web,api -c cyan,magenta \"pnpm --filter ./frontend dev\" \"pnpm run dev:api\"",
+    "dev": "concurrently -n web,api -c cyan,magenta \"pnpm --filter @cosimosi/web dev\" \"pnpm run dev:api\"",
     "dev:api": "docker compose --profile dev up backend",
-    "dev:blog": "pnpm --filter ./blog dev",
-    "dev:web": "pnpm --filter ./frontend dev",
+    "dev:blog": "pnpm --filter @cosimosi/blog dev",
+    "dev:web": "pnpm --filter @cosimosi/web dev",
     "gen": "node scripts/gen-values.mjs && node scripts/gen.mjs",
     "gen:values": "node scripts/gen-values.mjs",
     "gen:proto": "node scripts/gen.mjs proto",
@@ -24,9 +24,9 @@
     "db:reset": "node scripts/db.mjs reset",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "build:web": "pnpm --filter ./frontend build",
-    "build:blog": "pnpm --filter ./blog build",
-    "build:api": "cd backend && go build -o bin/api ./cmd/api",
+    "build:web": "pnpm --filter @cosimosi/web build",
+    "build:blog": "pnpm --filter @cosimosi/blog build",
+    "build:api": "cd apps/api && go build -o bin/api ./cmd/api",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -19,18 +19,18 @@ let did = false
 if (wantProto) {
   if (hasBufConfig()) {
     note('buf generate (proto → Go·TS)')
-    // Template lives at backend/buf.gen.yaml, module input is proto/ — both must be
+    // Template lives at proto/buf.gen.yaml, module input is proto/ — both must be
     // explicit (a bare `buf generate` at repo root has no buf.gen.yaml and fails).
     run('docker', [
       'run', '--rm',
       '-v', mount('', '/work'), '-w', '/work',
       'bufbuild/buf:latest',
-      'generate', '--template', 'backend/buf.gen.yaml', 'proto',
+      'generate', '--template', 'proto/buf.gen.yaml', 'proto',
     ])
     ok('buf 완료')
     did = true
   } else {
-    note('buf 건너뜀 — proto 계약(backend/buf.gen.yaml)이 아직 없음')
+    note('buf 건너뜀 — proto 계약(proto/buf.gen.yaml)이 아직 없음')
   }
 }
 
@@ -39,13 +39,13 @@ if (wantSql) {
     note('sqlc generate (schema.sql → Go)')
     run('docker', [
       'run', '--rm',
-      '-v', mount('backend', '/app'), '-w', '/app',
+      '-v', mount('apps/api', '/app'), '-w', '/app',
       'sqlc/sqlc:latest', 'generate',
     ])
     ok('sqlc 완료')
     did = true
   } else {
-    note('sqlc 건너뜀 — DB 스키마(backend/internal/db/schema.sql)가 아직 없음')
+    note('sqlc 건너뜀 — DB 스키마(apps/api/internal/db/schema.sql)가 아직 없음')
   }
 }
 

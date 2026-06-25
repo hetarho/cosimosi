@@ -20,7 +20,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./apps/api
       dockerfile: Dockerfile.dev
     container_name: cosimosi-backend
     profiles: ["dev"]
@@ -50,7 +50,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./backend:/app
+      - ./apps/api:/app
       - backend_go_mod:/go/pkg/mod
       - backend_tmp:/app/tmp
 
