@@ -6,9 +6,12 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "dev": "concurrently -n web,api -c cyan,magenta \"pnpm --filter @cosimosi/web dev\" \"pnpm run dev:api\"",
-    "dev:api": "docker compose --profile dev up backend",
+    "dev:api": "docker compose up api",
     "dev:blog": "pnpm --filter @cosimosi/blog dev",
     "dev:web": "pnpm --filter @cosimosi/web dev",
+    "dev:mobile": "pnpm --filter @cosimosi/mobile start",
+    "ios": "pnpm --filter @cosimosi/mobile ios",
+    "android": "pnpm --filter @cosimosi/mobile android",
     "gen": "node scripts/gen-values.mjs && node scripts/gen.mjs",
     "gen:values": "node scripts/gen-values.mjs",
     "gen:proto": "node scripts/gen.mjs proto",

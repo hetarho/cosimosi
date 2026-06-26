@@ -1,14 +1,6 @@
-FROM golang:1.26-alpine
-
+# Foundation dev image: runs the api with `go run`. docker-compose bind-mounts the
+# source into /app and persists the module cache in a volume, so no COPY here.
+FROM golang:1.26
 WORKDIR /app
-
-RUN apk add --no-cache git
-RUN go install github.com/air-verse/air@latest
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . .
-
 EXPOSE 8080
-CMD ["air", "-c", ".air.toml"]
+CMD ["go", "run", "./cmd/api"]

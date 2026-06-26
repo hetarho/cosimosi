@@ -11,7 +11,7 @@
 // nested `[][]float64`). Strings and non-finite numbers (Infinity/NaN) are rejected — content
 // tables (theme CSS, mood color/affect) stay in code, and an "open-ended" tier uses a finite
 // bound array instead of Infinity.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve, join } from 'node:path'
 import { parse } from 'yaml'
@@ -20,6 +20,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const srcPath = join(root, 'spec', 'values.yaml')
 const tsOut = join(root, 'apps', 'web', 'src', 'shared', 'config', 'values.gen.ts')
 const goOut = join(root, 'apps', 'api', 'internal', 'values', 'values_gen.go')
+
+// Skip cleanly until the config-values unit creates spec/values.yaml — same
+// contract as the other gen steps (light up when the source is present).
+if (!existsSync(srcPath)) {
+  console.log('  · gen:values 건너뜀 — spec/values.yaml 이 아직 없음')
+  process.exit(0)
+}
 
 const camel = (s) => s.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase())
 const pascal = (s) => s.replace(/(^|_)([a-z0-9])/g, (_, __, c) => c.toUpperCase())

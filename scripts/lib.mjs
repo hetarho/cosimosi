@@ -7,7 +7,7 @@
 // present and skip cleanly otherwise.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -41,7 +41,12 @@ export const pnpm = (args) =>
 export const COMPOSE_NETWORK = 'cosimosi_default'
 
 // --- sentinels: a step runs only once its tool's config is present ---
-export const hasBufConfig = () => existsSync(`${repoRoot}/proto/buf.gen.yaml`)
+// buf runs only when there's an actual contract to generate — the template alone
+// isn't enough. The MVP contract lives under proto-mvp/ (reference-only); the
+// transport unit authors the real .proto under proto/ and this lights up then.
+export const hasBufConfig = () =>
+  existsSync(`${repoRoot}/proto/buf.gen.yaml`) &&
+  readdirSync(`${repoRoot}/proto`, { recursive: true }).some((f) => String(f).endsWith('.proto'))
 export const hasDbSchema = () => existsSync(`${repoRoot}/apps/api/internal/db/schema.sql`)
 
 // --- console output ---

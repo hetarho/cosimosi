@@ -1,7 +1,6 @@
-# CI gate (spec 14, 2.1): web lint + build, blog build, and api vet + build must pass.
-# Runs on PRs (merge gate) AND on direct pushes to develop/main (solo-dev validation —
-# no PR needed to catch a break). Linux runners, so the Windows .exe block (§8) doesn't
-# apply — Go runs natively here. No secrets needed, so this is safe to run anytime.
+# CI gate: web lint + build, blog build, and api vet + build must pass. Runs on PRs
+# (merge gate) and on direct pushes to develop/main (solo-dev validation — no PR needed
+# to catch a break). Linux runners run Go natively. No secrets, so it's safe to run anytime.
 name: CI
 
 on:
@@ -46,6 +45,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: apps/api/go.mod
-          cache-dependency-path: apps/api/go.sum
+          # The foundation api has no third-party deps yet (no go.sum); key the module
+          # cache off go.mod. Switch to go.sum once a dependency is introduced.
+          cache-dependency-path: apps/api/go.mod
       - run: go vet ./...
       - run: go build ./...

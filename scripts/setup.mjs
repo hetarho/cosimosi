@@ -1,53 +1,28 @@
 // One-shot bootstrap for a fresh clone:  pnpm setup  →  pnpm dev
 //
-//   1. .env            (copy from .env.example if missing)
-//   2. deps            (pnpm install — workspace)
-//   3. postgres        (docker compose up -d postgres, wait for healthy)
-//   4. migrations      (goose up — skips when no migrations yet)
-//   5. codegen         (buf + sqlc — skip whichever isn't configured)
+//   1. .env   (copy from .env.example if missing)
+//   2. deps   (pnpm install — workspace)
 //
-// Idempotent: safe to re-run after pulling contract/schema changes. The inner
-// dev loop (`pnpm dev`) intentionally does NOT re-run this — run setup (or the
-// individual `pnpm gen` / `pnpm db:migrate`) only when proto/schema changes.
+// Local infra (Postgres), migrations, and codegen are not part of the platform
+// foundation — they return with their own units (data-persistence, rpc-transport)
+// and this bootstrap grows the corresponding steps back then.
 
-import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync } from 'node:fs'
-import { run, pnpm, repoRoot, section, ok, note, fail } from './lib.mjs'
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-
-async function waitHealthy(container, timeoutSec) {
-  note(`${container} health 대기...`)
-  for (let i = 0; i < timeoutSec; i++) {
-    const r = spawnSync('docker', ['inspect', '--format', '{{.State.Health.Status}}', container], {
-      encoding: 'utf8',
-    })
-    if ((r.stdout || '').trim() === 'healthy') return ok('postgres healthy')
-    await sleep(1000)
-  }
-  fail(`${container} 가 ${timeoutSec}s 안에 healthy 상태가 되지 못했어요. 'docker compose logs postgres' 확인.`)
-}
+import { pnpm, repoRoot, section, ok, note, fail } from './lib.mjs'
 
 async function main() {
   section('.env')
   if (existsSync(`${repoRoot}/.env`)) note('.env 이미 있음')
-  else {
+  else if (existsSync(`${repoRoot}/.env.example`)) {
     copyFileSync(`${repoRoot}/.env.example`, `${repoRoot}/.env`)
     ok('.env.example → .env 생성 (필요 시 키 채우기)')
-  }
+  } else note('.env.example 없음 — 건너뜀')
 
   section('deps')
   pnpm(['install'])
 
-  section('infra (postgres)')
-  run('docker', ['compose', 'up', '-d', 'postgres'])
-  await waitHealthy('cosimosi-postgres', 60)
-
-  run('node', ['scripts/db.mjs', 'up'])
-  run('node', ['scripts/gen.mjs'])
-
   section('done')
-  console.log('  \x1b[32m✓\x1b[0m 준비 완료 — 이제  \x1b[1mpnpm dev\x1b[0m  로 프론트(:1214)+백엔드(:8080) 기동')
+  console.log('  \x1b[32m✓\x1b[0m 준비 완료 — 웹 \x1b[1mpnpm dev:web\x1b[0m (:5173) · api \x1b[1mpnpm dev:api\x1b[0m (:8080) · 모바일 \x1b[1mpnpm dev:mobile\x1b[0m')
 }
 
 main().catch((e) => fail(e.message))

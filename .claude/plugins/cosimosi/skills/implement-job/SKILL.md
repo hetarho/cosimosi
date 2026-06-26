@@ -124,7 +124,8 @@ A job is done when the **docs are true again**, not just when code builds:
    depth fix needed); only its frontmatter `source`/`plan` numbers must stay correct. Numbering stays safe: `pnpm
    spec:job` counts `archive/` too (monotonic), so the next job never reuses NN.
 
-Report:
+Report — **write the final completion report in Korean** (the spec docs stay English, but the closing summary to the
+user is Korean). Keep the structure below; translate the labels:
 
 ```
 ✅ Job NN — <title> (<type>)  done

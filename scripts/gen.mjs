@@ -30,7 +30,7 @@ if (wantProto) {
     ok('buf 완료')
     did = true
   } else {
-    note('buf 건너뜀 — proto 계약(proto/buf.gen.yaml)이 아직 없음')
+    note('buf 건너뜀 — proto/ 에 .proto 계약이 아직 없음 (전송 유닛에서 추가)')
   }
 }
 

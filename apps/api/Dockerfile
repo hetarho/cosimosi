@@ -1,23 +1,13 @@
-# syntax=docker/dockerfile:1
-# Production image for the cosimosi API (spec 14). Multi-stage static build — separate
-# from Dockerfile.dev (air hot-reload). The builder compiles a CGO-free static binary;
-# the runtime is distroless/static (no shell, non-root) carrying just the binary + the
-# CA certs it needs for TLS to Supabase. The MVP embedding worker runs as a goroutine
-# in this same binary (Architecture §4.6), so one image serves API + worker.
-
-FROM golang:1.26-alpine AS builder
+# Production image: static binary on distroless. No go.sum is copied because the
+# foundation api has no third-party dependencies yet; add it here when one is introduced.
+FROM golang:1.26 AS build
 WORKDIR /src
-# Cache modules first — this layer is reused unless go.mod/go.sum change.
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 COPY . .
-# Static, stripped, reproducible binary. CGO off so it runs on distroless/static.
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /api ./cmd/api
+RUN CGO_ENABLED=0 go build -o /out/api ./cmd/api
 
-FROM gcr.io/distroless/static-debian12:nonroot
-WORKDIR /
-COPY --from=builder /api /api
-# distroless/static:nonroot runs as uid 65532 and bundles ca-certificates.
-USER nonroot:nonroot
+FROM gcr.io/distroless/static-debian12
+COPY --from=build /out/api /api
 EXPOSE 8080
 ENTRYPOINT ["/api"]

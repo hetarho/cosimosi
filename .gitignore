@@ -8,6 +8,7 @@ dist/
 # Go
 apps/api/bin/
 apps/api/tmp/
+apps/api/api
 *.exe
 
 # Editor

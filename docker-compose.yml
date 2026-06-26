@@ -1,60 +1,20 @@
 name: cosimosi
 
+# Foundation dev stack: just the Go api hello world. Postgres, AI adapters, and the
+# rest of the runtime config return with their own units (data-persistence onward).
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: cosimosi-postgres
-    environment:
-      POSTGRES_USER: cosimosi
-      POSTGRES_PASSWORD: cosimosi
-      POSTGRES_DB: cosimosi
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cosimosi -d cosimosi"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  backend:
+  api:
     build:
       context: ./apps/api
       dockerfile: Dockerfile.dev
-    container_name: cosimosi-backend
-    profiles: ["dev"]
-    depends_on:
-      postgres:
-        condition: service_healthy
+    container_name: cosimosi-api
     environment:
       PORT: "8080"
-      DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
-      CORS_ORIGIN: http://localhost:1214
-      # Threaded from the root .env (compose interpolates ${...}). Without the
-      # secret the auth interceptor fails closed and every signed-in RPC returns
-      # Unauthenticated; the :- default keeps compose quiet when it's unset.
-      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
-      SUPABASE_PROJECT_URL: ${SUPABASE_PROJECT_URL:-}
-      # AI adapters (spec 05·34) — embedding is env-selected (mock = keyless
-      # default; openai needs OPENAI_API_KEY). Extraction has NO env knob: it
-      # follows the admin console's active LLM selection (keyless mock when none
-      # is active), and provider keys live encrypted in the DB via the console.
-      AI_EMBEDDER: ${AI_EMBEDDER:-mock}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      # Admin console (spec 34) — allowlist + LLM key envelope master key.
-      ADMIN_USER_IDS: ${ADMIN_USER_IDS:-}
-      LLM_KEY_ENCRYPTION_KEY: ${LLM_KEY_ENCRYPTION_KEY:-}
-      # Invite membership gate (spec 41). Default on; set false in .env to retire the beta gate.
-      INVITE_GATE_ENABLED: ${INVITE_GATE_ENABLED:-true}
     ports:
       - "8080:8080"
     volumes:
       - ./apps/api:/app
-      - backend_go_mod:/go/pkg/mod
-      - backend_tmp:/app/tmp
+      - api_go_mod:/go/pkg/mod
 
 volumes:
-  postgres_data:
-  backend_go_mod:
-  backend_tmp:
+  api_go_mod:
