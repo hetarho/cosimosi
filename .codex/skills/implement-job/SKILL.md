@@ -8,7 +8,7 @@ description: >-
   top-to-bottom (regen with `pnpm gen`/`db:migrate`/`gen:values` as contracts/schema/tuning move), verifies (acceptance
   criteria true + no regression for changes + build/lint/vet), code-reviews (/code-review), reflects the result into
   the SSOT (plan/policy/tech/values; archives the change doc if type=change), and marks the job done. All docs are
-  written in English. Do NOT auto-commit.
+  written in English, but the final user-facing report is written in Korean. Do NOT auto-commit.
 ---
 
 # Implement a job (unified: new + change + refactor)
@@ -16,7 +16,8 @@ description: >-
 A **job** (`spec/jobs/NN.*.md`) is the buildable work doc. Its frontmatter tells you everything: `type`
 (new|change|refactor), `source` (the plan, change, or code-review it implements), `plan` (the plan built/modified,
 or `none` for refactors), `status`. You implement its **Implementation Checklist** and verify against its
-**Acceptance Criteria**. **All docs you write or update are in English.**
+**Acceptance Criteria**. **All docs you write or update are in English.** The final user-facing report is the exception:
+write it in Korean, while keeping file paths, commands, identifiers, and generated labels readable as code/literals.
 
 ## Step 0 — Claim the job (concurrency)
 
@@ -124,7 +125,7 @@ A job is done when the **docs are true again**, not just when code builds:
    depth fix needed); only its frontmatter `source`/`plan` numbers must stay correct. Numbering stays safe: `pnpm
    spec:job` counts `archive/` too (monotonic), so the next job never reuses NN.
 
-Report:
+Report to the user in Korean, keeping commands, file paths, and identifiers verbatim:
 
 ```
 ✅ Job NN — <title> (<type>)  done

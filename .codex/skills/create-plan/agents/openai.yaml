@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Plan"
-  short_description: "Draft a cosymosy feature plan"
-  default_prompt: "Use $create-plan to draft a new cosymosy feature plan."
+  short_description: "Draft a cosimosi feature plan"
+  default_prompt: "Use $create-plan to draft a new cosimosi feature plan."
