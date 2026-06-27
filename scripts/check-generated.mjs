@@ -6,7 +6,6 @@ const generatedPathspecs = [
   'apps/api/internal/gen',
   'apps/api/internal/values/values_gen.go',
   'apps/api/db/gen',
-  'apps/api/internal/db/gen',
   'apps/web/src/shared/api/gen',
   'apps/web/src/shared/config/values.gen.ts',
   ':(glob)packages/**/gen/**',

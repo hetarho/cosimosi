@@ -68,9 +68,9 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: 'apps/api/internal/db/migrations/*'
+          source: 'apps/api/db/migrations/*'
           target: '/srv/cosimosi-${{ env.ENV_NAME }}/migrations'
-          strip_components: 5
+          strip_components: 4
 
       - name: Migrate (direct 5432) → set IMAGE_TAG → roll out
         uses: appleboy/ssh-action@v1.2.0

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
-import { fail, mount, ok, repoRoot, section } from './lib.mjs'
+import { COMPOSE_NETWORK, fail, hasDbMigrations, mount, ok, pnpm, repoRoot, section } from './lib.mjs'
 
 const image = 'golang:1.26'
 const mode = process.argv[2] ?? 'all'
@@ -37,6 +37,9 @@ if (!plan.length) {
   process.exit(1)
 }
 
+const hostTestDatabaseURL = 'postgres://cosimosi:cosimosi@localhost:5432/cosimosi?sslmode=disable'
+const dockerTestDatabaseURL = 'postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable'
+
 const hasHostGo = () => {
   const result = spawnSync('go', ['version'], { cwd: repoRoot, stdio: 'ignore' })
   return !result.error && result.status === 0
@@ -56,6 +59,7 @@ const runHost = (name) => {
   const [cmd, args] = check.host
   const result = spawnSync(cmd, args, {
     cwd: `${repoRoot}/apps/api`,
+    env: { ...process.env, ...envFor(name, hostTestDatabaseURL) },
     encoding: check.failOnStdout ? 'utf8' : undefined,
     stdio: check.failOnStdout ? 'pipe' : 'inherit',
     shell: false,
@@ -73,23 +77,33 @@ const runHost = (name) => {
 
 section(`api ${mode}`)
 
+if (plan.includes('test') && hasDbMigrations()) {
+  pnpm(['db:migrate'])
+}
+
 if (hasHostGo()) {
   for (const name of plan) {
     runHost(name)
   }
 } else {
-  run('docker', [
+  const dockerArgs = [
     'run',
     '--rm',
     '-v',
     mount('apps/api', '/app'),
     '-w',
     '/app',
-    image,
-    'sh',
-    '-c',
-    plan.map((name) => checks[name].docker).join(' && '),
-  ])
+  ]
+  if (plan.includes('test') && hasDbMigrations()) {
+    dockerArgs.push('--network', COMPOSE_NETWORK, '-e', `COSIMOSI_TEST_DATABASE_URL=${dockerTestDatabaseURL}`)
+  }
+  dockerArgs.push(image, 'sh', '-c', plan.map((name) => checks[name].docker).join(' && '))
+  run('docker', dockerArgs)
 }
 
 ok(`api ${mode} passed`)
+
+function envFor(name, databaseURL) {
+  if (name !== 'test' || !hasDbMigrations()) return {}
+  return { COSIMOSI_TEST_DATABASE_URL: process.env.COSIMOSI_TEST_DATABASE_URL || databaseURL }
+}

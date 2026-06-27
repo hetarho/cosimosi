@@ -47,7 +47,12 @@ export const COMPOSE_NETWORK = 'cosimosi_default'
 export const hasBufConfig = () =>
   existsSync(`${repoRoot}/proto/buf.gen.yaml`) &&
   readdirSync(`${repoRoot}/proto`, { recursive: true }).some((f) => String(f).endsWith('.proto'))
-export const hasDbSchema = () => existsSync(`${repoRoot}/apps/api/internal/db/schema.sql`)
+const hasSqlFiles = (dir) =>
+  existsSync(dir) && readdirSync(dir, { recursive: true }).some((f) => String(f).endsWith('.sql'))
+export const hasDbMigrations = () => hasSqlFiles(`${repoRoot}/apps/api/db/migrations`)
+export const hasDbQueries = () => hasSqlFiles(`${repoRoot}/apps/api/db/queries`)
+export const hasSqlcInputs = () =>
+  existsSync(`${repoRoot}/apps/api/sqlc.yaml`) && hasDbMigrations() && hasDbQueries()
 
 // --- console output ---
 export const section = (t) => console.log(`\n\x1b[36m▶ ${t}\x1b[0m`)

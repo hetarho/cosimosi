@@ -1,7 +1,7 @@
 name: cosimosi
 
-# Foundation dev stack: just the Go api hello world. Postgres, AI adapters, and the
-# rest of the runtime config return with their own units (data-persistence onward).
+# Phase 1 dev stack: the Go API plus the local persistence service. Product
+# runtime services return only when their own units need them.
 services:
   api:
     build:
@@ -10,11 +10,33 @@ services:
     container_name: cosimosi-api
     environment:
       PORT: "8080"
+      DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
     ports:
       - "8080:8080"
     volumes:
       - ./apps/api:/app
       - api_go_mod:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: pgvector/pgvector:0.8.3-pg17
+    container_name: cosimosi-postgres
+    environment:
+      POSTGRES_USER: cosimosi
+      POSTGRES_PASSWORD: cosimosi
+      POSTGRES_DB: cosimosi
+    ports:
+      - "5432:5432"
+    volumes:
+      - api_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cosimosi -d cosimosi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   api_go_mod:
+  api_postgres_data:

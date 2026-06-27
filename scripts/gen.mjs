@@ -9,12 +9,13 @@
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { run, mount, hasBufConfig, hasDbSchema, section, ok, note, repoRoot } from './lib.mjs'
+import { run, mount, hasBufConfig, hasSqlcInputs, section, ok, note, repoRoot } from './lib.mjs'
 
 const target = process.argv[2] // undefined | 'proto' | 'sql'
 const wantProto = !target || target === 'proto'
 const wantSql = !target || target === 'sql'
 const bufImage = 'bufbuild/buf:1.70.0'
+const sqlcImage = 'sqlc/sqlc:1.31.1'
 
 section('codegen')
 let did = false
@@ -39,17 +40,17 @@ if (wantProto) {
 }
 
 if (wantSql) {
-  if (hasDbSchema()) {
-    note('sqlc generate (schema.sql → Go)')
+  if (hasSqlcInputs()) {
+    note('sqlc generate (apps/api/db schema+queries → Go)')
     run('docker', [
       'run', '--rm',
       '-v', mount('apps/api', '/app'), '-w', '/app',
-      'sqlc/sqlc:latest', 'generate',
+      sqlcImage, 'generate',
     ])
     ok('sqlc 완료')
     did = true
   } else {
-    note('sqlc 건너뜀 — DB 스키마(apps/api/internal/db/schema.sql)가 아직 없음')
+    note('sqlc 건너뜀 — apps/api/sqlc.yaml + db/migrations/*.sql + db/queries/*.sql 이 모두 필요함')
   }
 }
 
