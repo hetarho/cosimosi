@@ -8,7 +8,8 @@ description: >-
   top-to-bottom (regen with `pnpm gen`/`db:migrate`/`gen:values` as contracts/schema/tuning move), verifies (acceptance
   criteria true + no regression for changes + build/lint/vet), code-reviews (/code-review), reflects the result into
   the SSOT (plan/policy/tech/values; archives the change doc if type=change), and marks the job done. All docs are
-  written in English, but the final user-facing report is written in Korean. Do NOT auto-commit.
+  written in English, but the final user-facing report is written in Korean and includes a reviewer-friendly
+  explanation of the core implementation logic. Do NOT auto-commit.
 ---
 
 # Implement a job (unified: new + change + refactor)
@@ -18,6 +19,8 @@ A **job** (`spec/jobs/NN.*.md`) is the buildable work doc. Its frontmatter tells
 or `none` for refactors), `status`. You implement its **Implementation Checklist** and verify against its
 **Acceptance Criteria**. **All docs you write or update are in English.** The final user-facing report is the exception:
 write it in Korean, while keeping file paths, commands, identifiers, and generated labels readable as code/literals.
+That final report must also explain the core logic clearly enough that the user can begin code review from the report,
+not from a cold diff.
 
 ## Step 0 — Claim the job (concurrency)
 
@@ -125,14 +128,31 @@ A job is done when the **docs are true again**, not just when code builds:
    depth fix needed); only its frontmatter `source`/`plan` numbers must stay correct. Numbering stays safe: `pnpm
    spec:job` counts `archive/` too (monotonic), so the next job never reuses NN.
 
-Report to the user in Korean, keeping commands, file paths, and identifiers verbatim:
+Report to the user in Korean, keeping commands, file paths, and identifiers verbatim. Be friendly and review-oriented:
+summarize what changed, then explain the core logic and review path. The report must include:
+
+- **Core logic:** the main runtime/data/control flow, where it enters, which modules own it, and why the implementation
+  satisfies the spec.
+- **Review guide:** the most important files or file groups to inspect first, plus what each proves.
+- **Risk notes:** any subtle behavior, boundary, generated-code, config, migration, or verification caveat that a
+  reviewer should keep in mind. If there are no special risks, say so plainly.
+- **Verification evidence:** the exact commands that passed, not just "tested".
+
+Use this shape, extending it when the job is broad:
 
 ```
 ✅ Job NN — <title> (<type>)  done
 - source: <plan/NN | changes/NN | code-review/NN>  ·  plan: <plan/NN | none>
 - implementation: Implementation Checklist T001–TNNN ✅
+- core logic:
+  - <entrypoint / flow 1: what happens and which files own it>
+  - <flow 2, if relevant>
+- review guide:
+  - <file/group>: <what to review there>
+  - <file/group>: <what acceptance criterion or invariant it proves>
+- risk notes: <none, or concise caveats for reviewers>
 - codegen/migration/values: <result, or "n/a">
-- verification: build ✅ · lint ✅ · acceptance criteria <per-item ✅> (+ for change: no regression ✅)
+- verification: <exact commands passed> · acceptance criteria <per-item ✅> (+ for change: no regression ✅)
 - review: /code-review <applied N · rejected M + reason> (+ codex <merged> or "skipped")
 - SSOT: plan <updated> · policy/tech <updated/none> · values.yaml <updated/none> (+ for change: changes/ archived)
 - cleanup: job → jobs/archive/ (jobs/ now lists only todo/doing)
