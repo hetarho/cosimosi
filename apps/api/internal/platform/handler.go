@@ -1,0 +1,134 @@
+package platform
+
+import (
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
+	"connectrpc.com/connect"
+	connectcors "connectrpc.com/cors"
+	platformv1connect "github.com/cosimosi/api/internal/gen/cosimosi/platform/v1/platformv1connect"
+)
+
+const requestIDHeader = "X-Request-Id"
+
+type handlerConfig struct {
+	logger          *log.Logger
+	corsOrigins     []string
+	platformService platformv1connect.PlatformServiceHandler
+}
+
+type HandlerOption func(*handlerConfig)
+
+func WithCORSOrigins(origins []string) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.corsOrigins = append([]string(nil), origins...)
+	}
+}
+
+func WithPlatformService(service platformv1connect.PlatformServiceHandler) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.platformService = service
+	}
+}
+
+func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
+	cfg := handlerConfig{
+		logger:          logger,
+		corsOrigins:     defaultCORSOrigins(),
+		platformService: PlatformService{},
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte("hello world"))
+	})
+
+	path, handler := platformv1connect.NewPlatformServiceHandler(
+		cfg.platformService,
+		connect.WithInterceptors(
+			PanicRecoveryInterceptor(cfg.logger),
+			RequestIDInterceptor(),
+			AuthPlaceholderInterceptor(),
+			LoggingInterceptor(cfg.logger),
+		),
+	)
+	mux.Handle(path, handler)
+
+	return requestIDMiddleware(corsMiddleware(cfg.corsOrigins, mux))
+}
+
+func NewHTTPServer(addr string, logger *log.Logger, opts ...HandlerOption) *http.Server {
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
+	return &http.Server{
+		Addr:      addr,
+		Handler:   NewHandler(logger, opts...),
+		Protocols: protocols,
+	}
+}
+
+func defaultCORSOrigins() []string {
+	if raw := os.Getenv("COSIMOSI_CORS_ORIGINS"); raw != "" {
+		parts := strings.Split(raw, ",")
+		origins := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if origin := strings.TrimSpace(part); origin != "" {
+				origins = append(origins, origin)
+			}
+		}
+		return origins
+	}
+	return []string{
+		"http://localhost:5173",
+		"http://127.0.0.1:5173",
+		"http://localhost:8081",
+		"http://127.0.0.1:8081",
+	}
+}
+
+func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
+	allowed := make(map[string]struct{}, len(allowedOrigins))
+	for _, origin := range allowedOrigins {
+		allowed[origin] = struct{}{}
+	}
+
+	allowedHeaders := append(connectcors.AllowedHeaders(), "Authorization", requestIDHeader)
+	exposedHeaders := append(connectcors.ExposedHeaders(), requestIDHeader)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if _, ok := allowed[origin]; origin != "" && ok {
+			header := w.Header()
+			header.Set("Access-Control-Allow-Origin", origin)
+			header.Set("Access-Control-Expose-Headers", strings.Join(exposedHeaders, ","))
+			header.Add("Vary", "Origin")
+		}
+
+		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+			header := w.Header()
+			header.Set("Access-Control-Allow-Methods", strings.Join(connectcors.AllowedMethods(), ","))
+			header.Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ","))
+			header.Set("Access-Control-Max-Age", "7200")
+			header.Add("Vary", "Access-Control-Request-Method")
+			header.Add("Vary", "Access-Control-Request-Headers")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}

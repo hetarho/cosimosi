@@ -7,11 +7,14 @@
 // If a tool's config isn't present yet, the matching step skips with a note
 // instead of failing.
 
-import { run, mount, hasBufConfig, hasDbSchema, section, ok, note } from './lib.mjs'
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { run, mount, hasBufConfig, hasDbSchema, section, ok, note, repoRoot } from './lib.mjs'
 
 const target = process.argv[2] // undefined | 'proto' | 'sql'
 const wantProto = !target || target === 'proto'
 const wantSql = !target || target === 'sql'
+const bufImage = 'bufbuild/buf:1.70.0'
 
 section('codegen')
 let did = false
@@ -24,9 +27,10 @@ if (wantProto) {
     run('docker', [
       'run', '--rm',
       '-v', mount('', '/work'), '-w', '/work',
-      'bufbuild/buf:latest',
+      bufImage,
       'generate', '--template', 'proto/buf.gen.yaml', 'proto',
     ])
+    trimGeneratedTypeScript(join(repoRoot, 'packages/api-client/src/gen'))
     ok('buf 완료')
     did = true
   } else {
@@ -50,3 +54,18 @@ if (wantSql) {
 }
 
 if (!did) note('아직 생성할 대상 없음. 설정 추가 후 다시 실행하면 자동으로 켜져요.')
+
+function trimGeneratedTypeScript(dir) {
+  if (!existsSync(dir)) return
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry)
+    if (statSync(path).isDirectory()) {
+      trimGeneratedTypeScript(path)
+      continue
+    }
+    if (!path.endsWith('.ts')) continue
+    const source = readFileSync(path, 'utf8')
+    const trimmed = source.replace(/\n{2,}$/u, '\n')
+    if (trimmed !== source) writeFileSync(path, trimmed)
+  }
+}

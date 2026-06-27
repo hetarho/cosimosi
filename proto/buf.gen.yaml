@@ -4,20 +4,20 @@
 # this file). Plugins are remote (run on the BSR) — nothing to install locally,
 # which matters because Windows Application Control blocks unsigned .exe here.
 #
-# Pins track their runtime: protocolbuffers/go ↔ google.golang.org/protobuf,
-# connectrpc/go ↔ connectrpc.com/connect (keep == apps/api/go.mod to avoid gen/runtime drift).
 version: v2
+clean: true
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/cosimosi/api/internal/gen
 plugins:
-  # Go message types → apps/api/internal/gen/cosimosi/v1/*.pb.go (package cosimosiv1)
   - remote: buf.build/protocolbuffers/go:v1.36.11
     out: apps/api/internal/gen
     opt: paths=source_relative
-  # Go Connect handlers/clients → apps/api/internal/gen/cosimosi/v1/cosimosiv1connect/*.connect.go
   - remote: buf.build/connectrpc/go:v1.20.0
     out: apps/api/internal/gen
     opt: paths=source_relative
-  # TS types + Connect service descriptor → apps/web/src/shared/api/gen/cosimosi/v1/memory_pb.ts
-  # connect-es v2: protoc-gen-es alone emits the service (no protoc-gen-connect-es).
-  - remote: buf.build/bufbuild/es:v2.12.0
-    out: apps/web/src/shared/api/gen
+  - remote: buf.build/bufbuild/es:v2.12.1
+    out: packages/api-client/src/gen
     opt: target=ts

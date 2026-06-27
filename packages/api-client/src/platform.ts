@@ -1,0 +1,43 @@
+import { timestampFromDate } from '@bufbuild/protobuf/wkt'
+import { createClient, createRouterTransport, type Client, type Transport } from '@connectrpc/connect'
+import { createQueryOptions } from '@connectrpc/connect-query-core'
+import { createConnectTransport } from '@connectrpc/connect-web'
+
+import { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
+
+export { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
+export type { PingRequest, PingResponse } from './gen/cosimosi/platform/v1/platform_pb.ts'
+
+export interface ApiTransportOptions {
+  baseUrl: string
+  useHttpGet?: boolean
+}
+
+export function createApiTransport({ baseUrl, useHttpGet = true }: ApiTransportOptions): Transport {
+  return createConnectTransport({ baseUrl, useHttpGet })
+}
+
+export function createPlatformClient(transport: Transport): Client<typeof PlatformService> {
+  return createClient(PlatformService, transport)
+}
+
+export function createPlatformMockTransport(
+  ping: () => { message: string; requestId?: string; serverTime?: Date },
+): Transport {
+  return createRouterTransport(({ service }) => {
+    service(PlatformService, {
+      ping() {
+        const response = ping()
+        return {
+          message: response.message,
+          requestId: response.requestId ?? 'test-request-id',
+          serverTime: timestampFromDate(response.serverTime ?? new Date(0)),
+        }
+      },
+    })
+  })
+}
+
+export function createPlatformPingQueryOptions(transport: Transport) {
+  return createQueryOptions(PlatformService.method.ping, undefined, { transport })
+}

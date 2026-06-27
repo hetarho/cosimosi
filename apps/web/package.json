@@ -17,6 +17,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cosimosi/api-client": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

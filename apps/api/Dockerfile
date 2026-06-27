@@ -1,8 +1,7 @@
-# Production image: static binary on distroless. No go.sum is copied because the
-# foundation api has no third-party dependencies yet; add it here when one is introduced.
+# Production image: static binary on distroless.
 FROM golang:1.26 AS build
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -o /out/api ./cmd/api

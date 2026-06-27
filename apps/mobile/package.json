@@ -10,6 +10,7 @@
     "start": "react-native start"
   },
   "dependencies": {
+    "@cosimosi/api-client": "workspace:*",
     "react": "19.2.3",
     "react-native": "0.86.0"
   },

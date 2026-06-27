@@ -1,33 +1,18 @@
 // Command api is the cosimosi backend entrypoint.
-//
-// This is the platform-foundation hello world: a bare net/http server with no
-// transport framework, router, or internal/ contexts. A context is introduced
-// by the first feature that needs it (ARCHITECTURE §2.3), not up front.
 package main
 
 import (
 	"log"
-	"net/http"
 	"os"
+
+	"github.com/cosimosi/api/internal/platform"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	// Catch-all so "/" answers without shadowing /health.
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		_, _ = w.Write([]byte("hello world"))
-	})
-
-	addr := ":" + port()
-	log.Printf("api listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	logger := log.Default()
+	server := platform.NewHTTPServer(":"+port(), logger)
+	logger.Printf("api listening on %s", server.Addr)
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }
