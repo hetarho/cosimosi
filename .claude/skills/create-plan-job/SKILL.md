@@ -6,7 +6,7 @@ description: >-
   scaffolds the next sequential spec/jobs/MM.slug.md with `pnpm spec:job plan NN` (frontmatter type=new, source/plan=
   plan/NN; the plan's acceptance criteria are auto-copied into the job's Acceptance Criteria), then fills the
   Implementation Checklist + Affected files from the plan's Design. It does NOT implement — that's
-  /cosimosi:implement-job MM. All docs are written in English. Do NOT auto-commit.
+  /implement-job MM. All docs are written in English. Do NOT auto-commit.
 ---
 
 # Create an implementation job from a plan (new)
@@ -29,7 +29,7 @@ doesn't build it. **Write the job in English.**
    grep) and the grounding (tech/policy/values it depends on).
    Don't pad the Acceptance Criteria — those came from the plan; refine only if the plan's wording isn't checkable.
 4. **Register** — in the 00.overview progress board, note that plan NN now has job MM (still ⬜/🟡 until implemented).
-5. Report the job path + "Next: `/cosimosi:implement-job MM`". Do NOT implement or commit.
+5. Report the job path + "Next: `/implement-job MM`". Do NOT implement or commit.
 
-For a CHANGE to shipped behavior, use /cosimosi:create-change → /cosimosi:create-change-job instead (this skill is
+For a CHANGE to shipped behavior, use /create-change → /create-change-job instead (this skill is
 for new plans).

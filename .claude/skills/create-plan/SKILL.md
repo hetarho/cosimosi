@@ -6,7 +6,7 @@ description: >-
   for X", "design how X should work", "write a planning doc". This skill interrogates the user (purpose · scope/non-goals
   · design · acceptance criteria), scaffolds the next sequential plan with `pnpm spec:plan "<title>"`, fills it, ALSO
   creates/updates the policy/ux docs and notes the spec/values.yaml numbers the feature needs, and registers it in
-  00.overview (status ⬜ planning). It does NOT implement — that's /cosimosi:create-plan-job then /cosimosi:implement-job.
+  00.overview (status ⬜ planning). It does NOT implement — that's /create-plan-job then /implement-job.
   All docs are written in English. Do NOT auto-commit.
 ---
 
@@ -46,7 +46,7 @@ A feature usually implies canonical rules or numbers. As part of creating the pl
 
 - **policy/** — create or update the domain/ux doc(s) the feature's rules belong to (e.g. `policy/domain/<x>.md`).
   policy describes *current truth*, so write the rule as "will be true once implemented" in the plan's **Policy /
-  Values Impact** section now; the rule lands in policy/ when the job completes (see /cosimosi:implement-job Step 6).
+  Values Impact** section now; the rule lands in policy/ when the job completes (see /implement-job Step 6).
   Don't pre-write unbuilt rules into policy as if shipped.
 - **spec/values.yaml — ALL config goes here.** Any setting/tuning number the feature introduces or changes
   (thresholds, coefficients, caps, defaults, …) is config: enumerate it in **Policy / Values Impact**. Rule: config
@@ -58,6 +58,6 @@ A feature usually implies canonical rules or numbers. As part of creating the pl
 
 Add the plan to the **plan index** and the **progress board** with status **⬜ planning** (so other agents see it
 exists, unbuilt). Add it to the dependency graph if it has prerequisites. Then report: the plan path, what policy/ux
-you touched, and "Next: `/cosimosi:create-plan-job NN` to generate the implementation job". Do NOT implement or commit.
+you touched, and "Next: `/create-plan-job NN` to generate the implementation job". Do NOT implement or commit.
 
-For a CHANGE to shipped behavior, use /cosimosi:create-change instead (this skill is for new features).
+For a CHANGE to shipped behavior, use /create-change instead (this skill is for new features).

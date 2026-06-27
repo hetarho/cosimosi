@@ -5,7 +5,7 @@ description: >-
   the user wants an audit, a refactor-opportunity sweep, or a tech-debt report — "review the codebase", "audit the
   frontend for debt", "where can we refactor X", "do a code-quality pass". It scaffolds the next report with
   `pnpm spec:code-review "<title>"`, then fills it with evidence-backed findings (R001…) and candidate jobs. It does
-  NOT modify code and does NOT implement — turn selected findings into a job with /cosimosi:create-refactor-job NN.
+  NOT modify code and does NOT implement — turn selected findings into a job with /create-refactor-job NN.
   All docs are written in English. Do NOT auto-commit.
 ---
 
@@ -27,8 +27,8 @@ opportunities only — no code changes here; implementation belongs in `spec/job
    (P1/P2/P3), area, evidence, why it matters, recommendation, and a suggested job split. Note **Cross-Cutting
    Themes**, open **Questions / Tradeoffs**, and honest **Verification Notes** (what passed/failed/was blocked).
 4. **Candidate Jobs** — distill the findings into a list of coherent implementation-job candidates, each a sentence a
-   `/cosimosi:create-refactor-job` run can turn into a job.
-5. Report the report path + "Next: `/cosimosi:create-refactor-job NN` to turn selected findings into a job". Do NOT
+   `/create-refactor-job` run can turn into a job.
+5. Report the report path + "Next: `/create-refactor-job NN` to turn selected findings into a job". Do NOT
    modify code or commit.
 
 This is the read-only sibling of the diff reviewer `/code-review` — that one reviews the working tree inline; this
