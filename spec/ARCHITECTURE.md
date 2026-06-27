@@ -7,13 +7,14 @@ the *frame*, not the product's features.
 
 In short:
 
-- **One ubiquitous language, owned by the domain layer.** One vocabulary is used verbatim across the domain, DB,
-  proto, and frontend. The architecture gives it a single home (the domain layer) and guards the boundaries where
-  other representations (proto, sql, pixels) translate to and from it (§1). *Which* words those are is domain content,
-  out of scope here.
-- **Backend = Domain-Driven Design.** Bounded contexts, each layered `domain → app → infra`, dependencies pointing
-  inward only. Data is **sqlc + pgvector + a weighted graph**; transport is **Connect RPC + Protobuf**; AI is
-  **behind ports + an async worker** (§2).
+- **One ubiquitous language, owned by the domain model.** One canonical semantic vocabulary is used across the
+  domain, DB, proto, and frontend. Each representation may use its own casing/suffixes, but not a second product word
+  for the same concept. Boundaries translate proto/sql/pixels to and from the domain model (§1). *Which* words those
+  are is domain content, out of scope here.
+- **Backend = domain-first Go.** `cmd/` composes, `internal/` protects, context packages own behavior, and adapters sit
+  at the edge. Clean Architecture/DDD terms are used as control rails for complex core logic, not as mandatory folders
+  for every small feature. Data is **sqlc + pgvector + a weighted graph**; transport is **Connect RPC + Protobuf**; AI is
+  **behind consumer-owned ports + an async worker** (§2).
 - **Frontend = Feature-Sliced Design**: React 19 + R3F 9 + three.js `WebGPURenderer` + TSL, one-way imports,
   control-state in XState, data in Zustand/Query (§3).
 - **Web and mobile are peer apps** sharing pure code via `packages/`. Mobile is React Native (§3.5).
@@ -29,7 +30,7 @@ cosimosi/                  pnpm workspace
 └── apps/                  peer applications — each built & deployed on its own
     ├── web/               React 19 + Vite + R3F (FSD)
     ├── mobile/            React Native + Metro + R3F (FSD) — own native ios/ + android/
-    ├── api/               Go (DDD) + Connect + sqlc + pgvector
+    ├── api/               Go domain-first service + Connect + sqlc + pgvector
     └── blog/              Astro
 ```
 
@@ -51,33 +52,42 @@ cosimosi/                  pnpm workspace
 > The actual vocabulary — which noun maps to which type, which verb to which use-case — is **domain content** and is
 > out of scope here. This section is the *architectural rule* for **where** names live and how they cross boundaries.
 
-- **The `domain` layer is the single naming authority.** Domain types and domain-service functions carry the
-  canonical names; every other layer either uses those names verbatim or translates at a boundary.
+- **The domain model is the single naming authority.** Domain types and domain-service functions carry the canonical
+  names; every other layer either uses those names semantically or translates at a boundary. In a small Go context this
+  may be the context package itself; in a larger context it may be a `domain/` package.
 - **proto and sql are foreign representations, kept at the edge.** The transport DTO (proto) and the persistence row
   (sqlc) are *not* domain types. They are mapped to/from domain at two anti-corruption boundaries — the RPC handler
-  (`proto ↔ domain`) and the repository (`row ↔ domain`). No proto/sql type ever leaks inward.
+  (`proto ↔ domain`) and the pg adapter (`row ↔ domain`). No proto/sql type ever leaks inward.
 - **The frontend mirrors the domain names, then projects to visuals at one seam.** Domain-mirror slices carry the
   canonical names; the *visual* vocabulary appears only in the rendering layer, behind the `entities/*/api` mapper (§3.4).
 - **Enforced, not hoped.** A lint rejects forbidden cross-vocabulary names (a rendering word used as a domain symbol,
-  or a second name for an existing concept), so a new domain name is defined once and reused everywhere.
+  or a second product word for an existing concept), so a new domain name is defined once and reused everywhere. The
+  lint is semantic: representation-specific casing, pluralization, and generated-code suffixes are allowed when they do
+  not introduce a new concept name.
 
 ---
 
-## 2. Backend — Domain-Driven Design
+## 2. Backend — Domain-first Go
 
-### 2.1 What DDD means here
+### 2.1 What this means
 
-The domain layer is the sole home of the ubiquitous language; proto, sqlc, and pgx live outside it. "DDD here" means:
+The backend needs the control of Clean Architecture without importing Java-style ceremony into Go. The rule is:
+**start with clear Go packages, then split only when the package earns it.**
 
-- **Bounded contexts** — the model is split where the language changes meaning. Inside a context the terms are exact;
-  across contexts they talk through published interfaces, never by reaching into each other's domain or tables.
-- **A layered context** — every context is `domain → app → infra`, with the **dependency rule**: source code
-  dependencies point **only inward**. `domain` imports nothing of ours and nothing of infrastructure.
-- **Tactical patterns** — aggregates, entities, value objects, domain services (pure), application services
-  (use-cases), repositories (ports declared consumer-side), and an anti-corruption boundary at proto/sql mapping.
+The invariants are stricter than the folder shape:
 
-It is *pragmatic* Go DDD: no ORM, no generic repository abstraction over sqlc. sqlc *is* the repository
-implementation; the domain is kept clean of it.
+- **Domain language is protected.** Product terms live in the domain model and stay free of proto, sqlc, pgx, JSON tags,
+  DB tags, and transport concerns.
+- **Dependencies point toward behavior, not infrastructure.** RPC and persistence code call the context behavior; domain
+  logic never calls RPC, sqlc, pgx, SDK clients, or framework code.
+- **`cmd/` is the composition root.** Binaries wire concrete dependencies, config, adapters, handlers, and workers.
+- **Abstractions are earned.** Interfaces are declared by the consuming code when tests, replacement, or cross-context
+  integration needs them. No implementation-side interfaces just for mocking.
+- **DDD is a toolbox for the core.** Bounded contexts, aggregates, value objects, domain services, and use-cases are used
+  where the product model is rich enough to benefit from them. Thin supporting features stay thin.
+
+No ORM, no DI framework, no generic repository abstraction over sqlc. sqlc is the generated query layer; hand-written Go
+around it is an adapter only when domain mapping, dynamic SQL, transactions, or tests need one.
 
 ### 2.2 Context kinds & how they integrate
 
@@ -88,12 +98,13 @@ scope here):
    ┌─────────────────────────────┐
    │  CORE DOMAIN context        │   the product's reason to exist; the richest model
    └──────────▲────────▲─────────┘
-   app port   │        │   app port
+   published  │        │   published
+   behavior   │        │   behavior
    ┌──────────┴───┐  ┌──┴───────────────┐
    │ SUPPORTING   │  │ SUPPORTING       │   necessary, lower-stakes domains around the core
    └──────────────┘  └──────────────────┘
    ┌──────────────────────────────────────┐
-   │ GENERIC / SHARED KERNEL               │   config · db pool · rpc mux · id — no business meaning
+   │ PLATFORM                              │   config · db pool · rpc mux · id — no business meaning
    └──────────────────────────────────────┘
    ┌──────────────────────────────────────┐
    │ SUPPORTING (external-service wrapper) │   3rd-party deps (e.g. AI) hidden behind ports + adapters
@@ -101,58 +112,74 @@ scope here):
 ```
 
 - **One core domain, the rest support it.** Effort concentrates on the core; supporting contexts stay thin.
-- **Contexts integrate only through `app`-layer interfaces.** A context that needs another depends on the other's
-  *published* interface (a port), never on its `domain` internals or its tables (customer/supplier, core upstream).
-- **The generic context is a shared kernel** of infra with no business meaning.
+- **Contexts integrate through small published behavior.** A context that needs another depends on the other's exported
+  use-case/port surface, never on its internals or tables. If the producer is still small, that surface may be the
+  context package itself; if it grows, it may live in an `app/` package.
+- **`platform/` is not a domain context.** It is shared infrastructure with no business meaning.
 - **External services live behind ports** in a supporting context; their concrete adapters sit in the outermost ring.
 
 ### 2.3 Layout of a context
 
-Every context — core or supporting — has the **same three-layer shape**. `<context>` is a placeholder; the real
-context names are out of scope here.
+`<context>` is a placeholder; real context names are domain content, out of scope here. The important unit in Go is the
+package, not a diagram. Do not create empty packages to satisfy an architecture picture.
 
 ```
 apps/api/
 ├── cmd/
-│   ├── api/main.go         composition root: the ONLY place that wires all layers & contexts together
+│   ├── api/main.go         calls run(), builds the HTTP server, wires adapters
 │   └── worker/main.go      async/background worker (same wiring style)
 ├── internal/
-│   ├── <context>/          one bounded context
-│   │   ├── domain/         PURE. aggregates · entities · value objects · domain services (pure fns).
-│   │   │                   carries the canonical names. imports: stdlib only — NO proto/sqlc/pgx, NO json/db tags.
-│   │   ├── app/            use-cases (application services) + the ports they consume (interfaces: repo, clock, …)
-│   │   └── infra/          adapters (outermost ring):
-│   │       ├── pg/         repository impl: sqlc + thin pgx; row↔domain mapping
-│   │       └── rpc/        Connect handler: proto↔domain mapping; thin (policy stays in app)
-│   ├── <context>/          … one folder per bounded context, same split
-│   ├── <external-wrapper>/ supporting context: ports + concrete adapters for a 3rd-party service
-│   └── platform/           generic shared kernel: config · db pool · rpc mux · id · generated config
+│   ├── <context>/          one bounded context; start as one package when that stays readable
+│   │   ├── types.go        domain types / value objects / canonical names
+│   │   ├── service.go      domain behavior or application use-cases while still small
+│   │   ├── ports.go        consumer-owned interfaces, only once a consumer exists
+│   │   ├── pg/             sqlc + thin pgx adapter; row↔domain mapping
+│   │   └── rpc/            Connect handler; proto↔domain mapping; thin
+│   ├── <context>/          another context; same progression, not necessarily same files
+│   ├── <external-wrapper>/ supporting wrapper for a 3rd-party service, behind consumer-owned ports
+│   └── platform/           config · db pool · rpc mux/server · id · generated config
 └── db/
-    ├── migrations/         goose .up/.down — tables/columns carry the canonical domain names
+    ├── migrations/         goose .up/.down — tables/columns carry canonical domain meaning
     ├── queries/            sqlc input (*.sql), grouped per context
     └── gen/                sqlc output (never hand-edited) — an infra detail
 ```
 
+If a context grows past the readable one-package shape, split by dependency direction:
+
+```
+internal/<context>/
+├── domain/                 pure domain model and domain services
+├── app/                    use-cases + consumer-owned ports
+├── pg/                     persistence adapter: sqlc/pgx + row↔domain mapping
+└── rpc/                    transport adapter: proto↔domain mapping
+```
+
+This split is a refactor, not a starting tax. Use it when it removes noise, import cycles, test pain, or mixed IO/domain
+code. Supporting contexts may stay in the smaller shape forever.
+
 > Per-context `db` ownership: each context owns its tables and queries; cross-context reads go through the owning
-> context's `app` interface, not by querying another context's tables.
+> context's published behavior, not by querying another context's tables.
 
 ### 2.4 The dependency rule
 
 ```
-   infra  ───────►  app  ───────►  domain
- (pg repo,        (use-cases,     (pure types +
-  rpc handler,     ports as        domain services)
-  ai adapters)     interfaces)     depends on NOTHING of ours
+   pg / rpc / SDK adapters  ───────►  context behavior  ───────►  domain model
+                                     (or app package)              (pure)
 ```
 
-- **Inward only.** `rpc` handler knows `app`; `app` knows `domain`; `domain` knows neither. The composition root
-  (`cmd/api/main.go`) is the one place that sees everything and injects concrete adapters into ports.
-- **Ports are declared by the consumer.** `<context>/app` declares the interfaces *it* needs (repository, clock,
-  external-service ports) — idiomatic Go, "accept interfaces, defined where used". `<context>/infra` and the
-  external-wrapper context *implement* them.
+- **Inward only.** `rpc` and `pg` know context behavior; context behavior knows the domain model; the domain model knows
+  neither. In the split shape this is `rpc/pg → app → domain`.
+- **The composition root sees everything.** `cmd/api` and `cmd/worker` inject concrete adapters into the behavior that
+  consumes them.
+- **Ports are declared by the consumer.** The context behavior declares the interfaces it needs (repository, clock,
+  external service, job queue) only when it actually consumes them. Concrete `pg` packages and external-wrapper packages
+  return structs and implement those interfaces implicitly.
 - **proto types and sqlc rows are infrastructure.** The domain has never heard of them. The handler maps
-  proto↔domain; the repo maps row↔domain. These two mappers are the **anti-corruption boundary** that keeps the
+  proto↔domain; the pg adapter maps row↔domain. These two mappers are the anti-corruption boundary that keeps the
   language pure.
+- **Package names must read well at call sites.** Avoid repeating generic `domain`, `app`, or `service` package names
+  when they force aliases or hide the product concept. Prefer the smaller context package until the split makes code
+  clearer.
 
 ### 2.5 Aggregate boundaries (a structural decision)
 
@@ -162,8 +189,10 @@ content, out of scope here. The rules:
 - **An entity with its own lifecycle is its own aggregate root.** An entity shared by many others is a separate root,
   referenced **by id through a membership/join**, never *owned* — an aggregate never reaches inside another's
   internals.
-- **Emergent relationships get no aggregate, type, or table.** A relationship that can be *computed* from stored data
-  is derived at read time, not modeled — storing it as a redundant edge is forbidden.
+- **Emergent relationships are not domain source-of-truth.** A relationship that can be computed from stored data is not
+  promoted into an aggregate root or canonical domain type. It may be materialized as an infrastructure projection
+  (for example, a weighted edge table) only when performance, async derivation, or query shape requires it, and only if
+  it can be rebuilt from its source facts.
 - **Domain services are pure functions** (no IO) over the aggregates. Purity is what lets a client-side simulation and
   the server run the *same* math, pinned by golden-parity tests.
 
@@ -177,20 +206,24 @@ product reward SQL control and gain nothing from an ORM:
 - **atomic weight upserts** (`INSERT … ON CONFLICT … DO UPDATE`, batched).
 
 sqlc generates the static queries; a *thin* pgx layer handles only the genuinely dynamic ones (runtime-variable hop
-count / sort). **`<context>/infra/pg` is the only place that touches sqlc/pgx**, mapping rows to/from `domain` types —
-no sqlc row escapes into `app` or `domain`. (Concrete tables/queries are defined per-feature, not here.)
+count / sort). **`<context>/pg` is the only context-specific package that touches sqlc/pgx**, mapping rows to/from
+domain types — no sqlc row escapes into context behavior or the domain model. (Concrete tables/queries are defined
+per-feature, not here.)
 
 ### 2.7 Transport — Connect RPC + Protobuf
 
 - **`proto/` is the single contract.** `buf` generates the Go server (`protoc-gen-connect-go`/`protoc-gen-go`) and
-  the TS client (`protobuf-es` + `connect-es`) — shared by the web and mobile apps. **proto messages carry the
-  canonical domain names verbatim** (never abbreviated or renamed).
-- **proto = DTO layer.** Domain stays pure; the `infra/rpc` handler maps proto↔domain.
+  the TS client (`protobuf-es` + `connect-es`) — shared by the web and mobile apps. Proto messages carry canonical
+  domain terms semantically; representation-specific casing, request/response suffixes, and generated-code naming are
+  fine, but synonyms and abbreviations are not.
+- **proto = DTO layer.** Domain stays pure; the `rpc` handler maps proto↔domain.
 - **Unary only.** RN has no server-streaming, so we never design push streams. **High-frequency client-local events
   persist as a debounced, idempotent unary batch** (a `batch_id` recorded server-side prevents double-counting).
   Idempotent unary reads are exposed as HTTP GET → cacheable on the CDN.
 - connect-go handlers are `http.Handler`s mounted on a thin `net/http` mux (`platform`) with `h2c` + CORS; only
-  `/health` is hand-routed. Run `buf`/`sqlc`/`go` inside Docker/WSL (Windows Application Control blocks user-dir `.exe`s).
+  `/health` is hand-routed. The server is built through a `NewServer(...deps) http.Handler` constructor, with route /
+  service registration visible in one place. `main()` stays tiny and delegates to `run(...)`. Run `buf`/`sqlc`/`go`
+  inside Docker/WSL (Windows Application Control blocks user-dir `.exe`s).
 
 ### 2.8 Async work & external-service ports
 
@@ -203,24 +236,26 @@ A write that triggers slow work returns immediately and enqueues a job; a backgr
 
 - **Queue = a `jobs` table** (`SELECT … FOR UPDATE SKIP LOCKED`), exponential backoff via a `next_run_at` column.
   The worker is a separate process (`cmd/worker`) but may run as a goroutine in dev.
-- **External services live behind ports:** an interface in `app`, a concrete adapter (3rd-party SDK or a **keyless
-  mock** fallback) injected at the composition root. Cost-metered (per-call caps, caching, daily/monthly limits). New
-  providers/capabilities slot in behind the *same* port — nothing else changes.
+- **External services live behind ports:** an interface at the consumer, a concrete adapter (3rd-party SDK or a
+  **keyless mock** fallback) injected at the composition root. Cost-metered (per-call caps, caching, daily/monthly
+  limits). New providers/capabilities slot in behind the same consumed behavior — nothing else changes.
 - **Optimistic write pattern.** The write returns only an id; the client renders optimistically. Slow results filled
   by the worker surface on the **next read** (refetch) — no polling, no streaming.
 
 ### 2.9 Forbidden patterns
 
-1. **Renaming a concept across layers.** One name, every layer (§1).
-2. **A type/table for a relationship that should be emergent.** If it can be computed from stored data, derive it;
-   don't store a redundant edge.
-3. **sqlc rows or proto types leaking into `domain`/`app`** — they are infra; map at the boundary.
-4. **An ORM or hand-rolled generic repository over sqlc** — sqlc *is* the repository.
-5. **Interfaces declared at the implementation** — declare them consumer-side (`<context>/app`).
-6. **Business logic in the RPC handler** — handler is thin (map + call); policy lives in `app`/`domain`.
-7. **Server-authoritative client-derived state** — the server owns the source data; anything a client can derive
+1. **Renaming a concept across layers.** One semantic product name, every layer (§1).
+2. **Creating packages for a diagram.** No empty `domain/app/infra` folders, no pass-through services, no interface
+   unless a consumer needs it.
+3. **A computed relationship as domain source-of-truth.** If it can be derived, keep it derived or materialized only as
+   a rebuildable infrastructure projection.
+4. **sqlc rows or proto types leaking into domain/context behavior** — they are infra; map at the boundary.
+5. **An ORM or hand-rolled generic repository over sqlc** — sqlc is the generated query layer.
+6. **Interfaces declared at the implementation** — declare them consumer-side where they are used.
+7. **Business logic in the RPC handler** — handler is thin (map + call); policy lives in context behavior/domain.
+8. **Server-authoritative client-derived state** — the server owns the source data; anything a client can derive
    (e.g. layout coordinates) is not stored authoritatively.
-8. **High-frequency events as server-streaming** — unary batch only (RN constraint).
+9. **High-frequency events as server-streaming** — unary batch only (RN constraint).
 
 ---
 
@@ -393,9 +428,12 @@ apps/mobile/
 - **FSD** — [Overview](https://feature-sliced.design/docs/get-started/overview) ·
   [Layers](https://feature-sliced.design/docs/reference/layers) ·
   [Public API](https://feature-sliced.design/docs/reference/public-api)
-- **DDD** — Evans, *Domain-Driven Design*; Vernon, *Implementing DDD*;
-  [Three Dots Labs — Clean Architecture in Go](https://threedots.tech/post/introducing-clean-architecture/) ·
-  [Go Code Review — Interfaces](https://go.dev/wiki/CodeReviewComments#interfaces)
+- **Backend architecture** — [Go module layout](https://go.dev/doc/modules/layout) ·
+  [Go Code Review — Interfaces](https://go.dev/wiki/CodeReviewComments#interfaces) ·
+  [Ben Johnson — Standard Package Layout](https://gobeyond.ghost.io/standard-package-layout/) ·
+  [Mat Ryer — HTTP Services in Go](https://grafana.com/blog/how-i-write-http-services-in-go-after-13-years/) ·
+  Evans, *Domain-Driven Design*; Vernon, *Implementing DDD*;
+  [Three Dots Labs — Clean Architecture in Go](https://threedots.tech/post/introducing-clean-architecture/)
 - **Backend stack** — [sqlc](https://docs.sqlc.dev) ([#2467 repository](https://github.com/sqlc-dev/sqlc/issues/2467),
   [#3548 vector](https://github.com/sqlc-dev/sqlc/issues/3548)) · [pgvector](https://github.com/pgvector/pgvector) ·
   [connect-go](https://connectrpc.com/docs/) · [buf](https://github.com/bufbuild/buf)

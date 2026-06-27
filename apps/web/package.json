@@ -5,8 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc -b",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "pnpm run lint:ox && pnpm run lint:fsd && pnpm run lint:boundaries",
+    "lint:ox": "oxlint",
+    "lint:fsd": "steiger ./src --fail-on-warnings",
+    "lint:boundaries": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
+    "lint:boundaries:probe": "node ../../scripts/probe-web-boundary.mjs",
+    "test": "vitest run --passWithNoTests",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -14,12 +21,19 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@feature-sliced/steiger-plugin": "^0.6.0",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "eslint": "^10.6.0",
+    "eslint-plugin-boundaries": "^6.0.2",
     "oxlint": "^1.69.0",
+    "steiger": "^0.5.13",
     "typescript": "~6.0.2",
-    "vite": "^8.1.0"
+    "typescript-eslint": "^8.62.0",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9"
   }
 }

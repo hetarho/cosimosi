@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "ASTRO_TELEMETRY_DISABLED=1 ASTRO_DEV_BACKGROUND=1 astro dev --port 4321",
     "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "typecheck": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "check": "pnpm run build",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview --port 4322"
   },
   "dependencies": {

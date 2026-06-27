@@ -27,9 +27,25 @@
     "db:reset": "node scripts/db.mjs reset",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
+    "lint": "pnpm lint:web && pnpm lint:mobile && pnpm lint:api && pnpm lint:language",
+    "lint:web": "pnpm --filter @cosimosi/web lint",
+    "lint:mobile": "pnpm --filter @cosimosi/mobile lint",
+    "lint:api": "node scripts/go-check.mjs fmt",
+    "lint:language": "node scripts/lint-ubiquitous-language.mjs",
+    "typecheck": "pnpm typecheck:web && pnpm typecheck:mobile && pnpm typecheck:blog",
+    "typecheck:web": "pnpm --filter @cosimosi/web typecheck",
+    "typecheck:mobile": "pnpm --filter @cosimosi/mobile typecheck",
+    "typecheck:blog": "pnpm --filter @cosimosi/blog typecheck",
+    "test": "pnpm test:web && pnpm test:api",
+    "test:web": "pnpm --filter @cosimosi/web test",
+    "test:api": "node scripts/go-check.mjs test",
+    "vet:api": "node scripts/go-check.mjs vet",
+    "check:api": "node scripts/go-check.mjs",
+    "check:gen": "node scripts/check-generated.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build:web && pnpm build:blog && pnpm vet:api && pnpm build:api && pnpm check:gen",
     "build:web": "pnpm --filter @cosimosi/web build",
     "build:blog": "pnpm --filter @cosimosi/blog build",
-    "build:api": "cd apps/api && go build -o bin/api ./cmd/api",
+    "build:api": "node scripts/go-check.mjs build",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -39,6 +55,6 @@
   },
   "packageManager": "pnpm@10.26.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   }
 }

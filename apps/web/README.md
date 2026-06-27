@@ -1,32 +1,17 @@
-# React + TypeScript + Vite
+# @cosimosi/web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + Vite web shell for the clean platform.
 
-Currently, two official plugins are available:
+## Commands
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Command | Purpose |
+|---|---|
+| `pnpm --filter @cosimosi/web dev` | Start Vite locally |
+| `pnpm --filter @cosimosi/web lint` | Run oxlint, Steiger FSD checks, and ESLint boundaries |
+| `pnpm --filter @cosimosi/web typecheck` | Run `tsc -b` |
+| `pnpm --filter @cosimosi/web test` | Run Vitest in host-only mode |
+| `pnpm --filter @cosimosi/web build` | Typecheck and build the Vite app |
+| `pnpm --filter @cosimosi/web lint:boundaries:probe` | Verify that a deliberate forbidden FSD layer import fails |
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The web FSD boundary is intentionally active before feature slices exist. The current app shell is small, and later
+slices inherit the same one-way layer rule as they appear.
