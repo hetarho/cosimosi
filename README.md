@@ -95,7 +95,8 @@ cosimosi/
 
 1. [spec/plan/00.overview.md](spec/plan/00.overview.md)에서 **선행 의존이 끝난 유닛**을 고른다.
 2. 그 `NN.*.md`의 목적·범위·설계·수용 기준을 읽고 job으로 옮겨 구현한다.
-3. 작업을 끝낼 때마다 **Conventional Commits**(영문 제목 / 한글 본문)로 커밋한다.
+3. 작업을 끝낼 때마다 **Conventional Commits** 변형으로 커밋한다:
+   `type(planNN - scope): English title`. 커밋 제목은 영어로 쓰고, 본문/코멘트는 한국어로 쓴다.
 
 ## 비-목표
 

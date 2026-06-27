@@ -136,7 +136,8 @@ Report to the user in Korean, keeping commands, file paths, and identifiers verb
 - review: /code-review <applied N · rejected M + reason> (+ codex <merged> or "skipped")
 - SSOT: plan <updated> · policy/tech <updated/none> · values.yaml <updated/none> (+ for change: changes/ archived)
 - cleanup: job → jobs/archive/ (jobs/ now lists only todo/doing)
-- commit: not done — changed files are staged for you. You commit (Conventional Commits, English subject/body).
+- commit: not done — changed files are staged for you. You commit with `type(planNN - scope): English title`; write
+  the title in English and the body/comment in Korean.
 ```
 
 **Don't run `git commit`.** The user commits.

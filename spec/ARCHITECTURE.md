@@ -415,7 +415,8 @@ apps/mobile/
 
 - **Language.** English for code and identifiers; UI copy is i18n'd (Paraglide).
 - **IDs.** Backend mints `TEXT` PKs (UUID/nanoid); clients never create IDs. Times stored UTC, displayed local.
-- **Git.** Conventional Commits, small semantic units. `gofmt` + ESLint.
+- **Git.** Commit small semantic units with `type(planNN - scope): English title`; the subject is English and the
+  body/comment is Korean. Use the relevant plan number for plan-bound work. `gofmt` + ESLint.
 - **Not now:** real prod deployment; Connect server-streaming; the mobile **feature UI** and the RN WebGPU renderer
   (the mobile app *shell* ships in the foundation per §3.5 — only its feature screens + renderer come later);
   multi-user real-time collaboration (the social features are async, one-way, and deferred). These are decisions on
