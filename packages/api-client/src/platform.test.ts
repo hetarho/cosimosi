@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { createPlatformClient, createPlatformMockTransport, createPlatformPingQueryOptions } from './platform.ts'
+import {
+  PlatformService,
+  createApiAuthInterceptor,
+  createPlatformClient,
+  createPlatformMockTransport,
+  createPlatformPingQueryOptions,
+} from './platform.ts'
+import { createRouterTransport } from '@connectrpc/connect'
 
 describe('platform transport facade', () => {
   it('calls PlatformService.Ping through an in-memory transport', async () => {
@@ -23,5 +30,66 @@ describe('platform transport facade', () => {
 
     expect(options.queryKey[0]).toBe('connect-query')
     expect(typeof options.queryFn).toBe('function')
+  })
+
+  it('attaches bearer tokens through the shared auth interceptor', async () => {
+    const seenHeaders: string[] = []
+    let token = 'token-1'
+    const transport = createRouterTransport(
+      ({ service }) => {
+        service(PlatformService, {
+          ping(_request, context) {
+            seenHeaders.push(context.requestHeader.get('Authorization') ?? '')
+            return { message: 'pong' }
+          },
+        })
+      },
+      {
+        transport: {
+          interceptors: [
+            createApiAuthInterceptor({
+              getAccessToken: async () => token,
+            }),
+          ],
+        },
+      },
+    )
+    const client = createPlatformClient(transport)
+
+    await client.ping({})
+    token = 'token-2'
+    await client.ping({})
+
+    expect(seenHeaders).toEqual(['Bearer token-1', 'Bearer token-2'])
+  })
+
+  it('continues anonymously when token access fails', async () => {
+    const seenHeaders: string[] = []
+    const transport = createRouterTransport(
+      ({ service }) => {
+        service(PlatformService, {
+          ping(_request, context) {
+            seenHeaders.push(context.requestHeader.get('Authorization') ?? '')
+            return { message: 'pong' }
+          },
+        })
+      },
+      {
+        transport: {
+          interceptors: [
+            createApiAuthInterceptor({
+              getAccessToken: async () => {
+                throw new Error('storage unavailable')
+              },
+            }),
+          ],
+        },
+      },
+    )
+    const client = createPlatformClient(transport)
+
+    await client.ping({})
+
+    expect(seenHeaders).toEqual([''])
   })
 })

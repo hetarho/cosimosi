@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@cosimosi/api-client": "workspace:*",
+    "@cosimosi/auth": "workspace:*",
     "react": "19.2.3",
     "react-native": "0.86.0"
   },

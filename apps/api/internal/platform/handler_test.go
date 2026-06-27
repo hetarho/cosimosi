@@ -3,6 +3,7 @@ package platform
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -91,7 +92,7 @@ func TestHealthAndRequestIDShareCompositionRoot(t *testing.T) {
 	}
 }
 
-func TestAuthPlaceholderDoesNotBlockPublicPing(t *testing.T) {
+func TestAuthAllowlistKeepsPublicPingAnonymous(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(NewHandler(log.New(io.Discard, "", 0)))
@@ -100,6 +101,117 @@ func TestAuthPlaceholderDoesNotBlockPublicPing(t *testing.T) {
 	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
 	if _, err := client.Ping(context.Background(), connect.NewRequest(&platformv1.PingRequest{})); err != nil {
 		t.Fatalf("public Ping without Authorization failed: %v", err)
+	}
+}
+
+func TestAuthInterceptorRejectsProtectedPingWithoutToken(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPublicProcedures(nil),
+		WithAuthVerifier(fakeAuthVerifier{userID: "user-1"}),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	_, err := client.Ping(context.Background(), connect.NewRequest(&platformv1.PingRequest{}))
+	if err == nil {
+		t.Fatal("protected Ping unexpectedly succeeded")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeUnauthenticated {
+		t.Fatalf("code = %s, want unauthenticated", got)
+	}
+	if strings.Contains(err.Error(), "user-1") {
+		t.Fatalf("unauthenticated error leaked verifier detail: %v", err)
+	}
+}
+
+func TestAuthInterceptorRejectsInvalidOrExpiredTokens(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPublicProcedures(nil),
+		WithAuthVerifier(fakeAuthVerifier{err: errors.New("token expired")}),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(authorizationHeader, "Bearer expired-token")
+	_, err := client.Ping(context.Background(), req)
+	if err == nil {
+		t.Fatal("protected Ping unexpectedly succeeded")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeUnauthenticated {
+		t.Fatalf("code = %s, want unauthenticated", got)
+	}
+	if strings.Contains(err.Error(), "token expired") {
+		t.Fatalf("unauthenticated error leaked token detail: %v", err)
+	}
+}
+
+func TestAuthInterceptorReturnsUnavailableWhenVerifierUnavailable(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPublicProcedures(nil),
+		WithAuthVerifier(fakeAuthVerifier{err: ErrAuthVerifierUnavailable}),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(authorizationHeader, "Bearer valid-token")
+	_, err := client.Ping(context.Background(), req)
+	if err == nil {
+		t.Fatal("protected Ping unexpectedly succeeded")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeUnavailable {
+		t.Fatalf("code = %s, want unavailable", got)
+	}
+	if strings.Contains(err.Error(), "Supabase") {
+		t.Fatalf("unavailable error leaked verifier detail: %v", err)
+	}
+}
+
+func TestAuthInterceptorExtractsUserIDForProtectedCalls(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPublicProcedures(nil),
+		WithAuthVerifier(fakeAuthVerifier{userID: "supabase-user-1"}),
+		WithPlatformService(authContextPlatformService{}),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(authorizationHeader, "Bearer valid-token")
+	res, err := client.Ping(context.Background(), req)
+	if err != nil {
+		t.Fatalf("protected Ping failed: %v", err)
+	}
+	if got := res.Msg.GetMessage(); got != "user:supabase-user-1" {
+		t.Fatalf("message = %q, want user id from context", got)
+	}
+}
+
+func TestUserScopeRequiresAuthenticatedContext(t *testing.T) {
+	t.Parallel()
+
+	if _, err := UserScopeFromContext(context.Background()); err == nil {
+		t.Fatal("UserScopeFromContext unexpectedly succeeded without auth context")
+	}
+	scope, err := UserScopeFromContext(ContextWithUserID(context.Background(), "user-scope-1"))
+	if err != nil {
+		t.Fatalf("UserScopeFromContext failed: %v", err)
+	}
+	if got := scope.UserID(); got != "user-scope-1" {
+		t.Fatalf("scope user id = %q", got)
 	}
 }
 
@@ -171,8 +283,59 @@ func TestLoggingInterceptorRecordsMethodAndRequestID(t *testing.T) {
 	}
 }
 
+func TestAuthRejectedRequestsAreLogged(t *testing.T) {
+	t.Parallel()
+
+	var logs bytes.Buffer
+	server := httptest.NewServer(NewHandler(
+		log.New(&logs, "", 0),
+		WithPublicProcedures(nil),
+		WithAuthVerifier(fakeAuthVerifier{userID: "user-1"}),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	_, err := client.Ping(context.Background(), connect.NewRequest(&platformv1.PingRequest{}))
+	if err == nil {
+		t.Fatal("protected Ping unexpectedly succeeded")
+	}
+
+	got := logs.String()
+	if !strings.Contains(got, platformv1connect.PlatformServicePingProcedure) {
+		t.Fatalf("logs = %q, want method", got)
+	}
+	if !strings.Contains(got, connect.CodeUnauthenticated.String()) {
+		t.Fatalf("logs = %q, want unauthenticated status", got)
+	}
+}
+
 type panicPlatformService struct{}
 
 func (panicPlatformService) Ping(context.Context, *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
 	panic("boom")
+}
+
+type fakeAuthVerifier struct {
+	userID string
+	err    error
+}
+
+func (v fakeAuthVerifier) VerifyAccessToken(context.Context, string) (UserIdentity, error) {
+	if v.err != nil {
+		return UserIdentity{}, v.err
+	}
+	return UserIdentity{UserID: v.userID}, nil
+}
+
+type authContextPlatformService struct{}
+
+func (authContextPlatformService) Ping(ctx context.Context, _ *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
+	scope, err := UserScopeFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&platformv1.PingResponse{
+		Message:   "user:" + scope.UserID(),
+		RequestId: RequestIDFromContext(ctx),
+	}), nil
 }

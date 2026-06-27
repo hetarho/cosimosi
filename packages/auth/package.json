@@ -1,0 +1,24 @@
+{
+  "name": "@cosimosi/auth",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@connectrpc/connect": "^2.1.2",
+    "@cosimosi/api-client": "workspace:*",
+    "@supabase/supabase-js": "^2.108.2",
+    "xstate": "^5.32.2"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

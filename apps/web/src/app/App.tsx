@@ -1,3 +1,9 @@
+import { WebAuthProvider } from './auth-provider.tsx'
+
 export default function App() {
-  return <h1>hello world</h1>
+  return (
+    <WebAuthProvider>
+      <h1>hello world</h1>
+    </WebAuthProvider>
+  )
 }

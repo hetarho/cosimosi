@@ -14,9 +14,11 @@ import (
 const requestIDHeader = "X-Request-Id"
 
 type handlerConfig struct {
-	logger          *log.Logger
-	corsOrigins     []string
-	platformService platformv1connect.PlatformServiceHandler
+	logger           *log.Logger
+	corsOrigins      []string
+	authVerifier     AuthTokenVerifier
+	publicProcedures []string
+	platformService  platformv1connect.PlatformServiceHandler
 }
 
 type HandlerOption func(*handlerConfig)
@@ -33,11 +35,24 @@ func WithPlatformService(service platformv1connect.PlatformServiceHandler) Handl
 	}
 }
 
+func WithAuthVerifier(verifier AuthTokenVerifier) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.authVerifier = verifier
+	}
+}
+
+func WithPublicProcedures(procedures []string) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.publicProcedures = append([]string(nil), procedures...)
+	}
+}
+
 func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 	cfg := handlerConfig{
-		logger:          logger,
-		corsOrigins:     defaultCORSOrigins(),
-		platformService: PlatformService{},
+		logger:           logger,
+		corsOrigins:      defaultCORSOrigins(),
+		publicProcedures: []string{platformv1connect.PlatformServicePingProcedure},
+		platformService:  PlatformService{},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -60,8 +75,8 @@ func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 		connect.WithInterceptors(
 			PanicRecoveryInterceptor(cfg.logger),
 			RequestIDInterceptor(),
-			AuthPlaceholderInterceptor(),
 			LoggingInterceptor(cfg.logger),
+			AuthInterceptor(cfg.authVerifier, cfg.publicProcedures),
 		),
 	)
 	mux.Handle(path, handler)
