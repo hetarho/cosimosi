@@ -4,7 +4,7 @@ import { fail, ok, pnpm, repoRoot, section } from './lib.mjs'
 
 const generatedPathspecs = [
   'apps/api/internal/gen',
-  'apps/api/internal/values/values_gen.go',
+  'apps/api/internal/platform/values/values_gen.go',
   'apps/api/db/gen',
   ':(glob)packages/**/gen/**',
   ':(glob)packages/**/*.gen.ts',
