@@ -19,5 +19,8 @@ apps/api/api
 # Local data
 data/
 
+# inlang/Paraglide plugin module cache (fetched at compile time, machine-local)
+project.inlang/cache/
+
 # Claude Code local runtime state (machine/session-specific — never commit)
 .claude/scheduled_tasks.lock

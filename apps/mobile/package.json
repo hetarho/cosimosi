@@ -14,6 +14,7 @@
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/client-cache": "workspace:*",
+    "@cosimosi/i18n": "workspace:*",
     "@cosimosi/state-machine": "workspace:*",
     "@tanstack/react-query": "^5.101.1",
     "@xstate/react": "^6.1.0",
