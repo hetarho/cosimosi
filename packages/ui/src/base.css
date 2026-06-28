@@ -1,0 +1,29 @@
+/*
+ * Design-system web base styles — the DOM-only companion to theme.gen.css.
+ * Loaded once at the web app's composition boundary (apps/web app/index.css);
+ * React Native gets the equivalent behavior through accessibility props, not CSS.
+ */
+
+/* Honor the OS reduced-motion setting for every shared transition/animation (plan/09 A6). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Visually hidden but exposed to assistive tech — backs the VisuallyHidden primitive. */
+.cosimosi-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

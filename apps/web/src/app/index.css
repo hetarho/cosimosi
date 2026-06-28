@@ -1,7 +1,18 @@
-:root {
-  font-family: system-ui, sans-serif;
-}
+@import 'tailwindcss';
+@import '@cosimosi/ui/theme.css';
+@import '@cosimosi/ui/base.css';
 
-body {
-  margin: 0;
+/* Tailwind v4 auto-detects content under this app only; the design-system
+   primitives live in @cosimosi/ui, so their utility classes must be scanned too. */
+@source '../../../../packages/ui/src/**/*.{ts,tsx}';
+
+/* The web composition boundary applies the design-system theme to the document.
+   Per-route/background theming flows through the theme seam (@cosimosi/ui). */
+@layer base {
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+  }
 }

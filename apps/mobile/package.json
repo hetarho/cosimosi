@@ -16,10 +16,12 @@
     "@cosimosi/client-cache": "workspace:*",
     "@cosimosi/i18n": "workspace:*",
     "@cosimosi/state-machine": "workspace:*",
+    "@cosimosi/ui": "workspace:*",
     "@tanstack/react-query": "^5.101.1",
     "@xstate/react": "^6.1.0",
     "react": "19.2.7",
     "react-native": "0.86.0",
+    "text-encoding": "^0.7.0",
     "xstate": "^5.32.2"
   },
   "devDependencies": {

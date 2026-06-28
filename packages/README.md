@@ -16,7 +16,13 @@
 |---|---|---|
 | `packages/core` | 앱 독립 순수 로직 — memory physics(`force-sim`의 순수 `tick`), values 해석, mood utilities | 순수 로직이 web 밖(모바일 등)에서 필요해질 때 |
 | `packages/rendering` (또는 `webgl`) | TSL 노드 조립, WebGPU renderer 포트, R3F 헬퍼, shader-art toolkit | 모바일 렌더러(`react-native-webgpu` 등)가 확정돼 같은 셰이더/씬을 공유할 때 — 그 전엔 app-local 유지가 기본 |
-| `packages/ui` (또는 `design-system`) | 공유 디자인 토큰·기초 컴포넌트 | web과 blog가 같은 토큰/컴포넌트를 실제로 공유하게 될 때 |
+
+## 이미 승격된 패키지
+
+- **`packages/ui`** (`@cosimosi/ui`) — 공유 디자인 토큰 + 접근성 UI 프리미티브. web·mobile이 day-one에 함께 쓰는
+  Phase 1 예외라(promote-later 아님, [overview](../spec/plan/00.overview.md) §1) 처음부터 패키지로 짓는다. `packages/`의
+  "DOM/native 미의존" 규칙의 **플랫폼 인지 예외**: DOM(`*.tsx`) + RN(`*.native.tsx`) 형제를 `exports` 조건으로 가른다.
+  규칙은 [spec/tech/design-system.md](../spec/tech/design-system.md).
 
 루트 `proto/`는 패키지가 아니라 **모든 클라이언트가 공유하는 transport 계약**이다 — `packages/`로 옮기지 않는다.
 모바일 재사용 전략의 전체 그림은 [spec/tech/architecture.md](../spec/tech/architecture.md) §3.4를 본다.

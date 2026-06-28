@@ -9,6 +9,7 @@ const generatedPathspecs = [
   ':(glob)packages/**/gen/**',
   ':(glob)packages/**/*.gen.ts',
   ':(glob)packages/**/*.gen.tsx',
+  ':(glob)packages/**/*.gen.css',
 ]
 
 const git = (args) => {

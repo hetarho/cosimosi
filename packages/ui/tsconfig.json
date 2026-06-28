@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "moduleDetection": "force",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "jsx": "react-jsx",
+    // The package holds both DOM (*.tsx) and React Native (*.native.tsx) primitives,
+    // so the typecheck must see both type worlds at once. Web uses Tailwind classes;
+    // native uses RN StyleSheet built from the shared tokens (native-styles.ts). node
+    // covers the fs/path used by tests.
+    "types": ["node", "react", "react-dom", "react-native"]
+  },
+  // vitest.setup.ts pulls in the @testing-library/jest-dom matcher augmentation so
+  // the tests' .toBeInTheDocument()/.toHaveFocus() typecheck.
+  "include": ["src", "vitest.setup.ts"]
+}

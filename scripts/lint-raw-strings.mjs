@@ -22,7 +22,7 @@ import { fail, ok, repoRoot, section } from './lib.mjs'
 
 const probe = process.argv.includes('--probe')
 
-const roots = ['apps/web/src', 'apps/mobile/src']
+const roots = ['apps/web/src', 'apps/mobile/src', 'packages/ui/src']
 const scanExtensions = new Set(['.tsx', '.jsx'])
 const ignoredSegments = new Set(['node_modules', 'dist', 'build', 'coverage', 'gen', 'generated'])
 const ignoredFilePatterns = [/\.test\./, /\.spec\./, /\.stories\./, /\.probe\./, /\.gen\./]
