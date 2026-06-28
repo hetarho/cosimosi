@@ -6,11 +6,11 @@ import tseslint from 'typescript-eslint'
 const layers = ['app', 'pages', 'widgets', 'features', 'entities', 'shared']
 const lowerLayers = {
   app: layers,
-  pages: ['widgets', 'features', 'entities', 'shared'],
-  widgets: ['features', 'entities', 'shared'],
-  features: ['entities', 'shared'],
-  entities: ['shared'],
-  shared: [],
+  pages: ['pages', 'widgets', 'features', 'entities', 'shared'],
+  widgets: ['widgets', 'features', 'entities', 'shared'],
+  features: ['features', 'entities', 'shared'],
+  entities: ['entities', 'shared'],
+  shared: ['shared'],
 }
 
 export default defineConfig([

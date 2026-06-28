@@ -8,7 +8,7 @@ import {
   type AuthFacade,
 } from '@cosimosi/auth'
 
-import { AuthContext } from './auth-context.ts'
+import { AuthContext } from '../shared/auth/index.ts'
 
 interface WebAuthProviderProps {
   children?: ReactNode

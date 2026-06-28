@@ -12,7 +12,7 @@ import {
 import { createTelemetryRequestIdInterceptor } from '@cosimosi/observability'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 
-import { useAuthFacade, useSessionSnapshot } from './auth-context.ts'
+import { useAuthFacade, useSessionSnapshot } from '../shared/auth/index.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
 
 interface WebClientCacheProviderProps {

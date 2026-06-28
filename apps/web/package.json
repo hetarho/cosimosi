@@ -21,6 +21,7 @@
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/client-cache": "workspace:*",
+    "@cosimosi/config": "workspace:*",
     "@cosimosi/i18n": "workspace:*",
     "@cosimosi/observability": "workspace:*",
     "@cosimosi/state-machine": "workspace:*",

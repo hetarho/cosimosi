@@ -132,6 +132,9 @@ importers:
       '@cosimosi/client-cache':
         specifier: workspace:*
         version: link:../../packages/client-cache
+      '@cosimosi/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@cosimosi/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
