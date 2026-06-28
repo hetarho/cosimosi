@@ -19,7 +19,7 @@
 
 **플랫폼 재구축 — 토대 단계.** 깨끗한 `apps/{api,web,mobile}` 루트가 각각 "hello world"를 띄우는 빈 무대다. 아직 도메인·전송(RPC)·DB·렌더링은 없다 — [00.overview](spec/plan/00.overview.md)의 순서대로 유닛을 쌓아 올린다.
 
-MVP 코드는 `apps/api-mvp` · `apps/web-mvp`로 보존돼 있다(**참조 전용** — 워크스페이스/CI에서 제외, 새 빌드에 영향 없음).
+이전 MVP 코드·스펙은 **git 히스토리에 보존**돼 있다(현재 트리에는 없음 — 클린 재구축이 끝나 참조용 사본은 정리했다).
 
 ## 사전 요구
 
@@ -78,13 +78,10 @@ cosimosi/
 ├── spec/            ← 기획·아키텍처·작업 스펙 (source of truth)
 ├── scripts/         ← DX 래퍼 — spec·gen·db (Docker 기반, 셸 무관)
 ├── proto/           ← .proto 단일 계약 (전송 유닛부터 사용)
-├── proto-mvp/       ← 이전 MVP 계약 (참조 전용, codegen 제외)
 ├── apps/
 │   ├── api/         ← Go — cmd/api (net/http hello world)
 │   ├── web/         ← React 19 + Vite + TS (FSD: 현재 app/ 셸만)
 │   ├── mobile/      ← React Native + TS (Metro, ios/ + android/)
-│   ├── api-mvp/     ← 이전 MVP api (참조 전용, 빌드 제외)
-│   ├── web-mvp/     ← 이전 MVP web (참조 전용, 빌드 제외)
 │   └── blog/        ← Astro 정적 블로그 (콘텐츠: src/blog.md)
 └── packages/        ← 공유 패키지 경계 (promote-on-reuse; 빈 패키지 선제 생성 금지)
 ```

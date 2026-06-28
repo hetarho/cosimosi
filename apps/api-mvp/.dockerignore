@@ -1,7 +1,0 @@
-bin/
-tmp/
-*.exe
-.env
-.air.toml
-Dockerfile
-Dockerfile.dev
