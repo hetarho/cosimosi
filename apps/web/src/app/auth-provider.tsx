@@ -11,7 +11,7 @@ import {
 import { AuthContext } from './auth-context.ts'
 
 interface WebAuthProviderProps {
-  children: ReactNode
+  children?: ReactNode
   facade?: AuthFacade
 }
 

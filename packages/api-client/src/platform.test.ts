@@ -5,7 +5,9 @@ import {
   createApiAuthInterceptor,
   createPlatformClient,
   createPlatformMockTransport,
+  createPlatformPingQueryKey,
   createPlatformPingQueryOptions,
+  createPlatformServiceQueryKey,
 } from './platform.ts'
 import { createRouterTransport } from '@connectrpc/connect'
 
@@ -30,6 +32,8 @@ describe('platform transport facade', () => {
 
     expect(options.queryKey[0]).toBe('connect-query')
     expect(typeof options.queryFn).toBe('function')
+    expect(options.queryKey).toEqual(createPlatformPingQueryKey(transport))
+    expect(createPlatformServiceQueryKey()[1].serviceName).toContain('PlatformService')
   })
 
   it('attaches bearer tokens through the shared auth interceptor', async () => {

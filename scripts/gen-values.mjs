@@ -1,143 +1,132 @@
 #!/usr/bin/env node
-// Generate FE (TypeScript) + BE (Go) constants from spec/values.yaml — the single canonical
-// source of tuning numbers ("balance patch" file). Run via `pnpm gen:values` (or `pnpm gen`).
-// Outputs (both committed, both marked GENERATED — DO NOT EDIT):
-//   apps/web/src/shared/config/values.gen.ts
-//   apps/api/internal/values/values_gen.go
-//
-// A value is either a finite number (a tuning scalar) or a numeric array — flat (e.g. phase
-// multipliers) or nested (e.g. per-axis [base, gain] pairs). Scalars become FE `as const`
-// numbers / Go untyped consts; arrays become FE readonly tuples / Go `var []float64` (or
-// nested `[][]float64`). Strings and non-finite numbers (Infinity/NaN) are rejected — content
-// tables (theme CSS, mood color/affect) stay in code, and an "open-ended" tier uses a finite
-// bound array instead of Infinity.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { dirname, resolve, join } from 'node:path'
+
 import { parse } from 'yaml'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const srcPath = join(root, 'spec', 'values.yaml')
-const tsOut = join(root, 'apps', 'web', 'src', 'shared', 'config', 'values.gen.ts')
+const tsOut = join(root, 'packages', 'config', 'src', 'values.gen.ts')
 const goOut = join(root, 'apps', 'api', 'internal', 'values', 'values_gen.go')
 
-// Skip cleanly until the config-values unit creates spec/values.yaml — same
-// contract as the other gen steps (light up when the source is present).
 if (!existsSync(srcPath)) {
-  console.log('  · gen:values 건너뜀 — spec/values.yaml 이 아직 없음')
+  console.log('  * gen:values skipped: spec/values.yaml is not present')
   process.exit(0)
 }
 
-const camel = (s) => s.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase())
-const pascal = (s) => s.replace(/(^|_)([a-z0-9])/g, (_, __, c) => c.toUpperCase())
+const snakeCase = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/
 
-const isNum = (v) => typeof v === 'number' && Number.isFinite(v)
-const isNumArray = (v) => Array.isArray(v) && v.every((x) => isNum(x) || isNumArray(x))
-const isStr = (v) => typeof v === 'string'
-// A scalar map is a one-level object whose values are ALL finite numbers or ALL strings (e.g.
-// customization.price / .free) — an item-id → price / axis → free-kind table. Keys are stable
-// identifiers (item ids like "star:aurora") and are emitted VERBATIM (never camel/pascal-cased).
-const isScalarMap = (v) =>
-  v !== null &&
-  typeof v === 'object' &&
-  !Array.isArray(v) &&
-  Object.values(v).length > 0 &&
-  (Object.values(v).every(isNum) || Object.values(v).every(isStr))
+const camel = (value) => value.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase())
+const pascal = (value) => value.replace(/(^|_)([a-z0-9])/g, (_, __, c) => c.toUpperCase())
 
-// Validate + classify each value. Tuning scalars stay numbers/numeric-arrays; the customization
-// economy (spec 44) also allows string scalars and one-level scalar maps (price/free config).
-const assertValue = (g, k, v) => {
-  if (isNum(v)) return 'scalar'
-  if (isNumArray(v)) return 'array'
-  if (isStr(v)) return 'string'
-  if (isScalarMap(v)) return 'map'
+const isNumber = (value) => typeof value === 'number' && Number.isFinite(value)
+const isNumberArray = (value) => Array.isArray(value) && value.length > 0 && value.every((item) => isNumber(item) || isNumberArray(item))
+const isString = (value) => typeof value === 'string'
+const isScalarMap = (value) => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const entries = Object.entries(value)
+  if (!entries.length) return false
+  return entries.every(([, item]) => isNumber(item)) || entries.every(([, item]) => isString(item))
+}
+
+function assertName(kind, value) {
+  if (!snakeCase.test(value)) {
+    throw new Error(`values.yaml: ${kind} "${value}" must be snake_case`)
+  }
+}
+
+function assertValue(group, key, value) {
+  if (isNumber(value) || isNumberArray(value) || isString(value) || isScalarMap(value)) return
   throw new Error(
-    `values.yaml: ${g}.${k} must be a finite number, a numeric array, a string, or a one-level ` +
-      `scalar map (got ${JSON.stringify(v)})`,
+    `values.yaml: ${group}.${key} must be a finite number, numeric array, string, or one-level scalar map ` +
+      `(got ${JSON.stringify(value)})`,
   )
 }
 
-// ── TypeScript literal: numbers and numeric arrays serialize verbatim via JSON. ──
-const tsLit = (v) => JSON.stringify(v)
-
-// ── Go literals. Scalars → untyped const. Arrays → typed var ([]float64 / [][]float64…). ──
-const goType = (v) => (isNum(v) ? 'float64' : '[]' + goType(v[0]))
-// Inner composite literals elide their element type ({…}); the var declares the full type.
-const goLit = (v) => (isNum(v) ? String(v) : `{${v.map(goLit).join(', ')}}`)
-const goVarType = (v) => `${goType(v)}` // top-level array var type, e.g. [][]float64
-
 const doc = parse(readFileSync(srcPath, 'utf8'))
+if (doc === null || typeof doc !== 'object' || Array.isArray(doc)) {
+  throw new Error('values.yaml must contain grouped values')
+}
+
 const groups = Object.entries(doc)
 if (!groups.length) throw new Error('values.yaml has no groups')
-for (const [g, kv] of groups) for (const [k, v] of Object.entries(kv)) assertValue(g, k, v)
 
-// ── TypeScript: nested `VALUES` (camelCase) ──────────────────────────────────────────
+for (const [group, values] of groups) {
+  assertName('group', group)
+  if (values === null || typeof values !== 'object' || Array.isArray(values)) {
+    throw new Error(`values.yaml: ${group} must be an object`)
+  }
+  for (const [key, value] of Object.entries(values)) {
+    assertName('key', key)
+    assertValue(group, key, value)
+  }
+}
+
+const tsLiteral = (value) => JSON.stringify(value)
+
 const tsGroups = groups
-  .map(([g, kv]) => {
-    const lines = Object.entries(kv).map(([k, v]) => `    ${camel(k)}: ${tsLit(v)},`)
-    return `  ${camel(g)}: {\n${lines.join('\n')}\n  },`
+  .map(([group, values]) => {
+    const lines = Object.entries(values).map(([key, value]) => `    ${camel(key)}: ${tsLiteral(value)},`)
+    return `  ${camel(group)}: {\n${lines.join('\n')}\n  },`
   })
   .join('\n')
-const ts = `/* GENERATED FROM spec/values.yaml — DO NOT EDIT. Run \`pnpm gen:values\`. */
+
+const ts = `/* GENERATED FROM spec/values.yaml - DO NOT EDIT. Run \`pnpm gen:values\`. */
 export const VALUES = {
 ${tsGroups}
 } as const
 `
 
-// ── Go: package `values`. Scalars → one untyped const block per group; arrays → var block. ──
-const goMapLit = (v) => {
-  const valType = Object.values(v).every(isNum) ? 'int' : 'string'
-  // gofmt aligns map values into a column: pad each "key": to the widest, then one space.
-  const rows = Object.entries(v).map(([mk, mv]) => ({
-    key: `${JSON.stringify(mk)}:`,
-    val: valType === 'string' ? JSON.stringify(mv) : String(mv),
+const goType = (value) => (isNumber(value) ? 'float64' : `[]${goType(value[0])}`)
+const goLiteral = (value) => (isNumber(value) ? String(value) : `{${value.map(goLiteral).join(', ')}}`)
+
+function goMapLiteral(value) {
+  const valueType = Object.values(value).every(isNumber) ? 'int' : 'string'
+  const rows = Object.entries(value).map(([mapKey, mapValue]) => ({
+    key: `${JSON.stringify(mapKey)}:`,
+    value: valueType === 'string' ? JSON.stringify(mapValue) : String(mapValue),
   }))
-  const w = Math.max(...rows.map((r) => r.key.length))
-  const pairs = rows.map((r) => `\t\t${r.key.padEnd(w)} ${r.val},`)
-  return `map[string]${valType}{\n${pairs.join('\n')}\n\t}`
+  const width = Math.max(...rows.map((row) => row.key.length))
+  const entries = rows.map((row) => `\t\t${row.key.padEnd(width)} ${row.value},`)
+  return `map[string]${valueType}{\n${entries.join('\n')}\n\t}`
 }
+
 const goBlocks = groups
-  .map(([g, kv]) => {
-    // Number + string scalars share one untyped `const (…)` block (numbers byte-identical to
-    // before — string consts only appear in groups that declare them); numeric arrays and scalar
-    // maps each get a `var (…)` block.
-    const scalars = Object.entries(kv).filter(([, v]) => isNum(v) || isStr(v))
-    const arrays = Object.entries(kv).filter(([, v]) => isNumArray(v))
-    const maps = Object.entries(kv).filter(([, v]) => isScalarMap(v))
-    const parts = [`// ${g}`]
+  .map(([group, values]) => {
+    const scalars = Object.entries(values).filter(([, value]) => isNumber(value) || isString(value))
+    const arrays = Object.entries(values).filter(([, value]) => isNumberArray(value))
+    const maps = Object.entries(values).filter(([, value]) => isScalarMap(value))
+    const parts = [`// ${group}`]
+
     if (scalars.length) {
-      const entries = scalars.map(([k, v]) => ({
-        name: pascal(g) + pascal(k),
-        val: isStr(v) ? JSON.stringify(v) : String(v),
+      const entries = scalars.map(([key, value]) => ({
+        name: pascal(group) + pascal(key),
+        value: isString(value) ? JSON.stringify(value) : String(value),
       }))
-      const w = Math.max(...entries.map((e) => e.name.length))
-      const lines = entries.map((e) => `\t${e.name.padEnd(w)} = ${e.val}`)
-      parts.push(`const (\n${lines.join('\n')}\n)`)
+      const width = Math.max(...entries.map((entry) => entry.name.length))
+      parts.push(`const (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)`)
     }
+
     if (arrays.length) {
-      const entries = arrays.map(([k, v]) => ({
-        name: pascal(g) + pascal(k),
-        decl: `${goVarType(v)}${goLit(v)}`,
+      const entries = arrays.map(([key, value]) => ({
+        name: pascal(group) + pascal(key),
+        value: `${goType(value)}${goLiteral(value)}`,
       }))
-      const w = Math.max(...entries.map((e) => e.name.length))
-      const lines = entries.map((e) => `\t${e.name.padEnd(w)} = ${e.decl}`)
-      parts.push(`var (\n${lines.join('\n')}\n)`)
+      const width = Math.max(...entries.map((entry) => entry.name.length))
+      parts.push(`var (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)`)
     }
+
     if (maps.length) {
-      // Stable-id keys (e.g. "star:aurora") can't be Go identifiers — emit one `map[string]…`
-      // var per table with the raw keys verbatim (NO per-key const, NO key transform).
-      const lines = maps.map(([k, v]) => `\t${pascal(g) + pascal(k)} = ${goMapLit(v)}`)
+      const lines = maps.map(([key, value]) => `\t${pascal(group) + pascal(key)} = ${goMapLiteral(value)}`)
       parts.push(`var (\n${lines.join('\n')}\n)`)
     }
+
     return parts.join('\n')
   })
   .join('\n\n')
-const go = `// Code generated from spec/values.yaml — DO NOT EDIT. Run \`pnpm gen:values\`.
-//
-// Canonical tuning values ("balance patch"). Edit spec/values.yaml, then run \`pnpm gen:values\`.
-// Scalar consts are untyped so they drop into float32/float64/int contexts exactly like a
-// literal. Numeric-array vars ([]float64 / [][]float64) carry render-only tuning arrays; some
-// are unused on the server (FE-only knobs) — that's fine, this file is the shared source.
+
+const go = `// Code generated from spec/values.yaml - DO NOT EDIT. Run \`pnpm gen:values\`.
 package values
 
 ${goBlocks}

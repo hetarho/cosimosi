@@ -17,8 +17,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@connectrpc/connect-query": "^2.2.0",
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
+    "@cosimosi/client-cache": "workspace:*",
+    "@tanstack/react-query": "^5.101.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

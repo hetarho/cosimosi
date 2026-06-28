@@ -1,13 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { MobileAuthProvider } from './auth-provider';
+import { MobileClientCacheProvider } from './query-provider';
 
 export default function App() {
   return (
     <MobileAuthProvider>
-      <View style={styles.container}>
-        <Text>hello world</Text>
-      </View>
+      <MobileClientCacheProvider>
+        <View style={styles.container}>
+          <Text>hello world</Text>
+        </View>
+      </MobileClientCacheProvider>
     </MobileAuthProvider>
   );
 }

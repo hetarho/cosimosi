@@ -6,22 +6,28 @@ const generatedPathspecs = [
   'apps/api/internal/gen',
   'apps/api/internal/values/values_gen.go',
   'apps/api/db/gen',
-  'apps/web/src/shared/api/gen',
-  'apps/web/src/shared/config/values.gen.ts',
   ':(glob)packages/**/gen/**',
   ':(glob)packages/**/*.gen.ts',
   ':(glob)packages/**/*.gen.tsx',
 ]
 
-const status = () => {
-  const result = spawnSync('git', ['status', '--porcelain', '--untracked-files=all', '--', ...generatedPathspecs], {
+const git = (args) => {
+  const result = spawnSync('git', args, {
     cwd: repoRoot,
     encoding: 'utf8',
   })
   if (result.error) throw result.error
-  if (result.status) fail('git status failed while checking generated outputs')
+  if (result.status) fail('git failed while checking generated outputs')
   return result.stdout.trim()
 }
+
+const status = () =>
+  [
+    git(['diff', '--name-only', '--', ...generatedPathspecs]),
+    git(['ls-files', '--others', '--exclude-standard', '--', ...generatedPathspecs]),
+  ]
+    .filter(Boolean)
+    .join('\n')
 
 section('generated freshness')
 pnpm(['gen'])

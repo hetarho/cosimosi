@@ -1,12 +1,13 @@
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { createClient, createRouterTransport, type Client, type Interceptor, type Transport } from '@connectrpc/connect'
-import { createQueryOptions } from '@connectrpc/connect-query-core'
+import { createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-query-core'
 import { createConnectTransport } from '@connectrpc/connect-web'
 
 import { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
 
 export { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
 export type { PingRequest, PingResponse } from './gen/cosimosi/platform/v1/platform_pb.ts'
+export type { Transport as ApiTransport } from '@connectrpc/connect'
 
 export interface ApiAuthTokenProvider {
   getAccessToken(): Promise<string | null>
@@ -60,6 +61,23 @@ export function createPlatformMockTransport(
         }
       },
     })
+  })
+}
+
+export function createPlatformServiceQueryKey(transport?: Transport) {
+  return createConnectQueryKey({
+    schema: PlatformService,
+    transport,
+    cardinality: undefined,
+  })
+}
+
+export function createPlatformPingQueryKey(transport?: Transport) {
+  return createConnectQueryKey({
+    schema: PlatformService.method.ping,
+    input: {},
+    transport,
+    cardinality: 'finite',
   })
 }
 

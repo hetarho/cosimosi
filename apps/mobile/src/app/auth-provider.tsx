@@ -15,7 +15,7 @@ import {
 const AuthContext = createContext<AuthFacade | null>(null);
 
 interface MobileAuthProviderProps {
-  children: ReactNode;
+  children?: ReactNode;
   adapter?: AuthAdapter;
   facade?: AuthFacade;
   supabase?: MobileSupabaseAuthOptions;

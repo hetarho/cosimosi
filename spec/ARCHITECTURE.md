@@ -219,7 +219,9 @@ per-feature, not here.)
 - **proto = DTO layer.** Domain stays pure; the `rpc` handler maps proto↔domain.
 - **Unary only.** RN has no server-streaming, so we never design push streams. **High-frequency client-local events
   persist as a debounced, idempotent unary batch** (a `batch_id` recorded server-side prevents double-counting).
-  Idempotent unary reads are exposed as HTTP GET → cacheable on the CDN.
+  Idempotent unary reads are exposed as HTTP GET → cacheable on the CDN. Client transports attach an explicit RPC cache
+  policy interceptor so GET-eligible requests are registered, proto-marked `NO_SIDE_EFFECTS`, and never configured as
+  shared CDN cache when the data is user-scoped.
 - connect-go handlers are `http.Handler`s mounted on a thin `net/http` mux (`platform`) with `h2c` + CORS; only
   `/health` is hand-routed. The server is built through a `NewServer(...deps) http.Handler` constructor, with route /
   service registration visible in one place. `main()` stays tiny and delegates to `run(...)`. Run `buf`/`sqlc`/`go`
@@ -366,6 +368,7 @@ packages/                pure cross-app modules — no Vite/Metro/DOM/native dep
 ├── force-sim/           pure tick(dt) simulation module (node+edge → Float32Array coords)
 ├── shaders/             cross-platform shader/geometry toolkit — TSL nodes, no DOM
 ├── api-client/          generated transport client + config
+├── client-cache/         QueryClient defaults, connect-query keys, optimistic helpers, cache tests
 └── config/              constants generated from values.yaml (gen:values)
 ```
 

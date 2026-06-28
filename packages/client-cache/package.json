@@ -1,0 +1,25 @@
+{
+  "name": "@cosimosi/client-cache",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@connectrpc/connect": "^2.1.2",
+    "@connectrpc/connect-query-core": "^2.2.0",
+    "@cosimosi/api-client": "workspace:*",
+    "@cosimosi/config": "workspace:*",
+    "@tanstack/query-core": "^5.101.1"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}
