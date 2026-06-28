@@ -14,9 +14,12 @@
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/client-cache": "workspace:*",
+    "@cosimosi/state-machine": "workspace:*",
     "@tanstack/react-query": "^5.101.1",
+    "@xstate/react": "^6.1.0",
     "react": "19.2.7",
-    "react-native": "0.86.0"
+    "react-native": "0.86.0",
+    "xstate": "^5.32.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
