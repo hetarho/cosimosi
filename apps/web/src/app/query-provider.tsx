@@ -9,6 +9,8 @@ import {
   createClientCacheRpcPolicyInterceptor,
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache'
+import { createTelemetryRequestIdInterceptor } from '@cosimosi/observability'
+import { useObservabilityFacade } from '@cosimosi/observability/react'
 
 import { useAuthFacade, useSessionSnapshot } from './auth-context.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
@@ -22,6 +24,7 @@ interface WebClientCacheProviderProps {
 
 export function WebClientCacheProvider({ children, apiBaseUrl, queryClient, transport }: WebClientCacheProviderProps) {
   const auth = useAuthFacade()
+  const observability = useObservabilityFacade()
   const session = useSessionSnapshot()
   const baseUrl = apiBaseUrl ?? resolveWebApiBaseUrl(import.meta.env)
   const cacheScope = session.userId ?? 'anonymous'
@@ -31,8 +34,14 @@ export function WebClientCacheProvider({ children, apiBaseUrl, queryClient, tran
   }
   const resolvedQueryClient = queryClient ?? ownedQueryClient.current ?? createClientCacheQueryClient()
   const resolvedTransport = useMemo(
-    () => transport ?? createApiTransport({ baseUrl, auth, interceptors: [createClientCacheRpcPolicyInterceptor()] }),
-    [auth, baseUrl, transport],
+    () =>
+      transport ??
+      createApiTransport({
+        baseUrl,
+        auth,
+        interceptors: [createClientCacheRpcPolicyInterceptor(), createTelemetryRequestIdInterceptor(observability)],
+      }),
+    [auth, baseUrl, observability, transport],
   )
   const previousCacheScope = useRef(cacheScope)
 

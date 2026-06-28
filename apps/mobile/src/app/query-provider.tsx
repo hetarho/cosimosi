@@ -10,6 +10,8 @@ import {
   createClientCacheRpcPolicyInterceptor,
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache';
+import { createTelemetryRequestIdInterceptor } from '@cosimosi/observability';
+import { useObservabilityFacade } from '@cosimosi/observability/react';
 
 import { useAuthFacade, useSessionSnapshot } from './auth-provider';
 
@@ -28,6 +30,7 @@ export function resolveMobileApiBaseUrl(platformOS: typeof Platform.OS = Platfor
 
 export function MobileClientCacheProvider({ children, apiBaseUrl, queryClient, transport }: MobileClientCacheProviderProps) {
   const auth = useAuthFacade();
+  const observability = useObservabilityFacade();
   const session = useSessionSnapshot();
   const baseUrl = apiBaseUrl ?? resolveMobileApiBaseUrl();
   const cacheScope = session.userId ?? 'anonymous';
@@ -37,8 +40,14 @@ export function MobileClientCacheProvider({ children, apiBaseUrl, queryClient, t
   }
   const resolvedQueryClient = queryClient ?? ownedQueryClient.current ?? createClientCacheQueryClient();
   const resolvedTransport = useMemo(
-    () => transport ?? createApiTransport({ baseUrl, auth, interceptors: [createClientCacheRpcPolicyInterceptor()] }),
-    [auth, baseUrl, transport],
+    () =>
+      transport ??
+      createApiTransport({
+        baseUrl,
+        auth,
+        interceptors: [createClientCacheRpcPolicyInterceptor(), createTelemetryRequestIdInterceptor(observability)],
+      }),
+    [auth, baseUrl, observability, transport],
   );
   const previousCacheScope = useRef(cacheScope);
 

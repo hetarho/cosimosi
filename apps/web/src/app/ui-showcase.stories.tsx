@@ -81,7 +81,7 @@ export function UiShowcase() {
         <Dialog
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
-          title="Delete memory?"
+          title="Delete engram?"
           description="This cannot be undone."
           closeLabel="Close"
         >
@@ -127,7 +127,7 @@ export function UiShowcase() {
 
       <div className="fixed right-4 bottom-4 w-72">
         <Toast open={toastOpen} onOpenChange={setToastOpen} variant="success" durationMs={3000}>
-          Memory saved.
+          Engram saved.
         </Toast>
       </div>
     </main>

@@ -6,6 +6,8 @@ import { useTransport } from '@connectrpc/connect-query'
 import { createPlatformMockTransport, type ApiTransport } from '@cosimosi/api-client'
 import { FakeAuthAdapter, createAuthFacade } from '@cosimosi/auth'
 import { createClientCacheQueryClient } from '@cosimosi/client-cache'
+import { createObservabilityFacade } from '@cosimosi/observability'
+import { ObservabilityProvider } from '@cosimosi/observability/react'
 
 import { resolveWebApiBaseUrl } from './query-config.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
@@ -25,6 +27,7 @@ describe('web client cache provider config', () => {
 
   it('provides the generated Connect transport through connect-query context', () => {
     const facade = createAuthFacade({ adapter: new FakeAuthAdapter() })
+    const observability = createObservabilityFacade()
     const queryClient = createClientCacheQueryClient()
     const transport = createPlatformMockTransport(() => ({ message: 'pong' }))
     let contextTransport: ApiTransport | null = null
@@ -36,14 +39,19 @@ describe('web client cache provider config', () => {
 
     renderToString(
       createElement(
-        WebAuthProvider,
-        { facade },
-        createElement(WebClientCacheProvider, { queryClient, transport }, createElement(Probe)),
+        ObservabilityProvider,
+        { facade: observability },
+        createElement(
+          WebAuthProvider,
+          { facade },
+          createElement(WebClientCacheProvider, { queryClient, transport }, createElement(Probe)),
+        ),
       ),
     )
 
     expect(contextTransport).toBe(transport)
     facade.dispose()
+    observability.dispose()
     queryClient.clear()
   })
 })

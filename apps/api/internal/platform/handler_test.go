@@ -15,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	platformv1 "github.com/cosimosi/api/internal/gen/cosimosi/platform/v1"
 	platformv1connect "github.com/cosimosi/api/internal/gen/cosimosi/platform/v1/platformv1connect"
+	"github.com/cosimosi/api/internal/platform/observability"
 )
 
 func TestPingReturnsPlatformMetadata(t *testing.T) {
@@ -49,6 +50,28 @@ func TestPingReturnsPlatformMetadata(t *testing.T) {
 	}
 	if got := res.Msg.GetServerTime().AsTime(); !got.Equal(time.Date(2026, 6, 27, 1, 2, 3, 0, time.UTC)) {
 		t.Fatalf("server time = %s", got)
+	}
+}
+
+func TestRequestIDRejectsUnsafeClientValues(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(NewHandler(log.New(io.Discard, "", 0)))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(requestIDHeader, "authorization=secret")
+
+	res, err := client.Ping(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Ping failed: %v", err)
+	}
+	if got := res.Header().Get(requestIDHeader); got == "" || got == "authorization=secret" {
+		t.Fatalf("response request id = %q, want generated safe id", got)
+	}
+	if got := res.Msg.GetRequestId(); got == "" || got == "authorization=secret" {
+		t.Fatalf("message request id = %q, want generated safe id", got)
 	}
 }
 
@@ -215,22 +238,84 @@ func TestUserScopeRequiresAuthenticatedContext(t *testing.T) {
 	}
 }
 
-func TestPanicRecoveryReturnsInternal(t *testing.T) {
+func TestPanicRecoveryReturnsInternalAndReportsUnexpectedFailure(t *testing.T) {
 	t.Parallel()
 
+	reporter := observability.NewInMemoryReporter()
 	server := httptest.NewServer(NewHandler(
 		log.New(io.Discard, "", 0),
 		WithPlatformService(panicPlatformService{}),
+		WithObservabilityReporter(reporter),
 	))
 	t.Cleanup(server.Close)
 
 	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
-	_, err := client.Ping(context.Background(), connect.NewRequest(&platformv1.PingRequest{}))
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(requestIDHeader, "request-panic")
+	_, err := client.Ping(context.Background(), req)
 	if err == nil {
 		t.Fatal("Ping unexpectedly succeeded")
 	}
 	if got := connect.CodeOf(err); got != connect.CodeInternal {
 		t.Fatalf("code = %s, want internal", got)
+	}
+	if strings.Contains(err.Error(), "boom") {
+		t.Fatalf("panic leaked to client: %v", err)
+	}
+	events := reporter.Events()
+	if len(events) != 1 {
+		t.Fatalf("reported events = %d, want 1", len(events))
+	}
+	if got := events[0].Attributes["request_id"]; got != "request-panic" {
+		t.Fatalf("reported request id = %q, want request-panic", got)
+	}
+	if got := events[0].Attributes["rpc_code"]; got != connect.CodeInternal.String() {
+		t.Fatalf("reported rpc code = %q, want internal", got)
+	}
+	if got := events[0].Attributes["panic_type"]; got != "string" {
+		t.Fatalf("reported panic type = %q, want string", got)
+	}
+}
+
+func TestStructuredInternalErrorsAreStableAndReported(t *testing.T) {
+	t.Parallel()
+
+	reporter := observability.NewInMemoryReporter()
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPlatformService(internalErrorPlatformService{}),
+		WithObservabilityReporter(reporter),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(requestIDHeader, "authorization=secret")
+	_, err := client.Ping(context.Background(), req)
+	if err == nil {
+		t.Fatal("Ping unexpectedly succeeded")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeInternal {
+		t.Fatalf("code = %s, want internal", got)
+	}
+	if strings.Contains(err.Error(), "database exploded") {
+		t.Fatalf("internal error leaked to client: %v", err)
+	}
+	events := reporter.Events()
+	if len(events) != 1 {
+		t.Fatalf("reported events = %d, want 1", len(events))
+	}
+	if strings.Contains(events[0].Error, "database exploded") {
+		t.Fatalf("reported internal error leaked detail: %q", events[0].Error)
+	}
+	if got := events[0].Attributes["method"]; got != platformv1connect.PlatformServicePingProcedure {
+		t.Fatalf("reported method = %q, want ping procedure", got)
+	}
+	if got := events[0].Attributes["request_id"]; got == "" || got == "authorization=secret" {
+		t.Fatalf("reported request id = %q, want generated safe id", got)
+	}
+	if got := events[0].Attributes["error_type"]; got == "" || got == "*connect.Error" {
+		t.Fatalf("reported error type = %q, want underlying safe type", got)
 	}
 }
 
@@ -313,6 +398,12 @@ type panicPlatformService struct{}
 
 func (panicPlatformService) Ping(context.Context, *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
 	panic("boom")
+}
+
+type internalErrorPlatformService struct{}
+
+func (internalErrorPlatformService) Ping(context.Context, *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, errors.New("database exploded"))
 }
 
 type fakeAuthVerifier struct {

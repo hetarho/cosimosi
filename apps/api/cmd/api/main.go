@@ -2,23 +2,71 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/observability"
 )
 
-const supabaseAuthHTTPTimeout = 3 * time.Second
+const (
+	supabaseAuthHTTPTimeout = 3 * time.Second
+	apiShutdownTimeout      = 5 * time.Second
+	reporterFlushTimeout    = 2 * time.Second
+)
 
 func main() {
 	logger := log.Default()
 	handlerOptions := authHandlerOptions(logger)
+	reporter, err := observability.NewReporterFromEnv()
+	if err != nil {
+		logger.Fatalf("configure observability reporter: %v", err)
+	}
+	handlerOptions = append(handlerOptions, platform.WithObservabilityReporter(reporter))
 	server := platform.NewHTTPServer(":"+port(), logger, handlerOptions...)
 	logger.Printf("api listening on %s", server.Addr)
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := serveHTTPServer(ctx, server, logger); err != nil {
+		reporter.Flush(reporterFlushTimeout)
+		logger.Fatalf("serve api: %v", err)
+	}
+	if ok := reporter.Flush(reporterFlushTimeout); !ok {
+		logger.Print("observability reporter flush timed out")
+	}
+}
+
+func serveHTTPServer(ctx context.Context, server *http.Server, logger *log.Logger) error {
+	errs := make(chan error, 1)
+	go func() {
+		errs <- server.ListenAndServe()
+	}()
+
+	select {
+	case err := <-errs:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		logger.Print("api shutting down")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), apiShutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			_ = server.Close()
+			return fmt.Errorf("shutdown api server: %w", err)
+		}
+		if err := <-errs; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
 	}
 }
 

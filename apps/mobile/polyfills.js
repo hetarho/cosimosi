@@ -1,3 +1,5 @@
+/* global globalThis */
+
 /**
  * React Native global polyfills. Imported first in index.js — before the app's
  * module graph — so the globals exist when transitive deps initialize.

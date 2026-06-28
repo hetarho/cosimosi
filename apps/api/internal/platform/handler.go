@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 	connectcors "connectrpc.com/cors"
 	platformv1connect "github.com/cosimosi/api/internal/gen/cosimosi/platform/v1/platformv1connect"
+	"github.com/cosimosi/api/internal/platform/observability"
 )
 
 const requestIDHeader = "X-Request-Id"
@@ -19,6 +20,7 @@ type handlerConfig struct {
 	authVerifier     AuthTokenVerifier
 	publicProcedures []string
 	platformService  platformv1connect.PlatformServiceHandler
+	observability    observability.Reporter
 }
 
 type HandlerOption func(*handlerConfig)
@@ -47,12 +49,19 @@ func WithPublicProcedures(procedures []string) HandlerOption {
 	}
 }
 
+func WithObservabilityReporter(reporter observability.Reporter) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.observability = reporter
+	}
+}
+
 func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 	cfg := handlerConfig{
 		logger:           logger,
 		corsOrigins:      defaultCORSOrigins(),
 		publicProcedures: []string{platformv1connect.PlatformServicePingProcedure},
 		platformService:  PlatformService{},
+		observability:    observability.NoopReporter{},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -73,8 +82,9 @@ func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 	path, handler := platformv1connect.NewPlatformServiceHandler(
 		cfg.platformService,
 		connect.WithInterceptors(
-			PanicRecoveryInterceptor(cfg.logger),
+			PanicRecoveryInterceptor(cfg.logger, cfg.observability),
 			RequestIDInterceptor(),
+			StructuredErrorInterceptor(cfg.observability),
 			LoggingInterceptor(cfg.logger),
 			AuthInterceptor(cfg.authVerifier, cfg.publicProcedures),
 		),
