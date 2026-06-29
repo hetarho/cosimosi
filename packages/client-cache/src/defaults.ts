@@ -41,14 +41,12 @@ export function createClientCacheQueryClient(options: ClientCacheQueryClientOpti
 
 function mergeDefaultOptions(base: DefaultOptions, overrides: DefaultOptions | undefined): DefaultOptions {
   if (!overrides) return base
-  const mutations = overrides.mutations || base.mutations ? { ...base.mutations, ...overrides.mutations } : undefined
+  const { queries: overrideQueries, mutations: overrideMutations, ...restOverrides } = overrides
+  const mutations = base.mutations || overrideMutations ? { ...base.mutations, ...overrideMutations } : undefined
   return {
     ...base,
-    ...overrides,
-    queries: {
-      ...base.queries,
-      ...overrides.queries,
-    },
+    ...restOverrides,
+    queries: { ...base.queries, ...overrideQueries },
     ...(mutations ? { mutations } : {}),
   }
 }

@@ -48,9 +48,11 @@ describe('catalog machine context rule', () => {
     actor.stop()
   })
 
-  it('context types reject forbidden large-data fields at compile time', () => {
-    // The context type carries only the documented control fields. A future PR
-    // adding a Float32Array / collection / transport object would fail tsc here.
+  it('context types stay control-only payloads', () => {
+    // These literals must stay assignable as control-only payloads. The compile-time
+    // guard is the closed Snapshot interface at each machine's definition — it is what
+    // rejects a new non-control field (a Float32Array, collection, or transport object),
+    // not this test.
     const asyncCmd: AsyncCommandSnapshot = {
       status: 'idle',
       commandId: null,

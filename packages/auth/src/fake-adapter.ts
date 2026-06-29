@@ -74,8 +74,8 @@ export class FakeAuthAdapter implements AuthAdapter {
 
   async getAccessToken(): Promise<string | null> {
     if (this.session && this.session.expiresAt <= this.now()) {
-      // Mirror real adapter behavior: an expired session exposes no token until
-      // the host triggers refresh. Tests cover both branches.
+      // The fake intentionally omits the real adapter's inline refresh: an expired
+      // session exposes no token until the host triggers refresh.
       return null
     }
     return this.accessTokenFn(this.session)

@@ -7,7 +7,7 @@
     "dev": "vite",
     "typecheck": "tsc -b",
     "build": "tsc -b && vite build",
-    "lint": "pnpm run lint:ox && pnpm run lint:fsd && pnpm run lint:boundaries",
+    "lint": "pnpm run lint:ox && pnpm run lint:fsd && pnpm run lint:boundaries && pnpm run lint:boundaries:probe",
     "lint:ox": "oxlint",
     "lint:fsd": "steiger ./src --fail-on-warnings",
     "lint:boundaries": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",

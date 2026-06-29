@@ -6,6 +6,15 @@ import type { ToastOwnProps, ToastVariant } from './types.ts'
 
 export type ToastProps = ToastOwnProps
 
+// Mirror web's per-variant role: only warning/danger announce assertively. RN has no
+// 'status' role, so info/success carry no role and lean on the polite live region.
+const ROLE: Record<ToastVariant, 'alert' | undefined> = {
+  info: undefined,
+  success: undefined,
+  warning: 'alert',
+  danger: 'alert',
+}
+
 const TONE: Record<ToastVariant, string> = {
   info: color.border,
   success: color.success,
@@ -27,7 +36,7 @@ export function Toast({ open, onOpenChange, variant = 'info', durationMs, childr
 
   return (
     <View
-      accessibilityRole="alert"
+      accessibilityRole={ROLE[variant]}
       accessibilityLiveRegion={variant === 'warning' || variant === 'danger' ? 'assertive' : 'polite'}
       style={[styles.toast, { borderColor: TONE[variant] }]}
     >

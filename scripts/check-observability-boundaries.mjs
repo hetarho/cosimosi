@@ -1,7 +1,9 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
-const root = process.cwd()
+import { fail, ok, repoRoot, section } from './lib.mjs'
+
+const root = repoRoot
 
 const checks = [
   {
@@ -35,12 +37,19 @@ const checks = [
 
 const violations = []
 
+section('observability boundaries')
+
 for (const probe of [
   { path: 'apps/web/src/app/observability-provider.tsx', specifier: '@sentry/react' },
   { path: 'apps/mobile/src/app/providers/observability-provider.tsx', specifier: '@sentry/react-native' },
   { path: 'apps/api/internal/platform/observability/sentry.go', specifier: 'github.com/getsentry/sentry-go' },
 ]) {
-  const source = readFileSync(join(root, probe.path), 'utf8')
+  const probePath = join(root, probe.path)
+  if (!existsSync(probePath)) {
+    violations.push(`${probe.path}: observability boundary probe file is missing`)
+    continue
+  }
+  const source = readFileSync(probePath, 'utf8')
   if (!hasForbiddenSpecifier(source, probe.specifier)) {
     violations.push(`${probe.path}: observability boundary probe expected ${probe.specifier} import here`)
   }
@@ -61,8 +70,10 @@ for (const check of checks) {
 
 if (violations.length > 0) {
   console.error(violations.join('\n'))
-  process.exit(1)
+  fail('observability boundary guard failed')
 }
+
+ok('vendor SDK imports stay at the platform/app observability boundary')
 
 function* walk(dir, extensions) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

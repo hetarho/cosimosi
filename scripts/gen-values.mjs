@@ -207,7 +207,7 @@ function renderGo(groups) {
       const scalars = values.filter(({ kind }) => kind === 'number' || kind === 'string')
       const arrays = values.filter(({ kind }) => kind === 'number_array')
       const maps = values.filter(({ kind }) => kind === 'number_map' || kind === 'string_map')
-      const parts = [`// ${name}`]
+      const decls = []
 
       if (scalars.length) {
         const entries = scalars.map(({ key, value }) => ({
@@ -215,7 +215,7 @@ function renderGo(groups) {
           value: isString(value) ? JSON.stringify(value) : goNumberLiteral(value),
         }))
         const width = Math.max(...entries.map((entry) => entry.name.length))
-        parts.push(`const (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)`)
+        decls.push({ kind: 'const', text: `const (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)` })
       }
 
       if (arrays.length) {
@@ -224,15 +224,23 @@ function renderGo(groups) {
           value: goArrayLiteral(value),
         }))
         const width = Math.max(...entries.map((entry) => entry.name.length))
-        parts.push(`var (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)`)
+        decls.push({ kind: 'var', text: `var (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)` })
       }
 
       if (maps.length) {
         const lines = maps.map(({ key, kind, value }) => `\t${pascal(name) + pascal(key)} = ${goMapLiteral(value, kind)}`)
-        parts.push(`var (\n${lines.join('\n')}\n)`)
+        decls.push({ kind: 'var', text: `var (\n${lines.join('\n')}\n)` })
       }
 
-      return parts.join('\n')
+      // gofmt inserts a blank line between top-level declaration blocks of different
+      // kinds (const → var); emit it so the generated Go stays gofmt-clean and
+      // check:gen can't disagree with lint:api. Same-kind blocks stay adjacent.
+      let block = `// ${name}`
+      decls.forEach((decl, index) => {
+        const changedKind = index > 0 && decls[index - 1].kind !== decl.kind
+        block += `${changedKind ? '\n\n' : '\n'}${decl.text}`
+      })
+      return block
     })
     .join('\n\n')
 

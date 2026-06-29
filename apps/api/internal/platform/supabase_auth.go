@@ -301,10 +301,10 @@ func supabaseEndpoint(baseURL *url.URL, suffix string) string {
 	return endpoint.String()
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
+func firstNonEmpty(candidates ...string) string {
+	for _, candidate := range candidates {
+		if strings.TrimSpace(candidate) != "" {
+			return strings.TrimSpace(candidate)
 		}
 	}
 	return ""

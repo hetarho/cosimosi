@@ -11,7 +11,7 @@ const ROUNDED: Record<NonNullable<SkeletonOwnProps['rounded']>, string> = {
 }
 
 export function Skeleton({ width, height, rounded = 'md' }: SkeletonProps) {
-  // animate-pulse is neutralized by base.css under prefers-reduced-motion (A6).
+  // animate-pulse is neutralized by base.css under prefers-reduced-motion.
   return (
     <span
       aria-hidden="true"

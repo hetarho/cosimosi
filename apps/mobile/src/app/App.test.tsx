@@ -40,7 +40,7 @@ describe('mobile app shell', () => {
       fireEvent.press(screen.getByText(m.mobile_shell_open_diagnostics()));
       await waitFor(() => expect(screen.getByText(m.mobile_diagnostics_title())).toBeTruthy());
 
-      // A7: provider health only — never the access token or product/private data.
+      // provider health only — never the access token or product/private data.
       expect(screen.queryByText(/fake-token/)).toBeNull();
     } finally {
       fakes.dispose();

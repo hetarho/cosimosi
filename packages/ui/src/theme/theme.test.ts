@@ -4,7 +4,7 @@ import { getThemeState, resetTheme, setBackground, setTheme, subscribeTheme } fr
 
 afterEach(() => resetTheme())
 
-describe('theme/background seam (A7)', () => {
+describe('theme/background seam', () => {
   it('defaults to dark / cosmos', () => {
     expect(getThemeState()).toEqual({ theme: 'dark', background: { tone: 'cosmos' } })
   })

@@ -21,7 +21,7 @@ function walk(dir: string): string[] {
   return files
 }
 
-describe('design-system isolation (A2/A4/A7)', () => {
+describe('design-system isolation', () => {
   it('imports no domain, cache, transport, or product-copy package', () => {
     const offenders = walk(SRC)
       .filter((file) => FORBIDDEN.test(readFileSync(file, 'utf8')))

@@ -53,6 +53,22 @@ test('generates deterministic TypeScript and API platform Go values', (t) => {
   assert.match(firstGo, /ClientCacheAliases = map\[string]string/)
 })
 
+test('emits gofmt-clean Go when a group mixes a scalar with an array or map', (t) => {
+  const fixture = generateFixture(
+    t,
+    `mixed:
+  scale: 2
+  ratios: [0.5, 1]
+`,
+  )
+
+  const go = readFileSync(fixture.goOut, 'utf8')
+  // gofmt requires a blank line between the const and var declaration blocks; a
+  // single newline between them is gofmt-dirty and would deadlock check:gen vs lint:api.
+  assert.match(go, /\n\)\n\nvar \(/)
+  assert.doesNotMatch(go, /\n\)\nvar \(/)
+})
+
 const invalidFixtures = [
   {
     name: 'non-finite numbers',
