@@ -8,7 +8,7 @@ import {
   TransportPingPanel,
   ValuesPanel,
 } from './platform-panel-components.tsx'
-import { createTestPanelRegistry, type TestPanelCapability, type TestPanelDefinition } from './registry.ts'
+import { createTestPanelRegistry, type TestPanelCapability, type TestPanelDefinition } from '../../../shared/test-panel/index.ts'
 
 export const PHASE_ONE_TEST_CAPABILITIES = [
   'transport',

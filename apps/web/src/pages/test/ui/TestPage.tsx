@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { Badge, Button, cx } from '@cosimosi/ui'
+import { Badge, Button } from '@cosimosi/ui'
 
 import { m, useActiveLocale } from '../../../shared/i18n/index.ts'
 import {
@@ -8,12 +8,11 @@ import {
   createCapabilitySet,
   getMissingCapabilities,
   isPanelAvailable,
-  PHASE_ONE_TEST_CAPABILITIES,
-  platformTestPanels,
   readTestPanelMessage,
   type TestPanelCapability,
   type TestPanelDefinition,
 } from '../../../shared/test-panel/index.ts'
+import { PHASE_ONE_TEST_CAPABILITIES, platformTestPanels } from '../lib/platform-panels.ts'
 
 const ACTIVE_PANEL_ARIA_CURRENT = 'page' as const
 
@@ -109,7 +108,7 @@ function UnavailablePanel({
         <p className="text-sm font-medium text-text-muted">{m.test_harness_missing_capabilities()}</p>
         <ul className="mt-2 grid gap-2">
           {missingCapabilities.map((capability) => (
-            <li key={`${panel.id}-${capability}`} className={cx('rounded-md border border-border bg-surface px-3 py-2 text-sm')}>
+            <li key={`${panel.id}-${capability}`} className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
               {readTestPanelMessage(capabilityMessageKeys[capability])}
             </li>
           ))}

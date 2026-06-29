@@ -36,6 +36,15 @@ describe('platform transport facade', () => {
     expect(createPlatformServiceQueryKey()[1].serviceName).toContain('PlatformService')
   })
 
+  it('omits serverTime from fake ping responses when the fake does not provide one', async () => {
+    const transport = createPlatformMockTransport(() => ({ message: 'pong' }))
+    const client = createPlatformClient(transport)
+
+    const response = await client.ping({})
+
+    expect(response.serverTime).toBeUndefined()
+  })
+
   it('attaches bearer tokens through the shared auth interceptor', async () => {
     const seenHeaders: string[] = []
     let token = 'token-1'

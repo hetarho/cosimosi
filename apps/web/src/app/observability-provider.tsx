@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 import * as Sentry from '@sentry/react'
 import posthog from 'posthog-js'
@@ -25,11 +25,15 @@ interface WebObservabilityProviderProps {
 }
 
 export function WebObservabilityProvider({ children, facade }: WebObservabilityProviderProps) {
-  const [runtime] = useState(createDefaultWebObservabilityRuntime)
+  const runtimeRef = useRef<WebObservabilityRuntime | null>(null)
+  if (!facade && !runtimeRef.current) {
+    runtimeRef.current = createDefaultWebObservabilityRuntime()
+  }
+  const runtime = runtimeRef.current
   const vendorStarted = useRef(false)
 
   useEffect(() => {
-    if (facade || vendorStarted.current) return
+    if (facade || !runtime || vendorStarted.current) return
     runtime.setVendorAdapter(
       createWebVendorTelemetryAdapter({
         sentryDsn: import.meta.env.VITE_SENTRY_DSN,
@@ -41,7 +45,13 @@ export function WebObservabilityProvider({ children, facade }: WebObservabilityP
     vendorStarted.current = true
   }, [facade, runtime])
 
-  return <ObservabilityProvider facade={facade ?? runtime.facade}>{children}</ObservabilityProvider>
+  useEffect(() => {
+    return () => {
+      runtimeRef.current?.facade.dispose()
+    }
+  }, [])
+
+  return <ObservabilityProvider facade={facade ?? runtime!.facade}>{children}</ObservabilityProvider>
 }
 
 export function WebObservabilitySessionBridge() {

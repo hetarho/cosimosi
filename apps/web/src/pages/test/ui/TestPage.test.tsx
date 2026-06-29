@@ -1,11 +1,17 @@
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 
 import { createTestPanelRegistry, type TestPanelDefinition } from '../../../shared/test-panel/index.ts'
 import { TestPage } from './TestPage.tsx'
 
 describe('test harness page shell', () => {
+  beforeEach(() => {
+    setActiveLocale(defaultLocale)
+  })
+
   it('renders unavailable panels without calling their render function', () => {
     const render = vi.fn(() => createElement('span'))
     const futurePanel: TestPanelDefinition = {

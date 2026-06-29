@@ -52,13 +52,12 @@ State-machine, domain-fixture, and golden-parity capabilities are reserved for l
 
 ## 4. Fake helper rule
 
-Tests and offline diagnostics use the shared fake helpers, not production secrets:
+Tests and offline diagnostics use the test-route fake helpers, not production secrets:
 
 - `@cosimosi/auth` `FakeAuthAdapter`;
-- `@cosimosi/api-client` `createPlatformMockTransport`;
-- `@cosimosi/client-cache` `createClientCacheTestContext`.
+- `@cosimosi/client-cache` `createClientCacheTestContext`, including its mock transport seam.
 
-`apps/web/src/shared/test-panel/fakes.ts` composes those imports into `createTestHarnessFakes()` for route and panel
+`apps/web/src/pages/test/lib/fakes.ts` composes those imports into `createTestHarnessFakes()` for route and panel
 smoke tests.
 
 ## 5. Headless unit convention

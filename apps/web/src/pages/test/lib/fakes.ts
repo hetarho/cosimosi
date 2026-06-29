@@ -1,4 +1,4 @@
-import { createPlatformMockTransport, type ApiTransport } from '@cosimosi/api-client'
+import type { ApiTransport } from '@cosimosi/api-client'
 import { FakeAuthAdapter, createAuthFacade, type AuthFacade, type AuthSession } from '@cosimosi/auth'
 import {
   createClientCacheTestContext,
@@ -7,6 +7,10 @@ import {
 } from '@cosimosi/client-cache'
 
 const DEFAULT_FAKE_AUTH_TTL_MS = 60_000
+const DEFAULT_TEST_HARNESS_PING: NonNullable<ClientCacheTestContextOptions['ping']> = () => ({
+  message: 'pong',
+  requestId: 'test-harness-fake',
+})
 
 export interface CreateTestHarnessFakesOptions {
   userId?: string
@@ -28,8 +32,7 @@ export function createTestHarnessFakes(options: CreateTestHarnessFakesOptions = 
     }),
   })
   const cache = createClientCacheTestContext({
-    ping: options.ping ?? (() => ({ message: 'pong', requestId: 'test-harness-fake' })),
-    transport: createPlatformMockTransport(options.ping ?? (() => ({ message: 'pong', requestId: 'test-harness-fake' }))),
+    ping: options.ping ?? DEFAULT_TEST_HARNESS_PING,
   })
   return {
     authFacade,

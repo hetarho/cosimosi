@@ -4,14 +4,19 @@ import boundaries from 'eslint-plugin-boundaries'
 import tseslint from 'typescript-eslint'
 
 const layers = ['app', 'pages', 'widgets', 'features', 'entities', 'shared']
+const slicedLayers = ['pages', 'widgets', 'features', 'entities', 'shared']
 const lowerLayers = {
   app: layers,
-  pages: ['pages', 'widgets', 'features', 'entities', 'shared'],
-  widgets: ['widgets', 'features', 'entities', 'shared'],
-  features: ['features', 'entities', 'shared'],
-  entities: ['entities', 'shared'],
-  shared: ['shared'],
+  pages: ['widgets', 'features', 'entities', 'shared'],
+  widgets: ['features', 'entities', 'shared'],
+  features: ['entities', 'shared'],
+  entities: ['shared'],
+  shared: [],
 }
+const sameSliceRules = slicedLayers.map((layer) => ({
+  from: { type: layer, captured: { slice: '*' } },
+  allow: { to: { type: layer, captured: { slice: '{{ from.captured.slice }}' } } },
+}))
 
 export default defineConfig([
   {
@@ -25,13 +30,13 @@ export default defineConfig([
     },
     settings: {
       'boundaries/elements': [
-        { type: 'app', pattern: 'src/main.tsx' },
-        { type: 'app', pattern: 'src/app/**' },
-        { type: 'pages', pattern: 'src/pages/*/**' },
-        { type: 'widgets', pattern: 'src/widgets/*/**' },
-        { type: 'features', pattern: 'src/features/*/**' },
-        { type: 'entities', pattern: 'src/entities/*/**' },
-        { type: 'shared', pattern: 'src/shared/**' },
+        { type: 'app', pattern: 'src/main.tsx', mode: 'full' },
+        { type: 'app', pattern: 'src/app/**/*', mode: 'full' },
+        { type: 'pages', pattern: 'src/pages/(*)/**/*', mode: 'full', capture: ['slice'] },
+        { type: 'widgets', pattern: 'src/widgets/(*)/**/*', mode: 'full', capture: ['slice'] },
+        { type: 'features', pattern: 'src/features/(*)/**/*', mode: 'full', capture: ['slice'] },
+        { type: 'entities', pattern: 'src/entities/(*)/**/*', mode: 'full', capture: ['slice'] },
+        { type: 'shared', pattern: 'src/shared/(*)/**/*', mode: 'full', capture: ['slice'] },
       ],
     },
     rules: {
@@ -43,10 +48,13 @@ export default defineConfig([
         'error',
         {
           default: 'disallow',
-          rules: Object.entries(lowerLayers).map(([from, allow]) => ({
-            from: { type: from },
-            allow: { to: { type: allow } },
-          })),
+          rules: [
+            ...sameSliceRules,
+            ...Object.entries(lowerLayers).map(([from, allow]) => ({
+              from: { type: from },
+              allow: { to: { type: allow } },
+            })),
+          ],
         },
       ],
     },

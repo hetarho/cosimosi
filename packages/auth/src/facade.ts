@@ -1,6 +1,7 @@
 import { createActor, type Actor, type SnapshotFrom } from 'xstate'
 
 import type { AuthAdapter, AuthFacade, SignInCredentials } from './auth-adapter.ts'
+import { readErrorMessage } from './error.ts'
 import { sessionMachine } from './session-machine.ts'
 import type { SessionSnapshot } from './session.ts'
 
@@ -158,6 +159,5 @@ async function bootstrap(adapter: AuthAdapter, actor: Actor<typeof sessionMachin
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return 'unknown auth error'
+  return readErrorMessage(error, 'unknown auth error')
 }

@@ -4,12 +4,14 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { createPlatformClient, type PingResponse } from '@cosimosi/api-client'
+import { readErrorMessage } from '@cosimosi/auth'
 import { inspectClientCache, setClientCacheData } from '@cosimosi/client-cache'
 import { VALUES } from '@cosimosi/config'
-import { Badge, Button, Skeleton, Switch, TextField } from '@cosimosi/ui'
+import { Badge, Button, Skeleton, Switch, TextField, type BadgeVariant } from '@cosimosi/ui'
 
-import { useAuthFacade, useSessionSnapshot } from '../auth/index.ts'
-import { m, setActiveLocale, supportedLocales, useActiveLocale, type Locale } from '../i18n/index.ts'
+import { useAuthFacade, useSessionSnapshot } from '../../../shared/auth/index.ts'
+import { m, setActiveLocale, supportedLocales, useActiveLocale, type Locale } from '../../../shared/i18n/index.ts'
+import { formatPingServerTime } from './platform-panel-format.ts'
 
 type PingStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -20,6 +22,12 @@ interface PingState {
 }
 
 const TEST_CACHE_KEY = ['test-harness', 'cache-probe'] as const
+const STATUS_BADGE_CONTENT = {
+  idle: { variant: 'neutral', label: () => m.test_harness_status_idle() },
+  loading: { variant: 'warning', label: () => m.test_harness_status_loading() },
+  success: { variant: 'success', label: () => m.test_harness_status_success() },
+  error: { variant: 'danger', label: () => m.test_harness_status_error() },
+} as const satisfies Record<PingStatus, { variant: BadgeVariant; label: () => string }>
 
 export function TransportPingPanel() {
   const transport = useTransport()
@@ -53,7 +61,7 @@ export function TransportPingPanel() {
           rows={[
             [m.test_harness_message(), ping.response.message],
             [m.test_harness_request_id(), ping.response.requestId || m.test_harness_not_available()],
-            [m.test_harness_server_time(), formatTimestamp(ping.response.serverTime)],
+            [m.test_harness_server_time(), formatPingServerTime(ping.response.serverTime)],
           ]}
         />
       ) : null}
@@ -234,16 +242,8 @@ function PanelStack({ children }: { children: ReactNode }) {
 }
 
 function StatusBadge({ status }: { status: PingStatus }) {
-  const variant = status === 'success' ? 'success' : status === 'error' ? 'danger' : status === 'loading' ? 'warning' : 'neutral'
-  const label =
-    status === 'success'
-      ? m.test_harness_status_success()
-      : status === 'error'
-        ? m.test_harness_status_error()
-        : status === 'loading'
-          ? m.test_harness_status_loading()
-          : m.test_harness_status_idle()
-  return <Badge variant={variant}>{label}</Badge>
+  const content = STATUS_BADGE_CONTENT[status]
+  return <Badge variant={content.variant}>{content.label()}</Badge>
 }
 
 function KeyValueList({ rows }: { rows: readonly (readonly [string, string])[] }) {
@@ -275,11 +275,6 @@ function tokenLabel(status: 'idle' | 'loading' | 'present' | 'absent'): string {
   return m.test_harness_auth_token_absent()
 }
 
-function formatTimestamp(timestamp: PingResponse['serverTime']): string {
-  if (!timestamp) return m.test_harness_not_available()
-  return new Date(Number(timestamp.seconds) * 1000 + Math.floor(timestamp.nanos / 1_000_000)).toISOString()
-}
-
 function formatMs(value: number): string {
   return `${value} ${m.test_harness_unit_ms()}`
 }
@@ -289,6 +284,5 @@ function localeLabel(locale: Locale): string {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return m.test_harness_unknown_error()
+  return readErrorMessage(error, m.test_harness_unknown_error())
 }

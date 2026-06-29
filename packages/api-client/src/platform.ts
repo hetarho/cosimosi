@@ -8,6 +8,7 @@ import { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
 export { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
 export type { PingRequest, PingResponse } from './gen/cosimosi/platform/v1/platform_pb.ts'
 export type { Transport as ApiTransport } from '@connectrpc/connect'
+export { timestampDate } from '@bufbuild/protobuf/wkt'
 
 export interface ApiAuthTokenProvider {
   getAccessToken(): Promise<string | null>
@@ -54,10 +55,11 @@ export function createPlatformMockTransport(
     service(PlatformService, {
       ping() {
         const response = ping()
+        const serverTime = response.serverTime ? timestampFromDate(response.serverTime) : undefined
         return {
           message: response.message,
           requestId: response.requestId ?? 'test-request-id',
-          serverTime: timestampFromDate(response.serverTime ?? new Date(0)),
+          serverTime,
         }
       },
     })

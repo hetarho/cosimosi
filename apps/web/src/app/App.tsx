@@ -31,7 +31,7 @@ export default function App({
   observabilityFacade,
   locale,
 }: AppProps = {}) {
-  const route = routePath === '/test' ? 'test' : 'showcase'
+  const route = normalizeRoutePath(routePath) === '/test' ? 'test' : 'showcase'
   return (
     <WebObservabilityProvider facade={observabilityFacade}>
       <ObservedErrorBoundary fallback={WebAppErrorFallback}>
@@ -51,6 +51,12 @@ export default function App({
 function currentRoutePath(): string {
   if (typeof window === 'undefined') return '/'
   return window.location.pathname
+}
+
+function normalizeRoutePath(routePath: string): string {
+  const path = routePath.split(/[?#]/, 1)[0] ?? '/'
+  if (path === '') return '/'
+  return path.length > 1 ? path.replace(/\/+$/, '') : path
 }
 
 function WebAppErrorFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackProps) {
