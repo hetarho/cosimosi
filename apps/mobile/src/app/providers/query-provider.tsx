@@ -1,21 +1,27 @@
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { Platform } from 'react-native';
+import {createContext, useContext, useEffect, useMemo, useRef, type ReactNode} from 'react';
 
-import { TransportProvider } from '@connectrpc/connect-query';
-import { QueryClientProvider } from '@tanstack/react-query';
+import {TransportProvider} from '@connectrpc/connect-query';
+import {QueryClientProvider} from '@tanstack/react-query';
 
-import { createApiTransport, type ApiTransport } from '@cosimosi/api-client';
+import {createApiTransport, type ApiTransport} from '@cosimosi/api-client';
 import {
   createClientCacheQueryClient,
   createClientCacheRpcPolicyInterceptor,
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache';
-import { createTelemetryRequestIdInterceptor } from '@cosimosi/observability';
-import { useObservabilityFacade } from '@cosimosi/observability/react';
+import {createTelemetryRequestIdInterceptor} from '@cosimosi/observability';
+import {useObservabilityFacade} from '@cosimosi/observability/react';
 
-import { useAuthFacade, useSessionSnapshot } from './auth-provider';
+import {resolveMobileApiBaseUrl} from '../../shared/config/index.ts';
+import {useAuthFacade, useSessionSnapshot} from './auth-provider.tsx';
 
-const ApiTransportContext = createContext<ApiTransport | null>(null);
+interface MobileApiContextValue {
+  transport: ApiTransport;
+  /** The base URL the live transport was built with — surfaced to diagnostics. */
+  baseUrl: string;
+}
+
+const MobileApiContext = createContext<MobileApiContextValue | null>(null);
 
 interface MobileClientCacheProviderProps {
   children?: ReactNode;
@@ -24,11 +30,7 @@ interface MobileClientCacheProviderProps {
   transport?: ApiTransport;
 }
 
-export function resolveMobileApiBaseUrl(platformOS: typeof Platform.OS = Platform.OS): string {
-  return platformOS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
-}
-
-export function MobileClientCacheProvider({ children, apiBaseUrl, queryClient, transport }: MobileClientCacheProviderProps) {
+export function MobileClientCacheProvider({children, apiBaseUrl, queryClient, transport}: MobileClientCacheProviderProps) {
   const auth = useAuthFacade();
   const observability = useObservabilityFacade();
   const session = useSessionSnapshot();
@@ -50,6 +52,10 @@ export function MobileClientCacheProvider({ children, apiBaseUrl, queryClient, t
     [auth, baseUrl, observability, transport],
   );
   const previousCacheScope = useRef(cacheScope);
+  const apiContextValue = useMemo<MobileApiContextValue>(
+    () => ({transport: resolvedTransport, baseUrl}),
+    [baseUrl, resolvedTransport],
+  );
 
   useEffect(
     () => () => {
@@ -65,15 +71,24 @@ export function MobileClientCacheProvider({ children, apiBaseUrl, queryClient, t
 
   return (
     <TransportProvider transport={resolvedTransport}>
-      <ApiTransportContext.Provider value={resolvedTransport}>
+      <MobileApiContext.Provider value={apiContextValue}>
         <QueryClientProvider client={resolvedQueryClient}>{children}</QueryClientProvider>
-      </ApiTransportContext.Provider>
+      </MobileApiContext.Provider>
     </TransportProvider>
   );
 }
 
+function useMobileApiContext(): MobileApiContextValue {
+  const value = useContext(MobileApiContext);
+  if (!value) throw new Error('useMobileApi* must be used inside MobileClientCacheProvider');
+  return value;
+}
+
 export function useMobileApiTransport(): ApiTransport {
-  const transport = useContext(ApiTransportContext);
-  if (!transport) throw new Error('useMobileApiTransport must be used inside MobileClientCacheProvider');
-  return transport;
+  return useMobileApiContext().transport;
+}
+
+/** The base URL the live transport uses (honours an injected apiBaseUrl override). */
+export function useMobileApiBaseUrl(): string {
+  return useMobileApiContext().baseUrl;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {useEffect, useRef, useState, type ReactNode} from 'react';
 
 import * as Sentry from '@sentry/react-native';
 
@@ -13,9 +13,9 @@ import {
   type TelemetryLevel,
   type TelemetryPropertyBag,
 } from '@cosimosi/observability';
-import { ObservabilityProvider, useObservabilityFacade, useObservabilitySnapshot } from '@cosimosi/observability/react';
+import {ObservabilityProvider, useObservabilityFacade, useObservabilitySnapshot} from '@cosimosi/observability/react';
 
-import { useSessionSnapshot } from './auth-provider';
+import {useSessionSnapshot} from './auth-provider.tsx';
 
 interface MobileObservabilityProviderProps {
   children?: ReactNode;
@@ -46,7 +46,7 @@ export function MobileObservabilityProvider({
 
   useEffect(() => {
     if (facade) return;
-    const nextConfig = { sentryDsn, release, posthog };
+    const nextConfig = {sentryDsn, release, posthog};
     if (sameMobileVendorTelemetryOptions(vendorConfig.current, nextConfig)) return;
     runtime.setVendorAdapter(createMobileVendorTelemetryAdapter(nextConfig));
     vendorConfig.current = nextConfig;
@@ -62,7 +62,7 @@ export function MobileObservabilitySessionBridge() {
 
   useEffect(() => {
     if (session.userId) {
-      observability.identify(session.userId, { surface: 'mobile' });
+      observability.identify(session.userId, {surface: 'mobile'});
     } else {
       observability.resetIdentity();
     }
@@ -123,7 +123,7 @@ function createMobileVendorTelemetryAdapter({
     },
     captureMessage(message, level, context) {
       if (!sentryEnabled) return;
-      Sentry.captureMessage(message, { ...captureContext(context), level: toSentryLevel(level) });
+      Sentry.captureMessage(message, {...captureContext(context), level: toSentryLevel(level)});
     },
     track(eventName, properties) {
       posthog?.capture(eventName, properties);

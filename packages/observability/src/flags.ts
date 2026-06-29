@@ -59,7 +59,7 @@ export const platformFeatureFlags = defineFeatureFlagRegistry([
     owner: 'plan/10.observability-and-flags',
     kind: 'operational',
     description: 'Allows development diagnostics surfaces to be enabled without changing product behavior.',
-    review: 'Review with plan/13.mobile-app-shell when the mobile diagnostics route is implemented.',
+    review: 'Wired by plan/13.mobile-app-shell (mobile diagnostics route); default off keeps it out of production.',
     remoteKey: 'platform-diagnostics-surface',
   },
 ] as const)

@@ -13,5 +13,7 @@
  *   when a component owns the machine and rerendering on every transition is
  *   acceptable (small widgets).
  * - `shallowEqual` → comparator for selectors that return object slices.
+ * - `createActorContext(machine)` → React context for an actor a provider owns
+ *   and descendants select from (app-wide lifecycle actors; ARCHITECTURE §3.2).
  */
-export { shallowEqual, useActorRef, useMachine, useSelector } from '@xstate/react';
+export { createActorContext, shallowEqual, useActorRef, useMachine, useSelector } from '@xstate/react';

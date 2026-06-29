@@ -1,44 +1,32 @@
-import { ObservedErrorBoundary, type ObservedErrorBoundaryFallbackProps } from '@cosimosi/observability/react';
-import { m } from '@cosimosi/i18n';
-import { Button } from '@cosimosi/ui';
-import { StyleSheet, View } from 'react-native';
+import {StatusBar} from 'react-native';
+import {SafeAreaProvider, type Metrics} from 'react-native-safe-area-context';
 
-import { MobileAuthProvider } from './auth-provider';
-import { MobileI18nProvider } from './i18n-provider';
-import { MobileObservabilityProvider, MobileObservabilitySessionBridge } from './observability-provider';
-import { MobileClientCacheProvider } from './query-provider';
-import { UiShowcase } from './ui-showcase.stories.tsx';
+import {tokens} from '@cosimosi/ui';
 
-export default function App() {
-  return (
-    <MobileObservabilityProvider>
-      <ObservedErrorBoundary fallback={MobileAppErrorFallback}>
-        <MobileI18nProvider>
-          <MobileAuthProvider>
-            <MobileObservabilitySessionBridge />
-            <MobileClientCacheProvider>
-              <UiShowcase />
-            </MobileClientCacheProvider>
-          </MobileAuthProvider>
-        </MobileI18nProvider>
-      </ObservedErrorBoundary>
-    </MobileObservabilityProvider>
-  );
+import {NavigationRoot, type NavigationRootProps} from './navigation/index.ts';
+import {MobileAppProviders, type MobileAppProvidersProps} from './providers/index.ts';
+import {resolvedSafeAreaMetrics} from '../shared/native/index.ts';
+
+export interface AppProps extends Omit<MobileAppProvidersProps, 'children'> {
+  /** Safe-area metrics; the device window in production, fixed metrics in host tests. */
+  safeAreaMetrics?: Metrics;
+  /** Deep-linking config passthrough; host tests pass `null` to skip the native path. */
+  navigationLinking?: NavigationRootProps['linking'];
 }
 
-function MobileAppErrorFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackProps) {
+/**
+ * Mobile app shell. A thin composition root: native shell (safe area + status bar)
+ * wraps the documented provider stack, which wraps the typed navigation tree. All
+ * adapters are injectable so the shell renders in host tests without Supabase, a
+ * real API, or native device features (plan/13).
+ */
+export default function App({safeAreaMetrics = resolvedSafeAreaMetrics, navigationLinking, ...providers}: AppProps = {}) {
   return (
-    <View style={styles.errorFallback}>
-      <Button onPress={resetErrorBoundary}>{m.common_retry()}</Button>
-    </View>
+    <SafeAreaProvider initialMetrics={safeAreaMetrics}>
+      <StatusBar barStyle="light-content" backgroundColor={tokens.color.bg} />
+      <MobileAppProviders {...providers}>
+        <NavigationRoot linking={navigationLinking} />
+      </MobileAppProviders>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  errorFallback: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-});

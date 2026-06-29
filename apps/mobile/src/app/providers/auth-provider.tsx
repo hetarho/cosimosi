@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import {createContext, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode} from 'react';
 
 import {
   FakeAuthAdapter,
@@ -9,8 +9,9 @@ import {
   type AuthAdapter,
   type AuthFacade,
   type SessionSnapshot,
-  type SupabaseAuthStorage,
 } from '@cosimosi/auth';
+
+import type {SecureTokenStorage} from '../../shared/native/index.ts';
 
 const AuthContext = createContext<AuthFacade | null>(null);
 
@@ -24,16 +25,17 @@ interface MobileAuthProviderProps {
 export interface MobileSupabaseAuthOptions {
   supabaseUrl: string;
   publishableKey: string;
-  secureStorage: SupabaseAuthStorage;
+  /** Keychain/Keystore-backed token store from the native secure-storage seam. */
+  secureStorage: SecureTokenStorage;
   storageKey?: string;
 }
 
-export function MobileAuthProvider({ children, adapter, facade, supabase }: MobileAuthProviderProps) {
+export function MobileAuthProvider({children, adapter, facade, supabase}: MobileAuthProviderProps) {
   const binding = useMemo(
     () =>
       facade
-        ? { auth: facade, owned: false }
-        : { auth: createAuthFacade({ adapter: adapter ?? createDefaultMobileAuthAdapter(supabase) }), owned: true },
+        ? {auth: facade, owned: false}
+        : {auth: createAuthFacade({adapter: adapter ?? createDefaultMobileAuthAdapter(supabase)}), owned: true},
     [adapter, facade, supabase],
   );
   useEffect(

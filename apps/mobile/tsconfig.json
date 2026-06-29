@@ -2,9 +2,9 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "React Native",
   // Self-contained instead of extending @react-native/typescript-config: that
-  // package is hoisted to the repo-root node_modules and forces `types: ["jest"]`,
-  // which the editor can't resolve here (jest isn't installed — tests land in the
-  // quality-gates unit). The options below mirror the RN base, minus the jest types.
+  // package is hoisted to the repo-root node_modules and pins a fixed `types`
+  // list, which the editor can't always resolve here. The options below mirror the
+  // RN base; leaving `types` unset auto-includes @types/jest for the shell tests.
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
