@@ -14,14 +14,15 @@ import (
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
+	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 var ErrSupabaseAuthNotConfigured = errors.New("supabase auth is not configured")
 
 const (
-	defaultSupabaseJWKSCacheTTL            = 10 * time.Minute
-	defaultSupabaseJWKSMissRefreshInterval = time.Minute
+	defaultSupabaseJWKSCacheTTL            = time.Duration(values.SupabaseAuthJwksCacheTtlMs) * time.Millisecond
+	defaultSupabaseJWKSMissRefreshInterval = time.Duration(values.SupabaseAuthJwksMissRefreshIntervalMs) * time.Millisecond
 	defaultSupabaseJWTAudience             = "authenticated"
 	defaultSupabaseJWTRole                 = "authenticated"
 )
@@ -105,7 +106,7 @@ func NewSupabaseJWTVerifier(opts SupabaseJWTVerifierOptions) (*SupabaseJWTVerifi
 func NewSupabaseJWTVerifierFromEnv(httpClient *http.Client) (*SupabaseJWTVerifier, bool, error) {
 	supabaseURL := firstNonEmpty(os.Getenv("SUPABASE_PROJECT_URL"), os.Getenv("SUPABASE_URL"))
 	jwtSecret := os.Getenv("SUPABASE_JWT_SECRET")
-	if supabaseURL == "" && jwtSecret == "" {
+	if supabaseURL == "" {
 		return nil, false, nil
 	}
 	verifier, err := NewSupabaseJWTVerifier(SupabaseJWTVerifierOptions{

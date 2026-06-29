@@ -41,7 +41,7 @@ describe('web app test harness route', () => {
     }
   })
 
-  it('honors the locale override during server rendering', () => {
+  it('does not mutate the active locale during server rendering', () => {
     const fakes = createTestHarnessFakes()
     const observability = createObservabilityFacade()
 
@@ -57,8 +57,8 @@ describe('web app test harness route', () => {
         />,
       )
 
-      expect(html).toContain('테스트 하네스')
-      expect(html).not.toContain('Test harness')
+      expect(html).toContain('Test harness')
+      expect(html).not.toContain('테스트 하네스')
     } finally {
       fakes.dispose()
       observability.dispose()

@@ -8,3 +8,14 @@ const (
 	ClientCacheDefaultRetryCount    = 1
 	ClientCacheOptimisticRollbackMs = 10000
 )
+
+// auth_session
+const (
+	AuthSessionAccessTokenRefreshSkewMs = 60000
+)
+
+// supabase_auth
+const (
+	SupabaseAuthJwksCacheTtlMs            = 600000
+	SupabaseAuthJwksMissRefreshIntervalMs = 60000
+)

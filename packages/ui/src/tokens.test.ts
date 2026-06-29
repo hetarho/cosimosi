@@ -8,7 +8,7 @@ import { CSS_TOKEN_GROUPS, tokens } from './tokens.ts'
 
 const color = tokens.color
 
-// Text token pairs that must clear WCAG AA for normal-size text (plan/09 A5).
+// Text token pairs that must clear WCAG AA for normal-size text.
 const TEXT_PAIRS: ReadonlyArray<[fg: string, bg: string, label: string]> = [
   [color.text, color.bg, 'text on bg'],
   [color.text, color.surface, 'text on surface'],

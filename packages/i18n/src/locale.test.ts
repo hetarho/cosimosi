@@ -13,7 +13,7 @@ import {
 
 // This suite runs in Vitest's default Node environment: no window, navigator, or
 // document exist here, which is the point — locale resolution and message
-// rendering must work without any browser globals (plan/08 A5).
+// rendering must work without any browser globals.
 
 afterEach(() => {
   setActiveLocale(defaultLocale)

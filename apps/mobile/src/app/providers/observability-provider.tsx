@@ -3,19 +3,21 @@ import {useEffect, useRef, useState, type ReactNode} from 'react';
 import * as Sentry from '@sentry/react-native';
 
 import {
-  createInMemoryTelemetryAdapter,
-  createObservabilityFacade,
+  captureContext,
+  createObservabilityRuntime,
   platformFeatureFlags,
   type FeatureFlagDefinition,
   type ObservabilityFacade,
+  type ObservabilityRuntime,
   type TelemetryAdapter,
-  type TelemetryContext,
-  type TelemetryLevel,
   type TelemetryPropertyBag,
+  toSentryLevel,
 } from '@cosimosi/observability';
 import {ObservabilityProvider, useObservabilityFacade, useObservabilitySnapshot} from '@cosimosi/observability/react';
 
-import {useSessionSnapshot} from './auth-provider.tsx';
+import {useSessionSnapshot} from '@cosimosi/auth/react';
+
+import {readMobileFeatureFlagOverrides} from '../../shared/config/index.ts';
 
 interface MobileObservabilityProviderProps {
   children?: ReactNode;
@@ -41,18 +43,31 @@ export function MobileObservabilityProvider({
   release,
   posthog,
 }: MobileObservabilityProviderProps) {
-  const [runtime] = useState(createDefaultMobileObservabilityRuntime);
+  const [runtime] = useState<ObservabilityRuntime | null>(() => (facade ? null : createDefaultMobileObservabilityRuntime()));
   const vendorConfig = useRef<MobileVendorTelemetryOptions | null>(null);
+  const vendorBinding = useRef<MobileVendorTelemetryBinding | null>(null);
 
   useEffect(() => {
-    if (facade) return;
+    if (facade || !runtime) return;
+    const activeRuntime = runtime;
     const nextConfig = {sentryDsn, release, posthog};
     if (sameMobileVendorTelemetryOptions(vendorConfig.current, nextConfig)) return;
-    runtime.setVendorAdapter(createMobileVendorTelemetryAdapter(nextConfig));
     vendorConfig.current = nextConfig;
+    let cancelled = false;
+    async function replaceVendorAdapter() {
+      await vendorBinding.current?.dispose();
+      if (cancelled) return;
+      const nextBinding = createMobileVendorTelemetryAdapter(nextConfig);
+      activeRuntime.setVendorAdapter(nextBinding.adapter);
+      vendorBinding.current = nextBinding;
+    }
+    replaceVendorAdapter();
+    return () => {
+      cancelled = true;
+    };
   }, [facade, posthog, release, runtime, sentryDsn]);
 
-  return <ObservabilityProvider facade={facade ?? runtime.facade}>{children}</ObservabilityProvider>;
+  return <ObservabilityProvider facade={facade ?? runtime!.facade}>{children}</ObservabilityProvider>;
 }
 
 export function MobileObservabilitySessionBridge() {
@@ -77,33 +92,22 @@ interface MobileVendorTelemetryOptions {
   posthog?: MobilePostHogClient;
 }
 
-interface MobileObservabilityRuntime {
-  readonly facade: ObservabilityFacade;
-  setVendorAdapter(adapter: TelemetryAdapter | null): void;
+interface MobileVendorTelemetryBinding {
+  readonly adapter: TelemetryAdapter | null;
+  dispose(): Promise<void>;
 }
 
-function createDefaultMobileObservabilityRuntime(): MobileObservabilityRuntime {
-  const memoryAdapter = createInMemoryTelemetryAdapter();
-  let vendorAdapter: TelemetryAdapter | null = null;
-  const delegatedVendorAdapter = createDelegatedTelemetryAdapter(() => vendorAdapter);
-  const facade = createObservabilityFacade({
-    adapters: [memoryAdapter, delegatedVendorAdapter],
-    flagRegistry: platformFeatureFlags,
+function createDefaultMobileObservabilityRuntime(): ObservabilityRuntime {
+  return createObservabilityRuntime({
+    flagRegistry: platformFeatureFlags.withOverrides(readMobileFeatureFlagOverrides()),
   });
-  return {
-    facade,
-    setVendorAdapter(adapter) {
-      vendorAdapter = adapter;
-      adapter?.setAnalyticsConsent?.(facade.snapshot.consent);
-    },
-  };
 }
 
 function createMobileVendorTelemetryAdapter({
   sentryDsn,
   release,
   posthog,
-}: MobileVendorTelemetryOptions): TelemetryAdapter | null {
+}: MobileVendorTelemetryOptions): MobileVendorTelemetryBinding {
   const sentryEnabled = Boolean(sentryDsn);
   if (sentryDsn) {
     Sentry.init({
@@ -114,60 +118,41 @@ function createMobileVendorTelemetryAdapter({
     });
   }
 
-  if (!sentryEnabled && !posthog) return null;
+  if (!sentryEnabled && !posthog) return {adapter: null, async dispose() {}};
 
   return {
-    captureException(error, context) {
-      if (!sentryEnabled) return;
-      Sentry.captureException(error, captureContext(context));
+    adapter: {
+      captureException(error, context) {
+        if (!sentryEnabled) return;
+        Sentry.captureException(error, captureContext('mobile', context));
+      },
+      captureMessage(message, level, context) {
+        if (!sentryEnabled) return;
+        Sentry.captureMessage(message, {...captureContext('mobile', context), level: toSentryLevel(level)});
+      },
+      track(eventName, properties) {
+        posthog?.capture(eventName, properties);
+      },
+      identify(userId, traits) {
+        posthog?.identify(userId, traits);
+      },
+      resetIdentity() {
+        posthog?.reset();
+      },
+      setAnalyticsConsent(consent) {
+        if (consent === 'granted') posthog?.optIn?.();
+        else posthog?.optOut?.();
+      },
+      getFeatureFlag(definition: FeatureFlagDefinition) {
+        if (!posthog || !definition.remoteKey) return undefined;
+        const value = posthog.getFeatureFlag?.(definition.remoteKey);
+        return typeof value === 'boolean' ? value : undefined;
+      },
     },
-    captureMessage(message, level, context) {
-      if (!sentryEnabled) return;
-      Sentry.captureMessage(message, {...captureContext(context), level: toSentryLevel(level)});
-    },
-    track(eventName, properties) {
-      posthog?.capture(eventName, properties);
-    },
-    identify(userId, traits) {
-      posthog?.identify(userId, traits);
-    },
-    resetIdentity() {
+    async dispose() {
+      if (sentryEnabled) await Sentry.close();
+      posthog?.optOut?.();
       posthog?.reset();
-    },
-    setAnalyticsConsent(consent) {
-      if (consent === 'granted') posthog?.optIn?.();
-      else posthog?.optOut?.();
-    },
-    getFeatureFlag(definition: FeatureFlagDefinition) {
-      if (!posthog || !definition.remoteKey) return undefined;
-      const value = posthog.getFeatureFlag?.(definition.remoteKey);
-      return typeof value === 'boolean' ? value : undefined;
-    },
-  };
-}
-
-function createDelegatedTelemetryAdapter(getAdapter: () => TelemetryAdapter | null): TelemetryAdapter {
-  return {
-    captureException(error, context) {
-      getAdapter()?.captureException(error, context);
-    },
-    captureMessage(message, level, context) {
-      getAdapter()?.captureMessage(message, level, context);
-    },
-    track(eventName, properties) {
-      getAdapter()?.track(eventName, properties);
-    },
-    identify(userId, traits) {
-      getAdapter()?.identify(userId, traits);
-    },
-    resetIdentity() {
-      getAdapter()?.resetIdentity();
-    },
-    setAnalyticsConsent(consent) {
-      getAdapter()?.setAnalyticsConsent?.(consent);
-    },
-    getFeatureFlag(definition) {
-      return getAdapter()?.getFeatureFlag?.(definition);
     },
   };
 }
@@ -177,23 +162,4 @@ function sameMobileVendorTelemetryOptions(
   next: MobileVendorTelemetryOptions,
 ): boolean {
   return previous?.sentryDsn === next.sentryDsn && previous?.release === next.release && previous?.posthog === next.posthog;
-}
-
-function captureContext(context: TelemetryContext) {
-  return {
-    tags: {
-      source: context.source ?? 'mobile',
-      request_id: stringProperty(context.properties, 'requestId'),
-    },
-    extra: context.properties,
-  };
-}
-
-function stringProperty(properties: TelemetryPropertyBag | undefined, key: string): string | undefined {
-  const value = properties?.[key];
-  return typeof value === 'string' ? value : undefined;
-}
-
-function toSentryLevel(level: TelemetryLevel) {
-  return level === 'warning' ? 'warning' : level;
 }

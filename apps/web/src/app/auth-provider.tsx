@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 
 import {
   FakeAuthAdapter,
@@ -7,8 +7,7 @@ import {
   createSupabaseAuthClient,
   type AuthFacade,
 } from '@cosimosi/auth'
-
-import { AuthContext } from '../shared/auth/index.ts'
+import { AuthProvider } from '@cosimosi/auth/react'
 
 interface WebAuthProviderProps {
   children?: ReactNode
@@ -16,17 +15,11 @@ interface WebAuthProviderProps {
 }
 
 export function WebAuthProvider({ children, facade }: WebAuthProviderProps) {
-  const binding = useMemo(
-    () => (facade ? { auth: facade, owned: false } : { auth: createDefaultWebAuthFacade(), owned: true }),
-    [facade],
+  return (
+    <AuthProvider facade={facade} createFacade={createDefaultWebAuthFacade}>
+      {children}
+    </AuthProvider>
   )
-  useEffect(
-    () => () => {
-      if (binding.owned) binding.auth.dispose()
-    },
-    [binding],
-  )
-  return <AuthContext.Provider value={binding.auth}>{children}</AuthContext.Provider>
 }
 
 function createDefaultWebAuthFacade(): AuthFacade {

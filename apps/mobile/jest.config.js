@@ -1,8 +1,8 @@
 const reactNativePreset = require('@react-native/jest-preset');
 
 /**
- * Host-only Jest config for the app-shell smoke test (plan/13 A8). Runs in Node
- * with the React Native preset's native-module mocks — no emulator.
+ * Host-only Jest config for the app-shell smoke test. Runs in Node with the
+ * React Native preset's native-module mocks — no emulator.
  *
  * Two repo-specific overrides:
  * - `transform`: pin the code transformer to this app's babel.config.js via

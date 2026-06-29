@@ -5,7 +5,7 @@ import type { ColorToken } from '../tokens.ts'
  *
  * This store selects visual tokens and a background style. It is deliberately
  * isolated from the product: it imports no domain or cache code and exposes no way
- * to write emotion, engram strength, recall state, or graph layout (plan/09 A7).
+ * to write emotion, engram strength, recall state, or graph layout.
  * Domain → visual mapping (e.g. emotion → color) belongs to the rendering
  * projection in a later product unit, never here. The store is platform-pure, so
  * web and React Native drive the same seam through `useTheme`.

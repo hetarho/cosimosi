@@ -1,12 +1,16 @@
 import {Platform} from 'react-native';
 
-import type {PlatformFeatureFlagKey} from '@cosimosi/observability';
+import {
+  platformFeatureFlags,
+  readFeatureFlagOverrides,
+  type FeatureFlagValue,
+  type PlatformFeatureFlagKey,
+} from '@cosimosi/observability';
 
 /**
  * Mobile runtime configuration seam. Base URL, app-version label, and which
  * feature flag gates the diagnostics surface are architecture/runtime concerns,
- * not numeric product tuning — so they live here, not in spec/values.yaml
- * (plan/13 Policy/Values Impact).
+ * not numeric product tuning — so they live here, not in spec/values.yaml.
  */
 
 /**
@@ -20,10 +24,22 @@ export function resolveMobileApiBaseUrl(platformOS: typeof Platform.OS = Platfor
 
 /**
  * App version/build label for the diagnostics surface (no secrets). Placeholder
- * kept in sync with package.json until a native build-version source (e.g. the
- * platform build config) is wired at deployment — a plan/13 non-goal.
+ * kept in sync with package.json until a native build-version source is wired at
+ * deployment.
  */
 export const mobileAppVersion = '0.0.1';
 
-/** Feature flag (plan/10) that gates whether the diagnostics surface is reachable. */
+/** Feature flag that gates whether the diagnostics surface is reachable. */
 export const diagnosticsSurfaceFlag: PlatformFeatureFlagKey = 'platform.diagnosticsSurface';
+
+export type MobileFeatureFlagEnv = Record<string, string | boolean | undefined>;
+
+export function readMobileFeatureFlagOverrides(
+  env: MobileFeatureFlagEnv = defaultMobileFeatureFlagEnv(),
+): Partial<Record<PlatformFeatureFlagKey, FeatureFlagValue>> {
+  return readFeatureFlagOverrides(platformFeatureFlags.definitions, env);
+}
+
+function defaultMobileFeatureFlagEnv(): MobileFeatureFlagEnv {
+  return ((globalThis as typeof globalThis & {process?: {env?: MobileFeatureFlagEnv}}).process?.env ?? {});
+}

@@ -135,9 +135,8 @@ export function createObservabilityFacade<K extends string = (typeof platformFea
       emit()
     },
     getFeatureFlag(key) {
-      const definition = flagRegistry.definitions.find((item) => item.key === key)
-      if (!definition) throw new Error(`Unknown feature flag: ${key}`)
-      if (snapshot.consent !== 'granted') return flagRegistry.resolve(key)
+      const definition = flagRegistry.getDefinition(key)
+      if (snapshot.consent !== 'granted' && requiresConsentForRemoteFlag(definition)) return flagRegistry.resolve(key)
       for (const adapter of adapters) {
         const remoteValue = adapter.getFeatureFlag?.(definition)
         if (remoteValue !== undefined) return flagRegistry.resolve(key, remoteValue)
@@ -155,6 +154,10 @@ export function createObservabilityFacade<K extends string = (typeof platformFea
       listeners.clear()
     },
   }
+}
+
+function requiresConsentForRemoteFlag(definition: FeatureFlagDefinition): boolean {
+  return definition.kind !== 'kill-switch' && definition.kind !== 'operational'
 }
 
 function redactedTelemetryError(error: unknown): Error {

@@ -13,6 +13,12 @@ generated files are never edited by hand.
 Values are build-time config. They are not remote config, environment config, feature flags, formulas, copy, schema, or
 theme content.
 
+Current groups:
+
+- `client_cache`: TanStack Query default timing and optimistic rollback windows.
+- `auth_session`: frontend Supabase access-token refresh skew.
+- `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
+
 ## 2. Schema
 
 Groups, generated keys, and scalar-map keys use `snake_case`. The generator accepts:
@@ -39,7 +45,7 @@ arrays/maps, nested arrays, nested maps, and mixed-type scalar maps with clear `
 
 Do not put these in `spec/values.yaml`:
 
-- runtime environment, deployment config, URLs, DSNs, API keys, Supabase settings, or secrets;
+- runtime environment, deployment config, URLs, DSNs, API keys, Supabase project URLs, or secrets;
 - feature flags or remote-config values;
 - proto contracts, SQL schemas, or DB migration choices;
 - product formulas whose behavior belongs in code;

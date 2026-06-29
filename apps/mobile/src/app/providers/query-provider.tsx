@@ -3,13 +3,13 @@ import {createContext, useContext, useEffect, useMemo, useRef, type ReactNode} f
 import {TransportProvider} from '@connectrpc/connect-query';
 import {QueryClientProvider} from '@tanstack/react-query';
 
-import {createApiTransport, type ApiTransport} from '@cosimosi/api-client';
+import {type ApiTransport} from '@cosimosi/api-client';
 import {
-  createClientCacheQueryClient,
-  createClientCacheRpcPolicyInterceptor,
+  clearOwnedClientCache,
+  resolveClientCacheQueryClient,
+  resolveClientCacheTransport,
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache';
-import {createTelemetryRequestIdInterceptor} from '@cosimosi/observability';
 import {useObservabilityFacade} from '@cosimosi/observability/react';
 
 import {resolveMobileApiBaseUrl} from '../../shared/config/index.ts';
@@ -37,18 +37,10 @@ export function MobileClientCacheProvider({children, apiBaseUrl, queryClient, tr
   const baseUrl = apiBaseUrl ?? resolveMobileApiBaseUrl();
   const cacheScope = session.userId ?? 'anonymous';
   const ownedQueryClient = useRef<ClientCacheQueryClient | null>(null);
-  if (!queryClient && !ownedQueryClient.current) {
-    ownedQueryClient.current = createClientCacheQueryClient();
-  }
-  const resolvedQueryClient = queryClient ?? ownedQueryClient.current ?? createClientCacheQueryClient();
+  const ownsQueryClient = !queryClient;
+  const resolvedQueryClient = resolveClientCacheQueryClient({queryClient, ownedQueryClient});
   const resolvedTransport = useMemo(
-    () =>
-      transport ??
-      createApiTransport({
-        baseUrl,
-        auth,
-        interceptors: [createClientCacheRpcPolicyInterceptor(), createTelemetryRequestIdInterceptor(observability)],
-      }),
+    () => resolveClientCacheTransport({transport, baseUrl, auth, observability}),
     [auth, baseUrl, observability, transport],
   );
   const previousCacheScope = useRef(cacheScope);
@@ -59,15 +51,15 @@ export function MobileClientCacheProvider({children, apiBaseUrl, queryClient, tr
 
   useEffect(
     () => () => {
-      if (!queryClient) ownedQueryClient.current?.clear();
+      clearOwnedClientCache(resolvedQueryClient, ownsQueryClient);
     },
-    [queryClient],
+    [ownsQueryClient, resolvedQueryClient],
   );
   useEffect(() => {
     if (previousCacheScope.current === cacheScope) return;
-    if (!queryClient) resolvedQueryClient.clear();
+    clearOwnedClientCache(resolvedQueryClient, ownsQueryClient);
     previousCacheScope.current = cacheScope;
-  }, [cacheScope, queryClient, resolvedQueryClient]);
+  }, [cacheScope, ownsQueryClient, resolvedQueryClient]);
 
   return (
     <TransportProvider transport={resolvedTransport}>

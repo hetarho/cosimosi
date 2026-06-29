@@ -1,23 +1,19 @@
-import {createContext, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode} from 'react';
+import {type ReactNode} from 'react';
 
 import {
   FakeAuthAdapter,
   createAuthFacade,
   createSupabaseAuthAdapter,
   createSupabaseAuthClient,
-  initialSessionSnapshot,
   type AuthAdapter,
   type AuthFacade,
-  type SessionSnapshot,
 } from '@cosimosi/auth';
+import {AuthProvider, useAuthFacade, useSessionSnapshot} from '@cosimosi/auth/react';
 
 import type {SecureTokenStorage} from '../../shared/native/index.ts';
 
-const AuthContext = createContext<AuthFacade | null>(null);
-
 interface MobileAuthProviderProps {
   children?: ReactNode;
-  adapter?: AuthAdapter;
   facade?: AuthFacade;
   supabase?: MobileSupabaseAuthOptions;
 }
@@ -30,32 +26,12 @@ export interface MobileSupabaseAuthOptions {
   storageKey?: string;
 }
 
-export function MobileAuthProvider({children, adapter, facade, supabase}: MobileAuthProviderProps) {
-  const binding = useMemo(
-    () =>
-      facade
-        ? {auth: facade, owned: false}
-        : {auth: createAuthFacade({adapter: adapter ?? createDefaultMobileAuthAdapter(supabase)}), owned: true},
-    [adapter, facade, supabase],
+export function MobileAuthProvider({children, facade, supabase}: MobileAuthProviderProps) {
+  return (
+    <AuthProvider facade={facade} createFacade={() => createAuthFacade({adapter: createDefaultMobileAuthAdapter(supabase)})}>
+      {children}
+    </AuthProvider>
   );
-  useEffect(
-    () => () => {
-      if (binding.owned) binding.auth.dispose();
-    },
-    [binding],
-  );
-  return <AuthContext.Provider value={binding.auth}>{children}</AuthContext.Provider>;
-}
-
-export function useAuthFacade(): AuthFacade {
-  const facade = useContext(AuthContext);
-  if (!facade) throw new Error('useAuthFacade must be used inside MobileAuthProvider');
-  return facade;
-}
-
-export function useSessionSnapshot(): SessionSnapshot {
-  const facade = useAuthFacade();
-  return useSyncExternalStore(facade.subscribe, () => facade.snapshot, () => initialSessionSnapshot);
 }
 
 function createDefaultMobileAuthAdapter(supabase: MobileSupabaseAuthOptions | undefined): AuthAdapter {
@@ -71,3 +47,5 @@ function createDefaultMobileAuthAdapter(supabase: MobileSupabaseAuthOptions | un
     }),
   );
 }
+
+export {useAuthFacade, useSessionSnapshot};

@@ -33,3 +33,12 @@ export {
   type InMemoryTelemetryEvent,
 } from './memory-adapter.ts'
 export { createTelemetryRequestIdInterceptor, requestIdHeader } from './connect.ts'
+export {
+  captureContext,
+  createDelegatedTelemetryAdapter,
+  createObservabilityRuntime,
+  stringTelemetryProperty,
+  toSentryLevel,
+  type CreateObservabilityRuntimeOptions,
+  type ObservabilityRuntime,
+} from './runtime.ts'

@@ -7,8 +7,8 @@ const SRC = join(process.cwd(), 'src')
 
 // The design system is domain-agnostic: it must not reach into product domain, the
 // data cache, the transport client, or even the i18n message catalogue — copy
-// arrives through props (plan/09 A2, A4, A7). Importing any of these would let a
-// primitive embed product strings or touch domain/cache state.
+// arrives through props. Importing any of these would let a primitive embed
+// product strings or touch domain/cache state.
 const FORBIDDEN = /from\s+['"]@cosimosi\/(auth|client-cache|api-client|state-machine|config|i18n)['"]/
 
 function walk(dir: string): string[] {

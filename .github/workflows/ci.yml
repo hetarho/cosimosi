@@ -7,83 +7,14 @@ on:
     branches: [develop, main]
 
 jobs:
-  web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4 # reads packageManager (pnpm@10.x) from package.json
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @cosimosi/web lint
-      - run: pnpm --filter @cosimosi/web typecheck
-      - run: pnpm --filter @cosimosi/web test
-      - run: pnpm --filter @cosimosi/web build
-
-  mobile:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @cosimosi/mobile lint
-      - run: pnpm --filter @cosimosi/mobile typecheck
-
-  blog:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @cosimosi/blog typecheck
-      - run: pnpm --filter @cosimosi/blog build
-
-  api:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: apps/api/go.mod
-          cache-dependency-path: apps/api/go.mod
-      - run: test -z "$(gofmt -l .)"
-      - run: go vet ./...
-      - run: go test ./...
-      - run: go build ./...
-
-  codegen:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check:gen
-
-  language:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint:language
+      - run: pnpm check

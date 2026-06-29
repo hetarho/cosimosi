@@ -1,12 +1,3 @@
-const forbiddenCacheFields = new Set([
-  'coordinatesBuffer',
-  'derivedBrightness',
-  'frameCoordinates',
-  'perFrameCoordinates',
-  'renderBuffer',
-  'renderBuffers',
-])
-
 export function assertClientCacheData(value: unknown, path = 'data'): void {
   assertClientCacheDataInner(value, path, new WeakSet<object>())
 }
@@ -52,9 +43,6 @@ function assertClientCacheObject(value: object, path: string, seen: WeakSet<obje
     return
   }
   for (const [key, item] of Object.entries(value)) {
-    if (forbiddenCacheFields.has(key)) {
-      throw new Error(`${path}.${key} is render-loop data and does not belong in TanStack Query cache`)
-    }
     assertClientCacheDataInner(item, `${path}.${key}`, seen)
   }
 }

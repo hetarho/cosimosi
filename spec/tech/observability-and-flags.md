@@ -12,9 +12,10 @@
 |---|---|
 | Cross-app facade, consent gate, safe property typing, in-memory adapter | `packages/observability/src/*` |
 | React context and app-level error boundary | `packages/observability/src/react.tsx` |
+| Shared runtime factory and delegated vendor adapter | `packages/observability/src/runtime.ts` |
 | Connect request-id client interceptor | `packages/observability/src/connect.ts` |
 | Web vendor adapter | `apps/web/src/app/observability-provider.tsx` |
-| Mobile vendor adapter | `apps/mobile/src/app/observability-provider.tsx` |
+| Mobile vendor adapter | `apps/mobile/src/app/providers/observability-provider.tsx` |
 | API reporter and safe attributes | `apps/api/internal/platform/observability/*` |
 | API error/panic/reporting interceptors | `apps/api/internal/platform/{handler,interceptors}.go` |
 | Direct-vendor-import guard | `scripts/check-observability-boundaries.mjs` (`pnpm lint:observability`) |
@@ -22,10 +23,12 @@
 Feature/domain slices import `@cosimosi/observability` or the app context only. Direct
 Sentry/PostHog imports are allowed only at app/platform observability boundaries:
 `apps/web/src/app/observability-provider.tsx`,
-`apps/mobile/src/app/observability-provider.tsx`, and
-`apps/api/internal/platform/observability/sentry.go`. The boundary guard scans the
-clean app roots and `packages/`/`apps/api/internal`; `apps/*-mvp` are reference-only
-and are not part of the clean Phase 1 workspace. The guard matches quoted import
+`apps/mobile/src/app/providers/observability-provider.tsx`, and
+`apps/api/internal/platform/observability/sentry.go`; the focused mobile provider
+test is allowed to import/mock the native Sentry SDK so the boundary lifecycle can
+be asserted. The boundary guard scans the clean app roots and
+`packages/`/`apps/api/internal`; archived/reference apps are not part of the
+active workspace. The guard matches quoted import
 specifiers by prefix, so subpath imports and dynamic imports are rejected too.
 
 ## 2. Consent and telemetry classes
@@ -51,15 +54,18 @@ dependency is owned there.
 React providers keep the facade instance stable across StrictMode effect replays. The
 web/mobile vendor SDK adapters are attached from effects through a delegated adapter
 instead of initialized during render; the delegated adapter receives the current
-consent state as soon as it is attached. Error boundaries expose a reset render prop
-and reset-key path so app shells can render platform-specific recovery UI.
+consent state as soon as it is attached. Mobile closes the previous Sentry binding
+before reinitializing when vendor props change. Error boundaries expose a reset render
+prop and reset-key path so app shells can render platform-specific recovery UI.
 
 ## 3. Safe properties
 
 `SafeTelemetryProperties<T>` rejects sensitive keys at type-check time for literals,
 and `assertSafeTelemetryProperties` rejects the same keys at runtime for dynamic bags.
-The blocked key families include diary text, record body, generated memory content,
-raw embeddings, auth tokens, secrets, and passwords.
+The blocked key families are generic credential/secrets names: tokens, auth headers,
+API keys, secrets, and passwords. Product-domain field names are not hardcoded in
+this platform denylist; private product content is kept out by review, DTO design,
+and the app-specific telemetry call sites.
 
 API telemetry uses `observability.Attributes`, which can only be built through
 `NewAttributes`/`MustAttributes`. It carries stable operational fields such as
@@ -99,8 +105,14 @@ Rules:
 
 - feature code reads through the observability facade (`getFeatureFlag`);
 - local/test/dev overrides are registry-level overrides, not scattered conditionals;
-- remote PostHog values are consulted only after analytics consent is granted;
+- `kill-switch` and `operational` remote values may be consulted before analytics
+  consent because they control safety and platform operation, not analytics identity;
+- `release` remote values are consulted only after analytics consent is granted;
 - remote values fall back to committed defaults when absent or disabled;
+- the in-memory adapter accepts natural flag keys and remote keys consistently for
+  test/dev setup;
+- registry definition fails fast when two flag keys derive the same environment
+  override name;
 - flags are boolean-only in this platform seam. Numeric product tuning belongs in
   `spec/values.yaml` and generated config, never in the feature-flag registry.
 
@@ -118,7 +130,8 @@ Runtime secrets and endpoints are environment/ops configuration:
   `VITE_POSTHOG_HOST`, `VITE_COSIMOSI_FLAG_*`;
 - API: `COSIMOSI_SENTRY_DSN`, `COSIMOSI_RELEASE`;
 - mobile: provider props (`sentryDsn`, `release`, optional native PostHog-compatible
-  client) until the mobile shell owns a runtime env source.
+  client) plus `COSIMOSI_FLAG_*` build-time/runtime environment overrides read
+  through the same registry parser as web.
 
 The API entrypoint handles SIGINT/SIGTERM with `http.Server.Shutdown` and calls the
 reporter flush path on graceful shutdown or fatal listen errors, so buffered Sentry

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { useTransport } from '@connectrpc/connect-query'
@@ -13,7 +13,13 @@ import { resolveWebApiBaseUrl } from './query-config.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
 
+const cleanupTasks: Array<() => void> = []
+
 describe('web client cache provider config', () => {
+  afterEach(() => {
+    while (cleanupTasks.length) cleanupTasks.pop()?.()
+  })
+
   it('prefers the explicit client cache API base URL', () => {
     expect(resolveWebApiBaseUrl({ VITE_API_BASE_URL: 'https://api.example.test', VITE_API_URL: 'https://legacy.test' })).toBe(
       'https://api.example.test',
@@ -29,6 +35,7 @@ describe('web client cache provider config', () => {
     const facade = createAuthFacade({ adapter: new FakeAuthAdapter() })
     const observability = createObservabilityFacade()
     const queryClient = createClientCacheQueryClient()
+    cleanupTasks.push(() => queryClient.clear(), () => observability.dispose(), () => facade.dispose())
     const transport = createPlatformMockTransport(() => ({ message: 'pong' }))
     let contextTransport: ApiTransport | null = null
 
@@ -50,8 +57,5 @@ describe('web client cache provider config', () => {
     )
 
     expect(contextTransport).toBe(transport)
-    facade.dispose()
-    observability.dispose()
-    queryClient.clear()
   })
 })

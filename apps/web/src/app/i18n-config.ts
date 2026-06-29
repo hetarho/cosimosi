@@ -13,7 +13,7 @@ export interface WebLocaleSources {
 /**
  * Web locale precedence: explicit/stored choice → browser languages → default.
  * Pure — the provider supplies the platform values, so this is testable without
- * `window`/`navigator` (plan/08 A5).
+ * `window`/`navigator`.
  */
 export function resolveWebLocale({ stored, languages = [] }: WebLocaleSources): Locale {
   return resolveLocale([stored, ...languages])

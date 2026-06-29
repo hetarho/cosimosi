@@ -14,4 +14,4 @@
  *   acceptable (forms, small widgets).
  * - `shallowEqual` → comparator for selectors that return object slices.
  */
-export { shallowEqual, useActorRef, useMachine, useSelector } from '@xstate/react'
+export { shallowEqual, useActorRef, useMachine, useSelector } from '@cosimosi/state-machine/react'

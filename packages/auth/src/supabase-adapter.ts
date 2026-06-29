@@ -1,5 +1,7 @@
 import { createClient, type AuthSession as SupabaseSession, type SupabaseClient, type SupportedStorage } from '@supabase/supabase-js'
 
+import { VALUES } from '@cosimosi/config'
+
 import type { AuthAdapter, AuthAdapterChangeSource, AuthSession, SignInCredentials } from './auth-adapter.ts'
 import type { SessionSnapshot } from './session.ts'
 
@@ -12,6 +14,10 @@ export interface SupabaseAuthClientOptions {
   storageKey?: string
   detectSessionInUrl?: boolean
   flowType?: 'implicit' | 'pkce'
+}
+
+export interface SupabaseAuthAdapterOptions {
+  now?: () => number
 }
 
 export function createSupabaseAuthClient({
@@ -34,17 +40,17 @@ export function createSupabaseAuthClient({
   })
 }
 
-export function createSupabaseAuthAdapter(client: SupabaseClient): AuthAdapter {
+export function createSupabaseAuthAdapter(client: SupabaseClient, { now = Date.now }: SupabaseAuthAdapterOptions = {}): AuthAdapter {
   return {
     async bootstrap() {
       const { data, error } = await client.auth.getSession()
       if (error) throw error
-      return toAuthSession(data.session)
+      return toAuthSession(data.session, now)
     },
     async signIn(credentials: SignInCredentials) {
       const { data, error } = await client.auth.signInWithPassword(credentials)
       if (error) throw error
-      return requireAuthSession(data.session)
+      return requireAuthSession(data.session, now)
     },
     async signOut() {
       const { error } = await client.auth.signOut()
@@ -53,16 +59,24 @@ export function createSupabaseAuthAdapter(client: SupabaseClient): AuthAdapter {
     async refresh() {
       const { data, error } = await client.auth.refreshSession()
       if (error) throw error
-      return requireAuthSession(data.session)
+      return requireAuthSession(data.session, now)
     },
     async getAccessToken() {
       const { data, error } = await client.auth.getSession()
       if (error) throw error
-      return toAuthSession(data.session) ? (data.session?.access_token ?? null) : null
+      const session = data.session
+      const raw = toRawAuthSession(session)
+      if (!raw) return null
+      if (shouldRefreshAccessToken(raw.expiresAt, now())) {
+        const refreshed = await client.auth.refreshSession()
+        if (refreshed.error) throw refreshed.error
+        return accessTokenFromSession(refreshed.data.session, now)
+      }
+      return accessTokenFromSession(session, now)
     },
     onChange(listener) {
       const { data } = client.auth.onAuthStateChange((event, session) => {
-        listener(toSessionSnapshot(session), { source: toAuthAdapterChangeSource(event) })
+        listener(toSessionSnapshot(session, now), { source: toAuthAdapterChangeSource(event) })
       })
       return () => data.subscription.unsubscribe()
     },
@@ -88,15 +102,15 @@ function toAuthAdapterChangeSource(event: string): AuthAdapterChangeSource {
   }
 }
 
-function requireAuthSession(session: SupabaseSession | null): AuthSession {
-  const converted = toAuthSession(session)
+function requireAuthSession(session: SupabaseSession | null, now: () => number): AuthSession {
+  const converted = toAuthSession(session, now)
   if (!converted) throw new Error('Supabase did not return an authenticated session')
   return converted
 }
 
-function toAuthSession(session: SupabaseSession | null): AuthSession | null {
+function toAuthSession(session: SupabaseSession | null, now: () => number): AuthSession | null {
   const converted = toRawAuthSession(session)
-  if (!converted || converted.expiresAt <= Date.now()) return null
+  if (!converted || converted.expiresAt <= now()) return null
   return converted
 }
 
@@ -108,12 +122,20 @@ function toRawAuthSession(session: SupabaseSession | null): AuthSession | null {
   }
 }
 
-function toSessionSnapshot(session: SupabaseSession | null): SessionSnapshot {
+function accessTokenFromSession(session: SupabaseSession | null, now: () => number): string | null {
+  return toAuthSession(session, now) ? (session?.access_token ?? null) : null
+}
+
+function shouldRefreshAccessToken(expiresAt: number, now: number): boolean {
+  return expiresAt <= now + VALUES.authSession.accessTokenRefreshSkewMs
+}
+
+function toSessionSnapshot(session: SupabaseSession | null, now: () => number): SessionSnapshot {
   const converted = toRawAuthSession(session)
   if (!converted) {
     return { status: 'signedOut', userId: null, expiresAt: null, error: null }
   }
-  if (converted.expiresAt <= Date.now()) {
+  if (converted.expiresAt <= now()) {
     return { status: 'expired', userId: null, expiresAt: null, error: null }
   }
   return { status: 'authenticated', userId: converted.userId, expiresAt: converted.expiresAt, error: null }

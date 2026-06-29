@@ -334,15 +334,15 @@ func TestNewSupabaseJWTVerifierFromEnvIgnoresServerPublishableKey(t *testing.T) 
 	}
 }
 
-func TestNewSupabaseJWTVerifierFromEnvRejectsJWTSecretWithoutURL(t *testing.T) {
+func TestNewSupabaseJWTVerifierFromEnvTreatsJWTSecretWithoutURLAsUnconfigured(t *testing.T) {
 	t.Setenv("SUPABASE_URL", "")
 	t.Setenv("SUPABASE_PROJECT_URL", "")
 	t.Setenv("SUPABASE_PUBLISHABLE_KEY", "")
 	t.Setenv("SUPABASE_JWT_SECRET", "legacy-secret")
 
 	_, ok, err := NewSupabaseJWTVerifierFromEnv(http.DefaultClient)
-	if err == nil {
-		t.Fatal("NewSupabaseJWTVerifierFromEnv unexpectedly accepted JWT secret without Supabase URL")
+	if err != nil {
+		t.Fatalf("NewSupabaseJWTVerifierFromEnv failed: %v", err)
 	}
 	if ok {
 		t.Fatal("NewSupabaseJWTVerifierFromEnv returned ok=true for partial config")

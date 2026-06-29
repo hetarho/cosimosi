@@ -1,13 +1,11 @@
 import {type ApiTransport} from '@cosimosi/api-client';
-import {FakeAuthAdapter, createAuthFacade, type AuthFacade, type AuthSession} from '@cosimosi/auth';
+import {FakeAuthAdapter, createAuthFacade, type AuthFacade, type AuthSession, type SupabaseAuthStorage} from '@cosimosi/auth';
 import {
   createClientCacheTestContext,
   type ClientCacheQueryClient,
   type ClientCacheTestContextOptions,
 } from '@cosimosi/client-cache';
 import {createObservabilityFacade, platformFeatureFlags, type ObservabilityFacade} from '@cosimosi/observability';
-
-import {createInMemorySecureTokenStorage, type SecureTokenStorage} from '../native/index.ts';
 
 const DEFAULT_FAKE_AUTH_TTL_MS = 60_000;
 
@@ -24,14 +22,14 @@ export interface MobileShellFakes {
   queryClient: ClientCacheQueryClient;
   transport: ApiTransport;
   observabilityFacade: ObservabilityFacade;
-  secureStorage: SecureTokenStorage;
+  secureStorage: SupabaseAuthStorage;
   dispose(): void;
 }
 
 /**
- * Fake adapters for the mobile app-shell host test (plan/13 A4) — fake auth,
- * transport, storage, locale source, and observability. No Supabase, no network,
- * no native bridge, so the shell renders without an emulator.
+ * Fake adapters for the mobile app-shell host test: auth, transport, storage,
+ * locale source, and observability. No Supabase, no network, no native bridge,
+ * so the shell renders without an emulator.
  */
 export function createMobileShellFakes(options: CreateMobileShellFakesOptions = {}): MobileShellFakes {
   const ping = options.ping ?? (() => ({message: 'pong', requestId: 'mobile-shell-fake'}));
@@ -62,5 +60,20 @@ function createInitialFakeSession(options: CreateMobileShellFakesOptions): AuthS
   return {
     userId: options.userId,
     expiresAt: options.expiresAt ?? Date.now() + DEFAULT_FAKE_AUTH_TTL_MS,
+  };
+}
+
+function createInMemorySecureTokenStorage(): SupabaseAuthStorage {
+  const store = new Map<string, string>();
+  return {
+    getItem(key) {
+      return store.has(key) ? (store.get(key) as string) : null;
+    },
+    setItem(key, value) {
+      store.set(key, value);
+    },
+    removeItem(key) {
+      store.delete(key);
+    },
   };
 }

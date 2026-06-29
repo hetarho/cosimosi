@@ -1,19 +1,18 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import * as Sentry from '@sentry/react'
 import posthog from 'posthog-js'
 
 import {
-  createInMemoryTelemetryAdapter,
-  createObservabilityFacade,
+  captureContext,
+  createObservabilityRuntime,
   platformFeatureFlags,
   readFeatureFlagOverrides,
   type FeatureFlagDefinition,
   type ObservabilityFacade,
+  type ObservabilityRuntime,
   type TelemetryAdapter,
-  type TelemetryContext,
-  type TelemetryLevel,
-  type TelemetryPropertyBag,
+  toSentryLevel,
 } from '@cosimosi/observability'
 import { ObservabilityProvider, useObservabilityFacade, useObservabilitySnapshot } from '@cosimosi/observability/react'
 
@@ -25,11 +24,7 @@ interface WebObservabilityProviderProps {
 }
 
 export function WebObservabilityProvider({ children, facade }: WebObservabilityProviderProps) {
-  const runtimeRef = useRef<WebObservabilityRuntime | null>(null)
-  if (!facade && !runtimeRef.current) {
-    runtimeRef.current = createDefaultWebObservabilityRuntime()
-  }
-  const runtime = runtimeRef.current
+  const [runtime] = useState<ObservabilityRuntime | null>(() => (facade ? null : createDefaultWebObservabilityRuntime()))
   const vendorStarted = useRef(false)
 
   useEffect(() => {
@@ -44,12 +39,6 @@ export function WebObservabilityProvider({ children, facade }: WebObservabilityP
     )
     vendorStarted.current = true
   }, [facade, runtime])
-
-  useEffect(() => {
-    return () => {
-      runtimeRef.current?.facade.dispose()
-    }
-  }, [])
 
   return <ObservabilityProvider facade={facade ?? runtime!.facade}>{children}</ObservabilityProvider>
 }
@@ -70,27 +59,11 @@ export function WebObservabilitySessionBridge() {
   return null
 }
 
-interface WebObservabilityRuntime {
-  readonly facade: ObservabilityFacade
-  setVendorAdapter(adapter: TelemetryAdapter | null): void
-}
-
-function createDefaultWebObservabilityRuntime(): WebObservabilityRuntime {
-  const memoryAdapter = createInMemoryTelemetryAdapter()
-  let vendorAdapter: TelemetryAdapter | null = null
-  const delegatedVendorAdapter = createDelegatedTelemetryAdapter(() => vendorAdapter)
-  const adapters = [memoryAdapter, delegatedVendorAdapter]
+function createDefaultWebObservabilityRuntime(): ObservabilityRuntime {
   const flagRegistry = platformFeatureFlags.withOverrides(
     readFeatureFlagOverrides(platformFeatureFlags.definitions, import.meta.env, 'VITE_COSIMOSI_FLAG_'),
   )
-  const facade = createObservabilityFacade({ adapters, flagRegistry })
-  return {
-    facade,
-    setVendorAdapter(adapter) {
-      vendorAdapter = adapter
-      adapter?.setAnalyticsConsent?.(facade.snapshot.consent)
-    },
-  }
+  return createObservabilityRuntime({ flagRegistry })
 }
 
 interface WebVendorTelemetryOptions {
@@ -128,11 +101,11 @@ function createWebVendorTelemetryAdapter(options: WebVendorTelemetryOptions): Te
   return {
     captureException(error, context) {
       if (!sentryEnabled) return
-      Sentry.captureException(error, captureContext(context))
+      Sentry.captureException(error, captureContext('web', context))
     },
     captureMessage(message, level, context) {
       if (!sentryEnabled) return
-      Sentry.captureMessage(message, { ...captureContext(context), level: toSentryLevel(level) })
+      Sentry.captureMessage(message, { ...captureContext('web', context), level: toSentryLevel(level) })
     },
     track(eventName, properties) {
       if (posthogEnabled) posthog.capture(eventName, properties)
@@ -154,49 +127,4 @@ function createWebVendorTelemetryAdapter(options: WebVendorTelemetryOptions): Te
       return typeof value === 'boolean' ? value : undefined
     },
   }
-}
-
-function createDelegatedTelemetryAdapter(getAdapter: () => TelemetryAdapter | null): TelemetryAdapter {
-  return {
-    captureException(error, context) {
-      getAdapter()?.captureException(error, context)
-    },
-    captureMessage(message, level, context) {
-      getAdapter()?.captureMessage(message, level, context)
-    },
-    track(eventName, properties) {
-      getAdapter()?.track(eventName, properties)
-    },
-    identify(userId, traits) {
-      getAdapter()?.identify(userId, traits)
-    },
-    resetIdentity() {
-      getAdapter()?.resetIdentity()
-    },
-    setAnalyticsConsent(consent) {
-      getAdapter()?.setAnalyticsConsent?.(consent)
-    },
-    getFeatureFlag(definition) {
-      return getAdapter()?.getFeatureFlag?.(definition)
-    },
-  }
-}
-
-function captureContext(context: TelemetryContext) {
-  return {
-    tags: {
-      source: context.source ?? 'web',
-      request_id: stringProperty(context.properties, 'requestId'),
-    },
-    extra: context.properties,
-  }
-}
-
-function stringProperty(properties: TelemetryPropertyBag | undefined, key: string): string | undefined {
-  const value = properties?.[key]
-  return typeof value === 'string' ? value : undefined
-}
-
-function toSentryLevel(level: TelemetryLevel) {
-  return level === 'warning' ? 'warning' : level
 }

@@ -6,4 +6,11 @@ export const VALUES = {
     defaultRetryCount: 1,
     optimisticRollbackMs: 10000,
   },
+  authSession: {
+    accessTokenRefreshSkewMs: 60000,
+  },
+  supabaseAuth: {
+    jwksCacheTtlMs: 600000,
+    jwksMissRefreshIntervalMs: 60000,
+  },
 } as const

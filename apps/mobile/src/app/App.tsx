@@ -18,7 +18,7 @@ export interface AppProps extends Omit<MobileAppProvidersProps, 'children'> {
  * Mobile app shell. A thin composition root: native shell (safe area + status bar)
  * wraps the documented provider stack, which wraps the typed navigation tree. All
  * adapters are injectable so the shell renders in host tests without Supabase, a
- * real API, or native device features (plan/13).
+ * real API, or native device features.
  */
 export default function App({safeAreaMetrics = resolvedSafeAreaMetrics, navigationLinking, ...providers}: AppProps = {}) {
   return (

@@ -14,7 +14,10 @@ const checks = [
     dir: 'apps/mobile/src',
     extensions: ['.ts', '.tsx'],
     forbidden: ['@sentry/react-native', 'posthog-react-native'],
-    allowed: [/^apps\/mobile\/src\/app\/observability-provider\.tsx$/],
+    allowed: [
+      /^apps\/mobile\/src\/app\/providers\/observability-provider\.tsx$/,
+      /^apps\/mobile\/src\/app\/providers\/observability-provider\.test\.tsx$/,
+    ],
   },
   {
     dir: 'packages',
@@ -31,6 +34,17 @@ const checks = [
 ]
 
 const violations = []
+
+for (const probe of [
+  { path: 'apps/web/src/app/observability-provider.tsx', specifier: '@sentry/react' },
+  { path: 'apps/mobile/src/app/providers/observability-provider.tsx', specifier: '@sentry/react-native' },
+  { path: 'apps/api/internal/platform/observability/sentry.go', specifier: 'github.com/getsentry/sentry-go' },
+]) {
+  const source = readFileSync(join(root, probe.path), 'utf8')
+  if (!hasForbiddenSpecifier(source, probe.specifier)) {
+    violations.push(`${probe.path}: observability boundary probe expected ${probe.specifier} import here`)
+  }
+}
 
 for (const check of checks) {
   for (const file of walk(join(root, check.dir), check.extensions)) {

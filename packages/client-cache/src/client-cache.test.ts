@@ -194,31 +194,31 @@ describe('client cache facade', () => {
           },
           {
             queryKey: secondKey,
-            update: () => ({ derivedBrightness: 0.8 }),
+            update: () => ({ coordinates: new Float32Array([0, 1, 2]) }),
           },
         ],
       }),
-    ).rejects.toThrow(/render-loop data/)
+    ).rejects.toThrow(/render-loop buffer/)
 
     expect(context.queryClient.getQueryData<{ message: string }>(firstKey)?.message).toBe('first-before')
     expect(context.queryClient.getQueryData<{ message: string }>(secondKey)?.message).toBe('second-before')
   })
 
-  it('rejects render-loop buffers and continuously derived visual fields', () => {
+  it('rejects render-loop buffers while allowing plain scalar fields', () => {
     expect(() => assertClientCacheData(new Float32Array([0, 1, 2]))).toThrow(/render-loop buffer/)
     expect(() => assertClientCacheData({ payload: new Uint8Array([1, 2, 3]) })).not.toThrow()
     expect(() =>
       setClientCacheData(createClientCacheQueryClient(), platformCacheKeys.ping(), {
-        perFrameCoordinates: [0, 1, 2],
+        coordinates: new Float32Array([0, 1, 2]),
       }),
-    ).toThrow(/render-loop data/)
+    ).toThrow(/render-loop buffer/)
     expect(() =>
       setClientCacheData(createClientCacheQueryClient(), platformCacheKeys.ping(), {
-        derivedBrightness: 0.8,
+        scalarScore: 0.8,
       }),
-    ).toThrow(/render-loop data/)
-    expect(() => assertClientCacheData(new Map([['visual', { renderBuffers: [] }]]))).toThrow(/render-loop data/)
-    expect(() => assertClientCacheData(new Set([{ frameCoordinates: [] }]))).toThrow(/render-loop data/)
+    ).not.toThrow()
+    expect(() => assertClientCacheData(new Map([['visual', new Float32Array([0, 1, 2])]]))).toThrow(/render-loop buffer/)
+    expect(() => assertClientCacheData(new Set([new Float32Array([0, 1, 2])]))).toThrow(/render-loop buffer/)
   })
 
   it('rejects circular cache data with a bounded error', () => {

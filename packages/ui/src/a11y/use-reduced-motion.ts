@@ -1,17 +1,23 @@
 import { useSyncExternalStore } from 'react'
 
 const QUERY = '(prefers-reduced-motion: reduce)'
+let reducedMotionQuery: MediaQueryList | null | undefined
 
 function subscribe(onChange: () => void): () => void {
-  if (typeof window === 'undefined' || !window.matchMedia) return () => {}
-  const mql = window.matchMedia(QUERY)
+  const mql = getReducedMotionQuery()
+  if (!mql) return () => {}
   mql.addEventListener('change', onChange)
   return () => mql.removeEventListener('change', onChange)
 }
 
 function getSnapshot(): boolean {
-  if (typeof window === 'undefined' || !window.matchMedia) return false
-  return window.matchMedia(QUERY).matches
+  return getReducedMotionQuery()?.matches ?? false
+}
+
+function getReducedMotionQuery(): MediaQueryList | null {
+  if (reducedMotionQuery !== undefined) return reducedMotionQuery
+  reducedMotionQuery = typeof window === 'undefined' || !window.matchMedia ? null : window.matchMedia(QUERY)
+  return reducedMotionQuery
 }
 
 /**

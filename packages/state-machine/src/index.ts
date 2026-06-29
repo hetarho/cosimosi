@@ -2,11 +2,11 @@
  * @cosimosi/state-machine — platform-pure XState v5 catalog and helpers.
  *
  * Both apps/web and apps/mobile consume this package. It stays free of
- * React, three.js, and DOM/native deps; the React binding seam lives in each
- * app under shared/model. ARCHITECTURE §3.1, §3.2, §3.5.
+ * React, three.js, and DOM/native deps; the React binding seam lives under
+ * @cosimosi/state-machine/react and app shared/model re-exports it.
  *
- * Catalog (this unit ships platform-level patterns; product workflows are
- * authored by their feature plans — non-goal of plan/07):
+ * Catalog (this package ships platform-level patterns; product workflows are
+ * authored by their feature slices):
  * - sessionMachine (from @cosimosi/auth) — auth/session lifecycle reference.
  * - asyncCommandMachine — generic local-command lifecycle
  *   (idle → submitting → succeeded | failed | cancelled).

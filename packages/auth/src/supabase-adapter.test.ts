@@ -18,20 +18,54 @@ describe('createSupabaseAuthAdapter', () => {
     await expect(adapter.refresh()).rejects.toThrow('Supabase did not return an authenticated session')
   })
 
-  it('returns null access tokens for expired sessions', async () => {
-    const adapter = createSupabaseAuthAdapter(fakeSupabaseClient(expiredSupabaseSession()))
+  it('refreshes expired sessions before returning access tokens', async () => {
+    const now = Date.UTC(2026, 5, 29, 12, 0, 0)
+    let refreshCalls = 0
+    const adapter = createSupabaseAuthAdapter(
+      fakeSupabaseClient(supabaseSession({ accessToken: 'expired-token', expiresAt: now - 1_000 }), {
+        refreshedSession: supabaseSession({ accessToken: 'fresh-token', expiresAt: now + 60_000 }),
+        onRefresh: () => {
+          refreshCalls += 1
+        },
+      }),
+      { now: () => now },
+    )
 
-    await expect(adapter.getAccessToken()).resolves.toBeNull()
+    await expect(adapter.getAccessToken()).resolves.toBe('fresh-token')
+    expect(refreshCalls).toBe(1)
+  })
+
+  it('refreshes near-expiry sessions before returning access tokens', async () => {
+    const now = Date.UTC(2026, 5, 29, 12, 0, 0)
+    let refreshCalls = 0
+    const adapter = createSupabaseAuthAdapter(
+      fakeSupabaseClient(supabaseSession({ accessToken: 'nearly-expired-token', expiresAt: now + 30_000 }), {
+        refreshedSession: supabaseSession({ accessToken: 'fresh-token', expiresAt: now + 300_000 }),
+        onRefresh: () => {
+          refreshCalls += 1
+        },
+      }),
+      { now: () => now },
+    )
+
+    await expect(adapter.getAccessToken()).resolves.toBe('fresh-token')
+    expect(refreshCalls).toBe(1)
   })
 })
 
-function fakeSupabaseClient(session: unknown) {
+function fakeSupabaseClient(
+  session: unknown,
+  options: { refreshedSession?: unknown; onRefresh?: () => void } = {},
+) {
   return {
     auth: {
       getSession: async () => ({ data: { session }, error: null }),
       signInWithPassword: async () => ({ data: { session }, error: null }),
       signOut: async () => ({ error: null }),
-      refreshSession: async () => ({ data: { session }, error: null }),
+      refreshSession: async () => {
+        options.onRefresh?.()
+        return { data: { session: options.refreshedSession ?? session }, error: null }
+      },
       onAuthStateChange: () => ({
         data: {
           subscription: {
@@ -44,9 +78,16 @@ function fakeSupabaseClient(session: unknown) {
 }
 
 function expiredSupabaseSession() {
+  return supabaseSession({
+    accessToken: 'expired-token',
+    expiresAt: Date.now() - 60_000,
+  })
+}
+
+function supabaseSession({ accessToken, expiresAt }: { accessToken: string; expiresAt: number }) {
   return {
-    access_token: 'expired-token',
-    expires_at: Math.floor(Date.now() / 1000) - 60,
+    access_token: accessToken,
+    expires_at: Math.floor(expiresAt / 1000),
     user: { id: 'supabase-user-1' },
   }
 }

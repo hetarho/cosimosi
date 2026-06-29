@@ -20,8 +20,8 @@ type PingState = {kind: 'idle' | 'pending' | 'ok' | 'error'; text: string};
  * Provider-health surface — not a product screen. It reports locale, theme,
  * session status, API base URL + a live transport ping, query-cache size, and
  * feature-flag defaults. It never shows tokens, diary text, generated memory
- * content, embeddings, or any product data (plan/13 A7), and it is reachable only
- * while the platform diagnostics-surface flag is on.
+ * content, embeddings, or any product data, and it is reachable only while the
+ * platform diagnostics-surface flag is on.
  */
 export function DiagnosticsScreen({navigation}: RootStackScreenProps<'Diagnostics'>) {
   const observability = useObservabilityFacade();

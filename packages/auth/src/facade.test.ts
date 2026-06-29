@@ -78,6 +78,34 @@ describe('createAuthFacade', () => {
     expect(facade.snapshot.userId).toBe('fake-user-a@b.co')
   })
 
+  it.each(['signedOut', 'expired'] as const)(
+    'does not lose %s adapter events while bootstrap is pending',
+    async (status) => {
+      const bootstrap = deferred<AuthSession | null>()
+      let emit!: Parameters<AuthAdapter['onChange']>[0]
+      const adapter: AuthAdapter = {
+        bootstrap: () => bootstrap.promise,
+        signIn: async () => ({ userId: 'unused', expiresAt: 1 }),
+        signOut: async () => {},
+        refresh: async () => ({ userId: 'unused', expiresAt: 1 }),
+        getAccessToken: async () => 'stored-token',
+        onChange: (listener) => {
+          emit = listener
+          return () => {}
+        },
+      }
+      const facade = createAuthFacade({ adapter })
+
+      emit({ status, userId: null, expiresAt: null, error: null }, { source: 'external' })
+      bootstrap.resolve({ userId: 'bootstrap-user', expiresAt: 999 })
+      await flush()
+
+      expect(facade.snapshot.status).toBe('signedOut')
+      expect(facade.snapshot.userId).toBeNull()
+      await expect(facade.getAccessToken()).resolves.toBeNull()
+    },
+  )
+
   it('publishes adapter-driven expiration changes through subscriptions', async () => {
     const adapter = new FakeAuthAdapter({ initial: { userId: 'u', expiresAt: 999 } })
     const facade = createAuthFacade({ adapter })
@@ -118,21 +146,23 @@ describe('createAuthFacade', () => {
     expect(facade.snapshot.userId).toBeNull()
   })
 
-  it('signs out locally and suppresses tokens when adapter sign-out fails', async () => {
+  it('restores local session state when adapter sign-out fails', async () => {
     const adapter = new FakeAuthAdapter({
-      initial: { userId: 'u', expiresAt: 999 },
+      initial: { userId: 'u', expiresAt: 60_000 },
       signOutError: 'network unavailable',
+      now: () => 1_000,
     })
     const facade = createAuthFacade({ adapter })
 
     await flush()
 
     await expect(facade.signOut()).rejects.toThrow('network unavailable')
-    expect(facade.snapshot.status).toBe('signedOut')
-    await expect(facade.getAccessToken()).resolves.toBeNull()
+    expect(facade.snapshot.status).toBe('authenticated')
+    expect(facade.snapshot.userId).toBe('u')
+    await expect(facade.getAccessToken()).resolves.toBe('fake-token-u')
 
     adapter.emit({ status: 'authenticated', userId: 'u', expiresAt: 1_000, error: null }, 'tokenRefreshed')
-    expect(facade.snapshot.status).toBe('signedOut')
+    expect(facade.snapshot.status).toBe('authenticated')
 
     adapter.emit({ status: 'authenticated', userId: 'u', expiresAt: 1_001, error: null }, 'signedIn')
     expect(facade.snapshot.status).toBe('authenticated')

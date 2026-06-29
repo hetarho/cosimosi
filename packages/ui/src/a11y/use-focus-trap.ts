@@ -19,8 +19,8 @@ export interface FocusTrapOptions {
 /**
  * Trap keyboard focus inside `containerRef` while `active`. On activation it moves
  * focus into the region; on deactivation it restores focus to the element that had
- * it before. This is the modal-surface focus contract (plan/09 A6 keyboard/focus);
- * web-only, since React Native modals manage their own focus.
+ * it before. This is the modal-surface focus contract; web-only, since React
+ * Native modals manage their own focus.
  */
 export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, { active, onEscape }: FocusTrapOptions): void {
   // Hold the latest onEscape in a ref so an inline callback (a fresh identity each

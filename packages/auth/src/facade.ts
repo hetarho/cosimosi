@@ -30,7 +30,15 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
   actor.start()
 
   const adapterUnsubscribe = adapter.onChange((snapshot, change) => {
-    if (disposed || !bootstrapped) return
+    if (disposed) return
+    if (!bootstrapped && (snapshot.status === 'signedOut' || snapshot.status === 'expired')) {
+      epoch += 1
+      locallySignedOut = true
+      suppressAdapterRefresh = true
+      actor.send({ type: 'SIGN_OUT' })
+      return
+    }
+    if (!bootstrapped) return
     switch (snapshot.status) {
       case 'signedOut':
         epoch += 1
@@ -86,11 +94,25 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
       }
     },
     async signOut() {
-      epoch += 1
+      const previousEpoch = epoch
+      const previousLocallySignedOut = locallySignedOut
+      const previousSuppressAdapterRefresh = suppressAdapterRefresh
+      const previousSnapshot = { ...actor.getSnapshot().context }
+      const operationEpoch = ++epoch
       locallySignedOut = true
       suppressAdapterRefresh = true
       if (!disposed) actor.send({ type: 'SIGN_OUT' })
-      await adapter.signOut()
+      try {
+        await adapter.signOut()
+      } catch (error) {
+        if (!disposed && operationEpoch === epoch) {
+          epoch = previousEpoch
+          locallySignedOut = previousLocallySignedOut
+          suppressAdapterRefresh = previousSuppressAdapterRefresh
+          actor.send({ type: 'RESTORE', snapshot: previousSnapshot })
+        }
+        throw error
+      }
     },
     async refresh() {
       const operationEpoch = ++epoch

@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 
-import { getActiveLocale, setActiveLocale, type Locale } from '@cosimosi/i18n'
+import { setActiveLocale, type Locale } from '@cosimosi/i18n'
 
 import { useActiveLocale } from '../shared/i18n/index.ts'
 import { resolveWebLocale, WEB_LOCALE_STORAGE_KEY } from './i18n-config.ts'
@@ -12,12 +12,8 @@ interface WebI18nProviderProps {
 }
 
 export function WebI18nProvider({ children, locale: override }: WebI18nProviderProps) {
-  if (override && getActiveLocale() !== override) {
-    setActiveLocale(override)
-  }
-
-  // Negotiate the locale once on mount, in an effect rather than during render, so
-  // render touches no window/navigator — SSR- and test-safe.
+  // Locale negotiation writes to the external store only from effects, keeping
+  // render free of global store mutation, window, and navigator access.
   useEffect(() => {
     if (override) {
       setActiveLocale(override)

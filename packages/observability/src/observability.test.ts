@@ -43,7 +43,7 @@ describe('observability facade', () => {
 
   it('rejects sensitive telemetry property keys at runtime', () => {
     const observability = createObservabilityFacade()
-    const unsafeProperties = { diaryText: 'private' } as TelemetryPropertyBag
+    const unsafeProperties = { authToken: 'private' } as TelemetryPropertyBag
 
     expect(() => observability.captureMessage('nope', 'warning', { properties: unsafeProperties })).toThrow(
       /Sensitive telemetry property/,
@@ -80,14 +80,14 @@ describe('observability facade', () => {
     }
   })
 
-  it('uses committed flag defaults, dev overrides, and consent-gated remote values', () => {
+  it('uses committed flag defaults, dev overrides, and consent-aware remote values', () => {
     const memory = createInMemoryTelemetryAdapter()
     const observability = createObservabilityFacade({ adapters: [memory], flagRegistry: platformFeatureFlags })
 
     expect(observability.getFeatureFlag('platform.diagnosticsSurface')).toBe(false)
 
-    memory.setFeatureFlag('platform-diagnostics-surface', true)
-    expect(observability.getFeatureFlag('platform.diagnosticsSurface')).toBe(false)
+    memory.setFeatureFlag('platform.diagnosticsSurface', true)
+    expect(observability.getFeatureFlag('platform.diagnosticsSurface')).toBe(true)
 
     observability.setConsent('granted')
     expect(observability.getFeatureFlag('platform.diagnosticsSurface')).toBe(true)
@@ -99,15 +99,45 @@ describe('observability facade', () => {
     overridden.setConsent('granted')
     expect(overridden.getFeatureFlag('platform.diagnosticsSurface')).toBe(false)
   })
+
+  it('gates release flags by consent while safety flags can bypass consent', () => {
+    const registry = defineFeatureFlagRegistry([
+      {
+        key: 'platform.remoteKillSwitch',
+        defaultValue: false,
+        owner: 'plan/10.observability-and-flags',
+        kind: 'kill-switch',
+        description: 'Safety control.',
+        review: 'Can be read before analytics consent.',
+        remoteKey: 'platform-remote-kill-switch',
+      },
+      {
+        key: 'platform.releaseToggle',
+        defaultValue: false,
+        owner: 'plan/10.observability-and-flags',
+        kind: 'release',
+        description: 'Release rollout.',
+        review: 'Consent-gated remote lookup.',
+        remoteKey: 'platform-release-toggle',
+      },
+    ] as const)
+    const memory = createInMemoryTelemetryAdapter()
+    const observability = createObservabilityFacade({ adapters: [memory], flagRegistry: registry })
+
+    memory.setFeatureFlag('platform.remoteKillSwitch', true)
+    memory.setFeatureFlag('platform.releaseToggle', true)
+
+    expect(observability.getFeatureFlag('platform.remoteKillSwitch')).toBe(true)
+    expect(observability.getFeatureFlag('platform.releaseToggle')).toBe(false)
+
+    observability.setConsent('granted')
+    expect(observability.getFeatureFlag('platform.releaseToggle')).toBe(true)
+  })
 })
 
 describe('observability types', () => {
   it('keeps sensitive keys and tuning values out of typed surfaces', () => {
     safeTelemetryProperties({ requestId: 'safe' })
-    expect(() => {
-      // @ts-expect-error diary text is private product content and cannot be telemetry.
-      safeTelemetryProperties({ diaryText: 'private' })
-    }).toThrow(/Sensitive telemetry property/)
     expect(() => {
       // @ts-expect-error auth tokens cannot be telemetry.
       safeTelemetryProperties({ authToken: 'secret' })
@@ -123,6 +153,27 @@ describe('observability types', () => {
         review: 'Review before enabling.',
       },
     ] as const)
+
+    expect(() =>
+      defineFeatureFlagRegistry([
+        {
+          key: 'platform.a-b',
+          defaultValue: false,
+          owner: 'plan/10.observability-and-flags',
+          kind: 'operational',
+          description: 'Collision probe.',
+          review: 'Should never compile into one env override.',
+        },
+        {
+          key: 'platform.a_b',
+          defaultValue: false,
+          owner: 'plan/10.observability-and-flags',
+          kind: 'operational',
+          description: 'Collision probe.',
+          review: 'Should never compile into one env override.',
+        },
+      ] as const),
+    ).toThrow(/PLATFORM_A_B/)
 
     defineFeatureFlagRegistry([
       {

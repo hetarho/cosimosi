@@ -2,7 +2,7 @@ import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 /**
  * Typed route registry for the mobile shell. This file and NavigationRoot are the
- * only places that know the navigation library (plan/13). The shell owns
+ * only places that know the navigation library. The shell owns
  * navigation infrastructure, not product IA: the route set is deliberately small
  * and non-product. Feature screens are added later by presentation plans through
  * this same typed boundary.

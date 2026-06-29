@@ -3,17 +3,6 @@ export type TelemetryValue = TelemetryScalar | readonly TelemetryScalar[]
 export type TelemetryPropertyBag = Record<string, TelemetryValue | undefined>
 
 export const sensitiveTelemetryKeys = [
-  'diaryText',
-  'diary_text',
-  'recordBody',
-  'record_body',
-  'memoryContent',
-  'memory_content',
-  'generatedMemoryContent',
-  'generated_memory_content',
-  'rawEmbedding',
-  'raw_embedding',
-  'embedding',
   'token',
   'authToken',
   'auth_token',

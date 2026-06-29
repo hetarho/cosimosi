@@ -27,6 +27,13 @@ export {
   type RpcMethodDescriptor,
   type RpcCachePolicy,
 } from './http-policy.ts'
+export {
+  clearOwnedClientCache,
+  resolveClientCacheQueryClient,
+  resolveClientCacheTransport,
+  type ResolveClientCacheQueryClientOptions,
+  type ResolveClientCacheTransportOptions,
+} from './provider.ts'
 export { assertClientCacheData } from './render-state.ts'
 export {
   createClientCacheTestContext,

@@ -369,7 +369,11 @@ packages/                pure cross-app modules — no Vite/Metro/DOM/native dep
 ├── shaders/             cross-platform shader/geometry toolkit — TSL nodes, no DOM
 ├── api-client/          generated transport client + config
 ├── client-cache/         QueryClient defaults, connect-query keys, optimistic helpers, cache tests
-└── config/              constants generated from values.yaml (gen:values)
+├── auth/                 platform-pure session facade/adapters + optional React context seam
+├── observability/        telemetry/flags facade + optional React/runtime seams
+├── state-machine/        XState catalog + optional React binding seam
+├── i18n/                 generated message facade + optional React locale seam
+└── config/               constants generated from values.yaml (gen:values)
 ```
 
 **`apps/mobile` — React Native, mirrors the web app's FSD.** Same layers and same slice names; it consumes
@@ -405,7 +409,7 @@ apps/mobile/
 
 - **Per-user isolation.** Every persisted row carries the user id and every query is scoped to it via an
   interceptor-injected context value (RLS is a later hardening). This is a transport+persistence rule, applied
-  uniformly rather than per-feature.
+  uniformly rather than per-feature. The root lint gate scans product migrations and query files for the convention.
 - **Derived state, not stored state.** State that varies continuously with time is *computed at read time* from the
   last-event timestamp, never written per tick; only discrete events persist. The server stays authoritative over the
   source data while anything derivable from it (appearance, layout) is a pure function — kept out of the store.

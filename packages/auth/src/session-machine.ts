@@ -19,6 +19,7 @@ export type SessionEvent =
   | { type: 'REFRESH_FAILURE'; error: string }
   | { type: 'EXPIRED' }
   | { type: 'SIGN_OUT' }
+  | { type: 'RESTORE'; snapshot: SessionSnapshot }
   | { type: 'RESET' }
 
 export const sessionMachine = setup({
@@ -67,15 +68,34 @@ export const sessionMachine = setup({
         : {},
     ),
     setSignedOut: assign({ status: 'signedOut', userId: null, expiresAt: null, error: null }),
+    restoreSnapshot: assign(({ event }) => (event.type === 'RESTORE' ? event.snapshot : {})),
   },
   guards: {
     hasUser: ({ event }) => event.type === 'BOOTSTRAP_DONE' && event.userId !== null,
     hasCurrentUser: ({ context }) => context.userId !== null,
+    restoringBootstrapping: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'bootstrapping',
+    restoringSignedOut: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'signedOut',
+    restoringSigningIn: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'signingIn',
+    restoringAuthenticated: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'authenticated',
+    restoringRefreshing: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'refreshing',
+    restoringExpired: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'expired',
+    restoringFailed: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'failed',
   },
 }).createMachine({
   id: 'session',
   context: initialSessionSnapshot,
   initial: 'bootstrapping',
+  on: {
+    RESTORE: [
+      { target: '.bootstrapping', guard: 'restoringBootstrapping', actions: 'restoreSnapshot' },
+      { target: '.signedOut', guard: 'restoringSignedOut', actions: 'restoreSnapshot' },
+      { target: '.signingIn', guard: 'restoringSigningIn', actions: 'restoreSnapshot' },
+      { target: '.authenticated', guard: 'restoringAuthenticated', actions: 'restoreSnapshot' },
+      { target: '.refreshing', guard: 'restoringRefreshing', actions: 'restoreSnapshot' },
+      { target: '.expired', guard: 'restoringExpired', actions: 'restoreSnapshot' },
+      { target: '.failed', guard: 'restoringFailed', actions: 'restoreSnapshot' },
+    ],
+  },
   states: {
     bootstrapping: {
       on: {

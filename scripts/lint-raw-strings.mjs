@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-// Raw user-facing string lint (plan/08 A6): user-facing copy in UI components must
-// go through message functions (`m.*`), not raw literals, so localization stays the
-// default path. It parses each .tsx/.jsx with the TypeScript AST and flags two
-// things only:
+// Raw user-facing string lint: user-facing copy in UI components must go through
+// message functions (`m.*`), not raw literals, so localization stays the default
+// path. It parses each .tsx/.jsx with the TypeScript AST and flags two things only:
 //   1. JSX text nodes that contain letters  (<h1>hello</h1>);
 //   2. string literals on user-facing JSX attributes (title/placeholder/alt/label/
 //      aria-*/accessibility*).

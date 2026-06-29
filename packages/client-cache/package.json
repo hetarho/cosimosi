@@ -15,7 +15,9 @@
     "@connectrpc/connect": "^2.1.2",
     "@connectrpc/connect-query-core": "^2.2.0",
     "@cosimosi/api-client": "workspace:*",
+    "@cosimosi/auth": "workspace:*",
     "@cosimosi/config": "workspace:*",
+    "@cosimosi/observability": "workspace:*",
     "@tanstack/query-core": "^5.101.1"
   },
   "devDependencies": {

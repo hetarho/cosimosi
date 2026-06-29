@@ -1,6 +1,6 @@
 /**
  * WCAG 2.x contrast math over sRGB hex colors. Pure and DOM-free so the token
- * contrast guarantees (plan/09 A5) are checked in a plain unit test.
+ * contrast guarantees are checked in a plain unit test.
  */
 
 /** AA contrast ratio for normal-size text. */

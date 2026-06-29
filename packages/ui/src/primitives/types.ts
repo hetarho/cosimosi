@@ -9,7 +9,7 @@ import type { ReactNode } from 'react'
  * no React Native equivalent.
  *
  * Primitives take copy through props (ReactNode / string), never as embedded
- * literals, so consumers pass i18n message output (plan/09 A4).
+ * literals, so consumers pass localized message output.
  */
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'

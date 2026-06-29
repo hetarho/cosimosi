@@ -4,7 +4,7 @@
  * React Native gets the equivalent behavior through accessibility props, not CSS.
  */
 
-/* Honor the OS reduced-motion setting for every shared transition/animation (plan/09 A6). */
+/* Honor the OS reduced-motion setting for every shared transition/animation. */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,

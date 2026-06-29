@@ -10,14 +10,14 @@
 |---|---|---|
 | Catalog machines (`asyncCommandMachine`, `panelMachine`) + types | `packages/state-machine` | `xstate` only — no React, no DOM, no native |
 | Auth/session machine (auth-domain lifecycle reference) | `packages/auth` | `xstate`, `@supabase/supabase-js`, `@cosimosi/api-client` |
-| React binding hooks (`useActorRef`, `useSelector`, `useMachine`, `shallowEqual`) | `apps/{web,mobile}/src/shared/model/xstate-react.ts` re-export of `@xstate/react` | `@xstate/react`, `react` |
+| React binding hooks (`createActorContext`, `useActorRef`, `useSelector`, `useMachine`, `shallowEqual`) | `@cosimosi/state-machine/react`; apps re-export it from `shared/model/xstate-react.ts` | `@xstate/react`, `react` |
 | Per-feature machines (when they arrive) | `apps/{web,mobile}/src/<slice>/model/<name>.machine.ts` | imported from `@cosimosi/state-machine` or feature-local |
 
-Both apps consume `@cosimosi/state-machine` directly. `packages/state-machine`
+Both apps consume `@cosimosi/state-machine` directly. The package's root export
 stays React-free so the same catalog works in tests, Web Workers, and R3F
-frame-loops without dragging React into them. The React binding seam lives in
-each app's `shared/model` so the binding library can be swapped without
-touching feature call sites.
+frame-loops without dragging React into them. The optional `/react` export owns
+the shared binding seam once, and each app's `shared/model` re-exports it so
+feature call sites stay stable.
 
 ## 2. Machine placement
 
@@ -68,9 +68,8 @@ documented control fields.
 
 ## 4. Catalog (platform-level patterns)
 
-This unit ships three platform-level patterns. Product workflows (Encode,
-Recall, camera mode, universe tour, …) are non-goals of plan/07 and are
-authored by their feature plans.
+This package ships platform-level patterns. Product workflows (Encode, Recall,
+camera mode, universe tour, …) are authored by their feature slices.
 
 | Pattern | Source | States |
 |---|---|---|
@@ -100,7 +99,7 @@ an action, fully replayable in tests.
   `shallowEqual` when it returns an object slice.
 - Use `useMachine(machine)` for small component-owned machines where rerendering
   on every transition is fine.
-- All hooks are imported from `shared/model` (the seam), not from `@xstate/react`
+- All hooks are imported from `shared/model` (the app seam), not from `@xstate/react`
   directly.
 
 ### 5.2 The R3F `useFrame` pattern — no React state per frame

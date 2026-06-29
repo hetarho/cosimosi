@@ -13,8 +13,8 @@ import {
 } from './panel.machine.ts'
 
 /**
- * ARCHITECTURE §3.2 / plan/07 context rule: machine context is id-and-control
- * metadata only. Server collections, graph/coordinate buffers, transport tokens,
+ * Machine context is id-and-control metadata only. Server collections,
+ * graph/coordinate buffers, transport tokens,
  * and store snapshots are forbidden — those live in Query/Zustand/refs and are
  * selected by id. These tests hold the line on that contract for every catalog
  * machine so a future addition cannot quietly smuggle data in.
