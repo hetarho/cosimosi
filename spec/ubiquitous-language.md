@@ -1,12 +1,25 @@
 # cosimosi — Ubiquitous Language (용어집)
 
-> cosimosi 어휘의 단일 진실 공급원(SSOT). **한 개념 = 한 이름.** 각 항목은 *단어 / 간단 / 세부*만 담는다 — 의미의 *왜*와 신경과학 근거는 `concept.md`가 소유한다.
+> cosimosi 어휘의 단일 진실 공급원(SSOT) — [PRD.md](PRD.md) §3의 정규 미러. **한 개념 = 한 이름.** 각 항목은
+> *단어 / 간단 / 세부*만 담는다 — 의미의 *왜*와 신경과학 근거는 [concept.md](concept.md) · PRD §9가 소유한다.
+
+## 세 층의 언어
+
+- **코드 = UL = 과학(기능) 용어.** 비즈니스 로직이 기억 인지과학 기반이므로 코드·DB·proto·기획·대화가 *하나의 과학
+  용어*를 쓴다(`EpisodicMemory`·`Neuron`·`Synapse`·`Hippocampus`…). 한 개념 = 한 이름, 모든 레이어에서.
+- **사용자 표시 = 시적 카피.** 사용자 UI에만 보이는 감성 표현(기억의 별·우주먼지·기억의 바다·별의 영혼·별가루…).
+  코드와 *느슨하게* 매핑하며 **코드/도메인엔 절대 안 쓴다**(렌더링 어휘는 §4).
+- **영감을 얻은 곳.** 해부학·이론 출처(engram 등)는 concept.md · PRD §9가 보존하되, UL 이름은 위 기능 용어를 쓴다.
 
 ## 규칙
 
-- **한 개념 = 한 이름, 모든 레이어에서.** Go 타입 · DB 테이블 · proto · FE 도메인 미러가 같은 이름을 쓴다.
-- **렌더링 단어는 FE 전용.** `star`·`cell-star`·`filament`·`constellation`은 시각화 단어다 — 도메인·DB·proto는 절대 쓰지 않는다(§4).
-- **창발하는 것에는 타입을 주지 않는다.** "기억 간 근접 / 별자리"는 force-sim 출력일 뿐, 타입·테이블이 없다.
+- **한 개념 = 한 이름, 모든 레이어에서.** Go 타입 · DB 테이블 · proto · FE 도메인 미러가 같은 이름을 쓴다(표현별
+  casing/접미사/복수형은 허용, 동의어·약어는 금지).
+- **렌더링 단어는 FE 전용.** `star`·`cell-star`·`filament`·`constellation`·`nebula`는 시각화 단어다 — 도메인·DB·proto는
+  절대 쓰지 않는다(§4).
+- **창발하는 것에는 타입을 주지 않는다.** "기억 간 근접 / 별자리"·"성운"·"잠재 뉴런"은 force-sim 출력·파생·렌더 배경일
+  뿐, 타입·테이블이 없다(타입을 주면 폐기된 기억↔기억 엣지가 부활한다).
+- **유스케이스 ↔ 원시 연산은 다른 레이어라 별개 이름 가능**(`Reinforce`≠`Potentiate`, `Depress`≠`Downscale`).
 - **신규 도메인 용어는 코드보다 이 문서에 먼저.**
 
 ---
@@ -15,23 +28,28 @@
 
 | 단어 | 간단 | 세부 |
 |---|---|---|
-| `Record` | 일기 원본 | 사용자가 작성한 불변 일기 항목 — 원문·작성일만 보유, append-only. 감정은 보유 안 함(→ `Engram`). |
-| `Engram` | 기억 | 세포들의 희소 앙상블. 애그리거트 루트 — 세포를 id로 참조. `Emotion`·`AbstractionStage`·`CurrentMemoryText`·`GistStages` 보유. |
-| `EngramCell` | 세포 | 기억을 이루는 한 요소. 여러 기억이 공유. 타입 3종(→ `CellType`). |
-| `CellType` | 세포 타입 | 셀 분류 3종 — 의미(주제·개념)/공간(장소)/개체(사람·고유 대상). |
-| `CellActivation` | 멤버십 | engram↔cell 조인 — 어떤 세포를 켰는지 + 가중치. |
-| `Synapse` | 시냅스 | 두 세포 사이 가중 무방향 엣지(`a_id<b_id` 정규화). 기억↔기억 엣지는 없음. |
-| `Synapse.Strength` | 시냅스 강도 | 두 세포가 얼마나 단단히 묶였는가 (0..1). |
-| `Embedding` | 임베딩 | 의미 최근접 탐색용 pgvector 벡터. |
-| `Emotion` | 감정 | mood + valence + arousal + intensity 값 객체. `Engram`에 붙음. |
-| `AbstractionStage` | 추상화 단계 | 기억이 얼마나 요지화됐는가 (0=구체/해마 .. 4=요지/신피질). |
-| `Engram.CurrentMemoryText` | 현재 기억 텍스트 | 마지막 회상 시 재구성된 서사. `Record`와 별개, 재공고화로 갱신. |
-| `Engram.GistStages` | 요지 단계 | 미리 생성한 요지 텍스트 4개 배열(stage 1..4). `Gistifier`가 생성. |
-| `MemoryProvenance` | 별 변천사 | 한 엔그램의 기억 텍스트 상태 변화 append-only 이력(종류 + 출처). |
-| `Job` | 작업 | extract/embed/link 큐 항목. |
-| `Stardust` | 별가루 | 회상 경제 화폐. append-only 원장(`stardust_ledger`)에서 잔액 파생. |
-| 활성도 / 망각 | (파생) | 지금의 접근성. read-time 계산, 저장 안 함. 어두워질 뿐 0 아님. |
-| 별자리 | (창발 — 타입 없음) | 두 엔그램이 세포를 공유하고 그 시냅스가 강해서 가까워짐. FE가 `constellation`으로 그림. |
+| `Diary` (`diaries`) | 일기 원본 | 사용자가 쓴 **불변** 일기. append-only, 수정·삭제 없음. 시적: *일기*. |
+| `EpisodicMemory` (`episodic_memories`) | 일화기억 | 한 경험의 기억 = 뉴런들의 *희소 앙상블*. **애그리거트 루트**(뉴런을 id로 참조). `name`(LLM 추천, 사용자 수정 가능)·`Emotion`·`CurrentText`·`SemanticStages`·`DecayStages` 보유. 시적: *기억의 별(○○별)*. |
+| `SemanticMemory` | 의미기억 | 일화기억이 *요지화*되어 신피질로 오른 버전. `EpisodicMemory`에 종속(별도 대등 엔티티 아님). 시적: *별의 영혼*. |
+| `EpisodicMemory.CurrentText` | 현재 기억 텍스트 | 마지막 회상 시 재구성된 서사. 재공고화로 갱신, `Diary`(불변)와 별개. |
+| `EpisodicMemory.SemanticStages` | 요지화 단계 텍스트 | LLM이 미리 만든 의미화 4단계. 재공고화 시 *남은 단계만* 재생성. |
+| `EpisodicMemory.DecayStages` | 망각 단계 텍스트 | 망각 단계별 텍스트 — 단어 랜덤 삭제. *요지화와 독립 축*, 밝기와 함께 진행. |
+| `Neuron` (`neurons`) | 뉴런 (요소) | 기억의 구성 요소. **타입 3종**(→ `NeuronType`). 여러 기억이 공유. `name` nullable(null = 잠재). 시적: *우주먼지*. |
+| `NeuronType` | 뉴런 타입 | 3종 — **의미**(semantic, 주제·개념)/**공간**(spatial, 장소)/**개체**(entity, 사람·고유 대상). |
+| `NeuronActivation` (`neuron_activations`) | 켜진 뉴런 (멤버십) | `EpisodicMemory`↔`Neuron` 조인(+가중치). |
+| `Synapse` (`synapses`) | 시냅스 | **두 뉴런 사이** 가중 무방향 엣지(`a_id<b_id` 정규화). 헵: 강화(LTP)/약화(LTD). 기억↔기억 엣지 없음. 시적: *빛나는 선*(무명). |
+| `Synapse.Strength` (0..1) | 시냅스 강도 | 두 뉴런이 얼마나 단단히 묶였는가. 시적: *선 굵기·밝기*. |
+| `Embedding` (`embeddings`) | 임베딩 | 의미 최근접 탐색용 pgvector 벡터. |
+| `Emotion` | 감정 | mood + valence + arousal + intensity 값 객체. `EpisodicMemory`마다 주 감정 1개. valence → 색, arousal → 강도·망각 변조. **위치 무관**([I3]). 시적: *별빛 색*. |
+| `EffectiveBrightness` | 활성도 / 망각 (파생) | 지금의 접근성. read-time 계산, 저장 안 함. 어두워질 뿐 0 아님. 시적: *밝기*. |
+| `EffectiveStrength` | 강도 / 크기 (파생) | 누적 회상 + arousal 초기값. **위치 무관**. 시적: *별 크기*. |
+| `Twinkle` (`twinkle_ledger`) | 화폐 | 회상 화폐. **기본**(매일 리셋) / **추가**(영구·충전) 2층. append-only 원장에서 잔액 파생. 회고 = 망각 깊을수록 비쌈, 영혼 열람 = 요지화 깊을수록 쌈. 시적: *별가루*. |
+| 변천사 (`EpisodicMemory` 텍스트 이력) | 변천사 | 생성 → 요지화 → 재공고화… 종류 라벨 + 출처 + 시간순. 왜곡 무알림. append-only. 시적: *별 변천사*. |
+| `Job` (`jobs`) | 작업 (큐) | extract / embed / link / consolidate 큐. |
+| `Hippocampus` / `Neocortex` | 2-저장 (좌표 규약) | 일화기억 생성지 / 요지 저장. 요지화 = 신피질 상승(x,y 복사·z만). **별도 엔티티 아님**. 시적: *얕은바다 / 중간바다*(심해 = 도식 v2). |
+| *(창발 — 타입 없음)* | 기억 간 근접 | 뉴런 공유 + 시냅스 강함 → force-sim 출력. 시적: *별자리*. |
+| *(렌더 배경 — 타입 없음)* | 잠재 뉴런 | 회색 점. 활성화 시 `Neuron` 행 생성(경쟁적 할당). DB 아님. 시적: *이름 없는 먼지*. |
+| *(파생 — `Emotion` 블렌딩)* | 감정 색 (군집) | 강도 가중 감정 색의 창발적 혼합. 시적: *성운*. |
 
 ---
 
@@ -39,14 +57,17 @@
 
 | 단어 | 간단 | 세부 |
 |---|---|---|
-| `Encode` | 부호화 | 일기 → 사건 분할 → 세포(재사용/할당) → 엔그램 + 활성 → 잡 적재. |
-| `Link` | 연결 | 공유 세포·시냅스로 기억 간 근접이 *창발*하게 함. 엔그램끼리 직접 잇지 않음, 감정 안 씀. |
-| `Recall` | 회상 | 엔그램 재발화 — 확산 활성화·경쟁 억제·`last_recalled_at` 갱신. 예측 오류 시만 `Reconsolidate`. |
-| `Reinforce` | 강화 | "회상하기" 버튼 한 번의 강화를 멱등(`batch_id`) 적용. 내부에서 `Potentiate`/`Depress` 호출. |
-| `Reconsolidate` | 재공고화 | 예측 오류 게이트로 `CurrentMemoryText` 갱신·`GistStages` 재생성·형태 재조형. `Record`는 불변. |
-| `Consolidate` | 공고화 (수면) | 우주 시간 전진 순간 read-time 진행 — 재배치·요지화(stage++)·도식·항상성 다운스케일링. |
-| `Earn` | 별가루 적립 | 일기 작성·접속으로 `Stardust` 적립. |
-| `Spend` | 별가루 소모 | 무료 한도 초과 회상에서 `Stardust` 차감. 요지 단계 높을수록 저렴. |
+| `Encode` | 부호화 | 일기 → 일화기억 분할 + 이름 추천 + 감정 + 뉴런 추출/정규화(재사용·dedup) → 엔그램 + 활성 + 잡 적재. |
+| `Link` | 연결 | 뉴런 공유 + 시간 근접으로 시냅스가 *창발*하게 함. 기억끼리 직접 잇지 않음, 감정 안 씀. |
+| `Recall` | 회상 (재공고화) | 회고 시 밝기·망각·요지화 타이머 회복 + LTP. 예측 오류가 있을 때만 `Reconsolidate`. |
+| `Reinforce` | 강화 | "회고하기" 한 번의 강화를 멱등(`batch_id`) 적용. 내부에서 `Potentiate`/`Depress` 호출. |
+| `Reconsolidate` | 재공고화 | 예측 오류 게이트로 `CurrentText` 갱신 + `SemanticStages` *남은 단계* 재생성 + `Reshape`. `Diary` 불변. |
+| `ViewSemantic` | 의미기억 열람 | 요지 별(신피질) *보기만*. 다시 쓰기 없음. 요지화 깊을수록 저렴. |
+| `Consolidate` | 공고화 (수면) | 우주 시간 전진 순간 read-time 진행 — 재배치 · `Semanticize`(stage++) · `Downscale`. |
+| `Forget` | 망각 | 밝기 감쇠 + 단어 삭제, 바닥 유지. read-time(우주 시간 기준). |
+| `Release` | 놓아주기 / 삭제 | 사용자 명시적 삭제(전체 = 소프트 딜리트 30일 / 놓아주기 = 의미 뉴런 영구 봉인). |
+| `Earn` | 별가루 적립 | 일기 작성 · 친구 초대 · 결제로 `Twinkle` 적립. |
+| `Spend` | 별가루 소모 | 회고(재공고화) · 요지 열람에서 `Twinkle` 차감(기본 → 추가 순). |
 
 ---
 
@@ -56,30 +77,31 @@
 
 | 단어 | 간단 | 세부 |
 |---|---|---|
-| `Potentiate` | 강화 (LTP) | `strength = min(1, strength + δ)` — 공동 점화 쌍. `Reinforce`가 호출하는 원시 연산. ↔ `Depress`. |
+| `Potentiate` | 강화 (LTP) | 공동 점화 쌍 강화 — *남은 여지(1 − 현재강도)에 비례*해 1.0에 점근. `Reinforce`가 호출하는 원시 연산. ↔ `Depress`. |
 | `Depress` | 약화 (LTD) | 연합적·시냅스 특이적 약화. 삭제 없음. ↔ `Potentiate`. |
-| `Downscale` | 항상성 다운스케일링 (SHY) | 수면 중 전역 시냅스 재정규화. **LTD와 다른 기전**, 삭제 없음. `Consolidate`가 호출. |
-| `Decay` | 망각 / 감쇠 | `activation(Δt) = exp(-λ·Δt)`, `A_MIN` 바닥. Δt = 우주 시간 경과분. λ는 arousal 변조. |
-| `Reshape` | 형태 재조형 | 재공고화 시 형태 재조각 — 부분 복원 + 미세 드리프트. |
-| `InitialStrength` | 초기 시냅스 강도 | 새 연결 초기 강도(세포 중첩·맥락 기반, 감정 제외). |
-| `AbstractionStageFor` | 추상화 단계 산출 | 시간/회상으로부터 현재 추상화 단계 도출. |
-| `EffectiveBrightness` | 유효 밝기 | `last_recalled_at`와 `Decay`로부터 현재 밝기 도출. |
+| `Downscale` | 다운스케일링 (SHY) | 수면 중 전역 시냅스 재정규화. **LTD와 다른 기전**, 삭제 없음. `Consolidate`가 호출. |
+| `Semanticize` | 요지화 | 일화기억 → 의미 압축 단계 산출. *망각과 독립 축*. |
+| `Reshape` | 형태 재조형 | 재공고화 시 별 seed 변경 = 모양 변화(재구성성). 어긋남이 있을 때만. |
+| `InitialStrength` | 초기 시냅스 강도 | 새 연결 초기값(낮게 시작; 같은 기억 내 > 공유 뉴런 > 시간 근접 차등). 감정 제외. |
+| `Decay` | 망각 / 감쇠 | 밝기·망각 단계 감쇠. Δt = 우주 시간 경과분. arousal·연결강도 변조, 바닥 유지. |
+| `EffectiveBrightness` | 유효 밝기 | 마지막 회상 시각 + `Decay`로부터 현재 밝기 도출. |
 | `EffectiveStrength` | 유효 강도 | 누적 강화 + 각성 초기값으로부터 현재 별 크기 도출. |
 
 ---
 
 ## 4. 렌더링 어휘 (FE 전용)
 
-> 시각화 레이어에서만 존재. Go 도메인·DB·proto·FE 도메인 미러는 절대 쓰지 않는다.
+> 시각화 레이어에서만 존재. Go 도메인·DB·proto·FE 도메인 미러는 절대 쓰지 않는다(anti-corruption 경계).
 
 | 단어 | 간단 | 세부 |
 |---|---|---|
-| `star` | 큰 별 | 기억 하나 = `Engram` (크기=강도, 밝기=활성, 색=`Emotion`, 형태=`AbstractionStage`). |
-| `cell-star` | 작은 별 | 세포 하나 = `EngramCell`. |
-| `filament` | 선 | 세포 사이 선 = `Synapse` (굵기·밝기·맥동 = `Strength`). |
+| `star` | 큰 별 | 기억의 별 = `EpisodicMemory` / 영혼 = `SemanticMemory`. 크기 = 강도, 밝기 = 활성, 색 = `Emotion`, 모양 = seed. |
+| `cell-star` | 작은 별 | 우주먼지 = `Neuron`. seed 없는 단순한 점. |
+| `filament` | 선 | 빛나는 선 = `Synapse`. 굵기·밝기·맥동 = `Strength`. 별끼리 잇는 선은 없음. |
 | `constellation` | 별자리 | 기억 군집 = 창발물, force-sim 출력. 도메인 타입 아님. |
-| `latent-star` | 회색 별 | 잠재 세포 배경 점. 켜지는 순간 `cell-star`로 깨어남. 렌더 전용·비-DB. |
-| `hippocampal-layer` / `neocortical-layer` | z축 2층 | `AbstractionStage`에서 파생되는 z 렌더 좌표(저장 안 함). 해마층 z0–10·신피질층 z15–25. |
+| `nebula` | 성운 | 강도 가중 `Emotion` 블렌딩. 전역 색조가 로컬 색에서 창발. |
+| `latent-star` | 회색 별 | 잠재 뉴런 배경 점. 켜지는 순간 `cell-star`로 깨어남. 렌더 전용·비-DB. |
+| 깊이 층 | z축 2층 | 얕은/중간/심해 바다 = `Hippocampus`/`Neocortex`/도식. 신피질 버전은 해마 x,y를 복사하고 z만 고정 밴드로 상승(해마 z 0–10·신피질 z 15–25, [C6]); z 층은 요지화 진행도가 정함(`SemanticStages` 텍스트에서 좌표를 파생하지 않음). z 렌더 좌표는 저장 안 함([I5]). |
 
 ---
 
@@ -87,6 +109,6 @@
 
 | 단어 | 간단 | 세부 |
 |---|---|---|
-| `Embedder` | 임베더 | 요소 → 임베딩 벡터. (연결 코어 — 필수) |
-| `Extractor` | 추출기 | 일기 텍스트 → 사건 분할·요소·감정. 키 없으면 mock으로 degrade. |
-| `Gistifier` | 요지 생성기 | 추상화된 기억의 파생 요지 텍스트 생성. `Record` 원문은 절대 변형 안 함. |
+| `Extractor` | 추출기 | 일기 → 사건 분할 · 이름 추천 · 요소 정준화 · 감정. **출력 스키마 강제**(위치·색·강도·시간·삭제는 스키마에 없음). |
+| `Embedder` | 임베더 | 요소 → 임베딩 벡터. |
+| `Semanticizer` | 의미화 생성기 | 의미화 단계 텍스트 생성. `Diary` 원문은 **절대 불변**. |

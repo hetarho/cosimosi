@@ -17,7 +17,9 @@ In short:
   **behind consumer-owned ports + an async worker** (§2).
 - **Frontend = Feature-Sliced Design**: React 19 + R3F 9 + three.js `WebGPURenderer` + TSL, one-way imports,
   control-state in XState, data in Zustand/Query (§3).
-- **Web and mobile are peer apps** sharing pure code via `packages/`. Mobile is React Native (§3.5).
+- **Web and mobile are first-class peer apps** sharing pure code via `packages/`. Mobile is React Native. Release
+  targets: **web = open beta, mobile = MVP** — both built together (no web-first); mobile ships the core loop at reduced
+  scope/polish (§3.5).
 
 ## System shape
 
@@ -286,7 +288,7 @@ apps/web/src/
 │   └── <visual-noun>/      ui (renderer + shader bindings)                — projects a domain entity to a body
 └── shared/                 domain-agnostic
     ├── ui/                 design-system primitives + HUD atoms
-    ├── lib/                platform / render glue (e.g. the renderer boundary)         — web-specific
+    ├── lib/                platform / render glue (renderer boundary) — web + *.native sibling on mobile
     └── i18n/               message catalogue
 ```
 
@@ -300,9 +302,8 @@ apps/web/src/
 | `shared` | domain-agnostic reuse | "no domain word in it" |
 
 > Pure cross-app modules (shared domain logic, deterministic compute, the shader toolkit, the generated transport
-> client, generated config) are *designed* to live in `packages/` (§3.5). Destination fixed (nothing is homeless);
-> while `apps/web` is the only consumer they may sit in `shared/lib/*` / `entities/*/model` and are **extracted to
-> `packages/` when `apps/mobile` becomes the second consumer** (promote-on-reuse — lazy *timing*, fixed *destination*).
+> client, generated config) live in `packages/`. **Both apps are consumers from the start**, so pure code is designed
+> cross-platform up front and placed in `packages/` directly — not built web-first and extracted later.
 
 **Where each file goes (segments).** Inside *any* slice, files are grouped by *technical role* — never by generic
 `components/`/`hooks/`/`types/` folders:
@@ -397,11 +398,12 @@ apps/mobile/
 - **Renderer.** `react-native-webgpu` hosts the same three.js `WebGPURenderer` + TSL shaders from `packages/shaders`
   — the scene renders from one shader source on both platforms.
 
-> The foundation sets up the mobile app **shell** alongside the web — providers (data/i18n/theme/session), RN
-> navigation, and the design-system's RN primitives — so both apps run from day one, with the shared layers kept
-> platform-pure in `packages/`. **Promote-on-reuse still governs feature code** (web-first, extracted as mobile
-> features arrive); only the mobile **feature UI** and the **RN WebGPU renderer** are built later, with their web
-> counterparts.
+> Both apps are **first-class build targets, built together** — not web-first. A feature ships for web (open-beta
+> scope) **and** mobile (MVP scope) in the same work, sharing all pure layers via `packages/` and one TSL shader source.
+> Mobile MVP may carry **reduced scope and visual polish** (fewer post-FX, lower instance counts, deferred secondary
+> features), but the **core loop and the 3D universe run on mobile too** — the RN WebGPU renderer
+> (`react-native-webgpu`) is **in scope, not deferred**. Caveat: `react-native-webgpu` is pre-1.0 / early-adopter — pin
+> versions, require the New Architecture (RN ≥ 0.81), no Expo Go (custom dev client), and test on physical devices.
 
 ---
 
@@ -424,10 +426,9 @@ apps/mobile/
 - **IDs.** Backend mints `TEXT` PKs (UUID/nanoid); clients never create IDs. Times stored UTC, displayed local.
 - **Git.** Commit small semantic units with `type(planNN - scope): English title`; the subject is English and the
   body/comment is Korean. Use the relevant plan number for plan-bound work. `gofmt` + ESLint.
-- **Not now:** real prod deployment; Connect server-streaming; the mobile **feature UI** and the RN WebGPU renderer
-  (the mobile app *shell* ships in the foundation per §3.5 — only its feature screens + renderer come later);
-  multi-user real-time collaboration (the social features are async, one-way, and deferred). These are decisions on
-  record, not work in flight.
+- **Not now:** real prod deployment; Connect server-streaming; multi-user real-time collaboration (the social features
+  are async, one-way, and deferred). **Mobile is no longer deferred** — it is a first-class MVP target built alongside
+  web (§3.5). These are decisions on record, not work in flight.
 
 ---
 
