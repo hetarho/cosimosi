@@ -3,10 +3,10 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 // Shared R3F layer: the demo orbit camera — drag to rotate, wheel/pinch to zoom, with
-// inertial damping. A minimal inspection rig, NOT the product navigation (the real
-// universe camera/fly rig is Epic A `universe-canvas`). Attaches to the canvas DOM element;
-// on a host without one it stays inert rather than throwing. Damping needs update() every
-// frame, so it runs in useFrame at default priority — before PostFX's priority-1 render.
+// inertial damping. A minimal inspection rig, not the product's navigation camera. Attaches
+// to the canvas DOM element; on a host without one it stays inert rather than throwing.
+// Damping needs update() every frame, so it runs in useFrame at default priority — before
+// PostFX's priority-1 render.
 export function CameraControls() {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
@@ -16,7 +16,7 @@ export function CameraControls() {
     const el = gl.domElement
     // gl.domElement types as HTMLCanvasElement, but the mobile tsconfig has no DOM lib — cast
     // to probe for a real DOM event target, so this shared layer compiles on native and simply
-    // stays inert there (native camera nav is Epic A, needs gesture-handler not DOM events).
+    // stays inert there (native touch nav would use a gesture-handler, not DOM events).
     if (typeof (el as unknown as { addEventListener?: unknown }).addEventListener !== 'function') return
     const controls = new OrbitControls(camera, el)
     controls.enableDamping = true
