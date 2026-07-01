@@ -101,5 +101,8 @@
   "universe_home_write": "Write a diary",
   "universe_home_explore": "Explore",
   "universe_home_settings": "Settings",
-  "universe_renderer_unavailable": "The 3D universe needs WebGPU, which isn't available here yet."
+  "universe_renderer_unavailable": "The 3D universe needs WebGPU, which isn't available here yet.",
+  "not_found_title": "Nothing orbits here",
+  "not_found_description": "This path leads into empty space.",
+  "not_found_home_action": "Back to your universe"
 }

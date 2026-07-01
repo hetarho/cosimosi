@@ -101,5 +101,8 @@
   "universe_home_write": "일기 쓰기",
   "universe_home_explore": "둘러보기",
   "universe_home_settings": "설정",
-  "universe_renderer_unavailable": "3D 우주는 WebGPU가 필요한데 아직 사용할 수 없어요."
+  "universe_renderer_unavailable": "3D 우주는 WebGPU가 필요한데 아직 사용할 수 없어요.",
+  "not_found_title": "여긴 아무것도 돌지 않아요",
+  "not_found_description": "이 길은 빈 우주로 이어져요.",
+  "not_found_home_action": "우주로 돌아가기"
 }
