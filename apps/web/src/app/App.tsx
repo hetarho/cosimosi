@@ -9,10 +9,10 @@ import type { ObservabilityFacade } from '@cosimosi/observability'
 
 import { TestPage } from '../pages/test/index.ts'
 import { UniverseHomePage } from '../pages/universe/index.ts'
-import { WebAuthProvider } from './auth-provider.tsx'
-import { WebI18nProvider } from './i18n-provider.tsx'
-import { WebObservabilityProvider, WebObservabilitySessionBridge } from './observability-provider.tsx'
-import { WebClientCacheProvider } from './query-provider.tsx'
+import { WebAuthProvider } from './providers/auth-provider.tsx'
+import { WebI18nProvider } from './providers/i18n-provider.tsx'
+import { WebObservabilityProvider, WebObservabilitySessionBridge } from './providers/observability-provider.tsx'
+import { WebClientCacheProvider } from './providers/query-provider.tsx'
 
 interface AppProps {
   routePath?: string

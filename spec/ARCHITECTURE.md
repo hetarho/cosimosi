@@ -274,12 +274,23 @@ The frontend is Feature-Sliced Design, applied identically by both the web and m
 public API (`entities/A/@x/B.ts`). Each slice exposes a single `index.ts` (no wildcard barrels). Enforced by `steiger`
 + `eslint-plugin-boundaries`.
 
+> **The non-sliced layers are still segmented, never flat.** `app` and `shared` carry no slices, but they are **not** a
+> pile of loose files — they are divided into segments by technical role: `app` into `providers`/`routes`|`navigation`/
+> `model`/`styles` (only `App.tsx`·`main.tsx`·`index.css` sit at the `app` root), `shared` into `ui`/`lib`/`i18n`. Both
+> `apps/web` and `apps/mobile` follow this identically (web↔mobile parity). This app-layer contract — the rule
+> `steiger` and `eslint-plugin-boundaries` do **not** cover — is enforced by `pnpm lint:fsd:layout`
+> (`scripts/lint-fsd-layout.mjs`), so a provider dropped flat in `app/` fails the gate, not just review.
+
 The skeleton — what each **layer** is for. `<…>` are placeholders; the actual slices (and their domain names) are
 created per-feature and are out of scope here, never pre-listed:
 
 ```
 apps/web/src/
-├── app/                    entry · providers (data/transport/i18n/theme/error) · router · global styles
+├── app/                    composition root — SEGMENTED, never flat (only App.tsx · main.tsx · index.css at root):
+│   ├── providers/          data/transport/i18n/theme/error/observability providers + their config
+│   ├── routes/ | navigation/  router (web) · RN navigation (mobile)
+│   ├── model/              app-shell machine · app-level pure logic
+│   └── styles/             global styles
 ├── pages/      <screen>/   route-level screens; compose widgets + features; hold no domain logic
 ├── widgets/    <block>/    self-contained big UI blocks (e.g. a full-screen canvas)
 ├── features/   <verb>/     one slice per user action / use-case

@@ -12,7 +12,7 @@ import {
 } from '@cosimosi/client-cache'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 
-import { useAuthFacade, useSessionSnapshot } from '../shared/auth/index.ts'
+import { useAuthFacade, useSessionSnapshot } from '../../shared/auth/index.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
 
 interface WebClientCacheProviderProps {

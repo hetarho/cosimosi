@@ -31,10 +31,17 @@ already 🟡 claimed by another in-flight job/agent. If free, set it 🟡 (job N
 ## Step 1 — Read the source + grounding
 
 Read the `source` spec in full (`plan/NN` for new, `changes/NN` for change, `code-review/NN` for refactor — esp. its
-acceptance criteria and scope/non-goals), its grounding (`tech/*.md`, `policy/**`, `concept.md`), and the **8
+acceptance criteria and scope/non-goals), its grounding (**`ARCHITECTURE.md`** — the § covering this job's surface, `tech/*.md`, `policy/**`, `concept.md`), and the **8
 invariants** in 00.overview (§불변 원칙). For `type: change`, also read the modified `plan` and note the existing
 acceptance criteria you must NOT regress. Grep the code the spec names — that's your blast radius (it should match the
 job's Affected files).
+
+**Architecture placement gate — invoke the placement skill for this job's surface *before* creating/moving files, and
+re-run its self-audit at review time (Step 4):** FE (`apps/web/src`, `apps/mobile/src`, a FE `packages/*`) →
+**`/fe-architecture`**; mobile / native (RN screens, `*.native`, metro/babel, `ios/`·`android/`) → also
+**`/mobile-architecture`**; Go under `apps/api` → **`/be-architecture`**. Each carries the layer/slice/segment (or
+context) decision procedure + a self-audit, backed by `ARCHITECTURE.md` (§3 / §2). This is how structural rules enter
+the loop — the last time it was skipped, `apps/web/src/app` drifted flat.
 
 ## Step 2 — Build the Implementation Checklist top-to-bottom
 

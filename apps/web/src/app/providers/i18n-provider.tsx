@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 
 import { setActiveLocale, type Locale } from '@cosimosi/i18n'
 
-import { useActiveLocale } from '../shared/i18n/index.ts'
+import { useActiveLocale } from '../../shared/i18n/index.ts'
 import { resolveWebLocale, WEB_LOCALE_STORAGE_KEY } from './i18n-config.ts'
 
 interface WebI18nProviderProps {

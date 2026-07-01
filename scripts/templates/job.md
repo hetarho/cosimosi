@@ -24,10 +24,14 @@ title: {{TITLE}}
 
 ## Grounding
 - Constitution (the 8 invariants): [00.overview](../plan/00.overview.md) §불변 원칙
+- Architecture (placement): [ARCHITECTURE.md](../ARCHITECTURE.md) — FE §3 (layers/slices/segments, §3.4 domain→visual,
+  §3.5 mobile) · BE §2 (context layout, dependency rule). Invoke `/fe-architecture` · `/mobile-architecture` ·
+  `/be-architecture` for the surfaces this job touches.
 - tech / policy / values touched: <!-- -->
 
 ## Affected files (blast radius)
-<!-- Exact paths found from the source spec + a code grep — nothing outside this scope is touched. -->
+<!-- Exact paths found from the source spec + a code grep — nothing outside this scope is touched.
+     For each, note its target placement: FE layer/slice/segment (§3.1) or BE context/package (§2). -->
 
 ## Verification / DoD
 - [ ] Every **Acceptance Criteria** item above is true in the current code
@@ -35,6 +39,8 @@ title: {{TITLE}}
 - [ ] Codegen / migration / values applied (if any): `pnpm gen` / `pnpm db:migrate` / `pnpm gen:values`
 - [ ] FE `--filter @cosimosi/web build`·`lint` / BE `go vet ./... && go build ./...` (Docker) pass (if any)
 - [ ] Constitution sanity: no row deletes on `records`/`memories`/`memory_links`, no body UPDATE on `records`
+- [ ] Architecture self-audit passed (the relevant `/fe-` `/mobile-` `/be-architecture` checklist): placement correct,
+      app-layer segmented (not flat), web↔mobile parity, `pnpm lint:fsd:layout` green (FE)
 
 ## Review
 - [ ] `/code-review` applied (rejections noted with reason) · for non-trivial logic, `/codex:review --background`

@@ -26,7 +26,9 @@ doesn't build it. **Write the job in English.**
    parallel (different files, no dep); flag `(gen)`/`(migrate)`/`(gen:values)` where a contract/schema/tuning number
    moves. **Any config/tuning number the plan calls for → a `spec/values.yaml` + `pnpm gen:values` task; code imports
    the generated constant, never a hardcoded literal.** Fill **Affected files** (blast radius from the plan + a code
-   grep) and the grounding (tech/policy/values it depends on).
+   grep), noting for each its **target placement** — FE layer/slice/segment (`ARCHITECTURE.md` §3.1) or BE
+   context/package (§2), so `/implement-job` places it right — and the grounding (`ARCHITECTURE.md` §3/§2 +
+   tech/policy/values it depends on).
    Don't pad the Acceptance Criteria — those came from the plan; refine only if the plan's wording isn't checkable.
 4. **Register** — in the 00.overview progress board, note that plan NN now has job MM (still ⬜/🟡 until implemented).
 5. Report the job path + "Next: `/implement-job MM`". Do NOT implement or commit.

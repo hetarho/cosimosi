@@ -26,6 +26,9 @@ forks) until you can write each section concretely:
 - **Scope / Non-goals** — what's in, and what's explicitly out (non-goals prevent scope creep).
 - **Design** — how it works: key decisions, RPC/proto contract, data model, state machines, render approach.
   Surface choices as questions when there's a real fork (e.g. "coordinates: server-authoritative vs client-emergent?").
+  Include **architecture placement** — which FSD layer/slice/segment (FE, `ARCHITECTURE.md` §3.1) or Go context/package
+  (BE, §2) each new piece lands in — so the job and implementer inherit the placement instead of re-deriving it (or
+  drifting into a flat layout). Invoke `/fe-architecture` · `/be-architecture` · `/mobile-architecture` when unsure.
 - **Acceptance Criteria** — the testable criteria that make it "true" (these become the job's acceptance criteria).
 - **Policy / Values Impact** — which policy rules, and which spec/values.yaml numbers the feature sets or changes.
 

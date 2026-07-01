@@ -1,9 +1,11 @@
 # pre-commit 게이트 — 아키텍처 규칙 + 빌드를 항상 검증한다(하나라도 실패하면 커밋 중단).
 #  1) ESLint  : model/shared 순수성(boundaries) + 일반 린트
 #  2) steiger : FSD 구조(임포트 방향·public API·세그먼트)
-#  3) build   : tsc -b + vite build (타입 + 프로덕션 번들)
+#  3) fsd:layout : app 레이어 세그먼트화 + role-not-type (web·mobile, ARCHITECTURE §3.1 — steiger 미커버 영역)
+#  4) build   : tsc -b + vite build (타입 + 프로덕션 번들)
 # 우회가 꼭 필요하면 `git commit --no-verify`.
-echo "▶ pre-commit: architecture lint (eslint + steiger) + build"
+echo "▶ pre-commit: architecture lint (eslint + steiger + fsd:layout) + build"
 pnpm --filter @cosimosi/web run lint || exit 1
 pnpm --filter @cosimosi/web run lint:fsd || exit 1
+pnpm lint:fsd:layout || exit 1
 pnpm --filter @cosimosi/web run build || exit 1
