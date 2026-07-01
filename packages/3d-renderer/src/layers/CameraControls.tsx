@@ -17,7 +17,10 @@ export function CameraControls() {
     // gl.domElement types as HTMLCanvasElement, but the mobile tsconfig has no DOM lib — cast
     // to probe for a real DOM event target, so this shared layer compiles on native and simply
     // stays inert there (native touch nav would use a gesture-handler, not DOM events).
-    if (typeof (el as unknown as { addEventListener?: unknown }).addEventListener !== 'function') return
+    // react-native-webgpu's canvas shim exposes addEventListener but not ownerDocument, and
+    // OrbitControls dereferences el.ownerDocument on connect — so require both to avoid a crash.
+    const probe = el as unknown as { addEventListener?: unknown; ownerDocument?: unknown }
+    if (typeof probe.addEventListener !== 'function' || probe.ownerDocument == null) return
     const controls = new OrbitControls(camera, el)
     controls.enableDamping = true
     controls.enablePan = false
