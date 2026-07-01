@@ -16,12 +16,15 @@ default → `src/index.ts` — and `index.native.ts` re-exports the web entry (t
 differs on native). Slices import `@cosimosi/3d-renderer`, never `three` directly.
 
 ```
-packages/3d-renderer/src/
+packages/3d-renderer/src/                                                              GENERIC core (names no concrete bg)
 ├── shader-art/   noise · field · pattern · finish · sdf · geometry (+ tsl helper)  — pure TSL building blocks
-├── skin/         presets (data) + background-node (composes the toolkit into a skin)
-├── layers/       Background · StarField · PostFX                                    — shared R3F scene layers
+├── layers/       Background (node) · StarField · CameraControls (demo orbit) · PostFX (bloom)  — type-agnostic R3F layers
 ├── canvas/       UniverseCanvas (web R3F + WebGPURenderer)                          — the only platform-forked surface
-├── skin-context · SkinProvider · asset-source                                       — seam + §3.4 port
+├── asset-source · skin-context · SkinProvider                                       — §3.4 port + skin seam
+├── assets/       CONCRETE looks (use the core; depend on it, not vice-versa)
+│   ├── backgrounds/  nebula · gradient (each: Props + node-builder) + registry (BackgroundSpec + resolveBackgroundNode)
+│   ├── skins/        presets (typed instances: {background:{type,props}, bloom, camera})
+│   └── UniverseScene composition: resolves the bg node + wires the layers
 └── index.ts / index.native.ts / jsx-elements.ts
 ```
 
@@ -33,17 +36,34 @@ React, or DOM. Skins **compose** these into a look. Authoring is **TSL only** (t
 GLSL — so one source serves web + native. (Rich artistic layering/mixing is later product work; the foundation makes
 the effects library-shaped.)
 
-### Skins
-A **skin** is non-domain ambiance: `UNIVERSE_SKINS` presets (palette + pattern params + bloom + camera) + a
-`nebulaBackgroundNode` that composes the toolkit. The **active skin** is one build-time constant —
+### Backgrounds, skins, and the registry
+A background is a **typed** thing. Each **background type** owns its own props shape **and** its own TSL node-builder,
+paired in a discriminated union (`BackgroundSpec`) and dispatched by **one registry** — `resolveBackgroundNode(spec)`
+(`assets/backgrounds/`: `nebula` + `gradient` today; adding a type = its module + one registry case — no layer/host/seam
+change). A **skin** is a *typed instance* of non-domain ambiance: `UniverseSkin = { key, label, background: {type, props},
+bloom, camera }` (`assets/skins/presets.ts`). Type-specific params live in `background.props` (nebula:
+palette/pattern/clear); **scene-level** ambiance — `bloom` (post) and `camera` (fov) — stays at the skin top level, so
+`PostFX`/`UniverseCanvas` never index a type-specific props bag. The **active skin** is one build-time constant —
 `rendering.active_skin` (`spec/values.yaml` → `@cosimosi/config`). The seam is `SkinProvider` + `useSkin()`
 (`resolveActiveSkin` maps the constant); a future end-user runtime switcher ([P4]) replaces the source with no consumer
-change. **Invariant:** the skin is presentation-only — it never sets per-memory emotion/position/strength ([I3][I11]).
+change. **Invariant:** a skin/background is presentation-only — it never sets per-memory emotion/position/strength ([I3][I11]).
+
+**Generic core vs assets.** The toolkit (`shader-art`), scene layers (`layers/`), canvas host, skin seam, and
+asset-source port name **no** concrete background type; the type→node-builder dispatch and the concrete looks
+(`nebula`/`gradient`/skins/`UniverseScene`) live in `assets/`, which depends on the core — not vice-versa. `Background`
+takes a resolved `node`; `PostFX` takes `bloom` params. (The seam reads the skin *table* from `assets/skins` — its
+content — but references no background type/node-builder.)
 
 ### Across the R3F reconciler
 R3F runs its own reconciler, so context from the DOM/RN tree outside `<Canvas>` does **not** reach in-canvas children.
-The active skin is read with `useSkin()` at the boundary and **passed as a prop** to `Background`/`PostFX` — never via
-context across the canvas.
+The active skin is read with `useSkin()` at the boundary; `UniverseScene` resolves the background node and passes it as a
+prop to `Background` (and `skin.bloom` to `PostFX`) — never via context across the canvas.
+
+### Camera (demo orbit)
+`UniverseScene` mounts `CameraControls` — three's `OrbitControls` (drag = rotate, wheel/pinch = zoom, inertial damping;
+pan off; distance clamped). It updates in a default-priority `useFrame`, before `PostFX`'s priority-1 render. This is a
+**demo inspection rig**, not product navigation — the real universe camera/fly rig is Epic A `universe-canvas`
+([U3][V0]). It attaches to the canvas DOM element and stays **inert on hosts without one** (native gesture nav is Epic A).
 
 ### Post-processing
 `PostFX` builds a three `PostProcessing` pipeline with a **TSL bloom pass** (`three/addons/tsl/display/BloomNode.js`)

@@ -1,6 +1,6 @@
 import { createContext, use } from 'react'
-import { isSkinKey, type SkinKey, type UniverseSkin } from './skin/presets.ts'
-import { UNIVERSE_SKINS } from './skin/presets.ts'
+import { isSkinKey, type SkinKey, type UniverseSkin } from './assets/skins/presets.ts'
+import { UNIVERSE_SKINS } from './assets/skins/presets.ts'
 
 export interface SkinContextValue {
   readonly skin: UniverseSkin

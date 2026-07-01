@@ -16,6 +16,15 @@ export const PostFX = Noop;
 export const useSkin = () => ({
   skin: {
     key: 'aurora',
+    label: 'Aurora',
+    background: {
+      type: 'nebula',
+      props: {
+        clear: [0.01, 0.02, 0.05],
+        palette: [0x070a1a, 0x1b2a6b, 0x2f8f9d],
+        pattern: {warp: 0.55, freq: 1.6, detail: 1.4},
+      },
+    },
     camera: {fov: 55},
     bloom: {strength: 1, radius: 0.5, threshold: 0.2},
   },

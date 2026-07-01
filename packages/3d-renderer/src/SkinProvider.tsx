@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { SkinContext, skinValue } from './skin-context.ts'
-import type { SkinKey } from './skin/presets.ts'
+import type { SkinKey } from './assets/skins/presets.ts'
 
 // The skin seam. `defaultSkin` is the build-time active skin (the app passes
 // resolveActiveSkin(VALUES.rendering.active_skin)); setSkinKey is exposed so a future
