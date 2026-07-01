@@ -15,7 +15,7 @@ function SceneHost() {
 }
 
 // The home screen: a full-bleed universe with a few floating actions over it. The actions
-// are placeholders — their flows are product work (Epic A); this is the foundation shell.
+// are inert placeholders — no handlers are wired to them.
 function UniverseHome() {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-text">

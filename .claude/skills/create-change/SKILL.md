@@ -26,7 +26,7 @@ but a delta. Authoring it by interview (not a one-liner) is the safety gate: the
    - **To-be** — the desired behavior/contract after the change.
    - **Scope / Non-goals (regression boundary)** — what changes, and what must NOT (the regression boundary).
    - **Acceptance Criteria** — testable criteria for the change (these become the job's acceptance criteria).
-   Honor the 8 invariants — a change never breaks one.
+   Honor the invariants [I1]–[I11] — a change never breaks one.
 3. **Scaffold + fill** — `pnpm spec:change <planNN> "<title>"` → `spec/changes/NN.slug.md` (frontmatter
    `change`/`plan`/`status`/`title`). **Pass an English title** so the file slug is English kebab-case (like the
    existing `plan/` files); the scaffold slugifies `<title>` straight into the filename. Fill the sections from the

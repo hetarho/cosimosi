@@ -14,7 +14,7 @@ description: >-
 
 `plan/NN.*.md` is the **as-built SSOT** — the human-authored WHAT that makes implementation safe. Your job is to
 turn a fuzzy request into a complete, reviewable plan at the quality of the existing docs (read one, e.g.
-[plan/21](../../../spec/plan/21.memory-fragmentation.md) or [plan/30](../../../spec/plan/30.personalization.md), for the bar).
+[plan/04](../../../spec/plan/04.auth-session.md) or [plan/14](../../../spec/plan/14.rendering-foundation.md), for the bar).
 **Write the plan in English.**
 
 ## Step 1 — Interview
@@ -32,7 +32,7 @@ forks) until you can write each section concretely:
 - **Acceptance Criteria** — the testable criteria that make it "true" (these become the job's acceptance criteria).
 - **Policy / Values Impact** — which policy rules, and which spec/values.yaml numbers the feature sets or changes.
 
-Honor the **8 invariants** (00.overview §불변 원칙) — if the request would break one (e.g. delete stars, mutate the
+Honor the invariants **[I1]–[I11]** (00.overview §3, *The constitution*) — if the request would break one (e.g. delete stars, mutate the
 original diary, server-side coords), flag it and resolve with the user before writing.
 
 ## Step 2 — Scaffold + fill

@@ -11,7 +11,7 @@
 <!-- What is in, and what is explicitly out. Non-goals prevent scope creep. -->
 
 ## Grounding
-- Constitution (the 8 invariants): [00.overview](00.overview.md) §불변 원칙
+- Constitution ([I1]–[I11]): [00.overview](00.overview.md) §3 (*The constitution*)
 - tech / policy / concept basis: <!-- the docs this depends on -->
 
 ## Design

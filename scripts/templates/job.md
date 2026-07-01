@@ -23,7 +23,7 @@ title: {{TITLE}}
 - [ ] T001 …
 
 ## Grounding
-- Constitution (the 8 invariants): [00.overview](../plan/00.overview.md) §불변 원칙
+- Constitution ([I1]–[I11]): [00.overview](../plan/00.overview.md) §3 (*The constitution*)
 - Architecture (placement): [ARCHITECTURE.md](../ARCHITECTURE.md) — FE §3 (layers/slices/segments, §3.4 domain→visual,
   §3.5 mobile) · BE §2 (context layout, dependency rule). Invoke `/fe-architecture` · `/mobile-architecture` ·
   `/be-architecture` for the surfaces this job touches.

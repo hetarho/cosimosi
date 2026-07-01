@@ -27,8 +27,8 @@ already 🟡 claimed by another in-flight job/agent. If free, set it 🟡 (job N
 ## Step 1 — Read the source + grounding
 
 Read the `source` spec in full (`plan/NN` for new, `changes/NN` for change, `code-review/NN` for refactor — esp. its
-acceptance criteria and scope/non-goals), its grounding (**`ARCHITECTURE.md`** — the § covering this job's surface, `tech/*.md`, `policy/**`, `concept.md`), and the **8
-invariants** in 00.overview (§불변 원칙). For `type: change`, also read the modified `plan` and note the existing
+acceptance criteria and scope/non-goals), its grounding (**`ARCHITECTURE.md`** — the § covering this job's surface, `tech/*.md`, `policy/**`, `concept.md`), and the invariants
+**[I1]–[I11]** in 00.overview (§3, *The constitution*). For `type: change`, also read the modified `plan` and note the existing
 acceptance criteria you must NOT regress. Grep the code the spec names — that's your blast radius (it should match the
 job's Affected files).
 
@@ -127,7 +127,8 @@ A job is done when the **docs are true again**, not just when code builds:
 5. **Close out** — job frontmatter `status: done`, all checkboxes ✅; 00.overview progress board for the `plan` → ✅
    (clear the 🟡 claim).
 6. **Archive the job** — move this `spec/jobs/NN.*.md` → `spec/jobs/archive/NN.*.md` (create `archive/` if absent), so
-   `jobs/` lists only todo/doing work. The archived doc is a historical record — its relative links may go stale (no
+   `jobs/` lists only todo/doing work. (Enforced: `pnpm lint:spec` fails if a `status: done` job is left in
+   `spec/jobs/` — run it if unsure.) The archived doc is a historical record — its relative links may go stale (no
    depth fix needed); only its frontmatter `source`/`plan` numbers must stay correct. Numbering stays safe: `pnpm
    spec:job` counts `archive/` too (monotonic), so the next job never reuses NN.
 

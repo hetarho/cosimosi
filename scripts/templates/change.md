@@ -26,5 +26,5 @@ title: {{TITLE}}
 
 ## Grounding
 - Target plan: [{{PLAN}}](../{{PLAN}}.md)
-- Constitution (the 8 invariants): [00.overview](../plan/00.overview.md) §불변 원칙 — a change never breaks an invariant
+- Constitution ([I1]–[I11]): [00.overview](../plan/00.overview.md) §3 (*The constitution*) — a change never breaks an invariant
 - Affected policy / tech / values: <!-- -->
