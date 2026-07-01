@@ -13,4 +13,9 @@ export const VALUES = {
     jwksCacheTtlMs: 600000,
     jwksMissRefreshIntervalMs: 60000,
   },
+  rendering: {
+    activeSkin: "aurora",
+    maxPixelRatio: 2,
+    instanceBucketSize: 4096,
+  },
 } as const

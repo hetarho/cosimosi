@@ -59,4 +59,29 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // three.js / R3F live only inside the @cosimosi/3d-renderer package (plan/14);
+    // slices consume that package boundary, never three/R3F directly.
+    files: [
+      'src/main.tsx',
+      'src/app/**/*.{ts,tsx}',
+      'src/pages/**/*.{ts,tsx}',
+      'src/widgets/**/*.{ts,tsx}',
+      'src/features/**/*.{ts,tsx}',
+      'src/entities/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['three', 'three/*', '@react-three/fiber'],
+              message: 'Import three/R3F only via the @cosimosi/3d-renderer package, not directly in a slice.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

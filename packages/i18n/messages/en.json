@@ -94,5 +94,12 @@
   "mobile_diagnostics_unknown_error": "Unknown error",
   "mobile_diagnostics_query_entries": "Query cache entries",
   "mobile_diagnostics_flags": "Feature flag defaults",
-  "mobile_diagnostics_back": "Back to shell"
+  "mobile_diagnostics_back": "Back to shell",
+  "test_harness_render_title": "Rendering foundation",
+  "test_harness_render_description": "Skinned universe background, instanced bodies, and a bloom pass on the WebGPU renderer (WebGL2 fallback). Switch skins live.",
+  "test_harness_render_skin_group_label": "Universe skin",
+  "universe_home_write": "Write a diary",
+  "universe_home_explore": "Explore",
+  "universe_home_settings": "Settings",
+  "universe_renderer_unavailable": "The 3D universe needs WebGPU, which isn't available here yet."
 }

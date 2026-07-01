@@ -1,0 +1,41 @@
+{
+  "name": "@cosimosi/3d-renderer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.native.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "peerDependencies": {
+    "@react-three/fiber": ">=9",
+    "react": ">=19",
+    "three": ">=0.185"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    },
+    "react-native-webgpu": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@react-three/fiber": "^9.6.1",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/three": "^0.185.0",
+    "react": "^19.2.7",
+    "react-native": "0.86.0",
+    "react-native-webgpu": "^0.5.16",
+    "three": "^0.185.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

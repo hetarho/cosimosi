@@ -24,3 +24,12 @@ supabase_auth:
   jwks_cache_ttl_ms: 600000
   # Rate-limit forced JWKS refreshes after key misses.
   jwks_miss_refresh_interval_ms: 60000
+
+rendering:
+  # Active universe background skin (preset key in @cosimosi/shaders UNIVERSE_SKINS:
+  # aurora | ember | void). Build-time selection; re-skin by changing this.
+  active_skin: aurora
+  # Cap devicePixelRatio so high-DPI screens don't tank the GPU frame budget.
+  max_pixel_ratio: 2
+  # InstancedMesh bucket capacity — nodes batch into fixed-size instanced draws.
+  instance_bucket_size: 4096

@@ -20,6 +20,9 @@ export function ShellHomeScreen({navigation}: RootStackScreenProps<'ShellHome'>)
     <View style={styles.container}>
       <Text style={styles.title}>{m.mobile_shell_home_title()}</Text>
       <Text style={styles.description}>{m.mobile_shell_home_description()}</Text>
+      <Button variant="primary" onPress={() => navigation.navigate(ROUTES.universe)}>
+        {m.universe_home_explore()}
+      </Button>
       {diagnosticsEnabled ? (
         <Button variant="secondary" onPress={() => navigation.navigate(ROUTES.diagnostics)}>
           {m.mobile_shell_open_diagnostics()}

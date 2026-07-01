@@ -8,11 +8,11 @@ import type { Locale } from '@cosimosi/i18n'
 import type { ObservabilityFacade } from '@cosimosi/observability'
 
 import { TestPage } from '../pages/test/index.ts'
+import { UniverseHomePage } from '../pages/universe/index.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { WebI18nProvider } from './i18n-provider.tsx'
 import { WebObservabilityProvider, WebObservabilitySessionBridge } from './observability-provider.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
-import { UiShowcase } from './ui-showcase.stories.tsx'
 
 interface AppProps {
   routePath?: string
@@ -39,7 +39,7 @@ export default function App({
           <WebAuthProvider facade={authFacade}>
             <WebObservabilitySessionBridge />
             <WebClientCacheProvider queryClient={queryClient} transport={transport}>
-              {route === 'test' ? <TestPage /> : <UiShowcase />}
+              {route === 'test' ? <TestPage /> : <UniverseHomePage />}
             </WebClientCacheProvider>
           </WebAuthProvider>
         </WebI18nProvider>

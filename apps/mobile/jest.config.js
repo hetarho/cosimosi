@@ -21,4 +21,10 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-native-safe-area-context)/)',
   ],
+  // The shell smoke tests exercise the shell, not the WebGPU renderer; stub the 3D
+  // package so jest doesn't load three (ESM, untransformed in this host config).
+  moduleNameMapper: {
+    ...reactNativePreset.moduleNameMapper,
+    '^@cosimosi/3d-renderer$': '<rootDir>/jest.mock.3d-renderer.tsx',
+  },
 };

@@ -28,7 +28,9 @@ const ignoredSegments = new Set([
   '.astro',
   '.vite',
 ])
-const visualSegments = new Set(['ui', 'visual', 'visuals', 'render', 'renderer', 'rendering', 'canvas', 'shader', 'shaders'])
+// `3d-renderer` = the @cosimosi/3d-renderer package: it IS the rendering layer, so
+// rendering vocabulary (star/nebula/filament…) is its native language throughout.
+const visualSegments = new Set(['ui', 'visual', 'visuals', 'render', 'renderer', 'rendering', 'canvas', 'shader', 'shaders', '3d-renderer'])
 const forbiddenEdgePatterns = [
   /\bEngram(?:Edge|Link|Relation|Relationship)\b/,
   /\bMemory(?:Edge|Link|Relation|Relationship)\b/,

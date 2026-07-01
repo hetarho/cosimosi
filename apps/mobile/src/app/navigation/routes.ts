@@ -14,12 +14,15 @@ export const ROUTES = {
   shellHome: 'ShellHome',
   /** Dev-only provider health surface (gated by the diagnostics flag). */
   diagnostics: 'Diagnostics',
+  /** The 3D memory universe — the shared @cosimosi/3d-renderer scene. */
+  universe: 'Universe',
 } as const;
 
 export type RootStackParamList = {
   Boot: undefined;
   ShellHome: undefined;
   Diagnostics: undefined;
+  Universe: undefined;
 };
 
 export type RootStackScreenProps<RouteName extends keyof RootStackParamList> =

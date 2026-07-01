@@ -19,3 +19,10 @@ const (
 	SupabaseAuthJwksCacheTtlMs            = 600000
 	SupabaseAuthJwksMissRefreshIntervalMs = 60000
 )
+
+// rendering
+const (
+	RenderingActiveSkin         = "aurora"
+	RenderingMaxPixelRatio      = 2
+	RenderingInstanceBucketSize = 4096
+)

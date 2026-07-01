@@ -6,6 +6,7 @@ import {DiagnosticsScreen} from '../diagnostics/index.ts';
 import {ROUTES, type RootStackParamList} from './routes.ts';
 import {BootScreen} from './screens/BootScreen.tsx';
 import {ShellHomeScreen} from './screens/ShellHomeScreen.tsx';
+import {UniverseScreen} from './screens/UniverseScreen.tsx';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -20,6 +21,7 @@ const mobileLinking: LinkingOptions<RootStackParamList> = {
     screens: {
       [ROUTES.shellHome]: 'home',
       [ROUTES.diagnostics]: 'diagnostics',
+      [ROUTES.universe]: 'universe',
     },
   },
 };
@@ -36,6 +38,7 @@ export function NavigationRoot({linking = mobileLinking}: NavigationRootProps = 
         <Stack.Screen name={ROUTES.boot} component={BootScreen} />
         <Stack.Screen name={ROUTES.shellHome} component={ShellHomeScreen} />
         <Stack.Screen name={ROUTES.diagnostics} component={DiagnosticsScreen} />
+        <Stack.Screen name={ROUTES.universe} component={UniverseScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

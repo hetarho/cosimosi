@@ -20,6 +20,17 @@ const config = {
       path.resolve(__dirname, 'node_modules'),
       path.resolve(workspaceRoot, 'node_modules'),
     ],
+    // react-native-webgpu: resolve bare `three` to its WebGPU build so the shared
+    // @cosimosi/3d-renderer scene runs on the native WebGPU backend (README guidance).
+    // Resolve bare `three` to its WebGPU build so the shared @cosimosi/3d-renderer scene
+    // runs on the native WebGPU backend. (@react-three/fiber → web build is handled by the
+    // patch in patches/, per the react-native-webgpu README, so no redirect needed here.)
+    resolveRequest: (context, moduleName, platform) => {
+      if (moduleName === 'three') {
+        return context.resolveRequest(context, 'three/webgpu', platform);
+      }
+      return context.resolveRequest(context, moduleName, platform);
+    },
   },
 };
 
