@@ -14,7 +14,7 @@
 | React context and app-level error boundary | `packages/observability/src/react.tsx` |
 | Shared runtime factory and delegated vendor adapter | `packages/observability/src/runtime.ts` |
 | Connect request-id client interceptor | `packages/observability/src/connect.ts` |
-| Web vendor adapter | `apps/web/src/app/observability-provider.tsx` |
+| Web vendor adapter | `apps/web/src/app/providers/observability-provider.tsx` |
 | Mobile vendor adapter | `apps/mobile/src/app/providers/observability-provider.tsx` |
 | API reporter and safe attributes | `apps/api/internal/platform/observability/*` |
 | API error/panic/reporting interceptors | `apps/api/internal/platform/{handler,interceptors}.go` |
@@ -22,7 +22,7 @@
 
 Feature/domain slices import `@cosimosi/observability` or the app context only. Direct
 Sentry/PostHog imports are allowed only at app/platform observability boundaries:
-`apps/web/src/app/observability-provider.tsx`,
+`apps/web/src/app/providers/observability-provider.tsx`,
 `apps/mobile/src/app/providers/observability-provider.tsx`, and
 `apps/api/internal/platform/observability/sentry.go`; the focused mobile provider
 test is allowed to import/mock the native Sentry SDK so the boundary lifecycle can

@@ -10,7 +10,7 @@ const checks = [
     dir: 'apps/web/src',
     extensions: ['.ts', '.tsx'],
     forbidden: ['@sentry/react', '@sentry/browser', '@sentry/core', 'posthog-js'],
-    allowed: [/^apps\/web\/src\/app\/observability-provider\.tsx$/],
+    allowed: [/^apps\/web\/src\/app\/providers\/observability-provider\.tsx$/],
   },
   {
     dir: 'apps/mobile/src',
@@ -40,7 +40,7 @@ const violations = []
 section('observability boundaries')
 
 for (const probe of [
-  { path: 'apps/web/src/app/observability-provider.tsx', specifier: '@sentry/react' },
+  { path: 'apps/web/src/app/providers/observability-provider.tsx', specifier: '@sentry/react' },
   { path: 'apps/mobile/src/app/providers/observability-provider.tsx', specifier: '@sentry/react-native' },
   { path: 'apps/api/internal/platform/observability/sentry.go', specifier: 'github.com/getsentry/sentry-go' },
 ]) {
