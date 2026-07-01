@@ -4,7 +4,7 @@
 
 /* Tailwind v4 auto-detects content under this app only; the design-system
    primitives live in @cosimosi/ui, so their utility classes must be scanned too. */
-@source '../../../../packages/ui/src/**/*.{ts,tsx}';
+@source '../../../../../packages/ui/src/**/*.{ts,tsx}';
 
 /* The web composition boundary applies the design-system theme to the document.
    Per-route/background theming flows through the theme seam (@cosimosi/ui). */
