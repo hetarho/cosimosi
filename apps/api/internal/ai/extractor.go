@@ -6,34 +6,25 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cosimosi/api/internal/memory"
-	"github.com/cosimosi/api/internal/platform/values"
 )
 
 var ErrLLMClientRequired = errors.New("ai real extractor requires an llm client")
 
+// RealExtractor owns task knowledge only — the prompts, the output schema, and the
+// domain-DTO mapping. It consumes the capability interface (already wrapped in the
+// metering seam); metering and caching are not its concern (§2.4 / A6).
 type RealExtractor struct {
 	client LLMClient
-	meter  *Meter
-	mu     sync.Mutex
-	cache  boundedCache[memory.ExtractResult]
 }
 
-func NewRealExtractor(client LLMClient, meter *Meter) (*RealExtractor, error) {
+func NewRealExtractor(client LLMClient) (*RealExtractor, error) {
 	if client == nil {
 		return nil, ErrLLMClientRequired
 	}
-	if meter == nil {
-		meter = NewMeter()
-	}
-	return &RealExtractor{
-		client: client,
-		meter:  meter,
-		cache:  newBoundedCache[memory.ExtractResult](aiAdapterCacheMaxEntries),
-	}, nil
+	return &RealExtractor{client: client}, nil
 }
 
 func (a *RealExtractor) Split(ctx context.Context, body string, diaryDate time.Time, existingNeurons []memory.ExistingNeuron) (memory.ExtractResult, error) {
@@ -47,47 +38,16 @@ func (a *RealExtractor) ReviseSplit(ctx context.Context, prior memory.ExtractRes
 }
 
 func (a *RealExtractor) completeExtract(ctx context.Context, inputKey string, prompt string) (memory.ExtractResult, error) {
-	userID, err := a.meter.UserID(ctx)
-	if err != nil {
-		return memory.ExtractResult{}, err
-	}
-	cacheKey := stableHash(userID, inputKey)
-	if cached, ok := a.cached(cacheKey); ok {
-		return cached, nil
-	}
-	userID, err = a.meter.Charge(ctx)
-	if err != nil {
-		return memory.ExtractResult{}, err
-	}
 	resp, err := a.client.CompleteJSON(ctx, LLMRequest{
-		UserID:          userID,
-		Prompt:          prompt,
-		MaxOutputTokens: values.AiPerCallTokenCap,
-		OutputSchema:    ExtractOutputSchema(),
-		CacheKey:        cacheKey,
+		Prompt:       prompt,
+		OutputSchema: ExtractOutputSchema(),
+		CacheKey:     inputKey,
+		Validate:     func(body []byte) error { _, err := parseExtractResult(body); return err },
 	})
 	if err != nil {
 		return memory.ExtractResult{}, err
 	}
-	result, err := parseExtractResult(resp.JSON)
-	if err != nil {
-		return memory.ExtractResult{}, err
-	}
-	a.store(cacheKey, result)
-	return result, nil
-}
-
-func (a *RealExtractor) cached(key string) (memory.ExtractResult, bool) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	result, ok := a.cache.get(key)
-	return copyExtractResult(result), ok
-}
-
-func (a *RealExtractor) store(key string, result memory.ExtractResult) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.cache.put(key, copyExtractResult(result))
+	return parseExtractResult(resp.JSON)
 }
 
 type extractEnvelopeJSON struct {
@@ -226,17 +186,4 @@ func revisePrompt(prior memory.ExtractResult, instruction string) string {
 		prior,
 		instruction,
 	)
-}
-
-func copyExtractResult(result memory.ExtractResult) memory.ExtractResult {
-	copied := memory.ExtractResult{Memories: make([]memory.ExtractedMemory, 0, len(result.Memories))}
-	for _, item := range result.Memories {
-		neurons := append([]memory.ExtractedNeuron(nil), item.Neurons...)
-		copied.Memories = append(copied.Memories, memory.ExtractedMemory{
-			Name:    item.Name,
-			Mood:    item.Mood,
-			Neurons: neurons,
-		})
-	}
-	return copied
 }

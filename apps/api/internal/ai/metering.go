@@ -95,3 +95,126 @@ func (m *Meter) pruneLocked(currentWindow string) {
 		}
 	}
 }
+
+// The metering decorators wrap the capability interfaces so the per-call token cap,
+// the daily call cap, and identical-input caching apply uniformly to every provider
+// (A6). The mock adapters bypass this seam entirely — they are never wrapped. Each
+// decorator resolves the caller from context, serves an identical prior call from the
+// cache without charging, and only charges the daily cap on a real provider call.
+
+type meteredLLMClient struct {
+	inner LLMClient
+	meter *Meter
+	mu    sync.Mutex
+	cache boundedCache[[]byte]
+}
+
+func newMeteredLLMClient(inner LLMClient, meter *Meter) *meteredLLMClient {
+	return &meteredLLMClient{
+		inner: inner,
+		meter: meter,
+		cache: newBoundedCache[[]byte](aiAdapterCacheMaxEntries),
+	}
+}
+
+func (c *meteredLLMClient) CompleteJSON(ctx context.Context, req LLMRequest) (LLMResponse, error) {
+	userID, err := c.meter.UserID(ctx)
+	if err != nil {
+		return LLMResponse{}, err
+	}
+	key := stableHash(userID, req.CacheKey)
+	if cached, ok := c.get(key); ok {
+		return LLMResponse{JSON: cached}, nil
+	}
+	if _, err := c.meter.Charge(ctx); err != nil {
+		return LLMResponse{}, err
+	}
+	req.UserID = userID
+	req.MaxOutputTokens = values.AiPerCallTokenCap
+	resp, err := c.inner.CompleteJSON(ctx, req)
+	if err != nil {
+		return LLMResponse{}, err
+	}
+	if req.Validate != nil {
+		if err := req.Validate(resp.JSON); err != nil {
+			// A response the consumer rejects is not cached — the identical input can
+			// re-sample on retry instead of being served a poisoned cache entry.
+			return LLMResponse{}, err
+		}
+	}
+	c.put(key, resp.JSON)
+	return LLMResponse{JSON: append([]byte(nil), resp.JSON...)}, nil
+}
+
+func (c *meteredLLMClient) get(key string) ([]byte, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	value, ok := c.cache.get(key)
+	if !ok {
+		return nil, false
+	}
+	return append([]byte(nil), value...), true
+}
+
+func (c *meteredLLMClient) put(key string, value []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache.put(key, append([]byte(nil), value...))
+}
+
+type meteredEmbeddingClient struct {
+	inner EmbeddingClient
+	meter *Meter
+	mu    sync.Mutex
+	cache boundedCache[[][]float32]
+}
+
+func newMeteredEmbeddingClient(inner EmbeddingClient, meter *Meter) *meteredEmbeddingClient {
+	return &meteredEmbeddingClient{
+		inner: inner,
+		meter: meter,
+		cache: newBoundedCache[[][]float32](aiAdapterCacheMaxEntries),
+	}
+}
+
+func (c *meteredEmbeddingClient) Embed(ctx context.Context, req EmbeddingRequest) (EmbeddingResponse, error) {
+	userID, err := c.meter.UserID(ctx)
+	if err != nil {
+		return EmbeddingResponse{}, err
+	}
+	key := stableHash(userID, req.CacheKey)
+	if cached, ok := c.get(key); ok {
+		return EmbeddingResponse{Vectors: cached}, nil
+	}
+	if _, err := c.meter.Charge(ctx); err != nil {
+		return EmbeddingResponse{}, err
+	}
+	req.UserID = userID
+	resp, err := c.inner.Embed(ctx, req)
+	if err != nil {
+		return EmbeddingResponse{}, err
+	}
+	if req.Validate != nil {
+		if err := req.Validate(resp.Vectors); err != nil {
+			return EmbeddingResponse{}, err
+		}
+	}
+	c.put(key, resp.Vectors)
+	return EmbeddingResponse{Vectors: copyVectors(resp.Vectors)}, nil
+}
+
+func (c *meteredEmbeddingClient) get(key string) ([][]float32, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	vectors, ok := c.cache.get(key)
+	if !ok {
+		return nil, false
+	}
+	return copyVectors(vectors), true
+}
+
+func (c *meteredEmbeddingClient) put(key string, vectors [][]float32) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache.put(key, copyVectors(vectors))
+}

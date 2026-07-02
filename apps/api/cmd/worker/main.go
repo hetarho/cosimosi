@@ -11,6 +11,15 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/ai"
+
+	// Blank imports register the available provider adapters into internal/ai's
+	// factory. Provider + key are read from env per capability (COSIMOSI_LLM_* /
+	// COSIMOSI_EMBEDDING_*); a missing key selects the keyless mock, an unknown
+	// provider name is a startup error. Adding a provider = a new subpackage + one
+	// blank import here, no consumer change.
+	_ "github.com/cosimosi/api/internal/ai/anthropic"
+	_ "github.com/cosimosi/api/internal/ai/voyage"
+
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	platformdb "github.com/cosimosi/api/internal/platform/db"

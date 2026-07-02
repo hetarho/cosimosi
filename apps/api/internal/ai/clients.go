@@ -2,6 +2,15 @@ package ai
 
 import "context"
 
+// ProviderConfig is the vendor-neutral construction input the factory hands to a
+// provider client's constructor. It carries only runtime identity/config — never a
+// spec/values.yaml key (A8): API keys, model ids, and base URLs are env/secrets.
+type ProviderConfig struct {
+	APIKey  string
+	Model   string // optional override; empty selects the provider's recorded default
+	BaseURL string // optional override; empty selects the provider's default endpoint
+}
+
 type JSONSchema map[string]any
 
 type LLMClient interface {
@@ -14,6 +23,12 @@ type LLMRequest struct {
 	MaxOutputTokens int
 	OutputSchema    JSONSchema
 	CacheKey        string
+	// Validate, if set, is run by the metering seam against a fresh provider response
+	// before it is cached. It lets the port adapter (which owns parsing) reject a
+	// schema-conforming-but-unusable response so a transient bad sample does not
+	// poison the identical-input cache for later retries. It stays provider-neutral:
+	// the seam only invokes it, it does not parse.
+	Validate func([]byte) error
 }
 
 type LLMResponse struct {
@@ -29,6 +44,9 @@ type EmbeddingRequest struct {
 	Texts    []string
 	Dim      int
 	CacheKey string
+	// Validate mirrors LLMRequest.Validate — the seam runs it before caching so a
+	// response the embedder would reject (wrong count or dimension) is never cached.
+	Validate func([][]float32) error
 }
 
 type EmbeddingResponse struct {

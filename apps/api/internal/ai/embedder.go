@@ -4,52 +4,34 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
 var ErrEmbeddingClientRequired = errors.New("ai real embedder requires an embedding client")
 
+// RealEmbedder owns the domain contract — the target dimension and the row-shape
+// check. It consumes the metering-wrapped capability interface; caps and caching
+// live at that seam, not here (§2.4 / A6).
 type RealEmbedder struct {
 	client EmbeddingClient
-	meter  *Meter
-	mu     sync.Mutex
-	cache  boundedCache[[][]float32]
 }
 
-func NewRealEmbedder(client EmbeddingClient, meter *Meter) (*RealEmbedder, error) {
+func NewRealEmbedder(client EmbeddingClient) (*RealEmbedder, error) {
 	if client == nil {
 		return nil, ErrEmbeddingClientRequired
 	}
-	if meter == nil {
-		meter = NewMeter()
-	}
-	return &RealEmbedder{
-		client: client,
-		meter:  meter,
-		cache:  newBoundedCache[[][]float32](aiAdapterCacheMaxEntries),
-	}, nil
+	return &RealEmbedder{client: client}, nil
 }
 
 func (e *RealEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	userID, err := e.meter.UserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-	key := stableHash("embed", userID, texts, values.AiEmbeddingDim)
-	if cached, ok := e.cached(key); ok {
-		return cached, nil
-	}
-	userID, err = e.meter.Charge(ctx)
-	if err != nil {
-		return nil, err
-	}
+	key := stableHash("embed", texts, values.AiEmbeddingDim)
+	want := len(texts)
 	resp, err := e.client.Embed(ctx, EmbeddingRequest{
-		UserID:   userID,
 		Texts:    append([]string(nil), texts...),
 		Dim:      values.AiEmbeddingDim,
 		CacheKey: key,
+		Validate: func(vectors [][]float32) error { return validateVectors(vectors, want) },
 	})
 	if err != nil {
 		return nil, err
@@ -57,21 +39,7 @@ func (e *RealEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, 
 	if err := validateVectors(resp.Vectors, len(texts)); err != nil {
 		return nil, err
 	}
-	e.store(key, resp.Vectors)
 	return copyVectors(resp.Vectors), nil
-}
-
-func (e *RealEmbedder) cached(key string) ([][]float32, bool) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	vectors, ok := e.cache.get(key)
-	return copyVectors(vectors), ok
-}
-
-func (e *RealEmbedder) store(key string, vectors [][]float32) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.cache.put(key, copyVectors(vectors))
 }
 
 func validateVectors(vectors [][]float32, want int) error {

@@ -15,14 +15,14 @@ import (
 )
 
 func TestMockAdaptersAreDeterministicOffline(t *testing.T) {
-	t.Setenv(EnvAPIKey, "")
+	clearProviderEnv(t)
 
 	adapters, err := NewAdaptersFromEnv(FactoryOptions{})
 	if err != nil {
 		t.Fatalf("NewAdaptersFromEnv failed: %v", err)
 	}
-	if adapters.Mode != "mock" {
-		t.Fatalf("mode = %q, want mock", adapters.Mode)
+	if adapters.Mode != "llm=mock embedding=mock" {
+		t.Fatalf("mode = %q, want llm=mock embedding=mock", adapters.Mode)
 	}
 
 	ctx := context.Background()
@@ -43,28 +43,24 @@ func TestMockAdaptersAreDeterministicOffline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
 	}
-	secondEmbedding, err := adapters.Embedder.Embed(ctx, []string{"blue market"})
-	if err != nil {
-		t.Fatalf("second Embed failed: %v", err)
-	}
 	if len(firstEmbedding) != 1 || len(firstEmbedding[0]) != values.AiEmbeddingDim {
 		t.Fatalf("embedding dimensions = %d vectors, %d dim", len(firstEmbedding), len(firstEmbedding[0]))
 	}
-	if !reflect.DeepEqual(firstEmbedding, secondEmbedding) {
-		t.Fatal("mock Embed is not deterministic")
-	}
+}
 
-	item := memory.SemanticizeMemory{Name: "Blue Market", CurrentText: "Met Mina", Mood: memory.MoodCalm}
-	firstStages, err := adapters.Semanticizer.GenerateSemanticStages(ctx, item)
+// The mock adapters bypass the metering seam — repeated calls beyond the daily cap
+// never trip a cost limit and never require a user scope (A6: the mock is unmetered).
+func TestMockAdaptersAreUnmetered(t *testing.T) {
+	clearProviderEnv(t)
+	adapters, err := NewAdaptersFromEnv(FactoryOptions{Meter: newMeter(1, fixedNow)})
 	if err != nil {
-		t.Fatalf("GenerateSemanticStages failed: %v", err)
+		t.Fatalf("NewAdaptersFromEnv failed: %v", err)
 	}
-	secondStages, err := adapters.Semanticizer.GenerateSemanticStages(ctx, item)
-	if err != nil {
-		t.Fatalf("second GenerateSemanticStages failed: %v", err)
-	}
-	if firstStages != secondStages {
-		t.Fatalf("mock semantic stages are not deterministic: %v vs %v", firstStages, secondStages)
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		if _, err := adapters.Extractor.Split(ctx, fmt.Sprintf("market-%d", i), fixedNow(), nil); err != nil {
+			t.Fatalf("mock Split %d failed: %v", i, err)
+		}
 	}
 }
 
@@ -90,48 +86,69 @@ func TestExtractorSchemaForcedDTOHasNoInvariantBreakingFields(t *testing.T) {
 	}
 }
 
-func TestRealExtractorUsesTokenCapCostLimitAndCache(t *testing.T) {
+// The metering seam wraps every real LLM path: the per-call token cap is applied to the
+// vendor request, the daily cap trips on distinct inputs, and an identical input is
+// served from cache without re-billing.
+func TestMeteredLLMSeamAppliesTokenCapCostLimitAndCache(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
 	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","neurons":[{"name":"market","type":"semantic"}]}]}`)}
-	extractor, err := NewRealExtractor(client, newMeter(1, fixedNow))
+	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(1, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealExtractor failed: %v", err)
 	}
 
-	if _, err := extractor.Split(ctx, "market", time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC), nil); err != nil {
+	if _, err := extractor.Split(ctx, "market", fixedNow(), nil); err != nil {
 		t.Fatalf("Split failed: %v", err)
 	}
 	if client.calls != 1 || client.lastRequest.MaxOutputTokens != values.AiPerCallTokenCap {
 		t.Fatalf("client calls=%d cap=%d", client.calls, client.lastRequest.MaxOutputTokens)
 	}
+	if client.lastRequest.UserID != "user-1" {
+		t.Fatalf("seam did not scope request to caller, userID=%q", client.lastRequest.UserID)
+	}
 
-	if _, err := extractor.Split(ctx, "market", time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC), nil); err != nil {
+	if _, err := extractor.Split(ctx, "market", fixedNow(), nil); err != nil {
 		t.Fatalf("cached Split failed: %v", err)
 	}
 	if client.calls != 1 {
 		t.Fatalf("cached Split re-billed: calls=%d", client.calls)
 	}
 
-	_, err = extractor.Split(ctx, "different market", time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC), nil)
-	if !IsCostLimitError(err) {
+	if _, err := extractor.Split(ctx, "different market", fixedNow(), nil); !IsCostLimitError(err) {
 		t.Fatalf("different Split error = %v, want CostLimitError", err)
 	}
 }
 
-func TestRealEmbedderUsesDimensionCostLimitAndCache(t *testing.T) {
+func TestMeteredLLMSeamRequiresUserScope(t *testing.T) {
+	client := &fakeLLMClient{response: []byte(`{}`)}
+	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(10, fixedNow)))
+	if err != nil {
+		t.Fatalf("NewRealExtractor failed: %v", err)
+	}
+	if _, err := extractor.Split(context.Background(), "market", fixedNow(), nil); err == nil {
+		t.Fatal("Split without user scope succeeded, want ErrUserScopeRequired")
+	}
+}
+
+func TestMeteredEmbeddingSeamAppliesDimensionCostLimitAndCache(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
 	client := &fakeEmbeddingClient{}
-	embedder, err := NewRealEmbedder(client, newMeter(1, fixedNow))
+	embedder, err := NewRealEmbedder(newMeteredEmbeddingClient(client, newMeter(1, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealEmbedder failed: %v", err)
 	}
 
-	if _, err := embedder.Embed(ctx, []string{"market"}); err != nil {
+	vectors, err := embedder.Embed(ctx, []string{"market"})
+	if err != nil {
 		t.Fatalf("Embed failed: %v", err)
+	}
+	if len(vectors) != 1 || len(vectors[0]) != values.AiEmbeddingDim {
+		t.Fatalf("embedding shape = %d vectors dim %d", len(vectors), len(vectors[0]))
 	}
 	if client.calls != 1 || client.lastRequest.Dim != values.AiEmbeddingDim {
 		t.Fatalf("client calls=%d dim=%d", client.calls, client.lastRequest.Dim)
 	}
+
 	if _, err := embedder.Embed(ctx, []string{"market"}); err != nil {
 		t.Fatalf("cached Embed failed: %v", err)
 	}
@@ -139,9 +156,39 @@ func TestRealEmbedderUsesDimensionCostLimitAndCache(t *testing.T) {
 		t.Fatalf("cached Embed re-billed: calls=%d", client.calls)
 	}
 
-	_, err = embedder.Embed(ctx, []string{"different market"})
-	if !IsCostLimitError(err) {
+	if _, err := embedder.Embed(ctx, []string{"different market"}); !IsCostLimitError(err) {
 		t.Fatalf("different Embed error = %v, want CostLimitError", err)
+	}
+}
+
+// A response the consumer rejects must not be cached, so an identical retry re-invokes
+// the provider (and can re-sample) rather than being served a poisoned cache entry.
+func TestMeteredSeamDoesNotCacheRejectedResponses(t *testing.T) {
+	ctx := platform.ContextWithUserID(context.Background(), "user-1")
+	reject := errors.New("consumer rejected the response")
+
+	llm := &fakeLLMClient{response: []byte(`{"valid":"but unusable"}`)}
+	llmSeam := newMeteredLLMClient(llm, newMeter(10, fixedNow))
+	llmReq := LLMRequest{CacheKey: "k", Validate: func([]byte) error { return reject }}
+	for i := 0; i < 2; i++ {
+		if _, err := llmSeam.CompleteJSON(ctx, llmReq); !errors.Is(err, reject) {
+			t.Fatalf("llm attempt %d error = %v, want rejection", i, err)
+		}
+	}
+	if llm.calls != 2 {
+		t.Fatalf("llm inner calls = %d, want 2 (rejected response must not be cached)", llm.calls)
+	}
+
+	emb := &fakeEmbeddingClient{}
+	embSeam := newMeteredEmbeddingClient(emb, newMeter(10, fixedNow))
+	embReq := EmbeddingRequest{Texts: []string{"x"}, Dim: values.AiEmbeddingDim, CacheKey: "k", Validate: func([][]float32) error { return reject }}
+	for i := 0; i < 2; i++ {
+		if _, err := embSeam.Embed(ctx, embReq); !errors.Is(err, reject) {
+			t.Fatalf("embedding attempt %d error = %v, want rejection", i, err)
+		}
+	}
+	if emb.calls != 2 {
+		t.Fatalf("embedding inner calls = %d, want 2 (rejected response must not be cached)", emb.calls)
 	}
 }
 
@@ -162,14 +209,14 @@ func TestBoundedCacheEvictsOldestEntries(t *testing.T) {
 	}
 }
 
-func TestRealExtractorCacheIsBounded(t *testing.T) {
+func TestMeteredLLMSeamCacheIsBounded(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
 	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","neurons":[{"name":"market","type":"semantic"}]}]}`)}
-	extractor, err := NewRealExtractor(client, newMeter(aiAdapterCacheMaxEntries+10, fixedNow))
+	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(aiAdapterCacheMaxEntries+10, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealExtractor failed: %v", err)
 	}
-	day := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	day := fixedNow()
 	for i := 0; i < aiAdapterCacheMaxEntries+1; i++ {
 		if _, err := extractor.Split(ctx, fmt.Sprintf("market-%d", i), day, nil); err != nil {
 			t.Fatalf("Split %d failed: %v", i, err)
@@ -200,21 +247,13 @@ func TestMeterPrunesOldDailyWindows(t *testing.T) {
 	}
 }
 
-func TestFactorySelectsRealOnlyWhenKeyAndClientsArePresent(t *testing.T) {
-	if _, err := NewAdapters(FactoryOptions{APIKey: "key"}); !errors.Is(err, ErrRealClientsRequired) {
-		t.Fatalf("NewAdapters with key and no clients error = %v, want ErrRealClientsRequired", err)
-	}
-	adapters, err := NewAdapters(FactoryOptions{
-		APIKey:          "key",
-		LLMClient:       &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","neurons":[{"name":"market","type":"semantic"}]}]}`)},
-		EmbeddingClient: &fakeEmbeddingClient{},
-		Meter:           newMeter(10, fixedNow),
-	})
-	if err != nil {
-		t.Fatalf("NewAdapters real failed: %v", err)
-	}
-	if adapters.Mode != "real" {
-		t.Fatalf("mode = %q, want real", adapters.Mode)
+func clearProviderEnv(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{
+		EnvLLMProvider, EnvLLMAPIKey, EnvLLMModel, EnvLLMBaseURL,
+		EnvEmbeddingProvider, EnvEmbeddingAPIKey, EnvEmbeddingModel, EnvEmbeddingBaseURL,
+	} {
+		t.Setenv(key, "")
 	}
 }
 

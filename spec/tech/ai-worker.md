@@ -16,36 +16,60 @@ The port DTOs are memory-owned and schema-forced. `ExtractResult` can only carry
 `{memories:[{name, mood, neurons:[{name, type}]}]}`; there is no position, color, strength, time, delete, proto, sqlc,
 or SDK type in the shape.
 
-`internal/ai` contains concrete adapters for those ports. It may import memory DTO types to satisfy the ports, but it
-does not own split/dedup/synapse/linking/diary behavior. Provider SDKs and provider-specific client construction are
-owned by the later provider abstraction job; this unit exposes only provider-agnostic `LLMClient` and `EmbeddingClient`
-capability seams.
+`internal/ai` contains concrete port adapters for those ports. It may import memory DTO types to satisfy the ports, but
+it does not own split/dedup/synapse/linking/diary behavior. The port adapters (`RealExtractor`, `RealEmbedder`,
+`RealSemanticizer`) own **task knowledge only** — the prompts, the output JSON schemas, and the domain-DTO mapping — and
+consume the provider-agnostic `LLMClient` / `EmbeddingClient` capability interfaces declared beside them. They import no
+vendor SDK type.
+
+Each provider client lives in its own subpackage (`internal/ai/anthropic`, `internal/ai/voyage`) so a vendor SDK
+dependency is confined per package. A provider client owns **vendor knowledge only** — SDK/HTTP transport, auth, the
+model id, the native structured-output mechanism, and error normalization; it holds no prompt text, no domain DTO, and
+no knowledge of what a call is for. The dependency points inward only: a provider subpackage imports `internal/ai` for
+the capability types and the typed error set; `internal/ai` never imports a provider subpackage (a driver registry —
+`RegisterLLMProvider` / `RegisterEmbeddingProvider`, called from each subpackage's `init`, populated by a blank import
+in `cmd/*` — avoids the cycle).
 
 `internal/platform/jobqueue` is generic queue mechanism. It knows job id, user id, kind, attempts, and backoff; it does
 not import memory, neurons, embeddings, or semantic stages. The memory context supplies the `embed` and `semanticize`
 handlers.
 
-## 2. Adapter Selection and Cost
+## 2. Provider Selection and Cost
 
-`internal/ai.NewAdaptersFromEnv` selects adapters by runtime secret presence:
+`internal/ai.NewAdaptersFromEnv` selects a provider **per capability, independently**, from runtime env:
 
-- `COSIMOSI_AI_API_KEY` absent: keyless deterministic mock adapters.
-- `COSIMOSI_AI_API_KEY` present: real adapters, requiring provider clients supplied by the composition root.
+- LLM (drives `Extractor` + `Semanticizer`): `COSIMOSI_LLM_PROVIDER`, `COSIMOSI_LLM_API_KEY`, and optional
+  `COSIMOSI_LLM_MODEL` / `COSIMOSI_LLM_BASE_URL`.
+- Embedding: `COSIMOSI_EMBEDDING_PROVIDER`, `COSIMOSI_EMBEDDING_API_KEY`, and optional `COSIMOSI_EMBEDDING_MODEL` /
+  `COSIMOSI_EMBEDDING_BASE_URL`.
 
-There is no values key or feature flag for real-vs-mock selection.
-This job intentionally does not construct vendor clients; until the provider abstraction job supplies them, setting
-`COSIMOSI_AI_API_KEY` without injected clients returns `ErrRealClientsRequired`.
+Selection rule for each capability: **key absent → the keyless deterministic mock; key present → that provider's client,
+wrapped in the metering seam; an unknown or recognized-but-unimplemented provider name → a startup error, never a silent
+default.** The contract slots are `anthropic · openai · deepseek · zai · gemini` (LLM) and `voyage · openai · gemini`
+(embedding); Epic A implements **Anthropic** (`claude-opus-4-8`, override with `COSIMOSI_LLM_MODEL`) and **Voyage AI**
+(`voyage-3.5`, override with `COSIMOSI_EMBEDDING_MODEL`). Adding another slot is a new subpackage + one blank import in
+`cmd/*`, no consumer change. There is no values key or feature flag for provider selection — provider identity, model
+ids, keys, and base URLs are env/secrets only.
 
-The mock adapters are offline and unmetered. They deterministically produce the same split/name/neurons, embedding
-vector length, and four semantic stage texts for the same input.
+The mock adapters are offline and **unmetered** — they bypass the metering seam entirely. They deterministically produce
+the same split/name/neurons, embedding vector length, and four semantic stage texts for the same input.
 
-Real adapters are metered:
+Cost metering is a **decorator at the capability-interface seam** (`internal/ai/metering.go`), so caps and caching apply
+uniformly to every provider:
 
-- `ai.per_call_token_cap = 1200` is sent as the max-output guard on every LLM request.
-- `ai.daily_call_cap = 200` limits billable LLM/embedding calls per user per UTC calendar day.
-- Identical split/revise/semanticize/embed inputs are cached inside a bounded adapter cache so retries and re-runs do
-  not re-bill and long-running workers do not grow memory without bound.
+- `ai.per_call_token_cap = 1200` is set as the max-output guard on every LLM request at the seam.
+- `ai.daily_call_cap = 200` limits billable LLM/embedding calls per user per UTC calendar day; one shared meter counts
+  LLM and embedding calls together.
+- Identical inputs are cached inside a bounded per-seam cache (keyed by user + the port adapter's content hash) so
+  retries and re-runs do not re-bill and long-running workers do not grow memory without bound. A response the port
+  adapter rejects (its `Validate` hook fails) is **not** cached, so an identical retry can re-sample rather than being
+  served a poisoned entry.
 - Over-limit calls return a typed `CostLimitError` whose retry time is the next UTC calendar day.
+
+Every provider client normalizes vendor failures into the shared typed error set — the only errors that cross out of
+`internal/ai`: `RateLimitedError` (retryable), `AuthFailedError` (terminal), `CostLimitError` (cost-capped), and
+`MalformedStructuredOutputError` (schema violation; the retry decision belongs to the port adapter). No vendor SDK error
+type escapes the package.
 
 ## 3. Jobs Queue
 
@@ -85,7 +109,8 @@ fills it, the stages appear on the next read/refetch. No polling, server-streami
 ## 5. Runtimes
 
 `cmd/worker` is the standalone process. It opens the Postgres pool, builds the `memory/pg` queue/store, selects AI
-adapters, and runs the generic job loop.
+adapters, and runs the generic job loop. It (and `cmd/api`) blank-import `internal/ai/anthropic` and
+`internal/ai/voyage` so those providers register with the factory before env selection runs.
 
 `cmd/api` can run the same memory worker as a dev goroutine when `COSIMOSI_DEV_WORKER=1`; `docker-compose.yml` enables
 that path for the local API container. Runtime environment and secrets stay out of `spec/values.yaml`.
