@@ -1,0 +1,49 @@
+{
+  "seed": 424242,
+  "ticks": 24,
+  "dt": 0.016666666666666666,
+  "graph": {
+    "neurons": [
+      { "id": "n_self", "connectivity": 8, "seedHint": { "x": 18, "y": -4, "z": 4 } },
+      { "id": "n_place", "connectivity": 3, "seedHint": { "x": -10, "y": 12, "z": 6 } },
+      { "id": "n_detail", "connectivity": 1, "seedHint": { "x": 4, "y": 20, "z": 5 } },
+      { "id": "n_seeded", "connectivity": 2 }
+    ],
+    "synapses": [
+      { "sourceNeuronId": "n_self", "targetNeuronId": "n_place", "strength": 0.8 },
+      { "sourceNeuronId": "n_place", "targetNeuronId": "n_detail", "strength": 0.35 },
+      { "sourceNeuronId": "n_detail", "targetNeuronId": "n_seeded", "strength": 0.45 }
+    ],
+    "episodicMemories": [
+      { "id": "e_first" },
+      { "id": "e_second" }
+    ],
+    "activations": [
+      { "episodicMemoryId": "e_first", "neuronId": "n_self", "weight": 3 },
+      { "episodicMemoryId": "e_first", "neuronId": "n_place", "weight": 1 },
+      { "episodicMemoryId": "e_second", "neuronId": "n_place", "weight": 1 },
+      { "episodicMemoryId": "e_second", "neuronId": "n_detail", "weight": 2 },
+      { "episodicMemoryId": "e_second", "neuronId": "n_seeded", "weight": 1 }
+    ]
+  },
+  "coordinates": [
+    3.7435543537139893,
+    -0.3453177213668823,
+    4.437323570251465,
+    -2.7379612922668457,
+    2.9258804321289062,
+    5.238560199737549,
+    3.6799113750457764,
+    7.392463684082031,
+    5.235393047332764,
+    8.477523803710938,
+    -2.2156009674072266,
+    6.168249607086182,
+    2.1231753826141357,
+    0.47248178720474243,
+    4.637632369995117,
+    3.274846076965332,
+    3.8738017082214355,
+    5.4693989753723145
+  ]
+}

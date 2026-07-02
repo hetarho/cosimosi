@@ -83,3 +83,17 @@ const (
 	SynapseTemporalWindowDays  = 3
 	SynapseTemporalBonus       = 0.1
 )
+
+// force_sim
+const (
+	ForceSimCharge          = 0.035
+	ForceSimLinkDistance    = 12
+	ForceSimCenterStrength  = 0.018
+	ForceSimRepulsion       = 2.4
+	ForceSimTickAlphaDecay  = 0.022
+	ForceSimHippocampusZMin = 0
+	ForceSimHippocampusZMax = 10
+	ForceSimNeocortexZMin   = 15
+	ForceSimNeocortexZMax   = 25
+	ForceSimSeed            = 190019
+)

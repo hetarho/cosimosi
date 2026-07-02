@@ -87,3 +87,20 @@ synapse:
   # Temporal-link knobs are owned with synapse values but consumed by the future Link use-case.
   temporal_window_days: 3
   temporal_bonus: 0.1
+
+force_sim:
+  # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.
+  charge: 0.035
+  # Target rest length for neuron-to-neuron synapse springs in layout units.
+  link_distance: 12
+  # Center pull coefficient; connectivity scales this so self-relevant nodes settle nearer the origin.
+  center_strength: 0.018
+  # Barnes-Hut repulsion coefficient for baseline pattern separation.
+  repulsion: 2.4
+  # Per-tick alpha cooling, tuned for stable convergence without freezing the first launch.
+  tick_alpha_decay: 0.022
+  hippocampus_z_min: 0
+  hippocampus_z_max: 10
+  neocortex_z_min: 15
+  neocortex_z_max: 25
+  seed: 190019

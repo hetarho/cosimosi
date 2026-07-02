@@ -38,4 +38,16 @@ export const VALUES = {
     temporalWindowDays: 3,
     temporalBonus: 0.1,
   },
+  forceSim: {
+    charge: 0.035,
+    linkDistance: 12,
+    centerStrength: 0.018,
+    repulsion: 2.4,
+    tickAlphaDecay: 0.022,
+    hippocampusZMin: 0,
+    hippocampusZMax: 10,
+    neocortexZMin: 15,
+    neocortexZMax: 25,
+    seed: 190019,
+  },
 } as const

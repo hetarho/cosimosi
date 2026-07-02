@@ -24,6 +24,7 @@ Current groups:
   intensity.
 - `synapse`: saturating-LTP coefficient, single strength cap, signal-tiered initial strengths, read-time synapse decay,
   and temporal-link knobs consumed by the future `Link` use-case.
+- `force_sim`: deterministic layout coefficients, z-band bounds, and seed consumed by `@cosimosi/force-sim`.
 
 ## 2. Schema
 
