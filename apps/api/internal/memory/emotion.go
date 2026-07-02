@@ -42,43 +42,47 @@ type Emotion struct {
 	Intensity float64
 }
 
-var moodQuadrants = map[Mood]EmotionQuadrant{
-	MoodJoy:        EmotionQuadrantPositiveHighArousal,
-	MoodExcitement: EmotionQuadrantPositiveHighArousal,
-	MoodLove:       EmotionQuadrantPositiveHighArousal,
-	MoodCalm:       EmotionQuadrantPositiveLowArousal,
-	MoodGratitude:  EmotionQuadrantPositiveLowArousal,
-	MoodRelief:     EmotionQuadrantPositiveLowArousal,
-	MoodAnger:      EmotionQuadrantNegativeHighArousal,
-	MoodFear:       EmotionQuadrantNegativeHighArousal,
-	MoodStress:     EmotionQuadrantNegativeHighArousal,
-	MoodSad:        EmotionQuadrantNegativeLowArousal,
-	MoodTired:      EmotionQuadrantNegativeLowArousal,
-	MoodEmptiness:  EmotionQuadrantNegativeLowArousal,
-	MoodNeutral:    EmotionQuadrantNeutral,
+type moodDefinition struct {
+	mood     Mood
+	valueKey string
+	quadrant EmotionQuadrant
 }
 
-func AllMoods() []Mood {
-	return []Mood{
-		MoodJoy,
-		MoodCalm,
-		MoodSad,
-		MoodAnger,
-		MoodFear,
-		MoodLove,
-		MoodNeutral,
-		MoodExcitement,
-		MoodGratitude,
-		MoodRelief,
-		MoodStress,
-		MoodTired,
-		MoodEmptiness,
+var moodCatalog = []moodDefinition{
+	{mood: MoodJoy, valueKey: "joy", quadrant: EmotionQuadrantPositiveHighArousal},
+	{mood: MoodCalm, valueKey: "calm", quadrant: EmotionQuadrantPositiveLowArousal},
+	{mood: MoodSad, valueKey: "sad", quadrant: EmotionQuadrantNegativeLowArousal},
+	{mood: MoodAnger, valueKey: "anger", quadrant: EmotionQuadrantNegativeHighArousal},
+	{mood: MoodFear, valueKey: "fear", quadrant: EmotionQuadrantNegativeHighArousal},
+	{mood: MoodLove, valueKey: "love", quadrant: EmotionQuadrantPositiveHighArousal},
+	{mood: MoodNeutral, valueKey: "neutral", quadrant: EmotionQuadrantNeutral},
+	{mood: MoodExcitement, valueKey: "excitement", quadrant: EmotionQuadrantPositiveHighArousal},
+	{mood: MoodGratitude, valueKey: "gratitude", quadrant: EmotionQuadrantPositiveLowArousal},
+	{mood: MoodRelief, valueKey: "relief", quadrant: EmotionQuadrantPositiveLowArousal},
+	{mood: MoodStress, valueKey: "stress", quadrant: EmotionQuadrantNegativeHighArousal},
+	{mood: MoodTired, valueKey: "tired", quadrant: EmotionQuadrantNegativeLowArousal},
+	{mood: MoodEmptiness, valueKey: "emptiness", quadrant: EmotionQuadrantNegativeLowArousal},
+}
+
+var (
+	allMoods         = make([]Mood, 0, len(moodCatalog))
+	moodDefinitionBy = make(map[Mood]moodDefinition, len(moodCatalog))
+)
+
+func init() {
+	for _, definition := range moodCatalog {
+		allMoods = append(allMoods, definition.mood)
+		moodDefinitionBy[definition.mood] = definition
 	}
 }
 
+func AllMoods() []Mood {
+	return append([]Mood(nil), allMoods...)
+}
+
 func MoodQuadrant(mood Mood) (EmotionQuadrant, bool) {
-	quadrant, ok := moodQuadrants[mood]
-	return quadrant, ok
+	definition, ok := moodDefinitionBy[mood]
+	return definition.quadrant, ok
 }
 
 func MoodCoordinate(mood Mood) (EmotionCoordinate, bool) {
@@ -125,34 +129,6 @@ func ArousalToInitialStrength(arousal float64) float64 {
 }
 
 func moodValueKey(mood Mood) (string, bool) {
-	switch mood {
-	case MoodJoy:
-		return "joy", true
-	case MoodCalm:
-		return "calm", true
-	case MoodSad:
-		return "sad", true
-	case MoodAnger:
-		return "anger", true
-	case MoodFear:
-		return "fear", true
-	case MoodLove:
-		return "love", true
-	case MoodNeutral:
-		return "neutral", true
-	case MoodExcitement:
-		return "excitement", true
-	case MoodGratitude:
-		return "gratitude", true
-	case MoodRelief:
-		return "relief", true
-	case MoodStress:
-		return "stress", true
-	case MoodTired:
-		return "tired", true
-	case MoodEmptiness:
-		return "emptiness", true
-	default:
-		return "", false
-	}
+	definition, ok := moodDefinitionBy[mood]
+	return definition.valueKey, ok
 }

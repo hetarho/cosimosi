@@ -140,6 +140,9 @@ INSERT INTO embeddings (
     $2,
     $3::vector(1024)
 )
+ON CONFLICT (neuron_id) DO UPDATE
+SET vector = EXCLUDED.vector
+WHERE embeddings.user_id = EXCLUDED.user_id
 RETURNING neuron_id, vector;
 
 -- name: EnqueueJob :one

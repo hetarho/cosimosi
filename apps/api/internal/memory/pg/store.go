@@ -14,7 +14,6 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -25,14 +24,19 @@ var (
 
 type Store struct {
 	queries *dbgen.Queries
+	txer    txStarter
 }
 
-func NewStore(db interface {
-	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
-	Query(context.Context, string, ...interface{}) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...interface{}) pgx.Row
-}) Store {
-	return Store{queries: dbgen.New(db)}
+type txStarter interface {
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
+}
+
+func NewStore(db dbgen.DBTX) Store {
+	store := Store{queries: dbgen.New(db)}
+	if txer, ok := db.(txStarter); ok {
+		store.txer = txer
+	}
+	return store
 }
 
 func (s Store) InsertDiary(ctx context.Context, scope platform.UserScope, diary memory.Diary) (memory.Diary, error) {
@@ -172,20 +176,47 @@ func (s Store) GetUniverse(ctx context.Context, scope platform.UserScope) (memor
 	if err := s.ready(scope); err != nil {
 		return memory.UniverseFacts{}, err
 	}
+
+	if s.txer != nil {
+		tx, err := s.txer.BeginTx(ctx, pgx.TxOptions{
+			IsoLevel:   pgx.RepeatableRead,
+			AccessMode: pgx.ReadOnly,
+		})
+		if err != nil {
+			return memory.UniverseFacts{}, err
+		}
+		defer func() {
+			_ = tx.Rollback(ctx)
+		}()
+
+		facts, err := getUniverse(ctx, scope, s.queries.WithTx(tx))
+		if err != nil {
+			return memory.UniverseFacts{}, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return memory.UniverseFacts{}, err
+		}
+		return facts, nil
+	}
+
+	return getUniverse(ctx, scope, s.queries)
+}
+
+func getUniverse(ctx context.Context, scope platform.UserScope, queries *dbgen.Queries) (memory.UniverseFacts, error) {
 	userID := scope.UserID()
-	memories, err := s.queries.ListUniverseEpisodicMemories(ctx, userID)
+	memories, err := queries.ListUniverseEpisodicMemories(ctx, userID)
 	if err != nil {
 		return memory.UniverseFacts{}, err
 	}
-	neurons, err := s.queries.ListUniverseNeurons(ctx, userID)
+	neurons, err := queries.ListUniverseNeurons(ctx, userID)
 	if err != nil {
 		return memory.UniverseFacts{}, err
 	}
-	activations, err := s.queries.ListUniverseNeuronActivations(ctx, userID)
+	activations, err := queries.ListUniverseNeuronActivations(ctx, userID)
 	if err != nil {
 		return memory.UniverseFacts{}, err
 	}
-	synapses, err := s.queries.ListUniverseSynapses(ctx, userID)
+	synapses, err := queries.ListUniverseSynapses(ctx, userID)
 	if err != nil {
 		return memory.UniverseFacts{}, err
 	}

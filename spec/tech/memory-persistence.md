@@ -47,6 +47,9 @@ The migration stores embedding vectors as `vector(1024)` and creates `embeddings
 `vector_cosine_ops`. sqlc maps `vector` to a string at the generated boundary; `internal/memory/pg` converts between
 domain `[]float32` and the pgvector literal and validates the generated dimension before writes.
 
+Embedding writes are per-neuron upserts for the owning user: re-embedding the same neuron replaces the vector instead
+of failing on the `embeddings(neuron_id)` primary key.
+
 ## 4. sqlc Boundary
 
 `apps/api/db/queries/memory/launch.sql` contains baseline launch-path inserts/upserts:
@@ -62,6 +65,12 @@ domain `[]float32` and the pgvector literal and validates the generated dimensio
 `apps/api/db/queries/memory/universe.sql` contains the baseline `GetUniverse` read shape: memories, neurons with
 connectivity, activation edges, and synapses. It returns stored facts only; read-time brightness, decay, layout, and
 visual state stay outside persistence.
+
+`GetUniverse` returns the visible graph: soft-deleted memories and sealed neurons are excluded, activation edges must
+join visible memory + visible neuron nodes, synapses must join two visible neurons, and neuron connectivity counts only
+visible-memory activations. The pg adapter reads the four result sets in one `REPEATABLE READ` read-only transaction
+when it is backed by a pool; callers that construct the store over an existing transaction inherit that transaction's
+snapshot.
 
 Generated rows stay in `apps/api/db/gen`. `internal/memory` imports no sqlc, pgx, proto, or DB representation type;
 `internal/memory/pg` is the only memory package that imports `dbgen`/`pgtype` and maps rows to domain structs.

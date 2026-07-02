@@ -93,12 +93,20 @@ func (q *Queries) ListUniverseEpisodicMemories(ctx context.Context, userID strin
 
 const listUniverseNeuronActivations = `-- name: ListUniverseNeuronActivations :many
 SELECT
-    episodic_memory_id,
-    neuron_id,
-    weight
-FROM neuron_activations
-WHERE user_id = $1
-ORDER BY episodic_memory_id, neuron_id
+    na.episodic_memory_id,
+    na.neuron_id,
+    na.weight
+FROM neuron_activations AS na
+JOIN episodic_memories AS em
+  ON em.user_id = na.user_id
+ AND em.id = na.episodic_memory_id
+ AND em.deleted_at IS NULL
+JOIN neurons AS n
+  ON n.user_id = na.user_id
+ AND n.id = na.neuron_id
+ AND n.sealed_at IS NULL
+WHERE na.user_id = $1
+ORDER BY na.episodic_memory_id, na.neuron_id
 `
 
 type ListUniverseNeuronActivationsRow struct {
@@ -134,11 +142,15 @@ SELECT
     n.neuron_type,
     n.created_at,
     n.sealed_at,
-    COUNT(na.episodic_memory_id)::int AS connectivity
+    COUNT(em.id)::int AS connectivity
 FROM neurons AS n
 LEFT JOIN neuron_activations AS na
   ON na.user_id = n.user_id
  AND na.neuron_id = n.id
+LEFT JOIN episodic_memories AS em
+  ON em.user_id = na.user_id
+ AND em.id = na.episodic_memory_id
+ AND em.deleted_at IS NULL
 WHERE n.user_id = $1
   AND n.sealed_at IS NULL
 GROUP BY n.id, n.name, n.neuron_type, n.created_at, n.sealed_at
@@ -183,16 +195,24 @@ func (q *Queries) ListUniverseNeurons(ctx context.Context, userID string) ([]Lis
 
 const listUniverseSynapses = `-- name: ListUniverseSynapses :many
 SELECT
-    id,
-    neuron_a_id,
-    neuron_b_id,
-    strength,
-    co_activation_count,
-    last_activated_universe_time,
-    created_at
-FROM synapses
-WHERE user_id = $1
-ORDER BY neuron_a_id, neuron_b_id
+    s.id,
+    s.neuron_a_id,
+    s.neuron_b_id,
+    s.strength,
+    s.co_activation_count,
+    s.last_activated_universe_time,
+    s.created_at
+FROM synapses AS s
+JOIN neurons AS neuron_a
+  ON neuron_a.user_id = s.user_id
+ AND neuron_a.id = s.neuron_a_id
+ AND neuron_a.sealed_at IS NULL
+JOIN neurons AS neuron_b
+  ON neuron_b.user_id = s.user_id
+ AND neuron_b.id = s.neuron_b_id
+ AND neuron_b.sealed_at IS NULL
+WHERE s.user_id = $1
+ORDER BY s.neuron_a_id, s.neuron_b_id
 `
 
 type ListUniverseSynapsesRow struct {

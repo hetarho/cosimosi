@@ -73,6 +73,17 @@ func TestMoodCoordinatesMatchQuadrants(t *testing.T) {
 	}
 }
 
+func TestAllMoodsReturnsCopy(t *testing.T) {
+	t.Parallel()
+
+	moods := AllMoods()
+	moods[0] = Mood("BROKEN")
+
+	if AllMoods()[0] != MoodJoy {
+		t.Fatal("AllMoods exposed mutable mood catalog")
+	}
+}
+
 func TestNewEmotionUsesMoodCoordinateAndDefaultIntensity(t *testing.T) {
 	t.Parallel()
 
