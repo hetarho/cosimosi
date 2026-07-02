@@ -18,6 +18,8 @@ Current groups:
 - `client_cache`: TanStack Query default timing and optimistic rollback windows.
 - `auth_session`: frontend Supabase access-token refresh skew.
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
+- `rendering`: active universe skin, pixel-ratio cap, and renderer instance bucket capacity.
+- `ai`: embedding vector dimension shared by the memory schema and future embedding clients.
 
 ## 2. Schema
 

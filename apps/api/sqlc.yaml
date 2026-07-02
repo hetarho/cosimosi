@@ -8,3 +8,6 @@ sql:
         package: dbgen
         out: db/gen
         sql_package: pgx/v5
+        overrides:
+          - db_type: vector
+            go_type: string

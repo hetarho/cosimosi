@@ -26,3 +26,8 @@ const (
 	RenderingMaxPixelRatio      = 2
 	RenderingInstanceBucketSize = 4096
 )
+
+// ai
+const (
+	AiEmbeddingDim = 1024
+)

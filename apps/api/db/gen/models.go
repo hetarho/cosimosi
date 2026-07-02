@@ -3,3 +3,81 @@
 //   sqlc v1.31.1
 
 package dbgen
+
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type Diary struct {
+	ID        string
+	UserID    string
+	Body      string
+	DiaryDate pgtype.Date
+	CreatedAt pgtype.Timestamptz
+}
+
+type Embedding struct {
+	NeuronID string
+	UserID   string
+	Vector   string
+}
+
+type EpisodicMemory struct {
+	ID                       string
+	UserID                   string
+	DiaryID                  string
+	Name                     string
+	CurrentText              string
+	Seed                     pgtype.Int8
+	Mood                     string
+	Valence                  float32
+	Arousal                  float32
+	Intensity                float32
+	BaseStrength             float32
+	RecallCount              int32
+	CreatedUniverseTime      pgtype.Date
+	LastRecalledUniverseTime pgtype.Date
+	SemanticStage            int16
+	SemanticizeTimerResetAt  pgtype.Date
+	SemanticStages           []byte
+	DecayStages              []byte
+	DeletedAt                pgtype.Timestamptz
+}
+
+type Job struct {
+	ID        string
+	UserID    string
+	Kind      string
+	Payload   []byte
+	Status    string
+	Attempts  int32
+	NextRunAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
+type Neuron struct {
+	ID         string
+	UserID     string
+	Name       pgtype.Text
+	NeuronType string
+	CreatedAt  pgtype.Timestamptz
+	SealedAt   pgtype.Timestamptz
+}
+
+type NeuronActivation struct {
+	EpisodicMemoryID string
+	NeuronID         string
+	UserID           string
+	Weight           float32
+}
+
+type Synapse struct {
+	ID                        string
+	UserID                    string
+	NeuronAID                 string
+	NeuronBID                 string
+	Strength                  float32
+	CoActivationCount         int32
+	LastActivatedUniverseTime pgtype.Date
+	CreatedAt                 pgtype.Timestamptz
+}

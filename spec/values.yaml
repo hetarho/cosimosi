@@ -33,3 +33,7 @@ rendering:
   max_pixel_ratio: 2
   # InstancedMesh bucket capacity — nodes batch into fixed-size instanced draws.
   instance_bucket_size: 4096
+
+ai:
+  # Voyage 4-family embeddings default to 1024 dimensions while still allowing smaller/larger Matryoshka outputs.
+  embedding_dim: 1024

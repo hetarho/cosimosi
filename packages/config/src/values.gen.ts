@@ -18,4 +18,7 @@ export const VALUES = {
     maxPixelRatio: 2,
     instanceBucketSize: 4096,
   },
+  ai: {
+    embeddingDim: 1024,
+  },
 } as const
