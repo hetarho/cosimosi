@@ -49,6 +49,7 @@ type EpisodicMemory struct {
 	LastRecalledUniverseTime *time.Time
 	SemanticStage            int16
 	SemanticizeTimerResetAt  *time.Time
+	SemanticStages           *SemanticStages
 	DeletedAt                *time.Time
 }
 
@@ -86,14 +87,33 @@ type Embedding struct {
 	Vector   []float32
 }
 
+type SemanticStages [4]string
+
 type Job struct {
 	ID        string
+	UserID    string
 	Kind      JobKind
 	Payload   []byte
 	Status    JobStatus
 	Attempts  int32
 	NextRunAt time.Time
 	CreatedAt time.Time
+}
+
+func (j Job) JobID() string {
+	return j.ID
+}
+
+func (j Job) JobUserID() string {
+	return j.UserID
+}
+
+func (j Job) JobKind() string {
+	return string(j.Kind)
+}
+
+func (j Job) JobAttempts() int32 {
+	return j.Attempts
 }
 
 type UniverseFacts struct {

@@ -37,6 +37,14 @@ rendering:
 ai:
   # Voyage 4-family embeddings default to 1024 dimensions while still allowing smaller/larger Matryoshka outputs.
   embedding_dim: 1024
+  # Generic max-output guard for one real LLM call; provider/model specifics stay runtime config.
+  per_call_token_cap: 1200
+  # Real AI adapters meter billable calls per user on a UTC calendar-day window.
+  daily_call_cap: 200
+  # Worker failures retry this many total attempts before the row is kept as failed.
+  job_max_attempts: 5
+  # Exponential worker retry base: base * 2^attempts, with no jitter for deterministic tests.
+  job_backoff_base_ms: 60000
 
 emotion:
   # Mood coordinates are domain facts, stored on each memory at launch time.

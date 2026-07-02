@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -25,16 +27,24 @@ var (
 type Store struct {
 	queries *dbgen.Queries
 	txer    txStarter
+	batcher batchSender
 }
 
 type txStarter interface {
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
+type batchSender interface {
+	SendBatch(context.Context, *pgx.Batch) pgx.BatchResults
+}
+
 func NewStore(db dbgen.DBTX) Store {
 	store := Store{queries: dbgen.New(db)}
 	if txer, ok := db.(txStarter); ok {
 		store.txer = txer
+	}
+	if batcher, ok := db.(batchSender); ok {
+		store.batcher = batcher
 	}
 	return store
 }
@@ -172,6 +182,160 @@ func (s Store) EnqueueJob(ctx context.Context, scope platform.UserScope, job mem
 	return mapJob(row), nil
 }
 
+func (s Store) ClaimDue(ctx context.Context, now time.Time) (memory.Job, error) {
+	if s.queries == nil {
+		return memory.Job{}, ErrQueriesRequired
+	}
+	claimAt := timeOrNow(now)
+	row, err := s.queries.ClaimDueJob(ctx, dbgen.ClaimDueJobParams{
+		LeaseUntil: pgTime(jobLeaseUntil(claimAt)),
+		NowAt:      pgTime(claimAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return memory.Job{}, jobqueue.ErrNoJob
+	}
+	if err != nil {
+		return memory.Job{}, err
+	}
+	return mapJob(row), nil
+}
+
+func (s Store) Complete(ctx context.Context, job memory.Job) error {
+	if err := s.readyJob(job); err != nil {
+		return err
+	}
+	_, err := s.queries.CompleteJob(ctx, dbgen.CompleteJobParams{
+		UserID: job.UserID,
+		ID:     job.ID,
+	})
+	return err
+}
+
+func (s Store) Retry(ctx context.Context, job memory.Job, nextAttempts int32, nextRunAt time.Time) error {
+	if err := s.readyJob(job); err != nil {
+		return err
+	}
+	_, err := s.queries.RetryJob(ctx, dbgen.RetryJobParams{
+		UserID:    job.UserID,
+		ID:        job.ID,
+		Attempts:  nextAttempts,
+		NextRunAt: pgTime(nextRunAt),
+	})
+	return err
+}
+
+func (s Store) Fail(ctx context.Context, job memory.Job, nextAttempts int32) error {
+	if err := s.readyJob(job); err != nil {
+		return err
+	}
+	_, err := s.queries.FailJob(ctx, dbgen.FailJobParams{
+		UserID:   job.UserID,
+		ID:       job.ID,
+		Attempts: nextAttempts,
+	})
+	return err
+}
+
+func (s Store) UpsertEmbeddings(ctx context.Context, userID string, embeddings []memory.Embedding) error {
+	if err := s.readyUserID(userID); err != nil {
+		return err
+	}
+	if len(embeddings) == 0 {
+		return nil
+	}
+	rows := make([]embeddingBatchRow, 0, len(embeddings))
+	for _, embedding := range embeddings {
+		vector, err := vectorLiteral(embedding.Vector)
+		if err != nil {
+			return err
+		}
+		rows = append(rows, embeddingBatchRow{
+			neuronID: embedding.NeuronID,
+			vector:   vector,
+		})
+	}
+	if s.batcher != nil {
+		return s.upsertEmbeddingsBatch(ctx, userID, rows)
+	}
+	return s.upsertEmbeddingsSerial(ctx, userID, rows)
+}
+
+type embeddingBatchRow struct {
+	neuronID string
+	vector   string
+}
+
+const upsertEmbeddingBatchSQL = `
+INSERT INTO embeddings (
+    neuron_id,
+    user_id,
+    vector
+) VALUES (
+    $1,
+    $2,
+    $3::vector
+)
+ON CONFLICT (neuron_id) DO UPDATE
+SET vector = EXCLUDED.vector
+WHERE embeddings.user_id = EXCLUDED.user_id
+RETURNING neuron_id, vector
+`
+
+func (s Store) upsertEmbeddingsBatch(ctx context.Context, userID string, rows []embeddingBatchRow) error {
+	batch := &pgx.Batch{}
+	for _, row := range rows {
+		batch.Queue(upsertEmbeddingBatchSQL, row.neuronID, userID, row.vector)
+	}
+	results := s.batcher.SendBatch(ctx, batch)
+	closed := false
+	defer func() {
+		if !closed {
+			_ = results.Close()
+		}
+	}()
+	for range rows {
+		var neuronID string
+		var vector string
+		if err := results.QueryRow().Scan(&neuronID, &vector); err != nil {
+			return err
+		}
+	}
+	if err := results.Close(); err != nil {
+		return err
+	}
+	closed = true
+	return nil
+}
+
+func (s Store) upsertEmbeddingsSerial(ctx context.Context, userID string, rows []embeddingBatchRow) error {
+	for _, row := range rows {
+		if _, err := s.queries.InsertEmbedding(ctx, dbgen.InsertEmbeddingParams{
+			NeuronID: row.neuronID,
+			UserID:   userID,
+			Column3:  row.vector,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s Store) SaveSemanticStages(ctx context.Context, userID string, memoryID string, stages memory.SemanticStages) error {
+	if err := s.readyUserID(userID); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(stages)
+	if err != nil {
+		return err
+	}
+	_, err = s.queries.SetSemanticStages(ctx, dbgen.SetSemanticStagesParams{
+		UserID:  userID,
+		ID:      memoryID,
+		Column3: raw,
+	})
+	return err
+}
+
 func (s Store) GetUniverse(ctx context.Context, scope platform.UserScope) (memory.UniverseFacts, error) {
 	if err := s.ready(scope); err != nil {
 		return memory.UniverseFacts{}, err
@@ -237,6 +401,31 @@ func (s Store) ready(scope platform.UserScope) error {
 		return ErrQueriesRequired
 	}
 	return nil
+}
+
+func (s Store) readyUserID(userID string) error {
+	if userID == "" {
+		return ErrUserScopeRequired
+	}
+	if s.queries == nil {
+		return ErrQueriesRequired
+	}
+	return nil
+}
+
+func (s Store) readyJob(job memory.Job) error {
+	if job.ID == "" {
+		return errors.New("memory job requires an id")
+	}
+	return s.readyUserID(job.UserID)
+}
+
+func jobLeaseUntil(now time.Time) time.Time {
+	return now.Add(jobLeaseDuration())
+}
+
+func jobLeaseDuration() time.Duration {
+	return time.Duration(values.AiJobBackoffBaseMs*values.AiJobMaxAttempts) * time.Millisecond
 }
 
 func synapseParams(scope platform.UserScope, synapse memory.Synapse) (dbgen.UpsertSynapseParams, error) {
@@ -324,6 +513,7 @@ func mapEpisodicMemoryRead(row dbgen.ListUniverseEpisodicMemoriesRow) memory.Epi
 		LastRecalledUniverseTime: datePtr(row.LastRecalledUniverseTime),
 		SemanticStage:            row.SemanticStage,
 		SemanticizeTimerResetAt:  datePtr(row.SemanticizeTimerResetAt),
+		SemanticStages:           semanticStagesPtr(row.SemanticStages),
 		DeletedAt:                timePtr(row.DeletedAt),
 	}
 }
@@ -402,9 +592,10 @@ func mapEmbedding(row dbgen.InsertEmbeddingRow) (memory.Embedding, error) {
 	}, nil
 }
 
-func mapJob(row dbgen.EnqueueJobRow) memory.Job {
+func mapJob(row dbgen.Job) memory.Job {
 	return memory.Job{
 		ID:        row.ID,
+		UserID:    row.UserID,
 		Kind:      memory.JobKind(row.Kind),
 		Payload:   row.Payload,
 		Status:    memory.JobStatus(row.Status),
@@ -487,6 +678,19 @@ func parseVectorLiteral(raw string) ([]float32, error) {
 		vector = append(vector, float32(value))
 	}
 	return vector, nil
+}
+
+func semanticStagesPtr(raw []byte) *memory.SemanticStages {
+	if len(raw) == 0 {
+		return nil
+	}
+	var values []string
+	if err := json.Unmarshal(raw, &values); err != nil || len(values) != len(memory.SemanticStages{}) {
+		return nil
+	}
+	var stages memory.SemanticStages
+	copy(stages[:], values)
+	return &stages
 }
 
 func pgDate(value time.Time) pgtype.Date {

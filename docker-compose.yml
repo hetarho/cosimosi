@@ -11,6 +11,7 @@ services:
     environment:
       PORT: "8080"
       DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
+      COSIMOSI_DEV_WORKER: "1"
     ports:
       - "8080:8080"
     volumes:

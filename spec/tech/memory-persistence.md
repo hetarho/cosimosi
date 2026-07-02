@@ -66,11 +66,18 @@ of failing on the `embeddings(neuron_id)` primary key.
 connectivity, activation edges, and synapses. It returns stored facts only; read-time brightness, decay, layout, and
 visual state stay outside persistence.
 
+`GetUniverse` also returns nullable `episodic_memories.semantic_stages`. It remains `NULL` until the AI worker fills the
+four pre-generated stage texts; after that, the value appears on the next read/refetch.
+
 `GetUniverse` returns the visible graph: soft-deleted memories and sealed neurons are excluded, activation edges must
 join visible memory + visible neuron nodes, synapses must join two visible neurons, and neuron connectivity counts only
 visible-memory activations. The pg adapter reads the four result sets in one `REPEATABLE READ` read-only transaction
 when it is backed by a pool; callers that construct the store over an existing transaction inherit that transaction's
 snapshot.
+
+`apps/api/db/queries/memory/jobs.sql` contains the worker-side queue shape: claim due work with
+`FOR UPDATE SKIP LOCKED`, complete, retry, fail, and write semantic stages. The query file is memory-owned because the
+`jobs` table belongs to the memory context, while the generic retry loop lives in `internal/platform/jobqueue`.
 
 Generated rows stay in `apps/api/db/gen`. `internal/memory` imports no sqlc, pgx, proto, or DB representation type;
 `internal/memory/pg` is the only memory package that imports `dbgen`/`pgtype` and maps rows to domain structs.

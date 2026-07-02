@@ -15,6 +15,7 @@ SELECT
     last_recalled_universe_time,
     semantic_stage,
     semanticize_timer_reset_at,
+    semantic_stages,
     deleted_at
 FROM episodic_memories
 WHERE user_id = $1

@@ -19,7 +19,7 @@ Current groups:
 - `auth_session`: frontend Supabase access-token refresh skew.
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
 - `rendering`: active universe skin, pixel-ratio cap, and renderer instance bucket capacity.
-- `ai`: embedding vector dimension shared by the memory schema and future embedding clients.
+- `ai`: embedding vector dimension, real-adapter token/call caps, and worker retry/backoff caps.
 - `emotion`: mood valence/arousal scalar maps, arousal-to-initial-strength bounds, and default memory emotion
   intensity.
 - `synapse`: saturating-LTP coefficient, single strength cap, signal-tiered initial strengths, read-time synapse decay,

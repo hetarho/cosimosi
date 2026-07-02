@@ -20,6 +20,10 @@ export const VALUES = {
   },
   ai: {
     embeddingDim: 1024,
+    perCallTokenCap: 1200,
+    dailyCallCap: 200,
+    jobMaxAttempts: 5,
+    jobBackoffBaseMs: 60000,
   },
   emotion: {
     moodValence: {"joy":0.82,"calm":0.62,"sad":-0.78,"anger":-0.76,"fear":-0.82,"love":0.9,"neutral":0,"excitement":0.78,"gratitude":0.76,"relief":0.68,"stress":-0.7,"tired":-0.55,"emptiness":-0.68},

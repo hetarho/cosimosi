@@ -30,10 +30,15 @@ func main() {
 		logger.Fatalf("configure observability reporter: %v", err)
 	}
 	handlerOptions = append(handlerOptions, platform.WithObservabilityReporter(reporter))
-	server := platform.NewHTTPServer(":"+port(), logger, handlerOptions...)
-	logger.Printf("api listening on %s", server.Addr)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	stopWorker, err := maybeStartDevWorker(ctx, logger)
+	if err != nil {
+		logger.Fatalf("start dev memory worker: %v", err)
+	}
+	defer stopWorker()
+	server := platform.NewHTTPServer(":"+port(), logger, handlerOptions...)
+	logger.Printf("api listening on %s", server.Addr)
 	if err := serveHTTPServer(ctx, server, logger); err != nil {
 		reporter.Flush(reporterFlushTimeout)
 		logger.Fatalf("serve api: %v", err)

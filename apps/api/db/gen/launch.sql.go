@@ -31,7 +31,7 @@ INSERT INTO jobs (
     $7,
     $8
 )
-RETURNING id, kind, payload, status, attempts, next_run_at, created_at
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at
 `
 
 type EnqueueJobParams struct {
@@ -45,17 +45,7 @@ type EnqueueJobParams struct {
 	CreatedAt pgtype.Timestamptz
 }
 
-type EnqueueJobRow struct {
-	ID        string
-	Kind      string
-	Payload   []byte
-	Status    string
-	Attempts  int32
-	NextRunAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
-}
-
-func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (EnqueueJobRow, error) {
+func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Job, error) {
 	row := q.db.QueryRow(ctx, enqueueJob,
 		arg.ID,
 		arg.UserID,
@@ -66,9 +56,10 @@ func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Enqueue
 		arg.NextRunAt,
 		arg.CreatedAt,
 	)
-	var i EnqueueJobRow
+	var i Job
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Kind,
 		&i.Payload,
 		&i.Status,

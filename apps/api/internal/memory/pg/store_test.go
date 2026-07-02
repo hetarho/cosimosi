@@ -152,8 +152,9 @@ func TestRowDomainMapping(t *testing.T) {
 		t.Fatalf("mapSynapse = %+v", synapse)
 	}
 
-	job := mapJob(dbgen.EnqueueJobRow{
+	job := mapJob(dbgen.Job{
 		ID:        "job-1",
+		UserID:    "user-1",
 		Kind:      string(memory.JobKindEmbed),
 		Payload:   []byte(`{"neuron_id":"neuron-1"}`),
 		Status:    string(memory.JobStatusPending),
@@ -161,7 +162,7 @@ func TestRowDomainMapping(t *testing.T) {
 		NextRunAt: pgTime(instant),
 		CreatedAt: pgTime(instant),
 	})
-	if job.Kind != memory.JobKindEmbed || job.Status != memory.JobStatusPending || job.Attempts != 1 {
+	if job.UserID != "user-1" || job.Kind != memory.JobKindEmbed || job.Status != memory.JobStatusPending || job.Attempts != 1 {
 		t.Fatalf("mapJob = %+v", job)
 	}
 }
@@ -196,6 +197,21 @@ func TestEmbeddingRowMappingParsesPgvectorLiteral(t *testing.T) {
 	}
 	if embedding.NeuronID != "neuron-1" || !reflect.DeepEqual(embedding.Vector, []float32{0.25, -1.5}) {
 		t.Fatalf("mapEmbedding = %+v", embedding)
+	}
+}
+
+func TestSemanticStagesMappingPreservesNullAndFourStages(t *testing.T) {
+	t.Parallel()
+
+	if stages := semanticStagesPtr(nil); stages != nil {
+		t.Fatalf("nil semantic stages = %v, want nil", stages)
+	}
+	stages := semanticStagesPtr([]byte(`["one","two","three","four"]`))
+	if stages == nil || *stages != (memory.SemanticStages{"one", "two", "three", "four"}) {
+		t.Fatalf("semanticStagesPtr = %v", stages)
+	}
+	if stages := semanticStagesPtr([]byte(`["one"]`)); stages != nil {
+		t.Fatalf("short semantic stages = %v, want nil", stages)
 	}
 }
 
