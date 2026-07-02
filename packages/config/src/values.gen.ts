@@ -28,4 +28,14 @@ export const VALUES = {
     arousalStrengthMax: 0.75,
     defaultIntensity: 0.7,
   },
+  synapse: {
+    potentiationRate: 0.2,
+    strengthCap: 1,
+    initialSameMemory: 0.32,
+    initialSharedNeuron: 0.2,
+    initialTemporal: 0.08,
+    strengthDecayPerDay: 0.015,
+    temporalWindowDays: 3,
+    temporalBonus: 0.1,
+  },
 } as const

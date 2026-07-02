@@ -1,0 +1,93 @@
+{
+  "tolerance": 1e-9,
+  "values": {
+    "potentiation_rate": 0.2,
+    "strength_cap": 1,
+    "initial_same_memory": 0.32,
+    "initial_shared_neuron": 0.2,
+    "initial_temporal": 0.08,
+    "strength_decay_per_day": 0.015
+  },
+  "cases": [
+    {
+      "function": "potentiate",
+      "inputs": { "strength": 0.1, "rate": 0.2 },
+      "expected": 0.28
+    },
+    {
+      "function": "potentiate",
+      "inputs": { "strength": 0.5, "rate": 0.2 },
+      "expected": 0.6
+    },
+    {
+      "function": "potentiate",
+      "inputs": { "strength": 0.9, "rate": 0.2 },
+      "expected": 0.92
+    },
+    {
+      "function": "potentiate",
+      "inputs": { "strength": 1, "rate": 0.2 },
+      "expected": 1
+    },
+    {
+      "function": "potentiate_repeated",
+      "inputs": { "strength": 0.2, "rate": 0.2, "iterations": 5 },
+      "expected": 0.7378560000000001
+    },
+    {
+      "function": "potentiate_repeated",
+      "inputs": { "strength": 0.2, "rate": 0.2, "iterations": 20 },
+      "expected": 0.9907766279631451
+    },
+    {
+      "function": "depress",
+      "inputs": { "strength": 0.55, "amount": 0.12 },
+      "expected": 0.43000000000000005
+    },
+    {
+      "function": "depress",
+      "inputs": { "strength": 0.08, "amount": 0.2 },
+      "expected": 0
+    },
+    {
+      "function": "initial_strength",
+      "inputs": { "signal_kind": "same_memory" },
+      "expected": 0.32
+    },
+    {
+      "function": "initial_strength",
+      "inputs": { "signal_kind": "shared_neuron" },
+      "expected": 0.2
+    },
+    {
+      "function": "initial_strength",
+      "inputs": { "signal_kind": "temporal" },
+      "expected": 0.08
+    },
+    {
+      "function": "effective_synapse_strength",
+      "inputs": { "base": 0.6, "elapsed_universe_days": 0 },
+      "expected": 0.6
+    },
+    {
+      "function": "effective_synapse_strength",
+      "inputs": { "base": 0.6, "elapsed_universe_days": 10 },
+      "expected": 0.5158382653554857
+    },
+    {
+      "function": "effective_synapse_strength",
+      "inputs": { "base": 0.6, "elapsed_universe_days": 365 },
+      "expected": 0.0024119893285724984
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0.42, "recall_count": 0 },
+      "expected": 0.42
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": { "elapsed_universe_days": 180 },
+      "expected": 1
+    }
+  ]
+}

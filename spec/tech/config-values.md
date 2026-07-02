@@ -22,6 +22,8 @@ Current groups:
 - `ai`: embedding vector dimension shared by the memory schema and future embedding clients.
 - `emotion`: mood valence/arousal scalar maps, arousal-to-initial-strength bounds, and default memory emotion
   intensity.
+- `synapse`: saturating-LTP coefficient, single strength cap, signal-tiered initial strengths, read-time synapse decay,
+  and temporal-link knobs consumed by the future `Link` use-case.
 
 ## 2. Schema
 

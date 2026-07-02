@@ -71,3 +71,15 @@ var (
 		"emptiness":  0.16,
 	}
 )
+
+// synapse
+const (
+	SynapsePotentiationRate    = 0.2
+	SynapseStrengthCap         = 1
+	SynapseInitialSameMemory   = 0.32
+	SynapseInitialSharedNeuron = 0.2
+	SynapseInitialTemporal     = 0.08
+	SynapseStrengthDecayPerDay = 0.015
+	SynapseTemporalWindowDays  = 3
+	SynapseTemporalBonus       = 0.1
+)

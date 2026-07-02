@@ -72,3 +72,18 @@ emotion:
   arousal_strength_min: 0.35
   arousal_strength_max: 0.75
   default_intensity: 0.7
+
+synapse:
+  # Saturating LTP gains this fraction of the remaining headroom per co-firing.
+  potentiation_rate: 0.2
+  # One cap for every synapse signal kind; signal differences live in initials.
+  strength_cap: 1.0
+  # Fresh links start low and tier by causal signal strength.
+  initial_same_memory: 0.32
+  initial_shared_neuron: 0.2
+  initial_temporal: 0.08
+  # Read-time effective strength fades slowly in universe-days without mutating the stored base.
+  strength_decay_per_day: 0.015
+  # Temporal-link knobs are owned with synapse values but consumed by the future Link use-case.
+  temporal_window_days: 3
+  temporal_bonus: 0.1
