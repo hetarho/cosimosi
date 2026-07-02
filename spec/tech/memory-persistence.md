@@ -27,6 +27,11 @@ Every product table carries `user_id TEXT NOT NULL`. Every product query under `
 `EpisodicMemory` is the aggregate root for an experience. It references `Neuron` only through
 `neuron_activations`; it does not store neuron columns directly.
 
+`Emotion` is a value object on `EpisodicMemory`, not its own table or aggregate. The schema stores it as
+`mood`/`valence`/`arousal`/`intensity` columns on `episodic_memories`; the Go domain represents it as the nested
+`memory.Emotion` field, and `internal/memory/pg` is the adapter that maps between the flat sqlc row and the nested
+domain value.
+
 `Neuron` is its own shared root. `Synapse` is only a neuron-to-neuron edge. The schema has no memory-to-memory edge
 table and no stored position, coordinate, constellation, latent-neuron, or nebula-color state.
 

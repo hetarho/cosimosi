@@ -98,7 +98,7 @@ func TestRowDomainMapping(t *testing.T) {
 		Name:                     "Evening walk",
 		CurrentText:              "walked home",
 		Seed:                     pgtype.Int8{Int64: seed, Valid: true},
-		Mood:                     "calm",
+		Mood:                     string(memory.MoodCalm),
 		Valence:                  0.7,
 		Arousal:                  0.2,
 		Intensity:                0.5,
@@ -113,8 +113,11 @@ func TestRowDomainMapping(t *testing.T) {
 	if episodicMemory.Seed == nil || *episodicMemory.Seed != seed || episodicMemory.LastRecalledUniverseTime == nil || episodicMemory.DeletedAt == nil {
 		t.Fatalf("mapEpisodicMemory lost nullable fields: %+v", episodicMemory)
 	}
-	if episodicMemory.Mood != "calm" || episodicMemory.BaseStrength != 0.6 || episodicMemory.SemanticStage != 1 {
+	if episodicMemory.Emotion.Mood != memory.MoodCalm || !near(episodicMemory.BaseStrength, 0.6) || episodicMemory.SemanticStage != 1 {
 		t.Fatalf("mapEpisodicMemory mapped fields incorrectly: %+v", episodicMemory)
+	}
+	if !near(episodicMemory.Emotion.Valence, 0.7) || !near(episodicMemory.Emotion.Arousal, 0.2) || !near(episodicMemory.Emotion.Intensity, 0.5) {
+		t.Fatalf("mapEpisodicMemory mapped emotion incorrectly: %+v", episodicMemory.Emotion)
 	}
 
 	neuron := mapNeuron(dbgen.UpsertNeuronRow{
@@ -208,4 +211,12 @@ func mustScope(t *testing.T) platform.UserScope {
 
 func stringsHasPrefix(value, prefix string) bool {
 	return len(value) >= len(prefix) && value[:len(prefix)] == prefix
+}
+
+func near(got, want float64) bool {
+	const tolerance = 0.000001
+	if got < want {
+		return want-got <= tolerance
+	}
+	return got-want <= tolerance
 }

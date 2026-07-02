@@ -42,11 +42,8 @@ type EpisodicMemory struct {
 	Name                     string
 	CurrentText              string
 	Seed                     *int64
-	Mood                     string
-	Valence                  float32
-	Arousal                  float32
-	Intensity                float32
-	BaseStrength             float32
+	Emotion                  Emotion
+	BaseStrength             float64
 	RecallCount              int32
 	CreatedUniverseTime      time.Time
 	LastRecalledUniverseTime *time.Time

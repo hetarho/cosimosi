@@ -20,6 +20,8 @@ Current groups:
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
 - `rendering`: active universe skin, pixel-ratio cap, and renderer instance bucket capacity.
 - `ai`: embedding vector dimension shared by the memory schema and future embedding clients.
+- `emotion`: mood valence/arousal scalar maps, arousal-to-initial-strength bounds, and default memory emotion
+  intensity.
 
 ## 2. Schema
 
