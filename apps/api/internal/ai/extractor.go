@@ -129,12 +129,10 @@ func normalizeMood(value string) (memory.Mood, error) {
 
 func normalizeNeuronType(value string) (memory.NeuronType, error) {
 	neuronType := memory.NeuronType(strings.ToLower(strings.TrimSpace(value)))
-	switch neuronType {
-	case memory.NeuronTypeSemantic, memory.NeuronTypeSpatial, memory.NeuronTypeEntity:
-		return neuronType, nil
-	default:
+	if !neuronType.Valid() {
 		return "", fmt.Errorf("extractor response neuron type %q is not supported", value)
 	}
+	return neuronType, nil
 }
 
 func ExtractOutputSchema() JSONSchema {

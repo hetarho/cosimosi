@@ -20,6 +20,8 @@ Current groups:
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
 - `rendering`: active universe skin, pixel-ratio cap, and renderer instance bucket capacity.
 - `ai`: embedding vector dimension, real-adapter token/call caps, and worker retry/backoff caps.
+- `encode`: diary split bounds (memory count, semantic-neuron minimum), revise/repair retry and output-token caps, and
+  the embedding-assist dedup similarity threshold + top-k consumed by the `Encode` use-case.
 - `emotion`: mood valence/arousal scalar maps, arousal-to-initial-strength bounds, and default memory emotion
   intensity.
 - `synapse`: saturating-LTP coefficient, single strength cap, signal-tiered initial strengths, read-time synapse decay,

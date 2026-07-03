@@ -32,6 +32,17 @@ export const VALUES = {
     arousalStrengthMax: 0.75,
     defaultIntensity: 0.7,
   },
+  encode: {
+    minMemories: 2,
+    maxMemories: 5,
+    minSemanticNeurons: 1,
+    maxReviseRetries: 3,
+    maxOutputTokens: 1000,
+    dedupSimilarityThreshold: 0.85,
+    dedupTopK: 8,
+    dedupBodyMatchLimit: 32,
+    activationWeight: 1,
+  },
   synapse: {
     potentiationRate: 0.2,
     strengthCap: 1,

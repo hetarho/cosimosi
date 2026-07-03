@@ -4,14 +4,23 @@
 version: v2
 modules:
   - path: proto
-lint:
-  use:
-    - STANDARD
-  except:
-    # Mood enum values are persisted as their bare name strings in records.mood
-    # (see memory.proto), so we intentionally drop the MOOD_ prefix that
-    # ENUM_VALUE_PREFIX requires — keeps the stored value "JOY", not "MOOD_JOY".
-    - ENUM_VALUE_PREFIX
+    lint:
+      use:
+        - STANDARD
+      except:
+        # Mood enum values are persisted as their bare name strings in records.mood
+        # (see memory.proto), so we intentionally drop the MOOD_ prefix that
+        # ENUM_VALUE_PREFIX requires — keeps the stored value "JOY", not "MOOD_JOY".
+        - ENUM_VALUE_PREFIX
+      ignore_only:
+        # Plan 20 fixes ReviseSplit to return SplitDiaryResponse: a revise re-enters
+        # the same preview loop, so chained revises feed `previous` without any
+        # response-type conversion. That intentionally shares one response message
+        # across two RPCs, which these two rules would otherwise forbid.
+        RPC_RESPONSE_STANDARD_NAME:
+          - proto/cosimosi/memory/v1/memory.proto
+        RPC_REQUEST_RESPONSE_UNIQUE:
+          - proto/cosimosi/memory/v1/memory.proto
 breaking:
   use:
     - FILE

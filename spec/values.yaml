@@ -81,6 +81,32 @@ emotion:
   arousal_strength_max: 0.75
   default_intensity: 0.7
 
+encode:
+  # Event-boundary split bounds per diary; outside this range the extractor is re-prompted, never clamped.
+  min_memories: 2
+  max_memories: 5
+  # Extraction guideline enforced as retry/repair — a placeholder neuron is never injected.
+  min_semantic_neurons: 1
+  # Repair/revise re-prompts allowed per SplitDiary/ReviseSplit call after the initial extraction:
+  # one user instruction plus up to two schema/count repairs before the canonical error.
+  max_revise_retries: 3
+  # Output budget the use-case enforces on the returned split (estimated tokens);
+  # kept below ai.per_call_token_cap so the encode guard trips before the generic guard.
+  max_output_tokens: 1000
+  # Embedding-assist dedup: minimum cosine similarity for a neuron to surface as a
+  # canonicalization candidate. Conservative — only near-identical wordings qualify,
+  # keeping the merge bias toward "true synonyms only".
+  dedup_similarity_threshold: 0.85
+  # Embedding-assist dedup: nearest-neighbour candidates fetched per split. Small on
+  # purpose — the assist is narrow; the LLM sees few, high-confidence candidates.
+  dedup_top_k: 8
+  # Name-in-body dedup candidates fetched per split, longest (most specific) names
+  # first. Bounds the extractor prompt against users with many short neuron names.
+  dedup_body_match_limit: 32
+  # Co-membership weight written per neuron activation at launch. Uniform in Epic A;
+  # differentiated weighting is a later-epic refinement behind the same NOT NULL column.
+  activation_weight: 1.0
+
 synapse:
   # Saturating LTP gains this fraction of the remaining headroom per co-firing.
   potentiation_rate: 0.2

@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package cosimosi.memory.v1;
+
+// MemoryService owns the encode write contract (plan 20: SplitDiary / ReviseSplit /
+// LaunchStars) and the GetUniverse read contract (shape owned by plan 23).
+//
+// [W4a] structural defense: the encode schema carries ONLY
+// {memories:[{name, mood, neurons:[{name, type}]}]}. No position, color, strength,
+// seed, time, or delete field exists anywhere in it, so a prompt injection has no
+// field in which to emit an invariant-violating value ([I1][I3][I5][I10]).
+service MemoryService {
+  // Synchronous preview split — the user sees and edits it [W2]; persists nothing.
+  // Invokes the LLM (cost-metered), so it is NOT marked NO_SIDE_EFFECTS.
+  rpc SplitDiary(SplitDiaryRequest) returns (SplitDiaryResponse);
+  // Natural-language edit re-run [W4a]; same schema-forced output. Returns
+  // SplitDiaryResponse by design (plan 20): a revise re-enters the same preview
+  // loop, so chained revises feed `previous` without a conversion.
+  rpc ReviseSplit(ReviseSplitRequest) returns (SplitDiaryResponse);
+  // Persist-and-launch: atomically commits the user-confirmed split (plan 20
+  // PersistEncoded). Optimistic write — returns ids only (ARCHITECTURE §2.8).
+  rpc LaunchStars(LaunchStarsRequest) returns (LaunchStarsResponse);
+  // Per-user universe read carrying stored facts only — no positions or derived
+  // values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
+  // clients into HTTP GET (never shared-CDN-cached; the data is user-scoped).
+  rpc GetUniverse(GetUniverseRequest) returns (GetUniverseResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message SplitDiaryRequest {
+  string body = 1;
+  // User-entered diary date [W5], ISO DATE (YYYY-MM-DD).
+  string diary_date = 2;
+}
+
+message ReviseSplitRequest {
+  string body = 1;
+  string diary_date = 2;
+  SplitDiaryResponse previous = 3;
+  string instruction = 4;
+}
+
+message SplitDiaryResponse {
+  repeated ProposedMemory memories = 1;
+}
+
+message ProposedMemory {
+  string name = 1;
+  // One primary mood from the 13-mood enum [M1], carried as its bare name string
+  // (e.g. "JOY") — the same representation records persist.
+  string mood = 2;
+  repeated ProposedNeuron neurons = 3;
+}
+
+message ProposedNeuron {
+  string name = 1;
+  // type ∈ semantic | spatial | entity [E3].
+  string type = 2;
+}
+
+message LaunchStarsRequest {
+  string body = 1;
+  string diary_date = 2;
+  // The user-edited split result [W2][W4].
+  repeated ConfirmedMemory memories = 3;
+}
+
+message ConfirmedMemory {
+  string name = 1;
+  string mood = 2;
+  repeated ProposedNeuron neurons = 3;
+}
+
+message LaunchStarsResponse {
+  // Optimistic write: ids only; embeddings/gist fill on the next read (§2.8).
+  repeated string memory_ids = 1;
+  // Neurons genuinely created by this launch (not deduped onto existing ones) —
+  // newness is a server-only decision, surfaced for the awaken animation
+  // (plan 25, [E7a]).
+  repeated string new_neuron_ids = 2;
+}
+
+message GetUniverseRequest {}
+
+message GetUniverseResponse {
+  repeated EpisodicMemoryDto memories = 1;
+  repeated NeuronDto neurons = 2;
+  repeated SynapseDto synapses = 3;
+  // Current universe time (ISO DATE), derived in Epic A from the latest launched
+  // memory; empty until the first launch. The universe_state clock is Epic B.
+  string universe_time = 4;
+}
+
+message EmotionDto {
+  string mood = 1;
+  double valence = 2;
+  double arousal = 3;
+  double intensity = 4;
+}
+
+message NeuronActivationDto {
+  string neuron_id = 1;
+  float weight = 2;
+}
+
+message EpisodicMemoryDto {
+  string id = 1;
+  string name = 2;
+  EmotionDto emotion = 3;
+  double base_strength = 4;
+  int32 recall_count = 5;
+  // ISO DATE — universe-time facts for client-side read-time derivation.
+  string created_universe_time = 6;
+  optional string last_recalled_universe_time = 7;
+  // Visual form/anchor hint [E7] — never a stored coordinate [I5].
+  optional int64 seed = 8;
+  // Per-neuron membership edges (+ weight) — the memory↔neuron join, never a
+  // memory↔memory edge [I4][I6].
+  repeated NeuronActivationDto activations = 9;
+}
+
+message NeuronDto {
+  string id = 1;
+  optional string name = 2;
+  string neuron_type = 3;
+  // Degree over visible memories, read by the layout radius [V1].
+  int32 connectivity = 4;
+}
+
+message SynapseDto {
+  string id = 1;
+  string neuron_a_id = 2;
+  string neuron_b_id = 3;
+  float strength = 4;
+  int32 co_activation_count = 5;
+  string last_activated_universe_time = 6;
+}

@@ -10,6 +10,17 @@ const (
 	NeuronTypeEntity   NeuronType = "entity"
 )
 
+// Valid reports whether t is one of the three canonical neuron types [E3] —
+// the single owner of the valid-type set for both the domain and the adapters.
+func (t NeuronType) Valid() bool {
+	switch t {
+	case NeuronTypeSemantic, NeuronTypeSpatial, NeuronTypeEntity:
+		return true
+	default:
+		return false
+	}
+}
+
 type JobKind string
 
 const (

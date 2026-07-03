@@ -21,7 +21,13 @@ type handlerConfig struct {
 	publicProcedures []string
 	platformService  platformv1connect.PlatformServiceHandler
 	observability    observability.Reporter
+	services         []RPCServiceBuilder
 }
+
+// RPCServiceBuilder mounts one Connect service: it receives the shared platform
+// interceptor chain (recovery, request-id, errors, logging, auth) and returns the
+// generated handler's mount path + http.Handler.
+type RPCServiceBuilder func(opts ...connect.HandlerOption) (string, http.Handler)
 
 type HandlerOption func(*handlerConfig)
 
@@ -55,6 +61,15 @@ func WithObservabilityReporter(reporter observability.Reporter) HandlerOption {
 	}
 }
 
+// WithRPCService registers an additional Connect service (built at the
+// composition root) on the platform mux, behind the same interceptor chain the
+// platform service uses.
+func WithRPCService(build RPCServiceBuilder) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.services = append(cfg.services, build)
+	}
+}
+
 func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 	cfg := handlerConfig{
 		logger:           logger,
@@ -79,17 +94,19 @@ func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 		_, _ = w.Write([]byte("hello world"))
 	})
 
-	path, handler := platformv1connect.NewPlatformServiceHandler(
-		cfg.platformService,
-		connect.WithInterceptors(
-			PanicRecoveryInterceptor(cfg.logger, cfg.observability),
-			RequestIDInterceptor(),
-			StructuredErrorInterceptor(cfg.observability),
-			LoggingInterceptor(cfg.logger),
-			AuthInterceptor(cfg.authVerifier, cfg.publicProcedures),
-		),
+	interceptors := connect.WithInterceptors(
+		PanicRecoveryInterceptor(cfg.logger, cfg.observability),
+		RequestIDInterceptor(),
+		StructuredErrorInterceptor(cfg.observability),
+		LoggingInterceptor(cfg.logger),
+		AuthInterceptor(cfg.authVerifier, cfg.publicProcedures),
 	)
+	path, handler := platformv1connect.NewPlatformServiceHandler(cfg.platformService, interceptors)
 	mux.Handle(path, handler)
+	for _, build := range cfg.services {
+		servicePath, serviceHandler := build(interceptors)
+		mux.Handle(servicePath, serviceHandler)
+	}
 
 	return requestIDMiddleware(corsMiddleware(cfg.corsOrigins, mux))
 }

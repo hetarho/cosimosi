@@ -2,8 +2,6 @@ package platform
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -29,7 +27,7 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID, ok := normalizeRequestID(r.Header.Get(requestIDHeader))
 		if !ok {
-			requestID = newRequestID()
+			requestID = NewID()
 			r.Header.Set(requestIDHeader, requestID)
 		}
 		w.Header().Set(requestIDHeader, requestID)
@@ -42,7 +40,7 @@ func RequestIDInterceptor() connect.UnaryInterceptorFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			requestID, ok := normalizeRequestID(req.Header().Get(requestIDHeader))
 			if !ok {
-				requestID = newRequestID()
+				requestID = NewID()
 			}
 			ctx = context.WithValue(ctx, requestIDContextKey{}, requestID)
 
@@ -130,14 +128,6 @@ func PanicRecoveryInterceptor(logger *log.Logger, reporter observability.Reporte
 			return next(ctx, req)
 		}
 	}
-}
-
-func newRequestID() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return hex.EncodeToString([]byte(time.Now().UTC().Format(time.RFC3339Nano)))
-	}
-	return hex.EncodeToString(b[:])
 }
 
 func requestIDFromContextOrRequest(ctx context.Context, req connect.AnyRequest) string {

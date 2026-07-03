@@ -69,26 +69,53 @@ func (MockSemanticizer) GenerateSemanticStages(_ context.Context, item memory.Se
 	}, nil
 }
 
+// mockExtract emits values.EncodeMinMemories memories so the keyless mock
+// satisfies the encode invariants the use-case enforces ([E2] count range,
+// [E4] ≥1 semantic neuron per memory) instead of tripping the repair loop.
 func mockExtract(body string, salt string) memory.ExtractResult {
 	tokens := bodyTokens(body)
-	name := mockEngramName(tokens)
-	neurons := []memory.ExtractedNeuron{
-		{Name: tokenAt(tokens, 0, "engram"), Type: memory.NeuronTypeSemantic},
-		{Name: tokenAt(tokens, 1, "place"), Type: memory.NeuronTypeSpatial},
-		{Name: tokenAt(tokens, 2, "person"), Type: memory.NeuronTypeEntity},
-	}
-	if salt != "" {
-		name = mockEngramName(bodyTokens(name + " " + salt))
-	}
-	return memory.ExtractResult{
-		Memories: []memory.ExtractedMemory{
-			{
-				Name:    name,
-				Mood:    mockMood(body + salt),
-				Neurons: neurons,
+	count := values.EncodeMinMemories
+	memories := make([]memory.ExtractedMemory, 0, count)
+	for i := 0; i < count; i++ {
+		slice := tokenSlice(tokens, i, count)
+		name := mockEngramName(slice)
+		if salt != "" {
+			name = mockEngramName(bodyTokens(name + " " + salt))
+		}
+		neurons := make([]memory.ExtractedNeuron, 0, values.EncodeMinSemanticNeurons+2)
+		for s := 0; s < values.EncodeMinSemanticNeurons; s++ {
+			neurons = append(neurons, memory.ExtractedNeuron{
+				Name: tokenAt(slice, s, fmt.Sprintf("engram %d-%d", i+1, s+1)),
+				Type: memory.NeuronTypeSemantic,
+			})
+		}
+		neurons = append(neurons,
+			memory.ExtractedNeuron{
+				Name: tokenAt(slice, values.EncodeMinSemanticNeurons, fmt.Sprintf("place %d", i+1)),
+				Type: memory.NeuronTypeSpatial,
 			},
-		},
+			memory.ExtractedNeuron{
+				Name: tokenAt(slice, values.EncodeMinSemanticNeurons+1, fmt.Sprintf("person %d", i+1)),
+				Type: memory.NeuronTypeEntity,
+			},
+		)
+		memories = append(memories, memory.ExtractedMemory{
+			Name:    fmt.Sprintf("%s %d", name, i+1),
+			Mood:    mockMood(fmt.Sprintf("%s%s%d", body, salt, i)),
+			Neurons: neurons,
+		})
 	}
+	return memory.ExtractResult{Memories: memories}
+}
+
+// tokenSlice deals the body tokens round-robin across the mock memories so each
+// memory sees distinct tokens (distinct neuron names → no accidental dedup).
+func tokenSlice(tokens []string, index int, count int) []string {
+	slice := make([]string, 0, (len(tokens)+count-1)/count)
+	for i := index; i < len(tokens); i += count {
+		slice = append(slice, tokens[i])
+	}
+	return slice
 }
 
 func mockEngramName(tokens []string) string {

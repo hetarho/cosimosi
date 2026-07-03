@@ -32,6 +32,14 @@ func main() {
 	handlerOptions = append(handlerOptions, platform.WithObservabilityReporter(reporter))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	memoryOption, closeMemory, err := memoryServiceOption(ctx, logger)
+	if err != nil {
+		logger.Fatalf("wire memory service: %v", err)
+	}
+	defer closeMemory()
+	if memoryOption != nil {
+		handlerOptions = append(handlerOptions, memoryOption)
+	}
 	stopWorker, err := maybeStartDevWorker(ctx, logger)
 	if err != nil {
 		logger.Fatalf("start dev memory worker: %v", err)

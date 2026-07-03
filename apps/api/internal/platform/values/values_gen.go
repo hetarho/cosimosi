@@ -76,6 +76,19 @@ var (
 	}
 )
 
+// encode
+const (
+	EncodeMinMemories              = 2
+	EncodeMaxMemories              = 5
+	EncodeMinSemanticNeurons       = 1
+	EncodeMaxReviseRetries         = 3
+	EncodeMaxOutputTokens          = 1000
+	EncodeDedupSimilarityThreshold = 0.85
+	EncodeDedupTopK                = 8
+	EncodeDedupBodyMatchLimit      = 32
+	EncodeActivationWeight         = 1
+)
+
 // synapse
 const (
 	SynapsePotentiationRate    = 0.2
