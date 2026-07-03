@@ -184,10 +184,37 @@ so `three` stays inside the package.
 - **On-device render** is pending verification like the rest of the RN scene — run `pnpm ios` (the mobile MVP instance
   caps / dropped post-FX are confirmed via on-device profiling; the shared bodies and projection do not fork).
 
+## Latent star field & awaken (plan 25 as-built)
+
+Latent stars are **rendering-only** — no DB rows, no RPC, no domain type in Go/proto/sqlc or the FE mirror. A `neurons`
+row exists only for an *activated* neuron, written by Encode (plan 20), never here. The awaken is entry choreography; the
+seed anchor is a client presentation choice; the real neuron's final position is **emergent** from the force-sim and is
+**never stored** [I5][E7a].
+
+- **`LatentField` layer (`@cosimosi/3d-renderer`).** One `InstancedMesh` + a gray TSL `MeshBasicNodeMaterial`, rendered
+  as a background layer: `depthTest`/`depthWrite` off + `renderOrder = -1` so every real body draws on top. Matrices are
+  written **once** (rewritten only when the field or the consumed set changes), never per frame; a subtle shader-time
+  `positionLocal` wobble (`drift`) gives the dust life without meaning. A consumed point (one that has awakened)
+  collapses to scale 0. The mesh is hidden until its matrices are first written (a fresh `InstancedMesh` starts
+  full-count with zero matrices).
+- **`entities/latent-star` (visual entity).** `model/latent-field.ts` is a deterministic seeded generator (self-contained
+  Park-Miller PRNG seeded by `force_sim.seed`, so web↔mobile agree) producing `rendering.latent_star_count` positions in
+  a disc of `rendering.latent_field_radius`, z ∈ the hippocampus band; points carry no color/brightness/identity. It is
+  **not** a force-sim node. `model/latent-consumed-store.ts` holds the shared consumed marks.
+- **`features/awaken-neuron` (feature).** `pickAwakenSeeds` picks N **distinct** latent stars nearest the recently-active
+  anchors (`recentlyActiveNeuronIds` over the episodic-memory mirror within `synapse.temporal_window_days`), else random.
+  The UI flares each pick with a `sin(πp)` envelope (a fixed-capacity pool advanced by `FrameTick`, no XState, no 60fps
+  React state) and marks it consumed; a module-level `awaken-registry` store makes the awaken **idempotent across
+  remounts**. It reacts to `new_neuron_ids` (plan 20 / job 32); until job 32 wires the launch flow the trigger is empty.
+- **Mobile (§3.5).** Slices copied verbatim; the widget passes `rendering.latent_star_count_mobile` (reduced MVP count).
+  No `*.native` sibling — the R3F host is already forked at the canvas level.
+
 ## Config
 `spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
-(instancing bucket capacity), plus the plan-24 visual ranges `star_size_min`/`star_size_max`,
+(instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
-`filament_brightness_min`/`filament_brightness_max`, and `cell_star_point_size`. Generated to `@cosimosi/config`
-(`VALUES.rendering.*`) + Go constants via `pnpm gen:values` — never hardcoded. (The star seed-form shader graph and the
-filament/cell-star tint colors are code/content, not values.)
+`filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
+`latent_star_count`, `latent_star_count_mobile`, `latent_field_radius`, `latent_star_size`. Generated to
+`@cosimosi/config` (`VALUES.rendering.*`) + Go constants via `pnpm gen:values` — never hardcoded. (The star seed-form
+shader graph, the latent-field drift/flare motion, and the filament/cell-star/latent tint colors are code/content, not
+values.)

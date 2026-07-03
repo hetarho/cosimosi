@@ -7,9 +7,10 @@ export default defineConfig([
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
   },
   {
-    // The domain-mirror entities, the rendering entities (plan 24 star/cell-star/filament),
-    // and the universe widget are the read model/scene scaffold that later presentation units
-    // consume (plans 23–27) — they land before their other consumers, so a single reference
+    // The domain-mirror entities, the rendering entities (plan 24 star/cell-star/filament,
+    // plan 25 latent-star), the awaken feature (plan 25), and the universe widget are the read
+    // model/scene scaffold that later presentation units consume (plans 23–27) — they land
+    // before their other consumers (the launch flow is plan 27 / job 32), so a single reference
     // (today the universe widget) is by design, not a slice to merge away. Scoped to exactly
     // these slices so a genuinely insignificant future slice still gets flagged.
     files: [
@@ -19,6 +20,8 @@ export default defineConfig([
       './src/entities/star/**',
       './src/entities/cell-star/**',
       './src/entities/filament/**',
+      './src/entities/latent-star/**',
+      './src/features/awaken-neuron/**',
       './src/widgets/universe-canvas/**',
     ],
     rules: {

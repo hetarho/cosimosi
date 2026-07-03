@@ -32,6 +32,7 @@ export { createCellStarBodySource } from './assets/bodies/cell-star-body.ts'
 export { createFilamentBodySource, FILAMENT_VERTEX_COLOR } from './assets/bodies/filament-body.ts'
 export { Background } from './layers/Background.tsx'
 export { StarField, type StarFieldProps } from './layers/StarField.tsx'
+export { LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
 export { CameraControls } from './layers/CameraControls.tsx'
 export {
   InstancedNodeLayer,

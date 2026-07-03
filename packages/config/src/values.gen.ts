@@ -26,6 +26,10 @@ export const VALUES = {
     filamentBrightnessMin: 0.12,
     filamentBrightnessMax: 0.85,
     cellStarPointSize: 0.35,
+    latentStarCount: 800,
+    latentStarCountMobile: 300,
+    latentFieldRadius: 34,
+    latentStarSize: 0.14,
   },
   ai: {
     embeddingDim: 1024,

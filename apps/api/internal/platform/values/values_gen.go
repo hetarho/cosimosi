@@ -34,6 +34,10 @@ const (
 	RenderingFilamentBrightnessMin = 0.12
 	RenderingFilamentBrightnessMax = 0.85
 	RenderingCellStarPointSize     = 0.35
+	RenderingLatentStarCount       = 800
+	RenderingLatentStarCountMobile = 300
+	RenderingLatentFieldRadius     = 34
+	RenderingLatentStarSize        = 0.14
 )
 
 // ai

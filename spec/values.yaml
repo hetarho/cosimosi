@@ -51,6 +51,16 @@ rendering:
   # Cell-star (neuron) constant point radius in world units — seedless, no emotion color; a
   # neuron carries information, not emotion [V5]. Degree-driven sizing stays reserved.
   cell_star_point_size: 0.35
+  # Latent-star field ([E7a][V7]): gray not-yet-recruited engram points scattered through the
+  # hippocampus z-band (force_sim.hippocampus_z_*), filling the visible volume. Rendering-only,
+  # no DB. Web = open-beta density; mobile MVP lowers the instance count (§3.5).
+  latent_star_count: 800
+  latent_star_count_mobile: 300
+  # World radius of the x,y disc the field scatters within (z comes from the hippocampus band).
+  latent_field_radius: 34
+  # Latent point world radius — small and dim; below cell_star_point_size so a real neuron reads
+  # as brighter/larger than the silent field it wakes from.
+  latent_star_size: 0.14
 
 ai:
   # Voyage 4-family embeddings default to 1024 dimensions while still allowing smaller/larger Matryoshka outputs.

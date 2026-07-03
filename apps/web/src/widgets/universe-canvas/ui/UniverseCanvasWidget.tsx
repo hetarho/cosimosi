@@ -23,8 +23,10 @@ import {
   type UniverseNavigationMode,
 } from '@cosimosi/universe'
 
+import { AwakenNeuron, recentlyActiveNeuronIds, type AwakenAnchor } from '../../../features/awaken-neuron/index.ts'
 import { CellStarLayer } from '../../../entities/cell-star/index.ts'
 import { FilamentLayer } from '../../../entities/filament/index.ts'
+import { LatentStarField, generateLatentField } from '../../../entities/latent-star/index.ts'
 import { StarLayer } from '../../../entities/star/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useUniverse } from '../api/use-universe.ts'
@@ -32,6 +34,9 @@ import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
 const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
+// The launch flow (plan 27 / job 32) will feed genuinely-created ids here; until then the awaken
+// seam is exercised by the feature's unit tests, and the field renders with nothing awakening.
+const NO_NEW_NEURONS: readonly string[] = []
 
 // The universe scene block: mounts the @cosimosi/3d-renderer canvas host + skin/post
 // pipeline unchanged (no renderer lifecycle, no skin system, no post pipeline of its own)
@@ -113,10 +118,50 @@ function UniverseCanvasHost() {
 
   const neuronCount = graph?.neurons.length ?? 0
 
+  // The gray latent field is generated once from the shared seed (web↔mobile agree) and is NOT a
+  // sim node — decorative, static, never attracting real nodes [E7a][I5]. Mobile lowers the count.
+  const latentField = useMemo(
+    () =>
+      generateLatentField({
+        seed: VALUES.forceSim.seed,
+        count: VALUES.rendering.latentStarCount,
+        zMin: VALUES.forceSim.hippocampusZMin,
+        zMax: VALUES.forceSim.hippocampusZMax,
+        radius: VALUES.rendering.latentFieldRadius,
+      }),
+    [],
+  )
+
+  // The awaken's anchor set: positions of recently-active neurons (a client heuristic over the
+  // visible graph, [L4] window used conceptually), read from the live coordinate buffer at trigger
+  // time. Empty → the pick is random. Purely presentation; nothing is sent to the server.
+  const resolveAnchors = useCallback(
+    (excludeIds: ReadonlySet<string>): readonly AwakenAnchor[] => {
+      const buffer = bridge.coordinates.current
+      if (!buffer || !nodeIndex || !universe) return []
+      const ids = recentlyActiveNeuronIds({
+        memories: universe.memories,
+        universeTime: universe.universeTime,
+        windowDays: VALUES.synapse.temporalWindowDays,
+        excludeIds,
+      })
+      const anchors: AwakenAnchor[] = []
+      for (const id of ids) {
+        const index = nodeIndex.neurons[id]
+        if (index === undefined) continue
+        const offset = forceSimCoordinateOffset(index)
+        anchors.push([buffer[offset] ?? 0, buffer[offset + 1] ?? 0, buffer[offset + 2] ?? 0])
+      }
+      return anchors
+    },
+    [bridge, nodeIndex, universe],
+  )
+
   return (
     <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
       <Background node={backgroundNode} />
       <StarField />
+      <LatentStarField field={latentField} />
       <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
       <StarLayer
         positions={bridge.coordinates}
@@ -130,6 +175,7 @@ function UniverseCanvasHost() {
         neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
         universeTime={universe?.universeTime ?? null}
       />
+      <AwakenNeuron field={latentField} newNeuronIds={NO_NEW_NEURONS} resolveAnchors={resolveAnchors} />
       <NavigationRig getPose={getPose} onArrived={handleArrived} {...UNIVERSE_CAMERA_RIG} />
       <FrameTick onFrame={pump} />
       <PostFX bloom={skin.bloom} />
