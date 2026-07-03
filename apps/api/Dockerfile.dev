@@ -1,6 +1,9 @@
-# Foundation dev image: runs the api with `go run`. docker-compose bind-mounts the
-# source into /app and persists the module cache in a volume, so no COPY here.
+# Foundation dev image: runs the api under air for hot reload. docker-compose
+# bind-mounts the source into /app and persists the module cache in a volume, so
+# no COPY here. air (installed into /go/bin at build time) watches /app and
+# rebuilds ./cmd/api on every save — see .air.toml.
 FROM golang:1.26
 WORKDIR /app
+RUN go install github.com/air-verse/air@latest
 EXPOSE 8080
-CMD ["go", "run", "./cmd/api"]
+CMD ["air", "-c", ".air.toml"]
