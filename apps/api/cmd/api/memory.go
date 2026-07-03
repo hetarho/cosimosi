@@ -47,6 +47,9 @@ func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.Hand
 		Candidates: store,
 		Launches:   store,
 		Universe:   store,
+		// Link (plan 21) runs as the last step of PersistEncoded's transaction,
+		// wiring synapses over the launch's own store handle.
+		Linker: memory.NewLinkService(memory.LinkDeps{}),
 	})
 	if err != nil {
 		pool.Close()

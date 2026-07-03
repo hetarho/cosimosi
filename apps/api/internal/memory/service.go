@@ -15,6 +15,7 @@ var (
 	ErrCandidatesRequired = errors.New("memory service requires a neuron candidate repo")
 	ErrLaunchesRequired   = errors.New("memory service requires a launch repo")
 	ErrUniverseRequired   = errors.New("memory service requires a universe reader")
+	ErrLinkerRequired     = errors.New("memory service requires a linker")
 )
 
 // Service owns the encode use-cases (plan 20): Encode / ReviseSplit previews and
@@ -39,7 +40,8 @@ type ServiceDeps struct {
 	Candidates NeuronCandidateRepo
 	Launches   LaunchRepo
 	Universe   UniverseReader
-	// Linker is optional until job 27 wires the real Link; nil skips the seam.
+	// Linker wires synapses as the last step of PersistEncoded (plan 21); it is
+	// required so no composition root can launch memories without growing the graph.
 	Linker Linker
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
@@ -63,6 +65,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	}
 	if deps.Universe == nil {
 		return nil, ErrUniverseRequired
+	}
+	if deps.Linker == nil {
+		return nil, ErrLinkerRequired
 	}
 	service := &Service{
 		extractor:  deps.Extractor,

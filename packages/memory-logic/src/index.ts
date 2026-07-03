@@ -1,5 +1,6 @@
 export { effectiveBrightness, effectiveStrength } from './effective-values.ts'
 export {
+  applyTemporalBonus,
   effectiveSynapseStrength,
   depress,
   initialStrength,

@@ -165,6 +165,8 @@ func TestSynapsePlasticityGoldenFixture(t *testing.T) {
 			if !ok {
 				t.Fatalf("InitialStrength(%s) failed", testCase.Inputs.SignalKind)
 			}
+		case "apply_temporal_bonus":
+			got = ApplyTemporalBonus(testCase.Inputs.Strength)
 		case "effective_synapse_strength":
 			got = EffectiveSynapseStrength(testCase.Inputs.Base, testCase.Inputs.ElapsedUniverseDays)
 		case "effective_strength":

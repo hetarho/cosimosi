@@ -161,6 +161,174 @@ func TestGetUniverseReturnsOnlyVisibleGraph(t *testing.T) {
 	}
 }
 
+// A8 [L5][L8]: the atomic weighted upsert is idempotent on the canonical pair —
+// the same (user, neuron_a, neuron_b) written repeatedly advances ONE row: strength
+// = the last written base, co_activation_count incremented, last_activated advanced
+// via GREATEST (an earlier date never rolls it back).
+func TestUpsertSynapseConflictAdvancesSingleRow(t *testing.T) {
+	pool := openMemoryTestPool(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-synapse-upsert-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+
+	neuronA, err := store.UpsertNeuron(ctx, scope, memory.Neuron{ID: base + "-a", Type: memory.NeuronTypeSemantic, CreatedAt: day})
+	if err != nil {
+		t.Fatalf("UpsertNeuron A failed: %v", err)
+	}
+	neuronB, err := store.UpsertNeuron(ctx, scope, memory.Neuron{ID: base + "-b", Type: memory.NeuronTypeEntity, CreatedAt: day})
+	if err != nil {
+		t.Fatalf("UpsertNeuron B failed: %v", err)
+	}
+
+	upsert := func(id string, aID string, bID string, strength float32, activated time.Time) {
+		t.Helper()
+		if _, err := store.UpsertSynapse(ctx, scope, memory.Synapse{
+			ID:                        id,
+			NeuronAID:                 aID,
+			NeuronBID:                 bID,
+			Strength:                  strength,
+			CoActivationCount:         1,
+			LastActivatedUniverseTime: activated,
+			CreatedAt:                 activated,
+		}); err != nil {
+			t.Fatalf("UpsertSynapse %s failed: %v", id, err)
+		}
+	}
+	later := day.AddDate(0, 0, 5)
+	upsert(base+"-syn-1", neuronA.ID, neuronB.ID, 0.32, day)
+	upsert(base+"-syn-2", neuronB.ID, neuronA.ID, 0.5, later)                 // reversed order: same canonical row
+	upsert(base+"-syn-3", neuronA.ID, neuronB.ID, 0.6, day.AddDate(0, 0, -5)) // earlier: GREATEST keeps `later`
+
+	var rows int
+	if err := pool.PgxPool().QueryRow(ctx, "SELECT count(*) FROM synapses WHERE user_id = $1", userID).Scan(&rows); err != nil {
+		t.Fatalf("count synapses failed: %v", err)
+	}
+	if rows != 1 {
+		t.Fatalf("synapse rows = %d, want 1 (idempotent on the canonical pair)", rows)
+	}
+
+	var strength float32
+	var count int32
+	var lastActivated time.Time
+	if err := pool.PgxPool().QueryRow(ctx,
+		"SELECT strength, co_activation_count, last_activated_universe_time FROM synapses WHERE user_id = $1", userID,
+	).Scan(&strength, &count, &lastActivated); err != nil {
+		t.Fatalf("read synapse failed: %v", err)
+	}
+	if !near32(strength, 0.6) {
+		t.Fatalf("strength = %v, want the last written base 0.6", strength)
+	}
+	if count != 3 {
+		t.Fatalf("co_activation_count = %d, want 3", count)
+	}
+	if !lastActivated.UTC().Equal(later) {
+		t.Fatalf("last_activated = %v, want the latest date %v (GREATEST)", lastActivated.UTC(), later)
+	}
+
+	strengths, err := store.SynapseStrengths(ctx, scope, []string{neuronA.ID, neuronB.ID})
+	if err != nil {
+		t.Fatalf("SynapseStrengths failed: %v", err)
+	}
+	if len(strengths) != 1 || !near32(float32(strengths[0].Strength), 0.6) {
+		t.Fatalf("SynapseStrengths = %+v, want one pair at the last written base 0.6", strengths)
+	}
+}
+
+// A10 (§4): synapse reads and writes are per-user isolated — user B never sees
+// user A's synapse base or co-activations.
+func TestSynapseReadsAreUserScoped(t *testing.T) {
+	pool := openMemoryTestPool(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-synapse-scope-%d", time.Now().UnixNano())
+	userA := base + "-a-user"
+	userB := base + "-b-user"
+	cleanupMemoryTestRows(t, pool, userA)
+	cleanupMemoryTestRows(t, pool, userB)
+
+	scopeA, err := platform.NewUserScope(userA)
+	if err != nil {
+		t.Fatalf("NewUserScope A failed: %v", err)
+	}
+	scopeB, err := platform.NewUserScope(userB)
+	if err != nil {
+		t.Fatalf("NewUserScope B failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	emotion, ok := memory.NewEmotion(memory.MoodCalm)
+	if !ok {
+		t.Fatal("NewEmotion(MoodCalm) failed")
+	}
+
+	nA1, err := store.UpsertNeuron(ctx, scopeA, memory.Neuron{ID: base + "-a-n1", Type: memory.NeuronTypeSemantic, CreatedAt: day})
+	if err != nil {
+		t.Fatalf("UpsertNeuron A1 failed: %v", err)
+	}
+	nA2, err := store.UpsertNeuron(ctx, scopeA, memory.Neuron{ID: base + "-a-n2", Type: memory.NeuronTypeEntity, CreatedAt: day})
+	if err != nil {
+		t.Fatalf("UpsertNeuron A2 failed: %v", err)
+	}
+	diaryA, err := store.InsertDiary(ctx, scopeA, memory.Diary{ID: base + "-a-diary", Body: "diary", DiaryDate: day, CreatedAt: day})
+	if err != nil {
+		t.Fatalf("InsertDiary A failed: %v", err)
+	}
+	memA, err := store.InsertEpisodicMemory(ctx, scopeA, memory.EpisodicMemory{
+		ID: base + "-a-memory", DiaryID: diaryA.ID, Name: "memory", CurrentText: "memory",
+		Emotion: emotion, BaseStrength: 0.5, CreatedUniverseTime: day,
+	})
+	if err != nil {
+		t.Fatalf("InsertEpisodicMemory A failed: %v", err)
+	}
+	for _, id := range []string{nA1.ID, nA2.ID} {
+		if _, err := store.InsertNeuronActivation(ctx, scopeA, memory.NeuronActivation{EpisodicMemoryID: memA.ID, NeuronID: id, Weight: 0.7}); err != nil {
+			t.Fatalf("InsertNeuronActivation A failed: %v", err)
+		}
+	}
+	if _, err := store.UpsertSynapse(ctx, scopeA, memory.Synapse{
+		ID: base + "-a-syn", NeuronAID: nA1.ID, NeuronBID: nA2.ID, Strength: 0.4, CoActivationCount: 1, LastActivatedUniverseTime: day, CreatedAt: day,
+	}); err != nil {
+		t.Fatalf("UpsertSynapse A failed: %v", err)
+	}
+
+	if strengths, err := store.SynapseStrengths(ctx, scopeB, []string{nA1.ID, nA2.ID}); err != nil || len(strengths) != 0 {
+		t.Fatalf("user B SynapseStrengths = (%+v, %v), want empty", strengths, err)
+	}
+	strengthsA, err := store.SynapseStrengths(ctx, scopeA, []string{nA1.ID, nA2.ID})
+	if err != nil || len(strengthsA) != 1 || !near32(float32(strengthsA[0].Strength), 0.4) {
+		t.Fatalf("user A SynapseStrengths = (%+v, %v), want one pair at 0.4", strengthsA, err)
+	}
+
+	if activations, err := store.CoActivations(ctx, scopeB, []string{nA1.ID, nA2.ID}); err != nil || len(activations) != 0 {
+		t.Fatalf("user B CoActivations = (%v, %v), want empty", activations, err)
+	}
+	activations, err := store.CoActivations(ctx, scopeA, []string{nA1.ID, nA2.ID})
+	if err != nil {
+		t.Fatalf("user A CoActivations failed: %v", err)
+	}
+	if len(activations) != 2 {
+		t.Fatalf("user A CoActivations = %d rows, want 2", len(activations))
+	}
+	for _, activation := range activations {
+		if activation.MemoryID != memA.ID || !activation.MemoryDate.Equal(day) {
+			t.Fatalf("CoActivation = %+v, want memory %s dated %v", activation, memA.ID, day)
+		}
+	}
+}
+
 func TestInsertEmbeddingUpdatesExistingNeuronVector(t *testing.T) {
 	pool := openMemoryTestPool(t)
 

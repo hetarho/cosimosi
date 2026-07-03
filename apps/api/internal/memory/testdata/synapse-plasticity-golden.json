@@ -65,6 +65,16 @@
       "expected": 0.08
     },
     {
+      "function": "apply_temporal_bonus",
+      "inputs": { "strength": 0.5 },
+      "expected": 0.6
+    },
+    {
+      "function": "apply_temporal_bonus",
+      "inputs": { "strength": 0.95 },
+      "expected": 1
+    },
+    {
       "function": "effective_synapse_strength",
       "inputs": { "base": 0.6, "elapsed_universe_days": 0 },
       "expected": 0.6

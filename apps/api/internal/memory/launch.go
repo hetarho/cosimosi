@@ -133,12 +133,10 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 			launched = append(launched, LaunchedMemory{EpisodicMemory: episodicMemory, NeuronIDs: neuronIDs})
 		}
 
-		// Link seam (plan 21): the last in-transaction step. Job 27 wires the
-		// real Link here; until then the seam is nil and no synapse is created.
-		if s.linker != nil {
-			if err := s.linker.LinkLaunched(ctx, scope, tx, launched); err != nil {
-				return err
-			}
+		// Link (plan 21) is the last in-transaction step: synapses land atomically
+		// with the launch, before the async embed/semanticize enqueue.
+		if err := s.linker.LinkLaunched(ctx, scope, tx, launched); err != nil {
+			return err
 		}
 
 		return s.enqueueAsyncJobs(ctx, scope, tx, body, confirmed, launched, newNeurons)

@@ -27,6 +27,14 @@ func Depress(strength float64, amount float64) float64 {
 	return clamp(boundedStrength-boundedAmount, 0, values.SynapseStrengthCap)
 }
 
+// ApplyTemporalBonus adds the temporal-proximity bonus [L4] on top of a synapse
+// base strength when a co-activation falls inside synapse.temporal_window_days,
+// saturating at the single cap [L9]. Keeping the bonus in the pure layer (not in
+// Link) is what lets the client golden-parity mirror reproduce the stored base.
+func ApplyTemporalBonus(strength float64) float64 {
+	return clamp(strength+values.SynapseTemporalBonus, 0, values.SynapseStrengthCap)
+}
+
 func InitialStrength(signalKind SignalKind) (float64, bool) {
 	switch signalKind {
 	case SignalKindSameMemory:

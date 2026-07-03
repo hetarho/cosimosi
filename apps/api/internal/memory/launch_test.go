@@ -20,6 +20,11 @@ type fakeLaunchStore struct {
 	existing   []ExistingNeuron
 	failMethod string
 
+	// Link seam fixtures (plan 21): prior memberships CoActivations replays and the
+	// stored base strengths SynapseStrengths serves on the repeat path.
+	coActivations    []NeuronMemoryActivation
+	existingSynapses map[string]float64
+
 	txCount   int
 	committed launchState
 	staging   *launchState
@@ -30,6 +35,7 @@ type launchState struct {
 	memories    []EpisodicMemory
 	neurons     []Neuron
 	activations []NeuronActivation
+	synapses    []Synapse
 	jobs        []Job
 	findCalls   [][]string
 }
@@ -116,6 +122,77 @@ func (f *fakeLaunchStore) EnqueueJob(_ context.Context, _ platform.UserScope, jo
 	}
 	f.staging.jobs = append(f.staging.jobs, job)
 	return job, nil
+}
+
+func (f *fakeLaunchStore) CoActivations(_ context.Context, scope platform.UserScope, neuronIDs []string) ([]NeuronMemoryActivation, error) {
+	if scope.UserID() == "" {
+		return nil, errors.New("scope missing")
+	}
+	if err := f.fail("CoActivations"); err != nil {
+		return nil, err
+	}
+	requested := make(map[string]struct{}, len(neuronIDs))
+	for _, id := range neuronIDs {
+		requested[id] = struct{}{}
+	}
+	matched := make([]NeuronMemoryActivation, 0)
+	for _, activation := range f.coActivations {
+		if _, ok := requested[activation.NeuronID]; ok {
+			matched = append(matched, activation)
+		}
+	}
+	return matched, nil
+}
+
+func (f *fakeLaunchStore) SynapseStrengths(_ context.Context, scope platform.UserScope, neuronIDs []string) ([]NeuronPairStrength, error) {
+	if scope.UserID() == "" {
+		return nil, errors.New("scope missing")
+	}
+	if err := f.fail("SynapseStrengths"); err != nil {
+		return nil, err
+	}
+	requested := make(map[string]struct{}, len(neuronIDs))
+	for _, id := range neuronIDs {
+		requested[id] = struct{}{}
+	}
+	strengths := make([]NeuronPairStrength, 0)
+	for key, strength := range f.existingSynapses {
+		aID, bID := splitSynapseKey(key)
+		if _, ok := requested[aID]; !ok {
+			continue
+		}
+		if _, ok := requested[bID]; !ok {
+			continue
+		}
+		strengths = append(strengths, NeuronPairStrength{NeuronAID: aID, NeuronBID: bID, Strength: strength})
+	}
+	return strengths, nil
+}
+
+func (f *fakeLaunchStore) UpsertSynapse(_ context.Context, scope platform.UserScope, synapse Synapse) (Synapse, error) {
+	if scope.UserID() == "" {
+		return Synapse{}, errors.New("scope missing")
+	}
+	if err := f.fail("UpsertSynapse"); err != nil {
+		return Synapse{}, err
+	}
+	if synapse.NeuronBID < synapse.NeuronAID {
+		synapse.NeuronAID, synapse.NeuronBID = synapse.NeuronBID, synapse.NeuronAID
+	}
+	f.staging.synapses = append(f.staging.synapses, synapse)
+	return synapse, nil
+}
+
+func synapseKey(a string, b string) string {
+	if b < a {
+		a, b = b, a
+	}
+	return a + "\x00" + b
+}
+
+func splitSynapseKey(key string) (string, string) {
+	i := strings.IndexByte(key, 0)
+	return key[:i], key[i+1:]
 }
 
 type fakeLinker struct {

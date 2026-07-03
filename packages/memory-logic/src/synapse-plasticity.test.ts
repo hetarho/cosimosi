@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { VALUES } from '@cosimosi/config'
 
 import {
+  applyTemporalBonus,
   depress,
   effectiveSynapseStrength,
   initialStrength,
@@ -150,6 +151,9 @@ describe('synapse plasticity', () => {
         case 'initial_strength':
           got = initialStrength(required(testCase.inputs.signal_kind))
           break
+        case 'apply_temporal_bonus':
+          got = applyTemporalBonus(required(testCase.inputs.strength))
+          break
         case 'effective_synapse_strength':
           got = effectiveSynapseStrength(required(testCase.inputs.base), required(testCase.inputs.elapsed_universe_days))
           break
@@ -169,6 +173,7 @@ function isSynapseFixtureCase(functionName: string): functionName is SynapseFunc
     functionName === 'potentiate_repeated' ||
     functionName === 'depress' ||
     functionName === 'initial_strength' ||
+    functionName === 'apply_temporal_bonus' ||
     functionName === 'effective_synapse_strength'
   )
 }
@@ -178,6 +183,7 @@ type SynapseFunctionName =
   | 'potentiate_repeated'
   | 'depress'
   | 'initial_strength'
+  | 'apply_temporal_bonus'
   | 'effective_synapse_strength'
 
 function required<T>(value: T | undefined): T {

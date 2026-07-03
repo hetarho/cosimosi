@@ -336,6 +336,7 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 		Candidates: fixture.candidates,
 		Launches:   fixture.launches,
 		Universe:   fixture.universe,
+		Linker:     fixture.linker,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

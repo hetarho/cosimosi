@@ -26,6 +26,10 @@ export function depress(strength: number, amount: number): number {
   return clamp(boundedStrength - boundedAmount, 0, VALUES.synapse.strengthCap)
 }
 
+export function applyTemporalBonus(strength: number): number {
+  return clamp(strength + VALUES.synapse.temporalBonus, 0, VALUES.synapse.strengthCap)
+}
+
 export function initialStrength(signalKind: string): number {
   if (!isSignalKind(signalKind)) {
     throw new RangeError(`unknown SignalKind: ${signalKind}`)
