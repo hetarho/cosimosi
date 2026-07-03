@@ -33,7 +33,7 @@ import { UNIVERSE_SCENE_STYLE } from '../config/scene-style.ts'
 import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 
 const EMPTY_ENDPOINT_PAIRS = new Uint32Array(0)
-const IDLE_POSE: NavigationPose = { mode: 'idle', target: null }
+const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
 
 // The universe scene block: mounts the @cosimosi/3d-renderer canvas host + skin/post
 // pipeline unchanged (no renderer lifecycle, no skin system, no post pipeline of its own)
@@ -69,7 +69,11 @@ function UniverseCanvasHost() {
 
   const actorRef = useActorRef(universeNavigationMachine)
   const pose = useMemo(
-    () => ({ mode: 'idle' as UniverseNavigationMode, target: [0, 0, 0] as [number, number, number] }),
+    () => ({
+      mode: 'idle' as UniverseNavigationMode,
+      target: [0, 0, 0] as [number, number, number],
+      targetId: null as string | null,
+    }),
     [],
   )
   const getPose = useCallback((): NavigationPose => {
@@ -83,6 +87,7 @@ function UniverseCanvasHost() {
     // Polled per glide frame — read the buffer in place, no per-frame allocation.
     const offset = forceSimCoordinateOffset(index)
     pose.mode = mode
+    pose.targetId = nodeId
     pose.target[0] = buffer[offset] ?? 0
     pose.target[1] = buffer[offset + 1] ?? 0
     pose.target[2] = buffer[offset + 2] ?? 0

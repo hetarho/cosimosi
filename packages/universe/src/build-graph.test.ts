@@ -122,6 +122,30 @@ describe('buildUniverseGraph', () => {
     expect(graph.activations[0].weight).toBe(0)
   })
 
+  it('coerces non-finite magnitudes to 0 so the sim never rejects the graph', () => {
+    const universe = universeFixture()
+    const corrupt: UniverseSnapshot = {
+      ...universe,
+      neurons: [{ ...universe.neurons[0], connectivity: Number.NaN }, universe.neurons[1]],
+      synapses: [{ ...universe.synapses[0], strength: Number.POSITIVE_INFINITY }],
+      memories: [
+        {
+          ...universe.memories[0],
+          activations: [{ neuronId: 'neuron-1', weight: Number.NaN }],
+        },
+      ],
+    }
+
+    const graph = buildUniverseGraph(corrupt)
+
+    // Every projected magnitude is finite — a non-finite input (NaN or ±Infinity) becomes 0.
+    expect(Number.isFinite(graph.neurons[0].connectivity)).toBe(true)
+    expect(graph.neurons[0].connectivity).toBe(0)
+    expect(Number.isFinite(graph.synapses[0].strength)).toBe(true)
+    expect(graph.synapses[0].strength).toBe(0)
+    expect(graph.activations[0].weight).toBe(0)
+  })
+
   it('maps edge endpoint pairs onto neuron slots of the coordinate buffer only', () => {
     const graph = buildUniverseGraph(universeFixture())
     const nodeIndex = createForceSimNodeIndex(graph)

@@ -4,13 +4,16 @@ import { MathUtils, Vector3 } from 'three/webgpu'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 import { canAttachDomControls } from './dom-controls.ts'
+import { createArrivalLatchState, stepArrivalLatch, type NavigationPoseMode } from './navigation-latch.ts'
 
-export type NavigationPoseMode = 'idle' | 'focusing' | 'flying'
+export type { NavigationPoseMode }
 
 export interface NavigationPose {
   readonly mode: NavigationPoseMode
   /** World position of the travel target; null keeps the rig in free navigation. */
   readonly target: readonly [number, number, number] | null
+  /** Identity of the travel target; a change re-arms the arrival latch even mid-mode. */
+  readonly targetId: string | null
 }
 
 export interface NavigationRigProps {
@@ -26,6 +29,8 @@ export interface NavigationRigProps {
   readonly glideLambda: { readonly focusing: number; readonly flying: number }
   /** Camera-to-goal distance below which a glide counts as arrived. */
   readonly arriveEpsilon: number
+  /** A glide that can't settle within this many seconds force-arrives (safety net). */
+  readonly arriveTimeoutSeconds: number
 }
 
 // Shared R3F layer: the product navigation rig. Free navigation (zoom · rotate · pan) is
@@ -43,6 +48,7 @@ export function NavigationRig({
   framingDistance,
   glideLambda,
   arriveEpsilon,
+  arriveTimeoutSeconds,
 }: NavigationRigProps) {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
@@ -51,8 +57,7 @@ export function NavigationRig({
   const targetVec = useMemo(() => new Vector3(), [])
   const approach = useMemo(() => new Vector3(), [])
   const cameraGoal = useMemo(() => new Vector3(), [])
-  const arrivedSent = useRef(false)
-  const lastMode = useRef<NavigationPoseMode>('idle')
+  const latch = useRef(createArrivalLatchState())
 
   useEffect(() => {
     const el = gl.domElement
@@ -73,13 +78,15 @@ export function NavigationRig({
   useFrame((_, delta) => {
     const pose = getPose()
     const controls = controlsRef.current
-    if (pose.mode !== lastMode.current) {
-      lastMode.current = pose.mode
-      arrivedSent.current = false
-    }
 
     if (pose.mode === 'idle' || !pose.target) {
-      arrivedSent.current = false
+      stepArrivalLatch(latch.current, {
+        mode: 'idle',
+        targetId: pose.targetId,
+        withinEpsilon: false,
+        delta,
+        arriveTimeoutSeconds,
+      })
       if (controls) {
         controls.enabled = true
         controls.update()
@@ -105,15 +112,21 @@ export function NavigationRig({
     if (controls) controls.target.copy(lookTarget)
     camera.lookAt(lookTarget)
 
-    // Once-per-arrival latch with distance hysteresis: leaving the epsilon shell re-arms
-    // it, so retargeting to a new node in the same mode (the machine never passes through
-    // idle) still gets its ARRIVED — a mode-only latch would deadlock the glide.
+    // Arrival latch (pure reducer, unit-tested): fires ARRIVED once per glide when the camera
+    // settles inside the epsilon shell, re-arms on drift out of it OR on a retarget (target id
+    // change — even across an unobserved idle frame), and force-arrives past
+    // arriveTimeoutSeconds so a glide can never strand the rig with controls disabled.
     const withinEpsilon =
       camera.position.distanceTo(cameraGoal) < arriveEpsilon && lookTarget.distanceTo(targetVec) < arriveEpsilon
-    if (!withinEpsilon) {
-      arrivedSent.current = false
-    } else if (!arrivedSent.current) {
-      arrivedSent.current = true
+    if (
+      stepArrivalLatch(latch.current, {
+        mode: pose.mode,
+        targetId: pose.targetId,
+        withinEpsilon,
+        delta,
+        arriveTimeoutSeconds,
+      })
+    ) {
       onArrived?.()
     }
   })

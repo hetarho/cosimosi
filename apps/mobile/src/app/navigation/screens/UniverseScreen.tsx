@@ -1,5 +1,7 @@
 import {StyleSheet, Text, View} from 'react-native';
 
+import {QueryErrorResetBoundary} from '@tanstack/react-query';
+
 import {Button, tokens} from '@cosimosi/ui';
 import {m} from '@cosimosi/i18n';
 import {
@@ -28,9 +30,17 @@ export function UniverseScreen() {
   return (
     <View style={styles.root}>
       <View style={StyleSheet.absoluteFill}>
-        <ObservedErrorBoundary fallback={RendererFallback}>
-          <UniverseCanvasWidget />
-        </ObservedErrorBoundary>
+        {/* QueryErrorResetBoundary makes Retry actually recover a failed GetUniverse read:
+            resetErrorBoundary → reset() flips react-query's error-reset flag so the remounted
+            query refetches. Without it, throwOnError re-throws the cached error and the button
+            is inert (react-query forces retryOnMount=false while the boundary is unreset). */}
+        <QueryErrorResetBoundary>
+          {({reset}) => (
+            <ObservedErrorBoundary fallback={RendererFallback} onReset={reset}>
+              <UniverseCanvasWidget />
+            </ObservedErrorBoundary>
+          )}
+        </QueryErrorResetBoundary>
       </View>
       <View style={styles.hud}>
         <Button>{m.universe_home_write()}</Button>

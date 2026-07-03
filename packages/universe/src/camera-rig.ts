@@ -9,4 +9,7 @@ export const UNIVERSE_CAMERA_RIG = {
   /** Exp-damp responsiveness per glide mode (higher = snappier). */
   glideLambda: { focusing: 4, flying: 2.2 },
   arriveEpsilon: 0.35,
+  /** A glide that can't settle inside the arrival shell within this many seconds force-arrives,
+   *  so a chase of a still-drifting target never strands the rig (normal glides land in ~3s). */
+  arriveTimeoutSeconds: 6,
 } as const

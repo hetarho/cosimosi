@@ -1,3 +1,5 @@
+import { QueryErrorResetBoundary } from '@tanstack/react-query'
+
 import { ObservedErrorBoundary, type ObservedErrorBoundaryFallbackProps } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
@@ -24,9 +26,17 @@ export function UniverseHomePage() {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-text">
       <div className="absolute inset-0">
-        <ObservedErrorBoundary fallback={UniverseCanvasFallback}>
-          <UniverseCanvasWidget />
-        </ObservedErrorBoundary>
+        {/* QueryErrorResetBoundary makes Retry actually recover a failed GetUniverse read:
+            resetErrorBoundary → reset() flips react-query's error-reset flag so the remounted
+            query refetches. Without it, throwOnError re-throws the cached error and the button
+            is inert (react-query forces retryOnMount=false while the boundary is unreset). */}
+        <QueryErrorResetBoundary>
+          {({ reset }) => (
+            <ObservedErrorBoundary fallback={UniverseCanvasFallback} onReset={reset}>
+              <UniverseCanvasWidget />
+            </ObservedErrorBoundary>
+          )}
+        </QueryErrorResetBoundary>
       </div>
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6">
         <header className="flex justify-end">

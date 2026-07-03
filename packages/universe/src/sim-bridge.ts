@@ -48,6 +48,10 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
   let spareBuffers: ArrayBuffer[] = []
   let inFlight = false
   let pendingDt = 0
+  // Layout of the currently displayed buffer, so a refetch can carry existing coordinates
+  // across a resize (neurons occupy the first slots, memories after — plan 19's contract).
+  let displayedNeurons = 0
+  let displayedMemories = 0
 
   const stop = (clearCoordinates: boolean) => {
     worker?.terminate()
@@ -55,7 +59,11 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
     spareBuffers = []
     inFlight = false
     pendingDt = 0
-    if (clearCoordinates) coordinates.current = null
+    if (clearCoordinates) {
+      coordinates.current = null
+      displayedNeurons = 0
+      displayedMemories = 0
+    }
   }
 
   return {
@@ -64,7 +72,31 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
       // Keep the previous buffer on screen through the swap — the new worker's first
       // coords replace it; only dispose() blanks the scene.
       stop(false)
-      const floats = (graph.neurons.length + graph.episodicMemories.length) * FORCE_SIM_COORDINATE_STRIDE
+      const neuronCount = graph.neurons.length
+      const memoryCount = graph.episodicMemories.length
+      const floats = (neuronCount + memoryCount) * FORCE_SIM_COORDINATE_STRIDE
+      // On a refetch, resize the displayed buffer to the new graph up front, carrying over the
+      // coordinates of nodes that still exist (neurons, then memories). Without this the old,
+      // smaller buffer stays on screen until the worker's first tick and the layers read past
+      // its end (new nodes flash at the origin and the whole memory band shifts, since
+      // firstNodeIndex grows). A same-size refetch copies 1:1, so a periodic revalidation never
+      // flickers; only genuinely new nodes sit at the origin, and only until the first coords
+      // arrive a frame or two later. On the FIRST load (no previous buffer) leave coordinates
+      // null so the layers stay hidden until real coords — no origin-stacked flash.
+      const previous = coordinates.current
+      if (previous) {
+        const stride = FORCE_SIM_COORDINATE_STRIDE
+        const next = new Float32Array(floats)
+        next.set(previous.subarray(0, Math.min(displayedNeurons, neuronCount) * stride), 0)
+        const memoryFloats = Math.min(displayedMemories, memoryCount) * stride
+        if (memoryFloats > 0) {
+          const from = displayedNeurons * stride
+          next.set(previous.subarray(from, from + memoryFloats), neuronCount * stride)
+        }
+        coordinates.current = next
+      }
+      displayedNeurons = neuronCount
+      displayedMemories = memoryCount
       const spawned = spawner()
       spawned.onmessage = (event) => {
         const message = event.data as SimWorkerResponse | null
