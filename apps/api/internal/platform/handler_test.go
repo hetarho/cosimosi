@@ -324,7 +324,7 @@ func TestCORSPreflightAllowsConnectHeaders(t *testing.T) {
 
 	handler := NewHandler(log.New(io.Discard, "", 0))
 	req := httptest.NewRequest(http.MethodOptions, platformv1connect.PlatformServicePingProcedure, nil)
-	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Origin", "http://localhost:1214")
 	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
 	req.Header.Set("Access-Control-Request-Headers", "Content-Type,Connect-Protocol-Version")
 	rec := httptest.NewRecorder()
@@ -334,7 +334,7 @@ func TestCORSPreflightAllowsConnectHeaders(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("preflight status = %d, want 204", rec.Code)
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5173" {
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:1214" {
 		t.Fatalf("allow origin = %q", got)
 	}
 	if got := rec.Header().Get("Access-Control-Allow-Methods"); !strings.Contains(got, http.MethodGet) || !strings.Contains(got, http.MethodPost) {

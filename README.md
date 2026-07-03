@@ -35,11 +35,21 @@ pnpm install                # 워크스페이스 의존성 (web · mobile · blo
 
 | 앱 | 실행 | 확인 |
 |---|---|---|
-| 웹 | `pnpm dev:web` | <http://localhost:5173> → "hello world" |
-| API | `pnpm dev:api` (Docker :8080) <br> 또는 `cd apps/api && go run ./cmd/api` | `curl localhost:8080` → `hello world` · `/health` → 200 |
-| 모바일 | `pnpm dev:mobile` (Metro) 후 `pnpm ios` / `pnpm android` | 시뮬레이터/에뮬레이터에 "hello world" |
+| 웹 | `pnpm dev:web` | <http://localhost:1214> → `/` 우주 |
+| API | `pnpm dev:api` (Docker :8080) <br> 또는 `cd apps/api && go run ./cmd/api` | `/health` → 200 |
+| 모바일 | `pnpm dev:mobile` (Metro) 후 `pnpm ios` / `pnpm android` | 시뮬레이터/에뮬레이터에 Universe 화면 |
 
 `pnpm dev` 는 웹 + api(Docker)를 동시에 띄운다.
+
+**로컬 로그인 우회 (dev 전용).** `.env`에 `VITE_DEV_USER_ID`(웹) + `COSIMOSI_DEV_AUTH=1`(api)을
+같은 값으로 두면 Supabase 로그인 없이 그 유저로 항상 인증된다 — 웹은 fake 세션을 부트스트랩하고
+api의 dev verifier가 `fake-token-<id>` 베어러를 그 유저로 신뢰한다. 두 값을 비우면 실제 Supabase 인증.
+프로덕션 빌드엔 절대 켜지 않는다. 그 유저의 우주를 채우려면(작문 플로우는 아직 없음):
+
+```bash
+psql "$DATABASE_URL" -f scripts/seed-dev-universe.sql   # dev-user 에 샘플 별/뉴런/시냅스 시드
+# 또는 Docker: docker exec -i cosimosi-postgres psql -U cosimosi -d cosimosi < scripts/seed-dev-universe.sql
+```
 
 **빌드:** `pnpm build:web` → `apps/web/dist` · `pnpm build:blog` → `apps/blog/dist` ·
 `pnpm build:api` → `go build ./...` in `apps/api` (host Go when present, otherwise Docker `golang:1.26`).

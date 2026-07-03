@@ -84,6 +84,10 @@ func serveHTTPServer(ctx context.Context, server *http.Server, logger *log.Logge
 }
 
 func authHandlerOptions(logger *log.Logger) []platform.HandlerOption {
+	if devVerifier, ok := devAuthVerifier(); ok {
+		logger.Print("COSIMOSI_DEV_AUTH is on: accepting dev fake-token bearers — never enable in production")
+		return []platform.HandlerOption{platform.WithAuthVerifier(devVerifier)}
+	}
 	verifier, ok, err := platform.NewSupabaseJWTVerifierFromEnv(&http.Client{
 		Timeout: supabaseAuthHTTPTimeout,
 	})

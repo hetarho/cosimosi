@@ -135,8 +135,9 @@ func defaultCORSOrigins() []string {
 		return origins
 	}
 	return []string{
-		"http://localhost:5173",
-		"http://127.0.0.1:5173",
+		// Web dev server (vite strictPort 1214) and the RN Metro dev server (8081).
+		"http://localhost:1214",
+		"http://127.0.0.1:1214",
 		"http://localhost:8081",
 		"http://127.0.0.1:8081",
 	}

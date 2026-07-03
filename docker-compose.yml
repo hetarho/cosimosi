@@ -12,6 +12,9 @@ services:
       PORT: "8080"
       DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
       COSIMOSI_DEV_WORKER: "1"
+      # Dev sign-in bypass, toggled from the root .env (empty = off → real auth).
+      # See scripts/seed-dev-universe.sql and .env.example.
+      COSIMOSI_DEV_AUTH: "${COSIMOSI_DEV_AUTH:-}"
     ports:
       - "8080:8080"
     volumes:
