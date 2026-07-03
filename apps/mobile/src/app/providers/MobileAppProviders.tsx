@@ -28,6 +28,8 @@ export interface MobileAppProvidersProps {
   deviceLocale?: string;
   apiBaseUrl?: string;
   supabase?: MobileSupabaseAuthOptions;
+  /** Dev sign-in bypass user id (local only); the app root defaults it from mobileDevUserId. */
+  devUserId?: string;
 }
 
 /**
@@ -57,13 +59,14 @@ export function MobileAppProviders({
   deviceLocale,
   apiBaseUrl,
   supabase,
+  devUserId,
 }: MobileAppProvidersProps) {
   return (
     <MobileObservabilityProvider facade={observabilityFacade}>
       <ObservedErrorBoundary fallback={MobileAppErrorFallback}>
         <MobileI18nProvider locale={locale} deviceLocale={deviceLocale}>
           <MobileThemeProvider>
-            <MobileAuthProvider facade={authFacade} supabase={supabase}>
+            <MobileAuthProvider facade={authFacade} supabase={supabase} devUserId={devUserId}>
               <MobileObservabilitySessionBridge />
               <MobileClientCacheProvider queryClient={queryClient} transport={transport} apiBaseUrl={apiBaseUrl}>
                 <MachineActorsProvider>{children}</MachineActorsProvider>

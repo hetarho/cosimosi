@@ -5,6 +5,7 @@ import {tokens} from '@cosimosi/ui';
 
 import {NavigationRoot, type NavigationRootProps} from './navigation/index.ts';
 import {MobileAppProviders, type MobileAppProvidersProps} from './providers/index.ts';
+import {mobileDevUserId} from '../shared/config/index.ts';
 import {resolvedSafeAreaMetrics} from '../shared/native/index.ts';
 
 export interface AppProps extends Omit<MobileAppProvidersProps, 'children'> {
@@ -20,11 +21,16 @@ export interface AppProps extends Omit<MobileAppProvidersProps, 'children'> {
  * adapters are injectable so the shell renders in host tests without Supabase, a
  * real API, or native device features.
  */
-export default function App({safeAreaMetrics = resolvedSafeAreaMetrics, navigationLinking, ...providers}: AppProps = {}) {
+export default function App({
+  safeAreaMetrics = resolvedSafeAreaMetrics,
+  navigationLinking,
+  devUserId = mobileDevUserId,
+  ...providers
+}: AppProps = {}) {
   return (
     <SafeAreaProvider initialMetrics={safeAreaMetrics}>
       <StatusBar barStyle="light-content" backgroundColor={tokens.color.bg} />
-      <MobileAppProviders {...providers}>
+      <MobileAppProviders devUserId={devUserId} {...providers}>
         <NavigationRoot linking={navigationLinking} />
       </MobileAppProviders>
     </SafeAreaProvider>

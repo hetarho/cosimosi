@@ -32,6 +32,15 @@ export const mobileAppVersion = '0.0.1';
 /** Feature flag that gates whether the diagnostics surface is reachable. */
 export const diagnosticsSurfaceFlag: PlatformFeatureFlagKey = 'platform.diagnosticsSurface';
 
+/**
+ * Dev sign-in bypass user id (local only). Mirrors the web's VITE_DEV_USER_ID so `pnpm ios`
+ * sees the same seeded universe (scripts/seed-dev-universe.sql) without a Supabase login.
+ * NODE_ENV-gated (Metro inlines it) so a release build never gets a bypass user; the id must
+ * match the api's COSIMOSI_DEV_USER_ID. Undefined in production → falls back to real auth.
+ */
+export const mobileDevUserId: string | undefined =
+  process.env.NODE_ENV === 'production' ? undefined : 'dev-user';
+
 export type MobileFeatureFlagEnv = Record<string, string | boolean | undefined>;
 
 export function readMobileFeatureFlagOverrides(

@@ -41,10 +41,11 @@ pnpm install                # 워크스페이스 의존성 (web · mobile · blo
 
 `pnpm dev` 는 웹 + api(Docker)를 동시에 띄운다.
 
-**로컬 로그인 우회 (dev 전용).** `.env`에 `VITE_DEV_USER_ID`(웹) + `COSIMOSI_DEV_AUTH=1`(api)을
-같은 값으로 두면 Supabase 로그인 없이 그 유저로 항상 인증된다 — 웹은 fake 세션을 부트스트랩하고
-api의 dev verifier가 `fake-token-<id>` 베어러를 그 유저로 신뢰한다. 두 값을 비우면 실제 Supabase 인증.
-프로덕션 빌드엔 절대 켜지 않는다. 그 유저의 우주를 채우려면(작문 플로우는 아직 없음):
+**로컬 로그인 우회 (dev 전용).** `.env`에 세 값을 두면 Supabase 로그인 없이 한 명의 dev 유저로 항상
+인증된다: `COSIMOSI_DEV_AUTH=1`(api 켜기), `COSIMOSI_DEV_USER_ID`(api가 신뢰할 유저), `VITE_DEV_USER_ID`(웹).
+뒤 두 값은 **같은 id**여야 한다 — 웹은 그 id로 fake 세션을 부트스트랩해 `fake-token-<id>`를 보내고,
+api의 dev verifier는 **오직 그 id의** 베어러만 신뢰한다(임의 유저 사칭 방지). 셋 다 비우면 실제 Supabase 인증.
+웹 프로덕션 빌드는 `VITE_DEV_USER_ID`가 있으면 즉시 에러로 막는다. 그 유저의 우주를 채우려면(작문 플로우는 아직 없음):
 
 ```bash
 psql "$DATABASE_URL" -f scripts/seed-dev-universe.sql   # dev-user 에 샘플 별/뉴런/시냅스 시드

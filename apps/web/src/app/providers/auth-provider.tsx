@@ -28,10 +28,15 @@ const DEV_SESSION_EXPIRES_AT = Number.MAX_SAFE_INTEGER
 
 function createDefaultWebAuthFacade(): AuthFacade {
   const devUserId = import.meta.env.VITE_DEV_USER_ID
-  if (devUserId) {
+  if (devUserId && !import.meta.env.DEV) {
+    // The dev sign-in bypass is an auth-bypass path — it must never ship in a production
+    // build. Fail loud on misconfiguration instead of silently authenticating as a fake user.
+    throw new Error('VITE_DEV_USER_ID must not be set in a production build (dev sign-in bypass)')
+  }
+  if (import.meta.env.DEV && devUserId) {
     // Dev-only sign-in bypass: an always-authenticated fake session so `pnpm dev` skips the
-    // Supabase login round-trip. The API's matching dev verifier (COSIMOSI_DEV_AUTH) accepts
-    // the resulting `fake-token-<id>` bearer as this same user. Never set in a prod build.
+    // Supabase login round-trip. The API's matching dev verifier (COSIMOSI_DEV_AUTH +
+    // COSIMOSI_DEV_USER_ID) accepts the resulting `fake-token-<id>` bearer as this same user.
     return createAuthFacade({
       adapter: new FakeAuthAdapter({ initial: { userId: devUserId, expiresAt: DEV_SESSION_EXPIRES_AT } }),
     })
