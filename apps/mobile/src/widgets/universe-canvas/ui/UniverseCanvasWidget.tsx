@@ -18,18 +18,19 @@ import {
   type NavigationPose,
 } from '@cosimosi/3d-renderer';
 import {createForceSimNodeIndex, forceSimCoordinateOffset} from '@cosimosi/force-sim';
+import {
+  UNIVERSE_CAMERA_RIG,
+  buildSynapseEndpointIndexPairs,
+  buildUniverseGraph,
+  createUniverseSimBridge,
+  universeNavigationMachine,
+  type UniverseNavigationMode,
+} from '@cosimosi/universe';
 
 import {useActorRef} from '../../../shared/model/index.ts';
 import {useUniverse} from '../api/use-universe.ts';
-import {UNIVERSE_CAMERA_RIG} from '../config/camera-rig.ts';
 import {UNIVERSE_SCENE_STYLE} from '../config/scene-style.ts';
-import {buildSynapseEndpointIndexPairs, buildUniverseGraph} from '../lib/build-graph.ts';
-import {createUniverseSimBridge} from '../lib/sim-bridge.ts';
 import {createSimWorkerSpawner} from '../lib/sim-worker-spawner.ts';
-import {
-  universeNavigationMachine,
-  type UniverseNavigationMode,
-} from '../model/universe-navigation.machine.ts';
 
 const EMPTY_ENDPOINT_PAIRS = new Uint32Array(0);
 const IDLE_POSE: NavigationPose = {mode: 'idle', target: null};

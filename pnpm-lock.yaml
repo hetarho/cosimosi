@@ -70,6 +70,9 @@ importers:
       '@cosimosi/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@cosimosi/universe':
+        specifier: workspace:*
+        version: link:../../packages/universe
       '@react-navigation/native':
         specifier: ^7.3.4
         version: 7.3.4(react-native@0.86.0(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.7))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
@@ -227,6 +230,9 @@ importers:
       '@cosimosi/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@cosimosi/universe':
+        specifier: workspace:*
+        version: link:../../packages/universe
       '@react-three/fiber':
         specifier: ^9.6.1
         version: 9.6.1(patch_hash=56ce79c443d7fd7f0cb8bc88567c06aecb7b8a92924f2985490c9275bbccadd9)(@types/react@19.2.17)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@6.0.3))(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.7))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(three@0.185.0)
@@ -607,6 +613,28 @@ importers:
       react-native:
         specifier: 0.86.0
         version: 0.86.0(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@6.0.3))(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.7))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@24.13.2)(jsdom@29.1.1)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+
+  packages/universe:
+    dependencies:
+      '@cosimosi/force-sim':
+        specifier: workspace:*
+        version: link:../force-sim
+      '@cosimosi/memory':
+        specifier: workspace:*
+        version: link:../memory
+      xstate:
+        specifier: ^5.32.2
+        version: 5.32.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

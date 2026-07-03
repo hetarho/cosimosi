@@ -1,4 +1,4 @@
-import type {SimWorkerSpawner} from './sim-bridge.ts';
+import type {SimWorkerSpawner} from '@cosimosi/universe';
 
 // React Native ships no standard Worker primitive, so the mobile bridge runs the inline
 // JS-thread fallback — current universe graph sizes tick well within a frame there. When

@@ -25,6 +25,7 @@
     "@cosimosi/observability": "workspace:*",
     "@cosimosi/state-machine": "workspace:*",
     "@cosimosi/ui": "workspace:*",
+    "@cosimosi/universe": "workspace:*",
     "@react-navigation/native": "^7.3.4",
     "@react-three/fiber": "^9.6.1",
     "@react-navigation/native-stack": "^7.17.6",

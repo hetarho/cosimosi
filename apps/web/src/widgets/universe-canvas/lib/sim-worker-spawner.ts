@@ -1,4 +1,4 @@
-import type { SimWorkerLike, SimWorkerSpawner } from './sim-bridge.ts'
+import type { SimWorkerLike, SimWorkerSpawner } from '@cosimosi/universe'
 
 // Vite detects and bundles the worker module through this literal
 // `new Worker(new URL(...), { type: 'module' })` pattern — keep it verbatim.
