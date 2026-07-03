@@ -33,6 +33,24 @@ rendering:
   max_pixel_ratio: 2
   # InstancedMesh bucket capacity — nodes batch into fixed-size instanced draws.
   instance_bucket_size: 4096
+  # Star (episodic-memory) instance scale range — world radius mapped from EffectiveStrength
+  # (base_strength + recall accumulation). Bigger memory → bigger star [V3].
+  star_size_min: 0.9
+  star_size_max: 3.2
+  # Star brightness range mapped from EffectiveBrightness [V2]. Epic A resolves full (max);
+  # min is the decay floor Epic D dims toward — a star is dimmed, never deleted.
+  star_brightness_min: 0.15
+  star_brightness_max: 1.0
+  # Filament (synapse) fat-line half-width range in world units, mapped from
+  # EffectiveSynapseStrength — a stronger synapse draws a thicker line [V6].
+  filament_width_min: 0.04
+  filament_width_max: 0.35
+  # Filament glow range mapped from EffectiveSynapseStrength — stronger synapse glows brighter [V6].
+  filament_brightness_min: 0.12
+  filament_brightness_max: 0.85
+  # Cell-star (neuron) constant point radius in world units — seedless, no emotion color; a
+  # neuron carries information, not emotion [V5]. Degree-driven sizing stays reserved.
+  cell_star_point_size: 0.35
 
 ai:
   # Voyage 4-family embeddings default to 1024 dimensions while still allowing smaller/larger Matryoshka outputs.

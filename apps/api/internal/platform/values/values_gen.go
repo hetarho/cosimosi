@@ -22,9 +22,18 @@ const (
 
 // rendering
 const (
-	RenderingActiveSkin         = "aurora"
-	RenderingMaxPixelRatio      = 2
-	RenderingInstanceBucketSize = 4096
+	RenderingActiveSkin            = "aurora"
+	RenderingMaxPixelRatio         = 2
+	RenderingInstanceBucketSize    = 4096
+	RenderingStarSizeMin           = 0.9
+	RenderingStarSizeMax           = 3.2
+	RenderingStarBrightnessMin     = 0.15
+	RenderingStarBrightnessMax     = 1
+	RenderingFilamentWidthMin      = 0.04
+	RenderingFilamentWidthMax      = 0.35
+	RenderingFilamentBrightnessMin = 0.12
+	RenderingFilamentBrightnessMax = 0.85
+	RenderingCellStarPointSize     = 0.35
 )
 
 // ai

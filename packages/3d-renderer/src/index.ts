@@ -20,15 +20,28 @@ export {
 export { SkinProvider } from './SkinProvider.tsx'
 export type { VisualBodyKind, VisualBodyRequest, VisualBodySource } from './asset-source.ts'
 export { createPrimitiveBodySource, type PrimitiveBodySpec } from './primitive-body-source.ts'
+// Concrete visual bodies (plan 24): the star / cell-star / filament looks, each through the
+// asset-source port. Per-instance channel attribute names travel with the body they feed.
+export {
+  createStarBodySource,
+  STAR_INSTANCE_TINT,
+  STAR_INSTANCE_BRIGHTNESS,
+  STAR_INSTANCE_SEED,
+} from './assets/bodies/star-body.ts'
+export { createCellStarBodySource } from './assets/bodies/cell-star-body.ts'
+export { createFilamentBodySource, FILAMENT_VERTEX_COLOR } from './assets/bodies/filament-body.ts'
 export { Background } from './layers/Background.tsx'
 export { StarField, type StarFieldProps } from './layers/StarField.tsx'
 export { CameraControls } from './layers/CameraControls.tsx'
 export {
   InstancedNodeLayer,
   type CoordinateBufferRef,
+  type InstanceAttributeChannel,
+  type InstanceChannels,
   type InstancedNodeLayerProps,
 } from './layers/InstancedNodeLayer.tsx'
 export { EdgeLineLayer, type EdgeLineLayerProps } from './layers/EdgeLineLayer.tsx'
+export { FatLineLayer, type FatLineLayerProps } from './layers/FatLineLayer.tsx'
 export {
   NavigationRig,
   type NavigationPose,

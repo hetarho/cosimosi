@@ -122,10 +122,10 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
   nodes). Both READ the latest coordinate buffer in `useFrame` — coordinates never enter React state or a store, and
   nothing persists them [I5]. **WebGPU note:** a mesh is kept `visible = false` until it has ≥1 instance/segment to
   draw — a 0-count geometry inside the PostFX `pass()` makes the WebGPU backend build an invalid object bind group and
-  wedges the device. **Deferred to plan 24:** the fat-line `Line2`/`Line2NodeMaterial` (width/brightness = synapse
-  strength — its transparent path reads the opaque viewport texture, which the custom PostFX pipeline doesn't expose)
-  and `instance_bucket_size` bucketing for graphs beyond one InstancedMesh; both are unused by this scaffold, which
-  renders generic 1px lines and a single node mesh.
+  wedges the device. `InstancedNodeLayer`/`EdgeLineLayer`/`createPrimitiveBodySource` remain generic package primitives;
+  the universe scene composes the plan-24 star/cell-star/filament bodies over them (below). `instance_bucket_size`
+  bucketing for graphs beyond one InstancedMesh is still future — each body kind renders as one InstancedMesh / one
+  batched ribbon.
 - **The sim runs off the render thread**: `packages/force-sim` in a module Web Worker behind a `UniverseSimBridge`
   (`@cosimosi/universe`), two buffers ping-ponging as transferables; `FrameTick` pumps it once per frame. React Native
   has no standard Worker, so its per-app spawner returns null and the bridge runs the sim inline on the JS thread — the
@@ -145,7 +145,49 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
   returns control. Rig feel scalars (`UNIVERSE_CAMERA_RIG`) are code-level constants in `@cosimosi/universe` (no
   `rendering.camera.*` values group exists yet).
 
+## Star / neuron / filament bodies (plan 24 as-built)
+
+The three **rendering entities** turn the domain-mirror graph into bodies. Each lives in `entities/<visual-noun>`
+(web + mobile, same slice names) and its body is a `VisualBodySource` from `@cosimosi/3d-renderer/assets/bodies/` —
+so `three` stays inside the package.
+
+- **The domain→visual projection is one-way (§3.4).** A rendering entity imports its domain mirror **only** via the
+  mirror's `@x` public API (`entities/episodic-memory/@x/star`, `neuron/@x/cell-star`, `synapse/@x/filament`), reads
+  the shared read-time functions (`@cosimosi/memory-logic`) and the palette seam (`@cosimosi/emotion`), and produces a
+  body. It exports nothing back into the domain slice or its `api` mapper; no visual word (`star`/`cell-star`/
+  `filament`/…) becomes a domain symbol. Enforced by the §1 ubiquitous-language lint (which treats an
+  `entities/<rendering-term>` slice as a visual path so the vocabulary is native there, still forbidden in the mirrors)
+  and by an `entities-x` element + `entities → entities-x` rule in each app's eslint boundaries config.
+- **`star` (episodic-memory).** An instanced TSL big-star (`star-body.ts`, `shader` source): a unit sphere whose
+  surface is displaced by ridged noise keyed on a per-instance **seed**, so two seeds take different coherent forms
+  [V5]; the seed is immutable input (rendered, never mutated/animated — the Epic-C `Reshape` seam). Four independent
+  channels, each a pure function of stored facts (`entities/star/model`): **size** = `effectiveStrength` → per-instance
+  matrix scale in `star_size_min…max` [V3]; **brightness** = `effectiveBrightness` → per-instance attribute in
+  `star_brightness_min…max` (resolves full today; the range is the Epic-D decay seam [V2]); **color** = the primary
+  emotion via the plan-17 `moodColor` palette seam, linear-RGB per-instance attribute — emotion feeds color and nothing
+  else [I3][M3]. Channels ride `InstancedNodeLayer` (extended with an optional `channels` = per-instance scale + named
+  instance attributes), recomputed only on read-model / universe-time change; the coordinate buffer is read per frame.
+- **`cell-star` (neuron).** A seedless instanced point (`cell-star-body.ts`, `primitive` source) at a constant
+  `cell_star_point_size` — no emotion color, no seed-form; a neuron carries information, not emotion [V5][I3].
+  Degree-driven sizing stays reserved.
+- **`filament` (synapse).** A batched camera-billboarded **ribbon** fat-line (`FatLineLayer` + `filament-body.ts`,
+  `shader` source, additive + `DoubleSide`): one mesh, 4 verts / 2 tris per edge, each quad billboarded toward the
+  camera with **half-width + glow = `effectiveSynapseStrength`** (read-time from stored `strength` +
+  `last_activated_universe_time`) in `filament_width_min…max` / `filament_brightness_min…max` [V6]. **Not three's
+  `Line2`:** `Line2NodeMaterial`'s transparent path samples the opaque viewport texture the custom PostFX pipeline
+  never exposes (WebGPU rejects the bind group); the ribbon needs no viewport texture and survives the pipeline.
+  Endpoints are neuron coordinate slots only, so a star↔star line is structurally impossible [I4][I6].
+- **One universe clock.** `elapsedUniverseDays` (ISO-date → floored days) lives in `@cosimosi/memory-logic` — the
+  companion to `effectiveBrightness` / `effectiveSynapseStrength` — so star and filament read the same clock. Visual
+  channel mapping (`lerpClamp`) floors a non-finite read-time value to the range minimum, so a skewed row can't write a
+  NaN scale/vertex.
+- **On-device render** is pending verification like the rest of the RN scene — run `pnpm ios` (the mobile MVP instance
+  caps / dropped post-FX are confirmed via on-device profiling; the shared bodies and projection do not fork).
+
 ## Config
 `spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
-(instancing bucket capacity). Generated to `@cosimosi/config` (`VALUES.rendering.*`) + Go constants via
-`pnpm gen:values` — never hardcoded.
+(instancing bucket capacity), plus the plan-24 visual ranges `star_size_min`/`star_size_max`,
+`star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
+`filament_brightness_min`/`filament_brightness_max`, and `cell_star_point_size`. Generated to `@cosimosi/config`
+(`VALUES.rendering.*`) + Go constants via `pnpm gen:values` — never hardcoded. (The star seed-form shader graph and the
+filament/cell-star tint colors are code/content, not values.)

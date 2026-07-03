@@ -52,6 +52,9 @@ importers:
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cosimosi/emotion':
+        specifier: workspace:*
+        version: link:../../packages/emotion
       '@cosimosi/force-sim':
         specifier: workspace:*
         version: link:../../packages/force-sim
@@ -61,6 +64,9 @@ importers:
       '@cosimosi/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@cosimosi/memory-logic':
+        specifier: workspace:*
+        version: link:../../packages/memory-logic
       '@cosimosi/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -212,6 +218,9 @@ importers:
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cosimosi/emotion':
+        specifier: workspace:*
+        version: link:../../packages/emotion
       '@cosimosi/force-sim':
         specifier: workspace:*
         version: link:../../packages/force-sim
@@ -221,6 +230,9 @@ importers:
       '@cosimosi/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@cosimosi/memory-logic':
+        specifier: workspace:*
+        version: link:../../packages/memory-logic
       '@cosimosi/observability':
         specifier: workspace:*
         version: link:../../packages/observability

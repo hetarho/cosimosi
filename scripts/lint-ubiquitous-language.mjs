@@ -55,8 +55,19 @@ const renderingPatterns = (term) => [
 
 const files = []
 
+const renderingTermSet = new Set(renderingTerms)
 const isIgnoredPath = (path) => path.split(sep).some((segment) => ignoredSegments.has(segment))
 const isVisualPath = (path) => path.split(sep).some((segment) => visualSegments.has(segment))
+// A rendering entity slice — `entities/<visual-noun>` where the slice IS a rendering term
+// (star/cell-star/filament/…) — is the FE rendering layer (ARCHITECTURE §3.4): visual
+// vocabulary is native there, including its `model`/`index` segments. The lint's job is to
+// keep those words OUT of the domain-mirror slices (episodic-memory/neuron/synapse) and their
+// api mappers, which never carry a rendering-term slice name.
+const isVisualEntityPath = (path) => {
+  const segments = path.split(sep)
+  const entitiesAt = segments.indexOf('entities')
+  return entitiesAt >= 0 && renderingTermSet.has(segments[entitiesAt + 1])
+}
 
 const walk = (dir) => {
   if (!existsSync(dir) || isIgnoredPath(relative(repoRoot, dir))) return
@@ -92,7 +103,7 @@ if (probe === 'visual') {
 const violations = []
 
 for (const file of files) {
-  const visualAllowed = isVisualPath(file.path)
+  const visualAllowed = isVisualPath(file.path) || isVisualEntityPath(file.path)
 
   if (!visualAllowed) {
     for (const term of renderingTerms) {

@@ -3,15 +3,12 @@ import {useCallback, useEffect, useMemo} from 'react';
 import {VALUES} from '@cosimosi/config';
 import {
   Background,
-  EdgeLineLayer,
   FrameTick,
-  InstancedNodeLayer,
   NavigationRig,
   PostFX,
   SkinProvider,
   StarField,
   UniverseCanvas,
-  createPrimitiveBodySource,
   resolveActiveSkin,
   resolveBackgroundNode,
   useSkin,
@@ -20,19 +17,20 @@ import {
 import {createForceSimNodeIndex, forceSimCoordinateOffset} from '@cosimosi/force-sim';
 import {
   UNIVERSE_CAMERA_RIG,
-  buildSynapseEndpointIndexPairs,
   buildUniverseGraph,
   createUniverseSimBridge,
   universeNavigationMachine,
   type UniverseNavigationMode,
 } from '@cosimosi/universe';
 
+import {CellStarLayer} from '../../../entities/cell-star/index.ts';
+import {FilamentLayer} from '../../../entities/filament/index.ts';
+import {StarLayer} from '../../../entities/star/index.ts';
 import {useActorRef} from '../../../shared/model/index.ts';
 import {useUniverse} from '../api/use-universe.ts';
-import {UNIVERSE_SCENE_STYLE} from '../config/scene-style.ts';
 import {createSimWorkerSpawner} from '../lib/sim-worker-spawner.ts';
 
-const EMPTY_ENDPOINT_PAIRS = new Uint32Array(0);
+const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {};
 const IDLE_POSE: NavigationPose = {mode: 'idle', target: null, targetId: null};
 
 // The universe scene block: mounts the @cosimosi/3d-renderer canvas host + skin/post
@@ -48,18 +46,6 @@ function UniverseCanvasHost() {
   const {universe} = useUniverse();
   const graph = useMemo(() => (universe ? buildUniverseGraph(universe) : null), [universe]);
   const nodeIndex = useMemo(() => (graph ? createForceSimNodeIndex(graph) : null), [graph]);
-  const endpointPairs = useMemo(
-    () => (graph && nodeIndex ? buildSynapseEndpointIndexPairs(graph, nodeIndex) : EMPTY_ENDPOINT_PAIRS),
-    [graph, nodeIndex],
-  );
-  const bodySource = useMemo(
-    () =>
-      createPrimitiveBodySource({
-        'universe-node-neuron': UNIVERSE_SCENE_STYLE.neuronBody,
-        'universe-node-memory': UNIVERSE_SCENE_STYLE.memoryBody,
-      }),
-    [],
-  );
 
   const bridge = useMemo(() => createUniverseSimBridge(createSimWorkerSpawner()), []);
   useEffect(() => () => bridge.dispose(), [bridge]);
@@ -134,34 +120,23 @@ function UniverseCanvasHost() {
   );
 
   const neuronCount = graph?.neurons.length ?? 0;
-  const memoryCount = graph?.episodicMemories.length ?? 0;
 
   return (
     <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
       <Background node={backgroundNode} />
       <StarField />
-      <InstancedNodeLayer
-        source={bodySource}
-        bodyId="universe-node-neuron"
-        count={neuronCount}
-        positions={bridge.coordinates}
-        onNodePointerDown={focusNeuron}
-        onNodeDoubleClick={flyToNeuron}
-      />
-      <InstancedNodeLayer
-        source={bodySource}
-        bodyId="universe-node-memory"
-        count={memoryCount}
+      <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
+      <StarLayer
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
-        onNodePointerDown={focusMemory}
-        onNodeDoubleClick={flyToMemory}
+        universeTime={universe?.universeTime ?? null}
+        onFocus={focusMemory}
+        onFly={flyToMemory}
       />
-      <EdgeLineLayer
-        endpointPairs={endpointPairs}
-        count={endpointPairs.length / 2}
+      <FilamentLayer
         positions={bridge.coordinates}
-        color={UNIVERSE_SCENE_STYLE.edgeColor}
+        neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
+        universeTime={universe?.universeTime ?? null}
       />
       <NavigationRig getPose={getPose} onArrived={handleArrived} {...UNIVERSE_CAMERA_RIG} />
       <FrameTick onFrame={pump} />
