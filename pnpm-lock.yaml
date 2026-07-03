@@ -52,9 +52,15 @@ importers:
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cosimosi/force-sim':
+        specifier: workspace:*
+        version: link:../../packages/force-sim
       '@cosimosi/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@cosimosi/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
       '@cosimosi/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -112,6 +118,9 @@ importers:
       xstate:
         specifier: ^5.32.2
         version: 5.32.2
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.17)(immer@10.2.0)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
     devDependencies:
       '@babel/core':
         specifier: ^7.25.2
@@ -200,9 +209,15 @@ importers:
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cosimosi/force-sim':
+        specifier: workspace:*
+        version: link:../../packages/force-sim
       '@cosimosi/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@cosimosi/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
       '@cosimosi/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -242,6 +257,9 @@ importers:
       xstate:
         specifier: ^5.32.2
         version: 5.32.2
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.17)(immer@10.2.0)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -299,6 +317,10 @@ importers:
         version: 4.1.9(@types/node@24.13.2)(jsdom@29.1.1)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
 
   packages/3d-renderer:
+    dependencies:
+      '@cosimosi/config':
+        specifier: workspace:*
+        version: link:../config
     devDependencies:
       '@react-three/fiber':
         specifier: ^9.6.1
@@ -464,6 +486,28 @@ importers:
       react:
         specifier: ^19.2.7
         version: 19.2.7
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@24.13.2)(jsdom@29.1.1)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+
+  packages/memory:
+    dependencies:
+      '@cosimosi/api-client':
+        specifier: workspace:*
+        version: link:../api-client
+      '@cosimosi/emotion':
+        specifier: workspace:*
+        version: link:../emotion
+    devDependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.12.1
+        version: 2.12.1
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

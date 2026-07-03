@@ -6,7 +6,7 @@ export {
   type ClientCacheTimings,
 } from './defaults.ts'
 export type { QueryClient as ClientCacheQueryClient } from '@tanstack/query-core'
-export { isConnectQueryKey, platformCacheKeys } from './keys.ts'
+export { isConnectQueryKey, memoryCacheKeys, platformCacheKeys } from './keys.ts'
 export {
   beginOptimisticMutation,
   type BeginOptimisticMutationOptions,
@@ -19,9 +19,11 @@ export {
   createRpcCachePolicyInterceptor,
   defineRpcCachePolicy,
   idempotentUnaryReadPolicy,
+  memoryRpcCachePolicies,
   platformRpcCachePolicies,
   rpcMethodPolicyKey,
   unaryWritePolicy,
+  userScopedUnaryReadPolicy,
   type RpcCachePolicyEntry,
   type RpcCacheMethod,
   type RpcMethodDescriptor,

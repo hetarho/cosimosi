@@ -2,26 +2,17 @@ import {StyleSheet, Text, View} from 'react-native';
 
 import {Button, tokens} from '@cosimosi/ui';
 import {m} from '@cosimosi/i18n';
-import {VALUES} from '@cosimosi/config';
 import {
   ObservedErrorBoundary,
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react';
-import {SkinProvider, UniverseCanvas, UniverseScene, resolveActiveSkin, useSkin} from '@cosimosi/3d-renderer';
 
-// The same shared 3D scene as web (@cosimosi/3d-renderer) — skinned background + stars +
-// bloom, composed by UniverseScene (rendering vocabulary stays inside the package). Only
-// the build setup forks on native (metro three→webgpu + @react-three/fiber→web build,
-// react-native-webgpu). Error-boundaried so a WebGPU/native failure shows a fallback.
-function SceneHost() {
-  const {skin} = useSkin();
-  return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
-      <UniverseScene skin={skin} />
-    </UniverseCanvas>
-  );
-}
+import {UniverseCanvasWidget} from '../../../widgets/universe-canvas/index.ts';
 
+// The universe screen: the real memory universe full-bleed with a floating action over
+// it. The shared widget owns the whole 3D block (renderer mount, GetUniverse read, sim,
+// camera rig) — the same slice as web (§3.5). Error-boundaried so a WebGPU/native
+// failure shows a fallback instead of crashing.
 function RendererFallback({resetErrorBoundary}: ObservedErrorBoundaryFallbackProps) {
   return (
     <View style={styles.fallback}>
@@ -35,18 +26,16 @@ function RendererFallback({resetErrorBoundary}: ObservedErrorBoundaryFallbackPro
 
 export function UniverseScreen() {
   return (
-    <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-      <View style={styles.root}>
-        <View style={StyleSheet.absoluteFill}>
-          <ObservedErrorBoundary fallback={RendererFallback}>
-            <SceneHost />
-          </ObservedErrorBoundary>
-        </View>
-        <View style={styles.hud}>
-          <Button>{m.universe_home_write()}</Button>
-        </View>
+    <View style={styles.root}>
+      <View style={StyleSheet.absoluteFill}>
+        <ObservedErrorBoundary fallback={RendererFallback}>
+          <UniverseCanvasWidget />
+        </ObservedErrorBoundary>
       </View>
-    </SkinProvider>
+      <View style={styles.hud}>
+        <Button>{m.universe_home_write()}</Button>
+      </View>
+    </View>
   );
 }
 

@@ -19,9 +19,23 @@ export {
 } from './skin-context.ts'
 export { SkinProvider } from './SkinProvider.tsx'
 export type { VisualBodyKind, VisualBodyRequest, VisualBodySource } from './asset-source.ts'
+export { createPrimitiveBodySource, type PrimitiveBodySpec } from './primitive-body-source.ts'
 export { Background } from './layers/Background.tsx'
 export { StarField, type StarFieldProps } from './layers/StarField.tsx'
 export { CameraControls } from './layers/CameraControls.tsx'
+export {
+  InstancedNodeLayer,
+  type CoordinateBufferRef,
+  type InstancedNodeLayerProps,
+} from './layers/InstancedNodeLayer.tsx'
+export { EdgeLineLayer, type EdgeLineLayerProps } from './layers/EdgeLineLayer.tsx'
+export {
+  NavigationRig,
+  type NavigationPose,
+  type NavigationPoseMode,
+  type NavigationRigProps,
+} from './layers/NavigationRig.tsx'
+export { FrameTick } from './layers/FrameTick.tsx'
 export { PostFX, type BloomParams } from './layers/PostFX.tsx'
 export { UniverseScene } from './assets/UniverseScene.tsx'
 export { UniverseCanvas, type UniverseCanvasProps } from './canvas/UniverseCanvas.tsx'

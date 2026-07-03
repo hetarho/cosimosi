@@ -1,26 +1,32 @@
+import { ObservedErrorBoundary, type ObservedErrorBoundaryFallbackProps } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
-import { VALUES } from '@cosimosi/config'
-import { SkinProvider, UniverseCanvas, UniverseScene, resolveActiveSkin, useSkin } from '@cosimosi/3d-renderer'
 
-// The 3D universe behind everything — composed by the package's UniverseScene (skinned
-// background + floating stars + bloom), so rendering vocabulary stays inside the package.
-function SceneHost() {
-  const { skin } = useSkin()
+import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
+
+// Contains a renderer/read failure to the canvas area (mirror of the mobile screen's
+// boundary) — without it a throw here would unmount the whole app to the root fallback.
+function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackProps) {
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
-      <UniverseScene skin={skin} />
-    </UniverseCanvas>
+    <div className="flex min-h-full items-center justify-center">
+      <Button variant="secondary" onClick={resetErrorBoundary}>
+        {m.common_retry()}
+      </Button>
+    </div>
   )
 }
 
-// The home screen: a full-bleed universe with a few floating actions over it. The actions
-// are inert placeholders — no handlers are wired to them.
-function UniverseHome() {
+// The home screen (`/`): the real memory universe full-bleed, with a few floating actions
+// over it. The widget owns the whole 3D block (renderer mount, graph read, sim, camera
+// rig); the page only lays out the HUD. The actions are inert placeholders — no handlers
+// are wired to them.
+export function UniverseHomePage() {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-text">
       <div className="absolute inset-0">
-        <SceneHost />
+        <ObservedErrorBoundary fallback={UniverseCanvasFallback}>
+          <UniverseCanvasWidget />
+        </ObservedErrorBoundary>
       </div>
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6">
         <header className="flex justify-end">
@@ -34,13 +40,5 @@ function UniverseHome() {
         </div>
       </div>
     </main>
-  )
-}
-
-export function UniverseHomePage() {
-  return (
-    <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-      <UniverseHome />
-    </SkinProvider>
   )
 }

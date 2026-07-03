@@ -97,6 +97,44 @@ The scene code is shared; native needs build-time wiring (not forked code):
   custom dev client (no Expo Go). Verify the render on a simulator/device.
 - **Jest:** host shell tests mock `@cosimosi/3d-renderer` (`jest.mock.3d-renderer.tsx`) so jest never loads three (ESM).
 
+## The universe canvas (plan 23 as-built)
+
+The first real consumer of the substrate: `widgets/universe-canvas` (web + mobile, mirrored slices) renders the
+per-user memory graph on the main page (`/` · `UniverseScreen`).
+
+- **Mount, never re-bootstrap.** Presentation units mount `UniverseCanvas` + `SkinProvider` + `PostFX` from the
+  package and compose their scene inside; they add no renderer lifecycle, skin system, or post pipeline of their own.
+  React context does **not** cross the R3F reconciler — app-context hooks (query/skin/machine) run outside the canvas
+  and pass data in as props.
+- **The read model** is the domain-mirror `entities/{episodic-memory,neuron,synapse}` (Zustand stores; populated once
+  per `GetUniverse` fetch) over `@cosimosi/memory` — the shared FE domain types + proto→domain mappers (strict at the
+  boundary: unknown mood/neuron-type or a non-canonical synapse fails loud). The pages/screens wrap the widget in an
+  error boundary so a corrupt row contains to the canvas area.
+- **Scene primitives** are package layers, the only three importers: `InstancedNodeLayer` (one `InstancedMesh` sized to
+  the active node count — bodies resolved through the `VisualBodySource` port, `createPrimitiveBodySource` binding
+  generic unlit spheres until the real bodies land) and `EdgeLineLayer` (a plain `THREE.LineSegments` +
+  `LineBasicNodeMaterial` over a `position` BufferGeometry, 2 verts per edge, raycast disabled so picking stays on
+  nodes). Both READ the latest coordinate buffer in `useFrame` — coordinates never enter React state or a store, and
+  nothing persists them [I5]. **WebGPU note:** a mesh is kept `visible = false` until it has ≥1 instance/segment to
+  draw — a 0-count geometry inside the PostFX `pass()` makes the WebGPU backend build an invalid object bind group and
+  wedges the device. **Deferred to plan 24:** the fat-line `Line2`/`Line2NodeMaterial` (width/brightness = synapse
+  strength — its transparent path reads the opaque viewport texture, which the custom PostFX pipeline doesn't expose)
+  and `instance_bucket_size` bucketing for graphs beyond one InstancedMesh; both are unused by this scaffold, which
+  renders generic 1px lines and a single node mesh.
+- **The sim runs off the render thread**: `packages/force-sim` in a module Web Worker behind a `UniverseSimBridge`
+  (widget `lib/`), two buffers ping-ponging as transferables; `FrameTick` pumps it once per frame. React Native has no
+  standard Worker, so its per-app spawner returns null and the bridge runs the sim inline on the JS thread — the
+  bridge/sim/scene stay shared and a future RN worker primitive slots in behind the spawner seam. A worker/sim error
+  terminates the bridge and reads as an **empty** universe (never a zero-stacked one); the widget's graph builder
+  clamps out-of-range stored magnitudes so a skewed row cannot kill the scene, and structurally emits neuron↔neuron
+  edges only [I4][I6] from connectivity alone [I3].
+- **Navigation** is the product `NavigationRig` (zoom · rotate · pan via OrbitControls where a DOM canvas exists —
+  inert on native for the MVP — plus machine-driven focus/fly glides with a distance-hysteresis arrival latch). It
+  replaces the demo `CameraControls` for the universe scene; the demo layer remains for `/test`/`UniverseScene`. The
+  camera/selection modes live in the widget's XState machine (`model/universe-navigation.machine.ts`, ids-only
+  context), polled per frame via `getSnapshot()`. Rig feel scalars are code-level constants in the widget `config/`
+  segment (no `rendering.camera.*` values group exists yet).
+
 ## Config
 `spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
 (instancing bucket capacity). Generated to `@cosimosi/config` (`VALUES.rendering.*`) + Go constants via

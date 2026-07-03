@@ -13,6 +13,12 @@ export const UniverseScene = Noop;
 export const Background = Noop;
 export const StarField = Noop;
 export const PostFX = Noop;
+export const InstancedNodeLayer = Noop;
+export const EdgeLineLayer = Noop;
+export const NavigationRig = Noop;
+export const FrameTick = Noop;
+export const createPrimitiveBodySource = () => ({resolve: () => ({})});
+export const resolveBackgroundNode = () => null;
 export const useSkin = () => ({
   skin: {
     key: 'aurora',

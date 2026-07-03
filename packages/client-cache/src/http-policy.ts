@@ -1,6 +1,6 @@
 import type { Interceptor } from '@connectrpc/connect'
 
-import { PlatformService } from '@cosimosi/api-client'
+import { MemoryService, PlatformService } from '@cosimosi/api-client'
 
 export type RpcCacheMethod = 'GET' | 'POST'
 
@@ -62,7 +62,7 @@ export function createRpcCachePolicyInterceptor(entries: readonly RpcCachePolicy
 }
 
 export function createClientCacheRpcPolicyInterceptor(): Interceptor {
-  return createRpcCachePolicyInterceptor(platformRpcCachePolicies)
+  return createRpcCachePolicyInterceptor([...platformRpcCachePolicies, ...memoryRpcCachePolicies])
 }
 
 export function rpcMethodPolicyKey(method: RpcMethodDescriptor): string {
@@ -83,9 +83,22 @@ export const unaryWritePolicy = defineRpcCachePolicy({
   userScoped: true,
 })
 
+// GET-eligible read over user-scoped data: privately cacheable, never shared CDN (§2.7/§4).
+export const userScopedUnaryReadPolicy = defineRpcCachePolicy({
+  ...idempotentUnaryReadPolicy,
+  userScoped: true,
+})
+
 export const platformRpcCachePolicies = [
   {
     method: PlatformService.method.ping,
     policy: idempotentUnaryReadPolicy,
+  },
+] as const satisfies readonly RpcCachePolicyEntry[]
+
+export const memoryRpcCachePolicies = [
+  {
+    method: MemoryService.method.getUniverse,
+    policy: userScopedUnaryReadPolicy,
   },
 ] as const satisfies readonly RpcCachePolicyEntry[]

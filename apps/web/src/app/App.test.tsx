@@ -54,6 +54,34 @@ describe('web app test harness route', () => {
     }
   })
 
+  it('serves the universe as the main page: / composes the universe-canvas widget', async () => {
+    const fakes = createTestHarnessFakes({ userId: 'universe-test-user' })
+    const observability = createObservabilityFacade()
+    const router = await loadedTestRouter('/')
+
+    try {
+      // SSR renders the whole DOM-side composition (route registry → page → widget →
+      // skin provider → GetUniverse query wiring); the canvas contents mount client-side.
+      const html = renderToString(
+        <App
+          router={router}
+          authFacade={fakes.authFacade}
+          queryClient={fakes.queryClient}
+          transport={fakes.transport}
+          observabilityFacade={observability}
+          locale="en"
+        />,
+      )
+
+      expect(html).toContain('Write a diary')
+      expect(html).toContain('Explore')
+      expect(html).not.toContain('Nothing orbits here')
+    } finally {
+      fakes.dispose()
+      observability.dispose()
+    }
+  })
+
   it('gates /test behind the diagnostics flag — off resolves to not-found', async () => {
     const fakes = createTestHarnessFakes()
     const observability = createObservabilityFacade()

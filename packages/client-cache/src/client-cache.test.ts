@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createContextValues, type Interceptor, type UnaryRequest, type UnaryResponse } from '@connectrpc/connect'
 
-import { PlatformService, createPlatformPingQueryOptions } from '@cosimosi/api-client'
+import { MemoryService, PlatformService, createGetUniverseQueryOptions, createPlatformPingQueryOptions } from '@cosimosi/api-client'
 
 import { clientCacheTimings, createClientCacheQueryClient } from './defaults.ts'
 import {
@@ -10,11 +10,13 @@ import {
   createRpcCachePolicyInterceptor,
   defineRpcCachePolicy,
   idempotentUnaryReadPolicy,
+  memoryRpcCachePolicies,
   rpcMethodPolicyKey,
   unaryWritePolicy,
+  userScopedUnaryReadPolicy,
   type RpcMethodDescriptor,
 } from './http-policy.ts'
-import { isConnectQueryKey, platformCacheKeys } from './keys.ts'
+import { isConnectQueryKey, memoryCacheKeys, platformCacheKeys } from './keys.ts'
 import { beginOptimisticMutation } from './optimistic.ts'
 import { assertClientCacheData } from './render-state.ts'
 import { createClientCacheTestContext, setClientCacheData } from './test-helpers.ts'
@@ -226,6 +228,38 @@ describe('client cache facade', () => {
     circular.self = circular
 
     expect(() => assertClientCacheData(circular)).toThrow(/circular cache data/)
+  })
+
+  it('registers GetUniverse as a GET-eligible, user-scoped, never-shared-CDN read', async () => {
+    const entry = memoryRpcCachePolicies.find((candidate) => candidate.method === MemoryService.method.getUniverse)
+
+    expect(entry).toBeDefined()
+    expect(entry?.policy).toBe(userScopedUnaryReadPolicy)
+    expect(userScopedUnaryReadPolicy).toMatchObject({
+      idempotent: true,
+      method: 'GET',
+      sharedCdn: false,
+      userScoped: true,
+    })
+    expect(rpcMethodPolicyKey(MemoryService.method.getUniverse)).toBe('cosimosi.memory.v1.MemoryService/GetUniverse')
+    // The default client interceptor accepts the registered GET without throwing.
+    await expect(
+      callPolicyInterceptor(createClientCacheRpcPolicyInterceptor(), 'GET', MemoryService.method.getUniverse),
+    ).resolves.toBe(true)
+    // Unregistered NO_SIDE_EFFECTS methods still fail loud.
+    await expect(
+      callPolicyInterceptor(createRpcCachePolicyInterceptor([]), 'GET', MemoryService.method.getUniverse),
+    ).rejects.toThrow(/without an explicit/)
+  })
+
+  it('keeps memory cache keys aligned with the API-client facade', () => {
+    const context = createClientCacheTestContext()
+    const key = memoryCacheKeys.getUniverse(context.transport)
+
+    expect(isConnectQueryKey(key)).toBe(true)
+    expect(key[1].methodName).toBe('GetUniverse')
+    expect(createGetUniverseQueryOptions(context.transport).queryKey).toEqual(key)
+    expect(memoryCacheKeys.service()[1].serviceName).toContain('MemoryService')
   })
 
   it('allows GET only for idempotent reads and rejects shared CDN for user-scoped data', async () => {

@@ -23,7 +23,9 @@
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/client-cache": "workspace:*",
     "@cosimosi/config": "workspace:*",
+    "@cosimosi/force-sim": "workspace:*",
     "@cosimosi/i18n": "workspace:*",
+    "@cosimosi/memory": "workspace:*",
     "@cosimosi/observability": "workspace:*",
     "@cosimosi/state-machine": "workspace:*",
     "@cosimosi/ui": "workspace:*",
@@ -36,7 +38,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "three": "^0.185.0",
-    "xstate": "^5.32.2"
+    "xstate": "^5.32.2",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
