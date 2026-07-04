@@ -44,8 +44,11 @@ pnpm install                # 워크스페이스 의존성 (web · mobile · blo
 **로컬 로그인 우회 (dev 전용).** `.env`에 세 값을 두면 Supabase 로그인 없이 한 명의 dev 유저로 항상
 인증된다: `COSIMOSI_DEV_AUTH=1`(api 켜기), `COSIMOSI_DEV_USER_ID`(api가 신뢰할 유저), `VITE_DEV_USER_ID`(웹).
 뒤 두 값은 **같은 id**여야 한다 — 웹은 그 id로 fake 세션을 부트스트랩해 `fake-token-<id>`를 보내고,
-api의 dev verifier는 **오직 그 id의** 베어러만 신뢰한다(임의 유저 사칭 방지). 셋 다 비우면 실제 Supabase 인증.
-웹 프로덕션 빌드는 `VITE_DEV_USER_ID`가 있으면 즉시 에러로 막는다. 그 유저의 우주를 채우려면(작문 플로우는 아직 없음):
+api의 dev verifier는 **오직 그 id의** 베어러만 신뢰한다(임의 유저 사칭 방지). 모바일도 같은
+`COSIMOSI_DEV_USER_ID`를 따른다 — 모바일 dev 시작 때 `dev-user.gen.ts`로 자동 생성되므로(기본 `dev-user`)
+세 클라이언트가 손수 맞출 필요 없이 한 id로 묶인다. 셋 다 비우면 실제 Supabase 인증.
+CI 빌드는 `VITE_DEV_USER_ID`가 있으면 **빌드 타임에** 에러로 막는다(dev-auth 번들은 배포 불가) — 로컬은 `pnpm dev`용으로 그대로 두고 런타임 assert가 백스톱이다.
+그 유저의 우주를 채우려면(작문 플로우는 아직 없음):
 
 ```bash
 psql "$DATABASE_URL" -f scripts/seed-dev-universe.sql   # dev-user 에 샘플 별/뉴런/시냅스 시드

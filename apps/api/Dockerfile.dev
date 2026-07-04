@@ -4,6 +4,8 @@
 # rebuilds ./cmd/api on every save — see .air.toml.
 FROM golang:1.26
 WORKDIR /app
-RUN go install github.com/air-verse/air@latest
+# Pin Air to an explicit release: `@latest` lets an upstream change break `pnpm dev:api` with no
+# repo diff or CI signal (this dev image isn't built by CI). Bump deliberately.
+RUN go install github.com/air-verse/air@v1.65.3
 EXPOSE 8080
 CMD ["air", "-c", ".air.toml"]

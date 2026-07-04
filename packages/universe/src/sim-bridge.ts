@@ -1,7 +1,11 @@
 import {
   FORCE_SIM_COORDINATE_STRIDE,
+  carryPreviousPositions,
+  createForceSimNodeIndex,
   createForceSimulation,
+  remapCoordinateBuffer,
   type ForceSimGraph,
+  type ForceSimNodeIndex,
   type ForceSimulation,
 } from '@cosimosi/force-sim'
 
@@ -48,10 +52,9 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
   let spareBuffers: ArrayBuffer[] = []
   let inFlight = false
   let pendingDt = 0
-  // Layout of the currently displayed buffer, so a refetch can carry existing coordinates
-  // across a resize (neurons occupy the first slots, memories after — plan 19's contract).
-  let displayedNeurons = 0
-  let displayedMemories = 0
+  // The node index that laid out the currently displayed buffer, so a refetch can carry existing
+  // coordinates across a reorder/resize by stable node id (plan 19's contract) rather than by slot.
+  let displayedIndex: ForceSimNodeIndex | null = null
 
   const stop = (clearCoordinates: boolean) => {
     worker?.terminate()
@@ -61,8 +64,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
     pendingDt = 0
     if (clearCoordinates) {
       coordinates.current = null
-      displayedNeurons = 0
-      displayedMemories = 0
+      displayedIndex = null
     }
   }
 
@@ -72,31 +74,21 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
       // Keep the previous buffer on screen through the swap — the new worker's first
       // coords replace it; only dispose() blanks the scene.
       stop(false)
-      const neuronCount = graph.neurons.length
-      const memoryCount = graph.episodicMemories.length
-      const floats = (neuronCount + memoryCount) * FORCE_SIM_COORDINATE_STRIDE
-      // On a refetch, resize the displayed buffer to the new graph up front, carrying over the
-      // coordinates of nodes that still exist (neurons, then memories). Without this the old,
-      // smaller buffer stays on screen until the worker's first tick and the layers read past
-      // its end (new nodes flash at the origin and the whole memory band shifts, since
-      // firstNodeIndex grows). A same-size refetch copies 1:1, so a periodic revalidation never
-      // flickers; only genuinely new nodes sit at the origin, and only until the first coords
-      // arrive a frame or two later. On the FIRST load (no previous buffer) leave coordinates
-      // null so the layers stay hidden until real coords — no origin-stacked flash.
+      const nextIndex = createForceSimNodeIndex(graph)
+      const floats = nextIndex.entries.length * FORCE_SIM_COORDINATE_STRIDE
+      // On a refetch, carry surviving nodes' coordinates to their NEW slots BY ID (remap), so the
+      // scene stays put through the worker swap even if the backend reordered the nodes; and seed
+      // the next sim from those same positions so its first tick resumes where it left off.
+      // Genuinely new nodes sit at the origin only until the first coords arrive a frame or two
+      // later. On the FIRST load (no previous buffer) leave coordinates null so the layers stay
+      // hidden until real coords — no origin-stacked flash.
       const previous = coordinates.current
-      if (previous) {
-        const stride = FORCE_SIM_COORDINATE_STRIDE
-        const next = new Float32Array(floats)
-        next.set(previous.subarray(0, Math.min(displayedNeurons, neuronCount) * stride), 0)
-        const memoryFloats = Math.min(displayedMemories, memoryCount) * stride
-        if (memoryFloats > 0) {
-          const from = displayedNeurons * stride
-          next.set(previous.subarray(from, from + memoryFloats), neuronCount * stride)
-        }
-        coordinates.current = next
+      let seededGraph = graph
+      if (previous && displayedIndex) {
+        coordinates.current = remapCoordinateBuffer(nextIndex, previous, displayedIndex)
+        seededGraph = carryPreviousPositions(graph, previous, displayedIndex)
       }
-      displayedNeurons = neuronCount
-      displayedMemories = memoryCount
+      displayedIndex = nextIndex
       const spawned = spawner()
       spawned.onmessage = (event) => {
         const message = event.data as SimWorkerResponse | null
@@ -119,7 +111,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
       worker = spawned
       // Two buffers ping-pong as transferables (zero-copy): one displayed, one in flight.
       spareBuffers = [new ArrayBuffer(floats * 4), new ArrayBuffer(floats * 4)]
-      worker.postMessage({ type: 'init', graph } satisfies SimWorkerRequest)
+      worker.postMessage({ type: 'init', graph: seededGraph } satisfies SimWorkerRequest)
     },
     pump(dt) {
       pendingDt += dt
@@ -139,12 +131,21 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
 function createInlineSimBridge(): UniverseSimBridge {
   const coordinates: MutableCoordinateBufferRef = { current: null }
   let sim: ForceSimulation | null = null
+  // The node index of the currently displayed buffer, so a refetch carries coordinates by id —
+  // the same continuity the worker branch gives, so web and mobile don't diverge on refetch.
+  let displayedIndex: ForceSimNodeIndex | null = null
 
   return {
     coordinates,
     start(graph) {
-      sim = createForceSimulation(graph)
+      const previous = coordinates.current
+      const seededGraph =
+        previous && displayedIndex ? carryPreviousPositions(graph, previous, displayedIndex) : graph
+      sim = createForceSimulation(seededGraph)
+      // Seeded from prior positions, the first frame already lands survivors where they were —
+      // no async swap window here (the sim is synchronous), so no separate display remap is needed.
       coordinates.current = sim.coordinates
+      displayedIndex = sim.nodeIndex
     },
     pump(dt) {
       if (!sim) return
@@ -153,6 +154,7 @@ function createInlineSimBridge(): UniverseSimBridge {
     dispose() {
       sim = null
       coordinates.current = null
+      displayedIndex = null
     },
   }
 }
