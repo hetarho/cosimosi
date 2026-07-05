@@ -62,6 +62,35 @@ rendering:
   # as brighter/larger than the silent field it wakes from.
   latent_star_size: 0.14
 
+nebula:
+  # Emotion color field ([M4][M5]): each rendered memory bleeds its mood color into the ambient
+  # field, weighted by EffectiveStrength (base + recall accumulation). Its own group — the unit
+  # owns a coherent scalar set; folding into rendering.* would blur ownership. Contributions
+  # composite additively behind the bodies, so the universe's global tone is emergent, never
+  # stored. Realized as per-contributor soft-glow kernels in world space (see tech/rendering.md).
+  #
+  # EffectiveStrength → bleed radius (world units). Stronger stars bleed wider [M4]. Kept modest so
+  # kernels stay local: in a dense cluster many wide kernels sum additively and wash the core to
+  # white, so radius is tuned to bleed between neighbors without flooding the center.
+  bleed_radius_coefficient: 12
+  # Floor radius so even the weakest star reads as a tight local glow rather than vanishing [M4].
+  min_bleed_radius: 3
+  # Local-region density falloff sharpness — higher concentrates color near the star, so overlapping
+  # regions still bleed but each keeps a dense core and the diffuse mid-field haze (which is what
+  # sums toward white where stars cluster) stays thin.
+  falloff_exponent: 3.5
+  # Contributor budget cap — the strongest N memories bleed into the field (perf lever, shared
+  # by web and mobile; the field stays legible when a universe grows past this).
+  max_contributors: 96
+  # Per-platform contributor kernel tessellation (silhouette smoothness of each glow). Mobile
+  # lower — the MVP fidelity reduction from the same TSL source (§3.5).
+  field_resolution_web: 24
+  field_resolution_mobile: 10
+  # Overall additive amplitude per kernel — the primary saturation lever. Held well below 1 so that
+  # where many kernels overlap their sum reads as a coexisting blend rather than a blown-out white
+  # core, especially since the bloom PostFX pass amplifies the field further.
+  base_intensity: 0.3
+
 ai:
   # Voyage 4-family embeddings default to 1024 dimensions while still allowing smaller/larger Matryoshka outputs.
   embedding_dim: 1024

@@ -205,16 +205,53 @@ seed anchor is a client presentation choice; the real neuron's final position is
   anchors (`recentlyActiveNeuronIds` over the episodic-memory mirror within `synapse.temporal_window_days`), else random.
   The UI flares each pick with a `sin(πp)` envelope (a fixed-capacity pool advanced by `FrameTick`, no XState, no 60fps
   React state) and marks it consumed; a module-level `awaken-registry` store makes the awaken **idempotent across
-  remounts**. It reacts to `new_neuron_ids` (plan 20 / job 32); until job 32 wires the launch flow the trigger is empty.
+  remounts**. It reacts to `new_neuron_ids` — the writing flow (plan 27) announces them through the module-level
+  `features/launch-stars` launched-neurons store, which the always-mounted canvas reads and feeds here.
 - **Mobile (§3.5).** Slices copied verbatim; the widget passes `rendering.latent_star_count_mobile` (reduced MVP count).
   No `*.native` sibling — the R3F host is already forked at the canvas level.
+
+### Nebula emotion color field (plan 26)
+
+The ambient color field blends **many** per-star emotion colors at once — each memory's mood color bleeds into its
+region, stronger stars bleed wider, and the universe's global tone **emerges** from the composite; it is never stored,
+modeled, or surfaced as an average-tone readout ([M4][M5][I5][§3.4]).
+
+- **`ColorField` layer (`@cosimosi/3d-renderer`).** The domain-agnostic realization is **additive world-space soft-glow
+  kernels**, not a full-screen uniform-array loop pass: one `InstancedMesh` of unit spheres with a TSL
+  `MeshBasicNodeMaterial` whose `opacityNode` is a **view-facing radial falloff** (`clamp(normalView.z,0,1) ^
+  falloff_exponent × base_intensity`), so a plain sphere reads as a soft glow with no billboarding. `AdditiveBlending`,
+  `depthTest`/`depthWrite` off, `renderOrder = -2`, so contributions **sum** in the framebuffer (many colors coexist and
+  bleed, the tone emerges) and the latent field (-1) + every real body draw on top. Positions are read per frame from the
+  coordinate buffer into instance matrices (§3.3); the per-contributor tint is an instance attribute uploaded only when
+  the read model changes. Colors in, pixels out — the layer holds no emotion, palette, or domain import. This reuses the
+  proven `InstancedNodeLayer`/`LatentField` per-frame pattern and avoids an untested TSL `Loop`/`uniformArray` full-screen
+  shader with WebGL2-fallback risk; additive framebuffer compositing is the screen-space realization the plan left open.
+- **`entities/nebula` (visual entity).** `lib/contributors.ts` is a pure projection: each rendered memory →
+  `(nodeIndex = firstNodeIndex + storeIndex, moodColor(mood) → linear RGB tint, EffectiveStrength → max(min_bleed_radius,
+  bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` keeping the **strongest**. Color comes
+  solely through the plan-17 `moodColor` seam — no color literal, no valence→hue math; the weight input is
+  `EffectiveStrength` (the derived read-time size), the Epic-C recall mirror seam. `ui/NebulaField.tsx` binds the layer
+  with `firstNodeIndex = neuronCount` (memories share the star layer's buffer slots); `ui/NebulaNotice.tsx` is the
+  honest-mirror HUD disclosure (i18n copy, renders no color). The mirror slice is read only via `@x/nebula.ts`.
+- **Layer coexistence.** The nebula (domain emotion color) composites over the plan-14 skin background and behind the
+  latent field + bodies. The skin never reads emotion; the nebula never sets ambiance — neither writes to the domain.
+- **Optimistic-launch interaction (plan 27).** A just-launched memory enters the `episodic-memory` store before its
+  force-sim node exists, so its nebula kernel (and its star) render at the world origin until the next `GetUniverse`
+  refetch rebuilds the graph and the sim positions it — the §2.8 optimistic degradation ("position fills on next read").
+- **Mobile (§3.5).** `lib`/`ui`/`@x` copied verbatim; the mount passes `nebula.field_resolution_mobile` (coarser
+  kernels). `NebulaNotice` has an RN sibling (View/Text vs DOM); the `ColorField` TSL layer is shared — no `*.native`.
 
 ## Config
 `spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
 (instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
 `filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
-`latent_star_count`, `latent_star_count_mobile`, `latent_field_radius`, `latent_star_size`. Generated to
-`@cosimosi/config` (`VALUES.rendering.*`) + Go constants via `pnpm gen:values` — never hardcoded. (The star seed-form
-shader graph, the latent-field drift/flare motion, and the filament/cell-star/latent tint colors are code/content, not
-values.)
+`latent_star_count`, `latent_star_count_mobile`, `latent_field_radius`, `latent_star_size`.
+
+`spec/values.yaml → nebula` (plan 26, its own group): `bleed_radius_coefficient` (`EffectiveStrength` → bleed radius),
+`min_bleed_radius` (floor), `falloff_exponent` (kernel density sharpness), `max_contributors` (kernel budget cap),
+`field_resolution_web`/`field_resolution_mobile` (per-platform kernel tessellation), `base_intensity` (ambient
+amplitude). Generated to `@cosimosi/config` (`VALUES.rendering.*` / `VALUES.nebula.*`) + Go constants via
+`pnpm gen:values` — never hardcoded. (The star seed-form shader graph, the latent-field drift/flare motion, the nebula
+falloff/blend graph, the compositing/blend mode, and the filament/cell-star/latent/nebula tint colors are code/content,
+not values.)

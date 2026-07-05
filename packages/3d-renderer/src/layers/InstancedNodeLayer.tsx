@@ -71,6 +71,10 @@ export function InstancedNodeLayer({
   const [body, setBody] = useState<THREE.Mesh | null>(null)
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
   const matrix = useMemo(() => new THREE.Matrix4(), [])
+  // A zero-scale matrix hides an instance whose coordinate isn't in the live buffer yet, keeping its
+  // slot so the instanceId still equals the node index for picking (a separate matrix, so the
+  // uniform-scale `matrix` composed once below is never clobbered).
+  const zeroMatrix = useMemo(() => new THREE.Matrix4().makeScale(0, 0, 0), [])
   // InstancedMesh needs a fixed instance capacity at construction; size it to the active
   // count (min 1) and recreate via `key` when the count changes — graphs refetch rarely.
   const instanceCount = Math.max(1, count)
@@ -135,11 +139,18 @@ export function InstancedNodeLayer({
     // column changes per instance. Per-instance scales (stars) recompose the matrix each instance.
     if (!scales) matrix.makeScale(scale, scale, scale)
     for (let i = 0; i < count; i++) {
+      const offset = (firstNodeIndex + i) * 3
+      // No live coordinate for this node yet — e.g. an optimistic launch grew the store before the
+      // next GetUniverse read grew the buffer. Hide it at zero scale (keeping its instance slot, so
+      // the instanceId still maps to the node index for picking) rather than drawing it at origin.
+      if (offset < 0 || offset + 2 >= buffer.length) {
+        mesh.setMatrixAt(i, zeroMatrix)
+        continue
+      }
       if (scales) {
         const size = scales[i] ?? scale
         matrix.makeScale(size, size, size)
       }
-      const offset = (firstNodeIndex + i) * 3
       matrix.setPosition(buffer[offset] ?? 0, buffer[offset + 1] ?? 0, buffer[offset + 2] ?? 0)
       mesh.setMatrixAt(i, matrix)
     }

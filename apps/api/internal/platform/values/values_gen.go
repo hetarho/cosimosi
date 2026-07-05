@@ -40,6 +40,17 @@ const (
 	RenderingLatentStarSize        = 0.14
 )
 
+// nebula
+const (
+	NebulaBleedRadiusCoefficient = 12
+	NebulaMinBleedRadius         = 3
+	NebulaFalloffExponent        = 3.5
+	NebulaMaxContributors        = 96
+	NebulaFieldResolutionWeb     = 24
+	NebulaFieldResolutionMobile  = 10
+	NebulaBaseIntensity          = 0.3
+)
+
 // ai
 const (
 	AiEmbeddingDim     = 1024

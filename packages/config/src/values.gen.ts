@@ -31,6 +31,15 @@ export const VALUES = {
     latentFieldRadius: 34,
     latentStarSize: 0.14,
   },
+  nebula: {
+    bleedRadiusCoefficient: 12,
+    minBleedRadius: 3,
+    falloffExponent: 3.5,
+    maxContributors: 96,
+    fieldResolutionWeb: 24,
+    fieldResolutionMobile: 10,
+    baseIntensity: 0.3,
+  },
   ai: {
     embeddingDim: 1024,
     perCallTokenCap: 1200,

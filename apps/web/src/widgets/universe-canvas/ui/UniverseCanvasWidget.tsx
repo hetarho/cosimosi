@@ -24,9 +24,11 @@ import {
 } from '@cosimosi/universe'
 
 import { AwakenNeuron, recentlyActiveNeuronIds, type AwakenAnchor } from '../../../features/awaken-neuron/index.ts'
+import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { CellStarLayer } from '../../../entities/cell-star/index.ts'
 import { FilamentLayer } from '../../../entities/filament/index.ts'
 import { LatentStarField, generateLatentField } from '../../../entities/latent-star/index.ts'
+import { NebulaField } from '../../../entities/nebula/index.ts'
 import { StarLayer } from '../../../entities/star/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useUniverse } from '../api/use-universe.ts'
@@ -34,9 +36,6 @@ import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
 const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
-// The launch flow (plan 27 / job 32) will feed genuinely-created ids here; until then the awaken
-// seam is exercised by the feature's unit tests, and the field renders with nothing awakening.
-const NO_NEW_NEURONS: readonly string[] = []
 
 // The universe scene block: mounts the @cosimosi/3d-renderer canvas host + skin/post
 // pipeline unchanged (no renderer lifecycle, no skin system, no post pipeline of its own)
@@ -118,6 +117,10 @@ function UniverseCanvasHost() {
 
   const neuronCount = graph?.neurons.length ?? 0
 
+  // The launch flow announces genuinely-created neuron ids here; the awaken plays for the fresh
+  // ones (idempotent via the awaken registry). Empty until the first launch of this session.
+  const newNeuronIds = useLaunchedNeuronsStore((state) => state.newNeuronIds)
+
   // The gray latent field is generated once from the shared seed (web↔mobile agree) and is NOT a
   // sim node — decorative, static, never attracting real nodes [E7a][I5]. Mobile lowers the count.
   const latentField = useMemo(
@@ -161,6 +164,9 @@ function UniverseCanvasHost() {
     <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
       <Background node={backgroundNode} />
       <StarField />
+      {/* Emotion color field: additive mood-color blend behind the latent field and bodies
+          (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}
+      <NebulaField positions={bridge.coordinates} firstNodeIndex={neuronCount} />
       <LatentStarField field={latentField} />
       <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
       <StarLayer
@@ -175,7 +181,7 @@ function UniverseCanvasHost() {
         neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
         universeTime={universe?.universeTime ?? null}
       />
-      <AwakenNeuron field={latentField} newNeuronIds={NO_NEW_NEURONS} resolveAnchors={resolveAnchors} />
+      <AwakenNeuron field={latentField} newNeuronIds={newNeuronIds} resolveAnchors={resolveAnchors} />
       <NavigationRig getPose={getPose} onArrived={handleArrived} {...UNIVERSE_CAMERA_RIG} />
       <FrameTick onFrame={pump} />
       <PostFX bloom={skin.bloom} />

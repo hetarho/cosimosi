@@ -8,6 +8,7 @@ import {
   TransportPingPanel,
   ValuesPanel,
 } from './platform-panel-components.tsx'
+import { NebulaDemoPanel } from './nebula-demo-panel.tsx'
 import { RenderDemoPanel } from './render-demo-panel.tsx'
 import { createTestPanelRegistry, type TestPanelCapability, type TestPanelDefinition } from '../../../shared/test-panel/index.ts'
 
@@ -70,5 +71,13 @@ export const platformTestPanels = createTestPanelRegistry([
     // No capability gate: the panel self-handles GPU absence (WebGPU → WebGL2 → none).
     requiredCapabilities: [],
     render: () => createElement(RenderDemoPanel),
+  },
+  {
+    id: 'nebula-color-field',
+    titleKey: 'test_harness_nebula_title',
+    descriptionKey: 'test_harness_nebula_description',
+    // No capability gate: the panel self-handles GPU absence (WebGPU → WebGL2 → none).
+    requiredCapabilities: [],
+    render: () => createElement(NebulaDemoPanel),
   },
 ] as const satisfies readonly TestPanelDefinition[])
