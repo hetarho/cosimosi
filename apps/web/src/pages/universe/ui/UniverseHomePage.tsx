@@ -4,7 +4,9 @@ import { ObservedErrorBoundary, type ObservedErrorBoundaryFallbackProps } from '
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 
+import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
+import { WritingFlowSheet } from '../../../widgets/writing-flow/index.ts'
 
 // Contains a renderer/read failure to the canvas area (mirror of the mobile screen's
 // boundary) — without it a throw here would unmount the whole app to the root fallback.
@@ -39,13 +41,14 @@ export function UniverseHomePage() {
         </QueryErrorResetBoundary>
       </div>
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6">
-        <header className="flex justify-end">
+        <header className="flex items-start justify-between gap-3">
+          <NebulaNotice />
           <Button variant="secondary" className="pointer-events-auto">
             {m.universe_home_settings()}
           </Button>
         </header>
         <div className="pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 pb-2">
-          <Button variant="primary">{m.universe_home_write()}</Button>
+          <WritingFlowSheet />
           <Button variant="secondary">{m.universe_home_explore()}</Button>
         </div>
       </div>

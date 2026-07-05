@@ -6,12 +6,20 @@ import { GetUniverseResponseSchema, MemoryService } from './gen/cosimosi/memory/
 
 export { MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
 export type {
+  ConfirmedMemory,
   EmotionDto,
   EpisodicMemoryDto,
   GetUniverseRequest,
   GetUniverseResponse,
+  LaunchStarsRequest,
+  LaunchStarsResponse,
   NeuronActivationDto,
   NeuronDto,
+  ProposedMemory,
+  ProposedNeuron,
+  ReviseSplitRequest,
+  SplitDiaryRequest,
+  SplitDiaryResponse,
   SynapseDto,
 } from './gen/cosimosi/memory/v1/memory_pb.ts'
 

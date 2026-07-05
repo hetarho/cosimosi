@@ -28,4 +28,20 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The writing-flow vertical: four single-action feature slices composed by one widget, and that
+    // widget mounted by the universe page. A single reference is the FSD grain here — a feature is
+    // one user action (§3.1), not a slice to merge away. Scoped to these slices so a genuinely
+    // insignificant future slice still gets flagged.
+    files: [
+      './src/features/write-diary/**',
+      './src/features/split-diary/**',
+      './src/features/revise-split/**',
+      './src/features/launch-stars/**',
+      './src/widgets/writing-flow/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
 ])

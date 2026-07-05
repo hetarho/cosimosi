@@ -9,7 +9,9 @@ import {
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react';
 
+import {NebulaNotice} from '../../../entities/nebula/index.ts';
 import {UniverseCanvasWidget} from '../../../widgets/universe-canvas/index.ts';
+import {WritingFlowSheet} from '../../../widgets/writing-flow/index.ts';
 
 // The universe screen: the real memory universe full-bleed with a floating action over
 // it. The shared widget owns the whole 3D block (renderer mount, GetUniverse read, sim,
@@ -42,8 +44,11 @@ export function UniverseScreen() {
           )}
         </QueryErrorResetBoundary>
       </View>
+      <View style={styles.notice}>
+        <NebulaNotice />
+      </View>
       <View style={styles.hud}>
-        <Button>{m.universe_home_write()}</Button>
+        <WritingFlowSheet />
       </View>
     </View>
   );
@@ -51,6 +56,7 @@ export function UniverseScreen() {
 
 const styles = StyleSheet.create({
   root: {flex: 1},
+  notice: {position: 'absolute', left: 16, right: 16, top: 24},
   hud: {position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center'},
   fallback: {flex: 1, gap: 16, alignItems: 'center', justifyContent: 'center', padding: 24},
   fallbackText: {color: tokens.color['text-muted'], fontSize: 15, textAlign: 'center'},
