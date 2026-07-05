@@ -21,7 +21,7 @@ export interface ContributorParams {
 }
 
 // Pure contributor selection/packing for the emotion color field (§3.4, one-way projection). Each
-// rendered memory bleeds its mood color — obtained ONLY through the plan-17 palette seam
+// rendered memory bleeds its mood color — obtained ONLY through the emotion palette seam
 // (`moodColor`), the single color path — with a bleed radius weighted by its EffectiveStrength: the
 // derived read-time size (base strength + recall accumulation), read here, never re-derived from raw
 // base strength. When the field is over the contributor budget the STRONGEST memories are kept — a

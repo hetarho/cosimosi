@@ -52,7 +52,7 @@ type LaunchRepo interface {
 // LaunchTx is the transaction-scoped write surface PersistEncoded consumes. It
 // deliberately exposes no Diary update and no delete of any kind, so the launch
 // path cannot express an [I1]/[I2] violation. It embeds SynapseStore so Link's
-// synapse reads and writes run on the very same transaction (plan 21, §2.6).
+// synapse reads and writes run on the very same transaction (§2.6).
 type LaunchTx interface {
 	LatestLaunchedUniverseTime(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 	InsertDiary(ctx context.Context, scope platform.UserScope, diary Diary) (Diary, error)
@@ -102,16 +102,14 @@ type NeuronPairStrength struct {
 	Strength  float64
 }
 
-// UniverseReader backs the GetUniverse read over the stored facts (plan 16's
-// universe queries).
+// UniverseReader backs the GetUniverse read over the stored universe facts.
 type UniverseReader interface {
 	GetUniverse(ctx context.Context, scope platform.UserScope) (UniverseFacts, error)
 }
 
-// Linker is the in-transaction Link seam (plan 21): PersistEncoded invokes it as
+// Linker is the in-transaction Link seam: PersistEncoded invokes it as
 // the last step of its transaction so synapse writes land atomically with the
-// launch. Job 27 provides the implementation; until then the seam stays nil and
-// no synapse is created at launch.
+// launch. A nil Linker skips linking (no synapse is created at launch).
 type Linker interface {
 	LinkLaunched(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory) error
 }

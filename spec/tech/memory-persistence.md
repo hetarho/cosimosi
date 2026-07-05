@@ -79,6 +79,18 @@ snapshot.
 `FOR UPDATE SKIP LOCKED`, complete, retry, fail, and write semantic stages. The query file is memory-owned because the
 `jobs` table belongs to the memory context, while the generic retry loop lives in `internal/platform/jobqueue`.
 
+The claim is **leased and fenced**. `jobs.lease_generation` is a monotonic token the claim bumps on every claim; a
+claim sets `status='running'` and pushes `next_run_at` out by `ai.job_lease_ms` (the lease window). The terminal
+transitions (`complete`/`retry`/`fail`) match only `status='running' AND lease_generation = <the claimed generation>`,
+so a worker whose lease expired — its job re-claimed by another — can no longer finalize the row; its transition is a
+silent no-op. This prevents the lost-update and duplicate-processing races when a handler overruns its lease. The lease
+window is its own tuning knob (`ai.job_lease_ms`), sized to outlast one handler run — deliberately **not** derived from
+the exponential retry backoff (`ai.job_backoff_base_ms`). Because `lease_generation` also counts claims, the runner
+dead-letters a job re-claimed past `ai.job_max_claims` without ever completing — the signature of a handler that keeps
+killing its worker (a panic that escapes recovery, OOM, SIGKILL) — so a poison job cannot loop forever. Ordinary
+handler panics are recovered in `internal/platform/jobqueue` and flow through the normal attempt/backoff path instead
+of crashing the worker.
+
 Generated rows stay in `apps/api/db/gen`. `internal/memory` imports no sqlc, pgx, proto, or DB representation type;
 `internal/memory/pg` is the only memory package that imports `dbgen`/`pgtype` and maps rows to domain structs.
 

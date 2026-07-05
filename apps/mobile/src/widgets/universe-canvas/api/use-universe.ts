@@ -32,9 +32,24 @@ export function useUniverse(): UniverseReadState {
   const setSynapses = useSynapseStore(state => state.setAll);
 
   useEffect(() => {
-    setMemories(universe?.memories ?? []);
-    setNeurons(universe?.neurons ?? []);
-    setSynapses(universe?.synapses ?? []);
+    if (!universe) {
+      setMemories([]);
+      setNeurons([]);
+      setSynapses([]);
+      return;
+    }
+    // Merge server truth with any optimistically-launched memory not yet visible
+    // server-side (an eager refetch — or a stale GET cache — right after a launch must
+    // not drop the just-launched memory). Server rows win on id; optimistic-only rows
+    // survive until the read includes them. Only when a universe is present, so a signed-out
+    // empty read still clears a prior user's data.
+    const serverIds = new Set(universe.memories.map(memory => memory.id));
+    const optimisticOnly = Object.values(useEpisodicMemoryStore.getState().byId).filter(
+      memory => !serverIds.has(memory.id),
+    );
+    setMemories([...universe.memories, ...optimisticOnly]);
+    setNeurons(universe.neurons);
+    setSynapses(universe.synapses);
   }, [universe, setMemories, setNeurons, setSynapses]);
 
   return {universe};

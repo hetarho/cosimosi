@@ -20,7 +20,7 @@ export interface EdgeLineLayerProps {
 // path: that material blends against the opaque viewport mip texture, which isn't available
 // under the package's custom PostFX RenderPipeline and makes WebGPU reject the bind group.
 // Lines are 1px here (WebGPU basic lines); fat-line width/brightness = synapse strength is a
-// plan-24 refinement. raycast is a no-op so picking stays on the instanced nodes; frustumCulled
+// later refinement. raycast is a no-op so picking stays on the instanced nodes; frustumCulled
 // off because bounds are never recomputed per frame.
 export function EdgeLineLayer({ endpointPairs, count, positions, color = '#ffffff' }: EdgeLineLayerProps) {
   const vertexCapacity = Math.max(1, count) * 2

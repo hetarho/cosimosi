@@ -20,7 +20,7 @@ var ErrLaunchInvalidMemories = errors.New("memory launch requires a valid confir
 // LaunchResult is PersistEncoded's optimistic return (§2.8): ids only —
 // embeddings and gist texts fill on the next read. NewNeuronIDs are the neurons
 // genuinely created (not deduped onto existing ones) — newness is a server-only
-// decision, surfaced for the awaken animation ([E7a], plan 25).
+// decision, surfaced for the awaken animation ([E7a]).
 type LaunchResult struct {
 	DiaryID      string
 	MemoryIDs    []string
@@ -72,7 +72,8 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 		result.DiaryID = diary.ID
 		// Monotonic launch guard [I10][T1]: a past-dated diary is saved (the
 		// objective record always lands) but launches no EpisodicMemory.
-		// Universe-clock advance itself is Epic B; this guard is Epic A's seam.
+		// Advancing the universe clock is a separate concern; this guard only
+		// blocks a past-dated launch.
 		if latest != nil && diaryDate.Before(*latest) {
 			result.PastDated = true
 			return nil
@@ -133,7 +134,7 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 			launched = append(launched, LaunchedMemory{EpisodicMemory: episodicMemory, NeuronIDs: neuronIDs})
 		}
 
-		// Link (plan 21) is the last in-transaction step: synapses land atomically
+		// Link is the last in-transaction step: synapses land atomically
 		// with the launch, before the async embed/semanticize enqueue.
 		if err := s.linker.LinkLaunched(ctx, scope, tx, launched); err != nil {
 			return err
@@ -147,7 +148,7 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 	return result, nil
 }
 
-// Universe returns the stored universe facts plus Epic A's derived universe time:
+// Universe returns the stored universe facts plus the derived universe time:
 // the latest launched memory's created_universe_time, taken from the same read
 // snapshot as the facts (a separate latest-launched query could race a launch).
 func (s *Service) Universe(ctx context.Context, scope platform.UserScope) (UniverseFacts, *time.Time, error) {

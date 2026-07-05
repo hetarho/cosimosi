@@ -2,7 +2,7 @@ export interface LatentFieldParams {
   /** Reuse force_sim.seed so web and mobile generate the identical, reproducible field. */
   readonly seed: number
   readonly count: number
-  /** Hippocampus z-band from force_sim (plan 19). */
+  /** Hippocampus z-band from force_sim. */
   readonly zMin: number
   readonly zMax: number
   /** World radius of the x,y disc the field fills. */

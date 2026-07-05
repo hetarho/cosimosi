@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {Button, tokens} from '@cosimosi/ui';
-import {m} from '@cosimosi/i18n';
+
+import {m} from '../../../shared/i18n/index.ts';
 
 // The honest-mirror notice ([M5], PRD §1.4) — the RN fork of the web disclosure (§3.5, primitive
 // differs: RN View/Text vs DOM). A tap reveals that the universe's color is the emotions you

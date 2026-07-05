@@ -7,7 +7,7 @@ export interface NeuronActivation {
   readonly weight: number
 }
 
-// FE domain mirror of the stored episodic-memory facts (GetUniverse contract, plan 23).
+// FE domain mirror of the stored episodic-memory facts (GetUniverse contract).
 // Stored facts only: read-time derived values (effective strength/brightness) come from
 // @cosimosi/memory-logic, and positions are emergent force-sim output, never fields [I5].
 export interface EpisodicMemory {

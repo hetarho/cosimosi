@@ -4,9 +4,24 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/cosimosi/api/internal/platform"
 )
+
+func TestRateLimitedErrorHonorsRetryAfterHint(t *testing.T) {
+	withHint := &RateLimitedError{Provider: "voyage", RetryAfter: time.Hour}
+	before := time.Now().UTC()
+	at := withHint.RetryAt()
+	if at.Before(before.Add(time.Hour - time.Minute)) {
+		t.Fatalf("RetryAt = %s, want at least ~1h out (honoring Retry-After)", at)
+	}
+
+	noHint := &RateLimitedError{Provider: "voyage"}
+	if !noHint.RetryAt().IsZero() {
+		t.Fatalf("RetryAt with no hint = %s, want zero (fall back to backoff)", noHint.RetryAt())
+	}
+}
 
 func TestFactorySelectsProvidersIndependentlyPerCapability(t *testing.T) {
 	llmStub := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","neurons":[{"name":"market","type":"semantic"}]}]}`)}
@@ -80,6 +95,17 @@ func TestFactorySelectsProvidersIndependentlyPerCapability(t *testing.T) {
 		_, err = NewAdapters(FactoryOptions{Embedding: CapabilityConfig{APIKey: "key"}})
 		if !errors.Is(err, ErrUnknownProvider) {
 			t.Fatalf("empty-provider error = %v, want ErrUnknownProvider", err)
+		}
+	})
+
+	t.Run("named provider without an API key is a startup error, not a silent mock", func(t *testing.T) {
+		_, err := NewAdapters(FactoryOptions{LLM: CapabilityConfig{Provider: "teststub"}})
+		if err == nil {
+			t.Fatal("named LLM provider with no key did not error; it must not silently fall back to the mock")
+		}
+		_, err = NewAdapters(FactoryOptions{Embedding: CapabilityConfig{Provider: "teststub"}})
+		if err == nil {
+			t.Fatal("named embedding provider with no key did not error; it must not silently fall back to the mock")
 		}
 	})
 

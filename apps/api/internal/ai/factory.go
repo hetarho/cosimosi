@@ -116,24 +116,34 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 	// registry-selected client is labeled by its provider name.
 	llmClient := opts.LLMClient
 	llmMode := "real"
-	if llmClient == nil && opts.LLM.APIKey != "" {
-		client, err := newLLMClient(opts.LLM)
-		if err != nil {
-			return Adapters{}, err
+	if llmClient == nil {
+		if opts.LLM.APIKey != "" {
+			client, err := newLLMClient(opts.LLM)
+			if err != nil {
+				return Adapters{}, err
+			}
+			llmClient = client
+			llmMode = providerLabel(opts.LLM.Provider)
+		} else if opts.LLM.Provider != "" {
+			// A named provider with no key is a misconfiguration, not a request for the mock:
+			// fail fast so a deploy can't silently serve mock extractions under a real provider.
+			return Adapters{}, fmt.Errorf("ai: LLM provider %q configured without an API key (%s)", opts.LLM.Provider, EnvLLMAPIKey)
 		}
-		llmClient = client
-		llmMode = providerLabel(opts.LLM.Provider)
 	}
 
 	embeddingClient := opts.EmbeddingClient
 	embeddingMode := "real"
-	if embeddingClient == nil && opts.Embedding.APIKey != "" {
-		client, err := newEmbeddingClient(opts.Embedding)
-		if err != nil {
-			return Adapters{}, err
+	if embeddingClient == nil {
+		if opts.Embedding.APIKey != "" {
+			client, err := newEmbeddingClient(opts.Embedding)
+			if err != nil {
+				return Adapters{}, err
+			}
+			embeddingClient = client
+			embeddingMode = providerLabel(opts.Embedding.Provider)
+		} else if opts.Embedding.Provider != "" {
+			return Adapters{}, fmt.Errorf("ai: embedding provider %q configured without an API key (%s)", opts.Embedding.Provider, EnvEmbeddingAPIKey)
 		}
-		embeddingClient = client
-		embeddingMode = providerLabel(opts.Embedding.Provider)
 	}
 
 	var (

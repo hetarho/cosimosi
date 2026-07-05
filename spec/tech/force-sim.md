@@ -55,6 +55,8 @@ cross-engine implementations must reproduce the fixture contract before they are
 - `center_strength`
 - `repulsion`
 - `tick_alpha_decay`
+- `velocity_damping`
+- `min_alpha`
 - `hippocampus_z_min`
 - `hippocampus_z_max`
 - `neocortex_z_min`

@@ -1,6 +1,6 @@
 // Navigation-rig presentation constants. They shape interaction feel, not product
 // behavior, so they stay code-level; one moves to a values.yaml rendering.camera.* key
-// only when it needs cross-surface tuning (plan 23).
+// only when it needs cross-surface tuning.
 export const UNIVERSE_CAMERA_RIG = {
   minDistance: 6,
   maxDistance: 220,

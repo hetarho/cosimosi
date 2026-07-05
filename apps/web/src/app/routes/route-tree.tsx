@@ -28,7 +28,7 @@ const universeRoute = createRoute({
 const testRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/test',
-  // The verification harness (plan 12) is a dev-only surface: unreachable — it
+  // The verification harness is a dev-only surface: unreachable — it
   // resolves to the not-found screen — unless the diagnostics flag is on, so a
   // production build never exposes it.
   beforeLoad: ({ context }) => {

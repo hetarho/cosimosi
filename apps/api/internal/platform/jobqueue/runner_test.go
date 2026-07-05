@@ -85,6 +85,44 @@ func TestRunnerFailsExhaustedAndUnhandledJobs(t *testing.T) {
 	}
 }
 
+func TestRunnerRecoversHandlerPanicIntoRetry(t *testing.T) {
+	now := fixedRunnerNow()
+	queue := &fakeQueue{claim: testJob{id: "job-1", userID: "user-1", kind: "embed"}}
+	runner := mustRunner(t, queue, map[string]Handler[testJob]{
+		"embed": func(context.Context, testJob) error { panic("boom") },
+	}, now)
+
+	worked, err := runner.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("RunOnce returned error for a panicking handler (worker would have crashed): %v", err)
+	}
+	if !worked || queue.retried.id != "job-1" || queue.retryAttempts != 1 {
+		t.Fatalf("panic did not flow through the retry path: worked=%v retried=%+v attempts=%d", worked, queue.retried, queue.retryAttempts)
+	}
+}
+
+func TestRunnerDeadLettersJobReclaimedPastMaxClaims(t *testing.T) {
+	now := fixedRunnerNow()
+	// leaseGeneration 11 > MaxClaims 10: the job has been re-claimed past the ceiling
+	// without ever completing (a handler that keeps killing its worker).
+	queue := &fakeQueue{claim: testJob{id: "job-1", userID: "user-1", kind: "embed", attempts: 1, leaseGeneration: 11}}
+	handlerRan := false
+	runner := mustRunner(t, queue, map[string]Handler[testJob]{
+		"embed": func(context.Context, testJob) error { handlerRan = true; return nil },
+	}, now)
+
+	worked, err := runner.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("RunOnce failed: %v", err)
+	}
+	if !worked || queue.failed.id != "job-1" {
+		t.Fatalf("over-claimed job not dead-lettered: worked=%v failed=%+v", worked, queue.failed)
+	}
+	if handlerRan {
+		t.Fatal("handler ran for a dead-lettered job; it must be failed without executing")
+	}
+}
+
 func TestRunnerReturnsIdleWhenNoJobIsDue(t *testing.T) {
 	runner := mustRunner(t, &fakeQueue{claimErr: ErrNoJob}, nil, fixedRunnerNow())
 	worked, err := runner.RunOnce(context.Background())
@@ -144,6 +182,7 @@ func mustRunner(t *testing.T, queue *fakeQueue, handlers map[string]Handler[test
 	t.Helper()
 	runner, err := NewRunner[testJob](queue, handlers, Config{
 		MaxAttempts:  3,
+		MaxClaims:    10,
 		BackoffBase:  time.Minute,
 		PollInterval: time.Millisecond,
 		Now:          func() time.Time { return now },
@@ -155,16 +194,18 @@ func mustRunner(t *testing.T, queue *fakeQueue, handlers map[string]Handler[test
 }
 
 type testJob struct {
-	id       string
-	userID   string
-	kind     string
-	attempts int32
+	id              string
+	userID          string
+	kind            string
+	attempts        int32
+	leaseGeneration int64
 }
 
-func (j testJob) JobID() string      { return j.id }
-func (j testJob) JobUserID() string  { return j.userID }
-func (j testJob) JobKind() string    { return j.kind }
-func (j testJob) JobAttempts() int32 { return j.attempts }
+func (j testJob) JobID() string             { return j.id }
+func (j testJob) JobUserID() string         { return j.userID }
+func (j testJob) JobKind() string           { return j.kind }
+func (j testJob) JobAttempts() int32        { return j.attempts }
+func (j testJob) JobLeaseGeneration() int64 { return j.leaseGeneration }
 
 type delayedError struct {
 	at time.Time

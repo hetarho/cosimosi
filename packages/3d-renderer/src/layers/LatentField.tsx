@@ -9,8 +9,9 @@ export interface LatentFieldProps {
   /** Interleaved xyz instance positions (stride 3), length >= count*3. Written once, not per frame. */
   readonly positions: Float32Array | null
   readonly count: number
-  /** World radius of each latent point. */
-  readonly size?: number
+  /** World radius of each latent point. Caller-supplied (from generated config) so the
+   * default can't silently disagree with values.yaml. */
+  readonly size: number
   readonly color?: THREE.ColorRepresentation
   /** Shader-time ambient drift amplitude, as a fraction of a point's radius; 0 disables the wobble. */
   readonly drift?: number
@@ -28,7 +29,7 @@ export interface LatentFieldProps {
 export function LatentField({
   positions,
   count,
-  size = 0.15,
+  size,
   color = '#7d8ba8',
   drift = 0,
   consumed = null,

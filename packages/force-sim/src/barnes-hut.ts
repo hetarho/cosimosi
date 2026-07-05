@@ -1,5 +1,10 @@
 import { forceSimCoordinateOffset } from './graph.ts'
 
+// Approximation-internal constants of the Barnes-Hut octree, not layout tuning surfaced to
+// config: the opening angle (accuracy/speed of the far-cell approximation), the cell-size
+// epsilon that avoids a zero-width split, and the distance softening that avoids a singular
+// near-field force. They govern how the O(n log n) approximation is computed, not the shape
+// of the emergent layout (that is `repulsion`, which does flow through config).
 const BARNES_HUT_THETA = 0.72
 const MIN_HALF_SIZE = 0.000001
 const SOFTENING = 0.5

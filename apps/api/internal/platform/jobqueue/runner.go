@@ -17,6 +17,9 @@ type Job interface {
 	JobUserID() string
 	JobKind() string
 	JobAttempts() int32
+	// JobLeaseGeneration is the claim count / fence token; the runner dead-letters a job
+	// that keeps being re-claimed past MaxClaims without ever completing.
+	JobLeaseGeneration() int64
 }
 
 type Queue[J Job] interface {
@@ -34,6 +37,7 @@ type retryAtError interface {
 
 type Config struct {
 	MaxAttempts  int32
+	MaxClaims    int32
 	BackoffBase  time.Duration
 	PollInterval time.Duration
 	Now          func() time.Time
@@ -44,6 +48,7 @@ type Runner[J Job] struct {
 	queue        Queue[J]
 	handlers     map[string]Handler[J]
 	maxAttempts  int32
+	maxClaims    int32
 	backoffBase  time.Duration
 	pollInterval time.Duration
 	now          func() time.Time
@@ -78,6 +83,7 @@ func NewRunner[J Job](queue Queue[J], handlers map[string]Handler[J], cfg Config
 		queue:        queue,
 		handlers:     copiedHandlers,
 		maxAttempts:  cfg.MaxAttempts,
+		maxClaims:    cfg.MaxClaims,
 		backoffBase:  cfg.BackoffBase,
 		pollInterval: pollInterval,
 		now:          now,
@@ -117,6 +123,22 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
+	// Dead-letter a job that has been re-claimed past the hard claim ceiling without ever
+	// finishing — the signature of a handler that kills its worker (panic that escapes,
+	// OOM, SIGKILL) every run, which would otherwise loop forever since a killed worker
+	// never records a failure.
+	if r.maxClaims > 0 && job.JobLeaseGeneration() > int64(r.maxClaims) {
+		if err := r.queue.Fail(ctx, job, job.JobAttempts()); err != nil {
+			if shouldStop(ctx, err) {
+				return true, err
+			}
+			r.logf("job %s fail transition failed: %v", job.JobID(), err)
+			return true, nil
+		}
+		r.logf("job %s dead-lettered after %d claims", job.JobID(), job.JobLeaseGeneration())
+		return true, nil
+	}
+
 	handler, ok := r.handlers[job.JobKind()]
 	if !ok {
 		nextAttempts := r.nextAttempts(job)
@@ -132,7 +154,7 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 	}
 
 	handlerCtx := platform.ContextWithUserID(ctx, job.JobUserID())
-	if err := handler(handlerCtx, job); err != nil {
+	if err := r.invoke(handler, handlerCtx, job); err != nil {
 		if err := r.handleFailure(ctx, job, err); err != nil {
 			if shouldStop(ctx, err) {
 				return true, err
@@ -148,6 +170,18 @@ func (r Runner[J]) RunOnce(ctx context.Context) (bool, error) {
 		r.logf("job %s complete transition failed: %v", job.JobID(), err)
 	}
 	return true, nil
+}
+
+// invoke runs a handler, converting a panic into an ordinary failure so one bad job
+// can't take down the worker process — the failure then flows through the normal
+// attempt/backoff path and is eventually failed like any other.
+func (r Runner[J]) invoke(handler Handler[J], ctx context.Context, job J) (err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = fmt.Errorf("job handler panicked: %v", rec)
+		}
+	}()
+	return handler(ctx, job)
 }
 
 func (r Runner[J]) handleFailure(ctx context.Context, job J, cause error) error {

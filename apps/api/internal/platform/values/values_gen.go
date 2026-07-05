@@ -58,6 +58,8 @@ const (
 	AiDailyCallCap     = 200
 	AiJobMaxAttempts   = 5
 	AiJobBackoffBaseMs = 60000
+	AiJobLeaseMs       = 300000
+	AiJobMaxClaims     = 20
 )
 
 // emotion
@@ -132,6 +134,8 @@ const (
 	ForceSimCenterStrength  = 0.018
 	ForceSimRepulsion       = 2.4
 	ForceSimTickAlphaDecay  = 0.022
+	ForceSimVelocityDamping = 0.62
+	ForceSimMinAlpha        = 0.02
 	ForceSimHippocampusZMin = 0
 	ForceSimHippocampusZMax = 10
 	ForceSimNeocortexZMin   = 15

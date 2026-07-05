@@ -23,9 +23,10 @@ WITH next_job AS (
 )
 UPDATE jobs
 SET status = 'running',
-    next_run_at = $1
+    next_run_at = $1,
+    lease_generation = lease_generation + 1
 WHERE id = (SELECT id FROM next_job)
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
 `
 
 type ClaimDueJobParams struct {
@@ -45,6 +46,7 @@ func (q *Queries) ClaimDueJob(ctx context.Context, arg ClaimDueJobParams) (Job, 
 		&i.Attempts,
 		&i.NextRunAt,
 		&i.CreatedAt,
+		&i.LeaseGeneration,
 	)
 	return i, err
 }
@@ -54,16 +56,19 @@ UPDATE jobs
 SET status = 'done'
 WHERE user_id = $1
   AND id = $2
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at
+  AND status = 'running'
+  AND lease_generation = $3
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
 `
 
 type CompleteJobParams struct {
-	UserID string
-	ID     string
+	UserID          string
+	ID              string
+	LeaseGeneration int64
 }
 
 func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (Job, error) {
-	row := q.db.QueryRow(ctx, completeJob, arg.UserID, arg.ID)
+	row := q.db.QueryRow(ctx, completeJob, arg.UserID, arg.ID, arg.LeaseGeneration)
 	var i Job
 	err := row.Scan(
 		&i.ID,
@@ -74,6 +79,7 @@ func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (Job, 
 		&i.Attempts,
 		&i.NextRunAt,
 		&i.CreatedAt,
+		&i.LeaseGeneration,
 	)
 	return i, err
 }
@@ -84,17 +90,25 @@ SET status = 'failed',
     attempts = $3
 WHERE user_id = $1
   AND id = $2
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at
+  AND status = 'running'
+  AND lease_generation = $4
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
 `
 
 type FailJobParams struct {
-	UserID   string
-	ID       string
-	Attempts int32
+	UserID          string
+	ID              string
+	Attempts        int32
+	LeaseGeneration int64
 }
 
 func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (Job, error) {
-	row := q.db.QueryRow(ctx, failJob, arg.UserID, arg.ID, arg.Attempts)
+	row := q.db.QueryRow(ctx, failJob,
+		arg.UserID,
+		arg.ID,
+		arg.Attempts,
+		arg.LeaseGeneration,
+	)
 	var i Job
 	err := row.Scan(
 		&i.ID,
@@ -105,6 +119,7 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (Job, error) {
 		&i.Attempts,
 		&i.NextRunAt,
 		&i.CreatedAt,
+		&i.LeaseGeneration,
 	)
 	return i, err
 }
@@ -116,14 +131,17 @@ SET status = 'pending',
     next_run_at = $4
 WHERE user_id = $1
   AND id = $2
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at
+  AND status = 'running'
+  AND lease_generation = $5
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
 `
 
 type RetryJobParams struct {
-	UserID    string
-	ID        string
-	Attempts  int32
-	NextRunAt pgtype.Timestamptz
+	UserID          string
+	ID              string
+	Attempts        int32
+	NextRunAt       pgtype.Timestamptz
+	LeaseGeneration int64
 }
 
 func (q *Queries) RetryJob(ctx context.Context, arg RetryJobParams) (Job, error) {
@@ -132,6 +150,7 @@ func (q *Queries) RetryJob(ctx context.Context, arg RetryJobParams) (Job, error)
 		arg.ID,
 		arg.Attempts,
 		arg.NextRunAt,
+		arg.LeaseGeneration,
 	)
 	var i Job
 	err := row.Scan(
@@ -143,6 +162,7 @@ func (q *Queries) RetryJob(ctx context.Context, arg RetryJobParams) (Job, error)
 		&i.Attempts,
 		&i.NextRunAt,
 		&i.CreatedAt,
+		&i.LeaseGeneration,
 	)
 	return i, err
 }

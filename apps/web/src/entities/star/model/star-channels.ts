@@ -7,7 +7,7 @@ import type { EpisodicMemory } from '../../episodic-memory/@x/star.ts'
 // The pure four-channel projection of an episodic memory onto its big-star body (§3.4). Same
 // stored facts always draw the same star: size = EffectiveStrength [V3], brightness =
 // EffectiveBrightness [V2] (the read-time fn resolves 1 while forgetting decay is unmodeled —
-// the range is that seam), color = the primary emotion via the plan-17 palette seam and
+// the range is that seam), color = the primary emotion via the emotion palette seam and
 // nothing else [I3][M3], shape = the stored seed passed through as immutable input [V5][A7].
 // No `three`, no rendering-vocab dependency — a deterministic function over domain facts.
 export interface StarChannels {

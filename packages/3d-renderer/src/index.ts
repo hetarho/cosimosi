@@ -20,7 +20,7 @@ export {
 export { SkinProvider } from './SkinProvider.tsx'
 export type { VisualBodyKind, VisualBodyRequest, VisualBodySource } from './asset-source.ts'
 export { createPrimitiveBodySource, type PrimitiveBodySpec } from './primitive-body-source.ts'
-// Concrete visual bodies (plan 24): the star / cell-star / filament looks, each through the
+// Concrete visual bodies: the star / cell-star / filament looks, each through the
 // asset-source port. Per-instance channel attribute names travel with the body they feed.
 export {
   createStarBodySource,

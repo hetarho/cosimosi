@@ -587,15 +587,35 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnqueueJob failed: %v", err)
 	}
+	// A terminal transition is fenced: it applies only while the caller still holds the
+	// lease it claimed under, so claim before retrying.
+	claimed, err := store.ClaimDue(ctx, now)
+	if err != nil {
+		t.Fatalf("ClaimDue failed: %v", err)
+	}
 	retryAt := now.Add(2 * time.Minute)
-	if err := store.Retry(ctx, job, 1, retryAt); err != nil {
+	if err := store.Retry(ctx, claimed, 1, retryAt); err != nil {
 		t.Fatalf("Retry failed: %v", err)
 	}
 	status, attempts := readJobStatus(t, pool, userID, job.ID)
 	if status != string(memory.JobStatusPending) || attempts != 1 {
 		t.Fatalf("after retry status=%q attempts=%d", status, attempts)
 	}
-	if err := store.Fail(ctx, job, int32(values.AiJobMaxAttempts)); err != nil {
+
+	// Re-claim (a new lease generation), then prove the stale first lease can no longer
+	// finalize the row — a lease-expired worker's Complete is a silent no-op (R001 fence).
+	reclaimed, err := store.ClaimDue(ctx, retryAt.Add(time.Second))
+	if err != nil {
+		t.Fatalf("reclaim ClaimDue failed: %v", err)
+	}
+	if err := store.Complete(ctx, claimed); err != nil {
+		t.Fatalf("stale Complete returned error, want silent no-op: %v", err)
+	}
+	if status, _ := readJobStatus(t, pool, userID, job.ID); status != string(memory.JobStatusRunning) {
+		t.Fatalf("stale lease clobbered the row: status=%q, want running", status)
+	}
+
+	if err := store.Fail(ctx, reclaimed, int32(values.AiJobMaxAttempts)); err != nil {
 		t.Fatalf("Fail failed: %v", err)
 	}
 	status, attempts = readJobStatus(t, pool, userID, job.ID)

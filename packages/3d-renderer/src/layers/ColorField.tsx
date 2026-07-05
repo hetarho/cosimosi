@@ -23,12 +23,15 @@ export interface ColorFieldProps {
   readonly tints: Float32Array | null
   /** Per-contributor bleed radius in world units — the instance scale (wider = stronger). */
   readonly radii: Float32Array | null
-  /** Local-region density falloff sharpness; higher keeps a denser core. */
-  readonly falloffExponent?: number
-  /** Overall ambient amplitude of the field. */
-  readonly baseIntensity?: number
-  /** Kernel silhouette tessellation (the per-platform fidelity lever; mobile lower). */
-  readonly resolution?: number
+  /** Local-region density falloff sharpness; higher keeps a denser core. Caller-supplied
+   * (from generated config) — no in-code default, so the field can never render tuning that
+   * silently disagrees with values.yaml. */
+  readonly falloffExponent: number
+  /** Overall ambient amplitude of the field (caller-supplied from generated config). */
+  readonly baseIntensity: number
+  /** Kernel silhouette tessellation (the per-platform fidelity lever; mobile lower;
+   * caller-supplied from generated config). */
+  readonly resolution: number
 }
 
 // Shared R3F layer: the domain-agnostic color field. Colors in, pixels out — no emotion, no
@@ -46,9 +49,9 @@ export function ColorField({
   nodeIndices,
   tints,
   radii,
-  falloffExponent = 2.5,
-  baseIntensity = 0.5,
-  resolution = 24,
+  falloffExponent,
+  baseIntensity,
+  resolution,
 }: ColorFieldProps) {
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
   const matrix = useMemo(() => new THREE.Matrix4(), [])

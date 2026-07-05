@@ -165,4 +165,4 @@ INSERT INTO jobs (
     $7,
     $8
 )
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at;
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation;

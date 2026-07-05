@@ -81,8 +81,8 @@ func (s *Service) dedupCandidates(ctx context.Context, scope platform.UserScope,
 	if err != nil {
 		return nil, err
 	}
-	// The embedding kNN is a best-effort assist by design (a "narrow assist",
-	// plan 20): a throttled embedder or an over-long body must not take down the
+	// The embedding kNN is a best-effort assist by design (a "narrow assist"):
+	// a throttled embedder or an over-long body must not take down the
 	// whole preview — candidates degrade to the name-match set.
 	var nearest []ExistingNeuron
 	if vectors, err := s.embedder.Embed(ctx, []string{body}); err == nil && len(vectors) == 1 {

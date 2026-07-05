@@ -25,6 +25,7 @@ export function UniverseCanvas({ children, dpr = [1, 2], fov = 55, forceWebGL = 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const root = useRef<ReconcilerRoot<any> | null>(null)
   const canvasRef = useRef<CanvasRef>(null)
+  const renderer = useRef<THREE.WebGPURenderer | null>(null)
 
   // The scene is re-rendered into the root on every prop change (below); memoize nothing here.
   useEffect(() => {
@@ -52,20 +53,21 @@ export function UniverseCanvas({ children, dpr = [1, 2], fov = 55, forceWebGL = 
       // backend is initialized before the first render() (a bare renderer would throw
       // "render() called before the backend is initialized").
       gl: async () => {
-        const renderer = new THREE.WebGPURenderer({ canvas, context, forceWebGL, antialias: true })
-        await renderer.init()
+        const gpuRenderer = new THREE.WebGPURenderer({ canvas, context, forceWebGL, antialias: true })
+        renderer.current = gpuRenderer
+        await gpuRenderer.init()
         // react-native-webgpu needs an explicit present() after each on-screen frame (the web
         // host gets this from the browser compositor). Wrap render() to present ONLY when
         // drawing to the surface (getRenderTarget() === null) — a frame with post-processing
         // (PostFX/bloom) issues several offscreen render-target passes before the final
         // composite, and presenting mid-pipeline would flush an unrendered surface (blank
         // screen). This presents exactly once per frame, after the composite.
-        const renderFrame = renderer.render.bind(renderer)
-        renderer.render = (scene: THREE.Scene, camera: THREE.Camera) => {
+        const renderFrame = gpuRenderer.render.bind(gpuRenderer)
+        gpuRenderer.render = (scene: THREE.Scene, camera: THREE.Camera) => {
           renderFrame(scene, camera)
-          if (renderer.getRenderTarget() === null) context.present()
+          if (gpuRenderer.getRenderTarget() === null) context.present()
         }
-        return renderer
+        return gpuRenderer
       },
       frameloop: 'always',
       dpr: 1,
@@ -75,6 +77,10 @@ export function UniverseCanvas({ children, dpr = [1, 2], fov = 55, forceWebGL = 
     return () => {
       unmountComponentAtNode(canvas)
       root.current = null
+      // The manual root doesn't own the factory-created renderer, so dispose the WebGPU
+      // device/pipelines here or a remount (StrictMode / dpr·fov·forceWebGL change) leaks them.
+      renderer.current?.dispose()
+      renderer.current = null
     }
   }, [children, dpr, fov, forceWebGL])
 

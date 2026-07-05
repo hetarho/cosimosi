@@ -156,6 +156,30 @@ describe('force-sim layout rules', () => {
 
     expect(() => createForceSimulation(graph, { values: testValues })).toThrow(/cannot include mood/)
   })
+
+  it('handles an empty universe without NaN or throwing (a brand-new account)', () => {
+    const empty: ForceSimGraph = { neurons: [], synapses: [], episodicMemories: [], activations: [] }
+    const simulation = createForceSimulation(empty, { values: testValues })
+    expect(() => tick(simulation, 60)).not.toThrow()
+    expect(simulation.coordinates.length).toBe(0)
+    expect([...simulation.coordinates].every(Number.isFinite)).toBe(true)
+  })
+
+  it('handles a single unconnected neuron with a memory without divide-by-zero', () => {
+    const graph: ForceSimGraph = {
+      neurons: [{ id: 'lonely', connectivity: 0, seedHint: { x: 3, y: 0, z: 4 } }],
+      synapses: [],
+      episodicMemories: [{ id: 'first' }],
+      activations: [{ episodicMemoryId: 'first', neuronId: 'lonely', weight: 1 }],
+    }
+    const simulation = createForceSimulation(graph, { values: testValues })
+    expect(() => tick(simulation, 60)).not.toThrow()
+    const neuron = simulation.getPosition('neuron', 'lonely')
+    const memory = simulation.getPosition('episodicMemory', 'first')
+    expect(neuron && Number.isFinite(neuron.x) && Number.isFinite(neuron.y) && Number.isFinite(neuron.z)).toBe(true)
+    // The lone memory settles onto its only neuron's centroid — no /0 from an empty weight sum.
+    expect(memory && Number.isFinite(memory.x) && Number.isFinite(memory.y) && Number.isFinite(memory.z)).toBe(true)
+  })
 })
 
 function tick(simulation: ReturnType<typeof createForceSimulation>, count: number): void {

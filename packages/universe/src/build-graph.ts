@@ -1,7 +1,7 @@
 import type { ForceSimGraph, ForceSimNodeIndex } from '@cosimosi/force-sim'
 import type { UniverseSnapshot } from '@cosimosi/memory'
 
-// Pure projection of the domain mirror onto the force-sim graph contract (plan 19).
+// Pure projection of the domain mirror onto the force-sim graph contract.
 // Structural invariants live here:
 //  - edges come from synapses ONLY (neuron↔neuron) — an episodic memory can never be an
 //    edge endpoint, so no memory↔memory force or line can exist [I4][I6];

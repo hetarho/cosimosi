@@ -10,12 +10,19 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { repoRoot, section, ok, note, fail } from './lib.mjs'
 
-const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'packages']
-const SKIP_FILE = /\.(test|spec|stories|probe)\.[jt]sx?$/
-const CODE_EXT = /\.[jt]sx?$/
-// only lines that carry a comment marker are inspected (so string literals aren't flagged)
+const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages']
+// tests/stories/fixtures and generated Go (sqlc/proto/values) are exempt.
+const SKIP_FILE = /(\.(test|spec|stories|probe)\.[jt]sx?$|_test\.go$|_gen\.go$|\.sql\.go$|\.pb\.go$|_connect\.go$)/
+const CODE_EXT = /\.(go|[jt]sx?)$/
+// only lines that carry a comment marker are inspected (so string literals aren't flagged);
+// Go and TS/JS share the // and /* */ markers.
 const COMMENT = /(\/\/|\/\*|^\s*\*|\{\s*\/\*|<!--)/
-// high-confidence process/history markers (verified zero false-positives on the current tree)
+// high-confidence process/history markers (verified zero false-positives on the current tree).
+// Plan/job/finding numbers and epic names are ticket-like references the timeless-comment rule
+// forbids. Two things are deliberately NOT flagged: requirement-ID anchors that *name a rule*
+// (e.g. [I2], [E7a]) and architecture-section pointers (§3.4) — both explain why the code must
+// be this way (design rationale), not when it was written, and § refs are an established
+// house convention across the tree.
 const NARRATION = [
   /\bused to be\b/i,
   /\brenamed from\b/i,
@@ -25,11 +32,44 @@ const NARRATION = [
   /\bpreviously was\b/i,
   /\bbumped (from|to)\b/i,
   /\bEpic [A-Z]\b/,
+  /\bplan[-\s]?\d/i,
+  /\bjob[-\s]?\d/i,
+  /\bR0\d\d\b/,
   /\bfoundation shell\b/i,
   /\bmid-flight\b/i,
   /\boriginal journey\b/i,
   /\bas discussed\b/i,
 ]
+
+const narrates = (line) => COMMENT.test(line) && NARRATION.find((re) => re.test(line))
+
+// `--probe` self-test: proves the guard catches the process/plan forms and leaves the
+// allowed design-rationale anchors (requirement IDs, § section pointers) untouched.
+if (process.argv.includes('--probe')) {
+  section('Comment-history probe — catch process/plan refs, allow rule/section anchors')
+  const mustCatch = [
+    '// this mirrors plan 20 exactly',
+    '\t// Link (plan 21) runs last', // Go comment
+    '// Job 27 provides the implementation',
+    '// the R001 regression',
+    '// during Epic B the clock advances',
+  ]
+  const mustAllow = [
+    '// keeps the Diary immutable [I2]',
+    '// surfaced for the awaken animation ([E7a])',
+    '// atomically with the launch (§2.6)',
+    '// bump the counter', // no marker of any kind
+  ]
+  const missed = mustCatch.filter((l) => !narrates(l))
+  const falsePos = mustAllow.filter((l) => narrates(l))
+  if (missed.length || falsePos.length) {
+    for (const l of missed) console.error(`  \x1b[31m✗\x1b[0m should catch: ${l}`)
+    for (const l of falsePos) console.error(`  \x1b[31m✗\x1b[0m should allow: ${l}`)
+    fail('comment-history probe failed')
+  }
+  ok('probe caught every process/plan ref and allowed every rule/section anchor')
+  process.exit(0)
+}
 
 const files = []
 const walk = (dir) => {

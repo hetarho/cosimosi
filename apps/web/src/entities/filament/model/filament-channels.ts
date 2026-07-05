@@ -5,7 +5,7 @@ import type { Synapse } from '../../synapse/@x/filament.ts'
 
 // The pure projection of a synapse onto its fat-line body (§3.4). Width and brightness both
 // track EffectiveSynapseStrength — the read-time decayed strength from the stored base +
-// last-activated universe time (golden-parity with the Go domain, plan 18) [V6]. A stronger
+// last-activated universe time (golden-parity with the Go domain) [V6]. A stronger
 // synapse draws a thicker, brighter line. Endpoints (neuron ids → buffer slots) are resolved
 // in the ui, structurally excluding a star↔star line [I4][I6].
 export interface FilamentChannels {

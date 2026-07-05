@@ -23,7 +23,7 @@ function readByKey(buffer: Float32Array, index: ForceSimNodeIndex, key: string):
   return { x: buffer[offset], y: buffer[offset + 1], z: buffer[offset + 2] }
 }
 
-// Enrich a freshly-built graph with the positions the previous frame ended on, feeding plan 19's
+// Enrich a freshly-built graph with the positions the previous frame ended on, feeding the force-sim's
 // `previousPosition` / `seedHint` seed seam so the next sim resumes each surviving node near where
 // it was — the same continuity on the worker (web) and inline (mobile) branches. New nodes carry
 // no hint and seed normally; removed nodes are simply absent.

@@ -205,10 +205,11 @@ func (s Store) Complete(ctx context.Context, job memory.Job) error {
 		return err
 	}
 	_, err := s.queries.CompleteJob(ctx, dbgen.CompleteJobParams{
-		UserID: job.UserID,
-		ID:     job.ID,
+		UserID:          job.UserID,
+		ID:              job.ID,
+		LeaseGeneration: job.LeaseGeneration,
 	})
-	return err
+	return ignoreLostLease(err)
 }
 
 func (s Store) Retry(ctx context.Context, job memory.Job, nextAttempts int32, nextRunAt time.Time) error {
@@ -216,12 +217,13 @@ func (s Store) Retry(ctx context.Context, job memory.Job, nextAttempts int32, ne
 		return err
 	}
 	_, err := s.queries.RetryJob(ctx, dbgen.RetryJobParams{
-		UserID:    job.UserID,
-		ID:        job.ID,
-		Attempts:  nextAttempts,
-		NextRunAt: pgTime(nextRunAt),
+		UserID:          job.UserID,
+		ID:              job.ID,
+		Attempts:        nextAttempts,
+		NextRunAt:       pgTime(nextRunAt),
+		LeaseGeneration: job.LeaseGeneration,
 	})
-	return err
+	return ignoreLostLease(err)
 }
 
 func (s Store) Fail(ctx context.Context, job memory.Job, nextAttempts int32) error {
@@ -229,10 +231,21 @@ func (s Store) Fail(ctx context.Context, job memory.Job, nextAttempts int32) err
 		return err
 	}
 	_, err := s.queries.FailJob(ctx, dbgen.FailJobParams{
-		UserID:   job.UserID,
-		ID:       job.ID,
-		Attempts: nextAttempts,
+		UserID:          job.UserID,
+		ID:              job.ID,
+		Attempts:        nextAttempts,
+		LeaseGeneration: job.LeaseGeneration,
 	})
+	return ignoreLostLease(err)
+}
+
+// ignoreLostLease swallows the no-rows result of a fenced terminal transition: the
+// job's lease was superseded by another worker's re-claim, so this worker no longer
+// owns it and must not treat the missed update as an error.
+func ignoreLostLease(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
 	return err
 }
 
@@ -424,8 +437,11 @@ func jobLeaseUntil(now time.Time) time.Time {
 	return now.Add(jobLeaseDuration())
 }
 
+// The lease only has to outlast one handler run — long enough that a healthy worker
+// finishes before another can re-claim, short enough that a dead worker's job frees up
+// promptly. It is its own knob, not coupled to the (exponential) retry backoff.
 func jobLeaseDuration() time.Duration {
-	return time.Duration(values.AiJobBackoffBaseMs*values.AiJobMaxAttempts) * time.Millisecond
+	return time.Duration(values.AiJobLeaseMs) * time.Millisecond
 }
 
 func synapseParams(scope platform.UserScope, synapse memory.Synapse) (dbgen.UpsertSynapseParams, error) {
@@ -594,14 +610,15 @@ func mapEmbedding(row dbgen.InsertEmbeddingRow) (memory.Embedding, error) {
 
 func mapJob(row dbgen.Job) memory.Job {
 	return memory.Job{
-		ID:        row.ID,
-		UserID:    row.UserID,
-		Kind:      memory.JobKind(row.Kind),
-		Payload:   row.Payload,
-		Status:    memory.JobStatus(row.Status),
-		Attempts:  row.Attempts,
-		NextRunAt: timeValue(row.NextRunAt),
-		CreatedAt: timeValue(row.CreatedAt),
+		ID:              row.ID,
+		UserID:          row.UserID,
+		Kind:            memory.JobKind(row.Kind),
+		Payload:         row.Payload,
+		Status:          memory.JobStatus(row.Status),
+		Attempts:        row.Attempts,
+		NextRunAt:       timeValue(row.NextRunAt),
+		CreatedAt:       timeValue(row.CreatedAt),
+		LeaseGeneration: row.LeaseGeneration,
 	}
 }
 

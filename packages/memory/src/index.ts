@@ -1,4 +1,4 @@
-// @cosimosi/memory — the shared FE domain mirror of the universe read model (plan 23):
+// @cosimosi/memory — the shared FE domain mirror of the universe read model:
 // episodic memory · neuron · synapse types + the GetUniverse proto→domain mappers.
 // Pure (no three, no DOM, no visual vocabulary); web and mobile consume it verbatim.
 export type { EpisodicMemory, NeuronActivation } from './episodic-memory.ts'

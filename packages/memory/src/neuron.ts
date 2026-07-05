@@ -6,7 +6,7 @@ export function isNeuronType(value: string): value is NeuronType {
   return (NEURON_TYPES as readonly string[]).includes(value)
 }
 
-// FE domain mirror of the stored neuron facts (GetUniverse contract, plan 23).
+// FE domain mirror of the stored neuron facts (GetUniverse contract).
 export interface Neuron {
   readonly id: string
   readonly name: string | null

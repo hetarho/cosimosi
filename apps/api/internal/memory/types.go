@@ -109,10 +109,17 @@ type Job struct {
 	Attempts  int32
 	NextRunAt time.Time
 	CreatedAt time.Time
+	// LeaseGeneration is the fence token the worker holds for this claim; a terminal
+	// transition matches only while it equals the row's current generation.
+	LeaseGeneration int64
 }
 
 func (j Job) JobID() string {
 	return j.ID
+}
+
+func (j Job) JobLeaseGeneration() int64 {
+	return j.LeaseGeneration
 }
 
 func (j Job) JobUserID() string {

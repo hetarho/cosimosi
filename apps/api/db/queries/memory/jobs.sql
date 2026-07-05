@@ -10,16 +10,19 @@ WITH next_job AS (
 )
 UPDATE jobs
 SET status = 'running',
-    next_run_at = sqlc.arg(lease_until)
+    next_run_at = sqlc.arg(lease_until),
+    lease_generation = lease_generation + 1
 WHERE id = (SELECT id FROM next_job)
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at;
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation;
 
 -- name: CompleteJob :one
 UPDATE jobs
 SET status = 'done'
 WHERE user_id = $1
   AND id = $2
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at;
+  AND status = 'running'
+  AND lease_generation = $3
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation;
 
 -- name: RetryJob :one
 UPDATE jobs
@@ -28,7 +31,9 @@ SET status = 'pending',
     next_run_at = $4
 WHERE user_id = $1
   AND id = $2
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at;
+  AND status = 'running'
+  AND lease_generation = $5
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation;
 
 -- name: FailJob :one
 UPDATE jobs
@@ -36,7 +41,9 @@ SET status = 'failed',
     attempts = $3
 WHERE user_id = $1
   AND id = $2
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at;
+  AND status = 'running'
+  AND lease_generation = $4
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation;
 
 -- name: SetSemanticStages :one
 UPDATE episodic_memories

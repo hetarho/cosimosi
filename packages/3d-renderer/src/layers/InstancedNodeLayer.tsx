@@ -119,6 +119,10 @@ export function InstancedNodeLayer({
         ;(existing.array as Float32Array).set(channel.array)
         existing.needsUpdate = true
       } else {
+        // A count change keeps the memoized body geometry, so the previous attribute is still
+        // attached — dispose its GPU buffer before replacing it, or it leaks (the body's
+        // dispose cleanup runs only on unmount/body swap, not on a count change).
+        existing?.dispose()
         mesh.geometry.setAttribute(channel.name, new THREE.InstancedBufferAttribute(channel.array, channel.itemSize))
       }
     }

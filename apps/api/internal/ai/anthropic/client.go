@@ -60,7 +60,9 @@ func New(cfg ai.ProviderConfig) (ai.LLMClient, error) {
 func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMResponse, error) {
 	maxTokens := int64(req.MaxOutputTokens)
 	if maxTokens <= 0 {
-		maxTokens = 1
+		// A non-positive cap is a caller/config bug — fail loudly instead of silently issuing
+		// a 1-token request that would always truncate into malformed output.
+		return ai.LLMResponse{}, fmt.Errorf("anthropic: MaxOutputTokens must be positive, got %d", req.MaxOutputTokens)
 	}
 	params := sdk.MessageNewParams{
 		Model:     c.model,

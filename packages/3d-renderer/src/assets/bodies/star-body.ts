@@ -3,7 +3,7 @@
 // forms [V5]; color is the memory's emotion tint (fed per instance) scaled by a brightness
 // channel [V2][I3]. Size is applied by the layer as per-instance scale, so this body is
 // authored at unit radius. TSL only (one source → WGSL + GLSL, §3.3); the seed-form graph is
-// code, not config (per plan 24 the shader graph is excluded from values.yaml).
+// code, not config (the shader graph is excluded from values.yaml).
 import { float, normalLocal, positionLocal, vec3 } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
@@ -19,7 +19,7 @@ export const STAR_INSTANCE_BRIGHTNESS = 'aStarBrightness'
 export const STAR_INSTANCE_SEED = 'aStarSeed'
 
 // Seed-form graph constants. Not config tuning — they define the star's visual grammar (the
-// shape's frequency/relief/shimmer), the way the nebula's octaves live in code, so plan 24
+// shape's frequency/relief/shimmer), the way the nebula's octaves live in code, so the shader graph
 // excludes them from values.yaml.
 const FORM_FREQUENCY = 1.4
 const FORM_RELIEF = 0.28

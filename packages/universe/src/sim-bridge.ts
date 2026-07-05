@@ -13,7 +13,7 @@ export interface MutableCoordinateBufferRef {
   current: Float32Array | null
 }
 
-// The widget's seam onto the force-sim host (plan 19's coordinate contract): start() hands
+// The widget's seam onto the force-sim host (its coordinate contract): start() hands
 // the projected graph in, pump(dt) advances one frame, and layers READ `coordinates` per
 // frame. Coordinates live only in this ref — never in a store and never persisted [I5].
 export interface UniverseSimBridge {
@@ -53,7 +53,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
   let inFlight = false
   let pendingDt = 0
   // The node index that laid out the currently displayed buffer, so a refetch can carry existing
-  // coordinates across a reorder/resize by stable node id (plan 19's contract) rather than by slot.
+  // coordinates across a reorder/resize by stable node id rather than by slot.
   let displayedIndex: ForceSimNodeIndex | null = null
 
   const stop = (clearCoordinates: boolean) => {

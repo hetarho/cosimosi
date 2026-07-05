@@ -8,9 +8,9 @@ import (
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
-// LinkService implements the Linker seam (plan 21): it grows the neuron synapse
+// LinkService implements the Linker seam: it grows the neuron synapse
 // graph as the last step of PersistEncoded's transaction. It is pure orchestration
-// over plan 18's plasticity functions and the SynapseStore port — it owns no IO,
+// over the plasticity functions and the SynapseStore port — it owns no IO,
 // only the id/clock seams every synapse row needs.
 //
 // The launch path (decided 2026-07) runs the linking rules synchronously over the
@@ -22,10 +22,10 @@ import (
 //     synapse.temporal_window_days of a prior co-firing earns synapse.temporal_bonus.
 //
 // Cross-memory refinement *beyond* the launched neurons (rescanning the wider
-// graph) is the reserved async `link` job's concern (plan 22, §2.8) and is not run
+// graph) is the reserved async `link` job's concern (§2.8) and is not run
 // here. Every edge is neuron↔neuron ([L6][I6]); there is never a memory↔memory
 // edge, and constellations stay emergent ([I5][L7]). All strength math delegates to
-// plan 18 [A11]; Link only inserts or strengthens [I1].
+// the plasticity functions [A11]; Link only inserts or strengthens [I1].
 type LinkService struct {
 	now   func() time.Time
 	newID func() string
@@ -53,9 +53,9 @@ func NewLinkService(deps LinkDeps) *LinkService {
 // and each canonical pair advances exactly one row via the atomic upsert [L5][L8].
 //
 // The stored base is read here and written absolutely by the upsert, while
-// co_activation_count increments relatively (plan 16's baseline upsert). This is
+// co_activation_count increments relatively (a baseline upsert). This is
 // correct under the product's per-user serial launch model (the diary-monotonic
-// universe clock, Epic B); concurrent same-user launches of the same pair are not a
+// universe clock); concurrent same-user launches of the same pair are not a
 // supported path, matching PersistEncoded's other optimistic reads (§2.8).
 func (l *LinkService) LinkLaunched(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory) error {
 	if scope.UserID() == "" {
@@ -182,7 +182,7 @@ func dedupNeuronIDs(ids []string) []string {
 }
 
 // computeLinkStrength folds one launch's co-firings of a same-memory pair into the
-// stored base, delegating every step to plan 18 [A11]: a first-time pair starts at
+// stored base, delegating every step to the plasticity functions [A11]: a first-time pair starts at
 // the same-memory initial [L1][L10]; each further co-firing potentiates toward the
 // cap [L8][L9]; the temporal bonus is added once for this launch when its co-firing
 // is in window [L4]. It re-implements no strength arithmetic of its own.

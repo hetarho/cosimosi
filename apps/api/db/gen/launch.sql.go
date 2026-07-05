@@ -31,7 +31,7 @@ INSERT INTO jobs (
     $7,
     $8
 )
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at
+RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
 `
 
 type EnqueueJobParams struct {
@@ -66,6 +66,7 @@ func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Job, er
 		&i.Attempts,
 		&i.NextRunAt,
 		&i.CreatedAt,
+		&i.LeaseGeneration,
 	)
 	return i, err
 }

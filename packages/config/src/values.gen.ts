@@ -46,6 +46,8 @@ export const VALUES = {
     dailyCallCap: 200,
     jobMaxAttempts: 5,
     jobBackoffBaseMs: 60000,
+    jobLeaseMs: 300000,
+    jobMaxClaims: 20,
   },
   emotion: {
     moodValence: {"joy":0.82,"calm":0.62,"sad":-0.78,"anger":-0.76,"fear":-0.82,"love":0.9,"neutral":0,"excitement":0.78,"gratitude":0.76,"relief":0.68,"stress":-0.7,"tired":-0.55,"emptiness":-0.68},
@@ -81,6 +83,8 @@ export const VALUES = {
     centerStrength: 0.018,
     repulsion: 2.4,
     tickAlphaDecay: 0.022,
+    velocityDamping: 0.62,
+    minAlpha: 0.02,
     hippocampusZMin: 0,
     hippocampusZMax: 10,
     neocortexZMin: 15,

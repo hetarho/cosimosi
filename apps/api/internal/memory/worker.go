@@ -10,6 +10,7 @@ import (
 
 type WorkerConfig struct {
 	MaxAttempts  int32
+	MaxClaims    int32
 	BackoffBase  time.Duration
 	PollInterval time.Duration
 	Now          func() time.Time
@@ -25,6 +26,7 @@ type WorkerStore interface {
 func DefaultWorkerConfig(pollInterval time.Duration, logger *log.Logger) WorkerConfig {
 	return WorkerConfig{
 		MaxAttempts:  int32(values.AiJobMaxAttempts),
+		MaxClaims:    int32(values.AiJobMaxClaims),
 		BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
 		PollInterval: pollInterval,
 		Logger:       logger,
@@ -62,6 +64,7 @@ func NewJobRunner(
 	}
 	return jobqueue.NewRunner[Job](queue, handlers, jobqueue.Config{
 		MaxAttempts:  cfg.MaxAttempts,
+		MaxClaims:    cfg.MaxClaims,
 		BackoffBase:  cfg.BackoffBase,
 		PollInterval: cfg.PollInterval,
 		Now:          cfg.Now,

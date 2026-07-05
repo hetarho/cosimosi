@@ -102,6 +102,14 @@ ai:
   job_max_attempts: 5
   # Exponential worker retry base: base * 2^attempts, with no jitter for deterministic tests.
   job_backoff_base_ms: 60000
+  # A claimed job's lease window: it only has to outlast one handler run. A worker that
+  # dies mid-run frees its job for re-claim after this; the lease fence keeps the dead
+  # worker from finalizing the row late. Its own knob, not coupled to the retry backoff.
+  job_lease_ms: 300000
+  # Hard loop-breaker: a job re-claimed this many times without ever completing (a handler
+  # that keeps killing its worker) is dead-lettered. Set well above job_max_attempts so
+  # ordinary transient retries never trip it.
+  job_max_claims: 20
 
 emotion:
   # Mood coordinates are domain facts, stored on each memory at launch time.
@@ -190,6 +198,10 @@ force_sim:
   repulsion: 2.4
   # Per-tick alpha cooling, tuned for stable convergence without freezing the first launch.
   tick_alpha_decay: 0.022
+  # Velocity retained per tick (1 = no damping); lower settles the layout faster but stiffer.
+  velocity_damping: 0.62
+  # Alpha floor so the layout keeps a little residual motion instead of freezing hard.
+  min_alpha: 0.02
   hippocampus_z_min: 0
   hippocampus_z_max: 10
   neocortex_z_min: 15

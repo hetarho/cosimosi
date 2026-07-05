@@ -45,14 +45,15 @@ type EpisodicMemory struct {
 }
 
 type Job struct {
-	ID        string
-	UserID    string
-	Kind      string
-	Payload   []byte
-	Status    string
-	Attempts  int32
-	NextRunAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
+	ID              string
+	UserID          string
+	Kind            string
+	Payload         []byte
+	Status          string
+	Attempts        int32
+	NextRunAt       pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	LeaseGeneration int64
 }
 
 type Neuron struct {

@@ -18,7 +18,7 @@ var (
 	ErrLinkerRequired     = errors.New("memory service requires a linker")
 )
 
-// Service owns the encode use-cases (plan 20): Encode / ReviseSplit previews and
+// Service owns the encode use-cases: Encode / ReviseSplit previews and
 // the PersistEncoded launch, plus the Universe read. All policy — split-count,
 // semantic-neuron, dedup, caps, and the monotonic launch guard — lives here, not
 // in the RPC handlers (ARCHITECTURE §2.9#7).
@@ -40,7 +40,7 @@ type ServiceDeps struct {
 	Candidates NeuronCandidateRepo
 	Launches   LaunchRepo
 	Universe   UniverseReader
-	// Linker wires synapses as the last step of PersistEncoded (plan 21); it is
+	// Linker wires synapses as the last step of PersistEncoded; it is
 	// required so no composition root can launch memories without growing the graph.
 	Linker Linker
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and

@@ -15,10 +15,10 @@ import {
 import { applyForceSimForces, createForceModel, type ForceSimForceModel } from './forces.ts'
 import { clampToHippocampusZ, placeEpisodicMemoriesAtCentroids, seedInitialPositions } from './seed.ts'
 
+// Solver-internal integration constants (not layout tuning): the fixed-timestep reference
+// rate and the clamp on how many sub-steps one slow frame may take.
 const FRAME_RATE_NORMALIZER = 60
 const MAX_FRAME_STEP = 4
-const VELOCITY_DAMPING = 0.62
-const MIN_ALPHA = 0.02
 const FORBIDDEN_INPUT_FIELDS = new Set(['mood', 'valence', 'arousal', 'intensity', 'color', 'time', 'timestamp', 'date'])
 
 export const DEFAULT_FORCE_SIM_VALUES: ForceSimValues = VALUES.forceSim
@@ -61,7 +61,7 @@ export function createForceSimulation(
         applyForceSimForces(forceModel, values, positions, forces)
         integrateNeurons(forceModel, values, positions, velocities, forces, alpha, frameStep)
         placeEpisodicMemoriesAtCentroids(graph, nodeIndex, values, positions)
-        alpha = Math.max(MIN_ALPHA, alpha * (1 - values.tickAlphaDecay))
+        alpha = Math.max(values.minAlpha, alpha * (1 - values.tickAlphaDecay))
         writeCoordinates(positions, coordinates)
       }
       if (output && output !== coordinates) {
@@ -89,9 +89,9 @@ function integrateNeurons(
   for (const nodeIndex of model.neuronNodeIndices) {
     const offset = forceSimCoordinateOffset(nodeIndex)
 
-    velocities[offset] = (velocities[offset] + forces[offset] * alpha * frameStep) * VELOCITY_DAMPING
-    velocities[offset + 1] = (velocities[offset + 1] + forces[offset + 1] * alpha * frameStep) * VELOCITY_DAMPING
-    velocities[offset + 2] = (velocities[offset + 2] + forces[offset + 2] * alpha * frameStep) * VELOCITY_DAMPING
+    velocities[offset] = (velocities[offset] + forces[offset] * alpha * frameStep) * values.velocityDamping
+    velocities[offset + 1] = (velocities[offset + 1] + forces[offset + 1] * alpha * frameStep) * values.velocityDamping
+    velocities[offset + 2] = (velocities[offset + 2] + forces[offset + 2] * alpha * frameStep) * values.velocityDamping
 
     positions[offset] += velocities[offset] * frameStep
     positions[offset + 1] += velocities[offset + 1] * frameStep
