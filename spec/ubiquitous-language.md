@@ -28,7 +28,7 @@
 
 | 단어 | 간단 | 세부 |
 |---|---|---|
-| `Diary` (`diaries`) | 일기 원본 | 사용자가 쓴 **불변** 일기. append-only, 수정·삭제 없음. 시적: *일기*. |
+| `Diary` (`diaries`) | 일기 원본 | 사용자가 쓴 **불변** 일기. live 상태에서는 append-only이며 시스템/재공고화가 수정하지 않는다; 사용자 명시적 삭제([X])는 예외. 시적: *일기*. |
 | `EpisodicMemory` (`episodic_memories`) | 일화기억 | 한 경험의 기억 = 뉴런들의 *희소 앙상블*. **애그리거트 루트**(뉴런을 id로 참조). `name`(LLM 추천, 사용자 수정 가능)·`Emotion`·`CurrentText`·`SemanticStages`·`DecayStages` 보유. 시적: *기억의 별(○○별)*. |
 | `SemanticMemory` | 의미기억 | 일화기억이 *요지화*되어 신피질로 오른 버전. `EpisodicMemory`에 종속(별도 대등 엔티티 아님). 시적: *별의 영혼*. |
 | `EpisodicMemory.CurrentText` | 현재 기억 텍스트 | 마지막 회상 시 재구성된 서사. 재공고화로 갱신, `Diary`(불변)와 별개. |
