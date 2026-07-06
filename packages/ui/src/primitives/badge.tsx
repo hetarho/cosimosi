@@ -13,7 +13,12 @@ const VARIANTS: Record<BadgeVariant, string> = {
 
 export function Badge({ variant = 'neutral', children }: BadgeProps) {
   return (
-    <span className={cx('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', VARIANTS[variant])}>
+    <span
+      className={cx(
+        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium leading-none',
+        VARIANTS[variant],
+      )}
+    >
       {children}
     </span>
   )

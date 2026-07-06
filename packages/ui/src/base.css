@@ -15,6 +15,59 @@
   }
 }
 
+/* ── Glassmorphic chrome ──────────────────────────────────────────────────────
+ * The 2D language over the live universe: chrome floats as frosted glass rather than
+ * opaque cards, so the emotion-lit background reads through it. A glass surface is a
+ * theme-tinted translucent fill + a backdrop blur/saturate + a hairline border + an
+ * inner top highlight (the lit glass edge). Every value derives from the theme vars,
+ * so glass reskins with `[data-theme]`.
+ *
+ * These live in `@layer components` (Tailwind v4 declares theme < base < components <
+ * utilities): so any Tailwind utility a consumer adds — `rounded-*`, `border-*`,
+ * `shadow-*` — sits in the later `utilities` layer and cleanly overrides the glass
+ * defaults, no specificity fight. Glass sets a default border/shadow and no radius.
+ *
+ * Three weights: `.glass-subtle` (ambient overlays / HUD), `.glass` (default panels),
+ * `.glass-strong` (focused surfaces — dialogs, popovers). Backdrop-filter needs content
+ * behind to blur; the @supports fallback keeps them readable where it is unsupported.
+ */
+@layer components {
+  .glass-subtle,
+  .glass,
+  .glass-strong {
+    border: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+    box-shadow:
+      var(--shadow-lg),
+      inset 0 1px 0 0 color-mix(in oklab, white 14%, transparent);
+  }
+  .glass-subtle {
+    background-color: color-mix(in oklab, var(--color-surface) 34%, transparent);
+    backdrop-filter: blur(10px) saturate(1.25);
+    -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  }
+  .glass {
+    background-color: color-mix(in oklab, var(--color-surface) 52%, transparent);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  }
+  .glass-strong {
+    background-color: color-mix(in oklab, var(--color-surface-raised) 68%, transparent);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-subtle {
+      background-color: color-mix(in oklab, var(--color-surface) 82%, transparent);
+    }
+    .glass {
+      background-color: color-mix(in oklab, var(--color-surface) 90%, transparent);
+    }
+    .glass-strong {
+      background-color: color-mix(in oklab, var(--color-surface-raised) 95%, transparent);
+    }
+  }
+}
+
 /* Visually hidden but exposed to assistive tech — backs the VisuallyHidden primitive. */
 .cosimosi-sr-only {
   position: absolute;

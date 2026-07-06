@@ -21,6 +21,9 @@ extend(THREE as any)
  * with an explicit `size` (no measurement) and a `present()` after each frame. The public
  * props stay identical to web, so slices consume `<UniverseCanvas>` the same way.
  */
+// `transparent` (shared prop) is web-only for now: no native call site passes it, so this host
+// deliberately does not implement the zero-alpha clear. Wire it here if a native surface ever
+// needs a DOM/CSS backdrop behind the scene.
 export function UniverseCanvas({ children, dpr = [1, 2], fov = 55, forceWebGL = false }: UniverseCanvasProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const root = useRef<ReconcilerRoot<any> | null>(null)

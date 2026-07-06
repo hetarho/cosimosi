@@ -34,9 +34,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
+    gap: 6,
     borderRadius: radius.full,
-    paddingHorizontal: space[2],
-    paddingVertical: 2,
+    paddingHorizontal: space[3],
+    paddingVertical: space[1],
   },
-  text: { fontSize: fontSize.xs, fontWeight: '500' },
+  text: { fontSize: fontSize.xs, fontWeight: '500', lineHeight: fontSize.xs },
 })

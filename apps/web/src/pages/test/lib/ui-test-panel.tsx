@@ -2,17 +2,15 @@ import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent,
 
 import { VALUES } from '@cosimosi/config'
 import {
-  Background,
   CameraControls,
   PostFX,
   SkinProvider,
   StarField,
   UniverseCanvas,
-  resolveBackgroundNode,
   useSkin,
   type SkinKey,
 } from '@cosimosi/3d-renderer'
-import { moodColor, type Mood } from '@cosimosi/emotion'
+import { moodColor, MOODS, type Mood } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
 import { CellStarLayer, FilamentLayer, NebulaField, StarLayer } from '@cosimosi/universe-render'
@@ -27,11 +25,15 @@ import {
   TextField,
   Toast,
   Tooltip,
+  cx,
+  useReducedMotion,
   type BadgeVariant,
   type ButtonVariant,
   type ControlSize,
 } from '@cosimosi/ui'
 
+import { BACKGROUND_CANDIDATES } from './backgrounds/index.ts'
+import { rgba, toEmotionSlices, type EmotionSlice } from './backgrounds/emotion-field.ts'
 import { buildEngramDemoScene, type EngramDemoScene } from './engram-demo-scene.ts'
 
 // The single UI test surface, split into three tabs that share one skin. A preset is a
@@ -100,6 +102,11 @@ const T = {
   recall: '회고하기',
   history: '변천사',
   write: 'Write a diary',
+  // Universe backdrop controls
+  emotionsTitle: 'Emotions in this universe',
+  emotionsHint: 'Tap a mood: add → make primary → remove',
+  primaryTag: 'primary',
+  backgroundTitle: 'Backdrop',
   // Diary list (UI only)
   diaryTitle: 'Diary',
   universeCrumb: 'Universe',
@@ -239,20 +246,96 @@ export function UiTestPanel() {
 }
 
 // ── Universe + UI ──────────────────────────────────────────────────────────
-// The live 3D scene with product UI floating over it.
+// The live 3D scene floating over an emotion-driven backdrop, with glass product UI on top.
+// The backdrop is no longer tied to the theme — it carries the *emotions present in the universe*
+// (1..13), so the controls below drive which emotions colour the field and which backdrop paints
+// them. Weighting: each present mood counts 1, the primary counts more, so it reads as dominant;
+// normalized so a fuller universe divides the field into more, evenly-shared slices.
+const PRIMARY_BOOST = 2.5
+
+function countMoods(memories: readonly EpisodicMemory[]): Map<Mood, number> {
+  const counts = new Map<Mood, number>()
+  for (const memory of memories) {
+    counts.set(memory.emotion.mood, (counts.get(memory.emotion.mood) ?? 0) + 1)
+  }
+  return counts
+}
+
+function dominantMood(counts: ReadonlyMap<Mood, number>): Mood {
+  let best: Mood = MOODS[0]
+  let bestCount = -1
+  for (const mood of MOODS) {
+    const count = counts.get(mood) ?? 0
+    if (count > bestCount) {
+      best = mood
+      bestCount = count
+    }
+  }
+  return best
+}
+
+function buildEmotions(present: ReadonlySet<Mood>, primary: Mood): EmotionSlice[] {
+  const raw = new Map<Mood, number>()
+  for (const mood of present) raw.set(mood, mood === primary ? PRIMARY_BOOST : 1)
+  if (raw.size === 0) raw.set(primary, PRIMARY_BOOST)
+  return toEmotionSlices(raw)
+}
+
 function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
+  const reducedMotion = useReducedMotion()
+  const sceneCounts = useMemo(() => countMoods(scene.memories), [scene])
+  const [present, setPresent] = useState<ReadonlySet<Mood>>(() => new Set(sceneCounts.keys()))
+  const [primary, setPrimary] = useState<Mood>(() => dominantMood(sceneCounts))
+  const [candidateKey, setCandidateKey] = useState(BACKGROUND_CANDIDATES[0].key)
+
+  const emotions = useMemo(() => buildEmotions(present, primary), [present, primary])
+  const candidate = BACKGROUND_CANDIDATES.find((entry) => entry.key === candidateKey) ?? BACKGROUND_CANDIDATES[0]
+  const Backdrop = candidate.Component
+
+  // One tap cycles a mood: absent → present → primary → removed. Always keeps ≥1 present; removing
+  // the primary hands the crown to the next remaining mood so the field is never orphaned.
+  const cycleMood = (mood: Mood) => {
+    if (!present.has(mood)) {
+      const next = new Set(present)
+      next.add(mood)
+      setPresent(next)
+      if (present.size === 0) setPrimary(mood)
+      return
+    }
+    if (mood !== primary) {
+      setPrimary(mood)
+      return
+    }
+    if (present.size <= 1) return
+    const next = new Set(present)
+    next.delete(mood)
+    setPresent(next)
+    setPrimary([...next][0] ?? mood)
+  }
+
   return (
-    <div className="flex flex-col gap-3">
-      {/* Fixed 4:3 box — the scene fills the panel width and no longer grows with the viewport. */}
-      <div className="relative aspect-4/3 overflow-hidden rounded-lg border border-border bg-bg">
-        <EngramUniverseCanvas scene={scene} />
-        <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4">
-          <div className="flex items-start justify-between">
-            <Badge variant="primary">{T.hud}</Badge>
+    <div className="flex flex-col gap-4">
+      <EmotionControls present={present} primary={primary} onCycle={cycleMood} />
+      <BackgroundSwitcher
+        emotions={emotions}
+        activeKey={candidate.key}
+        onSelect={setCandidateKey}
+      />
+
+      {/* Layered: emotion backdrop (z-0) · transparent 3D scene (z-10) · glass chrome (z-20). */}
+      <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-border bg-black/50">
+        <Backdrop emotions={emotions} reducedMotion={reducedMotion} className="z-0" />
+        <div className="absolute inset-0 z-10">
+          <EngramUniverseCanvas scene={scene} />
+        </div>
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-4">
+          <div className="flex items-start justify-between gap-2">
+            <span className="glass-subtle rounded-full px-3 py-1 text-xs font-medium text-text">{T.hud}</span>
+            <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">{candidate.label}</span>
           </div>
           <div className="pointer-events-auto flex flex-wrap items-end justify-between gap-3">
-            <div className="max-w-xs rounded-lg border border-border bg-surface p-4 shadow-card">
-              <div className="mb-1 text-sm font-semibold text-text">{T.overlayCardTitle}</div>
+            <div className="glass max-w-xs rounded-2xl p-4 text-text">
+              <div className="mb-1 text-sm font-semibold">{T.overlayCardTitle}</div>
               <p className="mb-3 text-xs text-text-muted">{T.overlayCardBody}</p>
               <div className="flex gap-2">
                 <Button size="sm">{T.recall}</Button>
@@ -269,15 +352,116 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
   )
 }
 
+// The primary-emotion + present-emotions control: 13 mood chips, each tapped to cycle through the
+// universe. Filled = present, ringed = primary, faded outline = absent. This is the "change the
+// dominant emotion colour" surface — the backdrop repaints live as it changes.
+function EmotionControls({
+  present,
+  primary,
+  onCycle,
+}: {
+  present: ReadonlySet<Mood>
+  primary: Mood
+  onCycle: (mood: Mood) => void
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
+          {T.emotionsTitle} · {present.size}
+        </h3>
+        <span className="text-xs text-text-subtle">{T.emotionsHint}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {MOODS.map((mood) => {
+          const isPresent = present.has(mood)
+          const isPrimary = mood === primary
+          const color = moodColor(mood)
+          return (
+            <button
+              key={mood}
+              type="button"
+              onClick={() => onCycle(mood)}
+              aria-pressed={isPresent}
+              className={cx(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                isPresent ? 'border-transparent text-text' : 'border-border text-text-subtle opacity-60 hover:opacity-100',
+              )}
+              style={{
+                backgroundColor: isPresent ? rgba(color, isPrimary ? 0.42 : 0.2) : 'transparent',
+                boxShadow: isPrimary ? `0 0 0 2px ${rgba(color, 0.95)}` : undefined,
+              }}
+            >
+              <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: color }} />
+              {MOOD_LABEL[mood]}
+              {isPrimary ? (
+                <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{T.primaryTag}</span>
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+// The background-candidate switcher: a live thumbnail per candidate (rendered static to stay cheap
+// — reducedMotion is forced on the previews) plus the selected one's blurb. Selecting swaps the
+// live universe backdrop above.
+function BackgroundSwitcher({
+  emotions,
+  activeKey,
+  onSelect,
+}: {
+  emotions: readonly EmotionSlice[]
+  activeKey: string
+  onSelect: (key: string) => void
+}) {
+  const active = BACKGROUND_CANDIDATES.find((entry) => entry.key === activeKey)
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">{T.backgroundTitle}</h3>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {BACKGROUND_CANDIDATES.map((entry) => {
+          const Preview = entry.Component
+          const selected = entry.key === activeKey
+          return (
+            <button
+              key={entry.key}
+              type="button"
+              onClick={() => onSelect(entry.key)}
+              aria-pressed={selected}
+              title={entry.blurb}
+              className={cx(
+                'group flex flex-col overflow-hidden rounded-xl border text-left transition-colors',
+                selected ? 'border-primary' : 'border-border hover:border-text-subtle',
+              )}
+            >
+              <span className="relative block h-16 w-full overflow-hidden bg-black/60">
+                <Preview emotions={emotions} reducedMotion />
+              </span>
+              <span className="flex items-center justify-between gap-1 px-2 py-1.5">
+                <span className="truncate text-xs font-medium text-text">{entry.label}</span>
+                {selected ? <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" /> : null}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {active ? <p className="text-xs text-text-subtle">{active.blurb}</p> : null}
+    </section>
+  )
+}
+
 // A self-contained slice of the product universe for design work: it loads a fixed set of engram
 // cells (8 episodic memories anchored to a handful of neurons) into the shared read-model stores
 // and renders the real render layers over a static coordinate buffer — no force-sim, no backend.
 // So the memory stars, cell-star neurons, synapse filaments, and emotion nebula all draw from
-// genuine domain facts, re-skinning with the Aurora/Ember switch above.
+// genuine domain facts. The scene draws NO background node: the canvas clears transparent so the
+// emotion-driven DOM backdrop behind it shows through. The skin still tunes camera + bloom.
 function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
   const { skin } = useSkin()
   const positions = useMemo(() => ({ current: scene.positions }), [scene])
-  const backgroundNode = useMemo(() => resolveBackgroundNode(skin.background), [skin.background])
 
   // Own the singleton read-model stores while mounted — the product universe widget is never
   // mounted on the /test surface — and clear them on unmount so a later tab starts clean.
@@ -293,8 +477,7 @@ function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
   }, [scene])
 
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
-      <Background node={backgroundNode} />
+    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov} transparent>
       <StarField />
       <NebulaField positions={positions} firstNodeIndex={scene.firstMemoryIndex} />
       <CellStarLayer positions={positions} />
