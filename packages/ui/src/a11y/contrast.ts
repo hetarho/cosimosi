@@ -1,7 +1,10 @@
 /**
- * WCAG 2.x contrast math over sRGB hex colors. Pure and DOM-free so the token
- * contrast guarantees are checked in a plain unit test.
+ * WCAG 2.x contrast math. Pure and DOM-free so the token contrast guarantees are
+ * checked in a plain unit test. Accepts both sRGB hex and OKLCH (the token format);
+ * OKLCH is converted to linear sRGB via lib/oklch.
  */
+
+import { oklchToLinearRgb, parseOklch } from '../lib/oklch.ts'
 
 /** AA contrast ratio for normal-size text. */
 export const WCAG_AA_TEXT = 4.5
@@ -27,9 +30,17 @@ export function parseHex(hex: string): { r: number; g: number; b: number } {
   }
 }
 
-/** Relative luminance (0–1) of an sRGB hex color. */
-export function relativeLuminance(hex: string): number {
-  const { r, g, b } = parseHex(hex)
+const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
+
+/** Relative luminance (0–1) of an sRGB hex or OKLCH color. */
+export function relativeLuminance(color: string): number {
+  if (color.trimStart().toLowerCase().startsWith('oklch')) {
+    const parsed = parseOklch(color)
+    if (!parsed) throw new Error(`not an oklch color: ${color}`)
+    const { r, g, b } = oklchToLinearRgb(parsed)
+    return 0.2126 * clamp01(r) + 0.7152 * clamp01(g) + 0.0722 * clamp01(b)
+  }
+  const { r, g, b } = parseHex(color)
   return 0.2126 * srgbChannelToLinear(r) + 0.7152 * srgbChannelToLinear(g) + 0.0722 * srgbChannelToLinear(b)
 }
 

@@ -7,7 +7,7 @@ import { createPlatformClient, type PingResponse } from '@cosimosi/api-client'
 import { readErrorMessage } from '@cosimosi/auth'
 import { inspectClientCache, setClientCacheData } from '@cosimosi/client-cache'
 import { VALUES } from '@cosimosi/config'
-import { Badge, Button, Skeleton, Switch, TextField, type BadgeVariant } from '@cosimosi/ui'
+import { Badge, Button, type BadgeVariant } from '@cosimosi/ui'
 
 import { useAuthFacade, useSessionSnapshot } from '../../../shared/auth/index.ts'
 import { m, setActiveLocale, supportedLocales, useActiveLocale, type Locale } from '../../../shared/i18n/index.ts'
@@ -204,34 +204,6 @@ export function I18nPanel() {
             {localeLabel(locale)}
           </Button>
         ))}
-      </div>
-    </PanelStack>
-  )
-}
-
-export function DesignSystemPanel() {
-  const [enabled, setEnabled] = useState(false)
-
-  return (
-    <PanelStack>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button>{m.test_harness_design_system_button_primary()}</Button>
-        <Button variant="secondary">{m.test_harness_design_system_button_secondary()}</Button>
-        <Badge variant="success">{m.test_harness_design_system_badge_success()}</Badge>
-        <Badge variant="warning">{m.test_harness_design_system_badge_warning()}</Badge>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TextField
-          label={m.test_harness_design_system_text_field_label()}
-          placeholder={m.test_harness_design_system_text_field_placeholder()}
-        />
-        <div className="flex items-center rounded-md border border-border bg-surface-subtle p-4">
-          <Switch label={m.test_harness_design_system_switch_label()} checked={enabled} onCheckedChange={setEnabled} />
-        </div>
-      </div>
-      <div className="grid gap-2" aria-label={m.test_harness_design_system_skeleton_label()}>
-        <Skeleton width={240} height={16} />
-        <Skeleton width={160} height={16} />
       </div>
     </PanelStack>
   )

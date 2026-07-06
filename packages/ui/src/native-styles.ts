@@ -1,4 +1,5 @@
-import { tokens } from './tokens.ts'
+import { oklchToRnColor } from './lib/oklch.ts'
+import { tokens, type ColorToken } from './tokens.ts'
 
 /**
  * React Native styling values derived from the canonical token map (tokens.ts).
@@ -16,8 +17,14 @@ function remToPx(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-/** Raw token colors (hex / rgba strings — both valid in RN). */
-export const color = tokens.color
+/**
+ * Token colors as React-Native-safe strings. The tokens author color in OKLCH,
+ * which RN `StyleSheet` cannot parse — so each is converted to `#rrggbb` / `rgba()`
+ * here (once, at module load). Same single source as web; only the encoding differs.
+ */
+export const color = Object.fromEntries(
+  Object.entries(tokens.color).map(([role, value]) => [role, oklchToRnColor(value)]),
+) as Record<ColorToken, string>
 
 /** Corner radii in px (RN has no rem). */
 export const radius = {

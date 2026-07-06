@@ -46,7 +46,7 @@ describe('web app test harness route', () => {
 
       expect(html).toContain('Test harness')
       expect(html).toContain('Transport ping')
-      expect(html).toContain('Design system')
+      expect(html).toContain('UI test')
       expect(html).not.toContain('ui-showcase')
     } finally {
       fakes.dispose()

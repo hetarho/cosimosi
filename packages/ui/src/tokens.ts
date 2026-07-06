@@ -19,27 +19,12 @@
  * defaults.
  */
 
+import { palette } from './palette.ts'
+
 export const tokens = {
-  /** Semantic color roles. Dark-first; text pairs are contrast-checked (tokens.test.ts). */
-  color: {
-    bg: '#0b1020',
-    surface: '#131a2e',
-    'surface-raised': '#1f294a',
-    text: '#f2f5fb',
-    'text-muted': '#bcc6de',
-    'text-subtle': '#9aa4c2',
-    border: '#2c375a',
-    primary: '#9db8ff',
-    'primary-foreground': '#0a1430',
-    danger: '#ff9aa8',
-    'danger-foreground': '#3a0a12',
-    success: '#7be0bb',
-    'success-foreground': '#04221a',
-    warning: '#ffd479',
-    'warning-foreground': '#3a2a00',
-    'focus-ring': '#b9ccff',
-    overlay: 'rgba(4, 7, 16, 0.66)',
-  },
+  /** Semantic color roles = the active theme's palette (palette.ts). Dark-first; text
+   *  pairs are contrast-checked (tokens.test.ts). Runtime theme swap = `data-theme`. */
+  color: palette,
 
   /** Corner radii. */
   radius: {
