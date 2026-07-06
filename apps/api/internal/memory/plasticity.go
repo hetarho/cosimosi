@@ -9,7 +9,12 @@ import (
 type SignalKind string
 
 const (
-	SignalKindSameMemory   SignalKind = "same_memory"
+	SignalKindSameMemory SignalKind = "same_memory"
+	// Reserved tiered initials [L10]: the current linking rules seed no synapse from these —
+	// a shared neuron *is* the link through activation membership (no edge, [L2]) and temporal
+	// proximity is applied as a bonus on top of an existing base (ApplyTemporalBonus, [L4]), not
+	// as a fresh initial. They keep the tier so a later cross-memory linker that mints distinct
+	// shared/temporal edges reads its seed here without a signature change.
 	SignalKindSharedNeuron SignalKind = "shared_neuron"
 	SignalKindTemporal     SignalKind = "temporal"
 )
@@ -21,6 +26,10 @@ func Potentiate(strength float64, rate float64) float64 {
 	return clamp(next, 0, values.SynapseStrengthCap)
 }
 
+// Depress is the LTD counterpart to Potentiate, reserved for the forgetting dynamics: it weakens a
+// stored base without downscaling other synapses ([I9]). No launch/link path calls it yet — linking
+// only inserts or strengthens ([I1]) — so it is kept pure and golden-parity-mirrored until the
+// forgetting epic drives it.
 func Depress(strength float64, amount float64) float64 {
 	boundedStrength := clamp(strength, 0, values.SynapseStrengthCap)
 	boundedAmount := math.Max(0, amount)
@@ -48,6 +57,10 @@ func InitialStrength(signalKind SignalKind) (float64, bool) {
 	}
 }
 
+// EffectiveSynapseStrength fades a stored base by elapsed universe-days at read time without
+// mutating it [L5]. The server writes only the base today, so the live consumer is the FE render
+// mirror (a synapse's rendered width/glow) held byte-identical by golden parity; this copy is
+// reserved for when the server itself computes effective values (recall/forgetting).
 func EffectiveSynapseStrength(base float64, elapsedUniverseDays float64) float64 {
 	boundedBase := clamp(base, 0, values.SynapseStrengthCap)
 	boundedElapsed := math.Max(0, elapsedUniverseDays)

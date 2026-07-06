@@ -9,7 +9,7 @@ import {
   setMemoryMood,
   splitMemory,
   type ProposedMemoryDraft,
-} from './proposal.ts'
+} from '@cosimosi/universe'
 
 // Data store (§3.2): the editable proposal. The machine holds the phase; the proposal lives here,
 // mutated by the pure edit helpers. NL revises replace it wholesale (setFromResponse); hand-edits

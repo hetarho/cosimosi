@@ -20,10 +20,9 @@ function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFal
   )
 }
 
-// The home screen (`/`): the real memory universe full-bleed, with a few floating actions
-// over it. The widget owns the whole 3D block (renderer mount, graph read, sim, camera
-// rig); the page only lays out the HUD. The actions are inert placeholders — no handlers
-// are wired to them.
+// The home screen (`/`): the real memory universe full-bleed, with the write action floating
+// over it (mirror of the mobile screen's HUD, §3.5). The widget owns the whole 3D block (renderer
+// mount, graph read, sim, camera rig); the page only lays out the HUD.
 export function UniverseHomePage() {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-text">
@@ -43,13 +42,9 @@ export function UniverseHomePage() {
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6">
         <header className="flex items-start justify-between gap-3">
           <NebulaNotice />
-          <Button variant="secondary" className="pointer-events-auto">
-            {m.universe_home_settings()}
-          </Button>
         </header>
         <div className="pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 pb-2">
           <WritingFlowSheet />
-          <Button variant="secondary">{m.universe_home_explore()}</Button>
         </div>
       </div>
     </main>

@@ -6,9 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
 import { universeFromResponse, type UniverseSnapshot } from '@cosimosi/memory'
 
-import { useEpisodicMemoryStore } from '../../../entities/episodic-memory/index.ts'
-import { useNeuronStore } from '../../../entities/neuron/index.ts'
-import { useSynapseStore } from '../../../entities/synapse/index.ts'
+import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
 
 export interface UniverseReadState {
   universe: UniverseSnapshot | null

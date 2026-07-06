@@ -38,6 +38,7 @@ const (
 	RenderingLatentStarCountMobile = 300
 	RenderingLatentFieldRadius     = 34
 	RenderingLatentStarSize        = 0.14
+	RenderingAwakenCapacity        = 32
 )
 
 // nebula

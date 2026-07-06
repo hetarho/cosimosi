@@ -6,21 +6,21 @@ import {useQuery, useQueryClient} from '@tanstack/react-query';
 
 import {createGetUniverseQueryKey, createGetUniverseQueryOptions} from '@cosimosi/api-client';
 import {Button, Dialog, tokens} from '@cosimosi/ui';
-
-import {ProposedMemoryList, requestSplitDiary} from '../../../features/split-diary/index.ts';
-import {ReviseControls, requestReviseSplit} from '../../../features/revise-split/index.ts';
 import {
-  LaunchButton,
   insertLaunchedMemories,
   isPastDated,
   requestLaunchStars,
-  useLaunchedNeuronsStore,
-} from '../../../features/launch-stars/index.ts';
+  writingFlowMachine,
+  type WritingFlowStatus,
+} from '@cosimosi/universe';
+
+import {ProposedMemoryList, requestSplitDiary} from '../../../features/split-diary/index.ts';
+import {ReviseControls, requestReviseSplit} from '../../../features/revise-split/index.ts';
+import {LaunchButton, useLaunchedNeuronsStore} from '../../../features/launch-stars/index.ts';
 import {WriteDiaryFields, useDiaryDraftStore} from '../../../features/write-diary/index.ts';
 import {m} from '../../../shared/i18n/index.ts';
 import {useMachine} from '../../../shared/model/index.ts';
 import {useProposalStore} from '../model/proposal-store.ts';
-import {writingFlowMachine, type WritingFlowStatus} from '../model/writing-flow.machine.ts';
 
 // The diary date defaults to *today in the user's own timezone* ([W5]). `toISOString()` would emit
 // the UTC date, which is a day behind for KST users in the local 00:00–09:00 window — build the ISO
@@ -48,6 +48,9 @@ export function WritingFlowSheet() {
 
   const transport = useTransport();
   const queryClient = useQueryClient();
+  // Only universe time is read, to *predict* a past-dated launch and warn before the button is
+  // pressed. This is a pre-launch prediction, not the authority — the server returns the real
+  // outcome on `pastDated`. A loading/errored read leaves it null → treated as not-past.
   const universeQuery = useQuery(createGetUniverseQueryOptions(transport));
   const universeTime =
     universeQuery.data && universeQuery.data.universeTime !== '' ? universeQuery.data.universeTime : null;
@@ -105,8 +108,13 @@ export function WritingFlowSheet() {
     const memories = proposal;
     requestLaunchStars(transport, {body, diaryDate, memories})
       .then(response => {
-        insertLaunchedMemories(memories, response.memoryIds, diaryDate);
-        announce(response.newNeuronIds);
+        // The server's monotonic guard is authoritative: a past-dated launch saves the diary
+        // but creates no memory, so no star appears ([T1][I10]). Gate the optimistic insert on
+        // its `pastDated` flag rather than inferring it from an empty id list.
+        if (!response.pastDated) {
+          insertLaunchedMemories(memories, response.memoryIds, diaryDate);
+          announce(response.newNeuronIds);
+        }
         queryClient.invalidateQueries({queryKey: createGetUniverseQueryKey(transport)}).catch(() => undefined);
         send({type: 'LAUNCH_OK'});
       })

@@ -28,9 +28,13 @@ const ignoredSegments = new Set([
   '.astro',
   '.vite',
 ])
-// `3d-renderer` = the @cosimosi/3d-renderer package: it IS the rendering layer, so
-// rendering vocabulary (star/nebula/filament…) is its native language throughout.
-const visualSegments = new Set(['ui', 'visual', 'visuals', 'render', 'renderer', 'rendering', 'canvas', 'shader', 'shaders', '3d-renderer'])
+// `3d-renderer`/`universe`/`universe-render` = the scene/rendering packages. They ARE the
+// rendering layer, so rendering vocabulary (star/nebula/filament…) is its native language
+// throughout: @cosimosi/universe holds the scene's graph projection + read-model + domain→visual
+// channel mappers, and @cosimosi/universe-render holds the R3F bindings. The domain-mirror boundary
+// that must stay visual-free is @cosimosi/memory + apps/api (still scanned); the memory-edge and
+// synonym checks below still run on these packages regardless.
+const visualSegments = new Set(['ui', 'visual', 'visuals', 'render', 'renderer', 'rendering', 'canvas', 'shader', 'shaders', '3d-renderer', 'universe', 'universe-render'])
 const forbiddenEdgePatterns = [
   /\bEngram(?:Edge|Link|Relation|Relationship)\b/,
   /\bMemory(?:Edge|Link|Relation|Relationship)\b/,

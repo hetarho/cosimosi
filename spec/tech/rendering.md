@@ -110,9 +110,10 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
   package and compose their scene inside; they add no renderer lifecycle, skin system, or post pipeline of their own.
   React context does **not** cross the R3F reconciler — app-context hooks (query/skin/machine) run outside the canvas
   and pass data in as props.
-- **The read model** is the domain-mirror `entities/{episodic-memory,neuron,synapse}` (Zustand stores; populated once
-  per `GetUniverse` fetch) over `@cosimosi/memory` — the shared FE domain types + proto→domain mappers (strict at the
-  boundary: unknown mood/neuron-type or a non-canonical synapse fails loud). The pages/screens wrap the widget in an
+- **The read model** is three Zustand stores (episodic-memory / neuron / synapse; populated once per `GetUniverse`
+  fetch), promoted to **`@cosimosi/universe`** (job 35) and shared verbatim by both apps, over `@cosimosi/memory` — the
+  shared FE domain types + proto→domain mappers (strict at the boundary: unknown mood/neuron-type or a non-canonical
+  synapse fails loud). The pages/screens wrap the widget in an
   error boundary — reset-wired through react-query's `QueryErrorResetBoundary` so its Retry actually refetches the
   failed `GetUniverse` read — so a corrupt row or read failure contains to the canvas area and recovers in place.
 - **Scene primitives** are package layers, the only three importers: `InstancedNodeLayer` (one `InstancedMesh` sized to
@@ -147,17 +148,23 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
 
 ## Star / neuron / filament bodies (plan 24 as-built)
 
-The three **rendering entities** turn the domain-mirror graph into bodies. Each lives in `entities/<visual-noun>`
-(web + mobile, same slice names) and its body is a `VisualBodySource` from `@cosimosi/3d-renderer/assets/bodies/` —
-so `three` stays inside the package.
+The three **rendering entities** turn the domain-mirror graph into bodies. Their body is a `VisualBodySource` from
+`@cosimosi/3d-renderer/assets/bodies/` — so `three` stays inside the package.
 
-- **The domain→visual projection is one-way (§3.4).** A rendering entity imports its domain mirror **only** via the
-  mirror's `@x` public API (`entities/episodic-memory/@x/star`, `neuron/@x/cell-star`, `synapse/@x/filament`), reads
-  the shared read-time functions (`@cosimosi/memory-logic`) and the palette seam (`@cosimosi/emotion`), and produces a
-  body. It exports nothing back into the domain slice or its `api` mapper; no visual word (`star`/`cell-star`/
-  `filament`/…) becomes a domain symbol. Enforced by the §1 ubiquitous-language lint (which treats an
-  `entities/<rendering-term>` slice as a visual path so the vocabulary is native there, still forbidden in the mirrors)
-  and by an `entities-x` element + `entities → entities-x` rule in each app's eslint boundaries config.
+> **As-built (job 35 — write vertical promoted to packages).** The rendering entities are no longer duplicated app
+> slices. Their **pure channel projections** (`starChannels`/`cellStarChannels`/`filamentChannels`, nebula
+> `buildContributors`, `latentField`) + the read-model stores live in **`@cosimosi/universe`**; their **R3F bindings**
+> (`StarLayer`/`CellStarLayer`/`FilamentLayer`/`LatentStarField`/`NebulaField`/`AwakenNeuron`) live in
+> **`@cosimosi/universe-render`** (depends on `@cosimosi/3d-renderer` + `@cosimosi/universe`). Both apps import them
+> verbatim — one source, no `*.native` fork (nothing here uses a DOM/RN primitive). The apps keep only the forked
+> DOM/RN sheets (`WritingFlowSheet`, `ReviseControls`, `LaunchButton`, `NebulaNotice`, …) and their session stores.
+
+- **The domain→visual projection is one-way (§3.4).** A channel projection imports the domain read-model **types** from
+  `@cosimosi/memory` (formerly the FE mirror's `@x` public API), reads the shared read-time functions
+  (`@cosimosi/memory-logic`) and the palette seam (`@cosimosi/emotion`), and produces a body. It exports nothing back
+  into the domain types or the `api` mapper; no visual word (`star`/`cell-star`/`filament`/…) becomes a domain symbol.
+  Enforced by the §1 ubiquitous-language lint (which treats the `@cosimosi/universe`/`@cosimosi/universe-render` scene
+  packages as visual paths so the vocabulary is native there, still forbidden in `@cosimosi/memory` + `apps/api`).
 - **`star` (episodic-memory).** An instanced TSL big-star (`star-body.ts`, `shader` source): a unit sphere whose
   surface is displaced by ridged noise keyed on a per-instance **seed**, so two seeds take different coherent forms
   [V5]; the seed is immutable input (rendered, never mutated/animated — the Epic-C `Reshape` seam). Four independent
@@ -207,8 +214,9 @@ seed anchor is a client presentation choice; the real neuron's final position is
   React state) and marks it consumed; a module-level `awaken-registry` store makes the awaken **idempotent across
   remounts**. It reacts to `new_neuron_ids` — the writing flow (plan 27) announces them through the module-level
   `features/launch-stars` launched-neurons store, which the always-mounted canvas reads and feeds here.
-- **Mobile (§3.5).** Slices copied verbatim; the widget passes `rendering.latent_star_count_mobile` (reduced MVP count).
-  No `*.native` sibling — the R3F host is already forked at the canvas level.
+- **Mobile (§3.5).** The field + layer are the shared package modules (`@cosimosi/universe` / `@cosimosi/universe-render`);
+  the widget passes `rendering.latent_star_count_mobile` (reduced MVP count). No `*.native` sibling — the R3F host is
+  already forked at the canvas level.
 
 ### Nebula emotion color field (plan 26)
 
@@ -232,21 +240,24 @@ modeled, or surfaced as an average-tone readout ([M4][M5][I5][§3.4]).
   solely through the plan-17 `moodColor` seam — no color literal, no valence→hue math; the weight input is
   `EffectiveStrength` (the derived read-time size), the Epic-C recall mirror seam. `ui/NebulaField.tsx` binds the layer
   with `firstNodeIndex = neuronCount` (memories share the star layer's buffer slots); `ui/NebulaNotice.tsx` is the
-  honest-mirror HUD disclosure (i18n copy, renders no color). The mirror slice is read only via `@x/nebula.ts`.
+  honest-mirror HUD disclosure (i18n copy, renders no color; the one bit still app-local, a forked DOM/RN component).
+  The read model is read from the shared `@cosimosi/universe` episodic-memory store.
 - **Layer coexistence.** The nebula (domain emotion color) composites over the plan-14 skin background and behind the
   latent field + bodies. The skin never reads emotion; the nebula never sets ambiance — neither writes to the domain.
 - **Optimistic-launch interaction (plan 27).** A just-launched memory enters the `episodic-memory` store before its
   force-sim node exists, so its nebula kernel (and its star) render at the world origin until the next `GetUniverse`
   refetch rebuilds the graph and the sim positions it — the §2.8 optimistic degradation ("position fills on next read").
-- **Mobile (§3.5).** `lib`/`ui`/`@x` copied verbatim; the mount passes `nebula.field_resolution_mobile` (coarser
-  kernels). `NebulaNotice` has an RN sibling (View/Text vs DOM); the `ColorField` TSL layer is shared — no `*.native`.
+- **Mobile (§3.5).** The projection (`buildContributors`) + the `NebulaField` layer are the shared package modules; the
+  mount passes `nebula.field_resolution_mobile` (coarser kernels). `NebulaNotice` is forked per-app (RN View/Text vs
+  DOM); the `ColorField` TSL layer is shared — no `*.native`.
 
 ## Config
 `spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
 (instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
 `filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
-`latent_star_count`, `latent_star_count_mobile`, `latent_field_radius`, `latent_star_size`.
+`latent_star_count`, `latent_star_count_mobile`, `latent_field_radius`, `latent_star_size`, and `awaken_capacity`
+(the awaken flare pool ceiling — a resource cap, so it is config; the flare's motion/look stays in code).
 
 `spec/values.yaml → nebula` (plan 26, its own group): `bleed_radius_coefficient` (`EffectiveStrength` → bleed radius),
 `min_bleed_radius` (floor), `falloff_exponent` (kernel density sharpness), `max_contributors` (kernel budget cap),

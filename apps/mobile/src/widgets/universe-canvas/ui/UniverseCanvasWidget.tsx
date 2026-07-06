@@ -19,17 +19,22 @@ import {
   UNIVERSE_CAMERA_RIG,
   buildUniverseGraph,
   createUniverseSimBridge,
+  generateLatentField,
+  recentlyActiveNeuronIds,
   universeNavigationMachine,
+  type AwakenAnchor,
   type UniverseNavigationMode,
 } from '@cosimosi/universe';
+import {
+  AwakenNeuron,
+  CellStarLayer,
+  FilamentLayer,
+  LatentStarField,
+  NebulaField,
+  StarLayer,
+} from '@cosimosi/universe-render';
 
-import {AwakenNeuron, recentlyActiveNeuronIds, type AwakenAnchor} from '../../../features/awaken-neuron/index.ts';
 import {useLaunchedNeuronsStore} from '../../../features/launch-stars/index.ts';
-import {CellStarLayer} from '../../../entities/cell-star/index.ts';
-import {FilamentLayer} from '../../../entities/filament/index.ts';
-import {LatentStarField, generateLatentField} from '../../../entities/latent-star/index.ts';
-import {NebulaField} from '../../../entities/nebula/index.ts';
-import {StarLayer} from '../../../entities/star/index.ts';
 import {useActorRef} from '../../../shared/model/index.ts';
 import {useUniverse} from '../api/use-universe.ts';
 import {createSimWorkerSpawner} from '../lib/sim-worker-spawner.ts';

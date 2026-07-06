@@ -30,14 +30,22 @@ Only coefficients, caps, and initials live in `spec/values.yaml`:
 - `synapse.potentiation_rate = 0.2`
 - `synapse.strength_cap = 1.0`
 - `synapse.initial_same_memory = 0.32`
-- `synapse.initial_shared_neuron = 0.2`
-- `synapse.initial_temporal = 0.08`
+- `synapse.initial_shared_neuron = 0.2` — reserved tier (see below)
+- `synapse.initial_temporal = 0.08` — reserved tier (see below)
 - `synapse.strength_decay_per_day = 0.015`
 - `synapse.temporal_window_days = 3`
 - `synapse.temporal_bonus = 0.1`
 
 The formula shapes stay in code: saturating LTP, floor/cap clamps, exponential read-time synapse decay, the `SignalKind`
 enum, and the Epic-A memory-level stubs.
+
+**Reserved tiers.** Link seeds a synapse only from `initial_same_memory` today. The `shared_neuron` and `temporal`
+tiers ([L10]) are marked as forward reservations in code and values.yaml: a shared neuron *is* the link through
+activation membership (no synapse to seed, [L2]), and temporal proximity is applied as a bonus on top of an existing
+base (`temporal_bonus`), not as a fresh initial ([L4]). They are kept for a later cross-memory linker that mints
+distinct shared/temporal edges. Likewise `Depress` (LTD) and the read-time `EffectiveStrength`/`EffectiveBrightness`/
+`EffectiveSynapseStrength` have no server production caller yet — reserved for the forgetting/recall dynamics; the
+effective functions are consumed today only by the FE render mirror (golden-parity).
 
 ## 4. Golden parity
 

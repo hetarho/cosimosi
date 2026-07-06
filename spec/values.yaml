@@ -61,6 +61,10 @@ rendering:
   # Latent point world radius — small and dim; below cell_star_point_size so a real neuron reads
   # as brighter/larger than the silent field it wakes from.
   latent_star_size: 0.14
+  # Awaken flare pool ceiling: max concurrent birth flares rendered at once. A launch rarely births
+  # more than a few new neurons; an overflowing burst is not lost — the excess flares on the next
+  # pass (the animation look/motion stays in code; only this pool cap is tuning).
+  awaken_capacity: 32
 
 nebula:
   # Emotion color field ([M4][M5]): each rendered memory bleeds its mood color into the ambient
@@ -177,13 +181,17 @@ synapse:
   potentiation_rate: 0.2
   # One cap for every synapse signal kind; signal differences live in initials.
   strength_cap: 1.0
-  # Fresh links start low and tier by causal signal strength.
+  # Fresh links start low and tier by causal signal strength (same > shared > temporal, [L10]).
   initial_same_memory: 0.32
+  # Reserved tiers: today's linking seeds no synapse from these — a shared neuron is the link via
+  # membership (no edge) and temporal proximity is a bonus, not an initial. Kept for a later
+  # cross-memory linker that mints distinct shared/temporal edges.
   initial_shared_neuron: 0.2
   initial_temporal: 0.08
   # Read-time effective strength fades slowly in universe-days without mutating the stored base.
   strength_decay_per_day: 0.015
-  # Temporal-link knobs are owned with synapse values but consumed by the future Link use-case.
+  # Temporal-link knobs: a co-firing inside temporal_window_days earns temporal_bonus on top of the
+  # base — consumed by Link at launch.
   temporal_window_days: 3
   temporal_bonus: 0.1
 

@@ -429,7 +429,12 @@ type LaunchStarsResponse struct {
 	// Neurons genuinely created by this launch (not deduped onto existing ones) —
 	// newness is a server-only decision, surfaced for the awaken animation
 	// (plan 25, [E7a]).
-	NewNeuronIds  []string `protobuf:"bytes,2,rep,name=new_neuron_ids,json=newNeuronIds,proto3" json:"new_neuron_ids,omitempty"`
+	NewNeuronIds []string `protobuf:"bytes,2,rep,name=new_neuron_ids,json=newNeuronIds,proto3" json:"new_neuron_ids,omitempty"`
+	// The monotonic launch guard's authoritative outcome [I10][T1]: the diary was
+	// saved but no memory was created because its date precedes the universe's
+	// present. The client keys its optimistic insert off this, not off an
+	// empty memory_ids coincidence.
+	PastDated     bool `protobuf:"varint,3,opt,name=past_dated,json=pastDated,proto3" json:"past_dated,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -476,6 +481,13 @@ func (x *LaunchStarsResponse) GetNewNeuronIds() []string {
 		return x.NewNeuronIds
 	}
 	return nil
+}
+
+func (x *LaunchStarsResponse) GetPastDated() bool {
+	if x != nil {
+		return x.PastDated
+	}
+	return false
 }
 
 type GetUniverseRequest struct {
@@ -1001,11 +1013,13 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x0fConfirmedMemory\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04mood\x18\x02 \x01(\tR\x04mood\x12<\n" +
-	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\"Z\n" +
+	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\"y\n" +
 	"\x13LaunchStarsResponse\x12\x1d\n" +
 	"\n" +
 	"memory_ids\x18\x01 \x03(\tR\tmemoryIds\x12$\n" +
-	"\x0enew_neuron_ids\x18\x02 \x03(\tR\fnewNeuronIds\"\x14\n" +
+	"\x0enew_neuron_ids\x18\x02 \x03(\tR\fnewNeuronIds\x12\x1d\n" +
+	"\n" +
+	"past_dated\x18\x03 \x01(\bR\tpastDated\"\x14\n" +
 	"\x12GetUniverseRequest\"\xf2\x01\n" +
 	"\x13GetUniverseResponse\x12A\n" +
 	"\bmemories\x18\x01 \x03(\v2%.cosimosi.memory.v1.EpisodicMemoryDtoR\bmemories\x127\n" +

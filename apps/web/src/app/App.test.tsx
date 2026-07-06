@@ -74,7 +74,6 @@ describe('web app test harness route', () => {
       )
 
       expect(html).toContain('Write a diary')
-      expect(html).toContain('Explore')
       expect(html).not.toContain('Nothing orbits here')
     } finally {
       fakes.dispose()

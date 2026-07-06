@@ -30,6 +30,7 @@ export const VALUES = {
     latentStarCountMobile: 300,
     latentFieldRadius: 34,
     latentStarSize: 0.14,
+    awakenCapacity: 32,
   },
   nebula: {
     bleedRadiusCoefficient: 12,

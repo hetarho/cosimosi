@@ -17,7 +17,7 @@ import {
 } from '@cosimosi/3d-renderer'
 import { Button } from '@cosimosi/ui'
 
-import { buildContributors } from '../../../entities/nebula/index.ts'
+import { buildContributors } from '@cosimosi/universe'
 import { m } from '../../../shared/i18n/index.ts'
 
 // Placeholder memories — one per mood, assorted base strengths — scattered around the origin.

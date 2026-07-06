@@ -79,6 +79,11 @@ message LaunchStarsResponse {
   // newness is a server-only decision, surfaced for the awaken animation
   // (plan 25, [E7a]).
   repeated string new_neuron_ids = 2;
+  // The monotonic launch guard's authoritative outcome [I10][T1]: the diary was
+  // saved but no memory was created because its date precedes the universe's
+  // present. The client keys its optimistic insert off this, not off an
+  // empty memory_ids coincidence.
+  bool past_dated = 3;
 }
 
 message GetUniverseRequest {}

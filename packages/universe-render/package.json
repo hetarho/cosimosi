@@ -1,5 +1,5 @@
 {
-  "name": "@cosimosi/universe",
+  "name": "@cosimosi/universe-render",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,20 +12,22 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@cosimosi/api-client": "workspace:*",
+    "@cosimosi/3d-renderer": "workspace:*",
     "@cosimosi/config": "workspace:*",
-    "@cosimosi/emotion": "workspace:*",
-    "@cosimosi/force-sim": "workspace:*",
-    "@cosimosi/memory": "workspace:*",
-    "@cosimosi/memory-logic": "workspace:*",
-    "xstate": "^5.32.2",
-    "zustand": "^5.0.14"
+    "@cosimosi/universe": "workspace:*"
   },
   "peerDependencies": {
-    "react": ">=19"
+    "@react-three/fiber": ">=9",
+    "react": ">=19",
+    "three": ">=0.185"
   },
   "devDependencies": {
+    "@react-three/fiber": "^9.6.1",
     "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/three": "^0.185.0",
+    "react": "^19.2.7",
+    "three": "^0.185.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   }

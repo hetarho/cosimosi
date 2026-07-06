@@ -73,6 +73,7 @@ func (s *Server) LaunchStars(ctx context.Context, req *connect.Request[memoryv1.
 	return connect.NewResponse(&memoryv1.LaunchStarsResponse{
 		MemoryIds:    result.MemoryIDs,
 		NewNeuronIds: result.NewNeuronIDs,
+		PastDated:    result.PastDated,
 	}), nil
 }
 
