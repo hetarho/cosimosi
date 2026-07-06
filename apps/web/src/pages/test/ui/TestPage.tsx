@@ -34,7 +34,7 @@ export function TestPage({
 
   return (
     <main className="min-h-dvh bg-background text-text">
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 md:grid-cols-[18rem_1fr] md:px-6">
+      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 md:grid-cols-[9rem_1fr] md:px-6">
         <header className="md:col-span-2">
           <Badge variant="primary">{m.test_harness_route_badge()}</Badge>
           <div className="mt-3 max-w-3xl">

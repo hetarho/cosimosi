@@ -1,7 +1,21 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 
 import { VALUES } from '@cosimosi/config'
-import { SkinProvider, UniverseCanvas, UniverseScene, useSkin, type SkinKey } from '@cosimosi/3d-renderer'
+import {
+  Background,
+  CameraControls,
+  PostFX,
+  SkinProvider,
+  StarField,
+  UniverseCanvas,
+  resolveBackgroundNode,
+  useSkin,
+  type SkinKey,
+} from '@cosimosi/3d-renderer'
+import { moodColor, type Mood } from '@cosimosi/emotion'
+import type { EpisodicMemory } from '@cosimosi/memory'
+import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
+import { CellStarLayer, FilamentLayer, NebulaField, StarLayer } from '@cosimosi/universe-render'
 import {
   Badge,
   Button,
@@ -18,14 +32,23 @@ import {
   type ControlSize,
 } from '@cosimosi/ui'
 
-// The single UI test surface. A preset is a *universe*: one switch drives the 3D skin and
-// the 2D theme together (data-theme on the document root re-skins portals too), so the whole
-// component catalog + universe view re-skin at once. Captions are demo data, intentionally
-// outside the product i18n catalog (a dev-only /test surface).
+import { buildEngramDemoScene, type EngramDemoScene } from './engram-demo-scene.ts'
+
+// The single UI test surface, split into three tabs that share one skin. A preset is a
+// *universe*: one switch drives the 3D skin and the 2D theme together (data-theme on the
+// document root re-skins portals too), so every tab re-skins at once. Captions are demo data,
+// intentionally outside the product i18n catalog (a dev-only /test surface).
 const PRESETS: readonly { key: SkinKey; label: string; blurb: string }[] = [
   { key: 'aurora', label: 'Aurora', blurb: 'Cool borealis — lavender · chartreuse · mint.' },
   { key: 'ember', label: 'Ember', blurb: 'Warm cosmic — ember-coral · rose · gold.' },
 ]
+
+const TABS = [
+  { key: 'universe', label: 'Universe + UI' },
+  { key: 'ui', label: 'UI only' },
+  { key: 'system', label: 'Design system' },
+] as const
+type TabKey = (typeof TABS)[number]['key']
 
 const BUTTON_VARIANTS: readonly ButtonVariant[] = ['primary', 'secondary', 'ghost', 'danger']
 const CONTROL_SIZES: readonly ControlSize[] = ['sm', 'md', 'lg']
@@ -37,21 +60,59 @@ const ACCENTS: readonly { name: string; bg: string; fg: string }[] = [
   { name: 'Tertiary', bg: 'bg-tertiary', fg: 'text-tertiary-foreground' },
 ]
 
-const STATS: readonly { label: string; value: string }[] = [
-  { label: 'Strength', value: '0.62' },
-  { label: 'Brightness', value: '0.90' },
-  { label: 'Recall count', value: '3' },
-  { label: 'Neurons', value: '7' },
-]
+// Human labels for the moods the demo scene uses (dev-only /test copy, not product i18n).
+const MOOD_LABEL: Record<Mood, string> = {
+  JOY: 'Joy',
+  CALM: 'Calm',
+  SAD: 'Sad',
+  ANGER: 'Anger',
+  FEAR: 'Fear',
+  LOVE: 'Love',
+  NEUTRAL: 'Neutral',
+  EXCITEMENT: 'Excitement',
+  GRATITUDE: 'Gratitude',
+  RELIEF: 'Relief',
+  STRESS: 'Stress',
+  TIRED: 'Tired',
+  EMPTINESS: 'Emptiness',
+}
+
+// Presentation-only excerpts keyed by the demo memory id — episodic bodies are not part of the
+// universe read model, so these live with the view, not the domain scene.
+const SNIPPETS: Record<string, string> = {
+  'm-window': 'Rain against the glass, a page left open to the same line. Nothing asked to be finished.',
+  'm-dusk-kitchen': 'Onions in the pan, the radio low. She hummed the part she never remembered the words to.',
+  'm-cat-home': 'Three days of an empty bowl, then paw prints on the sill at dawn.',
+  'm-winter-sea': 'The water was the colour of old coins. We did not say much on the way back.',
+  'm-cold-coffee': 'Made it, forgot it, found it cold by the window. Poured it out without tasting.',
+  'm-laughing-rain': 'We ran for the awning and missed it entirely — soaked, laughing at nothing.',
+  'm-unsent-letter': 'Wrote it twice, folded it once, left it in the drawer with the others.',
+  'm-morning-light': 'First light on the counter, the whole day still unspent. Just the cup, warm in both hands.',
+}
 
 const T = {
-  universeAndUi: 'Universe + UI',
-  components: 'Components',
-  composed: 'Composed screen',
+  // Tabs
+  tablistLabel: 'UI test views',
+  // Universe overlay
   hud: '우주의 시간 · Y1 · D28',
   overlayCardTitle: 'A quiet afternoon',
   overlayCardBody: 'A surface floating over the live universe.',
+  recall: '회고하기',
+  history: '변천사',
   write: 'Write a diary',
+  // Diary list (UI only)
+  diaryTitle: 'Diary',
+  universeCrumb: 'Universe',
+  searchPlaceholder: 'Search memories',
+  searchLabel: 'Search memories',
+  sortRecent: 'Recent',
+  sortStrongest: 'Strongest',
+  back: 'Back',
+  more: 'More',
+  memories: 'memories',
+  strength: 'Strength',
+  notRecalled: 'Not yet recalled',
+  // Component catalog (Design system)
   buttonsMatrix: 'Buttons · variants × sizes',
   buttonsStates: 'Buttons · states',
   iconButtons: 'Icon buttons',
@@ -84,28 +145,30 @@ const T = {
   tooltipTrigger: 'Hover for tooltip',
   showToast: 'Show toast',
   toastBody: 'Saved — this is a toast.',
-  back: 'Back',
-  share: 'Share',
-  more: 'More',
-  universeCrumb: 'Universe',
-  moodBadge: '기쁨',
-  dateBadge: 'Year 1 · Day 12',
-  detailTitle: 'A quiet afternoon by the window',
-  detailMeta: 'Recalled 3 times · last seen 4 days ago',
-  detailBody:
-    'The light came in ▓▓▓ warm across the desk, and for a moment ▓▓▓▓ nothing needed to be done. A cup of tea went cold while ▓▓▓▓▓ the page stayed open to the same line.',
-  recall: '회고하기',
-  history: '변천사',
-  original: '원본 일기 보기',
-  pin: 'Pin to constellation',
 }
 
+const TABPANEL_ID = 'ui-test-tabpanel'
+
 function UiTestInner() {
-  const { skin, skinKey, setSkinKey } = useSkin()
-  const [toastOpen, setToastOpen] = useState(false)
-  const [switchOn, setSwitchOn] = useState(false)
-  const [checked, setChecked] = useState(true)
-  const [starred, setStarred] = useState(true)
+  const { skinKey, setSkinKey } = useSkin()
+  const [tab, setTab] = useState<TabKey>('universe')
+  const scene = useMemo(() => buildEngramDemoScene(), [])
+
+  // WAI-ARIA tabs pattern: arrow/Home/End move between tabs with automatic activation, and only
+  // the selected tab is in the Tab sequence (roving tabindex, set on each tab below).
+  const handleTablistKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const current = TABS.findIndex((entry) => entry.key === tab)
+    let next: number | null = null
+    if (event.key === 'ArrowRight') next = (current + 1) % TABS.length
+    else if (event.key === 'ArrowLeft') next = (current - 1 + TABS.length) % TABS.length
+    else if (event.key === 'Home') next = 0
+    else if (event.key === 'End') next = TABS.length - 1
+    if (next === null) return
+    event.preventDefault()
+    const nextKey = TABS[next].key
+    setTab(nextKey)
+    document.getElementById(`ui-test-tab-${nextKey}`)?.focus()
+  }
 
   // Theme the whole document (portals included) while this panel is mounted; restore on leave.
   useEffect(() => {
@@ -133,34 +196,229 @@ function UiTestInner() {
         <span className="text-sm text-text-muted">{PRESETS.find((p) => p.key === skinKey)?.blurb}</span>
       </div>
 
-      {/* ── Universe + UI ─────────────────────────────────────── */}
-      <Section title={T.universeAndUi}>
-        <div className="relative h-[52vh] min-h-96 overflow-hidden rounded-lg border border-border bg-bg">
-          <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
-            <UniverseScene skin={skin} />
-          </UniverseCanvas>
-          <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4">
-            <div className="flex items-start justify-between">
-              <Badge variant="primary">{T.hud}</Badge>
-            </div>
-            <div className="pointer-events-auto flex flex-wrap items-end justify-between gap-3">
-              <div className="max-w-xs rounded-lg border border-border bg-surface p-4 shadow-card">
-                <div className="mb-1 text-sm font-semibold text-text">{T.overlayCardTitle}</div>
-                <p className="mb-3 text-xs text-text-muted">{T.overlayCardBody}</p>
-                <div className="flex gap-2">
-                  <Button size="sm">{T.recall}</Button>
-                  <Button size="sm" variant="secondary">
-                    {T.history}
-                  </Button>
-                </div>
+      <div
+        role="tablist"
+        aria-label={T.tablistLabel}
+        onKeyDown={handleTablistKeyDown}
+        className="flex flex-wrap gap-2 border-b border-border pb-3"
+      >
+        {TABS.map((entry) => {
+          const active = entry.key === tab
+          return (
+            <Button
+              key={entry.key}
+              role="tab"
+              id={`ui-test-tab-${entry.key}`}
+              aria-selected={active}
+              aria-controls={TABPANEL_ID}
+              tabIndex={active ? 0 : -1}
+              variant={active ? 'primary' : 'ghost'}
+              onClick={() => setTab(entry.key)}
+            >
+              {entry.label}
+            </Button>
+          )
+        })}
+      </div>
+
+      <div id={TABPANEL_ID} role="tabpanel" aria-labelledby={`ui-test-tab-${tab}`} tabIndex={0} className="rounded-md">
+        {tab === 'universe' ? <UniverseTabPanel scene={scene} /> : null}
+        {tab === 'ui' ? <DiaryListScreen memories={scene.memories} /> : null}
+        {tab === 'system' ? <ComponentCatalog /> : null}
+      </div>
+    </div>
+  )
+}
+
+export function UiTestPanel() {
+  return (
+    <SkinProvider defaultSkin="aurora">
+      <UiTestInner />
+    </SkinProvider>
+  )
+}
+
+// ── Universe + UI ──────────────────────────────────────────────────────────
+// The live 3D scene with product UI floating over it.
+function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Fixed 4:3 box — the scene fills the panel width and no longer grows with the viewport. */}
+      <div className="relative aspect-4/3 overflow-hidden rounded-lg border border-border bg-bg">
+        <EngramUniverseCanvas scene={scene} />
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4">
+          <div className="flex items-start justify-between">
+            <Badge variant="primary">{T.hud}</Badge>
+          </div>
+          <div className="pointer-events-auto flex flex-wrap items-end justify-between gap-3">
+            <div className="max-w-xs rounded-lg border border-border bg-surface p-4 shadow-card">
+              <div className="mb-1 text-sm font-semibold text-text">{T.overlayCardTitle}</div>
+              <p className="mb-3 text-xs text-text-muted">{T.overlayCardBody}</p>
+              <div className="flex gap-2">
+                <Button size="sm">{T.recall}</Button>
+                <Button size="sm" variant="secondary">
+                  {T.history}
+                </Button>
               </div>
-              <Button leadingIcon={<StarIcon />}>{T.write}</Button>
             </div>
+            <Button leadingIcon={<StarIcon />}>{T.write}</Button>
           </div>
         </div>
-      </Section>
+      </div>
+    </div>
+  )
+}
 
-      {/* ── Components ────────────────────────────────────────── */}
+// A self-contained slice of the product universe for design work: it loads a fixed set of engram
+// cells (8 episodic memories anchored to a handful of neurons) into the shared read-model stores
+// and renders the real render layers over a static coordinate buffer — no force-sim, no backend.
+// So the memory stars, cell-star neurons, synapse filaments, and emotion nebula all draw from
+// genuine domain facts, re-skinning with the Aurora/Ember switch above.
+function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
+  const { skin } = useSkin()
+  const positions = useMemo(() => ({ current: scene.positions }), [scene])
+  const backgroundNode = useMemo(() => resolveBackgroundNode(skin.background), [skin.background])
+
+  // Own the singleton read-model stores while mounted — the product universe widget is never
+  // mounted on the /test surface — and clear them on unmount so a later tab starts clean.
+  useEffect(() => {
+    useNeuronStore.getState().setAll(scene.neurons)
+    useEpisodicMemoryStore.getState().setAll(scene.memories)
+    useSynapseStore.getState().setAll(scene.synapses)
+    return () => {
+      useNeuronStore.getState().setAll([])
+      useEpisodicMemoryStore.getState().setAll([])
+      useSynapseStore.getState().setAll([])
+    }
+  }, [scene])
+
+  return (
+    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
+      <Background node={backgroundNode} />
+      <StarField />
+      <NebulaField positions={positions} firstNodeIndex={scene.firstMemoryIndex} />
+      <CellStarLayer positions={positions} />
+      <StarLayer positions={positions} firstNodeIndex={scene.firstMemoryIndex} universeTime={scene.universeTime} />
+      <FilamentLayer positions={positions} neuronIndexById={scene.neuronIndexById} universeTime={scene.universeTime} />
+      <CameraControls />
+      <PostFX bloom={skin.bloom} />
+    </UniverseCanvas>
+  )
+}
+
+// ── UI only ────────────────────────────────────────────────────────────────
+// A composed diary-list product screen, built entirely from design-system primitives over the
+// same demo memories the universe draws — so the 2D list and the 3D scene stay one dataset.
+function DiaryListScreen({ memories }: { memories: readonly EpisodicMemory[] }) {
+  const ordered = useMemo(
+    () => [...memories].sort((a, b) => b.createdUniverseTime.localeCompare(a.createdUniverseTime)),
+    [memories],
+  )
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-bg">
+      <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+        <div className="flex items-center gap-3">
+          <IconButton size="sm" variant="ghost" label={T.back} icon={<Chevron />} />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-text">{T.diaryTitle}</span>
+            <span className="text-xs text-text-subtle">
+              {`${ordered.length} ${T.memories} · ${T.universeCrumb}`}
+            </span>
+          </div>
+        </div>
+        <Button leadingIcon={<StarIcon />}>{T.write}</Button>
+      </header>
+      <div className="flex flex-col gap-4 p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-56 flex-1">
+            <TextField aria-label={T.searchLabel} placeholder={T.searchPlaceholder} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="primary">{T.sortRecent}</Badge>
+            <Badge variant="neutral">{T.sortStrongest}</Badge>
+          </div>
+        </div>
+        <div className="grid max-h-120 gap-3 overflow-y-auto pr-1">
+          {ordered.map((memory) => (
+            <DiaryCard key={memory.id} memory={memory} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DiaryCard({ memory }: { memory: EpisodicMemory }) {
+  return (
+    <article className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <MoodTag mood={memory.emotion.mood} />
+            <Badge variant="neutral">{formatUniverseDay(memory.createdUniverseTime)}</Badge>
+          </div>
+          <h4 className="truncate text-base font-semibold text-text">{memory.name}</h4>
+        </div>
+        <IconButton size="sm" variant="ghost" label={T.more} icon={<EllipsisIcon />} />
+      </div>
+      <p className="line-clamp-2 text-sm leading-6 text-text-muted">{SNIPPETS[memory.id] ?? ''}</p>
+      <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+        <span className="text-xs text-text-subtle">{recalledLabel(memory)}</span>
+        <StrengthMeter value={memory.baseStrength} />
+      </div>
+    </article>
+  )
+}
+
+function MoodTag({ mood }: { mood: Mood }) {
+  return (
+    <Badge variant="neutral">
+      <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full" style={{ backgroundColor: moodColor(mood) }} />
+      {MOOD_LABEL[mood]}
+    </Badge>
+  )
+}
+
+function StrengthMeter({ value }: { value: number }) {
+  const pct = Math.round(Math.min(1, Math.max(0, value)) * 100)
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-text-subtle">{T.strength}</span>
+      <div
+        role="progressbar"
+        aria-label={T.strength}
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-1.5 w-20 overflow-hidden rounded-full bg-border"
+      >
+        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function formatUniverseDay(iso: string): string {
+  const day = Number.parseInt(iso.slice(8, 10), 10)
+  return Number.isFinite(day) ? `Y1 · D${day}` : iso
+}
+
+function recalledLabel(memory: EpisodicMemory): string {
+  if (memory.recallCount === 0) return T.notRecalled
+  const last = memory.lastRecalledUniverseTime
+  const times = `Recalled ${memory.recallCount}×`
+  return last ? `${times} · last ${formatUniverseDay(last)}` : times
+}
+
+// ── Design system ────────────────────────────────────────────────────────────
+// The raw primitive catalog — every component in its variant/size/state matrix.
+function ComponentCatalog() {
+  const [toastOpen, setToastOpen] = useState(false)
+  const [switchOn, setSwitchOn] = useState(false)
+  const [checked, setChecked] = useState(true)
+
+  return (
+    <div className="flex flex-col gap-6">
       <Section title={T.accentsTitle}>
         <div className="grid gap-3 sm:grid-cols-3">
           {ACCENTS.map((a) => (
@@ -260,63 +518,7 @@ function UiTestInner() {
           <Skeleton width="60%" height={16} />
         </div>
       </Section>
-
-      {/* ── Composed screen (2D only) ─────────────────────────── */}
-      <Section title={T.composed}>
-        <div className="overflow-hidden rounded-lg border border-border bg-bg">
-          <header className="flex items-center justify-between border-b border-border px-5 py-3">
-            <div className="flex items-center gap-3">
-              <IconButton size="sm" variant="ghost" label={T.back} icon={<Chevron />} />
-              <span className="text-sm font-medium text-text-muted">{T.universeCrumb}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <IconButton size="sm" variant="ghost" label={T.share} icon={<StarIcon />} />
-              <IconButton size="sm" variant="ghost" label={T.more} icon={<StarIcon />} />
-            </div>
-          </header>
-          <div className="grid gap-6 p-5 md:grid-cols-[1fr_15rem]">
-            <article className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="primary">{T.moodBadge}</Badge>
-                  <Badge variant="neutral">{T.dateBadge}</Badge>
-                </div>
-                <h4 className="text-2xl font-semibold text-text">{T.detailTitle}</h4>
-                <p className="text-sm text-text-subtle">{T.detailMeta}</p>
-              </div>
-              <p className="leading-7 text-text">{T.detailBody}</p>
-              <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-                <Button>{T.recall}</Button>
-                <Button variant="secondary">{T.history}</Button>
-                <Button variant="ghost">{T.original}</Button>
-              </div>
-            </article>
-            <aside className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
-                {STATS.map((stat) => (
-                  <div key={stat.label} className="flex items-center justify-between">
-                    <span className="text-sm text-text-muted">{stat.label}</span>
-                    <span className="text-sm font-semibold text-text">{stat.value}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border bg-surface p-4">
-                <span className="text-sm text-text">{T.pin}</span>
-                <Switch ariaLabel={T.pin} checked={starred} onCheckedChange={setStarred} />
-              </div>
-            </aside>
-          </div>
-        </div>
-      </Section>
     </div>
-  )
-}
-
-export function UiTestPanel() {
-  return (
-    <SkinProvider defaultSkin="aurora">
-      <UiTestInner />
-    </SkinProvider>
   )
 }
 
@@ -341,6 +543,16 @@ function Chevron() {
   return (
     <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function EllipsisIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4" fill="currentColor">
+      <circle cx="4" cy="10" r="1.5" />
+      <circle cx="10" cy="10" r="1.5" />
+      <circle cx="16" cy="10" r="1.5" />
     </svg>
   )
 }

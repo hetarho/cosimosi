@@ -25,6 +25,13 @@ const FORM_FREQUENCY = 1.4
 const FORM_RELIEF = 0.28
 const SURFACE_CONTRAST = 0.35
 
+// Emissive gain: the star reads as a light point only when its core clears the scene bloom
+// threshold, but the emotion tint is a sub-1.0 linear colour and the brightness channel is pinned
+// at 1 (forgetting decay unmodeled, [V2]), so an ungained core sits at/under the threshold and the
+// sphere reads as a flat opaque disc. This constant lifts the core into HDR so bloom catches it —
+// a luminosity grammar constant, part of the shader graph, not values.yaml tuning.
+const EMISSIVE_GAIN = 2.4
+
 function createStarMaterial(): THREE.MeshBasicNodeMaterial {
   const material = new THREE.MeshBasicNodeMaterial()
   const seed = attributeFloatNode(STAR_INSTANCE_SEED)
@@ -41,7 +48,7 @@ function createStarMaterial(): THREE.MeshBasicNodeMaterial {
   // shimmer for texture, then scaled by the brightness channel (resolves full while forgetting
   // decay is unmodeled, [V2]).
   const shimmer = fbm(field.mul(2)).mul(0.5).add(0.5).mul(SURFACE_CONTRAST)
-  material.colorNode = tint.mul(float(1).add(shimmer)).mul(brightness)
+  material.colorNode = tint.mul(float(1).add(shimmer)).mul(brightness).mul(float(EMISSIVE_GAIN))
   return material
 }
 
