@@ -121,29 +121,29 @@
 @layer components {
   .btn-c-primary {
     --btn-c: var(--color-primary);
-    --btn-fill: 30%;
-    --btn-fill-h: 40%;
+    --btn-fill: 46%;
+    --btn-fill-h: 60%;
     --btn-glow: color-mix(in oklab, var(--color-primary) 42%, transparent);
     --btn-ink: var(--color-primary);
   }
   .btn-c-secondary {
     --btn-c: var(--color-secondary);
-    --btn-fill: 30%;
-    --btn-fill-h: 40%;
+    --btn-fill: 46%;
+    --btn-fill-h: 60%;
     --btn-glow: color-mix(in oklab, var(--color-secondary) 42%, transparent);
     --btn-ink: var(--color-secondary);
   }
   .btn-c-tertiary {
     --btn-c: var(--color-tertiary);
-    --btn-fill: 30%;
-    --btn-fill-h: 40%;
+    --btn-fill: 46%;
+    --btn-fill-h: 60%;
     --btn-glow: color-mix(in oklab, var(--color-tertiary) 42%, transparent);
     --btn-ink: var(--color-tertiary);
   }
   .btn-c-danger {
     --btn-c: var(--color-danger);
-    --btn-fill: 30%;
-    --btn-fill-h: 40%;
+    --btn-fill: 46%;
+    --btn-fill-h: 60%;
     --btn-glow: color-mix(in oklab, var(--color-danger) 42%, transparent);
     --btn-ink: var(--color-danger);
   }
@@ -151,34 +151,37 @@
      is the plain text colour (an accent ink would be invisible/garish on a neutral control). */
   .btn-c-neutral {
     --btn-c: var(--color-surface-raised);
-    --btn-fill: 40%;
-    --btn-fill-h: 58%;
+    --btn-fill: 52%;
+    --btn-fill-h: 68%;
     --btn-glow: transparent;
     --btn-ink: var(--color-text);
   }
 
-  /* Contained — filled liquid-glass lens (tint + specular rim + gloss + coloured glow). */
+  /* Contained — filled liquid-glass lens (tint + specular rim + gloss + coloured glow). Colour-forward:
+     the role tint carries the fill, the white gloss/rim is trimmed to a thin lit edge (not a milky
+     film), and the hairline border is tinted with the role colour instead of pure white. */
   .btn-contained {
     color: var(--color-text);
     background-color: color-mix(in oklab, var(--btn-c) var(--btn-fill), transparent);
     background-image: linear-gradient(
       180deg,
-      color-mix(in oklab, white 13%, transparent) 0%,
-      color-mix(in oklab, white 2%, transparent) 42%,
+      color-mix(in oklab, white 5.5%, transparent) 0%,
+      color-mix(in oklab, white 1%, transparent) 40%,
       transparent 100%
     );
-    border: 1px solid color-mix(in oklab, white 11%, transparent);
+    border: 1px solid color-mix(in oklab, var(--btn-c) 38%, transparent);
     box-shadow:
-      inset 0 1px 0.5px 0 color-mix(in oklab, white 28%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 7%, transparent),
+      inset 0 1px 0.5px 0 color-mix(in oklab, white 14%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 4%, transparent),
       0 1px 1px -0.5px color-mix(in oklab, black 38%, transparent),
       0 6px 16px -12px var(--btn-glow, transparent);
   }
   .btn-contained:hover {
     background-color: color-mix(in oklab, var(--btn-c) var(--btn-fill-h), transparent);
+    border-color: color-mix(in oklab, var(--btn-c) 52%, transparent);
     box-shadow:
-      inset 0 1px 0.5px 0 color-mix(in oklab, white 36%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 9%, transparent),
+      inset 0 1px 0.5px 0 color-mix(in oklab, white 19%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 5%, transparent),
       0 1px 1px -0.5px color-mix(in oklab, black 38%, transparent),
       0 8px 22px -11px var(--btn-glow, transparent);
   }
@@ -213,8 +216,15 @@
     -webkit-backdrop-filter: none;
     color: var(--btn-ink);
   }
+  /* Hover lights the label like neon: a soft drop-shadow bloom emitted from the text glyphs (the bg
+     stays a near-transparent whisper). drop-shadow (not text-shadow) so it eases in via the button's
+     existing `transition` — and it hugs the glyphs since the fill is transparent. Neutral's --btn-c is
+     the quiet surface colour, so its bloom is intentionally faint. */
   .btn-text:hover {
-    background-color: color-mix(in oklab, var(--btn-c) 12%, transparent);
+    background-color: color-mix(in oklab, var(--btn-c) 6%, transparent);
+    filter:
+      drop-shadow(0 0 6px color-mix(in oklab, var(--btn-c) 60%, transparent))
+      drop-shadow(0 0 14px color-mix(in oklab, var(--btn-c) 32%, transparent));
   }
 }
 

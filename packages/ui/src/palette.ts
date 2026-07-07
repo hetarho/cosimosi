@@ -84,9 +84,9 @@ const withAlpha = (oklch: string, alpha: number): string => oklch.replace(/\)$/,
 const p = {
   navy: ramp(269, 0.35, 0.05), // cool neutral (aurora ground + text) — chroma peaks dark so grounds keep their navy identity
   umber: ramp(35, 0.4, 0.042), // warm neutral (ember ground + text) — chroma peaks dark for a smouldering ground
-  lavender: ramp(298, 0.6, 0.15), // aurora primary
+  lavender: ramp(298, 0.63, 0.2), // aurora primary — neon violet (chroma pushed to match chartreuse's vividity)
   chartreuse: ramp(122, 0.86, 0.18), // aurora secondary
-  mint: ramp(168, 0.78, 0.135), // aurora tertiary
+  mint: ramp(168, 0.78, 0.175), // aurora tertiary — neon teal (chroma pushed to match chartreuse's vividity)
   coral: ramp(47, 0.72, 0.16), // ember primary
   rose: ramp(8, 0.62, 0.16), // ember secondary
   gold: ramp(85, 0.86, 0.15), // warning (both) + ember tertiary
