@@ -80,7 +80,7 @@ export function NebulaDemoPanel() {
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
       <div className="flex flex-col gap-3">
-        <Button variant="secondary" className="self-start" onClick={() => setForceWebGL((value) => !value)}>
+        <Button color="neutral" className="self-start" onClick={() => setForceWebGL((value) => !value)}>
           {forceWebGL ? m.test_harness_nebula_use_webgpu() : m.test_harness_nebula_force_webgl()}
         </Button>
         {/* Remount the renderer when the backend flips so the WebGPU→WebGL2 fallback is exercised. */}

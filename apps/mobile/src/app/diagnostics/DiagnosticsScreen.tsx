@@ -45,7 +45,7 @@ export function DiagnosticsScreen({navigation}: RootStackScreenProps<'Diagnostic
     return (
       <View style={styles.unavailable}>
         <Text style={styles.description}>{m.mobile_diagnostics_unavailable()}</Text>
-        <Button variant="ghost" onPress={() => navigation.goBack()}>
+        <Button variant="text" color="neutral" onPress={() => navigation.goBack()}>
           {m.mobile_diagnostics_back()}
         </Button>
       </View>
@@ -78,7 +78,7 @@ export function DiagnosticsScreen({navigation}: RootStackScreenProps<'Diagnostic
 
       <View style={styles.pingRow}>
         <Row label={m.mobile_diagnostics_transport_ping()} value={ping.text} />
-        <Button variant="secondary" onPress={runPing} loading={ping.kind === 'pending'}>
+        <Button color="neutral" onPress={runPing} loading={ping.kind === 'pending'}>
           {m.mobile_diagnostics_ping_action()}
         </Button>
       </View>
@@ -93,7 +93,7 @@ export function DiagnosticsScreen({navigation}: RootStackScreenProps<'Diagnostic
       ))}
 
       <View style={styles.backRow}>
-        <Button variant="ghost" onPress={() => navigation.goBack()}>
+        <Button variant="text" color="neutral" onPress={() => navigation.goBack()}>
           {m.mobile_diagnostics_back()}
         </Button>
       </View>

@@ -1,11 +1,12 @@
 import type { ButtonHTMLAttributes } from 'react'
 
 import { cx } from '../lib/cx.ts'
-import { BUTTON_VARIANTS, FOCUS_RING } from './button-styles.ts'
+import { BUTTON_APPEARANCE, BUTTON_COLOR, FOCUS_RING } from './button-styles.ts'
 import { Spinner } from './spinner.tsx'
 import type { ButtonOwnProps, ControlSize } from './types.ts'
 
-export type ButtonProps = ButtonOwnProps & ButtonHTMLAttributes<HTMLButtonElement>
+// Omit the DOM `color` attribute so our `color` prop (a role, not a CSS colour string) owns the name.
+export type ButtonProps = ButtonOwnProps & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color'>
 
 const BASE =
   'inline-flex items-center justify-center gap-2 rounded-md font-medium transition select-none ' +
@@ -18,7 +19,8 @@ const SIZES: Record<ControlSize, string> = {
 }
 
 export function Button({
-  variant = 'primary',
+  variant = 'contained',
+  color = 'primary',
   size = 'md',
   loading = false,
   disabled,
@@ -32,7 +34,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={cx(BASE, BUTTON_VARIANTS[variant], SIZES[size], className)}
+      className={cx(BASE, BUTTON_APPEARANCE[variant], BUTTON_COLOR[color], SIZES[size], className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}

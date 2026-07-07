@@ -1,22 +1,40 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps, type StyleProp, type ViewStyle } from 'react-native'
 
 import { color, fontSize, radius, space } from '../native-styles.ts'
-import type { ButtonOwnProps, ButtonVariant, ControlSize } from './types.ts'
+import type { ButtonColor, ButtonOwnProps, ControlSize } from './types.ts'
 
 export type ButtonProps = ButtonOwnProps & Omit<PressableProps, 'children' | 'style'> & { style?: StyleProp<ViewStyle> }
 
-const BG: Record<ButtonVariant, string> = {
+// Two axes on native too (no glass/blur — RN can't; solid fill / border / bare approximates it).
+// CONTAINED_* is the filled look per colour; INK is the label/border colour for outlined + text.
+const CONTAINED_BG: Record<ButtonColor, string> = {
   primary: color.primary,
-  secondary: color['surface-raised'],
-  ghost: 'transparent',
+  secondary: color.secondary,
+  tertiary: color.tertiary,
+  neutral: color['surface-raised'],
   danger: color.danger,
 }
-
-const FG: Record<ButtonVariant, string> = {
+const CONTAINED_FG: Record<ButtonColor, string> = {
   primary: color['primary-foreground'],
-  secondary: color.text,
-  ghost: color.text,
+  secondary: color['secondary-foreground'],
+  tertiary: color['tertiary-foreground'],
+  neutral: color.text,
   danger: color['danger-foreground'],
+}
+const INK: Record<ButtonColor, string> = {
+  primary: color.primary,
+  secondary: color.secondary,
+  tertiary: color.tertiary,
+  neutral: color.text,
+  danger: color.danger,
+}
+// Outlined border: the accent, except neutral falls back to the neutral border token.
+const OUTLINE_BORDER: Record<ButtonColor, string> = {
+  primary: color.primary,
+  secondary: color.secondary,
+  tertiary: color.tertiary,
+  neutral: color.border,
+  danger: color.danger,
 }
 
 const HEIGHT: Record<ControlSize, number> = { sm: 32, md: 40, lg: 48 }
@@ -24,7 +42,8 @@ const PAD_X: Record<ControlSize, number> = { sm: space[3], md: space[4], lg: spa
 const FONT: Record<ControlSize, number> = { sm: fontSize.sm, md: fontSize.base, lg: fontSize.lg }
 
 export function Button({
-  variant = 'primary',
+  variant = 'contained',
+  color: colorRole = 'primary',
   size = 'md',
   loading = false,
   disabled,
@@ -35,6 +54,8 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const isDisabled = disabled || loading
+  const bg = variant === 'contained' ? CONTAINED_BG[colorRole] : 'transparent'
+  const fg = variant === 'contained' ? CONTAINED_FG[colorRole] : INK[colorRole]
   return (
     <Pressable
       accessibilityRole="button"
@@ -42,15 +63,15 @@ export function Button({
       disabled={isDisabled}
       style={[
         styles.base,
-        { backgroundColor: BG[variant], height: HEIGHT[size], paddingHorizontal: PAD_X[size] },
-        variant === 'secondary' && styles.bordered,
+        { backgroundColor: bg, height: HEIGHT[size], paddingHorizontal: PAD_X[size] },
+        variant === 'outlined' && { borderWidth: 1, borderColor: OUTLINE_BORDER[colorRole] },
         isDisabled && styles.disabled,
         style,
       ]}
       {...rest}
     >
-      {loading ? <ActivityIndicator color={FG[variant]} /> : leadingIcon}
-      <Text style={{ color: FG[variant], fontSize: FONT[size], fontWeight: '500' }}>{children}</Text>
+      {loading ? <ActivityIndicator color={fg} /> : leadingIcon}
+      <Text style={{ color: fg, fontSize: FONT[size], fontWeight: '500' }}>{children}</Text>
       {loading ? null : trailingIcon}
     </Pressable>
   )
@@ -58,6 +79,5 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space[2], borderRadius: radius.md },
-  bordered: { borderWidth: 1, borderColor: color.border },
   disabled: { opacity: 0.5 },
 })

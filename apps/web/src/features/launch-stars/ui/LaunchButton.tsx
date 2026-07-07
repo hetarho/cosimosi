@@ -24,7 +24,7 @@ export function LaunchButton({ pastDated, busy, onLaunch }: LaunchButtonProps) {
         <p className="rounded-md border border-border bg-surface p-3 text-sm leading-relaxed text-text-muted">
           {m.writing_flow_past_date_notice()}
         </p>
-        <Button variant="primary" disabled={busy} onClick={onLaunch}>
+        <Button color="primary" disabled={busy} onClick={onLaunch}>
           {m.writing_flow_past_date_confirm()}
         </Button>
       </div>
@@ -33,7 +33,7 @@ export function LaunchButton({ pastDated, busy, onLaunch }: LaunchButtonProps) {
 
   return (
     <Button
-      variant="primary"
+      color="primary"
       disabled={busy}
       onClick={() => (pastDated ? setConfirming(true) : onLaunch())}
     >

@@ -42,17 +42,20 @@ export function UiShowcase() {
       <Text style={styles.heading}>@cosimosi/ui — native</Text>
 
       <Section title="Button">
-        <Button variant="primary">Primary</Button>
-        <Button variant="secondary">Secondary</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="danger">Danger</Button>
+        <Button color="primary">Primary</Button>
+        <Button color="secondary">Secondary</Button>
+        <Button color="tertiary">Tertiary</Button>
+        <Button color="neutral">Neutral</Button>
+        <Button variant="text" color="neutral">Ghost</Button>
+        <Button color="danger">Danger</Button>
         <Button loading>Loading</Button>
         <Button disabled>Disabled</Button>
       </Section>
 
       <Section title="IconButton">
-        <IconButton label="Add" icon={<Text style={styles.glyph}>+</Text>} variant="primary" />
-        <IconButton label="Add" icon={<Text style={styles.glyph}>+</Text>} variant="secondary" />
+        <IconButton label="Add" icon={<Text style={styles.glyph}>+</Text>} color="primary" />
+        <IconButton label="Add" icon={<Text style={styles.glyph}>+</Text>} color="secondary" />
+        <IconButton label="Add" icon={<Text style={styles.glyph}>+</Text>} color="neutral" />
         <IconButton label="Loading" icon={<Text style={styles.glyph}>+</Text>} loading />
       </Section>
 
@@ -82,16 +85,16 @@ export function UiShowcase() {
           description="This cannot be undone."
           closeLabel="Close">
           <View style={styles.dialogActions}>
-            <Button variant="ghost" onPress={() => setDialogOpen(false)}>
+            <Button variant="text" color="neutral" onPress={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button variant="danger" onPress={() => setDialogOpen(false)}>
+            <Button color="danger" onPress={() => setDialogOpen(false)}>
               Delete
             </Button>
           </View>
         </Dialog>
         <Tooltip content="Saved to your universe">
-          <Button variant="secondary">Trigger</Button>
+          <Button color="neutral">Trigger</Button>
         </Tooltip>
         <Button onPress={() => setToastOpen(true)}>Show toast</Button>
       </Section>
@@ -114,7 +117,7 @@ export function UiShowcase() {
           theme: {theme} · background: {background.tone}
         </Text>
         <Button
-          variant="secondary"
+          color="neutral"
           onPress={() => setBackground({tone: background.tone === 'cosmos' ? 'plain' : 'cosmos'})}>
           Toggle background
         </Button>

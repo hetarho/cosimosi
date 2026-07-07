@@ -1,29 +1,46 @@
 import { ActivityIndicator, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewStyle } from 'react-native'
 
 import { color, radius } from '../native-styles.ts'
-import type { ButtonVariant, ControlSize, IconButtonOwnProps } from './types.ts'
+import type { ButtonColor, ControlSize, IconButtonOwnProps } from './types.ts'
 
 export type IconButtonProps = IconButtonOwnProps &
   Omit<PressableProps, 'children' | 'accessibilityLabel' | 'style'> & { style?: StyleProp<ViewStyle> }
 
-const BG: Record<ButtonVariant, string> = {
+// Mirrors button.native's two-axis model (appearance × colour).
+const CONTAINED_BG: Record<ButtonColor, string> = {
   primary: color.primary,
-  secondary: color['surface-raised'],
-  ghost: 'transparent',
+  secondary: color.secondary,
+  tertiary: color.tertiary,
+  neutral: color['surface-raised'],
   danger: color.danger,
 }
-
-const FG: Record<ButtonVariant, string> = {
+const CONTAINED_FG: Record<ButtonColor, string> = {
   primary: color['primary-foreground'],
-  secondary: color.text,
-  ghost: color.text,
+  secondary: color['secondary-foreground'],
+  tertiary: color['tertiary-foreground'],
+  neutral: color.text,
   danger: color['danger-foreground'],
+}
+const INK: Record<ButtonColor, string> = {
+  primary: color.primary,
+  secondary: color.secondary,
+  tertiary: color.tertiary,
+  neutral: color.text,
+  danger: color.danger,
+}
+const OUTLINE_BORDER: Record<ButtonColor, string> = {
+  primary: color.primary,
+  secondary: color.secondary,
+  tertiary: color.tertiary,
+  neutral: color.border,
+  danger: color.danger,
 }
 
 const SIDE: Record<ControlSize, number> = { sm: 32, md: 40, lg: 48 }
 
 export function IconButton({
-  variant = 'ghost',
+  variant = 'text',
+  color: colorRole = 'neutral',
   size = 'md',
   loading = false,
   disabled,
@@ -33,6 +50,8 @@ export function IconButton({
   ...rest
 }: IconButtonProps) {
   const isDisabled = disabled || loading
+  const bg = variant === 'contained' ? CONTAINED_BG[colorRole] : 'transparent'
+  const fg = variant === 'contained' ? CONTAINED_FG[colorRole] : INK[colorRole]
   return (
     <Pressable
       accessibilityRole="button"
@@ -41,20 +60,19 @@ export function IconButton({
       disabled={isDisabled}
       style={[
         styles.base,
-        { backgroundColor: BG[variant], width: SIDE[size], height: SIDE[size] },
-        variant === 'secondary' && styles.bordered,
+        { backgroundColor: bg, width: SIDE[size], height: SIDE[size] },
+        variant === 'outlined' && { borderWidth: 1, borderColor: OUTLINE_BORDER[colorRole] },
         isDisabled && styles.disabled,
         style,
       ]}
       {...rest}
     >
-      {loading ? <ActivityIndicator color={FG[variant]} /> : icon}
+      {loading ? <ActivityIndicator color={fg} /> : icon}
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   base: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
-  bordered: { borderWidth: 1, borderColor: color.border },
   disabled: { opacity: 0.5 },
 })

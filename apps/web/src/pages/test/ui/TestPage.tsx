@@ -51,7 +51,7 @@ export function TestPage({
               <Button
                 key={panel.id}
                 onClick={() => setSelectedPanelId(panel.id)}
-                variant={selected ? 'primary' : 'secondary'}
+                color={selected ? 'primary' : 'neutral'}
                 className="justify-start"
                 aria-current={selected ? ACTIVE_PANEL_ARIA_CURRENT : undefined}
               >

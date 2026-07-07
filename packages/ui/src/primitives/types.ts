@@ -12,14 +12,20 @@ import type { ReactNode } from 'react'
  * literals, so consumers pass localized message output.
  */
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+/** Button APPEARANCE (emphasis). Compose with `ButtonColor` — the two axes are independent. */
+export type ButtonVariant = 'contained' | 'outlined' | 'text'
+/** Button COLOUR role. success/warning stay status-only (badges/toasts), not button colours. */
+export type ButtonColor = 'primary' | 'secondary' | 'tertiary' | 'neutral' | 'danger'
 export type ControlSize = 'sm' | 'md' | 'lg'
 export type BadgeVariant = 'neutral' | 'primary' | 'success' | 'warning' | 'danger'
 export type ToastVariant = 'info' | 'success' | 'warning' | 'danger'
 export type CardVariant = 'solid' | 'glass'
 
 export interface ButtonOwnProps {
+  /** Appearance / emphasis. Default `contained`. */
   variant?: ButtonVariant
+  /** Colour role. Default `primary`. */
+  color?: ButtonColor
   size?: ControlSize
   /** Show a spinner and block interaction. */
   loading?: boolean
@@ -29,7 +35,10 @@ export interface ButtonOwnProps {
 }
 
 export interface IconButtonOwnProps {
+  /** Appearance / emphasis. Default `text`. */
   variant?: ButtonVariant
+  /** Colour role. Default `neutral`. */
+  color?: ButtonColor
   size?: ControlSize
   loading?: boolean
   /** Accessible name for the icon-only control. Required so it is never unlabeled. */

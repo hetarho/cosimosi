@@ -17,7 +17,7 @@ export function NebulaNotice() {
           {m.universe_nebula_notice_body()}
         </p>
       ) : null}
-      <Button variant="secondary" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <Button color="neutral" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         {m.universe_nebula_notice_title()}
       </Button>
     </div>

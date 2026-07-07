@@ -71,13 +71,13 @@ export function ReviseControls({ memories, onRename, onSetMood, onMerge, onSplit
             ) : null}
             <div className="flex gap-2">
               <Button
-                variant="secondary"
+                color="neutral"
                 disabled={busy || !canMerge || index >= memories.length - 1}
                 onClick={() => onMerge(index)}
               >
                 {m.writing_flow_merge_action()}
               </Button>
-              <Button variant="secondary" disabled={busy || !canSplit} onClick={() => onSplit(index)}>
+              <Button color="neutral" disabled={busy || !canSplit} onClick={() => onSplit(index)}>
                 {m.writing_flow_split_memory_action()}
               </Button>
             </div>
@@ -93,7 +93,7 @@ export function ReviseControls({ memories, onRename, onSetMood, onMerge, onSplit
           onChange={(event) => setInstruction(event.target.value)}
         />
         <Button
-          variant="secondary"
+          color="neutral"
           className="self-start"
           disabled={busy || instruction.trim().length === 0}
           onClick={() => {

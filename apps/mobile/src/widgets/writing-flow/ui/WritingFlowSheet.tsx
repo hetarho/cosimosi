@@ -140,7 +140,7 @@ export function WritingFlowSheet() {
 
   return (
     <>
-      <Button variant="primary" onPress={open}>
+      <Button color="primary" onPress={open}>
         {m.universe_home_write()}
       </Button>
       <Dialog
@@ -155,7 +155,7 @@ export function WritingFlowSheet() {
             <>
               <WriteDiaryFields />
               {body.trim().length === 0 ? <Text style={styles.hint}>{m.writing_flow_empty_body_hint()}</Text> : null}
-              <Button variant="primary" disabled={body.trim().length === 0} onPress={runSplit}>
+              <Button color="primary" disabled={body.trim().length === 0} onPress={runSplit}>
                 {m.writing_flow_split_action()}
               </Button>
             </>
@@ -176,7 +176,7 @@ export function WritingFlowSheet() {
                 onRevise={runRevise}
               />
               <View style={styles.footer}>
-                <Button variant="secondary" disabled={busy} onPress={() => send({type: 'BACK'})}>
+                <Button color="neutral" disabled={busy} onPress={() => send({type: 'BACK'})}>
                   {m.writing_flow_back_action()}
                 </Button>
                 <LaunchButton pastDated={isPastDated(diaryDate, universeTime)} busy={busy} onLaunch={runLaunch} />

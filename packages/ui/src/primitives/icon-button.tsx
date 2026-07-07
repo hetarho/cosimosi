@@ -1,12 +1,12 @@
 import type { ButtonHTMLAttributes } from 'react'
 
 import { cx } from '../lib/cx.ts'
-import { BUTTON_VARIANTS, FOCUS_RING } from './button-styles.ts'
+import { BUTTON_APPEARANCE, BUTTON_COLOR, FOCUS_RING } from './button-styles.ts'
 import { Spinner } from './spinner.tsx'
 import type { ControlSize, IconButtonOwnProps } from './types.ts'
 
 export type IconButtonProps = IconButtonOwnProps &
-  Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'children'>
+  Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'children' | 'color'>
 
 const BASE =
   'inline-flex items-center justify-center rounded-md transition select-none ' +
@@ -19,7 +19,8 @@ const SIZES: Record<ControlSize, string> = {
 }
 
 export function IconButton({
-  variant = 'ghost',
+  variant = 'text',
+  color = 'neutral',
   size = 'md',
   loading = false,
   disabled,
@@ -33,7 +34,7 @@ export function IconButton({
     <button
       type={type}
       aria-label={label}
-      className={cx(BASE, BUTTON_VARIANTS[variant], SIZES[size], className)}
+      className={cx(BASE, BUTTON_APPEARANCE[variant], BUTTON_COLOR[color], SIZES[size], className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}

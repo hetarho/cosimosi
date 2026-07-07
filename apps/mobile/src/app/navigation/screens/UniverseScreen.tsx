@@ -21,7 +21,7 @@ function RendererFallback({resetErrorBoundary}: ObservedErrorBoundaryFallbackPro
   return (
     <View style={styles.fallback}>
       <Text style={styles.fallbackText}>{m.universe_renderer_unavailable()}</Text>
-      <Button variant="secondary" onPress={resetErrorBoundary}>
+      <Button color="neutral" onPress={resetErrorBoundary}>
         {m.common_retry()}
       </Button>
     </View>

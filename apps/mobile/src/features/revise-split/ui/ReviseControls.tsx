@@ -63,10 +63,10 @@ export function ReviseControls({memories, onRename, onSetMood, onMerge, onSplit,
               </Text>
             ) : null}
             <View style={styles.actions}>
-              <Button variant="secondary" disabled={busy || !canMerge || index >= memories.length - 1} onPress={() => onMerge(index)}>
+              <Button color="neutral" disabled={busy || !canMerge || index >= memories.length - 1} onPress={() => onMerge(index)}>
                 {m.writing_flow_merge_action()}
               </Button>
-              <Button variant="secondary" disabled={busy || !canSplit} onPress={() => onSplit(index)}>
+              <Button color="neutral" disabled={busy || !canSplit} onPress={() => onSplit(index)}>
                 {m.writing_flow_split_memory_action()}
               </Button>
             </View>
@@ -82,7 +82,7 @@ export function ReviseControls({memories, onRename, onSetMood, onMerge, onSplit,
           onChangeText={setInstruction}
         />
         <Button
-          variant="secondary"
+          color="neutral"
           disabled={busy || instruction.trim().length === 0}
           onPress={() => {
             onRevise(instruction);

@@ -13,7 +13,7 @@ import { WritingFlowSheet } from '../../../widgets/writing-flow/index.ts'
 function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackProps) {
   return (
     <div className="flex min-h-full items-center justify-center">
-      <Button variant="secondary" onClick={resetErrorBoundary}>
+      <Button color="neutral" onClick={resetErrorBoundary}>
         {m.common_retry()}
       </Button>
     </div>

@@ -30,6 +30,7 @@ export {
 
 export type {
   ButtonVariant,
+  ButtonColor,
   ControlSize,
   BadgeVariant,
   ToastVariant,

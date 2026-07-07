@@ -19,6 +19,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Dialog,
   IconButton,
   Skeleton,
   Switch,
@@ -30,6 +31,7 @@ import {
   useReducedMotion,
   type BadgeVariant,
   type ButtonVariant,
+  type ButtonColor,
   type ControlSize,
 } from '@cosimosi/ui'
 
@@ -53,7 +55,14 @@ const TABS = [
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
-const BUTTON_VARIANTS: readonly ButtonVariant[] = ['primary', 'secondary', 'ghost', 'danger']
+// Buttons are two axes now: appearance (contained/outlined/text) × colour. The matrix shows each
+// appearance as a row across every colour.
+const BUTTON_APPEARANCES: readonly { variant: ButtonVariant; label: string }[] = [
+  { variant: 'contained', label: 'Contained' },
+  { variant: 'outlined', label: 'Outlined' },
+  { variant: 'text', label: 'Text' },
+]
+const BUTTON_COLORS: readonly ButtonColor[] = ['primary', 'secondary', 'tertiary', 'neutral', 'danger']
 const CONTROL_SIZES: readonly ControlSize[] = ['sm', 'md', 'lg']
 const BADGE_VARIANTS: readonly BadgeVariant[] = ['neutral', 'primary', 'success', 'warning', 'danger']
 
@@ -122,7 +131,8 @@ const T = {
   strength: 'Strength',
   notRecalled: 'Not yet recalled',
   // Component catalog (Design system)
-  buttonsMatrix: 'Buttons · variants × sizes',
+  buttonsMatrix: 'Buttons · appearance × colour',
+  sizesLabel: 'Sizes',
   buttonsStates: 'Buttons · states',
   iconButtons: 'Icon buttons',
   badges: 'Badges',
@@ -159,6 +169,23 @@ const T = {
   tooltipTrigger: 'Hover for tooltip',
   showToast: 'Show toast',
   toastBody: 'Saved — this is a toast.',
+  // Card comparison + demo card contents
+  cardsCompare: 'Cards · glass vs solid',
+  cardsCompareHint: 'Glass shows the scene through it; solid stays opaque',
+  demoStatus: 'Active',
+  demoNotify: 'Notifications',
+  demoRemember: 'Remember me',
+  demoAction: 'Save',
+  demoAlt: 'Cancel',
+  // Modal / Dialog
+  modal: 'Modal / Dialog',
+  modalOpen: 'Open dialog',
+  dialogTitle: 'Release this star?',
+  dialogBody: 'This memory will fade from the universe. You can’t undo this.',
+  dialogClose: 'Close',
+  dialogDontShow: 'Don’t ask again',
+  dialogCancel: 'Cancel',
+  dialogConfirm: 'Release',
 }
 
 const TABPANEL_ID = 'ui-test-tabpanel'
@@ -201,7 +228,7 @@ function UiTestInner() {
         {PRESETS.map((preset) => (
           <Button
             key={preset.key}
-            variant={preset.key === skinKey ? 'primary' : 'secondary'}
+            color={preset.key === skinKey ? 'primary' : 'neutral'}
             onClick={() => setSkinKey(preset.key)}
           >
             {preset.label}
@@ -226,7 +253,8 @@ function UiTestInner() {
               aria-selected={active}
               aria-controls={TABPANEL_ID}
               tabIndex={active ? 0 : -1}
-              variant={active ? 'primary' : 'ghost'}
+              variant={active ? 'contained' : 'text'}
+              color={active ? 'primary' : 'neutral'}
               onClick={() => setTab(entry.key)}
             >
               {entry.label}
@@ -237,7 +265,12 @@ function UiTestInner() {
 
       <div id={TABPANEL_ID} role="tabpanel" aria-labelledby={`ui-test-tab-${tab}`} tabIndex={0} className="rounded-md">
         {tab === 'universe' ? <UniverseTabPanel scene={scene} /> : null}
-        {tab === 'ui' ? <DiaryListScreen memories={scene.memories} /> : null}
+        {tab === 'ui' ? (
+          <div className="flex flex-col gap-6">
+            <CardComparison />
+            <DiaryListScreen memories={scene.memories} />
+          </div>
+        ) : null}
         {tab === 'system' ? <ComponentCatalog /> : null}
       </div>
     </div>
@@ -368,20 +401,16 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-4">
           <div className="flex items-start justify-between gap-2">
             <Badge variant="neutral">{T.hud}</Badge>
-            <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">{candidate.label}</span>
+            <div className="pointer-events-auto flex items-center gap-2">
+              <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">{candidate.label}</span>
+              <DialogDemo size="sm" />
+            </div>
           </div>
-          <div className="pointer-events-auto flex flex-wrap items-end justify-between gap-3">
-            <Card variant="glass" className="max-w-xs">
-              <div className="mb-1 text-sm font-semibold">{T.overlayCardTitle}</div>
-              <p className="mb-3 text-xs text-text-muted">{T.overlayCardBody}</p>
-              <div className="flex gap-2">
-                <Button size="sm">{T.recall}</Button>
-                <Button size="sm" variant="secondary">
-                  {T.history}
-                </Button>
-              </div>
-            </Card>
-            <Button leadingIcon={<StarIcon />}>{T.write}</Button>
+          {/* glass vs solid, both floating over the same live universe: the glass card frosts the
+              scene behind it, the solid card is opaque — the clearest way to feel the difference. */}
+          <div className="pointer-events-auto grid grid-cols-2 gap-3">
+            <DemoCard variant="glass" />
+            <DemoCard variant="solid" />
           </div>
         </div>
       </div>
@@ -569,6 +598,83 @@ function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
   )
 }
 
+// Opens the design-system Dialog (glass-strong, portalled over a scrim). Dropped into each tab so
+// the modal can be seen over the universe, over the diary page, and in the catalog — it always
+// renders full-viewport over the current tab regardless of where its trigger lives.
+function DialogDemo({ size = 'md' }: { size?: ControlSize }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button size={size} onClick={() => setOpen(true)}>
+        {T.modalOpen}
+      </Button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={T.dialogTitle}
+        description={T.dialogBody}
+        closeLabel={T.dialogClose}
+      >
+        <div className="flex flex-col gap-4">
+          <Checkbox label={T.dialogDontShow} />
+          <div className="flex justify-end gap-2">
+            <Button variant="text" color="neutral" onClick={() => setOpen(false)}>
+              {T.dialogCancel}
+            </Button>
+            <Button color="danger" onClick={() => setOpen(false)}>
+              {T.dialogConfirm}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </>
+  )
+}
+
+// A card filled with real controls, in both surface variants — the clearest way to see the
+// glass↔solid difference: over the universe the glass card frosts the scene through it while the
+// solid card stays opaque; on a plain page the glass reads as a lighter translucent panel.
+function DemoCard({ variant }: { variant: 'solid' | 'glass' }) {
+  const [notify, setNotify] = useState(variant === 'glass')
+  const [remember, setRemember] = useState(true)
+  const label = variant === 'glass' ? T.cardGlass : T.cardSolid
+  return (
+    <Card variant={variant} className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold">{label}</span>
+        <Badge variant={variant === 'glass' ? 'primary' : 'success'}>{T.demoStatus}</Badge>
+      </div>
+      <Switch label={T.demoNotify} checked={notify} onCheckedChange={setNotify} />
+      <Checkbox label={T.demoRemember} checked={remember} onCheckedChange={setRemember} />
+      <div className="flex gap-2">
+        <Button size="sm">{T.demoAction}</Button>
+        <Button size="sm" variant="text" color="neutral">
+          {T.demoAlt}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+// Side-by-side glass vs solid, used on the UI-only page (plain surface) and the Design-system tab.
+function CardComparison() {
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">{T.cardsCompare}</h3>
+          <span className="text-xs text-text-subtle">{T.cardsCompareHint}</span>
+        </div>
+        <DialogDemo size="sm" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DemoCard variant="glass" />
+        <DemoCard variant="solid" />
+      </div>
+    </section>
+  )
+}
+
 // ── UI only ────────────────────────────────────────────────────────────────
 // A composed diary-list product screen, built entirely from design-system primitives over the
 // same demo memories the universe draws — so the 2D list and the 3D scene stay one dataset.
@@ -581,7 +687,7 @@ function DiaryListScreen({ memories }: { memories: readonly EpisodicMemory[] }) 
     <div className="card-surface overflow-hidden rounded-2xl">
       <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div className="flex items-center gap-3">
-          <IconButton size="sm" variant="ghost" label={T.back} icon={<Chevron />} />
+          <IconButton size="sm" variant="text" color="neutral" label={T.back} icon={<Chevron />} />
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-text">{T.diaryTitle}</span>
             <span className="text-xs text-text-subtle">
@@ -622,7 +728,7 @@ function DiaryCard({ memory }: { memory: EpisodicMemory }) {
           </div>
           <h4 className="truncate text-base font-semibold text-text">{memory.name}</h4>
         </div>
-        <IconButton size="sm" variant="ghost" label={T.more} icon={<EllipsisIcon />} />
+        <IconButton size="sm" variant="text" color="neutral" label={T.more} icon={<EllipsisIcon />} />
       </div>
       <p className="line-clamp-2 text-sm leading-6 text-text-muted">{SNIPPETS[memory.id] ?? ''}</p>
       <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
@@ -697,41 +803,47 @@ function ComponentCatalog() {
 
       <Section title={T.cards}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Card variant="solid">
-            <div className="text-sm font-semibold">{T.cardSolid}</div>
-            <p className="mt-1 text-xs text-text-muted">{T.cardSolidBody}</p>
-          </Card>
-          <Card variant="glass">
-            <div className="text-sm font-semibold">{T.cardGlass}</div>
-            <p className="mt-1 text-xs text-text-muted">{T.cardGlassBody}</p>
-          </Card>
+          <DemoCard variant="glass" />
+          <DemoCard variant="solid" />
         </div>
+      </Section>
+
+      <Section title={T.modal}>
+        <DialogDemo />
       </Section>
 
       <Section title={T.buttonsMatrix}>
         <div className="grid gap-4">
-          {CONTROL_SIZES.map((size) => (
-            <div key={size} className="flex flex-wrap items-center gap-3">
-              <span className="w-8 text-xs uppercase tracking-wide text-text-subtle">{size}</span>
-              {BUTTON_VARIANTS.map((variant) => (
-                <Button key={variant} variant={variant} size={size}>
-                  {variant}
+          {BUTTON_APPEARANCES.map((appr) => (
+            <div key={appr.variant} className="flex flex-wrap items-center gap-3">
+              <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">{appr.label}</span>
+              {BUTTON_COLORS.map((c) => (
+                <Button key={c} variant={appr.variant} color={c}>
+                  {c}
                 </Button>
               ))}
             </div>
           ))}
+          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+            <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">{T.sizesLabel}</span>
+            {CONTROL_SIZES.map((size) => (
+              <Button key={size} size={size}>
+                {size}
+              </Button>
+            ))}
+          </div>
         </div>
       </Section>
 
       <Section title={T.buttonsStates}>
         <div className="flex flex-wrap items-center gap-3">
           <Button leadingIcon={<StarIcon />}>{T.leadingIcon}</Button>
-          <Button trailingIcon={<StarIcon />} variant="secondary">
+          <Button trailingIcon={<StarIcon />} color="neutral">
             {T.trailingIcon}
           </Button>
           <Button loading>{T.loadingButton}</Button>
           <Button disabled>{T.disabledButton}</Button>
-          <Button variant="danger" disabled>
+          <Button color="danger" disabled>
             {T.dangerDisabled}
           </Button>
         </div>
@@ -739,8 +851,8 @@ function ComponentCatalog() {
 
       <Section title={T.iconButtons}>
         <div className="flex flex-wrap items-center gap-3">
-          {BUTTON_VARIANTS.map((variant) => (
-            <IconButton key={variant} variant={variant} label={`${variant} icon action`} icon={<StarIcon />} />
+          {BUTTON_COLORS.map((c) => (
+            <IconButton key={c} variant="contained" color={c} label={`${c} icon action`} icon={<StarIcon />} />
           ))}
           <IconButton label={T.loadingIconAction} loading icon={<StarIcon />} />
         </div>
@@ -778,7 +890,7 @@ function ComponentCatalog() {
       <Section title={T.overlays}>
         <div className="flex flex-wrap items-center gap-3">
           <Tooltip content={T.tooltipContent}>
-            <Button variant="secondary">{T.tooltipTrigger}</Button>
+            <Button color="neutral">{T.tooltipTrigger}</Button>
           </Tooltip>
           <Button onClick={() => setToastOpen(true)}>{T.showToast}</Button>
           <Toast open={toastOpen} onOpenChange={setToastOpen} variant="success" durationMs={2400}>

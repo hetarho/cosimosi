@@ -14,7 +14,7 @@ export function NebulaNotice() {
   return (
     <View style={styles.root}>
       {open ? <Text style={styles.body}>{m.universe_nebula_notice_body()}</Text> : null}
-      <Button variant="secondary" onPress={() => setOpen(value => !value)}>
+      <Button color="neutral" onPress={() => setOpen(value => !value)}>
         {m.universe_nebula_notice_title()}
       </Button>
     </View>

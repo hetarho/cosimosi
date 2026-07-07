@@ -103,13 +103,13 @@ export function AuthSessionPanel() {
         ]}
       />
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => void inspectToken()} loading={tokenState === 'loading'} variant="secondary">
+        <Button onClick={() => void inspectToken()} loading={tokenState === 'loading'} color="neutral">
           {m.test_harness_auth_inspect_token()}
         </Button>
         <Button
           onClick={() => void auth.refresh().catch((refreshError: unknown) => setError(errorMessage(refreshError)))}
           disabled={session.status !== 'authenticated' && session.status !== 'refreshing'}
-          variant="secondary"
+          color="neutral"
         >
           {m.test_harness_auth_refresh_session()}
         </Button>
@@ -149,10 +149,10 @@ export function QueryCachePanel() {
       <KeyValueList rows={[[m.test_harness_query_entry_count(), String(entries.length)]]} />
       <div className="flex flex-wrap gap-2">
         <Button onClick={seedFakeQuery}>{m.test_harness_query_seed_fake()}</Button>
-        <Button onClick={invalidate} variant="secondary">
+        <Button onClick={invalidate} color="neutral">
           {m.test_harness_query_invalidate()}
         </Button>
-        <Button onClick={clear} variant="secondary">
+        <Button onClick={clear} color="neutral">
           {m.test_harness_query_clear()}
         </Button>
       </div>
@@ -200,7 +200,7 @@ export function I18nPanel() {
       <KeyValueList rows={[[m.test_harness_i18n_active_locale(), activeLocale]]} />
       <div className="flex flex-wrap gap-2">
         {supportedLocales.map((locale) => (
-          <Button key={locale} onClick={() => setActiveLocale(locale)} variant={activeLocale === locale ? 'primary' : 'secondary'}>
+          <Button key={locale} onClick={() => setActiveLocale(locale)} color={activeLocale === locale ? 'primary' : 'neutral'}>
             {localeLabel(locale)}
           </Button>
         ))}
