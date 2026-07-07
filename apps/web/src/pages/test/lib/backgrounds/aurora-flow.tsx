@@ -65,8 +65,10 @@ export const AuroraFlow: EmotionBackground = ({ emotions, reducedMotion, classNa
     overflow: 'hidden',
     pointerEvents: 'none',
     // Deep space base, very low-alpha weighted tint layered over near-black so panels stay legible.
-    background: `radial-gradient(120% 90% at 50% 40%, ${rgba(baseTint, 0.14)} 0%, rgba(6, 6, 12, 0.96) 78%)`,
+    // Longhands only (no `background` shorthand) so the base colour isn't clobbered by the gradient
+    // and React doesn't warn about mixing shorthand + non-shorthand for the same property.
     backgroundColor: '#05050a',
+    backgroundImage: `radial-gradient(120% 90% at 50% 40%, ${rgba(baseTint, 0.14)} 0%, rgba(6, 6, 12, 0.96) 78%)`,
   }
 
   return (

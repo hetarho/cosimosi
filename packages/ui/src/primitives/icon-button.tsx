@@ -9,7 +9,7 @@ export type IconButtonProps = IconButtonOwnProps &
   Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'children'>
 
 const BASE =
-  'inline-flex items-center justify-center rounded-md transition-colors select-none ' +
+  'inline-flex items-center justify-center rounded-md transition select-none ' +
   `${FOCUS_RING} disabled:opacity-50 disabled:pointer-events-none`
 
 const SIZES: Record<ControlSize, string> = {

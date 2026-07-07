@@ -17,6 +17,7 @@ import { CellStarLayer, FilamentLayer, NebulaField, StarLayer } from '@cosimosi/
 import {
   Badge,
   Button,
+  Card,
   Checkbox,
   IconButton,
   Skeleton,
@@ -33,7 +34,7 @@ import {
 } from '@cosimosi/ui'
 
 import { BACKGROUND_CANDIDATES } from './backgrounds/index.ts'
-import { rgba, toEmotionSlices, type EmotionSlice } from './backgrounds/emotion-field.ts'
+import { toEmotionSlices, type EmotionSlice } from './backgrounds/emotion-field.ts'
 import { buildEngramDemoScene, type EngramDemoScene } from './engram-demo-scene.ts'
 
 // The single UI test surface, split into three tabs that share one skin. A preset is a
@@ -104,7 +105,8 @@ const T = {
   write: 'Write a diary',
   // Universe backdrop controls
   emotionsTitle: 'Emotions in this universe',
-  emotionsHint: 'Tap a mood: add → make primary → remove',
+  emotionsHint: 'Drag a share — the rest give or take to keep the total at 100%',
+  addEmotion: 'Add an emotion',
   primaryTag: 'primary',
   backgroundTitle: 'Backdrop',
   // Diary list (UI only)
@@ -129,6 +131,11 @@ const T = {
   overlays: 'Overlays',
   loading: 'Loading — skeleton',
   accentsTitle: 'Brand accents',
+  cards: 'Cards',
+  cardSolid: 'Solid',
+  cardSolidBody: 'Elevated opaque content surface — lists, panels, forms.',
+  cardGlass: 'Glass',
+  cardGlassBody: 'Frosted material for chrome floating over the universe.',
   leadingIcon: 'leading icon',
   trailingIcon: 'trailing icon',
   loadingButton: 'loading',
@@ -247,11 +254,13 @@ export function UiTestPanel() {
 
 // ── Universe + UI ──────────────────────────────────────────────────────────
 // The live 3D scene floating over an emotion-driven backdrop, with glass product UI on top.
-// The backdrop is no longer tied to the theme — it carries the *emotions present in the universe*
-// (1..13), so the controls below drive which emotions colour the field and which backdrop paints
-// them. Weighting: each present mood counts 1, the primary counts more, so it reads as dominant;
-// normalized so a fuller universe divides the field into more, evenly-shared slices.
-const PRIMARY_BOOST = 2.5
+// The backdrop carries the *emotions present in the universe* (1..13) as shares that always total
+// 100%: dragging one emotion's share makes the rest give or take in proportion to their current
+// shares, so the field stays a faithful pie of the universe's feeling. The more emotions present,
+// the more finely the backdrop divides among them.
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
 
 function countMoods(memories: readonly EpisodicMemory[]): Map<Mood, number> {
   const counts = new Map<Mood, number>()
@@ -261,61 +270,89 @@ function countMoods(memories: readonly EpisodicMemory[]): Map<Mood, number> {
   return counts
 }
 
-function dominantMood(counts: ReadonlyMap<Mood, number>): Mood {
+function dominantMood(weights: ReadonlyMap<Mood, number>): Mood {
   let best: Mood = MOODS[0]
-  let bestCount = -1
+  let bestWeight = -1
   for (const mood of MOODS) {
-    const count = counts.get(mood) ?? 0
-    if (count > bestCount) {
+    const weight = weights.get(mood) ?? 0
+    if (weight > bestWeight) {
       best = mood
-      bestCount = count
+      bestWeight = weight
     }
   }
   return best
 }
 
-function buildEmotions(present: ReadonlySet<Mood>, primary: Mood): EmotionSlice[] {
-  const raw = new Map<Mood, number>()
-  for (const mood of present) raw.set(mood, mood === primary ? PRIMARY_BOOST : 1)
-  if (raw.size === 0) raw.set(primary, PRIMARY_BOOST)
-  return toEmotionSlices(raw)
+// Round fractional shares to whole percents that sum to exactly `targetSum` (largest-remainder
+// method: floor everyone, then hand the leftover percents to the largest fractional parts).
+function roundShares(shares: readonly (readonly [Mood, number])[], targetSum: number): [Mood, number][] {
+  const parts = shares.map(([mood, value]) => {
+    const floor = Math.floor(value)
+    return { mood, floor, remainder: value - floor }
+  })
+  const used = parts.reduce((sum, part) => sum + part.floor, 0)
+  let leftover = Math.round(targetSum) - used
+  const ranked = [...parts].sort((a, b) => b.remainder - a.remainder)
+  for (let i = 0; i < ranked.length && leftover > 0; i += 1) {
+    ranked[i].floor += 1
+    leftover -= 1
+  }
+  return parts.map((part) => [part.mood, part.floor] as [Mood, number])
+}
+
+// The universe's starting shares: each mood weighted by how many memories carry it, normalized to
+// whole percents summing to 100. An empty universe falls back to a single mood at 100.
+function initialWeights(memories: readonly EpisodicMemory[]): Map<Mood, number> {
+  const counts = [...countMoods(memories)].filter(([, count]) => count > 0)
+  if (counts.length === 0) return new Map([[MOODS[0], 100]])
+  const total = counts.reduce((sum, [, count]) => sum + count, 0)
+  const scaled = counts.map(([mood, count]) => [mood, (count / total) * 100] as const)
+  const weights = new Map<Mood, number>()
+  for (const [mood, percent] of roundShares(scaled, 100)) if (percent > 0) weights.set(mood, percent)
+  return weights
+}
+
+// Set `mood` to `rawTarget`% and let the other present emotions absorb the difference in proportion
+// to their current shares, keeping the total at 100. Guards match the spec: a lone emotion (nothing
+// else present) can't be moved — it's stuck at 100 — and a zero emotion never grows from
+// redistribution (only an explicit add brings one in). Increasing caps the mood at 100 as the
+// others reach 0.
+function setWeight(weights: ReadonlyMap<Mood, number>, mood: Mood, rawTarget: number): Map<Mood, number> {
+  const current = weights.get(mood) ?? 0
+  const others = [...weights].filter(([other, weight]) => other !== mood && weight > 0)
+  const othersTotal = others.reduce((sum, [, weight]) => sum + weight, 0)
+  if (othersTotal <= 0) return new Map(weights)
+  const target = Math.round(clamp(rawTarget, 0, 100))
+  // Can't take more than the others hold (mood caps at 100) or push the mood below 0.
+  const moved = clamp(target - current, -current, othersTotal)
+  if (moved === 0) return new Map(weights)
+  const settled = current + moved
+  const shares = others.map(([other, weight]) => [other, weight - moved * (weight / othersTotal)] as const)
+  const next = new Map<Mood, number>()
+  for (const [other, percent] of roundShares(shares, 100 - settled)) if (percent > 0) next.set(other, percent)
+  if (settled > 0) next.set(mood, settled)
+  return next
 }
 
 function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
   const reducedMotion = useReducedMotion()
-  const sceneCounts = useMemo(() => countMoods(scene.memories), [scene])
-  const [present, setPresent] = useState<ReadonlySet<Mood>>(() => new Set(sceneCounts.keys()))
-  const [primary, setPrimary] = useState<Mood>(() => dominantMood(sceneCounts))
+  const [weights, setWeights] = useState<ReadonlyMap<Mood, number>>(() => initialWeights(scene.memories))
   const [candidateKey, setCandidateKey] = useState(BACKGROUND_CANDIDATES[0].key)
 
-  const emotions = useMemo(() => buildEmotions(present, primary), [present, primary])
+  const emotions = useMemo(() => toEmotionSlices(weights), [weights])
+  const primary = useMemo(() => dominantMood(weights), [weights])
   const candidate = BACKGROUND_CANDIDATES.find((entry) => entry.key === candidateKey) ?? BACKGROUND_CANDIDATES[0]
   const Backdrop = candidate.Component
 
-  // One tap cycles a mood: absent → present → primary → removed. Always keeps ≥1 present; removing
-  // the primary hands the crown to the next remaining mood so the field is never orphaned.
-  const cycleMood = (mood: Mood) => {
-    if (!present.has(mood)) {
-      const next = new Set(present)
-      next.add(mood)
-      setPresent(next)
-      if (present.size === 0) setPrimary(mood)
-      return
-    }
-    if (mood !== primary) {
-      setPrimary(mood)
-      return
-    }
-    if (present.size <= 1) return
-    const next = new Set(present)
-    next.delete(mood)
-    setPresent(next)
-    setPrimary([...next][0] ?? mood)
-  }
+  // Drag a slider to set a mood's share; the rest of the universe absorbs the change in proportion
+  // to their current shares, so every emotion always totals 100. Adding pulls a slice from the rest.
+  const handleSet = (mood: Mood, value: number) => setWeights((current) => setWeight(current, mood, value))
+  const handleAdd = (mood: Mood) =>
+    setWeights((current) => setWeight(current, mood, Math.round(100 / (current.size + 1))))
 
   return (
     <div className="flex flex-col gap-4">
-      <EmotionControls present={present} primary={primary} onCycle={cycleMood} />
+      <EmotionControls weights={weights} primary={primary} onSet={handleSet} onAdd={handleAdd} />
       <BackgroundSwitcher
         emotions={emotions}
         activeKey={candidate.key}
@@ -330,11 +367,11 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
         </div>
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-4">
           <div className="flex items-start justify-between gap-2">
-            <span className="glass-subtle rounded-full px-3 py-1 text-xs font-medium text-text">{T.hud}</span>
+            <Badge variant="neutral">{T.hud}</Badge>
             <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">{candidate.label}</span>
           </div>
           <div className="pointer-events-auto flex flex-wrap items-end justify-between gap-3">
-            <div className="glass max-w-xs rounded-2xl p-4 text-text">
+            <Card variant="glass" className="max-w-xs">
               <div className="mb-1 text-sm font-semibold">{T.overlayCardTitle}</div>
               <p className="mb-3 text-xs text-text-muted">{T.overlayCardBody}</p>
               <div className="flex gap-2">
@@ -343,7 +380,7 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
                   {T.history}
                 </Button>
               </div>
-            </div>
+            </Card>
             <Button leadingIcon={<StarIcon />}>{T.write}</Button>
           </div>
         </div>
@@ -352,55 +389,98 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
   )
 }
 
-// The primary-emotion + present-emotions control: 13 mood chips, each tapped to cycle through the
-// universe. Filled = present, ringed = primary, faded outline = absent. This is the "change the
-// dominant emotion colour" surface — the backdrop repaints live as it changes.
+// The present-emotions control: one slider per present emotion showing its share of the field (all
+// shares total 100%, shown on the right). Dragging a slider redistributes the rest proportionally;
+// the largest share is tagged `primary`. Absent moods sit below as faded chips that add themselves
+// (pulling a slice from the rest). A lone emotion (the only one present, so at 100%) locks — there
+// is nothing to trade its share with.
 function EmotionControls({
-  present,
+  weights,
   primary,
-  onCycle,
+  onSet,
+  onAdd,
 }: {
-  present: ReadonlySet<Mood>
+  weights: ReadonlyMap<Mood, number>
   primary: Mood
-  onCycle: (mood: Mood) => void
+  onSet: (mood: Mood, value: number) => void
+  onAdd: (mood: Mood) => void
 }) {
+  const present = MOODS.filter((mood) => (weights.get(mood) ?? 0) > 0)
+  const absent = MOODS.filter((mood) => (weights.get(mood) ?? 0) <= 0)
+  // With a single emotion present it holds the whole 100% and has no partner to give to or take
+  // from — its slider and remove control lock (spec: "can't reduce the lone 100").
+  const locked = present.length <= 1
+
   return (
-    <section className="flex flex-col gap-2">
+    <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
-          {T.emotionsTitle} · {present.size}
+          {T.emotionsTitle} · {present.length}
         </h3>
         <span className="text-xs text-text-subtle">{T.emotionsHint}</span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {MOODS.map((mood) => {
-          const isPresent = present.has(mood)
-          const isPrimary = mood === primary
+
+      <div className="flex flex-col gap-2">
+        {present.map((mood) => {
+          const value = weights.get(mood) ?? 0
           const color = moodColor(mood)
+          const isPrimary = mood === primary
           return (
-            <button
-              key={mood}
-              type="button"
-              onClick={() => onCycle(mood)}
-              aria-pressed={isPresent}
-              className={cx(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                isPresent ? 'border-transparent text-text' : 'border-border text-text-subtle opacity-60 hover:opacity-100',
-              )}
-              style={{
-                backgroundColor: isPresent ? rgba(color, isPrimary ? 0.42 : 0.2) : 'transparent',
-                boxShadow: isPrimary ? `0 0 0 2px ${rgba(color, 0.95)}` : undefined,
-              }}
-            >
-              <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: color }} />
-              {MOOD_LABEL[mood]}
-              {isPrimary ? (
-                <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{T.primaryTag}</span>
-              ) : null}
-            </button>
+            <div key={mood} className="flex items-center gap-3">
+              <span aria-hidden className="inline-block size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+              <span className="flex w-28 shrink-0 items-center gap-1.5 text-xs font-medium text-text">
+                <span className="truncate">{MOOD_LABEL[mood]}</span>
+                {isPrimary ? (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-text-subtle">{T.primaryTag}</span>
+                ) : null}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={value}
+                disabled={locked}
+                aria-label={`${MOOD_LABEL[mood]} share`}
+                onChange={(event) => onSet(mood, event.target.valueAsNumber)}
+                className="min-w-0 flex-1 disabled:opacity-40"
+                style={{ accentColor: color }}
+              />
+              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-text-muted">{value}%</span>
+              <button
+                type="button"
+                onClick={() => onSet(mood, 0)}
+                disabled={locked}
+                aria-label={`Remove ${MOOD_LABEL[mood]}`}
+                className="shrink-0 rounded-full px-1.5 text-sm text-text-subtle transition-colors hover:text-text disabled:opacity-30"
+              >
+                ✕
+              </button>
+            </div>
           )
         })}
       </div>
+
+      {absent.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs text-text-subtle">{T.addEmotion}</span>
+          <div className="flex flex-wrap gap-2">
+            {absent.map((mood) => {
+              const color = moodColor(mood)
+              return (
+                <button
+                  key={mood}
+                  type="button"
+                  onClick={() => onAdd(mood)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-text-subtle opacity-60 transition-opacity hover:opacity-100"
+                >
+                  <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: color }} />
+                  {MOOD_LABEL[mood]}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -484,7 +564,7 @@ function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
       <StarLayer positions={positions} firstNodeIndex={scene.firstMemoryIndex} universeTime={scene.universeTime} />
       <FilamentLayer positions={positions} neuronIndexById={scene.neuronIndexById} universeTime={scene.universeTime} />
       <CameraControls />
-      <PostFX bloom={skin.bloom} />
+      <PostFX bloom={skin.bloom} transparent />
     </UniverseCanvas>
   )
 }
@@ -498,7 +578,7 @@ function DiaryListScreen({ memories }: { memories: readonly EpisodicMemory[] }) 
     [memories],
   )
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-bg">
+    <div className="card-surface overflow-hidden rounded-2xl">
       <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div className="flex items-center gap-3">
           <IconButton size="sm" variant="ghost" label={T.back} icon={<Chevron />} />
@@ -533,7 +613,7 @@ function DiaryListScreen({ memories }: { memories: readonly EpisodicMemory[] }) 
 
 function DiaryCard({ memory }: { memory: EpisodicMemory }) {
   return (
-    <article className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-card">
+    <article className="card-surface flex flex-col gap-3 rounded-2xl p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -556,7 +636,7 @@ function DiaryCard({ memory }: { memory: EpisodicMemory }) {
 function MoodTag({ mood }: { mood: Mood }) {
   return (
     <Badge variant="neutral">
-      <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full" style={{ backgroundColor: moodColor(mood) }} />
+      <span aria-hidden className="badge-dot" style={{ backgroundColor: moodColor(mood) }} />
       {MOOD_LABEL[mood]}
     </Badge>
   )
@@ -612,6 +692,19 @@ function ComponentCatalog() {
               {a.name}
             </div>
           ))}
+        </div>
+      </Section>
+
+      <Section title={T.cards}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card variant="solid">
+            <div className="text-sm font-semibold">{T.cardSolid}</div>
+            <p className="mt-1 text-xs text-text-muted">{T.cardSolidBody}</p>
+          </Card>
+          <Card variant="glass">
+            <div className="text-sm font-semibold">{T.cardGlass}</div>
+            <p className="mt-1 text-xs text-text-muted">{T.cardGlassBody}</p>
+          </Card>
         </div>
       </Section>
 
@@ -709,7 +802,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">{title}</h3>
-      <div className="rounded-md border border-border bg-surface p-4">{children}</div>
+      <Card>{children}</Card>
     </section>
   )
 }

@@ -29,19 +29,14 @@ export function Switch({ checked, defaultChecked, onCheckedChange, label, ariaLa
         disabled={disabled}
         onClick={toggle}
         className={cx(
-          'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors',
+          'switch-track',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
           'disabled:opacity-50 disabled:pointer-events-none',
-          value ? 'bg-primary' : 'bg-surface-raised',
         )}
       >
-        <span
-          aria-hidden="true"
-          className={cx(
-            'inline-block size-5 rounded-full bg-text transition-transform',
-            value ? 'translate-x-4' : 'translate-x-0.5',
-          )}
-        />
+        {/* Geometry, position, on-state hue + motion all live in base.css `.switch-*`, driven by
+            the button's aria-checked state above. */}
+        <span aria-hidden="true" className="switch-thumb" />
       </button>
       {label ? (
         <span id={labelId} className="text-sm text-text">

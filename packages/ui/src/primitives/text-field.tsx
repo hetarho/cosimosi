@@ -6,8 +6,7 @@ import type { ControlSize, FieldOwnProps } from './types.ts'
 export type TextFieldProps = FieldOwnProps & Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>
 
 const CONTROL_BASE =
-  'w-full rounded-md border bg-surface text-text placeholder:text-text-subtle transition-colors ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg ' +
+  'field-surface w-full rounded-lg text-text placeholder:text-text-subtle transition ' +
   'disabled:opacity-50 disabled:pointer-events-none'
 
 const CONTROL_SIZES: Record<ControlSize, string> = {
@@ -32,7 +31,7 @@ export function TextField({ label, description, error, size = 'md', id, classNam
       ) : null}
       <input
         id={fieldId}
-        className={cx(CONTROL_BASE, CONTROL_SIZES[size], error ? 'border-danger' : 'border-border', className)}
+        className={cx(CONTROL_BASE, CONTROL_SIZES[size], className)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         {...rest}

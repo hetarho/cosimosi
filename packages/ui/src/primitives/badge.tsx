@@ -3,23 +3,16 @@ import type { BadgeOwnProps, BadgeVariant } from './types.ts'
 
 export type BadgeProps = BadgeOwnProps
 
+// Outline-first glass chips: colour lives on the rim + text (+ optional .badge-dot), not a solid
+// fill. The recipe (geometry, material, per-variant colour) lives in base.css `.badge*`.
 const VARIANTS: Record<BadgeVariant, string> = {
-  neutral: 'bg-surface-raised text-text-muted',
-  primary: 'bg-primary text-primary-foreground',
-  success: 'bg-success text-success-foreground',
-  warning: 'bg-warning text-warning-foreground',
-  danger: 'bg-danger text-danger-foreground',
+  neutral: 'badge-neutral',
+  primary: 'badge-primary',
+  success: 'badge-success',
+  warning: 'badge-warning',
+  danger: 'badge-danger',
 }
 
 export function Badge({ variant = 'neutral', children }: BadgeProps) {
-  return (
-    <span
-      className={cx(
-        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium leading-none',
-        VARIANTS[variant],
-      )}
-    >
-      {children}
-    </span>
-  )
+  return <span className={cx('badge', VARIANTS[variant])}>{children}</span>
 }

@@ -33,6 +33,7 @@ export type {
   ControlSize,
   BadgeVariant,
   ToastVariant,
+  CardVariant,
   ButtonOwnProps,
   IconButtonOwnProps,
   FieldOwnProps,
@@ -41,6 +42,7 @@ export type {
   TooltipOwnProps,
   ToastOwnProps,
   BadgeOwnProps,
+  CardOwnProps,
   SkeletonOwnProps,
 } from './primitives/types.ts'
 
@@ -54,5 +56,6 @@ export { Dialog, type DialogProps } from './primitives/dialog.native.tsx'
 export { Tooltip, type TooltipProps } from './primitives/tooltip.native.tsx'
 export { Toast, type ToastProps } from './primitives/toast.native.tsx'
 export { Badge, type BadgeProps } from './primitives/badge.native.tsx'
+export { Card, type CardProps } from './primitives/card.native.tsx'
 export { Skeleton, type SkeletonProps } from './primitives/skeleton.native.tsx'
 export { VisuallyHidden, type VisuallyHiddenProps } from './primitives/visually-hidden.native.tsx'

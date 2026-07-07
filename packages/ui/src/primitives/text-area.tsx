@@ -6,8 +6,7 @@ import type { FieldOwnProps } from './types.ts'
 export type TextAreaProps = Omit<FieldOwnProps, 'size'> & TextareaHTMLAttributes<HTMLTextAreaElement>
 
 const CONTROL_BASE =
-  'w-full min-h-24 rounded-md border bg-surface px-3 py-2 text-base text-text placeholder:text-text-subtle transition-colors ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg ' +
+  'field-surface w-full min-h-24 rounded-lg px-3 py-2 text-base text-text placeholder:text-text-subtle transition ' +
   'disabled:opacity-50 disabled:pointer-events-none'
 
 export function TextArea({ label, description, error, id, className, ...rest }: TextAreaProps) {
@@ -26,7 +25,7 @@ export function TextArea({ label, description, error, id, className, ...rest }: 
       ) : null}
       <textarea
         id={fieldId}
-        className={cx(CONTROL_BASE, error ? 'border-danger' : 'border-border', className)}
+        className={cx(CONTROL_BASE, className)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         {...rest}

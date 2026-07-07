@@ -64,7 +64,7 @@ export function TestPage({
           })}
         </aside>
 
-        <section className="min-w-0 rounded-md border border-border bg-surface p-4 shadow-card">
+        <section className="card-surface min-w-0 rounded-2xl p-4">
           {selectedPanel ? (
             <article className="flex flex-col gap-4">
               <div className="flex flex-col gap-2 border-b border-border pb-4">

@@ -16,6 +16,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 export type ControlSize = 'sm' | 'md' | 'lg'
 export type BadgeVariant = 'neutral' | 'primary' | 'success' | 'warning' | 'danger'
 export type ToastVariant = 'info' | 'success' | 'warning' | 'danger'
+export type CardVariant = 'solid' | 'glass'
 
 export interface ButtonOwnProps {
   variant?: ButtonVariant
@@ -82,6 +83,12 @@ export interface ToastOwnProps {
 
 export interface BadgeOwnProps {
   variant?: BadgeVariant
+  children?: ReactNode
+}
+
+export interface CardOwnProps {
+  /** `solid` = elevated opaque content panel; `glass` = glass material for cards over rich backdrops. */
+  variant?: CardVariant
   children?: ReactNode
 }
 

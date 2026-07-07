@@ -26,7 +26,7 @@ export function Dialog({ open, onClose, title, description, ariaLabel, closeLabe
         aria-label={title ? undefined : ariaLabel}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className="relative z-10 m-4 w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg focus-visible:outline-none"
+        className="glass-strong relative z-10 m-4 w-full max-w-md rounded-2xl p-6 focus-visible:outline-none"
       >
         <div className="flex items-start justify-between gap-4">
           {title ? (

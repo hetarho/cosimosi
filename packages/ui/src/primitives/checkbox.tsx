@@ -13,7 +13,7 @@ export function Checkbox({ checked, defaultChecked, onCheckedChange, label, aria
         disabled={disabled}
         aria-label={label ? undefined : ariaLabel}
         onChange={(event) => onCheckedChange?.(event.target.checked)}
-        className="size-4 rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        className="checkbox focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
         {...controlled}
       />
       {label ? <span className="text-sm text-text">{label}</span> : null}

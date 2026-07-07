@@ -35,25 +35,29 @@
   .glass-subtle,
   .glass,
   .glass-strong {
-    border: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+    /* Directional specular rim — a bright thin top edge + a faint lower lip — reads as a curved
+       lit lens instead of a flat uniform border (the dated glassmorphism tell). The higher
+       saturate below keeps the material clear + colour-forward (Liquid Glass), not milky. */
+    border: 1px solid color-mix(in oklab, white 12%, transparent);
     box-shadow:
       var(--shadow-lg),
-      inset 0 1px 0 0 color-mix(in oklab, white 14%, transparent);
+      inset 0 1px 0 0 color-mix(in oklab, white 30%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 8%, transparent);
   }
   .glass-subtle {
-    background-color: color-mix(in oklab, var(--color-surface) 34%, transparent);
-    backdrop-filter: blur(10px) saturate(1.25);
-    -webkit-backdrop-filter: blur(10px) saturate(1.25);
+    background-color: color-mix(in oklab, var(--color-surface) 32%, transparent);
+    backdrop-filter: blur(10px) saturate(1.6);
+    -webkit-backdrop-filter: blur(10px) saturate(1.6);
   }
   .glass {
-    background-color: color-mix(in oklab, var(--color-surface) 52%, transparent);
-    backdrop-filter: blur(16px) saturate(1.4);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    background-color: color-mix(in oklab, var(--color-surface) 48%, transparent);
+    backdrop-filter: blur(16px) saturate(1.8);
+    -webkit-backdrop-filter: blur(16px) saturate(1.8);
   }
   .glass-strong {
-    background-color: color-mix(in oklab, var(--color-surface-raised) 68%, transparent);
-    backdrop-filter: blur(24px) saturate(1.5);
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    background-color: color-mix(in oklab, var(--color-surface-raised) 62%, transparent);
+    backdrop-filter: blur(24px) saturate(2);
+    -webkit-backdrop-filter: blur(24px) saturate(2);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass-subtle {
@@ -65,6 +69,414 @@
     .glass-strong {
       background-color: color-mix(in oklab, var(--color-surface-raised) 95%, transparent);
     }
+  }
+}
+
+/* ── Liquid-glass buttons ──────────────────────────────────────────────────────
+ * A translucent lens, not a flat frosted rectangle (the dated look). Each button is:
+ *   · a MODEST backdrop blur + strong saturate — the background colour / emotion field reads
+ *     *through* the button and its colours pop (Liquid Glass "clarity"), rather than a milky plate;
+ *   · a directional specular rim — a bright thin top edge + a faint lower lip — so it reads as a
+ *     curved lit lens. This is the single biggest tell separating modern glass from the old uniform
+ *     1px white border;
+ *   · a top-down gloss gradient + a soft coloured glow in the variant hue, so it feels lit within.
+ *
+ * NO backdrop-filter on buttons: it's the one real cost of glass, and on small + numerous controls
+ * Chromium renders an edge seam that flickers on hover (plus a per-element GPU pass). Buttons are
+ * small and many (matrices, toolbars, lists), so the glass read comes from the translucent tint +
+ * specular rim + gloss + coloured glow alone — real backdrop blur is reserved for the few large chrome
+ * panels (.glass*). Colours derive from theme vars → reskins with [data-theme]; `--glass-btn-glow` is
+ * the per-variant halo.
+ */
+@layer components {
+  .glass-btn {
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, white 22%, transparent) 0%,
+      color-mix(in oklab, white 3%, transparent) 42%,
+      transparent 100%
+    );
+    border: 1px solid color-mix(in oklab, white 14%, transparent);
+    box-shadow:
+      inset 0 1px 0.5px 0 color-mix(in oklab, white 44%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 10%, transparent),
+      0 1px 1px -0.5px color-mix(in oklab, black 45%, transparent),
+      0 8px 22px -10px var(--glass-btn-glow, transparent);
+  }
+  .glass-btn:hover {
+    box-shadow:
+      inset 0 1px 0.5px 0 color-mix(in oklab, white 54%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 13%, transparent),
+      0 1px 1px -0.5px color-mix(in oklab, black 45%, transparent),
+      0 10px 30px -8px var(--glass-btn-glow, transparent);
+  }
+  .glass-btn:active {
+    box-shadow:
+      inset 0 1px 3px 0 color-mix(in oklab, black 26%, transparent),
+      0 4px 14px -10px var(--glass-btn-glow, transparent);
+  }
+
+  .glass-btn-primary {
+    --glass-btn-glow: color-mix(in oklab, var(--color-primary) 65%, transparent);
+    background-color: color-mix(in oklab, var(--color-primary) 30%, transparent);
+    color: var(--color-text);
+  }
+  .glass-btn-primary:hover {
+    background-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
+  }
+  .glass-btn-danger {
+    --glass-btn-glow: color-mix(in oklab, var(--color-danger) 65%, transparent);
+    background-color: color-mix(in oklab, var(--color-danger) 30%, transparent);
+    color: var(--color-text);
+  }
+  .glass-btn-danger:hover {
+    background-color: color-mix(in oklab, var(--color-danger) 40%, transparent);
+  }
+  .glass-btn-secondary {
+    background-color: color-mix(in oklab, var(--color-surface-raised) 40%, transparent);
+    color: var(--color-text);
+  }
+  .glass-btn-secondary:hover {
+    background-color: color-mix(in oklab, var(--color-surface-raised) 58%, transparent);
+  }
+  /* Ghost stays a bare text button — no backdrop pass, no rim — so toolbars/tab strips of ghosts
+     cost nothing and don't read as a wall of plates. */
+  .glass-btn-ghost {
+    background-image: none;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: var(--color-text);
+  }
+  .glass-btn-ghost:hover {
+    background-color: color-mix(in oklab, var(--color-surface) 40%, transparent);
+  }
+}
+
+/* ── Card surface ──────────────────────────────────────────────────────────────
+ * The elevated *opaque* content panel behind `<Card variant="solid">`. Modern dark-UI depth: a
+ * surface stepped up from the page, a hairline top-lit edge, and a soft shadow — readable content,
+ * not glass (glass is reserved for floating chrome/overlays). Derives from theme vars → reskins.
+ */
+@layer components {
+  .card-surface {
+    background-color: var(--color-surface);
+    border: 1px solid color-mix(in oklab, white 8%, transparent);
+    box-shadow:
+      var(--shadow-md),
+      inset 0 1px 0 0 color-mix(in oklab, white 8%, transparent);
+  }
+}
+
+/* ── Toast surface ─────────────────────────────────────────────────────────────
+ * A frosted *light* glass (white translucent + backdrop blur) so a toast pops over the dark app —
+ * bright and clearly visible, yet semi-transparent enough to read as glass (the scene blurs through).
+ * Dark text for contrast on the light frost; the variant hue rides the border (a Tailwind border-*
+ * layered on top). Toasts are few, so the backdrop pass is affordable (unlike the small controls).
+ */
+@layer components {
+  .toast-surface {
+    background-color: color-mix(in oklab, white 20%, transparent);
+    color: var(--color-text);
+    border: 1px solid color-mix(in oklab, white 35%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    backdrop-filter: blur(18px) saturate(1.6);
+    box-shadow:
+      var(--shadow-lg),
+      inset 0 1px 0 0 color-mix(in oklab, white 40%, transparent);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .toast-surface {
+      background-color: color-mix(in oklab, var(--color-surface-raised) 92%, transparent);
+    }
+  }
+}
+
+/* ── Badge / status chip — outline-first glass ────────────────────────────────
+ * The modern replacement for the dated solid-fill pills (bg-primary + white text). Material = glass
+ * (backdrop blur+saturate, same family as .glass / .glass-btn). COLOUR lives in the hairline RIM +
+ * lifted TEXT + an optional self-luminous DOT — the fill is a whisper (6–10%), never a solid slab.
+ * One var (--badge-c) drives border/text/dot per variant, so it reskins with [data-theme]. Resting
+ * chips carry NO outer glow (glow is emphasis-only). data-on-scene raises the fill for chips that
+ * float over the raw universe (not on glass chrome) so small text keeps AA contrast.
+ */
+@layer components {
+  .badge {
+    --badge-c: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: var(--radius-full);
+    padding-block: 0.125rem;
+    padding-inline: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+    white-space: nowrap;
+    color: var(--color-text-muted);
+    background-color: color-mix(in oklab, var(--color-text) 6%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-text) 14%, transparent);
+    -webkit-backdrop-filter: blur(6px) saturate(1.8);
+    backdrop-filter: blur(6px) saturate(1.8);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 6%, transparent);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+  .badge:has(> .badge-dot),
+  .badge--with-dot {
+    padding-inline: 0.625rem;
+  }
+  /* Self-luminous status dot. NEVER ship a dot without a text label — a colour dot alone is not a
+     colour-blind-safe status cue; the label is. */
+  .badge-dot {
+    flex: none;
+    inline-size: 0.375rem;
+    block-size: 0.375rem;
+    border-radius: var(--radius-full);
+    background-color: var(--badge-c);
+    box-shadow: 0 0 6px 0 color-mix(in oklab, var(--badge-c) 55%, transparent);
+  }
+  .badge-neutral {
+    --badge-c: var(--color-text-muted);
+  }
+  .badge-primary,
+  .badge-success,
+  .badge-warning,
+  .badge-danger {
+    background-color: color-mix(in oklab, var(--badge-c) 10%, transparent);
+    border-color: color-mix(in oklab, var(--badge-c) 45%, transparent);
+    color: color-mix(in oklab, var(--badge-c) 85%, white);
+  }
+  .badge-primary {
+    --badge-c: var(--color-primary);
+  }
+  .badge-success {
+    --badge-c: var(--color-success);
+  }
+  .badge-warning {
+    --badge-c: var(--color-warning);
+  }
+  .badge-danger {
+    --badge-c: var(--color-danger);
+  }
+  /* primary (L~0.76) and warning (L~0.89) are already light → keep text nearer the pure hue so
+     chroma doesn't wash out. */
+  .badge-primary,
+  .badge-warning {
+    color: color-mix(in oklab, var(--badge-c) 92%, white);
+  }
+  /* Toggled filter chip — denser tint + stronger rim + near-white text, still no solid fill. */
+  .badge[aria-pressed='true'],
+  .badge[data-selected] {
+    background-color: color-mix(in oklab, var(--badge-c) 16%, transparent);
+    border-color: color-mix(in oklab, var(--badge-c) 60%, transparent);
+    color: color-mix(in oklab, var(--badge-c) 92%, white);
+  }
+  /* Emphasis / active ONLY — a TIGHT coloured halo (negative spread, never a diffuse neon wash). */
+  .badge[data-emphasis] {
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 6%, transparent),
+      0 0 12px -2px color-mix(in oklab, var(--badge-c) 45%, transparent);
+  }
+  /* On-scene floor: over the raw universe a chip must raise its fill to opaque density so small
+     text keeps >=4.5:1 over a bright star/nebula. */
+  .badge[data-on-scene] {
+    background-color: color-mix(in oklab, var(--color-surface-raised) 90%, transparent);
+  }
+  .badge-primary[data-on-scene],
+  .badge-success[data-on-scene],
+  .badge-warning[data-on-scene],
+  .badge-danger[data-on-scene] {
+    background-color: color-mix(in oklab, var(--badge-c) 18%, var(--color-surface-raised));
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .badge {
+      background-color: color-mix(in oklab, var(--color-surface-raised) 90%, transparent);
+    }
+    .badge-primary,
+    .badge-success,
+    .badge-warning,
+    .badge-danger {
+      background-color: color-mix(in oklab, var(--badge-c) 18%, var(--color-surface-raised));
+    }
+  }
+}
+
+/* ── Switch ───────────────────────────────────────────────────────────────────
+ * A translucent track (no backdrop-filter — small control, same flicker/GPU reason as the buttons).
+ * Turning ON brings the hue in via the BORDER + a two-part primary glow (the field-focus ring at 22%
+ * + a tightened bloom at 65%) over a lightly-tinted track — never a solid primary slab. The thumb is
+ * self-luminous and tints primary when on. The role="switch" element KEEPS its Tailwind FOCUS_RING
+ * (ring-2 ring-offset-2) — that opaque offset ring is the keyboard indicator.
+ */
+@layer components {
+  .switch-track {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    inline-size: 2.5rem;
+    block-size: 1.5rem;
+    border-radius: var(--radius-full);
+    background-color: color-mix(in oklab, var(--color-surface-raised) 82%, transparent);
+    border: 1px solid color-mix(in oklab, white 12%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, white 6%, transparent);
+    transition:
+      background-color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard);
+  }
+  .switch-track[aria-checked='true'] {
+    background-color: color-mix(in oklab, var(--color-primary) 30%, var(--color-surface-raised));
+    border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent),
+      0 0 12px -2px color-mix(in oklab, var(--color-primary) 65%, transparent);
+  }
+  .switch-thumb {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 0.125rem;
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+    border-radius: var(--radius-full);
+    background-color: color-mix(in oklab, white 90%, transparent);
+    box-shadow:
+      var(--shadow-sm),
+      inset 0 1px 0 0 color-mix(in oklab, white 60%, transparent);
+    transform: translateY(-50%);
+    transition:
+      transform var(--duration-base) var(--ease-standard),
+      background-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard);
+  }
+  .switch-track[aria-checked='true'] .switch-thumb {
+    transform: translate(1rem, -50%);
+    background-color: var(--color-primary);
+    box-shadow:
+      var(--shadow-sm),
+      0 0 8px 0 color-mix(in oklab, var(--color-primary) 60%, transparent);
+  }
+}
+
+/* ── Field — recessed glass input ─────────────────────────────────────────────
+ * Recessed bg-derived fill + the shipped focus literals (border primary 65% + ring 22%), plus a
+ * light backdrop blur (the universe reads through), a carved top inner shadow (recessed, NOT a
+ * bottom lip), and aria-invalid / data-valid validation. Colour never enters the FILL — it lives in
+ * the BORDER + ring.
+ */
+@layer components {
+  .field-surface {
+    background-color: color-mix(in oklab, var(--color-bg) 60%, transparent);
+    border: 1px solid color-mix(in oklab, white 10%, transparent);
+    color: var(--color-text);
+    -webkit-backdrop-filter: blur(10px) saturate(1.6);
+    backdrop-filter: blur(10px) saturate(1.6);
+    box-shadow: inset 0 1px 2px 0 color-mix(in oklab, black 25%, transparent);
+    transition:
+      background-color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard);
+  }
+  .field-surface::placeholder {
+    color: var(--color-text-subtle);
+  }
+  .field-surface:hover:not(:disabled) {
+    border-color: color-mix(in oklab, white 18%, transparent);
+  }
+  .field-surface:focus,
+  .field-surface:focus-visible {
+    outline: none;
+    border-color: color-mix(in oklab, var(--color-primary) 65%, transparent);
+    box-shadow:
+      inset 0 1px 2px 0 color-mix(in oklab, black 18%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
+  }
+  .field-surface[aria-invalid='true'] {
+    border-color: color-mix(in oklab, var(--color-danger) 65%, transparent);
+  }
+  .field-surface[aria-invalid='true']:focus,
+  .field-surface[aria-invalid='true']:focus-visible {
+    border-color: color-mix(in oklab, var(--color-danger) 65%, transparent);
+    box-shadow:
+      inset 0 1px 2px 0 color-mix(in oklab, black 18%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--color-danger) 22%, transparent);
+  }
+  .field-surface[data-valid='true'] {
+    border-color: color-mix(in oklab, var(--color-success) 65%, transparent);
+  }
+  .field-surface[data-valid='true']:focus,
+  .field-surface[data-valid='true']:focus-visible {
+    border-color: color-mix(in oklab, var(--color-success) 65%, transparent);
+    box-shadow:
+      inset 0 1px 2px 0 color-mix(in oklab, black 18%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--color-success) 22%, transparent);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .field-surface {
+      background-color: color-mix(in oklab, var(--color-bg) 92%, transparent);
+    }
+  }
+}
+
+/* ── Checkbox ─────────────────────────────────────────────────────────────────
+ * An appearance:none native <input> restyled to the border-accent language: a recessed box that
+ * fills lightly and gains a primary rim when checked, with a CSS tick. The input stays real for a11y
+ * and keeps its Tailwind FOCUS_RING. Matches the field/switch material (no backdrop-filter — small
+ * control). Derives from theme vars → reskins with [data-theme].
+ */
+@layer components {
+  .checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    flex: none;
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    border-radius: 0.375rem;
+    border: 1px solid color-mix(in oklab, white 14%, transparent);
+    background-color: color-mix(in oklab, var(--color-bg) 55%, transparent);
+    box-shadow: inset 0 1px 2px 0 color-mix(in oklab, black 22%, transparent);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+  .checkbox:hover:not(:disabled) {
+    border-color: color-mix(in oklab, white 24%, transparent);
+  }
+  .checkbox:checked {
+    background-color: color-mix(in oklab, var(--color-primary) 24%, transparent);
+    border-color: color-mix(in oklab, var(--color-primary) 60%, transparent);
+  }
+  /* Tick — a rotated open box corner, scaled in when checked. */
+  .checkbox::after {
+    content: '';
+    position: absolute;
+    inset-block-start: 0.15rem;
+    inset-inline-start: 0.34rem;
+    inline-size: 0.3rem;
+    block-size: 0.58rem;
+    border: solid color-mix(in oklab, var(--color-primary) 90%, white);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) scale(0);
+    transform-origin: center;
+    transition: transform var(--duration-fast) var(--ease-emphasized);
+  }
+  .checkbox:checked::after {
+    transform: rotate(45deg) scale(1);
   }
 }
 

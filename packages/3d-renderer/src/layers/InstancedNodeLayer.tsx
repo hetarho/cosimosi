@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three/webgpu'
 
@@ -110,9 +110,19 @@ export function InstancedNodeLayer({
   // InstancedBufferAttribute is created only when the instance count changes — otherwise every
   // read-model change would orphan a GPU buffer on the long-lived shared geometry. count <= 0
   // uploads nothing (the mesh is hidden and a zero-length attribute mismatches the capacity).
-  useEffect(() => {
+  //
+  // This runs in a LAYOUT effect, not a passive one, to close a mount-order race: `body` is
+  // adopted asynchronously, so the mesh joins the scene on a fresh commit — and the node-based
+  // render/bloom pipeline (PostFX) builds each object's shader on its first `useFrame` render,
+  // reading the instance attributes off the geometry then. A passive effect can flush *after*
+  // that first rAF, so the shader gets built against attribute-less geometry ("attribute not
+  // found on geometry") and the node builder caches that broken build → the body renders blank
+  // until a later rebuild. A layout effect attaches the attributes synchronously before the next
+  // paint/rAF, so the first shader build always sees them (intermittent on remount otherwise).
+  useLayoutEffect(() => {
     const mesh = meshRef.current
     if (!mesh || !body || count <= 0) return
+    let added = false
     for (const channel of channels?.attributes ?? []) {
       const existing = mesh.geometry.getAttribute(channel.name) as THREE.InstancedBufferAttribute | undefined
       if (existing && existing.array.length === channel.array.length) {
@@ -124,8 +134,13 @@ export function InstancedNodeLayer({
         // dispose cleanup runs only on unmount/body swap, not on a count change).
         existing?.dispose()
         mesh.geometry.setAttribute(channel.name, new THREE.InstancedBufferAttribute(channel.array, channel.itemSize))
+        added = true
       }
     }
+    // A newly attached/replaced attribute changes the geometry's attribute set: invalidate any
+    // shader the node builder may already have compiled against the prior set, so it recompiles
+    // against the now-complete geometry (belt-and-suspenders alongside the layout-effect ordering).
+    if (added && !Array.isArray(mesh.material)) mesh.material.needsUpdate = true
   }, [body, channels, instanceCount, count])
 
   useFrame(() => {

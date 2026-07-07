@@ -8,7 +8,7 @@ import type { ButtonOwnProps, ControlSize } from './types.ts'
 export type ButtonProps = ButtonOwnProps & ButtonHTMLAttributes<HTMLButtonElement>
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors select-none ' +
+  'inline-flex items-center justify-center gap-2 rounded-md font-medium transition select-none ' +
   `${FOCUS_RING} disabled:opacity-50 disabled:pointer-events-none`
 
 const SIZES: Record<ControlSize, string> = {
