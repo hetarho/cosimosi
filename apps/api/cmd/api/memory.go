@@ -50,6 +50,9 @@ func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.Hand
 		// Link runs as the last step of PersistEncoded's transaction,
 		// wiring synapses over the launch's own store handle.
 		Linker: memory.NewLinkService(memory.LinkDeps{}),
+		// The no-op progression seam ([T4]); the real advance-triggered
+		// handler (consolidation/semanticize) rebinds here later.
+		Progression: memory.NoopAdvanceProgression{},
 	})
 	if err != nil {
 		pool.Close()

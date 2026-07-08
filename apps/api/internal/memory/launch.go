@@ -26,9 +26,14 @@ type LaunchResult struct {
 	MemoryIDs    []string
 	NewNeuronIDs []string
 	// PastDated reports the monotonic launch guard [I10][T1]: the diary was saved
-	// but no EpisodicMemory launched, because diary_date precedes the latest
-	// launched one.
+	// but no EpisodicMemory launched, because diary_date precedes the universe
+	// clock.
 	PastDated bool
+	// The clock before/after this launch's advance — the interval the
+	// acceleration animation plays over ([T2]). Nil Previous = the first-ever
+	// launch; a past-dated launch carries the unmoved clock in both.
+	PreviousUniverseTime *time.Time
+	UniverseTime         *time.Time
 }
 
 // PersistEncoded atomically commits the user-confirmed split at launch: Diary +
@@ -56,9 +61,23 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 
 	var result LaunchResult
 	err := s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
-		latest, err := tx.LatestLaunchedUniverseTime(ctx, scope)
+		// The guard read locks the clock row for this transaction, so two
+		// concurrent launches cannot both pass the guard against the same
+		// stale clock and commit a memory dated before it ([I10]).
+		clock, err := tx.UniverseClockForUpdate(ctx, scope)
 		if err != nil {
 			return err
+		}
+		// While the clock row is unborn (a universe launched before the clock
+		// existed), guard against the newest launched memory instead — the
+		// same fallback the universe read uses — so the clock can never be
+		// born at a date before the universe's present.
+		guard := clock
+		if guard == nil {
+			guard, err = tx.LatestLaunchedUniverseTime(ctx, scope)
+			if err != nil {
+				return err
+			}
 		}
 		diary, err := tx.InsertDiary(ctx, scope, Diary{
 			ID:        s.newID(),
@@ -70,11 +89,12 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 			return err
 		}
 		result.DiaryID = diary.ID
+		result.PreviousUniverseTime = guard
+		result.UniverseTime = guard
 		// Monotonic launch guard [I10][T1]: a past-dated diary is saved (the
-		// objective record always lands) but launches no EpisodicMemory.
-		// Advancing the universe clock is a separate concern; this guard only
-		// blocks a past-dated launch.
-		if latest != nil && diaryDate.Before(*latest) {
+		// objective record always lands) but launches no EpisodicMemory, and
+		// the clock stays unmoved — the response interval is {clock, clock}.
+		if !CanLaunchAt(diaryDate, guard) {
 			result.PastDated = true
 			return nil
 		}
@@ -134,13 +154,20 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 			launched = append(launched, LaunchedMemory{EpisodicMemory: episodicMemory, NeuronIDs: neuronIDs})
 		}
 
-		// Link is the last in-transaction step: synapses land atomically
-		// with the launch, before the async embed/semanticize enqueue.
+		// Link runs before the async enqueue: synapses land atomically
+		// with the launch.
 		if err := s.linker.LinkLaunched(ctx, scope, tx, launched); err != nil {
 			return err
 		}
+		if err := s.enqueueAsyncJobs(ctx, scope, tx, body, confirmed, launched, newNeurons); err != nil {
+			return err
+		}
 
-		return s.enqueueAsyncJobs(ctx, scope, tx, body, confirmed, launched, newNeurons)
+		// The advance is the transaction's last step ([T2] case 1): the domain
+		// computes the target (AdvanceClock; the upsert's GREATEST is the SQL
+		// mirror), the clock moves to the diary date, and the progression hook
+		// sees the crossed interval — all atomic with the launch rows.
+		return s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), diaryDate), &result.UniverseTime)
 	})
 	if err != nil {
 		return LaunchResult{}, err
@@ -148,9 +175,12 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 	return result, nil
 }
 
-// Universe returns the stored universe facts plus the derived universe time:
-// the latest launched memory's created_universe_time, taken from the same read
-// snapshot as the facts (a separate latest-launched query could race a launch).
+// Universe returns the stored universe facts plus the universe time from the
+// authoritative universe_state clock ([T5]). One-release fallback: a universe
+// whose clock row has not been born yet (launched before the clock existed)
+// still reads the latest launched memory's created_universe_time from the same
+// snapshot, so no universe visibly resets; an empty universe reads nil.
+// Reading never advances the clock ([T3]).
 func (s *Service) Universe(ctx context.Context, scope platform.UserScope) (UniverseFacts, *time.Time, error) {
 	if scope.UserID() == "" {
 		return UniverseFacts{}, nil, ErrScopeRequired
@@ -159,11 +189,13 @@ func (s *Service) Universe(ctx context.Context, scope platform.UserScope) (Unive
 	if err != nil {
 		return UniverseFacts{}, nil, err
 	}
-	var universeTime *time.Time
-	for _, episodicMemory := range facts.EpisodicMemories {
-		created := episodicMemory.CreatedUniverseTime
-		if universeTime == nil || created.After(*universeTime) {
-			universeTime = &created
+	universeTime := facts.UniverseClock
+	if universeTime == nil {
+		for _, episodicMemory := range facts.EpisodicMemories {
+			created := episodicMemory.CreatedUniverseTime
+			if universeTime == nil || created.After(*universeTime) {
+				universeTime = &created
+			}
 		}
 	}
 	return facts, universeTime, nil

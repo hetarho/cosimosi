@@ -114,34 +114,38 @@ func (f *fakeUniverseReader) GetUniverse(_ context.Context, _ platform.UserScope
 }
 
 type serviceFixture struct {
-	extractor  *fakeExtractor
-	embedder   *fakeEmbedder
-	candidates *fakeCandidateRepo
-	launches   *fakeLaunchStore
-	universe   *fakeUniverseReader
-	linker     *fakeLinker
-	service    *Service
+	extractor   *fakeExtractor
+	embedder    *fakeEmbedder
+	candidates  *fakeCandidateRepo
+	launches    *fakeLaunchStore
+	universe    *fakeUniverseReader
+	linker      *fakeLinker
+	progression *fakeProgression
+	service     *Service
 }
 
 func newFixture(t *testing.T) *serviceFixture {
 	t.Helper()
+	launches := &fakeLaunchStore{}
 	fixture := &serviceFixture{
-		extractor:  &fakeExtractor{splitResult: validSplit()},
-		embedder:   &fakeEmbedder{},
-		candidates: &fakeCandidateRepo{},
-		launches:   &fakeLaunchStore{},
-		universe:   &fakeUniverseReader{},
-		linker:     &fakeLinker{},
+		extractor:   &fakeExtractor{splitResult: validSplit()},
+		embedder:    &fakeEmbedder{},
+		candidates:  &fakeCandidateRepo{},
+		launches:    launches,
+		universe:    &fakeUniverseReader{},
+		linker:      &fakeLinker{},
+		progression: &fakeProgression{store: launches},
 	}
 	ids := 0
 	service, err := NewService(ServiceDeps{
-		Extractor:  fixture.extractor,
-		Embedder:   fixture.embedder,
-		Candidates: fixture.candidates,
-		Launches:   fixture.launches,
-		Universe:   fixture.universe,
-		Linker:     fixture.linker,
-		Now:        func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
+		Extractor:   fixture.extractor,
+		Embedder:    fixture.embedder,
+		Candidates:  fixture.candidates,
+		Launches:    fixture.launches,
+		Universe:    fixture.universe,
+		Linker:      fixture.linker,
+		Progression: fixture.progression,
+		Now:         func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
 		NewID: func() string {
 			ids++
 			return fmt.Sprintf("id-%d", ids)
@@ -331,12 +335,13 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.candidates.inBody = []ExistingNeuron{{ID: "n-1", Name: "market", Type: NeuronTypeSpatial}}
 	service, err := NewService(ServiceDeps{
-		Extractor:  fixture.extractor,
-		Embedder:   failingEmbedder{},
-		Candidates: fixture.candidates,
-		Launches:   fixture.launches,
-		Universe:   fixture.universe,
-		Linker:     fixture.linker,
+		Extractor:   fixture.extractor,
+		Embedder:    failingEmbedder{},
+		Candidates:  fixture.candidates,
+		Launches:    fixture.launches,
+		Universe:    fixture.universe,
+		Linker:      fixture.linker,
+		Progression: fixture.progression,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

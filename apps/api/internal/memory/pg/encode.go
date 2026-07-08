@@ -3,7 +3,6 @@ package pg
 import (
 	"context"
 	"errors"
-	"time"
 
 	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/memory"
@@ -35,22 +34,6 @@ func (s Store) InLaunchTx(ctx context.Context, fn func(tx memory.LaunchTx) error
 		return err
 	}
 	return tx.Commit(ctx)
-}
-
-// LatestLaunchedUniverseTime returns the newest launched memory's
-// created_universe_time, or nil when the user has launched nothing yet.
-func (s Store) LatestLaunchedUniverseTime(ctx context.Context, scope platform.UserScope) (*time.Time, error) {
-	if err := s.ready(scope); err != nil {
-		return nil, err
-	}
-	row, err := s.queries.LatestLaunchedUniverseTime(ctx, scope.UserID())
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return datePtr(row), nil
 }
 
 func (s Store) ListNeuronCandidatesInBody(ctx context.Context, scope platform.UserScope, body string, limit int32) ([]memory.ExistingNeuron, error) {

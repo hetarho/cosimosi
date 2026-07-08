@@ -1,13 +1,6 @@
--- Encode use-case queries (plan 20): dedup-candidate assembly, persist-time
--- neuron resolution, and the monotonic launch guard. Every query is user-scoped.
-
--- name: LatestLaunchedUniverseTime :one
-SELECT created_universe_time
-FROM episodic_memories
-WHERE user_id = $1
-  AND deleted_at IS NULL
-ORDER BY created_universe_time DESC, id DESC
-LIMIT 1;
+-- Encode use-case queries (plan 20): dedup-candidate assembly and persist-time
+-- neuron resolution. Every query is user-scoped. (The monotonic launch guard
+-- reads the universe_state clock — clock.sql — since plan 30.)
 
 -- name: ListNeuronCandidatesInBody :many
 SELECT id, name, neuron_type

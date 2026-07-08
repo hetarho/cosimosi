@@ -11,25 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const latestLaunchedUniverseTime = `-- name: LatestLaunchedUniverseTime :one
-
-SELECT created_universe_time
-FROM episodic_memories
-WHERE user_id = $1
-  AND deleted_at IS NULL
-ORDER BY created_universe_time DESC, id DESC
-LIMIT 1
-`
-
-// Encode use-case queries (plan 20): dedup-candidate assembly, persist-time
-// neuron resolution, and the monotonic launch guard. Every query is user-scoped.
-func (q *Queries) LatestLaunchedUniverseTime(ctx context.Context, userID string) (pgtype.Date, error) {
-	row := q.db.QueryRow(ctx, latestLaunchedUniverseTime, userID)
-	var created_universe_time pgtype.Date
-	err := row.Scan(&created_universe_time)
-	return created_universe_time, err
-}
-
 const listNearestNeuronCandidates = `-- name: ListNearestNeuronCandidates :many
 SELECT n.id, n.name, n.neuron_type
 FROM embeddings AS e
@@ -83,6 +64,7 @@ func (q *Queries) ListNearestNeuronCandidates(ctx context.Context, arg ListNeare
 }
 
 const listNeuronCandidatesInBody = `-- name: ListNeuronCandidatesInBody :many
+
 SELECT id, name, neuron_type
 FROM neurons
 WHERE user_id = $1
@@ -105,6 +87,9 @@ type ListNeuronCandidatesInBodyRow struct {
 	NeuronType string
 }
 
+// Encode use-case queries (plan 20): dedup-candidate assembly and persist-time
+// neuron resolution. Every query is user-scoped. (The monotonic launch guard
+// reads the universe_state clock — clock.sql — since plan 30.)
 func (q *Queries) ListNeuronCandidatesInBody(ctx context.Context, arg ListNeuronCandidatesInBodyParams) ([]ListNeuronCandidatesInBodyRow, error) {
 	rows, err := q.db.Query(ctx, listNeuronCandidatesInBody, arg.UserID, arg.Column2, arg.Limit)
 	if err != nil {

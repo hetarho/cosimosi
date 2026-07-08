@@ -139,4 +139,8 @@ type UniverseFacts struct {
 	Neurons          []NeuronWithConnectivity
 	Activations      []NeuronActivation
 	Synapses         []Synapse
+	// UniverseClock is the stored universe_state clock, read in the same snapshot
+	// as the facts so a concurrent launch cannot skew universe time against them;
+	// nil = the clock row is not born yet (lazy birth).
+	UniverseClock *time.Time
 }

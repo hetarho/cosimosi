@@ -82,3 +82,9 @@ type Synapse struct {
 	LastActivatedUniverseTime pgtype.Date
 	CreatedAt                 pgtype.Timestamptz
 }
+
+type UniverseState struct {
+	UserID              string
+	CurrentUniverseTime pgtype.Date
+	UpdatedAt           pgtype.Timestamptz
+}

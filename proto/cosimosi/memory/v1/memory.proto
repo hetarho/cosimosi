@@ -84,6 +84,13 @@ message LaunchStarsResponse {
   // present. The client keys its optimistic insert off this, not off an
   // empty memory_ids coincidence.
   bool past_dated = 3;
+  // The universe clock before/after this launch's advance (ISO DATE) — the
+  // interval the acceleration animation plays over [T2] (plan 31). Empty
+  // previous_universe_time = the first-ever launch (no prior clock, the same
+  // empty-until-set convention as GetUniverseResponse.universe_time); a
+  // past-dated launch carries the unmoved clock in both (no acceleration).
+  string previous_universe_time = 4;
+  string universe_time = 5;
 }
 
 message GetUniverseRequest {}
@@ -92,8 +99,10 @@ message GetUniverseResponse {
   repeated EpisodicMemoryDto memories = 1;
   repeated NeuronDto neurons = 2;
   repeated SynapseDto synapses = 3;
-  // Current universe time (ISO DATE), derived in Epic A from the latest launched
-  // memory; empty until the first launch. The universe_state clock is Epic B.
+  // Current universe time (ISO DATE) — the stored universe_state clock [T5],
+  // with a one-release fallback to the latest launched memory for a pre-Epic-B
+  // user whose clock row has not been born yet; empty for an empty universe.
+  // Reading never advances the clock [T3].
   string universe_time = 4;
 }
 

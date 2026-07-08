@@ -434,9 +434,16 @@ type LaunchStarsResponse struct {
 	// saved but no memory was created because its date precedes the universe's
 	// present. The client keys its optimistic insert off this, not off an
 	// empty memory_ids coincidence.
-	PastDated     bool `protobuf:"varint,3,opt,name=past_dated,json=pastDated,proto3" json:"past_dated,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PastDated bool `protobuf:"varint,3,opt,name=past_dated,json=pastDated,proto3" json:"past_dated,omitempty"`
+	// The universe clock before/after this launch's advance (ISO DATE) — the
+	// interval the acceleration animation plays over [T2] (plan 31). Empty
+	// previous_universe_time = the first-ever launch (no prior clock, the same
+	// empty-until-set convention as GetUniverseResponse.universe_time); a
+	// past-dated launch carries the unmoved clock in both (no acceleration).
+	PreviousUniverseTime string `protobuf:"bytes,4,opt,name=previous_universe_time,json=previousUniverseTime,proto3" json:"previous_universe_time,omitempty"`
+	UniverseTime         string `protobuf:"bytes,5,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *LaunchStarsResponse) Reset() {
@@ -490,6 +497,20 @@ func (x *LaunchStarsResponse) GetPastDated() bool {
 	return false
 }
 
+func (x *LaunchStarsResponse) GetPreviousUniverseTime() string {
+	if x != nil {
+		return x.PreviousUniverseTime
+	}
+	return ""
+}
+
+func (x *LaunchStarsResponse) GetUniverseTime() string {
+	if x != nil {
+		return x.UniverseTime
+	}
+	return ""
+}
+
 type GetUniverseRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -531,8 +552,10 @@ type GetUniverseResponse struct {
 	Memories []*EpisodicMemoryDto   `protobuf:"bytes,1,rep,name=memories,proto3" json:"memories,omitempty"`
 	Neurons  []*NeuronDto           `protobuf:"bytes,2,rep,name=neurons,proto3" json:"neurons,omitempty"`
 	Synapses []*SynapseDto          `protobuf:"bytes,3,rep,name=synapses,proto3" json:"synapses,omitempty"`
-	// Current universe time (ISO DATE), derived in Epic A from the latest launched
-	// memory; empty until the first launch. The universe_state clock is Epic B.
+	// Current universe time (ISO DATE) — the stored universe_state clock [T5],
+	// with a one-release fallback to the latest launched memory for a pre-Epic-B
+	// user whose clock row has not been born yet; empty for an empty universe.
+	// Reading never advances the clock [T3].
 	UniverseTime  string `protobuf:"bytes,4,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1013,13 +1036,15 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x0fConfirmedMemory\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04mood\x18\x02 \x01(\tR\x04mood\x12<\n" +
-	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\"y\n" +
+	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\"\xd4\x01\n" +
 	"\x13LaunchStarsResponse\x12\x1d\n" +
 	"\n" +
 	"memory_ids\x18\x01 \x03(\tR\tmemoryIds\x12$\n" +
 	"\x0enew_neuron_ids\x18\x02 \x03(\tR\fnewNeuronIds\x12\x1d\n" +
 	"\n" +
-	"past_dated\x18\x03 \x01(\bR\tpastDated\"\x14\n" +
+	"past_dated\x18\x03 \x01(\bR\tpastDated\x124\n" +
+	"\x16previous_universe_time\x18\x04 \x01(\tR\x14previousUniverseTime\x12#\n" +
+	"\runiverse_time\x18\x05 \x01(\tR\funiverseTime\"\x14\n" +
 	"\x12GetUniverseRequest\"\xf2\x01\n" +
 	"\x13GetUniverseResponse\x12A\n" +
 	"\bmemories\x18\x01 \x03(\v2%.cosimosi.memory.v1.EpisodicMemoryDtoR\bmemories\x127\n" +

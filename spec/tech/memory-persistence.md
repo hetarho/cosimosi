@@ -101,3 +101,29 @@ Generated rows stay in `apps/api/db/gen`. `internal/memory` imports no sqlc, pgx
 The database enforces this with `CHECK (neuron_a_id < neuron_b_id)` plus
 `UNIQUE (user_id, neuron_a_id, neuron_b_id)`. `internal/memory/pg` also normalizes every synapse write before calling
 sqlc so both input orders target the same row.
+
+## 6. Universe Clock
+
+`apps/api/db/migrations/00004_universe_state.sql` owns `universe_state` — the single per-user authoritative universe
+clock ([T5]): `user_id TEXT PRIMARY KEY`, `current_universe_time DATE NOT NULL`, `updated_at`. It is **stored state,
+not an emergent value** ([I5] governs positions/constellations/nebula color, not the clock).
+
+The clock is **monotonic at two layers** ([I10]): the pure domain `memory.AdvanceClock(current, target)` returns the
+later day, and the only write path — `AdvanceUniverseClock` in `apps/api/db/queries/memory/clock.sql` — is a
+single-row upsert whose `GREATEST(universe_state.current_universe_time, EXCLUDED.current_universe_time)` mirrors it as
+defense-in-depth (the same two-layer discipline as the synapse `CHECK`). There is no `UPDATE` that can lower the value
+and no `DELETE` on `universe_state`; the `user_id` primary key serializes concurrent launches onto one row.
+`updated_at` stamps every advance **attempt** (the upsert always touches it, even when `GREATEST` holds the clock) —
+it is row maintenance, not "when the clock last moved"; derive movement from `current_universe_time` itself.
+
+**Birth is lazy.** A user with no launches has no row; `pg.UniverseClock` maps the absent row to a nil `*time.Time`,
+keeping Epic A's empty-universe read. The first advance creates the row via the upsert — no backfill migration.
+
+Universe time is a **DATE** (day granularity) and is the model's single read-time "now": every elapsed-universe-day
+derivation (forgetting decay, the semanticize timer, synapse strength decay) reads it as a scalar; it never enters
+layout ([I7]). The diary-date monotonic constraint is the pure predicate `memory.CanLaunchAt(diaryDate, clock)` —
+`diaryDate ≥ clock` launches, an earlier diary saves without a star, a nil clock always launches ([T1]).
+
+The clock repository port is **consumer-owned by plan 30** (the time-advance use-case); `memory/pg` exposes the
+concrete `UniverseClock`/`AdvanceUniverseClock` store methods it will bind to. Until plan 30 rewires the call sites,
+`GetUniverse.universe_time` and the launch guard keep Epic A's `max(created_universe_time)` derivation.

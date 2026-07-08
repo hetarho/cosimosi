@@ -52,9 +52,10 @@ type LaunchRepo interface {
 // LaunchTx is the transaction-scoped write surface PersistEncoded consumes. It
 // deliberately exposes no Diary update and no delete of any kind, so the launch
 // path cannot express an [I1]/[I2] violation. It embeds SynapseStore so Link's
-// synapse reads and writes run on the very same transaction (§2.6).
+// synapse reads and writes run on the very same transaction (§2.6), and
+// UniverseClockStore so the clock read + advance land atomically with the
+// launch rows ([T2] case 1).
 type LaunchTx interface {
-	LatestLaunchedUniverseTime(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 	InsertDiary(ctx context.Context, scope platform.UserScope, diary Diary) (Diary, error)
 	InsertEpisodicMemory(ctx context.Context, scope platform.UserScope, episodicMemory EpisodicMemory) (EpisodicMemory, error)
 	FindNeuronsByNames(ctx context.Context, scope platform.UserScope, names []string) ([]ExistingNeuron, error)
@@ -62,6 +63,46 @@ type LaunchTx interface {
 	InsertNeuronActivation(ctx context.Context, scope platform.UserScope, activation NeuronActivation) (NeuronActivation, error)
 	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
 	SynapseStore
+	UniverseClockStore
+}
+
+// UniverseClockStore is the consumer-owned port over the per-user authoritative
+// universe clock ([T5]). UniverseClock returns nil for the unborn clock (no
+// launches yet — lazy birth); UniverseClockForUpdate is the launch guard's
+// locked read, holding the clock row so concurrent launches serialize on the
+// guard instead of racing it; LatestLaunchedUniverseTime is the guard baseline
+// while the clock row is unborn (keeps the guard consistent with the universe
+// read's fallback); AdvanceUniverseClock is the GREATEST upsert, so no caller
+// can move the clock backward ([I10]). Method names match the memory/pg
+// concrete, which implements this implicitly.
+type UniverseClockStore interface {
+	UniverseClock(ctx context.Context, scope platform.UserScope) (*time.Time, error)
+	UniverseClockForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error)
+	LatestLaunchedUniverseTime(ctx context.Context, scope platform.UserScope) (*time.Time, error)
+	AdvanceUniverseClock(ctx context.Context, scope platform.UserScope, target time.Time) (time.Time, error)
+}
+
+// ProgressionTx is the narrow write surface an AdvanceProgression binding may
+// touch: the job queue (advance-implied work is enqueued, not run inline) and
+// the clock. Deliberately NOT the full LaunchTx — a progression handler must
+// never be able to insert launch rows, keeping the sync path's "mutates no
+// Diary" guarantee structural ([I2]). LaunchTx satisfies this by embedding.
+type ProgressionTx interface {
+	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
+	UniverseClockStore
+}
+
+// AdvanceProgression is the read-time progression hook ([T4]): fired inside
+// the advance transaction whenever the clock actually moves (launch and sync),
+// with the interval the clock crossed. A nil from is the first-ever advance;
+// an advance that holds the clock (same-day sync, equal-date launch) fires
+// nothing. The tx surface is passed so a binding's writes — the consolidation/
+// semanticize work an interval implies — join the advance atomically; the
+// shipped default is the documented no-op (forgetting is read-time and needs
+// no work at advance). There is no cron anywhere: this hook is the only
+// advance-triggered seam.
+type AdvanceProgression interface {
+	OnAdvance(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, to time.Time) error
 }
 
 // SynapseStore is the consumer-owned port (§2.4) Link consumes to grow the neuron

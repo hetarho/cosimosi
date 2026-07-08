@@ -741,6 +741,184 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 	}
 }
 
+func TestLaunchTxAdvancesClockAtomicallyAndUniverseReadsIt(t *testing.T) {
+	pool := openMemoryTestPool(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-clock-tx-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	emotion, ok := memory.NewEmotion(memory.MoodCalm)
+	if !ok {
+		t.Fatal("NewEmotion(MoodCalm) failed")
+	}
+
+	// Pre-clock universe: launch rows exist but no universe_state row — the
+	// facts carry a nil clock (the service's one-release fallback path).
+	err = store.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
+		diary, err := tx.InsertDiary(ctx, scope, memory.Diary{ID: base + "-diary-0", Body: "pre-clock", DiaryDate: day, CreatedAt: day})
+		if err != nil {
+			return err
+		}
+		_, err = tx.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+			ID: base + "-memory-0", DiaryID: diary.ID, Name: "Pre-clock", CurrentText: "pre-clock",
+			Emotion: emotion, BaseStrength: 0.5, CreatedUniverseTime: day,
+		})
+		return err
+	})
+	if err != nil {
+		t.Fatalf("pre-clock launch tx failed: %v", err)
+	}
+	facts, err := store.GetUniverse(ctx, scope)
+	if err != nil {
+		t.Fatalf("GetUniverse failed: %v", err)
+	}
+	if facts.UniverseClock != nil {
+		t.Fatalf("pre-clock facts clock = %v, want nil (fallback path)", facts.UniverseClock)
+	}
+
+	// A launch-shaped transaction advances the clock atomically with its rows.
+	later := day.AddDate(0, 0, 4)
+	err = store.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
+		diary, err := tx.InsertDiary(ctx, scope, memory.Diary{ID: base + "-diary-1", Body: "launch", DiaryDate: later, CreatedAt: later})
+		if err != nil {
+			return err
+		}
+		if _, err := tx.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+			ID: base + "-memory-1", DiaryID: diary.ID, Name: "Launch", CurrentText: "launch",
+			Emotion: emotion, BaseStrength: 0.5, CreatedUniverseTime: later,
+		}); err != nil {
+			return err
+		}
+		_, err = tx.AdvanceUniverseClock(ctx, scope, later)
+		return err
+	})
+	if err != nil {
+		t.Fatalf("launch tx with advance failed: %v", err)
+	}
+	facts, err = store.GetUniverse(ctx, scope)
+	if err != nil {
+		t.Fatalf("GetUniverse after advance failed: %v", err)
+	}
+	if facts.UniverseClock == nil || !facts.UniverseClock.Equal(later) {
+		t.Fatalf("facts clock = %v, want the stored %v", facts.UniverseClock, later)
+	}
+
+	// A failed transaction rolls the advance back with the rows.
+	failedDay := later.AddDate(0, 0, 3)
+	err = store.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
+		if _, err := tx.AdvanceUniverseClock(ctx, scope, failedDay); err != nil {
+			return err
+		}
+		return errors.New("injected rollback")
+	})
+	if err == nil {
+		t.Fatal("expected the injected rollback to surface")
+	}
+	clock, err := store.UniverseClock(ctx, scope)
+	if err != nil {
+		t.Fatalf("UniverseClock after rollback failed: %v", err)
+	}
+	if clock == nil || !clock.Equal(later) {
+		t.Fatalf("clock after rollback = %v, want unchanged %v", clock, later)
+	}
+}
+
+func TestUniverseClockLazyBirthAndMonotonicUpsert(t *testing.T) {
+	pool := openMemoryTestPool(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-clock-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	otherUserID := base + "-other"
+	cleanupMemoryTestRows(t, pool, userID)
+	cleanupMemoryTestRows(t, pool, otherUserID)
+
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	otherScope, err := platform.NewUserScope(otherUserID)
+	if err != nil {
+		t.Fatalf("NewUserScope other failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+
+	// Lazy birth: no launches → no row → nil universe time.
+	clock, err := store.UniverseClock(ctx, scope)
+	if err != nil {
+		t.Fatalf("UniverseClock before birth failed: %v", err)
+	}
+	if clock != nil {
+		t.Fatalf("unborn clock = %v, want nil", clock)
+	}
+
+	first := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	advanced, err := store.AdvanceUniverseClock(ctx, scope, first)
+	if err != nil {
+		t.Fatalf("AdvanceUniverseClock birth failed: %v", err)
+	}
+	if !advanced.Equal(first) {
+		t.Fatalf("birth advance = %v, want %v", advanced, first)
+	}
+
+	// An out-of-order (earlier) advance never rewinds: the GREATEST upsert holds the clock.
+	earlier := first.AddDate(0, 0, -3)
+	held, err := store.AdvanceUniverseClock(ctx, scope, earlier)
+	if err != nil {
+		t.Fatalf("AdvanceUniverseClock earlier failed: %v", err)
+	}
+	if !held.Equal(first) {
+		t.Fatalf("earlier advance moved the clock to %v, want held at %v", held, first)
+	}
+
+	later := first.AddDate(0, 0, 6)
+	moved, err := store.AdvanceUniverseClock(ctx, scope, later)
+	if err != nil {
+		t.Fatalf("AdvanceUniverseClock later failed: %v", err)
+	}
+	if !moved.Equal(later) {
+		t.Fatalf("later advance = %v, want %v", moved, later)
+	}
+
+	// Repeat upserts stay a single row per user.
+	var rows int
+	if err := pool.PgxPool().QueryRow(ctx, "SELECT COUNT(*) FROM universe_state WHERE user_id = $1", userID).Scan(&rows); err != nil {
+		t.Fatalf("count universe_state failed: %v", err)
+	}
+	if rows != 1 {
+		t.Fatalf("universe_state rows = %d, want 1", rows)
+	}
+
+	// Per-user isolation: another user's clock is unaffected and reads nil.
+	otherClock, err := store.UniverseClock(ctx, otherScope)
+	if err != nil {
+		t.Fatalf("UniverseClock other failed: %v", err)
+	}
+	if otherClock != nil {
+		t.Fatalf("other user's clock = %v, want nil", otherClock)
+	}
+
+	readBack, err := store.UniverseClock(ctx, scope)
+	if err != nil {
+		t.Fatalf("UniverseClock read-back failed: %v", err)
+	}
+	if readBack == nil || !readBack.Equal(later) {
+		t.Fatalf("read-back clock = %v, want %v", readBack, later)
+	}
+}
+
 func openMemoryTestPool(t *testing.T) *platformdb.Pool {
 	t.Helper()
 
@@ -771,6 +949,7 @@ func cleanupMemoryTestRows(t *testing.T, pool *platformdb.Pool, userID string) {
 		defer cancel()
 
 		tables := []string{
+			"universe_state",
 			"jobs",
 			"embeddings",
 			"synapses",

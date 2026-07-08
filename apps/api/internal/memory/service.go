@@ -10,12 +10,13 @@ import (
 )
 
 var (
-	ErrExtractorRequired  = errors.New("memory service requires an extractor")
-	ErrEmbedderRequired   = errors.New("memory service requires an embedder")
-	ErrCandidatesRequired = errors.New("memory service requires a neuron candidate repo")
-	ErrLaunchesRequired   = errors.New("memory service requires a launch repo")
-	ErrUniverseRequired   = errors.New("memory service requires a universe reader")
-	ErrLinkerRequired     = errors.New("memory service requires a linker")
+	ErrExtractorRequired   = errors.New("memory service requires an extractor")
+	ErrEmbedderRequired    = errors.New("memory service requires an embedder")
+	ErrCandidatesRequired  = errors.New("memory service requires a neuron candidate repo")
+	ErrLaunchesRequired    = errors.New("memory service requires a launch repo")
+	ErrUniverseRequired    = errors.New("memory service requires a universe reader")
+	ErrLinkerRequired      = errors.New("memory service requires a linker")
+	ErrProgressionRequired = errors.New("memory service requires an advance progression hook")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -23,15 +24,16 @@ var (
 // semantic-neuron, dedup, caps, and the monotonic launch guard — lives here, not
 // in the RPC handlers (ARCHITECTURE §2.9#7).
 type Service struct {
-	extractor  Extractor
-	embedder   Embedder
-	candidates NeuronCandidateRepo
-	launches   LaunchRepo
-	universe   UniverseReader
-	linker     Linker
-	now        func() time.Time
-	newID      func() string
-	newSeed    func() int64
+	extractor   Extractor
+	embedder    Embedder
+	candidates  NeuronCandidateRepo
+	launches    LaunchRepo
+	universe    UniverseReader
+	linker      Linker
+	progression AdvanceProgression
+	now         func() time.Time
+	newID       func() string
+	newSeed     func() int64
 }
 
 type ServiceDeps struct {
@@ -43,6 +45,11 @@ type ServiceDeps struct {
 	// Linker wires synapses as the last step of PersistEncoded; it is
 	// required so no composition root can launch memories without growing the graph.
 	Linker Linker
+	// Progression is the read-time progression hook fired when the clock moves
+	// ([T4]); required (the default binding is NoopAdvanceProgression) so no
+	// composition root can advance the clock without the seam the
+	// advance-triggered handlers hang their work on.
+	Progression AdvanceProgression
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -69,16 +76,20 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Linker == nil {
 		return nil, ErrLinkerRequired
 	}
+	if deps.Progression == nil {
+		return nil, ErrProgressionRequired
+	}
 	service := &Service{
-		extractor:  deps.Extractor,
-		embedder:   deps.Embedder,
-		candidates: deps.Candidates,
-		launches:   deps.Launches,
-		universe:   deps.Universe,
-		linker:     deps.Linker,
-		now:        deps.Now,
-		newID:      deps.NewID,
-		newSeed:    deps.NewSeed,
+		extractor:   deps.Extractor,
+		embedder:    deps.Embedder,
+		candidates:  deps.Candidates,
+		launches:    deps.Launches,
+		universe:    deps.Universe,
+		linker:      deps.Linker,
+		progression: deps.Progression,
+		now:         deps.Now,
+		newID:       deps.NewID,
+		newSeed:     deps.NewSeed,
 	}
 	if service.now == nil {
 		service.now = func() time.Time { return time.Now().UTC() }

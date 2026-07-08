@@ -397,12 +397,17 @@ func getUniverse(ctx context.Context, scope platform.UserScope, queries *dbgen.Q
 	if err != nil {
 		return memory.UniverseFacts{}, err
 	}
+	clock, err := nilableClock(queries.GetUniverseClock(ctx, userID))
+	if err != nil {
+		return memory.UniverseFacts{}, err
+	}
 
 	return memory.UniverseFacts{
 		EpisodicMemories: mapEpisodicMemories(memories),
 		Neurons:          mapNeuronsWithConnectivity(neurons),
 		Activations:      mapNeuronActivations(activations),
 		Synapses:         mapSynapses(synapses),
+		UniverseClock:    clock,
 	}, nil
 }
 

@@ -153,6 +153,23 @@ func TestUniverseResponseEmptyUniverseTime(t *testing.T) {
 	}
 }
 
+func TestLaunchIntervalDateValueMapping(t *testing.T) {
+	previous := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	advanced := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+
+	// Launchable: {previous, advanced} round-trips as ISO DATE strings.
+	if got := dateValue(&previous); got != "2026-06-20" {
+		t.Fatalf("previous = %q, want 2026-06-20", got)
+	}
+	if got := dateValue(&advanced); got != "2026-07-02" {
+		t.Fatalf("advanced = %q, want 2026-07-02", got)
+	}
+	// First-ever launch: nil previous maps to the empty-until-set convention.
+	if got := dateValue(nil); got != "" {
+		t.Fatalf("nil previous = %q, want empty", got)
+	}
+}
+
 func TestParseDiaryDate(t *testing.T) {
 	got, err := parseDiaryDate("2026-03-01")
 	if err != nil {

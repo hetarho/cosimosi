@@ -16,9 +16,10 @@ import (
 // state that only becomes visible (committed) when fn returns nil — mirroring the
 // all-or-nothing transaction contract the tests assert.
 type fakeLaunchStore struct {
-	latest     *time.Time
-	existing   []ExistingNeuron
-	failMethod string
+	clock          *time.Time
+	latestLaunched *time.Time
+	existing       []ExistingNeuron
+	failMethod     string
 
 	// Link seam fixtures (plan 21): prior memberships CoActivations replays and the
 	// stored base strengths SynapseStrengths serves on the repeat path.
@@ -31,13 +32,14 @@ type fakeLaunchStore struct {
 }
 
 type launchState struct {
-	diaries     []Diary
-	memories    []EpisodicMemory
-	neurons     []Neuron
-	activations []NeuronActivation
-	synapses    []Synapse
-	jobs        []Job
-	findCalls   [][]string
+	diaries      []Diary
+	memories     []EpisodicMemory
+	neurons      []Neuron
+	activations  []NeuronActivation
+	synapses     []Synapse
+	jobs         []Job
+	findCalls    [][]string
+	clockAdvance *time.Time
 }
 
 var errInjectedFailure = errors.New("injected persistence failure")
@@ -50,6 +52,9 @@ func (f *fakeLaunchStore) InLaunchTx(_ context.Context, fn func(tx LaunchTx) err
 		return err
 	}
 	f.committed = *f.staging
+	if f.staging.clockAdvance != nil {
+		f.clock = f.staging.clockAdvance
+	}
 	f.staging = nil
 	return nil
 }
@@ -61,11 +66,57 @@ func (f *fakeLaunchStore) fail(method string) error {
 	return nil
 }
 
+func (f *fakeLaunchStore) UniverseClock(_ context.Context, scope platform.UserScope) (*time.Time, error) {
+	if scope.UserID() == "" {
+		return nil, errors.New("scope missing")
+	}
+	if err := f.fail("UniverseClock"); err != nil {
+		return nil, err
+	}
+	if f.staging != nil && f.staging.clockAdvance != nil {
+		return f.staging.clockAdvance, nil
+	}
+	return f.clock, nil
+}
+
+func (f *fakeLaunchStore) UniverseClockForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error) {
+	if err := f.fail("UniverseClockForUpdate"); err != nil {
+		return nil, err
+	}
+	return f.UniverseClock(ctx, scope)
+}
+
 func (f *fakeLaunchStore) LatestLaunchedUniverseTime(_ context.Context, scope platform.UserScope) (*time.Time, error) {
 	if scope.UserID() == "" {
 		return nil, errors.New("scope missing")
 	}
-	return f.latest, f.fail("LatestLaunchedUniverseTime")
+	if err := f.fail("LatestLaunchedUniverseTime"); err != nil {
+		return nil, err
+	}
+	return f.latestLaunched, nil
+}
+
+// AdvanceUniverseClock mirrors the real store's GREATEST semantics via the
+// domain AdvanceClock, staging the value so a rolled-back transaction leaves
+// the committed clock untouched — the atomicity the tests assert. It reads
+// the staged advance first so a double in-tx advance behaves like the real
+// GREATEST-against-current-row upsert.
+func (f *fakeLaunchStore) AdvanceUniverseClock(_ context.Context, scope platform.UserScope, target time.Time) (time.Time, error) {
+	if scope.UserID() == "" {
+		return time.Time{}, errors.New("scope missing")
+	}
+	if err := f.fail("AdvanceUniverseClock"); err != nil {
+		return time.Time{}, err
+	}
+	current := time.Time{}
+	if f.staging != nil && f.staging.clockAdvance != nil {
+		current = *f.staging.clockAdvance
+	} else if f.clock != nil {
+		current = *f.clock
+	}
+	advanced := AdvanceClock(current, target)
+	f.staging.clockAdvance = &advanced
+	return advanced, nil
 }
 
 func (f *fakeLaunchStore) InsertDiary(_ context.Context, _ platform.UserScope, diary Diary) (Diary, error) {
@@ -207,6 +258,32 @@ func (f *fakeLinker) LinkLaunched(_ context.Context, _ platform.UserScope, _ Lau
 	return f.err
 }
 
+// fakeProgression records every OnAdvance and whether it fired inside the
+// launch store's open transaction (staging non-nil) — the [T4] in-tx contract.
+type fakeProgression struct {
+	store *fakeLaunchStore
+	calls []progressionCall
+	err   error
+}
+
+type progressionCall struct {
+	from     *time.Time
+	to       time.Time
+	insideTx bool
+}
+
+func (f *fakeProgression) OnAdvance(_ context.Context, scope platform.UserScope, _ ProgressionTx, from *time.Time, to time.Time) error {
+	if scope.UserID() == "" {
+		return errors.New("scope missing")
+	}
+	f.calls = append(f.calls, progressionCall{
+		from:     from,
+		to:       to,
+		insideTx: f.store != nil && f.store.staging != nil,
+	})
+	return f.err
+}
+
 func confirmedFixture() []ExtractedMemory {
 	return []ExtractedMemory{
 		{
@@ -338,8 +415,8 @@ func TestPersistEncodedMidStepFailureLeavesNoPartialRows(t *testing.T) {
 func TestPersistEncodedPastDatedSavesDiaryLaunchesNothing(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	latest := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
-	fixture.launches.latest = &latest
+	clock := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	fixture.launches.clock = &clock
 
 	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
 	if err != nil {
@@ -358,13 +435,24 @@ func TestPersistEncodedPastDatedSavesDiaryLaunchesNothing(t *testing.T) {
 	if fixture.linker.calls != 0 {
 		t.Fatal("the link seam must not run for a past-dated diary")
 	}
+	// The clock stays unmoved and the response interval is {clock, clock}.
+	if state.clockAdvance != nil {
+		t.Fatal("a past-dated launch must not advance the clock")
+	}
+	if result.PreviousUniverseTime == nil || !result.PreviousUniverseTime.Equal(clock) ||
+		result.UniverseTime == nil || !result.UniverseTime.Equal(clock) {
+		t.Fatalf("interval = {%v, %v}, want the unmoved clock in both", result.PreviousUniverseTime, result.UniverseTime)
+	}
+	if len(fixture.progression.calls) != 0 {
+		t.Fatal("the progression hook must not fire when the clock does not advance")
+	}
 }
 
 func TestPersistEncodedSameDateLaunches(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	latest := testDiaryDate()
-	fixture.launches.latest = &latest
+	clock := testDiaryDate()
+	fixture.launches.clock = &clock
 
 	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
 	if err != nil {
@@ -372,6 +460,119 @@ func TestPersistEncodedSameDateLaunches(t *testing.T) {
 	}
 	if result.PastDated || len(result.MemoryIDs) != 2 {
 		t.Fatalf("same-date launch must proceed, got pastDated=%v memories=%d", result.PastDated, len(result.MemoryIDs))
+	}
+	// The clock did not move, so no interval crossed and no hook fires.
+	if len(fixture.progression.calls) != 0 {
+		t.Fatalf("progression calls = %d, want 0 for an equal-date launch", len(fixture.progression.calls))
+	}
+}
+
+func TestPersistEncodedPreClockUniverseGuardsAgainstLatestLaunched(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	// A universe launched before the clock existed: no universe_state row, but
+	// memories up to 2026-07-02. The guard must use the latest launched date,
+	// not treat the unborn clock as "anything goes" — otherwise a past-dated
+	// launch would birth the clock in the past and visibly rewind the universe.
+	latest := testDiaryDate()
+	fixture.launches.latestLaunched = &latest
+	pastDate := latest.AddDate(0, 0, -10)
+
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", pastDate, confirmedFixture())
+	if err != nil {
+		t.Fatalf("PersistEncoded failed: %v", err)
+	}
+	if !result.PastDated {
+		t.Fatal("PastDated = false, want the unborn-clock guard to use the latest launched date")
+	}
+	if fixture.launches.clock != nil {
+		t.Fatalf("clock = %v, want still unborn after a refused launch", fixture.launches.clock)
+	}
+	if result.PreviousUniverseTime == nil || !result.PreviousUniverseTime.Equal(latest) {
+		t.Fatalf("interval baseline = %v, want the latest launched %v", result.PreviousUniverseTime, latest)
+	}
+}
+
+func TestPersistEncodedAdvancesClockAndReturnsInterval(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	previous := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	fixture.launches.clock = &previous
+
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	if err != nil {
+		t.Fatalf("PersistEncoded failed: %v", err)
+	}
+	if fixture.launches.clock == nil || !fixture.launches.clock.Equal(testDiaryDate()) {
+		t.Fatalf("committed clock = %v, want the diary date %v", fixture.launches.clock, testDiaryDate())
+	}
+	if result.PreviousUniverseTime == nil || !result.PreviousUniverseTime.Equal(previous) {
+		t.Fatalf("previous = %v, want %v", result.PreviousUniverseTime, previous)
+	}
+	if result.UniverseTime == nil || !result.UniverseTime.Equal(testDiaryDate()) {
+		t.Fatalf("universe time = %v, want %v", result.UniverseTime, testDiaryDate())
+	}
+	if len(fixture.progression.calls) != 1 {
+		t.Fatalf("progression calls = %d, want 1 per advance", len(fixture.progression.calls))
+	}
+	call := fixture.progression.calls[0]
+	if call.from == nil || !call.from.Equal(previous) || !call.to.Equal(testDiaryDate()) {
+		t.Fatalf("hook interval = {%v, %v}, want {%v, %v}", call.from, call.to, previous, testDiaryDate())
+	}
+	if !call.insideTx {
+		t.Fatal("the progression hook must fire inside the launch transaction")
+	}
+}
+
+func TestPersistEncodedFirstLaunchBirthsClockWithNilPrevious(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	if err != nil {
+		t.Fatalf("PersistEncoded failed: %v", err)
+	}
+	if result.PastDated {
+		t.Fatal("the first-ever launch must be launchable (no prior bar)")
+	}
+	if result.PreviousUniverseTime != nil {
+		t.Fatalf("previous = %v, want nil on the first-ever launch", result.PreviousUniverseTime)
+	}
+	if result.UniverseTime == nil || !result.UniverseTime.Equal(testDiaryDate()) {
+		t.Fatalf("universe time = %v, want %v", result.UniverseTime, testDiaryDate())
+	}
+	if len(fixture.progression.calls) != 1 || fixture.progression.calls[0].from != nil {
+		t.Fatalf("hook = %+v, want one call with nil from", fixture.progression.calls)
+	}
+}
+
+func TestPersistEncodedClockAdvanceFailureRollsBackLaunch(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	fixture.launches.failMethod = "AdvanceUniverseClock"
+
+	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	if !errors.Is(err, errInjectedFailure) {
+		t.Fatalf("err = %v, want the injected failure", err)
+	}
+	state := fixture.launches.committed
+	if len(state.diaries)+len(state.memories)+len(state.jobs) != 0 || fixture.launches.clock != nil {
+		t.Fatal("a failed clock advance must roll the whole launch back")
+	}
+}
+
+func TestPersistEncodedProgressionFailureRollsBackLaunch(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	fixture.progression.err = errors.New("progression handler failed")
+
+	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	if err == nil {
+		t.Fatal("a progression failure inside the transaction must fail the launch")
+	}
+	state := fixture.launches.committed
+	if len(state.diaries)+len(state.memories) != 0 || fixture.launches.clock != nil {
+		t.Fatal("a failed progression hook must roll back the launch and the advance")
 	}
 }
 
@@ -448,22 +649,42 @@ func TestPersistEncodedLinkSeamFailureAbortsTheLaunch(t *testing.T) {
 	}
 }
 
-func TestUniverseDerivesUniverseTimeFromLatestMemory(t *testing.T) {
+func TestUniverseReadsStoredClockWithFallback(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	older := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	newer := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	fixture.universe.facts = UniverseFacts{EpisodicMemories: []EpisodicMemory{
-		{ID: "m-1", CreatedUniverseTime: newer},
-		{ID: "m-2", CreatedUniverseTime: older},
-	}}
+	stored := time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)
 
+	// The stored universe_state clock wins when present — a recall-synced clock
+	// can sit past every memory's creation date.
+	fixture.universe.facts = UniverseFacts{
+		EpisodicMemories: []EpisodicMemory{
+			{ID: "m-1", CreatedUniverseTime: newer},
+			{ID: "m-2", CreatedUniverseTime: older},
+		},
+		UniverseClock: &stored,
+	}
 	_, universeTime, err := fixture.service.Universe(context.Background(), testScope(t))
 	if err != nil {
 		t.Fatalf("Universe failed: %v", err)
 	}
+	if universeTime == nil || !universeTime.Equal(stored) {
+		t.Fatalf("universe time = %v, want the stored clock %v", universeTime, stored)
+	}
+
+	// One-release fallback: an unborn clock row still derives the pre-Epic-B
+	// max(created_universe_time), so no universe visibly resets.
+	fixture.universe.facts = UniverseFacts{EpisodicMemories: []EpisodicMemory{
+		{ID: "m-1", CreatedUniverseTime: newer},
+		{ID: "m-2", CreatedUniverseTime: older},
+	}}
+	_, universeTime, err = fixture.service.Universe(context.Background(), testScope(t))
+	if err != nil {
+		t.Fatalf("Universe failed: %v", err)
+	}
 	if universeTime == nil || !universeTime.Equal(newer) {
-		t.Fatalf("universe time = %v, want %v", universeTime, newer)
+		t.Fatalf("fallback universe time = %v, want %v", universeTime, newer)
 	}
 
 	fixture.universe.facts = UniverseFacts{}

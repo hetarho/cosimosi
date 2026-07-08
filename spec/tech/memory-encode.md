@@ -42,19 +42,36 @@ proto↔domain and call it (§2.9#7):
 - **`PersistEncoded`** — re-validates the confirmed split (a hand-crafted `LaunchStars` cannot bypass the policy)
   and **rejects a future-dated diary** (beyond UTC today + 1 day of timezone slack — a future date would advance the
   monotonic clock past real time and permanently past-date every later diary), then in **one transaction**
-  (`LaunchRepo.InLaunchTx`): monotonic-guard read → Diary insert (append-only, [I2]) → if past-dated, commit the
-  Diary alone and launch nothing ([I10][T1]; the wire signal is `memory_ids == []` — the response shape is
-  plan-fixed, and plan 27's writing flow shows the notice before launching) → neuron resolution (exact lowercased
-  (name, type) against existing neurons; in-batch dedupe; genuinely new neurons created once) → `EpisodicMemory`
-  inserts (`seed` generated, `base_strength = ArousalToInitialStrength(arousal)`, `created_universe_time =
-  diary_date`, `current_text` = the diary body until reconsolidation rewrites it [R8a]) → `NeuronActivation` inserts
-  (`encode.activation_weight`, uniform in Epic A) → the **`Linker` seam** (nil until job 27 wires `Link`) → `embed`
-  (one job, new neurons only) + `semanticize` (one per memory) enqueue.
-- **`Universe`** — `UniverseReader.GetUniverse` + the snapshot-derived universe time.
+  (`LaunchRepo.InLaunchTx`): `universe_state` clock read (in-tx, plan 30) → Diary insert (append-only, [I2]) → the
+  `CanLaunchAt(diary_date, clock)` guard — if past-dated, commit the Diary alone, launch nothing, leave the clock
+  unmoved, and return the interval `{clock, clock}` ([I10][T1]; the wire signal is `past_dated` + `memory_ids == []`,
+  and plan 27's writing flow shows the notice before launching) → neuron resolution (exact lowercased (name, type)
+  against existing neurons; in-batch dedupe; genuinely new neurons created once) → `EpisodicMemory` inserts (`seed`
+  generated, `base_strength = ArousalToInitialStrength(arousal)`, `created_universe_time = diary_date`,
+  `current_text` = the diary body until reconsolidation rewrites it [R8a]) → `NeuronActivation` inserts
+  (`encode.activation_weight`, uniform in Epic A) → the **`Linker` seam** → `embed` (one job, new neurons only) +
+  `semanticize` (one per memory) enqueue → **`AdvanceUniverseClock(diary_date)`** (the `GREATEST` upsert) →
+  **`AdvanceProgression.OnAdvance(scope, tx, from, to)`** — the whole launch, clock advance, and hook land wholly or
+  not at all ([T2] case 1). `LaunchResult` carries the interval (`PreviousUniverseTime` nil on the first-ever launch);
+  the wire fields are `previous_universe_time`/`universe_time` (empty-string = unset).
+- **`SyncToToday`** — the recall-composed capability ([T2] case 2 / [R1a]), no RPC and no button: in one
+  `InLaunchTx`, read the clock, advance to `utcDate(now)`, fire the progression hook over `{previous, today}`, return
+  the interval. Idempotent within a day (the `GREATEST` upsert holds today); mutates no Diary ([I2]). Epic C's
+  `Recall` composes it behind the sync-consent gate.
+- **`Universe`** — `UniverseReader.GetUniverse`; universe time is the stored `universe_state` clock, read **in the
+  same `REPEATABLE READ` snapshot** as the facts (`UniverseFacts.UniverseClock`), with a one-release fallback to the
+  snapshot's `max(created_universe_time)` while a pre-Epic-B user's clock row is unborn, and nil for an empty
+  universe. Reading never advances the clock ([T3]).
+
+The **`AdvanceProgression` hook** ([T4]) fires on every clock advance (launch and sync) inside the advance
+transaction with `(scope, tx, from, to)` — the tx surface is passed so a binding's writes join the advance
+atomically. Epic B binds `NoopAdvanceProgression` (forgetting is read-time; nothing to do at advance); Epics C/E
+rebind the real handler that enqueues the `semanticize`/`consolidate` work an interval crosses. No cron exists.
 
 Ports consumed (consumer-owned, `ports.go`): `Extractor`, `Embedder`, `NeuronCandidateRepo`, `LaunchRepo`/`LaunchTx`,
-`UniverseReader`, `JobQueue` (via `LaunchTx.EnqueueJob`), `Linker`. `LaunchTx` deliberately exposes no Diary update
-and no delete, so the launch path cannot express an [I1]/[I2] violation.
+`UniverseReader`, `JobQueue` (via `LaunchTx.EnqueueJob`), `Linker`, `UniverseClockStore` (embedded in `LaunchTx`; the
+plan-29 `memory/pg` concrete), `AdvanceProgression`. `LaunchTx` deliberately exposes no Diary update and no delete,
+so the launch path cannot express an [I1]/[I2] violation.
 
 ## 3. Persistence (`db/queries/memory/encode.sql`, `memory/pg`)
 

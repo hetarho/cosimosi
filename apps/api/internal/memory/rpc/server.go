@@ -71,9 +71,11 @@ func (s *Server) LaunchStars(ctx context.Context, req *connect.Request[memoryv1.
 		return nil, domainError(err)
 	}
 	return connect.NewResponse(&memoryv1.LaunchStarsResponse{
-		MemoryIds:    result.MemoryIDs,
-		NewNeuronIds: result.NewNeuronIDs,
-		PastDated:    result.PastDated,
+		MemoryIds:            result.MemoryIDs,
+		NewNeuronIds:         result.NewNeuronIDs,
+		PastDated:            result.PastDated,
+		PreviousUniverseTime: dateValue(result.PreviousUniverseTime),
+		UniverseTime:         dateValue(result.UniverseTime),
 	}), nil
 }
 
@@ -243,6 +245,15 @@ func dateString(value *time.Time) *string {
 	if value == nil {
 		return nil
 	}
-	formatted := value.Format(time.DateOnly)
+	formatted := dateValue(value)
 	return &formatted
+}
+
+// dateValue is the empty-until-set wire convention for plain-string DATE
+// fields (the same one GetUniverseResponse.universe_time uses).
+func dateValue(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return value.Format(time.DateOnly)
 }
