@@ -11,6 +11,7 @@ import {
 
 import {NebulaNotice} from '../../../entities/nebula/index.ts';
 import {UniverseCanvasWidget} from '../../../widgets/universe-canvas/index.ts';
+import {UniverseTimeOverlay} from '../../../widgets/universe-time/index.ts';
 import {WritingFlowSheet} from '../../../widgets/writing-flow/index.ts';
 
 // The universe screen: the real memory universe full-bleed with a floating action over
@@ -47,6 +48,9 @@ export function UniverseScreen() {
       <View style={styles.notice}>
         <NebulaNotice />
       </View>
+      {/* Mounted at the screen root so its absolute veil/HUD span the full screen; before the
+          write action so the veil dims the scene + notice but never the primary affordance. */}
+      <UniverseTimeOverlay />
       <View style={styles.hud}>
         <WritingFlowSheet />
       </View>

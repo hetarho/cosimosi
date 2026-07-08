@@ -6,6 +6,7 @@ import { m } from '@cosimosi/i18n'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
+import { UniverseTimeOverlay } from '../../../widgets/universe-time/index.ts'
 import { WritingFlowSheet } from '../../../widgets/writing-flow/index.ts'
 
 // Contains a renderer/read failure to the canvas area (mirror of the mobile screen's
@@ -42,6 +43,9 @@ export function UniverseHomePage() {
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6">
         <header className="flex items-start justify-between gap-3">
           <NebulaNotice />
+          {/* HUD top ([T6]) with the acceleration veil + consent host riding along; the veil is a
+              fixed layer, so the write action below (later in paint order) stays crisp over it. */}
+          <UniverseTimeOverlay />
         </header>
         <div className="pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 pb-2">
           <WritingFlowSheet />

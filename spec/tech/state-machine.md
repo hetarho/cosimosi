@@ -28,6 +28,7 @@ Machines live where the control flow belongs, never in a generic folder:
 | app-wide lifecycle (session bootstrap, app mode) | `apps/{web,mobile}/src/app/model/<name>.machine.ts` |
 | feature action machine (encode, recall, select, …) | `apps/{web,mobile}/src/features/<verb>/model/<name>.machine.ts` |
 | entity control machine | `apps/{web,mobile}/src/entities/<noun>/model/<name>.machine.ts` |
+| shared product machine (web+mobile parity, §6) | `packages/universe/src/<name>.machine.ts` |
 | generic reusable pattern (the catalog) | `packages/state-machine/src/<name>.machine.ts` |
 
 Files are named `<name>.machine.ts` and export named factory functions and/or
@@ -144,7 +145,40 @@ Until the renderer exists (Phase 4), this pattern is the contract every
 presentation slice will reuse — recorded here so a future contributor cannot
 "just" `setSnapshot` per frame.
 
-## 6. Tests
+## 6. Shared product machines (the parity home)
+
+Product machines that both apps consume verbatim live in the product's pure
+package — `packages/universe` — not in an app slice (`writingFlowMachine`,
+`universeNavigationMachine`, `universeTimeMachine`). The §2 slice homes apply
+to machines only one app owns; a web+mobile widget pair imports its machine
+from the package and forks only its `ui` hosts (ARCHITECTURE §3.5).
+
+### 6.1 `universeTimeMachine` (the time overlay)
+
+`idle → confirming → accelerating → idle`, context empty — the strictest form
+of the §3 rule. All payload rides outside the machine:
+
+- the **clock value** lives in the `useUniverseClockStore` mirror (synced from
+  every `GetUniverse` read; nil = unborn clock);
+- the **advance interval + deferred reveal ids** ride a module-level announce
+  seam (`features/accelerate-time`'s announcement store, take-to-consume) —
+  `ADVANCED` carries only an emptiness flag for the guard, and an empty
+  interval (no time passed) never enters `accelerating`;
+- `confirming` is the sync-consent modal; **ACCEPT parks back in `idle`** on
+  purpose — the acceleration presents the *committed* sync interval, which the
+  recall use-case announces through the same `ADVANCED` seam a launch uses, so
+  the wait needs no fourth state.
+
+The acceleration is presentation over an already-committed data path: on a
+clock-advancing launch the optimistic insert and the `GetUniverse` invalidate
+stay immediate, and only the *reveal* (the awaken entry announce) is deferred
+to the transition's `DONE` — accelerate, then the star appears. The transition
+component owns a reserved choreography slot the forgetting/consolidation
+visuals later fill off the same interval seam. Per-frame veil intensity goes
+through a DOM ref / `Animated.Value`, never React state (§5.2); the date tick
+re-renders at most once per sampled date.
+
+## 7. Tests
 
 Every catalog machine has:
 
@@ -153,10 +187,11 @@ Every catalog machine has:
 - the shared `context-rule.test.ts` — asserts snapshots are JSON-serializable
   and expose only the documented control fields (the §3 contract).
 
-Feature machines (when they arrive) follow the same pattern at their slice.
+Feature machines follow the same pattern at their home (`universeTimeMachine`
+keeps its transition + serializability tests beside it in `packages/universe`).
 
-## 7. Non-goals (held by plan/07)
+## 8. Non-goals (held by plan/07)
 
-No product workflow machine, no renderer implementation, no force-sim, no
-server data cache, no global event bus, no animation timeline. This unit is
-the catalog + the rules; product content lands with its feature plan.
+No renderer implementation, no force-sim, no server data cache, no global
+event bus, no animation timeline. The foundation unit is the catalog + the
+rules; product machines land with their feature plans (§6).

@@ -8,13 +8,15 @@ import {universeFromResponse, type UniverseSnapshot} from '@cosimosi/memory';
 
 import {useEpisodicMemoryStore, useNeuronStore, useSynapseStore} from '@cosimosi/universe';
 
+import {syncUniverseClock} from '../../../entities/universe-clock/index.ts';
+
 export interface UniverseReadState {
   universe: UniverseSnapshot | null;
 }
 
 // The widget's GetUniverse read: the generated Connect query (GET; key + cache policy
 // owned by api-client/client-cache) mapped DTO→domain at the entity mapper seam, then
-// written into the three entity stores every response (Query cache → store).
+// written into the four entity stores every response (Query cache → store).
 // `universe.universeTime` is the read-time-derivation input for @cosimosi/memory-logic —
 // this unit never re-derives that math. Stores are data (§3.2); nothing here is per-frame.
 // A fetch failure (401/500/network) throws to the widget's error boundary via throwOnError
@@ -34,6 +36,7 @@ export function useUniverse(): UniverseReadState {
       setMemories([]);
       setNeurons([]);
       setSynapses([]);
+      syncUniverseClock(null);
       return;
     }
     // Merge server truth with any optimistically-launched memory not yet visible
@@ -48,6 +51,7 @@ export function useUniverse(): UniverseReadState {
     setMemories([...universe.memories, ...optimisticOnly]);
     setNeurons(universe.neurons);
     setSynapses(universe.synapses);
+    syncUniverseClock(universe.universeTime);
   }, [universe, setMemories, setNeurons, setSynapses]);
 
   return {universe};

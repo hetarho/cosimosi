@@ -41,6 +41,23 @@ export {
   type LaunchStarsInput,
 } from './launch-stars.ts'
 
+// Universe time presentation core: the clock mirror, the advance interval an acceleration plays
+// over, and the time overlay's control-state
+export { useUniverseClockStore, type UniverseClock, type UniverseClockState } from './universe-clock-store.ts'
+export {
+  UNIVERSE_TIME_ACCELERATION,
+  advanceAnnouncementFromLaunch,
+  advanceDurationMs,
+  advanceSweepFrame,
+  isEmptyAdvance,
+  mergeAdvanceAnnouncements,
+  sampleAdvanceDate,
+  type AdvanceAnnouncement,
+  type AdvanceInterval,
+  type AdvanceSweepFrame,
+} from './advance-interval.ts'
+export { universeTimeMachine, type UniverseTimeEvent, type UniverseTimePhase } from './universe-time.machine.ts'
+
 // Awaken (entry choreography) logic + idempotency registry
 export {
   pickAwakenSeeds,

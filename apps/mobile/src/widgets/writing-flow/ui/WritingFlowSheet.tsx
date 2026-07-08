@@ -7,6 +7,7 @@ import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {createGetUniverseQueryKey, createGetUniverseQueryOptions} from '@cosimosi/api-client';
 import {Button, Dialog, tokens} from '@cosimosi/ui';
 import {
+  advanceAnnouncementFromLaunch,
   insertLaunchedMemories,
   isPastDated,
   requestLaunchStars,
@@ -17,6 +18,7 @@ import {
 import {ProposedMemoryList, requestSplitDiary} from '../../../features/split-diary/index.ts';
 import {ReviseControls, requestReviseSplit} from '../../../features/revise-split/index.ts';
 import {LaunchButton, useLaunchedNeuronsStore} from '../../../features/launch-stars/index.ts';
+import {useAdvanceAnnouncementStore} from '../../../features/accelerate-time/index.ts';
 import {WriteDiaryFields, useDiaryDraftStore} from '../../../features/write-diary/index.ts';
 import {m} from '../../../shared/i18n/index.ts';
 import {useMachine} from '../../../shared/model/index.ts';
@@ -68,6 +70,7 @@ export function WritingFlowSheet() {
   const resetProposal = useProposalStore(state => state.reset);
 
   const announce = useLaunchedNeuronsStore(state => state.announce);
+  const announceAdvance = useAdvanceAnnouncementStore(state => state.announce);
 
   const open = useCallback(() => {
     resetDraft(todayIso());
@@ -113,13 +116,23 @@ export function WritingFlowSheet() {
         // its `pastDated` flag rather than inferring it from an empty id list.
         if (!response.pastDated) {
           insertLaunchedMemories(memories, response.memoryIds, diaryDate);
-          announce(response.newNeuronIds);
+          // The reveal rides the clock ([T2] case 1: accelerate → then the star appears): a
+          // clock-advancing launch hands the interval + awaken ids to the acceleration seam and
+          // the overlay releases them when the transition completes. Presentation only — the
+          // insert above and the invalidate below stay immediate. No advance (same-day launch)
+          // keeps the immediate awaken.
+          const advance = advanceAnnouncementFromLaunch(response);
+          if (advance) {
+            announceAdvance(advance);
+          } else {
+            announce(response.newNeuronIds);
+          }
         }
         queryClient.invalidateQueries({queryKey: createGetUniverseQueryKey(transport)}).catch(() => undefined);
         send({type: 'LAUNCH_OK'});
       })
       .catch(() => send({type: 'LAUNCH_ERR', error: 'launch'}));
-  }, [transport, body, diaryDate, proposal, announce, queryClient, send]);
+  }, [transport, body, diaryDate, proposal, announce, announceAdvance, queryClient, send]);
 
   const editThen = useCallback(
     (apply: () => void) => {

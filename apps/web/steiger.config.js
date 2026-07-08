@@ -35,4 +35,23 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The universe-time vertical (plan 31): three single-surface features composed by one widget,
+    // mounted by the universe page — the same one-action grain as writing-flow above. Epic C adds
+    // the second reference (recall-flow-ui opens confirm-time-sync); merging them away would undo
+    // the plan's slice shape. The clock entity is the vertical's pure domain mirror (substance in
+    // @cosimosi/universe); every consumer (the canvas read, the HUD, the overlay) sits in a slice
+    // this config already exempts, so the rule counts no references for it. Scoped so a genuinely
+    // insignificant future slice still gets flagged.
+    files: [
+      './src/entities/universe-clock/**',
+      './src/features/universe-clock-hud/**',
+      './src/features/accelerate-time/**',
+      './src/features/confirm-time-sync/**',
+      './src/widgets/universe-time/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
 ])

@@ -155,6 +155,12 @@
   "mood_emptiness": "Emptiness",
   "universe_home_explore": "Explore",
   "universe_renderer_unavailable": "The 3D universe needs WebGPU, which isn't available here yet.",
+  "universe_time_hud_label": "Universe time",
+  "universe_time_hud_empty": "Begins with your first diary",
+  "universe_time_sync_consent_title": "Universe time",
+  "universe_time_sync_consent_body": "To recall, the universe's time must move to today. Diaries for the past days left unwritten can no longer be added. Continue?",
+  "universe_time_sync_accept": "Yes",
+  "universe_time_sync_reject": "No",
   "not_found_title": "Nothing orbits here",
   "not_found_description": "This path leads into empty space.",
   "not_found_home_action": "Back to your universe"
