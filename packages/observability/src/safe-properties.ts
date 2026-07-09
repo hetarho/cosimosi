@@ -25,7 +25,11 @@ type NormalizedSensitiveTelemetryKey = Lowercase<SensitiveTelemetryKey>
 const sensitiveKeySet = new Set<string>(sensitiveTelemetryKeys.map(normalizeTelemetryKey))
 
 export type SafeTelemetryProperties<T extends TelemetryPropertyBag = TelemetryPropertyBag> = {
-  readonly [K in keyof T]: K extends string ? (Lowercase<K> extends NormalizedSensitiveTelemetryKey ? never : T[K]) : T[K]
+  readonly [K in keyof T]: K extends string
+    ? Lowercase<K> extends NormalizedSensitiveTelemetryKey
+      ? never
+      : T[K]
+    : T[K]
 }
 
 export function safeTelemetryProperties<const T extends TelemetryPropertyBag>(

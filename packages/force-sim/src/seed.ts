@@ -29,7 +29,10 @@ export function seedInitialPositions(
   const clusterCenters = new Map<ForceSimNodeId, ForceSimCoordinate>()
 
   for (const episodicMemory of graph.episodicMemories) {
-    clusterCenters.set(episodicMemory.id, seededClusterCenter(values, rngFor(values, `cluster:${episodicMemory.id}`)))
+    clusterCenters.set(
+      episodicMemory.id,
+      seededClusterCenter(values, rngFor(values, `cluster:${episodicMemory.id}`)),
+    )
   }
 
   for (const neuron of graph.neurons) {
@@ -37,9 +40,17 @@ export function seedInitialPositions(
     if (index === undefined) continue
 
     const position = neuron.previousPosition
-      ? nearCoordinate(neuron.previousPosition, values.linkDistance * 0.03, rngFor(values, `previous:${neuron.id}`))
+      ? nearCoordinate(
+          neuron.previousPosition,
+          values.linkDistance * 0.03,
+          rngFor(values, `previous:${neuron.id}`),
+        )
       : neuron.seedHint
-        ? nearCoordinate(neuron.seedHint, values.linkDistance * 0.001, rngFor(values, `hint:${neuron.id}`))
+        ? nearCoordinate(
+            neuron.seedHint,
+            values.linkDistance * 0.001,
+            rngFor(values, `hint:${neuron.id}`),
+          )
         : seedForNewNeuron(neuron.id, firstClusterByNeuron, clusterCenters, values)
 
     writePosition(positions, index, position, values)
@@ -135,7 +146,11 @@ function seedForNewNeuron(
   const center = clusterId ? clusterCenters.get(clusterId) : undefined
   if (!center) return seededClusterCenter(values, rngFor(values, `free:${neuronId}`))
 
-  return nearCoordinate(center, values.linkDistance * 0.12, rngFor(values, `cluster-neuron:${clusterId}:${neuronId}`))
+  return nearCoordinate(
+    center,
+    values.linkDistance * 0.12,
+    rngFor(values, `cluster-neuron:${clusterId}:${neuronId}`),
+  )
 }
 
 function seededClusterCenter(values: ForceSimValues, rng: SeededRng): ForceSimCoordinate {
@@ -161,7 +176,10 @@ function nearCoordinate(
   }
 }
 
-function sanitizeCoordinate(coordinate: ForceSimCoordinate, values: ForceSimValues): ForceSimCoordinate {
+function sanitizeCoordinate(
+  coordinate: ForceSimCoordinate,
+  values: ForceSimValues,
+): ForceSimCoordinate {
   return {
     x: coordinate.x,
     y: coordinate.y,

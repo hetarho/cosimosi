@@ -1,6 +1,17 @@
-import { Component, createContext, useContext, useRef, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  Component,
+  createContext,
+  useContext,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 
-import { createObservabilityFacade, type ObservabilityFacade, type ObservabilitySnapshot } from './facade.ts'
+import {
+  createObservabilityFacade,
+  type ObservabilityFacade,
+  type ObservabilitySnapshot,
+} from './facade.ts'
 
 const ObservabilityContext = createContext<ObservabilityFacade | null>(null)
 
@@ -12,7 +23,11 @@ interface ObservabilityProviderProps {
 export function ObservabilityProvider({ children, facade }: ObservabilityProviderProps) {
   const ownedFacade = useRef<ObservabilityFacade | null>(null)
   if (!facade && !ownedFacade.current) ownedFacade.current = createObservabilityFacade()
-  return <ObservabilityContext.Provider value={facade ?? ownedFacade.current}>{children}</ObservabilityContext.Provider>
+  return (
+    <ObservabilityContext.Provider value={facade ?? ownedFacade.current}>
+      {children}
+    </ObservabilityContext.Provider>
+  )
 }
 
 export function useObservabilityFacade(): ObservabilityFacade {
@@ -23,7 +38,11 @@ export function useObservabilityFacade(): ObservabilityFacade {
 
 export function useObservabilitySnapshot(): ObservabilitySnapshot {
   const facade = useObservabilityFacade()
-  return useSyncExternalStore(facade.subscribe, () => facade.snapshot, () => facade.snapshot)
+  return useSyncExternalStore(
+    facade.subscribe,
+    () => facade.snapshot,
+    () => facade.snapshot,
+  )
 }
 
 export interface ObservedErrorBoundaryFallbackProps {
@@ -31,7 +50,8 @@ export interface ObservedErrorBoundaryFallbackProps {
   resetErrorBoundary: () => void
 }
 
-type ObservedErrorBoundaryFallback = ReactNode | ((props: ObservedErrorBoundaryFallbackProps) => ReactNode)
+type ObservedErrorBoundaryFallback =
+  ReactNode | ((props: ObservedErrorBoundaryFallbackProps) => ReactNode)
 
 interface ObservedErrorBoundaryProps {
   children?: ReactNode
@@ -45,7 +65,10 @@ interface ObservedErrorBoundaryState {
   error: Error | null
 }
 
-class ObservedErrorBoundaryImpl extends Component<ObservedErrorBoundaryProps, ObservedErrorBoundaryState> {
+class ObservedErrorBoundaryImpl extends Component<
+  ObservedErrorBoundaryProps,
+  ObservedErrorBoundaryState
+> {
   state: ObservedErrorBoundaryState = { error: null }
 
   static getDerivedStateFromError(error: Error): ObservedErrorBoundaryState {
@@ -75,7 +98,10 @@ class ObservedErrorBoundaryImpl extends Component<ObservedErrorBoundaryProps, Ob
   render(): ReactNode {
     if (this.state.error) {
       if (typeof this.props.fallback === 'function') {
-        return this.props.fallback({ error: this.state.error, resetErrorBoundary: this.resetErrorBoundary })
+        return this.props.fallback({
+          error: this.state.error,
+          resetErrorBoundary: this.resetErrorBoundary,
+        })
       }
       return this.props.fallback ?? null
     }
@@ -83,16 +109,29 @@ class ObservedErrorBoundaryImpl extends Component<ObservedErrorBoundaryProps, Ob
   }
 }
 
-export function ObservedErrorBoundary({ children, fallback, onReset, resetKeys }: Omit<ObservedErrorBoundaryProps, 'facade'>) {
+export function ObservedErrorBoundary({
+  children,
+  fallback,
+  onReset,
+  resetKeys,
+}: Omit<ObservedErrorBoundaryProps, 'facade'>) {
   const facade = useObservabilityFacade()
   return (
-    <ObservedErrorBoundaryImpl facade={facade} fallback={fallback} onReset={onReset} resetKeys={resetKeys}>
+    <ObservedErrorBoundaryImpl
+      facade={facade}
+      fallback={fallback}
+      onReset={onReset}
+      resetKeys={resetKeys}
+    >
       {children}
     </ObservedErrorBoundaryImpl>
   )
 }
 
-function haveResetKeysChanged(previous: readonly unknown[] | undefined, next: readonly unknown[] | undefined): boolean {
+function haveResetKeysChanged(
+  previous: readonly unknown[] | undefined,
+  next: readonly unknown[] | undefined,
+): boolean {
   if (!previous || !next || previous.length !== next.length) return previous !== next
   return previous.some((value, index) => !Object.is(value, next[index]))
 }

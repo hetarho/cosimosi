@@ -10,4 +10,4 @@ module.exports = {
     // react-native-reanimated v4 worklets transform — MUST stay last in the list.
     'react-native-worklets/plugin',
   ],
-};
+}

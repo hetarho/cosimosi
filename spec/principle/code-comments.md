@@ -5,7 +5,7 @@ A comment exists to help a reader understand the code in front of them. Nothing 
 ## Rules
 
 - **Explain what is non-obvious now** — an invariant the code must keep, a platform constraint, a boundary rule, a
-  subtle reason the code *must* be this way.
+  subtle reason the code _must_ be this way.
 - **Never record process or history** — no "changed from X", "we chose A over B", change/ticket numbers, dated notes,
   TODO-with-a-story, or decision logs. Git history and the spec own that.
 - **If a comment would only make sense to someone who watched it being written, delete it.**

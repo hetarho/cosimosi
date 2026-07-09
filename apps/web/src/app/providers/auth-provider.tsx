@@ -38,7 +38,9 @@ function createDefaultWebAuthFacade(): AuthFacade {
     // Supabase login round-trip. The API's matching dev verifier (COSIMOSI_DEV_AUTH +
     // COSIMOSI_DEV_USER_ID) accepts the resulting `fake-token-<id>` bearer as this same user.
     return createAuthFacade({
-      adapter: new FakeAuthAdapter({ initial: { userId: devUserId, expiresAt: DEV_SESSION_EXPIRES_AT } }),
+      adapter: new FakeAuthAdapter({
+        initial: { userId: devUserId, expiresAt: DEV_SESSION_EXPIRES_AT },
+      }),
     })
   }
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL

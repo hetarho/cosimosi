@@ -1,6 +1,6 @@
 packages:
-  - "apps/web"
-  - "apps/mobile"
-  - "apps/blog"
-  - "packages/*"
+  - 'apps/web'
+  - 'apps/mobile'
+  - 'apps/blog'
+  - 'packages/*'
   # apps/api is the Go backend, driven by the Go toolchain — not a pnpm member.

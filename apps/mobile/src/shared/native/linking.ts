@@ -5,4 +5,4 @@
  * these prefixes into React Navigation's typed linking config, which owns the
  * native `Linking` integration — so feature/domain slices never touch links.
  */
-export const mobileLinkingPrefixes = ['cosimosi://'] as const;
+export const mobileLinkingPrefixes = ['cosimosi://'] as const

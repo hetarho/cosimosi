@@ -1,14 +1,14 @@
-import {useEffect, useRef} from 'react';
-import {Animated, StyleSheet} from 'react-native';
+import { useEffect, useRef } from 'react'
+import { Animated, StyleSheet } from 'react-native'
 
-import {tokens, useReducedMotion} from '@cosimosi/ui';
-import {advanceDurationMs, advanceSweepFrame, type AdvanceInterval} from '@cosimosi/universe';
+import { tokens, useReducedMotion } from '@cosimosi/ui'
+import { advanceDurationMs, advanceSweepFrame, type AdvanceInterval } from '@cosimosi/universe'
 
 export interface AccelerateTimeProps {
-  interval: AdvanceInterval;
+  interval: AdvanceInterval
   /** Fires once per sampled date while the sweep runs — the widget hands it to the HUD. */
-  onTick: (universeTime: string) => void;
-  onDone: () => void;
+  onTick: (universeTime: string) => void
+  onDone: () => void
 }
 
 // The neutral time-passing transition ([T2]) — the RN fork of the web veil (§3.5, primitive
@@ -18,19 +18,19 @@ export interface AccelerateTimeProps {
 // easing gives the 0 → peak → 0 envelope, so it stays smooth on the busiest JS frame right after a
 // launch; a lightweight rAF loop only sets the ≤maxDateSteps HUD dates (which must stay on JS) and
 // signals completion off the callback's own timestamp so the sweep is deterministic under tests.
-export function AccelerateTime({interval, onTick, onDone}: AccelerateTimeProps) {
-  const veilOpacity = useRef(new Animated.Value(0)).current;
-  const reducedMotion = useReducedMotion();
-  const callbacksRef = useRef({onTick, onDone});
-  callbacksRef.current = {onTick, onDone};
+export function AccelerateTime({ interval, onTick, onDone }: AccelerateTimeProps) {
+  const veilOpacity = useRef(new Animated.Value(0)).current
+  const reducedMotion = useReducedMotion()
+  const callbacksRef = useRef({ onTick, onDone })
+  callbacksRef.current = { onTick, onDone }
 
   useEffect(() => {
     if (reducedMotion) {
-      callbacksRef.current.onTick(interval.current);
-      callbacksRef.current.onDone();
-      return;
+      callbacksRef.current.onTick(interval.current)
+      callbacksRef.current.onDone()
+      return
     }
-    const duration = advanceDurationMs(interval);
+    const duration = advanceDurationMs(interval)
     const veil = Animated.timing(veilOpacity, {
       toValue: VEIL_MAX_OPACITY,
       duration,
@@ -38,43 +38,48 @@ export function AccelerateTime({interval, onTick, onDone}: AccelerateTimeProps) 
       // veil dims in and lifts back out over the one timing rather than needing a sequence.
       easing: (t: number) => Math.sin(Math.PI * t),
       useNativeDriver: true,
-    });
-    veil.start();
+    })
+    veil.start()
 
-    let frame = 0;
-    let start: number | null = null;
-    let lastShown: string | null = null;
+    let frame = 0
+    let start: number | null = null
+    let lastShown: string | null = null
     const step = (now: number) => {
       if (start === null) {
-        start = now;
+        start = now
       }
-      const {universeTime, done} = advanceSweepFrame(interval, now - start);
+      const { universeTime, done } = advanceSweepFrame(interval, now - start)
       if (universeTime !== lastShown) {
-        lastShown = universeTime;
-        callbacksRef.current.onTick(universeTime);
+        lastShown = universeTime
+        callbacksRef.current.onTick(universeTime)
       }
       if (done) {
-        callbacksRef.current.onDone();
-        return;
+        callbacksRef.current.onDone()
+        return
       }
-      frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
+      frame = requestAnimationFrame(step)
+    }
+    frame = requestAnimationFrame(step)
     return () => {
-      cancelAnimationFrame(frame);
-      veil.stop();
-      veilOpacity.setValue(0);
-    };
-  }, [interval, reducedMotion, veilOpacity]);
+      cancelAnimationFrame(frame)
+      veil.stop()
+      veilOpacity.setValue(0)
+    }
+  }, [interval, reducedMotion, veilOpacity])
 
-  return <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.veil, {opacity: veilOpacity}]} />;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, styles.veil, { opacity: veilOpacity }]}
+    />
+  )
 }
 
 // Presentation constant (code-level, the camera-rig precedent). Lower than the web veil on purpose:
 // the RN veil is a flat full-screen fill (no radial vignette), so it must stay light enough that the
 // scene centre — where the launched star reveals — reads through it at the sweep's midpoint.
-const VEIL_MAX_OPACITY = 0.45;
+const VEIL_MAX_OPACITY = 0.45
 
 const styles = StyleSheet.create({
-  veil: {backgroundColor: tokens.color.bg},
-});
+  veil: { backgroundColor: tokens.color.bg },
+})

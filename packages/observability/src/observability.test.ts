@@ -45,9 +45,9 @@ describe('observability facade', () => {
     const observability = createObservabilityFacade()
     const unsafeProperties = { authToken: 'private' } as TelemetryPropertyBag
 
-    expect(() => observability.captureMessage('nope', 'warning', { properties: unsafeProperties })).toThrow(
-      /Sensitive telemetry property/,
-    )
+    expect(() =>
+      observability.captureMessage('nope', 'warning', { properties: unsafeProperties }),
+    ).toThrow(/Sensitive telemetry property/)
   })
 
   it('threads the latest request id into frontend error reports', () => {
@@ -82,7 +82,10 @@ describe('observability facade', () => {
 
   it('uses committed flag defaults, dev overrides, and consent-aware remote values', () => {
     const memory = createInMemoryTelemetryAdapter()
-    const observability = createObservabilityFacade({ adapters: [memory], flagRegistry: platformFeatureFlags })
+    const observability = createObservabilityFacade({
+      adapters: [memory],
+      flagRegistry: platformFeatureFlags,
+    })
 
     expect(observability.getFeatureFlag('platform.diagnosticsSurface')).toBe(false)
 

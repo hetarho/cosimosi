@@ -1,8 +1,18 @@
-import { createClient, type AuthSession as SupabaseSession, type SupabaseClient, type SupportedStorage } from '@supabase/supabase-js'
+import {
+  createClient,
+  type AuthSession as SupabaseSession,
+  type SupabaseClient,
+  type SupportedStorage,
+} from '@supabase/supabase-js'
 
 import { VALUES } from '@cosimosi/config'
 
-import type { AuthAdapter, AuthAdapterChangeSource, AuthSession, SignInCredentials } from './auth-adapter.ts'
+import type {
+  AuthAdapter,
+  AuthAdapterChangeSource,
+  AuthSession,
+  SignInCredentials,
+} from './auth-adapter.ts'
 import type { SessionSnapshot } from './session.ts'
 
 export type SupabaseAuthStorage = SupportedStorage
@@ -40,7 +50,10 @@ export function createSupabaseAuthClient({
   })
 }
 
-export function createSupabaseAuthAdapter(client: SupabaseClient, { now = Date.now }: SupabaseAuthAdapterOptions = {}): AuthAdapter {
+export function createSupabaseAuthAdapter(
+  client: SupabaseClient,
+  { now = Date.now }: SupabaseAuthAdapterOptions = {},
+): AuthAdapter {
   return {
     async bootstrap() {
       const { data, error } = await client.auth.getSession()
@@ -138,5 +151,10 @@ function toSessionSnapshot(session: SupabaseSession | null, now: () => number): 
   if (converted.expiresAt <= now()) {
     return { status: 'expired', userId: null, expiresAt: null, error: null }
   }
-  return { status: 'authenticated', userId: converted.userId, expiresAt: converted.expiresAt, error: null }
+  return {
+    status: 'authenticated',
+    userId: converted.userId,
+    expiresAt: converted.expiresAt,
+    error: null,
+  }
 }

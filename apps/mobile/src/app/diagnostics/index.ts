@@ -1,1 +1,1 @@
-export {DiagnosticsScreen} from './DiagnosticsScreen.tsx';
+export { DiagnosticsScreen } from './DiagnosticsScreen.tsx'

@@ -54,7 +54,10 @@ describe('advanceSweepFrame', () => {
 
   it('runs the veil envelope 0 → peak → 0 and terminates at the duration', () => {
     const duration = advanceDurationMs(interval)
-    expect(advanceSweepFrame(interval, 0)).toMatchObject({ universeTime: '2026-07-01', done: false })
+    expect(advanceSweepFrame(interval, 0)).toMatchObject({
+      universeTime: '2026-07-01',
+      done: false,
+    })
     expect(advanceSweepFrame(interval, 0).veilIntensity).toBeCloseTo(0)
     expect(advanceSweepFrame(interval, duration / 2).veilIntensity).toBeCloseTo(1)
     const end = advanceSweepFrame(interval, duration)

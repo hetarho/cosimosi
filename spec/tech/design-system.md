@@ -15,16 +15,16 @@ It is the **platform-aware exception** to the "packages are DOM/native-free" rul
 it ships DOM (`*.tsx`) and React Native (`*.native.tsx`) siblings, selected by the
 package's `exports` conditions.
 
-| Concern | Location |
-|---|---|
-| Canonical token source (DOM-free TS map) | `packages/ui/src/tokens.ts` |
+| Concern                                        | Location                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| Canonical token source (DOM-free TS map)       | `packages/ui/src/tokens.ts`                                        |
 | Generated Tailwind `@theme` (web + NativeWind) | `packages/ui/src/theme.gen.css` (committed, via `pnpm gen:tokens`) |
-| Web base styles (reduced-motion, sr-only) | `packages/ui/src/base.css` |
-| Primitives | `packages/ui/src/primitives/<name>.tsx` + `<name>.native.tsx` |
-| a11y helpers | `packages/ui/src/a11y/*` |
-| Theme/background seam | `packages/ui/src/theme/*` |
-| Web entry (web barrel) | `packages/ui/src/index.ts` (`exports` `default`) |
-| RN entry (native barrel) | `packages/ui/src/index.native.ts` (`exports` `react-native`) |
+| Web base styles (reduced-motion, sr-only)      | `packages/ui/src/base.css`                                         |
+| Primitives                                     | `packages/ui/src/primitives/<name>.tsx` + `<name>.native.tsx`      |
+| a11y helpers                                   | `packages/ui/src/a11y/*`                                           |
+| Theme/background seam                          | `packages/ui/src/theme/*`                                          |
+| Web entry (web barrel)                         | `packages/ui/src/index.ts` (`exports` `default`)                   |
+| RN entry (native barrel)                       | `packages/ui/src/index.native.ts` (`exports` `react-native`)       |
 
 Apps depend on `@cosimosi/ui`; the package depends only on React (+ `react-dom` /
 `react-native` as platform peers). It imports **no** domain, cache, transport, or
@@ -43,7 +43,7 @@ generated file (`pnpm check:gen` enforces freshness). Two consumers:
 - **Raw TS values** where utilities can't reach: contrast checks, React Native
   style/color props (e.g. `ActivityIndicator` color), and tests import `tokens`.
 
-Only foundation tokens that should *not* fight Tailwind's defaults are emitted
+Only foundation tokens that should _not_ fight Tailwind's defaults are emitted
 (`CSS_TOKEN_GROUPS` = color, radius, shadow, duration, ease, ring, z). Spacing and
 font-size stay TS-only — Tailwind's built-in scales already cover those utilities.
 
@@ -57,7 +57,7 @@ numeric product tuning). Tokens live in code, as a token map + generated CSS.
   and `@cosimosi/ui/base.css` — the only place tokens enter the web app. Tailwind v4
   auto-detects content under the app only, so the entry CSS also declares
   `@source '…/packages/ui/src/**/*.{ts,tsx}'` — without it the utility classes used
-  *inside* the design-system primitives are never generated and primitives render
+  _inside_ the design-system primitives are never generated and primitives render
   unstyled.
 - **Mobile:** plain React Native `StyleSheet`, built from the same token map via
   `packages/ui/src/native-styles.ts` (rem→px, color/spacing/font-size scalars).
@@ -80,7 +80,7 @@ token scalars in `native-styles.ts`.
 **Class composition.** `lib/cx.ts` joins class fragments (no conflict resolution);
 the design-system's own variant/size maps are disjoint, so it suffices. The visual
 axes are set through `variant`/`size` props; a consumer `className` (web) is for
-*additive* utilities (layout, spacing), not for overriding a variant's color — two
+_additive_ utilities (layout, spacing), not for overriding a variant's color — two
 conflicting Tailwind utilities resolve by stylesheet order, not class-attribute
 order, so an override is not reliable without `tailwind-merge`. If reliable
 overrides are needed later, promote `cx` to a `cn` (clsx + tailwind-merge) with the

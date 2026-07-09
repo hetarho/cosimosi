@@ -21,11 +21,18 @@ const MIGRATIONS = 'apps/api/db/migrations'
 // GOOSE_DBSTRING, and takes the command via GOOSE_COMMAND (defaults to up).
 const goose = (command) =>
   run('docker', [
-    'run', '--rm', '--network', COMPOSE_NETWORK,
-    '-v', mount(MIGRATIONS, '/migrations'),
-    '-e', 'GOOSE_DRIVER=postgres',
-    '-e', `GOOSE_DBSTRING=${DBSTRING}`,
-    '-e', `GOOSE_COMMAND=${command}`,
+    'run',
+    '--rm',
+    '--network',
+    COMPOSE_NETWORK,
+    '-v',
+    mount(MIGRATIONS, '/migrations'),
+    '-e',
+    'GOOSE_DRIVER=postgres',
+    '-e',
+    `GOOSE_DBSTRING=${DBSTRING}`,
+    '-e',
+    `GOOSE_COMMAND=${command}`,
     GOOSE_IMAGE,
   ])
 

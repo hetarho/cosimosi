@@ -27,8 +27,10 @@ export interface ProposalState {
 export const useProposalStore = create<ProposalState>()((set) => ({
   memories: [],
   setFromResponse: (response) => set({ memories: draftsFromResponse(response) }),
-  rename: (index, name) => set((state) => ({ memories: renameMemory(state.memories, index, name) })),
-  setMood: (index, mood) => set((state) => ({ memories: setMemoryMood(state.memories, index, mood) })),
+  rename: (index, name) =>
+    set((state) => ({ memories: renameMemory(state.memories, index, name) })),
+  setMood: (index, mood) =>
+    set((state) => ({ memories: setMemoryMood(state.memories, index, mood) })),
   merge: (index) => set((state) => ({ memories: mergeMemory(state.memories, index) })),
   split: (index) => set((state) => ({ memories: splitMemory(state.memories, index) })),
   reset: () => set({ memories: [] }),

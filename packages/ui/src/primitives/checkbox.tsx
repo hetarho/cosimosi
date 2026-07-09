@@ -3,8 +3,16 @@ import type { ToggleOwnProps } from './types.ts'
 
 export type CheckboxProps = ToggleOwnProps
 
-export function Checkbox({ checked, defaultChecked, onCheckedChange, label, ariaLabel, disabled }: CheckboxProps) {
-  const controlled = checked !== undefined ? { checked } : { defaultChecked: defaultChecked ?? false }
+export function Checkbox({
+  checked,
+  defaultChecked,
+  onCheckedChange,
+  label,
+  ariaLabel,
+  disabled,
+}: CheckboxProps) {
+  const controlled =
+    checked !== undefined ? { checked } : { defaultChecked: defaultChecked ?? false }
 
   return (
     <label className={cx('inline-flex items-center gap-2', disabled && 'opacity-50')}>

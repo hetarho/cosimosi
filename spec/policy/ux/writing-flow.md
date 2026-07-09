@@ -5,8 +5,8 @@
 
 ## The flow
 
-*일기 쓰기* (write a diary) → *별 쪼개기* (split into 2–5 proposed memories, each with a suggested name + primary
-emotion) → edit → *별 띄우기* (launch, a star appears). The split is a synchronous preview that persists nothing; only
+_일기 쓰기_ (write a diary) → _별 쪼개기_ (split into 2–5 proposed memories, each with a suggested name + primary
+emotion) → edit → _별 띄우기_ (launch, a star appears). The split is a synchronous preview that persists nothing; only
 launch writes.
 
 ## Editing is session-only, meaning-inputs only

@@ -1,5 +1,5 @@
-import { createPlatformClient, createPlatformMockTransport } from '@cosimosi/api-client';
-import { createClientCacheTestContext } from '@cosimosi/client-cache';
+import { createPlatformClient, createPlatformMockTransport } from '@cosimosi/api-client'
+import { createClientCacheTestContext } from '@cosimosi/client-cache'
 
 export async function probeSharedPlatformClientImport() {
   const client = createPlatformClient(
@@ -7,9 +7,9 @@ export async function probeSharedPlatformClientImport() {
       message: 'pong',
       requestId: 'mobile-import-probe',
     })),
-  );
+  )
 
-  return client.ping({});
+  return client.ping({})
 }
 
 export async function probeSharedClientCacheFacade() {
@@ -18,7 +18,7 @@ export async function probeSharedClientCacheFacade() {
       message: 'pong',
       requestId: 'mobile-cache-probe',
     }),
-  });
+  })
 
-  return context.queryClient.fetchQuery(context.platform.pingQueryOptions());
+  return context.queryClient.fetchQuery(context.platform.pingQueryOptions())
 }

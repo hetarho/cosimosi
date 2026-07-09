@@ -51,7 +51,11 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
         if (snapshot.userId && snapshot.expiresAt !== null) {
           locallySignedOut = false
           suppressAdapterRefresh = false
-          actor.send({ type: 'AUTHENTICATED', userId: snapshot.userId, expiresAt: snapshot.expiresAt })
+          actor.send({
+            type: 'AUTHENTICATED',
+            userId: snapshot.userId,
+            expiresAt: snapshot.expiresAt,
+          })
         }
         break
       case 'expired':
@@ -83,7 +87,11 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
         if (!disposed && operationEpoch === epoch) {
           locallySignedOut = false
           suppressAdapterRefresh = false
-          actor.send({ type: 'SIGN_IN_SUCCESS', userId: session.userId, expiresAt: session.expiresAt })
+          actor.send({
+            type: 'SIGN_IN_SUCCESS',
+            userId: session.userId,
+            expiresAt: session.expiresAt,
+          })
         }
       } catch (error) {
         if (!disposed && operationEpoch === epoch) {
@@ -122,7 +130,11 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
         if (!disposed && operationEpoch === epoch) {
           locallySignedOut = false
           suppressAdapterRefresh = false
-          actor.send({ type: 'REFRESH_SUCCESS', userId: session.userId, expiresAt: session.expiresAt })
+          actor.send({
+            type: 'REFRESH_SUCCESS',
+            userId: session.userId,
+            expiresAt: session.expiresAt,
+          })
         }
       } catch (error) {
         if (!disposed && operationEpoch === epoch) {
@@ -134,7 +146,10 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
     getAccessToken() {
       if (disposed || locallySignedOut) return Promise.resolve(null)
       const snapshot = actor.getSnapshot().context
-      if ((snapshot.status !== 'authenticated' && snapshot.status !== 'refreshing') || snapshot.userId === null) {
+      if (
+        (snapshot.status !== 'authenticated' && snapshot.status !== 'refreshing') ||
+        snapshot.userId === null
+      ) {
         return Promise.resolve(null)
       }
       return adapter.getAccessToken().catch(() => null)
@@ -161,7 +176,11 @@ interface BootstrapCallbacks {
   didFinish(): void
 }
 
-async function bootstrap(adapter: AuthAdapter, actor: Actor<typeof sessionMachine>, callbacks: BootstrapCallbacks): Promise<void> {
+async function bootstrap(
+  adapter: AuthAdapter,
+  actor: Actor<typeof sessionMachine>,
+  callbacks: BootstrapCallbacks,
+): Promise<void> {
   try {
     const session = await adapter.bootstrap()
     if (callbacks.shouldApply()) {

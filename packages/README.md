@@ -12,10 +12,10 @@
 
 ## 후보 (아직 만들지 않음)
 
-| 후보 | 무엇 | 승격 조건 |
-|---|---|---|
-| `packages/core` | 앱 독립 순수 로직 — memory physics(`force-sim`의 순수 `tick`), values 해석, mood utilities | 순수 로직이 web 밖(모바일 등)에서 필요해질 때 |
-| `packages/rendering` (또는 `webgl`) | TSL 노드 조립, WebGPU renderer 포트, R3F 헬퍼, shader-art toolkit | 모바일 렌더러(`react-native-webgpu` 등)가 확정돼 같은 셰이더/씬을 공유할 때 — 그 전엔 app-local 유지가 기본 |
+| 후보                                | 무엇                                                                                       | 승격 조건                                                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `packages/core`                     | 앱 독립 순수 로직 — memory physics(`force-sim`의 순수 `tick`), values 해석, mood utilities | 순수 로직이 web 밖(모바일 등)에서 필요해질 때                                                               |
+| `packages/rendering` (또는 `webgl`) | TSL 노드 조립, WebGPU renderer 포트, R3F 헬퍼, shader-art toolkit                          | 모바일 렌더러(`react-native-webgpu` 등)가 확정돼 같은 셰이더/씬을 공유할 때 — 그 전엔 app-local 유지가 기본 |
 
 ## 이미 승격된 패키지
 

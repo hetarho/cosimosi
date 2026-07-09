@@ -64,7 +64,12 @@ export const sessionMachine = setup({
     ),
     setRefreshError: assign(({ context, event }) =>
       event.type === 'REFRESH_FAILURE'
-        ? { status: 'authenticated', userId: context.userId, expiresAt: context.expiresAt, error: event.error }
+        ? {
+            status: 'authenticated',
+            userId: context.userId,
+            expiresAt: context.expiresAt,
+            error: event.error,
+          }
         : {},
     ),
     setSignedOut: assign({ status: 'signedOut', userId: null, expiresAt: null, error: null }),
@@ -73,12 +78,18 @@ export const sessionMachine = setup({
   guards: {
     hasUser: ({ event }) => event.type === 'BOOTSTRAP_DONE' && event.userId !== null,
     hasCurrentUser: ({ context }) => context.userId !== null,
-    restoringBootstrapping: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'bootstrapping',
-    restoringSignedOut: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'signedOut',
-    restoringSigningIn: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'signingIn',
-    restoringAuthenticated: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'authenticated',
-    restoringRefreshing: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'refreshing',
-    restoringExpired: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'expired',
+    restoringBootstrapping: ({ event }) =>
+      event.type === 'RESTORE' && event.snapshot.status === 'bootstrapping',
+    restoringSignedOut: ({ event }) =>
+      event.type === 'RESTORE' && event.snapshot.status === 'signedOut',
+    restoringSigningIn: ({ event }) =>
+      event.type === 'RESTORE' && event.snapshot.status === 'signingIn',
+    restoringAuthenticated: ({ event }) =>
+      event.type === 'RESTORE' && event.snapshot.status === 'authenticated',
+    restoringRefreshing: ({ event }) =>
+      event.type === 'RESTORE' && event.snapshot.status === 'refreshing',
+    restoringExpired: ({ event }) =>
+      event.type === 'RESTORE' && event.snapshot.status === 'expired',
     restoringFailed: ({ event }) => event.type === 'RESTORE' && event.snapshot.status === 'failed',
   },
 }).createMachine({

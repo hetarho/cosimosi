@@ -1,4 +1,4 @@
-const reactNativePreset = require('@react-native/jest-preset');
+const reactNativePreset = require('@react-native/jest-preset')
 
 /**
  * Host-only Jest config for the app-shell smoke test. Runs in Node with the
@@ -16,7 +16,7 @@ module.exports = {
   setupFiles: [...reactNativePreset.setupFiles, '<rootDir>/jest.setup.js'],
   transform: {
     ...reactNativePreset.transform,
-    '^.+\\.(js|ts|tsx)$': ['babel-jest', {configFile: require.resolve('./babel.config.js')}],
+    '^.+\\.(js|ts|tsx)$': ['babel-jest', { configFile: require.resolve('./babel.config.js') }],
   },
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-native-safe-area-context)/)',
@@ -27,4 +27,4 @@ module.exports = {
     ...reactNativePreset.moduleNameMapper,
     '^@cosimosi/3d-renderer$': '<rootDir>/jest.mock.3d-renderer.tsx',
   },
-};
+}

@@ -48,7 +48,12 @@ export default defineConfig([
         { type: 'widgets', pattern: 'src/widgets/(*)/**/*', mode: 'full', capture: ['slice'] },
         { type: 'features', pattern: 'src/features/(*)/**/*', mode: 'full', capture: ['slice'] },
         // The `@x` public API is its own element, matched before the general entities pattern.
-        { type: 'entities-x', pattern: 'src/entities/(*)/@x/**/*', mode: 'full', capture: ['slice'] },
+        {
+          type: 'entities-x',
+          pattern: 'src/entities/(*)/@x/**/*',
+          mode: 'full',
+          capture: ['slice'],
+        },
         { type: 'entities', pattern: 'src/entities/(*)/**/*', mode: 'full', capture: ['slice'] },
         { type: 'shared', pattern: 'src/shared/(*)/**/*', mode: 'full', capture: ['slice'] },
       ],
@@ -92,7 +97,8 @@ export default defineConfig([
           patterns: [
             {
               group: ['three', 'three/*', '@react-three/fiber'],
-              message: 'Import three/R3F only via the @cosimosi/3d-renderer package, not directly in a slice.',
+              message:
+                'Import three/R3F only via the @cosimosi/3d-renderer package, not directly in a slice.',
             },
           ],
         },

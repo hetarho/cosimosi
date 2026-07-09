@@ -16,7 +16,8 @@ function getSnapshot(): boolean {
 
 function getReducedMotionQuery(): MediaQueryList | null {
   if (reducedMotionQuery !== undefined) return reducedMotionQuery
-  reducedMotionQuery = typeof window === 'undefined' || !window.matchMedia ? null : window.matchMedia(QUERY)
+  reducedMotionQuery =
+    typeof window === 'undefined' || !window.matchMedia ? null : window.matchMedia(QUERY)
   return reducedMotionQuery
 }
 

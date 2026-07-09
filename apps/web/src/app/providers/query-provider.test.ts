@@ -21,21 +21,32 @@ describe('web client cache provider config', () => {
   })
 
   it('prefers the explicit client cache API base URL', () => {
-    expect(resolveWebApiBaseUrl({ VITE_API_BASE_URL: 'https://api.example.test', VITE_API_URL: 'https://legacy.test' })).toBe(
-      'https://api.example.test',
-    )
+    expect(
+      resolveWebApiBaseUrl({
+        VITE_API_BASE_URL: 'https://api.example.test',
+        VITE_API_URL: 'https://legacy.test',
+      }),
+    ).toBe('https://api.example.test')
   })
 
   it('falls back to the existing API URL env name and then local API origin', () => {
-    expect(resolveWebApiBaseUrl({ VITE_API_BASE_URL: '', VITE_API_URL: 'https://api.test' })).toBe('https://api.test')
-    expect(resolveWebApiBaseUrl({ VITE_API_BASE_URL: '', VITE_API_URL: '' })).toBe('http://localhost:8080')
+    expect(resolveWebApiBaseUrl({ VITE_API_BASE_URL: '', VITE_API_URL: 'https://api.test' })).toBe(
+      'https://api.test',
+    )
+    expect(resolveWebApiBaseUrl({ VITE_API_BASE_URL: '', VITE_API_URL: '' })).toBe(
+      'http://localhost:8080',
+    )
   })
 
   it('provides the generated Connect transport through connect-query context', () => {
     const facade = createAuthFacade({ adapter: new FakeAuthAdapter() })
     const observability = createObservabilityFacade()
     const queryClient = createClientCacheQueryClient()
-    cleanupTasks.push(() => queryClient.clear(), () => observability.dispose(), () => facade.dispose())
+    cleanupTasks.push(
+      () => queryClient.clear(),
+      () => observability.dispose(),
+      () => facade.dispose(),
+    )
     const transport = createPlatformMockTransport(() => ({ message: 'pong' }))
     let contextTransport: ApiTransport | null = null
 

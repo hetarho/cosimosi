@@ -1,6 +1,9 @@
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
 
-import { ObservedErrorBoundary, type ObservedErrorBoundaryFallbackProps } from '@cosimosi/observability/react'
+import {
+  ObservedErrorBoundary,
+  type ObservedErrorBoundaryFallbackProps,
+} from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 

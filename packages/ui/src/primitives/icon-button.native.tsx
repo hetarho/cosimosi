@@ -1,10 +1,19 @@
-import { ActivityIndicator, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewStyle } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native'
 
 import { color, radius } from '../native-styles.ts'
 import type { ButtonColor, ControlSize, IconButtonOwnProps } from './types.ts'
 
 export type IconButtonProps = IconButtonOwnProps &
-  Omit<PressableProps, 'children' | 'accessibilityLabel' | 'style'> & { style?: StyleProp<ViewStyle> }
+  Omit<PressableProps, 'children' | 'accessibilityLabel' | 'style'> & {
+    style?: StyleProp<ViewStyle>
+  }
 
 // Mirrors button.native's two-axis model (appearance × colour).
 const CONTAINED_BG: Record<ButtonColor, string> = {

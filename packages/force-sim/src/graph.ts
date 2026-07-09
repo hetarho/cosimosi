@@ -113,7 +113,10 @@ export function createForceSimNodeIndex(graph: ForceSimGraph): ForceSimNodeIndex
   }
 }
 
-export function readForceSimCoordinate(buffer: ArrayLike<number>, index: number): ForceSimCoordinate {
+export function readForceSimCoordinate(
+  buffer: ArrayLike<number>,
+  index: number,
+): ForceSimCoordinate {
   const offset = forceSimCoordinateOffset(index)
   return {
     x: buffer[offset] ?? 0,

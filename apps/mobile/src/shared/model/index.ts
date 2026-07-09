@@ -4,4 +4,4 @@ export {
   useActorRef,
   useMachine,
   useSelector,
-} from './xstate-react.ts';
+} from './xstate-react.ts'

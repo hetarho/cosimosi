@@ -6,7 +6,8 @@ import { assign, setup } from 'xstate'
  * only the last diagnostic error. `splitting` / `revising` / `launching` are loading states the UI
  * shows a restrained affordance for; a failed split/revise/launch returns to a retriable state.
  */
-export type WritingFlowStatus = 'idle' | 'writing' | 'splitting' | 'reviewing' | 'revising' | 'launching' | 'done'
+export type WritingFlowStatus =
+  'idle' | 'writing' | 'splitting' | 'reviewing' | 'revising' | 'launching' | 'done'
 
 export interface WritingFlowContext {
   /** Surfaced on a failed split/revise/launch; opaque diagnostic, never a transport error object. */

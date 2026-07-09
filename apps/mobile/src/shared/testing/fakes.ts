@@ -1,29 +1,39 @@
-import {type ApiTransport} from '@cosimosi/api-client';
-import {FakeAuthAdapter, createAuthFacade, type AuthFacade, type AuthSession, type SupabaseAuthStorage} from '@cosimosi/auth';
+import { type ApiTransport } from '@cosimosi/api-client'
+import {
+  FakeAuthAdapter,
+  createAuthFacade,
+  type AuthFacade,
+  type AuthSession,
+  type SupabaseAuthStorage,
+} from '@cosimosi/auth'
 import {
   createClientCacheTestContext,
   type ClientCacheQueryClient,
   type ClientCacheTestContextOptions,
-} from '@cosimosi/client-cache';
-import {createObservabilityFacade, platformFeatureFlags, type ObservabilityFacade} from '@cosimosi/observability';
+} from '@cosimosi/client-cache'
+import {
+  createObservabilityFacade,
+  platformFeatureFlags,
+  type ObservabilityFacade,
+} from '@cosimosi/observability'
 
-const DEFAULT_FAKE_AUTH_TTL_MS = 60_000;
+const DEFAULT_FAKE_AUTH_TTL_MS = 60_000
 
 export interface CreateMobileShellFakesOptions {
-  userId?: string;
-  expiresAt?: number;
-  ping?: ClientCacheTestContextOptions['ping'];
+  userId?: string
+  expiresAt?: number
+  ping?: ClientCacheTestContextOptions['ping']
   /** Override the diagnostics-surface flag default (off) so the surface renders. */
-  diagnosticsEnabled?: boolean;
+  diagnosticsEnabled?: boolean
 }
 
 export interface MobileShellFakes {
-  authFacade: AuthFacade;
-  queryClient: ClientCacheQueryClient;
-  transport: ApiTransport;
-  observabilityFacade: ObservabilityFacade;
-  secureStorage: SupabaseAuthStorage;
-  dispose(): void;
+  authFacade: AuthFacade
+  queryClient: ClientCacheQueryClient
+  transport: ApiTransport
+  observabilityFacade: ObservabilityFacade
+  secureStorage: SupabaseAuthStorage
+  dispose(): void
 }
 
 /**
@@ -31,16 +41,18 @@ export interface MobileShellFakes {
  * locale source, and observability. No Supabase, no network, no native bridge,
  * so the shell renders without an emulator.
  */
-export function createMobileShellFakes(options: CreateMobileShellFakesOptions = {}): MobileShellFakes {
-  const ping = options.ping ?? (() => ({message: 'pong', requestId: 'mobile-shell-fake'}));
+export function createMobileShellFakes(
+  options: CreateMobileShellFakesOptions = {},
+): MobileShellFakes {
+  const ping = options.ping ?? (() => ({ message: 'pong', requestId: 'mobile-shell-fake' }))
   const authFacade = createAuthFacade({
-    adapter: new FakeAuthAdapter({initial: createInitialFakeSession(options)}),
-  });
-  const cache = createClientCacheTestContext({ping});
+    adapter: new FakeAuthAdapter({ initial: createInitialFakeSession(options) }),
+  })
+  const cache = createClientCacheTestContext({ ping })
   const flagRegistry = options.diagnosticsEnabled
-    ? platformFeatureFlags.withOverrides({'platform.diagnosticsSurface': true})
-    : platformFeatureFlags;
-  const observabilityFacade = createObservabilityFacade({flagRegistry});
+    ? platformFeatureFlags.withOverrides({ 'platform.diagnosticsSurface': true })
+    : platformFeatureFlags
+  const observabilityFacade = createObservabilityFacade({ flagRegistry })
   return {
     authFacade,
     queryClient: cache.queryClient,
@@ -48,32 +60,32 @@ export function createMobileShellFakes(options: CreateMobileShellFakesOptions = 
     observabilityFacade,
     secureStorage: createInMemorySecureTokenStorage(),
     dispose() {
-      authFacade.dispose();
-      cache.queryClient.clear();
-      observabilityFacade.dispose();
+      authFacade.dispose()
+      cache.queryClient.clear()
+      observabilityFacade.dispose()
     },
-  };
+  }
 }
 
 function createInitialFakeSession(options: CreateMobileShellFakesOptions): AuthSession | null {
-  if (!options.userId) return null;
+  if (!options.userId) return null
   return {
     userId: options.userId,
     expiresAt: options.expiresAt ?? Date.now() + DEFAULT_FAKE_AUTH_TTL_MS,
-  };
+  }
 }
 
 function createInMemorySecureTokenStorage(): SupabaseAuthStorage {
-  const store = new Map<string, string>();
+  const store = new Map<string, string>()
   return {
     getItem(key) {
-      return store.has(key) ? (store.get(key) as string) : null;
+      return store.has(key) ? (store.get(key) as string) : null
     },
     setItem(key, value) {
-      store.set(key, value);
+      store.set(key, value)
     },
     removeItem(key) {
-      store.delete(key);
+      store.delete(key)
     },
-  };
+  }
 }

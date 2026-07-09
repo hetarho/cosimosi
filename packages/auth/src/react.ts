@@ -1,4 +1,11 @@
-import { createContext, createElement, useContext, useRef, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  createContext,
+  createElement,
+  useContext,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 
 import type { AuthFacade } from './auth-adapter.ts'
 import type { SessionSnapshot } from './session.ts'
@@ -31,5 +38,9 @@ export function useAuthFacade(providerName = 'AuthProvider'): AuthFacade {
 
 export function useSessionSnapshot(): SessionSnapshot {
   const facade = useAuthFacade()
-  return useSyncExternalStore(facade.subscribe, () => facade.snapshot, () => facade.snapshot)
+  return useSyncExternalStore(
+    facade.subscribe,
+    () => facade.snapshot,
+    () => facade.snapshot,
+  )
 }

@@ -22,7 +22,12 @@ export interface EdgeLineLayerProps {
 // Lines are 1px here (WebGPU basic lines); fat-line width/brightness = synapse strength is a
 // later refinement. raycast is a no-op so picking stays on the instanced nodes; frustumCulled
 // off because bounds are never recomputed per frame.
-export function EdgeLineLayer({ endpointPairs, count, positions, color = '#ffffff' }: EdgeLineLayerProps) {
+export function EdgeLineLayer({
+  endpointPairs,
+  count,
+  positions,
+  color = '#ffffff',
+}: EdgeLineLayerProps) {
   const vertexCapacity = Math.max(1, count) * 2
   const linePositions = useMemo(() => new Float32Array(vertexCapacity * 3), [vertexCapacity])
   const geometry = useMemo(() => {

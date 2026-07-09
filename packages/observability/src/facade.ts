@@ -3,7 +3,11 @@ import {
   type SafeTelemetryProperties,
   type TelemetryPropertyBag,
 } from './safe-properties.ts'
-import { platformFeatureFlags, type FeatureFlagDefinition, type FeatureFlagRegistry } from './flags.ts'
+import {
+  platformFeatureFlags,
+  type FeatureFlagDefinition,
+  type FeatureFlagRegistry,
+} from './flags.ts'
 
 export type TelemetryLevel = 'debug' | 'info' | 'warning' | 'error' | 'fatal'
 export type ConsentState = 'denied' | 'granted'
@@ -33,10 +37,23 @@ export type FeatureFlagValueFromAdapter = boolean | undefined
 
 export interface ObservabilityFacade<K extends string = string> {
   readonly snapshot: ObservabilitySnapshot
-  captureException<const T extends TelemetryPropertyBag>(error: unknown, context?: TelemetryContext<T>): void
-  captureMessage<const T extends TelemetryPropertyBag>(message: string, level?: TelemetryLevel, context?: TelemetryContext<T>): void
-  track<const T extends TelemetryPropertyBag>(eventName: string, properties?: SafeTelemetryProperties<T>): boolean
-  identify<const T extends TelemetryPropertyBag>(userId: string, traits?: SafeTelemetryProperties<T>): boolean
+  captureException<const T extends TelemetryPropertyBag>(
+    error: unknown,
+    context?: TelemetryContext<T>,
+  ): void
+  captureMessage<const T extends TelemetryPropertyBag>(
+    message: string,
+    level?: TelemetryLevel,
+    context?: TelemetryContext<T>,
+  ): void
+  track<const T extends TelemetryPropertyBag>(
+    eventName: string,
+    properties?: SafeTelemetryProperties<T>,
+  ): boolean
+  identify<const T extends TelemetryPropertyBag>(
+    userId: string,
+    traits?: SafeTelemetryProperties<T>,
+  ): boolean
   resetIdentity(): void
   setConsent(consent: ConsentState): void
   setRequestId(requestId: string | null): void
@@ -50,7 +67,9 @@ export interface CreateObservabilityFacadeOptions<K extends string> {
   flagRegistry?: FeatureFlagRegistry<K>
 }
 
-export function createObservabilityFacade<K extends string = (typeof platformFeatureFlags.definitions)[number]['key']>({
+export function createObservabilityFacade<
+  K extends string = (typeof platformFeatureFlags.definitions)[number]['key'],
+>({
   adapters = [],
   flagRegistry = platformFeatureFlags as FeatureFlagRegistry<K>,
 }: CreateObservabilityFacadeOptions<K> = {}): ObservabilityFacade<K> {
@@ -66,7 +85,9 @@ export function createObservabilityFacade<K extends string = (typeof platformFea
     for (const listener of listeners) listener()
   }
 
-  function withRequestId<T extends TelemetryPropertyBag>(context: TelemetryContext<T> = {}): TelemetryContext {
+  function withRequestId<T extends TelemetryPropertyBag>(
+    context: TelemetryContext<T> = {},
+  ): TelemetryContext {
     const properties = normalizeTelemetryProperties(context.properties)
     if (snapshot.requestId && properties.requestId === undefined) {
       properties.requestId = snapshot.requestId
@@ -74,7 +95,10 @@ export function createObservabilityFacade<K extends string = (typeof platformFea
     return { ...context, properties }
   }
 
-  function withSafeError(error: unknown, context: TelemetryContext): { error: Error; context: TelemetryContext } {
+  function withSafeError(
+    error: unknown,
+    context: TelemetryContext,
+  ): { error: Error; context: TelemetryContext } {
     const safeError = redactedTelemetryError(error)
     const properties = normalizeTelemetryProperties(context.properties)
     if (properties.errorName === undefined) properties.errorName = safeError.name
@@ -104,7 +128,8 @@ export function createObservabilityFacade<K extends string = (typeof platformFea
     track(eventName, properties) {
       if (disposed) return false
       const safeProperties = normalizeTelemetryProperties(properties)
-      if (snapshot.requestId && safeProperties.requestId === undefined) safeProperties.requestId = snapshot.requestId
+      if (snapshot.requestId && safeProperties.requestId === undefined)
+        safeProperties.requestId = snapshot.requestId
       if (snapshot.consent !== 'granted') return blockAnalyticsCall()
       for (const adapter of adapters) adapter.track(eventName, safeProperties)
       return true
@@ -136,7 +161,8 @@ export function createObservabilityFacade<K extends string = (typeof platformFea
     },
     getFeatureFlag(key) {
       const definition = flagRegistry.getDefinition(key)
-      if (snapshot.consent !== 'granted' && requiresConsentForRemoteFlag(definition)) return flagRegistry.resolve(key)
+      if (snapshot.consent !== 'granted' && requiresConsentForRemoteFlag(definition))
+        return flagRegistry.resolve(key)
       for (const adapter of adapters) {
         const remoteValue = adapter.getFeatureFlag?.(definition)
         if (remoteValue !== undefined) return flagRegistry.resolve(key, remoteValue)

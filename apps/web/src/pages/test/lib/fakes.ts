@@ -1,5 +1,10 @@
 import type { ApiTransport } from '@cosimosi/api-client'
-import { FakeAuthAdapter, createAuthFacade, type AuthFacade, type AuthSession } from '@cosimosi/auth'
+import {
+  FakeAuthAdapter,
+  createAuthFacade,
+  type AuthFacade,
+  type AuthSession,
+} from '@cosimosi/auth'
 import {
   createClientCacheTestContext,
   type ClientCacheQueryClient,
@@ -25,7 +30,9 @@ export interface TestHarnessFakes {
   dispose(): void
 }
 
-export function createTestHarnessFakes(options: CreateTestHarnessFakesOptions = {}): TestHarnessFakes {
+export function createTestHarnessFakes(
+  options: CreateTestHarnessFakesOptions = {},
+): TestHarnessFakes {
   const authFacade = createAuthFacade({
     adapter: new FakeAuthAdapter({
       initial: createInitialFakeSession(options),

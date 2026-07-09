@@ -124,7 +124,8 @@ export function InstancedNodeLayer({
     if (!mesh || !body || count <= 0) return
     let added = false
     for (const channel of channels?.attributes ?? []) {
-      const existing = mesh.geometry.getAttribute(channel.name) as THREE.InstancedBufferAttribute | undefined
+      const existing = mesh.geometry.getAttribute(channel.name) as
+        THREE.InstancedBufferAttribute | undefined
       if (existing && existing.array.length === channel.array.length) {
         ;(existing.array as Float32Array).set(channel.array)
         existing.needsUpdate = true
@@ -133,7 +134,10 @@ export function InstancedNodeLayer({
         // attached — dispose its GPU buffer before replacing it, or it leaks (the body's
         // dispose cleanup runs only on unmount/body swap, not on a count change).
         existing?.dispose()
-        mesh.geometry.setAttribute(channel.name, new THREE.InstancedBufferAttribute(channel.array, channel.itemSize))
+        mesh.geometry.setAttribute(
+          channel.name,
+          new THREE.InstancedBufferAttribute(channel.array, channel.itemSize),
+        )
         added = true
       }
     }

@@ -174,8 +174,14 @@ export function buildEngramDemoScene(): EngramDemoScene {
   const synapses = buildSynapses()
   const degreeById = new Map<NeuronId, number>()
   for (const synapse of synapses) {
-    degreeById.set(synapse.neuronAId as NeuronId, (degreeById.get(synapse.neuronAId as NeuronId) ?? 0) + 1)
-    degreeById.set(synapse.neuronBId as NeuronId, (degreeById.get(synapse.neuronBId as NeuronId) ?? 0) + 1)
+    degreeById.set(
+      synapse.neuronAId as NeuronId,
+      (degreeById.get(synapse.neuronAId as NeuronId) ?? 0) + 1,
+    )
+    degreeById.set(
+      synapse.neuronBId as NeuronId,
+      (degreeById.get(synapse.neuronBId as NeuronId) ?? 0) + 1,
+    )
   }
 
   const neurons: Neuron[] = NEURON_SEEDS.map((neuron) => ({
@@ -217,7 +223,15 @@ export function buildEngramDemoScene(): EngramDemoScene {
     positions[offset + 2] = centroid[2] * 0.6 + ((i % 4) - 1.5) * 2.2
   })
 
-  return { neurons, memories, synapses, positions, neuronIndexById, firstMemoryIndex, universeTime: UNIVERSE_TIME }
+  return {
+    neurons,
+    memories,
+    synapses,
+    positions,
+    neuronIndexById,
+    firstMemoryIndex,
+    universeTime: UNIVERSE_TIME,
+  }
 }
 
 function centroidOf(
@@ -240,7 +254,12 @@ function centroidOf(
 // Neuron↔neuron links the co-activations imply (canonical neuronAId < neuronBId). Hand-listed so
 // the strengths visibly vary across the filament layer.
 function buildSynapses(): readonly Synapse[] {
-  const pairs: readonly { a: NeuronId; b: NeuronId; strength: number; coActivationCount: number }[] = [
+  const pairs: readonly {
+    a: NeuronId
+    b: NeuronId
+    strength: number
+    coActivationCount: number
+  }[] = [
     { a: 'n-rain', b: 'n-coffee', strength: 0.7, coActivationCount: 4 },
     { a: 'n-mother', b: 'n-kitchen', strength: 0.88, coActivationCount: 6 },
     { a: 'n-cat', b: 'n-kitchen', strength: 0.55, coActivationCount: 3 },

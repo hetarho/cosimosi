@@ -39,7 +39,9 @@ export const capabilityMessageKeys = {
   goldenParity: 'test_harness_capability_golden_parity',
 } as const satisfies Record<TestPanelCapability, TestPanelMessageKey>
 
-export function createTestPanelRegistry<const TPanels extends readonly TestPanelDefinition[]>(panels: TPanels): TPanels {
+export function createTestPanelRegistry<const TPanels extends readonly TestPanelDefinition[]>(
+  panels: TPanels,
+): TPanels {
   const seen = new Set<string>()
   for (const panel of panels) {
     if (seen.has(panel.id)) throw new Error(`duplicate test panel id: ${panel.id}`)
@@ -48,7 +50,9 @@ export function createTestPanelRegistry<const TPanels extends readonly TestPanel
   return panels
 }
 
-export function createCapabilitySet(capabilities: readonly TestPanelCapability[]): ReadonlySet<TestPanelCapability> {
+export function createCapabilitySet(
+  capabilities: readonly TestPanelCapability[],
+): ReadonlySet<TestPanelCapability> {
   return new Set(capabilities)
 }
 

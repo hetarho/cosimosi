@@ -16,6 +16,6 @@
     "directory": "./apps/web/dist",
     // SPA: 매칭되는 파일이 없는 경로(/universe, /dormant, 새로고침)는 200으로 index.html을
     // 돌려준다 — 없으면 딥링크가 404가 난다.
-    "not_found_handling": "single-page-application"
-  }
+    "not_found_handling": "single-page-application",
+  },
 }

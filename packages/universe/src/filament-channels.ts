@@ -26,11 +26,19 @@ export function filamentChannels(synapse: Synapse, universeTime: string | null):
   const elapsed = elapsedUniverseDays(synapse.lastActivatedUniverseTime, universeTime)
   const effective = effectiveSynapseStrength(synapse.strength, elapsed)
   const width = lerpClamp(rendering.filamentWidthMin, rendering.filamentWidthMax, effective)
-  const brightness = lerpClamp(rendering.filamentBrightnessMin, rendering.filamentBrightnessMax, effective)
+  const brightness = lerpClamp(
+    rendering.filamentBrightnessMin,
+    rendering.filamentBrightnessMax,
+    effective,
+  )
   return {
     width,
     brightness,
-    color: [FILAMENT_TINT[0] * brightness, FILAMENT_TINT[1] * brightness, FILAMENT_TINT[2] * brightness],
+    color: [
+      FILAMENT_TINT[0] * brightness,
+      FILAMENT_TINT[1] * brightness,
+      FILAMENT_TINT[2] * brightness,
+    ],
   }
 }
 

@@ -84,7 +84,8 @@ export function ColorField({
   useEffect(() => {
     const mesh = meshRef.current
     if (!mesh || !tints || count <= 0) return
-    const existing = mesh.geometry.getAttribute(FIELD_INSTANCE_TINT) as THREE.InstancedBufferAttribute | undefined
+    const existing = mesh.geometry.getAttribute(FIELD_INSTANCE_TINT) as
+      THREE.InstancedBufferAttribute | undefined
     if (existing && existing.array.length === tints.length) {
       ;(existing.array as Float32Array).set(tints)
       existing.needsUpdate = true

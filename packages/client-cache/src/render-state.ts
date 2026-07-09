@@ -4,13 +4,20 @@ export function assertClientCacheData(value: unknown, path = 'data'): void {
 
 function assertClientCacheDataInner(value: unknown, path: string, seen: WeakSet<object>): void {
   if (value === null || value === undefined) return
-  if (value instanceof ArrayBuffer || (ArrayBuffer.isView(value) && !(value instanceof Uint8Array))) {
-    throw new Error(`${path} is render-loop buffer data and does not belong in TanStack Query cache`)
+  if (
+    value instanceof ArrayBuffer ||
+    (ArrayBuffer.isView(value) && !(value instanceof Uint8Array))
+  ) {
+    throw new Error(
+      `${path} is render-loop buffer data and does not belong in TanStack Query cache`,
+    )
   }
   if (value instanceof Uint8Array) return
   if (typeof value !== 'object') return
   if (seen.has(value)) {
-    throw new Error(`${path} contains circular cache data and does not belong in TanStack Query cache`)
+    throw new Error(
+      `${path} contains circular cache data and does not belong in TanStack Query cache`,
+    )
   }
   seen.add(value)
   try {

@@ -28,7 +28,9 @@ export const universeNavigationMachine = setup({
     events: {} as UniverseNavigationEvent,
   },
   actions: {
-    setSelection: assign(({ event }) => (event.type === 'SELECT' ? { selectedNodeId: event.nodeId } : {})),
+    setSelection: assign(({ event }) =>
+      event.type === 'SELECT' ? { selectedNodeId: event.nodeId } : {},
+    ),
     clearSelection: assign({ selectedNodeId: null }),
     setTravelTarget: assign(({ event }) =>
       event.type === 'FOCUS' || event.type === 'FLY' ? { travelNodeId: event.nodeId } : {},

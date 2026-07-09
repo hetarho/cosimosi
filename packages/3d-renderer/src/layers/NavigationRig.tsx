@@ -4,7 +4,11 @@ import { MathUtils, Vector3 } from 'three/webgpu'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 import { canAttachDomControls } from './dom-controls.ts'
-import { createArrivalLatchState, stepArrivalLatch, type NavigationPoseMode } from './navigation-latch.ts'
+import {
+  createArrivalLatchState,
+  stepArrivalLatch,
+  type NavigationPoseMode,
+} from './navigation-latch.ts'
 
 export type { NavigationPoseMode }
 
@@ -117,7 +121,8 @@ export function NavigationRig({
     // change — even across an unobserved idle frame), and force-arrives past
     // arriveTimeoutSeconds so a glide can never strand the rig with controls disabled.
     const withinEpsilon =
-      camera.position.distanceTo(cameraGoal) < arriveEpsilon && lookTarget.distanceTo(targetVec) < arriveEpsilon
+      camera.position.distanceTo(cameraGoal) < arriveEpsilon &&
+      lookTarget.distanceTo(targetVec) < arriveEpsilon
     if (
       stepArrivalLatch(latch.current, {
         mode: pose.mode,

@@ -24,7 +24,12 @@ extend(THREE as any)
 // `transparent` (shared prop) is web-only for now: no native call site passes it, so this host
 // deliberately does not implement the zero-alpha clear. Wire it here if a native surface ever
 // needs a DOM/CSS backdrop behind the scene.
-export function UniverseCanvas({ children, dpr = [1, 2], fov = 55, forceWebGL = false }: UniverseCanvasProps) {
+export function UniverseCanvas({
+  children,
+  dpr = [1, 2],
+  fov = 55,
+  forceWebGL = false,
+}: UniverseCanvasProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const root = useRef<ReconcilerRoot<any> | null>(null)
   const canvasRef = useRef<CanvasRef>(null)
@@ -56,7 +61,12 @@ export function UniverseCanvas({ children, dpr = [1, 2], fov = 55, forceWebGL = 
       // backend is initialized before the first render() (a bare renderer would throw
       // "render() called before the backend is initialized").
       gl: async () => {
-        const gpuRenderer = new THREE.WebGPURenderer({ canvas, context, forceWebGL, antialias: true })
+        const gpuRenderer = new THREE.WebGPURenderer({
+          canvas,
+          context,
+          forceWebGL,
+          antialias: true,
+        })
         renderer.current = gpuRenderer
         await gpuRenderer.init()
         // react-native-webgpu needs an explicit present() after each on-screen frame (the web

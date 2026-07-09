@@ -40,7 +40,9 @@ function createStarMaterial(): THREE.MeshBasicNodeMaterial {
 
   // Offset the noise field by the seed so each star samples a different region → a different
   // coherent form. The seed is immutable input here (rendered, never mutated/animated [A7]).
-  const field = positionLocal.mul(FORM_FREQUENCY).add(vec3(seed.mul(4.1), seed.mul(1.7), seed.mul(0.3)))
+  const field = positionLocal
+    .mul(FORM_FREQUENCY)
+    .add(vec3(seed.mul(4.1), seed.mul(1.7), seed.mul(0.3)))
   const relief = ridged(field, { octaves: 3 }).mul(FORM_RELIEF)
   material.positionNode = positionLocal.add(normalLocal.mul(relief))
 

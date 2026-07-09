@@ -114,7 +114,12 @@ function insert(node: OctreeNode, positions: Float64Array, nodeIndex: number, de
   insertIntoChild(node, positions, nodeIndex, depth + 1)
 }
 
-function insertIntoChild(node: OctreeNode, positions: Float64Array, nodeIndex: number, depth: number): void {
+function insertIntoChild(
+  node: OctreeNode,
+  positions: Float64Array,
+  nodeIndex: number,
+  depth: number,
+): void {
   const offset = forceSimCoordinateOffset(nodeIndex)
   const x = positions[offset]
   const y = positions[offset + 1]

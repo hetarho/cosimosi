@@ -1,8 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createContextValues, type Interceptor, type UnaryRequest, type UnaryResponse } from '@connectrpc/connect'
+import {
+  createContextValues,
+  type Interceptor,
+  type UnaryRequest,
+  type UnaryResponse,
+} from '@connectrpc/connect'
 
-import { MemoryService, PlatformService, createGetUniverseQueryOptions, createPlatformPingQueryOptions } from '@cosimosi/api-client'
+import {
+  MemoryService,
+  PlatformService,
+  createGetUniverseQueryOptions,
+  createPlatformPingQueryOptions,
+} from '@cosimosi/api-client'
 
 import { clientCacheTimings, createClientCacheQueryClient } from './defaults.ts'
 import {
@@ -83,14 +93,18 @@ describe('client cache facade', () => {
     })
 
     expect(context.queryClient.getQueryData<{ message: string }>(key)?.message).toBe('optimistic')
-    expect(optimistic.snapshots).toMatchObject([{ queryKey: key, exists: true, data: { message: 'before' } }])
+    expect(optimistic.snapshots).toMatchObject([
+      { queryKey: key, exists: true, data: { message: 'before' } },
+    ])
     expect(optimistic.rollbackDelayMs).toBe(clientCacheTimings.optimisticRollbackMs)
 
     optimistic.rollback()
     expect(context.queryClient.getQueryData<{ message: string }>(key)?.message).toBe('before')
 
     await optimistic.settle()
-    expect(context.queryClient.getQueryCache().find({ queryKey: invalidateKey })?.state.isInvalidated).toBe(true)
+    expect(
+      context.queryClient.getQueryCache().find({ queryKey: invalidateKey })?.state.isInvalidated,
+    ).toBe(true)
   })
 
   it('treats undefined cache updates as explicit query removal', () => {
@@ -122,14 +136,20 @@ describe('client cache facade', () => {
       ],
     })
 
-    expect(context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message).toBe('optimistic')
+    expect(
+      context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message,
+    ).toBe('optimistic')
     optimistic.rollback()
-    expect(context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message).toBe('before')
+    expect(
+      context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message,
+    ).toBe('before')
 
     const restored = context.queryClient.getQueryData<{ items: { message: string }[] }>(key)
     if (restored) restored.items[0].message = 'mutated-after-rollback'
     optimistic.rollback()
-    expect(context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message).toBe('before')
+    expect(
+      context.queryClient.getQueryData<{ items: { message: string }[] }>(key)?.items[0].message,
+    ).toBe('before')
   })
 
   it('clones typed array views in fallback optimistic snapshots', async () => {
@@ -202,8 +222,12 @@ describe('client cache facade', () => {
       }),
     ).rejects.toThrow(/render-loop buffer/)
 
-    expect(context.queryClient.getQueryData<{ message: string }>(firstKey)?.message).toBe('first-before')
-    expect(context.queryClient.getQueryData<{ message: string }>(secondKey)?.message).toBe('second-before')
+    expect(context.queryClient.getQueryData<{ message: string }>(firstKey)?.message).toBe(
+      'first-before',
+    )
+    expect(context.queryClient.getQueryData<{ message: string }>(secondKey)?.message).toBe(
+      'second-before',
+    )
   })
 
   it('rejects render-loop buffers while allowing plain scalar fields', () => {
@@ -219,8 +243,12 @@ describe('client cache facade', () => {
         scalarScore: 0.8,
       }),
     ).not.toThrow()
-    expect(() => assertClientCacheData(new Map([['visual', new Float32Array([0, 1, 2])]]))).toThrow(/render-loop buffer/)
-    expect(() => assertClientCacheData(new Set([new Float32Array([0, 1, 2])]))).toThrow(/render-loop buffer/)
+    expect(() => assertClientCacheData(new Map([['visual', new Float32Array([0, 1, 2])]]))).toThrow(
+      /render-loop buffer/,
+    )
+    expect(() => assertClientCacheData(new Set([new Float32Array([0, 1, 2])]))).toThrow(
+      /render-loop buffer/,
+    )
   })
 
   it('rejects circular cache data with a bounded error', () => {
@@ -231,7 +259,9 @@ describe('client cache facade', () => {
   })
 
   it('registers GetUniverse as a GET-eligible, user-scoped, never-shared-CDN read', async () => {
-    const entry = memoryRpcCachePolicies.find((candidate) => candidate.method === MemoryService.method.getUniverse)
+    const entry = memoryRpcCachePolicies.find(
+      (candidate) => candidate.method === MemoryService.method.getUniverse,
+    )
 
     expect(entry).toBeDefined()
     expect(entry?.policy).toBe(userScopedUnaryReadPolicy)
@@ -241,14 +271,24 @@ describe('client cache facade', () => {
       sharedCdn: false,
       userScoped: true,
     })
-    expect(rpcMethodPolicyKey(MemoryService.method.getUniverse)).toBe('cosimosi.memory.v1.MemoryService/GetUniverse')
+    expect(rpcMethodPolicyKey(MemoryService.method.getUniverse)).toBe(
+      'cosimosi.memory.v1.MemoryService/GetUniverse',
+    )
     // The default client interceptor accepts the registered GET without throwing.
     await expect(
-      callPolicyInterceptor(createClientCacheRpcPolicyInterceptor(), 'GET', MemoryService.method.getUniverse),
+      callPolicyInterceptor(
+        createClientCacheRpcPolicyInterceptor(),
+        'GET',
+        MemoryService.method.getUniverse,
+      ),
     ).resolves.toBe(true)
     // Unregistered NO_SIDE_EFFECTS methods still fail loud.
     await expect(
-      callPolicyInterceptor(createRpcCachePolicyInterceptor([]), 'GET', MemoryService.method.getUniverse),
+      callPolicyInterceptor(
+        createRpcCachePolicyInterceptor([]),
+        'GET',
+        MemoryService.method.getUniverse,
+      ),
     ).rejects.toThrow(/without an explicit/)
   })
 
@@ -281,19 +321,31 @@ describe('client cache facade', () => {
         userScoped: true,
       }),
     ).toThrow(/User-scoped/)
-    expect(rpcMethodPolicyKey(PlatformService.method.ping)).toBe('cosimosi.platform.v1.PlatformService/Ping')
-    await expect(callPolicyInterceptor(createClientCacheRpcPolicyInterceptor(), 'POST')).resolves.toBe(true)
-    await expect(callPolicyInterceptor(createRpcCachePolicyInterceptor([]), 'GET')).rejects.toThrow(/without an explicit/)
-    await expect(callPolicyInterceptor(createRpcCachePolicyInterceptor([]), 'POST')).rejects.toThrow(/without an explicit/)
+    expect(rpcMethodPolicyKey(PlatformService.method.ping)).toBe(
+      'cosimosi.platform.v1.PlatformService/Ping',
+    )
+    await expect(
+      callPolicyInterceptor(createClientCacheRpcPolicyInterceptor(), 'POST'),
+    ).resolves.toBe(true)
+    await expect(callPolicyInterceptor(createRpcCachePolicyInterceptor([]), 'GET')).rejects.toThrow(
+      /without an explicit/,
+    )
+    await expect(
+      callPolicyInterceptor(createRpcCachePolicyInterceptor([]), 'POST'),
+    ).rejects.toThrow(/without an explicit/)
     await expect(
       callPolicyInterceptor(
-        createRpcCachePolicyInterceptor([{ method: PlatformService.method.ping, policy: unaryWritePolicy }]),
+        createRpcCachePolicyInterceptor([
+          { method: PlatformService.method.ping, policy: unaryWritePolicy },
+        ]),
         'POST',
       ),
     ).rejects.toThrow(/registered with a POST/)
     await expect(
       callPolicyInterceptor(
-        createRpcCachePolicyInterceptor([{ method: nonIdempotentMethod, policy: idempotentUnaryReadPolicy }]),
+        createRpcCachePolicyInterceptor([
+          { method: nonIdempotentMethod, policy: idempotentUnaryReadPolicy },
+        ]),
         'POST',
         nonIdempotentMethod,
       ),

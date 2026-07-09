@@ -1,4 +1,4 @@
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
 /**
  * Typed route registry for the mobile shell. This file and NavigationRoot are the
@@ -16,17 +16,17 @@ export const ROUTES = {
   diagnostics: 'Diagnostics',
   /** The 3D memory universe — the shared @cosimosi/3d-renderer scene. */
   universe: 'Universe',
-} as const;
+} as const
 
 export type RootStackParamList = {
-  Boot: undefined;
-  ShellHome: undefined;
-  Diagnostics: undefined;
-  Universe: undefined;
-};
+  Boot: undefined
+  ShellHome: undefined
+  Diagnostics: undefined
+  Universe: undefined
+}
 
 export type RootStackScreenProps<RouteName extends keyof RootStackParamList> =
-  NativeStackScreenProps<RootStackParamList, RouteName>;
+  NativeStackScreenProps<RootStackParamList, RouteName>
 
 declare global {
   // Makes the typed param list the default for navigation hooks app-wide.

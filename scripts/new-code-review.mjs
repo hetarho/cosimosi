@@ -10,7 +10,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const reportDir = join(root, 'spec', 'code-review')
 const tpl = join(root, 'scripts', 'templates', 'code-review.md')
 
-const title = process.argv.slice(2).filter((a) => !a.startsWith('--')).join(' ').trim()
+const title = process.argv
+  .slice(2)
+  .filter((a) => !a.startsWith('--'))
+  .join(' ')
+  .trim()
 if (!title) {
   console.error('Usage: pnpm spec:code-review "<title>"')
   process.exit(1)
@@ -24,13 +28,21 @@ if (existsSync(out)) {
   process.exit(1)
 }
 
-writeFileSync(out, fill(readFileSync(tpl, 'utf8'), { NN: nn, TITLE: title, DATE: localDate() }), 'utf8')
+writeFileSync(
+  out,
+  fill(readFileSync(tpl, 'utf8'), { NN: nn, TITLE: title, DATE: localDate() }),
+  'utf8',
+)
 console.log(`Created spec/code-review/${nn}.${slug}.md`)
-console.log(`Next: /cosimosi:create-code-review fills the read-only report, then /cosimosi:create-refactor-job ${nn} creates an implementation job from selected findings.`)
+console.log(
+  `Next: /cosimosi:create-code-review fills the read-only report, then /cosimosi:create-refactor-job ${nn} creates an implementation job from selected findings.`,
+)
 
 function nextNum(dir) {
   const archive = join(dir, 'archive')
-  const files = existsSync(archive) ? [...readdirSync(dir), ...readdirSync(archive)] : readdirSync(dir)
+  const files = existsSync(archive)
+    ? [...readdirSync(dir), ...readdirSync(archive)]
+    : readdirSync(dir)
   const nums = files
     .map((f) => parseInt((f.match(/^(\d+)/) || [])[1], 10))
     .filter((n) => !Number.isNaN(n))
@@ -38,13 +50,15 @@ function nextNum(dir) {
 }
 
 function slugify(s) {
-  return s
-    .toLowerCase()
-    .replace(/[\\/:*?"<>|.]+/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40) || 'untitled'
+  return (
+    s
+      .toLowerCase()
+      .replace(/[\\/:*?"<>|.]+/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40) || 'untitled'
+  )
 }
 
 function fill(t, m) {

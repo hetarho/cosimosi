@@ -30,7 +30,9 @@ describe('filamentChannels', () => {
   })
 
   it('is deterministic and colors by strength-scaled brightness, not emotion', () => {
-    expect(filamentChannels(synapse(), '2026-02-01')).toEqual(filamentChannels(synapse(), '2026-02-01'))
+    expect(filamentChannels(synapse(), '2026-02-01')).toEqual(
+      filamentChannels(synapse(), '2026-02-01'),
+    )
     const strong = filamentChannels(synapse({ strength: 0.9 }), '2026-01-01')
     const weak = filamentChannels(synapse({ strength: 0.1 }), '2026-01-01')
     expect(strong.color[2]).toBeGreaterThan(weak.color[2])
@@ -41,7 +43,11 @@ describe('projectFilaments', () => {
   const neuronIndex = { 'neuron-a': 0, 'neuron-b': 1, 'neuron-c': 2 }
 
   it('resolves endpoints to neuron slots only, preserving edge order', () => {
-    const batch = projectFilaments([synapse({ neuronAId: 'neuron-a', neuronBId: 'neuron-c' })], neuronIndex, null)
+    const batch = projectFilaments(
+      [synapse({ neuronAId: 'neuron-a', neuronBId: 'neuron-c' })],
+      neuronIndex,
+      null,
+    )
     expect(batch.count).toBe(1)
     expect(Array.from(batch.endpointPairs)).toEqual([0, 2])
     expect(batch.widths.length).toBe(1)

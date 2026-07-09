@@ -5,4 +5,4 @@ export {
   mobileDevUserId,
   readMobileFeatureFlagOverrides,
   type MobileFeatureFlagEnv,
-} from './runtime-config.ts';
+} from './runtime-config.ts'

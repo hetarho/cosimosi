@@ -12,7 +12,8 @@ import { repoRoot, section, ok, note, fail } from './lib.mjs'
 
 const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages']
 // tests/stories/fixtures and generated Go (sqlc/proto/values) are exempt.
-const SKIP_FILE = /(\.(test|spec|stories|probe)\.[jt]sx?$|_test\.go$|_gen\.go$|\.sql\.go$|\.pb\.go$|_connect\.go$)/
+const SKIP_FILE =
+  /(\.(test|spec|stories|probe)\.[jt]sx?$|_test\.go$|_gen\.go$|\.sql\.go$|\.pb\.go$|_connect\.go$)/
 const CODE_EXT = /\.(go|[jt]sx?)$/
 // only lines that carry a comment marker are inspected (so string literals aren't flagged);
 // Go and TS/JS share the // and /* */ markers.
@@ -95,7 +96,9 @@ for (const file of files) {
     if (!COMMENT.test(line)) return
     const hit = NARRATION.find((re) => re.test(line))
     if (hit) {
-      problems.push(`${file.replace(repoRoot + '/', '')}:${i + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/principle/code-comments.md).`)
+      problems.push(
+        `${file.replace(repoRoot + '/', '')}:${i + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/principle/code-comments.md).`,
+      )
     }
   })
 }
@@ -104,6 +107,8 @@ section('Comment-history — comments explain current code, not process/history 
 note(`scanned ${files.length} source files (tests/stories/fixtures exempt)`)
 if (problems.length) {
   for (const p of problems) console.error(`  \x1b[31m✗\x1b[0m ${p}`)
-  fail(`${problems.length} process/history comment(s). Rewrite as a timeless "why", or delete (git remembers history).`)
+  fail(
+    `${problems.length} process/history comment(s). Rewrite as a timeless "why", or delete (git remembers history).`,
+  )
 }
 ok('no process/history narration in source comments')

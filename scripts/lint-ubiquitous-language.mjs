@@ -8,13 +8,15 @@ const glossary = readFileSync(glossaryPath, 'utf8')
 const probe = process.argv.find((arg) => arg.startsWith('--probe='))?.slice('--probe='.length)
 
 const renderingSection = glossary.split('## 4. 렌더링 어휘')[1]?.split('## 5.')[0]
-if (!renderingSection) fail('could not find the rendering vocabulary section in spec/ubiquitous-language.md')
+if (!renderingSection)
+  fail('could not find the rendering vocabulary section in spec/ubiquitous-language.md')
 
 const renderingTerms = renderingSection
   .split('\n')
   .map((line) => line.match(/^\|\s*`([^`]+)`/)?.[1])
   .filter(Boolean)
-if (!renderingTerms.length) fail('could not extract rendering terms from spec/ubiquitous-language.md')
+if (!renderingTerms.length)
+  fail('could not extract rendering terms from spec/ubiquitous-language.md')
 
 const roots = ['apps/api', 'apps/web/src', 'apps/mobile/src', 'apps/blog/src', 'packages', 'proto']
 const extensions = new Set(['.go', '.sql', '.proto', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
@@ -34,7 +36,20 @@ const ignoredSegments = new Set([
 // channel mappers, and @cosimosi/universe-render holds the R3F bindings. The domain-mirror boundary
 // that must stay visual-free is @cosimosi/memory + apps/api (still scanned); the memory-edge and
 // synonym checks below still run on these packages regardless.
-const visualSegments = new Set(['ui', 'visual', 'visuals', 'render', 'renderer', 'rendering', 'canvas', 'shader', 'shaders', '3d-renderer', 'universe', 'universe-render'])
+const visualSegments = new Set([
+  'ui',
+  'visual',
+  'visuals',
+  'render',
+  'renderer',
+  'rendering',
+  'canvas',
+  'shader',
+  'shaders',
+  '3d-renderer',
+  'universe',
+  'universe-render',
+])
 const forbiddenEdgePatterns = [
   /\bEngram(?:Edge|Link|Relation|Relationship)\b/,
   /\bMemory(?:Edge|Link|Relation|Relationship)\b/,
@@ -50,7 +65,11 @@ const forbiddenSynonyms = [
 ]
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const pascal = (value) => value.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
+const pascal = (value) =>
+  value
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('')
 const renderingPatterns = (term) => [
   new RegExp(`(^|[^A-Za-z0-9_-])${escapeRegExp(term)}([^A-Za-z0-9_-]|$)`, 'i'),
   new RegExp(`\\b${escapeRegExp(term.replace(/-/g, '_'))}\\b`, 'i'),

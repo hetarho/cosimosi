@@ -39,4 +39,6 @@ const outPath = join(repoRoot, 'packages/ui/src/theme.gen.css')
 writeFileSync(outPath, css)
 
 section('design tokens')
-ok(`wrote ${themeLines.length} token(s) + ${themeBlocks.length} theme block(s) to packages/ui/src/theme.gen.css`)
+ok(
+  `wrote ${themeLines.length} token(s) + ${themeBlocks.length} theme block(s) to packages/ui/src/theme.gen.css`,
+)

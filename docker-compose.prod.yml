@@ -13,7 +13,7 @@ services:
     env_file: .env
     restart: unless-stopped
     expose:
-      - "8080"
+      - '8080'
     networks:
       edge:
         aliases:

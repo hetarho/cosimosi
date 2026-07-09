@@ -10,7 +10,13 @@ import { VALUES } from '@cosimosi/config'
 import { Badge, Button, type BadgeVariant } from '@cosimosi/ui'
 
 import { useAuthFacade, useSessionSnapshot } from '../../../shared/auth/index.ts'
-import { m, setActiveLocale, supportedLocales, useActiveLocale, type Locale } from '../../../shared/i18n/index.ts'
+import {
+  m,
+  setActiveLocale,
+  supportedLocales,
+  useActiveLocale,
+  type Locale,
+} from '../../../shared/i18n/index.ts'
 import { formatPingServerTime } from './platform-panel-format.ts'
 
 type PingStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -60,7 +66,10 @@ export function TransportPingPanel() {
         <KeyValueList
           rows={[
             [m.test_harness_message(), ping.response.message],
-            [m.test_harness_request_id(), ping.response.requestId || m.test_harness_not_available()],
+            [
+              m.test_harness_request_id(),
+              ping.response.requestId || m.test_harness_not_available(),
+            ],
             [m.test_harness_server_time(), formatPingServerTime(ping.response.serverTime)],
           ]}
         />
@@ -98,16 +107,29 @@ export function AuthSessionPanel() {
         rows={[
           [m.test_harness_auth_status(), session.status],
           [m.test_harness_auth_user_id(), session.userId ?? m.test_harness_no_user()],
-          [m.test_harness_auth_expires_at(), session.expiresAt ? new Date(session.expiresAt).toISOString() : m.test_harness_not_available()],
+          [
+            m.test_harness_auth_expires_at(),
+            session.expiresAt
+              ? new Date(session.expiresAt).toISOString()
+              : m.test_harness_not_available(),
+          ],
           [m.test_harness_auth_token(), tokenLabel(tokenState)],
         ]}
       />
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => void inspectToken()} loading={tokenState === 'loading'} color="neutral">
+        <Button
+          onClick={() => void inspectToken()}
+          loading={tokenState === 'loading'}
+          color="neutral"
+        >
           {m.test_harness_auth_inspect_token()}
         </Button>
         <Button
-          onClick={() => void auth.refresh().catch((refreshError: unknown) => setError(errorMessage(refreshError)))}
+          onClick={() =>
+            void auth
+              .refresh()
+              .catch((refreshError: unknown) => setError(errorMessage(refreshError)))
+          }
           disabled={session.status !== 'authenticated' && session.status !== 'refreshing'}
           color="neutral"
         >
@@ -161,7 +183,10 @@ export function QueryCachePanel() {
       ) : (
         <div className="grid gap-2">
           {entries.map((entry) => (
-            <div key={entry.queryHash} className="rounded-md border border-border bg-surface-subtle p-3 text-sm">
+            <div
+              key={entry.queryHash}
+              className="rounded-md border border-border bg-surface-subtle p-3 text-sm"
+            >
               <KeyValueList
                 rows={[
                   [m.test_harness_query_hash(), entry.queryHash],
@@ -185,7 +210,10 @@ export function ValuesPanel() {
           [m.test_harness_values_default_stale(), formatMs(VALUES.clientCache.defaultStaleMs)],
           [m.test_harness_values_default_gc(), formatMs(VALUES.clientCache.defaultGcMs)],
           [m.test_harness_values_retry_count(), String(VALUES.clientCache.defaultRetryCount)],
-          [m.test_harness_values_rollback_window(), formatMs(VALUES.clientCache.optimisticRollbackMs)],
+          [
+            m.test_harness_values_rollback_window(),
+            formatMs(VALUES.clientCache.optimisticRollbackMs),
+          ],
         ]}
       />
     </PanelStack>
@@ -200,7 +228,11 @@ export function I18nPanel() {
       <KeyValueList rows={[[m.test_harness_i18n_active_locale(), activeLocale]]} />
       <div className="flex flex-wrap gap-2">
         {supportedLocales.map((locale) => (
-          <Button key={locale} onClick={() => setActiveLocale(locale)} color={activeLocale === locale ? 'primary' : 'neutral'}>
+          <Button
+            key={locale}
+            onClick={() => setActiveLocale(locale)}
+            color={activeLocale === locale ? 'primary' : 'neutral'}
+          >
             {localeLabel(locale)}
           </Button>
         ))}
@@ -222,7 +254,10 @@ function KeyValueList({ rows }: { rows: readonly (readonly [string, string])[] }
   return (
     <dl className="grid gap-2 text-sm">
       {rows.map(([label, value]) => (
-        <div key={label} className="grid gap-1 rounded-md border border-border bg-surface-subtle p-3 sm:grid-cols-[12rem_1fr]">
+        <div
+          key={label}
+          className="grid gap-1 rounded-md border border-border bg-surface-subtle p-3 sm:grid-cols-[12rem_1fr]"
+        >
           <dt className="font-medium text-text-muted">{label}</dt>
           <dd className="break-words text-text">{value}</dd>
         </div>

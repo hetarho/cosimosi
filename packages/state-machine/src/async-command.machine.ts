@@ -7,12 +7,7 @@ import { assign, setup } from 'xstate'
  * owns only control metadata — the command payload and any data result live in
  * the caller / cache, referenced by id. ARCHITECTURE §3.2: control state only.
  */
-export type AsyncCommandStatus =
-  | 'idle'
-  | 'submitting'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
+export type AsyncCommandStatus = 'idle' | 'submitting' | 'succeeded' | 'failed' | 'cancelled'
 
 export interface AsyncCommandSnapshot {
   status: AsyncCommandStatus
@@ -95,12 +90,8 @@ export const asyncCommandMachine = setup({
     },
     submitting: {
       on: {
-        RESOLVE: [
-          { target: 'succeeded', guard: 'matchesAttempt', actions: 'setSucceeded' },
-        ],
-        REJECT: [
-          { target: 'failed', guard: 'matchesAttempt', actions: 'setFailed' },
-        ],
+        RESOLVE: [{ target: 'succeeded', guard: 'matchesAttempt', actions: 'setSucceeded' }],
+        REJECT: [{ target: 'failed', guard: 'matchesAttempt', actions: 'setFailed' }],
         CANCEL: { target: 'cancelled', actions: 'setCancelled' },
       },
     },

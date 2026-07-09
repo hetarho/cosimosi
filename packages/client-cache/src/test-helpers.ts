@@ -21,8 +21,10 @@ export interface ClientCacheTestContextOptions {
 }
 
 export function createClientCacheTestContext(options: ClientCacheTestContextOptions = {}) {
-  const transport = options.transport ?? createPlatformMockTransport(options.ping ?? (() => ({ message: 'pong' })))
-  const queryClient = options.queryClient ?? createClientCacheQueryClient(options.queryClientOptions)
+  const transport =
+    options.transport ?? createPlatformMockTransport(options.ping ?? (() => ({ message: 'pong' })))
+  const queryClient =
+    options.queryClient ?? createClientCacheQueryClient(options.queryClientOptions)
   return {
     queryClient,
     transport,
@@ -51,7 +53,10 @@ export function setClientCacheData<TData>(
   updater: TData | undefined | ((current: TData | undefined) => TData | undefined),
 ): TData | undefined {
   const current = queryClient.getQueryData<TData>(queryKey)
-  const next = typeof updater === 'function' ? (updater as (current: TData | undefined) => TData | undefined)(current) : updater
+  const next =
+    typeof updater === 'function'
+      ? (updater as (current: TData | undefined) => TData | undefined)(current)
+      : updater
   assertClientCacheData(next)
   if (next === undefined) {
     queryClient.removeQueries({ queryKey, exact: true })

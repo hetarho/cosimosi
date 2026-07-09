@@ -35,7 +35,13 @@ function seededRandom(seed: number): () => number {
 // hippocampus z-band, filling a disc of `radius` in x,y. Points carry ONLY a position — no
 // brightness, no color, no name, no identity; those belong to real neurons, never the silent
 // field. Purely rendering data: nothing here is persisted or read from the server.
-export function generateLatentField({ seed, count, zMin, zMax, radius }: LatentFieldParams): LatentField {
+export function generateLatentField({
+  seed,
+  count,
+  zMin,
+  zMax,
+  radius,
+}: LatentFieldParams): LatentField {
   const safeCount = Math.max(0, Math.trunc(count))
   const positions = new Float32Array(safeCount * 3)
   const random = seededRandom(seed)

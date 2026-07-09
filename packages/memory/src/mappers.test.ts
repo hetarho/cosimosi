@@ -8,7 +8,12 @@ import {
   SynapseDtoSchema,
 } from '@cosimosi/api-client/gen/cosimosi/memory/v1/memory_pb.ts'
 
-import { episodicMemoryFromDto, neuronFromDto, synapseFromDto, universeFromResponse } from './mappers.ts'
+import {
+  episodicMemoryFromDto,
+  neuronFromDto,
+  synapseFromDto,
+  universeFromResponse,
+} from './mappers.ts'
 
 const memoryDtoFixture = (overrides: Record<string, unknown> = {}) =>
   create(EpisodicMemoryDtoSchema, {
@@ -58,20 +63,31 @@ describe('GetUniverse proto→domain mappers', () => {
     const noEmotion = create(EpisodicMemoryDtoSchema, { id: 'memory-x', name: 'x' })
     expect(() => episodicMemoryFromDto(noEmotion)).toThrow(/without an emotion/)
     expect(() =>
-      episodicMemoryFromDto(memoryDtoFixture({ emotion: { mood: 'BLISSFUL', valence: 0, arousal: 0, intensity: 0 } })),
+      episodicMemoryFromDto(
+        memoryDtoFixture({ emotion: { mood: 'BLISSFUL', valence: 0, arousal: 0, intensity: 0 } }),
+      ),
     ).toThrow(/unknown mood/)
   })
 
   it('maps neurons, keeping the layout radius input (connectivity) and nullable name', () => {
     const named = neuronFromDto(
-      create(NeuronDtoSchema, { id: 'neuron-1', name: 'sea', neuronType: 'semantic', connectivity: 3 }),
+      create(NeuronDtoSchema, {
+        id: 'neuron-1',
+        name: 'sea',
+        neuronType: 'semantic',
+        connectivity: 3,
+      }),
     )
-    const unnamed = neuronFromDto(create(NeuronDtoSchema, { id: 'neuron-2', neuronType: 'spatial', connectivity: 1 }))
+    const unnamed = neuronFromDto(
+      create(NeuronDtoSchema, { id: 'neuron-2', neuronType: 'spatial', connectivity: 1 }),
+    )
 
     expect(named).toEqual({ id: 'neuron-1', name: 'sea', neuronType: 'semantic', connectivity: 3 })
     expect(unnamed.name).toBeNull()
     expect(() =>
-      neuronFromDto(create(NeuronDtoSchema, { id: 'neuron-3', neuronType: 'cosmic', connectivity: 0 })),
+      neuronFromDto(
+        create(NeuronDtoSchema, { id: 'neuron-3', neuronType: 'cosmic', connectivity: 0 }),
+      ),
     ).toThrow(/unknown neuron type/)
   })
 
@@ -90,10 +106,14 @@ describe('GetUniverse proto→domain mappers', () => {
     expect(synapse.neuronAId).toBe('neuron-1')
     expect(synapse.strength).toBeCloseTo(0.32)
     expect(() =>
-      synapseFromDto(create(SynapseDtoSchema, { id: 'synapse-2', neuronAId: 'neuron-2', neuronBId: 'neuron-1' })),
+      synapseFromDto(
+        create(SynapseDtoSchema, { id: 'synapse-2', neuronAId: 'neuron-2', neuronBId: 'neuron-1' }),
+      ),
     ).toThrow(/not canonical/)
     expect(() =>
-      synapseFromDto(create(SynapseDtoSchema, { id: 'synapse-3', neuronAId: 'neuron-1', neuronBId: 'neuron-1' })),
+      synapseFromDto(
+        create(SynapseDtoSchema, { id: 'synapse-3', neuronAId: 'neuron-1', neuronBId: 'neuron-1' }),
+      ),
     ).toThrow(/not canonical/)
   })
 
@@ -111,7 +131,9 @@ describe('GetUniverse proto→domain mappers', () => {
     expect(universe.neurons[0].neuronType).toBe('semantic')
     expect(universe.universeTime).toBeNull()
 
-    const dated = universeFromResponse(create(GetUniverseResponseSchema, { universeTime: '2026-07-01' }))
+    const dated = universeFromResponse(
+      create(GetUniverseResponseSchema, { universeTime: '2026-07-01' }),
+    )
     expect(dated.universeTime).toBe('2026-07-01')
   })
 

@@ -71,7 +71,14 @@ export interface AwakenSeedInput {
 // latent point nearest ANY anchor (excitability draws recruitment toward the recent cluster).
 // Without anchors (the first-ever neuron, or nothing recent): a random available point. Picks
 // never collide — N simultaneous births consume N distinct latent points (AC A4/A5).
-export function pickAwakenSeeds({ positions, count, consumed, anchors, births, random }: AwakenSeedInput): number[] {
+export function pickAwakenSeeds({
+  positions,
+  count,
+  consumed,
+  anchors,
+  births,
+  random,
+}: AwakenSeedInput): number[] {
   const picked: number[] = []
   const taken = new Set<number>()
   const isAvailable = (index: number) => !consumed.has(index) && !taken.has(index)
@@ -98,7 +105,11 @@ export function pickAwakenSeeds({ positions, count, consumed, anchors, births, r
   return picked
 }
 
-function nearestAnchorDistanceSq(positions: Float32Array, index: number, anchors: readonly AwakenAnchor[]): number {
+function nearestAnchorDistanceSq(
+  positions: Float32Array,
+  index: number,
+  anchors: readonly AwakenAnchor[],
+): number {
   const x = positions[index * 3] ?? 0
   const y = positions[index * 3 + 1] ?? 0
   const z = positions[index * 3 + 2] ?? 0
@@ -112,7 +123,11 @@ function nearestAnchorDistanceSq(positions: Float32Array, index: number, anchors
   return best
 }
 
-function randomAvailable(count: number, isAvailable: (index: number) => boolean, random: () => number): number {
+function randomAvailable(
+  count: number,
+  isAvailable: (index: number) => boolean,
+  random: () => number,
+): number {
   let available = 0
   for (let index = 0; index < count; index++) if (isAvailable(index)) available++
   if (available === 0) return -1

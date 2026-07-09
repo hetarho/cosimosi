@@ -33,6 +33,8 @@ describe('test panel registry', () => {
   })
 
   it('rejects duplicate ids before the route shell sees them', () => {
-    expect(() => createTestPanelRegistry([panel, panel] as const)).toThrow(/duplicate test panel id/)
+    expect(() => createTestPanelRegistry([panel, panel] as const)).toThrow(
+      /duplicate test panel id/,
+    )
   })
 })

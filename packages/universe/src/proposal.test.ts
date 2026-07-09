@@ -11,8 +11,24 @@ import {
 } from './proposal.ts'
 
 const sample: ProposedMemoryDraft[] = [
-  { id: 'a', name: 'Morning', mood: 'JOY', neurons: [{ name: 'cafe', type: 'entity' }, { name: 'quiet', type: 'semantic' }] },
-  { id: 'b', name: 'Meeting', mood: 'STRESS', neurons: [{ name: 'quiet', type: 'semantic' }, { name: 'office', type: 'spatial' }] },
+  {
+    id: 'a',
+    name: 'Morning',
+    mood: 'JOY',
+    neurons: [
+      { name: 'cafe', type: 'entity' },
+      { name: 'quiet', type: 'semantic' },
+    ],
+  },
+  {
+    id: 'b',
+    name: 'Meeting',
+    mood: 'STRESS',
+    neurons: [
+      { name: 'quiet', type: 'semantic' },
+      { name: 'office', type: 'spatial' },
+    ],
+  },
   { id: 'c', name: 'Evening', mood: 'CALM', neurons: [{ name: 'home', type: 'spatial' }] },
 ]
 
@@ -22,7 +38,11 @@ describe('draftsFromResponse', () => {
       memories: [{ name: 'A', mood: 'JOY', neurons: [{ name: 'n1', type: 'entity' }] }],
     } as unknown as SplitDiaryResponse
     const [draft] = draftsFromResponse(response)
-    expect(draft).toMatchObject({ name: 'A', mood: 'JOY', neurons: [{ name: 'n1', type: 'entity' }] })
+    expect(draft).toMatchObject({
+      name: 'A',
+      mood: 'JOY',
+      neurons: [{ name: 'n1', type: 'entity' }],
+    })
   })
 
   it('assigns each proposed memory a distinct stable id (for React keys)', () => {
@@ -80,7 +100,9 @@ describe('hand-edit helpers', () => {
   })
 
   it('splits a single-neuron memory by copying the neuron to both sides', () => {
-    const one: ProposedMemoryDraft[] = [{ id: 'solo', name: 'Solo', mood: 'CALM', neurons: [{ name: 'sea', type: 'entity' }] }]
+    const one: ProposedMemoryDraft[] = [
+      { id: 'solo', name: 'Solo', mood: 'CALM', neurons: [{ name: 'sea', type: 'entity' }] },
+    ]
     const next = splitMemory(one, 0)
     expect(next).toHaveLength(2)
     expect(next[0]?.neurons).toHaveLength(1)

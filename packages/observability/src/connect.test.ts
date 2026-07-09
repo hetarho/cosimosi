@@ -1,5 +1,11 @@
 import type { DescMessage, DescMethodUnary, DescService, MessageShape } from '@bufbuild/protobuf'
-import { Code, ConnectError, createContextValues, type UnaryRequest, type UnaryResponse } from '@connectrpc/connect'
+import {
+  Code,
+  ConnectError,
+  createContextValues,
+  type UnaryRequest,
+  type UnaryResponse,
+} from '@connectrpc/connect'
 import { describe, expect, it } from 'vitest'
 
 import { createTelemetryRequestIdInterceptor } from './connect.ts'
@@ -9,14 +15,17 @@ describe('request id interceptor', () => {
   it('records request ids from successful RPC responses', async () => {
     const observability = createObservabilityFacade()
     const interceptor = createTelemetryRequestIdInterceptor(observability)
-    const res = await interceptor(async () => ({
-      message: {} as MessageShape<DescMessage>,
-      stream: false,
-      service: fakeService,
-      method: fakeMethod,
-      header: new Headers({ 'x-request-id': 'request-success' }),
-      trailer: new Headers(),
-    } satisfies UnaryResponse))(fakeRequest())
+    const res = await interceptor(
+      async () =>
+        ({
+          message: {} as MessageShape<DescMessage>,
+          stream: false,
+          service: fakeService,
+          method: fakeMethod,
+          header: new Headers({ 'x-request-id': 'request-success' }),
+          trailer: new Headers(),
+        }) satisfies UnaryResponse,
+    )(fakeRequest())
 
     expect(res.header.get('x-request-id')).toBe('request-success')
     expect(observability.snapshot.requestId).toBe('request-success')
@@ -40,14 +49,17 @@ describe('request id interceptor', () => {
     const observability = createObservabilityFacade()
     const interceptor = createTelemetryRequestIdInterceptor(observability)
 
-    await interceptor(async () => ({
-      message: {} as MessageShape<DescMessage>,
-      stream: false,
-      service: fakeService,
-      method: fakeMethod,
-      header: new Headers({ 'x-request-id': 'authorization=secret' }),
-      trailer: new Headers(),
-    } satisfies UnaryResponse))(fakeRequest())
+    await interceptor(
+      async () =>
+        ({
+          message: {} as MessageShape<DescMessage>,
+          stream: false,
+          service: fakeService,
+          method: fakeMethod,
+          header: new Headers({ 'x-request-id': 'authorization=secret' }),
+          trailer: new Headers(),
+        }) satisfies UnaryResponse,
+    )(fakeRequest())
 
     expect(observability.snapshot.requestId).toBeNull()
   })

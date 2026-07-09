@@ -1,13 +1,13 @@
-import {Platform} from 'react-native';
+import { Platform } from 'react-native'
 
 import {
   platformFeatureFlags,
   readFeatureFlagOverrides,
   type FeatureFlagValue,
   type PlatformFeatureFlagKey,
-} from '@cosimosi/observability';
+} from '@cosimosi/observability'
 
-import {MOBILE_DEV_USER_ID} from './dev-user.gen.ts';
+import { MOBILE_DEV_USER_ID } from './dev-user.gen.ts'
 
 /**
  * Mobile runtime configuration seam. Base URL, app-version label, and which
@@ -21,7 +21,7 @@ import {MOBILE_DEV_USER_ID} from './dev-user.gen.ts';
  * URL through the same resolver boundary.
  */
 export function resolveMobileApiBaseUrl(platformOS: typeof Platform.OS = Platform.OS): string {
-  return platformOS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
+  return platformOS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080'
 }
 
 /**
@@ -29,10 +29,10 @@ export function resolveMobileApiBaseUrl(platformOS: typeof Platform.OS = Platfor
  * kept in sync with package.json until a native build-version source is wired at
  * deployment.
  */
-export const mobileAppVersion = '0.0.1';
+export const mobileAppVersion = '0.0.1'
 
 /** Feature flag that gates whether the diagnostics surface is reachable. */
-export const diagnosticsSurfaceFlag: PlatformFeatureFlagKey = 'platform.diagnosticsSurface';
+export const diagnosticsSurfaceFlag: PlatformFeatureFlagKey = 'platform.diagnosticsSurface'
 
 /**
  * Dev sign-in bypass user id (local only), NODE_ENV-gated (Metro inlines NODE_ENV) so a release
@@ -43,16 +43,19 @@ export const diagnosticsSurfaceFlag: PlatformFeatureFlagKey = 'platform.diagnost
  * user, scripts/seed-dev-universe.sql) when unset. Undefined in production → falls back to real auth.
  */
 export const mobileDevUserId: string | undefined =
-  process.env.NODE_ENV === 'production' ? undefined : MOBILE_DEV_USER_ID;
+  process.env.NODE_ENV === 'production' ? undefined : MOBILE_DEV_USER_ID
 
-export type MobileFeatureFlagEnv = Record<string, string | boolean | undefined>;
+export type MobileFeatureFlagEnv = Record<string, string | boolean | undefined>
 
 export function readMobileFeatureFlagOverrides(
   env: MobileFeatureFlagEnv = defaultMobileFeatureFlagEnv(),
 ): Partial<Record<PlatformFeatureFlagKey, FeatureFlagValue>> {
-  return readFeatureFlagOverrides(platformFeatureFlags.definitions, env);
+  return readFeatureFlagOverrides(platformFeatureFlags.definitions, env)
 }
 
 function defaultMobileFeatureFlagEnv(): MobileFeatureFlagEnv {
-  return ((globalThis as typeof globalThis & {process?: {env?: MobileFeatureFlagEnv}}).process?.env ?? {});
+  return (
+    (globalThis as typeof globalThis & { process?: { env?: MobileFeatureFlagEnv } }).process?.env ??
+    {}
+  )
 }

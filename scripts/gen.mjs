@@ -26,10 +26,17 @@ if (wantProto) {
     // Template lives at proto/buf.gen.yaml, module input is proto/ — both must be
     // explicit (a bare `buf generate` at repo root has no buf.gen.yaml and fails).
     run('docker', [
-      'run', '--rm',
-      '-v', mount('', '/work'), '-w', '/work',
+      'run',
+      '--rm',
+      '-v',
+      mount('', '/work'),
+      '-w',
+      '/work',
       bufImage,
-      'generate', '--template', 'proto/buf.gen.yaml', 'proto',
+      'generate',
+      '--template',
+      'proto/buf.gen.yaml',
+      'proto',
     ])
     trimGeneratedTypeScript(join(repoRoot, 'packages/api-client/src/gen'))
     ok('buf 완료')
@@ -43,9 +50,14 @@ if (wantSql) {
   if (hasSqlcInputs()) {
     note('sqlc generate (apps/api/db schema+queries → Go)')
     run('docker', [
-      'run', '--rm',
-      '-v', mount('apps/api', '/app'), '-w', '/app',
-      sqlcImage, 'generate',
+      'run',
+      '--rm',
+      '-v',
+      mount('apps/api', '/app'),
+      '-w',
+      '/app',
+      sqlcImage,
+      'generate',
     ])
     ok('sqlc 완료')
     did = true

@@ -44,14 +44,21 @@ describe('starChannels', () => {
 
   it('binds color to emotion only — same mood same color, different mood different color [I3][M3]', () => {
     const moods: readonly Mood[] = ['JOY', 'SAD']
-    const colors = moods.map((mood) => starChannels(memory({ emotion: createEmotion(mood) }), null).color)
+    const colors = moods.map(
+      (mood) => starChannels(memory({ emotion: createEmotion(mood) }), null).color,
+    )
     // A second JOY memory with different strength/seed still gets the same color.
-    expect(starChannels(memory({ emotion: createEmotion('JOY'), baseStrength: 0.9, seed: 9n }), null).color).toEqual(colors[0])
+    expect(
+      starChannels(memory({ emotion: createEmotion('JOY'), baseStrength: 0.9, seed: 9n }), null)
+        .color,
+    ).toEqual(colors[0])
     expect(colors[0]).not.toEqual(colors[1])
   })
 
   it('gives different seeds different form parameters [V5]', () => {
-    expect(starChannels(memory({ seed: 1n }), null).seed).not.toBe(starChannels(memory({ seed: 2n }), null).seed)
+    expect(starChannels(memory({ seed: 1n }), null).seed).not.toBe(
+      starChannels(memory({ seed: 2n }), null).seed,
+    )
   })
 })
 

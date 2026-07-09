@@ -6,7 +6,15 @@ import type { DialogOwnProps } from './types.ts'
 
 export type DialogProps = DialogOwnProps
 
-export function Dialog({ open, onClose, title, description, ariaLabel, closeLabel, children }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  description,
+  ariaLabel,
+  closeLabel,
+  children,
+}: DialogProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const descriptionId = useId()
@@ -59,7 +67,14 @@ export function Dialog({ open, onClose, title, description, ariaLabel, closeLabe
 
 function CloseIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="size-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
     </svg>
   )

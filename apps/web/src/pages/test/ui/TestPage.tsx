@@ -26,11 +26,18 @@ export function TestPage({
   availableCapabilities = PHASE_ONE_TEST_CAPABILITIES,
 }: TestPageProps) {
   useActiveLocale()
-  const capabilities = useMemo(() => createCapabilitySet(availableCapabilities), [availableCapabilities])
+  const capabilities = useMemo(
+    () => createCapabilitySet(availableCapabilities),
+    [availableCapabilities],
+  )
   const [selectedPanelId, setSelectedPanelId] = useState(() => panels[0]?.id ?? '')
   const selectedPanel = panels.find((panel) => panel.id === selectedPanelId) ?? panels[0]
-  const missingCapabilities = selectedPanel ? getMissingCapabilities(selectedPanel, capabilities) : []
-  const selectedPanelAvailable = selectedPanel ? isPanelAvailable(selectedPanel, capabilities) : false
+  const missingCapabilities = selectedPanel
+    ? getMissingCapabilities(selectedPanel, capabilities)
+    : []
+  const selectedPanelAvailable = selectedPanel
+    ? isPanelAvailable(selectedPanel, capabilities)
+    : false
 
   return (
     <main className="min-h-dvh bg-background text-text">
@@ -57,7 +64,11 @@ export function TestPage({
               >
                 <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
                   <span className="truncate">{readTestPanelMessage(panel.titleKey)}</span>
-                  <span className="text-xs opacity-80">{available ? m.test_harness_available_badge() : m.test_harness_unavailable_badge()}</span>
+                  <span className="text-xs opacity-80">
+                    {available
+                      ? m.test_harness_available_badge()
+                      : m.test_harness_unavailable_badge()}
+                  </span>
                 </span>
               </Button>
             )
@@ -69,13 +80,19 @@ export function TestPage({
             <article className="flex flex-col gap-4">
               <div className="flex flex-col gap-2 border-b border-border pb-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-semibold">{readTestPanelMessage(selectedPanel.titleKey)}</h2>
+                  <h2 className="text-xl font-semibold">
+                    {readTestPanelMessage(selectedPanel.titleKey)}
+                  </h2>
                   <Badge variant={selectedPanelAvailable ? 'success' : 'warning'}>
-                    {selectedPanelAvailable ? m.test_harness_available_badge() : m.test_harness_unavailable_badge()}
+                    {selectedPanelAvailable
+                      ? m.test_harness_available_badge()
+                      : m.test_harness_unavailable_badge()}
                   </Badge>
                 </div>
                 {selectedPanel.descriptionKey ? (
-                  <p className="text-sm leading-6 text-text-muted">{readTestPanelMessage(selectedPanel.descriptionKey)}</p>
+                  <p className="text-sm leading-6 text-text-muted">
+                    {readTestPanelMessage(selectedPanel.descriptionKey)}
+                  </p>
                 ) : null}
               </div>
               {selectedPanelAvailable ? (
@@ -103,12 +120,19 @@ function UnavailablePanel({
   return (
     <div className="rounded-md border border-border bg-surface-subtle p-4" role="status">
       <p className="font-medium">{m.test_harness_panel_unavailable_title()}</p>
-      <p className="mt-2 text-sm leading-6 text-text-muted">{m.test_harness_panel_unavailable_description()}</p>
+      <p className="mt-2 text-sm leading-6 text-text-muted">
+        {m.test_harness_panel_unavailable_description()}
+      </p>
       <div className="mt-4">
-        <p className="text-sm font-medium text-text-muted">{m.test_harness_missing_capabilities()}</p>
+        <p className="text-sm font-medium text-text-muted">
+          {m.test_harness_missing_capabilities()}
+        </p>
         <ul className="mt-2 grid gap-2">
           {missingCapabilities.map((capability) => (
-            <li key={`${panel.id}-${capability}`} className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
+            <li
+              key={`${panel.id}-${capability}`}
+              className="rounded-md border border-border bg-surface px-3 py-2 text-sm"
+            >
               {readTestPanelMessage(capabilityMessageKeys[capability])}
             </li>
           ))}

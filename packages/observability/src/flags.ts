@@ -4,7 +4,8 @@ export type FeatureFlagKind = 'release' | 'operational' | 'kill-switch'
 export interface FeatureFlagDefinition<K extends string = string> {
   readonly key: K
   readonly defaultValue: FeatureFlagValue
-  readonly owner: `plan/${number}${string}` | `changes/${number}${string}` | `code-review/${number}${string}`
+  readonly owner:
+    `plan/${number}${string}` | `changes/${number}${string}` | `code-review/${number}${string}`
   readonly kind: FeatureFlagKind
   readonly description: string
   readonly review: string
@@ -34,7 +35,8 @@ export function defineFeatureFlagRegistry<const T extends readonly FeatureFlagDe
   }
   for (const [key, value] of Object.entries(overrides)) {
     if (!definitionMap.has(key)) throw new Error(`Unknown feature flag override: ${key}`)
-    if (typeof value !== 'boolean') throw new Error(`Feature flags only accept boolean overrides: ${key}`)
+    if (typeof value !== 'boolean')
+      throw new Error(`Feature flags only accept boolean overrides: ${key}`)
     overrideMap.set(key, value)
   }
 
@@ -53,7 +55,10 @@ export function defineFeatureFlagRegistry<const T extends readonly FeatureFlagDe
       return remoteValue ?? getDefinition(key).defaultValue
     },
     withOverrides(nextOverrides) {
-      return defineFeatureFlagRegistry(definitions, { ...Object.fromEntries(overrideMap), ...nextOverrides })
+      return defineFeatureFlagRegistry(definitions, {
+        ...Object.fromEntries(overrideMap),
+        ...nextOverrides,
+      })
     },
   }
 }
@@ -64,7 +69,9 @@ function assertUniqueEnvOverrideNames(definitions: readonly FeatureFlagDefinitio
     const envName = featureFlagEnvName(definition.key)
     const previous = envNames.get(envName)
     if (previous) {
-      throw new Error(`Feature flag env override ${envName} is shared by ${previous} and ${definition.key}`)
+      throw new Error(
+        `Feature flag env override ${envName} is shared by ${previous} and ${definition.key}`,
+      )
     }
     envNames.set(envName, definition.key)
   }
@@ -76,7 +83,8 @@ export const platformFeatureFlags = defineFeatureFlagRegistry([
     defaultValue: false,
     owner: 'plan/10.observability-and-flags',
     kind: 'operational',
-    description: 'Allows development diagnostics surfaces to be enabled without changing product behavior.',
+    description:
+      'Allows development diagnostics surfaces to be enabled without changing product behavior.',
     review: 'Wired by the mobile diagnostics route; default off keeps it out of production.',
     remoteKey: 'platform-diagnostics-surface',
   },

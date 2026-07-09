@@ -1,9 +1,18 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps, type StyleProp, type ViewStyle } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native'
 
 import { color, fontSize, radius, space } from '../native-styles.ts'
 import type { ButtonColor, ButtonOwnProps, ControlSize } from './types.ts'
 
-export type ButtonProps = ButtonOwnProps & Omit<PressableProps, 'children' | 'style'> & { style?: StyleProp<ViewStyle> }
+export type ButtonProps = ButtonOwnProps &
+  Omit<PressableProps, 'children' | 'style'> & { style?: StyleProp<ViewStyle> }
 
 // Two axes on native too (no glass/blur — RN can't; solid fill / border / bare approximates it).
 // CONTAINED_* is the filled look per colour; INK is the label/border colour for outlined + text.
@@ -78,6 +87,12 @@ export function Button({
 }
 
 const styles = StyleSheet.create({
-  base: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space[2], borderRadius: radius.md },
+  base: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space[2],
+    borderRadius: radius.md,
+  },
   disabled: { opacity: 0.5 },
 })

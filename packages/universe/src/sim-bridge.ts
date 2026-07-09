@@ -119,7 +119,9 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
       const buffer = spareBuffers.pop()
       if (!buffer) return
       inFlight = true
-      worker.postMessage({ type: 'tick', dt: pendingDt, buffer } satisfies SimWorkerRequest, [buffer])
+      worker.postMessage({ type: 'tick', dt: pendingDt, buffer } satisfies SimWorkerRequest, [
+        buffer,
+      ])
       pendingDt = 0
     },
     dispose: () => stop(true),

@@ -15,7 +15,15 @@ const CONTROL_SIZES: Record<ControlSize, string> = {
   lg: 'h-12 px-3.5 text-lg',
 }
 
-export function TextField({ label, description, error, size = 'md', id, className, ...rest }: TextFieldProps) {
+export function TextField({
+  label,
+  description,
+  error,
+  size = 'md',
+  id,
+  className,
+  ...rest
+}: TextFieldProps) {
   const reactId = useId()
   const fieldId = id ?? reactId
   const descriptionId = description ? `${fieldId}-description` : undefined

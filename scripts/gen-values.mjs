@@ -17,7 +17,8 @@ const pascal = (value) => value.replace(/(^|_)([a-z0-9])/g, (_, __, c) => c.toUp
 
 const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value)
 const isString = (value) => typeof value === 'string'
-const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+const isPlainObject = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
 
 function describeValue(value) {
   if (typeof value === 'number') {
@@ -158,7 +159,12 @@ function assertUniqueGeneratedNames(groups) {
     for (const { key } of group.values) {
       const sourcePath = `${group.name}.${key}`
       assertUniqueGeneratedName('TypeScript key name', camel(key), sourcePath, tsKeys)
-      assertUniqueGeneratedName('Go constant name', pascal(group.name) + pascal(key), sourcePath, goNames)
+      assertUniqueGeneratedName(
+        'Go constant name',
+        pascal(group.name) + pascal(key),
+        sourcePath,
+        goNames,
+      )
     }
   }
 }
@@ -215,7 +221,10 @@ function renderGo(groups) {
           value: isString(value) ? JSON.stringify(value) : goNumberLiteral(value),
         }))
         const width = Math.max(...entries.map((entry) => entry.name.length))
-        decls.push({ kind: 'const', text: `const (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)` })
+        decls.push({
+          kind: 'const',
+          text: `const (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)`,
+        })
       }
 
       if (arrays.length) {
@@ -224,11 +233,17 @@ function renderGo(groups) {
           value: goArrayLiteral(value),
         }))
         const width = Math.max(...entries.map((entry) => entry.name.length))
-        decls.push({ kind: 'var', text: `var (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)` })
+        decls.push({
+          kind: 'var',
+          text: `var (\n${entries.map((entry) => `\t${entry.name.padEnd(width)} = ${entry.value}`).join('\n')}\n)`,
+        })
       }
 
       if (maps.length) {
-        const lines = maps.map(({ key, kind, value }) => `\t${pascal(name) + pascal(key)} = ${goMapLiteral(value, kind)}`)
+        const lines = maps.map(
+          ({ key, kind, value }) =>
+            `\t${pascal(name) + pascal(key)} = ${goMapLiteral(value, kind)}`,
+        )
         decls.push({ kind: 'var', text: `var (\n${lines.join('\n')}\n)` })
       }
 
@@ -279,7 +294,9 @@ export function generateValues({
 }
 
 function isDirectRun() {
-  return process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  return (
+    process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  )
 }
 
 if (isDirectRun()) {

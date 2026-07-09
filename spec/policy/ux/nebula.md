@@ -8,7 +8,7 @@
 
 The universe's color is **the emotions you re-read, not the average of your feelings**. The field blends **many** mood
 colors at once — each memory bleeds its color into its region, and a memory you revisit grows stronger and bleeds
-wider — so the overall tone reflects *what you often return to*, a deliberately different and more honest thing than an
+wider — so the overall tone reflects _what you often return to_, a deliberately different and more honest thing than an
 emotional average.
 
 - **The user must be told.** An honest-mirror notice is present near the field, stating this definition, so a warm

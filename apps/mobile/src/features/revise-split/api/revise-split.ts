@@ -20,7 +20,10 @@ export interface ReviseSplitInput {
 // features/revise-split api: the natural-language re-run ([W4a]). It sends the current proposal +
 // the user's instruction and returns the same schema-forced shape, which REPLACES the proposal —
 // so hand-edit and NL edit converge on one result. Unary, no persistence (§2.7).
-export async function requestReviseSplit(transport: Transport, input: ReviseSplitInput): Promise<SplitDiaryResponse> {
+export async function requestReviseSplit(
+  transport: Transport,
+  input: ReviseSplitInput,
+): Promise<SplitDiaryResponse> {
   return createMemoryClient(transport).reviseSplit({
     body: input.body,
     diaryDate: input.diaryDate,

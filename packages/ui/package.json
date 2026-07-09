@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "sideEffects": ["*.css"],
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     ".": {
       "react-native": "./src/index.native.ts",
@@ -23,8 +25,12 @@
     "react-native": ">=0.80"
   },
   "peerDependenciesMeta": {
-    "react-dom": { "optional": true },
-    "react-native": { "optional": true }
+    "react-dom": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",

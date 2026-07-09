@@ -7,8 +7,14 @@ import {
   type UniverseTimePhase,
 } from '@cosimosi/universe'
 
-import { AccelerateTime, useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
-import { ConfirmTimeSyncDialog, useTimeSyncConsentStore } from '../../../features/confirm-time-sync/index.ts'
+import {
+  AccelerateTime,
+  useAdvanceAnnouncementStore,
+} from '../../../features/accelerate-time/index.ts'
+import {
+  ConfirmTimeSyncDialog,
+  useTimeSyncConsentStore,
+} from '../../../features/confirm-time-sync/index.ts'
 import { UniverseTimeHud } from '../../../features/universe-clock-hud/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
 import { releaseAdvance } from '../model/release-advance.ts'
@@ -63,7 +69,8 @@ export function UniverseTimeOverlay() {
     () => () => {
       const played = playingRef.current
       if (played) releaseAdvance(played)
-      if (useTimeSyncConsentStore.getState().pending) useTimeSyncConsentStore.getState().settle('cancel')
+      if (useTimeSyncConsentStore.getState().pending)
+        useTimeSyncConsentStore.getState().settle('cancel')
     },
     [],
   )
@@ -88,7 +95,9 @@ export function UniverseTimeOverlay() {
 
   return (
     <>
-      {playing ? <AccelerateTime interval={playing.interval} onTick={setSweepTime} onDone={done} /> : null}
+      {playing ? (
+        <AccelerateTime interval={playing.interval} onTick={setSweepTime} onDone={done} />
+      ) : null}
       <UniverseTimeHud overrideTime={playing ? sweepTime : null} />
       <ConfirmTimeSyncDialog open={phase === 'confirming'} onAccept={accept} onReject={reject} />
     </>

@@ -50,8 +50,14 @@ export function FatLineLayer({
 
   const geometry = useMemo(() => {
     const ribbon = new THREE.BufferGeometry()
-    ribbon.setAttribute('position', new THREE.BufferAttribute(new Float32Array(capacity * 4 * 3), 3))
-    ribbon.setAttribute(FILAMENT_VERTEX_COLOR, new THREE.BufferAttribute(new Float32Array(capacity * 4 * 3), 3))
+    ribbon.setAttribute(
+      'position',
+      new THREE.BufferAttribute(new Float32Array(capacity * 4 * 3), 3),
+    )
+    ribbon.setAttribute(
+      FILAMENT_VERTEX_COLOR,
+      new THREE.BufferAttribute(new Float32Array(capacity * 4 * 3), 3),
+    )
     const index = new Uint32Array(capacity * 6)
     for (let edge = 0; edge < capacity; edge++) {
       const base = edge * 4
@@ -131,7 +137,14 @@ export function FatLineLayer({
   }, [geometry, material])
 
   const scratch = useMemo(
-    () => ({ a: new THREE.Vector3(), b: new THREE.Vector3(), cam: new THREE.Vector3(), dir: new THREE.Vector3(), view: new THREE.Vector3(), perp: new THREE.Vector3() }),
+    () => ({
+      a: new THREE.Vector3(),
+      b: new THREE.Vector3(),
+      cam: new THREE.Vector3(),
+      dir: new THREE.Vector3(),
+      view: new THREE.Vector3(),
+      perp: new THREE.Vector3(),
+    }),
     [],
   )
 
@@ -183,7 +196,13 @@ export function FatLineLayer({
   return <primitive object={mesh} />
 }
 
-function writeVertex(target: Float32Array, offset: number, end: THREE.Vector3, perp: THREE.Vector3, side: number) {
+function writeVertex(
+  target: Float32Array,
+  offset: number,
+  end: THREE.Vector3,
+  perp: THREE.Vector3,
+  side: number,
+) {
   target[offset] = end.x + perp.x * side
   target[offset + 1] = end.y + perp.y * side
   target[offset + 2] = end.z + perp.z * side

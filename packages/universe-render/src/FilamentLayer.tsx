@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 
-import { FatLineLayer, createFilamentBodySource, type CoordinateBufferRef } from '@cosimosi/3d-renderer'
+import {
+  FatLineLayer,
+  createFilamentBodySource,
+  type CoordinateBufferRef,
+} from '@cosimosi/3d-renderer'
 
 import { projectFilaments, useSynapseStore } from '@cosimosi/universe'
 
@@ -23,7 +27,12 @@ export function FilamentLayer({ positions, neuronIndexById, universeTime }: Fila
   const ids = useSynapseStore((state) => state.ids)
 
   const projection = useMemo(
-    () => projectFilaments(ids.map((id) => byId[id]).filter((synapse) => synapse !== undefined), neuronIndexById, universeTime),
+    () =>
+      projectFilaments(
+        ids.map((id) => byId[id]).filter((synapse) => synapse !== undefined),
+        neuronIndexById,
+        universeTime,
+      ),
     [byId, ids, neuronIndexById, universeTime],
   )
 

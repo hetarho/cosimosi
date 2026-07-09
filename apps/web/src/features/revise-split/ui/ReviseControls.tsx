@@ -34,7 +34,15 @@ export interface ReviseControlsProps {
 // re-runs the split ([W4a]). Both reach the same result; the widget applies hand-edits locally and
 // replaces the proposal on an NL revise. Merge/split honor the encode 2–5 bound ([E2], surfaced
 // from generated config, never hardcoded).
-export function ReviseControls({ memories, onRename, onSetMood, onMerge, onSplit, onRevise, busy }: ReviseControlsProps) {
+export function ReviseControls({
+  memories,
+  onRename,
+  onSetMood,
+  onMerge,
+  onSplit,
+  onRevise,
+  busy,
+}: ReviseControlsProps) {
   const [instruction, setInstruction] = useState('')
   const canMerge = memories.length > VALUES.encode.minMemories
   const canSplit = memories.length < VALUES.encode.maxMemories
@@ -43,7 +51,10 @@ export function ReviseControls({ memories, onRename, onSetMood, onMerge, onSplit
     <div className="flex flex-col gap-4">
       <ul className="flex flex-col gap-3">
         {memories.map((memory, index) => (
-          <li key={memory.id} className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3">
+          <li
+            key={memory.id}
+            className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3"
+          >
             <TextField
               label={m.writing_flow_name_label()}
               value={memory.name}

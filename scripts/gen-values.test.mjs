@@ -131,7 +131,8 @@ foo1:
   retry_1: 1
   retry1: 2
 `,
-    error: /client_cache\.retry1 generates duplicate TypeScript key name "retry1" already used by client_cache\.retry_1/,
+    error:
+      /client_cache\.retry1 generates duplicate TypeScript key name "retry1" already used by client_cache\.retry_1/,
   },
   {
     name: 'Go constant name collisions',
@@ -140,7 +141,8 @@ foo1:
 foo_bar:
   baz: 2
 `,
-    error: /foo_bar\.baz generates duplicate Go constant name "FooBarBaz" already used by foo\.bar_baz/,
+    error:
+      /foo_bar\.baz generates duplicate Go constant name "FooBarBaz" already used by foo\.bar_baz/,
   },
 ]
 

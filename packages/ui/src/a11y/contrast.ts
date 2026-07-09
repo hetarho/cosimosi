@@ -41,7 +41,11 @@ export function relativeLuminance(color: string): number {
     return 0.2126 * clamp01(r) + 0.7152 * clamp01(g) + 0.0722 * clamp01(b)
   }
   const { r, g, b } = parseHex(color)
-  return 0.2126 * srgbChannelToLinear(r) + 0.7152 * srgbChannelToLinear(g) + 0.0722 * srgbChannelToLinear(b)
+  return (
+    0.2126 * srgbChannelToLinear(r) +
+    0.7152 * srgbChannelToLinear(g) +
+    0.0722 * srgbChannelToLinear(b)
+  )
 }
 
 /** Contrast ratio (1–21) between two sRGB hex colors. */

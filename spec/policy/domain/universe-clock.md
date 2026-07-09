@@ -30,7 +30,7 @@ graph structure alone ([I5]).
    `CanLaunchAt`, and — when launchable — advances the clock to the diary date as the transaction's last step. The
    pre-transaction future-date rejection (`diary_date > today + 1 day` of timezone slack) keeps a launch from ever
    advancing the clock past real time ([I10]).
-2. **Recall → today, with consent.** `SyncToToday` is a *capability*, not a user action — no RPC, no button; Epic C's
+2. **Recall → today, with consent.** `SyncToToday` is a _capability_, not a user action — no RPC, no button; Epic C's
    `Recall` composes it behind the sync-consent gate ([R1a], modal owned by plan 31). Idempotent within a day.
 
 **Every advance fires the read-time progression hook, never a cron** ([T4]). `AdvanceProgression.OnAdvance(scope, tx,

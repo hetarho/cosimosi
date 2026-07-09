@@ -51,7 +51,10 @@ describe('memory transport facade', () => {
     const response = await client.getUniverse({})
 
     expect(response.memories).toHaveLength(1)
-    expect(response.memories[0].activations.map((a) => a.neuronId)).toEqual(['neuron-1', 'neuron-2'])
+    expect(response.memories[0].activations.map((a) => a.neuronId)).toEqual([
+      'neuron-1',
+      'neuron-2',
+    ])
     expect(response.neurons[1].name).toBeUndefined()
     expect(response.synapses[0].neuronAId).toBe('neuron-1')
     expect(response.universeTime).toBe('2026-07-01')

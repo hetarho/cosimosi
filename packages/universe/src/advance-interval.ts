@@ -49,7 +49,8 @@ export function isEmptyAdvance(interval: AdvanceInterval): boolean {
 
 export function advanceDurationMs(interval: AdvanceInterval): number {
   const days = advanceDays(interval)
-  const scaled = UNIVERSE_TIME_ACCELERATION.minDurationMs + days * UNIVERSE_TIME_ACCELERATION.perDayMs
+  const scaled =
+    UNIVERSE_TIME_ACCELERATION.minDurationMs + days * UNIVERSE_TIME_ACCELERATION.perDayMs
   return Math.min(UNIVERSE_TIME_ACCELERATION.maxDurationMs, scaled)
 }
 

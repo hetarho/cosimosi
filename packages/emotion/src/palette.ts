@@ -28,7 +28,10 @@ export const defaultMoodPalette: MoodPalette = {
 
 let activePalette = defaultMoodPalette
 
-export function defineMoodPalette(name: string, colors: Readonly<Record<Mood, Color>>): MoodPalette {
+export function defineMoodPalette(
+  name: string,
+  colors: Readonly<Record<Mood, Color>>,
+): MoodPalette {
   const palette = { name, colors }
   assertCompletePalette(palette)
   return palette

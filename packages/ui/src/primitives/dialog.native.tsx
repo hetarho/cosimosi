@@ -5,7 +5,15 @@ import type { DialogOwnProps } from './types.ts'
 
 export type DialogProps = DialogOwnProps
 
-export function Dialog({ open, onClose, title, description, ariaLabel, closeLabel, children }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  description,
+  ariaLabel,
+  closeLabel,
+  children,
+}: DialogProps) {
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -18,7 +26,12 @@ export function Dialog({ open, onClose, title, description, ariaLabel, closeLabe
         >
           <View style={styles.header}>
             {title ? <Text style={styles.title}>{title}</Text> : <View />}
-            <Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={onClose} style={styles.close}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={closeLabel}
+              onPress={onClose}
+              style={styles.close}
+            >
               <Text style={styles.closeGlyph}>✕</Text>
             </Pressable>
           </View>
@@ -31,9 +44,28 @@ export function Dialog({ open, onClose, title, description, ariaLabel, closeLabe
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: color.overlay, paddingHorizontal: space[4] },
-  panel: { width: '100%', maxWidth: 448, borderRadius: radius.lg, borderWidth: 1, borderColor: color.border, backgroundColor: color.surface, padding: space[6] },
-  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space[4] },
+  backdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: color.overlay,
+    paddingHorizontal: space[4],
+  },
+  panel: {
+    width: '100%',
+    maxWidth: 448,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.surface,
+    padding: space[6],
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: space[4],
+  },
   title: { color: color.text, fontSize: fontSize.lg, fontWeight: '600' },
   close: { padding: space[1] },
   closeGlyph: { color: color['text-muted'], fontSize: fontSize.base },

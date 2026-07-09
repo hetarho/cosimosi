@@ -13,13 +13,26 @@ import {
   type ForceSimValues,
 } from './graph.ts'
 import { applyForceSimForces, createForceModel, type ForceSimForceModel } from './forces.ts'
-import { clampToHippocampusZ, placeEpisodicMemoriesAtCentroids, seedInitialPositions } from './seed.ts'
+import {
+  clampToHippocampusZ,
+  placeEpisodicMemoriesAtCentroids,
+  seedInitialPositions,
+} from './seed.ts'
 
 // Solver-internal integration constants (not layout tuning): the fixed-timestep reference
 // rate and the clamp on how many sub-steps one slow frame may take.
 const FRAME_RATE_NORMALIZER = 60
 const MAX_FRAME_STEP = 4
-const FORBIDDEN_INPUT_FIELDS = new Set(['mood', 'valence', 'arousal', 'intensity', 'color', 'time', 'timestamp', 'date'])
+const FORBIDDEN_INPUT_FIELDS = new Set([
+  'mood',
+  'valence',
+  'arousal',
+  'intensity',
+  'color',
+  'time',
+  'timestamp',
+  'date',
+])
 
 export const DEFAULT_FORCE_SIM_VALUES: ForceSimValues = VALUES.forceSim
 
@@ -89,13 +102,19 @@ function integrateNeurons(
   for (const nodeIndex of model.neuronNodeIndices) {
     const offset = forceSimCoordinateOffset(nodeIndex)
 
-    velocities[offset] = (velocities[offset] + forces[offset] * alpha * frameStep) * values.velocityDamping
-    velocities[offset + 1] = (velocities[offset + 1] + forces[offset + 1] * alpha * frameStep) * values.velocityDamping
-    velocities[offset + 2] = (velocities[offset + 2] + forces[offset + 2] * alpha * frameStep) * values.velocityDamping
+    velocities[offset] =
+      (velocities[offset] + forces[offset] * alpha * frameStep) * values.velocityDamping
+    velocities[offset + 1] =
+      (velocities[offset + 1] + forces[offset + 1] * alpha * frameStep) * values.velocityDamping
+    velocities[offset + 2] =
+      (velocities[offset + 2] + forces[offset + 2] * alpha * frameStep) * values.velocityDamping
 
     positions[offset] += velocities[offset] * frameStep
     positions[offset + 1] += velocities[offset + 1] * frameStep
-    positions[offset + 2] = clampToHippocampusZ(positions[offset + 2] + velocities[offset + 2] * frameStep, values)
+    positions[offset + 2] = clampToHippocampusZ(
+      positions[offset + 2] + velocities[offset + 2] * frameStep,
+      values,
+    )
   }
 }
 
@@ -155,10 +174,14 @@ function validateGraph(graph: ForceSimGraph): void {
   for (const synapse of graph.synapses) {
     rejectForbiddenFields('synapse', synapse)
     if (!neuronIds.has(synapse.sourceNeuronId)) {
-      throw new Error(`force-sim synapse references unknown source neuron: ${synapse.sourceNeuronId}`)
+      throw new Error(
+        `force-sim synapse references unknown source neuron: ${synapse.sourceNeuronId}`,
+      )
     }
     if (!neuronIds.has(synapse.targetNeuronId)) {
-      throw new Error(`force-sim synapse references unknown target neuron: ${synapse.targetNeuronId}`)
+      throw new Error(
+        `force-sim synapse references unknown target neuron: ${synapse.targetNeuronId}`,
+      )
     }
     assertFinite('synapse.strength', synapse.strength)
     assertUnitInterval('synapse.strength', synapse.strength)
@@ -167,7 +190,9 @@ function validateGraph(graph: ForceSimGraph): void {
   for (const activation of graph.activations) {
     rejectForbiddenFields('activation', activation)
     if (!episodicMemoryIds.has(activation.episodicMemoryId)) {
-      throw new Error(`force-sim activation references unknown episodic memory: ${activation.episodicMemoryId}`)
+      throw new Error(
+        `force-sim activation references unknown episodic memory: ${activation.episodicMemoryId}`,
+      )
     }
     if (!neuronIds.has(activation.neuronId)) {
       throw new Error(`force-sim activation references unknown neuron: ${activation.neuronId}`)

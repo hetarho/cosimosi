@@ -14,7 +14,12 @@ export interface StarFieldProps {
 
 // Shared R3F layer: the small floating background stars. Unlit (MeshBasicNodeMaterial) so
 // they read as light points. Deterministic scatter — no domain data, no force-sim.
-export function StarField({ count = 400, radius = 60, color = '#cfe0ff', spin = 0.01 }: StarFieldProps) {
+export function StarField({
+  count = 400,
+  radius = 60,
+  color = '#cfe0ff',
+  spin = 0.01,
+}: StarFieldProps) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const geometry = useMemo(() => new THREE.SphereGeometry(0.18, 8, 8), [])
   const material = useMemo(() => {
@@ -45,10 +50,13 @@ export function StarField({ count = 400, radius = 60, color = '#cfe0ff', spin = 
     mesh.instanceMatrix.needsUpdate = true
   }, [count, radius])
 
-  useEffect(() => () => {
-    geometry.dispose()
-    material.dispose()
-  }, [geometry, material])
+  useEffect(
+    () => () => {
+      geometry.dispose()
+      material.dispose()
+    },
+    [geometry, material],
+  )
 
   useFrame((_, delta) => {
     if (ref.current) ref.current.rotation.y += delta * spin

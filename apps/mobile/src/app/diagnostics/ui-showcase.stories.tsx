@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState, type ReactNode } from 'react'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import {
   Badge,
@@ -16,26 +16,26 @@ import {
   VisuallyHidden,
   tokens,
   useTheme,
-} from '@cosimosi/ui';
+} from '@cosimosi/ui'
 
 // Dev surface to eyeball every primitive on React Native. The `.stories.tsx` name
 // keeps its demo copy out of the i18n raw-string lint.
 
-function Section({title, children}: {title: string; children: ReactNode}) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={styles.row}>{children}</View>
     </View>
-  );
+  )
 }
 
 export function UiShowcase() {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [toastOpen, setToastOpen] = useState(false);
-  const [checked, setChecked] = useState(true);
-  const [on, setOn] = useState(false);
-  const {theme, background, setBackground} = useTheme();
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [toastOpen, setToastOpen] = useState(false)
+  const [checked, setChecked] = useState(true)
+  const [on, setOn] = useState(false)
+  const { theme, background, setBackground } = useTheme()
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -46,7 +46,9 @@ export function UiShowcase() {
         <Button color="secondary">Secondary</Button>
         <Button color="tertiary">Tertiary</Button>
         <Button color="neutral">Neutral</Button>
-        <Button variant="text" color="neutral">Ghost</Button>
+        <Button variant="text" color="neutral">
+          Ghost
+        </Button>
         <Button color="danger">Danger</Button>
         <Button loading>Loading</Button>
         <Button disabled>Disabled</Button>
@@ -83,7 +85,8 @@ export function UiShowcase() {
           onClose={() => setDialogOpen(false)}
           title="Delete engram?"
           description="This cannot be undone."
-          closeLabel="Close">
+          closeLabel="Close"
+        >
           <View style={styles.dialogActions}>
             <Button variant="text" color="neutral" onPress={() => setDialogOpen(false)}>
               Cancel
@@ -118,7 +121,8 @@ export function UiShowcase() {
         </Text>
         <Button
           color="neutral"
-          onPress={() => setBackground({tone: background.tone === 'cosmos' ? 'plain' : 'cosmos'})}>
+          onPress={() => setBackground({ tone: background.tone === 'cosmos' ? 'plain' : 'cosmos' })}
+        >
           Toggle background
         </Button>
       </Section>
@@ -131,19 +135,29 @@ export function UiShowcase() {
         </Toast>
       </View>
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
-  screen: {flex: 1, backgroundColor: tokens.color.bg},
-  content: {padding: 20, gap: 8},
-  heading: {color: tokens.color.text, fontSize: 24, fontWeight: '600'},
-  section: {gap: 12, borderBottomWidth: 1, borderBottomColor: tokens.color.border, paddingVertical: 20},
-  sectionTitle: {color: tokens.color['text-muted'], fontSize: 12, fontWeight: '600', textTransform: 'uppercase'},
-  row: {flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12},
-  field: {width: '100%'},
-  glyph: {color: tokens.color['primary-foreground'], fontSize: 18},
-  dialogActions: {flexDirection: 'row', justifyContent: 'flex-end', gap: 8},
-  note: {color: tokens.color['text-muted'], fontSize: 14},
-  toast: {marginTop: 16},
-});
+  screen: { flex: 1, backgroundColor: tokens.color.bg },
+  content: { padding: 20, gap: 8 },
+  heading: { color: tokens.color.text, fontSize: 24, fontWeight: '600' },
+  section: {
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.color.border,
+    paddingVertical: 20,
+  },
+  sectionTitle: {
+    color: tokens.color['text-muted'],
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12 },
+  field: { width: '100%' },
+  glyph: { color: tokens.color['primary-foreground'], fontSize: 18 },
+  dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  note: { color: tokens.color['text-muted'], fontSize: 14 },
+  toast: { marginTop: 16 },
+})

@@ -186,7 +186,11 @@ function UniverseCanvasHost() {
         neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
         universeTime={universe?.universeTime ?? null}
       />
-      <AwakenNeuron field={latentField} newNeuronIds={newNeuronIds} resolveAnchors={resolveAnchors} />
+      <AwakenNeuron
+        field={latentField}
+        newNeuronIds={newNeuronIds}
+        resolveAnchors={resolveAnchors}
+      />
       <NavigationRig getPose={getPose} onArrived={handleArrived} {...UNIVERSE_CAMERA_RIG} />
       <FrameTick onFrame={pump} />
       <PostFX bloom={skin.bloom} />

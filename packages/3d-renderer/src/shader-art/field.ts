@@ -1,7 +1,21 @@
 // Spatial transforms — the same noise becomes a different pattern when you bend the
 // coordinates. Base of spirals, vortices, symmetry, turbulence. All pure: take a
 // coordinate node, return a transformed coordinate/scalar node.
-import { vec2, vec3, float, atan, asin, cos, sin, mod, log, length, clamp, abs, max } from 'three/tsl'
+import {
+  vec2,
+  vec3,
+  float,
+  atan,
+  asin,
+  cos,
+  sin,
+  mod,
+  log,
+  length,
+  clamp,
+  abs,
+  max,
+} from 'three/tsl'
 import { asFloatNode, asVec2Node, asVec3Node } from '../tsl'
 import { fbm } from './noise'
 
@@ -25,7 +39,10 @@ export function domainWarp(p: unknown, { amount = 0.6, octaves = 3 }: DomainWarp
 /** Unit direction vector → spherical coords. lon=longitude (-π..π), lat=latitude (-π/2..π/2). Base of radial/symmetric patterns. */
 export function toSpherical(dir: unknown) {
   const d = asVec3Node(dir)
-  return { lon: asFloatNode(atan(d.z, d.x)), lat: asFloatNode(asin(clamp(d.y, float(-1), float(1)))) }
+  return {
+    lon: asFloatNode(atan(d.z, d.x)),
+    lat: asFloatNode(asin(clamp(d.y, float(-1), float(1)))),
+  }
 }
 
 /** 2D vector → polar coords. angle (-π..π), radius (distance to origin). */
@@ -43,8 +60,14 @@ export interface LogSpiralOptions {
 
 /** Log-spiral phase — angle·arms + log(radius)·twist. Feed through sin to get arms.
  *  Spiral galaxies/whirlpools. Clamps radius to avoid log blowup at the center. */
-export function logSpiral(angle: unknown, radius: unknown, { arms = 5, twist = 1 }: LogSpiralOptions = {}) {
-  return asFloatNode(angle).mul(arms).add(log(max(asFloatNode(radius), float(1e-3))).mul(twist))
+export function logSpiral(
+  angle: unknown,
+  radius: unknown,
+  { arms = 5, twist = 1 }: LogSpiralOptions = {},
+) {
+  return asFloatNode(angle)
+    .mul(arms)
+    .add(log(max(asFloatNode(radius), float(1e-3))).mul(twist))
 }
 
 /** Kaleidoscope fold — folds the angle into segments with mirror symmetry. Mandalas/sacred geometry. Returns the folded angle (0..π/segments). */

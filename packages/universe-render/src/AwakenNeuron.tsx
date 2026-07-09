@@ -3,7 +3,13 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { FrameTick, InstancedNodeLayer, createPrimitiveBodySource } from '@cosimosi/3d-renderer'
 import { VALUES } from '@cosimosi/config'
 
-import { pickAwakenSeeds, useAwakenRegistryStore, useLatentConsumedStore, type AwakenAnchor, type LatentField } from '@cosimosi/universe'
+import {
+  pickAwakenSeeds,
+  useAwakenRegistryStore,
+  useLatentConsumedStore,
+  type AwakenAnchor,
+  type LatentField,
+} from '@cosimosi/universe'
 
 // Awaken animation vocabulary — motion/look is code, never values.yaml [E7a]. A fixed pool of
 // concurrent flares (one launch rarely births more than a few new neurons); each flares in place

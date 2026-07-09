@@ -28,7 +28,7 @@ owned by the extractor adapter's prompt.
 
 Dedup is an **identity judgement** ("is this the same neuron the user already has?"), performed by the extractor
 against a per-user candidate set and honored at persist time by exact (name, type) resolution. It is distinct from
-similarity *linking* ([L3]): merging decides sameness, it never creates an edge.
+similarity _linking_ ([L3]): merging decides sameness, it never creates an edge.
 
 - **entity** — same person/proper referent merges ("엄마" / "어머니" → one neuron).
 - **spatial** — true aliases only, granularity preserved ("스타벅스" ≠ "스타벅스 강남점").

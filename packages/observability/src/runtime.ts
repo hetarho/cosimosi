@@ -1,7 +1,4 @@
-import {
-  createInMemoryTelemetryAdapter,
-  type InMemoryTelemetryAdapter,
-} from './memory-adapter.ts'
+import { createInMemoryTelemetryAdapter, type InMemoryTelemetryAdapter } from './memory-adapter.ts'
 import {
   createObservabilityFacade,
   type ObservabilityFacade,
@@ -9,7 +6,11 @@ import {
   type TelemetryContext,
   type TelemetryLevel,
 } from './facade.ts'
-import { platformFeatureFlags, type FeatureFlagRegistry, type PlatformFeatureFlagKey } from './flags.ts'
+import {
+  platformFeatureFlags,
+  type FeatureFlagRegistry,
+  type PlatformFeatureFlagKey,
+} from './flags.ts'
 import type { TelemetryPropertyBag } from './safe-properties.ts'
 
 export interface ObservabilityRuntime {
@@ -42,7 +43,9 @@ export function createObservabilityRuntime({
   }
 }
 
-export function createDelegatedTelemetryAdapter(getAdapter: () => TelemetryAdapter | null): TelemetryAdapter {
+export function createDelegatedTelemetryAdapter(
+  getAdapter: () => TelemetryAdapter | null,
+): TelemetryAdapter {
   return {
     captureException(error, context) {
       getAdapter()?.captureException(error, context)
@@ -78,7 +81,10 @@ export function captureContext(surface: string, context: TelemetryContext) {
   }
 }
 
-export function stringTelemetryProperty(properties: TelemetryPropertyBag | undefined, key: string): string | undefined {
+export function stringTelemetryProperty(
+  properties: TelemetryPropertyBag | undefined,
+  key: string,
+): string | undefined {
   const value = properties?.[key]
   return typeof value === 'string' ? value : undefined
 }

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getThemeState, resetTheme, setBackground, setTheme, subscribeTheme } from './theme-store.ts'
+import {
+  getThemeState,
+  resetTheme,
+  setBackground,
+  setTheme,
+  subscribeTheme,
+} from './theme-store.ts'
 
 afterEach(() => resetTheme())
 

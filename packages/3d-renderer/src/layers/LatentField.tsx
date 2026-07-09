@@ -58,7 +58,9 @@ export function LatentField({
       // dust. Amplitude is scaled by the instance size (positionLocal is pre-instance-matrix),
       // so `drift` reads as a fraction of a point's own radius.
       const t = asFloatNode(uTime)
-      const wobble = vec3(sin(t), sin(t.mul(1.3).add(2.1)), sin(t.mul(0.7).add(4.2))).mul(float(drift))
+      const wobble = vec3(sin(t), sin(t.mul(1.3).add(2.1)), sin(t.mul(0.7).add(4.2))).mul(
+        float(drift),
+      )
       mat.positionNode = positionLocal.add(wobble)
     }
     return mat
@@ -72,7 +74,11 @@ export function LatentField({
     const dummy = new THREE.Object3D()
     for (let i = 0; i < count; i++) {
       const hidden = consumed?.has(i) ?? false
-      dummy.position.set(positions[i * 3] ?? 0, positions[i * 3 + 1] ?? 0, positions[i * 3 + 2] ?? 0)
+      dummy.position.set(
+        positions[i * 3] ?? 0,
+        positions[i * 3 + 1] ?? 0,
+        positions[i * 3 + 2] ?? 0,
+      )
       dummy.scale.setScalar(hidden ? 0 : size)
       dummy.updateMatrix()
       mesh.setMatrixAt(i, dummy.matrix)

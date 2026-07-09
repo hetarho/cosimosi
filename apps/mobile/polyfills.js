@@ -8,11 +8,11 @@
  * `new globalThis.TextEncoder()/TextDecoder()`; Hermes ships neither, so the
  * transport stack (api-client → protobuf) throws on load without this shim.
  */
-import { TextDecoder, TextEncoder } from 'text-encoding';
+import { TextDecoder, TextEncoder } from 'text-encoding'
 
 if (typeof globalThis.TextEncoder === 'undefined') {
-  globalThis.TextEncoder = TextEncoder;
+  globalThis.TextEncoder = TextEncoder
 }
 if (typeof globalThis.TextDecoder === 'undefined') {
-  globalThis.TextDecoder = TextDecoder;
+  globalThis.TextDecoder = TextDecoder
 }

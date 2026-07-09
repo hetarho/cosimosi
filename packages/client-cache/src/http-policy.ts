@@ -36,7 +36,9 @@ export function defineRpcCachePolicy(policy: RpcCachePolicy): RpcCachePolicy {
   return policy
 }
 
-export function createRpcCachePolicyInterceptor(entries: readonly RpcCachePolicyEntry[]): Interceptor {
+export function createRpcCachePolicyInterceptor(
+  entries: readonly RpcCachePolicyEntry[],
+): Interceptor {
   const policies = new Map(
     entries.map((entry) => [rpcMethodPolicyKey(entry.method), defineRpcCachePolicy(entry.policy)]),
   )
@@ -55,7 +57,9 @@ export function createRpcCachePolicyInterceptor(entries: readonly RpcCachePolicy
       throw new Error(`${methodKey} uses HTTP GET without proto NO_SIDE_EFFECTS idempotency`)
     }
     if (policy.method !== 'GET' && mayUseHttpGet) {
-      throw new Error(`${methodKey} has proto NO_SIDE_EFFECTS idempotency but is registered with a POST cache policy`)
+      throw new Error(
+        `${methodKey} has proto NO_SIDE_EFFECTS idempotency but is registered with a POST cache policy`,
+      )
     }
     return next(req)
   }

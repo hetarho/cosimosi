@@ -19,7 +19,10 @@ export interface ForceSimForceModel {
   readonly synapseLinks: readonly ForceSimSynapseLink[]
 }
 
-export function createForceModel(graph: ForceSimGraph, nodeIndex: ForceSimNodeIndex): ForceSimForceModel {
+export function createForceModel(
+  graph: ForceSimGraph,
+  nodeIndex: ForceSimNodeIndex,
+): ForceSimForceModel {
   const connectivityByNodeIndex = new Float64Array(nodeIndex.entries.length)
   const neuronNodeIndices: number[] = []
 
@@ -33,7 +36,8 @@ export function createForceModel(graph: ForceSimGraph, nodeIndex: ForceSimNodeIn
   const synapseLinks = graph.synapses.flatMap((synapse): ForceSimSynapseLink[] => {
     const sourceIndex = nodeIndex.neurons[synapse.sourceNeuronId]
     const targetIndex = nodeIndex.neurons[synapse.targetNeuronId]
-    if (sourceIndex === undefined || targetIndex === undefined || sourceIndex === targetIndex) return []
+    if (sourceIndex === undefined || targetIndex === undefined || sourceIndex === targetIndex)
+      return []
     return [
       {
         sourceIndex,
@@ -96,7 +100,8 @@ function applySynapseSprings(
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1
     const sourceConnectivity = model.connectivityByNodeIndex[link.sourceIndex]
     const targetConnectivity = model.connectivityByNodeIndex[link.targetIndex]
-    const restDistance = values.linkDistance / Math.sqrt(1 + (sourceConnectivity + targetConnectivity) * 0.05)
+    const restDistance =
+      values.linkDistance / Math.sqrt(1 + (sourceConnectivity + targetConnectivity) * 0.05)
     const magnitude = (distance - restDistance) * values.charge * link.strength
     const fx = (dx / distance) * magnitude
     const fy = (dy / distance) * magnitude

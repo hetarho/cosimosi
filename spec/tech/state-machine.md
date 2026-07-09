@@ -6,12 +6,12 @@
 
 ## 1. Packages and the React seam
 
-| Concern | Location | Depends on |
-|---|---|---|
-| Catalog machines (`asyncCommandMachine`, `panelMachine`) + types | `packages/state-machine` | `xstate` only — no React, no DOM, no native |
-| Auth/session machine (auth-domain lifecycle reference) | `packages/auth` | `xstate`, `@supabase/supabase-js`, `@cosimosi/api-client` |
-| React binding hooks (`createActorContext`, `useActorRef`, `useSelector`, `useMachine`, `shallowEqual`) | `@cosimosi/state-machine/react`; apps re-export it from `shared/model/xstate-react.ts` | `@xstate/react`, `react` |
-| Per-feature machines (when they arrive) | `apps/{web,mobile}/src/<slice>/model/<name>.machine.ts` | imported from `@cosimosi/state-machine` or feature-local |
+| Concern                                                                                                | Location                                                                               | Depends on                                                |
+| ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Catalog machines (`asyncCommandMachine`, `panelMachine`) + types                                       | `packages/state-machine`                                                               | `xstate` only — no React, no DOM, no native               |
+| Auth/session machine (auth-domain lifecycle reference)                                                 | `packages/auth`                                                                        | `xstate`, `@supabase/supabase-js`, `@cosimosi/api-client` |
+| React binding hooks (`createActorContext`, `useActorRef`, `useSelector`, `useMachine`, `shallowEqual`) | `@cosimosi/state-machine/react`; apps re-export it from `shared/model/xstate-react.ts` | `@xstate/react`, `react`                                  |
+| Per-feature machines (when they arrive)                                                                | `apps/{web,mobile}/src/<slice>/model/<name>.machine.ts`                                | imported from `@cosimosi/state-machine` or feature-local  |
 
 Both apps consume `@cosimosi/state-machine` directly. The package's root export
 stays React-free so the same catalog works in tests, Web Workers, and R3F
@@ -23,13 +23,13 @@ feature call sites stay stable.
 
 Machines live where the control flow belongs, never in a generic folder:
 
-| Machine kind | Home |
-|---|---|
-| app-wide lifecycle (session bootstrap, app mode) | `apps/{web,mobile}/src/app/model/<name>.machine.ts` |
+| Machine kind                                       | Home                                                            |
+| -------------------------------------------------- | --------------------------------------------------------------- |
+| app-wide lifecycle (session bootstrap, app mode)   | `apps/{web,mobile}/src/app/model/<name>.machine.ts`             |
 | feature action machine (encode, recall, select, …) | `apps/{web,mobile}/src/features/<verb>/model/<name>.machine.ts` |
-| entity control machine | `apps/{web,mobile}/src/entities/<noun>/model/<name>.machine.ts` |
-| shared product machine (web+mobile parity, §6) | `packages/universe/src/<name>.machine.ts` |
-| generic reusable pattern (the catalog) | `packages/state-machine/src/<name>.machine.ts` |
+| entity control machine                             | `apps/{web,mobile}/src/entities/<noun>/model/<name>.machine.ts` |
+| shared product machine (web+mobile parity, §6)     | `packages/universe/src/<name>.machine.ts`                       |
+| generic reusable pattern (the catalog)             | `packages/state-machine/src/<name>.machine.ts`                  |
 
 Files are named `<name>.machine.ts` and export named factory functions and/or
 the machine constant plus its types (`<Name>Event`, `<Name>Snapshot`, …). No
@@ -39,7 +39,7 @@ through its hooks/adapters.
 
 ## 3. Context rule — ids and control metadata only
 
-A machine context is the *control state* of a flow. It is intentionally small,
+A machine context is the _control state_ of a flow. It is intentionally small,
 serializable, and free of payload.
 
 **Allowed in context:**
@@ -72,11 +72,11 @@ documented control fields.
 This package ships platform-level patterns. Product workflows (Encode, Recall,
 camera mode, universe tour, …) are authored by their feature slices.
 
-| Pattern | Source | States |
-|---|---|---|
-| `sessionMachine` | `@cosimosi/auth` (plan/04) | bootstrapping · signedOut · signingIn · authenticated · refreshing · expired · failed |
-| `asyncCommandMachine` | `@cosimosi/state-machine` | idle · submitting · succeeded · failed · cancelled |
-| `panelMachine` | `@cosimosi/state-machine` | closed · open · loading · ready · error |
+| Pattern               | Source                     | States                                                                                |
+| --------------------- | -------------------------- | ------------------------------------------------------------------------------------- |
+| `sessionMachine`      | `@cosimosi/auth` (plan/04) | bootstrapping · signedOut · signingIn · authenticated · refreshing · expired · failed |
+| `asyncCommandMachine` | `@cosimosi/state-machine`  | idle · submitting · succeeded · failed · cancelled                                    |
+| `panelMachine`        | `@cosimosi/state-machine`  | closed · open · loading · ready · error                                               |
 
 `asyncCommandMachine` keeps a monotonic `attempt` counter. The `RESOLVE` and
 `REJECT` events echo the `attempt` they observed when starting; a transition
@@ -106,7 +106,7 @@ an action, fully replayable in tests.
 ### 5.2 The R3F `useFrame` pattern — no React state per frame
 
 This is the most important rule. The renderer reads coordinates from a
-Web-Worker force-sim and the *machine* through stable refs; it never drives 60
+Web-Worker force-sim and the _machine_ through stable refs; it never drives 60
 fps through React state. The pattern, in pseudocode:
 
 ```ts
@@ -136,7 +136,7 @@ Why:
 - Continuous values (positions, brightness, lerped colors) are never put in
   machine context or React state — they live in refs / worker buffers and are
   derived from the last-event timestamp (ARCHITECTURE §4, derived state).
-- The machine gates *discrete* modes only (frozen, dragging, focused); it does
+- The machine gates _discrete_ modes only (frozen, dragging, focused); it does
   not model per-frame animation.
 - A transition may be sent from a React handler (user pressed play) or from the
   worker boundary (sim settled), but never from inside `useFrame`.
@@ -165,13 +165,13 @@ of the §3 rule. All payload rides outside the machine:
   `ADVANCED` carries only an emptiness flag for the guard, and an empty
   interval (no time passed) never enters `accelerating`;
 - `confirming` is the sync-consent modal; **ACCEPT parks back in `idle`** on
-  purpose — the acceleration presents the *committed* sync interval, which the
+  purpose — the acceleration presents the _committed_ sync interval, which the
   recall use-case announces through the same `ADVANCED` seam a launch uses, so
   the wait needs no fourth state.
 
 The acceleration is presentation over an already-committed data path: on a
 clock-advancing launch the optimistic insert and the `GetUniverse` invalidate
-stay immediate, and only the *reveal* (the awaken entry announce) is deferred
+stay immediate, and only the _reveal_ (the awaken entry announce) is deferred
 to the transition's `DONE` — accelerate, then the star appears. The transition
 component owns a reserved choreography slot the forgetting/consolidation
 visuals later fill off the same interval seam. Per-frame veil intensity goes

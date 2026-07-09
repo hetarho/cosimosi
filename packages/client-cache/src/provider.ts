@@ -1,7 +1,10 @@
 import type { ApiTransport } from '@cosimosi/api-client'
 import { createApiTransport } from '@cosimosi/api-client'
 import type { AuthFacade } from '@cosimosi/auth'
-import { createTelemetryRequestIdInterceptor, type ObservabilityFacade } from '@cosimosi/observability'
+import {
+  createTelemetryRequestIdInterceptor,
+  type ObservabilityFacade,
+} from '@cosimosi/observability'
 import type { QueryClient as ClientCacheQueryClient } from '@tanstack/query-core'
 
 import { createClientCacheQueryClient } from './defaults.ts'
@@ -39,11 +42,17 @@ export function resolveClientCacheTransport({
     createApiTransport({
       baseUrl,
       auth,
-      interceptors: [createClientCacheRpcPolicyInterceptor(), createTelemetryRequestIdInterceptor(observability)],
+      interceptors: [
+        createClientCacheRpcPolicyInterceptor(),
+        createTelemetryRequestIdInterceptor(observability),
+      ],
     })
   )
 }
 
-export function clearOwnedClientCache(queryClient: ClientCacheQueryClient, ownsQueryClient: boolean): void {
+export function clearOwnedClientCache(
+  queryClient: ClientCacheQueryClient,
+  ownsQueryClient: boolean,
+): void {
   if (ownsQueryClient) queryClient.clear()
 }

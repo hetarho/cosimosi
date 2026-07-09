@@ -9,15 +9,15 @@ services:
       dockerfile: Dockerfile.dev
     container_name: cosimosi-api
     environment:
-      PORT: "8080"
+      PORT: '8080'
       DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
-      COSIMOSI_DEV_WORKER: "1"
+      COSIMOSI_DEV_WORKER: '1'
       # Dev sign-in bypass, toggled from the root .env (empty = off → real auth). The verifier
       # trusts only fake-token-<COSIMOSI_DEV_USER_ID>. See scripts/seed-dev-universe.sql and .env.example.
-      COSIMOSI_DEV_AUTH: "${COSIMOSI_DEV_AUTH:-}"
-      COSIMOSI_DEV_USER_ID: "${COSIMOSI_DEV_USER_ID:-}"
+      COSIMOSI_DEV_AUTH: '${COSIMOSI_DEV_AUTH:-}'
+      COSIMOSI_DEV_USER_ID: '${COSIMOSI_DEV_USER_ID:-}'
     ports:
-      - "8080:8080"
+      - '8080:8080'
     volumes:
       - ./apps/api:/app
       - api_go_mod:/go/pkg/mod
@@ -33,11 +33,11 @@ services:
       POSTGRES_PASSWORD: cosimosi
       POSTGRES_DB: cosimosi
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - api_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cosimosi -d cosimosi"]
+      test: ['CMD-SHELL', 'pg_isready -U cosimosi -d cosimosi']
       interval: 5s
       timeout: 5s
       retries: 10

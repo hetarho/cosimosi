@@ -108,10 +108,7 @@ export const ParticleField: EmotionBackground = ({ emotions, reducedMotion, clas
   const [br, bg, bb] = useMemo(() => hexToRgb(baseColor), [baseColor])
 
   // Resolved per-emotion rgb table, indexed by particle.colorIndex.
-  const colorTable = useMemo(
-    () => emotions.map((emotion) => hexToRgb(emotion.color)),
-    [emotions],
-  )
+  const colorTable = useMemo(() => emotions.map((emotion) => hexToRgb(emotion.color)), [emotions])
 
   // Rebuild the swarm only when the emotion set changes (never inside the frame loop).
   const particles = useMemo(() => buildParticles(emotions), [emotions])
@@ -144,8 +141,14 @@ export const ParticleField: EmotionBackground = ({ emotions, reducedMotion, clas
       // Deep base fill — a soft vertical gradient over darkened space so the field
       // reads as a luminous mid-toned backdrop, not a flat wash.
       const bgGrad = ctx.createLinearGradient(0, 0, 0, height)
-      bgGrad.addColorStop(0, `rgb(${Math.round(br * 0.28)}, ${Math.round(bg * 0.28)}, ${Math.round(bb * 0.34)})`)
-      bgGrad.addColorStop(1, `rgb(${Math.round(br * 0.14)}, ${Math.round(bg * 0.14)}, ${Math.round(bb * 0.2)})`)
+      bgGrad.addColorStop(
+        0,
+        `rgb(${Math.round(br * 0.28)}, ${Math.round(bg * 0.28)}, ${Math.round(bb * 0.34)})`,
+      )
+      bgGrad.addColorStop(
+        1,
+        `rgb(${Math.round(br * 0.14)}, ${Math.round(bg * 0.14)}, ${Math.round(bb * 0.2)})`,
+      )
       ctx.globalCompositeOperation = 'source-over'
       ctx.fillStyle = bgGrad
       ctx.fillRect(0, 0, width, height)

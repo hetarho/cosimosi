@@ -35,9 +35,7 @@ const DRIFT_DURATIONS = [18, 22, 26, 24, 30, 20, 28]
 // Stable fallback for an empty emotions array: one neutral deep-space slice. Hoisted to module
 // scope so its reference never changes across renders (keeps the useMemo deps stable) and so its
 // `mood` is typed as the exact `Mood` literal the contract requires (uppercase, not 'calm').
-const FALLBACK_SLICES: readonly EmotionSlice[] = [
-  { mood: 'CALM', color: '#0a0a12', weight: 1 },
-]
+const FALLBACK_SLICES: readonly EmotionSlice[] = [{ mood: 'CALM', color: '#0a0a12', weight: 1 }]
 
 // Keyframes for the slow breathing drift. Each blob picks one by index so the mesh never pulses in
 // unison; `alternate` on the animation makes the translate ease back and forth.

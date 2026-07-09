@@ -6,8 +6,18 @@ import './jsx-elements.ts'
 
 export * from './shader-art/index.ts'
 // Skins (typed instances) + background types (each owns props + node-builder) + the registry.
-export { UNIVERSE_SKINS, SKIN_KEYS, isSkinKey, type SkinKey, type UniverseSkin } from './assets/skins/presets.ts'
-export { resolveBackgroundNode, type BackgroundType, type BackgroundSpec } from './assets/backgrounds/registry.ts'
+export {
+  UNIVERSE_SKINS,
+  SKIN_KEYS,
+  isSkinKey,
+  type SkinKey,
+  type UniverseSkin,
+} from './assets/skins/presets.ts'
+export {
+  resolveBackgroundNode,
+  type BackgroundType,
+  type BackgroundSpec,
+} from './assets/backgrounds/registry.ts'
 export { nebulaBackgroundNode, type NebulaProps } from './assets/backgrounds/nebula.ts'
 export { gradientBackgroundNode, type GradientProps } from './assets/backgrounds/gradient.ts'
 export {

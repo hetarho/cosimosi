@@ -95,7 +95,15 @@ export const tokens = {
 } as const
 
 /** Token groups the generator writes into `theme.gen.css`. */
-export const CSS_TOKEN_GROUPS = ['color', 'radius', 'shadow', 'duration', 'ease', 'ring', 'z'] as const
+export const CSS_TOKEN_GROUPS = [
+  'color',
+  'radius',
+  'shadow',
+  'duration',
+  'ease',
+  'ring',
+  'z',
+] as const
 
 export type Tokens = typeof tokens
 export type ColorToken = keyof Tokens['color']

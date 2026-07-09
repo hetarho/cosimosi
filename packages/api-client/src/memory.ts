@@ -1,5 +1,10 @@
 import type { MessageInitShape } from '@bufbuild/protobuf'
-import { createClient, createRouterTransport, type Client, type Transport } from '@connectrpc/connect'
+import {
+  createClient,
+  createRouterTransport,
+  type Client,
+  type Transport,
+} from '@connectrpc/connect'
 import { createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-query-core'
 
 import { GetUniverseResponseSchema, MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'

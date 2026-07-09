@@ -140,7 +140,10 @@ describe('createAuthFacade', () => {
 
     await flush()
     await facade.signOut()
-    adapter.emit({ status: 'authenticated', userId: 'u', expiresAt: 1_000, error: null }, 'tokenRefreshed')
+    adapter.emit(
+      { status: 'authenticated', userId: 'u', expiresAt: 1_000, error: null },
+      'tokenRefreshed',
+    )
 
     expect(facade.snapshot.status).toBe('signedOut')
     expect(facade.snapshot.userId).toBeNull()
@@ -161,10 +164,16 @@ describe('createAuthFacade', () => {
     expect(facade.snapshot.userId).toBe('u')
     await expect(facade.getAccessToken()).resolves.toBe('fake-token-u')
 
-    adapter.emit({ status: 'authenticated', userId: 'u', expiresAt: 1_000, error: null }, 'tokenRefreshed')
+    adapter.emit(
+      { status: 'authenticated', userId: 'u', expiresAt: 1_000, error: null },
+      'tokenRefreshed',
+    )
     expect(facade.snapshot.status).toBe('authenticated')
 
-    adapter.emit({ status: 'authenticated', userId: 'u', expiresAt: 1_001, error: null }, 'signedIn')
+    adapter.emit(
+      { status: 'authenticated', userId: 'u', expiresAt: 1_001, error: null },
+      'signedIn',
+    )
     expect(facade.snapshot.status).toBe('authenticated')
     expect(facade.snapshot.userId).toBe('u')
   })

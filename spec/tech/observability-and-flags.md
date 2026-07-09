@@ -8,17 +8,17 @@
 
 ## 1. Package and app boundaries
 
-| Concern | Location |
-|---|---|
-| Cross-app facade, consent gate, safe property typing, in-memory adapter | `packages/observability/src/*` |
-| React context and app-level error boundary | `packages/observability/src/react.tsx` |
-| Shared runtime factory and delegated vendor adapter | `packages/observability/src/runtime.ts` |
-| Connect request-id client interceptor | `packages/observability/src/connect.ts` |
-| Web vendor adapter | `apps/web/src/app/providers/observability-provider.tsx` |
-| Mobile vendor adapter | `apps/mobile/src/app/providers/observability-provider.tsx` |
-| API reporter and safe attributes | `apps/api/internal/platform/observability/*` |
-| API error/panic/reporting interceptors | `apps/api/internal/platform/{handler,interceptors}.go` |
-| Direct-vendor-import guard | `scripts/check-observability-boundaries.mjs` (`pnpm lint:observability`) |
+| Concern                                                                 | Location                                                                 |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Cross-app facade, consent gate, safe property typing, in-memory adapter | `packages/observability/src/*`                                           |
+| React context and app-level error boundary                              | `packages/observability/src/react.tsx`                                   |
+| Shared runtime factory and delegated vendor adapter                     | `packages/observability/src/runtime.ts`                                  |
+| Connect request-id client interceptor                                   | `packages/observability/src/connect.ts`                                  |
+| Web vendor adapter                                                      | `apps/web/src/app/providers/observability-provider.tsx`                  |
+| Mobile vendor adapter                                                   | `apps/mobile/src/app/providers/observability-provider.tsx`               |
+| API reporter and safe attributes                                        | `apps/api/internal/platform/observability/*`                             |
+| API error/panic/reporting interceptors                                  | `apps/api/internal/platform/{handler,interceptors}.go`                   |
+| Direct-vendor-import guard                                              | `scripts/check-observability-boundaries.mjs` (`pnpm lint:observability`) |
 
 Feature/domain slices import `@cosimosi/observability` or the app context only. Direct
 Sentry/PostHog imports are allowed only at app/platform observability boundaries:

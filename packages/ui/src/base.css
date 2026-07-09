@@ -222,8 +222,7 @@
      the quiet surface colour, so its bloom is intentionally faint. */
   .btn-text:hover {
     background-color: color-mix(in oklab, var(--btn-c) 6%, transparent);
-    filter:
-      drop-shadow(0 0 6px color-mix(in oklab, var(--btn-c) 60%, transparent))
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--btn-c) 60%, transparent))
       drop-shadow(0 0 14px color-mix(in oklab, var(--btn-c) 32%, transparent));
   }
 }

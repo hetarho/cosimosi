@@ -1,35 +1,41 @@
-import {type ReactNode} from 'react';
-import {StyleSheet, View} from 'react-native';
+import { type ReactNode } from 'react'
+import { StyleSheet, View } from 'react-native'
 
-import {m} from '@cosimosi/i18n';
-import {ObservedErrorBoundary, type ObservedErrorBoundaryFallbackProps} from '@cosimosi/observability/react';
-import {Button} from '@cosimosi/ui';
-import type {ApiTransport} from '@cosimosi/api-client';
-import type {AuthFacade} from '@cosimosi/auth';
-import type {ClientCacheQueryClient} from '@cosimosi/client-cache';
-import type {Locale} from '@cosimosi/i18n';
-import type {ObservabilityFacade} from '@cosimosi/observability';
+import { m } from '@cosimosi/i18n'
+import {
+  ObservedErrorBoundary,
+  type ObservedErrorBoundaryFallbackProps,
+} from '@cosimosi/observability/react'
+import { Button } from '@cosimosi/ui'
+import type { ApiTransport } from '@cosimosi/api-client'
+import type { AuthFacade } from '@cosimosi/auth'
+import type { ClientCacheQueryClient } from '@cosimosi/client-cache'
+import type { Locale } from '@cosimosi/i18n'
+import type { ObservabilityFacade } from '@cosimosi/observability'
 
-import {MobileAuthProvider, type MobileSupabaseAuthOptions} from './auth-provider.tsx';
-import {MobileI18nProvider} from './i18n-provider.tsx';
-import {MobileObservabilityProvider, MobileObservabilitySessionBridge} from './observability-provider.tsx';
-import {MachineActorsProvider} from './machine-actors-provider.tsx';
-import {MobileClientCacheProvider} from './query-provider.tsx';
-import {MobileThemeProvider} from './theme-provider.tsx';
+import { MobileAuthProvider, type MobileSupabaseAuthOptions } from './auth-provider.tsx'
+import { MobileI18nProvider } from './i18n-provider.tsx'
+import {
+  MobileObservabilityProvider,
+  MobileObservabilitySessionBridge,
+} from './observability-provider.tsx'
+import { MachineActorsProvider } from './machine-actors-provider.tsx'
+import { MobileClientCacheProvider } from './query-provider.tsx'
+import { MobileThemeProvider } from './theme-provider.tsx'
 
 export interface MobileAppProvidersProps {
-  children?: ReactNode;
+  children?: ReactNode
   /** Test/runtime overrides. When omitted, each provider builds its real adapter. */
-  observabilityFacade?: ObservabilityFacade;
-  authFacade?: AuthFacade;
-  queryClient?: ClientCacheQueryClient;
-  transport?: ApiTransport;
-  locale?: Locale;
-  deviceLocale?: string;
-  apiBaseUrl?: string;
-  supabase?: MobileSupabaseAuthOptions;
+  observabilityFacade?: ObservabilityFacade
+  authFacade?: AuthFacade
+  queryClient?: ClientCacheQueryClient
+  transport?: ApiTransport
+  locale?: Locale
+  deviceLocale?: string
+  apiBaseUrl?: string
+  supabase?: MobileSupabaseAuthOptions
   /** Dev sign-in bypass user id (local only); the app root defaults it from mobileDevUserId. */
-  devUserId?: string;
+  devUserId?: string
 }
 
 /**
@@ -68,7 +74,11 @@ export function MobileAppProviders({
           <MobileThemeProvider>
             <MobileAuthProvider facade={authFacade} supabase={supabase} devUserId={devUserId}>
               <MobileObservabilitySessionBridge />
-              <MobileClientCacheProvider queryClient={queryClient} transport={transport} apiBaseUrl={apiBaseUrl}>
+              <MobileClientCacheProvider
+                queryClient={queryClient}
+                transport={transport}
+                apiBaseUrl={apiBaseUrl}
+              >
                 <MachineActorsProvider>{children}</MachineActorsProvider>
               </MobileClientCacheProvider>
             </MobileAuthProvider>
@@ -76,15 +86,15 @@ export function MobileAppProviders({
         </MobileI18nProvider>
       </ObservedErrorBoundary>
     </MobileObservabilityProvider>
-  );
+  )
 }
 
-function MobileAppErrorFallback({resetErrorBoundary}: ObservedErrorBoundaryFallbackProps) {
+function MobileAppErrorFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackProps) {
   return (
     <View style={styles.errorFallback}>
       <Button onPress={resetErrorBoundary}>{m.common_retry()}</Button>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -94,4 +104,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-});
+})

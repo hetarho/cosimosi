@@ -33,7 +33,9 @@ if (existsSync(pinPath)) {
   if (compareSemver(pinParts, required) < 0) {
     fail(`.node-version (${pin}) is below the declared engines floor >=${required.join('.')}`)
   }
-  note(`.node-version pins ${pin} (CI installs this); any local Node >=${required.join('.')} is fine`)
+  note(
+    `.node-version pins ${pin} (CI installs this); any local Node >=${required.join('.')} is fine`,
+  )
 }
 
 function parseMinimumNode(range) {

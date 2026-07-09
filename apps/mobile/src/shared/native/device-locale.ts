@@ -1,4 +1,4 @@
-import {NativeModules, Platform} from 'react-native';
+import { NativeModules, Platform } from 'react-native'
 
 /**
  * Best-effort device locale via React Native's built-in native modules — no extra
@@ -11,11 +11,11 @@ import {NativeModules, Platform} from 'react-native';
 export function readDeviceLocale(): string | undefined {
   try {
     if (Platform.OS === 'ios') {
-      const settings = NativeModules.SettingsManager?.settings;
-      return settings?.AppleLocale ?? settings?.AppleLanguages?.[0];
+      const settings = NativeModules.SettingsManager?.settings
+      return settings?.AppleLocale ?? settings?.AppleLanguages?.[0]
     }
-    return NativeModules.I18nManager?.localeIdentifier;
+    return NativeModules.I18nManager?.localeIdentifier
   } catch {
-    return undefined;
+    return undefined
   }
 }

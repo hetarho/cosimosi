@@ -6,11 +6,7 @@ import {
   initialAsyncCommandSnapshot,
   type AsyncCommandSnapshot,
 } from './async-command.machine.ts'
-import {
-  initialPanelSnapshot,
-  panelMachine,
-  type PanelSnapshot,
-} from './panel.machine.ts'
+import { initialPanelSnapshot, panelMachine, type PanelSnapshot } from './panel.machine.ts'
 
 /**
  * Machine context is id-and-control metadata only. Server collections,
@@ -21,7 +17,9 @@ import {
  */
 describe('catalog machine context rule', () => {
   it('initial snapshots are JSON-serializable control-only payloads', () => {
-    expect(JSON.parse(JSON.stringify(initialAsyncCommandSnapshot))).toEqual(initialAsyncCommandSnapshot)
+    expect(JSON.parse(JSON.stringify(initialAsyncCommandSnapshot))).toEqual(
+      initialAsyncCommandSnapshot,
+    )
     expect(JSON.parse(JSON.stringify(initialPanelSnapshot))).toEqual(initialPanelSnapshot)
   })
 
@@ -32,7 +30,13 @@ describe('catalog machine context rule', () => {
     actor.send({ type: 'RESOLVE', resultId: 'mem-9', attempt: 1 })
     const snapshot: AsyncCommandSnapshot = actor.getSnapshot().context
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot)
-    expect(Object.keys(snapshot).sort()).toEqual(['attempt', 'commandId', 'error', 'resultId', 'status'])
+    expect(Object.keys(snapshot).sort()).toEqual([
+      'attempt',
+      'commandId',
+      'error',
+      'resultId',
+      'status',
+    ])
     actor.stop()
   })
 

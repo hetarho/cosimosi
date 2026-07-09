@@ -25,7 +25,9 @@ function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
 describe('buildContributors', () => {
   it('maps bleed radius from EffectiveStrength with the generated coefficient [A3]', () => {
     const { radii } = buildContributors([memory({ baseStrength: 0.5 })], { firstNodeIndex: 0 })
-    expect(radii[0]).toBeCloseTo(Math.max(nebula.minBleedRadius, nebula.bleedRadiusCoefficient * 0.5))
+    expect(radii[0]).toBeCloseTo(
+      Math.max(nebula.minBleedRadius, nebula.bleedRadiusCoefficient * 0.5),
+    )
   })
 
   it('floors the weakest star at min_bleed_radius [A3]', () => {
@@ -36,8 +38,12 @@ describe('buildContributors', () => {
   it('weighs by EffectiveStrength (base + recall), the Epic-C mirror seam [A8]', () => {
     // effectiveStrength(base, recall) == base in Epic A, so recall does not yet change the radius;
     // reading the derived value (not raw base) is what activates the mirror without a rewire.
-    const fresh = buildContributors([memory({ baseStrength: 0.5, recallCount: 0 })], { firstNodeIndex: 0 })
-    const reread = buildContributors([memory({ baseStrength: 0.5, recallCount: 9 })], { firstNodeIndex: 0 })
+    const fresh = buildContributors([memory({ baseStrength: 0.5, recallCount: 0 })], {
+      firstNodeIndex: 0,
+    })
+    const reread = buildContributors([memory({ baseStrength: 0.5, recallCount: 9 })], {
+      firstNodeIndex: 0,
+    })
     expect(reread.radii[0]).toBe(fresh.radii[0])
   })
 
@@ -49,7 +55,9 @@ describe('buildContributors', () => {
   })
 
   it('skips a missing memory without shifting the buffer index', () => {
-    const { count, nodeIndices } = buildContributors([undefined, memory({ baseStrength: 0.6 })], { firstNodeIndex: 0 })
+    const { count, nodeIndices } = buildContributors([undefined, memory({ baseStrength: 0.6 })], {
+      firstNodeIndex: 0,
+    })
     expect(count).toBe(1)
     expect(nodeIndices[0]).toBe(1)
   })
@@ -66,8 +74,12 @@ describe('buildContributors', () => {
   })
 
   it('draws color solely through the palette seam — mood decides the tint [A4]', () => {
-    const sad = buildContributors([memory({ emotion: createEmotion('SAD') })], { firstNodeIndex: 0 }).tints
-    const joy = buildContributors([memory({ emotion: createEmotion('JOY') })], { firstNodeIndex: 0 }).tints
+    const sad = buildContributors([memory({ emotion: createEmotion('SAD') })], {
+      firstNodeIndex: 0,
+    }).tints
+    const joy = buildContributors([memory({ emotion: createEmotion('JOY') })], {
+      firstNodeIndex: 0,
+    }).tints
     expect([sad[0], sad[1], sad[2]]).not.toEqual([joy[0], joy[1], joy[2]])
   })
 })

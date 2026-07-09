@@ -22,7 +22,10 @@ export interface FocusTrapOptions {
  * it before. This is the modal-surface focus contract; web-only, since React
  * Native modals manage their own focus.
  */
-export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, { active, onEscape }: FocusTrapOptions): void {
+export function useFocusTrap(
+  containerRef: RefObject<HTMLElement | null>,
+  { active, onEscape }: FocusTrapOptions,
+): void {
   // Hold the latest onEscape in a ref so an inline callback (a fresh identity each
   // render) doesn't tear down and re-arm the trap — which would re-steal focus.
   const onEscapeRef = useRef(onEscape)
@@ -37,7 +40,9 @@ export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, { acti
     // Exclude elements pulled out of tab order (e.g. `<button tabindex="-1">`), which
     // the tag-based selector would otherwise match.
     const focusable = () =>
-      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((el) => el.tabIndex >= 0)
+      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.tabIndex >= 0,
+      )
 
     const initial = focusable()[0] ?? container
     initial.focus()

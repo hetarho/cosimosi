@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import {
@@ -62,9 +68,21 @@ const BUTTON_APPEARANCES: readonly { variant: ButtonVariant; label: string }[] =
   { variant: 'outlined', label: 'Outlined' },
   { variant: 'text', label: 'Text' },
 ]
-const BUTTON_COLORS: readonly ButtonColor[] = ['primary', 'secondary', 'tertiary', 'neutral', 'danger']
+const BUTTON_COLORS: readonly ButtonColor[] = [
+  'primary',
+  'secondary',
+  'tertiary',
+  'neutral',
+  'danger',
+]
 const CONTROL_SIZES: readonly ControlSize[] = ['sm', 'md', 'lg']
-const BADGE_VARIANTS: readonly BadgeVariant[] = ['neutral', 'primary', 'success', 'warning', 'danger']
+const BADGE_VARIANTS: readonly BadgeVariant[] = [
+  'neutral',
+  'primary',
+  'success',
+  'warning',
+  'danger',
+]
 
 const ACCENTS: readonly { name: string; bg: string; fg: string }[] = [
   { name: 'Primary', bg: 'bg-primary', fg: 'text-primary-foreground' },
@@ -92,14 +110,18 @@ const MOOD_LABEL: Record<Mood, string> = {
 // Presentation-only excerpts keyed by the demo memory id — episodic bodies are not part of the
 // universe read model, so these live with the view, not the domain scene.
 const SNIPPETS: Record<string, string> = {
-  'm-window': 'Rain against the glass, a page left open to the same line. Nothing asked to be finished.',
-  'm-dusk-kitchen': 'Onions in the pan, the radio low. She hummed the part she never remembered the words to.',
+  'm-window':
+    'Rain against the glass, a page left open to the same line. Nothing asked to be finished.',
+  'm-dusk-kitchen':
+    'Onions in the pan, the radio low. She hummed the part she never remembered the words to.',
   'm-cat-home': 'Three days of an empty bowl, then paw prints on the sill at dawn.',
   'm-winter-sea': 'The water was the colour of old coins. We did not say much on the way back.',
-  'm-cold-coffee': 'Made it, forgot it, found it cold by the window. Poured it out without tasting.',
+  'm-cold-coffee':
+    'Made it, forgot it, found it cold by the window. Poured it out without tasting.',
   'm-laughing-rain': 'We ran for the awning and missed it entirely — soaked, laughing at nothing.',
   'm-unsent-letter': 'Wrote it twice, folded it once, left it in the drawer with the others.',
-  'm-morning-light': 'First light on the counter, the whole day still unspent. Just the cup, warm in both hands.',
+  'm-morning-light':
+    'First light on the counter, the whole day still unspent. Just the cup, warm in both hands.',
 }
 
 const T = {
@@ -234,7 +256,9 @@ function UiTestInner() {
             {preset.label}
           </Button>
         ))}
-        <span className="text-sm text-text-muted">{PRESETS.find((p) => p.key === skinKey)?.blurb}</span>
+        <span className="text-sm text-text-muted">
+          {PRESETS.find((p) => p.key === skinKey)?.blurb}
+        </span>
       </div>
 
       <div
@@ -263,7 +287,13 @@ function UiTestInner() {
         })}
       </div>
 
-      <div id={TABPANEL_ID} role="tabpanel" aria-labelledby={`ui-test-tab-${tab}`} tabIndex={0} className="rounded-md">
+      <div
+        id={TABPANEL_ID}
+        role="tabpanel"
+        aria-labelledby={`ui-test-tab-${tab}`}
+        tabIndex={0}
+        className="rounded-md"
+      >
         {tab === 'universe' ? <UniverseTabPanel scene={scene} /> : null}
         {tab === 'ui' ? (
           <div className="flex flex-col gap-6">
@@ -318,7 +348,10 @@ function dominantMood(weights: ReadonlyMap<Mood, number>): Mood {
 
 // Round fractional shares to whole percents that sum to exactly `targetSum` (largest-remainder
 // method: floor everyone, then hand the leftover percents to the largest fractional parts).
-function roundShares(shares: readonly (readonly [Mood, number])[], targetSum: number): [Mood, number][] {
+function roundShares(
+  shares: readonly (readonly [Mood, number])[],
+  targetSum: number,
+): [Mood, number][] {
   const parts = shares.map(([mood, value]) => {
     const floor = Math.floor(value)
     return { mood, floor, remainder: value - floor }
@@ -341,7 +374,8 @@ function initialWeights(memories: readonly EpisodicMemory[]): Map<Mood, number> 
   const total = counts.reduce((sum, [, count]) => sum + count, 0)
   const scaled = counts.map(([mood, count]) => [mood, (count / total) * 100] as const)
   const weights = new Map<Mood, number>()
-  for (const [mood, percent] of roundShares(scaled, 100)) if (percent > 0) weights.set(mood, percent)
+  for (const [mood, percent] of roundShares(scaled, 100))
+    if (percent > 0) weights.set(mood, percent)
   return weights
 }
 
@@ -350,7 +384,11 @@ function initialWeights(memories: readonly EpisodicMemory[]): Map<Mood, number> 
 // else present) can't be moved — it's stuck at 100 — and a zero emotion never grows from
 // redistribution (only an explicit add brings one in). Increasing caps the mood at 100 as the
 // others reach 0.
-function setWeight(weights: ReadonlyMap<Mood, number>, mood: Mood, rawTarget: number): Map<Mood, number> {
+function setWeight(
+  weights: ReadonlyMap<Mood, number>,
+  mood: Mood,
+  rawTarget: number,
+): Map<Mood, number> {
   const current = weights.get(mood) ?? 0
   const others = [...weights].filter(([other, weight]) => other !== mood && weight > 0)
   const othersTotal = others.reduce((sum, [, weight]) => sum + weight, 0)
@@ -360,26 +398,33 @@ function setWeight(weights: ReadonlyMap<Mood, number>, mood: Mood, rawTarget: nu
   const moved = clamp(target - current, -current, othersTotal)
   if (moved === 0) return new Map(weights)
   const settled = current + moved
-  const shares = others.map(([other, weight]) => [other, weight - moved * (weight / othersTotal)] as const)
+  const shares = others.map(
+    ([other, weight]) => [other, weight - moved * (weight / othersTotal)] as const,
+  )
   const next = new Map<Mood, number>()
-  for (const [other, percent] of roundShares(shares, 100 - settled)) if (percent > 0) next.set(other, percent)
+  for (const [other, percent] of roundShares(shares, 100 - settled))
+    if (percent > 0) next.set(other, percent)
   if (settled > 0) next.set(mood, settled)
   return next
 }
 
 function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
   const reducedMotion = useReducedMotion()
-  const [weights, setWeights] = useState<ReadonlyMap<Mood, number>>(() => initialWeights(scene.memories))
+  const [weights, setWeights] = useState<ReadonlyMap<Mood, number>>(() =>
+    initialWeights(scene.memories),
+  )
   const [candidateKey, setCandidateKey] = useState(BACKGROUND_CANDIDATES[0].key)
 
   const emotions = useMemo(() => toEmotionSlices(weights), [weights])
   const primary = useMemo(() => dominantMood(weights), [weights])
-  const candidate = BACKGROUND_CANDIDATES.find((entry) => entry.key === candidateKey) ?? BACKGROUND_CANDIDATES[0]
+  const candidate =
+    BACKGROUND_CANDIDATES.find((entry) => entry.key === candidateKey) ?? BACKGROUND_CANDIDATES[0]
   const Backdrop = candidate.Component
 
   // Drag a slider to set a mood's share; the rest of the universe absorbs the change in proportion
   // to their current shares, so every emotion always totals 100. Adding pulls a slice from the rest.
-  const handleSet = (mood: Mood, value: number) => setWeights((current) => setWeight(current, mood, value))
+  const handleSet = (mood: Mood, value: number) =>
+    setWeights((current) => setWeight(current, mood, value))
   const handleAdd = (mood: Mood) =>
     setWeights((current) => setWeight(current, mood, Math.round(100 / (current.size + 1))))
 
@@ -402,7 +447,9 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
           <div className="flex items-start justify-between gap-2">
             <Badge variant="neutral">{T.hud}</Badge>
             <div className="pointer-events-auto flex items-center gap-2">
-              <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">{candidate.label}</span>
+              <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">
+                {candidate.label}
+              </span>
               <DialogDemo size="sm" />
             </div>
           </div>
@@ -456,11 +503,17 @@ function EmotionControls({
           const isPrimary = mood === primary
           return (
             <div key={mood} className="flex items-center gap-3">
-              <span aria-hidden className="inline-block size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+              <span
+                aria-hidden
+                className="inline-block size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: color }}
+              />
               <span className="flex w-28 shrink-0 items-center gap-1.5 text-xs font-medium text-text">
                 <span className="truncate">{MOOD_LABEL[mood]}</span>
                 {isPrimary ? (
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-text-subtle">{T.primaryTag}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-text-subtle">
+                    {T.primaryTag}
+                  </span>
                 ) : null}
               </span>
               <input
@@ -474,7 +527,9 @@ function EmotionControls({
                 className="min-w-0 flex-1 disabled:opacity-40"
                 style={{ accentColor: color }}
               />
-              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-text-muted">{value}%</span>
+              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-text-muted">
+                {value}%
+              </span>
               <button
                 type="button"
                 onClick={() => onSet(mood, 0)}
@@ -502,7 +557,11 @@ function EmotionControls({
                   onClick={() => onAdd(mood)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-text-subtle opacity-60 transition-opacity hover:opacity-100"
                 >
-                  <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: color }} />
+                  <span
+                    aria-hidden
+                    className="inline-block size-2 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
                   {MOOD_LABEL[mood]}
                 </button>
               )
@@ -529,7 +588,9 @@ function BackgroundSwitcher({
   const active = BACKGROUND_CANDIDATES.find((entry) => entry.key === activeKey)
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">{T.backgroundTitle}</h3>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
+        {T.backgroundTitle}
+      </h3>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {BACKGROUND_CANDIDATES.map((entry) => {
           const Preview = entry.Component
@@ -551,7 +612,9 @@ function BackgroundSwitcher({
               </span>
               <span className="flex items-center justify-between gap-1 px-2 py-1.5">
                 <span className="truncate text-xs font-medium text-text">{entry.label}</span>
-                {selected ? <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" /> : null}
+                {selected ? (
+                  <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
+                ) : null}
               </span>
             </button>
           )
@@ -590,8 +653,16 @@ function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
       <StarField />
       <NebulaField positions={positions} firstNodeIndex={scene.firstMemoryIndex} />
       <CellStarLayer positions={positions} />
-      <StarLayer positions={positions} firstNodeIndex={scene.firstMemoryIndex} universeTime={scene.universeTime} />
-      <FilamentLayer positions={positions} neuronIndexById={scene.neuronIndexById} universeTime={scene.universeTime} />
+      <StarLayer
+        positions={positions}
+        firstNodeIndex={scene.firstMemoryIndex}
+        universeTime={scene.universeTime}
+      />
+      <FilamentLayer
+        positions={positions}
+        neuronIndexById={scene.neuronIndexById}
+        universeTime={scene.universeTime}
+      />
       <CameraControls />
       <PostFX bloom={skin.bloom} transparent />
     </UniverseCanvas>
@@ -662,7 +733,9 @@ function CardComparison() {
     <section className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">{T.cardsCompare}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
+            {T.cardsCompare}
+          </h3>
           <span className="text-xs text-text-subtle">{T.cardsCompareHint}</span>
         </div>
         <DialogDemo size="sm" />
@@ -728,7 +801,13 @@ function DiaryCard({ memory }: { memory: EpisodicMemory }) {
           </div>
           <h4 className="truncate text-base font-semibold text-text">{memory.name}</h4>
         </div>
-        <IconButton size="sm" variant="text" color="neutral" label={T.more} icon={<EllipsisIcon />} />
+        <IconButton
+          size="sm"
+          variant="text"
+          color="neutral"
+          label={T.more}
+          icon={<EllipsisIcon />}
+        />
       </div>
       <p className="line-clamp-2 text-sm leading-6 text-text-muted">{SNIPPETS[memory.id] ?? ''}</p>
       <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
@@ -816,7 +895,9 @@ function ComponentCatalog() {
         <div className="grid gap-4">
           {BUTTON_APPEARANCES.map((appr) => (
             <div key={appr.variant} className="flex flex-wrap items-center gap-3">
-              <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">{appr.label}</span>
+              <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">
+                {appr.label}
+              </span>
               {BUTTON_COLORS.map((c) => (
                 <Button key={c} variant={appr.variant} color={c}>
                   {c}
@@ -825,7 +906,9 @@ function ComponentCatalog() {
             </div>
           ))}
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-            <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">{T.sizesLabel}</span>
+            <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">
+              {T.sizesLabel}
+            </span>
             {CONTROL_SIZES.map((size) => (
               <Button key={size} size={size}>
                 {size}
@@ -852,7 +935,13 @@ function ComponentCatalog() {
       <Section title={T.iconButtons}>
         <div className="flex flex-wrap items-center gap-3">
           {BUTTON_COLORS.map((c) => (
-            <IconButton key={c} variant="contained" color={c} label={`${c} icon action`} icon={<StarIcon />} />
+            <IconButton
+              key={c}
+              variant="contained"
+              color={c}
+              label={`${c} icon action`}
+              icon={<StarIcon />}
+            />
           ))}
           <IconButton label={T.loadingIconAction} loading icon={<StarIcon />} />
         </div>
@@ -871,7 +960,11 @@ function ComponentCatalog() {
       <Section title={T.fields}>
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField label={T.fieldLabel} placeholder={T.placeholder} />
-          <TextField label={T.fieldWithDescription} description={T.fieldDescription} placeholder={T.placeholder} />
+          <TextField
+            label={T.fieldWithDescription}
+            description={T.fieldDescription}
+            placeholder={T.placeholder}
+          />
           <TextField label={T.fieldInvalid} error={T.fieldError} placeholder={T.placeholder} />
           <TextField label={T.fieldDisabled} placeholder={T.placeholder} disabled />
           <TextArea label={T.textArea} placeholder={T.textAreaPlaceholder} rows={3} />
@@ -929,7 +1022,14 @@ function StarIcon() {
 
 function Chevron() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
       <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )

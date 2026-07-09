@@ -20,7 +20,11 @@ export default defineConfig(({ command, mode }) => {
   // as universal defense in depth. loadEnv reads the root .env files; process.env also catches a
   // value passed straight on the build command line.
   const env = loadEnv(mode, envDir, 'VITE_')
-  if ((env.VITE_DEV_USER_ID || process.env.VITE_DEV_USER_ID) && command === 'build' && process.env.CI) {
+  if (
+    (env.VITE_DEV_USER_ID || process.env.VITE_DEV_USER_ID) &&
+    command === 'build' &&
+    process.env.CI
+  ) {
     throw new Error(
       'VITE_DEV_USER_ID must not be set in a CI/production build (dev sign-in bypass) — unset it before building.',
     )

@@ -13,9 +13,21 @@ function seededRandom(sequence: readonly number[]): () => number {
 
 describe('recentlyActiveNeuronIds', () => {
   const memories = [
-    { createdUniverseTime: '2026-01-10', lastRecalledUniverseTime: null, activations: [{ neuronId: 'recent' }] },
-    { createdUniverseTime: '2025-06-01', lastRecalledUniverseTime: null, activations: [{ neuronId: 'old' }] },
-    { createdUniverseTime: '2025-01-01', lastRecalledUniverseTime: '2026-01-09', activations: [{ neuronId: 'recalled' }] },
+    {
+      createdUniverseTime: '2026-01-10',
+      lastRecalledUniverseTime: null,
+      activations: [{ neuronId: 'recent' }],
+    },
+    {
+      createdUniverseTime: '2025-06-01',
+      lastRecalledUniverseTime: null,
+      activations: [{ neuronId: 'old' }],
+    },
+    {
+      createdUniverseTime: '2025-01-01',
+      lastRecalledUniverseTime: '2026-01-09',
+      activations: [{ neuronId: 'recalled' }],
+    },
   ]
 
   it('returns neurons of memories created/recalled inside the window, dropping stale ones', () => {
@@ -43,7 +55,14 @@ describe('pickAwakenSeeds', () => {
 
   it('picks the latent point nearest an anchor', () => {
     const anchors: AwakenAnchor[] = [[19, 0, 0]] // closest to index 2 (x=20)
-    const picks = pickAwakenSeeds({ positions: FIELD, count: COUNT, consumed: new Set(), anchors, births: 1, random: noRandom })
+    const picks = pickAwakenSeeds({
+      positions: FIELD,
+      count: COUNT,
+      consumed: new Set(),
+      anchors,
+      births: 1,
+      random: noRandom,
+    })
     expect(picks).toEqual([2])
   })
 
@@ -62,7 +81,14 @@ describe('pickAwakenSeeds', () => {
 
   it('gives N simultaneous births N distinct latent points', () => {
     const anchors: AwakenAnchor[] = [[0, 0, 0]]
-    const picks = pickAwakenSeeds({ positions: FIELD, count: COUNT, consumed: new Set(), anchors, births: 3, random: noRandom })
+    const picks = pickAwakenSeeds({
+      positions: FIELD,
+      count: COUNT,
+      consumed: new Set(),
+      anchors,
+      births: 3,
+      random: noRandom,
+    })
     expect(new Set(picks).size).toBe(3)
     expect(picks).toEqual([0, 1, 2]) // nearest-first from anchor at origin
   })

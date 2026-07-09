@@ -22,7 +22,9 @@ async function main() {
   pnpm(['install'])
 
   section('done')
-  console.log('  \x1b[32m✓\x1b[0m 준비 완료 — 웹 \x1b[1mpnpm dev:web\x1b[0m (:5173) · api \x1b[1mpnpm dev:api\x1b[0m (:8080) · 모바일 \x1b[1mpnpm dev:mobile\x1b[0m')
+  console.log(
+    '  \x1b[32m✓\x1b[0m 준비 완료 — 웹 \x1b[1mpnpm dev:web\x1b[0m (:5173) · api \x1b[1mpnpm dev:api\x1b[0m (:8080) · 모바일 \x1b[1mpnpm dev:mobile\x1b[0m',
+  )
 }
 
 main().catch((e) => fail(e.message))

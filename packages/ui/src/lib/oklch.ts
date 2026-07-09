@@ -44,7 +44,8 @@ export function oklchToLinearRgb({ L, C, H }: Oklch): { r: number; g: number; b:
 }
 
 const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
-const linearToSrgb = (c: number): number => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)
+const linearToSrgb = (c: number): number =>
+  c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055
 const to255 = (c: number): number => Math.round(clamp01(linearToSrgb(clamp01(c))) * 255)
 const hex2 = (n: number): string => n.toString(16).padStart(2, '0')
 

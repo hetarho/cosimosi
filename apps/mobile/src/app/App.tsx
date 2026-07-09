@@ -1,18 +1,18 @@
-import {StatusBar} from 'react-native';
-import {SafeAreaProvider, type Metrics} from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native'
+import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context'
 
-import {tokens} from '@cosimosi/ui';
+import { tokens } from '@cosimosi/ui'
 
-import {NavigationRoot, type NavigationRootProps} from './navigation/index.ts';
-import {MobileAppProviders, type MobileAppProvidersProps} from './providers/index.ts';
-import {mobileDevUserId} from '../shared/config/index.ts';
-import {resolvedSafeAreaMetrics} from '../shared/native/index.ts';
+import { NavigationRoot, type NavigationRootProps } from './navigation/index.ts'
+import { MobileAppProviders, type MobileAppProvidersProps } from './providers/index.ts'
+import { mobileDevUserId } from '../shared/config/index.ts'
+import { resolvedSafeAreaMetrics } from '../shared/native/index.ts'
 
 export interface AppProps extends Omit<MobileAppProvidersProps, 'children'> {
   /** Safe-area metrics; the device window in production, fixed metrics in host tests. */
-  safeAreaMetrics?: Metrics;
+  safeAreaMetrics?: Metrics
   /** Deep-linking config passthrough; host tests pass `null` to skip the native path. */
-  navigationLinking?: NavigationRootProps['linking'];
+  navigationLinking?: NavigationRootProps['linking']
 }
 
 /**
@@ -34,5 +34,5 @@ export default function App({
         <NavigationRoot linking={navigationLinking} />
       </MobileAppProviders>
     </SafeAreaProvider>
-  );
+  )
 }

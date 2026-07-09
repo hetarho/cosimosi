@@ -10,23 +10,59 @@ describe('arrival latch', () => {
     const state = createArrivalLatchState()
 
     expect(
-      stepArrivalLatch(state, { mode: 'flying', targetId: 'a', withinEpsilon: false, delta: DT, arriveTimeoutSeconds: TIMEOUT }),
+      stepArrivalLatch(state, {
+        mode: 'flying',
+        targetId: 'a',
+        withinEpsilon: false,
+        delta: DT,
+        arriveTimeoutSeconds: TIMEOUT,
+      }),
     ).toBe(false)
     expect(
-      stepArrivalLatch(state, { mode: 'flying', targetId: 'a', withinEpsilon: true, delta: DT, arriveTimeoutSeconds: TIMEOUT }),
+      stepArrivalLatch(state, {
+        mode: 'flying',
+        targetId: 'a',
+        withinEpsilon: true,
+        delta: DT,
+        arriveTimeoutSeconds: TIMEOUT,
+      }),
     ).toBe(true)
     expect(
-      stepArrivalLatch(state, { mode: 'flying', targetId: 'a', withinEpsilon: true, delta: DT, arriveTimeoutSeconds: TIMEOUT }),
+      stepArrivalLatch(state, {
+        mode: 'flying',
+        targetId: 'a',
+        withinEpsilon: true,
+        delta: DT,
+        arriveTimeoutSeconds: TIMEOUT,
+      }),
     ).toBe(false)
   })
 
   it('re-arms on leaving the shell (drift) and fires again on re-entry', () => {
     const state = createArrivalLatchState()
 
-    stepArrivalLatch(state, { mode: 'focusing', targetId: 'a', withinEpsilon: true, delta: DT, arriveTimeoutSeconds: TIMEOUT })
-    stepArrivalLatch(state, { mode: 'focusing', targetId: 'a', withinEpsilon: false, delta: DT, arriveTimeoutSeconds: TIMEOUT })
+    stepArrivalLatch(state, {
+      mode: 'focusing',
+      targetId: 'a',
+      withinEpsilon: true,
+      delta: DT,
+      arriveTimeoutSeconds: TIMEOUT,
+    })
+    stepArrivalLatch(state, {
+      mode: 'focusing',
+      targetId: 'a',
+      withinEpsilon: false,
+      delta: DT,
+      arriveTimeoutSeconds: TIMEOUT,
+    })
     expect(
-      stepArrivalLatch(state, { mode: 'focusing', targetId: 'a', withinEpsilon: true, delta: DT, arriveTimeoutSeconds: TIMEOUT }),
+      stepArrivalLatch(state, {
+        mode: 'focusing',
+        targetId: 'a',
+        withinEpsilon: true,
+        delta: DT,
+        arriveTimeoutSeconds: TIMEOUT,
+      }),
     ).toBe(true)
   })
 
@@ -35,7 +71,13 @@ describe('arrival latch', () => {
 
     // Focus A, arrive. The machine would flip to idle here, but the rig never polls that idle
     // frame — the user clicks node B before the next frame.
-    stepArrivalLatch(state, { mode: 'focusing', targetId: 'a', withinEpsilon: true, delta: DT, arriveTimeoutSeconds: TIMEOUT })
+    stepArrivalLatch(state, {
+      mode: 'focusing',
+      targetId: 'a',
+      withinEpsilon: true,
+      delta: DT,
+      arriveTimeoutSeconds: TIMEOUT,
+    })
 
     // Next observed frame: mode is STILL 'focusing', but now targeting B, which sits within the
     // arrival shell. This must fire ARRIVED for B — otherwise the glide strands forever.
@@ -80,8 +122,20 @@ describe('arrival latch', () => {
   it('resets when the machine returns to idle', () => {
     const state = createArrivalLatchState()
 
-    stepArrivalLatch(state, { mode: 'flying', targetId: 'a', withinEpsilon: true, delta: DT, arriveTimeoutSeconds: TIMEOUT })
-    stepArrivalLatch(state, { mode: 'idle', targetId: null, withinEpsilon: false, delta: DT, arriveTimeoutSeconds: TIMEOUT })
+    stepArrivalLatch(state, {
+      mode: 'flying',
+      targetId: 'a',
+      withinEpsilon: true,
+      delta: DT,
+      arriveTimeoutSeconds: TIMEOUT,
+    })
+    stepArrivalLatch(state, {
+      mode: 'idle',
+      targetId: null,
+      withinEpsilon: false,
+      delta: DT,
+      arriveTimeoutSeconds: TIMEOUT,
+    })
 
     expect(state.arrivedSent).toBe(false)
     expect(state.glideElapsed).toBe(0)

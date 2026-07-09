@@ -10,5 +10,7 @@ export type TooltipProps = TooltipOwnProps
  * cross-platform API stays identical to the web Tooltip.
  */
 export function Tooltip({ content, children }: TooltipProps) {
-  return <View accessibilityHint={typeof content === 'string' ? content : undefined}>{children}</View>
+  return (
+    <View accessibilityHint={typeof content === 'string' ? content : undefined}>{children}</View>
+  )
 }

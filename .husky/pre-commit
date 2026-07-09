@@ -1,10 +1,13 @@
-# pre-commit 게이트 — CI(`pnpm check`)의 lint 로직을 그대로 돌려 커밋 전에 막는다(하나라도 실패하면 중단).
-#  · lint : `pnpm lint` = CI가 돌리는 전체 lint 묶음(check:node·web·mobile·fsd:layout·api·
+# pre-commit 게이트 — staged 포맷을 먼저 적용한 뒤 CI(`pnpm check`)의 lint 로직을 그대로 돌려
+# 커밋 전에 막는다(하나라도 실패하면 중단).
+#  · format: `lint-staged`가 staged TS/JS/JSON/MD/YAML/CSS/HTML만 Prettier로 정리한다.
+#  · lint : `pnpm lint` = CI가 돌리는 전체 lint 묶음(check:node·format:check·web·mobile·fsd:layout·api·
 #           observability·language·raw-strings·persistence·spec·comments). comment-history(R006)
 #           처럼 CI에서만 터지던 것들을 로컬에서 잡는다. lint:api는 Docker(또는 host go)가 필요하다.
 #  · build: tsc -b + vite build (타입 + 프로덕션 번들).
 # CI 전체 게이트의 나머지(typecheck / test / blog·api build)는 무거워서 제외한다 — 그건 CI가 돌린다.
 # 우회가 꼭 필요하면 `git commit --no-verify`.
-echo "▶ pre-commit: CI lint suite (pnpm lint) + web build"
+echo "▶ pre-commit: staged formatting + CI lint suite (pnpm lint) + web build"
+pnpm exec lint-staged || exit 1
 pnpm lint || exit 1
 pnpm --filter @cosimosi/web run build || exit 1

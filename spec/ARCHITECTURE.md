@@ -1,15 +1,15 @@
 # cosimosi Architecture
 
 This document is the single source of truth for cosimosi's **structure & boundaries** — the layers, the dependency
-rules, and where every piece of code lives. (The product's *vocabulary* is owned by a separate document; the vision
+rules, and where every piece of code lives. (The product's _vocabulary_ is owned by a separate document; the vision
 and the per-feature specs are too. Those reference this one, never the reverse.) It is **self-contained**: it defines
-the *frame*, not the product's features.
+the _frame_, not the product's features.
 
 In short:
 
 - **One ubiquitous language, owned by the domain model.** One canonical semantic vocabulary is used across the
   domain, DB, proto, and frontend. Each representation may use its own casing/suffixes, but not a second product word
-  for the same concept. Boundaries translate proto/sql/pixels to and from the domain model (§1). *Which* words those
+  for the same concept. Boundaries translate proto/sql/pixels to and from the domain model (§1). _Which_ words those
   are is domain content, out of scope here.
 - **Backend = domain-first Go.** `cmd/` composes, `internal/` protects, context packages own behavior, and adapters sit
   at the edge. Clean Architecture/DDD terms are used as control rails for complex core logic, not as mandatory folders
@@ -36,7 +36,7 @@ cosimosi/                  pnpm workspace
     └── blog/              Astro
 ```
 
-- **`apps/web` and `apps/mobile` are two separate React applications**, not one. They share the *pure* layers
+- **`apps/web` and `apps/mobile` are two separate React applications**, not one. They share the _pure_ layers
   through `packages/` (domain mirror, domain logic, force-sim, TSL shaders, the Connect client, generated config) and
   both follow the same FSD + rendering architecture (§3). The web app bundles with Vite; the mobile app bundles with
   Metro and owns its native `ios/`/`android/` projects — it is **not** hosted inside the web build.
@@ -52,16 +52,16 @@ cosimosi/                  pnpm workspace
 ## 1. The ubiquitous-language pattern (not the vocabulary)
 
 > The actual vocabulary — which noun maps to which type, which verb to which use-case — is **domain content** and is
-> out of scope here. This section is the *architectural rule* for **where** names live and how they cross boundaries.
+> out of scope here. This section is the _architectural rule_ for **where** names live and how they cross boundaries.
 
 - **The domain model is the single naming authority.** Domain types and domain-service functions carry the canonical
   names; every other layer either uses those names semantically or translates at a boundary. In a small Go context this
   may be the context package itself; in a larger context it may be a `domain/` package.
 - **proto and sql are foreign representations, kept at the edge.** The transport DTO (proto) and the persistence row
-  (sqlc) are *not* domain types. They are mapped to/from domain at two anti-corruption boundaries — the RPC handler
+  (sqlc) are _not_ domain types. They are mapped to/from domain at two anti-corruption boundaries — the RPC handler
   (`proto ↔ domain`) and the pg adapter (`row ↔ domain`). No proto/sql type ever leaks inward.
 - **The frontend mirrors the domain names, then projects to visuals at one seam.** Domain-mirror slices carry the
-  canonical names; the *visual* vocabulary appears only in the rendering layer, behind the `entities/*/api` mapper (§3.4).
+  canonical names; the _visual_ vocabulary appears only in the rendering layer, behind the `entities/*/api` mapper (§3.4).
 - **Enforced, not hoped.** A lint rejects forbidden cross-vocabulary names (a rendering word used as a domain symbol,
   or a second product word for an existing concept), so a new domain name is defined once and reused everywhere. The
   lint is semantic: representation-specific casing, pluralization, and generated-code suffixes are allowed when they do
@@ -185,18 +185,18 @@ code. Supporting contexts may stay in the smaller shape forever.
 
 ### 2.5 Aggregate boundaries (a structural decision)
 
-The *rules* for drawing aggregate boundaries are architectural; *which* aggregates exist (and their fields) are domain
+The _rules_ for drawing aggregate boundaries are architectural; _which_ aggregates exist (and their fields) are domain
 content, out of scope here. The rules:
 
 - **An entity with its own lifecycle is its own aggregate root.** An entity shared by many others is a separate root,
-  referenced **by id through a membership/join**, never *owned* — an aggregate never reaches inside another's
+  referenced **by id through a membership/join**, never _owned_ — an aggregate never reaches inside another's
   internals.
 - **Emergent relationships are not domain source-of-truth.** A relationship that can be computed from stored data is not
   promoted into an aggregate root or canonical domain type. It may be materialized as an infrastructure projection
   (for example, a weighted edge table) only when performance, async derivation, or query shape requires it, and only if
   it can be rebuilt from its source facts.
 - **Domain services are pure functions** (no IO) over the aggregates. Purity is what lets a client-side simulation and
-  the server run the *same* math, pinned by golden-parity tests.
+  the server run the _same_ math, pinned by golden-parity tests.
 
 ### 2.6 Persistence — sqlc + pgvector (because the workload isn't CRUD)
 
@@ -207,7 +207,7 @@ product reward SQL control and gain nothing from an ORM:
 - **weighted-graph traversal** (neighbour / top-N / recursive N-hop over an edge table), and
 - **atomic weight upserts** (`INSERT … ON CONFLICT … DO UPDATE`, batched).
 
-sqlc generates the static queries; a *thin* pgx layer handles only the genuinely dynamic ones (runtime-variable hop
+sqlc generates the static queries; a _thin_ pgx layer handles only the genuinely dynamic ones (runtime-variable hop
 count / sort). **`<context>/pg` is the only context-specific package that touches sqlc/pgx**, mapping rows to/from
 domain types — no sqlc row escapes into context behavior or the domain model. (Concrete tables/queries are defined
 per-feature, not here.)
@@ -270,9 +270,10 @@ The frontend is Feature-Sliced Design, applied identically by both the web and m
 ### 3.1 Layers & the web directory tree
 
 **Six layers, one-way imports:** `app → pages → widgets → features → entities → shared`. A slice imports only
-*lower* layers; same-layer cross-import is forbidden — the **only** exception is `entities`↔`entities` via the `@x`
+_lower_ layers; same-layer cross-import is forbidden — the **only** exception is `entities`↔`entities` via the `@x`
 public API (`entities/A/@x/B.ts`). Each slice exposes a single `index.ts` (no wildcard barrels). Enforced by `steiger`
-+ `eslint-plugin-boundaries`.
+
+- `eslint-plugin-boundaries`.
 
 > **The non-sliced layers are still segmented, never flat.** `app` and `shared` carry no slices, but they are **not** a
 > pile of loose files — they are divided into segments by technical role: `app` into `providers`/`routes`|`navigation`/
@@ -303,33 +304,33 @@ apps/web/src/
     └── i18n/               message catalogue
 ```
 
-| Layer | Role | One-line test |
-|---|---|---|
-| `app` | composition: providers, routing, global style | "wires the app together" |
-| `pages` | a route/screen; composes lower layers | "a URL lands here" |
-| `widgets` | a large self-contained block reused across pages | "a big chunk a page drops in" |
-| `features` | one user-facing action | "a verb the user does" |
+| Layer      | Role                                              | One-line test                    |
+| ---------- | ------------------------------------------------- | -------------------------------- |
+| `app`      | composition: providers, routing, global style     | "wires the app together"         |
+| `pages`    | a route/screen; composes lower layers             | "a URL lands here"               |
+| `widgets`  | a large self-contained block reused across pages  | "a big chunk a page drops in"    |
+| `features` | one user-facing action                            | "a verb the user does"           |
 | `entities` | a domain object (mirror) or its visual projection | "a noun the product talks about" |
-| `shared` | domain-agnostic reuse | "no domain word in it" |
+| `shared`   | domain-agnostic reuse                             | "no domain word in it"           |
 
 > Pure cross-app modules (shared domain logic, deterministic compute, the shader toolkit, the generated transport
 > client, generated config) live in `packages/`. **Both apps are consumers from the start**, so pure code is designed
 > cross-platform up front and placed in `packages/` directly — not built web-first and extracted later.
 
-**Where each file goes (segments).** Inside *any* slice, files are grouped by *technical role* — never by generic
+**Where each file goes (segments).** Inside _any_ slice, files are grouped by _technical role_ — never by generic
 `components/`/`hooks/`/`types/` folders:
 
-| Segment | Holds |
-|---|---|
-| `ui` | React/R3F components, shader bindings — **the only platform-aware code** (`*.native.tsx` lives here) |
-| `model` | types, Zustand stores, **XState machines**, pure slice logic |
-| `api` | backend calls + proto↔domain mappers for this slice |
-| `lib` | slice-internal helpers (not shared out) |
-| `config` | slice-local constants (tuning numbers come from generated config, never hardcoded) |
+| Segment  | Holds                                                                                                |
+| -------- | ---------------------------------------------------------------------------------------------------- |
+| `ui`     | React/R3F components, shader bindings — **the only platform-aware code** (`*.native.tsx` lives here) |
+| `model`  | types, Zustand stores, **XState machines**, pure slice logic                                         |
+| `api`    | backend calls + proto↔domain mappers for this slice                                                  |
+| `lib`    | slice-internal helpers (not shared out)                                                              |
+| `config` | slice-local constants (tuning numbers come from generated config, never hardcoded)                   |
 
-**Decision procedure** — given a new file, ask in order: (1) *a domain noun, or its rendering?* → `entities/<domain>`
-vs `entities/<visual>`; (2) *a user action?* → `features/<verb>`; (3) *a big self-contained block?* → `widgets`;
-(4) *a whole screen?* → `pages`; (5) *domain-agnostic & reused?* → `shared` (or `packages/` if pure & cross-app).
+**Decision procedure** — given a new file, ask in order: (1) _a domain noun, or its rendering?_ → `entities/<domain>`
+vs `entities/<visual>`; (2) _a user action?_ → `features/<verb>`; (3) _a big self-contained block?_ → `widgets`;
+(4) _a whole screen?_ → `pages`; (5) _domain-agnostic & reused?_ → `shared` (or `packages/` if pure & cross-app).
 Then pick the segment from the table. If two slices need the same thing it promotes **down** a layer — never copied
 sideways.
 
@@ -348,10 +349,10 @@ React state (no 60fps re-renders).
 The render workload is a **force-directed graph viz** (many instanced nodes + many fat-line edges, updated per frame).
 The stack that fits it:
 
-- **R3F 9 + three.js `WebGPURenderer`** (auto-falls-back to WebGL2); shaders in **TSL** (compiles to WGSL *and* GLSL →
+- **R3F 9 + three.js `WebGPURenderer`** (auto-falls-back to WebGL2); shaders in **TSL** (compiles to WGSL _and_ GLSL →
   one shader source for web + mobile). Post-processing via three's node pipeline (pin three's version).
 - **Simulation off the render thread.** The force-sim is a pure `tick(dt)` module (in/out: node+edge arrays /
-  `Float32Array` of coords), run in a Web Worker (Barnes-Hut, O(N log N)). The renderer only *reads* coords into
+  `Float32Array` of coords), run in a Web Worker (Barnes-Hut, O(N log N)). The renderer only _reads_ coords into
   `InstancedMesh.matrix` / uniforms — **never drives 60fps from React state**.
 - **Instancing/batching first.** Nodes = `InstancedMesh` buckets; edges = `Line2`.
 - **Visual bodies come through an asset-source port** (shader | glTF | …) so the domain never imports a concrete
@@ -366,7 +367,7 @@ maps to which visual body, and how each property maps, is domain content, out of
   maps `proto → FE domain` — the FE mirror of the backend's anti-corruption boundary (§2.4).
 - **Rendering entities** import a domain-mirror entity (via `@x`) and project it to a visual body. The projection is
   **one-way**: visual words never travel back up into the domain slices or the API mapper, and anything the domain
-  treats as *emergent* stays emergent here too — rendered, never modeled.
+  treats as _emergent_ stays emergent here too — rendered, never modeled.
 
 ### 3.5 Shared packages & the mobile app
 
@@ -423,7 +424,7 @@ apps/mobile/
 - **Per-user isolation.** Every persisted row carries the user id and every query is scoped to it via an
   interceptor-injected context value (RLS is a later hardening). This is a transport+persistence rule, applied
   uniformly rather than per-feature. The root lint gate scans product migrations and query files for the convention.
-- **Derived state, not stored state.** State that varies continuously with time is *computed at read time* from the
+- **Derived state, not stored state.** State that varies continuously with time is _computed at read time_ from the
   last-event timestamp, never written per tick; only discrete events persist. The server stays authoritative over the
   source data while anything derivable from it (appearance, layout) is a pure function — kept out of the store.
 - **Config is build-time and generated.** Tuning scalars live in `values.yaml` → `pnpm gen:values` → FE(TS)/BE(Go)
@@ -452,7 +453,7 @@ apps/mobile/
   [Go Code Review — Interfaces](https://go.dev/wiki/CodeReviewComments#interfaces) ·
   [Ben Johnson — Standard Package Layout](https://gobeyond.ghost.io/standard-package-layout/) ·
   [Mat Ryer — HTTP Services in Go](https://grafana.com/blog/how-i-write-http-services-in-go-after-13-years/) ·
-  Evans, *Domain-Driven Design*; Vernon, *Implementing DDD*;
+  Evans, _Domain-Driven Design_; Vernon, _Implementing DDD_;
   [Three Dots Labs — Clean Architecture in Go](https://threedots.tech/post/introducing-clean-architecture/)
 - **Backend stack** — [sqlc](https://docs.sqlc.dev) ([#2467 repository](https://github.com/sqlc-dev/sqlc/issues/2467),
   [#3548 vector](https://github.com/sqlc-dev/sqlc/issues/3548)) · [pgvector](https://github.com/pgvector/pgvector) ·

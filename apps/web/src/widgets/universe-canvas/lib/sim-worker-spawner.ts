@@ -6,5 +6,7 @@ import type { SimWorkerLike, SimWorkerSpawner } from '@cosimosi/universe'
 export function createSimWorkerSpawner(): SimWorkerSpawner | null {
   if (typeof Worker !== 'function') return null
   return () =>
-    new Worker(new URL('./universe-sim.worker.ts', import.meta.url), { type: 'module' }) as SimWorkerLike
+    new Worker(new URL('./universe-sim.worker.ts', import.meta.url), {
+      type: 'module',
+    }) as SimWorkerLike
 }

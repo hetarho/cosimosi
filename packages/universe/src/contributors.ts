@@ -33,7 +33,8 @@ export function buildContributors(
   { firstNodeIndex }: ContributorParams,
 ): NebulaContributors {
   const { nebula } = VALUES
-  const scored: { nodeIndex: number; mood: EpisodicMemory['emotion']['mood']; radius: number }[] = []
+  const scored: { nodeIndex: number; mood: EpisodicMemory['emotion']['mood']; radius: number }[] =
+    []
   memories.forEach((memory, index) => {
     if (!memory) return
     const strength = clamp01(effectiveStrength(memory.baseStrength, memory.recallCount))

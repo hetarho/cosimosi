@@ -1,0 +1,33 @@
+# Dependency and build artifacts
+node_modules/
+dist/
+.astro/
+coverage/
+data/
+
+# Local/tool state
+.git/
+.claude/
+.codex/
+project.inlang/cache/
+
+# Package-manager lockfiles are owned by the package manager.
+pnpm-lock.yaml
+apps/mobile/ios/Podfile.lock
+
+# Generated outputs are owned by their generators.
+apps/api/db/gen/
+apps/api/internal/gen/
+apps/api/internal/platform/values/values_gen.go
+apps/mobile/src/shared/config/dev-user.gen.ts
+packages/api-client/src/gen/
+packages/config/src/values.gen.ts
+packages/i18n/src/gen/
+packages/ui/src/theme.gen.css
+
+# Native build output and generated projects.
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/

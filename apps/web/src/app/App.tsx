@@ -1,4 +1,7 @@
-import { ObservedErrorBoundary, type ObservedErrorBoundaryFallbackProps } from '@cosimosi/observability/react'
+import {
+  ObservedErrorBoundary,
+  type ObservedErrorBoundaryFallbackProps,
+} from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 import type { ApiTransport } from '@cosimosi/api-client'
@@ -9,7 +12,10 @@ import type { ObservabilityFacade } from '@cosimosi/observability'
 
 import { WebAuthProvider } from './providers/auth-provider.tsx'
 import { WebI18nProvider } from './providers/i18n-provider.tsx'
-import { WebObservabilityProvider, WebObservabilitySessionBridge } from './providers/observability-provider.tsx'
+import {
+  WebObservabilityProvider,
+  WebObservabilitySessionBridge,
+} from './providers/observability-provider.tsx'
 import { WebClientCacheProvider } from './providers/query-provider.tsx'
 import { WebRouterProvider, createAppRouter } from './routes/index.ts'
 

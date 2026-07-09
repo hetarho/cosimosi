@@ -31,7 +31,9 @@ describe('force-sim purity and worker contract', () => {
       for (const match of text.matchAll(importPattern)) {
         const specifier = match[1] ?? match[2] ?? ''
         expect(
-          forbiddenImports.some((forbidden) => specifier === forbidden || specifier.startsWith(`${forbidden}/`)),
+          forbiddenImports.some(
+            (forbidden) => specifier === forbidden || specifier.startsWith(`${forbidden}/`),
+          ),
         ).toBe(false)
       }
       expect(globalPattern.test(text)).toBe(false)
@@ -50,7 +52,10 @@ describe('force-sim purity and worker contract', () => {
     expect(clonedGraph).toEqual(graph)
 
     const simulation = createForceSimulation(clonedGraph)
-    const output = simulation.tick(1 / 60, createEmptyForceSimBuffer(simulation.nodeIndex.entries.length))
+    const output = simulation.tick(
+      1 / 60,
+      createEmptyForceSimBuffer(simulation.nodeIndex.entries.length),
+    )
     const expectedLength = output.length
     const transferable = output.buffer
     expect(transferable).toBeInstanceOf(ArrayBuffer)
@@ -69,7 +74,10 @@ describe('force-sim purity and worker contract', () => {
     expect(output.byteLength).toBe(0)
     expect(simulation.coordinates.byteLength).toBe(expectedLength * Float32Array.BYTES_PER_ELEMENT)
 
-    const nextOutput = simulation.tick(1 / 60, createEmptyForceSimBuffer(simulation.nodeIndex.entries.length))
+    const nextOutput = simulation.tick(
+      1 / 60,
+      createEmptyForceSimBuffer(simulation.nodeIndex.entries.length),
+    )
     expect(nextOutput.length).toBe(expectedLength)
   })
 })

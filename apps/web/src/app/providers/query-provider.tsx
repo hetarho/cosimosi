@@ -22,7 +22,12 @@ interface WebClientCacheProviderProps {
   transport?: ApiTransport
 }
 
-export function WebClientCacheProvider({ children, apiBaseUrl, queryClient, transport }: WebClientCacheProviderProps) {
+export function WebClientCacheProvider({
+  children,
+  apiBaseUrl,
+  queryClient,
+  transport,
+}: WebClientCacheProviderProps) {
   const auth = useAuthFacade()
   const observability = useObservabilityFacade()
   const session = useSessionSnapshot()

@@ -36,10 +36,16 @@ export interface OptimisticMutationContext {
   settle(): Promise<void>
 }
 
-export async function beginOptimisticMutation(options: BeginOptimisticMutationOptions): Promise<OptimisticMutationContext> {
-  await Promise.all(options.patches.map((patch) => options.queryClient.cancelQueries({ queryKey: patch.queryKey })))
+export async function beginOptimisticMutation(
+  options: BeginOptimisticMutationOptions,
+): Promise<OptimisticMutationContext> {
+  await Promise.all(
+    options.patches.map((patch) => options.queryClient.cancelQueries({ queryKey: patch.queryKey })),
+  )
 
-  const snapshots = options.patches.map((patch) => captureSnapshot(options.queryClient, patch.queryKey))
+  const snapshots = options.patches.map((patch) =>
+    captureSnapshot(options.queryClient, patch.queryKey),
+  )
 
   try {
     for (const patch of options.patches) {
@@ -57,7 +63,11 @@ export async function beginOptimisticMutation(options: BeginOptimisticMutationOp
       restoreSnapshots(options.queryClient, snapshots)
     },
     async settle() {
-      await Promise.all((options.invalidate ?? []).map((queryKey) => options.queryClient.invalidateQueries({ queryKey })))
+      await Promise.all(
+        (options.invalidate ?? []).map((queryKey) =>
+          options.queryClient.invalidateQueries({ queryKey }),
+        ),
+      )
     },
   }
 }
@@ -87,7 +97,10 @@ function applyPatch(queryClient: QueryClient, patch: OptimisticPatch): void {
   }
 }
 
-function restoreSnapshots(queryClient: QueryClient, snapshots: readonly OptimisticSnapshot[]): void {
+function restoreSnapshots(
+  queryClient: QueryClient,
+  snapshots: readonly OptimisticSnapshot[],
+): void {
   for (const snapshot of snapshots) {
     if (!snapshot.exists) {
       queryClient.removeQueries({ queryKey: snapshot.queryKey, exact: true })
@@ -95,13 +108,17 @@ function restoreSnapshots(queryClient: QueryClient, snapshots: readonly Optimist
       const restoredState = cloneSnapshotState(snapshot)
       const query =
         queryClient.getQueryCache().find({ queryKey: snapshot.queryKey, exact: true }) ??
-        queryClient.getQueryCache().build(queryClient, { queryKey: snapshot.queryKey }, restoredState)
+        queryClient
+          .getQueryCache()
+          .build(queryClient, { queryKey: snapshot.queryKey }, restoredState)
       query.setState(restoredState)
     }
   }
 }
 
-function cloneSnapshotState(snapshot: Extract<OptimisticSnapshot, { exists: true }>): QueryState<unknown, Error> {
+function cloneSnapshotState(
+  snapshot: Extract<OptimisticSnapshot, { exists: true }>,
+): QueryState<unknown, Error> {
   return {
     ...snapshot.state,
     data: cloneCacheData(snapshot.state.data),
@@ -109,7 +126,8 @@ function cloneSnapshotState(snapshot: Extract<OptimisticSnapshot, { exists: true
 }
 
 function cloneCacheData<T>(value: T): T {
-  const structuredCloneFn = (globalThis as { structuredClone?: <TValue>(input: TValue) => TValue }).structuredClone
+  const structuredCloneFn = (globalThis as { structuredClone?: <TValue>(input: TValue) => TValue })
+    .structuredClone
   if (structuredCloneFn) {
     try {
       return structuredCloneFn(value)
@@ -128,13 +146,18 @@ function cloneCacheDataFallback<T>(value: T): T {
   if (Array.isArray(value)) return value.map((item) => cloneCacheDataFallback(item)) as T
   if (value instanceof Map) {
     return new Map(
-      Array.from(value.entries(), ([key, item]) => [cloneCacheDataFallback(key), cloneCacheDataFallback(item)]),
+      Array.from(value.entries(), ([key, item]) => [
+        cloneCacheDataFallback(key),
+        cloneCacheDataFallback(item),
+      ]),
     ) as T
   }
   if (value instanceof Set) {
     return new Set(Array.from(value.values(), (item) => cloneCacheDataFallback(item))) as T
   }
-  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneCacheDataFallback(item)])) as T
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, cloneCacheDataFallback(item)]),
+  ) as T
 }
 
 function cloneArrayBufferView<T extends ArrayBufferView>(value: T): T {

@@ -14,7 +14,11 @@ import {
   type TelemetryAdapter,
   toSentryLevel,
 } from '@cosimosi/observability'
-import { ObservabilityProvider, useObservabilityFacade, useObservabilitySnapshot } from '@cosimosi/observability/react'
+import {
+  ObservabilityProvider,
+  useObservabilityFacade,
+  useObservabilitySnapshot,
+} from '@cosimosi/observability/react'
 
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
 
@@ -24,7 +28,9 @@ interface WebObservabilityProviderProps {
 }
 
 export function WebObservabilityProvider({ children, facade }: WebObservabilityProviderProps) {
-  const [runtime] = useState<ObservabilityRuntime | null>(() => (facade ? null : createDefaultWebObservabilityRuntime()))
+  const [runtime] = useState<ObservabilityRuntime | null>(() =>
+    facade ? null : createDefaultWebObservabilityRuntime(),
+  )
   const vendorStarted = useRef(false)
 
   useEffect(() => {
@@ -40,7 +46,9 @@ export function WebObservabilityProvider({ children, facade }: WebObservabilityP
     vendorStarted.current = true
   }, [facade, runtime])
 
-  return <ObservabilityProvider facade={facade ?? runtime!.facade}>{children}</ObservabilityProvider>
+  return (
+    <ObservabilityProvider facade={facade ?? runtime!.facade}>{children}</ObservabilityProvider>
+  )
 }
 
 export function WebObservabilitySessionBridge() {
@@ -61,7 +69,11 @@ export function WebObservabilitySessionBridge() {
 
 function createDefaultWebObservabilityRuntime(): ObservabilityRuntime {
   const flagRegistry = platformFeatureFlags.withOverrides(
-    readFeatureFlagOverrides(platformFeatureFlags.definitions, import.meta.env, 'VITE_COSIMOSI_FLAG_'),
+    readFeatureFlagOverrides(
+      platformFeatureFlags.definitions,
+      import.meta.env,
+      'VITE_COSIMOSI_FLAG_',
+    ),
   )
   return createObservabilityRuntime({ flagRegistry })
 }
@@ -73,7 +85,9 @@ interface WebVendorTelemetryOptions {
   posthogHost?: string
 }
 
-function createWebVendorTelemetryAdapter(options: WebVendorTelemetryOptions): TelemetryAdapter | null {
+function createWebVendorTelemetryAdapter(
+  options: WebVendorTelemetryOptions,
+): TelemetryAdapter | null {
   const sentryEnabled = Boolean(options.sentryDsn)
   const posthogEnabled = Boolean(options.posthogKey)
 
@@ -105,7 +119,10 @@ function createWebVendorTelemetryAdapter(options: WebVendorTelemetryOptions): Te
     },
     captureMessage(message, level, context) {
       if (!sentryEnabled) return
-      Sentry.captureMessage(message, { ...captureContext('web', context), level: toSentryLevel(level) })
+      Sentry.captureMessage(message, {
+        ...captureContext('web', context),
+        level: toSentryLevel(level),
+      })
     },
     track(eventName, properties) {
       if (posthogEnabled) posthog.capture(eventName, properties)

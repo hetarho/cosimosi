@@ -12,14 +12,14 @@
 a grep for `@tanstack/react-router` outside `app/routes/` must return nothing. Lower FSD layers (`pages`, `features`)
 never import the library; they navigate through the seam in §4.
 
-| File | Role |
-|---|---|
-| `routes/route-tree.tsx` | the code-based route tree + `RouterContext` type |
-| `routes/router.ts` | `createAppRouter(...)` factory + the `declare module … Register` type registration |
-| `routes/WebRouterProvider.tsx` | reads the diagnostics flag, memoizes the router, renders `<RouterProvider>` |
-| `routes/not-found.tsx` | the localized not-found screen |
-| `routes/navigation.ts` | the typed navigation seam (`Link`, `useAppNavigate`) |
-| `routes/index.ts` | the segment's public API |
+| File                           | Role                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------------- |
+| `routes/route-tree.tsx`        | the code-based route tree + `RouterContext` type                                   |
+| `routes/router.ts`             | `createAppRouter(...)` factory + the `declare module … Register` type registration |
+| `routes/WebRouterProvider.tsx` | reads the diagnostics flag, memoizes the router, renders `<RouterProvider>`        |
+| `routes/not-found.tsx`         | the localized not-found screen                                                     |
+| `routes/navigation.ts`         | the typed navigation seam (`Link`, `useAppNavigate`)                               |
+| `routes/index.ts`              | the segment's public API                                                           |
 
 ## 2. The route tree
 
@@ -36,7 +36,9 @@ never import the library; they navigate through the seam in §4.
 
 ```ts
 declare module '@tanstack/react-router' {
-  interface Register { router: ReturnType<typeof createAppRouter> }
+  interface Register {
+    router: ReturnType<typeof createAppRouter>
+  }
 }
 ```
 

@@ -20,7 +20,10 @@ export interface IridescentOptions {
 }
 
 /** Thin-film (oil-slick) tint — hue slides with phase (view angle/time, etc.). A pearly sheen oscillating around baseHue. */
-export function iridescent(phase: unknown, { baseHue = 0.6, range = 0.25, sat = 0.6, val = 1 }: IridescentOptions = {}) {
+export function iridescent(
+  phase: unknown,
+  { baseHue = 0.6, range = 0.25, sat = 0.6, val = 1 }: IridescentOptions = {},
+) {
   const hue = float(baseHue).add(sin(asFloatNode(phase)).mul(range))
   return asVec3Node(mx_hsvtorgb(vec3(hue, float(sat), float(val))))
 }

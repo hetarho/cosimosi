@@ -12,7 +12,7 @@ making neuron birth legible.
 
 ## Must Hold
 
-- The latent field is **rendering-only** — no DB rows, no RPC, no domain/proto/sqlc type. Only an *activated* neuron
+- The latent field is **rendering-only** — no DB rows, no RPC, no domain/proto/sqlc type. Only an _activated_ neuron
   is persisted, and only by Encode. The gray field is a metaphor, not deletable domain state ([I1]/[F2]).
 - The awaken start point is a **presentation choice** (a gray point near a recently-active neuron, else random); the
   real neuron's final position is **emergent** from the force-sim and is never stored ([I5]). No "awaken position" is
@@ -22,5 +22,5 @@ making neuron birth legible.
 
 ## Copy Implication
 
-Describe the gray field as *dormant / not-yet-lit memory*, never as "empty" or "deleted". The awaken reads as a silent
+Describe the gray field as _dormant / not-yet-lit memory_, never as "empty" or "deleted". The awaken reads as a silent
 cell lighting up near its neighbours — a birth, not a notification.

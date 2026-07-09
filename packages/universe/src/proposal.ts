@@ -56,7 +56,10 @@ export function setMemoryMood(
 
 // Merge memory `index` with the one after it: keep the first's name + mood, union the neuron
 // membership (deduped) — a neuron-normalization edit expressed by touch ([W4][E10]).
-export function mergeMemory(memories: readonly ProposedMemoryDraft[], index: number): ProposedMemoryDraft[] {
+export function mergeMemory(
+  memories: readonly ProposedMemoryDraft[],
+  index: number,
+): ProposedMemoryDraft[] {
   // Never fall below the encode minimum — the same 2–5 bound the UI gate enforces, clamped here as
   // defense in depth so no caller can drive the proposal out of range ([E2]).
   if (memories.length <= VALUES.encode.minMemories) return memories.slice()
@@ -75,7 +78,10 @@ export function mergeMemory(memories: readonly ProposedMemoryDraft[], index: num
 // Split memory `index` into two: neuron membership is halved so each side is a distinct memory the
 // user (or a follow-up NL revise) refines. A single-neuron memory copies its neuron to both so
 // neither side is left empty.
-export function splitMemory(memories: readonly ProposedMemoryDraft[], index: number): ProposedMemoryDraft[] {
+export function splitMemory(
+  memories: readonly ProposedMemoryDraft[],
+  index: number,
+): ProposedMemoryDraft[] {
   // Never exceed the encode maximum — the same 2–5 bound the UI gate enforces, clamped here as
   // defense in depth so no caller can drive the proposal out of range ([E2]).
   if (memories.length >= VALUES.encode.maxMemories) return memories.slice()
@@ -86,7 +92,11 @@ export function splitMemory(memories: readonly ProposedMemoryDraft[], index: num
   const tail = target.neurons.slice(mid)
   // The first half keeps the target's id (its row stays put); the new second half gets a fresh id.
   const first: ProposedMemoryDraft = { ...target, neurons: head }
-  const second: ProposedMemoryDraft = { ...target, id: nextMemoryId(), neurons: tail.length > 0 ? tail : head.slice(0, 1) }
+  const second: ProposedMemoryDraft = {
+    ...target,
+    id: nextMemoryId(),
+    neurons: tail.length > 0 ? tail : head.slice(0, 1),
+  }
   return [...memories.slice(0, index), first, second, ...memories.slice(index + 1)]
 }
 

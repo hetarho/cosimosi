@@ -23,7 +23,11 @@ export function NebulaField({ positions, firstNodeIndex, resolution }: NebulaFie
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)
   const contributors = useMemo(
-    () => buildContributors(ids.map((id) => byId[id]), { firstNodeIndex }),
+    () =>
+      buildContributors(
+        ids.map((id) => byId[id]),
+        { firstNodeIndex },
+      ),
     [byId, ids, firstNodeIndex],
   )
   return (

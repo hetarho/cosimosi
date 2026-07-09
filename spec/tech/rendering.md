@@ -6,13 +6,13 @@ As-built rules for the 3D rendering substrate (built by [plan/14](../plan/14.ren
 > **Status.** Web is built and verified (typecheck · lint · test · build). Mobile is wired and verified at the
 > source-gate level (typecheck · lint · test · `pod install`); the **on-device/simulator render is pending
 > verification** — run `pnpm ios` (this is the one thing CI can't see). The 3D scene, shader toolkit, and skins are **shared
-> verbatim** across web and React Native — only the native *build setup* forks, not the code.
+> verbatim** across web and React Native — only the native _build setup_ forks, not the code.
 
 ## The package — `@cosimosi/3d-renderer`
 
 A **platform-aware** package (like `@cosimosi/ui`): it owns `three` + `@react-three/fiber` (peer deps) and is the
 single 3D library both apps consume. The exports map forks only the entry — `react-native` → `src/index.native.ts`,
-default → `src/index.ts` — and `index.native.ts` re-exports the web entry (the code is shared; only the *build setup*
+default → `src/index.ts` — and `index.native.ts` re-exports the web entry (the code is shared; only the _build setup_
 differs on native). Slices import `@cosimosi/3d-renderer`, never `three` directly.
 
 ```
@@ -29,6 +29,7 @@ packages/3d-renderer/src/                                                       
 ```
 
 ### Shader-art toolkit (the composable effect library)
+
 Domain-agnostic procedural TSL techniques, two families: **effects** (`noise` fbm/worley/ridged · `field`
 domain-warp/polar/kaleido/log-spiral · `pattern` cell-edge/iso-line/contour · `finish` fresnel/iridescent → color/mask
 nodes) and **objects** (`sdf` · `geometry` → forms). Each is a pure node-in/node-out builder — no material, uniform,
@@ -37,10 +38,11 @@ GLSL — so one source serves web + native. (Rich artistic layering/mixing is la
 the effects library-shaped.)
 
 ### Backgrounds, skins, and the registry
+
 A background is a **typed** thing. Each **background type** owns its own props shape **and** its own TSL node-builder,
 paired in a discriminated union (`BackgroundSpec`) and dispatched by **one registry** — `resolveBackgroundNode(spec)`
 (`assets/backgrounds/`: `nebula` + `gradient` today; adding a type = its module + one registry case — no layer/host/seam
-change). A **skin** is a *typed instance* of non-domain ambiance: `UniverseSkin = { key, label, background: {type, props},
+change). A **skin** is a _typed instance_ of non-domain ambiance: `UniverseSkin = { key, label, background: {type, props},
 bloom, camera }` (`assets/skins/presets.ts`). Type-specific params live in `background.props` (nebula:
 palette/pattern/clear); **scene-level** ambiance — `bloom` (post) and `camera` (fov) — stays at the skin top level, so
 `PostFX`/`UniverseCanvas` never index a type-specific props bag. The **active skin** is one build-time constant —
@@ -51,26 +53,30 @@ change. **Invariant:** a skin/background is presentation-only — it never sets 
 **Generic core vs assets.** The toolkit (`shader-art`), scene layers (`layers/`), canvas host, skin seam, and
 asset-source port name **no** concrete background type; the type→node-builder dispatch and the concrete looks
 (`nebula`/`gradient`/skins/`UniverseScene`) live in `assets/`, which depends on the core — not vice-versa. `Background`
-takes a resolved `node`; `PostFX` takes `bloom` params. (The seam reads the skin *table* from `assets/skins` — its
+takes a resolved `node`; `PostFX` takes `bloom` params. (The seam reads the skin _table_ from `assets/skins` — its
 content — but references no background type/node-builder.)
 
 ### Across the R3F reconciler
+
 R3F runs its own reconciler, so context from the DOM/RN tree outside `<Canvas>` does **not** reach in-canvas children.
 The active skin is read with `useSkin()` at the boundary; `UniverseScene` resolves the background node and passes it as a
 prop to `Background` (and `skin.bloom` to `PostFX`) — never via context across the canvas.
 
 ### Camera (demo orbit)
+
 `UniverseScene` mounts `CameraControls` — three's `OrbitControls` (drag = rotate, wheel/pinch = zoom, inertial damping;
 pan off; distance clamped). It updates in a default-priority `useFrame`, before `PostFX`'s priority-1 render. This is a
 **demo inspection rig**, not product navigation — the real universe camera/fly rig is Epic A `universe-canvas`
 ([U3][V0]). It attaches to the canvas DOM element and stays **inert on hosts without one** (native gesture nav is Epic A).
 
 ### Post-processing
+
 `PostFX` builds a three `PostProcessing` pipeline with a **TSL bloom pass** (`three/addons/tsl/display/BloomNode.js`)
 over `pass(scene, camera)`, parameterized by the skin. It takes the render loop with a positive-priority `useFrame`;
 `renderAsync()` per frame is the documented three WebGPU pattern (the renderer queues).
 
 ## Consumers
+
 - **Web:** `apps/web/src/pages/universe` is the **main page (`/`)** — full-bleed `UniverseCanvas` (background + stars +
   bloom) with floating HUD buttons. The old design-system showcase page is retired; design-system primitives are
   verified via the `/test` harness `Design system` panel. The `/test` **rendering-foundation** panel
@@ -80,10 +86,12 @@ over `pass(scene, camera)`, parameterized by the skin. It takes the render loop 
 - Both apps import `@cosimosi/3d-renderer` identically — proven by `typecheck` passing on **both** web and RN.
 
 ## three confined to the package
+
 `apps/web/eslint.config.js` `no-restricted-imports` forbids `three` / `three/*` / `@react-three/fiber` in
 `app`/`pages`/`widgets`/`features`/`entities` — slices go through the package boundary.
 
 ## React Native build setup (as-built)
+
 The scene code is shared; native needs build-time wiring (not forked code):
 
 - **Deps:** `react-native-webgpu` + its peers `react-native-reanimated` + `react-native-worklets`.
@@ -194,7 +202,7 @@ The three **rendering entities** turn the domain-mirror graph into bodies. Their
 ## Latent star field & awaken (plan 25 as-built)
 
 Latent stars are **rendering-only** — no DB rows, no RPC, no domain type in Go/proto/sqlc or the FE mirror. A `neurons`
-row exists only for an *activated* neuron, written by Encode (plan 20), never here. The awaken is entry choreography; the
+row exists only for an _activated_ neuron, written by Encode (plan 20), never here. The awaken is entry choreography; the
 seed anchor is a client presentation choice; the real neuron's final position is **emergent** from the force-sim and is
 **never stored** [I5][E7a].
 
@@ -227,7 +235,7 @@ modeled, or surfaced as an average-tone readout ([M4][M5][I5][§3.4]).
 - **`ColorField` layer (`@cosimosi/3d-renderer`).** The domain-agnostic realization is **additive world-space soft-glow
   kernels**, not a full-screen uniform-array loop pass: one `InstancedMesh` of unit spheres with a TSL
   `MeshBasicNodeMaterial` whose `opacityNode` is a **view-facing radial falloff** (`clamp(normalView.z,0,1) ^
-  falloff_exponent × base_intensity`), so a plain sphere reads as a soft glow with no billboarding. `AdditiveBlending`,
+falloff_exponent × base_intensity`), so a plain sphere reads as a soft glow with no billboarding. `AdditiveBlending`,
   `depthTest`/`depthWrite` off, `renderOrder = -2`, so contributions **sum** in the framebuffer (many colors coexist and
   bleed, the tone emerges) and the latent field (-1) + every real body draw on top. Positions are read per frame from the
   coordinate buffer into instance matrices (§3.3); the per-contributor tint is an instance attribute uploaded only when
@@ -236,7 +244,7 @@ modeled, or surfaced as an average-tone readout ([M4][M5][I5][§3.4]).
   shader with WebGL2-fallback risk; additive framebuffer compositing is the screen-space realization the plan left open.
 - **`entities/nebula` (visual entity).** `lib/contributors.ts` is a pure projection: each rendered memory →
   `(nodeIndex = firstNodeIndex + storeIndex, moodColor(mood) → linear RGB tint, EffectiveStrength → max(min_bleed_radius,
-  bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` keeping the **strongest**. Color comes
+bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` keeping the **strongest**. Color comes
   solely through the plan-17 `moodColor` seam — no color literal, no valence→hue math; the weight input is
   `EffectiveStrength` (the derived read-time size), the Epic-C recall mirror seam. `ui/NebulaField.tsx` binds the layer
   with `firstNodeIndex = neuronCount` (memories share the star layer's buffer slots); `ui/NebulaNotice.tsx` is the
@@ -252,6 +260,7 @@ modeled, or surfaced as an average-tone readout ([M4][M5][I5][§3.4]).
   DOM); the `ColorField` TSL layer is shared — no `*.native`.
 
 ## Config
+
 `spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
 (instancing bucket capacity), the plan-24 visual ranges `star_size_min`/`star_size_max`,
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,

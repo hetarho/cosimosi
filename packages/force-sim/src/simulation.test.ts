@@ -71,7 +71,10 @@ describe('force-sim layout rules', () => {
     }
     const extraGraph: ForceSimGraph = {
       ...baseGraph,
-      episodicMemories: [...baseGraph.episodicMemories, { id: 'm2', seedHint: { x: 100, y: 0, z: 5 } }],
+      episodicMemories: [
+        ...baseGraph.episodicMemories,
+        { id: 'm2', seedHint: { x: 100, y: 0, z: 5 } },
+      ],
     }
 
     const base = createForceSimulation(baseGraph, { values: testValues })
@@ -79,7 +82,9 @@ describe('force-sim layout rules', () => {
     tick(base, 60)
     tick(extra, 60)
 
-    expect(extra.getPosition('episodicMemory', 'm1')).toEqual(base.getPosition('episodicMemory', 'm1'))
+    expect(extra.getPosition('episodicMemory', 'm1')).toEqual(
+      base.getPosition('episodicMemory', 'm1'),
+    )
   })
 
   it('uses clustered and stable seed placement before forces settle', () => {
@@ -120,7 +125,9 @@ describe('force-sim layout rules', () => {
     const simulation = createForceSimulation(graph, { values: testValues })
     tick(simulation, 90)
 
-    expect(distance(simulation.getPosition('neuron', 'a'), simulation.getPosition('neuron', 'b'))).toBeGreaterThan(1)
+    expect(
+      distance(simulation.getPosition('neuron', 'a'), simulation.getPosition('neuron', 'b')),
+    ).toBeGreaterThan(1)
     for (const entry of simulation.nodeIndex.entries) {
       const coordinate = readForceSimCoordinate(simulation.coordinates, entry.index)
       expect(coordinate.z).toBeGreaterThanOrEqual(testValues.hippocampusZMin)
@@ -143,7 +150,9 @@ describe('force-sim layout rules', () => {
     const simulation = createForceSimulation(graph, { values: testValues })
     tick(simulation, 90)
 
-    expect(distance(simulation.getPosition('neuron', 'a'), simulation.getPosition('neuron', 'b'))).toBeGreaterThan(1)
+    expect(
+      distance(simulation.getPosition('neuron', 'a'), simulation.getPosition('neuron', 'b')),
+    ).toBeGreaterThan(1)
   })
 
   it('rejects emotion and time fields at the runtime boundary', () => {
@@ -154,11 +163,18 @@ describe('force-sim layout rules', () => {
       activations: [],
     } as unknown as ForceSimGraph
 
-    expect(() => createForceSimulation(graph, { values: testValues })).toThrow(/cannot include mood/)
+    expect(() => createForceSimulation(graph, { values: testValues })).toThrow(
+      /cannot include mood/,
+    )
   })
 
   it('handles an empty universe without NaN or throwing (a brand-new account)', () => {
-    const empty: ForceSimGraph = { neurons: [], synapses: [], episodicMemories: [], activations: [] }
+    const empty: ForceSimGraph = {
+      neurons: [],
+      synapses: [],
+      episodicMemories: [],
+      activations: [],
+    }
     const simulation = createForceSimulation(empty, { values: testValues })
     expect(() => tick(simulation, 60)).not.toThrow()
     expect(simulation.coordinates.length).toBe(0)
@@ -176,9 +192,13 @@ describe('force-sim layout rules', () => {
     expect(() => tick(simulation, 60)).not.toThrow()
     const neuron = simulation.getPosition('neuron', 'lonely')
     const memory = simulation.getPosition('episodicMemory', 'first')
-    expect(neuron && Number.isFinite(neuron.x) && Number.isFinite(neuron.y) && Number.isFinite(neuron.z)).toBe(true)
+    expect(
+      neuron && Number.isFinite(neuron.x) && Number.isFinite(neuron.y) && Number.isFinite(neuron.z),
+    ).toBe(true)
     // The lone memory settles onto its only neuron's centroid — no /0 from an empty weight sum.
-    expect(memory && Number.isFinite(memory.x) && Number.isFinite(memory.y) && Number.isFinite(memory.z)).toBe(true)
+    expect(
+      memory && Number.isFinite(memory.x) && Number.isFinite(memory.y) && Number.isFinite(memory.z),
+    ).toBe(true)
   })
 })
 

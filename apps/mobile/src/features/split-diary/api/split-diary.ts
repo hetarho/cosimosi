@@ -12,6 +12,9 @@ export interface SplitDiaryInput {
 // in-session and only LaunchStars writes ([W2]). The proposal is shaped for the editable surface
 // by the widget's proposal mappers (name / mood / neuron membership only — no position / color /
 // strength / time can travel on this contract, §3.3).
-export async function requestSplitDiary(transport: Transport, input: SplitDiaryInput): Promise<SplitDiaryResponse> {
+export async function requestSplitDiary(
+  transport: Transport,
+  input: SplitDiaryInput,
+): Promise<SplitDiaryResponse> {
   return createMemoryClient(transport).splitDiary({ body: input.body, diaryDate: input.diaryDate })
 }

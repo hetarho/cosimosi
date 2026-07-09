@@ -9,7 +9,11 @@ import {
 } from './platform-panel-components.tsx'
 import { NebulaDemoPanel } from './nebula-demo-panel.tsx'
 import { UiTestPanel } from './ui-test-panel.tsx'
-import { createTestPanelRegistry, type TestPanelCapability, type TestPanelDefinition } from '../../../shared/test-panel/index.ts'
+import {
+  createTestPanelRegistry,
+  type TestPanelCapability,
+  type TestPanelDefinition,
+} from '../../../shared/test-panel/index.ts'
 
 export const PHASE_ONE_TEST_CAPABILITIES = [
   'transport',

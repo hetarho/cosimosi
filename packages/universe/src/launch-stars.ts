@@ -1,4 +1,8 @@
-import { createMemoryClient, type ApiTransport, type LaunchStarsResponse } from '@cosimosi/api-client'
+import {
+  createMemoryClient,
+  type ApiTransport,
+  type LaunchStarsResponse,
+} from '@cosimosi/api-client'
 import { MOODS, arousalToInitialStrength, createEmotion, type Mood } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -22,7 +26,10 @@ export interface LaunchStarsInput {
 // only (§2.7 unary). Embeddings / neurons / synapses / the emergent position fill on the next
 // GetUniverse read (§2.8) — this call never carries them. Fresh request objects are shaped here so
 // the proto DTO boundary owns the wire shape.
-export async function requestLaunchStars(transport: ApiTransport, input: LaunchStarsInput): Promise<LaunchStarsResponse> {
+export async function requestLaunchStars(
+  transport: ApiTransport,
+  input: LaunchStarsInput,
+): Promise<LaunchStarsResponse> {
   return createMemoryClient(transport).launchStars({
     body: input.body,
     diaryDate: input.diaryDate,
@@ -64,7 +71,11 @@ export function insertLaunchedMemories(
   store.setAll([...existing, ...inserted])
 }
 
-function optimisticMemory(memory: ConfirmedMemoryInput, id: string, diaryDate: string): EpisodicMemory {
+function optimisticMemory(
+  memory: ConfirmedMemoryInput,
+  id: string,
+  diaryDate: string,
+): EpisodicMemory {
   const emotion = createEmotion(asMood(memory.mood))
   return {
     id,

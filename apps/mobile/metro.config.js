@@ -1,7 +1,7 @@
-const path = require('path');
-const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const path = require('path')
+const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config')
 
-const workspaceRoot = path.resolve(__dirname, '../..');
+const workspaceRoot = path.resolve(__dirname, '../..')
 
 /**
  * Metro configuration
@@ -27,11 +27,11 @@ const config = {
     // patch in patches/, per the react-native-webgpu README, so no redirect needed here.)
     resolveRequest: (context, moduleName, platform) => {
       if (moduleName === 'three') {
-        return context.resolveRequest(context, 'three/webgpu', platform);
+        return context.resolveRequest(context, 'three/webgpu', platform)
       }
-      return context.resolveRequest(context, moduleName, platform);
+      return context.resolveRequest(context, moduleName, platform)
     },
   },
-};
+}
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = mergeConfig(getDefaultConfig(__dirname), config)

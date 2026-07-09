@@ -57,7 +57,9 @@ export function WritingFlowSheet() {
   // loading/errored read leaves it null → treated as not-past.
   const universeQuery = useQuery(createGetUniverseQueryOptions(transport))
   const universeTime =
-    universeQuery.data && universeQuery.data.universeTime !== '' ? universeQuery.data.universeTime : null
+    universeQuery.data && universeQuery.data.universeTime !== ''
+      ? universeQuery.data.universeTime
+      : null
 
   const body = useDiaryDraftStore((state) => state.body)
   const diaryDate = useDiaryDraftStore((state) => state.diaryDate)
@@ -127,7 +129,9 @@ export function WritingFlowSheet() {
           if (advance) announceAdvance(advance)
           else announce(response.newNeuronIds)
         }
-        queryClient.invalidateQueries({ queryKey: createGetUniverseQueryKey(transport) }).catch(() => undefined)
+        queryClient
+          .invalidateQueries({ queryKey: createGetUniverseQueryKey(transport) })
+          .catch(() => undefined)
         send({ type: 'LAUNCH_OK' })
       })
       .catch(() => send({ type: 'LAUNCH_ERR', error: 'launch' }))
@@ -169,14 +173,23 @@ export function WritingFlowSheet() {
           {status === 'writing' ? (
             <>
               <WriteDiaryFields />
-              {body.trim().length === 0 ? <p className="text-sm text-text-subtle">{m.writing_flow_empty_body_hint()}</p> : null}
-              <Button color="primary" className="self-start" disabled={body.trim().length === 0} onClick={runSplit}>
+              {body.trim().length === 0 ? (
+                <p className="text-sm text-text-subtle">{m.writing_flow_empty_body_hint()}</p>
+              ) : null}
+              <Button
+                color="primary"
+                className="self-start"
+                disabled={body.trim().length === 0}
+                onClick={runSplit}
+              >
                 {m.writing_flow_split_action()}
               </Button>
             </>
           ) : null}
 
-          {status === 'splitting' ? <p className="text-sm text-text-muted">{m.writing_flow_splitting()}</p> : null}
+          {status === 'splitting' ? (
+            <p className="text-sm text-text-muted">{m.writing_flow_splitting()}</p>
+          ) : null}
 
           {status === 'reviewing' ? (
             <>
@@ -194,12 +207,18 @@ export function WritingFlowSheet() {
                 <Button color="neutral" disabled={busy} onClick={() => send({ type: 'BACK' })}>
                   {m.writing_flow_back_action()}
                 </Button>
-                <LaunchButton pastDated={isPastDated(diaryDate, universeTime)} busy={busy} onLaunch={runLaunch} />
+                <LaunchButton
+                  pastDated={isPastDated(diaryDate, universeTime)}
+                  busy={busy}
+                  onLaunch={runLaunch}
+                />
               </div>
             </>
           ) : null}
 
-          {status === 'revising' ? <p className="text-sm text-text-muted">{m.writing_flow_revising()}</p> : null}
+          {status === 'revising' ? (
+            <p className="text-sm text-text-muted">{m.writing_flow_revising()}</p>
+          ) : null}
 
           {status === 'launching' ? (
             <>

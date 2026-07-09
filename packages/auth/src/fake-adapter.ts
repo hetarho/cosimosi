@@ -1,4 +1,9 @@
-import type { AuthAdapter, AuthAdapterChangeSource, AuthSession, SignInCredentials } from './auth-adapter.ts'
+import type {
+  AuthAdapter,
+  AuthAdapterChangeSource,
+  AuthSession,
+  SignInCredentials,
+} from './auth-adapter.ts'
 import type { SessionSnapshot } from './session.ts'
 
 interface FakeAdapterOptions {
@@ -30,7 +35,8 @@ export class FakeAuthAdapter implements AuthAdapter {
   private readonly listeners = new Set<Parameters<AuthAdapter['onChange']>[0]>()
   constructor(options: FakeAdapterOptions = {}) {
     this.session = options.initial ?? null
-    this.accessTokenFn = options.accessToken ?? ((session) => (session ? `fake-token-${session.userId}` : null))
+    this.accessTokenFn =
+      options.accessToken ?? ((session) => (session ? `fake-token-${session.userId}` : null))
     this.now = options.now ?? Date.now
     if (options.bootstrapError !== undefined) this.bootstrapError = options.bootstrapError
     if (options.signInError !== undefined) this.signInError = options.signInError
@@ -53,7 +59,10 @@ export class FakeAuthAdapter implements AuthAdapter {
     if (!credentials.email || !credentials.password) throw new Error('invalid credentials')
     const expiresAt = this.now() + 60_000
     this.session = { userId: `fake-user-${credentials.email}`, expiresAt }
-    this.emit({ status: 'authenticated', userId: this.session.userId, expiresAt, error: null }, 'signedIn')
+    this.emit(
+      { status: 'authenticated', userId: this.session.userId, expiresAt, error: null },
+      'signedIn',
+    )
     return this.session
   }
 
@@ -68,7 +77,10 @@ export class FakeAuthAdapter implements AuthAdapter {
     if (!this.session) throw new Error('no session to refresh')
     const expiresAt = this.now() + 60_000
     this.session = { ...this.session, expiresAt }
-    this.emit({ status: 'authenticated', userId: this.session.userId, expiresAt, error: null }, 'tokenRefreshed')
+    this.emit(
+      { status: 'authenticated', userId: this.session.userId, expiresAt, error: null },
+      'tokenRefreshed',
+    )
     return this.session
   }
 

@@ -9,8 +9,8 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     environment:
       API_DOMAIN_PROD: ${API_DOMAIN_PROD}
       API_DOMAIN_STAGING: ${API_DOMAIN_STAGING}

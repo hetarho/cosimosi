@@ -15,19 +15,27 @@ describe('createSupabaseAuthAdapter', () => {
     await expect(adapter.signIn({ email: 'a@b.co', password: 'pw' })).rejects.toThrow(
       'Supabase did not return an authenticated session',
     )
-    await expect(adapter.refresh()).rejects.toThrow('Supabase did not return an authenticated session')
+    await expect(adapter.refresh()).rejects.toThrow(
+      'Supabase did not return an authenticated session',
+    )
   })
 
   it('refreshes expired sessions before returning access tokens', async () => {
     const now = Date.UTC(2026, 5, 29, 12, 0, 0)
     let refreshCalls = 0
     const adapter = createSupabaseAuthAdapter(
-      fakeSupabaseClient(supabaseSession({ accessToken: 'expired-token', expiresAt: now - 1_000 }), {
-        refreshedSession: supabaseSession({ accessToken: 'fresh-token', expiresAt: now + 60_000 }),
-        onRefresh: () => {
-          refreshCalls += 1
+      fakeSupabaseClient(
+        supabaseSession({ accessToken: 'expired-token', expiresAt: now - 1_000 }),
+        {
+          refreshedSession: supabaseSession({
+            accessToken: 'fresh-token',
+            expiresAt: now + 60_000,
+          }),
+          onRefresh: () => {
+            refreshCalls += 1
+          },
         },
-      }),
+      ),
       { now: () => now },
     )
 
@@ -39,12 +47,18 @@ describe('createSupabaseAuthAdapter', () => {
     const now = Date.UTC(2026, 5, 29, 12, 0, 0)
     let refreshCalls = 0
     const adapter = createSupabaseAuthAdapter(
-      fakeSupabaseClient(supabaseSession({ accessToken: 'nearly-expired-token', expiresAt: now + 30_000 }), {
-        refreshedSession: supabaseSession({ accessToken: 'fresh-token', expiresAt: now + 300_000 }),
-        onRefresh: () => {
-          refreshCalls += 1
+      fakeSupabaseClient(
+        supabaseSession({ accessToken: 'nearly-expired-token', expiresAt: now + 30_000 }),
+        {
+          refreshedSession: supabaseSession({
+            accessToken: 'fresh-token',
+            expiresAt: now + 300_000,
+          }),
+          onRefresh: () => {
+            refreshCalls += 1
+          },
         },
-      }),
+      ),
       { now: () => now },
     )
 

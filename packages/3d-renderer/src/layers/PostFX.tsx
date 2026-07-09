@@ -15,7 +15,13 @@ export interface BloomParams {
 // the WebGPU path and degrades on WebGL2. Takes the render loop with a positive-priority
 // useFrame (R3F's default render yields to it). The canvas host initializes the renderer
 // up-front, so the pipeline drives the synchronous render() each frame.
-export function PostFX({ bloom: params, transparent = false }: { bloom: BloomParams; transparent?: boolean }) {
+export function PostFX({
+  bloom: params,
+  transparent = false,
+}: {
+  bloom: BloomParams
+  transparent?: boolean
+}) {
   const renderer = useThree((state) => state.gl) as unknown as WebGPURenderer
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)

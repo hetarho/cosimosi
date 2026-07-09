@@ -3,7 +3,8 @@ import { useId, type TextareaHTMLAttributes } from 'react'
 import { cx } from '../lib/cx.ts'
 import type { FieldOwnProps } from './types.ts'
 
-export type TextAreaProps = Omit<FieldOwnProps, 'size'> & TextareaHTMLAttributes<HTMLTextAreaElement>
+export type TextAreaProps = Omit<FieldOwnProps, 'size'> &
+  TextareaHTMLAttributes<HTMLTextAreaElement>
 
 const CONTROL_BASE =
   'field-surface w-full min-h-24 rounded-lg px-3 py-2 text-base text-text placeholder:text-text-subtle transition ' +

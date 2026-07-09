@@ -41,7 +41,10 @@ interface SynapseFixtureCase {
   readonly expected: number
 }
 
-const fixtureUrl = new URL('../../../apps/api/internal/memory/testdata/synapse-plasticity-golden.json', import.meta.url)
+const fixtureUrl = new URL(
+  '../../../apps/api/internal/memory/testdata/synapse-plasticity-golden.json',
+  import.meta.url,
+)
 
 describe('synapse plasticity', () => {
   it('keeps generated synapse constants aligned with the golden fixture', () => {
@@ -70,7 +73,9 @@ describe('synapse plasticity', () => {
       }
     }
 
-    expect(potentiate(VALUES.synapse.strengthCap, VALUES.synapse.potentiationRate)).toBe(VALUES.synapse.strengthCap)
+    expect(potentiate(VALUES.synapse.strengthCap, VALUES.synapse.potentiationRate)).toBe(
+      VALUES.synapse.strengthCap,
+    )
 
     let strength = 0.2
     for (let index = 0; index < 200; index += 1) {
@@ -155,7 +160,10 @@ describe('synapse plasticity', () => {
           got = applyTemporalBonus(required(testCase.inputs.strength))
           break
         case 'effective_synapse_strength':
-          got = effectiveSynapseStrength(required(testCase.inputs.base), required(testCase.inputs.elapsed_universe_days))
+          got = effectiveSynapseStrength(
+            required(testCase.inputs.base),
+            required(testCase.inputs.elapsed_universe_days),
+          )
           break
       }
       expectClose(got, testCase.expected, fixture.tolerance)

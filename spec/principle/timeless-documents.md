@@ -10,8 +10,8 @@ opened — by anyone, cold, with no knowledge of how it came to be.
 - **No dependence on transient context.** A reader opening the file after a rewrite, after old code is deleted, or
   months later must understand it without any backstory. If a sentence only makes sense to someone who watched it being
   written, it does not belong.
-- **State the rule, not the journey to it.** Rationale appears only where a reader needs it to *avoid breaking the
-  rule* (a live constraint) — never as a record of deliberation or rejected alternatives.
+- **State the rule, not the journey to it.** Rationale appears only where a reader needs it to _avoid breaking the
+  rule_ (a live constraint) — never as a record of deliberation or rejected alternatives.
 - **One responsibility per document; reference, don't duplicate.** Each doc owns its content and the others point to
   it. Restating another doc's content is drift waiting to happen.
 

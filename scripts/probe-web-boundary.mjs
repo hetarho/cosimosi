@@ -76,7 +76,11 @@ try {
   // Match by a path fragment that includes the unique temp-slice dir (mkdtemp suffix), so the
   // assertion can't be fooled by an unrelated real file that happens to share a fixture basename.
   const sliceB = basename(sliceBDir)
-  const forbidden = [`${sliceB}/model/to-pages.ts`, `${sliceB}/model/forbidden-model.ts`, `${sliceB}/@x/x-leak.ts`]
+  const forbidden = [
+    `${sliceB}/model/to-pages.ts`,
+    `${sliceB}/model/forbidden-model.ts`,
+    `${sliceB}/@x/x-leak.ts`,
+  ]
   const allowed = [`${sliceB}/model/allowed-x.ts`, `${sliceB}/@x/x-own.ts`]
 
   if (result.status === 0) {
@@ -94,7 +98,9 @@ try {
       console.error(output)
       failure = `allowed imports were wrongly flagged: ${leaked.join(', ')}`
     } else {
-      ok('entities→pages, entities→other-model, and @x→other-slice fail; entities→@x and @x→own-slice pass')
+      ok(
+        'entities→pages, entities→other-model, and @x→other-slice fail; entities→@x and @x→own-slice pass',
+      )
     }
   }
 } finally {

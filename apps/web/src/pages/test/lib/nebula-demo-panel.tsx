@@ -56,7 +56,11 @@ function NebulaDemoScene({ forceWebGL }: { forceWebGL: boolean }) {
   const scene = useMemo(() => buildDemoScene(), [])
   const positions = useMemo(() => ({ current: scene.positions }), [scene])
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov} forceWebGL={forceWebGL}>
+    <UniverseCanvas
+      dpr={[1, VALUES.rendering.maxPixelRatio]}
+      fov={skin.camera.fov}
+      forceWebGL={forceWebGL}
+    >
       <Background node={backgroundNode} />
       <StarField />
       <ColorField
@@ -80,7 +84,11 @@ export function NebulaDemoPanel() {
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
       <div className="flex flex-col gap-3">
-        <Button color="neutral" className="self-start" onClick={() => setForceWebGL((value) => !value)}>
+        <Button
+          color="neutral"
+          className="self-start"
+          onClick={() => setForceWebGL((value) => !value)}
+        >
           {forceWebGL ? m.test_harness_nebula_use_webgpu() : m.test_harness_nebula_force_webgl()}
         </Button>
         {/* Remount the renderer when the backend flips so the WebGPU→WebGL2 fallback is exercised. */}

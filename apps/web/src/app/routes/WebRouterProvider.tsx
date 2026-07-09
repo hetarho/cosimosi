@@ -25,7 +25,8 @@ export function WebRouterProvider({ router, initialEntries }: WebRouterProviderP
   // The /test harness is always reachable in development; a production build
   // exposes it only when the diagnostics flag is explicitly on. `import.meta.env.DEV`
   // is true under the Vite dev server and false in a production build.
-  const diagnosticsEnabled = import.meta.env.DEV || (observability.getFeatureFlag(diagnosticsSurfaceFlag) ?? false)
+  const diagnosticsEnabled =
+    import.meta.env.DEV || (observability.getFeatureFlag(diagnosticsSurfaceFlag) ?? false)
   const resolved = useMemo(
     () => router ?? createAppRouter({ diagnosticsEnabled, initialEntries }),
     [router, initialEntries, diagnosticsEnabled],

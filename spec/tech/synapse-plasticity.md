@@ -40,7 +40,7 @@ The formula shapes stay in code: saturating LTP, floor/cap clamps, exponential r
 enum, and the Epic-A memory-level stubs.
 
 **Reserved tiers.** Link seeds a synapse only from `initial_same_memory` today. The `shared_neuron` and `temporal`
-tiers ([L10]) are marked as forward reservations in code and values.yaml: a shared neuron *is* the link through
+tiers ([L10]) are marked as forward reservations in code and values.yaml: a shared neuron _is_ the link through
 activation membership (no synapse to seed, [L2]), and temporal proximity is applied as a bonus on top of an existing
 base (`temporal_bonus`), not as a fresh initial ([L4]). They are kept for a later cross-memory linker that mints
 distinct shared/temporal edges. Likewise `Depress` (LTD) and the read-time `EffectiveStrength`/`EffectiveBrightness`/

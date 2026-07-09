@@ -27,7 +27,9 @@ if (!['plan', 'change', 'refactor'].includes(kind) || !nnArg) {
   process.exit(1)
 }
 
-const nn = String(nnArg).replace(/[^0-9]/g, '').padStart(2, '0')
+const nn = String(nnArg)
+  .replace(/[^0-9]/g, '')
+  .padStart(2, '0')
 const srcDir = kind === 'plan' ? planDir : kind === 'change' ? changesDir : codeReviewDir
 const srcLabel = kind === 'plan' ? 'plan' : kind === 'change' ? 'changes' : 'code-review'
 const srcFile = readdirSync(srcDir).find((f) => f.startsWith(nn + '.') && f.endsWith('.md'))
@@ -67,7 +69,9 @@ const acc = extractAcceptance(srcText)
 if (acc) doc = doc.replace(/- \[ \] A1 .*/, acc)
 
 writeFileSync(out, doc, 'utf8')
-console.log(`Created spec/jobs/${jobnn}.${slugify(title)}.md  (type=${type}, source=${sourceRef}, plan=${planRef})`)
+console.log(
+  `Created spec/jobs/${jobnn}.${slugify(title)}.md  (type=${type}, source=${sourceRef}, plan=${planRef})`,
+)
 console.log(
   type === 'refactor'
     ? `Next: /cosimosi:create-refactor-job ${nn} fills job ${jobnn}, then /cosimosi:implement-job ${jobnn} implements it.`
@@ -114,7 +118,9 @@ function sections(t) {
 // Monotonic across live + archive/: done docs move to archive/ but their numbers must never be reused.
 function nextNum(dir) {
   const archive = join(dir, 'archive')
-  const files = existsSync(archive) ? [...readdirSync(dir), ...readdirSync(archive)] : readdirSync(dir)
+  const files = existsSync(archive)
+    ? [...readdirSync(dir), ...readdirSync(archive)]
+    : readdirSync(dir)
   const nums = files
     .map((f) => parseInt((f.match(/^(\d+)/) || [])[1], 10))
     .filter((n) => !Number.isNaN(n))
@@ -122,13 +128,15 @@ function nextNum(dir) {
 }
 
 function slugify(s) {
-  return s
-    .toLowerCase()
-    .replace(/[\\/:*?"<>|.]+/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40) || 'untitled'
+  return (
+    s
+      .toLowerCase()
+      .replace(/[\\/:*?"<>|.]+/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40) || 'untitled'
+  )
 }
 
 function fill(t, m) {

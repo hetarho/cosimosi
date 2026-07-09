@@ -53,7 +53,10 @@ function unitClamp(value: number): number {
 
 // Edge endpoints as node-index pairs into the coordinate buffer, for the edge layer.
 // Indices come from the sim's node-index map, so they can only ever name neuron slots.
-export function buildSynapseEndpointIndexPairs(graph: ForceSimGraph, nodeIndex: ForceSimNodeIndex): Uint32Array {
+export function buildSynapseEndpointIndexPairs(
+  graph: ForceSimGraph,
+  nodeIndex: ForceSimNodeIndex,
+): Uint32Array {
   const pairs = new Uint32Array(graph.synapses.length * 2)
   for (let i = 0; i < graph.synapses.length; i++) {
     const synapse = graph.synapses[i]

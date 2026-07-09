@@ -17,9 +17,24 @@ import { repoRoot, section, ok, note, fail } from './lib.mjs'
 
 const APPS = ['apps/web', 'apps/mobile']
 // The only files allowed to sit flat at the app-layer root (the entrypoint, global style, barrel, co-located tests).
-const APP_ROOT_ALLOW = new Set(['App.tsx', 'App.test.tsx', 'main.tsx', 'main.test.tsx', 'index.css', 'index.ts'])
+const APP_ROOT_ALLOW = new Set([
+  'App.tsx',
+  'App.test.tsx',
+  'main.tsx',
+  'main.test.tsx',
+  'index.css',
+  'index.ts',
+])
 const CODE_EXT = /\.(ts|tsx|js|jsx|css)$/
-const GENERIC_SEGMENTS = new Set(['components', 'hooks', 'utils', 'helpers', 'types', 'constants', 'misc'])
+const GENERIC_SEGMENTS = new Set([
+  'components',
+  'hooks',
+  'utils',
+  'helpers',
+  'types',
+  'constants',
+  'misc',
+])
 
 const problems = []
 
@@ -44,7 +59,9 @@ for (const app of APPS) {
         )
       }
     }
-    note(`${app}/src/app segments: ${segments.length ? segments.sort().join(', ') : '(none — app layer is flat!)'}`)
+    note(
+      `${app}/src/app segments: ${segments.length ? segments.sort().join(', ') : '(none — app layer is flat!)'}`,
+    )
   }
 
   // R2 — no generic-type folders anywhere under src (group by role, not type).
@@ -65,7 +82,9 @@ for (const app of APPS) {
 
 if (problems.length) {
   for (const p of problems) console.error(`  \x1b[31m✗\x1b[0m ${p}`)
-  fail(`${problems.length} FSD layout violation(s). See ARCHITECTURE.md §3.1 (the app layer is segmented; group by role).`)
+  fail(
+    `${problems.length} FSD layout violation(s). See ARCHITECTURE.md §3.1 (the app layer is segmented; group by role).`,
+  )
 }
 
 ok('app layers are segmented; no generic-type folders')

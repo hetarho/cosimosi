@@ -90,12 +90,20 @@ if (probe) {
 const violations = []
 
 for (const file of files) {
-  const source = ts.createSourceFile(file.path, file.text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const source = ts.createSourceFile(
+    file.path,
+    file.text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  )
   const lines = file.text.split('\n')
 
   const lineOptedOut = (pos) => {
     const { line } = source.getLineAndCharacterOfPosition(pos)
-    return (lines[line] ?? '').includes(optOutToken) || (lines[line - 1] ?? '').includes(optOutToken)
+    return (
+      (lines[line] ?? '').includes(optOutToken) || (lines[line - 1] ?? '').includes(optOutToken)
+    )
   }
   const report = (pos, message) => {
     if (lineOptedOut(pos)) return
@@ -107,7 +115,10 @@ for (const file of files) {
     if (ts.isJsxText(node)) {
       const value = node.text.trim()
       if (value && hasLetter(value)) {
-        report(node.getStart(source), `raw JSX text "${truncate(value)}" — use a message function (m.*)`)
+        report(
+          node.getStart(source),
+          `raw JSX text "${truncate(value)}" — use a message function (m.*)`,
+        )
       }
     } else if (ts.isJsxAttribute(node) && userFacingAttributes.has(node.name.getText(source))) {
       // Catch both `title="raw"` and the `title={"raw"}` expression-wrapped form.
@@ -127,7 +138,11 @@ for (const file of files) {
 function attributeStringLiteral(initializer) {
   if (!initializer) return undefined
   if (ts.isStringLiteral(initializer)) return initializer
-  if (ts.isJsxExpression(initializer) && initializer.expression && ts.isStringLiteral(initializer.expression)) {
+  if (
+    ts.isJsxExpression(initializer) &&
+    initializer.expression &&
+    ts.isStringLiteral(initializer.expression)
+  ) {
     return initializer.expression
   }
   return undefined
@@ -149,7 +164,9 @@ if (probe) {
   ok('probe caught the deliberate UI string and ignored the documented non-UI cases')
 } else if (violations.length) {
   for (const violation of violations) console.error(`- ${violation}`)
-  fail(`${violations.length} raw user-facing string(s) found; route copy through message functions or mark with ${optOutToken}`)
+  fail(
+    `${violations.length} raw user-facing string(s) found; route copy through message functions or mark with ${optOutToken}`,
+  )
 } else {
   ok(`scanned ${files.length} UI component file(s); no raw user-facing strings`)
 }

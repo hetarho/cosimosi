@@ -100,9 +100,13 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
     for (const { table, body } of createTableBodies(source)) {
       if (platformTables.has(table)) continue
       if (body === null) {
-        violations.push(`${rel}: product table ${table} could not be parsed; ensure balanced parentheses and a user_id column`)
+        violations.push(
+          `${rel}: product table ${table} could not be parsed; ensure balanced parentheses and a user_id column`,
+        )
       } else if (!/\buser_id\b/i.test(body)) {
-        violations.push(`${rel}: product table ${table} must declare user_id or be listed as platform-owned`)
+        violations.push(
+          `${rel}: product table ${table} must declare user_id or be listed as platform-owned`,
+        )
       }
     }
   }
@@ -115,7 +119,9 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
     for (const statement of source.split(';')) {
       if (!statement.trim()) continue
       if (!/\buser_id\b/i.test(statement)) {
-        violations.push(`apps/api/db/queries/${rel}: product query must include a user_id predicate`)
+        violations.push(
+          `apps/api/db/queries/${rel}: product query must include a user_id predicate`,
+        )
       }
     }
   }
@@ -142,7 +148,9 @@ function walkSqlFiles(dir, files) {
 }
 
 function isDirectRun() {
-  return process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  return (
+    process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  )
 }
 
 if (isDirectRun()) {

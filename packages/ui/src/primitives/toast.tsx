@@ -42,7 +42,10 @@ export function Toast({ open, onOpenChange, variant = 'info', durationMs, childr
       <div
         role={ROLE[variant]}
         aria-live={variant === 'warning' || variant === 'danger' ? 'assertive' : 'polite'}
-        className={cx('toast-surface pointer-events-auto rounded-xl px-4 py-3 text-sm', TONE[variant])}
+        className={cx(
+          'toast-surface pointer-events-auto rounded-xl px-4 py-3 text-sm',
+          TONE[variant],
+        )}
       >
         {children}
       </div>

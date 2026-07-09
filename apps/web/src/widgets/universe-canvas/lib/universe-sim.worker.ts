@@ -27,7 +27,9 @@ scope.onmessage = (event) => {
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
     if (message.type === 'tick') {
-      scope.postMessage({ type: 'error', message: detail, buffer: message.buffer }, [message.buffer])
+      scope.postMessage({ type: 'error', message: detail, buffer: message.buffer }, [
+        message.buffer,
+      ])
     } else {
       scope.postMessage({ type: 'error', message: detail }, [])
     }

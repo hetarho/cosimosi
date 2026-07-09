@@ -59,9 +59,13 @@ describe('buildUniverseGraph', () => {
       { id: 'neuron-1', connectivity: 3 },
       { id: 'neuron-2', connectivity: 1 },
     ])
-    expect(graph.synapses).toEqual([{ sourceNeuronId: 'neuron-1', targetNeuronId: 'neuron-2', strength: 0.32 }])
+    expect(graph.synapses).toEqual([
+      { sourceNeuronId: 'neuron-1', targetNeuronId: 'neuron-2', strength: 0.32 },
+    ])
     expect(graph.episodicMemories).toEqual([{ id: 'memory-1' }])
-    expect(graph.activations).toEqual([{ episodicMemoryId: 'memory-1', neuronId: 'neuron-1', weight: 1 }])
+    expect(graph.activations).toEqual([
+      { episodicMemoryId: 'memory-1', neuronId: 'neuron-1', weight: 1 },
+    ])
   })
 
   it('can structurally never produce a memory↔memory edge [I4][I6]', () => {
@@ -76,13 +80,20 @@ describe('buildUniverseGraph', () => {
       expect(memoryIds.has(synapse.targetNeuronId)).toBe(false)
     }
     // Memories reach the graph only as anchored bodies + membership, never as edges.
-    expect(graph.activations.every((activation) => memoryIds.has(activation.episodicMemoryId))).toBe(true)
+    expect(
+      graph.activations.every((activation) => memoryIds.has(activation.episodicMemoryId)),
+    ).toBe(true)
   })
 
   it('feeds layout from connectivity only — no emotion term reaches the sim [I3]', () => {
     const graph = buildUniverseGraph(universeFixture())
 
-    const layoutInputs = [...graph.neurons, ...graph.synapses, ...graph.episodicMemories, ...graph.activations]
+    const layoutInputs = [
+      ...graph.neurons,
+      ...graph.synapses,
+      ...graph.episodicMemories,
+      ...graph.activations,
+    ]
     for (const input of layoutInputs) {
       for (const key of Object.keys(input)) {
         expect(key).not.toMatch(/mood|valence|arousal|intensity|color|emotion/i)

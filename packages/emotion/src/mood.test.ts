@@ -9,8 +9,12 @@ describe('mood coordinates', () => {
   it('keeps the 13 mood enum aligned with generated values maps', () => {
     expect(MOODS).toHaveLength(13)
     expect(new Set(MOODS).size).toBe(13)
-    expect(Object.values(moodValueKeys).sort()).toEqual(Object.keys(VALUES.emotion.moodValence).sort())
-    expect(Object.values(moodValueKeys).sort()).toEqual(Object.keys(VALUES.emotion.moodArousal).sort())
+    expect(Object.values(moodValueKeys).sort()).toEqual(
+      Object.keys(VALUES.emotion.moodValence).sort(),
+    )
+    expect(Object.values(moodValueKeys).sort()).toEqual(
+      Object.keys(VALUES.emotion.moodArousal).sort(),
+    )
   })
 
   it('reads mood coordinates from generated values', () => {

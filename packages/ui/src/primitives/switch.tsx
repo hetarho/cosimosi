@@ -5,7 +5,14 @@ import type { ToggleOwnProps } from './types.ts'
 
 export type SwitchProps = ToggleOwnProps
 
-export function Switch({ checked, defaultChecked, onCheckedChange, label, ariaLabel, disabled }: SwitchProps) {
+export function Switch({
+  checked,
+  defaultChecked,
+  onCheckedChange,
+  label,
+  ariaLabel,
+  disabled,
+}: SwitchProps) {
   const [internal, setInternal] = useState(defaultChecked ?? false)
   const isControlled = checked !== undefined
   const value = isControlled ? checked : internal

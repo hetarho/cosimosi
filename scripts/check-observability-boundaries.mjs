@@ -24,7 +24,14 @@ const checks = [
   {
     dir: 'packages',
     extensions: ['.ts', '.tsx'],
-    forbidden: ['@sentry/react', '@sentry/react-native', '@sentry/browser', '@sentry/core', 'posthog-js', 'posthog-react-native'],
+    forbidden: [
+      '@sentry/react',
+      '@sentry/react-native',
+      '@sentry/browser',
+      '@sentry/core',
+      'posthog-js',
+      'posthog-react-native',
+    ],
     allowed: [],
   },
   {
@@ -41,8 +48,14 @@ section('observability boundaries')
 
 for (const probe of [
   { path: 'apps/web/src/app/providers/observability-provider.tsx', specifier: '@sentry/react' },
-  { path: 'apps/mobile/src/app/providers/observability-provider.tsx', specifier: '@sentry/react-native' },
-  { path: 'apps/api/internal/platform/observability/sentry.go', specifier: 'github.com/getsentry/sentry-go' },
+  {
+    path: 'apps/mobile/src/app/providers/observability-provider.tsx',
+    specifier: '@sentry/react-native',
+  },
+  {
+    path: 'apps/api/internal/platform/observability/sentry.go',
+    specifier: 'github.com/getsentry/sentry-go',
+  },
 ]) {
   const probePath = join(root, probe.path)
   if (!existsSync(probePath)) {
@@ -51,7 +64,9 @@ for (const probe of [
   }
   const source = readFileSync(probePath, 'utf8')
   if (!hasForbiddenSpecifier(source, probe.specifier)) {
-    violations.push(`${probe.path}: observability boundary probe expected ${probe.specifier} import here`)
+    violations.push(
+      `${probe.path}: observability boundary probe expected ${probe.specifier} import here`,
+    )
   }
 }
 
@@ -62,7 +77,9 @@ for (const check of checks) {
     const source = readFileSync(file, 'utf8')
     for (const forbidden of check.forbidden) {
       if (hasForbiddenSpecifier(source, forbidden)) {
-        violations.push(`${rel}: direct ${forbidden} import is only allowed at the platform/app observability boundary`)
+        violations.push(
+          `${rel}: direct ${forbidden} import is only allowed at the platform/app observability boundary`,
+        )
       }
     }
   }

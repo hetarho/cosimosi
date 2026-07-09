@@ -15,7 +15,9 @@ describe('FakeAuthAdapter', () => {
     adapter.onChange((snapshot) => events.push(snapshot))
     const session = await adapter.signIn({ email: 'a@b.co', password: 'pw' })
     expect(session.userId).toBe('fake-user-a@b.co')
-    expect(events).toContainEqual(expect.objectContaining({ userId: session.userId, status: 'authenticated' }))
+    expect(events).toContainEqual(
+      expect.objectContaining({ userId: session.userId, status: 'authenticated' }),
+    )
   })
 
   it('rejects signIn when configured to fail', async () => {

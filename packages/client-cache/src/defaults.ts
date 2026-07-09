@@ -21,7 +21,9 @@ export interface ClientCacheQueryClientOptions extends Omit<QueryClientConfig, '
   timings?: ClientCacheTimings
 }
 
-export function createClientCacheDefaultOptions(timings: ClientCacheTimings = clientCacheTimings): DefaultOptions {
+export function createClientCacheDefaultOptions(
+  timings: ClientCacheTimings = clientCacheTimings,
+): DefaultOptions {
   return {
     queries: {
       staleTime: timings.defaultStaleMs,
@@ -31,7 +33,9 @@ export function createClientCacheDefaultOptions(timings: ClientCacheTimings = cl
   }
 }
 
-export function createClientCacheQueryClient(options: ClientCacheQueryClientOptions = {}): QueryClient {
+export function createClientCacheQueryClient(
+  options: ClientCacheQueryClientOptions = {},
+): QueryClient {
   const { defaultOptions, timings, ...queryClientOptions } = options
   return new QueryClient({
     ...queryClientOptions,
@@ -39,10 +43,14 @@ export function createClientCacheQueryClient(options: ClientCacheQueryClientOpti
   })
 }
 
-function mergeDefaultOptions(base: DefaultOptions, overrides: DefaultOptions | undefined): DefaultOptions {
+function mergeDefaultOptions(
+  base: DefaultOptions,
+  overrides: DefaultOptions | undefined,
+): DefaultOptions {
   if (!overrides) return base
   const { queries: overrideQueries, mutations: overrideMutations, ...restOverrides } = overrides
-  const mutations = base.mutations || overrideMutations ? { ...base.mutations, ...overrideMutations } : undefined
+  const mutations =
+    base.mutations || overrideMutations ? { ...base.mutations, ...overrideMutations } : undefined
   return {
     ...base,
     ...restOverrides,

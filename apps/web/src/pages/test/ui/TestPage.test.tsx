@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 
-import { createTestPanelRegistry, type TestPanelDefinition } from '../../../shared/test-panel/index.ts'
+import {
+  createTestPanelRegistry,
+  type TestPanelDefinition,
+} from '../../../shared/test-panel/index.ts'
 import { TestPage } from './TestPage.tsx'
 
 describe('test harness page shell', () => {

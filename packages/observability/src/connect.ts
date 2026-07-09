@@ -24,5 +24,10 @@ export function createTelemetryRequestIdInterceptor(
 }
 
 export function isSafeRequestId(value: string | null): value is string {
-  return value !== null && value.length > 0 && value.length <= maxRequestIdLength && /^[A-Za-z0-9._:-]+$/.test(value)
+  return (
+    value !== null &&
+    value.length > 0 &&
+    value.length <= maxRequestIdLength &&
+    /^[A-Za-z0-9._:-]+$/.test(value)
+  )
 }

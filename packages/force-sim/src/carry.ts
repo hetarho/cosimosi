@@ -15,7 +15,11 @@ import {
 
 // A node's coordinate out of a buffer laid out by `index`, or null if that id wasn't in the
 // buffer (a genuinely new node) or its slot falls outside the buffer.
-function readByKey(buffer: Float32Array, index: ForceSimNodeIndex, key: string): ForceSimCoordinate | null {
+function readByKey(
+  buffer: Float32Array,
+  index: ForceSimNodeIndex,
+  key: string,
+): ForceSimCoordinate | null {
   const slot = index.byKey[key]
   if (slot === undefined) return null
   const offset = forceSimCoordinateOffset(slot)
@@ -37,7 +41,11 @@ export function carryPreviousPositions(
     return previous ? { ...neuron, previousPosition: previous } : neuron
   })
   const episodicMemories = graph.episodicMemories.map((memory) => {
-    const previous = readByKey(previousBuffer, previousIndex, forceSimNodeKey('episodicMemory', memory.id))
+    const previous = readByKey(
+      previousBuffer,
+      previousIndex,
+      forceSimNodeKey('episodicMemory', memory.id),
+    )
     return previous ? { ...memory, seedHint: previous } : memory
   })
   return { ...graph, neurons, episodicMemories }

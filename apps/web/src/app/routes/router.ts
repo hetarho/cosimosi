@@ -18,7 +18,9 @@ export function createAppRouter({ diagnosticsEnabled, initialEntries }: CreateAp
   return createRouter({
     routeTree,
     context: { diagnosticsEnabled },
-    ...(initialEntries ? { history: createMemoryHistory({ initialEntries: [...initialEntries] }) } : {}),
+    ...(initialEntries
+      ? { history: createMemoryHistory({ initialEntries: [...initialEntries] }) }
+      : {}),
   })
 }
 

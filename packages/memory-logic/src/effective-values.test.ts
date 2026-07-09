@@ -17,7 +17,10 @@ interface EffectiveFixture {
   }[]
 }
 
-const fixtureUrl = new URL('../../../apps/api/internal/memory/testdata/synapse-plasticity-golden.json', import.meta.url)
+const fixtureUrl = new URL(
+  '../../../apps/api/internal/memory/testdata/synapse-plasticity-golden.json',
+  import.meta.url,
+)
 
 describe('memory effective values', () => {
   it('keeps Epic A EffectiveStrength and EffectiveBrightness stubs distinct from synapse strength', () => {
@@ -32,7 +35,10 @@ describe('memory effective values', () => {
     for (const testCase of fixture.cases) {
       let got: number | undefined
       if (testCase.function === 'effective_strength') {
-        got = effectiveStrength(required(testCase.inputs.base_strength), required(testCase.inputs.recall_count))
+        got = effectiveStrength(
+          required(testCase.inputs.base_strength),
+          required(testCase.inputs.recall_count),
+        )
       }
       if (testCase.function === 'effective_brightness') {
         got = effectiveBrightness(required(testCase.inputs.elapsed_universe_days))

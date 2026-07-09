@@ -26,7 +26,10 @@ export function useUniverse(): UniverseReadState {
   const transport = useTransport()
   const queryOptions = useMemo(() => createGetUniverseQueryOptions(transport), [transport])
   const query = useQuery({ ...queryOptions, throwOnError: true })
-  const universe = useMemo(() => (query.data ? universeFromResponse(query.data) : null), [query.data])
+  const universe = useMemo(
+    () => (query.data ? universeFromResponse(query.data) : null),
+    [query.data],
+  )
   const setMemories = useEpisodicMemoryStore((state) => state.setAll)
   const setNeurons = useNeuronStore((state) => state.setAll)
   const setSynapses = useSynapseStore((state) => state.setAll)

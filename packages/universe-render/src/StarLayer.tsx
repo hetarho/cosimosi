@@ -26,7 +26,13 @@ export interface StarLayerProps {
 // attributes to the shader body through the asset-source port. Channels recompute only when
 // the read model / universe time changes — never per frame (§3.3); the coordinate buffer is
 // read per frame inside the layer, never here.
-export function StarLayer({ positions, firstNodeIndex, universeTime, onFocus, onFly }: StarLayerProps) {
+export function StarLayer({
+  positions,
+  firstNodeIndex,
+  universeTime,
+  onFocus,
+  onFly,
+}: StarLayerProps) {
   const bodySource = useMemo(() => createStarBodySource(), [])
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)

@@ -6,14 +6,14 @@
 
 ## 문서 (source of truth)
 
-이 저장소는 **스펙 주도(spec-driven)** 로 개발한다. *무엇을·왜·어떻게·지금 무엇을* 짓는지가 전부 `spec/`에 있다. 읽는 순서: **concept → ubiquitous-language → ARCHITECTURE → plan**.
+이 저장소는 **스펙 주도(spec-driven)** 로 개발한다. _무엇을·왜·어떻게·지금 무엇을_ 짓는지가 전부 `spec/`에 있다. 읽는 순서: **concept → ubiquitous-language → ARCHITECTURE → plan**.
 
-| 문서 | 내용 |
-|---|---|
-| [spec/concept.md](spec/concept.md) | **무엇을 / 왜** — 엔그램 우주 비전과 신경과학 가드레일 |
-| [spec/ubiquitous-language.md](spec/ubiquitous-language.md) | **용어** — 규범적 용어 목록 |
-| [spec/ARCHITECTURE.md](spec/ARCHITECTURE.md) | **어떻게** — 레이어·경계·배치 규칙, 스택 결정 |
-| [spec/plan/](spec/plan/) | **지금 무엇을 / 언제** — 번호별 작업 스펙. [00.overview](spec/plan/00.overview.md)가 색인·로드맵 |
+| 문서                                                       | 내용                                                                                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [spec/concept.md](spec/concept.md)                         | **무엇을 / 왜** — 엔그램 우주 비전과 신경과학 가드레일                                           |
+| [spec/ubiquitous-language.md](spec/ubiquitous-language.md) | **용어** — 규범적 용어 목록                                                                      |
+| [spec/ARCHITECTURE.md](spec/ARCHITECTURE.md)               | **어떻게** — 레이어·경계·배치 규칙, 스택 결정                                                    |
+| [spec/plan/](spec/plan/)                                   | **지금 무엇을 / 언제** — 번호별 작업 스펙. [00.overview](spec/plan/00.overview.md)가 색인·로드맵 |
 
 ## 상태
 
@@ -33,11 +33,11 @@
 pnpm install                # 워크스페이스 의존성 (web · mobile · blog · packages)
 ```
 
-| 앱 | 실행 | 확인 |
-|---|---|---|
-| 웹 | `pnpm dev:web` | <http://localhost:1214> → `/` 우주 |
-| API | `pnpm dev:api` (Docker :8080) <br> 또는 `cd apps/api && go run ./cmd/api` | `/health` → 200 |
-| 모바일 | `pnpm dev:mobile` (Metro) 후 `pnpm ios` / `pnpm android` | 시뮬레이터/에뮬레이터에 Universe 화면 |
+| 앱     | 실행                                                                      | 확인                                  |
+| ------ | ------------------------------------------------------------------------- | ------------------------------------- |
+| 웹     | `pnpm dev:web`                                                            | <http://localhost:1214> → `/` 우주    |
+| API    | `pnpm dev:api` (Docker :8080) <br> 또는 `cd apps/api && go run ./cmd/api` | `/health` → 200                       |
+| 모바일 | `pnpm dev:mobile` (Metro) 후 `pnpm ios` / `pnpm android`                  | 시뮬레이터/에뮬레이터에 Universe 화면 |
 
 `pnpm dev` 는 웹 + api(Docker)를 동시에 띄운다.
 
@@ -68,13 +68,13 @@ pnpm check
 
 The root gate is split into composable commands:
 
-| Command | Runs |
-|---|---|
-| `pnpm lint` | web oxlint + FSD/ESLint boundaries, mobile ESLint, api gofmt cleanliness, ubiquitous-language lint |
-| `pnpm typecheck` | web TypeScript, mobile TypeScript, blog Astro build/type generation |
-| `pnpm test` | web Vitest, api `go test ./...` |
-| `pnpm check:gen` | `pnpm gen`, then fails if generated outputs are dirty |
-| `pnpm check:api` | api gofmt, vet, test, and build together |
+| Command          | Runs                                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| `pnpm lint`      | web oxlint + FSD/ESLint boundaries, mobile ESLint, api gofmt cleanliness, ubiquitous-language lint |
+| `pnpm typecheck` | web TypeScript, mobile TypeScript, blog Astro build/type generation                                |
+| `pnpm test`      | web Vitest, api `go test ./...`                                                                    |
+| `pnpm check:gen` | `pnpm gen`, then fails if generated outputs are dirty                                              |
+| `pnpm check:api` | api gofmt, vet, test, and build together                                                           |
 
 Backend gates run on host Go when available and fall back to Docker with the same commands. The vocabulary lint reads
 `spec/ubiquitous-language.md` and scans only active source roots. Probe commands for deliberate failures:

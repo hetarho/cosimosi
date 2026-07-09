@@ -35,7 +35,11 @@ describe('remapCoordinateBuffer', () => {
 
 describe('carryPreviousPositions', () => {
   it('seeds survivors from their prior positions by id and leaves new nodes unseeded', () => {
-    const next = carryPreviousPositions(graphOf(['C', 'A', 'B'], ['M']), previousBuffer, previousIndex)
+    const next = carryPreviousPositions(
+      graphOf(['C', 'A', 'B'], ['M']),
+      previousBuffer,
+      previousIndex,
+    )
     const byId = Object.fromEntries(next.neurons.map((n) => [n.id, n.previousPosition]))
     expect(byId.A).toEqual({ x: 1, y: 1, z: 1 })
     expect(byId.B).toEqual({ x: 2, y: 2, z: 2 })

@@ -23,7 +23,12 @@ export {
 export { UNIVERSE_CAMERA_RIG } from './camera-rig.ts'
 
 // Write-vertical control-state + proposal algebra
-export { writingFlowMachine, type WritingFlowStatus, type WritingFlowContext, type WritingFlowEvent } from './writing-flow.machine.ts'
+export {
+  writingFlowMachine,
+  type WritingFlowStatus,
+  type WritingFlowContext,
+  type WritingFlowEvent,
+} from './writing-flow.machine.ts'
 export {
   draftsFromResponse,
   renameMemory,
@@ -43,7 +48,11 @@ export {
 
 // Universe time presentation core: the clock mirror, the advance interval an acceleration plays
 // over, and the time overlay's control-state
-export { useUniverseClockStore, type UniverseClock, type UniverseClockState } from './universe-clock-store.ts'
+export {
+  useUniverseClockStore,
+  type UniverseClock,
+  type UniverseClockState,
+} from './universe-clock-store.ts'
 export {
   UNIVERSE_TIME_ACCELERATION,
   advanceAnnouncementFromLaunch,
@@ -56,7 +65,11 @@ export {
   type AdvanceInterval,
   type AdvanceSweepFrame,
 } from './advance-interval.ts'
-export { universeTimeMachine, type UniverseTimeEvent, type UniverseTimePhase } from './universe-time.machine.ts'
+export {
+  universeTimeMachine,
+  type UniverseTimeEvent,
+  type UniverseTimePhase,
+} from './universe-time.machine.ts'
 
 // Awaken (entry choreography) logic + idempotency registry
 export {
@@ -76,8 +89,17 @@ export { useLatentConsumedStore, type LatentConsumedState } from './latent-consu
 // Domain → visual channel projections (one-way, §3.4)
 export { starChannels, hexToLinearRgb, normalizeSeed, type StarChannels } from './star-channels.ts'
 export { cellStarChannels, type CellStarChannels } from './cell-star-channels.ts'
-export { filamentChannels, projectFilaments, type FilamentChannels, type FilamentBatch } from './filament-channels.ts'
-export { buildContributors, type NebulaContributors, type ContributorParams } from './contributors.ts'
+export {
+  filamentChannels,
+  projectFilaments,
+  type FilamentChannels,
+  type FilamentBatch,
+} from './filament-channels.ts'
+export {
+  buildContributors,
+  type NebulaContributors,
+  type ContributorParams,
+} from './contributors.ts'
 
 // Read-model stores (data, §3.2) — populated per GetUniverse read, read by the render bindings
 export { useEpisodicMemoryStore, type EpisodicMemoryState } from './episodic-memory-store.ts'

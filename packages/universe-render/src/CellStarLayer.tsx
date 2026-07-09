@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 
-import { InstancedNodeLayer, createCellStarBodySource, type CoordinateBufferRef } from '@cosimosi/3d-renderer'
+import {
+  InstancedNodeLayer,
+  createCellStarBodySource,
+  type CoordinateBufferRef,
+} from '@cosimosi/3d-renderer'
 
 import { cellStarChannels, useNeuronStore } from '@cosimosi/universe'
 

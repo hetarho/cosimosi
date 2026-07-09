@@ -1,5 +1,11 @@
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
-import { createClient, createRouterTransport, type Client, type Interceptor, type Transport } from '@connectrpc/connect'
+import {
+  createClient,
+  createRouterTransport,
+  type Client,
+  type Interceptor,
+  type Transport,
+} from '@connectrpc/connect'
 import { createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-query-core'
 import { createConnectTransport } from '@connectrpc/connect-web'
 
@@ -21,7 +27,12 @@ export interface ApiTransportOptions {
   interceptors?: Interceptor[]
 }
 
-export function createApiTransport({ baseUrl, useHttpGet = true, auth, interceptors = [] }: ApiTransportOptions): Transport {
+export function createApiTransport({
+  baseUrl,
+  useHttpGet = true,
+  auth,
+  interceptors = [],
+}: ApiTransportOptions): Transport {
   return createConnectTransport({
     baseUrl,
     useHttpGet,

@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
-import { COMPOSE_NETWORK, fail, hasDbMigrations, mount, ok, pnpm, repoRoot, section } from './lib.mjs'
+import {
+  COMPOSE_NETWORK,
+  fail,
+  hasDbMigrations,
+  mount,
+  ok,
+  pnpm,
+  repoRoot,
+  section,
+} from './lib.mjs'
 
 const image = 'golang:1.26'
 const mode = process.argv[2] ?? 'all'
@@ -25,12 +34,7 @@ const checks = {
   },
 }
 
-const plan =
-  mode === 'all'
-    ? ['fmt', 'vet', 'test', 'build']
-    : mode in checks
-      ? [mode]
-      : []
+const plan = mode === 'all' ? ['fmt', 'vet', 'test', 'build'] : mode in checks ? [mode] : []
 
 if (!plan.length) {
   console.error(`Unknown api check "${mode}". Use one of: all, ${Object.keys(checks).join(', ')}`)
@@ -86,16 +90,14 @@ if (hasHostGo()) {
     runHost(name)
   }
 } else {
-  const dockerArgs = [
-    'run',
-    '--rm',
-    '-v',
-    mount('apps/api', '/app'),
-    '-w',
-    '/app',
-  ]
+  const dockerArgs = ['run', '--rm', '-v', mount('apps/api', '/app'), '-w', '/app']
   if (plan.includes('test') && hasDbMigrations()) {
-    dockerArgs.push('--network', COMPOSE_NETWORK, '-e', `COSIMOSI_TEST_DATABASE_URL=${dockerTestDatabaseURL}`)
+    dockerArgs.push(
+      '--network',
+      COMPOSE_NETWORK,
+      '-e',
+      `COSIMOSI_TEST_DATABASE_URL=${dockerTestDatabaseURL}`,
+    )
   }
   dockerArgs.push(image, 'sh', '-c', plan.map((name) => checks[name].docker).join(' && '))
   run('docker', dockerArgs)

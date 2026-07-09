@@ -1,1 +1,1 @@
-export {UniverseCanvasWidget} from './ui/UniverseCanvasWidget.tsx';
+export { UniverseCanvasWidget } from './ui/UniverseCanvasWidget.tsx'

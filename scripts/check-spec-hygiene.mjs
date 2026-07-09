@@ -47,7 +47,9 @@ for (const root of SKILL_ROOTS) {
       checkedLinks++
       const resolved = resolve(dirname(file), target)
       if (!existsSync(resolved)) {
-        problems.push(`${file.replace(repoRoot + '/', '')} → broken link \`${m[1]}\` (resolves to a path that doesn't exist).`)
+        problems.push(
+          `${file.replace(repoRoot + '/', '')} → broken link \`${m[1]}\` (resolves to a path that doesn't exist).`,
+        )
       }
     }
   }
@@ -65,7 +67,9 @@ if (existsSync(jobsDir)) {
     if (!e.isFile() || !e.name.endsWith('.md')) continue // skip the archive/ dir
     const status = readStatus(join(jobsDir, e.name))
     if (status === 'done') {
-      problems.push(`spec/jobs/${e.name} is \`status: done\` but still in spec/jobs/ — move it to spec/jobs/archive/ (a done job must be archived).`)
+      problems.push(
+        `spec/jobs/${e.name} is \`status: done\` but still in spec/jobs/ — move it to spec/jobs/archive/ (a done job must be archived).`,
+      )
     }
   }
   const archiveDir = join(jobsDir, 'archive')
@@ -74,7 +78,9 @@ if (existsSync(jobsDir)) {
       if (!e.isFile() || !e.name.endsWith('.md')) continue
       const status = readStatus(join(archiveDir, e.name))
       if (status === 'todo' || status === 'doing') {
-        problems.push(`spec/jobs/archive/${e.name} is \`status: ${status}\` but archived — unfinished jobs belong in spec/jobs/, not archive/.`)
+        problems.push(
+          `spec/jobs/archive/${e.name} is \`status: ${status}\` but archived — unfinished jobs belong in spec/jobs/, not archive/.`,
+        )
       }
     }
   }
@@ -82,6 +88,8 @@ if (existsSync(jobsDir)) {
 
 if (problems.length) {
   for (const p of problems) console.error(`  \x1b[31m✗\x1b[0m ${p}`)
-  fail(`${problems.length} spec-hygiene issue(s). See code-review 03 (R003 doc links · R004 job status/location).`)
+  fail(
+    `${problems.length} spec-hygiene issue(s). See code-review 03 (R003 doc links · R004 job status/location).`,
+  )
 }
 ok('workflow-doc links resolve; job status matches location')

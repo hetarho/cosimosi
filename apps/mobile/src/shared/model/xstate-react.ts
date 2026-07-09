@@ -16,4 +16,10 @@
  * - `createActorContext(machine)` → React context for an actor a provider owns
  *   and descendants select from (app-wide lifecycle actors; ARCHITECTURE §3.2).
  */
-export {createActorContext, shallowEqual, useActorRef, useMachine, useSelector} from '@cosimosi/state-machine/react';
+export {
+  createActorContext,
+  shallowEqual,
+  useActorRef,
+  useMachine,
+  useSelector,
+} from '@cosimosi/state-machine/react'

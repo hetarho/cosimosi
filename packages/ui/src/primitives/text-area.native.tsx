@@ -1,10 +1,20 @@
-import { StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type TextStyle } from 'react-native'
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type TextStyle,
+} from 'react-native'
 
 import { color, fontSize, radius, space } from '../native-styles.ts'
 import type { FieldOwnProps } from './types.ts'
 
 export type TextAreaProps = Omit<FieldOwnProps, 'size'> &
-  Omit<TextInputProps, 'accessibilityLabel' | 'multiline' | 'style'> & { style?: StyleProp<TextStyle> }
+  Omit<TextInputProps, 'accessibilityLabel' | 'multiline' | 'style'> & {
+    style?: StyleProp<TextStyle>
+  }
 
 export function TextArea({ label, description, error, style, ...rest }: TextAreaProps) {
   return (

@@ -37,7 +37,9 @@ export function Toast({ open, onOpenChange, variant = 'info', durationMs, childr
   return (
     <View
       accessibilityRole={ROLE[variant]}
-      accessibilityLiveRegion={variant === 'warning' || variant === 'danger' ? 'assertive' : 'polite'}
+      accessibilityLiveRegion={
+        variant === 'warning' || variant === 'danger' ? 'assertive' : 'polite'
+      }
       style={[styles.toast, { borderColor: TONE[variant] }]}
     >
       <Text style={styles.text}>{children}</Text>

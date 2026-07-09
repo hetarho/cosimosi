@@ -65,7 +65,9 @@ export function createInMemoryTelemetryAdapter(): InMemoryTelemetryAdapter {
       events.push({ kind: 'consent', consent })
     },
     getFeatureFlag(definition: FeatureFlagDefinition) {
-      return featureFlags.get(definition.key) ?? featureFlags.get(definition.remoteKey ?? definition.key)
+      return (
+        featureFlags.get(definition.key) ?? featureFlags.get(definition.remoteKey ?? definition.key)
+      )
     },
     setFeatureFlag(key, value) {
       featureFlags.set(key, value)
