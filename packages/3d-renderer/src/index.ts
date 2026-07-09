@@ -45,6 +45,12 @@ export { StarField, type StarFieldProps } from './layers/StarField.tsx'
 export { LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
 export { ColorField, type ColorFieldProps } from './layers/ColorField.tsx'
 export { CameraControls } from './layers/CameraControls.tsx'
+export { SkySphere, type SkySphereProps } from './layers/SkySphere.tsx'
+export {
+  buildEmotionGradientTexture,
+  updateEmotionGradientTexture,
+  type GradientStop,
+} from './assets/sky/emotion-gradient.ts'
 export {
   InstancedNodeLayer,
   type CoordinateBufferRef,

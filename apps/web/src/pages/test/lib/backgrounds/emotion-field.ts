@@ -50,64 +50,6 @@ export function toEmotionSlices(rawWeights: ReadonlyMap<Mood, number>): EmotionS
     .sort((a, b) => b.weight - a.weight || a.mood.localeCompare(b.mood))
 }
 
-/** An emotion slice resolved to its cumulative span across the field (fractions of 1). */
-export interface EmotionStop extends EmotionSlice {
-  /** Span start as a fraction 0..1 (running total of prior weights). */
-  readonly start: number
-  /** Span end as a fraction 0..1. */
-  readonly end: number
-  /** Span midpoint — the natural anchor for a color stop / arc center. */
-  readonly mid: number
-}
-
-/**
- * Lay the emotions end-to-end along a 0..1 axis, each occupying an interval ∝ its weight.
- * Feeds proportional constructs: conic arcs, linear color-stop bands, ring segments.
- */
-export function cumulativeStops(emotions: readonly EmotionSlice[]): EmotionStop[] {
-  const stops: EmotionStop[] = []
-  let acc = 0
-  for (const emotion of emotions) {
-    const start = acc
-    const end = acc + emotion.weight
-    stops.push({ ...emotion, start, end, mid: (start + end) / 2 })
-    acc = end
-  }
-  return stops
-}
-
-/** A 2D placement in the unit box (0..1), plus the slice it belongs to. */
-export interface EmotionPlacement extends EmotionSlice {
-  readonly x: number
-  readonly y: number
-  /** Suggested radius (fraction of the box) for a blob, scaled by √weight so area ∝ weight. */
-  readonly radius: number
-}
-
-/**
- * Even placements via the golden angle (sunflower / Vogel spiral): N points spread across the
- * field without clustering at any count, so a universe with more emotions still divides the
- * space fairly. Blob radius scales with √weight (area, not diameter, tracks the share).
- */
-export function goldenAnglePlacements(
-  emotions: readonly EmotionSlice[],
-  options: { readonly spread?: number; readonly maxRadius?: number } = {},
-): EmotionPlacement[] {
-  const { spread = 0.42, maxRadius = 0.6 } = options
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5))
-  const count = emotions.length
-  return emotions.map((emotion, index) => {
-    const distance = count <= 1 ? 0 : Math.sqrt((index + 0.5) / count) * spread
-    const angle = index * goldenAngle
-    return {
-      ...emotion,
-      x: 0.5 + distance * Math.cos(angle),
-      y: 0.5 + distance * Math.sin(angle),
-      radius: Math.sqrt(emotion.weight) * maxRadius,
-    }
-  })
-}
-
 /** Blend hex colors by weight into one representative `#rrggbb` (a fallback / average tone). */
 export function blendEmotionColors(emotions: readonly EmotionSlice[]): string {
   if (emotions.length === 0) return '#0a0a12'
@@ -145,4 +87,50 @@ function rgbToHex(r: number, g: number, b: number): string {
 export function rgba(hex: string, alpha: number): string {
   const [r, g, b] = hexToRgb(hex)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** Parse a hex color into normalized [r,g,b] (0..1) — the form shader uniforms want. */
+export function hexToRgbNorm(hex: string): [number, number, number] {
+  const [r, g, b] = hexToRgb(hex)
+  return [r / 255, g / 255, b / 255]
+}
+
+// ── Shader uniform packing ────────────────────────────────────────────────
+// The GLSL backdrops (see shader-canvas.tsx) carry the universe's emotions as
+// fixed-length uniform arrays: a color + a normalized weight per slot, plus the
+// live count. One mood per slot, 13 slots (= MOODS.length) — the palette ceiling.
+// Effects read [0, uCount) and ignore the tail, so the same shader serves a
+// 1-emotion universe and a 13-emotion one; the count reshapes the composition.
+
+/** Maximum emotion slots a shader carries — matches the palette's mood count. */
+export const MAX_EMOTION_SLOTS = 13
+
+/** Emotion state packed for a WebGL uniform upload. */
+export interface EmotionUniforms {
+  /** Flat rgb triples (0..1), MAX_EMOTION_SLOTS * 3 long; tail past `count` is zeroed. */
+  readonly colors: Float32Array
+  /** Normalized shares (0..1), MAX_EMOTION_SLOTS long; tail past `count` is zeroed. */
+  readonly weights: Float32Array
+  /** Active emotion count (0..MAX_EMOTION_SLOTS). */
+  readonly count: number
+  /** Weighted-average tint (0..1) — a base tone for empty regions / fallbacks. */
+  readonly base: readonly [number, number, number]
+}
+
+/** Pack primary-first slices into fixed-length uniform arrays for the shader host. */
+export function packEmotionUniforms(emotions: readonly EmotionSlice[]): EmotionUniforms {
+  const colors = new Float32Array(MAX_EMOTION_SLOTS * 3)
+  const weights = new Float32Array(MAX_EMOTION_SLOTS)
+  const count = Math.min(emotions.length, MAX_EMOTION_SLOTS)
+  for (let i = 0; i < count; i++) {
+    const slice = emotions[i]
+    if (!slice) continue
+    const [r, g, b] = hexToRgbNorm(slice.color)
+    colors[i * 3] = r
+    colors[i * 3 + 1] = g
+    colors[i * 3 + 2] = b
+    weights[i] = slice.weight
+  }
+  const [br, bg, bb] = hexToRgbNorm(blendEmotionColors(emotions))
+  return { colors, weights, count, base: [br, bg, bb] }
 }
