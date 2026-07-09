@@ -53,6 +53,13 @@ func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.Hand
 		// The no-op progression seam ([T4]); the real advance-triggered
 		// handler (consolidation/semanticize) rebinds here later.
 		Progression: memory.NoopAdvanceProgression{},
+		// The recall transaction runs over the same store. SpendGate is the
+		// allow-all no-op default until the economy rebinds the real balance-check
+		// + deduct (§CC2); PredictionError is the LLM semantic-compare (keyless mock
+		// when no key). All bound here, the only place that sees the concretes.
+		Recalls:         store,
+		SpendGate:       memory.AllowAllSpendGate{},
+		PredictionError: adapters.PredictionError,
 	})
 	if err != nil {
 		pool.Close()

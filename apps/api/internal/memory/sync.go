@@ -26,31 +26,11 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 	}
 	var result SyncResult
 	err := s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
-		// Serialize against concurrent launches for the whole transaction,
-		// birth window included, exactly as the launch path does ([I10]).
-		if err := tx.LockUniverseClock(ctx, scope); err != nil {
-			return err
-		}
-		clock, err := tx.UniverseClockForUpdate(ctx, scope)
+		r, err := s.syncToToday(ctx, scope, tx)
 		if err != nil {
 			return err
 		}
-		// Mirror the launch guard's unborn-clock fallback: a pre-clock universe
-		// shows the latest launched memory as its universe time, so a sync must
-		// advance from that baseline — never birth the clock at today when today
-		// is before it, which would visibly rewind the observable present.
-		guard := clock
-		if guard == nil {
-			guard, err = tx.LatestLaunchedUniverseTime(ctx, scope)
-			if err != nil {
-				return err
-			}
-		}
-		var current *time.Time
-		if err := s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), utcDate(s.now())), &current); err != nil {
-			return err
-		}
-		result = SyncResult{Previous: guard, Current: *current}
+		result = r
 		return nil
 	})
 	if err != nil {
@@ -59,11 +39,46 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 	return result, nil
 }
 
+// syncToToday advances the clock to today on an already-open transaction and
+// returns the crossed interval. Factored out of SyncToToday so the recall
+// use-case composes the same advance INSIDE its own transaction ([R1a]) — recall
+// and sync must land atomically, so recall cannot call SyncToToday (which opens
+// its own transaction). The surface is ProgressionTx: sync touches only the clock
+// and the progression hook, never a launch write. LaunchTx and RecallTx both
+// satisfy it.
+func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx) (SyncResult, error) {
+	// Serialize against concurrent launches for the whole transaction,
+	// birth window included, exactly as the launch path does ([I10]).
+	if err := tx.LockUniverseClock(ctx, scope); err != nil {
+		return SyncResult{}, err
+	}
+	clock, err := tx.UniverseClockForUpdate(ctx, scope)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	// Mirror the launch guard's unborn-clock fallback: a pre-clock universe
+	// shows the latest launched memory as its universe time, so a sync must
+	// advance from that baseline — never birth the clock at today when today
+	// is before it, which would visibly rewind the observable present.
+	guard := clock
+	if guard == nil {
+		guard, err = tx.LatestLaunchedUniverseTime(ctx, scope)
+		if err != nil {
+			return SyncResult{}, err
+		}
+	}
+	var current *time.Time
+	if err := s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), utcDate(s.now())), &current); err != nil {
+		return SyncResult{}, err
+	}
+	return SyncResult{Previous: guard, Current: *current}, nil
+}
+
 // advanceAndProgress moves the clock to target and fires the progression hook
 // only when the clock actually moved: a held clock (same-day sync, equal-date
 // launch) crosses no interval, so no advance-triggered work may be implied —
 // otherwise every idempotent re-sync would re-fire the interval's handlers.
-func (s *Service) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx LaunchTx, from *time.Time, target time.Time, out **time.Time) error {
+func (s *Service) advanceAndProgress(ctx context.Context, scope platform.UserScope, tx ProgressionTx, from *time.Time, target time.Time, out **time.Time) error {
 	advanced, err := tx.AdvanceUniverseClock(ctx, scope, target)
 	if err != nil {
 		return err

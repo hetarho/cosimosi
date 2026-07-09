@@ -29,6 +29,42 @@ type fakeLaunchStore struct {
 	txCount   int
 	committed launchState
 	staging   *launchState
+
+	// Recall seam fixtures (job 44): the memory/members/neighbors/diary-memberships the
+	// recall reads replay, plus a recorder of the recall-specific writes committed only
+	// when the recall transaction returns nil (the same all-or-nothing contract).
+	recallStars          map[string]EpisodicMemory
+	recallMemberNeurons  map[string][]ExistingNeuron
+	recallMemberSynapses map[string][]Synapse
+	recallNeighbors      map[string][]NeighborSharedSemanticCount
+	diaryMemories        map[string][]string
+
+	recallTxCount int
+	recall        recallRecord
+	recallStaging *recallRecord
+}
+
+type recallRecord struct {
+	anchorResets []recordedAnchorReset
+	offsets      []recordedOffset
+	provenance   []MemoryProvenance
+	reconText    []recordedReconText
+}
+
+type recordedAnchorReset struct {
+	memoryID     string
+	universeTime time.Time
+}
+
+type recordedOffset struct {
+	memoryIDs []string
+	delta     float64
+}
+
+type recordedReconText struct {
+	memoryID    string
+	currentText string
+	seed        int64
 }
 
 type launchState struct {

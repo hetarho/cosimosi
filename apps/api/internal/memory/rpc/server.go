@@ -91,6 +91,43 @@ func (s *Server) GetUniverse(ctx context.Context, _ *connect.Request[memoryv1.Ge
 	return connect.NewResponse(universeResponse(facts, universeTime)), nil
 }
 
+func (s *Server) Recall(ctx context.Context, req *connect.Request[memoryv1.RecallRequest]) (*connect.Response[memoryv1.RecallResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.Recall(ctx, scope, req.Msg.GetMemoryId(), req.Msg.GetRewriteText())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.RecallResponse{
+		Reconsolidated:       result.Reconsolidated,
+		CurrentText:          result.CurrentText,
+		Seed:                 result.Seed,
+		RecallCount:          result.RecallCount,
+		EffectiveStrength:    float32(result.EffectiveStrength),
+		PreviousUniverseTime: dateValue(result.Sync.Previous),
+		UniverseTime:         result.Sync.Current.Format(time.DateOnly),
+	}), nil
+}
+
+func (s *Server) RecallDiaryStars(ctx context.Context, req *connect.Request[memoryv1.RecallDiaryStarsRequest]) (*connect.Response[memoryv1.RecallDiaryStarsResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.RecallDiaryStars(ctx, scope, req.Msg.GetDiaryId())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.RecallDiaryStarsResponse{
+		DiaryId:              result.DiaryID,
+		EpisodicMemoryIds:    result.EpisodicMemoryIDs,
+		PreviousUniverseTime: dateValue(result.Sync.Previous),
+		UniverseTime:         result.Sync.Current.Format(time.DateOnly),
+	}), nil
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -111,8 +148,15 @@ func parseDiaryDate(raw string) (time.Time, error) {
 func domainError(err error) error {
 	switch {
 	case errors.Is(err, memory.ErrEncodeInputRequired),
-		errors.Is(err, memory.ErrLaunchInvalidMemories):
+		errors.Is(err, memory.ErrLaunchInvalidMemories),
+		errors.Is(err, memory.ErrRecallInputRequired):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, memory.ErrRecallMemoryNotFound):
+		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, memory.ErrRecallMemoryUnavailable):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	case errors.Is(err, memory.ErrInsufficientTwinkle):
+		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, memory.ErrEncodeRetryExhausted):
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, memory.ErrEncodeInvalidSplit):

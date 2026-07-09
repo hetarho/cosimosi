@@ -1004,6 +1004,276 @@ func (x *SynapseDto) GetLastActivatedUniverseTime() string {
 	return ""
 }
 
+// The memory + what the user wrote back. rewrite_text is the ONLY content the client
+// sends — no seed, brightness, strength, decay, price, or diary field exists, so the
+// reshape/bump/anchors/price are all server-derived (§2.9#8, [W4a] structural defense).
+type RecallRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MemoryId      string                 `protobuf:"bytes,1,opt,name=memory_id,json=memoryId,proto3" json:"memory_id,omitempty"`
+	RewriteText   string                 `protobuf:"bytes,2,opt,name=rewrite_text,json=rewriteText,proto3" json:"rewrite_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecallRequest) Reset() {
+	*x = RecallRequest{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecallRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecallRequest) ProtoMessage() {}
+
+func (x *RecallRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecallRequest.ProtoReflect.Descriptor instead.
+func (*RecallRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *RecallRequest) GetMemoryId() string {
+	if x != nil {
+		return x.MemoryId
+	}
+	return ""
+}
+
+func (x *RecallRequest) GetRewriteText() string {
+	if x != nil {
+		return x.RewriteText
+	}
+	return ""
+}
+
+type RecallResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// false = reinforce-only [R4]; true = prediction error → reshape [R6].
+	Reconsolidated bool `protobuf:"varint,1,opt,name=reconsolidated,proto3" json:"reconsolidated,omitempty"`
+	// Unchanged on reinforce-only; the new narrative on reconsolidation.
+	CurrentText string `protobuf:"bytes,2,opt,name=current_text,json=currentText,proto3" json:"current_text,omitempty"`
+	// Unchanged on reinforce-only; a new visual-form seed on reconsolidation [V5].
+	Seed int64 `protobuf:"varint,3,opt,name=seed,proto3" json:"seed,omitempty"`
+	// Incremented on every recall [R3].
+	RecallCount int32 `protobuf:"varint,4,opt,name=recall_count,json=recallCount,proto3" json:"recall_count,omitempty"`
+	// The bumped read-time size [R3][V3].
+	EffectiveStrength float32 `protobuf:"fixed32,5,opt,name=effective_strength,json=effectiveStrength,proto3" json:"effective_strength,omitempty"`
+	// The universe clock before/after the sync (ISO DATE) — the interval the
+	// acceleration replay plays over [T2] (plan 31); empty previous = the unborn clock.
+	PreviousUniverseTime string `protobuf:"bytes,6,opt,name=previous_universe_time,json=previousUniverseTime,proto3" json:"previous_universe_time,omitempty"`
+	UniverseTime         string `protobuf:"bytes,7,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *RecallResponse) Reset() {
+	*x = RecallResponse{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecallResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecallResponse) ProtoMessage() {}
+
+func (x *RecallResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecallResponse.ProtoReflect.Descriptor instead.
+func (*RecallResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *RecallResponse) GetReconsolidated() bool {
+	if x != nil {
+		return x.Reconsolidated
+	}
+	return false
+}
+
+func (x *RecallResponse) GetCurrentText() string {
+	if x != nil {
+		return x.CurrentText
+	}
+	return ""
+}
+
+func (x *RecallResponse) GetSeed() int64 {
+	if x != nil {
+		return x.Seed
+	}
+	return 0
+}
+
+func (x *RecallResponse) GetRecallCount() int32 {
+	if x != nil {
+		return x.RecallCount
+	}
+	return 0
+}
+
+func (x *RecallResponse) GetEffectiveStrength() float32 {
+	if x != nil {
+		return x.EffectiveStrength
+	}
+	return 0
+}
+
+func (x *RecallResponse) GetPreviousUniverseTime() string {
+	if x != nil {
+		return x.PreviousUniverseTime
+	}
+	return ""
+}
+
+func (x *RecallResponse) GetUniverseTime() string {
+	if x != nil {
+		return x.UniverseTime
+	}
+	return ""
+}
+
+// diary_id is the only field the client sends — the affected memory ids, price, and
+// anchors are all server-derived (§2.9#8).
+type RecallDiaryStarsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DiaryId       string                 `protobuf:"bytes,1,opt,name=diary_id,json=diaryId,proto3" json:"diary_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecallDiaryStarsRequest) Reset() {
+	*x = RecallDiaryStarsRequest{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecallDiaryStarsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecallDiaryStarsRequest) ProtoMessage() {}
+
+func (x *RecallDiaryStarsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecallDiaryStarsRequest.ProtoReflect.Descriptor instead.
+func (*RecallDiaryStarsRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *RecallDiaryStarsRequest) GetDiaryId() string {
+	if x != nil {
+		return x.DiaryId
+	}
+	return ""
+}
+
+type RecallDiaryStarsResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	DiaryId string                 `protobuf:"bytes,1,opt,name=diary_id,json=diaryId,proto3" json:"diary_id,omitempty"`
+	// The still-live memories reinforced by this whole-diary recall [D3].
+	EpisodicMemoryIds []string `protobuf:"bytes,2,rep,name=episodic_memory_ids,json=episodicMemoryIds,proto3" json:"episodic_memory_ids,omitempty"`
+	// The sync interval, as in RecallResponse.
+	PreviousUniverseTime string `protobuf:"bytes,3,opt,name=previous_universe_time,json=previousUniverseTime,proto3" json:"previous_universe_time,omitempty"`
+	UniverseTime         string `protobuf:"bytes,4,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *RecallDiaryStarsResponse) Reset() {
+	*x = RecallDiaryStarsResponse{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecallDiaryStarsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecallDiaryStarsResponse) ProtoMessage() {}
+
+func (x *RecallDiaryStarsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecallDiaryStarsResponse.ProtoReflect.Descriptor instead.
+func (*RecallDiaryStarsResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RecallDiaryStarsResponse) GetDiaryId() string {
+	if x != nil {
+		return x.DiaryId
+	}
+	return ""
+}
+
+func (x *RecallDiaryStarsResponse) GetEpisodicMemoryIds() []string {
+	if x != nil {
+		return x.EpisodicMemoryIds
+	}
+	return nil
+}
+
+func (x *RecallDiaryStarsResponse) GetPreviousUniverseTime() string {
+	if x != nil {
+		return x.PreviousUniverseTime
+	}
+	return ""
+}
+
+func (x *RecallDiaryStarsResponse) GetUniverseTime() string {
+	if x != nil {
+		return x.UniverseTime
+	}
+	return ""
+}
+
 var File_cosimosi_memory_v1_memory_proto protoreflect.FileDescriptor
 
 const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
@@ -1086,13 +1356,33 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\vneuron_b_id\x18\x03 \x01(\tR\tneuronBId\x12\x1a\n" +
 	"\bstrength\x18\x04 \x01(\x02R\bstrength\x12.\n" +
 	"\x13co_activation_count\x18\x05 \x01(\x05R\x11coActivationCount\x12?\n" +
-	"\x1clast_activated_universe_time\x18\x06 \x01(\tR\x19lastActivatedUniverseTime2\x90\x03\n" +
+	"\x1clast_activated_universe_time\x18\x06 \x01(\tR\x19lastActivatedUniverseTime\"O\n" +
+	"\rRecallRequest\x12\x1b\n" +
+	"\tmemory_id\x18\x01 \x01(\tR\bmemoryId\x12!\n" +
+	"\frewrite_text\x18\x02 \x01(\tR\vrewriteText\"\x9c\x02\n" +
+	"\x0eRecallResponse\x12&\n" +
+	"\x0ereconsolidated\x18\x01 \x01(\bR\x0ereconsolidated\x12!\n" +
+	"\fcurrent_text\x18\x02 \x01(\tR\vcurrentText\x12\x12\n" +
+	"\x04seed\x18\x03 \x01(\x03R\x04seed\x12!\n" +
+	"\frecall_count\x18\x04 \x01(\x05R\vrecallCount\x12-\n" +
+	"\x12effective_strength\x18\x05 \x01(\x02R\x11effectiveStrength\x124\n" +
+	"\x16previous_universe_time\x18\x06 \x01(\tR\x14previousUniverseTime\x12#\n" +
+	"\runiverse_time\x18\a \x01(\tR\funiverseTime\"4\n" +
+	"\x17RecallDiaryStarsRequest\x12\x19\n" +
+	"\bdiary_id\x18\x01 \x01(\tR\adiaryId\"\xc0\x01\n" +
+	"\x18RecallDiaryStarsResponse\x12\x19\n" +
+	"\bdiary_id\x18\x01 \x01(\tR\adiaryId\x12.\n" +
+	"\x13episodic_memory_ids\x18\x02 \x03(\tR\x11episodicMemoryIds\x124\n" +
+	"\x16previous_universe_time\x18\x03 \x01(\tR\x14previousUniverseTime\x12#\n" +
+	"\runiverse_time\x18\x04 \x01(\tR\funiverseTime2\xd0\x04\n" +
 	"\rMemoryService\x12[\n" +
 	"\n" +
 	"SplitDiary\x12%.cosimosi.memory.v1.SplitDiaryRequest\x1a&.cosimosi.memory.v1.SplitDiaryResponse\x12]\n" +
 	"\vReviseSplit\x12&.cosimosi.memory.v1.ReviseSplitRequest\x1a&.cosimosi.memory.v1.SplitDiaryResponse\x12^\n" +
 	"\vLaunchStars\x12&.cosimosi.memory.v1.LaunchStarsRequest\x1a'.cosimosi.memory.v1.LaunchStarsResponse\x12c\n" +
-	"\vGetUniverse\x12&.cosimosi.memory.v1.GetUniverseRequest\x1a'.cosimosi.memory.v1.GetUniverseResponse\"\x03\x90\x02\x01B\xd1\x01\n" +
+	"\vGetUniverse\x12&.cosimosi.memory.v1.GetUniverseRequest\x1a'.cosimosi.memory.v1.GetUniverseResponse\"\x03\x90\x02\x01\x12O\n" +
+	"\x06Recall\x12!.cosimosi.memory.v1.RecallRequest\x1a\".cosimosi.memory.v1.RecallResponse\x12m\n" +
+	"\x10RecallDiaryStars\x12+.cosimosi.memory.v1.RecallDiaryStarsRequest\x1a,.cosimosi.memory.v1.RecallDiaryStarsResponseB\xd1\x01\n" +
 	"\x16com.cosimosi.memory.v1B\vMemoryProtoP\x01Z@github.com/cosimosi/api/internal/gen/cosimosi/memory/v1;memoryv1\xa2\x02\x03CMX\xaa\x02\x12Cosimosi.Memory.V1\xca\x02\x12Cosimosi\\Memory\\V1\xe2\x02\x1eCosimosi\\Memory\\V1\\GPBMetadata\xea\x02\x14Cosimosi::Memory::V1b\x06proto3"
 
 var (
@@ -1107,23 +1397,27 @@ func file_cosimosi_memory_v1_memory_proto_rawDescGZIP() []byte {
 	return file_cosimosi_memory_v1_memory_proto_rawDescData
 }
 
-var file_cosimosi_memory_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_cosimosi_memory_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_cosimosi_memory_v1_memory_proto_goTypes = []any{
-	(*SplitDiaryRequest)(nil),   // 0: cosimosi.memory.v1.SplitDiaryRequest
-	(*ReviseSplitRequest)(nil),  // 1: cosimosi.memory.v1.ReviseSplitRequest
-	(*SplitDiaryResponse)(nil),  // 2: cosimosi.memory.v1.SplitDiaryResponse
-	(*ProposedMemory)(nil),      // 3: cosimosi.memory.v1.ProposedMemory
-	(*ProposedNeuron)(nil),      // 4: cosimosi.memory.v1.ProposedNeuron
-	(*LaunchStarsRequest)(nil),  // 5: cosimosi.memory.v1.LaunchStarsRequest
-	(*ConfirmedMemory)(nil),     // 6: cosimosi.memory.v1.ConfirmedMemory
-	(*LaunchStarsResponse)(nil), // 7: cosimosi.memory.v1.LaunchStarsResponse
-	(*GetUniverseRequest)(nil),  // 8: cosimosi.memory.v1.GetUniverseRequest
-	(*GetUniverseResponse)(nil), // 9: cosimosi.memory.v1.GetUniverseResponse
-	(*EmotionDto)(nil),          // 10: cosimosi.memory.v1.EmotionDto
-	(*NeuronActivationDto)(nil), // 11: cosimosi.memory.v1.NeuronActivationDto
-	(*EpisodicMemoryDto)(nil),   // 12: cosimosi.memory.v1.EpisodicMemoryDto
-	(*NeuronDto)(nil),           // 13: cosimosi.memory.v1.NeuronDto
-	(*SynapseDto)(nil),          // 14: cosimosi.memory.v1.SynapseDto
+	(*SplitDiaryRequest)(nil),        // 0: cosimosi.memory.v1.SplitDiaryRequest
+	(*ReviseSplitRequest)(nil),       // 1: cosimosi.memory.v1.ReviseSplitRequest
+	(*SplitDiaryResponse)(nil),       // 2: cosimosi.memory.v1.SplitDiaryResponse
+	(*ProposedMemory)(nil),           // 3: cosimosi.memory.v1.ProposedMemory
+	(*ProposedNeuron)(nil),           // 4: cosimosi.memory.v1.ProposedNeuron
+	(*LaunchStarsRequest)(nil),       // 5: cosimosi.memory.v1.LaunchStarsRequest
+	(*ConfirmedMemory)(nil),          // 6: cosimosi.memory.v1.ConfirmedMemory
+	(*LaunchStarsResponse)(nil),      // 7: cosimosi.memory.v1.LaunchStarsResponse
+	(*GetUniverseRequest)(nil),       // 8: cosimosi.memory.v1.GetUniverseRequest
+	(*GetUniverseResponse)(nil),      // 9: cosimosi.memory.v1.GetUniverseResponse
+	(*EmotionDto)(nil),               // 10: cosimosi.memory.v1.EmotionDto
+	(*NeuronActivationDto)(nil),      // 11: cosimosi.memory.v1.NeuronActivationDto
+	(*EpisodicMemoryDto)(nil),        // 12: cosimosi.memory.v1.EpisodicMemoryDto
+	(*NeuronDto)(nil),                // 13: cosimosi.memory.v1.NeuronDto
+	(*SynapseDto)(nil),               // 14: cosimosi.memory.v1.SynapseDto
+	(*RecallRequest)(nil),            // 15: cosimosi.memory.v1.RecallRequest
+	(*RecallResponse)(nil),           // 16: cosimosi.memory.v1.RecallResponse
+	(*RecallDiaryStarsRequest)(nil),  // 17: cosimosi.memory.v1.RecallDiaryStarsRequest
+	(*RecallDiaryStarsResponse)(nil), // 18: cosimosi.memory.v1.RecallDiaryStarsResponse
 }
 var file_cosimosi_memory_v1_memory_proto_depIdxs = []int32{
 	2,  // 0: cosimosi.memory.v1.ReviseSplitRequest.previous:type_name -> cosimosi.memory.v1.SplitDiaryResponse
@@ -1140,12 +1434,16 @@ var file_cosimosi_memory_v1_memory_proto_depIdxs = []int32{
 	1,  // 11: cosimosi.memory.v1.MemoryService.ReviseSplit:input_type -> cosimosi.memory.v1.ReviseSplitRequest
 	5,  // 12: cosimosi.memory.v1.MemoryService.LaunchStars:input_type -> cosimosi.memory.v1.LaunchStarsRequest
 	8,  // 13: cosimosi.memory.v1.MemoryService.GetUniverse:input_type -> cosimosi.memory.v1.GetUniverseRequest
-	2,  // 14: cosimosi.memory.v1.MemoryService.SplitDiary:output_type -> cosimosi.memory.v1.SplitDiaryResponse
-	2,  // 15: cosimosi.memory.v1.MemoryService.ReviseSplit:output_type -> cosimosi.memory.v1.SplitDiaryResponse
-	7,  // 16: cosimosi.memory.v1.MemoryService.LaunchStars:output_type -> cosimosi.memory.v1.LaunchStarsResponse
-	9,  // 17: cosimosi.memory.v1.MemoryService.GetUniverse:output_type -> cosimosi.memory.v1.GetUniverseResponse
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
+	15, // 14: cosimosi.memory.v1.MemoryService.Recall:input_type -> cosimosi.memory.v1.RecallRequest
+	17, // 15: cosimosi.memory.v1.MemoryService.RecallDiaryStars:input_type -> cosimosi.memory.v1.RecallDiaryStarsRequest
+	2,  // 16: cosimosi.memory.v1.MemoryService.SplitDiary:output_type -> cosimosi.memory.v1.SplitDiaryResponse
+	2,  // 17: cosimosi.memory.v1.MemoryService.ReviseSplit:output_type -> cosimosi.memory.v1.SplitDiaryResponse
+	7,  // 18: cosimosi.memory.v1.MemoryService.LaunchStars:output_type -> cosimosi.memory.v1.LaunchStarsResponse
+	9,  // 19: cosimosi.memory.v1.MemoryService.GetUniverse:output_type -> cosimosi.memory.v1.GetUniverseResponse
+	16, // 20: cosimosi.memory.v1.MemoryService.Recall:output_type -> cosimosi.memory.v1.RecallResponse
+	18, // 21: cosimosi.memory.v1.MemoryService.RecallDiaryStars:output_type -> cosimosi.memory.v1.RecallDiaryStarsResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
 	10, // [10:10] is the sub-list for extension type_name
 	10, // [10:10] is the sub-list for extension extendee
 	0,  // [0:10] is the sub-list for field type_name
@@ -1164,7 +1462,7 @@ func file_cosimosi_memory_v1_memory_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_memory_v1_memory_proto_rawDesc), len(file_cosimosi_memory_v1_memory_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

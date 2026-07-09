@@ -26,6 +26,12 @@ service MemoryService {
   rpc GetUniverse(GetUniverseRequest) returns (GetUniverseResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
+  // NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
+  rpc Recall(RecallRequest) returns (RecallResponse);
+  // 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
+  // NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
+  rpc RecallDiaryStars(RecallDiaryStarsRequest) returns (RecallDiaryStarsResponse);
 }
 
 message SplitDiaryRequest {
@@ -149,4 +155,44 @@ message SynapseDto {
   float strength = 4;
   int32 co_activation_count = 5;
   string last_activated_universe_time = 6;
+}
+
+// The memory + what the user wrote back. rewrite_text is the ONLY content the client
+// sends — no seed, brightness, strength, decay, price, or diary field exists, so the
+// reshape/bump/anchors/price are all server-derived (§2.9#8, [W4a] structural defense).
+message RecallRequest {
+  string memory_id = 1;
+  string rewrite_text = 2;
+}
+
+message RecallResponse {
+  // false = reinforce-only [R4]; true = prediction error → reshape [R6].
+  bool reconsolidated = 1;
+  // Unchanged on reinforce-only; the new narrative on reconsolidation.
+  string current_text = 2;
+  // Unchanged on reinforce-only; a new visual-form seed on reconsolidation [V5].
+  int64 seed = 3;
+  // Incremented on every recall [R3].
+  int32 recall_count = 4;
+  // The bumped read-time size [R3][V3].
+  float effective_strength = 5;
+  // The universe clock before/after the sync (ISO DATE) — the interval the
+  // acceleration replay plays over [T2] (plan 31); empty previous = the unborn clock.
+  string previous_universe_time = 6;
+  string universe_time = 7;
+}
+
+// diary_id is the only field the client sends — the affected memory ids, price, and
+// anchors are all server-derived (§2.9#8).
+message RecallDiaryStarsRequest {
+  string diary_id = 1;
+}
+
+message RecallDiaryStarsResponse {
+  string diary_id = 1;
+  // The still-live memories reinforced by this whole-diary recall [D3].
+  repeated string episodic_memory_ids = 2;
+  // The sync interval, as in RecallResponse.
+  string previous_universe_time = 3;
+  string universe_time = 4;
 }

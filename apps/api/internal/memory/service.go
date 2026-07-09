@@ -10,13 +10,16 @@ import (
 )
 
 var (
-	ErrExtractorRequired   = errors.New("memory service requires an extractor")
-	ErrEmbedderRequired    = errors.New("memory service requires an embedder")
-	ErrCandidatesRequired  = errors.New("memory service requires a neuron candidate repo")
-	ErrLaunchesRequired    = errors.New("memory service requires a launch repo")
-	ErrUniverseRequired    = errors.New("memory service requires a universe reader")
-	ErrLinkerRequired      = errors.New("memory service requires a linker")
-	ErrProgressionRequired = errors.New("memory service requires an advance progression hook")
+	ErrExtractorRequired       = errors.New("memory service requires an extractor")
+	ErrEmbedderRequired        = errors.New("memory service requires an embedder")
+	ErrCandidatesRequired      = errors.New("memory service requires a neuron candidate repo")
+	ErrLaunchesRequired        = errors.New("memory service requires a launch repo")
+	ErrUniverseRequired        = errors.New("memory service requires a universe reader")
+	ErrLinkerRequired          = errors.New("memory service requires a linker")
+	ErrProgressionRequired     = errors.New("memory service requires an advance progression hook")
+	ErrRecallsRequired         = errors.New("memory service requires a recall repo")
+	ErrSpendGateRequired       = errors.New("memory service requires a spend gate")
+	ErrPredictionErrorRequired = errors.New("memory service requires a prediction-error port")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -24,16 +27,19 @@ var (
 // semantic-neuron, dedup, caps, and the monotonic launch guard — lives here, not
 // in the RPC handlers (ARCHITECTURE §2.9#7).
 type Service struct {
-	extractor   Extractor
-	embedder    Embedder
-	candidates  NeuronCandidateRepo
-	launches    LaunchRepo
-	universe    UniverseReader
-	linker      Linker
-	progression AdvanceProgression
-	now         func() time.Time
-	newID       func() string
-	newSeed     func() int64
+	extractor       Extractor
+	embedder        Embedder
+	candidates      NeuronCandidateRepo
+	launches        LaunchRepo
+	universe        UniverseReader
+	linker          Linker
+	progression     AdvanceProgression
+	recalls         RecallRepo
+	spendGate       SpendGate
+	predictionError PredictionError
+	now             func() time.Time
+	newID           func() string
+	newSeed         func() int64
 }
 
 type ServiceDeps struct {
@@ -50,6 +56,13 @@ type ServiceDeps struct {
 	// composition root can advance the clock without the seam the
 	// advance-triggered handlers hang their work on.
 	Progression AdvanceProgression
+	// Recalls runs the recall transaction; SpendGate gates the Twinkle spend
+	// (allow-all no-op default, real gate rebinds later); PredictionError is the LLM
+	// semantic-compare deciding reinforce vs. reconsolidate. All required so no
+	// composition root can wire a recall path missing its economy or its gate.
+	Recalls         RecallRepo
+	SpendGate       SpendGate
+	PredictionError PredictionError
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -79,17 +92,29 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Progression == nil {
 		return nil, ErrProgressionRequired
 	}
+	if deps.Recalls == nil {
+		return nil, ErrRecallsRequired
+	}
+	if deps.SpendGate == nil {
+		return nil, ErrSpendGateRequired
+	}
+	if deps.PredictionError == nil {
+		return nil, ErrPredictionErrorRequired
+	}
 	service := &Service{
-		extractor:   deps.Extractor,
-		embedder:    deps.Embedder,
-		candidates:  deps.Candidates,
-		launches:    deps.Launches,
-		universe:    deps.Universe,
-		linker:      deps.Linker,
-		progression: deps.Progression,
-		now:         deps.Now,
-		newID:       deps.NewID,
-		newSeed:     deps.NewSeed,
+		extractor:       deps.Extractor,
+		embedder:        deps.Embedder,
+		candidates:      deps.Candidates,
+		launches:        deps.Launches,
+		universe:        deps.Universe,
+		linker:          deps.Linker,
+		progression:     deps.Progression,
+		recalls:         deps.Recalls,
+		spendGate:       deps.SpendGate,
+		predictionError: deps.PredictionError,
+		now:             deps.Now,
+		newID:           deps.NewID,
+		newSeed:         deps.NewSeed,
 	}
 	if service.now == nil {
 		service.now = func() time.Time { return time.Now().UTC() }

@@ -67,10 +67,11 @@ type CapabilityConfig struct {
 }
 
 type Adapters struct {
-	Extractor    memory.Extractor
-	Embedder     memory.Embedder
-	Semanticizer memory.Semanticizer
-	Mode         string
+	Extractor       memory.Extractor
+	Embedder        memory.Embedder
+	Semanticizer    memory.Semanticizer
+	PredictionError memory.PredictionError
+	Mode            string
 }
 
 type FactoryOptions struct {
@@ -147,9 +148,10 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 	}
 
 	var (
-		extractor    memory.Extractor
-		semanticizer memory.Semanticizer
-		embedder     memory.Embedder
+		extractor       memory.Extractor
+		semanticizer    memory.Semanticizer
+		predictionError memory.PredictionError
+		embedder        memory.Embedder
 	)
 
 	if llmClient != nil {
@@ -162,11 +164,17 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 		if err != nil {
 			return Adapters{}, err
 		}
+		realPredictionError, err := NewRealPredictionError(metered)
+		if err != nil {
+			return Adapters{}, err
+		}
 		extractor = realExtractor
 		semanticizer = realSemanticizer
+		predictionError = realPredictionError
 	} else {
 		extractor = NewMockExtractor()
 		semanticizer = NewMockSemanticizer()
+		predictionError = NewMockPredictionError()
 		llmMode = "mock"
 	}
 
@@ -183,10 +191,11 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 	}
 
 	return Adapters{
-		Extractor:    extractor,
-		Embedder:     embedder,
-		Semanticizer: semanticizer,
-		Mode:         fmt.Sprintf("llm=%s embedding=%s", llmMode, embeddingMode),
+		Extractor:       extractor,
+		Embedder:        embedder,
+		Semanticizer:    semanticizer,
+		PredictionError: predictionError,
+		Mode:            fmt.Sprintf("llm=%s embedding=%s", llmMode, embeddingMode),
 	}, nil
 }
 

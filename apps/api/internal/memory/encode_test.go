@@ -114,43 +114,60 @@ func (f *fakeUniverseReader) GetUniverse(_ context.Context, _ platform.UserScope
 }
 
 type serviceFixture struct {
-	extractor   *fakeExtractor
-	embedder    *fakeEmbedder
-	candidates  *fakeCandidateRepo
-	launches    *fakeLaunchStore
-	universe    *fakeUniverseReader
-	linker      *fakeLinker
-	progression *fakeProgression
-	service     *Service
+	extractor       *fakeExtractor
+	embedder        *fakeEmbedder
+	candidates      *fakeCandidateRepo
+	launches        *fakeLaunchStore
+	universe        *fakeUniverseReader
+	linker          *fakeLinker
+	progression     *fakeProgression
+	spendGate       *fakeSpendGate
+	predictionError *fakePredictionError
+	service         *Service
+	seeds           []int64
 }
 
 func newFixture(t *testing.T) *serviceFixture {
 	t.Helper()
 	launches := &fakeLaunchStore{}
 	fixture := &serviceFixture{
-		extractor:   &fakeExtractor{splitResult: validSplit()},
-		embedder:    &fakeEmbedder{},
-		candidates:  &fakeCandidateRepo{},
-		launches:    launches,
-		universe:    &fakeUniverseReader{},
-		linker:      &fakeLinker{},
-		progression: &fakeProgression{store: launches},
+		extractor:       &fakeExtractor{splitResult: validSplit()},
+		embedder:        &fakeEmbedder{},
+		candidates:      &fakeCandidateRepo{},
+		launches:        launches,
+		universe:        &fakeUniverseReader{},
+		linker:          &fakeLinker{},
+		progression:     &fakeProgression{store: launches},
+		spendGate:       &fakeSpendGate{},
+		predictionError: &fakePredictionError{},
 	}
 	ids := 0
+	// NewSeed hands out fixture.seeds in order (default 42), so a reconsolidation's
+	// reshape entropy is deterministic in tests.
+	seedCalls := 0
 	service, err := NewService(ServiceDeps{
-		Extractor:   fixture.extractor,
-		Embedder:    fixture.embedder,
-		Candidates:  fixture.candidates,
-		Launches:    fixture.launches,
-		Universe:    fixture.universe,
-		Linker:      fixture.linker,
-		Progression: fixture.progression,
-		Now:         func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
+		Extractor:       fixture.extractor,
+		Embedder:        fixture.embedder,
+		Candidates:      fixture.candidates,
+		Launches:        fixture.launches,
+		Universe:        fixture.universe,
+		Linker:          fixture.linker,
+		Progression:     fixture.progression,
+		Recalls:         fixture.launches,
+		SpendGate:       fixture.spendGate,
+		PredictionError: fixture.predictionError,
+		Now:             func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
 		NewID: func() string {
 			ids++
 			return fmt.Sprintf("id-%d", ids)
 		},
-		NewSeed: func() int64 { return 42 },
+		NewSeed: func() int64 {
+			seedCalls++
+			if seedCalls <= len(fixture.seeds) {
+				return fixture.seeds[seedCalls-1]
+			}
+			return 42
+		},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -335,13 +352,16 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.candidates.inBody = []ExistingNeuron{{ID: "n-1", Name: "market", Type: NeuronTypeSpatial}}
 	service, err := NewService(ServiceDeps{
-		Extractor:   fixture.extractor,
-		Embedder:    failingEmbedder{},
-		Candidates:  fixture.candidates,
-		Launches:    fixture.launches,
-		Universe:    fixture.universe,
-		Linker:      fixture.linker,
-		Progression: fixture.progression,
+		Extractor:       fixture.extractor,
+		Embedder:        failingEmbedder{},
+		Candidates:      fixture.candidates,
+		Launches:        fixture.launches,
+		Universe:        fixture.universe,
+		Linker:          fixture.linker,
+		Progression:     fixture.progression,
+		Recalls:         fixture.launches,
+		SpendGate:       fixture.spendGate,
+		PredictionError: fixture.predictionError,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

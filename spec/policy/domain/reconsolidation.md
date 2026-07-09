@@ -44,6 +44,8 @@ guarantee, the forgetting-elapsed clamp, and the `kind`/`source` enums are code/
 
 ## Non-rules (owned elsewhere)
 
-The recall/reconsolidate **orchestration** (the transaction, the LLM regen calls, the provenance/offset call sites, the
-`Recall` RPCs) is the recall use-case. The read-time decay that consumes `forgetting_offset_days`, the 변천사 read +
-baseline synthesis + export, the `semanticized`/`system` provenance rows, and Twinkle prices are their own later units.
+The recall/reconsolidate **orchestration** (the one transaction, the sync composition, the spend gate, the
+prediction-error compare + regen enqueue, the provenance/offset call sites, and the `Recall`/`RecallDiaryStars` RPCs) is
+the recall use-case, as-built in [tech/memory-recall.md](../../tech/memory-recall.md). The read-time decay that consumes
+`forgetting_offset_days`, the 변천사 read + baseline synthesis + export, the `semanticized`/`system` provenance rows, and
+Twinkle prices are their own later units.

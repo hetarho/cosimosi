@@ -298,7 +298,7 @@ func (s *Service) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope
 	return nil
 }
 
-func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx LaunchTx, kind JobKind, payload any) error {
+func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return err

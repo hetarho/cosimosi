@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/memory/v1/memory.proto.
  */
 export const file_cosimosi_memory_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Ch9jb3NpbW9zaS9tZW1vcnkvdjEvbWVtb3J5LnByb3RvEhJjb3NpbW9zaS5tZW1vcnkudjEiNQoRU3BsaXREaWFyeVJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJIoUBChJSZXZpc2VTcGxpdFJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJEjgKCHByZXZpb3VzGAMgASgLMiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRITCgtpbnN0cnVjdGlvbhgEIAEoCSJKChJTcGxpdERpYXJ5UmVzcG9uc2USNAoIbWVtb3JpZXMYASADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWRNZW1vcnkiYQoOUHJvcG9zZWRNZW1vcnkSDAoEbmFtZRgBIAEoCRIMCgRtb29kGAIgASgJEjMKB25ldXJvbnMYAyADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWROZXVyb24iLAoOUHJvcG9zZWROZXVyb24SDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJIm0KEkxhdW5jaFN0YXJzUmVxdWVzdBIMCgRib2R5GAEgASgJEhIKCmRpYXJ5X2RhdGUYAiABKAkSNQoIbWVtb3JpZXMYAyADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuQ29uZmlybWVkTWVtb3J5ImIKD0NvbmZpcm1lZE1lbW9yeRIMCgRuYW1lGAEgASgJEgwKBG1vb2QYAiABKAkSMwoHbmV1cm9ucxgDIAMoCzIiLmNvc2ltb3NpLm1lbW9yeS52MS5Qcm9wb3NlZE5ldXJvbiKMAQoTTGF1bmNoU3RhcnNSZXNwb25zZRISCgptZW1vcnlfaWRzGAEgAygJEhYKDm5ld19uZXVyb25faWRzGAIgAygJEhIKCnBhc3RfZGF0ZWQYAyABKAgSHgoWcHJldmlvdXNfdW5pdmVyc2VfdGltZRgEIAEoCRIVCg11bml2ZXJzZV90aW1lGAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCLHAQoTR2V0VW5pdmVyc2VSZXNwb25zZRI3CghtZW1vcmllcxgBIAMoCzIlLmNvc2ltb3NpLm1lbW9yeS52MS5FcGlzb2RpY01lbW9yeUR0bxIuCgduZXVyb25zGAIgAygLMh0uY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkR0bxIwCghzeW5hcHNlcxgDIAMoCzIeLmNvc2ltb3NpLm1lbW9yeS52MS5TeW5hcHNlRHRvEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiTwoKRW1vdGlvbkR0bxIMCgRtb29kGAEgASgJEg8KB3ZhbGVuY2UYAiABKAESDwoHYXJvdXNhbBgDIAEoARIRCglpbnRlbnNpdHkYBCABKAEiOAoTTmV1cm9uQWN0aXZhdGlvbkR0bxIRCgluZXVyb25faWQYASABKAkSDgoGd2VpZ2h0GAIgASgCIs4CChFFcGlzb2RpY01lbW9yeUR0bxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KB2Vtb3Rpb24YAyABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuRW1vdGlvbkR0bxIVCg1iYXNlX3N0cmVuZ3RoGAQgASgBEhQKDHJlY2FsbF9jb3VudBgFIAEoBRIdChVjcmVhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkSKAobbGFzdF9yZWNhbGxlZF91bml2ZXJzZV90aW1lGAcgASgJSACIAQESEQoEc2VlZBgIIAEoA0gBiAEBEjwKC2FjdGl2YXRpb25zGAkgAygLMicuY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkFjdGl2YXRpb25EdG9CHgocX2xhc3RfcmVjYWxsZWRfdW5pdmVyc2VfdGltZUIHCgVfc2VlZCJeCglOZXVyb25EdG8SCgoCaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhMKC25ldXJvbl90eXBlGAMgASgJEhQKDGNvbm5lY3Rpdml0eRgEIAEoBUIHCgVfbmFtZSKXAQoKU3luYXBzZUR0bxIKCgJpZBgBIAEoCRITCgtuZXVyb25fYV9pZBgCIAEoCRITCgtuZXVyb25fYl9pZBgDIAEoCRIQCghzdHJlbmd0aBgEIAEoAhIbChNjb19hY3RpdmF0aW9uX2NvdW50GAUgASgFEiQKHGxhc3RfYWN0aXZhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkykAMKDU1lbW9yeVNlcnZpY2USWwoKU3BsaXREaWFyeRIlLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVxdWVzdBomLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVzcG9uc2USXQoLUmV2aXNlU3BsaXQSJi5jb3NpbW9zaS5tZW1vcnkudjEuUmV2aXNlU3BsaXRSZXF1ZXN0GiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRJeCgtMYXVuY2hTdGFycxImLmNvc2ltb3NpLm1lbW9yeS52MS5MYXVuY2hTdGFyc1JlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuTGF1bmNoU3RhcnNSZXNwb25zZRJjCgtHZXRVbml2ZXJzZRImLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRVbml2ZXJzZVJlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuR2V0VW5pdmVyc2VSZXNwb25zZSIDkAIBQtEBChZjb20uY29zaW1vc2kubWVtb3J5LnYxQgtNZW1vcnlQcm90b1ABWkBnaXRodWIuY29tL2Nvc2ltb3NpL2FwaS9pbnRlcm5hbC9nZW4vY29zaW1vc2kvbWVtb3J5L3YxO21lbW9yeXYxogIDQ01YqgISQ29zaW1vc2kuTWVtb3J5LlYxygISQ29zaW1vc2lcTWVtb3J5XFYx4gIeQ29zaW1vc2lcTWVtb3J5XFYxXEdQQk1ldGFkYXRh6gIUQ29zaW1vc2k6Ok1lbW9yeTo6VjFiBnByb3RvMw");
+  fileDesc("Ch9jb3NpbW9zaS9tZW1vcnkvdjEvbWVtb3J5LnByb3RvEhJjb3NpbW9zaS5tZW1vcnkudjEiNQoRU3BsaXREaWFyeVJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJIoUBChJSZXZpc2VTcGxpdFJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJEjgKCHByZXZpb3VzGAMgASgLMiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRITCgtpbnN0cnVjdGlvbhgEIAEoCSJKChJTcGxpdERpYXJ5UmVzcG9uc2USNAoIbWVtb3JpZXMYASADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWRNZW1vcnkiYQoOUHJvcG9zZWRNZW1vcnkSDAoEbmFtZRgBIAEoCRIMCgRtb29kGAIgASgJEjMKB25ldXJvbnMYAyADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWROZXVyb24iLAoOUHJvcG9zZWROZXVyb24SDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJIm0KEkxhdW5jaFN0YXJzUmVxdWVzdBIMCgRib2R5GAEgASgJEhIKCmRpYXJ5X2RhdGUYAiABKAkSNQoIbWVtb3JpZXMYAyADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuQ29uZmlybWVkTWVtb3J5ImIKD0NvbmZpcm1lZE1lbW9yeRIMCgRuYW1lGAEgASgJEgwKBG1vb2QYAiABKAkSMwoHbmV1cm9ucxgDIAMoCzIiLmNvc2ltb3NpLm1lbW9yeS52MS5Qcm9wb3NlZE5ldXJvbiKMAQoTTGF1bmNoU3RhcnNSZXNwb25zZRISCgptZW1vcnlfaWRzGAEgAygJEhYKDm5ld19uZXVyb25faWRzGAIgAygJEhIKCnBhc3RfZGF0ZWQYAyABKAgSHgoWcHJldmlvdXNfdW5pdmVyc2VfdGltZRgEIAEoCRIVCg11bml2ZXJzZV90aW1lGAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCLHAQoTR2V0VW5pdmVyc2VSZXNwb25zZRI3CghtZW1vcmllcxgBIAMoCzIlLmNvc2ltb3NpLm1lbW9yeS52MS5FcGlzb2RpY01lbW9yeUR0bxIuCgduZXVyb25zGAIgAygLMh0uY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkR0bxIwCghzeW5hcHNlcxgDIAMoCzIeLmNvc2ltb3NpLm1lbW9yeS52MS5TeW5hcHNlRHRvEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiTwoKRW1vdGlvbkR0bxIMCgRtb29kGAEgASgJEg8KB3ZhbGVuY2UYAiABKAESDwoHYXJvdXNhbBgDIAEoARIRCglpbnRlbnNpdHkYBCABKAEiOAoTTmV1cm9uQWN0aXZhdGlvbkR0bxIRCgluZXVyb25faWQYASABKAkSDgoGd2VpZ2h0GAIgASgCIs4CChFFcGlzb2RpY01lbW9yeUR0bxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KB2Vtb3Rpb24YAyABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuRW1vdGlvbkR0bxIVCg1iYXNlX3N0cmVuZ3RoGAQgASgBEhQKDHJlY2FsbF9jb3VudBgFIAEoBRIdChVjcmVhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkSKAobbGFzdF9yZWNhbGxlZF91bml2ZXJzZV90aW1lGAcgASgJSACIAQESEQoEc2VlZBgIIAEoA0gBiAEBEjwKC2FjdGl2YXRpb25zGAkgAygLMicuY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkFjdGl2YXRpb25EdG9CHgocX2xhc3RfcmVjYWxsZWRfdW5pdmVyc2VfdGltZUIHCgVfc2VlZCJeCglOZXVyb25EdG8SCgoCaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhMKC25ldXJvbl90eXBlGAMgASgJEhQKDGNvbm5lY3Rpdml0eRgEIAEoBUIHCgVfbmFtZSKXAQoKU3luYXBzZUR0bxIKCgJpZBgBIAEoCRITCgtuZXVyb25fYV9pZBgCIAEoCRITCgtuZXVyb25fYl9pZBgDIAEoCRIQCghzdHJlbmd0aBgEIAEoAhIbChNjb19hY3RpdmF0aW9uX2NvdW50GAUgASgFEiQKHGxhc3RfYWN0aXZhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkiOAoNUmVjYWxsUmVxdWVzdBIRCgltZW1vcnlfaWQYASABKAkSFAoMcmV3cml0ZV90ZXh0GAIgASgJIrUBCg5SZWNhbGxSZXNwb25zZRIWCg5yZWNvbnNvbGlkYXRlZBgBIAEoCBIUCgxjdXJyZW50X3RleHQYAiABKAkSDAoEc2VlZBgDIAEoAxIUCgxyZWNhbGxfY291bnQYBCABKAUSGgoSZWZmZWN0aXZlX3N0cmVuZ3RoGAUgASgCEh4KFnByZXZpb3VzX3VuaXZlcnNlX3RpbWUYBiABKAkSFQoNdW5pdmVyc2VfdGltZRgHIAEoCSIrChdSZWNhbGxEaWFyeVN0YXJzUmVxdWVzdBIQCghkaWFyeV9pZBgBIAEoCSKAAQoYUmVjYWxsRGlhcnlTdGFyc1Jlc3BvbnNlEhAKCGRpYXJ5X2lkGAEgASgJEhsKE2VwaXNvZGljX21lbW9yeV9pZHMYAiADKAkSHgoWcHJldmlvdXNfdW5pdmVyc2VfdGltZRgDIAEoCRIVCg11bml2ZXJzZV90aW1lGAQgASgJMtAECg1NZW1vcnlTZXJ2aWNlElsKClNwbGl0RGlhcnkSJS5jb3NpbW9zaS5tZW1vcnkudjEuU3BsaXREaWFyeVJlcXVlc3QaJi5jb3NpbW9zaS5tZW1vcnkudjEuU3BsaXREaWFyeVJlc3BvbnNlEl0KC1JldmlzZVNwbGl0EiYuY29zaW1vc2kubWVtb3J5LnYxLlJldmlzZVNwbGl0UmVxdWVzdBomLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVzcG9uc2USXgoLTGF1bmNoU3RhcnMSJi5jb3NpbW9zaS5tZW1vcnkudjEuTGF1bmNoU3RhcnNSZXF1ZXN0GicuY29zaW1vc2kubWVtb3J5LnYxLkxhdW5jaFN0YXJzUmVzcG9uc2USYwoLR2V0VW5pdmVyc2USJi5jb3NpbW9zaS5tZW1vcnkudjEuR2V0VW5pdmVyc2VSZXF1ZXN0GicuY29zaW1vc2kubWVtb3J5LnYxLkdldFVuaXZlcnNlUmVzcG9uc2UiA5ACARJPCgZSZWNhbGwSIS5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsUmVxdWVzdBoiLmNvc2ltb3NpLm1lbW9yeS52MS5SZWNhbGxSZXNwb25zZRJtChBSZWNhbGxEaWFyeVN0YXJzEisuY29zaW1vc2kubWVtb3J5LnYxLlJlY2FsbERpYXJ5U3RhcnNSZXF1ZXN0GiwuY29zaW1vc2kubWVtb3J5LnYxLlJlY2FsbERpYXJ5U3RhcnNSZXNwb25zZULRAQoWY29tLmNvc2ltb3NpLm1lbW9yeS52MUILTWVtb3J5UHJvdG9QAVpAZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL21lbW9yeS92MTttZW1vcnl2MaICA0NNWKoCEkNvc2ltb3NpLk1lbW9yeS5WMcoCEkNvc2ltb3NpXE1lbW9yeVxWMeICHkNvc2ltb3NpXE1lbW9yeVxWMVxHUEJNZXRhZGF0YeoCFENvc2ltb3NpOjpNZW1vcnk6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message cosimosi.memory.v1.SplitDiaryRequest
@@ -494,6 +494,148 @@ export const SynapseDtoSchema: GenMessage<SynapseDto> = /*@__PURE__*/
   messageDesc(file_cosimosi_memory_v1_memory, 14);
 
 /**
+ * The memory + what the user wrote back. rewrite_text is the ONLY content the client
+ * sends — no seed, brightness, strength, decay, price, or diary field exists, so the
+ * reshape/bump/anchors/price are all server-derived (§2.9#8, [W4a] structural defense).
+ *
+ * @generated from message cosimosi.memory.v1.RecallRequest
+ */
+export type RecallRequest = Message<"cosimosi.memory.v1.RecallRequest"> & {
+  /**
+   * @generated from field: string memory_id = 1;
+   */
+  memoryId: string;
+
+  /**
+   * @generated from field: string rewrite_text = 2;
+   */
+  rewriteText: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.RecallRequest.
+ * Use `create(RecallRequestSchema)` to create a new message.
+ */
+export const RecallRequestSchema: GenMessage<RecallRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 15);
+
+/**
+ * @generated from message cosimosi.memory.v1.RecallResponse
+ */
+export type RecallResponse = Message<"cosimosi.memory.v1.RecallResponse"> & {
+  /**
+   * false = reinforce-only [R4]; true = prediction error → reshape [R6].
+   *
+   * @generated from field: bool reconsolidated = 1;
+   */
+  reconsolidated: boolean;
+
+  /**
+   * Unchanged on reinforce-only; the new narrative on reconsolidation.
+   *
+   * @generated from field: string current_text = 2;
+   */
+  currentText: string;
+
+  /**
+   * Unchanged on reinforce-only; a new visual-form seed on reconsolidation [V5].
+   *
+   * @generated from field: int64 seed = 3;
+   */
+  seed: bigint;
+
+  /**
+   * Incremented on every recall [R3].
+   *
+   * @generated from field: int32 recall_count = 4;
+   */
+  recallCount: number;
+
+  /**
+   * The bumped read-time size [R3][V3].
+   *
+   * @generated from field: float effective_strength = 5;
+   */
+  effectiveStrength: number;
+
+  /**
+   * The universe clock before/after the sync (ISO DATE) — the interval the
+   * acceleration replay plays over [T2] (plan 31); empty previous = the unborn clock.
+   *
+   * @generated from field: string previous_universe_time = 6;
+   */
+  previousUniverseTime: string;
+
+  /**
+   * @generated from field: string universe_time = 7;
+   */
+  universeTime: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.RecallResponse.
+ * Use `create(RecallResponseSchema)` to create a new message.
+ */
+export const RecallResponseSchema: GenMessage<RecallResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 16);
+
+/**
+ * diary_id is the only field the client sends — the affected memory ids, price, and
+ * anchors are all server-derived (§2.9#8).
+ *
+ * @generated from message cosimosi.memory.v1.RecallDiaryStarsRequest
+ */
+export type RecallDiaryStarsRequest = Message<"cosimosi.memory.v1.RecallDiaryStarsRequest"> & {
+  /**
+   * @generated from field: string diary_id = 1;
+   */
+  diaryId: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.RecallDiaryStarsRequest.
+ * Use `create(RecallDiaryStarsRequestSchema)` to create a new message.
+ */
+export const RecallDiaryStarsRequestSchema: GenMessage<RecallDiaryStarsRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 17);
+
+/**
+ * @generated from message cosimosi.memory.v1.RecallDiaryStarsResponse
+ */
+export type RecallDiaryStarsResponse = Message<"cosimosi.memory.v1.RecallDiaryStarsResponse"> & {
+  /**
+   * @generated from field: string diary_id = 1;
+   */
+  diaryId: string;
+
+  /**
+   * The still-live memories reinforced by this whole-diary recall [D3].
+   *
+   * @generated from field: repeated string episodic_memory_ids = 2;
+   */
+  episodicMemoryIds: string[];
+
+  /**
+   * The sync interval, as in RecallResponse.
+   *
+   * @generated from field: string previous_universe_time = 3;
+   */
+  previousUniverseTime: string;
+
+  /**
+   * @generated from field: string universe_time = 4;
+   */
+  universeTime: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.RecallDiaryStarsResponse.
+ * Use `create(RecallDiaryStarsResponseSchema)` to create a new message.
+ */
+export const RecallDiaryStarsResponseSchema: GenMessage<RecallDiaryStarsResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 18);
+
+/**
  * MemoryService owns the encode write contract (plan 20: SplitDiary / ReviseSplit /
  * LaunchStars) and the GetUniverse read contract (shape owned by plan 23).
  *
@@ -550,6 +692,28 @@ export const MemoryService: GenService<{
     methodKind: "unary";
     input: typeof GetUniverseRequestSchema;
     output: typeof GetUniverseResponseSchema;
+  },
+  /**
+   * 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
+   * NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
+   *
+   * @generated from rpc cosimosi.memory.v1.MemoryService.Recall
+   */
+  recall: {
+    methodKind: "unary";
+    input: typeof RecallRequestSchema;
+    output: typeof RecallResponseSchema;
+  },
+  /**
+   * 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
+   * NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
+   *
+   * @generated from rpc cosimosi.memory.v1.MemoryService.RecallDiaryStars
+   */
+  recallDiaryStars: {
+    methodKind: "unary";
+    input: typeof RecallDiaryStarsRequestSchema;
+    output: typeof RecallDiaryStarsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_memory_v1_memory, 0);

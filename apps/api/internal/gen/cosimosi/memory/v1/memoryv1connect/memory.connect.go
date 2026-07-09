@@ -45,6 +45,11 @@ const (
 	// MemoryServiceGetUniverseProcedure is the fully-qualified name of the MemoryService's GetUniverse
 	// RPC.
 	MemoryServiceGetUniverseProcedure = "/cosimosi.memory.v1.MemoryService/GetUniverse"
+	// MemoryServiceRecallProcedure is the fully-qualified name of the MemoryService's Recall RPC.
+	MemoryServiceRecallProcedure = "/cosimosi.memory.v1.MemoryService/Recall"
+	// MemoryServiceRecallDiaryStarsProcedure is the fully-qualified name of the MemoryService's
+	// RecallDiaryStars RPC.
+	MemoryServiceRecallDiaryStarsProcedure = "/cosimosi.memory.v1.MemoryService/RecallDiaryStars"
 )
 
 // MemoryServiceClient is a client for the cosimosi.memory.v1.MemoryService service.
@@ -63,6 +68,12 @@ type MemoryServiceClient interface {
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
 	// clients into HTTP GET (never shared-CDN-cached; the data is user-scoped).
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
+	// 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
+	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
+	Recall(context.Context, *connect.Request[v1.RecallRequest]) (*connect.Response[v1.RecallResponse], error)
+	// 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
+	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
+	RecallDiaryStars(context.Context, *connect.Request[v1.RecallDiaryStarsRequest]) (*connect.Response[v1.RecallDiaryStarsResponse], error)
 }
 
 // NewMemoryServiceClient constructs a client for the cosimosi.memory.v1.MemoryService service. By
@@ -101,15 +112,29 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		recall: connect.NewClient[v1.RecallRequest, v1.RecallResponse](
+			httpClient,
+			baseURL+MemoryServiceRecallProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("Recall")),
+			connect.WithClientOptions(opts...),
+		),
+		recallDiaryStars: connect.NewClient[v1.RecallDiaryStarsRequest, v1.RecallDiaryStarsResponse](
+			httpClient,
+			baseURL+MemoryServiceRecallDiaryStarsProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("RecallDiaryStars")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // memoryServiceClient implements MemoryServiceClient.
 type memoryServiceClient struct {
-	splitDiary  *connect.Client[v1.SplitDiaryRequest, v1.SplitDiaryResponse]
-	reviseSplit *connect.Client[v1.ReviseSplitRequest, v1.SplitDiaryResponse]
-	launchStars *connect.Client[v1.LaunchStarsRequest, v1.LaunchStarsResponse]
-	getUniverse *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
+	splitDiary       *connect.Client[v1.SplitDiaryRequest, v1.SplitDiaryResponse]
+	reviseSplit      *connect.Client[v1.ReviseSplitRequest, v1.SplitDiaryResponse]
+	launchStars      *connect.Client[v1.LaunchStarsRequest, v1.LaunchStarsResponse]
+	getUniverse      *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
+	recall           *connect.Client[v1.RecallRequest, v1.RecallResponse]
+	recallDiaryStars *connect.Client[v1.RecallDiaryStarsRequest, v1.RecallDiaryStarsResponse]
 }
 
 // SplitDiary calls cosimosi.memory.v1.MemoryService.SplitDiary.
@@ -132,6 +157,16 @@ func (c *memoryServiceClient) GetUniverse(ctx context.Context, req *connect.Requ
 	return c.getUniverse.CallUnary(ctx, req)
 }
 
+// Recall calls cosimosi.memory.v1.MemoryService.Recall.
+func (c *memoryServiceClient) Recall(ctx context.Context, req *connect.Request[v1.RecallRequest]) (*connect.Response[v1.RecallResponse], error) {
+	return c.recall.CallUnary(ctx, req)
+}
+
+// RecallDiaryStars calls cosimosi.memory.v1.MemoryService.RecallDiaryStars.
+func (c *memoryServiceClient) RecallDiaryStars(ctx context.Context, req *connect.Request[v1.RecallDiaryStarsRequest]) (*connect.Response[v1.RecallDiaryStarsResponse], error) {
+	return c.recallDiaryStars.CallUnary(ctx, req)
+}
+
 // MemoryServiceHandler is an implementation of the cosimosi.memory.v1.MemoryService service.
 type MemoryServiceHandler interface {
 	// Synchronous preview split — the user sees and edits it [W2]; persists nothing.
@@ -148,6 +183,12 @@ type MemoryServiceHandler interface {
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
 	// clients into HTTP GET (never shared-CDN-cached; the data is user-scoped).
 	GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error)
+	// 회고하기 — remember an episodic memory; reinforce, and reconsolidate on prediction error [R1][R6].
+	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and may rewrite the memory.
+	Recall(context.Context, *connect.Request[v1.RecallRequest]) (*connect.Response[v1.RecallResponse], error)
+	// 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
+	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
+	RecallDiaryStars(context.Context, *connect.Request[v1.RecallDiaryStarsRequest]) (*connect.Response[v1.RecallDiaryStarsResponse], error)
 }
 
 // NewMemoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -182,6 +223,18 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceRecallHandler := connect.NewUnaryHandler(
+		MemoryServiceRecallProcedure,
+		svc.Recall,
+		connect.WithSchema(memoryServiceMethods.ByName("Recall")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceRecallDiaryStarsHandler := connect.NewUnaryHandler(
+		MemoryServiceRecallDiaryStarsProcedure,
+		svc.RecallDiaryStars,
+		connect.WithSchema(memoryServiceMethods.ByName("RecallDiaryStars")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.memory.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MemoryServiceSplitDiaryProcedure:
@@ -192,6 +245,10 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceLaunchStarsHandler.ServeHTTP(w, r)
 		case MemoryServiceGetUniverseProcedure:
 			memoryServiceGetUniverseHandler.ServeHTTP(w, r)
+		case MemoryServiceRecallProcedure:
+			memoryServiceRecallHandler.ServeHTTP(w, r)
+		case MemoryServiceRecallDiaryStarsProcedure:
+			memoryServiceRecallDiaryStarsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -215,4 +272,12 @@ func (UnimplementedMemoryServiceHandler) LaunchStars(context.Context, *connect.R
 
 func (UnimplementedMemoryServiceHandler) GetUniverse(context.Context, *connect.Request[v1.GetUniverseRequest]) (*connect.Response[v1.GetUniverseResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.GetUniverse is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) Recall(context.Context, *connect.Request[v1.RecallRequest]) (*connect.Response[v1.RecallResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.Recall is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) RecallDiaryStars(context.Context, *connect.Request[v1.RecallDiaryStarsRequest]) (*connect.Response[v1.RecallDiaryStarsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.RecallDiaryStars is not implemented"))
 }

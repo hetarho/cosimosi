@@ -27,6 +27,13 @@ type SemanticizeJobPayload struct {
 	CurrentText string              `json:"current_text"`
 	Mood        Mood                `json:"mood"`
 	Neurons     []SemanticJobNeuron `json:"neurons"`
+	// KeepStages/KeptStages carry the reconsolidation remaining-stage rule ([C7]): the
+	// worker regenerates all four stage texts from CurrentText, then keeps the first
+	// KeepStages already-risen texts from KeptStages (z-axis is one-way — a risen gist
+	// stage is a thing that happened). Both are zero/nil for a launch semanticize, which
+	// keeps nothing and writes all four (the pregenerated set).
+	KeepStages int16           `json:"keep_stages,omitempty"`
+	KeptStages *SemanticStages `json:"kept_stages,omitempty"`
 }
 
 type SemanticJobNeuron struct {
@@ -101,6 +108,14 @@ func NewSemanticizeJobHandler(semanticizer Semanticizer, writer SemanticStagesWr
 		})
 		if err != nil {
 			return err
+		}
+		// Reconsolidation keeps the already-risen gist texts and takes the freshly
+		// regenerated ones for the rest ([C7]); a launch semanticize keeps none and
+		// writes all four.
+		if payload.KeptStages != nil {
+			for i := 0; i < int(payload.KeepStages) && i < len(stages); i++ {
+				stages[i] = payload.KeptStages[i]
+			}
 		}
 		return writer.SaveSemanticStages(ctx, job.UserID, payload.MemoryID, stages)
 	}
