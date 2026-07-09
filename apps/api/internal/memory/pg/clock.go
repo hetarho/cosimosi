@@ -28,6 +28,18 @@ func nilableClock(row pgtype.Date, err error) (*time.Time, error) {
 	return datePtr(row), nil
 }
 
+// LockUniverseClock takes the per-user, transaction-scoped advisory lock that
+// serializes a user's clock birth window. It needs no existing row (unlike the
+// FOR UPDATE guard read), so concurrent first-launches serialize here instead
+// of racing the monotonic guard against a stale nil clock while the clock row
+// is still unborn ([I10]). Must be the first clock touch in the transaction.
+func (s Store) LockUniverseClock(ctx context.Context, scope platform.UserScope) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	return s.queries.LockUniverseClock(ctx, scope.UserID())
+}
+
 // UniverseClock reads the user's authoritative clock (nil = unborn).
 func (s Store) UniverseClock(ctx context.Context, scope platform.UserScope) (*time.Time, error) {
 	if err := s.ready(scope); err != nil {
@@ -39,8 +51,9 @@ func (s Store) UniverseClock(ctx context.Context, scope platform.UserScope) (*ti
 // UniverseClockForUpdate is the launch guard's read: it locks the clock row for
 // the rest of the transaction, so concurrent launches serialize on the guard
 // instead of racing it and committing a memory dated before the clock ([I10]).
-// An unborn clock has no row to lock; the birth window is guarded by the
-// LatestLaunchedUniverseTime baseline instead.
+// An unborn clock has no row to lock; that birth window is serialized by
+// LockUniverseClock (the advisory lock), with LatestLaunchedUniverseTime as the
+// guard baseline until the row exists.
 func (s Store) UniverseClockForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
 export { UniverseTimeOverlay } from './ui/UniverseTimeOverlay.tsx'
-// The "open sync consent" affordance reserved for the recall flow ([R1a]): await the decision,
-// then compose the Recall whose committed interval this overlay plays.
-export { requestTimeSyncConsent, type TimeSyncDecision } from '../../features/confirm-time-sync/index.ts'
+// The recall flow ([R1a]) opens sync consent by importing requestTimeSyncConsent directly from
+// features/confirm-time-sync (a downward feature→feature import). It must NOT re-route through this
+// widget: a feature importing a widget symbol is an upward import the FSD boundary forbids (§3.1).

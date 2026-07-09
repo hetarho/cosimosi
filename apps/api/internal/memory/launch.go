@@ -61,9 +61,18 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 
 	var result LaunchResult
 	err := s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
-		// The guard read locks the clock row for this transaction, so two
-		// concurrent launches cannot both pass the guard against the same
-		// stale clock and commit a memory dated before it ([I10]).
+		// Serialize this user's launches for the whole transaction before the
+		// guard read. The advisory lock covers the birth window a locked clock
+		// read cannot — an unborn clock has no row to FOR UPDATE, so without it
+		// two concurrent first-launches would both pass the guard against a
+		// stale nil clock and one could launch a memory that should have been
+		// past-dated ([I10][T1]).
+		if err := tx.LockUniverseClock(ctx, scope); err != nil {
+			return err
+		}
+		// With the birth window serialized, the guard read reflects any
+		// concurrent launch that already committed: FOR UPDATE holds the row
+		// once it exists, and LockUniverseClock covers the pre-row window.
 		clock, err := tx.UniverseClockForUpdate(ctx, scope)
 		if err != nil {
 			return err

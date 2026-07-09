@@ -67,15 +67,19 @@ type LaunchTx interface {
 }
 
 // UniverseClockStore is the consumer-owned port over the per-user authoritative
-// universe clock ([T5]). UniverseClock returns nil for the unborn clock (no
-// launches yet — lazy birth); UniverseClockForUpdate is the launch guard's
+// universe clock ([T5]). LockUniverseClock is the birth-window guard's advisory
+// lock, taken first in every launch/sync transaction so concurrent launches
+// serialize even while the clock row is unborn (a FOR UPDATE read can lock no
+// row that does not exist yet); UniverseClock returns nil for the unborn clock
+// (no launches yet — lazy birth); UniverseClockForUpdate is the launch guard's
 // locked read, holding the clock row so concurrent launches serialize on the
-// guard instead of racing it; LatestLaunchedUniverseTime is the guard baseline
-// while the clock row is unborn (keeps the guard consistent with the universe
-// read's fallback); AdvanceUniverseClock is the GREATEST upsert, so no caller
-// can move the clock backward ([I10]). Method names match the memory/pg
-// concrete, which implements this implicitly.
+// guard instead of racing it once the row exists; LatestLaunchedUniverseTime is
+// the guard baseline while the clock row is unborn (keeps the guard consistent
+// with the universe read's fallback); AdvanceUniverseClock is the GREATEST
+// upsert, so no caller can move the clock backward ([I10]). Method names match
+// the memory/pg concrete, which implements this implicitly.
 type UniverseClockStore interface {
+	LockUniverseClock(ctx context.Context, scope platform.UserScope) error
 	UniverseClock(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 	UniverseClockForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 	LatestLaunchedUniverseTime(ctx context.Context, scope platform.UserScope) (*time.Time, error)

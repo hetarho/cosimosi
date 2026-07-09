@@ -119,11 +119,22 @@ it is row maintenance, not "when the clock last moved"; derive movement from `cu
 **Birth is lazy.** A user with no launches has no row; `pg.UniverseClock` maps the absent row to a nil `*time.Time`,
 keeping Epic A's empty-universe read. The first advance creates the row via the upsert — no backfill migration.
 
+**The birth window is serialized by an advisory lock.** Once the row exists, `GetUniverseClockForUpdate`'s
+`FOR UPDATE` holds it for the transaction, so concurrent launches serialize on the guard. But `FOR UPDATE` can lock no
+row that does not exist yet, so during lazy birth two concurrent first-launches would otherwise both read a nil clock
+and one could launch a memory that a serial run would have past-dated ([T1]). Every launch/sync transaction therefore
+takes `LockUniverseClock` — a per-user `pg_advisory_xact_lock`, namespaced by a constant class key — as its **first**
+step, before the guard read. It needs no existing row, so it closes the birth window the `user_id` primary key (which
+serializes only the clock _write_) leaves open.
+
 Universe time is a **DATE** (day granularity) and is the model's single read-time "now": every elapsed-universe-day
 derivation (forgetting decay, the semanticize timer, synapse strength decay) reads it as a scalar; it never enters
 layout ([I7]). The diary-date monotonic constraint is the pure predicate `memory.CanLaunchAt(diaryDate, clock)` —
 `diaryDate ≥ clock` launches, an earlier diary saves without a star, a nil clock always launches ([T1]).
 
 The clock repository port is **consumer-owned by plan 30** (the time-advance use-case); `memory/pg` exposes the
-concrete `UniverseClock`/`AdvanceUniverseClock` store methods it will bind to. Until plan 30 rewires the call sites,
-`GetUniverse.universe_time` and the launch guard keep Epic A's `max(created_universe_time)` derivation.
+concrete `LockUniverseClock`/`UniverseClock`/`UniverseClockForUpdate`/`LatestLaunchedUniverseTime`/`AdvanceUniverseClock`
+store methods it binds to. Plan 30 has wired the stored `universe_state` clock as the **primary** source for both the
+launch guard (`UniverseClockForUpdate`) and `GetUniverse.universe_time`; Epic A's `max(created_universe_time)` survives
+only as the **one-release fallback** for a pre-clock universe whose row has not been born yet (`LatestLaunchedUniverseTime`
+for the guard, the `EpisodicMemories` scan for the read), so no universe visibly resets during the migration window.

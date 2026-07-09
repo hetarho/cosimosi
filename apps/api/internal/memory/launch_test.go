@@ -79,6 +79,13 @@ func (f *fakeLaunchStore) UniverseClock(_ context.Context, scope platform.UserSc
 	return f.clock, nil
 }
 
+func (f *fakeLaunchStore) LockUniverseClock(_ context.Context, scope platform.UserScope) error {
+	if scope.UserID() == "" {
+		return errors.New("scope missing")
+	}
+	return f.fail("LockUniverseClock")
+}
+
 func (f *fakeLaunchStore) UniverseClockForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error) {
 	if err := f.fail("UniverseClockForUpdate"); err != nil {
 		return nil, err

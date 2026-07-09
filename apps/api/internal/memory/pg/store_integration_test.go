@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -916,6 +917,114 @@ func TestUniverseClockLazyBirthAndMonotonicUpsert(t *testing.T) {
 	}
 	if readBack == nil || !readBack.Equal(later) {
 		t.Fatalf("read-back clock = %v, want %v", readBack, later)
+	}
+}
+
+// TestLockUniverseClockSerializesConcurrentBirth pins the birth-window fix
+// ([I10][T1]). While the clock row is unborn, GetUniverseClockForUpdate can lock
+// no row, so two concurrent first-launches would both read a nil clock and one
+// could launch a memory a serial run would have past-dated. LockUniverseClock —
+// a per-user advisory xact lock that needs no row — closes that window.
+//
+// Tx A takes the lock and births the clock, holding its transaction open. Tx B
+// starts while A holds the lock; its LockUniverseClock must block until A commits
+// (proven deterministically by watching pg_locks for a non-granted advisory
+// lock, not a sleep), and only then does B's guard read see A's committed clock —
+// exactly the observation that past-dates a concurrent earlier diary.
+func TestLockUniverseClockSerializesConcurrentBirth(t *testing.T) {
+	pool := openMemoryTestPool(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-clock-lock-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	born := time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
+
+	aLocked := make(chan struct{})    // closed once A holds the advisory lock
+	aMayCommit := make(chan struct{}) // closed to release A after B is proven to be waiting
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := store.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
+			if err := tx.LockUniverseClock(ctx, scope); err != nil {
+				return err
+			}
+			close(aLocked)
+			<-aMayCommit
+			_, advErr := tx.AdvanceUniverseClock(ctx, scope, born)
+			return advErr
+		}); err != nil {
+			t.Errorf("tx A (birth under lock) failed: %v", err)
+		}
+	}()
+
+	select {
+	case <-aLocked:
+	case <-ctx.Done():
+		t.Fatalf("tx A never acquired the lock: %v", ctx.Err())
+	}
+
+	var bSaw *time.Time
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := store.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
+			if err := tx.LockUniverseClock(ctx, scope); err != nil {
+				return err
+			}
+			clock, readErr := tx.UniverseClockForUpdate(ctx, scope)
+			if readErr != nil {
+				return readErr
+			}
+			bSaw = clock
+			return nil
+		}); err != nil {
+			t.Errorf("tx B (waiter) failed: %v", err)
+		}
+	}()
+
+	// Deterministically wait until B is blocked on the advisory lock. Tests in
+	// this package run serially, so the sole non-granted advisory lock is B's.
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("tx B never blocked on the advisory lock: %v", ctx.Err())
+		default:
+		}
+		var waiting int
+		if err := pool.PgxPool().QueryRow(ctx,
+			"SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted").Scan(&waiting); err != nil {
+			t.Fatalf("poll pg_locks failed: %v", err)
+		}
+		if waiting > 0 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	close(aMayCommit)
+	wg.Wait()
+
+	// The lock forced B to observe A's committed birth rather than the nil clock
+	// it would have raced to concurrently.
+	if bSaw == nil || !bSaw.Equal(born) {
+		t.Fatalf("tx B saw clock %v, want A's committed %v (the advisory lock did not serialize the birth window)", bSaw, born)
+	}
+	// That serialized read is exactly what past-dates a concurrent earlier diary:
+	// B guards against the born clock, not the nil it would otherwise have seen.
+	earlier := born.AddDate(0, 0, -5)
+	if memory.CanLaunchAt(earlier, bSaw) {
+		t.Fatalf("an earlier diary %v would still launch against the serialized clock %v — birth-window guard failed", earlier, born)
 	}
 }
 

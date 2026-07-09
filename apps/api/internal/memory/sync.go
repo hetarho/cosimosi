@@ -26,17 +26,31 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 	}
 	var result SyncResult
 	err := s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
-		// The locked read serializes the sync against concurrent launches'
-		// guards, the same way the launch path does ([I10]).
+		// Serialize against concurrent launches for the whole transaction,
+		// birth window included, exactly as the launch path does ([I10]).
+		if err := tx.LockUniverseClock(ctx, scope); err != nil {
+			return err
+		}
 		clock, err := tx.UniverseClockForUpdate(ctx, scope)
 		if err != nil {
 			return err
 		}
+		// Mirror the launch guard's unborn-clock fallback: a pre-clock universe
+		// shows the latest launched memory as its universe time, so a sync must
+		// advance from that baseline — never birth the clock at today when today
+		// is before it, which would visibly rewind the observable present.
+		guard := clock
+		if guard == nil {
+			guard, err = tx.LatestLaunchedUniverseTime(ctx, scope)
+			if err != nil {
+				return err
+			}
+		}
 		var current *time.Time
-		if err := s.advanceAndProgress(ctx, scope, tx, clock, AdvanceClock(timeOrZero(clock), utcDate(s.now())), &current); err != nil {
+		if err := s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), utcDate(s.now())), &current); err != nil {
 			return err
 		}
-		result = SyncResult{Previous: clock, Current: *current}
+		result = SyncResult{Previous: guard, Current: *current}
 		return nil
 	})
 	if err != nil {
