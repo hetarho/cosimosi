@@ -78,6 +78,12 @@ export const VALUES = {
     temporalWindowDays: 3,
     temporalBonus: 0.1,
   },
+  reconsolidation: {
+    recallStrengthGain: 0.15,
+    neighborSlowDays: -2,
+    neighborSpeedDays: 3,
+    neighborSpeedThreshold: 2,
+  },
   forceSim: {
     charge: 0.035,
     linkDistance: 12,

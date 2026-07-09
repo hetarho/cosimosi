@@ -42,6 +42,7 @@ type EpisodicMemory struct {
 	SemanticStages           []byte
 	DecayStages              []byte
 	DeletedAt                pgtype.Timestamptz
+	ForgettingOffsetDays     float32
 }
 
 type Job struct {
@@ -54,6 +55,17 @@ type Job struct {
 	NextRunAt       pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
 	LeaseGeneration int64
+}
+
+type MemoryProvenance struct {
+	ID               string
+	UserID           string
+	EpisodicMemoryID string
+	Kind             string
+	Source           string
+	Text             string
+	UniverseTime     pgtype.Date
+	CreatedAt        pgtype.Timestamptz
 }
 
 type Neuron struct {

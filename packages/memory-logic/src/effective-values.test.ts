@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
+import { VALUES } from '@cosimosi/config'
+
 import { effectiveBrightness, effectiveStrength } from './effective-values.ts'
 
 interface EffectiveFixture {
@@ -23,9 +25,26 @@ const fixtureUrl = new URL(
 )
 
 describe('memory effective values', () => {
-  it('keeps Epic A EffectiveStrength and EffectiveBrightness stubs distinct from synapse strength', () => {
+  it('accumulates recall with diminishing returns toward the cap, identity at count 0', () => {
+    // Launched, never-recalled stars keep their base strength ([A5]).
     expect(effectiveStrength(0.42, 0)).toBe(0.42)
-    expect(effectiveStrength(0.42, 12)).toBe(0.42)
+    expect(effectiveStrength(0.42, 1)).toBeGreaterThan(0.42)
+
+    // Consecutive counts so each increment is exactly one recall (diminishing per-recall).
+    let previous = 0.42
+    let previousIncrement = Number.POSITIVE_INFINITY
+    for (let count = 1; count <= 40; count += 1) {
+      const got = effectiveStrength(0.42, count)
+      expect(got).toBeGreaterThanOrEqual(previous - 1e-12)
+      expect(got).toBeLessThanOrEqual(VALUES.synapse.strengthCap)
+      const increment = got - previous
+      expect(increment).toBeLessThanOrEqual(previousIncrement + 1e-12)
+      previousIncrement = increment
+      previous = got
+    }
+  })
+
+  it('keeps EffectiveBrightness the Epic-D stub (full brightness)', () => {
     expect(effectiveBrightness(180)).toBe(1)
   })
 

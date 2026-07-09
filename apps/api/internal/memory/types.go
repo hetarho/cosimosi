@@ -40,6 +40,63 @@ const (
 	JobStatusFailed  JobStatus = "failed"
 )
 
+// ProvenanceKind labels a representational event in a memory's 변천사 ([R8a][D1]).
+// 'created' is never written — it is synthesized at read from the memory's
+// creation facts; reconsolidation appends 'reconsolidated', and gist rise appends
+// 'semanticized'. A closed enum stored as TEXT, validated by the domain before
+// insert (matching NeuronType/JobKind, not a PG enum type).
+type ProvenanceKind string
+
+const (
+	ProvenanceKindCreated        ProvenanceKind = "created"
+	ProvenanceKindSemanticized   ProvenanceKind = "semanticized"
+	ProvenanceKindReconsolidated ProvenanceKind = "reconsolidated"
+)
+
+func (k ProvenanceKind) Valid() bool {
+	switch k {
+	case ProvenanceKindCreated, ProvenanceKindSemanticized, ProvenanceKindReconsolidated:
+		return true
+	default:
+		return false
+	}
+}
+
+// ProvenanceSource records who authored a representational event: 'original' the
+// diarist's launched account (the synthesized baseline), 'system' the AI (gist),
+// 'user' a recall rewrite. Closed enum, TEXT, domain-validated.
+type ProvenanceSource string
+
+const (
+	ProvenanceSourceOriginal ProvenanceSource = "original"
+	ProvenanceSourceSystem   ProvenanceSource = "system"
+	ProvenanceSourceUser     ProvenanceSource = "user"
+)
+
+func (s ProvenanceSource) Valid() bool {
+	switch s {
+	case ProvenanceSourceOriginal, ProvenanceSourceSystem, ProvenanceSourceUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// MemoryProvenance is one append-only 변천사 row ([R8a][D1]): a memory's
+// representation text at one event, tagged by kind × source and anchored in
+// universe-time. Appended, never mutated ([I1]); the 'created'/'original'
+// baseline is synthesized at read, never stored. CreatedAt is DB-assigned on
+// insert (the deterministic tiebreak for same-universe-day events).
+type MemoryProvenance struct {
+	ID               string
+	EpisodicMemoryID string
+	Kind             ProvenanceKind
+	Source           ProvenanceSource
+	Text             string
+	UniverseTime     time.Time
+	CreatedAt        time.Time
+}
+
 type Diary struct {
 	ID        string
 	Body      string

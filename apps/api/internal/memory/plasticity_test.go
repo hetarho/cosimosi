@@ -132,11 +132,11 @@ func TestEffectiveSynapseStrengthInvariants(t *testing.T) {
 func TestMemoryEffectiveStubs(t *testing.T) {
 	t.Parallel()
 
+	// EffectiveStrength now accumulates recall (plan 32); its full monotone/diminishing/cap
+	// invariants live in reconsolidation_test.go. Here we pin only the launched (count 0) identity
+	// and that EffectiveBrightness remains the Epic-D stub (full brightness).
 	if got := EffectiveStrength(0.42, 0); got != 0.42 {
 		t.Fatalf("EffectiveStrength(base, 0) = %v, want base", got)
-	}
-	if got := EffectiveStrength(0.42, 12); got != 0.42 {
-		t.Fatalf("EffectiveStrength currently ignores recall_count, got %v", got)
 	}
 	if got := EffectiveBrightness(180); got != 1.0 {
 		t.Fatalf("EffectiveBrightness = %v, want full brightness", got)

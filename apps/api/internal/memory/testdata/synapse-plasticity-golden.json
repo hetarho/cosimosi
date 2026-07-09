@@ -95,6 +95,56 @@
       "expected": 0.42
     },
     {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0, "recall_count": 1 },
+      "expected": 0.15000000000000002
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0, "recall_count": 2 },
+      "expected": 0.2775000000000001
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0, "recall_count": 5 },
+      "expected": 0.5562946875000001
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0, "recall_count": 20 },
+      "expected": 0.9612404689154857
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0.42, "recall_count": 1 },
+      "expected": 0.5069999999999999
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0.42, "recall_count": 2 },
+      "expected": 0.5809500000000001
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0.42, "recall_count": 5 },
+      "expected": 0.7426509187500001
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0.42, "recall_count": 20 },
+      "expected": 0.9775194719709817
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0.95, "recall_count": 1 },
+      "expected": 0.9575
+    },
+    {
+      "function": "effective_strength",
+      "inputs": { "base_strength": 0.95, "recall_count": 20 },
+      "expected": 0.9980620234457743
+    },
+    {
       "function": "effective_brightness",
       "inputs": { "elapsed_universe_days": 180 },
       "expected": 1

@@ -195,6 +195,21 @@ synapse:
   temporal_window_days: 3
   temporal_bonus: 0.1
 
+reconsolidation:
+  # [R3][V3] Per-recall headroom fraction the EffectiveStrength recall term gains, saturating toward
+  # synapse.strength_cap — a handful of recalls grows a star noticeably without ever reaching the cap.
+  recall_strength_gain: 0.15
+  # [R5] Signed neighbor forgetting nudge in universe-days, added to a neighbor's forgetting_offset_days
+  # on recall (never to the recalled star itself, [F5]). neighbor_slow_days is NEGATIVE — one shared
+  # semantic neuron co-recalls a weak link (spreading activation), slowing its forgetting.
+  neighbor_slow_days: -2.0
+  # [R5] POSITIVE delta for a neighbor sharing >= neighbor_speed_threshold semantic neurons: a strong
+  # competitor is inhibited (retrieval-induced forgetting, Anderson 1994), speeding its forgetting.
+  neighbor_speed_days: 3.0
+  # [R5] Shared-semantic-neuron count at/above which the neighbor delta flips from slow (-) to speed (+).
+  # Fixed by the PRD (1 vs >=2) but kept a value so the boundary is not hardcoded.
+  neighbor_speed_threshold: 2
+
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.
   charge: 0.035

@@ -128,6 +128,14 @@ const (
 	SynapseTemporalBonus       = 0.1
 )
 
+// reconsolidation
+const (
+	ReconsolidationRecallStrengthGain     = 0.15
+	ReconsolidationNeighborSlowDays       = -2
+	ReconsolidationNeighborSpeedDays      = 3
+	ReconsolidationNeighborSpeedThreshold = 2
+)
+
 // force_sim
 const (
 	ForceSimCharge          = 0.035
