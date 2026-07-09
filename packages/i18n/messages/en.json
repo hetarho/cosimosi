@@ -164,9 +164,7 @@
   "not_found_title": "Nothing orbits here",
   "not_found_description": "This path leads into empty space.",
   "not_found_home_action": "Back to your universe",
-  "test_harness_background_showcase_title": "Emotion backdrops",
-  "test_harness_background_showcase_description": "Autonomous shader skies inspired by react-bits — each carries the universe's emotions and restructures by their count. The same effect is shown holding 1 / 3 / 5 / 7 emotions.",
   "test_harness_background_showcase_reduced_motion": "Reduced motion — frozen",
   "test_harness_sky_title": "Emotion sky (3D)",
-  "test_harness_sky_description": "A shader-lit sphere wrapping the star scene — drag to look around inside it. The emotion palette (and the effect) reshape with the count. Faithful TSL port of react-bits' Grainient (reference; the rest follow once the direction is confirmed)."
+  "test_harness_sky_description": "A shader-lit sphere wrapping the star scene — drag to look around inside it. Thirteen react-bits-derived effects, each sampling the universe's emotion palette; pick an effect and how many emotions it holds. Effects tagged 'adapted' re-create a look their screen-space source can't wear on a sphere."
 }

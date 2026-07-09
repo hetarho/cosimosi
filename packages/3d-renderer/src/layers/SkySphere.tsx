@@ -8,7 +8,11 @@ import {
   updateEmotionGradientTexture,
   type GradientStop,
 } from '../assets/sky/emotion-gradient.ts'
-import { grainientSkyNode } from '../assets/sky/grainient-sky.ts'
+import {
+  DEFAULT_SKY_EFFECT,
+  resolveSkyEffect,
+  type SkyEffectKey,
+} from '../assets/sky/sky-effects.ts'
 
 // The emotion sky: a large sphere drawn on its INNER surface (BackSide), enclosing the whole
 // universe scene, shaded by a TSL effect. Not a flat screen-space wash — a real body wrapping
@@ -19,6 +23,8 @@ import { grainientSkyNode } from '../assets/sky/grainient-sky.ts'
 export interface SkySphereProps {
   /** The universe's emotions (color + weight); reshapes the palette ramp. */
   readonly stops: readonly GradientStop[]
+  /** Which react-bits-derived effect shades the sphere (defaults to Grainient). */
+  readonly effect?: SkyEffectKey
   /** Freeze the animation to a static frame. */
   readonly reducedMotion?: boolean
   /** Sphere radius — big enough to enclose the scene. */
@@ -27,29 +33,32 @@ export interface SkySphereProps {
 
 const FROZEN_TIME = 12
 
-export function SkySphere({ stops, reducedMotion = false, radius = 400 }: SkySphereProps) {
+export function SkySphere({
+  stops,
+  effect = DEFAULT_SKY_EFFECT,
+  reducedMotion = false,
+  radius = 400,
+}: SkySphereProps) {
   const gradient = useMemo(() => buildEmotionGradientTexture(stops), [])
   const time = useMemo(() => uniform(0), [])
   const geometry = useMemo(() => new THREE.SphereGeometry(radius, 96, 48), [radius])
+  // Rebuilds only when the effect changes; an emotion change just repaints the ramp (below).
   const material = useMemo(() => {
     const mat = new THREE.MeshBasicNodeMaterial()
     mat.side = THREE.BackSide
     mat.depthWrite = false
-    mat.colorNode = grainientSkyNode({ gradient, time }) as never
+    mat.colorNode = resolveSkyEffect(effect).build({ gradient, time }) as never
     return mat
-  }, [gradient, time])
+  }, [gradient, time, effect])
 
   // Repaint the ramp when the emotions change (no material rebuild).
   useEffect(() => updateEmotionGradientTexture(gradient, stops), [gradient, stops])
 
-  useEffect(
-    () => () => {
-      geometry.dispose()
-      material.dispose()
-      gradient.dispose()
-    },
-    [geometry, material, gradient],
-  )
+  // Dispose each resource only when it is actually replaced (or on unmount) — the material is
+  // rebuilt on an effect switch, so its cleanup must NOT take the still-live geometry/gradient with it.
+  useEffect(() => () => geometry.dispose(), [geometry])
+  useEffect(() => () => gradient.dispose(), [gradient])
+  useEffect(() => () => material.dispose(), [material])
 
   const frozen = useRef(false)
   useFrame((_, delta) => {

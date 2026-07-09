@@ -10,11 +10,15 @@ import { VALUES } from '@cosimosi/config'
 import {
   CameraControls,
   PostFX,
+  SKY_EFFECTS,
   SkinProvider,
+  SkySphere,
   StarField,
   UniverseCanvas,
+  resolveSkyEffect,
   useSkin,
   type SkinKey,
+  type SkyEffectKey,
 } from '@cosimosi/3d-renderer'
 import { moodColor, MOODS, type Mood } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
@@ -41,8 +45,7 @@ import {
   type ControlSize,
 } from '@cosimosi/ui'
 
-import { BACKGROUND_CANDIDATES } from './backgrounds/index.ts'
-import { toEmotionSlices, type EmotionSlice } from './backgrounds/emotion-field.ts'
+import { toEmotionSlices, type EmotionSlice } from './emotion-slices.ts'
 import { buildEngramDemoScene, type EngramDemoScene } from './engram-demo-scene.ts'
 
 // The single UI test surface, split into three tabs that share one skin. A preset is a
@@ -409,17 +412,14 @@ function setWeight(
 }
 
 function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
-  const reducedMotion = useReducedMotion()
   const [weights, setWeights] = useState<ReadonlyMap<Mood, number>>(() =>
     initialWeights(scene.memories),
   )
-  const [candidateKey, setCandidateKey] = useState(BACKGROUND_CANDIDATES[0].key)
+  const [effectKey, setEffectKey] = useState<SkyEffectKey>(SKY_EFFECTS[0].key)
 
   const emotions = useMemo(() => toEmotionSlices(weights), [weights])
   const primary = useMemo(() => dominantMood(weights), [weights])
-  const candidate =
-    BACKGROUND_CANDIDATES.find((entry) => entry.key === candidateKey) ?? BACKGROUND_CANDIDATES[0]
-  const Backdrop = candidate.Component
+  const effect = resolveSkyEffect(effectKey)
 
   // Drag a slider to set a mood's share; the rest of the universe absorbs the change in proportion
   // to their current shares, so every emotion always totals 100. Adding pulls a slice from the rest.
@@ -431,24 +431,20 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
   return (
     <div className="flex flex-col gap-4">
       <EmotionControls weights={weights} primary={primary} onSet={handleSet} onAdd={handleAdd} />
-      <BackgroundSwitcher
-        emotions={emotions}
-        activeKey={candidate.key}
-        onSelect={setCandidateKey}
-      />
+      <BackgroundSwitcher activeKey={effect.key} onSelect={setEffectKey} />
 
-      {/* Layered: emotion backdrop (z-0) · transparent 3D scene (z-10) · glass chrome (z-20). */}
+      {/* The emotion sky is now a real body INSIDE the scene (the enclosing sphere), not a DOM layer
+          behind a transparent canvas: 3D universe (z-0) · glass chrome (z-10). */}
       <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-border bg-black/50">
-        <Backdrop emotions={emotions} reducedMotion={reducedMotion} className="z-0" />
-        <div className="absolute inset-0 z-10">
-          <EngramUniverseCanvas scene={scene} />
+        <div className="absolute inset-0 z-0">
+          <EngramUniverseCanvas scene={scene} effect={effect.key} emotions={emotions} />
         </div>
-        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-4">
+        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-4">
           <div className="flex items-start justify-between gap-2">
             <Badge variant="neutral">{T.hud}</Badge>
             <div className="pointer-events-auto flex items-center gap-2">
               <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">
-                {candidate.label}
+                {effect.label}
               </span>
               <DialogDemo size="sm" />
             </div>
@@ -573,28 +569,25 @@ function EmotionControls({
   )
 }
 
-// The background-candidate switcher: a live thumbnail per candidate (rendered static to stay cheap
-// — reducedMotion is forced on the previews) plus the selected one's blurb. Selecting swaps the
-// live universe backdrop above.
+// The emotion-sky switcher: one button per react-bits-derived effect (a live WebGPU thumbnail each
+// would cost a context, so it's labels not previews) plus the selected one's blurb. Selecting swaps
+// the sky enclosing the live universe above.
 function BackgroundSwitcher({
-  emotions,
   activeKey,
   onSelect,
 }: {
-  emotions: readonly EmotionSlice[]
-  activeKey: string
-  onSelect: (key: string) => void
+  activeKey: SkyEffectKey
+  onSelect: (key: SkyEffectKey) => void
 }) {
-  const active = BACKGROUND_CANDIDATES.find((entry) => entry.key === activeKey)
+  const active = resolveSkyEffect(activeKey)
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
         {T.backgroundTitle}
       </h3>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        {BACKGROUND_CANDIDATES.map((entry) => {
-          const Preview = entry.Component
-          const selected = entry.key === activeKey
+      <div className="flex flex-wrap gap-2">
+        {SKY_EFFECTS.map((entry) => {
+          const selected = entry.key === active.key
           return (
             <button
               key={entry.key}
@@ -603,24 +596,25 @@ function BackgroundSwitcher({
               aria-pressed={selected}
               title={entry.blurb}
               className={cx(
-                'group flex flex-col overflow-hidden rounded-xl border text-left transition-colors',
-                selected ? 'border-primary' : 'border-border hover:border-text-subtle',
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                selected
+                  ? 'border-primary text-text'
+                  : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
               )}
             >
-              <span className="relative block h-16 w-full overflow-hidden bg-black/60">
-                <Preview emotions={emotions} reducedMotion />
-              </span>
-              <span className="flex items-center justify-between gap-1 px-2 py-1.5">
-                <span className="truncate text-xs font-medium text-text">{entry.label}</span>
-                {selected ? (
-                  <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
-                ) : null}
-              </span>
+              <span
+                aria-hidden
+                className={cx(
+                  'size-1.5 rounded-full',
+                  entry.fidelity === 'faithful' ? 'bg-primary' : 'bg-text-subtle',
+                )}
+              />
+              {entry.label}
             </button>
           )
         })}
       </div>
-      {active ? <p className="text-xs text-text-subtle">{active.blurb}</p> : null}
+      <p className="text-xs text-text-subtle">{active.blurb}</p>
     </section>
   )
 }
@@ -629,10 +623,20 @@ function BackgroundSwitcher({
 // cells (8 episodic memories anchored to a handful of neurons) into the shared read-model stores
 // and renders the real render layers over a static coordinate buffer — no force-sim, no backend.
 // So the memory stars, cell-star neurons, synapse filaments, and emotion nebula all draw from
-// genuine domain facts. The scene draws NO background node: the canvas clears transparent so the
-// emotion-driven DOM backdrop behind it shows through. The skin still tunes camera + bloom.
-function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
+// genuine domain facts. The emotion sky is a real body enclosing the scene (the BackSide sphere),
+// shaded by the chosen react-bits effect off the universe's palette. The skin still tunes camera +
+// bloom.
+function EngramUniverseCanvas({
+  scene,
+  effect,
+  emotions,
+}: {
+  scene: EngramDemoScene
+  effect: SkyEffectKey
+  emotions: readonly EmotionSlice[]
+}) {
   const { skin } = useSkin()
+  const reducedMotion = useReducedMotion()
   const positions = useMemo(() => ({ current: scene.positions }), [scene])
 
   // Own the singleton read-model stores while mounted — the product universe widget is never
@@ -649,7 +653,8 @@ function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
   }, [scene])
 
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov} transparent>
+    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
+      <SkySphere stops={emotions} effect={effect} reducedMotion={reducedMotion} />
       <StarField />
       <NebulaField positions={positions} firstNodeIndex={scene.firstMemoryIndex} />
       <CellStarLayer positions={positions} />
@@ -664,7 +669,7 @@ function EngramUniverseCanvas({ scene }: { scene: EngramDemoScene }) {
         universeTime={scene.universeTime}
       />
       <CameraControls />
-      <PostFX bloom={skin.bloom} transparent />
+      <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )
 }

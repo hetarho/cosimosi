@@ -52,6 +52,14 @@ export {
   type GradientStop,
 } from './assets/sky/emotion-gradient.ts'
 export {
+  SKY_EFFECTS,
+  DEFAULT_SKY_EFFECT,
+  resolveSkyEffect,
+  type SkyEffect,
+  type SkyEffectKey,
+  type SkyFidelity,
+} from './assets/sky/sky-effects.ts'
+export {
   InstancedNodeLayer,
   type CoordinateBufferRef,
   type InstanceAttributeChannel,
