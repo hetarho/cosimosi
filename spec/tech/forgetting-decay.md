@@ -9,13 +9,15 @@
 
 The Go domain implementation lives in `apps/api/internal/memory`:
 
-- `forgetting.go`: `EffectiveElapsedDays`, `DecayStage`, `DecayStageText`, and the helpers (`slowFactor`,
-  `removableIndices`, `seededRemovalOrder`, `seededRank`, `endsSentence`, `isStopWord`).
-- `effective.go`: `EffectiveStrength` (recall term); `EffectiveBrightness` is defined in `forgetting.go`.
+- `forgetting.go`: `EffectiveElapsedDays`, `EffectiveBrightness`, `DecayStage`, `DecayDepth`,
+  `AccessibilityCostWeight`, `DecayStageText`, and the helpers (`slowFactor`, `removableIndices`, `seededRemovalOrder`,
+  `seededRank`, `endsSentence`, `isStopWord`).
+- `effective.go`: `EffectiveStrength` (recall term).
 
 The TypeScript mirror lives in `packages/memory-logic`, a pure cross-app package with no DOM, Vite, Metro, native, RPC,
-DB, or SDK dependency: `forgetting.ts` (`effectiveElapsedDays`, `decayStage`, `decayStageText`) and `effective-values.ts`
-(`effectiveBrightness`, `slowFactor`). Web and mobile consume this package for read-time memory math.
+DB, or SDK dependency: `forgetting.ts` (`effectiveElapsedDays`, `decayStage`, `decayDepth`, `accessibilityCostWeight`,
+`decayStageText`) and `effective-values.ts` (`effectiveBrightness`, `slowFactor`). Web and mobile consume this package
+for read-time memory math.
 
 ## 2. Purity and boundaries
 
@@ -38,6 +40,17 @@ slow)`, `decayFactor = 1 − brightness_decay_per_day`, clamped to `[floor, 1]`.
 - **`slow = 1 + arousal·arousal_slow_coefficient + effectiveStrength·connection_slow_coefficient`** (both inputs floored
   at 0, so `slow ≥ 1`) — shared by brightness and stage, so they move together; higher arousal/strength stretch the
   time-axis (slower fade).
+- **`DecayDepth(effectiveElapsedDays, arousal, effectiveStrength)`** — normalizes forgetting progress to `[0, 1]`: the
+  continuous stage-fraction `clamp(days / (stage_interval_days · maxStage · slow), 0, 1)` over the same slow-stretched
+  clock `DecayStage` crosses (0 = fresh, 1 = at/after the deepest stage). It is the normalized input the accessibility
+  weight reads, independent of the stage count; recall resets decay → depth 0.
+- **`AccessibilityCostWeight(decayDepth)`** — turns the normalized depth into an accessibility/cost **weight** ([F4]):
+  `clamp(cost_weight_floor + (cost_weight_cap − cost_weight_floor)·clamp(depth,0,1)^cost_weight_curve, floor, cap)`. A
+  monotone convex ease — cheap early, steepening toward silence — from the floor (depth 0, fully accessible, never free
+  [G1]) to the cap (depth 1, silent engram, expensive but bounded, never unreachable [I1][F2]). It emits a **weight, not
+  a Twinkle price**: the recall pricing layer turns it into a price and its spend gate re-derives the weight server-side
+  (this unit computes accessibility; pricing/spending live in the Twinkle economy). Recovery on recall is expressed only
+  through the input (`decayDepth → 0` after a recall resets decay, [F5]) — there is no stored `accessibility` field.
 - **`DecayStageText(currentText, stage, seed)`** — stage `0` (or below) and texts of ≤ 2 words return the vivid,
   unredacted text. For stage `s` in `1..maxStage`, the removal ratio is `stage_word_removal_ratios[s-1]` (**stage 0 is
   the reserved vivid state, so the ratios describe the decayed stages 1..N**). Removable words are all words except the
@@ -57,10 +70,14 @@ Only coefficients, the floor, and the per-stage ratios live in `spec/values.yaml
   count** (`maxStage = 4`)
 - `forgetting.arousal_slow_coefficient = 1.0`
 - `forgetting.connection_slow_coefficient = 1.0`
+- `forgetting.cost_weight_floor = 1.0` — the accessibility weight at depth 0 (cheapest, non-zero)
+- `forgetting.cost_weight_cap = 4.0` — the accessibility weight at depth 1 (expensive but bounded)
+- `forgetting.cost_weight_curve = 2.0` — the convex curvature of the floor→cap ease
 
-The shapes stay in code: the exponential brightness curve, the stage step function, the seeded word-removal +
-first/last + stop-word heuristic, the redaction token string, and the derived stage count. The `EffectiveStrength`
-recall term (`[F7]` connection-strength input) is passed in by the caller, not recomputed here.
+The shapes stay in code: the exponential brightness curve, the stage step function, the depth normalization, the convex
+cost-weight ease + its `[floor, cap]` clamp, the seeded word-removal + first/last + stop-word heuristic, the redaction
+token string, and the derived stage count. Every Twinkle price constant lives in the Twinkle economy, never here. The
+`EffectiveStrength` recall term (`[F7]` connection-strength input) is passed in by the caller, not recomputed here.
 
 **v1 tokenization limitation ([F9] "to refine").** Word-removal is **whitespace-tokenized** (`strings.Fields` / `split(/\s+/)`).
 Korean — the product's primary language — and Latin scripts delimit words with spaces, so they decay correctly. A script

@@ -109,6 +109,35 @@ func DecayStageText(currentText string, stage int, seed int64) string {
 	return strings.Join(result, " ")
 }
 
+// DecayDepth normalizes forgetting progress to [0, 1] — the continuous stage-fraction over the same
+// slow-stretched elapsed clock DecayStage crosses (0 = fresh, 1 = at/after the deepest stage). It is
+// the normalized input the accessibility-cost weight reads, so the two axes speak one normalized
+// language independent of how many decay stages exist ([F1][F4]). Recall resets decay → depth 0.
+func DecayDepth(effectiveElapsedDays float64, arousal float64, effectiveStrength float64) float64 {
+	maxStage := len(values.ForgettingStageWordRemovalRatios)
+	span := values.ForgettingStageIntervalDays * float64(maxStage) * slowFactor(arousal, effectiveStrength)
+	if span <= 0 {
+		return 0
+	}
+	return clamp(math.Max(0, effectiveElapsedDays)/span, 0, 1)
+}
+
+// AccessibilityCostWeight turns a memory's normalized forgetting depth into an accessibility/cost
+// weight ([F4]): a monotone convex ease from cost_weight_floor (depth 0 — fully accessible, cheapest
+// but never free [G1]) to cost_weight_cap (depth 1 — silent engram, expensive but bounded, never
+// unreachable [I1][F2]). Deeper decay ⇒ harder to reach ⇒ costlier. It emits a weight, not a Twinkle
+// price — the recall pricing layer turns this weight into a price and its spend gate re-derives the
+// weight server-side (this unit computes accessibility; pricing and spending live in the Twinkle
+// economy). The curve shape + clamp are code; only the floor, cap, and curvature are values. Recall
+// resets decay to depth 0, so the weight returns to the floor ([F5]).
+func AccessibilityCostWeight(decayDepth float64) float64 {
+	weightFloor := float64(values.ForgettingCostWeightFloor)
+	weightCap := float64(values.ForgettingCostWeightCap)
+	depth := clamp(decayDepth, 0, 1)
+	weight := weightFloor + (weightCap-weightFloor)*math.Pow(depth, values.ForgettingCostWeightCurve)
+	return clamp(weight, weightFloor, weightCap)
+}
+
 // slowFactor stretches the decay time-axis by arousal and connection strength — both non-negative,
 // so the factor is >= 1 and division by it always slows (never speeds) the fade ([F6][F7]).
 func slowFactor(arousal float64, effectiveStrength float64) float64 {

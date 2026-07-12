@@ -143,6 +143,9 @@ const (
 	ForgettingStageIntervalDays         = 30
 	ForgettingArousalSlowCoefficient    = 1
 	ForgettingConnectionSlowCoefficient = 1
+	ForgettingCostWeightFloor           = 1
+	ForgettingCostWeightCap             = 4
+	ForgettingCostWeightCurve           = 2
 )
 
 var (

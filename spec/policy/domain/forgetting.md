@@ -34,6 +34,15 @@ prefers content words over function words. Removal is **nested** — a deeper st
 stage's words, so the progression reads as continuous erosion. This is a **separate axis** from the semantic
 (`semantic_stages`) gist: forgetting removes words at random; semanticization compresses meaning.
 
+**Deeper forgetting costs more to recall; recall returns it to the floor** ([F4][F5]). A pure, golden-parity
+`AccessibilityCostWeight(decayDepth)` maps the normalized forgetting depth (0 fresh → 1 silent engram) to a monotone,
+convex accessibility **weight** bounded in `[cost_weight_floor, cost_weight_cap]` — a deeper-decayed episodic memory is
+harder to reach, but never unreachable/infinite ([I1]). It emits a **weight, not a price**: the Twinkle economy prices it
+and its spend gate re-derives the weight server-side (this domain computes accessibility; pricing and spending live
+elsewhere). Recovery is expressed only through the input — recall resets decay, so `decayDepth → 0` and the weight
+returns to its floor; there is no stored `accessibility` field ([I5][I8]). This is the **episodic-recall** axis only —
+the gist-view cost is the separate `semantic_stage` axis.
+
 **Reading resets accessibility but does not restore content here** ([I8]). This unit only **dims/erases** — the recall
 writes that reset brightness (`last_recalled_universe_time` moving to now) and recover a memory belong to recall /
 reconsolidation, and the neighbor `forgetting_offset_days` **write** belongs to reconsolidation. This unit only **reads**

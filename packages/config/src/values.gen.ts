@@ -91,6 +91,9 @@ export const VALUES = {
     stageWordRemovalRatios: [0.2,0.4,0.6,0.85],
     arousalSlowCoefficient: 1,
     connectionSlowCoefficient: 1,
+    costWeightFloor: 1,
+    costWeightCap: 4,
+    costWeightCurve: 2,
   },
   forceSim: {
     charge: 0.035,

@@ -1,5 +1,11 @@
 export { effectiveBrightness, effectiveStrength, slowFactor } from './effective-values.ts'
-export { decayStage, decayStageText, effectiveElapsedDays } from './forgetting.ts'
+export {
+  accessibilityCostWeight,
+  decayDepth,
+  decayStage,
+  decayStageText,
+  effectiveElapsedDays,
+} from './forgetting.ts'
 export { neighborForgettingDelta, reshape } from './reconsolidation.ts'
 export { elapsedUniverseDays } from './universe-time.ts'
 export {

@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest'
 import { VALUES } from '@cosimosi/config'
 
 import { effectiveBrightness } from './effective-values.ts'
-import { decayStage, decayStageText, effectiveElapsedDays } from './forgetting.ts'
+import {
+  accessibilityCostWeight,
+  decayDepth,
+  decayStage,
+  decayStageText,
+  effectiveElapsedDays,
+} from './forgetting.ts'
 
 interface ForgettingFixture {
   readonly tolerance: number
@@ -27,6 +33,7 @@ interface ForgettingFixture {
       readonly effective_elapsed_days?: number
       readonly arousal?: number
       readonly effective_strength?: number
+      readonly decay_depth?: number
       readonly current_text?: string
       readonly stage?: number
       readonly seed?: string
@@ -82,6 +89,16 @@ describe('forgetting decay', () => {
           required(inputs.effective_strength),
         )
         expect(got).toBe(required(testCase.expected))
+      } else if (testCase.function === 'decay_depth') {
+        const got = decayDepth(
+          required(inputs.effective_elapsed_days),
+          required(inputs.arousal),
+          required(inputs.effective_strength),
+        )
+        expect(Math.abs(got - required(testCase.expected))).toBeLessThanOrEqual(fixture.tolerance)
+      } else if (testCase.function === 'accessibility_cost_weight') {
+        const got = accessibilityCostWeight(required(inputs.decay_depth))
+        expect(Math.abs(got - required(testCase.expected))).toBeLessThanOrEqual(fixture.tolerance)
       } else if (testCase.function === 'decay_stage_text') {
         const got = decayStageText(
           required(inputs.current_text),
@@ -137,6 +154,37 @@ describe('forgetting decay', () => {
     }
     expect(decayStage(1e9, 0, 0)).toBe(MAX_STAGE)
     expect(decayStage(90, 1, 1)).toBeLessThanOrEqual(decayStage(90, 0, 0))
+  })
+
+  it('decayDepth is normalized [0,1], 0 at fresh, monotone, capped, slowed by arousal/strength', () => {
+    expect(decayDepth(0, 0, 0)).toBe(0)
+    let previous = -1
+    for (const days of [0, 15, 30, 60, 120, 240, 1e9]) {
+      const got = decayDepth(days, 0, 0)
+      expect(got).toBeGreaterThanOrEqual(previous)
+      expect(got).toBeGreaterThanOrEqual(0)
+      expect(got).toBeLessThanOrEqual(1)
+      previous = got
+    }
+    expect(decayDepth(1e9, 0, 0)).toBe(1)
+    expect(decayDepth(120, 1, 1)).toBeLessThanOrEqual(decayDepth(120, 0, 0))
+  })
+
+  it('accessibilityCostWeight: floor at 0, cap at 1, strictly increasing, clamped', () => {
+    const floor = VALUES.forgetting.costWeightFloor
+    const cap = VALUES.forgetting.costWeightCap
+    expect(accessibilityCostWeight(0)).toBe(floor)
+    expect(accessibilityCostWeight(1)).toBe(cap)
+    expect(accessibilityCostWeight(-0.5)).toBe(floor)
+    expect(accessibilityCostWeight(1.5)).toBe(cap)
+    let previous = Number.NEGATIVE_INFINITY
+    for (const depth of [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]) {
+      const got = accessibilityCostWeight(depth)
+      expect(got).toBeGreaterThan(previous)
+      expect(got).toBeGreaterThanOrEqual(floor - 1e-12)
+      expect(got).toBeLessThanOrEqual(cap + 1e-12)
+      previous = got
+    }
   })
 
   it('decayStageText is deterministic, nested-superset, structure-preserving, never empty', () => {

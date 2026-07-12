@@ -231,6 +231,15 @@ forgetting:
   # How strongly EffectiveStrength (connection/size) stretches the decay time-axis — better-connected
   # memories forget slower [F7].
   connection_slow_coefficient: 1.0
+  # [F4][G1] Accessibility cost WEIGHT (a multiplier, not a Twinkle price — Epic F prices it, CC3):
+  # deeper forgetting makes an episodic recall harder to pull back. Floor = the fully-accessible
+  # baseline a freshly-recalled recall costs (never free [G1]); cap = a maximally decayed silent-engram
+  # recall, expensive but bounded (never unreachable [I1][F2]).
+  cost_weight_floor: 1.0
+  cost_weight_cap: 4.0
+  # Convex curvature of the floor->cap ease; > 1 keeps early decay cheap and steepens toward the floor
+  # of silence [F4]. The curve formula + the [floor, cap] clamp stay code.
+  cost_weight_curve: 2.0
 
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.

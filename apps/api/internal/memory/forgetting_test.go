@@ -139,6 +139,69 @@ func TestDecayStageInvariants(t *testing.T) {
 	}
 }
 
+// TestDecayDepthInvariants: normalized [0,1], 0 at fresh, monotone non-decreasing in elapsed, capped
+// at 1, and slowed by arousal/strength.
+func TestDecayDepthInvariants(t *testing.T) {
+	t.Parallel()
+
+	if got := DecayDepth(0, 0, 0); got != 0 {
+		t.Fatalf("DecayDepth at elapsed 0 = %v, want 0", got)
+	}
+	previous := -1.0
+	for _, days := range []float64{0, 15, 30, 60, 120, 240, 1e9} {
+		got := DecayDepth(days, 0, 0)
+		if got < previous {
+			t.Fatalf("DecayDepth decreased at %v days: %v < %v", days, got, previous)
+		}
+		if got < 0 || got > 1 {
+			t.Fatalf("DecayDepth(%v) = %v, want within [0, 1]", days, got)
+		}
+		previous = got
+	}
+	if got := DecayDepth(1e9, 0, 0); got != 1 {
+		t.Fatalf("DecayDepth capped = %v, want 1", got)
+	}
+	// Arousal/strength slow decay, so depth at the same elapsed days is lower (or equal).
+	if DecayDepth(120, 1, 1) > DecayDepth(120, 0, 0) {
+		t.Fatalf("slowed memory reached a deeper depth")
+	}
+}
+
+// TestAccessibilityCostWeightInvariants covers A2/A3/A4: floor at 0, cap at 1, monotone with a
+// strictly increasing interior, and clamped into [floor, cap] for out-of-range inputs.
+func TestAccessibilityCostWeightInvariants(t *testing.T) {
+	t.Parallel()
+
+	weightFloor := float64(values.ForgettingCostWeightFloor)
+	weightCap := float64(values.ForgettingCostWeightCap)
+
+	if got := AccessibilityCostWeight(0); got != weightFloor {
+		t.Fatalf("AccessibilityCostWeight(0) = %v, want floor %v", got, weightFloor)
+	}
+	if got := AccessibilityCostWeight(1); got != weightCap {
+		t.Fatalf("AccessibilityCostWeight(1) = %v, want cap %v", got, weightCap)
+	}
+	// Out-of-range clamps into [floor, cap].
+	if got := AccessibilityCostWeight(-0.5); got != weightFloor {
+		t.Fatalf("AccessibilityCostWeight(-0.5) = %v, want floor %v", got, weightFloor)
+	}
+	if got := AccessibilityCostWeight(1.5); got != weightCap {
+		t.Fatalf("AccessibilityCostWeight(1.5) = %v, want cap %v", got, weightCap)
+	}
+	// Strictly increasing across the interior (deeper decay ⇒ costlier).
+	previous := math.Inf(-1)
+	for _, depth := range []float64{0, 0.1, 0.25, 0.5, 0.75, 0.9, 1} {
+		got := AccessibilityCostWeight(depth)
+		if got <= previous {
+			t.Fatalf("AccessibilityCostWeight not strictly increasing at depth %v: %v <= %v", depth, got, previous)
+		}
+		if got < weightFloor-1e-12 || got > weightCap+1e-12 {
+			t.Fatalf("AccessibilityCostWeight(%v) = %v, want within [floor, cap]", depth, got)
+		}
+		previous = got
+	}
+}
+
 // TestDecayStageTextInvariants covers A6/A7/A8: determinism, nested superset across stages,
 // strictly-increasing removal, structure preservation (first/last of each sentence kept), and a
 // non-empty deepest stage for adversarial texts.
@@ -249,6 +312,7 @@ type forgettingInputs struct {
 	EffectiveElapsedDays *float64 `json:"effective_elapsed_days,omitempty"`
 	Arousal              *float64 `json:"arousal,omitempty"`
 	EffectiveStrength    *float64 `json:"effective_strength,omitempty"`
+	DecayDepth           *float64 `json:"decay_depth,omitempty"`
 	CurrentText          string   `json:"current_text,omitempty"`
 	Stage                *int     `json:"stage,omitempty"`
 	// Seed is carried as a decimal string so an int64 seed above 2^53 survives JSON round-trip on
@@ -312,6 +376,10 @@ func runForgettingCase(t *testing.T, testCase forgettingCase) (float64, string) 
 		return EffectiveBrightness(derefFloat(in.EffectiveElapsedDays), derefFloat(in.Arousal), derefFloat(in.EffectiveStrength)), ""
 	case "decay_stage":
 		return float64(DecayStage(derefFloat(in.EffectiveElapsedDays), derefFloat(in.Arousal), derefFloat(in.EffectiveStrength))), ""
+	case "decay_depth":
+		return DecayDepth(derefFloat(in.EffectiveElapsedDays), derefFloat(in.Arousal), derefFloat(in.EffectiveStrength)), ""
+	case "accessibility_cost_weight":
+		return AccessibilityCostWeight(derefFloat(in.DecayDepth)), ""
 	case "decay_stage_text":
 		return 0, DecayStageText(in.CurrentText, derefInt(in.Stage), parseSeed(t, in.Seed))
 	default:
@@ -421,6 +489,31 @@ func TestWriteForgettingGolden(t *testing.T) {
 	for _, in := range stageInputs {
 		got := float64(DecayStage(derefFloat(in.EffectiveElapsedDays), derefFloat(in.Arousal), derefFloat(in.EffectiveStrength)))
 		cases = append(cases, forgettingCase{Function: "decay_stage", Inputs: in, Expected: fptr(got)})
+	}
+
+	// decay_depth: 0 at fresh, 1 at/past the deepest stage span, an interior fraction, and slowed by
+	// arousal/strength (a lower depth at the same elapsed days).
+	depthInputs := []forgettingInputs{
+		{EffectiveElapsedDays: fptr(0), Arousal: fptr(0), EffectiveStrength: fptr(0)},
+		{EffectiveElapsedDays: fptr(60), Arousal: fptr(0), EffectiveStrength: fptr(0)},
+		{EffectiveElapsedDays: fptr(120), Arousal: fptr(0), EffectiveStrength: fptr(0)},
+		{EffectiveElapsedDays: fptr(1000000), Arousal: fptr(0), EffectiveStrength: fptr(0)},
+		{EffectiveElapsedDays: fptr(120), Arousal: fptr(1), EffectiveStrength: fptr(1)},
+	}
+	for _, in := range depthInputs {
+		got := DecayDepth(derefFloat(in.EffectiveElapsedDays), derefFloat(in.Arousal), derefFloat(in.EffectiveStrength))
+		cases = append(cases, forgettingCase{Function: "decay_depth", Inputs: in, Expected: fptr(got)})
+	}
+
+	// accessibility_cost_weight: floor at 0, cap at 1, an interior convex sweep, and out-of-range
+	// inputs clamped into [floor, cap].
+	for _, depth := range []float64{-0.5, 0, 0.1, 0.25, 0.5, 0.75, 0.9, 1, 1.5} {
+		in := forgettingInputs{DecayDepth: fptr(depth)}
+		cases = append(cases, forgettingCase{
+			Function: "accessibility_cost_weight",
+			Inputs:   in,
+			Expected: fptr(AccessibilityCostWeight(depth)),
+		})
 	}
 
 	// decay_stage_text: determinism + nested superset + per-stage ratio + first/last guard, over a

@@ -90,6 +90,41 @@ export function decayStage(
   return raw
 }
 
+// decayDepth normalizes forgetting progress to [0, 1] — the continuous stage-fraction over the same
+// slow-stretched elapsed clock decayStage crosses (0 = fresh, 1 = at/after the deepest stage). It is
+// the normalized input accessibilityCostWeight reads, so the two axes speak one normalized language
+// independent of the stage count ([F1][F4]). Recall resets decay → depth 0.
+export function decayDepth(
+  effectiveElapsedDaysValue: number,
+  arousal: number,
+  effectiveStrength: number,
+): number {
+  const maxStage = VALUES.forgetting.stageWordRemovalRatios.length
+  const span =
+    VALUES.forgetting.stageIntervalDays * maxStage * slowFactor(arousal, effectiveStrength)
+  if (span <= 0) return 0
+  return clampUnit(Math.max(0, effectiveElapsedDaysValue) / span)
+}
+
+// accessibilityCostWeight turns a memory's normalized forgetting depth into an accessibility/cost
+// weight ([F4]), mirroring the Go implementation for golden-parity: a monotone convex ease from
+// costWeightFloor (depth 0 — cheapest, never free [G1]) to costWeightCap (depth 1 — silent engram,
+// expensive but bounded, never unreachable [I1][F2]). It emits a weight, not a Twinkle price (the
+// pricing layer prices it; the client uses this only to preview the recall cost). Curve shape + clamp
+// are code.
+export function accessibilityCostWeight(decayDepthValue: number): number {
+  const weightFloor = VALUES.forgetting.costWeightFloor
+  const weightCap = VALUES.forgetting.costWeightCap
+  const depth = clampUnit(decayDepthValue)
+  const weight =
+    weightFloor + (weightCap - weightFloor) * depth ** VALUES.forgetting.costWeightCurve
+  return Math.min(weightCap, Math.max(weightFloor, weight))
+}
+
+function clampUnit(value: number): number {
+  return Math.min(1, Math.max(0, value))
+}
+
 // decayStageText produces the stage-`stage` decay text by removing a per-stage ratio of words at
 // random, replacing each with the redaction token ([F1][F9]). Deterministic given (currentText,
 // stage, seed) — the seeded PRNG is the only randomness. Stage 0 (or below) is the vivid text;
