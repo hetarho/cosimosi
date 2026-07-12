@@ -1,6 +1,6 @@
 import { VALUES } from '@cosimosi/config'
 import { moodColor } from '@cosimosi/emotion'
-import { effectiveBrightness, effectiveStrength, elapsedUniverseDays } from '@cosimosi/memory-logic'
+import { effectiveBrightness, effectiveStrength } from '@cosimosi/memory-logic'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -21,11 +21,12 @@ export interface StarChannels {
   readonly seed: number
 }
 
-export function starChannels(memory: EpisodicMemory, universeTime: string | null): StarChannels {
+export function starChannels(memory: EpisodicMemory, _universeTime: string | null): StarChannels {
   const { rendering } = VALUES
   const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
-  const reference = memory.lastRecalledUniverseTime ?? memory.createdUniverseTime
-  const brightness = effectiveBrightness(elapsedUniverseDays(reference, universeTime))
+  // effectiveBrightness now carries the Epic-D forgetting fade, but the star-brightness render seam
+  // stays full (elapsed 0) until forgetting-visuals binds the real effectiveElapsedDays/offset [V2].
+  const brightness = effectiveBrightness(0, memory.emotion.arousal, strength)
   return {
     size: lerpClamp(rendering.starSizeMin, rendering.starSizeMax, strength),
     brightness: lerpClamp(rendering.starBrightnessMin, rendering.starBrightnessMax, brightness),

@@ -118,7 +118,12 @@ type EpisodicMemory struct {
 	SemanticStage            int16
 	SemanticizeTimerResetAt  *time.Time
 	SemanticStages           *SemanticStages
-	DeletedAt                *time.Time
+	// DecayStages holds the stored per-stage word-loss texts ([R8a]); the read returns them so the
+	// client shows the persisted fragment for the current stage. Nil until a stage text is filled.
+	DecayStages []string
+	// ForgettingOffsetDays is the signed neighbor forgetting nudge (CC4), read into EffectiveElapsedDays.
+	ForgettingOffsetDays float64
+	DeletedAt            *time.Time
 }
 
 type Neuron struct {

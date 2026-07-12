@@ -136,6 +136,19 @@ const (
 	ReconsolidationNeighborSpeedThreshold = 2
 )
 
+// forgetting
+const (
+	ForgettingBrightnessDecayPerDay     = 0.02
+	ForgettingBrightnessFloor           = 0.15
+	ForgettingStageIntervalDays         = 30
+	ForgettingArousalSlowCoefficient    = 1
+	ForgettingConnectionSlowCoefficient = 1
+)
+
+var (
+	ForgettingStageWordRemovalRatios = []float64{0.2, 0.4, 0.6, 0.85}
+)
+
 // force_sim
 const (
 	ForceSimCharge          = 0.035

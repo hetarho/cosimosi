@@ -535,6 +535,8 @@ func mapEpisodicMemoryRead(row dbgen.ListUniverseEpisodicMemoriesRow) memory.Epi
 		SemanticStage:            row.SemanticStage,
 		SemanticizeTimerResetAt:  datePtr(row.SemanticizeTimerResetAt),
 		SemanticStages:           semanticStagesPtr(row.SemanticStages),
+		DecayStages:              decayStagesSlice(row.DecayStages),
+		ForgettingOffsetDays:     float64(row.ForgettingOffsetDays),
 		DeletedAt:                timePtr(row.DeletedAt),
 	}
 }
@@ -713,6 +715,20 @@ func semanticStagesPtr(raw []byte) *memory.SemanticStages {
 	var stages memory.SemanticStages
 	copy(stages[:], values)
 	return &stages
+}
+
+// decayStagesSlice decodes the stored decay_stages JSONB into the variable-length stage-text slice
+// ([R8a]); NULL/empty and malformed JSON both read as nil (no stage text filled yet), never an error
+// — the read stays derivation-only, and the client falls back to current_text.
+func decayStagesSlice(raw []byte) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var stages []string
+	if err := json.Unmarshal(raw, &stages); err != nil {
+		return nil
+	}
+	return stages
 }
 
 func pgDate(value time.Time) pgtype.Date {

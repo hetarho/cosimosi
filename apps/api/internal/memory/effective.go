@@ -27,9 +27,5 @@ func EffectiveStrength(baseStrength float64, recallCount int32) float64 {
 	return clamp(values.SynapseStrengthCap-remaining, base, values.SynapseStrengthCap)
 }
 
-// EffectiveBrightness is the read-time brightness seam reserved for the forgetting dynamics ([V2]):
-// brightness will decay from elapsed universe time. Until the forgetting decay drives it, it is the
-// identity (full brightness), so callers read through it now without a later signature change.
-func EffectiveBrightness(_ float64) float64 {
-	return 1.0
-}
+// EffectiveBrightness is defined with the forgetting decay dynamics in forgetting.go — the Epic-A
+// stub reserved here is filled by the first forgetting unit ([V2][F1]).

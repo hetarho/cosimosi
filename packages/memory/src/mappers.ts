@@ -50,6 +50,8 @@ export function episodicMemoryFromDto(dto: EpisodicMemoryDto): EpisodicMemory {
       neuronId: activation.neuronId,
       weight: activation.weight,
     })),
+    decayStages: dto.decayStages,
+    forgettingOffsetDays: dto.forgettingOffsetDays,
   }
 }
 

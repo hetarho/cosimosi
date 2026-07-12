@@ -13,10 +13,33 @@ export function effectiveStrength(baseStrength: number, recallCount: number): nu
   return clamp(VALUES.synapse.strengthCap - remaining, base, VALUES.synapse.strengthCap)
 }
 
-// effectiveBrightness stays the Epic-D stub (full brightness) until the forgetting decay ([V2]) drives
-// it, so callers read through it now without a later signature change.
-export function effectiveBrightness(_elapsedUniverseDays: number): number {
-  return 1
+// effectiveBrightness is the read-time brightness of a memory ([F1][F2]), mirroring the Go
+// internal/memory implementation for golden-parity: a floored exponential fade of the offset-
+// inclusive elapsed days, stretched (slowed) by arousal ([F6]) and connection strength ([F7]). Shape
+// is code; only the coefficients and floor are values. 1.0 at elapsed 0, monotone non-increasing in
+// elapsed, clamped into [brightnessFloor, 1] — never below the floor, never 0.
+export function effectiveBrightness(
+  effectiveElapsedDays: number,
+  arousal: number,
+  effectiveStrength: number,
+): number {
+  const floor = VALUES.forgetting.brightnessFloor
+  const days = Math.max(0, effectiveElapsedDays)
+  const slow = slowFactor(arousal, effectiveStrength)
+  const decayFactor = clamp(1 - VALUES.forgetting.brightnessDecayPerDay, 0, 1)
+  const brightness = floor + (1 - floor) * decayFactor ** (days / slow)
+  return clamp(brightness, floor, 1)
+}
+
+// slowFactor stretches the decay time-axis by arousal and connection strength — both non-negative,
+// so the factor is >= 1 and dividing by it always slows (never speeds) the fade ([F6][F7]). Shared
+// by effectiveBrightness and decayStage so brightness and stage move together ([F1]).
+export function slowFactor(arousal: number, effectiveStrength: number): number {
+  return (
+    1 +
+    Math.max(0, arousal) * VALUES.forgetting.arousalSlowCoefficient +
+    Math.max(0, effectiveStrength) * VALUES.forgetting.connectionSlowCoefficient
+  )
 }
 
 function clamp(value: number, minValue: number, maxValue: number): number {

@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 
 import type { RecallResponse } from '@cosimosi/api-client'
+import { createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 
 import { useEpisodicMemoryStore } from './episodic-memory-store.ts'
@@ -22,12 +23,15 @@ function response(overrides: Partial<RecallResponse>): RecallResponse {
 const memory = {
   id: 'm1',
   name: 'Market run',
+  emotion: createEmotion('CALM'),
   baseStrength: 0.5,
   recallCount: 0,
   createdUniverseTime: '2026-06-20',
   lastRecalledUniverseTime: null,
   seed: 7n,
   activations: [],
+  decayStages: [],
+  forgettingOffsetDays: 0,
 } as EpisodicMemory
 
 describe('applyRecallResult', () => {

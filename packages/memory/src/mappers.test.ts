@@ -33,7 +33,12 @@ const memoryDtoFixture = (overrides: Record<string, unknown> = {}) =>
 describe('GetUniverse proto→domain mappers', () => {
   it('maps the stored episodic-memory facts verbatim', () => {
     const memory = episodicMemoryFromDto(
-      memoryDtoFixture({ lastRecalledUniverseTime: '2026-07-01', seed: 42n }),
+      memoryDtoFixture({
+        lastRecalledUniverseTime: '2026-07-01',
+        seed: 42n,
+        decayStages: ['first xxxx sea', 'xxxx xxxx sea'],
+        forgettingOffsetDays: -2.5,
+      }),
     )
 
     expect(memory).toEqual({
@@ -49,14 +54,18 @@ describe('GetUniverse proto→domain mappers', () => {
         { neuronId: 'neuron-1', weight: 1 },
         { neuronId: 'neuron-2', weight: 0.5 },
       ],
+      decayStages: ['first xxxx sea', 'xxxx xxxx sea'],
+      forgettingOffsetDays: -2.5,
     })
   })
 
-  it('defaults absent optional facts to null', () => {
+  it('defaults absent optional facts to null, empty decay stages, zero offset', () => {
     const memory = episodicMemoryFromDto(memoryDtoFixture())
 
     expect(memory.lastRecalledUniverseTime).toBeNull()
     expect(memory.seed).toBeNull()
+    expect(memory.decayStages).toEqual([])
+    expect(memory.forgettingOffsetDays).toBe(0)
   })
 
   it('rejects an episodic memory without an emotion or with an unknown mood', () => {

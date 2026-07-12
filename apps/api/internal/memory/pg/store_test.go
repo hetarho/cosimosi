@@ -215,6 +215,23 @@ func TestSemanticStagesMappingPreservesNullAndFourStages(t *testing.T) {
 	}
 }
 
+func TestDecayStagesMappingPreservesNullAndStages(t *testing.T) {
+	t.Parallel()
+
+	// NULL/empty and malformed JSON both read as nil — the read is derivation-only, so the client
+	// falls back to current_text rather than the read erroring on a bad stored value.
+	if stages := decayStagesSlice(nil); stages != nil {
+		t.Fatalf("nil decay stages = %v, want nil", stages)
+	}
+	if stages := decayStagesSlice([]byte(`not json`)); stages != nil {
+		t.Fatalf("malformed decay stages = %v, want nil", stages)
+	}
+	stages := decayStagesSlice([]byte(`["나는 오늘 xxxx","나는 xxxx xxxx"]`))
+	if len(stages) != 2 || stages[0] != "나는 오늘 xxxx" || stages[1] != "나는 xxxx xxxx" {
+		t.Fatalf("decayStagesSlice = %v", stages)
+	}
+}
+
 func mustScope(t *testing.T) platform.UserScope {
 	t.Helper()
 

@@ -45,6 +45,8 @@ function buildDemoScene() {
       lastRecalledUniverseTime: null,
       seed: null,
       activations: [],
+      decayStages: [],
+      forgettingOffsetDays: 0,
     }
   })
   return { positions, contributors: buildContributors(memories, { firstNodeIndex: 0 }) }

@@ -133,13 +133,11 @@ func TestMemoryEffectiveStubs(t *testing.T) {
 	t.Parallel()
 
 	// EffectiveStrength now accumulates recall (plan 32); its full monotone/diminishing/cap
-	// invariants live in reconsolidation_test.go. Here we pin only the launched (count 0) identity
-	// and that EffectiveBrightness remains the Epic-D stub (full brightness).
+	// invariants live in reconsolidation_test.go. Here we pin only the launched (count 0) identity.
+	// EffectiveBrightness gained its Epic-D forgetting dynamics — its invariants live in
+	// forgetting_test.go.
 	if got := EffectiveStrength(0.42, 0); got != 0.42 {
 		t.Fatalf("EffectiveStrength(base, 0) = %v, want base", got)
-	}
-	if got := EffectiveBrightness(180); got != 1.0 {
-		t.Fatalf("EffectiveBrightness = %v, want full brightness", got)
 	}
 }
 
@@ -171,8 +169,6 @@ func TestSynapsePlasticityGoldenFixture(t *testing.T) {
 			got = EffectiveSynapseStrength(testCase.Inputs.Base, testCase.Inputs.ElapsedUniverseDays)
 		case "effective_strength":
 			got = EffectiveStrength(testCase.Inputs.BaseStrength, testCase.Inputs.RecallCount)
-		case "effective_brightness":
-			got = EffectiveBrightness(testCase.Inputs.ElapsedUniverseDays)
 		default:
 			t.Fatalf("unknown golden function %q", testCase.Function)
 		}

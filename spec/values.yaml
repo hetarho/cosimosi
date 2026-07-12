@@ -210,6 +210,28 @@ reconsolidation:
   # Fixed by the PRD (1 vs >=2) but kept a value so the boundary is not hardcoded.
   neighbor_speed_threshold: 2
 
+forgetting:
+  # Read-time brightness fade coefficient (per universe-day) driving EffectiveBrightness down its
+  # exponential toward the floor — the Ebbinghaus curve made visible [F1][V2].
+  brightness_decay_per_day: 0.02
+  # The silent-engram floor EffectiveBrightness never drops below (never 0): a star dims, it is
+  # never deleted [F2][I1]. Aligned with rendering.star_brightness_min — that render floor is the
+  # visual image of this domain value.
+  brightness_floor: 0.15
+  # Universe-days per decay stage (the step spacing DecayStage crosses, stretched by the slow
+  # factor) [F1].
+  stage_interval_days: 30
+  # Per-stage fraction of removable words redacted, strictly increasing; the ARRAY LENGTH derives
+  # the number of decay stages (maxStage) — there is no separate declared count [F1][F9]. Applies to
+  # stages 1..N; stage 0 is the vivid, unredacted text. The exact ratios are a v1 "to refine" [F9].
+  stage_word_removal_ratios: [0.2, 0.4, 0.6, 0.85]
+  # How strongly arousal stretches the decay time-axis — high-arousal memories dim/decay slower
+  # (McGaugh consolidation); arousal is the only emotion input, valence never enters [F6][I3].
+  arousal_slow_coefficient: 1.0
+  # How strongly EffectiveStrength (connection/size) stretches the decay time-axis — better-connected
+  # memories forget slower [F7].
+  connection_slow_coefficient: 1.0
+
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.
   charge: 0.035

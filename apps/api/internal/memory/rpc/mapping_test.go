@@ -82,12 +82,15 @@ func TestUniverseResponseMapsFactsAndGroupsActivations(t *testing.T) {
 				RecallCount:              2,
 				CreatedUniverseTime:      created,
 				LastRecalledUniverseTime: &recalled,
+				DecayStages:              []string{"First xxxx", "xxxx xxxx"},
+				ForgettingOffsetDays:     -2.5,
 			},
 			{
 				ID:                  "mem-2",
 				Name:                "Second",
 				CreatedUniverseTime: created,
 				// LastRecalledUniverseTime nil → the DTO field must stay nil.
+				// DecayStages nil → the DTO repeated field must stay empty.
 			},
 		},
 		Neurons: []memory.NeuronWithConnectivity{
@@ -131,8 +134,17 @@ func TestUniverseResponseMapsFactsAndGroupsActivations(t *testing.T) {
 	if len(first.GetActivations()) != 2 {
 		t.Fatalf("mem-1 should group 2 activations, got %d", len(first.GetActivations()))
 	}
+	if len(first.GetDecayStages()) != 2 || first.GetDecayStages()[0] != "First xxxx" || first.GetDecayStages()[1] != "xxxx xxxx" {
+		t.Fatalf("decay_stages not passed through: %+v", first.GetDecayStages())
+	}
+	if first.GetForgettingOffsetDays() != -2.5 {
+		t.Fatalf("forgetting_offset_days not passed through: %v", first.GetForgettingOffsetDays())
+	}
 	if got.GetMemories()[1].LastRecalledUniverseTime != nil {
 		t.Fatalf("nil recall time must stay nil, got %v", got.GetMemories()[1].LastRecalledUniverseTime)
+	}
+	if len(got.GetMemories()[1].GetDecayStages()) != 0 {
+		t.Fatalf("nil decay stages must map to empty, got %v", got.GetMemories()[1].GetDecayStages())
 	}
 	if len(got.GetMemories()[1].GetActivations()) != 1 {
 		t.Fatalf("mem-2 should group 1 activation, got %d", len(got.GetMemories()[1].GetActivations()))

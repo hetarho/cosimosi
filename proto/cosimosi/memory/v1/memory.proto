@@ -141,6 +141,13 @@ message EpisodicMemoryDto {
   // Per-neuron membership edges (+ weight) — the memory↔neuron join, never a
   // memory↔memory edge [I4][I6].
   repeated NeuronActivationDto activations = 9;
+  // Stored per-stage word-loss texts [R8a]; empty until a stage text is filled. The
+  // client shows the fragment for its current DecayStage, so the server pre-renders no
+  // current decay text — stored facts only [I5].
+  repeated string decay_stages = 10;
+  // Signed neighbor forgetting nudge in universe-days (CC4), read into the client's
+  // effective-elapsed-days clock; 0 when no neighbor recall has shifted it.
+  double forgetting_offset_days = 11;
 }
 
 message NeuronDto {

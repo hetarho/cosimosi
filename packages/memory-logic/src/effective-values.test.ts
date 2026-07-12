@@ -44,8 +44,9 @@ describe('memory effective values', () => {
     }
   })
 
-  it('keeps EffectiveBrightness the Epic-D stub (full brightness)', () => {
-    expect(effectiveBrightness(180)).toBe(1)
+  it('fills EffectiveBrightness with the Epic-D forgetting fade (1.0 at elapsed 0)', () => {
+    // Full-brightness input; the forgetting invariants + golden parity live in forgetting.test.ts.
+    expect(effectiveBrightness(0, 0.5, 0.5)).toBe(1)
   })
 
   it('matches the shared Go golden fixture', () => {
@@ -58,9 +59,6 @@ describe('memory effective values', () => {
           required(testCase.inputs.base_strength),
           required(testCase.inputs.recall_count),
         )
-      }
-      if (testCase.function === 'effective_brightness') {
-        got = effectiveBrightness(required(testCase.inputs.elapsed_universe_days))
       }
       if (got === undefined) continue
       expect(Math.abs(got - testCase.expected)).toBeLessThanOrEqual(fixture.tolerance)

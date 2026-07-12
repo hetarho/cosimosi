@@ -22,4 +22,9 @@ export interface EpisodicMemory {
   /** Visual form/anchor hint [E7] — never a stored coordinate [I5]. */
   readonly seed: bigint | null
   readonly activations: readonly NeuronActivation[]
+  /** Stored per-stage word-loss texts [R8a]; empty until a stage text is filled. The client shows
+   *  the fragment for its current decay stage — read-time derived, never a pre-rendered value [I5]. */
+  readonly decayStages: readonly string[]
+  /** Signed neighbor forgetting nudge in universe-days (CC4), fed into effectiveElapsedDays. */
+  readonly forgettingOffsetDays: number
 }

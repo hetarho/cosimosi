@@ -1,0 +1,377 @@
+{
+  "tolerance": 1e-9,
+  "values": {
+    "brightness_decay_per_day": 0.02,
+    "brightness_floor": 0.15,
+    "stage_interval_days": 30,
+    "stage_word_removal_ratios": [0.2, 0.4, 0.6, 0.85],
+    "arousal_slow_coefficient": 1,
+    "connection_slow_coefficient": 1
+  },
+  "cases": [
+    {
+      "function": "effective_elapsed_days",
+      "inputs": {
+        "now": "2026-03-01",
+        "created": "2026-01-01",
+        "offset_days": 0
+      },
+      "expected": 59
+    },
+    {
+      "function": "effective_elapsed_days",
+      "inputs": {
+        "now": "2026-03-01",
+        "last_recalled": "2026-02-01",
+        "created": "2026-01-01",
+        "offset_days": 0
+      },
+      "expected": 28
+    },
+    {
+      "function": "effective_elapsed_days",
+      "inputs": {
+        "now": "2026-03-01",
+        "last_recalled": "2026-02-01",
+        "created": "2026-01-01",
+        "offset_days": 5
+      },
+      "expected": 33
+    },
+    {
+      "function": "effective_elapsed_days",
+      "inputs": {
+        "now": "2026-03-01",
+        "last_recalled": "2026-02-01",
+        "created": "2026-01-01",
+        "offset_days": -1000
+      },
+      "expected": 0
+    },
+    {
+      "function": "effective_elapsed_days",
+      "inputs": {
+        "now": "2026-03-01",
+        "last_recalled": "2027-01-01",
+        "created": "2026-01-01",
+        "offset_days": 0
+      },
+      "expected": 0
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 0,
+        "arousal": 0,
+        "effective_strength": 0
+      },
+      "expected": 1
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 30,
+        "arousal": 0.5,
+        "effective_strength": 0.5
+      },
+      "expected": 0.777783737248593
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 180,
+        "arousal": 0.5,
+        "effective_strength": 0.5
+      },
+      "expected": 0.2879639874932888
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 3650,
+        "arousal": 0.5,
+        "effective_strength": 0.5
+      },
+      "expected": 0.15000000000000008
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 180,
+        "arousal": 0.1,
+        "effective_strength": 0.5
+      },
+      "expected": 0.23756941352196762
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 180,
+        "arousal": 0.9,
+        "effective_strength": 0.5
+      },
+      "expected": 0.33679902394932304
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 180,
+        "arousal": 0.5,
+        "effective_strength": 0.1
+      },
+      "expected": 0.23756941352196762
+    },
+    {
+      "function": "effective_brightness",
+      "inputs": {
+        "effective_elapsed_days": 180,
+        "arousal": 0.5,
+        "effective_strength": 0.9
+      },
+      "expected": 0.33679902394932304
+    },
+    {
+      "function": "decay_stage",
+      "inputs": {
+        "effective_elapsed_days": 0,
+        "arousal": 0,
+        "effective_strength": 0
+      },
+      "expected": 0
+    },
+    {
+      "function": "decay_stage",
+      "inputs": {
+        "effective_elapsed_days": 29,
+        "arousal": 0,
+        "effective_strength": 0
+      },
+      "expected": 0
+    },
+    {
+      "function": "decay_stage",
+      "inputs": {
+        "effective_elapsed_days": 30,
+        "arousal": 0,
+        "effective_strength": 0
+      },
+      "expected": 1
+    },
+    {
+      "function": "decay_stage",
+      "inputs": {
+        "effective_elapsed_days": 90,
+        "arousal": 0,
+        "effective_strength": 0
+      },
+      "expected": 3
+    },
+    {
+      "function": "decay_stage",
+      "inputs": {
+        "effective_elapsed_days": 120,
+        "arousal": 0,
+        "effective_strength": 0
+      },
+      "expected": 4
+    },
+    {
+      "function": "decay_stage",
+      "inputs": {
+        "effective_elapsed_days": 1000000,
+        "arousal": 0,
+        "effective_strength": 0
+      },
+      "expected": 4
+    },
+    {
+      "function": "decay_stage",
+      "inputs": {
+        "effective_elapsed_days": 90,
+        "arousal": 1,
+        "effective_strength": 1
+      },
+      "expected": 1
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "I went to the market today and bought fresh pasta with my friend.",
+        "stage": 0,
+        "seed": "1234567"
+      },
+      "expected_text": "I went to the market today and bought fresh pasta with my friend."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "I went to the market today and bought fresh pasta with my friend.",
+        "stage": 1,
+        "seed": "1234567"
+      },
+      "expected_text": "I went to the market today and xxxx xxxx pasta with my friend."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "I went to the market today and bought fresh pasta with my friend.",
+        "stage": 2,
+        "seed": "1234567"
+      },
+      "expected_text": "I xxxx to the market today and xxxx xxxx xxxx with my friend."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "I went to the market today and bought fresh pasta with my friend.",
+        "stage": 3,
+        "seed": "1234567"
+      },
+      "expected_text": "I xxxx to the xxxx xxxx and xxxx xxxx xxxx with my friend."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "I went to the market today and bought fresh pasta with my friend.",
+        "stage": 4,
+        "seed": "1234567"
+      },
+      "expected_text": "I xxxx xxxx xxxx xxxx xxxx and xxxx xxxx xxxx with xxxx friend."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "나는 오늘 친구랑 파스타랑 커피를 정말 맛있게 먹었다 그리고 행복했다",
+        "stage": 0,
+        "seed": "42"
+      },
+      "expected_text": "나는 오늘 친구랑 파스타랑 커피를 정말 맛있게 먹었다 그리고 행복했다"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "나는 오늘 친구랑 파스타랑 커피를 정말 맛있게 먹었다 그리고 행복했다",
+        "stage": 1,
+        "seed": "42"
+      },
+      "expected_text": "나는 오늘 친구랑 파스타랑 커피를 정말 맛있게 xxxx 그리고 행복했다"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "나는 오늘 친구랑 파스타랑 커피를 정말 맛있게 먹었다 그리고 행복했다",
+        "stage": 2,
+        "seed": "42"
+      },
+      "expected_text": "나는 오늘 친구랑 파스타랑 xxxx 정말 xxxx xxxx 그리고 행복했다"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "나는 오늘 친구랑 파스타랑 커피를 정말 맛있게 먹었다 그리고 행복했다",
+        "stage": 3,
+        "seed": "42"
+      },
+      "expected_text": "나는 오늘 친구랑 파스타랑 xxxx xxxx xxxx xxxx 그리고 행복했다"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "나는 오늘 친구랑 파스타랑 커피를 정말 맛있게 먹었다 그리고 행복했다",
+        "stage": 4,
+        "seed": "42"
+      },
+      "expected_text": "나는 오늘 xxxx xxxx xxxx xxxx xxxx xxxx 그리고 행복했다"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "She said \"hello.\" Then walked home under the bright winter stars.",
+        "stage": 0,
+        "seed": "1234567"
+      },
+      "expected_text": "She said \"hello.\" Then walked home under the bright winter stars."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "She said \"hello.\" Then walked home under the bright winter stars.",
+        "stage": 1,
+        "seed": "1234567"
+      },
+      "expected_text": "She said \"hello.\" Then walked home under the xxxx winter stars."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "She said \"hello.\" Then walked home under the bright winter stars.",
+        "stage": 2,
+        "seed": "1234567"
+      },
+      "expected_text": "She said \"hello.\" Then walked home xxxx the xxxx winter stars."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "She said \"hello.\" Then walked home under the bright winter stars.",
+        "stage": 3,
+        "seed": "1234567"
+      },
+      "expected_text": "She xxxx \"hello.\" Then walked home xxxx the xxxx xxxx stars."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "She said \"hello.\" Then walked home under the bright winter stars.",
+        "stage": 4,
+        "seed": "1234567"
+      },
+      "expected_text": "She xxxx \"hello.\" Then xxxx home xxxx the xxxx xxxx stars."
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        "stage": 0,
+        "seed": "9007199254740995"
+      },
+      "expected_text": "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        "stage": 1,
+        "seed": "9007199254740995"
+      },
+      "expected_text": "alpha beta gamma delta epsilon xxxx eta theta iota kappa"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        "stage": 2,
+        "seed": "9007199254740995"
+      },
+      "expected_text": "alpha beta xxxx delta epsilon xxxx xxxx theta iota kappa"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        "stage": 3,
+        "seed": "9007199254740995"
+      },
+      "expected_text": "alpha beta xxxx delta epsilon xxxx xxxx xxxx iota kappa"
+    },
+    {
+      "function": "decay_stage_text",
+      "inputs": {
+        "current_text": "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        "stage": 4,
+        "seed": "9007199254740995"
+      },
+      "expected_text": "alpha xxxx xxxx delta xxxx xxxx xxxx xxxx iota kappa"
+    }
+  ]
+}

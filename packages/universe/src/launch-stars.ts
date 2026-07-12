@@ -88,6 +88,9 @@ function optimisticMemory(
     lastRecalledUniverseTime: null,
     seed: null,
     activations: [],
+    // A freshly launched star is vivid: no decay-stage text yet, no neighbor offset.
+    decayStages: [],
+    forgettingOffsetDays: 0,
   }
 }
 

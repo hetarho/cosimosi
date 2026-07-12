@@ -29,6 +29,8 @@ SELECT
     semantic_stage,
     semanticize_timer_reset_at,
     semantic_stages,
+    decay_stages,
+    forgetting_offset_days,
     deleted_at
 FROM episodic_memories
 WHERE user_id = $1
@@ -53,6 +55,8 @@ type ListUniverseEpisodicMemoriesRow struct {
 	SemanticStage            int16
 	SemanticizeTimerResetAt  pgtype.Date
 	SemanticStages           []byte
+	DecayStages              []byte
+	ForgettingOffsetDays     float32
 	DeletedAt                pgtype.Timestamptz
 }
 
@@ -82,6 +86,8 @@ func (q *Queries) ListUniverseEpisodicMemories(ctx context.Context, userID strin
 			&i.SemanticStage,
 			&i.SemanticizeTimerResetAt,
 			&i.SemanticStages,
+			&i.DecayStages,
+			&i.ForgettingOffsetDays,
 			&i.DeletedAt,
 		); err != nil {
 			return nil, err

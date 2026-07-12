@@ -84,6 +84,14 @@ export const VALUES = {
     neighborSpeedDays: 3,
     neighborSpeedThreshold: 2,
   },
+  forgetting: {
+    brightnessDecayPerDay: 0.02,
+    brightnessFloor: 0.15,
+    stageIntervalDays: 30,
+    stageWordRemovalRatios: [0.2,0.4,0.6,0.85],
+    arousalSlowCoefficient: 1,
+    connectionSlowCoefficient: 1,
+  },
   forceSim: {
     charge: 0.035,
     linkDistance: 12,

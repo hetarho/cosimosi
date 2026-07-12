@@ -1,6 +1,6 @@
 import { moodColor } from '@cosimosi/emotion'
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
-import { effectiveBrightness, effectiveStrength, elapsedUniverseDays } from '@cosimosi/memory-logic'
+import { effectiveBrightness, effectiveStrength } from '@cosimosi/memory-logic'
 import { normalizeSeed } from '@cosimosi/universe'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
@@ -39,9 +39,9 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 // functions (starChannels/effectiveStrength/effectiveBrightness) — none re-derived here (A2).
 export function MetaBlock({
   selection,
-  universeTime,
 }: {
   selection: { kind: 'episodic'; memory: EpisodicMemory } | { kind: 'neuron'; neuron: Neuron }
+  // Reserved for forgetting-visuals: the read-time "now" that will drive effectiveElapsedDays [V2].
   universeTime: string | null
 }) {
   if (selection.kind === 'neuron') {
@@ -59,15 +59,11 @@ export function MetaBlock({
   }
 
   const { memory } = selection
-  // effectiveBrightness is the read-time stub (1) until forgetting decay drives it (CC1); reading
-  // through it now means the fade appears with no panel change once that decay lands.
-  const brightness = effectiveBrightness(
-    elapsedUniverseDays(
-      memory.lastRecalledUniverseTime ?? memory.createdUniverseTime,
-      universeTime,
-    ),
-  )
   const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
+  // effectiveBrightness now carries the Epic-D forgetting fade, but this panel stays full (elapsed 0)
+  // until forgetting-visuals binds the real effectiveElapsedDays/offset — the fade lands with no
+  // panel change then (CC1).
+  const brightness = effectiveBrightness(0, memory.emotion.arousal, strength)
   return (
     <div className="flex gap-4">
       <StarGlyph memory={memory} />

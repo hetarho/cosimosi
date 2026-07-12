@@ -22,6 +22,8 @@ const universeFixture = (): UniverseSnapshot => ({
         { neuronId: 'neuron-1', weight: 1 },
         { neuronId: 'neuron-ghost', weight: 1 },
       ],
+      decayStages: [],
+      forgettingOffsetDays: 0,
     },
   ],
   neurons: [

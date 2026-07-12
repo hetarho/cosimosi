@@ -19,6 +19,8 @@ const memory = {
   lastRecalledUniverseTime: null,
   seed: 123n,
   activations: [],
+  decayStages: [],
+  forgettingOffsetDays: 0,
 } as EpisodicMemory
 
 const neuron: Neuron = { id: 'n1', name: 'market', neuronType: 'spatial', connectivity: 3 }

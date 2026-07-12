@@ -143,11 +143,6 @@
       "function": "effective_strength",
       "inputs": { "base_strength": 0.95, "recall_count": 20 },
       "expected": 0.9980620234457743
-    },
-    {
-      "function": "effective_brightness",
-      "inputs": { "elapsed_universe_days": 180 },
-      "expected": 1
     }
   ]
 }

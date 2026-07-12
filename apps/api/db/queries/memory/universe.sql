@@ -16,6 +16,8 @@ SELECT
     semantic_stage,
     semanticize_timer_reset_at,
     semantic_stages,
+    decay_stages,
+    forgetting_offset_days,
     deleted_at
 FROM episodic_memories
 WHERE user_id = $1

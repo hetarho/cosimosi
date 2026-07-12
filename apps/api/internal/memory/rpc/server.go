@@ -268,6 +268,8 @@ func universeResponse(facts memory.UniverseFacts, universeTime *time.Time) *memo
 			LastRecalledUniverseTime: dateString(episodicMemory.LastRecalledUniverseTime),
 			Seed:                     episodicMemory.Seed,
 			Activations:              activationsByMemory[episodicMemory.ID],
+			DecayStages:              episodicMemory.DecayStages,
+			ForgettingOffsetDays:     episodicMemory.ForgettingOffsetDays,
 		})
 	}
 

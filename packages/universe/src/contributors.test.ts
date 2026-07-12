@@ -18,6 +18,8 @@ function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
     lastRecalledUniverseTime: null,
     seed: null,
     activations: [],
+    decayStages: [],
+    forgettingOffsetDays: 0,
     ...overrides,
   }
 }

@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { moodColor } from '@cosimosi/emotion'
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
-import { effectiveBrightness, effectiveStrength, elapsedUniverseDays } from '@cosimosi/memory-logic'
+import { effectiveBrightness, effectiveStrength } from '@cosimosi/memory-logic'
 import { tokens } from '@cosimosi/ui'
 import { normalizeSeed } from '@cosimosi/universe'
 
@@ -41,9 +41,9 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 // read-time functions, none re-derived (A2) — identical logic to the web fork.
 export function MetaBlock({
   selection,
-  universeTime,
 }: {
   selection: { kind: 'episodic'; memory: EpisodicMemory } | { kind: 'neuron'; neuron: Neuron }
+  // Reserved for forgetting-visuals: the read-time "now" that will drive effectiveElapsedDays [V2].
   universeTime: string | null
 }) {
   if (selection.kind === 'neuron') {
@@ -61,13 +61,10 @@ export function MetaBlock({
   }
 
   const { memory } = selection
-  const brightness = effectiveBrightness(
-    elapsedUniverseDays(
-      memory.lastRecalledUniverseTime ?? memory.createdUniverseTime,
-      universeTime,
-    ),
-  )
   const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
+  // effectiveBrightness now carries the Epic-D forgetting fade, but this panel stays full (elapsed 0)
+  // until forgetting-visuals binds the real effectiveElapsedDays/offset — identical to the web fork.
+  const brightness = effectiveBrightness(0, memory.emotion.arousal, strength)
   return (
     <View style={styles.episodic}>
       <StarGlyph memory={memory} />

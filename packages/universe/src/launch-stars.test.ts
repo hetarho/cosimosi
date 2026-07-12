@@ -16,6 +16,8 @@ function existing(id: string): EpisodicMemory {
     lastRecalledUniverseTime: null,
     seed: null,
     activations: [],
+    decayStages: [],
+    forgettingOffsetDays: 0,
   }
 }
 
