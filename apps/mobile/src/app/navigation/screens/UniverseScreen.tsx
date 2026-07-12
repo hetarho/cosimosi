@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
@@ -8,8 +9,11 @@ import {
   ObservedErrorBoundary,
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react'
+import { universeNavigationMachine } from '@cosimosi/universe'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
+import { useActorRef } from '../../../shared/model/index.ts'
+import { DetailPanel } from '../../../widgets/star-detail/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
 import { UniverseTimeOverlay } from '../../../widgets/universe-time/index.ts'
 import { WritingFlowSheet } from '../../../widgets/writing-flow/index.ts'
@@ -30,6 +34,25 @@ function RendererFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackP
 }
 
 export function UniverseScreen() {
+  // The navigation/selection actor is owned HERE (the app layer) so the canvas and the star-detail
+  // panel share one selection — the canvas machine stays the single owner (§3.2), as on web.
+  const navigationActorRef = useActorRef(universeNavigationMachine)
+
+  // The panel hands off recall + origin-diary as intents; their consuming flows are their own
+  // units, so the screen records the request for that consumer and does not act here (A5/A6).
+  const recallTargetRef = useRef<string | null>(null)
+  const openDiaryTargetRef = useRef<string | null>(null)
+  const gistTargetRef = useRef<string | null>(null)
+  const handleRecallRequested = useCallback((episodicMemoryId: string) => {
+    recallTargetRef.current = episodicMemoryId
+  }, [])
+  const handleOpenDiary = useCallback((episodicMemoryId: string) => {
+    openDiaryTargetRef.current = episodicMemoryId
+  }, [])
+  const handleGistSelected = useCallback((episodicMemoryId: string) => {
+    gistTargetRef.current = episodicMemoryId
+  }, [])
+
   return (
     <View style={styles.root}>
       <View style={StyleSheet.absoluteFill}>
@@ -40,7 +63,7 @@ export function UniverseScreen() {
         <QueryErrorResetBoundary>
           {({ reset }) => (
             <ObservedErrorBoundary fallback={RendererFallback} onReset={reset}>
-              <UniverseCanvasWidget />
+              <UniverseCanvasWidget navigationActorRef={navigationActorRef} />
             </ObservedErrorBoundary>
           )}
         </QueryErrorResetBoundary>
@@ -54,6 +77,13 @@ export function UniverseScreen() {
       <View style={styles.hud}>
         <WritingFlowSheet />
       </View>
+      {/* Read-only detail bottom sheet over the running canvas — opens on selection (A1). */}
+      <DetailPanel
+        navigationActorRef={navigationActorRef}
+        onRecallRequested={handleRecallRequested}
+        onOpenDiary={handleOpenDiary}
+        onGistSelected={handleGistSelected}
+      />
     </View>
   )
 }

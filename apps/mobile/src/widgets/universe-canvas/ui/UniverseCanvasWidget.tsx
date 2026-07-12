@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
+import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
 import {
@@ -49,7 +50,9 @@ const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
 // via props only. Per-frame flow: the sim bridge swaps the coordinate buffer ref, the
 // package layers read it in useFrame, and the rig polls the machine via getSnapshot() —
 // no 60 fps React state and no per-frame store reads.
-function UniverseCanvasHost() {
+type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
+
+function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: NavigationActorRef }) {
   const { skin } = useSkin()
   const backgroundNode = useMemo(() => resolveBackgroundNode(skin.background), [skin.background])
   const { universe } = useUniverse()
@@ -64,7 +67,11 @@ function UniverseCanvasHost() {
     }
   }, [bridge, graph])
 
-  const actorRef = useActorRef(universeNavigationMachine)
+  // The selection/navigation actor is lifted to the composing screen so the star-detail panel
+  // subscribes to the SAME selection — the canvas machine stays the single owner (§3.2). Mounted
+  // without a lifted ref, it owns its own (parity with web).
+  const ownActorRef = useActorRef(universeNavigationMachine)
+  const actorRef = navigationActorRef ?? ownActorRef
   const pose = useMemo(
     () => ({
       mode: 'idle' as UniverseNavigationMode,
@@ -214,10 +221,14 @@ function UniverseCanvasHost() {
   )
 }
 
-export function UniverseCanvasWidget() {
+export function UniverseCanvasWidget({
+  navigationActorRef,
+}: {
+  navigationActorRef?: NavigationActorRef
+} = {}) {
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-      <UniverseCanvasHost />
+      <UniverseCanvasHost navigationActorRef={navigationActorRef} />
     </SkinProvider>
   )
 }

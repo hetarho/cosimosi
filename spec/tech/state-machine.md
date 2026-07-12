@@ -178,6 +178,30 @@ visuals later fill off the same interval seam. Per-frame veil intensity goes
 through a DOM ref / `Animated.Value`, never React state (§5.2); the date tick
 re-renders at most once per sampled date.
 
+### 6.2 `starDetailMachine` (the star-detail panel)
+
+`closed → meta → provenance`, context empty — the same context-free form as the
+time overlay. The machine owns only the panel's **view phase**; every payload
+rides outside it:
+
+- the **selected id** stays in `universeNavigationMachine` (the single selection
+  owner); the composing page/screen lifts that actor and passes it to both the
+  canvas widget and the panel, which subscribes via `useSelector`. The panel
+  derives open/closed by sending `OPEN`/`CLOSE` from the resolved selection —
+  it never owns a second copy of "which star is selected";
+- the resolved star comes from the pure `resolveSelection(selectedNodeId, stores)`
+  selector over the `episodic-memory`/`neuron` read-model mirrors, yielding
+  `episodic | neuron | gist | none` (a gist body is recognized by an injectable
+  recognizer and routes away to the paid view, so no gist state lives here);
+- the **provenance list** is a Query read fetched only on entering `provenance`;
+- `RECALL` / `OPEN_DIARY` are **emitted intents** the composing page consumes
+  (recall flow / router) — they are self-handled no-ops that leave the phase
+  intact, so the panel hands off without owning downstream behavior. `OPEN`
+  re-enters `meta` so re-selecting a star drops a stale provenance view.
+
+web and mobile import this machine + the resolver verbatim from `packages/universe`
+and fork only the panel host (a web side-sheet, a mobile bottom sheet, §6/§3.5).
+
 ## 7. Tests
 
 Every catalog machine has:
