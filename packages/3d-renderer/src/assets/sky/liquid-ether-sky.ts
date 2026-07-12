@@ -15,7 +15,12 @@ export function liquidEtherSkyNode({ gradient, time }: SkyNodeArgs) {
   const t = skySeconds(time, 0.08)
 
   // advect the 3D sample frame by an fbm domain warp — the "velocity field" smearing the dye
-  const warped = domainWarp(skyDir().mul(2.4).add(vec3(0, 0, t)), { amount: 1.2, octaves: 4 })
+  const warped = domainWarp(
+    skyDir()
+      .mul(2.4)
+      .add(vec3(0, 0, t)),
+    { amount: 1.2, octaves: 4 },
+  )
   const flow = fbm01(warped.mul(0.5))
   const swirl = fbm01(warped.add(vec3(3.1, 1.7, 0)))
   const g = clamp(flow.mul(0.7).add(swirl.mul(0.3)), float(0), float(1))

@@ -59,7 +59,7 @@ export const starDetailMachine = setup({
  * A selected node resolved to the domain star the panel renders. Episodic stars get the
  * full meta + free current-text + buttons; neurons get info-only meta (no emotion,
  * no episodic actions, [D1][I3]); a gist (요지) body routes to the paid gist-view surface
- * ([R8], plan 34) instead of this panel; nothing selected / an unknown id is `none`.
+ * ([R8]) instead of this panel; nothing selected / an unknown id is `none`.
  */
 export type ResolvedSelection =
   | { kind: 'episodic'; memory: EpisodicMemory }
@@ -71,11 +71,11 @@ export interface SelectionStores {
   episodicById: Readonly<Record<string, EpisodicMemory>>
   neuronById: Readonly<Record<string, Neuron>>
   /**
-   * Recognizes a gist-body node id (the z-raised 신피질 star Epic E adds) and returns the
-   * episodic memory it abstracts. Until gist bodies render there are none, so the default
-   * recognizes nothing and every selection is episodic/neuron/none; the panel supplies
-   * Epic E's recognizer here to route gist selections to the paid view (A7) without this
-   * resolver knowing the gist-body id format.
+   * Recognizes a gist-body node id (the z-raised 신피질 gist star [V9]) and returns the
+   * episodic memory it abstracts. While no gist bodies render there are none, so the
+   * default recognizes nothing and every selection is episodic/neuron/none; the panel
+   * injects the recognizer once gist bodies exist, routing gist selections to the paid
+   * view ([R8]) without this resolver knowing the gist-body id format.
    */
   gistMemoryId?: (nodeId: string) => string | null
 }

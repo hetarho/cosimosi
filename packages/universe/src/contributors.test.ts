@@ -36,15 +36,16 @@ describe('buildContributors', () => {
   })
 
   it('weighs by EffectiveStrength (base + recall), the Epic-C mirror seam [A8]', () => {
-    // effectiveStrength(base, recall) == base in Epic A, so recall does not yet change the radius;
-    // reading the derived value (not raw base) is what activates the mirror without a rewire.
+    // contributors reads the derived effectiveStrength(base, recall), not raw base, so once the
+    // recall term is live ([R3][V3]) a recalled memory bleeds wider — recall grows strength, and
+    // reading the derived value (not raw base) is what carries that through to the nebula radius.
     const fresh = buildContributors([memory({ baseStrength: 0.5, recallCount: 0 })], {
       firstNodeIndex: 0,
     })
     const reread = buildContributors([memory({ baseStrength: 0.5, recallCount: 9 })], {
       firstNodeIndex: 0,
     })
-    expect(reread.radii[0]).toBe(fresh.radii[0])
+    expect(reread.radii[0]).toBeGreaterThan(fresh.radii[0] ?? 0)
   })
 
   it('keeps store→buffer index alignment: nodeIndex = firstNodeIndex + storeIndex', () => {
