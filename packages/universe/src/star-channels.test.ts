@@ -18,6 +18,7 @@ function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
     activations: [],
     decayStages: [],
     forgettingOffsetDays: 0,
+    currentText: 'a memory',
     ...overrides,
   }
 }
@@ -37,11 +38,28 @@ describe('starChannels', () => {
     expect(large).toBeGreaterThan(small)
   })
 
-  it('renders full brightness in Epic A, inside the range [V2]', () => {
-    const { brightness } = starChannels(memory(), '2026-06-01')
-    expect(brightness).toBeGreaterThanOrEqual(rendering.starBrightnessMin)
-    expect(brightness).toBeLessThanOrEqual(rendering.starBrightnessMax)
+  it('renders full brightness for a freshly-created star (elapsed 0) [V2]', () => {
+    // universeTime === createdUniverseTime → elapsed 0 → full brightness at the range max.
+    const { brightness } = starChannels(memory(), '2026-01-01')
     expect(brightness).toBe(rendering.starBrightnessMax)
+  })
+
+  it('dims an unrecalled star as universe-time passes, floored at the min, never removed [F1][F2]', () => {
+    const fresh = starChannels(memory(), '2026-01-01').brightness
+    const aged = starChannels(memory(), '2026-04-01').brightness
+    const ancient = starChannels(memory(), '2035-01-01').brightness
+    expect(aged).toBeLessThan(fresh)
+    expect(aged).toBeGreaterThanOrEqual(rendering.starBrightnessMin)
+    // The silent engram: a fully-decayed star bottoms at the render floor (approached asymptotically),
+    // never 0 / never removed.
+    expect(ancient).toBeCloseTo(rendering.starBrightnessMin, 5)
+    expect(ancient).toBeGreaterThan(0)
+    expect(ancient).toBeLessThan(aged)
+  })
+
+  it('brightens back to full when the last recall is the current time (recovery re-render) [F5]', () => {
+    const recalled = starChannels(memory({ lastRecalledUniverseTime: '2026-06-01' }), '2026-06-01')
+    expect(recalled.brightness).toBe(rendering.starBrightnessMax)
   })
 
   it('binds color to emotion only — same mood same color, different mood different color [I3][M3]', () => {

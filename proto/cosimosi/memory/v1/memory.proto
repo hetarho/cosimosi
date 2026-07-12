@@ -148,6 +148,11 @@ message EpisodicMemoryDto {
   // Signed neighbor forgetting nudge in universe-days (CC4), read into the client's
   // effective-elapsed-days clock; 0 when no neighbor recall has shifted it.
   double forgetting_offset_days = 11;
+  // The current-memory text ([I2] a representation of the memory, never the Diary). The
+  // client renders its current decay-stage erosion from decay_stages, falling back to this
+  // whole text when no stage string is yet persisted. It is the memory's text, not a
+  // pre-rendered decay text — the erosion is derived client-side [I5][R8a].
+  string current_text = 12;
 }
 
 message NeuronDto {

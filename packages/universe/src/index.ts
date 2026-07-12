@@ -110,6 +110,7 @@ export { useLatentConsumedStore, type LatentConsumedState } from './latent-consu
 
 // Domain → visual channel projections (one-way, §3.4)
 export { starChannels, hexToLinearRgb, normalizeSeed, type StarChannels } from './star-channels.ts'
+export { currentDecayStage, currentDecayText } from './current-decay-text.ts'
 export { cellStarChannels, type CellStarChannels } from './cell-star-channels.ts'
 export {
   filamentChannels,

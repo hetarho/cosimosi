@@ -38,6 +38,7 @@ describe('GetUniverse proto→domain mappers', () => {
         seed: 42n,
         decayStages: ['first xxxx sea', 'xxxx xxxx sea'],
         forgettingOffsetDays: -2.5,
+        currentText: 'first swim in the cold winter sea',
       }),
     )
 
@@ -56,6 +57,7 @@ describe('GetUniverse proto→domain mappers', () => {
       ],
       decayStages: ['first xxxx sea', 'xxxx xxxx sea'],
       forgettingOffsetDays: -2.5,
+      currentText: 'first swim in the cold winter sea',
     })
   })
 
@@ -64,6 +66,7 @@ describe('GetUniverse proto→domain mappers', () => {
 
     expect(memory.lastRecalledUniverseTime).toBeNull()
     expect(memory.seed).toBeNull()
+    expect(memory.currentText).toBe('')
     expect(memory.decayStages).toEqual([])
     expect(memory.forgettingOffsetDays).toBe(0)
   })

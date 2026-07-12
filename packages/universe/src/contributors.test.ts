@@ -20,6 +20,7 @@ function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
     activations: [],
     decayStages: [],
     forgettingOffsetDays: 0,
+    currentText: 'a memory',
     ...overrides,
   }
 }

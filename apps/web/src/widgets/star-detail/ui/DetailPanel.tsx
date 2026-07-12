@@ -3,6 +3,7 @@ import type { ActorRefFrom } from 'xstate'
 
 import { Button } from '@cosimosi/ui'
 import {
+  currentDecayText,
   resolveSelection,
   starDetailMachine,
   useEpisodicMemoryStore,
@@ -100,7 +101,7 @@ export function DetailPanel({
           <MetaBlock selection={selection} universeTime={universeTime} />
           {selection.kind === 'episodic' && (
             <>
-              <CurrentMemoryText text={null} />
+              <CurrentMemoryText text={currentDecayText(selection.memory, universeTime)} />
               <div className="flex flex-wrap gap-2">
                 <Button
                   color="primary"

@@ -4,10 +4,11 @@ import { tokens } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
 
-// features/current-memory-text ([R1][G1][F1], RN fork): the episodic star's forgotten current
-// memory text, shown FREE — a pure read that advances no clock, spends no 별가루, restores nothing
-// (A3). The text is supplied by the composing widget from the memory-representation read (still
-// deferred); while no source is wired the panel says so rather than inventing content.
+// features/current-memory-text ([R1][G1][F1], RN fork): the episodic star's forgotten current-memory
+// text, shown FREE — a pure read that advances no clock, spends no 별가루, restores nothing. The
+// composing widget supplies the resolved current decay-stage text (whole while vivid, word-eroded as
+// it decays [F1][R8a]); the erosion is not announced. While no text has loaded the panel says so
+// rather than inventing content.
 export function CurrentMemoryText({ text }: { text: string | null }) {
   if (!text) {
     return <Text style={styles.unavailable}>{m.star_detail_text_unavailable()}</Text>

@@ -761,8 +761,13 @@ type EpisodicMemoryDto struct {
 	// Signed neighbor forgetting nudge in universe-days (CC4), read into the client's
 	// effective-elapsed-days clock; 0 when no neighbor recall has shifted it.
 	ForgettingOffsetDays float64 `protobuf:"fixed64,11,opt,name=forgetting_offset_days,json=forgettingOffsetDays,proto3" json:"forgetting_offset_days,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The current-memory text ([I2] a representation of the memory, never the Diary). The
+	// client renders its current decay-stage erosion from decay_stages, falling back to this
+	// whole text when no stage string is yet persisted. It is the memory's text, not a
+	// pre-rendered decay text — the erosion is derived client-side [I5][R8a].
+	CurrentText   string `protobuf:"bytes,12,opt,name=current_text,json=currentText,proto3" json:"current_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EpisodicMemoryDto) Reset() {
@@ -870,6 +875,13 @@ func (x *EpisodicMemoryDto) GetForgettingOffsetDays() float64 {
 		return x.ForgettingOffsetDays
 	}
 	return 0
+}
+
+func (x *EpisodicMemoryDto) GetCurrentText() string {
+	if x != nil {
+		return x.CurrentText
+	}
+	return ""
 }
 
 type NeuronDto struct {
@@ -1469,7 +1481,7 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\tintensity\x18\x04 \x01(\x01R\tintensity\"J\n" +
 	"\x13NeuronActivationDto\x12\x1b\n" +
 	"\tneuron_id\x18\x01 \x01(\tR\bneuronId\x12\x16\n" +
-	"\x06weight\x18\x02 \x01(\x02R\x06weight\"\x97\x04\n" +
+	"\x06weight\x18\x02 \x01(\x02R\x06weight\"\xba\x04\n" +
 	"\x11EpisodicMemoryDto\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x128\n" +
@@ -1482,7 +1494,8 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\vactivations\x18\t \x03(\v2'.cosimosi.memory.v1.NeuronActivationDtoR\vactivations\x12!\n" +
 	"\fdecay_stages\x18\n" +
 	" \x03(\tR\vdecayStages\x124\n" +
-	"\x16forgetting_offset_days\x18\v \x01(\x01R\x14forgettingOffsetDaysB\x1e\n" +
+	"\x16forgetting_offset_days\x18\v \x01(\x01R\x14forgettingOffsetDays\x12!\n" +
+	"\fcurrent_text\x18\f \x01(\tR\vcurrentTextB\x1e\n" +
 	"\x1c_last_recalled_universe_timeB\a\n" +
 	"\x05_seed\"\x82\x01\n" +
 	"\tNeuronDto\x12\x0e\n" +

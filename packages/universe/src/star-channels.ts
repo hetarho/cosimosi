@@ -1,15 +1,19 @@
 import { VALUES } from '@cosimosi/config'
 import { moodColor } from '@cosimosi/emotion'
-import { effectiveBrightness, effectiveStrength } from '@cosimosi/memory-logic'
+import {
+  effectiveBrightness,
+  effectiveElapsedDays,
+  effectiveStrength,
+} from '@cosimosi/memory-logic'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
 // The pure four-channel projection of an episodic memory onto its big-star body (§3.4). Same
 // stored facts always draw the same star: size = EffectiveStrength [V3], brightness =
-// EffectiveBrightness [V2] (the read-time fn resolves 1 while forgetting decay is unmodeled —
-// the range is that seam), color = the primary emotion via the emotion palette seam and
-// nothing else [I3][M3], shape = the stored seed passed through as immutable input [V5][A7].
-// No `three`, no rendering-vocab dependency — a deterministic function over domain facts.
+// EffectiveBrightness [V2] (the read-time forgetting fade — a star unrecalled in universe-time dims
+// toward the silent-engram floor, never to 0 [F1][F2]), color = the primary emotion via the emotion
+// palette seam and nothing else [I3][M3], shape = the stored seed passed through as immutable input
+// [V5][A7]. No `three`, no rendering-vocab dependency — a deterministic function over domain facts.
 export interface StarChannels {
   /** World scale (radius) from EffectiveStrength, within [starSizeMin, starSizeMax]. */
   readonly size: number
@@ -21,26 +25,43 @@ export interface StarChannels {
   readonly seed: number
 }
 
-export function starChannels(memory: EpisodicMemory, _universeTime: string | null): StarChannels {
+export function starChannels(memory: EpisodicMemory, universeTime: string | null): StarChannels {
   const { rendering } = VALUES
   const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
-  // effectiveBrightness now carries the Epic-D forgetting fade, but the star-brightness render seam
-  // stays full (elapsed 0) until forgetting-visuals binds the real effectiveElapsedDays/offset [V2].
-  const brightness = effectiveBrightness(0, memory.emotion.arousal, strength)
+  // The real read-time forgetting fade: universe-days since last recall (offset-inclusive), slowed by
+  // arousal and connection strength; its range already IS [star_brightness_min, max], so it maps
+  // straight to the brightness channel, floored at the silent-engram min [V2][F1][F2].
+  const elapsed = effectiveElapsedDays(
+    universeTime,
+    memory.lastRecalledUniverseTime,
+    memory.createdUniverseTime,
+    memory.forgettingOffsetDays,
+  )
+  const brightness = effectiveBrightness(elapsed, memory.emotion.arousal, strength)
   return {
     size: lerpClamp(rendering.starSizeMin, rendering.starSizeMax, strength),
-    brightness: lerpClamp(rendering.starBrightnessMin, rendering.starBrightnessMax, brightness),
+    // EffectiveBrightness already returns [forgetting.brightness_floor, 1] with the floor aligned to
+    // star_brightness_min, so it IS the render range — clamp it in place, do NOT re-lerp a [0,1]
+    // fraction (that would lift the silent-engram floor off star_brightness_min). A2/[F2].
+    brightness: clampToRange(brightness, rendering.starBrightnessMin, rendering.starBrightnessMax),
     color: hexToLinearRgb(moodColor(memory.emotion.mood)),
     seed: normalizeSeed(memory.seed, memory.id),
   }
 }
 
-// Map a read-time value into a visual range; a non-finite input (from a skewed/corrupt DTO
-// field the domain mapper didn't coerce) floors to `min` rather than producing a NaN scale /
-// width that would poison an InstancedMesh matrix or ribbon vertex.
+// Map a [0,1] fraction into a visual range; a non-finite input (from a skewed/corrupt DTO field the
+// domain mapper didn't coerce) floors to `min` rather than producing a NaN scale / width that would
+// poison an InstancedMesh matrix or ribbon vertex.
 function lerpClamp(min: number, max: number, t: number): number {
   const clamped = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0
   return min + (max - min) * clamped
+}
+
+// Clamp an already-in-range value to [min, max]; a non-finite input floors to `min` (same corrupt-DTO
+// guard as lerpClamp). Used for EffectiveBrightness, whose own range equals the render range.
+function clampToRange(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min
+  return Math.min(max, Math.max(min, value))
 }
 
 // Parse `#rrggbb` and convert sRGB → linear so the raw floats match the renderer's linear

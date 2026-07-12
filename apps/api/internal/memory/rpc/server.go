@@ -270,6 +270,7 @@ func universeResponse(facts memory.UniverseFacts, universeTime *time.Time) *memo
 			Activations:              activationsByMemory[episodicMemory.ID],
 			DecayStages:              episodicMemory.DecayStages,
 			ForgettingOffsetDays:     episodicMemory.ForgettingOffsetDays,
+			CurrentText:              episodicMemory.CurrentText,
 		})
 	}
 

@@ -52,6 +52,7 @@ export function episodicMemoryFromDto(dto: EpisodicMemoryDto): EpisodicMemory {
     })),
     decayStages: dto.decayStages,
     forgettingOffsetDays: dto.forgettingOffsetDays,
+    currentText: dto.currentText,
   }
 }
 

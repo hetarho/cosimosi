@@ -19,6 +19,8 @@ export interface StarLayerProps {
   readonly universeTime: string | null
   readonly onFocus?: (index: number) => void
   readonly onFly?: (index: number) => void
+  /** Hover glimpse: the star index under the pointer, or null when it leaves ([F1] word-loss preview). */
+  readonly onHover?: (index: number | null) => void
 }
 
 // The instanced R3F binding for the episodic-memory big star: it reads the domain mirror via
@@ -32,6 +34,7 @@ export function StarLayer({
   universeTime,
   onFocus,
   onFly,
+  onHover,
 }: StarLayerProps) {
   const bodySource = useMemo(() => createStarBodySource(), [])
   const byId = useEpisodicMemoryStore((state) => state.byId)
@@ -75,6 +78,7 @@ export function StarLayer({
       channels={channels}
       onNodePointerDown={onFocus}
       onNodeDoubleClick={onFly}
+      onNodeHover={onHover}
     />
   )
 }

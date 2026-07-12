@@ -2,9 +2,13 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { moodColor } from '@cosimosi/emotion'
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
-import { effectiveBrightness, effectiveStrength } from '@cosimosi/memory-logic'
+import {
+  effectiveBrightness,
+  effectiveElapsedDays,
+  effectiveStrength,
+} from '@cosimosi/memory-logic'
 import { tokens } from '@cosimosi/ui'
-import { normalizeSeed } from '@cosimosi/universe'
+import { currentDecayStage, normalizeSeed } from '@cosimosi/universe'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
@@ -41,9 +45,10 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 // read-time functions, none re-derived (A2) — identical logic to the web fork.
 export function MetaBlock({
   selection,
+  universeTime,
 }: {
   selection: { kind: 'episodic'; memory: EpisodicMemory } | { kind: 'neuron'; neuron: Neuron }
-  // Reserved for forgetting-visuals: the read-time "now" that will drive effectiveElapsedDays [V2].
+  // The read-time "now" that drives the forgetting fade + current decay stage [V2][F1].
   universeTime: string | null
 }) {
   if (selection.kind === 'neuron') {
@@ -62,9 +67,17 @@ export function MetaBlock({
 
   const { memory } = selection
   const strength = effectiveStrength(memory.baseStrength, memory.recallCount)
-  // effectiveBrightness now carries the Epic-D forgetting fade, but this panel stays full (elapsed 0)
-  // until forgetting-visuals binds the real effectiveElapsedDays/offset — identical to the web fork.
-  const brightness = effectiveBrightness(0, memory.emotion.arousal, strength)
+  // The real read-time forgetting state: brightness fade and decay stage share the same
+  // offset-inclusive elapsed clock, so the "현재 망각 정도" indicator moves with the star's dimming
+  // ([F1][V2]); recall resets the anchors so the next read reads full/vivid ([F5]). Identical to web.
+  const elapsed = effectiveElapsedDays(
+    universeTime,
+    memory.lastRecalledUniverseTime,
+    memory.createdUniverseTime,
+    memory.forgettingOffsetDays,
+  )
+  const brightness = effectiveBrightness(elapsed, memory.emotion.arousal, strength)
+  const stage = currentDecayStage(memory, universeTime)
   return (
     <View style={styles.episodic}>
       <StarGlyph memory={memory} />
@@ -73,7 +86,7 @@ export function MetaBlock({
         <MetaRow label={m.star_meta_brightness()} value={percent(brightness)} />
         <MetaRow label={m.star_meta_created()} value={memory.createdUniverseTime} />
         <MetaRow label={m.star_meta_strength()} value={strength.toFixed(2)} />
-        <MetaRow label={m.star_meta_forgetting_state()} value={m.star_meta_forgetting_vivid()} />
+        <MetaRow label={m.star_meta_forgetting_state()} value={forgettingStageLabel(stage)} />
       </View>
     </View>
   )
@@ -83,6 +96,20 @@ function neuronTypeLabel(type: Neuron['neuronType']): string {
   if (type === 'semantic') return m.star_meta_neuron_type_semantic()
   if (type === 'spatial') return m.star_meta_neuron_type_spatial()
   return m.star_meta_neuron_type_entity()
+}
+
+// The forgetting-degree label for a decay stage (0 = vivid); clamps past the last known label since
+// the stage-ratio array is [F9]-tunable. Mirrors the web fork.
+function forgettingStageLabel(stage: number): string {
+  const labels = [
+    m.star_meta_forgetting_vivid(),
+    m.star_meta_forgetting_softening(),
+    m.star_meta_forgetting_blurring(),
+    m.star_meta_forgetting_faint(),
+    m.star_meta_forgetting_distant(),
+  ]
+  const index = Math.min(Math.max(stage, 0), labels.length - 1)
+  return labels[index]
 }
 
 function percent(value: number): string {

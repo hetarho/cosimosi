@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
@@ -20,9 +20,11 @@ import {
   UNIVERSE_CAMERA_RIG,
   buildUniverseGraph,
   createUniverseSimBridge,
+  currentDecayText,
   generateLatentField,
   recentlyActiveNeuronIds,
   universeNavigationMachine,
+  useEpisodicMemoryStore,
   type AwakenAnchor,
   type UniverseNavigationMode,
 } from '@cosimosi/universe'
@@ -127,7 +129,24 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
     [graph, sendNodeCommand],
   )
 
+  // Hover glimpse: a truncated current decay-stage text so the eroded memory reads as eroded before
+  // the panel opens ([F1][R8a]). The label is the preview, the panel is the full read. Keyed by id so
+  // pointer-moves within one star don't re-render; the full text + word-loss recovery live in the panel.
+  const episodicIds = useEpisodicMemoryStore((state) => state.ids)
+  const [hoveredMemoryId, setHoveredMemoryId] = useState<string | null>(null)
+  const handleMemoryHover = useCallback(
+    (index: number | null) => {
+      // Resolve against the SAME episodic-store ids StarLayer indexes its instances by — not the
+      // graph's memory list, which lags the store by the optimistic-launch tail (would mis-map or
+      // drop a just-launched star's glimpse).
+      const id = index === null ? null : (episodicIds[index] ?? null)
+      setHoveredMemoryId((previous) => (previous === id ? previous : id))
+    },
+    [episodicIds],
+  )
+
   const neuronCount = graph?.neurons.length ?? 0
+  const episodicById = useEpisodicMemoryStore((state) => state.byId)
 
   // The launch flow announces genuinely-created neuron ids here; the awaken plays for the fresh
   // ones (idempotent via the awaken registry). Empty until the first launch of this session.
@@ -172,37 +191,61 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
     [bridge, nodeIndex, universe],
   )
 
+  const hoveredMemory = hoveredMemoryId ? episodicById[hoveredMemoryId] : undefined
+  const glimpseText = hoveredMemory
+    ? truncateGlimpse(currentDecayText(hoveredMemory, universe?.universeTime ?? null))
+    : ''
+
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
-      <Background node={backgroundNode} />
-      <StarField />
-      {/* Emotion color field: additive mood-color blend behind the latent field and bodies
-          (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}
-      <NebulaField positions={bridge.coordinates} firstNodeIndex={neuronCount} />
-      <LatentStarField field={latentField} />
-      <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
-      <StarLayer
-        positions={bridge.coordinates}
-        firstNodeIndex={neuronCount}
-        universeTime={universe?.universeTime ?? null}
-        onFocus={focusMemory}
-        onFly={flyToMemory}
-      />
-      <FilamentLayer
-        positions={bridge.coordinates}
-        neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
-        universeTime={universe?.universeTime ?? null}
-      />
-      <AwakenNeuron
-        field={latentField}
-        newNeuronIds={newNeuronIds}
-        resolveAnchors={resolveAnchors}
-      />
-      <NavigationRig getPose={getPose} onArrived={handleArrived} {...UNIVERSE_CAMERA_RIG} />
-      <FrameTick onFrame={pump} />
-      <PostFX bloom={skin.bloom} />
-    </UniverseCanvas>
+    <div className="relative h-full w-full">
+      <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
+        <Background node={backgroundNode} />
+        <StarField />
+        {/* Emotion color field: additive mood-color blend behind the latent field and bodies
+            (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}
+        <NebulaField positions={bridge.coordinates} firstNodeIndex={neuronCount} />
+        <LatentStarField field={latentField} />
+        <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
+        <StarLayer
+          positions={bridge.coordinates}
+          firstNodeIndex={neuronCount}
+          universeTime={universe?.universeTime ?? null}
+          onFocus={focusMemory}
+          onFly={flyToMemory}
+          onHover={handleMemoryHover}
+        />
+        <FilamentLayer
+          positions={bridge.coordinates}
+          neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
+          universeTime={universe?.universeTime ?? null}
+        />
+        <AwakenNeuron
+          field={latentField}
+          newNeuronIds={newNeuronIds}
+          resolveAnchors={resolveAnchors}
+        />
+        <NavigationRig getPose={getPose} onArrived={handleArrived} {...UNIVERSE_CAMERA_RIG} />
+        <FrameTick onFrame={pump} />
+        <PostFX bloom={skin.bloom} />
+      </UniverseCanvas>
+      {/* Hover glimpse of the eroded memory — shown plainly, no decay warning ([R8a]). The full
+          forgotten text + recovery live in the star-detail panel. */}
+      {glimpseText && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center px-4">
+          <p className="max-w-[min(90vw,40rem)] truncate rounded-full border border-border bg-surface/80 px-4 py-1.5 text-sm text-text-muted backdrop-blur">
+            {glimpseText}
+          </p>
+        </div>
+      )}
+    </div>
   )
+}
+
+// The hover label is a glimpse, not the read (the panel holds the full text) — keep it to one line.
+function truncateGlimpse(text: string): string {
+  const trimmed = text.trim()
+  const limit = 60
+  return trimmed.length > limit ? `${trimmed.slice(0, limit)}…` : trimmed
 }
 
 export function UniverseCanvasWidget({

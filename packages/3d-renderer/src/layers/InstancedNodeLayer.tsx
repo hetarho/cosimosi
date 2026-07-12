@@ -47,6 +47,8 @@ export interface InstancedNodeLayerProps {
   readonly channels?: InstanceChannels
   readonly onNodePointerDown?: (nodeIndex: number) => void
   readonly onNodeDoubleClick?: (nodeIndex: number) => void
+  /** Hover: the node index under the pointer, or null when the pointer leaves the mesh. */
+  readonly onNodeHover?: (nodeIndex: number | null) => void
 }
 
 // Shared R3F layer: data-driven instanced nodes. One InstancedMesh sized to the active node
@@ -67,6 +69,7 @@ export function InstancedNodeLayer({
   channels,
   onNodePointerDown,
   onNodeDoubleClick,
+  onNodeHover,
 }: InstancedNodeLayerProps) {
   const [body, setBody] = useState<THREE.Mesh | null>(null)
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
@@ -216,6 +219,23 @@ export function InstancedNodeLayer({
               event.stopPropagation()
               const index = pick(event.instanceId)
               if (index !== null) onNodeDoubleClick(index)
+            }
+          : undefined
+      }
+      onPointerMove={
+        onNodeHover
+          ? (event: ThreeEvent<PointerEvent>) => {
+              event.stopPropagation()
+              const index = pick(event.instanceId)
+              if (index !== null) onNodeHover(index)
+            }
+          : undefined
+      }
+      onPointerOut={
+        onNodeHover
+          ? (event: ThreeEvent<PointerEvent>) => {
+              event.stopPropagation()
+              onNodeHover(null)
             }
           : undefined
       }

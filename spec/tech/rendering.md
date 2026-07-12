@@ -177,11 +177,16 @@ The three **rendering entities** turn the domain-mirror graph into bodies. Their
   surface is displaced by ridged noise keyed on a per-instance **seed**, so two seeds take different coherent forms
   [V5]; the seed is immutable input (rendered, never mutated/animated — the Epic-C `Reshape` seam). Four independent
   channels, each a pure function of stored facts (`entities/star/model`): **size** = `effectiveStrength` → per-instance
-  matrix scale in `star_size_min…max` [V3]; **brightness** = `effectiveBrightness` → per-instance attribute in
-  `star_brightness_min…max` (resolves full today; the range is the Epic-D decay seam [V2]); **color** = the primary
-  emotion via the plan-17 `moodColor` palette seam, linear-RGB per-instance attribute — emotion feeds color and nothing
-  else [I3][M3]. Channels ride `InstancedNodeLayer` (extended with an optional `channels` = per-instance scale + named
-  instance attributes), recomputed only on read-model / universe-time change; the coordinate buffer is read per frame.
+  matrix scale in `star_size_min…max` [V3]; **brightness** = the real read-time `effectiveBrightness` (forgetting fade:
+  offset-inclusive universe-days since last recall, slowed by arousal + connection strength) → per-instance attribute.
+  Its own range already equals `[star_brightness_min, star_brightness_max]` (`forgetting.brightness_floor` is aligned to
+  `star_brightness_min`), so `starChannels` **clamps it in place — it does NOT re-lerp a `[0,1]` fraction** (that would
+  lift the silent-engram floor off the min); a fully-decayed star bottoms at `star_brightness_min`, never 0/removed
+  [V2][F1][F2]; **color** = the primary emotion via the plan-17 `moodColor` palette seam, linear-RGB per-instance
+  attribute — emotion feeds color and nothing else [I3][M3]. Channels ride `InstancedNodeLayer` (extended with an
+  optional `channels` = per-instance scale + named instance attributes; and an optional `onNodeHover` pointer-hover seam),
+  recomputed only on read-model / universe-time change; the coordinate buffer is read per frame. A clock advance dims
+  crossed-threshold stars through this same rebuild (the forgetting half of the acceleration slot [V8]).
 - **`cell-star` (neuron).** A seedless instanced point (`cell-star-body.ts`, `primitive` source) at a constant
   `cell_star_point_size` — no emotion color, no seed-form; a neuron carries information, not emotion [V5][I3].
   Degree-driven sizing stays reserved.

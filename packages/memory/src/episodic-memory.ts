@@ -27,4 +27,7 @@ export interface EpisodicMemory {
   readonly decayStages: readonly string[]
   /** Signed neighbor forgetting nudge in universe-days (CC4), fed into effectiveElapsedDays. */
   readonly forgettingOffsetDays: number
+  /** The current-memory text ([I2] a representation, never the Diary). The client renders its
+   *  current decay-stage erosion from decayStages, falling back to this whole text [R8a]. */
+  readonly currentText: string
 }

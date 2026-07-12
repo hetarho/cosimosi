@@ -88,9 +88,11 @@ function optimisticMemory(
     lastRecalledUniverseTime: null,
     seed: null,
     activations: [],
-    // A freshly launched star is vivid: no decay-stage text yet, no neighbor offset.
+    // A freshly launched star is vivid: no decay-stage text yet, no neighbor offset. The current
+    // text is not in the confirmed-split input; it arrives on the next GetUniverse read.
     decayStages: [],
     forgettingOffsetDays: 0,
+    currentText: '',
   }
 }
 
