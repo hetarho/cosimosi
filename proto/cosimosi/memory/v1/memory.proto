@@ -32,6 +32,9 @@ service MemoryService {
   // 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
   // NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
   rpc RecallDiaryStars(RecallDiaryStarsRequest) returns (RecallDiaryStarsResponse);
+  // 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
+  // It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
+  rpc ViewSemantic(ViewSemanticRequest) returns (ViewSemanticResponse);
 }
 
 message SplitDiaryRequest {
@@ -186,6 +189,24 @@ message RecallResponse {
 // anchors are all server-derived (§2.9#8).
 message RecallDiaryStarsRequest {
   string diary_id = 1;
+}
+
+// The memory and the gist stage the user chose to view [C6] — the only fields the
+// client sends; whether that stage has risen and what it costs are server-derived (§2.9#8).
+message ViewSemanticRequest {
+  string episodic_memory_id = 1;
+  int32 stage = 2;
+}
+
+// NOTE: no current_text, no seed, no provenance, no recall/timer field — this RPC
+// reads a gist, it never rewrites [R8][I2].
+message ViewSemanticResponse {
+  // Pregenerated semantic_stages text for the viewed stage (read-only) [R8][R8a].
+  string text = 1;
+  // The stage that was viewed.
+  int32 stage = 2;
+  // memory.semantic_stage — how far it has risen [C6][V9].
+  int32 reached_stage = 3;
 }
 
 message RecallDiaryStarsResponse {

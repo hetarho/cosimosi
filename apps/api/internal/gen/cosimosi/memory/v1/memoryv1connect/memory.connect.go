@@ -50,6 +50,9 @@ const (
 	// MemoryServiceRecallDiaryStarsProcedure is the fully-qualified name of the MemoryService's
 	// RecallDiaryStars RPC.
 	MemoryServiceRecallDiaryStarsProcedure = "/cosimosi.memory.v1.MemoryService/RecallDiaryStars"
+	// MemoryServiceViewSemanticProcedure is the fully-qualified name of the MemoryService's
+	// ViewSemantic RPC.
+	MemoryServiceViewSemanticProcedure = "/cosimosi.memory.v1.MemoryService/ViewSemantic"
 )
 
 // MemoryServiceClient is a client for the cosimosi.memory.v1.MemoryService service.
@@ -74,6 +77,9 @@ type MemoryServiceClient interface {
 	// 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
 	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
 	RecallDiaryStars(context.Context, *connect.Request[v1.RecallDiaryStarsRequest]) (*connect.Response[v1.RecallDiaryStarsResponse], error)
+	// 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
+	// It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
+	ViewSemantic(context.Context, *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error)
 }
 
 // NewMemoryServiceClient constructs a client for the cosimosi.memory.v1.MemoryService service. By
@@ -124,6 +130,12 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(memoryServiceMethods.ByName("RecallDiaryStars")),
 			connect.WithClientOptions(opts...),
 		),
+		viewSemantic: connect.NewClient[v1.ViewSemanticRequest, v1.ViewSemanticResponse](
+			httpClient,
+			baseURL+MemoryServiceViewSemanticProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("ViewSemantic")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -135,6 +147,7 @@ type memoryServiceClient struct {
 	getUniverse      *connect.Client[v1.GetUniverseRequest, v1.GetUniverseResponse]
 	recall           *connect.Client[v1.RecallRequest, v1.RecallResponse]
 	recallDiaryStars *connect.Client[v1.RecallDiaryStarsRequest, v1.RecallDiaryStarsResponse]
+	viewSemantic     *connect.Client[v1.ViewSemanticRequest, v1.ViewSemanticResponse]
 }
 
 // SplitDiary calls cosimosi.memory.v1.MemoryService.SplitDiary.
@@ -167,6 +180,11 @@ func (c *memoryServiceClient) RecallDiaryStars(ctx context.Context, req *connect
 	return c.recallDiaryStars.CallUnary(ctx, req)
 }
 
+// ViewSemantic calls cosimosi.memory.v1.MemoryService.ViewSemantic.
+func (c *memoryServiceClient) ViewSemantic(ctx context.Context, req *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error) {
+	return c.viewSemantic.CallUnary(ctx, req)
+}
+
 // MemoryServiceHandler is an implementation of the cosimosi.memory.v1.MemoryService service.
 type MemoryServiceHandler interface {
 	// Synchronous preview split — the user sees and edits it [W2]; persists nothing.
@@ -189,6 +207,9 @@ type MemoryServiceHandler interface {
 	// 이 일기로 태어난 별 보기 — no-rewrite whole-diary recall [D3].
 	// NOT NO_SIDE_EFFECTS: it spends Twinkle, advances the clock (sync), and reinforces every affected memory.
 	RecallDiaryStars(context.Context, *connect.Request[v1.RecallDiaryStarsRequest]) (*connect.Response[v1.RecallDiaryStarsResponse], error)
+	// 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
+	// It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
+	ViewSemantic(context.Context, *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error)
 }
 
 // NewMemoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -235,6 +256,12 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(memoryServiceMethods.ByName("RecallDiaryStars")),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceViewSemanticHandler := connect.NewUnaryHandler(
+		MemoryServiceViewSemanticProcedure,
+		svc.ViewSemantic,
+		connect.WithSchema(memoryServiceMethods.ByName("ViewSemantic")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.memory.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MemoryServiceSplitDiaryProcedure:
@@ -249,6 +276,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceRecallHandler.ServeHTTP(w, r)
 		case MemoryServiceRecallDiaryStarsProcedure:
 			memoryServiceRecallDiaryStarsHandler.ServeHTTP(w, r)
+		case MemoryServiceViewSemanticProcedure:
+			memoryServiceViewSemanticHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -280,4 +309,8 @@ func (UnimplementedMemoryServiceHandler) Recall(context.Context, *connect.Reques
 
 func (UnimplementedMemoryServiceHandler) RecallDiaryStars(context.Context, *connect.Request[v1.RecallDiaryStarsRequest]) (*connect.Response[v1.RecallDiaryStarsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.RecallDiaryStars is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) ViewSemantic(context.Context, *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.ViewSemantic is not implemented"))
 }

@@ -32,6 +32,13 @@ spatial/entity excluded, emotion never counted ([I3]).
 **The neighbor ± is `Depress`/LTD, not `Downscale`/SHY** ([I9]). Retrieval-induced weakening is associative/local; the
 homeostatic sleep downscale is a separate mechanism (owned by the consolidation epic) and is not implemented here.
 
+**A gist star is read-only — viewing is not a recall** ([R8][R1]). The gist view reads the pregenerated
+`semantic_stages[stage]` text, spends Twinkle through the shared `SpendGate`, and is **cheaper the deeper the gist**
+([G4], the inverse of episodic recall's decay cost [F4]). It never rewrites, never reconsolidates, never resets
+brightness/decay/timer/LTP, and never advances the clock ([I2][I8][I10]) — recall/reconsolidation act on the episodic
+memory only. A stage the memory has not risen to is refused, never fabricated; the reached stage is
+server-authoritative ([C6]).
+
 ## The shape (what is a value, what is not)
 
 The **numeric rules are pure and golden-parity-pinned** (Go `internal/memory` ↔ TS `packages/memory-logic`): the

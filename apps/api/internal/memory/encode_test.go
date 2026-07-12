@@ -123,6 +123,7 @@ type serviceFixture struct {
 	progression     *fakeProgression
 	spendGate       *fakeSpendGate
 	predictionError *fakePredictionError
+	gists           *fakeGistReader
 	service         *Service
 	seeds           []int64
 }
@@ -140,6 +141,7 @@ func newFixture(t *testing.T) *serviceFixture {
 		progression:     &fakeProgression{store: launches},
 		spendGate:       &fakeSpendGate{},
 		predictionError: &fakePredictionError{},
+		gists:           &fakeGistReader{},
 	}
 	ids := 0
 	// NewSeed hands out fixture.seeds in order (default 42), so a reconsolidation's
@@ -156,6 +158,7 @@ func newFixture(t *testing.T) *serviceFixture {
 		Recalls:         fixture.launches,
 		SpendGate:       fixture.spendGate,
 		PredictionError: fixture.predictionError,
+		Gists:           fixture.gists,
 		Now:             func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
 		NewID: func() string {
 			ids++
@@ -362,6 +365,7 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 		Recalls:         fixture.launches,
 		SpendGate:       fixture.spendGate,
 		PredictionError: fixture.predictionError,
+		Gists:           fixture.gists,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

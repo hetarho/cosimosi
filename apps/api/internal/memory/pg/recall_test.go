@@ -14,7 +14,7 @@ import (
 // anchors are deterministic against the wall clock.
 func recallServiceDay() time.Time { return time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC) }
 
-func newRecallService(t *testing.T, store memory.RecallRepo, launches memory.LaunchRepo, universe memory.UniverseReader, candidates memory.NeuronCandidateRepo) *memory.Service {
+func newRecallService(t *testing.T, store Store, launches memory.LaunchRepo, universe memory.UniverseReader, candidates memory.NeuronCandidateRepo) *memory.Service {
 	t.Helper()
 	adapters, err := ai.NewAdapters(ai.FactoryOptions{})
 	if err != nil {
@@ -32,6 +32,7 @@ func newRecallService(t *testing.T, store memory.RecallRepo, launches memory.Lau
 		Recalls:         store,
 		SpendGate:       memory.AllowAllSpendGate{},
 		PredictionError: adapters.PredictionError,
+		Gists:           store,
 		Now:             recallServiceDay,
 		NewSeed:         func() int64 { return seed },
 	})

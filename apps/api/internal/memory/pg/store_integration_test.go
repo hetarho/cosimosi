@@ -1028,6 +1028,138 @@ func TestLockUniverseClockSerializesConcurrentBirth(t *testing.T) {
 	}
 }
 
+// TestViewSemanticEndToEndReadsWithoutWriting drives the gist read + the full
+// ViewSemantic use-case against a real database (plan 34 / job 45): the owner gets
+// the stored stage texts (JSONB → domain mapping, NULL → nil), another user and a
+// soft-deleted row are not-found (A9), and the write-probe proves the view changed
+// no row and birthed no clock (A1/A7 — [R8][I2][I10]).
+func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-gist-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	intruderID := base + "-intruder"
+	cleanupMemoryTestRows(t, pool, userID)
+	cleanupMemoryTestRows(t, pool, intruderID)
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	intruderScope, err := platform.NewUserScope(intruderID)
+	if err != nil {
+		t.Fatalf("NewUserScope intruder failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	emotion, ok := memory.NewEmotion(memory.MoodCalm)
+	if !ok {
+		t.Fatal("NewEmotion(MoodCalm) failed")
+	}
+	diary, err := store.InsertDiary(ctx, scope, memory.Diary{ID: base + "-diary", Body: "gist day", DiaryDate: day, CreatedAt: day})
+	if err != nil {
+		t.Fatalf("InsertDiary failed: %v", err)
+	}
+	risen, err := store.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+		ID: base + "-m1", DiaryID: diary.ID, Name: "Risen", CurrentText: "a concrete account",
+		Emotion: emotion, BaseStrength: 0.5, CreatedUniverseTime: day, SemanticStage: 2,
+	})
+	if err != nil {
+		t.Fatalf("InsertEpisodicMemory risen failed: %v", err)
+	}
+	unrisen, err := store.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+		ID: base + "-m2", DiaryID: diary.ID, Name: "Unrisen", CurrentText: "another account",
+		Emotion: emotion, BaseStrength: 0.5, CreatedUniverseTime: day,
+	})
+	if err != nil {
+		t.Fatalf("InsertEpisodicMemory unrisen failed: %v", err)
+	}
+	stages := memory.SemanticStages{"stage one", "stage two", "stage three", "stage four"}
+	if err := store.SaveSemanticStages(ctx, userID, risen.ID, stages); err != nil {
+		t.Fatalf("SaveSemanticStages failed: %v", err)
+	}
+
+	// Row snapshot before the views — the [R8] write-probe baseline.
+	const rowSnapshot = `SELECT current_text, coalesce(seed, 0), recall_count,
+		last_recalled_universe_time IS NULL, semanticize_timer_reset_at IS NULL,
+		semantic_stage, coalesce(semantic_stages::text, ''), deleted_at IS NULL
+		FROM episodic_memories WHERE id = $1`
+	type snapshot struct {
+		text                             string
+		seed                             int64
+		recallCount                      int32
+		noLastRecalled, noTimer, noneDel bool
+		stage                            int16
+		stagesJSON                       string
+	}
+	readSnapshot := func(id string) snapshot {
+		var s snapshot
+		if err := pool.PgxPool().QueryRow(ctx, rowSnapshot, id).Scan(
+			&s.text, &s.seed, &s.recallCount, &s.noLastRecalled, &s.noTimer,
+			&s.stage, &s.stagesJSON, &s.noneDel); err != nil {
+			t.Fatalf("row snapshot %s failed: %v", id, err)
+		}
+		return s
+	}
+	before := readSnapshot(risen.ID)
+
+	// The pg read maps JSONB → the domain stage array; NULL → nil.
+	gist, err := store.EpisodicMemoryGist(ctx, scope, risen.ID)
+	if err != nil {
+		t.Fatalf("EpisodicMemoryGist failed: %v", err)
+	}
+	if gist.SemanticStage != 2 || gist.SemanticStages == nil || *gist.SemanticStages != stages {
+		t.Fatalf("gist = %+v, want stage 2 + the saved texts", gist)
+	}
+	unrisenGist, err := store.EpisodicMemoryGist(ctx, scope, unrisen.ID)
+	if err != nil {
+		t.Fatalf("EpisodicMemoryGist unrisen failed: %v", err)
+	}
+	if unrisenGist.SemanticStages != nil {
+		t.Fatalf("unrisen stages = %+v, want nil for a NULL semantic_stages", unrisenGist.SemanticStages)
+	}
+
+	// The full use-case over the real store returns the stored stage text…
+	service := newRecallService(t, store, store, store, store)
+	result, err := service.ViewSemantic(ctx, scope, risen.ID, 2)
+	if err != nil {
+		t.Fatalf("ViewSemantic failed: %v", err)
+	}
+	if result.Text != "stage two" || result.Stage != 2 || result.ReachedStage != 2 {
+		t.Fatalf("result = %+v, want stage two's text + meta", result)
+	}
+	// …refuses the unrisen stage server-authoritatively (A3)…
+	if _, err := service.ViewSemantic(ctx, scope, risen.ID, 3); !errors.Is(err, memory.ErrViewSemanticStageNotRisen) {
+		t.Fatalf("stage 3 err = %v, want ErrViewSemanticStageNotRisen", err)
+	}
+	// …and is invisible to another user (A9).
+	if _, err := service.ViewSemantic(ctx, intruderScope, risen.ID, 1); !errors.Is(err, memory.ErrViewSemanticMemoryNotFound) {
+		t.Fatalf("intruder err = %v, want ErrViewSemanticMemoryNotFound", err)
+	}
+
+	// Write-probe (A1/A7): the viewed row is byte-identical and no clock row was born.
+	if after := readSnapshot(risen.ID); after != before {
+		t.Fatalf("row changed by a view: before %+v, after %+v", before, after)
+	}
+	var clockRows int
+	if err := pool.PgxPool().QueryRow(ctx,
+		"SELECT count(*) FROM universe_state WHERE user_id = $1", userID).Scan(&clockRows); err != nil {
+		t.Fatalf("count universe_state failed: %v", err)
+	}
+	if clockRows != 0 {
+		t.Fatalf("universe_state rows = %d, want 0 — a view must not advance or birth the clock", clockRows)
+	}
+
+	// A soft-deleted memory's gist is not viewable (§4 not-found, plan 48 owns release).
+	if _, err := pool.PgxPool().Exec(ctx, "UPDATE episodic_memories SET deleted_at = $1 WHERE id = $2", day, risen.ID); err != nil {
+		t.Fatalf("soft-delete failed: %v", err)
+	}
+	if _, err := store.EpisodicMemoryGist(ctx, scope, risen.ID); !errors.Is(err, memory.ErrViewSemanticMemoryNotFound) {
+		t.Fatalf("soft-deleted err = %v, want ErrViewSemanticMemoryNotFound", err)
+	}
+}
+
 func openMemoryTestPool(t *testing.T) *platformdb.Pool {
 	t.Helper()
 

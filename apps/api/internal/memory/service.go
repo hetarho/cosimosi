@@ -20,6 +20,7 @@ var (
 	ErrRecallsRequired         = errors.New("memory service requires a recall repo")
 	ErrSpendGateRequired       = errors.New("memory service requires a spend gate")
 	ErrPredictionErrorRequired = errors.New("memory service requires a prediction-error port")
+	ErrGistsRequired           = errors.New("memory service requires a gist reader")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -37,6 +38,7 @@ type Service struct {
 	recalls         RecallRepo
 	spendGate       SpendGate
 	predictionError PredictionError
+	gists           GistReader
 	now             func() time.Time
 	newID           func() string
 	newSeed         func() int64
@@ -63,6 +65,9 @@ type ServiceDeps struct {
 	Recalls         RecallRepo
 	SpendGate       SpendGate
 	PredictionError PredictionError
+	// Gists is the gist-view read port ([R8]); required so no composition root can
+	// wire the view path without its per-user-scoped read.
+	Gists GistReader
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -101,6 +106,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.PredictionError == nil {
 		return nil, ErrPredictionErrorRequired
 	}
+	if deps.Gists == nil {
+		return nil, ErrGistsRequired
+	}
 	service := &Service{
 		extractor:       deps.Extractor,
 		embedder:        deps.Embedder,
@@ -112,6 +120,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		recalls:         deps.Recalls,
 		spendGate:       deps.SpendGate,
 		predictionError: deps.PredictionError,
+		gists:           deps.Gists,
 		now:             deps.Now,
 		newID:           deps.NewID,
 		newSeed:         deps.NewSeed,

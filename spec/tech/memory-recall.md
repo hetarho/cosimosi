@@ -1,10 +1,11 @@
 # tech: memory recall
 
-> As-built recall write-path — the backend orchestration of 회고하기. The architecture frame is
-> [ARCHITECTURE.md](../ARCHITECTURE.md) §2.4–§2.8; plan [33.recall-usecase](../plan/33.recall-usecase.md) owns the
-> product shape and [policy/domain/reconsolidation.md](../policy/domain/reconsolidation.md) the domain rule. This unit
-> orchestrates the pure rules in [tech/reconsolidation.md](reconsolidation.md); it defines no new numeric rule and adds
-> no `values.yaml` key.
+> As-built recall write-path — the backend orchestration of 회고하기 — plus its read-only counterpart, the gist view
+> (§8). The architecture frame is [ARCHITECTURE.md](../ARCHITECTURE.md) §2.4–§2.8; plans
+> [33.recall-usecase](../plan/33.recall-usecase.md) / [34.view-semantic-usecase](../plan/34.view-semantic-usecase.md)
+> own the product shape and [policy/domain/reconsolidation.md](../policy/domain/reconsolidation.md) the domain rule.
+> This unit orchestrates the pure rules in [tech/reconsolidation.md](reconsolidation.md); it defines no new numeric
+> rule and adds no `values.yaml` key.
 
 ## 1. Placement
 
@@ -112,3 +113,39 @@ Every read, spend, compare, write, and provenance append is scoped to `platform.
 shared-semantic counts, live diary memories) and writes (anchors, `current_text`/`seed`, `AddForgettingOffset`,
 `AppendMemoryProvenance`, `UpsertSynapse`) carry the user id, so a cross-user recall resolves to
 `ErrRecallMemoryNotFound`.
+
+## 8. The gist view (`ViewSemantic`) — the read-only counterpart ([R8])
+
+`ViewSemantic(scope, memoryID, stage)` (`view_semantic.go`) is the semantic half of the recall/view asymmetry: it
+returns the pregenerated `semantic_stages` text for one gist stage and **writes nothing** — no transaction, no
+anchors, no provenance, no LLM, no clock advance ([I2][I8][I10]). Stages are the 1-based ladder ([C6a]: `semantic_stage`
+0 = concrete, nothing viewable; 1..4 = the pregenerated texts, stage _k_'s text at array index _k−1_); the valid upper
+bound is the **derived** stage-array length, never a declared count.
+
+|                      | trigger                | acts on                       | mutation                                                                      | cost direction                             | owner        |
+| -------------------- | ---------------------- | ----------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------ | ------------ |
+| **회고 (recall)**    | 회고하기 button ([R1]) | _episodic_ memory (해마)      | brightness reset, decay recovery, timer reset, LTP, maybe rewrite ([R2]–[R7]) | **costlier the deeper the decay** ([F4])   | §2–§4        |
+| **요지 열람 (view)** | gist-star view ([R8])  | _semantic_ gist text (신피질) | **none** (read-only)                                                          | **cheaper the deeper the gist** ([R8][G4]) | this section |
+
+Ordered flow — every refusal precedes the spend, and after a successful spend no error path remains before the text:
+
+1. **Validate input** — empty id / `stage < 1` → `ErrViewSemanticInputRequired` (`InvalidArgument`).
+2. **Load** — `GistReader.EpisodicMemoryGist(scope, memoryID) → MemoryGist{SemanticStage, SemanticStages}`, the view's
+   own consumer-owned port (a standalone read; the recall surface reads the same columns but only inside `RecallTx`).
+   The pg concrete (`memory/pg/view_semantic.go` + `db/queries/memory/view_semantic.sql`) is a pure user-scoped
+   SELECT excluding soft-deleted rows; missing/other-user/soft-deleted → `ErrViewSemanticMemoryNotFound` (`NotFound`).
+   (Full-delete hides the whole row from the universe; release semantics beyond that are the deletion epic's.)
+3. **Server-authoritative stage check** (§2.9#8) — `semantic_stages` non-NULL **and** `stage ≤ len(stages)` **and**
+   `stage ≤ semantic_stage`, else the canonical `ErrViewSemanticStageNotRisen` (`FailedPrecondition`): the unit never
+   fabricates a text for an unreached stage.
+4. **Spend** — `SpendGate.CheckAndSpend(scope, GistViewSpendIntent(memoryID, stage))`, the **same port and the same
+   bound instance** as recall (§5): kind `view_gist`, carrying the requested `stage` as the gist-depth signal (a
+   monotone "how abstracted" measure) — never a price; the economy's curve maps a deeper signal to a **cheaper** price,
+   the inverse of recall's decay-cost direction ([G4]). The spend is a **precondition of the read**:
+   `ErrInsufficientTwinkle` (`ResourceExhausted`) returns no text. The allow-all no-op default charges nothing.
+5. **Return** — `{memoryID, text, stage, reachedStage}`; the RPC
+   `ViewSemantic(ViewSemanticRequest{episodic_memory_id, stage}) → ViewSemanticResponse{text, stage, reached_stage}`
+   is unary and **not** `NO_SIDE_EFFECTS` (it spends), with a thin handler mapping proto↔domain only.
+
+Not golden-parity: a server-only read+spend — the client renders the returned text and never recomputes the signal or
+the reached stage.

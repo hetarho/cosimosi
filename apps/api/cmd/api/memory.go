@@ -60,6 +60,9 @@ func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.Hand
 		Recalls:         store,
 		SpendGate:       memory.AllowAllSpendGate{},
 		PredictionError: adapters.PredictionError,
+		// The gist-view read shares the same store and the same SpendGate
+		// instance as recall — one spend-and-check seam for both metered actions.
+		Gists: store,
 	})
 	if err != nil {
 		pool.Close()

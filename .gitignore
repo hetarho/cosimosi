@@ -19,6 +19,9 @@ apps/api/api
 # Local data
 data/
 
+# Go build + module cache written by the Go-in-Docker tooling (machine-local, regenerated)
+.gocache/
+
 # inlang/Paraglide plugin module cache (fetched at compile time, machine-local)
 project.inlang/cache/
 

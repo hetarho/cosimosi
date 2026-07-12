@@ -128,6 +128,22 @@ func (s *Server) RecallDiaryStars(ctx context.Context, req *connect.Request[memo
 	}), nil
 }
 
+func (s *Server) ViewSemantic(ctx context.Context, req *connect.Request[memoryv1.ViewSemanticRequest]) (*connect.Response[memoryv1.ViewSemanticResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.ViewSemantic(ctx, scope, req.Msg.GetEpisodicMemoryId(), int(req.Msg.GetStage()))
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.ViewSemanticResponse{
+		Text:         result.Text,
+		Stage:        int32(result.Stage),
+		ReachedStage: int32(result.ReachedStage),
+	}), nil
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -149,11 +165,14 @@ func domainError(err error) error {
 	switch {
 	case errors.Is(err, memory.ErrEncodeInputRequired),
 		errors.Is(err, memory.ErrLaunchInvalidMemories),
-		errors.Is(err, memory.ErrRecallInputRequired):
+		errors.Is(err, memory.ErrRecallInputRequired),
+		errors.Is(err, memory.ErrViewSemanticInputRequired):
 		return connect.NewError(connect.CodeInvalidArgument, err)
-	case errors.Is(err, memory.ErrRecallMemoryNotFound):
+	case errors.Is(err, memory.ErrRecallMemoryNotFound),
+		errors.Is(err, memory.ErrViewSemanticMemoryNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, memory.ErrRecallMemoryUnavailable):
+	case errors.Is(err, memory.ErrRecallMemoryUnavailable),
+		errors.Is(err, memory.ErrViewSemanticStageNotRisen):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, memory.ErrInsufficientTwinkle):
 		return connect.NewError(connect.CodeResourceExhausted, err)
