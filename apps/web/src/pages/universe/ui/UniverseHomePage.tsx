@@ -8,10 +8,11 @@ import {
 } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
-import { universeNavigationMachine } from '@cosimosi/universe'
+import { universeNavigationMachine, useRecallTargetStore } from '@cosimosi/universe'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
+import { RecallFlowSheet } from '../../../widgets/recall-flow/index.ts'
 import { DetailPanel } from '../../../widgets/star-detail/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
 import { UniverseTimeOverlay } from '../../../widgets/universe-time/index.ts'
@@ -37,14 +38,15 @@ export function UniverseHomePage() {
   // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
   const navigationActorRef = useActorRef(universeNavigationMachine)
 
-  // The panel hands off recall + origin-diary as intents; the flows that consume them
-  // (recall-flow-ui / diary-reader-page) are their own units, so the page records the request
-  // for that consumer to read and does not recall/navigate here itself (A5/A6).
-  const recallTargetRef = useRef<string | null>(null)
+  // 회고하기 opens the recall flow via the shared recall-target store (the flow widget subscribes).
+  // 원본 일기 보기 is still a seam — the diary reader is its own unit — so the page records that
+  // request for its consumer and does not navigate here itself (A6).
+  const requestRecallTarget = useRecallTargetStore((state) => state.request)
   const openDiaryTargetRef = useRef<string | null>(null)
-  const handleRecallRequested = useCallback((episodicMemoryId: string) => {
-    recallTargetRef.current = episodicMemoryId
-  }, [])
+  const handleRecallRequested = useCallback(
+    (episodicMemoryId: string) => requestRecallTarget(episodicMemoryId),
+    [requestRecallTarget],
+  )
   const handleOpenDiary = useCallback((episodicMemoryId: string) => {
     openDiaryTargetRef.current = episodicMemoryId
   }, [])
@@ -88,6 +90,8 @@ export function UniverseHomePage() {
         onOpenDiary={handleOpenDiary}
         onGistSelected={handleGistSelected}
       />
+      {/* The recall (회고하기) flow — opens over the canvas when the panel requests a recall. */}
+      <RecallFlowSheet />
     </main>
   )
 }

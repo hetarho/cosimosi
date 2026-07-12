@@ -22,6 +22,8 @@ export type {
   NeuronDto,
   ProposedMemory,
   ProposedNeuron,
+  RecallRequest,
+  RecallResponse,
   ReviseSplitRequest,
   SplitDiaryRequest,
   SplitDiaryResponse,

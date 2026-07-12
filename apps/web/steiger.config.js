@@ -70,4 +70,14 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The recall-flow vertical (plan 36): one feature slice composed by one flow widget, opened by
+    // the star-detail panel — the same one-action grain as writing-flow. A single reference is the
+    // FSD grain here, not a slice to merge away. Scoped so a genuinely insignificant future slice
+    // still gets flagged.
+    files: ['./src/features/recall-star/**', './src/widgets/recall-flow/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
 ])

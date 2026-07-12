@@ -38,6 +38,20 @@ export {
   type SelectionStores,
 } from './star-detail.machine.ts'
 export {
+  recallFlowMachine,
+  recallOutcome,
+  type RecallFlowPhase,
+  type RecallFlowEvent,
+  type RecallOutcome,
+} from './recall-flow.machine.ts'
+export {
+  requestRecall,
+  applyRecallResult,
+  recallAdvanceAnnouncement,
+  type RecallInput,
+} from './recall-star.ts'
+export { useRecallTargetStore, type RecallTargetState } from './recall-target-store.ts'
+export {
   draftsFromResponse,
   renameMemory,
   setMemoryMood,

@@ -202,6 +202,32 @@ rides outside it:
 web and mobile import this machine + the resolver verbatim from `packages/universe`
 and fork only the panel host (a web side-sheet, a mobile bottom sheet, §6/§3.5).
 
+### 6.3 `recallFlowMachine` (the recall flow)
+
+`idle → confirmingSync → rewriting → reconsolidating → result`, context empty —
+the summon-and-rewrite flow the star-detail panel opens. Every payload rides
+outside the machine (A10):
+
+- the **recalled memory id** lives in the shared `useRecallTargetStore` — the
+  panel's 회고하기 records it there, the flow widget subscribes and sends `OPEN`
+  when it appears; the **rewrite text + result** live in the per-app recall-draft
+  store, never in context;
+- `OPEN` carries `needsSync` (clock-behind-today, computed by the widget) as the
+  guard input: it routes to `confirmingSync` only when behind, else straight to
+  `rewriting` ([R1a]). `REJECT` from the consent leaves `idle` with the clock
+  unmoved (the recall's sync fires only server-side on the confirmed call);
+- `reconsolidating` is the loading phase over the **single synchronous `Recall`**
+  (sync + compare + recall commit atomically server-side, §2.7/§2.8). `DONE` →
+  `result`, `ERROR` → `rewriting` (retriable, the draft store keeps the rewrite);
+- the FE never decides the branch — `recallOutcome(reconsolidated)` reflects the
+  server flag, and the result applies only the read-model-held anchors
+  (`applyRecallResult`: seed + recall_count + last_recalled) so the star reshapes;
+  the committed sync interval plays through the same `AdvanceAnnouncement` seam a
+  launch uses.
+
+web and mobile import the machine + the recall helpers verbatim from
+`packages/universe`; only the sheet/input hosts fork (§6/§3.5).
+
 ## 7. Tests
 
 Every catalog machine has:

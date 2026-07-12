@@ -194,5 +194,13 @@
   "star_provenance_source_system": "System",
   "star_provenance_source_user": "You",
   "star_provenance_loading": "Loading…",
-  "star_provenance_empty": "No history yet."
+  "star_provenance_empty": "No history yet.",
+  "recall_flow_title": "Recall",
+  "recall_rewrite_prompt": "Write it again as you remember it now.",
+  "recall_rewrite_label": "Rewrite",
+  "recall_rewrite_placeholder": "As you remember it…",
+  "recall_confirm": "Recall it",
+  "recall_reconsolidating": "Recalling…",
+  "recall_result_reconsolidated": "It is kept this way now.",
+  "recall_result_reinforced": "Clearer again — unchanged."
 }

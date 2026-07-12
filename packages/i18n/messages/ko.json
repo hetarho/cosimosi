@@ -194,5 +194,13 @@
   "star_provenance_source_system": "시스템",
   "star_provenance_source_user": "사용자",
   "star_provenance_loading": "불러오는 중…",
-  "star_provenance_empty": "아직 변천의 기록이 없어요."
+  "star_provenance_empty": "아직 변천의 기록이 없어요.",
+  "recall_flow_title": "회고",
+  "recall_rewrite_prompt": "그날을 지금 기억나는 대로 다시 적어 보세요.",
+  "recall_rewrite_label": "다시 적기",
+  "recall_rewrite_placeholder": "기억나는 대로…",
+  "recall_confirm": "떠올리기",
+  "recall_reconsolidating": "떠올리는 중…",
+  "recall_result_reconsolidated": "이렇게 다시 기억으로 남았어요.",
+  "recall_result_reinforced": "다시 또렷해졌어요. 그대로 남아 있어요."
 }
