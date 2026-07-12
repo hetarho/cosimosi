@@ -1,30 +1,46 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { TrackballControls } from 'three/addons/controls/TrackballControls.js'
 
 import { canAttachDomControls } from './dom-controls.ts'
 
-// Shared R3F layer: the demo orbit camera — drag to rotate, wheel/pinch to zoom, with
-// inertial damping. A minimal inspection rig, not the product's navigation camera. Attaches
-// to the canvas DOM element; on a host without one it stays inert rather than throwing.
-// Damping needs update() every frame, so it runs in useFrame at default priority — before
-// PostFX's priority-1 render.
+// Shared R3F layer: the demo inspection camera — drag to rotate, wheel/pinch to zoom, with
+// inertial damping. TrackballControls (not OrbitControls) so rotation NEVER blocks: it holds no
+// fixed up-vector, so you can tumble past the poles and keep spinning infinitely in any direction
+// (OrbitControls hard-clamps the polar angle to [0, π] and sticks at top/bottom). A minimal rig,
+// not the product's navigation camera. Attaches to the canvas DOM element; on a host without one it
+// stays inert rather than throwing. Damping needs update() every frame, so it runs in useFrame at
+// default priority — before PostFX's priority-1 render.
 export function CameraControls() {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
-  const controlsRef = useRef<OrbitControls | null>(null)
+  const controlsRef = useRef<TrackballControls | null>(null)
 
   useEffect(() => {
     const el = gl.domElement
     if (!canAttachDomControls(el)) return
-    const controls = new OrbitControls(camera, el)
-    controls.enableDamping = true
-    controls.enablePan = false
+    const controls = new TrackballControls(camera, el)
+    controls.noPan = true
+    // Inertial damping (staticMoving off): the throw keeps gliding, never latching to a stop.
+    controls.staticMoving = false
+    controls.dynamicDampingFactor = 0.15
+    controls.rotateSpeed = 1.8
+    controls.zoomSpeed = 1.2
     controls.minDistance = 20
     controls.maxDistance = 220
     controlsRef.current = controls
+
+    // TrackballControls maps pointer motion through the element's on-screen size, so it must be told
+    // when the canvas resizes (the responsive /test box) or the rotation math drifts.
+    let observer: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => controls.handleResize())
+      observer.observe(el)
+    }
+
     return () => {
       controlsRef.current = null
+      observer?.disconnect()
       controls.dispose()
     }
   }, [camera, gl])
