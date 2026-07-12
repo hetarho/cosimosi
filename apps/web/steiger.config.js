@@ -54,4 +54,20 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The star-detail vertical (plan 35): three single-surface read features composed by one panel
+    // widget, mounted by the universe page — the same one-action grain as writing-flow. A feature
+    // is one user surface (§3.1), not a slice to merge away; later references arrive as the panel's
+    // hand-offs light up (the recall flow it opens, the gist view a gist selection routes to).
+    // Scoped so a genuinely insignificant future slice still gets flagged.
+    files: [
+      './src/features/star-meta/**',
+      './src/features/current-memory-text/**',
+      './src/features/star-provenance/**',
+      './src/widgets/star-detail/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
 ])

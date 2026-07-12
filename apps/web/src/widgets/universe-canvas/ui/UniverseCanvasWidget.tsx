@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
+import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
 import {
@@ -42,6 +43,8 @@ import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
 const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
 
+type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
+
 // The universe scene block: mounts the @cosimosi/3d-renderer canvas host + skin/post
 // pipeline unchanged (no renderer lifecycle, no skin system, no post pipeline of its own)
 // and composes the projected graph inside it. All hooks that need app context run OUT
@@ -49,7 +52,7 @@ const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
 // via props only. Per-frame flow: the worker bridge swaps the coordinate buffer ref, the
 // package layers read it in useFrame, and the rig polls the machine via getSnapshot() —
 // no 60 fps React state and no per-frame store reads.
-function UniverseCanvasHost() {
+function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: NavigationActorRef }) {
   const { skin } = useSkin()
   const backgroundNode = useMemo(() => resolveBackgroundNode(skin.background), [skin.background])
   const { universe } = useUniverse()
@@ -62,7 +65,11 @@ function UniverseCanvasHost() {
     if (graph) bridge.start(graph)
   }, [bridge, graph])
 
-  const actorRef = useActorRef(universeNavigationMachine)
+  // The selection/navigation actor is lifted to the composing page so a sibling widget (the
+  // star-detail panel) subscribes to the SAME selection — the canvas machine stays the single
+  // selection owner (§3.2). When mounted without a lifted ref (test pages), it owns its own.
+  const ownActorRef = useActorRef(universeNavigationMachine)
+  const actorRef = navigationActorRef ?? ownActorRef
   const pose = useMemo(
     () => ({
       mode: 'idle' as UniverseNavigationMode,
@@ -198,10 +205,14 @@ function UniverseCanvasHost() {
   )
 }
 
-export function UniverseCanvasWidget() {
+export function UniverseCanvasWidget({
+  navigationActorRef,
+}: {
+  navigationActorRef?: NavigationActorRef
+} = {}) {
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-      <UniverseCanvasHost />
+      <UniverseCanvasHost navigationActorRef={navigationActorRef} />
     </SkinProvider>
   )
 }

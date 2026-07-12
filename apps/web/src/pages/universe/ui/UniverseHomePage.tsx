@@ -1,3 +1,5 @@
+import { useCallback, useRef } from 'react'
+
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
 
 import {
@@ -6,8 +8,11 @@ import {
 } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
+import { universeNavigationMachine } from '@cosimosi/universe'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
+import { useActorRef } from '../../../shared/model/index.ts'
+import { DetailPanel } from '../../../widgets/star-detail/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
 import { UniverseTimeOverlay } from '../../../widgets/universe-time/index.ts'
 import { WritingFlowSheet } from '../../../widgets/writing-flow/index.ts'
@@ -28,6 +33,28 @@ function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFal
 // over it (mirror of the mobile screen's HUD, §3.5). The widget owns the whole 3D block (renderer
 // mount, graph read, sim, camera rig); the page only lays out the HUD.
 export function UniverseHomePage() {
+  // The navigation/selection actor is owned HERE (the app layer) so the canvas and the
+  // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
+  const navigationActorRef = useActorRef(universeNavigationMachine)
+
+  // The panel hands off recall + origin-diary as intents; the flows that consume them
+  // (recall-flow-ui / diary-reader-page) are their own units, so the page records the request
+  // for that consumer to read and does not recall/navigate here itself (A5/A6).
+  const recallTargetRef = useRef<string | null>(null)
+  const openDiaryTargetRef = useRef<string | null>(null)
+  const handleRecallRequested = useCallback((episodicMemoryId: string) => {
+    recallTargetRef.current = episodicMemoryId
+  }, [])
+  const handleOpenDiary = useCallback((episodicMemoryId: string) => {
+    openDiaryTargetRef.current = episodicMemoryId
+  }, [])
+  // Gist bodies route to the paid gist-view surface; none render until the semanticization layer
+  // adds them, so this seam records the target for that surface to consume (A7).
+  const gistTargetRef = useRef<string | null>(null)
+  const handleGistSelected = useCallback((episodicMemoryId: string) => {
+    gistTargetRef.current = episodicMemoryId
+  }, [])
+
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-text">
       <div className="absolute inset-0">
@@ -38,7 +65,7 @@ export function UniverseHomePage() {
         <QueryErrorResetBoundary>
           {({ reset }) => (
             <ObservedErrorBoundary fallback={UniverseCanvasFallback} onReset={reset}>
-              <UniverseCanvasWidget />
+              <UniverseCanvasWidget navigationActorRef={navigationActorRef} />
             </ObservedErrorBoundary>
           )}
         </QueryErrorResetBoundary>
@@ -54,6 +81,13 @@ export function UniverseHomePage() {
           <WritingFlowSheet />
         </div>
       </div>
+      {/* Read-only detail panel over the running canvas — opens on selection, remounts nothing (A1). */}
+      <DetailPanel
+        navigationActorRef={navigationActorRef}
+        onRecallRequested={handleRecallRequested}
+        onOpenDiary={handleOpenDiary}
+        onGistSelected={handleGistSelected}
+      />
     </main>
   )
 }
