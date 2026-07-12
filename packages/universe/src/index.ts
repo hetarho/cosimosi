@@ -30,6 +30,14 @@ export {
   type WritingFlowEvent,
 } from './writing-flow.machine.ts'
 export {
+  starDetailMachine,
+  resolveSelection,
+  type StarDetailPhase,
+  type StarDetailEvent,
+  type ResolvedSelection,
+  type SelectionStores,
+} from './star-detail.machine.ts'
+export {
   draftsFromResponse,
   renameMemory,
   setMemoryMood,
