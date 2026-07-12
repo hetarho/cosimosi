@@ -99,5 +99,14 @@ export function prismaticBurstSkyNode({ gradient, time }: SkyNodeArgs) {
     .mul(r.mul(r.mul(6).sub(15)).add(10))
   let s = pow(q.mul(0.5), 1.5)
   s = mix(s, float(1).sub(pow(float(1).sub(s), 2)), 0.2)
-  return clamp(col.mul(clamp(s, float(0), float(1))).mul(INTENSITY), float(0), float(1))
+  const lit = col.mul(clamp(s, float(0), float(1))).mul(INTENSITY)
+
+  // Ambient fill so the far side isn't a dead black void: a faint emotion wash that swells toward the
+  // back (front-angle r → 1), where the outward-streaming rays never reach. Sampled from the ramp so
+  // it still carries the palette, with a whisper of the step-jitter noise so it isn't a flat plate.
+  // Kept low and zero near the front core, so the burst stays the hero.
+  const ambient = sampleRamp(gradient, fract(r.mul(0.6).sub(t.mul(0.02))))
+    .mul(smoothstep(float(0.18), float(1), r))
+    .mul(float(0.16).add(n.mul(0.06)))
+  return clamp(lit.add(ambient), float(0), float(1))
 }

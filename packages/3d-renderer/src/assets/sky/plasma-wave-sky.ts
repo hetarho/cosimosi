@@ -1,62 +1,79 @@
-import { clamp, cos, dot, float, length, max, min, sin, sqrt, vec2, vec3 } from 'three/tsl'
+import {
+  abs,
+  atan,
+  clamp,
+  cos,
+  cross,
+  dot,
+  exp,
+  float,
+  fract,
+  normalize,
+  sin,
+  vec3,
+} from 'three/tsl'
 
-import { floatAcc, sampleRamp, skyDir, skySeconds, type SkyNodeArgs } from './sky-node.ts'
+import { sampleRamp, skyDir, skySeconds, type SkyNodeArgs } from './sky-node.ts'
 
-// PlasmaWave — react-bits' PlasmaWave (a short SDF raymarch through two sine/cosine-wobbling neon
-// tubes) mapped SEAMLESSLY onto the sphere: each fragment marches along its OWN 3D surface direction
-// (`skyDir`) instead of a projected screen ray, so the plasma is a genuine 3D body wrapping the
-// scene with no seam and no pole. The two tube colors are drawn from the emotion ramp — richest at
-// two or three emotions.
+// PlasmaWave — an ADAPTED sky: react-bits' PlasmaWave is a screen-space SDF raymarch of two neon
+// tubes running along one axis, which on a sphere sat all on one side and only ever showed its two
+// fixed tube colours. Reworked into a genuinely volumetric neon tangle that wraps the whole scene:
+// several tubes, each a small circle about its OWN tumbling 3D axis, sweep and wobble across the
+// sphere so they weave here and there and cross one another (the bright plasma knots), and each
+// tube is coloured CONTINUOUSLY from the emotion ramp along its length — so the whole palette rides
+// the sky, richer the more emotions are present. Seamless (a pure function of the surface direction:
+// the azimuth enters only through sin/cos and fract, the latitude through a dot).
 
 const PI = Math.PI
-const STEPS = 16
-const LT = 0.3
+const TUBES = 5
 
 export function plasmaWaveSkyNode({ gradient, time }: SkyNodeArgs) {
-  const t = skySeconds(time, 1).mul(PI)
-  const t1 = t.mul(0.7)
-  const t2 = t.mul(0.9)
-  const tS1 = t.mul(0.05)
-  const tS2 = t.mul(0.05)
+  const u = skyDir()
+  const t = skySeconds(time, 1)
 
-  const o = vec3(0, 0, -7)
-  const u = skyDir() // per-fragment 3D ray — no screen projection, no seam
+  // faint emotion base so empty sky keeps depth
+  let col = sampleRamp(gradient, float(0.5)).mul(0.04)
 
-  let d = floatAcc()
-  let s = floatAcc(1)
-  let kx = floatAcc()
-  let ky = floatAcc()
-  for (let i = 0; i < STEPS; i++) {
-    const p = o.add(u.mul(d))
-    const px = p.x.sub(15)
-    const wob1 = float(1).add(sin(t1.add(px.mul(0.8))).mul(0.1))
-    const wob2 = float(0.5).add(cos(t2.add(px.mul(1.1))).mul(0.1))
-    const px2 = px.add(PI / 2)
-    const sinOff = sin(vec2(px, px2).add(tS1)).mul(wob1)
-    const cosOff = cos(vec2(px, px2).add(tS2)).mul(wob2)
-    const yz = vec2(p.y, p.z)
-    const pxLt = px.add(LT)
-    kx = max(pxLt, length(yz.sub(sinOff)).sub(LT))
-    ky = max(pxLt, length(yz.sub(cosOff)).sub(LT))
-    s = min(s, min(kx, ky))
-    d = d.add(s.mul(0.7))
+  for (let i = 0; i < TUBES; i++) {
+    // A tumbling 3D axis — all three components animate at different rates, so the tube's plane keeps
+    // reorienting and the tangle reads as volumetric rather than pinned to one side.
+    const a = t.mul(0.12 + i * 0.017)
+    const axis = normalize(
+      vec3(
+        sin(a.add(i * 1.7)),
+        cos(a.mul(0.8).add(i * 2.3)).mul(0.9),
+        sin(a.mul(1.3).add(i * 0.9)),
+      ),
+    )
+    // A tangent frame about the axis. The tiny offset before normalize guards the measure-zero instant
+    // the axis aligns with `ref` (cross → 0); where that happens the tube's brightness is ~0 anyway.
+    const ref = vec3(0.31, 0.83, 0.46)
+    const b1 = normalize(cross(axis, ref).add(vec3(1e-4, 0, 0)))
+    const b2 = cross(axis, b1)
+
+    // The tube is the small circle where the "latitude" about the axis matches a drifting target, so
+    // the ring sweeps across the sphere over time (never quite to the poles, where it would vanish).
+    const lat = dot(u, axis) // −1..1
+    const target = sin(t.mul(0.5).add(i * 1.1)).mul(0.55)
+    // Azimuth around the axis (0..2π along the ring): wobbles the ring into an organic coil and drives
+    // the continuous colour. It enters only via sin/cos and fract, so its ±π branch cut leaves no seam.
+    const az = atan(dot(u, b2), dot(u, b1))
+    const wob = sin(az.mul(3).add(t.mul(1.1).add(i * 2.0)))
+      .mul(0.06)
+      .add(sin(az.mul(2).sub(t.mul(0.7))).mul(0.04))
+    const dist = abs(lat.sub(target).add(wob))
+    // A thin bright neon core plus a soft halo; where tubes cross, the additive sum knots up brighter.
+    const glow = exp(dist.mul(-42)).add(exp(dist.mul(-7)).mul(0.4))
+    // colour continuously from the palette along the tube (not two fixed hues)
+    const hue = fract(
+      az
+        .mul(1 / (2 * PI))
+        .add(0.5)
+        .add(i * 0.13)
+        .add(t.mul(0.02)),
+    )
+    col = col.add(sampleRamp(gradient, hue).mul(glow).mul(1.3))
   }
 
-  // The source breaks the march once it hits a surface, keeping `d` monotonic ≥ 0; we unroll a
-  // fixed step count instead, so `s` (and thus `d`) can dip negative — guard before the sqrt
-  // (WGSL `sqrt(negative)` is NaN, which would black out the tubes).
-  const sqrtD = sqrt(max(d, float(0)))
-  const scalar = cos(d.mul(PI * 2)).sub(s.mul(sqrtD))
-  let raw = max(vec3(scalar.sub(kx), scalar.sub(ky), scalar), vec3(0))
-  raw = vec3(raw.x, raw.y.add(0.1), raw.z.add(0.1))
-  raw = raw.mul(0.4).add(vec3(raw.z, raw.x, raw.y).mul(0.6)).add(raw.mul(raw))
-  const lum = dot(raw, vec3(0.299, 0.587, 0.114))
-
-  const w1 = max(float(0), float(1).sub(kx.mul(2)))
-  const w2 = max(float(0), float(1).sub(ky.mul(2)))
-  const wt = w1.add(w2).add(0.001)
-  const c1 = sampleRamp(gradient, float(0.25))
-  const c2 = sampleRamp(gradient, float(0.8))
-  const c = c1.mul(w1).add(c2.mul(w2)).div(wt).mul(lum).mul(3.5)
-  return clamp(c, float(0), float(1))
+  return clamp(col, float(0), vec3(1))
 }

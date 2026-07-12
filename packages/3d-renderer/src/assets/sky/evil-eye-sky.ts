@@ -1,6 +1,13 @@
 import { atan, clamp, float, fract, length, max, pow, vec2 } from 'three/tsl'
 
-import { sampleRamp, skyStereo, skySeconds, valueNoise, type SkyNodeArgs } from './sky-node.ts'
+import {
+  sampleRamp,
+  skyStereo,
+  skySeconds,
+  spin,
+  valueNoise,
+  type SkyNodeArgs,
+} from './sky-node.ts'
 
 // EvilEye — faithful to react-bits' EvilEye: a polar-mapped flaming ocular form — two flame rings,
 // an inner-eye body, an elliptical pupil, and an outer glow — churned by noise sampled in polar
@@ -16,31 +23,22 @@ const GLOW_INTENSITY = 0.35
 const INTENSITY = 1.5
 
 export function evilEyeSkyNode({ gradient, time }: SkyNodeArgs) {
-  const p = skyStereo(0.8) // faces the viewer; source's `uScale` 0.8 as the zoom
+  // Smaller zoom pulls the whole eye into the central view: the source's uScale 0.8 spread the eye
+  // edge to ~77° off-centre (it overran the screen), so it never read as an eye. 0.25 lands the eye
+  // (and its glow) inside a comfortable field of view. All features are defined via length(p)/p, so
+  // this just resizes the eye uniformly — the proportions are unchanged.
+  const p = skyStereo(0.25)
   const ft = skySeconds(time, 1)
 
   const polarRadius = length(p).mul(2)
-  const polarAngle = atan(p.x, p.y).mul((2 / 6.28) * 0.3)
-  const polarUv = vec2(polarRadius, polarAngle)
-
-  const noiseA = valueNoise(
-    polarUv
-      .mul(vec2(0.2, 7))
-      .mul(NOISE_SCALE)
-      .add(vec2(ft.mul(-0.1), 0)),
-  )
-  const noiseB = valueNoise(
-    polarUv
-      .mul(vec2(0.3, 4))
-      .mul(NOISE_SCALE)
-      .add(vec2(ft.mul(-0.2), 0)),
-  )
-  const noiseC = valueNoise(
-    polarUv
-      .mul(vec2(0.1, 5))
-      .mul(NOISE_SCALE)
-      .add(vec2(ft.mul(-0.1), 0)),
-  )
+  // Seamless flame churn. The source sampled noise in polar (radius, angle) space, but a raw angle
+  // from atan carries a branch cut → a hard radial seam where the flame "doesn't line up". Instead
+  // swirl the CONTINUOUS stereo coordinate by a radius-dependent angle: value-noise combs into radial
+  // flame tongues (the polar look) while staying a continuous function of direction, so no seam.
+  const swirl = spin(p, polarRadius.mul(2.2).sub(ft.mul(0.3)))
+  const noiseA = valueNoise(swirl.mul(3.0 * NOISE_SCALE).add(vec2(ft.mul(-0.1), 0)))
+  const noiseB = valueNoise(swirl.mul(4.5 * NOISE_SCALE).add(vec2(0, ft.mul(-0.2))))
+  const noiseC = valueNoise(swirl.mul(2.2 * NOISE_SCALE).add(vec2(ft.mul(-0.1), 1.7)))
 
   const mask = float(1).sub(length(p)) // distanceMask
 

@@ -1,4 +1,4 @@
-import { clamp, cos, float, fract, sin, vec3 } from 'three/tsl'
+import { clamp, cos, float, fract, length, sin, vec3 } from 'three/tsl'
 
 import { floatAcc, sampleRamp, skyStereo, skySeconds, type SkyNodeArgs } from './sky-node.ts'
 
@@ -12,7 +12,13 @@ import { floatAcc, sampleRamp, skyStereo, skySeconds, type SkyNodeArgs } from '.
 const SPEED = 0.6
 
 export function iridescenceSkyNode({ gradient, time }: SkyNodeArgs) {
-  const p = skyStereo()
+  // Bounded stereographic. The raw chart's projection pole (behind the viewer) runs to infinity, and
+  // the feedback integrator's frequency diverges there into a hard pinch — the point where the whole
+  // pattern "converges". Compress by /(|raw|+1): this folds the entire sphere (pole included) into the
+  // open unit disk, leaving the front effectively 1:1 (raw is tiny there, so the look is unchanged)
+  // while the far hemisphere saturates to a smooth swirl instead of a singularity.
+  const raw = skyStereo()
+  const p = raw.div(length(raw).add(1))
   const t = skySeconds(time, SPEED)
 
   // the react-bits feedback loop, unrolled: each pass bends the next through the last

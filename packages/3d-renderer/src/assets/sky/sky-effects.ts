@@ -92,11 +92,11 @@ export const SKY_EFFECTS = [
   {
     key: 'plasma-wave',
     label: 'Plasma Wave',
-    blurb: 'Two neon tubes coiling — richest when two or three emotions share the sky.',
-    fidelity: 'faithful',
+    blurb: 'Neon tubes weaving and crossing around the sky — each ring rides the whole palette.',
+    fidelity: 'adapted',
     build: plasmaWaveSkyNode,
-    emotionCounts: [2, 3, 5],
-    defaultCount: 3,
+    emotionCounts: [3, 5, 7],
+    defaultCount: 5,
   },
   {
     key: 'ferrofluid',

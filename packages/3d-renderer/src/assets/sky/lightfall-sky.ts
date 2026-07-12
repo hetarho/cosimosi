@@ -1,4 +1,4 @@
-import { clamp, cos, exp, float, fract, vec3 } from 'three/tsl'
+import { clamp, cos, exp, float, fract, smoothstep, vec3 } from 'three/tsl'
 
 import { sampleRamp, skyDir, skyLongitude, skySeconds, type SkyNodeArgs } from './sky-node.ts'
 
@@ -25,6 +25,12 @@ export function lightfallSkyNode({ gradient, time }: SkyNodeArgs) {
   // a faint emotion glow so empty sky keeps depth
   let col = sampleRamp(gradient, float(0.5)).mul(0.05)
 
+  // Taper the meridian streaks toward the TOP pole (+Y). A streak is a full pole-to-pole line, and at
+  // a pole every meridian crowds into one point: at the bottom that reads as light pooling (natural,
+  // kept), but at the top it was a harsh wheel-hub of converging lines. Fade the lines out up top so
+  // they dissolve rather than meet at a hard point.
+  const topTaper = smoothstep(float(0.95), float(0.35), dir.y)
+
   for (let i = 0; i < STREAKS; i++) {
     // periodic angular distance to the streak's meridian → a seamless thin column
     const column = exp(
@@ -40,8 +46,13 @@ export function lightfallSkyNode({ gradient, time }: SkyNodeArgs) {
         .add(i * 0.37),
     )
     const glow = fall.mul(fall).mul(1.6).add(0.25)
-    col = col.add(sampleRamp(gradient, i / (STREAKS - 1)).mul(column.mul(glow)))
+    col = col.add(sampleRamp(gradient, i / (STREAKS - 1)).mul(column.mul(glow).mul(topTaper)))
   }
+
+  // The luminous source the light falls FROM: a soft halo capping the top pole where the streaks
+  // dissolved, so the top reads as a glowing origin instead of a hard line-hub.
+  const topGlow = smoothstep(float(0.55), float(1), dir.y)
+  col = col.add(sampleRamp(gradient, float(0.5)).mul(topGlow.mul(topGlow).mul(0.3)))
 
   return clamp(col, float(0), vec3(1))
 }
