@@ -1,0 +1,174 @@
+{
+  "tolerance": 1e-9,
+  "values": {
+    "gist_units_per_stage": 10,
+    "neocortex_z_min": 15,
+    "neocortex_z_max": 25,
+    "max_stage": 4
+  },
+  "cases": [
+    {
+      "function": "semanticize",
+      "inputs": {
+        "current_stage": 0,
+        "units_elapsed": 0
+      },
+      "expected": 0
+    },
+    {
+      "function": "semanticize",
+      "inputs": {
+        "current_stage": 0,
+        "units_elapsed": 1
+      },
+      "expected": 1
+    },
+    {
+      "function": "semanticize",
+      "inputs": {
+        "current_stage": 1,
+        "units_elapsed": 2
+      },
+      "expected": 3
+    },
+    {
+      "function": "semanticize",
+      "inputs": {
+        "current_stage": 2,
+        "units_elapsed": 1
+      },
+      "expected": 3
+    },
+    {
+      "function": "semanticize",
+      "inputs": {
+        "current_stage": 3,
+        "units_elapsed": 10
+      },
+      "expected": 4
+    },
+    {
+      "function": "semanticize",
+      "inputs": {
+        "current_stage": 4,
+        "units_elapsed": 3
+      },
+      "expected": 4
+    },
+    {
+      "function": "gist_units_elapsed",
+      "inputs": {
+        "now": "2026-01-01",
+        "timer_reset_at": "2026-01-01",
+        "arousal": 0,
+        "connection_strength": 0
+      },
+      "expected": 0
+    },
+    {
+      "function": "gist_units_elapsed",
+      "inputs": {
+        "now": "2026-01-26",
+        "timer_reset_at": "2026-01-01",
+        "arousal": 0,
+        "connection_strength": 0
+      },
+      "expected": 2
+    },
+    {
+      "function": "gist_units_elapsed",
+      "inputs": {
+        "now": "2026-01-26",
+        "timer_reset_at": "2026-01-01",
+        "arousal": 0.9,
+        "connection_strength": 0.9
+      },
+      "expected": 0
+    },
+    {
+      "function": "gist_units_elapsed",
+      "inputs": {
+        "now": "2027-01-01",
+        "timer_reset_at": "2026-01-01",
+        "arousal": 0,
+        "connection_strength": 0
+      },
+      "expected": 36
+    },
+    {
+      "function": "gist_units_elapsed",
+      "inputs": {
+        "now": "2027-01-01",
+        "timer_reset_at": "2026-01-01",
+        "arousal": 0.5,
+        "connection_strength": 0.5
+      },
+      "expected": 18
+    },
+    {
+      "function": "gist_coordinate",
+      "inputs": {
+        "hippocampal_x": 3.5,
+        "hippocampal_y": -7.25,
+        "stage": 0
+      },
+      "expected_coord": {
+        "x": 3.5,
+        "y": -7.25,
+        "z": 15
+      }
+    },
+    {
+      "function": "gist_coordinate",
+      "inputs": {
+        "hippocampal_x": 3.5,
+        "hippocampal_y": -7.25,
+        "stage": 1
+      },
+      "expected_coord": {
+        "x": 3.5,
+        "y": -7.25,
+        "z": 17.5
+      }
+    },
+    {
+      "function": "gist_coordinate",
+      "inputs": {
+        "hippocampal_x": 3.5,
+        "hippocampal_y": -7.25,
+        "stage": 2
+      },
+      "expected_coord": {
+        "x": 3.5,
+        "y": -7.25,
+        "z": 20
+      }
+    },
+    {
+      "function": "gist_coordinate",
+      "inputs": {
+        "hippocampal_x": 3.5,
+        "hippocampal_y": -7.25,
+        "stage": 3
+      },
+      "expected_coord": {
+        "x": 3.5,
+        "y": -7.25,
+        "z": 22.5
+      }
+    },
+    {
+      "function": "gist_coordinate",
+      "inputs": {
+        "hippocampal_x": 3.5,
+        "hippocampal_y": -7.25,
+        "stage": 4
+      },
+      "expected_coord": {
+        "x": 3.5,
+        "y": -7.25,
+        "z": 25
+      }
+    }
+  ]
+}

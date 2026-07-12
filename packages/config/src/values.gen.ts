@@ -78,6 +78,9 @@ export const VALUES = {
     temporalWindowDays: 3,
     temporalBonus: 0.1,
   },
+  semantic: {
+    gistUnitsPerStage: 10,
+  },
   reconsolidation: {
     recallStrengthGain: 0.15,
     neighborSlowDays: -2,

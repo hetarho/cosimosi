@@ -128,6 +128,11 @@ const (
 	SynapseTemporalBonus       = 0.1
 )
 
+// semantic
+const (
+	SemanticGistUnitsPerStage = 10
+)
+
 // reconsolidation
 const (
 	ReconsolidationRecallStrengthGain     = 0.15

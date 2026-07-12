@@ -195,6 +195,14 @@ synapse:
   temporal_window_days: 3
   temporal_bonus: 0.1
 
+semantic:
+  # [C6a] Universe-days per gist stage: the gist-timer rises one semantic_stage each time this many
+  # (modulation-adjusted) universe-days pass since semanticize_timer_reset_at. The timer REUSES the
+  # forgetting.*_slow_coefficient modulation (arousal + connection slow it) — one knob for both axes,
+  # no second modulation key. SEMANTIC_MAX_STAGE is the derived count of pregenerated gist texts (code,
+  # not a value), and the neocortex z-band is force_sim.neocortex_z_* (reused, not re-declared).
+  gist_units_per_stage: 10
+
 reconsolidation:
   # [R3][V3] Per-recall headroom fraction the EffectiveStrength recall term gains, saturating toward
   # synapse.strength_cap — a handful of recalls grows a star noticeably without ever reaching the cap.
