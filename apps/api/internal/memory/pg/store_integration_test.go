@@ -705,6 +705,7 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 		store,
 		store,
 		store,
+		store,
 		ai.NewMockEmbedder(),
 		ai.NewMockSemanticizer(),
 		memory.WorkerConfig{

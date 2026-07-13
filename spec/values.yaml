@@ -218,6 +218,23 @@ reconsolidation:
   # Fixed by the PRD (1 vs >=2) but kept a value so the boundary is not hardcoded.
   neighbor_speed_threshold: 2
 
+consolidation:
+  # [C4] Per-sleep global homeostatic scale-down (SHY) applied to every synapse's stored base
+  # strength on a clock advance. Gentle on purpose: the universe sleeps on every launch/recall,
+  # so the renormalization compounds across sleeps. Its own group — folding into synapse.* would
+  # blur the SHY-vs-LTD ownership [I9].
+  downscale_factor: 0.05
+  # [C4][I1] The positive residual floor Downscale never drops a synapse below — a weak edge dims
+  # toward silence but is never removed. Downscale also never weakens an edge already at/below it.
+  downscale_floor: 0.05
+  # [C4] Weak-edge bias exponent: how sharply the renormalization spares strong edges (keep signal,
+  # prune noise). Higher = strong edges lose even less of the per-sleep factor.
+  downscale_weak_bias: 2.0
+  # [C2] Replay-set expansion bound: how many shared-neuron hops the touched constellation grows
+  # from a stage-advanced memory. Bounds the companion re-layout so a long interval never
+  # reorganizes the whole universe.
+  replay_neighbor_hops: 1
+
 forgetting:
   # Read-time brightness fade coefficient (per universe-day) driving EffectiveBrightness down its
   # exponential toward the floor — the Ebbinghaus curve made visible [F1][V2].

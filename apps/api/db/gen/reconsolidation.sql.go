@@ -44,7 +44,8 @@ INSERT INTO memory_provenance (
     kind,
     source,
     text,
-    universe_time
+    universe_time,
+    created_at
 ) VALUES (
     $1,
     $2,
@@ -52,7 +53,8 @@ INSERT INTO memory_provenance (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    clock_timestamp()
 )
 `
 
@@ -68,7 +70,10 @@ type AppendMemoryProvenanceParams struct {
 
 // Appends one 변천사 row ([R8a][D1], A8). Append-only: there is deliberately NO UPDATE and NO DELETE
 // query on memory_provenance in this repo (retained rows are immutable; the parent memory's ON DELETE
-// CASCADE is the only removal — Epic H's user full-delete sweep). created_at is DB-assigned (now()).
+// CASCADE is the only removal — Epic H's user full-delete sweep). created_at is DB-assigned with
+// clock_timestamp() — the transaction-constant now() would tie for the multiple rows one
+// consolidation appends inside a single advance (a multi-stage gist jump), and created_at is the
+// deterministic tiebreak same-universe-day timeline readers sort by.
 func (q *Queries) AppendMemoryProvenance(ctx context.Context, arg AppendMemoryProvenanceParams) error {
 	_, err := q.db.Exec(ctx, appendMemoryProvenance,
 		arg.ID,

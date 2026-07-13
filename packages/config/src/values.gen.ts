@@ -87,6 +87,12 @@ export const VALUES = {
     neighborSpeedDays: 3,
     neighborSpeedThreshold: 2,
   },
+  consolidation: {
+    downscaleFactor: 0.05,
+    downscaleFloor: 0.05,
+    downscaleWeakBias: 2,
+    replayNeighborHops: 1,
+  },
   forgetting: {
     brightnessDecayPerDay: 0.02,
     brightnessFloor: 0.15,

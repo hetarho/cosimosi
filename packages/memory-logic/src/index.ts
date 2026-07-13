@@ -18,6 +18,7 @@ export {
   applyTemporalBonus,
   effectiveSynapseStrength,
   depress,
+  downscale,
   initialStrength,
   isSignalKind,
   potentiate,

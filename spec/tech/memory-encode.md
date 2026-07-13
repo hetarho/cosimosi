@@ -65,8 +65,29 @@ proto↔domain and call it (§2.9#7):
 
 The **`AdvanceProgression` hook** ([T4]) fires on every clock advance (launch and sync) inside the advance
 transaction with `(scope, tx, from, to)` — the tx surface is passed so a binding's writes join the advance
-atomically. Epic B binds `NoopAdvanceProgression` (forgetting is read-time; nothing to do at advance); Epics C/E
-rebind the real handler that enqueues the `semanticize`/`consolidate` work an interval crosses. No cron exists.
+atomically. The production binding is `memory.Consolidator` (`consolidate.go`, the Epic-E 우주의 잠);
+`NoopAdvanceProgression` remains the documented default for compositions without the sleep. No cron exists.
+
+**The advance write path (`Consolidator`, plan 41).** The handler upgrades the hook's `ProgressionTx` to its
+consumer-owned `ConsolidateTx` surface via a type assertion — the pg transaction store implements both
+(compile-proven in `memory/pg`), plan 30's port signature stays untouched, and like `LaunchTx`/`RecallTx` the surface
+exposes no Diary write and no delete. A nil `from` (the first-ever advance) and a held/rewound target are total
+no-ops. Over a crossed interval it, per non-deleted memory: (1) rises `semantic_stage` by the whole gist-units the
+timer crossed (`GistUnitsElapsed` → `Semanticize`; anchor = `semanticize_timer_reset_at`, else
+`created_universe_time`), appending one `semanticized/system` provenance row per crossed stage and **consuming the
+crossed units from the timer anchor** (`ConsumeGistUnits`, the model-owned inverse — residual sub-unit days carry, so
+re-running an already-consolidated interval is convergent); (2) re-enqueues `semanticize` for any risen memory whose
+ladder text is genuinely missing — the repair runs on every advance, not only on a fresh crossing, so a dead
+generation job never strands a gist; (3) persists newly crossed decay-stage texts (the plan-37 deterministic
+algorithm; every missing slot up to the target fills, existing entries never overwritten). Then, batched: the risen
+stages + consumed anchors (both GREATEST-guarded in SQL), the `Downscale` renormalization over the synapses **last
+activated before `to`** (an edge linked inside the advancing transaction never slept; no-change rows skipped on the
+float32 grid), the replay marker (`last_activated_universe_time` refreshed for every synapse with both endpoints in
+the touched constellation — stage-advanced memories + `consolidation.replay_neighbor_hops` shared-neuron neighbors),
+and one id-only `consolidate` job (the worker re-reads the authoritative neuron texts at execution and re-embeds).
+Downscale runs before the replay touch so the slept-edge filter sees pre-replay recency. Queries live in
+`db/queries/memory/consolidate.sql`; the interval read reuses `ListUniverseEpisodicMemories`, so consolidation and
+the universe read share one non-deleted per-user memory shape.
 
 Ports consumed (consumer-owned, `ports.go`): `Extractor`, `Embedder`, `NeuronCandidateRepo`, `LaunchRepo`/`LaunchTx`,
 `UniverseReader`, `JobQueue` (via `LaunchTx.EnqueueJob`), `Linker`, `UniverseClockStore` (embedded in `LaunchTx`; the
@@ -94,7 +115,7 @@ Generated into `internal/platform/values` and `packages/config/src/values.gen.ts
 ## 5. Composition root
 
 `cmd/api` wires DB pool → `memorypg.NewStore` → `memory.NewService` (with `internal/ai`'s env-selected real/keyless
-adapters) → `memoryrpc.NewServer` → `platform.WithRPCService` (the generic Connect-service mount that reuses the
-platform interceptor chain). Without `DATABASE_URL` the API boots and only skips the memory service. The keyless
-`MockExtractor` emits `values.EncodeMinMemories` memories, each with a semantic neuron, so the dev flow passes the
-encode invariants.
+adapters and `Progression: memory.NewConsolidator(nil)`, the advance-time sleep) → `memoryrpc.NewServer` →
+`platform.WithRPCService` (the generic Connect-service mount that reuses the platform interceptor chain). Without
+`DATABASE_URL` the API boots and only skips the memory service. The keyless `MockExtractor` emits
+`values.EncodeMinMemories` memories, each with a semantic neuron, so the dev flow passes the encode invariants.

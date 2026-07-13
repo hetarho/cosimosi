@@ -19,6 +19,9 @@ func TestSynapseGeneratedValuesMatchGoldenFixture(t *testing.T) {
 	assertAlmostEqual(t, "initial_shared_neuron", values.SynapseInitialSharedNeuron, fixture.Values.InitialSharedNeuron, fixture.Tolerance)
 	assertAlmostEqual(t, "initial_temporal", values.SynapseInitialTemporal, fixture.Values.InitialTemporal, fixture.Tolerance)
 	assertAlmostEqual(t, "strength_decay_per_day", values.SynapseStrengthDecayPerDay, fixture.Values.StrengthDecayPerDay, fixture.Tolerance)
+	assertAlmostEqual(t, "consolidation.downscale_factor", values.ConsolidationDownscaleFactor, fixture.Values.Consolidation.DownscaleFactor, fixture.Tolerance)
+	assertAlmostEqual(t, "consolidation.downscale_floor", values.ConsolidationDownscaleFloor, fixture.Values.Consolidation.DownscaleFloor, fixture.Tolerance)
+	assertAlmostEqual(t, "consolidation.downscale_weak_bias", values.ConsolidationDownscaleWeakBias, fixture.Values.Consolidation.DownscaleWeakBias, fixture.Tolerance)
 }
 
 func TestPotentiateInvariants(t *testing.T) {
@@ -108,6 +111,49 @@ func TestDepressInvariants(t *testing.T) {
 	}
 }
 
+func TestDownscaleInvariants(t *testing.T) {
+	t.Parallel()
+
+	factor := values.ConsolidationDownscaleFactor
+
+	// Cap-strength edges fully preserved; weaker edges lose a larger fraction of
+	// themselves — the SHY keep-signal/prune-noise bias (A6).
+	if got := Downscale(values.SynapseStrengthCap, factor); got != values.SynapseStrengthCap {
+		t.Fatalf("Downscale(cap, factor) = %v, want cap", got)
+	}
+	strongLoss := 1 - Downscale(0.8, factor)/0.8
+	weakLoss := 1 - Downscale(0.2, factor)/0.2
+	if weakLoss <= strongLoss {
+		t.Fatalf("weak-edge loss fraction %v, want > strong-edge loss %v", weakLoss, strongLoss)
+	}
+
+	// Positive residual floor: repeated sleeps converge to the floor, never 0-by-removal
+	// ([I1]); an edge already at/below the floor is left as-is.
+	strength := 0.3
+	for range 500 {
+		strength = Downscale(strength, factor)
+	}
+	if strength < values.ConsolidationDownscaleFloor {
+		t.Fatalf("repeated Downscale = %v, want >= floor %v", strength, values.ConsolidationDownscaleFloor)
+	}
+	if got := Downscale(0.04, factor); got != 0.04 {
+		t.Fatalf("Downscale(below-floor, factor) = %v, want unchanged 0.04", got)
+	}
+
+	// Monotone in strength (order preserved) and always within [0, strength].
+	previous := 0.0
+	for _, value := range []float64{0, 0.1, 0.3, 0.5, 0.7, 0.9, 1} {
+		got := Downscale(value, factor)
+		if got > value {
+			t.Fatalf("Downscale(%v, %v) = %v, want <= strength", value, factor, got)
+		}
+		if got < previous {
+			t.Fatalf("Downscale(%v, %v) = %v, breaks strength ordering (previous %v)", value, factor, got, previous)
+		}
+		previous = got
+	}
+}
+
 func TestEffectiveSynapseStrengthInvariants(t *testing.T) {
 	t.Parallel()
 
@@ -169,6 +215,8 @@ func TestSynapsePlasticityGoldenFixture(t *testing.T) {
 			got = EffectiveSynapseStrength(testCase.Inputs.Base, testCase.Inputs.ElapsedUniverseDays)
 		case "effective_strength":
 			got = EffectiveStrength(testCase.Inputs.BaseStrength, testCase.Inputs.RecallCount)
+		case "downscale":
+			got = Downscale(testCase.Inputs.Strength, testCase.Inputs.Factor)
 		default:
 			t.Fatalf("unknown golden function %q", testCase.Function)
 		}
@@ -183,12 +231,19 @@ type synapseFixture struct {
 }
 
 type synapseFixtureValues struct {
-	PotentiationRate    float64 `json:"potentiation_rate"`
-	StrengthCap         float64 `json:"strength_cap"`
-	InitialSameMemory   float64 `json:"initial_same_memory"`
-	InitialSharedNeuron float64 `json:"initial_shared_neuron"`
-	InitialTemporal     float64 `json:"initial_temporal"`
-	StrengthDecayPerDay float64 `json:"strength_decay_per_day"`
+	PotentiationRate    float64                   `json:"potentiation_rate"`
+	StrengthCap         float64                   `json:"strength_cap"`
+	InitialSameMemory   float64                   `json:"initial_same_memory"`
+	InitialSharedNeuron float64                   `json:"initial_shared_neuron"`
+	InitialTemporal     float64                   `json:"initial_temporal"`
+	StrengthDecayPerDay float64                   `json:"strength_decay_per_day"`
+	Consolidation       synapseFixtureDownscaling `json:"consolidation"`
+}
+
+type synapseFixtureDownscaling struct {
+	DownscaleFactor   float64 `json:"downscale_factor"`
+	DownscaleFloor    float64 `json:"downscale_floor"`
+	DownscaleWeakBias float64 `json:"downscale_weak_bias"`
 }
 
 type synapseFixtureCase struct {
@@ -207,6 +262,7 @@ type synapseFixtureInputs struct {
 	ElapsedUniverseDays float64    `json:"elapsed_universe_days"`
 	BaseStrength        float64    `json:"base_strength"`
 	RecallCount         int32      `json:"recall_count"`
+	Factor              float64    `json:"factor"`
 }
 
 func readSynapseFixture(t *testing.T) synapseFixture {

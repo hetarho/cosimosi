@@ -13,7 +13,10 @@ WHERE user_id = sqlc.arg(user_id)
 
 -- Appends one 변천사 row ([R8a][D1], A8). Append-only: there is deliberately NO UPDATE and NO DELETE
 -- query on memory_provenance in this repo (retained rows are immutable; the parent memory's ON DELETE
--- CASCADE is the only removal — Epic H's user full-delete sweep). created_at is DB-assigned (now()).
+-- CASCADE is the only removal — Epic H's user full-delete sweep). created_at is DB-assigned with
+-- clock_timestamp() — the transaction-constant now() would tie for the multiple rows one
+-- consolidation appends inside a single advance (a multi-stage gist jump), and created_at is the
+-- deterministic tiebreak same-universe-day timeline readers sort by.
 -- name: AppendMemoryProvenance :exec
 INSERT INTO memory_provenance (
     id,
@@ -22,7 +25,8 @@ INSERT INTO memory_provenance (
     kind,
     source,
     text,
-    universe_time
+    universe_time,
+    created_at
 ) VALUES (
     sqlc.arg(id),
     sqlc.arg(user_id),
@@ -30,5 +34,6 @@ INSERT INTO memory_provenance (
     sqlc.arg(kind),
     sqlc.arg(source),
     sqlc.arg(text),
-    sqlc.arg(universe_time)
+    sqlc.arg(universe_time),
+    clock_timestamp()
 );

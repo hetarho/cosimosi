@@ -2,6 +2,7 @@ package memory
 
 import (
 	"math"
+	"sort"
 	"time"
 
 	"github.com/cosimosi/api/internal/platform/values"
@@ -58,6 +59,30 @@ func GistUnitsElapsed(now time.Time, timerResetAt time.Time, arousal float64, co
 // smaller as modulation grows. Arousal only, never valence ([F6][F7][I3]).
 func timerModulation(arousal float64, connectionStrength float64) float64 {
 	return 1 / slowFactor(arousal, connectionStrength)
+}
+
+// ConsumeGistUnits is the gist-timer's inverse: the anchor moved forward by exactly the whole
+// days the crossed units spanned, so residual sub-unit progress carries and re-reading the
+// timer from the returned anchor yields zero units for the same "now" — the convergence the
+// consolidation materializer relies on ([C6a]; never a refund that would re-rise the next
+// stage early, never a discard that would delay it). The day count is the smallest whole-day
+// elapsed at which GistUnitsElapsed itself first reads the crossed units — the inverse is
+// derived from the forward timer, not a second formula that could drift from it. The search
+// is bounded: the timer is monotone non-decreasing in elapsed days and unbounded above (the
+// modulated day fraction keeps accumulating), so the target count is always reached.
+func ConsumeGistUnits(anchor time.Time, crossedUnits int, arousal float64, connectionStrength float64) time.Time {
+	if crossedUnits <= 0 {
+		return utcDate(anchor)
+	}
+	anchorDate := utcDate(anchor)
+	upperBound := 1
+	for GistUnitsElapsed(anchorDate.AddDate(0, 0, upperBound), anchorDate, arousal, connectionStrength) < crossedUnits {
+		upperBound *= 2
+	}
+	consumed := sort.Search(upperBound+1, func(days int) bool {
+		return GistUnitsElapsed(anchorDate.AddDate(0, 0, days), anchorDate, arousal, connectionStrength) >= crossedUnits
+	})
+	return anchorDate.AddDate(0, 0, consumed)
 }
 
 // GistCoordinate places a gist body: x, y copied VERBATIM from the emergent hippocampal coordinates (the

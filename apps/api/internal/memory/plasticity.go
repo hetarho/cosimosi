@@ -36,6 +36,24 @@ func Depress(strength float64, amount float64) float64 {
 	return clamp(boundedStrength-boundedAmount, 0, values.SynapseStrengthCap)
 }
 
+// Downscale is homeostatic synaptic downscaling — the sleep renormalization (SHY; Tononi &
+// Cirelli 2014) the consolidation use-case applies to EVERY synapse once per clock advance
+// ([C4]). It is a deliberately distinct mechanism from Depress/LTD ([I9]): Depress is
+// associative and local (one competing pair weakened by a recall), Downscale is global and
+// proportional (each edge scaled once per sleep). The loss fraction shrinks as strength
+// approaches the cap (weak edges lose proportionally more headroom — keep signal, prune
+// noise; the weak-bias exponent tunes how sharply strong edges are spared), and the result
+// is floored at a positive residual: a weak edge dims toward silence but is never removed,
+// and an edge already at/below the floor is left as-is rather than lifted ([I1]).
+func Downscale(strength float64, factor float64) float64 {
+	boundedStrength := clamp(strength, 0, values.SynapseStrengthCap)
+	boundedFactor := clamp(factor, 0, 1)
+	loss := boundedFactor * (1 - math.Pow(boundedStrength/values.SynapseStrengthCap, values.ConsolidationDownscaleWeakBias))
+	next := boundedStrength * (1 - loss)
+	residualFloor := math.Min(boundedStrength, values.ConsolidationDownscaleFloor)
+	return clamp(next, residualFloor, boundedStrength)
+}
+
 // ApplyTemporalBonus adds the temporal-proximity bonus [L4] on top of a synapse
 // base strength when a co-activation falls inside synapse.temporal_window_days,
 // saturating at the single cap [L9]. Keeping the bonus in the pure layer (not in

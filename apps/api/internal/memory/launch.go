@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -299,21 +298,7 @@ func (s *Service) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope
 }
 
 func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any) error {
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	now := s.now()
-	_, err = tx.EnqueueJob(ctx, scope, Job{
-		ID:        s.newID(),
-		UserID:    scope.UserID(),
-		Kind:      kind,
-		Payload:   raw,
-		Status:    JobStatusPending,
-		NextRunAt: now,
-		CreatedAt: now,
-	})
-	return err
+	return enqueueJob(ctx, tx, scope, s.newID(), s.now(), kind, payload)
 }
 
 // validateConfirmedSplit re-applies the encode invariants to the user-confirmed

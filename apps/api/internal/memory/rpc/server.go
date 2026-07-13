@@ -182,6 +182,10 @@ func domainError(err error) error {
 		// An extractor adapter emitting an out-of-schema shape is a server-side
 		// contract breach, not a client mistake.
 		return connect.NewError(connect.CodeInternal, err)
+	case errors.Is(err, memory.ErrConsolidateTxRequired):
+		// A progression transaction that cannot consolidate is a composition-root
+		// wiring fault, never a client mistake.
+		return connect.NewError(connect.CodeInternal, err)
 	case errors.Is(err, memory.ErrScopeRequired):
 		return connect.NewError(connect.CodeUnauthenticated, err)
 	default:

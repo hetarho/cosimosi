@@ -69,6 +69,52 @@ func TestGistUnitsElapsedInvariants(t *testing.T) {
 	}
 }
 
+// TestConsumeGistUnitsInvariants pins the timer inverse the consolidation materializer relies
+// on: consuming the crossed units moves the anchor forward by exactly their span — re-reading
+// the timer from the consumed anchor at the same "now" yields zero units (convergence), and
+// the residual sub-unit days are neither refunded (an early next stage) nor discarded (a
+// delayed one).
+func TestConsumeGistUnitsInvariants(t *testing.T) {
+	t.Parallel()
+
+	anchor := date(t, "2026-01-01")
+	// 24 unmodulated days at 10 days/unit → 2 units spanning exactly 20 days.
+	now := date(t, "2026-01-25")
+	units := GistUnitsElapsed(now, anchor, 0, 0)
+	if units != 2 {
+		t.Fatalf("fixture units = %d, want 2", units)
+	}
+	consumed := ConsumeGistUnits(anchor, units, 0, 0)
+	if want := date(t, "2026-01-21"); !consumed.Equal(want) {
+		t.Fatalf("consumed anchor = %v, want exactly the crossed units' span %v", consumed, want)
+	}
+	if got := GistUnitsElapsed(now, consumed, 0, 0); got != 0 {
+		t.Fatalf("units at consumed anchor = %d, want 0 (convergence)", got)
+	}
+	// The 4 residual days carry: the next unit completes 6 days later, not 10.
+	if got := GistUnitsElapsed(date(t, "2026-01-31"), consumed, 0, 0); got != 1 {
+		t.Fatalf("units 6 days past the consumed anchor = %d, want the on-schedule 1", got)
+	}
+
+	// Modulated timers invert exactly the same way — through the forward fn itself.
+	slowedUnits := GistUnitsElapsed(date(t, "2026-03-01"), anchor, 1, 1)
+	if slowedUnits < 1 {
+		t.Fatal("fixture must cross at least one modulated unit")
+	}
+	slowedConsumed := ConsumeGistUnits(anchor, slowedUnits, 1, 1)
+	if got := GistUnitsElapsed(date(t, "2026-03-01"), slowedConsumed, 1, 1); got != 0 {
+		t.Fatalf("modulated units at consumed anchor = %d, want 0", got)
+	}
+	if got := GistUnitsElapsed(slowedConsumed, anchor, 1, 1); got != slowedUnits {
+		t.Fatalf("units spanned by the consumed days = %d, want %d (no refund, no discard)", got, slowedUnits)
+	}
+
+	// Zero or negative crossings leave the anchor where it is.
+	if got := ConsumeGistUnits(anchor, 0, 0, 0); !got.Equal(anchor) {
+		t.Fatalf("ConsumeGistUnits(anchor, 0) = %v, want the anchor unchanged", got)
+	}
+}
+
 // TestGistCoordinateInvariants covers A7: x,y verbatim, z inside the neocortex band and disjoint from
 // the hippocampus band for every stage 1..max.
 func TestGistCoordinateInvariants(t *testing.T) {

@@ -6,7 +6,12 @@
     "initial_same_memory": 0.32,
     "initial_shared_neuron": 0.2,
     "initial_temporal": 0.08,
-    "strength_decay_per_day": 0.015
+    "strength_decay_per_day": 0.015,
+    "consolidation": {
+      "downscale_factor": 0.05,
+      "downscale_floor": 0.05,
+      "downscale_weak_bias": 2
+    }
   },
   "cases": [
     {
@@ -143,6 +148,61 @@
       "function": "effective_strength",
       "inputs": { "base_strength": 0.95, "recall_count": 20 },
       "expected": 0.9980620234457743
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 1, "factor": 0.05 },
+      "expected": 1
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.8, "factor": 0.05 },
+      "expected": 0.7856000000000001
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.5, "factor": 0.05 },
+      "expected": 0.48125
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.2, "factor": 0.05 },
+      "expected": 0.1904
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.08, "factor": 0.05 },
+      "expected": 0.07602560000000001
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.06, "factor": 0.05 },
+      "expected": 0.0570108
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.04, "factor": 0.05 },
+      "expected": 0.04
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0, "factor": 0.05 },
+      "expected": 0
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.5, "factor": 0 },
+      "expected": 0.5
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.5, "factor": 1 },
+      "expected": 0.125
+    },
+    {
+      "function": "downscale",
+      "inputs": { "strength": 0.9, "factor": 0.3 },
+      "expected": 0.8487000000000001
     }
   ]
 }

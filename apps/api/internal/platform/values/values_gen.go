@@ -141,6 +141,14 @@ const (
 	ReconsolidationNeighborSpeedThreshold = 2
 )
 
+// consolidation
+const (
+	ConsolidationDownscaleFactor    = 0.05
+	ConsolidationDownscaleFloor     = 0.05
+	ConsolidationDownscaleWeakBias  = 2
+	ConsolidationReplayNeighborHops = 1
+)
+
 // forgetting
 const (
 	ForgettingBrightnessDecayPerDay     = 0.02

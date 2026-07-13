@@ -50,9 +50,9 @@ func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.Hand
 		// Link runs as the last step of PersistEncoded's transaction,
 		// wiring synapses over the launch's own store handle.
 		Linker: memory.NewLinkService(memory.LinkDeps{}),
-		// The no-op progression seam ([T4]); the real advance-triggered
-		// handler (consolidation/semanticize) rebinds here later.
-		Progression: memory.NoopAdvanceProgression{},
+		// The real advance-triggered handler ([T4]): consolidation (우주의 잠)
+		// runs inside every launch/sync advance transaction — no cron anywhere.
+		Progression: memory.NewConsolidator(nil),
 		// The recall transaction runs over the same store. SpendGate is the
 		// allow-all no-op default until the economy rebinds the real balance-check
 		// + deduct (§CC2); PredictionError is the LLM semantic-compare (keyless mock

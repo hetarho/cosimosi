@@ -7,6 +7,7 @@ import { VALUES } from '@cosimosi/config'
 import {
   applyTemporalBonus,
   depress,
+  downscale,
   effectiveSynapseStrength,
   initialStrength,
   isSignalKind,
@@ -23,6 +24,11 @@ interface SynapseFixture {
     readonly initial_shared_neuron: number
     readonly initial_temporal: number
     readonly strength_decay_per_day: number
+    readonly consolidation: {
+      readonly downscale_factor: number
+      readonly downscale_floor: number
+      readonly downscale_weak_bias: number
+    }
   }
   readonly cases: readonly SynapseFixtureCase[]
 }
@@ -37,6 +43,7 @@ interface SynapseFixtureCase {
     readonly signal_kind?: SignalKind
     readonly base?: number
     readonly elapsed_universe_days?: number
+    readonly factor?: number
   }
   readonly expected: number
 }
@@ -57,6 +64,11 @@ describe('synapse plasticity', () => {
       initial_shared_neuron: VALUES.synapse.initialSharedNeuron,
       initial_temporal: VALUES.synapse.initialTemporal,
       strength_decay_per_day: VALUES.synapse.strengthDecayPerDay,
+      consolidation: {
+        downscale_factor: VALUES.consolidation.downscaleFactor,
+        downscale_floor: VALUES.consolidation.downscaleFloor,
+        downscale_weak_bias: VALUES.consolidation.downscaleWeakBias,
+      },
     })
   })
 
@@ -120,6 +132,33 @@ describe('synapse plasticity', () => {
     }
   })
 
+  it('keeps Downscale global, weak-biased, floored, and never a removal', () => {
+    const factor = VALUES.consolidation.downscaleFactor
+
+    // Cap-strength edges are fully preserved; weaker edges lose a larger fraction of
+    // themselves — the SHY keep-signal/prune-noise bias.
+    expect(downscale(VALUES.synapse.strengthCap, factor)).toBe(VALUES.synapse.strengthCap)
+    const strongLoss = 1 - downscale(0.8, factor) / 0.8
+    const weakLoss = 1 - downscale(0.2, factor) / 0.2
+    expect(weakLoss).toBeGreaterThan(strongLoss)
+
+    // Positive residual floor: repeated sleeps converge to the floor, never 0-by-removal;
+    // an edge already at/below the floor is left as-is (never lifted, never pushed lower).
+    let strength = 0.3
+    for (let index = 0; index < 500; index += 1) strength = downscale(strength, factor)
+    expect(strength).toBeGreaterThanOrEqual(VALUES.consolidation.downscaleFloor)
+    expect(downscale(0.04, factor)).toBe(0.04)
+
+    // Monotone in strength (order-preserving) and always within [0, strength].
+    let previous = 0
+    for (const value of [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]) {
+      const next = downscale(value, factor)
+      expect(next).toBeLessThanOrEqual(value)
+      expect(next).toBeGreaterThanOrEqual(previous)
+      previous = next
+    }
+  })
+
   it('keeps EffectiveSynapseStrength read-time, monotone, and non-mutating', () => {
     const base = 0.72
     expect(effectiveSynapseStrength(base, 0)).toBeCloseTo(base, 12)
@@ -165,6 +204,9 @@ describe('synapse plasticity', () => {
             required(testCase.inputs.elapsed_universe_days),
           )
           break
+        case 'downscale':
+          got = downscale(required(testCase.inputs.strength), required(testCase.inputs.factor))
+          break
       }
       expectClose(got, testCase.expected, fixture.tolerance)
     }
@@ -182,7 +224,8 @@ function isSynapseFixtureCase(functionName: string): functionName is SynapseFunc
     functionName === 'depress' ||
     functionName === 'initial_strength' ||
     functionName === 'apply_temporal_bonus' ||
-    functionName === 'effective_synapse_strength'
+    functionName === 'effective_synapse_strength' ||
+    functionName === 'downscale'
   )
 }
 
@@ -193,6 +236,7 @@ type SynapseFunctionName =
   | 'initial_strength'
   | 'apply_temporal_bonus'
   | 'effective_synapse_strength'
+  | 'downscale'
 
 function required<T>(value: T | undefined): T {
   if (value === undefined) throw new Error('golden fixture is missing a required input')

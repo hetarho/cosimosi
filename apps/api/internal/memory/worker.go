@@ -21,6 +21,7 @@ type WorkerStore interface {
 	JobQueue
 	EmbeddingWriter
 	SemanticStagesWriter
+	NeuronEmbedTextReader
 }
 
 func DefaultWorkerConfig(pollInterval time.Duration, logger *log.Logger) WorkerConfig {
@@ -44,6 +45,7 @@ func NewDefaultJobRunner(
 		store,
 		store,
 		store,
+		store,
 		embedder,
 		semanticizer,
 		DefaultWorkerConfig(pollInterval, logger),
@@ -54,6 +56,7 @@ func NewJobRunner(
 	queue JobQueue,
 	embeddingWriter EmbeddingWriter,
 	semanticStagesWriter SemanticStagesWriter,
+	neuronTexts NeuronEmbedTextReader,
 	embedder Embedder,
 	semanticizer Semanticizer,
 	cfg WorkerConfig,
@@ -61,6 +64,7 @@ func NewJobRunner(
 	handlers := map[string]jobqueue.Handler[Job]{
 		string(JobKindEmbed):       NewEmbedJobHandler(embedder, embeddingWriter),
 		string(JobKindSemanticize): NewSemanticizeJobHandler(semanticizer, semanticStagesWriter),
+		string(JobKindConsolidate): NewConsolidateJobHandler(embedder, embeddingWriter, neuronTexts),
 	}
 	return jobqueue.NewRunner[Job](queue, handlers, jobqueue.Config{
 		MaxAttempts:  cfg.MaxAttempts,

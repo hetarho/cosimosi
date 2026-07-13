@@ -71,7 +71,7 @@ func (l *LinkService) LinkLaunched(ctx context.Context, scope platform.UserScope
 	launchedMemoryIDs := map[string]struct{}{}
 	for _, memory := range launched {
 		launchedMemoryIDs[memory.ID] = struct{}{}
-		ids := dedupNeuronIDs(memory.NeuronIDs)
+		ids := dedupIDs(memory.NeuronIDs)
 		for _, id := range ids {
 			neuronSet[id] = struct{}{}
 		}
@@ -168,7 +168,7 @@ func canonicalPair(x string, y string) pairKey {
 	return pairKey{a: y, b: x}
 }
 
-func dedupNeuronIDs(ids []string) []string {
+func dedupIDs(ids []string) []string {
 	seen := make(map[string]struct{}, len(ids))
 	out := make([]string, 0, len(ids))
 	for _, id := range ids {

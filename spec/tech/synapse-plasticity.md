@@ -8,7 +8,8 @@
 
 The Go domain implementation lives in `apps/api/internal/memory`:
 
-- `plasticity.go`: `Potentiate`, `Depress`, `SignalKind`, `InitialStrength`, and `EffectiveSynapseStrength`.
+- `plasticity.go`: `Potentiate`, `Depress`, `Downscale`, `SignalKind`, `InitialStrength`, and
+  `EffectiveSynapseStrength`.
 - `effective.go`: Epic-A memory-level stubs `EffectiveStrength` and `EffectiveBrightness`.
 
 The TypeScript mirror lives in `packages/memory-logic`, a pure cross-app package with no DOM, Vite, Metro, native, RPC,
@@ -19,9 +20,12 @@ DB, or SDK dependency. Web and mobile consume this package when they need read-t
 These functions are deterministic scalar math. They do not read clocks, repositories, proto DTOs, sqlc rows, pgx,
 transport clients, SDKs, randomness, DOM globals, or fetch.
 
-`Depress` is associative/local LTD over one synapse. It is not `Downscale`; SHY downscaling remains Epic E
-consolidation behavior. `Reinforce` remains a future recall use-case that may call `Potentiate`, not a synonym for the
-primitive formula.
+`Depress` is associative/local LTD over one synapse; `Downscale` is homeostatic/global SHY over every slept synapse
+once per sleep — two distinct pure primitives that are never conflated ([I9]). `Downscale(strength, factor)` scales a
+stored base down by the per-sleep factor with a weak-edge bias (the loss fraction shrinks as strength approaches the
+cap — keep signal, prune noise) and a positive residual floor: an edge dims toward silence but is never removed, and
+an edge already at/below the floor is left as-is ([I1][C4]). Its only production caller is the consolidation use-case
+(the advance-time batch); the recall use-case batch-LTPs through `Potentiate`.
 
 ## 3. Values and formulas
 
@@ -35,17 +39,21 @@ Only coefficients, caps, and initials live in `spec/values.yaml`:
 - `synapse.strength_decay_per_day = 0.015`
 - `synapse.temporal_window_days = 3`
 - `synapse.temporal_bonus = 0.1`
+- `consolidation.downscale_factor = 0.05` — the per-sleep global SHY scale-down `Downscale` applies ([C4])
+- `consolidation.downscale_floor = 0.05` — the positive residual floor (never removal, [I1])
+- `consolidation.downscale_weak_bias = 2.0` — the weak-edge bias exponent (strong edges spared)
 
-The formula shapes stay in code: saturating LTP, floor/cap clamps, exponential read-time synapse decay, the `SignalKind`
-enum, and the Epic-A memory-level stubs.
+The formula shapes stay in code: saturating LTP, floor/cap clamps, the `Downscale` retention curve, exponential
+read-time synapse decay, the `SignalKind` enum, and the Epic-A memory-level stubs.
 
 **Reserved tiers.** Link seeds a synapse only from `initial_same_memory` today. The `shared_neuron` and `temporal`
 tiers ([L10]) are marked as forward reservations in code and values.yaml: a shared neuron _is_ the link through
 activation membership (no synapse to seed, [L2]), and temporal proximity is applied as a bonus on top of an existing
 base (`temporal_bonus`), not as a fresh initial ([L4]). They are kept for a later cross-memory linker that mints
-distinct shared/temporal edges. Likewise `Depress` (LTD) and the read-time `EffectiveStrength`/`EffectiveBrightness`/
-`EffectiveSynapseStrength` have no server production caller yet — reserved for the forgetting/recall dynamics; the
-effective functions are consumed today only by the FE render mirror (golden-parity).
+distinct shared/temporal edges. `Depress` (LTD) still has no server production caller — reserved for the
+recall-competition/deletion dynamics — while `Downscale` is driven by consolidation and `EffectiveStrength` by the
+recall/view surfaces; `EffectiveBrightness`/`EffectiveSynapseStrength` are consumed today by the FE render mirror
+(golden-parity).
 
 ## 4. Golden parity
 
