@@ -1,10 +1,10 @@
 ---
 job: '{{JOB}}'
-type: { { TYPE } }
-source: { { SOURCE } }
-plan: { { PLAN } }
+type: '{{TYPE}}'
+source: '{{SOURCE}}'
+plan: '{{PLAN}}'
 status: todo
-title: { { TITLE } }
+title: '{{TITLE}}'
 ---
 
 # Job {{JOB}}: {{TITLE}} ({{TYPE}})

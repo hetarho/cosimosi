@@ -100,17 +100,25 @@ function extractAcceptance(t) {
   })
   if (!section) return null
 
-  const items = section.body
-    .split('\n')
-    .map((l) => l.replace(/^\s*(?:\d+\.|[-*])\s+/, '').trim())
-    .filter((l) => l && !l.startsWith('<!--'))
+  // One item per top-level list entry; indented continuation lines and sub-bullets fold into their item.
+  const items = []
+  for (const line of section.body.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('<!--')) continue
+    const bullet = line.match(/^(?:\d+\.|[-*])\s+(.*)$/)
+    if (bullet) items.push(bullet[1].trim())
+    else if (items.length)
+      items[items.length - 1] += ' ' + trimmed.replace(/^(?:\d+\.|[-*])\s+/, '')
+  }
 
   return items.length ? items.map((it, i) => `- [ ] A${i + 1} ${it}`).join('\n') : null
 }
 
 function sections(t) {
   const result = []
-  const re = /^##\s+(.+?)\s*\n([\s\S]*?)(?=^##\s+|\n---\s*$|$)/gm
+  // Lookahead alternatives: next `##` heading, a thematic-break line, or absolute end of input.
+  // `$` alone would match every line end under the m flag and truncate the body to its first line.
+  const re = /^##\s+(.+?)\s*\n([\s\S]*?)(?=^##\s+|^---\s*$|(?![\s\S]))/gm
   for (const m of t.matchAll(re)) result.push({ heading: m[1], body: m[2] })
   return result
 }
