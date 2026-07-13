@@ -204,6 +204,7 @@ export function buildEngramDemoScene(): EngramDemoScene {
     decayStages: [],
     forgettingOffsetDays: 0,
     currentText: memory.name,
+    semanticStage: 0,
   }))
 
   const positions = new Float32Array((neurons.length + memories.length) * 3)

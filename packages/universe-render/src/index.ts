@@ -9,3 +9,8 @@ export { FilamentLayer, type FilamentLayerProps } from './FilamentLayer.tsx'
 export { LatentStarField, type LatentStarFieldProps } from './LatentStarField.tsx'
 export { NebulaField, type NebulaFieldProps } from './NebulaField.tsx'
 export { AwakenNeuron, type AwakenNeuronProps } from './AwakenNeuron.tsx'
+export {
+  GistStarLayer,
+  type GistRiseEvent,
+  type GistStarLayerProps,
+} from './GistStarLayer.tsx'

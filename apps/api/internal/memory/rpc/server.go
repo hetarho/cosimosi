@@ -275,6 +275,7 @@ func universeResponse(facts memory.UniverseFacts, universeTime *time.Time) *memo
 			DecayStages:              episodicMemory.DecayStages,
 			ForgettingOffsetDays:     episodicMemory.ForgettingOffsetDays,
 			CurrentText:              episodicMemory.CurrentText,
+			SemanticStage:            int32(episodicMemory.SemanticStage),
 		})
 	}
 

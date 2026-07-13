@@ -65,6 +65,16 @@ rendering:
   # more than a few new neurons; an overflowing burst is not lost — the excess flares on the next
   # pass (the animation look/motion stays in code; only this pool cap is tuning).
   awaken_capacity: 32
+  # Gist-star (neocortical body, [V3][V5][V9]) instance scale range mapped from EffectiveStrength —
+  # kept below the episodic star_size_* so a gist reads as a quieter echo of its memory.
+  gist_star_size_min: 0.7
+  gist_star_size_max: 2.4
+  # Base softness of the diffuse gist body (0..1) — the [V5] "gistified" look distinguishing it
+  # from the sharp episodic seed body; deeper stages read progressively more diffuse from here.
+  gist_star_diffuse: 0.55
+  # Depth-cue haze intensity across the hippocampus↔neocortex gap (z 10–15, [V9]) — a restrained
+  # rendering affordance marking the layer boundary, never a wall.
+  gist_rise_layer_fog: 0.35
 
 nebula:
   # Emotion color field ([M4][M5]): each rendered memory bleeds its mood color into the ambient

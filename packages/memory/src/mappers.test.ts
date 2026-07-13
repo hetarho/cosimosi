@@ -39,6 +39,7 @@ describe('GetUniverse proto→domain mappers', () => {
         decayStages: ['first xxxx sea', 'xxxx xxxx sea'],
         forgettingOffsetDays: -2.5,
         currentText: 'first swim in the cold winter sea',
+        semanticStage: 2,
       }),
     )
 
@@ -58,6 +59,7 @@ describe('GetUniverse proto→domain mappers', () => {
       decayStages: ['first xxxx sea', 'xxxx xxxx sea'],
       forgettingOffsetDays: -2.5,
       currentText: 'first swim in the cold winter sea',
+      semanticStage: 2,
     })
   })
 

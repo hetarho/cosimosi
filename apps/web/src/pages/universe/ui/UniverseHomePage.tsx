@@ -50,11 +50,12 @@ export function UniverseHomePage() {
   const handleOpenDiary = useCallback((episodicMemoryId: string) => {
     openDiaryTargetRef.current = episodicMemoryId
   }, [])
-  // Gist bodies route to the paid gist-view surface; none render until the semanticization layer
-  // adds them, so this seam records the target for that surface to consume (A7).
-  const gistTargetRef = useRef<string | null>(null)
-  const handleGistSelected = useCallback((episodicMemoryId: string) => {
-    gistTargetRef.current = episodicMemoryId
+  // A gist body routes to the paid gist-view surface with its (memory, stage) ViewSemantic
+  // selection ([R8]); the viewer is a separate unit, so this seam records the target for it to
+  // consume (A7).
+  const gistTargetRef = useRef<{ episodicMemoryId: string; stage: number } | null>(null)
+  const handleGistSelected = useCallback((episodicMemoryId: string, stage: number) => {
+    gistTargetRef.current = { episodicMemoryId, stage }
   }, [])
 
   return (

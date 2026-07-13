@@ -33,6 +33,7 @@ const memory = {
   decayStages: [],
   forgettingOffsetDays: 0,
   currentText: 'Market run text',
+  semanticStage: 0,
 } as EpisodicMemory
 
 describe('applyRecallResult', () => {

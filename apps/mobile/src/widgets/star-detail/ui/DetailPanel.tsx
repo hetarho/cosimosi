@@ -5,6 +5,7 @@ import type { ActorRefFrom } from 'xstate'
 import { Button, tokens } from '@cosimosi/ui'
 import {
   currentDecayText,
+  parseGistNodeId,
   resolveSelection,
   starDetailMachine,
   useEpisodicMemoryStore,
@@ -37,7 +38,7 @@ export function DetailPanel({
   navigationActorRef: NavigationActorRef
   onRecallRequested: (episodicMemoryId: string) => void
   onOpenDiary: (episodicMemoryId: string) => void
-  onGistSelected: (episodicMemoryId: string) => void
+  onGistSelected: (episodicMemoryId: string, stage: number) => void
 }) {
   const selectedNodeId = useSelector(
     navigationActorRef,
@@ -49,24 +50,27 @@ export function DetailPanel({
   const { height } = useWindowDimensions()
 
   const selection = useMemo(
-    () => resolveSelection(selectedNodeId, { episodicById, neuronById }),
+    () =>
+      resolveSelection(selectedNodeId, { episodicById, neuronById, resolveGist: parseGistNodeId }),
     [selectedNodeId, episodicById, neuronById],
   )
   const [snapshot, send] = useMachine(starDetailMachine)
   const phase = snapshot.value as StarDetailPhase
 
   const kind = selection.kind
-  const gistMemoryId = selection.kind === 'gist' ? selection.episodicMemoryId : null
+  const gist = selection.kind === 'gist' ? selection : null
+  const gistMemoryId = gist?.episodicMemoryId ?? null
+  const gistStage = gist?.stage ?? null
   useEffect(() => {
-    if (kind === 'gist' && gistMemoryId) {
-      onGistSelected(gistMemoryId)
+    if (gistMemoryId !== null && gistStage !== null) {
+      onGistSelected(gistMemoryId, gistStage)
       send({ type: 'CLOSE' })
     } else if (kind === 'episodic' || kind === 'neuron') {
       send({ type: 'OPEN' })
     } else {
       send({ type: 'CLOSE' })
     }
-  }, [selectedNodeId, kind, gistMemoryId, send, onGistSelected])
+  }, [selectedNodeId, kind, gistMemoryId, gistStage, send, onGistSelected])
 
   const episodicId = selection.kind === 'episodic' ? selection.memory.id : null
   const provenance = useProvenanceQuery(episodicId, phase === 'provenance')

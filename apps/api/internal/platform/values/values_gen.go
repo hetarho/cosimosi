@@ -39,6 +39,10 @@ const (
 	RenderingLatentFieldRadius     = 34
 	RenderingLatentStarSize        = 0.14
 	RenderingAwakenCapacity        = 32
+	RenderingGistStarSizeMin       = 0.7
+	RenderingGistStarSizeMax       = 2.4
+	RenderingGistStarDiffuse       = 0.55
+	RenderingGistRiseLayerFog      = 0.35
 )
 
 // nebula

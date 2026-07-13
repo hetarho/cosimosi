@@ -64,7 +64,7 @@ export const starDetailMachine = setup({
 export type ResolvedSelection =
   | { kind: 'episodic'; memory: EpisodicMemory }
   | { kind: 'neuron'; neuron: Neuron }
-  | { kind: 'gist'; episodicMemoryId: string }
+  | { kind: 'gist'; episodicMemoryId: string; stage: number }
   | { kind: 'none' }
 
 export interface SelectionStores {
@@ -72,12 +72,11 @@ export interface SelectionStores {
   neuronById: Readonly<Record<string, Neuron>>
   /**
    * Recognizes a gist-body node id (the z-raised 신피질 gist star [V9]) and returns the
-   * episodic memory it abstracts. While no gist bodies render there are none, so the
-   * default recognizes nothing and every selection is episodic/neuron/none; the panel
-   * injects the recognizer once gist bodies exist, routing gist selections to the paid
-   * view ([R8]) without this resolver knowing the gist-body id format.
+   * `(memory, stage)` ViewSemantic selection it names ([R8]). The panel injects the
+   * recognizer (the gist layer's parseGistNodeId), so this resolver never knows the
+   * gist-body id format; without one, every selection is episodic/neuron/none.
    */
-  gistMemoryId?: (nodeId: string) => string | null
+  resolveGist?: (nodeId: string) => { episodicMemoryId: string; stage: number } | null
 }
 
 // Pure selector (§3.2): the canvas machine's selected id → the domain star, looked up in
@@ -88,8 +87,8 @@ export function resolveSelection(
   stores: SelectionStores,
 ): ResolvedSelection {
   if (!selectedNodeId) return { kind: 'none' }
-  const gistId = stores.gistMemoryId?.(selectedNodeId) ?? null
-  if (gistId) return { kind: 'gist', episodicMemoryId: gistId }
+  const gist = stores.resolveGist?.(selectedNodeId) ?? null
+  if (gist) return { kind: 'gist', episodicMemoryId: gist.episodicMemoryId, stage: gist.stage }
   const memory = stores.episodicById[selectedNodeId]
   if (memory) return { kind: 'episodic', memory }
   const neuron = stores.neuronById[selectedNodeId]

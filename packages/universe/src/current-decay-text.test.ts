@@ -18,6 +18,7 @@ function memory(overrides: Partial<EpisodicMemory> = {}): EpisodicMemory {
     decayStages: [],
     forgettingOffsetDays: 0,
     currentText: 'the whole memory as first written',
+    semanticStage: 0,
     ...overrides,
   }
 }

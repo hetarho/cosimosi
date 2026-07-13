@@ -93,6 +93,8 @@ function optimisticMemory(
     decayStages: [],
     forgettingOffsetDays: 0,
     currentText: '',
+    // A just-launched memory has risen no gist stage yet ([C6a] — the timer starts now).
+    semanticStage: 0,
   }
 }
 

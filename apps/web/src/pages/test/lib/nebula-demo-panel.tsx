@@ -48,6 +48,7 @@ function buildDemoScene() {
       decayStages: [],
       forgettingOffsetDays: 0,
       currentText: mood,
+      semanticStage: 0,
     }
   })
   return { positions, contributors: buildContributors(memories, { firstNodeIndex: 0 }) }

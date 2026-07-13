@@ -44,7 +44,7 @@ export function UniverseScreen() {
   // screen records those for later and does not act here (A5/A6).
   const requestRecallTarget = useRecallTargetStore((state) => state.request)
   const openDiaryTargetRef = useRef<string | null>(null)
-  const gistTargetRef = useRef<string | null>(null)
+  const gistTargetRef = useRef<{ episodicMemoryId: string; stage: number } | null>(null)
   const handleRecallRequested = useCallback(
     (episodicMemoryId: string) => requestRecallTarget(episodicMemoryId),
     [requestRecallTarget],
@@ -52,8 +52,8 @@ export function UniverseScreen() {
   const handleOpenDiary = useCallback((episodicMemoryId: string) => {
     openDiaryTargetRef.current = episodicMemoryId
   }, [])
-  const handleGistSelected = useCallback((episodicMemoryId: string) => {
-    gistTargetRef.current = episodicMemoryId
+  const handleGistSelected = useCallback((episodicMemoryId: string, stage: number) => {
+    gistTargetRef.current = { episodicMemoryId, stage }
   }, [])
 
   return (

@@ -31,6 +31,10 @@ export const VALUES = {
     latentFieldRadius: 34,
     latentStarSize: 0.14,
     awakenCapacity: 32,
+    gistStarSizeMin: 0.7,
+    gistStarSizeMax: 2.4,
+    gistStarDiffuse: 0.55,
+    gistRiseLayerFog: 0.35,
   },
   nebula: {
     bleedRadiusCoefficient: 12,

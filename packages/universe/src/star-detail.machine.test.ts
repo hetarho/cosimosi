@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
 
+import { gistNodeId, parseGistNodeId } from './gist-star-channels.ts'
 import { resolveSelection, starDetailMachine } from './star-detail.machine.ts'
 
 function actor() {
@@ -75,13 +76,24 @@ describe('resolveSelection', () => {
   it('routes a recognized gist body to the paid gist view before the episodic lookup', () => {
     const gistStores = {
       ...stores,
-      gistMemoryId: (id: string) => (id === 'gist:m1:2' ? 'm1' : null),
+      resolveGist: (id: string) =>
+        id === 'gist:2:m1' ? { episodicMemoryId: 'm1', stage: 2 } : null,
     }
-    expect(resolveSelection('gist:m1:2', gistStores)).toEqual({
+    expect(resolveSelection('gist:2:m1', gistStores)).toEqual({
       kind: 'gist',
       episodicMemoryId: 'm1',
+      stage: 2,
     })
     // A non-gist id still resolves normally through the same recognizer.
     expect(resolveSelection('m1', gistStores)).toEqual({ kind: 'episodic', memory })
+  })
+
+  it('routes the real gist-layer id format through the injected parser', () => {
+    const gistStores = { ...stores, resolveGist: parseGistNodeId }
+    expect(resolveSelection(gistNodeId('m1', 3), gistStores)).toEqual({
+      kind: 'gist',
+      episodicMemoryId: 'm1',
+      stage: 3,
+    })
   })
 })

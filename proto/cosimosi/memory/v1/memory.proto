@@ -153,6 +153,10 @@ message EpisodicMemoryDto {
   // whole text when no stage string is yet persisted. It is the memory's text, not a
   // pre-rendered decay text — the erosion is derived client-side [I5][R8a].
   string current_text = 12;
+  // How far the memory has risen on the gist ladder [C6][C7] — the client renders one
+  // neocortical gist body per risen stage at a client-derived coordinate (copy x,y, raise z
+  // [I5][V9]); 0..4 and monotone (a stage never un-rises).
+  int32 semantic_stage = 13;
 }
 
 message NeuronDto {

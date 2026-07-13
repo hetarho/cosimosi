@@ -20,6 +20,7 @@ const memory = {
   decayStages: [],
   forgettingOffsetDays: 0,
   currentText: 'a memory',
+  semanticStage: 0,
 } as EpisodicMemory
 
 const neuron: Neuron = { id: 'n1', name: 'market', neuronType: 'spatial', connectivity: 3 }

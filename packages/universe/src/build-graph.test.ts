@@ -25,6 +25,7 @@ const universeFixture = (): UniverseSnapshot => ({
       decayStages: [],
       forgettingOffsetDays: 0,
       currentText: 'a memory',
+      semanticStage: 0,
     },
   ],
   neurons: [

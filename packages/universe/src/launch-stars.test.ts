@@ -19,6 +19,7 @@ function existing(id: string): EpisodicMemory {
     decayStages: [],
     forgettingOffsetDays: 0,
     currentText: 'a memory',
+    semanticStage: 0,
   }
 }
 

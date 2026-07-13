@@ -35,3 +35,11 @@ A palette must not:
 - feed layout, strength, connection, or forgetting logic.
 
 The seam shape enforces the policy: it consumes `Mood` and returns `Color`.
+
+## Every Body Colored by Emotion Colors Through the One Seam
+
+Every rendered body whose color carries meaning reads it from the same `mood → color` seam — the episodic star, its
+nebula bleed, and the **neocortical gist star** alike. A gist keeps its memory's emotion ([M3][I3]): rising a semantic
+stage changes a body's z and its diffuse look, never its color; abstraction is expressed spatially, and emotion never
+reaches the gist's z or geometry. (Atmosphere-only tints — the layer-gap haze, the skin background — are neutral
+space-tones, deliberately outside the emotion seam.)

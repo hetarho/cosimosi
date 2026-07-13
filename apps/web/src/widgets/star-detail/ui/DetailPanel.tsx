@@ -4,6 +4,7 @@ import type { ActorRefFrom } from 'xstate'
 import { Button } from '@cosimosi/ui'
 import {
   currentDecayText,
+  parseGistNodeId,
   resolveSelection,
   starDetailMachine,
   useEpisodicMemoryStore,
@@ -39,7 +40,7 @@ export function DetailPanel({
   /** Emits the origin-diary navigation intent for this memory (the reader is owned downstream). */
   onOpenDiary: (episodicMemoryId: string) => void
   /** A gist body routes to the paid gist-view surface instead of this panel ([R8]). */
-  onGistSelected: (episodicMemoryId: string) => void
+  onGistSelected: (episodicMemoryId: string, stage: number) => void
 }) {
   const selectedNodeId = useSelector(
     navigationActorRef,
@@ -50,27 +51,30 @@ export function DetailPanel({
   const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
 
   const selection = useMemo(
-    () => resolveSelection(selectedNodeId, { episodicById, neuronById }),
+    () =>
+      resolveSelection(selectedNodeId, { episodicById, neuronById, resolveGist: parseGistNodeId }),
     [selectedNodeId, episodicById, neuronById],
   )
   const [snapshot, send] = useMachine(starDetailMachine)
   const phase = snapshot.value as StarDetailPhase
 
   const kind = selection.kind
-  const gistMemoryId = selection.kind === 'gist' ? selection.episodicMemoryId : null
+  const gist = selection.kind === 'gist' ? selection : null
+  const gistMemoryId = gist?.episodicMemoryId ?? null
+  const gistStage = gist?.stage ?? null
   // Drive the panel phase off the selection identity: a gist body routes away, an episodic/neuron
   // selection opens (re-entering meta so a re-select drops a stale provenance view), and no/empty
   // selection closes. Keyed on the id + kind so an unrelated store refresh does not reset the view.
   useEffect(() => {
-    if (kind === 'gist' && gistMemoryId) {
-      onGistSelected(gistMemoryId)
+    if (gistMemoryId !== null && gistStage !== null) {
+      onGistSelected(gistMemoryId, gistStage)
       send({ type: 'CLOSE' })
     } else if (kind === 'episodic' || kind === 'neuron') {
       send({ type: 'OPEN' })
     } else {
       send({ type: 'CLOSE' })
     }
-  }, [selectedNodeId, kind, gistMemoryId, send, onGistSelected])
+  }, [selectedNodeId, kind, gistMemoryId, gistStage, send, onGistSelected])
 
   const episodicId = selection.kind === 'episodic' ? selection.memory.id : null
   const provenance = useProvenanceQuery(episodicId, phase === 'provenance')

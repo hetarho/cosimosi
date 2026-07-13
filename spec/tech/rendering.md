@@ -264,6 +264,44 @@ bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` kee
   mount passes `nebula.field_resolution_mobile` (coarser kernels). `NebulaNotice` is forked per-app (RN View/Text vs
   DOM); the `ColorField` TSL layer is shared — no `*.native`.
 
+## Gist-star / z-layer rendering (plan 42 as-built)
+
+The universe renders its **two z-bands as one navigable 3D depth** ([V9][V0]): the hippocampus band
+(`force_sim.hippocampus_z_*`; episodic stars + latent field) below, the neocortex band (`force_sim.neocortex_z_*`;
+gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no second camera.
+
+- **A gist star copies the episodic `(x, y)` and raises only z** ([C6][I5]). The neocortex runs **no force-sim**:
+  `GistStarLayer` (`@cosimosi/universe-render`) derives each instance's position per frame — x, y read live from the
+  memory's hippocampal sim slot, z from the memory-logic golden-parity `gistCoordinate` for the instance's stage — via
+  `InstancedNodeLayer`'s optional `getInstancePosition` mapper (per-frame, allocation-free; the default
+  contiguous-slot path is unchanged). No gist coordinate is ever stored or reverse-projected. `COORDINATE_STRIDE` is
+  exported by the renderer as the coordinate-buffer contract's owner.
+- **One instance per risen stage.** `gist-star-channels.ts` (`@cosimosi/universe`, pure, shared web+mobile) emits N
+  instances for `semanticStage = N` (risen stages persist [C7]): color = `moodColor(mood)` through the single palette
+  seam and nothing else ([M3][I3]); size = `EffectiveStrength` lerped into `rendering.gist_star_size_*` (a quieter
+  echo of the episodic range [V3]); softness = `rendering.gist_star_diffuse` at stage 1 deepening to fully diffuse at
+  the ladder top ([V5]). The `GetUniverse` DTO carries `semantic_stage` (the plan-40 read premise, realized here —
+  the server facts always had it; the wire field was added, no new RPC).
+- **Abstraction is z + a diffuse look, never shape** ([V5]). `gist-star-body.ts` (`@cosimosi/3d-renderer`) is its own
+  TSL `VisualBodySource` — a facing-falloff glow ball (additive, depth-tested but never depth-written) with
+  per-instance tint + softness attributes; the episodic seed channel is untouched by stage.
+- **The gap depth cue is `BandFog`** — an additive, raycast-invisible haze slab across the z 10–15 gap (peak at the
+  gap center, zero at both band edges; intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the
+  boundary, never a wall and never a click shield.
+- **The neutral stage-rise is appearance-driven and one-way** ([V8][I10]). Consolidation is the sole stage writer, so
+  a `(memory, stage)` instance newly appearing in the projection *is* the advance's read landing: it eases from the
+  memory's hippocampal z up into the band once (`GIST_RISE_DURATION_SECONDS`, a code-level layer constant); the first
+  non-empty projection seeds silently (no page-load mass rise) and an empty interval adds no instance, so nothing
+  plays. The per-interval rise events surface on `GistStarLayer.onStageRise` — the **booked [V8] slot** the
+  later-authored pulled-upward/relate-star replay choreography consumes; nothing more is built.
+- **A gist star is read-only** ([R8][I8]). Its pick payload is `gistNodeId(memoryId, stage)`; a pick sends the
+  navigation machine SELECT only (a gist body is not a sim node — no camera glide), the star-detail resolver routes it
+  through the injected `parseGistNodeId` recognizer as `{kind: 'gist', episodicMemoryId, stage}`, and the panel
+  forwards `(memoryId, stage)` to the ViewSemantic surface seam — no 회고하기, no rewrite affordance, no
+  un-rise/placement/stage control ([I10][I11]).
+- **Mobile (§3.5).** Channels, body, fog, and layer are the shared package modules — no `*.native` fork; the mobile
+  widget composes them identically (source-gate verified; on-device render pending).
+
 ## Config
 
 `spec/values.yaml → rendering`: `active_skin` (preset key), `max_pixel_ratio` (DPR cap), `instance_bucket_size`
@@ -271,7 +309,11 @@ bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` kee
 `star_brightness_min`/`star_brightness_max`, `filament_width_min`/`filament_width_max`,
 `filament_brightness_min`/`filament_brightness_max`, `cell_star_point_size`, plus the plan-25 latent-field scalars
 `latent_star_count`, `latent_star_count_mobile`, `latent_field_radius`, `latent_star_size`, and `awaken_capacity`
-(the awaken flare pool ceiling — a resource cap, so it is config; the flare's motion/look stays in code).
+(the awaken flare pool ceiling — a resource cap, so it is config; the flare's motion/look stays in code), and the
+plan-42 gist scalars `gist_star_size_min`/`gist_star_size_max` (the quieter `EffectiveStrength` → size range),
+`gist_star_diffuse` (the base softness of the diffuse gist body), `gist_rise_layer_fog` (the gap depth-cue haze).
+(The stage→z map is **not** a value — it is the memory-logic `gistCoordinate` derivation over the reused
+`force_sim.{hippocampus,neocortex}_z_*` bands; the rise duration stays a code-level layer constant.)
 
 `spec/values.yaml → nebula` (plan 26, its own group): `bleed_radius_coefficient` (`EffectiveStrength` → bleed radius),
 `min_bleed_radius` (floor), `falloff_exponent` (kernel density sharpness), `max_contributors` (kernel budget cap),

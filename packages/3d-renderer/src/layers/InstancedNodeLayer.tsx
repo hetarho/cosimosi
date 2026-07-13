@@ -13,6 +13,9 @@ export interface CoordinateBufferRef {
   readonly current: Float32Array | null
 }
 
+/** The buffer's xyz interleave — slot n's coordinates start at n * COORDINATE_STRIDE. */
+export const COORDINATE_STRIDE = 3
+
 /** A per-instance vertex attribute uploaded to the instanced geometry, read by the body's TSL material. */
 export interface InstanceAttributeChannel {
   readonly name: string
@@ -32,6 +35,20 @@ export interface InstanceChannels {
   readonly attributes?: readonly InstanceAttributeChannel[]
 }
 
+/**
+ * Optional per-frame position derivation: write the instance's world xyz into `out` and
+ * return true, or return false to hide the instance this frame. Layers whose instances are
+ * PROJECTIONS of buffer slots (e.g. a gist body copying its memory's x, y with a derived,
+ * possibly animating z) supply this instead of the default contiguous-slot read. Called
+ * inside useFrame — it must not allocate or touch React state.
+ */
+export type InstancePositionMapper = (
+  instanceIndex: number,
+  buffer: Float32Array,
+  out: Float32Array,
+  elapsedSeconds: number,
+) => boolean
+
 export interface InstancedNodeLayerProps {
   /** Body port (§3.4): the node body comes from a VisualBodySource, never a direct import. */
   readonly source: VisualBodySource
@@ -45,6 +62,8 @@ export interface InstancedNodeLayerProps {
   readonly scale?: number
   /** Optional per-instance appearance (size/tint/brightness/seed) for shader bodies. */
   readonly channels?: InstanceChannels
+  /** Per-frame derived positions; when absent, instances read contiguous buffer slots. */
+  readonly getInstancePosition?: InstancePositionMapper
   readonly onNodePointerDown?: (nodeIndex: number) => void
   readonly onNodeDoubleClick?: (nodeIndex: number) => void
   /** Hover: the node index under the pointer, or null when the pointer leaves the mesh. */
@@ -67,6 +86,7 @@ export function InstancedNodeLayer({
   firstNodeIndex = 0,
   scale = 1,
   channels,
+  getInstancePosition,
   onNodePointerDown,
   onNodeDoubleClick,
   onNodeHover,
@@ -74,6 +94,7 @@ export function InstancedNodeLayer({
   const [body, setBody] = useState<THREE.Mesh | null>(null)
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
   const matrix = useMemo(() => new THREE.Matrix4(), [])
+  const derivedPosition = useMemo(() => new Float32Array(3), [])
   // A zero-scale matrix hides an instance whose coordinate isn't in the live buffer yet, keeping its
   // slot so the instanceId still equals the node index for picking (a separate matrix, so the
   // uniform-scale `matrix` composed once below is never clobbered).
@@ -150,7 +171,7 @@ export function InstancedNodeLayer({
     if (added && !Array.isArray(mesh.material)) mesh.material.needsUpdate = true
   }, [body, channels, instanceCount, count])
 
-  useFrame(() => {
+  useFrame((state) => {
     const mesh = meshRef.current
     if (!mesh) return
     const buffer = positions.current
@@ -164,20 +185,39 @@ export function InstancedNodeLayer({
     // Uniform-scale path (e.g. cell-stars): compose the scale once, then only the translation
     // column changes per instance. Per-instance scales (stars) recompose the matrix each instance.
     if (!scales) matrix.makeScale(scale, scale, scale)
+    const elapsed = state.clock.elapsedTime
     for (let i = 0; i < count; i++) {
-      const offset = (firstNodeIndex + i) * 3
-      // No live coordinate for this node yet — e.g. an optimistic launch grew the store before the
-      // next GetUniverse read grew the buffer. Hide it at zero scale (keeping its instance slot, so
-      // the instanceId still maps to the node index for picking) rather than drawing it at origin.
-      if (offset < 0 || offset + 2 >= buffer.length) {
-        mesh.setMatrixAt(i, zeroMatrix)
-        continue
+      // Resolve this instance's world xyz — either the mapper's derived position (a projection
+      // layer owning slot lookup, bounds, and animation) or the contiguous coordinate slot. A
+      // node with no live coordinate yet (e.g. an optimistic launch grew the store before the
+      // next GetUniverse read grew the buffer) hides at zero scale, keeping its slot so the
+      // instanceId still maps to the node index for picking.
+      let x: number
+      let y: number
+      let z: number
+      if (getInstancePosition) {
+        if (!getInstancePosition(i, buffer, derivedPosition, elapsed)) {
+          mesh.setMatrixAt(i, zeroMatrix)
+          continue
+        }
+        x = derivedPosition[0] ?? 0
+        y = derivedPosition[1] ?? 0
+        z = derivedPosition[2] ?? 0
+      } else {
+        const offset = (firstNodeIndex + i) * COORDINATE_STRIDE
+        if (offset < 0 || offset + 2 >= buffer.length) {
+          mesh.setMatrixAt(i, zeroMatrix)
+          continue
+        }
+        x = buffer[offset] ?? 0
+        y = buffer[offset + 1] ?? 0
+        z = buffer[offset + 2] ?? 0
       }
       if (scales) {
         const size = scales[i] ?? scale
         matrix.makeScale(size, size, size)
       }
-      matrix.setPosition(buffer[offset] ?? 0, buffer[offset + 1] ?? 0, buffer[offset + 2] ?? 0)
+      matrix.setPosition(x, y, z)
       mesh.setMatrixAt(i, matrix)
     }
     mesh.count = count

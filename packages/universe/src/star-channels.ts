@@ -51,8 +51,9 @@ export function starChannels(memory: EpisodicMemory, universeTime: string | null
 
 // Map a [0,1] fraction into a visual range; a non-finite input (from a skewed/corrupt DTO field the
 // domain mapper didn't coerce) floors to `min` rather than producing a NaN scale / width that would
-// poison an InstancedMesh matrix or ribbon vertex.
-function lerpClamp(min: number, max: number, t: number): number {
+// poison an InstancedMesh matrix or ribbon vertex. Shared with the gist channels — one range-mapping
+// guard for every strength→size projection.
+export function lerpClamp(min: number, max: number, t: number): number {
   const clamped = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0
   return min + (max - min) * clamped
 }

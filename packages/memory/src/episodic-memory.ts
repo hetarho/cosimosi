@@ -30,4 +30,7 @@ export interface EpisodicMemory {
   /** The current-memory text ([I2] a representation, never the Diary). The client renders its
    *  current decay-stage erosion from decayStages, falling back to this whole text [R8a]. */
   readonly currentText: string
+  /** How far the memory has risen on the gist ladder [C6][C7] (0..4, monotone) — one
+   *  neocortical gist body renders per risen stage at a client-derived coordinate [I5][V9]. */
+  readonly semanticStage: number
 }

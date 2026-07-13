@@ -40,6 +40,11 @@ export {
 } from './assets/bodies/star-body.ts'
 export { createCellStarBodySource } from './assets/bodies/cell-star-body.ts'
 export { createFilamentBodySource, FILAMENT_VERTEX_COLOR } from './assets/bodies/filament-body.ts'
+export {
+  createGistStarBodySource,
+  GIST_INSTANCE_TINT,
+  GIST_INSTANCE_DIFFUSE,
+} from './assets/bodies/gist-star-body.ts'
 export { Background } from './layers/Background.tsx'
 export { StarField, type StarFieldProps } from './layers/StarField.tsx'
 export { LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
@@ -60,12 +65,15 @@ export {
   type SkyFidelity,
 } from './assets/sky/sky-effects.ts'
 export {
+  COORDINATE_STRIDE,
   InstancedNodeLayer,
   type CoordinateBufferRef,
   type InstanceAttributeChannel,
   type InstanceChannels,
   type InstancedNodeLayerProps,
+  type InstancePositionMapper,
 } from './layers/InstancedNodeLayer.tsx'
+export { BandFog, type BandFogProps } from './layers/BandFog.tsx'
 export { EdgeLineLayer, type EdgeLineLayerProps } from './layers/EdgeLineLayer.tsx'
 export { FatLineLayer, type FatLineLayerProps } from './layers/FatLineLayer.tsx'
 export {

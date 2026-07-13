@@ -4,6 +4,7 @@ import type { ActorRefFrom } from 'xstate'
 import { VALUES } from '@cosimosi/config'
 import {
   Background,
+  BandFog,
   FrameTick,
   NavigationRig,
   PostFX,
@@ -21,6 +22,7 @@ import {
   buildUniverseGraph,
   createUniverseSimBridge,
   generateLatentField,
+  gistNodeId,
   recentlyActiveNeuronIds,
   universeNavigationMachine,
   type AwakenAnchor,
@@ -30,6 +32,7 @@ import {
   AwakenNeuron,
   CellStarLayer,
   FilamentLayer,
+  GistStarLayer,
   LatentStarField,
   NebulaField,
   StarLayer,
@@ -134,6 +137,13 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
     (index: number) => sendNodeCommand(graph?.episodicMemories[index]?.id, 'fly'),
     [graph, sendNodeCommand],
   )
+  // A gist pick is a SELECT only (read-only routing to the paid view, [R8]) — gist bodies are
+  // not sim nodes, so there is no coordinate for the camera to glide to.
+  const selectGist = useCallback(
+    (memoryId: string, stage: number) =>
+      actorRef.send({ type: 'SELECT', nodeId: gistNodeId(memoryId, stage) }),
+    [actorRef],
+  )
 
   const neuronCount = graph?.neurons.length ?? 0
 
@@ -208,6 +218,19 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
         positions={bridge.coordinates}
         neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
         universeTime={universe?.universeTime ?? null}
+      />
+      {/* The neocortex band ([V9]): gist bodies at the memories' copied x,y, risen z — plus
+          the restrained gap haze that makes the two bands read as depth, never a wall. */}
+      <BandFog
+        zMin={VALUES.forceSim.hippocampusZMax}
+        zMax={VALUES.forceSim.neocortexZMin}
+        radius={VALUES.rendering.latentFieldRadius}
+        intensity={VALUES.rendering.gistRiseLayerFog}
+      />
+      <GistStarLayer
+        positions={bridge.coordinates}
+        memoryIndexById={nodeIndex?.episodicMemories ?? EMPTY_NEURON_INDEX}
+        onSelect={selectGist}
       />
       <AwakenNeuron
         field={latentField}
