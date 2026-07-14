@@ -169,6 +169,17 @@ var (
 	ForgettingStageWordRemovalRatios = []float64{0.2, 0.4, 0.6, 0.85}
 )
 
+// twinkle
+const (
+	TwinkleBasicDailyAmount       = 100
+	TwinkleRecallBaseCost         = 5
+	TwinkleRecallDepthCoefficient = 10
+	TwinkleRecallMaxCost          = 40
+	TwinkleGistBaseCost           = 10
+	TwinkleGistStageDiscount      = 3
+	TwinkleGistMinCost            = 3
+)
+
 // force_sim
 const (
 	ForceSimCharge          = 0.035

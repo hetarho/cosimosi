@@ -1,0 +1,191 @@
+{
+  "tolerance": 1e-9,
+  "values": {
+    "basic_daily_amount": 100,
+    "recall_base_cost": 5,
+    "recall_depth_coefficient": 10,
+    "recall_max_cost": 40,
+    "gist_base_cost": 10,
+    "gist_stage_discount": 3,
+    "gist_min_cost": 3
+  },
+  "cases": [
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": 1.0 },
+      "expected": 15
+    },
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": 1.5 },
+      "expected": 20
+    },
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": 2.0 },
+      "expected": 25
+    },
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": 2.75 },
+      "expected": 33
+    },
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": 3.5 },
+      "expected": 40
+    },
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": 4.0 },
+      "expected": 40
+    },
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": 0 },
+      "expected": 5
+    },
+    {
+      "function": "recall_cost",
+      "inputs": { "accessibility_cost": -1 },
+      "expected": 5
+    },
+    {
+      "function": "gist_view_cost",
+      "inputs": { "semantic_stage": 1 },
+      "expected": 10
+    },
+    {
+      "function": "gist_view_cost",
+      "inputs": { "semantic_stage": 2 },
+      "expected": 7
+    },
+    {
+      "function": "gist_view_cost",
+      "inputs": { "semantic_stage": 3 },
+      "expected": 4
+    },
+    {
+      "function": "gist_view_cost",
+      "inputs": { "semantic_stage": 4 },
+      "expected": 3
+    },
+    {
+      "function": "gist_view_cost",
+      "inputs": { "semantic_stage": 0 },
+      "expected": 10
+    },
+    {
+      "function": "gist_view_cost",
+      "inputs": { "semantic_stage": 6 },
+      "expected": 3
+    },
+    {
+      "function": "plan_spend",
+      "inputs": { "basic_remaining": 100, "additional": 0, "cost": 100 },
+      "expected_plan": { "from_basic": 100, "from_additional": 0, "ok": true }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": { "basic_remaining": 30, "additional": 50, "cost": 70 },
+      "expected_plan": { "from_basic": 30, "from_additional": 40, "ok": true }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": { "basic_remaining": 10, "additional": 5, "cost": 20 },
+      "expected_plan": { "from_basic": 10, "from_additional": 10, "ok": false }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": { "basic_remaining": 0, "additional": 0, "cost": 0 },
+      "expected_plan": { "from_basic": 0, "from_additional": 0, "ok": true }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": { "basic_remaining": 100, "additional": 20, "cost": 15 },
+      "expected_plan": { "from_basic": 15, "from_additional": 0, "ok": true }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": { "basic_remaining": 0, "additional": 40, "cost": 25 },
+      "expected_plan": { "from_basic": 0, "from_additional": 25, "ok": true }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": { "basic_remaining": 50, "additional": 10, "cost": -5 },
+      "expected_plan": { "from_basic": 0, "from_additional": 0, "ok": true }
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-14T09:00:00Z",
+        "reset_window": "2026-07-13",
+        "spent_this_window": 40
+      },
+      "expected": 100
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-14T09:00:00Z",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 40
+      },
+      "expected": 60
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-14T23:59:59Z",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 100
+      },
+      "expected": 0
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-14T23:59:59Z",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 130
+      },
+      "expected": 0
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-14T23:59:59Z",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-15T00:00:00Z",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 100
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-13T12:00:00Z",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
+    },
+    {
+      "function": "basic_remaining",
+      "inputs": {
+        "now": "2026-07-14T09:00:00Z",
+        "reset_window": "2026-07-14",
+        "spent_this_window": -10
+      },
+      "expected": 100
+    }
+  ]
+}

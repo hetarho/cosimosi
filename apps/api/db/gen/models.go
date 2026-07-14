@@ -95,6 +95,26 @@ type Synapse struct {
 	CreatedAt                 pgtype.Timestamptz
 }
 
+type TwinkleBalance struct {
+	UserID               string
+	Additional           int32
+	BasicSpentThisWindow int32
+	BasicResetWindow     pgtype.Date
+	UpdatedAt            pgtype.Timestamptz
+}
+
+type TwinkleLedgerEntry struct {
+	ID             string
+	UserID         string
+	Kind           string
+	Reason         string
+	Amount         int32
+	FromBasic      int32
+	FromAdditional int32
+	DedupKey       pgtype.Text
+	CreatedAt      pgtype.Timestamptz
+}
+
 type UniverseState struct {
 	UserID              string
 	CurrentUniverseTime pgtype.Date

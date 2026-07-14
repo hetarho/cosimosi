@@ -108,6 +108,15 @@ export const VALUES = {
     costWeightCap: 4,
     costWeightCurve: 2,
   },
+  twinkle: {
+    basicDailyAmount: 100,
+    recallBaseCost: 5,
+    recallDepthCoefficient: 10,
+    recallMaxCost: 40,
+    gistBaseCost: 10,
+    gistStageDiscount: 3,
+    gistMinCost: 3,
+  },
   forceSim: {
     charge: 0.035,
     linkDistance: 12,

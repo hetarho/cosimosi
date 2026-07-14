@@ -276,6 +276,30 @@ forgetting:
   # of silence [F4]. The curve formula + the [floor, cap] clamp stay code.
   cost_weight_curve: 2.0
 
+twinkle:
+  # [G2] The daily basic Twinkle grant: refills to this amount at the start of each real UTC
+  # calendar day and never carries unspent remainder into the next day. Sized so a day of
+  # ordinary recall (a handful of 회고 + gist views) fits inside it — basic must not block the
+  # core loop [G5].
+  basic_daily_amount: 100
+  # [G4][F4] 회고 (recall) price floor term: the base Twinkle a recall costs before the
+  # decay-depth term is added. The accessibility weight (forgetting.cost_weight_*) starts at
+  # 1.0, so the cheapest real recall is base + coefficient.
+  recall_base_cost: 5
+  # [G4][F4] How steeply recall price rises per unit of accessibility/decay-depth weight —
+  # deeper-forgotten memories cost more to pull back.
+  recall_depth_coefficient: 10
+  # [G4][G5] Cap on a single 회고 price so a maximally-decayed silent engram stays recallable
+  # within a plausible daily balance (bounded, never unreachable).
+  recall_max_cost: 40
+  # [G4][R8] 요지 별 열람 (gist view) price at the shallowest gist stage (stage 1).
+  gist_base_cost: 10
+  # [G4][R8] Twinkle discount per deeper gist stage — deeper abstraction is cheaper to skim.
+  gist_stage_discount: 3
+  # [G4][G1] Floor for gist-view price: cheap but never free (the free surface is meta info
+  # and the forgotten current text, not a gist read).
+  gist_min_cost: 3
+
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.
   charge: 0.035
