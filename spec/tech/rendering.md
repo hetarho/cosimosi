@@ -289,7 +289,7 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
   gap center, zero at both band edges; intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the
   boundary, never a wall and never a click shield.
 - **The neutral stage-rise is appearance-driven and one-way** ([V8][I10]). Consolidation is the sole stage writer, so
-  a `(memory, stage)` instance newly appearing in the projection *is* the advance's read landing: it eases from the
+  a `(memory, stage)` instance newly appearing in the projection _is_ the advance's read landing: it eases from the
   memory's hippocampal z up into the band once (`GIST_RISE_DURATION_SECONDS`, a code-level layer constant); the first
   non-empty projection seeds silently (no page-load mass rise) and an empty interval adds no instance, so nothing
   plays. The per-interval rise events surface on `GistStarLayer.onStageRise` — the **booked [V8] slot** the

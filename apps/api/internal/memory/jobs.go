@@ -45,7 +45,7 @@ type SemanticJobNeuron struct {
 }
 
 // ConsolidateJobPayload is the interval-implied heavy work an advance enqueues ([C7], §2.8):
-// the replayed constellation's neurons re-embed after the reorg, off the advance transaction.
+// the replay set's neurons re-embed after the reorg, off the advance transaction.
 // It carries neuron IDENTITY only — names are mutable (a later launch can rename a neuron),
 // so the worker re-reads the authoritative texts at execution rather than embedding a
 // stale enqueue-time snapshot. The interval and stage-advanced memory ids ride along as the
@@ -130,8 +130,8 @@ func NewSemanticizeJobHandler(semanticizer Semanticizer, writer SemanticStagesWr
 	}
 }
 
-// NewConsolidateJobHandler drains the consolidate kind ([C4][C7]): re-embed the replayed
-// constellation's neurons on their current meaning, read at execution time. Neurons that
+// NewConsolidateJobHandler drains the consolidate kind ([C4][C7]): re-embed the replay
+// set's neurons on their current meaning, read at execution time. Neurons that
 // have vanished, sealed, or carry no usable text are skipped rather than failed — an
 // unnamed neuron simply has nothing to re-embed.
 func NewConsolidateJobHandler(embedder Embedder, writer EmbeddingWriter, names NeuronEmbedTextReader) func(context.Context, Job) error {

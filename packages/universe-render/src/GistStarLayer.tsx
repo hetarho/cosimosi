@@ -26,7 +26,7 @@ export interface GistRiseEvent {
 
 export interface GistStarLayerProps {
   readonly positions: CoordinateBufferRef
-  /** Memory id → sim node slot (the node index's episodic map) — the x, y source per frame. */
+  /** Engram id → sim node slot (the node index's episodic map) — the x, y source per frame. */
   readonly memoryIndexById: Readonly<Record<string, number>>
   /** A gist pick: read-only, routes to the ViewSemantic surface ([R8]) — never 회고하기. */
   readonly onSelect?: (memoryId: string, stage: number) => void

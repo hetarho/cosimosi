@@ -35,8 +35,8 @@ WHERE user_id = sqlc.arg(user_id)
   AND id = sqlc.arg(memory_id)
   AND deleted_at IS NULL;
 
--- The live neurons activated by a memory set — the constellation expansion step ([C2]).
--- name: ListConstellationNeurons :many
+-- The live neurons activated by a memory set — the replay-set expansion step ([C2]).
+-- name: ListReplaySetNeurons :many
 SELECT DISTINCT n.id, n.name, n.neuron_type
 FROM neuron_activations AS na
 JOIN neurons AS n
@@ -61,10 +61,10 @@ WHERE na.user_id = sqlc.arg(user_id)
 ORDER BY na.episodic_memory_id;
 
 -- The replay marker ([C2][I5]): refresh the activation recency of every synapse with BOTH
--- endpoints inside the touched constellation — the same trace a recall's reinforcement leaves,
--- consumed at read (filament fade / effective strength), never a stored coordinate. GREATEST
+-- endpoints inside the touched replay set — the same trace a recall's reinforcement leaves,
+-- consumed at read (the synapse strength fade / effective strength), never a stored coordinate. GREATEST
 -- keeps the marker forward-only ([I10]).
--- name: TouchConstellationSynapses :exec
+-- name: TouchReplaySetSynapses :exec
 UPDATE synapses
 SET last_activated_universe_time = GREATEST(last_activated_universe_time, sqlc.arg(universe_time)::date)
 WHERE user_id = sqlc.arg(user_id)

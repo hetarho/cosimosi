@@ -44,7 +44,7 @@ func newConsolidateService(t *testing.T, store Store) *memory.Service {
 // TestSyncConsolidatesEndToEnd drives a real sync-to-today advance with the Consolidator
 // bound and asserts the whole sleep landed atomically: gist stages risen with per-stage
 // provenance and a consumed timer anchor, newly crossed decay-stage texts persisted, the
-// touched constellation's synapses replay-marked, every synapse downscaled through the pure
+// touched replay set's synapses replay-marked, every synapse downscaled through the pure
 // fn, the consolidate job enqueued — and the Diary untouched with no row deleted (A1–A12).
 func TestSyncConsolidatesEndToEnd(t *testing.T) {
 	pool := openMemoryTestPool(t)
@@ -83,7 +83,7 @@ func TestSyncConsolidatesEndToEnd(t *testing.T) {
 	if err := store.SaveSemanticStages(ctx, userID, m1.ID, memory.SemanticStages{"g1", "g2", "g3", "g4"}); err != nil {
 		t.Fatalf("SaveSemanticStages failed: %v", err)
 	}
-	// m2 shares a neuron with m1 (the constellation neighbor); m3 is an unrelated island.
+	// m2 shares a neuron with m1 (the shared-neuron neighbor); m3 is an unrelated island.
 	// Both sit at the stage ceiling — with their ladders fully pregenerated, so the repair
 	// pass has nothing to re-enqueue — and only m1 seeds the replay set.
 	for _, id := range []string{base + "-m2", base + "-m3"} {
@@ -118,7 +118,7 @@ func TestSyncConsolidatesEndToEnd(t *testing.T) {
 			t.Fatalf("InsertNeuronActivation failed: %v", err)
 		}
 	}
-	// syn-in sits inside m1's constellation; syn-out is the island's own edge — it must be
+	// syn-in sits inside m1's replay set; syn-out is the island's own edge — it must be
 	// downscaled (slept) but never replay-touched (bounded); syn-fresh was last activated at
 	// today itself, so it never slept through the interval and is outside the downscale set.
 	for _, s := range []struct {
@@ -218,7 +218,7 @@ func TestSyncConsolidatesEndToEnd(t *testing.T) {
 		t.Fatalf("decay stage 1 = %q, want %q", gotDecay[0], want)
 	}
 
-	// Replay marker bounded to the touched constellation: the shared-neuron edge refreshed
+	// Replay marker bounded to the touched replay set: the shared-neuron edge refreshed
 	// to the advance day, the island edge untouched ([C2][I5]).
 	readSynapse := func(id string) (float32, time.Time) {
 		var s float32
@@ -233,7 +233,7 @@ func TestSyncConsolidatesEndToEnd(t *testing.T) {
 	outStrength, outTouched := readSynapse(base + "-syn-out")
 	freshStrength, _ := readSynapse(base + "-syn-fresh")
 	if !inTouched.Equal(today) {
-		t.Fatalf("constellation synapse last_activated = %v, want the advance day", inTouched)
+		t.Fatalf("replay-set synapse last_activated = %v, want the advance day", inTouched)
 	}
 	if !outTouched.Equal(created) {
 		t.Fatalf("island synapse last_activated = %v, want untouched", outTouched)
@@ -243,7 +243,7 @@ func TestSyncConsolidatesEndToEnd(t *testing.T) {
 	// the fn the float32-narrowed base the store read back (the `real` column round-trip),
 	// not the float64 literal. The fresh edge is untouched; no row is removed ([C4][I1]).
 	if want := float32(memory.Downscale(float64(float32(0.5)), 0.05)); inStrength != want {
-		t.Fatalf("constellation strength = %v, want %v", inStrength, want)
+		t.Fatalf("replay-set strength = %v, want %v", inStrength, want)
 	}
 	if want := float32(memory.Downscale(float64(float32(0.8)), 0.05)); outStrength != want {
 		t.Fatalf("island strength = %v, want %v", outStrength, want)

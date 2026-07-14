@@ -66,14 +66,14 @@ func (s Store) FillDecayStages(ctx context.Context, scope platform.UserScope, me
 	})
 }
 
-func (s Store) ConstellationNeurons(ctx context.Context, scope platform.UserScope, memoryIDs []string) ([]memory.ExistingNeuron, error) {
+func (s Store) ReplaySetNeurons(ctx context.Context, scope platform.UserScope, memoryIDs []string) ([]memory.ExistingNeuron, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err
 	}
 	if len(memoryIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := s.queries.ListConstellationNeurons(ctx, dbgen.ListConstellationNeuronsParams{
+	rows, err := s.queries.ListReplaySetNeurons(ctx, dbgen.ListReplaySetNeuronsParams{
 		UserID:    scope.UserID(),
 		MemoryIds: memoryIDs,
 	})
@@ -100,14 +100,14 @@ func (s Store) MemoriesActivatingNeurons(ctx context.Context, scope platform.Use
 	})
 }
 
-func (s Store) TouchConstellationSynapses(ctx context.Context, scope platform.UserScope, neuronIDs []string, universeTime time.Time) error {
+func (s Store) TouchReplaySetSynapses(ctx context.Context, scope platform.UserScope, neuronIDs []string, universeTime time.Time) error {
 	if err := s.ready(scope); err != nil {
 		return err
 	}
 	if len(neuronIDs) == 0 {
 		return nil
 	}
-	return s.queries.TouchConstellationSynapses(ctx, dbgen.TouchConstellationSynapsesParams{
+	return s.queries.TouchReplaySetSynapses(ctx, dbgen.TouchReplaySetSynapsesParams{
 		UserID:       scope.UserID(),
 		UniverseTime: pgDate(universeTime),
 		NeuronIds:    neuronIDs,

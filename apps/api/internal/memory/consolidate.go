@@ -14,7 +14,7 @@ import (
 // the Consolidator is the production AdvanceProgression binding.
 // Fired inside the same advance transaction as launch and sync-to-today, it advances the gist
 // stages whose semanticize timer crossed ([C6]), persists newly reached forgetting-stage texts
-// ([F1][R8a]), marks the replayed constellations for the read-time companion re-layout ([C2]),
+// ([F1][R8a]), marks the replay sets for the read-time companion re-layout ([C2]),
 // homeostatically Downscales the user's synapses (SHY, [C4][I9]), and enqueues the interval's
 // heavy work on the worker ([C7]). There is no cron and no RPC — the advance hook is the sole
 // trigger, and consolidation is never a user action ([T4]).
@@ -43,7 +43,7 @@ type SynapseStrength struct {
 }
 
 // ConsolidateTx is the consolidation write surface, consumer-owned here (§2.4). The advance
-// hook hands the handler plan 30's ProgressionTx — that port signature is unchanged — and the
+// hook hands the handler the universe-clock seam's ProgressionTx — that port signature is unchanged — and the
 // handler upgrades it to this surface via a type assertion; the pg transaction store
 // implements both, so the upgrade is a wiring fact, not a runtime gamble. Like LaunchTx and
 // RecallTx it exposes NO Diary write and NO delete of any kind, so the consolidation path
@@ -64,15 +64,16 @@ type ConsolidateTx interface {
 	// array the caller built. The caller merges (existing entries are never overwritten);
 	// the per-user advisory lock serializes the read-merge-write.
 	FillDecayStages(ctx context.Context, scope platform.UserScope, memoryID string, stages []string) error
-	// ConstellationNeurons returns the live neurons activated by the given memories.
-	ConstellationNeurons(ctx context.Context, scope platform.UserScope, memoryIDs []string) ([]ExistingNeuron, error)
+	// ReplaySetNeurons returns the live neurons activated by the given memories — the
+	// replay-set expansion input ([C2]).
+	ReplaySetNeurons(ctx context.Context, scope platform.UserScope, memoryIDs []string) ([]ExistingNeuron, error)
 	// MemoriesActivatingNeurons returns the non-deleted memories activating any of the
 	// given neurons — the shared-neuron neighbor expansion ([C2]).
 	MemoriesActivatingNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string) ([]string, error)
-	// TouchConstellationSynapses moves last_activated_universe_time forward to the advance
-	// time for every synapse with BOTH endpoints in the constellation — the replay marker
+	// TouchReplaySetSynapses moves last_activated_universe_time forward to the advance
+	// time for every synapse with BOTH endpoints in the replay set — the replay marker
 	// the read consumes ([C2]); no coordinate is ever stored ([I5]).
-	TouchConstellationSynapses(ctx context.Context, scope platform.UserScope, neuronIDs []string, universeTime time.Time) error
+	TouchReplaySetSynapses(ctx context.Context, scope platform.UserScope, neuronIDs []string, universeTime time.Time) error
 	// ListSynapseStrengths returns the user's synapses (id + stored base) last activated
 	// BEFORE the given universe time — the edges that actually slept through the interval.
 	// Edges activated at the advance target (just launched in this very transaction, or
@@ -84,7 +85,7 @@ type ConsolidateTx interface {
 }
 
 // Consolidator is the concrete AdvanceProgression handler ([T4]), bound at cmd/api. It works
-// entirely through plan 30's port: the signature, the launch/sync call sites, and the
+// entirely through the universe-clock advance port: the signature, the launch/sync call sites, and the
 // no-op-on-held-clock guarantee belong to that seam, and this handler must never require
 // widening it (its extra write surface comes from the ConsolidateTx upgrade instead).
 type Consolidator struct {
@@ -163,19 +164,19 @@ func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope,
 	}
 
 	// Downscale runs BEFORE the replay marker refreshes activation recency: the slept-edge
-	// filter (activated before `to`) must still see the constellation's pre-replay state, or
+	// filter (activated before `to`) must still see the replay set's pre-replay state, or
 	// the touched edges would skip the very sleep that replayed them.
 	if err := c.downscaleSynapses(ctx, scope, tx, to); err != nil {
 		return err
 	}
 
-	replayNeurons, err := c.markReplayedConstellations(ctx, scope, tx, memoryIDsOf(advances), to)
+	replayNeurons, err := c.markReplaySet(ctx, scope, tx, memoryIDsOf(advances), to)
 	if err != nil {
 		return err
 	}
 
-	// Interval-implied heavy work leaves the transaction ([C7], §2.8): the replayed
-	// constellation's neurons re-embed on the worker, never inline.
+	// Interval-implied heavy work leaves the transaction ([C7], §2.8): the replay set's
+	// neurons re-embed on the worker, never inline.
 	if len(advances) > 0 && len(replayNeurons) > 0 {
 		if err := c.enqueueConsolidateJob(ctx, scope, tx, from, to, memoryIDsOf(advances), replayNeurons); err != nil {
 			return err
@@ -195,7 +196,7 @@ func (c Consolidator) advanceGistStage(ctx context.Context, scope platform.UserS
 		return nil, nil
 	}
 	// The gist-timer anchor: recall/reconsolidation resets it; a never-recalled memory
-	// counts from its creation (plan 40's launch semantics for the NULL column).
+	// counts from its creation (the NULL timer column reads as created-at).
 	anchor := episodicMemory.CreatedUniverseTime
 	if episodicMemory.SemanticizeTimerResetAt != nil {
 		anchor = *episodicMemory.SemanticizeTimerResetAt
@@ -318,19 +319,20 @@ func mergeDecayStageTexts(existing []string, currentText string, targetStage int
 	return merged, changed
 }
 
-// markReplayedConstellations marks the interval's replayed set for the read-time companion
-// re-layout ([C2]): the stage-advanced memories plus their shared-neuron neighbors within
+// markReplaySet marks the interval's replay set for the read-time companion re-layout
+// ([C2]): the stage-advanced memories plus their shared-neuron neighbors within
 // consolidation.replay_neighbor_hops. The marker is the existing activation state — the
-// constellation's synapses get last_activated_universe_time touched to the advance time,
-// exactly the trace a recall's reinforcement leaves — so the read (filament fade, effective
-// strength) sees the replay without any stored coordinate ([I5]). Bounded by the hop value:
-// the whole universe is never marked. Returns the constellation's neurons (the re-embed set).
-func (c Consolidator) markReplayedConstellations(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, advancedIDs []string, to time.Time) ([]ExistingNeuron, error) {
+// replay set's synapses get last_activated_universe_time touched to the advance time,
+// exactly the trace a recall's reinforcement leaves — so the read (the synapse strength
+// fade / effective strength) sees the replay without any stored coordinate ([I5]). Bounded
+// by the hop value: the whole universe is never marked. Returns the replay set's neurons
+// (the re-embed set).
+func (c Consolidator) markReplaySet(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, advancedIDs []string, to time.Time) ([]ExistingNeuron, error) {
 	if len(advancedIDs) == 0 {
 		return nil, nil
 	}
 	memoryIDs := uniqueSorted(advancedIDs)
-	neurons, err := tx.ConstellationNeurons(ctx, scope, memoryIDs)
+	neurons, err := tx.ReplaySetNeurons(ctx, scope, memoryIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +349,7 @@ func (c Consolidator) markReplayedConstellations(ctx context.Context, scope plat
 			break
 		}
 		memoryIDs = expanded
-		neurons, err = tx.ConstellationNeurons(ctx, scope, memoryIDs)
+		neurons, err = tx.ReplaySetNeurons(ctx, scope, memoryIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -355,7 +357,7 @@ func (c Consolidator) markReplayedConstellations(ctx context.Context, scope plat
 	if len(neurons) == 0 {
 		return nil, nil
 	}
-	if err := tx.TouchConstellationSynapses(ctx, scope, neuronIDsOf(neurons), to); err != nil {
+	if err := tx.TouchReplaySetSynapses(ctx, scope, neuronIDsOf(neurons), to); err != nil {
 		return nil, err
 	}
 	return neurons, nil

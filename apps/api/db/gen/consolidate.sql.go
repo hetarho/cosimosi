@@ -104,50 +104,6 @@ func (q *Queries) FillConsolidationDecayStages(ctx context.Context, arg FillCons
 	return err
 }
 
-const listConstellationNeurons = `-- name: ListConstellationNeurons :many
-SELECT DISTINCT n.id, n.name, n.neuron_type
-FROM neuron_activations AS na
-JOIN neurons AS n
-  ON n.user_id = na.user_id
- AND n.id = na.neuron_id
- AND n.sealed_at IS NULL
-WHERE na.user_id = $1
-  AND na.episodic_memory_id = ANY($2::text[])
-ORDER BY n.id
-`
-
-type ListConstellationNeuronsParams struct {
-	UserID    string
-	MemoryIds []string
-}
-
-type ListConstellationNeuronsRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
-}
-
-// The live neurons activated by a memory set — the constellation expansion step ([C2]).
-func (q *Queries) ListConstellationNeurons(ctx context.Context, arg ListConstellationNeuronsParams) ([]ListConstellationNeuronsRow, error) {
-	rows, err := q.db.Query(ctx, listConstellationNeurons, arg.UserID, arg.MemoryIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListConstellationNeuronsRow
-	for rows.Next() {
-		var i ListConstellationNeuronsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listMemoriesActivatingNeurons = `-- name: ListMemoriesActivatingNeurons :many
 SELECT DISTINCT na.episodic_memory_id
 FROM neuron_activations AS na
@@ -229,6 +185,50 @@ func (q *Queries) ListNeuronEmbedTexts(ctx context.Context, arg ListNeuronEmbedT
 	return items, nil
 }
 
+const listReplaySetNeurons = `-- name: ListReplaySetNeurons :many
+SELECT DISTINCT n.id, n.name, n.neuron_type
+FROM neuron_activations AS na
+JOIN neurons AS n
+  ON n.user_id = na.user_id
+ AND n.id = na.neuron_id
+ AND n.sealed_at IS NULL
+WHERE na.user_id = $1
+  AND na.episodic_memory_id = ANY($2::text[])
+ORDER BY n.id
+`
+
+type ListReplaySetNeuronsParams struct {
+	UserID    string
+	MemoryIds []string
+}
+
+type ListReplaySetNeuronsRow struct {
+	ID         string
+	Name       pgtype.Text
+	NeuronType string
+}
+
+// The live neurons activated by a memory set — the replay-set expansion step ([C2]).
+func (q *Queries) ListReplaySetNeurons(ctx context.Context, arg ListReplaySetNeuronsParams) ([]ListReplaySetNeuronsRow, error) {
+	rows, err := q.db.Query(ctx, listReplaySetNeurons, arg.UserID, arg.MemoryIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReplaySetNeuronsRow
+	for rows.Next() {
+		var i ListReplaySetNeuronsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSynapseStrengthsForDownscale = `-- name: ListSynapseStrengthsForDownscale :many
 SELECT id, strength
 FROM synapses
@@ -270,7 +270,7 @@ func (q *Queries) ListSynapseStrengthsForDownscale(ctx context.Context, arg List
 	return items, nil
 }
 
-const touchConstellationSynapses = `-- name: TouchConstellationSynapses :exec
+const touchReplaySetSynapses = `-- name: TouchReplaySetSynapses :exec
 UPDATE synapses
 SET last_activated_universe_time = GREATEST(last_activated_universe_time, $1::date)
 WHERE user_id = $2
@@ -278,17 +278,17 @@ WHERE user_id = $2
   AND neuron_b_id = ANY($3::text[])
 `
 
-type TouchConstellationSynapsesParams struct {
+type TouchReplaySetSynapsesParams struct {
 	UniverseTime pgtype.Date
 	UserID       string
 	NeuronIds    []string
 }
 
 // The replay marker ([C2][I5]): refresh the activation recency of every synapse with BOTH
-// endpoints inside the touched constellation — the same trace a recall's reinforcement leaves,
-// consumed at read (filament fade / effective strength), never a stored coordinate. GREATEST
+// endpoints inside the touched replay set — the same trace a recall's reinforcement leaves,
+// consumed at read (the synapse strength fade / effective strength), never a stored coordinate. GREATEST
 // keeps the marker forward-only ([I10]).
-func (q *Queries) TouchConstellationSynapses(ctx context.Context, arg TouchConstellationSynapsesParams) error {
-	_, err := q.db.Exec(ctx, touchConstellationSynapses, arg.UniverseTime, arg.UserID, arg.NeuronIds)
+func (q *Queries) TouchReplaySetSynapses(ctx context.Context, arg TouchReplaySetSynapsesParams) error {
+	_, err := q.db.Exec(ctx, touchReplaySetSynapses, arg.UniverseTime, arg.UserID, arg.NeuronIds)
 	return err
 }

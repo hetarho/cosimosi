@@ -122,7 +122,7 @@ func (f *fakeConsolidateTx) FillDecayStages(_ context.Context, _ platform.UserSc
 	return nil
 }
 
-func (f *fakeConsolidateTx) ConstellationNeurons(_ context.Context, _ platform.UserScope, memoryIDs []string) ([]ExistingNeuron, error) {
+func (f *fakeConsolidateTx) ReplaySetNeurons(_ context.Context, _ platform.UserScope, memoryIDs []string) ([]ExistingNeuron, error) {
 	seen := map[string]struct{}{}
 	neurons := make([]ExistingNeuron, 0)
 	for _, memoryID := range memoryIDs {
@@ -152,7 +152,7 @@ func (f *fakeConsolidateTx) MemoriesActivatingNeurons(_ context.Context, _ platf
 	return ids, nil
 }
 
-func (f *fakeConsolidateTx) TouchConstellationSynapses(_ context.Context, _ platform.UserScope, neuronIDs []string, universeTime time.Time) error {
+func (f *fakeConsolidateTx) TouchReplaySetSynapses(_ context.Context, _ platform.UserScope, neuronIDs []string, universeTime time.Time) error {
 	f.touchedNeurons = append(f.touchedNeurons, neuronIDs)
 	f.touchedAt = universeTime
 	return nil
@@ -450,7 +450,7 @@ func TestConsolidatePersistsNewlyReachedDecayStageTexts(t *testing.T) {
 	}
 }
 
-func TestConsolidateMarksReplayBoundedToTouchedConstellations(t *testing.T) {
+func TestConsolidateMarksReplayBoundedToReplaySet(t *testing.T) {
 	t.Parallel()
 	tx := newFakeConsolidateTx()
 	advancing := plainConsolidateMemory("m1", consolidateDate(0))
@@ -473,8 +473,8 @@ func TestConsolidateMarksReplayBoundedToTouchedConstellations(t *testing.T) {
 
 	runConsolidator(t, tx, &from, to)
 
-	// m1 advanced; its constellation is m1 + the shared-neuron neighbor m2 → neurons n1, n2.
-	// The unrelated m3/n3 constellation is outside the hop bound and never marked ([C2]).
+	// m1 advanced; its replay set is m1 + the shared-neuron neighbor m2 → neurons n1, n2.
+	// The unrelated m3/n3 cluster is outside the hop bound and never marked ([C2]).
 	if len(tx.touchedNeurons) != 1 {
 		t.Fatalf("touch calls = %d, want 1", len(tx.touchedNeurons))
 	}
@@ -483,7 +483,7 @@ func TestConsolidateMarksReplayBoundedToTouchedConstellations(t *testing.T) {
 		touched[id] = true
 	}
 	if !touched["n1"] || !touched["n2"] || touched["n3"] {
-		t.Fatalf("touched neurons = %v, want the m1∪m2 constellation without n3", tx.touchedNeurons[0])
+		t.Fatalf("touched neurons = %v, want the m1∪m2 replay set without n3", tx.touchedNeurons[0])
 	}
 	if !tx.touchedAt.Equal(to) {
 		t.Fatalf("touch universe time = %v, want the advance time %v", tx.touchedAt, to)
@@ -607,7 +607,7 @@ func TestConsolidateEnqueuesHeavyWorkNotInlineLLM(t *testing.T) {
 		t.Fatalf("payload memories = %v, want [m1]", payload.MemoryIDs)
 	}
 	if len(payload.NeuronIDs) != 1 || payload.NeuronIDs[0] != "n1" {
-		t.Fatalf("payload neuron ids = %v, want the constellation neuron id only (texts re-read at execution)", payload.NeuronIDs)
+		t.Fatalf("payload neuron ids = %v, want the replay-set neuron id only (texts re-read at execution)", payload.NeuronIDs)
 	}
 }
 

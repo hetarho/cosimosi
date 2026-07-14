@@ -24,7 +24,7 @@ import (
 // Cross-memory refinement *beyond* the launched neurons (rescanning the wider
 // graph) is the reserved async `link` job's concern (§2.8) and is not run
 // here. Every edge is neuron↔neuron ([L6][I6]); there is never a memory↔memory
-// edge, and constellations stay emergent ([I5][L7]). All strength math delegates to
+// edge, and memory clusters stay emergent ([I5][L7]). All strength math delegates to
 // the plasticity functions [A11]; Link only inserts or strengthens [I1].
 type LinkService struct {
 	now   func() time.Time
