@@ -176,6 +176,18 @@ func (s *Server) Export(ctx context.Context, req *connect.Request[memoryv1.Expor
 	}), nil
 }
 
+func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.GetDiariesRequest]) (*connect.Response[memoryv1.GetDiariesResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.service.GetDiaries(ctx, scope, int(req.Msg.GetPageSize()), req.Msg.GetPageToken())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(diariesResponse(page)), nil
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -200,7 +212,8 @@ func domainError(err error) error {
 		errors.Is(err, memory.ErrRecallInputRequired),
 		errors.Is(err, memory.ErrViewSemanticInputRequired),
 		errors.Is(err, memory.ErrProvenanceInputRequired),
-		errors.Is(err, memory.ErrExportFormatRequired):
+		errors.Is(err, memory.ErrExportFormatRequired),
+		errors.Is(err, memory.ErrDiaryPageTokenInvalid):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, memory.ErrRecallMemoryNotFound),
 		errors.Is(err, memory.ErrViewSemanticMemoryNotFound),
@@ -273,6 +286,31 @@ func provenanceEntries(entries []memory.ProvenanceEntry) []*memoryv1.ProvenanceE
 		})
 	}
 	return out
+}
+
+// diariesResponse maps one archive page onto the wire DTOs: the verbatim body, ISO-DATE fields
+// (created_universe_time empty-until-set for a memory-less diary), and the split refs (mood as its bare
+// enum name, mapped to a color client-side).
+func diariesResponse(page memory.DiaryPage) *memoryv1.GetDiariesResponse {
+	diaries := make([]*memoryv1.DiaryDto, 0, len(page.Diaries))
+	for _, diary := range page.Diaries {
+		refs := make([]*memoryv1.DiarySplitRef, 0, len(diary.Memories))
+		for _, ref := range diary.Memories {
+			refs = append(refs, &memoryv1.DiarySplitRef{
+				EpisodicMemoryId: ref.EpisodicMemoryID,
+				Name:             ref.Name,
+				Mood:             string(ref.Mood),
+			})
+		}
+		diaries = append(diaries, &memoryv1.DiaryDto{
+			Id:                  diary.ID,
+			Body:                diary.Body,
+			DiaryDate:           diary.DiaryDate.Format(time.DateOnly),
+			CreatedUniverseTime: dateValue(diary.CreatedUniverseTime),
+			Memories:            refs,
+		})
+	}
+	return &memoryv1.GetDiariesResponse{Diaries: diaries, NextPageToken: page.NextPageToken}
 }
 
 // domainExportFormat maps the proto ExportFormat enum onto the domain format; an unspecified/unknown

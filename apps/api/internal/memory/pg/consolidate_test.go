@@ -37,6 +37,7 @@ func newConsolidateService(t *testing.T, store Store) *memory.Service {
 		Signals:         store,
 		Provenance:      store,
 		Exports:         store,
+		Diaries:         store,
 		Now:             consolidateServiceDay,
 	})
 	if err != nil {

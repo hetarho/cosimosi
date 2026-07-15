@@ -5,6 +5,7 @@ import { mobileLinkingPrefixes } from '../../shared/native/index.ts'
 import { DiagnosticsScreen } from '../diagnostics/index.ts'
 import { ROUTES, type RootStackParamList } from './routes.ts'
 import { BootScreen } from './screens/BootScreen.tsx'
+import { DiaryReaderScreen } from './screens/DiaryReaderScreen.tsx'
 import { ShellHomeScreen } from './screens/ShellHomeScreen.tsx'
 import { UniverseScreen } from './screens/UniverseScreen.tsx'
 
@@ -22,6 +23,7 @@ const mobileLinking: LinkingOptions<RootStackParamList> = {
       [ROUTES.shellHome]: 'home',
       [ROUTES.diagnostics]: 'diagnostics',
       [ROUTES.universe]: 'universe',
+      [ROUTES.diaryReader]: 'diary',
     },
   },
 }
@@ -39,6 +41,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
         <Stack.Screen name={ROUTES.shellHome} component={ShellHomeScreen} />
         <Stack.Screen name={ROUTES.diagnostics} component={DiagnosticsScreen} />
         <Stack.Screen name={ROUTES.universe} component={UniverseScreen} />
+        <Stack.Screen name={ROUTES.diaryReader} component={DiaryReaderScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   )

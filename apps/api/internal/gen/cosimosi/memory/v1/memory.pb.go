@@ -1751,6 +1751,255 @@ func (x *ExportResponse) GetFilename() string {
 	return ""
 }
 
+type GetDiariesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Entries per page (server default/clamp = diary_reader.page_size); 0 means the server default.
+	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Opaque cursor from a prior GetDiariesResponse.next_page_token; empty starts at the newest entry.
+	PageToken     string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDiariesRequest) Reset() {
+	*x = GetDiariesRequest{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDiariesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDiariesRequest) ProtoMessage() {}
+
+func (x *GetDiariesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDiariesRequest.ProtoReflect.Descriptor instead.
+func (*GetDiariesRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetDiariesRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetDiariesRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+// Reverse-chronological by diary_date. next_page_token empty = the last page.
+type GetDiariesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Diaries       []*DiaryDto            `protobuf:"bytes,1,rep,name=diaries,proto3" json:"diaries,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDiariesResponse) Reset() {
+	*x = GetDiariesResponse{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDiariesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDiariesResponse) ProtoMessage() {}
+
+func (x *GetDiariesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDiariesResponse.ProtoReflect.Descriptor instead.
+func (*GetDiariesResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GetDiariesResponse) GetDiaries() []*DiaryDto {
+	if x != nil {
+		return x.Diaries
+	}
+	return nil
+}
+
+func (x *GetDiariesResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type DiaryDto struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The immutable original body, returned verbatim — never a derived or mutated value [I2][D4].
+	Body string `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	// ISO DATE (the user-entered diary date [W5]).
+	DiaryDate string `protobuf:"bytes,3,opt,name=diary_date,json=diaryDate,proto3" json:"diary_date,omitempty"`
+	// ISO DATE (universe-time the diary's stars were launched at).
+	CreatedUniverseTime string `protobuf:"bytes,4,opt,name=created_universe_time,json=createdUniverseTime,proto3" json:"created_universe_time,omitempty"`
+	// The split membership [D3]: the still-live episodic memories this diary launched (soft-deleted
+	// excluded). Empty when every memory was let go — the diary record still lists ([I1]).
+	Memories      []*DiarySplitRef `protobuf:"bytes,5,rep,name=memories,proto3" json:"memories,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiaryDto) Reset() {
+	*x = DiaryDto{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiaryDto) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiaryDto) ProtoMessage() {}
+
+func (x *DiaryDto) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiaryDto.ProtoReflect.Descriptor instead.
+func (*DiaryDto) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *DiaryDto) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DiaryDto) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *DiaryDto) GetDiaryDate() string {
+	if x != nil {
+		return x.DiaryDate
+	}
+	return ""
+}
+
+func (x *DiaryDto) GetCreatedUniverseTime() string {
+	if x != nil {
+		return x.CreatedUniverseTime
+	}
+	return ""
+}
+
+func (x *DiaryDto) GetMemories() []*DiarySplitRef {
+	if x != nil {
+		return x.Memories
+	}
+	return nil
+}
+
+type DiarySplitRef struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	EpisodicMemoryId string                 `protobuf:"bytes,1,opt,name=episodic_memory_id,json=episodicMemoryId,proto3" json:"episodic_memory_id,omitempty"`
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// The primary mood, bare enum name (e.g. "JOY") — the client maps it to a color [I3].
+	Mood          string `protobuf:"bytes,3,opt,name=mood,proto3" json:"mood,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiarySplitRef) Reset() {
+	*x = DiarySplitRef{}
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiarySplitRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiarySplitRef) ProtoMessage() {}
+
+func (x *DiarySplitRef) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_memory_v1_memory_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiarySplitRef.ProtoReflect.Descriptor instead.
+func (*DiarySplitRef) Descriptor() ([]byte, []int) {
+	return file_cosimosi_memory_v1_memory_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *DiarySplitRef) GetEpisodicMemoryId() string {
+	if x != nil {
+		return x.EpisodicMemoryId
+	}
+	return ""
+}
+
+func (x *DiarySplitRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DiarySplitRef) GetMood() string {
+	if x != nil {
+		return x.Mood
+	}
+	return ""
+}
+
 var File_cosimosi_memory_v1_memory_proto protoreflect.FileDescriptor
 
 const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
@@ -1878,11 +2127,29 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x0eExportResponse\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\fR\acontent\x12!\n" +
 	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x1a\n" +
-	"\bfilename\x18\x03 \x01(\tR\bfilename*Z\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename\"O\n" +
+	"\x11GetDiariesRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"t\n" +
+	"\x12GetDiariesResponse\x126\n" +
+	"\adiaries\x18\x01 \x03(\v2\x1c.cosimosi.memory.v1.DiaryDtoR\adiaries\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc0\x01\n" +
+	"\bDiaryDto\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04body\x18\x02 \x01(\tR\x04body\x12\x1d\n" +
+	"\n" +
+	"diary_date\x18\x03 \x01(\tR\tdiaryDate\x122\n" +
+	"\x15created_universe_time\x18\x04 \x01(\tR\x13createdUniverseTime\x12=\n" +
+	"\bmemories\x18\x05 \x03(\v2!.cosimosi.memory.v1.DiarySplitRefR\bmemories\"e\n" +
+	"\rDiarySplitRef\x12,\n" +
+	"\x12episodic_memory_id\x18\x01 \x01(\tR\x10episodicMemoryId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04mood\x18\x03 \x01(\tR\x04mood*Z\n" +
 	"\fExportFormat\x12\x1d\n" +
 	"\x19EXPORT_FORMAT_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11EXPORT_FORMAT_CSV\x10\x01\x12\x14\n" +
-	"\x10EXPORT_FORMAT_MD\x10\x022\xf4\x06\n" +
+	"\x10EXPORT_FORMAT_MD\x10\x022\xd6\a\n" +
 	"\rMemoryService\x12[\n" +
 	"\n" +
 	"SplitDiary\x12%.cosimosi.memory.v1.SplitDiaryRequest\x1a&.cosimosi.memory.v1.SplitDiaryResponse\x12]\n" +
@@ -1893,7 +2160,9 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x10RecallDiaryStars\x12+.cosimosi.memory.v1.RecallDiaryStarsRequest\x1a,.cosimosi.memory.v1.RecallDiaryStarsResponse\x12a\n" +
 	"\fViewSemantic\x12'.cosimosi.memory.v1.ViewSemanticRequest\x1a(.cosimosi.memory.v1.ViewSemanticResponse\x12i\n" +
 	"\rGetProvenance\x12(.cosimosi.memory.v1.GetProvenanceRequest\x1a).cosimosi.memory.v1.GetProvenanceResponse\"\x03\x90\x02\x01\x12T\n" +
-	"\x06Export\x12!.cosimosi.memory.v1.ExportRequest\x1a\".cosimosi.memory.v1.ExportResponse\"\x03\x90\x02\x01B\xd1\x01\n" +
+	"\x06Export\x12!.cosimosi.memory.v1.ExportRequest\x1a\".cosimosi.memory.v1.ExportResponse\"\x03\x90\x02\x01\x12`\n" +
+	"\n" +
+	"GetDiaries\x12%.cosimosi.memory.v1.GetDiariesRequest\x1a&.cosimosi.memory.v1.GetDiariesResponse\"\x03\x90\x02\x01B\xd1\x01\n" +
 	"\x16com.cosimosi.memory.v1B\vMemoryProtoP\x01Z@github.com/cosimosi/api/internal/gen/cosimosi/memory/v1;memoryv1\xa2\x02\x03CMX\xaa\x02\x12Cosimosi.Memory.V1\xca\x02\x12Cosimosi\\Memory\\V1\xe2\x02\x1eCosimosi\\Memory\\V1\\GPBMetadata\xea\x02\x14Cosimosi::Memory::V1b\x06proto3"
 
 var (
@@ -1909,7 +2178,7 @@ func file_cosimosi_memory_v1_memory_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_memory_v1_memory_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_memory_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_cosimosi_memory_v1_memory_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_cosimosi_memory_v1_memory_proto_goTypes = []any{
 	(ExportFormat)(0),                // 0: cosimosi.memory.v1.ExportFormat
 	(*SplitDiaryRequest)(nil),        // 1: cosimosi.memory.v1.SplitDiaryRequest
@@ -1938,6 +2207,10 @@ var file_cosimosi_memory_v1_memory_proto_goTypes = []any{
 	(*ProvenanceEntry)(nil),          // 24: cosimosi.memory.v1.ProvenanceEntry
 	(*ExportRequest)(nil),            // 25: cosimosi.memory.v1.ExportRequest
 	(*ExportResponse)(nil),           // 26: cosimosi.memory.v1.ExportResponse
+	(*GetDiariesRequest)(nil),        // 27: cosimosi.memory.v1.GetDiariesRequest
+	(*GetDiariesResponse)(nil),       // 28: cosimosi.memory.v1.GetDiariesResponse
+	(*DiaryDto)(nil),                 // 29: cosimosi.memory.v1.DiaryDto
+	(*DiarySplitRef)(nil),            // 30: cosimosi.memory.v1.DiarySplitRef
 }
 var file_cosimosi_memory_v1_memory_proto_depIdxs = []int32{
 	3,  // 0: cosimosi.memory.v1.ReviseSplitRequest.previous:type_name -> cosimosi.memory.v1.SplitDiaryResponse
@@ -1952,29 +2225,33 @@ var file_cosimosi_memory_v1_memory_proto_depIdxs = []int32{
 	12, // 9: cosimosi.memory.v1.EpisodicMemoryDto.activations:type_name -> cosimosi.memory.v1.NeuronActivationDto
 	24, // 10: cosimosi.memory.v1.GetProvenanceResponse.entries:type_name -> cosimosi.memory.v1.ProvenanceEntry
 	0,  // 11: cosimosi.memory.v1.ExportRequest.format:type_name -> cosimosi.memory.v1.ExportFormat
-	1,  // 12: cosimosi.memory.v1.MemoryService.SplitDiary:input_type -> cosimosi.memory.v1.SplitDiaryRequest
-	2,  // 13: cosimosi.memory.v1.MemoryService.ReviseSplit:input_type -> cosimosi.memory.v1.ReviseSplitRequest
-	6,  // 14: cosimosi.memory.v1.MemoryService.LaunchStars:input_type -> cosimosi.memory.v1.LaunchStarsRequest
-	9,  // 15: cosimosi.memory.v1.MemoryService.GetUniverse:input_type -> cosimosi.memory.v1.GetUniverseRequest
-	16, // 16: cosimosi.memory.v1.MemoryService.Recall:input_type -> cosimosi.memory.v1.RecallRequest
-	18, // 17: cosimosi.memory.v1.MemoryService.RecallDiaryStars:input_type -> cosimosi.memory.v1.RecallDiaryStarsRequest
-	19, // 18: cosimosi.memory.v1.MemoryService.ViewSemantic:input_type -> cosimosi.memory.v1.ViewSemanticRequest
-	22, // 19: cosimosi.memory.v1.MemoryService.GetProvenance:input_type -> cosimosi.memory.v1.GetProvenanceRequest
-	25, // 20: cosimosi.memory.v1.MemoryService.Export:input_type -> cosimosi.memory.v1.ExportRequest
-	3,  // 21: cosimosi.memory.v1.MemoryService.SplitDiary:output_type -> cosimosi.memory.v1.SplitDiaryResponse
-	3,  // 22: cosimosi.memory.v1.MemoryService.ReviseSplit:output_type -> cosimosi.memory.v1.SplitDiaryResponse
-	8,  // 23: cosimosi.memory.v1.MemoryService.LaunchStars:output_type -> cosimosi.memory.v1.LaunchStarsResponse
-	10, // 24: cosimosi.memory.v1.MemoryService.GetUniverse:output_type -> cosimosi.memory.v1.GetUniverseResponse
-	17, // 25: cosimosi.memory.v1.MemoryService.Recall:output_type -> cosimosi.memory.v1.RecallResponse
-	21, // 26: cosimosi.memory.v1.MemoryService.RecallDiaryStars:output_type -> cosimosi.memory.v1.RecallDiaryStarsResponse
-	20, // 27: cosimosi.memory.v1.MemoryService.ViewSemantic:output_type -> cosimosi.memory.v1.ViewSemanticResponse
-	23, // 28: cosimosi.memory.v1.MemoryService.GetProvenance:output_type -> cosimosi.memory.v1.GetProvenanceResponse
-	26, // 29: cosimosi.memory.v1.MemoryService.Export:output_type -> cosimosi.memory.v1.ExportResponse
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	29, // 12: cosimosi.memory.v1.GetDiariesResponse.diaries:type_name -> cosimosi.memory.v1.DiaryDto
+	30, // 13: cosimosi.memory.v1.DiaryDto.memories:type_name -> cosimosi.memory.v1.DiarySplitRef
+	1,  // 14: cosimosi.memory.v1.MemoryService.SplitDiary:input_type -> cosimosi.memory.v1.SplitDiaryRequest
+	2,  // 15: cosimosi.memory.v1.MemoryService.ReviseSplit:input_type -> cosimosi.memory.v1.ReviseSplitRequest
+	6,  // 16: cosimosi.memory.v1.MemoryService.LaunchStars:input_type -> cosimosi.memory.v1.LaunchStarsRequest
+	9,  // 17: cosimosi.memory.v1.MemoryService.GetUniverse:input_type -> cosimosi.memory.v1.GetUniverseRequest
+	16, // 18: cosimosi.memory.v1.MemoryService.Recall:input_type -> cosimosi.memory.v1.RecallRequest
+	18, // 19: cosimosi.memory.v1.MemoryService.RecallDiaryStars:input_type -> cosimosi.memory.v1.RecallDiaryStarsRequest
+	19, // 20: cosimosi.memory.v1.MemoryService.ViewSemantic:input_type -> cosimosi.memory.v1.ViewSemanticRequest
+	22, // 21: cosimosi.memory.v1.MemoryService.GetProvenance:input_type -> cosimosi.memory.v1.GetProvenanceRequest
+	25, // 22: cosimosi.memory.v1.MemoryService.Export:input_type -> cosimosi.memory.v1.ExportRequest
+	27, // 23: cosimosi.memory.v1.MemoryService.GetDiaries:input_type -> cosimosi.memory.v1.GetDiariesRequest
+	3,  // 24: cosimosi.memory.v1.MemoryService.SplitDiary:output_type -> cosimosi.memory.v1.SplitDiaryResponse
+	3,  // 25: cosimosi.memory.v1.MemoryService.ReviseSplit:output_type -> cosimosi.memory.v1.SplitDiaryResponse
+	8,  // 26: cosimosi.memory.v1.MemoryService.LaunchStars:output_type -> cosimosi.memory.v1.LaunchStarsResponse
+	10, // 27: cosimosi.memory.v1.MemoryService.GetUniverse:output_type -> cosimosi.memory.v1.GetUniverseResponse
+	17, // 28: cosimosi.memory.v1.MemoryService.Recall:output_type -> cosimosi.memory.v1.RecallResponse
+	21, // 29: cosimosi.memory.v1.MemoryService.RecallDiaryStars:output_type -> cosimosi.memory.v1.RecallDiaryStarsResponse
+	20, // 30: cosimosi.memory.v1.MemoryService.ViewSemantic:output_type -> cosimosi.memory.v1.ViewSemanticResponse
+	23, // 31: cosimosi.memory.v1.MemoryService.GetProvenance:output_type -> cosimosi.memory.v1.GetProvenanceResponse
+	26, // 32: cosimosi.memory.v1.MemoryService.Export:output_type -> cosimosi.memory.v1.ExportResponse
+	28, // 33: cosimosi.memory.v1.MemoryService.GetDiaries:output_type -> cosimosi.memory.v1.GetDiariesResponse
+	24, // [24:34] is the sub-list for method output_type
+	14, // [14:24] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_memory_v1_memory_proto_init() }
@@ -1990,7 +2267,7 @@ func file_cosimosi_memory_v1_memory_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_memory_v1_memory_proto_rawDesc), len(file_cosimosi_memory_v1_memory_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   26,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -16,6 +16,8 @@ export const ROUTES = {
   diagnostics: 'Diagnostics',
   /** The 3D memory universe — the shared @cosimosi/3d-renderer scene. */
   universe: 'Universe',
+  /** The immutable diary archive — the quiet keeping-place ([D2]). */
+  diaryReader: 'DiaryReader',
 } as const
 
 export type RootStackParamList = {
@@ -23,6 +25,7 @@ export type RootStackParamList = {
   ShellHome: undefined
   Diagnostics: undefined
   Universe: undefined
+  DiaryReader: undefined
 }
 
 export type RootStackScreenProps<RouteName extends keyof RootStackParamList> =

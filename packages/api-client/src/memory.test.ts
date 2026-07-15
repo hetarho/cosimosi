@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   MemoryService,
+  createGetDiariesInfiniteQueryOptions,
+  createGetDiariesQueryKey,
+  createGetDiariesQueryOptions,
   createGetUniverseQueryKey,
   createGetUniverseQueryOptions,
   createMemoryClient,
@@ -74,6 +77,34 @@ describe('memory transport facade', () => {
     expect(typeof options.queryFn).toBe('function')
     expect(options.queryKey).toEqual(createGetUniverseQueryKey(transport))
     expect(createMemoryServiceQueryKey()[1].serviceName).toContain('MemoryService')
+  })
+
+  it('creates paginated Query options for GetDiaries mirroring the universe read', () => {
+    const transport = createMemoryMockTransport(universeFixture)
+    const options = createGetDiariesQueryOptions({ pageSize: 20, pageToken: '' }, transport)
+
+    expect(options.queryKey[0]).toBe('connect-query')
+    expect(typeof options.queryFn).toBe('function')
+    expect(createGetDiariesQueryKey()[1].serviceName).toContain('MemoryService')
+  })
+
+  it('drives GetDiaries pagination off next_page_token (empty = last page)', () => {
+    const transport = createMemoryMockTransport(universeFixture)
+    const infinite = createGetDiariesInfiniteQueryOptions(transport, 20)
+
+    expect(infinite.initialPageParam).toBe('')
+    const more = {
+      $typeName: 'cosimosi.memory.v1.GetDiariesResponse' as const,
+      diaries: [],
+      nextPageToken: 'cursor-2',
+    }
+    const last = {
+      $typeName: 'cosimosi.memory.v1.GetDiariesResponse' as const,
+      diaries: [],
+      nextPageToken: '',
+    }
+    expect(infinite.getNextPageParam(more, [more], 'cursor-1', [''])).toBe('cursor-2')
+    expect(infinite.getNextPageParam(last, [last], 'cursor-2', [''])).toBeUndefined()
   })
 
   it('carries stored facts only on the universe read (no position or coordinate field)', async () => {

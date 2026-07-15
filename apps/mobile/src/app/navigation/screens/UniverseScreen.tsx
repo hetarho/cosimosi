@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
@@ -9,7 +9,11 @@ import {
   ObservedErrorBoundary,
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react'
-import { universeNavigationMachine, useRecallTargetStore } from '@cosimosi/universe'
+import {
+  universeNavigationMachine,
+  useOpenDiaryTargetStore,
+  useRecallTargetStore,
+} from '@cosimosi/universe'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
@@ -19,6 +23,7 @@ import { DetailPanel } from '../../../widgets/star-detail/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
 import { UniverseTimeOverlay } from '../../../widgets/universe-time/index.ts'
 import { WritingFlowSheet } from '../../../widgets/writing-flow/index.ts'
+import { ROUTES, type RootStackScreenProps } from '../routes.ts'
 
 // The universe screen: the real memory universe full-bleed with a floating action over
 // it. The shared widget owns the whole 3D block (renderer mount, GetUniverse read, sim,
@@ -35,23 +40,27 @@ function RendererFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackP
   )
 }
 
-export function UniverseScreen() {
+export function UniverseScreen({ navigation }: RootStackScreenProps<'Universe'>) {
   // The navigation/selection actor is owned HERE (the app layer) so the canvas and the star-detail
   // panel share one selection — the canvas machine stays the single owner (§3.2), as on web.
   const navigationActorRef = useActorRef(universeNavigationMachine)
 
   // 회고하기 opens the recall flow via the shared recall-target store (the flow widget subscribes).
-  // 원본 일기 보기 is still a seam — the diary reader is its own unit — so the screen records that
-  // for later and does not act here (A6).
+  // 원본 일기 보기 parks the memory id in the open-diary-target store and navigates to the archive,
+  // where the reader opens the owning diary ([D2]).
   const requestRecallTarget = useRecallTargetStore((state) => state.request)
-  const openDiaryTargetRef = useRef<string | null>(null)
+  const requestOpenDiary = useOpenDiaryTargetStore((state) => state.request)
   const handleRecallRequested = useCallback(
     (episodicMemoryId: string) => requestRecallTarget(episodicMemoryId),
     [requestRecallTarget],
   )
-  const handleOpenDiary = useCallback((episodicMemoryId: string) => {
-    openDiaryTargetRef.current = episodicMemoryId
-  }, [])
+  const handleOpenDiary = useCallback(
+    (episodicMemoryId: string) => {
+      requestOpenDiary(episodicMemoryId)
+      navigation.navigate(ROUTES.diaryReader)
+    },
+    [requestOpenDiary, navigation],
+  )
 
   return (
     <View style={styles.root}>
@@ -75,6 +84,12 @@ export function UniverseScreen() {
       <View style={styles.stardust}>
         <StardustOverlay />
       </View>
+      {/* The quiet way into the archive ([D2]) — a restrained affordance, not persistent chrome. */}
+      <View style={styles.diary}>
+        <Button color="neutral" size="sm" onPress={() => navigation.navigate(ROUTES.diaryReader)}>
+          {m.diary_reader_title()}
+        </Button>
+      </View>
       {/* Mounted at the screen root so its absolute veil/HUD span the full screen; before the
           write action so the veil dims the scene + notice but never the primary affordance. */}
       <UniverseTimeOverlay />
@@ -97,6 +112,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   notice: { position: 'absolute', left: 16, right: 16, top: 24 },
   stardust: { position: 'absolute', right: 16, top: 72 },
+  diary: { position: 'absolute', right: 16, top: 120 },
   hud: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center' },
   fallback: { flex: 1, gap: 16, alignItems: 'center', justifyContent: 'center', padding: 24 },
   fallbackText: { color: tokens.color['text-muted'], fontSize: 15, textAlign: 'center' },

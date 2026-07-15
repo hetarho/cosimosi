@@ -199,3 +199,8 @@ const (
 	ForceSimNeocortexZMax   = 25
 	ForceSimSeed            = 190019
 )
+
+// diary_reader
+const (
+	DiaryReaderPageSize = 20
+)

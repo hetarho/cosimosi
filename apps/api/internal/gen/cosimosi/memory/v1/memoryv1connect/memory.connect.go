@@ -58,6 +58,9 @@ const (
 	MemoryServiceGetProvenanceProcedure = "/cosimosi.memory.v1.MemoryService/GetProvenance"
 	// MemoryServiceExportProcedure is the fully-qualified name of the MemoryService's Export RPC.
 	MemoryServiceExportProcedure = "/cosimosi.memory.v1.MemoryService/Export"
+	// MemoryServiceGetDiariesProcedure is the fully-qualified name of the MemoryService's GetDiaries
+	// RPC.
+	MemoryServiceGetDiariesProcedure = "/cosimosi.memory.v1.MemoryService/GetDiaries"
 )
 
 // MemoryServiceClient is a client for the cosimosi.memory.v1.MemoryService service.
@@ -92,6 +95,9 @@ type MemoryServiceClient interface {
 	// Whole-account export of the immutable Diary + memories as a downloadable file [W6][D4]. The Diary is
 	// the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
 	Export(context.Context, *connect.Request[v1.ExportRequest]) (*connect.Response[v1.ExportResponse], error)
+	// The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
+	// diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
+	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
 }
 
 // NewMemoryServiceClient constructs a client for the cosimosi.memory.v1.MemoryService service. By
@@ -162,6 +168,13 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getDiaries: connect.NewClient[v1.GetDiariesRequest, v1.GetDiariesResponse](
+			httpClient,
+			baseURL+MemoryServiceGetDiariesProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("GetDiaries")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -176,6 +189,7 @@ type memoryServiceClient struct {
 	viewSemantic     *connect.Client[v1.ViewSemanticRequest, v1.ViewSemanticResponse]
 	getProvenance    *connect.Client[v1.GetProvenanceRequest, v1.GetProvenanceResponse]
 	export           *connect.Client[v1.ExportRequest, v1.ExportResponse]
+	getDiaries       *connect.Client[v1.GetDiariesRequest, v1.GetDiariesResponse]
 }
 
 // SplitDiary calls cosimosi.memory.v1.MemoryService.SplitDiary.
@@ -223,6 +237,11 @@ func (c *memoryServiceClient) Export(ctx context.Context, req *connect.Request[v
 	return c.export.CallUnary(ctx, req)
 }
 
+// GetDiaries calls cosimosi.memory.v1.MemoryService.GetDiaries.
+func (c *memoryServiceClient) GetDiaries(ctx context.Context, req *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error) {
+	return c.getDiaries.CallUnary(ctx, req)
+}
+
 // MemoryServiceHandler is an implementation of the cosimosi.memory.v1.MemoryService service.
 type MemoryServiceHandler interface {
 	// Synchronous preview split — the user sees and edits it [W2]; persists nothing.
@@ -255,6 +274,9 @@ type MemoryServiceHandler interface {
 	// Whole-account export of the immutable Diary + memories as a downloadable file [W6][D4]. The Diary is
 	// the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
 	Export(context.Context, *connect.Request[v1.ExportRequest]) (*connect.Response[v1.ExportResponse], error)
+	// The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
+	// diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
+	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
 }
 
 // NewMemoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -321,6 +343,13 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceGetDiariesHandler := connect.NewUnaryHandler(
+		MemoryServiceGetDiariesProcedure,
+		svc.GetDiaries,
+		connect.WithSchema(memoryServiceMethods.ByName("GetDiaries")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.memory.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MemoryServiceSplitDiaryProcedure:
@@ -341,6 +370,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceGetProvenanceHandler.ServeHTTP(w, r)
 		case MemoryServiceExportProcedure:
 			memoryServiceExportHandler.ServeHTTP(w, r)
+		case MemoryServiceGetDiariesProcedure:
+			memoryServiceGetDiariesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -384,4 +415,8 @@ func (UnimplementedMemoryServiceHandler) GetProvenance(context.Context, *connect
 
 func (UnimplementedMemoryServiceHandler) Export(context.Context, *connect.Request[v1.ExportRequest]) (*connect.Response[v1.ExportResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.Export is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.GetDiaries is not implemented"))
 }

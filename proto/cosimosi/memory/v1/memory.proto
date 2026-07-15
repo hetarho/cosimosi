@@ -46,6 +46,11 @@ service MemoryService {
   rpc Export(ExportRequest) returns (ExportResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
+  // diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
+  rpc GetDiaries(GetDiariesRequest) returns (GetDiariesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message SplitDiaryRequest {
@@ -279,4 +284,37 @@ message ExportResponse {
   bytes content = 1;
   string content_type = 2;
   string filename = 3;
+}
+
+message GetDiariesRequest {
+  // Entries per page (server default/clamp = diary_reader.page_size); 0 means the server default.
+  int32 page_size = 1;
+  // Opaque cursor from a prior GetDiariesResponse.next_page_token; empty starts at the newest entry.
+  string page_token = 2;
+}
+
+// Reverse-chronological by diary_date. next_page_token empty = the last page.
+message GetDiariesResponse {
+  repeated DiaryDto diaries = 1;
+  string next_page_token = 2;
+}
+
+message DiaryDto {
+  string id = 1;
+  // The immutable original body, returned verbatim — never a derived or mutated value [I2][D4].
+  string body = 2;
+  // ISO DATE (the user-entered diary date [W5]).
+  string diary_date = 3;
+  // ISO DATE (universe-time the diary's stars were launched at).
+  string created_universe_time = 4;
+  // The split membership [D3]: the still-live episodic memories this diary launched (soft-deleted
+  // excluded). Empty when every memory was let go — the diary record still lists ([I1]).
+  repeated DiarySplitRef memories = 5;
+}
+
+message DiarySplitRef {
+  string episodic_memory_id = 1;
+  string name = 2;
+  // The primary mood, bare enum name (e.g. "JOY") — the client maps it to a color [I3].
+  string mood = 3;
 }

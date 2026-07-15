@@ -135,4 +135,7 @@ export const VALUES = {
     neocortexZMax: 25,
     seed: 190019,
   },
+  diaryReader: {
+    pageSize: 20,
+  },
 } as const

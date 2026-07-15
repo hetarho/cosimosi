@@ -25,6 +25,7 @@ import {
   gistNodeId,
   recentlyActiveNeuronIds,
   universeNavigationMachine,
+  usePendingFlyTargetStore,
   type AwakenAnchor,
   type UniverseNavigationMode,
 } from '@cosimosi/universe'
@@ -75,6 +76,19 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   // without a lifted ref, it owns its own (parity with web).
   const ownActorRef = useActorRef(universeNavigationMachine)
   const actorRef = navigationActorRef ?? ownActorRef
+
+  // Camera hand-off from a cross-route action (the diary jump): a parked fly target is consumed
+  // once the graph carries the node, gliding to the recovered star, then cleared. The reinforced
+  // star already exists in the universe, so the node resolves as soon as the read loads.
+  const flyTargetNodeId = usePendingFlyTargetStore((state) => state.nodeId)
+  const clearFlyTarget = usePendingFlyTargetStore((state) => state.clear)
+  useEffect(() => {
+    if (!flyTargetNodeId || !nodeIndex) return
+    const index = nodeIndex.neurons[flyTargetNodeId] ?? nodeIndex.episodicMemories[flyTargetNodeId]
+    if (index !== undefined) actorRef.send({ type: 'FLY', nodeId: flyTargetNodeId })
+    clearFlyTarget()
+  }, [flyTargetNodeId, nodeIndex, actorRef, clearFlyTarget])
+
   const pose = useMemo(
     () => ({
       mode: 'idle' as UniverseNavigationMode,

@@ -262,6 +262,47 @@ web and mobile import the machine + the balance/charge-request stores verbatim
 from `packages/universe`; only the HUD/sheet hosts fork (§6/§3.5). There is no
 login-bonus path anywhere ([G3]); the daily basic grant plays that role.
 
+### 6.5 `diaryReaderMachine` (the diary-reader jump)
+
+`browsing → confirming → recalling → flying`, context empty — the "이 일기로
+태어난 별 보기" jump the reader owns (plan 47). Browsing the archive is free and
+data-driven (a `GetDiaries` infinite Query + the shared `useDiaryStore`), so it
+is the resting state, not a phase; only the jump spends and moves the clock:
+
+- the **selected/target diary id, the server quote, and the deep-link target**
+  all ride outside the machine — the widget's local `jumpDiaryId`, the
+  `features/spend-cost-display` `QuoteSpend` Query, and the shared
+  `useOpenDiaryTargetStore` (a one-slot memory id parked by star-detail's
+  원본 일기 보기; the reader opens the owning diary once its page loads,
+  auto-paging until found or the archive is exhausted);
+- `JUMP` carries `needsSync` (clock-behind-today **or unknown**) as the guard:
+  behind/unknown → `confirming` (the reusable sync-consent modal), else straight
+  to `recalling`. `REJECT` → `browsing` with the clock unmoved and nothing spent
+  ([R1a]); a cold deep-link with a null clock is treated as needing consent, so a
+  jump can never sync+spend without the user's yes;
+- `recalling` is the loading phase over the **single synchronous
+  `RecallDiaryStars`** (server-side sync + reinforce of every still-live memory,
+  atomic, §2.7/§2.8) — never a reconsolidation (no `current_text`/`seed`, [R6]).
+  `DONE` → `flying`, `ERROR` → `browsing`. The error path reopens the retriable
+  cost gate only for known **pre-spend** Connect codes (ResourceExhausted /
+  InvalidArgument / FailedPrecondition / NotFound / Unauthenticated); any other
+  (ambiguous) failure closes the jump and refetches, so a possibly-committed
+  recall is never one-click retried into a double-spend;
+- `flying` is terminal: the widget announces the acceleration over the returned
+  interval (the same `AdvanceAnnouncement` seam a launch/recall uses), parks the
+  camera target in the shared `usePendingFlyTargetStore`, invalidates
+  `GetUniverse`, and navigates home — the reader unmounts on the route change, so
+  no explicit return-to-`browsing` is needed. The universe canvas consumes the
+  parked fly target on mount and sends its navigation actor a `FLY` (§3.4 —
+  the reader never imports `three` or the camera rig).
+
+web and mobile import the machine + the diary/open-target/fly-target stores +
+the `RecallDiaryStars` helper verbatim from `packages/universe`; only the
+list/entry hosts fork (§6/§3.5). The cost gate is the same widget-local pre-step
+as the recall flow (§6.3), and the row action disables purely on empty split
+membership (a live memory is always priced above zero, so the quote is fetched
+once in the modal, not per row).
+
 ## 7. Tests
 
 Every catalog machine has:

@@ -98,4 +98,20 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The diary-reader vertical ([D2][D3]): the free archive read + the single paid whole-diary
+    // recall action, composed by one reader widget and mounted by the reader page — the same
+    // one-surface grain as the verticals above. The diary entity is the vertical's shared
+    // read-model (substance in @cosimosi/universe). A single reference is the FSD grain here, not
+    // a slice to merge away. Scoped so a genuinely insignificant future slice still gets flagged.
+    files: [
+      './src/entities/diary/**',
+      './src/features/read-diary-list/**',
+      './src/features/recall-diary-stars/**',
+      './src/widgets/diary-reader/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
 ])

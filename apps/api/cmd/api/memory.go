@@ -82,6 +82,8 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		// pure reads (no clock, no economy seam).
 		Provenance: store,
 		Exports:    store,
+		// The diary-reader archive read runs over the same store (free, per-user scoped).
+		Diaries: store,
 	})
 	if err != nil {
 		pool.Close()

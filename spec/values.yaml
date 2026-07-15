@@ -332,3 +332,9 @@ force_sim:
   neocortex_z_min: 15
   neocortex_z_max: 25
   seed: 190019
+
+diary_reader:
+  # [D2] GetDiaries pagination page size: diary entries fetched per page, keeping a long
+  # reader-app archive lazy. The FE fetch reads this; the BE read may reuse the Go constant as
+  # its default/clamp so a client cannot request an unbounded page.
+  page_size: 20

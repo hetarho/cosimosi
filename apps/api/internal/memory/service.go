@@ -25,6 +25,7 @@ var (
 	ErrSignalsRequired         = errors.New("memory service requires a spend-signal repo")
 	ErrProvenanceRequired      = errors.New("memory service requires a provenance reader")
 	ErrExportsRequired         = errors.New("memory service requires an export reader")
+	ErrDiariesRequired         = errors.New("memory service requires a diary reader")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -47,6 +48,7 @@ type Service struct {
 	signals         SpendSignalRepo
 	provenance      ProvenanceReader
 	exports         ExportReader
+	diaries         DiaryReader
 	now             func() time.Time
 	newID           func() string
 	newSeed         func() int64
@@ -91,6 +93,9 @@ type ServiceDeps struct {
 	// per-user-scoped reads; both are pure reads with no economy seam.
 	Provenance ProvenanceReader
 	Exports    ExportReader
+	// Diaries backs the read-only diary-reader archive page ([D2]); required so no
+	// composition root wires the reader without its per-user-scoped read (a free read).
+	Diaries DiaryReader
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -144,6 +149,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Exports == nil {
 		return nil, ErrExportsRequired
 	}
+	if deps.Diaries == nil {
+		return nil, ErrDiariesRequired
+	}
 	service := &Service{
 		extractor:       deps.Extractor,
 		embedder:        deps.Embedder,
@@ -160,6 +168,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		signals:         deps.Signals,
 		provenance:      deps.Provenance,
 		exports:         deps.Exports,
+		diaries:         deps.Diaries,
 		now:             deps.Now,
 		newID:           deps.NewID,
 		newSeed:         deps.NewSeed,

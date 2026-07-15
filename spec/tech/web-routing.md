@@ -26,7 +26,10 @@ never import the library; they navigate through the seam in §4.
 - **Code-based**, not file-based: `createRootRouteWithContext<RouterContext>()` for the root (component renders
   `<Outlet/>`, `notFoundComponent` is the localized screen), `createRoute` per screen, composed with `addChildren`.
   File-based routing is not used — it scatters route files and fights FSD.
-- Current routes: `/` → `UniverseHomePage` (`pages/universe`), `/test` → `TestPage` (`pages/test`).
+- Current routes: `/` → `UniverseHomePage` (`pages/universe`), `/test` → `TestPage` (`pages/test`), `/diary` →
+  `DiaryReaderPage` (`pages/diary-reader`, plan 47). Because `pages` may not import the router (§4), the diary route's
+  `component` is a thin **app-layer wrapper** that reads `useAppNavigate` and injects `onOpenReader`/`onExit` callbacks
+  into the page — the navigation seam stays inside `app/routes/`.
 - **Adding a route** (done by a presentation plan): add a `createRoute` in `route-tree.tsx`, point it at a `pages/`
   screen, and register it in `addChildren`. Nothing outside `app/routes/` changes.
 

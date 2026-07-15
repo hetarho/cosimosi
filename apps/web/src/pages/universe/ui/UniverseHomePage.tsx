@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
 
@@ -8,7 +8,11 @@ import {
 } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
-import { universeNavigationMachine, useRecallTargetStore } from '@cosimosi/universe'
+import {
+  universeNavigationMachine,
+  useOpenDiaryTargetStore,
+  useRecallTargetStore,
+} from '@cosimosi/universe'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
@@ -33,24 +37,29 @@ function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFal
 
 // The home screen (`/`): the real memory universe full-bleed, with the write action floating
 // over it (mirror of the mobile screen's HUD, §3.5). The widget owns the whole 3D block (renderer
-// mount, graph read, sim, camera rig); the page only lays out the HUD.
-export function UniverseHomePage() {
+// mount, graph read, sim, camera rig); the page only lays out the HUD. `onOpenReader` is the
+// app-layer navigation seam to the diary archive (the page never reaches the router itself).
+export function UniverseHomePage({ onOpenReader }: { onOpenReader?: () => void }) {
   // The navigation/selection actor is owned HERE (the app layer) so the canvas and the
   // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
   const navigationActorRef = useActorRef(universeNavigationMachine)
 
   // 회고하기 opens the recall flow via the shared recall-target store (the flow widget subscribes).
-  // 원본 일기 보기 is still a seam — the diary reader is its own unit — so the page records that
-  // request for its consumer and does not navigate here itself (A6).
+  // 원본 일기 보기 parks the memory id in the open-diary-target store and navigates to the archive,
+  // where the reader opens the owning diary ([D2]).
   const requestRecallTarget = useRecallTargetStore((state) => state.request)
-  const openDiaryTargetRef = useRef<string | null>(null)
+  const requestOpenDiary = useOpenDiaryTargetStore((state) => state.request)
   const handleRecallRequested = useCallback(
     (episodicMemoryId: string) => requestRecallTarget(episodicMemoryId),
     [requestRecallTarget],
   )
-  const handleOpenDiary = useCallback((episodicMemoryId: string) => {
-    openDiaryTargetRef.current = episodicMemoryId
-  }, [])
+  const handleOpenDiary = useCallback(
+    (episodicMemoryId: string) => {
+      requestOpenDiary(episodicMemoryId)
+      onOpenReader?.()
+    },
+    [requestOpenDiary, onOpenReader],
+  )
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-text">
@@ -76,6 +85,13 @@ export function UniverseHomePage() {
           <div className="flex flex-col items-end gap-3">
             <UniverseTimeOverlay />
             <StardustOverlay />
+            {/* The quiet way into the archive ([D2]) — a restrained affordance, not a persistent
+                chrome bar. pointer-events-auto so it stays tappable over the non-interactive HUD. */}
+            <div className="pointer-events-auto">
+              <Button color="neutral" size="sm" onClick={() => onOpenReader?.()}>
+                {m.diary_reader_title()}
+              </Button>
+            </div>
           </div>
         </header>
         <div className="pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 pb-2">

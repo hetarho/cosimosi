@@ -51,6 +51,19 @@ export {
   type RecallInput,
 } from './recall-star.ts'
 export { useRecallTargetStore, type RecallTargetState } from './recall-target-store.ts'
+
+// Diary-reader vertical (일기장, [D2][D3]): the free archive read-model, the whole-diary recall
+// jump machine + its RPC/acceleration hand-off, and the two cross-route one-slot channels
+// (deep-link into the reader, camera fly back out).
+export { useDiaryStore, type Diary, type DiarySplitMember, type DiaryState } from './diary-store.ts'
+export {
+  diaryReaderMachine,
+  type DiaryReaderPhase,
+  type DiaryReaderEvent,
+} from './diary-reader.machine.ts'
+export { requestRecallDiaryStars, diaryRecallAdvanceAnnouncement } from './recall-diary-stars.ts'
+export { useOpenDiaryTargetStore, type OpenDiaryTargetState } from './open-diary-target-store.ts'
+export { usePendingFlyTargetStore, type PendingFlyTargetState } from './pending-fly-target-store.ts'
 export {
   draftsFromResponse,
   renameMemory,

@@ -154,6 +154,13 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
   returns control. Rig feel scalars (`UNIVERSE_CAMERA_RIG`) are code-level constants in `@cosimosi/universe` (no
   `rendering.camera.*` values group exists yet).
 
+- **Cross-route fly hand-off (plan 47).** The diary-reader jump lives on a separate route from the canvas, so it cannot
+  send the navigation actor a `FLY` directly. It parks the target in a shared one-slot `usePendingFlyTargetStore`
+  (`@cosimosi/universe`) and navigates home; the canvas widget consumes it on mount — once the target node exists in the
+  graph it sends `FLY` and clears the store. An episodic star's node id **is** its memory id, so the jump parks the first
+  recalled `episodic_memory_id` with no translation. The reader never imports `three` or the rig (§3.4); the fly is a
+  discrete navigation event, and the reinforced star already exists so the node always resolves.
+
 ## Star / neuron / filament bodies (plan 24 as-built)
 
 The three **rendering entities** turn the domain-mirror graph into bodies. Their body is a `VisualBodySource` from
