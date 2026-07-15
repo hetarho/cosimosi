@@ -69,6 +69,28 @@ func (MockSemanticizer) GenerateSemanticStages(_ context.Context, item memory.Se
 	}, nil
 }
 
+// MockSealSuggester is the keyless deterministic seal-suggester so the letting-go flow is testable
+// offline (matching the other mock adapters, which bypass metering). It surfaces exactly the offered
+// this-memory-only semantic candidates unchanged — so its output is always a subset of the safe set,
+// never a shared or foreign reference ([X6]) — with a fixed, neutral reason. Deterministic in inputs.
+type MockSealSuggester struct{}
+
+func NewMockSealSuggester() MockSealSuggester {
+	return MockSealSuggester{}
+}
+
+func (MockSealSuggester) Suggest(_ context.Context, _ memory.MemorySummary, _ string, candidates []memory.SealCandidateRef) (memory.SealSuggestion, error) {
+	out := make([]memory.SealCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		out = append(out, memory.SealCandidate{
+			NeuronID: candidate.NeuronID,
+			Name:     candidate.Name,
+			Reason:   "a meaning held only by this memory",
+		})
+	}
+	return memory.SealSuggestion{Candidates: out}, nil
+}
+
 // mockExtract emits values.EncodeMinMemories memories so the keyless mock
 // satisfies the encode invariants the use-case enforces ([E2] count range,
 // [E4] ≥1 semantic neuron per memory) instead of tripping the repair loop.

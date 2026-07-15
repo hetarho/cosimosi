@@ -188,6 +188,76 @@ func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.G
 	return connect.NewResponse(diariesResponse(page)), nil
 }
 
+func (s *Server) Release(ctx context.Context, req *connect.Request[memoryv1.ReleaseRequest]) (*connect.Response[memoryv1.ReleaseResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.Release(ctx, scope, req.Msg.GetDiaryId())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.ReleaseResponse{
+		DiaryId:           result.DiaryID,
+		EpisodicMemoryIds: result.EpisodicMemoryIDs,
+		DeletedAt:         result.DeletedAt.UTC().Format(time.RFC3339),
+	}), nil
+}
+
+func (s *Server) Restore(ctx context.Context, req *connect.Request[memoryv1.RestoreRequest]) (*connect.Response[memoryv1.RestoreResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.Restore(ctx, scope, req.Msg.GetDiaryId())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.RestoreResponse{
+		DiaryId:           result.DiaryID,
+		EpisodicMemoryIds: result.EpisodicMemoryIDs,
+	}), nil
+}
+
+func (s *Server) SuggestLetGo(ctx context.Context, req *connect.Request[memoryv1.SuggestLetGoRequest]) (*connect.Response[memoryv1.SuggestLetGoResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.SuggestLetGo(ctx, scope, req.Msg.GetEpisodicMemoryId(), req.Msg.GetWords())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.SuggestLetGoResponse{
+		Candidates: sealCandidates(result.Candidates),
+		HeavyState: &memoryv1.HeavyState{Detected: result.HeavyState.Detected, Severity: result.HeavyState.Severity},
+	}), nil
+}
+
+func (s *Server) LetGo(ctx context.Context, req *connect.Request[memoryv1.LetGoRequest]) (*connect.Response[memoryv1.LetGoResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.LetGo(ctx, scope, req.Msg.GetEpisodicMemoryId(), req.Msg.GetApprovedNeuronIds())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.LetGoResponse{SealedNeuronIds: result.SealedNeuronIDs}), nil
+}
+
+func sealCandidates(candidates []memory.SealCandidate) []*memoryv1.SealCandidate {
+	out := make([]*memoryv1.SealCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		out = append(out, &memoryv1.SealCandidate{
+			NeuronId: candidate.NeuronID,
+			Name:     candidate.Name,
+			Reason:   candidate.Reason,
+		})
+	}
+	return out
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -213,14 +283,22 @@ func domainError(err error) error {
 		errors.Is(err, memory.ErrViewSemanticInputRequired),
 		errors.Is(err, memory.ErrProvenanceInputRequired),
 		errors.Is(err, memory.ErrExportFormatRequired),
-		errors.Is(err, memory.ErrDiaryPageTokenInvalid):
+		errors.Is(err, memory.ErrDiaryPageTokenInvalid),
+		errors.Is(err, memory.ErrReleaseInputRequired),
+		errors.Is(err, memory.ErrLetGoInvalidApproved):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, memory.ErrRecallMemoryNotFound),
 		errors.Is(err, memory.ErrViewSemanticMemoryNotFound),
-		errors.Is(err, memory.ErrProvenanceMemoryNotFound):
+		errors.Is(err, memory.ErrProvenanceMemoryNotFound),
+		errors.Is(err, memory.ErrReleaseMemoryNotFound),
+		errors.Is(err, memory.ErrReleaseNoLiveMemories),
+		errors.Is(err, memory.ErrRestoreNotReleased):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, memory.ErrRecallMemoryUnavailable),
-		errors.Is(err, memory.ErrViewSemanticStageNotRisen):
+		errors.Is(err, memory.ErrViewSemanticStageNotRisen),
+		errors.Is(err, memory.ErrReleaseMemoryUnavailable),
+		errors.Is(err, memory.ErrAlreadyReleased),
+		errors.Is(err, memory.ErrRestoreWindowExpired):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, memory.ErrInsufficientTwinkle):
 		return connect.NewError(connect.CodeResourceExhausted, err)

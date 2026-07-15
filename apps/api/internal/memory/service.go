@@ -26,6 +26,8 @@ var (
 	ErrProvenanceRequired      = errors.New("memory service requires a provenance reader")
 	ErrExportsRequired         = errors.New("memory service requires an export reader")
 	ErrDiariesRequired         = errors.New("memory service requires a diary reader")
+	ErrReleasesRequired        = errors.New("memory service requires a release repo")
+	ErrSealSuggesterRequired   = errors.New("memory service requires a seal suggester")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -49,6 +51,8 @@ type Service struct {
 	provenance      ProvenanceReader
 	exports         ExportReader
 	diaries         DiaryReader
+	releases        ReleaseRepo
+	sealSuggester   SealSuggester
 	now             func() time.Time
 	newID           func() string
 	newSeed         func() int64
@@ -96,6 +100,12 @@ type ServiceDeps struct {
 	// Diaries backs the read-only diary-reader archive page ([D2]); required so no
 	// composition root wires the reader without its per-user-scoped read (a free read).
 	Diaries DiaryReader
+	// Releases runs the release/restore/letting-go/sweep transaction and the letting-go
+	// candidate reads; SealSuggester is the AI seal-candidate suggester (keyless mock when
+	// no key, [X6]). Both required so no composition root wires the delete path without its
+	// repository or its AI seam — the domain executes, the AI only suggests.
+	Releases      ReleaseRepo
+	SealSuggester SealSuggester
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -152,6 +162,12 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Diaries == nil {
 		return nil, ErrDiariesRequired
 	}
+	if deps.Releases == nil {
+		return nil, ErrReleasesRequired
+	}
+	if deps.SealSuggester == nil {
+		return nil, ErrSealSuggesterRequired
+	}
 	service := &Service{
 		extractor:       deps.Extractor,
 		embedder:        deps.Embedder,
@@ -169,6 +185,8 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		provenance:      deps.Provenance,
 		exports:         deps.Exports,
 		diaries:         deps.Diaries,
+		releases:        deps.Releases,
+		sealSuggester:   deps.SealSuggester,
 		now:             deps.Now,
 		newID:           deps.NewID,
 		newSeed:         deps.NewSeed,

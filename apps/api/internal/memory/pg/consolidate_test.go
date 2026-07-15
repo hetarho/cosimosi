@@ -38,6 +38,8 @@ func newConsolidateService(t *testing.T, store Store) *memory.Service {
 		Provenance:      store,
 		Exports:         store,
 		Diaries:         store,
+		Releases:        store,
+		SealSuggester:   adapters.SealSuggester,
 		Now:             consolidateServiceDay,
 	})
 	if err != nil {

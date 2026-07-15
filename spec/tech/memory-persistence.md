@@ -200,3 +200,19 @@ edge's base strength drops but it is **never** deleted. `deletion.sql` contains 
 mutates `diaries`. Letting-go feeds only a memory's `semantic` neurons and does not soft-delete the memory (emotion
 columns + seed intact — the star lives as a content-less silent engram); positions recompute for free since force-sim
 reads only live neurons (no position write, [I5]).
+
+**Release / Restore / letting-go / sweep (plan 49).** The `Release`/`Restore`/`SuggestLetGo`/`LetGo` use-cases in
+`internal/memory/release.go` orchestrate the rules above over a retention-scoped ledger (`00008_release_ledger.sql`):
+`release_groups` (`UNIQUE(user_id, diary_id)`, real-clock UTC `deleted_at`) + three `ON DELETE CASCADE` effect tables
+(`release_memories`, `release_sealed_neurons`, `release_synapse_deltas` recording each contribution edge's **applied LTD
+delta**). `Release` runs in one `InReleaseTx`: guard already-released → soft-delete the diary's memories → classify +
+seal orphans + Depress shared contributions (recording the deltas) → write the ledger. `Restore`, within
+`release.soft_delete_retention_days`, clears `deleted_at`, unseals exactly the release's sealed neurons, and adds each
+recorded delta back to the edge's current strength **clamped, atomically in SQL** (lost-update-safe against interim
+LTP/downscale), then deletes the group. `SuggestLetGo`/`LetGo` seal only server-re-validated this-memory-only `semantic`
+neurons (the AI suggests within a pre-filtered set, never executes; permanent, no ledger). The **retention sweep** —
+`Service.Sweep`, the only hard delete of user data — removes release groups older than the window (activations →
+synapses touching exclusive orphans → embeddings → exclusive orphan neurons → memories `deleted_at IS NOT NULL` →
+diary → group; `memory_provenance` rides job 43's cascade), never a live row or a shared neuron. It runs with no cron
+(invoked opportunistically at `Release`); Sweep and Restore serialize on the group row via `FOR UPDATE` /
+`FOR UPDATE SKIP LOCKED`, so they never interleave into a half-swept restored diary.

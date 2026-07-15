@@ -51,6 +51,14 @@ service MemoryService {
   rpc GetDiaries(GetDiariesRequest) returns (GetDiariesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // full delete — diary-scoped soft-delete + 30-day restore window ([X1][X2]); persists a soft-delete, no hard delete.
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+  // undo a full delete within the retention window ([X2]).
+  rpc Restore(RestoreRequest) returns (RestoreResponse);
+  // letting-go step 1 — AI suggests this-memory-only semantic neurons; persists nothing ([X6]).
+  rpc SuggestLetGo(SuggestLetGoRequest) returns (SuggestLetGoResponse);
+  // letting-go step 2 — seal the user-approved neurons; permanent, no timer ([X4][X5][X6]).
+  rpc LetGo(LetGoRequest) returns (LetGoResponse);
 }
 
 message SplitDiaryRequest {
@@ -318,3 +326,55 @@ message DiarySplitRef {
   // The primary mood, bare enum name (e.g. "JOY") — the client maps it to a color [I3].
   string mood = 3;
 }
+
+message ReleaseRequest {
+  string diary_id = 1;
+}
+
+message ReleaseResponse {
+  string diary_id = 1;
+  repeated string episodic_memory_ids = 2;
+  string deleted_at = 3; // deleted_at = real-clock UTC
+}
+
+message RestoreRequest {
+  string diary_id = 1;
+}
+
+message RestoreResponse {
+  string diary_id = 1;
+  repeated string episodic_memory_ids = 2;
+}
+
+message SuggestLetGoRequest {
+  string episodic_memory_id = 1;
+  string words = 2; // the user's words/meaning
+}
+
+message SuggestLetGoResponse {
+  repeated SealCandidate candidates = 1;
+  HeavyState heavy_state = 2; // [X7] reserved backend heavy-state hint
+}
+
+message SealCandidate {
+  string neuron_id = 1;
+  string name = 2;
+  string reason = 3; // this-memory-only semantic
+}
+
+message HeavyState {
+  bool detected = 1;
+  string severity = 2; // [X7] → the delete UI surfaces a professional-resource notice
+}
+
+message LetGoRequest {
+  string episodic_memory_id = 1;
+  repeated string approved_neuron_ids = 2; // user-approved subset
+}
+
+message LetGoResponse {
+  repeated string sealed_neuron_ids = 1;
+}
+// NOTE: no field lets the client (or the AI) command a hard delete, seal a shared/foreign neuron, or
+// touch a kept emotion neuron — [X6] structural defense; the server re-validates approved_neuron_ids against
+// the this-memory-only semantic set.

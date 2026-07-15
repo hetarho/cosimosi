@@ -71,6 +71,7 @@ type Adapters struct {
 	Embedder        memory.Embedder
 	Semanticizer    memory.Semanticizer
 	PredictionError memory.PredictionError
+	SealSuggester   memory.SealSuggester
 	Mode            string
 }
 
@@ -151,6 +152,7 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 		extractor       memory.Extractor
 		semanticizer    memory.Semanticizer
 		predictionError memory.PredictionError
+		sealSuggester   memory.SealSuggester
 		embedder        memory.Embedder
 	)
 
@@ -168,13 +170,19 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 		if err != nil {
 			return Adapters{}, err
 		}
+		realSealSuggester, err := NewRealSealSuggester(metered)
+		if err != nil {
+			return Adapters{}, err
+		}
 		extractor = realExtractor
 		semanticizer = realSemanticizer
 		predictionError = realPredictionError
+		sealSuggester = realSealSuggester
 	} else {
 		extractor = NewMockExtractor()
 		semanticizer = NewMockSemanticizer()
 		predictionError = NewMockPredictionError()
+		sealSuggester = NewMockSealSuggester()
 		llmMode = "mock"
 	}
 
@@ -195,6 +203,7 @@ func NewAdapters(opts FactoryOptions) (Adapters, error) {
 		Embedder:        embedder,
 		Semanticizer:    semanticizer,
 		PredictionError: predictionError,
+		SealSuggester:   sealSuggester,
 		Mode:            fmt.Sprintf("llm=%s embedding=%s", llmMode, embeddingMode),
 	}, nil
 }

@@ -209,3 +209,8 @@ const (
 const (
 	DeletionContributionWeakenAmount = 0.15
 )
+
+// release
+const (
+	ReleaseSoftDeleteRetentionDays = 30
+)

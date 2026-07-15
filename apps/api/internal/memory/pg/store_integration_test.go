@@ -1191,6 +1191,10 @@ func cleanupMemoryTestRows(t *testing.T, pool *platformdb.Pool, userID string) {
 		defer cancel()
 
 		tables := []string{
+			"release_synapse_deltas",
+			"release_sealed_neurons",
+			"release_memories",
+			"release_groups",
 			"universe_state",
 			"jobs",
 			"embeddings",

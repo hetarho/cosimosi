@@ -40,3 +40,19 @@ both alive — `neuron_activations` needs no column of its own). A sealed/soft-d
 nobody, consolidates into nothing, and never renders — there is no invisible-but-still-pulling ghost ([X3]). The removal
 is **server-authoritative**: the client learns of it only by facts disappearing from `GetUniverse`, and its unchanged
 force-sim / effective-value math runs over the smaller live graph.
+
+## The removals are user-orchestrated flows (plan 49)
+
+`Release` / `Restore` / `SuggestLetGo` / `LetGo` are the use-cases that execute the rules above (owned by plan
+[49.release-usecase](../../plan/49.release-usecase.md)):
+
+- **Full delete is a diary-scoped 30-day soft-delete with restore** ([X1][X2]). `Release` soft-deletes the diary's
+  memories, seals orphans, weakens shared contributions, and records a retention-scoped release-effect ledger; `Restore`
+  reverses it exactly within `release.soft_delete_retention_days` (real-clock UTC) — clearing `deleted_at`, unsealing the
+  neurons it sealed, and adding the recorded LTD back. Restore refuses once swept or expired.
+- **Letting-go is permanent** ([X4][X5][X6]) — AI-suggest → user-approve → domain-seal, over this-memory-only `semantic`
+  neurons the server re-validates. It writes no `deleted_at`, keeps no ledger, and has **no restore**. The AI can only
+  reference a pre-filtered candidate; it never executes a seal.
+- **The system never originates deletion** ([I1]). The only hard delete is the retention sweep of user-soft-deleted
+  release groups older than the window; it never touches a live (`deleted_at IS NULL`) row or a shared neuron, and runs
+  with no cron (invoked opportunistically at the start of a `Release`). Deletion is never priced (no stardust gate).

@@ -84,6 +84,33 @@ type NeuronActivation struct {
 	Weight           float32
 }
 
+type ReleaseGroup struct {
+	ID        string
+	UserID    string
+	DiaryID   string
+	DeletedAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
+type ReleaseMemory struct {
+	ReleaseID        string
+	UserID           string
+	EpisodicMemoryID string
+}
+
+type ReleaseSealedNeuron struct {
+	ReleaseID string
+	UserID    string
+	NeuronID  string
+}
+
+type ReleaseSynapseDelta struct {
+	ReleaseID    string
+	UserID       string
+	SynapseID    string
+	AppliedDelta float32
+}
+
 type Synapse struct {
 	ID                        string
 	UserID                    string

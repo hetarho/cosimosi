@@ -84,6 +84,12 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		Exports:    store,
 		// The diary-reader archive read runs over the same store (free, per-user scoped).
 		Diaries: store,
+		// The release/restore/letting-go/sweep transaction + letting-go candidate reads run over
+		// the same store; SealSuggester is the AI seal-candidate suggester (keyless mock when no
+		// key). The sweep is triggered opportunistically at the start of every Release (no cron) —
+		// no worker registration is needed.
+		Releases:      store,
+		SealSuggester: adapters.SealSuggester,
 	})
 	if err != nil {
 		pool.Close()

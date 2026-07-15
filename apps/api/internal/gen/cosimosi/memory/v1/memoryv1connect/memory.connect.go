@@ -61,6 +61,15 @@ const (
 	// MemoryServiceGetDiariesProcedure is the fully-qualified name of the MemoryService's GetDiaries
 	// RPC.
 	MemoryServiceGetDiariesProcedure = "/cosimosi.memory.v1.MemoryService/GetDiaries"
+	// MemoryServiceReleaseProcedure is the fully-qualified name of the MemoryService's Release RPC.
+	MemoryServiceReleaseProcedure = "/cosimosi.memory.v1.MemoryService/Release"
+	// MemoryServiceRestoreProcedure is the fully-qualified name of the MemoryService's Restore RPC.
+	MemoryServiceRestoreProcedure = "/cosimosi.memory.v1.MemoryService/Restore"
+	// MemoryServiceSuggestLetGoProcedure is the fully-qualified name of the MemoryService's
+	// SuggestLetGo RPC.
+	MemoryServiceSuggestLetGoProcedure = "/cosimosi.memory.v1.MemoryService/SuggestLetGo"
+	// MemoryServiceLetGoProcedure is the fully-qualified name of the MemoryService's LetGo RPC.
+	MemoryServiceLetGoProcedure = "/cosimosi.memory.v1.MemoryService/LetGo"
 )
 
 // MemoryServiceClient is a client for the cosimosi.memory.v1.MemoryService service.
@@ -98,6 +107,14 @@ type MemoryServiceClient interface {
 	// The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
 	// diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
 	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
+	// full delete — diary-scoped soft-delete + 30-day restore window ([X1][X2]); persists a soft-delete, no hard delete.
+	Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error)
+	// undo a full delete within the retention window ([X2]).
+	Restore(context.Context, *connect.Request[v1.RestoreRequest]) (*connect.Response[v1.RestoreResponse], error)
+	// letting-go step 1 — AI suggests this-memory-only semantic neurons; persists nothing ([X6]).
+	SuggestLetGo(context.Context, *connect.Request[v1.SuggestLetGoRequest]) (*connect.Response[v1.SuggestLetGoResponse], error)
+	// letting-go step 2 — seal the user-approved neurons; permanent, no timer ([X4][X5][X6]).
+	LetGo(context.Context, *connect.Request[v1.LetGoRequest]) (*connect.Response[v1.LetGoResponse], error)
 }
 
 // NewMemoryServiceClient constructs a client for the cosimosi.memory.v1.MemoryService service. By
@@ -175,6 +192,30 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		release: connect.NewClient[v1.ReleaseRequest, v1.ReleaseResponse](
+			httpClient,
+			baseURL+MemoryServiceReleaseProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("Release")),
+			connect.WithClientOptions(opts...),
+		),
+		restore: connect.NewClient[v1.RestoreRequest, v1.RestoreResponse](
+			httpClient,
+			baseURL+MemoryServiceRestoreProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("Restore")),
+			connect.WithClientOptions(opts...),
+		),
+		suggestLetGo: connect.NewClient[v1.SuggestLetGoRequest, v1.SuggestLetGoResponse](
+			httpClient,
+			baseURL+MemoryServiceSuggestLetGoProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("SuggestLetGo")),
+			connect.WithClientOptions(opts...),
+		),
+		letGo: connect.NewClient[v1.LetGoRequest, v1.LetGoResponse](
+			httpClient,
+			baseURL+MemoryServiceLetGoProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("LetGo")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -190,6 +231,10 @@ type memoryServiceClient struct {
 	getProvenance    *connect.Client[v1.GetProvenanceRequest, v1.GetProvenanceResponse]
 	export           *connect.Client[v1.ExportRequest, v1.ExportResponse]
 	getDiaries       *connect.Client[v1.GetDiariesRequest, v1.GetDiariesResponse]
+	release          *connect.Client[v1.ReleaseRequest, v1.ReleaseResponse]
+	restore          *connect.Client[v1.RestoreRequest, v1.RestoreResponse]
+	suggestLetGo     *connect.Client[v1.SuggestLetGoRequest, v1.SuggestLetGoResponse]
+	letGo            *connect.Client[v1.LetGoRequest, v1.LetGoResponse]
 }
 
 // SplitDiary calls cosimosi.memory.v1.MemoryService.SplitDiary.
@@ -242,6 +287,26 @@ func (c *memoryServiceClient) GetDiaries(ctx context.Context, req *connect.Reque
 	return c.getDiaries.CallUnary(ctx, req)
 }
 
+// Release calls cosimosi.memory.v1.MemoryService.Release.
+func (c *memoryServiceClient) Release(ctx context.Context, req *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error) {
+	return c.release.CallUnary(ctx, req)
+}
+
+// Restore calls cosimosi.memory.v1.MemoryService.Restore.
+func (c *memoryServiceClient) Restore(ctx context.Context, req *connect.Request[v1.RestoreRequest]) (*connect.Response[v1.RestoreResponse], error) {
+	return c.restore.CallUnary(ctx, req)
+}
+
+// SuggestLetGo calls cosimosi.memory.v1.MemoryService.SuggestLetGo.
+func (c *memoryServiceClient) SuggestLetGo(ctx context.Context, req *connect.Request[v1.SuggestLetGoRequest]) (*connect.Response[v1.SuggestLetGoResponse], error) {
+	return c.suggestLetGo.CallUnary(ctx, req)
+}
+
+// LetGo calls cosimosi.memory.v1.MemoryService.LetGo.
+func (c *memoryServiceClient) LetGo(ctx context.Context, req *connect.Request[v1.LetGoRequest]) (*connect.Response[v1.LetGoResponse], error) {
+	return c.letGo.CallUnary(ctx, req)
+}
+
 // MemoryServiceHandler is an implementation of the cosimosi.memory.v1.MemoryService service.
 type MemoryServiceHandler interface {
 	// Synchronous preview split — the user sees and edits it [W2]; persists nothing.
@@ -277,6 +342,14 @@ type MemoryServiceHandler interface {
 	// The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
 	// diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
 	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
+	// full delete — diary-scoped soft-delete + 30-day restore window ([X1][X2]); persists a soft-delete, no hard delete.
+	Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error)
+	// undo a full delete within the retention window ([X2]).
+	Restore(context.Context, *connect.Request[v1.RestoreRequest]) (*connect.Response[v1.RestoreResponse], error)
+	// letting-go step 1 — AI suggests this-memory-only semantic neurons; persists nothing ([X6]).
+	SuggestLetGo(context.Context, *connect.Request[v1.SuggestLetGoRequest]) (*connect.Response[v1.SuggestLetGoResponse], error)
+	// letting-go step 2 — seal the user-approved neurons; permanent, no timer ([X4][X5][X6]).
+	LetGo(context.Context, *connect.Request[v1.LetGoRequest]) (*connect.Response[v1.LetGoResponse], error)
 }
 
 // NewMemoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -350,6 +423,30 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceReleaseHandler := connect.NewUnaryHandler(
+		MemoryServiceReleaseProcedure,
+		svc.Release,
+		connect.WithSchema(memoryServiceMethods.ByName("Release")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceRestoreHandler := connect.NewUnaryHandler(
+		MemoryServiceRestoreProcedure,
+		svc.Restore,
+		connect.WithSchema(memoryServiceMethods.ByName("Restore")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceSuggestLetGoHandler := connect.NewUnaryHandler(
+		MemoryServiceSuggestLetGoProcedure,
+		svc.SuggestLetGo,
+		connect.WithSchema(memoryServiceMethods.ByName("SuggestLetGo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceLetGoHandler := connect.NewUnaryHandler(
+		MemoryServiceLetGoProcedure,
+		svc.LetGo,
+		connect.WithSchema(memoryServiceMethods.ByName("LetGo")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.memory.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MemoryServiceSplitDiaryProcedure:
@@ -372,6 +469,14 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceExportHandler.ServeHTTP(w, r)
 		case MemoryServiceGetDiariesProcedure:
 			memoryServiceGetDiariesHandler.ServeHTTP(w, r)
+		case MemoryServiceReleaseProcedure:
+			memoryServiceReleaseHandler.ServeHTTP(w, r)
+		case MemoryServiceRestoreProcedure:
+			memoryServiceRestoreHandler.ServeHTTP(w, r)
+		case MemoryServiceSuggestLetGoProcedure:
+			memoryServiceSuggestLetGoHandler.ServeHTTP(w, r)
+		case MemoryServiceLetGoProcedure:
+			memoryServiceLetGoHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -419,4 +524,20 @@ func (UnimplementedMemoryServiceHandler) Export(context.Context, *connect.Reques
 
 func (UnimplementedMemoryServiceHandler) GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.GetDiaries is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.Release is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) Restore(context.Context, *connect.Request[v1.RestoreRequest]) (*connect.Response[v1.RestoreResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.Restore is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) SuggestLetGo(context.Context, *connect.Request[v1.SuggestLetGoRequest]) (*connect.Response[v1.SuggestLetGoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.SuggestLetGo is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) LetGo(context.Context, *connect.Request[v1.LetGoRequest]) (*connect.Response[v1.LetGoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.LetGo is not implemented"))
 }

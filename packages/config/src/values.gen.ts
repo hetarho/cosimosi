@@ -141,4 +141,7 @@ export const VALUES = {
   deletion: {
     contributionWeakenAmount: 0.15,
   },
+  release: {
+    softDeleteRetentionDays: 30,
+  },
 } as const

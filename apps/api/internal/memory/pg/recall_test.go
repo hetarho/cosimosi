@@ -38,6 +38,8 @@ func newRecallService(t *testing.T, store Store, launches memory.LaunchRepo, uni
 		Provenance:      store,
 		Exports:         store,
 		Diaries:         store,
+		Releases:        store,
+		SealSuggester:   adapters.SealSuggester,
 		Now:             recallServiceDay,
 		NewSeed:         func() int64 { return seed },
 	})

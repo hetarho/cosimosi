@@ -345,3 +345,11 @@ deletion:
   # conservative so a delete visibly thins the shared bond without erasing it — the base is never
   # deleted and the neuron keeps its other, stronger bonds (fresh same-memory edges start ~0.32).
   contribution_weaken_amount: 0.15
+
+release:
+  # [X2] The full-delete restore window: a diary release is a soft-delete kept restorable for this
+  # many real-clock (wall-clock UTC) days, after which the retention sweep hard-deletes it. The single
+  # boundary of the "30 days to change your mind" promise — real-world time, not universe-time, so it
+  # is independent of launches/recalls. Only full delete uses it; letting-go is permanent and has NO
+  # timer key (that absence is the [X5] guarantee).
+  soft_delete_retention_days: 30
