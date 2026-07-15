@@ -2,15 +2,15 @@
 // @generated from file cosimosi/memory/v1/memory.proto (package cosimosi.memory.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file cosimosi/memory/v1/memory.proto.
  */
 export const file_cosimosi_memory_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Ch9jb3NpbW9zaS9tZW1vcnkvdjEvbWVtb3J5LnByb3RvEhJjb3NpbW9zaS5tZW1vcnkudjEiNQoRU3BsaXREaWFyeVJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJIoUBChJSZXZpc2VTcGxpdFJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJEjgKCHByZXZpb3VzGAMgASgLMiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRITCgtpbnN0cnVjdGlvbhgEIAEoCSJKChJTcGxpdERpYXJ5UmVzcG9uc2USNAoIbWVtb3JpZXMYASADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWRNZW1vcnkiYQoOUHJvcG9zZWRNZW1vcnkSDAoEbmFtZRgBIAEoCRIMCgRtb29kGAIgASgJEjMKB25ldXJvbnMYAyADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWROZXVyb24iLAoOUHJvcG9zZWROZXVyb24SDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJIm0KEkxhdW5jaFN0YXJzUmVxdWVzdBIMCgRib2R5GAEgASgJEhIKCmRpYXJ5X2RhdGUYAiABKAkSNQoIbWVtb3JpZXMYAyADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuQ29uZmlybWVkTWVtb3J5ImIKD0NvbmZpcm1lZE1lbW9yeRIMCgRuYW1lGAEgASgJEgwKBG1vb2QYAiABKAkSMwoHbmV1cm9ucxgDIAMoCzIiLmNvc2ltb3NpLm1lbW9yeS52MS5Qcm9wb3NlZE5ldXJvbiKMAQoTTGF1bmNoU3RhcnNSZXNwb25zZRISCgptZW1vcnlfaWRzGAEgAygJEhYKDm5ld19uZXVyb25faWRzGAIgAygJEhIKCnBhc3RfZGF0ZWQYAyABKAgSHgoWcHJldmlvdXNfdW5pdmVyc2VfdGltZRgEIAEoCRIVCg11bml2ZXJzZV90aW1lGAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCLHAQoTR2V0VW5pdmVyc2VSZXNwb25zZRI3CghtZW1vcmllcxgBIAMoCzIlLmNvc2ltb3NpLm1lbW9yeS52MS5FcGlzb2RpY01lbW9yeUR0bxIuCgduZXVyb25zGAIgAygLMh0uY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkR0bxIwCghzeW5hcHNlcxgDIAMoCzIeLmNvc2ltb3NpLm1lbW9yeS52MS5TeW5hcHNlRHRvEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiTwoKRW1vdGlvbkR0bxIMCgRtb29kGAEgASgJEg8KB3ZhbGVuY2UYAiABKAESDwoHYXJvdXNhbBgDIAEoARIRCglpbnRlbnNpdHkYBCABKAEiOAoTTmV1cm9uQWN0aXZhdGlvbkR0bxIRCgluZXVyb25faWQYASABKAkSDgoGd2VpZ2h0GAIgASgCIrIDChFFcGlzb2RpY01lbW9yeUR0bxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KB2Vtb3Rpb24YAyABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuRW1vdGlvbkR0bxIVCg1iYXNlX3N0cmVuZ3RoGAQgASgBEhQKDHJlY2FsbF9jb3VudBgFIAEoBRIdChVjcmVhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkSKAobbGFzdF9yZWNhbGxlZF91bml2ZXJzZV90aW1lGAcgASgJSACIAQESEQoEc2VlZBgIIAEoA0gBiAEBEjwKC2FjdGl2YXRpb25zGAkgAygLMicuY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkFjdGl2YXRpb25EdG8SFAoMZGVjYXlfc3RhZ2VzGAogAygJEh4KFmZvcmdldHRpbmdfb2Zmc2V0X2RheXMYCyABKAESFAoMY3VycmVudF90ZXh0GAwgASgJEhYKDnNlbWFudGljX3N0YWdlGA0gASgFQh4KHF9sYXN0X3JlY2FsbGVkX3VuaXZlcnNlX3RpbWVCBwoFX3NlZWQiXgoJTmV1cm9uRHRvEgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARITCgtuZXVyb25fdHlwZRgDIAEoCRIUCgxjb25uZWN0aXZpdHkYBCABKAVCBwoFX25hbWUilwEKClN5bmFwc2VEdG8SCgoCaWQYASABKAkSEwoLbmV1cm9uX2FfaWQYAiABKAkSEwoLbmV1cm9uX2JfaWQYAyABKAkSEAoIc3RyZW5ndGgYBCABKAISGwoTY29fYWN0aXZhdGlvbl9jb3VudBgFIAEoBRIkChxsYXN0X2FjdGl2YXRlZF91bml2ZXJzZV90aW1lGAYgASgJIjgKDVJlY2FsbFJlcXVlc3QSEQoJbWVtb3J5X2lkGAEgASgJEhQKDHJld3JpdGVfdGV4dBgCIAEoCSK1AQoOUmVjYWxsUmVzcG9uc2USFgoOcmVjb25zb2xpZGF0ZWQYASABKAgSFAoMY3VycmVudF90ZXh0GAIgASgJEgwKBHNlZWQYAyABKAMSFAoMcmVjYWxsX2NvdW50GAQgASgFEhoKEmVmZmVjdGl2ZV9zdHJlbmd0aBgFIAEoAhIeChZwcmV2aW91c191bml2ZXJzZV90aW1lGAYgASgJEhUKDXVuaXZlcnNlX3RpbWUYByABKAkiKwoXUmVjYWxsRGlhcnlTdGFyc1JlcXVlc3QSEAoIZGlhcnlfaWQYASABKAkiQAoTVmlld1NlbWFudGljUmVxdWVzdBIaChJlcGlzb2RpY19tZW1vcnlfaWQYASABKAkSDQoFc3RhZ2UYAiABKAUiSgoUVmlld1NlbWFudGljUmVzcG9uc2USDAoEdGV4dBgBIAEoCRINCgVzdGFnZRgCIAEoBRIVCg1yZWFjaGVkX3N0YWdlGAMgASgFIoABChhSZWNhbGxEaWFyeVN0YXJzUmVzcG9uc2USEAoIZGlhcnlfaWQYASABKAkSGwoTZXBpc29kaWNfbWVtb3J5X2lkcxgCIAMoCRIeChZwcmV2aW91c191bml2ZXJzZV90aW1lGAMgASgJEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkyswUKDU1lbW9yeVNlcnZpY2USWwoKU3BsaXREaWFyeRIlLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVxdWVzdBomLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVzcG9uc2USXQoLUmV2aXNlU3BsaXQSJi5jb3NpbW9zaS5tZW1vcnkudjEuUmV2aXNlU3BsaXRSZXF1ZXN0GiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRJeCgtMYXVuY2hTdGFycxImLmNvc2ltb3NpLm1lbW9yeS52MS5MYXVuY2hTdGFyc1JlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuTGF1bmNoU3RhcnNSZXNwb25zZRJjCgtHZXRVbml2ZXJzZRImLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRVbml2ZXJzZVJlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuR2V0VW5pdmVyc2VSZXNwb25zZSIDkAIBEk8KBlJlY2FsbBIhLmNvc2ltb3NpLm1lbW9yeS52MS5SZWNhbGxSZXF1ZXN0GiIuY29zaW1vc2kubWVtb3J5LnYxLlJlY2FsbFJlc3BvbnNlEm0KEFJlY2FsbERpYXJ5U3RhcnMSKy5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsRGlhcnlTdGFyc1JlcXVlc3QaLC5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsRGlhcnlTdGFyc1Jlc3BvbnNlEmEKDFZpZXdTZW1hbnRpYxInLmNvc2ltb3NpLm1lbW9yeS52MS5WaWV3U2VtYW50aWNSZXF1ZXN0GiguY29zaW1vc2kubWVtb3J5LnYxLlZpZXdTZW1hbnRpY1Jlc3BvbnNlQtEBChZjb20uY29zaW1vc2kubWVtb3J5LnYxQgtNZW1vcnlQcm90b1ABWkBnaXRodWIuY29tL2Nvc2ltb3NpL2FwaS9pbnRlcm5hbC9nZW4vY29zaW1vc2kvbWVtb3J5L3YxO21lbW9yeXYxogIDQ01YqgISQ29zaW1vc2kuTWVtb3J5LlYxygISQ29zaW1vc2lcTWVtb3J5XFYx4gIeQ29zaW1vc2lcTWVtb3J5XFYxXEdQQk1ldGFkYXRh6gIUQ29zaW1vc2k6Ok1lbW9yeTo6VjFiBnByb3RvMw");
+  fileDesc("Ch9jb3NpbW9zaS9tZW1vcnkvdjEvbWVtb3J5LnByb3RvEhJjb3NpbW9zaS5tZW1vcnkudjEiNQoRU3BsaXREaWFyeVJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJIoUBChJSZXZpc2VTcGxpdFJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJEjgKCHByZXZpb3VzGAMgASgLMiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRITCgtpbnN0cnVjdGlvbhgEIAEoCSJKChJTcGxpdERpYXJ5UmVzcG9uc2USNAoIbWVtb3JpZXMYASADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWRNZW1vcnkiYQoOUHJvcG9zZWRNZW1vcnkSDAoEbmFtZRgBIAEoCRIMCgRtb29kGAIgASgJEjMKB25ldXJvbnMYAyADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWROZXVyb24iLAoOUHJvcG9zZWROZXVyb24SDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJIm0KEkxhdW5jaFN0YXJzUmVxdWVzdBIMCgRib2R5GAEgASgJEhIKCmRpYXJ5X2RhdGUYAiABKAkSNQoIbWVtb3JpZXMYAyADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuQ29uZmlybWVkTWVtb3J5ImIKD0NvbmZpcm1lZE1lbW9yeRIMCgRuYW1lGAEgASgJEgwKBG1vb2QYAiABKAkSMwoHbmV1cm9ucxgDIAMoCzIiLmNvc2ltb3NpLm1lbW9yeS52MS5Qcm9wb3NlZE5ldXJvbiKMAQoTTGF1bmNoU3RhcnNSZXNwb25zZRISCgptZW1vcnlfaWRzGAEgAygJEhYKDm5ld19uZXVyb25faWRzGAIgAygJEhIKCnBhc3RfZGF0ZWQYAyABKAgSHgoWcHJldmlvdXNfdW5pdmVyc2VfdGltZRgEIAEoCRIVCg11bml2ZXJzZV90aW1lGAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCLHAQoTR2V0VW5pdmVyc2VSZXNwb25zZRI3CghtZW1vcmllcxgBIAMoCzIlLmNvc2ltb3NpLm1lbW9yeS52MS5FcGlzb2RpY01lbW9yeUR0bxIuCgduZXVyb25zGAIgAygLMh0uY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkR0bxIwCghzeW5hcHNlcxgDIAMoCzIeLmNvc2ltb3NpLm1lbW9yeS52MS5TeW5hcHNlRHRvEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiTwoKRW1vdGlvbkR0bxIMCgRtb29kGAEgASgJEg8KB3ZhbGVuY2UYAiABKAESDwoHYXJvdXNhbBgDIAEoARIRCglpbnRlbnNpdHkYBCABKAEiOAoTTmV1cm9uQWN0aXZhdGlvbkR0bxIRCgluZXVyb25faWQYASABKAkSDgoGd2VpZ2h0GAIgASgCIrIDChFFcGlzb2RpY01lbW9yeUR0bxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KB2Vtb3Rpb24YAyABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuRW1vdGlvbkR0bxIVCg1iYXNlX3N0cmVuZ3RoGAQgASgBEhQKDHJlY2FsbF9jb3VudBgFIAEoBRIdChVjcmVhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkSKAobbGFzdF9yZWNhbGxlZF91bml2ZXJzZV90aW1lGAcgASgJSACIAQESEQoEc2VlZBgIIAEoA0gBiAEBEjwKC2FjdGl2YXRpb25zGAkgAygLMicuY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkFjdGl2YXRpb25EdG8SFAoMZGVjYXlfc3RhZ2VzGAogAygJEh4KFmZvcmdldHRpbmdfb2Zmc2V0X2RheXMYCyABKAESFAoMY3VycmVudF90ZXh0GAwgASgJEhYKDnNlbWFudGljX3N0YWdlGA0gASgFQh4KHF9sYXN0X3JlY2FsbGVkX3VuaXZlcnNlX3RpbWVCBwoFX3NlZWQiXgoJTmV1cm9uRHRvEgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARITCgtuZXVyb25fdHlwZRgDIAEoCRIUCgxjb25uZWN0aXZpdHkYBCABKAVCBwoFX25hbWUilwEKClN5bmFwc2VEdG8SCgoCaWQYASABKAkSEwoLbmV1cm9uX2FfaWQYAiABKAkSEwoLbmV1cm9uX2JfaWQYAyABKAkSEAoIc3RyZW5ndGgYBCABKAISGwoTY29fYWN0aXZhdGlvbl9jb3VudBgFIAEoBRIkChxsYXN0X2FjdGl2YXRlZF91bml2ZXJzZV90aW1lGAYgASgJIjgKDVJlY2FsbFJlcXVlc3QSEQoJbWVtb3J5X2lkGAEgASgJEhQKDHJld3JpdGVfdGV4dBgCIAEoCSK1AQoOUmVjYWxsUmVzcG9uc2USFgoOcmVjb25zb2xpZGF0ZWQYASABKAgSFAoMY3VycmVudF90ZXh0GAIgASgJEgwKBHNlZWQYAyABKAMSFAoMcmVjYWxsX2NvdW50GAQgASgFEhoKEmVmZmVjdGl2ZV9zdHJlbmd0aBgFIAEoAhIeChZwcmV2aW91c191bml2ZXJzZV90aW1lGAYgASgJEhUKDXVuaXZlcnNlX3RpbWUYByABKAkiKwoXUmVjYWxsRGlhcnlTdGFyc1JlcXVlc3QSEAoIZGlhcnlfaWQYASABKAkiQAoTVmlld1NlbWFudGljUmVxdWVzdBIaChJlcGlzb2RpY19tZW1vcnlfaWQYASABKAkSDQoFc3RhZ2UYAiABKAUiSgoUVmlld1NlbWFudGljUmVzcG9uc2USDAoEdGV4dBgBIAEoCRINCgVzdGFnZRgCIAEoBRIVCg1yZWFjaGVkX3N0YWdlGAMgASgFIoABChhSZWNhbGxEaWFyeVN0YXJzUmVzcG9uc2USEAoIZGlhcnlfaWQYASABKAkSGwoTZXBpc29kaWNfbWVtb3J5X2lkcxgCIAMoCRIeChZwcmV2aW91c191bml2ZXJzZV90aW1lGAMgASgJEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiMgoUR2V0UHJvdmVuYW5jZVJlcXVlc3QSGgoSZXBpc29kaWNfbWVtb3J5X2lkGAEgASgJIk0KFUdldFByb3ZlbmFuY2VSZXNwb25zZRI0CgdlbnRyaWVzGAEgAygLMiMuY29zaW1vc2kubWVtb3J5LnYxLlByb3ZlbmFuY2VFbnRyeSJUCg9Qcm92ZW5hbmNlRW50cnkSDAoEa2luZBgBIAEoCRIOCgZzb3VyY2UYAiABKAkSDAoEdGV4dBgDIAEoCRIVCg11bml2ZXJzZV90aW1lGAQgASgJIkEKDUV4cG9ydFJlcXVlc3QSMAoGZm9ybWF0GAEgASgOMiAuY29zaW1vc2kubWVtb3J5LnYxLkV4cG9ydEZvcm1hdCJJCg5FeHBvcnRSZXNwb25zZRIPCgdjb250ZW50GAEgASgMEhQKDGNvbnRlbnRfdHlwZRgCIAEoCRIQCghmaWxlbmFtZRgDIAEoCSpaCgxFeHBvcnRGb3JtYXQSHQoZRVhQT1JUX0ZPUk1BVF9VTlNQRUNJRklFRBAAEhUKEUVYUE9SVF9GT1JNQVRfQ1NWEAESFAoQRVhQT1JUX0ZPUk1BVF9NRBACMvQGCg1NZW1vcnlTZXJ2aWNlElsKClNwbGl0RGlhcnkSJS5jb3NpbW9zaS5tZW1vcnkudjEuU3BsaXREaWFyeVJlcXVlc3QaJi5jb3NpbW9zaS5tZW1vcnkudjEuU3BsaXREaWFyeVJlc3BvbnNlEl0KC1JldmlzZVNwbGl0EiYuY29zaW1vc2kubWVtb3J5LnYxLlJldmlzZVNwbGl0UmVxdWVzdBomLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVzcG9uc2USXgoLTGF1bmNoU3RhcnMSJi5jb3NpbW9zaS5tZW1vcnkudjEuTGF1bmNoU3RhcnNSZXF1ZXN0GicuY29zaW1vc2kubWVtb3J5LnYxLkxhdW5jaFN0YXJzUmVzcG9uc2USYwoLR2V0VW5pdmVyc2USJi5jb3NpbW9zaS5tZW1vcnkudjEuR2V0VW5pdmVyc2VSZXF1ZXN0GicuY29zaW1vc2kubWVtb3J5LnYxLkdldFVuaXZlcnNlUmVzcG9uc2UiA5ACARJPCgZSZWNhbGwSIS5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsUmVxdWVzdBoiLmNvc2ltb3NpLm1lbW9yeS52MS5SZWNhbGxSZXNwb25zZRJtChBSZWNhbGxEaWFyeVN0YXJzEisuY29zaW1vc2kubWVtb3J5LnYxLlJlY2FsbERpYXJ5U3RhcnNSZXF1ZXN0GiwuY29zaW1vc2kubWVtb3J5LnYxLlJlY2FsbERpYXJ5U3RhcnNSZXNwb25zZRJhCgxWaWV3U2VtYW50aWMSJy5jb3NpbW9zaS5tZW1vcnkudjEuVmlld1NlbWFudGljUmVxdWVzdBooLmNvc2ltb3NpLm1lbW9yeS52MS5WaWV3U2VtYW50aWNSZXNwb25zZRJpCg1HZXRQcm92ZW5hbmNlEiguY29zaW1vc2kubWVtb3J5LnYxLkdldFByb3ZlbmFuY2VSZXF1ZXN0GikuY29zaW1vc2kubWVtb3J5LnYxLkdldFByb3ZlbmFuY2VSZXNwb25zZSIDkAIBElQKBkV4cG9ydBIhLmNvc2ltb3NpLm1lbW9yeS52MS5FeHBvcnRSZXF1ZXN0GiIuY29zaW1vc2kubWVtb3J5LnYxLkV4cG9ydFJlc3BvbnNlIgOQAgFC0QEKFmNvbS5jb3NpbW9zaS5tZW1vcnkudjFCC01lbW9yeVByb3RvUAFaQGdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS9tZW1vcnkvdjE7bWVtb3J5djGiAgNDTViqAhJDb3NpbW9zaS5NZW1vcnkuVjHKAhJDb3NpbW9zaVxNZW1vcnlcVjHiAh5Db3NpbW9zaVxNZW1vcnlcVjFcR1BCTWV0YWRhdGHqAhRDb3NpbW9zaTo6TWVtb3J5OjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message cosimosi.memory.v1.SplitDiaryRequest
@@ -733,6 +733,151 @@ export const RecallDiaryStarsResponseSchema: GenMessage<RecallDiaryStarsResponse
   messageDesc(file_cosimosi_memory_v1_memory, 20);
 
 /**
+ * @generated from message cosimosi.memory.v1.GetProvenanceRequest
+ */
+export type GetProvenanceRequest = Message<"cosimosi.memory.v1.GetProvenanceRequest"> & {
+  /**
+   * @generated from field: string episodic_memory_id = 1;
+   */
+  episodicMemoryId: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.GetProvenanceRequest.
+ * Use `create(GetProvenanceRequestSchema)` to create a new message.
+ */
+export const GetProvenanceRequestSchema: GenMessage<GetProvenanceRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 21);
+
+/**
+ * Baseline first, then universe-time ascending order [R8a]. No separate distortion
+ * flag — distortion is found by reading the list, not announced.
+ *
+ * @generated from message cosimosi.memory.v1.GetProvenanceResponse
+ */
+export type GetProvenanceResponse = Message<"cosimosi.memory.v1.GetProvenanceResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.memory.v1.ProvenanceEntry entries = 1;
+   */
+  entries: ProvenanceEntry[];
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.GetProvenanceResponse.
+ * Use `create(GetProvenanceResponseSchema)` to create a new message.
+ */
+export const GetProvenanceResponseSchema: GenMessage<GetProvenanceResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 22);
+
+/**
+ * @generated from message cosimosi.memory.v1.ProvenanceEntry
+ */
+export type ProvenanceEntry = Message<"cosimosi.memory.v1.ProvenanceEntry"> & {
+  /**
+   * created | semanticized | reconsolidated [R8a].
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * original | system | user [R8a].
+   *
+   * @generated from field: string source = 2;
+   */
+  source: string;
+
+  /**
+   * @generated from field: string text = 3;
+   */
+  text: string;
+
+  /**
+   * ISO DATE (universe-time [T]).
+   *
+   * @generated from field: string universe_time = 4;
+   */
+  universeTime: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.ProvenanceEntry.
+ * Use `create(ProvenanceEntrySchema)` to create a new message.
+ */
+export const ProvenanceEntrySchema: GenMessage<ProvenanceEntry> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 23);
+
+/**
+ * @generated from message cosimosi.memory.v1.ExportRequest
+ */
+export type ExportRequest = Message<"cosimosi.memory.v1.ExportRequest"> & {
+  /**
+   * @generated from field: cosimosi.memory.v1.ExportFormat format = 1;
+   */
+  format: ExportFormat;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.ExportRequest.
+ * Use `create(ExportRequestSchema)` to create a new message.
+ */
+export const ExportRequestSchema: GenMessage<ExportRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 24);
+
+/**
+ * @generated from message cosimosi.memory.v1.ExportResponse
+ */
+export type ExportResponse = Message<"cosimosi.memory.v1.ExportResponse"> & {
+  /**
+   * @generated from field: bytes content = 1;
+   */
+  content: Uint8Array;
+
+  /**
+   * @generated from field: string content_type = 2;
+   */
+  contentType: string;
+
+  /**
+   * @generated from field: string filename = 3;
+   */
+  filename: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.ExportResponse.
+ * Use `create(ExportResponseSchema)` to create a new message.
+ */
+export const ExportResponseSchema: GenMessage<ExportResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 25);
+
+/**
+ * @generated from enum cosimosi.memory.v1.ExportFormat
+ */
+export enum ExportFormat {
+  /**
+   * @generated from enum value: EXPORT_FORMAT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: EXPORT_FORMAT_CSV = 1;
+   */
+  CSV = 1,
+
+  /**
+   * @generated from enum value: EXPORT_FORMAT_MD = 2;
+   */
+  MD = 2,
+}
+
+/**
+ * Describes the enum cosimosi.memory.v1.ExportFormat.
+ */
+export const ExportFormatSchema: GenEnum<ExportFormat> = /*@__PURE__*/
+  enumDesc(file_cosimosi_memory_v1_memory, 0);
+
+/**
  * MemoryService owns the encode write contract (plan 20: SplitDiary / ReviseSplit /
  * LaunchStars) and the GetUniverse read contract (shape owned by plan 23).
  *
@@ -822,6 +967,29 @@ export const MemoryService: GenService<{
     methodKind: "unary";
     input: typeof ViewSemanticRequestSchema;
     output: typeof ViewSemanticResponseSchema;
+  },
+  /**
+   * 변천사 — a memory's variant history (created/semanticized/reconsolidated × original/system/user),
+   * time-ordered with the created/original baseline synthesized first [R8a][D1]. Advances no clock [T3],
+   * appends no row, spends no Twinkle [R1][G1] — GET-eligible.
+   *
+   * @generated from rpc cosimosi.memory.v1.MemoryService.GetProvenance
+   */
+  getProvenance: {
+    methodKind: "unary";
+    input: typeof GetProvenanceRequestSchema;
+    output: typeof GetProvenanceResponseSchema;
+  },
+  /**
+   * Whole-account export of the immutable Diary + memories as a downloadable file [W6][D4]. The Diary is
+   * the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
+   *
+   * @generated from rpc cosimosi.memory.v1.MemoryService.Export
+   */
+  export: {
+    methodKind: "unary";
+    input: typeof ExportRequestSchema;
+    output: typeof ExportResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_memory_v1_memory, 0);

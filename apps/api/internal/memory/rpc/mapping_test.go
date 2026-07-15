@@ -158,6 +158,39 @@ func TestUniverseResponseMapsFactsAndGroupsActivations(t *testing.T) {
 	}
 }
 
+func TestProvenanceEntriesMapDomainHistory(t *testing.T) {
+	created := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	rewritten := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
+	entries := []memory.ProvenanceEntry{
+		{Kind: memory.ProvenanceKindCreated, Source: memory.ProvenanceSourceOriginal, Text: "born", UniverseTime: created},
+		{Kind: memory.ProvenanceKindReconsolidated, Source: memory.ProvenanceSourceUser, Text: "rewrite", UniverseTime: rewritten},
+	}
+
+	got := provenanceEntries(entries)
+
+	if len(got) != 2 {
+		t.Fatalf("want 2 wire entries, got %d", len(got))
+	}
+	if got[0].GetKind() != "created" || got[0].GetSource() != "original" || got[0].GetText() != "born" || got[0].GetUniverseTime() != "2026-06-01" {
+		t.Fatalf("baseline entry not mapped: %+v", got[0])
+	}
+	if got[1].GetKind() != "reconsolidated" || got[1].GetSource() != "user" || got[1].GetUniverseTime() != "2026-06-20" {
+		t.Fatalf("appended entry not mapped: %+v", got[1])
+	}
+}
+
+func TestDomainExportFormatMapsEnumAndRejectsUnspecified(t *testing.T) {
+	if got, err := domainExportFormat(memoryv1.ExportFormat_EXPORT_FORMAT_CSV); err != nil || got != memory.ExportFormatCSV {
+		t.Fatalf("CSV = (%v, %v), want (csv, nil)", got, err)
+	}
+	if got, err := domainExportFormat(memoryv1.ExportFormat_EXPORT_FORMAT_MD); err != nil || got != memory.ExportFormatMD {
+		t.Fatalf("MD = (%v, %v), want (md, nil)", got, err)
+	}
+	if _, err := domainExportFormat(memoryv1.ExportFormat_EXPORT_FORMAT_UNSPECIFIED); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("unspecified format err = %v, want InvalidArgument", err)
+	}
+}
+
 func TestUniverseResponseEmptyUniverseTime(t *testing.T) {
 	got := universeResponse(memory.UniverseFacts{}, nil)
 	if got.GetUniverseTime() != "" {
@@ -205,6 +238,9 @@ func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 		{memory.ErrEncodeRetryExhausted, connect.CodeResourceExhausted},
 		{memory.ErrEncodeInvalidSplit, connect.CodeInternal},
 		{memory.ErrScopeRequired, connect.CodeUnauthenticated},
+		{memory.ErrProvenanceInputRequired, connect.CodeInvalidArgument},
+		{memory.ErrProvenanceMemoryNotFound, connect.CodeNotFound},
+		{memory.ErrExportFormatRequired, connect.CodeInvalidArgument},
 	}
 	for _, c := range cases {
 		if got := connect.CodeOf(domainError(c.err)); got != c.want {

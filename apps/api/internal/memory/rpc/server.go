@@ -144,6 +144,38 @@ func (s *Server) ViewSemantic(ctx context.Context, req *connect.Request[memoryv1
 	}), nil
 }
 
+func (s *Server) GetProvenance(ctx context.Context, req *connect.Request[memoryv1.GetProvenanceRequest]) (*connect.Response[memoryv1.GetProvenanceResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := s.service.GetProvenance(ctx, scope, req.Msg.GetEpisodicMemoryId())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.GetProvenanceResponse{Entries: provenanceEntries(entries)}), nil
+}
+
+func (s *Server) Export(ctx context.Context, req *connect.Request[memoryv1.ExportRequest]) (*connect.Response[memoryv1.ExportResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	format, err := domainExportFormat(req.Msg.GetFormat())
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.service.Export(ctx, scope, format)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.ExportResponse{
+		Content:     result.Content,
+		ContentType: result.ContentType,
+		Filename:    result.Filename,
+	}), nil
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -166,10 +198,13 @@ func domainError(err error) error {
 	case errors.Is(err, memory.ErrEncodeInputRequired),
 		errors.Is(err, memory.ErrLaunchInvalidMemories),
 		errors.Is(err, memory.ErrRecallInputRequired),
-		errors.Is(err, memory.ErrViewSemanticInputRequired):
+		errors.Is(err, memory.ErrViewSemanticInputRequired),
+		errors.Is(err, memory.ErrProvenanceInputRequired),
+		errors.Is(err, memory.ErrExportFormatRequired):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, memory.ErrRecallMemoryNotFound),
-		errors.Is(err, memory.ErrViewSemanticMemoryNotFound):
+		errors.Is(err, memory.ErrViewSemanticMemoryNotFound),
+		errors.Is(err, memory.ErrProvenanceMemoryNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, memory.ErrRecallMemoryUnavailable),
 		errors.Is(err, memory.ErrViewSemanticStageNotRisen):
@@ -222,6 +257,36 @@ func domainNeurons(proposed []*memoryv1.ProposedNeuron) []memory.ExtractedNeuron
 		})
 	}
 	return neurons
+}
+
+// provenanceEntries maps the domain variant history onto the wire DTOs: kind/source carried as their
+// bare enum strings (as the FE narrows them), universe_time as an ISO DATE. Baseline-first ordering is
+// the use-case's, preserved here.
+func provenanceEntries(entries []memory.ProvenanceEntry) []*memoryv1.ProvenanceEntry {
+	out := make([]*memoryv1.ProvenanceEntry, 0, len(entries))
+	for _, entry := range entries {
+		out = append(out, &memoryv1.ProvenanceEntry{
+			Kind:         string(entry.Kind),
+			Source:       string(entry.Source),
+			Text:         entry.Text,
+			UniverseTime: entry.UniverseTime.Format(time.DateOnly),
+		})
+	}
+	return out
+}
+
+// domainExportFormat maps the proto ExportFormat enum onto the domain format; an unspecified/unknown
+// value is a client mistake (§2.9#7 — the enum↔domain map is the handler's, the read policy the
+// use-case's).
+func domainExportFormat(format memoryv1.ExportFormat) (memory.ExportFormat, error) {
+	switch format {
+	case memoryv1.ExportFormat_EXPORT_FORMAT_CSV:
+		return memory.ExportFormatCSV, nil
+	case memoryv1.ExportFormat_EXPORT_FORMAT_MD:
+		return memory.ExportFormatMD, nil
+	default:
+		return "", connect.NewError(connect.CodeInvalidArgument, memory.ErrExportFormatRequired)
+	}
 }
 
 func splitResponse(result memory.ExtractResult) *memoryv1.SplitDiaryResponse {

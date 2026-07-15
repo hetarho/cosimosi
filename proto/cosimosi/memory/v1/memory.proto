@@ -35,6 +35,17 @@ service MemoryService {
   // 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
   // It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
   rpc ViewSemantic(ViewSemanticRequest) returns (ViewSemanticResponse);
+  // 변천사 — a memory's variant history (created/semanticized/reconsolidated × original/system/user),
+  // time-ordered with the created/original baseline synthesized first [R8a][D1]. Advances no clock [T3],
+  // appends no row, spends no Twinkle [R1][G1] — GET-eligible.
+  rpc GetProvenance(GetProvenanceRequest) returns (GetProvenanceResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Whole-account export of the immutable Diary + memories as a downloadable file [W6][D4]. The Diary is
+  // the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
+  rpc Export(ExportRequest) returns (ExportResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message SplitDiaryRequest {
@@ -232,4 +243,40 @@ message RecallDiaryStarsResponse {
   // The sync interval, as in RecallResponse.
   string previous_universe_time = 3;
   string universe_time = 4;
+}
+
+message GetProvenanceRequest {
+  string episodic_memory_id = 1;
+}
+
+// Baseline first, then universe-time ascending order [R8a]. No separate distortion
+// flag — distortion is found by reading the list, not announced.
+message GetProvenanceResponse {
+  repeated ProvenanceEntry entries = 1;
+}
+
+message ProvenanceEntry {
+  // created | semanticized | reconsolidated [R8a].
+  string kind = 1;
+  // original | system | user [R8a].
+  string source = 2;
+  string text = 3;
+  // ISO DATE (universe-time [T]).
+  string universe_time = 4;
+}
+
+message ExportRequest {
+  ExportFormat format = 1;
+}
+
+enum ExportFormat {
+  EXPORT_FORMAT_UNSPECIFIED = 0;
+  EXPORT_FORMAT_CSV = 1;
+  EXPORT_FORMAT_MD = 2;
+}
+
+message ExportResponse {
+  bytes content = 1;
+  string content_type = 2;
+  string filename = 3;
 }

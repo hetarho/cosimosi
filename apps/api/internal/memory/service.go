@@ -23,6 +23,8 @@ var (
 	ErrPredictionErrorRequired = errors.New("memory service requires a prediction-error port")
 	ErrGistsRequired           = errors.New("memory service requires a gist reader")
 	ErrSignalsRequired         = errors.New("memory service requires a spend-signal repo")
+	ErrProvenanceRequired      = errors.New("memory service requires a provenance reader")
+	ErrExportsRequired         = errors.New("memory service requires an export reader")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -43,6 +45,8 @@ type Service struct {
 	predictionError PredictionError
 	gists           GistReader
 	signals         SpendSignalRepo
+	provenance      ProvenanceReader
+	exports         ExportReader
 	now             func() time.Time
 	newID           func() string
 	newSeed         func() int64
@@ -81,6 +85,12 @@ type ServiceDeps struct {
 	// required so no composition root can register the quote against a service that
 	// cannot resolve its depth signals.
 	Signals SpendSignalRepo
+	// Provenance backs the read-only 변천사 read (baseline facts + appended history);
+	// Exports backs the whole-account read (retained diaries + still-live memories).
+	// Both required so no composition root wires the read/export path without its
+	// per-user-scoped reads; both are pure reads with no economy seam.
+	Provenance ProvenanceReader
+	Exports    ExportReader
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -128,6 +138,12 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Signals == nil {
 		return nil, ErrSignalsRequired
 	}
+	if deps.Provenance == nil {
+		return nil, ErrProvenanceRequired
+	}
+	if deps.Exports == nil {
+		return nil, ErrExportsRequired
+	}
 	service := &Service{
 		extractor:       deps.Extractor,
 		embedder:        deps.Embedder,
@@ -142,6 +158,8 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		predictionError: deps.PredictionError,
 		gists:           deps.Gists,
 		signals:         deps.Signals,
+		provenance:      deps.Provenance,
+		exports:         deps.Exports,
 		now:             deps.Now,
 		newID:           deps.NewID,
 		newSeed:         deps.NewSeed,

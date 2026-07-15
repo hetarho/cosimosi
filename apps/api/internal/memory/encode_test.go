@@ -125,6 +125,8 @@ type serviceFixture struct {
 	earn            *fakeEarnPort
 	predictionError *fakePredictionError
 	gists           *fakeGistReader
+	provenance      *fakeProvenanceReader
+	exports         *fakeExportReader
 	service         *Service
 	seeds           []int64
 }
@@ -144,6 +146,8 @@ func newFixture(t *testing.T) *serviceFixture {
 		earn:            &fakeEarnPort{},
 		predictionError: &fakePredictionError{},
 		gists:           &fakeGistReader{},
+		provenance:      &fakeProvenanceReader{},
+		exports:         &fakeExportReader{},
 	}
 	ids := 0
 	// NewSeed hands out fixture.seeds in order (default 42), so a reconsolidation's
@@ -163,6 +167,8 @@ func newFixture(t *testing.T) *serviceFixture {
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
 		Signals:         fixture.launches,
+		Provenance:      fixture.provenance,
+		Exports:         fixture.exports,
 		Now:             func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
 		NewID: func() string {
 			ids++
@@ -372,6 +378,8 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
 		Signals:         fixture.launches,
+		Provenance:      fixture.provenance,
+		Exports:         fixture.exports,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

@@ -78,6 +78,10 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		// The published spend-signal reads run over the same store (standalone,
 		// no transaction).
 		Signals: store,
+		// The read-only provenance + export reads run over the same store; both are
+		// pure reads (no clock, no economy seam).
+		Provenance: store,
+		Exports:    store,
 	})
 	if err != nil {
 		pool.Close()

@@ -1,15 +1,42 @@
+import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
-import type { ProvenanceEntry } from '../model/provenance.ts'
+import { createMemoryClient } from '@cosimosi/api-client'
 
-// The GetProvenance read (owned by the provenance-export unit) has no Connect client yet. This
-// adapter is the seam: it resolves the empty history so the 변천사 view renders its no-history
-// state, and the owning unit later rebinds it to the real NO_SIDE_EFFECTS read + proto→domain map
-// with no ui/widget change (taking the memory id the query key already carries). The read
-// synthesizes the created baseline (CC5); the panel renders whatever ordered list it returns and
-// does not know that rule.
-export async function fetchProvenance(): Promise<ProvenanceEntry[]> {
-  return []
+import type { ProvenanceEntry, ProvenanceKind, ProvenanceSource } from '../model/provenance.ts'
+
+type MemoryClient = ReturnType<typeof createMemoryClient>
+
+// The wire shape this adapter maps from — the fields the panel renders, narrowed onto the FE model's
+// closed enums. Kept structural so the mapper is testable without a Connect message instance.
+interface WireProvenanceEntry {
+  readonly kind: string
+  readonly source: string
+  readonly text: string
+  readonly universeTime: string
+}
+
+// Maps the GetProvenance response entries onto the FE read model, in arrival order — the read already
+// returns them baseline-first, universe-time ordered; the panel does not learn the baseline-synthesis
+// rule ([R8a], CC5). kind/source are the backend's closed enums, cast onto the model's unions.
+export function mapProvenanceEntries(entries: readonly WireProvenanceEntry[]): ProvenanceEntry[] {
+  return entries.map((entry) => ({
+    kind: entry.kind as ProvenanceKind,
+    source: entry.source as ProvenanceSource,
+    text: entry.text,
+    universeTime: entry.universeTime,
+  }))
+}
+
+// The real GetProvenance read (NO_SIDE_EFFECTS, free) over the generated Connect client + proto→domain
+// map, taking the memory id the query key carries. The read synthesizes the created baseline (CC5); the
+// panel renders whatever ordered list it returns and does not know that rule.
+export async function fetchProvenance(
+  client: MemoryClient,
+  episodicMemoryId: string,
+): Promise<ProvenanceEntry[]> {
+  const response = await client.getProvenance({ episodicMemoryId })
+  return mapProvenanceEntries(response.entries)
 }
 
 export function provenanceQueryKey(episodicMemoryId: string) {
@@ -19,9 +46,10 @@ export function provenanceQueryKey(episodicMemoryId: string) {
 // Fetched via Query when the 변천사 view is entered (enabled only then), so opening the panel to
 // meta does not read; the result is cached per memory id.
 export function useProvenanceQuery(episodicMemoryId: string | null, enabled: boolean) {
+  const transport = useTransport()
   return useQuery({
     queryKey: provenanceQueryKey(episodicMemoryId ?? ''),
-    queryFn: () => fetchProvenance(),
+    queryFn: () => fetchProvenance(createMemoryClient(transport), episodicMemoryId ?? ''),
     enabled: enabled && Boolean(episodicMemoryId),
   })
 }

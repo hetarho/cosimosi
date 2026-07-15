@@ -138,3 +138,32 @@ store methods it binds to. Plan 30 has wired the stored `universe_state` clock a
 launch guard (`UniverseClockForUpdate`) and `GetUniverse.universe_time`; Epic A's `max(created_universe_time)` survives
 only as the **one-release fallback** for a pre-clock universe whose row has not been born yet (`LatestLaunchedUniverseTime`
 for the guard, the `EpisodicMemories` scan for the read), so no universe visibly resets during the migration window.
+
+## 7. Provenance read + Export
+
+Plan [46](../plan/46.provenance-export.md) owns two read-only use-cases in `internal/memory` (`GetProvenance`,
+`Export`) over `db/queries/memory/provenance.sql`. Both are per-user scoped, GET-eligible / `NO_SIDE_EFFECTS`, and
+free (metadata/archive tier): they advance no clock ([T3]), append no `memory_provenance` row, spend no Twinkle, and
+issue no `UPDATE`/`DELETE` of any kind. `provenance.sql` is **SELECT-only** — the sole writer of `memory_provenance`
+is the reconsolidation/semanticization append path in `reconsolidation.sql`.
+
+**변천사 (`GetProvenance`).** A memory's variant history is a time-ordered list of `{kind, source, text,
+universe_time}` (kind ∈ created|semanticized|reconsolidated, source ∈ original|system|user) with **no separate
+distortion flag** — distortion is found by reading it. The **created/original baseline is synthesized at read** from
+the memory's creation facts: `created_universe_time` plus the **immutable `Diary` body** reached via `diary_id` (the
+objective record) — never `current_text`, never a stored or backfilled `memory_provenance` row ([CC5][I2]). So a
+memory that has never been reconsolidated/semanticized still returns a one-entry history. The baseline is the earliest
+event and is emitted first; the appended rows follow in `universe_time` order (`created_at` tiebreak), backed by the
+`memory_provenance_timeline` index. The `Diary` is **never a mutable entry** in the history — it records only the
+representation's evolution; the objective record is reached solely through `Export` (and the diary reader).
+
+**Export.** The whole-account export ([W6][D4]) reads the user's retained `diaries` (append-only, never soft-deleted)
+plus each diary's **still-live** `episodic_memories` (`deleted_at IS NULL` — the letting-go exclusion honored in what
+is handed out, [I1][X3]) and serializes CSV or MD. Only the objective record leaves: the diary body is **byte-verbatim**
+(CSV quoting round-trips commas/quotes/newlines; the body is not sanitized, since [A4] forbids mutating it) and each
+memory contributes only its stable identity (name, mood, `created_universe_time`) — never `current_text` or stage
+texts. A saved-but-past-dated diary whose memory was never launched is still exported. The export is the whole account
+in one call (no range/selection params), delivered as the RPC response payload (`{content, content_type, filename}`).
+
+The `ProvenanceReader`/`ExportReader` ports are **consumer-owned** in `internal/memory`; `memory/pg` is the only sqlc
+seam and binds the concretes at the composition root. No proto/sqlc type crosses into the use-case or pure domain.
