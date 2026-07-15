@@ -30,7 +30,7 @@ func (s Store) InRecallTx(ctx context.Context, fn func(tx memory.RecallTx) error
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
-	if err := fn(Store{queries: s.queries.WithTx(tx)}); err != nil {
+	if err := fn(Store{queries: s.queries.WithTx(tx), db: tx}); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -97,18 +97,30 @@ func (s Store) RecallMemberSynapses(ctx context.Context, scope platform.UserScop
 	return synapses, nil
 }
 
-func (s Store) LiveDiaryMemoryIDs(ctx context.Context, scope platform.UserScope, diaryID string) ([]string, error) {
+func (s Store) LiveDiaryRecallAnchors(ctx context.Context, scope platform.UserScope, diaryID string) ([]memory.DiaryRecallAnchor, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err
 	}
-	ids, err := s.queries.ListLiveDiaryMemoryIDs(ctx, dbgen.ListLiveDiaryMemoryIDsParams{
+	rows, err := s.queries.ListLiveDiaryRecallAnchors(ctx, dbgen.ListLiveDiaryRecallAnchorsParams{
 		UserID:  scope.UserID(),
 		DiaryID: diaryID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return ids, nil
+	anchors := make([]memory.DiaryRecallAnchor, 0, len(rows))
+	for _, row := range rows {
+		anchors = append(anchors, memory.DiaryRecallAnchor{
+			EpisodicMemoryID:         row.ID,
+			Arousal:                  float64(row.Arousal),
+			BaseStrength:             float64(row.BaseStrength),
+			RecallCount:              row.RecallCount,
+			CreatedUniverseTime:      dateValue(row.CreatedUniverseTime),
+			LastRecalledUniverseTime: datePtr(row.LastRecalledUniverseTime),
+			ForgettingOffsetDays:     float64(row.ForgettingOffsetDays),
+		})
+	}
+	return anchors, nil
 }
 
 func (s Store) NeighborSharedSemanticCounts(ctx context.Context, scope platform.UserScope, memoryID string) ([]memory.NeighborSharedSemanticCount, error) {
@@ -185,6 +197,7 @@ func mapRecallMemory(row dbgen.LoadEpisodicMemoryForRecallRow) memory.EpisodicMe
 		SemanticStage:            row.SemanticStage,
 		SemanticizeTimerResetAt:  datePtr(row.SemanticizeTimerResetAt),
 		SemanticStages:           semanticStagesPtr(row.SemanticStages),
+		ForgettingOffsetDays:     float64(row.ForgettingOffsetDays),
 		DeletedAt:                timePtr(row.DeletedAt),
 	}
 }

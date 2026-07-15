@@ -87,7 +87,9 @@ func (s *Service) ViewSemantic(ctx context.Context, scope platform.UserScope, me
 	if gist.SemanticStages == nil || stage > len(gist.SemanticStages) || stage > int(gist.SemanticStage) {
 		return ViewSemanticResult{}, ErrViewSemanticStageNotRisen
 	}
-	if err := s.spendGate.CheckAndSpend(ctx, scope, GistViewSpendIntent(memoryID, stage)); err != nil {
+	// A view is a standalone read holding no transaction, so the gate receives a nil
+	// EconomyTx and runs the spend in its own — the only write a view implies.
+	if err := s.spendGate.CheckAndSpend(ctx, scope, nil, GistViewSpendIntent(memoryID, stage)); err != nil {
 		return ViewSemanticResult{}, err
 	}
 	return ViewSemanticResult{

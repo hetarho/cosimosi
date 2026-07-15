@@ -4,9 +4,11 @@
 -- the authenticated user ([U1], §4, lint:persistence). The Diary is never written here ([I2]).
 
 -- Loads the memory being recalled with the state the branch needs: current_text/seed for the
--- compare + reshape, and semantic_stage/semantic_stages for the remaining-stage selection
--- ([C7]). deleted_at is returned so the use-case rejects a soft-deleted target with a distinct
--- error; a missing row (not the caller's) is ErrRecallMemoryNotFound.
+-- compare + reshape, semantic_stage/semantic_stages for the remaining-stage selection ([C7]),
+-- and the forgetting anchors (forgetting_offset_days with the recall/created anchors) so the
+-- spend-time accessibility signal derives from this same row ([F4][G4]). deleted_at is
+-- returned so the use-case rejects a soft-deleted target with a distinct error; a missing row
+-- (not the caller's) is ErrRecallMemoryNotFound.
 -- name: LoadEpisodicMemoryForRecall :one
 SELECT
     id,
@@ -25,6 +27,7 @@ SELECT
     semantic_stage,
     semanticize_timer_reset_at,
     semantic_stages,
+    forgetting_offset_days,
     deleted_at
 FROM episodic_memories
 WHERE user_id = sqlc.arg(user_id)
@@ -116,9 +119,18 @@ WHERE user_id = sqlc.arg(user_id)
   AND id = sqlc.arg(memory_id)
   AND deleted_at IS NULL;
 
--- The still-live episodic memories born from a diary — the whole-diary recall set ([D3]).
--- name: ListLiveDiaryMemoryIDs :many
-SELECT id
+-- The still-live episodic memories born from a diary with their forgetting/strength
+-- anchors — the whole-diary recall set ([D3]) and the scalars its per-memory spend
+-- pricing derives from ([F4][G4]), in one batch (no text or gist payload).
+-- name: ListLiveDiaryRecallAnchors :many
+SELECT
+    id,
+    arousal,
+    base_strength,
+    recall_count,
+    created_universe_time,
+    last_recalled_universe_time,
+    forgetting_offset_days
 FROM episodic_memories
 WHERE user_id = sqlc.arg(user_id)
   AND diary_id = sqlc.arg(diary_id)

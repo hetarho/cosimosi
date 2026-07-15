@@ -19,8 +19,10 @@ var (
 	ErrProgressionRequired     = errors.New("memory service requires an advance progression hook")
 	ErrRecallsRequired         = errors.New("memory service requires a recall repo")
 	ErrSpendGateRequired       = errors.New("memory service requires a spend gate")
+	ErrEarnRequired            = errors.New("memory service requires an earn port")
 	ErrPredictionErrorRequired = errors.New("memory service requires a prediction-error port")
 	ErrGistsRequired           = errors.New("memory service requires a gist reader")
+	ErrSignalsRequired         = errors.New("memory service requires a spend-signal repo")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -37,8 +39,10 @@ type Service struct {
 	progression     AdvanceProgression
 	recalls         RecallRepo
 	spendGate       SpendGate
+	earn            EarnPort
 	predictionError PredictionError
 	gists           GistReader
+	signals         SpendSignalRepo
 	now             func() time.Time
 	newID           func() string
 	newSeed         func() int64
@@ -59,15 +63,24 @@ type ServiceDeps struct {
 	// advance-triggered handlers hang their work on.
 	Progression AdvanceProgression
 	// Recalls runs the recall transaction; SpendGate gates the Twinkle spend
-	// (allow-all no-op default, real gate rebinds later); PredictionError is the LLM
-	// semantic-compare deciding reinforce vs. reconsolidate. All required so no
-	// composition root can wire a recall path missing its economy or its gate.
+	// (AllowAllSpendGate for economy-less composition, the real gate at cmd/api);
+	// PredictionError is the LLM semantic-compare deciding reinforce vs.
+	// reconsolidate. All required so no composition root can wire a recall path
+	// missing its economy or its gate.
 	Recalls         RecallRepo
 	SpendGate       SpendGate
 	PredictionError PredictionError
+	// Earn is the write-earn seam fired inside the launch transaction ([G3]);
+	// required (NoEarnOnWrite for economy-less composition) so no composition root
+	// can launch diaries with the grant seam silently unbound.
+	Earn EarnPort
 	// Gists is the gist-view read port ([R8]); required so no composition root can
 	// wire the view path without its per-user-scoped read.
 	Gists GistReader
+	// Signals backs the published spend-signal reads the economy's quote consumes;
+	// required so no composition root can register the quote against a service that
+	// cannot resolve its depth signals.
+	Signals SpendSignalRepo
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -103,11 +116,17 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.SpendGate == nil {
 		return nil, ErrSpendGateRequired
 	}
+	if deps.Earn == nil {
+		return nil, ErrEarnRequired
+	}
 	if deps.PredictionError == nil {
 		return nil, ErrPredictionErrorRequired
 	}
 	if deps.Gists == nil {
 		return nil, ErrGistsRequired
+	}
+	if deps.Signals == nil {
+		return nil, ErrSignalsRequired
 	}
 	service := &Service{
 		extractor:       deps.Extractor,
@@ -119,8 +138,10 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		progression:     deps.Progression,
 		recalls:         deps.Recalls,
 		spendGate:       deps.SpendGate,
+		earn:            deps.Earn,
 		predictionError: deps.PredictionError,
 		gists:           deps.Gists,
+		signals:         deps.Signals,
 		now:             deps.Now,
 		newID:           deps.NewID,
 		newSeed:         deps.NewSeed,

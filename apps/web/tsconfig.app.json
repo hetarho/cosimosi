@@ -21,7 +21,9 @@
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    // No erasableSyntaxOnly: the generated Connect client (@cosimosi/api-client
+    // src/gen) carries proto-pinned TypeScript enums, and this app is
+    // Vite-transpiled, never type-stripped, so the restriction buys nothing here.
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]

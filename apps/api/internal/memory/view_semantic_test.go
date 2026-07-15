@@ -62,6 +62,11 @@ func TestViewSemanticReturnsPregeneratedStageTextReadOnly(t *testing.T) {
 	if intent.Kind != SpendKindViewGist || intent.MemoryID != "m1" || intent.Stage != 2 {
 		t.Fatalf("spend intent = %+v, want {view_gist m1 2}", intent)
 	}
+	// The view holds no transaction: the gate receives a nil EconomyTx and owns the
+	// spend's atomicity itself.
+	if len(fixture.spendGate.txs) != 1 || fixture.spendGate.txs[0] != nil {
+		t.Fatalf("spend txs = %+v, want one nil handle for a view", fixture.spendGate.txs)
+	}
 	// A1/A6/A7: nothing written, no transaction opened, no clock advance, no
 	// reconsolidation machinery — the view is a pure read outside every write path.
 	if fixture.launches.txCount != 0 || fixture.launches.recallTxCount != 0 {

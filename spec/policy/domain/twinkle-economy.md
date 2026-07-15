@@ -1,8 +1,10 @@
 # policy: twinkle economy
 
-> Domain policy for the 별가루 (Twinkle) recall economy. Owned by plan
-> [43.stardust-ledger](../../plan/43.stardust-ledger.md); the as-built context rules live in
-> [tech/twinkle-economy.md](../../tech/twinkle-economy.md). Reinforces PRD §5.9 [G1][G2][G4][G5].
+> Domain policy for the 별가루 (Twinkle) recall economy. Owned by plans
+> [43.stardust-ledger](../../plan/43.stardust-ledger.md) (ledger/balance/curves) and
+> [44.earn-spend-usecase](../../plan/44.earn-spend-usecase.md) (earn/spend/quote); the as-built
+> context rules live in [tech/twinkle-economy.md](../../tech/twinkle-economy.md). Reinforces PRD
+> §5.9 [G1][G2][G3][G4][G5][G6].
 
 ## The rule
 
@@ -34,3 +36,33 @@ balance and prices pre-spend with the mirrored curves, but never advances the ba
 **The reset day is real time, deliberately** — the one intentional real-time crossing in the otherwise diary-driven
 engine, isolated to the twinkle context: the economy paces the user's real-world daily habit ([M5][G5]), and a
 universe-time refill would never refill a user who only views.
+
+**Twinkle earns only via write / invite-both-sides / verified payment — there is no login or attendance bonus**
+([G3]); the daily basic reset plays that role by design. Every earn credits **additional** only — basic is the daily
+derivation and is never earned:
+
+- **Write** — `twinkle.earn_write` once **per launched diary** (not per memory, so splitting a diary into more
+  memories inflates nothing), granted inside the launch transaction; a past-dated diary that launches no episodic
+  memory earns nothing (the grant rides the monotonic launch guard, [I10]).
+- **Invite** — on a **valid signup**, the inviter earns `twinkle.earn_invite_inviter` and the new friend
+  `twinkle.earn_invite_invitee`, each **exactly once per signup**: a signup is claimable once (any code), and the
+  (inviter, invitee) pair credits once. The invite code is the inviter's user id; self-invite is refused. The
+  concrete anti-abuse criteria are a **reserved seam** ([G6]) behind the `valid-signup` predicate — its permissive
+  default (a real, distinct signup) tightens later with no change to the invite earn.
+- **Payment** — `Charge` credits only after the store receipt is **verified** through the payment-verifier port; the
+  verifier's amount and idempotency key are authoritative, so a replayed receipt credits exactly once. No
+  verification, no value.
+
+**The spend is a consequence of the memory action, never a separate step**: recall and gist-view hand the gate a
+`SpendIntent` (kind + depth signal — **never a price**); the gate prices it via the cost curves, checks the balance,
+and deducts basic→additional **inside the caller's transaction** — no charge without the recall, no recall without
+the charge. An unaffordable action returns the canonical insufficient-twinkle refusal and writes nothing; nothing is
+ever deleted by a refusal ([I1]).
+
+**Quotes are server-priced, read-only previews** ([G4]): `QuoteSpend` resolves the authoritative depth signal
+server-side, prices with the same curves, and returns `{cost, covered, shortfall}` without writing a row or moving a
+clock; the real spend re-derives everything at action time, so a stale quote is simply refused.
+
+**Core-loop protection is a relationship, not a constant** ([G5]): `basic_daily_amount ≥ expected_daily_ruminations ×
+cheap_recall_cost` — everyday rumination ([M5]) always fits the daily basic grant at the cheap end of the recall
+curve; the gate bites only excess. The relationship is enforced by a test over the generated constants.

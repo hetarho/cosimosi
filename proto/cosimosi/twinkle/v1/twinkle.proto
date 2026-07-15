@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package cosimosi.twinkle.v1;
+
+// TwinkleService owns the Twinkle economy's client contract (plan 44): the balance
+// read, the server-priced spend quote, and the two mutating earn RPCs (invite claim,
+// verified payment charge).
+//
+// NOTE: the write-earn has NO RPC — it fires from memory's LaunchStars via the
+// consumer-owned EarnPort, in-transaction. The spend has NO RPC — it fires from
+// recall/view via the consumer-owned SpendGate this unit binds. The economy stays a
+// consequence of the memory actions, not a separate user step.
+service TwinkleService {
+  // balance read — the HUD source (plan 45); no side effects, user-scoped.
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // spend quote — server-priced, read-only; the UI displays this before
+  // recall/gist-view/diary-jump. Writes no ledger row; the real spend re-derives
+  // everything at action time.
+  rpc QuoteSpend(QuoteSpendRequest) returns (QuoteSpendResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // invite claim — both-sides credit on a valid signup; idempotent per
+  // (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
+  rpc ClaimInvite(ClaimInviteRequest) returns (ClaimInviteResponse);
+  // payment charge — verifies a store receipt before crediting additional Twinkle
+  // [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
+  rpc Charge(ChargeRequest) returns (ChargeResponse);
+}
+
+message GetBalanceRequest {}
+
+// The derived two-tier balance [G2]: daily-reset basic, permanent additional, and
+// their spendable total.
+message GetBalanceResponse {
+  int64 basic = 1;
+  int64 additional = 2;
+  int64 total = 3;
+}
+
+enum SpendKind {
+  SPEND_KIND_UNSPECIFIED = 0;
+  SPEND_KIND_RECALL = 1;
+  SPEND_KIND_GIST_VIEW = 2;
+  SPEND_KIND_DIARY_RECALL = 3;
+}
+
+message QuoteSpendRequest {
+  SpendKind kind = 1;
+  // The target: episodic_memory_id for a recall or gist-view quote, diary_id for
+  // the whole-diary recall batch quote [D3].
+  string episodic_memory_id = 2;
+  string diary_id = 3;
+}
+
+message QuoteSpendResponse {
+  int64 cost = 1;
+  bool covered = 2;
+  int64 shortfall = 3;
+}
+
+// invitee redeems the inviter's code.
+message ClaimInviteRequest {
+  string invite_code = 1;
+}
+
+// idempotent: replay returns the same total.
+message ClaimInviteResponse {
+  int64 balance_total = 1;
+}
+
+message ChargeRequest {
+  string pack_id = 1;
+  string platform = 2;
+  string receipt = 3;
+}
+
+message ChargeResponse {
+  int64 balance_total = 1;
+}

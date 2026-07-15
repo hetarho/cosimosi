@@ -39,8 +39,15 @@ func (q *Queries) ApplyReconsolidatedText(ctx context.Context, arg ApplyReconsol
 	return err
 }
 
-const listLiveDiaryMemoryIDs = `-- name: ListLiveDiaryMemoryIDs :many
-SELECT id
+const listLiveDiaryRecallAnchors = `-- name: ListLiveDiaryRecallAnchors :many
+SELECT
+    id,
+    arousal,
+    base_strength,
+    recall_count,
+    created_universe_time,
+    last_recalled_universe_time,
+    forgetting_offset_days
 FROM episodic_memories
 WHERE user_id = $1
   AND diary_id = $2
@@ -48,25 +55,45 @@ WHERE user_id = $1
 ORDER BY created_universe_time, id
 `
 
-type ListLiveDiaryMemoryIDsParams struct {
+type ListLiveDiaryRecallAnchorsParams struct {
 	UserID  string
 	DiaryID string
 }
 
-// The still-live episodic memories born from a diary — the whole-diary recall set ([D3]).
-func (q *Queries) ListLiveDiaryMemoryIDs(ctx context.Context, arg ListLiveDiaryMemoryIDsParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, listLiveDiaryMemoryIDs, arg.UserID, arg.DiaryID)
+type ListLiveDiaryRecallAnchorsRow struct {
+	ID                       string
+	Arousal                  float32
+	BaseStrength             float32
+	RecallCount              int32
+	CreatedUniverseTime      pgtype.Date
+	LastRecalledUniverseTime pgtype.Date
+	ForgettingOffsetDays     float32
+}
+
+// The still-live episodic memories born from a diary with their forgetting/strength
+// anchors — the whole-diary recall set ([D3]) and the scalars its per-memory spend
+// pricing derives from ([F4][G4]), in one batch (no text or gist payload).
+func (q *Queries) ListLiveDiaryRecallAnchors(ctx context.Context, arg ListLiveDiaryRecallAnchorsParams) ([]ListLiveDiaryRecallAnchorsRow, error) {
+	rows, err := q.db.Query(ctx, listLiveDiaryRecallAnchors, arg.UserID, arg.DiaryID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []string
+	var items []ListLiveDiaryRecallAnchorsRow
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var i ListLiveDiaryRecallAnchorsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Arousal,
+			&i.BaseStrength,
+			&i.RecallCount,
+			&i.CreatedUniverseTime,
+			&i.LastRecalledUniverseTime,
+			&i.ForgettingOffsetDays,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -93,6 +120,7 @@ SELECT
     semantic_stage,
     semanticize_timer_reset_at,
     semantic_stages,
+    forgetting_offset_days,
     deleted_at
 FROM episodic_memories
 WHERE user_id = $1
@@ -121,6 +149,7 @@ type LoadEpisodicMemoryForRecallRow struct {
 	SemanticStage            int16
 	SemanticizeTimerResetAt  pgtype.Date
 	SemanticStages           []byte
+	ForgettingOffsetDays     float32
 	DeletedAt                pgtype.Timestamptz
 }
 
@@ -129,9 +158,11 @@ type LoadEpisodicMemoryForRecallRow struct {
 // reconsolidation.sql) and these reads land in one transaction. Every statement is scoped to
 // the authenticated user ([U1], §4, lint:persistence). The Diary is never written here ([I2]).
 // Loads the memory being recalled with the state the branch needs: current_text/seed for the
-// compare + reshape, and semantic_stage/semantic_stages for the remaining-stage selection
-// ([C7]). deleted_at is returned so the use-case rejects a soft-deleted target with a distinct
-// error; a missing row (not the caller's) is ErrRecallMemoryNotFound.
+// compare + reshape, semantic_stage/semantic_stages for the remaining-stage selection ([C7]),
+// and the forgetting anchors (forgetting_offset_days with the recall/created anchors) so the
+// spend-time accessibility signal derives from this same row ([F4][G4]). deleted_at is
+// returned so the use-case rejects a soft-deleted target with a distinct error; a missing row
+// (not the caller's) is ErrRecallMemoryNotFound.
 func (q *Queries) LoadEpisodicMemoryForRecall(ctx context.Context, arg LoadEpisodicMemoryForRecallParams) (LoadEpisodicMemoryForRecallRow, error) {
 	row := q.db.QueryRow(ctx, loadEpisodicMemoryForRecall, arg.UserID, arg.MemoryID)
 	var i LoadEpisodicMemoryForRecallRow
@@ -152,6 +183,7 @@ func (q *Queries) LoadEpisodicMemoryForRecall(ctx context.Context, arg LoadEpiso
 		&i.SemanticStage,
 		&i.SemanticizeTimerResetAt,
 		&i.SemanticStages,
+		&i.ForgettingOffsetDays,
 		&i.DeletedAt,
 	)
 	return i, err

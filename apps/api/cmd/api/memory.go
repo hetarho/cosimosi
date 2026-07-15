@@ -16,16 +16,17 @@ import (
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 )
 
-// memoryServiceOption wires the memory context at the composition root: DB pool →
-// pg store, env-selected AI adapters (real or keyless mock) → memory.Service →
-// Connect handler registered on the platform mux. Without DATABASE_URL the API
-// still boots (matching the dev worker's opt-in posture) and only skips the
-// memory service.
-func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.HandlerOption, func(), error) {
+// domainServiceOptions wires the memory + twinkle contexts at the composition root
+// over ONE shared DB pool: pg stores, env-selected AI adapters (real or keyless
+// mock), the cross-context economy seam (the real SpendGate + EarnPort into memory,
+// memory's published reads into twinkle's quote — see twinkle.go), and both Connect
+// handlers registered on the platform mux. Without DATABASE_URL the API still boots
+// (matching the dev worker's opt-in posture) and only skips the domain services.
+func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.HandlerOption, func(), error) {
 	noop := func() {}
 	cfg, err := platformdb.ConfigFromEnv()
 	if errors.Is(err, platformdb.ErrDatabaseURLRequired) {
-		logger.Print("DATABASE_URL is not set; memory service is not registered")
+		logger.Print("DATABASE_URL is not set; memory and twinkle services are not registered")
 		return nil, noop, nil
 	}
 	if err != nil {
@@ -37,6 +38,15 @@ func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.Hand
 	}
 	store := memorypg.NewStore(pool.PgxPool())
 	adapters, err := ai.NewAdaptersFromEnv(ai.FactoryOptions{})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	// The twinkle service is built first (memory's gate and earn port wrap it); its
+	// spend-signal reader binds back to the memory service just below — the one
+	// two-way seam, closed here where every concrete is visible.
+	signals := &memorySpendSignals{}
+	twinkleService, err := newTwinkleService(pool, signals)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
@@ -53,29 +63,41 @@ func memoryServiceOption(ctx context.Context, logger *log.Logger) (platform.Hand
 		// The real advance-triggered handler ([T4]): consolidation (우주의 잠)
 		// runs inside every launch/sync advance transaction — no cron anywhere.
 		Progression: memory.NewConsolidator(nil),
-		// The recall transaction runs over the same store. SpendGate is the
-		// allow-all no-op default until the economy rebinds the real balance-check
-		// + deduct (§CC2); PredictionError is the LLM semantic-compare (keyless mock
-		// when no key). All bound here, the only place that sees the concretes.
+		// The recall transaction runs over the same store. SpendGate is the REAL
+		// twinkle balance-check + deduct ([CC2] — the Epic-C allow-all no-op is
+		// replaced here); Earn is the write grant fired inside the launch
+		// transaction ([G3]); PredictionError is the LLM semantic-compare (keyless
+		// mock when no key). All bound here, the only place that sees the concretes.
 		Recalls:         store,
-		SpendGate:       memory.AllowAllSpendGate{},
+		SpendGate:       twinkleSpendGate{service: twinkleService},
+		Earn:            twinkleEarnPort{service: twinkleService},
 		PredictionError: adapters.PredictionError,
 		// The gist-view read shares the same store and the same SpendGate
 		// instance as recall — one spend-and-check seam for both metered actions.
 		Gists: store,
+		// The published spend-signal reads run over the same store (standalone,
+		// no transaction).
+		Signals: store,
 	})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
+	signals.bind(service)
 	server, err := memoryrpc.NewServer(service)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
+	twinkleOption, err := twinkleServiceOption(twinkleService)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	logger.Printf("memory service registered ai_mode=%s", adapters.Mode)
-	option := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
+	logger.Print("twinkle service registered (economy gate live)")
+	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
-	return option, pool.Close, nil
+	return []platform.HandlerOption{memoryOption, twinkleOption}, pool.Close, nil
 }

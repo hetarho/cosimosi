@@ -23,6 +23,11 @@ type Balance struct {
 	Additional int
 }
 
+// Total is the spendable whole the client renders ([G2]): basic + additional.
+func (b Balance) Total() int {
+	return b.Basic + b.Additional
+}
+
 // BalanceRecord is the stored authoritative fact set the balance row holds — the permanent
 // balance plus the lazy basic-reset anchor. Basic is derived from it at read (DeriveBalance),
 // exactly as the universe clock stores an anchor and derives elapsed.

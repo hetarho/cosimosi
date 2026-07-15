@@ -31,8 +31,10 @@ func newConsolidateService(t *testing.T, store Store) *memory.Service {
 		Progression:     memory.NewConsolidator(nil),
 		Recalls:         store,
 		SpendGate:       memory.AllowAllSpendGate{},
+		Earn:            memory.NoEarnOnWrite{},
 		PredictionError: adapters.PredictionError,
 		Gists:           store,
+		Signals:         store,
 		Now:             consolidateServiceDay,
 	})
 	if err != nil {

@@ -299,6 +299,18 @@ twinkle:
   # [G4][G1] Floor for gist-view price: cheap but never free (the free surface is meta info
   # and the forgotten current text, not a gist read).
   gist_min_cost: 3
+  # [G3] Twinkle granted per launched diary (the write earn path) — once per diary, not per
+  # star, credited to additional; a past-dated diary that launches no star earns nothing.
+  earn_write: 100
+  # [G3] Twinkle granted to the inviter on a valid signup (the invite earn path). Split from
+  # the invitee grant so an asymmetric inviter bonus stays expressible.
+  earn_invite_inviter: 500
+  # [G3] Twinkle granted to the newly-signed-up friend on a valid signup (the invite earn
+  # path); credited exactly once per signup.
+  earn_invite_invitee: 500
+  # [G3] The single v1 payment-pack grant a verified Charge credits to additional balance
+  # (a multi-pack table is content, not a scalar; the price structure is product config).
+  charge_pack: 100
 
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.

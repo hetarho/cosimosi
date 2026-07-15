@@ -66,6 +66,24 @@ type LaunchTx interface {
 	UniverseClockStore
 }
 
+// EarnPort is the consumer-owned write-earn seam ([G3], §2.4): fired by PersistEncoded
+// once per launched diary (not per memory — splitting one diary into more memories must not
+// inflate the reward), inside the launch transaction via the EconomyTx handle, and only
+// after the monotonic launch guard admits the diary — a past-dated diary that launches
+// no episodic memory earns nothing ([I10]). The concrete is the economy's write grant, bound at
+// cmd/api; the launch and its grant commit or roll back together.
+type EarnPort interface {
+	OnDiaryLaunched(ctx context.Context, scope platform.UserScope, tx EconomyTx, diaryID string) error
+}
+
+// NoEarnOnWrite is the economy-less EarnPort binding (tests, minimal roots): a launch
+// grants nothing. cmd/api binds the real write grant in its place ([G3]).
+type NoEarnOnWrite struct{}
+
+func (NoEarnOnWrite) OnDiaryLaunched(context.Context, platform.UserScope, EconomyTx, string) error {
+	return nil
+}
+
 // UniverseClockStore is the consumer-owned port over the per-user authoritative
 // universe clock ([T5]). LockUniverseClock is the birth-window guard's advisory
 // lock, taken first in every launch/sync transaction so concurrent launches
@@ -150,6 +168,19 @@ type NeuronPairStrength struct {
 // UniverseReader backs the GetUniverse read over the stored universe facts.
 type UniverseReader interface {
 	GetUniverse(ctx context.Context, scope platform.UserScope) (UniverseFacts, error)
+}
+
+// SpendSignalRepo is the read port behind the published spend-signal reads (the
+// economy's quote resolves its depth signals through them, §2.2 published behavior):
+// narrow per-target loads plus the clock and its unborn-clock fallback, standalone
+// (no transaction — a quote writes nothing). The memory/pg store satisfies it with
+// the same reads recall uses, so a quoted signal and the spend-time signal derive
+// from the same facts.
+type SpendSignalRepo interface {
+	EpisodicMemoryForRecall(ctx context.Context, scope platform.UserScope, memoryID string) (EpisodicMemory, error)
+	LiveDiaryRecallAnchors(ctx context.Context, scope platform.UserScope, diaryID string) ([]DiaryRecallAnchor, error)
+	UniverseClock(ctx context.Context, scope platform.UserScope) (*time.Time, error)
+	LatestLaunchedUniverseTime(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 }
 
 // Linker is the in-transaction Link seam: PersistEncoded invokes it as

@@ -106,6 +106,13 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 			result.PastDated = true
 			return nil
 		}
+		// Earn-on-write ([G3]): one grant per launched diary — not per memory — fired
+		// inside this transaction so the launch and its grant commit or roll back
+		// together. Placed after the monotonic guard's early return, so a past-dated
+		// diary that launches no episodic memory earns nothing ([I10]).
+		if err := s.earn.OnDiaryLaunched(ctx, scope, tx, diary.ID); err != nil {
+			return err
+		}
 
 		neuronIDByKey, newNeurons, err := s.resolveNeurons(ctx, scope, tx, confirmed)
 		if err != nil {

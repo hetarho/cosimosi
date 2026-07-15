@@ -8,6 +8,7 @@ package pg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -16,16 +17,21 @@ import (
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
 	ErrUserScopeRequired = errors.New("twinkle store requires authenticated user scope")
 	ErrQueriesRequired   = errors.New("twinkle store requires database queries")
+	// ErrTxStarterRequired is returned when the store was built over a plain DBTX
+	// (e.g. an existing transaction) and cannot begin a ledger transaction itself.
+	ErrTxStarterRequired = errors.New("twinkle store requires a transaction-capable pool")
 	// ErrBasicGrantExceeded is the guard rejection: the basic-tier draw would push the
 	// window's spend past the daily grant (a raced/stale plan) — the spend is refused,
-	// never partially applied.
-	ErrBasicGrantExceeded = errors.New("twinkle spend exceeds the daily basic grant")
+	// never partially applied. It wraps the canonical insufficient-twinkle denial: to
+	// the caller a raced basic overdraw IS not-enough-twinkle at the true window state.
+	ErrBasicGrantExceeded = fmt.Errorf("twinkle spend exceeds the daily basic grant: %w", twinkle.ErrInsufficientTwinkle)
 	// ErrDeltaOutOfRange rejects deltas/amounts the INT columns cannot hold, and a negative
 	// basic spend delta (PlanSpend never produces one; a refund is not a domain operation) —
 	// values that would otherwise wrap through the int32 cast or mint basic silently.
@@ -34,10 +40,45 @@ var (
 
 type Store struct {
 	queries *dbgen.Queries
+	txer    txStarter
+}
+
+type txStarter interface {
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
 func NewStore(db dbgen.DBTX) Store {
-	return Store{queries: dbgen.New(db)}
+	store := Store{queries: dbgen.New(db)}
+	if txer, ok := db.(txStarter); ok {
+		store.txer = txer
+	}
+	return store
+}
+
+// InLedgerTx implements twinkle.LedgerRepo: it runs fn against a store bound to one
+// pgx transaction, so an earn/spend pair — the dedup-keyed log append plus the
+// guarded balance delta — commits wholly or not at all. The RPC-driven earns
+// (invite, charge) and the tx-less gist-view spend run here; a spend joining a
+// memory transaction instead arrives through the composition root's economy seam
+// (NewStore over that transaction's handle).
+func (s Store) InLedgerTx(ctx context.Context, fn func(tx twinkle.LedgerStore) error) error {
+	if s.queries == nil {
+		return ErrQueriesRequired
+	}
+	if s.txer == nil {
+		return ErrTxStarterRequired
+	}
+	tx, err := s.txer.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	if err := fn(Store{queries: s.queries.WithTx(tx)}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // GetBalanceRecord reads the user's stored balance facts. A user who never earned or spent
@@ -94,7 +135,7 @@ func (s Store) ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, 
 		return mapBalanceRecord(row), nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return twinkle.BalanceRecord{}, err
+		return twinkle.BalanceRecord{}, balanceCheckAsInsufficient(err)
 	}
 	born, err := s.queries.InsertTwinkleBalance(ctx, dbgen.InsertTwinkleBalanceParams{
 		UserID:          scope.UserID(),
@@ -107,16 +148,30 @@ func (s Store) ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, 
 		return mapBalanceRecord(born), nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return twinkle.BalanceRecord{}, err
+		return twinkle.BalanceRecord{}, balanceCheckAsInsufficient(err)
 	}
 	row, err = s.queries.UpdateTwinkleBalanceDelta(ctx, updateParams)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return twinkle.BalanceRecord{}, ErrBasicGrantExceeded
 	}
 	if err != nil {
-		return twinkle.BalanceRecord{}, err
+		return twinkle.BalanceRecord{}, balanceCheckAsInsufficient(err)
 	}
 	return mapBalanceRecord(row), nil
+}
+
+// balanceCheckAsInsufficient translates a twinkle_balances CHECK violation into the
+// canonical insufficient-twinkle denial: two spends racing the same stale balance
+// read serialize on the row lock, and the loser's delta drives a tier negative —
+// which IS "not enough twinkle at the true balance", not a storage fault. Every
+// other error passes through untouched.
+func balanceCheckAsInsufficient(err error) error {
+	var pgErr *pgconn.PgError
+	// 23514 = PostgreSQL check_violation.
+	if errors.As(err, &pgErr) && pgErr.Code == "23514" && pgErr.TableName == "twinkle_balances" {
+		return fmt.Errorf("twinkle balance tier exhausted by a concurrent spend: %w (%w)", twinkle.ErrInsufficientTwinkle, err)
+	}
+	return err
 }
 
 // AppendLedgerEntry appends one row to the append-only earn/spend log ([I1] — the log is

@@ -7,20 +7,21 @@
 
 ## 1. Boundaries
 
-`internal/twinkle` is a **standalone core context**: it never imports `internal/memory` (or any other context).
-Memory reaches twinkle's spend through a consumer-owned `SpendGate` port wired at the composition root (CC2/CC8);
-until the earn/spend use-case (plan 44) binds it, the Epic-C no-op allow-all gate stays in place. The context ships
-as one package plus its persistence seam:
+`internal/twinkle` is a **standalone core context**: it never imports `internal/memory` (or any other context), and
+memory never imports twinkle. The two meet only at the composition root (`cmd/api/twinkle.go`), where the
+cross-context adapters live (CC2/CC8). The context ships as one package plus its persistence and transport seams:
 
-- `internal/twinkle` — the pure domain: `Balance`, `BalanceRecord`, `LedgerEntry`, the closed `EntryKind`
-  (`earn|spend`) / `EntryReason` (`payment|invite|write_diary|recall|gist_view`) sets, and the pure functions below.
-  No proto, sqlc, pgx, SDK, or IO import; no clock read (`now` is always an argument).
+- `internal/twinkle` — the domain + use-cases: `Balance`, `BalanceRecord`, `LedgerEntry`, the closed `EntryKind`
+  (`earn|spend`) / `EntryReason` (`payment|invite|write_diary|recall|gist_view`) sets, the pure functions below, and
+  the `Service` use-cases (`GetBalance` / `CheckAndSpend` / `EarnOnWrite` / `ClaimInvite` / `Charge` / `QuoteSpend`).
+  No proto, sqlc, pgx, or SDK import; the pure functions take `now` as an argument (the Service's clock is a seam).
 - `internal/twinkle/pg` — the context's **only** sqlc/pgx package: the concrete `Store` over `twinkle_balances` +
-  `twinkle_ledger_entries` with row↔domain mapping at this edge. It declares **no repository interface** — the port
-  is consumer-owned by the plan-44 use-case, which composes the store's methods inside its transaction (build a
-  `Store` over the tx via `NewStore`).
-
-No RPC surface exists yet (`twinkle.v1` is plan 44's). No earn amounts are defined here (plan 44's values).
+  `twinkle_ledger_entries` with row↔domain mapping at this edge, plus `InLedgerTx` (the own-transaction runner). It
+  declares **no repository interface** — the `LedgerStore`/`LedgerRepo` ports are consumer-owned by the use-cases.
+- `internal/twinkle/rpc` — thin Connect handlers for `twinkle.v1.TwinkleService` (`GetBalance`, `QuoteSpend`,
+  `ClaimInvite`, `Charge`): proto↔domain map + call, no policy. `GetBalance`/`QuoteSpend` are `NO_SIDE_EFFECTS`;
+  `ClaimInvite`/`Charge` mutate and are idempotent per their keys. **Earn-on-write and the spend have no RPC** —
+  they are cross-context port calls inside memory's transactions.
 
 ## 2. The balance model
 
@@ -88,11 +89,57 @@ loser surfaces as `ErrBasicGrantExceeded`. The store also rejects negative `basi
 domain operation) and any delta/amount outside int32 (`ErrDeltaOutOfRange` — never a silent wrap). A stale caller
 window never rolls the anchor backward (`GREATEST`); a rolled window starts its spend from just the new delta.
 
-### Idempotency contract (for the plan-44 transaction)
+### Idempotency contract
 
 `ApplyBalanceDelta` is **not** dedup-guarded; `AppendLedgerEntry` is (`false` = already-applied retry). The
 composing use-case appends the dedup-keyed ledger entry **first** in the same transaction and skips the delta when
-the append reports a retry — that pairing is what makes a retried earn/spend idempotent end to end.
+the append reports a retry — that pairing is what makes a retried earn/spend idempotent end to end. The dedup keys
+are use-case policy: `write_diary:<diaryID>` (once per diary), `invite_signup:<inviteeID>` (once per signup, the
+invitee side — a replay skips the inviter side too), `invite:<inviterID>:<inviteeID>` (once per pair, the inviter
+side), and the verifier-returned key for payments. Spends carry no dedup key (each recall/view is a new event).
+`ErrBasicGrantExceeded` wraps the canonical `twinkle.ErrInsufficientTwinkle`: a raced basic overdraw surfaces to the
+caller as not-enough-twinkle at the true window state.
+
+## 4a. The use-cases (`internal/twinkle.Service`)
+
+- **`CheckAndSpend(scope, ledger, intent)`** — the real `SpendGate` behavior ([CC2][G1]): price the intent
+  (`RecallCost(accessibilityCost)` / `GistViewCost(semanticStage)` — the caller passes only signals), derive the
+  balance, `PlanSpend` basic→additional, and on `ok` append the spend row + apply the guarded delta. On `!ok` return
+  `ErrInsufficientTwinkle` and write **nothing**. `ledger` is the caller's transaction-bound store (the economy
+  seam); `nil` runs the spend in its own `InLedgerTx` (the tx-less gist view). A zero-priced intent writes nothing.
+- **`EarnOnWrite(scope, ledger, diaryID)`** — the write grant, `twinkle.earn_write` to additional, dedup-keyed per
+  diary; requires the launch's transaction-bound store (`ErrEarnTxRequired` otherwise).
+- **`ClaimInvite(scope, inviteCode)`** — the invite code **is the inviter's user id** (share links carry it; no
+  invite-code table exists — resolution is identity). Consults the `ValidSignup` predicate (permissive default
+  `DistinctSignup`: non-empty, distinct pair), then credits invitee + inviter in one `InLedgerTx` under the two-layer
+  dedup keys above. Replay (same or different code) returns the same balance, credits no one.
+- **`Charge(scope, packID, platform, receipt)`** — `StorePaymentVerifier.Verify` first; only a verified receipt for
+  a known pack credits `ReasonPayment` by the verifier's amount under the verifier's dedup key. The shipped verifier
+  is the deterministic `KeylessPaymentVerifier` (accepts only `DefaultChargePackID` with a non-empty receipt; key =
+  sha256 of the receipt) — the §2.8 keyless-mock posture; **the production store-SDK adapter is a deferred seam
+  behind the same port and must be bound before real payments launch**.
+- **`GetBalance(scope)`** / **`QuoteSpend(scope, kind, targetID)`** — read-only: derive the balance (lazy-birth
+  default for an absent row, no write, no window roll); the quote resolves its depth signal through the
+  `SpendSignalReader` port, prices with the same curves, and returns `{cost, covered, shortfall}` (diary-recall =
+  the per-memory `RecallCost` sum, [D3]).
+
+## 4b. The cross-context economy seam (composition root only)
+
+Memory declares `SpendGate`/`EarnPort` with an opaque **`EconomyTx`** handle (`any`); recall/launch pass their
+transaction surface through it, the gist view passes `nil`. The `memory/pg` store exposes its bound query handle via
+`DB()`; `cmd/api`'s `twinkleSpendGate`/`twinkleEarnPort` adapters extract it and bind `twinklepg.NewStore` over the
+**same pgx transaction** — the two contexts share the transaction, never the queries, so a spend/earn and its
+recall/launch commit or roll back as one. The adapters also translate vocabulary both ways: `memory.SpendIntent` →
+`twinkle.SpendIntent` (kind → reason, signals as scalars), `twinkle.ErrInsufficientTwinkle` →
+`memory.ErrInsufficientTwinkle`, and memory's read refusals → `twinkle.ErrQuoteTargetNotFound/Unavailable` for the
+quote. `memorySpendSignals` implements `twinkle.SpendSignalReader` over memory's published reads
+(`RecallAccessibility`, `DiaryRecallAccessibilities` — one batch anchor read per diary, no text/gist payload — and
+`ViewableGistStage`, the reached = deepest = cheapest viewable stage); it is bound to the memory service right after
+construction (the one two-way seam, closed at the root). Signal reads derive at `GREATEST(guard baseline, real
+today)` — the clock a real recall would sync to, with the unborn clock falling back to the latest launched memory
+exactly like the sync guard — so a quote and the authoritative spend price the same decay state. The whole-diary
+recall spends from the same one-snapshot batch anchors before any reinforce runs, so in-batch neighbor nudges can
+never drift the action's price from its quote.
 
 ## 5. Per-user isolation (§4)
 
@@ -111,7 +158,13 @@ same key. `pnpm lint:persistence` enforces the query scoping.
 | `gist_base_cost`           | 10    | 요지 열람 price at gist stage 1 [G4][R8]                   |
 | `gist_stage_discount`      | 3     | discount per deeper gist stage [G4][R8]                    |
 | `gist_min_cost`            | 3     | gist-view floor — cheap but never free [G4][G1]            |
+| `earn_write`               | 100   | write grant per launched diary → additional [G3]           |
+| `earn_invite_inviter`      | 500   | inviter grant on a valid signup [G3]                       |
+| `earn_invite_invitee`      | 500   | new friend's grant on a valid signup [G3]                  |
+| `charge_pack`              | 100   | the single v1 pack a verified Charge credits [G3]          |
 
 With the shipped `forgetting.cost_weight_*` (weight ∈ [1, 4]) the effective 회고 price runs 15 (fresh) → 40
-(capped); a day's grant covers roughly six fresh recalls or a mix of recalls and gist views. Earn amounts
-(`earn_write` / invite / charge packs) are plan 44's enumeration, not this table's.
+(capped); a day's grant covers roughly six fresh recalls or a mix of recalls and gist views. The [G5] relationship
+`basic_daily_amount ≥ 5 expected daily ruminations × cheap recall (15)` is pinned by a test over the generated
+constants. The pack **price table** (₩/$ per pack) is product content, not a value; `DefaultChargePackID` is the one
+v1 pack id (code).

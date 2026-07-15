@@ -122,6 +122,7 @@ type serviceFixture struct {
 	linker          *fakeLinker
 	progression     *fakeProgression
 	spendGate       *fakeSpendGate
+	earn            *fakeEarnPort
 	predictionError *fakePredictionError
 	gists           *fakeGistReader
 	service         *Service
@@ -140,6 +141,7 @@ func newFixture(t *testing.T) *serviceFixture {
 		linker:          &fakeLinker{},
 		progression:     &fakeProgression{store: launches},
 		spendGate:       &fakeSpendGate{},
+		earn:            &fakeEarnPort{},
 		predictionError: &fakePredictionError{},
 		gists:           &fakeGistReader{},
 	}
@@ -157,8 +159,10 @@ func newFixture(t *testing.T) *serviceFixture {
 		Progression:     fixture.progression,
 		Recalls:         fixture.launches,
 		SpendGate:       fixture.spendGate,
+		Earn:            fixture.earn,
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
+		Signals:         fixture.launches,
 		Now:             func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
 		NewID: func() string {
 			ids++
@@ -364,8 +368,10 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 		Progression:     fixture.progression,
 		Recalls:         fixture.launches,
 		SpendGate:       fixture.spendGate,
+		Earn:            fixture.earn,
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
+		Signals:         fixture.launches,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

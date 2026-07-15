@@ -26,6 +26,7 @@ var (
 
 type Store struct {
 	queries *dbgen.Queries
+	db      dbgen.DBTX
 	txer    txStarter
 	batcher batchSender
 }
@@ -39,7 +40,7 @@ type batchSender interface {
 }
 
 func NewStore(db dbgen.DBTX) Store {
-	store := Store{queries: dbgen.New(db)}
+	store := Store{queries: dbgen.New(db), db: db}
 	if txer, ok := db.(txStarter); ok {
 		store.txer = txer
 	}
@@ -47,6 +48,16 @@ func NewStore(db dbgen.DBTX) Store {
 		store.batcher = batcher
 	}
 	return store
+}
+
+// DB exposes the query handle this store is bound to — the pool, or the open
+// transaction inside In*Tx. It exists for the composition root's cross-context
+// economy seam ([CC2]): the root binds the twinkle ledger store onto the very same
+// transaction a recall/launch runs in, so a spend/earn and its memory work commit or
+// roll back together. Context behavior never calls it (the handle stays opaque
+// through memory.EconomyTx).
+func (s Store) DB() dbgen.DBTX {
+	return s.db
 }
 
 func (s Store) InsertDiary(ctx context.Context, scope platform.UserScope, diary memory.Diary) (memory.Diary, error) {

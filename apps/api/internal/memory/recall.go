@@ -29,14 +29,40 @@ var (
 	ErrRecallMemoryUnavailable = errors.New("recall target memory is unavailable")
 )
 
-// AllowAllSpendGate is the shipped SpendGate default: it permits every action and charges
-// nothing, so the recall loop works before the economy exists (§CC2). The real
-// balance-check + deduct rebinds it at the composition root. Mirrors NoopAdvanceProgression's
-// stance — a deliberate no-op default, not a missing binding.
+// AllowAllSpendGate is the economy-less SpendGate binding: it permits every action and
+// charges nothing, so the recall loop composes without the economy (tests, minimal
+// roots). cmd/api binds the real balance-check + deduct in its place (§CC2). Mirrors
+// NoopAdvanceProgression's stance — a deliberate no-op, not a missing binding.
 type AllowAllSpendGate struct{}
 
-func (AllowAllSpendGate) CheckAndSpend(context.Context, platform.UserScope, SpendIntent) error {
+func (AllowAllSpendGate) CheckAndSpend(context.Context, platform.UserScope, EconomyTx, SpendIntent) error {
 	return nil
+}
+
+// recallAccessibilitySignal derives the spend-time accessibility cost weight ([F4])
+// the recall SpendIntent carries: the same read-time forgetting chain the render
+// path uses (offset-inclusive elapsed → decay depth → convex weight), evaluated at
+// the post-sync universe time — so the gate prices exactly the decay state the user
+// is recalling out of. A signal, never a price ([CC3]: pricing lives in the economy).
+func recallAccessibilitySignal(anchor DiaryRecallAnchor, universeTime time.Time) float64 {
+	elapsed := EffectiveElapsedDays(universeTime, anchor.LastRecalledUniverseTime,
+		anchor.CreatedUniverseTime, anchor.ForgettingOffsetDays)
+	strength := EffectiveStrength(anchor.BaseStrength, anchor.RecallCount)
+	return AccessibilityCostWeight(DecayDepth(elapsed, anchor.Arousal, strength))
+}
+
+// recallAnchorOf projects a loaded memory onto its accessibility anchors — the
+// single-target recall's view of the same scalars the diary batch reads directly.
+func recallAnchorOf(episodicMemory EpisodicMemory) DiaryRecallAnchor {
+	return DiaryRecallAnchor{
+		EpisodicMemoryID:         episodicMemory.ID,
+		Arousal:                  episodicMemory.Emotion.Arousal,
+		BaseStrength:             episodicMemory.BaseStrength,
+		RecallCount:              episodicMemory.RecallCount,
+		CreatedUniverseTime:      episodicMemory.CreatedUniverseTime,
+		LastRecalledUniverseTime: episodicMemory.LastRecalledUniverseTime,
+		ForgettingOffsetDays:     episodicMemory.ForgettingOffsetDays,
+	}
 }
 
 // RecallResult is Recall's optimistic return (§2.8): the branch taken plus the memory's
@@ -87,18 +113,21 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, memoryID
 		if err != nil {
 			return err
 		}
-		// 2. Spend Twinkle for the recall (allow-all no-op default); a denial aborts
-		// the whole transaction, resetting nothing (§CC2).
-		if err := s.spendGate.CheckAndSpend(ctx, scope, RecallSpendIntent(memoryID)); err != nil {
-			return err
-		}
-		// 3. Load the memory; a soft-deleted target is unavailable ([R1]).
+		// 2. Load the memory; a soft-deleted target is unavailable ([R1]). The load
+		// precedes the spend so a not-found target never charges — and the spend
+		// intent's depth signal is derived from this loaded state.
 		memory, err := tx.EpisodicMemoryForRecall(ctx, scope, memoryID)
 		if err != nil {
 			return err
 		}
 		if memory.DeletedAt != nil {
 			return ErrRecallMemoryUnavailable
+		}
+		// 3. Spend Twinkle for the recall: the intent carries the post-sync
+		// accessibility signal and joins this transaction, so a denial aborts the
+		// whole recall, resetting and charging nothing (§CC2).
+		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(memoryID, recallAccessibilitySignal(recallAnchorOf(memory), sync.Current))); err != nil {
+			return err
 		}
 		// 4. Prediction-error judgement — an LLM semantic compare of content ([R6]).
 		differs, err := s.predictionError.Differs(ctx, memory.CurrentText, rewriteText)
@@ -154,18 +183,25 @@ func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope
 		if err != nil {
 			return err
 		}
-		ids, err := tx.LiveDiaryMemoryIDs(ctx, scope, diaryID)
+		anchors, err := tx.LiveDiaryRecallAnchors(ctx, scope, diaryID)
 		if err != nil {
 			return err
 		}
-		// Spend + reinforce per memory: the SpendIntent targets one memory, so the
-		// diary's recall cost is the sum of the per-memory recalls ([D3], the economy
-		// prices each). A denial mid-way aborts the whole transaction — atomic, resets
-		// nothing.
-		for _, id := range ids {
-			if err := s.spendGate.CheckAndSpend(ctx, scope, RecallSpendIntent(id)); err != nil {
+		// Spend first, for EVERY memory, from the one pre-recall anchor snapshot:
+		// each SpendIntent targets one memory and carries that memory's own
+		// accessibility signal, so the diary's cost is the sum of the per-memory
+		// recalls ([D3]) — priced exactly as the diary quote priced it (a reinforce
+		// nudges neighbor offsets, so pricing after reinforcing a sibling would
+		// drift from the quote). A denial aborts the whole transaction — atomic,
+		// resets nothing.
+		ids := make([]string, 0, len(anchors))
+		for _, anchor := range anchors {
+			ids = append(ids, anchor.EpisodicMemoryID)
+			if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(anchor.EpisodicMemoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
 				return err
 			}
+		}
+		for _, id := range ids {
 			if _, err := s.reinforce(ctx, scope, tx, id, sync.Current); err != nil {
 				return err
 			}

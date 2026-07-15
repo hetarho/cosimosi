@@ -30,7 +30,7 @@ func (s Store) InLaunchTx(ctx context.Context, fn func(tx memory.LaunchTx) error
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
-	if err := fn(Store{queries: s.queries.WithTx(tx)}); err != nil {
+	if err := fn(Store{queries: s.queries.WithTx(tx), db: tx}); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

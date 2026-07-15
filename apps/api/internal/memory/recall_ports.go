@@ -21,7 +21,7 @@ import (
 var ErrInsufficientTwinkle = errors.New("insufficient twinkle for this action")
 
 // SpendKind names WHICH metered action a SpendIntent is for. It is a depth/kind
-// SIGNAL, never a price: the gate maps a kind (+ its target and gist depth) to a
+// SIGNAL, never a price: the gate maps a kind (+ its target and depth signal) to a
 // cost via the cost curve, so no price literal ever lives in this context (§CC2).
 // recall = 회고하기; view_gist = 요지 열람 (the paired gist-view consumer).
 type SpendKind string
@@ -32,30 +32,43 @@ const (
 )
 
 // SpendIntent tells the SpendGate what is being spent on: the action kind, the target
-// memory, and — for a gist view — the gist stage whose depth prices it ([R8][G4]).
-// It carries NO price: the recall side supplies the accessibility/depth signal and
-// the gate decides the cost and whether the balance allows it (§CC2). Stage is unused
-// (0) for a recall.
+// memory, and the kind's depth signal — a recall carries the server-derived
+// accessibility cost weight ([F4], computed at spend time by the recall use-case), a
+// gist view carries the viewed stage ([R8][G4]). It carries NO price: this context
+// supplies only the signals and the gate prices them and decides whether the balance
+// allows the action (§CC2/CC3). Stage is unused (0) for a recall; AccessibilityCost
+// is unused (0) for a gist view.
 type SpendIntent struct {
-	Kind     SpendKind
-	MemoryID string
-	Stage    int16
+	Kind              SpendKind
+	MemoryID          string
+	Stage             int16
+	AccessibilityCost float64
 }
 
-// RecallSpendIntent is the recall action's intent — the target memory, no price.
-func RecallSpendIntent(memoryID string) SpendIntent {
-	return SpendIntent{Kind: SpendKindRecall, MemoryID: memoryID}
+// RecallSpendIntent is the recall action's intent — the target memory plus its
+// spend-time accessibility cost weight ([F4]), never a price.
+func RecallSpendIntent(memoryID string, accessibilityCost float64) SpendIntent {
+	return SpendIntent{Kind: SpendKindRecall, MemoryID: memoryID, AccessibilityCost: accessibilityCost}
 }
+
+// EconomyTx is the opaque handle to the caller's open repository transaction that an
+// economy write (spend or earn) must join ([CC2]): recall/launch pass their tx surface
+// through it so the composition-root economy binding can run its ledger write on the
+// same database transaction — no charge without the action, no action without the
+// charge. Opaque on purpose: the ledger write belongs to another context whose writes
+// this context cannot express, and only the composition root understands the concrete.
+// nil = the caller holds no transaction (the binding runs its own).
+type EconomyTx any
 
 // SpendGate is the consumer-owned check-and-spend port ([G1], §2.4). Declared ONCE
 // here and shared with the gist-view use-case — the two are the only spend actions in
-// v1. The shipped default is an allow-all no-op (AllowAllSpendGate) so the recall loop
-// works with no economy; the real balance-check + deduct rebinds it at the composition
-// root. A denial returns ErrInsufficientTwinkle and, because the whole recall is one
-// transaction, resets nothing (§CC2). The gate never sees a price — only the
-// SpendIntent's kind/target/depth signal.
+// v1. The shipped default is an allow-all no-op (AllowAllSpendGate) for economy-less
+// composition (tests); cmd/api binds the real balance-check + deduct. A denial returns
+// ErrInsufficientTwinkle and, because the spend joins the caller's transaction (tx),
+// resets nothing (§CC2). The gate never sees a price — only the SpendIntent's
+// kind/target/depth signals.
 type SpendGate interface {
-	CheckAndSpend(ctx context.Context, scope platform.UserScope, spend SpendIntent) error
+	CheckAndSpend(ctx context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error
 }
 
 // MemoryProvenanceStore appends one append-only 변천사 row ([R8a]). Consumer-owned by
@@ -104,9 +117,10 @@ type RecallTx interface {
 	// memory's member neurons — the co-activated edges Reinforce batch-LTPs ([R3]). Only
 	// neuron↔neuron edges exist, so no memory↔memory edge can be returned ([I4][I6]).
 	RecallMemberSynapses(ctx context.Context, scope platform.UserScope, memoryID string) ([]Synapse, error)
-	// LiveDiaryMemoryIDs returns the still-live (soft-delete-excluded) episodic
-	// memories born from a diary — the whole-diary recall set ([D3]).
-	LiveDiaryMemoryIDs(ctx context.Context, scope platform.UserScope, diaryID string) ([]string, error)
+	// LiveDiaryRecallAnchors returns the still-live (soft-delete-excluded) episodic
+	// memories born from a diary — the whole-diary recall set ([D3]) — each with the
+	// forgetting/strength anchors its spend pricing derives from, in one batch read.
+	LiveDiaryRecallAnchors(ctx context.Context, scope platform.UserScope, diaryID string) ([]DiaryRecallAnchor, error)
 	// NeighborSharedSemanticCounts returns, for each NEIGHBOR episodic memory (never
 	// the recalled memory), the count of SEMANTIC neurons it shares with the recalled
 	// memory — spatial/entity excluded, emotion never a neuron ([I3][R5]). The count
@@ -137,6 +151,21 @@ type SynapseWriter interface {
 type NeighborSharedSemanticCount struct {
 	NeighborID          string
 	SharedSemanticCount int
+}
+
+// DiaryRecallAnchor is one live diary memory's forgetting/strength anchors — exactly
+// the scalars the spend-time accessibility signal derives from ([F4][G4]), with no
+// text or gist payload riding along. The whole-diary recall and its quote read these
+// in one batch, so every per-memory price in a batch derives from one pre-action
+// snapshot (a reinforce nudging a sibling's offset cannot reprice the batch mid-way).
+type DiaryRecallAnchor struct {
+	EpisodicMemoryID         string
+	Arousal                  float64
+	BaseStrength             float64
+	RecallCount              int32
+	CreatedUniverseTime      time.Time
+	LastRecalledUniverseTime *time.Time
+	ForgettingOffsetDays     float64
 }
 
 // RecallAnchors is ResetRecallAnchors's return: the post-increment recall count and

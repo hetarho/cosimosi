@@ -116,6 +116,10 @@ export const VALUES = {
     gistBaseCost: 10,
     gistStageDiscount: 3,
     gistMinCost: 3,
+    earnWrite: 100,
+    earnInviteInviter: 500,
+    earnInviteInvitee: 500,
+    chargePack: 100,
   },
   forceSim: {
     charge: 0.035,

@@ -80,6 +80,23 @@ type launchState struct {
 
 var errInjectedFailure = errors.New("injected persistence failure")
 
+// fakeEarnPort records the write-earn seam's firings: the diary granted and the
+// EconomyTx handle it was carried on (the launch transaction).
+type fakeEarnPort struct {
+	failErr  error
+	diaryIDs []string
+	txs      []EconomyTx
+}
+
+func (f *fakeEarnPort) OnDiaryLaunched(_ context.Context, scope platform.UserScope, tx EconomyTx, diaryID string) error {
+	if scope.UserID() == "" {
+		return errors.New("scope missing")
+	}
+	f.diaryIDs = append(f.diaryIDs, diaryID)
+	f.txs = append(f.txs, tx)
+	return f.failErr
+}
+
 func (f *fakeLaunchStore) InLaunchTx(_ context.Context, fn func(tx LaunchTx) error) error {
 	f.txCount++
 	f.staging = &launchState{}
@@ -488,6 +505,46 @@ func TestPersistEncodedPastDatedSavesDiaryLaunchesNothing(t *testing.T) {
 	}
 	if len(fixture.progression.calls) != 0 {
 		t.Fatal("the progression hook must not fire when the clock does not advance")
+	}
+	// No launched memory, no earn: the write grant rides the same guard ([G3][I10]).
+	if len(fixture.earn.diaryIDs) != 0 {
+		t.Fatalf("earn firings = %v, want none for a past-dated diary", fixture.earn.diaryIDs)
+	}
+}
+
+func TestPersistEncodedEarnsOncePerLaunchedDiary(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+
+	// confirmedFixture launches TWO memories from one diary — the grant must still
+	// fire exactly once, per diary, carried on the launch transaction handle.
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	if err != nil {
+		t.Fatalf("PersistEncoded failed: %v", err)
+	}
+	if len(result.MemoryIDs) != 2 {
+		t.Fatalf("memories = %d, want the 2-memory fixture", len(result.MemoryIDs))
+	}
+	if len(fixture.earn.diaryIDs) != 1 || fixture.earn.diaryIDs[0] != result.DiaryID {
+		t.Fatalf("earn firings = %v, want exactly one for diary %s", fixture.earn.diaryIDs, result.DiaryID)
+	}
+	if len(fixture.earn.txs) != 1 || fixture.earn.txs[0] == nil {
+		t.Fatal("the write grant must carry the launch transaction handle")
+	}
+}
+
+func TestPersistEncodedEarnFailureRollsBackLaunch(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	fixture.earn.failErr = errInjectedFailure
+
+	if _, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture()); !errors.Is(err, errInjectedFailure) {
+		t.Fatalf("err = %v, want the injected earn failure", err)
+	}
+	// A launch and its grant commit or roll back together: nothing committed.
+	state := fixture.launches.committed
+	if len(state.diaries) != 0 || len(state.memories) != 0 || len(state.neurons) != 0 || len(state.jobs) != 0 {
+		t.Fatal("a failed write grant must roll the whole launch back")
 	}
 }
 

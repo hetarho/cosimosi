@@ -62,11 +62,15 @@ func (f *fakeLaunchStore) RecallMemberSynapses(_ context.Context, scope platform
 	return f.recallMemberSynapses[memoryID], nil
 }
 
-func (f *fakeLaunchStore) LiveDiaryMemoryIDs(_ context.Context, scope platform.UserScope, diaryID string) ([]string, error) {
+func (f *fakeLaunchStore) LiveDiaryRecallAnchors(_ context.Context, scope platform.UserScope, diaryID string) ([]DiaryRecallAnchor, error) {
 	if scope.UserID() == "" {
 		return nil, errors.New("scope missing")
 	}
-	return f.diaryMemories[diaryID], nil
+	anchors := make([]DiaryRecallAnchor, 0, len(f.diaryMemories[diaryID]))
+	for _, id := range f.diaryMemories[diaryID] {
+		anchors = append(anchors, recallAnchorOf(f.recallStars[id]))
+	}
+	return anchors, nil
 }
 
 func (f *fakeLaunchStore) NeighborSharedSemanticCounts(_ context.Context, scope platform.UserScope, memoryID string) ([]NeighborSharedSemanticCount, error) {
@@ -116,13 +120,15 @@ func (f *fakeLaunchStore) AppendMemoryProvenance(_ context.Context, scope platfo
 type fakeSpendGate struct {
 	denyErr error
 	intents []SpendIntent
+	txs     []EconomyTx
 }
 
-func (f *fakeSpendGate) CheckAndSpend(_ context.Context, scope platform.UserScope, spend SpendIntent) error {
+func (f *fakeSpendGate) CheckAndSpend(_ context.Context, scope platform.UserScope, tx EconomyTx, spend SpendIntent) error {
 	if scope.UserID() == "" {
 		return errors.New("scope missing")
 	}
 	f.intents = append(f.intents, spend)
+	f.txs = append(f.txs, tx)
 	return f.denyErr
 }
 
@@ -222,9 +228,15 @@ func TestRecallNoErrorBranchReinforcesOnly(t *testing.T) {
 	if fixture.predictionError.calls != 1 || fixture.predictionError.gotCurrent != "original account" || fixture.predictionError.gotRewrite != "original account, reworded" {
 		t.Fatalf("compare = %+v, want one call over (current, rewrite)", fixture.predictionError)
 	}
-	// A2: one recall spend intent for the target.
-	if len(fixture.spendGate.intents) != 1 || fixture.spendGate.intents[0] != RecallSpendIntent("m1") {
-		t.Fatalf("spend intents = %+v, want one recall intent for m1", fixture.spendGate.intents)
+	// A2: one recall spend intent for the target, carrying the post-sync
+	// accessibility signal — and the recall's own transaction handle, so the real
+	// gate's debit joins this transaction.
+	wantIntent := RecallSpendIntent("m1", recallAccessibilitySignal(recallAnchorOf(fixture.launches.recallStars["m1"]), fixtureToday()))
+	if len(fixture.spendGate.intents) != 1 || fixture.spendGate.intents[0] != wantIntent {
+		t.Fatalf("spend intents = %+v, want one %+v", fixture.spendGate.intents, wantIntent)
+	}
+	if len(fixture.spendGate.txs) != 1 || fixture.spendGate.txs[0] == nil {
+		t.Fatal("the recall spend must carry the recall transaction handle")
 	}
 }
 

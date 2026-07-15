@@ -28,6 +28,8 @@ export type {
   SplitDiaryRequest,
   SplitDiaryResponse,
   SynapseDto,
+  ViewSemanticRequest,
+  ViewSemanticResponse,
 } from './gen/cosimosi/memory/v1/memory_pb.ts'
 
 export function createMemoryClient(transport: Transport): Client<typeof MemoryService> {

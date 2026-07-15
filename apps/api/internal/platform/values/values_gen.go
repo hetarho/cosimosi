@@ -178,6 +178,10 @@ const (
 	TwinkleGistBaseCost           = 10
 	TwinkleGistStageDiscount      = 3
 	TwinkleGistMinCost            = 3
+	TwinkleEarnWrite              = 100
+	TwinkleEarnInviteInviter      = 500
+	TwinkleEarnInviteInvitee      = 500
+	TwinkleChargePack             = 100
 )
 
 // force_sim
