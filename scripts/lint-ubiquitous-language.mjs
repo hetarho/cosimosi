@@ -106,6 +106,15 @@ const isTestHarnessPath = (segments) => {
   const pagesAt = segments.indexOf('pages')
   return pagesAt >= 0 && segments[pagesAt + 1] === 'test'
 }
+// The stardust economy overlay (별가루/Twinkle) is spec-named `widgets/stardust`, so its barrel
+// export `StardustOverlay` unavoidably matches the rendering term "star" — yet it is the economy
+// surface, not a rendering slice, and imports no visual entity (§3.4). Scoped to the slice so a
+// real rendering-term leak elsewhere still trips the gate.
+const isStardustEconomyPath = (segments) =>
+  segments[0] === 'apps' &&
+  segments[2] === 'src' &&
+  segments[3] === 'widgets' &&
+  segments[4] === 'stardust'
 const isGeneratedFile = (text) => /\bDO NOT EDIT\b/i.test(text.slice(0, 400))
 
 const walk = (dir) => {
@@ -148,6 +157,7 @@ for (const file of files) {
     isVisualEntityPath(file.path) ||
     isCompositionPath(segments) ||
     isTestHarnessPath(segments) ||
+    isStardustEconomyPath(segments) ||
     isGeneratedFile(file.text)
 
   if (!visualAllowed) {

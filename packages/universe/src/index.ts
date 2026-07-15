@@ -93,6 +93,19 @@ export {
   type UniverseTimePhase,
 } from './universe-time.machine.ts'
 
+// Stardust economy (별가루) control-state + balance mirror: the charge-sheet phase
+// machine and the two-tier balance store the HUD reads (figures in the store, phase in
+// the machine, §3.2)
+export { stardustMachine, type StardustPhase, type StardustEvent } from './stardust.machine.ts'
+export {
+  useTwinkleBalanceStore,
+  twinkleTotal,
+  type TwinkleBalance,
+  type TwinkleBalanceState,
+} from './twinkle-balance-store.ts'
+export { useChargeRequestStore, type ChargeRequestState } from './charge-request-store.ts'
+export { requestViewSemantic, type ViewSemanticInput } from './view-semantic.ts'
+
 // Awaken (entry choreography) logic + idempotency registry
 export {
   pickAwakenSeeds,

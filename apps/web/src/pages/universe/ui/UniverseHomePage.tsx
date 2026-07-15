@@ -13,6 +13,7 @@ import { universeNavigationMachine, useRecallTargetStore } from '@cosimosi/unive
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { RecallFlowSheet } from '../../../widgets/recall-flow/index.ts'
+import { StardustOverlay } from '../../../widgets/stardust/index.ts'
 import { DetailPanel } from '../../../widgets/star-detail/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
 import { UniverseTimeOverlay } from '../../../widgets/universe-time/index.ts'
@@ -50,13 +51,6 @@ export function UniverseHomePage() {
   const handleOpenDiary = useCallback((episodicMemoryId: string) => {
     openDiaryTargetRef.current = episodicMemoryId
   }, [])
-  // A gist body routes to the paid gist-view surface with its (memory, stage) ViewSemantic
-  // selection ([R8]); the viewer is a separate unit, so this seam records the target for it to
-  // consume (A7).
-  const gistTargetRef = useRef<{ episodicMemoryId: string; stage: number } | null>(null)
-  const handleGistSelected = useCallback((episodicMemoryId: string, stage: number) => {
-    gistTargetRef.current = { episodicMemoryId, stage }
-  }, [])
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-text">
@@ -77,8 +71,12 @@ export function UniverseHomePage() {
         <header className="flex items-start justify-between gap-3">
           <NebulaNotice />
           {/* HUD top ([T6]) with the acceleration veil + consent host riding along; the veil is a
-              fixed layer, so the write action below (later in paint order) stays crisp over it. */}
-          <UniverseTimeOverlay />
+              fixed layer, so the write action below (later in paint order) stays crisp over it. The
+              persistent Twinkle balance + charge host ([G2][G3]) sit beneath it, top-right. */}
+          <div className="flex flex-col items-end gap-3">
+            <UniverseTimeOverlay />
+            <StardustOverlay />
+          </div>
         </header>
         <div className="pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 pb-2">
           <WritingFlowSheet />
@@ -89,7 +87,6 @@ export function UniverseHomePage() {
         navigationActorRef={navigationActorRef}
         onRecallRequested={handleRecallRequested}
         onOpenDiary={handleOpenDiary}
-        onGistSelected={handleGistSelected}
       />
       {/* The recall (회고하기) flow — opens over the canvas when the panel requests a recall. */}
       <RecallFlowSheet />

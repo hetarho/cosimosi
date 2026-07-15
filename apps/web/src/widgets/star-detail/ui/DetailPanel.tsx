@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type { ActorRefFrom } from 'xstate'
 
 import { Button } from '@cosimosi/ui'
@@ -20,6 +20,7 @@ import { ProvenanceList, useProvenanceQuery } from '../../../features/star-prove
 import { m } from '../../../shared/i18n/index.ts'
 import { useMachine, useSelector } from '../../../shared/model/index.ts'
 import { STAR_DETAIL_PANEL } from '../config/panel.ts'
+import { GistViewSheet } from './GistViewSheet.tsx'
 
 type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
 
@@ -32,15 +33,12 @@ export function DetailPanel({
   navigationActorRef,
   onRecallRequested,
   onOpenDiary,
-  onGistSelected,
 }: {
   navigationActorRef: NavigationActorRef
   /** Episodic-only: opens the recall flow for this memory (owned downstream); no recall here. */
   onRecallRequested: (episodicMemoryId: string) => void
   /** Emits the origin-diary navigation intent for this memory (the reader is owned downstream). */
   onOpenDiary: (episodicMemoryId: string) => void
-  /** A gist body routes to the paid gist-view surface instead of this panel ([R8]). */
-  onGistSelected: (episodicMemoryId: string, stage: number) => void
 }) {
   const selectedNodeId = useSelector(
     navigationActorRef,
@@ -59,27 +57,41 @@ export function DetailPanel({
   const phase = snapshot.value as StarDetailPhase
 
   const kind = selection.kind
-  const gist = selection.kind === 'gist' ? selection : null
-  const gistMemoryId = gist?.episodicMemoryId ?? null
-  const gistStage = gist?.stage ?? null
-  // Drive the panel phase off the selection identity: a gist body routes away, an episodic/neuron
-  // selection opens (re-entering meta so a re-select drops a stale provenance view), and no/empty
-  // selection closes. Keyed on the id + kind so an unrelated store refresh does not reset the view.
+  // Drive the panel phase off the selection identity: a gist body shows the paid gist-view
+  // sheet (below) rather than this meta panel, so the meta phase closes; an episodic/neuron
+  // selection opens (re-entering meta so a re-select drops a stale provenance view), and
+  // no/empty selection closes. Keyed on the id + kind so a store refresh does not reset it.
   useEffect(() => {
-    if (gistMemoryId !== null && gistStage !== null) {
-      onGistSelected(gistMemoryId, gistStage)
+    if (kind === 'gist') {
       send({ type: 'CLOSE' })
     } else if (kind === 'episodic' || kind === 'neuron') {
       send({ type: 'OPEN' })
     } else {
       send({ type: 'CLOSE' })
     }
-  }, [selectedNodeId, kind, gistMemoryId, gistStage, send, onGistSelected])
+  }, [selectedNodeId, kind, send])
+
+  const clearSelection = useCallback(
+    () => navigationActorRef.send({ type: 'CLEAR_SELECTION' }),
+    [navigationActorRef],
+  )
 
   const episodicId = selection.kind === 'episodic' ? selection.memory.id : null
   const provenance = useProvenanceQuery(episodicId, phase === 'provenance')
 
-  if (phase === 'closed' || selection.kind === 'gist' || selection.kind === 'none') return null
+  // A gist body opens the priced gist-view over the canvas (A5); closing clears the canvas
+  // selection so re-selecting the same body reopens it.
+  if (selection.kind === 'gist') {
+    return (
+      <GistViewSheet
+        episodicMemoryId={selection.episodicMemoryId}
+        stage={selection.stage}
+        onClose={clearSelection}
+      />
+    )
+  }
+
+  if (phase === 'closed' || selection.kind === 'none') return null
 
   return (
     <aside
@@ -91,11 +103,7 @@ export function DetailPanel({
         <h2 className="text-base font-medium text-text">
           {selection.kind === 'episodic' ? selection.memory.name : m.star_detail_title_neuron()}
         </h2>
-        <Button
-          color="neutral"
-          size="sm"
-          onClick={() => navigationActorRef.send({ type: 'CLEAR_SELECTION' })}
-        >
+        <Button color="neutral" size="sm" onClick={clearSelection}>
           {m.common_dismiss()}
         </Button>
       </header>

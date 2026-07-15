@@ -80,4 +80,22 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The stardust economy vertical (plan 45): a pure balance mirror (substance in
+    // @cosimosi/universe), a persistent balance-HUD feature + a charge feature composed by the
+    // stardust overlay widget (mounted by the universe page), and a REUSABLE cost-display feature
+    // the recall-flow and star-detail (gist) widgets compose before a spend. Low/single references
+    // are the FSD grain here — a feature is one user surface (§3.1), not a slice to merge away.
+    // Scoped so a genuinely insignificant future slice still gets flagged.
+    files: [
+      './src/entities/twinkle/**',
+      './src/features/twinkle-balance-hud/**',
+      './src/features/spend-cost-display/**',
+      './src/features/charge-twinkle/**',
+      './src/widgets/stardust/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
 ])

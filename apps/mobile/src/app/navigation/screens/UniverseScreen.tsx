@@ -14,6 +14,7 @@ import { universeNavigationMachine, useRecallTargetStore } from '@cosimosi/unive
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { RecallFlowSheet } from '../../../widgets/recall-flow/index.ts'
+import { StardustOverlay } from '../../../widgets/stardust/index.ts'
 import { DetailPanel } from '../../../widgets/star-detail/index.ts'
 import { UniverseCanvasWidget } from '../../../widgets/universe-canvas/index.ts'
 import { UniverseTimeOverlay } from '../../../widgets/universe-time/index.ts'
@@ -40,20 +41,16 @@ export function UniverseScreen() {
   const navigationActorRef = useActorRef(universeNavigationMachine)
 
   // 회고하기 opens the recall flow via the shared recall-target store (the flow widget subscribes).
-  // 원본 일기 보기 / gist routing are still seams — their consumers are their own units — so the
-  // screen records those for later and does not act here (A5/A6).
+  // 원본 일기 보기 is still a seam — the diary reader is its own unit — so the screen records that
+  // for later and does not act here (A6).
   const requestRecallTarget = useRecallTargetStore((state) => state.request)
   const openDiaryTargetRef = useRef<string | null>(null)
-  const gistTargetRef = useRef<{ episodicMemoryId: string; stage: number } | null>(null)
   const handleRecallRequested = useCallback(
     (episodicMemoryId: string) => requestRecallTarget(episodicMemoryId),
     [requestRecallTarget],
   )
   const handleOpenDiary = useCallback((episodicMemoryId: string) => {
     openDiaryTargetRef.current = episodicMemoryId
-  }, [])
-  const handleGistSelected = useCallback((episodicMemoryId: string, stage: number) => {
-    gistTargetRef.current = { episodicMemoryId, stage }
   }, [])
 
   return (
@@ -74,6 +71,10 @@ export function UniverseScreen() {
       <View style={styles.notice}>
         <NebulaNotice />
       </View>
+      {/* The persistent Twinkle balance + charge host ([G2][G3]), top-right below the notice. */}
+      <View style={styles.stardust}>
+        <StardustOverlay />
+      </View>
       {/* Mounted at the screen root so its absolute veil/HUD span the full screen; before the
           write action so the veil dims the scene + notice but never the primary affordance. */}
       <UniverseTimeOverlay />
@@ -85,7 +86,6 @@ export function UniverseScreen() {
         navigationActorRef={navigationActorRef}
         onRecallRequested={handleRecallRequested}
         onOpenDiary={handleOpenDiary}
-        onGistSelected={handleGistSelected}
       />
       {/* The recall (회고하기) flow — opens over the canvas when the panel requests a recall. */}
       <RecallFlowSheet />
@@ -96,6 +96,7 @@ export function UniverseScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   notice: { position: 'absolute', left: 16, right: 16, top: 24 },
+  stardust: { position: 'absolute', right: 16, top: 72 },
   hud: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center' },
   fallback: { flex: 1, gap: 16, alignItems: 'center', justifyContent: 'center', padding: 24 },
   fallbackText: { color: tokens.color['text-muted'], fontSize: 15, textAlign: 'center' },

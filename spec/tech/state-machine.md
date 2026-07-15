@@ -226,7 +226,41 @@ outside the machine (A10):
   launch uses.
 
 web and mobile import the machine + the recall helpers verbatim from
-`packages/universe`; only the sheet/input hosts fork (§6/§3.5).
+`packages/universe`; only the sheet/input hosts fork (§6/§3.5). The Twinkle
+**cost gate** ([G4]) is a widget-local pre-step, not a machine phase: the flow
+shows `features/spend-cost-display` before revealing the rewrite and proceeds
+only on its confirm, gated by a local "shown → proceeded" boolean — so the
+shared machine stays untouched (the cost display carries its own tiny control,
+plan 45). A spend refused at commit (a stale-quote shortfall) resets that gate
+and refetches, so the display re-quotes into the charge path rather than
+dead-ending.
+
+### 6.4 `stardustMachine` (the charge sheet)
+
+`idle → charging → (paying | inviting) → idle`, context empty — the economy
+overlay's charge-sheet phase (plan 45). Every figure rides outside the machine
+(A10):
+
+- the **two-tier balance** lives in the shared `useTwinkleBalanceStore` mirror
+  (synced from `GetBalance`; `total` is derived `basic + additional`, never
+  stored); the **pending-spend cost** is the `QuoteSpend` Query read the cost
+  display owns; the **charge result** is the earn mutation's returned total —
+  none of them in context;
+- `charging` is the sheet open (the payment + invite paths); `PAY`/`INVITE`
+  drive the async earn (a store round trip + verified `Charge`, or `ClaimInvite`)
+  through `paying`/`inviting`. `DONE` → `idle` with the balance refetched;
+  `ERROR` → `charging`, retriable — a failed earn credits nothing and never
+  dead-ends;
+- `paying`/`inviting` **cannot be closed mid-flight** (no `CLOSE` there): a
+  store round trip + backend verification must resolve before the sheet
+  releases, so no credit shows before the backend confirms it;
+- the sheet opens both from a **shortfall** in the cost display (through the
+  decoupled `useChargeRequestStore` signal, so the spend flows never import the
+  overlay) and from a restrained **proactive** affordance beside the balance.
+
+web and mobile import the machine + the balance/charge-request stores verbatim
+from `packages/universe`; only the HUD/sheet hosts fork (§6/§3.5). There is no
+login-bonus path anywhere ([G3]); the daily basic grant plays that role.
 
 ## 7. Tests
 

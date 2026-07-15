@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 
@@ -9,15 +9,18 @@ import {
   recallFlowMachine,
   recallOutcome,
   requestRecall,
+  useChargeRequestStore,
   useRecallTargetStore,
   useUniverseClockStore,
   type RecallFlowPhase,
 } from '@cosimosi/universe'
 
+import { useInvalidateTwinkleBalance } from '../../../entities/twinkle/index.ts'
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
 import { CurrentMemoryText } from '../../../features/current-memory-text/index.ts'
 import { RecallResult, RecallRewrite } from '../../../features/recall-star/index.ts'
+import { SpendCostDisplay, recallSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
 import { useRecallDraftStore } from '../model/recall-draft-store.ts'
@@ -43,6 +46,15 @@ export function RecallFlowSheet() {
   const [snapshot, send] = useMachine(recallFlowMachine)
   const phase = snapshot.value as RecallFlowPhase
 
+  // The cost gate ([G4], A5): 회고하기 is priced before it happens. The display shows the
+  // recall quote first; only on its proceed does the rewrite reveal. This tiny "shown →
+  // proceeded" control is the cost display's own, so it stays local rather than widening
+  // the shared recall machine. A basic-affordable recall proceeds straight through (A9); a
+  // shortfall opens the charge sheet (A4).
+  const [costPassed, setCostPassed] = useState(false)
+  const requestCharge = useChargeRequestStore((state) => state.request)
+  const invalidateBalance = useInvalidateTwinkleBalance()
+
   const rewrite = useRecallDraftStore((state) => state.rewrite)
   const result = useRecallDraftStore((state) => state.result)
   const setRewrite = useRecallDraftStore((state) => state.setRewrite)
@@ -59,6 +71,7 @@ export function RecallFlowSheet() {
   useEffect(() => {
     if (memoryId && phase === 'idle') {
       resetDraft()
+      setCostPassed(false)
       send({ type: 'OPEN', needsSync })
     }
   }, [memoryId, phase, needsSync, send, resetDraft])
@@ -67,12 +80,14 @@ export function RecallFlowSheet() {
     send({ type: 'CLOSE' })
     clearTarget()
     resetDraft()
+    setCostPassed(false)
   }, [send, clearTarget, resetDraft])
 
   const reject = useCallback(() => {
     send({ type: 'REJECT' })
     clearTarget()
     resetDraft()
+    setCostPassed(false)
   }, [send, clearTarget, resetDraft])
 
   const confirmRecall = useCallback(async () => {
@@ -92,12 +107,20 @@ export function RecallFlowSheet() {
         outcome: recallOutcome(response.reconsolidated),
         currentText: response.currentText,
       })
+      // The recall spent Twinkle through the server gate; refetch so the HUD reflects the
+      // debit (§2.7 — refetch on the action, no polling).
+      invalidateBalance()
       send({ type: 'DONE' })
     } catch {
-      // A failed recall applied nothing; return to a retriable rewriting with the rewrite intact.
+      // A failed recall applied nothing. It may be a stale-quote shortfall (the balance
+      // dropped since the quote), so refetch and re-surface the cost gate with a fresh
+      // quote — affordable → proceed again, short → the charge path (A4, never a dead
+      // end). The rewrite text stays in the draft store.
+      invalidateBalance()
+      setCostPassed(false)
       send({ type: 'ERROR' })
     }
-  }, [memoryId, rewrite, transport, announceAdvance, setResult, send])
+  }, [memoryId, rewrite, transport, announceAdvance, setResult, invalidateBalance, send])
 
   if (phase === 'idle') return null
 
@@ -110,17 +133,26 @@ export function RecallFlowSheet() {
   return (
     <Dialog open onClose={close} title={m.recall_flow_title()} closeLabel={m.common_dismiss()}>
       <div className="flex flex-col gap-4">
-        {(phase === 'rewriting' || phase === 'reconsolidating') && (
-          <>
-            <CurrentMemoryText text={null} />
-            <RecallRewrite
-              value={rewrite}
-              onChange={setRewrite}
-              onConfirm={confirmRecall}
-              busy={phase === 'reconsolidating'}
+        {(phase === 'rewriting' || phase === 'reconsolidating') &&
+          memoryId &&
+          (costPassed ? (
+            <>
+              <CurrentMemoryText text={null} />
+              <RecallRewrite
+                value={rewrite}
+                onChange={setRewrite}
+                onConfirm={confirmRecall}
+                busy={phase === 'reconsolidating'}
+              />
+            </>
+          ) : (
+            <SpendCostDisplay
+              pending={recallSpend(memoryId)}
+              onProceed={() => setCostPassed(true)}
+              onCancel={close}
+              onCharge={requestCharge}
             />
-          </>
-        )}
+          ))}
         {phase === 'result' && result && (
           <>
             <RecallResult outcome={result.outcome} currentText={result.currentText} />
