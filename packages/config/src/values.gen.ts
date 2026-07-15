@@ -138,4 +138,7 @@ export const VALUES = {
   diaryReader: {
     pageSize: 20,
   },
+  deletion: {
+    contributionWeakenAmount: 0.15,
+  },
 } as const

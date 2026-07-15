@@ -204,3 +204,8 @@ const (
 const (
 	DiaryReaderPageSize = 20
 )
+
+// deletion
+const (
+	DeletionContributionWeakenAmount = 0.15
+)

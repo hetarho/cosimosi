@@ -167,3 +167,36 @@ in one call (no range/selection params), delivered as the RPC response payload (
 
 The `ProvenanceReader`/`ExportReader` ports are **consumer-owned** in `internal/memory`; `memory/pg` is the only sqlc
 seam and binds the concretes at the composition root. No proto/sqlc type crosses into the use-case or pure domain.
+
+## 8. Deletion rules (soft-delete, sealing, the alive-predicate)
+
+Plan [48](../plan/48.deletion-rules.md) activates the reserved `episodic_memories.deleted_at` / `neurons.sealed_at`
+columns (schema unchanged — no migration, no `neuron_activations` column). The rules are the pure `ClassifyNeurons`
+predicate in `internal/memory/deletion.go` + the sealing/weakening writes in `internal/memory/pg/deletion.go`
+(`db/queries/memory/deletion.sql`). No orchestration or ports here — the Release/LetGo use-cases (plan 49) own the
+transaction and declare the consumer-owned interfaces the store methods satisfy.
+
+**The canonical alive-predicate.** One "is this alive?" test, reused at every read and compute: a memory is alive iff
+`deleted_at IS NULL`; a neuron iff `sealed_at IS NULL`; a synapse iff **both** endpoint neurons are alive; an activation
+**transitively** (its memory and neuron both alive — so `neuron_activations` needs no `sealed_at` of its own). The
+predicate lives as `deleted_at IS NULL` / `sealed_at IS NULL` JOIN/WHERE clauses across `memory/pg`'s queries. This unit
+extends it to the two compute reads that lacked it: `consolidate.sql`'s `ListSynapseStrengthsForDownscale` (both
+endpoints unsealed, so a sealed-endpoint edge leaves the SHY/`Downscale` selection) and `recall.sql`'s
+`LoadRecallMemberSynapses` (member-neuron subqueries filtered to unsealed, so a let-go neuron's edges are never
+batch-LTP'd) — `GetUniverse`'s four sub-queries already excluded both.
+
+**Classification (pure, server-authoritative).** `ClassifyNeurons(removalMemoryIDs, neuronIDs, facts)` partitions a
+removal set's neurons into **orphan** (no live memory outside the set still activates it → seal) and **shared** (≥1 live
+outside memory → keep + weaken), evaluated as-of removal. The activation facts (each neuron's activations tagged with the
+activating memory's `deleted_at` state) come from `pg`; the outside-set + liveness decision stays in code, so the truth
+table is unit-tested without a DB. It is **not** FE↔BE golden-parity — a removal reaches the client only by facts
+disappearing from `GetUniverse`.
+
+**The write side.** `SoftDeleteDiaryMemories` sets `deleted_at` on a diary's live memories (returning the removal set;
+the `Diary` row is never touched, [I2]); `SealNeurons` sets `sealed_at` on an explicit orphan set (idempotent, no
+unseal); `WeakenSharedContributions` reads the affected edges (both endpoints in the removal set, ≥1 shared), applies the
+pure `Depress` (LTD, never `Downscale`/SHY — [I9]) by `deletion.contribution_weaken_amount`, and writes them back — the
+edge's base strength drops but it is **never** deleted. `deletion.sql` contains **no** `DELETE` statement and never
+mutates `diaries`. Letting-go feeds only a memory's `semantic` neurons and does not soft-delete the memory (emotion
+columns + seed intact — the star lives as a content-less silent engram); positions recompute for free since force-sim
+reads only live neurons (no position write, [I5]).

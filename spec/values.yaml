@@ -338,3 +338,10 @@ diary_reader:
   # reader-app archive lazy. The FE fetch reads this; the BE read may reuse the Go constant as
   # its default/clamp so a client cannot request an unbounded page.
   page_size: 20
+
+deletion:
+  # [X1][X4] LTD step passed to Depress when a removed memory withdraws its contribution from a
+  # SHARED (kept) neuron's synapse. An absolute strength decrement (Depress clamps to 0..strength_cap):
+  # conservative so a delete visibly thins the shared bond without erasing it — the base is never
+  # deleted and the neuron keeps its other, stronger bonds (fresh same-memory edges start ~0.32).
+  contribution_weaken_amount: 0.15

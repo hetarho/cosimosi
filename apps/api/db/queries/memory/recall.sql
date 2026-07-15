@@ -60,10 +60,12 @@ FROM synapses AS s
 WHERE s.user_id = sqlc.arg(user_id)
   AND s.neuron_a_id IN (
       SELECT member_a.neuron_id FROM neuron_activations AS member_a
+      JOIN neurons AS na ON na.id = member_a.neuron_id AND na.user_id = member_a.user_id AND na.sealed_at IS NULL
       WHERE member_a.user_id = sqlc.arg(user_id) AND member_a.episodic_memory_id = sqlc.arg(memory_id)
   )
   AND s.neuron_b_id IN (
       SELECT member_b.neuron_id FROM neuron_activations AS member_b
+      JOIN neurons AS nb ON nb.id = member_b.neuron_id AND nb.user_id = member_b.user_id AND nb.sealed_at IS NULL
       WHERE member_b.user_id = sqlc.arg(user_id) AND member_b.episodic_memory_id = sqlc.arg(memory_id)
   )
 ORDER BY s.neuron_a_id, s.neuron_b_id;

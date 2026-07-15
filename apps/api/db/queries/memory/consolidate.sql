@@ -74,12 +74,22 @@ WHERE user_id = sqlc.arg(user_id)
 -- The Downscale input ([C4]): the user's synapses that actually slept through the interval —
 -- an edge last activated at/after the advance target was linked in this very transaction (or
 -- replay-refreshed) and did not exist through the slept days, so it is excluded.
+-- Both endpoint neurons must be alive ([X3], plan 48): a sealed-endpoint edge leaves the dynamics via
+-- the canonical alive-predicate, so it is never Downscaled — no invisible-but-still-renormalizing ghost.
 -- name: ListSynapseStrengthsForDownscale :many
-SELECT id, strength
-FROM synapses
-WHERE user_id = sqlc.arg(user_id)
-  AND last_activated_universe_time < sqlc.arg(activated_before)::date
-ORDER BY id;
+SELECT s.id, s.strength
+FROM synapses AS s
+JOIN neurons AS na
+  ON na.id = s.neuron_a_id
+ AND na.user_id = s.user_id
+ AND na.sealed_at IS NULL
+JOIN neurons AS nb
+  ON nb.id = s.neuron_b_id
+ AND nb.user_id = s.user_id
+ AND nb.sealed_at IS NULL
+WHERE s.user_id = sqlc.arg(user_id)
+  AND s.last_activated_universe_time < sqlc.arg(activated_before)::date
+ORDER BY s.id;
 
 -- The consolidate worker's execution-time re-read: the live (unsealed) neurons' current
 -- embed texts, so a re-embed never writes a vector for a name that has since changed.

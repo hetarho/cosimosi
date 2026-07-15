@@ -230,11 +230,19 @@ func (q *Queries) ListReplaySetNeurons(ctx context.Context, arg ListReplaySetNeu
 }
 
 const listSynapseStrengthsForDownscale = `-- name: ListSynapseStrengthsForDownscale :many
-SELECT id, strength
-FROM synapses
-WHERE user_id = $1
-  AND last_activated_universe_time < $2::date
-ORDER BY id
+SELECT s.id, s.strength
+FROM synapses AS s
+JOIN neurons AS na
+  ON na.id = s.neuron_a_id
+ AND na.user_id = s.user_id
+ AND na.sealed_at IS NULL
+JOIN neurons AS nb
+  ON nb.id = s.neuron_b_id
+ AND nb.user_id = s.user_id
+ AND nb.sealed_at IS NULL
+WHERE s.user_id = $1
+  AND s.last_activated_universe_time < $2::date
+ORDER BY s.id
 `
 
 type ListSynapseStrengthsForDownscaleParams struct {
@@ -250,6 +258,8 @@ type ListSynapseStrengthsForDownscaleRow struct {
 // The Downscale input ([C4]): the user's synapses that actually slept through the interval —
 // an edge last activated at/after the advance target was linked in this very transaction (or
 // replay-refreshed) and did not exist through the slept days, so it is excluded.
+// Both endpoint neurons must be alive ([X3], plan 48): a sealed-endpoint edge leaves the dynamics via
+// the canonical alive-predicate, so it is never Downscaled — no invisible-but-still-renormalizing ghost.
 func (q *Queries) ListSynapseStrengthsForDownscale(ctx context.Context, arg ListSynapseStrengthsForDownscaleParams) ([]ListSynapseStrengthsForDownscaleRow, error) {
 	rows, err := q.db.Query(ctx, listSynapseStrengthsForDownscale, arg.UserID, arg.ActivatedBefore)
 	if err != nil {
