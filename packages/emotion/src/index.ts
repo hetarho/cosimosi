@@ -11,13 +11,18 @@ export {
   type MoodCoordinate,
 } from './mood.ts'
 export {
+  assertCompletePalette,
   defaultMoodPalette,
   defineMoodPalette,
   moodColor,
+  paletteVersion,
   resetMoodPalette,
   resolvePalette,
   setMoodPalette,
+  subscribeMoodPalette,
   type Color,
   type MoodPalette,
 } from './palette.ts'
+export { DEFAULT_PALETTE_ID, PALETTES, listPalettes, paletteById, paletteIds } from './registry.ts'
+export { checkPaletteAxisConsistency, type PaletteAxisWarning } from './axis-consistency.ts'
 export { arousalToInitialStrength } from './strength.ts'

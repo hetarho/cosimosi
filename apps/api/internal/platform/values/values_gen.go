@@ -107,6 +107,11 @@ var (
 	}
 )
 
+// palette
+const (
+	PaletteAxisWarnValenceThreshold = 0.6
+)
+
 // encode
 const (
 	EncodeMinMemories              = 2

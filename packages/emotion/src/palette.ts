@@ -28,6 +28,11 @@ export const defaultMoodPalette: MoodPalette = {
 
 let activePalette = defaultMoodPalette
 
+// The active palette lives in module state, so a swap is invisible to any view that memoized
+// colors into a buffer. This monotonic tick lets such a view key its recompute on the swap.
+let paletteVersionCounter = 0
+const paletteListeners = new Set<() => void>()
+
 export function defineMoodPalette(
   name: string,
   colors: Readonly<Record<Mood, Color>>,
@@ -44,17 +49,42 @@ export function resolvePalette(): MoodPalette {
 export function setMoodPalette(palette: MoodPalette): void {
   assertCompletePalette(palette)
   activePalette = palette
+  notifyPaletteChange()
 }
 
 export function resetMoodPalette(): void {
   activePalette = defaultMoodPalette
+  notifyPaletteChange()
 }
 
 export function moodColor(mood: Mood): Color {
   return resolvePalette().colors[mood]
 }
 
-function assertCompletePalette(palette: MoodPalette): void {
+// A monotonic counter that advances on every active-palette swap — the recompute key for a
+// consumer that cannot observe the module-level swap directly.
+export function paletteVersion(): number {
+  return paletteVersionCounter
+}
+
+// Subscribe to active-palette swaps; returns an unsubscribe. Framework-agnostic on purpose, so
+// a renderer host can bridge it (e.g. through useSyncExternalStore) without this pure module
+// taking a UI-framework dependency.
+export function subscribeMoodPalette(listener: () => void): () => void {
+  paletteListeners.add(listener)
+  return () => {
+    paletteListeners.delete(listener)
+  }
+}
+
+function notifyPaletteChange(): void {
+  paletteVersionCounter += 1
+  for (const listener of paletteListeners) {
+    listener()
+  }
+}
+
+export function assertCompletePalette(palette: MoodPalette): void {
   for (const mood of MOODS) {
     if (!palette.colors[mood]) {
       throw new Error(`Mood palette "${palette.name}" is missing ${mood}`)

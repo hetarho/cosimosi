@@ -15,6 +15,7 @@ export {
   type OptimisticSnapshot,
 } from './optimistic.ts'
 export {
+  accountRpcCachePolicies,
   createClientCacheRpcPolicyInterceptor,
   createRpcCachePolicyInterceptor,
   defineRpcCachePolicy,

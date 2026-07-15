@@ -1,6 +1,6 @@
 import type { Interceptor } from '@connectrpc/connect'
 
-import { MemoryService, PlatformService } from '@cosimosi/api-client'
+import { AccountService, MemoryService, PlatformService } from '@cosimosi/api-client'
 
 export type RpcCacheMethod = 'GET' | 'POST'
 
@@ -66,7 +66,11 @@ export function createRpcCachePolicyInterceptor(
 }
 
 export function createClientCacheRpcPolicyInterceptor(): Interceptor {
-  return createRpcCachePolicyInterceptor([...platformRpcCachePolicies, ...memoryRpcCachePolicies])
+  return createRpcCachePolicyInterceptor([
+    ...platformRpcCachePolicies,
+    ...memoryRpcCachePolicies,
+    ...accountRpcCachePolicies,
+  ])
 }
 
 export function rpcMethodPolicyKey(method: RpcMethodDescriptor): string {
@@ -103,6 +107,15 @@ export const platformRpcCachePolicies = [
 export const memoryRpcCachePolicies = [
   {
     method: MemoryService.method.getUniverse,
+    policy: userScopedUnaryReadPolicy,
+  },
+] as const satisfies readonly RpcCachePolicyEntry[]
+
+// The palette-preference read is GET-eligible but per-user — privately cacheable, never shared CDN
+// (§2.7/§4). The set is a plain POST and needs no entry (a non-idempotent write is passed through).
+export const accountRpcCachePolicies = [
+  {
+    method: AccountService.method.getPalettePreference,
     policy: userScopedUnaryReadPolicy,
   },
 ] as const satisfies readonly RpcCachePolicyEntry[]

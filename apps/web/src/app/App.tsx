@@ -16,6 +16,7 @@ import {
   WebObservabilityProvider,
   WebObservabilitySessionBridge,
 } from './providers/observability-provider.tsx'
+import { PaletteBootstrap } from './providers/palette-bootstrap.tsx'
 import { WebClientCacheProvider } from './providers/query-provider.tsx'
 import { WebRouterProvider, createAppRouter } from './routes/index.ts'
 
@@ -44,7 +45,9 @@ export default function App({
           <WebAuthProvider facade={authFacade}>
             <WebObservabilitySessionBridge />
             <WebClientCacheProvider queryClient={queryClient} transport={transport}>
-              <WebRouterProvider router={router} />
+              <PaletteBootstrap>
+                <WebRouterProvider router={router} />
+              </PaletteBootstrap>
             </WebClientCacheProvider>
           </WebAuthProvider>
         </WebI18nProvider>

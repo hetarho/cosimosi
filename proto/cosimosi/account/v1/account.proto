@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package cosimosi.account.v1;
+
+// AccountService owns the per-user account preference contract. Today it carries exactly one
+// preference: the chosen emotion-palette id.
+//
+// Structural defense: the write's ONLY field is palette_id. There is no mood, color, coordinate,
+// memory id, position, or strength field anywhere in this file — so a preference write has no
+// field in which to reach the meaning layer. The palette is swappable presentation; a memory's
+// emotion and its position/strength are not, and the shape of this contract is what guarantees it.
+service AccountService {
+  // Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
+  // NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).
+  rpc GetPalettePreference(GetPalettePreferenceRequest) returns (PalettePreference) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Store the caller's palette id. Accepts only an id known to the first-party registry; an
+  // unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
+  rpc SetPalettePreference(SetPalettePreferenceRequest) returns (PalettePreference);
+}
+
+// Caller = the authenticated user (scope from the auth context); no request fields.
+message GetPalettePreferenceRequest {}
+
+// palette_id is the entire writable surface.
+message SetPalettePreferenceRequest {
+  string palette_id = 1;
+}
+
+// The resolved palette id (the default id when the user never set one).
+message PalettePreference {
+  string palette_id = 1;
+}

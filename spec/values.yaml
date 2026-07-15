@@ -160,6 +160,15 @@ emotion:
   arousal_strength_max: 0.75
   default_intensity: 0.7
 
+palette:
+  # Axis-consistency tolerance [P3]: checkPaletteAxisConsistency reads each mood color's
+  # warm/cool value from its hue (a code formula), multiplies it against the mood's stored
+  # valence (emotion.mood_valence), and warns when the contradiction — a cool color on a
+  # positive-valence mood, or a warm color on a negative one — exceeds this. Warn-only, never
+  # a hard block. Tuned so every shipped registry palette passes with margin (the default's
+  # sharpest contradiction sits at ~0.4) while a genuinely inverted palette still trips.
+  axis_warn_valence_threshold: 0.6
+
 encode:
   # Event-boundary split bounds per diary; outside this range the extractor is re-prompted, never clamped.
   min_memories: 2

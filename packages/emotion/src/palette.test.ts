@@ -4,8 +4,10 @@ import {
   defaultMoodPalette,
   defineMoodPalette,
   moodColor,
+  paletteVersion,
   resetMoodPalette,
   setMoodPalette,
+  subscribeMoodPalette,
   type Color,
   type MoodPalette,
 } from './palette.ts'
@@ -40,6 +42,27 @@ describe('mood palette seam', () => {
     } as unknown as MoodPalette
 
     expect(() => setMoodPalette(partial)).toThrow(/missing CALM/)
+  })
+
+  it('advances the palette version and notifies subscribers on a swap', () => {
+    const substitute = defineMoodPalette('version-probe', colorTable('#abcdef'))
+    let notifications = 0
+    const unsubscribe = subscribeMoodPalette(() => {
+      notifications += 1
+    })
+    const before = paletteVersion()
+
+    setMoodPalette(substitute)
+    expect(paletteVersion()).toBe(before + 1)
+    expect(notifications).toBe(1)
+
+    resetMoodPalette()
+    expect(paletteVersion()).toBe(before + 2)
+    expect(notifications).toBe(2)
+
+    unsubscribe()
+    setMoodPalette(substitute)
+    expect(notifications).toBe(2)
   })
 })
 

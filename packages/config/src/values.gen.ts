@@ -61,6 +61,9 @@ export const VALUES = {
     arousalStrengthMax: 0.75,
     defaultIntensity: 0.7,
   },
+  palette: {
+    axisWarnValenceThreshold: 0.6,
+  },
   encode: {
     minMemories: 2,
     maxMemories: 5,

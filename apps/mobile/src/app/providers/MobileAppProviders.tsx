@@ -20,6 +20,7 @@ import {
   MobileObservabilitySessionBridge,
 } from './observability-provider.tsx'
 import { MachineActorsProvider } from './machine-actors-provider.tsx'
+import { MobilePaletteBootstrap } from './palette-bootstrap.tsx'
 import { MobileClientCacheProvider } from './query-provider.tsx'
 import { MobileThemeProvider } from './theme-provider.tsx'
 
@@ -79,7 +80,9 @@ export function MobileAppProviders({
                 transport={transport}
                 apiBaseUrl={apiBaseUrl}
               >
-                <MachineActorsProvider>{children}</MachineActorsProvider>
+                <MobilePaletteBootstrap>
+                  <MachineActorsProvider>{children}</MachineActorsProvider>
+                </MobilePaletteBootstrap>
               </MobileClientCacheProvider>
             </MobileAuthProvider>
           </MobileThemeProvider>

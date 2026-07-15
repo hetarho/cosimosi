@@ -39,6 +39,7 @@ import {
   StarLayer,
 } from '@cosimosi/universe-render'
 
+import { usePaletteVersion } from '../../../features/change-palette/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useUniverse } from '../api/use-universe.ts'
@@ -161,6 +162,13 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
 
   const neuronCount = graph?.neurons.length ?? 0
 
+  // The emotion-colored layers memoize each memory's mood color into instanced buffers, so a live
+  // palette swap (module-level setMoodPalette) is invisible to their memos. Remounting them on the
+  // palette version recomputes the buffers through the unchanged moodColor seam — a live re-color
+  // with no rendering-package edit and no GetUniverse refetch. Only the color-bearing layers key on
+  // it; neuron/synapse layers carry no emotion color and stay mounted.
+  const paletteVersion = usePaletteVersion()
+
   // The launch flow announces genuinely-created neuron ids here; the awaken plays for the fresh
   // ones (idempotent via the awaken registry). Empty until the first launch of this session.
   const newNeuronIds = useLaunchedNeuronsStore((state) => state.newNeuronIds)
@@ -215,6 +223,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
       {/* Emotion color field: additive mood-color blend behind the latent field and bodies
           (renderOrder -2). Reduced fidelity from the same TSL source via fieldResolutionMobile. */}
       <NebulaField
+        key={`nebula-${paletteVersion}`}
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
         resolution={VALUES.nebula.fieldResolutionMobile}
@@ -222,6 +231,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
       <LatentStarField field={latentField} />
       <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
       <StarLayer
+        key={`star-${paletteVersion}`}
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
         universeTime={universe?.universeTime ?? null}
@@ -242,6 +252,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
         intensity={VALUES.rendering.gistRiseLayerFog}
       />
       <GistStarLayer
+        key={`gist-${paletteVersion}`}
         positions={bridge.coordinates}
         memoryIndexById={nodeIndex?.episodicMemories ?? EMPTY_NEURON_INDEX}
         onSelect={selectGist}

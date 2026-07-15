@@ -106,10 +106,16 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
+	accountOption, err := accountServiceOption(pool)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	logger.Printf("memory service registered ai_mode=%s", adapters.Mode)
 	logger.Print("twinkle service registered (economy gate live)")
+	logger.Print("account service registered (palette preference)")
 	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
-	return []platform.HandlerOption{memoryOption, twinkleOption}, pool.Close, nil
+	return []platform.HandlerOption{memoryOption, twinkleOption, accountOption}, pool.Close, nil
 }
