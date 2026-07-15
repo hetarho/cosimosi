@@ -33,12 +33,19 @@ export function DetailPanel({
   navigationActorRef,
   onRecallRequested,
   onOpenDiary,
+  onDeleteSourceDiary,
+  onLetGo,
 }: {
   navigationActorRef: NavigationActorRef
   /** Episodic-only: opens the recall flow for this memory (owned downstream); no recall here. */
   onRecallRequested: (episodicMemoryId: string) => void
   /** Emits the origin-diary navigation intent for this memory (the reader is owned downstream). */
   onOpenDiary: (episodicMemoryId: string) => void
+  /** Emits the full-delete intent for this star's source diary — the deletion flow (owned
+   *  downstream) affects ALL stars born from that diary, not only the selected one. */
+  onDeleteSourceDiary: (episodicMemoryId: string) => void
+  /** Emits the letting-go intent for this memory (the deletion flow is owned downstream). */
+  onLetGo: (episodicMemoryId: string) => void
 }) {
   const selectedNodeId = useSelector(
     navigationActorRef,
@@ -127,6 +134,16 @@ export function DetailPanel({
                 </Button>
                 <Button color="neutral" size="sm" onClick={() => onOpenDiary(selection.memory.id)}>
                   {m.star_detail_open_diary()}
+                </Button>
+                <Button color="neutral" size="sm" onClick={() => onLetGo(selection.memory.id)}>
+                  {m.star_detail_letgo()}
+                </Button>
+                <Button
+                  color="danger"
+                  size="sm"
+                  onClick={() => onDeleteSourceDiary(selection.memory.id)}
+                >
+                  {m.star_detail_delete_source()}
                 </Button>
               </div>
             </>

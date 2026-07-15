@@ -63,6 +63,35 @@ export {
 } from './diary-reader.machine.ts'
 export { requestRecallDiaryStars, diaryRecallAdvanceAnnouncement } from './recall-diary-stars.ts'
 export { useOpenDiaryTargetStore, type OpenDiaryTargetState } from './open-diary-target-store.ts'
+
+// Deletion + letting-go vertical: the two-branch flow machine + restore-window helper, the four
+// RPC wrappers + optimistic apply helpers, and the three cross-route stores (open-target,
+// same-session released groups, optimistic seal marks).
+export {
+  deletionFlowMachine,
+  remainingRestoreDays,
+  type DeletionFlowPhase,
+  type DeletionFlowContext,
+  type DeletionFlowEvent,
+} from './deletion-flow.machine.ts'
+export {
+  requestRelease,
+  requestRestore,
+  requestSuggestLetGo,
+  requestLetGo,
+  applyReleaseResult,
+  applyRestoreResult,
+} from './deletion.ts'
+export {
+  useDeletionTargetStore,
+  type DeletionTarget,
+  type DeletionTargetState,
+} from './deletion-target-store.ts'
+export {
+  useReleasedGroupsStore,
+  type ReleasedGroup,
+  type ReleasedGroupsState,
+} from './released-groups-store.ts'
 export { usePendingFlyTargetStore, type PendingFlyTargetState } from './pending-fly-target-store.ts'
 export {
   draftsFromResponse,

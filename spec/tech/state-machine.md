@@ -303,6 +303,43 @@ as the recall flow (§6.3), and the row action disables purely on empty split
 membership (a live memory is always priced above zero, so the quote is fetched
 once in the modal, not per row).
 
+### 6.6 `deletionFlowMachine` (the delete / letting-go flow)
+
+Two branches under one machine (plan 50): full delete `idle → confirmingDelete →
+deleting → done` and letting-go `idle → phrasing → suggesting → approving →
+sealing → done`, meeting at a shared `done`. Context holds ids only (the target
+diary or episodic memory); the typed phrase, the server-returned candidate list,
+and the toggled seal subset live in the widget's `deletion-draft-store`, never in
+context ([I3][I11]). **Restore is not a state** — it is a one-shot feature the
+host page drives.
+
+- `OPEN_DELETE`/`OPEN_LETGO` set the target; `CONFIRM`/`SUGGEST`/`SEAL` advance;
+  `BACK` reopens `phrasing` from `approving`; `DONE`/`ERROR` resolve each async
+  step. Errors are retriable and return to the prior interactive state
+  (`confirmingDelete`/`phrasing`/`approving`) with nothing applied — a failed
+  `LetGo` seals nothing.
+- **The loading states `deleting`/`suggesting`/`sealing` carry no `CANCEL`** (only
+  the interactive states do), and the sheet's close/backdrop is inert while a call
+  is in flight — mirroring `stardustMachine`'s un-closable `paying`/`inviting`
+  (§6.4). This closes the stale-completion race: a call can never be abandoned
+  mid-flight to open another branch, so an old async `DONE`/`ERROR` cannot land on
+  the wrong branch.
+- The widget fires the RPC imperatively (the recall-flow precedent, §6.3): the
+  optimistic apply runs **only on success** (`Release` removes the returned ids
+  from the episodic-memory mirror + records the group for same-session restore;
+  `LetGo` invalidates `GetUniverse` so the sealed neuron drops from the next read),
+  and `Release`/`Restore` invalidate both the finite and infinite `GetDiaries`
+  keys. The heavy-state hint is carried as draft-store data, not a state — the
+  notice is advisory and gates nothing ([X7]).
+
+web and mobile import the machine + the deletion stores + the four RPC wrappers
+verbatim from `packages/universe`; only the sheet/step `ui` forks. On mobile,
+both the universe and diary-reader screens host the sheet against one global
+target store, so each gates consumption on `useIsFocused()` — only the focused
+screen opens the flow (web routes unmount, so they need no gate). The deletion
+stores are cleared on sign-out (where the universe mirrors are), so a release
+never leaks across users in one process.
+
 ## 7. Tests
 
 Every catalog machine has:

@@ -10,6 +10,7 @@ import {
   diaryRecallAdvanceAnnouncement,
   requestRecallDiaryStars,
   useChargeRequestStore,
+  useDeletionTargetStore,
   useOpenDiaryTargetStore,
   usePendingFlyTargetStore,
   useUniverseClockStore,
@@ -19,6 +20,7 @@ import {
 import { useInvalidateTwinkleBalance } from '../../../entities/twinkle/index.ts'
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
+import { RestoreSection } from '../../../features/restore-memory/index.ts'
 import { DiaryList, useDiaryArchive } from '../../../features/read-diary-list/index.ts'
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
@@ -67,6 +69,7 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
   const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
   const requestFlyTarget = usePendingFlyTargetStore((state) => state.request)
   const requestCharge = useChargeRequestStore((state) => state.request)
+  const openFullDelete = useDeletionTargetStore((state) => state.openFullDelete)
   const invalidateBalance = useInvalidateTwinkleBalance()
   const invalidateUniverse = useInvalidateUniverse()
 
@@ -158,6 +161,10 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
         </Button>
       </View>
 
+      {/* The soft-deleted "지운 일기" restore section sits beside the immutable archive it survives
+          within ([W6][D4]) — this session's releases only (an accepted v1 limit). */}
+      <RestoreSection />
+
       <DiaryList
         diaries={diaries}
         openedDiaryId={openedDiaryId}
@@ -169,10 +176,20 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
         isLoadingMore={isLoadingMore}
         onLoadMore={loadMore}
         renderActions={(diary) => (
-          <RecallDiaryStarsAction
-            liveCount={diary.memories.length}
-            onInitiate={() => setJumpDiaryId(diary.id)}
-          />
+          <View style={styles.rowActions}>
+            <RecallDiaryStarsAction
+              liveCount={diary.memories.length}
+              onInitiate={() => setJumpDiaryId(diary.id)}
+            />
+            <Button
+              color="danger"
+              size="sm"
+              onPress={() => openFullDelete(diary.id)}
+              disabled={diary.memories.length === 0}
+            >
+              {m.deletion_delete_entry_action()}
+            </Button>
+          </View>
         )}
       />
 
@@ -212,4 +229,10 @@ const styles = StyleSheet.create({
   },
   title: { color: tokens.color.text, fontSize: tokens.fontSize.lg, fontWeight: '500' },
   muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
+  rowActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tokens.spacing[2],
+  },
 })

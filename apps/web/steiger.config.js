@@ -114,4 +114,20 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The deletion + letting-go vertical ([X1][X4]): three single-action feature slices (full
+    // delete, restore, letting-go) composed by one deletion-flow widget and opened from the
+    // star-detail panel and the diary reader over the running canvas. A feature is one user action
+    // (§3.1), not a slice to merge away; restore-memory is also mounted directly by the diary-reader
+    // widget. Scoped so a genuinely insignificant future slice still gets flagged.
+    files: [
+      './src/features/delete-memory/**',
+      './src/features/restore-memory/**',
+      './src/features/let-go/**',
+      './src/widgets/deletion-flow/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
 ])

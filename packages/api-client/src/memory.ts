@@ -24,8 +24,11 @@ export type {
   GetDiariesResponse,
   GetUniverseRequest,
   GetUniverseResponse,
+  HeavyState,
   LaunchStarsRequest,
   LaunchStarsResponse,
+  LetGoRequest,
+  LetGoResponse,
   NeuronActivationDto,
   NeuronDto,
   ProposedMemory,
@@ -34,9 +37,16 @@ export type {
   RecallDiaryStarsResponse,
   RecallRequest,
   RecallResponse,
+  ReleaseRequest,
+  ReleaseResponse,
+  RestoreRequest,
+  RestoreResponse,
   ReviseSplitRequest,
+  SealCandidate,
   SplitDiaryRequest,
   SplitDiaryResponse,
+  SuggestLetGoRequest,
+  SuggestLetGoResponse,
   SynapseDto,
   ViewSemanticRequest,
   ViewSemanticResponse,
@@ -109,4 +119,12 @@ export function createGetDiariesInfiniteQueryOptions(transport: Transport, pageS
         lastPage.nextPageToken === '' ? undefined : lastPage.nextPageToken,
     },
   )
+}
+
+// The invalidation key for the PAGINATED archive read — derived from the same options the reader
+// registers, so it matches exactly. The finite GetDiaries key does NOT match the infinite query,
+// so a mutation that changes the archive (release/restore) must invalidate this one for the
+// reader's live-memory chips + per-diary actions to refresh.
+export function createGetDiariesInfiniteQueryKey(transport: Transport, pageSize: number) {
+  return createGetDiariesInfiniteQueryOptions(transport, pageSize).queryKey
 }

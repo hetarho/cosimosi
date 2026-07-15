@@ -6,7 +6,13 @@ import { useQuery } from '@tanstack/react-query'
 import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
 import { universeFromResponse, type UniverseSnapshot } from '@cosimosi/memory'
 
-import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
+import {
+  useDeletionTargetStore,
+  useEpisodicMemoryStore,
+  useNeuronStore,
+  useReleasedGroupsStore,
+  useSynapseStore,
+} from '@cosimosi/universe'
 
 import { syncUniverseClock } from '../../../entities/universe-clock/index.ts'
 
@@ -40,6 +46,10 @@ export function useUniverse(): UniverseReadState {
       setNeurons([])
       setSynapses([])
       syncUniverseClock(null)
+      // A signed-out (or empty) read must not leave a prior user's release groups or open deletion
+      // target behind — RestoreSection reads them cross-route, so clear them with the mirrors.
+      useReleasedGroupsStore.getState().reset()
+      useDeletionTargetStore.getState().clear()
       return
     }
     // Merge server truth with any optimistically-launched memory not yet visible
