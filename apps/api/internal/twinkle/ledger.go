@@ -134,8 +134,14 @@ func PlanSpend(basicRemaining int, additional int, cost int) SpendPlan {
 // are values.
 func RecallCost(accessibilityCost float64) int {
 	depth := math.Max(0, accessibilityCost)
-	cost := int(math.Round(values.TwinkleRecallBaseCost + values.TwinkleRecallDepthCoefficient*depth))
-	return clampInt(cost, 0, values.TwinkleRecallMaxCost)
+	cost := math.Round(values.TwinkleRecallBaseCost + values.TwinkleRecallDepthCoefficient*depth)
+	// Clamp in float space before the int conversion: a deep-enough weight drives the linear
+	// term past int64's range, and a raw float→int of that overflows to a negative value that
+	// would floor to 0 rather than the cap. Any cost at or above the ceiling is the ceiling.
+	if cost >= float64(values.TwinkleRecallMaxCost) {
+		return values.TwinkleRecallMaxCost
+	}
+	return clampInt(int(cost), 0, values.TwinkleRecallMaxCost)
 }
 
 // GistViewCost prices a 요지 별 열람 from the semantic_stage the semanticization unit computes
