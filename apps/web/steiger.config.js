@@ -130,4 +130,26 @@ export default defineConfig([
       'fsd/insignificant-slice': 'off',
     },
   },
+  {
+    // The settings vertical (plan 52): the one settings page hosts three sectioned features —
+    // account-settings (sign-out + identity) and customize-staging (the reserved [P4] slot) exist
+    // only there BY DESIGN (§3.1: a feature is one user surface; the page composes, never absorbs).
+    // change-palette is not exempted — its second consumer (the app-init palette apply) already
+    // counts. Scoped so a genuinely insignificant future slice still gets flagged.
+    files: ['./src/features/account-settings/**', './src/features/customize-staging/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
+    // The features layer's slice count is spec-governed (one plan authors each slice deliberately;
+    // the inventory mirrors apps/mobile 1:1), so the fixed ungrouped-slice threshold (20) is not a
+    // drift signal here — regrouping into slice folders would churn every import and the
+    // web↔mobile parity lint for no structural gain. Slice hygiene stays enforced per slice by
+    // fsd/insignificant-slice above.
+    files: ['./src/features/**'],
+    rules: {
+      'fsd/excessive-slicing': 'off',
+    },
+  },
 ])

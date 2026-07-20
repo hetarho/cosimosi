@@ -44,7 +44,13 @@ function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFal
 // over it (mirror of the mobile screen's HUD, §3.5). The widget owns the whole 3D block (renderer
 // mount, graph read, sim, camera rig); the page only lays out the HUD. `onOpenReader` is the
 // app-layer navigation seam to the diary archive (the page never reaches the router itself).
-export function UniverseHomePage({ onOpenReader }: { onOpenReader?: () => void }) {
+export function UniverseHomePage({
+  onOpenReader,
+  onOpenSettings,
+}: {
+  onOpenReader?: () => void
+  onOpenSettings?: () => void
+}) {
   // The navigation/selection actor is owned HERE (the app layer) so the canvas and the
   // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
   const navigationActorRef = useActorRef(universeNavigationMachine)
@@ -123,9 +129,13 @@ export function UniverseHomePage({ onOpenReader }: { onOpenReader?: () => void }
           <div className="flex flex-col items-end gap-3">
             <UniverseTimeOverlay />
             <StardustOverlay />
-            {/* The quiet way into the archive ([D2]) — a restrained affordance, not a persistent
-                chrome bar. pointer-events-auto so it stays tappable over the non-interactive HUD. */}
-            <div className="pointer-events-auto">
+            {/* The quiet way into the archive ([D2]) and settings ([52]) — restrained
+                affordances, not a persistent chrome bar. pointer-events-auto so they stay
+                tappable over the non-interactive HUD. */}
+            <div className="pointer-events-auto flex gap-2">
+              <Button color="neutral" size="sm" onClick={() => onOpenSettings?.()}>
+                {m.settings_title()}
+              </Button>
               <Button color="neutral" size="sm" onClick={() => onOpenReader?.()}>
                 {m.diary_reader_title()}
               </Button>

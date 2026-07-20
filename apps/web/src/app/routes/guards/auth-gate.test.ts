@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { SessionStatus } from '@cosimosi/auth'
 
-import { authGuardBeforeLoad } from './auth-gate.ts'
+import { authGuardBeforeLoad, loginReturnTarget } from './auth-gate.ts'
 
 // A minimal parsed location — the guard only reads `pathname` (where the user was headed) to carry
 // it through as the login `from`.
@@ -36,6 +36,25 @@ describe('authGuardBeforeLoad', () => {
   for (const status of ['bootstrapping', 'refreshing', 'authenticated'] as const) {
     it(`does not redirect a ${status} session`, () => {
       expect(runGuard(status)).toBeUndefined()
+    })
+  }
+})
+
+describe('loginReturnTarget', () => {
+  it('returns a carried internal pathname', () => {
+    expect(loginReturnTarget('/diary')).toBe('/diary')
+  })
+
+  it('falls back to the universe when nothing was carried', () => {
+    expect(loginReturnTarget(undefined)).toBe('/')
+  })
+
+  // `from` is user-visible URL input: reject anything that is not an internal single-slash
+  // pathname, and never return to /login itself (a crafted from must not pin a signed-in user
+  // to the login screen).
+  for (const hostile of ['/login', '//evil.example', 'https://evil.example', 'diary', '']) {
+    it(`rejects ${JSON.stringify(hostile)} back to the universe`, () => {
+      expect(loginReturnTarget(hostile)).toBe('/')
     })
   }
 })

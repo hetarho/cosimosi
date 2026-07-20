@@ -163,6 +163,24 @@ describe('web auth gate', () => {
     }
   })
 
+  // A7: a directly-entered product URL while signed out resolves to a /login redirect CARRYING the
+  // original pathname as `from` — through the real route tree (guard + login route registration),
+  // so a successful sign-in can return to the requested route. `router.load()` parks the thrown
+  // redirect on state (the SSR 302 seam) rather than committing the location. The return
+  // navigation itself is a live effect (LoginRoute) outside the SSR harness's reach; its target
+  // selection is `from ?? '/'`.
+  it('redirects an unauthenticated deep link to /login carrying the requested route', async () => {
+    const router = createAppRouter({
+      diagnosticsEnabled: false,
+      getSessionStatus: () => 'signedOut',
+      initialEntries: ['/diary'],
+    })
+    await router.load()
+    expect(router.state.redirect).toMatchObject({
+      options: { to: '/login', search: { from: '/diary' } },
+    })
+  })
+
   // A3: no landing/marketing route between login and the universe — an invented path is not-found.
   it('has no landing route — an unmapped path resolves to not-found', async () => {
     const fakes = createTestHarnessFakes()
@@ -185,6 +203,64 @@ describe('web auth gate', () => {
         />,
       )
       expect(html).toContain('Nothing orbits here')
+    } finally {
+      fakes.dispose()
+      observability.dispose()
+    }
+  })
+
+  // Settings (plan 52) A2: /settings sits under the same authenticated layout — a signed-out
+  // arrival is redirected by the shared guard (the page implements no redirect of its own).
+  it('redirects a signed-out /settings arrival to /login through the shared gate', async () => {
+    const router = createAppRouter({
+      diagnosticsEnabled: false,
+      getSessionStatus: () => 'signedOut',
+      initialEntries: ['/settings'],
+    })
+    await router.load()
+    expect(router.state.redirect).toMatchObject({
+      options: { to: '/login', search: { from: '/settings' } },
+    })
+  })
+
+  // Settings (plan 52) A1/A3/A6/A7/A8: an authenticated /settings renders the sectioned
+  // composition — the identity from the session snapshot (no fetch), the sign-out action, the
+  // registry palettes, and the reserved staging slot — and structurally offers NO form control
+  // anywhere (nothing on the page can set an emotion, a position, or a strength).
+  it('serves the settings page for an authenticated session with no form control anywhere', async () => {
+    const fakes = createTestHarnessFakes({ userId: 'settings-test-user' })
+    const observability = createObservabilityFacade()
+    await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
+    const router = createAppRouter({
+      diagnosticsEnabled: false,
+      getSessionStatus: () => fakes.authFacade.snapshot.status,
+      initialEntries: ['/settings'],
+    })
+    await router.load()
+
+    try {
+      const html = renderToString(
+        <App
+          router={router}
+          authFacade={fakes.authFacade}
+          queryClient={fakes.queryClient}
+          transport={fakes.transport}
+          observabilityFacade={observability}
+          locale="en"
+        />,
+      )
+
+      expect(html).toContain('Settings')
+      expect(html).toContain('Account')
+      expect(html).toContain('Palette')
+      expect(html).toContain('Staging')
+      expect(html).toContain('settings-test-user')
+      expect(html).toContain('Sign out')
+      expect(html).toContain('Muted dusk')
+      expect(html).toContain('This space opens later.')
+      for (const control of ['<input', '<select', '<textarea', '<option']) {
+        expect(html).not.toContain(control)
+      }
     } finally {
       fakes.dispose()
       observability.dispose()

@@ -15,9 +15,10 @@ import { m } from '@cosimosi/i18n'
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
+import { SettingsPage } from '../../pages/settings/index.ts'
 import { TestPage } from '../../pages/test/index.ts'
 import { UniverseHomePage } from '../../pages/universe/index.ts'
-import { authGuardBeforeLoad } from './guards/auth-gate.ts'
+import { authGuardBeforeLoad, loginReturnTarget } from './guards/auth-gate.ts'
 import { useAppNavigate } from './navigation.ts'
 import { NotFoundScreen } from './not-found.tsx'
 
@@ -83,7 +84,12 @@ function AuthenticatedLayout() {
 // rules-of-hooks. The universe stays the home route ('/'); the archive is its own ('/diary').
 function UniverseRoute() {
   const navigate = useAppNavigate()
-  return <UniverseHomePage onOpenReader={() => navigate({ to: '/diary' })} />
+  return (
+    <UniverseHomePage
+      onOpenReader={() => navigate({ to: '/diary' })}
+      onOpenSettings={() => navigate({ to: '/settings' })}
+    />
+  )
 }
 
 function DiaryReaderRoute() {
@@ -91,19 +97,30 @@ function DiaryReaderRoute() {
   return <DiaryReaderPage onExit={() => navigate({ to: '/' })} />
 }
 
+function SettingsRoute() {
+  const navigate = useAppNavigate()
+  return <SettingsPage onExit={() => navigate({ to: '/' })} />
+}
+
 // The login entry: on a successful sign-in the session reaches authenticated, so this returns the
-// user to the route they were headed for (the guard's `from`) or the universe. An already-signed-in
-// visitor to /login is bounced straight to the universe.
+// user to the route they were headed for (the guard's `from`, validated) or the universe. An
+// already-signed-in visitor to /login is bounced straight to the universe. While the session is
+// still settling (bootstrapping/refreshing) this holds neutrally instead of rendering the form —
+// the no-flash rule applies to /login too: a signed-in user opening /login cold must not see a
+// sign-in form for a beat before being bounced. `signingIn` keeps the form (that is where the
+// pending sign-in lives).
 function LoginRoute() {
   const search = useSearch({ strict: false }) as { from?: string }
   const { status } = useSessionSnapshot()
   const navigate = useAppNavigate()
-  const authenticated = gateDecision(status) === 'universe'
+  const decision = gateDecision(status)
+  const authenticated = decision === 'universe'
   useEffect(() => {
     if (authenticated) {
-      navigate({ to: search.from ?? '/' })
+      navigate({ to: loginReturnTarget(search.from) })
     }
   }, [authenticated, search.from, navigate])
+  if (decision === 'hold') return <AuthHold />
   return <LoginPage />
 }
 
@@ -129,6 +146,12 @@ const diaryReaderRoute = createRoute({
   component: DiaryReaderRoute,
 })
 
+const settingsRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/settings',
+  component: SettingsRoute,
+})
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -151,7 +174,7 @@ const testRoute = createRoute({
 })
 
 export const routeTree = rootRoute.addChildren([
-  authenticatedRoute.addChildren([universeRoute, diaryReaderRoute]),
+  authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, settingsRoute]),
   loginRoute,
   testRoute,
 ])

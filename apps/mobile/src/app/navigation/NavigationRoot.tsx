@@ -10,6 +10,7 @@ import { ROUTES, type RootStackParamList } from './routes.ts'
 import { BootScreen } from './screens/BootScreen.tsx'
 import { DiaryReaderScreen } from './screens/DiaryReaderScreen.tsx'
 import { LoginScreen } from './screens/LoginScreen.tsx'
+import { SettingsScreen } from './screens/SettingsScreen.tsx'
 import { UniverseScreen } from './screens/UniverseScreen.tsx'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -26,6 +27,7 @@ const mobileLinking: LinkingOptions<RootStackParamList> = {
       [ROUTES.diagnostics]: 'diagnostics',
       [ROUTES.universe]: 'universe',
       [ROUTES.diaryReader]: 'diary',
+      [ROUTES.settings]: 'settings',
     },
   },
 }
@@ -59,6 +61,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
           <>
             <Stack.Screen name={ROUTES.universe} component={UniverseScreen} />
             <Stack.Screen name={ROUTES.diaryReader} component={DiaryReaderScreen} />
+            <Stack.Screen name={ROUTES.settings} component={SettingsScreen} />
             <Stack.Screen name={ROUTES.diagnostics} component={DiagnosticsScreen} />
           </>
         ) : stack === 'login' ? (

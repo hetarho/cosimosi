@@ -21,3 +21,13 @@ export function authGuardBeforeLoad(
     throw redirect({ to: '/login', search: { from: location.pathname } })
   }
 }
+
+// Where a completed sign-in returns to. `from` is user-visible URL input, so it is validated at
+// the point of use, not trusted from the query string: only an internal single-slash pathname
+// counts (never '//host' protocol-relative, never an absolute URL), and never '/login' itself —
+// a crafted /login?from=/login must not pin an authenticated user to the login screen. Anything
+// else falls back to the universe.
+export function loginReturnTarget(from: string | undefined): string {
+  if (!from || !from.startsWith('/') || from.startsWith('//') || from === '/login') return '/'
+  return from
+}

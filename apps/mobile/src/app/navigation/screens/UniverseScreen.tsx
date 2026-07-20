@@ -126,8 +126,12 @@ export function UniverseScreen({ navigation }: RootStackScreenProps<'Universe'>)
       <View style={styles.stardust}>
         <StardustOverlay />
       </View>
-      {/* The quiet way into the archive ([D2]) — a restrained affordance, not persistent chrome. */}
+      {/* The quiet ways into the archive ([D2]) and settings ([52]) — restrained affordances,
+          not persistent chrome. */}
       <View style={styles.diary}>
+        <Button color="neutral" size="sm" onPress={() => navigation.navigate(ROUTES.settings)}>
+          {m.settings_title()}
+        </Button>
         <Button color="neutral" size="sm" onPress={() => navigation.navigate(ROUTES.diaryReader)}>
           {m.diary_reader_title()}
         </Button>
@@ -159,7 +163,7 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   notice: { position: 'absolute', left: 16, right: 16, top: 24 },
   stardust: { position: 'absolute', right: 16, top: 72 },
-  diary: { position: 'absolute', right: 16, top: 120 },
+  diary: { alignItems: 'flex-end', gap: 8, position: 'absolute', right: 16, top: 120 },
   hud: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center', gap: 12 },
   welcome: {
     color: tokens.color['text-muted'],

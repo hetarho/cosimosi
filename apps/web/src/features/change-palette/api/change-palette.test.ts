@@ -1,5 +1,5 @@
 import { createRouterTransport } from '@connectrpc/connect'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AccountService, MemoryService, createAccountMockTransport } from '@cosimosi/api-client'
 import {
@@ -106,6 +106,36 @@ describe('features/change-palette api', () => {
     // ...but the stored emotion fact (mood/valence/arousal) did not — the swap is a projection
     // change, never a change to the memory it projects ([I11][I3]).
     expect(memoryFact).toEqual(snapshot)
+  })
+
+  it('serializes persists so the server converges on the last selection across remounts', async () => {
+    const sent: string[] = []
+    let releaseFirst = () => {}
+    const firstBlocked = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    const transport = createRouterTransport(({ service }) => {
+      service(AccountService, {
+        async setPalettePreference(request) {
+          sent.push(request.paletteId)
+          // The first write hangs (a slow server); a later selection must not overtake it.
+          if (sent.length === 1) await firstBlocked
+          return { paletteId: request.paletteId }
+        },
+      })
+    })
+
+    const first = changePalette(transport, ALT_ID)
+    const second = changePalette(transport, DEFAULT_PALETTE_ID)
+    // Only the first write is sent — the second waits for it to settle, so the server can
+    // never apply them out of order (the picker's local pending flag dies with the screen; this
+    // ordering must hold at the api).
+    await vi.waitFor(() => expect(sent).toEqual([ALT_ID]))
+    releaseFirst()
+    await Promise.all([first, second])
+
+    expect(sent).toEqual([ALT_ID, DEFAULT_PALETTE_ID])
+    expect(usePalettePreferenceStore.getState().paletteId).toBe(DEFAULT_PALETTE_ID)
   })
 
   it('a swap fires no GetUniverse read — only the palette changed (A7)', async () => {
