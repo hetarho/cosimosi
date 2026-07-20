@@ -8,13 +8,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
  * this same typed boundary.
  */
 export const ROUTES = {
-  /** Transient state while session/i18n/theme seams settle. */
+  /** Neutral splash held while the session seam settles (bootstrapping/refreshing). */
   boot: 'Boot',
-  /** Neutral placeholder confirming the shell is ready. */
-  shellHome: 'ShellHome',
-  /** Dev-only provider health surface (gated by the diagnostics flag). */
+  /** The sign-in entry — the unauthenticated default; there is no landing route before it. */
+  login: 'Login',
+  /** Dev-only provider health surface (gated by the diagnostics flag; deep-link reachable). */
   diagnostics: 'Diagnostics',
-  /** The 3D memory universe — the shared @cosimosi/3d-renderer scene. */
+  /** The 3D memory universe — the shared @cosimosi/3d-renderer scene; the authenticated default. */
   universe: 'Universe',
   /** The immutable diary archive — the quiet keeping-place ([D2]). */
   diaryReader: 'DiaryReader',
@@ -22,7 +22,7 @@ export const ROUTES = {
 
 export type RootStackParamList = {
   Boot: undefined
-  ShellHome: undefined
+  Login: undefined
   Diagnostics: undefined
   Universe: undefined
   DiaryReader: undefined

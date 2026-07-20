@@ -1,7 +1,9 @@
 import { useCallback } from 'react'
 
-import { QueryErrorResetBoundary } from '@tanstack/react-query'
+import { useTransport } from '@connectrpc/connect-query'
+import { QueryErrorResetBoundary, useQuery } from '@tanstack/react-query'
 
+import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
 import {
   ObservedErrorBoundary,
   type ObservedErrorBoundaryFallbackProps,
@@ -46,6 +48,14 @@ export function UniverseHomePage({ onOpenReader }: { onOpenReader?: () => void }
   // The navigation/selection actor is owned HERE (the app layer) so the canvas and the
   // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
   const navigationActorRef = useActorRef(universeNavigationMachine)
+
+  // First-run welcome ([U2][V7]): a settled universe read with zero episodic memories is a
+  // beginning, not an error — the same canvas renders the gray latent field beneath, and the HUD
+  // adds one quiet welcome line above the existing 일기 쓰기 entry. Derived from the shared
+  // GetUniverse read (deduped with the canvas widget's), never a separate route or flag.
+  const transport = useTransport()
+  const universeQuery = useQuery(createGetUniverseQueryOptions(transport))
+  const firstRun = universeQuery.isSuccess && (universeQuery.data?.memories.length ?? 0) === 0
 
   // 회고하기 opens the recall flow via the shared recall-target store (the flow widget subscribes).
   // 원본 일기 보기 parks the memory id in the open-diary-target store and navigates to the archive,
@@ -122,7 +132,12 @@ export function UniverseHomePage({ onOpenReader }: { onOpenReader?: () => void }
             </div>
           </div>
         </header>
-        <div className="pointer-events-auto mx-auto flex flex-wrap items-center justify-center gap-3 pb-2">
+        <div className="pointer-events-auto mx-auto flex flex-col items-center gap-3 pb-2">
+          {firstRun ? (
+            <p className="max-w-sm text-center text-sm text-text-muted">
+              {m.universe_first_run_welcome()}
+            </p>
+          ) : null}
           <WritingFlowSheet />
         </div>
       </div>

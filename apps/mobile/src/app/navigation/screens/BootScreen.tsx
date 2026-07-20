@@ -1,30 +1,14 @@
-import { useEffect } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
 import { m } from '@cosimosi/i18n'
 import { tokens } from '@cosimosi/ui'
 
-import { AppShellActor, useSessionSnapshot } from '../../providers/index.ts'
-import { ROUTES, type RootStackScreenProps } from '../routes.ts'
-
 /**
- * Transient boot route. Sends the shell-lifecycle actor `READY` once the session
- * seam leaves its bootstrapping state, then resets navigation to ShellHome so the
- * boot route can never be returned to via the back stack.
+ * Neutral splash held while the session seam settles (`bootstrapping`/`refreshing`). It owns no
+ * navigation: the gate (NavigationRoot) swaps to the login or universe stack from the same session
+ * snapshot once it settles, so there is no signed-out flash and no route to return to here.
  */
-export function BootScreen({ navigation }: RootStackScreenProps<'Boot'>) {
-  const session = useSessionSnapshot()
-  const actor = AppShellActor.useActorRef()
-  const isReady = AppShellActor.useSelector((state) => state.matches('ready'))
-
-  useEffect(() => {
-    if (session.status !== 'bootstrapping') actor.send({ type: 'READY' })
-  }, [actor, session.status])
-
-  useEffect(() => {
-    if (isReady) navigation.reset({ index: 0, routes: [{ name: ROUTES.shellHome }] })
-  }, [isReady, navigation])
-
+export function BootScreen() {
   return (
     <View style={styles.container}>
       <ActivityIndicator color={tokens.color.primary} />

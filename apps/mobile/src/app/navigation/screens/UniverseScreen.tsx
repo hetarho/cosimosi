@@ -2,8 +2,10 @@ import { useCallback } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { useIsFocused } from '@react-navigation/native'
-import { QueryErrorResetBoundary } from '@tanstack/react-query'
+import { useTransport } from '@connectrpc/connect-query'
+import { QueryErrorResetBoundary, useQuery } from '@tanstack/react-query'
 
+import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
 import { Button, tokens } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 import {
@@ -51,6 +53,14 @@ export function UniverseScreen({ navigation }: RootStackScreenProps<'Universe'>)
   // Only the focused screen consumes the shared deletion target — the diary-reader screen stays
   // mounted underneath in the native stack, so an unfocused sheet must not also open the flow.
   const isFocused = useIsFocused()
+
+  // First-run welcome ([U2][V7]): a settled universe read with zero episodic memories is a
+  // beginning, not an error — the same canvas renders the gray latent field beneath, and the HUD
+  // adds one quiet welcome line above the existing 일기 쓰기 entry. Derived from the shared
+  // GetUniverse read (deduped with the canvas widget's), never a separate route or flag.
+  const transport = useTransport()
+  const universeQuery = useQuery(createGetUniverseQueryOptions(transport))
+  const firstRun = universeQuery.isSuccess && (universeQuery.data?.memories.length ?? 0) === 0
 
   // 회고하기 opens the recall flow via the shared recall-target store (the flow widget subscribes).
   // 원본 일기 보기 parks the memory id in the open-diary-target store and navigates to the archive,
@@ -126,6 +136,7 @@ export function UniverseScreen({ navigation }: RootStackScreenProps<'Universe'>)
           write action so the veil dims the scene + notice but never the primary affordance. */}
       <UniverseTimeOverlay />
       <View style={styles.hud}>
+        {firstRun ? <Text style={styles.welcome}>{m.universe_first_run_welcome()}</Text> : null}
         <WritingFlowSheet />
       </View>
       {/* Read-only detail bottom sheet over the running canvas — opens on selection (A1). */}
@@ -149,7 +160,14 @@ const styles = StyleSheet.create({
   notice: { position: 'absolute', left: 16, right: 16, top: 24 },
   stardust: { position: 'absolute', right: 16, top: 72 },
   diary: { position: 'absolute', right: 16, top: 120 },
-  hud: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center' },
+  hud: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center', gap: 12 },
+  welcome: {
+    color: tokens.color['text-muted'],
+    fontSize: 14,
+    textAlign: 'center',
+    maxWidth: 320,
+    paddingHorizontal: 24,
+  },
   fallback: { flex: 1, gap: 16, alignItems: 'center', justifyContent: 'center', padding: 24 },
   fallbackText: { color: tokens.color['text-muted'], fontSize: 15, textAlign: 'center' },
 })
