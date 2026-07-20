@@ -13,6 +13,10 @@ const reactNativePreset = require('@react-native/jest-preset')
  */
 module.exports = {
   ...reactNativePreset,
+  // Full-app render tests (App smoke test, deletion-flow sheet) mount deep RN trees whose
+  // `waitFor` polling gets starved on a busy multi-worker CI runner; the 5s default is too
+  // tight there even though each test is sub-second in isolation. Give them headroom.
+  testTimeout: 20000,
   setupFiles: [...reactNativePreset.setupFiles, '<rootDir>/jest.setup.js'],
   transform: {
     ...reactNativePreset.transform,

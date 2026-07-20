@@ -12,6 +12,9 @@ export const SkinProvider = Passthrough
 export const UniverseScene = Noop
 export const Background = Noop
 export const StarField = Noop
+export const LatentField = Noop
+export const ColorField = Noop
+export const BandFog = Noop
 export const PostFX = Noop
 export const InstancedNodeLayer = Noop
 export const EdgeLineLayer = Noop
@@ -22,9 +25,13 @@ export const createPrimitiveBodySource = () => ({ resolve: () => ({}) })
 export const createStarBodySource = () => ({ resolve: () => ({}) })
 export const createCellStarBodySource = () => ({ resolve: () => ({}) })
 export const createFilamentBodySource = () => ({ resolve: () => ({}) })
+export const createGistStarBodySource = () => ({ resolve: () => ({}) })
+export const COORDINATE_STRIDE = 3
 export const STAR_INSTANCE_TINT = 'aStarTint'
 export const STAR_INSTANCE_BRIGHTNESS = 'aStarBrightness'
 export const STAR_INSTANCE_SEED = 'aStarSeed'
+export const GIST_INSTANCE_TINT = 'aGistTint'
+export const GIST_INSTANCE_DIFFUSE = 'aGistDiffuse'
 export const FILAMENT_VERTEX_COLOR = 'aFilamentColor'
 export const resolveBackgroundNode = () => null
 export const useSkin = () => ({
