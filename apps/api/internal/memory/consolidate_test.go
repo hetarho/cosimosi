@@ -73,7 +73,7 @@ func (f *fakeConsolidateTx) EnqueueJob(_ context.Context, _ platform.UserScope, 
 	return job, nil
 }
 
-func (f *fakeConsolidateTx) LockUniverseClock(context.Context, platform.UserScope) error {
+func (f *fakeConsolidateTx) LockGraphMutation(context.Context, platform.UserScope) error {
 	return nil
 }
 
@@ -270,7 +270,7 @@ type progressionOnlyTx struct{}
 func (progressionOnlyTx) EnqueueJob(_ context.Context, _ platform.UserScope, job Job) (Job, error) {
 	return job, nil
 }
-func (progressionOnlyTx) LockUniverseClock(context.Context, platform.UserScope) error { return nil }
+func (progressionOnlyTx) LockGraphMutation(context.Context, platform.UserScope) error { return nil }
 func (progressionOnlyTx) UniverseClock(context.Context, platform.UserScope) (*time.Time, error) {
 	return nil, nil
 }

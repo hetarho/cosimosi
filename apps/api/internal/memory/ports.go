@@ -76,11 +76,17 @@ func (NoEarnOnWrite) OnDiaryLaunched(context.Context, platform.UserScope, Econom
 	return nil
 }
 
+// GraphMutationLocker is the consumer-visible serialization seam shared by every
+// per-user memory-graph writer. The transaction-scoped lock is always acquired
+// first, before release rows, clock rows, or graph rows, and needs no pre-existing
+// universe-state row.
+type GraphMutationLocker interface {
+	LockGraphMutation(ctx context.Context, scope platform.UserScope) error
+}
+
 // UniverseClockStore is the consumer-owned port over the per-user authoritative
-// universe clock ([T5]). LockUniverseClock is the birth-window guard's advisory
-// lock, taken first in every launch/sync transaction so concurrent launches
-// serialize even while the clock row is unborn (a FOR UPDATE read can lock no
-// row that does not exist yet); UniverseClock returns nil for the unborn clock
+// universe clock ([T5]). It embeds the graph lock because every launch/sync transaction
+// acquires that lock before the birth-window guard; UniverseClock returns nil for the unborn clock
 // (no launches yet — lazy birth); UniverseClockForUpdate is the launch guard's
 // locked read, holding the clock row so concurrent launches serialize on the
 // guard instead of racing it once the row exists; LatestLaunchedUniverseTime is
@@ -89,7 +95,7 @@ func (NoEarnOnWrite) OnDiaryLaunched(context.Context, platform.UserScope, Econom
 // upsert, so no caller can move the clock backward ([I10]). Method names match
 // the memory/pg concrete, which implements this implicitly.
 type UniverseClockStore interface {
-	LockUniverseClock(ctx context.Context, scope platform.UserScope) error
+	GraphMutationLocker
 	UniverseClock(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 	UniverseClockForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error)
 	LatestLaunchedUniverseTime(ctx context.Context, scope platform.UserScope) (*time.Time, error)

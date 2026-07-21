@@ -93,7 +93,7 @@ type RecallDiaryStarsResult struct {
 // The prediction-error LLM compare runs INSIDE the transaction on purpose: the spend must
 // gate it (an unaffordable recall never pays for the compare — §CC2) and the spend +
 // reinforce must be atomic, which forces the compare between them. That is safe here — the
-// per-user universe clock serializes a user's writes (a user cannot launch while recalling),
+// per-user graph-mutation lock serializes a user's writes (a user cannot launch while recalling),
 // the compare is metered + cached + keyless-mock-deterministic, and any compare error rolls
 // the whole recall back, charging and resetting nothing.
 func (s *Service) Recall(ctx context.Context, scope platform.UserScope, memoryID string, rewriteText string) (RecallResult, error) {

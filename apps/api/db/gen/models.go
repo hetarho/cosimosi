@@ -121,6 +121,7 @@ type ReleaseSealedNeuron struct {
 	ReleaseID string
 	UserID    string
 	NeuronID  string
+	SealedAt  pgtype.Timestamptz
 }
 
 type ReleaseSynapseDelta struct {

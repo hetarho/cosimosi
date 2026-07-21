@@ -63,7 +63,7 @@ FOR UPDATE
 // The launch guard's read: FOR UPDATE holds the clock row for the rest of the
 // launch transaction, so a concurrent launch cannot pass the monotonic guard
 // against a clock another transaction is about to advance ([I10]). The birth
-// window (no row yet to lock) is covered by LockUniverseClock above.
+// window (no row yet to lock) is covered by LockGraphMutation above.
 func (q *Queries) GetUniverseClockForUpdate(ctx context.Context, userID string) (pgtype.Date, error) {
 	row := q.db.QueryRow(ctx, getUniverseClockForUpdate, userID)
 	var current_universe_time pgtype.Date
@@ -91,7 +91,7 @@ func (q *Queries) LatestLaunchedUniverseTime(ctx context.Context, userID string)
 	return created_universe_time, err
 }
 
-const lockUniverseClock = `-- name: LockUniverseClock :exec
+const lockGraphMutation = `-- name: LockGraphMutation :exec
 SELECT pg_advisory_xact_lock(hashtext('universe_state'), hashtext($1))
 `
 
@@ -101,8 +101,8 @@ SELECT pg_advisory_xact_lock(hashtext('universe_state'), hashtext($1))
 // the clock row cannot yet be locked) serialize here instead of racing the
 // monotonic guard against a stale nil clock ([I10]). Namespaced by a constant
 // class key so it never collides with another advisory-lock domain. Taken as
-// the first step of every launch/sync transaction, before the guard read.
-func (q *Queries) LockUniverseClock(ctx context.Context, userID string) error {
-	_, err := q.db.Exec(ctx, lockUniverseClock, userID)
+// the first step of every graph-changing transaction, before release/clock/graph rows.
+func (q *Queries) LockGraphMutation(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, lockGraphMutation, userID)
 	return err
 }

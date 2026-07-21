@@ -66,12 +66,12 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 		// two concurrent first-launches would both pass the guard against a
 		// stale nil clock and one could launch a memory that should have been
 		// past-dated ([I10][T1]).
-		if err := tx.LockUniverseClock(ctx, scope); err != nil {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
 			return err
 		}
 		// With the birth window serialized, the guard read reflects any
 		// concurrent launch that already committed: FOR UPDATE holds the row
-		// once it exists, and LockUniverseClock covers the pre-row window.
+		// once it exists, and LockGraphMutation covers the pre-row window.
 		clock, err := tx.UniverseClockForUpdate(ctx, scope)
 		if err != nil {
 			return err

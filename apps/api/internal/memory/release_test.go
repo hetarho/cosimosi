@@ -43,6 +43,7 @@ type fakeRelMemory struct {
 type fakeRelNeuron struct {
 	semantic bool
 	sealed   bool
+	sealedAt time.Time
 	revision int64
 }
 
@@ -101,6 +102,11 @@ func (f *fakeReleaseRepo) InReleaseTx(ctx context.Context, fn func(tx ReleaseTx)
 		f.restore(snapshot)
 		return err
 	}
+	return nil
+}
+
+func (f *fakeReleaseRepo) LockGraphMutation(_ context.Context, _ platform.UserScope) error {
+	f.operations = append(f.operations, "lock_graph")
 	return nil
 }
 
@@ -190,7 +196,7 @@ func (f *fakeReleaseRepo) ThisMemoryOnlySemanticNeurons(_ context.Context, _ pla
 		if neuron == nil || !neuron.semantic || neuron.sealed {
 			continue
 		}
-		if f.activatedByOtherLiveMemory(neuronID, memoryID) {
+		if f.activatedByOtherRetainedMemory(neuronID, memoryID) {
 			continue
 		}
 		out = append(out, SealCandidateRef{NeuronID: neuronID, Name: neuronID})
@@ -205,7 +211,7 @@ func (f *fakeReleaseRepo) ThisMemoryOnlySemanticNeuronIDs(_ context.Context, _ p
 		if neuron == nil || !neuron.semantic {
 			continue
 		}
-		if f.activatedByOtherLiveMemory(neuronID, memoryID) {
+		if f.activatedByOtherRetainedMemory(neuronID, memoryID) {
 			continue
 		}
 		out = append(out, neuronID)
@@ -225,12 +231,12 @@ func (f *fakeReleaseRepo) neuronsActivatedBy(memoryID string) []string {
 	return out
 }
 
-func (f *fakeReleaseRepo) activatedByOtherLiveMemory(neuronID, memoryID string) bool {
+func (f *fakeReleaseRepo) activatedByOtherRetainedMemory(neuronID, memoryID string) bool {
 	for _, activation := range f.activations {
 		if activation.neuronID != neuronID || activation.memoryID == memoryID {
 			continue
 		}
-		if mem, ok := f.memories[activation.memoryID]; ok && !mem.deleted {
+		if _, ok := f.memories[activation.memoryID]; ok {
 			return true
 		}
 	}
@@ -272,7 +278,7 @@ func (f *fakeReleaseRepo) RemovalNeuronIDs(_ context.Context, _ platform.UserSco
 	return out, nil
 }
 
-func (f *fakeReleaseRepo) NeuronActivationFacts(_ context.Context, _ platform.UserScope, neuronIDs []string) ([]NeuronActivationFact, error) {
+func (f *fakeReleaseRepo) RetainedNeuronActivationFacts(_ context.Context, _ platform.UserScope, neuronIDs []string) ([]NeuronActivationFact, error) {
 	want := map[string]bool{}
 	for _, id := range neuronIDs {
 		want[id] = true
@@ -282,26 +288,24 @@ func (f *fakeReleaseRepo) NeuronActivationFacts(_ context.Context, _ platform.Us
 		if !want[activation.neuronID] {
 			continue
 		}
-		deleted := false
-		if mem, ok := f.memories[activation.memoryID]; ok {
-			deleted = mem.deleted
-		}
 		out = append(out, NeuronActivationFact{
 			NeuronID:         activation.neuronID,
 			EpisodicMemoryID: activation.memoryID,
-			MemoryDeleted:    deleted,
 		})
 	}
 	return out, nil
 }
 
-func (f *fakeReleaseRepo) SealNeurons(_ context.Context, _ platform.UserScope, neuronIDs []string, _ time.Time) error {
+func (f *fakeReleaseRepo) SealNeurons(_ context.Context, _ platform.UserScope, neuronIDs []string, sealedAt time.Time) ([]string, error) {
+	sealed := make([]string, 0, len(neuronIDs))
 	for _, id := range neuronIDs {
-		if neuron, ok := f.neurons[id]; ok {
+		if neuron, ok := f.neurons[id]; ok && !neuron.sealed {
 			neuron.sealed = true
+			neuron.sealedAt = sealedAt
+			sealed = append(sealed, id)
 		}
 	}
-	return nil
+	return sealed, nil
 }
 
 func (f *fakeReleaseRepo) contributionSynapses(removalNeuronIDs, sharedNeuronIDs []string) []string {
@@ -368,7 +372,7 @@ func (f *fakeReleaseRepo) RecordReleaseMemories(_ context.Context, _ platform.Us
 	return nil
 }
 
-func (f *fakeReleaseRepo) RecordReleaseSealedNeurons(_ context.Context, _ platform.UserScope, releaseID string, neuronIDs []string) error {
+func (f *fakeReleaseRepo) RecordReleaseSealedNeurons(_ context.Context, _ platform.UserScope, releaseID string, neuronIDs []string, _ time.Time) error {
 	f.groups[releaseID].sealed = append(f.groups[releaseID].sealed, neuronIDs...)
 	return nil
 }
@@ -382,39 +386,70 @@ func (f *fakeReleaseRepo) ReleaseMemories(_ context.Context, _ platform.UserScop
 	return append([]string(nil), f.groups[releaseID].memoryIDs...), nil
 }
 
-func (f *fakeReleaseRepo) ReleaseSealedNeurons(_ context.Context, _ platform.UserScope, releaseID string) ([]string, error) {
-	return append([]string(nil), f.groups[releaseID].sealed...), nil
+func (f *fakeReleaseRepo) ReleaseMemoryNeuronSealFacts(_ context.Context, _ platform.UserScope, releaseID string) ([]NeuronSealFact, error) {
+	group := f.groups[releaseID]
+	seen := map[string]bool{}
+	facts := []NeuronSealFact{}
+	for _, memoryID := range group.memoryIDs {
+		for _, neuronID := range f.neuronsActivatedBy(memoryID) {
+			if seen[neuronID] {
+				continue
+			}
+			seen[neuronID] = true
+			neuron, ok := f.neurons[neuronID]
+			if !ok {
+				continue
+			}
+			hasEffect := false
+			ownsSeal := false
+			for _, candidate := range f.groups {
+				if !stringIn(neuronID, candidate.sealed) {
+					continue
+				}
+				hasEffect = true
+				if neuron.sealed && neuron.sealedAt.Equal(candidate.deletedAt) {
+					ownsSeal = true
+				}
+			}
+			facts = append(facts, NeuronSealFact{
+				NeuronID:               neuronID,
+				RepresentationRevision: neuron.revision,
+				Sealed:                 neuron.sealed,
+				HasReleaseEffect:       hasEffect,
+				ReleaseOwnsCurrentSeal: ownsSeal,
+			})
+		}
+	}
+	return facts, nil
 }
 
-func (f *fakeReleaseRepo) ReleaseSealedNeuronTargets(_ context.Context, _ platform.UserScope, releaseID string) ([]JobTarget, error) {
-	targets := make([]JobTarget, 0, len(f.groups[releaseID].sealed))
-	for _, neuronID := range f.groups[releaseID].sealed {
-		neuron, ok := f.neurons[neuronID]
-		if !ok {
-			continue
+func (f *fakeReleaseRepo) DeleteReleaseNeuronSealEffects(_ context.Context, _ platform.UserScope, neuronIDs []string) error {
+	for _, group := range f.groups {
+		kept := group.sealed[:0]
+		for _, neuronID := range group.sealed {
+			if !stringIn(neuronID, neuronIDs) {
+				kept = append(kept, neuronID)
+			}
 		}
-		targets = append(targets, JobTarget{
-			Kind:             JobTargetNeuron,
-			ID:               neuronID,
-			ExpectedRevision: neuron.revision,
-		})
+		group.sealed = kept
 	}
-	return targets, nil
+	return nil
+}
+
+func (f *fakeReleaseRepo) UnsealReleaseOwnedNeurons(_ context.Context, _ platform.UserScope, neuronIDs []string) error {
+	for _, id := range neuronIDs {
+		if neuron, ok := f.neurons[id]; ok {
+			neuron.sealed = false
+			neuron.sealedAt = time.Time{}
+		}
+	}
+	return nil
 }
 
 func (f *fakeReleaseRepo) ClearReleaseMemoriesDeletedAt(_ context.Context, _ platform.UserScope, memoryIDs []string) error {
 	for _, id := range memoryIDs {
 		if mem, ok := f.memories[id]; ok {
 			mem.deleted = false
-		}
-	}
-	return nil
-}
-
-func (f *fakeReleaseRepo) UnsealReleaseNeurons(_ context.Context, _ platform.UserScope, neuronIDs []string) error {
-	for _, id := range neuronIDs {
-		if neuron, ok := f.neurons[id]; ok {
-			neuron.sealed = false
 		}
 	}
 	return nil
@@ -502,8 +537,18 @@ func (f *fakeReleaseRepo) ExclusiveReleaseNeurons(_ context.Context, _ platform.
 	for _, id := range releaseMemoryIDs {
 		inSet[id] = true
 	}
+	candidates := []string{}
+	seen := map[string]bool{}
+	for _, memoryID := range releaseMemoryIDs {
+		for _, neuronID := range f.neuronsActivatedBy(memoryID) {
+			if !seen[neuronID] {
+				seen[neuronID] = true
+				candidates = append(candidates, neuronID)
+			}
+		}
+	}
 	out := []string{}
-	for _, neuronID := range f.groups[releaseID].sealed {
+	for _, neuronID := range candidates {
 		external := false
 		for _, activation := range f.activations {
 			if activation.neuronID == neuronID && !inSet[activation.memoryID] {
@@ -697,7 +742,7 @@ func releaseTestScope(t *testing.T) platform.UserScope {
 }
 
 // A one-diary graph: memory m1 (diary d1) activates an orphan semantic neuron and a shared neuron
-// (also activated by the live outside memory m2), joined by a synapse.
+// (also activated by the retained outside memory m2), joined by a synapse.
 func seedReleaseGraph(repo *fakeReleaseRepo) {
 	repo.memories["m1"] = &fakeRelMemory{diaryID: "d1", name: "Market", text: "met a friend", mood: MoodCalm}
 	repo.memories["m2"] = &fakeRelMemory{diaryID: "d2", name: "Outside", text: "still here", mood: MoodJoy}
@@ -709,6 +754,31 @@ func seedReleaseGraph(repo *fakeReleaseRepo) {
 		{memoryID: "m2", neuronID: "n-shared"},
 	}
 	repo.synapses["syn"] = &fakeRelSynapse{aID: "n-orphan", bID: "n-shared", strength: 0.6}
+}
+
+// Two diaries whose memories retain the same two neurons and edge. Neither release may seal either
+// neuron; each records only its own actual contribution delta.
+func seedOverlappingReleaseGraph(repo *fakeReleaseRepo) {
+	repo.memories["m-a"] = &fakeRelMemory{diaryID: "d-a", name: "A", text: "a", mood: MoodCalm}
+	repo.memories["m-b"] = &fakeRelMemory{diaryID: "d-b", name: "B", text: "b", mood: MoodJoy}
+	repo.neurons["n-1"] = &fakeRelNeuron{semantic: true, revision: 1}
+	repo.neurons["n-2"] = &fakeRelNeuron{semantic: true, revision: 1}
+	repo.activations = []fakeRelActivation{
+		{memoryID: "m-a", neuronID: "n-1"},
+		{memoryID: "m-a", neuronID: "n-2"},
+		{memoryID: "m-b", neuronID: "n-1"},
+		{memoryID: "m-b", neuronID: "n-2"},
+	}
+	repo.synapses["shared-edge"] = &fakeRelSynapse{aID: "n-1", bID: "n-2", strength: 0.8}
+}
+
+func releaseGroupIDForDiary(t *testing.T, repo *fakeReleaseRepo, scope platform.UserScope, diaryID string) string {
+	t.Helper()
+	group, ok, err := repo.ReleaseGroupForDiary(context.Background(), scope, diaryID)
+	if err != nil || !ok {
+		t.Fatalf("release group for %s = (%+v, %v, %v), want present", diaryID, group, ok, err)
+	}
+	return group.ID
 }
 
 // --- tests ---------------------------------------------------------------------------------------
@@ -845,6 +915,202 @@ func TestReleaseIsIdempotentGuardNoDoubleSeal(t *testing.T) {
 	}
 }
 
+func TestOverlappingReleasesRestoreInEitherOrder(t *testing.T) {
+	t.Parallel()
+	for _, order := range [][]string{{"d-a", "d-b"}, {"d-b", "d-a"}} {
+		order := order
+		t.Run(order[0]+"-then-"+order[1], func(t *testing.T) {
+			t.Parallel()
+			repo := newFakeReleaseRepo()
+			seedOverlappingReleaseGraph(repo)
+			releaseAt := time.Date(2026, 7, 3, 12, 0, 0, 0, time.UTC)
+			scope := releaseTestScope(t)
+			service := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt)
+			if _, err := service.Release(context.Background(), scope, "d-a"); err != nil {
+				t.Fatalf("Release A failed: %v", err)
+			}
+			if _, err := service.Release(context.Background(), scope, "d-b"); err != nil {
+				t.Fatalf("Release B failed: %v", err)
+			}
+			if repo.neurons["n-1"].sealed || repo.neurons["n-2"].sealed {
+				t.Fatal("retained overlap was release-sealed")
+			}
+			for _, group := range repo.groups {
+				if len(group.sealed) != 0 || len(group.deltas) != 1 {
+					t.Fatalf("overlap ledger = sealed %v deltas %v, want 0/1", group.sealed, group.deltas)
+				}
+			}
+			if repo.synapses["shared-edge"].strength >= 0.8 {
+				t.Fatal("overlapping releases did not apply their contribution deltas")
+			}
+
+			restoreService := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt.Add(time.Hour))
+			for _, diaryID := range order {
+				if _, err := restoreService.Restore(context.Background(), scope, diaryID); err != nil {
+					t.Fatalf("Restore %s failed: %v", diaryID, err)
+				}
+			}
+			if repo.memories["m-a"].deleted || repo.memories["m-b"].deleted {
+				t.Fatal("restore order left an overlapping owner deleted")
+			}
+			if got := repo.synapses["shared-edge"].strength; got < 0.8-1e-12 || got > 0.8+1e-12 {
+				t.Fatalf("restored strength = %v, want exact original 0.8", got)
+			}
+			if len(repo.groups) != 0 {
+				t.Fatalf("restore order left groups: %+v", repo.groups)
+			}
+		})
+	}
+}
+
+func TestRestoreOneOwnerThenSweepOtherPreservesLiveGraph(t *testing.T) {
+	t.Parallel()
+	repo := newFakeReleaseRepo()
+	seedOverlappingReleaseGraph(repo)
+	releaseAt := time.Date(2026, 7, 3, 12, 0, 0, 0, time.UTC)
+	scope := releaseTestScope(t)
+	service := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt)
+	if _, err := service.Release(context.Background(), scope, "d-a"); err != nil {
+		t.Fatalf("Release A failed: %v", err)
+	}
+	if _, err := service.Release(context.Background(), scope, "d-b"); err != nil {
+		t.Fatalf("Release B failed: %v", err)
+	}
+	bGroup := releaseGroupIDForDiary(t, repo, scope, "d-b")
+	if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt.Add(time.Hour)).Restore(context.Background(), scope, "d-a"); err != nil {
+		t.Fatalf("Restore A failed: %v", err)
+	}
+	deadline := releaseAt.Add(retentionWindow())
+	swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, bGroup, deadline)
+	if err != nil || !swept {
+		t.Fatalf("Sweep B = (%v, %v), want true/nil", swept, err)
+	}
+	if _, ok := repo.memories["m-a"]; !ok || repo.memories["m-a"].deleted {
+		t.Fatal("Sweep B removed or deleted restored owner A")
+	}
+	if repo.neurons["n-1"].sealed || repo.neurons["n-2"].sealed {
+		t.Fatal("restored live owner points at a release-sealed neuron")
+	}
+	if _, ok := repo.synapses["shared-edge"]; !ok {
+		t.Fatal("Sweep B deleted A's retained shared edge")
+	}
+}
+
+func TestOverlappingReleasesSweepInEitherOrderDeletesLastOwner(t *testing.T) {
+	t.Parallel()
+	for _, order := range [][]string{{"d-a", "d-b"}, {"d-b", "d-a"}} {
+		order := order
+		t.Run(order[0]+"-then-"+order[1], func(t *testing.T) {
+			t.Parallel()
+			repo := newFakeReleaseRepo()
+			seedOverlappingReleaseGraph(repo)
+			releaseAt := time.Date(2026, 7, 3, 12, 0, 0, 0, time.UTC)
+			scope := releaseTestScope(t)
+			service := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt)
+			if _, err := service.Release(context.Background(), scope, "d-a"); err != nil {
+				t.Fatalf("Release A failed: %v", err)
+			}
+			if _, err := service.Release(context.Background(), scope, "d-b"); err != nil {
+				t.Fatalf("Release B failed: %v", err)
+			}
+			groups := map[string]string{
+				"d-a": releaseGroupIDForDiary(t, repo, scope, "d-a"),
+				"d-b": releaseGroupIDForDiary(t, repo, scope, "d-b"),
+			}
+			deadline := releaseAt.Add(retentionWindow())
+			if swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, groups[order[0]], deadline); err != nil || !swept {
+				t.Fatalf("first sweep = (%v, %v)", swept, err)
+			}
+			if _, ok := repo.neurons["n-1"]; !ok {
+				t.Fatal("first sweep deleted a neuron retained by the other release owner")
+			}
+			if swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, groups[order[1]], deadline); err != nil || !swept {
+				t.Fatalf("second sweep = (%v, %v)", swept, err)
+			}
+			if _, ok := repo.neurons["n-1"]; ok {
+				t.Fatal("last owner sweep retained n-1")
+			}
+			if _, ok := repo.neurons["n-2"]; ok {
+				t.Fatal("last owner sweep retained n-2")
+			}
+			if _, ok := repo.synapses["shared-edge"]; ok {
+				t.Fatal("last owner sweep retained the orphan edge")
+			}
+		})
+	}
+}
+
+func TestLetGoAndReleaseSealOriginsDoNotCross(t *testing.T) {
+	t.Parallel()
+	repo := newFakeReleaseRepo()
+	repo.memories["m-live"] = &fakeRelMemory{diaryID: "d-live", name: "live", text: "live", mood: MoodCalm}
+	repo.memories["m-release"] = &fakeRelMemory{diaryID: "d-release", name: "release", text: "release", mood: MoodCalm}
+	repo.neurons["n-shared"] = &fakeRelNeuron{semantic: true, revision: 1}
+	repo.neurons["n-private"] = &fakeRelNeuron{semantic: true, revision: 1}
+	repo.activations = []fakeRelActivation{
+		{memoryID: "m-live", neuronID: "n-shared"},
+		{memoryID: "m-release", neuronID: "n-shared"},
+		{memoryID: "m-live", neuronID: "n-private"},
+	}
+	releaseAt := time.Date(2026, 7, 3, 12, 0, 0, 0, time.UTC)
+	scope := releaseTestScope(t)
+	service := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt)
+	if _, err := service.Release(context.Background(), scope, "d-release"); err != nil {
+		t.Fatalf("Release shared owner failed: %v", err)
+	}
+	if _, err := service.LetGo(context.Background(), scope, "m-live", []string{"n-shared"}); !errors.Is(err, ErrLetGoInvalidApproved) {
+		t.Fatalf("LetGo retained-shared neuron err = %v, want ErrLetGoInvalidApproved", err)
+	}
+	if _, err := service.LetGo(context.Background(), scope, "m-live", []string{"n-private"}); err != nil {
+		t.Fatalf("LetGo private neuron failed: %v", err)
+	}
+	if !repo.neurons["n-private"].sealed {
+		t.Fatal("LetGo did not permanently seal private neuron")
+	}
+	if _, err := service.Release(context.Background(), scope, "d-live"); err != nil {
+		t.Fatalf("Release LetGo memory failed: %v", err)
+	}
+	if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt.Add(time.Hour)).Restore(context.Background(), scope, "d-live"); err != nil {
+		t.Fatalf("Restore LetGo memory failed: %v", err)
+	}
+	if !repo.neurons["n-private"].sealed {
+		t.Fatal("Restore unsealed a permanent LetGo neuron")
+	}
+}
+
+func TestReleaseMutationsAcquireGraphLockFirst(t *testing.T) {
+	t.Parallel()
+	repo := newFakeReleaseRepo()
+	seedReleaseGraph(repo)
+	now := time.Date(2026, 7, 3, 12, 0, 0, 0, time.UTC)
+	scope := releaseTestScope(t)
+	service := newReleaseService(t, repo, &fakeSealSuggester{}, now)
+	if _, err := service.Release(context.Background(), scope, "d1"); err != nil {
+		t.Fatalf("Release failed: %v", err)
+	}
+	if len(repo.operations) < 2 || repo.operations[0] != "lock_graph" || repo.operations[1] != "lock_graph" {
+		t.Fatalf("Release transactions did not lock first: %v", repo.operations)
+	}
+
+	repo.operations = nil
+	if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, now.Add(time.Hour)).Restore(context.Background(), scope, "d1"); err != nil {
+		t.Fatalf("Restore failed: %v", err)
+	}
+	if len(repo.operations) == 0 || repo.operations[0] != "lock_graph" {
+		t.Fatalf("Restore did not lock first: %v", repo.operations)
+	}
+
+	letGoRepo := newFakeReleaseRepo()
+	seedReleaseGraph(letGoRepo)
+	letGoRepo.operations = nil
+	if _, err := newReleaseService(t, letGoRepo, &fakeSealSuggester{}, now).LetGo(context.Background(), scope, "m1", []string{"n-orphan"}); err != nil {
+		t.Fatalf("LetGo failed: %v", err)
+	}
+	if len(letGoRepo.operations) == 0 || letGoRepo.operations[0] != "lock_graph" {
+		t.Fatalf("LetGo did not lock first: %v", letGoRepo.operations)
+	}
+}
+
 func TestReleaseRejectsNoLiveMemories(t *testing.T) {
 	t.Parallel()
 	repo := newFakeReleaseRepo()
@@ -937,8 +1203,12 @@ func TestRestoreBeforeDeadlineRemovesTriggerAndRequeuesSafely(t *testing.T) {
 	if reembed == nil || reembed.Kind != JobKindEmbed || reembed.Status != JobStatusPending {
 		t.Fatalf("restore re-embed = %+v, want pending embed", reembed)
 	}
-	if len(reembed.Targets) != 1 || reembed.Targets[0] != (JobTarget{Kind: JobTargetNeuron, ID: "n-orphan", ExpectedRevision: 1}) {
-		t.Fatalf("restore re-embed targets = %+v, want current sealed-neuron revision", reembed.Targets)
+	wantTargets := []JobTarget{
+		{Kind: JobTargetNeuron, ID: "n-orphan", ExpectedRevision: 1},
+		{Kind: JobTargetNeuron, ID: "n-shared", ExpectedRevision: 1},
+	}
+	if !slices.Equal(reembed.Targets, wantTargets) {
+		t.Fatalf("restore re-embed targets = %+v, want all current live neuron revisions %+v", reembed.Targets, wantTargets)
 	}
 	if len(repo.groups) != 0 || repo.memories["m1"].deleted || repo.neurons["n-orphan"].sealed {
 		t.Fatal("Restore did not atomically retire the release and restore its sources")
@@ -1193,6 +1463,7 @@ func TestSweepHardDeletesOnlyExpiredGroups(t *testing.T) {
 		t.Fatalf("deadline sweep = (%d, %v), want (1, nil)", swept, err)
 	}
 	wantOperations := []string{
+		"lock_graph",
 		"purge_jobs",
 		"delete_activations",
 		"delete_synapses",

@@ -28,14 +28,13 @@ func (s Store) RemovalNeuronIDs(ctx context.Context, scope platform.UserScope, m
 	})
 }
 
-// NeuronActivationFacts returns, for the given neurons, every activation tagged with the activating
-// memory's soft-delete state — the classification input the domain reduces to orphan/shared ([X1]).
-// Per-user scoped.
-func (s Store) NeuronActivationFacts(ctx context.Context, scope platform.UserScope, neuronIDs []string) ([]memory.NeuronActivationFact, error) {
+// RetainedNeuronActivationFacts returns every activation owned by a memory row that still exists.
+// Both live and soft-deleted rows are owners until Sweep removes the activation. Per-user scoped.
+func (s Store) RetainedNeuronActivationFacts(ctx context.Context, scope platform.UserScope, neuronIDs []string) ([]memory.NeuronActivationFact, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err
 	}
-	rows, err := s.queries.ListRemovalNeuronActivations(ctx, dbgen.ListRemovalNeuronActivationsParams{
+	rows, err := s.queries.ListRetainedNeuronActivations(ctx, dbgen.ListRetainedNeuronActivationsParams{
 		UserID:    scope.UserID(),
 		NeuronIds: neuronIDs,
 	})
@@ -47,7 +46,6 @@ func (s Store) NeuronActivationFacts(ctx context.Context, scope platform.UserSco
 		facts = append(facts, memory.NeuronActivationFact{
 			NeuronID:         row.NeuronID,
 			EpisodicMemoryID: row.EpisodicMemoryID,
-			MemoryDeleted:    row.MemoryDeleted,
 		})
 	}
 	return facts, nil
@@ -69,12 +67,12 @@ func (s Store) SoftDeleteDiaryMemories(ctx context.Context, scope platform.UserS
 
 // SealNeurons seals the given orphan neurons at the caller's timestamp (only those not already sealed —
 // idempotent). No unseal here (restore is the release use-case's). Per-user scoped.
-func (s Store) SealNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string, sealedAt time.Time) error {
+func (s Store) SealNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string, sealedAt time.Time) ([]string, error) {
 	if err := s.ready(scope); err != nil {
-		return err
+		return nil, err
 	}
 	if len(neuronIDs) == 0 {
-		return nil
+		return nil, nil
 	}
 	return s.queries.SealNeurons(ctx, dbgen.SealNeuronsParams{
 		UserID:    scope.UserID(),

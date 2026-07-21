@@ -38,28 +38,87 @@ package memory
 type NeuronClass string
 
 const (
-	// NeuronClassOrphan — no live memory outside the removal set still activates the neuron, so it is
+	// NeuronClassOrphan — no retained memory outside the removal set still activates the neuron, so it is
 	// sealed; its edges then leave every dynamic via the alive-predicate.
 	NeuronClassOrphan NeuronClass = "orphan"
-	// NeuronClassShared — at least one live memory outside the removal set still activates the neuron, so
+	// NeuronClassShared — at least one retained memory outside the removal set still activates the neuron, so
 	// it is kept; only the removed memories' contribution to its synapses is Depressed.
 	NeuronClassShared NeuronClass = "shared"
 )
 
-// NeuronActivationFact is one (neuron, memory) activation edge with the activating memory's soft-delete
-// state, supplied by memory/pg for classification. The classified neuron's own liveness is not carried:
-// only live neurons enter a fresh removal, and the decision is about which OTHER memories keep it alive.
+// NeuronActivationFact is one retained (neuron, memory) activation edge supplied by memory/pg for
+// classification. A row exists for both a live memory and a soft-deleted memory still awaiting its
+// retention sweep; a swept memory has no activation row. Encoding retained ownership structurally keeps
+// overlapping release effects compositional instead of making callers reinterpret deleted_at.
 type NeuronActivationFact struct {
 	NeuronID         string
 	EpisodicMemoryID string
-	MemoryDeleted    bool
+}
+
+// NeuronSealFact is the locked, persistence-neutral input for reclassifying seals when a retained
+// release memory is restored or another overlapping release is swept. ReleaseOwnsCurrentSeal is true
+// only when a release-effect timestamp matches the neuron's current seal; a later LetGo seal therefore
+// remains distinguishable even while a stale release-effect row still exists.
+type NeuronSealFact struct {
+	NeuronID               string
+	RepresentationRevision int64
+	Sealed                 bool
+	HasReleaseEffect       bool
+	ReleaseOwnsCurrentSeal bool
+}
+
+// NeuronRevision is the identity/revision pair used to regenerate deletion-safe derived state after
+// Restore. It deliberately carries no source text.
+type NeuronRevision struct {
+	NeuronID               string
+	RepresentationRevision int64
+}
+
+// NeuronSealReclassification is the pure decision produced from locked seal facts. Release effects
+// can be retired without unsealing when a newer permanent seal replaced them.
+type NeuronSealReclassification struct {
+	RetireReleaseEffectIDs []string
+	UnsealNeuronIDs        []string
+	Reembed                []NeuronRevision
+}
+
+// ReclassifyRetainedNeuronSeals composes release ownership with permanent LetGo semantics. Any
+// release effect conflicts with a retained owner and is retired. The current seal is reversed only
+// when its timestamp is owned by a release effect; an unsealed or newly release-unsealed neuron is
+// eligible for re-embedding, while a permanent LetGo seal remains sealed and absent from that work.
+func ReclassifyRetainedNeuronSeals(facts []NeuronSealFact) NeuronSealReclassification {
+	plan := NeuronSealReclassification{
+		RetireReleaseEffectIDs: make([]string, 0, len(facts)),
+		UnsealNeuronIDs:        make([]string, 0, len(facts)),
+		Reembed:                make([]NeuronRevision, 0, len(facts)),
+	}
+	seen := make(map[string]bool, len(facts))
+	for _, fact := range facts {
+		if fact.NeuronID == "" || seen[fact.NeuronID] {
+			continue
+		}
+		seen[fact.NeuronID] = true
+		if fact.HasReleaseEffect {
+			plan.RetireReleaseEffectIDs = append(plan.RetireReleaseEffectIDs, fact.NeuronID)
+		}
+		if fact.Sealed && fact.ReleaseOwnsCurrentSeal {
+			plan.UnsealNeuronIDs = append(plan.UnsealNeuronIDs, fact.NeuronID)
+		}
+		if !fact.Sealed || fact.ReleaseOwnsCurrentSeal {
+			plan.Reembed = append(plan.Reembed, NeuronRevision{
+				NeuronID:               fact.NeuronID,
+				RepresentationRevision: fact.RepresentationRevision,
+			})
+		}
+	}
+	return plan
 }
 
 // ClassifyNeurons partitions a removal set's neurons into orphan (seal) and shared (keep + weaken),
-// evaluated as-of removal (A1). A neuron is shared iff at least one activation ties it to a memory that
-// is BOTH outside the removal set AND live (not soft-deleted); otherwise it is an orphan. Deterministic
-// and IO-free — the who-else-activates facts come from memory/pg, the decision is domain math. The
-// result preserves the input neuron order and never allocates a neuron into both partitions.
+// evaluated as-of removal (A1). A neuron is shared iff at least one retained activation ties it to a
+// memory outside the removal set; soft-deleted rows remain owners until Sweep removes their activation.
+// Otherwise it is an orphan. Deterministic and IO-free — the retained-owner facts come from memory/pg,
+// the decision is domain math. The result preserves input order and never allocates a neuron twice.
 func ClassifyNeurons(removalMemoryIDs, neuronIDs []string, facts []NeuronActivationFact) (orphans, shared []string) {
 	inRemoval := make(map[string]bool, len(removalMemoryIDs))
 	for _, id := range removalMemoryIDs {
@@ -67,7 +126,7 @@ func ClassifyNeurons(removalMemoryIDs, neuronIDs []string, facts []NeuronActivat
 	}
 	sharedByNeuron := make(map[string]bool, len(neuronIDs))
 	for _, fact := range facts {
-		if fact.MemoryDeleted || inRemoval[fact.EpisodicMemoryID] {
+		if inRemoval[fact.EpisodicMemoryID] {
 			continue
 		}
 		sharedByNeuron[fact.NeuronID] = true

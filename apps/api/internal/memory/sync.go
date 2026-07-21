@@ -49,7 +49,7 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx) (SyncResult, error) {
 	// Serialize against concurrent launches for the whole transaction,
 	// birth window included, exactly as the launch path does ([I10]).
-	if err := tx.LockUniverseClock(ctx, scope); err != nil {
+	if err := tx.LockGraphMutation(ctx, scope); err != nil {
 		return SyncResult{}, err
 	}
 	clock, err := tx.UniverseClockForUpdate(ctx, scope)

@@ -58,7 +58,7 @@ func (s Store) EpisodicMemoryForRelease(ctx context.Context, scope platform.User
 }
 
 // ThisMemoryOnlySemanticNeurons returns the unsealed semantic neurons this memory activates that
-// no other live memory activates — the letting-go candidate set ([X4]). Per-user scoped.
+// no other retained memory activates — the letting-go candidate set ([X4]). Per-user scoped.
 func (s Store) ThisMemoryOnlySemanticNeurons(ctx context.Context, scope platform.UserScope, memoryID string) ([]memory.SealCandidateRef, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func (s Store) RecordReleaseMemories(ctx context.Context, scope platform.UserSco
 	})
 }
 
-func (s Store) RecordReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string, neuronIDs []string) error {
+func (s Store) RecordReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string, neuronIDs []string, sealedAt time.Time) error {
 	if err := s.ready(scope); err != nil {
 		return err
 	}
@@ -162,6 +162,7 @@ func (s Store) RecordReleaseSealedNeurons(ctx context.Context, scope platform.Us
 		ReleaseID: releaseID,
 		UserID:    scope.UserID(),
 		NeuronIds: neuronIDs,
+		SealedAt:  pgTime(sealedAt),
 	})
 }
 
@@ -196,36 +197,54 @@ func (s Store) ReleaseMemories(ctx context.Context, scope platform.UserScope, re
 	})
 }
 
-func (s Store) ReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string) ([]string, error) {
+func (s Store) ReleaseMemoryNeuronSealFacts(ctx context.Context, scope platform.UserScope, releaseID string) ([]memory.NeuronSealFact, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err
 	}
-	return s.queries.ListReleaseSealedNeurons(ctx, dbgen.ListReleaseSealedNeuronsParams{
-		UserID:    scope.UserID(),
-		ReleaseID: releaseID,
-	})
-}
-
-func (s Store) ReleaseSealedNeuronTargets(ctx context.Context, scope platform.UserScope, releaseID string) ([]memory.JobTarget, error) {
-	if err := s.ready(scope); err != nil {
-		return nil, err
-	}
-	rows, err := s.queries.ListReleaseSealedNeuronTargets(ctx, dbgen.ListReleaseSealedNeuronTargetsParams{
+	rows, err := s.queries.ListReleaseMemoryNeuronSealFacts(ctx, dbgen.ListReleaseMemoryNeuronSealFactsParams{
 		UserID:    scope.UserID(),
 		ReleaseID: releaseID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	targets := make([]memory.JobTarget, 0, len(rows))
+	facts := make([]memory.NeuronSealFact, 0, len(rows))
 	for _, row := range rows {
-		targets = append(targets, memory.JobTarget{
-			Kind:             memory.JobTargetNeuron,
-			ID:               row.ID,
-			ExpectedRevision: row.RepresentationRevision,
+		facts = append(facts, memory.NeuronSealFact{
+			NeuronID:               row.ID,
+			RepresentationRevision: row.RepresentationRevision,
+			Sealed:                 row.Sealed,
+			HasReleaseEffect:       row.HasReleaseEffect,
+			ReleaseOwnsCurrentSeal: row.ReleaseOwnsCurrentSeal,
 		})
 	}
-	return targets, nil
+	return facts, nil
+}
+
+func (s Store) DeleteReleaseNeuronSealEffects(ctx context.Context, scope platform.UserScope, neuronIDs []string) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	if len(neuronIDs) == 0 {
+		return nil
+	}
+	return s.queries.DeleteReleaseNeuronSealEffects(ctx, dbgen.DeleteReleaseNeuronSealEffectsParams{
+		UserID:    scope.UserID(),
+		NeuronIds: neuronIDs,
+	})
+}
+
+func (s Store) UnsealReleaseOwnedNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	if len(neuronIDs) == 0 {
+		return nil
+	}
+	return s.queries.UnsealReleaseOwnedNeurons(ctx, dbgen.UnsealReleaseOwnedNeuronsParams{
+		UserID:    scope.UserID(),
+		NeuronIds: neuronIDs,
+	})
 }
 
 // ReverseReleaseSynapseDeltas adds each recorded LTD amount back to the edge's current strength,
@@ -291,19 +310,6 @@ func (s Store) ClearReleaseMemoriesDeletedAt(ctx context.Context, scope platform
 	return s.queries.ClearReleaseMemoriesDeletedAt(ctx, dbgen.ClearReleaseMemoriesDeletedAtParams{
 		UserID:            scope.UserID(),
 		EpisodicMemoryIds: memoryIDs,
-	})
-}
-
-func (s Store) UnsealReleaseNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string) error {
-	if err := s.ready(scope); err != nil {
-		return err
-	}
-	if len(neuronIDs) == 0 {
-		return nil
-	}
-	return s.queries.UnsealReleaseNeurons(ctx, dbgen.UnsealReleaseNeuronsParams{
-		UserID:    scope.UserID(),
-		NeuronIds: neuronIDs,
 	})
 }
 
@@ -460,11 +466,14 @@ func (s Store) WeakenSharedContributionsReturningDeltas(ctx context.Context, sco
 	strengths := make([]float32, 0, len(rows))
 	deltas := make([]memory.SynapseDelta, 0, len(rows))
 	for _, row := range rows {
-		pre := float64(row.Strength)
-		post := memory.Depress(pre, amount)
+		preStored := row.Strength
+		postStored := float32(memory.Depress(float64(preStored), amount))
 		ids = append(ids, row.ID)
-		strengths = append(strengths, float32(post))
-		deltas = append(deltas, memory.SynapseDelta{SynapseID: row.ID, AppliedDelta: pre - post})
+		strengths = append(strengths, postStored)
+		deltas = append(deltas, memory.SynapseDelta{
+			SynapseID:    row.ID,
+			AppliedDelta: float64(preStored - postStored),
+		})
 	}
 	if err := s.queries.ApplyContributionWeaken(ctx, dbgen.ApplyContributionWeakenParams{
 		UserID:     scope.UserID(),

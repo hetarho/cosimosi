@@ -1184,18 +1184,18 @@ func TestUniverseClockLazyBirthAndMonotonicUpsert(t *testing.T) {
 	}
 }
 
-// TestLockUniverseClockSerializesConcurrentBirth pins the birth-window fix
+// TestLockGraphMutationSerializesConcurrentBirth pins the birth-window fix
 // ([I10][T1]). While the clock row is unborn, GetUniverseClockForUpdate can lock
 // no row, so two concurrent first-launches would both read a nil clock and one
-// could launch a memory a serial run would have past-dated. LockUniverseClock —
+// could launch a memory a serial run would have past-dated. LockGraphMutation —
 // a per-user advisory xact lock that needs no row — closes that window.
 //
 // Tx A takes the lock and births the clock, holding its transaction open. Tx B
-// starts while A holds the lock; its LockUniverseClock must block until A commits
+// starts while A holds the lock; its LockGraphMutation must block until A commits
 // (proven deterministically by watching pg_locks for a non-granted advisory
 // lock, not a sleep), and only then does B's guard read see A's committed clock —
 // exactly the observation that past-dates a concurrent earlier diary.
-func TestLockUniverseClockSerializesConcurrentBirth(t *testing.T) {
+func TestLockGraphMutationSerializesConcurrentBirth(t *testing.T) {
 	pool := openMemoryTestPool(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -1220,7 +1220,7 @@ func TestLockUniverseClockSerializesConcurrentBirth(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		if err := store.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
-			if err := tx.LockUniverseClock(ctx, scope); err != nil {
+			if err := tx.LockGraphMutation(ctx, scope); err != nil {
 				return err
 			}
 			close(aLocked)
@@ -1243,7 +1243,7 @@ func TestLockUniverseClockSerializesConcurrentBirth(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		if err := store.InLaunchTx(ctx, func(tx memory.LaunchTx) error {
-			if err := tx.LockUniverseClock(ctx, scope); err != nil {
+			if err := tx.LockGraphMutation(ctx, scope); err != nil {
 				return err
 			}
 			clock, readErr := tx.UniverseClockForUpdate(ctx, scope)

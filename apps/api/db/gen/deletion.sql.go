@@ -47,6 +47,7 @@ WHERE user_id = $1
     OR neuron_b_id = ANY($3::text[])
   )
 ORDER BY id
+FOR UPDATE
 `
 
 type ListContributionSynapsesParams struct {
@@ -74,54 +75,6 @@ func (q *Queries) ListContributionSynapses(ctx context.Context, arg ListContribu
 	for rows.Next() {
 		var i ListContributionSynapsesRow
 		if err := rows.Scan(&i.ID, &i.Strength); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRemovalNeuronActivations = `-- name: ListRemovalNeuronActivations :many
-SELECT
-    na.neuron_id,
-    na.episodic_memory_id,
-    (em.deleted_at IS NOT NULL)::boolean AS memory_deleted
-FROM neuron_activations AS na
-JOIN episodic_memories AS em
-  ON em.id = na.episodic_memory_id
- AND em.user_id = na.user_id
-WHERE na.user_id = $1
-  AND na.neuron_id = ANY($2::text[])
-`
-
-type ListRemovalNeuronActivationsParams struct {
-	UserID    string
-	NeuronIds []string
-}
-
-type ListRemovalNeuronActivationsRow struct {
-	NeuronID         string
-	EpisodicMemoryID string
-	MemoryDeleted    bool
-}
-
-// The classification facts for the removal set's neurons: every activation tying one of the given
-// neurons to a memory, tagged with that memory's soft-delete state. The domain decides orphan (no live
-// memory outside the removal set) vs shared — the outside-set + liveness logic stays in code so it is
-// unit-testable without a DB (A1). Sealed neurons never enter (only live neurons are classified).
-func (q *Queries) ListRemovalNeuronActivations(ctx context.Context, arg ListRemovalNeuronActivationsParams) ([]ListRemovalNeuronActivationsRow, error) {
-	rows, err := q.db.Query(ctx, listRemovalNeuronActivations, arg.UserID, arg.NeuronIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListRemovalNeuronActivationsRow
-	for rows.Next() {
-		var i ListRemovalNeuronActivationsRow
-		if err := rows.Scan(&i.NeuronID, &i.EpisodicMemoryID, &i.MemoryDeleted); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -179,12 +132,59 @@ func (q *Queries) ListRemovalNeuronIDs(ctx context.Context, arg ListRemovalNeuro
 	return items, nil
 }
 
-const sealNeurons = `-- name: SealNeurons :exec
+const listRetainedNeuronActivations = `-- name: ListRetainedNeuronActivations :many
+SELECT
+    na.neuron_id,
+    na.episodic_memory_id
+FROM neuron_activations AS na
+JOIN episodic_memories AS em
+  ON em.id = na.episodic_memory_id
+ AND em.user_id = na.user_id
+WHERE na.user_id = $1
+  AND na.neuron_id = ANY($2::text[])
+`
+
+type ListRetainedNeuronActivationsParams struct {
+	UserID    string
+	NeuronIds []string
+}
+
+type ListRetainedNeuronActivationsRow struct {
+	NeuronID         string
+	EpisodicMemoryID string
+}
+
+// The retained-owner facts for the removal set's neurons: every activation tying one of the given
+// neurons to a memory row that still exists. Soft-deleted memories remain owners until their retention
+// sweep removes the activation; swept memories are absent by construction. The domain decides whether
+// an owner is outside the current removal set. Sealed neurons never enter a fresh classification.
+func (q *Queries) ListRetainedNeuronActivations(ctx context.Context, arg ListRetainedNeuronActivationsParams) ([]ListRetainedNeuronActivationsRow, error) {
+	rows, err := q.db.Query(ctx, listRetainedNeuronActivations, arg.UserID, arg.NeuronIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRetainedNeuronActivationsRow
+	for rows.Next() {
+		var i ListRetainedNeuronActivationsRow
+		if err := rows.Scan(&i.NeuronID, &i.EpisodicMemoryID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sealNeurons = `-- name: SealNeurons :many
 UPDATE neurons
 SET sealed_at = $1
 WHERE user_id = $2
   AND id = ANY($3::text[])
   AND sealed_at IS NULL
+RETURNING id
 `
 
 type SealNeuronsParams struct {
@@ -195,9 +195,24 @@ type SealNeuronsParams struct {
 
 // Seal an explicit orphan-neuron id set (only those not already sealed — idempotent). No unseal here;
 // restore is job 60's.
-func (q *Queries) SealNeurons(ctx context.Context, arg SealNeuronsParams) error {
-	_, err := q.db.Exec(ctx, sealNeurons, arg.SealedAt, arg.UserID, arg.NeuronIds)
-	return err
+func (q *Queries) SealNeurons(ctx context.Context, arg SealNeuronsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, sealNeurons, arg.SealedAt, arg.UserID, arg.NeuronIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const softDeleteDiaryMemories = `-- name: SoftDeleteDiaryMemories :many

@@ -129,13 +129,15 @@ it is row maintenance, not "when the clock last moved"; derive movement from `cu
 **Birth is lazy.** A user with no launches has no row; `pg.UniverseClock` maps the absent row to a nil `*time.Time`,
 keeping Epic A's empty-universe read. The first advance creates the row via the upsert — no backfill migration.
 
-**The birth window is serialized by an advisory lock.** Once the row exists, `GetUniverseClockForUpdate`'s
+**All graph mutations share one advisory lock.** Once the row exists, `GetUniverseClockForUpdate`'s
 `FOR UPDATE` holds it for the transaction, so concurrent launches serialize on the guard. But `FOR UPDATE` can lock no
 row that does not exist yet, so during lazy birth two concurrent first-launches would otherwise both read a nil clock
 and one could launch a memory that a serial run would have past-dated ([T1]). Every launch/sync transaction therefore
-takes `LockUniverseClock` — a per-user `pg_advisory_xact_lock`, namespaced by a constant class key — as its **first**
-step, before the guard read. It needs no existing row, so it closes the birth window the `user_id` primary key (which
-serializes only the clock _write_) leaves open.
+takes `LockGraphMutation` — a per-user `pg_advisory_xact_lock`, namespaced by the established constant class key — as
+its **first** step, before the guard read. Release, Restore, LetGo, targeted/normal Sweep, recall, and consolidation use
+that exact lock too, so reads and writes of a user's memory graph compose into serial outcomes. It needs no existing
+row, closes the lazy-birth window, and preserves concurrency between different users. The global order is **graph
+advisory lock → release-group/row locks → graph rows**; every participating transaction acquires the advisory lock first.
 
 Universe time is a **DATE** (day granularity) and is the model's single read-time "now": every elapsed-universe-day
 derivation (forgetting decay, the semanticize timer, synapse strength decay) reads it as a scalar; it never enters
@@ -143,7 +145,7 @@ layout ([I7]). The diary-date monotonic constraint is the pure predicate `memory
 `diaryDate ≥ clock` launches, an earlier diary saves without a star, a nil clock always launches ([T1]).
 
 The clock repository port is **consumer-owned by plan 30** (the time-advance use-case); `memory/pg` exposes the
-concrete `LockUniverseClock`/`UniverseClock`/`UniverseClockForUpdate`/`LatestLaunchedUniverseTime`/`AdvanceUniverseClock`
+concrete `LockGraphMutation`/`UniverseClock`/`UniverseClockForUpdate`/`LatestLaunchedUniverseTime`/`AdvanceUniverseClock`
 store methods it binds to. Plan 30 has wired the stored `universe_state` clock as the **primary** source for both the
 launch guard (`UniverseClockForUpdate`) and `GetUniverse.universe_time`; Epic A's `max(created_universe_time)` survives
 only as the **one-release fallback** for a pre-clock universe whose row has not been born yet (`LatestLaunchedUniverseTime`
@@ -198,17 +200,21 @@ endpoints unsealed, so a sealed-endpoint edge leaves the SHY/`Downscale` selecti
 batch-LTP'd) — `GetUniverse`'s four sub-queries already excluded both.
 
 **Classification (pure, server-authoritative).** `ClassifyNeurons(removalMemoryIDs, neuronIDs, facts)` partitions a
-removal set's neurons into **orphan** (no live memory outside the set still activates it → seal) and **shared** (≥1 live
-outside memory → keep + weaken), evaluated as-of removal. The activation facts (each neuron's activations tagged with the
-activating memory's `deleted_at` state) come from `pg`; the outside-set + liveness decision stays in code, so the truth
-table is unit-tested without a DB. It is **not** FE↔BE golden-parity — a removal reaches the client only by facts
+removal set's neurons into **orphan** (no retained memory outside the set still activates it → seal) and **shared** (at
+least one retained outside owner → keep + weaken), evaluated as-of removal. Every activation whose memory row still
+exists counts, including a soft-deleted memory inside its Restore window; a swept owner has no activation fact. The
+facts come from `pg`, while the outside-set decision stays in code, so the truth table is unit-tested without a DB.
+`ReclassifyRetainedNeuronSeals` is the companion pure decision: retire conflicting release-origin effects, unseal only
+when the current seal timestamp is owned by such an effect, and preserve permanent LetGo/replacement seals. It is **not** FE↔BE golden-parity — a removal reaches the client only by facts
 disappearing from `GetUniverse`.
 
 **The write side.** `SoftDeleteDiaryMemories` sets `deleted_at` on a diary's live memories (returning the removal set;
 the `Diary` row is never touched, [I2]); `SealNeurons` sets `sealed_at` on an explicit orphan set (idempotent, no
 unseal); `WeakenSharedContributions` reads the affected edges (both endpoints in the removal set, ≥1 shared), applies the
-pure `Depress` (LTD, never `Downscale`/SHY — [I9]) by `deletion.contribution_weaken_amount`, and writes them back — the
-edge's base strength drops but it is **never** deleted. `deletion.sql` contains **no** `DELETE` statement and never
+pure `Depress` (LTD, never `Downscale`/SHY — [I9]) by `deletion.contribution_weaken_amount`, and writes them back. The
+selection is ordered and `FOR UPDATE`; the release ledger records `preStored - postStored` after conversion to the DB
+`REAL` grid, so Restore adds back exactly what PostgreSQL stored. The edge's base strength drops but it is **never**
+deleted. `deletion.sql` contains **no** `DELETE` statement and never
 mutates `diaries`. Letting-go feeds only a memory's `semantic` neurons and does not soft-delete the memory (emotion
 columns + seed intact — the star lives as a content-less silent engram); positions recompute for free since force-sim
 reads only live neurons (no position write, [I5]).
@@ -216,18 +222,22 @@ reads only live neurons (no position write, [I5]).
 **Release / Restore / letting-go / sweep (plan 49).** The `Release`/`Restore`/`SuggestLetGo`/`LetGo` use-cases in
 `internal/memory/release.go` orchestrate the rules above over a retention-scoped ledger (`00008_release_ledger.sql`):
 `release_groups` (`UNIQUE(user_id, diary_id)`, real-clock UTC `deleted_at`) + three `ON DELETE CASCADE` effect tables
-(`release_memories`, `release_sealed_neurons`, `release_synapse_deltas` recording each contribution edge's **applied LTD
-delta**). `Release` runs in one `InReleaseTx`: guard already-released → soft-delete the diary's memories → classify +
-seal orphans + Depress shared contributions (recording the deltas) → write the ledger. `Restore`, within
-`release.soft_delete_retention_days`, clears `deleted_at`, unseals exactly the release's sealed neurons, and adds each
-recorded delta back to the edge's current strength **clamped, atomically in SQL** (lost-update-safe against interim
-LTP/downscale), then deletes the group. `SuggestLetGo`/`LetGo` seal only server-re-validated this-memory-only `semantic`
+(`release_memories`, `release_sealed_neurons(sealed_at)`, `release_synapse_deltas` recording each contribution edge's
+**actual applied LTD delta**). `Release` runs in one `InReleaseTx`: acquire the graph lock → guard already-released →
+soft-delete the diary's memories → classify against retained owners + seal orphans + Depress locked shared
+contributions → write only the seal effects actually applied. `Restore`, within
+`release.soft_delete_retention_days`, clears `deleted_at`, reclassifies every restored activation, reverses only a
+timestamp-owned release-origin seal (never a LetGo seal), and adds each recorded delta back to the edge's current
+strength **clamped, atomically in SQL**, then deletes the group. `SuggestLetGo`/`LetGo` seal only server-re-validated this-memory-only `semantic`
 neurons (the AI suggests within a pre-filtered set, never executes; permanent, no ledger). The **retention sweep** —
-`Service.Sweep`, the only hard delete of user data — removes release groups whose deadline is due (activations →
+`Service.Sweep`, the only hard delete of user data — reclassifies release-origin seals and derives exclusivity from all
+release-memory activations before it removes groups whose deadline is due (activations →
 synapses touching exclusive orphans → embeddings → exclusive orphan neurons → memories `deleted_at IS NOT NULL` →
 diary → group; `memory_provenance` rides job 43's cascade), never a live row or a shared neuron. `Release` atomically
 creates a deduplicated queue target scheduled for exactly `deleted_at + release.soft_delete_retention_days`; the normal
 worker loop executes it even if the user never returns. Restore is allowed only while `now < deadline` and cancels that
-trigger. Targeted Restore/sweep paths serialize on the exact group row with `FOR UPDATE` (without `SKIP LOCKED`), so a
+trigger. Migration `00012_release_seal_ownership_repair.sql` timestamps/reconciles legacy release effects,
+non-destructively repairs live/retained overlap, preserves LetGo replacements, and queues revision-aware re-embedding
+for repaired live neurons. Targeted Restore/sweep paths serialize on the exact group row with `FOR UPDATE` (without `SKIP LOCKED`), so a
 boundary race cannot skip the group or interleave into a half-swept restored diary. The opportunistic pre-Release sweep
 remains a secondary cleanup path, not the durable trigger; no cron is introduced.

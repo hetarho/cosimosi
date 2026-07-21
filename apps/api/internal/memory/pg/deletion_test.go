@@ -88,15 +88,15 @@ func TestDeletionSealsAndWeakensWithoutHardDeleteOrGhost(t *testing.T) {
 	if err != nil || len(neuronSet) != 2 {
 		t.Fatalf("RemovalNeuronIDs = (%v, %v), want the 2 neurons", neuronSet, err)
 	}
-	facts, err := store.NeuronActivationFacts(ctx, scope, neuronSet)
+	facts, err := store.RetainedNeuronActivationFacts(ctx, scope, neuronSet)
 	if err != nil {
-		t.Fatalf("NeuronActivationFacts: %v", err)
+		t.Fatalf("RetainedNeuronActivationFacts: %v", err)
 	}
 	orphans, shared := memory.ClassifyNeurons(removed, neuronSet, facts)
 	if len(orphans) != 1 || orphans[0] != nOrphan || len(shared) != 1 || shared[0] != nShared {
 		t.Fatalf("classify = (orphans %v, shared %v), want ([nOrphan], [nShared])", orphans, shared)
 	}
-	if err := store.SealNeurons(ctx, scope, orphans, time.Now().UTC()); err != nil {
+	if _, err := store.SealNeurons(ctx, scope, orphans, time.Now().UTC()); err != nil {
 		t.Fatalf("SealNeurons: %v", err)
 	}
 	if err := store.WeakenSharedContributions(ctx, scope, neuronSet, shared, values.DeletionContributionWeakenAmount); err != nil {

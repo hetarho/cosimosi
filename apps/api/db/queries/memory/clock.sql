@@ -9,14 +9,14 @@ WHERE user_id = $1;
 -- the clock row cannot yet be locked) serialize here instead of racing the
 -- monotonic guard against a stale nil clock ([I10]). Namespaced by a constant
 -- class key so it never collides with another advisory-lock domain. Taken as
--- the first step of every launch/sync transaction, before the guard read.
--- name: LockUniverseClock :exec
+-- the first step of every graph-changing transaction, before release/clock/graph rows.
+-- name: LockGraphMutation :exec
 SELECT pg_advisory_xact_lock(hashtext('universe_state'), hashtext(sqlc.arg(user_id)));
 
 -- The launch guard's read: FOR UPDATE holds the clock row for the rest of the
 -- launch transaction, so a concurrent launch cannot pass the monotonic guard
 -- against a clock another transaction is about to advance ([I10]). The birth
--- window (no row yet to lock) is covered by LockUniverseClock above.
+-- window (no row yet to lock) is covered by LockGraphMutation above.
 -- name: GetUniverseClockForUpdate :one
 SELECT current_universe_time
 FROM universe_state

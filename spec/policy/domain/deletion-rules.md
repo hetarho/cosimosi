@@ -15,8 +15,9 @@ already-soft-deleted release group, owned by the release use-case.
 
 ## Shared neurons are preserved; only contribution is withdrawn
 
-A removal classifies each of its neurons as **orphan** (activated by no live memory outside the removal set) or
-**shared** (still activated by ≥1 live memory outside it), evaluated as-of removal. Orphans are sealed (`sealed_at`);
+A removal classifies each of its neurons as **orphan** (activated by no retained memory outside the removal set) or
+**shared** (still activated by at least one retained memory outside it), evaluated as-of removal. Retained includes a
+soft-deleted memory during its Restore window; only Sweep removes ownership by deleting the activation row. Orphans are sealed (`sealed_at`);
 shared neurons are **kept**, and only the removed memories' contribution to their synapses is weakened via `Depress`
 (LTD) — the edge's base strength is lowered but the synapse is **never deleted**, so a shared neuron keeps its other
 bonds ([X1][I6]). Weakening uses `Depress` (associative/local), never `Downscale` (sleep-time homeostatic, a distinct
@@ -48,14 +49,20 @@ force-sim / effective-value math runs over the smaller live graph.
 
 - **Full delete is a diary-scoped 30-day soft-delete with restore** ([X1][X2]). `Release` soft-deletes the diary's
   memories, seals orphans, weakens shared contributions, and records a retention-scoped release-effect ledger; `Restore`
-  reverses it exactly within `release.soft_delete_retention_days` (real-clock UTC) — clearing `deleted_at`, unsealing the
-  neurons it sealed, and adding the recorded LTD back. Restore refuses once swept or expired.
+  reverses it exactly within `release.soft_delete_retention_days` (real-clock UTC) — clearing `deleted_at`, reclassifying
+  every restored activation, reversing timestamp-owned release seals, and adding the recorded LTD back. A permanent
+  LetGo seal is never unsealed. Restore refuses once swept or expired.
 - **Letting-go is permanent** ([X4][X5][X6]) — AI-suggest → user-approve → domain-seal, over this-memory-only `semantic`
   neurons the server re-validates. It writes no `deleted_at`, keeps no ledger, and has **no restore**. The AI can only
   reference a pre-filtered candidate; it never executes a seal.
 - **The system never originates deletion** ([I1]). The only hard delete is the retention sweep of user-soft-deleted
-  release groups whose restore deadline has arrived; it never touches a live (`deleted_at IS NULL`) row or a shared
-  neuron. `Release` atomically schedules a deduplicated queue target for exactly
+  release groups whose restore deadline has arrived; it computes last-owner exclusivity from all retained activations
+  and never touches a live (`deleted_at IS NULL`) row or a retained shared neuron. `Release` atomically schedules a deduplicated queue target for exactly
   `deleted_at + release.soft_delete_retention_days`, so the normal worker loop completes the user-originated deletion
   even if that user never returns. Restore strictly before the deadline cancels the target; at or after the deadline it
   cannot resurrect the data. This uses no cron, and deletion is never priced (no stardust gate).
+
+All graph-changing paths use one transaction-scoped per-user graph lock in the order **graph advisory lock → release
+group/row locks → graph rows**. Contribution synapses are row-locked before `Depress`, and the ledger records the actual
+delta stored on PostgreSQL's `REAL` grid, so concurrent recall/consolidation cannot lose an update and Restore reverses
+exactly that release's contribution.

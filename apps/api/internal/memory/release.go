@@ -72,6 +72,9 @@ func (s *Service) Release(ctx context.Context, scope platform.UserScope, diaryID
 
 	var result ReleaseResult
 	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
 		if _, exists, err := tx.ReleaseGroupForDiary(ctx, scope, diaryID); err != nil {
 			return err
 		} else if exists {
@@ -103,15 +106,16 @@ func (s *Service) Release(ctx context.Context, scope platform.UserScope, diaryID
 		if err != nil {
 			return err
 		}
-		facts, err := tx.NeuronActivationFacts(ctx, scope, neuronIDs)
+		facts, err := tx.RetainedNeuronActivationFacts(ctx, scope, neuronIDs)
 		if err != nil {
 			return err
 		}
 		orphans, shared := ClassifyNeurons(memoryIDs, neuronIDs, facts)
-		if err := tx.SealNeurons(ctx, scope, orphans, deletedAt); err != nil {
+		sealed, err := tx.SealNeurons(ctx, scope, orphans, deletedAt)
+		if err != nil {
 			return err
 		}
-		if err := tx.RecordReleaseSealedNeurons(ctx, scope, releaseID, orphans); err != nil {
+		if err := tx.RecordReleaseSealedNeurons(ctx, scope, releaseID, sealed, deletedAt); err != nil {
 			return err
 		}
 		deltas, err := tx.WeakenSharedContributionsReturningDeltas(ctx, scope, neuronIDs, shared, values.DeletionContributionWeakenAmount)
@@ -149,7 +153,7 @@ func (s *Service) Release(ctx context.Context, scope platform.UserScope, diaryID
 }
 
 // Restore undoes a full delete within the retention window ([X2]): it clears deleted_at for the released
-// memories, unseals exactly the orphan neurons the release sealed, adds the recorded LTD back to each
+// memories, reclassifies release-origin seals across every restored activation, adds the recorded LTD back to each
 // shared contribution synapse (clamped), and retires the release group — returning every released memory
 // to full participation. It refuses once the release is absent (swept / never released) or older than the
 // window. Letting-go has no restore path.
@@ -164,6 +168,9 @@ func (s *Service) Restore(ctx context.Context, scope platform.UserScope, diaryID
 	restoreAt := s.now()
 	var result RestoreResult
 	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
 		group, exists, err := tx.ReleaseGroupForDiary(ctx, scope, diaryID)
 		if err != nil {
 			return err
@@ -183,15 +190,8 @@ func (s *Service) Restore(ctx context.Context, scope platform.UserScope, diaryID
 			return err
 		}
 
-		sealed, err := tx.ReleaseSealedNeurons(ctx, scope, group.ID)
+		reembedTargets, err := reclassifyReleaseMemoryNeurons(ctx, scope, tx, group.ID)
 		if err != nil {
-			return err
-		}
-		reembedTargets, err := tx.ReleaseSealedNeuronTargets(ctx, scope, group.ID)
-		if err != nil {
-			return err
-		}
-		if err := tx.UnsealReleaseNeurons(ctx, scope, sealed); err != nil {
 			return err
 		}
 
@@ -274,6 +274,9 @@ func (s *Service) LetGo(ctx context.Context, scope platform.UserScope, memoryID 
 
 	var result LetGoResult
 	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
 		episodicMemory, err := tx.EpisodicMemoryForRelease(ctx, scope, memoryID)
 		if err != nil {
 			return err
@@ -304,12 +307,12 @@ func (s *Service) LetGo(ctx context.Context, scope platform.UserScope, memoryID 
 		// Classify defensively — the approved ids are orphan-to-this-memory by construction, so the
 		// classifier seals all of them and the shared-weaken is a no-op, but routing through the shared rules
 		// keeps the one sealing path.
-		facts, err := tx.NeuronActivationFacts(ctx, scope, approved)
+		facts, err := tx.RetainedNeuronActivationFacts(ctx, scope, approved)
 		if err != nil {
 			return err
 		}
 		orphans, shared := ClassifyNeurons([]string{memoryID}, approved, facts)
-		if err := tx.SealNeurons(ctx, scope, orphans, s.now()); err != nil {
+		if _, err := tx.SealNeurons(ctx, scope, orphans, s.now()); err != nil {
 			return err
 		}
 		if err := tx.WeakenSharedContributions(ctx, scope, approved, shared, values.DeletionContributionWeakenAmount); err != nil {
@@ -338,6 +341,9 @@ func (s *Service) Sweep(ctx context.Context, scope platform.UserScope, now time.
 	cutoff := now.Add(-retentionWindow())
 	swept := 0
 	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
 		groups, err := tx.ExpiredReleaseGroups(ctx, scope, cutoff)
 		if err != nil {
 			return err
@@ -379,6 +385,9 @@ func (s RetentionSweeper) SweepRelease(ctx context.Context, scope platform.UserS
 	}
 	swept := false
 	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
 		group, exists, err := tx.ReleaseGroupForSweep(ctx, scope, releaseID)
 		if err != nil || !exists {
 			return err
@@ -413,6 +422,11 @@ func sweepReleaseGroup(ctx context.Context, scope platform.UserScope, tx Release
 	if err != nil {
 		return err
 	}
+	// Reclassify before the group can cascade its release-origin ownership away. This is
+	// essential when an overlapping retained owner makes a neuron ineligible for deletion.
+	if _, err := reclassifyReleaseMemoryNeurons(ctx, scope, tx, group.ID); err != nil {
+		return err
+	}
 	// Decide exclusive dependents while activations still exist. A neuron another
 	// memory activates is spared; it may remain as a target of a mixed worker job.
 	exclusive, err := tx.ExclusiveReleaseNeurons(ctx, scope, group.ID, memoryIDs)
@@ -441,6 +455,29 @@ func sweepReleaseGroup(ctx context.Context, scope platform.UserScope, tx Release
 		return err
 	}
 	return tx.DeleteReleaseGroup(ctx, scope, group.ID)
+}
+
+func reclassifyReleaseMemoryNeurons(ctx context.Context, scope platform.UserScope, tx ReleaseTx, releaseID string) ([]JobTarget, error) {
+	facts, err := tx.ReleaseMemoryNeuronSealFacts(ctx, scope, releaseID)
+	if err != nil {
+		return nil, err
+	}
+	plan := ReclassifyRetainedNeuronSeals(facts)
+	if err := tx.DeleteReleaseNeuronSealEffects(ctx, scope, plan.RetireReleaseEffectIDs); err != nil {
+		return nil, err
+	}
+	if err := tx.UnsealReleaseOwnedNeurons(ctx, scope, plan.UnsealNeuronIDs); err != nil {
+		return nil, err
+	}
+	targets := make([]JobTarget, 0, len(plan.Reembed))
+	for _, target := range plan.Reembed {
+		targets = append(targets, JobTarget{
+			Kind:             JobTargetNeuron,
+			ID:               target.NeuronID,
+			ExpectedRevision: target.RepresentationRevision,
+		})
+	}
+	return targets, nil
 }
 
 // retentionWindow is the full-delete restore window as a real-clock duration — the sole boundary of the

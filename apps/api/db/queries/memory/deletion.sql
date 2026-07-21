@@ -18,15 +18,14 @@ WHERE na.user_id = sqlc.arg(user_id)
   AND (sqlc.narg(neuron_type)::text IS NULL OR n.neuron_type = sqlc.narg(neuron_type)::text)
 ORDER BY n.id;
 
--- The classification facts for the removal set's neurons: every activation tying one of the given
--- neurons to a memory, tagged with that memory's soft-delete state. The domain decides orphan (no live
--- memory outside the removal set) vs shared — the outside-set + liveness logic stays in code so it is
--- unit-testable without a DB (A1). Sealed neurons never enter (only live neurons are classified).
--- name: ListRemovalNeuronActivations :many
+-- The retained-owner facts for the removal set's neurons: every activation tying one of the given
+-- neurons to a memory row that still exists. Soft-deleted memories remain owners until their retention
+-- sweep removes the activation; swept memories are absent by construction. The domain decides whether
+-- an owner is outside the current removal set. Sealed neurons never enter a fresh classification.
+-- name: ListRetainedNeuronActivations :many
 SELECT
     na.neuron_id,
-    na.episodic_memory_id,
-    (em.deleted_at IS NOT NULL)::boolean AS memory_deleted
+    na.episodic_memory_id
 FROM neuron_activations AS na
 JOIN episodic_memories AS em
   ON em.id = na.episodic_memory_id
@@ -47,12 +46,13 @@ RETURNING id;
 
 -- Seal an explicit orphan-neuron id set (only those not already sealed — idempotent). No unseal here;
 -- restore is job 60's.
--- name: SealNeurons :exec
+-- name: SealNeurons :many
 UPDATE neurons
 SET sealed_at = sqlc.arg(sealed_at)
 WHERE user_id = sqlc.arg(user_id)
   AND id = ANY(sqlc.arg(neuron_ids)::text[])
-  AND sealed_at IS NULL;
+  AND sealed_at IS NULL
+RETURNING id;
 
 -- The synapses a removal weakens: edges internal to the removal set's neuron cloud (BOTH endpoints
 -- co-activated by removed memories) with at least one SHARED (kept) endpoint. Doubly-orphaned edges are
@@ -68,7 +68,8 @@ WHERE user_id = sqlc.arg(user_id)
     neuron_a_id = ANY(sqlc.arg(shared_neuron_ids)::text[])
     OR neuron_b_id = ANY(sqlc.arg(shared_neuron_ids)::text[])
   )
-ORDER BY id;
+ORDER BY id
+FOR UPDATE;
 
 -- Write back the Depressed strengths for the weakened synapses (the ApplySynapseDownscale precedent) —
 -- the base strength is lowered, the edge is NEVER deleted ([X1][I6]).

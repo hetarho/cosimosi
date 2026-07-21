@@ -8,26 +8,28 @@ import (
 func TestClassifyNeuronsPartitionsOrphanVsShared(t *testing.T) {
 	t.Parallel()
 	// Removing memory m1. n-orphan is activated only by m1; n-shared is also activated by the live
-	// outside memory m2; n-dead-outside is activated outside the set only by a soft-deleted memory (that
-	// does not keep it alive); n-inside-only is activated by m1 and by the also-removed m3.
+	// outside memory m2; n-retained-outside is activated outside the set by a soft-deleted-but-retained
+	// memory; n-inside-only is activated by m1 and by the also-removed m3. A swept owner is represented
+	// by no activation fact and therefore does not appear here.
 	orphans, shared := ClassifyNeurons(
 		[]string{"m1", "m3"},
-		[]string{"n-orphan", "n-shared", "n-dead-outside", "n-inside-only"},
+		[]string{"n-orphan", "n-shared", "n-retained-outside", "n-swept-outside", "n-inside-only"},
 		[]NeuronActivationFact{
 			{NeuronID: "n-orphan", EpisodicMemoryID: "m1"},
 			{NeuronID: "n-shared", EpisodicMemoryID: "m1"},
 			{NeuronID: "n-shared", EpisodicMemoryID: "m2"},
-			{NeuronID: "n-dead-outside", EpisodicMemoryID: "m1"},
-			{NeuronID: "n-dead-outside", EpisodicMemoryID: "m9", MemoryDeleted: true},
+			{NeuronID: "n-retained-outside", EpisodicMemoryID: "m1"},
+			{NeuronID: "n-retained-outside", EpisodicMemoryID: "m9"},
+			{NeuronID: "n-swept-outside", EpisodicMemoryID: "m1"},
 			{NeuronID: "n-inside-only", EpisodicMemoryID: "m1"},
 			{NeuronID: "n-inside-only", EpisodicMemoryID: "m3"},
 		},
 	)
 
-	// A1: shared = ≥1 live memory OUTSIDE the removal set; everything else is an orphan. A soft-deleted
-	// outside memory and an in-removal-set memory both fail to keep a neuron alive.
-	wantOrphans := []string{"n-orphan", "n-dead-outside", "n-inside-only"}
-	wantShared := []string{"n-shared"}
+	// A1: every retained outside owner keeps a neuron shared. A swept owner contributes no fact, while
+	// an activation from another memory inside the same removal set does not count as outside ownership.
+	wantOrphans := []string{"n-orphan", "n-swept-outside", "n-inside-only"}
+	wantShared := []string{"n-shared", "n-retained-outside"}
 	if !reflect.DeepEqual(orphans, wantOrphans) {
 		t.Fatalf("orphans = %v, want %v", orphans, wantOrphans)
 	}
@@ -39,7 +41,7 @@ func TestClassifyNeuronsPartitionsOrphanVsShared(t *testing.T) {
 func TestClassifyNeuronsLettingGoSingleMemorySubset(t *testing.T) {
 	t.Parallel()
 	// Letting-go shape: one memory's semantic-neuron subset. n-sem-a is its alone → orphan; n-sem-b is
-	// shared with a live outside memory → kept.
+	// shared with a retained outside memory → kept.
 	orphans, shared := ClassifyNeurons(
 		[]string{"m1"},
 		[]string{"n-sem-a", "n-sem-b"},
@@ -84,5 +86,41 @@ func TestClassifyNeuronsZeroOutsideActivationsAllOrphan(t *testing.T) {
 	)
 	if len(shared) != 0 || !reflect.DeepEqual(orphans, []string{"n1", "n2"}) {
 		t.Fatalf("all-inside removal = (orphans %v, shared %v), want both orphan", orphans, shared)
+	}
+}
+
+func TestReclassifyRetainedNeuronSealsPreservesPermanentLetGo(t *testing.T) {
+	t.Parallel()
+	plan := ReclassifyRetainedNeuronSeals([]NeuronSealFact{
+		{NeuronID: "unsealed", RepresentationRevision: 1},
+		{
+			NeuronID:               "release-owned",
+			RepresentationRevision: 2,
+			Sealed:                 true,
+			HasReleaseEffect:       true,
+			ReleaseOwnsCurrentSeal: true,
+		},
+		{
+			NeuronID:               "let-go-replaced",
+			RepresentationRevision: 3,
+			Sealed:                 true,
+			HasReleaseEffect:       true,
+			ReleaseOwnsCurrentSeal: false,
+		},
+		{NeuronID: "let-go-only", RepresentationRevision: 4, Sealed: true},
+	})
+
+	if !reflect.DeepEqual(plan.RetireReleaseEffectIDs, []string{"release-owned", "let-go-replaced"}) {
+		t.Fatalf("retired effects = %v", plan.RetireReleaseEffectIDs)
+	}
+	if !reflect.DeepEqual(plan.UnsealNeuronIDs, []string{"release-owned"}) {
+		t.Fatalf("unsealed = %v, want only timestamp-owned release seal", plan.UnsealNeuronIDs)
+	}
+	wantReembed := []NeuronRevision{
+		{NeuronID: "unsealed", RepresentationRevision: 1},
+		{NeuronID: "release-owned", RepresentationRevision: 2},
+	}
+	if !reflect.DeepEqual(plan.Reembed, wantReembed) {
+		t.Fatalf("reembed = %+v, want %+v", plan.Reembed, wantReembed)
 	}
 }

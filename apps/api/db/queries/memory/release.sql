@@ -39,10 +39,15 @@ VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(diary_id), sqlc.arg(deleted_at
 INSERT INTO release_memories (release_id, user_id, episodic_memory_id)
 SELECT sqlc.arg(release_id), sqlc.arg(user_id), UNNEST(sqlc.arg(episodic_memory_ids)::text[]);
 
--- Record the orphan neurons this release sealed.
+-- Record only the neurons this release actually changed from unsealed to sealed, together with the
+-- exact timestamp that proves ownership of the reversible release-origin effect.
 -- name: InsertReleaseSealedNeurons :exec
-INSERT INTO release_sealed_neurons (release_id, user_id, neuron_id)
-SELECT sqlc.arg(release_id), sqlc.arg(user_id), UNNEST(sqlc.arg(neuron_ids)::text[]);
+INSERT INTO release_sealed_neurons (release_id, user_id, neuron_id, sealed_at)
+SELECT
+    sqlc.arg(release_id),
+    sqlc.arg(user_id),
+    UNNEST(sqlc.arg(neuron_ids)::text[]),
+    sqlc.arg(sealed_at);
 
 -- Record the LTD amount removed from each shared-contribution synapse (for exact restore).
 -- name: InsertReleaseSynapseDeltas :exec
@@ -53,7 +58,7 @@ SELECT
     UNNEST(sqlc.arg(synapse_ids)::text[]),
     UNNEST(sqlc.arg(applied_deltas)::real[]);
 
--- Restore reads: the release's memory ids and the neurons it sealed.
+-- Restore reads: the release's memory ids.
 -- name: ListReleaseMemories :many
 SELECT episodic_memory_id
 FROM release_memories
@@ -61,25 +66,57 @@ WHERE user_id = sqlc.arg(user_id)
   AND release_id = sqlc.arg(release_id)
 ORDER BY episodic_memory_id;
 
--- name: ListReleaseSealedNeurons :many
-SELECT neuron_id
-FROM release_sealed_neurons
-WHERE user_id = sqlc.arg(user_id)
-  AND release_id = sqlc.arg(release_id)
-ORDER BY neuron_id;
+-- The pure reclassification facts for every neuron activated by a release's retained memories. The
+-- current neuron row is locked after the shared graph advisory lock. `has_release_effect` identifies
+-- stale effects to retire; `release_owns_current_seal` is timestamp-fenced so a later permanent LetGo
+-- seal is never mistaken for a reversible release seal.
+-- name: ListReleaseMemoryNeuronSealFacts :many
+SELECT
+    n.id,
+    n.representation_revision,
+    (n.sealed_at IS NOT NULL)::boolean AS sealed,
+    EXISTS (
+        SELECT 1
+        FROM release_sealed_neurons AS effect
+        WHERE effect.user_id = n.user_id
+          AND effect.neuron_id = n.id
+    )::boolean AS has_release_effect,
+    EXISTS (
+        SELECT 1
+        FROM release_sealed_neurons AS owner
+        WHERE owner.user_id = n.user_id
+          AND owner.neuron_id = n.id
+          AND owner.sealed_at = n.sealed_at
+    )::boolean AS release_owns_current_seal
+FROM neurons AS n
+WHERE n.user_id = sqlc.arg(user_id)
+  AND EXISTS (
+      SELECT 1
+      FROM release_memories AS rm
+      JOIN neuron_activations AS na
+        ON na.episodic_memory_id = rm.episodic_memory_id
+       AND na.user_id = rm.user_id
+      WHERE rm.user_id = n.user_id
+        AND rm.release_id = sqlc.arg(release_id)
+        AND na.neuron_id = n.id
+  )
+ORDER BY n.id
+FOR UPDATE OF n;
 
--- Restore re-embeds the neurons this release unseals. A queued embed may have
--- harmlessly completed while they were sealed, so this current revision set is
--- the durable way to restore equivalent derived state.
--- name: ListReleaseSealedNeuronTargets :many
-SELECT n.id, n.representation_revision
-FROM release_sealed_neurons AS rsn
-JOIN neurons AS n
-  ON n.id = rsn.neuron_id
- AND n.user_id = rsn.user_id
-WHERE rsn.user_id = sqlc.arg(user_id)
-  AND rsn.release_id = sqlc.arg(release_id)
-ORDER BY n.id;
+-- Once the pure policy identifies a retained owner conflict, retire every release-origin effect for
+-- those neurons, including an effect recorded by a different overlapping release group.
+-- name: DeleteReleaseNeuronSealEffects :exec
+DELETE FROM release_sealed_neurons
+WHERE user_id = sqlc.arg(user_id)
+  AND neuron_id = ANY(sqlc.arg(neuron_ids)::text[]);
+
+-- The pure policy passes only current timestamp-matched release seals here. LetGo seals never enter.
+-- name: UnsealReleaseOwnedNeurons :exec
+UPDATE neurons
+SET sealed_at = NULL
+WHERE user_id = sqlc.arg(user_id)
+  AND id = ANY(sqlc.arg(neuron_ids)::text[])
+  AND sealed_at IS NOT NULL;
 
 -- Release cancels every active memory-targeted semantic job in the same
 -- transaction as soft deletion. Clearing the allowlisted payload is defensive;
@@ -159,17 +196,9 @@ WHERE user_id = sqlc.arg(user_id)
   AND id = ANY(sqlc.arg(episodic_memory_ids)::text[])
   AND deleted_at IS NOT NULL;
 
--- Restore's unseal: unseal exactly the orphan neurons this release sealed (only the still-sealed ones —
--- idempotent). No other neuron is touched.
--- name: UnsealReleaseNeurons :exec
-UPDATE neurons
-SET sealed_at = NULL
-WHERE user_id = sqlc.arg(user_id)
-  AND id = ANY(sqlc.arg(neuron_ids)::text[])
-  AND sealed_at IS NOT NULL;
-
 -- The this-memory-only semantic candidate set for letting-go ([X4][X6]): unsealed semantic neurons this
--- memory activates that NO OTHER LIVE memory activates. The AI ranks only within this already-safe set;
+-- memory activates that NO OTHER RETAINED memory activates. Soft-deleted memories remain owners until
+-- Sweep removes them. The AI ranks only within this already-safe set;
 -- LetGo re-validates every approved id against it server-side (§2.9#8).
 -- name: ListThisMemoryOnlySemanticNeurons :many
 SELECT n.id, n.name
@@ -190,13 +219,12 @@ WHERE n.user_id = sqlc.arg(user_id)
     WHERE other.user_id = n.user_id
       AND other.neuron_id = n.id
       AND other.episodic_memory_id <> sqlc.arg(memory_id)
-      AND em.deleted_at IS NULL
   )
 ORDER BY n.id;
 
 -- LetGo's server-side re-validation set ([X6], §2.9#8): the this-memory-only semantic neuron ids,
 -- INCLUDING already-sealed ones — so re-approving a neuron this memory already let go is an idempotent
--- no-op, while a shared/foreign/non-semantic id is still absent and rejected. Distinct from the
+-- no-op, while a retained-shared/foreign/non-semantic id is still absent and rejected. Distinct from the
 -- suggestion read above (which hides sealed neurons — they need no re-suggesting).
 -- name: ListThisMemoryOnlySemanticNeuronIDs :many
 SELECT n.id
@@ -216,7 +244,6 @@ WHERE n.user_id = sqlc.arg(user_id)
     WHERE other.user_id = n.user_id
       AND other.neuron_id = n.id
       AND other.episodic_memory_id <> sqlc.arg(memory_id)
-      AND em.deleted_at IS NULL
   )
 ORDER BY n.id;
 
@@ -233,22 +260,25 @@ WHERE user_id = sqlc.arg(user_id)
 ORDER BY deleted_at, id
 FOR UPDATE;
 
--- Sweep eligibility: of this release's sealed orphan neurons, the ones NO activation outside the release
--- set references — the exclusive dependents safe to hard-delete. A neuron another memory still activates
--- is spared (conservative — never over-deletes, never a shared neuron).
+-- Sweep eligibility starts from every neuron activated by this release's memories, not only the subset
+-- this release sealed. That lets the final retained owner clean up a conservatively preserved overlap.
+-- A neuron with any activation outside this release set remains owned and is spared.
 -- name: ListExclusiveReleaseNeurons :many
-SELECT rsn.neuron_id
-FROM release_sealed_neurons AS rsn
-WHERE rsn.user_id = sqlc.arg(user_id)
-  AND rsn.release_id = sqlc.arg(release_id)
+SELECT DISTINCT na.neuron_id
+FROM release_memories AS rm
+JOIN neuron_activations AS na
+  ON na.episodic_memory_id = rm.episodic_memory_id
+ AND na.user_id = rm.user_id
+WHERE rm.user_id = sqlc.arg(user_id)
+  AND rm.release_id = sqlc.arg(release_id)
   AND NOT EXISTS (
     SELECT 1
-    FROM neuron_activations AS na
-    WHERE na.user_id = rsn.user_id
-      AND na.neuron_id = rsn.neuron_id
-      AND na.episodic_memory_id <> ALL(sqlc.arg(release_memory_ids)::text[])
+    FROM neuron_activations AS outside
+    WHERE outside.user_id = rm.user_id
+      AND outside.neuron_id = na.neuron_id
+      AND outside.episodic_memory_id <> ALL(sqlc.arg(release_memory_ids)::text[])
   )
-ORDER BY rsn.neuron_id;
+ORDER BY na.neuron_id;
 
 -- Sweep deletes, in FK-safe order. Each is user-scoped and bound to the release's own rows.
 -- Queue metadata/effect targets go first. Mixed-neuron jobs retain their live

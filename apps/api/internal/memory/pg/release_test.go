@@ -109,6 +109,21 @@ func seedReleaseGraph(t *testing.T, ctx context.Context, store Store, scope plat
 	return g
 }
 
+func seedOverlappingReleaseGraph(t *testing.T, ctx context.Context, store Store, scope platform.UserScope, base string, day time.Time) releaseGraph {
+	t.Helper()
+	g := seedReleaseGraph(t, ctx, store, scope, base, day)
+	for _, neuronID := range []string{g.orphan, g.spatial} {
+		if _, err := store.InsertNeuronActivation(ctx, scope, memory.NeuronActivation{
+			EpisodicMemoryID: g.m2,
+			NeuronID:         neuronID,
+			Weight:           1,
+		}); err != nil {
+			t.Fatalf("Insert overlapping activation %s: %v", neuronID, err)
+		}
+	}
+	return g
+}
+
 func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 	pool := openMemoryTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -241,6 +256,158 @@ func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 	if !memoryIDs(mustUniverse(t, store, ctx, scope).EpisodicMemories)[g.m1] {
 		t.Fatal("restored memory not back in GetUniverse")
 	}
+}
+
+func TestOverlappingReleaseRestoreAndSweepOrdersEndToEnd(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
+	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+
+	for _, order := range [][]int{{1, 2}, {2, 1}} {
+		order := order
+		t.Run(fmt.Sprintf("restore-%d-then-%d", order[0], order[1]), func(t *testing.T) {
+			base := fmt.Sprintf("test-overlap-restore-%d-%d", order[0], time.Now().UnixNano())
+			userID := base + "-user"
+			cleanupMemoryTestRows(t, pool, userID)
+			scope, _ := platform.NewUserScope(userID)
+			g := seedOverlappingReleaseGraph(t, ctx, store, scope, base, day)
+			service := newReleaseService(t, store, func() time.Time { return releaseAt })
+			if _, err := service.Release(ctx, scope, g.d1); err != nil {
+				t.Fatalf("Release d1 failed: %v", err)
+			}
+			if _, err := service.Release(ctx, scope, g.d2); err != nil {
+				t.Fatalf("Release d2 failed: %v", err)
+			}
+			var sealed, effects int
+			if err := pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM neurons WHERE user_id = $1 AND sealed_at IS NOT NULL`, userID).Scan(&sealed); err != nil {
+				t.Fatalf("count sealed overlap neurons failed: %v", err)
+			}
+			if err := pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM release_sealed_neurons WHERE user_id = $1`, userID).Scan(&effects); err != nil {
+				t.Fatalf("count overlap seal effects failed: %v", err)
+			}
+			if sealed != 0 || effects != 0 {
+				t.Fatalf("overlap release seals/effects = %d/%d, want 0/0", sealed, effects)
+			}
+
+			diaries := map[int]string{1: g.d1, 2: g.d2}
+			clock := releaseAt.Add(time.Hour)
+			restore := newReleaseService(t, store, func() time.Time { return clock })
+			for _, which := range order {
+				if _, err := restore.Restore(ctx, scope, diaries[which]); err != nil {
+					t.Fatalf("Restore d%d failed: %v", which, err)
+				}
+			}
+			var strength float32
+			if err := pool.PgxPool().QueryRow(ctx, `SELECT strength FROM synapses WHERE user_id = $1 AND id = $2`, userID, g.syn).Scan(&strength); err != nil {
+				t.Fatalf("read restored overlap strength failed: %v", err)
+			}
+			if diff := strength - g.preSharedContribution; diff < -1e-6 || diff > 1e-6 {
+				t.Fatalf("restored overlap strength = %v, want %v", strength, g.preSharedContribution)
+			}
+			var liveMemories int
+			if err := pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM episodic_memories WHERE user_id = $1 AND deleted_at IS NULL`, userID).Scan(&liveMemories); err != nil {
+				t.Fatalf("count restored overlap memories failed: %v", err)
+			}
+			if liveMemories != 2 {
+				t.Fatalf("restored overlap memories = %d, want 2", liveMemories)
+			}
+		})
+	}
+
+	for _, order := range [][]int{{1, 2}, {2, 1}} {
+		order := order
+		t.Run(fmt.Sprintf("sweep-%d-then-%d", order[0], order[1]), func(t *testing.T) {
+			base := fmt.Sprintf("test-overlap-sweep-%d-%d", order[0], time.Now().UnixNano())
+			userID := base + "-user"
+			cleanupMemoryTestRows(t, pool, userID)
+			scope, _ := platform.NewUserScope(userID)
+			g := seedOverlappingReleaseGraph(t, ctx, store, scope, base, day)
+			service := newReleaseService(t, store, func() time.Time { return releaseAt })
+			if _, err := service.Release(ctx, scope, g.d1); err != nil {
+				t.Fatalf("Release d1 failed: %v", err)
+			}
+			if _, err := service.Release(ctx, scope, g.d2); err != nil {
+				t.Fatalf("Release d2 failed: %v", err)
+			}
+			groups := map[int]string{}
+			for which, diaryID := range map[int]string{1: g.d1, 2: g.d2} {
+				var groupID string
+				if err := pool.PgxPool().QueryRow(ctx, `SELECT id FROM release_groups WHERE user_id = $1 AND diary_id = $2`, userID, diaryID).Scan(&groupID); err != nil {
+					t.Fatalf("read release group d%d failed: %v", which, err)
+				}
+				groups[which] = groupID
+			}
+			deadline := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
+			for index, which := range order {
+				swept, err := memory.NewRetentionSweeper(store).SweepRelease(ctx, scope, groups[which], deadline)
+				if err != nil || !swept {
+					t.Fatalf("sweep d%d = (%v, %v), want true/nil", which, swept, err)
+				}
+				var neuronCount int
+				if err := pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM neurons WHERE user_id = $1`, userID).Scan(&neuronCount); err != nil {
+					t.Fatalf("count overlap neurons after sweep failed: %v", err)
+				}
+				if index == 0 && neuronCount != 3 {
+					t.Fatalf("first sweep retained %d neurons, want all 3 for other owner", neuronCount)
+				}
+				if index == 1 && neuronCount != 0 {
+					t.Fatalf("last sweep retained %d neurons, want 0", neuronCount)
+				}
+			}
+			var synapses int
+			if err := pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM synapses WHERE user_id = $1`, userID).Scan(&synapses); err != nil {
+				t.Fatalf("count overlap synapses failed: %v", err)
+			}
+			if synapses != 0 {
+				t.Fatalf("last owner sweep retained %d synapses", synapses)
+			}
+		})
+	}
+
+	t.Run("restore-one-then-sweep-other", func(t *testing.T) {
+		base := fmt.Sprintf("test-overlap-mixed-%d", time.Now().UnixNano())
+		userID := base + "-user"
+		cleanupMemoryTestRows(t, pool, userID)
+		scope, _ := platform.NewUserScope(userID)
+		g := seedOverlappingReleaseGraph(t, ctx, store, scope, base, day)
+		service := newReleaseService(t, store, func() time.Time { return releaseAt })
+		if _, err := service.Release(ctx, scope, g.d1); err != nil {
+			t.Fatalf("Release d1 failed: %v", err)
+		}
+		if _, err := service.Release(ctx, scope, g.d2); err != nil {
+			t.Fatalf("Release d2 failed: %v", err)
+		}
+		var group2 string
+		if err := pool.PgxPool().QueryRow(ctx, `SELECT id FROM release_groups WHERE user_id = $1 AND diary_id = $2`, userID, g.d2).Scan(&group2); err != nil {
+			t.Fatalf("read d2 release group failed: %v", err)
+		}
+		if _, err := newReleaseService(t, store, func() time.Time { return releaseAt.Add(time.Hour) }).Restore(ctx, scope, g.d1); err != nil {
+			t.Fatalf("Restore d1 failed: %v", err)
+		}
+		deadline := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
+		if swept, err := memory.NewRetentionSweeper(store).SweepRelease(ctx, scope, group2, deadline); err != nil || !swept {
+			t.Fatalf("Sweep d2 = (%v, %v), want true/nil", swept, err)
+		}
+		var liveSealed, graphRows int
+		if err := pool.PgxPool().QueryRow(ctx, `
+			SELECT count(*)
+			FROM neuron_activations AS na
+			JOIN episodic_memories AS em ON em.id = na.episodic_memory_id AND em.user_id = na.user_id
+			JOIN neurons AS n ON n.id = na.neuron_id AND n.user_id = na.user_id
+			WHERE na.user_id = $1 AND em.deleted_at IS NULL AND n.sealed_at IS NOT NULL
+		`, userID).Scan(&liveSealed); err != nil {
+			t.Fatalf("count live sealed activations failed: %v", err)
+		}
+		if err := pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM neurons WHERE user_id = $1`, userID).Scan(&graphRows); err != nil {
+			t.Fatalf("count preserved graph failed: %v", err)
+		}
+		if liveSealed != 0 || graphRows != 3 {
+			t.Fatalf("restore/sweep graph = live-sealed %d neurons %d, want 0/3", liveSealed, graphRows)
+		}
+	})
 }
 
 func TestClaimedSemanticJobCannotPublishAfterRelease(t *testing.T) {

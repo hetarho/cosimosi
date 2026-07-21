@@ -168,6 +168,24 @@ func (q *Queries) DeleteReleaseMemories(ctx context.Context, arg DeleteReleaseMe
 	return err
 }
 
+const deleteReleaseNeuronSealEffects = `-- name: DeleteReleaseNeuronSealEffects :exec
+DELETE FROM release_sealed_neurons
+WHERE user_id = $1
+  AND neuron_id = ANY($2::text[])
+`
+
+type DeleteReleaseNeuronSealEffectsParams struct {
+	UserID    string
+	NeuronIds []string
+}
+
+// Once the pure policy identifies a retained owner conflict, retire every release-origin effect for
+// those neurons, including an effect recorded by a different overlapping release group.
+func (q *Queries) DeleteReleaseNeuronSealEffects(ctx context.Context, arg DeleteReleaseNeuronSealEffectsParams) error {
+	_, err := q.db.Exec(ctx, deleteReleaseNeuronSealEffects, arg.UserID, arg.NeuronIds)
+	return err
+}
+
 const deleteReleaseNeurons = `-- name: DeleteReleaseNeurons :exec
 DELETE FROM neurons
 WHERE user_id = $1
@@ -344,19 +362,30 @@ func (q *Queries) InsertReleaseMemories(ctx context.Context, arg InsertReleaseMe
 }
 
 const insertReleaseSealedNeurons = `-- name: InsertReleaseSealedNeurons :exec
-INSERT INTO release_sealed_neurons (release_id, user_id, neuron_id)
-SELECT $1, $2, UNNEST($3::text[])
+INSERT INTO release_sealed_neurons (release_id, user_id, neuron_id, sealed_at)
+SELECT
+    $1,
+    $2,
+    UNNEST($3::text[]),
+    $4
 `
 
 type InsertReleaseSealedNeuronsParams struct {
 	ReleaseID string
 	UserID    string
 	NeuronIds []string
+	SealedAt  pgtype.Timestamptz
 }
 
-// Record the orphan neurons this release sealed.
+// Record only the neurons this release actually changed from unsealed to sealed, together with the
+// exact timestamp that proves ownership of the reversible release-origin effect.
 func (q *Queries) InsertReleaseSealedNeurons(ctx context.Context, arg InsertReleaseSealedNeuronsParams) error {
-	_, err := q.db.Exec(ctx, insertReleaseSealedNeurons, arg.ReleaseID, arg.UserID, arg.NeuronIds)
+	_, err := q.db.Exec(ctx, insertReleaseSealedNeurons,
+		arg.ReleaseID,
+		arg.UserID,
+		arg.NeuronIds,
+		arg.SealedAt,
+	)
 	return err
 }
 
@@ -388,18 +417,21 @@ func (q *Queries) InsertReleaseSynapseDeltas(ctx context.Context, arg InsertRele
 }
 
 const listExclusiveReleaseNeurons = `-- name: ListExclusiveReleaseNeurons :many
-SELECT rsn.neuron_id
-FROM release_sealed_neurons AS rsn
-WHERE rsn.user_id = $1
-  AND rsn.release_id = $2
+SELECT DISTINCT na.neuron_id
+FROM release_memories AS rm
+JOIN neuron_activations AS na
+  ON na.episodic_memory_id = rm.episodic_memory_id
+ AND na.user_id = rm.user_id
+WHERE rm.user_id = $1
+  AND rm.release_id = $2
   AND NOT EXISTS (
     SELECT 1
-    FROM neuron_activations AS na
-    WHERE na.user_id = rsn.user_id
-      AND na.neuron_id = rsn.neuron_id
-      AND na.episodic_memory_id <> ALL($3::text[])
+    FROM neuron_activations AS outside
+    WHERE outside.user_id = rm.user_id
+      AND outside.neuron_id = na.neuron_id
+      AND outside.episodic_memory_id <> ALL($3::text[])
   )
-ORDER BY rsn.neuron_id
+ORDER BY na.neuron_id
 `
 
 type ListExclusiveReleaseNeuronsParams struct {
@@ -408,9 +440,9 @@ type ListExclusiveReleaseNeuronsParams struct {
 	ReleaseMemoryIds []string
 }
 
-// Sweep eligibility: of this release's sealed orphan neurons, the ones NO activation outside the release
-// set references — the exclusive dependents safe to hard-delete. A neuron another memory still activates
-// is spared (conservative — never over-deletes, never a shared neuron).
+// Sweep eligibility starts from every neuron activated by this release's memories, not only the subset
+// this release sealed. That lets the final retained owner clean up a conservatively preserved overlap.
+// A neuron with any activation outside this release set remains owned and is spared.
 func (q *Queries) ListExclusiveReleaseNeurons(ctx context.Context, arg ListExclusiveReleaseNeuronsParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listExclusiveReleaseNeurons, arg.UserID, arg.ReleaseID, arg.ReleaseMemoryIds)
 	if err != nil {
@@ -489,7 +521,7 @@ type ListReleaseMemoriesParams struct {
 	ReleaseID string
 }
 
-// Restore reads: the release's memory ids and the neurons it sealed.
+// Restore reads: the release's memory ids.
 func (q *Queries) ListReleaseMemories(ctx context.Context, arg ListReleaseMemoriesParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listReleaseMemories, arg.UserID, arg.ReleaseID)
 	if err != nil {
@@ -510,76 +542,76 @@ func (q *Queries) ListReleaseMemories(ctx context.Context, arg ListReleaseMemori
 	return items, nil
 }
 
-const listReleaseSealedNeuronTargets = `-- name: ListReleaseSealedNeuronTargets :many
-SELECT n.id, n.representation_revision
-FROM release_sealed_neurons AS rsn
-JOIN neurons AS n
-  ON n.id = rsn.neuron_id
- AND n.user_id = rsn.user_id
-WHERE rsn.user_id = $1
-  AND rsn.release_id = $2
+const listReleaseMemoryNeuronSealFacts = `-- name: ListReleaseMemoryNeuronSealFacts :many
+SELECT
+    n.id,
+    n.representation_revision,
+    (n.sealed_at IS NOT NULL)::boolean AS sealed,
+    EXISTS (
+        SELECT 1
+        FROM release_sealed_neurons AS effect
+        WHERE effect.user_id = n.user_id
+          AND effect.neuron_id = n.id
+    )::boolean AS has_release_effect,
+    EXISTS (
+        SELECT 1
+        FROM release_sealed_neurons AS owner
+        WHERE owner.user_id = n.user_id
+          AND owner.neuron_id = n.id
+          AND owner.sealed_at = n.sealed_at
+    )::boolean AS release_owns_current_seal
+FROM neurons AS n
+WHERE n.user_id = $1
+  AND EXISTS (
+      SELECT 1
+      FROM release_memories AS rm
+      JOIN neuron_activations AS na
+        ON na.episodic_memory_id = rm.episodic_memory_id
+       AND na.user_id = rm.user_id
+      WHERE rm.user_id = n.user_id
+        AND rm.release_id = $2
+        AND na.neuron_id = n.id
+  )
 ORDER BY n.id
+FOR UPDATE OF n
 `
 
-type ListReleaseSealedNeuronTargetsParams struct {
+type ListReleaseMemoryNeuronSealFactsParams struct {
 	UserID    string
 	ReleaseID string
 }
 
-type ListReleaseSealedNeuronTargetsRow struct {
+type ListReleaseMemoryNeuronSealFactsRow struct {
 	ID                     string
 	RepresentationRevision int64
+	Sealed                 bool
+	HasReleaseEffect       bool
+	ReleaseOwnsCurrentSeal bool
 }
 
-// Restore re-embeds the neurons this release unseals. A queued embed may have
-// harmlessly completed while they were sealed, so this current revision set is
-// the durable way to restore equivalent derived state.
-func (q *Queries) ListReleaseSealedNeuronTargets(ctx context.Context, arg ListReleaseSealedNeuronTargetsParams) ([]ListReleaseSealedNeuronTargetsRow, error) {
-	rows, err := q.db.Query(ctx, listReleaseSealedNeuronTargets, arg.UserID, arg.ReleaseID)
+// The pure reclassification facts for every neuron activated by a release's retained memories. The
+// current neuron row is locked after the shared graph advisory lock. `has_release_effect` identifies
+// stale effects to retire; `release_owns_current_seal` is timestamp-fenced so a later permanent LetGo
+// seal is never mistaken for a reversible release seal.
+func (q *Queries) ListReleaseMemoryNeuronSealFacts(ctx context.Context, arg ListReleaseMemoryNeuronSealFactsParams) ([]ListReleaseMemoryNeuronSealFactsRow, error) {
+	rows, err := q.db.Query(ctx, listReleaseMemoryNeuronSealFacts, arg.UserID, arg.ReleaseID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListReleaseSealedNeuronTargetsRow
+	var items []ListReleaseMemoryNeuronSealFactsRow
 	for rows.Next() {
-		var i ListReleaseSealedNeuronTargetsRow
-		if err := rows.Scan(&i.ID, &i.RepresentationRevision); err != nil {
+		var i ListReleaseMemoryNeuronSealFactsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RepresentationRevision,
+			&i.Sealed,
+			&i.HasReleaseEffect,
+			&i.ReleaseOwnsCurrentSeal,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listReleaseSealedNeurons = `-- name: ListReleaseSealedNeurons :many
-SELECT neuron_id
-FROM release_sealed_neurons
-WHERE user_id = $1
-  AND release_id = $2
-ORDER BY neuron_id
-`
-
-type ListReleaseSealedNeuronsParams struct {
-	UserID    string
-	ReleaseID string
-}
-
-func (q *Queries) ListReleaseSealedNeurons(ctx context.Context, arg ListReleaseSealedNeuronsParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, listReleaseSealedNeurons, arg.UserID, arg.ReleaseID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var neuron_id string
-		if err := rows.Scan(&neuron_id); err != nil {
-			return nil, err
-		}
-		items = append(items, neuron_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -605,7 +637,6 @@ WHERE n.user_id = $1
     WHERE other.user_id = n.user_id
       AND other.neuron_id = n.id
       AND other.episodic_memory_id <> $2
-      AND em.deleted_at IS NULL
   )
 ORDER BY n.id
 `
@@ -617,7 +648,7 @@ type ListThisMemoryOnlySemanticNeuronIDsParams struct {
 
 // LetGo's server-side re-validation set ([X6], §2.9#8): the this-memory-only semantic neuron ids,
 // INCLUDING already-sealed ones — so re-approving a neuron this memory already let go is an idempotent
-// no-op, while a shared/foreign/non-semantic id is still absent and rejected. Distinct from the
+// no-op, while a retained-shared/foreign/non-semantic id is still absent and rejected. Distinct from the
 // suggestion read above (which hides sealed neurons — they need no re-suggesting).
 func (q *Queries) ListThisMemoryOnlySemanticNeuronIDs(ctx context.Context, arg ListThisMemoryOnlySemanticNeuronIDsParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, listThisMemoryOnlySemanticNeuronIDs, arg.UserID, arg.MemoryID)
@@ -658,7 +689,6 @@ WHERE n.user_id = $1
     WHERE other.user_id = n.user_id
       AND other.neuron_id = n.id
       AND other.episodic_memory_id <> $2
-      AND em.deleted_at IS NULL
   )
 ORDER BY n.id
 `
@@ -674,7 +704,8 @@ type ListThisMemoryOnlySemanticNeuronsRow struct {
 }
 
 // The this-memory-only semantic candidate set for letting-go ([X4][X6]): unsealed semantic neurons this
-// memory activates that NO OTHER LIVE memory activates. The AI ranks only within this already-safe set;
+// memory activates that NO OTHER RETAINED memory activates. Soft-deleted memories remain owners until
+// Sweep removes them. The AI ranks only within this already-safe set;
 // LetGo re-validates every approved id against it server-side (§2.9#8).
 func (q *Queries) ListThisMemoryOnlySemanticNeurons(ctx context.Context, arg ListThisMemoryOnlySemanticNeuronsParams) ([]ListThisMemoryOnlySemanticNeuronsRow, error) {
 	rows, err := q.db.Query(ctx, listThisMemoryOnlySemanticNeurons, arg.UserID, arg.MemoryID)
@@ -822,7 +853,7 @@ func (q *Queries) ReverseReleaseSynapseDeltas(ctx context.Context, arg ReverseRe
 	return err
 }
 
-const unsealReleaseNeurons = `-- name: UnsealReleaseNeurons :exec
+const unsealReleaseOwnedNeurons = `-- name: UnsealReleaseOwnedNeurons :exec
 UPDATE neurons
 SET sealed_at = NULL
 WHERE user_id = $1
@@ -830,14 +861,13 @@ WHERE user_id = $1
   AND sealed_at IS NOT NULL
 `
 
-type UnsealReleaseNeuronsParams struct {
+type UnsealReleaseOwnedNeuronsParams struct {
 	UserID    string
 	NeuronIds []string
 }
 
-// Restore's unseal: unseal exactly the orphan neurons this release sealed (only the still-sealed ones —
-// idempotent). No other neuron is touched.
-func (q *Queries) UnsealReleaseNeurons(ctx context.Context, arg UnsealReleaseNeuronsParams) error {
-	_, err := q.db.Exec(ctx, unsealReleaseNeurons, arg.UserID, arg.NeuronIds)
+// The pure policy passes only current timestamp-matched release seals here. LetGo seals never enter.
+func (q *Queries) UnsealReleaseOwnedNeurons(ctx context.Context, arg UnsealReleaseOwnedNeuronsParams) error {
+	_, err := q.db.Exec(ctx, unsealReleaseOwnedNeurons, arg.UserID, arg.NeuronIds)
 	return err
 }

@@ -126,11 +126,12 @@ type ReleaseRepo interface {
 // implicitly. It exposes NO Diary UPDATE — the only Diary mutation is the sweep's whole-row
 // delete ([I2]).
 type ReleaseTx interface {
+	GraphMutationLocker
 	// The shared sealing/soft-delete/classification concretes (reused).
 	SoftDeleteDiaryMemories(ctx context.Context, scope platform.UserScope, diaryID string, deletedAt time.Time) ([]string, error)
 	RemovalNeuronIDs(ctx context.Context, scope platform.UserScope, memoryIDs []string, neuronType *NeuronType) ([]string, error)
-	NeuronActivationFacts(ctx context.Context, scope platform.UserScope, neuronIDs []string) ([]NeuronActivationFact, error)
-	SealNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string, sealedAt time.Time) error
+	RetainedNeuronActivationFacts(ctx context.Context, scope platform.UserScope, neuronIDs []string) ([]NeuronActivationFact, error)
+	SealNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string, sealedAt time.Time) ([]string, error)
 	// WeakenSharedContributions is the combined shared-neuron LTD, used by LetGo (which keeps
 	// no ledger). Release uses the delta-returning variant below instead.
 	WeakenSharedContributions(ctx context.Context, scope platform.UserScope, removalNeuronIDs, sharedNeuronIDs []string, amount float64) error
@@ -149,15 +150,18 @@ type ReleaseTx interface {
 	ReleaseGroupForSweep(ctx context.Context, scope platform.UserScope, releaseID string) (ReleaseGroup, bool, error)
 	InsertReleaseGroup(ctx context.Context, scope platform.UserScope, group ReleaseGroup) error
 	RecordReleaseMemories(ctx context.Context, scope platform.UserScope, releaseID string, memoryIDs []string) error
-	RecordReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string, neuronIDs []string) error
+	RecordReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string, neuronIDs []string, sealedAt time.Time) error
 	RecordReleaseSynapseDeltas(ctx context.Context, scope platform.UserScope, releaseID string, deltas []SynapseDelta) error
 
 	// Restore reads + reversal writes.
 	ReleaseMemories(ctx context.Context, scope platform.UserScope, releaseID string) ([]string, error)
-	ReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string) ([]string, error)
-	ReleaseSealedNeuronTargets(ctx context.Context, scope platform.UserScope, releaseID string) ([]JobTarget, error)
 	ClearReleaseMemoriesDeletedAt(ctx context.Context, scope platform.UserScope, memoryIDs []string) error
-	UnsealReleaseNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string) error
+	// ReleaseMemoryNeuronSealFacts locks the current facts for every neuron activated by
+	// this release's memories. The use-case applies the pure reclassification policy before
+	// calling the two narrow writes below.
+	ReleaseMemoryNeuronSealFacts(ctx context.Context, scope platform.UserScope, releaseID string) ([]NeuronSealFact, error)
+	DeleteReleaseNeuronSealEffects(ctx context.Context, scope platform.UserScope, neuronIDs []string) error
+	UnsealReleaseOwnedNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string) error
 	// ReverseReleaseSynapseDeltas adds each recorded LTD amount back to the edge's current strength
 	// atomically (lost-update-safe) — the exact reversal of Release's contribution Depress.
 	ReverseReleaseSynapseDeltas(ctx context.Context, scope platform.UserScope, releaseID string) error
