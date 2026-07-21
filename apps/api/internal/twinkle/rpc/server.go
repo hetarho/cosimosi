@@ -1,7 +1,7 @@
 // Package rpc is the twinkle context's transport adapter: thin Connect handlers
 // that map proto DTOs to domain inputs and call the use-cases (ARCHITECTURE
 // §2.7/§2.9#7). No policy lives here — pricing, spend order, earn reasons,
-// idempotency, and valid-signup all live in the use-case/domain.
+// idempotency, and trusted-claim validation all live in the use-case/domain.
 package rpc
 
 import (
@@ -125,7 +125,14 @@ func domainError(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, twinkle.ErrInsufficientTwinkle):
 		return connect.NewError(connect.CodeResourceExhausted, err)
+	case errors.Is(err, twinkle.ErrPaymentVerificationUnavailable),
+		errors.Is(err, twinkle.ErrInviteResolutionUnavailable):
+		return connect.NewError(connect.CodeUnavailable, err)
+	case errors.Is(err, twinkle.ErrPaymentBeneficiaryMismatch),
+		errors.Is(err, twinkle.ErrInviteBeneficiaryMismatch):
+		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, twinkle.ErrInviteNotEligible),
+		errors.Is(err, twinkle.ErrInviteGrantConflict),
 		errors.Is(err, twinkle.ErrPaymentNotVerified),
 		errors.Is(err, twinkle.ErrQuoteTargetUnavailable):
 		return connect.NewError(connect.CodeFailedPrecondition, err)

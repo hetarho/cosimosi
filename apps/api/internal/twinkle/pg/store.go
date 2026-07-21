@@ -36,6 +36,10 @@ var (
 	// basic spend delta (PlanSpend never produces one; a refund is not a domain operation) —
 	// values that would otherwise wrap through the int32 cast or mint basic silently.
 	ErrDeltaOutOfRange = errors.New("twinkle delta or amount is out of range")
+	// ErrUnexpectedLedgerConflict distinguishes a backend-minted entry-id collision
+	// from the two intentional dedup guards. Treating every ON CONFLICT no-op as a
+	// replay could otherwise drop a legitimate balance delta silently.
+	ErrUnexpectedLedgerConflict = errors.New("twinkle ledger append hit a non-idempotency conflict")
 )
 
 type Store struct {
@@ -200,7 +204,24 @@ func (s Store) AppendLedgerEntry(ctx context.Context, scope platform.UserScope, 
 	if err != nil {
 		return false, err
 	}
-	return affected > 0, nil
+	if affected > 0 {
+		return true, nil
+	}
+	if entry.DedupKey == nil {
+		return false, ErrUnexpectedLedgerConflict
+	}
+	dedupExists, err := s.queries.TwinkleLedgerDedupExists(ctx, dbgen.TwinkleLedgerDedupExistsParams{
+		DedupKey:    pgText(entry.DedupKey),
+		UserID:      scope.UserID(),
+		EntryReason: string(entry.Reason),
+	})
+	if err != nil {
+		return false, err
+	}
+	if !dedupExists {
+		return false, ErrUnexpectedLedgerConflict
+	}
+	return false, nil
 }
 
 func (s Store) ready(scope platform.UserScope) error {

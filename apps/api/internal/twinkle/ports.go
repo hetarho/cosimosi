@@ -10,7 +10,7 @@ import (
 // The earn/spend use-cases' consumer-owned ports (§2.4/§2.9#6). Declared HERE
 // because the twinkle use-cases are the consumers: the ledger store they compose
 // their transactions from, the depth-signal reads a quote prices, the store-payment
-// verifier ([G3]), and the invite valid-signup predicate ([G6]). Domain-shaped in
+// verifier ([G3]), and the trusted invite/signup resolver ([G6]). Domain-shaped in
 // and out — no proto, sqlc, pgx, or SDK type crosses any of them, and no memory
 // type either: depth signals arrive as scalars (§2.2, CC8).
 
@@ -49,34 +49,55 @@ type SpendSignalReader interface {
 	ViewableGistStage(ctx context.Context, scope platform.UserScope, memoryID string) (int, error)
 }
 
-// PaymentReceipt is a store purchase claim as the client hands it over: the pack,
-// the store platform, and the opaque receipt blob the store issued.
-type PaymentReceipt struct {
-	PackID   string
-	Platform string
-	Receipt  string
+// PaymentVerificationRequest is the untrusted purchase material Charge hands to
+// the configured store adapter. BeneficiaryUserID always comes from the
+// authenticated scope, never from the wire request.
+type PaymentVerificationRequest struct {
+	PackID            string
+	Provider          string
+	Receipt           string
+	BeneficiaryUserID string
 }
 
-// VerifiedPayment is a verifier-authenticated grant: the authoritative Twinkle
-// amount the receipt is worth and the idempotency key that makes a replayed
-// receipt credit exactly once.
+// VerifiedPayment is a verifier-authenticated purchase claim. The adapter binds
+// one normalized provider transaction to its provider, catalog pack,
+// authoritative amount, and authenticated beneficiary.
 type VerifiedPayment struct {
-	Amount   int
-	DedupKey string
+	ProviderTransactionID string
+	Provider              string
+	PackID                string
+	Amount                int
+	BeneficiaryUserID     string
 }
 
 // StorePaymentVerifier is the external-service port ([G3], §2.8) Charge consults
-// before crediting anything: only a verified receipt for a known pack carries
-// value. The shipped concrete is the deterministic keyless fake (dev/test); the
-// production store-SDK adapter is a deferred seam behind this same port —
-// production config credits nothing unverified.
+// before crediting anything. Production uses the fail-closed unavailable
+// adapter until a real store adapter is explicitly configured at the composition
+// root.
 type StorePaymentVerifier interface {
-	Verify(ctx context.Context, receipt PaymentReceipt) (VerifiedPayment, error)
+	Verify(ctx context.Context, request PaymentVerificationRequest) (VerifiedPayment, error)
 }
 
-// ValidSignup is the reserved invite anti-abuse seam ([G6]): consulted before
-// either invite side is credited. The shipped binding is the permissive default
-// (a real, distinct signup — DistinctSignup); the concrete criteria (min-activity,
-// device dedup, rate caps) bind behind this same predicate with no change to the
-// invite earn.
-type ValidSignup func(ctx context.Context, inviterID string, inviteeID string) (bool, error)
+// InviteResolutionRequest carries an opaque code plus the authenticated invitee
+// to the account/signup boundary. The invite code is never interpreted as an
+// account id inside the Twinkle context.
+type InviteResolutionRequest struct {
+	InviteCode    string
+	InviteeUserID string
+}
+
+// ResolvedSignup is the trusted signup identity returned only after the outer
+// account adapter has established inviter existence, distinctness, and signup
+// eligibility.
+type ResolvedSignup struct {
+	SignupID      string
+	InviterUserID string
+	InviteeUserID string
+}
+
+// InviteResolver is the consumer-owned account/signup seam ([G6]). Production
+// uses the fail-closed unavailable adapter until a real directory-backed
+// resolver is explicitly configured at the composition root.
+type InviteResolver interface {
+	Resolve(ctx context.Context, request InviteResolutionRequest) (ResolvedSignup, error)
+}

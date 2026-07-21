@@ -60,7 +60,7 @@ basicRemaining)`, overflow to additional, `ok` only when the overflow fits; inpu
 - The curve shapes, clamps, spend order, and the reset-window rule are **code**; only the seven coefficients are
   `spec/values.yaml` (`twinkle.*`).
 
-## 4. Storage (`twinkle_balances` + `twinkle_ledger_entries`, migration 00007)
+## 4. Storage (`twinkle_balances` + `twinkle_ledger_entries`, migrations 00007/00010)
 
 **A balance row + an append-only event log**, not a pure event-sourced ledger: the hot-path read is one PK lookup;
 the log preserves auditability, idempotency, and reconstructability.
@@ -70,7 +70,9 @@ the log preserves auditability, idempotency, and reconstructability.
   authoritative single-writer state (like `universe_state`) — the FE reads, never writes. The daily-grant literal
   never appears in DDL; it arrives at the write as a query argument from the generated constant.
 - `twinkle_ledger_entries` — append-only ([I1]): never `UPDATE`d/`DELETE`d by the system. `UNIQUE (user_id,
-dedup_key)` is the idempotency guard (`NULL` opts out — PG treats NULLs as distinct). Reconstruction invariants
+dedup_key)` is the general idempotency guard (`NULL` opts out — PG treats NULLs as distinct). Migration 00010 adds a
+  partial global unique index on non-null payment keys; its preflight aborts with the duplicate keys when historical
+  cross-user replay exists and never repairs history by mutation. Reconstruction invariants
   are DB-enforced: `CHECK (amount > 0)`, non-negative `from_basic`/`from_additional`, and a spend's amount must
   equal its two-tier split. `kind`/`reason` are TEXT closed sets owned by the domain, not PG enums.
 
@@ -94,9 +96,10 @@ window never rolls the anchor backward (`GREATEST`); a rolled window starts its 
 `ApplyBalanceDelta` is **not** dedup-guarded; `AppendLedgerEntry` is (`false` = already-applied retry). The
 composing use-case appends the dedup-keyed ledger entry **first** in the same transaction and skips the delta when
 the append reports a retry — that pairing is what makes a retried earn/spend idempotent end to end. The dedup keys
-are use-case policy: `write_diary:<diaryID>` (once per diary), `invite_signup:<inviteeID>` (once per signup, the
-invitee side — a replay skips the inviter side too), `invite:<inviterID>:<inviteeID>` (once per pair, the inviter
-side), and the verifier-returned key for payments. Spends carry no dedup key (each recall/view is a new event).
+are use-case policy: `write_diary:<diaryID>` (once per diary), `invite_signup:<signupID>` (invitee side),
+`invite:<signupID>` (inviter side), and a `payment:` key derived from the normalized provider + provider transaction
+identity. Payment keys are globally single-use; other keys remain user-scoped. Spends carry no dedup key (each
+recall/view is a new event).
 `ErrBasicGrantExceeded` wraps the canonical `twinkle.ErrInsufficientTwinkle`: a raced basic overdraw surfaces to the
 caller as not-enough-twinkle at the true window state.
 
@@ -109,15 +112,14 @@ caller as not-enough-twinkle at the true window state.
   seam); `nil` runs the spend in its own `InLedgerTx` (the tx-less gist view). A zero-priced intent writes nothing.
 - **`EarnOnWrite(scope, ledger, diaryID)`** — the write grant, `twinkle.earn_write` to additional, dedup-keyed per
   diary; requires the launch's transaction-bound store (`ErrEarnTxRequired` otherwise).
-- **`ClaimInvite(scope, inviteCode)`** — the invite code **is the inviter's user id** (share links carry it; no
-  invite-code table exists — resolution is identity). Consults the `ValidSignup` predicate (permissive default
-  `DistinctSignup`: non-empty, distinct pair), then credits invitee + inviter in one `InLedgerTx` under the two-layer
-  dedup keys above. Replay (same or different code) returns the same balance, credits no one.
-- **`Charge(scope, packID, platform, receipt)`** — `StorePaymentVerifier.Verify` first; only a verified receipt for
-  a known pack credits `ReasonPayment` by the verifier's amount under the verifier's dedup key. The shipped verifier
-  is the deterministic `KeylessPaymentVerifier` (accepts only `DefaultChargePackID` with a non-empty receipt; key =
-  sha256 of the receipt) — the §2.8 keyless-mock posture; **the production store-SDK adapter is a deferred seam
-  behind the same port and must be bound before real payments launch**.
+- **`ClaimInvite(scope, inviteCode)`** — passes the opaque code and authenticated invitee to `InviteResolver`; only a
+  trusted result binding one signup identity, an existing distinct inviter, and that invitee can credit. Both sides
+  derive keys from the signup identity and commit atomically. `UnavailableInviteResolver` is the production default,
+  so raw/fabricated account ids carry no value.
+- **`Charge(scope, packID, provider, receipt)`** — asks `StorePaymentVerifier` for a trusted claim and validates its
+  normalized provider transaction identity, provider, known pack, exact catalog amount, and authenticated beneficiary.
+  The opaque receipt never becomes a ledger key or an error detail. `UnavailablePaymentVerifier` is the production
+  default until a real store adapter is explicitly bound at `cmd/api`.
 - **`GetBalance(scope)`** / **`QuoteSpend(scope, kind, targetID)`** — read-only: derive the balance (lazy-birth
   default for an absent row, no write, no window roll); the quote resolves its depth signal through the
   `SpendSignalReader` port, prices with the same curves, and returns `{cost, covered, shortfall}` (diary-recall =
@@ -145,8 +147,9 @@ never drift the action's price from its quote.
 ## 5. Per-user isolation (§4)
 
 Both tables carry `user_id`; every query filters by it; every store method requires a non-empty
-`platform.UserScope` (`ErrUserScopeRequired`). The ledger dedup key is scoped per user — two users may reuse the
-same key. `pnpm lint:persistence` enforces the query scoping.
+`platform.UserScope` (`ErrUserScopeRequired`). Product reads/writes remain user-scoped; the one deliberate global
+constraint is the partial unique payment-key index, because a provider transaction cannot belong to two users.
+`pnpm lint:persistence` enforces query scoping.
 
 ## 6. Values (`spec/values.yaml` → `twinkle.*`)
 

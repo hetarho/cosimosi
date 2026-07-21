@@ -2,6 +2,8 @@ package twinkle
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -15,15 +17,15 @@ import (
 // pure ledger model in ledger.go: the real SpendGate the recall/gist-view
 // consumers call ([CC2][G1]), the three earn paths (write / invite / verified
 // payment, [G3]), the balance read, and the server quote ([G4]). Every policy —
-// pricing, spend order, earn reasons, idempotency, valid-signup — lives here or in
+// pricing, spend order, earn reasons, idempotency, and trusted-claim validation — lives here or in
 // the pure domain, never in a handler (§2.9#7). There is deliberately NO
 // login/attendance earn path ([G3]): the daily basic reset is that role.
 
 var (
-	ErrLedgerRequired      = errors.New("twinkle service requires a ledger repo")
-	ErrVerifierRequired    = errors.New("twinkle service requires a store payment verifier")
-	ErrValidSignupRequired = errors.New("twinkle service requires a valid-signup predicate")
-	ErrSignalsRequired     = errors.New("twinkle service requires a spend-signal reader")
+	ErrLedgerRequired         = errors.New("twinkle service requires a ledger repo")
+	ErrVerifierRequired       = errors.New("twinkle service requires a store payment verifier")
+	ErrInviteResolverRequired = errors.New("twinkle service requires an invite resolver")
+	ErrSignalsRequired        = errors.New("twinkle service requires a spend-signal reader")
 	// ErrScopeRequired mirrors the transport guard: every derivation, quote, earn,
 	// and spend is scoped to an authenticated user (§4).
 	ErrScopeRequired = errors.New("twinkle requires an authenticated user scope")
@@ -37,14 +39,17 @@ var (
 	// ErrSpendIntentInvalid rejects a SpendIntent whose reason is not a spend
 	// reason — a composition fault, not a user input.
 	ErrSpendIntentInvalid = errors.New("twinkle spend intent carries no spendable reason")
-	// ErrInviteInputRequired / ErrInviteNotEligible are the invite claim's canonical
-	// refusals: an empty code, and a pair the valid-signup predicate declines ([G6]).
-	ErrInviteInputRequired = errors.New("invite claim requires an invite code")
-	ErrInviteNotEligible   = errors.New("invite claim is not an eligible signup")
-	// ErrChargeInputRequired / ErrPaymentNotVerified guard the payment path ([G3]):
-	// nothing credits without a verified receipt for a known pack.
-	ErrChargeInputRequired = errors.New("charge requires a pack, platform, and receipt")
-	ErrPaymentNotVerified  = errors.New("store payment receipt is not verified")
+	// Invite refusals reveal no account-directory detail to the transport.
+	ErrInviteInputRequired         = errors.New("invite claim requires an invite code")
+	ErrInviteResolutionUnavailable = errors.New("invite verification is unavailable")
+	ErrInviteBeneficiaryMismatch   = errors.New("invite claim beneficiary does not match the authenticated user")
+	ErrInviteNotEligible           = errors.New("invite claim is not an eligible signup")
+	ErrInviteGrantConflict         = errors.New("invite signup grant is inconsistent with existing ledger state")
+	// Payment refusals reveal no provider or receipt detail to the transport.
+	ErrChargeInputRequired            = errors.New("charge requires a pack, provider, and receipt")
+	ErrPaymentVerificationUnavailable = errors.New("store payment verification is unavailable")
+	ErrPaymentBeneficiaryMismatch     = errors.New("payment beneficiary does not match the authenticated user")
+	ErrPaymentNotVerified             = errors.New("store payment transaction is not verified")
 	// ErrQuoteInputRequired rejects a quote without a kind and its target id.
 	ErrQuoteInputRequired = errors.New("spend quote requires a kind and a target id")
 	// ErrQuoteTargetNotFound / ErrQuoteTargetUnavailable are the canonical quote-target
@@ -93,20 +98,19 @@ type Quote struct {
 // Service owns the earn/spend use-cases. All concretes arrive through the
 // consumer-owned ports; cross-context signals arrive as scalars (CC8).
 type Service struct {
-	ledger      LedgerRepo
-	verifier    StorePaymentVerifier
-	validSignup ValidSignup
-	signals     SpendSignalReader
-	now         func() time.Time
-	newID       func() string
+	ledger         LedgerRepo
+	verifier       StorePaymentVerifier
+	inviteResolver InviteResolver
+	signals        SpendSignalReader
+	now            func() time.Time
+	newID          func() string
 }
 
 type ServiceDeps struct {
-	Ledger   LedgerRepo
-	Verifier StorePaymentVerifier
-	// ValidSignup is the [G6] seam; bind DistinctSignup for the permissive default.
-	ValidSignup ValidSignup
-	Signals     SpendSignalReader
+	Ledger         LedgerRepo
+	Verifier       StorePaymentVerifier
+	InviteResolver InviteResolver
+	Signals        SpendSignalReader
 	// Now/NewID are test seams; nil selects the real UTC clock and the platform id.
 	Now   func() time.Time
 	NewID func() string
@@ -119,19 +123,19 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Verifier == nil {
 		return nil, ErrVerifierRequired
 	}
-	if deps.ValidSignup == nil {
-		return nil, ErrValidSignupRequired
+	if deps.InviteResolver == nil {
+		return nil, ErrInviteResolverRequired
 	}
 	if deps.Signals == nil {
 		return nil, ErrSignalsRequired
 	}
 	service := &Service{
-		ledger:      deps.Ledger,
-		verifier:    deps.Verifier,
-		validSignup: deps.ValidSignup,
-		signals:     deps.Signals,
-		now:         deps.Now,
-		newID:       deps.NewID,
+		ledger:         deps.Ledger,
+		verifier:       deps.Verifier,
+		inviteResolver: deps.InviteResolver,
+		signals:        deps.Signals,
+		now:            deps.Now,
+		newID:          deps.NewID,
 	}
 	if service.now == nil {
 		service.now = func() time.Time { return time.Now().UTC() }
@@ -245,28 +249,36 @@ func (s *Service) EarnOnWrite(ctx context.Context, scope platform.UserScope, led
 	return err
 }
 
-// ClaimInvite credits both invite sides on a valid signup ([G3][G6]): the invitee
-// (the authenticated caller redeeming a code) and the inviter the code resolves to.
-// The invite code IS the inviter's user id — share links carry it; there is no
-// invite-code table (the ledger pair is the economy's whole schema), so resolution
-// is identity. Idempotency is two-layered: the invitee-side entry is keyed
-// once-per-signup (a second claim by the same account — same or different code —
-// is a replay and credits no one), and the inviter-side entry is keyed per
-// (inviter, invitee), so a single signup credits each side exactly once. Replay
-// returns the same balance.
+// ClaimInvite resolves the opaque code through the trusted account/signup seam
+// before opening the atomic ledger transaction. Only the returned signup identity
+// and account ids participate in validation and deduplication; caller-shaped ids
+// never carry value.
 func (s *Service) ClaimInvite(ctx context.Context, scope platform.UserScope, inviteCode string) (Balance, error) {
 	if scope.UserID() == "" {
 		return Balance{}, ErrScopeRequired
 	}
-	inviterID := strings.TrimSpace(inviteCode)
-	if inviterID == "" {
+	code := strings.TrimSpace(inviteCode)
+	if code == "" {
 		return Balance{}, ErrInviteInputRequired
 	}
-	valid, err := s.validSignup(ctx, inviterID, scope.UserID())
+	resolved, err := s.inviteResolver.Resolve(ctx, InviteResolutionRequest{
+		InviteCode:    code,
+		InviteeUserID: scope.UserID(),
+	})
 	if err != nil {
-		return Balance{}, err
+		if errors.Is(err, ErrInviteResolutionUnavailable) {
+			return Balance{}, ErrInviteResolutionUnavailable
+		}
+		return Balance{}, ErrInviteNotEligible
 	}
-	if !valid {
+	signupID := resolved.SignupID
+	inviterID := resolved.InviterUserID
+	inviteeID := resolved.InviteeUserID
+	if inviteeID != scope.UserID() {
+		return Balance{}, ErrInviteBeneficiaryMismatch
+	}
+	if !isCanonicalClaimID(signupID) || !isCanonicalClaimID(inviterID) ||
+		!isCanonicalClaimID(inviteeID) || inviterID == inviteeID {
 		return Balance{}, ErrInviteNotEligible
 	}
 	inviterScope, err := platform.NewUserScope(inviterID)
@@ -274,18 +286,65 @@ func (s *Service) ClaimInvite(ctx context.Context, scope platform.UserScope, inv
 		return Balance{}, ErrInviteInputRequired
 	}
 	err = s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
-		applied, err := s.earn(ctx, scope, tx, ReasonInvite, values.TwinkleEarnInviteInvitee,
-			"invite_signup:"+scope.UserID())
+		inviteeApplied, err := s.earn(ctx, scope, tx, ReasonInvite, values.TwinkleEarnInviteInvitee,
+			"invite_signup:"+signupID)
 		if err != nil {
 			return err
 		}
-		if !applied {
-			// The signup was already claimed — the whole claim is a replay, so the
-			// inviter side is skipped too (exactly once per signup, both sides).
-			return nil
+		inviterApplied, err := s.earn(ctx, inviterScope, tx, ReasonInvite, values.TwinkleEarnInviteInviter,
+			"invite:"+signupID)
+		if err != nil {
+			return err
 		}
-		_, err = s.earn(ctx, inviterScope, tx, ReasonInvite, values.TwinkleEarnInviteInviter,
-			"invite:"+inviterID+":"+scope.UserID())
+		if inviteeApplied != inviterApplied {
+			return ErrInviteGrantConflict
+		}
+		return nil
+	})
+	if err != nil {
+		return Balance{}, err
+	}
+	return s.GetBalance(ctx, scope)
+}
+
+// Charge credits only a verifier-authenticated claim bound to the current user,
+// provider, known pack, authoritative amount, and normalized provider transaction.
+// The transaction identity, not the opaque receipt, derives the global dedup key.
+func (s *Service) Charge(ctx context.Context, scope platform.UserScope, packID string, provider string, receipt string) (Balance, error) {
+	if scope.UserID() == "" {
+		return Balance{}, ErrScopeRequired
+	}
+	requestedPack := strings.TrimSpace(packID)
+	requestedProvider := normalizePaymentProvider(provider)
+	if requestedPack == "" || requestedProvider == "" || strings.TrimSpace(receipt) == "" {
+		return Balance{}, ErrChargeInputRequired
+	}
+	verified, err := s.verifier.Verify(ctx, PaymentVerificationRequest{
+		PackID:            requestedPack,
+		Provider:          requestedProvider,
+		Receipt:           receipt,
+		BeneficiaryUserID: scope.UserID(),
+	})
+	if err != nil {
+		if errors.Is(err, ErrPaymentVerificationUnavailable) {
+			return Balance{}, ErrPaymentVerificationUnavailable
+		}
+		return Balance{}, ErrPaymentNotVerified
+	}
+	if verified.BeneficiaryUserID != scope.UserID() {
+		return Balance{}, ErrPaymentBeneficiaryMismatch
+	}
+	verifiedProvider := normalizePaymentProvider(verified.Provider)
+	transactionID := strings.TrimSpace(verified.ProviderTransactionID)
+	if verifiedProvider == "" || verifiedProvider != requestedProvider ||
+		transactionID == "" || transactionID != verified.ProviderTransactionID ||
+		verified.PackID != requestedPack || verified.PackID != DefaultChargePackID ||
+		verified.Amount != values.TwinkleChargePack {
+		return Balance{}, ErrPaymentNotVerified
+	}
+	dedupKey := paymentTransactionKey(verifiedProvider, transactionID)
+	err = s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+		_, err := s.earn(ctx, scope, tx, ReasonPayment, verified.Amount, dedupKey)
 		return err
 	})
 	if err != nil {
@@ -294,33 +353,17 @@ func (s *Service) ClaimInvite(ctx context.Context, scope platform.UserScope, inv
 	return s.GetBalance(ctx, scope)
 }
 
-// Charge is the payment earn ([G3]): verify the store receipt through the
-// StorePaymentVerifier port first, and only a verified receipt credits additional
-// balance — by the verifier-returned authoritative amount, idempotent per the
-// verifier-returned key, so a replayed receipt credits exactly once. No
-// verification, no value.
-func (s *Service) Charge(ctx context.Context, scope platform.UserScope, packID string, platformName string, receipt string) (Balance, error) {
-	if scope.UserID() == "" {
-		return Balance{}, ErrScopeRequired
-	}
-	if strings.TrimSpace(packID) == "" || strings.TrimSpace(platformName) == "" || strings.TrimSpace(receipt) == "" {
-		return Balance{}, ErrChargeInputRequired
-	}
-	verified, err := s.verifier.Verify(ctx, PaymentReceipt{PackID: packID, Platform: platformName, Receipt: receipt})
-	if err != nil {
-		return Balance{}, err
-	}
-	if verified.Amount <= 0 || verified.DedupKey == "" {
-		return Balance{}, ErrPaymentNotVerified
-	}
-	err = s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
-		_, err := s.earn(ctx, scope, tx, ReasonPayment, verified.Amount, verified.DedupKey)
-		return err
-	})
-	if err != nil {
-		return Balance{}, err
-	}
-	return s.GetBalance(ctx, scope)
+func normalizePaymentProvider(provider string) string {
+	return strings.ToLower(strings.TrimSpace(provider))
+}
+
+func isCanonicalClaimID(value string) bool {
+	return value != "" && value == strings.TrimSpace(value)
+}
+
+func paymentTransactionKey(provider string, transactionID string) string {
+	digest := sha256.Sum256([]byte(fmt.Sprintf("%d:%s%s", len(provider), provider, transactionID)))
+	return "payment:" + hex.EncodeToString(digest[:])
 }
 
 // QuoteSpend is CheckAndSpend's read-only twin ([G4]): resolve the authoritative

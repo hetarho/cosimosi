@@ -121,6 +121,27 @@ func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	}
 }
 
+func TestProductionTwinkleExternalEarnsFailClosedWithoutAdapters(t *testing.T) {
+	pool := openEconomyTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userID := fmt.Sprintf("test-economy-%d-trust", time.Now().UnixNano())
+	cleanupEconomyTestRows(t, pool, userID)
+	scope := economyScope(t, userID)
+	service := economyTwinkleService(t, pool)
+
+	if _, err := service.Charge(ctx, scope, twinkle.DefaultChargePackID, "app-store", "arbitrary-non-empty-receipt"); !errors.Is(err, twinkle.ErrPaymentVerificationUnavailable) {
+		t.Fatalf("Charge err = %v, want ErrPaymentVerificationUnavailable", err)
+	}
+	if _, err := service.ClaimInvite(ctx, scope, "fabricated-account-id"); !errors.Is(err, twinkle.ErrInviteResolutionUnavailable) {
+		t.Fatalf("ClaimInvite err = %v, want ErrInviteResolutionUnavailable", err)
+	}
+	if rows := countLedgerRows(t, pool, userID); rows != 0 {
+		t.Fatalf("external earn ledger rows = %d, want 0 while adapters are unavailable", rows)
+	}
+}
+
 func economyTwinkleService(t *testing.T, pool *platformdb.Pool) *twinkle.Service {
 	t.Helper()
 	service, err := newTwinkleService(pool, &memorySpendSignals{})

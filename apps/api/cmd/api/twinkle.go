@@ -26,17 +26,15 @@ import (
 // cannot bind a ledger store to — never a client mistake.
 var errEconomyTxUnusable = errors.New("economy tx does not expose a database handle")
 
-// newTwinkleService builds the twinkle context over the shared pool: the ledger
-// repo, the keyless payment verifier (§2.8 — the production store-SDK adapter is a
-// deferred seam behind the same port; nothing credits unverified), the permissive
-// valid-signup default ([G6]), and the spend-signal reader bound to memory's
-// published reads after the memory service exists.
+// newTwinkleService builds the twinkle context over the shared pool. External earn
+// paths stay fail-closed until real store and account/signup adapters are
+// explicitly selected here; write earns and metered spends remain available.
 func newTwinkleService(pool *platformdb.Pool, signals *memorySpendSignals) (*twinkle.Service, error) {
 	return twinkle.NewService(twinkle.ServiceDeps{
-		Ledger:      twinklepg.NewStore(pool.PgxPool()),
-		Verifier:    twinkle.KeylessPaymentVerifier{},
-		ValidSignup: twinkle.DistinctSignup,
-		Signals:     signals,
+		Ledger:         twinklepg.NewStore(pool.PgxPool()),
+		Verifier:       twinkle.UnavailablePaymentVerifier{},
+		InviteResolver: twinkle.UnavailableInviteResolver{},
+		Signals:        signals,
 	})
 }
 

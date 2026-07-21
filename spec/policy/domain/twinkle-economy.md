@@ -44,14 +44,14 @@ derivation and is never earned:
 - **Write** — `twinkle.earn_write` once **per launched diary** (not per memory, so splitting a diary into more
   memories inflates nothing), granted inside the launch transaction; a past-dated diary that launches no episodic
   memory earns nothing (the grant rides the monotonic launch guard, [I10]).
-- **Invite** — on a **valid signup**, the inviter earns `twinkle.earn_invite_inviter` and the new friend
-  `twinkle.earn_invite_invitee`, each **exactly once per signup**: a signup is claimable once (any code), and the
-  (inviter, invitee) pair credits once. The invite code is the inviter's user id; self-invite is refused. The
-  concrete anti-abuse criteria are a **reserved seam** ([G6]) behind the `valid-signup` predicate — its permissive
-  default (a real, distinct signup) tightens later with no change to the invite earn.
-- **Payment** — `Charge` credits only after the store receipt is **verified** through the payment-verifier port; the
-  verifier's amount and idempotency key are authoritative, so a replayed receipt credits exactly once. No
-  verification, no value.
+- **Invite** — an opaque invite code carries no value by itself. A trusted account/signup resolver must bind one
+  eligible signup identity to an existing distinct inviter and the authenticated invitee. Both sides then credit
+  atomically and exactly once for that trusted identity; resolver unavailability, invalidity, dedup conflict, or
+  persistence failure credits neither side. Concrete anti-abuse criteria remain behind the resolver ([G6]).
+- **Payment** — `Charge` credits only from a store-verifier claim binding the normalized provider transaction,
+  provider, known pack, authoritative amount, and authenticated beneficiary. A provider transaction is globally
+  single-use across users. No configured verifier means an explicit unavailable refusal; arbitrary receipt text can
+  never mint Twinkle.
 
 **The spend is a consequence of the memory action, never a separate step**: recall and gist-view hand the gate a
 `SpendIntent` (kind + depth signal — **never a price**); the gate prices it via the cost curves, checks the balance,

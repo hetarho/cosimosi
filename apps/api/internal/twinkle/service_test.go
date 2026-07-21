@@ -19,11 +19,12 @@ import (
 // InLedgerTx semantics — so the use-case tests assert the same behavior the
 // integration store enforces.
 type fakeLedger struct {
-	records map[string]BalanceRecord
-	born    map[string]bool
-	entries []recordedEntry
-	txCount int
-	writes  int
+	records           map[string]BalanceRecord
+	born              map[string]bool
+	entries           []recordedEntry
+	failAppendForUser string
+	txCount           int
+	writes            int
 }
 
 type recordedEntry struct {
@@ -80,9 +81,15 @@ func (f *fakeLedger) AppendLedgerEntry(_ context.Context, scope platform.UserSco
 		return false, errors.New("scope missing")
 	}
 	f.writes++
+	if scope.UserID() == f.failAppendForUser {
+		return false, errors.New("injected ledger append failure")
+	}
 	if entry.DedupKey != nil {
 		for _, existing := range f.entries {
-			if existing.userID == scope.UserID() && existing.entry.DedupKey != nil && *existing.entry.DedupKey == *entry.DedupKey {
+			if existing.entry.DedupKey == nil || *existing.entry.DedupKey != *entry.DedupKey {
+				continue
+			}
+			if existing.userID == scope.UserID() || entry.Reason == ReasonPayment {
 				return false, nil
 			}
 		}
@@ -103,8 +110,9 @@ func (f *fakeLedger) InLedgerTx(ctx context.Context, fn func(tx LedgerStore) err
 		born[user] = wasBorn
 	}
 	entries := append([]recordedEntry(nil), f.entries...)
+	writes := f.writes
 	if err := fn(f); err != nil {
-		f.records, f.born, f.entries = records, born, entries
+		f.records, f.born, f.entries, f.writes = records, born, entries, writes
 		return err
 	}
 	return nil
@@ -148,12 +156,54 @@ func (f *fakeSignals) ViewableGistStage(_ context.Context, _ platform.UserScope,
 	return f.gist[memoryID], nil
 }
 
+type strictPaymentVerifier struct {
+	claims map[string]VerifiedPayment
+	err    error
+	calls  int
+}
+
+func (v *strictPaymentVerifier) Verify(_ context.Context, request PaymentVerificationRequest) (VerifiedPayment, error) {
+	v.calls++
+	if v.err != nil {
+		return VerifiedPayment{}, v.err
+	}
+	claim, ok := v.claims[request.Receipt]
+	if !ok {
+		return VerifiedPayment{}, ErrPaymentNotVerified
+	}
+	return claim, nil
+}
+
+type strictInviteResolver struct {
+	claims map[string]ResolvedSignup
+	err    error
+	calls  int
+}
+
+func inviteResolutionKey(code string, inviteeID string) string {
+	return code + "\x00" + inviteeID
+}
+
+func (r *strictInviteResolver) Resolve(_ context.Context, request InviteResolutionRequest) (ResolvedSignup, error) {
+	r.calls++
+	if r.err != nil {
+		return ResolvedSignup{}, r.err
+	}
+	claim, ok := r.claims[inviteResolutionKey(request.InviteCode, request.InviteeUserID)]
+	if !ok {
+		return ResolvedSignup{}, ErrInviteNotEligible
+	}
+	return claim, nil
+}
+
 // --- fixture -----------------------------------------------------------------
 
 type twinkleFixture struct {
-	ledger  *fakeLedger
-	signals *fakeSignals
-	service *Service
+	ledger   *fakeLedger
+	signals  *fakeSignals
+	verifier *strictPaymentVerifier
+	resolver *strictInviteResolver
+	service  *Service
 }
 
 func twinkleNow() time.Time { return time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC) }
@@ -163,16 +213,18 @@ func twinkleToday() time.Time { return time.Date(2026, 7, 14, 0, 0, 0, 0, time.U
 func newTwinkleFixture(t *testing.T) *twinkleFixture {
 	t.Helper()
 	fixture := &twinkleFixture{
-		ledger:  newFakeLedger(),
-		signals: &fakeSignals{recall: map[string]float64{}, gist: map[string]int{}, diary: map[string][]float64{}},
+		ledger:   newFakeLedger(),
+		signals:  &fakeSignals{recall: map[string]float64{}, gist: map[string]int{}, diary: map[string][]float64{}},
+		verifier: &strictPaymentVerifier{claims: map[string]VerifiedPayment{}},
+		resolver: &strictInviteResolver{claims: map[string]ResolvedSignup{}},
 	}
 	ids := 0
 	service, err := NewService(ServiceDeps{
-		Ledger:      fixture.ledger,
-		Verifier:    KeylessPaymentVerifier{},
-		ValidSignup: DistinctSignup,
-		Signals:     fixture.signals,
-		Now:         twinkleNow,
+		Ledger:         fixture.ledger,
+		Verifier:       fixture.verifier,
+		InviteResolver: fixture.resolver,
+		Signals:        fixture.signals,
+		Now:            twinkleNow,
 		NewID: func() string {
 			ids++
 			return fmt.Sprintf("entry-%d", ids)
@@ -436,8 +488,11 @@ func TestClaimInviteCreditsBothSidesExactlyOnce(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	invitee := twinkleScope(t, "friend-1")
+	trusted := ResolvedSignup{SignupID: "signup-1", InviterUserID: "inviter-1", InviteeUserID: "friend-1"}
+	fixture.resolver.claims[inviteResolutionKey("opaque-code-1", "friend-1")] = trusted
+	fixture.resolver.claims[inviteResolutionKey("opaque-code-2", "friend-1")] = trusted
 
-	balance, err := fixture.service.ClaimInvite(context.Background(), invitee, "inviter-1")
+	balance, err := fixture.service.ClaimInvite(context.Background(), invitee, "opaque-code-1")
 	if err != nil {
 		t.Fatalf("ClaimInvite failed: %v", err)
 	}
@@ -450,7 +505,7 @@ func TestClaimInviteCreditsBothSidesExactlyOnce(t *testing.T) {
 	}
 
 	// A replayed claim is a no-op returning the same total.
-	replay, err := fixture.service.ClaimInvite(context.Background(), invitee, "inviter-1")
+	replay, err := fixture.service.ClaimInvite(context.Background(), invitee, "opaque-code-1")
 	if err != nil {
 		t.Fatalf("ClaimInvite replay failed: %v", err)
 	}
@@ -459,24 +514,50 @@ func TestClaimInviteCreditsBothSidesExactlyOnce(t *testing.T) {
 	}
 	// A second claim with a DIFFERENT code is still the same signup — no side
 	// credits again ([G3] exactly once per signup).
-	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "inviter-2"); err != nil {
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "opaque-code-2"); err != nil {
 		t.Fatalf("ClaimInvite(other code) failed: %v", err)
 	}
 	if len(fixture.ledger.userEntries("friend-1")) != 1 {
 		t.Fatal("the invitee earned twice across two codes — the signup must credit once")
 	}
-	if len(fixture.ledger.userEntries("inviter-2")) != 0 {
-		t.Fatal("a second inviter was credited for an already-claimed signup")
-	}
 }
 
-func TestClaimInviteRefusesSelfInviteAndEmptyCode(t *testing.T) {
+func TestClaimInviteRefusesUntrustedAndMismatchedClaims(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	invitee := twinkleScope(t, "user-1")
+	fixture.resolver.claims[inviteResolutionKey("self-code", "user-1")] = ResolvedSignup{
+		SignupID: "signup-self", InviterUserID: "user-1", InviteeUserID: "user-1",
+	}
+	fixture.resolver.claims[inviteResolutionKey("wrong-beneficiary", "user-1")] = ResolvedSignup{
+		SignupID: "signup-other", InviterUserID: "inviter-1", InviteeUserID: "user-2",
+	}
+	fixture.resolver.claims[inviteResolutionKey("padded-beneficiary", "user-1")] = ResolvedSignup{
+		SignupID: "signup-padded-beneficiary", InviterUserID: "inviter-1", InviteeUserID: " user-1 ",
+	}
+	fixture.resolver.claims[inviteResolutionKey("padded-inviter", "user-1")] = ResolvedSignup{
+		SignupID: "signup-padded-inviter", InviterUserID: " inviter-1 ", InviteeUserID: "user-1",
+	}
+	fixture.resolver.claims[inviteResolutionKey("padded-signup", "user-1")] = ResolvedSignup{
+		SignupID: " signup-padded ", InviterUserID: "inviter-1", InviteeUserID: "user-1",
+	}
 
-	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "user-1"); !errors.Is(err, ErrInviteNotEligible) {
-		t.Fatalf("self-invite err = %v, want ErrInviteNotEligible (the permissive default refuses it)", err)
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "self-code"); !errors.Is(err, ErrInviteNotEligible) {
+		t.Fatalf("self-invite err = %v, want ErrInviteNotEligible", err)
+	}
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "wrong-beneficiary"); !errors.Is(err, ErrInviteBeneficiaryMismatch) {
+		t.Fatalf("beneficiary mismatch err = %v, want ErrInviteBeneficiaryMismatch", err)
+	}
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "padded-beneficiary"); !errors.Is(err, ErrInviteBeneficiaryMismatch) {
+		t.Fatalf("padded beneficiary err = %v, want ErrInviteBeneficiaryMismatch", err)
+	}
+	for _, code := range []string{"padded-inviter", "padded-signup"} {
+		if _, err := fixture.service.ClaimInvite(context.Background(), invitee, code); !errors.Is(err, ErrInviteNotEligible) {
+			t.Fatalf("%s err = %v, want ErrInviteNotEligible", code, err)
+		}
+	}
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "user-2"); !errors.Is(err, ErrInviteNotEligible) {
+		t.Fatalf("raw/nonexistent inviter err = %v, want ErrInviteNotEligible", err)
 	}
 	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "  "); !errors.Is(err, ErrInviteInputRequired) {
 		t.Fatalf("empty code err = %v, want ErrInviteInputRequired", err)
@@ -486,14 +567,86 @@ func TestClaimInviteRefusesSelfInviteAndEmptyCode(t *testing.T) {
 	}
 }
 
+func TestClaimInviteAdapterAndTransactionFailuresCreditNeitherSide(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	invitee := twinkleScope(t, "friend-1")
+
+	fixture.resolver.err = errors.New("directory detail that must stay private")
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "opaque"); !errors.Is(err, ErrInviteNotEligible) || strings.Contains(err.Error(), "directory detail") {
+		t.Fatalf("resolver failure err = %v, want sanitized ErrInviteNotEligible", err)
+	}
+	fixture.resolver.err = nil
+	fixture.resolver.claims[inviteResolutionKey("opaque", "friend-1")] = ResolvedSignup{
+		SignupID: "signup-1", InviterUserID: "inviter-1", InviteeUserID: "friend-1",
+	}
+	fixture.ledger.failAppendForUser = "inviter-1"
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "opaque"); err == nil {
+		t.Fatal("injected inviter persistence failure succeeded")
+	}
+	if len(fixture.ledger.entries) != 0 || fixture.ledger.born["friend-1"] || fixture.ledger.born["inviter-1"] {
+		t.Fatal("a failed atomic invite grant left a one-sided balance or ledger entry")
+	}
+}
+
+func TestClaimInviteRollsBackWhenOnlyTheInviterDedupKeyAlreadyExists(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	invitee := twinkleScope(t, "friend-1")
+	inviter := twinkleScope(t, "inviter-1")
+	fixture.resolver.claims[inviteResolutionKey("opaque", "friend-1")] = ResolvedSignup{
+		SignupID: "signup-1", InviterUserID: "inviter-1", InviteeUserID: "friend-1",
+	}
+	staleKey := "invite:signup-1"
+	fixture.ledger.entries = append(fixture.ledger.entries, recordedEntry{
+		userID: inviter.UserID(),
+		entry:  LedgerEntry{ID: "historical", Kind: EntryKindEarn, Reason: ReasonInvite, Amount: 1, DedupKey: &staleKey},
+	})
+
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "opaque"); !errors.Is(err, ErrInviteGrantConflict) {
+		t.Fatalf("ClaimInvite err = %v, want ErrInviteGrantConflict", err)
+	}
+	if len(fixture.ledger.userEntries("friend-1")) != 0 || fixture.ledger.born["friend-1"] {
+		t.Fatal("an inconsistent inviter dedup conflict left a one-sided invitee grant")
+	}
+}
+
+func TestClaimInviteRejectsWhenOnlyTheInviteeDedupKeyAlreadyExists(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	invitee := twinkleScope(t, "friend-1")
+	fixture.resolver.claims[inviteResolutionKey("opaque", "friend-1")] = ResolvedSignup{
+		SignupID: "signup-1", InviterUserID: "inviter-1", InviteeUserID: "friend-1",
+	}
+	staleKey := "invite_signup:signup-1"
+	fixture.ledger.entries = append(fixture.ledger.entries, recordedEntry{
+		userID: invitee.UserID(),
+		entry:  LedgerEntry{ID: "historical", Kind: EntryKindEarn, Reason: ReasonInvite, Amount: 1, DedupKey: &staleKey},
+	})
+
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "opaque"); !errors.Is(err, ErrInviteGrantConflict) {
+		t.Fatalf("ClaimInvite err = %v, want ErrInviteGrantConflict", err)
+	}
+	if len(fixture.ledger.userEntries("inviter-1")) != 0 || fixture.ledger.born["inviter-1"] {
+		t.Fatal("an inconsistent invitee dedup conflict was silently repaired with a one-sided inviter grant")
+	}
+}
+
 // --- earn: payment ---------------------------------------------------------------
 
 func TestChargeCreditsOnlyVerifiedReceiptsIdempotently(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
+	fixture.verifier.claims["receipt-blob-1"] = VerifiedPayment{
+		ProviderTransactionID: "transaction-1",
+		Provider:              "app-store",
+		PackID:                DefaultChargePackID,
+		Amount:                values.TwinkleChargePack,
+		BeneficiaryUserID:     "user-1",
+	}
 
-	balance, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "ios", "receipt-blob-1")
+	balance, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", "receipt-blob-1")
 	if err != nil {
 		t.Fatalf("Charge failed: %v", err)
 	}
@@ -501,7 +654,7 @@ func TestChargeCreditsOnlyVerifiedReceiptsIdempotently(t *testing.T) {
 		t.Fatalf("additional = %d, want the verified pack grant %d", balance.Additional, values.TwinkleChargePack)
 	}
 	// The same receipt replayed credits nothing more.
-	replay, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "ios", "receipt-blob-1")
+	replay, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", "receipt-blob-1")
 	if err != nil {
 		t.Fatalf("Charge replay failed: %v", err)
 	}
@@ -509,7 +662,7 @@ func TestChargeCreditsOnlyVerifiedReceiptsIdempotently(t *testing.T) {
 		t.Fatal("a replayed receipt must be idempotent")
 	}
 	// An unknown pack fails verification and credits nothing.
-	if _, err := fixture.service.Charge(context.Background(), scope, "pack-unknown", "ios", "receipt-blob-2"); !errors.Is(err, ErrPaymentNotVerified) {
+	if _, err := fixture.service.Charge(context.Background(), scope, "pack-unknown", "app-store", "receipt-blob-2"); !errors.Is(err, ErrPaymentNotVerified) {
 		t.Fatalf("unknown pack err = %v, want ErrPaymentNotVerified", err)
 	}
 	if len(fixture.ledger.userEntries("user-1")) != 1 {
@@ -517,6 +670,104 @@ func TestChargeCreditsOnlyVerifiedReceiptsIdempotently(t *testing.T) {
 	}
 	if _, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "", ""); !errors.Is(err, ErrChargeInputRequired) {
 		t.Fatalf("empty input err = %v, want ErrChargeInputRequired", err)
+	}
+}
+
+func TestChargeRejectsUnboundOrMalformedVerifiedClaims(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	base := VerifiedPayment{
+		ProviderTransactionID: "transaction-1",
+		Provider:              "app-store",
+		PackID:                DefaultChargePackID,
+		Amount:                values.TwinkleChargePack,
+		BeneficiaryUserID:     "user-1",
+	}
+	cases := []struct {
+		name  string
+		claim VerifiedPayment
+		want  error
+	}{
+		{name: "beneficiary", claim: func() VerifiedPayment { c := base; c.BeneficiaryUserID = "user-2"; return c }(), want: ErrPaymentBeneficiaryMismatch},
+		{name: "padded beneficiary", claim: func() VerifiedPayment { c := base; c.BeneficiaryUserID = " user-1 "; return c }(), want: ErrPaymentBeneficiaryMismatch},
+		{name: "transaction", claim: func() VerifiedPayment { c := base; c.ProviderTransactionID = ""; return c }(), want: ErrPaymentNotVerified},
+		{name: "unnormalized transaction", claim: func() VerifiedPayment { c := base; c.ProviderTransactionID = " transaction-1 "; return c }(), want: ErrPaymentNotVerified},
+		{name: "provider", claim: func() VerifiedPayment { c := base; c.Provider = "play-store"; return c }(), want: ErrPaymentNotVerified},
+		{name: "pack", claim: func() VerifiedPayment { c := base; c.PackID = "unknown"; return c }(), want: ErrPaymentNotVerified},
+		{name: "amount", claim: func() VerifiedPayment { c := base; c.Amount = 0; return c }(), want: ErrPaymentNotVerified},
+	}
+	for _, test := range cases {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			receipt := "receipt-" + test.name
+			fixture.verifier.claims[receipt] = test.claim
+			if _, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", receipt); !errors.Is(err, test.want) {
+				t.Fatalf("Charge err = %v, want %v", err, test.want)
+			}
+		})
+	}
+	if len(fixture.ledger.entries) != 0 || fixture.ledger.born["user-1"] {
+		t.Fatal("invalid verified claims must not credit or birth a balance")
+	}
+}
+
+func TestChargeSanitizesVerifierFailuresAndGloballyDeduplicatesTransactions(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	first := twinkleScope(t, "user-1")
+	second := twinkleScope(t, "user-2")
+
+	fixture.verifier.err = errors.New("provider secret receipt detail")
+	if _, err := fixture.service.Charge(context.Background(), first, DefaultChargePackID, "app-store", "secret-receipt"); !errors.Is(err, ErrPaymentNotVerified) || strings.Contains(err.Error(), "secret") {
+		t.Fatalf("verifier failure err = %v, want sanitized ErrPaymentNotVerified", err)
+	}
+	fixture.verifier.err = nil
+	claim := VerifiedPayment{
+		ProviderTransactionID: "transaction-global",
+		Provider:              "app-store",
+		PackID:                DefaultChargePackID,
+		Amount:                values.TwinkleChargePack,
+		BeneficiaryUserID:     "user-1",
+	}
+	fixture.verifier.claims["receipt-1"] = claim
+	if _, err := fixture.service.Charge(context.Background(), first, DefaultChargePackID, "app-store", "receipt-1"); err != nil {
+		t.Fatalf("first Charge failed: %v", err)
+	}
+	claim.BeneficiaryUserID = "user-2"
+	fixture.verifier.claims["receipt-2"] = claim
+	secondBalance, err := fixture.service.Charge(context.Background(), second, DefaultChargePackID, "app-store", "receipt-2")
+	if err != nil {
+		t.Fatalf("cross-user replay failed: %v", err)
+	}
+	if secondBalance.Additional != 0 || len(fixture.ledger.entries) != 1 {
+		t.Fatalf("cross-user replay balance=%+v entries=%d, want no second grant", secondBalance, len(fixture.ledger.entries))
+	}
+}
+
+func TestFailClosedEarnAdaptersReturnCanonicalUnavailableErrors(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	service, err := NewService(ServiceDeps{
+		Ledger:         fixture.ledger,
+		Verifier:       UnavailablePaymentVerifier{},
+		InviteResolver: UnavailableInviteResolver{},
+		Signals:        fixture.signals,
+		Now:            twinkleNow,
+		NewID:          func() string { return "entry" },
+	})
+	if err != nil {
+		t.Fatalf("NewService failed: %v", err)
+	}
+	scope := twinkleScope(t, "user-1")
+	if _, err := service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", "arbitrary-receipt"); !errors.Is(err, ErrPaymentVerificationUnavailable) {
+		t.Fatalf("Charge err = %v, want ErrPaymentVerificationUnavailable", err)
+	}
+	if _, err := service.ClaimInvite(context.Background(), scope, "arbitrary-code"); !errors.Is(err, ErrInviteResolutionUnavailable) {
+		t.Fatalf("ClaimInvite err = %v, want ErrInviteResolutionUnavailable", err)
+	}
+	if len(fixture.ledger.entries) != 0 || fixture.ledger.writes != 0 {
+		t.Fatal("unavailable trust adapters must reach no ledger write")
 	}
 }
 

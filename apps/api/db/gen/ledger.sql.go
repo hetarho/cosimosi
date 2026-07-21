@@ -25,7 +25,7 @@ INSERT INTO twinkle_ledger_entries (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
-ON CONFLICT (user_id, dedup_key) DO NOTHING
+ON CONFLICT DO NOTHING
 `
 
 type AppendTwinkleLedgerEntryParams struct {
@@ -41,9 +41,9 @@ type AppendTwinkleLedgerEntryParams struct {
 }
 
 // The append-only log write ([I1] — twinkle_ledger_entries is never UPDATEd/DELETEd by the
-// system). ON CONFLICT DO NOTHING on (user_id, dedup_key) is the idempotency guard: a retried
-// earn/spend with the same dedup_key affects 0 rows instead of double-applying (NULL dedup_key
-// opts out — PG treats NULLs as distinct).
+// system). ON CONFLICT DO NOTHING covers both the per-user idempotency guard and the partial
+// global payment-transaction guard: either replay affects 0 rows instead of double-applying
+// (NULL dedup_key opts out — PG treats NULLs as distinct).
 func (q *Queries) AppendTwinkleLedgerEntry(ctx context.Context, arg AppendTwinkleLedgerEntryParams) (int64, error) {
 	result, err := q.db.Exec(ctx, appendTwinkleLedgerEntry,
 		arg.ID,
@@ -129,6 +129,34 @@ func (q *Queries) InsertTwinkleBalance(ctx context.Context, arg InsertTwinkleBal
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const twinkleLedgerDedupExists = `-- name: TwinkleLedgerDedupExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM twinkle_ledger_entries
+    WHERE dedup_key = $1
+      AND (
+          user_id = $2
+          OR (reason = 'payment' AND $3::text = 'payment')
+      )
+)
+`
+
+type TwinkleLedgerDedupExistsParams struct {
+	DedupKey    pgtype.Text
+	UserID      string
+	EntryReason string
+}
+
+// Disambiguate an idempotency conflict from an unrelated primary-key collision after the
+// unqualified ON CONFLICT above. General keys are user-scoped; payment transaction keys are
+// deliberately global because one provider transaction cannot be replayed across accounts.
+func (q *Queries) TwinkleLedgerDedupExists(ctx context.Context, arg TwinkleLedgerDedupExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, twinkleLedgerDedupExists, arg.DedupKey, arg.UserID, arg.EntryReason)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const updateTwinkleBalanceDelta = `-- name: UpdateTwinkleBalanceDelta :one

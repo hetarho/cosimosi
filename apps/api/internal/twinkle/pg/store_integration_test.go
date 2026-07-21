@@ -2,6 +2,8 @@ package pg
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -218,6 +220,16 @@ func TestTwinkleLedgerAppendIsIdempotent(t *testing.T) {
 		t.Fatalf("ledger entries = %d, want 1 after retry", count)
 	}
 
+	// Unqualified ON CONFLICT also catches the backend-minted primary key. A
+	// different dedup key colliding on id must surface as storage corruption, not
+	// masquerade as an already-applied action that silently skips its delta.
+	idCollision := entry
+	otherDedup := base + "-different-action"
+	idCollision.DedupKey = &otherDedup
+	if _, err := store.AppendLedgerEntry(ctx, scope, idCollision); !errors.Is(err, ErrUnexpectedLedgerConflict) {
+		t.Fatalf("AppendLedgerEntry(id collision) err = %v, want ErrUnexpectedLedgerConflict", err)
+	}
+
 	// The dedup key is scoped per user: another user reusing the same key still appends (A2).
 	otherScope := mustUserScope(t, otherID)
 	otherEntry := entry
@@ -272,6 +284,132 @@ func TestTwinkleLedgerAppendIsIdempotent(t *testing.T) {
 			t.Fatalf("nil-dedup append %d was deduped, want applied", i)
 		}
 	}
+}
+
+func TestPaymentTransactionIsSingleUseAcrossRetriesAndUsers(t *testing.T) {
+	pool := openTwinkleTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-payment-replay-%d", time.Now().UnixNano())
+	firstID := base + "-first"
+	secondID := base + "-second"
+	concurrentID := base + "-concurrent"
+	for _, userID := range []string{firstID, secondID, concurrentID} {
+		cleanupTwinkleTestRows(t, pool, userID)
+	}
+	verifier := &echoPaymentVerifier{}
+	service, err := twinkle.NewService(twinkle.ServiceDeps{
+		Ledger:         NewStore(pool.PgxPool()),
+		Verifier:       verifier,
+		InviteResolver: twinkle.UnavailableInviteResolver{},
+		Signals:        emptySpendSignals{},
+	})
+	if err != nil {
+		t.Fatalf("NewService failed: %v", err)
+	}
+
+	first := mustUserScope(t, firstID)
+	verifier.transactionID = base + "-same-user"
+	for range 2 {
+		if _, err := service.Charge(ctx, first, twinkle.DefaultChargePackID, "app-store", "opaque-receipt"); err != nil {
+			t.Fatalf("same-user Charge failed: %v", err)
+		}
+	}
+	assertPaymentState(t, pool, firstID, verifier.transactionID, values.TwinkleChargePack, 1)
+
+	concurrent := mustUserScope(t, concurrentID)
+	verifier.transactionID = base + "-concurrent"
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range errs {
+		wg.Add(1)
+		go func(slot int) {
+			defer wg.Done()
+			_, errs[slot] = service.Charge(ctx, concurrent, twinkle.DefaultChargePackID, "app-store", "opaque-receipt")
+		}(i)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent Charge failed: %v", err)
+		}
+	}
+	assertPaymentState(t, pool, concurrentID, verifier.transactionID, values.TwinkleChargePack, 1)
+
+	verifier.transactionID = base + "-cross-user"
+	if _, err := service.Charge(ctx, first, twinkle.DefaultChargePackID, "app-store", "opaque-receipt"); err != nil {
+		t.Fatalf("first cross-user Charge failed: %v", err)
+	}
+	second := mustUserScope(t, secondID)
+	if _, err := service.Charge(ctx, second, twinkle.DefaultChargePackID, "app-store", "same-transaction-new-account"); err != nil {
+		t.Fatalf("cross-user replay Charge failed: %v", err)
+	}
+	assertPaymentState(t, pool, secondID, verifier.transactionID, 0, 0)
+	var globalRows int
+	if err := pool.PgxPool().QueryRow(ctx,
+		"SELECT count(*) FROM twinkle_ledger_entries WHERE reason = 'payment' AND dedup_key = $1",
+		paymentKeyForTest("app-store", verifier.transactionID)).Scan(&globalRows); err != nil {
+		t.Fatalf("count global payment rows failed: %v", err)
+	}
+	if globalRows != 1 {
+		t.Fatalf("global payment rows = %d, want exactly 1", globalRows)
+	}
+}
+
+type echoPaymentVerifier struct {
+	transactionID string
+}
+
+func (v *echoPaymentVerifier) Verify(_ context.Context, request twinkle.PaymentVerificationRequest) (twinkle.VerifiedPayment, error) {
+	return twinkle.VerifiedPayment{
+		ProviderTransactionID: v.transactionID,
+		Provider:              request.Provider,
+		PackID:                request.PackID,
+		Amount:                values.TwinkleChargePack,
+		BeneficiaryUserID:     request.BeneficiaryUserID,
+	}, nil
+}
+
+type emptySpendSignals struct{}
+
+func (emptySpendSignals) RecallAccessibility(context.Context, platform.UserScope, string) (float64, error) {
+	return 0, nil
+}
+
+func (emptySpendSignals) DiaryRecallAccessibilities(context.Context, platform.UserScope, string) ([]float64, error) {
+	return nil, nil
+}
+
+func (emptySpendSignals) ViewableGistStage(context.Context, platform.UserScope, string) (int, error) {
+	return 0, nil
+}
+
+func assertPaymentState(t *testing.T, pool *platformdb.Pool, userID string, transactionID string, wantAdditional int, wantRows int) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var additional int
+	if err := pool.PgxPool().QueryRow(ctx, "SELECT COALESCE((SELECT additional FROM twinkle_balances WHERE user_id = $1), 0)", userID).Scan(&additional); err != nil {
+		t.Fatalf("read payment balance failed: %v", err)
+	}
+	if additional != wantAdditional {
+		t.Fatalf("additional for %s = %d, want %d", userID, additional, wantAdditional)
+	}
+	var rows int
+	if err := pool.PgxPool().QueryRow(ctx,
+		"SELECT count(*) FROM twinkle_ledger_entries WHERE user_id = $1 AND reason = 'payment' AND dedup_key = $2",
+		userID, paymentKeyForTest("app-store", transactionID)).Scan(&rows); err != nil {
+		t.Fatalf("count payment rows failed: %v", err)
+	}
+	if rows != wantRows {
+		t.Fatalf("payment rows for %s = %d, want %d", userID, rows, wantRows)
+	}
+}
+
+func paymentKeyForTest(provider string, transactionID string) string {
+	digest := sha256.Sum256([]byte(fmt.Sprintf("%d:%s%s", len(provider), provider, transactionID)))
+	return "payment:" + hex.EncodeToString(digest[:])
 }
 
 func mustUserScope(t *testing.T, userID string) platform.UserScope {
