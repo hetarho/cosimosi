@@ -54,9 +54,6 @@ type ConsolidateTx interface {
 	// ListMemoriesForConsolidation returns the user's non-deleted memories with the
 	// stage/timer/decay anchors the interval math reads.
 	ListMemoriesForConsolidation(ctx context.Context, scope platform.UserScope) ([]EpisodicMemory, error)
-	// RecallMemberNeurons returns a memory's live member neurons — reused here as the
-	// semanticize re-enqueue payload inputs (the same concrete the recall path uses).
-	RecallMemberNeurons(ctx context.Context, scope platform.UserScope, memoryID string) ([]ExistingNeuron, error)
 	// ApplyStageAdvances persists the risen stages + consumed timer anchors in one batch.
 	// The stage write is GREATEST-guarded in SQL — a stage never decrements ([C7]).
 	ApplyStageAdvances(ctx context.Context, scope platform.UserScope, advances []StageAdvance) error
@@ -178,7 +175,7 @@ func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope,
 	// Interval-implied heavy work leaves the transaction ([C7], §2.8): the replay set's
 	// neurons re-embed on the worker, never inline.
 	if len(advances) > 0 && len(replayNeurons) > 0 {
-		if err := c.enqueueConsolidateJob(ctx, scope, tx, from, to, memoryIDsOf(advances), replayNeurons); err != nil {
+		if err := c.enqueueConsolidateJob(ctx, scope, tx, replayNeurons); err != nil {
 			return err
 		}
 	}
@@ -253,27 +250,8 @@ func missingStageText(stages *SemanticStages, risenStage int) bool {
 // stage has no text ([C7], A9): the worker regenerates the set from current_text and keeps
 // the leading already-present texts (a risen gist stage is a thing that happened).
 func (c Consolidator) enqueueSemanticizeRegen(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, episodicMemory *EpisodicMemory) error {
-	neurons, err := tx.RecallMemberNeurons(ctx, scope, episodicMemory.ID)
-	if err != nil {
-		return err
-	}
-	keep := int16(0)
-	if episodicMemory.SemanticStages != nil {
-		for _, text := range episodicMemory.SemanticStages {
-			if text == "" {
-				break
-			}
-			keep++
-		}
-	}
-	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindSemanticize, SemanticizeJobPayload{
-		MemoryID:    episodicMemory.ID,
-		Name:        episodicMemory.Name,
-		CurrentText: episodicMemory.CurrentText,
-		Mood:        episodicMemory.Emotion.Mood,
-		Neurons:     semanticJobNeurons(neurons),
-		KeepStages:  keep,
-		KeptStages:  episodicMemory.SemanticStages,
+	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindSemanticize, SemanticizeJobPayload{}, JobTarget{
+		Kind: JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision,
 	})
 }
 
@@ -391,14 +369,12 @@ func (c Consolidator) downscaleSynapses(ctx context.Context, scope platform.User
 	return tx.ApplySynapseDownscale(ctx, scope, updates)
 }
 
-func (c Consolidator) enqueueConsolidateJob(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, from time.Time, to time.Time, advancedIDs []string, neurons []ExistingNeuron) error {
-	payload := ConsolidateJobPayload{
-		FromUniverseTime: utcDate(from).Format(time.DateOnly),
-		ToUniverseTime:   utcDate(to).Format(time.DateOnly),
-		MemoryIDs:        uniqueSorted(advancedIDs),
-		NeuronIDs:        uniqueSorted(neuronIDsOf(neurons)),
+func (c Consolidator) enqueueConsolidateJob(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, neurons []ExistingNeuron) error {
+	targets := make([]JobTarget, 0, len(neurons))
+	for _, neuron := range neurons {
+		targets = append(targets, JobTarget{Kind: JobTargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision})
 	}
-	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindConsolidate, payload)
+	return enqueueJob(ctx, tx, scope, c.newID(), time.Time{}, JobKindConsolidate, ConsolidateJobPayload{}, targets...)
 }
 
 func neuronIDsOf(neurons []ExistingNeuron) []string {

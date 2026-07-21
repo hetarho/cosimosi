@@ -18,7 +18,8 @@ SELECT
     semantic_stages,
     decay_stages,
     forgetting_offset_days,
-    deleted_at
+    deleted_at,
+    representation_revision
 FROM episodic_memories
 WHERE user_id = $1
   AND deleted_at IS NULL
@@ -31,6 +32,7 @@ SELECT
     n.neuron_type,
     n.created_at,
     n.sealed_at,
+    n.representation_revision,
     COUNT(em.id)::int AS connectivity
 FROM neurons AS n
 LEFT JOIN neuron_activations AS na
@@ -42,7 +44,7 @@ LEFT JOIN episodic_memories AS em
  AND em.deleted_at IS NULL
 WHERE n.user_id = $1
   AND n.sealed_at IS NULL
-GROUP BY n.id, n.name, n.neuron_type, n.created_at, n.sealed_at
+GROUP BY n.id, n.name, n.neuron_type, n.created_at, n.sealed_at, n.representation_revision
 ORDER BY n.id;
 
 -- name: ListUniverseNeuronActivations :many

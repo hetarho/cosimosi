@@ -3,6 +3,8 @@ package memory
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -41,6 +43,7 @@ type fakeRelMemory struct {
 type fakeRelNeuron struct {
 	semantic bool
 	sealed   bool
+	revision int64
 }
 
 type fakeRelActivation struct {
@@ -72,6 +75,9 @@ type fakeReleaseRepo struct {
 	activations []fakeRelActivation
 	synapses    map[string]*fakeRelSynapse
 	groups      map[string]*fakeRelGroup
+	jobs        map[string]*Job
+	operations  []string
+	nextID      int
 
 	txCount     int
 	weakenCalls int
@@ -84,6 +90,7 @@ func newFakeReleaseRepo() *fakeReleaseRepo {
 		neurons:  map[string]*fakeRelNeuron{},
 		synapses: map[string]*fakeRelSynapse{},
 		groups:   map[string]*fakeRelGroup{},
+		jobs:     map[string]*Job{},
 	}
 }
 
@@ -118,7 +125,29 @@ func (f *fakeReleaseRepo) snapshot() *fakeReleaseRepo {
 		copyGroup.deltas = append([]SynapseDelta(nil), group.deltas...)
 		clone.groups[id] = &copyGroup
 	}
+	for id, job := range f.jobs {
+		copyJob := *job
+		copyJob.Payload = append([]byte(nil), job.Payload...)
+		copyJob.Targets = append([]JobTarget(nil), job.Targets...)
+		if job.DedupKey != nil {
+			value := *job.DedupKey
+			copyJob.DedupKey = &value
+		}
+		if job.TerminalAt != nil {
+			value := *job.TerminalAt
+			copyJob.TerminalAt = &value
+		}
+		if job.CanceledByReleaseID != nil {
+			value := *job.CanceledByReleaseID
+			copyJob.CanceledByReleaseID = &value
+		}
+		clone.jobs[id] = &copyJob
+	}
 	clone.activations = append([]fakeRelActivation(nil), f.activations...)
+	clone.operations = append([]string(nil), f.operations...)
+	clone.nextID = f.nextID
+	clone.weakenCalls = f.weakenCalls
+	clone.sweptDiary = f.sweptDiary
 	return clone
 }
 
@@ -127,7 +156,12 @@ func (f *fakeReleaseRepo) restore(snapshot *fakeReleaseRepo) {
 	f.neurons = snapshot.neurons
 	f.synapses = snapshot.synapses
 	f.groups = snapshot.groups
+	f.jobs = snapshot.jobs
 	f.activations = snapshot.activations
+	f.operations = snapshot.operations
+	f.nextID = snapshot.nextID
+	f.weakenCalls = snapshot.weakenCalls
+	f.sweptDiary = snapshot.sweptDiary
 }
 
 func (f *fakeReleaseRepo) EpisodicMemoryForRelease(_ context.Context, _ platform.UserScope, memoryID string) (EpisodicMemory, error) {
@@ -316,6 +350,14 @@ func (f *fakeReleaseRepo) ReleaseGroupForDiary(_ context.Context, _ platform.Use
 	return ReleaseGroup{}, false, nil
 }
 
+func (f *fakeReleaseRepo) ReleaseGroupForSweep(_ context.Context, _ platform.UserScope, releaseID string) (ReleaseGroup, bool, error) {
+	group, ok := f.groups[releaseID]
+	if !ok {
+		return ReleaseGroup{}, false, nil
+	}
+	return ReleaseGroup{ID: group.id, DiaryID: group.diaryID, DeletedAt: group.deletedAt}, true, nil
+}
+
 func (f *fakeReleaseRepo) InsertReleaseGroup(_ context.Context, _ platform.UserScope, group ReleaseGroup) error {
 	f.groups[group.ID] = &fakeRelGroup{id: group.ID, diaryID: group.DiaryID, deletedAt: group.DeletedAt}
 	return nil
@@ -342,6 +384,22 @@ func (f *fakeReleaseRepo) ReleaseMemories(_ context.Context, _ platform.UserScop
 
 func (f *fakeReleaseRepo) ReleaseSealedNeurons(_ context.Context, _ platform.UserScope, releaseID string) ([]string, error) {
 	return append([]string(nil), f.groups[releaseID].sealed...), nil
+}
+
+func (f *fakeReleaseRepo) ReleaseSealedNeuronTargets(_ context.Context, _ platform.UserScope, releaseID string) ([]JobTarget, error) {
+	targets := make([]JobTarget, 0, len(f.groups[releaseID].sealed))
+	for _, neuronID := range f.groups[releaseID].sealed {
+		neuron, ok := f.neurons[neuronID]
+		if !ok {
+			continue
+		}
+		targets = append(targets, JobTarget{
+			Kind:             JobTargetNeuron,
+			ID:               neuronID,
+			ExpectedRevision: neuron.revision,
+		})
+	}
+	return targets, nil
 }
 
 func (f *fakeReleaseRepo) ClearReleaseMemoriesDeletedAt(_ context.Context, _ platform.UserScope, memoryIDs []string) error {
@@ -371,15 +429,68 @@ func (f *fakeReleaseRepo) ReverseReleaseSynapseDeltas(_ context.Context, _ platf
 	return nil
 }
 
+func (f *fakeReleaseRepo) CancelReleaseMemoryJobs(_ context.Context, _ platform.UserScope, releaseID string, memoryIDs []string, cancelledAt time.Time) error {
+	for _, job := range f.jobs {
+		if job.Status != JobStatusPending && job.Status != JobStatusRunning {
+			continue
+		}
+		if !jobTargetsAny(targetMemoryIDs(job), memoryIDs) {
+			continue
+		}
+		job.Status = JobStatusCanceled
+		job.Payload = []byte("{}")
+		job.TerminalAt = timePointer(cancelledAt)
+		job.CanceledByReleaseID = stringPointer(releaseID)
+		job.LeaseGeneration++
+	}
+	f.operations = append(f.operations, "cancel_jobs")
+	return nil
+}
+
+func (f *fakeReleaseRepo) RequeueReleaseMemoryJobs(_ context.Context, _ platform.UserScope, releaseID string, nextRunAt time.Time) error {
+	for _, job := range f.jobs {
+		if job.Status != JobStatusCanceled || job.CanceledByReleaseID == nil || *job.CanceledByReleaseID != releaseID {
+			continue
+		}
+		job.Status = JobStatusPending
+		job.Payload = []byte("{}")
+		job.TerminalAt = nil
+		job.CanceledByReleaseID = nil
+		job.NextRunAt = nextRunAt
+	}
+	f.operations = append(f.operations, "requeue_jobs")
+	return nil
+}
+
+func (f *fakeReleaseRepo) DeleteReleaseRetentionJobs(_ context.Context, _ platform.UserScope, releaseID string) error {
+	for id, job := range f.jobs {
+		if job.Kind == JobKindRetention && jobHasTarget(job, JobTargetRelease, releaseID) {
+			delete(f.jobs, id)
+		}
+	}
+	f.operations = append(f.operations, "delete_retention_jobs")
+	return nil
+}
+
+func (f *fakeReleaseRepo) EnqueueJob(_ context.Context, _ platform.UserScope, job Job) (Job, error) {
+	copyJob := job
+	copyJob.Payload = append([]byte(nil), job.Payload...)
+	copyJob.Targets = append([]JobTarget(nil), job.Targets...)
+	f.jobs[job.ID] = &copyJob
+	f.operations = append(f.operations, "enqueue:"+string(job.Kind))
+	return copyJob, nil
+}
+
 func (f *fakeReleaseRepo) DeleteReleaseGroup(_ context.Context, _ platform.UserScope, releaseID string) error {
 	delete(f.groups, releaseID)
+	f.operations = append(f.operations, "delete_group")
 	return nil
 }
 
 func (f *fakeReleaseRepo) ExpiredReleaseGroups(_ context.Context, _ platform.UserScope, cutoff time.Time) ([]ReleaseGroup, error) {
 	out := []ReleaseGroup{}
 	for _, group := range f.groups {
-		if group.deletedAt.Before(cutoff) {
+		if !group.deletedAt.After(cutoff) {
 			out = append(out, ReleaseGroup{ID: group.id, DiaryID: group.diaryID, DeletedAt: group.deletedAt})
 		}
 	}
@@ -407,6 +518,26 @@ func (f *fakeReleaseRepo) ExclusiveReleaseNeurons(_ context.Context, _ platform.
 	return out, nil
 }
 
+func (f *fakeReleaseRepo) PurgeReleaseJobs(_ context.Context, _ platform.UserScope, releaseID string, memoryIDs, neuronIDs []string) error {
+	for jobID, job := range f.jobs {
+		kept := make([]JobTarget, 0, len(job.Targets))
+		for _, target := range job.Targets {
+			remove := target.Kind == JobTargetRelease && target.ID == releaseID
+			remove = remove || target.Kind == JobTargetMemory && stringIn(target.ID, memoryIDs)
+			remove = remove || target.Kind == JobTargetNeuron && stringIn(target.ID, neuronIDs)
+			if !remove {
+				kept = append(kept, target)
+			}
+		}
+		job.Targets = kept
+		if len(job.Targets) == 0 {
+			delete(f.jobs, jobID)
+		}
+	}
+	f.operations = append(f.operations, "purge_jobs")
+	return nil
+}
+
 func (f *fakeReleaseRepo) DeleteReleaseActivations(_ context.Context, _ platform.UserScope, memoryIDs []string) error {
 	inSet := map[string]bool{}
 	for _, id := range memoryIDs {
@@ -419,6 +550,7 @@ func (f *fakeReleaseRepo) DeleteReleaseActivations(_ context.Context, _ platform
 		}
 	}
 	f.activations = kept
+	f.operations = append(f.operations, "delete_activations")
 	return nil
 }
 
@@ -432,10 +564,12 @@ func (f *fakeReleaseRepo) DeleteReleaseSynapses(_ context.Context, _ platform.Us
 			delete(f.synapses, id)
 		}
 	}
+	f.operations = append(f.operations, "delete_synapses")
 	return nil
 }
 
 func (f *fakeReleaseRepo) DeleteReleaseEmbeddings(_ context.Context, _ platform.UserScope, _ []string) error {
+	f.operations = append(f.operations, "delete_embeddings")
 	return nil
 }
 
@@ -443,6 +577,7 @@ func (f *fakeReleaseRepo) DeleteReleaseNeurons(_ context.Context, _ platform.Use
 	for _, id := range neuronIDs {
 		delete(f.neurons, id)
 	}
+	f.operations = append(f.operations, "delete_neurons")
 	return nil
 }
 
@@ -452,12 +587,68 @@ func (f *fakeReleaseRepo) DeleteReleaseMemories(_ context.Context, _ platform.Us
 			delete(f.memories, id)
 		}
 	}
+	f.operations = append(f.operations, "delete_memories")
 	return nil
 }
 
 func (f *fakeReleaseRepo) DeleteReleaseDiary(_ context.Context, _ platform.UserScope, _ string) error {
 	f.sweptDiary = true
+	f.operations = append(f.operations, "delete_diary")
 	return nil
+}
+
+func targetMemoryIDs(job *Job) []string {
+	ids := []string{}
+	for _, target := range job.Targets {
+		if target.Kind == JobTargetMemory {
+			ids = append(ids, target.ID)
+		}
+	}
+	return ids
+}
+
+func jobTargetsAny(left, right []string) bool {
+	for _, value := range left {
+		if stringIn(value, right) {
+			return true
+		}
+	}
+	return false
+}
+
+func jobHasTarget(job *Job, kind JobTargetKind, id string) bool {
+	for _, target := range job.Targets {
+		if target.Kind == kind && target.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func hasJobKind(jobs map[string]*Job, kind JobKind) bool {
+	for _, job := range jobs {
+		if job.Kind == kind {
+			return true
+		}
+	}
+	return false
+}
+
+func stringIn(value string, values []string) bool {
+	for _, candidate := range values {
+		if candidate == value {
+			return true
+		}
+	}
+	return false
+}
+
+func timePointer(value time.Time) *time.Time {
+	return &value
+}
+
+func stringPointer(value string) *string {
+	return &value
 }
 
 // --- fixture -------------------------------------------------------------------------------------
@@ -465,7 +656,6 @@ func (f *fakeReleaseRepo) DeleteReleaseDiary(_ context.Context, _ platform.UserS
 func newReleaseService(t *testing.T, repo *fakeReleaseRepo, suggester *fakeSealSuggester, now time.Time) *Service {
 	t.Helper()
 	launches := &fakeLaunchStore{}
-	ids := 0
 	service, err := NewService(ServiceDeps{
 		Extractor:       &fakeExtractor{splitResult: validSplit()},
 		Embedder:        &fakeEmbedder{},
@@ -487,8 +677,8 @@ func newReleaseService(t *testing.T, repo *fakeReleaseRepo, suggester *fakeSealS
 		SealSuggester:   suggester,
 		Now:             func() time.Time { return now },
 		NewID: func() string {
-			ids++
-			return "release-id"
+			repo.nextID++
+			return fmt.Sprintf("release-id-%d", repo.nextID)
 		},
 	})
 	if err != nil {
@@ -511,8 +701,8 @@ func releaseTestScope(t *testing.T) platform.UserScope {
 func seedReleaseGraph(repo *fakeReleaseRepo) {
 	repo.memories["m1"] = &fakeRelMemory{diaryID: "d1", name: "Market", text: "met a friend", mood: MoodCalm}
 	repo.memories["m2"] = &fakeRelMemory{diaryID: "d2", name: "Outside", text: "still here", mood: MoodJoy}
-	repo.neurons["n-orphan"] = &fakeRelNeuron{semantic: true}
-	repo.neurons["n-shared"] = &fakeRelNeuron{semantic: true}
+	repo.neurons["n-orphan"] = &fakeRelNeuron{semantic: true, revision: 1}
+	repo.neurons["n-shared"] = &fakeRelNeuron{semantic: true, revision: 1}
 	repo.activations = []fakeRelActivation{
 		{memoryID: "m1", neuronID: "n-orphan"},
 		{memoryID: "m1", neuronID: "n-shared"},
@@ -559,6 +749,78 @@ func TestReleaseSoftDeletesSealsWeakensAndLedgers(t *testing.T) {
 	}
 	if stored.deltas[0].AppliedDelta <= 0 {
 		t.Fatalf("recorded delta = %v, want the positive LTD amount removed", stored.deltas[0].AppliedDelta)
+	}
+}
+
+func TestReleaseSchedulesExactRetentionAndCancelsMemoryJobs(t *testing.T) {
+	t.Parallel()
+	repo := newFakeReleaseRepo()
+	seedReleaseGraph(repo)
+	now := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+	scope := releaseTestScope(t)
+	repo.jobs["semantic-m1"] = &Job{
+		ID:              "semantic-m1",
+		UserID:          scope.UserID(),
+		Kind:            JobKindSemanticize,
+		Payload:         []byte(`{"current_text":"must be redacted"}`),
+		Status:          JobStatusRunning,
+		LeaseGeneration: 7,
+		Targets: []JobTarget{{
+			Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1,
+		}},
+	}
+	repo.jobs["semantic-m2"] = &Job{
+		ID:      "semantic-m2",
+		UserID:  scope.UserID(),
+		Kind:    JobKindSemanticize,
+		Payload: []byte("{}"),
+		Status:  JobStatusPending,
+		Targets: []JobTarget{{
+			Kind: JobTargetMemory, ID: "m2", ExpectedRevision: 1,
+		}},
+	}
+	service := newReleaseService(t, repo, &fakeSealSuggester{}, now)
+
+	if _, err := service.Release(context.Background(), scope, "d1"); err != nil {
+		t.Fatalf("Release failed: %v", err)
+	}
+	group, ok, err := repo.ReleaseGroupForDiary(context.Background(), scope, "d1")
+	if err != nil || !ok {
+		t.Fatalf("release group = (%+v, %v, %v), want present", group, ok, err)
+	}
+
+	cancelled := repo.jobs["semantic-m1"]
+	if cancelled.Status != JobStatusCanceled || cancelled.CanceledByReleaseID == nil || *cancelled.CanceledByReleaseID != group.ID {
+		t.Fatalf("released-memory job = %+v, want cancelled by %s", cancelled, group.ID)
+	}
+	if cancelled.TerminalAt == nil || !cancelled.TerminalAt.Equal(now) {
+		t.Fatalf("cancelled terminal_at = %v, want %v", cancelled.TerminalAt, now)
+	}
+	if string(cancelled.Payload) != "{}" || cancelled.LeaseGeneration != 8 {
+		t.Fatalf("cancelled payload/generation = %s/%d, want {}/8", cancelled.Payload, cancelled.LeaseGeneration)
+	}
+	if outside := repo.jobs["semantic-m2"]; outside.Status != JobStatusPending {
+		t.Fatalf("outside-memory job status = %q, want pending", outside.Status)
+	}
+
+	var trigger *Job
+	for _, job := range repo.jobs {
+		if job.Kind == JobKindRetention {
+			trigger = job
+		}
+	}
+	if trigger == nil || trigger.Kind != JobKindRetention || trigger.Status != JobStatusPending {
+		t.Fatalf("retention trigger = %+v, want pending retention_sweep", trigger)
+	}
+	deadline := now.Add(retentionWindow())
+	if !trigger.CreatedAt.Equal(now) || !trigger.NextRunAt.Equal(deadline) {
+		t.Fatalf("retention trigger times = created %v next %v, want %v/%v", trigger.CreatedAt, trigger.NextRunAt, now, deadline)
+	}
+	if trigger.DedupKey == nil || *trigger.DedupKey != group.ID || string(trigger.Payload) != "{}" {
+		t.Fatalf("retention trigger dedup/payload = %v/%s, want %s/{}", trigger.DedupKey, trigger.Payload, group.ID)
+	}
+	if len(trigger.Targets) != 1 || trigger.Targets[0] != (JobTarget{Kind: JobTargetRelease, ID: group.ID}) {
+		t.Fatalf("retention targets = %+v, want release-group identity only", trigger.Targets)
 	}
 }
 
@@ -630,6 +892,59 @@ func TestRestoreReversesWithinWindow(t *testing.T) {
 	}
 }
 
+func TestRestoreBeforeDeadlineRemovesTriggerAndRequeuesSafely(t *testing.T) {
+	t.Parallel()
+	repo := newFakeReleaseRepo()
+	seedReleaseGraph(repo)
+	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+	restoreAt := releaseAt.Add(6 * time.Hour)
+	scope := releaseTestScope(t)
+	repo.jobs["semantic-m1"] = &Job{
+		ID:      "semantic-m1",
+		UserID:  scope.UserID(),
+		Kind:    JobKindSemanticize,
+		Payload: []byte("{}"),
+		Status:  JobStatusPending,
+		Targets: []JobTarget{{
+			Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1,
+		}},
+	}
+	if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt).Release(context.Background(), scope, "d1"); err != nil {
+		t.Fatalf("Release failed: %v", err)
+	}
+	if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, restoreAt).Restore(context.Background(), scope, "d1"); err != nil {
+		t.Fatalf("Restore failed: %v", err)
+	}
+
+	requeued := repo.jobs["semantic-m1"]
+	if requeued == nil || requeued.Status != JobStatusPending || !requeued.NextRunAt.Equal(restoreAt) {
+		t.Fatalf("restored semantic job = %+v, want pending at %v", requeued, restoreAt)
+	}
+	if requeued.TerminalAt != nil || requeued.CanceledByReleaseID != nil || string(requeued.Payload) != "{}" {
+		t.Fatalf("restored semantic terminal metadata = %+v, want cleared with identity-only payload", requeued)
+	}
+	for _, job := range repo.jobs {
+		if job.Kind == JobKindRetention {
+			t.Fatalf("retention trigger survived Restore: %+v", job)
+		}
+	}
+	var reembed *Job
+	for _, job := range repo.jobs {
+		if job.Kind == JobKindEmbed {
+			reembed = job
+		}
+	}
+	if reembed == nil || reembed.Kind != JobKindEmbed || reembed.Status != JobStatusPending {
+		t.Fatalf("restore re-embed = %+v, want pending embed", reembed)
+	}
+	if len(reembed.Targets) != 1 || reembed.Targets[0] != (JobTarget{Kind: JobTargetNeuron, ID: "n-orphan", ExpectedRevision: 1}) {
+		t.Fatalf("restore re-embed targets = %+v, want current sealed-neuron revision", reembed.Targets)
+	}
+	if len(repo.groups) != 0 || repo.memories["m1"].deleted || repo.neurons["n-orphan"].sealed {
+		t.Fatal("Restore did not atomically retire the release and restore its sources")
+	}
+}
+
 func TestRestoreRefusesExpiredAndNotReleased(t *testing.T) {
 	t.Parallel()
 	repo := newFakeReleaseRepo()
@@ -646,11 +961,11 @@ func TestRestoreRefusesExpiredAndNotReleased(t *testing.T) {
 	if _, err := service.Release(context.Background(), scope, "d1"); err != nil {
 		t.Fatalf("Release failed: %v", err)
 	}
-	// Past the window: a service clocked well beyond retention refuses.
-	expired := releaseNow.Add(retentionWindow() + time.Hour)
+	// The exact boundary belongs to the sweep: Restore is strictly before-deadline only.
+	expired := releaseNow.Add(retentionWindow())
 	expiredService := newReleaseService(t, repo, &fakeSealSuggester{}, expired)
 	if _, err := expiredService.Restore(context.Background(), scope, "d1"); !errors.Is(err, ErrRestoreWindowExpired) {
-		t.Fatalf("Restore past window err = %v, want ErrRestoreWindowExpired", err)
+		t.Fatalf("Restore at window boundary err = %v, want ErrRestoreWindowExpired", err)
 	}
 	if !repo.memories["m1"].deleted {
 		t.Fatal("an expired restore must not clear the soft-delete")
@@ -758,6 +1073,87 @@ func TestLetGoSealsOnlyApprovedAndRejectsForeign(t *testing.T) {
 	}
 }
 
+func TestRetentionSweeperDueNoOpAndEarlyRetry(t *testing.T) {
+	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+	deadline := releaseAt.Add(retentionWindow())
+
+	t.Run("early retries at the exact deadline without mutation", func(t *testing.T) {
+		repo := newFakeReleaseRepo()
+		seedReleaseGraph(repo)
+		scope := releaseTestScope(t)
+		if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt).Release(context.Background(), scope, "d1"); err != nil {
+			t.Fatalf("Release failed: %v", err)
+		}
+		group, ok, err := repo.ReleaseGroupForDiary(context.Background(), scope, "d1")
+		if err != nil || !ok {
+			t.Fatalf("release group = (%+v, %v, %v), want present", group, ok, err)
+		}
+
+		swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, group.ID, deadline.Add(-time.Nanosecond))
+		if swept {
+			t.Fatal("an early retention claim reported a sweep")
+		}
+		var notDue retentionNotDueError
+		if !errors.As(err, &notDue) || !notDue.RetryAt().Equal(deadline) {
+			t.Fatalf("early sweep err = %v (retry %v), want retention retry at %v", err, notDue.RetryAt(), deadline)
+		}
+		if _, ok := repo.groups[group.ID]; !ok || !repo.memories["m1"].deleted {
+			t.Fatal("an early retention claim mutated the released aggregate")
+		}
+		if !hasJobKind(repo.jobs, JobKindRetention) {
+			t.Fatal("an early retention claim lost its durable trigger")
+		}
+	})
+
+	t.Run("exact deadline sweeps", func(t *testing.T) {
+		repo := newFakeReleaseRepo()
+		seedReleaseGraph(repo)
+		scope := releaseTestScope(t)
+		if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt).Release(context.Background(), scope, "d1"); err != nil {
+			t.Fatalf("Release failed: %v", err)
+		}
+		group, ok, err := repo.ReleaseGroupForDiary(context.Background(), scope, "d1")
+		if err != nil || !ok {
+			t.Fatalf("release group = (%+v, %v, %v), want present", group, ok, err)
+		}
+
+		swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, group.ID, deadline)
+		if err != nil || !swept {
+			t.Fatalf("deadline sweep = (%v, %v), want (true, nil)", swept, err)
+		}
+		if _, ok := repo.groups[group.ID]; ok {
+			t.Fatal("deadline sweep retained the release group")
+		}
+		if _, ok := repo.memories["m1"]; ok {
+			t.Fatal("deadline sweep retained the released memory")
+		}
+	})
+
+	t.Run("restored group is a no-op", func(t *testing.T) {
+		repo := newFakeReleaseRepo()
+		seedReleaseGraph(repo)
+		scope := releaseTestScope(t)
+		if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt).Release(context.Background(), scope, "d1"); err != nil {
+			t.Fatalf("Release failed: %v", err)
+		}
+		group, ok, err := repo.ReleaseGroupForDiary(context.Background(), scope, "d1")
+		if err != nil || !ok {
+			t.Fatalf("release group = (%+v, %v, %v), want present", group, ok, err)
+		}
+		if _, err := newReleaseService(t, repo, &fakeSealSuggester{}, releaseAt.Add(time.Hour)).Restore(context.Background(), scope, "d1"); err != nil {
+			t.Fatalf("Restore failed: %v", err)
+		}
+
+		swept, err := NewRetentionSweeper(repo).SweepRelease(context.Background(), scope, group.ID, deadline)
+		if err != nil || swept {
+			t.Fatalf("restored-group sweep = (%v, %v), want (false, nil)", swept, err)
+		}
+		if repo.memories["m1"].deleted {
+			t.Fatal("restored-group no-op re-deleted the live memory")
+		}
+	})
+}
+
 func TestSweepHardDeletesOnlyExpiredGroups(t *testing.T) {
 	t.Parallel()
 	repo := newFakeReleaseRepo()
@@ -769,6 +1165,17 @@ func TestSweepHardDeletesOnlyExpiredGroups(t *testing.T) {
 	if _, err := service.Release(context.Background(), scope, "d1"); err != nil {
 		t.Fatalf("Release failed: %v", err)
 	}
+	repo.jobs["memory-job"] = &Job{
+		ID: "memory-job", UserID: scope.UserID(), Kind: JobKindSemanticize, Status: JobStatusCanceled,
+		Payload: []byte("{}"), Targets: []JobTarget{{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1}},
+	}
+	repo.jobs["mixed-neuron-job"] = &Job{
+		ID: "mixed-neuron-job", UserID: scope.UserID(), Kind: JobKindEmbed, Status: JobStatusPending,
+		Payload: []byte("{}"), Targets: []JobTarget{
+			{Kind: JobTargetNeuron, ID: "n-orphan", ExpectedRevision: 1},
+			{Kind: JobTargetNeuron, ID: "n-shared", ExpectedRevision: 1},
+		},
+	}
 
 	// A sweep at release time removes nothing (group is fresh).
 	if swept, err := service.Sweep(context.Background(), scope, releaseNow); err != nil || swept != 0 {
@@ -778,11 +1185,32 @@ func TestSweepHardDeletesOnlyExpiredGroups(t *testing.T) {
 		t.Fatal("a fresh release was hard-deleted")
 	}
 
-	// A sweep past the window hard-deletes the group's memory, its exclusive orphan neuron, and the diary.
-	past := releaseNow.Add(retentionWindow() + time.Hour)
-	swept, err := service.Sweep(context.Background(), scope, past)
+	// The exact deadline is eligible. Queue targets go first, before any source row is removed.
+	repo.operations = nil
+	deadline := releaseNow.Add(retentionWindow())
+	swept, err := service.Sweep(context.Background(), scope, deadline)
 	if err != nil || swept != 1 {
-		t.Fatalf("expired sweep = (%d, %v), want (1, nil)", swept, err)
+		t.Fatalf("deadline sweep = (%d, %v), want (1, nil)", swept, err)
+	}
+	wantOperations := []string{
+		"purge_jobs",
+		"delete_activations",
+		"delete_synapses",
+		"delete_embeddings",
+		"delete_neurons",
+		"delete_memories",
+		"delete_diary",
+		"delete_group",
+	}
+	if !slices.Equal(repo.operations, wantOperations) {
+		t.Fatalf("sweep operations = %v, want FK-safe metadata-first order %v", repo.operations, wantOperations)
+	}
+	if _, ok := repo.jobs["memory-job"]; ok || hasJobKind(repo.jobs, JobKindRetention) {
+		t.Fatal("sweep retained job metadata for deleted memory/release targets")
+	}
+	mixed := repo.jobs["mixed-neuron-job"]
+	if mixed == nil || len(mixed.Targets) != 1 || mixed.Targets[0].ID != "n-shared" {
+		t.Fatalf("mixed job after sweep = %+v, want only its live shared-neuron target", mixed)
 	}
 	if _, ok := repo.memories["m1"]; ok {
 		t.Fatal("the expired release's memory was not hard-deleted")

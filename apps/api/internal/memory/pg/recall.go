@@ -66,7 +66,7 @@ func (s Store) RecallMemberNeurons(ctx context.Context, scope platform.UserScope
 	}
 	neurons := make([]memory.ExistingNeuron, 0, len(rows))
 	for _, row := range rows {
-		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType))
+		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType, row.RepresentationRevision))
 	}
 	return neurons, nil
 }
@@ -165,9 +165,9 @@ func (s Store) ResetRecallAnchors(ctx context.Context, scope platform.UserScope,
 	}, nil
 }
 
-func (s Store) ApplyReconsolidatedText(ctx context.Context, scope platform.UserScope, memoryID string, currentText string, seed int64) error {
+func (s Store) ApplyReconsolidatedText(ctx context.Context, scope platform.UserScope, memoryID string, currentText string, seed int64) (int64, error) {
 	if err := s.ready(scope); err != nil {
-		return err
+		return 0, err
 	}
 	return s.queries.ApplyReconsolidatedText(ctx, dbgen.ApplyReconsolidatedTextParams{
 		CurrentText: currentText,
@@ -199,5 +199,6 @@ func mapRecallMemory(row dbgen.LoadEpisodicMemoryForRecallRow) memory.EpisodicMe
 		SemanticStages:           semanticStagesPtr(row.SemanticStages),
 		ForgettingOffsetDays:     float64(row.ForgettingOffsetDays),
 		DeletedAt:                timePtr(row.DeletedAt),
+		RepresentationRevision:   row.RepresentationRevision,
 	}
 }

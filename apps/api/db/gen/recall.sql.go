@@ -11,13 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const applyReconsolidatedText = `-- name: ApplyReconsolidatedText :exec
+const applyReconsolidatedText = `-- name: ApplyReconsolidatedText :one
 UPDATE episodic_memories
 SET current_text = $1,
-    seed = $2
+    seed = $2,
+    representation_revision = representation_revision + 1
 WHERE user_id = $3
   AND id = $4
   AND deleted_at IS NULL
+RETURNING representation_revision
 `
 
 type ApplyReconsolidatedTextParams struct {
@@ -29,14 +31,16 @@ type ApplyReconsolidatedTextParams struct {
 
 // Writes ONLY the reconsolidation representation deltas ([R6][V5]): current_text and seed. Never
 // the Diary ([I2]); plain recall never runs this ([R4]).
-func (q *Queries) ApplyReconsolidatedText(ctx context.Context, arg ApplyReconsolidatedTextParams) error {
-	_, err := q.db.Exec(ctx, applyReconsolidatedText,
+func (q *Queries) ApplyReconsolidatedText(ctx context.Context, arg ApplyReconsolidatedTextParams) (int64, error) {
+	row := q.db.QueryRow(ctx, applyReconsolidatedText,
 		arg.CurrentText,
 		arg.Seed,
 		arg.UserID,
 		arg.MemoryID,
 	)
-	return err
+	var representation_revision int64
+	err := row.Scan(&representation_revision)
+	return representation_revision, err
 }
 
 const listLiveDiaryRecallAnchors = `-- name: ListLiveDiaryRecallAnchors :many
@@ -121,7 +125,8 @@ SELECT
     semanticize_timer_reset_at,
     semantic_stages,
     forgetting_offset_days,
-    deleted_at
+    deleted_at,
+    representation_revision
 FROM episodic_memories
 WHERE user_id = $1
   AND id = $2
@@ -151,6 +156,7 @@ type LoadEpisodicMemoryForRecallRow struct {
 	SemanticStages           []byte
 	ForgettingOffsetDays     float32
 	DeletedAt                pgtype.Timestamptz
+	RepresentationRevision   int64
 }
 
 // Recall use-case reads/writes (plan 33 / job 44), run by the recall transaction. The write
@@ -185,12 +191,13 @@ func (q *Queries) LoadEpisodicMemoryForRecall(ctx context.Context, arg LoadEpiso
 		&i.SemanticStages,
 		&i.ForgettingOffsetDays,
 		&i.DeletedAt,
+		&i.RepresentationRevision,
 	)
 	return i, err
 }
 
 const loadRecallMemberNeurons = `-- name: LoadRecallMemberNeurons :many
-SELECT n.id, n.name, n.neuron_type
+SELECT n.id, n.name, n.neuron_type, n.representation_revision
 FROM neuron_activations AS na
 JOIN neurons AS n
   ON n.user_id = na.user_id
@@ -207,9 +214,10 @@ type LoadRecallMemberNeuronsParams struct {
 }
 
 type LoadRecallMemberNeuronsRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	RepresentationRevision int64
 }
 
 // The recalled memory's live member neurons (the reconsolidation regen's semanticize inputs).
@@ -222,7 +230,12 @@ func (q *Queries) LoadRecallMemberNeurons(ctx context.Context, arg LoadRecallMem
 	var items []LoadRecallMemberNeuronsRow
 	for rows.Next() {
 		var i LoadRecallMemberNeuronsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NeuronType,
+			&i.RepresentationRevision,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

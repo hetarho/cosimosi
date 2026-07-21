@@ -19,6 +19,16 @@ WHERE user_id = sqlc.arg(user_id)
   AND diary_id = sqlc.arg(diary_id)
 FOR UPDATE;
 
+-- The worker's exact release target. Unlike the global sweep scan this blocks
+-- on the one row: skipping a Restore-held row could complete the only durable
+-- retention trigger before that Restore rolls back.
+-- name: GetReleaseGroupForSweep :one
+SELECT id, diary_id, deleted_at
+FROM release_groups
+WHERE user_id = sqlc.arg(user_id)
+  AND id = sqlc.arg(release_id)
+FOR UPDATE;
+
 -- Insert the release record at the caller's real-clock UTC deleted_at (created_at defaults).
 -- name: InsertReleaseGroup :exec
 INSERT INTO release_groups (id, user_id, diary_id, deleted_at)
@@ -57,6 +67,76 @@ FROM release_sealed_neurons
 WHERE user_id = sqlc.arg(user_id)
   AND release_id = sqlc.arg(release_id)
 ORDER BY neuron_id;
+
+-- Restore re-embeds the neurons this release unseals. A queued embed may have
+-- harmlessly completed while they were sealed, so this current revision set is
+-- the durable way to restore equivalent derived state.
+-- name: ListReleaseSealedNeuronTargets :many
+SELECT n.id, n.representation_revision
+FROM release_sealed_neurons AS rsn
+JOIN neurons AS n
+  ON n.id = rsn.neuron_id
+ AND n.user_id = rsn.user_id
+WHERE rsn.user_id = sqlc.arg(user_id)
+  AND rsn.release_id = sqlc.arg(release_id)
+ORDER BY n.id;
+
+-- Release cancels every active memory-targeted semantic job in the same
+-- transaction as soft deletion. Clearing the allowlisted payload is defensive;
+-- incrementing the lease generation fences already-claimed workers.
+-- name: CancelReleaseMemoryJobs :execrows
+UPDATE jobs AS j
+SET status = 'cancelled',
+    payload = '{}'::jsonb,
+    terminal_at = sqlc.arg(cancelled_at),
+    cancelled_by_release_id = sqlc.arg(release_id),
+    lease_generation = j.lease_generation + 1
+WHERE j.user_id = sqlc.arg(user_id)
+  AND j.status IN ('pending', 'running')
+  AND EXISTS (
+      SELECT 1
+      FROM job_targets AS jt
+      WHERE jt.job_id = j.id
+        AND jt.user_id = j.user_id
+        AND jt.target_kind = 'episodic_memory'
+        AND jt.target_id = ANY(sqlc.arg(episodic_memory_ids)::text[])
+  );
+
+-- A successful pre-deadline Restore revives only jobs this release cancelled.
+-- Their targets already carry the current expected revision; reconsolidation
+-- races are serialized by the release transaction and stale targets no-op.
+-- name: RequeueReleaseMemoryJobs :execrows
+UPDATE jobs AS j
+SET status = 'pending',
+    terminal_at = NULL,
+    cancelled_by_release_id = NULL,
+    next_run_at = sqlc.arg(next_run_at),
+    payload = '{}'::jsonb
+WHERE j.user_id = sqlc.arg(user_id)
+  AND j.status = 'cancelled'
+  AND j.cancelled_by_release_id = sqlc.arg(release_id)
+  AND EXISTS (
+      SELECT 1
+      FROM job_targets AS jt
+      WHERE jt.job_id = j.id
+        AND jt.user_id = j.user_id
+        AND jt.target_kind = 'episodic_memory'
+  );
+
+-- Restore removes the not-yet-due trigger only after every reversal succeeds.
+-- The target row cascades with the job.
+-- name: DeleteReleaseRetentionJobs :execrows
+DELETE FROM jobs AS j
+WHERE j.user_id = sqlc.arg(user_id)
+  AND j.kind = 'retention_sweep'
+  AND EXISTS (
+      SELECT 1
+      FROM job_targets AS jt
+      WHERE jt.job_id = j.id
+        AND jt.user_id = j.user_id
+        AND jt.target_kind = 'release_group'
+        AND jt.target_id = sqlc.arg(release_id)
+  );
 
 -- Restore's synapse reversal ([X2]): add each recorded LTD amount back to the edge's CURRENT strength,
 -- clamped to [0, cap], atomically in SQL — so a concurrent LTP/downscale/weaken between read and write is
@@ -140,19 +220,18 @@ WHERE n.user_id = sqlc.arg(user_id)
   )
 ORDER BY n.id;
 
--- Sweep read: release groups whose deleted_at is older than the retention cutoff (now − window),
+-- Sweep read: release groups whose deleted_at has reached the retention cutoff (now - window),
 -- computed in the use-case. A restored group has been deleted, so it never appears — a restored release
 -- is a sweep no-op by construction.
 -- name: ListExpiredReleaseGroups :many
--- FOR UPDATE SKIP LOCKED so the sweep serializes with a concurrent Restore on the same group: a group a
--- Restore is holding is skipped (Restore will retire it), and a group the sweep holds makes a concurrent
--- Restore's FOR UPDATE read wait, then find it gone. No half-swept restored diary either way.
+-- Blocking FOR UPDATE serializes with Restore. At the exact deadline the group is
+-- eligible; the durable job must never skip the sole row and complete prematurely.
 SELECT id, diary_id, deleted_at
 FROM release_groups
 WHERE user_id = sqlc.arg(user_id)
-  AND deleted_at < sqlc.arg(cutoff)
+  AND deleted_at <= sqlc.arg(cutoff)
 ORDER BY deleted_at, id
-FOR UPDATE SKIP LOCKED;
+FOR UPDATE;
 
 -- Sweep eligibility: of this release's sealed orphan neurons, the ones NO activation outside the release
 -- set references — the exclusive dependents safe to hard-delete. A neuron another memory still activates
@@ -172,6 +251,38 @@ WHERE rsn.user_id = sqlc.arg(user_id)
 ORDER BY rsn.neuron_id;
 
 -- Sweep deletes, in FK-safe order. Each is user-scoped and bound to the release's own rows.
+-- Queue metadata/effect targets go first. Mixed-neuron jobs retain their live
+-- targets; a job whose last target is removed is deleted, fencing its worker.
+-- name: PurgeReleaseJobs :many
+WITH removed_targets AS (
+    DELETE FROM job_targets AS jt
+    WHERE jt.user_id = sqlc.arg(user_id)
+      AND (
+          (jt.target_kind = 'episodic_memory'
+           AND jt.target_id = ANY(sqlc.arg(episodic_memory_ids)::text[]))
+          OR
+          (jt.target_kind = 'neuron'
+           AND jt.target_id = ANY(sqlc.arg(neuron_ids)::text[]))
+          OR
+          (jt.target_kind = 'release_group'
+           AND jt.target_id = sqlc.arg(release_id))
+      )
+    RETURNING jt.job_id
+), affected_jobs AS (
+    SELECT DISTINCT job_id FROM removed_targets
+)
+DELETE FROM jobs AS j
+USING affected_jobs AS affected
+WHERE j.user_id = sqlc.arg(user_id)
+  AND j.id = affected.job_id
+  AND NOT EXISTS (
+      SELECT 1
+      FROM job_targets AS remaining
+      WHERE remaining.job_id = j.id
+        AND remaining.user_id = j.user_id
+  )
+RETURNING j.id;
+
 -- Activations of the swept memories (removes the memory↔neuron edges before the memories/neurons go).
 -- name: DeleteReleaseActivations :exec
 DELETE FROM neuron_activations

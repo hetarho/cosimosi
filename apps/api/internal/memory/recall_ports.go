@@ -135,7 +135,7 @@ type RecallTx interface {
 	// ApplyReconsolidatedText writes ONLY the reconsolidation representation deltas —
 	// current_text and seed ([R6][V5]). Never the Diary ([I2]). Plain recall never
 	// calls it ([R4]).
-	ApplyReconsolidatedText(ctx context.Context, scope platform.UserScope, memoryID string, currentText string, seed int64) error
+	ApplyReconsolidatedText(ctx context.Context, scope platform.UserScope, memoryID string, currentText string, seed int64) (int64, error)
 	SynapseWriter
 }
 

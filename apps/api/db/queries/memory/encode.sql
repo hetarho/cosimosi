@@ -3,7 +3,7 @@
 -- reads the universe_state clock — clock.sql — since plan 30.)
 
 -- name: ListNeuronCandidatesInBody :many
-SELECT id, name, neuron_type
+SELECT id, name, neuron_type, representation_revision
 FROM neurons
 WHERE user_id = $1
   AND sealed_at IS NULL
@@ -13,7 +13,7 @@ ORDER BY LENGTH(name) DESC, id
 LIMIT $3;
 
 -- name: ListNeuronsByNames :many
-SELECT id, name, neuron_type
+SELECT id, name, neuron_type, representation_revision
 FROM neurons
 WHERE user_id = $1
   AND sealed_at IS NULL
@@ -22,7 +22,7 @@ WHERE user_id = $1
 ORDER BY id;
 
 -- name: ListNearestNeuronCandidates :many
-SELECT n.id, n.name, n.neuron_type
+SELECT n.id, n.name, n.neuron_type, n.representation_revision
 FROM embeddings AS e
 JOIN neurons AS n
   ON n.user_id = e.user_id

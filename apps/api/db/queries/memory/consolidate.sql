@@ -37,7 +37,7 @@ WHERE user_id = sqlc.arg(user_id)
 
 -- The live neurons activated by a memory set — the replay-set expansion step ([C2]).
 -- name: ListReplaySetNeurons :many
-SELECT DISTINCT n.id, n.name, n.neuron_type
+SELECT DISTINCT n.id, n.name, n.neuron_type, n.representation_revision
 FROM neuron_activations AS na
 JOIN neurons AS n
   ON n.user_id = na.user_id
@@ -90,16 +90,6 @@ JOIN neurons AS nb
 WHERE s.user_id = sqlc.arg(user_id)
   AND s.last_activated_universe_time < sqlc.arg(activated_before)::date
 ORDER BY s.id;
-
--- The consolidate worker's execution-time re-read: the live (unsealed) neurons' current
--- embed texts, so a re-embed never writes a vector for a name that has since changed.
--- name: ListNeuronEmbedTexts :many
-SELECT id, name, neuron_type
-FROM neurons
-WHERE user_id = sqlc.arg(user_id)
-  AND id = ANY(sqlc.arg(neuron_ids)::text[])
-  AND sealed_at IS NULL
-ORDER BY id;
 
 -- Batch base-strength write for the Downscale renormalization ([C4]): values are computed by
 -- the pure domain fn (the source of truth) and written absolutely — rows update in place,

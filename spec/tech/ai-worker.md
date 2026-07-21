@@ -81,27 +81,42 @@ type escapes the package.
 - `RetryJob`: marks a failed attempt `pending`, increments attempts to the caller-computed value, and writes
   `next_run_at`.
 - `FailJob`: marks an exhausted or unhandled job `failed`.
-- `SetSemanticStages`: writes only `episodic_memories.semantic_stages` scoped by `user_id`.
+- Current-source reads and conditional derived writes are scoped by `user_id`, target identity, and
+  `representation_revision`.
+- `PurgeTerminalJobs` removes a bounded batch of terminal queue metadata older than
+  `ai.job_terminal_retention_days`; it preserves a failed retention job while its release group still exists.
 
 Backoff is deterministic: `ai.job_backoff_base_ms * 2^attempts`, no jitter. A claimed `running` row uses
-`next_run_at` as its lease deadline; the lease duration is `ai.job_backoff_base_ms * ai.job_max_attempts` (5 minutes
-with the shipped values). `ai.job_max_attempts = 5`; once the next attempt count reaches that cap, the job is marked
-`failed` and kept for inspection. A cost-limit error is scheduled for the next UTC calendar day without incrementing
-`attempts`. The worker never deletes neurons, memories, synapses, embeddings, or diaries.
+`next_run_at` as its lease deadline for `ai.job_lease_ms`. Ordinary jobs are marked `failed` after
+`ai.job_max_attempts`; retention jobs remain retryable because they are the durable executor for a user-originated
+release. A cost-limit error is scheduled for the next UTC calendar day without incrementing `attempts`. Regular AI
+handlers never delete domain rows. The narrow `retention_sweep` handler is the sole worker path that hard-deletes data,
+and it can act only on an existing user-created release group at or after that group's restore deadline.
 
-Unhandled reserved kinds (`extract`, `link`, `consolidate`) have no Epic A dispatch branch. The generic runner marks
-them `failed` without panicking.
+`consolidate` is now an active identity/revision-fenced re-embedding path. Still-unhandled reserved kinds (`extract`,
+`link`) are marked `failed` by the generic runner without panicking.
 
 Transient queue I/O errors during claim, complete, retry, or fail are logged and the runner continues polling. Context
 cancelation remains the shutdown signal.
 
 ## 4. Worker Effects
 
-`embed` jobs decode a payload of neuron ids/texts, call `Embedder.Embed`, and batch-upsert `embeddings` rows for the
-claimed job's user when the backing pgx connection supports batching.
+Active work rows carry an empty JSON payload. Their identities and expected revisions live in normalized `job_targets`
+rows, so pending, running, and terminal queue records never retain a snapshot of a Diary body, memory text, neuron
+name, or semantic-stage text.
 
-`semanticize` jobs decode a memory payload, call `Semanticizer.GenerateSemanticStages`, and write the four JSON stage
-texts to `episodic_memories.semantic_stages`.
+`embed` jobs load each target neuron by user, id, liveness, and expected `representation_revision` immediately before
+calling `Embedder.Embed`. The resulting embedding is written only if the same target is still live at that revision;
+release, sealing, or a concurrent representation rewrite turns the work into a successful no-op.
+
+`semanticize` jobs apply the same current-read and conditional-write fence to an episodic-memory target before writing
+the four generated stage texts. `consolidate` jobs use identity/revision targets rather than source snapshots as well.
+
+Every successful `Release` enqueues one deduplicated `retention_sweep` target for its release group at exactly
+`deleted_at + release.soft_delete_retention_days`, in the same transaction as the soft delete. The handler locks that
+specific group, treats `deadline <= now` as due, and invokes the scoped deletion sequence. Restore before the deadline
+cancels the trigger; an already-restored or already-swept target is a harmless no-op. The normal worker poll loop is the
+operational trigger—there is no separate cron or scheduler.
 
 `GetUniverse` now reads nullable `semantic_stages`: before the worker fills the value it is `NULL`; after the worker
 fills it, the stages appear on the next read/refetch. No polling, server-streaming, or diary mutation is introduced.
@@ -113,4 +128,8 @@ adapters, and runs the generic job loop. It (and `cmd/api`) blank-import `intern
 `internal/ai/voyage` so those providers register with the factory before env selection runs.
 
 `cmd/api` can run the same memory worker as a dev goroutine when `COSIMOSI_DEV_WORKER=1`; `docker-compose.yml` enables
-that path for the local API container. Runtime environment and secrets stay out of `spec/values.yaml`.
+that path for the local API container. The production image contains both `/api` and `/worker`, and
+`docker-compose.prod.yml` runs them as separate services from the same immutable image tag. Backend rollout stops both
+old processes before queue-contract migrations, then starts both on the migrated schema; a failed migration restores
+the prior image selection and only the services that had been running. Runtime environment and secrets stay out of
+`spec/values.yaml`.

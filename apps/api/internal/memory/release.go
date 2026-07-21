@@ -20,8 +20,9 @@ import (
 //     user APPROVES; it is permanent — no deleted_at, no timer, no ledger, no restore ([X4][X5]). The
 //     memory's emotion/color/seed and its spatial/entity neurons are untouched — a silent engram.
 //   - Sweep: the ONLY hard delete of user data. It removes solely release groups the user soft-deleted
-//     once older than the window, honoring [I1] by construction (it originates no deletion of its own).
-//     It runs with no cron — Release invokes it opportunistically as the trigger.
+//     once their restore deadline arrives, honoring [I1] by construction (it originates no deletion of
+//     its own). Release atomically schedules the durable target; the normal worker loop executes it
+//     without a cron. The opportunistic pre-Release sweep remains a secondary cleanup path.
 //
 // The system never originates deletion; the AI never executes one. Orphan-ness and approved-id validity
 // are server-side decisions (§2.9#8): every read, seal, unseal, delete, and suggestion is per-user scoped.
@@ -51,10 +52,10 @@ var (
 )
 
 // Release performs a full delete of one diary ([X1][X2]): opportunistically sweep the caller's expired
-// releases first (the no-cron trigger), then in one transaction soft-delete every live memory born from
+// releases first, then in one transaction soft-delete every live memory born from
 // the diary, seal the removal set's orphan neurons, weaken the shared neurons' contribution (LTD), and
-// record the release-effect ledger so Restore can reverse it exactly. No hard delete, no Diary UPDATE,
-// no SpendGate (deletion is never priced).
+// record the release-effect ledger plus its exact-deadline retention job so Restore can reverse it
+// exactly. No hard delete, no Diary UPDATE, no SpendGate (deletion is never priced).
 func (s *Service) Release(ctx context.Context, scope platform.UserScope, diaryID string) (ReleaseResult, error) {
 	if scope.UserID() == "" {
 		return ReleaseResult{}, ErrScopeRequired
@@ -63,8 +64,8 @@ func (s *Service) Release(ctx context.Context, scope platform.UserScope, diaryID
 		return ReleaseResult{}, ErrReleaseInputRequired
 	}
 
-	// The retention sweep runs before the release (its trigger). It is the caller's own per-user
-	// sweep, so a Release both frees expired storage and starts a new window in one visit.
+	// This secondary per-user sweep frees expired storage during an active visit. The durable
+	// exact-deadline job below is what guarantees cleanup when the user never returns.
 	if _, err := s.Sweep(ctx, scope, s.now()); err != nil {
 		return ReleaseResult{}, err
 	}
@@ -120,6 +121,23 @@ func (s *Service) Release(ctx context.Context, scope platform.UserScope, diaryID
 		if err := tx.RecordReleaseSynapseDeltas(ctx, scope, releaseID, deltas); err != nil {
 			return err
 		}
+		if err := tx.CancelReleaseMemoryJobs(ctx, scope, releaseID, memoryIDs, deletedAt); err != nil {
+			return err
+		}
+		if err := enqueueScheduledJob(
+			ctx,
+			tx,
+			scope,
+			s.newID(),
+			deletedAt.Add(retentionWindow()),
+			deletedAt,
+			JobKindRetention,
+			releaseID,
+			RetentionSweepJobPayload{},
+			JobTarget{Kind: JobTargetRelease, ID: releaseID},
+		); err != nil {
+			return err
+		}
 
 		result = ReleaseResult{DiaryID: diaryID, EpisodicMemoryIDs: memoryIDs, DeletedAt: deletedAt}
 		return nil
@@ -143,6 +161,7 @@ func (s *Service) Restore(ctx context.Context, scope platform.UserScope, diaryID
 		return RestoreResult{}, ErrReleaseInputRequired
 	}
 
+	restoreAt := s.now()
 	var result RestoreResult
 	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {
 		group, exists, err := tx.ReleaseGroupForDiary(ctx, scope, diaryID)
@@ -152,7 +171,7 @@ func (s *Service) Restore(ctx context.Context, scope platform.UserScope, diaryID
 		if !exists {
 			return ErrRestoreNotReleased
 		}
-		if s.now().Sub(group.DeletedAt) >= retentionWindow() {
+		if !restoreAt.Before(group.DeletedAt.Add(retentionWindow())) {
 			return ErrRestoreWindowExpired
 		}
 
@@ -168,6 +187,10 @@ func (s *Service) Restore(ctx context.Context, scope platform.UserScope, diaryID
 		if err != nil {
 			return err
 		}
+		reembedTargets, err := tx.ReleaseSealedNeuronTargets(ctx, scope, group.ID)
+		if err != nil {
+			return err
+		}
 		if err := tx.UnsealReleaseNeurons(ctx, scope, sealed); err != nil {
 			return err
 		}
@@ -175,6 +198,17 @@ func (s *Service) Restore(ctx context.Context, scope platform.UserScope, diaryID
 		// Add each recorded LTD amount back to the edge's current strength, clamped, atomically in SQL
 		// — the exact reversal of Release's Depress that composes with (never clobbers) interim activity.
 		if err := tx.ReverseReleaseSynapseDeltas(ctx, scope, group.ID); err != nil {
+			return err
+		}
+		if err := tx.RequeueReleaseMemoryJobs(ctx, scope, group.ID, restoreAt); err != nil {
+			return err
+		}
+		if len(reembedTargets) > 0 {
+			if err := enqueueJob(ctx, tx, scope, s.newID(), restoreAt, JobKindEmbed, EmbedJobPayload{}, reembedTargets...); err != nil {
+				return err
+			}
+		}
+		if err := tx.DeleteReleaseRetentionJobs(ctx, scope, group.ID); err != nil {
 			return err
 		}
 
@@ -291,7 +325,7 @@ func (s *Service) LetGo(ctx context.Context, scope platform.UserScope, memoryID 
 }
 
 // Sweep is the retention sweeper ([X2][I1]) — the ONLY hard delete of user data. In one transaction it
-// removes every release group whose deleted_at is older than the window: the released (still-soft-deleted)
+// removes every release group whose deleted_at has reached the retention cutoff: the released (still-soft-deleted)
 // memories and their retained provenance (via the memory-provenance cascade), their activations, the exclusive sealed
 // orphan neurons no other memory references (with their embeddings + edges), and the original Diary
 // row/body — in FK-safe order, per-user scoped. It never touches a live (deleted_at IS NULL) row and never
@@ -309,35 +343,7 @@ func (s *Service) Sweep(ctx context.Context, scope platform.UserScope, now time.
 			return err
 		}
 		for _, group := range groups {
-			memoryIDs, err := tx.ReleaseMemories(ctx, scope, group.ID)
-			if err != nil {
-				return err
-			}
-			// The exclusive dependents are decided before any delete, over the activations still
-			// present — a neuron another memory activates is spared (never a shared neuron).
-			exclusive, err := tx.ExclusiveReleaseNeurons(ctx, scope, group.ID, memoryIDs)
-			if err != nil {
-				return err
-			}
-			if err := tx.DeleteReleaseActivations(ctx, scope, memoryIDs); err != nil {
-				return err
-			}
-			if err := tx.DeleteReleaseSynapses(ctx, scope, exclusive); err != nil {
-				return err
-			}
-			if err := tx.DeleteReleaseEmbeddings(ctx, scope, exclusive); err != nil {
-				return err
-			}
-			if err := tx.DeleteReleaseNeurons(ctx, scope, exclusive); err != nil {
-				return err
-			}
-			if err := tx.DeleteReleaseMemories(ctx, scope, memoryIDs); err != nil {
-				return err
-			}
-			if err := tx.DeleteReleaseDiary(ctx, scope, group.DiaryID); err != nil {
-				return err
-			}
-			if err := tx.DeleteReleaseGroup(ctx, scope, group.ID); err != nil {
+			if err := sweepReleaseGroup(ctx, scope, tx, group); err != nil {
 				return err
 			}
 			swept++
@@ -348,6 +354,93 @@ func (s *Service) Sweep(ctx context.Context, scope platform.UserScope, now time.
 		return 0, err
 	}
 	return swept, nil
+}
+
+// RetentionSweeper is the narrow worker-facing use-case. It locks one scheduled
+// release group, retries exactly at its deadline when claimed early, and treats a
+// group already retired by Restore as a successful no-op.
+type RetentionSweeper struct {
+	releases ReleaseRepo
+}
+
+func NewRetentionSweeper(releases ReleaseRepo) RetentionSweeper {
+	return RetentionSweeper{releases: releases}
+}
+
+func (s RetentionSweeper) SweepRelease(ctx context.Context, scope platform.UserScope, releaseID string, now time.Time) (bool, error) {
+	if scope.UserID() == "" {
+		return false, ErrScopeRequired
+	}
+	if releaseID == "" {
+		return false, ErrReleaseInputRequired
+	}
+	if s.releases == nil {
+		return false, errors.New("retention sweep requires a release repository")
+	}
+	swept := false
+	err := s.releases.InReleaseTx(ctx, func(tx ReleaseTx) error {
+		group, exists, err := tx.ReleaseGroupForSweep(ctx, scope, releaseID)
+		if err != nil || !exists {
+			return err
+		}
+		deadline := group.DeletedAt.Add(retentionWindow())
+		if now.Before(deadline) {
+			return retentionNotDueError{deadline: deadline}
+		}
+		if err := sweepReleaseGroup(ctx, scope, tx, group); err != nil {
+			return err
+		}
+		swept = true
+		return nil
+	})
+	return swept, err
+}
+
+type retentionNotDueError struct {
+	deadline time.Time
+}
+
+func (e retentionNotDueError) Error() string {
+	return "release retention sweep claimed before its deadline"
+}
+
+func (e retentionNotDueError) RetryAt() time.Time {
+	return e.deadline
+}
+
+func sweepReleaseGroup(ctx context.Context, scope platform.UserScope, tx ReleaseTx, group ReleaseGroup) error {
+	memoryIDs, err := tx.ReleaseMemories(ctx, scope, group.ID)
+	if err != nil {
+		return err
+	}
+	// Decide exclusive dependents while activations still exist. A neuron another
+	// memory activates is spared; it may remain as a target of a mixed worker job.
+	exclusive, err := tx.ExclusiveReleaseNeurons(ctx, scope, group.ID, memoryIDs)
+	if err != nil {
+		return err
+	}
+	if err := tx.PurgeReleaseJobs(ctx, scope, group.ID, memoryIDs, exclusive); err != nil {
+		return err
+	}
+	if err := tx.DeleteReleaseActivations(ctx, scope, memoryIDs); err != nil {
+		return err
+	}
+	if err := tx.DeleteReleaseSynapses(ctx, scope, exclusive); err != nil {
+		return err
+	}
+	if err := tx.DeleteReleaseEmbeddings(ctx, scope, exclusive); err != nil {
+		return err
+	}
+	if err := tx.DeleteReleaseNeurons(ctx, scope, exclusive); err != nil {
+		return err
+	}
+	if err := tx.DeleteReleaseMemories(ctx, scope, memoryIDs); err != nil {
+		return err
+	}
+	if err := tx.DeleteReleaseDiary(ctx, scope, group.DiaryID); err != nil {
+		return err
+	}
+	return tx.DeleteReleaseGroup(ctx, scope, group.ID)
 }
 
 // retentionWindow is the full-delete restore window as a real-clock duration — the sole boundary of the

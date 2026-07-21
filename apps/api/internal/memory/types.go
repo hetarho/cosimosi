@@ -29,16 +29,36 @@ const (
 	JobKindLink        JobKind = "link"
 	JobKindExtract     JobKind = "extract"
 	JobKindConsolidate JobKind = "consolidate"
+	JobKindRetention   JobKind = "retention_sweep"
 )
 
 type JobStatus string
 
 const (
-	JobStatusPending JobStatus = "pending"
-	JobStatusRunning JobStatus = "running"
-	JobStatusDone    JobStatus = "done"
-	JobStatusFailed  JobStatus = "failed"
+	JobStatusPending  JobStatus = "pending"
+	JobStatusRunning  JobStatus = "running"
+	JobStatusDone     JobStatus = "done"
+	JobStatusFailed   JobStatus = "failed"
+	JobStatusCanceled JobStatus = "cancelled"
 )
+
+type JobTargetKind string
+
+const (
+	JobTargetMemory  JobTargetKind = "episodic_memory"
+	JobTargetNeuron  JobTargetKind = "neuron"
+	JobTargetRelease JobTargetKind = "release_group"
+)
+
+// JobTarget is identity/revision metadata indexed outside the payload. It lets
+// Release cancel work without inspecting JSON and lets Sweep remove every queue
+// trace before deleting the target aggregate. Revision is zero for identity-only
+// lifecycle targets such as a release group.
+type JobTarget struct {
+	Kind             JobTargetKind
+	ID               string
+	ExpectedRevision int64
+}
 
 // ProvenanceKind labels a representational event in a memory's 변천사 ([R8a][D1]).
 // 'created' is never written — it is synthesized at read from the memory's
@@ -124,14 +144,18 @@ type EpisodicMemory struct {
 	// ForgettingOffsetDays is the signed neighbor forgetting nudge (CC4), read into EffectiveElapsedDays.
 	ForgettingOffsetDays float64
 	DeletedAt            *time.Time
+	// RepresentationRevision changes whenever the authoritative source representation
+	// is rewritten. Async work captures it and may publish only while it still matches.
+	RepresentationRevision int64
 }
 
 type Neuron struct {
-	ID        string
-	Name      *string
-	Type      NeuronType
-	CreatedAt time.Time
-	SealedAt  *time.Time
+	ID                     string
+	Name                   *string
+	Type                   NeuronType
+	CreatedAt              time.Time
+	SealedAt               *time.Time
+	RepresentationRevision int64
 }
 
 type NeuronWithConnectivity struct {
@@ -163,14 +187,18 @@ type Embedding struct {
 type SemanticStages [4]string
 
 type Job struct {
-	ID        string
-	UserID    string
-	Kind      JobKind
-	Payload   []byte
-	Status    JobStatus
-	Attempts  int32
-	NextRunAt time.Time
-	CreatedAt time.Time
+	ID                  string
+	UserID              string
+	Kind                JobKind
+	Payload             []byte
+	Status              JobStatus
+	Attempts            int32
+	NextRunAt           time.Time
+	CreatedAt           time.Time
+	DedupKey            *string
+	Targets             []JobTarget
+	TerminalAt          *time.Time
+	CanceledByReleaseID *string
 	// LeaseGeneration is the fence token the worker holds for this claim; a terminal
 	// transition matches only while it equals the row's current generation.
 	LeaseGeneration int64
@@ -181,6 +209,12 @@ func (j Job) JobID() string {
 }
 
 func (j Job) JobLeaseGeneration() int64 {
+	// Retention work is the sole durable trigger for an inactive user's explicit
+	// Release. It retries past the generic dead-letter claim ceiling; the actual
+	// LeaseGeneration field still fences its database operations.
+	if j.Kind == JobKindRetention {
+		return 0
+	}
 	return j.LeaseGeneration
 }
 

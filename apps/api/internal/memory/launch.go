@@ -174,7 +174,7 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 		if err := s.linker.LinkLaunched(ctx, scope, tx, launched); err != nil {
 			return err
 		}
-		if err := s.enqueueAsyncJobs(ctx, scope, tx, body, confirmed, launched, newNeurons); err != nil {
+		if err := s.enqueueAsyncJobs(ctx, scope, tx, launched, newNeurons); err != nil {
 			return err
 		}
 
@@ -269,43 +269,28 @@ func (s *Service) resolveNeurons(ctx context.Context, scope platform.UserScope, 
 
 // enqueueAsyncJobs hands the slow work to the worker (§2.8): one embed job for
 // the genuinely new neurons and one semanticize job per launched memory.
-func (s *Service) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope, tx LaunchTx, body string, confirmed []ExtractedMemory, launched []LaunchedMemory, newNeurons []Neuron) error {
+func (s *Service) enqueueAsyncJobs(ctx context.Context, scope platform.UserScope, tx LaunchTx, launched []LaunchedMemory, newNeurons []Neuron) error {
 	if len(newNeurons) > 0 {
-		payload := EmbedJobPayload{Neurons: make([]EmbedJobNeuron, 0, len(newNeurons))}
+		targets := make([]JobTarget, 0, len(newNeurons))
 		for _, neuron := range newNeurons {
-			name := ""
-			if neuron.Name != nil {
-				name = *neuron.Name
-			}
-			payload.Neurons = append(payload.Neurons, EmbedJobNeuron{ID: neuron.ID, Text: name})
+			targets = append(targets, JobTarget{Kind: JobTargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision})
 		}
-		if err := s.enqueue(ctx, scope, tx, JobKindEmbed, payload); err != nil {
+		if err := s.enqueue(ctx, scope, tx, JobKindEmbed, EmbedJobPayload{}, targets...); err != nil {
 			return err
 		}
 	}
-	// launched is built 1:1 in confirmed order, so index i pairs the persisted
-	// memory with the confirmed neurons the semanticizer should see.
-	for i, launchedMemory := range launched {
-		neurons := make([]SemanticJobNeuron, 0, len(confirmed[i].Neurons))
-		for _, neuron := range confirmed[i].Neurons {
-			neurons = append(neurons, SemanticJobNeuron{Name: neuron.Name, Type: neuron.Type})
-		}
-		payload := SemanticizeJobPayload{
-			MemoryID:    launchedMemory.ID,
-			Name:        launchedMemory.Name,
-			CurrentText: body,
-			Mood:        launchedMemory.Emotion.Mood,
-			Neurons:     neurons,
-		}
-		if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, payload); err != nil {
+	for _, launchedMemory := range launched {
+		if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, SemanticizeJobPayload{}, JobTarget{
+			Kind: JobTargetMemory, ID: launchedMemory.ID, ExpectedRevision: launchedMemory.RepresentationRevision,
+		}); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any) error {
-	return enqueueJob(ctx, tx, scope, s.newID(), s.now(), kind, payload)
+func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx ProgressionTx, kind JobKind, payload any, targets ...JobTarget) error {
+	return enqueueJob(ctx, tx, scope, s.newID(), s.now(), kind, payload, targets...)
 }
 
 // validateConfirmedSplit re-applies the encode invariants to the user-confirmed

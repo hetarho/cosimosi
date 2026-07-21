@@ -76,8 +76,12 @@ when it is backed by a pool; callers that construct the store over an existing t
 snapshot.
 
 `apps/api/db/queries/memory/jobs.sql` contains the worker-side queue shape: claim due work with
-`FOR UPDATE SKIP LOCKED`, complete, retry, fail, and write semantic stages. The query file is memory-owned because the
-`jobs` table belongs to the memory context, while the generic retry loop lives in `internal/platform/jobqueue`.
+`FOR UPDATE SKIP LOCKED`, complete, retry, fail, current-source reads, revision-fenced derived writes, and bounded
+terminal cleanup. The query file is memory-owned because the `jobs` table belongs to the memory context, while the
+generic retry loop lives in `internal/platform/jobqueue`. `job_targets` is the authoritative normalized mapping from a
+job to a user-scoped `episodic_memory`, `neuron`, or `release_group`; payload JSON is empty and never stores authored
+source text. `episodic_memories.representation_revision` and `neurons.representation_revision` advance when their
+external-processing source changes, so work claimed for an older representation cannot publish over the new one.
 
 The claim is **leased and fenced**. `jobs.lease_generation` is a monotonic token the claim bumps on every claim; a
 claim sets `status='running'` and pushes `next_run_at` out by `ai.job_lease_ms` (the lease window). The terminal
@@ -89,7 +93,13 @@ the exponential retry backoff (`ai.job_backoff_base_ms`). Because `lease_generat
 dead-letters a job re-claimed past `ai.job_max_claims` without ever completing — the signature of a handler that keeps
 killing its worker (a panic that escapes recovery, OOM, SIGKILL) — so a poison job cannot loop forever. Ordinary
 handler panics are recovered in `internal/platform/jobqueue` and flow through the normal attempt/backoff path instead
-of crashing the worker.
+of crashing the worker. Done, failed, and cancelled queue metadata is retained for
+`ai.job_terminal_retention_days = 30` and deleted in bounded batches by the existing worker maintenance loop. A failed
+retention trigger is excluded from cleanup while its release group exists and continues retrying until the
+user-originated release is swept. Queue payloads are structurally constrained to the empty JSON object by both the pg
+adapter and database; a caller cannot persist a source snapshot and rely on handler-time rejection. Deployment
+quiesces the old API and worker before applying this queue-contract migration, preventing a pre-migration process with
+an already-loaded legacy payload from writing through the new boundary.
 
 Generated rows stay in `apps/api/db/gen`. `internal/memory` imports no sqlc, pgx, proto, or DB representation type;
 `internal/memory/pg` is the only memory package that imports `dbgen`/`pgtype` and maps rows to domain structs.
@@ -213,8 +223,11 @@ seal orphans + Depress shared contributions (recording the deltas) → write the
 recorded delta back to the edge's current strength **clamped, atomically in SQL** (lost-update-safe against interim
 LTP/downscale), then deletes the group. `SuggestLetGo`/`LetGo` seal only server-re-validated this-memory-only `semantic`
 neurons (the AI suggests within a pre-filtered set, never executes; permanent, no ledger). The **retention sweep** —
-`Service.Sweep`, the only hard delete of user data — removes release groups older than the window (activations →
+`Service.Sweep`, the only hard delete of user data — removes release groups whose deadline is due (activations →
 synapses touching exclusive orphans → embeddings → exclusive orphan neurons → memories `deleted_at IS NOT NULL` →
-diary → group; `memory_provenance` rides job 43's cascade), never a live row or a shared neuron. It runs with no cron
-(invoked opportunistically at `Release`); Sweep and Restore serialize on the group row via `FOR UPDATE` /
-`FOR UPDATE SKIP LOCKED`, so they never interleave into a half-swept restored diary.
+diary → group; `memory_provenance` rides job 43's cascade), never a live row or a shared neuron. `Release` atomically
+creates a deduplicated queue target scheduled for exactly `deleted_at + release.soft_delete_retention_days`; the normal
+worker loop executes it even if the user never returns. Restore is allowed only while `now < deadline` and cancels that
+trigger. Targeted Restore/sweep paths serialize on the exact group row with `FOR UPDATE` (without `SKIP LOCKED`), so a
+boundary race cannot skip the group or interleave into a half-swept restored diary. The opportunistic pre-Release sweep
+remains a secondary cleanup path, not the durable trigger; no cron is introduced.

@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -26,14 +25,15 @@ func fullStages() *SemanticStages {
 func plainConsolidateMemory(id string, created time.Time) EpisodicMemory {
 	seed := int64(42)
 	return EpisodicMemory{
-		ID:                  id,
-		DiaryID:             "diary-" + id,
-		Name:                "memory " + id,
-		CurrentText:         "I walked to the harbor and watched the boats until sunset came.",
-		Seed:                &seed,
-		Emotion:             Emotion{Mood: MoodNeutral, Arousal: 0},
-		CreatedUniverseTime: created,
-		SemanticStages:      fullStages(),
+		ID:                     id,
+		DiaryID:                "diary-" + id,
+		Name:                   "memory " + id,
+		CurrentText:            "I walked to the harbor and watched the boats until sunset came.",
+		Seed:                   &seed,
+		Emotion:                Emotion{Mood: MoodNeutral, Arousal: 0},
+		CreatedUniverseTime:    created,
+		SemanticStages:         fullStages(),
+		RepresentationRevision: 1,
 	}
 }
 
@@ -564,12 +564,11 @@ func TestConsolidateRepairsMissingStageTextsAtTheCeiling(t *testing.T) {
 	if semanticize == nil {
 		t.Fatal("a ceiling memory with missing stage texts did not re-enqueue semanticize")
 	}
-	var payload SemanticizeJobPayload
-	if err := json.Unmarshal(semanticize.Payload, &payload); err != nil {
-		t.Fatalf("decode payload: %v", err)
+	if string(semanticize.Payload) != "{}" {
+		t.Fatalf("payload = %s, want source-free object", semanticize.Payload)
 	}
-	if payload.MemoryID != "m1" || payload.KeepStages != 0 {
-		t.Fatalf("payload = %+v, want m1 keeping nothing", payload)
+	if len(semanticize.Targets) != 1 || semanticize.Targets[0] != (JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1}) {
+		t.Fatalf("targets = %+v, want revisioned m1", semanticize.Targets)
 	}
 	if len(tx.advances) != 0 {
 		t.Fatalf("advances = %+v, want none at the ceiling", tx.advances)
@@ -596,18 +595,11 @@ func TestConsolidateEnqueuesHeavyWorkNotInlineLLM(t *testing.T) {
 	if job.Kind != JobKindConsolidate {
 		t.Fatalf("job kind = %s, want consolidate", job.Kind)
 	}
-	var payload ConsolidateJobPayload
-	if err := json.Unmarshal(job.Payload, &payload); err != nil {
-		t.Fatalf("decode payload: %v", err)
+	if string(job.Payload) != "{}" {
+		t.Fatalf("payload = %s, want source-free object", job.Payload)
 	}
-	if payload.FromUniverseTime != "2026-01-01" || payload.ToUniverseTime != "2026-01-13" {
-		t.Fatalf("payload interval = %s..%s", payload.FromUniverseTime, payload.ToUniverseTime)
-	}
-	if len(payload.MemoryIDs) != 1 || payload.MemoryIDs[0] != "m1" {
-		t.Fatalf("payload memories = %v, want [m1]", payload.MemoryIDs)
-	}
-	if len(payload.NeuronIDs) != 1 || payload.NeuronIDs[0] != "n1" {
-		t.Fatalf("payload neuron ids = %v, want the replay-set neuron id only (texts re-read at execution)", payload.NeuronIDs)
+	if len(job.Targets) != 1 || job.Targets[0].Kind != JobTargetNeuron || job.Targets[0].ID != "n1" {
+		t.Fatalf("targets = %+v, want the replay-set neuron only", job.Targets)
 	}
 }
 
@@ -635,15 +627,11 @@ func TestConsolidateReenqueuesSemanticizeOnlyForMissingStageTexts(t *testing.T) 
 	if semanticize == nil {
 		t.Fatal("missing stage text did not re-enqueue semanticize")
 	}
-	var payload SemanticizeJobPayload
-	if err := json.Unmarshal(semanticize.Payload, &payload); err != nil {
-		t.Fatalf("decode payload: %v", err)
+	if string(semanticize.Payload) != "{}" {
+		t.Fatalf("payload = %s, want source-free object", semanticize.Payload)
 	}
-	if payload.MemoryID != "m1" || payload.KeepStages != 1 {
-		t.Fatalf("payload = %+v, want m1 keeping the 1 leading text", payload)
-	}
-	if payload.KeptStages == nil || payload.KeptStages[0] != "gist-1" {
-		t.Fatalf("kept stages = %+v, want the existing gist-1 carried", payload.KeptStages)
+	if len(semanticize.Targets) != 1 || semanticize.Targets[0].ID != "m1" {
+		t.Fatalf("targets = %+v, want m1; current stages are re-read by the worker", semanticize.Targets)
 	}
 	// The rise itself still materialized and left its 변천사 rows (with empty text where
 	// the pregenerated string is missing — the row anchors the event).

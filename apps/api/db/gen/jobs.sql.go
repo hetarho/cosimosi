@@ -12,11 +12,19 @@ import (
 )
 
 const claimDueJob = `-- name: ClaimDueJob :one
+
 WITH next_job AS (
     SELECT j.id
     FROM jobs AS j
     WHERE j.next_run_at <= $2
       AND j.status IN ('pending', 'running')
+      AND j.terminal_at IS NULL
+      AND EXISTS (
+          SELECT 1
+          FROM job_targets AS jt
+          WHERE jt.job_id = j.id
+            AND jt.user_id = j.user_id
+      )
     ORDER BY j.next_run_at, j.created_at, j.id
     FOR UPDATE SKIP LOCKED
     LIMIT 1
@@ -26,7 +34,9 @@ SET status = 'running',
     next_run_at = $1,
     lease_generation = lease_generation + 1
 WHERE id = (SELECT id FROM next_job)
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
+RETURNING
+    id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+    lease_generation, dedup_key, terminal_at, cancelled_by_release_id
 `
 
 type ClaimDueJobParams struct {
@@ -34,6 +44,7 @@ type ClaimDueJobParams struct {
 	NowAt      pgtype.Timestamptz
 }
 
+// Worker-owned queue transitions and deletion-safe current-source persistence.
 func (q *Queries) ClaimDueJob(ctx context.Context, arg ClaimDueJobParams) (Job, error) {
 	row := q.db.QueryRow(ctx, claimDueJob, arg.LeaseUntil, arg.NowAt)
 	var i Job
@@ -47,18 +58,24 @@ func (q *Queries) ClaimDueJob(ctx context.Context, arg ClaimDueJobParams) (Job, 
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.LeaseGeneration,
+		&i.DedupKey,
+		&i.TerminalAt,
+		&i.CancelledByReleaseID,
 	)
 	return i, err
 }
 
 const completeJob = `-- name: CompleteJob :one
 UPDATE jobs
-SET status = 'done'
+SET status = 'done',
+    terminal_at = clock_timestamp()
 WHERE user_id = $1
   AND id = $2
   AND status = 'running'
   AND lease_generation = $3
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
+RETURNING
+    id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+    lease_generation, dedup_key, terminal_at, cancelled_by_release_id
 `
 
 type CompleteJobParams struct {
@@ -80,6 +97,9 @@ func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (Job, 
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.LeaseGeneration,
+		&i.DedupKey,
+		&i.TerminalAt,
+		&i.CancelledByReleaseID,
 	)
 	return i, err
 }
@@ -87,26 +107,29 @@ func (q *Queries) CompleteJob(ctx context.Context, arg CompleteJobParams) (Job, 
 const failJob = `-- name: FailJob :one
 UPDATE jobs
 SET status = 'failed',
-    attempts = $3
-WHERE user_id = $1
-  AND id = $2
+    attempts = $1,
+    terminal_at = clock_timestamp()
+WHERE user_id = $2
+  AND id = $3
   AND status = 'running'
   AND lease_generation = $4
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
+RETURNING
+    id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+    lease_generation, dedup_key, terminal_at, cancelled_by_release_id
 `
 
 type FailJobParams struct {
+	Attempts        int32
 	UserID          string
 	ID              string
-	Attempts        int32
 	LeaseGeneration int64
 }
 
 func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (Job, error) {
 	row := q.db.QueryRow(ctx, failJob,
+		arg.Attempts,
 		arg.UserID,
 		arg.ID,
-		arg.Attempts,
 		arg.LeaseGeneration,
 	)
 	var i Job
@@ -120,36 +143,272 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (Job, error) {
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.LeaseGeneration,
+		&i.DedupKey,
+		&i.TerminalAt,
+		&i.CancelledByReleaseID,
 	)
 	return i, err
+}
+
+const listJobTargets = `-- name: ListJobTargets :many
+SELECT target_kind, target_id, expected_revision
+FROM job_targets
+WHERE user_id = $1
+  AND job_id = $2
+ORDER BY target_kind, target_id
+`
+
+type ListJobTargetsParams struct {
+	UserID string
+	JobID  string
+}
+
+type ListJobTargetsRow struct {
+	TargetKind       string
+	TargetID         string
+	ExpectedRevision pgtype.Int8
+}
+
+func (q *Queries) ListJobTargets(ctx context.Context, arg ListJobTargetsParams) ([]ListJobTargetsRow, error) {
+	rows, err := q.db.Query(ctx, listJobTargets, arg.UserID, arg.JobID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListJobTargetsRow
+	for rows.Next() {
+		var i ListJobTargetsRow
+		if err := rows.Scan(&i.TargetKind, &i.TargetID, &i.ExpectedRevision); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveNeuronJobSources = `-- name: ListLiveNeuronJobSources :many
+SELECT n.id, n.name, jt.expected_revision
+FROM neurons AS n
+JOIN job_targets AS jt
+  ON jt.user_id = n.user_id
+ AND jt.target_kind = 'neuron'
+ AND jt.target_id = n.id
+ AND jt.expected_revision = n.representation_revision
+JOIN jobs AS j
+  ON j.id = jt.job_id
+ AND j.user_id = jt.user_id
+WHERE j.user_id = $1
+  AND j.id = $2
+  AND j.status = 'running'
+  AND j.terminal_at IS NULL
+  AND j.lease_generation = $3
+  AND n.sealed_at IS NULL
+  AND n.name IS NOT NULL
+  AND btrim(n.name) <> ''
+ORDER BY n.id
+`
+
+type ListLiveNeuronJobSourcesParams struct {
+	UserID          string
+	JobID           string
+	LeaseGeneration int64
+}
+
+type ListLiveNeuronJobSourcesRow struct {
+	ID               string
+	Name             pgtype.Text
+	ExpectedRevision pgtype.Int8
+}
+
+func (q *Queries) ListLiveNeuronJobSources(ctx context.Context, arg ListLiveNeuronJobSourcesParams) ([]ListLiveNeuronJobSourcesRow, error) {
+	rows, err := q.db.Query(ctx, listLiveNeuronJobSources, arg.UserID, arg.JobID, arg.LeaseGeneration)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLiveNeuronJobSourcesRow
+	for rows.Next() {
+		var i ListLiveNeuronJobSourcesRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.ExpectedRevision); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const loadLiveSemanticizeJobSource = `-- name: LoadLiveSemanticizeJobSource :one
+SELECT
+    em.id,
+    em.name,
+    em.current_text,
+    em.mood,
+    em.semantic_stage,
+    em.semantic_stages,
+    em.representation_revision,
+    COALESCE(
+        ARRAY_AGG(n.name::text ORDER BY n.id)
+            FILTER (WHERE n.id IS NOT NULL AND n.name IS NOT NULL AND btrim(n.name) <> ''),
+        ARRAY[]::text[]
+    )::text[] AS neuron_names,
+    COALESCE(
+        ARRAY_AGG(n.neuron_type::text ORDER BY n.id)
+            FILTER (WHERE n.id IS NOT NULL AND n.name IS NOT NULL AND btrim(n.name) <> ''),
+        ARRAY[]::text[]
+    )::text[] AS neuron_types
+FROM episodic_memories AS em
+JOIN job_targets AS jt
+  ON jt.user_id = em.user_id
+ AND jt.target_kind = 'episodic_memory'
+ AND jt.target_id = em.id
+ AND jt.expected_revision = em.representation_revision
+JOIN jobs AS j
+  ON j.id = jt.job_id
+ AND j.user_id = jt.user_id
+LEFT JOIN neuron_activations AS na
+  ON na.episodic_memory_id = em.id
+ AND na.user_id = em.user_id
+LEFT JOIN neurons AS n
+  ON n.id = na.neuron_id
+ AND n.user_id = na.user_id
+ AND n.sealed_at IS NULL
+WHERE j.user_id = $1
+  AND j.id = $2
+  AND j.kind = 'semanticize'
+  AND j.status = 'running'
+  AND j.terminal_at IS NULL
+  AND j.lease_generation = $3
+  AND em.deleted_at IS NULL
+GROUP BY em.id
+`
+
+type LoadLiveSemanticizeJobSourceParams struct {
+	UserID          string
+	JobID           string
+	LeaseGeneration int64
+}
+
+type LoadLiveSemanticizeJobSourceRow struct {
+	ID                     string
+	Name                   string
+	CurrentText            string
+	Mood                   string
+	SemanticStage          int16
+	SemanticStages         []byte
+	RepresentationRevision int64
+	NeuronNames            []string
+	NeuronTypes            []string
+}
+
+func (q *Queries) LoadLiveSemanticizeJobSource(ctx context.Context, arg LoadLiveSemanticizeJobSourceParams) (LoadLiveSemanticizeJobSourceRow, error) {
+	row := q.db.QueryRow(ctx, loadLiveSemanticizeJobSource, arg.UserID, arg.JobID, arg.LeaseGeneration)
+	var i LoadLiveSemanticizeJobSourceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CurrentText,
+		&i.Mood,
+		&i.SemanticStage,
+		&i.SemanticStages,
+		&i.RepresentationRevision,
+		&i.NeuronNames,
+		&i.NeuronTypes,
+	)
+	return i, err
+}
+
+const purgeTerminalJobs = `-- name: PurgeTerminalJobs :many
+WITH expired AS (
+    SELECT j.id
+    FROM jobs AS j
+    WHERE j.terminal_at < $1
+      AND j.status IN ('done', 'failed', 'cancelled')
+      AND NOT (
+          j.kind = 'retention_sweep'
+          AND EXISTS (
+              SELECT 1
+              FROM job_targets AS jt
+              JOIN release_groups AS rg
+                ON rg.id = jt.target_id
+               AND rg.user_id = jt.user_id
+              WHERE jt.job_id = j.id
+                AND jt.user_id = j.user_id
+                AND jt.target_kind = 'release_group'
+          )
+      )
+    ORDER BY j.terminal_at, j.id
+    FOR UPDATE SKIP LOCKED
+    LIMIT $2
+)
+DELETE FROM jobs AS j
+USING expired
+WHERE j.id = expired.id
+RETURNING j.id
+`
+
+type PurgeTerminalJobsParams struct {
+	Cutoff    pgtype.Timestamptz
+	BatchSize int32
+}
+
+// This is the queue owner's sole bounded, global maintenance scan. Product
+// reads/writes remain user-scoped. A failed retention trigger stays until its
+// release group is gone, preserving eventual user-originated hard deletion.
+func (q *Queries) PurgeTerminalJobs(ctx context.Context, arg PurgeTerminalJobsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, purgeTerminalJobs, arg.Cutoff, arg.BatchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const retryJob = `-- name: RetryJob :one
 UPDATE jobs
 SET status = 'pending',
-    attempts = $3,
-    next_run_at = $4
-WHERE user_id = $1
-  AND id = $2
+    attempts = $1,
+    next_run_at = $2,
+    terminal_at = NULL
+WHERE user_id = $3
+  AND id = $4
   AND status = 'running'
   AND lease_generation = $5
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
+RETURNING
+    id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+    lease_generation, dedup_key, terminal_at, cancelled_by_release_id
 `
 
 type RetryJobParams struct {
-	UserID          string
-	ID              string
 	Attempts        int32
 	NextRunAt       pgtype.Timestamptz
+	UserID          string
+	ID              string
 	LeaseGeneration int64
 }
 
 func (q *Queries) RetryJob(ctx context.Context, arg RetryJobParams) (Job, error) {
 	row := q.db.QueryRow(ctx, retryJob,
-		arg.UserID,
-		arg.ID,
 		arg.Attempts,
 		arg.NextRunAt,
+		arg.UserID,
+		arg.ID,
 		arg.LeaseGeneration,
 	)
 	var i Job
@@ -163,33 +422,118 @@ func (q *Queries) RetryJob(ctx context.Context, arg RetryJobParams) (Job, error)
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.LeaseGeneration,
+		&i.DedupKey,
+		&i.TerminalAt,
+		&i.CancelledByReleaseID,
 	)
 	return i, err
 }
 
-const setSemanticStages = `-- name: SetSemanticStages :one
-UPDATE episodic_memories
-SET semantic_stages = $3::jsonb
-WHERE user_id = $1
-  AND id = $2
-  AND deleted_at IS NULL
-RETURNING id, semantic_stages
+const saveJobSemanticStages = `-- name: SaveJobSemanticStages :execrows
+WITH eligible AS MATERIALIZED (
+    SELECT em.id
+    FROM episodic_memories AS em
+    JOIN job_targets AS jt
+      ON jt.user_id = em.user_id
+     AND jt.target_kind = 'episodic_memory'
+     AND jt.target_id = em.id
+     AND jt.expected_revision = em.representation_revision
+    JOIN jobs AS j
+      ON j.id = jt.job_id
+     AND j.user_id = jt.user_id
+    WHERE j.user_id = $2
+      AND j.id = $3
+      AND j.kind = 'semanticize'
+      AND j.status = 'running'
+      AND j.terminal_at IS NULL
+      AND j.lease_generation = $4
+      AND em.id = $5
+      AND em.representation_revision = $6
+      AND em.deleted_at IS NULL
+    FOR UPDATE OF em, jt, j
+)
+UPDATE episodic_memories AS em
+SET semantic_stages = $1::jsonb
+FROM eligible
+WHERE em.id = eligible.id
 `
 
-type SetSemanticStagesParams struct {
-	UserID  string
-	ID      string
-	Column3 []byte
+type SaveJobSemanticStagesParams struct {
+	SemanticStages   []byte
+	UserID           string
+	JobID            string
+	LeaseGeneration  int64
+	MemoryID         string
+	ExpectedRevision int64
 }
 
-type SetSemanticStagesRow struct {
-	ID             string
-	SemanticStages []byte
+func (q *Queries) SaveJobSemanticStages(ctx context.Context, arg SaveJobSemanticStagesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, saveJobSemanticStages,
+		arg.SemanticStages,
+		arg.UserID,
+		arg.JobID,
+		arg.LeaseGeneration,
+		arg.MemoryID,
+		arg.ExpectedRevision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-func (q *Queries) SetSemanticStages(ctx context.Context, arg SetSemanticStagesParams) (SetSemanticStagesRow, error) {
-	row := q.db.QueryRow(ctx, setSemanticStages, arg.UserID, arg.ID, arg.Column3)
-	var i SetSemanticStagesRow
-	err := row.Scan(&i.ID, &i.SemanticStages)
-	return i, err
+const upsertJobEmbedding = `-- name: UpsertJobEmbedding :one
+WITH eligible AS MATERIALIZED (
+    SELECT n.id, n.user_id
+    FROM neurons AS n
+    JOIN job_targets AS jt
+      ON jt.user_id = n.user_id
+     AND jt.target_kind = 'neuron'
+     AND jt.target_id = n.id
+     AND jt.expected_revision = n.representation_revision
+    JOIN jobs AS j
+      ON j.id = jt.job_id
+     AND j.user_id = jt.user_id
+    WHERE j.user_id = $1
+      AND j.id = $2
+      AND j.status = 'running'
+      AND j.terminal_at IS NULL
+      AND j.lease_generation = $3
+      AND n.id = $4
+      AND n.representation_revision = $5
+      AND n.sealed_at IS NULL
+    FOR UPDATE OF n, jt, j
+), upserted AS (
+    INSERT INTO embeddings (neuron_id, user_id, vector)
+    SELECT id, user_id, $6::vector(1024)
+    FROM eligible
+    ON CONFLICT (neuron_id) DO UPDATE
+    SET vector = EXCLUDED.vector
+    WHERE embeddings.user_id = EXCLUDED.user_id
+    RETURNING neuron_id
+)
+SELECT count(*)::bigint AS rows_written FROM upserted
+`
+
+type UpsertJobEmbeddingParams struct {
+	UserID           string
+	JobID            string
+	LeaseGeneration  int64
+	NeuronID         string
+	ExpectedRevision int64
+	Vector           string
+}
+
+func (q *Queries) UpsertJobEmbedding(ctx context.Context, arg UpsertJobEmbeddingParams) (int64, error) {
+	row := q.db.QueryRow(ctx, upsertJobEmbedding,
+		arg.UserID,
+		arg.JobID,
+		arg.LeaseGeneration,
+		arg.NeuronID,
+		arg.ExpectedRevision,
+		arg.Vector,
+	)
+	var rows_written int64
+	err := row.Scan(&rows_written)
+	return rows_written, err
 }

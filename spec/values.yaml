@@ -124,6 +124,10 @@ ai:
   # that keeps killing its worker) is dead-lettered. Set well above job_max_attempts so
   # ordinary transient retries never trip it.
   job_max_claims: 20
+  # Queue-inspection metadata for done/failed/cancelled jobs is retained for this many
+  # real-clock days, then removed in bounded batches by the worker loop. This governs
+  # identity/revision-only job metadata, never Diary or memory source retention.
+  job_terminal_retention_days: 30
 
 emotion:
   # Mood coordinates are domain facts, stored on each memory at launch time.

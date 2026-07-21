@@ -28,24 +28,16 @@ type Store struct {
 	queries *dbgen.Queries
 	db      dbgen.DBTX
 	txer    txStarter
-	batcher batchSender
 }
 
 type txStarter interface {
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-type batchSender interface {
-	SendBatch(context.Context, *pgx.Batch) pgx.BatchResults
-}
-
 func NewStore(db dbgen.DBTX) Store {
 	store := Store{queries: dbgen.New(db), db: db}
 	if txer, ok := db.(txStarter); ok {
 		store.txer = txer
-	}
-	if batcher, ok := db.(batchSender); ok {
-		store.batcher = batcher
 	}
 	return store
 }
@@ -177,20 +169,44 @@ func (s Store) EnqueueJob(ctx context.Context, scope platform.UserScope, job mem
 	if err := s.ready(scope); err != nil {
 		return memory.Job{}, err
 	}
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(job.Payload, &payload); err != nil || payload == nil || len(payload) != 0 {
+		return memory.Job{}, errors.New("memory job payload must be an empty object")
+	}
+	if len(job.Targets) == 0 {
+		return memory.Job{}, errors.New("memory job requires at least one target")
+	}
+	targetKinds := make([]string, 0, len(job.Targets))
+	targetIDs := make([]string, 0, len(job.Targets))
+	expectedRevisions := make([]int64, 0, len(job.Targets))
+	for _, target := range job.Targets {
+		if target.Kind == "" || target.ID == "" {
+			return memory.Job{}, errors.New("memory job target requires kind and id")
+		}
+		targetKinds = append(targetKinds, string(target.Kind))
+		targetIDs = append(targetIDs, target.ID)
+		expectedRevisions = append(expectedRevisions, target.ExpectedRevision)
+	}
 	row, err := s.queries.EnqueueJob(ctx, dbgen.EnqueueJobParams{
-		ID:        job.ID,
-		UserID:    scope.UserID(),
-		Kind:      string(job.Kind),
-		Payload:   job.Payload,
-		Status:    string(job.Status),
-		Attempts:  job.Attempts,
-		NextRunAt: pgTime(timeOrNow(job.NextRunAt)),
-		CreatedAt: pgTime(timeOrNow(job.CreatedAt)),
+		ID:                job.ID,
+		UserID:            scope.UserID(),
+		Kind:              string(job.Kind),
+		Payload:           job.Payload,
+		Status:            string(job.Status),
+		Attempts:          job.Attempts,
+		NextRunAt:         pgTime(timeOrNow(job.NextRunAt)),
+		CreatedAt:         pgTime(timeOrNow(job.CreatedAt)),
+		DedupKey:          pgText(job.DedupKey),
+		TargetKinds:       targetKinds,
+		TargetIds:         targetIDs,
+		ExpectedRevisions: expectedRevisions,
 	})
 	if err != nil {
 		return memory.Job{}, err
 	}
-	return mapJob(row), nil
+	mapped := mapEnqueuedJob(row)
+	mapped.Targets = append([]memory.JobTarget(nil), job.Targets...)
+	return mapped, nil
 }
 
 func (s Store) ClaimDue(ctx context.Context, now time.Time) (memory.Job, error) {
@@ -208,7 +224,16 @@ func (s Store) ClaimDue(ctx context.Context, now time.Time) (memory.Job, error) 
 	if err != nil {
 		return memory.Job{}, err
 	}
-	return mapJob(row), nil
+	job := mapJob(row)
+	targetRows, err := s.queries.ListJobTargets(ctx, dbgen.ListJobTargetsParams{
+		UserID: job.UserID,
+		JobID:  job.ID,
+	})
+	if err != nil {
+		return memory.Job{}, err
+	}
+	job.Targets = mapJobTargets(targetRows)
+	return job, nil
 }
 
 func (s Store) Complete(ctx context.Context, job memory.Job) error {
@@ -260,83 +285,89 @@ func ignoreLostLease(err error) error {
 	return err
 }
 
-func (s Store) UpsertEmbeddings(ctx context.Context, userID string, embeddings []memory.Embedding) error {
-	if err := s.readyUserID(userID); err != nil {
+// EmbedJobSources resolves the authoritative current names only while the job's
+// running lease and each live neuron revision still match its target row.
+func (s Store) EmbedJobSources(ctx context.Context, job memory.Job) ([]memory.EmbedJobSource, error) {
+	if err := s.readyJob(job); err != nil {
+		return nil, err
+	}
+	rows, err := s.queries.ListLiveNeuronJobSources(ctx, dbgen.ListLiveNeuronJobSourcesParams{
+		UserID:          job.UserID,
+		JobID:           job.ID,
+		LeaseGeneration: job.LeaseGeneration,
+	})
+	if err != nil {
+		return nil, err
+	}
+	sources := make([]memory.EmbedJobSource, 0, len(rows))
+	for _, row := range rows {
+		sources = append(sources, memory.EmbedJobSource{
+			NeuronID:         row.ID,
+			Text:             row.Name.String,
+			ExpectedRevision: row.ExpectedRevision.Int64,
+		})
+	}
+	return sources, nil
+}
+
+// SemanticizeJobSource resolves the current memory representation, live member
+// neurons, and risen stages under the same running lease/revision predicate.
+func (s Store) SemanticizeJobSource(ctx context.Context, job memory.Job) (memory.SemanticizeJobSource, bool, error) {
+	if err := s.readyJob(job); err != nil {
+		return memory.SemanticizeJobSource{}, false, err
+	}
+	params := dbgen.LoadLiveSemanticizeJobSourceParams{
+		UserID:          job.UserID,
+		JobID:           job.ID,
+		LeaseGeneration: job.LeaseGeneration,
+	}
+	row, err := s.queries.LoadLiveSemanticizeJobSource(ctx, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return memory.SemanticizeJobSource{}, false, nil
+	}
+	if err != nil {
+		return memory.SemanticizeJobSource{}, false, err
+	}
+	if len(row.NeuronNames) != len(row.NeuronTypes) {
+		return memory.SemanticizeJobSource{}, false, errors.New("semanticize source neuron arrays do not match")
+	}
+	neurons := make([]memory.ExtractedNeuron, 0, len(row.NeuronNames))
+	for i, name := range row.NeuronNames {
+		neurons = append(neurons, memory.ExtractedNeuron{
+			Name: name,
+			Type: memory.NeuronType(row.NeuronTypes[i]),
+		})
+	}
+	return memory.SemanticizeJobSource{
+		Engram: memory.SemanticizeMemory{
+			ID:          row.ID,
+			Name:        row.Name,
+			CurrentText: row.CurrentText,
+			Mood:        memory.Mood(row.Mood),
+			Neurons:     neurons,
+		},
+		ExpectedRevision: row.RepresentationRevision,
+		RisenStage:       row.SemanticStage,
+		CurrentStages:    semanticStagesPtr(row.SemanticStages),
+	}, true, nil
+}
+
+func (s Store) SaveJobEmbeddings(ctx context.Context, job memory.Job, embeddings []memory.RevisionedEmbedding) error {
+	if err := s.readyJob(job); err != nil {
 		return err
 	}
-	if len(embeddings) == 0 {
-		return nil
-	}
-	rows := make([]embeddingBatchRow, 0, len(embeddings))
 	for _, embedding := range embeddings {
 		vector, err := vectorLiteral(embedding.Vector)
 		if err != nil {
 			return err
 		}
-		rows = append(rows, embeddingBatchRow{
-			neuronID: embedding.NeuronID,
-			vector:   vector,
-		})
-	}
-	if s.batcher != nil {
-		return s.upsertEmbeddingsBatch(ctx, userID, rows)
-	}
-	return s.upsertEmbeddingsSerial(ctx, userID, rows)
-}
-
-type embeddingBatchRow struct {
-	neuronID string
-	vector   string
-}
-
-const upsertEmbeddingBatchSQL = `
-INSERT INTO embeddings (
-    neuron_id,
-    user_id,
-    vector
-) VALUES (
-    $1,
-    $2,
-    $3::vector
-)
-ON CONFLICT (neuron_id) DO UPDATE
-SET vector = EXCLUDED.vector
-WHERE embeddings.user_id = EXCLUDED.user_id
-RETURNING neuron_id, vector
-`
-
-func (s Store) upsertEmbeddingsBatch(ctx context.Context, userID string, rows []embeddingBatchRow) error {
-	batch := &pgx.Batch{}
-	for _, row := range rows {
-		batch.Queue(upsertEmbeddingBatchSQL, row.neuronID, userID, row.vector)
-	}
-	results := s.batcher.SendBatch(ctx, batch)
-	closed := false
-	defer func() {
-		if !closed {
-			_ = results.Close()
-		}
-	}()
-	for range rows {
-		var neuronID string
-		var vector string
-		if err := results.QueryRow().Scan(&neuronID, &vector); err != nil {
-			return err
-		}
-	}
-	if err := results.Close(); err != nil {
-		return err
-	}
-	closed = true
-	return nil
-}
-
-func (s Store) upsertEmbeddingsSerial(ctx context.Context, userID string, rows []embeddingBatchRow) error {
-	for _, row := range rows {
-		if _, err := s.queries.InsertEmbedding(ctx, dbgen.InsertEmbeddingParams{
-			NeuronID: row.neuronID,
-			UserID:   userID,
-			Column3:  row.vector,
+		if _, err := s.queries.UpsertJobEmbedding(ctx, dbgen.UpsertJobEmbeddingParams{
+			UserID:           job.UserID,
+			JobID:            job.ID,
+			LeaseGeneration:  job.LeaseGeneration,
+			NeuronID:         embedding.NeuronID,
+			ExpectedRevision: embedding.ExpectedRevision,
+			Vector:           vector,
 		}); err != nil {
 			return err
 		}
@@ -344,20 +375,37 @@ func (s Store) upsertEmbeddingsSerial(ctx context.Context, userID string, rows [
 	return nil
 }
 
-func (s Store) SaveSemanticStages(ctx context.Context, userID string, memoryID string, stages memory.SemanticStages) error {
-	if err := s.readyUserID(userID); err != nil {
+func (s Store) SaveJobSemanticStages(ctx context.Context, job memory.Job, memoryID string, expectedRevision int64, stages memory.SemanticStages) error {
+	if err := s.readyJob(job); err != nil {
 		return err
 	}
 	raw, err := json.Marshal(stages)
 	if err != nil {
 		return err
 	}
-	_, err = s.queries.SetSemanticStages(ctx, dbgen.SetSemanticStagesParams{
-		UserID:  userID,
-		ID:      memoryID,
-		Column3: raw,
+	_, err = s.queries.SaveJobSemanticStages(ctx, dbgen.SaveJobSemanticStagesParams{
+		SemanticStages:   raw,
+		UserID:           job.UserID,
+		JobID:            job.ID,
+		LeaseGeneration:  job.LeaseGeneration,
+		MemoryID:         memoryID,
+		ExpectedRevision: expectedRevision,
 	})
 	return err
+}
+
+func (s Store) PurgeTerminalJobs(ctx context.Context, cutoff time.Time, batchSize int32) (int, error) {
+	if s.queries == nil {
+		return 0, ErrQueriesRequired
+	}
+	if batchSize <= 0 {
+		return 0, errors.New("terminal job purge requires a positive batch size")
+	}
+	ids, err := s.queries.PurgeTerminalJobs(ctx, dbgen.PurgeTerminalJobsParams{
+		Cutoff:    pgTime(cutoff),
+		BatchSize: batchSize,
+	})
+	return len(ids), err
 }
 
 func (s Store) GetUniverse(ctx context.Context, scope platform.UserScope) (memory.UniverseFacts, error) {
@@ -523,6 +571,7 @@ func mapEpisodicMemory(row dbgen.InsertEpisodicMemoryRow) memory.EpisodicMemory 
 		SemanticStage:            row.SemanticStage,
 		SemanticizeTimerResetAt:  datePtr(row.SemanticizeTimerResetAt),
 		DeletedAt:                timePtr(row.DeletedAt),
+		RepresentationRevision:   row.RepresentationRevision,
 	}
 }
 
@@ -549,27 +598,30 @@ func mapEpisodicMemoryRead(row dbgen.ListUniverseEpisodicMemoriesRow) memory.Epi
 		DecayStages:              decayStagesSlice(row.DecayStages),
 		ForgettingOffsetDays:     float64(row.ForgettingOffsetDays),
 		DeletedAt:                timePtr(row.DeletedAt),
+		RepresentationRevision:   row.RepresentationRevision,
 	}
 }
 
 func mapNeuron(row dbgen.UpsertNeuronRow) memory.Neuron {
 	return memory.Neuron{
-		ID:        row.ID,
-		Name:      textPtr(row.Name),
-		Type:      memory.NeuronType(row.NeuronType),
-		CreatedAt: timeValue(row.CreatedAt),
-		SealedAt:  timePtr(row.SealedAt),
+		ID:                     row.ID,
+		Name:                   textPtr(row.Name),
+		Type:                   memory.NeuronType(row.NeuronType),
+		CreatedAt:              timeValue(row.CreatedAt),
+		SealedAt:               timePtr(row.SealedAt),
+		RepresentationRevision: row.RepresentationRevision,
 	}
 }
 
 func mapNeuronRead(row dbgen.ListUniverseNeuronsRow) memory.NeuronWithConnectivity {
 	return memory.NeuronWithConnectivity{
 		Neuron: memory.Neuron{
-			ID:        row.ID,
-			Name:      textPtr(row.Name),
-			Type:      memory.NeuronType(row.NeuronType),
-			CreatedAt: timeValue(row.CreatedAt),
-			SealedAt:  timePtr(row.SealedAt),
+			ID:                     row.ID,
+			Name:                   textPtr(row.Name),
+			Type:                   memory.NeuronType(row.NeuronType),
+			CreatedAt:              timeValue(row.CreatedAt),
+			SealedAt:               timePtr(row.SealedAt),
+			RepresentationRevision: row.RepresentationRevision,
 		},
 		Connectivity: row.Connectivity,
 	}
@@ -628,16 +680,48 @@ func mapEmbedding(row dbgen.InsertEmbeddingRow) (memory.Embedding, error) {
 
 func mapJob(row dbgen.Job) memory.Job {
 	return memory.Job{
-		ID:              row.ID,
-		UserID:          row.UserID,
-		Kind:            memory.JobKind(row.Kind),
-		Payload:         row.Payload,
-		Status:          memory.JobStatus(row.Status),
-		Attempts:        row.Attempts,
-		NextRunAt:       timeValue(row.NextRunAt),
-		CreatedAt:       timeValue(row.CreatedAt),
-		LeaseGeneration: row.LeaseGeneration,
+		ID:                  row.ID,
+		UserID:              row.UserID,
+		Kind:                memory.JobKind(row.Kind),
+		Payload:             row.Payload,
+		Status:              memory.JobStatus(row.Status),
+		Attempts:            row.Attempts,
+		NextRunAt:           timeValue(row.NextRunAt),
+		CreatedAt:           timeValue(row.CreatedAt),
+		DedupKey:            textPtr(row.DedupKey),
+		TerminalAt:          timePtr(row.TerminalAt),
+		CanceledByReleaseID: textPtr(row.CancelledByReleaseID),
+		LeaseGeneration:     row.LeaseGeneration,
 	}
+}
+
+func mapEnqueuedJob(row dbgen.EnqueueJobRow) memory.Job {
+	return memory.Job{
+		ID:                  row.ID,
+		UserID:              row.UserID,
+		Kind:                memory.JobKind(row.Kind),
+		Payload:             row.Payload,
+		Status:              memory.JobStatus(row.Status),
+		Attempts:            row.Attempts,
+		NextRunAt:           timeValue(row.NextRunAt),
+		CreatedAt:           timeValue(row.CreatedAt),
+		DedupKey:            textPtr(row.DedupKey),
+		TerminalAt:          timePtr(row.TerminalAt),
+		CanceledByReleaseID: textPtr(row.CancelledByReleaseID),
+		LeaseGeneration:     row.LeaseGeneration,
+	}
+}
+
+func mapJobTargets(rows []dbgen.ListJobTargetsRow) []memory.JobTarget {
+	targets := make([]memory.JobTarget, 0, len(rows))
+	for _, row := range rows {
+		targets = append(targets, memory.JobTarget{
+			Kind:             memory.JobTargetKind(row.TargetKind),
+			ID:               row.TargetID,
+			ExpectedRevision: row.ExpectedRevision.Int64,
+		})
+	}
+	return targets
 }
 
 func mapEpisodicMemories(rows []dbgen.ListUniverseEpisodicMemoriesRow) []memory.EpisodicMemory {

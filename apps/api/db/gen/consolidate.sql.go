@@ -143,50 +143,8 @@ func (q *Queries) ListMemoriesActivatingNeurons(ctx context.Context, arg ListMem
 	return items, nil
 }
 
-const listNeuronEmbedTexts = `-- name: ListNeuronEmbedTexts :many
-SELECT id, name, neuron_type
-FROM neurons
-WHERE user_id = $1
-  AND id = ANY($2::text[])
-  AND sealed_at IS NULL
-ORDER BY id
-`
-
-type ListNeuronEmbedTextsParams struct {
-	UserID    string
-	NeuronIds []string
-}
-
-type ListNeuronEmbedTextsRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
-}
-
-// The consolidate worker's execution-time re-read: the live (unsealed) neurons' current
-// embed texts, so a re-embed never writes a vector for a name that has since changed.
-func (q *Queries) ListNeuronEmbedTexts(ctx context.Context, arg ListNeuronEmbedTextsParams) ([]ListNeuronEmbedTextsRow, error) {
-	rows, err := q.db.Query(ctx, listNeuronEmbedTexts, arg.UserID, arg.NeuronIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListNeuronEmbedTextsRow
-	for rows.Next() {
-		var i ListNeuronEmbedTextsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listReplaySetNeurons = `-- name: ListReplaySetNeurons :many
-SELECT DISTINCT n.id, n.name, n.neuron_type
+SELECT DISTINCT n.id, n.name, n.neuron_type, n.representation_revision
 FROM neuron_activations AS na
 JOIN neurons AS n
   ON n.user_id = na.user_id
@@ -203,9 +161,10 @@ type ListReplaySetNeuronsParams struct {
 }
 
 type ListReplaySetNeuronsRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	RepresentationRevision int64
 }
 
 // The live neurons activated by a memory set — the replay-set expansion step ([C2]).
@@ -218,7 +177,12 @@ func (q *Queries) ListReplaySetNeurons(ctx context.Context, arg ListReplaySetNeu
 	var items []ListReplaySetNeuronsRow
 	for rows.Next() {
 		var i ListReplaySetNeuronsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NeuronType,
+			&i.RepresentationRevision,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

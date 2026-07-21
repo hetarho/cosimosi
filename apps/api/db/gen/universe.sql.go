@@ -31,7 +31,8 @@ SELECT
     semantic_stages,
     decay_stages,
     forgetting_offset_days,
-    deleted_at
+    deleted_at,
+    representation_revision
 FROM episodic_memories
 WHERE user_id = $1
   AND deleted_at IS NULL
@@ -58,6 +59,7 @@ type ListUniverseEpisodicMemoriesRow struct {
 	DecayStages              []byte
 	ForgettingOffsetDays     float32
 	DeletedAt                pgtype.Timestamptz
+	RepresentationRevision   int64
 }
 
 func (q *Queries) ListUniverseEpisodicMemories(ctx context.Context, userID string) ([]ListUniverseEpisodicMemoriesRow, error) {
@@ -89,6 +91,7 @@ func (q *Queries) ListUniverseEpisodicMemories(ctx context.Context, userID strin
 			&i.DecayStages,
 			&i.ForgettingOffsetDays,
 			&i.DeletedAt,
+			&i.RepresentationRevision,
 		); err != nil {
 			return nil, err
 		}
@@ -151,6 +154,7 @@ SELECT
     n.neuron_type,
     n.created_at,
     n.sealed_at,
+    n.representation_revision,
     COUNT(em.id)::int AS connectivity
 FROM neurons AS n
 LEFT JOIN neuron_activations AS na
@@ -162,17 +166,18 @@ LEFT JOIN episodic_memories AS em
  AND em.deleted_at IS NULL
 WHERE n.user_id = $1
   AND n.sealed_at IS NULL
-GROUP BY n.id, n.name, n.neuron_type, n.created_at, n.sealed_at
+GROUP BY n.id, n.name, n.neuron_type, n.created_at, n.sealed_at, n.representation_revision
 ORDER BY n.id
 `
 
 type ListUniverseNeuronsRow struct {
-	ID           string
-	Name         pgtype.Text
-	NeuronType   string
-	CreatedAt    pgtype.Timestamptz
-	SealedAt     pgtype.Timestamptz
-	Connectivity int32
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	CreatedAt              pgtype.Timestamptz
+	SealedAt               pgtype.Timestamptz
+	RepresentationRevision int64
+	Connectivity           int32
 }
 
 func (q *Queries) ListUniverseNeurons(ctx context.Context, userID string) ([]ListUniverseNeuronsRow, error) {
@@ -190,6 +195,7 @@ func (q *Queries) ListUniverseNeurons(ctx context.Context, userID string) ([]Lis
 			&i.NeuronType,
 			&i.CreatedAt,
 			&i.SealedAt,
+			&i.RepresentationRevision,
 			&i.Connectivity,
 		); err != nil {
 			return nil, err

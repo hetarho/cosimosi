@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -93,12 +92,16 @@ func (f *fakeLaunchStore) ResetRecallAnchors(_ context.Context, scope platform.U
 	return RecallAnchors{RecallCount: mem.RecallCount + 1, BaseStrength: mem.BaseStrength}, nil
 }
 
-func (f *fakeLaunchStore) ApplyReconsolidatedText(_ context.Context, scope platform.UserScope, memoryID string, currentText string, seed int64) error {
+func (f *fakeLaunchStore) ApplyReconsolidatedText(_ context.Context, scope platform.UserScope, memoryID string, currentText string, seed int64) (int64, error) {
 	if scope.UserID() == "" {
-		return errors.New("scope missing")
+		return 0, errors.New("scope missing")
 	}
 	f.recallStaging.reconText = append(f.recallStaging.reconText, recordedReconText{memoryID: memoryID, currentText: currentText, seed: seed})
-	return nil
+	revision := f.recallStars[memoryID].RepresentationRevision
+	if revision <= 0 {
+		revision = 1
+	}
+	return revision + 1, nil
 }
 
 func (f *fakeLaunchStore) AddForgettingOffset(_ context.Context, scope platform.UserScope, memoryIDs []string, delta float64) error {
@@ -279,27 +282,33 @@ func TestRecallErrorBranchReconsolidates(t *testing.T) {
 	if len(fixture.launches.committed.jobs) != 1 {
 		t.Fatalf("enqueued jobs = %d, want 1 regen job", len(fixture.launches.committed.jobs))
 	}
-	var payload SemanticizeJobPayload
-	if err := json.Unmarshal(fixture.launches.committed.jobs[0].Payload, &payload); err != nil {
-		t.Fatalf("decode regen payload: %v", err)
+	job := fixture.launches.committed.jobs[0]
+	if string(job.Payload) != "{}" {
+		t.Fatalf("regen payload = %s, want source-free object", job.Payload)
 	}
-	if payload.CurrentText != "a genuinely different memory" || payload.KeepStages != 2 || payload.KeptStages == nil || *payload.KeptStages != kept {
-		t.Fatalf("regen payload = %+v, want new text + keep 2 already-risen stages", payload)
+	if len(job.Targets) != 1 || job.Targets[0] != (JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 2}) {
+		t.Fatalf("regen targets = %+v, want m1 at rewrite revision 2", job.Targets)
 	}
 }
 
 func TestReconsolidateRegenKeepsRisenStages(t *testing.T) {
 	t.Parallel()
-	// The worker merge honors [C7]: keep the first KeepStages already-risen texts, take the
+	// The worker merge honors [C7]: keep the currently risen non-empty texts, take the
 	// regenerated rest — the reconsolidation regen's core contract.
 	regenerated := SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}
 	kept := SemanticStages{"keep-0", "keep-1", "old-2", "old-3"}
 	semanticizer := &fakeSemanticizer{stages: regenerated}
 	writer := &fakeSemanticStagesWriter{}
-	handler := NewSemanticizeJobHandler(semanticizer, writer)
+	reader := &fakeJobSourceReader{semanticOK: true, semanticSource: SemanticizeJobSource{
+		Engram:           SemanticizeMemory{ID: "m1", CurrentText: "new"},
+		ExpectedRevision: 2,
+		RisenStage:       2,
+		CurrentStages:    &kept,
+	}}
+	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
 
-	payload, _ := json.Marshal(SemanticizeJobPayload{MemoryID: "m1", CurrentText: "new", KeepStages: 2, KeptStages: &kept})
-	if err := handler(context.Background(), Job{UserID: "user-1", Payload: payload}); err != nil {
+	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 2})
+	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
 	}
 	want := SemanticStages{"keep-0", "keep-1", "gen-2", "gen-3"}
@@ -315,10 +324,14 @@ func TestLaunchSemanticizeKeepsNothing(t *testing.T) {
 	regenerated := SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}
 	semanticizer := &fakeSemanticizer{stages: regenerated}
 	writer := &fakeSemanticStagesWriter{}
-	handler := NewSemanticizeJobHandler(semanticizer, writer)
+	reader := &fakeJobSourceReader{semanticOK: true, semanticSource: SemanticizeJobSource{
+		Engram:           SemanticizeMemory{ID: "m1", CurrentText: "body"},
+		ExpectedRevision: 1,
+	}}
+	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
 
-	payload, _ := json.Marshal(SemanticizeJobPayload{MemoryID: "m1", CurrentText: "body"})
-	if err := handler(context.Background(), Job{UserID: "user-1", Payload: payload}); err != nil {
+	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1})
+	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
 	}
 	if writer.stages != regenerated {

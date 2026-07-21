@@ -10,6 +10,7 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // InReleaseTx implements memory.ReleaseRepo: it runs fn against a store bound to one pgx
@@ -107,6 +108,23 @@ func (s Store) ReleaseGroupForDiary(ctx context.Context, scope platform.UserScop
 	return memory.ReleaseGroup{ID: row.ID, DiaryID: row.DiaryID, DeletedAt: timeValue(row.DeletedAt)}, true, nil
 }
 
+func (s Store) ReleaseGroupForSweep(ctx context.Context, scope platform.UserScope, releaseID string) (memory.ReleaseGroup, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return memory.ReleaseGroup{}, false, err
+	}
+	row, err := s.queries.GetReleaseGroupForSweep(ctx, dbgen.GetReleaseGroupForSweepParams{
+		UserID:    scope.UserID(),
+		ReleaseID: releaseID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return memory.ReleaseGroup{}, false, nil
+	}
+	if err != nil {
+		return memory.ReleaseGroup{}, false, err
+	}
+	return memory.ReleaseGroup{ID: row.ID, DiaryID: row.DiaryID, DeletedAt: timeValue(row.DeletedAt)}, true, nil
+}
+
 func (s Store) InsertReleaseGroup(ctx context.Context, scope platform.UserScope, group memory.ReleaseGroup) error {
 	if err := s.ready(scope); err != nil {
 		return err
@@ -188,6 +206,28 @@ func (s Store) ReleaseSealedNeurons(ctx context.Context, scope platform.UserScop
 	})
 }
 
+func (s Store) ReleaseSealedNeuronTargets(ctx context.Context, scope platform.UserScope, releaseID string) ([]memory.JobTarget, error) {
+	if err := s.ready(scope); err != nil {
+		return nil, err
+	}
+	rows, err := s.queries.ListReleaseSealedNeuronTargets(ctx, dbgen.ListReleaseSealedNeuronTargetsParams{
+		UserID:    scope.UserID(),
+		ReleaseID: releaseID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	targets := make([]memory.JobTarget, 0, len(rows))
+	for _, row := range rows {
+		targets = append(targets, memory.JobTarget{
+			Kind:             memory.JobTargetNeuron,
+			ID:               row.ID,
+			ExpectedRevision: row.RepresentationRevision,
+		})
+	}
+	return targets, nil
+}
+
 // ReverseReleaseSynapseDeltas adds each recorded LTD amount back to the edge's current strength,
 // clamped, atomically in SQL — the lost-update-safe reversal of Release's Depress (a concurrent
 // LTP/downscale between a read and write can't be clobbered). Per-user scoped.
@@ -200,6 +240,45 @@ func (s Store) ReverseReleaseSynapseDeltas(ctx context.Context, scope platform.U
 		ReleaseID:   releaseID,
 		StrengthCap: float32(values.SynapseStrengthCap),
 	})
+}
+
+func (s Store) CancelReleaseMemoryJobs(ctx context.Context, scope platform.UserScope, releaseID string, memoryIDs []string, cancelledAt time.Time) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	if len(memoryIDs) == 0 {
+		return nil
+	}
+	_, err := s.queries.CancelReleaseMemoryJobs(ctx, dbgen.CancelReleaseMemoryJobsParams{
+		CancelledAt:       pgTime(cancelledAt),
+		ReleaseID:         pgtype.Text{String: releaseID, Valid: releaseID != ""},
+		UserID:            scope.UserID(),
+		EpisodicMemoryIds: memoryIDs,
+	})
+	return err
+}
+
+func (s Store) RequeueReleaseMemoryJobs(ctx context.Context, scope platform.UserScope, releaseID string, nextRunAt time.Time) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	_, err := s.queries.RequeueReleaseMemoryJobs(ctx, dbgen.RequeueReleaseMemoryJobsParams{
+		NextRunAt: pgTime(nextRunAt),
+		UserID:    scope.UserID(),
+		ReleaseID: pgtype.Text{String: releaseID, Valid: releaseID != ""},
+	})
+	return err
+}
+
+func (s Store) DeleteReleaseRetentionJobs(ctx context.Context, scope platform.UserScope, releaseID string) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	_, err := s.queries.DeleteReleaseRetentionJobs(ctx, dbgen.DeleteReleaseRetentionJobsParams{
+		UserID:    scope.UserID(),
+		ReleaseID: releaseID,
+	})
+	return err
 }
 
 func (s Store) ClearReleaseMemoriesDeletedAt(ctx context.Context, scope platform.UserScope, memoryIDs []string) error {
@@ -265,6 +344,19 @@ func (s Store) ExclusiveReleaseNeurons(ctx context.Context, scope platform.UserS
 		ReleaseID:        releaseID,
 		ReleaseMemoryIds: releaseMemoryIDs,
 	})
+}
+
+func (s Store) PurgeReleaseJobs(ctx context.Context, scope platform.UserScope, releaseID string, memoryIDs, neuronIDs []string) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	_, err := s.queries.PurgeReleaseJobs(ctx, dbgen.PurgeReleaseJobsParams{
+		UserID:            scope.UserID(),
+		EpisodicMemoryIds: memoryIDs,
+		NeuronIds:         neuronIDs,
+		ReleaseID:         releaseID,
+	})
+	return err
 }
 
 func (s Store) DeleteReleaseActivations(ctx context.Context, scope platform.UserScope, memoryIDs []string) error {

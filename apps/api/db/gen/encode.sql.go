@@ -12,7 +12,7 @@ import (
 )
 
 const listNearestNeuronCandidates = `-- name: ListNearestNeuronCandidates :many
-SELECT n.id, n.name, n.neuron_type
+SELECT n.id, n.name, n.neuron_type, n.representation_revision
 FROM embeddings AS e
 JOIN neurons AS n
   ON n.user_id = e.user_id
@@ -33,9 +33,10 @@ type ListNearestNeuronCandidatesParams struct {
 }
 
 type ListNearestNeuronCandidatesRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	RepresentationRevision int64
 }
 
 func (q *Queries) ListNearestNeuronCandidates(ctx context.Context, arg ListNearestNeuronCandidatesParams) ([]ListNearestNeuronCandidatesRow, error) {
@@ -52,7 +53,12 @@ func (q *Queries) ListNearestNeuronCandidates(ctx context.Context, arg ListNeare
 	var items []ListNearestNeuronCandidatesRow
 	for rows.Next() {
 		var i ListNearestNeuronCandidatesRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NeuronType,
+			&i.RepresentationRevision,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -65,7 +71,7 @@ func (q *Queries) ListNearestNeuronCandidates(ctx context.Context, arg ListNeare
 
 const listNeuronCandidatesInBody = `-- name: ListNeuronCandidatesInBody :many
 
-SELECT id, name, neuron_type
+SELECT id, name, neuron_type, representation_revision
 FROM neurons
 WHERE user_id = $1
   AND sealed_at IS NULL
@@ -82,9 +88,10 @@ type ListNeuronCandidatesInBodyParams struct {
 }
 
 type ListNeuronCandidatesInBodyRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	RepresentationRevision int64
 }
 
 // Encode use-case queries (plan 20): dedup-candidate assembly and persist-time
@@ -99,7 +106,12 @@ func (q *Queries) ListNeuronCandidatesInBody(ctx context.Context, arg ListNeuron
 	var items []ListNeuronCandidatesInBodyRow
 	for rows.Next() {
 		var i ListNeuronCandidatesInBodyRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NeuronType,
+			&i.RepresentationRevision,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -111,7 +123,7 @@ func (q *Queries) ListNeuronCandidatesInBody(ctx context.Context, arg ListNeuron
 }
 
 const listNeuronsByNames = `-- name: ListNeuronsByNames :many
-SELECT id, name, neuron_type
+SELECT id, name, neuron_type, representation_revision
 FROM neurons
 WHERE user_id = $1
   AND sealed_at IS NULL
@@ -126,9 +138,10 @@ type ListNeuronsByNamesParams struct {
 }
 
 type ListNeuronsByNamesRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	RepresentationRevision int64
 }
 
 func (q *Queries) ListNeuronsByNames(ctx context.Context, arg ListNeuronsByNamesParams) ([]ListNeuronsByNamesRow, error) {
@@ -140,7 +153,12 @@ func (q *Queries) ListNeuronsByNames(ctx context.Context, arg ListNeuronsByNames
 	var items []ListNeuronsByNamesRow
 	for rows.Next() {
 		var i ListNeuronsByNamesRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.NeuronType); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.NeuronType,
+			&i.RepresentationRevision,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

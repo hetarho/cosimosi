@@ -27,14 +27,6 @@ type JobQueue interface {
 	Fail(ctx context.Context, job Job, nextAttempts int32) error
 }
 
-type EmbeddingWriter interface {
-	UpsertEmbeddings(ctx context.Context, userID string, embeddings []Embedding) error
-}
-
-type SemanticStagesWriter interface {
-	SaveSemanticStages(ctx context.Context, userID string, memoryID string, stages SemanticStages) error
-}
-
 // NeuronCandidateRepo assembles the per-user dedup-candidate set Encode hands the
 // extractor to canonicalize against ([E10]): a name match against the diary body
 // plus the narrow embedding nearest-neighbour assist.
@@ -198,9 +190,10 @@ type LaunchedMemory struct {
 }
 
 type ExistingNeuron struct {
-	ID   string
-	Name string
-	Type NeuronType
+	ID                     string
+	Name                   string
+	Type                   NeuronType
+	RepresentationRevision int64
 }
 
 type ExtractResult struct {

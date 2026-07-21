@@ -54,5 +54,8 @@ force-sim / effective-value math runs over the smaller live graph.
   neurons the server re-validates. It writes no `deleted_at`, keeps no ledger, and has **no restore**. The AI can only
   reference a pre-filtered candidate; it never executes a seal.
 - **The system never originates deletion** ([I1]). The only hard delete is the retention sweep of user-soft-deleted
-  release groups older than the window; it never touches a live (`deleted_at IS NULL`) row or a shared neuron, and runs
-  with no cron (invoked opportunistically at the start of a `Release`). Deletion is never priced (no stardust gate).
+  release groups whose restore deadline has arrived; it never touches a live (`deleted_at IS NULL`) row or a shared
+  neuron. `Release` atomically schedules a deduplicated queue target for exactly
+  `deleted_at + release.soft_delete_retention_days`, so the normal worker loop completes the user-originated deletion
+  even if that user never returns. Restore strictly before the deadline cancels the target; at or after the deadline it
+  cannot resurrect the data. This uses no cron, and deletion is never priced (no stardust gate).

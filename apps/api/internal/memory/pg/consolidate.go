@@ -82,7 +82,7 @@ func (s Store) ReplaySetNeurons(ctx context.Context, scope platform.UserScope, m
 	}
 	neurons := make([]memory.ExistingNeuron, 0, len(rows))
 	for _, row := range rows {
-		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType))
+		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType, row.RepresentationRevision))
 	}
 	return neurons, nil
 }
@@ -133,29 +133,6 @@ func (s Store) ListSynapseStrengths(ctx context.Context, scope platform.UserScop
 		})
 	}
 	return strengths, nil
-}
-
-// NeuronEmbedTexts implements memory.NeuronEmbedTextReader for the consolidate worker: the
-// live neurons' current names, read at job execution.
-func (s Store) NeuronEmbedTexts(ctx context.Context, userID string, neuronIDs []string) ([]memory.ExistingNeuron, error) {
-	if err := s.readyUserID(userID); err != nil {
-		return nil, err
-	}
-	if len(neuronIDs) == 0 {
-		return nil, nil
-	}
-	rows, err := s.queries.ListNeuronEmbedTexts(ctx, dbgen.ListNeuronEmbedTextsParams{
-		UserID:    userID,
-		NeuronIds: neuronIDs,
-	})
-	if err != nil {
-		return nil, err
-	}
-	neurons := make([]memory.ExistingNeuron, 0, len(rows))
-	for _, row := range rows {
-		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType))
-	}
-	return neurons, nil
 }
 
 func (s Store) ApplySynapseDownscale(ctx context.Context, scope platform.UserScope, updates []memory.SynapseStrength) error {

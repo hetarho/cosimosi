@@ -154,6 +154,19 @@ func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 	if n := count("SELECT count(*) FROM release_synapse_deltas WHERE user_id = $1", userID); n != 1 {
 		t.Fatalf("release_synapse_deltas = %d, want 1", n)
 	}
+	var retentionDeadline time.Time
+	if err := pg.QueryRow(ctx, `
+		SELECT j.next_run_at
+		FROM jobs AS j
+		JOIN job_targets AS jt ON jt.job_id = j.id AND jt.user_id = j.user_id
+		WHERE j.user_id = $1 AND j.kind = 'retention_sweep'
+		  AND jt.target_kind = 'release_group'
+	`, userID).Scan(&retentionDeadline); err != nil {
+		t.Fatalf("read scheduled retention job: %v", err)
+	}
+	if want := clock.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour); !retentionDeadline.Equal(want) {
+		t.Fatalf("retention deadline = %v, want %v", retentionDeadline, want)
+	}
 	// m1 soft-deleted, orphans sealed, shared kept, synapse Depressed — no hard delete.
 	if n := count("SELECT count(*) FROM episodic_memories WHERE user_id = $1 AND deleted_at IS NOT NULL", userID); n != 1 {
 		t.Fatalf("soft-deleted memories = %d, want 1", n)
@@ -211,6 +224,9 @@ func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 	if n := count("SELECT count(*) FROM release_groups WHERE user_id = $1", userID); n != 0 {
 		t.Fatalf("release group not retired on restore: %d", n)
 	}
+	if n := count("SELECT count(*) FROM jobs WHERE user_id = $1 AND kind = 'retention_sweep'", userID); n != 0 {
+		t.Fatalf("restore left %d retention jobs, want 0", n)
+	}
 	if n := count("SELECT count(*) FROM episodic_memories WHERE user_id = $1 AND deleted_at IS NOT NULL", userID); n != 0 {
 		t.Fatalf("deleted_at not cleared: %d still soft-deleted", n)
 	}
@@ -224,6 +240,113 @@ func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 	}
 	if !memoryIDs(mustUniverse(t, store, ctx, scope).EpisodicMemories)[g.m1] {
 		t.Fatal("restored memory not back in GetUniverse")
+	}
+}
+
+func TestClaimedSemanticJobCannotPublishAfterRelease(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-release-job-fence-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, _ := platform.NewUserScope(userID)
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)
+	g := seedReleaseGraph(t, ctx, store, scope, base, day)
+	var revision int64
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT representation_revision FROM episodic_memories WHERE user_id = $1 AND id = $2`, userID, g.m1).Scan(&revision); err != nil {
+		t.Fatalf("read memory revision: %v", err)
+	}
+	releaseAt := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+	job, err := store.EnqueueJob(ctx, scope, memory.Job{
+		ID: base + "-semantic", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+		NextRunAt: releaseAt.Add(-time.Minute), CreatedAt: releaseAt.Add(-time.Minute),
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: g.m1, ExpectedRevision: revision}},
+	})
+	if err != nil {
+		t.Fatalf("enqueue semantic job: %v", err)
+	}
+	claimed, err := store.ClaimDue(ctx, releaseAt)
+	if err != nil || claimed.ID != job.ID {
+		t.Fatalf("claim semantic job = (%+v, %v)", claimed, err)
+	}
+	service := newReleaseService(t, store, func() time.Time { return releaseAt })
+	if _, err := service.Release(ctx, scope, g.d1); err != nil {
+		t.Fatalf("Release failed: %v", err)
+	}
+	if err := store.SaveJobSemanticStages(ctx, claimed, g.m1, revision, memory.SemanticStages{"one", "two", "three", "four"}); err != nil {
+		t.Fatalf("stale conditional write returned error: %v", err)
+	}
+	var status string
+	var payload string
+	var lease int64
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT status, payload::text, lease_generation FROM jobs WHERE user_id = $1 AND id = $2`, userID, job.ID).
+		Scan(&status, &payload, &lease); err != nil {
+		t.Fatalf("read cancelled job: %v", err)
+	}
+	if status != "cancelled" || payload != "{}" || lease == claimed.LeaseGeneration {
+		t.Fatalf("cancelled job = status %q payload %q lease %d (claimed %d)", status, payload, lease, claimed.LeaseGeneration)
+	}
+	var stagesNull bool
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT semantic_stages IS NULL FROM episodic_memories WHERE user_id = $1 AND id = $2`, userID, g.m1).Scan(&stagesNull); err != nil {
+		t.Fatalf("read semantic stages: %v", err)
+	}
+	if !stagesNull {
+		t.Fatal("claimed job published semantic stages after Release")
+	}
+}
+
+func TestScheduledRetentionWorkerSweepsWithoutAnotherUserRPC(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-retention-worker-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, _ := platform.NewUserScope(userID)
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	g := seedReleaseGraph(t, ctx, store, scope, base, day)
+	releaseAt := time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	service := newReleaseService(t, store, func() time.Time { return releaseAt })
+	if _, err := service.Release(ctx, scope, g.d1); err != nil {
+		t.Fatalf("Release failed: %v", err)
+	}
+	due := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
+	runner, err := memory.NewJobRunner(
+		store, store, store, store, memory.NewRetentionSweeper(store), store,
+		ai.NewMockEmbedder(), ai.NewMockSemanticizer(), memory.WorkerConfig{
+			MaxAttempts:  int32(values.AiJobMaxAttempts),
+			MaxClaims:    int32(values.AiJobMaxClaims),
+			BackoffBase:  time.Duration(values.AiJobBackoffBaseMs) * time.Millisecond,
+			PollInterval: time.Millisecond,
+			Now:          func() time.Time { return due },
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewJobRunner failed: %v", err)
+	}
+	worked, err := runner.RunOnce(ctx)
+	if err != nil || !worked {
+		t.Fatalf("RunOnce = (%t, %v), want due retention work", worked, err)
+	}
+	var memories, diaries, groups int
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT
+		  (SELECT count(*) FROM episodic_memories WHERE user_id = $1 AND id = $2),
+		  (SELECT count(*) FROM diaries WHERE user_id = $1 AND id = $3),
+		  (SELECT count(*) FROM release_groups WHERE user_id = $1)
+	`, userID, g.m1, g.d1).Scan(&memories, &diaries, &groups); err != nil {
+		t.Fatalf("inspect swept release: %v", err)
+	}
+	if memories != 0 || diaries != 0 || groups != 0 {
+		t.Fatalf("inactive release remained: memories=%d diaries=%d groups=%d", memories, diaries, groups)
 	}
 }
 

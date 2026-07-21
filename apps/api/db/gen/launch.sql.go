@@ -12,40 +12,94 @@ import (
 )
 
 const enqueueJob = `-- name: EnqueueJob :one
-INSERT INTO jobs (
-    id,
-    user_id,
-    kind,
-    payload,
-    status,
-    attempts,
-    next_run_at,
-    created_at
-) VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8
+WITH inserted_job AS (
+    INSERT INTO jobs (
+        id,
+        user_id,
+        kind,
+        payload,
+        status,
+        attempts,
+        next_run_at,
+        created_at,
+        dedup_key
+    ) VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+    )
+    ON CONFLICT (user_id, kind, dedup_key) WHERE dedup_key IS NOT NULL
+    DO UPDATE SET dedup_key = jobs.dedup_key
+    RETURNING
+        id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+        lease_generation, dedup_key, terminal_at, cancelled_by_release_id
+), inserted_targets AS (
+    INSERT INTO job_targets (
+        job_id,
+        user_id,
+        target_kind,
+        target_id,
+        expected_revision
+    )
+    SELECT
+        inserted_job.id,
+        inserted_job.user_id,
+        target.target_kind,
+        target.target_id,
+        NULLIF(target.expected_revision, 0)
+    FROM inserted_job
+    CROSS JOIN LATERAL (
+        SELECT
+            UNNEST($10::text[]) AS target_kind,
+            UNNEST($11::text[]) AS target_id,
+            UNNEST($12::bigint[]) AS expected_revision
+    ) AS target
+    ON CONFLICT DO NOTHING
+    RETURNING job_id
 )
-RETURNING id, user_id, kind, payload, status, attempts, next_run_at, created_at, lease_generation
+SELECT
+    id, user_id, kind, payload, status, attempts, next_run_at, created_at,
+    lease_generation, dedup_key, terminal_at, cancelled_by_release_id
+FROM inserted_job
 `
 
 type EnqueueJobParams struct {
-	ID        string
-	UserID    string
-	Kind      string
-	Payload   []byte
-	Status    string
-	Attempts  int32
-	NextRunAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
+	ID                string
+	UserID            string
+	Kind              string
+	Payload           []byte
+	Status            string
+	Attempts          int32
+	NextRunAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	DedupKey          pgtype.Text
+	TargetKinds       []string
+	TargetIds         []string
+	ExpectedRevisions []int64
 }
 
-func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Job, error) {
+type EnqueueJobRow struct {
+	ID                   string
+	UserID               string
+	Kind                 string
+	Payload              []byte
+	Status               string
+	Attempts             int32
+	NextRunAt            pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	LeaseGeneration      int64
+	DedupKey             pgtype.Text
+	TerminalAt           pgtype.Timestamptz
+	CancelledByReleaseID pgtype.Text
+}
+
+func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (EnqueueJobRow, error) {
 	row := q.db.QueryRow(ctx, enqueueJob,
 		arg.ID,
 		arg.UserID,
@@ -55,8 +109,12 @@ func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Job, er
 		arg.Attempts,
 		arg.NextRunAt,
 		arg.CreatedAt,
+		arg.DedupKey,
+		arg.TargetKinds,
+		arg.TargetIds,
+		arg.ExpectedRevisions,
 	)
-	var i Job
+	var i EnqueueJobRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -67,6 +125,9 @@ func (q *Queries) EnqueueJob(ctx context.Context, arg EnqueueJobParams) (Job, er
 		&i.NextRunAt,
 		&i.CreatedAt,
 		&i.LeaseGeneration,
+		&i.DedupKey,
+		&i.TerminalAt,
+		&i.CancelledByReleaseID,
 	)
 	return i, err
 }
@@ -207,7 +268,8 @@ RETURNING
     last_recalled_universe_time,
     semantic_stage,
     semanticize_timer_reset_at,
-    deleted_at
+    deleted_at,
+    representation_revision
 `
 
 type InsertEpisodicMemoryParams struct {
@@ -246,6 +308,7 @@ type InsertEpisodicMemoryRow struct {
 	SemanticStage            int16
 	SemanticizeTimerResetAt  pgtype.Date
 	DeletedAt                pgtype.Timestamptz
+	RepresentationRevision   int64
 }
 
 func (q *Queries) InsertEpisodicMemory(ctx context.Context, arg InsertEpisodicMemoryParams) (InsertEpisodicMemoryRow, error) {
@@ -285,6 +348,7 @@ func (q *Queries) InsertEpisodicMemory(ctx context.Context, arg InsertEpisodicMe
 		&i.SemanticStage,
 		&i.SemanticizeTimerResetAt,
 		&i.DeletedAt,
+		&i.RepresentationRevision,
 	)
 	return i, err
 }
@@ -347,9 +411,15 @@ INSERT INTO neurons (
 )
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
-    neuron_type = EXCLUDED.neuron_type
+    neuron_type = EXCLUDED.neuron_type,
+    representation_revision = CASE
+        WHEN neurons.name IS DISTINCT FROM EXCLUDED.name
+          OR neurons.neuron_type IS DISTINCT FROM EXCLUDED.neuron_type
+        THEN neurons.representation_revision + 1
+        ELSE neurons.representation_revision
+    END
 WHERE neurons.user_id = EXCLUDED.user_id
-RETURNING id, name, neuron_type, created_at, sealed_at
+RETURNING id, name, neuron_type, created_at, sealed_at, representation_revision
 `
 
 type UpsertNeuronParams struct {
@@ -362,11 +432,12 @@ type UpsertNeuronParams struct {
 }
 
 type UpsertNeuronRow struct {
-	ID         string
-	Name       pgtype.Text
-	NeuronType string
-	CreatedAt  pgtype.Timestamptz
-	SealedAt   pgtype.Timestamptz
+	ID                     string
+	Name                   pgtype.Text
+	NeuronType             string
+	CreatedAt              pgtype.Timestamptz
+	SealedAt               pgtype.Timestamptz
+	RepresentationRevision int64
 }
 
 func (q *Queries) UpsertNeuron(ctx context.Context, arg UpsertNeuronParams) (UpsertNeuronRow, error) {
@@ -385,6 +456,7 @@ func (q *Queries) UpsertNeuron(ctx context.Context, arg UpsertNeuronParams) (Ups
 		&i.NeuronType,
 		&i.CreatedAt,
 		&i.SealedAt,
+		&i.RepresentationRevision,
 	)
 	return i, err
 }

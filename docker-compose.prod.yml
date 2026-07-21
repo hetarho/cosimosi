@@ -19,6 +19,12 @@ services:
         aliases:
           - ${API_UPSTREAM}
 
+  worker:
+    image: ghcr.io/hetarho/cosimosi-api:${IMAGE_TAG:-latest}
+    entrypoint: ['/worker']
+    env_file: .env
+    restart: unless-stopped
+
 networks:
   edge:
     external: true # one-time on the VPS: docker network create edge

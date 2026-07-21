@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -191,6 +190,9 @@ func (f *fakeLaunchStore) InsertEpisodicMemory(_ context.Context, _ platform.Use
 	if err := f.fail("InsertEpisodicMemory"); err != nil {
 		return EpisodicMemory{}, err
 	}
+	if episodicMemory.RepresentationRevision == 0 {
+		episodicMemory.RepresentationRevision = 1
+	}
 	f.staging.memories = append(f.staging.memories, episodicMemory)
 	return episodicMemory, nil
 }
@@ -214,6 +216,9 @@ func (f *fakeLaunchStore) FindNeuronsByNames(_ context.Context, _ platform.UserS
 func (f *fakeLaunchStore) UpsertNeuron(_ context.Context, _ platform.UserScope, neuron Neuron) (Neuron, error) {
 	if err := f.fail("UpsertNeuron"); err != nil {
 		return Neuron{}, err
+	}
+	if neuron.RepresentationRevision == 0 {
+		neuron.RepresentationRevision = 1
 	}
 	f.staging.neurons = append(f.staging.neurons, neuron)
 	return neuron, nil
@@ -440,12 +445,16 @@ func TestPersistEncodedLaunchesAtomicallyWithDedup(t *testing.T) {
 		if job.Kind != JobKindEmbed {
 			continue
 		}
-		var payload EmbedJobPayload
-		if err := json.Unmarshal(job.Payload, &payload); err != nil {
-			t.Fatalf("embed payload invalid: %v", err)
+		if string(job.Payload) != "{}" {
+			t.Fatalf("embed payload = %s, want source-free object", job.Payload)
 		}
-		if len(payload.Neurons) != 3 {
-			t.Fatalf("embed payload neurons = %d, want only the 3 new ones", len(payload.Neurons))
+		if len(job.Targets) != 3 {
+			t.Fatalf("embed targets = %d, want only the 3 new neurons", len(job.Targets))
+		}
+		for _, target := range job.Targets {
+			if target.Kind != JobTargetNeuron || target.ExpectedRevision != 1 {
+				t.Fatalf("embed target = %+v, want revisioned neuron", target)
+			}
 		}
 	}
 	if fixture.linker.calls != 1 {

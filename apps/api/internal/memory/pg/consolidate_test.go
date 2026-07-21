@@ -87,9 +87,7 @@ func TestSyncConsolidatesEndToEnd(t *testing.T) {
 		t.Fatalf("InsertEpisodicMemory m1 failed: %v", err)
 	}
 	// The gist ladder is pregenerated, so the advance must not re-enqueue semanticize.
-	if err := store.SaveSemanticStages(ctx, userID, m1.ID, memory.SemanticStages{"g1", "g2", "g3", "g4"}); err != nil {
-		t.Fatalf("SaveSemanticStages failed: %v", err)
-	}
+	setSemanticStagesFixture(t, ctx, store, userID, m1.ID, memory.SemanticStages{"g1", "g2", "g3", "g4"})
 	// m2 shares a neuron with m1 (the shared-neuron neighbor); m3 is an unrelated island.
 	// Both sit at the stage ceiling — with their ladders fully pregenerated, so the repair
 	// pass has nothing to re-enqueue — and only m1 seeds the replay set.
@@ -101,9 +99,7 @@ func TestSyncConsolidatesEndToEnd(t *testing.T) {
 		}); err != nil {
 			t.Fatalf("InsertEpisodicMemory %s failed: %v", id, err)
 		}
-		if err := store.SaveSemanticStages(ctx, userID, id, memory.SemanticStages{"g1", "g2", "g3", "g4"}); err != nil {
-			t.Fatalf("SaveSemanticStages %s failed: %v", id, err)
-		}
+		setSemanticStagesFixture(t, ctx, store, userID, id, memory.SemanticStages{"g1", "g2", "g3", "g4"})
 	}
 	neurons := map[string]memory.NeuronType{
 		base + "-n1": memory.NeuronTypeSemantic,

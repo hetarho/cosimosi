@@ -299,29 +299,17 @@ func (s *Service) reconsolidate(ctx context.Context, scope platform.UserScope, t
 	// The use-case owns randomness so the domain stays pure: it mints the fresh entropy
 	// and Reshape guarantees the returned seed differs from the current one ([V5]).
 	newSeed := Reshape(seedOrZero(memory.Seed), s.newSeed())
-	if err := tx.ApplyReconsolidatedText(ctx, scope, memory.ID, rewriteText, newSeed); err != nil {
-		return 0, err
-	}
-
-	// Regenerate only the remaining stage texts on the new narrative ([C7]): the member
-	// neurons + mood are unchanged, so the semanticize inputs are the memory's own plus the
-	// new current_text. KeepStages tells the worker how many already-risen gist texts to
-	// preserve (z-axis is one-way — a risen stage is a thing that happened). Async LLM pass;
-	// the texts fill on the next read (optimistic write §2.8).
-	neurons, err := tx.RecallMemberNeurons(ctx, scope, memory.ID)
+	revision, err := tx.ApplyReconsolidatedText(ctx, scope, memory.ID, rewriteText, newSeed)
 	if err != nil {
 		return 0, err
 	}
-	payload := SemanticizeJobPayload{
-		MemoryID:    memory.ID,
-		Name:        memory.Name,
-		CurrentText: rewriteText,
-		Mood:        memory.Emotion.Mood,
-		Neurons:     semanticJobNeurons(neurons),
-		KeepStages:  memory.SemanticStage,
-		KeptStages:  memory.SemanticStages,
-	}
-	if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, payload); err != nil {
+
+	// The identity-only job re-reads the current text, mood, live neurons, and already-risen
+	// stages immediately before the external call. The revision returned by the rewrite is
+	// its fence, so an older generation cannot publish over this representation.
+	if err := s.enqueue(ctx, scope, tx, JobKindSemanticize, SemanticizeJobPayload{}, JobTarget{
+		Kind: JobTargetMemory, ID: memory.ID, ExpectedRevision: revision,
+	}); err != nil {
 		return 0, err
 	}
 
@@ -338,14 +326,6 @@ func (s *Service) reconsolidate(ctx context.Context, scope platform.UserScope, t
 		return 0, err
 	}
 	return newSeed, nil
-}
-
-func semanticJobNeurons(neurons []ExistingNeuron) []SemanticJobNeuron {
-	out := make([]SemanticJobNeuron, 0, len(neurons))
-	for _, neuron := range neurons {
-		out = append(out, SemanticJobNeuron{Name: neuron.Name, Type: neuron.Type})
-	}
-	return out
 }
 
 func seedOrZero(seed *int64) int64 {

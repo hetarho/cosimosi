@@ -146,6 +146,7 @@ type ReleaseTx interface {
 
 	// Release ledger writes + the already-released guard read.
 	ReleaseGroupForDiary(ctx context.Context, scope platform.UserScope, diaryID string) (ReleaseGroup, bool, error)
+	ReleaseGroupForSweep(ctx context.Context, scope platform.UserScope, releaseID string) (ReleaseGroup, bool, error)
 	InsertReleaseGroup(ctx context.Context, scope platform.UserScope, group ReleaseGroup) error
 	RecordReleaseMemories(ctx context.Context, scope platform.UserScope, releaseID string, memoryIDs []string) error
 	RecordReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string, neuronIDs []string) error
@@ -154,16 +155,22 @@ type ReleaseTx interface {
 	// Restore reads + reversal writes.
 	ReleaseMemories(ctx context.Context, scope platform.UserScope, releaseID string) ([]string, error)
 	ReleaseSealedNeurons(ctx context.Context, scope platform.UserScope, releaseID string) ([]string, error)
+	ReleaseSealedNeuronTargets(ctx context.Context, scope platform.UserScope, releaseID string) ([]JobTarget, error)
 	ClearReleaseMemoriesDeletedAt(ctx context.Context, scope platform.UserScope, memoryIDs []string) error
 	UnsealReleaseNeurons(ctx context.Context, scope platform.UserScope, neuronIDs []string) error
 	// ReverseReleaseSynapseDeltas adds each recorded LTD amount back to the edge's current strength
 	// atomically (lost-update-safe) — the exact reversal of Release's contribution Depress.
 	ReverseReleaseSynapseDeltas(ctx context.Context, scope platform.UserScope, releaseID string) error
+	CancelReleaseMemoryJobs(ctx context.Context, scope platform.UserScope, releaseID string, memoryIDs []string, cancelledAt time.Time) error
+	RequeueReleaseMemoryJobs(ctx context.Context, scope platform.UserScope, releaseID string, nextRunAt time.Time) error
+	DeleteReleaseRetentionJobs(ctx context.Context, scope platform.UserScope, releaseID string) error
+	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
 	DeleteReleaseGroup(ctx context.Context, scope platform.UserScope, releaseID string) error
 
 	// Retention sweep reads + the FK-safe hard deletes (the only hard delete of user data, [I1]).
 	ExpiredReleaseGroups(ctx context.Context, scope platform.UserScope, cutoff time.Time) ([]ReleaseGroup, error)
 	ExclusiveReleaseNeurons(ctx context.Context, scope platform.UserScope, releaseID string, releaseMemoryIDs []string) ([]string, error)
+	PurgeReleaseJobs(ctx context.Context, scope platform.UserScope, releaseID string, memoryIDs, neuronIDs []string) error
 	DeleteReleaseActivations(ctx context.Context, scope platform.UserScope, memoryIDs []string) error
 	DeleteReleaseSynapses(ctx context.Context, scope platform.UserScope, neuronIDs []string) error
 	DeleteReleaseEmbeddings(ctx context.Context, scope platform.UserScope, neuronIDs []string) error

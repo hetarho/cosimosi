@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelReleaseMemoryJobs = `-- name: CancelReleaseMemoryJobs :execrows
+UPDATE jobs AS j
+SET status = 'cancelled',
+    payload = '{}'::jsonb,
+    terminal_at = $1,
+    cancelled_by_release_id = $2,
+    lease_generation = j.lease_generation + 1
+WHERE j.user_id = $3
+  AND j.status IN ('pending', 'running')
+  AND EXISTS (
+      SELECT 1
+      FROM job_targets AS jt
+      WHERE jt.job_id = j.id
+        AND jt.user_id = j.user_id
+        AND jt.target_kind = 'episodic_memory'
+        AND jt.target_id = ANY($4::text[])
+  )
+`
+
+type CancelReleaseMemoryJobsParams struct {
+	CancelledAt       pgtype.Timestamptz
+	ReleaseID         pgtype.Text
+	UserID            string
+	EpisodicMemoryIds []string
+}
+
+// Release cancels every active memory-targeted semantic job in the same
+// transaction as soft deletion. Clearing the allowlisted payload is defensive;
+// incrementing the lease generation fences already-claimed workers.
+func (q *Queries) CancelReleaseMemoryJobs(ctx context.Context, arg CancelReleaseMemoryJobsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelReleaseMemoryJobs,
+		arg.CancelledAt,
+		arg.ReleaseID,
+		arg.UserID,
+		arg.EpisodicMemoryIds,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearReleaseMemoriesDeletedAt = `-- name: ClearReleaseMemoriesDeletedAt :exec
 UPDATE episodic_memories
 SET deleted_at = NULL
@@ -42,7 +84,6 @@ type DeleteReleaseActivationsParams struct {
 	EpisodicMemoryIds []string
 }
 
-// Sweep deletes, in FK-safe order. Each is user-scoped and bound to the release's own rows.
 // Activations of the swept memories (removes the memory↔neuron edges before the memories/neurons go).
 func (q *Queries) DeleteReleaseActivations(ctx context.Context, arg DeleteReleaseActivationsParams) error {
 	_, err := q.db.Exec(ctx, deleteReleaseActivations, arg.UserID, arg.EpisodicMemoryIds)
@@ -143,6 +184,35 @@ func (q *Queries) DeleteReleaseNeurons(ctx context.Context, arg DeleteReleaseNeu
 	return err
 }
 
+const deleteReleaseRetentionJobs = `-- name: DeleteReleaseRetentionJobs :execrows
+DELETE FROM jobs AS j
+WHERE j.user_id = $1
+  AND j.kind = 'retention_sweep'
+  AND EXISTS (
+      SELECT 1
+      FROM job_targets AS jt
+      WHERE jt.job_id = j.id
+        AND jt.user_id = j.user_id
+        AND jt.target_kind = 'release_group'
+        AND jt.target_id = $2
+  )
+`
+
+type DeleteReleaseRetentionJobsParams struct {
+	UserID    string
+	ReleaseID string
+}
+
+// Restore removes the not-yet-due trigger only after every reversal succeeds.
+// The target row cascades with the job.
+func (q *Queries) DeleteReleaseRetentionJobs(ctx context.Context, arg DeleteReleaseRetentionJobsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReleaseRetentionJobs, arg.UserID, arg.ReleaseID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteReleaseSynapses = `-- name: DeleteReleaseSynapses :exec
 DELETE FROM synapses
 WHERE user_id = $1
@@ -200,6 +270,35 @@ type GetReleaseGroupForDiaryRow struct {
 func (q *Queries) GetReleaseGroupForDiary(ctx context.Context, arg GetReleaseGroupForDiaryParams) (GetReleaseGroupForDiaryRow, error) {
 	row := q.db.QueryRow(ctx, getReleaseGroupForDiary, arg.UserID, arg.DiaryID)
 	var i GetReleaseGroupForDiaryRow
+	err := row.Scan(&i.ID, &i.DiaryID, &i.DeletedAt)
+	return i, err
+}
+
+const getReleaseGroupForSweep = `-- name: GetReleaseGroupForSweep :one
+SELECT id, diary_id, deleted_at
+FROM release_groups
+WHERE user_id = $1
+  AND id = $2
+FOR UPDATE
+`
+
+type GetReleaseGroupForSweepParams struct {
+	UserID    string
+	ReleaseID string
+}
+
+type GetReleaseGroupForSweepRow struct {
+	ID        string
+	DiaryID   string
+	DeletedAt pgtype.Timestamptz
+}
+
+// The worker's exact release target. Unlike the global sweep scan this blocks
+// on the one row: skipping a Restore-held row could complete the only durable
+// retention trigger before that Restore rolls back.
+func (q *Queries) GetReleaseGroupForSweep(ctx context.Context, arg GetReleaseGroupForSweepParams) (GetReleaseGroupForSweepRow, error) {
+	row := q.db.QueryRow(ctx, getReleaseGroupForSweep, arg.UserID, arg.ReleaseID)
+	var i GetReleaseGroupForSweepRow
 	err := row.Scan(&i.ID, &i.DiaryID, &i.DeletedAt)
 	return i, err
 }
@@ -336,9 +435,9 @@ const listExpiredReleaseGroups = `-- name: ListExpiredReleaseGroups :many
 SELECT id, diary_id, deleted_at
 FROM release_groups
 WHERE user_id = $1
-  AND deleted_at < $2
+  AND deleted_at <= $2
 ORDER BY deleted_at, id
-FOR UPDATE SKIP LOCKED
+FOR UPDATE
 `
 
 type ListExpiredReleaseGroupsParams struct {
@@ -352,12 +451,11 @@ type ListExpiredReleaseGroupsRow struct {
 	DeletedAt pgtype.Timestamptz
 }
 
-// Sweep read: release groups whose deleted_at is older than the retention cutoff (now − window),
+// Sweep read: release groups whose deleted_at has reached the retention cutoff (now - window),
 // computed in the use-case. A restored group has been deleted, so it never appears — a restored release
 // is a sweep no-op by construction.
-// FOR UPDATE SKIP LOCKED so the sweep serializes with a concurrent Restore on the same group: a group a
-// Restore is holding is skipped (Restore will retire it), and a group the sweep holds makes a concurrent
-// Restore's FOR UPDATE read wait, then find it gone. No half-swept restored diary either way.
+// Blocking FOR UPDATE serializes with Restore. At the exact deadline the group is
+// eligible; the durable job must never skip the sole row and complete prematurely.
 func (q *Queries) ListExpiredReleaseGroups(ctx context.Context, arg ListExpiredReleaseGroupsParams) ([]ListExpiredReleaseGroupsRow, error) {
 	rows, err := q.db.Query(ctx, listExpiredReleaseGroups, arg.UserID, arg.Cutoff)
 	if err != nil {
@@ -405,6 +503,50 @@ func (q *Queries) ListReleaseMemories(ctx context.Context, arg ListReleaseMemori
 			return nil, err
 		}
 		items = append(items, episodic_memory_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReleaseSealedNeuronTargets = `-- name: ListReleaseSealedNeuronTargets :many
+SELECT n.id, n.representation_revision
+FROM release_sealed_neurons AS rsn
+JOIN neurons AS n
+  ON n.id = rsn.neuron_id
+ AND n.user_id = rsn.user_id
+WHERE rsn.user_id = $1
+  AND rsn.release_id = $2
+ORDER BY n.id
+`
+
+type ListReleaseSealedNeuronTargetsParams struct {
+	UserID    string
+	ReleaseID string
+}
+
+type ListReleaseSealedNeuronTargetsRow struct {
+	ID                     string
+	RepresentationRevision int64
+}
+
+// Restore re-embeds the neurons this release unseals. A queued embed may have
+// harmlessly completed while they were sealed, so this current revision set is
+// the durable way to restore equivalent derived state.
+func (q *Queries) ListReleaseSealedNeuronTargets(ctx context.Context, arg ListReleaseSealedNeuronTargetsParams) ([]ListReleaseSealedNeuronTargetsRow, error) {
+	rows, err := q.db.Query(ctx, listReleaseSealedNeuronTargets, arg.UserID, arg.ReleaseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReleaseSealedNeuronTargetsRow
+	for rows.Next() {
+		var i ListReleaseSealedNeuronTargetsRow
+		if err := rows.Scan(&i.ID, &i.RepresentationRevision); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -552,6 +694,108 @@ func (q *Queries) ListThisMemoryOnlySemanticNeurons(ctx context.Context, arg Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const purgeReleaseJobs = `-- name: PurgeReleaseJobs :many
+WITH removed_targets AS (
+    DELETE FROM job_targets AS jt
+    WHERE jt.user_id = $1
+      AND (
+          (jt.target_kind = 'episodic_memory'
+           AND jt.target_id = ANY($2::text[]))
+          OR
+          (jt.target_kind = 'neuron'
+           AND jt.target_id = ANY($3::text[]))
+          OR
+          (jt.target_kind = 'release_group'
+           AND jt.target_id = $4)
+      )
+    RETURNING jt.job_id
+), affected_jobs AS (
+    SELECT DISTINCT job_id FROM removed_targets
+)
+DELETE FROM jobs AS j
+USING affected_jobs AS affected
+WHERE j.user_id = $1
+  AND j.id = affected.job_id
+  AND NOT EXISTS (
+      SELECT 1
+      FROM job_targets AS remaining
+      WHERE remaining.job_id = j.id
+        AND remaining.user_id = j.user_id
+  )
+RETURNING j.id
+`
+
+type PurgeReleaseJobsParams struct {
+	UserID            string
+	EpisodicMemoryIds []string
+	NeuronIds         []string
+	ReleaseID         string
+}
+
+// Sweep deletes, in FK-safe order. Each is user-scoped and bound to the release's own rows.
+// Queue metadata/effect targets go first. Mixed-neuron jobs retain their live
+// targets; a job whose last target is removed is deleted, fencing its worker.
+func (q *Queries) PurgeReleaseJobs(ctx context.Context, arg PurgeReleaseJobsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, purgeReleaseJobs,
+		arg.UserID,
+		arg.EpisodicMemoryIds,
+		arg.NeuronIds,
+		arg.ReleaseID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const requeueReleaseMemoryJobs = `-- name: RequeueReleaseMemoryJobs :execrows
+UPDATE jobs AS j
+SET status = 'pending',
+    terminal_at = NULL,
+    cancelled_by_release_id = NULL,
+    next_run_at = $1,
+    payload = '{}'::jsonb
+WHERE j.user_id = $2
+  AND j.status = 'cancelled'
+  AND j.cancelled_by_release_id = $3
+  AND EXISTS (
+      SELECT 1
+      FROM job_targets AS jt
+      WHERE jt.job_id = j.id
+        AND jt.user_id = j.user_id
+        AND jt.target_kind = 'episodic_memory'
+  )
+`
+
+type RequeueReleaseMemoryJobsParams struct {
+	NextRunAt pgtype.Timestamptz
+	UserID    string
+	ReleaseID pgtype.Text
+}
+
+// A successful pre-deadline Restore revives only jobs this release cancelled.
+// Their targets already carry the current expected revision; reconsolidation
+// races are serialized by the release transaction and stale targets no-op.
+func (q *Queries) RequeueReleaseMemoryJobs(ctx context.Context, arg RequeueReleaseMemoryJobsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, requeueReleaseMemoryJobs, arg.NextRunAt, arg.UserID, arg.ReleaseID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const reverseReleaseSynapseDeltas = `-- name: ReverseReleaseSynapseDeltas :exec

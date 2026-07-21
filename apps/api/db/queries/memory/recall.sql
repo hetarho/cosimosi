@@ -28,14 +28,15 @@ SELECT
     semanticize_timer_reset_at,
     semantic_stages,
     forgetting_offset_days,
-    deleted_at
+    deleted_at,
+    representation_revision
 FROM episodic_memories
 WHERE user_id = sqlc.arg(user_id)
   AND id = sqlc.arg(memory_id);
 
 -- The recalled memory's live member neurons (the reconsolidation regen's semanticize inputs).
 -- name: LoadRecallMemberNeurons :many
-SELECT n.id, n.name, n.neuron_type
+SELECT n.id, n.name, n.neuron_type, n.representation_revision
 FROM neuron_activations AS na
 JOIN neurons AS n
   ON n.user_id = na.user_id
@@ -113,13 +114,15 @@ RETURNING recall_count, base_strength;
 
 -- Writes ONLY the reconsolidation representation deltas ([R6][V5]): current_text and seed. Never
 -- the Diary ([I2]); plain recall never runs this ([R4]).
--- name: ApplyReconsolidatedText :exec
+-- name: ApplyReconsolidatedText :one
 UPDATE episodic_memories
 SET current_text = sqlc.arg(current_text),
-    seed = sqlc.arg(seed)
+    seed = sqlc.arg(seed),
+    representation_revision = representation_revision + 1
 WHERE user_id = sqlc.arg(user_id)
   AND id = sqlc.arg(memory_id)
-  AND deleted_at IS NULL;
+  AND deleted_at IS NULL
+RETURNING representation_revision;
 
 -- The still-live episodic memories born from a diary with their forgetting/strength
 -- anchors — the whole-diary recall set ([D3]) and the scalars its per-memory spend

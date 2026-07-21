@@ -28,6 +28,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate production Compose
+        env:
+          IMAGE_TAG: validation
+          API_UPSTREAM: cosimosi-api-validation
+        run: |
+          test ! -e .env
+          cp .env.example .env
+          trap 'rm -f .env' EXIT
+          docker compose -f docker-compose.prod.yml config --quiet --no-env-resolution
+
       # Login only needed when we actually push (DEPLOY_ENABLED). GITHUB_TOKEN is automatic.
       - name: Log in to GHCR
         if: ${{ vars.DEPLOY_ENABLED == 'true' }}
@@ -61,7 +71,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # (6a) Migration files must be on the VPS before goose runs (it mounts them).
+      # The runtime definition and migration files must be on the VPS before rollout.
+      - name: Sync production Compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: 'docker-compose.prod.yml'
+          target: '/srv/cosimosi-${{ env.ENV_NAME }}'
+
       - name: Sync migrations to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -72,7 +91,7 @@ jobs:
           target: '/srv/cosimosi-${{ env.ENV_NAME }}/migrations'
           strip_components: 4
 
-      - name: Migrate (direct 5432) → set IMAGE_TAG → roll out
+      - name: Pull → quiesce → migrate (direct 5432) → roll out
         uses: appleboy/ssh-action@v1.2.0
         env:
           IMAGE_TAG: ${{ github.sha }}
@@ -83,26 +102,79 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           envs: IMAGE_TAG,DIRECT_DATABASE_URL,ENV_NAME
           script: |
-            set -e
+            set -eu
             cd "/srv/cosimosi-${ENV_NAME}"
-            # 1) Migrations FIRST, via the DIRECT connection (5432 — never the 6543 pooler
-            #    for DDL). Failure here exits non-zero → the API is never replaced.
+
+            compose() {
+              docker compose -f docker-compose.prod.yml "$@"
+            }
+            set_image_tag() {
+              if grep -q '^IMAGE_TAG=' .env; then
+                sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=$1|" .env
+              else
+                echo "IMAGE_TAG=$1" >> .env
+              fi
+            }
+
+            # Preserve the complete untracked environment file so a failed migration can
+            # restore the previous image selection without disturbing any runtime secrets.
+            ENV_BACKUP=.env.deploy-backup
+            cp -p .env "$ENV_BACKUP"
+            trap 'rm -f "$ENV_BACKUP"' EXIT
+
+            API_WAS_RUNNING=false
+            WORKER_WAS_RUNNING=false
+            if [ -n "$(compose ps -q --status running api)" ]; then
+              API_WAS_RUNNING=true
+            fi
+            if [ -n "$(compose ps -q --status running worker)" ]; then
+              WORKER_WAS_RUNNING=true
+            fi
+
+            restart_previous_services() {
+              restart_failed=false
+              if [ "$API_WAS_RUNNING" = true ] && ! compose up -d --no-deps api; then
+                restart_failed=true
+              fi
+              if [ "$WORKER_WAS_RUNNING" = true ] && ! compose up -d --no-deps worker; then
+                restart_failed=true
+              fi
+              [ "$restart_failed" = false ]
+            }
+
+            # 1) Resolve and pull both processes from the same immutable SHA before taking
+            #    either currently-running process offline.
+            set_image_tag "$IMAGE_TAG"
+            if ! compose pull api worker; then
+              cp -p "$ENV_BACKUP" .env
+              exit 1
+            fi
+
+            # 2) Migration 00011 rewrites the live queue contract. Stop every producer and
+            #    consumer before goose can acquire its table locks.
+            if ! compose stop -t 30 api worker; then
+              cp -p "$ENV_BACKUP" .env
+              restart_previous_services || true
+              exit 1
+            fi
+
+            # 3) Migrate through the DIRECT connection (5432 — never the 6543 pooler for
+            #    DDL). On failure, restore the old tag and exactly the services that were
+            #    running before this rollout.
             #    goose has no official Docker image — kukymbr/goose-docker wrapper, same
             #    as scripts/db.mjs: mounts /migrations, command via GOOSE_COMMAND.
-            docker run --rm -v "$PWD/migrations:/migrations" \
-              -e GOOSE_DRIVER=postgres -e GOOSE_DBSTRING="$DIRECT_DATABASE_URL" \
-              -e GOOSE_COMMAND=up \
-              ghcr.io/kukymbr/goose-docker:3.27.1
-            # 2) Record IMAGE_TAG in the stack .env so `pull` and `up` resolve the SAME
-            #    SHA (an inline IMAGE_TAG=... would only reach `pull`, spec 14 §4).
-            if grep -q '^IMAGE_TAG=' .env; then
-              sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env
-            else
-              echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
+            if ! docker run --rm -v "$PWD/migrations:/migrations" \
+                -e GOOSE_DRIVER=postgres -e GOOSE_DBSTRING="$DIRECT_DATABASE_URL" \
+                -e GOOSE_COMMAND=up \
+                ghcr.io/kukymbr/goose-docker:3.27.1; then
+              cp -p "$ENV_BACKUP" .env
+              restart_previous_services || true
+              exit 1
             fi
-            # 3) Roll the API to the new image, then prune dangling layers.
+
+            # 4) The successful migration commits the already-recorded IMAGE_TAG. Start
+            #    the API and worker from that same image, then prune dangling layers.
             #    --remove-orphans: drop containers for services removed from the compose
             #    file (e.g. the old per-stack caddy) instead of leaving them running.
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            compose up -d --remove-orphans api worker
             docker image prune -f

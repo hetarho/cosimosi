@@ -58,13 +58,14 @@ const (
 
 // ai
 const (
-	AiEmbeddingDim     = 1024
-	AiPerCallTokenCap  = 1200
-	AiDailyCallCap     = 200
-	AiJobMaxAttempts   = 5
-	AiJobBackoffBaseMs = 60000
-	AiJobLeaseMs       = 300000
-	AiJobMaxClaims     = 20
+	AiEmbeddingDim             = 1024
+	AiPerCallTokenCap          = 1200
+	AiDailyCallCap             = 200
+	AiJobMaxAttempts           = 5
+	AiJobBackoffBaseMs         = 60000
+	AiJobLeaseMs               = 300000
+	AiJobMaxClaims             = 20
+	AiJobTerminalRetentionDays = 30
 )
 
 // emotion

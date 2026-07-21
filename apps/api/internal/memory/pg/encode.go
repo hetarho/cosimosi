@@ -50,7 +50,7 @@ func (s Store) ListNeuronCandidatesInBody(ctx context.Context, scope platform.Us
 	}
 	neurons := make([]memory.ExistingNeuron, 0, len(rows))
 	for _, row := range rows {
-		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType))
+		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType, row.RepresentationRevision))
 	}
 	return neurons, nil
 }
@@ -74,7 +74,7 @@ func (s Store) ListNearestNeuronCandidates(ctx context.Context, scope platform.U
 	}
 	neurons := make([]memory.ExistingNeuron, 0, len(rows))
 	for _, row := range rows {
-		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType))
+		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType, row.RepresentationRevision))
 	}
 	return neurons, nil
 }
@@ -97,15 +97,16 @@ func (s Store) FindNeuronsByNames(ctx context.Context, scope platform.UserScope,
 	}
 	neurons := make([]memory.ExistingNeuron, 0, len(rows))
 	for _, row := range rows {
-		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType))
+		neurons = append(neurons, existingNeuron(row.ID, row.Name.String, row.NeuronType, row.RepresentationRevision))
 	}
 	return neurons, nil
 }
 
-func existingNeuron(id string, name string, neuronType string) memory.ExistingNeuron {
+func existingNeuron(id string, name string, neuronType string, representationRevision int64) memory.ExistingNeuron {
 	return memory.ExistingNeuron{
-		ID:   id,
-		Name: name,
-		Type: memory.NeuronType(neuronType),
+		ID:                     id,
+		Name:                   name,
+		Type:                   memory.NeuronType(neuronType),
+		RepresentationRevision: representationRevision,
 	}
 }

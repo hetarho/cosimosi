@@ -346,15 +346,16 @@ func TestInsertEmbeddingUpdatesExistingNeuronVector(t *testing.T) {
 	}
 	store := NewStore(pool.PgxPool())
 	day := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	neuronName := "market"
 	neuron, err := store.UpsertNeuron(ctx, scope, memory.Neuron{
 		ID:        base + "-neuron",
+		Name:      &neuronName,
 		Type:      memory.NeuronTypeSemantic,
 		CreatedAt: day,
 	})
 	if err != nil {
 		t.Fatalf("UpsertNeuron failed: %v", err)
 	}
-
 	first := make([]float32, values.AiEmbeddingDim)
 	first[0] = 0.1
 	if _, err := store.InsertEmbedding(ctx, scope, memory.Embedding{NeuronID: neuron.ID, Vector: first}); err != nil {
@@ -394,10 +395,13 @@ func TestClaimDueJobsAreDisjointAcrossConcurrentClaimants(t *testing.T) {
 		if _, err := store.EnqueueJob(ctx, scope, memory.Job{
 			ID:        id,
 			Kind:      memory.JobKindEmbed,
-			Payload:   []byte(`{"neurons":[]}`),
+			Payload:   []byte(`{}`),
 			Status:    memory.JobStatusPending,
 			NextRunAt: now.Add(-time.Minute),
 			CreatedAt: now,
+			Targets: []memory.JobTarget{{
+				Kind: memory.JobTargetNeuron, ID: id + "-target", ExpectedRevision: 1,
+			}},
 		}); err != nil {
 			t.Fatalf("EnqueueJob failed: %v", err)
 		}
@@ -472,10 +476,13 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 	job, err := store.EnqueueJob(ctx, scope, memory.Job{
 		ID:        base + "-job",
 		Kind:      memory.JobKindEmbed,
-		Payload:   []byte(`{"neurons":[]}`),
+		Payload:   []byte(`{}`),
 		Status:    memory.JobStatusPending,
 		NextRunAt: now.Add(-time.Minute),
 		CreatedAt: now,
+		Targets: []memory.JobTarget{{
+			Kind: memory.JobTargetNeuron, ID: base + "-target", ExpectedRevision: 1,
+		}},
 	})
 	if err != nil {
 		t.Fatalf("EnqueueJob failed: %v", err)
@@ -540,10 +547,13 @@ func TestEnqueueJobCanSharePersistTransaction(t *testing.T) {
 	if _, err := txStore.EnqueueJob(ctx, scope, memory.Job{
 		ID:        base + "-job",
 		Kind:      memory.JobKindEmbed,
-		Payload:   []byte(`{"neurons":[]}`),
+		Payload:   []byte(`{}`),
 		Status:    memory.JobStatusPending,
 		NextRunAt: day,
 		CreatedAt: day,
+		Targets: []memory.JobTarget{{
+			Kind: memory.JobTargetNeuron, ID: base + "-target", ExpectedRevision: 1,
+		}},
 	}); err != nil {
 		t.Fatalf("EnqueueJob in tx failed: %v", err)
 	}
@@ -580,10 +590,13 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 	job, err := store.EnqueueJob(ctx, scope, memory.Job{
 		ID:        base + "-job",
 		Kind:      memory.JobKindEmbed,
-		Payload:   []byte(`{"neurons":[]}`),
+		Payload:   []byte(`{}`),
 		Status:    memory.JobStatusPending,
 		NextRunAt: now,
 		CreatedAt: now,
+		Targets: []memory.JobTarget{{
+			Kind: memory.JobTargetNeuron, ID: base + "-target", ExpectedRevision: 1,
+		}},
 	})
 	if err != nil {
 		t.Fatalf("EnqueueJob failed: %v", err)
@@ -622,6 +635,126 @@ func TestJobRetryAndFailKeepRows(t *testing.T) {
 	status, attempts = readJobStatus(t, pool, userID, job.ID)
 	if status != string(memory.JobStatusFailed) || attempts != int32(values.AiJobMaxAttempts) {
 		t.Fatalf("after fail status=%q attempts=%d", status, attempts)
+	}
+}
+
+func TestEnqueueJobRejectsSourceBearingPayloadAtAdapterAndDatabase(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-job-payload-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	job := memory.Job{
+		ID: base + "-job", Kind: memory.JobKindSemanticize,
+		Payload: []byte(`{"current_text":"must never persist"}`), Status: memory.JobStatusPending,
+		NextRunAt: time.Now().UTC(), CreatedAt: time.Now().UTC(),
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: base + "-memory", ExpectedRevision: 1}},
+	}
+	if _, err := store.EnqueueJob(ctx, scope, job); err == nil {
+		t.Fatal("source-bearing payload passed the memory/pg enqueue boundary")
+	}
+	var stored int
+	if err := pool.PgxPool().QueryRow(ctx, `SELECT count(*) FROM jobs WHERE id = $1`, job.ID).Scan(&stored); err != nil {
+		t.Fatalf("inspect rejected enqueue failed: %v", err)
+	}
+	if stored != 0 {
+		t.Fatalf("rejected source-bearing payload persisted %d job rows", stored)
+	}
+
+	if _, err := pool.PgxPool().Exec(ctx, `
+		INSERT INTO jobs (id, user_id, kind, payload, status, next_run_at)
+		VALUES ($1, $2, 'semanticize', '{"current_text":"bypass"}'::jsonb, 'pending', now())`,
+		base+"-direct", userID); err == nil {
+		t.Fatal("database accepted a source-bearing job payload")
+	}
+}
+
+func TestTerminalJobCleanupIsBoundedAndPreservesDueRetentionTrigger(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-jobs-cleanup-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	cutoff := time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC)
+	for i := 0; i < 3; i++ {
+		id := fmt.Sprintf("%s-old-%d", base, i)
+		if _, err := store.EnqueueJob(ctx, scope, memory.Job{
+			ID: id, Kind: memory.JobKindEmbed, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+			NextRunAt: cutoff, CreatedAt: cutoff,
+			Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: id + "-target", ExpectedRevision: 1}},
+		}); err != nil {
+			t.Fatalf("enqueue old terminal fixture failed: %v", err)
+		}
+		if _, err := pool.PgxPool().Exec(ctx, `
+			UPDATE jobs SET status = 'done', terminal_at = $1 WHERE user_id = $2 AND id = $3`,
+			cutoff.Add(-time.Hour), userID, id); err != nil {
+			t.Fatalf("terminalize old fixture failed: %v", err)
+		}
+	}
+	boundaryID := base + "-boundary"
+	if _, err := store.EnqueueJob(ctx, scope, memory.Job{
+		ID: boundaryID, Kind: memory.JobKindEmbed, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+		NextRunAt: cutoff, CreatedAt: cutoff,
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: boundaryID + "-target", ExpectedRevision: 1}},
+	}); err != nil {
+		t.Fatalf("enqueue boundary fixture failed: %v", err)
+	}
+	if _, err := pool.PgxPool().Exec(ctx, `
+		UPDATE jobs SET status = 'done', terminal_at = $1 WHERE user_id = $2 AND id = $3`, cutoff, userID, boundaryID); err != nil {
+		t.Fatalf("terminalize boundary fixture failed: %v", err)
+	}
+
+	releaseID := base + "-release"
+	if _, err := pool.PgxPool().Exec(ctx, `
+		INSERT INTO release_groups (id, user_id, diary_id, deleted_at)
+		VALUES ($1, $2, $3, $4)`, releaseID, userID, base+"-diary", cutoff.Add(-31*24*time.Hour)); err != nil {
+		t.Fatalf("insert release group failed: %v", err)
+	}
+	retentionID := base + "-retention"
+	if _, err := store.EnqueueJob(ctx, scope, memory.Job{
+		ID: retentionID, Kind: memory.JobKindRetention, Payload: []byte(`{}`), Status: memory.JobStatusPending,
+		NextRunAt: cutoff, CreatedAt: cutoff,
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetRelease, ID: releaseID}},
+	}); err != nil {
+		t.Fatalf("enqueue retention fixture failed: %v", err)
+	}
+	if _, err := pool.PgxPool().Exec(ctx, `
+		UPDATE jobs SET status = 'failed', terminal_at = $1 WHERE user_id = $2 AND id = $3`,
+		cutoff.Add(-time.Hour), userID, retentionID); err != nil {
+		t.Fatalf("terminalize retention fixture failed: %v", err)
+	}
+
+	if purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2); err != nil || purged != 2 {
+		t.Fatalf("first purge = (%d, %v), want (2, nil)", purged, err)
+	}
+	if purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2); err != nil || purged != 1 {
+		t.Fatalf("second purge = (%d, %v), want (1, nil)", purged, err)
+	}
+	if purged, err := store.PurgeTerminalJobs(ctx, cutoff, 2); err != nil || purged != 0 {
+		t.Fatalf("third purge = (%d, %v), want (0, nil)", purged, err)
+	}
+	var kept int
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT count(*) FROM jobs WHERE user_id = $1 AND id = ANY($2::text[])`,
+		userID, []string{boundaryID, retentionID}).Scan(&kept); err != nil {
+		t.Fatalf("inspect retained terminals failed: %v", err)
+	}
+	if kept != 2 {
+		t.Fatalf("retained terminal rows = %d, want boundary + durable retention", kept)
 	}
 }
 
@@ -666,13 +799,22 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InsertEpisodicMemory failed: %v", err)
 	}
+	neuronName := "market"
 	neuron, err := store.UpsertNeuron(ctx, scope, memory.Neuron{
 		ID:        base + "-neuron",
+		Name:      &neuronName,
 		Type:      memory.NeuronTypeSemantic,
 		CreatedAt: day,
 	})
 	if err != nil {
 		t.Fatalf("UpsertNeuron failed: %v", err)
+	}
+	if _, err := store.InsertNeuronActivation(ctx, scope, memory.NeuronActivation{
+		EpisodicMemoryID: episodicMemory.ID,
+		NeuronID:         neuron.ID,
+		Weight:           1,
+	}); err != nil {
+		t.Fatalf("InsertNeuronActivation failed: %v", err)
 	}
 	before, err := store.GetUniverse(ctx, scope)
 	if err != nil {
@@ -682,20 +824,18 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 		t.Fatalf("semantic stages before worker = %+v, want one memory with nil stages", before.EpisodicMemories)
 	}
 
-	embedPayload, _ := json.Marshal(memory.EmbedJobPayload{
-		Neurons: []memory.EmbedJobNeuron{{ID: neuron.ID, Text: "market"}},
-	})
-	semanticPayload, _ := json.Marshal(memory.SemanticizeJobPayload{
-		MemoryID:    episodicMemory.ID,
-		Name:        episodicMemory.Name,
-		CurrentText: episodicMemory.CurrentText,
-		Mood:        episodicMemory.Emotion.Mood,
-		Neurons:     []memory.SemanticJobNeuron{{Name: "market", Type: memory.NeuronTypeSemantic}},
-	})
 	now := day.Add(time.Hour)
 	for _, job := range []memory.Job{
-		{ID: base + "-job-embed", Kind: memory.JobKindEmbed, Payload: embedPayload, Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now},
-		{ID: base + "-job-semanticize", Kind: memory.JobKindSemanticize, Payload: semanticPayload, Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now},
+		{
+			ID: base + "-job-embed", Kind: memory.JobKindEmbed, Payload: []byte(`{}`),
+			Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now,
+			Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: neuron.ID, ExpectedRevision: neuron.RepresentationRevision}},
+		},
+		{
+			ID: base + "-job-semanticize", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
+			Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now,
+			Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision}},
+		},
 	} {
 		if _, err := store.EnqueueJob(ctx, scope, job); err != nil {
 			t.Fatalf("EnqueueJob %s failed: %v", job.ID, err)
@@ -705,6 +845,8 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 		store,
 		store,
 		store,
+		store,
+		memory.NewRetentionSweeper(store),
 		store,
 		ai.NewMockEmbedder(),
 		ai.NewMockSemanticizer(),
@@ -740,6 +882,127 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 	}
 	if body := readDiaryBody(t, pool, userID, diary.ID); body != "original diary body" {
 		t.Fatalf("diary body = %q, want original unchanged", body)
+	}
+}
+
+func TestJobHandlersHonorStoreLivenessAndRevisionFences(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-job-fences-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	emotion, _ := memory.NewEmotion(memory.MoodCalm)
+	diary, err := store.InsertDiary(ctx, scope, memory.Diary{ID: base + "-diary", Body: "private body", DiaryDate: day, CreatedAt: day})
+	if err != nil {
+		t.Fatalf("InsertDiary failed: %v", err)
+	}
+	episodicMemory, err := store.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+		ID: base + "-memory", DiaryID: diary.ID, Name: "Current", CurrentText: "private current text",
+		Emotion: emotion, BaseStrength: 0.5, CreatedUniverseTime: day,
+	})
+	if err != nil {
+		t.Fatalf("InsertEpisodicMemory failed: %v", err)
+	}
+	name := "current neuron"
+	neuron, err := store.UpsertNeuron(ctx, scope, memory.Neuron{
+		ID: base + "-neuron", Name: &name, Type: memory.NeuronTypeSemantic, CreatedAt: day,
+	})
+	if err != nil {
+		t.Fatalf("UpsertNeuron failed: %v", err)
+	}
+	if _, err := store.InsertNeuronActivation(ctx, scope, memory.NeuronActivation{
+		EpisodicMemoryID: episodicMemory.ID, NeuronID: neuron.ID, Weight: 0.8,
+	}); err != nil {
+		t.Fatalf("InsertNeuronActivation failed: %v", err)
+	}
+
+	staleSemantic := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+		ID: base + "-semantic-stale", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
+		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: 1}},
+	})
+	if _, err := pool.PgxPool().Exec(ctx, `
+		UPDATE episodic_memories SET representation_revision = 2
+		WHERE user_id = $1 AND id = $2`, userID, episodicMemory.ID); err != nil {
+		t.Fatalf("supersede semantic source failed: %v", err)
+	}
+	staleSemanticizer := &pgCallbackSemanticizer{}
+	if err := memory.NewSemanticizeJobHandler(staleSemanticizer, store, store)(ctx, staleSemantic); err != nil {
+		t.Fatalf("stale semantic handler failed: %v", err)
+	}
+	if staleSemanticizer.calls != 0 {
+		t.Fatalf("superseded semantic target made %d provider calls, want 0", staleSemanticizer.calls)
+	}
+
+	raceSemantic := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+		ID: base + "-semantic-race", Kind: memory.JobKindSemanticize, Payload: []byte(`{}`),
+		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: 2}},
+	})
+	raceSemanticizer := &pgCallbackSemanticizer{onCall: func() error {
+		_, err := pool.PgxPool().Exec(ctx, `
+			UPDATE episodic_memories SET current_text = 'newer text', representation_revision = 3
+			WHERE user_id = $1 AND id = $2`, userID, episodicMemory.ID)
+		return err
+	}}
+	if err := memory.NewSemanticizeJobHandler(raceSemanticizer, store, store)(ctx, raceSemantic); err != nil {
+		t.Fatalf("racing semantic handler failed: %v", err)
+	}
+	var stagesNull bool
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT semantic_stages IS NULL FROM episodic_memories WHERE user_id = $1 AND id = $2`,
+		userID, episodicMemory.ID).Scan(&stagesNull); err != nil {
+		t.Fatalf("inspect semantic fence failed: %v", err)
+	}
+	if raceSemanticizer.calls != 1 || !stagesNull {
+		t.Fatalf("semantic race = calls %d stages_null %t, want provider call but fenced write", raceSemanticizer.calls, stagesNull)
+	}
+
+	sealedEmbed := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+		ID: base + "-embed-sealed", Kind: memory.JobKindEmbed, Payload: []byte(`{}`),
+		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: neuron.ID, ExpectedRevision: 1}},
+	})
+	if _, err := pool.PgxPool().Exec(ctx, `
+		UPDATE neurons SET sealed_at = now() WHERE user_id = $1 AND id = $2`, userID, neuron.ID); err != nil {
+		t.Fatalf("seal embed source failed: %v", err)
+	}
+	sealedEmbedder := &pgCallbackEmbedder{}
+	if err := memory.NewEmbedJobHandler(sealedEmbedder, store, store)(ctx, sealedEmbed); err != nil {
+		t.Fatalf("sealed embed handler failed: %v", err)
+	}
+	if sealedEmbedder.calls != 0 {
+		t.Fatalf("sealed embed target made %d provider calls, want 0", sealedEmbedder.calls)
+	}
+
+	if _, err := pool.PgxPool().Exec(ctx, `
+		UPDATE neurons SET sealed_at = NULL WHERE user_id = $1 AND id = $2`, userID, neuron.ID); err != nil {
+		t.Fatalf("unseal embed source failed: %v", err)
+	}
+	raceEmbed := enqueueRunningJobFixture(t, ctx, store, scope, memory.Job{
+		ID: base + "-embed-race", Kind: memory.JobKindEmbed, Payload: []byte(`{}`),
+		Status: memory.JobStatusPending, NextRunAt: day, CreatedAt: day,
+		Targets: []memory.JobTarget{{Kind: memory.JobTargetNeuron, ID: neuron.ID, ExpectedRevision: 1}},
+	})
+	raceEmbedder := &pgCallbackEmbedder{onCall: func() error {
+		_, err := pool.PgxPool().Exec(ctx, `
+			UPDATE neurons SET name = 'newer neuron', representation_revision = 2
+			WHERE user_id = $1 AND id = $2`, userID, neuron.ID)
+		return err
+	}}
+	if err := memory.NewEmbedJobHandler(raceEmbedder, store, store)(ctx, raceEmbed); err != nil {
+		t.Fatalf("racing embed handler failed: %v", err)
+	}
+	if count := readEmbeddingCount(t, pool, userID, neuron.ID); raceEmbedder.calls != 1 || count != 0 {
+		t.Fatalf("embed race = calls %d embeddings %d, want provider call but fenced write", raceEmbedder.calls, count)
 	}
 }
 
@@ -1077,9 +1340,7 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 		t.Fatalf("InsertEpisodicMemory unrisen failed: %v", err)
 	}
 	stages := memory.SemanticStages{"stage one", "stage two", "stage three", "stage four"}
-	if err := store.SaveSemanticStages(ctx, userID, risen.ID, stages); err != nil {
-		t.Fatalf("SaveSemanticStages failed: %v", err)
-	}
+	setSemanticStagesFixture(t, ctx, store, userID, risen.ID, stages)
 
 	// Row snapshot before the views — the [R8] write-probe baseline.
 	const rowSnapshot = `SELECT current_text, coalesce(seed, 0), recall_count,
@@ -1210,6 +1471,71 @@ func cleanupMemoryTestRows(t *testing.T, pool *platformdb.Pool, userID string) {
 			}
 		}
 	})
+}
+
+func setSemanticStagesFixture(t *testing.T, ctx context.Context, store Store, userID, memoryID string, stages memory.SemanticStages) {
+	t.Helper()
+	raw, err := json.Marshal(stages)
+	if err != nil {
+		t.Fatalf("marshal semantic stage fixture failed: %v", err)
+	}
+	if _, err := store.db.Exec(ctx, `
+		UPDATE episodic_memories
+		SET semantic_stages = $1::jsonb
+		WHERE user_id = $2 AND id = $3`, raw, userID, memoryID); err != nil {
+		t.Fatalf("set semantic stage fixture failed: %v", err)
+	}
+}
+
+func enqueueRunningJobFixture(t *testing.T, ctx context.Context, store Store, scope platform.UserScope, job memory.Job) memory.Job {
+	t.Helper()
+	enqueued, err := store.EnqueueJob(ctx, scope, job)
+	if err != nil {
+		t.Fatalf("enqueue running job fixture failed: %v", err)
+	}
+	if _, err := store.db.Exec(ctx, `
+		UPDATE jobs
+		SET status = 'running', lease_generation = lease_generation + 1
+		WHERE user_id = $1 AND id = $2`, scope.UserID(), enqueued.ID); err != nil {
+		t.Fatalf("claim running job fixture failed: %v", err)
+	}
+	enqueued.Status = memory.JobStatusRunning
+	enqueued.LeaseGeneration++
+	return enqueued
+}
+
+type pgCallbackSemanticizer struct {
+	calls  int
+	onCall func() error
+}
+
+func (f *pgCallbackSemanticizer) GenerateSemanticStages(context.Context, memory.SemanticizeMemory) (memory.SemanticStages, error) {
+	f.calls++
+	if f.onCall != nil {
+		if err := f.onCall(); err != nil {
+			return memory.SemanticStages{}, err
+		}
+	}
+	return memory.SemanticStages{"one", "two", "three", "four"}, nil
+}
+
+type pgCallbackEmbedder struct {
+	calls  int
+	onCall func() error
+}
+
+func (f *pgCallbackEmbedder) Embed(_ context.Context, texts []string) ([][]float32, error) {
+	f.calls++
+	if f.onCall != nil {
+		if err := f.onCall(); err != nil {
+			return nil, err
+		}
+	}
+	vectors := make([][]float32, len(texts))
+	for i := range vectors {
+		vectors[i] = make([]float32, values.AiEmbeddingDim)
+	}
+	return vectors, nil
 }
 
 func readJobStatus(t *testing.T, pool *platformdb.Pool, userID string, jobID string) (string, int32) {

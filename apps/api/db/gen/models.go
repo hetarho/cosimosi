@@ -43,18 +43,30 @@ type EpisodicMemory struct {
 	DecayStages              []byte
 	DeletedAt                pgtype.Timestamptz
 	ForgettingOffsetDays     float32
+	RepresentationRevision   int64
 }
 
 type Job struct {
-	ID              string
-	UserID          string
-	Kind            string
-	Payload         []byte
-	Status          string
-	Attempts        int32
-	NextRunAt       pgtype.Timestamptz
-	CreatedAt       pgtype.Timestamptz
-	LeaseGeneration int64
+	ID                   string
+	UserID               string
+	Kind                 string
+	Payload              []byte
+	Status               string
+	Attempts             int32
+	NextRunAt            pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	LeaseGeneration      int64
+	DedupKey             pgtype.Text
+	TerminalAt           pgtype.Timestamptz
+	CancelledByReleaseID pgtype.Text
+}
+
+type JobTarget struct {
+	JobID            string
+	UserID           string
+	TargetKind       string
+	TargetID         string
+	ExpectedRevision pgtype.Int8
 }
 
 type MemoryProvenance struct {
@@ -69,12 +81,13 @@ type MemoryProvenance struct {
 }
 
 type Neuron struct {
-	ID         string
-	UserID     string
-	Name       pgtype.Text
-	NeuronType string
-	CreatedAt  pgtype.Timestamptz
-	SealedAt   pgtype.Timestamptz
+	ID                     string
+	UserID                 string
+	Name                   pgtype.Text
+	NeuronType             string
+	CreatedAt              pgtype.Timestamptz
+	SealedAt               pgtype.Timestamptz
+	RepresentationRevision int64
 }
 
 type NeuronActivation struct {
