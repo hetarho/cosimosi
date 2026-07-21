@@ -44,6 +44,8 @@ type EpisodicMemory struct {
 	DeletedAt                pgtype.Timestamptz
 	ForgettingOffsetDays     float32
 	RepresentationRevision   int64
+	PendingSemanticStage     pgtype.Int2
+	PendingSemanticRiseAt    pgtype.Date
 }
 
 type Job struct {
@@ -78,6 +80,7 @@ type MemoryProvenance struct {
 	Text             string
 	UniverseTime     pgtype.Date
 	CreatedAt        pgtype.Timestamptz
+	SemanticStage    pgtype.Int2
 }
 
 type Neuron struct {
@@ -166,4 +169,5 @@ type UniverseState struct {
 	UserID              string
 	CurrentUniverseTime pgtype.Date
 	UpdatedAt           pgtype.Timestamptz
+	ConsolidatedThrough pgtype.Date
 }

@@ -444,7 +444,7 @@ func TestClaimedSemanticJobCannotPublishAfterRelease(t *testing.T) {
 	if _, err := service.Release(ctx, scope, g.d1); err != nil {
 		t.Fatalf("Release failed: %v", err)
 	}
-	if err := store.SaveJobSemanticStages(ctx, claimed, g.m1, revision, memory.SemanticStages{"one", "two", "three", "four"}); err != nil {
+	if err := store.CompleteSemanticizeJob(ctx, claimed, g.m1, revision, memory.SemanticStages{"one", "two", "three", "four"}); err != nil {
 		t.Fatalf("stale conditional write returned error: %v", err)
 	}
 	var status string

@@ -19,6 +19,51 @@ import (
 // advance hook upgrades its ProgressionTx to — the upgrade is a wiring fact, not a gamble.
 var _ memory.ConsolidateTx = Store{}
 
+func (s Store) ConsolidationWatermarkForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error) {
+	if err := s.ready(scope); err != nil {
+		return nil, err
+	}
+	through, err := s.queries.ConsolidationWatermarkForUpdate(ctx, scope.UserID())
+	if err != nil {
+		// No universe_state row would mean the hook fired before the clock advance
+		// upserted it — a wiring bug, surfaced loudly rather than read as "never
+		// consolidated" (which would silently re-run processed intervals).
+		return nil, err
+	}
+	return datePtr(through), nil
+}
+
+func (s Store) SetConsolidationWatermark(ctx context.Context, scope platform.UserScope, through time.Time) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	return s.queries.SetConsolidationWatermark(ctx, dbgen.SetConsolidationWatermarkParams{
+		Through: pgDate(through),
+		UserID:  scope.UserID(),
+	})
+}
+
+func (s Store) RecordPendingGistRises(ctx context.Context, scope platform.UserScope, rises []memory.PendingGistRise) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	if len(rises) == 0 {
+		return nil
+	}
+	params := dbgen.RecordPendingGistRisesParams{
+		UserID:    scope.UserID(),
+		MemoryIds: make([]string, 0, len(rises)),
+		Stages:    make([]int16, 0, len(rises)),
+		RiseAts:   make([]pgtype.Date, 0, len(rises)),
+	}
+	for _, rise := range rises {
+		params.MemoryIds = append(params.MemoryIds, rise.MemoryID)
+		params.Stages = append(params.Stages, rise.Stage)
+		params.RiseAts = append(params.RiseAts, pgDate(rise.RiseAt))
+	}
+	return s.queries.RecordPendingGistRises(ctx, params)
+}
+
 func (s Store) ListMemoriesForConsolidation(ctx context.Context, scope platform.UserScope) ([]memory.EpisodicMemory, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err

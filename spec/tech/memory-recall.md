@@ -68,13 +68,14 @@ Reshape(seed, freshEntropy)` (the use-case mints the randomness so the domain st
 regeneration; append one `reconsolidated`/`source=user` `memory_provenance` row. The anchors, LTP, strength bump, and
 neighbor ± already ran in `Reinforce`. The `Diary` is untouched ([I2]).
 
-**Remaining-stage regeneration reuses the `semanticize` job**, not a new kind: `SemanticizeJobPayload` carries
-`KeepStages` (= the memory's current `semantic_stage`) and `KeptStages` (the existing `semantic_stages`). The worker
-regenerates all four stage texts from the new `current_text`, then keeps the first `KeepStages` already-risen texts
-(z-axis one-way, [C7]) and takes the regenerated rest. A launch semanticize sets neither field (`omitempty`), so it
-keeps nothing and writes all four — unchanged behavior. Async LLM pass; texts fill on the next read (optimistic write
-§2.8). (In v1 `semantic_stage` never advances until the consolidation epic, so the boundary is 0 and all four
-regenerate; the merge is stage-aware from day one so it stays correct once rising ships.)
+**Remaining-stage regeneration reuses the `semanticize` job**, not a new kind: the job carries identity + the
+post-rewrite `representation_revision` only (an empty payload — the deletion-safe queue contract). The worker re-reads
+the live memory/neurons immediately before the LLM call, regenerates all four stage texts from the current
+`current_text`, and hands them to the **completion transaction**, which — under the per-user graph lock and the
+lease/revision fence — keeps the LIVE already-risen non-blank texts (z-axis one-way, [C7]), takes the regenerated
+rest, finalizes any pending gist rise with its stage-identified provenance rows, and completes the job atomically. A
+launch semanticize has nothing risen, so it writes all four. Async LLM pass; texts fill on the next read (optimistic
+write §2.8).
 
 ## 5. The consumer-owned ports (`internal/memory`, §2.4)
 

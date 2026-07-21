@@ -347,8 +347,6 @@ func (s Store) SemanticizeJobSource(ctx context.Context, job memory.Job) (memory
 			Neurons:     neurons,
 		},
 		ExpectedRevision: row.RepresentationRevision,
-		RisenStage:       row.SemanticStage,
-		CurrentStages:    semanticStagesPtr(row.SemanticStages),
 	}, true, nil
 }
 
@@ -375,22 +373,116 @@ func (s Store) SaveJobEmbeddings(ctx context.Context, job memory.Job, embeddings
 	return nil
 }
 
-func (s Store) SaveJobSemanticStages(ctx context.Context, job memory.Job, memoryID string, expectedRevision int64, stages memory.SemanticStages) error {
+// CompleteSemanticizeJob is the semanticize completion transaction in one atomic unit: under the
+// per-user graph lock it re-validates the running lease + live representation revision,
+// merges the generated ladder over the live kept stages, finalizes a pending gist rise
+// (visible stage + one stage-identified provenance row per newly materialized stage, at the
+// crossing's universe-time), and marks the job done — atomically. A lost fence applies no
+// side effect and lets the worker's own terminal transition decide the job's fate; a
+// replayed completion finds the job no longer running and is a no-op.
+func (s Store) CompleteSemanticizeJob(ctx context.Context, job memory.Job, memoryID string, expectedRevision int64, generated memory.SemanticStages) error {
 	if err := s.readyJob(job); err != nil {
 		return err
 	}
-	raw, err := json.Marshal(stages)
+	if s.txer == nil {
+		// Already transaction-scoped (InTx-bound store): run on the open transaction.
+		return s.completeSemanticizeJob(ctx, s.queries, job, memoryID, expectedRevision, generated)
+	}
+	tx, err := s.txer.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
-	_, err = s.queries.SaveJobSemanticStages(ctx, dbgen.SaveJobSemanticStagesParams{
-		SemanticStages:   raw,
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	if err := s.completeSemanticizeJob(ctx, s.queries.WithTx(tx), job, memoryID, expectedRevision, generated); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s Store) completeSemanticizeJob(ctx context.Context, queries *dbgen.Queries, job memory.Job, memoryID string, expectedRevision int64, generated memory.SemanticStages) error {
+	// The same advisory lock every graph writer takes first: the finalization below moves
+	// semantic_stage and appends provenance, so it must serialize with a concurrent
+	// consolidation instead of racing its stale ListMemoriesForConsolidation read.
+	if err := queries.LockGraphMutation(ctx, job.UserID); err != nil {
+		return err
+	}
+	live, err := queries.LockSemanticizeCompletion(ctx, dbgen.LockSemanticizeCompletionParams{
 		UserID:           job.UserID,
 		JobID:            job.ID,
 		LeaseGeneration:  job.LeaseGeneration,
 		MemoryID:         memoryID,
 		ExpectedRevision: expectedRevision,
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Fence lost: lease reclaimed, revision superseded, or target released. No side
+		// effect; the stale job completes as a successful no-op upstream.
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// Merge live kept stages: the texts of already-visible stages are history-backed (their
+	// provenance rows carry them) and are never replaced by a later generation.
+	merged := generated
+	if kept := semanticStagesPtr(live.SemanticStages); kept != nil {
+		for i := 0; i < int(live.SemanticStage) && i < len(merged); i++ {
+			if strings.TrimSpace(kept[i]) != "" {
+				merged[i] = kept[i]
+			}
+		}
+	}
+
+	targetStage := live.SemanticStage
+	pendingStage := int16Ptr(live.PendingSemanticStage)
+	riseAt := datePtr(live.PendingSemanticRiseAt)
+	if pendingStage != nil && *pendingStage > targetStage {
+		targetStage = *pendingStage
+	}
+	for stage := live.SemanticStage + 1; stage <= targetStage; stage++ {
+		text := merged[stage-1]
+		if strings.TrimSpace(text) == "" || riseAt == nil {
+			return fmt.Errorf("pending gist rise to stage %d cannot materialize: blank text or missing rise time", stage)
+		}
+		stageID := stage
+		if err := queries.AppendMemoryProvenance(ctx, dbgen.AppendMemoryProvenanceParams{
+			ID:               platform.NewID(),
+			UserID:           job.UserID,
+			EpisodicMemoryID: memoryID,
+			Kind:             string(memory.ProvenanceKindSemanticized),
+			Source:           string(memory.ProvenanceSourceSystem),
+			Text:             text,
+			UniverseTime:     pgDate(*riseAt),
+			SemanticStage:    pgInt2Ptr(&stageID),
+		}); err != nil {
+			return err
+		}
+	}
+
+	raw, err := json.Marshal(merged)
+	if err != nil {
+		return err
+	}
+	if err := queries.FinalizeSemanticizeCompletion(ctx, dbgen.FinalizeSemanticizeCompletionParams{
+		SemanticStages: raw,
+		Stage:          targetStage,
+		UserID:         job.UserID,
+		MemoryID:       memoryID,
+	}); err != nil {
+		return err
+	}
+	// Completing the job in this same transaction is what makes a replay a no-op: once the
+	// ladder/stage/provenance land, no later claim can run this work again.
+	_, err = queries.CompleteJob(ctx, dbgen.CompleteJobParams{
+		UserID:          job.UserID,
+		ID:              job.ID,
+		LeaseGeneration: job.LeaseGeneration,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
 	return err
 }
 
@@ -595,6 +687,8 @@ func mapEpisodicMemoryRead(row dbgen.ListUniverseEpisodicMemoriesRow) memory.Epi
 		SemanticStage:            row.SemanticStage,
 		SemanticizeTimerResetAt:  datePtr(row.SemanticizeTimerResetAt),
 		SemanticStages:           semanticStagesPtr(row.SemanticStages),
+		PendingSemanticStage:     int16Ptr(row.PendingSemanticStage),
+		PendingSemanticRiseAt:    datePtr(row.PendingSemanticRiseAt),
 		DecayStages:              decayStagesSlice(row.DecayStages),
 		ForgettingOffsetDays:     float64(row.ForgettingOffsetDays),
 		DeletedAt:                timePtr(row.DeletedAt),
@@ -853,6 +947,20 @@ func pgInt8(value *int64) pgtype.Int8 {
 		return pgtype.Int8{}
 	}
 	return pgtype.Int8{Int64: *value, Valid: true}
+}
+
+func pgInt2Ptr(value *int16) pgtype.Int2 {
+	if value == nil {
+		return pgtype.Int2{}
+	}
+	return pgtype.Int2{Int16: *value, Valid: true}
+}
+
+func int16Ptr(value pgtype.Int2) *int16 {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Int16
 }
 
 func pgText(value *string) pgtype.Text {

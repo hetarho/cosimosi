@@ -150,6 +150,38 @@ func (q *Queries) FailJob(ctx context.Context, arg FailJobParams) (Job, error) {
 	return i, err
 }
 
+const finalizeSemanticizeCompletion = `-- name: FinalizeSemanticizeCompletion :exec
+UPDATE episodic_memories
+SET semantic_stages = $1::jsonb,
+    semantic_stage = GREATEST(semantic_stage, $2::smallint),
+    pending_semantic_stage = NULL,
+    pending_semantic_rise_at = NULL
+WHERE user_id = $3
+  AND id = $4
+  AND deleted_at IS NULL
+`
+
+type FinalizeSemanticizeCompletionParams struct {
+	SemanticStages []byte
+	Stage          int16
+	UserID         string
+	MemoryID       string
+}
+
+// The completion's single episodic-memory write: the merged ladder lands, a pending rise
+// (if any) becomes the visible stage (GREATEST — a stage never decrements [C7]), and the
+// pending marker clears. Runs only after LockSemanticizeCompletion validated the fence in
+// this same transaction.
+func (q *Queries) FinalizeSemanticizeCompletion(ctx context.Context, arg FinalizeSemanticizeCompletionParams) error {
+	_, err := q.db.Exec(ctx, finalizeSemanticizeCompletion,
+		arg.SemanticStages,
+		arg.Stage,
+		arg.UserID,
+		arg.MemoryID,
+	)
+	return err
+}
+
 const listJobTargets = `-- name: ListJobTargets :many
 SELECT target_kind, target_id, expected_revision
 FROM job_targets
@@ -249,8 +281,6 @@ SELECT
     em.name,
     em.current_text,
     em.mood,
-    em.semantic_stage,
-    em.semantic_stages,
     em.representation_revision,
     COALESCE(
         ARRAY_AGG(n.name::text ORDER BY n.id)
@@ -299,8 +329,6 @@ type LoadLiveSemanticizeJobSourceRow struct {
 	Name                   string
 	CurrentText            string
 	Mood                   string
-	SemanticStage          int16
-	SemanticStages         []byte
 	RepresentationRevision int64
 	NeuronNames            []string
 	NeuronTypes            []string
@@ -314,11 +342,74 @@ func (q *Queries) LoadLiveSemanticizeJobSource(ctx context.Context, arg LoadLive
 		&i.Name,
 		&i.CurrentText,
 		&i.Mood,
-		&i.SemanticStage,
-		&i.SemanticStages,
 		&i.RepresentationRevision,
 		&i.NeuronNames,
 		&i.NeuronTypes,
+	)
+	return i, err
+}
+
+const lockSemanticizeCompletion = `-- name: LockSemanticizeCompletion :one
+SELECT
+    em.semantic_stage,
+    em.semantic_stages,
+    em.pending_semantic_stage,
+    em.pending_semantic_rise_at
+FROM episodic_memories AS em
+JOIN job_targets AS jt
+  ON jt.user_id = em.user_id
+ AND jt.target_kind = 'episodic_memory'
+ AND jt.target_id = em.id
+ AND jt.expected_revision = em.representation_revision
+JOIN jobs AS j
+  ON j.id = jt.job_id
+ AND j.user_id = jt.user_id
+WHERE j.user_id = $1
+  AND j.id = $2
+  AND j.kind = 'semanticize'
+  AND j.status = 'running'
+  AND j.terminal_at IS NULL
+  AND j.lease_generation = $3
+  AND em.id = $4
+  AND em.representation_revision = $5
+  AND em.deleted_at IS NULL
+FOR UPDATE OF em, jt, j
+`
+
+type LockSemanticizeCompletionParams struct {
+	UserID           string
+	JobID            string
+	LeaseGeneration  int64
+	MemoryID         string
+	ExpectedRevision int64
+}
+
+type LockSemanticizeCompletionRow struct {
+	SemanticStage         int16
+	SemanticStages        []byte
+	PendingSemanticStage  pgtype.Int2
+	PendingSemanticRiseAt pgtype.Date
+}
+
+// The semanticize completion transaction's locked validation read: the claimed job's lease,
+// the target's liveness, and the expected representation revision are re-checked together
+// under row locks, and the LIVE stage/ladder/pending state comes back for the merge +
+// finalization. No row = the fence was lost (lease reclaimed, revision superseded, target
+// released) — the completion applies no side effect.
+func (q *Queries) LockSemanticizeCompletion(ctx context.Context, arg LockSemanticizeCompletionParams) (LockSemanticizeCompletionRow, error) {
+	row := q.db.QueryRow(ctx, lockSemanticizeCompletion,
+		arg.UserID,
+		arg.JobID,
+		arg.LeaseGeneration,
+		arg.MemoryID,
+		arg.ExpectedRevision,
+	)
+	var i LockSemanticizeCompletionRow
+	err := row.Scan(
+		&i.SemanticStage,
+		&i.SemanticStages,
+		&i.PendingSemanticStage,
+		&i.PendingSemanticRiseAt,
 	)
 	return i, err
 }
@@ -427,59 +518,6 @@ func (q *Queries) RetryJob(ctx context.Context, arg RetryJobParams) (Job, error)
 		&i.CancelledByReleaseID,
 	)
 	return i, err
-}
-
-const saveJobSemanticStages = `-- name: SaveJobSemanticStages :execrows
-WITH eligible AS MATERIALIZED (
-    SELECT em.id
-    FROM episodic_memories AS em
-    JOIN job_targets AS jt
-      ON jt.user_id = em.user_id
-     AND jt.target_kind = 'episodic_memory'
-     AND jt.target_id = em.id
-     AND jt.expected_revision = em.representation_revision
-    JOIN jobs AS j
-      ON j.id = jt.job_id
-     AND j.user_id = jt.user_id
-    WHERE j.user_id = $2
-      AND j.id = $3
-      AND j.kind = 'semanticize'
-      AND j.status = 'running'
-      AND j.terminal_at IS NULL
-      AND j.lease_generation = $4
-      AND em.id = $5
-      AND em.representation_revision = $6
-      AND em.deleted_at IS NULL
-    FOR UPDATE OF em, jt, j
-)
-UPDATE episodic_memories AS em
-SET semantic_stages = $1::jsonb
-FROM eligible
-WHERE em.id = eligible.id
-`
-
-type SaveJobSemanticStagesParams struct {
-	SemanticStages   []byte
-	UserID           string
-	JobID            string
-	LeaseGeneration  int64
-	MemoryID         string
-	ExpectedRevision int64
-}
-
-func (q *Queries) SaveJobSemanticStages(ctx context.Context, arg SaveJobSemanticStagesParams) (int64, error) {
-	result, err := q.db.Exec(ctx, saveJobSemanticStages,
-		arg.SemanticStages,
-		arg.UserID,
-		arg.JobID,
-		arg.LeaseGeneration,
-		arg.MemoryID,
-		arg.ExpectedRevision,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
 }
 
 const upsertJobEmbedding = `-- name: UpsertJobEmbedding :one

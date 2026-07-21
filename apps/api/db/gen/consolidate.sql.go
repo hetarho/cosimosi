@@ -82,6 +82,24 @@ func (q *Queries) ApplySynapseDownscale(ctx context.Context, arg ApplySynapseDow
 	return err
 }
 
+const consolidationWatermarkForUpdate = `-- name: ConsolidationWatermarkForUpdate :one
+SELECT consolidated_through
+FROM universe_state
+WHERE user_id = $1
+FOR UPDATE
+`
+
+// The consolidation watermark's locked read: the universe-time this user's consolidation has
+// already processed through (NULL = never consolidated). FOR UPDATE holds the row so
+// overlapping advance transactions serialize on the clamp instead of racing it. The row always
+// exists here — the hook fires only after AdvanceUniverseClock upserted it in this transaction.
+func (q *Queries) ConsolidationWatermarkForUpdate(ctx context.Context, userID string) (pgtype.Date, error) {
+	row := q.db.QueryRow(ctx, consolidationWatermarkForUpdate, userID)
+	var consolidated_through pgtype.Date
+	err := row.Scan(&consolidated_through)
+	return consolidated_through, err
+}
+
 const fillConsolidationDecayStages = `-- name: FillConsolidationDecayStages :exec
 UPDATE episodic_memories
 SET decay_stages = $1::jsonb
@@ -242,6 +260,63 @@ func (q *Queries) ListSynapseStrengthsForDownscale(ctx context.Context, arg List
 		return nil, err
 	}
 	return items, nil
+}
+
+const recordPendingGistRises = `-- name: RecordPendingGistRises :exec
+UPDATE episodic_memories AS em
+SET pending_semantic_stage = GREATEST(COALESCE(em.pending_semantic_stage, 0::smallint), pending.stage),
+    pending_semantic_rise_at = COALESCE(em.pending_semantic_rise_at, pending.rise_at)
+FROM (
+    SELECT
+        UNNEST($2::text[]) AS memory_id,
+        UNNEST($3::smallint[]) AS stage,
+        UNNEST($4::date[]) AS rise_at
+) AS pending
+WHERE em.user_id = $1
+  AND em.id = pending.memory_id
+  AND em.deleted_at IS NULL
+`
+
+type RecordPendingGistRisesParams struct {
+	UserID    string
+	MemoryIds []string
+	Stages    []int16
+	RiseAts   []pgtype.Date
+}
+
+// Records a gist rise whose ladder text is missing as pending work instead of publishing
+// it: the visible semantic_stage stays at the last readable stage; the semanticize
+// completion transaction finalizes the rise once real text exists. GREATEST extends an
+// existing pending target; COALESCE keeps the FIRST crossing's universe-time as the event
+// time the finalized 변천사 rows will carry.
+func (q *Queries) RecordPendingGistRises(ctx context.Context, arg RecordPendingGistRisesParams) error {
+	_, err := q.db.Exec(ctx, recordPendingGistRises,
+		arg.UserID,
+		arg.MemoryIds,
+		arg.Stages,
+		arg.RiseAts,
+	)
+	return err
+}
+
+const setConsolidationWatermark = `-- name: SetConsolidationWatermark :exec
+UPDATE universe_state
+SET consolidated_through = GREATEST(COALESCE(consolidated_through, $1::date), $1::date),
+    updated_at = now()
+WHERE user_id = $2
+`
+
+type SetConsolidationWatermarkParams struct {
+	Through pgtype.Date
+	UserID  string
+}
+
+// Moves the watermark to the consolidated interval's end, after every interval effect
+// succeeded in this same transaction. GREATEST keeps it monotone ([I10]) — a rolled-back
+// attempt leaves it untouched, so the interval stays retryable.
+func (q *Queries) SetConsolidationWatermark(ctx context.Context, arg SetConsolidationWatermarkParams) error {
+	_, err := q.db.Exec(ctx, setConsolidationWatermark, arg.Through, arg.UserID)
+	return err
 }
 
 const touchReplaySetSynapses = `-- name: TouchReplaySetSynapses :exec

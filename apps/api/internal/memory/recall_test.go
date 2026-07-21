@@ -291,19 +291,17 @@ func TestRecallErrorBranchReconsolidates(t *testing.T) {
 	}
 }
 
-func TestReconsolidateRegenKeepsRisenStages(t *testing.T) {
+func TestReconsolidateRegenHandsGenerationToTheCompletionFence(t *testing.T) {
 	t.Parallel()
-	// The worker merge honors [C7]: keep the currently risen non-empty texts, take the
-	// regenerated rest — the reconsolidation regen's core contract.
+	// The [C7] keep-merge (already-risen non-empty texts survive, the rest regenerates)
+	// now lives INSIDE the completion transaction against live row state — the handler's
+	// contract is to pass the generated ladder and the revision fence through untouched.
 	regenerated := SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}
-	kept := SemanticStages{"keep-0", "keep-1", "old-2", "old-3"}
 	semanticizer := &fakeSemanticizer{stages: regenerated}
 	writer := &fakeSemanticStagesWriter{}
 	reader := &fakeJobSourceReader{semanticOK: true, semanticSource: SemanticizeJobSource{
 		Engram:           SemanticizeMemory{ID: "m1", CurrentText: "new"},
 		ExpectedRevision: 2,
-		RisenStage:       2,
-		CurrentStages:    &kept,
 	}}
 	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
 
@@ -311,31 +309,8 @@ func TestReconsolidateRegenKeepsRisenStages(t *testing.T) {
 	if err := handler(context.Background(), job); err != nil {
 		t.Fatalf("handler failed: %v", err)
 	}
-	want := SemanticStages{"keep-0", "keep-1", "gen-2", "gen-3"}
-	if writer.stages != want {
-		t.Fatalf("saved stages = %v, want first two kept + rest regenerated %v", writer.stages, want)
-	}
-}
-
-func TestLaunchSemanticizeKeepsNothing(t *testing.T) {
-	t.Parallel()
-	// A launch semanticize carries no keep boundary, so it writes all four generated texts —
-	// the reconsolidation fields are additive and do not change launch behavior.
-	regenerated := SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}
-	semanticizer := &fakeSemanticizer{stages: regenerated}
-	writer := &fakeSemanticStagesWriter{}
-	reader := &fakeJobSourceReader{semanticOK: true, semanticSource: SemanticizeJobSource{
-		Engram:           SemanticizeMemory{ID: "m1", CurrentText: "body"},
-		ExpectedRevision: 1,
-	}}
-	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
-
-	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "m1", ExpectedRevision: 1})
-	if err := handler(context.Background(), job); err != nil {
-		t.Fatalf("handler failed: %v", err)
-	}
-	if writer.stages != regenerated {
-		t.Fatalf("saved stages = %v, want all regenerated %v", writer.stages, regenerated)
+	if writer.generated != regenerated || writer.expectedRevision != 2 || writer.memoryID != "m1" {
+		t.Fatalf("completion got %v rev %d for %q, want the untouched generation at the rewrite revision", writer.generated, writer.expectedRevision, writer.memoryID)
 	}
 }
 

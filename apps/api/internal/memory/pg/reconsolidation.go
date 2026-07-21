@@ -57,5 +57,6 @@ func (s Store) AppendMemoryProvenance(ctx context.Context, scope platform.UserSc
 		Source:           string(entry.Source),
 		Text:             entry.Text,
 		UniverseTime:     pgDate(entry.UniverseTime),
+		SemanticStage:    pgInt2Ptr(entry.SemanticStage),
 	})
 }

@@ -59,8 +59,7 @@ func TestEmbedJobHandlerSkipsMissingSealedOrSupersededSources(t *testing.T) {
 	}
 }
 
-func TestSemanticizeJobHandlerReadsCurrentSourceAndKeepsRisenStages(t *testing.T) {
-	kept := SemanticStages{"keep-0", "keep-1", "old-2", "old-3"}
+func TestSemanticizeJobHandlerReadsCurrentSourceAndHandsGenerationToCompletion(t *testing.T) {
 	reader := &fakeJobSourceReader{
 		semanticOK: true,
 		semanticSource: SemanticizeJobSource{
@@ -72,8 +71,6 @@ func TestSemanticizeJobHandlerReadsCurrentSourceAndKeepsRisenStages(t *testing.T
 				Neurons:     []ExtractedNeuron{{Name: "harbor", Type: NeuronTypeSemantic}},
 			},
 			ExpectedRevision: 4,
-			RisenStage:       2,
-			CurrentStages:    &kept,
 		},
 	}
 	semanticizer := &fakeSemanticizer{stages: SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}}
@@ -87,34 +84,34 @@ func TestSemanticizeJobHandlerReadsCurrentSourceAndKeepsRisenStages(t *testing.T
 	if semanticizer.item.CurrentText != "current text" || semanticizer.item.Name != "Current name" {
 		t.Fatalf("semanticizer item = %+v", semanticizer.item)
 	}
-	want := SemanticStages{"keep-0", "keep-1", "gen-2", "gen-3"}
-	if writer.memoryID != "memory-1" || writer.expectedRevision != 4 || writer.stages != want {
-		t.Fatalf("writer = memory %q revision %d stages %v", writer.memoryID, writer.expectedRevision, writer.stages)
+	// The generated ladder is handed to the completion untouched — the kept-stage
+	// merge happens inside the completion transaction against LIVE state, so a
+	// stage that rose after the source read cannot be overwritten here.
+	want := SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}
+	if writer.memoryID != "memory-1" || writer.expectedRevision != 4 || writer.generated != want {
+		t.Fatalf("writer = memory %q revision %d stages %v", writer.memoryID, writer.expectedRevision, writer.generated)
 	}
 }
 
-func TestSemanticizeJobHandlerRepairsMissingRisenStageFromCurrentSource(t *testing.T) {
-	current := SemanticStages{"keep-0", "", "old-2", "old-3"}
+func TestSemanticizeJobHandlerRefusesBlankGeneratedStage(t *testing.T) {
 	reader := &fakeJobSourceReader{
 		semanticOK: true,
 		semanticSource: SemanticizeJobSource{
 			Engram:           SemanticizeMemory{ID: "memory-1", CurrentText: "current text"},
 			ExpectedRevision: 4,
-			RisenStage:       2,
-			CurrentStages:    &current,
 		},
 	}
-	semanticizer := &fakeSemanticizer{stages: SemanticStages{"gen-0", "gen-1", "gen-2", "gen-3"}}
+	semanticizer := &fakeSemanticizer{stages: SemanticStages{"gen-0", "  ", "gen-2", "gen-3"}}
 	writer := &fakeSemanticStagesWriter{}
 	handler := NewSemanticizeJobHandler(semanticizer, reader, writer)
 	job := revisionedJob(JobKindSemanticize, JobTarget{Kind: JobTargetMemory, ID: "memory-1", ExpectedRevision: 4})
 
-	if err := handler(context.Background(), job); err != nil {
-		t.Fatalf("handler failed: %v", err)
+	// A blank rung is a provider failure on the retry path — never a committed ladder.
+	if err := handler(context.Background(), job); !errors.Is(err, errBlankSemanticStage) {
+		t.Fatalf("blank stage error = %v, want errBlankSemanticStage", err)
 	}
-	want := SemanticStages{"keep-0", "gen-1", "gen-2", "gen-3"}
-	if writer.stages != want {
-		t.Fatalf("writer stages = %v, want missing risen stage repaired as %v", writer.stages, want)
+	if writer.calls != 0 {
+		t.Fatalf("blank generation reached the completion writer %d times", writer.calls)
 	}
 }
 
@@ -243,17 +240,17 @@ type fakeSemanticStagesWriter struct {
 	job              Job
 	memoryID         string
 	expectedRevision int64
-	stages           SemanticStages
+	generated        SemanticStages
 	err              error
 	calls            int
 }
 
-func (f *fakeSemanticStagesWriter) SaveJobSemanticStages(_ context.Context, job Job, memoryID string, expectedRevision int64, stages SemanticStages) error {
+func (f *fakeSemanticStagesWriter) CompleteSemanticizeJob(_ context.Context, job Job, memoryID string, expectedRevision int64, generated SemanticStages) error {
 	f.calls++
 	f.job = job
 	f.memoryID = memoryID
 	f.expectedRevision = expectedRevision
-	f.stages = stages
+	f.generated = generated
 	return f.err
 }
 

@@ -51,6 +51,8 @@ type fakeConsolidateTx struct {
 	listCalls       int
 	provenance      []MemoryProvenance
 	advances        []StageAdvance
+	pendings        []PendingGistRise
+	watermark       *time.Time
 	decayFills      map[string][]string
 	touchedNeurons  [][]string
 	touchedAt       time.Time
@@ -114,6 +116,23 @@ func (f *fakeConsolidateTx) RecallMemberNeurons(_ context.Context, _ platform.Us
 
 func (f *fakeConsolidateTx) ApplyStageAdvances(_ context.Context, _ platform.UserScope, advances []StageAdvance) error {
 	f.advances = append(f.advances, advances...)
+	return nil
+}
+
+func (f *fakeConsolidateTx) ConsolidationWatermarkForUpdate(context.Context, platform.UserScope) (*time.Time, error) {
+	return f.watermark, nil
+}
+
+func (f *fakeConsolidateTx) SetConsolidationWatermark(_ context.Context, _ platform.UserScope, through time.Time) error {
+	// Mirror the store's GREATEST guard: monotone, never rewound.
+	if f.watermark == nil || through.After(*f.watermark) {
+		f.watermark = &through
+	}
+	return nil
+}
+
+func (f *fakeConsolidateTx) RecordPendingGistRises(_ context.Context, _ platform.UserScope, rises []PendingGistRise) error {
+	f.pendings = append(f.pendings, rises...)
 	return nil
 }
 
@@ -183,17 +202,37 @@ func (f *fakeConsolidateTx) ApplySynapseDownscale(_ context.Context, _ platform.
 	return nil
 }
 
-// applyPersistedState folds the recorded stage advances and decay fills back into the fake's
-// memories, simulating what the committed transaction leaves for a later advance to read.
+// applyPersistedState folds the recorded stage advances, pending rises, and decay fills back
+// into the fake's memories, simulating what the committed transaction leaves for a later
+// advance to read. The watermark persists on the fake itself (it is read at the next run's
+// start, like the committed universe_state row).
 func (f *fakeConsolidateTx) applyPersistedState() {
 	for _, advance := range f.advances {
 		for i := range f.memories {
 			if f.memories[i].ID != advance.MemoryID {
 				continue
 			}
-			f.memories[i].SemanticStage = advance.Stage
+			if advance.Stage > f.memories[i].SemanticStage {
+				f.memories[i].SemanticStage = advance.Stage
+			}
 			anchor := advance.TimerResetAt
 			f.memories[i].SemanticizeTimerResetAt = &anchor
+		}
+	}
+	for _, pending := range f.pendings {
+		for i := range f.memories {
+			if f.memories[i].ID != pending.MemoryID {
+				continue
+			}
+			// Mirror the store: GREATEST on the stage, first crossing's rise time kept.
+			if f.memories[i].PendingSemanticStage == nil || pending.Stage > *f.memories[i].PendingSemanticStage {
+				stage := pending.Stage
+				f.memories[i].PendingSemanticStage = &stage
+			}
+			if f.memories[i].PendingSemanticRiseAt == nil {
+				riseAt := pending.RiseAt
+				f.memories[i].PendingSemanticRiseAt = &riseAt
+			}
 		}
 	}
 	for memoryID, stages := range f.decayFills {
@@ -204,6 +243,7 @@ func (f *fakeConsolidateTx) applyPersistedState() {
 		}
 	}
 	f.advances = nil
+	f.pendings = nil
 	f.decayFills = map[string][]string{}
 	f.provenance = nil
 	f.touchedNeurons = nil
@@ -243,7 +283,7 @@ func TestConsolidateHeldOrFirstAdvanceIsANoop(t *testing.T) {
 	// from == nil: the first-ever advance has no prior interval to sleep over.
 	runConsolidator(t, tx, nil, day)
 
-	if tx.listCalls != 0 || len(tx.advances) != 0 || len(tx.provenance) != 0 ||
+	if tx.listCalls != 0 || len(tx.advances) != 0 || len(tx.provenance) != 0 || len(tx.pendings) != 0 ||
 		len(tx.decayFills) != 0 || len(tx.touchedNeurons) != 0 || len(tx.downscaled) != 0 || len(tx.jobs) != 0 {
 		t.Fatalf("no-op advance touched state: %+v", tx)
 	}
@@ -318,11 +358,17 @@ func TestConsolidateAdvancesAllCrossedStagesClampedWithProvenance(t *testing.T) 
 		if want := fullStages()[i]; entry.Text != want {
 			t.Fatalf("provenance[%d] text = %q, want %q", i, entry.Text, want)
 		}
+		if entry.SemanticStage == nil || int(*entry.SemanticStage) != i+1 {
+			t.Fatalf("provenance[%d] stage identity = %v, want %d", i, entry.SemanticStage, i+1)
+		}
 		if !entry.UniverseTime.Equal(to) {
 			t.Fatalf("provenance[%d] universe time = %v, want %v", i, entry.UniverseTime, to)
 		}
 	}
-	// All stage texts exist, so no semanticize regen; the only job is the consolidate kind.
+	// All stage texts exist, so nothing defers and no semanticize regen is needed.
+	if len(tx.pendings) != 0 {
+		t.Fatalf("pendings = %+v, want none for a fully pregenerated ladder", tx.pendings)
+	}
 	for _, job := range tx.jobs {
 		if job.Kind == JobKindSemanticize {
 			t.Fatal("pregenerated stages must not re-enqueue semanticize ([C7])")
@@ -386,6 +432,7 @@ func TestConsolidateRerunOfConsolidatedIntervalConverges(t *testing.T) {
 	tx := newFakeConsolidateTx()
 	tx.memories = []EpisodicMemory{plainConsolidateMemory("m1", consolidateDate(0))}
 	tx.memberNeurons["m1"] = []ExistingNeuron{{ID: "n1", Name: "harbor", Type: NeuronTypeSemantic}}
+	tx.synapses = []fakeSynapseRow{{id: "s1", strength: 0.5, lastActivated: consolidateDate(0)}}
 	from := consolidateDate(0)
 	to := consolidateDate(35)
 
@@ -393,20 +440,58 @@ func TestConsolidateRerunOfConsolidatedIntervalConverges(t *testing.T) {
 	if len(tx.advances) != 1 || tx.advances[0].Stage != 3 || len(tx.decayFills["m1"]) == 0 {
 		t.Fatalf("first run advances = %+v fills = %+v", tx.advances, tx.decayFills)
 	}
+	if tx.downscaleCalls != 1 {
+		t.Fatalf("first run downscale batches = %d, want 1", tx.downscaleCalls)
+	}
 	firstFill := tx.decayFills["m1"]
+	firstStrength := tx.synapses[0].strength
 	tx.applyPersistedState()
 
-	// The consumed anchor + the never-overwrite merge make a re-run of the very same
-	// interval a no-op: no stage, no provenance, no fill, no consolidate job (A10).
+	// The watermark makes a re-run of the very same interval a total no-op: no stage,
+	// no provenance, no fill, no job — and, critically, no second downscale (A10/A4).
 	runConsolidator(t, tx, &from, to)
 	if len(tx.advances) != 0 || len(tx.provenance) != 0 || len(tx.jobs) != 0 {
 		t.Fatalf("re-run advanced again: advances=%+v provenance=%d jobs=%d", tx.advances, len(tx.provenance), len(tx.jobs))
+	}
+	if tx.downscaleCalls != 0 || tx.synapses[0].strength != firstStrength {
+		t.Fatalf("re-run downscaled again: calls=%d strength %v → %v", tx.downscaleCalls, firstStrength, tx.synapses[0].strength)
 	}
 	if len(tx.decayFills) != 0 {
 		t.Fatalf("re-run rewrote decay stages: %+v", tx.decayFills)
 	}
 	if got := tx.memories[0].DecayStages; len(got) != len(firstFill) {
 		t.Fatalf("decay stages changed across re-run: %v vs %v", got, firstFill)
+	}
+}
+
+func TestConsolidateWatermarkClampsOverlappingIntervalToUnprocessedSuffix(t *testing.T) {
+	t.Parallel()
+	tx := newFakeConsolidateTx()
+	// At the ceiling: only the downscale distinguishes the runs.
+	settled := plainConsolidateMemory("m1", consolidateDate(0))
+	settled.SemanticStage = 4
+	tx.memories = []EpisodicMemory{settled}
+	tx.synapses = []fakeSynapseRow{{id: "s1", strength: 0.5, lastActivated: consolidateDate(0)}}
+
+	from := consolidateDate(0)
+	runConsolidator(t, tx, &from, consolidateDate(10))
+	if tx.downscaleCalls != 1 {
+		t.Fatalf("first run downscale batches = %d, want 1", tx.downscaleCalls)
+	}
+	afterFirst := tx.synapses[0].strength
+	tx.applyPersistedState()
+
+	// An overlapping invocation (from before the watermark) processes only the suffix:
+	// one further downscale for (10, 15], never a re-run of the covered (0, 10].
+	runConsolidator(t, tx, &from, consolidateDate(15))
+	if tx.downscaleCalls != 1 {
+		t.Fatalf("overlap downscale batches = %d, want exactly the suffix's 1", tx.downscaleCalls)
+	}
+	if want := Downscale(afterFirst, values.ConsolidationDownscaleFactor); tx.synapses[0].strength != want {
+		t.Fatalf("overlap strength = %v, want one further downscale %v", tx.synapses[0].strength, want)
+	}
+	if tx.watermark == nil || !tx.watermark.Equal(consolidateDate(15)) {
+		t.Fatalf("watermark = %v, want the processed-through end", tx.watermark)
 	}
 }
 
@@ -603,12 +688,13 @@ func TestConsolidateEnqueuesHeavyWorkNotInlineLLM(t *testing.T) {
 	}
 }
 
-func TestConsolidateReenqueuesSemanticizeOnlyForMissingStageTexts(t *testing.T) {
+func TestConsolidatePartialLadderPublishesReadablePrefixAndDefersTheRest(t *testing.T) {
 	t.Parallel()
 	tx := newFakeConsolidateTx()
 	episodicMemory := plainConsolidateMemory("m1", consolidateDate(0))
-	// The launch pregeneration landed only stage 1; the rise to stage 2 finds its text
-	// missing, so the regen is re-enqueued keeping the one good leading text ([C7]).
+	// The launch pregeneration landed only stage 1; the crossing to stage 2 finds its text
+	// missing, so stage 1 publishes with its real text and stage 2 defers as pending
+	// — nothing blank ever enters 변천사 or the visible stage.
 	episodicMemory.SemanticStages = &SemanticStages{"gist-1", "", "", ""}
 	tx.memories = []EpisodicMemory{episodicMemory}
 	tx.memberNeurons["m1"] = []ExistingNeuron{{ID: "n1", Name: "harbor", Type: NeuronTypeSemantic}}
@@ -633,10 +719,116 @@ func TestConsolidateReenqueuesSemanticizeOnlyForMissingStageTexts(t *testing.T) 
 	if len(semanticize.Targets) != 1 || semanticize.Targets[0].ID != "m1" {
 		t.Fatalf("targets = %+v, want m1; current stages are re-read by the worker", semanticize.Targets)
 	}
-	// The rise itself still materialized and left its 변천사 rows (with empty text where
-	// the pregenerated string is missing — the row anchors the event).
-	if len(tx.advances) != 1 || tx.advances[0].Stage != 2 {
-		t.Fatalf("advances = %+v, want the rise to stage 2", tx.advances)
+	// The visible rise stops at the readable prefix; the crossed-but-textless stage is
+	// pending work, not an empty publication.
+	if len(tx.advances) != 1 || tx.advances[0].Stage != 1 {
+		t.Fatalf("advances = %+v, want the visible rise clamped to readable stage 1", tx.advances)
+	}
+	if want := consolidateDate(20); !tx.advances[0].TimerResetAt.Equal(want) {
+		t.Fatalf("consumed anchor = %v, want the full crossed span %v", tx.advances[0].TimerResetAt, want)
+	}
+	if len(tx.pendings) != 1 || tx.pendings[0] != (PendingGistRise{MemoryID: "m1", Stage: 2, RiseAt: to}) {
+		t.Fatalf("pendings = %+v, want the deferred rise to stage 2 at %v", tx.pendings, to)
+	}
+	if len(tx.provenance) != 1 || tx.provenance[0].Text != "gist-1" || tx.provenance[0].SemanticStage == nil || *tx.provenance[0].SemanticStage != 1 {
+		t.Fatalf("provenance = %+v, want exactly the readable stage-1 event", tx.provenance)
+	}
+}
+
+func TestConsolidateWhitespaceRungCountsAsMissingAndDefers(t *testing.T) {
+	t.Parallel()
+	tx := newFakeConsolidateTx()
+	episodicMemory := plainConsolidateMemory("m1", consolidateDate(0))
+	// A whitespace-only rung would be refused by the provenance blank-text guard, so
+	// publishing it readable would abort the whole advance — it must defer instead.
+	episodicMemory.SemanticStages = &SemanticStages{"   ", "gist-2", "gist-3", "gist-4"}
+	tx.memories = []EpisodicMemory{episodicMemory}
+	from := consolidateDate(0)
+	to := consolidateDate(24)
+
+	runConsolidator(t, tx, &from, to)
+
+	if len(tx.provenance) != 0 {
+		t.Fatalf("provenance = %+v, want none for a whitespace rung", tx.provenance)
+	}
+	if len(tx.advances) != 1 || tx.advances[0].Stage != 0 {
+		t.Fatalf("advances = %+v, want the anchor-only advance at stage 0", tx.advances)
+	}
+	if len(tx.pendings) != 1 || tx.pendings[0].Stage != 2 {
+		t.Fatalf("pendings = %+v, want the deferred rise to stage 2", tx.pendings)
+	}
+}
+
+func TestConsolidateMissingLadderDefersWholeRiseWithoutBlankHistory(t *testing.T) {
+	t.Parallel()
+	tx := newFakeConsolidateTx()
+	bare := plainConsolidateMemory("m1", consolidateDate(0))
+	bare.SemanticStages = nil
+	tx.memories = []EpisodicMemory{bare}
+	tx.memberNeurons["m1"] = []ExistingNeuron{{ID: "n1", Name: "harbor", Type: NeuronTypeSemantic}}
+	from := consolidateDate(0)
+	to := consolidateDate(24)
+
+	runConsolidator(t, tx, &from, to)
+
+	// No 변천사 row and no visible stage change — the prior readable stage (0) stays
+	// authoritative; the crossing is recorded as revision-bound pending work (A1).
+	if len(tx.provenance) != 0 {
+		t.Fatalf("provenance = %+v, want none until real text exists", tx.provenance)
+	}
+	if len(tx.advances) != 1 || tx.advances[0].Stage != 0 {
+		t.Fatalf("advances = %+v, want the anchor-only advance at stage 0", tx.advances)
+	}
+	if want := consolidateDate(20); !tx.advances[0].TimerResetAt.Equal(want) {
+		t.Fatalf("consumed anchor = %v, want %v", tx.advances[0].TimerResetAt, want)
+	}
+	if len(tx.pendings) != 1 || tx.pendings[0] != (PendingGistRise{MemoryID: "m1", Stage: 2, RiseAt: to}) {
+		t.Fatalf("pendings = %+v, want the deferred rise to stage 2", tx.pendings)
+	}
+	var semanticize *Job
+	for i := range tx.jobs {
+		if tx.jobs[i].Kind == JobKindSemanticize {
+			semanticize = &tx.jobs[i]
+		}
+	}
+	if semanticize == nil {
+		t.Fatal("deferred rise did not enqueue regeneration")
+	}
+	if semanticize.Targets[0].ExpectedRevision != 1 {
+		t.Fatalf("regen revision = %d, want the live revision fence", semanticize.Targets[0].ExpectedRevision)
+	}
+
+	// A later crossing extends the pending target and keeps re-enqueueing, but the first
+	// crossing's universe-time is preserved as the eventual event time.
+	tx.applyPersistedState()
+	day24 := consolidateDate(24)
+	runConsolidator(t, tx, &day24, consolidateDate(34))
+	if len(tx.provenance) != 0 {
+		t.Fatalf("extension appended history: %+v", tx.provenance)
+	}
+	if len(tx.pendings) != 1 || tx.pendings[0].Stage != 3 || !tx.pendings[0].RiseAt.Equal(consolidateDate(34)) {
+		t.Fatalf("pendings = %+v, want the extension to stage 3", tx.pendings)
+	}
+	tx.applyPersistedState()
+	if tx.memories[0].PendingSemanticStage == nil || *tx.memories[0].PendingSemanticStage != 3 {
+		t.Fatalf("persisted pending stage = %v, want 3", tx.memories[0].PendingSemanticStage)
+	}
+	if tx.memories[0].PendingSemanticRiseAt == nil || !tx.memories[0].PendingSemanticRiseAt.Equal(to) {
+		t.Fatalf("persisted rise time = %v, want the FIRST crossing %v kept", tx.memories[0].PendingSemanticRiseAt, to)
+	}
+
+	// With no new units crossed, a pending memory still re-enqueues its regeneration on
+	// every advance — a dead job must not defer the rise forever.
+	day34 := consolidateDate(34)
+	runConsolidator(t, tx, &day34, consolidateDate(36))
+	regens := 0
+	for _, job := range tx.jobs {
+		if job.Kind == JobKindSemanticize {
+			regens++
+		}
+	}
+	if regens != 1 {
+		t.Fatalf("regens on a quiet advance = %d, want the repair re-enqueue", regens)
 	}
 }
 

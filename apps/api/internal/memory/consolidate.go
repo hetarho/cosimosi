@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
@@ -27,11 +28,24 @@ var ErrConsolidateTxRequired = errors.New("advance progression tx does not suppo
 // StageAdvance is one memory's gist rise over the advance interval: the risen stage and the
 // consumed timer anchor. Persisting the consumed anchor is what makes Consolidate convergent —
 // the next advance counts only the residual days, so an already-consolidated interval implies
-// zero further units (A10). The anchor only ever moves forward ([I10]).
+// zero further units (A10). The anchor only ever moves forward ([I10]). Stage may equal the
+// memory's current stage when only the anchor moves (a crossing whose ladder text is missing
+// consumes its units but defers the visible rise to the pending record below).
 type StageAdvance struct {
 	MemoryID     string
 	Stage        int16
 	TimerResetAt time.Time
+}
+
+// PendingGistRise is a crossing whose ladder text is missing: the stage the timer
+// reached and the crossing's universe-time. Recorded on the memory row instead of publishing
+// an empty stage/provenance; the semanticize completion transaction materializes it once real
+// text exists. The units are already consumed via StageAdvance's anchor, so rise math for
+// later intervals counts from max(visible, pending).
+type PendingGistRise struct {
+	MemoryID string
+	Stage    int16
+	RiseAt   time.Time
 }
 
 // SynapseStrength is one synapse's stored base strength — the Downscale batch reads and
@@ -51,12 +65,23 @@ type SynapseStrength struct {
 type ConsolidateTx interface {
 	ProgressionTx
 	MemoryProvenanceStore
+	// ConsolidationWatermarkForUpdate returns (locked, nil = never consolidated) the
+	// universe-time this user's consolidation already processed through — the clamp
+	// that makes a duplicate or overlapping invocation exactly-once (A4/A10).
+	ConsolidationWatermarkForUpdate(ctx context.Context, scope platform.UserScope) (*time.Time, error)
+	// SetConsolidationWatermark moves the marker to the processed interval's end, after
+	// every interval effect succeeded in this same transaction. Monotone ([I10]).
+	SetConsolidationWatermark(ctx context.Context, scope platform.UserScope, through time.Time) error
 	// ListMemoriesForConsolidation returns the user's non-deleted memories with the
 	// stage/timer/decay anchors the interval math reads.
 	ListMemoriesForConsolidation(ctx context.Context, scope platform.UserScope) ([]EpisodicMemory, error)
 	// ApplyStageAdvances persists the risen stages + consumed timer anchors in one batch.
 	// The stage write is GREATEST-guarded in SQL — a stage never decrements ([C7]).
 	ApplyStageAdvances(ctx context.Context, scope platform.UserScope, advances []StageAdvance) error
+	// RecordPendingGistRises persists deferred crossings in one batch: the pending stage
+	// only ever extends (GREATEST) and the first crossing's universe-time is kept as the
+	// event time the finalized provenance rows will carry.
+	RecordPendingGistRises(ctx context.Context, scope platform.UserScope, rises []PendingGistRise) error
 	// FillDecayStages replaces a memory's stored decay-stage text array with the merged
 	// array the caller built. The caller merges (existing entries are never overwritten);
 	// the per-user advisory lock serializes the read-merge-write.
@@ -122,28 +147,65 @@ func (c Consolidator) OnAdvance(ctx context.Context, scope platform.UserScope, t
 }
 
 func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, from time.Time, to time.Time) error {
+	// Exactly-once over the interval (A4/A10): clamp to the unprocessed suffix. A duplicate
+	// invocation of a processed interval is a total no-op; an overlapping one consolidates
+	// (and downscales) only the days the watermark has not covered yet.
+	watermark, err := tx.ConsolidationWatermarkForUpdate(ctx, scope)
+	if err != nil {
+		return err
+	}
+	if watermark != nil {
+		if !to.After(*watermark) {
+			return nil
+		}
+		if watermark.After(from) {
+			from = *watermark
+		}
+	}
+
 	memories, err := tx.ListMemoriesForConsolidation(ctx, scope)
 	if err != nil {
 		return err
 	}
 
 	advances := make([]StageAdvance, 0)
+	pendings := make([]PendingGistRise, 0)
+	risenMemoryIDs := make([]string, 0)
 	for i := range memories {
 		episodicMemory := &memories[i]
 		strength := EffectiveStrength(episodicMemory.BaseStrength, episodicMemory.RecallCount)
 
-		risen, err := c.advanceGistStage(ctx, scope, tx, episodicMemory, strength, to)
+		advance, pending, err := c.advanceGistStage(ctx, scope, tx, episodicMemory, strength, to)
 		if err != nil {
 			return err
 		}
+		// The repair horizon spans the visible stage AND any recorded pending rise: a
+		// pending memory must keep re-enqueueing regeneration on every advance until
+		// its completion lands, or a dead job would leave the rise deferred forever.
 		reachedStage := int(episodicMemory.SemanticStage)
-		if risen != nil {
-			advances = append(advances, *risen)
-			reachedStage = int(risen.Stage)
+		if episodicMemory.PendingSemanticStage != nil && int(*episodicMemory.PendingSemanticStage) > reachedStage {
+			reachedStage = int(*episodicMemory.PendingSemanticStage)
 		}
-		// Repair pass ([C7], A9): a risen stage whose pregenerated text never landed (a
-		// dead semanticize job) would otherwise stay unviewable forever — a memory at the
-		// ceiling crosses no further boundary, so the check cannot live on the rise alone.
+		if advance != nil {
+			advances = append(advances, *advance)
+			if int(advance.Stage) > reachedStage {
+				reachedStage = int(advance.Stage)
+			}
+		}
+		if pending != nil {
+			pendings = append(pendings, *pending)
+			if int(pending.Stage) > reachedStage {
+				reachedStage = int(pending.Stage)
+			}
+		}
+		// The interval touched this memory's gist axis — visibly or as pending work.
+		if advance != nil && int(advance.Stage) > int(episodicMemory.SemanticStage) || pending != nil {
+			risenMemoryIDs = append(risenMemoryIDs, episodicMemory.ID)
+		}
+		// Repair pass ([C7], A9): a reached stage whose pregenerated text never landed (a
+		// dead semanticize job, or a rise deferred as pending) would otherwise stay
+		// unviewable forever — a memory at the ceiling crosses no further boundary, so
+		// the check cannot live on the rise alone.
 		if reachedStage >= 1 && missingStageText(episodicMemory.SemanticStages, reachedStage) {
 			if err := c.enqueueSemanticizeRegen(ctx, scope, tx, episodicMemory); err != nil {
 				return err
@@ -159,6 +221,11 @@ func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope,
 			return err
 		}
 	}
+	if len(pendings) > 0 {
+		if err := tx.RecordPendingGistRises(ctx, scope, pendings); err != nil {
+			return err
+		}
+	}
 
 	// Downscale runs BEFORE the replay marker refreshes activation recency: the slept-edge
 	// filter (activated before `to`) must still see the replay set's pre-replay state, or
@@ -167,30 +234,41 @@ func (c Consolidator) consolidate(ctx context.Context, scope platform.UserScope,
 		return err
 	}
 
-	replayNeurons, err := c.markReplaySet(ctx, scope, tx, memoryIDsOf(advances), to)
+	replayNeurons, err := c.markReplaySet(ctx, scope, tx, risenMemoryIDs, to)
 	if err != nil {
 		return err
 	}
 
 	// Interval-implied heavy work leaves the transaction ([C7], §2.8): the replay set's
 	// neurons re-embed on the worker, never inline.
-	if len(advances) > 0 && len(replayNeurons) > 0 {
+	if len(replayNeurons) > 0 {
 		if err := c.enqueueConsolidateJob(ctx, scope, tx, replayNeurons); err != nil {
 			return err
 		}
 	}
-	return nil
+
+	// The marker moves last, atomically with every effect above — a rolled-back attempt
+	// leaves it untouched and the interval retryable (A4).
+	return tx.SetConsolidationWatermark(ctx, scope, to)
 }
 
 // advanceGistStage rises one memory's gist stage by the whole units its timer crossed by `to`
-// ([C1][C6]) and appends one semanticized/system provenance row per crossed stage so 변천사
-// stays continuous across a large jump (CC5, [R8a]). The stage texts are pregenerated — no
-// LLM call happens here ([C7]); a missing text is the caller's repair pass to re-enqueue.
-// Returns nil when nothing rose.
-func (c Consolidator) advanceGistStage(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, episodicMemory *EpisodicMemory, strength float64, to time.Time) (*StageAdvance, error) {
+// ([C1][C6]). Only stages whose pregenerated text exists are published: each gets one
+// semanticized/system provenance row carrying that text and its stage identity, so 변천사
+// stays continuous across a large jump (CC5, [R8a]) and never blank. A crossing
+// beyond the readable prefix is returned as a PendingGistRise — the visible stage stays put
+// and the semanticize completion materializes it later. The crossed units are consumed from
+// the anchor either way (the rise HAPPENED; only its publication waits for text), so rise
+// math counts from max(visible, pending) with the moved anchor. No LLM call happens here
+// ([C7]); the missing text is the caller's repair pass to re-enqueue.
+func (c Consolidator) advanceGistStage(ctx context.Context, scope platform.UserScope, tx ConsolidateTx, episodicMemory *EpisodicMemory, strength float64, to time.Time) (*StageAdvance, *PendingGistRise, error) {
 	currentStage := int(episodicMemory.SemanticStage)
-	if currentStage >= semanticMaxStage {
-		return nil, nil
+	effectiveStage := currentStage
+	if episodicMemory.PendingSemanticStage != nil && int(*episodicMemory.PendingSemanticStage) > effectiveStage {
+		effectiveStage = int(*episodicMemory.PendingSemanticStage)
+	}
+	if effectiveStage >= semanticMaxStage {
+		return nil, nil, nil
 	}
 	// The gist-timer anchor: recall/reconsolidation resets it; a never-recalled memory
 	// counts from its creation (the NULL timer column reads as created-at).
@@ -200,46 +278,72 @@ func (c Consolidator) advanceGistStage(ctx context.Context, scope platform.UserS
 	}
 	units := GistUnitsElapsed(to, anchor, episodicMemory.Emotion.Arousal, strength)
 	if units <= 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
-	risenStage := Semanticize(currentStage, units)
+	targetStage := Semanticize(effectiveStage, units)
 
-	for stage := currentStage + 1; stage <= risenStage; stage++ {
-		// The risen stage's pregenerated text; empty when the stage set is still
-		// pending/missing — the re-enqueue below regenerates it, and the 변천사 row
-		// still anchors the rise event itself.
-		text := ""
-		if episodicMemory.SemanticStages != nil {
-			text = episodicMemory.SemanticStages[stage-1]
+	// A memory already pending publishes nothing here — its stages materialize once, in the
+	// completion transaction. This crossing only extends the pending target.
+	readableStage := currentStage
+	if episodicMemory.PendingSemanticStage == nil {
+		for stage := currentStage + 1; stage <= targetStage; stage++ {
+			if stageText(episodicMemory.SemanticStages, stage) == "" {
+				break
+			}
+			readableStage = stage
 		}
+	}
+
+	for stage := currentStage + 1; stage <= readableStage; stage++ {
+		stageID := int16(stage)
 		if err := tx.AppendMemoryProvenance(ctx, scope, MemoryProvenance{
 			ID:               c.newID(),
 			EpisodicMemoryID: episodicMemory.ID,
 			Kind:             ProvenanceKindSemanticized,
 			Source:           ProvenanceSourceSystem,
-			Text:             text,
+			Text:             stageText(episodicMemory.SemanticStages, stage),
 			UniverseTime:     to,
+			SemanticStage:    &stageID,
 		}); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return &StageAdvance{
+	advance := &StageAdvance{
 		MemoryID:     episodicMemory.ID,
-		Stage:        int16(risenStage),
+		Stage:        int16(readableStage),
 		TimerResetAt: ConsumeGistUnits(anchor, units, episodicMemory.Emotion.Arousal, strength),
-	}, nil
+	}
+	var pending *PendingGistRise
+	if targetStage > readableStage {
+		pending = &PendingGistRise{
+			MemoryID: episodicMemory.ID,
+			Stage:    int16(targetStage),
+			RiseAt:   to,
+		}
+	}
+	return advance, pending, nil
+}
+
+// stageText returns a stage's pregenerated ladder text, "" when the ladder (or that rung)
+// is missing. Whitespace-only counts as missing — the provenance guard refuses blank text,
+// so publishing such a rung would abort the whole advance transaction instead of deferring.
+func stageText(stages *SemanticStages, stage int) string {
+	if stages == nil || stage < 1 || stage > len(stages) {
+		return ""
+	}
+	if strings.TrimSpace(stages[stage-1]) == "" {
+		return ""
+	}
+	return stages[stage-1]
 }
 
 // missingStageText reports whether any RISEN stage (1..risenStage) lacks its pregenerated
 // text — the [C7] "remaining stage genuinely missing" condition for the semanticize re-enqueue
 // (a nil set counts as all-missing: the launch generation never landed).
 func missingStageText(stages *SemanticStages, risenStage int) bool {
-	if stages == nil {
-		return true
-	}
-	for stage := 1; stage <= risenStage && stage <= len(stages); stage++ {
-		if stages[stage-1] == "" {
+	for stage := 1; stage <= risenStage && stage <= semanticMaxStage; stage++ {
+		if stageText(stages, stage) == "" {
 			return true
 		}
 	}

@@ -109,8 +109,12 @@ name, or semantic-stage text.
 calling `Embedder.Embed`. The resulting embedding is written only if the same target is still live at that revision;
 release, sealing, or a concurrent representation rewrite turns the work into a successful no-op.
 
-`semanticize` jobs apply the same current-read and conditional-write fence to an episodic-memory target before writing
-the four generated stage texts. `consolidate` jobs use identity/revision targets rather than source snapshots as well.
+`semanticize` jobs apply the same current-read fence to an episodic-memory target, refuse a blank generated rung as a
+retryable provider failure, and finish through one completion transaction: under the per-user graph advisory lock it
+re-validates the running lease + live revision, merges the generated ladder over the live kept stages, finalizes any
+pending gist rise (visible stage + one non-blank stage-identified provenance row per newly materialized stage, dated
+at the crossing), and marks the job done atomically — a lost fence applies no side effect and a replayed completion is
+a no-op. `consolidate` jobs use identity/revision targets rather than source snapshots as well.
 
 Every successful `Release` enqueues one deduplicated `retention_sweep` target for its release group at exactly
 `deleted_at + release.soft_delete_retention_days`, in the same transaction as the soft delete. The handler locks that

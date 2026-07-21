@@ -26,6 +26,7 @@ INSERT INTO memory_provenance (
     source,
     text,
     universe_time,
+    semantic_stage,
     created_at
 ) VALUES (
     sqlc.arg(id),
@@ -35,5 +36,6 @@ INSERT INTO memory_provenance (
     sqlc.arg(source),
     sqlc.arg(text),
     sqlc.arg(universe_time),
+    sqlc.arg(semantic_stage),
     clock_timestamp()
 );

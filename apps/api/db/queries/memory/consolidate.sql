@@ -25,6 +25,44 @@ WHERE em.user_id = sqlc.arg(user_id)
   AND em.id = advance.memory_id
   AND em.deleted_at IS NULL;
 
+-- The consolidation watermark's locked read: the universe-time this user's consolidation has
+-- already processed through (NULL = never consolidated). FOR UPDATE holds the row so
+-- overlapping advance transactions serialize on the clamp instead of racing it. The row always
+-- exists here — the hook fires only after AdvanceUniverseClock upserted it in this transaction.
+-- name: ConsolidationWatermarkForUpdate :one
+SELECT consolidated_through
+FROM universe_state
+WHERE user_id = $1
+FOR UPDATE;
+
+-- Moves the watermark to the consolidated interval's end, after every interval effect
+-- succeeded in this same transaction. GREATEST keeps it monotone ([I10]) — a rolled-back
+-- attempt leaves it untouched, so the interval stays retryable.
+-- name: SetConsolidationWatermark :exec
+UPDATE universe_state
+SET consolidated_through = GREATEST(COALESCE(consolidated_through, sqlc.arg(through)::date), sqlc.arg(through)::date),
+    updated_at = now()
+WHERE user_id = sqlc.arg(user_id);
+
+-- Records a gist rise whose ladder text is missing as pending work instead of publishing
+-- it: the visible semantic_stage stays at the last readable stage; the semanticize
+-- completion transaction finalizes the rise once real text exists. GREATEST extends an
+-- existing pending target; COALESCE keeps the FIRST crossing's universe-time as the event
+-- time the finalized 변천사 rows will carry.
+-- name: RecordPendingGistRises :exec
+UPDATE episodic_memories AS em
+SET pending_semantic_stage = GREATEST(COALESCE(em.pending_semantic_stage, 0::smallint), pending.stage),
+    pending_semantic_rise_at = COALESCE(em.pending_semantic_rise_at, pending.rise_at)
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(memory_ids)::text[]) AS memory_id,
+        UNNEST(sqlc.arg(stages)::smallint[]) AS stage,
+        UNNEST(sqlc.arg(rise_ats)::date[]) AS rise_at
+) AS pending
+WHERE em.user_id = sqlc.arg(user_id)
+  AND em.id = pending.memory_id
+  AND em.deleted_at IS NULL;
+
 -- Whole-array decay-stage text write ([F1][R8a]): the use-case merges (existing entries are
 -- never overwritten — the merge fills missing slots only) and the per-user advisory lock the
 -- advance transaction holds serializes the read-merge-write.

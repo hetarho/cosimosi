@@ -16,6 +16,8 @@ SELECT
     semantic_stage,
     semanticize_timer_reset_at,
     semantic_stages,
+    pending_semantic_stage,
+    pending_semantic_rise_at,
     decay_stages,
     forgetting_offset_days,
     deleted_at,

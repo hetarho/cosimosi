@@ -109,9 +109,11 @@ func TestMemoryProvenanceHistoryIsUniverseTimeOrdered(t *testing.T) {
 	}
 
 	// Append out of order; the read must return them universe-time ascending (A1).
+	// A semanticized event carries its stage identity (the materialization guard).
+	stageOne := int16(1)
 	appends := []memory.MemoryProvenance{
 		{ID: base + "-p2", EpisodicMemoryID: memoryID, Kind: memory.ProvenanceKindReconsolidated, Source: memory.ProvenanceSourceUser, Text: "rewrite", UniverseTime: time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)},
-		{ID: base + "-p1", EpisodicMemoryID: memoryID, Kind: memory.ProvenanceKindSemanticized, Source: memory.ProvenanceSourceSystem, Text: "gist", UniverseTime: time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC)},
+		{ID: base + "-p1", EpisodicMemoryID: memoryID, Kind: memory.ProvenanceKindSemanticized, Source: memory.ProvenanceSourceSystem, Text: "gist", UniverseTime: time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC), SemanticStage: &stageOne},
 	}
 	for _, entry := range appends {
 		if err := store.AppendMemoryProvenance(ctx, scope, entry); err != nil {

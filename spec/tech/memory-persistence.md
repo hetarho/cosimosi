@@ -144,6 +144,14 @@ derivation (forgetting decay, the semanticize timer, synapse strength decay) rea
 layout ([I7]). The diary-date monotonic constraint is the pure predicate `memory.CanLaunchAt(diaryDate, clock)` —
 `diaryDate ≥ clock` launches, an earlier diary saves without a star, a nil clock always launches ([T1]).
 
+**`universe_state` also carries the consolidation watermark** (`consolidated_through DATE`, migration 00013): the
+universe-time consolidation has processed through. The handler reads it locked (`FOR UPDATE`) inside the advance
+transaction, clamps the interval to the unprocessed suffix (duplicate/overlapping invocations become no-ops /
+suffix-only — the synapse downscale is exactly-once per slept interval), and moves it with a `GREATEST` write as the
+transaction's last effect, so it is monotone ([I10]) and a rolled-back attempt stays retryable. NULL means "never
+consolidated"; the hook only fires after the advance upserted the row, so a missing row is a wiring error, not a
+state.
+
 The clock repository port is **consumer-owned by plan 30** (the time-advance use-case); `memory/pg` exposes the
 concrete `LockGraphMutation`/`UniverseClock`/`UniverseClockForUpdate`/`LatestLaunchedUniverseTime`/`AdvanceUniverseClock`
 store methods it binds to. Plan 30 has wired the stored `universe_state` clock as the **primary** source for both the
@@ -156,8 +164,19 @@ for the guard, the `EpisodicMemories` scan for the read), so no universe visibly
 Plan [46](../plan/46.provenance-export.md) owns two read-only use-cases in `internal/memory` (`GetProvenance`,
 `Export`) over `db/queries/memory/provenance.sql`. Both are per-user scoped, GET-eligible / `NO_SIDE_EFFECTS`, and
 free (metadata/archive tier): they advance no clock ([T3]), append no `memory_provenance` row, spend no Twinkle, and
-issue no `UPDATE`/`DELETE` of any kind. `provenance.sql` is **SELECT-only** — the sole writer of `memory_provenance`
-is the reconsolidation/semanticization append path in `reconsolidation.sql`.
+issue no `UPDATE`/`DELETE` of any kind. `provenance.sql` is **SELECT-only** — the sole writers of `memory_provenance`
+are the reconsolidation/semanticization append path in `reconsolidation.sql` (used by the recall/advance transactions)
+and the semanticize completion transaction (`jobs.sql`'s fenced finalization), both INSERT-only.
+
+**Semanticized rows are stage-identified and database-guarded** (migration 00013): `semantic_stage SMALLINT` names the
+gist stage a `semanticized` event materialized; a partial unique index holds exactly one event per
+`(user_id, episodic_memory_id, semantic_stage)` and a forward-only `NOT VALID` CHECK refuses a new semanticized row
+with blank text or a missing stage. Legacy rows (NULL stage, possibly blank text) are retained untouched — append-only
+history is never repaired by mutation; the regen/repair path re-materializes the ladder instead. A gist crossing whose
+ladder text is missing publishes nothing: the memory row carries the deferred rise
+(`episodic_memories.pending_semantic_stage` + `pending_semantic_rise_at`, migration 00013) and the semanticize
+completion transaction — advisory-lock-first, lease/revision-fenced, job-completing — finalizes the visible stage and
+its provenance rows once real text exists.
 The client aggregate classifies both descriptors with `userScopedUnaryReadPolicy`, so they use authenticated GET while
 remaining ineligible for shared CDN caching.
 

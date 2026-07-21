@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/cosimosi/api/internal/platform"
@@ -15,6 +16,9 @@ import (
 var (
 	ErrJobUserRequired = errors.New("memory job requires a user id")
 	ErrJobPayload      = errors.New("memory job payload invalid")
+	// errBlankSemanticStage marks a provider result with an empty gist rung — a
+	// retryable generation failure, never something to persist.
+	errBlankSemanticStage = errors.New("semantic stage text is blank")
 )
 
 // Queue payloads are deliberately empty. Effect identities and their expected
@@ -42,8 +46,6 @@ type EmbedJobSource struct {
 type SemanticizeJobSource struct {
 	Engram           SemanticizeMemory
 	ExpectedRevision int64
-	RisenStage       int16
-	CurrentStages    *SemanticStages
 }
 
 type JobSourceReader interface {
@@ -61,8 +63,15 @@ type JobEmbeddingWriter interface {
 	SaveJobEmbeddings(ctx context.Context, job Job, embeddings []RevisionedEmbedding) error
 }
 
+// JobSemanticStagesWriter is the semanticize completion operation: in ONE
+// transaction it re-validates the job's running lease and the live
+// representation revision, merges the generated ladder over the live kept
+// stages, finalizes a pending gist rise (visible stage + one non-empty
+// stage-identified provenance row per newly materialized stage), and marks the
+// job done. A lost fence applies no side effect; replaying a committed
+// completion is a no-op because the job is no longer running.
 type JobSemanticStagesWriter interface {
-	SaveJobSemanticStages(ctx context.Context, job Job, memoryID string, expectedRevision int64, stages SemanticStages) error
+	CompleteSemanticizeJob(ctx context.Context, job Job, memoryID string, expectedRevision int64, generated SemanticStages) error
 }
 
 type DueReleaseSweeper interface {
@@ -110,22 +119,18 @@ func NewSemanticizeJobHandler(semanticizer Semanticizer, sources JobSourceReader
 		if err != nil {
 			return err
 		}
-		// Reconsolidation keeps the already-risen gist texts and takes freshly
-		// generated values only for the remaining stages. Reading both fields here
-		// prevents a delayed job from publishing an enqueue-time snapshot.
-		if source.CurrentStages != nil {
-			keep := int(source.RisenStage)
-			if keep < 0 {
-				keep = 0
-			}
-			if keep > len(stages) {
-				keep = len(stages)
-			}
-			for i := 0; i < keep && source.CurrentStages[i] != ""; i++ {
-				stages[i] = source.CurrentStages[i]
+		// A blank rung would materialize an unreadable gist and is refused by the
+		// provenance guard anyway — treat it as a provider failure so the normal
+		// retry/backoff path regenerates, instead of committing a broken ladder.
+		for _, text := range stages {
+			if strings.TrimSpace(text) == "" {
+				return fmt.Errorf("%w: memory %s", errBlankSemanticStage, source.Engram.ID)
 			}
 		}
-		return writer.SaveJobSemanticStages(ctx, job, source.Engram.ID, source.ExpectedRevision, stages)
+		// The kept-stage merge and the pending-rise finalization happen inside the
+		// completion transaction against LIVE row state — merging here against the
+		// source snapshot could overwrite a stage that rose after the source read.
+		return writer.CompleteSemanticizeJob(ctx, job, source.Engram.ID, source.ExpectedRevision, stages)
 	}
 }
 

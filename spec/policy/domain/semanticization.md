@@ -9,7 +9,10 @@
 **Semanticization rises, never regresses** ([C7], z-axis one-way). As universe-time passes since the gist-timer's reset
 anchor, a memory's meaning compresses and its `semantic_stage` rises through the pregenerated gist ladder, clamped at the
 derived ladder length (the count of pregenerated gist texts — never a tuned value). A single clock advance may cross
-**multiple** stages at once; each crossed stage appends one provenance row so 변천사 stays continuous (CC5, [R8a]).
+**multiple** stages at once; each materialized stage appends exactly one provenance row — carrying its **stage identity
+and non-blank text**, both database-guarded — so 변천사 stays continuous (CC5, [R8a]). A crossing whose ladder text is
+missing materializes **nothing yet**: the visible stage holds at the last readable stage and the rise stays pending
+until the regenerated text finalizes it (the consolidation use-case owns that deferral).
 
 **A reset delays the next stage but never lowers the stage.** Recall/reconsolidation resets `semanticize_timer_reset_at`
 to now, so the gist-timer recomputes to 0 elapsed units — the next rise is delayed — but the already-risen

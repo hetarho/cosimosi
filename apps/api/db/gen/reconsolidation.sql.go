@@ -45,6 +45,7 @@ INSERT INTO memory_provenance (
     source,
     text,
     universe_time,
+    semantic_stage,
     created_at
 ) VALUES (
     $1,
@@ -54,6 +55,7 @@ INSERT INTO memory_provenance (
     $5,
     $6,
     $7,
+    $8,
     clock_timestamp()
 )
 `
@@ -66,6 +68,7 @@ type AppendMemoryProvenanceParams struct {
 	Source           string
 	Text             string
 	UniverseTime     pgtype.Date
+	SemanticStage    pgtype.Int2
 }
 
 // Appends one 변천사 row ([R8a][D1], A8). Append-only: there is deliberately NO UPDATE and NO DELETE
@@ -83,6 +86,7 @@ func (q *Queries) AppendMemoryProvenance(ctx context.Context, arg AppendMemoryPr
 		arg.Source,
 		arg.Text,
 		arg.UniverseTime,
+		arg.SemanticStage,
 	)
 	return err
 }

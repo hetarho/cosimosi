@@ -114,7 +114,12 @@ type MemoryProvenance struct {
 	Source           ProvenanceSource
 	Text             string
 	UniverseTime     time.Time
-	CreatedAt        time.Time
+	// SemanticStage identifies which gist stage a semanticized event materialized
+	// (1..semanticMaxStage). The database holds exactly one event per stage and
+	// refuses a blank text with it, so a replayed writer cannot duplicate or blank
+	// the history. Nil on every other kind (and on legacy semanticized rows).
+	SemanticStage *int16
+	CreatedAt     time.Time
 }
 
 type Diary struct {
@@ -138,6 +143,13 @@ type EpisodicMemory struct {
 	SemanticStage            int16
 	SemanticizeTimerResetAt  *time.Time
 	SemanticStages           *SemanticStages
+	// PendingSemanticStage is a gist rise the timer already crossed whose ladder
+	// text is still missing: the visible SemanticStage stays authoritative until
+	// the semanticize completion materializes the rise with real text.
+	// PendingSemanticRiseAt is the crossing's universe-time — the event time the
+	// finalized provenance rows carry. Both nil when nothing is pending.
+	PendingSemanticStage  *int16
+	PendingSemanticRiseAt *time.Time
 	// DecayStages holds the stored per-stage word-loss texts ([R8a]); the read returns them so the
 	// client shows the persisted fragment for the current stage. Nil until a stage text is filled.
 	DecayStages []string
