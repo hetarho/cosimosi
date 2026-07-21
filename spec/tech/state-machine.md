@@ -193,7 +193,9 @@ rides outside it:
   selector over the `episodic-memory`/`neuron` read-model mirrors, yielding
   `episodic | neuron | gist | none` (a gist body is recognized by an injectable
   recognizer and routes away to the paid view, so no gist state lives here);
-- the **provenance list** is a Query read fetched only on entering `provenance`;
+- the **provenance list** is a Query read fetched only on entering `provenance`; Query, not the machine, owns its
+  loading/retrying/error/success lifecycle. The adapter keeps transport error + retry distinct from successful empty
+  data instead of collapsing `error` through `data ?? []`;
 - `RECALL` / `OPEN_DIARY` are **emitted intents** the composing page consumes
   (recall flow / router) — they are self-handled no-ops that leave the phase
   intact, so the panel hands off without owning downstream behavior. `OPEN`

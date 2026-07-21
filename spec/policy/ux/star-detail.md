@@ -37,6 +37,9 @@ The 변천사 view lists the star's representation events time-ordered, each lab
 (생성 / 요지화 / 재공고화) and **source** (원본 / 시스템 / 사용자). Distortion is **not** separately
 announced — the user discovers change by reading the entries ([R8a]). The list shows exactly the ordered
 entries the read returns; the created-baseline synthesis is the read's concern, not the panel's.
+A transport failure is shown as a recoverable localized error with retry and is never represented as an empty history.
+Loading and retrying remain visibly pending; empty copy is reserved for a successful empty payload, an invariant fallback
+because a normal successful read contains the synthesized created/original baseline.
 
 ## Actions hand off; the panel neither prices nor performs them
 

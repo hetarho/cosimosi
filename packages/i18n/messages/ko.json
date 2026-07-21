@@ -224,6 +224,8 @@
   "star_provenance_source_system": "시스템",
   "star_provenance_source_user": "사용자",
   "star_provenance_loading": "불러오는 중…",
+  "star_provenance_retrying": "변천사를 다시 펼치는 중…",
+  "star_provenance_error": "변천사를 펼치지 못했어요.",
   "star_provenance_empty": "아직 변천의 기록이 없어요.",
   "recall_flow_title": "회고",
   "recall_rewrite_prompt": "그날을 지금 기억나는 대로 다시 적어 보세요.",

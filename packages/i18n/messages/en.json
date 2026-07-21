@@ -224,6 +224,8 @@
   "star_provenance_source_system": "System",
   "star_provenance_source_user": "You",
   "star_provenance_loading": "Loading…",
+  "star_provenance_retrying": "Trying the history again…",
+  "star_provenance_error": "Unable to open the history.",
   "star_provenance_empty": "No history yet.",
   "recall_flow_title": "Recall",
   "recall_rewrite_prompt": "Write it again as you remember it now.",

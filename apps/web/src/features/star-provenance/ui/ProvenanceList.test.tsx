@@ -26,7 +26,9 @@ describe('ProvenanceList', () => {
   })
 
   it('renders time-ordered entries with kind and source labels', () => {
-    const html = renderToString(createElement(ProvenanceList, { entries, isLoading: false }))
+    const html = renderToString(
+      createElement(ProvenanceList, { entries, status: 'success', onRetry: () => undefined }),
+    )
     expect(html).toContain('the first account')
     expect(html).toContain('a reworded account')
     expect(html).toContain(m.star_provenance_kind_created())
@@ -37,12 +39,52 @@ describe('ProvenanceList', () => {
   })
 
   it('shows the empty note when the history has no entries', () => {
-    const html = renderToString(createElement(ProvenanceList, { entries: [], isLoading: false }))
+    const html = renderToString(
+      createElement(ProvenanceList, {
+        entries: [],
+        status: 'success',
+        onRetry: () => undefined,
+      }),
+    )
     expect(html).toContain(m.star_provenance_empty())
   })
 
   it('shows the loading note while the read is in flight', () => {
-    const html = renderToString(createElement(ProvenanceList, { entries: [], isLoading: true }))
+    const html = renderToString(
+      createElement(ProvenanceList, {
+        entries: [],
+        status: 'loading',
+        onRetry: () => undefined,
+      }),
+    )
     expect(html).toContain(m.star_provenance_loading())
+  })
+
+  it('renders transport failure as retryable error, never as empty history', () => {
+    const html = renderToString(
+      createElement(ProvenanceList, {
+        entries: [],
+        status: 'error',
+        onRetry: () => undefined,
+      }),
+    )
+
+    expect(html).toContain(m.star_provenance_error())
+    expect(html).toContain(m.common_retry())
+    expect(html).not.toContain(m.star_provenance_empty())
+  })
+
+  it('distinguishes an in-flight retry from an initial load and an error', () => {
+    const html = renderToString(
+      createElement(ProvenanceList, {
+        entries: [],
+        status: 'retrying',
+        onRetry: () => undefined,
+      }),
+    )
+
+    expect(html).toContain(m.star_provenance_retrying())
+    expect(html).not.toContain(m.star_provenance_error())
+    expect(html).not.toContain(m.star_provenance_empty())
   })
 })

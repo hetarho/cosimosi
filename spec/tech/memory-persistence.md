@@ -146,6 +146,8 @@ Plan [46](../plan/46.provenance-export.md) owns two read-only use-cases in `inte
 free (metadata/archive tier): they advance no clock ([T3]), append no `memory_provenance` row, spend no Twinkle, and
 issue no `UPDATE`/`DELETE` of any kind. `provenance.sql` is **SELECT-only** — the sole writer of `memory_provenance`
 is the reconsolidation/semanticization append path in `reconsolidation.sql`.
+The client aggregate classifies both descriptors with `userScopedUnaryReadPolicy`, so they use authenticated GET while
+remaining ineligible for shared CDN caching.
 
 **변천사 (`GetProvenance`).** A memory's variant history is a time-ordered list of `{kind, source, text,
 universe_time}` (kind ∈ created|semanticized|reconsolidated, source ∈ original|system|user) with **no separate

@@ -221,9 +221,11 @@ per-feature, not here.)
 - **proto = DTO layer.** Domain stays pure; the `rpc` handler maps proto↔domain.
 - **Unary only.** RN has no server-streaming, so we never design push streams. **High-frequency client-local events
   persist as a debounced, idempotent unary batch** (a `batch_id` recorded server-side prevents double-counting).
-  Idempotent unary reads are exposed as HTTP GET → cacheable on the CDN. Client transports attach an explicit RPC cache
-  policy interceptor so GET-eligible requests are registered, proto-marked `NO_SIDE_EFFECTS`, and never configured as
-  shared CDN cache when the data is user-scoped.
+  Idempotent unary reads may be exposed as HTTP GET; GET eligibility does not by itself make a response shared-CDN
+  cacheable. Every generated unary method marked `NO_SIDE_EFFECTS` is classified exactly once by the client RPC
+  cache-policy registry. The production transport rejects missing, duplicate, or proto-incompatible classifications
+  before I/O. Authenticated reads use the private user-scoped GET policy and are never shared-CDN cacheable; mutations
+  remain POST.
 - connect-go handlers are `http.Handler`s mounted on a thin `net/http` mux (`platform`) with `h2c` + CORS; only
   `/health` is hand-routed. The server is built through a `NewServer(...deps) http.Handler` constructor, with route /
   service registration visible in one place. `main()` stays tiny and delegates to `run(...)`. Run `buf`/`sqlc`/`go`

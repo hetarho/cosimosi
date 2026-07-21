@@ -1,3 +1,5 @@
+import { Button } from '@cosimosi/ui'
+
 import { m } from '../../../shared/i18n/index.ts'
 import type { ProvenanceEntry, ProvenanceKind, ProvenanceSource } from '../model/provenance.ts'
 
@@ -19,13 +21,28 @@ function sourceLabel(source: ProvenanceSource): string {
 // entries the read returns; ordering and the synthesized baseline are the read's concern.
 export function ProvenanceList({
   entries,
-  isLoading,
+  status,
+  onRetry,
 }: {
   entries: readonly ProvenanceEntry[]
-  isLoading: boolean
+  status: 'loading' | 'retrying' | 'error' | 'success'
+  onRetry: () => void
 }) {
-  if (isLoading) {
+  if (status === 'loading') {
     return <p className="text-sm text-text-muted">{m.star_provenance_loading()}</p>
+  }
+  if (status === 'retrying') {
+    return <p className="text-sm text-text-muted">{m.star_provenance_retrying()}</p>
+  }
+  if (status === 'error') {
+    return (
+      <div className="flex flex-col items-start gap-2" role="alert">
+        <p className="text-sm text-text-muted">{m.star_provenance_error()}</p>
+        <Button color="neutral" size="sm" onClick={onRetry}>
+          {m.common_retry()}
+        </Button>
+      </div>
+    )
   }
   if (entries.length === 0) {
     return <p className="text-sm text-text-muted italic">{m.star_provenance_empty()}</p>

@@ -121,7 +121,8 @@ caller as not-enough-twinkle at the true window state.
 - **`GetBalance(scope)`** / **`QuoteSpend(scope, kind, targetID)`** — read-only: derive the balance (lazy-birth
   default for an absent row, no write, no window roll); the quote resolves its depth signal through the
   `SpendSignalReader` port, prices with the same curves, and returns `{cost, covered, shortfall}` (diary-recall =
-  the per-memory `RecallCost` sum, [D3]).
+  the per-memory `RecallCost` sum, [D3]). Both descriptors use the client transport's `userScopedUnaryReadPolicy`, so
+  they are authenticated GETs and never shared-CDN cacheable.
 
 ## 4b. The cross-context economy seam (composition root only)
 

@@ -10,26 +10,38 @@ import {
 import {
   MemoryService,
   PlatformService,
+  SpendKind,
+  TwinkleService,
+  apiServiceDescriptors,
+  createMemoryClient,
   createGetUniverseQueryOptions,
   createPlatformPingQueryOptions,
+  createTwinkleClient,
 } from '@cosimosi/api-client'
+import type { AuthFacade } from '@cosimosi/auth'
+import { createObservabilityFacade } from '@cosimosi/observability'
 
 import { clientCacheTimings, createClientCacheQueryClient } from './defaults.ts'
 import {
+  assertRpcCachePolicyCoverage,
+  clientCacheRpcCachePolicies,
   createClientCacheRpcPolicyInterceptor,
   createRpcCachePolicyInterceptor,
   defineRpcCachePolicy,
   idempotentUnaryReadPolicy,
   memoryRpcCachePolicies,
+  platformPublicRpcReads,
   rpcMethodPolicyKey,
   unaryWritePolicy,
   userScopedUnaryReadPolicy,
   type RpcMethodDescriptor,
+  type RpcCachePolicyEntry,
 } from './http-policy.ts'
 import { isConnectQueryKey, memoryCacheKeys, platformCacheKeys } from './keys.ts'
 import { beginOptimisticMutation } from './optimistic.ts'
 import { assertClientCacheData } from './render-state.ts'
 import { createClientCacheTestContext, setClientCacheData } from './test-helpers.ts'
+import { resolveClientCacheTransport } from './provider.ts'
 
 describe('client cache facade', () => {
   it('creates isolated QueryClient instances with generated default timing values', () => {
@@ -292,6 +304,140 @@ describe('client cache facade', () => {
     ).rejects.toThrow(/without an explicit/)
   })
 
+  it('classifies every generated NO_SIDE_EFFECTS unary method exactly once', () => {
+    const generatedReadKeys = apiServiceDescriptors
+      .flatMap((service) => service.methods)
+      .filter((method) => method.methodKind === 'unary' && method.idempotency === 1)
+      .map(rpcMethodPolicyKey)
+      .sort()
+    const registeredReadKeys = clientCacheRpcCachePolicies
+      .map((entry) => rpcMethodPolicyKey(entry.method))
+      .sort()
+
+    expect(registeredReadKeys).toEqual(generatedReadKeys)
+    expect(generatedReadKeys).toHaveLength(8)
+    expect(() =>
+      assertRpcCachePolicyCoverage(
+        apiServiceDescriptors,
+        clientCacheRpcCachePolicies,
+        platformPublicRpcReads,
+      ),
+    ).not.toThrow()
+
+    const publicKeys = new Set(platformPublicRpcReads.map(rpcMethodPolicyKey))
+    for (const entry of clientCacheRpcCachePolicies) {
+      expect(entry.policy).toMatchObject({
+        idempotent: true,
+        method: 'GET',
+        sharedCdn: false,
+        userScoped: !publicKeys.has(rpcMethodPolicyKey(entry.method)),
+      })
+    }
+  })
+
+  it('rejects incomplete, duplicate, write, and incompatible generated policy registries', () => {
+    const assertCoverage = (entries: readonly RpcCachePolicyEntry[]) =>
+      assertRpcCachePolicyCoverage(apiServiceDescriptors, entries, platformPublicRpcReads)
+
+    expect(() => assertCoverage(clientCacheRpcCachePolicies.slice(1))).toThrow(/no explicit/)
+    expect(() =>
+      assertCoverage([...clientCacheRpcCachePolicies, clientCacheRpcCachePolicies[0]]),
+    ).toThrow(/more than one/)
+    expect(() =>
+      createRpcCachePolicyInterceptor([
+        clientCacheRpcCachePolicies[0],
+        clientCacheRpcCachePolicies[0],
+      ]),
+    ).toThrow(/more than one/)
+    expect(() =>
+      assertCoverage([
+        ...clientCacheRpcCachePolicies,
+        { method: MemoryService.method.release, policy: userScopedUnaryReadPolicy },
+      ]),
+    ).toThrow(/not a unary NO_SIDE_EFFECTS/)
+    expect(() =>
+      assertCoverage(
+        clientCacheRpcCachePolicies.map((entry) =>
+          entry.method === MemoryService.method.getUniverse
+            ? { ...entry, policy: unaryWritePolicy }
+            : entry,
+        ),
+      ),
+    ).toThrow(/incompatible/)
+    expect(() =>
+      assertCoverage(
+        clientCacheRpcCachePolicies.map((entry) =>
+          entry.method === TwinkleService.method.getBalance
+            ? { ...entry, policy: idempotentUnaryReadPolicy }
+            : entry,
+        ),
+      ),
+    ).toThrow(/private user-scoped/)
+    expect(() =>
+      assertCoverage(
+        clientCacheRpcCachePolicies.map((entry) =>
+          entry.method === TwinkleService.method.getBalance
+            ? { ...entry, policy: { ...userScopedUnaryReadPolicy, sharedCdn: true } }
+            : entry,
+        ),
+      ),
+    ).toThrow(/shared or public CDN/)
+  })
+
+  it('sends all newly classified reads through the production auth, policy, and telemetry chain', async () => {
+    const runtime = globalThis as unknown as {
+      Response: new (body: string, init: unknown) => unknown
+      Headers: new (init?: unknown) => { get(name: string): string | null }
+    }
+    const fetchMock = vi.fn(async () =>
+      Promise.resolve(
+        new runtime.Response('{}', {
+          status: 200,
+          headers: { 'content-type': 'application/json', 'x-request-id': 'policy-request' },
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const auth = {
+      getAccessToken: vi.fn(async () => 'token-1'),
+    } as unknown as AuthFacade
+    const observability = createObservabilityFacade()
+
+    try {
+      const transport = resolveClientCacheTransport({
+        baseUrl: 'https://api.example.test',
+        auth,
+        observability,
+      })
+      const memory = createMemoryClient(transport)
+      const twinkle = createTwinkleClient(transport)
+
+      await twinkle.getBalance({})
+      await twinkle.quoteSpend({ kind: SpendKind.RECALL, episodicMemoryId: 'memory-1' })
+      await memory.getProvenance({ episodicMemoryId: 'memory-1' })
+      await memory.export({})
+      await memory.getDiaries({})
+      await memory.release({ diaryId: 'diary-1' })
+
+      expect(fetchMock).toHaveBeenCalledTimes(6)
+      const calls = fetchMock.mock.calls as unknown as Array<
+        [string, { method?: string; headers?: unknown }]
+      >
+      for (const [, init] of calls.slice(0, 5)) {
+        expect(init.method).toBe('GET')
+        expect(new runtime.Headers(init.headers).get('Authorization')).toBe('Bearer token-1')
+      }
+      expect(calls[5][1].method).toBe('POST')
+      expect(new runtime.Headers(calls[5][1].headers).get('Authorization')).toBe('Bearer token-1')
+      expect(observability.snapshot.requestId).toBe('policy-request')
+      expect(auth.getAccessToken).toHaveBeenCalledTimes(6)
+    } finally {
+      vi.unstubAllGlobals()
+      observability.dispose()
+    }
+  })
+
   it('keeps memory cache keys aligned with the API-client facade', () => {
     const context = createClientCacheTestContext()
     const key = memoryCacheKeys.getUniverse(context.transport)
@@ -376,6 +522,7 @@ async function callPolicyInterceptor(
 const nonIdempotentMethod: RpcMethodDescriptor = {
   name: 'Write',
   idempotency: 0,
+  methodKind: 'unary',
   parent: {
     typeName: 'cosimosi.test.v1.TestService',
   },

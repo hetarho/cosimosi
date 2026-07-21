@@ -43,13 +43,37 @@ export function provenanceQueryKey(episodicMemoryId: string) {
   return ['provenance', episodicMemoryId] as const
 }
 
+interface ProvenanceQuerySnapshot {
+  readonly data: readonly ProvenanceEntry[] | undefined
+  readonly isPending: boolean
+  readonly isError: boolean
+  readonly isFetching: boolean
+  readonly isFetched: boolean
+}
+
+export function provenanceQueryStatus(
+  query: ProvenanceQuerySnapshot,
+): 'loading' | 'retrying' | 'error' | 'success' {
+  if (query.isFetching && (query.isError || (query.data === undefined && query.isFetched))) {
+    return 'retrying'
+  }
+  if (query.isPending) return 'loading'
+  if (query.isError) return 'error'
+  return 'success'
+}
+
 // Fetched via Query when the 변천사 view is entered (enabled only then), so opening the panel to
 // meta does not read; the result is cached per memory id.
 export function useProvenanceQuery(episodicMemoryId: string | null, enabled: boolean) {
   const transport = useTransport()
-  return useQuery({
+  const query = useQuery({
     queryKey: provenanceQueryKey(episodicMemoryId ?? ''),
     queryFn: () => fetchProvenance(createMemoryClient(transport), episodicMemoryId ?? ''),
     enabled: enabled && Boolean(episodicMemoryId),
   })
+  return {
+    entries: query.data ?? [],
+    status: provenanceQueryStatus(query),
+    retry: () => query.refetch().then(() => undefined),
+  }
 }

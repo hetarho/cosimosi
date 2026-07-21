@@ -156,7 +156,11 @@ export function DetailPanel({
           <Button color="neutral" size="sm" onClick={() => send({ type: 'BACK' })}>
             {m.star_detail_back()}
           </Button>
-          <ProvenanceList entries={provenance.data ?? []} isLoading={provenance.isLoading} />
+          <ProvenanceList
+            entries={provenance.entries}
+            status={provenance.status}
+            onRetry={provenance.retry}
+          />
         </div>
       )}
     </aside>

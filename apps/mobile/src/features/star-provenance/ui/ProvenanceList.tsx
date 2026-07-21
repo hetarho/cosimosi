@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 
-import { tokens } from '@cosimosi/ui'
+import { Button, tokens } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
 import type { ProvenanceEntry, ProvenanceKind, ProvenanceSource } from '../model/provenance.ts'
@@ -22,13 +22,28 @@ function sourceLabel(source: ProvenanceSource): string {
 // entries the read returns — ordering and the synthesized baseline are the read's concern.
 export function ProvenanceList({
   entries,
-  isLoading,
+  status,
+  onRetry,
 }: {
   entries: readonly ProvenanceEntry[]
-  isLoading: boolean
+  status: 'loading' | 'retrying' | 'error' | 'success'
+  onRetry: () => void
 }) {
-  if (isLoading) {
+  if (status === 'loading') {
     return <Text style={styles.note}>{m.star_provenance_loading()}</Text>
+  }
+  if (status === 'retrying') {
+    return <Text style={styles.note}>{m.star_provenance_retrying()}</Text>
+  }
+  if (status === 'error') {
+    return (
+      <View style={styles.error} accessibilityRole="alert">
+        <Text style={styles.note}>{m.star_provenance_error()}</Text>
+        <Button color="neutral" size="sm" onPress={onRetry}>
+          {m.common_retry()}
+        </Button>
+      </View>
+    )
   }
   if (entries.length === 0) {
     return <Text style={styles.empty}>{m.star_provenance_empty()}</Text>
@@ -49,6 +64,7 @@ export function ProvenanceList({
 
 const styles = StyleSheet.create({
   list: { gap: tokens.spacing[3] },
+  error: { alignItems: 'flex-start', gap: tokens.spacing[2] },
   entry: { gap: tokens.spacing[1] },
   meta: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.xs },
   text: { color: tokens.color.text, fontSize: tokens.fontSize.sm, lineHeight: 22 },

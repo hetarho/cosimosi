@@ -161,7 +161,11 @@ export function DetailPanel({
                 {m.star_detail_back()}
               </Button>
             </View>
-            <ProvenanceList entries={provenance.data ?? []} isLoading={provenance.isLoading} />
+            <ProvenanceList
+              entries={provenance.entries}
+              status={provenance.status}
+              onRetry={provenance.retry}
+            />
           </>
         )}
       </ScrollView>

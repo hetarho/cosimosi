@@ -1,6 +1,12 @@
 import type { Interceptor } from '@connectrpc/connect'
 
-import { AccountService, MemoryService, PlatformService } from '@cosimosi/api-client'
+import {
+  AccountService,
+  MemoryService,
+  PlatformService,
+  TwinkleService,
+  apiServiceDescriptors,
+} from '@cosimosi/api-client'
 
 export type RpcCacheMethod = 'GET' | 'POST'
 
@@ -14,9 +20,14 @@ export interface RpcCachePolicy {
 export interface RpcMethodDescriptor {
   readonly name: string
   readonly idempotency: number
+  readonly methodKind: string
   readonly parent: {
     readonly typeName: string
   }
+}
+
+export interface RpcServiceDescriptor {
+  readonly methods: readonly RpcMethodDescriptor[]
 }
 
 export interface RpcCachePolicyEntry {
@@ -39,9 +50,12 @@ export function defineRpcCachePolicy(policy: RpcCachePolicy): RpcCachePolicy {
 export function createRpcCachePolicyInterceptor(
   entries: readonly RpcCachePolicyEntry[],
 ): Interceptor {
-  const policies = new Map(
-    entries.map((entry) => [rpcMethodPolicyKey(entry.method), defineRpcCachePolicy(entry.policy)]),
-  )
+  const policies = new Map<string, RpcCachePolicy>()
+  for (const entry of entries) {
+    const key = rpcMethodPolicyKey(entry.method)
+    if (policies.has(key)) throw new Error(`${key} has more than one RPC cache policy`)
+    policies.set(key, defineRpcCachePolicy(entry.policy))
+  }
 
   return (next) => async (req) => {
     const methodKey = rpcMethodPolicyKey(req.method)
@@ -66,11 +80,12 @@ export function createRpcCachePolicyInterceptor(
 }
 
 export function createClientCacheRpcPolicyInterceptor(): Interceptor {
-  return createRpcCachePolicyInterceptor([
-    ...platformRpcCachePolicies,
-    ...memoryRpcCachePolicies,
-    ...accountRpcCachePolicies,
-  ])
+  assertRpcCachePolicyCoverage(
+    apiServiceDescriptors,
+    clientCacheRpcCachePolicies,
+    platformPublicRpcReads,
+  )
+  return createRpcCachePolicyInterceptor(clientCacheRpcCachePolicies)
 }
 
 export function rpcMethodPolicyKey(method: RpcMethodDescriptor): string {
@@ -109,6 +124,29 @@ export const memoryRpcCachePolicies = [
     method: MemoryService.method.getUniverse,
     policy: userScopedUnaryReadPolicy,
   },
+  {
+    method: MemoryService.method.getProvenance,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
+    method: MemoryService.method.export,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
+    method: MemoryService.method.getDiaries,
+    policy: userScopedUnaryReadPolicy,
+  },
+] as const satisfies readonly RpcCachePolicyEntry[]
+
+export const twinkleRpcCachePolicies = [
+  {
+    method: TwinkleService.method.getBalance,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
+    method: TwinkleService.method.quoteSpend,
+    policy: userScopedUnaryReadPolicy,
+  },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
 // The palette-preference read is GET-eligible but per-user — privately cacheable, never shared CDN
@@ -119,3 +157,57 @@ export const accountRpcCachePolicies = [
     policy: userScopedUnaryReadPolicy,
   },
 ] as const satisfies readonly RpcCachePolicyEntry[]
+
+export const clientCacheRpcCachePolicies = [
+  ...platformRpcCachePolicies,
+  ...memoryRpcCachePolicies,
+  ...twinkleRpcCachePolicies,
+  ...accountRpcCachePolicies,
+] as const satisfies readonly RpcCachePolicyEntry[]
+
+export const platformPublicRpcReads = [PlatformService.method.ping] as const
+
+export function assertRpcCachePolicyCoverage(
+  services: readonly RpcServiceDescriptor[],
+  entries: readonly RpcCachePolicyEntry[],
+  publicReads: readonly RpcMethodDescriptor[] = [],
+): void {
+  const generatedMethods = new Map<string, RpcMethodDescriptor>()
+  for (const service of services) {
+    for (const method of service.methods) generatedMethods.set(rpcMethodPolicyKey(method), method)
+  }
+
+  const publicReadKeys = new Set(publicReads.map(rpcMethodPolicyKey))
+  const policies = new Map<string, RpcCachePolicy>()
+  for (const entry of entries) {
+    const key = rpcMethodPolicyKey(entry.method)
+    if (policies.has(key)) throw new Error(`${key} has more than one RPC cache policy`)
+    const generatedMethod = generatedMethods.get(key)
+    if (!generatedMethod)
+      throw new Error(`${key} is not part of the generated API service inventory`)
+    if (
+      generatedMethod.methodKind !== 'unary' ||
+      generatedMethod.idempotency !== protoNoSideEffects
+    ) {
+      throw new Error(`${key} is not a unary NO_SIDE_EFFECTS read`)
+    }
+
+    const policy = defineRpcCachePolicy(entry.policy)
+    if (!policy.idempotent || policy.method !== 'GET') {
+      throw new Error(`${key} has an incompatible RPC read policy`)
+    }
+    if (publicReadKeys.has(key)) {
+      if (policy.userScoped)
+        throw new Error(`${key} is public but has a user-scoped RPC cache policy`)
+    } else if (!policy.userScoped || policy.sharedCdn) {
+      throw new Error(`${key} must use a private user-scoped RPC cache policy`)
+    }
+    policies.set(key, policy)
+  }
+
+  for (const method of generatedMethods.values()) {
+    if (method.methodKind !== 'unary' || method.idempotency !== protoNoSideEffects) continue
+    const key = rpcMethodPolicyKey(method)
+    if (!policies.has(key)) throw new Error(`${key} has no explicit RPC cache policy`)
+  }
+}
