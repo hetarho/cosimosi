@@ -1,19 +1,39 @@
-import { NavigationContainer, type LinkingOptions } from '@react-navigation/native'
+import { NavigationContainer, useIsFocused, type LinkingOptions } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
 import { gateDecision } from '@cosimosi/auth'
 
+import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
+import { LoginPage } from '../../pages/login/index.ts'
+import { SettingsPage } from '../../pages/settings/index.ts'
+import { UniversePage } from '../../pages/universe/index.ts'
 import { mobileLinkingPrefixes } from '../../shared/native/index.ts'
 import { DiagnosticsScreen } from '../diagnostics/index.ts'
 import { MobilePaletteBootstrap, useSessionSnapshot } from '../providers/index.ts'
-import { ROUTES, type RootStackParamList } from './routes.ts'
+import { ROUTES, type RootStackParamList, type RootStackScreenProps } from './routes.ts'
 import { BootScreen } from './screens/BootScreen.tsx'
-import { DiaryReaderScreen } from './screens/DiaryReaderScreen.tsx'
-import { LoginScreen } from './screens/LoginScreen.tsx'
-import { SettingsScreen } from './screens/SettingsScreen.tsx'
-import { UniverseScreen } from './screens/UniverseScreen.tsx'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
+
+function UniverseRoute({ navigation }: RootStackScreenProps<'Universe'>) {
+  const active = useIsFocused()
+  return (
+    <UniversePage
+      active={active}
+      onOpenDiary={() => navigation.navigate(ROUTES.diaryReader)}
+      onOpenSettings={() => navigation.navigate(ROUTES.settings)}
+    />
+  )
+}
+
+function DiaryReaderRoute({ navigation }: RootStackScreenProps<'DiaryReader'>) {
+  const active = useIsFocused()
+  return <DiaryReaderPage active={active} onExit={() => navigation.navigate(ROUTES.universe)} />
+}
+
+function SettingsRoute({ navigation }: RootStackScreenProps<'Settings'>) {
+  return <SettingsPage onBack={() => navigation.navigate(ROUTES.universe)} />
+}
 
 /**
  * Typed deep-link config built from the inbound-link seam's prefixes. Only the authenticated
@@ -59,13 +79,13 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {stack === 'universe' ? (
           <>
-            <Stack.Screen name={ROUTES.universe} component={UniverseScreen} />
-            <Stack.Screen name={ROUTES.diaryReader} component={DiaryReaderScreen} />
-            <Stack.Screen name={ROUTES.settings} component={SettingsScreen} />
+            <Stack.Screen name={ROUTES.universe} component={UniverseRoute} />
+            <Stack.Screen name={ROUTES.diaryReader} component={DiaryReaderRoute} />
+            <Stack.Screen name={ROUTES.settings} component={SettingsRoute} />
             <Stack.Screen name={ROUTES.diagnostics} component={DiagnosticsScreen} />
           </>
         ) : stack === 'login' ? (
-          <Stack.Screen name={ROUTES.login} component={LoginScreen} />
+          <Stack.Screen name={ROUTES.login} component={LoginPage} />
         ) : (
           <Stack.Screen name={ROUTES.boot} component={BootScreen} />
         )}

@@ -1,2 +1,2 @@
-export { useDiaryDraftStore, type DiaryDraftState } from './model/draft-store.ts'
+export { useDiaryDraftStore, type DiaryDraftState } from '@cosimosi/universe'
 export { WriteDiaryFields } from './ui/WriteDiaryFields.tsx'

@@ -212,8 +212,8 @@ outside the machine (A10):
 
 - the **recalled memory id** lives in the shared `useRecallTargetStore` — the
   panel's 회고하기 records it there, the flow widget subscribes and sends `OPEN`
-  when it appears; the **rewrite text + result** live in the per-app recall-draft
-  store, never in context;
+  when it appears; the **rewrite text + result** live in the shared `@cosimosi/universe`
+  recall-draft store, never in context;
 - `OPEN` carries `needsSync` (clock-behind-today, read from the server) as the
   guard input: it routes to `confirmingSync` only when behind, else straight to
   `rewriting` ([R1a]). `REJECT` from the consent leaves `idle` with the clock
@@ -247,7 +247,7 @@ dead-ending.
 overlay's charge-sheet phase (plan 45). Every figure rides outside the machine
 (A10):
 
-- the **two-tier balance** lives in the shared `useTwinkleBalanceStore` mirror
+- the **two-tier balance** lives in the `@cosimosi/twinkle` `useTwinkleBalanceStore` mirror
   (synced from `GetBalance`; `total` is derived `basic + additional`, never
   stored); the **pending-spend cost** is the `QuoteSpend` Query read the cost
   display owns; the **charge result** is the earn mutation's returned total —
@@ -261,7 +261,7 @@ overlay's charge-sheet phase (plan 45). Every figure rides outside the machine
   store round trip + backend verification must resolve before the sheet
   releases, so no credit shows before the backend confirms it;
 - the sheet opens both from a **shortfall** in the cost display (through the
-  decoupled `useChargeRequestStore` signal, so the spend flows never import the
+  decoupled `@cosimosi/twinkle` `useChargeRequestStore` signal, so the spend flows never import the
   overlay) and from a restrained **proactive** affordance beside the balance.
 
 web and mobile import the machine + the balance/charge-request stores verbatim

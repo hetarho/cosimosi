@@ -1,4 +1,4 @@
-import { useUniverseClockStore } from '../../../entities/universe-clock/index.ts'
+import { useUniverseClockStore } from '@cosimosi/universe'
 import { m } from '../../../shared/i18n/index.ts'
 
 export interface UniverseTimeHudProps {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
+import { CHARGE_PACK } from '@cosimosi/twinkle'
 import { Button, Dialog, TextField } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
@@ -46,9 +47,7 @@ export function ChargeSheet({
           <h3 className="text-sm font-medium text-text">{m.twinkle_charge_pay_title()}</h3>
           <p className="text-sm text-text-muted">{m.twinkle_charge_pay_body()}</p>
           <div className="flex items-center justify-between gap-3">
-            <span className="text-base text-text tabular-nums">
-              {String(VALUES.twinkle.chargePack)}
-            </span>
+            <span className="text-base text-text tabular-nums">{String(CHARGE_PACK.amount)}</span>
             <Button color="primary" size="sm" loading={paying} disabled={busy} onClick={onPay}>
               {m.twinkle_charge_pay_action()}
             </Button>

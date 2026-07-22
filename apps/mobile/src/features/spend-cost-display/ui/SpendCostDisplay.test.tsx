@@ -1,15 +1,15 @@
 import { fireEvent, render } from '@testing-library/react-native'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
+import { gistViewSpend, recallSpend } from '@cosimosi/twinkle'
+import { useSpendQuote } from '@cosimosi/twinkle/react'
 
-import { gistViewSpend, recallSpend } from '../model/pending-spend.ts'
 import { SpendCostDisplay } from './SpendCostDisplay.tsx'
 
 // The quote hook is mocked so the display renders a fixed server quote and the branches can
 // be pressed live. A4/A9: a covered quote reaches proceed and issues NO spend call (the
 // display returns a decision only); a shortfall offers charge instead of dead-ending.
-jest.mock('../api/quote-spend.ts', () => ({ useSpendQuote: jest.fn() }))
-import { useSpendQuote } from '../api/quote-spend.ts'
+jest.mock('@cosimosi/twinkle/react', () => ({ useSpendQuote: jest.fn() }))
 
 const mockUseSpendQuote = useSpendQuote as jest.Mock
 

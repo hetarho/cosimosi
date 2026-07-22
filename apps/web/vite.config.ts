@@ -52,6 +52,7 @@ export default defineConfig(({ command, mode }) => {
         '@cosimosi/memory-logic',
         '@cosimosi/observability',
         '@cosimosi/state-machine',
+        '@cosimosi/twinkle',
         '@cosimosi/ui',
         '@cosimosi/universe',
         '@cosimosi/universe-render',

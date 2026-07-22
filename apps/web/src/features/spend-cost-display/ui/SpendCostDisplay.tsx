@@ -1,9 +1,9 @@
 import { SpendKind } from '@cosimosi/api-client'
+import type { PendingSpend } from '@cosimosi/twinkle'
+import { useSpendQuote } from '@cosimosi/twinkle/react'
 import { Button } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useSpendQuote } from '../api/quote-spend.ts'
-import type { PendingSpend } from '../model/pending-spend.ts'
 
 function costLabel(kind: SpendKind): string {
   if (kind === SpendKind.GIST_VIEW) return m.twinkle_cost_gist_label()

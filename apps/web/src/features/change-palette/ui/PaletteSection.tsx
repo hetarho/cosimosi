@@ -1,12 +1,14 @@
 import { useState } from 'react'
 
 import { listPalettes } from '@cosimosi/emotion'
+import {
+  paletteDisplayName,
+  useChangePalette,
+  usePalettePreferenceStore,
+} from '@cosimosi/emotion/react'
 import { Badge } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useChangePalette } from '../api/change-palette.ts'
-import { usePalettePreferenceStore } from '../model/palette-preference-store.ts'
-import { paletteDisplayName } from '../lib/palette-display-name.ts'
 
 // The palette picker ([P1]): the settings page hosts it, this slice owns it. It renders the
 // registry and nothing else — only guardrail-respecting palettes exist there ([P3] is enforced at

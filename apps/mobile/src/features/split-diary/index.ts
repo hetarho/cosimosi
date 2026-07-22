@@ -1,4 +1,4 @@
-export { requestSplitDiary, type SplitDiaryInput } from './api/split-diary.ts'
+export { requestSplitDiary, type SplitDiaryInput } from '@cosimosi/memory'
 export {
   ProposedMemoryList,
   type ProposedMemoryListProps,

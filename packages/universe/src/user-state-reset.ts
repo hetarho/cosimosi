@@ -1,16 +1,21 @@
 import { useAwakenRegistryStore } from './awaken-registry.ts'
-import { useChargeRequestStore } from './charge-request-store.ts'
+import { useAdvanceAnnouncementStore } from './advance-announcement-store.ts'
 import { useDeletionTargetStore } from './deletion-target-store.ts'
+import { useDeletionDraftStore } from './deletion-draft-store.ts'
+import { useDiaryDraftStore } from './diary-draft-store.ts'
 import { useDiaryStore } from './diary-store.ts'
 import { useEpisodicMemoryStore } from './episodic-memory-store.ts'
 import { useLatentConsumedStore } from './latent-consumed-store.ts'
+import { useLaunchedNeuronsStore } from './launched-neurons-store.ts'
 import { useNeuronStore } from './neuron-store.ts'
 import { useOpenDiaryTargetStore } from './open-diary-target-store.ts'
 import { usePendingFlyTargetStore } from './pending-fly-target-store.ts'
+import { useProposalStore } from './proposal-store.ts'
 import { useRecallTargetStore } from './recall-target-store.ts'
+import { useRecallDraftStore } from './recall-draft-store.ts'
 import { useReleasedGroupsStore } from './released-groups-store.ts'
 import { useSynapseStore } from './synapse-store.ts'
-import { useTwinkleBalanceStore } from './twinkle-balance-store.ts'
+import { cancelPendingTimeSyncConsent } from './time-sync-consent-store.ts'
 import { useUniverseClockStore } from './universe-clock-store.ts'
 
 /**
@@ -24,13 +29,18 @@ export function resetUniverseUserState(): void {
   useSynapseStore.getState().clear()
   useUniverseClockStore.getState().clear()
   useDiaryStore.getState().clear()
-  useTwinkleBalanceStore.getState().clear()
   useReleasedGroupsStore.getState().reset()
   useRecallTargetStore.getState().clear()
   useOpenDiaryTargetStore.getState().clear()
   usePendingFlyTargetStore.getState().clear()
-  useChargeRequestStore.getState().clear()
   useDeletionTargetStore.getState().clear()
   useLatentConsumedStore.getState().reset()
   useAwakenRegistryStore.getState().reset()
+  useAdvanceAnnouncementStore.getState().reset()
+  useLaunchedNeuronsStore.getState().reset()
+  useDiaryDraftStore.getState().clear()
+  useProposalStore.getState().reset()
+  useRecallDraftStore.getState().reset()
+  useDeletionDraftStore.getState().reset()
+  cancelPendingTimeSyncConsent()
 }

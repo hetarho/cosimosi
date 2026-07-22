@@ -3,9 +3,9 @@ import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
+import type { ProvenanceEntry } from '@cosimosi/memory'
 
 import { m } from '../../../shared/i18n/index.ts'
-import type { ProvenanceEntry } from '../model/provenance.ts'
 import { ProvenanceList } from './ProvenanceList.tsx'
 
 const entries: ProvenanceEntry[] = [

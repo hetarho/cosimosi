@@ -2,9 +2,9 @@ import { type ReactNode } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { moodColor, type Mood } from '@cosimosi/emotion'
+import type { Diary, DiarySplitMember } from '@cosimosi/memory'
 import { Button, tokens } from '@cosimosi/ui'
 
-import type { Diary, DiarySplitMember } from '../../../entities/diary/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface DiaryListProps {

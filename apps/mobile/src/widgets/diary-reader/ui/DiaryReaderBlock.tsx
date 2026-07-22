@@ -5,6 +5,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createSyncStatusQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
+import { useChargeRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
 import {
   classifyPaidActionError,
@@ -12,7 +13,6 @@ import {
   diaryReaderMachine,
   diaryRecallAdvanceAnnouncement,
   requestRecallDiaryStars,
-  useChargeRequestStore,
   useDeletionTargetStore,
   useOpenDiaryTargetStore,
   usePendingFlyTargetStore,
@@ -21,7 +21,7 @@ import {
   type PaidActionSession,
 } from '@cosimosi/universe'
 
-import { useInvalidateTwinkleBalance } from '../../../entities/twinkle/index.ts'
+import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
 import { RestoreSection } from '../../../features/restore-memory/index.ts'
@@ -30,7 +30,7 @@ import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/ind
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
-import { useInvalidateUniverse } from '../model/invalidate-universe.ts'
+import { useInvalidateUniverse } from '@cosimosi/universe/react'
 
 // widgets/diary-reader (RN fork, [D2][D3]): the archive block. It composes the free read
 // (read-diary-list) with the one paid action (recall-diary-stars) and owns the jump machine + the

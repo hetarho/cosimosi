@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import type { Diary } from '@cosimosi/memory'
 
-import { useDiaryStore, type Diary } from './diary-store.ts'
+import { useDiaryStore } from './diary-store.ts'
 
 const diary = (id: string, memberIds: readonly string[]): Diary => ({
   id,

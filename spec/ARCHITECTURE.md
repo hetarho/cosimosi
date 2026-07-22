@@ -318,6 +318,9 @@ apps/web/src/
 > Pure cross-app modules (shared domain logic, deterministic compute, the shader toolkit, the generated transport
 > client, generated config) live in `packages/`. **Both apps are consumers from the start**, so pure code is designed
 > cross-platform up front and placed in `packages/` directly — not built web-first and extracted later.
+> The root `lint:fsd:layout` gate enforces this placement: mobile product composition cannot live under
+> `app/navigation/screens` (only the neutral boot shell may), and byte-identical same-relative pure modules under
+> app-local `api`/`model`/`lib`/`config`/`shared` paths fail until promoted to their owning package.
 
 **Where each file goes (segments).** Inside _any_ slice, files are grouped by _technical role_ — never by generic
 `components/`/`hooks/`/`types/` folders:
@@ -385,6 +388,7 @@ packages/                pure cross-app modules — no Vite/Metro/DOM/native dep
 ├── api-client/          generated transport client + config
 ├── client-cache/         QueryClient defaults, connect-query keys, optimistic helpers, cache tests
 ├── auth/                 platform-pure session facade/adapters + optional React context seam
+├── emotion/ · memory/ · universe/ · twinkle/  cohesive FE domain mirrors, stores, IO + explicit React seams
 ├── observability/        telemetry/flags facade + optional React/runtime seams
 ├── state-machine/        XState catalog + optional React binding seam
 ├── i18n/                 generated message facade + optional React locale seam

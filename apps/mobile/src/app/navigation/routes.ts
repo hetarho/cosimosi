@@ -3,9 +3,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 /**
  * Typed route registry for the mobile shell. This file and NavigationRoot are the
  * only places that know the navigation library. The shell owns
- * navigation infrastructure, not product IA: the route set is deliberately small
- * and non-product. Feature screens are added later by presentation plans through
- * this same typed boundary.
+ * navigation infrastructure, not product composition: product pages are imported by
+ * NavigationRoot and adapted to this typed boundary through callback/data props.
  */
 export const ROUTES = {
   /** Neutral splash held while the session seam settles (bootstrapping/refreshing). */

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Button } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useAccountSession } from '../api/use-account-session.ts'
+import { useAccountSession } from '@cosimosi/auth/react'
 
 // The basic account section: the read-only identity line and sign-out behind a plain confirm step
 // (never an accidental single tap). Account holds nothing else in v1 — no profile, no credentials,
@@ -32,7 +32,7 @@ export function AccountSection() {
               onClick={() => {
                 // The rejected case is already surfaced on the [04] snapshot; the flag reset in
                 // the api keeps the action usable.
-                void signOut().catch(() => undefined)
+                signOut().catch(() => undefined)
               }}
             >
               {m.settings_sign_out()}

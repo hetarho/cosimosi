@@ -1,2 +1,2 @@
 export { AccountSection } from './ui/AccountSection.tsx'
-export { useAccountSession, type AccountSession } from './api/use-account-session.ts'
+export { useAccountSession, type AccountSession } from '@cosimosi/auth/react'

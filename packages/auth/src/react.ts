@@ -1,6 +1,7 @@
 import {
   createContext,
   createElement,
+  useCallback,
   useEffect,
   useContext,
   useRef,
@@ -45,6 +46,31 @@ export function useSessionSnapshot(): SessionSnapshot {
     () => facade.snapshot,
     () => facade.snapshot,
   )
+}
+
+export interface AccountSession {
+  userId: string | null
+  signingOut: boolean
+  signOut: () => Promise<void>
+}
+
+// The account section's whole data surface: the session snapshot already held by [04] plus the
+// facade's existing sign-out. `signOut` is stable for a facade identity, propagates the facade
+// error, and always clears the transient flag so a failed action never leaves the control disabled.
+// Routing remains the app gate's responsibility after the session settles signed out.
+export function useAccountSession(): AccountSession {
+  const facade = useAuthFacade()
+  const { userId } = useSessionSnapshot()
+  const [signingOut, setSigningOut] = useState(false)
+  const signOut = useCallback(async () => {
+    setSigningOut(true)
+    try {
+      await facade.signOut()
+    } finally {
+      setSigningOut(false)
+    }
+  }, [facade])
+  return { userId, signingOut, signOut }
 }
 
 export function authScopeKey(snapshot: Pick<SessionSnapshot, 'userId'>): string {

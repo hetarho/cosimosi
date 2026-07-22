@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 
-import { useTwinkleBalanceStore } from '../../../entities/twinkle/index.ts'
+import { useTwinkleBalanceStore } from '@cosimosi/twinkle'
 import { TwinkleBalanceHud } from './TwinkleBalanceHud.tsx'
 
 // The SSR-string harness runs the render but reads zustand's *initial* snapshot (no effects,

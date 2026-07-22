@@ -19,7 +19,7 @@ import {
 } from '../../../features/let-go/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
-import { useDeletionDraftStore } from '../model/deletion-draft-store.ts'
+import { useDeletionDraftStore } from '@cosimosi/universe'
 
 // widgets/deletion-flow (RN fork, [X1][X4]): the bottom-sheet/modal host over the running canvas
 // (no renderer remount, [23]) composing the three features. It owns the flow machine + the draft

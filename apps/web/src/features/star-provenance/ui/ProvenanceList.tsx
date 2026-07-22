@@ -1,7 +1,7 @@
 import { Button } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import type { ProvenanceEntry, ProvenanceKind, ProvenanceSource } from '../model/provenance.ts'
+import type { ProvenanceEntry, ProvenanceKind, ProvenanceSource } from '@cosimosi/memory'
 
 function kindLabel(kind: ProvenanceKind): string {
   if (kind === 'created') return m.star_provenance_kind_created()

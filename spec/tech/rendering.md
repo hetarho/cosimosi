@@ -81,8 +81,9 @@ over `pass(scene, camera)`, parameterized by the skin. It takes the render loop 
   bloom) with floating HUD buttons. The old design-system showcase page is retired; design-system primitives are
   verified via the `/test` harness `Design system` panel. The `/test` **rendering-foundation** panel
   (`pages/test/lib/render-demo-panel`) drives the package with a live skin switcher.
-- **Mobile:** `apps/mobile/.../navigation/screens/UniverseScreen` (route `Universe`, reached from `ShellHome`) renders
-  the **same** package scene, error-boundaried so a WebGPU/native failure shows a fallback instead of crashing.
+- **Mobile:** `apps/mobile/src/pages/universe/ui/UniversePage.tsx` (registered by the app-layer `Universe` route
+  adapter) renders the **same** package scene, error-boundaried so a WebGPU/native failure shows a fallback instead of
+  crashing.
 - Both apps import `@cosimosi/3d-renderer` identically — proven by `typecheck` passing on **both** web and RN.
 
 ## three confined to the package
@@ -108,7 +109,7 @@ The scene code is shared; native needs build-time wiring (not forked code):
 ## The universe canvas (plan 23 as-built)
 
 The first real consumer of the substrate: `widgets/universe-canvas` (web + mobile) renders the per-user memory graph
-on the main page (`/` · `UniverseScreen`). Its platform-agnostic core — the graph builder, the `UniverseSimBridge`,
+on the main page (`/` · mobile `UniversePage`). Its platform-agnostic core — the graph builder, the `UniverseSimBridge`,
 the XState navigation machine, and the camera-rig scalars — is shared verbatim through **`@cosimosi/universe`**; the
 app widget slices hold only the app-context wiring (fetch → stores, scene composition) and the per-app sim-worker
 spawner. Sharing the core through a package — rather than copy-mirroring it into each app — is what keeps web and

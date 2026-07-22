@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 import { m } from '@cosimosi/i18n'
 
-import { requestTimeSyncConsent, useTimeSyncConsentStore } from '../model/consent.ts'
+import { requestTimeSyncConsent, useTimeSyncConsentStore } from '@cosimosi/universe'
 import { ConfirmTimeSyncDialog } from './ConfirmTimeSyncDialog.tsx'
 
 // The web half of the [R1a] consent contract. The dialog body mounts through a DOM portal, which

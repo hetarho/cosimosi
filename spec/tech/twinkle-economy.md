@@ -23,6 +23,12 @@ cross-context adapters live (CC2/CC8). The context ships as one package plus its
   `ClaimInvite`/`Charge` mutate and are idempotent per their keys. **Earn-on-write and the spend have no RPC** —
   they are cross-context port calls inside memory's transactions.
 
+The frontend IO/state boundary is the separate `@cosimosi/twinkle` package: balance Query + invalidation, the
+two-tier Zustand mirror, pending-spend/quote adapters, charge/invite actions, the generated-config-backed charge-pack
+projection, and the charge-request channel live there once for web and mobile. React Query hooks use its explicit
+`@cosimosi/twinkle/react` seam. Deterministic pricing formulas remain in `@cosimosi/twinkle-logic`; the IO/state
+package does not absorb or duplicate them.
+
 ## 2. The balance model
 
 `Balance = { Basic, Additional }` (whole Twinkle units).

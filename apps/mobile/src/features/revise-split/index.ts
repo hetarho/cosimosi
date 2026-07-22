@@ -1,4 +1,4 @@
-export { requestReviseSplit, type ReviseSplitInput } from './api/revise-split.ts'
+export { requestReviseSplit, type ReviseSplitInput } from '@cosimosi/memory'
 export {
   ReviseControls,
   type ReviseControlsProps,

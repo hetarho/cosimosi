@@ -11,6 +11,8 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
+    "allowJs": true,
+    "checkJs": false,
     "types": ["node"],
     "noUnusedLocals": true,
     "noUnusedParameters": true

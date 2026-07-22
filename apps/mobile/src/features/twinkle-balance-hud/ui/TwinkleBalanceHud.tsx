@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { tokens } from '@cosimosi/ui'
 
-import { twinkleTotal, useTwinkleBalanceStore } from '../../../entities/twinkle/index.ts'
+import { twinkleTotal, useTwinkleBalanceStore } from '@cosimosi/twinkle'
 import { m } from '../../../shared/i18n/index.ts'
 
 // features/twinkle-balance-hud ui (RN fork, [G2][G5]): the persistent, restrained balance

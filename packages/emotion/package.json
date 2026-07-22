@@ -5,17 +5,30 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./i18n": "./src/i18n.ts",
+    "./react": "./src/react.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@cosimosi/config": "workspace:*"
+    "@connectrpc/connect": "^2.1.2",
+    "@cosimosi/api-client": "workspace:*",
+    "@cosimosi/config": "workspace:*",
+    "@cosimosi/i18n": "workspace:*",
+    "zustand": "^5.0.14"
+  },
+  "peerDependencies": {
+    "@connectrpc/connect-query": "^2.2.0",
+    "react": ">=19"
   },
   "devDependencies": {
+    "@connectrpc/connect-query": "^2.2.0",
     "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "react": "^19.2.7",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   }

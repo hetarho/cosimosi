@@ -18,7 +18,7 @@ import {
 } from '../../../features/confirm-time-sync/index.ts'
 import { UniverseTimeHud } from '../../../features/universe-clock-hud/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
-import { releaseAdvance } from '../model/release-advance.ts'
+import { releaseAdvance } from '@cosimosi/universe'
 
 // widgets/universe-time (RN fork): the time overlay over the running canvas — the HUD, the
 // acceleration, and the consent modal composed by one machine phase (§3.1/§3.2). Shares model/api

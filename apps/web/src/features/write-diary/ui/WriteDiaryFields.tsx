@@ -1,7 +1,7 @@
 import { TextArea, TextField } from '@cosimosi/ui'
+import { useDiaryDraftStore } from '@cosimosi/universe'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useDiaryDraftStore } from '../model/draft-store.ts'
 
 // features/write-diary ui: the diary body + date-picker bound to the draft store ([W5]). The date
 // uses the platform date input (a web/native-forked primitive per §3.5). Copy is i18n.

@@ -14,15 +14,16 @@ import {
   useUniverseClockStore,
 } from '@cosimosi/universe'
 
-import { useRecallDraftStore } from '../model/recall-draft-store.ts'
+import { useRecallDraftStore } from '@cosimosi/universe'
 import { RecallFlowSheet } from './RecallFlowSheet.tsx'
 
 // The cost gate's quote hook is mocked to a fixed covered quote so the flow reaches the rewrite
 // phase without a QuoteSpend round-trip — the quote branch is pinned by the SpendCostDisplay test.
-jest.mock('../../../features/spend-cost-display/api/quote-spend.ts', () => ({
+jest.mock('@cosimosi/twinkle/react', () => ({
+  useInvalidateTwinkleBalance: () => jest.fn(async () => undefined),
   useSpendQuote: jest.fn(),
 }))
-import { useSpendQuote } from '../../../features/spend-cost-display/api/quote-spend.ts'
+import { useSpendQuote } from '@cosimosi/twinkle/react'
 const mockUseSpendQuote = useSpendQuote as jest.Mock
 
 const vividMemory: EpisodicMemory = {

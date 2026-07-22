@@ -5,5 +5,5 @@ export {
   claimInvite,
   startStorePurchase,
   PaymentUnavailableError,
-} from './api/charge.ts'
-export { CHARGE_PACK } from './config/pack.ts'
+} from '@cosimosi/twinkle'
+export { CHARGE_PACK } from '@cosimosi/twinkle'

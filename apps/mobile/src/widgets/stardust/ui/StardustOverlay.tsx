@@ -4,13 +4,10 @@ import { Platform, StyleSheet, View } from 'react-native'
 import { useTransport } from '@connectrpc/connect-query'
 
 import { VALUES } from '@cosimosi/config'
+import { useChargeRequestStore } from '@cosimosi/twinkle'
+import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
 import { Button, tokens } from '@cosimosi/ui'
-import { stardustMachine, useChargeRequestStore, type StardustPhase } from '@cosimosi/universe'
-
-import {
-  useInvalidateTwinkleBalance,
-  useTwinkleBalanceQuery,
-} from '../../../entities/twinkle/index.ts'
+import { stardustMachine, type StardustPhase } from '@cosimosi/universe'
 import {
   CHARGE_PACK,
   ChargeSheet,

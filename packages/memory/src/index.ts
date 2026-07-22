@@ -12,3 +12,11 @@ export {
   universeFromResponse,
   type UniverseSnapshot,
 } from './mappers.ts'
+export { diariesFromDtos, type Diary, type DiarySplitMember } from './diary.ts'
+export {
+  requestReviseSplit,
+  type ProposedMemoryInput,
+  type ReviseSplitInput,
+} from './revise-split.ts'
+export { requestSplitDiary, type SplitDiaryInput } from './split-diary.ts'
+export type { ProvenanceEntry, ProvenanceKind, ProvenanceSource } from './provenance.ts'

@@ -42,7 +42,7 @@ import {
 import { usePaletteVersion } from '../../../features/change-palette/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
-import { useUniverse } from '../api/use-universe.ts'
+import { useUniverse } from '@cosimosi/universe/react'
 import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}

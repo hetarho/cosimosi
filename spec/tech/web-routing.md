@@ -112,8 +112,9 @@ parity, §3.5):
 - **Mobile mirror** — `app/navigation/NavigationRoot.tsx` selects the authoritative stack from the same snapshot via
   the same mapping: login decision → the `Login` stack; `bootstrapping` → the `Boot` splash; otherwise the
   `Universe` stack (`refreshing` keeps it mounted — a cold entry is never `refreshing`). React Navigation swaps the
-  mounted stack on decision change, so sign-in/sign-out routing needs no manual resets. The shell-era `ShellHome`
-  screen is retired.
+  mounted stack on decision change, so sign-in/sign-out routing needs no manual resets. Product composition lives in
+  `pages/{login,universe,diary-reader,settings}`; module-private route adapters pass callback/data props, while the
+  neutral `BootScreen` alone remains under `app/navigation/screens`. The shell-era `ShellHome` screen is retired.
 - **Sign-out** routes to login on both apps by the same observation; nothing persisted is deleted. Before the new
   auth-scope subtree commits, the scope boundary clears the full Query cache (including injected clients) plus every
   registered user mirror, draft, target, deferred action, release/balance mirror, and palette epoch. A re-sign-in then

@@ -1,5 +1,2 @@
-export {
-  useAdvanceAnnouncementStore,
-  type AdvanceAnnouncementState,
-} from './model/advance-interval-store.ts'
+export { useAdvanceAnnouncementStore, type AdvanceAnnouncementState } from '@cosimosi/universe'
 export { AccelerateTime, type AccelerateTimeProps } from './ui/AccelerateTime.tsx'

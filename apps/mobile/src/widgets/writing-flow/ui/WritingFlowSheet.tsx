@@ -22,7 +22,7 @@ import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/i
 import { WriteDiaryFields, useDiaryDraftStore } from '../../../features/write-diary/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
-import { useProposalStore } from '../model/proposal-store.ts'
+import { useProposalStore } from '@cosimosi/universe'
 
 // The diary date defaults to *today in the user's own timezone* ([W5]). `toISOString()` would emit
 // the UTC date, which is a day behind for KST users in the local 00:00–09:00 window — build the ISO

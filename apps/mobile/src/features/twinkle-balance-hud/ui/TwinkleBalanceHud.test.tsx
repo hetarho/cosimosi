@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react-native'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
-import { useTwinkleBalanceStore } from '@cosimosi/universe'
+import { useTwinkleBalanceStore } from '@cosimosi/twinkle'
 
 import { TwinkleBalanceHud } from './TwinkleBalanceHud.tsx'
 

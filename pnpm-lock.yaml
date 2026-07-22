@@ -79,6 +79,9 @@ importers:
       '@cosimosi/state-machine':
         specifier: workspace:*
         version: link:../../packages/state-machine
+      '@cosimosi/twinkle':
+        specifier: workspace:*
+        version: link:../../packages/twinkle
       '@cosimosi/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -245,6 +248,9 @@ importers:
       '@cosimosi/state-machine':
         specifier: workspace:*
         version: link:../../packages/state-machine
+      '@cosimosi/twinkle':
+        specifier: workspace:*
+        version: link:../../packages/twinkle
       '@cosimosi/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -475,13 +481,34 @@ importers:
 
   packages/emotion:
     dependencies:
+      '@connectrpc/connect':
+        specifier: ^2.1.2
+        version: 2.1.2(@bufbuild/protobuf@2.12.1)
+      '@cosimosi/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config
+      '@cosimosi/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.17)(immer@10.2.0)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
     devDependencies:
+      '@connectrpc/connect-query':
+        specifier: ^2.2.0
+        version: 2.2.0(@bufbuild/protobuf@2.12.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.12.1))(@tanstack/query-core@5.101.1)(@tanstack/react-query@5.101.1(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -522,6 +549,9 @@ importers:
 
   packages/memory:
     dependencies:
+      '@connectrpc/connect':
+        specifier: ^2.1.2
+        version: 2.1.2(@bufbuild/protobuf@2.12.1)
       '@cosimosi/api-client':
         specifier: workspace:*
         version: link:../api-client
@@ -532,9 +562,21 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.12.1
         version: 2.12.1
+      '@connectrpc/connect-query':
+        specifier: ^2.2.0
+        version: 2.2.0(@bufbuild/protobuf@2.12.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.12.1))(@tanstack/query-core@5.101.1)(@tanstack/react-query@5.101.1(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tanstack/react-query':
+        specifier: ^5.101.1
+        version: 5.101.1(react@19.2.7)
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -589,6 +631,43 @@ importers:
       '@xstate/react':
         specifier: ^6.1.0
         version: 6.1.0(@types/react@19.2.17)(react@19.2.7)(xstate@5.32.2)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@24.13.2)(jsdom@29.1.1)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+
+  packages/twinkle:
+    dependencies:
+      '@connectrpc/connect':
+        specifier: ^2.1.2
+        version: 2.1.2(@bufbuild/protobuf@2.12.1)
+      '@cosimosi/api-client':
+        specifier: workspace:*
+        version: link:../api-client
+      '@cosimosi/config':
+        specifier: workspace:*
+        version: link:../config
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.17)(immer@10.2.0)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
+    devDependencies:
+      '@connectrpc/connect-query':
+        specifier: ^2.2.0
+        version: 2.2.0(@bufbuild/protobuf@2.12.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.12.1))(@tanstack/query-core@5.101.1)(@tanstack/react-query@5.101.1(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tanstack/react-query':
+        specifier: ^5.101.1
+        version: 5.101.1(react@19.2.7)
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.2
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -659,6 +738,9 @@ importers:
 
   packages/universe:
     dependencies:
+      '@connectrpc/connect':
+        specifier: ^2.1.2
+        version: 2.1.2(@bufbuild/protobuf@2.12.1)
       '@cosimosi/api-client':
         specifier: workspace:*
         version: link:../api-client
@@ -677,9 +759,6 @@ importers:
       '@cosimosi/memory-logic':
         specifier: workspace:*
         version: link:../memory-logic
-      react:
-        specifier: '>=19'
-        version: 19.2.7
       xstate:
         specifier: ^5.32.2
         version: 5.32.2
@@ -687,9 +766,21 @@ importers:
         specifier: ^5.0.14
         version: 5.0.14(@types/react@19.2.17)(immer@10.2.0)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
     devDependencies:
+      '@connectrpc/connect-query':
+        specifier: ^2.2.0
+        version: 2.2.0(@bufbuild/protobuf@2.12.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.12.1))(@tanstack/query-core@5.101.1)(@tanstack/react-query@5.101.1(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tanstack/react-query':
+        specifier: ^5.101.1
+        version: 5.101.1(react@19.2.7)
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -9273,7 +9364,9 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.0': {}
 

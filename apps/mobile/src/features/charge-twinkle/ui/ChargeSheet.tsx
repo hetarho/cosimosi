@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
+import { CHARGE_PACK } from '@cosimosi/twinkle'
 import { Button, Dialog, TextField, tokens } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
@@ -47,7 +48,7 @@ export function ChargeSheet({
           <Text style={styles.heading}>{m.twinkle_charge_pay_title()}</Text>
           <Text style={styles.muted}>{m.twinkle_charge_pay_body()}</Text>
           <View style={styles.row}>
-            <Text style={styles.figure}>{String(VALUES.twinkle.chargePack)}</Text>
+            <Text style={styles.figure}>{String(CHARGE_PACK.amount)}</Text>
             <Button color="primary" size="sm" loading={paying} disabled={busy} onPress={onPay}>
               {m.twinkle_charge_pay_action()}
             </Button>

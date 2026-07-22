@@ -6,7 +6,7 @@ import { Button, tokens } from '@cosimosi/ui'
 import { remainingRestoreDays, useReleasedGroupsStore } from '@cosimosi/universe'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useRestoreMemory } from '../api/use-restore.ts'
+import { useRestoreMemory } from '@cosimosi/universe/react'
 
 // features/restore-memory ui (RN fork, [X2]): the "지운 일기" section a host mounts. It lists this
 // session's released groups (from the Release response — a fresh reload lists none, the accepted v1

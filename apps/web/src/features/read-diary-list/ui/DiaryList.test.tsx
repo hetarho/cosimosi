@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 
-import type { Diary } from '../../../entities/diary/index.ts'
+import type { Diary } from '@cosimosi/memory'
 import { DiaryList, type DiaryListProps } from './DiaryList.tsx'
 
 const diary = (id: string, memberNames: readonly string[]): Diary => ({

@@ -3,17 +3,17 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { useTransport } from '@connectrpc/connect-query'
 
+import { useChargeRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
 import {
   classifyPaidActionError,
   createPaidActionSession,
   requestViewSemantic,
-  useChargeRequestStore,
   type PaidActionAttempt,
   type PaidActionSession,
 } from '@cosimosi/universe'
 
-import { useInvalidateTwinkleBalance } from '../../../entities/twinkle/index.ts'
+import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { SpendCostDisplay, gistViewSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 

@@ -19,21 +19,22 @@ or action from appearing or firing under B's credentials.
 
 ## Reset registry
 
-`@cosimosi/universe` owns `resetUniverseUserState()`. It is the only public package reset seam and
-must include every package-owned Zustand read mirror or cross-route action channel:
+Every stateful domain package owns one public reset seam for its user-scoped singletons. The app aggregator calls those
+seams; it does not enumerate package internals.
+
+`@cosimosi/universe` owns `resetUniverseUserState()` and includes every universe-owned Zustand read mirror, draft, or
+cross-route action channel:
 
 - episodic memories, neurons, synapses, universe clock, and diaries;
-- Twinkle balance and same-session released groups;
-- recall, open-diary, pending-fly, charge, and deletion targets;
-- latent consumed marks and the awaken registry.
+- same-session released groups, recall/open-diary/pending-fly/deletion targets;
+- advance and launched-neuron hand-offs, diary/split/recall/deletion drafts, and time-sync consent;
+- latent consumed marks and the awaken registry. Reset settles outstanding time-sync consent as `cancel`.
 
-Each app owns an `app/model/reset-user-state.ts` aggregator for the still-duplicated platform
-stores. The web and mobile inventories must stay equal until their promotion to a shared package:
+`@cosimosi/twinkle` owns `resetTwinkleUserState()` for the two-tier balance mirror and charge-request channel.
+`@cosimosi/emotion/react` owns the palette display/confirmed mirror plus its persistence epoch reset.
 
-- advance announcement and launched-neuron hand-offs;
-- diary, split proposal, recall, and deletion drafts;
-- the time-sync consent channel; a reset settles an outstanding promise as `cancel`;
-- palette display/confirmed mirrors and the palette persistence epoch.
+Each app's `app/model/reset-user-state.ts` is therefore a parity-checked composition of the universe, Twinkle, and
+palette reset APIs. It owns no second store inventory.
 
 Adding a module-global user-owned store or deferred action channel requires adding its empty/default
 reset to the owning aggregate and extending the inventory/reset regression. Component-local state

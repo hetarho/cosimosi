@@ -30,6 +30,7 @@
     "@cosimosi/memory-logic": "workspace:*",
     "@cosimosi/observability": "workspace:*",
     "@cosimosi/state-machine": "workspace:*",
+    "@cosimosi/twinkle": "workspace:*",
     "@cosimosi/ui": "workspace:*",
     "@cosimosi/universe": "workspace:*",
     "@cosimosi/universe-render": "workspace:*",

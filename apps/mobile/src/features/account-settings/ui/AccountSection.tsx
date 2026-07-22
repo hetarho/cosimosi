@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Button, tokens } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useAccountSession } from '../api/use-account-session.ts'
+import { useAccountSession } from '@cosimosi/auth/react'
 
 // The basic account section (RN mirror of the web ui over the same api): the read-only identity
 // line and sign-out behind a plain confirm step (never an accidental single tap). Account holds
@@ -34,7 +34,7 @@ export function AccountSection() {
               onPress={() => {
                 // The rejected case is already surfaced on the [04] snapshot; the flag reset in
                 // the api keeps the action usable.
-                void signOut().catch(() => undefined)
+                signOut().catch(() => undefined)
               }}
             >
               {m.settings_sign_out()}

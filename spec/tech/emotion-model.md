@@ -59,7 +59,11 @@ reads and canonically applies the preference (or deterministic default) before a
 mount. Live writes keep optimistic and server-confirmed ids separate, are serialized inside one auth epoch, and reject
 queued/late work after a scope change. A swap re-colors live (a palette-version signal remounts the color layers) with
 no `GetUniverse` refetch and no rendering-package edit. The
-registry + preference are frontend-owned (not golden-parity); the backend holds only the id.
+registry + preference are frontend-owned (not golden-parity); the backend holds only the id. The preference store,
+read/write functions, apply helpers, display-name projection, and their tests live once in `@cosimosi/emotion`; React
+and Connect Query bindings are exposed only through `@cosimosi/emotion/react` for both apps. The explicit
+`@cosimosi/emotion/i18n` seam owns `moodLabel(wireMood)`: its exhaustive mood-to-message projection falls back to
+neutral for an unknown DTO value, and app `shared/i18n` barrels re-export it without a web/mobile copy.
 
 ## 4. Arousal Strength Parity
 

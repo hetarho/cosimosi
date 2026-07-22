@@ -1,2 +1,2 @@
 export { m, useActiveLocale, type Locale } from '@cosimosi/i18n/react'
-export { moodLabel } from './mood-label.ts'
+export { moodLabel } from '@cosimosi/emotion/i18n'

@@ -4,7 +4,7 @@ export {
   useTimeSyncConsentStore,
   type TimeSyncConsentState,
   type TimeSyncDecision,
-} from './model/consent.ts'
+} from '@cosimosi/universe'
 export {
   ConfirmTimeSyncDialog,
   type ConfirmTimeSyncDialogProps,

@@ -3,16 +3,16 @@ import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
+import { gistViewSpend, recallSpend } from '@cosimosi/twinkle'
+import { useSpendQuote } from '@cosimosi/twinkle/react'
 
-import { gistViewSpend, recallSpend } from '../model/pending-spend.ts'
 import { SpendCostDisplay } from './SpendCostDisplay.tsx'
 
 // The quote hook is mocked so the display renders a fixed server quote with no transport —
 // the display renders the figure verbatim and never prices (A3). SSR can't click, so the
 // coverage/shortfall branches are asserted by which affordances render; the "never calls
 // spend" guarantee is structural (the feature imports no spend RPC — see the boundary audit).
-vi.mock('../api/quote-spend.ts', () => ({ useSpendQuote: vi.fn() }))
-import { useSpendQuote } from '../api/quote-spend.ts'
+vi.mock('@cosimosi/twinkle/react', () => ({ useSpendQuote: vi.fn() }))
 
 const mockUseSpendQuote = vi.mocked(useSpendQuote)
 

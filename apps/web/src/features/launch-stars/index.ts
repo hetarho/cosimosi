@@ -1,5 +1,2 @@
-export {
-  useLaunchedNeuronsStore,
-  type LaunchedNeuronsState,
-} from './model/launched-neurons-store.ts'
+export { useLaunchedNeuronsStore, type LaunchedNeuronsState } from '@cosimosi/universe'
 export { LaunchButton, type LaunchButtonProps } from './ui/LaunchButton.tsx'

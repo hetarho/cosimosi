@@ -67,7 +67,8 @@ export { requestSyncStatus } from './sync-status.ts'
 // Diary-reader vertical (일기장, [D2][D3]): the free archive read-model, the whole-diary recall
 // jump machine + its RPC/acceleration hand-off, and the two cross-route one-slot channels
 // (deep-link into the reader, camera fly back out).
-export { useDiaryStore, type Diary, type DiarySplitMember, type DiaryState } from './diary-store.ts'
+export { useDiaryStore, type DiaryState } from './diary-store.ts'
+export type { Diary, DiarySplitMember } from '@cosimosi/memory'
 export {
   diaryReaderMachine,
   type DiaryReaderPhase,
@@ -75,6 +76,8 @@ export {
 } from './diary-reader.machine.ts'
 export { requestRecallDiaryStars, diaryRecallAdvanceAnnouncement } from './recall-diary-stars.ts'
 export { useOpenDiaryTargetStore, type OpenDiaryTargetState } from './open-diary-target-store.ts'
+export { useDiaryDraftStore, type DiaryDraftState } from './diary-draft-store.ts'
+export { useProposalStore, type ProposalState } from './proposal-store.ts'
 
 // Deletion + letting-go vertical: the two-branch flow machine + restore-window helper, the four
 // RPC wrappers + optimistic apply helpers, and the three cross-route stores (open-target,
@@ -104,6 +107,11 @@ export {
   type ReleasedGroup,
   type ReleasedGroupsState,
 } from './released-groups-store.ts'
+export {
+  useDeletionDraftStore,
+  type DeletionCandidate,
+  type DeletionDraftState,
+} from './deletion-draft-store.ts'
 export { usePendingFlyTargetStore, type PendingFlyTargetState } from './pending-fly-target-store.ts'
 export {
   draftsFromResponse,
@@ -142,22 +150,27 @@ export {
   type AdvanceSweepFrame,
 } from './advance-interval.ts'
 export {
+  useAdvanceAnnouncementStore,
+  type AdvanceAnnouncementState,
+} from './advance-announcement-store.ts'
+export {
+  cancelPendingTimeSyncConsent,
+  requestTimeSyncConsent,
+  useTimeSyncConsentStore,
+  type TimeSyncConsentState,
+  type TimeSyncDecision,
+} from './time-sync-consent-store.ts'
+export { useLaunchedNeuronsStore, type LaunchedNeuronsState } from './launched-neurons-store.ts'
+export { releaseAdvance } from './release-advance.ts'
+export { syncUniverseClock } from './sync-universe-clock.ts'
+export {
   universeTimeMachine,
   type UniverseTimeEvent,
   type UniverseTimePhase,
 } from './universe-time.machine.ts'
 
-// Stardust economy (별가루) control-state + balance mirror: the charge-sheet phase
-// machine and the two-tier balance store the HUD reads (figures in the store, phase in
-// the machine, §3.2)
+// Stardust economy control-state; the Twinkle data/IO package owns balances and charge requests.
 export { stardustMachine, type StardustPhase, type StardustEvent } from './stardust.machine.ts'
-export {
-  useTwinkleBalanceStore,
-  twinkleTotal,
-  type TwinkleBalance,
-  type TwinkleBalanceState,
-} from './twinkle-balance-store.ts'
-export { useChargeRequestStore, type ChargeRequestState } from './charge-request-store.ts'
 export { requestViewSemantic, type ViewSemanticInput } from './view-semantic.ts'
 
 // Awaken (entry choreography) logic + idempotency registry
@@ -202,3 +215,8 @@ export { useEpisodicMemoryStore, type EpisodicMemoryState } from './episodic-mem
 export { useNeuronStore, type NeuronState } from './neuron-store.ts'
 export { useSynapseStore, type SynapseState } from './synapse-store.ts'
 export { resetUniverseUserState } from './user-state-reset.ts'
+export {
+  useRecallDraftStore,
+  type RecallDraftState,
+  type RecallResultView,
+} from './recall-draft-store.ts'
