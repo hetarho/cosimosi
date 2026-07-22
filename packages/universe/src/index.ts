@@ -201,3 +201,4 @@ export {
 export { useEpisodicMemoryStore, type EpisodicMemoryState } from './episodic-memory-store.ts'
 export { useNeuronStore, type NeuronState } from './neuron-store.ts'
 export { useSynapseStore, type SynapseState } from './synapse-store.ts'
+export { resetUniverseUserState } from './user-state-reset.ts'

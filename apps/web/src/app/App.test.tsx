@@ -1,14 +1,20 @@
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createGetUniverseQueryKey, type GetUniverseResponse } from '@cosimosi/api-client'
+import {
+  createGetPalettePreferenceQueryKey,
+  createGetUniverseQueryKey,
+  type GetUniverseResponse,
+} from '@cosimosi/api-client'
 import type { SessionStatus } from '@cosimosi/auth'
 import { setClientCacheData } from '@cosimosi/client-cache'
+import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
 import { createTestHarnessFakes } from '../pages/test/index.ts'
 import App from './App.tsx'
+import { resetWebUserState } from './model/reset-user-state.ts'
 import { createAppRouter } from './routes/index.ts'
 
 // The router resolves its route asynchronously, so SSR tests build a router at the
@@ -35,6 +41,13 @@ const emptyUniverse = {
   synapses: [],
   universeTime: '',
 } as unknown as GetUniverseResponse
+
+function seedDefaultPalette(fakes: ReturnType<typeof createTestHarnessFakes>, userId: string) {
+  resetWebUserState(userId)
+  setClientCacheData(fakes.queryClient, createGetPalettePreferenceQueryKey(fakes.transport), {
+    paletteId: DEFAULT_PALETTE_ID,
+  } as never)
+}
 
 describe('web app test harness route', () => {
   afterEach(() => {
@@ -231,6 +244,7 @@ describe('web auth gate', () => {
     const fakes = createTestHarnessFakes({ userId: 'settings-test-user' })
     const observability = createObservabilityFacade()
     await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
+    seedDefaultPalette(fakes, 'settings-test-user')
     const router = createAppRouter({
       diagnosticsEnabled: false,
       getSessionStatus: () => fakes.authFacade.snapshot.status,
@@ -275,6 +289,7 @@ describe('web auth gate', () => {
     const fakes = createTestHarnessFakes({ userId: 'universe-test-user' })
     const observability = createObservabilityFacade()
     await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
+    seedDefaultPalette(fakes, 'universe-test-user')
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
     const router = createAppRouter({
       diagnosticsEnabled: false,

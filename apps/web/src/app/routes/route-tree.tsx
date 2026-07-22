@@ -13,6 +13,7 @@ import { gateDecision, type SessionStatus } from '@cosimosi/auth'
 import { m } from '@cosimosi/i18n'
 
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
+import { PaletteBootstrap } from '../providers/palette-bootstrap.tsx'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
 import { SettingsPage } from '../../pages/settings/index.ts'
@@ -74,7 +75,13 @@ function AuthenticatedLayout() {
       navigate({ to: '/login', search: { from: location.pathname } })
     }
   }, [decision, navigate, location.pathname])
-  if (status === 'authenticated' || status === 'refreshing') return <Outlet />
+  if (status === 'authenticated' || status === 'refreshing') {
+    return (
+      <PaletteBootstrap>
+        <Outlet />
+      </PaletteBootstrap>
+    )
+  }
   return <AuthHold />
 }
 

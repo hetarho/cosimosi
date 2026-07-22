@@ -11,6 +11,7 @@ export interface DiaryDraftState {
   setDiaryDate: (diaryDate: string) => void
   /** Seed a fresh draft: empty body + the given date (today, supplied by the opener). */
   reset: (diaryDate: string) => void
+  clear: () => void
 }
 
 export const useDiaryDraftStore = create<DiaryDraftState>()((set) => ({
@@ -19,4 +20,5 @@ export const useDiaryDraftStore = create<DiaryDraftState>()((set) => ({
   setBody: (body) => set({ body }),
   setDiaryDate: (diaryDate) => set({ diaryDate }),
   reset: (diaryDate) => set({ body: '', diaryDate }),
+  clear: () => set({ body: '', diaryDate: '' }),
 }))

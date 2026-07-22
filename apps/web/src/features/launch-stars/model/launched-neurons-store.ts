@@ -7,9 +7,11 @@ import { create } from 'zustand'
 export interface LaunchedNeuronsState {
   newNeuronIds: readonly string[]
   announce: (ids: readonly string[]) => void
+  reset: () => void
 }
 
 export const useLaunchedNeuronsStore = create<LaunchedNeuronsState>()((set) => ({
   newNeuronIds: [],
   announce: (ids) => set({ newNeuronIds: ids }),
+  reset: () => set({ newNeuronIds: [] }),
 }))

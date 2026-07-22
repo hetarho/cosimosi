@@ -1,4 +1,5 @@
 export {
+  cancelPendingTimeSyncConsent,
   requestTimeSyncConsent,
   useTimeSyncConsentStore,
   type TimeSyncConsentState,

@@ -24,7 +24,7 @@ export function checkPaletteAxisConsistency(palette: MoodPalette): PaletteAxisWa
   const warnings: PaletteAxisWarning[] = []
   for (const mood of MOODS) {
     const valence = moodCoordinate(mood).valence
-    const warmth = hueWarmth(palette.colors[mood])
+    const warmth = colorWarmth(palette.colors[mood])
     // Warmth and valence should share a sign; their negated product is the contradiction, scaled
     // by valence strength, so a near-neutral mood is judged leniently and a strong one strictly.
     const severity = Math.max(0, -(warmth * valence))
@@ -38,27 +38,24 @@ export function checkPaletteAxisConsistency(palette: MoodPalette): PaletteAxisWa
 // Orange-gold reads warmest; its hue-circle antipode (~220°, azure) reads coolest.
 const WARM_PEAK_DEG = 40
 
-// The color's warm/cool value in [-1, 1], derived from hue alone: a cosine peaked at the warm
-// hue, so warmth falls off smoothly toward the cool antipode. Saturation/lightness do not enter —
-// the axis reading is about which side of the wheel the color sits on.
-function hueWarmth(color: Color): number {
-  const hue = hueDegrees(color)
-  return Math.cos(((hue - WARM_PEAK_DEG) * Math.PI) / 180)
+// A desaturated color has little hue evidence, so saturation attenuates the hue-circle reading and
+// makes grayscale exactly neutral instead of treating its arbitrary HSL hue as red.
+export function colorWarmth(color: Color): number {
+  const { hue, saturation } = hslHueAndSaturation(color)
+  return Math.cos(((hue - WARM_PEAK_DEG) * Math.PI) / 180) * saturation
 }
 
-// The hue angle (0..360°) of a #rrggbb color, standard HSL derivation. A fully desaturated color
-// has no meaningful hue and resolves to 0° (red); it never produces a warning on its own because
-// only a strong-valence mood with a contradicting hue crosses the threshold.
-function hueDegrees(color: Color): number {
+function hslHueAndSaturation(color: Color): { hue: number; saturation: number } {
   const r = parseInt(color.slice(1, 3), 16) / 255
   const g = parseInt(color.slice(3, 5), 16) / 255
   const b = parseInt(color.slice(5, 7), 16) / 255
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
   const delta = max - min
-  if (delta === 0) {
-    return 0
-  }
+  if (delta === 0) return { hue: 0, saturation: 0 }
+
+  const lightness = (max + min) / 2
+  const saturation = delta / (1 - Math.abs(2 * lightness - 1))
   let hue: number
   if (max === r) {
     hue = ((g - b) / delta) % 6
@@ -68,5 +65,5 @@ function hueDegrees(color: Color): number {
     hue = (r - g) / delta + 4
   }
   hue *= 60
-  return hue < 0 ? hue + 360 : hue
+  return { hue: hue < 0 ? hue + 360 : hue, saturation }
 }

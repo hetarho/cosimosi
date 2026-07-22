@@ -33,10 +33,20 @@ export const PALETTES: Readonly<Record<string, MoodPalette>> = {
   'muted-dusk': mutedDuskPalette,
 }
 
-// Resolve an id to its palette. An unknown id falls back to the default rather than throwing:
-// a stale stored preference or a client typo must still yield a colored universe, never a crash.
+export interface ResolvedMoodPalette {
+  readonly id: string
+  readonly palette: MoodPalette
+}
+
+// Canonicalize the stored id together with its palette so callers cannot render the fallback while
+// retaining an unknown id in a mirror or rollback checkpoint.
+export function resolvePaletteById(id: string): ResolvedMoodPalette {
+  const palette = PALETTES[id]
+  return palette ? { id, palette } : { id: DEFAULT_PALETTE_ID, palette: defaultMoodPalette }
+}
+
 export function paletteById(id: string): MoodPalette {
-  return PALETTES[id] ?? defaultMoodPalette
+  return resolvePaletteById(id).palette
 }
 
 // The pickable set for a chooser UI: each registered id with its display name.

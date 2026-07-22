@@ -1,40 +1,53 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import { createGetPalettePreferenceQueryOptions } from '@cosimosi/api-client'
-import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
+import { DEFAULT_PALETTE_ID, resolvePaletteById } from '@cosimosi/emotion'
+import { m } from '@cosimosi/i18n'
 
-import { applyPalette } from '../../features/change-palette/index.ts'
+import {
+  initializePaletteSession,
+  paletteSessionMatches,
+  usePalettePreferenceStore,
+} from '../../features/change-palette/index.ts'
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
 
-// App-init palette apply (§3.1): an app-layer step that reads the stored preference on boot and
-// applies it through the single setMoodPalette seam, so the universe is colored by the user's
-// palette from the first frame. It never blocks boot — the default palette is already active, so
-// the universe is never uncolored; an unset/unknown id or a failed/unauthenticated read falls back
-// to the default. A signed-out session re-applies the default (the store-clear sign-out hygiene).
-// This is the ONE host that forks per platform; the registry and the api segment are shared verbatim.
 export function PaletteBootstrap({ children }: { children?: ReactNode }) {
   const transport = useTransport()
-  const session = useSessionSnapshot()
-  const authenticated = Boolean(session.userId)
+  const { userId } = useSessionSnapshot()
   const preference = useQuery({
     ...createGetPalettePreferenceQueryOptions(transport),
-    enabled: authenticated,
+    enabled: userId !== null,
+    retry: false,
   })
-  const paletteId = preference.data?.paletteId
-  const failed = preference.isError
+  const confirmedPaletteId = usePalettePreferenceStore((state) => state.confirmedPaletteId)
+  const [releasedScopeKey, setReleasedScopeKey] = useState<string | null>(null)
+  const resolvedId = preference.isError
+    ? DEFAULT_PALETTE_ID
+    : preference.data
+      ? resolvePaletteById(preference.data.paletteId).id
+      : null
+  const alreadyApplied =
+    userId !== null &&
+    resolvedId !== null &&
+    confirmedPaletteId === resolvedId &&
+    paletteSessionMatches(userId, resolvedId)
+  const ready = userId !== null && (releasedScopeKey === userId || alreadyApplied)
 
   useEffect(() => {
-    if (!authenticated || failed) {
-      applyPalette(DEFAULT_PALETTE_ID)
-      return
-    }
-    if (paletteId) {
-      applyPalette(paletteId)
-    }
-  }, [authenticated, failed, paletteId])
+    if (!userId || !resolvedId || releasedScopeKey === userId) return
+    if (!alreadyApplied) initializePaletteSession(userId, resolvedId)
+    setReleasedScopeKey(userId)
+  }, [alreadyApplied, releasedScopeKey, resolvedId, userId])
 
+  if (!ready) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-background text-text-muted">
+        <p className="text-sm">{m.common_loading()}</p>
+      </main>
+    )
+  }
   return <>{children}</>
 }

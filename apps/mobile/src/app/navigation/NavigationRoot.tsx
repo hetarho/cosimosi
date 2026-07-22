@@ -5,7 +5,7 @@ import { gateDecision } from '@cosimosi/auth'
 
 import { mobileLinkingPrefixes } from '../../shared/native/index.ts'
 import { DiagnosticsScreen } from '../diagnostics/index.ts'
-import { useSessionSnapshot } from '../providers/index.ts'
+import { MobilePaletteBootstrap, useSessionSnapshot } from '../providers/index.ts'
 import { ROUTES, type RootStackParamList } from './routes.ts'
 import { BootScreen } from './screens/BootScreen.tsx'
 import { DiaryReaderScreen } from './screens/DiaryReaderScreen.tsx'
@@ -54,7 +54,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
   // (authenticated or a provisionally-authenticated refresh) the universe stack stays mounted.
   const stack =
     gateDecision(status) === 'login' ? 'login' : status === 'bootstrapping' ? 'splash' : 'universe'
-  return (
+  const navigation = (
     <NavigationContainer linking={linking ?? undefined}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {stack === 'universe' ? (
@@ -71,5 +71,10 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
         )}
       </Stack.Navigator>
     </NavigationContainer>
+  )
+  return stack === 'universe' ? (
+    <MobilePaletteBootstrap>{navigation}</MobilePaletteBootstrap>
+  ) : (
+    navigation
   )
 }

@@ -1,7 +1,7 @@
 import { VALUES } from '@cosimosi/config'
 import { describe, expect, it } from 'vitest'
 
-import { checkPaletteAxisConsistency } from './axis-consistency.ts'
+import { checkPaletteAxisConsistency, colorWarmth } from './axis-consistency.ts'
 import { MOODS, moodCoordinate, type Mood } from './mood.ts'
 import { PALETTES } from './registry.ts'
 import { defineMoodPalette, type Color } from './palette.ts'
@@ -47,5 +47,32 @@ describe('palette axis consistency', () => {
     const warnings = checkPaletteAxisConsistency(inverted)
 
     expect(warnings.some((warning) => warning.mood === 'NEUTRAL')).toBe(false)
+  })
+
+  it('treats grayscale as neutral hue evidence', () => {
+    const gray: Color = '#808080'
+    expect(colorWarmth(gray)).toBe(0)
+
+    const grayscale = defineMoodPalette(
+      'grayscale-probe',
+      Object.fromEntries(MOODS.map((mood) => [mood, gray])) as Record<Mood, Color>,
+    )
+    expect(checkPaletteAxisConsistency(grayscale)).toEqual([])
+  })
+
+  it('attenuates near-gray warmth below the warning threshold', () => {
+    const saturatedWarm: Color = '#ff3020'
+    const nearGrayWarm: Color = '#817f7f'
+    const saturatedWarmth = colorWarmth(saturatedWarm)
+    const nearGrayWarmth = colorWarmth(nearGrayWarm)
+
+    expect(Math.abs(nearGrayWarmth)).toBeLessThan(Math.abs(saturatedWarmth))
+    expect(Math.abs(nearGrayWarmth)).toBeLessThan(0.02)
+
+    const nearGray = defineMoodPalette(
+      'near-gray-probe',
+      Object.fromEntries(MOODS.map((mood) => [mood, nearGrayWarm])) as Record<Mood, Color>,
+    )
+    expect(checkPaletteAxisConsistency(nearGray)).toEqual([])
   })
 })

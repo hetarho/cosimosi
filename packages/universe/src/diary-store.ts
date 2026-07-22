@@ -24,6 +24,7 @@ export interface DiaryState {
   byId: Readonly<Record<string, Diary>>
   ids: readonly string[]
   setAll: (diaries: readonly Diary[]) => void
+  clear: () => void
 }
 
 // Data store (§3.2): the diary archive keyed by id, populated from the GetDiaries read (Query
@@ -37,4 +38,5 @@ export const useDiaryStore = create<DiaryState>()((set) => ({
       byId: Object.fromEntries(diaries.map((diary) => [diary.id, diary])),
       ids: diaries.map((diary) => diary.id),
     }),
+  clear: () => set({ byId: {}, ids: [] }),
 }))

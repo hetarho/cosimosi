@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react'
 
 import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -11,9 +19,11 @@ import {
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
+import { SessionScopeBoundary } from '@cosimosi/auth/react'
 
+import { resetMobileUserState } from '../model/reset-user-state.ts'
 import { resolveMobileApiBaseUrl } from '../../shared/config/index.ts'
-import { useAuthFacade, useSessionSnapshot } from './auth-provider.tsx'
+import { useAuthFacade } from './auth-provider.tsx'
 
 interface MobileApiContextValue {
   transport: ApiTransport
@@ -38,9 +48,7 @@ export function MobileClientCacheProvider({
 }: MobileClientCacheProviderProps) {
   const auth = useAuthFacade()
   const observability = useObservabilityFacade()
-  const session = useSessionSnapshot()
   const baseUrl = apiBaseUrl ?? resolveMobileApiBaseUrl()
-  const cacheScope = session.userId ?? 'anonymous'
   const ownedQueryClient = useRef<ClientCacheQueryClient | null>(null)
   const ownsQueryClient = !queryClient
   const resolvedQueryClient = resolveClientCacheQueryClient({ queryClient, ownedQueryClient })
@@ -48,7 +56,13 @@ export function MobileClientCacheProvider({
     () => resolveClientCacheTransport({ transport, baseUrl, auth, observability }),
     [auth, baseUrl, observability, transport],
   )
-  const previousCacheScope = useRef(cacheScope)
+  const resetScope = useCallback(
+    (nextScopeKey: string) => {
+      resolvedQueryClient.clear()
+      resetMobileUserState(nextScopeKey)
+    },
+    [resolvedQueryClient],
+  )
   const apiContextValue = useMemo<MobileApiContextValue>(
     () => ({ transport: resolvedTransport, baseUrl }),
     [baseUrl, resolvedTransport],
@@ -60,16 +74,12 @@ export function MobileClientCacheProvider({
     },
     [ownsQueryClient, resolvedQueryClient],
   )
-  useEffect(() => {
-    if (previousCacheScope.current === cacheScope) return
-    clearOwnedClientCache(resolvedQueryClient, ownsQueryClient)
-    previousCacheScope.current = cacheScope
-  }, [cacheScope, ownsQueryClient, resolvedQueryClient])
-
   return (
     <TransportProvider transport={resolvedTransport}>
       <MobileApiContext.Provider value={apiContextValue}>
-        <QueryClientProvider client={resolvedQueryClient}>{children}</QueryClientProvider>
+        <QueryClientProvider client={resolvedQueryClient}>
+          <SessionScopeBoundary onScopeChange={resetScope}>{children}</SessionScopeBoundary>
+        </QueryClientProvider>
       </MobileApiContext.Provider>
     </TransportProvider>
   )

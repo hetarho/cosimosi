@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 
 import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -11,8 +11,10 @@ import {
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
+import { SessionScopeBoundary } from '@cosimosi/auth/react'
 
-import { useAuthFacade, useSessionSnapshot } from '../../shared/auth/index.ts'
+import { resetWebUserState } from '../model/reset-user-state.ts'
+import { useAuthFacade } from '../../shared/auth/index.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
 
 interface WebClientCacheProviderProps {
@@ -30,9 +32,7 @@ export function WebClientCacheProvider({
 }: WebClientCacheProviderProps) {
   const auth = useAuthFacade()
   const observability = useObservabilityFacade()
-  const session = useSessionSnapshot()
   const baseUrl = apiBaseUrl ?? resolveWebApiBaseUrl(import.meta.env)
-  const cacheScope = session.userId ?? 'anonymous'
   const ownedQueryClient = useRef<ClientCacheQueryClient | null>(null)
   const ownsQueryClient = !queryClient
   const resolvedQueryClient = resolveClientCacheQueryClient({ queryClient, ownedQueryClient })
@@ -40,7 +40,13 @@ export function WebClientCacheProvider({
     () => resolveClientCacheTransport({ transport, baseUrl, auth, observability }),
     [auth, baseUrl, observability, transport],
   )
-  const previousCacheScope = useRef(cacheScope)
+  const resetScope = useCallback(
+    (nextScopeKey: string) => {
+      resolvedQueryClient.clear()
+      resetWebUserState(nextScopeKey)
+    },
+    [resolvedQueryClient],
+  )
 
   useEffect(
     () => () => {
@@ -48,15 +54,11 @@ export function WebClientCacheProvider({
     },
     [ownsQueryClient, resolvedQueryClient],
   )
-  useEffect(() => {
-    if (previousCacheScope.current === cacheScope) return
-    clearOwnedClientCache(resolvedQueryClient, ownsQueryClient)
-    previousCacheScope.current = cacheScope
-  }, [cacheScope, ownsQueryClient, resolvedQueryClient])
-
   return (
     <TransportProvider transport={resolvedTransport}>
-      <QueryClientProvider client={resolvedQueryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={resolvedQueryClient}>
+        <SessionScopeBoundary onScopeChange={resetScope}>{children}</SessionScopeBoundary>
+      </QueryClientProvider>
     </TransportProvider>
   )
 }

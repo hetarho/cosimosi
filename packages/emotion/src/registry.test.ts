@@ -4,7 +4,14 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { assertCompletePalette } from './palette.ts'
-import { DEFAULT_PALETTE_ID, PALETTES, listPalettes, paletteById, paletteIds } from './registry.ts'
+import {
+  DEFAULT_PALETTE_ID,
+  PALETTES,
+  listPalettes,
+  paletteById,
+  paletteIds,
+  resolvePaletteById,
+} from './registry.ts'
 import { defaultMoodPalette } from './palette.ts'
 
 describe('palette registry', () => {
@@ -25,6 +32,10 @@ describe('palette registry', () => {
   it('falls back to the default palette for an unknown id', () => {
     expect(paletteById('does-not-exist')).toBe(defaultMoodPalette)
     expect(paletteById('')).toBe(defaultMoodPalette)
+    expect(resolvePaletteById('does-not-exist')).toEqual({
+      id: DEFAULT_PALETTE_ID,
+      palette: defaultMoodPalette,
+    })
   })
 
   it('lists every registered palette as an { id, name } pair', () => {

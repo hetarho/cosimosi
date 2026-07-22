@@ -1,8 +1,10 @@
 import {
   createContext,
   createElement,
+  useEffect,
   useContext,
   useRef,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
@@ -43,4 +45,35 @@ export function useSessionSnapshot(): SessionSnapshot {
     () => facade.snapshot,
     () => facade.snapshot,
   )
+}
+
+export function authScopeKey(snapshot: Pick<SessionSnapshot, 'userId'>): string {
+  return snapshot.userId ?? 'anonymous'
+}
+
+export interface SessionScopeBoundaryProps {
+  children?: ReactNode
+  fallback?: ReactNode
+  onScopeChange: (nextScopeKey: string) => void
+}
+
+/**
+ * Unmounts the old subtree as soon as its auth scope changes, then releases the new subtree only
+ * after the host synchronously clears user-owned state and query data in an effect.
+ */
+export function SessionScopeBoundary({
+  children,
+  fallback = null,
+  onScopeChange,
+}: SessionScopeBoundaryProps) {
+  const observedScopeKey = authScopeKey(useSessionSnapshot())
+  const [committedScopeKey, setCommittedScopeKey] = useState(observedScopeKey)
+
+  useEffect(() => {
+    if (committedScopeKey === observedScopeKey) return
+    onScopeChange(observedScopeKey)
+    setCommittedScopeKey(observedScopeKey)
+  }, [committedScopeKey, observedScopeKey, onScopeChange])
+
+  return committedScopeKey === observedScopeKey ? children : fallback
 }

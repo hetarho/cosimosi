@@ -6,6 +6,7 @@ export interface SynapseState {
   byId: Readonly<Record<string, Synapse>>
   ids: readonly string[]
   setAll: (synapses: readonly Synapse[]) => void
+  clear: () => void
 }
 
 // Data store (§3.2): the synapse collection keyed by id, populated once per GetUniverse
@@ -18,4 +19,5 @@ export const useSynapseStore = create<SynapseState>()((set) => ({
       byId: Object.fromEntries(synapses.map((synapse) => [synapse.id, synapse])),
       ids: synapses.map((synapse) => synapse.id),
     }),
+  clear: () => set({ byId: {}, ids: [] }),
 }))

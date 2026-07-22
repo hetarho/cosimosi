@@ -12,6 +12,7 @@ export interface AdvanceAnnouncementState {
   pending: AdvanceAnnouncement | null
   announce: (announcement: AdvanceAnnouncement) => void
   take: () => AdvanceAnnouncement | null
+  reset: () => void
 }
 
 export const useAdvanceAnnouncementStore = create<AdvanceAnnouncementState>()((set, get) => ({
@@ -25,4 +26,5 @@ export const useAdvanceAnnouncementStore = create<AdvanceAnnouncementState>()((s
     if (pending) set({ pending: null })
     return pending
   },
+  reset: () => set({ pending: null }),
 }))

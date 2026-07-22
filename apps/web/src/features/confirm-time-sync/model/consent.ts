@@ -43,3 +43,7 @@ export const useTimeSyncConsentStore = create<TimeSyncConsentState>()((set, get)
 export function requestTimeSyncConsent(): Promise<TimeSyncDecision> {
   return useTimeSyncConsentStore.getState().request()
 }
+
+export function cancelPendingTimeSyncConsent(): void {
+  useTimeSyncConsentStore.getState().settle('cancel')
+}

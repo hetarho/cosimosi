@@ -25,6 +25,7 @@ export interface CreateMobileShellFakesOptions {
   ping?: ClientCacheTestContextOptions['ping']
   /** Override the diagnostics-surface flag default (off) so the surface renders. */
   diagnosticsEnabled?: boolean
+  transport?: ApiTransport
 }
 
 export interface MobileShellFakes {
@@ -48,7 +49,7 @@ export function createMobileShellFakes(
   const authFacade = createAuthFacade({
     adapter: new FakeAuthAdapter({ initial: createInitialFakeSession(options) }),
   })
-  const cache = createClientCacheTestContext({ ping })
+  const cache = createClientCacheTestContext({ ping, transport: options.transport })
   const flagRegistry = options.diagnosticsEnabled
     ? platformFeatureFlags.withOverrides({ 'platform.diagnosticsSurface': true })
     : platformFeatureFlags

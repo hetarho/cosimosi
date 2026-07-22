@@ -1,4 +1,4 @@
-import { paletteById, setMoodPalette } from '@cosimosi/emotion'
+import { resolvePaletteById, setMoodPalette } from '@cosimosi/emotion'
 
 import { usePalettePreferenceStore } from '../model/palette-preference-store.ts'
 
@@ -6,7 +6,15 @@ import { usePalettePreferenceStore } from '../model/palette-preference-store.ts'
 // setMoodPalette re-colors the universe through the single moodColor entry point, and the store
 // updates the picker's selection. An unknown id resolves to the default (paletteById is fail-safe),
 // so the universe is always colored by a real palette.
-export function applyPalette(id: string): void {
-  setMoodPalette(paletteById(id))
-  usePalettePreferenceStore.getState().setPaletteId(id)
+export function applyPalette(id: string): string {
+  const resolved = resolvePaletteById(id)
+  setMoodPalette(resolved.palette)
+  usePalettePreferenceStore.getState().setPaletteId(resolved.id)
+  return resolved.id
+}
+
+export function applyConfirmedPalette(id: string): string {
+  const canonicalId = applyPalette(id)
+  usePalettePreferenceStore.getState().setConfirmedPaletteId(canonicalId)
+  return canonicalId
 }

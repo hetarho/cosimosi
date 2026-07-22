@@ -46,16 +46,19 @@ palette table. A substitute palette is supplied as `Record<Mood, Color>` through
 `Mood` and returns only a `Color`, so it cannot write back to emotion facts or feed layout, strength, or synapse logic.
 
 **Palette registry + per-user preference (plan 51).** `packages/emotion/registry.ts` exposes a named registry —
-`PALETTES: Record<id, MoodPalette>` (≥2, each passing `assertCompletePalette`), `paletteById(id)` (unknown → default,
-fail-safe), `listPalettes()`, `DEFAULT_PALETTE_ID = 'cosimosi-default'` — the count is a derived array length, never a
-values scalar. `axis-consistency.ts` adds a pure `checkPaletteAxisConsistency(palette)` that warns (never blocks) when a
-color's hue-derived warm/cool reading contradicts `moodCoordinate(mood).valence` beyond
+`PALETTES: Record<id, MoodPalette>` (≥2, each passing `assertCompletePalette`), `resolvePaletteById(id)` (unknown →
+the canonical default `{ id, palette }` pair), `paletteById(id)`, `listPalettes()`, and
+`DEFAULT_PALETTE_ID = 'cosimosi-default'` — the count is a derived array length, never a values scalar.
+`axis-consistency.ts` adds a pure `checkPaletteAxisConsistency(palette)` that warns (never blocks) when a color's
+saturation-attenuated HSL warm/cool reading contradicts `moodCoordinate(mood).valence` beyond
 `values.palette.axis_warn_valence_threshold`; every shipped palette returns no warnings. The per-user choice is a single
 `palette_id` scalar owned by the new `internal/account` context (`account.v1.AccountService`, `palette_preferences`
 table) — the read coerces an unset/retired id to the default, the write accepts only a first-party allow-list id (kept
-byte-identical to the TS registry ids via a shared fixture), and the backend computes no color. An app-layer bootstrap
-reads the preference on boot and applies it through `setMoodPalette` before the universe settles; a swap re-colors live
-(a palette-version signal remounts the color layers) with no `GetUniverse` refetch and no rendering-package edit. The
+byte-identical to the TS registry ids via a shared fixture), and the backend computes no color. An app-layer commit gate
+reads and canonically applies the preference (or deterministic default) before authenticated palette-dependent children
+mount. Live writes keep optimistic and server-confirmed ids separate, are serialized inside one auth epoch, and reject
+queued/late work after a scope change. A swap re-colors live (a palette-version signal remounts the color layers) with
+no `GetUniverse` refetch and no rendering-package edit. The
 registry + preference are frontend-owned (not golden-parity); the backend holds only the id.
 
 ## 4. Arousal Strength Parity

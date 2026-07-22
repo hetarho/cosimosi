@@ -69,8 +69,10 @@ facade — the same key and facade the mobile shell uses to gate its `Diagnostic
 
 ## 6. Composition and testing
 
-- `WebRouterProvider` mounts `<RouterProvider>` as the **innermost** child of the provider stack (observability →
-  error boundary → i18n → auth → cache → router), so every route sees all providers. It resolves `diagnosticsEnabled`
+- `WebRouterProvider` mounts `<RouterProvider>` as the routed child of the provider stack (observability → error
+  boundary → i18n → auth → cache/session-scope boundary → router), so every route sees all providers. Authenticated
+  product routes add the palette commit gate immediately around their outlet; login and diagnostics do not wait for a
+  user preference. It resolves `diagnosticsEnabled`
   from the observability facade and memoizes the router on `[router, initialEntries, diagnosticsEnabled]`.
 - **Tests / storybook** render at a chosen route without a DOM: build a router with
   `createAppRouter({ diagnosticsEnabled, initialEntries })` (in-memory history), `await router.load()`, then inject it
@@ -112,9 +114,10 @@ parity, §3.5):
   `Universe` stack (`refreshing` keeps it mounted — a cold entry is never `refreshing`). React Navigation swaps the
   mounted stack on decision change, so sign-in/sign-out routing needs no manual resets. The shell-era `ShellHome`
   screen is retired.
-- **Sign-out** routes to login on both apps by the same observation; nothing is deleted — the query cache clears on
-  the auth-scope change (`app/providers` cache hygiene) and the universe stores clear on the next mounted read, so a
-  re-sign-in re-reads the same universe ([I1]).
+- **Sign-out** routes to login on both apps by the same observation; nothing persisted is deleted. Before the new
+  auth-scope subtree commits, the scope boundary clears the full Query cache (including injected clients) plus every
+  registered user mirror, draft, target, deferred action, release/balance mirror, and palette epoch. A re-sign-in then
+  reads that user's universe afresh ([I1]); the inventory contract is [tech/auth.md](auth.md).
 
 ## 9. Not built here
 

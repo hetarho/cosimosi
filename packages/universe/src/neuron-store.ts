@@ -6,6 +6,7 @@ export interface NeuronState {
   byId: Readonly<Record<string, Neuron>>
   ids: readonly string[]
   setAll: (neurons: readonly Neuron[]) => void
+  clear: () => void
 }
 
 // Data store (§3.2): the neuron collection keyed by id, populated once per GetUniverse
@@ -18,4 +19,5 @@ export const useNeuronStore = create<NeuronState>()((set) => ({
       byId: Object.fromEntries(neurons.map((neuron) => [neuron.id, neuron])),
       ids: neurons.map((neuron) => neuron.id),
     }),
+  clear: () => set({ byId: {}, ids: [] }),
 }))

@@ -23,6 +23,14 @@ export {
   type Color,
   type MoodPalette,
 } from './palette.ts'
-export { DEFAULT_PALETTE_ID, PALETTES, listPalettes, paletteById, paletteIds } from './registry.ts'
+export {
+  DEFAULT_PALETTE_ID,
+  PALETTES,
+  listPalettes,
+  paletteById,
+  paletteIds,
+  resolvePaletteById,
+  type ResolvedMoodPalette,
+} from './registry.ts'
 export { checkPaletteAxisConsistency, type PaletteAxisWarning } from './axis-consistency.ts'
 export { arousalToInitialStrength } from './strength.ts'

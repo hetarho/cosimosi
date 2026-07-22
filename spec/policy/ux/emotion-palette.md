@@ -51,11 +51,15 @@ id; `DEFAULT_PALETTE_ID = 'cosimosi-default'`). The choice is a **single `palett
 `account.v1.AccountService` (`Get`/`SetPalettePreference`) — `palette_id` is the **entire writable surface**, so a
 preference write structurally cannot reach the meaning layer ([I11][P2]); the backend stores only the id and computes
 no color. An unknown id is rejected on write and coerced to the default on read, and the write is validated against a
-first-party allow-list (kept in sync with the client registry by a byte-identical id fixture). At app init the stored
-id is read and applied through `setMoodPalette` — the universe is never uncolored (the default is active until the
-preference resolves), and an unset/unknown/unauthenticated/failed read falls back to the default. A swap re-colors the
-running universe live through the one `moodColor` seam with no rendering-code change and no `GetUniverse` refetch.
+first-party allow-list (kept in sync with the client registry by a byte-identical id fixture). At authenticated app
+entry, palette-dependent children remain behind a neutral commit gate until the stored id or deterministic default has
+been canonically applied through `setMoodPalette`; the first universe commit therefore cannot flash another palette.
+Unknown ids become the default id and palette together. A live swap re-colors immediately through the one `moodColor`
+seam with no rendering-code change and no `GetUniverse` refetch. Persistence tracks server-confirmed truth separately
+from optimistic display state, rolls failures back to that truth, and discards queued or late work from an obsolete
+auth-session epoch.
 
 **Axis-consistency is warn-only.** A pure `checkPaletteAxisConsistency` flags warm/cool ↔ valence mismatches as
-**warnings**, never a hard block ([P3]); every shipped palette passes. The registry is frontend-only content — the
-palette tables, ids, and the hue formula live in code, never in `values.yaml` (only the warn threshold is a value).
+**warnings**, never a hard block ([P3]); HSL saturation attenuates hue evidence, making grayscale exactly neutral and
+near-gray evidence weak. Every shipped palette passes. The registry is frontend-only content — the palette tables,
+ids, and the hue formula live in code, never in `values.yaml` (only the warn threshold is a value).
