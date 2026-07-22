@@ -32,5 +32,11 @@ export {
   resolvePaletteById,
   type ResolvedMoodPalette,
 } from './registry.ts'
+export {
+  MAX_SHOWCASE_EMOTIONS,
+  showcaseEmotions,
+  toEmotionSlices,
+  type EmotionSlice,
+} from './slices.ts'
 export { checkPaletteAxisConsistency, type PaletteAxisWarning } from './axis-consistency.ts'
 export { arousalToInitialStrength } from './strength.ts'

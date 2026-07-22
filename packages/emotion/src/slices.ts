@@ -1,10 +1,12 @@
-import { moodColor, type Mood } from '@cosimosi/emotion'
+import type { Mood } from './mood.ts'
+import { moodColor } from './palette.ts'
 
 // The emotion set a backdrop carries — the *emotions present in the universe*, not the theme. Each
 // slice is a mood, its palette color, and a normalized share; a backdrop paints them so the more
-// emotions a universe holds, the more the sky divides among them. Presentation-only. (This is the
-// generic slice model shared by the sky test panels — the emotion-sky effects themselves live in
-// `@cosimosi/3d-renderer` and consume the palette ramp.)
+// emotions a universe holds, the more the sky divides among them. Presentation-only: a slice is a
+// projection of moods through the palette seam, never a domain write. Shared by the emotion-sky
+// consumers (the enclosing sky sphere samples these as its gradient stops) and the design
+// showcases on web + mobile.
 
 /** One emotion present in the universe, with its share of the field. Weights sum to 1. */
 export interface EmotionSlice {

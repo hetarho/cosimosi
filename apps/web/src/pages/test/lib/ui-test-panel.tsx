@@ -20,7 +20,15 @@ import {
   type SkinKey,
   type SkyEffectKey,
 } from '@cosimosi/3d-renderer'
-import { moodColor, MOODS, type Mood } from '@cosimosi/emotion'
+import {
+  MAX_SHOWCASE_EMOTIONS,
+  moodColor,
+  MOODS,
+  showcaseEmotions,
+  toEmotionSlices,
+  type EmotionSlice,
+  type Mood,
+} from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { useEpisodicMemoryStore, useNeuronStore, useSynapseStore } from '@cosimosi/universe'
 import { CellStarLayer, FilamentLayer, NebulaField, StarLayer } from '@cosimosi/universe-render'
@@ -45,12 +53,6 @@ import {
   type ControlSize,
 } from '@cosimosi/ui'
 
-import {
-  MAX_SHOWCASE_EMOTIONS,
-  showcaseEmotions,
-  toEmotionSlices,
-  type EmotionSlice,
-} from './emotion-slices.ts'
 import { buildEngramDemoScene, type EngramDemoScene } from './engram-demo-scene.ts'
 
 // The single UI test surface, split into three tabs that share one skin. A preset is a

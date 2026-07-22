@@ -9,6 +9,7 @@ const Noop = () => null
 
 export const UniverseCanvas = Passthrough
 export const SkinProvider = Passthrough
+export const SkySphere = Noop
 export const UniverseScene = Noop
 export const Background = Noop
 export const StarField = Noop
@@ -34,6 +35,19 @@ export const GIST_INSTANCE_TINT = 'aGistTint'
 export const GIST_INSTANCE_DIFFUSE = 'aGistDiffuse'
 export const FILAMENT_VERTEX_COLOR = 'aFilamentColor'
 export const resolveBackgroundNode = () => null
+export const SKY_EFFECTS = [
+  {
+    key: 'grainient',
+    label: 'Grainient',
+    blurb: '',
+    fidelity: 'faithful',
+    build: () => null,
+    opacity: 0.9,
+    defaultCount: 5,
+  },
+]
+export const DEFAULT_SKY_EFFECT = 'grainient'
+export const resolveSkyEffect = () => SKY_EFFECTS[0]
 export const useSkin = () => ({
   skin: {
     key: 'aurora',

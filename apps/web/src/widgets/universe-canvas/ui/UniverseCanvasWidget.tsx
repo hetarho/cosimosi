@@ -9,6 +9,7 @@ import {
   NavigationRig,
   PostFX,
   SkinProvider,
+  SkySphere,
   StarField,
   UniverseCanvas,
   resolveActiveSkin,
@@ -25,12 +26,14 @@ import {
   generateLatentField,
   gistNodeId,
   recentlyActiveNeuronIds,
+  universeEmotionSlices,
   universeNavigationMachine,
   useEpisodicMemoryStore,
   usePendingFlyTargetStore,
   type AwakenAnchor,
   type UniverseNavigationMode,
 } from '@cosimosi/universe'
+import { useReducedMotion } from '@cosimosi/ui'
 import {
   AwakenNeuron,
   CellStarLayer,
@@ -180,6 +183,18 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   // it; neuron/synapse layers carry no emotion color and stay mounted.
   const paletteVersion = usePaletteVersion()
 
+  // The enclosing emotion sky ([57]): mounted when the active skin declares the `sky` background —
+  // the universe's own emotions drive the sphere's palette ramp ([I3], color only). Slices depend
+  // on the palette version so a live palette swap re-colors through the unchanged moodColor seam
+  // (the sphere repaints its ramp in place; the material rebuilds only if the emotion count moves).
+  const skyEffect = skin.background.type === 'sky' ? skin.background.props.effect : null
+  const reducedMotion = useReducedMotion()
+  const skyStops = useMemo(() => {
+    // The version is a genuine input: moodColor reads the module-level palette it stamps.
+    void paletteVersion
+    return skyEffect && universe ? universeEmotionSlices(universe.memories) : []
+  }, [skyEffect, universe, paletteVersion])
+
   // The launch flow announces genuinely-created neuron ids here; the awaken plays for the fresh
   // ones (idempotent via the awaken registry). Empty until the first launch of this session.
   const newNeuronIds = useLaunchedNeuronsStore((state) => state.newNeuronIds)
@@ -232,6 +247,9 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
     <div className="relative h-full w-full">
       <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
         <Background node={backgroundNode} />
+        {skyEffect && (
+          <SkySphere stops={skyStops} effect={skyEffect} reducedMotion={reducedMotion} />
+        )}
         <StarField />
         {/* Emotion color field: additive mood-color blend behind the latent field and bodies
             (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}

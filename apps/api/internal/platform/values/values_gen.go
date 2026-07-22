@@ -22,7 +22,7 @@ const (
 
 // rendering
 const (
-	RenderingActiveSkin            = "aurora"
+	RenderingActiveSkin            = "emotion"
 	RenderingMaxPixelRatio         = 2
 	RenderingEmotionSkyExposure    = 0.62
 	RenderingInstanceBucketSize    = 4096

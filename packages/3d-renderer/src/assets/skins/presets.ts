@@ -7,7 +7,7 @@
 import type { BackgroundSpec } from '../backgrounds/registry.ts'
 import type { BloomParams } from '../../layers/PostFX.tsx'
 
-export type SkinKey = 'aurora' | 'ember' | 'void' | 'dawn'
+export type SkinKey = 'aurora' | 'ember' | 'void' | 'dawn' | 'emotion'
 
 export interface UniverseSkin {
   readonly key: SkinKey
@@ -71,6 +71,20 @@ export const UNIVERSE_SKINS: Record<SkinKey, UniverseSkin> = {
       props: { top: 0x1a2a52, bottom: 0xe9a17c },
     },
     bloom: { strength: 0.6, radius: 0.6, threshold: 0.3 },
+    camera: { fov: 55 },
+  },
+  // The emotion sky ([57]): the backdrop is the SkySphere shaded by a react-bits-derived effect
+  // off the universe's own emotion palette — the host mounts the sphere when it sees this type.
+  // `night` matches the emotion ramp's bare-night base (#0a0a12) so the translucent effect and
+  // the void behind it read as one sky.
+  emotion: {
+    key: 'emotion',
+    label: 'Emotion Sky',
+    background: {
+      type: 'sky',
+      props: { effect: 'grainient', night: 0x0a0a12 },
+    },
+    bloom: { strength: 0.9, radius: 0.6, threshold: 0.2 },
     camera: { fov: 55 },
   },
 }

@@ -13,6 +13,8 @@ export const ROUTES = {
   login: 'Login',
   /** Dev-only provider health surface (gated by the diagnostics flag; deep-link reachable). */
   diagnostics: 'Diagnostics',
+  /** Dev-only on-device design showcase (gated by the diagnostics flag; deep-link reachable). */
+  test: 'Test',
   /** The 3D memory universe — the shared @cosimosi/3d-renderer scene; the authenticated default. */
   universe: 'Universe',
   /** The immutable diary archive — the quiet keeping-place ([D2]). */
@@ -25,6 +27,7 @@ export type RootStackParamList = {
   Boot: undefined
   Login: undefined
   Diagnostics: undefined
+  Test: undefined
   Universe: undefined
   DiaryReader: undefined
   Settings: undefined

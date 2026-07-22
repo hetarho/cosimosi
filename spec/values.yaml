@@ -26,9 +26,10 @@ supabase_auth:
   jwks_miss_refresh_interval_ms: 60000
 
 rendering:
-  # Active universe background skin (preset key in @cosimosi/shaders UNIVERSE_SKINS:
-  # aurora | ember | void). Build-time selection; re-skin by changing this.
-  active_skin: aurora
+  # Active universe background skin (preset key in @cosimosi/3d-renderer UNIVERSE_SKINS:
+  # aurora | ember | void | dawn | emotion). Build-time selection; re-skin by changing this.
+  # `emotion` wears the enclosing emotion sky-sphere driven by the universe's own palette.
+  active_skin: emotion
   # Cap devicePixelRatio so high-DPI screens don't tank the GPU frame budget.
   max_pixel_ratio: 2
   # Overall exposure of the emotion palette before a sky effect shapes it. Kept below 1 because
