@@ -6,5 +6,11 @@ export {
   createInMemorySecureTokenStorage,
   type SecureTokenStorage,
 } from './secure-token-storage.ts'
-export { mobileLinkingPrefixes } from './linking.ts'
+export {
+  isAuthCallbackUrl,
+  mobileAuthCallbackUrl,
+  mobileLinkingPrefixes,
+  openExternalUrl,
+  subscribeToAuthCallbackUrls,
+} from './linking.ts'
 export { fallbackSafeAreaMetrics, resolvedSafeAreaMetrics } from './safe-area.ts'

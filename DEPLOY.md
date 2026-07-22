@@ -127,8 +127,10 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
    version `npx wrangler versions upload`, 변수 3종(§3) 입력, 커스텀 도메인 `cosimosi.haeram.me` 연결.
 10. **Supabase Auth**: Google provider(Client ID/Secret — GCP 리디렉션 URI에
     `https://<ref>.supabase.co/auth/v1/callback`), URL Configuration의 Site URL
-    `https://cosimosi.haeram.me` + Redirect URLs(`…/universe` 3종: prod·localhost:1214·프리뷰 와일드카드),
-    OTP 쓰면 이메일 템플릿에 `{{ .Token }}`.
+    `https://cosimosi.haeram.me` + Redirect URLs 4종 — 웹은 우주가 `/`라서 origin 루트로 돌아온다:
+    `https://cosimosi.haeram.me/` · `http://localhost:1214/` · 프리뷰 와일드카드
+    (`https://*-cosimosi.sunlikeperson.workers.dev/`) · 모바일 딥링크 `cosimosi://auth-callback`
+    (허용목록에 없는 origin은 Site URL로 폴백해 prod로 떨어진다). OTP 쓰면 이메일 템플릿에 `{{ .Token }}`.
 
 ## 6. 롤백
 

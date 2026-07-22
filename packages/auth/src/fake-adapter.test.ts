@@ -25,6 +25,32 @@ describe('FakeAuthAdapter', () => {
     await expect(adapter.signIn({ email: 'a@b.co', password: 'pw' })).rejects.toThrow('nope')
   })
 
+  it('resolves the Google flow in-call and emits an authenticated snapshot', async () => {
+    const events: Array<{ userId: string | null; status: string }> = []
+    const adapter = new FakeAuthAdapter()
+    adapter.onChange((snapshot) => events.push(snapshot))
+    const session = await adapter.signInWithGoogle()
+    expect(session?.userId).toBe('fake-user-google')
+    expect(events).toContainEqual(
+      expect.objectContaining({ userId: 'fake-user-google', status: 'authenticated' }),
+    )
+  })
+
+  it('completes an OAuth callback into an authenticated session', async () => {
+    const adapter = new FakeAuthAdapter()
+    const session = await adapter.completeOAuthSignIn('cosimosi://auth-callback?code=abc')
+    expect(session.userId).toBe('fake-user-google')
+    expect(await adapter.bootstrap()).toEqual(session)
+  })
+
+  it('rejects the Google flow when configured to fail', async () => {
+    const adapter = new FakeAuthAdapter({ signInError: 'nope' })
+    await expect(adapter.signInWithGoogle()).rejects.toThrow('nope')
+    await expect(adapter.completeOAuthSignIn('cosimosi://auth-callback?code=x')).rejects.toThrow(
+      'nope',
+    )
+  })
+
   it('refreshes the active session and extends expiry', async () => {
     const initial: AuthSession = { userId: 'u', expiresAt: 1 }
     const adapter = new FakeAuthAdapter({ initial })

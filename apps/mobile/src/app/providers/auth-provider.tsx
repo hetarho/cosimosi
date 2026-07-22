@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 import {
   FakeAuthAdapter,
@@ -10,7 +10,12 @@ import {
 } from '@cosimosi/auth'
 import { AuthProvider, useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
 
-import type { SecureTokenStorage } from '../../shared/native/index.ts'
+import {
+  mobileAuthCallbackUrl,
+  openExternalUrl,
+  subscribeToAuthCallbackUrls,
+  type SecureTokenStorage,
+} from '../../shared/native/index.ts'
 
 // A dev fake session never expires (no code schedules a timer off expiresAt), so `pnpm ios`
 // stays signed in without a refresh loop. Mirrors the web dev bypass.
@@ -45,9 +50,28 @@ export function MobileAuthProvider({
         createAuthFacade({ adapter: createDefaultMobileAuthAdapter(supabase, devUserId) })
       }
     >
+      <OAuthCallbackBridge />
       {children}
     </AuthProvider>
   )
+}
+
+/**
+ * Forwards inbound `cosimosi://auth-callback` deep links to the facade's OAuth
+ * completion (ARCHITECTURE §3.5 — the app root owns auth-callback link parsing).
+ * A failed exchange lands on the session snapshot's `error`, which the login
+ * screen already surfaces — nothing to handle here.
+ */
+function OAuthCallbackBridge() {
+  const facade = useAuthFacade()
+  useEffect(
+    () =>
+      subscribeToAuthCallbackUrls((url) => {
+        facade.completeOAuthSignIn(url).catch(() => undefined)
+      }),
+    [facade],
+  )
+  return null
 }
 
 function createDefaultMobileAuthAdapter(
@@ -72,6 +96,12 @@ function createDefaultMobileAuthAdapter(
       detectSessionInUrl: false,
       flowType: 'pkce',
     }),
+    {
+      // External-browser PKCE flow: consent opens in the system browser and returns
+      // through the cosimosi:// callback, which OAuthCallbackBridge feeds back into
+      // the facade for the code exchange.
+      google: { redirectTo: mobileAuthCallbackUrl, openUrl: openExternalUrl },
+    },
   )
 }
 

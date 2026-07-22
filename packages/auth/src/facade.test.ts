@@ -60,6 +60,8 @@ describe('createAuthFacade', () => {
     const adapter: AuthAdapter = {
       bootstrap: () => bootstrap.promise,
       signIn: (credentials) => base.signIn(credentials),
+      signInWithGoogle: () => base.signInWithGoogle(),
+      completeOAuthSignIn: (callbackUrl) => base.completeOAuthSignIn(callbackUrl),
       signOut: () => base.signOut(),
       refresh: () => base.refresh(),
       getAccessToken: () => base.getAccessToken(),
@@ -86,6 +88,8 @@ describe('createAuthFacade', () => {
       const adapter: AuthAdapter = {
         bootstrap: () => bootstrap.promise,
         signIn: async () => ({ userId: 'unused', expiresAt: 1 }),
+        signInWithGoogle: async () => null,
+        completeOAuthSignIn: async () => ({ userId: 'unused', expiresAt: 1 }),
         signOut: async () => {},
         refresh: async () => ({ userId: 'unused', expiresAt: 1 }),
         getAccessToken: async () => 'stored-token',
@@ -105,6 +109,94 @@ describe('createAuthFacade', () => {
       await expect(facade.getAccessToken()).resolves.toBeNull()
     },
   )
+
+  it('signs in with Google when the adapter completes the flow in-call', async () => {
+    const facade = createAuthFacade({ adapter: new FakeAuthAdapter({ now: () => 1000 }) })
+
+    await flush()
+    await facade.signInWithGoogle()
+
+    expect(facade.snapshot.status).toBe('authenticated')
+    expect(facade.snapshot.userId).toBe('fake-user-google')
+  })
+
+  it('holds signingIn during an external OAuth flow and settles via the callback', async () => {
+    const facade = createAuthFacade({ adapter: externalOAuthAdapter() })
+
+    await flush()
+    await facade.signInWithGoogle()
+    expect(facade.snapshot.status).toBe('signingIn')
+
+    await facade.completeOAuthSignIn('cosimosi://auth-callback?code=abc')
+    expect(facade.snapshot.status).toBe('authenticated')
+    expect(facade.snapshot.userId).toBe('google-user')
+  })
+
+  it('cancelSignIn abandons a pending OAuth attempt and stays retryable', async () => {
+    const facade = createAuthFacade({ adapter: externalOAuthAdapter() })
+
+    await flush()
+    facade.cancelSignIn() // outside signingIn: a no-op
+    expect(facade.snapshot.status).toBe('signedOut')
+
+    await facade.signInWithGoogle()
+    expect(facade.snapshot.status).toBe('signingIn')
+    facade.cancelSignIn()
+    expect(facade.snapshot.status).toBe('signedOut')
+
+    // A completion that still arrives after the cancel drives a fresh attempt.
+    await facade.completeOAuthSignIn('cosimosi://auth-callback?code=late')
+    expect(facade.snapshot.status).toBe('authenticated')
+    expect(facade.snapshot.userId).toBe('google-user')
+  })
+
+  it('cancelSignIn never abandons an in-call password sign-in', async () => {
+    const pendingSignIn = deferred<AuthSession>()
+    const base = new FakeAuthAdapter()
+    const adapter: AuthAdapter = {
+      bootstrap: () => base.bootstrap(),
+      signIn: () => pendingSignIn.promise,
+      signInWithGoogle: async () => null,
+      completeOAuthSignIn: async () => ({ userId: 'unused', expiresAt: 1 }),
+      signOut: () => base.signOut(),
+      refresh: () => base.refresh(),
+      getAccessToken: () => base.getAccessToken(),
+      onChange: (listener) => base.onChange(listener),
+    }
+    const facade = createAuthFacade({ adapter })
+
+    await flush()
+    const signInPromise = facade.signIn({ email: 'a@b.co', password: 'pw' })
+    expect(facade.snapshot.status).toBe('signingIn')
+
+    // A blanket foreground/pageshow cancel must not kill the slow password attempt.
+    facade.cancelSignIn()
+    expect(facade.snapshot.status).toBe('signingIn')
+
+    pendingSignIn.resolve({ userId: 'password-user', expiresAt: Date.now() + 60_000 })
+    await signInPromise
+    expect(facade.snapshot.status).toBe('authenticated')
+    expect(facade.snapshot.userId).toBe('password-user')
+  })
+
+  it('surfaces OAuth completion failures as retryable failed snapshots', async () => {
+    const facade = createAuthFacade({
+      adapter: externalOAuthAdapter({ completeError: 'consent denied' }),
+    })
+
+    await flush()
+    await facade.signInWithGoogle()
+    await expect(facade.completeOAuthSignIn('cosimosi://auth-callback?error=x')).rejects.toThrow(
+      'consent denied',
+    )
+
+    expect(facade.snapshot.status).toBe('failed')
+    expect(facade.snapshot.error).toBe('consent denied')
+
+    // failed still accepts a new attempt (SIGN_IN_START is handled there).
+    await facade.completeOAuthSignIn('cosimosi://auth-callback?code=retry')
+    expect(facade.snapshot.status).toBe('authenticated')
+  })
 
   it('publishes adapter-driven expiration changes through subscriptions', async () => {
     const adapter = new FakeAuthAdapter({ initial: { userId: 'u', expiresAt: 999 } })
@@ -198,6 +290,8 @@ describe('createAuthFacade', () => {
     const throwingAdapter: AuthAdapter = {
       bootstrap: () => adapter.bootstrap(),
       signIn: (credentials) => adapter.signIn(credentials),
+      signInWithGoogle: () => adapter.signInWithGoogle(),
+      completeOAuthSignIn: (callbackUrl) => adapter.completeOAuthSignIn(callbackUrl),
       signOut: () => adapter.signOut(),
       refresh: () => adapter.refresh(),
       getAccessToken: async () => {
@@ -229,6 +323,29 @@ describe('createAuthFacade', () => {
     expect(statuses).not.toContain('disposed')
   })
 })
+
+/**
+ * An adapter whose Google flow leaves the app (resolves null) and completes only
+ * through the callback — the web-redirect / mobile-deep-link shape. A callback URL
+ * carrying `error=` rejects with `completeError`; any other callback succeeds.
+ */
+function externalOAuthAdapter({ completeError = 'oauth failed' } = {}): AuthAdapter {
+  const base = new FakeAuthAdapter()
+  return {
+    bootstrap: () => base.bootstrap(),
+    signIn: (credentials) => base.signIn(credentials),
+    signInWithGoogle: async () => null,
+    completeOAuthSignIn: async (callbackUrl) => {
+      if (callbackUrl.includes('error=')) throw new Error(completeError)
+      const session = { userId: 'google-user', expiresAt: Date.now() + 60_000 }
+      return session
+    },
+    signOut: () => base.signOut(),
+    refresh: () => base.refresh(),
+    getAccessToken: () => base.getAccessToken(),
+    onChange: (listener) => base.onChange(listener),
+  }
+}
 
 async function flush(): Promise<void> {
   await Promise.resolve()

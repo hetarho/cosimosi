@@ -10,6 +10,8 @@
   "login_password_label": "비밀번호",
   "login_submit": "들어가기",
   "login_failed": "들어가지 못했어요. 이메일과 비밀번호를 다시 확인해 주세요.",
+  "login_google": "Google로 들어가기",
+  "login_google_failed": "Google로는 들어가지 못했어요. 다시 시도해 주세요.",
   "settings_title": "설정",
   "settings_back": "우주로 돌아가기",
   "settings_section_account": "계정",

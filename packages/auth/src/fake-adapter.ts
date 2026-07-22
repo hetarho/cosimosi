@@ -66,6 +66,29 @@ export class FakeAuthAdapter implements AuthAdapter {
     return this.session
   }
 
+  async signInWithGoogle(): Promise<AuthSession | null> {
+    if (this.signInError) throw new Error(this.signInError)
+    return this.establishOAuthSession()
+  }
+
+  async completeOAuthSignIn(callbackUrl: string): Promise<AuthSession> {
+    if (this.signInError) throw new Error(this.signInError)
+    if (!callbackUrl) throw new Error('OAuth callback is missing the authorization code')
+    return this.establishOAuthSession()
+  }
+
+  // The fake resolves the whole OAuth round-trip in-call (no external browser), so a
+  // façade wired to it reaches `authenticated` synchronously — the keyless path A6 needs.
+  private establishOAuthSession(): AuthSession {
+    const expiresAt = this.now() + 60_000
+    this.session = { userId: this.session?.userId ?? 'fake-user-google', expiresAt }
+    this.emit(
+      { status: 'authenticated', userId: this.session.userId, expiresAt, error: null },
+      'signedIn',
+    )
+    return this.session
+  }
+
   async signOut(): Promise<void> {
     if (this.signOutError) throw new Error(this.signOutError)
     this.session = null

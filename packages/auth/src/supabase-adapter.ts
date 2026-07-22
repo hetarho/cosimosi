@@ -26,8 +26,26 @@ export interface SupabaseAuthClientOptions {
   flowType?: 'implicit' | 'pkce'
 }
 
+export interface SupabaseGoogleAuthOptions {
+  /**
+   * Where the provider returns the browser after consent. Must be in the Supabase
+   * project's redirect allowlist — an unlisted URL silently falls back to the
+   * project Site URL (prod), which strands preview/local/mobile sign-ins.
+   */
+  redirectTo: string
+  /**
+   * Mobile: open the consent URL in the system browser (`Linking.openURL`) instead
+   * of navigating this page. Its presence selects the external-browser PKCE flow
+   * (`skipBrowserRedirect`); completion must then arrive via `completeOAuthSignIn`
+   * with the deep-link callback URL.
+   */
+  openUrl?: (url: string) => Promise<void>
+}
+
 export interface SupabaseAuthAdapterOptions {
   now?: () => number
+  /** Google OAuth wiring; omitted → `signInWithGoogle` rejects as not configured. */
+  google?: SupabaseGoogleAuthOptions
 }
 
 export function createSupabaseAuthClient({
@@ -52,7 +70,7 @@ export function createSupabaseAuthClient({
 
 export function createSupabaseAuthAdapter(
   client: SupabaseClient,
-  { now = Date.now }: SupabaseAuthAdapterOptions = {},
+  { now = Date.now, google }: SupabaseAuthAdapterOptions = {},
 ): AuthAdapter {
   return {
     async bootstrap() {
@@ -62,6 +80,32 @@ export function createSupabaseAuthAdapter(
     },
     async signIn(credentials: SignInCredentials) {
       const { data, error } = await client.auth.signInWithPassword(credentials)
+      if (error) throw error
+      return requireAuthSession(data.session, now)
+    },
+    async signInWithGoogle() {
+      if (!google) throw new Error('Google sign-in is not configured for this adapter')
+      const external = google.openUrl !== undefined
+      const { data, error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: google.redirectTo, skipBrowserRedirect: external },
+      })
+      if (error) throw error
+      if (external) {
+        if (!data.url) throw new Error('Supabase did not return an OAuth URL')
+        await google.openUrl!(data.url)
+      }
+      // Without openUrl, signInWithOAuth has already begun the full-page redirect;
+      // either way the session arrives outside this call.
+      return null
+    },
+    async completeOAuthSignIn(callbackUrl: string) {
+      const providerError =
+        callbackUrlParam(callbackUrl, 'error_description') ?? callbackUrlParam(callbackUrl, 'error')
+      if (providerError) throw new Error(providerError)
+      const code = callbackUrlParam(callbackUrl, 'code')
+      if (!code) throw new Error('OAuth callback is missing the authorization code')
+      const { data, error } = await client.auth.exchangeCodeForSession(code)
       if (error) throw error
       return requireAuthSession(data.session, now)
     },
@@ -94,6 +138,21 @@ export function createSupabaseAuthAdapter(
       return () => data.subscription.unsubscribe()
     },
   }
+}
+
+// Hand-rolled query parsing: Hermes (RN) ships URL without a working
+// `searchParams`, and this file must stay platform-pure — no `new URL`.
+function callbackUrlParam(url: string, key: string): string | null {
+  const query = url.split('#')[0]?.split('?')[1]
+  if (!query) return null
+  for (const pair of query.split('&')) {
+    const [candidate, ...rest] = pair.split('=')
+    if (candidate === key) {
+      const value = rest.join('=')
+      return value ? decodeURIComponent(value.replaceAll('+', ' ')) : ''
+    }
+  }
+  return null
 }
 
 function toAuthAdapterChangeSource(event: string): AuthAdapterChangeSource {

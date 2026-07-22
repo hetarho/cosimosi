@@ -54,7 +54,17 @@ function createDefaultWebAuthFacade(): AuthFacade {
         supabaseUrl,
         publishableKey,
         detectSessionInUrl: true,
+        // PKCE keeps tokens out of the OAuth return URL — implicit flow would land
+        // them in the location fragment, where browser history retains them.
+        flowType: 'pkce',
       }),
+      {
+        // Google returns the browser to the universe root; detectSessionInUrl then
+        // establishes the session on load. The URL must be in the Supabase redirect
+        // allowlist for every origin we serve (prod, localhost, previews) — an
+        // unlisted origin silently falls back to the prod Site URL (DEPLOY.md §5).
+        google: { redirectTo: `${window.location.origin}/` },
+      },
     ),
   })
 }

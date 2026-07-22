@@ -6,8 +6,9 @@ import { gateDecision } from '@cosimosi/auth'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
 import { SettingsPage } from '../../pages/settings/index.ts'
+import { TestPage } from '../../pages/test/index.ts'
 import { UniversePage } from '../../pages/universe/index.ts'
-import { mobileLinkingPrefixes } from '../../shared/native/index.ts'
+import { isAuthCallbackUrl, mobileLinkingPrefixes } from '../../shared/native/index.ts'
 import { DiagnosticsScreen } from '../diagnostics/index.ts'
 import { MobilePaletteBootstrap, useSessionSnapshot } from '../providers/index.ts'
 import { ROUTES, type RootStackParamList, type RootStackScreenProps } from './routes.ts'
@@ -35,6 +36,10 @@ function SettingsRoute({ navigation }: RootStackScreenProps<'Settings'>) {
   return <SettingsPage onBack={() => navigation.navigate(ROUTES.universe)} />
 }
 
+function TestRoute({ navigation }: RootStackScreenProps<'Test'>) {
+  return <TestPage onBack={() => navigation.navigate(ROUTES.universe)} />
+}
+
 /**
  * Typed deep-link config built from the inbound-link seam's prefixes. Only the authenticated
  * stack's screens are link targets; the transient splash and the login entry are never linked to.
@@ -42,9 +47,13 @@ function SettingsRoute({ navigation }: RootStackScreenProps<'Settings'>) {
  */
 const mobileLinking: LinkingOptions<RootStackParamList> = {
   prefixes: [...mobileLinkingPrefixes],
+  // The OAuth callback is an auth event, not a screen — the auth provider's
+  // subscription consumes it; letting it through would log an unmatched-route warning.
+  filter: (url) => !isAuthCallbackUrl(url),
   config: {
     screens: {
       [ROUTES.diagnostics]: 'diagnostics',
+      [ROUTES.test]: 'test',
       [ROUTES.universe]: 'universe',
       [ROUTES.diaryReader]: 'diary',
       [ROUTES.settings]: 'settings',
@@ -83,6 +92,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
             <Stack.Screen name={ROUTES.diaryReader} component={DiaryReaderRoute} />
             <Stack.Screen name={ROUTES.settings} component={SettingsRoute} />
             <Stack.Screen name={ROUTES.diagnostics} component={DiagnosticsScreen} />
+            <Stack.Screen name={ROUTES.test} component={TestRoute} />
           </>
         ) : stack === 'login' ? (
           <Stack.Screen name={ROUTES.login} component={LoginPage} />
