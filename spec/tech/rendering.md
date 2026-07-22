@@ -283,7 +283,9 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
   memory's hippocampal sim slot, z from the memory-logic golden-parity `gistCoordinate` for the instance's stage — via
   `InstancedNodeLayer`'s optional `getInstancePosition` mapper (per-frame, allocation-free; the default
   contiguous-slot path is unchanged). No gist coordinate is ever stored or reverse-projected. `COORDINATE_STRIDE` is
-  exported by the renderer as the coordinate-buffer contract's owner.
+  exported by the renderer as the coordinate-buffer contract's owner. A memoized `GistRenderSnapshot` owns the
+  committed instance order, count, appearance arrays, and precomputed hippocampal slots; frame and pick callbacks close
+  over that object. No render-phase ref publication can expose a work-in-progress ordering to the committed mesh.
 - **One instance per risen stage.** `gist-star-channels.ts` (`@cosimosi/universe`, pure, shared web+mobile) emits N
   instances for `semanticStage = N` (risen stages persist [C7]): color = `moodColor(mood)` through the single palette
   seam and nothing else ([M3][I3]); size = `EffectiveStrength` lerped into `rendering.gist_star_size_*` (a quieter
@@ -293,9 +295,10 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 - **Abstraction is z + a diffuse look, never shape** ([V5]). `gist-star-body.ts` (`@cosimosi/3d-renderer`) is its own
   TSL `VisualBodySource` — a facing-falloff glow ball (additive, depth-tested but never depth-written) with
   per-instance tint + softness attributes; the episodic seed channel is untouched by stage.
-- **The gap depth cue is `BandFog`** — an additive, raycast-invisible haze slab across the z 10–15 gap (peak at the
-  gap center, zero at both band edges; intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the
-  boundary, never a wall and never a click shield.
+- **The gap depth cue is `BandFog`** — a stack of horizontal `DoubleSide` additive glow discs across the z 10–15 gap,
+  visible from above and below, raycast-invisible, and depth-write-free (peak at the gap center, zero at both band edges;
+  intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the boundary, never a wall and never a
+  click shield.
 - **The neutral stage-rise is appearance-driven and one-way** ([V8][I10]). Consolidation is the sole stage writer, so
   a `(memory, stage)` instance newly appearing in the projection _is_ the advance's read landing: it eases from the
   memory's hippocampal z up into the band once (`GIST_RISE_DURATION_SECONDS`, a code-level layer constant); the first

@@ -28,49 +28,56 @@ const SLICE_COUNT = 6
 // Radial softness: brightest at the axis, gone by the field edge (a glow disc, never a wall).
 const RADIAL_FALLOFF = 2.2
 
-export function BandFog({ zMin, zMax, radius, intensity }: BandFogProps) {
-  const group = useMemo(() => {
-    const container = new THREE.Group()
-    const span = Math.max(0.001, zMax - zMin)
-    for (let i = 0; i < SLICE_COUNT; i++) {
-      // Slice fraction across the gap, and a 1-|t| profile peaking at the gap center and
-      // reaching 0 at both band edges — the same envelope the layers rise into.
-      const t = i / (SLICE_COUNT - 1)
-      const profile = 1 - Math.abs(t * 2 - 1)
-      if (profile <= 0) continue
-      const material = new THREE.MeshBasicNodeMaterial()
-      // Radial falloff over the disc: distance from the local center, faded to the rim.
-      const radial = positionLocal.xy.length().div(float(radius)).clamp(0, 1)
-      const glow = float(1).sub(radial).clamp(0, 1).pow(float(RADIAL_FALLOFF))
-      const strength = float(profile * intensity)
-      material.colorNode = FOG_TINT.mul(glow).mul(strength)
-      material.opacityNode = glow.mul(strength)
-      material.transparent = true
-      material.blending = THREE.AdditiveBlending
-      material.depthWrite = false
-      const disc = new THREE.Mesh(new THREE.CircleGeometry(radius, 48), material)
-      // Behind the bodies in the draw order so the haze never washes a star's core.
-      disc.renderOrder = -1
-      // Invisible to the raycaster: the discs span the whole scene and would otherwise
-      // swallow every click aimed at a body behind them.
-      disc.raycast = () => {}
-      disc.position.set(0, 0, zMin + t * span)
-      container.add(disc)
-    }
-    return container
-  }, [zMin, zMax, radius, intensity])
+// Package-internal construction seam: tests inspect the complete draw/pick/resource contract
+// without depending on a GPU renderer or a camera implementation.
+export function createBandFogGroup({ zMin, zMax, radius, intensity }: BandFogProps): THREE.Group {
+  const container = new THREE.Group()
+  const span = Math.max(0.001, zMax - zMin)
+  for (let i = 0; i < SLICE_COUNT; i++) {
+    // Slice fraction across the gap, and a 1-|t| profile peaking at the gap center and
+    // reaching 0 at both band edges — the same envelope the layers rise into.
+    const t = i / (SLICE_COUNT - 1)
+    const profile = 1 - Math.abs(t * 2 - 1)
+    if (profile <= 0) continue
+    const material = new THREE.MeshBasicNodeMaterial()
+    // Radial falloff over the disc: distance from the local center, faded to the rim.
+    const radial = positionLocal.xy.length().div(float(radius)).clamp(0, 1)
+    const glow = float(1).sub(radial).clamp(0, 1).pow(float(RADIAL_FALLOFF))
+    const strength = float(profile * intensity)
+    material.colorNode = FOG_TINT.mul(glow).mul(strength)
+    material.opacityNode = glow.mul(strength)
+    material.transparent = true
+    material.blending = THREE.AdditiveBlending
+    material.depthWrite = false
+    material.side = THREE.DoubleSide
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(radius, 48), material)
+    // Behind the bodies in the draw order so the haze never washes a star's core.
+    disc.renderOrder = -1
+    // Invisible to the raycaster: the discs span the whole scene and would otherwise
+    // swallow every click aimed at a body behind them.
+    disc.raycast = () => {}
+    disc.position.set(0, 0, zMin + t * span)
+    container.add(disc)
+  }
+  return container
+}
 
-  useEffect(
-    () => () => {
-      for (const child of group.children) {
-        const disc = child as THREE.Mesh
-        disc.geometry.dispose()
-        const material = disc.material
-        if (!Array.isArray(material)) material.dispose()
-      }
-    },
-    [group],
+export function disposeBandFogGroup(group: THREE.Group) {
+  for (const child of group.children) {
+    const disc = child as THREE.Mesh
+    disc.geometry.dispose()
+    const material = disc.material
+    if (!Array.isArray(material)) material.dispose()
+  }
+}
+
+export function BandFog(props: BandFogProps) {
+  const group = useMemo(
+    () => createBandFogGroup(props),
+    [props.zMin, props.zMax, props.radius, props.intensity],
   )
+
+  useEffect(() => () => disposeBandFogGroup(group), [group])
 
   return <primitive object={group} />
 }

@@ -48,7 +48,127 @@ type RiseEntry = { start: number | null; startZ: number } | typeof SETTLED
 // gates on the episodic STORE being non-empty, not the gist projection: a universe with memories
 // but no risen gists still counts as loaded, so its first-ever gist rise animates instead of
 // being mistaken for an initial-load body.
-type RiseState = { readonly seen: Map<string, RiseEntry>; hydrated: boolean }
+export type GistRiseState = { readonly seen: Map<string, RiseEntry>; hydrated: boolean }
+
+export interface GistRenderSnapshot {
+  readonly count: number
+  readonly instances: readonly GistStarInstance[]
+  readonly positionSlots: readonly (number | undefined)[]
+  readonly channels: InstanceChannels
+}
+
+// One immutable ordering owns count, channel arrays, sim-slot sources, frame lookup, and pick
+// lookup. React publishes the object and every callback that closes over it in one commit, so a
+// work-in-progress render cannot expose its ordering to the previously committed mesh.
+export function createGistRenderSnapshot(
+  sourceInstances: readonly GistStarInstance[],
+  memoryIndexById: Readonly<Record<string, number>>,
+): GistRenderSnapshot {
+  const instances = Object.freeze([...sourceInstances])
+  const count = instances.length
+  const positionSlots = Object.freeze(
+    instances.map((instance) => memoryIndexById[instance.memoryId]),
+  )
+  const scales = new Float32Array(count)
+  const tint = new Float32Array(count * 3)
+  const softness = new Float32Array(count)
+  for (let i = 0; i < count; i++) {
+    const instance = instances[i]
+    scales[i] = instance.size
+    tint[i * 3] = instance.color[0]
+    tint[i * 3 + 1] = instance.color[1]
+    tint[i * 3 + 2] = instance.color[2]
+    softness[i] = instance.softness
+  }
+  return Object.freeze({
+    count,
+    instances,
+    positionSlots,
+    channels: Object.freeze({
+      scales,
+      attributes: Object.freeze([
+        Object.freeze({ name: GIST_INSTANCE_TINT, array: tint, itemSize: 3 }),
+        Object.freeze({ name: GIST_INSTANCE_DIFFUSE, array: softness, itemSize: 1 }),
+      ]),
+    }),
+  })
+}
+
+export function createGistRiseState(): GistRiseState {
+  return { seen: new Map(), hydrated: false }
+}
+
+export function reconcileGistRiseState(
+  state: GistRiseState,
+  snapshot: GistRenderSnapshot,
+  hasMemories: boolean,
+): readonly GistRiseEvent[] {
+  const alive = new Set<string>()
+  const risen: GistRiseEvent[] = []
+  for (const instance of snapshot.instances) {
+    alive.add(instance.nodeId)
+    if (state.seen.has(instance.nodeId)) continue
+    if (state.hydrated) {
+      state.seen.set(instance.nodeId, { start: null, startZ: 0 })
+      risen.push({ memoryId: instance.memoryId, stage: instance.stage })
+    } else {
+      state.seen.set(instance.nodeId, SETTLED)
+    }
+  }
+  for (const key of state.seen.keys()) {
+    if (!alive.has(key)) state.seen.delete(key)
+  }
+  if (hasMemories) state.hydrated = true
+  return risen
+}
+
+export function mapGistInstancePosition(
+  snapshot: GistRenderSnapshot,
+  riseState: GistRiseState,
+  index: number,
+  buffer: Float32Array,
+  out: Float32Array,
+  elapsedSeconds: number,
+): boolean {
+  const instance = snapshot.instances[index]
+  if (!instance) return false
+  const slot = snapshot.positionSlots[index]
+  if (slot === undefined) return false
+  const offset = slot * COORDINATE_STRIDE
+  if (offset < 0 || offset + 2 >= buffer.length) return false
+
+  const entry = riseState.seen.get(instance.nodeId)
+  if (entry === undefined) return false
+  out[0] = buffer[offset] ?? 0
+  out[1] = buffer[offset + 1] ?? 0
+  if (entry === SETTLED) {
+    out[2] = instance.z
+    return true
+  }
+  if (entry.start === null) {
+    // The fixed origin keeps the rise one-way if the hippocampal sim moves the memory mid-rise;
+    // a body first seen after a hidden-tab interval still gets the full ease.
+    entry.start = elapsedSeconds
+    entry.startZ = buffer[offset + 2] ?? 0
+  }
+  const progress = Math.min(
+    1,
+    Math.max(0, (elapsedSeconds - entry.start) / GIST_RISE_DURATION_SECONDS),
+  )
+  if (progress >= 1) {
+    riseState.seen.set(instance.nodeId, SETTLED)
+    out[2] = instance.z
+    return true
+  }
+  const eased = 1 - (1 - progress) ** 3
+  out[2] = entry.startZ + (instance.z - entry.startZ) * eased
+  return true
+}
+
+export function gistSelectionAt(snapshot: GistRenderSnapshot, index: number): GistRiseEvent | null {
+  const instance = snapshot.instances[index]
+  return instance ? { memoryId: instance.memoryId, stage: instance.stage } : null
+}
 
 // The instanced R3F binding for the neocortical gist body ([V9]): it projects each memory's
 // risen stages to instances (model — gistStarInstances), feeds tint/softness as per-instance
@@ -67,114 +187,41 @@ export function GistStarLayer({
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)
 
-  const instances = useMemo(() => {
+  const snapshot = useMemo(() => {
     const memories = []
     for (const id of ids) {
       const memory = byId[id]
       if (memory) memories.push(memory)
     }
-    return gistStarInstances(memories)
-  }, [byId, ids])
+    return createGistRenderSnapshot(gistStarInstances(memories), memoryIndexById)
+  }, [byId, ids, memoryIndexById])
 
-  const instancesRef = useRef<readonly GistStarInstance[]>(instances)
-  instancesRef.current = instances
-
-  const riseRef = useRef<RiseState>({ seen: new Map(), hydrated: false })
+  const riseRef = useRef<GistRiseState>(createGistRiseState())
   // Diff the projection against the seen set post-commit (it changes only when the read model
   // does): once the store has hydrated, a node id not seen before is a genuine rise — marked
   // pending + announced on the [V8] seam; the bodies present at hydration settle silently; a
   // vanished id (a deleted memory) drops its state. Running in an effect keeps the ref mutation
   // and the onStageRise call out of the render phase.
   useEffect(() => {
-    const state = riseRef.current
-    const alive = new Set<string>()
-    const risen: GistRiseEvent[] = []
-    for (const instance of instances) {
-      alive.add(instance.nodeId)
-      if (state.seen.has(instance.nodeId)) continue
-      if (state.hydrated) {
-        state.seen.set(instance.nodeId, { start: null, startZ: 0 })
-        risen.push({ memoryId: instance.memoryId, stage: instance.stage })
-      } else {
-        state.seen.set(instance.nodeId, SETTLED)
-      }
-    }
-    for (const key of state.seen.keys()) {
-      if (!alive.has(key)) state.seen.delete(key)
-    }
-    // The store being non-empty is hydration — from here on a new gist body is a real rise.
-    if (ids.length > 0) state.hydrated = true
+    // The store being non-empty is hydration — a loaded universe with no risen gist still
+    // treats its next stage as a real rise.
+    const risen = reconcileGistRiseState(riseRef.current, snapshot, ids.length > 0)
     if (risen.length > 0) onStageRise?.(risen)
-  }, [instances, ids, onStageRise])
+  }, [snapshot, ids.length, onStageRise])
 
   const getInstancePosition = useCallback(
     (index: number, buffer: Float32Array, out: Float32Array, elapsedSeconds: number): boolean => {
-      const instance = instancesRef.current[index]
-      if (!instance) return false
-      const slot = memoryIndexById[instance.memoryId]
-      if (slot === undefined) return false
-      const offset = slot * COORDINATE_STRIDE
-      if (offset < 0 || offset + 2 >= buffer.length) return false
-
-      const entry = riseRef.current.seen.get(instance.nodeId)
-      if (entry === undefined) return false // not diffed yet — hidden one frame
-      out[0] = buffer[offset] ?? 0
-      out[1] = buffer[offset + 1] ?? 0
-      if (entry === SETTLED) {
-        out[2] = instance.z
-        return true
-      }
-      if (entry.start === null) {
-        // Stamp the rise + capture the starting hippocampal z on its first rendered frame, so
-        // the ease is one-way against a fixed origin ([I10]) even if the sim re-lays the memory
-        // out mid-rise, and a body that appeared while the tab was hidden still plays in full.
-        entry.start = elapsedSeconds
-        entry.startZ = buffer[offset + 2] ?? 0
-      }
-      const progress = Math.min(
-        1,
-        Math.max(0, (elapsedSeconds - entry.start) / GIST_RISE_DURATION_SECONDS),
-      )
-      if (progress >= 1) {
-        riseRef.current.seen.set(instance.nodeId, SETTLED)
-        out[2] = instance.z
-        return true
-      }
-      const eased = 1 - (1 - progress) ** 3
-      out[2] = entry.startZ + (instance.z - entry.startZ) * eased
-      return true
+      return mapGistInstancePosition(snapshot, riseRef.current, index, buffer, out, elapsedSeconds)
     },
-    [memoryIndexById],
+    [snapshot],
   )
-
-  const channels = useMemo<InstanceChannels>(() => {
-    const count = instances.length
-    const scales = new Float32Array(count)
-    const tint = new Float32Array(count * 3)
-    const softness = new Float32Array(count)
-    for (let i = 0; i < count; i++) {
-      const instance = instances[i]
-      scales[i] = instance.size
-      tint[i * 3] = instance.color[0]
-      tint[i * 3 + 1] = instance.color[1]
-      tint[i * 3 + 2] = instance.color[2]
-      softness[i] = instance.softness
-    }
-    return {
-      scales,
-      attributes: [
-        { name: GIST_INSTANCE_TINT, array: tint, itemSize: 3 },
-        { name: GIST_INSTANCE_DIFFUSE, array: softness, itemSize: 1 },
-      ],
-    }
-  }, [instances])
 
   const handleSelect = useCallback(
     (index: number) => {
-      const instance = instancesRef.current[index]
-      if (instance) onSelect?.(instance.memoryId, instance.stage)
+      const selection = gistSelectionAt(snapshot, index)
+      if (selection) onSelect?.(selection.memoryId, selection.stage)
     },
-    [onSelect],
+    [snapshot, onSelect],
   )
 
   return (
@@ -182,9 +229,9 @@ export function GistStarLayer({
       source={bodySource}
       bodyId="gist-star"
       kind="shader"
-      count={instances.length}
+      count={snapshot.count}
       positions={positions}
-      channels={channels}
+      channels={snapshot.channels}
       getInstancePosition={getInstancePosition}
       onNodePointerDown={onSelect ? handleSelect : undefined}
     />
