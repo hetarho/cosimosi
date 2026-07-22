@@ -16,6 +16,8 @@ export const VALUES = {
   rendering: {
     activeSkin: "aurora",
     maxPixelRatio: 2,
+    emotionSkyExposure: 0.62,
+    emotionSkyOpacity: {"grainient":0.74,"iridescence":0.76,"soft_aurora":0.86,"liquid_ether":0.74,"prismatic_burst":0.9,"plasma_wave":0.92,"ferrofluid":0.92,"floating_lines":0.88,"ripple_grid":0.9,"evil_eye":0.92,"lightfall":0.92,"pixel_blast":0.94},
     instanceBucketSize: 4096,
     starSizeMin: 0.9,
     starSizeMax: 3.2,

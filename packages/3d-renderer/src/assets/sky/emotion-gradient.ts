@@ -1,12 +1,15 @@
 import * as THREE from 'three/webgpu'
 
+import { VALUES } from '@cosimosi/config'
+
 // A 1D palette ramp baked from the universe's emotions, sampled by the sky shaders. An emotion's
 // weight is its PRIORITY in the universe, and it shapes its band twice over: the band's WIDTH is
 // proportional to the weight (the primary feeling claims the most sky), and the band's DEPTH fades
-// with rank — the primary emotion paints at full color while lesser feelings sink toward the bare
-// night base, so a faint emotion reads as a pale wash, not an equal stripe. A 1-emotion universe
-// reads as a single full-strength hue. The count/priority-driven structure lives HERE (CPU), where
-// it's exact, so the TSL effects stay faithful to their react-bits originals and just sample this ramp.
+// with rank. A shared exposure ceiling keeps the enclosing full-frame body below bloom-heavy white
+// without dimming the palette further as emotion count grows. Lesser feelings sink farther toward
+// the bare night base, so a faint emotion reads as a pale wash, not an equal stripe. The
+// count/priority-driven structure lives HERE (CPU), where it's exact, so the TSL effects stay
+// faithful to their react-bits originals and just sample this ramp.
 //
 // This mirrors how several react-bits shaders take a `sampler2D` gradient uniform.
 
@@ -23,9 +26,10 @@ const GRADIENT_WIDTH = 256
 const NIGHT_BASE: readonly [number, number, number] = [10, 10, 18]
 
 /**
- * How sharply band DEPTH falls behind the primary emotion. Strength is `(share / topShare) ** DEPTH_CURVE`,
- * so `1` fades linearly with weight and larger values sink the lesser emotions toward the night base
- * faster — a low-share feeling reads as a near-transparent wash rather than a merely dimmer stripe.
+ * How sharply band DEPTH falls behind the primary emotion. Relative strength is
+ * `(share / topShare) ** DEPTH_CURVE`, so `1` fades linearly with weight and larger values sink the
+ * lesser emotions toward the night base faster — a low-share feeling reads as a near-transparent
+ * wash rather than a merely dimmer stripe.
  * TUNE THIS (with the showcase weight spread) to taste while eyeballing the /test emotion-sky panel.
  */
 const DEPTH_CURVE = 1.5
@@ -53,11 +57,16 @@ export function updateEmotionGradientTexture(
     total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
   )
   const topShare = shares.reduce((max, share) => Math.max(max, share), 0)
+  // The palette is a full-frame light source and is bloomed with the rest of the scene. Cap its
+  // exposure independently of emotion priority, but do not attenuate it by emotion count: doing so
+  // collapses a many-emotion gradient toward the night base until its color zones disappear.
+  const paletteExposure = VALUES.rendering.emotionSkyExposure
 
-  // Priority-deep band colors: the primary emotion (largest share) paints at full strength; the
+  // Priority-deep band colors: the primary emotion is the deepest within the exposure budget; the
   // rest fade toward the night base in proportion to how far behind the primary they sit.
   const rgb = stops.map((s, i) => {
-    const strength = topShare > 0 ? ((shares[i] ?? 0) / topShare) ** DEPTH_CURVE : 1
+    const relativeStrength = topShare > 0 ? ((shares[i] ?? 0) / topShare) ** DEPTH_CURVE : 0
+    const strength = paletteExposure * relativeStrength
     const c = toRgb(s.color)
     return [
       NIGHT_BASE[0] + (c[0] - NIGHT_BASE[0]) * strength,

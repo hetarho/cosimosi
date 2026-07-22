@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { uniform } from 'three/tsl'
+import { float, uniform } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
 import {
@@ -27,16 +27,50 @@ export interface SkySphereProps {
   readonly effect?: SkyEffectKey
   /** Freeze the animation to a static frame. */
   readonly reducedMotion?: boolean
+  /** Alpha override; when omitted, the selected effect's generated tuning is used. */
+  readonly opacity?: number
   /** Sphere radius — big enough to enclose the scene. */
   readonly radius?: number
 }
 
 const FROZEN_TIME = 12
 
+interface SkyMaterialOptions {
+  readonly gradient: THREE.Texture
+  readonly time: unknown
+  readonly effect: SkyEffectKey
+  readonly count: number
+  readonly weights: readonly number[]
+  readonly opacity: number
+}
+
+// Package-internal construction seam: the emotion layer uses normal alpha over the black void and
+// never writes depth. It still tests depth because Three renders transparent materials after opaque
+// ones; the far sphere must fail behind already-drawn stars instead of washing over them.
+export function createSkyMaterial({
+  gradient,
+  time,
+  effect,
+  count,
+  weights,
+  opacity,
+}: SkyMaterialOptions): THREE.MeshBasicNodeMaterial {
+  const mat = new THREE.MeshBasicNodeMaterial()
+  const alpha = Math.max(0, Math.min(1, opacity))
+  mat.side = THREE.BackSide
+  mat.transparent = alpha < 1
+  mat.depthWrite = false
+  mat.depthTest = true
+  mat.opacityNode = float(alpha)
+  mat.colorNode = resolveSkyEffect(effect).build({ gradient, time, count, weights }) as never
+  return mat
+}
+
 export function SkySphere({
   stops,
   effect = DEFAULT_SKY_EFFECT,
   reducedMotion = false,
+  opacity,
   radius = 400,
 }: SkySphereProps) {
   const gradient = useMemo(() => buildEmotionGradientTexture(stops), [])
@@ -52,14 +86,11 @@ export function SkySphere({
       total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
     )
   }, [stops])
+  const effectOpacity = opacity ?? resolveSkyEffect(effect).opacity
 
   const material = useMemo(() => {
-    const mat = new THREE.MeshBasicNodeMaterial()
-    mat.side = THREE.BackSide
-    mat.depthWrite = false
-    mat.colorNode = resolveSkyEffect(effect).build({ gradient, time, count, weights }) as never
-    return mat
-  }, [gradient, time, effect, count, weights])
+    return createSkyMaterial({ gradient, time, effect, count, weights, opacity: effectOpacity })
+  }, [gradient, time, effect, count, weights, effectOpacity])
 
   // Repaint the ramp when the emotions change (no material rebuild).
   useEffect(() => updateEmotionGradientTexture(gradient, stops), [gradient, stops])
@@ -83,5 +114,5 @@ export function SkySphere({
     time.value += delta
   })
 
-  return <mesh geometry={geometry} material={material} frustumCulled={false} />
+  return <mesh geometry={geometry} material={material} frustumCulled={false} renderOrder={-3} />
 }

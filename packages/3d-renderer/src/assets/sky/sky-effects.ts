@@ -1,3 +1,5 @@
+import { VALUES } from '@cosimosi/config'
+
 import type { SkyNodeBuilder } from './sky-node.ts'
 
 import { evilEyeSkyNode } from './evil-eye-sky.ts'
@@ -35,6 +37,8 @@ export interface SkyEffect {
   readonly fidelity: SkyFidelity
   /** The TSL color-node builder. */
   readonly build: SkyNodeBuilder
+  /** Effect-specific alpha: dense fills are clearer; sparse marks retain more presence. */
+  readonly opacity: number
   /** The emotion count it opens on (the count it reads best at); any count is still accepted. */
   readonly defaultCount: number
 }
@@ -46,6 +50,7 @@ export const SKY_EFFECTS = [
     blurb: 'A warped, grain-lit gradient — the palette marbles across the whole sky.',
     fidelity: 'faithful',
     build: grainientSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.grainient,
     defaultCount: 5,
   },
   {
@@ -54,6 +59,7 @@ export const SKY_EFFECTS = [
     blurb: 'An oil-slick shimmer rolling through every emotion in turn.',
     fidelity: 'faithful',
     build: iridescenceSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.iridescence,
     defaultCount: 3,
   },
   {
@@ -62,6 +68,7 @@ export const SKY_EFFECTS = [
     blurb: 'Two hanging curtains of light, each its own feeling.',
     fidelity: 'faithful',
     build: softAuroraSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.soft_aurora,
     defaultCount: 5,
   },
   {
@@ -70,6 +77,7 @@ export const SKY_EFFECTS = [
     blurb: 'Emotions smeared like dye in slow water, marbling together.',
     fidelity: 'adapted',
     build: liquidEtherSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.liquid_ether,
     defaultCount: 3,
   },
   {
@@ -78,6 +86,7 @@ export const SKY_EFFECTS = [
     blurb: 'Rays streaming outward, sweeping the palette along their length.',
     fidelity: 'faithful',
     build: prismaticBurstSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.prismatic_burst,
     defaultCount: 1,
   },
   {
@@ -86,6 +95,7 @@ export const SKY_EFFECTS = [
     blurb: 'Neon tubes weaving and crossing around the sky — each ring rides the whole palette.',
     fidelity: 'adapted',
     build: plasmaWaveSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.plasma_wave,
     defaultCount: 3,
   },
   {
@@ -94,6 +104,7 @@ export const SKY_EFFECTS = [
     blurb: 'Magnetic ridges rising and merging, lit at the crests in bands of feeling.',
     fidelity: 'faithful',
     build: ferrofluidSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.ferrofluid,
     defaultCount: 1,
   },
   {
@@ -102,6 +113,7 @@ export const SKY_EFFECTS = [
     blurb: 'A woven stack of glowing waves, one filament per emotion.',
     fidelity: 'faithful',
     build: floatingLinesSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.floating_lines,
     defaultCount: 5,
   },
   {
@@ -110,6 +122,7 @@ export const SKY_EFFECTS = [
     blurb: 'A grid rippling outward in concentric rings of color.',
     fidelity: 'faithful',
     build: rippleGridSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.ripple_grid,
     defaultCount: 2,
   },
   {
@@ -118,6 +131,7 @@ export const SKY_EFFECTS = [
     blurb: 'A ring of ocular flames — one eye per emotion, each sized by its intensity.',
     fidelity: 'faithful',
     build: evilEyeSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.evil_eye,
     defaultCount: 3,
   },
   {
@@ -126,6 +140,7 @@ export const SKY_EFFECTS = [
     blurb: 'Rays of light falling, each carrying its own feeling downward.',
     fidelity: 'adapted',
     build: lightfallSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.lightfall,
     defaultCount: 1,
   },
   {
@@ -134,6 +149,7 @@ export const SKY_EFFECTS = [
     blurb: 'Pixel dots pulsing in blast rings that roll through the palette.',
     fidelity: 'adapted',
     build: pixelBlastSkyNode,
+    opacity: VALUES.rendering.emotionSkyOpacity.pixel_blast,
     defaultCount: 3,
   },
 ] as const satisfies readonly SkyEffect[]

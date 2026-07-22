@@ -31,6 +31,25 @@ rendering:
   active_skin: aurora
   # Cap devicePixelRatio so high-DPI screens don't tank the GPU frame budget.
   max_pixel_ratio: 2
+  # Overall exposure of the emotion palette before a sky effect shapes it. Kept below 1 because
+  # the enclosing sky covers the whole frame and the scene bloom pass amplifies bright regions.
+  emotion_sky_exposure: 0.62
+  # Per-effect alpha of the enclosing emotion sky. Full-frame fills stay more transparent while
+  # sparse line/ray effects retain enough presence; every effect leaves the black void and stars
+  # visible even when one emotion fills the palette ramp.
+  emotion_sky_opacity:
+    grainient: 0.74
+    iridescence: 0.76
+    soft_aurora: 0.86
+    liquid_ether: 0.74
+    prismatic_burst: 0.9
+    plasma_wave: 0.92
+    ferrofluid: 0.92
+    floating_lines: 0.88
+    ripple_grid: 0.9
+    evil_eye: 0.92
+    lightfall: 0.92
+    pixel_blast: 0.94
   # InstancedMesh bucket capacity — nodes batch into fixed-size instanced draws.
   instance_bucket_size: 4096
   # Star (episodic-memory) instance scale range — world radius mapped from EffectiveStrength
