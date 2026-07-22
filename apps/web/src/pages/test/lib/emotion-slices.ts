@@ -30,8 +30,10 @@ export function toEmotionSlices(rawWeights: ReadonlyMap<Mood, number>): EmotionS
 
 // Fixed emotion sets for the sky showcase: the same effect is shown holding 1, 3, 5 and 7 emotions
 // so the designer can read how each backdrop subdivides as a universe accrues more feeling. The
-// moods are ordered warm→cool for visually distinct, primary-first swatches; shares descend gently
-// so the weight-driven structure (band width / ring thickness) is visible rather than uniform.
+// moods are ordered warm→cool for visually distinct, primary-first swatches; shares descend
+// GEOMETRICALLY (each ~0.7× the one before) so the weight-driven structure reads the way a real
+// universe would — the primary claims the widest, deepest band and the tail sinks to a faint wash,
+// not a near-uniform ramp that hides the priority fade. Tune SHOWCASE_FALLOFF to taste.
 
 const SHOWCASE_MOOD_ORDER: readonly Mood[] = [
   'JOY',
@@ -49,13 +51,19 @@ const SHOWCASE_MOOD_ORDER: readonly Mood[] = [
   'EMPTINESS',
 ]
 
-/** Build `count` primary-first emotion slices with gently descending shares. */
+/** The most emotions the showcase can hold (the full mood order) — the panel's count ceiling. */
+export const MAX_SHOWCASE_EMOTIONS = SHOWCASE_MOOD_ORDER.length
+
+/** Each successive emotion holds this fraction of the previous one's raw weight. */
+const SHOWCASE_FALLOFF = 0.7
+
+/** Build `count` primary-first emotion slices with geometrically descending shares. */
 export function showcaseEmotions(count: number): EmotionSlice[] {
   const n = Math.max(0, Math.min(count, SHOWCASE_MOOD_ORDER.length))
   const raw = new Map<Mood, number>()
   for (let i = 0; i < n; i++) {
     const mood = SHOWCASE_MOOD_ORDER[i]
-    if (mood) raw.set(mood, n - i * 0.6)
+    if (mood) raw.set(mood, SHOWCASE_FALLOFF ** i)
   }
   return toEmotionSlices(raw)
 }

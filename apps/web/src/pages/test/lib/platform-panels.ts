@@ -7,7 +7,6 @@ import {
   TransportPingPanel,
   ValuesPanel,
 } from './platform-panel-components.tsx'
-import { BackgroundSkyPanel } from './background-sky-panel.tsx'
 import { NebulaDemoPanel } from './nebula-demo-panel.tsx'
 import { UiTestPanel } from './ui-test-panel.tsx'
 import {
@@ -68,14 +67,6 @@ export const platformTestPanels = createTestPanelRegistry([
     // No capability gate: the panel self-handles GPU absence (WebGPU → WebGL2 → none).
     requiredCapabilities: [],
     render: () => createElement(NebulaDemoPanel),
-  },
-  {
-    id: 'background-sky',
-    titleKey: 'test_harness_sky_title',
-    descriptionKey: 'test_harness_sky_description',
-    // No capability gate: UniverseCanvas self-handles GPU absence (WebGPU → WebGL2 → none).
-    requiredCapabilities: [],
-    render: () => createElement(BackgroundSkyPanel),
   },
   {
     id: 'ui-test',

@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import { buildEmotionGradientTexture } from './emotion-gradient.ts'
 
-// The ramp's priority semantics: band WIDTH follows weight, band DEPTH follows rank — the primary
-// emotion paints at full color, lesser emotions fade toward the bare night base.
+// The ramp's priority semantics: band WIDTH follows weight, band DEPTH follows weight too but on a
+// steeper curve — the primary emotion paints at full color, lesser emotions fade toward the bare
+// night base as `(share / topShare) ** DEPTH_CURVE`, so a low-share feeling reads as a faint wash.
 
 const NIGHT_BASE = [10, 10, 18] as const
+
+/** Mirror of the ramp's depth-fade exponent (see emotion-gradient.ts). */
+const DEPTH_CURVE = 1.5
 
 /** Read the ramp pixel nearest to t∈[0,1]. */
 function pixel(texture: ReturnType<typeof buildEmotionGradientTexture>, t: number) {
@@ -36,7 +40,7 @@ describe('emotion gradient ramp', () => {
       { color: '#0000ff', weight: 1 },
     ])
     expect(pixel(texture, 0.05)).toEqual([255, 0, 0])
-    expect(pixel(texture, 0.95)).toEqual(faded([0, 0, 255], 0.5))
+    expect(pixel(texture, 0.95)).toEqual(faded([0, 0, 255], 0.5 ** DEPTH_CURVE))
     texture.dispose()
   })
 

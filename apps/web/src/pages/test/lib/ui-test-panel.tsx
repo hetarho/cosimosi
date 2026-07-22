@@ -45,7 +45,12 @@ import {
   type ControlSize,
 } from '@cosimosi/ui'
 
-import { toEmotionSlices, type EmotionSlice } from './emotion-slices.ts'
+import {
+  MAX_SHOWCASE_EMOTIONS,
+  showcaseEmotions,
+  toEmotionSlices,
+  type EmotionSlice,
+} from './emotion-slices.ts'
 import { buildEngramDemoScene, type EngramDemoScene } from './engram-demo-scene.ts'
 
 // The single UI test surface, split into three tabs that share one skin. A preset is a
@@ -56,6 +61,10 @@ const PRESETS: readonly { key: SkinKey; label: string; blurb: string }[] = [
   { key: 'aurora', label: 'Aurora', blurb: 'Cool borealis — lavender · chartreuse · mint.' },
   { key: 'ember', label: 'Ember', blurb: 'Warm cosmic — ember-coral · rose · gold.' },
 ]
+
+// Quick "how many emotions" presets — pick a count 1..N and the universe fills to that many emotions
+// (geometrically descending shares); the sliders below still fine-tune each share afterwards.
+const EMOTION_COUNTS = Array.from({ length: MAX_SHOWCASE_EMOTIONS }, (_, i) => i + 1)
 
 const TABS = [
   { key: 'universe', label: 'Universe + UI' },
@@ -138,6 +147,7 @@ const T = {
   history: '변천사',
   write: 'Write a diary',
   // Universe backdrop controls
+  emotionCountLabel: 'How many emotions',
   emotionsTitle: 'Emotions in this universe',
   emotionsHint: 'Drag a share — the rest give or take to keep the total at 100%',
   addEmotion: 'Add an emotion',
@@ -427,9 +437,22 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
     setWeights((current) => setWeight(current, mood, value))
   const handleAdd = (mood: Mood) =>
     setWeights((current) => setWeight(current, mood, Math.round(100 / (current.size + 1))))
+  // Pick a count → fill the universe with that many emotions on geometrically descending shares (the
+  // same showcase distribution the sliders below then fine-tune).
+  const handleCount = (n: number) =>
+    setWeights(() => {
+      const next = new Map<Mood, number>()
+      for (const [mood, percent] of roundShares(
+        showcaseEmotions(n).map((slice) => [slice.mood, slice.weight * 100] as const),
+        100,
+      ))
+        if (percent > 0) next.set(mood, percent)
+      return next
+    })
 
   return (
     <div className="flex flex-col gap-4">
+      <EmotionCountPresets count={emotions.length} onPick={handleCount} />
       <EmotionControls weights={weights} primary={primary} onSet={handleSet} onAdd={handleAdd} />
       <BackgroundSwitcher activeKey={effect.key} onSelect={setEffectKey} />
 
@@ -458,6 +481,37 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// Quick emotion-count presets: one button per count 1..N. Picking a count fills the universe with
+// that many emotions (the showcase distribution); the sliders below still fine-tune each share.
+function EmotionCountPresets({ count, onPick }: { count: number; onPick: (n: number) => void }) {
+  return (
+    <section className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
+        {T.emotionCountLabel}
+      </span>
+      {EMOTION_COUNTS.map((n) => {
+        const selected = n === count
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onPick(n)}
+            aria-pressed={selected}
+            className={cx(
+              'inline-flex size-7 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors',
+              selected
+                ? 'border-primary text-text'
+                : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
+            )}
+          >
+            {n}
+          </button>
+        )
+      })}
+    </section>
   )
 }
 
@@ -655,7 +709,7 @@ function EngramUniverseCanvas({
   return (
     <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
       <SkySphere stops={emotions} effect={effect} reducedMotion={reducedMotion} />
-      <StarField />
+      <StarField reducedMotion={reducedMotion} />
       <NebulaField positions={positions} firstNodeIndex={scene.firstMemoryIndex} />
       <CellStarLayer positions={positions} />
       <StarLayer

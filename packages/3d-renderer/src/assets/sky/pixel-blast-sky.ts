@@ -23,9 +23,14 @@ export function pixelBlastSkyNode({ gradient, time }: SkyNodeArgs) {
 
   // expanding blast rings, faded toward the back
   const wave = sin(dist.mul(18).sub(t.mul(3)))
-  const pulse = smoothstep(float(0.2), float(1), wave)
   const fade = smoothstep(float(4), float(0.4), dist)
 
+  // Ring THICKNESS tracks emotion INTENSITY. The ramp already gives each emotion a band whose width
+  // is its weight and whose colour deepens with its rank (see emotion-gradient); we read that band's
+  // brightness back out as luminance and widen the lit ring for it — so a strong feeling paints a
+  // thick bright ring and a faint one a thin sliver, rather than every ring the same width.
   const col = sampleRamp(gradient, fract(dist.add(t.mul(0.05))))
+  const lum = col.x.add(col.y).add(col.z).div(3)
+  const pulse = smoothstep(float(0.9).sub(lum.mul(0.65)), float(1), wave)
   return clamp(col.mul(dot).mul(pulse).mul(fade), float(0), vec3(1))
 }

@@ -35,6 +35,13 @@ export interface SkyNodeArgs {
   readonly gradient: Texture
   /** Seconds-elapsed uniform node (host-controlled; frozen under reduced motion). */
   readonly time: unknown
+  /** How many emotions the universe holds. Count-structured effects (one line / eye / ring per
+   *  emotion) read it to shape their STRUCTURE; continuous effects ignore it. It is a plain JS number
+   *  because the effect loops unroll at build time — the material is rebuilt when the count changes. */
+  readonly count: number
+  /** Normalized emotion shares, primary-first, summing to 1 (parallel to the ramp bands). Intensity-
+   *  structured effects size their per-emotion feature (eye radius, ring width) by `weights[i]`. */
+  readonly weights: readonly number[]
 }
 
 /** A sky effect builder: palette ramp + time → the sphere's surface color node. */

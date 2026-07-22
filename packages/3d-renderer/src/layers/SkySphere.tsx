@@ -42,14 +42,24 @@ export function SkySphere({
   const gradient = useMemo(() => buildEmotionGradientTexture(stops), [])
   const time = useMemo(() => uniform(0), [])
   const geometry = useMemo(() => new THREE.SphereGeometry(radius, 96, 48), [radius])
-  // Rebuilds only when the effect changes; an emotion change just repaints the ramp (below).
+
+  // Count-structured effects (one line / eye / ring per emotion) bake structure from these, so the
+  // material must rebuild when they change — a mere color swap still just repaints the ramp (below).
+  const count = stops.length
+  const weights = useMemo(() => {
+    const total = stops.reduce((sum, s) => sum + Math.max(s.weight, 0), 0)
+    return stops.map((s) =>
+      total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
+    )
+  }, [stops])
+
   const material = useMemo(() => {
     const mat = new THREE.MeshBasicNodeMaterial()
     mat.side = THREE.BackSide
     mat.depthWrite = false
-    mat.colorNode = resolveSkyEffect(effect).build({ gradient, time }) as never
+    mat.colorNode = resolveSkyEffect(effect).build({ gradient, time, count, weights }) as never
     return mat
-  }, [gradient, time, effect])
+  }, [gradient, time, effect, count, weights])
 
   // Repaint the ramp when the emotions change (no material rebuild).
   useEffect(() => updateEmotionGradientTexture(gradient, stops), [gradient, stops])

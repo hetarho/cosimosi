@@ -47,5 +47,10 @@ export function ferrofluidSkyNode({ gradient, time }: SkyNodeArgs) {
   // color from the branch difference (the source's `h`)
   const h = clamp(peaks.sub(peaks2).mul(1.2).add(0.5), float(0), float(1))
   const col = sampleRamp(gradient, h)
-  return clamp(col.mul(0.05).add(col.mul(lit)), float(0), float(1))
+
+  // The body fades to BLACK away from the crests instead of sitting at a flat fill: the peak field
+  // itself is the gradient (cubed so troughs sink to pure night), so only the ridges carry colour
+  // and the bare background shows through the valleys — the lit rim stays the sparkle on top.
+  const bodyFade = pow(clamp(merged, float(0), float(1)), 3).mul(0.22)
+  return clamp(col.mul(bodyFade).add(col.mul(lit)), float(0), float(1))
 }

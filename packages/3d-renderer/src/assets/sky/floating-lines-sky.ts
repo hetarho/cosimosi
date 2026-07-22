@@ -5,11 +5,10 @@ import { sampleRamp, skyStereo, skySeconds, spin, vec3Acc, type SkyNodeArgs } fr
 
 // FloatingLines — faithful to react-bits' FloatingLines: a stack of glowing sine-wave lines, each a
 // thin `0.0175 / |uv.y - wave|` filament, the whole field twisted by a log-spiral rotation. The
-// source colors the stack by a fixed gradient array indexed per line; we sample the emotion ramp per
-// line index instead — so each filament carries its own emotion and the count sets how many distinct
-// line-colors thread the field. One emotion → one color of parallel waves; many → a woven spectrum.
+// source colors the stack by a fixed gradient array indexed per line; we draw ONE FILAMENT PER
+// EMOTION (`count`) and color each from its own ramp band — so the number of lines threading the
+// field literally IS the emotion count. One emotion → a single wave; many → a woven spectrum.
 
-const LINES = 6
 const LINE_DISTANCE = 0.15
 const SPIRAL = 0.3
 
@@ -28,16 +27,18 @@ function waveLine(p: unknown, offset: number, t: unknown) {
     .add(0.01)
 }
 
-export function floatingLinesSkyNode({ gradient, time }: SkyNodeArgs) {
+export function floatingLinesSkyNode({ gradient, time, count }: SkyNodeArgs) {
+  const lines = Math.max(1, count)
   const b = skyStereo().mul(vec2(3, 2)) // seamless chart (singularity behind the viewer)
   const t = skySeconds(time, 1)
   const angle = log(length(b).add(1)).mul(SPIRAL)
   const ruv = spin(b, angle)
 
   let col = vec3Acc()
-  for (let i = 0; i < LINES; i++) {
-    const lineCol = sampleRamp(gradient, i / (LINES - 1))
-    const p = ruv.add(vec2(LINE_DISTANCE * i, 0))
+  for (let i = 0; i < lines; i++) {
+    // one filament per emotion, its color that emotion's ramp band; centered so the stack straddles 0
+    const lineCol = sampleRamp(gradient, lines > 1 ? i / (lines - 1) : 0.5)
+    const p = ruv.add(vec2(LINE_DISTANCE * (i - (lines - 1) / 2), 0))
     col = col.add(lineCol.mul(waveLine(p, 2 + 0.15 * i, t)))
   }
   return clamp(col.mul(0.4), float(0), float(1))

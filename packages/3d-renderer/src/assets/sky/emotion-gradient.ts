@@ -22,6 +22,14 @@ const GRADIENT_WIDTH = 256
 /** The bare night the sky is made of where no emotion reaches (`#0a0a12`). */
 const NIGHT_BASE: readonly [number, number, number] = [10, 10, 18]
 
+/**
+ * How sharply band DEPTH falls behind the primary emotion. Strength is `(share / topShare) ** DEPTH_CURVE`,
+ * so `1` fades linearly with weight and larger values sink the lesser emotions toward the night base
+ * faster — a low-share feeling reads as a near-transparent wash rather than a merely dimmer stripe.
+ * TUNE THIS (with the showcase weight spread) to taste while eyeballing the /test emotion-sky panel.
+ */
+const DEPTH_CURVE = 1.5
+
 /** Parse a hex color (string or number) to sRGB bytes [0..255]. */
 function toRgb(color: string | number): [number, number, number] {
   if (typeof color === 'number') {
@@ -49,7 +57,7 @@ export function updateEmotionGradientTexture(
   // Priority-deep band colors: the primary emotion (largest share) paints at full strength; the
   // rest fade toward the night base in proportion to how far behind the primary they sit.
   const rgb = stops.map((s, i) => {
-    const strength = topShare > 0 ? (shares[i] ?? 0) / topShare : 1
+    const strength = topShare > 0 ? ((shares[i] ?? 0) / topShare) ** DEPTH_CURVE : 1
     const c = toRgb(s.color)
     return [
       NIGHT_BASE[0] + (c[0] - NIGHT_BASE[0]) * strength,

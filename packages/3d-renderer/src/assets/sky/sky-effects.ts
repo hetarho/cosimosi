@@ -8,7 +8,6 @@ import { iridescenceSkyNode } from './iridescence-sky.ts'
 import { lightfallSkyNode } from './lightfall-sky.ts'
 import { liquidEtherSkyNode } from './liquid-ether-sky.ts'
 import { pixelBlastSkyNode } from './pixel-blast-sky.ts'
-import { pixelSnowSkyNode } from './pixel-snow-sky.ts'
 import { plasmaWaveSkyNode } from './plasma-wave-sky.ts'
 import { prismaticBurstSkyNode } from './prismatic-burst-sky.ts'
 import { rippleGridSkyNode } from './ripple-grid-sky.ts'
@@ -19,10 +18,9 @@ import { softAuroraSkyNode } from './soft-aurora-sky.ts'
 // sphere surface; `adapted` effects re-create the LOOK of a source that is fundamentally screen-space
 // 3D or a multi-pass simulation (it cannot live in one sphere-surface node) — honest about the seam.
 //
-// `emotionCounts` is how many feelings each effect reads well holding, and `defaultCount` the one it
-// opens on. Gradient/field effects subdivide cleanly into many color zones; discrete-band and radial
-// effects stay legible with fewer; the near-monochrome ones want one or two. This is the per-backdrop
-// emotion budget the UI test exercises.
+// `defaultCount` is how many feelings each effect OPENS on — the count it reads best at. There is no
+// hard ceiling: every effect accepts any emotion count 1..N (the test panel lets you pick freely),
+// and each effect reshapes itself to whatever count it's handed.
 
 export type SkyFidelity = 'faithful' | 'adapted'
 
@@ -37,9 +35,7 @@ export interface SkyEffect {
   readonly fidelity: SkyFidelity
   /** The TSL color-node builder. */
   readonly build: SkyNodeBuilder
-  /** Emotion counts this effect reads well holding (the panel offers these). */
-  readonly emotionCounts: readonly number[]
-  /** The count it opens on. */
+  /** The emotion count it opens on (the count it reads best at); any count is still accepted. */
   readonly defaultCount: number
 }
 
@@ -50,7 +46,6 @@ export const SKY_EFFECTS = [
     blurb: 'A warped, grain-lit gradient — the palette marbles across the whole sky.',
     fidelity: 'faithful',
     build: grainientSkyNode,
-    emotionCounts: [1, 3, 5, 7],
     defaultCount: 5,
   },
   {
@@ -59,8 +54,7 @@ export const SKY_EFFECTS = [
     blurb: 'An oil-slick shimmer rolling through every emotion in turn.',
     fidelity: 'faithful',
     build: iridescenceSkyNode,
-    emotionCounts: [1, 3, 5, 7],
-    defaultCount: 5,
+    defaultCount: 3,
   },
   {
     key: 'soft-aurora',
@@ -68,8 +62,7 @@ export const SKY_EFFECTS = [
     blurb: 'Two hanging curtains of light, each its own feeling.',
     fidelity: 'faithful',
     build: softAuroraSkyNode,
-    emotionCounts: [1, 2, 3, 5],
-    defaultCount: 3,
+    defaultCount: 5,
   },
   {
     key: 'liquid-ether',
@@ -77,8 +70,7 @@ export const SKY_EFFECTS = [
     blurb: 'Emotions smeared like dye in slow water, marbling together.',
     fidelity: 'adapted',
     build: liquidEtherSkyNode,
-    emotionCounts: [3, 5, 7],
-    defaultCount: 5,
+    defaultCount: 3,
   },
   {
     key: 'prismatic-burst',
@@ -86,8 +78,7 @@ export const SKY_EFFECTS = [
     blurb: 'Rays streaming outward, sweeping the palette along their length.',
     fidelity: 'faithful',
     build: prismaticBurstSkyNode,
-    emotionCounts: [3, 5, 7],
-    defaultCount: 5,
+    defaultCount: 1,
   },
   {
     key: 'plasma-wave',
@@ -95,8 +86,7 @@ export const SKY_EFFECTS = [
     blurb: 'Neon tubes weaving and crossing around the sky — each ring rides the whole palette.',
     fidelity: 'adapted',
     build: plasmaWaveSkyNode,
-    emotionCounts: [3, 5, 7],
-    defaultCount: 5,
+    defaultCount: 3,
   },
   {
     key: 'ferrofluid',
@@ -104,8 +94,7 @@ export const SKY_EFFECTS = [
     blurb: 'Magnetic ridges rising and merging, lit at the crests in bands of feeling.',
     fidelity: 'faithful',
     build: ferrofluidSkyNode,
-    emotionCounts: [1, 3, 5],
-    defaultCount: 3,
+    defaultCount: 1,
   },
   {
     key: 'floating-lines',
@@ -113,8 +102,7 @@ export const SKY_EFFECTS = [
     blurb: 'A woven stack of glowing waves, one filament per emotion.',
     fidelity: 'faithful',
     build: floatingLinesSkyNode,
-    emotionCounts: [1, 3, 6],
-    defaultCount: 6,
+    defaultCount: 5,
   },
   {
     key: 'ripple-grid',
@@ -122,17 +110,15 @@ export const SKY_EFFECTS = [
     blurb: 'A grid rippling outward in concentric rings of color.',
     fidelity: 'faithful',
     build: rippleGridSkyNode,
-    emotionCounts: [1, 3, 5],
-    defaultCount: 3,
+    defaultCount: 2,
   },
   {
     key: 'evil-eye',
     label: 'Evil Eye',
-    blurb: 'A single ocular flame — one dominant emotion, a second tinting the rim.',
+    blurb: 'A ring of ocular flames — one eye per emotion, each sized by its intensity.',
     fidelity: 'faithful',
     build: evilEyeSkyNode,
-    emotionCounts: [1, 2, 3],
-    defaultCount: 2,
+    defaultCount: 3,
   },
   {
     key: 'lightfall',
@@ -140,8 +126,7 @@ export const SKY_EFFECTS = [
     blurb: 'Rays of light falling, each carrying its own feeling downward.',
     fidelity: 'adapted',
     build: lightfallSkyNode,
-    emotionCounts: [1, 3, 6],
-    defaultCount: 3,
+    defaultCount: 1,
   },
   {
     key: 'pixel-blast',
@@ -149,17 +134,7 @@ export const SKY_EFFECTS = [
     blurb: 'Pixel dots pulsing in blast rings that roll through the palette.',
     fidelity: 'adapted',
     build: pixelBlastSkyNode,
-    emotionCounts: [1, 3, 5],
     defaultCount: 3,
-  },
-  {
-    key: 'pixel-snow',
-    label: 'Pixel Snow',
-    blurb: 'Blocky flakes drifting on a near-monochrome sky, a second hue frosting a few.',
-    fidelity: 'adapted',
-    build: pixelSnowSkyNode,
-    emotionCounts: [1, 2, 3],
-    defaultCount: 2,
   },
 ] as const satisfies readonly SkyEffect[]
 

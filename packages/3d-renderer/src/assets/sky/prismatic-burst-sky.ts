@@ -1,17 +1,4 @@
-import {
-  clamp,
-  cos,
-  float,
-  fract,
-  length,
-  min,
-  mix,
-  pow,
-  sin,
-  smoothstep,
-  vec3,
-  vec4,
-} from 'three/tsl'
+import { atan, clamp, cos, float, fract, length, min, sin, smoothstep, vec3, vec4 } from 'three/tsl'
 
 import { asFloatNode, asVec3Node } from '../../tsl'
 import {
@@ -29,9 +16,10 @@ import {
 // PrismaticBurst — a faithful port of react-bits' PrismaticBurst (the one source that already
 // samples a gradient texture), mapped SEAMLESSLY onto the sphere: each fragment volume-marches along
 // its OWN 3D surface direction (`skyDir`) rather than a projected screen ray, so the burst wraps the
-// scene with no seam and no pole. The march accumulates gradient-colored energy where a bent
-// interference pattern fires; the marched color IS the emotion ramp along the ray. Step count is
-// toned for the sphere. Rich at many emotions — the ramp is swept continuously.
+// scene with no seam and no pole. The march accumulates energy where a bent interference pattern
+// fires; that energy is coloured by the emotion of its ANGULAR SECTOR (the ramp fanned around the
+// burst centre), so the emotion count cuts the burst into that many coloured pie-slice rays. Step
+// count is toned for the sphere.
 
 const PI = Math.PI
 const STEPS = 16
@@ -57,6 +45,17 @@ export function prismaticBurstSkyNode({ gradient, time }: SkyNodeArgs) {
   // the self-animating 2D rotation applied to the march's xz each step (source's `M2`)
   const cc = cos(t.mul(0.2).add(vec4(0, 33, 11, 0)))
 
+  // Emotion colour by ANGULAR SECTOR: the azimuth around the burst's radial centre picks the ramp
+  // band, so the palette fans out as pie-slice rays — N emotions cut N coloured sectors (each sector's
+  // arc ∝ its weight), and changing the count visibly re-slices the burst rather than only re-tinting
+  // a radial cycle no one could read.
+  const azHue = fract(
+    atan(dir.y, dir.x)
+      .mul(1 / (2 * PI))
+      .add(0.5),
+  )
+  const emo = sampleRamp(gradient, azHue).mul(2)
+
   let col = vec3Acc()
   let marchT = floatAcc(0.01)
   for (let i = 0; i < STEPS; i++) {
@@ -80,33 +79,26 @@ export function prismaticBurstSkyNode({ gradient, time }: SkyNodeArgs) {
       sin(Pb.x.add(cos(Pb.y).mul(cos(Pb.z)))).mul(sin(Pb.z.add(sin(Pb.y).mul(cos(Pb.x.add(t)))))),
     )
 
-    const saw = fract(marchT.mul(0.25))
-    const tRay = saw.mul(saw).mul(float(3).sub(saw.mul(2)))
-    const spectral = sampleRamp(gradient, tRay).mul(2)
-    const base = spectral
-      .mul(float(0.05).div(stepLen.add(0.4)))
-      .mul(smoothstep(float(5), float(0), rad))
+    const base = emo.mul(float(0.05).div(stepLen.add(0.4))).mul(smoothstep(float(5), float(0), rad))
     col = col.add(base.mul(ray))
     marchT = marchT.add(stepLen)
   }
 
-  // the source's smootherstep edge fade over the seamless front-angle radius (darkens the core, so
-  // rays stream outward); r ∈ [0,1] by construction, so the pow bases stay non-negative
+  // Edge fade over the seamless front-angle radius: darkens the core so rays stream OUTWARD. A plain
+  // monotonic smootherstep (no extra pow/mix step) — the earlier `mix` re-brightened a mid band and
+  // read as a hard concentric RING sitting in front of the rays; dropping it leaves a clean outward
+  // falloff, so the burst is only streaks with no disc. r ∈ [0,1] by construction.
   const r = skyFrontAngle().div(PI)
-  const q = r
+  const s = r
     .mul(r)
     .mul(r)
     .mul(r.mul(r.mul(6).sub(15)).add(10))
-  let s = pow(q.mul(0.5), 1.5)
-  s = mix(s, float(1).sub(pow(float(1).sub(s), 2)), 0.2)
   const lit = col.mul(clamp(s, float(0), float(1))).mul(INTENSITY)
 
-  // Ambient fill so the far side isn't a dead black void: a faint emotion wash that swells toward the
-  // back (front-angle r → 1), where the outward-streaming rays never reach. Sampled from the ramp so
-  // it still carries the palette, with a whisper of the step-jitter noise so it isn't a flat plate.
-  // Kept low and zero near the front core, so the burst stays the hero.
+  // Faint far-side wash so the back isn't dead black — kept to the rear third only (smoothstep from
+  // r=0.55) so it never forms a ring around the burst, with a whisper of noise so it isn't a plate.
   const ambient = sampleRamp(gradient, fract(r.mul(0.6).sub(t.mul(0.02))))
-    .mul(smoothstep(float(0.18), float(1), r))
-    .mul(float(0.16).add(n.mul(0.06)))
+    .mul(smoothstep(float(0.55), float(1), r))
+    .mul(float(0.09).add(n.mul(0.04)))
   return clamp(lit.add(ambient), float(0), float(1))
 }
