@@ -1,10 +1,12 @@
 import * as THREE from 'three/webgpu'
 
-// A 1D palette ramp baked from the universe's emotions, sampled by the sky shaders. Each
-// emotion owns a band of the ramp proportional to its weight, blended smoothly across band
-// centers — so a 1-emotion universe reads as a single hue and an N-emotion universe divides
-// into N legible color zones. The count-driven structure lives HERE (CPU), where it's exact,
-// so the TSL effects stay faithful to their react-bits originals and just sample this ramp.
+// A 1D palette ramp baked from the universe's emotions, sampled by the sky shaders. An emotion's
+// weight is its PRIORITY in the universe, and it shapes its band twice over: the band's WIDTH is
+// proportional to the weight (the primary feeling claims the most sky), and the band's DEPTH fades
+// with rank — the primary emotion paints at full color while lesser feelings sink toward the bare
+// night base, so a faint emotion reads as a pale wash, not an equal stripe. A 1-emotion universe
+// reads as a single full-strength hue. The count/priority-driven structure lives HERE (CPU), where
+// it's exact, so the TSL effects stay faithful to their react-bits originals and just sample this ramp.
 //
 // This mirrors how several react-bits shaders take a `sampler2D` gradient uniform.
 
@@ -16,6 +18,9 @@ export interface GradientStop {
 }
 
 const GRADIENT_WIDTH = 256
+
+/** The bare night the sky is made of where no emotion reaches (`#0a0a12`). */
+const NIGHT_BASE: readonly [number, number, number] = [10, 10, 18]
 
 /** Parse a hex color (string or number) to sRGB bytes [0..255]. */
 function toRgb(color: string | number): [number, number, number] {
@@ -29,29 +34,41 @@ function toRgb(color: string | number): [number, number, number] {
   return [(int >> 16) & 0xff, (int >> 8) & 0xff, int & 0xff]
 }
 
-/** Fill the ramp bytes from the emotion stops (weight-sized bands, smooth blend). */
+/** Fill the ramp bytes from the emotion stops (weight-sized bands, priority-deep colors, smooth blend). */
 export function updateEmotionGradientTexture(
   texture: THREE.DataTexture,
   stops: readonly GradientStop[],
 ): void {
   const data = texture.image.data as Uint8ClampedArray | Uint8Array
-  const rgb = stops.map((s) => toRgb(s.color))
   const total = stops.reduce((sum, s) => sum + Math.max(s.weight, 0), 0)
+  const shares = stops.map((s) =>
+    total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
+  )
+  const topShare = shares.reduce((max, share) => Math.max(max, share), 0)
+
+  // Priority-deep band colors: the primary emotion (largest share) paints at full strength; the
+  // rest fade toward the night base in proportion to how far behind the primary they sit.
+  const rgb = stops.map((s, i) => {
+    const strength = topShare > 0 ? (shares[i] ?? 0) / topShare : 1
+    const c = toRgb(s.color)
+    return [
+      NIGHT_BASE[0] + (c[0] - NIGHT_BASE[0]) * strength,
+      NIGHT_BASE[1] + (c[1] - NIGHT_BASE[1]) * strength,
+      NIGHT_BASE[2] + (c[2] - NIGHT_BASE[2]) * strength,
+    ] as [number, number, number]
+  })
 
   // Band centers along [0,1] (running weight midpoint), like a cumulative color-stop layout.
   const centers: number[] = []
   let acc = 0
-  for (const s of stops) {
-    const w = total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1)
-    centers.push(acc + w / 2)
-    acc += w
+  for (const share of shares) {
+    centers.push(acc + share / 2)
+    acc += share
   }
 
   for (let x = 0; x < GRADIENT_WIDTH; x++) {
     const t = (x + 0.5) / GRADIENT_WIDTH
-    let r = 10
-    let g = 10
-    let b = 18
+    let [r, g, b] = NIGHT_BASE as [number, number, number]
     if (rgb.length === 1) {
       ;[r, g, b] = rgb[0] ?? [r, g, b]
     } else if (rgb.length > 1) {
