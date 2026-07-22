@@ -136,6 +136,10 @@ export const memoryRpcCachePolicies = [
     method: MemoryService.method.getDiaries,
     policy: userScopedUnaryReadPolicy,
   },
+  {
+    method: MemoryService.method.syncStatus,
+    policy: userScopedUnaryReadPolicy,
+  },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
 export const twinkleRpcCachePolicies = [

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -111,17 +113,31 @@ func economyLedger(tx memory.EconomyTx) (twinkle.LedgerStore, error) {
 }
 
 // twinkleIntent maps memory's spend vocabulary onto twinkle's: kind → entry reason,
-// the depth signals carried through as scalars. Prices exist on neither side of
-// this mapping ([CC3]).
+// the depth signals carried through as scalars, and the operation identity → the spend's
+// dedup key. Prices exist on neither side of this mapping ([CC3]).
 func twinkleIntent(spend memory.SpendIntent) (twinkle.SpendIntent, error) {
 	switch spend.Kind {
 	case memory.SpendKindRecall:
-		return twinkle.SpendIntent{Reason: twinkle.ReasonRecall, AccessibilityCost: spend.AccessibilityCost}, nil
+		return twinkle.SpendIntent{Reason: twinkle.ReasonRecall, AccessibilityCost: spend.AccessibilityCost, DedupKey: spendDedupKey(spend)}, nil
 	case memory.SpendKindViewGist:
-		return twinkle.SpendIntent{Reason: twinkle.ReasonGistView, SemanticStage: int(spend.Stage)}, nil
+		return twinkle.SpendIntent{Reason: twinkle.ReasonGistView, SemanticStage: int(spend.Stage), DedupKey: spendDedupKey(spend)}, nil
 	default:
 		return twinkle.SpendIntent{}, fmt.Errorf("%w: %q", twinkle.ErrSpendIntentInvalid, spend.Kind)
 	}
+}
+
+// spendDedupKey derives the twinkle spend row's idempotency key from the paid action's operation
+// id and target memory (A3). One recall/view spends once (its op id + memory id); a whole-diary
+// recall spends once per member under one op id, so folding the member id in gives each member a
+// distinct key — a replayed diary recall re-charges no member. Empty when no operation id rode
+// along (a non-paid path); the append then only guards backend id collisions.
+func spendDedupKey(spend memory.SpendIntent) string {
+	if spend.OperationID == "" {
+		return ""
+	}
+	payload := fmt.Sprintf("%d:%s%d:%s", len(spend.OperationID), spend.OperationID, len(spend.MemoryID), spend.MemoryID)
+	digest := sha256.Sum256([]byte(payload))
+	return "spend:" + hex.EncodeToString(digest[:])
 }
 
 // memorySpendSignals implements twinkle.SpendSignalReader over memory's published

@@ -48,6 +48,8 @@ export type {
   SuggestLetGoRequest,
   SuggestLetGoResponse,
   SynapseDto,
+  SyncStatusRequest,
+  SyncStatusResponse,
   ViewSemanticRequest,
   ViewSemanticResponse,
 } from './gen/cosimosi/memory/v1/memory_pb.ts'
@@ -87,6 +89,22 @@ export function createGetUniverseQueryKey(transport?: Transport) {
 
 export function createGetUniverseQueryOptions(transport: Transport) {
   return createQueryOptions(MemoryService.method.getUniverse, {}, { transport })
+}
+
+// The server-authoritative sync-status read ([R1a]): the client drives the sync-consent decision
+// from `needsSync` here, never a local Date. Free/GET-eligible, so it caches like the other reads;
+// a recall/diary-recall that advances the clock invalidates it alongside GetUniverse.
+export function createSyncStatusQueryKey(transport?: Transport) {
+  return createConnectQueryKey({
+    schema: MemoryService.method.syncStatus,
+    input: {},
+    transport,
+    cardinality: 'finite',
+  })
+}
+
+export function createSyncStatusQueryOptions(transport: Transport) {
+  return createQueryOptions(MemoryService.method.syncStatus, {}, { transport })
 }
 
 export function createGetDiariesQueryKey(transport?: Transport) {

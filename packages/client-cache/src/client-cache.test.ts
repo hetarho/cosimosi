@@ -315,7 +315,9 @@ describe('client cache facade', () => {
       .sort()
 
     expect(registeredReadKeys).toEqual(generatedReadKeys)
-    expect(generatedReadKeys).toHaveLength(8)
+    // Ping · GetUniverse · GetProvenance · Export · GetDiaries · SyncStatus · GetBalance ·
+    // QuoteSpend · GetPalettePreference — the SyncStatus read (job 70) makes nine.
+    expect(generatedReadKeys).toHaveLength(9)
     expect(() =>
       assertRpcCachePolicyCoverage(
         apiServiceDescriptors,

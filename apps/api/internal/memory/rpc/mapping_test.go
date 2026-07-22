@@ -241,6 +241,9 @@ func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 		{memory.ErrProvenanceInputRequired, connect.CodeInvalidArgument},
 		{memory.ErrProvenanceMemoryNotFound, connect.CodeNotFound},
 		{memory.ErrExportFormatRequired, connect.CodeInvalidArgument},
+		{memory.ErrOperationIDRequired, connect.CodeInvalidArgument},
+		{memory.ErrOperationConflict, connect.CodeAlreadyExists},
+		{memory.ErrSyncConsentRequired, connect.CodeFailedPrecondition},
 	}
 	for _, c := range cases {
 		if got := connect.CodeOf(domainError(c.err)); got != c.want {

@@ -98,8 +98,10 @@ composing use-case appends the dedup-keyed ledger entry **first** in the same tr
 the append reports a retry — that pairing is what makes a retried earn/spend idempotent end to end. The dedup keys
 are use-case policy: `write_diary:<diaryID>` (once per diary), `invite_signup:<signupID>` (invitee side),
 `invite:<signupID>` (inviter side), and a `payment:` key derived from the normalized provider + provider transaction
-identity. Payment keys are globally single-use; other keys remain user-scoped. Spends carry no dedup key (each
-recall/view is a new event).
+identity. **Spends carry an operation-derived key too** — `spend:<operationID>:<memoryID>`, minted at the composition
+root from the paid action's client operation id (per-action for a single recall/view, per-member when a whole-diary
+recall shares one operation id across its members), so a duplicate spend append applies no second balance delta (A3).
+Payment keys are globally single-use; other keys remain user-scoped.
 `ErrBasicGrantExceeded` wraps the canonical `twinkle.ErrInsufficientTwinkle`: a raced basic overdraw surfaces to the
 caller as not-enough-twinkle at the true window state.
 
@@ -107,9 +109,11 @@ caller as not-enough-twinkle at the true window state.
 
 - **`CheckAndSpend(scope, ledger, intent)`** — the real `SpendGate` behavior ([CC2][G1]): price the intent
   (`RecallCost(accessibilityCost)` / `GistViewCost(semanticStage)` — the caller passes only signals), derive the
-  balance, `PlanSpend` basic→additional, and on `ok` append the spend row + apply the guarded delta. On `!ok` return
-  `ErrInsufficientTwinkle` and write **nothing**. `ledger` is the caller's transaction-bound store (the economy
-  seam); `nil` runs the spend in its own `InLedgerTx` (the tx-less gist view). A zero-priced intent writes nothing.
+  balance, `PlanSpend` basic→additional, and on `ok` append the **dedup-keyed** spend row first (the intent's
+  `DedupKey`), then skip `ApplyBalanceDelta` when the append reports an already-applied retry — the same idempotent
+  pairing as `earn`, so a duplicate operation draws the balance once (A3). On `!ok` return `ErrInsufficientTwinkle` and
+  write **nothing**. `ledger` is the caller's transaction-bound store (the economy seam; both recall and the gist view
+  now pass their memory transaction). A zero-priced intent writes nothing.
 - **`EarnOnWrite(scope, ledger, diaryID)`** — the write grant, `twinkle.earn_write` to additional, dedup-keyed per
   diary; requires the launch's transaction-bound store (`ErrEarnTxRequired` otherwise).
 - **`ClaimInvite(scope, inviteCode)`** — passes the opaque code and authenticated invitee to `InviteResolver`; only a
@@ -120,16 +124,17 @@ caller as not-enough-twinkle at the true window state.
   normalized provider transaction identity, provider, known pack, exact catalog amount, and authenticated beneficiary.
   The opaque receipt never becomes a ledger key or an error detail. `UnavailablePaymentVerifier` is the production
   default until a real store adapter is explicitly bound at `cmd/api`.
-- **`GetBalance(scope)`** / **`QuoteSpend(scope, kind, targetID)`** — read-only: derive the balance (lazy-birth
+- **`GetBalance(scope)`** / **`QuoteSpend(scope, kind, targetID, semanticStage)`** — read-only: derive the balance (lazy-birth
   default for an absent row, no write, no window roll); the quote resolves its depth signal through the
-  `SpendSignalReader` port, prices with the same curves, and returns `{cost, covered, shortfall}` (diary-recall =
-  the per-memory `RecallCost` sum, [D3]). Both descriptors use the client transport's `userScopedUnaryReadPolicy`, so
-  they are authenticated GETs and never shared-CDN cacheable.
+  `SpendSignalReader` port, prices with the same curves, and returns `{cost, covered, shortfall}` (gist-view validates
+  the selected stage against the reached stage and prices that selection; diary-recall = the per-memory `RecallCost`
+  sum, [D3]). Both descriptors use the client transport's `userScopedUnaryReadPolicy`, so they are authenticated GETs
+  and never shared-CDN cacheable.
 
 ## 4b. The cross-context economy seam (composition root only)
 
 Memory declares `SpendGate`/`EarnPort` with an opaque **`EconomyTx`** handle (`any`); recall/launch pass their
-transaction surface through it, the gist view passes `nil`. The `memory/pg` store exposes its bound query handle via
+transaction surface through it, and the gist view passes its memory-owned transaction. The `memory/pg` store exposes its bound query handle via
 `DB()`; `cmd/api`'s `twinkleSpendGate`/`twinkleEarnPort` adapters extract it and bind `twinklepg.NewStore` over the
 **same pgx transaction** — the two contexts share the transaction, never the queries, so a spend/earn and its
 recall/launch commit or roll back as one. The adapters also translate vocabulary both ways: `memory.SpendIntent` →
@@ -137,7 +142,7 @@ recall/launch commit or roll back as one. The adapters also translate vocabulary
 `memory.ErrInsufficientTwinkle`, and memory's read refusals → `twinkle.ErrQuoteTargetNotFound/Unavailable` for the
 quote. `memorySpendSignals` implements `twinkle.SpendSignalReader` over memory's published reads
 (`RecallAccessibility`, `DiaryRecallAccessibilities` — one batch anchor read per diary, no text/gist payload — and
-`ViewableGistStage`, the reached = deepest = cheapest viewable stage); it is bound to the memory service right after
+`ViewableGistStage`, the authoritative upper bound for the selected quote stage); it is bound to the memory service right after
 construction (the one two-way seam, closed at the root). Signal reads derive at `GREATEST(guard baseline, real
 today)` — the clock a real recall would sync to, with the unborn clock falling back to the latest launched memory
 exactly like the sync guard — so a quote and the authoritative spend price the same decay state. The whole-diary

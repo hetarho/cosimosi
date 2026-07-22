@@ -35,7 +35,7 @@ func TestEconomySpendJoinsTheMemoryTransaction(t *testing.T) {
 	memoryStore := memorypg.NewStore(pool.PgxPool())
 	twinkleService := economyTwinkleService(t, pool)
 	gate := twinkleSpendGate{service: twinkleService}
-	intent := memory.RecallSpendIntent("memory-1", 1.0)
+	intent := memory.RecallSpendIntent("op-1", "memory-1", 1.0)
 	wantCost := twinkle.RecallCost(1.0)
 
 	// Roll back: the gate's ledger write vanishes with the enclosing transaction.
@@ -213,13 +213,25 @@ func cleanupEconomyTestRows(t *testing.T, pool *platformdb.Pool, userID string) 
 // without a database.
 func TestTwinkleIntentMapsKindsAndSignals(t *testing.T) {
 	t.Parallel()
-	recall, err := twinkleIntent(memory.RecallSpendIntent("m1", 2.5))
+	recall, err := twinkleIntent(memory.RecallSpendIntent("op-1", "m1", 2.5))
 	if err != nil || recall.Reason != twinkle.ReasonRecall || recall.AccessibilityCost != 2.5 {
 		t.Fatalf("recall intent = %+v (err %v), want reason recall carrying weight 2.5", recall, err)
 	}
-	gist, err := twinkleIntent(memory.GistViewSpendIntent("m1", 3))
+	// The operation id + target derive the spend's dedup key (A3) — per-action for a single
+	// recall, per-member when a whole-diary recall shares one operation id across its members.
+	if recall.DedupKey == "" || recall.DedupKey != spendDedupKey(memory.RecallSpendIntent("op-1", "m1", 0)) {
+		t.Fatalf("recall dedup key = %q, want the canonical operation/target key", recall.DedupKey)
+	}
+	gist, err := twinkleIntent(memory.GistViewSpendIntent("op-2", "m1", 3))
 	if err != nil || gist.Reason != twinkle.ReasonGistView || gist.SemanticStage != 3 {
 		t.Fatalf("gist intent = %+v (err %v), want reason gist_view carrying stage 3", gist, err)
+	}
+	if gist.DedupKey == "" || gist.DedupKey != spendDedupKey(memory.GistViewSpendIntent("op-2", "m1", 1)) {
+		t.Fatalf("gist dedup key = %q, want the canonical operation/target key", gist.DedupKey)
+	}
+	// Field boundaries are unambiguous: delimiter-like ids cannot alias another operation/target.
+	if spendDedupKey(memory.RecallSpendIntent("a:b", "c", 0)) == spendDedupKey(memory.RecallSpendIntent("a", "b:c", 0)) {
+		t.Fatal("length-delimited operation/target pairs must derive distinct dedup keys")
 	}
 	if _, err := twinkleIntent(memory.SpendIntent{Kind: "unknown"}); err == nil {
 		t.Fatal("an unknown kind must be a wiring fault, not a silent free spend")

@@ -4,17 +4,21 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 import { type AdvanceAnnouncement, type AdvanceInterval } from './advance-interval.ts'
 import { useEpisodicMemoryStore } from './episodic-memory-store.ts'
 
-// The rewrite the diarist sends to recall a memory ([R1]): the target and the rewritten account —
-// the only content the client sends. No seed/strength/decay/price/time field exists, so the
-// reshape/anchors/branch are all server-derived (§2.9#8, [I3][I11]).
+// The rewrite the diarist sends to recall a memory ([R1]): the target, the rewritten account, the
+// client operation id (idempotency, A2), and the explicit sync consent (A1). No seed/strength/
+// decay/price field exists, so the reshape/anchors/branch/price stay server-derived (§2.9#8,
+// [I3][I11]). operationId is stable across an ambiguous-failure retry (so the server replays the
+// receipt); syncConsent is true only when the user accepted the sync-consent modal.
 export interface RecallInput {
   readonly episodicMemoryId: string
   readonly rewriteText: string
+  readonly operationId: string
+  readonly syncConsent: boolean
 }
 
-// features/recall-star api: the single synchronous Recall call (§2.7 unary) — sync + prediction-error
-// compare + reinforce/(reconsolidate) commit atomically server-side. Fresh request shaped here so
-// the proto DTO boundary owns the wire shape; the request carries only the two fields (A5).
+// features/recall-star api: the single synchronous Recall call (§2.7 unary) — receipt check + sync
+// + prediction-error compare + reinforce/(reconsolidate) commit atomically server-side. Fresh
+// request shaped here so the proto DTO boundary owns the wire shape.
 export async function requestRecall(
   transport: ApiTransport,
   input: RecallInput,
@@ -22,14 +26,18 @@ export async function requestRecall(
   return createMemoryClient(transport).recall({
     memoryId: input.episodicMemoryId,
     rewriteText: input.rewriteText,
+    operationId: input.operationId,
+    syncConsent: input.syncConsent,
   })
 }
 
-// Optimistic apply on SUCCESS only (§2.8, server-authoritative): fold the recall's returned anchors
-// into the read-model mirror so the star re-renders — a reshaped body on reconsolidation (new seed,
-// [V5]) and a brighter/larger body from the recall bump (recall_count → EffectiveStrength). The
-// mirror holds no current_text (that is the panel's deferred read), so only seed/recall_count/
-// last_recalled are applied. A failed recall never calls this (nothing to roll back, A8).
+// Optimistic apply on SUCCESS only (§2.8, server-authoritative): fold the recall's returned
+// authoritative representation into the read-model mirror so the star re-renders and the detail
+// panel reads the fresh text — the bumped recall_count (→ brighter/larger + the decay-stage reset
+// to 0, so currentDecayText returns the whole text), the reset last_recalled, the (reshaped on
+// reconsolidation [V5]) seed, and the returned current_text (the new narrative on reconsolidation,
+// unchanged on reinforce). Applying current_text keeps the mirror from lagging the server after a
+// reconsolidation. A failed recall never calls this because there is nothing to apply.
 export function applyRecallResult(memoryId: string, response: RecallResponse): void {
   const store = useEpisodicMemoryStore.getState()
   const existing = store.byId[memoryId]
@@ -39,6 +47,7 @@ export function applyRecallResult(memoryId: string, response: RecallResponse): v
     seed: response.seed,
     recallCount: response.recallCount,
     lastRecalledUniverseTime: response.universeTime,
+    currentText: response.currentText,
   }
   const all = store.ids
     .map((id) => (id === memoryId ? updated : store.byId[id]))

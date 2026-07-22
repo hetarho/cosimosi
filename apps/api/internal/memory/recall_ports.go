@@ -32,23 +32,28 @@ const (
 )
 
 // SpendIntent tells the SpendGate what is being spent on: the action kind, the target
-// memory, and the kind's depth signal — a recall carries the server-derived
-// accessibility cost weight ([F4], computed at spend time by the recall use-case), a
-// gist view carries the viewed stage ([R8][G4]). It carries NO price: this context
-// supplies only the signals and the gate prices them and decides whether the balance
-// allows the action (§CC2/CC3). Stage is unused (0) for a recall; AccessibilityCost
-// is unused (0) for a gist view.
+// memory, the client operation id, and the kind's depth signal — a recall carries the
+// server-derived accessibility cost weight ([F4], computed at spend time by the recall
+// use-case), a gist view carries the viewed stage ([R8][G4]). It carries NO price: this
+// context supplies only the signals and the gate prices them and decides whether the balance
+// allows the action (§CC2/CC3). Stage is unused (0) for a recall; AccessibilityCost is unused
+// (0) for a gist view. OperationID + MemoryID derive the spend's per-action/per-member dedup
+// key at the economy seam, so a duplicate spend applies no second balance delta (A3).
 type SpendIntent struct {
 	Kind              SpendKind
 	MemoryID          string
+	OperationID       string
 	Stage             int16
 	AccessibilityCost float64
 }
 
 // RecallSpendIntent is the recall action's intent — the target memory plus its
-// spend-time accessibility cost weight ([F4]), never a price.
-func RecallSpendIntent(memoryID string, accessibilityCost float64) SpendIntent {
-	return SpendIntent{Kind: SpendKindRecall, MemoryID: memoryID, AccessibilityCost: accessibilityCost}
+// spend-time accessibility cost weight ([F4]), never a price. operationID carries the
+// paid-action identity the economy seam derives the dedup key from (A3); in a whole-diary
+// recall every member shares the operation id but differs by memory id, so each member's
+// spend dedup key is distinct.
+func RecallSpendIntent(operationID string, memoryID string, accessibilityCost float64) SpendIntent {
+	return SpendIntent{Kind: SpendKindRecall, MemoryID: memoryID, OperationID: operationID, AccessibilityCost: accessibilityCost}
 }
 
 // EconomyTx is the opaque handle to the caller's open repository transaction that an
@@ -105,6 +110,7 @@ type RecallTx interface {
 	ProgressionTx
 	MemoryProvenanceStore
 	ForgettingOffsetStore
+	PaidActionReceiptStore
 	// EpisodicMemoryForRecall loads the memory being recalled with the state the branch
 	// needs: current_text/seed for the compare + reshape, and semantic_stage/
 	// semantic_stages for the remaining-stage selection ([C7]). Returns

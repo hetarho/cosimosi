@@ -41,22 +41,35 @@ describe('applyRecallResult', () => {
     useEpisodicMemoryStore.getState().setAll([memory])
   })
 
-  it('reconsolidation folds the new seed + recall anchors into the store (the star reshapes) [A6]', () => {
+  it('reconsolidation folds the new seed + anchors + returned current text into the store [A7]', () => {
     applyRecallResult(
       'm1',
-      response({ reconsolidated: true, seed: 99n, recallCount: 1, universeTime: '2026-07-02' }),
+      response({
+        reconsolidated: true,
+        seed: 99n,
+        recallCount: 1,
+        currentText: 'a reworded afternoon',
+        universeTime: '2026-07-02',
+      }),
     )
     const updated = useEpisodicMemoryStore.getState().byId.m1
     expect(updated?.seed).toBe(99n)
     expect(updated?.recallCount).toBe(1)
     expect(updated?.lastRecalledUniverseTime).toBe('2026-07-02')
+    // R006/A7: the returned current text is applied, so the panel no longer lags the server after
+    // a reconsolidation (it was previously discarded).
+    expect(updated?.currentText).toBe('a reworded afternoon')
   })
 
-  it('reinforce-only leaves the seed (shape) unchanged, only bumps the recall anchors [A7]', () => {
-    applyRecallResult('m1', response({ reconsolidated: false, seed: 7n, recallCount: 1 }))
+  it('reinforce-only leaves the seed (shape) unchanged, only bumps the recall anchors + text [A7]', () => {
+    applyRecallResult(
+      'm1',
+      response({ reconsolidated: false, seed: 7n, recallCount: 1, currentText: 'Market run text' }),
+    )
     const updated = useEpisodicMemoryStore.getState().byId.m1
     expect(updated?.seed).toBe(7n)
     expect(updated?.recallCount).toBe(1)
+    expect(updated?.currentText).toBe('Market run text')
   })
 
   it('applies nothing for an unknown memory', () => {

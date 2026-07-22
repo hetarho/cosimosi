@@ -75,6 +75,9 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		// The gist-view read shares the same store and the same SpendGate
 		// instance as recall — one spend-and-check seam for both metered actions.
 		Gists: store,
+		// The paid gist-view transaction (target read + receipt + spend + receipt insert atomic,
+		// A3) runs over the same store.
+		ViewSemantics: store,
 		// The published spend-signal reads run over the same store (standalone,
 		// no transaction).
 		Signals: store,

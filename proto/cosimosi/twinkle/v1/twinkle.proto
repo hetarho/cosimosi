@@ -52,6 +52,9 @@ message QuoteSpendRequest {
   // the whole-diary recall batch quote [D3].
   string episodic_memory_id = 2;
   string diary_id = 3;
+  // The exact risen gist stage the user selected. Required only for GIST_VIEW;
+  // the quote prices the same stage that ViewSemantic will charge.
+  int32 semantic_stage = 4;
 }
 
 message QuoteSpendResponse {

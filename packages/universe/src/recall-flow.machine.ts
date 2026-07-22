@@ -14,6 +14,8 @@ export type RecallFlowEvent =
   | { type: 'RECALL' }
   | { type: 'DONE' }
   | { type: 'ERROR' }
+  | { type: 'CONSENT_REQUIRED' }
+  | { type: 'SESSION_INVALIDATED' }
   | { type: 'CLOSE' }
   | { type: 'RESET' }
 
@@ -41,27 +43,34 @@ export const recallFlowMachine = setup({
         ACCEPT: 'rewriting',
         REJECT: 'idle',
         CLOSE: 'idle',
+        SESSION_INVALIDATED: 'idle',
       },
     },
     rewriting: {
       on: {
         RECALL: 'reconsolidating',
         CLOSE: 'idle',
+        SESSION_INVALIDATED: 'idle',
       },
     },
-    // "떠올리는 중" — the single synchronous Recall covers sync + compare + recall atomically. A
-    // failure returns to a retriable rewriting with the rewrite text intact (the store keeps it, A8).
+    // "떠올리는 중" — the single synchronous Recall covers sync + compare + recall atomically.
+    // Non-dismissible (A4): no CLOSE — an in-flight paid action cannot be escaped/backdropped/X'd,
+    // so a late completion can never mutate a closed/reopened flow. ERROR returns to a retriable
+    // rewriting with the rewrite text intact (the store keeps it, A8); CONSENT_REQUIRED is the
+    // pre-spend consent-race backstop — the server refused an unconsented sync, so re-show consent.
     reconsolidating: {
       on: {
         DONE: 'result',
         ERROR: 'rewriting',
-        CLOSE: 'idle',
+        CONSENT_REQUIRED: 'confirmingSync',
+        SESSION_INVALIDATED: 'idle',
       },
     },
     result: {
       on: {
         RESET: 'idle',
         CLOSE: 'idle',
+        SESSION_INVALIDATED: 'idle',
       },
     },
   },

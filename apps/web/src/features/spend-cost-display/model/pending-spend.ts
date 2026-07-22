@@ -8,6 +8,7 @@ export interface PendingSpend {
   readonly kind: SpendKind
   readonly episodicMemoryId?: string
   readonly diaryId?: string
+  readonly semanticStage?: number
 }
 
 // A recall of one memory, priced by its decay depth (deeper decay → costlier, [G4][F4]).
@@ -15,11 +16,9 @@ export function recallSpend(episodicMemoryId: string): PendingSpend {
   return { kind: SpendKind.RECALL, episodicMemoryId }
 }
 
-// A gist-view of one memory at a risen stage, priced by gist depth (deeper gist → cheaper,
-// [G4]). The stage is not part of the quote target — the server prices by the memory's
-// gist depth; the stage the viewer chose is the ViewSemantic call's, not the quote's.
-export function gistViewSpend(episodicMemoryId: string): PendingSpend {
-  return { kind: SpendKind.GIST_VIEW, episodicMemoryId }
+// A gist-view quote carries the exact risen stage that the subsequent ViewSemantic call charges.
+export function gistViewSpend(episodicMemoryId: string, semanticStage: number): PendingSpend {
+  return { kind: SpendKind.GIST_VIEW, episodicMemoryId, semanticStage }
 }
 
 // The sum of a diary's recall costs ([D3]) — the batch quote the diary reader composes.

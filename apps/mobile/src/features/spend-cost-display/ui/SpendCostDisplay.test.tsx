@@ -2,7 +2,7 @@ import { fireEvent, render } from '@testing-library/react-native'
 
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 
-import { recallSpend } from '../model/pending-spend.ts'
+import { gistViewSpend, recallSpend } from '../model/pending-spend.ts'
 import { SpendCostDisplay } from './SpendCostDisplay.tsx'
 
 // The quote hook is mocked so the display renders a fixed server quote and the branches can
@@ -66,5 +66,27 @@ describe('SpendCostDisplay (mobile)', () => {
     fireEvent.press(view.getByText(m.twinkle_cost_charge()))
     expect(onCharge).toHaveBeenCalledTimes(1)
     expect(onProceed).not.toHaveBeenCalled()
+  })
+
+  it('passes the selected gist stage through the shared quote surface', () => {
+    mockUseSpendQuote.mockReturnValue({
+      data: { cost: 3n, covered: true, shortfall: 0n },
+      isError: false,
+    })
+
+    render(
+      <SpendCostDisplay
+        pending={gistViewSpend('memory-1', 2)}
+        onProceed={jest.fn()}
+        onCancel={jest.fn()}
+        onCharge={jest.fn()}
+      />,
+    )
+
+    expect(mockUseSpendQuote).toHaveBeenCalledWith({
+      kind: expect.anything(),
+      episodicMemoryId: 'memory-1',
+      semanticStage: 2,
+    })
   })
 })

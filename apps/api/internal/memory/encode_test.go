@@ -155,6 +155,9 @@ func newFixture(t *testing.T) *serviceFixture {
 		releases:        &fakeReleaseRepo{},
 		sealSuggester:   &fakeSealSuggester{},
 	}
+	// The paid gist-view transaction reads gists through the launch store, delegating to the same
+	// fakeGistReader the quote reads (one gist data source, as the single pg store is).
+	launches.gistReader = fixture.gists
 	ids := 0
 	// NewSeed hands out fixture.seeds in order (default 42), so a reconsolidation's
 	// reshape entropy is deterministic in tests.
@@ -172,6 +175,7 @@ func newFixture(t *testing.T) *serviceFixture {
 		Earn:            fixture.earn,
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
+		ViewSemantics:   fixture.launches,
 		Signals:         fixture.launches,
 		Provenance:      fixture.provenance,
 		Exports:         fixture.exports,
@@ -386,6 +390,7 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 		Earn:            fixture.earn,
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
+		ViewSemantics:   fixture.launches,
 		Signals:         fixture.launches,
 		Provenance:      fixture.provenance,
 		Exports:         fixture.exports,

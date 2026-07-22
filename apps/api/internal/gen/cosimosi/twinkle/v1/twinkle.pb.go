@@ -178,8 +178,11 @@ type QuoteSpendRequest struct {
 	// the whole-diary recall batch quote [D3].
 	EpisodicMemoryId string `protobuf:"bytes,2,opt,name=episodic_memory_id,json=episodicMemoryId,proto3" json:"episodic_memory_id,omitempty"`
 	DiaryId          string `protobuf:"bytes,3,opt,name=diary_id,json=diaryId,proto3" json:"diary_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The exact risen gist stage the user selected. Required only for GIST_VIEW;
+	// the quote prices the same stage that ViewSemantic will charge.
+	SemanticStage int32 `protobuf:"varint,4,opt,name=semantic_stage,json=semanticStage,proto3" json:"semantic_stage,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *QuoteSpendRequest) Reset() {
@@ -231,6 +234,13 @@ func (x *QuoteSpendRequest) GetDiaryId() string {
 		return x.DiaryId
 	}
 	return ""
+}
+
+func (x *QuoteSpendRequest) GetSemanticStage() int32 {
+	if x != nil {
+		return x.SemanticStage
+	}
+	return 0
 }
 
 type QuoteSpendResponse struct {
@@ -498,11 +508,12 @@ const file_cosimosi_twinkle_v1_twinkle_proto_rawDesc = "" +
 	"\n" +
 	"additional\x18\x02 \x01(\x03R\n" +
 	"additional\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x03R\x05total\"\x90\x01\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\"\xb7\x01\n" +
 	"\x11QuoteSpendRequest\x122\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1e.cosimosi.twinkle.v1.SpendKindR\x04kind\x12,\n" +
 	"\x12episodic_memory_id\x18\x02 \x01(\tR\x10episodicMemoryId\x12\x19\n" +
-	"\bdiary_id\x18\x03 \x01(\tR\adiaryId\"`\n" +
+	"\bdiary_id\x18\x03 \x01(\tR\adiaryId\x12%\n" +
+	"\x0esemantic_stage\x18\x04 \x01(\x05R\rsemanticStage\"`\n" +
 	"\x12QuoteSpendResponse\x12\x12\n" +
 	"\x04cost\x18\x01 \x01(\x03R\x04cost\x12\x18\n" +
 	"\acovered\x18\x02 \x01(\bR\acovered\x12\x1c\n" +

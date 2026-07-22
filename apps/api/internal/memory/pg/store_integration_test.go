@@ -1384,7 +1384,7 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 
 	// The full use-case over the real store returns the stored stage text…
 	service := newRecallService(t, store, store, store, store)
-	result, err := service.ViewSemantic(ctx, scope, risen.ID, 2)
+	result, err := service.ViewSemantic(ctx, scope, "op-view-1", risen.ID, 2)
 	if err != nil {
 		t.Fatalf("ViewSemantic failed: %v", err)
 	}
@@ -1392,11 +1392,11 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 		t.Fatalf("result = %+v, want stage two's text + meta", result)
 	}
 	// …refuses the unrisen stage server-authoritatively (A3)…
-	if _, err := service.ViewSemantic(ctx, scope, risen.ID, 3); !errors.Is(err, memory.ErrViewSemanticStageNotRisen) {
+	if _, err := service.ViewSemantic(ctx, scope, "op-view-2", risen.ID, 3); !errors.Is(err, memory.ErrViewSemanticStageNotRisen) {
 		t.Fatalf("stage 3 err = %v, want ErrViewSemanticStageNotRisen", err)
 	}
 	// …and is invisible to another user (A9).
-	if _, err := service.ViewSemantic(ctx, intruderScope, risen.ID, 1); !errors.Is(err, memory.ErrViewSemanticMemoryNotFound) {
+	if _, err := service.ViewSemantic(ctx, intruderScope, "op-view-3", risen.ID, 1); !errors.Is(err, memory.ErrViewSemanticMemoryNotFound) {
 		t.Fatalf("intruder err = %v, want ErrViewSemanticMemoryNotFound", err)
 	}
 
@@ -1452,6 +1452,7 @@ func cleanupMemoryTestRows(t *testing.T, pool *platformdb.Pool, userID string) {
 		defer cancel()
 
 		tables := []string{
+			"memory_paid_action_receipts",
 			"release_synapse_deltas",
 			"release_sealed_neurons",
 			"release_memories",

@@ -69,7 +69,7 @@ describe('SpendCostDisplay (web)', () => {
     } as ReturnType<typeof useSpendQuote>)
     const html = renderToString(
       createElement(SpendCostDisplay, {
-        pending: gistViewSpend('memory-1'),
+        pending: gistViewSpend('memory-1', 2),
         onProceed: () => {},
         onCancel: () => {},
         onCharge: () => {},

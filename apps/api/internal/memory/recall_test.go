@@ -28,9 +28,82 @@ func (f *fakeLaunchStore) InRecallTx(_ context.Context, fn func(tx RecallTx) err
 		f.clock = f.staging.clockAdvance
 	}
 	f.recall = *f.recallStaging
+	f.commitStagedReceipts()
 	f.staging = nil
 	f.recallStaging = nil
 	return nil
+}
+
+// --- paid-action receipt + view-semantic transaction fakes (job 70) ---
+
+// InViewSemanticTx mirrors InRecallTx's all-or-nothing contract for the paid gist view: the
+// receipt lookup/insert and the spend commit only when fn returns nil. It stages into
+// recallStaging (receipts only — a view writes no anchors/provenance).
+func (f *fakeLaunchStore) InViewSemanticTx(_ context.Context, fn func(tx ViewSemanticTx) error) error {
+	f.viewTxCount++
+	f.recallStaging = &recallRecord{}
+	if err := fn(f); err != nil {
+		f.recallStaging = nil
+		return err
+	}
+	f.commitStagedReceipts()
+	f.recallStaging = nil
+	return nil
+}
+
+// commitStagedReceipts persists the transaction's staged receipts into the committed store — the
+// idempotency record a later replay reads. A rolled-back transaction (fn error) never reaches here.
+func (f *fakeLaunchStore) commitStagedReceipts() {
+	if f.recallStaging == nil {
+		return
+	}
+	for _, receipt := range f.recallStaging.receipts {
+		if f.receipts == nil {
+			f.receipts = map[string]PaidActionReceipt{}
+		}
+		f.receipts[receipt.OperationID] = receipt
+	}
+}
+
+func (f *fakeLaunchStore) GetPaidActionReceipt(_ context.Context, scope platform.UserScope, operationID string) (PaidActionReceipt, bool, error) {
+	if scope.UserID() == "" {
+		return PaidActionReceipt{}, false, errors.New("scope missing")
+	}
+	if err := f.fail("GetPaidActionReceipt"); err != nil {
+		return PaidActionReceipt{}, false, err
+	}
+	receipt, ok := f.receipts[receiptKey(scope, operationID)]
+	if !ok {
+		return PaidActionReceipt{}, false, nil
+	}
+	return receipt, true, nil
+}
+
+func (f *fakeLaunchStore) InsertPaidActionReceipt(_ context.Context, scope platform.UserScope, receipt PaidActionReceipt) error {
+	if scope.UserID() == "" {
+		return errors.New("scope missing")
+	}
+	if err := f.fail("InsertPaidActionReceipt"); err != nil {
+		return err
+	}
+	// Key by user + operation id so user-isolation tests keep two users' receipts distinct.
+	receipt.OperationID = receiptKey(scope, receipt.OperationID)
+	f.recallStaging.receipts = append(f.recallStaging.receipts, receipt)
+	return nil
+}
+
+// EpisodicMemoryGist lets the fake launch store satisfy the view transaction's GistReader by
+// delegating to the fixture's gist reader — the same fixtures seedGist populates, so the paid view
+// and the quote read one gist data source (as the single pg store does).
+func (f *fakeLaunchStore) EpisodicMemoryGist(ctx context.Context, scope platform.UserScope, memoryID string) (MemoryGist, error) {
+	if f.gistReader == nil {
+		return MemoryGist{}, ErrViewSemanticMemoryNotFound
+	}
+	return f.gistReader.EpisodicMemoryGist(ctx, scope, memoryID)
+}
+
+func receiptKey(scope platform.UserScope, operationID string) string {
+	return scope.UserID() + "\x00" + operationID
 }
 
 func (f *fakeLaunchStore) EpisodicMemoryForRecall(_ context.Context, scope platform.UserScope, memoryID string) (EpisodicMemory, error) {
@@ -185,7 +258,7 @@ func TestRecallNoErrorBranchReinforcesOnly(t *testing.T) {
 		[]NeighborSharedSemanticCount{{NeighborID: "n2", SharedSemanticCount: 1}, {NeighborID: "n3", SharedSemanticCount: 2}},
 	)
 
-	result, err := fixture.service.Recall(context.Background(), testScope(t), "m1", "original account, reworded")
+	result, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "original account, reworded", true)
 	if err != nil {
 		t.Fatalf("Recall failed: %v", err)
 	}
@@ -234,7 +307,7 @@ func TestRecallNoErrorBranchReinforcesOnly(t *testing.T) {
 	// A2: one recall spend intent for the target, carrying the post-sync
 	// accessibility signal — and the recall's own transaction handle, so the real
 	// gate's debit joins this transaction.
-	wantIntent := RecallSpendIntent("m1", recallAccessibilitySignal(recallAnchorOf(fixture.launches.recallStars["m1"]), fixtureToday()))
+	wantIntent := RecallSpendIntent("op-1", "m1", recallAccessibilitySignal(recallAnchorOf(fixture.launches.recallStars["m1"]), fixtureToday()))
 	if len(fixture.spendGate.intents) != 1 || fixture.spendGate.intents[0] != wantIntent {
 		t.Fatalf("spend intents = %+v, want one %+v", fixture.spendGate.intents, wantIntent)
 	}
@@ -258,7 +331,7 @@ func TestRecallErrorBranchReconsolidates(t *testing.T) {
 	)
 	fixture.launches.recallMemberNeurons["m1"] = []ExistingNeuron{{ID: "a", Name: "market", Type: NeuronTypeSpatial}}
 
-	result, err := fixture.service.Recall(context.Background(), testScope(t), "m1", "a genuinely different memory")
+	result, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "a genuinely different memory", true)
 	if err != nil {
 		t.Fatalf("Recall failed: %v", err)
 	}
@@ -330,7 +403,7 @@ func TestRecallNeighborSelectionByCount(t *testing.T) {
 		},
 	)
 
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "m1", "reworded"); err != nil {
+	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true); err != nil {
 		t.Fatalf("Recall failed: %v", err)
 	}
 	// count 0 → no offset; count 1 → slow; count >= 2 → speed. The recalled memory gets no
@@ -357,7 +430,7 @@ func TestRecallSpendDenialResetsNothing(t *testing.T) {
 	fixture.spendGate.denyErr = ErrInsufficientTwinkle
 	fixture.seedRecallable("m1", EpisodicMemory{CurrentText: "x", Seed: seededSeed(1), BaseStrength: 0.5}, nil, nil)
 
-	_, err := fixture.service.Recall(context.Background(), testScope(t), "m1", "reworded")
+	_, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "reworded", true)
 	if !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("err = %v, want ErrInsufficientTwinkle", err)
 	}
@@ -381,10 +454,10 @@ func TestRecallRejectsDeletedAndMissingTargets(t *testing.T) {
 	fixture.launches.clock = seededTimePtr(recallTestClock())
 	fixture.seedRecallable("gone", EpisodicMemory{CurrentText: "x", Seed: seededSeed(1), DeletedAt: &deletedAt}, nil, nil)
 
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "gone", "reworded"); !errors.Is(err, ErrRecallMemoryUnavailable) {
+	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "gone", "reworded", true); !errors.Is(err, ErrRecallMemoryUnavailable) {
 		t.Fatalf("deleted target err = %v, want ErrRecallMemoryUnavailable", err)
 	}
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "never", "reworded"); !errors.Is(err, ErrRecallMemoryNotFound) {
+	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-2", "never", "reworded", true); !errors.Is(err, ErrRecallMemoryNotFound) {
 		t.Fatalf("missing target err = %v, want ErrRecallMemoryNotFound", err)
 	}
 }
@@ -406,7 +479,7 @@ func TestRecallDiaryStarsReinforcesEveryLiveMemory(t *testing.T) {
 	)
 	fixture.launches.diaryMemories = map[string][]string{"d1": {"m1", "m2"}}
 
-	result, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), "d1")
+	result, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), "op-1", "d1", true)
 	if err != nil {
 		t.Fatalf("RecallDiaryStars failed: %v", err)
 	}
@@ -434,16 +507,22 @@ func TestRecallDiaryStarsReinforcesEveryLiveMemory(t *testing.T) {
 func TestRecallRequiresScopeAndInput(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	if _, err := fixture.service.Recall(context.Background(), platform.UserScope{}, "m1", "x"); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.service.Recall(context.Background(), platform.UserScope{}, "op-1", "m1", "x", true); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("scopeless recall err = %v, want ErrScopeRequired", err)
 	}
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "m1", "  "); !errors.Is(err, ErrRecallInputRequired) {
+	if _, err := fixture.service.Recall(context.Background(), testScope(t), "", "m1", "x", true); !errors.Is(err, ErrOperationIDRequired) {
+		t.Fatalf("operationless recall err = %v, want ErrOperationIDRequired", err)
+	}
+	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "m1", "  ", true); !errors.Is(err, ErrRecallInputRequired) {
 		t.Fatalf("empty rewrite err = %v, want ErrRecallInputRequired", err)
 	}
-	if _, err := fixture.service.Recall(context.Background(), testScope(t), "", "rewrite"); !errors.Is(err, ErrRecallInputRequired) {
+	if _, err := fixture.service.Recall(context.Background(), testScope(t), "op-1", "", "rewrite", true); !errors.Is(err, ErrRecallInputRequired) {
 		t.Fatalf("empty memory id err = %v, want ErrRecallInputRequired", err)
 	}
-	if _, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), ""); !errors.Is(err, ErrRecallInputRequired) {
+	if _, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), "", "d1", true); !errors.Is(err, ErrOperationIDRequired) {
+		t.Fatalf("operationless diary recall err = %v, want ErrOperationIDRequired", err)
+	}
+	if _, err := fixture.service.RecallDiaryStars(context.Background(), testScope(t), "op-1", "", true); !errors.Is(err, ErrRecallInputRequired) {
 		t.Fatalf("empty diary id err = %v, want ErrRecallInputRequired", err)
 	}
 	if fixture.launches.recallTxCount != 0 {

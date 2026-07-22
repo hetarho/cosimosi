@@ -22,6 +22,7 @@ var (
 	ErrEarnRequired            = errors.New("memory service requires an earn port")
 	ErrPredictionErrorRequired = errors.New("memory service requires a prediction-error port")
 	ErrGistsRequired           = errors.New("memory service requires a gist reader")
+	ErrViewSemanticsRequired   = errors.New("memory service requires a view-semantic repo")
 	ErrSignalsRequired         = errors.New("memory service requires a spend-signal repo")
 	ErrProvenanceRequired      = errors.New("memory service requires a provenance reader")
 	ErrExportsRequired         = errors.New("memory service requires an export reader")
@@ -47,6 +48,7 @@ type Service struct {
 	earn            EarnPort
 	predictionError PredictionError
 	gists           GistReader
+	viewSemantics   ViewSemanticRepo
 	signals         SpendSignalRepo
 	provenance      ProvenanceReader
 	exports         ExportReader
@@ -85,8 +87,12 @@ type ServiceDeps struct {
 	// can launch diaries with the grant seam silently unbound.
 	Earn EarnPort
 	// Gists is the gist-view read port ([R8]); required so no composition root can
-	// wire the view path without its per-user-scoped read.
+	// wire the view path without its per-user-scoped read (the quote's standalone signal).
 	Gists GistReader
+	// ViewSemantics runs the paid gist-view transaction (target read + receipt + spend + receipt
+	// insert atomic, A3); required so no composition root can wire the paid view without its
+	// transactional idempotency boundary.
+	ViewSemantics ViewSemanticRepo
 	// Signals backs the published spend-signal reads the economy's quote consumes;
 	// required so no composition root can register the quote against a service that
 	// cannot resolve its depth signals.
@@ -150,6 +156,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Gists == nil {
 		return nil, ErrGistsRequired
 	}
+	if deps.ViewSemantics == nil {
+		return nil, ErrViewSemanticsRequired
+	}
 	if deps.Signals == nil {
 		return nil, ErrSignalsRequired
 	}
@@ -181,6 +190,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		earn:            deps.Earn,
 		predictionError: deps.PredictionError,
 		gists:           deps.Gists,
+		viewSemantics:   deps.ViewSemantics,
 		signals:         deps.Signals,
 		provenance:      deps.Provenance,
 		exports:         deps.Exports,

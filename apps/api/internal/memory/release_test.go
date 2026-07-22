@@ -714,6 +714,7 @@ func newReleaseService(t *testing.T, repo *fakeReleaseRepo, suggester *fakeSealS
 		Earn:            &fakeEarnPort{},
 		PredictionError: &fakePredictionError{},
 		Gists:           &fakeGistReader{},
+		ViewSemantics:   launches,
 		Signals:         launches,
 		Provenance:      &fakeProvenanceReader{},
 		Exports:         &fakeExportReader{},

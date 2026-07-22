@@ -52,6 +52,18 @@ export {
 } from './recall-star.ts'
 export { useRecallTargetStore, type RecallTargetState } from './recall-target-store.ts'
 
+// Paid-action lifecycle: the client operation-id + retry-classification helpers every paid flow
+// shares, and the server-authoritative sync-status read that drives the consent gate.
+export {
+  newOperationId,
+  classifyPaidActionError,
+  createPaidActionSession,
+  type PaidActionAttempt,
+  type PaidActionSession,
+  type PaidActionRetry,
+} from './paid-action-session.ts'
+export { requestSyncStatus } from './sync-status.ts'
+
 // Diary-reader vertical (일기장, [D2][D3]): the free archive read-model, the whole-diary recall
 // jump machine + its RPC/acceleration hand-off, and the two cross-route one-slot channels
 // (deep-link into the reader, camera fly back out).

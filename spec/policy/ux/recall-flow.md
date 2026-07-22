@@ -14,10 +14,14 @@ structurally unsendable (the request carries only the memory id + rewrite text, 
 
 ## Consent, then atomic sync
 
-When the universe clock is behind today, the flow first shows the **reusable sync-consent modal**: **예** proceeds and
-the later `Recall` syncs the clock to today **server-side, atomically with the recall**, then the acceleration plays the
-returned interval; **아니오** cancels the whole flow with the clock **unmoved** ([R1a][T2][I10]). When the clock is
-already today the modal is skipped. The flow itself never calls the clock or sync directly.
+Whether consent is needed is a **server** decision, read from the free `SyncStatus` (`needs_sync`) — never computed
+from the client's local `Date`, so a client at a UTC boundary or with a skewed clock can neither skip nor spuriously
+raise the modal ([R1a], A1). When `needs_sync` is true the flow first shows the **reusable sync-consent modal**: **예**
+proceeds and the later `Recall` (carrying `sync_consent = true`) syncs the clock to today **server-side, atomically
+with the recall**, then the acceleration plays the returned interval; **아니오** cancels the whole flow with the clock
+**unmoved** ([R1a][T2][I10]). When it is false the modal is skipped. The mutation still **re-checks** consent
+server-side and refuses an unconsented sync it turns out to need (a race) — the flow then refreshes status and re-shows
+the modal. The flow itself never calls the clock or sync directly.
 
 ## The server decides the branch; the client only reflects it
 
@@ -30,10 +34,22 @@ compare + recall). The FE **never** decides reinforce-vs-reconsolidate — it re
 - **No prediction error → reinforced:** the star's **shape and text are unchanged**; only the recall recovery occurs,
   and the result states that plainly.
 
-A failed `Recall` applies nothing and returns to a retriable rewrite with the text intact.
+A successful `Recall` applies the returned representation — including the returned **current text** — to the read-model
+mirror and invalidates GetUniverse + the target provenance + balance, so the panel/HUD no longer lag the server (A7).
 
-## The Diary is never mutated; no price here
+## Non-dismissible in flight; safe idempotent retry
+
+Each paid recall carries a **client operation id** (A2). While the `Recall` is in flight the "떠올리는 중" state is
+**non-dismissible** — Escape, backdrop, the X, and a re-submit are all inert (A4) — and an async completion is fenced to
+the active operation, so a closed/reopened/retargeted flow cannot be mutated by a late response. On failure the retry
+is classified (A5): an **ambiguous** failure (network/timeout) keeps the same operation id, so a re-submit replays the
+server's committed receipt instead of spending twice; a **known refusal** (insufficient balance, consent required, bad
+input) committed nothing, so the flow returns to the cost gate / consent modal and the next deliberate attempt mints a
+fresh id.
+
+## The Diary is never mutated; the cost gate fronts the spend
 
 Under every branch only the **representation** (seed + current text) changes — the `Diary` is never mutated ([I2][R7]).
-The flow **hardcodes no 별가루 price** and proceeds under the allow-all spend gate; economy gating is deferred. web and
-mobile run the same flow, sharing the machine + the recall helpers; only the sheet/input hosts fork.
+The flow **hardcodes no 별가루 price**: it shows the server-quoted cost gate before the rewrite and spends through the
+real gate atomically with the recall (a shortfall opens the charge sheet rather than dead-ending). web and mobile run
+the same flow, sharing the machine + the recall/session helpers; only the sheet/input hosts fork.

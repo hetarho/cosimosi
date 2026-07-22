@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
-import { Code, ConnectError } from '@connectrpc/connect'
 import { useTransport } from '@connectrpc/connect-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { createSyncStatusQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
 import {
+  classifyPaidActionError,
+  createPaidActionSession,
   diaryReaderMachine,
   diaryRecallAdvanceAnnouncement,
   requestRecallDiaryStars,
@@ -13,8 +16,9 @@ import {
   useDeletionTargetStore,
   useOpenDiaryTargetStore,
   usePendingFlyTargetStore,
-  useUniverseClockStore,
   type DiaryReaderPhase,
+  type PaidActionAttempt,
+  type PaidActionSession,
 } from '@cosimosi/universe'
 
 import { useInvalidateTwinkleBalance } from '../../../entities/twinkle/index.ts'
@@ -28,44 +32,28 @@ import { m } from '../../../shared/i18n/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
 import { useInvalidateUniverse } from '../model/invalidate-universe.ts'
 
-// Today in the user's own timezone (the recall-flow precedent) — toISOString() would emit the UTC
-// date, a day behind for KST users in the 00:00–09:00 window.
-const todayIso = () => {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
-// A pre-spend rejection is one the server raised before committing the recall (the spend gate or
-// input validation), so nothing was spent and reopening the cost gate for a retry is safe. Any
-// other failure is ambiguous — the recall may have committed — so it must not be one-click retried.
-function isPreSpendError(error: unknown): boolean {
-  if (!(error instanceof ConnectError)) return false
-  return (
-    error.code === Code.ResourceExhausted ||
-    error.code === Code.InvalidArgument ||
-    error.code === Code.FailedPrecondition ||
-    error.code === Code.NotFound ||
-    error.code === Code.Unauthenticated
-  )
-}
-
 // widgets/diary-reader (RN fork, [D2][D3]): the archive block. It composes the free read
 // (read-diary-list) with the one paid action (recall-diary-stars) and owns the jump machine + the
-// quote/consent sequencing: quote → consent (only when the clock is behind, [R1a]) →
-// RecallDiaryStars → announce the acceleration, ask the camera to fly to a recovered star,
-// invalidate GetUniverse, and hand back to the universe. 아니오 cancels with the clock unmoved and
-// nothing spent; a failed recall returns to browsing, retriable. It hardcodes no price (CC3) and
-// navigates only through the `onExit` seam its app-layer host supplies. Shares model with web.
+// quote/consent sequencing: quote → consent (server sync-status, never a local Date, A1) →
+// RecallDiaryStars (client operation id + explicit consent, A2/A3) → announce the acceleration, fly
+// to a recovered star, invalidate the reads, hand back to the universe. Non-dismissible while
+// recalling (A4) — header back / Dialog close / cancel inert — and a late completion is fenced to
+// the active operation. Hardcodes no price (CC3); navigates only via the `onExit` seam. Shares
+// model with the web fork.
 export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
   const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive()
   const [openedDiaryId, setOpenedDiaryId] = useState<string | null>(null)
   const [jumpDiaryId, setJumpDiaryId] = useState<string | null>(null)
+  const sessionRef = useRef<PaidActionSession | null>(null)
+  if (sessionRef.current === null) sessionRef.current = createPaidActionSession()
+  const paidSession = sessionRef.current
+  const [attempt, setAttempt] = useState<PaidActionAttempt | null>(null)
 
   const [snapshot, send] = useMachine(diaryReaderMachine)
   const phase = snapshot.value as DiaryReaderPhase
 
   const transport = useTransport()
-  const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
+  const queryClient = useQueryClient()
   const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
   const requestFlyTarget = usePendingFlyTargetStore((state) => state.request)
   const requestCharge = useChargeRequestStore((state) => state.request)
@@ -73,9 +61,15 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
   const invalidateBalance = useInvalidateTwinkleBalance()
   const invalidateUniverse = useInvalidateUniverse()
 
-  // Behind today OR unknown (a cold deep-link before any universe read) → consent precedes the
-  // server-side sync, so the jump can never spend + advance the clock without an explicit yes ([R1a]).
-  const needsSync = universeTime === null || universeTime < todayIso()
+  const syncStatusQuery = useQuery(createSyncStatusQueryOptions(transport))
+
+  useEffect(() => () => paidSession.invalidate(), [paidSession])
+
+  const invalidateSyncStatus = useCallback(() => {
+    queryClient
+      .invalidateQueries({ queryKey: createSyncStatusQueryKey(transport) })
+      .catch(() => undefined)
+  }, [queryClient, transport])
 
   const deepLinkMemoryId = useOpenDiaryTargetStore((state) => state.memoryId)
   const clearDeepLink = useOpenDiaryTargetStore((state) => state.clear)
@@ -89,80 +83,141 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
       clearDeepLink()
       return
     }
-    // The target diary may sit on a later page — pull pages until it is found or the archive is
-    // exhausted, then give up (a stale or foreign id never keeps the request pending forever).
     if (hasMore && !isLoadingMore) loadMore()
     else if (!hasMore) clearDeepLink()
   }, [deepLinkMemoryId, diaries, hasMore, isLoadingMore, loadMore, clearDeepLink])
 
   const runRecall = useCallback(
-    async (diaryId: string, fromConsent: boolean) => {
-      send(fromConsent ? { type: 'ACCEPT' } : { type: 'JUMP', needsSync: false })
+    async (diaryId: string, consent: boolean) => {
+      if (!attempt || attempt.targetKey !== diaryId || !paidSession.start(attempt)) return
+      const activeAttempt = attempt
+      const issue = () =>
+        requestRecallDiaryStars(transport, {
+          diaryId,
+          operationId: activeAttempt.operationId,
+          syncConsent: consent,
+        })
       try {
-        const response = await requestRecallDiaryStars(transport, { diaryId })
+        let response
+        try {
+          response = await issue()
+        } catch (firstError) {
+          if (!paidSession.isActive(activeAttempt)) return
+          if (classifyPaidActionError(firstError) !== 'ambiguous') throw firstError
+          // Ambiguous — re-issue ONCE with the SAME operation id: a committed-but-lost jump replays
+          // its receipt (no second spend, no re-quote of a depleted balance, A2/A5); otherwise it
+          // does the work. A second ambiguous failure falls through to the outer catch.
+          response = await issue()
+        }
+        if (!paidSession.isActive(activeAttempt)) return
         const advance = diaryRecallAdvanceAnnouncement(response)
         if (advance) announceAdvance(advance)
         const [firstStar] = response.episodicMemoryIds
         if (firstStar) requestFlyTarget(firstStar)
         invalidateUniverse()
         invalidateBalance()
+        invalidateSyncStatus()
         send({ type: 'DONE' })
         setJumpDiaryId(null)
         onExit()
       } catch (error) {
+        if (!paidSession.isActive(activeAttempt)) return
         invalidateBalance()
-        // A pre-spend rejection (e.g. a stale-quote shortfall) committed nothing, so reopen the cost
-        // gate with a fresh quote (the charge path stays reachable, A4). An ambiguous failure MAY
-        // have committed the recall, so do not offer a one-click retry that could double-spend:
-        // refetch the universe and close the jump; the user re-initiates deliberately if needed.
-        if (isPreSpendError(error)) {
-          send({ type: 'ERROR' })
-        } else {
+        if (classifyPaidActionError(error) === 'ambiguous') {
           invalidateUniverse()
           send({ type: 'ERROR' })
-          setJumpDiaryId(null)
+          return
         }
+        if (!consent) {
+          const status = await syncStatusQuery.refetch()
+          if (!paidSession.isActive(activeAttempt)) return
+          paidSession.finish(activeAttempt)
+          setAttempt(paidSession.begin(diaryId))
+          if (status.data?.needsSync) {
+            send({ type: 'CONSENT_REQUIRED' })
+            return
+          }
+        } else {
+          paidSession.finish(activeAttempt)
+          setAttempt(paidSession.begin(diaryId))
+        }
+        send({ type: 'ERROR' })
+      } finally {
+        paidSession.finish(activeAttempt)
       }
     },
     [
-      send,
+      attempt,
+      paidSession,
       transport,
       announceAdvance,
       requestFlyTarget,
       invalidateUniverse,
       invalidateBalance,
+      invalidateSyncStatus,
+      syncStatusQuery,
       onExit,
+      send,
     ],
   )
 
-  const proceedQuote = useCallback(() => {
-    if (!jumpDiaryId) return
-    if (needsSync) send({ type: 'JUMP', needsSync: true })
-    else runRecall(jumpDiaryId, false).catch(() => undefined)
-  }, [jumpDiaryId, needsSync, send, runRecall])
+  const proceedQuote = useCallback(async () => {
+    if (!jumpDiaryId || !attempt || attempt.targetKey !== jumpDiaryId) return
+    const activeAttempt = attempt
+    const status = await syncStatusQuery.refetch()
+    if (!paidSession.isActive(activeAttempt)) return
+    if (status.data?.needsSync) {
+      send({ type: 'JUMP', needsSync: true })
+    } else {
+      send({ type: 'JUMP', needsSync: false })
+      runRecall(jumpDiaryId, false).catch(() => undefined)
+    }
+  }, [attempt, jumpDiaryId, paidSession, syncStatusQuery, send, runRecall])
 
   const acceptSync = useCallback(() => {
-    if (jumpDiaryId) runRecall(jumpDiaryId, true).catch(() => undefined)
-  }, [jumpDiaryId, runRecall])
+    if (!jumpDiaryId) return
+    send({ type: 'ACCEPT' })
+    runRecall(jumpDiaryId, true).catch(() => undefined)
+  }, [jumpDiaryId, send, runRecall])
 
   const rejectSync = useCallback(() => {
+    if (attempt) paidSession.invalidate(attempt)
+    setAttempt(null)
     send({ type: 'REJECT' })
     setJumpDiaryId(null)
-  }, [send])
+  }, [attempt, paidSession, send])
 
-  const cancelQuote = useCallback(() => setJumpDiaryId(null), [])
+  const cancelQuote = useCallback(() => {
+    if (phase === 'recalling') return
+    if (attempt) paidSession.invalidate(attempt)
+    setAttempt(null)
+    setJumpDiaryId(null)
+  }, [attempt, paidSession, phase])
+
+  const exit = useCallback(() => {
+    if (phase === 'recalling') return
+    if (attempt) paidSession.invalidate(attempt)
+    setAttempt(null)
+    onExit()
+  }, [attempt, paidSession, phase, onExit])
+
+  const initiateJump = useCallback(
+    (diaryId: string) => {
+      setJumpDiaryId(diaryId)
+      setAttempt(paidSession.begin(diaryId))
+    },
+    [paidSession],
+  )
 
   return (
     <View style={styles.block}>
       <View style={styles.header}>
         <Text style={styles.title}>{m.diary_reader_title()}</Text>
-        <Button color="neutral" size="sm" onPress={onExit}>
+        <Button color="neutral" size="sm" onPress={exit} disabled={phase === 'recalling'}>
           {m.diary_reader_back()}
         </Button>
       </View>
 
-      {/* The soft-deleted "지운 일기" restore section sits beside the immutable archive it survives
-          within ([W6][D4]) — this session's releases only (an accepted v1 limit). */}
       <RestoreSection />
 
       <DiaryList
@@ -179,7 +234,7 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
           <View style={styles.rowActions}>
             <RecallDiaryStarsAction
               liveCount={diary.memories.length}
-              onInitiate={() => setJumpDiaryId(diary.id)}
+              onInitiate={() => initiateJump(diary.id)}
             />
             <Button
               color="danger"

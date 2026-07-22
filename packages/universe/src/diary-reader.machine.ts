@@ -14,6 +14,7 @@ export type DiaryReaderEvent =
   | { type: 'REJECT' }
   | { type: 'DONE' }
   | { type: 'ERROR' }
+  | { type: 'CONSENT_REQUIRED' }
 
 export const diaryReaderMachine = setup({
   types: {
@@ -40,12 +41,16 @@ export const diaryReaderMachine = setup({
         REJECT: 'browsing',
       },
     },
-    // "별들을 다시 떠올리는 중" — the single synchronous RecallDiaryStars covers sync + reinforce
-    // atomically. A failure returns to browsing, retriable (nothing was spent, A8).
+    // "별들을 다시 떠올리는 중" — the single synchronous RecallDiaryStars covers receipt check +
+    // sync + reinforce atomically. Non-dismissible (A4): the widget makes header-back / Dialog-close
+    // inert here, and the machine offers no cancel — only DONE/ERROR/CONSENT_REQUIRED. A pre-spend
+    // failure returns to browsing (re-quote, retriable, A5); CONSENT_REQUIRED re-shows the consent
+    // modal on the sync-consent race; an ambiguous failure is handled by the widget (no blind retry).
     recalling: {
       on: {
         DONE: 'flying',
         ERROR: 'browsing',
+        CONSENT_REQUIRED: 'confirming',
       },
     },
     // The recovered stars are surfaced back in the universe: the widget announces the acceleration,

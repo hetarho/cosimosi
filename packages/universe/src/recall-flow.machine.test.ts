@@ -46,12 +46,39 @@ describe('recallFlowMachine', () => {
     expect(flow.getSnapshot().value).toBe('reconsolidating')
   })
 
-  it('closes to idle from any live phase', () => {
+  it('closes to idle from a dismissible pre-spend phase', () => {
+    const flow = actor()
+    flow.send({ type: 'OPEN', needsSync: false })
+    expect(flow.getSnapshot().value).toBe('rewriting')
+    flow.send({ type: 'CLOSE' })
+    expect(flow.getSnapshot().value).toBe('idle')
+  })
+
+  it('is non-dismissible while reconsolidating (A4): CLOSE is ignored', () => {
     const flow = actor()
     flow.send({ type: 'OPEN', needsSync: false })
     flow.send({ type: 'RECALL' })
+    expect(flow.getSnapshot().value).toBe('reconsolidating')
     flow.send({ type: 'CLOSE' })
+    expect(flow.getSnapshot().value).toBe('reconsolidating')
+  })
+
+  it('invalidates an in-flight flow when its target or owning session changes', () => {
+    const flow = actor()
+    flow.send({ type: 'OPEN', needsSync: false })
+    flow.send({ type: 'RECALL' })
+    flow.send({ type: 'SESSION_INVALIDATED' })
     expect(flow.getSnapshot().value).toBe('idle')
+  })
+
+  it('an unconsented-sync race re-shows the consent modal (A5)', () => {
+    const flow = actor()
+    flow.send({ type: 'OPEN', needsSync: false })
+    flow.send({ type: 'RECALL' })
+    flow.send({ type: 'CONSENT_REQUIRED' })
+    expect(flow.getSnapshot().value).toBe('confirmingSync')
+    flow.send({ type: 'ACCEPT' })
+    expect(flow.getSnapshot().value).toBe('rewriting')
   })
 })
 

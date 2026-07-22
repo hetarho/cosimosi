@@ -43,4 +43,14 @@ describe('diaryReaderMachine', () => {
     flow.send({ type: 'JUMP', needsSync: false })
     expect(flow.getSnapshot().value).toBe('recalling')
   })
+
+  it('an unconsented-sync race re-shows the consent modal (A5)', () => {
+    const flow = actor()
+    flow.send({ type: 'JUMP', needsSync: false })
+    expect(flow.getSnapshot().value).toBe('recalling')
+    flow.send({ type: 'CONSENT_REQUIRED' })
+    expect(flow.getSnapshot().value).toBe('confirming')
+    flow.send({ type: 'ACCEPT' })
+    expect(flow.getSnapshot().value).toBe('recalling')
+  })
 })

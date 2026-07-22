@@ -7,14 +7,19 @@ import {
 import { type AdvanceAnnouncement, type AdvanceInterval } from './advance-interval.ts'
 
 // features/recall-diary-stars api: the whole-diary recall ([D3], §2.7 unary) — 이 일기로 태어난
-// 별 보기. Reinforce-only (never reconsolidation): the request carries ONLY the diary id, so the
-// affected memories and the sync interval are all server-derived (§2.9#8). Sync + reinforce every
-// still-live star commit atomically server-side; the FE holds no strength/time/price field.
+// 별 보기. Reinforce-only (never reconsolidation): the request carries the diary id plus the paid-
+// action operation id (idempotency, A2/A3 — each member spends under an operation-derived per-member
+// dedup key) and the explicit sync consent (A1); affected memories/price/interval stay server-
+// derived (§2.9#8). Sync + reinforce every still-live star commit atomically server-side.
 export async function requestRecallDiaryStars(
   transport: ApiTransport,
-  input: { diaryId: string },
+  input: { diaryId: string; operationId: string; syncConsent: boolean },
 ): Promise<RecallDiaryStarsResponse> {
-  return createMemoryClient(transport).recallDiaryStars({ diaryId: input.diaryId })
+  return createMemoryClient(transport).recallDiaryStars({
+    diaryId: input.diaryId,
+    operationId: input.operationId,
+    syncConsent: input.syncConsent,
+  })
 }
 
 // The recall-sync interval the acceleration replays over ([T2] case 2), read from the returned

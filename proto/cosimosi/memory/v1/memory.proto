@@ -35,6 +35,14 @@ service MemoryService {
   // 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
   // It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
   rpc ViewSemantic(ViewSemanticRequest) returns (ViewSemanticResponse);
+  // Server-authoritative sync status: the UTC "today" a recall/whole-diary-recall sync advances
+  // to, and whether the clock currently lags it (needs_sync). The consent decision is derived
+  // from the SERVER clock here, never a client Date — client skew / UTC boundaries can neither
+  // bypass nor spuriously require consent [R1a][T5]. A free read: advances no clock [T3], spends
+  // no Twinkle, GET-eligible.
+  rpc SyncStatus(SyncStatusRequest) returns (SyncStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // 변천사 — a memory's variant history (created/semanticized/reconsolidated × original/system/user),
   // time-ordered with the created/original baseline synthesized first [R8a][D1]. Advances no clock [T3],
   // appends no row, spends no Twinkle [R1][G1] — GET-eligible.
@@ -200,12 +208,20 @@ message SynapseDto {
   string last_activated_universe_time = 6;
 }
 
-// The memory + what the user wrote back. rewrite_text is the ONLY content the client
+// The memory + what the user wrote back. rewrite_text is the ONLY content field the client
 // sends — no seed, brightness, strength, decay, price, or diary field exists, so the
 // reshape/bump/anchors/price are all server-derived (§2.9#8, [W4a] structural defense).
 message RecallRequest {
   string memory_id = 1;
   string rewrite_text = 2;
+  // Client-minted idempotency key for this paid action (A2): the same id + same canonical
+  // input replays the original committed response without a second spend or recall; a
+  // different input under the same id is rejected. Required.
+  string operation_id = 3;
+  // Explicit consent to advance the universe clock to today before the recall ([R1a]). The
+  // server refuses — before any spend — when a sync is required but not consented, so a client
+  // clock cannot advance universe time without the user's yes.
+  bool sync_consent = 4;
 }
 
 message RecallResponse {
@@ -225,17 +241,24 @@ message RecallResponse {
   string universe_time = 7;
 }
 
-// diary_id is the only field the client sends — the affected memory ids, price, and
-// anchors are all server-derived (§2.9#8).
+// diary_id is the only target field the client sends — the affected memory ids, price, and
+// anchors are all server-derived (§2.9#8). operation_id/sync_consent carry the same paid-action
+// idempotency + consent contract as RecallRequest (A2/A3); each whole-diary member spends under
+// an operation-derived per-member dedup key, so a replay re-charges no member.
 message RecallDiaryStarsRequest {
   string diary_id = 1;
+  string operation_id = 2;
+  bool sync_consent = 3;
 }
 
-// The memory and the gist stage the user chose to view [C6] — the only fields the
+// The memory and the gist stage the user chose to view [C6] — the only target fields the
 // client sends; whether that stage has risen and what it costs are server-derived (§2.9#8).
+// operation_id carries the paid-action idempotency contract (A2/A3); a view advances no clock,
+// so it needs no sync_consent.
 message ViewSemanticRequest {
   string episodic_memory_id = 1;
   int32 stage = 2;
+  string operation_id = 3;
 }
 
 // NOTE: no current_text, no seed, no provenance, no recall/timer field — this RPC
@@ -256,6 +279,17 @@ message RecallDiaryStarsResponse {
   // The sync interval, as in RecallResponse.
   string previous_universe_time = 3;
   string universe_time = 4;
+}
+
+message SyncStatusRequest {}
+
+message SyncStatusResponse {
+  // The UTC calendar day (ISO DATE) a sync would advance the universe clock to — the server
+  // clock's "today", never the client's [T5].
+  string today = 1;
+  // Whether advancing the clock to `today` would move it forward: a recall would cross a day
+  // and must be consented to first ([R1a]). False for an already-synced or empty universe.
+  bool needs_sync = 2;
 }
 
 message GetProvenanceRequest {

@@ -15,7 +15,7 @@ HUD reads `twinkle.v1 GetBalance` and refreshes whenever a spend or earn resolve
 ## A spend is priced before it happens
 
 Recall (회상) and gist-view (요지 보기) show their cost **before** they proceed ([G4]): a recall priced by the star's
-decay depth (deeper decay → costlier), a gist-view priced by gist depth (deeper gist → cheaper). The figure is a
+decay depth (deeper decay → costlier), a gist-view priced by its selected risen stage (deeper gist → cheaper). The figure is a
 **server quote** (`QuoteSpend`); the FE never computes a price (CC3 — no price constant appears in the FE). The cost
 display returns a proceed/cancel decision only — it never itself performs the spend; the composing flow does.
 
@@ -29,8 +29,8 @@ actions.
 
 When a spend would exceed the balance, the cost display states the shortfall and offers to **charge** rather than
 failing silently ([G3]). Everyday remembering from the basic grant never reaches this path ([G5][M5]). A spend refused
-at commit (a stale quote, since the gist quote cannot carry the viewed stage and a balance can move between quote and
-spend) recovers into the same charge path — it re-quotes, it does not dead-end.
+at commit because balance or authoritative depth changed after its exact-stage quote recovers into the same charge
+path — it re-quotes, it does not dead-end.
 
 ## Earn is write / invite / payment — no login bonus
 

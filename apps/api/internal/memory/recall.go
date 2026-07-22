@@ -27,6 +27,11 @@ var (
 	// exist; ErrRecallMemoryUnavailable when it is soft-deleted ([R1]).
 	ErrRecallMemoryNotFound    = errors.New("recall target memory not found")
 	ErrRecallMemoryUnavailable = errors.New("recall target memory is unavailable")
+	// ErrRecallNoLiveMemories rejects a whole-diary recall that resolves to zero still-live
+	// memories for the caller — an all-let-go/deleted diary or, crucially, another user's diary
+	// (a foreign diary_id yields zero of the caller's anchors). Raised before the sync/spend/
+	// receipt so nothing commits: no free clock advance, no cross-user receipt row ([D3][U1]).
+	ErrRecallNoLiveMemories = errors.New("recall diary has no live memories for this user")
 )
 
 // AllowAllSpendGate is the economy-less SpendGate binding: it permits every action and
@@ -96,20 +101,45 @@ type RecallDiaryStarsResult struct {
 // per-user graph-mutation lock serializes a user's writes (a user cannot launch while recalling),
 // the compare is metered + cached + keyless-mock-deterministic, and any compare error rolls
 // the whole recall back, charging and resetting nothing.
-func (s *Service) Recall(ctx context.Context, scope platform.UserScope, memoryID string, rewriteText string) (RecallResult, error) {
+func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operationID string, memoryID string, rewriteText string, syncConsent bool) (RecallResult, error) {
 	if scope.UserID() == "" {
 		return RecallResult{}, ErrScopeRequired
+	}
+	if strings.TrimSpace(operationID) == "" {
+		return RecallResult{}, ErrOperationIDRequired
 	}
 	rewriteText = strings.TrimSpace(rewriteText)
 	if memoryID == "" || rewriteText == "" {
 		return RecallResult{}, ErrRecallInputRequired
 	}
+	fingerprint := recallFingerprint(memoryID, rewriteText)
 
 	var result RecallResult
 	err := s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
-		// 1. Sync the clock to today — recall lands on today's clock ([R1a]); the
-		// consent gate is the UI's. universeTime below is the post-sync clock.
-		sync, err := s.syncToToday(ctx, scope, tx)
+		// 0. Serialize this user's paid actions and look up a matching receipt BEFORE any
+		// work: concurrent duplicates queue on the lock, so the loser reads the winner's
+		// committed receipt and replays it — no second spend, no second recall (A2/A3). A
+		// same-id/different-input receipt is a conflict; an exact match replays the stored
+		// response verbatim (before the consent gate, so a committed recall's retry never
+		// spuriously demands consent).
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
+		receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
+		if err != nil {
+			return err
+		}
+		response, replay, err := replayReceipt(receipt, found, PaidActionRecall, fingerprint)
+		if err != nil {
+			return err
+		}
+		if replay {
+			return decodeReceiptResponse(response, &result)
+		}
+		// 1. Sync the clock to today — recall lands on today's clock ([R1a]). The consent is
+		// server-enforced here: a sync that would advance the clock without consent is refused
+		// before any spend (A1/A5). universeTime below is the post-sync clock.
+		sync, err := s.syncToToday(ctx, scope, tx, syncConsent)
 		if err != nil {
 			return err
 		}
@@ -123,10 +153,10 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, memoryID
 		if memory.DeletedAt != nil {
 			return ErrRecallMemoryUnavailable
 		}
-		// 3. Spend Twinkle for the recall: the intent carries the post-sync
-		// accessibility signal and joins this transaction, so a denial aborts the
-		// whole recall, resetting and charging nothing (§CC2).
-		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(memoryID, recallAccessibilitySignal(recallAnchorOf(memory), sync.Current))); err != nil {
+		// 3. Spend Twinkle for the recall: the intent carries the post-sync accessibility
+		// signal + the operation id (its dedup key) and joins this transaction, so a denial
+		// aborts the whole recall, resetting and charging nothing (§CC2).
+		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(recallAnchorOf(memory), sync.Current))); err != nil {
 			return err
 		}
 		// 4. Prediction-error judgement — an LLM semantic compare of content ([R6]).
@@ -147,17 +177,23 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, memoryID
 			Sync:              sync,
 		}
 		// 6. Branch: no error → reinforce only ([R4]); error → reconsolidate ([R6]).
-		if !differs {
-			return nil
+		if differs {
+			newSeed, err := s.reconsolidate(ctx, scope, tx, memory, rewriteText, sync.Current)
+			if err != nil {
+				return err
+			}
+			result.Reconsolidated = true
+			result.CurrentText = rewriteText
+			result.Seed = newSeed
 		}
-		newSeed, err := s.reconsolidate(ctx, scope, tx, memory, rewriteText, sync.Current)
-		if err != nil {
-			return err
-		}
-		result.Reconsolidated = true
-		result.CurrentText = rewriteText
-		result.Seed = newSeed
-		return nil
+		// 7. Commit the receipt in the SAME transaction as the debit + effects (A3): a
+		// response-loss retry of this operation id now replays `result` without redoing work.
+		return s.writeReceipt(ctx, scope, tx, PaidActionReceipt{
+			OperationID:        operationID,
+			Kind:               PaidActionRecall,
+			RequestFingerprint: fingerprint,
+			EpisodicMemoryID:   stringPtr(memoryID),
+		}, result)
 	})
 	if err != nil {
 		return RecallResult{}, err
@@ -169,17 +205,36 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, memoryID
 // spend the recall of each still-live memory born from the diary, and Reinforce each — in
 // ONE transaction. It never calls PredictionError or Reconsolidate, writes no current_text,
 // and changes no seed ([R4][R6][I8]).
-func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope, diaryID string) (RecallDiaryStarsResult, error) {
+func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope, operationID string, diaryID string, syncConsent bool) (RecallDiaryStarsResult, error) {
 	if scope.UserID() == "" {
 		return RecallDiaryStarsResult{}, ErrScopeRequired
+	}
+	if strings.TrimSpace(operationID) == "" {
+		return RecallDiaryStarsResult{}, ErrOperationIDRequired
 	}
 	if diaryID == "" {
 		return RecallDiaryStarsResult{}, ErrRecallInputRequired
 	}
+	fingerprint := diaryRecallFingerprint(diaryID)
 
 	var result RecallDiaryStarsResult
 	err := s.recalls.InRecallTx(ctx, func(tx RecallTx) error {
-		sync, err := s.syncToToday(ctx, scope, tx)
+		// 0. Lock + receipt replay before any work, exactly as single recall (A2/A3).
+		if err := tx.LockGraphMutation(ctx, scope); err != nil {
+			return err
+		}
+		receipt, found, err := tx.GetPaidActionReceipt(ctx, scope, operationID)
+		if err != nil {
+			return err
+		}
+		response, replay, err := replayReceipt(receipt, found, PaidActionDiaryRecall, fingerprint)
+		if err != nil {
+			return err
+		}
+		if replay {
+			return decodeReceiptResponse(response, &result)
+		}
+		sync, err := s.syncToToday(ctx, scope, tx, syncConsent)
 		if err != nil {
 			return err
 		}
@@ -187,17 +242,25 @@ func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope
 		if err != nil {
 			return err
 		}
-		// Spend first, for EVERY memory, from the one pre-recall anchor snapshot:
-		// each SpendIntent targets one memory and carries that memory's own
-		// accessibility signal, so the diary's cost is the sum of the per-memory
-		// recalls ([D3]) — priced exactly as the diary quote priced it (a reinforce
-		// nudges neighbor offsets, so pricing after reinforcing a sibling would
-		// drift from the quote). A denial aborts the whole transaction — atomic,
-		// resets nothing.
+		// Reject a diary with no still-live memories FOR THIS USER before spending, reinforcing,
+		// or writing a receipt — the whole transaction (including the sync) rolls back. This is
+		// also the per-user guard: a foreign diary_id resolves to zero of the caller's anchors, so
+		// user A cannot advance their clock for free against user B's diary or leave a cross-user
+		// receipt row ([D3][U1]). The reader UI already disables the action at zero live stars.
+		if len(anchors) == 0 {
+			return ErrRecallNoLiveMemories
+		}
+		// Spend first, for EVERY memory, from the one pre-recall anchor snapshot: each
+		// SpendIntent targets one memory and carries that memory's own accessibility signal,
+		// so the diary's cost is the sum of the per-memory recalls ([D3]) — priced exactly as
+		// the diary quote priced it (a reinforce nudges neighbor offsets, so pricing after
+		// reinforcing a sibling would drift from the quote). Each spend's dedup key is
+		// operation-id + member-id, so a replayed diary recall re-charges no member (A3). A
+		// denial aborts the whole transaction — atomic, resets nothing.
 		ids := make([]string, 0, len(anchors))
 		for _, anchor := range anchors {
 			ids = append(ids, anchor.EpisodicMemoryID)
-			if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(anchor.EpisodicMemoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
+			if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, anchor.EpisodicMemoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
 				return err
 			}
 		}
@@ -207,7 +270,12 @@ func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope
 			}
 		}
 		result = RecallDiaryStarsResult{DiaryID: diaryID, EpisodicMemoryIDs: ids, Sync: sync}
-		return nil
+		return s.writeReceipt(ctx, scope, tx, PaidActionReceipt{
+			OperationID:        operationID,
+			Kind:               PaidActionDiaryRecall,
+			RequestFingerprint: fingerprint,
+			DiaryID:            stringPtr(diaryID),
+		}, result)
 	})
 	if err != nil {
 		return RecallDiaryStarsResult{}, err

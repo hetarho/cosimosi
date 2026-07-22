@@ -45,7 +45,7 @@ func TestViewSemanticReturnsPregeneratedStageTextReadOnly(t *testing.T) {
 	fixture.launches.clock = &previous
 	fixture.seedGist("m1", 3, fourStages())
 
-	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "m1", 2)
+	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", 2)
 	if err != nil {
 		t.Fatalf("ViewSemantic failed: %v", err)
 	}
@@ -62,13 +62,16 @@ func TestViewSemanticReturnsPregeneratedStageTextReadOnly(t *testing.T) {
 	if intent.Kind != SpendKindViewGist || intent.MemoryID != "m1" || intent.Stage != 2 {
 		t.Fatalf("spend intent = %+v, want {view_gist m1 2}", intent)
 	}
-	// The view holds no transaction: the gate receives a nil EconomyTx and owns the
-	// spend's atomicity itself.
-	if len(fixture.spendGate.txs) != 1 || fixture.spendGate.txs[0] != nil {
-		t.Fatalf("spend txs = %+v, want one nil handle for a view", fixture.spendGate.txs)
+	// The paid view now runs in its own transaction (A3): the gate receives that transaction
+	// handle so the debit + the receipt commit together.
+	if len(fixture.spendGate.txs) != 1 || fixture.spendGate.txs[0] == nil {
+		t.Fatalf("spend txs = %+v, want one view-transaction handle", fixture.spendGate.txs)
 	}
-	// A1/A6/A7: nothing written, no transaction opened, no clock advance, no
-	// reconsolidation machinery — the view is a pure read outside every write path.
+	if fixture.launches.viewTxCount != 1 {
+		t.Fatalf("view transactions = %d, want 1", fixture.launches.viewTxCount)
+	}
+	// A1/A6/A7: no launch/recall transaction, no clock advance, no reconsolidation machinery —
+	// the view's only write is the debit + its receipt, never an anchor/provenance/clock write.
 	if fixture.launches.txCount != 0 || fixture.launches.recallTxCount != 0 {
 		t.Fatalf("transactions = {launch %d, recall %d}, want none for a view", fixture.launches.txCount, fixture.launches.recallTxCount)
 	}
@@ -100,7 +103,7 @@ func TestViewSemanticRefusesUnrisenOrUnpregeneratedStages(t *testing.T) {
 		{"stage above the derived ladder length", "risen-4", 5},
 	}
 	for _, tc := range cases {
-		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), tc.memoryID, tc.stage); !errors.Is(err, ErrViewSemanticStageNotRisen) {
+		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", tc.memoryID, tc.stage); !errors.Is(err, ErrViewSemanticStageNotRisen) {
 			t.Fatalf("%s: err = %v, want ErrViewSemanticStageNotRisen", tc.name, err)
 		}
 	}
@@ -118,14 +121,17 @@ func TestViewSemanticValidatesInput(t *testing.T) {
 	// Stage 0 is the concrete episodic memory, not a gist; negatives and an empty id
 	// are plain bad input. None may reach the gist read or the gate.
 	for _, stage := range []int{0, -1} {
-		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "m1", stage); !errors.Is(err, ErrViewSemanticInputRequired) {
+		if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", stage); !errors.Is(err, ErrViewSemanticInputRequired) {
 			t.Fatalf("stage %d err = %v, want ErrViewSemanticInputRequired", stage, err)
 		}
 	}
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "", 1); !errors.Is(err, ErrViewSemanticInputRequired) {
+	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "", 1); !errors.Is(err, ErrViewSemanticInputRequired) {
 		t.Fatalf("empty id err = %v, want ErrViewSemanticInputRequired", err)
 	}
-	if _, err := fixture.service.ViewSemantic(context.Background(), platform.UserScope{}, "m1", 1); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "", "m1", 1); !errors.Is(err, ErrOperationIDRequired) {
+		t.Fatalf("empty operation id err = %v, want ErrOperationIDRequired", err)
+	}
+	if _, err := fixture.service.ViewSemantic(context.Background(), platform.UserScope{}, "op-1", "m1", 1); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("missing scope err = %v, want ErrScopeRequired", err)
 	}
 	if len(fixture.gists.calls) != 0 || len(fixture.spendGate.intents) != 0 {
@@ -139,7 +145,7 @@ func TestViewSemanticMemoryNotFoundIsCanonical(t *testing.T) {
 
 	// A9 at the unit level: the reader returns the canonical not-found for a row that
 	// is not the caller's (the per-user WHERE is the pg integration test's proof).
-	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "someone-elses", 1); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
+	if _, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "someone-elses", 1); !errors.Is(err, ErrViewSemanticMemoryNotFound) {
 		t.Fatalf("err = %v, want ErrViewSemanticMemoryNotFound", err)
 	}
 	if len(fixture.spendGate.intents) != 0 {
@@ -153,7 +159,7 @@ func TestViewSemanticSpendIsAPreconditionOfTheRead(t *testing.T) {
 	fixture.seedGist("m1", 4, fourStages())
 	fixture.spendGate.denyErr = ErrInsufficientTwinkle
 
-	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "m1", 4)
+	result, err := fixture.service.ViewSemantic(context.Background(), testScope(t), "op-1", "m1", 4)
 	if !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("err = %v, want ErrInsufficientTwinkle surfaced verbatim", err)
 	}
@@ -172,9 +178,9 @@ func TestViewSemanticSpendIntentCarriesTheStageAsDepthSignal(t *testing.T) {
 	// stage) and its view_gist kind — never a price. The gate's cheaper-the-deeper
 	// mapping is the economy's, so all this unit owes is the stage-as-signal.
 	for stage := 1; stage <= len(SemanticStages{}); stage++ {
-		intent := GistViewSpendIntent("m1", stage)
-		if intent.Kind != SpendKindViewGist || intent.MemoryID != "m1" || int(intent.Stage) != stage {
-			t.Fatalf("GistViewSpendIntent(m1, %d) = %+v, want {view_gist m1 %d}", stage, intent, stage)
+		intent := GistViewSpendIntent("op-1", "m1", stage)
+		if intent.Kind != SpendKindViewGist || intent.MemoryID != "m1" || intent.OperationID != "op-1" || int(intent.Stage) != stage {
+			t.Fatalf("GistViewSpendIntent(op-1, m1, %d) = %+v, want {view_gist m1 op-1 %d}", stage, intent, stage)
 		}
 	}
 }

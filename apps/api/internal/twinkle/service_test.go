@@ -301,6 +301,38 @@ func TestCheckAndSpendPricesRecallViaTheCurveAndSplitsBasicFirst(t *testing.T) {
 	}
 }
 
+func TestCheckAndSpendIsIdempotentPerDedupKey(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 100, 0); err != nil {
+		t.Fatalf("seed additional failed: %v", err)
+	}
+
+	weight := float64(values.ForgettingCostWeightCap)
+	intent := SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight, DedupKey: "spend:op-1:m1"}
+
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, intent); err != nil {
+		t.Fatalf("first spend failed: %v", err)
+	}
+	afterFirst := fixture.ledger.records["user-1"]
+
+	// A duplicate append (same operation-derived dedup key) applies NO second balance delta (A3):
+	// the append reports the existing row and CheckAndSpend skips ApplyBalanceDelta.
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, intent); err != nil {
+		t.Fatalf("duplicate spend failed: %v", err)
+	}
+	afterSecond := fixture.ledger.records["user-1"]
+
+	if afterFirst != afterSecond {
+		t.Fatalf("balance moved on the duplicate spend: %+v → %+v, want unchanged", afterFirst, afterSecond)
+	}
+	entries := fixture.ledger.userEntries("user-1")
+	if len(entries) != 1 {
+		t.Fatalf("spend entries = %d, want exactly 1 for a deduped operation", len(entries))
+	}
+}
+
 func TestCheckAndSpendOverflowsIntoAdditionalWithTheExactSplit(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
@@ -403,21 +435,21 @@ func TestQuoteSpendMatchesTheGatePricingAndWritesNothing(t *testing.T) {
 	fixture.signals.diary["d1"] = []float64{1, float64(values.ForgettingCostWeightCap)}
 	writesBefore := fixture.ledger.writes
 
-	recallQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindRecall, "m1")
+	recallQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindRecall, "m1", 0)
 	if err != nil {
 		t.Fatalf("QuoteSpend(recall) failed: %v", err)
 	}
 	if recallQuote.Cost != RecallCost(float64(values.ForgettingCostWeightCap)) {
 		t.Fatalf("recall quote = %+v, want the gate's RecallCost", recallQuote)
 	}
-	gistQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindGistView, "m2")
+	gistQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindGistView, "m2", 2)
 	if err != nil {
 		t.Fatalf("QuoteSpend(gist) failed: %v", err)
 	}
-	if gistQuote.Cost != GistViewCost(3) {
-		t.Fatalf("gist quote = %+v, want GistViewCost(3)", gistQuote)
+	if gistQuote.Cost != GistViewCost(2) {
+		t.Fatalf("gist quote = %+v, want selected-stage GistViewCost(2)", gistQuote)
 	}
-	diaryQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindDiaryRecall, "d1")
+	diaryQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindDiaryRecall, "d1", 0)
 	if err != nil {
 		t.Fatalf("QuoteSpend(diary) failed: %v", err)
 	}
@@ -434,6 +466,20 @@ func TestQuoteSpendMatchesTheGatePricingAndWritesNothing(t *testing.T) {
 	}
 }
 
+func TestQuoteSpendGistRequiresASelectedRisenStage(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	fixture.signals.gist["m1"] = 2
+
+	if _, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindGistView, "m1", 0); !errors.Is(err, ErrQuoteInputRequired) {
+		t.Fatalf("stage-zero quote err = %v, want ErrQuoteInputRequired", err)
+	}
+	if _, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindGistView, "m1", 3); !errors.Is(err, ErrQuoteTargetUnavailable) {
+		t.Fatalf("unrisen-stage quote err = %v, want ErrQuoteTargetUnavailable", err)
+	}
+}
+
 func TestQuoteSpendReportsShortfall(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
@@ -444,7 +490,7 @@ func TestQuoteSpendReportsShortfall(t *testing.T) {
 	}
 	fixture.signals.diary["d1"] = []float64{1, 1, 1}
 
-	quote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindDiaryRecall, "d1")
+	quote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindDiaryRecall, "d1", 0)
 	if err != nil {
 		t.Fatalf("QuoteSpend failed: %v", err)
 	}
@@ -830,7 +876,7 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 	if _, err := fixture.service.Charge(ctx, none, DefaultChargePackID, "ios", "r"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("Charge err = %v, want ErrScopeRequired", err)
 	}
-	if _, err := fixture.service.QuoteSpend(ctx, none, QuoteKindRecall, "m1"); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.service.QuoteSpend(ctx, none, QuoteKindRecall, "m1", 0); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("QuoteSpend err = %v, want ErrScopeRequired", err)
 	}
 	if len(fixture.ledger.entries) != 0 || fixture.ledger.writes != 0 {

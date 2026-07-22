@@ -53,6 +53,9 @@ const (
 	// MemoryServiceViewSemanticProcedure is the fully-qualified name of the MemoryService's
 	// ViewSemantic RPC.
 	MemoryServiceViewSemanticProcedure = "/cosimosi.memory.v1.MemoryService/ViewSemantic"
+	// MemoryServiceSyncStatusProcedure is the fully-qualified name of the MemoryService's SyncStatus
+	// RPC.
+	MemoryServiceSyncStatusProcedure = "/cosimosi.memory.v1.MemoryService/SyncStatus"
 	// MemoryServiceGetProvenanceProcedure is the fully-qualified name of the MemoryService's
 	// GetProvenance RPC.
 	MemoryServiceGetProvenanceProcedure = "/cosimosi.memory.v1.MemoryService/GetProvenance"
@@ -97,6 +100,12 @@ type MemoryServiceClient interface {
 	// 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
 	// It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
 	ViewSemantic(context.Context, *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error)
+	// Server-authoritative sync status: the UTC "today" a recall/whole-diary-recall sync advances
+	// to, and whether the clock currently lags it (needs_sync). The consent decision is derived
+	// from the SERVER clock here, never a client Date — client skew / UTC boundaries can neither
+	// bypass nor spuriously require consent [R1a][T5]. A free read: advances no clock [T3], spends
+	// no Twinkle, GET-eligible.
+	SyncStatus(context.Context, *connect.Request[v1.SyncStatusRequest]) (*connect.Response[v1.SyncStatusResponse], error)
 	// 변천사 — a memory's variant history (created/semanticized/reconsolidated × original/system/user),
 	// time-ordered with the created/original baseline synthesized first [R8a][D1]. Advances no clock [T3],
 	// appends no row, spends no Twinkle [R1][G1] — GET-eligible.
@@ -171,6 +180,13 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(memoryServiceMethods.ByName("ViewSemantic")),
 			connect.WithClientOptions(opts...),
 		),
+		syncStatus: connect.NewClient[v1.SyncStatusRequest, v1.SyncStatusResponse](
+			httpClient,
+			baseURL+MemoryServiceSyncStatusProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("SyncStatus")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getProvenance: connect.NewClient[v1.GetProvenanceRequest, v1.GetProvenanceResponse](
 			httpClient,
 			baseURL+MemoryServiceGetProvenanceProcedure,
@@ -228,6 +244,7 @@ type memoryServiceClient struct {
 	recall           *connect.Client[v1.RecallRequest, v1.RecallResponse]
 	recallDiaryStars *connect.Client[v1.RecallDiaryStarsRequest, v1.RecallDiaryStarsResponse]
 	viewSemantic     *connect.Client[v1.ViewSemanticRequest, v1.ViewSemanticResponse]
+	syncStatus       *connect.Client[v1.SyncStatusRequest, v1.SyncStatusResponse]
 	getProvenance    *connect.Client[v1.GetProvenanceRequest, v1.GetProvenanceResponse]
 	export           *connect.Client[v1.ExportRequest, v1.ExportResponse]
 	getDiaries       *connect.Client[v1.GetDiariesRequest, v1.GetDiariesResponse]
@@ -270,6 +287,11 @@ func (c *memoryServiceClient) RecallDiaryStars(ctx context.Context, req *connect
 // ViewSemantic calls cosimosi.memory.v1.MemoryService.ViewSemantic.
 func (c *memoryServiceClient) ViewSemantic(ctx context.Context, req *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error) {
 	return c.viewSemantic.CallUnary(ctx, req)
+}
+
+// SyncStatus calls cosimosi.memory.v1.MemoryService.SyncStatus.
+func (c *memoryServiceClient) SyncStatus(ctx context.Context, req *connect.Request[v1.SyncStatusRequest]) (*connect.Response[v1.SyncStatusResponse], error) {
+	return c.syncStatus.CallUnary(ctx, req)
 }
 
 // GetProvenance calls cosimosi.memory.v1.MemoryService.GetProvenance.
@@ -332,6 +354,12 @@ type MemoryServiceHandler interface {
 	// 요지 열람 — read-only gist-stage view; spends Twinkle (via the SpendGate) — NOT NO_SIDE_EFFECTS.
 	// It never rewrites, never reconsolidates, and never advances the clock [R8][I2][I10].
 	ViewSemantic(context.Context, *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error)
+	// Server-authoritative sync status: the UTC "today" a recall/whole-diary-recall sync advances
+	// to, and whether the clock currently lags it (needs_sync). The consent decision is derived
+	// from the SERVER clock here, never a client Date — client skew / UTC boundaries can neither
+	// bypass nor spuriously require consent [R1a][T5]. A free read: advances no clock [T3], spends
+	// no Twinkle, GET-eligible.
+	SyncStatus(context.Context, *connect.Request[v1.SyncStatusRequest]) (*connect.Response[v1.SyncStatusResponse], error)
 	// 변천사 — a memory's variant history (created/semanticized/reconsolidated × original/system/user),
 	// time-ordered with the created/original baseline synthesized first [R8a][D1]. Advances no clock [T3],
 	// appends no row, spends no Twinkle [R1][G1] — GET-eligible.
@@ -402,6 +430,13 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(memoryServiceMethods.ByName("ViewSemantic")),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceSyncStatusHandler := connect.NewUnaryHandler(
+		MemoryServiceSyncStatusProcedure,
+		svc.SyncStatus,
+		connect.WithSchema(memoryServiceMethods.ByName("SyncStatus")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	memoryServiceGetProvenanceHandler := connect.NewUnaryHandler(
 		MemoryServiceGetProvenanceProcedure,
 		svc.GetProvenance,
@@ -463,6 +498,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceRecallDiaryStarsHandler.ServeHTTP(w, r)
 		case MemoryServiceViewSemanticProcedure:
 			memoryServiceViewSemanticHandler.ServeHTTP(w, r)
+		case MemoryServiceSyncStatusProcedure:
+			memoryServiceSyncStatusHandler.ServeHTTP(w, r)
 		case MemoryServiceGetProvenanceProcedure:
 			memoryServiceGetProvenanceHandler.ServeHTTP(w, r)
 		case MemoryServiceExportProcedure:
@@ -512,6 +549,10 @@ func (UnimplementedMemoryServiceHandler) RecallDiaryStars(context.Context, *conn
 
 func (UnimplementedMemoryServiceHandler) ViewSemantic(context.Context, *connect.Request[v1.ViewSemanticRequest]) (*connect.Response[v1.ViewSemanticResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.ViewSemantic is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) SyncStatus(context.Context, *connect.Request[v1.SyncStatusRequest]) (*connect.Response[v1.SyncStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.SyncStatus is not implemented"))
 }
 
 func (UnimplementedMemoryServiceHandler) GetProvenance(context.Context, *connect.Request[v1.GetProvenanceRequest]) (*connect.Response[v1.GetProvenanceResponse], error) {

@@ -41,6 +41,13 @@ type fakeLaunchStore struct {
 	recallTxCount int
 	recall        recallRecord
 	recallStaging *recallRecord
+
+	// Paid-action receipt seam (job 70): committed receipts keyed by userID+operationID (the
+	// idempotency store a replay reads), the gist reader the view transaction delegates to, and
+	// the view-transaction counter.
+	receipts    map[string]PaidActionReceipt
+	gistReader  *fakeGistReader
+	viewTxCount int
 }
 
 type recallRecord struct {
@@ -48,6 +55,7 @@ type recallRecord struct {
 	offsets      []recordedOffset
 	provenance   []MemoryProvenance
 	reconText    []recordedReconText
+	receipts     []PaidActionReceipt
 }
 
 type recordedAnchorReset struct {

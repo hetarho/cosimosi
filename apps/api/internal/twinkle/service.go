@@ -50,8 +50,8 @@ var (
 	ErrPaymentVerificationUnavailable = errors.New("store payment verification is unavailable")
 	ErrPaymentBeneficiaryMismatch     = errors.New("payment beneficiary does not match the authenticated user")
 	ErrPaymentNotVerified             = errors.New("store payment transaction is not verified")
-	// ErrQuoteInputRequired rejects a quote without a kind and its target id.
-	ErrQuoteInputRequired = errors.New("spend quote requires a kind and a target id")
+	// ErrQuoteInputRequired rejects a quote without its required action inputs.
+	ErrQuoteInputRequired = errors.New("spend quote requires a kind, target id, and action inputs")
 	// ErrQuoteTargetNotFound / ErrQuoteTargetUnavailable are the canonical quote-target
 	// refusals the composition root maps the signal reader's context errors onto
 	// (CC8 — this context names the refusal, never the memory error): no such target
@@ -66,14 +66,18 @@ var (
 // scalar — new packs extend the verifier, not this contract.
 const DefaultChargePackID = "twinkle_pack_default"
 
-// SpendIntent is what a metered action hands the gate: the spend reason and the
-// depth signal that prices it — the accessibility cost weight for a recall, the
-// viewed gist stage for a gist view ([CC3][G4]). It carries no price and no memory
-// type; the composition root maps the consumer's intent onto it.
+// SpendIntent is what a metered action hands the gate: the spend reason, the depth signal
+// that prices it — the accessibility cost weight for a recall, the viewed gist stage for a gist
+// view ([CC3][G4]) — and the operation-derived dedup key that makes the spend idempotent. It
+// carries no price and no memory type; the composition root maps the consumer's intent onto it.
+// DedupKey empty opts a spend out of dedup (the append then guards only backend-minted id
+// collisions); a real paid action always supplies one, so a duplicate append applies no second
+// balance delta (A3).
 type SpendIntent struct {
 	Reason            EntryReason
 	AccessibilityCost float64
 	SemanticStage     int
+	DedupKey          string
 }
 
 // QuoteKind names the spend a quote prices ([G4]): the same recall/gist-view
@@ -201,16 +205,30 @@ func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, l
 	if !plan.OK {
 		return ErrInsufficientTwinkle
 	}
-	if _, err := ledger.AppendLedgerEntry(ctx, scope, LedgerEntry{
+	// Append the dedup-keyed spend row FIRST — exactly like earn: a false means this
+	// operation's spend already landed (a duplicate/replay), so skip the balance delta and the
+	// draw is applied once end to end (A3). This is the spend-side idempotency the recall/view
+	// receipt layer backstops; together, no retry double-charges.
+	var dedupKey *string
+	if intent.DedupKey != "" {
+		key := intent.DedupKey
+		dedupKey = &key
+	}
+	applied, err := ledger.AppendLedgerEntry(ctx, scope, LedgerEntry{
 		ID:             s.newID(),
 		Kind:           EntryKindSpend,
 		Reason:         intent.Reason,
 		Amount:         cost,
 		FromBasic:      plan.FromBasic,
 		FromAdditional: plan.FromAdditional,
+		DedupKey:       dedupKey,
 		CreatedAt:      now,
-	}); err != nil {
+	})
+	if err != nil {
 		return err
+	}
+	if !applied {
+		return nil
 	}
 	_, err = ledger.ApplyBalanceDelta(ctx, scope, now, -plan.FromAdditional, plan.FromBasic)
 	return err
@@ -370,14 +388,14 @@ func paymentTransactionKey(provider string, transactionID string) string {
 // depth signal server-side, price with the same curves, derive the same balance,
 // plan the same draw — and write nothing: no ledger row, no window roll, no clock
 // advance. A stale quote is simply refused later by the authoritative spend.
-func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind QuoteKind, targetID string) (Quote, error) {
+func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind QuoteKind, targetID string, semanticStage int) (Quote, error) {
 	if scope.UserID() == "" {
 		return Quote{}, ErrScopeRequired
 	}
 	if strings.TrimSpace(targetID) == "" {
 		return Quote{}, ErrQuoteInputRequired
 	}
-	cost, err := s.quoteCost(ctx, scope, kind, targetID)
+	cost, err := s.quoteCost(ctx, scope, kind, targetID, semanticStage)
 	if err != nil {
 		return Quote{}, err
 	}
@@ -394,7 +412,7 @@ func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind
 	return Quote{Cost: cost, Covered: plan.OK, Shortfall: shortfall}, nil
 }
 
-func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind QuoteKind, targetID string) (int, error) {
+func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind QuoteKind, targetID string, semanticStage int) (int, error) {
 	switch kind {
 	case QuoteKindRecall:
 		weight, err := s.signals.RecallAccessibility(ctx, scope, targetID)
@@ -403,11 +421,17 @@ func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind 
 		}
 		return RecallCost(weight), nil
 	case QuoteKindGistView:
-		stage, err := s.signals.ViewableGistStage(ctx, scope, targetID)
+		if semanticStage < 1 {
+			return 0, fmt.Errorf("%w: gist semantic stage", ErrQuoteInputRequired)
+		}
+		reachedStage, err := s.signals.ViewableGistStage(ctx, scope, targetID)
 		if err != nil {
 			return 0, err
 		}
-		return GistViewCost(stage), nil
+		if semanticStage > reachedStage {
+			return 0, ErrQuoteTargetUnavailable
+		}
+		return GistViewCost(semanticStage), nil
 	case QuoteKindDiaryRecall:
 		weights, err := s.signals.DiaryRecallAccessibilities(ctx, scope, targetID)
 		if err != nil {

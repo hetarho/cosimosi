@@ -96,7 +96,7 @@ func (s *Server) Recall(ctx context.Context, req *connect.Request[memoryv1.Recal
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.Recall(ctx, scope, req.Msg.GetMemoryId(), req.Msg.GetRewriteText())
+	result, err := s.service.Recall(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetMemoryId(), req.Msg.GetRewriteText(), req.Msg.GetSyncConsent())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -116,7 +116,7 @@ func (s *Server) RecallDiaryStars(ctx context.Context, req *connect.Request[memo
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.RecallDiaryStars(ctx, scope, req.Msg.GetDiaryId())
+	result, err := s.service.RecallDiaryStars(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetDiaryId(), req.Msg.GetSyncConsent())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -133,7 +133,7 @@ func (s *Server) ViewSemantic(ctx context.Context, req *connect.Request[memoryv1
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.service.ViewSemantic(ctx, scope, req.Msg.GetEpisodicMemoryId(), int(req.Msg.GetStage()))
+	result, err := s.service.ViewSemantic(ctx, scope, req.Msg.GetOperationId(), req.Msg.GetEpisodicMemoryId(), int(req.Msg.GetStage()))
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -141,6 +141,21 @@ func (s *Server) ViewSemantic(ctx context.Context, req *connect.Request[memoryv1
 		Text:         result.Text,
 		Stage:        int32(result.Stage),
 		ReachedStage: int32(result.ReachedStage),
+	}), nil
+}
+
+func (s *Server) SyncStatus(ctx context.Context, _ *connect.Request[memoryv1.SyncStatusRequest]) (*connect.Response[memoryv1.SyncStatusResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	status, err := s.service.SyncStatus(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&memoryv1.SyncStatusResponse{
+		Today:     status.Today.Format(time.DateOnly),
+		NeedsSync: status.NeedsSync,
 	}), nil
 }
 
@@ -285,9 +300,15 @@ func domainError(err error) error {
 		errors.Is(err, memory.ErrExportFormatRequired),
 		errors.Is(err, memory.ErrDiaryPageTokenInvalid),
 		errors.Is(err, memory.ErrReleaseInputRequired),
-		errors.Is(err, memory.ErrLetGoInvalidApproved):
+		errors.Is(err, memory.ErrLetGoInvalidApproved),
+		errors.Is(err, memory.ErrOperationIDRequired):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, memory.ErrOperationConflict):
+		// Same client operation id, different canonical input (A2): replaying the receipt
+		// would return the wrong result, so the client must mint a fresh id.
+		return connect.NewError(connect.CodeAlreadyExists, err)
 	case errors.Is(err, memory.ErrRecallMemoryNotFound),
+		errors.Is(err, memory.ErrRecallNoLiveMemories),
 		errors.Is(err, memory.ErrViewSemanticMemoryNotFound),
 		errors.Is(err, memory.ErrProvenanceMemoryNotFound),
 		errors.Is(err, memory.ErrReleaseMemoryNotFound),
@@ -298,7 +319,10 @@ func domainError(err error) error {
 		errors.Is(err, memory.ErrViewSemanticStageNotRisen),
 		errors.Is(err, memory.ErrReleaseMemoryUnavailable),
 		errors.Is(err, memory.ErrAlreadyReleased),
-		errors.Is(err, memory.ErrRestoreWindowExpired):
+		errors.Is(err, memory.ErrRestoreWindowExpired),
+		errors.Is(err, memory.ErrSyncConsentRequired):
+		// Consent-required is a pre-spend precondition failure (A1/A5): nothing was charged, so
+		// the client safely refreshes sync-status and shows the consent modal before retrying.
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, memory.ErrInsufficientTwinkle):
 		return connect.NewError(connect.CodeResourceExhausted, err)

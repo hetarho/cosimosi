@@ -138,6 +138,7 @@ func newGraphConcurrencyServiceWith(
 		Earn:            earn,
 		PredictionError: adapters.PredictionError,
 		Gists:           store,
+		ViewSemantics:   store,
 		Signals:         store,
 		Provenance:      store,
 		Exports:         store,
@@ -238,7 +239,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 		}
 
 		go func() {
-			result, err := recallService.RecallDiaryStars(ctx, scope, g.d1)
+			result, err := recallService.RecallDiaryStars(ctx, scope, "op-a-diary-recall", g.d1, true)
 			recallDone <- recallOutcome{result: result, err: err}
 		}()
 		waitForAdvisoryWaiter(t, ctx, pool, userID)
@@ -254,7 +255,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 
 		otherCtx, otherCancel := context.WithTimeout(ctx, 5*time.Second)
 		defer otherCancel()
-		otherResult, err := otherService.RecallDiaryStars(otherCtx, otherScope, otherGraph.d1)
+		otherResult, err := otherService.RecallDiaryStars(otherCtx, otherScope, "op-b-diary-recall", otherGraph.d1, true)
 		if err != nil {
 			t.Fatalf("user B RecallDiaryStars blocked on user A graph lock: %v", err)
 		}
@@ -291,8 +292,11 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 			t.Fatalf("Release failed: %v", err)
 		}
 		recall := <-recallDone
-		if recall.err != nil {
-			t.Fatalf("RecallDiaryStars failed: %v", recall.err)
+		// Serialized AFTER the release soft-deleted every memory of d1, the whole-diary recall finds
+		// no live memory and correctly refuses (job 70) — so it reinforces nothing and the release's
+		// Depress stands. (The refusal also blocks a free clock advance / cross-user receipt.)
+		if !errors.Is(recall.err, memory.ErrRecallNoLiveMemories) {
+			t.Fatalf("release→recall err = %v, want ErrRecallNoLiveMemories", recall.err)
 		}
 		if len(recall.result.EpisodicMemoryIDs) != 0 {
 			t.Fatalf("release→recall affected memories = %v, want none after Release", recall.result.EpisodicMemoryIDs)
@@ -320,7 +324,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 		releaseErr := make(chan error, 1)
 
 		go func() {
-			_, err := recallService.RecallDiaryStars(ctx, scope, g.d1)
+			_, err := recallService.RecallDiaryStars(ctx, scope, "op-a-diary-recall-2", g.d1, true)
 			recallErr <- err
 		}()
 		select {

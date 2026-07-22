@@ -34,6 +34,7 @@ func newConsolidateService(t *testing.T, store Store) *memory.Service {
 		Earn:            memory.NoEarnOnWrite{},
 		PredictionError: adapters.PredictionError,
 		Gists:           store,
+		ViewSemantics:   store,
 		Signals:         store,
 		Provenance:      store,
 		Exports:         store,

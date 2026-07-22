@@ -214,13 +214,14 @@ outside the machine (A10):
   panel's 회고하기 records it there, the flow widget subscribes and sends `OPEN`
   when it appears; the **rewrite text + result** live in the per-app recall-draft
   store, never in context;
-- `OPEN` carries `needsSync` (clock-behind-today, computed by the widget) as the
+- `OPEN` carries `needsSync` (clock-behind-today, read from the server) as the
   guard input: it routes to `confirmingSync` only when behind, else straight to
   `rewriting` ([R1a]). `REJECT` from the consent leaves `idle` with the clock
   unmoved (the recall's sync fires only server-side on the confirmed call);
 - `reconsolidating` is the loading phase over the **single synchronous `Recall`**
   (sync + compare + recall commit atomically server-side, §2.7/§2.8). `DONE` →
-  `result`, `ERROR` → `rewriting` (retriable, the draft store keeps the rewrite);
+  `result`, `ERROR` → `rewriting` (retriable, the draft store keeps the rewrite).
+  `SESSION_INVALIDATED` returns any active phase to `idle` when target/session ownership changes;
 - the FE never decides the branch — `recallOutcome(reconsolidated)` reflects the
   server flag, and the result applies only the read-model-held anchors
   (`applyRecallResult`: seed + recall_count + last_recalled) so the star reshapes;
@@ -229,6 +230,9 @@ outside the machine (A10):
 
 web and mobile import the machine + the recall helpers verbatim from
 `packages/universe`; only the sheet/input hosts fork (§6/§3.5). The Twinkle
+paid-action controller is shared too: it synchronously suppresses duplicate submits, retains one operation id for an
+ambiguous receipt recovery, and fences completions by the active target/session attempt. Both hosts invalidate it on
+retarget, sign-out/target clear, and unmount, so a late completion cannot mutate a replacement flow. The Twinkle
 **cost gate** ([G4]) is a widget-local pre-step, not a machine phase: the flow
 shows `features/spend-cost-display` before revealing the rewrite and proceeds
 only on its confirm, gated by a local "shown → proceeded" boolean — so the

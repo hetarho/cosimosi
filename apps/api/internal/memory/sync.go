@@ -26,7 +26,8 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 	}
 	var result SyncResult
 	err := s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
-		r, err := s.syncToToday(ctx, scope, tx)
+		// The standalone sync IS the explicit consent action, so it advances unconditionally.
+		r, err := s.syncToToday(ctx, scope, tx, true)
 		if err != nil {
 			return err
 		}
@@ -39,6 +40,44 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 	return result, nil
 }
 
+// SyncStatus is the server-authoritative sync-status read ([R1a], A1): the UTC "today" a
+// recall/whole-diary recall would sync to and whether the clock currently lags it, computed from
+// the same guard baseline (clock, or the latest launched memory while the clock is unborn) and the
+// same UTC `now` the recall sync uses — so the client drives the consent decision from the server
+// clock, never a local Date. A pure read: no lock, no advance, no Twinkle.
+func (s *Service) SyncStatus(ctx context.Context, scope platform.UserScope) (SyncStatus, error) {
+	if scope.UserID() == "" {
+		return SyncStatus{}, ErrScopeRequired
+	}
+	guard, err := s.signals.UniverseClock(ctx, scope)
+	if err != nil {
+		return SyncStatus{}, err
+	}
+	if guard == nil {
+		guard, err = s.signals.LatestLaunchedUniverseTime(ctx, scope)
+		if err != nil {
+			return SyncStatus{}, err
+		}
+	}
+	today := utcDate(s.now())
+	return SyncStatus{Today: today, NeedsSync: syncNeedsConsent(guard, today)}, nil
+}
+
+// SyncStatus is the read's result: the server's UTC "today" (the sync target) and whether a sync
+// would advance the clock (needs consent, [R1a]).
+type SyncStatus struct {
+	Today     time.Time
+	NeedsSync bool
+}
+
+// syncNeedsConsent is the shared server-authoritative consent rule: advancing the clock to today
+// moves it forward iff the clock is born and today is strictly after it. An unborn clock needs no
+// consent (there is no memory to recall yet, and a birth is not a forward-forgetting jump). Both
+// SyncStatus and the recall sync gate decide from this one rule ([R1a]).
+func syncNeedsConsent(guard *time.Time, today time.Time) bool {
+	return guard != nil && today.After(utcDate(*guard))
+}
+
 // syncToToday advances the clock to today on an already-open transaction and
 // returns the crossed interval. Factored out of SyncToToday so the recall
 // use-case composes the same advance INSIDE its own transaction ([R1a]) — recall
@@ -46,7 +85,7 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 // its own transaction). The surface is ProgressionTx: sync touches only the clock
 // and the progression hook, never a launch write. LaunchTx and RecallTx both
 // satisfy it.
-func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx) (SyncResult, error) {
+func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx ProgressionTx, consent bool) (SyncResult, error) {
 	// Serialize against concurrent launches for the whole transaction,
 	// birth window included, exactly as the launch path does ([I10]).
 	if err := tx.LockGraphMutation(ctx, scope); err != nil {
@@ -67,8 +106,16 @@ func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx 
 			return SyncResult{}, err
 		}
 	}
+	// Server-enforced consent gate ([R1a], A1/A5): if advancing to today would move the clock
+	// forward, the caller must have consented — decided from the SERVER clock, never a client
+	// Date. Refused before any spend/effect, so nothing is charged and the client can safely
+	// re-consent (the recall's operation id stays reusable — no receipt was written).
+	today := utcDate(s.now())
+	if !consent && syncNeedsConsent(guard, today) {
+		return SyncResult{}, ErrSyncConsentRequired
+	}
 	var current *time.Time
-	if err := s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), utcDate(s.now())), &current); err != nil {
+	if err := s.advanceAndProgress(ctx, scope, tx, guard, AdvanceClock(timeOrZero(guard), today), &current); err != nil {
 		return SyncResult{}, err
 	}
 	return SyncResult{Previous: guard, Current: *current}, nil

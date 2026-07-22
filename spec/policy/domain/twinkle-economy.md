@@ -54,14 +54,18 @@ derivation and is never earned:
   never mint Twinkle.
 
 **The spend is a consequence of the memory action, never a separate step**: recall and gist-view hand the gate a
-`SpendIntent` (kind + depth signal — **never a price**); the gate prices it via the cost curves, checks the balance,
-and deducts basic→additional **inside the caller's transaction** — no charge without the recall, no recall without
-the charge. An unaffordable action returns the canonical insufficient-twinkle refusal and writes nothing; nothing is
-ever deleted by a refusal ([I1]).
+`SpendIntent` (kind + depth signal + the paid action's client operation id — **never a price**); the gate prices it via
+the cost curves, checks the balance, and deducts basic→additional **inside the caller's transaction** — no charge
+without the recall, no recall without the charge. **The spend is idempotent per operation**: its ledger row carries an
+operation-derived dedup key (per-member for a whole-diary recall), so a retried or concurrently-duplicated action draws
+the balance exactly once (A3) — backstopping the memory-side receipt that already replays a committed action's result.
+An unaffordable action returns the canonical insufficient-twinkle refusal and writes nothing; nothing is ever deleted
+by a refusal ([I1]).
 
 **Quotes are server-priced, read-only previews** ([G4]): `QuoteSpend` resolves the authoritative depth signal
 server-side, prices with the same curves, and returns `{cost, covered, shortfall}` without writing a row or moving a
-clock; the real spend re-derives everything at action time, so a stale quote is simply refused.
+clock. A gist quote carries and validates the exact selected stage, so quote and spend use the same depth signal; the
+real spend still re-derives everything at action time, so any stale quote is simply refused.
 
 **Core-loop protection is a relationship, not a constant** ([G5]): `basic_daily_amount ≥ expected_daily_ruminations ×
 cheap_recall_cost` — everyday rumination ([M5]) always fits the daily basic grant at the cheap end of the recall

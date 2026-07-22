@@ -71,6 +71,17 @@ type JobTarget struct {
 	ExpectedRevision pgtype.Int8
 }
 
+type MemoryPaidActionReceipt struct {
+	UserID             string
+	OperationID        string
+	ActionKind         string
+	RequestFingerprint string
+	EpisodicMemoryID   pgtype.Text
+	DiaryID            pgtype.Text
+	Response           []byte
+	CreatedAt          pgtype.Timestamptz
+}
+
 type MemoryProvenance struct {
 	ID               string
 	UserID           string
