@@ -42,8 +42,20 @@ const vividMemory: EpisodicMemory = {
   semanticStage: 0,
 }
 
+// Every client this suite creates is cleared after each test: clearing cancels the cache's
+// pending gc timers (default gcTime is minutes), which would otherwise hold the Jest worker's
+// event loop open after the suite and trip the force-exit warning.
+const queryClients: QueryClient[] = []
+
+afterEach(() => {
+  for (const client of queryClients.splice(0)) client.clear()
+})
+
 function renderSheet(transport: Transport) {
-  const queryClient = new QueryClient()
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+  })
+  queryClients.push(queryClient)
   return render(
     <QueryClientProvider client={queryClient}>
       <TransportProvider transport={transport}>

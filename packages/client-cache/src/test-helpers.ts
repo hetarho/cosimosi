@@ -24,7 +24,22 @@ export function createClientCacheTestContext(options: ClientCacheTestContextOpti
   const transport =
     options.transport ?? createPlatformMockTransport(options.ping ?? (() => ({ message: 'pong' })))
   const queryClient =
-    options.queryClient ?? createClientCacheQueryClient(options.queryClientOptions)
+    options.queryClient ??
+    createClientCacheQueryClient({
+      ...options.queryClientOptions,
+      // Test-context clients never retry and never schedule gc timers (TanStack's documented
+      // testing configuration): a read that is still failing/retrying when a suite tears down
+      // would otherwise settle afterwards and schedule a defaultGcMs (minutes-long) timeout on
+      // an orphaned query, holding the Jest process/worker open long past the run.
+      defaultOptions: {
+        ...options.queryClientOptions?.defaultOptions,
+        queries: {
+          retry: false,
+          gcTime: Number.POSITIVE_INFINITY,
+          ...options.queryClientOptions?.defaultOptions?.queries,
+        },
+      },
+    })
   return {
     queryClient,
     transport,

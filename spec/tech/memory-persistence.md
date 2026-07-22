@@ -16,8 +16,11 @@
 - `embeddings`
 - `jobs`
 
-Every product table carries `user_id TEXT NOT NULL`. Every product query under `apps/api/db/queries/memory/` includes
-`user_id`, and `pnpm lint:persistence` is the guard that keeps future memory queries scoped.
+Every product table carries `user_id TEXT NOT NULL`. Every product query under `apps/api/db/queries/memory/` is
+genuinely scoped by `user_id`, and `pnpm lint:persistence` is the guard that keeps future memory queries scoped: it
+requires an owned `user_id` column per product table and a conjunctive `user_id`-to-parameter equality path for every
+relation a statement touches (alias/CTE-aware, fail-closed on unsupported SQL). The worker queue's cross-user scans
+(`ClaimDueJob`, `PurgeTerminalJobs`) are the named allowlist exceptions.
 
 ## 2. Aggregate boundaries
 

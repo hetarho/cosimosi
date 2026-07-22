@@ -11,8 +11,19 @@ import { remainingRestoreDays, useReleasedGroupsStore } from '@cosimosi/universe
 
 import { RestoreSection } from './RestoreSection.tsx'
 
+// Cleared after each test: clearing cancels pending cache gc timers, which would otherwise
+// hold the Jest worker's event loop open after the suite (see jest.guards.js).
+const queryClients: QueryClient[] = []
+
+afterEach(() => {
+  for (const client of queryClients.splice(0)) client.clear()
+})
+
 function renderSection(transport: Transport) {
-  const queryClient = new QueryClient()
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+  })
+  queryClients.push(queryClient)
   return render(
     <QueryClientProvider client={queryClient}>
       <TransportProvider transport={transport}>

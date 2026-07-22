@@ -6,7 +6,7 @@
     "gen:dev-user": "node ../../scripts/gen-mobile-env.mjs",
     "android": "pnpm run gen:dev-user && react-native run-android",
     "ios": "pnpm run gen:dev-user && react-native run-ios",
-    "lint": "eslint . && pnpm run lint:boundaries:probe",
+    "lint": "eslint . --max-warnings=0 && pnpm run lint:boundaries:probe",
     "lint:boundaries": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
     "lint:boundaries:probe": "node ../../scripts/probe-mobile-boundary.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",

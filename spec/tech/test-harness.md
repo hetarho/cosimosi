@@ -60,6 +60,11 @@ Tests and offline diagnostics use the test-route fake helpers, not production se
 `apps/web/src/pages/test/lib/fakes.ts` composes those imports into `createTestHarnessFakes()` for route and panel
 smoke tests.
 
+`createClientCacheTestContext` clients never retry and never schedule cache gc timers (`retry: false`,
+`gcTime: Infinity` — TanStack's documented testing configuration): a read still failing when a suite tears down would
+otherwise settle afterwards and schedule a minutes-long gc timeout on an orphaned query, holding the Jest process or
+worker open long past the run. Suites that build a raw `QueryClient` directly use the same options.
+
 ## 5. Headless unit convention
 
 Every later headless domain/use-case unit should ship verification in this order:

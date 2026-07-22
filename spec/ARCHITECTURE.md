@@ -429,7 +429,15 @@ apps/mobile/
 
 - **Per-user isolation.** Every persisted row carries the user id and every query is scoped to it via an
   interceptor-injected context value (RLS is a later hardening). This is a transport+persistence rule, applied
-  uniformly rather than per-feature. The root lint gate scans product migrations and query files for the convention.
+  uniformly rather than per-feature. The root lint gate enforces it semantically, not by token presence: a product
+  `CREATE TABLE` must declare an owned `user_id` column (a foreign-key reference, CHECK expression, or `*_user_id`
+  lookalike does not count), and every product statement's relations must reach a `user_id` parameter through
+  conjunctive equality links (alias/CTE-aware; an OR disjunct is not a scope; unsupported SQL fails closed).
+  Deliberately global platform scans are named one-by-one in the gate's allowlist next to the reason they cross users.
+- **Gates fail loudly.** The primary web/mobile linters reject warnings (`oxlint --deny-warnings`,
+  `eslint --max-warnings=0`), and the mobile Jest harness fails a test on unexpected `console.error`/`console.warn`
+  and fails a suite that leaves a long-lived timer pending (`apps/mobile/jest.guards.js`) — a green exit code never
+  coexists with lifecycle noise, and no gate uses force-exit or warning suppression to stay green.
 - **Derived state, not stored state.** State that varies continuously with time is _computed at read time_ from the
   last-event timestamp, never written per tick; only discrete events persist. The server stays authoritative over the
   source data while anything derivable from it (appearance, layout) is a pure function — kept out of the store.

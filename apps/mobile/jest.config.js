@@ -18,6 +18,9 @@ module.exports = {
   // tight there even though each test is sub-second in isolation. Give them headroom.
   testTimeout: 20000,
   setupFiles: [...reactNativePreset.setupFiles, '<rootDir>/jest.setup.js'],
+  // Console/handle lifecycle guards: unexpected console errors/warnings fail the test,
+  // and a suite that leaves a long-lived timer pending fails instead of force-exiting.
+  setupFilesAfterEnv: ['<rootDir>/jest.guards.js'],
   transform: {
     ...reactNativePreset.transform,
     '^.+\\.(js|ts|tsx)$': ['babel-jest', { configFile: require.resolve('./babel.config.js') }],
