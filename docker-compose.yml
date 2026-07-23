@@ -10,7 +10,13 @@ services:
     container_name: cosimosi-api
     environment:
       PORT: '8080'
-      DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable
+      # describe_exec mirrors prod: Supabase's transaction pooler can't keep server-side
+      # NAMED prepared statements (pgx's default cache_statement → 42P05), so we use the
+      # unnamed describe→execute mode. It stays pooler-safe AND type-aware — pgx describes
+      # each statement to learn param OIDs, so JSONB []byte params encode correctly (unlike
+      # simple_protocol/exec, which drop the type info and send jsonb as bytea → 22P02).
+      # Running dev the same way surfaces pooler-only failures locally before they ship.
+      DATABASE_URL: postgres://cosimosi:cosimosi@postgres:5432/cosimosi?sslmode=disable&default_query_exec_mode=describe_exec
       COSIMOSI_DEV_WORKER: '1'
       # Dev sign-in bypass, toggled from the root .env (empty = off → real auth). The verifier
       # trusts only fake-token-<COSIMOSI_DEV_USER_ID>. See scripts/seed-dev-universe.sql and .env.example.
