@@ -20,9 +20,11 @@ import (
 	_ "github.com/cosimosi/api/internal/ai/anthropic"
 	_ "github.com/cosimosi/api/internal/ai/voyage"
 
+	adminpg "github.com/cosimosi/api/internal/admin/pg"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/secretbox"
 )
 
 const workerPollInterval = time.Second
@@ -58,10 +60,17 @@ func run(ctx context.Context, logger *log.Logger) error {
 
 func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(context.Context) error }, string, error) {
 	store := memorypg.NewStore(pool.PgxPool())
-	adapters, err := ai.NewAdaptersFromEnv(ai.FactoryOptions{})
-	if err != nil {
+	// Runtime AI config (the admin console): the worker resolves the same DB → env → keyless mock provider
+	// config the API writes (both read ai_provider_config), so a SetAIConfig reaches the worker
+	// without a redeploy. Its own meter counts its own process's calls.
+	var decrypter ai.KeyDecrypter = secretbox.Disabled{}
+	if box, ok, err := secretbox.NewFromEnv(); err != nil {
 		return nil, "", err
+	} else if ok {
+		decrypter = box
 	}
+	adminStore := adminpg.NewStore(pool.PgxPool())
+	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), ai.NewMeter())
 	runner, err := memory.NewDefaultJobRunner(
 		store,
 		adapters.Embedder,

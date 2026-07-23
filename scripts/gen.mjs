@@ -17,6 +17,14 @@ const wantSql = !target || target === 'sql'
 const bufImage = 'bufbuild/buf:1.70.0'
 const sqlcImage = 'sqlc/sqlc:1.31.1'
 
+// Run the codegen containers as the host user (Linux/WSL) so generated files are owned by the
+// caller, not root — otherwise the node post-processing below (and later git/check:gen) trips
+// over root-owned output. Empty on platforms without getuid (Docker Desktop maps ownership).
+const dockerUser =
+  typeof process.getuid === 'function'
+    ? ['--user', `${process.getuid()}:${process.getgid()}`, '-e', 'HOME=/tmp']
+    : []
+
 section('codegen')
 let did = false
 
@@ -28,6 +36,7 @@ if (wantProto) {
     run('docker', [
       'run',
       '--rm',
+      ...dockerUser,
       '-v',
       mount('', '/work'),
       '-w',
@@ -57,6 +66,7 @@ if (wantSql) {
     run('docker', [
       'run',
       '--rm',
+      ...dockerUser,
       '-v',
       mount('apps/api', '/app'),
       '-w',

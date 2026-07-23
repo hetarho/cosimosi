@@ -888,10 +888,11 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 
 func TestEarnReasonsAreAClosedSetWithNoLoginBonus(t *testing.T) {
 	t.Parallel()
-	// [G3]: exactly three earn paths — payment, invite, write. No login/attendance
-	// reason exists anywhere in the domain's closed set; the daily basic reset
-	// ([G2]) plays that role by design.
-	reasons := []EntryReason{ReasonPayment, ReasonInvite, ReasonWriteDiary, ReasonRecall, ReasonGistView}
+	// [G3]: the earn paths are payment, invite, write, plus the discretionary admin_grant
+	// (별가루 증정, the admin console). No login/attendance reason exists anywhere in the domain's closed
+	// set; the daily basic reset ([G2]) plays that role by design — admin_grant is an operator
+	// gift, not a recurring/automatic bonus.
+	reasons := []EntryReason{ReasonPayment, ReasonInvite, ReasonWriteDiary, ReasonRecall, ReasonGistView, ReasonAdminGrant}
 	for _, reason := range reasons {
 		lowered := strings.ToLower(string(reason))
 		if strings.Contains(lowered, "login") || strings.Contains(lowered, "attendance") {

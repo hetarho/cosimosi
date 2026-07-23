@@ -344,6 +344,17 @@ twinkle:
   # [G3] The single v1 payment-pack grant a verified Charge credits to additional balance
   # (a multi-pack table is content, not a scalar; the price structure is product config).
   charge_pack: 100
+  # Cap on a single admin stardust grant (별가루 증정), credited to additional. A fat-finger
+  # guard on the admin console's grant control — a larger gift is split across grants, each
+  # audited. Provider identity/keys stay env/DB secrets, never values (plan 28).
+  admin_grant_max: 100000
+
+# Admin console operational surface (plan 58): tuning for the web-only /admin console. Admin
+# identity (ADMIN_USER_IDS), the config encryption key, and the Supabase service-role key are
+# env secrets, not values.
+admin:
+  # Default page size for the admin user list and stardust-grant history pagination.
+  user_list_page_size: 50
 
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.

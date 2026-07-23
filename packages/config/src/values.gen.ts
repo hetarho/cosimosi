@@ -126,6 +126,10 @@ export const VALUES = {
     earnInviteInviter: 500,
     earnInviteInvitee: 500,
     chargePack: 100,
+    adminGrantMax: 100000,
+  },
+  admin: {
+    userListPageSize: 50,
   },
   forceSim: {
     charge: 0.035,

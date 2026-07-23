@@ -7,6 +7,7 @@ import { m } from '@cosimosi/i18n'
 
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
 import { PaletteBootstrap } from '../providers/palette-bootstrap.tsx'
+import { AdminPage } from '../../pages/admin/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
 import { SettingsPage } from '../../pages/settings/index.ts'
@@ -86,6 +87,14 @@ export function DiaryReaderRoute() {
 export function SettingsRoute() {
   const navigate = useAppNavigate()
   return <SettingsPage onExit={() => navigate({ to: '/' })} />
+}
+
+// The admin console route (web-only, the admin console). It mounts under the authenticated subtree; the page
+// itself gates on GetAdminSelf and sends a non-admin back to the universe (the BE interceptor is
+// the authoritative gate — a non-admin's admin.v1 calls are rejected regardless).
+export function AdminRoute() {
+  const navigate = useAppNavigate()
+  return <AdminPage onExit={() => navigate({ to: '/' })} />
 }
 
 // The login entry: on a successful sign-in the session reaches authenticated, so this returns the

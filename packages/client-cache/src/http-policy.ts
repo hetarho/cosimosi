@@ -2,6 +2,7 @@ import type { Interceptor } from '@connectrpc/connect'
 
 import {
   AccountService,
+  AdminService,
   MemoryService,
   PlatformService,
   TwinkleService,
@@ -162,11 +163,25 @@ export const accountRpcCachePolicies = [
   },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
+// Every admin console read is authenticated + admin-gated operator data: GET-eligible but never
+// shared-CDN cacheable (§2.7/§4). The mutations (GrantAdmin/RevokeAdmin/GrantStardust/SetAIConfig)
+// are plain POSTs and need no entry.
+export const adminRpcCachePolicies = [
+  { method: AdminService.method.getAdminSelf, policy: userScopedUnaryReadPolicy },
+  { method: AdminService.method.listAdmins, policy: userScopedUnaryReadPolicy },
+  { method: AdminService.method.listUsers, policy: userScopedUnaryReadPolicy },
+  { method: AdminService.method.listTwinkleGrants, policy: userScopedUnaryReadPolicy },
+  { method: AdminService.method.getAIConfig, policy: userScopedUnaryReadPolicy },
+  { method: AdminService.method.getAIUsage, policy: userScopedUnaryReadPolicy },
+  { method: AdminService.method.getJobHealth, policy: userScopedUnaryReadPolicy },
+] as const satisfies readonly RpcCachePolicyEntry[]
+
 export const clientCacheRpcCachePolicies = [
   ...platformRpcCachePolicies,
   ...memoryRpcCachePolicies,
   ...twinkleRpcCachePolicies,
   ...accountRpcCachePolicies,
+  ...adminRpcCachePolicies,
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
 export const platformPublicRpcReads = [PlatformService.method.ping] as const

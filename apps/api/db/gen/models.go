@@ -8,6 +8,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AdminAuditLog struct {
+	ID        string
+	Actor     string
+	Action    string
+	Target    string
+	Detail    []byte
+	CreatedAt pgtype.Timestamptz
+}
+
+type AdminStardustGrant struct {
+	ID         string
+	GrantedBy  string
+	TargetUser string
+	Amount     int32
+	Note       string
+	CreatedAt  pgtype.Timestamptz
+}
+
+type AdminUser struct {
+	UserID    string
+	GrantedBy string
+	GrantedAt pgtype.Timestamptz
+}
+
+type AiProviderConfig struct {
+	Capability      string
+	Provider        string
+	Model           string
+	BaseUrl         string
+	ApiKeyEncrypted []byte
+	KeyHint         string
+	UpdatedBy       string
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type Diary struct {
 	ID        string
 	UserID    string

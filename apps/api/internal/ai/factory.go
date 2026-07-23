@@ -234,6 +234,46 @@ func providerConfig(cfg CapabilityConfig) ProviderConfig {
 	return ProviderConfig{APIKey: cfg.APIKey, Model: cfg.Model, BaseURL: cfg.BaseURL}
 }
 
+// ValidateLLMProvider / ValidateEmbeddingProvider report whether a provider slot is known and
+// implemented — the same registry semantics NewAdapters uses — WITHOUT building a client. The
+// admin console (the admin console) calls them before persisting a SetAIConfig, so an unknown or
+// recognized-but-unimplemented provider is refused at write time, never silently stored to fail at
+// the next AI call. The embedding dimension itself is still enforced when the client is built /
+// first used (the AI-provider abstraction, A7); model is accepted here for that future static check.
+func ValidateLLMProvider(provider string, _ string) error {
+	name := strings.ToLower(strings.TrimSpace(provider))
+	if _, ok := llmProviders[name]; ok {
+		return nil
+	}
+	if slices.Contains(llmProviderSlots, name) {
+		return fmt.Errorf("%w: llm provider %q", ErrProviderNotImplemented, provider)
+	}
+	return fmt.Errorf("%w: llm provider %q", ErrUnknownProvider, provider)
+}
+
+func ValidateEmbeddingProvider(provider string, _ string) error {
+	name := strings.ToLower(strings.TrimSpace(provider))
+	if _, ok := embeddingProviders[name]; ok {
+		return nil
+	}
+	if slices.Contains(embeddingProviderSlots, name) {
+		return fmt.Errorf("%w: embedding provider %q", ErrProviderNotImplemented, provider)
+	}
+	return fmt.Errorf("%w: embedding provider %q", ErrUnknownProvider, provider)
+}
+
+// ProviderValidator adapts the package validators to the admin console's consumer-owned
+// AIProviderValidator port (satisfied structurally at the composition root).
+type ProviderValidator struct{}
+
+func (ProviderValidator) ValidateLLM(provider string, model string) error {
+	return ValidateLLMProvider(provider, model)
+}
+
+func (ProviderValidator) ValidateEmbedding(provider string, model string) error {
+	return ValidateEmbeddingProvider(provider, model)
+}
+
 func providerLabel(provider string) string {
 	if p := strings.ToLower(strings.TrimSpace(provider)); p != "" {
 		return p

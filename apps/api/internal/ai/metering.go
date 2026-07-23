@@ -38,6 +38,9 @@ type Meter struct {
 	dailyCap int
 	now      func() time.Time
 	calls    map[string]int
+	// capabilityCalls counts billable calls per capability|window for the admin usage dashboard
+	// (the admin console) — global (not per-user), a real-provider call only (cache hits/mock never charge).
+	capabilityCalls map[string]int
 }
 
 func NewMeter() *Meter {
@@ -49,9 +52,56 @@ func newMeter(dailyCap int, now func() time.Time) *Meter {
 		now = func() time.Time { return time.Now().UTC() }
 	}
 	return &Meter{
-		dailyCap: dailyCap,
-		now:      now,
-		calls:    make(map[string]int),
+		dailyCap:        dailyCap,
+		now:             now,
+		calls:           make(map[string]int),
+		capabilityCalls: make(map[string]int),
+	}
+}
+
+// observe records one real billable call for a capability ("llm" | "embedding") in the current UTC
+// window — the counter the admin usage dashboard reads. Cache hits and the keyless mock never
+// reach here, so the dashboard reflects actual provider spend.
+func (m *Meter) observe(capability string) {
+	window := m.now().UTC().Format(time.DateOnly)
+	key := capability + "|" + window
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pruneCapabilityLocked(window)
+	m.capabilityCalls[key]++
+}
+
+func (m *Meter) pruneCapabilityLocked(currentWindow string) {
+	suffix := "|" + currentWindow
+	for key := range m.capabilityCalls {
+		if !strings.HasSuffix(key, suffix) {
+			delete(m.capabilityCalls, key)
+		}
+	}
+}
+
+// UsageSnapshot is the admin usage dashboard's read of the meter: today's per-capability billable
+// call counts against the per-user daily cap. Global and process-local (the admin console limitation).
+type UsageSnapshot struct {
+	WindowUTCDay   string
+	DailyCap       int
+	PerCallTokens  int
+	LLMCalls       int
+	EmbeddingCalls int
+}
+
+// Snapshot returns today's usage counters for the dashboard.
+func (m *Meter) Snapshot() UsageSnapshot {
+	window := m.now().UTC().Format(time.DateOnly)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pruneCapabilityLocked(window)
+	return UsageSnapshot{
+		WindowUTCDay:   window,
+		DailyCap:       m.dailyCap,
+		PerCallTokens:  values.AiPerCallTokenCap,
+		LLMCalls:       m.capabilityCalls["llm|"+window],
+		EmbeddingCalls: m.capabilityCalls["embedding|"+window],
 	}
 }
 
@@ -129,6 +179,7 @@ func (c *meteredLLMClient) CompleteJSON(ctx context.Context, req LLMRequest) (LL
 	if _, err := c.meter.Charge(ctx); err != nil {
 		return LLMResponse{}, err
 	}
+	c.meter.observe("llm")
 	req.UserID = userID
 	req.MaxOutputTokens = values.AiPerCallTokenCap
 	resp, err := c.inner.CompleteJSON(ctx, req)
@@ -189,6 +240,7 @@ func (c *meteredEmbeddingClient) Embed(ctx context.Context, req EmbeddingRequest
 	if _, err := c.meter.Charge(ctx); err != nil {
 		return EmbeddingResponse{}, err
 	}
+	c.meter.observe("embedding")
 	req.UserID = userID
 	resp, err := c.inner.Embed(ctx, req)
 	if err != nil {

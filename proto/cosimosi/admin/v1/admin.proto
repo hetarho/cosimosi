@@ -1,0 +1,203 @@
+syntax = "proto3";
+
+package cosimosi.admin.v1;
+
+// AdminService is the operator console contract (the admin console): a web-only /admin surface's backend.
+// Every method is admin-gated by the admin-authorization interceptor (env-seed ADMIN_USER_IDS ∪
+// DB-promoted admin_users) layered on the the auth session auth interceptor — a non-admin caller is
+// rejected with PermissionDenied before any handler runs.
+//
+// Privacy defense ([I2]): this contract is metadata-only. No message here carries diary text,
+// emotion, episodic memory meaning, position, or any memory content — the console can enumerate accounts and
+// their balances/counts, never read what a user wrote. AI provider keys are write-only: they enter
+// only through SetAIConfigRequest.api_key and are never returned (GetAIConfig reports key_set + a
+// masked hint).
+service AdminService {
+  // Whether the caller is an admin — the FE gate/affordance source. Side-effect-free.
+  rpc GetAdminSelf(GetAdminSelfRequest) returns (GetAdminSelfResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // The current admin set (env-seed + DB-promoted). Side-effect-free.
+  rpc ListAdmins(ListAdminsRequest) returns (ListAdminsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Promote a user to admin (adds an admin_users row). Idempotent.
+  rpc GrantAdmin(GrantAdminRequest) returns (GrantAdminResponse);
+  // Demote a promoted admin (removes the admin_users row). Refused for a seed admin — the
+  // ADMIN_USER_IDS set is the undemotable trust anchor.
+  rpc RevokeAdmin(RevokeAdminRequest) returns (RevokeAdminResponse);
+
+  // Paginated, searchable account list — metadata only ([I2]). Side-effect-free.
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Grant additional (permanent) stardust to a user (별가루 증정) — an append-only admin_grant
+  // earn, capped by twinkle.admin_grant_max, idempotent per grant_id.
+  rpc GrantStardust(GrantStardustRequest) returns (GrantStardustResponse);
+  // The admin stardust grant history for accountability. Side-effect-free.
+  rpc ListTwinkleGrants(ListTwinkleGrantsRequest) returns (ListTwinkleGrantsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // The effective AI provider config per capability (DB override over env). The API key is never
+  // returned — only key_set + a masked hint. Side-effect-free.
+  rpc GetAIConfig(GetAIConfigRequest) returns (GetAIConfigResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Set one capability's provider config (DB override, applied without redeploy). Rejects an
+  // unknown/unimplemented provider or an embedding model that cannot honor the embedding
+  // dimension. A supplied api_key is encrypted at rest; omitting it keeps the stored key.
+  rpc SetAIConfig(SetAIConfigRequest) returns (SetAIConfigResponse);
+
+  // Today's AI call usage against the metering caps (read-only; process-local snapshot).
+  rpc GetAIUsage(GetAIUsageRequest) returns (GetAIUsageResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Aggregate background-job queue health (read-only).
+  rpc GetJobHealth(GetJobHealthRequest) returns (GetJobHealthResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// The AI capability a provider config / usage row applies to. LLM and embedding are selected
+// independently (the AI-provider abstraction).
+enum AICapability {
+  AI_CAPABILITY_UNSPECIFIED = 0;
+  AI_CAPABILITY_LLM = 1;
+  AI_CAPABILITY_EMBEDDING = 2;
+}
+
+message GetAdminSelfRequest {}
+message GetAdminSelfResponse {
+  bool is_admin = 1;
+}
+
+// One admin in the current set. Seed admins (from ADMIN_USER_IDS) have is_seed=true and no
+// granted_by/granted_at; promoted admins carry both.
+message AdminEntry {
+  string user_id = 1;
+  bool is_seed = 2;
+  string granted_by = 3;
+  string granted_at = 4;  // RFC3339; empty for seed admins
+}
+message ListAdminsRequest {}
+message ListAdminsResponse {
+  repeated AdminEntry admins = 1;
+}
+
+message GrantAdminRequest {
+  string user_id = 1;
+}
+message GrantAdminResponse {
+  bool is_admin = 1;  // true after promotion
+}
+message RevokeAdminRequest {
+  string user_id = 1;
+}
+message RevokeAdminResponse {
+  bool is_admin = 1;  // false after demotion
+}
+
+// Account metadata for the admin user list — NO memory content ([I2]). Balances/counts are
+// aggregates; the diary/episodic memory fields are counts, never the underlying entries.
+message AdminUser {
+  string user_id = 1;
+  string email = 2;
+  string signup_at = 3;  // RFC3339
+  bool is_admin = 4;
+  bool is_seed_admin = 5;
+  int64 basic = 6;
+  int64 additional = 7;
+  int64 total = 8;
+  int64 diary_count = 9;
+  int64 episodic_memory_count = 10;
+}
+message ListUsersRequest {
+  int32 page = 1;       // 0-based
+  int32 page_size = 2;  // 0 → admin.user_list_page_size default
+  string query = 3;     // email/id prefix match; empty = all
+}
+message ListUsersResponse {
+  repeated AdminUser users = 1;
+  int32 page = 2;
+  bool has_more = 3;
+}
+
+message GrantStardustRequest {
+  string user_id = 1;
+  int64 amount = 2;    // 0 < amount ≤ twinkle.admin_grant_max
+  string note = 3;
+  string grant_id = 4;  // client idempotency key; a replay returns the same balance
+}
+message GrantStardustResponse {
+  int64 balance_total = 1;  // the target's balance total after the grant
+}
+
+message TwinkleGrant {
+  string id = 1;
+  string granted_by = 2;
+  string target_user = 3;
+  int64 amount = 4;
+  string note = 5;
+  string created_at = 6;  // RFC3339
+}
+message ListTwinkleGrantsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+message ListTwinkleGrantsResponse {
+  repeated TwinkleGrant grants = 1;
+  int32 page = 2;
+  bool has_more = 3;
+}
+
+// The effective config for one capability. source tells the operator where it comes from
+// ("db" | "env" | "unset"); key_hint is a masked tail (e.g. "…abcd") or empty, never the key.
+message AICapabilityConfig {
+  AICapability capability = 1;
+  string provider = 2;
+  string model = 3;
+  string base_url = 4;
+  bool key_set = 5;
+  string key_hint = 6;
+  string source = 7;
+  string updated_by = 8;
+  string updated_at = 9;  // RFC3339; empty when unset/from env
+}
+message GetAIConfigRequest {}
+message GetAIConfigResponse {
+  repeated AICapabilityConfig capabilities = 1;
+}
+message SetAIConfigRequest {
+  AICapability capability = 1;
+  string provider = 2;
+  string model = 3;
+  string base_url = 4;
+  optional string api_key = 5;  // present → replace (encrypted at rest); omit → keep stored key
+}
+message SetAIConfigResponse {
+  AICapabilityConfig capability = 1;
+}
+
+message AIUsageCapability {
+  AICapability capability = 1;
+  int64 calls_today = 2;
+  int64 daily_cap = 3;
+}
+message GetAIUsageRequest {}
+message GetAIUsageResponse {
+  repeated AIUsageCapability capabilities = 1;
+  int64 per_call_token_cap = 2;
+  string window_utc_day = 3;  // the UTC calendar day the counts cover
+  bool process_local = 4;     // true: the meter is in-process/in-memory (the admin console limitation)
+}
+
+message GetJobHealthRequest {}
+message GetJobHealthResponse {
+  int64 pending = 1;
+  int64 running = 2;
+  int64 done = 3;
+  int64 failed = 4;
+  int64 dead_lettered = 5;
+}

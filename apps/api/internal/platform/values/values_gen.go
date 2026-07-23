@@ -206,6 +206,12 @@ const (
 	TwinkleEarnInviteInviter      = 500
 	TwinkleEarnInviteInvitee      = 500
 	TwinkleChargePack             = 100
+	TwinkleAdminGrantMax          = 100000
+)
+
+// admin
+const (
+	AdminUserListPageSize = 50
 )
 
 // force_sim

@@ -32,6 +32,10 @@ var (
 	// ErrEarnTxRequired is the wiring fault of a write grant fired outside its
 	// launch transaction — the grant must commit or roll back with the launch.
 	ErrEarnTxRequired = errors.New("twinkle write earn requires the launch transaction")
+	// ErrGrantAmountInvalid rejects a non-positive admin grant amount ([G3] admin_grant,
+	// the admin console). The per-grant cap is the admin context's policy; twinkle only refuses a
+	// zero/negative gift.
+	ErrGrantAmountInvalid = errors.New("twinkle admin grant amount must be positive")
 	// ErrInsufficientTwinkle is the canonical spend denial ([G1]): the plan does not
 	// fit the two tiers, nothing is written, the caller's action is refused ([I1] —
 	// refused, never erased).
@@ -265,6 +269,29 @@ func (s *Service) EarnOnWrite(ctx context.Context, scope platform.UserScope, led
 	}
 	_, err := s.earn(ctx, scope, ledger, ReasonWriteDiary, values.TwinkleEarnWrite, "write_diary:"+diaryID)
 	return err
+}
+
+// EarnAdminGrant credits `amount` additional Twinkle to the scoped user as an operator gift
+// (별가루 증정, the admin console). It runs in its own ledger transaction and is idempotent by dedupKey —
+// the admin console's grant id — so a replay returns the current balance without double-crediting.
+// It is the twinkle side of the grant only: the admin context validates the per-grant cap and
+// writes its own audit rows; twinkle refuses only a non-positive amount and credits a validated
+// gift to additional balance ([G2] — basic is the daily reset, never earned).
+func (s *Service) EarnAdminGrant(ctx context.Context, scope platform.UserScope, amount int, dedupKey string) (Balance, error) {
+	if scope.UserID() == "" {
+		return Balance{}, ErrScopeRequired
+	}
+	if amount <= 0 {
+		return Balance{}, ErrGrantAmountInvalid
+	}
+	err := s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+		_, err := s.earn(ctx, scope, tx, ReasonAdminGrant, amount, dedupKey)
+		return err
+	})
+	if err != nil {
+		return Balance{}, err
+	}
+	return s.GetBalance(ctx, scope)
 }
 
 // ClaimInvite resolves the opaque code through the trusted account/signup seam

@@ -12,7 +12,16 @@ import { fileURLToPath } from 'node:url'
 import { fail, ok, repoRoot, section } from './lib.mjs'
 
 const platformQueryDirs = new Set(['platform'])
-const platformTables = new Set([])
+// The admin console (plan 58) is the one sanctioned cross-user surface (§4): its tables hold
+// operator state (promoted admins, provider config, grant/audit records), not per-user product
+// data, and every admin.v1 method is admin-authorization-gated. They carry no UserScope filter by
+// design, so they are treated like platform tables here — exempt from the per-user isolation rule.
+const platformTables = new Set([
+  'admin_users',
+  'ai_provider_config',
+  'admin_stardust_grants',
+  'admin_audit_log',
+])
 // Deliberately global statements, allowlisted by `<dir>/<file>#<sqlc name>`. Each must be a
 // platform-owned scan whose own SQL comment states why it crosses users; product reads/writes
 // stay user-scoped. ClaimDueJob claims the next due job across users (single worker queue);
@@ -24,6 +33,10 @@ const globalQueries = new Set([
   'memory/jobs.sql#ClaimDueJob',
   'memory/jobs.sql#PurgeTerminalJobs',
   'twinkle/ledger.sql#TwinkleLedgerDedupExists',
+  // Admin console job-queue health (plan 58): global operator reads of the shared queue, like
+  // ClaimDueJob/PurgeTerminalJobs — aggregate status counts, no per-user scope.
+  'memory/admin_stats.sql#CountJobsByStatus',
+  'memory/admin_stats.sql#CountDeadLetteredJobs',
 ])
 
 // Blank SQL comments, single-quoted string literals, and dollar-quoted bodies in one

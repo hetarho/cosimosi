@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	adminpg "github.com/cosimosi/api/internal/admin/pg"
 	"github.com/cosimosi/api/internal/ai"
 	memoryv1connect "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1/memoryv1connect"
 	"github.com/cosimosi/api/internal/memory"
@@ -37,11 +38,15 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		return nil, noop, err
 	}
 	store := memorypg.NewStore(pool.PgxPool())
-	adapters, err := ai.NewAdaptersFromEnv(ai.FactoryOptions{})
-	if err != nil {
-		pool.Close()
-		return nil, noop, err
-	}
+	// AI provider selection is runtime config (the admin console, the change to the AI-provider abstraction's env-only stance):
+	// the resolving adapters resolve DB override → env → keyless mock and rebuild when the
+	// effective config changes, so a SetAIConfig from the admin console applies WITHOUT a redeploy.
+	// The admin store is the DB config reader; secretbox decrypts stored keys. One shared meter
+	// counts real provider calls for both the daily caps and the admin usage dashboard.
+	meter := ai.NewMeter()
+	adminStore := adminpg.NewStore(pool.PgxPool())
+	cipher, decrypter := adminCipher(logger)
+	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), meter)
 	// The twinkle service is built first (memory's gate and earn port wrap it); its
 	// spend-signal reader binds back to the memory service just below — the one
 	// two-way seam, closed here where every concrete is visible.
@@ -114,11 +119,24 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
+	adminOption, err := adminServiceOption(adminDeps{
+		store:     adminStore,
+		twinkle:   twinkleService,
+		memory:    store,
+		meter:     meter,
+		cipher:    cipher,
+		directory: newAccountDirectory(),
+	})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	logger.Printf("memory service registered ai_mode=%s", adapters.Mode)
 	logger.Print("twinkle service registered (economy gate live)")
 	logger.Print("account service registered (palette preference)")
+	logger.Print("admin service registered (operator console — admin-gated)")
 	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
-	return []platform.HandlerOption{memoryOption, twinkleOption, accountOption}, pool.Close, nil
+	return []platform.HandlerOption{memoryOption, twinkleOption, accountOption, adminOption}, pool.Close, nil
 }

@@ -6,6 +6,7 @@ import { TestPage } from '../../pages/test/index.ts'
 import { authGuardBeforeLoad } from './guards/auth-gate.ts'
 import { NotFoundScreen } from './not-found.tsx'
 import {
+  AdminRoute,
   AuthenticatedLayout,
   DiaryReaderRoute,
   LoginRoute,
@@ -56,6 +57,14 @@ const settingsRoute = createRoute({
   component: SettingsRoute,
 })
 
+// The admin console mounts under the authenticated subtree (so it inherits the auth gate); the page
+// then applies the admin gate. A web-only operator surface (the admin console) — no mobile route.
+const adminRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/admin',
+  component: AdminRoute,
+})
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -78,7 +87,7 @@ const testRoute = createRoute({
 })
 
 export const routeTree = rootRoute.addChildren([
-  authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, settingsRoute]),
+  authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, settingsRoute, adminRoute]),
   loginRoute,
   testRoute,
 ])
