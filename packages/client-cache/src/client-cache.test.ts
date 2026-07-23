@@ -315,9 +315,9 @@ describe('client cache facade', () => {
       .sort()
 
     expect(registeredReadKeys).toEqual(generatedReadKeys)
-    // Ping · GetUniverse · GetProvenance · Export · GetDiaries · SyncStatus · GetBalance ·
-    // QuoteSpend · GetPalettePreference — the SyncStatus read (job 70) makes nine.
-    expect(generatedReadKeys).toHaveLength(9)
+    // Nine platform/user reads plus eight admin-console reads. Keep this explicit count so a new
+    // NO_SIDE_EFFECTS RPC cannot be added without reviewing its client-cache policy.
+    expect(generatedReadKeys).toHaveLength(17)
     expect(() =>
       assertRpcCachePolicyCoverage(
         apiServiceDescriptors,
