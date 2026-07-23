@@ -365,5 +365,7 @@
   "admin_model_provider_placeholder": "공급자 선택",
   "admin_base_url_placeholder": "https://… (선택)",
   "admin_model_placeholder": "예: claude-opus-4-8",
-  "admin_users_search_placeholder": "이메일 또는 ID"
+  "admin_users_search_placeholder": "이메일 또는 ID",
+  "admin_load_error": "불러오지 못했어요 — API 서버 상태를 확인하세요.",
+  "admin_provider_empty": "표시할 공급자가 없어요."
 }

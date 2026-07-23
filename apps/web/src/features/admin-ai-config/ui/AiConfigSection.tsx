@@ -27,9 +27,16 @@ export function ProviderKeysSection() {
   if (query.isPending) {
     return <p className="text-sm text-text-muted">{m.admin_loading()}</p>
   }
+  if (query.isError) {
+    return <p className="text-sm text-danger">{m.admin_load_error()}</p>
+  }
+  const providers = query.data?.providers ?? []
+  if (providers.length === 0) {
+    return <p className="text-sm text-text-muted">{m.admin_provider_empty()}</p>
+  }
   return (
     <div className="flex flex-col gap-4">
-      {(query.data?.providers ?? []).map((provider) => (
+      {providers.map((provider) => (
         <ProviderKeyRow
           key={provider.provider}
           provider={provider}
@@ -114,17 +121,24 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
         >
           {m.admin_ai_save()}
         </Button>
-        {provider.keySet ? (
-          <Button
-            variant="outlined"
-            color="danger"
-            size="sm"
-            disabled={busy}
-            onClick={() => run(() => client.clearProviderKey({ provider: provider.provider }))}
-          >
-            {m.admin_provider_clear()}
-          </Button>
-        ) : null}
+        <Button
+          variant="outlined"
+          color="danger"
+          size="sm"
+          disabled={busy || (!provider.keySet && apiKey === '' && baseUrl === provider.baseUrl)}
+          onClick={() => {
+            // Reset: if a key is stored, remove it (encrypted row deleted); otherwise just clear the
+            // untyped inputs. Either way the row returns to "no key".
+            if (provider.keySet) {
+              run(() => client.clearProviderKey({ provider: provider.provider }))
+            } else {
+              setApiKey('')
+              setBaseUrl(provider.baseUrl)
+            }
+          }}
+        >
+          {m.admin_provider_clear()}
+        </Button>
       </div>
       {error ? <span className="text-sm text-danger">{error}</span> : null}
     </div>

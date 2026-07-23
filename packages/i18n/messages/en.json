@@ -365,5 +365,7 @@
   "admin_model_provider_placeholder": "Select a provider",
   "admin_base_url_placeholder": "https://… (optional)",
   "admin_model_placeholder": "e.g. claude-opus-4-8",
-  "admin_users_search_placeholder": "email or id"
+  "admin_users_search_placeholder": "email or id",
+  "admin_load_error": "Failed to load — check the API server.",
+  "admin_provider_empty": "No providers to show."
 }
