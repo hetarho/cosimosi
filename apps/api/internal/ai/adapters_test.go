@@ -250,8 +250,8 @@ func TestMeterPrunesOldDailyWindows(t *testing.T) {
 func clearProviderEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
-		EnvLLMProvider, EnvLLMAPIKey, EnvLLMModel, EnvLLMBaseURL,
-		EnvEmbeddingProvider, EnvEmbeddingAPIKey, EnvEmbeddingModel, EnvEmbeddingBaseURL,
+		EnvLLMProvider, EnvLLMAPIKey, EnvLLMModel,
+		EnvEmbeddingProvider, EnvEmbeddingAPIKey, EnvEmbeddingModel,
 	} {
 		t.Setenv(key, "")
 	}

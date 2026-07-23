@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/option"
 
 	"github.com/cosimosi/api/internal/ai"
 )
@@ -88,17 +89,38 @@ func TestCompleteJSONRejectsMalformedStructuredOutput(t *testing.T) {
 	}
 }
 
+// newTestClient builds the adapter pointed at a fake server. Production New offers no
+// endpoint override (the endpoint is adapter-owned, change 03), so the test constructs
+// the Client directly with the SDK's base-URL option.
 func newTestClient(t *testing.T, baseURL string) ai.LLMClient {
 	t.Helper()
-	client, err := New(ai.ProviderConfig{APIKey: "test-key", BaseURL: baseURL})
-	if err != nil {
-		t.Fatalf("New failed: %v", err)
+	return &Client{
+		api:   sdk.NewClient(option.WithAPIKey("test-key"), option.WithBaseURL(baseURL)),
+		model: defaultModel,
 	}
-	return client
 }
 
 func TestNewRequiresAPIKey(t *testing.T) {
 	if _, err := New(ai.ProviderConfig{}); err == nil {
 		t.Fatal("New with empty key succeeded, want error")
+	}
+}
+
+// The success path of New is not covered by the CompleteJSON tests (they construct the
+// Client directly to inject a fake endpoint), so cover its config handling here.
+func TestNewSelectsModel(t *testing.T) {
+	client, err := New(ai.ProviderConfig{APIKey: "k"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	if got := client.(*Client).model; got != defaultModel {
+		t.Fatalf("model = %q, want default %q", got, defaultModel)
+	}
+	client, err = New(ai.ProviderConfig{APIKey: "k", Model: "claude-custom"})
+	if err != nil {
+		t.Fatalf("New with model override failed: %v", err)
+	}
+	if got := client.(*Client).model; got != "claude-custom" {
+		t.Fatalf("model = %q, want override", got)
 	}
 }

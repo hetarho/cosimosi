@@ -46,7 +46,7 @@ glm/kimi (LLM) and openai/gemini/voyage (embedding); the `glm` slot is z.ai/Zhip
 model, then that provider's decrypted key) → env (`COSIMOSI_*`) → empty (keyless mock)**. `ai.ResolvingAdapters` wraps
 the memory ports (`Extractor`/`Embedder`/`Semanticizer`/`PredictionError`/`SealSuggester`); on each call it re-resolves
 and rebuilds the underlying real/mock adapters when the effective config's **fingerprint** changes (a sha256 of
-source+provider+model+base-URL+key, so a key rotation rebuilds too). Both `cmd/api` and `cmd/worker` resolve through it
+source+provider+model+key, so a key rotation rebuilds too). Both `cmd/api` and `cmd/worker` resolve through it
 over the same tables, so a change from the console reaches both processes without a redeploy. The metered wrapper, error
 taxonomy, and keyless-mock fallback are unchanged (the swap is below the metering seam).
 

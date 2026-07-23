@@ -188,11 +188,11 @@ func (aiProviderCatalog) ImplementedEmbedding(p string) bool { return ai.Impleme
 // config when no DB override exists — never the plaintext key, only whether one is set.
 type adminEnvConfig struct{}
 
-func (adminEnvConfig) EnvConfig(capability admin.AICapability) (string, string, string, bool) {
+func (adminEnvConfig) EnvConfig(capability admin.AICapability) (string, string, bool) {
 	llm, embedding := ai.EnvCapabilityConfigs()
 	cfg := llm
 	if capability == admin.CapabilityEmbedding {
 		cfg = embedding
 	}
-	return cfg.Provider, cfg.Model, cfg.BaseURL, cfg.APIKey != ""
+	return cfg.Provider, cfg.Model, cfg.APIKey != ""
 }

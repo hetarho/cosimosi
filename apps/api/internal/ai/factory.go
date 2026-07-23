@@ -17,12 +17,10 @@ const (
 	EnvLLMProvider = "COSIMOSI_LLM_PROVIDER"
 	EnvLLMAPIKey   = "COSIMOSI_LLM_API_KEY"
 	EnvLLMModel    = "COSIMOSI_LLM_MODEL"
-	EnvLLMBaseURL  = "COSIMOSI_LLM_BASE_URL"
 
 	EnvEmbeddingProvider = "COSIMOSI_EMBEDDING_PROVIDER"
 	EnvEmbeddingAPIKey   = "COSIMOSI_EMBEDDING_API_KEY"
 	EnvEmbeddingModel    = "COSIMOSI_EMBEDDING_MODEL"
-	EnvEmbeddingBaseURL  = "COSIMOSI_EMBEDDING_BASE_URL"
 )
 
 var (
@@ -100,12 +98,12 @@ func RegisterEmbeddingProvider(name string, factory func(ProviderConfig) (Embedd
 }
 
 // CapabilityConfig is one capability's runtime selection: which provider, its key,
-// and optional model/base-URL overrides.
+// and an optional model override. The provider's endpoint is NOT here — each adapter
+// owns its own endpoint (change 03).
 type CapabilityConfig struct {
 	Provider string
 	APIKey   string
 	Model    string
-	BaseURL  string
 }
 
 type Adapters struct {
@@ -134,7 +132,6 @@ func NewAdaptersFromEnv(opts FactoryOptions) (Adapters, error) {
 			Provider: strings.TrimSpace(os.Getenv(EnvLLMProvider)),
 			APIKey:   strings.TrimSpace(os.Getenv(EnvLLMAPIKey)),
 			Model:    strings.TrimSpace(os.Getenv(EnvLLMModel)),
-			BaseURL:  strings.TrimSpace(os.Getenv(EnvLLMBaseURL)),
 		}
 	}
 	if opts.Embedding == (CapabilityConfig{}) {
@@ -142,7 +139,6 @@ func NewAdaptersFromEnv(opts FactoryOptions) (Adapters, error) {
 			Provider: strings.TrimSpace(os.Getenv(EnvEmbeddingProvider)),
 			APIKey:   strings.TrimSpace(os.Getenv(EnvEmbeddingAPIKey)),
 			Model:    strings.TrimSpace(os.Getenv(EnvEmbeddingModel)),
-			BaseURL:  strings.TrimSpace(os.Getenv(EnvEmbeddingBaseURL)),
 		}
 	}
 	return NewAdapters(opts)
@@ -273,7 +269,7 @@ func newEmbeddingClient(cfg CapabilityConfig) (EmbeddingClient, error) {
 }
 
 func providerConfig(cfg CapabilityConfig) ProviderConfig {
-	return ProviderConfig{APIKey: cfg.APIKey, Model: cfg.Model, BaseURL: cfg.BaseURL}
+	return ProviderConfig{APIKey: cfg.APIKey, Model: cfg.Model}
 }
 
 // ValidateLLMProvider / ValidateEmbeddingProvider report whether a provider slot is known and

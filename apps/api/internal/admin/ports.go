@@ -105,7 +105,7 @@ type Cipher interface {
 // report the effective config when no DB override row exists (the factory's DB → env → mock
 // fallback, surfaced to the operator). Never returns a plaintext key — only whether one is set.
 type AIEnvConfig interface {
-	EnvConfig(capability AICapability) (provider string, model string, baseURL string, keySet bool)
+	EnvConfig(capability AICapability) (provider string, model string, keySet bool)
 }
 
 // ProviderCatalog is the set of provider slots + their per-capability support and adapter-

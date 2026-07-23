@@ -117,12 +117,16 @@ func TestEmbedMapsStatusErrors(t *testing.T) {
 	}
 }
 
+// newTestClient builds the adapter, then points its endpoint at a fake server.
+// Production New offers no endpoint override (the endpoint is adapter-owned,
+// change 03), so the test reaches the unexported field directly.
 func newTestClient(t *testing.T, baseURL string) ai.EmbeddingClient {
 	t.Helper()
-	client, err := New(ai.ProviderConfig{APIKey: "key", BaseURL: baseURL})
+	client, err := New(ai.ProviderConfig{APIKey: "key"})
 	if err != nil {
 		t.Fatalf("New failed: %v", err)
 	}
+	client.(*Client).endpoint = baseURL
 	return client
 }
 

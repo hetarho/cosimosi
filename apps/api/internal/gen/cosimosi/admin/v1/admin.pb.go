@@ -1037,9 +1037,8 @@ type ProviderKey struct {
 	SupportsEmbedding    bool                   `protobuf:"varint,5,opt,name=supports_embedding,json=supportsEmbedding,proto3" json:"supports_embedding,omitempty"`
 	ImplementedLlm       bool                   `protobuf:"varint,6,opt,name=implemented_llm,json=implementedLlm,proto3" json:"implemented_llm,omitempty"`
 	ImplementedEmbedding bool                   `protobuf:"varint,7,opt,name=implemented_embedding,json=implementedEmbedding,proto3" json:"implemented_embedding,omitempty"`
-	BaseUrl              string                 `protobuf:"bytes,8,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	UpdatedBy            string                 `protobuf:"bytes,9,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
-	UpdatedAt            string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // RFC3339; empty when unset
+	UpdatedBy            string                 `protobuf:"bytes,8,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	UpdatedAt            string                 `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // RFC3339; empty when unset
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1121,13 +1120,6 @@ func (x *ProviderKey) GetImplementedEmbedding() bool {
 		return x.ImplementedEmbedding
 	}
 	return false
-}
-
-func (x *ProviderKey) GetBaseUrl() string {
-	if x != nil {
-		return x.BaseUrl
-	}
-	return ""
 }
 
 func (x *ProviderKey) GetUpdatedBy() string {
@@ -1227,8 +1219,7 @@ func (x *ListProviderKeysResponse) GetProviders() []*ProviderKey {
 type SetProviderKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
-	ApiKey        string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`    // encrypted at rest; write-only
-	BaseUrl       string                 `protobuf:"bytes,3,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"` // optional per-provider endpoint override
+	ApiKey        string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"` // encrypted at rest; write-only
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1273,13 +1264,6 @@ func (x *SetProviderKeyRequest) GetProvider() string {
 func (x *SetProviderKeyRequest) GetApiKey() string {
 	if x != nil {
 		return x.ApiKey
-	}
-	return ""
-}
-
-func (x *SetProviderKeyRequest) GetBaseUrl() string {
-	if x != nil {
-		return x.BaseUrl
 	}
 	return ""
 }
@@ -2035,7 +2019,7 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\x19ListTwinkleGrantsResponse\x127\n" +
 	"\x06grants\x18\x01 \x03(\v2\x1f.cosimosi.admin.v1.TwinkleGrantR\x06grants\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xe6\x02\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xcb\x02\n" +
 	"\vProviderKey\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x17\n" +
 	"\akey_set\x18\x02 \x01(\bR\x06keySet\x12\x19\n" +
@@ -2043,20 +2027,17 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\fsupports_llm\x18\x04 \x01(\bR\vsupportsLlm\x12-\n" +
 	"\x12supports_embedding\x18\x05 \x01(\bR\x11supportsEmbedding\x12'\n" +
 	"\x0fimplemented_llm\x18\x06 \x01(\bR\x0eimplementedLlm\x123\n" +
-	"\x15implemented_embedding\x18\a \x01(\bR\x14implementedEmbedding\x12\x19\n" +
-	"\bbase_url\x18\b \x01(\tR\abaseUrl\x12\x1d\n" +
+	"\x15implemented_embedding\x18\a \x01(\bR\x14implementedEmbedding\x12\x1d\n" +
 	"\n" +
-	"updated_by\x18\t \x01(\tR\tupdatedBy\x12\x1d\n" +
+	"updated_by\x18\b \x01(\tR\tupdatedBy\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\n" +
-	" \x01(\tR\tupdatedAt\"\x19\n" +
+	"updated_at\x18\t \x01(\tR\tupdatedAt\"\x19\n" +
 	"\x17ListProviderKeysRequest\"X\n" +
 	"\x18ListProviderKeysResponse\x12<\n" +
-	"\tproviders\x18\x01 \x03(\v2\x1e.cosimosi.admin.v1.ProviderKeyR\tproviders\"g\n" +
+	"\tproviders\x18\x01 \x03(\v2\x1e.cosimosi.admin.v1.ProviderKeyR\tproviders\"L\n" +
 	"\x15SetProviderKeyRequest\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x17\n" +
-	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x19\n" +
-	"\bbase_url\x18\x03 \x01(\tR\abaseUrl\"T\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"T\n" +
 	"\x16SetProviderKeyResponse\x12:\n" +
 	"\bprovider\x18\x01 \x01(\v2\x1e.cosimosi.admin.v1.ProviderKeyR\bprovider\"5\n" +
 	"\x17ClearProviderKeyRequest\x12\x1a\n" +

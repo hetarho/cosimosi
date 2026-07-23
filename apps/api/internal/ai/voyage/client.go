@@ -25,9 +25,12 @@ const providerName = "voyage"
 
 // defaultModel is the recorded Voyage model for this seam. voyage-3.5 defaults to a
 // 1024-dimension vector and supports the output_dimension parameter for others.
+// endpoint is adapter-owned vendor knowledge (change 03): it is not config — not env,
+// not DB, not admin-editable. A self-hosted/proxy override, if ever needed, would be
+// this adapter's own deliberate env seam.
 const (
 	defaultModel   = "voyage-3.5"
-	defaultBaseURL = "https://api.voyageai.com/v1/embeddings"
+	endpoint       = "https://api.voyageai.com/v1/embeddings"
 	requestTimeout = 30 * time.Second
 	// inputTypeDocument marks these as stored (recall/search) embeddings, not queries.
 	inputTypeDocument = "document"
@@ -53,7 +56,7 @@ type Client struct {
 	apiKey              string
 	model               string
 	dim                 int
-	baseURL             string
+	endpoint            string // always the package endpoint const; a field only so tests can point at a fake server
 	sendOutputDimension bool
 	http                *http.Client
 }
@@ -78,15 +81,11 @@ func New(cfg ai.ProviderConfig) (ai.EmbeddingClient, error) {
 	if !contains(supported, dim) {
 		return nil, fmt.Errorf("voyage: model %q cannot produce dimension %d", model, dim)
 	}
-	base := defaultBaseURL
-	if b := strings.TrimSpace(cfg.BaseURL); b != "" {
-		base = b
-	}
 	return &Client{
 		apiKey:              key,
 		model:               model,
 		dim:                 dim,
-		baseURL:             base,
+		endpoint:            endpoint,
 		sendOutputDimension: len(supported) > 1,
 		http:                &http.Client{Timeout: requestTimeout},
 	}, nil
@@ -120,7 +119,7 @@ func (c *Client) Embed(ctx context.Context, req ai.EmbeddingRequest) (ai.Embeddi
 		return ai.EmbeddingResponse{}, &ai.MalformedStructuredOutputError{Provider: providerName, Err: err}
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL, bytes.NewReader(payload))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return ai.EmbeddingResponse{}, &ai.RateLimitedError{Provider: providerName, Err: err}
 	}

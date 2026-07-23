@@ -53,7 +53,6 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
   const transport = useTransport()
   const client = useMemo(() => createAdminClient(transport), [transport])
   const [apiKey, setApiKey] = useState('')
-  const [baseUrl, setBaseUrl] = useState(provider.baseUrl)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -102,22 +101,12 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
             onChange={(event) => setApiKey(event.target.value)}
           />
         </div>
-        <div className="w-56">
-          <TextField
-            label={m.admin_ai_base_url()}
-            placeholder={m.admin_base_url_placeholder()}
-            value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-          />
-        </div>
         <Button
           color="primary"
           size="sm"
           loading={busy}
           disabled={apiKey.trim() === ''}
-          onClick={() =>
-            run(() => client.setProviderKey({ provider: provider.provider, apiKey, baseUrl }))
-          }
+          onClick={() => run(() => client.setProviderKey({ provider: provider.provider, apiKey }))}
         >
           {m.admin_ai_save()}
         </Button>
@@ -125,15 +114,14 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
           variant="outlined"
           color="danger"
           size="sm"
-          disabled={busy || (!provider.keySet && apiKey === '' && baseUrl === provider.baseUrl)}
+          disabled={busy || (!provider.keySet && apiKey === '')}
           onClick={() => {
             // Reset: if a key is stored, remove it (encrypted row deleted); otherwise just clear the
-            // untyped inputs. Either way the row returns to "no key".
+            // untyped input. Either way the row returns to "no key".
             if (provider.keySet) {
               run(() => client.clearProviderKey({ provider: provider.provider }))
             } else {
               setApiKey('')
-              setBaseUrl(provider.baseUrl)
             }
           }}
         >

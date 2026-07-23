@@ -85,7 +85,6 @@ type StoredProviderKey struct {
 	Provider        string
 	APIKeyEncrypted []byte
 	KeyHint         string
-	BaseURL         string
 	UpdatedBy       string
 	UpdatedAt       time.Time
 }
@@ -106,7 +105,6 @@ type ProviderKeyInfo struct {
 	Provider             string
 	KeySet               bool
 	KeyHint              string
-	BaseURL              string
 	SupportsLLM          bool
 	SupportsEmbedding    bool
 	ImplementedLLM       bool

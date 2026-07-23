@@ -25,8 +25,8 @@ type ConfigReader interface {
 	// ReadCapabilityConfig returns the selected provider+model for "llm"|"embedding"; found=false
 	// when unset (the source falls back to env → keyless mock).
 	ReadCapabilityConfig(ctx context.Context, capability string) (provider string, model string, found bool, err error)
-	// ReadProviderKey returns a provider's encrypted key + optional base-URL; found=false when unset.
-	ReadProviderKey(ctx context.Context, provider string) (encryptedKey []byte, baseURL string, found bool, err error)
+	// ReadProviderKey returns a provider's encrypted key; found=false when unset.
+	ReadProviderKey(ctx context.Context, provider string) (encryptedKey []byte, found bool, err error)
 }
 
 // KeyDecrypter decrypts a stored API-key ciphertext (platform/secretbox). Only the config source
@@ -60,11 +60,10 @@ func (s *RuntimeConfigSource) effective(ctx context.Context, capability string, 
 		if found && strings.TrimSpace(provider) != "" {
 			cfg := CapabilityConfig{Provider: provider, Model: model}
 			// The key lives per provider (not per capability): resolve it by the selected provider.
-			encryptedKey, baseURL, keyFound, err := s.reader.ReadProviderKey(ctx, provider)
+			encryptedKey, keyFound, err := s.reader.ReadProviderKey(ctx, provider)
 			if err != nil {
 				return CapabilityConfig{}, "", err
 			}
-			cfg.BaseURL = baseURL
 			if keyFound && len(encryptedKey) > 0 && s.decrypter != nil {
 				key, err := s.decrypter.Decrypt(encryptedKey)
 				if err != nil {
@@ -82,7 +81,7 @@ func (s *RuntimeConfigSource) effective(ctx context.Context, capability string, 
 // hashed, never stored in the fingerprint in the clear). A stable fingerprint means the cached
 // built adapters are reused; a changed one triggers a rebuild.
 func fingerprint(source string, cfg CapabilityConfig) string {
-	sum := sha256.Sum256([]byte(source + "\x00" + cfg.Provider + "\x00" + cfg.Model + "\x00" + cfg.BaseURL + "\x00" + cfg.APIKey))
+	sum := sha256.Sum256([]byte(source + "\x00" + cfg.Provider + "\x00" + cfg.Model + "\x00" + cfg.APIKey))
 	return hex.EncodeToString(sum[:8])
 }
 
@@ -206,13 +205,11 @@ func EnvCapabilityConfigs() (llm CapabilityConfig, embedding CapabilityConfig) {
 		Provider: strings.TrimSpace(os.Getenv(EnvLLMProvider)),
 		APIKey:   strings.TrimSpace(os.Getenv(EnvLLMAPIKey)),
 		Model:    strings.TrimSpace(os.Getenv(EnvLLMModel)),
-		BaseURL:  strings.TrimSpace(os.Getenv(EnvLLMBaseURL)),
 	}
 	embedding = CapabilityConfig{
 		Provider: strings.TrimSpace(os.Getenv(EnvEmbeddingProvider)),
 		APIKey:   strings.TrimSpace(os.Getenv(EnvEmbeddingAPIKey)),
 		Model:    strings.TrimSpace(os.Getenv(EnvEmbeddingModel)),
-		BaseURL:  strings.TrimSpace(os.Getenv(EnvEmbeddingBaseURL)),
 	}
 	return llm, embedding
 }

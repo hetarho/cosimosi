@@ -46,15 +46,12 @@ func New(cfg ai.ProviderConfig) (ai.LLMClient, error) {
 	if key == "" {
 		return nil, fmt.Errorf("anthropic: api key is required")
 	}
-	opts := []option.RequestOption{option.WithAPIKey(key)}
-	if base := strings.TrimSpace(cfg.BaseURL); base != "" {
-		opts = append(opts, option.WithBaseURL(base))
-	}
+	// No endpoint option: the SDK default is the adapter-owned endpoint (change 03).
 	model := defaultModel
 	if m := strings.TrimSpace(cfg.Model); m != "" {
 		model = m
 	}
-	return &Client{api: sdk.NewClient(opts...), model: sdk.Model(model)}, nil
+	return &Client{api: sdk.NewClient(option.WithAPIKey(key)), model: sdk.Model(model)}, nil
 }
 
 func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMResponse, error) {

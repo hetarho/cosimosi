@@ -172,9 +172,8 @@ message ProviderKey {
   bool supports_embedding = 5;
   bool implemented_llm = 6;
   bool implemented_embedding = 7;
-  string base_url = 8;
-  string updated_by = 9;
-  string updated_at = 10;  // RFC3339; empty when unset
+  string updated_by = 8;
+  string updated_at = 9;  // RFC3339; empty when unset
 }
 message ListProviderKeysRequest {}
 message ListProviderKeysResponse {
@@ -182,8 +181,7 @@ message ListProviderKeysResponse {
 }
 message SetProviderKeyRequest {
   string provider = 1;
-  string api_key = 2;   // encrypted at rest; write-only
-  string base_url = 3;  // optional per-provider endpoint override
+  string api_key = 2;  // encrypted at rest; write-only
 }
 message SetProviderKeyResponse {
   ProviderKey provider = 1;

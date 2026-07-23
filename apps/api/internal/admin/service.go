@@ -338,7 +338,6 @@ func (s *Service) ListProviderKeys(ctx context.Context) ([]ProviderKeyInfo, erro
 		if key, ok := byProvider[provider]; ok {
 			info.KeySet = true
 			info.KeyHint = key.KeyHint
-			info.BaseURL = key.BaseURL
 			info.UpdatedBy = key.UpdatedBy
 			info.UpdatedAt = key.UpdatedAt
 		}
@@ -348,11 +347,10 @@ func (s *Service) ListProviderKeys(ctx context.Context) ([]ProviderKeyInfo, erro
 }
 
 // SetProviderKey stores one provider's API key, encrypted at rest. Rejects an unknown provider
-// slot. baseURL is an optional per-provider endpoint override.
-func (s *Service) SetProviderKey(ctx context.Context, actor string, provider string, apiKey string, baseURL string) (ProviderKeyInfo, error) {
+// slot.
+func (s *Service) SetProviderKey(ctx context.Context, actor string, provider string, apiKey string) (ProviderKeyInfo, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	apiKey = strings.TrimSpace(apiKey)
-	baseURL = strings.TrimSpace(baseURL)
 	if provider == "" {
 		return ProviderKeyInfo{}, ErrProviderRequired
 	}
@@ -370,7 +368,6 @@ func (s *Service) SetProviderKey(ctx context.Context, actor string, provider str
 		Provider:        provider,
 		APIKeyEncrypted: encrypted,
 		KeyHint:         s.cipher.Hint(apiKey),
-		BaseURL:         baseURL,
 		UpdatedBy:       actor,
 		UpdatedAt:       s.now(),
 	}
@@ -382,7 +379,6 @@ func (s *Service) SetProviderKey(ctx context.Context, actor string, provider str
 		Provider:             provider,
 		KeySet:               true,
 		KeyHint:              key.KeyHint,
-		BaseURL:              key.BaseURL,
 		SupportsLLM:          s.catalog.SupportsLLM(provider),
 		SupportsEmbedding:    s.catalog.SupportsEmbedding(provider),
 		ImplementedLLM:       s.catalog.ImplementedLLM(provider),
@@ -437,7 +433,7 @@ func (s *Service) GetAIConfig(ctx context.Context) ([]CapabilitySelection, error
 			})
 			continue
 		}
-		provider, model, _, keySet := s.envSnapshot(capability)
+		provider, model, keySet := s.envSnapshot(capability)
 		source := "unset"
 		if provider != "" || keySet {
 			source = "env"
@@ -452,9 +448,9 @@ func (s *Service) GetAIConfig(ctx context.Context) ([]CapabilitySelection, error
 	return out, nil
 }
 
-func (s *Service) envSnapshot(capability AICapability) (provider, model, baseURL string, keySet bool) {
+func (s *Service) envSnapshot(capability AICapability) (provider, model string, keySet bool) {
 	if s.envConfig == nil {
-		return "", "", "", false
+		return "", "", false
 	}
 	return s.envConfig.EnvConfig(capability)
 }

@@ -39,9 +39,8 @@ handlers.
 `internal/ai.NewAdaptersFromEnv` selects a provider **per capability, independently**, from runtime env:
 
 - LLM (drives `Extractor` + `Semanticizer`): `COSIMOSI_LLM_PROVIDER`, `COSIMOSI_LLM_API_KEY`, and optional
-  `COSIMOSI_LLM_MODEL` / `COSIMOSI_LLM_BASE_URL`.
-- Embedding: `COSIMOSI_EMBEDDING_PROVIDER`, `COSIMOSI_EMBEDDING_API_KEY`, and optional `COSIMOSI_EMBEDDING_MODEL` /
-  `COSIMOSI_EMBEDDING_BASE_URL`.
+  `COSIMOSI_LLM_MODEL`.
+- Embedding: `COSIMOSI_EMBEDDING_PROVIDER`, `COSIMOSI_EMBEDDING_API_KEY`, and optional `COSIMOSI_EMBEDDING_MODEL`.
 
 Selection rule for each capability: **key absent → the keyless deterministic mock; key present → that provider's client,
 wrapped in the metering seam; an unknown or recognized-but-unimplemented provider name → a startup error, never a silent
@@ -49,7 +48,9 @@ default.** The contract slots are `anthropic · openai · deepseek · zai · gem
 (embedding); Epic A implements **Anthropic** (`claude-opus-4-8`, override with `COSIMOSI_LLM_MODEL`) and **Voyage AI**
 (`voyage-3.5`, override with `COSIMOSI_EMBEDDING_MODEL`). Adding another slot is a new subpackage + one blank import in
 `cmd/*`, no consumer change. There is no values key or feature flag for provider selection — provider identity, model
-ids, keys, and base URLs are env/secrets only.
+ids, and keys are env/secrets only. The provider **endpoint is adapter-owned** (change 03): each adapter carries its
+own endpoint (Voyage as a package constant, Anthropic via the SDK default) — it is never env, DB, or admin config. If
+a self-hosted/proxy override is ever needed, it is that adapter's own env seam, added deliberately at that time.
 
 The mock adapters are offline and **unmetered** — they bypass the metering seam entirely. They deterministically produce
 the same split/name/neurons, embedding vector length, and four semantic stage texts for the same input.

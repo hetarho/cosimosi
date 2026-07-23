@@ -157,7 +157,7 @@ func (s *Server) SetProviderKey(ctx context.Context, req *connect.Request[adminv
 	if err != nil {
 		return nil, err
 	}
-	info, err := s.service.SetProviderKey(ctx, caller, req.Msg.GetProvider(), req.Msg.GetApiKey(), req.Msg.GetBaseUrl())
+	info, err := s.service.SetProviderKey(ctx, caller, req.Msg.GetProvider(), req.Msg.GetApiKey())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -256,7 +256,6 @@ func providerKeyToProto(p admin.ProviderKeyInfo) *adminv1.ProviderKey {
 		SupportsEmbedding:    p.SupportsEmbedding,
 		ImplementedLlm:       p.ImplementedLLM,
 		ImplementedEmbedding: p.ImplementedEmbedding,
-		BaseUrl:              p.BaseURL,
 		UpdatedBy:            p.UpdatedBy,
 		UpdatedAt:            formatTime(p.UpdatedAt),
 	}

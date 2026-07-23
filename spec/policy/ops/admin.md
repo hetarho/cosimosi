@@ -35,7 +35,8 @@ embedding) then **selects a provider + model** among the providers that have a k
 built adapter (`SetAIConfig`); selecting one that is unkeyed, unsupported, or unimplemented is refused. The factory
 resolves DB selection + provider key → env → keyless mock, applied without redeploy (see
 [tech/admin-console.md](../../tech/admin-console.md)). Provider slots: openai, gemini, anthropic, deepseek, glm, kimi
-(LLM) and openai, gemini, voyage (embedding).
+(LLM) and openai, gemini, voyage (embedding). The console manages **exactly** keys and capability selection — a
+provider's **endpoint is adapter-owned code** (change 03), never an env/DB/admin knob.
 
 **5. Accountability — every admin mutation is authorized and audited; keys are never logged.**
 `GrantAdmin`/`RevokeAdmin`/`SetAIConfig`/`GrantStardust` each append an `admin_audit_log` row (actor, action, target,

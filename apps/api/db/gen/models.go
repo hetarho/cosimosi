@@ -44,7 +44,6 @@ type AiProviderKey struct {
 	Provider        string
 	ApiKeyEncrypted []byte
 	KeyHint         string
-	BaseUrl         string
 	UpdatedBy       string
 	UpdatedAt       pgtype.Timestamptz
 }

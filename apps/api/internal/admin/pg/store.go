@@ -197,7 +197,6 @@ func (s Store) GetProviderKey(ctx context.Context, provider string) (*admin.Stor
 		Provider:        row.Provider,
 		APIKeyEncrypted: row.ApiKeyEncrypted,
 		KeyHint:         row.KeyHint,
-		BaseURL:         row.BaseUrl,
 		UpdatedBy:       row.UpdatedBy,
 		UpdatedAt:       row.UpdatedAt.Time,
 	}, nil
@@ -216,7 +215,6 @@ func (s Store) ListProviderKeys(ctx context.Context) ([]admin.StoredProviderKey,
 		keys = append(keys, admin.StoredProviderKey{
 			Provider:  row.Provider,
 			KeyHint:   row.KeyHint,
-			BaseURL:   row.BaseUrl,
 			UpdatedBy: row.UpdatedBy,
 			UpdatedAt: row.UpdatedAt.Time,
 		})
@@ -230,7 +228,6 @@ func (s Store) UpsertProviderKey(ctx context.Context, key admin.StoredProviderKe
 			Provider:        key.Provider,
 			ApiKeyEncrypted: key.APIKeyEncrypted,
 			KeyHint:         key.KeyHint,
-			BaseUrl:         key.BaseURL,
 			UpdatedBy:       key.UpdatedBy,
 			UpdatedAt:       pgtype.Timestamptz{Time: key.UpdatedAt, Valid: true},
 		}); err != nil {
@@ -272,20 +269,20 @@ func (s Store) ReadCapabilityConfig(ctx context.Context, capability string) (pro
 	return row.Provider, row.Model, true, nil
 }
 
-// ReadProviderKey implements ai.ConfigReader: the encrypted key + base URL for a provider. The
-// ciphertext is returned as-is; the source decrypts it (admin/pg never handles the plaintext key).
-func (s Store) ReadProviderKey(ctx context.Context, provider string) (encryptedKey []byte, baseURL string, found bool, err error) {
+// ReadProviderKey implements ai.ConfigReader: the encrypted key for a provider. The ciphertext is
+// returned as-is; the source decrypts it (admin/pg never handles the plaintext key).
+func (s Store) ReadProviderKey(ctx context.Context, provider string) (encryptedKey []byte, found bool, err error) {
 	if s.queries == nil {
-		return nil, "", false, ErrQueriesRequired
+		return nil, false, ErrQueriesRequired
 	}
 	row, err := s.queries.GetProviderKey(ctx, provider)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, "", false, nil
+		return nil, false, nil
 	}
 	if err != nil {
-		return nil, "", false, err
+		return nil, false, err
 	}
-	return row.ApiKeyEncrypted, row.BaseUrl, true, nil
+	return row.ApiKeyEncrypted, true, nil
 }
 
 // inTx runs fn against a queries bound to one pgx transaction, committing on success.

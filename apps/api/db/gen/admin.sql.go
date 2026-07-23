@@ -43,7 +43,7 @@ func (q *Queries) GetAIProviderConfig(ctx context.Context, capability string) (A
 }
 
 const getProviderKey = `-- name: GetProviderKey :one
-SELECT provider, api_key_encrypted, key_hint, base_url, updated_by, updated_at
+SELECT provider, api_key_encrypted, key_hint, updated_by, updated_at
 FROM ai_provider_keys
 WHERE provider = $1
 `
@@ -55,7 +55,6 @@ func (q *Queries) GetProviderKey(ctx context.Context, provider string) (AiProvid
 		&i.Provider,
 		&i.ApiKeyEncrypted,
 		&i.KeyHint,
-		&i.BaseUrl,
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 	)
@@ -158,7 +157,7 @@ func (q *Queries) ListPromotedAdmins(ctx context.Context) ([]AdminUser, error) {
 }
 
 const listProviderKeys = `-- name: ListProviderKeys :many
-SELECT provider, key_hint, base_url, updated_by, updated_at
+SELECT provider, key_hint, updated_by, updated_at
 FROM ai_provider_keys
 ORDER BY provider ASC
 `
@@ -166,7 +165,6 @@ ORDER BY provider ASC
 type ListProviderKeysRow struct {
 	Provider  string
 	KeyHint   string
-	BaseUrl   string
 	UpdatedBy string
 	UpdatedAt pgtype.Timestamptz
 }
@@ -183,7 +181,6 @@ func (q *Queries) ListProviderKeys(ctx context.Context) ([]ListProviderKeysRow, 
 		if err := rows.Scan(
 			&i.Provider,
 			&i.KeyHint,
-			&i.BaseUrl,
 			&i.UpdatedBy,
 			&i.UpdatedAt,
 		); err != nil {
@@ -294,12 +291,11 @@ func (q *Queries) UpsertAIProviderConfig(ctx context.Context, arg UpsertAIProvid
 }
 
 const upsertProviderKey = `-- name: UpsertProviderKey :exec
-INSERT INTO ai_provider_keys (provider, api_key_encrypted, key_hint, base_url, updated_by, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO ai_provider_keys (provider, api_key_encrypted, key_hint, updated_by, updated_at)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (provider) DO UPDATE SET
     api_key_encrypted = EXCLUDED.api_key_encrypted,
     key_hint = EXCLUDED.key_hint,
-    base_url = EXCLUDED.base_url,
     updated_by = EXCLUDED.updated_by,
     updated_at = EXCLUDED.updated_at
 `
@@ -308,7 +304,6 @@ type UpsertProviderKeyParams struct {
 	Provider        string
 	ApiKeyEncrypted []byte
 	KeyHint         string
-	BaseUrl         string
 	UpdatedBy       string
 	UpdatedAt       pgtype.Timestamptz
 }
@@ -318,7 +313,6 @@ func (q *Queries) UpsertProviderKey(ctx context.Context, arg UpsertProviderKeyPa
 		arg.Provider,
 		arg.ApiKeyEncrypted,
 		arg.KeyHint,
-		arg.BaseUrl,
 		arg.UpdatedBy,
 		arg.UpdatedAt,
 	)

@@ -14,13 +14,12 @@ CREATE TABLE admin_users (
 -- ai_provider_keys — service-global per-provider API keys the operator manages once (not per
 -- capability): one row per provider ('openai' | 'gemini' | 'anthropic' | 'deepseek' | 'glm' |
 -- 'kimi' | 'voyage'). The key is stored ENCRYPTED (AES-GCM, key from LLM_KEY_ENCRYPTION_KEY) and is
--- never returned by the read — only key_hint (a masked tail) is. base_url is an optional per-key
--- override for self-hosted/compatible endpoints.
+-- never returned by the read — only key_hint (a masked tail) is. There is no endpoint column:
+-- each provider's endpoint is owned by its code adapter (change 03).
 CREATE TABLE ai_provider_keys (
     provider          TEXT PRIMARY KEY,
     api_key_encrypted BYTEA NOT NULL,
     key_hint          TEXT NOT NULL DEFAULT '',
-    base_url          TEXT NOT NULL DEFAULT '',
     updated_by        TEXT NOT NULL DEFAULT '',
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );

@@ -265,10 +265,10 @@ func TestSetProviderKeyEncryptsAndMasks(t *testing.T) {
 	key := "sk-secret"
 
 	// Unknown provider slot is refused.
-	if _, err := svc.SetProviderKey(ctx, "actor", "bogus", key, ""); !errors.Is(err, ErrUnknownProvider) {
+	if _, err := svc.SetProviderKey(ctx, "actor", "bogus", key); !errors.Is(err, ErrUnknownProvider) {
 		t.Fatalf("unknown provider err = %v, want ErrUnknownProvider", err)
 	}
-	info, err := svc.SetProviderKey(ctx, "actor", "openai", key, "")
+	info, err := svc.SetProviderKey(ctx, "actor", "openai", key)
 	if err != nil {
 		t.Fatalf("SetProviderKey: %v", err)
 	}
@@ -300,10 +300,10 @@ func TestSetAIConfigRequiresSupportKeyAndImplementation(t *testing.T) {
 	if _, err := svc.SetAIConfig(ctx, "actor", CapabilityLLM, "openai", "gpt"); !errors.Is(err, ErrProviderKeyMissing) {
 		t.Fatalf("no-key err = %v, want ErrProviderKeyMissing", err)
 	}
-	if _, err := svc.SetProviderKey(ctx, "actor", "openai", "sk", ""); err != nil {
+	if _, err := svc.SetProviderKey(ctx, "actor", "openai", "sk"); err != nil {
 		t.Fatalf("SetProviderKey: %v", err)
 	}
-	if _, err := svc.SetProviderKey(ctx, "actor", "anthropic", "sk", ""); err != nil {
+	if _, err := svc.SetProviderKey(ctx, "actor", "anthropic", "sk"); err != nil {
 		t.Fatalf("SetProviderKey: %v", err)
 	}
 	// anthropic has a key but does not support embedding → capability mismatch.
