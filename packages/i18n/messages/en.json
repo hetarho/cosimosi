@@ -362,5 +362,8 @@
   "admin_provider_clear": "Clear key",
   "admin_provider_unimplemented": "adapter not ready",
   "admin_model_none_available": "No keyed provider yet. Set a key above first.",
-  "admin_model_provider_placeholder": "Select a provider"
+  "admin_model_provider_placeholder": "Select a provider",
+  "admin_base_url_placeholder": "https://… (optional)",
+  "admin_model_placeholder": "e.g. claude-opus-4-8",
+  "admin_users_search_placeholder": "email or id"
 }

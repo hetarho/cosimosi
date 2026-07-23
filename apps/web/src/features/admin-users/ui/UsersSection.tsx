@@ -9,7 +9,7 @@ import {
   createListUsersQueryOptions,
   type AdminUser,
 } from '@cosimosi/api-client'
-import { Button } from '@cosimosi/ui'
+import { Badge, Button, TextField } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
 
@@ -42,9 +42,9 @@ export function UsersSection() {
   const users = usersQuery.data?.users ?? []
   return (
     <div className="flex flex-col gap-4">
-      <input
-        className="rounded border border-border bg-background px-2 py-1 text-sm text-text"
-        placeholder={m.admin_users_search()}
+      <TextField
+        label={m.admin_users_search()}
+        placeholder={m.admin_users_search_placeholder()}
         value={query}
         onChange={(event) => {
           setPage(0)
@@ -54,7 +54,7 @@ export function UsersSection() {
       {users.length === 0 ? (
         <p className="text-sm text-text-muted">{m.admin_users_empty()}</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border">
+        <div className="flex flex-col gap-3">
           {users.map((user) => (
             <UserRow
               key={user.userId}
@@ -64,10 +64,11 @@ export function UsersSection() {
               client={client}
             />
           ))}
-        </ul>
+        </div>
       )}
       <div className="flex items-center gap-2">
         <Button
+          variant="outlined"
           color="neutral"
           size="sm"
           disabled={page === 0}
@@ -76,6 +77,7 @@ export function UsersSection() {
           {m.admin_users_prev()}
         </Button>
         <Button
+          variant="outlined"
           color="neutral"
           size="sm"
           disabled={!usersQuery.data?.hasMore}
@@ -85,8 +87,8 @@ export function UsersSection() {
         </Button>
       </div>
 
-      <section className="mt-4 flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-text">{m.admin_grants_history()}</h3>
+      <section className="mt-2 flex flex-col gap-2">
+        <h3 className="text-sm font-semibold text-text">{m.admin_grants_history()}</h3>
         {(grantsQuery.data?.grants ?? []).length === 0 ? (
           <p className="text-sm text-text-muted">{m.admin_grants_none()}</p>
         ) : (
@@ -130,38 +132,51 @@ function UserRow({
   }
 
   return (
-    <li className="flex flex-col gap-2 py-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-        <span className="text-text">{user.email || user.userId}</span>
-        <span className="text-xs text-text-muted">
-          {m.admin_users_balance()} {String(user.total)} · {m.admin_users_stars()}{' '}
-          {String(user.episodicMemoryCount)} · {m.admin_users_diaries()} {String(user.diaryCount)}
-          {user.isAdmin
-            ? ` · ${m.admin_users_is_admin()}${user.isSeedAdmin ? ` (${m.admin_users_seed()})` : ''}`
-            : ''}
-        </span>
+    <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-text">{user.email || user.userId}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {user.isAdmin ? (
+            <Badge variant="primary">
+              {m.admin_users_is_admin()}
+              {user.isSeedAdmin ? ` · ${m.admin_users_seed()}` : ''}
+            </Badge>
+          ) : null}
+          <Badge variant="neutral">
+            {m.admin_users_balance()} {String(user.total)}
+          </Badge>
+          <Badge variant="neutral">
+            {m.admin_users_stars()} {String(user.episodicMemoryCount)}
+          </Badge>
+          <Badge variant="neutral">
+            {m.admin_users_diaries()} {String(user.diaryCount)}
+          </Badge>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          className="w-24 rounded border border-border bg-background px-2 py-1 text-sm text-text"
-          type="number"
-          min={1}
-          placeholder={m.admin_users_grant_amount()}
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-        />
-        <input
-          className="flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-text"
-          placeholder={m.admin_users_grant_note()}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-        />
-        <Button color="neutral" size="sm" disabled={disabled} onClick={grant}>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-28">
+          <TextField
+            label={m.admin_users_grant_amount()}
+            type="number"
+            min={1}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+        </div>
+        <div className="min-w-40 flex-1">
+          <TextField
+            label={m.admin_users_grant_note()}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </div>
+        <Button color="primary" size="sm" disabled={disabled} onClick={grant}>
           {m.admin_users_grant_submit()}
         </Button>
         {user.isSeedAdmin ? null : user.isAdmin ? (
           <Button
-            color="neutral"
+            variant="outlined"
+            color="danger"
             size="sm"
             disabled={disabled}
             onClick={() => onAction(() => client.revokeAdmin({ userId: user.userId }))}
@@ -170,6 +185,7 @@ function UserRow({
           </Button>
         ) : (
           <Button
+            variant="outlined"
             color="neutral"
             size="sm"
             disabled={disabled}
@@ -179,6 +195,6 @@ function UserRow({
           </Button>
         )}
       </div>
-    </li>
+    </div>
   )
 }

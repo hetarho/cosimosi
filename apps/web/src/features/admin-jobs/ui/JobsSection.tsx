@@ -23,11 +23,11 @@ export function JobsSection() {
     [m.admin_jobs_dead(), data?.deadLettered ?? 0n],
   ]
   return (
-    <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {stats.map(([label, value]) => (
-        <div key={label} className="flex flex-col rounded border border-border p-2">
+        <div key={label} className="flex flex-col gap-1 rounded-xl border border-border p-4">
           <span className="text-xs text-text-muted">{label}</span>
-          <span className="text-text">{String(value)}</span>
+          <span className="text-2xl font-semibold text-text">{String(value)}</span>
         </div>
       ))}
     </div>

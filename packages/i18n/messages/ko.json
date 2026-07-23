@@ -362,5 +362,8 @@
   "admin_provider_clear": "키 삭제",
   "admin_provider_unimplemented": "어댑터 준비 중",
   "admin_model_none_available": "키가 설정된 공급자가 없어요. 먼저 위에서 키를 등록하세요.",
-  "admin_model_provider_placeholder": "공급자 선택"
+  "admin_model_provider_placeholder": "공급자 선택",
+  "admin_base_url_placeholder": "https://… (선택)",
+  "admin_model_placeholder": "예: claude-opus-4-8",
+  "admin_users_search_placeholder": "이메일 또는 ID"
 }

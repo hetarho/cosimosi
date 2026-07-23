@@ -10,13 +10,16 @@ import {
   createListProviderKeysQueryOptions,
   type ProviderKey,
 } from '@cosimosi/api-client'
-import { Button } from '@cosimosi/ui'
+import { Badge, Button, TextField } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
 
-// Provider API keys are managed once per provider (not per capability). Each capability then
-// selects among the providers that have a key. The key input is WRITE-ONLY — only "set/unset" + a
-// masked hint is shown.
+// Native select styled to match the design-system field surface (there is no Select primitive).
+const SELECT_CLASS =
+  'field-surface h-10 rounded-lg px-3 text-base text-text disabled:opacity-50 disabled:pointer-events-none'
+
+// Provider API keys are managed once per provider (not per capability). Each capability then selects
+// among the keyed providers. The key input is WRITE-ONLY — only "set/unset" + a masked hint shows.
 export function ProviderKeysSection() {
   const transport = useTransport()
   const query = useQuery(createListProviderKeysQueryOptions(transport))
@@ -25,7 +28,7 @@ export function ProviderKeysSection() {
     return <p className="text-sm text-text-muted">{m.admin_loading()}</p>
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {(query.data?.providers ?? []).map((provider) => (
         <ProviderKeyRow
           key={provider.provider}
@@ -59,46 +62,52 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
       .finally(() => setBusy(false))
   }
 
-  const caps: string[] = []
-  if (provider.supportsLlm) {
-    caps.push(
-      `${m.admin_ai_capability_llm()}${provider.implementedLlm ? '' : ` (${m.admin_provider_unimplemented()})`}`,
-    )
-  }
-  if (provider.supportsEmbedding) {
-    caps.push(
-      `${m.admin_ai_capability_embedding()}${provider.implementedEmbedding ? '' : ` (${m.admin_provider_unimplemented()})`}`,
-    )
-  }
-
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium text-text">{provider.provider}</span>
-        <span className="text-xs text-text-muted">
-          {caps.join(' · ')} ·{' '}
+    <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-text">{provider.provider}</span>
+          {provider.supportsLlm ? (
+            <Badge variant={provider.implementedLlm ? 'primary' : 'neutral'}>
+              {m.admin_ai_capability_llm()}
+              {provider.implementedLlm ? '' : ` · ${m.admin_provider_unimplemented()}`}
+            </Badge>
+          ) : null}
+          {provider.supportsEmbedding ? (
+            <Badge variant={provider.implementedEmbedding ? 'primary' : 'neutral'}>
+              {m.admin_ai_capability_embedding()}
+              {provider.implementedEmbedding ? '' : ` · ${m.admin_provider_unimplemented()}`}
+            </Badge>
+          ) : null}
+        </div>
+        <Badge variant={provider.keySet ? 'success' : 'neutral'}>
           {provider.keySet ? `${m.admin_ai_key_set()} ${provider.keyHint}` : m.admin_ai_key_unset()}
-        </span>
+        </Badge>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          className="flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-text"
-          type="password"
-          autoComplete="off"
-          placeholder={m.admin_provider_key_placeholder()}
-          value={apiKey}
-          onChange={(event) => setApiKey(event.target.value)}
-        />
-        <input
-          className="w-48 rounded border border-border bg-background px-2 py-1 text-sm text-text"
-          placeholder={m.admin_ai_base_url()}
-          value={baseUrl}
-          onChange={(event) => setBaseUrl(event.target.value)}
-        />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-56 flex-1">
+          <TextField
+            label={m.admin_ai_key()}
+            type="password"
+            autoComplete="off"
+            placeholder={m.admin_provider_key_placeholder()}
+            value={apiKey}
+            onChange={(event) => setApiKey(event.target.value)}
+          />
+        </div>
+        <div className="w-56">
+          <TextField
+            label={m.admin_ai_base_url()}
+            placeholder={m.admin_base_url_placeholder()}
+            value={baseUrl}
+            onChange={(event) => setBaseUrl(event.target.value)}
+          />
+        </div>
         <Button
-          color="neutral"
+          color="primary"
           size="sm"
-          disabled={busy || apiKey.trim() === ''}
+          loading={busy}
+          disabled={apiKey.trim() === ''}
           onClick={() =>
             run(() => client.setProviderKey({ provider: provider.provider, apiKey, baseUrl }))
           }
@@ -107,7 +116,8 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
         </Button>
         {provider.keySet ? (
           <Button
-            color="neutral"
+            variant="outlined"
+            color="danger"
             size="sm"
             disabled={busy}
             onClick={() => run(() => client.clearProviderKey({ provider: provider.provider }))}
@@ -116,13 +126,13 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
           </Button>
         ) : null}
       </div>
-      {error ? <span className="text-xs text-danger">{error}</span> : null}
+      {error ? <span className="text-sm text-danger">{error}</span> : null}
     </div>
   )
 }
 
 // Each capability selects a provider among those with a key that support + implement it, plus a
-// model. No key here — keys live in the provider section above.
+// model. No key here — keys live in the provider-keys tab.
 export function ModelSelectSection() {
   const transport = useTransport()
   const keysQuery = useQuery(createListProviderKeysQueryOptions(transport))
@@ -179,67 +189,66 @@ function CapabilityRow({
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (providers.length === 0) {
-    return (
-      <div className="flex flex-col gap-1 rounded-md border border-border p-3">
-        <span className="text-sm font-medium text-text">{label}</span>
-        <span className="text-xs text-text-muted">{m.admin_model_none_available()}</span>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border p-3">
-      <div className="flex items-baseline justify-between">
-        <span className="text-sm font-medium text-text">{label}</span>
-        <span className="text-xs text-text-muted">
+    <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-text">{label}</span>
+        <Badge variant="neutral">
           {m.admin_ai_source()}: {selection?.source ?? 'unset'}
-        </span>
+        </Badge>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          className="rounded border border-border bg-background px-2 py-1 text-sm text-text"
-          value={provider}
-          onChange={(event) => setProvider(event.target.value)}
-        >
-          <option value="">{m.admin_model_provider_placeholder()}</option>
-          {providers.map((p) => (
-            <option key={p.provider} value={p.provider}>
-              {p.provider}
-            </option>
-          ))}
-        </select>
-        <input
-          className="flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-text"
-          placeholder={m.admin_ai_model()}
-          value={model}
-          onChange={(event) => setModel(event.target.value)}
-        />
-        <Button
-          color="neutral"
-          size="sm"
-          disabled={busy || provider === ''}
-          onClick={() => {
-            setBusy(true)
-            setSaved(false)
-            setError(null)
-            client
-              .setAIConfig({ capability, provider, model })
-              .then(() => {
-                setSaved(true)
-                onChanged()
-              })
-              .catch((cause: unknown) =>
-                setError(cause instanceof Error ? cause.message : String(cause)),
-              )
-              .finally(() => setBusy(false))
-          }}
-        >
-          {m.admin_ai_save()}
-        </Button>
-        {saved ? <span className="text-xs text-text-muted">{m.admin_ai_saved()}</span> : null}
-        {error ? <span className="text-xs text-danger">{error}</span> : null}
-      </div>
+      {providers.length === 0 ? (
+        <span className="text-sm text-text-muted">{m.admin_model_none_available()}</span>
+      ) : (
+        <div className="flex flex-wrap items-end gap-3">
+          <select
+            aria-label={label}
+            className={SELECT_CLASS}
+            value={provider}
+            onChange={(event) => setProvider(event.target.value)}
+          >
+            <option value="">{m.admin_model_provider_placeholder()}</option>
+            {providers.map((p) => (
+              <option key={p.provider} value={p.provider}>
+                {p.provider}
+              </option>
+            ))}
+          </select>
+          <div className="min-w-48 flex-1">
+            <TextField
+              label={m.admin_ai_model()}
+              placeholder={m.admin_model_placeholder()}
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+            />
+          </div>
+          <Button
+            color="primary"
+            size="sm"
+            loading={busy}
+            disabled={provider === ''}
+            onClick={() => {
+              setBusy(true)
+              setSaved(false)
+              setError(null)
+              client
+                .setAIConfig({ capability, provider, model })
+                .then(() => {
+                  setSaved(true)
+                  onChanged()
+                })
+                .catch((cause: unknown) =>
+                  setError(cause instanceof Error ? cause.message : String(cause)),
+                )
+                .finally(() => setBusy(false))
+            }}
+          >
+            {m.admin_ai_save()}
+          </Button>
+          {saved ? <span className="text-sm text-text-muted">{m.admin_ai_saved()}</span> : null}
+        </div>
+      )}
+      {error ? <span className="text-sm text-danger">{error}</span> : null}
     </div>
   )
 }
