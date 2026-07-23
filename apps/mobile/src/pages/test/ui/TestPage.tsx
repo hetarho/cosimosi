@@ -20,8 +20,8 @@ import { Button, tokens, useReducedMotion } from '@cosimosi/ui'
 
 import { diagnosticsSurfaceFlag } from '../../../shared/config/index.ts'
 
-// The on-device design showcase — the mobile mirror of the web /test surface's emotion-sky panel
-// ([57]/job 39 T004). It proves the ONE shared TSL source on the React Native WebGPU canvas: the
+// The on-device design showcase — the mobile mirror of the web /test surface's emotion-sky panel.
+// It proves the ONE shared TSL source on the React Native WebGPU canvas: the
 // enclosing SkySphere, every react-bits-derived effect, and the emotion-count reshaping, inspected
 // on real hardware. Reachable only while the diagnostics-surface flag is on (deep link `test`),
 // like the diagnostics screen. Captions are demo data, intentionally outside the product i18n
