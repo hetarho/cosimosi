@@ -355,5 +355,12 @@
   "admin_jobs_running": "실행 중",
   "admin_jobs_done": "완료",
   "admin_jobs_failed": "실패",
-  "admin_jobs_dead": "데드레터"
+  "admin_jobs_dead": "데드레터",
+  "admin_section_provider_keys": "공급자 API 키",
+  "admin_section_ai_models": "AI 모델 선택",
+  "admin_provider_key_placeholder": "새 API 키 입력",
+  "admin_provider_clear": "키 삭제",
+  "admin_provider_unimplemented": "어댑터 준비 중",
+  "admin_model_none_available": "키가 설정된 공급자가 없어요. 먼저 위에서 키를 등록하세요.",
+  "admin_model_provider_placeholder": "공급자 선택"
 }

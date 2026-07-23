@@ -33,24 +33,30 @@ sanctioned §4 exception) and allowlisted in `check-persistence-isolation.mjs` (
 `admin/pg` method writes the mutation and its `admin_audit_log` row in one pgx transaction. The append-only logs are
 never `UPDATE`d/`DELETE`d.
 
-## 4. Runtime AI-provider config (the plan-28 change)
+## 4. Runtime AI-provider config (the AI-provider-abstraction change)
 
-`internal/ai.RuntimeConfigSource` resolves each capability's effective config as **DB row (`ai_provider_config`,
-decrypted key) → env (`COSIMOSI_*`) → empty (keyless mock)**. `ai.ResolvingAdapters` wraps the memory ports
-(`Extractor`/`Embedder`/`Semanticizer`/`PredictionError`/`SealSuggester`); on each call it re-resolves the config and
-rebuilds the underlying real/mock adapters when the effective config's **fingerprint** changes (a sha256 of
-source+provider+model+base-URL+key, so a key rotation rebuilds too). Both `cmd/api` and `cmd/worker` build adapters
-through it over the same `ai_provider_config` table, so a `SetAIConfig` from the console reaches both processes without
-a redeploy. The metered wrapper, error taxonomy, and keyless-mock fallback are unchanged (the swap is below the metering
-seam). The per-call config read is one indexed single-row lookup — negligible beside the network-bound AI call.
+Two levels: **per-provider keys** (`ai_provider_keys`, one row per provider slot) and **per-capability selection**
+(`ai_provider_config`, one row per capability → provider+model, no key). Keys are managed once via
+`SetProviderKey`/`ClearProviderKey`; a capability then selects a keyed, capability-supported, implemented provider via
+`SetAIConfig` (no key). Provider slots + per-capability support + adapter-implementation come from the AI registry
+through the consumer-owned `ProviderCatalog` port (admin imports no registry). Slots: openai/gemini/anthropic/deepseek/
+glm/kimi (LLM) and openai/gemini/voyage (embedding); the `glm` slot is z.ai/Zhipu.
+
+`internal/ai.RuntimeConfigSource` resolves each capability's effective config as **DB (capability's selected provider +
+model, then that provider's decrypted key) → env (`COSIMOSI_*`) → empty (keyless mock)**. `ai.ResolvingAdapters` wraps
+the memory ports (`Extractor`/`Embedder`/`Semanticizer`/`PredictionError`/`SealSuggester`); on each call it re-resolves
+and rebuilds the underlying real/mock adapters when the effective config's **fingerprint** changes (a sha256 of
+source+provider+model+base-URL+key, so a key rotation rebuilds too). Both `cmd/api` and `cmd/worker` resolve through it
+over the same tables, so a change from the console reaches both processes without a redeploy. The metered wrapper, error
+taxonomy, and keyless-mock fallback are unchanged (the swap is below the metering seam).
 
 ## 5. Secrets
 
 `platform/secretbox` is AES-GCM (nonce ‖ ciphertext) keyed by `LLM_KEY_ENCRYPTION_KEY` (base64 32-byte, server-only).
-`SetAIConfig` encrypts a supplied key; `GetAIConfig` returns only `key_set` + a masked hint (`secretbox.Hint`), never
-the plaintext. When the key env is unset, the fail-closed `Disabled` cipher refuses to encrypt (provider-key writes are
-rejected) — the console otherwise runs. `SUPABASE_SERVICE_ROLE_KEY` (server-only) powers the `AccountDirectory`; unset
-falls back to the keyless fake (empty user list).
+`SetProviderKey` encrypts the key; `ListProviderKeys`/`GetAIConfig` return only `key_set` + a masked hint
+(`secretbox.Hint`), never the plaintext. When the key env is unset, the fail-closed `Disabled` cipher refuses to encrypt
+(provider-key writes are rejected) — the console otherwise runs. `SUPABASE_SERVICE_ROLE_KEY` (server-only) powers the
+`AccountDirectory`; unset falls back to the keyless fake (empty user list).
 
 ## 6. Stardust grant
 

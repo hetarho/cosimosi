@@ -33,12 +33,18 @@ type AdminUser struct {
 }
 
 type AiProviderConfig struct {
-	Capability      string
+	Capability string
+	Provider   string
+	Model      string
+	UpdatedBy  string
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type AiProviderKey struct {
 	Provider        string
-	Model           string
-	BaseUrl         string
 	ApiKeyEncrypted []byte
 	KeyHint         string
+	BaseUrl         string
 	UpdatedBy       string
 	UpdatedAt       pgtype.Timestamptz
 }

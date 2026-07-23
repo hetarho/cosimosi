@@ -36,20 +36,38 @@ INSERT INTO admin_audit_log (id, actor, action, target, detail)
 VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetAIProviderConfig :one
-SELECT capability, provider, model, base_url, api_key_encrypted, key_hint, updated_by, updated_at
+SELECT capability, provider, model, updated_by, updated_at
 FROM ai_provider_config
 WHERE capability = $1;
 
 -- name: UpsertAIProviderConfig :exec
-INSERT INTO ai_provider_config (
-    capability, provider, model, base_url, api_key_encrypted, key_hint, updated_by, updated_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO ai_provider_config (capability, provider, model, updated_by, updated_at)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (capability) DO UPDATE SET
     provider = EXCLUDED.provider,
     model = EXCLUDED.model,
-    base_url = EXCLUDED.base_url,
-    api_key_encrypted = EXCLUDED.api_key_encrypted,
-    key_hint = EXCLUDED.key_hint,
     updated_by = EXCLUDED.updated_by,
     updated_at = EXCLUDED.updated_at;
+
+-- name: GetProviderKey :one
+SELECT provider, api_key_encrypted, key_hint, base_url, updated_by, updated_at
+FROM ai_provider_keys
+WHERE provider = $1;
+
+-- name: ListProviderKeys :many
+SELECT provider, key_hint, base_url, updated_by, updated_at
+FROM ai_provider_keys
+ORDER BY provider ASC;
+
+-- name: UpsertProviderKey :exec
+INSERT INTO ai_provider_keys (provider, api_key_encrypted, key_hint, base_url, updated_by, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (provider) DO UPDATE SET
+    api_key_encrypted = EXCLUDED.api_key_encrypted,
+    key_hint = EXCLUDED.key_hint,
+    base_url = EXCLUDED.base_url,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = EXCLUDED.updated_at;
+
+-- name: DeleteProviderKey :execrows
+DELETE FROM ai_provider_keys WHERE provider = $1;

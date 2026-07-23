@@ -18,20 +18,15 @@ import (
 // when the effective config's fingerprint changes. Metering, error taxonomy, port adapters, and
 // the keyless mock are unchanged — the swap happens strictly below them, inside NewAdapters.
 
-// ConfigRecord is one capability's stored provider config, decoupled from admin types so this
-// supporting wrapper never imports the admin core context (CC8). Found=false means no DB row.
-type ConfigRecord struct {
-	Provider        string
-	Model           string
-	BaseURL         string
-	APIKeyEncrypted []byte
-	Found           bool
-}
-
-// ConfigReader reads the stored provider config for a capability ("llm" | "embedding"). The
-// concrete is admin/pg (which owns the ai_provider_config table); this port is consumer-owned here.
+// ConfigReader reads the stored runtime provider selection: which provider+model a capability uses,
+// and the encrypted key for a provider. Decoupled from admin types so this supporting wrapper never
+// imports the admin core context (CC8). The concrete is admin/pg (which owns the ai_provider_* tables).
 type ConfigReader interface {
-	ReadProviderConfig(ctx context.Context, capability string) (ConfigRecord, error)
+	// ReadCapabilityConfig returns the selected provider+model for "llm"|"embedding"; found=false
+	// when unset (the source falls back to env → keyless mock).
+	ReadCapabilityConfig(ctx context.Context, capability string) (provider string, model string, found bool, err error)
+	// ReadProviderKey returns a provider's encrypted key + optional base-URL; found=false when unset.
+	ReadProviderKey(ctx context.Context, provider string) (encryptedKey []byte, baseURL string, found bool, err error)
 }
 
 // KeyDecrypter decrypts a stored API-key ciphertext (platform/secretbox). Only the config source
@@ -58,14 +53,20 @@ func NewRuntimeConfigSource(reader ConfigReader, decrypter KeyDecrypter) *Runtim
 
 func (s *RuntimeConfigSource) effective(ctx context.Context, capability string, envCfg CapabilityConfig) (CapabilityConfig, string, error) {
 	if s.reader != nil {
-		rec, err := s.reader.ReadProviderConfig(ctx, capability)
+		provider, model, found, err := s.reader.ReadCapabilityConfig(ctx, capability)
 		if err != nil {
 			return CapabilityConfig{}, "", err
 		}
-		if rec.Found && strings.TrimSpace(rec.Provider) != "" {
-			cfg := CapabilityConfig{Provider: rec.Provider, Model: rec.Model, BaseURL: rec.BaseURL}
-			if len(rec.APIKeyEncrypted) > 0 && s.decrypter != nil {
-				key, err := s.decrypter.Decrypt(rec.APIKeyEncrypted)
+		if found && strings.TrimSpace(provider) != "" {
+			cfg := CapabilityConfig{Provider: provider, Model: model}
+			// The key lives per provider (not per capability): resolve it by the selected provider.
+			encryptedKey, baseURL, keyFound, err := s.reader.ReadProviderKey(ctx, provider)
+			if err != nil {
+				return CapabilityConfig{}, "", err
+			}
+			cfg.BaseURL = baseURL
+			if keyFound && len(encryptedKey) > 0 && s.decrypter != nil {
+				key, err := s.decrypter.Decrypt(encryptedKey)
 				if err != nil {
 					return CapabilityConfig{}, "", err
 				}

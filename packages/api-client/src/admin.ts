@@ -8,15 +8,17 @@ export {
   AICapability,
   type AdminEntry,
   type AdminUser,
-  type AICapabilityConfig,
+  type CapabilitySelection,
   type GetAdminSelfResponse,
   type GetAIConfigResponse,
   type GetAIUsageResponse,
   type GetJobHealthResponse,
   type GrantStardustRequest,
   type ListAdminsResponse,
+  type ListProviderKeysResponse,
   type ListTwinkleGrantsResponse,
   type ListUsersResponse,
+  type ProviderKey,
   type SetAIConfigRequest,
   type TwinkleGrant,
 } from './gen/cosimosi/admin/v1/admin_pb.ts'
@@ -47,6 +49,10 @@ export function createListTwinkleGrantsQueryOptions(
   input: { page?: number; pageSize?: number } = {},
 ) {
   return createQueryOptions(AdminService.method.listTwinkleGrants, input, { transport })
+}
+
+export function createListProviderKeysQueryOptions(transport: Transport) {
+  return createQueryOptions(AdminService.method.listProviderKeys, {}, { transport })
 }
 
 export function createGetAIConfigQueryOptions(transport: Transport) {

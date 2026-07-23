@@ -20,7 +20,7 @@ type Service struct {
 	usage      AIUsageReader
 	jobs       JobHealthReader
 	cipher     Cipher
-	validator  AIProviderValidator
+	catalog    ProviderCatalog
 	envConfig  AIEnvConfig
 	seedIDs    map[string]struct{}
 	seedEmails map[string]struct{}
@@ -39,7 +39,7 @@ type ServiceDeps struct {
 	Usage      AIUsageReader
 	Jobs       JobHealthReader
 	Cipher     Cipher
-	Validator  AIProviderValidator
+	Catalog    ProviderCatalog
 	EnvConfig  AIEnvConfig
 	SeedAdmins string
 	// DevMode makes every authenticated caller an admin — set ONLY from the dev-auth bypass
@@ -66,8 +66,8 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		return nil, ErrJobsRequired
 	case deps.Cipher == nil:
 		return nil, ErrCipherRequired
-	case deps.Validator == nil:
-		return nil, ErrValidatorRequired
+	case deps.Catalog == nil:
+		return nil, ErrCatalogRequired
 	}
 	ids, emails := parseSeedAdmins(deps.SeedAdmins)
 	svc := &Service{
@@ -78,7 +78,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		usage:      deps.Usage,
 		jobs:       deps.Jobs,
 		cipher:     deps.Cipher,
-		validator:  deps.Validator,
+		catalog:    deps.Catalog,
 		envConfig:  deps.EnvConfig,
 		seedIDs:    ids,
 		seedEmails: emails,
@@ -314,42 +314,138 @@ func (s *Service) ListTwinkleGrants(ctx context.Context, page int, pageSize int)
 	return GrantPage{Grants: grants, Page: page, HasMore: hasMore}, nil
 }
 
-// GetAIConfig returns the effective provider config per capability, key masked. A stored DB row
-// wins (source "db"); otherwise the env selection is reported (source "env" when a provider is
-// configured, else "unset"). The plaintext key is never returned.
-func (s *Service) GetAIConfig(ctx context.Context) ([]EffectiveAIConfig, error) {
+// ListProviderKeys returns every provider slot with its key status + capability support, so the
+// console can manage keys per provider. The plaintext key is never returned — only KeySet + hint.
+func (s *Service) ListProviderKeys(ctx context.Context) ([]ProviderKeyInfo, error) {
+	stored, err := s.store.ListProviderKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+	byProvider := make(map[string]StoredProviderKey, len(stored))
+	for _, k := range stored {
+		byProvider[k.Provider] = k
+	}
+	slots := s.catalog.Slots()
+	out := make([]ProviderKeyInfo, 0, len(slots))
+	for _, provider := range slots {
+		info := ProviderKeyInfo{
+			Provider:             provider,
+			SupportsLLM:          s.catalog.SupportsLLM(provider),
+			SupportsEmbedding:    s.catalog.SupportsEmbedding(provider),
+			ImplementedLLM:       s.catalog.ImplementedLLM(provider),
+			ImplementedEmbedding: s.catalog.ImplementedEmbedding(provider),
+		}
+		if key, ok := byProvider[provider]; ok {
+			info.KeySet = true
+			info.KeyHint = key.KeyHint
+			info.BaseURL = key.BaseURL
+			info.UpdatedBy = key.UpdatedBy
+			info.UpdatedAt = key.UpdatedAt
+		}
+		out = append(out, info)
+	}
+	return out, nil
+}
+
+// SetProviderKey stores one provider's API key, encrypted at rest. Rejects an unknown provider
+// slot. baseURL is an optional per-provider endpoint override.
+func (s *Service) SetProviderKey(ctx context.Context, actor string, provider string, apiKey string, baseURL string) (ProviderKeyInfo, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	apiKey = strings.TrimSpace(apiKey)
+	baseURL = strings.TrimSpace(baseURL)
+	if provider == "" {
+		return ProviderKeyInfo{}, ErrProviderRequired
+	}
+	if !s.knownProvider(provider) {
+		return ProviderKeyInfo{}, ErrUnknownProvider
+	}
+	if apiKey == "" {
+		return ProviderKeyInfo{}, ErrProviderKeyRequired
+	}
+	encrypted, err := s.cipher.Encrypt([]byte(apiKey))
+	if err != nil {
+		return ProviderKeyInfo{}, err
+	}
+	key := StoredProviderKey{
+		Provider:        provider,
+		APIKeyEncrypted: encrypted,
+		KeyHint:         s.cipher.Hint(apiKey),
+		BaseURL:         baseURL,
+		UpdatedBy:       actor,
+		UpdatedAt:       s.now(),
+	}
+	audit := s.auditEntry(actor, ActionSetProviderKey, provider, nil)
+	if err := s.store.UpsertProviderKey(ctx, key, audit); err != nil {
+		return ProviderKeyInfo{}, err
+	}
+	return ProviderKeyInfo{
+		Provider:             provider,
+		KeySet:               true,
+		KeyHint:              key.KeyHint,
+		BaseURL:              key.BaseURL,
+		SupportsLLM:          s.catalog.SupportsLLM(provider),
+		SupportsEmbedding:    s.catalog.SupportsEmbedding(provider),
+		ImplementedLLM:       s.catalog.ImplementedLLM(provider),
+		ImplementedEmbedding: s.catalog.ImplementedEmbedding(provider),
+		UpdatedBy:            actor,
+		UpdatedAt:            key.UpdatedAt,
+	}, nil
+}
+
+// ClearProviderKey removes a provider's stored key.
+func (s *Service) ClearProviderKey(ctx context.Context, actor string, provider string) (ProviderKeyInfo, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider == "" {
+		return ProviderKeyInfo{}, ErrProviderRequired
+	}
+	if !s.knownProvider(provider) {
+		return ProviderKeyInfo{}, ErrUnknownProvider
+	}
+	audit := s.auditEntry(actor, ActionClearProviderKey, provider, nil)
+	if _, err := s.store.DeleteProviderKey(ctx, provider, audit); err != nil {
+		return ProviderKeyInfo{}, err
+	}
+	return ProviderKeyInfo{
+		Provider:             provider,
+		KeySet:               false,
+		SupportsLLM:          s.catalog.SupportsLLM(provider),
+		SupportsEmbedding:    s.catalog.SupportsEmbedding(provider),
+		ImplementedLLM:       s.catalog.ImplementedLLM(provider),
+		ImplementedEmbedding: s.catalog.ImplementedEmbedding(provider),
+	}, nil
+}
+
+// GetAIConfig returns the selected provider+model per capability. A stored DB row wins (source
+// "db"); otherwise the env selection is reported (source "env" when a provider is configured, else
+// "unset").
+func (s *Service) GetAIConfig(ctx context.Context) ([]CapabilitySelection, error) {
 	capabilities := []AICapability{CapabilityLLM, CapabilityEmbedding}
-	out := make([]EffectiveAIConfig, 0, len(capabilities))
+	out := make([]CapabilitySelection, 0, len(capabilities))
 	for _, capability := range capabilities {
-		stored, err := s.store.GetAIConfig(ctx, capability)
+		stored, err := s.store.GetCapabilityConfig(ctx, capability)
 		if err != nil {
 			return nil, err
 		}
 		if stored != nil {
-			out = append(out, EffectiveAIConfig{
+			out = append(out, CapabilitySelection{
 				Capability: capability,
 				Provider:   stored.Provider,
 				Model:      stored.Model,
-				BaseURL:    stored.BaseURL,
-				KeySet:     len(stored.APIKeyEncrypted) > 0,
-				KeyHint:    stored.KeyHint,
 				Source:     "db",
 				UpdatedBy:  stored.UpdatedBy,
 				UpdatedAt:  stored.UpdatedAt,
 			})
 			continue
 		}
-		provider, model, baseURL, keySet := s.envSnapshot(capability)
+		provider, model, _, keySet := s.envSnapshot(capability)
 		source := "unset"
 		if provider != "" || keySet {
 			source = "env"
 		}
-		out = append(out, EffectiveAIConfig{
+		out = append(out, CapabilitySelection{
 			Capability: capability,
 			Provider:   provider,
 			Model:      model,
-			BaseURL:    baseURL,
-			KeySet:     keySet,
 			Source:     source,
 		})
 	}
@@ -363,76 +459,78 @@ func (s *Service) envSnapshot(capability AICapability) (provider, model, baseURL
 	return s.envConfig.EnvConfig(capability)
 }
 
-// SetAIConfig validates the provider slot (and embedding dimension) then upserts the capability's
-// config, encrypting a supplied key at rest. Omitting the key keeps the stored one. Applied
-// without redeploy — the factory's config source rebuilds on the next call (T010).
-func (s *Service) SetAIConfig(ctx context.Context, actor string, capability AICapability, provider string, model string, baseURL string, apiKey *string) (EffectiveAIConfig, error) {
+// SetAIConfig selects a capability's provider + model. The provider must support the capability, be
+// implemented (a concrete adapter exists), and have a stored key — the console never selects a
+// provider the factory would then fail to build. No key here; keys are managed per provider.
+// Applied without redeploy — the factory's config source rebuilds on the next call.
+func (s *Service) SetAIConfig(ctx context.Context, actor string, capability AICapability, provider string, model string) (CapabilitySelection, error) {
 	if !KnownCapability(capability) {
-		return EffectiveAIConfig{}, ErrUnknownCapability
+		return CapabilitySelection{}, ErrUnknownCapability
 	}
-	provider = strings.TrimSpace(provider)
+	provider = strings.ToLower(strings.TrimSpace(provider))
 	model = strings.TrimSpace(model)
-	baseURL = strings.TrimSpace(baseURL)
 	if provider == "" {
-		return EffectiveAIConfig{}, ErrProviderRequired
+		return CapabilitySelection{}, ErrProviderRequired
 	}
-	switch capability {
-	case CapabilityLLM:
-		if err := s.validator.ValidateLLM(provider, model); err != nil {
-			return EffectiveAIConfig{}, err
-		}
-	case CapabilityEmbedding:
-		if err := s.validator.ValidateEmbedding(provider, model); err != nil {
-			return EffectiveAIConfig{}, err
-		}
+	if !s.knownProvider(provider) {
+		return CapabilitySelection{}, ErrUnknownProvider
 	}
-
-	cfg := StoredAIConfig{
+	supports, implemented := s.capabilitySupport(capability, provider)
+	if !supports {
+		return CapabilitySelection{}, ErrProviderCapabilityMismatch
+	}
+	if !implemented {
+		return CapabilitySelection{}, ErrProviderNotImplemented
+	}
+	key, err := s.store.GetProviderKey(ctx, provider)
+	if err != nil {
+		return CapabilitySelection{}, err
+	}
+	if key == nil {
+		return CapabilitySelection{}, ErrProviderKeyMissing
+	}
+	cfg := StoredCapabilityConfig{
 		Capability: capability,
 		Provider:   provider,
 		Model:      model,
-		BaseURL:    baseURL,
 		UpdatedBy:  actor,
 		UpdatedAt:  s.now(),
 	}
-	// A supplied key replaces the stored one; omitting it keeps the existing ciphertext + hint.
-	if apiKey != nil {
-		key := strings.TrimSpace(*apiKey)
-		if key != "" {
-			encrypted, err := s.cipher.Encrypt([]byte(key))
-			if err != nil {
-				return EffectiveAIConfig{}, err
-			}
-			cfg.APIKeyEncrypted = encrypted
-			cfg.KeyHint = s.cipher.Hint(key)
-		}
-	} else if existing, err := s.store.GetAIConfig(ctx, capability); err == nil && existing != nil {
-		cfg.APIKeyEncrypted = existing.APIKeyEncrypted
-		cfg.KeyHint = existing.KeyHint
-	} else if err != nil {
-		return EffectiveAIConfig{}, err
-	}
-
 	audit := s.auditEntry(actor, ActionSetAIConfig, string(capability), map[string]string{
 		"provider": provider,
 		"model":    model,
-		// Never the key — only whether one was set on this write.
-		"key_updated": boolStr(apiKey != nil && strings.TrimSpace(deref(apiKey)) != ""),
 	})
-	if err := s.store.UpsertAIConfig(ctx, cfg, audit); err != nil {
-		return EffectiveAIConfig{}, err
+	if err := s.store.UpsertCapabilityConfig(ctx, cfg, audit); err != nil {
+		return CapabilitySelection{}, err
 	}
-	return EffectiveAIConfig{
+	return CapabilitySelection{
 		Capability: capability,
 		Provider:   cfg.Provider,
 		Model:      cfg.Model,
-		BaseURL:    cfg.BaseURL,
-		KeySet:     len(cfg.APIKeyEncrypted) > 0,
-		KeyHint:    cfg.KeyHint,
 		Source:     "db",
 		UpdatedBy:  cfg.UpdatedBy,
 		UpdatedAt:  cfg.UpdatedAt,
 	}, nil
+}
+
+func (s *Service) knownProvider(provider string) bool {
+	for _, slot := range s.catalog.Slots() {
+		if slot == provider {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) capabilitySupport(capability AICapability, provider string) (supports bool, implemented bool) {
+	switch capability {
+	case CapabilityLLM:
+		return s.catalog.SupportsLLM(provider), s.catalog.ImplementedLLM(provider)
+	case CapabilityEmbedding:
+		return s.catalog.SupportsEmbedding(provider), s.catalog.ImplementedEmbedding(provider)
+	default:
+		return false, false
+	}
 }
 
 // GetAIUsage returns the metering snapshot for the usage dashboard.

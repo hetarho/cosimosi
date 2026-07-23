@@ -38,12 +38,54 @@ var (
 // adapter yet (A3). Adding a provider later is a new subpackage + a factory
 // registration (via init), never a consumer change. Only implemented slots register.
 var (
-	llmProviderSlots       = []string{"anthropic", "openai", "deepseek", "zai", "gemini"}
+	llmProviderSlots       = []string{"anthropic", "openai", "deepseek", "glm", "gemini", "kimi"}
 	embeddingProviderSlots = []string{"voyage", "openai", "gemini"}
 
 	llmProviders       = map[string]func(ProviderConfig) (LLMClient, error){}
 	embeddingProviders = map[string]func(ProviderConfig) (EmbeddingClient, error){}
 )
+
+// ProviderSlots is the union of every provider the seam supports across capabilities — the set the
+// admin console offers per-provider API-key management for. Sorted, deduplicated.
+func ProviderSlots() []string {
+	seen := map[string]struct{}{}
+	out := []string{}
+	for _, list := range [][]string{llmProviderSlots, embeddingProviderSlots} {
+		for _, p := range list {
+			if _, ok := seen[p]; ok {
+				continue
+			}
+			seen[p] = struct{}{}
+			out = append(out, p)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// SupportsLLM / SupportsEmbedding report whether a provider slot offers that capability (Anthropic
+// has no embedding API, Voyage no LLM, …) — the admin console filters each capability's selectable
+// providers by this.
+func SupportsLLM(provider string) bool {
+	return slices.Contains(llmProviderSlots, strings.ToLower(strings.TrimSpace(provider)))
+}
+
+func SupportsEmbedding(provider string) bool {
+	return slices.Contains(embeddingProviderSlots, strings.ToLower(strings.TrimSpace(provider)))
+}
+
+// ImplementedLLM / ImplementedEmbedding report whether a concrete adapter is registered for the
+// provider (vs a named-but-unbuilt slot). The console can offer a keyed slot but flag that
+// selecting an unimplemented one will fail until its adapter ships.
+func ImplementedLLM(provider string) bool {
+	_, ok := llmProviders[strings.ToLower(strings.TrimSpace(provider))]
+	return ok
+}
+
+func ImplementedEmbedding(provider string) bool {
+	_, ok := embeddingProviders[strings.ToLower(strings.TrimSpace(provider))]
+	return ok
+}
 
 // RegisterLLMProvider / RegisterEmbeddingProvider are the driver seam: a provider
 // subpackage registers its constructor from init(), so this package never imports the

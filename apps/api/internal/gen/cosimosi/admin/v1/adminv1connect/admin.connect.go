@@ -51,6 +51,15 @@ const (
 	// AdminServiceListTwinkleGrantsProcedure is the fully-qualified name of the AdminService's
 	// ListTwinkleGrants RPC.
 	AdminServiceListTwinkleGrantsProcedure = "/cosimosi.admin.v1.AdminService/ListTwinkleGrants"
+	// AdminServiceListProviderKeysProcedure is the fully-qualified name of the AdminService's
+	// ListProviderKeys RPC.
+	AdminServiceListProviderKeysProcedure = "/cosimosi.admin.v1.AdminService/ListProviderKeys"
+	// AdminServiceSetProviderKeyProcedure is the fully-qualified name of the AdminService's
+	// SetProviderKey RPC.
+	AdminServiceSetProviderKeyProcedure = "/cosimosi.admin.v1.AdminService/SetProviderKey"
+	// AdminServiceClearProviderKeyProcedure is the fully-qualified name of the AdminService's
+	// ClearProviderKey RPC.
+	AdminServiceClearProviderKeyProcedure = "/cosimosi.admin.v1.AdminService/ClearProviderKey"
 	// AdminServiceGetAIConfigProcedure is the fully-qualified name of the AdminService's GetAIConfig
 	// RPC.
 	AdminServiceGetAIConfigProcedure = "/cosimosi.admin.v1.AdminService/GetAIConfig"
@@ -82,12 +91,17 @@ type AdminServiceClient interface {
 	GrantStardust(context.Context, *connect.Request[v1.GrantStardustRequest]) (*connect.Response[v1.GrantStardustResponse], error)
 	// The admin stardust grant history for accountability. Side-effect-free.
 	ListTwinkleGrants(context.Context, *connect.Request[v1.ListTwinkleGrantsRequest]) (*connect.Response[v1.ListTwinkleGrantsResponse], error)
-	// The effective AI provider config per capability (DB override over env). The API key is never
-	// returned — only key_set + a masked hint. Side-effect-free.
+	// Every provider slot with its per-provider API-key status + capability support. The key itself
+	// is never returned — only key_set + a masked hint. Side-effect-free.
+	ListProviderKeys(context.Context, *connect.Request[v1.ListProviderKeysRequest]) (*connect.Response[v1.ListProviderKeysResponse], error)
+	// Store (encrypt at rest) one provider's API key. Rejects an unknown provider slot.
+	SetProviderKey(context.Context, *connect.Request[v1.SetProviderKeyRequest]) (*connect.Response[v1.SetProviderKeyResponse], error)
+	// Remove one provider's stored key.
+	ClearProviderKey(context.Context, *connect.Request[v1.ClearProviderKeyRequest]) (*connect.Response[v1.ClearProviderKeyResponse], error)
+	// The capability→provider/model selection (DB override over env). Side-effect-free.
 	GetAIConfig(context.Context, *connect.Request[v1.GetAIConfigRequest]) (*connect.Response[v1.GetAIConfigResponse], error)
-	// Set one capability's provider config (DB override, applied without redeploy). Rejects an
-	// unknown/unimplemented provider or an embedding model that cannot honor the embedding
-	// dimension. A supplied api_key is encrypted at rest; omitting it keeps the stored key.
+	// Select one capability's provider + model among the keyed, capability-compatible, implemented
+	// providers (DB override, applied without redeploy). No key here — keys are set per provider.
 	SetAIConfig(context.Context, *connect.Request[v1.SetAIConfigRequest]) (*connect.Response[v1.SetAIConfigResponse], error)
 	// Today's AI call usage against the metering caps (read-only; process-local snapshot).
 	GetAIUsage(context.Context, *connect.Request[v1.GetAIUsageRequest]) (*connect.Response[v1.GetAIUsageResponse], error)
@@ -152,6 +166,25 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		listProviderKeys: connect.NewClient[v1.ListProviderKeysRequest, v1.ListProviderKeysResponse](
+			httpClient,
+			baseURL+AdminServiceListProviderKeysProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ListProviderKeys")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setProviderKey: connect.NewClient[v1.SetProviderKeyRequest, v1.SetProviderKeyResponse](
+			httpClient,
+			baseURL+AdminServiceSetProviderKeyProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("SetProviderKey")),
+			connect.WithClientOptions(opts...),
+		),
+		clearProviderKey: connect.NewClient[v1.ClearProviderKeyRequest, v1.ClearProviderKeyResponse](
+			httpClient,
+			baseURL+AdminServiceClearProviderKeyProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ClearProviderKey")),
+			connect.WithClientOptions(opts...),
+		),
 		getAIConfig: connect.NewClient[v1.GetAIConfigRequest, v1.GetAIConfigResponse](
 			httpClient,
 			baseURL+AdminServiceGetAIConfigProcedure,
@@ -191,6 +224,9 @@ type adminServiceClient struct {
 	listUsers         *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
 	grantStardust     *connect.Client[v1.GrantStardustRequest, v1.GrantStardustResponse]
 	listTwinkleGrants *connect.Client[v1.ListTwinkleGrantsRequest, v1.ListTwinkleGrantsResponse]
+	listProviderKeys  *connect.Client[v1.ListProviderKeysRequest, v1.ListProviderKeysResponse]
+	setProviderKey    *connect.Client[v1.SetProviderKeyRequest, v1.SetProviderKeyResponse]
+	clearProviderKey  *connect.Client[v1.ClearProviderKeyRequest, v1.ClearProviderKeyResponse]
 	getAIConfig       *connect.Client[v1.GetAIConfigRequest, v1.GetAIConfigResponse]
 	setAIConfig       *connect.Client[v1.SetAIConfigRequest, v1.SetAIConfigResponse]
 	getAIUsage        *connect.Client[v1.GetAIUsageRequest, v1.GetAIUsageResponse]
@@ -232,6 +268,21 @@ func (c *adminServiceClient) ListTwinkleGrants(ctx context.Context, req *connect
 	return c.listTwinkleGrants.CallUnary(ctx, req)
 }
 
+// ListProviderKeys calls cosimosi.admin.v1.AdminService.ListProviderKeys.
+func (c *adminServiceClient) ListProviderKeys(ctx context.Context, req *connect.Request[v1.ListProviderKeysRequest]) (*connect.Response[v1.ListProviderKeysResponse], error) {
+	return c.listProviderKeys.CallUnary(ctx, req)
+}
+
+// SetProviderKey calls cosimosi.admin.v1.AdminService.SetProviderKey.
+func (c *adminServiceClient) SetProviderKey(ctx context.Context, req *connect.Request[v1.SetProviderKeyRequest]) (*connect.Response[v1.SetProviderKeyResponse], error) {
+	return c.setProviderKey.CallUnary(ctx, req)
+}
+
+// ClearProviderKey calls cosimosi.admin.v1.AdminService.ClearProviderKey.
+func (c *adminServiceClient) ClearProviderKey(ctx context.Context, req *connect.Request[v1.ClearProviderKeyRequest]) (*connect.Response[v1.ClearProviderKeyResponse], error) {
+	return c.clearProviderKey.CallUnary(ctx, req)
+}
+
 // GetAIConfig calls cosimosi.admin.v1.AdminService.GetAIConfig.
 func (c *adminServiceClient) GetAIConfig(ctx context.Context, req *connect.Request[v1.GetAIConfigRequest]) (*connect.Response[v1.GetAIConfigResponse], error) {
 	return c.getAIConfig.CallUnary(ctx, req)
@@ -270,12 +321,17 @@ type AdminServiceHandler interface {
 	GrantStardust(context.Context, *connect.Request[v1.GrantStardustRequest]) (*connect.Response[v1.GrantStardustResponse], error)
 	// The admin stardust grant history for accountability. Side-effect-free.
 	ListTwinkleGrants(context.Context, *connect.Request[v1.ListTwinkleGrantsRequest]) (*connect.Response[v1.ListTwinkleGrantsResponse], error)
-	// The effective AI provider config per capability (DB override over env). The API key is never
-	// returned — only key_set + a masked hint. Side-effect-free.
+	// Every provider slot with its per-provider API-key status + capability support. The key itself
+	// is never returned — only key_set + a masked hint. Side-effect-free.
+	ListProviderKeys(context.Context, *connect.Request[v1.ListProviderKeysRequest]) (*connect.Response[v1.ListProviderKeysResponse], error)
+	// Store (encrypt at rest) one provider's API key. Rejects an unknown provider slot.
+	SetProviderKey(context.Context, *connect.Request[v1.SetProviderKeyRequest]) (*connect.Response[v1.SetProviderKeyResponse], error)
+	// Remove one provider's stored key.
+	ClearProviderKey(context.Context, *connect.Request[v1.ClearProviderKeyRequest]) (*connect.Response[v1.ClearProviderKeyResponse], error)
+	// The capability→provider/model selection (DB override over env). Side-effect-free.
 	GetAIConfig(context.Context, *connect.Request[v1.GetAIConfigRequest]) (*connect.Response[v1.GetAIConfigResponse], error)
-	// Set one capability's provider config (DB override, applied without redeploy). Rejects an
-	// unknown/unimplemented provider or an embedding model that cannot honor the embedding
-	// dimension. A supplied api_key is encrypted at rest; omitting it keeps the stored key.
+	// Select one capability's provider + model among the keyed, capability-compatible, implemented
+	// providers (DB override, applied without redeploy). No key here — keys are set per provider.
 	SetAIConfig(context.Context, *connect.Request[v1.SetAIConfigRequest]) (*connect.Response[v1.SetAIConfigResponse], error)
 	// Today's AI call usage against the metering caps (read-only; process-local snapshot).
 	GetAIUsage(context.Context, *connect.Request[v1.GetAIUsageRequest]) (*connect.Response[v1.GetAIUsageResponse], error)
@@ -336,6 +392,25 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceListProviderKeysHandler := connect.NewUnaryHandler(
+		AdminServiceListProviderKeysProcedure,
+		svc.ListProviderKeys,
+		connect.WithSchema(adminServiceMethods.ByName("ListProviderKeys")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceSetProviderKeyHandler := connect.NewUnaryHandler(
+		AdminServiceSetProviderKeyProcedure,
+		svc.SetProviderKey,
+		connect.WithSchema(adminServiceMethods.ByName("SetProviderKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceClearProviderKeyHandler := connect.NewUnaryHandler(
+		AdminServiceClearProviderKeyProcedure,
+		svc.ClearProviderKey,
+		connect.WithSchema(adminServiceMethods.ByName("ClearProviderKey")),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminServiceGetAIConfigHandler := connect.NewUnaryHandler(
 		AdminServiceGetAIConfigProcedure,
 		svc.GetAIConfig,
@@ -379,6 +454,12 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceGrantStardustHandler.ServeHTTP(w, r)
 		case AdminServiceListTwinkleGrantsProcedure:
 			adminServiceListTwinkleGrantsHandler.ServeHTTP(w, r)
+		case AdminServiceListProviderKeysProcedure:
+			adminServiceListProviderKeysHandler.ServeHTTP(w, r)
+		case AdminServiceSetProviderKeyProcedure:
+			adminServiceSetProviderKeyHandler.ServeHTTP(w, r)
+		case AdminServiceClearProviderKeyProcedure:
+			adminServiceClearProviderKeyHandler.ServeHTTP(w, r)
 		case AdminServiceGetAIConfigProcedure:
 			adminServiceGetAIConfigHandler.ServeHTTP(w, r)
 		case AdminServiceSetAIConfigProcedure:
@@ -422,6 +503,18 @@ func (UnimplementedAdminServiceHandler) GrantStardust(context.Context, *connect.
 
 func (UnimplementedAdminServiceHandler) ListTwinkleGrants(context.Context, *connect.Request[v1.ListTwinkleGrantsRequest]) (*connect.Response[v1.ListTwinkleGrantsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.admin.v1.AdminService.ListTwinkleGrants is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ListProviderKeys(context.Context, *connect.Request[v1.ListProviderKeysRequest]) (*connect.Response[v1.ListProviderKeysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.admin.v1.AdminService.ListProviderKeys is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) SetProviderKey(context.Context, *connect.Request[v1.SetProviderKeyRequest]) (*connect.Response[v1.SetProviderKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.admin.v1.AdminService.SetProviderKey is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ClearProviderKey(context.Context, *connect.Request[v1.ClearProviderKeyRequest]) (*connect.Response[v1.ClearProviderKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.admin.v1.AdminService.ClearProviderKey is not implemented"))
 }
 
 func (UnimplementedAdminServiceHandler) GetAIConfig(context.Context, *connect.Request[v1.GetAIConfigRequest]) (*connect.Response[v1.GetAIConfigResponse], error) {

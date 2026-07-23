@@ -28,11 +28,14 @@ capped by `twinkle.admin_grant_max`, idempotent per grant id. It writes an `admi
 `admin_audit_log` entry (one admin transaction) and credits Twinkle via a separate idempotent earn keyed by the same
 grant id. A grant prices nothing, spends nothing, and deletes nothing — it is not a login/attendance bonus ([G3]).
 
-**4. AI provider config — DB override over env, encrypted write-only keys.**
-Provider/model/base-URL/key are runtime-editable from the console (DB override; the factory falls back to env, then the
-keyless mock). API keys are **encrypted at rest** and **write-only across the RPC boundary** — reads return only
-`key_set` + a masked hint, never the plaintext. `SetAIConfig` rejects an unknown/unimplemented provider slot. Applies
-without redeploy (see [tech/admin-console.md](../../tech/admin-console.md)).
+**4. AI provider config — per-provider keys, then per-capability selection; DB override over env.**
+API keys are managed **once per provider** (`SetProviderKey`/`ClearProviderKey`), encrypted at rest and **write-only**
+across the RPC boundary — reads return only `key_set` + a masked hint, never the plaintext. Each capability (LLM,
+embedding) then **selects a provider + model** among the providers that have a key, support that capability, and have a
+built adapter (`SetAIConfig`); selecting one that is unkeyed, unsupported, or unimplemented is refused. The factory
+resolves DB selection + provider key → env → keyless mock, applied without redeploy (see
+[tech/admin-console.md](../../tech/admin-console.md)). Provider slots: openai, gemini, anthropic, deepseek, glm, kimi
+(LLM) and openai, gemini, voyage (embedding).
 
 **5. Accountability — every admin mutation is authorized and audited; keys are never logged.**
 `GrantAdmin`/`RevokeAdmin`/`SetAIConfig`/`GrantStardust` each append an `admin_audit_log` row (actor, action, target,

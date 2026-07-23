@@ -11,8 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteProviderKey = `-- name: DeleteProviderKey :execrows
+DELETE FROM ai_provider_keys WHERE provider = $1
+`
+
+func (q *Queries) DeleteProviderKey(ctx context.Context, provider string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProviderKey, provider)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getAIProviderConfig = `-- name: GetAIProviderConfig :one
-SELECT capability, provider, model, base_url, api_key_encrypted, key_hint, updated_by, updated_at
+SELECT capability, provider, model, updated_by, updated_at
 FROM ai_provider_config
 WHERE capability = $1
 `
@@ -24,9 +36,26 @@ func (q *Queries) GetAIProviderConfig(ctx context.Context, capability string) (A
 		&i.Capability,
 		&i.Provider,
 		&i.Model,
-		&i.BaseUrl,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getProviderKey = `-- name: GetProviderKey :one
+SELECT provider, api_key_encrypted, key_hint, base_url, updated_by, updated_at
+FROM ai_provider_keys
+WHERE provider = $1
+`
+
+func (q *Queries) GetProviderKey(ctx context.Context, provider string) (AiProviderKey, error) {
+	row := q.db.QueryRow(ctx, getProviderKey, provider)
+	var i AiProviderKey
+	err := row.Scan(
+		&i.Provider,
 		&i.ApiKeyEncrypted,
 		&i.KeyHint,
+		&i.BaseUrl,
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 	)
@@ -128,6 +157,46 @@ func (q *Queries) ListPromotedAdmins(ctx context.Context) ([]AdminUser, error) {
 	return items, nil
 }
 
+const listProviderKeys = `-- name: ListProviderKeys :many
+SELECT provider, key_hint, base_url, updated_by, updated_at
+FROM ai_provider_keys
+ORDER BY provider ASC
+`
+
+type ListProviderKeysRow struct {
+	Provider  string
+	KeyHint   string
+	BaseUrl   string
+	UpdatedBy string
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListProviderKeys(ctx context.Context) ([]ListProviderKeysRow, error) {
+	rows, err := q.db.Query(ctx, listProviderKeys)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProviderKeysRow
+	for rows.Next() {
+		var i ListProviderKeysRow
+		if err := rows.Scan(
+			&i.Provider,
+			&i.KeyHint,
+			&i.BaseUrl,
+			&i.UpdatedBy,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTwinkleGrants = `-- name: ListTwinkleGrants :many
 SELECT id, granted_by, target_user, amount, note, created_at
 FROM admin_stardust_grants
@@ -196,29 +265,21 @@ func (q *Queries) RevokeAdmin(ctx context.Context, userID string) (int64, error)
 }
 
 const upsertAIProviderConfig = `-- name: UpsertAIProviderConfig :exec
-INSERT INTO ai_provider_config (
-    capability, provider, model, base_url, api_key_encrypted, key_hint, updated_by, updated_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO ai_provider_config (capability, provider, model, updated_by, updated_at)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (capability) DO UPDATE SET
     provider = EXCLUDED.provider,
     model = EXCLUDED.model,
-    base_url = EXCLUDED.base_url,
-    api_key_encrypted = EXCLUDED.api_key_encrypted,
-    key_hint = EXCLUDED.key_hint,
     updated_by = EXCLUDED.updated_by,
     updated_at = EXCLUDED.updated_at
 `
 
 type UpsertAIProviderConfigParams struct {
-	Capability      string
-	Provider        string
-	Model           string
-	BaseUrl         string
-	ApiKeyEncrypted []byte
-	KeyHint         string
-	UpdatedBy       string
-	UpdatedAt       pgtype.Timestamptz
+	Capability string
+	Provider   string
+	Model      string
+	UpdatedBy  string
+	UpdatedAt  pgtype.Timestamptz
 }
 
 func (q *Queries) UpsertAIProviderConfig(ctx context.Context, arg UpsertAIProviderConfigParams) error {
@@ -226,9 +287,38 @@ func (q *Queries) UpsertAIProviderConfig(ctx context.Context, arg UpsertAIProvid
 		arg.Capability,
 		arg.Provider,
 		arg.Model,
-		arg.BaseUrl,
+		arg.UpdatedBy,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const upsertProviderKey = `-- name: UpsertProviderKey :exec
+INSERT INTO ai_provider_keys (provider, api_key_encrypted, key_hint, base_url, updated_by, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (provider) DO UPDATE SET
+    api_key_encrypted = EXCLUDED.api_key_encrypted,
+    key_hint = EXCLUDED.key_hint,
+    base_url = EXCLUDED.base_url,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = EXCLUDED.updated_at
+`
+
+type UpsertProviderKeyParams struct {
+	Provider        string
+	ApiKeyEncrypted []byte
+	KeyHint         string
+	BaseUrl         string
+	UpdatedBy       string
+	UpdatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) UpsertProviderKey(ctx context.Context, arg UpsertProviderKeyParams) error {
+	_, err := q.db.Exec(ctx, upsertProviderKey,
+		arg.Provider,
 		arg.ApiKeyEncrypted,
 		arg.KeyHint,
+		arg.BaseUrl,
 		arg.UpdatedBy,
 		arg.UpdatedAt,
 	)

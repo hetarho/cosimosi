@@ -78,29 +78,49 @@ type GrantPage struct {
 	HasMore bool
 }
 
-// StoredAIConfig is a persisted ai_provider_config row. APIKeyEncrypted is the ciphertext (never
-// the plaintext); KeyHint is a masked tail for display.
-type StoredAIConfig struct {
-	Capability      AICapability
+// StoredProviderKey is a persisted ai_provider_keys row: one provider's encrypted API key.
+// APIKeyEncrypted is the ciphertext (never the plaintext); KeyHint is a masked tail for display.
+// ListProviderKeys reads leave APIKeyEncrypted nil (the key column is not selected).
+type StoredProviderKey struct {
 	Provider        string
-	Model           string
-	BaseURL         string
 	APIKeyEncrypted []byte
 	KeyHint         string
+	BaseURL         string
 	UpdatedBy       string
 	UpdatedAt       time.Time
 }
 
-// EffectiveAIConfig is what GetAIConfig returns per capability — the config the operator sees,
-// with the key masked. Source is where it comes from: "db", "env", or "unset". The plaintext key
-// is NEVER present here.
-type EffectiveAIConfig struct {
+// StoredCapabilityConfig is a persisted ai_provider_config row: which keyed provider + model a
+// capability uses. The key is NOT here — it comes from ai_provider_keys by provider.
+type StoredCapabilityConfig struct {
 	Capability AICapability
 	Provider   string
 	Model      string
-	BaseURL    string
-	KeySet     bool
-	KeyHint    string
+	UpdatedBy  string
+	UpdatedAt  time.Time
+}
+
+// ProviderKeyInfo is one provider slot's key status + capability support, for the console's
+// per-provider key management. The plaintext key is NEVER present — only KeySet + KeyHint.
+type ProviderKeyInfo struct {
+	Provider             string
+	KeySet               bool
+	KeyHint              string
+	BaseURL              string
+	SupportsLLM          bool
+	SupportsEmbedding    bool
+	ImplementedLLM       bool
+	ImplementedEmbedding bool
+	UpdatedBy            string
+	UpdatedAt            time.Time
+}
+
+// CapabilitySelection is what GetAIConfig returns per capability — the selected provider + model.
+// Source is where it comes from: "db", "env", or "unset".
+type CapabilitySelection struct {
+	Capability AICapability
+	Provider   string
+	Model      string
 	Source     string
 	UpdatedBy  string
 	UpdatedAt  time.Time
@@ -143,8 +163,10 @@ type AuditEntry struct {
 
 // The admin_audit_log action names (a closed set).
 const (
-	ActionGrantAdmin    = "grant_admin"
-	ActionRevokeAdmin   = "revoke_admin"
-	ActionSetAIConfig   = "set_ai_config"
-	ActionGrantStardust = "grant_stardust"
+	ActionGrantAdmin       = "grant_admin"
+	ActionRevokeAdmin      = "revoke_admin"
+	ActionSetAIConfig      = "set_ai_config"
+	ActionSetProviderKey   = "set_provider_key"
+	ActionClearProviderKey = "clear_provider_key"
+	ActionGrantStardust    = "grant_stardust"
 )

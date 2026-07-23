@@ -22,7 +22,7 @@ const (
 )
 
 // The AI capability a provider config / usage row applies to. LLM and embedding are selected
-// independently (plan 28).
+// independently (the AI-provider abstraction).
 type AICapability int32
 
 const (
@@ -1024,37 +1024,40 @@ func (x *ListTwinkleGrantsResponse) GetHasMore() bool {
 	return false
 }
 
-// The effective config for one capability. source tells the operator where it comes from
-// ("db" | "env" | "unset"); key_hint is a masked tail (e.g. "…abcd") or empty, never the key.
-type AICapabilityConfig struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Capability    AICapability           `protobuf:"varint,1,opt,name=capability,proto3,enum=cosimosi.admin.v1.AICapability" json:"capability,omitempty"`
-	Provider      string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
-	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
-	BaseUrl       string                 `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	KeySet        bool                   `protobuf:"varint,5,opt,name=key_set,json=keySet,proto3" json:"key_set,omitempty"`
-	KeyHint       string                 `protobuf:"bytes,6,opt,name=key_hint,json=keyHint,proto3" json:"key_hint,omitempty"`
-	Source        string                 `protobuf:"bytes,7,opt,name=source,proto3" json:"source,omitempty"`
-	UpdatedBy     string                 `protobuf:"bytes,8,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
-	UpdatedAt     string                 `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // RFC3339; empty when unset/from env
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+// One provider slot's key status + capability support. key_hint is a masked tail (e.g. "…abcd") or
+// empty; the key itself is never returned. supports_* = the slot offers that capability;
+// implemented_* = a concrete adapter exists (an unimplemented slot can hold a key but fails if
+// selected until its adapter ships).
+type ProviderKey struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Provider             string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	KeySet               bool                   `protobuf:"varint,2,opt,name=key_set,json=keySet,proto3" json:"key_set,omitempty"`
+	KeyHint              string                 `protobuf:"bytes,3,opt,name=key_hint,json=keyHint,proto3" json:"key_hint,omitempty"`
+	SupportsLlm          bool                   `protobuf:"varint,4,opt,name=supports_llm,json=supportsLlm,proto3" json:"supports_llm,omitempty"`
+	SupportsEmbedding    bool                   `protobuf:"varint,5,opt,name=supports_embedding,json=supportsEmbedding,proto3" json:"supports_embedding,omitempty"`
+	ImplementedLlm       bool                   `protobuf:"varint,6,opt,name=implemented_llm,json=implementedLlm,proto3" json:"implemented_llm,omitempty"`
+	ImplementedEmbedding bool                   `protobuf:"varint,7,opt,name=implemented_embedding,json=implementedEmbedding,proto3" json:"implemented_embedding,omitempty"`
+	BaseUrl              string                 `protobuf:"bytes,8,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	UpdatedBy            string                 `protobuf:"bytes,9,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	UpdatedAt            string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // RFC3339; empty when unset
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
-func (x *AICapabilityConfig) Reset() {
-	*x = AICapabilityConfig{}
+func (x *ProviderKey) Reset() {
+	*x = ProviderKey{}
 	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AICapabilityConfig) String() string {
+func (x *ProviderKey) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AICapabilityConfig) ProtoMessage() {}
+func (*ProviderKey) ProtoMessage() {}
 
-func (x *AICapabilityConfig) ProtoReflect() protoreflect.Message {
+func (x *ProviderKey) ProtoReflect() protoreflect.Message {
 	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1066,68 +1069,433 @@ func (x *AICapabilityConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AICapabilityConfig.ProtoReflect.Descriptor instead.
-func (*AICapabilityConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use ProviderKey.ProtoReflect.Descriptor instead.
+func (*ProviderKey) Descriptor() ([]byte, []int) {
 	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *AICapabilityConfig) GetCapability() AICapability {
-	if x != nil {
-		return x.Capability
-	}
-	return AICapability_AI_CAPABILITY_UNSPECIFIED
-}
-
-func (x *AICapabilityConfig) GetProvider() string {
+func (x *ProviderKey) GetProvider() string {
 	if x != nil {
 		return x.Provider
 	}
 	return ""
 }
 
-func (x *AICapabilityConfig) GetModel() string {
-	if x != nil {
-		return x.Model
-	}
-	return ""
-}
-
-func (x *AICapabilityConfig) GetBaseUrl() string {
-	if x != nil {
-		return x.BaseUrl
-	}
-	return ""
-}
-
-func (x *AICapabilityConfig) GetKeySet() bool {
+func (x *ProviderKey) GetKeySet() bool {
 	if x != nil {
 		return x.KeySet
 	}
 	return false
 }
 
-func (x *AICapabilityConfig) GetKeyHint() string {
+func (x *ProviderKey) GetKeyHint() string {
 	if x != nil {
 		return x.KeyHint
 	}
 	return ""
 }
 
-func (x *AICapabilityConfig) GetSource() string {
+func (x *ProviderKey) GetSupportsLlm() bool {
 	if x != nil {
-		return x.Source
+		return x.SupportsLlm
+	}
+	return false
+}
+
+func (x *ProviderKey) GetSupportsEmbedding() bool {
+	if x != nil {
+		return x.SupportsEmbedding
+	}
+	return false
+}
+
+func (x *ProviderKey) GetImplementedLlm() bool {
+	if x != nil {
+		return x.ImplementedLlm
+	}
+	return false
+}
+
+func (x *ProviderKey) GetImplementedEmbedding() bool {
+	if x != nil {
+		return x.ImplementedEmbedding
+	}
+	return false
+}
+
+func (x *ProviderKey) GetBaseUrl() string {
+	if x != nil {
+		return x.BaseUrl
 	}
 	return ""
 }
 
-func (x *AICapabilityConfig) GetUpdatedBy() string {
+func (x *ProviderKey) GetUpdatedBy() string {
 	if x != nil {
 		return x.UpdatedBy
 	}
 	return ""
 }
 
-func (x *AICapabilityConfig) GetUpdatedAt() string {
+func (x *ProviderKey) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type ListProviderKeysRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProviderKeysRequest) Reset() {
+	*x = ListProviderKeysRequest{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProviderKeysRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProviderKeysRequest) ProtoMessage() {}
+
+func (x *ListProviderKeysRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProviderKeysRequest.ProtoReflect.Descriptor instead.
+func (*ListProviderKeysRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{18}
+}
+
+type ListProviderKeysResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Providers     []*ProviderKey         `protobuf:"bytes,1,rep,name=providers,proto3" json:"providers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProviderKeysResponse) Reset() {
+	*x = ListProviderKeysResponse{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProviderKeysResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProviderKeysResponse) ProtoMessage() {}
+
+func (x *ListProviderKeysResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProviderKeysResponse.ProtoReflect.Descriptor instead.
+func (*ListProviderKeysResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ListProviderKeysResponse) GetProviders() []*ProviderKey {
+	if x != nil {
+		return x.Providers
+	}
+	return nil
+}
+
+type SetProviderKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	ApiKey        string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`    // encrypted at rest; write-only
+	BaseUrl       string                 `protobuf:"bytes,3,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"` // optional per-provider endpoint override
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetProviderKeyRequest) Reset() {
+	*x = SetProviderKeyRequest{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetProviderKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetProviderKeyRequest) ProtoMessage() {}
+
+func (x *SetProviderKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetProviderKeyRequest.ProtoReflect.Descriptor instead.
+func (*SetProviderKeyRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SetProviderKeyRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *SetProviderKeyRequest) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *SetProviderKeyRequest) GetBaseUrl() string {
+	if x != nil {
+		return x.BaseUrl
+	}
+	return ""
+}
+
+type SetProviderKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Provider      *ProviderKey           `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetProviderKeyResponse) Reset() {
+	*x = SetProviderKeyResponse{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetProviderKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetProviderKeyResponse) ProtoMessage() {}
+
+func (x *SetProviderKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetProviderKeyResponse.ProtoReflect.Descriptor instead.
+func (*SetProviderKeyResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *SetProviderKeyResponse) GetProvider() *ProviderKey {
+	if x != nil {
+		return x.Provider
+	}
+	return nil
+}
+
+type ClearProviderKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearProviderKeyRequest) Reset() {
+	*x = ClearProviderKeyRequest{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearProviderKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearProviderKeyRequest) ProtoMessage() {}
+
+func (x *ClearProviderKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearProviderKeyRequest.ProtoReflect.Descriptor instead.
+func (*ClearProviderKeyRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ClearProviderKeyRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+type ClearProviderKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Provider      *ProviderKey           `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClearProviderKeyResponse) Reset() {
+	*x = ClearProviderKeyResponse{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClearProviderKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClearProviderKeyResponse) ProtoMessage() {}
+
+func (x *ClearProviderKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClearProviderKeyResponse.ProtoReflect.Descriptor instead.
+func (*ClearProviderKeyResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ClearProviderKeyResponse) GetProvider() *ProviderKey {
+	if x != nil {
+		return x.Provider
+	}
+	return nil
+}
+
+// One capability's selected provider + model. source tells the operator where it comes from
+// ("db" | "env" | "unset").
+type CapabilitySelection struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Capability    AICapability           `protobuf:"varint,1,opt,name=capability,proto3,enum=cosimosi.admin.v1.AICapability" json:"capability,omitempty"`
+	Provider      string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
+	Source        string                 `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	UpdatedBy     string                 `protobuf:"bytes,5,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // RFC3339; empty when unset/from env
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CapabilitySelection) Reset() {
+	*x = CapabilitySelection{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CapabilitySelection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CapabilitySelection) ProtoMessage() {}
+
+func (x *CapabilitySelection) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CapabilitySelection.ProtoReflect.Descriptor instead.
+func (*CapabilitySelection) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CapabilitySelection) GetCapability() AICapability {
+	if x != nil {
+		return x.Capability
+	}
+	return AICapability_AI_CAPABILITY_UNSPECIFIED
+}
+
+func (x *CapabilitySelection) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *CapabilitySelection) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *CapabilitySelection) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *CapabilitySelection) GetUpdatedBy() string {
+	if x != nil {
+		return x.UpdatedBy
+	}
+	return ""
+}
+
+func (x *CapabilitySelection) GetUpdatedAt() string {
 	if x != nil {
 		return x.UpdatedAt
 	}
@@ -1142,7 +1510,7 @@ type GetAIConfigRequest struct {
 
 func (x *GetAIConfigRequest) Reset() {
 	*x = GetAIConfigRequest{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[18]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1154,7 +1522,7 @@ func (x *GetAIConfigRequest) String() string {
 func (*GetAIConfigRequest) ProtoMessage() {}
 
 func (x *GetAIConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[18]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1167,19 +1535,19 @@ func (x *GetAIConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAIConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetAIConfigRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{18}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{25}
 }
 
 type GetAIConfigResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Capabilities  []*AICapabilityConfig  `protobuf:"bytes,1,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	Selections    []*CapabilitySelection `protobuf:"bytes,1,rep,name=selections,proto3" json:"selections,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetAIConfigResponse) Reset() {
 	*x = GetAIConfigResponse{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[19]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1191,7 +1559,7 @@ func (x *GetAIConfigResponse) String() string {
 func (*GetAIConfigResponse) ProtoMessage() {}
 
 func (x *GetAIConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[19]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1204,12 +1572,12 @@ func (x *GetAIConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAIConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetAIConfigResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{19}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{26}
 }
 
-func (x *GetAIConfigResponse) GetCapabilities() []*AICapabilityConfig {
+func (x *GetAIConfigResponse) GetSelections() []*CapabilitySelection {
 	if x != nil {
-		return x.Capabilities
+		return x.Selections
 	}
 	return nil
 }
@@ -1219,15 +1587,13 @@ type SetAIConfigRequest struct {
 	Capability    AICapability           `protobuf:"varint,1,opt,name=capability,proto3,enum=cosimosi.admin.v1.AICapability" json:"capability,omitempty"`
 	Provider      string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
 	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
-	BaseUrl       string                 `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	ApiKey        *string                `protobuf:"bytes,5,opt,name=api_key,json=apiKey,proto3,oneof" json:"api_key,omitempty"` // present → replace (encrypted at rest); omit → keep stored key
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SetAIConfigRequest) Reset() {
 	*x = SetAIConfigRequest{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[20]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1239,7 +1605,7 @@ func (x *SetAIConfigRequest) String() string {
 func (*SetAIConfigRequest) ProtoMessage() {}
 
 func (x *SetAIConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[20]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1252,7 +1618,7 @@ func (x *SetAIConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAIConfigRequest.ProtoReflect.Descriptor instead.
 func (*SetAIConfigRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{20}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SetAIConfigRequest) GetCapability() AICapability {
@@ -1276,30 +1642,16 @@ func (x *SetAIConfigRequest) GetModel() string {
 	return ""
 }
 
-func (x *SetAIConfigRequest) GetBaseUrl() string {
-	if x != nil {
-		return x.BaseUrl
-	}
-	return ""
-}
-
-func (x *SetAIConfigRequest) GetApiKey() string {
-	if x != nil && x.ApiKey != nil {
-		return *x.ApiKey
-	}
-	return ""
-}
-
 type SetAIConfigResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Capability    *AICapabilityConfig    `protobuf:"bytes,1,opt,name=capability,proto3" json:"capability,omitempty"`
+	Selection     *CapabilitySelection   `protobuf:"bytes,1,opt,name=selection,proto3" json:"selection,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SetAIConfigResponse) Reset() {
 	*x = SetAIConfigResponse{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[21]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1311,7 +1663,7 @@ func (x *SetAIConfigResponse) String() string {
 func (*SetAIConfigResponse) ProtoMessage() {}
 
 func (x *SetAIConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[21]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1324,12 +1676,12 @@ func (x *SetAIConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAIConfigResponse.ProtoReflect.Descriptor instead.
 func (*SetAIConfigResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{21}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{28}
 }
 
-func (x *SetAIConfigResponse) GetCapability() *AICapabilityConfig {
+func (x *SetAIConfigResponse) GetSelection() *CapabilitySelection {
 	if x != nil {
-		return x.Capability
+		return x.Selection
 	}
 	return nil
 }
@@ -1345,7 +1697,7 @@ type AIUsageCapability struct {
 
 func (x *AIUsageCapability) Reset() {
 	*x = AIUsageCapability{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[22]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1357,7 +1709,7 @@ func (x *AIUsageCapability) String() string {
 func (*AIUsageCapability) ProtoMessage() {}
 
 func (x *AIUsageCapability) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[22]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1370,7 +1722,7 @@ func (x *AIUsageCapability) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AIUsageCapability.ProtoReflect.Descriptor instead.
 func (*AIUsageCapability) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{22}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AIUsageCapability) GetCapability() AICapability {
@@ -1402,7 +1754,7 @@ type GetAIUsageRequest struct {
 
 func (x *GetAIUsageRequest) Reset() {
 	*x = GetAIUsageRequest{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[23]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1414,7 +1766,7 @@ func (x *GetAIUsageRequest) String() string {
 func (*GetAIUsageRequest) ProtoMessage() {}
 
 func (x *GetAIUsageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[23]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1427,7 +1779,7 @@ func (x *GetAIUsageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAIUsageRequest.ProtoReflect.Descriptor instead.
 func (*GetAIUsageRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{23}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{30}
 }
 
 type GetAIUsageResponse struct {
@@ -1435,14 +1787,14 @@ type GetAIUsageResponse struct {
 	Capabilities    []*AIUsageCapability   `protobuf:"bytes,1,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
 	PerCallTokenCap int64                  `protobuf:"varint,2,opt,name=per_call_token_cap,json=perCallTokenCap,proto3" json:"per_call_token_cap,omitempty"`
 	WindowUtcDay    string                 `protobuf:"bytes,3,opt,name=window_utc_day,json=windowUtcDay,proto3" json:"window_utc_day,omitempty"` // the UTC calendar day the counts cover
-	ProcessLocal    bool                   `protobuf:"varint,4,opt,name=process_local,json=processLocal,proto3" json:"process_local,omitempty"`  // true: the meter is in-process/in-memory (plan-58 limitation)
+	ProcessLocal    bool                   `protobuf:"varint,4,opt,name=process_local,json=processLocal,proto3" json:"process_local,omitempty"`  // true: the meter is in-process/in-memory (the admin console limitation)
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetAIUsageResponse) Reset() {
 	*x = GetAIUsageResponse{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[24]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1454,7 +1806,7 @@ func (x *GetAIUsageResponse) String() string {
 func (*GetAIUsageResponse) ProtoMessage() {}
 
 func (x *GetAIUsageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[24]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1467,7 +1819,7 @@ func (x *GetAIUsageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAIUsageResponse.ProtoReflect.Descriptor instead.
 func (*GetAIUsageResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{24}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetAIUsageResponse) GetCapabilities() []*AIUsageCapability {
@@ -1506,7 +1858,7 @@ type GetJobHealthRequest struct {
 
 func (x *GetJobHealthRequest) Reset() {
 	*x = GetJobHealthRequest{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[25]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1518,7 +1870,7 @@ func (x *GetJobHealthRequest) String() string {
 func (*GetJobHealthRequest) ProtoMessage() {}
 
 func (x *GetJobHealthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[25]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1531,7 +1883,7 @@ func (x *GetJobHealthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobHealthRequest.ProtoReflect.Descriptor instead.
 func (*GetJobHealthRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{25}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{32}
 }
 
 type GetJobHealthResponse struct {
@@ -1547,7 +1899,7 @@ type GetJobHealthResponse struct {
 
 func (x *GetJobHealthResponse) Reset() {
 	*x = GetJobHealthResponse{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[26]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1559,7 +1911,7 @@ func (x *GetJobHealthResponse) String() string {
 func (*GetJobHealthResponse) ProtoMessage() {}
 
 func (x *GetJobHealthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[26]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1572,7 +1924,7 @@ func (x *GetJobHealthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobHealthResponse.ProtoReflect.Descriptor instead.
 func (*GetJobHealthResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{26}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetJobHealthResponse) GetPending() int64 {
@@ -1683,38 +2035,58 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\x19ListTwinkleGrantsResponse\x127\n" +
 	"\x06grants\x18\x01 \x03(\v2\x1f.cosimosi.admin.v1.TwinkleGrantR\x06grants\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xac\x02\n" +
-	"\x12AICapabilityConfig\x12?\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xe6\x02\n" +
+	"\vProviderKey\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x17\n" +
+	"\akey_set\x18\x02 \x01(\bR\x06keySet\x12\x19\n" +
+	"\bkey_hint\x18\x03 \x01(\tR\akeyHint\x12!\n" +
+	"\fsupports_llm\x18\x04 \x01(\bR\vsupportsLlm\x12-\n" +
+	"\x12supports_embedding\x18\x05 \x01(\bR\x11supportsEmbedding\x12'\n" +
+	"\x0fimplemented_llm\x18\x06 \x01(\bR\x0eimplementedLlm\x123\n" +
+	"\x15implemented_embedding\x18\a \x01(\bR\x14implementedEmbedding\x12\x19\n" +
+	"\bbase_url\x18\b \x01(\tR\abaseUrl\x12\x1d\n" +
+	"\n" +
+	"updated_by\x18\t \x01(\tR\tupdatedBy\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\n" +
+	" \x01(\tR\tupdatedAt\"\x19\n" +
+	"\x17ListProviderKeysRequest\"X\n" +
+	"\x18ListProviderKeysResponse\x12<\n" +
+	"\tproviders\x18\x01 \x03(\v2\x1e.cosimosi.admin.v1.ProviderKeyR\tproviders\"g\n" +
+	"\x15SetProviderKeyRequest\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x19\n" +
+	"\bbase_url\x18\x03 \x01(\tR\abaseUrl\"T\n" +
+	"\x16SetProviderKeyResponse\x12:\n" +
+	"\bprovider\x18\x01 \x01(\v2\x1e.cosimosi.admin.v1.ProviderKeyR\bprovider\"5\n" +
+	"\x17ClearProviderKeyRequest\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\"V\n" +
+	"\x18ClearProviderKeyResponse\x12:\n" +
+	"\bprovider\x18\x01 \x01(\v2\x1e.cosimosi.admin.v1.ProviderKeyR\bprovider\"\xde\x01\n" +
+	"\x13CapabilitySelection\x12?\n" +
 	"\n" +
 	"capability\x18\x01 \x01(\x0e2\x1f.cosimosi.admin.v1.AICapabilityR\n" +
 	"capability\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +
-	"\x05model\x18\x03 \x01(\tR\x05model\x12\x19\n" +
-	"\bbase_url\x18\x04 \x01(\tR\abaseUrl\x12\x17\n" +
-	"\akey_set\x18\x05 \x01(\bR\x06keySet\x12\x19\n" +
-	"\bkey_hint\x18\x06 \x01(\tR\akeyHint\x12\x16\n" +
-	"\x06source\x18\a \x01(\tR\x06source\x12\x1d\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12\x16\n" +
+	"\x06source\x18\x04 \x01(\tR\x06source\x12\x1d\n" +
 	"\n" +
-	"updated_by\x18\b \x01(\tR\tupdatedBy\x12\x1d\n" +
+	"updated_by\x18\x05 \x01(\tR\tupdatedBy\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\tR\tupdatedAt\"\x14\n" +
-	"\x12GetAIConfigRequest\"`\n" +
-	"\x13GetAIConfigResponse\x12I\n" +
-	"\fcapabilities\x18\x01 \x03(\v2%.cosimosi.admin.v1.AICapabilityConfigR\fcapabilities\"\xcc\x01\n" +
+	"updated_at\x18\x06 \x01(\tR\tupdatedAt\"\x14\n" +
+	"\x12GetAIConfigRequest\"]\n" +
+	"\x13GetAIConfigResponse\x12F\n" +
+	"\n" +
+	"selections\x18\x01 \x03(\v2&.cosimosi.admin.v1.CapabilitySelectionR\n" +
+	"selections\"\x87\x01\n" +
 	"\x12SetAIConfigRequest\x12?\n" +
 	"\n" +
 	"capability\x18\x01 \x01(\x0e2\x1f.cosimosi.admin.v1.AICapabilityR\n" +
 	"capability\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +
-	"\x05model\x18\x03 \x01(\tR\x05model\x12\x19\n" +
-	"\bbase_url\x18\x04 \x01(\tR\abaseUrl\x12\x1c\n" +
-	"\aapi_key\x18\x05 \x01(\tH\x00R\x06apiKey\x88\x01\x01B\n" +
-	"\n" +
-	"\b_api_key\"\\\n" +
-	"\x13SetAIConfigResponse\x12E\n" +
-	"\n" +
-	"capability\x18\x01 \x01(\v2%.cosimosi.admin.v1.AICapabilityConfigR\n" +
-	"capability\"\x92\x01\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\"[\n" +
+	"\x13SetAIConfigResponse\x12D\n" +
+	"\tselection\x18\x01 \x01(\v2&.cosimosi.admin.v1.CapabilitySelectionR\tselection\"\x92\x01\n" +
 	"\x11AIUsageCapability\x12?\n" +
 	"\n" +
 	"capability\x18\x01 \x01(\x0e2\x1f.cosimosi.admin.v1.AICapabilityR\n" +
@@ -1738,7 +2110,7 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\fAICapability\x12\x1d\n" +
 	"\x19AI_CAPABILITY_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11AI_CAPABILITY_LLM\x10\x01\x12\x1b\n" +
-	"\x17AI_CAPABILITY_EMBEDDING\x10\x022\xca\b\n" +
+	"\x17AI_CAPABILITY_EMBEDDING\x10\x022\x90\v\n" +
 	"\fAdminService\x12d\n" +
 	"\fGetAdminSelf\x12&.cosimosi.admin.v1.GetAdminSelfRequest\x1a'.cosimosi.admin.v1.GetAdminSelfResponse\"\x03\x90\x02\x01\x12^\n" +
 	"\n" +
@@ -1748,7 +2120,10 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\vRevokeAdmin\x12%.cosimosi.admin.v1.RevokeAdminRequest\x1a&.cosimosi.admin.v1.RevokeAdminResponse\x12[\n" +
 	"\tListUsers\x12#.cosimosi.admin.v1.ListUsersRequest\x1a$.cosimosi.admin.v1.ListUsersResponse\"\x03\x90\x02\x01\x12b\n" +
 	"\rGrantStardust\x12'.cosimosi.admin.v1.GrantStardustRequest\x1a(.cosimosi.admin.v1.GrantStardustResponse\x12s\n" +
-	"\x11ListTwinkleGrants\x12+.cosimosi.admin.v1.ListTwinkleGrantsRequest\x1a,.cosimosi.admin.v1.ListTwinkleGrantsResponse\"\x03\x90\x02\x01\x12a\n" +
+	"\x11ListTwinkleGrants\x12+.cosimosi.admin.v1.ListTwinkleGrantsRequest\x1a,.cosimosi.admin.v1.ListTwinkleGrantsResponse\"\x03\x90\x02\x01\x12p\n" +
+	"\x10ListProviderKeys\x12*.cosimosi.admin.v1.ListProviderKeysRequest\x1a+.cosimosi.admin.v1.ListProviderKeysResponse\"\x03\x90\x02\x01\x12e\n" +
+	"\x0eSetProviderKey\x12(.cosimosi.admin.v1.SetProviderKeyRequest\x1a).cosimosi.admin.v1.SetProviderKeyResponse\x12k\n" +
+	"\x10ClearProviderKey\x12*.cosimosi.admin.v1.ClearProviderKeyRequest\x1a+.cosimosi.admin.v1.ClearProviderKeyResponse\x12a\n" +
 	"\vGetAIConfig\x12%.cosimosi.admin.v1.GetAIConfigRequest\x1a&.cosimosi.admin.v1.GetAIConfigResponse\"\x03\x90\x02\x01\x12\\\n" +
 	"\vSetAIConfig\x12%.cosimosi.admin.v1.SetAIConfigRequest\x1a&.cosimosi.admin.v1.SetAIConfigResponse\x12^\n" +
 	"\n" +
@@ -1770,7 +2145,7 @@ func file_cosimosi_admin_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_admin_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_cosimosi_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_cosimosi_admin_v1_admin_proto_goTypes = []any{
 	(AICapability)(0),                 // 0: cosimosi.admin.v1.AICapability
 	(*GetAdminSelfRequest)(nil),       // 1: cosimosi.admin.v1.GetAdminSelfRequest
@@ -1790,54 +2165,70 @@ var file_cosimosi_admin_v1_admin_proto_goTypes = []any{
 	(*TwinkleGrant)(nil),              // 15: cosimosi.admin.v1.TwinkleGrant
 	(*ListTwinkleGrantsRequest)(nil),  // 16: cosimosi.admin.v1.ListTwinkleGrantsRequest
 	(*ListTwinkleGrantsResponse)(nil), // 17: cosimosi.admin.v1.ListTwinkleGrantsResponse
-	(*AICapabilityConfig)(nil),        // 18: cosimosi.admin.v1.AICapabilityConfig
-	(*GetAIConfigRequest)(nil),        // 19: cosimosi.admin.v1.GetAIConfigRequest
-	(*GetAIConfigResponse)(nil),       // 20: cosimosi.admin.v1.GetAIConfigResponse
-	(*SetAIConfigRequest)(nil),        // 21: cosimosi.admin.v1.SetAIConfigRequest
-	(*SetAIConfigResponse)(nil),       // 22: cosimosi.admin.v1.SetAIConfigResponse
-	(*AIUsageCapability)(nil),         // 23: cosimosi.admin.v1.AIUsageCapability
-	(*GetAIUsageRequest)(nil),         // 24: cosimosi.admin.v1.GetAIUsageRequest
-	(*GetAIUsageResponse)(nil),        // 25: cosimosi.admin.v1.GetAIUsageResponse
-	(*GetJobHealthRequest)(nil),       // 26: cosimosi.admin.v1.GetJobHealthRequest
-	(*GetJobHealthResponse)(nil),      // 27: cosimosi.admin.v1.GetJobHealthResponse
+	(*ProviderKey)(nil),               // 18: cosimosi.admin.v1.ProviderKey
+	(*ListProviderKeysRequest)(nil),   // 19: cosimosi.admin.v1.ListProviderKeysRequest
+	(*ListProviderKeysResponse)(nil),  // 20: cosimosi.admin.v1.ListProviderKeysResponse
+	(*SetProviderKeyRequest)(nil),     // 21: cosimosi.admin.v1.SetProviderKeyRequest
+	(*SetProviderKeyResponse)(nil),    // 22: cosimosi.admin.v1.SetProviderKeyResponse
+	(*ClearProviderKeyRequest)(nil),   // 23: cosimosi.admin.v1.ClearProviderKeyRequest
+	(*ClearProviderKeyResponse)(nil),  // 24: cosimosi.admin.v1.ClearProviderKeyResponse
+	(*CapabilitySelection)(nil),       // 25: cosimosi.admin.v1.CapabilitySelection
+	(*GetAIConfigRequest)(nil),        // 26: cosimosi.admin.v1.GetAIConfigRequest
+	(*GetAIConfigResponse)(nil),       // 27: cosimosi.admin.v1.GetAIConfigResponse
+	(*SetAIConfigRequest)(nil),        // 28: cosimosi.admin.v1.SetAIConfigRequest
+	(*SetAIConfigResponse)(nil),       // 29: cosimosi.admin.v1.SetAIConfigResponse
+	(*AIUsageCapability)(nil),         // 30: cosimosi.admin.v1.AIUsageCapability
+	(*GetAIUsageRequest)(nil),         // 31: cosimosi.admin.v1.GetAIUsageRequest
+	(*GetAIUsageResponse)(nil),        // 32: cosimosi.admin.v1.GetAIUsageResponse
+	(*GetJobHealthRequest)(nil),       // 33: cosimosi.admin.v1.GetJobHealthRequest
+	(*GetJobHealthResponse)(nil),      // 34: cosimosi.admin.v1.GetJobHealthResponse
 }
 var file_cosimosi_admin_v1_admin_proto_depIdxs = []int32{
 	3,  // 0: cosimosi.admin.v1.ListAdminsResponse.admins:type_name -> cosimosi.admin.v1.AdminEntry
 	10, // 1: cosimosi.admin.v1.ListUsersResponse.users:type_name -> cosimosi.admin.v1.AdminUser
 	15, // 2: cosimosi.admin.v1.ListTwinkleGrantsResponse.grants:type_name -> cosimosi.admin.v1.TwinkleGrant
-	0,  // 3: cosimosi.admin.v1.AICapabilityConfig.capability:type_name -> cosimosi.admin.v1.AICapability
-	18, // 4: cosimosi.admin.v1.GetAIConfigResponse.capabilities:type_name -> cosimosi.admin.v1.AICapabilityConfig
-	0,  // 5: cosimosi.admin.v1.SetAIConfigRequest.capability:type_name -> cosimosi.admin.v1.AICapability
-	18, // 6: cosimosi.admin.v1.SetAIConfigResponse.capability:type_name -> cosimosi.admin.v1.AICapabilityConfig
-	0,  // 7: cosimosi.admin.v1.AIUsageCapability.capability:type_name -> cosimosi.admin.v1.AICapability
-	23, // 8: cosimosi.admin.v1.GetAIUsageResponse.capabilities:type_name -> cosimosi.admin.v1.AIUsageCapability
-	1,  // 9: cosimosi.admin.v1.AdminService.GetAdminSelf:input_type -> cosimosi.admin.v1.GetAdminSelfRequest
-	4,  // 10: cosimosi.admin.v1.AdminService.ListAdmins:input_type -> cosimosi.admin.v1.ListAdminsRequest
-	6,  // 11: cosimosi.admin.v1.AdminService.GrantAdmin:input_type -> cosimosi.admin.v1.GrantAdminRequest
-	8,  // 12: cosimosi.admin.v1.AdminService.RevokeAdmin:input_type -> cosimosi.admin.v1.RevokeAdminRequest
-	11, // 13: cosimosi.admin.v1.AdminService.ListUsers:input_type -> cosimosi.admin.v1.ListUsersRequest
-	13, // 14: cosimosi.admin.v1.AdminService.GrantStardust:input_type -> cosimosi.admin.v1.GrantStardustRequest
-	16, // 15: cosimosi.admin.v1.AdminService.ListTwinkleGrants:input_type -> cosimosi.admin.v1.ListTwinkleGrantsRequest
-	19, // 16: cosimosi.admin.v1.AdminService.GetAIConfig:input_type -> cosimosi.admin.v1.GetAIConfigRequest
-	21, // 17: cosimosi.admin.v1.AdminService.SetAIConfig:input_type -> cosimosi.admin.v1.SetAIConfigRequest
-	24, // 18: cosimosi.admin.v1.AdminService.GetAIUsage:input_type -> cosimosi.admin.v1.GetAIUsageRequest
-	26, // 19: cosimosi.admin.v1.AdminService.GetJobHealth:input_type -> cosimosi.admin.v1.GetJobHealthRequest
-	2,  // 20: cosimosi.admin.v1.AdminService.GetAdminSelf:output_type -> cosimosi.admin.v1.GetAdminSelfResponse
-	5,  // 21: cosimosi.admin.v1.AdminService.ListAdmins:output_type -> cosimosi.admin.v1.ListAdminsResponse
-	7,  // 22: cosimosi.admin.v1.AdminService.GrantAdmin:output_type -> cosimosi.admin.v1.GrantAdminResponse
-	9,  // 23: cosimosi.admin.v1.AdminService.RevokeAdmin:output_type -> cosimosi.admin.v1.RevokeAdminResponse
-	12, // 24: cosimosi.admin.v1.AdminService.ListUsers:output_type -> cosimosi.admin.v1.ListUsersResponse
-	14, // 25: cosimosi.admin.v1.AdminService.GrantStardust:output_type -> cosimosi.admin.v1.GrantStardustResponse
-	17, // 26: cosimosi.admin.v1.AdminService.ListTwinkleGrants:output_type -> cosimosi.admin.v1.ListTwinkleGrantsResponse
-	20, // 27: cosimosi.admin.v1.AdminService.GetAIConfig:output_type -> cosimosi.admin.v1.GetAIConfigResponse
-	22, // 28: cosimosi.admin.v1.AdminService.SetAIConfig:output_type -> cosimosi.admin.v1.SetAIConfigResponse
-	25, // 29: cosimosi.admin.v1.AdminService.GetAIUsage:output_type -> cosimosi.admin.v1.GetAIUsageResponse
-	27, // 30: cosimosi.admin.v1.AdminService.GetJobHealth:output_type -> cosimosi.admin.v1.GetJobHealthResponse
-	20, // [20:31] is the sub-list for method output_type
-	9,  // [9:20] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	18, // 3: cosimosi.admin.v1.ListProviderKeysResponse.providers:type_name -> cosimosi.admin.v1.ProviderKey
+	18, // 4: cosimosi.admin.v1.SetProviderKeyResponse.provider:type_name -> cosimosi.admin.v1.ProviderKey
+	18, // 5: cosimosi.admin.v1.ClearProviderKeyResponse.provider:type_name -> cosimosi.admin.v1.ProviderKey
+	0,  // 6: cosimosi.admin.v1.CapabilitySelection.capability:type_name -> cosimosi.admin.v1.AICapability
+	25, // 7: cosimosi.admin.v1.GetAIConfigResponse.selections:type_name -> cosimosi.admin.v1.CapabilitySelection
+	0,  // 8: cosimosi.admin.v1.SetAIConfigRequest.capability:type_name -> cosimosi.admin.v1.AICapability
+	25, // 9: cosimosi.admin.v1.SetAIConfigResponse.selection:type_name -> cosimosi.admin.v1.CapabilitySelection
+	0,  // 10: cosimosi.admin.v1.AIUsageCapability.capability:type_name -> cosimosi.admin.v1.AICapability
+	30, // 11: cosimosi.admin.v1.GetAIUsageResponse.capabilities:type_name -> cosimosi.admin.v1.AIUsageCapability
+	1,  // 12: cosimosi.admin.v1.AdminService.GetAdminSelf:input_type -> cosimosi.admin.v1.GetAdminSelfRequest
+	4,  // 13: cosimosi.admin.v1.AdminService.ListAdmins:input_type -> cosimosi.admin.v1.ListAdminsRequest
+	6,  // 14: cosimosi.admin.v1.AdminService.GrantAdmin:input_type -> cosimosi.admin.v1.GrantAdminRequest
+	8,  // 15: cosimosi.admin.v1.AdminService.RevokeAdmin:input_type -> cosimosi.admin.v1.RevokeAdminRequest
+	11, // 16: cosimosi.admin.v1.AdminService.ListUsers:input_type -> cosimosi.admin.v1.ListUsersRequest
+	13, // 17: cosimosi.admin.v1.AdminService.GrantStardust:input_type -> cosimosi.admin.v1.GrantStardustRequest
+	16, // 18: cosimosi.admin.v1.AdminService.ListTwinkleGrants:input_type -> cosimosi.admin.v1.ListTwinkleGrantsRequest
+	19, // 19: cosimosi.admin.v1.AdminService.ListProviderKeys:input_type -> cosimosi.admin.v1.ListProviderKeysRequest
+	21, // 20: cosimosi.admin.v1.AdminService.SetProviderKey:input_type -> cosimosi.admin.v1.SetProviderKeyRequest
+	23, // 21: cosimosi.admin.v1.AdminService.ClearProviderKey:input_type -> cosimosi.admin.v1.ClearProviderKeyRequest
+	26, // 22: cosimosi.admin.v1.AdminService.GetAIConfig:input_type -> cosimosi.admin.v1.GetAIConfigRequest
+	28, // 23: cosimosi.admin.v1.AdminService.SetAIConfig:input_type -> cosimosi.admin.v1.SetAIConfigRequest
+	31, // 24: cosimosi.admin.v1.AdminService.GetAIUsage:input_type -> cosimosi.admin.v1.GetAIUsageRequest
+	33, // 25: cosimosi.admin.v1.AdminService.GetJobHealth:input_type -> cosimosi.admin.v1.GetJobHealthRequest
+	2,  // 26: cosimosi.admin.v1.AdminService.GetAdminSelf:output_type -> cosimosi.admin.v1.GetAdminSelfResponse
+	5,  // 27: cosimosi.admin.v1.AdminService.ListAdmins:output_type -> cosimosi.admin.v1.ListAdminsResponse
+	7,  // 28: cosimosi.admin.v1.AdminService.GrantAdmin:output_type -> cosimosi.admin.v1.GrantAdminResponse
+	9,  // 29: cosimosi.admin.v1.AdminService.RevokeAdmin:output_type -> cosimosi.admin.v1.RevokeAdminResponse
+	12, // 30: cosimosi.admin.v1.AdminService.ListUsers:output_type -> cosimosi.admin.v1.ListUsersResponse
+	14, // 31: cosimosi.admin.v1.AdminService.GrantStardust:output_type -> cosimosi.admin.v1.GrantStardustResponse
+	17, // 32: cosimosi.admin.v1.AdminService.ListTwinkleGrants:output_type -> cosimosi.admin.v1.ListTwinkleGrantsResponse
+	20, // 33: cosimosi.admin.v1.AdminService.ListProviderKeys:output_type -> cosimosi.admin.v1.ListProviderKeysResponse
+	22, // 34: cosimosi.admin.v1.AdminService.SetProviderKey:output_type -> cosimosi.admin.v1.SetProviderKeyResponse
+	24, // 35: cosimosi.admin.v1.AdminService.ClearProviderKey:output_type -> cosimosi.admin.v1.ClearProviderKeyResponse
+	27, // 36: cosimosi.admin.v1.AdminService.GetAIConfig:output_type -> cosimosi.admin.v1.GetAIConfigResponse
+	29, // 37: cosimosi.admin.v1.AdminService.SetAIConfig:output_type -> cosimosi.admin.v1.SetAIConfigResponse
+	32, // 38: cosimosi.admin.v1.AdminService.GetAIUsage:output_type -> cosimosi.admin.v1.GetAIUsageResponse
+	34, // 39: cosimosi.admin.v1.AdminService.GetJobHealth:output_type -> cosimosi.admin.v1.GetJobHealthResponse
+	26, // [26:40] is the sub-list for method output_type
+	12, // [12:26] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_admin_v1_admin_proto_init() }
@@ -1845,14 +2236,13 @@ func file_cosimosi_admin_v1_admin_proto_init() {
 	if File_cosimosi_admin_v1_admin_proto != nil {
 		return
 	}
-	file_cosimosi_admin_v1_admin_proto_msgTypes[20].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_admin_v1_admin_proto_rawDesc), len(file_cosimosi_admin_v1_admin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   27,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

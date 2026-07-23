@@ -40,14 +40,22 @@ service AdminService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  // The effective AI provider config per capability (DB override over env). The API key is never
-  // returned — only key_set + a masked hint. Side-effect-free.
+  // Every provider slot with its per-provider API-key status + capability support. The key itself
+  // is never returned — only key_set + a masked hint. Side-effect-free.
+  rpc ListProviderKeys(ListProviderKeysRequest) returns (ListProviderKeysResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Store (encrypt at rest) one provider's API key. Rejects an unknown provider slot.
+  rpc SetProviderKey(SetProviderKeyRequest) returns (SetProviderKeyResponse);
+  // Remove one provider's stored key.
+  rpc ClearProviderKey(ClearProviderKeyRequest) returns (ClearProviderKeyResponse);
+
+  // The capability→provider/model selection (DB override over env). Side-effect-free.
   rpc GetAIConfig(GetAIConfigRequest) returns (GetAIConfigResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Set one capability's provider config (DB override, applied without redeploy). Rejects an
-  // unknown/unimplemented provider or an embedding model that cannot honor the embedding
-  // dimension. A supplied api_key is encrypted at rest; omitting it keeps the stored key.
+  // Select one capability's provider + model among the keyed, capability-compatible, implemented
+  // providers (DB override, applied without redeploy). No key here — keys are set per provider.
   rpc SetAIConfig(SetAIConfigRequest) returns (SetAIConfigResponse);
 
   // Today's AI call usage against the metering caps (read-only; process-local snapshot).
@@ -152,32 +160,62 @@ message ListTwinkleGrantsResponse {
   bool has_more = 3;
 }
 
-// The effective config for one capability. source tells the operator where it comes from
-// ("db" | "env" | "unset"); key_hint is a masked tail (e.g. "…abcd") or empty, never the key.
-message AICapabilityConfig {
+// One provider slot's key status + capability support. key_hint is a masked tail (e.g. "…abcd") or
+// empty; the key itself is never returned. supports_* = the slot offers that capability;
+// implemented_* = a concrete adapter exists (an unimplemented slot can hold a key but fails if
+// selected until its adapter ships).
+message ProviderKey {
+  string provider = 1;
+  bool key_set = 2;
+  string key_hint = 3;
+  bool supports_llm = 4;
+  bool supports_embedding = 5;
+  bool implemented_llm = 6;
+  bool implemented_embedding = 7;
+  string base_url = 8;
+  string updated_by = 9;
+  string updated_at = 10;  // RFC3339; empty when unset
+}
+message ListProviderKeysRequest {}
+message ListProviderKeysResponse {
+  repeated ProviderKey providers = 1;
+}
+message SetProviderKeyRequest {
+  string provider = 1;
+  string api_key = 2;   // encrypted at rest; write-only
+  string base_url = 3;  // optional per-provider endpoint override
+}
+message SetProviderKeyResponse {
+  ProviderKey provider = 1;
+}
+message ClearProviderKeyRequest {
+  string provider = 1;
+}
+message ClearProviderKeyResponse {
+  ProviderKey provider = 1;
+}
+
+// One capability's selected provider + model. source tells the operator where it comes from
+// ("db" | "env" | "unset").
+message CapabilitySelection {
   AICapability capability = 1;
   string provider = 2;
   string model = 3;
-  string base_url = 4;
-  bool key_set = 5;
-  string key_hint = 6;
-  string source = 7;
-  string updated_by = 8;
-  string updated_at = 9;  // RFC3339; empty when unset/from env
+  string source = 4;
+  string updated_by = 5;
+  string updated_at = 6;  // RFC3339; empty when unset/from env
 }
 message GetAIConfigRequest {}
 message GetAIConfigResponse {
-  repeated AICapabilityConfig capabilities = 1;
+  repeated CapabilitySelection selections = 1;
 }
 message SetAIConfigRequest {
   AICapability capability = 1;
   string provider = 2;
   string model = 3;
-  string base_url = 4;
-  optional string api_key = 5;  // present → replace (encrypted at rest); omit → keep stored key
 }
 message SetAIConfigResponse {
-  AICapabilityConfig capability = 1;
+  CapabilitySelection selection = 1;
 }
 
 message AIUsageCapability {

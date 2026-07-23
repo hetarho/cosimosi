@@ -32,10 +32,20 @@ type Store interface {
 	// ListGrants returns one page of the grant history, newest first.
 	ListGrants(ctx context.Context, page int, pageSize int) ([]TwinkleGrant, bool, error)
 
-	// GetAIConfig reads one capability's stored config, or nil when unset.
-	GetAIConfig(ctx context.Context, capability AICapability) (*StoredAIConfig, error)
-	// UpsertAIConfig writes the config row and its audit entry in one tx.
-	UpsertAIConfig(ctx context.Context, cfg StoredAIConfig, audit AuditEntry) error
+	// GetCapabilityConfig reads one capability's selected provider+model, or nil when unset.
+	GetCapabilityConfig(ctx context.Context, capability AICapability) (*StoredCapabilityConfig, error)
+	// UpsertCapabilityConfig writes the selection row and its audit entry in one tx.
+	UpsertCapabilityConfig(ctx context.Context, cfg StoredCapabilityConfig, audit AuditEntry) error
+
+	// GetProviderKey reads one provider's stored key row (with ciphertext), or nil when unset.
+	GetProviderKey(ctx context.Context, provider string) (*StoredProviderKey, error)
+	// ListProviderKeys reads every stored key row WITHOUT the ciphertext (hint + metadata only).
+	ListProviderKeys(ctx context.Context) ([]StoredProviderKey, error)
+	// UpsertProviderKey writes the encrypted key row and its audit entry in one tx.
+	UpsertProviderKey(ctx context.Context, key StoredProviderKey, audit AuditEntry) error
+	// DeleteProviderKey removes a provider's key row and appends the audit entry, in one tx.
+	// removed=false when there was no key (a no-op clear is not an error).
+	DeleteProviderKey(ctx context.Context, provider string, audit AuditEntry) (removed bool, err error)
 }
 
 // AccountDirectory is the identity source for the user list — a composition-root adapter over the
@@ -98,10 +108,14 @@ type AIEnvConfig interface {
 	EnvConfig(capability AICapability) (provider string, model string, baseURL string, keySet bool)
 }
 
-// AIProviderValidator rejects an unknown/unimplemented provider slot or an embedding model that
-// cannot honor the embedding dimension, BEFORE SetAIConfig persists — reusing the AI-provider abstraction registry
-// semantics so the admin console cannot store a config the factory would then fail to build.
-type AIProviderValidator interface {
-	ValidateLLM(provider string, model string) error
-	ValidateEmbedding(provider string, model string) error
+// ProviderCatalog is the set of provider slots + their per-capability support and adapter-
+// implementation status (bound over the AI registry at the composition root). The console offers
+// key management for every slot, filters each capability's selectable providers by support, and
+// refuses selecting an unimplemented provider — all read from here, so admin imports no registry.
+type ProviderCatalog interface {
+	Slots() []string
+	SupportsLLM(provider string) bool
+	SupportsEmbedding(provider string) bool
+	ImplementedLLM(provider string) bool
+	ImplementedEmbedding(provider string) bool
 }

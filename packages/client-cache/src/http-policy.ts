@@ -171,6 +171,7 @@ export const adminRpcCachePolicies = [
   { method: AdminService.method.listAdmins, policy: userScopedUnaryReadPolicy },
   { method: AdminService.method.listUsers, policy: userScopedUnaryReadPolicy },
   { method: AdminService.method.listTwinkleGrants, policy: userScopedUnaryReadPolicy },
+  { method: AdminService.method.listProviderKeys, policy: userScopedUnaryReadPolicy },
   { method: AdminService.method.getAIConfig, policy: userScopedUnaryReadPolicy },
   { method: AdminService.method.getAIUsage, policy: userScopedUnaryReadPolicy },
   { method: AdminService.method.getJobHealth, policy: userScopedUnaryReadPolicy },

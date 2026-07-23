@@ -1,1 +1,1 @@
-export { AiConfigSection } from './ui/AiConfigSection.tsx'
+export { ProviderKeysSection, ModelSelectSection } from './ui/AiConfigSection.tsx'

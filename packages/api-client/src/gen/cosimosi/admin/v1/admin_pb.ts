@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/admin/v1/admin.proto.
  */
 export const file_cosimosi_admin_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("Ch1jb3NpbW9zaS9hZG1pbi92MS9hZG1pbi5wcm90bxIRY29zaW1vc2kuYWRtaW4udjEiFQoTR2V0QWRtaW5TZWxmUmVxdWVzdCIoChRHZXRBZG1pblNlbGZSZXNwb25zZRIQCghpc19hZG1pbhgBIAEoCCJWCgpBZG1pbkVudHJ5Eg8KB3VzZXJfaWQYASABKAkSDwoHaXNfc2VlZBgCIAEoCBISCgpncmFudGVkX2J5GAMgASgJEhIKCmdyYW50ZWRfYXQYBCABKAkiEwoRTGlzdEFkbWluc1JlcXVlc3QiQwoSTGlzdEFkbWluc1Jlc3BvbnNlEi0KBmFkbWlucxgBIAMoCzIdLmNvc2ltb3NpLmFkbWluLnYxLkFkbWluRW50cnkiJAoRR3JhbnRBZG1pblJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSImChJHcmFudEFkbWluUmVzcG9uc2USEAoIaXNfYWRtaW4YASABKAgiJQoSUmV2b2tlQWRtaW5SZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiJwoTUmV2b2tlQWRtaW5SZXNwb25zZRIQCghpc19hZG1pbhgBIAEoCCLNAQoJQWRtaW5Vc2VyEg8KB3VzZXJfaWQYASABKAkSDQoFZW1haWwYAiABKAkSEQoJc2lnbnVwX2F0GAMgASgJEhAKCGlzX2FkbWluGAQgASgIEhUKDWlzX3NlZWRfYWRtaW4YBSABKAgSDQoFYmFzaWMYBiABKAMSEgoKYWRkaXRpb25hbBgHIAEoAxINCgV0b3RhbBgIIAEoAxITCgtkaWFyeV9jb3VudBgJIAEoAxIdChVlcGlzb2RpY19tZW1vcnlfY291bnQYCiABKAMiQgoQTGlzdFVzZXJzUmVxdWVzdBIMCgRwYWdlGAEgASgFEhEKCXBhZ2Vfc2l6ZRgCIAEoBRINCgVxdWVyeRgDIAEoCSJgChFMaXN0VXNlcnNSZXNwb25zZRIrCgV1c2VycxgBIAMoCzIcLmNvc2ltb3NpLmFkbWluLnYxLkFkbWluVXNlchIMCgRwYWdlGAIgASgFEhAKCGhhc19tb3JlGAMgASgIIlcKFEdyYW50U3RhcmR1c3RSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSDgoGYW1vdW50GAIgASgDEgwKBG5vdGUYAyABKAkSEAoIZ3JhbnRfaWQYBCABKAkiLgoVR3JhbnRTdGFyZHVzdFJlc3BvbnNlEhUKDWJhbGFuY2VfdG90YWwYASABKAMidQoMVHdpbmtsZUdyYW50EgoKAmlkGAEgASgJEhIKCmdyYW50ZWRfYnkYAiABKAkSEwoLdGFyZ2V0X3VzZXIYAyABKAkSDgoGYW1vdW50GAQgASgDEgwKBG5vdGUYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCSI7ChhMaXN0VHdpbmtsZUdyYW50c1JlcXVlc3QSDAoEcGFnZRgBIAEoBRIRCglwYWdlX3NpemUYAiABKAUibAoZTGlzdFR3aW5rbGVHcmFudHNSZXNwb25zZRIvCgZncmFudHMYASADKAsyHy5jb3NpbW9zaS5hZG1pbi52MS5Ud2lua2xlR3JhbnQSDAoEcGFnZRgCIAEoBRIQCghoYXNfbW9yZRgDIAEoCCLXAQoSQUlDYXBhYmlsaXR5Q29uZmlnEjMKCmNhcGFiaWxpdHkYASABKA4yHy5jb3NpbW9zaS5hZG1pbi52MS5BSUNhcGFiaWxpdHkSEAoIcHJvdmlkZXIYAiABKAkSDQoFbW9kZWwYAyABKAkSEAoIYmFzZV91cmwYBCABKAkSDwoHa2V5X3NldBgFIAEoCBIQCghrZXlfaGludBgGIAEoCRIOCgZzb3VyY2UYByABKAkSEgoKdXBkYXRlZF9ieRgIIAEoCRISCgp1cGRhdGVkX2F0GAkgASgJIhQKEkdldEFJQ29uZmlnUmVxdWVzdCJSChNHZXRBSUNvbmZpZ1Jlc3BvbnNlEjsKDGNhcGFiaWxpdGllcxgBIAMoCzIlLmNvc2ltb3NpLmFkbWluLnYxLkFJQ2FwYWJpbGl0eUNvbmZpZyKeAQoSU2V0QUlDb25maWdSZXF1ZXN0EjMKCmNhcGFiaWxpdHkYASABKA4yHy5jb3NpbW9zaS5hZG1pbi52MS5BSUNhcGFiaWxpdHkSEAoIcHJvdmlkZXIYAiABKAkSDQoFbW9kZWwYAyABKAkSEAoIYmFzZV91cmwYBCABKAkSFAoHYXBpX2tleRgFIAEoCUgAiAEBQgoKCF9hcGlfa2V5IlAKE1NldEFJQ29uZmlnUmVzcG9uc2USOQoKY2FwYWJpbGl0eRgBIAEoCzIlLmNvc2ltb3NpLmFkbWluLnYxLkFJQ2FwYWJpbGl0eUNvbmZpZyJwChFBSVVzYWdlQ2FwYWJpbGl0eRIzCgpjYXBhYmlsaXR5GAEgASgOMh8uY29zaW1vc2kuYWRtaW4udjEuQUlDYXBhYmlsaXR5EhMKC2NhbGxzX3RvZGF5GAIgASgDEhEKCWRhaWx5X2NhcBgDIAEoAyITChFHZXRBSVVzYWdlUmVxdWVzdCKbAQoSR2V0QUlVc2FnZVJlc3BvbnNlEjoKDGNhcGFiaWxpdGllcxgBIAMoCzIkLmNvc2ltb3NpLmFkbWluLnYxLkFJVXNhZ2VDYXBhYmlsaXR5EhoKEnBlcl9jYWxsX3Rva2VuX2NhcBgCIAEoAxIWCg53aW5kb3dfdXRjX2RheRgDIAEoCRIVCg1wcm9jZXNzX2xvY2FsGAQgASgIIhUKE0dldEpvYkhlYWx0aFJlcXVlc3QibQoUR2V0Sm9iSGVhbHRoUmVzcG9uc2USDwoHcGVuZGluZxgBIAEoAxIPCgdydW5uaW5nGAIgASgDEgwKBGRvbmUYAyABKAMSDgoGZmFpbGVkGAQgASgDEhUKDWRlYWRfbGV0dGVyZWQYBSABKAMqYQoMQUlDYXBhYmlsaXR5Eh0KGUFJX0NBUEFCSUxJVFlfVU5TUEVDSUZJRUQQABIVChFBSV9DQVBBQklMSVRZX0xMTRABEhsKF0FJX0NBUEFCSUxJVFlfRU1CRURESU5HEAIyyggKDEFkbWluU2VydmljZRJkCgxHZXRBZG1pblNlbGYSJi5jb3NpbW9zaS5hZG1pbi52MS5HZXRBZG1pblNlbGZSZXF1ZXN0GicuY29zaW1vc2kuYWRtaW4udjEuR2V0QWRtaW5TZWxmUmVzcG9uc2UiA5ACARJeCgpMaXN0QWRtaW5zEiQuY29zaW1vc2kuYWRtaW4udjEuTGlzdEFkbWluc1JlcXVlc3QaJS5jb3NpbW9zaS5hZG1pbi52MS5MaXN0QWRtaW5zUmVzcG9uc2UiA5ACARJZCgpHcmFudEFkbWluEiQuY29zaW1vc2kuYWRtaW4udjEuR3JhbnRBZG1pblJlcXVlc3QaJS5jb3NpbW9zaS5hZG1pbi52MS5HcmFudEFkbWluUmVzcG9uc2USXAoLUmV2b2tlQWRtaW4SJS5jb3NpbW9zaS5hZG1pbi52MS5SZXZva2VBZG1pblJlcXVlc3QaJi5jb3NpbW9zaS5hZG1pbi52MS5SZXZva2VBZG1pblJlc3BvbnNlElsKCUxpc3RVc2VycxIjLmNvc2ltb3NpLmFkbWluLnYxLkxpc3RVc2Vyc1JlcXVlc3QaJC5jb3NpbW9zaS5hZG1pbi52MS5MaXN0VXNlcnNSZXNwb25zZSIDkAIBEmIKDUdyYW50U3RhcmR1c3QSJy5jb3NpbW9zaS5hZG1pbi52MS5HcmFudFN0YXJkdXN0UmVxdWVzdBooLmNvc2ltb3NpLmFkbWluLnYxLkdyYW50U3RhcmR1c3RSZXNwb25zZRJzChFMaXN0VHdpbmtsZUdyYW50cxIrLmNvc2ltb3NpLmFkbWluLnYxLkxpc3RUd2lua2xlR3JhbnRzUmVxdWVzdBosLmNvc2ltb3NpLmFkbWluLnYxLkxpc3RUd2lua2xlR3JhbnRzUmVzcG9uc2UiA5ACARJhCgtHZXRBSUNvbmZpZxIlLmNvc2ltb3NpLmFkbWluLnYxLkdldEFJQ29uZmlnUmVxdWVzdBomLmNvc2ltb3NpLmFkbWluLnYxLkdldEFJQ29uZmlnUmVzcG9uc2UiA5ACARJcCgtTZXRBSUNvbmZpZxIlLmNvc2ltb3NpLmFkbWluLnYxLlNldEFJQ29uZmlnUmVxdWVzdBomLmNvc2ltb3NpLmFkbWluLnYxLlNldEFJQ29uZmlnUmVzcG9uc2USXgoKR2V0QUlVc2FnZRIkLmNvc2ltb3NpLmFkbWluLnYxLkdldEFJVXNhZ2VSZXF1ZXN0GiUuY29zaW1vc2kuYWRtaW4udjEuR2V0QUlVc2FnZVJlc3BvbnNlIgOQAgESZAoMR2V0Sm9iSGVhbHRoEiYuY29zaW1vc2kuYWRtaW4udjEuR2V0Sm9iSGVhbHRoUmVxdWVzdBonLmNvc2ltb3NpLmFkbWluLnYxLkdldEpvYkhlYWx0aFJlc3BvbnNlIgOQAgFCyQEKFWNvbS5jb3NpbW9zaS5hZG1pbi52MUIKQWRtaW5Qcm90b1ABWj5naXRodWIuY29tL2Nvc2ltb3NpL2FwaS9pbnRlcm5hbC9nZW4vY29zaW1vc2kvYWRtaW4vdjE7YWRtaW52MaICA0NBWKoCEUNvc2ltb3NpLkFkbWluLlYxygIRQ29zaW1vc2lcQWRtaW5cVjHiAh1Db3NpbW9zaVxBZG1pblxWMVxHUEJNZXRhZGF0YeoCE0Nvc2ltb3NpOjpBZG1pbjo6VjFiBnByb3RvMw");
+  fileDesc("Ch1jb3NpbW9zaS9hZG1pbi92MS9hZG1pbi5wcm90bxIRY29zaW1vc2kuYWRtaW4udjEiFQoTR2V0QWRtaW5TZWxmUmVxdWVzdCIoChRHZXRBZG1pblNlbGZSZXNwb25zZRIQCghpc19hZG1pbhgBIAEoCCJWCgpBZG1pbkVudHJ5Eg8KB3VzZXJfaWQYASABKAkSDwoHaXNfc2VlZBgCIAEoCBISCgpncmFudGVkX2J5GAMgASgJEhIKCmdyYW50ZWRfYXQYBCABKAkiEwoRTGlzdEFkbWluc1JlcXVlc3QiQwoSTGlzdEFkbWluc1Jlc3BvbnNlEi0KBmFkbWlucxgBIAMoCzIdLmNvc2ltb3NpLmFkbWluLnYxLkFkbWluRW50cnkiJAoRR3JhbnRBZG1pblJlcXVlc3QSDwoHdXNlcl9pZBgBIAEoCSImChJHcmFudEFkbWluUmVzcG9uc2USEAoIaXNfYWRtaW4YASABKAgiJQoSUmV2b2tlQWRtaW5SZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiJwoTUmV2b2tlQWRtaW5SZXNwb25zZRIQCghpc19hZG1pbhgBIAEoCCLNAQoJQWRtaW5Vc2VyEg8KB3VzZXJfaWQYASABKAkSDQoFZW1haWwYAiABKAkSEQoJc2lnbnVwX2F0GAMgASgJEhAKCGlzX2FkbWluGAQgASgIEhUKDWlzX3NlZWRfYWRtaW4YBSABKAgSDQoFYmFzaWMYBiABKAMSEgoKYWRkaXRpb25hbBgHIAEoAxINCgV0b3RhbBgIIAEoAxITCgtkaWFyeV9jb3VudBgJIAEoAxIdChVlcGlzb2RpY19tZW1vcnlfY291bnQYCiABKAMiQgoQTGlzdFVzZXJzUmVxdWVzdBIMCgRwYWdlGAEgASgFEhEKCXBhZ2Vfc2l6ZRgCIAEoBRINCgVxdWVyeRgDIAEoCSJgChFMaXN0VXNlcnNSZXNwb25zZRIrCgV1c2VycxgBIAMoCzIcLmNvc2ltb3NpLmFkbWluLnYxLkFkbWluVXNlchIMCgRwYWdlGAIgASgFEhAKCGhhc19tb3JlGAMgASgIIlcKFEdyYW50U3RhcmR1c3RSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSDgoGYW1vdW50GAIgASgDEgwKBG5vdGUYAyABKAkSEAoIZ3JhbnRfaWQYBCABKAkiLgoVR3JhbnRTdGFyZHVzdFJlc3BvbnNlEhUKDWJhbGFuY2VfdG90YWwYASABKAMidQoMVHdpbmtsZUdyYW50EgoKAmlkGAEgASgJEhIKCmdyYW50ZWRfYnkYAiABKAkSEwoLdGFyZ2V0X3VzZXIYAyABKAkSDgoGYW1vdW50GAQgASgDEgwKBG5vdGUYBSABKAkSEgoKY3JlYXRlZF9hdBgGIAEoCSI7ChhMaXN0VHdpbmtsZUdyYW50c1JlcXVlc3QSDAoEcGFnZRgBIAEoBRIRCglwYWdlX3NpemUYAiABKAUibAoZTGlzdFR3aW5rbGVHcmFudHNSZXNwb25zZRIvCgZncmFudHMYASADKAsyHy5jb3NpbW9zaS5hZG1pbi52MS5Ud2lua2xlR3JhbnQSDAoEcGFnZRgCIAEoBRIQCghoYXNfbW9yZRgDIAEoCCLmAQoLUHJvdmlkZXJLZXkSEAoIcHJvdmlkZXIYASABKAkSDwoHa2V5X3NldBgCIAEoCBIQCghrZXlfaGludBgDIAEoCRIUCgxzdXBwb3J0c19sbG0YBCABKAgSGgoSc3VwcG9ydHNfZW1iZWRkaW5nGAUgASgIEhcKD2ltcGxlbWVudGVkX2xsbRgGIAEoCBIdChVpbXBsZW1lbnRlZF9lbWJlZGRpbmcYByABKAgSEAoIYmFzZV91cmwYCCABKAkSEgoKdXBkYXRlZF9ieRgJIAEoCRISCgp1cGRhdGVkX2F0GAogASgJIhkKF0xpc3RQcm92aWRlcktleXNSZXF1ZXN0Ik0KGExpc3RQcm92aWRlcktleXNSZXNwb25zZRIxCglwcm92aWRlcnMYASADKAsyHi5jb3NpbW9zaS5hZG1pbi52MS5Qcm92aWRlcktleSJMChVTZXRQcm92aWRlcktleVJlcXVlc3QSEAoIcHJvdmlkZXIYASABKAkSDwoHYXBpX2tleRgCIAEoCRIQCghiYXNlX3VybBgDIAEoCSJKChZTZXRQcm92aWRlcktleVJlc3BvbnNlEjAKCHByb3ZpZGVyGAEgASgLMh4uY29zaW1vc2kuYWRtaW4udjEuUHJvdmlkZXJLZXkiKwoXQ2xlYXJQcm92aWRlcktleVJlcXVlc3QSEAoIcHJvdmlkZXIYASABKAkiTAoYQ2xlYXJQcm92aWRlcktleVJlc3BvbnNlEjAKCHByb3ZpZGVyGAEgASgLMh4uY29zaW1vc2kuYWRtaW4udjEuUHJvdmlkZXJLZXkiowEKE0NhcGFiaWxpdHlTZWxlY3Rpb24SMwoKY2FwYWJpbGl0eRgBIAEoDjIfLmNvc2ltb3NpLmFkbWluLnYxLkFJQ2FwYWJpbGl0eRIQCghwcm92aWRlchgCIAEoCRINCgVtb2RlbBgDIAEoCRIOCgZzb3VyY2UYBCABKAkSEgoKdXBkYXRlZF9ieRgFIAEoCRISCgp1cGRhdGVkX2F0GAYgASgJIhQKEkdldEFJQ29uZmlnUmVxdWVzdCJRChNHZXRBSUNvbmZpZ1Jlc3BvbnNlEjoKCnNlbGVjdGlvbnMYASADKAsyJi5jb3NpbW9zaS5hZG1pbi52MS5DYXBhYmlsaXR5U2VsZWN0aW9uImoKElNldEFJQ29uZmlnUmVxdWVzdBIzCgpjYXBhYmlsaXR5GAEgASgOMh8uY29zaW1vc2kuYWRtaW4udjEuQUlDYXBhYmlsaXR5EhAKCHByb3ZpZGVyGAIgASgJEg0KBW1vZGVsGAMgASgJIlAKE1NldEFJQ29uZmlnUmVzcG9uc2USOQoJc2VsZWN0aW9uGAEgASgLMiYuY29zaW1vc2kuYWRtaW4udjEuQ2FwYWJpbGl0eVNlbGVjdGlvbiJwChFBSVVzYWdlQ2FwYWJpbGl0eRIzCgpjYXBhYmlsaXR5GAEgASgOMh8uY29zaW1vc2kuYWRtaW4udjEuQUlDYXBhYmlsaXR5EhMKC2NhbGxzX3RvZGF5GAIgASgDEhEKCWRhaWx5X2NhcBgDIAEoAyITChFHZXRBSVVzYWdlUmVxdWVzdCKbAQoSR2V0QUlVc2FnZVJlc3BvbnNlEjoKDGNhcGFiaWxpdGllcxgBIAMoCzIkLmNvc2ltb3NpLmFkbWluLnYxLkFJVXNhZ2VDYXBhYmlsaXR5EhoKEnBlcl9jYWxsX3Rva2VuX2NhcBgCIAEoAxIWCg53aW5kb3dfdXRjX2RheRgDIAEoCRIVCg1wcm9jZXNzX2xvY2FsGAQgASgIIhUKE0dldEpvYkhlYWx0aFJlcXVlc3QibQoUR2V0Sm9iSGVhbHRoUmVzcG9uc2USDwoHcGVuZGluZxgBIAEoAxIPCgdydW5uaW5nGAIgASgDEgwKBGRvbmUYAyABKAMSDgoGZmFpbGVkGAQgASgDEhUKDWRlYWRfbGV0dGVyZWQYBSABKAMqYQoMQUlDYXBhYmlsaXR5Eh0KGUFJX0NBUEFCSUxJVFlfVU5TUEVDSUZJRUQQABIVChFBSV9DQVBBQklMSVRZX0xMTRABEhsKF0FJX0NBUEFCSUxJVFlfRU1CRURESU5HEAIykAsKDEFkbWluU2VydmljZRJkCgxHZXRBZG1pblNlbGYSJi5jb3NpbW9zaS5hZG1pbi52MS5HZXRBZG1pblNlbGZSZXF1ZXN0GicuY29zaW1vc2kuYWRtaW4udjEuR2V0QWRtaW5TZWxmUmVzcG9uc2UiA5ACARJeCgpMaXN0QWRtaW5zEiQuY29zaW1vc2kuYWRtaW4udjEuTGlzdEFkbWluc1JlcXVlc3QaJS5jb3NpbW9zaS5hZG1pbi52MS5MaXN0QWRtaW5zUmVzcG9uc2UiA5ACARJZCgpHcmFudEFkbWluEiQuY29zaW1vc2kuYWRtaW4udjEuR3JhbnRBZG1pblJlcXVlc3QaJS5jb3NpbW9zaS5hZG1pbi52MS5HcmFudEFkbWluUmVzcG9uc2USXAoLUmV2b2tlQWRtaW4SJS5jb3NpbW9zaS5hZG1pbi52MS5SZXZva2VBZG1pblJlcXVlc3QaJi5jb3NpbW9zaS5hZG1pbi52MS5SZXZva2VBZG1pblJlc3BvbnNlElsKCUxpc3RVc2VycxIjLmNvc2ltb3NpLmFkbWluLnYxLkxpc3RVc2Vyc1JlcXVlc3QaJC5jb3NpbW9zaS5hZG1pbi52MS5MaXN0VXNlcnNSZXNwb25zZSIDkAIBEmIKDUdyYW50U3RhcmR1c3QSJy5jb3NpbW9zaS5hZG1pbi52MS5HcmFudFN0YXJkdXN0UmVxdWVzdBooLmNvc2ltb3NpLmFkbWluLnYxLkdyYW50U3RhcmR1c3RSZXNwb25zZRJzChFMaXN0VHdpbmtsZUdyYW50cxIrLmNvc2ltb3NpLmFkbWluLnYxLkxpc3RUd2lua2xlR3JhbnRzUmVxdWVzdBosLmNvc2ltb3NpLmFkbWluLnYxLkxpc3RUd2lua2xlR3JhbnRzUmVzcG9uc2UiA5ACARJwChBMaXN0UHJvdmlkZXJLZXlzEiouY29zaW1vc2kuYWRtaW4udjEuTGlzdFByb3ZpZGVyS2V5c1JlcXVlc3QaKy5jb3NpbW9zaS5hZG1pbi52MS5MaXN0UHJvdmlkZXJLZXlzUmVzcG9uc2UiA5ACARJlCg5TZXRQcm92aWRlcktleRIoLmNvc2ltb3NpLmFkbWluLnYxLlNldFByb3ZpZGVyS2V5UmVxdWVzdBopLmNvc2ltb3NpLmFkbWluLnYxLlNldFByb3ZpZGVyS2V5UmVzcG9uc2USawoQQ2xlYXJQcm92aWRlcktleRIqLmNvc2ltb3NpLmFkbWluLnYxLkNsZWFyUHJvdmlkZXJLZXlSZXF1ZXN0GisuY29zaW1vc2kuYWRtaW4udjEuQ2xlYXJQcm92aWRlcktleVJlc3BvbnNlEmEKC0dldEFJQ29uZmlnEiUuY29zaW1vc2kuYWRtaW4udjEuR2V0QUlDb25maWdSZXF1ZXN0GiYuY29zaW1vc2kuYWRtaW4udjEuR2V0QUlDb25maWdSZXNwb25zZSIDkAIBElwKC1NldEFJQ29uZmlnEiUuY29zaW1vc2kuYWRtaW4udjEuU2V0QUlDb25maWdSZXF1ZXN0GiYuY29zaW1vc2kuYWRtaW4udjEuU2V0QUlDb25maWdSZXNwb25zZRJeCgpHZXRBSVVzYWdlEiQuY29zaW1vc2kuYWRtaW4udjEuR2V0QUlVc2FnZVJlcXVlc3QaJS5jb3NpbW9zaS5hZG1pbi52MS5HZXRBSVVzYWdlUmVzcG9uc2UiA5ACARJkCgxHZXRKb2JIZWFsdGgSJi5jb3NpbW9zaS5hZG1pbi52MS5HZXRKb2JIZWFsdGhSZXF1ZXN0GicuY29zaW1vc2kuYWRtaW4udjEuR2V0Sm9iSGVhbHRoUmVzcG9uc2UiA5ACAULJAQoVY29tLmNvc2ltb3NpLmFkbWluLnYxQgpBZG1pblByb3RvUAFaPmdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS9hZG1pbi92MTthZG1pbnYxogIDQ0FYqgIRQ29zaW1vc2kuQWRtaW4uVjHKAhFDb3NpbW9zaVxBZG1pblxWMeICHUNvc2ltb3NpXEFkbWluXFYxXEdQQk1ldGFkYXRh6gITQ29zaW1vc2k6OkFkbWluOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message cosimosi.admin.v1.GetAdminSelfRequest
@@ -457,12 +457,193 @@ export const ListTwinkleGrantsResponseSchema: GenMessage<ListTwinkleGrantsRespon
   messageDesc(file_cosimosi_admin_v1_admin, 16);
 
 /**
- * The effective config for one capability. source tells the operator where it comes from
- * ("db" | "env" | "unset"); key_hint is a masked tail (e.g. "…abcd") or empty, never the key.
+ * One provider slot's key status + capability support. key_hint is a masked tail (e.g. "…abcd") or
+ * empty; the key itself is never returned. supports_* = the slot offers that capability;
+ * implemented_* = a concrete adapter exists (an unimplemented slot can hold a key but fails if
+ * selected until its adapter ships).
  *
- * @generated from message cosimosi.admin.v1.AICapabilityConfig
+ * @generated from message cosimosi.admin.v1.ProviderKey
  */
-export type AICapabilityConfig = Message<"cosimosi.admin.v1.AICapabilityConfig"> & {
+export type ProviderKey = Message<"cosimosi.admin.v1.ProviderKey"> & {
+  /**
+   * @generated from field: string provider = 1;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: bool key_set = 2;
+   */
+  keySet: boolean;
+
+  /**
+   * @generated from field: string key_hint = 3;
+   */
+  keyHint: string;
+
+  /**
+   * @generated from field: bool supports_llm = 4;
+   */
+  supportsLlm: boolean;
+
+  /**
+   * @generated from field: bool supports_embedding = 5;
+   */
+  supportsEmbedding: boolean;
+
+  /**
+   * @generated from field: bool implemented_llm = 6;
+   */
+  implementedLlm: boolean;
+
+  /**
+   * @generated from field: bool implemented_embedding = 7;
+   */
+  implementedEmbedding: boolean;
+
+  /**
+   * @generated from field: string base_url = 8;
+   */
+  baseUrl: string;
+
+  /**
+   * @generated from field: string updated_by = 9;
+   */
+  updatedBy: string;
+
+  /**
+   * RFC3339; empty when unset
+   *
+   * @generated from field: string updated_at = 10;
+   */
+  updatedAt: string;
+};
+
+/**
+ * Describes the message cosimosi.admin.v1.ProviderKey.
+ * Use `create(ProviderKeySchema)` to create a new message.
+ */
+export const ProviderKeySchema: GenMessage<ProviderKey> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 17);
+
+/**
+ * @generated from message cosimosi.admin.v1.ListProviderKeysRequest
+ */
+export type ListProviderKeysRequest = Message<"cosimosi.admin.v1.ListProviderKeysRequest"> & {
+};
+
+/**
+ * Describes the message cosimosi.admin.v1.ListProviderKeysRequest.
+ * Use `create(ListProviderKeysRequestSchema)` to create a new message.
+ */
+export const ListProviderKeysRequestSchema: GenMessage<ListProviderKeysRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 18);
+
+/**
+ * @generated from message cosimosi.admin.v1.ListProviderKeysResponse
+ */
+export type ListProviderKeysResponse = Message<"cosimosi.admin.v1.ListProviderKeysResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.admin.v1.ProviderKey providers = 1;
+   */
+  providers: ProviderKey[];
+};
+
+/**
+ * Describes the message cosimosi.admin.v1.ListProviderKeysResponse.
+ * Use `create(ListProviderKeysResponseSchema)` to create a new message.
+ */
+export const ListProviderKeysResponseSchema: GenMessage<ListProviderKeysResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 19);
+
+/**
+ * @generated from message cosimosi.admin.v1.SetProviderKeyRequest
+ */
+export type SetProviderKeyRequest = Message<"cosimosi.admin.v1.SetProviderKeyRequest"> & {
+  /**
+   * @generated from field: string provider = 1;
+   */
+  provider: string;
+
+  /**
+   * encrypted at rest; write-only
+   *
+   * @generated from field: string api_key = 2;
+   */
+  apiKey: string;
+
+  /**
+   * optional per-provider endpoint override
+   *
+   * @generated from field: string base_url = 3;
+   */
+  baseUrl: string;
+};
+
+/**
+ * Describes the message cosimosi.admin.v1.SetProviderKeyRequest.
+ * Use `create(SetProviderKeyRequestSchema)` to create a new message.
+ */
+export const SetProviderKeyRequestSchema: GenMessage<SetProviderKeyRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 20);
+
+/**
+ * @generated from message cosimosi.admin.v1.SetProviderKeyResponse
+ */
+export type SetProviderKeyResponse = Message<"cosimosi.admin.v1.SetProviderKeyResponse"> & {
+  /**
+   * @generated from field: cosimosi.admin.v1.ProviderKey provider = 1;
+   */
+  provider?: ProviderKey | undefined;
+};
+
+/**
+ * Describes the message cosimosi.admin.v1.SetProviderKeyResponse.
+ * Use `create(SetProviderKeyResponseSchema)` to create a new message.
+ */
+export const SetProviderKeyResponseSchema: GenMessage<SetProviderKeyResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 21);
+
+/**
+ * @generated from message cosimosi.admin.v1.ClearProviderKeyRequest
+ */
+export type ClearProviderKeyRequest = Message<"cosimosi.admin.v1.ClearProviderKeyRequest"> & {
+  /**
+   * @generated from field: string provider = 1;
+   */
+  provider: string;
+};
+
+/**
+ * Describes the message cosimosi.admin.v1.ClearProviderKeyRequest.
+ * Use `create(ClearProviderKeyRequestSchema)` to create a new message.
+ */
+export const ClearProviderKeyRequestSchema: GenMessage<ClearProviderKeyRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 22);
+
+/**
+ * @generated from message cosimosi.admin.v1.ClearProviderKeyResponse
+ */
+export type ClearProviderKeyResponse = Message<"cosimosi.admin.v1.ClearProviderKeyResponse"> & {
+  /**
+   * @generated from field: cosimosi.admin.v1.ProviderKey provider = 1;
+   */
+  provider?: ProviderKey | undefined;
+};
+
+/**
+ * Describes the message cosimosi.admin.v1.ClearProviderKeyResponse.
+ * Use `create(ClearProviderKeyResponseSchema)` to create a new message.
+ */
+export const ClearProviderKeyResponseSchema: GenMessage<ClearProviderKeyResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 23);
+
+/**
+ * One capability's selected provider + model. source tells the operator where it comes from
+ * ("db" | "env" | "unset").
+ *
+ * @generated from message cosimosi.admin.v1.CapabilitySelection
+ */
+export type CapabilitySelection = Message<"cosimosi.admin.v1.CapabilitySelection"> & {
   /**
    * @generated from field: cosimosi.admin.v1.AICapability capability = 1;
    */
@@ -479,44 +660,29 @@ export type AICapabilityConfig = Message<"cosimosi.admin.v1.AICapabilityConfig">
   model: string;
 
   /**
-   * @generated from field: string base_url = 4;
-   */
-  baseUrl: string;
-
-  /**
-   * @generated from field: bool key_set = 5;
-   */
-  keySet: boolean;
-
-  /**
-   * @generated from field: string key_hint = 6;
-   */
-  keyHint: string;
-
-  /**
-   * @generated from field: string source = 7;
+   * @generated from field: string source = 4;
    */
   source: string;
 
   /**
-   * @generated from field: string updated_by = 8;
+   * @generated from field: string updated_by = 5;
    */
   updatedBy: string;
 
   /**
    * RFC3339; empty when unset/from env
    *
-   * @generated from field: string updated_at = 9;
+   * @generated from field: string updated_at = 6;
    */
   updatedAt: string;
 };
 
 /**
- * Describes the message cosimosi.admin.v1.AICapabilityConfig.
- * Use `create(AICapabilityConfigSchema)` to create a new message.
+ * Describes the message cosimosi.admin.v1.CapabilitySelection.
+ * Use `create(CapabilitySelectionSchema)` to create a new message.
  */
-export const AICapabilityConfigSchema: GenMessage<AICapabilityConfig> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 17);
+export const CapabilitySelectionSchema: GenMessage<CapabilitySelection> = /*@__PURE__*/
+  messageDesc(file_cosimosi_admin_v1_admin, 24);
 
 /**
  * @generated from message cosimosi.admin.v1.GetAIConfigRequest
@@ -529,16 +695,16 @@ export type GetAIConfigRequest = Message<"cosimosi.admin.v1.GetAIConfigRequest">
  * Use `create(GetAIConfigRequestSchema)` to create a new message.
  */
 export const GetAIConfigRequestSchema: GenMessage<GetAIConfigRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 18);
+  messageDesc(file_cosimosi_admin_v1_admin, 25);
 
 /**
  * @generated from message cosimosi.admin.v1.GetAIConfigResponse
  */
 export type GetAIConfigResponse = Message<"cosimosi.admin.v1.GetAIConfigResponse"> & {
   /**
-   * @generated from field: repeated cosimosi.admin.v1.AICapabilityConfig capabilities = 1;
+   * @generated from field: repeated cosimosi.admin.v1.CapabilitySelection selections = 1;
    */
-  capabilities: AICapabilityConfig[];
+  selections: CapabilitySelection[];
 };
 
 /**
@@ -546,7 +712,7 @@ export type GetAIConfigResponse = Message<"cosimosi.admin.v1.GetAIConfigResponse
  * Use `create(GetAIConfigResponseSchema)` to create a new message.
  */
 export const GetAIConfigResponseSchema: GenMessage<GetAIConfigResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 19);
+  messageDesc(file_cosimosi_admin_v1_admin, 26);
 
 /**
  * @generated from message cosimosi.admin.v1.SetAIConfigRequest
@@ -566,18 +732,6 @@ export type SetAIConfigRequest = Message<"cosimosi.admin.v1.SetAIConfigRequest">
    * @generated from field: string model = 3;
    */
   model: string;
-
-  /**
-   * @generated from field: string base_url = 4;
-   */
-  baseUrl: string;
-
-  /**
-   * present → replace (encrypted at rest); omit → keep stored key
-   *
-   * @generated from field: optional string api_key = 5;
-   */
-  apiKey?: string | undefined;
 };
 
 /**
@@ -585,16 +739,16 @@ export type SetAIConfigRequest = Message<"cosimosi.admin.v1.SetAIConfigRequest">
  * Use `create(SetAIConfigRequestSchema)` to create a new message.
  */
 export const SetAIConfigRequestSchema: GenMessage<SetAIConfigRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 20);
+  messageDesc(file_cosimosi_admin_v1_admin, 27);
 
 /**
  * @generated from message cosimosi.admin.v1.SetAIConfigResponse
  */
 export type SetAIConfigResponse = Message<"cosimosi.admin.v1.SetAIConfigResponse"> & {
   /**
-   * @generated from field: cosimosi.admin.v1.AICapabilityConfig capability = 1;
+   * @generated from field: cosimosi.admin.v1.CapabilitySelection selection = 1;
    */
-  capability?: AICapabilityConfig | undefined;
+  selection?: CapabilitySelection | undefined;
 };
 
 /**
@@ -602,7 +756,7 @@ export type SetAIConfigResponse = Message<"cosimosi.admin.v1.SetAIConfigResponse
  * Use `create(SetAIConfigResponseSchema)` to create a new message.
  */
 export const SetAIConfigResponseSchema: GenMessage<SetAIConfigResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 21);
+  messageDesc(file_cosimosi_admin_v1_admin, 28);
 
 /**
  * @generated from message cosimosi.admin.v1.AIUsageCapability
@@ -629,7 +783,7 @@ export type AIUsageCapability = Message<"cosimosi.admin.v1.AIUsageCapability"> &
  * Use `create(AIUsageCapabilitySchema)` to create a new message.
  */
 export const AIUsageCapabilitySchema: GenMessage<AIUsageCapability> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 22);
+  messageDesc(file_cosimosi_admin_v1_admin, 29);
 
 /**
  * @generated from message cosimosi.admin.v1.GetAIUsageRequest
@@ -642,7 +796,7 @@ export type GetAIUsageRequest = Message<"cosimosi.admin.v1.GetAIUsageRequest"> &
  * Use `create(GetAIUsageRequestSchema)` to create a new message.
  */
 export const GetAIUsageRequestSchema: GenMessage<GetAIUsageRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 23);
+  messageDesc(file_cosimosi_admin_v1_admin, 30);
 
 /**
  * @generated from message cosimosi.admin.v1.GetAIUsageResponse
@@ -666,7 +820,7 @@ export type GetAIUsageResponse = Message<"cosimosi.admin.v1.GetAIUsageResponse">
   windowUtcDay: string;
 
   /**
-   * true: the meter is in-process/in-memory (plan-58 limitation)
+   * true: the meter is in-process/in-memory (the admin console limitation)
    *
    * @generated from field: bool process_local = 4;
    */
@@ -678,7 +832,7 @@ export type GetAIUsageResponse = Message<"cosimosi.admin.v1.GetAIUsageResponse">
  * Use `create(GetAIUsageResponseSchema)` to create a new message.
  */
 export const GetAIUsageResponseSchema: GenMessage<GetAIUsageResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 24);
+  messageDesc(file_cosimosi_admin_v1_admin, 31);
 
 /**
  * @generated from message cosimosi.admin.v1.GetJobHealthRequest
@@ -691,7 +845,7 @@ export type GetJobHealthRequest = Message<"cosimosi.admin.v1.GetJobHealthRequest
  * Use `create(GetJobHealthRequestSchema)` to create a new message.
  */
 export const GetJobHealthRequestSchema: GenMessage<GetJobHealthRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 25);
+  messageDesc(file_cosimosi_admin_v1_admin, 32);
 
 /**
  * @generated from message cosimosi.admin.v1.GetJobHealthResponse
@@ -728,11 +882,11 @@ export type GetJobHealthResponse = Message<"cosimosi.admin.v1.GetJobHealthRespon
  * Use `create(GetJobHealthResponseSchema)` to create a new message.
  */
 export const GetJobHealthResponseSchema: GenMessage<GetJobHealthResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_admin_v1_admin, 26);
+  messageDesc(file_cosimosi_admin_v1_admin, 33);
 
 /**
  * The AI capability a provider config / usage row applies to. LLM and embedding are selected
- * independently (plan 28).
+ * independently (the AI-provider abstraction).
  *
  * @generated from enum cosimosi.admin.v1.AICapability
  */
@@ -760,9 +914,9 @@ export const AICapabilitySchema: GenEnum<AICapability> = /*@__PURE__*/
   enumDesc(file_cosimosi_admin_v1_admin, 0);
 
 /**
- * AdminService is the operator console contract (plan 58): a web-only /admin surface's backend.
+ * AdminService is the operator console contract (the admin console): a web-only /admin surface's backend.
  * Every method is admin-gated by the admin-authorization interceptor (env-seed ADMIN_USER_IDS ∪
- * DB-promoted admin_users) layered on the plan-04 auth interceptor — a non-admin caller is
+ * DB-promoted admin_users) layered on the the auth session auth interceptor — a non-admin caller is
  * rejected with PermissionDenied before any handler runs.
  *
  * Privacy defense ([I2]): this contract is metadata-only. No message here carries diary text,
@@ -847,8 +1001,38 @@ export const AdminService: GenService<{
     output: typeof ListTwinkleGrantsResponseSchema;
   },
   /**
-   * The effective AI provider config per capability (DB override over env). The API key is never
-   * returned — only key_set + a masked hint. Side-effect-free.
+   * Every provider slot with its per-provider API-key status + capability support. The key itself
+   * is never returned — only key_set + a masked hint. Side-effect-free.
+   *
+   * @generated from rpc cosimosi.admin.v1.AdminService.ListProviderKeys
+   */
+  listProviderKeys: {
+    methodKind: "unary";
+    input: typeof ListProviderKeysRequestSchema;
+    output: typeof ListProviderKeysResponseSchema;
+  },
+  /**
+   * Store (encrypt at rest) one provider's API key. Rejects an unknown provider slot.
+   *
+   * @generated from rpc cosimosi.admin.v1.AdminService.SetProviderKey
+   */
+  setProviderKey: {
+    methodKind: "unary";
+    input: typeof SetProviderKeyRequestSchema;
+    output: typeof SetProviderKeyResponseSchema;
+  },
+  /**
+   * Remove one provider's stored key.
+   *
+   * @generated from rpc cosimosi.admin.v1.AdminService.ClearProviderKey
+   */
+  clearProviderKey: {
+    methodKind: "unary";
+    input: typeof ClearProviderKeyRequestSchema;
+    output: typeof ClearProviderKeyResponseSchema;
+  },
+  /**
+   * The capability→provider/model selection (DB override over env). Side-effect-free.
    *
    * @generated from rpc cosimosi.admin.v1.AdminService.GetAIConfig
    */
@@ -858,9 +1042,8 @@ export const AdminService: GenService<{
     output: typeof GetAIConfigResponseSchema;
   },
   /**
-   * Set one capability's provider config (DB override, applied without redeploy). Rejects an
-   * unknown/unimplemented provider or an embedding model that cannot honor the embedding
-   * dimension. A supplied api_key is encrypted at rest; omitting it keeps the stored key.
+   * Select one capability's provider + model among the keyed, capability-compatible, implemented
+   * providers (DB override, applied without redeploy). No key here — keys are set per provider.
    *
    * @generated from rpc cosimosi.admin.v1.AdminService.SetAIConfig
    */

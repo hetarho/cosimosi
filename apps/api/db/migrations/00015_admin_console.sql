@@ -11,19 +11,30 @@ CREATE TABLE admin_users (
     granted_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ai_provider_config — service-global runtime AI provider selection (plan 58's change to plan 28's
--- env-only stance): one row per capability. The factory resolves DB row → env → keyless mock, so a
--- SetAIConfig here takes effect without redeploy. The API key is stored ENCRYPTED (AES-GCM, key
--- from LLM_KEY_ENCRYPTION_KEY) and is never returned by the read — only key_hint (a masked tail) is.
-CREATE TABLE ai_provider_config (
-    capability        TEXT PRIMARY KEY,          -- 'llm' | 'embedding'
-    provider          TEXT NOT NULL,
-    model             TEXT NOT NULL DEFAULT '',
+-- ai_provider_keys — service-global per-provider API keys the operator manages once (not per
+-- capability): one row per provider ('openai' | 'gemini' | 'anthropic' | 'deepseek' | 'glm' |
+-- 'kimi' | 'voyage'). The key is stored ENCRYPTED (AES-GCM, key from LLM_KEY_ENCRYPTION_KEY) and is
+-- never returned by the read — only key_hint (a masked tail) is. base_url is an optional per-key
+-- override for self-hosted/compatible endpoints.
+CREATE TABLE ai_provider_keys (
+    provider          TEXT PRIMARY KEY,
+    api_key_encrypted BYTEA NOT NULL,
+    key_hint          TEXT NOT NULL DEFAULT '',
     base_url          TEXT NOT NULL DEFAULT '',
-    api_key_encrypted BYTEA,                     -- NULL = no stored key (config falls back to env/mock)
-    key_hint          TEXT NOT NULL DEFAULT '',  -- masked tail for display; never the plaintext key
     updated_by        TEXT NOT NULL DEFAULT '',
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ai_provider_config — service-global capability selection: which keyed provider + model each
+-- capability uses. One row per capability ('llm' | 'embedding'); the key comes from
+-- ai_provider_keys by provider (no key column here). The factory resolves DB row → env → keyless
+-- mock, so a change here takes effect without a redeploy.
+CREATE TABLE ai_provider_config (
+    capability TEXT PRIMARY KEY,          -- 'llm' | 'embedding'
+    provider   TEXT NOT NULL,
+    model      TEXT NOT NULL DEFAULT '',
+    updated_by TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- admin_stardust_grants — append-only audit of admin 별가루 증정 (who granted, to whom, how much,
@@ -57,4 +68,5 @@ CREATE INDEX admin_audit_log_created_at_idx ON admin_audit_log (created_at DESC)
 DROP TABLE admin_audit_log;
 DROP TABLE admin_stardust_grants;
 DROP TABLE ai_provider_config;
+DROP TABLE ai_provider_keys;
 DROP TABLE admin_users;

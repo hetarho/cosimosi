@@ -14,13 +14,15 @@ type fakeStore struct {
 	promoted map[string]PromotedAdmin
 	grants   []TwinkleGrant
 	audits   []AuditEntry
-	configs  map[AICapability]*StoredAIConfig
+	configs  map[AICapability]*StoredCapabilityConfig
+	keys     map[string]*StoredProviderKey
 }
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
 		promoted: map[string]PromotedAdmin{},
-		configs:  map[AICapability]*StoredAIConfig{},
+		configs:  map[AICapability]*StoredCapabilityConfig{},
+		keys:     map[string]*StoredProviderKey{},
 	}
 }
 
@@ -59,14 +61,36 @@ func (s *fakeStore) RecordGrant(_ context.Context, grant TwinkleGrant, audit Aud
 func (s *fakeStore) ListGrants(context.Context, int, int) ([]TwinkleGrant, bool, error) {
 	return s.grants, false, nil
 }
-func (s *fakeStore) GetAIConfig(_ context.Context, capability AICapability) (*StoredAIConfig, error) {
+func (s *fakeStore) GetCapabilityConfig(_ context.Context, capability AICapability) (*StoredCapabilityConfig, error) {
 	return s.configs[capability], nil
 }
-func (s *fakeStore) UpsertAIConfig(_ context.Context, cfg StoredAIConfig, audit AuditEntry) error {
+func (s *fakeStore) UpsertCapabilityConfig(_ context.Context, cfg StoredCapabilityConfig, audit AuditEntry) error {
 	stored := cfg
 	s.configs[cfg.Capability] = &stored
 	s.audits = append(s.audits, audit)
 	return nil
+}
+func (s *fakeStore) GetProviderKey(_ context.Context, provider string) (*StoredProviderKey, error) {
+	return s.keys[provider], nil
+}
+func (s *fakeStore) ListProviderKeys(context.Context) ([]StoredProviderKey, error) {
+	out := make([]StoredProviderKey, 0, len(s.keys))
+	for _, k := range s.keys {
+		out = append(out, *k)
+	}
+	return out, nil
+}
+func (s *fakeStore) UpsertProviderKey(_ context.Context, key StoredProviderKey, audit AuditEntry) error {
+	stored := key
+	s.keys[key.Provider] = &stored
+	s.audits = append(s.audits, audit)
+	return nil
+}
+func (s *fakeStore) DeleteProviderKey(_ context.Context, provider string, audit AuditEntry) (bool, error) {
+	_, ok := s.keys[provider]
+	delete(s.keys, provider)
+	s.audits = append(s.audits, audit)
+	return ok, nil
 }
 
 type fakeDirectory struct {
@@ -123,10 +147,17 @@ func (fakeCipher) Encrypt(plaintext []byte) ([]byte, error) {
 }
 func (fakeCipher) Hint(string) string { return "…test" }
 
-type fakeValidator struct{ err error }
+// fakeCatalog: openai + anthropic are the known slots; both implemented; openai supports both
+// capabilities, anthropic LLM only (mirrors the real shape — no embedding for anthropic).
+type fakeCatalog struct{}
 
-func (v fakeValidator) ValidateLLM(string, string) error       { return v.err }
-func (v fakeValidator) ValidateEmbedding(string, string) error { return v.err }
+func (fakeCatalog) Slots() []string { return []string{"openai", "anthropic"} }
+func (fakeCatalog) SupportsLLM(p string) bool {
+	return p == "openai" || p == "anthropic"
+}
+func (fakeCatalog) SupportsEmbedding(p string) bool    { return p == "openai" }
+func (fakeCatalog) ImplementedLLM(p string) bool       { return p == "openai" || p == "anthropic" }
+func (fakeCatalog) ImplementedEmbedding(p string) bool { return p == "openai" }
 
 func newTestService(t *testing.T, store Store, deps func(*ServiceDeps)) *Service {
 	t.Helper()
@@ -138,7 +169,7 @@ func newTestService(t *testing.T, store Store, deps func(*ServiceDeps)) *Service
 		Usage:     fakeUsage{},
 		Jobs:      fakeJobs{},
 		Cipher:    fakeCipher{},
-		Validator: fakeValidator{},
+		Catalog:   fakeCatalog{},
 		NewID:     func() string { return "id-1" },
 	}
 	if deps != nil {
@@ -227,39 +258,64 @@ func TestGrantStardustCapAndIdempotency(t *testing.T) {
 	}
 }
 
-func TestSetAIConfigRejectsInvalidProviderAndEncryptsKey(t *testing.T) {
+func TestSetProviderKeyEncryptsAndMasks(t *testing.T) {
 	store := newFakeStore()
-	ctx := context.Background()
-
-	rejecting := newTestService(t, store, func(d *ServiceDeps) {
-		d.Validator = fakeValidator{err: errors.New("unknown provider")}
-	})
-	key := "sk-secret"
-	if _, err := rejecting.SetAIConfig(ctx, "actor", CapabilityLLM, "bogus", "m", "", &key); err == nil {
-		t.Fatal("expected SetAIConfig to reject an invalid provider")
-	}
-
 	svc := newTestService(t, store, nil)
-	cfg, err := svc.SetAIConfig(ctx, "actor", CapabilityLLM, "anthropic", "claude", "", &key)
+	ctx := context.Background()
+	key := "sk-secret"
+
+	// Unknown provider slot is refused.
+	if _, err := svc.SetProviderKey(ctx, "actor", "bogus", key, ""); !errors.Is(err, ErrUnknownProvider) {
+		t.Fatalf("unknown provider err = %v, want ErrUnknownProvider", err)
+	}
+	info, err := svc.SetProviderKey(ctx, "actor", "openai", key, "")
 	if err != nil {
-		t.Fatalf("SetAIConfig: %v", err)
+		t.Fatalf("SetProviderKey: %v", err)
 	}
-	// The response never carries the plaintext key — only key_set + a masked hint.
-	if !cfg.KeySet || cfg.KeyHint == key {
-		t.Errorf("config leaks the key: keySet=%v hint=%q", cfg.KeySet, cfg.KeyHint)
+	if !info.KeySet || info.KeyHint == key {
+		t.Errorf("key leaked: keySet=%v hint=%q", info.KeySet, info.KeyHint)
 	}
-	stored := store.configs[CapabilityLLM]
+	stored := store.keys["openai"]
 	if stored == nil || string(stored.APIKeyEncrypted) == key {
 		t.Error("stored key must be encrypted at rest, never plaintext")
 	}
-	// GetAIConfig also masks the key.
-	got, err := svc.GetAIConfig(ctx)
+	// ListProviderKeys masks too and reports capability support.
+	list, err := svc.ListProviderKeys(ctx)
 	if err != nil {
-		t.Fatalf("GetAIConfig: %v", err)
+		t.Fatalf("ListProviderKeys: %v", err)
 	}
-	for _, c := range got {
-		if c.KeyHint == key {
-			t.Error("GetAIConfig returned the plaintext key")
+	for _, p := range list {
+		if p.KeyHint == key {
+			t.Error("ListProviderKeys returned the plaintext key")
 		}
+	}
+}
+
+func TestSetAIConfigRequiresSupportKeyAndImplementation(t *testing.T) {
+	store := newFakeStore()
+	svc := newTestService(t, store, nil)
+	ctx := context.Background()
+
+	// No key yet → refused.
+	if _, err := svc.SetAIConfig(ctx, "actor", CapabilityLLM, "openai", "gpt"); !errors.Is(err, ErrProviderKeyMissing) {
+		t.Fatalf("no-key err = %v, want ErrProviderKeyMissing", err)
+	}
+	if _, err := svc.SetProviderKey(ctx, "actor", "openai", "sk", ""); err != nil {
+		t.Fatalf("SetProviderKey: %v", err)
+	}
+	if _, err := svc.SetProviderKey(ctx, "actor", "anthropic", "sk", ""); err != nil {
+		t.Fatalf("SetProviderKey: %v", err)
+	}
+	// anthropic has a key but does not support embedding → capability mismatch.
+	if _, err := svc.SetAIConfig(ctx, "actor", CapabilityEmbedding, "anthropic", "m"); !errors.Is(err, ErrProviderCapabilityMismatch) {
+		t.Fatalf("embedding-on-anthropic err = %v, want ErrProviderCapabilityMismatch", err)
+	}
+	// openai LLM with a key + support + implemented → ok.
+	sel, err := svc.SetAIConfig(ctx, "actor", CapabilityLLM, "openai", "gpt")
+	if err != nil {
+		t.Fatalf("SetAIConfig: %v", err)
+	}
+	if sel.Provider != "openai" || sel.Source != "db" {
+		t.Errorf("selection = %+v, want openai/db", sel)
 	}
 }

@@ -355,5 +355,12 @@
   "admin_jobs_running": "Running",
   "admin_jobs_done": "Done",
   "admin_jobs_failed": "Failed",
-  "admin_jobs_dead": "Dead-lettered"
+  "admin_jobs_dead": "Dead-lettered",
+  "admin_section_provider_keys": "Provider API keys",
+  "admin_section_ai_models": "AI model selection",
+  "admin_provider_key_placeholder": "Enter new API key",
+  "admin_provider_clear": "Clear key",
+  "admin_provider_unimplemented": "adapter not ready",
+  "admin_model_none_available": "No keyed provider yet. Set a key above first.",
+  "admin_model_provider_placeholder": "Select a provider"
 }

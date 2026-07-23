@@ -18,6 +18,7 @@ const platformQueryDirs = new Set(['platform'])
 // design, so they are treated like platform tables here — exempt from the per-user isolation rule.
 const platformTables = new Set([
   'admin_users',
+  'ai_provider_keys',
   'ai_provider_config',
   'admin_stardust_grants',
   'admin_audit_log',

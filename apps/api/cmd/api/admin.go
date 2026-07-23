@@ -62,7 +62,7 @@ func adminServiceOption(deps adminDeps) (platform.HandlerOption, error) {
 		Usage:      adminMeterUsage{meter: deps.meter},
 		Jobs:       adminJobHealth{store: deps.memory},
 		Cipher:     deps.cipher,
-		Validator:  ai.ProviderValidator{},
+		Catalog:    aiProviderCatalog{},
 		EnvConfig:  adminEnvConfig{},
 		SeedAdmins: os.Getenv("ADMIN_USER_IDS"),
 		// Dev-auth mode (COSIMOSI_DEV_AUTH) makes every signed-in user an admin so `pnpm dev`
@@ -173,6 +173,16 @@ func (a adminJobHealth) Health(ctx context.Context) (admin.JobHealth, error) {
 		DeadLettered: dead,
 	}, nil
 }
+
+// aiProviderCatalog binds the admin console's ProviderCatalog port to the AI registry (slots +
+// per-capability support + adapter-implementation status), so admin imports no registry internals.
+type aiProviderCatalog struct{}
+
+func (aiProviderCatalog) Slots() []string                    { return ai.ProviderSlots() }
+func (aiProviderCatalog) SupportsLLM(p string) bool          { return ai.SupportsLLM(p) }
+func (aiProviderCatalog) SupportsEmbedding(p string) bool    { return ai.SupportsEmbedding(p) }
+func (aiProviderCatalog) ImplementedLLM(p string) bool       { return ai.ImplementedLLM(p) }
+func (aiProviderCatalog) ImplementedEmbedding(p string) bool { return ai.ImplementedEmbedding(p) }
 
 // adminEnvConfig reports the env-configured provider selection so GetAIConfig can show the effective
 // config when no DB override exists — never the plaintext key, only whether one is set.

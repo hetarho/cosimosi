@@ -7,7 +7,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/cosimosi/api/internal/admin"
-	"github.com/cosimosi/api/internal/ai"
 	adminv1 "github.com/cosimosi/api/internal/gen/cosimosi/admin/v1"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/secretbox"
@@ -141,16 +140,52 @@ func (s *Server) ListTwinkleGrants(ctx context.Context, req *connect.Request[adm
 	}), nil
 }
 
-func (s *Server) GetAIConfig(ctx context.Context, _ *connect.Request[adminv1.GetAIConfigRequest]) (*connect.Response[adminv1.GetAIConfigResponse], error) {
-	configs, err := s.service.GetAIConfig(ctx)
+func (s *Server) ListProviderKeys(ctx context.Context, _ *connect.Request[adminv1.ListProviderKeysRequest]) (*connect.Response[adminv1.ListProviderKeysResponse], error) {
+	providers, err := s.service.ListProviderKeys(ctx)
 	if err != nil {
 		return nil, domainError(err)
 	}
-	out := make([]*adminv1.AICapabilityConfig, 0, len(configs))
-	for _, c := range configs {
-		out = append(out, effectiveConfigToProto(c))
+	out := make([]*adminv1.ProviderKey, 0, len(providers))
+	for _, p := range providers {
+		out = append(out, providerKeyToProto(p))
 	}
-	return connect.NewResponse(&adminv1.GetAIConfigResponse{Capabilities: out}), nil
+	return connect.NewResponse(&adminv1.ListProviderKeysResponse{Providers: out}), nil
+}
+
+func (s *Server) SetProviderKey(ctx context.Context, req *connect.Request[adminv1.SetProviderKeyRequest]) (*connect.Response[adminv1.SetProviderKeyResponse], error) {
+	caller, err := callerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	info, err := s.service.SetProviderKey(ctx, caller, req.Msg.GetProvider(), req.Msg.GetApiKey(), req.Msg.GetBaseUrl())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&adminv1.SetProviderKeyResponse{Provider: providerKeyToProto(info)}), nil
+}
+
+func (s *Server) ClearProviderKey(ctx context.Context, req *connect.Request[adminv1.ClearProviderKeyRequest]) (*connect.Response[adminv1.ClearProviderKeyResponse], error) {
+	caller, err := callerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	info, err := s.service.ClearProviderKey(ctx, caller, req.Msg.GetProvider())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&adminv1.ClearProviderKeyResponse{Provider: providerKeyToProto(info)}), nil
+}
+
+func (s *Server) GetAIConfig(ctx context.Context, _ *connect.Request[adminv1.GetAIConfigRequest]) (*connect.Response[adminv1.GetAIConfigResponse], error) {
+	selections, err := s.service.GetAIConfig(ctx)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	out := make([]*adminv1.CapabilitySelection, 0, len(selections))
+	for _, c := range selections {
+		out = append(out, selectionToProto(c))
+	}
+	return connect.NewResponse(&adminv1.GetAIConfigResponse{Selections: out}), nil
 }
 
 func (s *Server) SetAIConfig(ctx context.Context, req *connect.Request[adminv1.SetAIConfigRequest]) (*connect.Response[adminv1.SetAIConfigResponse], error) {
@@ -162,17 +197,11 @@ func (s *Server) SetAIConfig(ctx context.Context, req *connect.Request[adminv1.S
 	if err != nil {
 		return nil, domainError(err)
 	}
-	// The optional api_key: a nil field keeps the stored key; a present one replaces it.
-	var apiKey *string
-	if req.Msg.ApiKey != nil {
-		key := req.Msg.GetApiKey()
-		apiKey = &key
-	}
-	cfg, err := s.service.SetAIConfig(ctx, caller, capability, req.Msg.GetProvider(), req.Msg.GetModel(), req.Msg.GetBaseUrl(), apiKey)
+	selection, err := s.service.SetAIConfig(ctx, caller, capability, req.Msg.GetProvider(), req.Msg.GetModel())
 	if err != nil {
 		return nil, domainError(err)
 	}
-	return connect.NewResponse(&adminv1.SetAIConfigResponse{Capability: effectiveConfigToProto(cfg)}), nil
+	return connect.NewResponse(&adminv1.SetAIConfigResponse{Selection: selectionToProto(selection)}), nil
 }
 
 func (s *Server) GetAIUsage(ctx context.Context, _ *connect.Request[adminv1.GetAIUsageRequest]) (*connect.Response[adminv1.GetAIUsageResponse], error) {
@@ -218,14 +247,26 @@ func callerID(ctx context.Context) (string, error) {
 	return userID, nil
 }
 
-func effectiveConfigToProto(c admin.EffectiveAIConfig) *adminv1.AICapabilityConfig {
-	return &adminv1.AICapabilityConfig{
+func providerKeyToProto(p admin.ProviderKeyInfo) *adminv1.ProviderKey {
+	return &adminv1.ProviderKey{
+		Provider:             p.Provider,
+		KeySet:               p.KeySet,
+		KeyHint:              p.KeyHint,
+		SupportsLlm:          p.SupportsLLM,
+		SupportsEmbedding:    p.SupportsEmbedding,
+		ImplementedLlm:       p.ImplementedLLM,
+		ImplementedEmbedding: p.ImplementedEmbedding,
+		BaseUrl:              p.BaseURL,
+		UpdatedBy:            p.UpdatedBy,
+		UpdatedAt:            formatTime(p.UpdatedAt),
+	}
+}
+
+func selectionToProto(c admin.CapabilitySelection) *adminv1.CapabilitySelection {
+	return &adminv1.CapabilitySelection{
 		Capability: capabilityToProto(c.Capability),
 		Provider:   c.Provider,
 		Model:      c.Model,
-		BaseUrl:    c.BaseURL,
-		KeySet:     c.KeySet,
-		KeyHint:    c.KeyHint,
 		Source:     c.Source,
 		UpdatedBy:  c.UpdatedBy,
 		UpdatedAt:  formatTime(c.UpdatedAt),
@@ -271,10 +312,13 @@ func domainError(err error) error {
 		errors.Is(err, admin.ErrGrantIDRequired),
 		errors.Is(err, admin.ErrUnknownCapability),
 		errors.Is(err, admin.ErrProviderRequired),
-		errors.Is(err, ai.ErrUnknownProvider),
-		errors.Is(err, ai.ErrProviderNotImplemented):
+		errors.Is(err, admin.ErrProviderKeyRequired),
+		errors.Is(err, admin.ErrUnknownProvider),
+		errors.Is(err, admin.ErrProviderCapabilityMismatch):
 		return connect.NewError(connect.CodeInvalidArgument, err)
-	case errors.Is(err, secretbox.ErrDisabled):
+	case errors.Is(err, admin.ErrProviderNotImplemented),
+		errors.Is(err, admin.ErrProviderKeyMissing),
+		errors.Is(err, secretbox.ErrDisabled):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return err

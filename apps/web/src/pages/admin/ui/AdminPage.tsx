@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createGetAdminSelfQueryOptions } from '@cosimosi/api-client'
 import { Button } from '@cosimosi/ui'
 
-import { AiConfigSection } from '../../../features/admin-ai-config/index.ts'
+import { ModelSelectSection, ProviderKeysSection } from '../../../features/admin-ai-config/index.ts'
 import { JobsSection } from '../../../features/admin-jobs/index.ts'
 import { UsageSection } from '../../../features/admin-usage/index.ts'
 import { UsersSection } from '../../../features/admin-users/index.ts'
@@ -51,8 +51,11 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
           {m.admin_back()}
         </Button>
       </header>
-      <Section title={m.admin_section_ai()}>
-        <AiConfigSection />
+      <Section title={m.admin_section_provider_keys()}>
+        <ProviderKeysSection />
+      </Section>
+      <Section title={m.admin_section_ai_models()}>
+        <ModelSelectSection />
       </Section>
       <Section title={m.admin_section_users()}>
         <UsersSection />
