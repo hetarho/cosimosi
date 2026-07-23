@@ -59,17 +59,29 @@ func LoggingInterceptor(logger *log.Logger) connect.UnaryInterceptorFunc {
 			start := time.Now()
 			resp, err := next(ctx, req)
 			if logger != nil {
-				status := "ok"
 				if err != nil {
-					status = connect.CodeOf(err).String()
+					// This interceptor runs inside StructuredErrorInterceptor, so it
+					// sees the raw error before internal/unknown ones are masked to a
+					// generic message. Log the underlying cause here — otherwise a
+					// prod 500 leaves only the code in the container logs and is
+					// undiagnosable without Sentry.
+					logger.Printf(
+						"rpc method=%s request_id=%s status=%s duration=%s error=%q",
+						req.Spec().Procedure,
+						RequestIDFromContext(ctx),
+						connect.CodeOf(err).String(),
+						time.Since(start).Round(time.Microsecond),
+						err.Error(),
+					)
+				} else {
+					logger.Printf(
+						"rpc method=%s request_id=%s status=%s duration=%s",
+						req.Spec().Procedure,
+						RequestIDFromContext(ctx),
+						"ok",
+						time.Since(start).Round(time.Microsecond),
+					)
 				}
-				logger.Printf(
-					"rpc method=%s request_id=%s status=%s duration=%s",
-					req.Spec().Procedure,
-					RequestIDFromContext(ctx),
-					status,
-					time.Since(start).Round(time.Microsecond),
-				)
 			}
 			return resp, err
 		}
