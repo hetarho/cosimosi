@@ -18,6 +18,7 @@ import (
 	// provider name is a startup error. Adding a provider = a new subpackage + one
 	// blank import here, no consumer change.
 	_ "github.com/cosimosi/api/internal/ai/anthropic"
+	_ "github.com/cosimosi/api/internal/ai/deepseek"
 	_ "github.com/cosimosi/api/internal/ai/voyage"
 
 	adminpg "github.com/cosimosi/api/internal/admin/pg"

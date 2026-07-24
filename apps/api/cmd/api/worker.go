@@ -13,6 +13,7 @@ import (
 	// Blank imports register the available provider adapters into internal/ai's
 	// factory (see cmd/worker for the per-capability env contract).
 	_ "github.com/cosimosi/api/internal/ai/anthropic"
+	_ "github.com/cosimosi/api/internal/ai/deepseek"
 	_ "github.com/cosimosi/api/internal/ai/voyage"
 
 	"github.com/cosimosi/api/internal/memory"

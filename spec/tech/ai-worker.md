@@ -22,13 +22,13 @@ it does not own split/dedup/synapse/linking/diary behavior. The port adapters (`
 consume the provider-agnostic `LLMClient` / `EmbeddingClient` capability interfaces declared beside them. They import no
 vendor SDK type.
 
-Each provider client lives in its own subpackage (`internal/ai/anthropic`, `internal/ai/voyage`) so a vendor SDK
-dependency is confined per package. A provider client owns **vendor knowledge only** — SDK/HTTP transport, auth, the
-model id, the native structured-output mechanism, and error normalization; it holds no prompt text, no domain DTO, and
-no knowledge of what a call is for. The dependency points inward only: a provider subpackage imports `internal/ai` for
-the capability types and the typed error set; `internal/ai` never imports a provider subpackage (a driver registry —
-`RegisterLLMProvider` / `RegisterEmbeddingProvider`, called from each subpackage's `init`, populated by a blank import
-in `cmd/*` — avoids the cycle).
+Each provider client lives in its own subpackage (`internal/ai/anthropic`, `internal/ai/deepseek`,
+`internal/ai/voyage`) so a vendor SDK dependency is confined per package. A provider client owns **vendor knowledge
+only** — SDK/HTTP transport, auth, the model id, the native structured-output mechanism, and error normalization; it
+holds no prompt text, no domain DTO, and no knowledge of what a call is for. The dependency points inward only: a
+provider subpackage imports `internal/ai` for the capability types and the typed error set; `internal/ai` never imports
+a provider subpackage (a driver registry — `RegisterLLMProvider` / `RegisterEmbeddingProvider`, called from each
+subpackage's `init`, populated by a blank import in `cmd/*` — avoids the cycle).
 
 `internal/platform/jobqueue` is generic queue mechanism. It knows job id, user id, kind, attempts, and backoff; it does
 not import memory, neurons, embeddings, or semantic stages. The memory context supplies the `embed` and `semanticize`
@@ -45,12 +45,13 @@ handlers.
 Selection rule for each capability: **key absent → the keyless deterministic mock; key present → that provider's client,
 wrapped in the metering seam; an unknown or recognized-but-unimplemented provider name → a startup error, never a silent
 default.** The contract slots are `anthropic · openai · deepseek · zai · gemini` (LLM) and `voyage · openai · gemini`
-(embedding); Epic A implements **Anthropic** (`claude-opus-4-8`, override with `COSIMOSI_LLM_MODEL`) and **Voyage AI**
-(`voyage-3.5`, override with `COSIMOSI_EMBEDDING_MODEL`). Adding another slot is a new subpackage + one blank import in
-`cmd/*`, no consumer change. There is no values key or feature flag for provider selection — provider identity, model
-ids, and keys are env/secrets only. The provider **endpoint is adapter-owned** (change 03): each adapter carries its
-own endpoint (Voyage as a package constant, Anthropic via the SDK default) — it is never env, DB, or admin config. If
-a self-hosted/proxy override is ever needed, it is that adapter's own env seam, added deliberately at that time.
+(embedding). Implemented adapters are **Anthropic** (`claude-opus-4-8`) and **DeepSeek**
+(`deepseek-v4-flash`) for LLM, and **Voyage AI** (`voyage-3.5`) for embedding; each default is overridable with its
+capability's `COSIMOSI_*_MODEL`. Adding another slot is a new subpackage + one blank import in `cmd/*`, no consumer
+change. There is no values key or feature flag for provider selection — provider identity, model ids, and keys are
+env/secrets only. The provider **endpoint is adapter-owned** (change 03): each adapter carries its own endpoint
+(DeepSeek and Voyage as package constants, Anthropic via the SDK default) — it is never env, DB, or admin config. If a
+self-hosted/proxy override is ever needed, it is that adapter's own env seam, added deliberately at that time.
 
 The mock adapters are offline and **unmetered** — they bypass the metering seam entirely. They deterministically produce
 the same split/name/neurons, embedding vector length, and four semantic stage texts for the same input.
@@ -129,8 +130,9 @@ fills it, the stages appear on the next read/refetch. No polling, server-streami
 ## 5. Runtimes
 
 `cmd/worker` is the standalone process. It opens the Postgres pool, builds the `memory/pg` queue/store, selects AI
-adapters, and runs the generic job loop. It (and `cmd/api`) blank-import `internal/ai/anthropic` and
-`internal/ai/voyage` so those providers register with the factory before env selection runs.
+adapters, and runs the generic job loop. It (and `cmd/api`) blank-import `internal/ai/anthropic`,
+`internal/ai/deepseek`, and `internal/ai/voyage` so those providers register with the factory before env selection
+runs.
 
 `cmd/api` can run the same memory worker as a dev goroutine when `COSIMOSI_DEV_WORKER=1`; `docker-compose.yml` enables
 that path for the local API container. The production image contains both `/api` and `/worker`, and
