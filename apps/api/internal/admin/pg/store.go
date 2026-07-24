@@ -2,7 +2,7 @@
 // admin.Store over admin_users, admin_stardust_grants, admin_audit_log, and ai_provider_config,
 // with row↔domain mapping at this edge — no dbgen type escapes inward. Every mutating method runs
 // the mutation and its admin_audit_log append in ONE transaction, so a sensitive admin action is
-// never recorded without its audit trail ([I1], A9). It declares no interface; the port is
+// never recorded without its audit trail ([I1]). It declares no interface; the port is
 // consumer-owned by the admin use-case.
 package pg
 

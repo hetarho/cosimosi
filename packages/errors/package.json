@@ -6,7 +6,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./core": "./src/core.ts"
+    "./core": "./src/core.ts",
+    "./react": "./src/react.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -17,7 +18,12 @@
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/i18n": "workspace:*"
   },
+  "peerDependencies": {
+    "react": ">=19"
+  },
   "devDependencies": {
+    "@types/react": "^19.2.17",
+    "react": "^19.2.7",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   }

@@ -4,7 +4,7 @@ import "context"
 
 // ProviderConfig is the vendor-neutral construction input the factory hands to a
 // provider client's constructor. It carries only runtime identity/config — never a
-// spec/values.yaml key (A8): API keys and model ids are env/secrets. The endpoint is
+// spec/values.yaml key: API keys and model ids are env/secrets. The endpoint is
 // NOT config — each adapter owns its own endpoint (change 03).
 type ProviderConfig struct {
 	APIKey string

@@ -39,7 +39,7 @@ func adminCipher(logger *log.Logger) (admin.Cipher, ai.KeyDecrypter) {
 }
 
 // adminDeps carries the already-built concretes the admin console composes (all visible at the
-// composition root). The admin store doubles as the AI config reader (T010), and the meter is the
+// composition root). The admin store doubles as the AI config reader, and the meter is the
 // same instance the resolving AI adapters count against, so the usage dashboard is truthful.
 type adminDeps struct {
 	store     adminpg.Store

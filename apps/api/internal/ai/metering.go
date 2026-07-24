@@ -147,8 +147,8 @@ func (m *Meter) pruneLocked(currentWindow string) {
 }
 
 // The metering decorators wrap the capability interfaces so the per-call token cap,
-// the daily call cap, and identical-input caching apply uniformly to every provider
-// (A6). The mock adapters bypass this seam entirely — they are never wrapped. Each
+// the daily call cap, and identical-input caching apply uniformly to every provider.
+// The mock adapters bypass this seam entirely — they are never wrapped. Each
 // decorator resolves the caller from context, serves an identical prior call from the
 // cache without charging, and only charges the daily cap on a real provider call.
 

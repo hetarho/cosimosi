@@ -36,36 +36,63 @@ const NARRATION = [
   /\bplan[-\s]?\d/i,
   /\bjob[-\s]?\d/i,
   /\bR0\d\d\b/,
+  /\bT0\d{2,}\b/,
   /\bfoundation shell\b/i,
   /\bmid-flight\b/i,
   /\boriginal journey\b/i,
   /\bas discussed\b/i,
 ]
 
-const narrates = (line) => COMMENT.test(line) && NARRATION.find((re) => re.test(line))
+// Path-scoped rules apply only under the listed path fragments. The bare acceptance-criteria
+// form (`A5`, `(A7)`) is forbidden everywhere by the principle, but the memory epic + the
+// frontend carry ~200 such refs from earlier batches; enforcing them tree-wide is a dedicated
+// cleanup, not this guard. Here we hold the two contexts that were cleaned (the AI + admin
+// backend) Ax-free. Bracketed requirement anchors ([A11]) stay allow-listed via the lookbehind.
+const SCOPED_NARRATION = [
+  { re: /(?<!\[)\bA\d+\b/, paths: ['apps/api/internal/ai/', 'apps/api/internal/admin/'] },
+]
+
+const scopedHit = (line, file) =>
+  SCOPED_NARRATION.find((rule) => rule.paths.some((p) => file.includes(p)) && rule.re.test(line))
+
+const narrates = (line, file = '') =>
+  COMMENT.test(line) && (NARRATION.find((re) => re.test(line)) || scopedHit(line, file))
 
 // `--probe` self-test: proves the guard catches the process/plan forms and leaves the
 // allowed design-rationale anchors (requirement IDs, § section pointers) untouched.
 if (process.argv.includes('--probe')) {
   section('Comment-history probe — catch process/plan refs, allow rule/section anchors')
+  // Each case is [line, file]; file is only meaningful for the path-scoped Ax rule.
   const mustCatch = [
-    '// this mirrors plan 20 exactly',
-    '\t// Link (plan 21) runs last', // Go comment
-    '// Job 27 provides the implementation',
-    '// the R001 regression',
-    '// during Epic B the clock advances',
+    ['// this mirrors plan 20 exactly', ''],
+    ['\t// Link (plan 21) runs last', ''], // Go comment
+    ['// Job 27 provides the implementation', ''],
+    ['// the R001 regression', ''],
+    ['// the AI config reader (T010)', ''],
+    ['// during Epic B the clock advances', ''],
+    // the acceptance-criteria form, scoped to the AI/admin backend contexts
+    ['// fails here, never at row-insert time (A7)', 'apps/api/internal/ai/voyage/client.go'],
+    ['// no vendor error escapes (A5)', 'apps/api/internal/admin/service.go'],
   ]
   const mustAllow = [
-    '// keeps the Diary immutable [I2]',
-    '// surfaced for the awaken animation ([E7a])',
-    '// atomically with the launch (§2.6)',
-    '// bump the counter', // no marker of any kind
+    ['// keeps the Diary immutable [I2]', ''],
+    ['// surfaced for the awaken animation ([E7a])', ''],
+    ['// atomically with the launch (§2.6)', ''],
+    ['// bump the counter', ''], // no marker of any kind
+    // the same Ax form OUTSIDE the scoped contexts is left to the earlier-epic convention
+    ['// exactly-once over the interval (A4/A10)', 'apps/api/internal/memory/consolidate.go'],
+    [
+      '// non-dismissible while recalling (A4)',
+      'apps/web/src/widgets/recall-flow/ui/RecallFlowSheet.tsx',
+    ],
+    // a bracketed requirement anchor is a rule reference, allowed even in the scoped contexts
+    ['// Link only strengthens [A11]', 'apps/api/internal/admin/service.go'],
   ]
-  const missed = mustCatch.filter((l) => !narrates(l))
-  const falsePos = mustAllow.filter((l) => narrates(l))
+  const missed = mustCatch.filter(([l, f]) => !narrates(l, f))
+  const falsePos = mustAllow.filter(([l, f]) => narrates(l, f))
   if (missed.length || falsePos.length) {
-    for (const l of missed) console.error(`  \x1b[31m✗\x1b[0m should catch: ${l}`)
-    for (const l of falsePos) console.error(`  \x1b[31m✗\x1b[0m should allow: ${l}`)
+    for (const [l] of missed) console.error(`  \x1b[31m✗\x1b[0m should catch: ${l}`)
+    for (const [l] of falsePos) console.error(`  \x1b[31m✗\x1b[0m should allow: ${l}`)
     fail('comment-history probe failed')
   }
   ok('probe caught every process/plan ref and allowed every rule/section anchor')
@@ -92,12 +119,13 @@ for (const g of SRC_GLOBS) {
 const problems = []
 for (const file of files) {
   const lines = readFileSync(file, 'utf8').split('\n')
+  const relative = file.replace(repoRoot + '/', '')
   lines.forEach((line, i) => {
     if (!COMMENT.test(line)) return
-    const hit = NARRATION.find((re) => re.test(line))
+    const hit = NARRATION.find((re) => re.test(line)) || scopedHit(line, relative)?.re
     if (hit) {
       problems.push(
-        `${file.replace(repoRoot + '/', '')}:${i + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/principle/code-comments.md).`,
+        `${relative}:${i + 1} — comment narrates process/history (\`${hit.source}\`); comments explain current code only (spec/principle/code-comments.md).`,
       )
     }
   })

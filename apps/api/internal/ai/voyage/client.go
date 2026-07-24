@@ -63,7 +63,7 @@ type Client struct {
 
 // New builds the adapter and enforces the output-dimension contract at startup wiring:
 // a model that cannot produce values.AiEmbeddingDim fails here, never at row-insert
-// time (A7).
+// time.
 func New(cfg ai.ProviderConfig) (ai.EmbeddingClient, error) {
 	key := strings.TrimSpace(cfg.APIKey)
 	if key == "" {

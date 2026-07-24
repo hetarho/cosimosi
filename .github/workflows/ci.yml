@@ -16,5 +16,11 @@ jobs:
         with:
           node-version-file: .node-version
           cache: pnpm
+      # Pin the backend Go toolchain so the go-check gates (vet/build/test) run under a known
+      # version, not the runner's ambient Go — matching apps/api/go.mod. go-check.mjs prefers a
+      # host `go` when present, so this version is what the CI gate actually uses.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
       - run: pnpm install --frozen-lockfile
       - run: pnpm check

@@ -276,7 +276,7 @@ func (s *Service) isSeedIdentity(userID string, email string) bool {
 // GrantStardust credits additional Twinkle to a user (별가루 증정): validate the cap, credit through
 // the twinkle earn (idempotent by grantID), then record the grant + audit rows in one admin tx.
 // Both sides key off grantID, so a replay never double-credits or double-records. Returns the
-// target's balance total after the grant. ([G3] admin_grant, A7; nothing is deleted/priced/spent.)
+// target's balance total after the grant. ([G3] admin_grant; nothing is deleted/priced/spent.)
 func (s *Service) GrantStardust(ctx context.Context, actor string, userID string, amount int, note string, grantID string) (int, error) {
 	target := strings.TrimSpace(userID)
 	if target == "" {

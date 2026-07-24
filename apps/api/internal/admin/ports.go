@@ -13,7 +13,7 @@ import (
 // Store is admin/pg's persistence surface: the DB-promoted admin roles, the grant + audit
 // records, and the AI provider config rows. Each mutating method writes its admin_audit_log row
 // in the SAME transaction as the mutation, so a mutation is never recorded without its audit
-// trail ([I1], A9). The concrete is a struct in admin/pg; this interface is consumer-owned.
+// trail ([I1]). The concrete is a struct in admin/pg; this interface is consumer-owned.
 type Store interface {
 	// IsPromoted reports whether a DB-promoted admin_users row exists for userID.
 	IsPromoted(ctx context.Context, userID string) (bool, error)
@@ -98,7 +98,7 @@ type JobHealthReader interface {
 
 // Cipher encrypts an API key for storage and derives its masked display hint. The concrete is
 // platform/secretbox (AES-GCM, key from LLM_KEY_ENCRYPTION_KEY). Admin never decrypts — that is the
-// AI config source's job when it builds a provider client (T010).
+// AI config source's job when it builds a provider client.
 type Cipher interface {
 	Encrypt(plaintext []byte) ([]byte, error)
 	Hint(plaintext string) string

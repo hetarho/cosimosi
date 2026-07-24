@@ -107,7 +107,7 @@ func mapError(err error) error {
 	var apiErr *sdk.Error
 	if errors.As(err, &apiErr) {
 		// Retain a sanitized cause, not the vendor *sdk.Error — no vendor error type
-		// escapes internal/ai (A5).
+		// escapes internal/ai.
 		cause := fmt.Errorf("anthropic status %d (request %s)", apiErr.StatusCode, apiErr.RequestID)
 		switch apiErr.StatusCode {
 		case http.StatusTooManyRequests, http.StatusRequestTimeout, http.StatusTooEarly:

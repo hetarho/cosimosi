@@ -12,7 +12,7 @@ var ErrEmbeddingClientRequired = errors.New("ai real embedder requires an embedd
 
 // RealEmbedder owns the domain contract — the target dimension and the row-shape
 // check. It consumes the metering-wrapped capability interface; caps and caching
-// live at that seam, not here (§2.4 / A6).
+// live at that seam, not here (§2.4).
 type RealEmbedder struct {
 	client EmbeddingClient
 }

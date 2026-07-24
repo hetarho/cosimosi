@@ -10,7 +10,7 @@ import (
 	"github.com/cosimosi/api/internal/memory"
 )
 
-// Per-capability runtime selection env (A4/A8). Provider identity is an ops choice,
+// Per-capability runtime selection env. Provider identity is an ops choice,
 // not a tuning value — it never enters spec/values.yaml. The two capabilities are
 // selected independently (e.g. Anthropic for LLM, Voyage for embeddings).
 const (
@@ -25,15 +25,15 @@ const (
 
 var (
 	// ErrUnknownProvider is returned at startup wiring for a provider name outside the
-	// contract slots — never a silent default (A4).
+	// contract slots — never a silent default.
 	ErrUnknownProvider = errors.New("ai: unknown provider name")
 	// ErrProviderNotImplemented is returned at startup for a recognized contract slot
-	// that has no adapter yet (A3) — also fails fast, never a silent default.
+	// that has no adapter yet — also fails fast, never a silent default.
 	ErrProviderNotImplemented = errors.New("ai: provider recognized but not implemented")
 )
 
 // The contract slots name every provider the seam supports, even the ones without an
-// adapter yet (A3). Adding a provider later is a new subpackage + a factory
+// adapter yet. Adding a provider later is a new subpackage + a factory
 // registration (via init), never a consumer change. Only implemented slots register.
 var (
 	llmProviderSlots       = []string{"anthropic", "openai", "deepseek", "glm", "gemini", "kimi"}
@@ -277,7 +277,7 @@ func providerConfig(cfg CapabilityConfig) ProviderConfig {
 // admin console (the admin console) calls them before persisting a SetAIConfig, so an unknown or
 // recognized-but-unimplemented provider is refused at write time, never silently stored to fail at
 // the next AI call. The embedding dimension itself is still enforced when the client is built /
-// first used (the AI-provider abstraction, A7); model is accepted here for that future static check.
+// first used (the AI-provider abstraction); model is accepted here for that future static check.
 func ValidateLLMProvider(provider string, _ string) error {
 	name := strings.ToLower(strings.TrimSpace(provider))
 	if _, ok := llmProviders[name]; ok {

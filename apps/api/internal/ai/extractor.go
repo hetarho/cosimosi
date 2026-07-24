@@ -15,7 +15,7 @@ var ErrLLMClientRequired = errors.New("ai real extractor requires an llm client"
 
 // RealExtractor owns task knowledge only — the prompts, the output schema, and the
 // domain-DTO mapping. It consumes the capability interface (already wrapped in the
-// metering seam); metering and caching are not its concern (§2.4 / A6).
+// metering seam); metering and caching are not its concern (§2.4).
 type RealExtractor struct {
 	client LLMClient
 }

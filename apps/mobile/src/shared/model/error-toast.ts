@@ -1,11 +1,4 @@
-import { createContext, useContext } from 'react'
-
-export type ShowErrorToast = (error: unknown) => void
-
-export const ErrorToastContext = createContext<ShowErrorToast | null>(null)
-
-export function useErrorToast(): ShowErrorToast {
-  const showError = useContext(ErrorToastContext)
-  if (!showError) throw new Error('useErrorToast must be used inside MobileErrorProvider')
-  return showError
-}
+// The error-toast context + hook are shared verbatim across web and mobile — re-exported from
+// @cosimosi/errors/react (promote-on-reuse). Only MobileErrorProvider (the component that renders
+// the native Toast) stays forked in the app layer.
+export { ErrorToastContext, useErrorToast, type ShowErrorToast } from '@cosimosi/errors/react'
