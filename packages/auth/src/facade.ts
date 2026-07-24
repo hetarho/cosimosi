@@ -32,11 +32,24 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
   // "foreground/pageshow → cancel" wiring can never abandon an in-flight password
   // sign-in that would still resolve.
   let externalOAuthPending = false
+  // Count of in-flight sign-in operations (password/Google/OAuth-completion).
+  let signInFlight = 0
   actor.start()
+
+  // An adapter "signedOut" event only says "there is no session". While a sign-in
+  // operation is in flight, or after one failed (`failed` holds the error the visitor
+  // must see), that is already true — letting the event through would bump the epoch
+  // (killing the in-flight operation's settlement) or clobber `failed` back to a
+  // pristine signedOut form. Skipping is safe against the late-bootstrap-restore
+  // hazard the SIGN_OUT normally guards: any sign-in operation already bumped the
+  // epoch when it started, so a pending bootstrap can no longer apply.
+  const signedOutEventIsRedundant = () =>
+    signInFlight > 0 || actor.getSnapshot().context.status === 'failed'
 
   const adapterUnsubscribe = adapter.onChange((snapshot, change) => {
     if (disposed) return
     if (!bootstrapped && (snapshot.status === 'signedOut' || snapshot.status === 'expired')) {
+      if (snapshot.status === 'signedOut' && signedOutEventIsRedundant()) return
       epoch += 1
       locallySignedOut = true
       suppressAdapterRefresh = true
@@ -46,6 +59,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
     if (!bootstrapped) return
     switch (snapshot.status) {
       case 'signedOut':
+        if (signedOutEventIsRedundant()) return
         epoch += 1
         locallySignedOut = true
         suppressAdapterRefresh = true
@@ -85,6 +99,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
     },
     async signIn(credentials: SignInCredentials) {
       const operationEpoch = ++epoch
+      signInFlight += 1
       externalOAuthPending = false
       const previousSuppressAdapterRefresh = suppressAdapterRefresh
       suppressAdapterRefresh = true
@@ -106,11 +121,18 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
           actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
         }
         throw error
+      } finally {
+        signInFlight -= 1
       }
     },
     async signInWithGoogle() {
       const operationEpoch = ++epoch
-      externalOAuthPending = false
+      signInFlight += 1
+      // Set BEFORE the await: the flow may leave the app inside adapter.signInWithGoogle()
+      // (system browser open), and a fast foreground/`pageshow` can call cancelSignIn()
+      // before that await resolves — the pending flag must already allow the abandon, or
+      // the machine sits `signingIn` until the next foreground.
+      externalOAuthPending = true
       const previousSuppressAdapterRefresh = suppressAdapterRefresh
       suppressAdapterRefresh = true
       actor.send({ type: 'SIGN_IN_START' })
@@ -118,6 +140,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
         const session = await adapter.signInWithGoogle()
         if (!disposed && operationEpoch === epoch) {
           if (session) {
+            externalOAuthPending = false
             locallySignedOut = false
             suppressAdapterRefresh = false
             actor.send({
@@ -125,24 +148,26 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
               userId: session.userId,
               expiresAt: session.expiresAt,
             })
-          } else {
-            // The flow continues outside the app (web full-page redirect / mobile
-            // system browser): the machine holds `signingIn` and settles later via
-            // the adapter's onChange (web return), via completeOAuthSignIn (mobile
-            // callback), or via cancelSignIn (abandoned).
-            externalOAuthPending = true
           }
+          // else: the flow continues outside the app (web full-page redirect / mobile
+          // system browser) — the machine holds `signingIn` and settles later via the
+          // adapter's onChange (web return), via completeOAuthSignIn (mobile callback),
+          // or via cancelSignIn (abandoned); the pending flag stays up until then.
         }
       } catch (error) {
         if (!disposed && operationEpoch === epoch) {
+          externalOAuthPending = false
           suppressAdapterRefresh = previousSuppressAdapterRefresh
           actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
         }
         throw error
+      } finally {
+        signInFlight -= 1
       }
     },
     async completeOAuthSignIn(callbackUrl: string) {
       const operationEpoch = ++epoch
+      signInFlight += 1
       externalOAuthPending = false
       const previousSuppressAdapterRefresh = suppressAdapterRefresh
       suppressAdapterRefresh = true
@@ -167,6 +192,8 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
           actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
         }
         throw error
+      } finally {
+        signInFlight -= 1
       }
     },
     cancelSignIn() {

@@ -13,6 +13,7 @@ import type {
   AuthSession,
   SignInCredentials,
 } from './auth-adapter.ts'
+import { callbackUrlError, callbackUrlParam } from './callback-url.ts'
 import type { SessionSnapshot } from './session.ts'
 
 export type SupabaseAuthStorage = SupportedStorage
@@ -100,8 +101,7 @@ export function createSupabaseAuthAdapter(
       return null
     },
     async completeOAuthSignIn(callbackUrl: string) {
-      const providerError =
-        callbackUrlParam(callbackUrl, 'error_description') ?? callbackUrlParam(callbackUrl, 'error')
+      const providerError = callbackUrlError(callbackUrl)
       if (providerError) throw new Error(providerError)
       const code = callbackUrlParam(callbackUrl, 'code')
       if (!code) throw new Error('OAuth callback is missing the authorization code')
@@ -138,21 +138,6 @@ export function createSupabaseAuthAdapter(
       return () => data.subscription.unsubscribe()
     },
   }
-}
-
-// Hand-rolled query parsing: Hermes (RN) ships URL without a working
-// `searchParams`, and this file must stay platform-pure — no `new URL`.
-function callbackUrlParam(url: string, key: string): string | null {
-  const query = url.split('#')[0]?.split('?')[1]
-  if (!query) return null
-  for (const pair of query.split('&')) {
-    const [candidate, ...rest] = pair.split('=')
-    if (candidate === key) {
-      const value = rest.join('=')
-      return value ? decodeURIComponent(value.replaceAll('+', ' ')) : ''
-    }
-  }
-  return null
 }
 
 function toAuthAdapterChangeSource(event: string): AuthAdapterChangeSource {

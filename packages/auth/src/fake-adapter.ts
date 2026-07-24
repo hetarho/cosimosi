@@ -4,6 +4,7 @@ import type {
   AuthSession,
   SignInCredentials,
 } from './auth-adapter.ts'
+import { callbackUrlError } from './callback-url.ts'
 import type { SessionSnapshot } from './session.ts'
 
 interface FakeAdapterOptions {
@@ -73,6 +74,10 @@ export class FakeAuthAdapter implements AuthAdapter {
 
   async completeOAuthSignIn(callbackUrl: string): Promise<AuthSession> {
     if (this.signInError) throw new Error(this.signInError)
+    // Mirrors the real adapter's error-callback parse (shared helper) so a test driving an
+    // `error=` callback through the fake fails exactly like production.
+    const providerError = callbackUrlError(callbackUrl)
+    if (providerError) throw new Error(providerError)
     if (!callbackUrl) throw new Error('OAuth callback is missing the authorization code')
     return this.establishOAuthSession()
   }

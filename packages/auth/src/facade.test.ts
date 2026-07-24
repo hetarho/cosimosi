@@ -150,6 +150,99 @@ describe('createAuthFacade', () => {
     expect(facade.snapshot.userId).toBe('google-user')
   })
 
+  it('cancelSignIn abandons an OAuth attempt even before the adapter call resolves', async () => {
+    // The system-browser open lives INSIDE adapter.signInWithGoogle(); a fast foreground
+    // (`AppState 'active'` / `pageshow`) can fire cancelSignIn before that await settles.
+    const pendingOpen = deferred<AuthSession | null>()
+    const base = new FakeAuthAdapter()
+    const adapter: AuthAdapter = {
+      bootstrap: () => base.bootstrap(),
+      signIn: (credentials) => base.signIn(credentials),
+      signInWithGoogle: () => pendingOpen.promise,
+      completeOAuthSignIn: async () => ({ userId: 'unused', expiresAt: 1 }),
+      signOut: () => base.signOut(),
+      refresh: () => base.refresh(),
+      getAccessToken: () => base.getAccessToken(),
+      onChange: (listener) => base.onChange(listener),
+    }
+    const facade = createAuthFacade({ adapter })
+
+    await flush()
+    void facade.signInWithGoogle()
+    expect(facade.snapshot.status).toBe('signingIn')
+
+    facade.cancelSignIn()
+    expect(facade.snapshot.status).toBe('signedOut')
+
+    // The late adapter resolution must not resurrect the abandoned attempt.
+    pendingOpen.resolve(null)
+    await flush()
+    expect(facade.snapshot.status).toBe('signedOut')
+  })
+
+  it('drives the machine to failed for an OAuth error callback (the web error-return path)', async () => {
+    const facade = createAuthFacade({ adapter: new FakeAuthAdapter() })
+
+    await flush()
+    await expect(
+      facade.completeOAuthSignIn(
+        'https://app.example/?error=access_denied&error_description=denied+by+user',
+      ),
+    ).rejects.toThrow('denied by user')
+
+    expect(facade.snapshot.status).toBe('failed')
+    expect(facade.snapshot.error).toBe('denied by user')
+  })
+
+  it('keeps the OAuth failure when a late adapter signedOut event races the error return', async () => {
+    // The web error-return fires while the Supabase INITIAL_SESSION(null) emission may
+    // still be pending (it can even trail a network refresh attempt). Neither ordering
+    // may clobber the failure copy back to a pristine signed-out form.
+    const bootstrap = deferred<AuthSession | null>()
+    let rejectCompletion!: (reason: Error) => void
+    const completion = new Promise<AuthSession>((_, reject) => {
+      rejectCompletion = reject
+    })
+    let emit!: Parameters<AuthAdapter['onChange']>[0]
+    const adapter: AuthAdapter = {
+      bootstrap: () => bootstrap.promise,
+      signIn: async () => ({ userId: 'unused', expiresAt: 1 }),
+      signInWithGoogle: async () => null,
+      completeOAuthSignIn: () => completion,
+      signOut: async () => {},
+      refresh: async () => ({ userId: 'unused', expiresAt: 1 }),
+      getAccessToken: async () => null,
+      onChange: (listener) => {
+        emit = listener
+        return () => {}
+      },
+    }
+    const facade = createAuthFacade({ adapter })
+
+    const settled = facade.completeOAuthSignIn('https://app.example/?error=denied').catch(() => {})
+    // The adapter's initial no-session emission arrives mid-operation…
+    emit(
+      { status: 'signedOut', userId: null, expiresAt: null, error: null },
+      { source: 'external' },
+    )
+    rejectCompletion(new Error('denied'))
+    await settled
+    expect(facade.snapshot.status).toBe('failed')
+    expect(facade.snapshot.error).toBe('denied')
+
+    // …or only after the failure already landed: still kept.
+    emit(
+      { status: 'signedOut', userId: null, expiresAt: null, error: null },
+      { source: 'external' },
+    )
+    expect(facade.snapshot.status).toBe('failed')
+
+    // A bootstrap resolving even later cannot restore a session either (epoch moved on).
+    bootstrap.resolve({ userId: 'stale-user', expiresAt: 999 })
+    await flush()
+    expect(facade.snapshot.status).toBe('failed')
+  })
+
   it('cancelSignIn never abandons an in-call password sign-in', async () => {
     const pendingSignIn = deferred<AuthSession>()
     const base = new FakeAuthAdapter()

@@ -1,13 +1,14 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 import {
   FakeAuthAdapter,
+  callbackUrlError,
   createAuthFacade,
   createSupabaseAuthAdapter,
   createSupabaseAuthClient,
   type AuthFacade,
 } from '@cosimosi/auth'
-import { AuthProvider } from '@cosimosi/auth/react'
+import { AuthProvider, useAuthFacade } from '@cosimosi/auth/react'
 
 interface WebAuthProviderProps {
   children?: ReactNode
@@ -17,9 +18,35 @@ interface WebAuthProviderProps {
 export function WebAuthProvider({ children, facade }: WebAuthProviderProps) {
   return (
     <AuthProvider facade={facade} createFacade={createDefaultWebAuthFacade}>
-      {children}
+      <OAuthErrorReturn>{children}</OAuthErrorReturn>
     </AuthProvider>
   )
+}
+
+// A denied/failed Google consent redirects back to `/` with `?error=…` and NO session:
+// `detectSessionInUrl` establishes nothing and the machine would settle `signedOut`, bouncing
+// the visitor to a pristine login form with no feedback. Feed that callback URL through the
+// facade (the same completeOAuthSignIn path mobile uses) so the machine reaches `failed` and
+// the login page renders the Google-failure copy. Params are stripped first, so a refresh —
+// or the StrictMode double-effect — cannot re-trigger the failure.
+function OAuthErrorReturn({ children }: { children?: ReactNode }) {
+  const facade = useAuthFacade()
+  useEffect(() => {
+    // Google returns only to the origin root (the one allowlisted redirect URL) — an
+    // `error` param on any other route is not an OAuth callback and must keep its URL state.
+    if (window.location.pathname !== '/') return
+    const callbackUrl = window.location.href
+    // GoTrue puts the error in the query or, for some classes, the hash fragment.
+    if (callbackUrlError(callbackUrl) === null) return
+    const url = new URL(callbackUrl)
+    for (const param of ['error', 'error_description', 'error_code']) {
+      url.searchParams.delete(param)
+    }
+    if (callbackUrlError(`#${url.hash.slice(1)}`) !== null) url.hash = ''
+    window.history.replaceState(window.history.state, '', url.toString())
+    facade.completeOAuthSignIn(callbackUrl).catch(() => undefined)
+  }, [facade])
+  return children
 }
 
 // A dev fake session never expires (no code schedules a timer off expiresAt), so `pnpm dev`

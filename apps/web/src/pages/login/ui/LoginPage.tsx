@@ -15,8 +15,11 @@ export function LoginPage() {
   const { status, error } = useSessionSnapshot()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  // Which action the visitor last attempted, so the failure copy matches it.
-  const [method, setMethod] = useState<'password' | 'google'>('password')
+  // Which action the visitor last attempted IN THIS MOUNT, so the failure copy and busy
+  // indicator match it. `null` = no in-mount attempt: an ambient failure arriving then
+  // (an OAuth return landing before this page mounts, or a bootstrap failure) reads as a
+  // Google failure — mobile's convention, mirrored for parity.
+  const [method, setMethod] = useState<'password' | 'google' | null>(null)
   const pending = status === 'signingIn'
 
   // A back-navigation from the Google consent page can restore this page from the
@@ -72,7 +75,7 @@ export function LoginPage() {
           />
           {error ? (
             <p role="alert" className="text-sm text-danger">
-              {method === 'google' ? m.login_google_failed() : m.login_failed()}
+              {method === 'password' ? m.login_failed() : m.login_google_failed()}
             </p>
           ) : null}
           <Button type="submit" color="primary" disabled={pending}>
