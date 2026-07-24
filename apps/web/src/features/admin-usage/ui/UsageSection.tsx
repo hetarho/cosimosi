@@ -14,6 +14,9 @@ export function UsageSection() {
   if (query.isPending) {
     return <p className="text-sm text-text-muted">{m.admin_loading()}</p>
   }
+  if (query.isError) {
+    return <p className="text-sm text-danger">{m.admin_load_error()}</p>
+  }
   const data = query.data
   const label = (capability: AICapability) =>
     capability === AICapability.AI_CAPABILITY_LLM ? m.admin_usage_llm() : m.admin_usage_embedding()

@@ -12,6 +12,7 @@ import {
 import { Badge, Button, TextField } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
+import { useErrorToast } from '../../../shared/model/index.ts'
 
 // The user list (metadata only, [I2]): search + paginate accounts, grant stardust (별가루 증정), and
 // promote/revoke admins inline; the grant history below is the accountability record. No memory
@@ -31,14 +32,19 @@ export function UsersSection() {
     void grantsQuery.refetch()
   }
 
+  const showError = useErrorToast()
   const runAction = (action: () => Promise<unknown>) => {
     setPending(true)
     action()
       .then(refresh)
-      .catch(() => undefined)
+      .catch(showError)
       .finally(() => setPending(false))
   }
 
+  // A failed list read must not render as "no users" — same rule as the jobs/usage boards.
+  if (usersQuery.isError) {
+    return <p className="text-sm text-danger">{m.admin_load_error()}</p>
+  }
   const users = usersQuery.data?.users ?? []
   return (
     <div className="flex flex-col gap-4">
@@ -89,7 +95,9 @@ export function UsersSection() {
 
       <section className="mt-2 flex flex-col gap-2">
         <h3 className="text-sm font-semibold text-text">{m.admin_grants_history()}</h3>
-        {(grantsQuery.data?.grants ?? []).length === 0 ? (
+        {grantsQuery.isError ? (
+          <p className="text-sm text-danger">{m.admin_load_error()}</p>
+        ) : (grantsQuery.data?.grants ?? []).length === 0 ? (
           <p className="text-sm text-text-muted">{m.admin_grants_none()}</p>
         ) : (
           <ul className="flex flex-col gap-1 text-xs text-text-muted">
@@ -122,7 +130,8 @@ function UserRow({
   const grant = () => {
     const value = Number.parseInt(amount, 10)
     if (!Number.isFinite(value) || value <= 0) return
-    // A fresh grant id per click makes a retried grant idempotent end to end.
+    // One id per submit: transport-level retries of this call dedup server-side (the id is the
+    // grant's idempotency key). A second click is deliberately a new grant, not a retry.
     const grantId = crypto.randomUUID()
     onAction(() =>
       client.grantStardust({ userId: user.userId, amount: BigInt(value), note, grantId }),

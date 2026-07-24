@@ -13,6 +13,7 @@ import {
 import { Badge, Button, TextField } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
+import { useErrorToast } from '../../../shared/model/index.ts'
 
 // Native select styled to match the design-system field surface (there is no Select primitive).
 const SELECT_CLASS =
@@ -52,19 +53,18 @@ export function ProviderKeysSection() {
 function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChanged: () => void }) {
   const transport = useTransport()
   const client = useMemo(() => createAdminClient(transport), [transport])
+  const showError = useErrorToast()
   const [apiKey, setApiKey] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const run = (action: () => Promise<unknown>) => {
     setBusy(true)
-    setError(null)
     action()
       .then(() => {
         setApiKey('')
         onChanged()
       })
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
+      .catch(showError)
       .finally(() => setBusy(false))
   }
 
@@ -128,7 +128,6 @@ function ProviderKeyRow({ provider, onChanged }: { provider: ProviderKey; onChan
           {m.admin_provider_clear()}
         </Button>
       </div>
-      {error ? <span className="text-sm text-danger">{error}</span> : null}
     </div>
   )
 }
@@ -142,6 +141,9 @@ export function ModelSelectSection() {
 
   if (keysQuery.isPending || configQuery.isPending) {
     return <p className="text-sm text-text-muted">{m.admin_loading()}</p>
+  }
+  if (keysQuery.isError || configQuery.isError) {
+    return <p className="text-sm text-danger">{m.admin_load_error()}</p>
   }
   const providers = keysQuery.data?.providers ?? []
   const selections = configQuery.data?.selections ?? []
@@ -185,18 +187,18 @@ function CapabilityRow({
 }) {
   const transport = useTransport()
   const client = useMemo(() => createAdminClient(transport), [transport])
+  const showError = useErrorToast()
   const [provider, setProvider] = useState(selection?.provider ?? '')
   const [model, setModel] = useState(selection?.model ?? '')
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-text">{label}</span>
         <Badge variant="neutral">
-          {m.admin_ai_source()}: {selection?.source ?? 'unset'}
+          {m.admin_ai_source()}: {sourceLabel(selection?.source)}
         </Badge>
       </div>
       {providers.length === 0 ? (
@@ -232,16 +234,13 @@ function CapabilityRow({
             onClick={() => {
               setBusy(true)
               setSaved(false)
-              setError(null)
               client
                 .setAIConfig({ capability, provider, model })
                 .then(() => {
                   setSaved(true)
                   onChanged()
                 })
-                .catch((cause: unknown) =>
-                  setError(cause instanceof Error ? cause.message : String(cause)),
-                )
+                .catch(showError)
                 .finally(() => setBusy(false))
             }}
           >
@@ -250,7 +249,19 @@ function CapabilityRow({
           {saved ? <span className="text-sm text-text-muted">{m.admin_ai_saved()}</span> : null}
         </div>
       )}
-      {error ? <span className="text-sm text-danger">{error}</span> : null}
     </div>
   )
+}
+
+// The server's source enum ('db' | 'env' | 'unset') rendered through the i18n seam; anything
+// unexpected reads as unset rather than leaking a raw enum value.
+function sourceLabel(source: string | undefined): string {
+  switch (source) {
+    case 'db':
+      return m.admin_ai_source_db()
+    case 'env':
+      return m.admin_ai_source_env()
+    default:
+      return m.admin_ai_source_unset()
+  }
 }

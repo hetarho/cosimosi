@@ -14,6 +14,11 @@ export function JobsSection() {
   if (query.isPending) {
     return <p className="text-sm text-text-muted">{m.admin_loading()}</p>
   }
+  // A failed read must never render as an all-zero healthy queue — exactly during an outage
+  // the operator needs this board to say "unknown", not "empty".
+  if (query.isError) {
+    return <p className="text-sm text-danger">{m.admin_load_error()}</p>
+  }
   const data = query.data
   const stats: Array<[string, bigint]> = [
     [m.admin_jobs_pending(), data?.pending ?? 0n],
