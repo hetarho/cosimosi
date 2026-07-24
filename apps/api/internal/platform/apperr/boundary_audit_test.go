@@ -39,12 +39,20 @@ func TestHandwrittenBoundariesUseAppErrorConstructors(t *testing.T) {
 			return readErr
 		}
 		text := string(source)
-		if strings.Contains(text, "connect.NewError(") || strings.Contains(text, "connect.NewErrorf(") {
-			relative, relativeErr := filepath.Rel(moduleRoot, path)
-			if relativeErr != nil {
-				relative = path
+		for _, rawConstructor := range []string{
+			"connect.NewError(",
+			"connect.NewErrorf(",
+			// NewWireError bypasses the taxonomy the same way NewError does — the blind spot
+			// R008 named. Handlers must go through platform/apperr.
+			"connect.NewWireError(",
+		} {
+			if strings.Contains(text, rawConstructor) {
+				relative, relativeErr := filepath.Rel(moduleRoot, path)
+				if relativeErr != nil {
+					relative = path
+				}
+				t.Errorf("%s constructs a raw Connect error (%s); use platform/apperr", relative, rawConstructor)
 			}
-			t.Errorf("%s constructs a raw Connect error; use platform/apperr", relative)
 		}
 		return nil
 	})

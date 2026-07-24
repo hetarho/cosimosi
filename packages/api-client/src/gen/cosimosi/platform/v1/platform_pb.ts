@@ -84,7 +84,8 @@ export type ErrorInfo = Message<"cosimosi.platform.v1.ErrorInfo"> & {
   metadata: { [key: string]: string };
 
   /**
-   * Raw internal detail is populated only outside production when explicitly enabled.
+   * Raw internal detail, populated only when explicitly enabled via the server's env gate
+   * (intended for non-production; a production deployment signal forces it off).
    *
    * @generated from field: string debug_detail = 5;
    */

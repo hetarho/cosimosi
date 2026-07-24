@@ -111,12 +111,35 @@ func TestExposeDetailFailsClosed(t *testing.T) {
 		{value: DetailVerbose, want: true},
 	} {
 		t.Run(testCase.value, func(t *testing.T) {
+			t.Setenv(EnvDeployEnvironment, "")
 			t.Setenv(EnvErrorDetail, testCase.value)
 			if got := ExposeDetail(); got != testCase.want {
 				t.Fatalf("ExposeDetail() = %t, want %t", got, testCase.want)
 			}
 		})
 	}
+}
+
+// The production deployment signal forces masking regardless of the verbose flag — a leaked
+// flag in a prod stack cannot expose raw causes. The prod match is trimmed/case-insensitive.
+func TestExposeDetailHardGatedInProduction(t *testing.T) {
+	for _, environment := range []string{"production", "Production", "  production  "} {
+		t.Run(environment, func(t *testing.T) {
+			t.Setenv(EnvErrorDetail, DetailVerbose)
+			t.Setenv(EnvDeployEnvironment, environment)
+			if ExposeDetail() {
+				t.Fatalf("ExposeDetail() = true under prod signal %q, want false", environment)
+			}
+		})
+	}
+	// A non-production environment still honors the verbose opt-in.
+	t.Run("staging still exposes", func(t *testing.T) {
+		t.Setenv(EnvErrorDetail, DetailVerbose)
+		t.Setenv(EnvDeployEnvironment, "staging")
+		if !ExposeDetail() {
+			t.Fatal("ExposeDetail() = false in staging with verbose set, want true")
+		}
+	})
 }
 
 func requireInfo(t *testing.T, err error) *platformv1.ErrorInfo {

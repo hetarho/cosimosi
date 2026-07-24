@@ -15,6 +15,13 @@ import (
 const (
 	EnvErrorDetail = "COSIMOSI_ERROR_DETAIL"
 	DetailVerbose  = "verbose"
+	// EnvDeployEnvironment names the deployment environment (production | staging), the same
+	// env var sentry-go reads for its environment tag. apperr reads it only as the production
+	// hard-gate in ExposeDetail — so it must be set to "production" on a prod stack even when
+	// Sentry itself is disabled (empty DSN). It is defense-in-depth: the primary control is
+	// leaving COSIMOSI_ERROR_DETAIL unset in production.
+	EnvDeployEnvironment = "SENTRY_ENVIRONMENT"
+	deployProduction     = "production"
 
 	ReasonInternal                        = "INTERNAL"
 	ReasonUnknown                         = "UNKNOWN"
@@ -121,8 +128,16 @@ func DefaultReason(code connect.Code) string {
 	return "PLATFORM_" + strings.ToUpper(code.String())
 }
 
-// ExposeDetail is deliberately opt-in: every value except "verbose" masks raw internal detail.
+// ExposeDetail reports whether raw internal detail may be copied to the wire — only when
+// explicitly enabled via the env gate (intended for non-production). It is deliberately
+// opt-in AND hard-gated: every value except exactly "verbose" masks, and a production
+// deployment signal forces masking regardless of the flag, so a flag leaked into a prod
+// stack cannot expose raw causes. The production match is deliberately looser
+// (trimmed, case-insensitive) than the verbose match — both err toward masking.
 func ExposeDetail() bool {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv(EnvDeployEnvironment)), deployProduction) {
+		return false
+	}
 	return os.Getenv(EnvErrorDetail) == DetailVerbose
 }
 

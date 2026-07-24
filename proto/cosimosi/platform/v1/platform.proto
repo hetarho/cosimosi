@@ -27,6 +27,7 @@ message ErrorInfo {
   string request_id = 3;
   // Metadata may carry only safe structured context, never private content or secrets.
   map<string, string> metadata = 4;
-  // Raw internal detail is populated only outside production when explicitly enabled.
+  // Raw internal detail, populated only when explicitly enabled via the server's env gate
+  // (intended for non-production; a production deployment signal forces it off).
   string debug_detail = 5;
 }

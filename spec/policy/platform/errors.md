@@ -24,9 +24,13 @@ The original cause stays server-side for logs and the unexpected-error reporter.
 Production must never send raw error text, SQL, stack traces, secrets, diary or
 memory content, generated content, tokens, or credentials. Metadata is limited to
 non-content discriminators needed for safe recovery. The only diagnostic exception
-is the exact non-production runtime setting `COSIMOSI_ERROR_DETAIL=verbose`, which
-copies the raw cause into `debug_detail` only. Empty, misspelled, and unknown values
-fail closed. Frontends never render `debug_detail`.
+is the exact runtime setting `COSIMOSI_ERROR_DETAIL=verbose`, which copies the raw
+cause into `debug_detail` only. Empty, misspelled, and unknown values fail closed.
+It is **hard-gated off in production**: when the deployment signal
+`SENTRY_ENVIRONMENT=production` is present, `debug_detail` is forced empty
+regardless of the flag, so a flag leaked into a prod stack cannot expose raw causes
+(a leaked flag still exposes in a non-production stack — keep it unset by default).
+Frontends never render `debug_detail`.
 
 Every failed RPC receives a non-empty `request_id`; it is the join key shared by the
 client presentation, API logs, and unexpected-error telemetry.

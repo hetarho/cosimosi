@@ -127,7 +127,8 @@ type ErrorInfo struct {
 	RequestId string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// Metadata may carry only safe structured context, never private content or secrets.
 	Metadata map[string]string `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Raw internal detail is populated only outside production when explicitly enabled.
+	// Raw internal detail, populated only when explicitly enabled via the server's env gate
+	// (intended for non-production; a production deployment signal forces it off).
 	DebugDetail   string `protobuf:"bytes,5,opt,name=debug_detail,json=debugDetail,proto3" json:"debug_detail,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -351,7 +351,86 @@ func TestStructuredInternalErrorsAreStableAndReported(t *testing.T) {
 	}
 }
 
+// R008/A1: the unmapped-cause → Internal invariant proven behaviorally through a real handler
+// (not by asserting a source substring). An unmapped raw error must reach the wire as Connect
+// Internal + reason INTERNAL + the masked message + empty metadata + a server request id, with
+// no raw cause leaked.
+func TestUnmappedCauseBecomesMaskedInternalOnTheWire(t *testing.T) {
+	t.Setenv(apperr.EnvErrorDetail, "")
+	t.Setenv(apperr.EnvDeployEnvironment, "")
+
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPlatformService(rawErrorPlatformService{}),
+		WithObservabilityReporter(observability.NewInMemoryReporter()),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(requestIDHeader, "request-unmapped")
+	_, err := client.Ping(context.Background(), req)
+	if err == nil {
+		t.Fatal("Ping unexpectedly succeeded")
+	}
+	if got := connect.CodeOf(err); got != connect.CodeInternal {
+		t.Fatalf("code = %s, want internal", got)
+	}
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("not a connect error: %v", err)
+	}
+	if connectErr.Message() != "internal server error" {
+		t.Fatalf("message = %q, want masked %q", connectErr.Message(), "internal server error")
+	}
+	if strings.Contains(err.Error(), "secret=xyz") {
+		t.Fatalf("raw cause leaked to client: %v", err)
+	}
+	info := requireWireErrorInfo(t, err)
+	if info.GetReason() != apperr.ReasonInternal {
+		t.Fatalf("reason = %q, want %q", info.GetReason(), apperr.ReasonInternal)
+	}
+	if info.GetRequestId() != "request-unmapped" {
+		t.Fatalf("request id = %q, want request-unmapped", info.GetRequestId())
+	}
+	if info.GetDebugDetail() != "" {
+		t.Fatalf("debug detail = %q, want empty", info.GetDebugDetail())
+	}
+	if len(info.GetMetadata()) != 0 {
+		t.Fatalf("metadata = %#v, want empty", info.GetMetadata())
+	}
+}
+
+// R013: even with the verbose flag set, a production deployment signal forces masking — a leaked
+// flag in a prod stack cannot copy raw causes onto the wire.
+func TestProductionSignalHardGatesDebugDetail(t *testing.T) {
+	t.Setenv(apperr.EnvErrorDetail, apperr.DetailVerbose)
+	t.Setenv(apperr.EnvDeployEnvironment, "production")
+
+	server := httptest.NewServer(NewHandler(
+		log.New(io.Discard, "", 0),
+		WithPlatformService(internalErrorPlatformService{}),
+	))
+	t.Cleanup(server.Close)
+
+	client := platformv1connect.NewPlatformServiceClient(server.Client(), server.URL)
+	req := connect.NewRequest(&platformv1.PingRequest{})
+	req.Header().Set(requestIDHeader, "request-prod-gate")
+	_, err := client.Ping(context.Background(), req)
+	if err == nil {
+		t.Fatal("Ping unexpectedly succeeded")
+	}
+	info := requireWireErrorInfo(t, err)
+	if info.GetDebugDetail() != "" {
+		t.Fatalf("debug detail = %q, want empty under the prod hard-gate", info.GetDebugDetail())
+	}
+	if strings.Contains(err.Error(), "database exploded") {
+		t.Fatalf("raw cause leaked despite the prod hard-gate: %v", err)
+	}
+}
+
 func TestStructuredInternalErrorsExposeDebugDetailOnlyWhenEnabled(t *testing.T) {
+	t.Setenv(apperr.EnvDeployEnvironment, "")
 	t.Setenv(apperr.EnvErrorDetail, apperr.DetailVerbose)
 
 	server := httptest.NewServer(NewHandler(
@@ -526,6 +605,14 @@ type internalErrorPlatformService struct{}
 
 func (internalErrorPlatformService) Ping(context.Context, *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
 	return nil, connect.NewError(connect.CodeInternal, errors.New("database exploded"))
+}
+
+type rawErrorPlatformService struct{}
+
+func (rawErrorPlatformService) Ping(context.Context, *connect.Request[platformv1.PingRequest]) (*connect.Response[platformv1.PingResponse], error) {
+	// A bare Go error with no apperr mapping: connect wraps it as CodeUnknown — the exact
+	// "unmapped cause" the boundary must fold into a masked Internal.
+	return nil, errors.New("unmapped raw cause with secret=xyz")
 }
 
 type failingTwinkleReadService struct {
