@@ -46,7 +46,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	meter := ai.NewMeter()
 	adminStore := adminpg.NewStore(pool.PgxPool())
 	cipher, decrypter := adminCipher(logger)
-	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), meter)
+	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), meter, logger)
 	// The twinkle service is built first (memory's gate and earn port wrap it); its
 	// spend-signal reader binds back to the memory service just below — the one
 	// two-way seam, closed here where every concrete is visible.

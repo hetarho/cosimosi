@@ -71,7 +71,7 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		decrypter = box
 	}
 	adminStore := adminpg.NewStore(pool.PgxPool())
-	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), ai.NewMeter())
+	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), ai.NewMeter(), logger)
 	runner, err := memory.NewDefaultJobRunner(
 		store,
 		adapters.Embedder,

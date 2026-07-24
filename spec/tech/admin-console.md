@@ -43,7 +43,12 @@ through the consumer-owned `ProviderCatalog` port (admin imports no registry). S
 glm/kimi (LLM) and openai/gemini/voyage (embedding); the `glm` slot is z.ai/Zhipu.
 
 `internal/ai.RuntimeConfigSource` resolves each capability's effective config as **DB (capability's selected provider +
-model, then that provider's decrypted key) → env (`COSIMOSI_*`) → empty (keyless mock)**. `ai.ResolvingAdapters` wraps
+model, then that provider's decrypted key) → env (`COSIMOSI_*`) → empty (keyless mock)**. A DB selection whose provider
+key **row** is absent (cleared via `ClearProviderKey`, or never set) is treated as unresolvable and falls through to env
+→ mock — it never yields a keyless DB config that the factory's provider-without-key fail-fast would reject, so an
+operator's clear/reselect ordering cannot hard-fail the AI pipeline; each rebuild logs the resolved mode so the
+degradation is visible in the process log. A key row that exists but is unusable — decrypt failure, empty ciphertext or
+plaintext — is still a hard error (see §5 — encryption-key drift/corruption must fail loudly, not silently serve mock). `ai.ResolvingAdapters` wraps
 the memory ports (`Extractor`/`Embedder`/`Semanticizer`/`PredictionError`/`SealSuggester`); on each call it re-resolves
 and rebuilds the underlying real/mock adapters when the effective config's **fingerprint** changes (a sha256 of
 source+provider+model+key, so a key rotation rebuilds too). Both `cmd/api` and `cmd/worker` resolve through it
@@ -53,6 +58,12 @@ taxonomy, and keyless-mock fallback are unchanged (the swap is below the meterin
 ## 5. Secrets
 
 `platform/secretbox` is AES-GCM (nonce ‖ ciphertext) keyed by `LLM_KEY_ENCRYPTION_KEY` (base64 32-byte, server-only).
+**The same `LLM_KEY_ENCRYPTION_KEY` value must be set on every process that resolves runtime AI config — both `cmd/api`
+and `cmd/worker`.** Keys are encrypted by the API at `SetProviderKey` time and decrypted by whichever process makes the
+AI call; a worker with the env unset (fail-closed `Disabled` cipher) or set to a different value cannot decrypt any
+stored key, so every resolve of a keyed DB selection errors and every AI-dependent job fails until the values match.
+This is deliberate fail-loud behavior (not a fall-through to mock): key drift is an ops misconfiguration to surface,
+and the two processes must be deployed with the secret from the same source.
 `SetProviderKey` encrypts the key; `ListProviderKeys`/`GetAIConfig` return only `key_set` + a masked hint
 (`secretbox.Hint`), never the plaintext. When the key env is unset, the fail-closed `Disabled` cipher refuses to encrypt
 (provider-key writes are rejected) — the console otherwise runs. `SUPABASE_SERVICE_ROLE_KEY` (server-only) powers the

@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -64,14 +66,28 @@ func (s *RuntimeConfigSource) effective(ctx context.Context, capability string, 
 			if err != nil {
 				return CapabilityConfig{}, "", err
 			}
-			if keyFound && len(encryptedKey) > 0 && s.decrypter != nil {
+			if keyFound {
+				// A key row that exists but cannot be used (empty ciphertext, no decrypter, a
+				// decrypt failure from encryption-key drift, or an empty plaintext) is a loud ops
+				// error, never a silent fall-through to mock — corruption/miswire must surface.
+				if len(encryptedKey) == 0 || s.decrypter == nil {
+					return CapabilityConfig{}, "", fmt.Errorf("ai: provider %q has a key row but no usable ciphertext/decrypter", provider)
+				}
 				key, err := s.decrypter.Decrypt(encryptedKey)
 				if err != nil {
 					return CapabilityConfig{}, "", err
 				}
+				if len(key) == 0 {
+					return CapabilityConfig{}, "", fmt.Errorf("ai: provider %q key decrypted to empty", provider)
+				}
 				cfg.APIKey = string(key)
+				return cfg, fingerprint("db", cfg), nil
 			}
-			return cfg, fingerprint("db", cfg), nil
+			// A selection whose provider key row is absent (cleared, or never set) falls through
+			// to env → keyless mock instead of yielding a keyless DB cfg that NewAdapters rejects:
+			// the factory's provider-without-key fail-fast guards deploy-time env misconfig, but a
+			// runtime operator action (ClearProviderKey before reselecting) must degrade the
+			// pipeline, never hard-fail every AI port in api and worker.
 		}
 	}
 	return envCfg, fingerprint("env", envCfg), nil
@@ -92,6 +108,7 @@ func fingerprint(source string, cfg CapabilityConfig) string {
 type ResolvingAdapters struct {
 	source *RuntimeConfigSource
 	meter  *Meter
+	logger *log.Logger
 	mu     sync.Mutex
 	fp     string
 	built  *Adapters
@@ -117,6 +134,15 @@ func (r *ResolvingAdapters) current(ctx context.Context) (Adapters, error) {
 	if err != nil {
 		return Adapters{}, err
 	}
+	// The prior built Adapters is dropped without disposal — deliberate: LLMClient/EmbeddingClient
+	// expose no Close, config changes are rare operator actions, and the replaced vendor client's
+	// idle keep-alive connections drain on the transport's idle timeout. In-flight calls holding
+	// the old Adapters value finish safely on it.
+	if r.logger != nil {
+		// The one operator-visible signal that a config change (including a cleared key
+		// degrading a capability to env/mock) actually took effect in this process.
+		r.logger.Printf("ai: adapters rebuilt (%s)", adapters.Mode)
+	}
 	r.fp = fp
 	r.built = &adapters
 	return adapters, nil
@@ -124,12 +150,13 @@ func (r *ResolvingAdapters) current(ctx context.Context) (Adapters, error) {
 
 // NewResolvingAdapters returns an Adapters whose ports resolve the effective config on each call.
 // The Mode label is static ("runtime db→env→mock"); the concrete provider a given call uses is
-// whatever the current config resolves to.
-func NewResolvingAdapters(source *RuntimeConfigSource, meter *Meter) Adapters {
+// whatever the current config resolves to. logger (nil-safe) reports each rebuild's resolved mode,
+// so a runtime degradation to env/mock is visible in the process log.
+func NewResolvingAdapters(source *RuntimeConfigSource, meter *Meter, logger *log.Logger) Adapters {
 	if meter == nil {
 		meter = NewMeter()
 	}
-	r := &ResolvingAdapters{source: source, meter: meter}
+	r := &ResolvingAdapters{source: source, meter: meter, logger: logger}
 	return Adapters{
 		Extractor:       resolvingExtractor{r},
 		Embedder:        resolvingEmbedder{r},
