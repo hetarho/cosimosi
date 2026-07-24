@@ -3,13 +3,19 @@
 # over SSH) runs once the VPS is ready (repo variable DEPLOY_ENABLED=true + SSH/DB secrets).
 # develop→staging, main→production (one VPS, two stacks).
 #
-# Manual-only during the platform rebuild: real deployment is out of scope for the
-# foundation, so this never fires on push. The deployment unit re-arms the push trigger
-# (apps/api paths) when hosting returns.
+# Fires automatically on push to develop/main (backend paths only), matching the frontend's
+# git-driven deploys. DEPLOY_ENABLED still gates the actual GHCR push + VPS rollout, so with
+# it unset a push only validates the build.
 name: Deploy backend
 
 on:
   workflow_dispatch:
+  push:
+    branches: [develop, main]
+    paths:
+      - 'apps/api/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/deploy-backend.yml'
 
 # Serialize deploys per environment (never roll two images at once).
 concurrency:
