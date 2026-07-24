@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/cosimosi/api/internal/ai"
@@ -41,9 +40,6 @@ func TestCompleteJSONUsesDeepSeekJSONOutput(t *testing.T) {
 			request.Messages[1] != (chatMessage{Role: "user", Content: "prompt"}) {
 			t.Fatalf("messages = %#v, want system + original user prompt", request.Messages)
 		}
-		if !strings.Contains(request.Messages[0].Content, `"required":["ok"]`) {
-			t.Errorf("system message does not carry output schema: %q", request.Messages[0].Content)
-		}
 
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"{\"ok\":true}"}}]}`))
@@ -66,6 +62,104 @@ func TestCompleteJSONUsesDeepSeekJSONOutput(t *testing.T) {
 	}
 	if string(resp.JSON) != `{"ok":true}` {
 		t.Fatalf("JSON = %q, want structured object", string(resp.JSON))
+	}
+}
+
+// The requested schema is enforced locally on the response (stable JSON Output guarantees only
+// JSON syntax, not conformance), so a schema-violating object never crosses the LLMClient seam.
+// The schema exercises the keywords the port adapters actually emit.
+func TestCompleteJSONEnforcesRequestedSchema(t *testing.T) {
+	schema := ai.JSONSchema{
+		"type":                 "object",
+		"additionalProperties": false,
+		"required":             []string{"mood", "tags"},
+		"properties": map[string]any{
+			"mood": map[string]any{"type": "string", "enum": []string{"CALM", "TENSE"}},
+			"tags": map[string]any{
+				"type":     "array",
+				"items":    map[string]any{"type": "string"},
+				"minItems": 1,
+				"maxItems": 2,
+			},
+		},
+	}
+	cases := []struct {
+		name    string
+		content string
+		wantErr bool
+	}{
+		{"conforming", `{"mood":"CALM","tags":["a"]}`, false},
+		{"conforming max items", `{"mood":"TENSE","tags":["a","b"]}`, false},
+		{"missing required", `{"tags":["a"]}`, true},
+		{"enum violation", `{"mood":"ECSTATIC","tags":["a"]}`, true},
+		{"additional property", `{"mood":"CALM","tags":["a"],"extra":1}`, true},
+		{"below minItems", `{"mood":"CALM","tags":[]}`, true},
+		{"above maxItems", `{"mood":"CALM","tags":["a","b","c"]}`, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := stopContentServer(tc.content)
+			defer server.Close()
+			client := newTestClient(t, server.URL)
+			resp, err := client.CompleteJSON(context.Background(), ai.LLMRequest{
+				Prompt:          "prompt",
+				MaxOutputTokens: 1200,
+				OutputSchema:    schema,
+			})
+			if tc.wantErr {
+				if !ai.IsMalformedStructuredOutput(err) {
+					t.Fatalf("error = %v, want MalformedStructuredOutputError", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("CompleteJSON failed: %v", err)
+			}
+			if string(resp.JSON) != tc.content {
+				t.Fatalf("JSON = %q, want %q", string(resp.JSON), tc.content)
+			}
+		})
+	}
+}
+
+// An invalid requested schema is a malformed contract, rejected before the billable request.
+func TestCompleteJSONRejectsInvalidRequestedSchema(t *testing.T) {
+	called := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"stop","message":{"content":"{}"}}]}`))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL)
+	_, err := client.CompleteJSON(context.Background(), ai.LLMRequest{
+		Prompt:          "prompt",
+		MaxOutputTokens: 1200,
+		// "type" must be a string/array; a number is not a valid schema.
+		OutputSchema: ai.JSONSchema{"type": 5},
+	})
+	if !ai.IsMalformedStructuredOutput(err) {
+		t.Fatalf("error = %v, want MalformedStructuredOutputError", err)
+	}
+	if called {
+		t.Error("an invalid requested schema must be rejected before the billable HTTP request")
+	}
+}
+
+// Only finish_reason == "stop" yields content. A capacity failure is retryable; every other
+// non-stop reason is malformed output even when the body is syntactically valid JSON.
+func TestCompleteJSONGatesOnFinishReason(t *testing.T) {
+	if _, err := runFinishReason(t, "insufficient_system_resource", `{}`); !ai.IsRateLimited(err) {
+		t.Fatalf("insufficient_system_resource error = %v, want RateLimitedError", err)
+	}
+	for _, reason := range []string{"length", "content_filter", "tool_calls", "", "wat"} {
+		t.Run("reason="+reason, func(t *testing.T) {
+			// Syntactically valid object content — only the finish reason makes it unusable.
+			if _, err := runFinishReason(t, reason, `{}`); !ai.IsMalformedStructuredOutput(err) {
+				t.Fatalf("finish reason %q error = %v, want MalformedStructuredOutputError", reason, err)
+			}
+		})
 	}
 }
 
@@ -181,6 +275,44 @@ func TestProviderRegistersWithFactory(t *testing.T) {
 	if err := ai.ValidateLLMProvider(providerName, defaultModel); err != nil {
 		t.Fatalf("factory rejected registered deepseek provider: %v", err)
 	}
+}
+
+// stopContentServer returns a fake DeepSeek that replies with finish_reason "stop" and the given
+// raw content string as the assistant message.
+func stopContentServer(content string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		body := chatResponseBody{}
+		body.Choices = append(body.Choices, struct {
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		}{FinishReason: "stop"})
+		body.Choices[0].Message.Content = content
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+}
+
+// runFinishReason drives one request through a fake server that replies with the given finish
+// reason and content, returning the client error (if any).
+func runFinishReason(t *testing.T, reason, content string) (ai.LLMResponse, error) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		body := chatResponseBody{}
+		body.Choices = append(body.Choices, struct {
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		}{FinishReason: reason})
+		body.Choices[0].Message.Content = content
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	return client.CompleteJSON(context.Background(), ai.LLMRequest{Prompt: "x", MaxOutputTokens: 1200})
 }
 
 func newTestClient(t *testing.T, baseURL string) *Client {

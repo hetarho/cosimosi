@@ -30,6 +30,16 @@ provider subpackage imports `internal/ai` for the capability types and the typed
 a provider subpackage (a driver registry — `RegisterLLMProvider` / `RegisterEmbeddingProvider`, called from each
 subpackage's `init`, populated by a blank import in `cmd/*` — avoids the cycle).
 
+The `LLMClient` contract is **full requested-schema conformance** (not merely JSON syntax): an adapter returns a value
+satisfying the entire `OutputSchema` or a typed `MalformedStructuredOutputError`. Each adapter meets this through the
+strongest **stable** native mechanism plus local validation where that mechanism is partial. **DeepSeek**: stable
+native JSON Output guarantees JSON syntax only (strict JSON-Schema mode is beta-only and omits keywords the port
+adapters use, e.g. `minItems`/`maxItems`), so the adapter compiles the requested schema (`santhosh-tekuri/jsonschema`,
+confined to `internal/ai/deepseek`) and validates the decoded response against it before returning; it also accepts
+content only when `finish_reason == "stop"` (a capacity failure stays a retryable `RateLimitedError`; every other
+non-stop reason — `length`/`content_filter`/`tool_calls`/empty/unknown — is malformed output even when the body is
+syntactically valid JSON, so a truncated or filtered generation never reaches the identical-input cache).
+
 `internal/platform/jobqueue` is generic queue mechanism. It knows job id, user id, kind, attempts, and backoff; it does
 not import memory, neurons, embeddings, or semantic stages. The memory context supplies the `embed` and `semanticize`
 handlers.

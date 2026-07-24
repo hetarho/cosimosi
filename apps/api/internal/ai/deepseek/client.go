@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/cosimosi/api/internal/ai"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 const providerName = "deepseek"
@@ -104,6 +105,19 @@ func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMRes
 			Err:      fmt.Errorf("encode output schema: %w", err),
 		}
 	}
+	// DeepSeek's stable JSON Output mode guarantees only JSON *syntax*, not conformance to the
+	// requested schema (strict JSON-Schema mode is beta-only and does not cover every keyword the
+	// port adapters emit, e.g. minItems/maxItems). The LLMClient contract requires full schema
+	// conformance, so compile the requested schema up front — before the billable request — and
+	// validate the response locally below. An invalid requested schema is a malformed contract,
+	// surfaced as MalformedStructuredOutputError rather than a live call.
+	compiledSchema, err := compileSchema(req.OutputSchema)
+	if err != nil {
+		return ai.LLMResponse{}, &ai.MalformedStructuredOutputError{
+			Provider: providerName,
+			Err:      fmt.Errorf("compile output schema: %w", err),
+		}
+	}
 	body := chatRequestBody{
 		Model:     c.model,
 		Messages:  []chatMessage{{Role: "system", Content: systemPrompt}, {Role: "user", Content: req.Prompt}},
@@ -161,21 +175,60 @@ func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMRes
 	}
 
 	choice := decoded.Choices[0]
+	// Gate on finish_reason before trusting the content. A capacity failure is retryable; every
+	// other non-stop reason (length/content_filter/tool_calls/empty/unknown) means the content is
+	// not the provider's completed answer — a truncated or filtered body can still be syntactically
+	// valid JSON (even `{}`), so accepting it would cache a silent wrong result for identical input.
 	if choice.FinishReason == "insufficient_system_resource" {
 		return ai.LLMResponse{}, &ai.RateLimitedError{
 			Provider: providerName,
 			Err:      fmt.Errorf("deepseek finish reason %q", choice.FinishReason),
 		}
 	}
+	if choice.FinishReason != "stop" {
+		return ai.LLMResponse{}, malformed(fmt.Sprintf("non-stop finish reason %q", choice.FinishReason))
+	}
 	content := []byte(strings.TrimSpace(choice.Message.Content))
-	var object map[string]json.RawMessage
-	if err := json.Unmarshal(content, &object); err != nil || object == nil {
-		if err == nil {
-			err = fmt.Errorf("response was not a JSON object")
-		}
+	instance, err := jsonschema.UnmarshalJSON(bytes.NewReader(content))
+	if err != nil {
 		return ai.LLMResponse{}, &ai.MalformedStructuredOutputError{Provider: providerName, Err: err}
 	}
+	if _, isObject := instance.(map[string]any); !isObject {
+		return ai.LLMResponse{}, malformed("response was not a JSON object")
+	}
+	if compiledSchema != nil {
+		if err := compiledSchema.Validate(instance); err != nil {
+			return ai.LLMResponse{}, &ai.MalformedStructuredOutputError{
+				Provider: providerName,
+				Err:      fmt.Errorf("response violates output schema: %w", err),
+			}
+		}
+	}
 	return ai.LLMResponse{JSON: content}, nil
+}
+
+// compileSchema turns the vendor-neutral requested schema into a validator. It returns (nil, nil)
+// for an empty schema (the caller keeps the JSON-object-only check). The schema map carries
+// Go-native types (e.g. []string, int); round-tripping through JSON canonicalizes them to the
+// json.Unmarshal-style values the validator expects.
+func compileSchema(schema ai.JSONSchema) (*jsonschema.Schema, error) {
+	if len(schema) == 0 {
+		return nil, nil
+	}
+	encoded, err := json.Marshal(schema)
+	if err != nil {
+		return nil, err
+	}
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(encoded))
+	if err != nil {
+		return nil, err
+	}
+	compiler := jsonschema.NewCompiler()
+	const schemaURI = "mem://deepseek/output-schema.json"
+	if err := compiler.AddResource(schemaURI, doc); err != nil {
+		return nil, err
+	}
+	return compiler.Compile(schemaURI)
 }
 
 func structuredOutputPrompt(schema ai.JSONSchema) (string, error) {

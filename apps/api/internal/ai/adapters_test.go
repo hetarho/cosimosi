@@ -192,6 +192,43 @@ func TestMeteredSeamDoesNotCacheRejectedResponses(t *testing.T) {
 	}
 }
 
+// A provider ERROR (not a consumer rejection) is never cached: an identical retry must reach the
+// provider again, and the first subsequent success is then cached normally. This guards the seam
+// against a truncated/filtered DeepSeek completion (now a typed error) poisoning the cache.
+func TestMeteredSeamDoesNotCacheProviderErrors(t *testing.T) {
+	ctx := platform.ContextWithUserID(context.Background(), "user-1")
+	providerErr := &MalformedStructuredOutputError{Provider: "deepseek", Err: errors.New("non-stop finish reason")}
+
+	llm := &fakeLLMClient{
+		response:   []byte(`{"ok":true}`),
+		failFirstN: 1,
+		failErr:    providerErr,
+	}
+	seam := newMeteredLLMClient(llm, newMeter(10, fixedNow))
+	req := LLMRequest{CacheKey: "k"}
+
+	// First call: provider fails — the error surfaces and nothing is cached.
+	if _, err := seam.CompleteJSON(ctx, req); !IsMalformedStructuredOutput(err) {
+		t.Fatalf("first call error = %v, want the provider error", err)
+	}
+	// Second identical call: the failure was not cached, so the provider is invoked again and
+	// now succeeds; that success is cached.
+	resp, err := seam.CompleteJSON(ctx, req)
+	if err != nil {
+		t.Fatalf("second call failed: %v", err)
+	}
+	if string(resp.JSON) != `{"ok":true}` {
+		t.Fatalf("second call JSON = %q, want the success body", string(resp.JSON))
+	}
+	// Third identical call: served from cache, provider not invoked a third time.
+	if _, err := seam.CompleteJSON(ctx, req); err != nil {
+		t.Fatalf("third call failed: %v", err)
+	}
+	if llm.calls != 2 {
+		t.Fatalf("provider calls = %d, want 2 (error not cached, success cached)", llm.calls)
+	}
+}
+
 func TestBoundedCacheEvictsOldestEntries(t *testing.T) {
 	cache := newBoundedCache[string](2)
 	cache.put("a", "first")
@@ -261,11 +298,17 @@ type fakeLLMClient struct {
 	response    []byte
 	calls       int
 	lastRequest LLMRequest
+	// failFirstN fails the first N calls with failErr, then serves response.
+	failFirstN int
+	failErr    error
 }
 
 func (c *fakeLLMClient) CompleteJSON(_ context.Context, req LLMRequest) (LLMResponse, error) {
 	c.calls++
 	c.lastRequest = req
+	if c.calls <= c.failFirstN {
+		return LLMResponse{}, c.failErr
+	}
 	return LLMResponse{JSON: append([]byte(nil), c.response...)}, nil
 }
 
