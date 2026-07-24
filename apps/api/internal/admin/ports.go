@@ -29,6 +29,9 @@ type Store interface {
 	// false when a row with the same grant id already exists (an idempotent replay) — the caller
 	// then skips nothing on the twinkle side because that earn is idempotent by the same id.
 	RecordGrant(ctx context.Context, grant TwinkleGrant, audit AuditEntry) (applied bool, err error)
+	// GetGrant reads one recorded grant by id (nil when absent) — the replay/conflict check
+	// behind RecordGrant's applied=false.
+	GetGrant(ctx context.Context, grantID string) (*TwinkleGrant, error)
 	// ListGrants returns one page of the grant history, newest first.
 	ListGrants(ctx context.Context, page int, pageSize int) ([]TwinkleGrant, bool, error)
 

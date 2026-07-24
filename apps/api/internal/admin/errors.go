@@ -22,6 +22,9 @@ var (
 	ErrGrantAmountRange = errors.New("stardust grant amount is out of range")
 	// ErrGrantIDRequired rejects a grant without a client idempotency id.
 	ErrGrantIDRequired = errors.New("stardust grant requires a grant id")
+	// ErrGrantIDConflict refuses a grant id already recorded for a different target/amount —
+	// the id is the idempotency key of ONE logical grant, never reusable across grants.
+	ErrGrantIDConflict = errors.New("stardust grant id was already used for a different grant")
 	// ErrUnknownCapability rejects an AI capability outside {llm, embedding}.
 	ErrUnknownCapability = errors.New("unknown AI capability")
 	// ErrProviderRequired rejects a request with no provider.

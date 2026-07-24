@@ -6,6 +6,7 @@ const (
 	reasonUserIDRequired             = "ADMIN_USER_ID_REQUIRED"
 	reasonGrantAmountRange           = "ADMIN_GRANT_AMOUNT_RANGE"
 	reasonGrantIDRequired            = "ADMIN_GRANT_ID_REQUIRED"
+	reasonGrantIDConflict            = "ADMIN_GRANT_ID_CONFLICT"
 	reasonUnknownCapability          = "ADMIN_UNKNOWN_CAPABILITY"
 	reasonProviderRequired           = "ADMIN_PROVIDER_REQUIRED"
 	reasonProviderKeyRequired        = "ADMIN_PROVIDER_KEY_REQUIRED"

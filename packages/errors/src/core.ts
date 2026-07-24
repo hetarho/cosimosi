@@ -13,6 +13,7 @@ export const ERROR_REASONS = {
   adminUserIdRequired: 'ADMIN_USER_ID_REQUIRED',
   adminGrantAmountRange: 'ADMIN_GRANT_AMOUNT_RANGE',
   adminGrantIdRequired: 'ADMIN_GRANT_ID_REQUIRED',
+  adminGrantIdConflict: 'ADMIN_GRANT_ID_CONFLICT',
   adminUnknownCapability: 'ADMIN_UNKNOWN_CAPABILITY',
   adminProviderRequired: 'ADMIN_PROVIDER_REQUIRED',
   adminProviderKeyRequired: 'ADMIN_PROVIDER_KEY_REQUIRED',

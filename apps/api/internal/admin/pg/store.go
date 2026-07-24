@@ -117,6 +117,27 @@ func (s Store) RecordGrant(ctx context.Context, grant admin.TwinkleGrant, audit 
 	return applied, nil
 }
 
+func (s Store) GetGrant(ctx context.Context, grantID string) (*admin.TwinkleGrant, error) {
+	if s.queries == nil {
+		return nil, ErrQueriesRequired
+	}
+	row, err := s.queries.GetTwinkleGrant(ctx, grantID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &admin.TwinkleGrant{
+		ID:         row.ID,
+		GrantedBy:  row.GrantedBy,
+		TargetUser: row.TargetUser,
+		Amount:     int(row.Amount),
+		Note:       row.Note,
+		CreatedAt:  row.CreatedAt.Time,
+	}, nil
+}
+
 func (s Store) ListGrants(ctx context.Context, page int, pageSize int) ([]admin.TwinkleGrant, bool, error) {
 	if s.queries == nil {
 		return nil, false, ErrQueriesRequired

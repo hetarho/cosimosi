@@ -22,6 +22,7 @@ func TestDomainErrorMapsAdminErrors(t *testing.T) {
 		{admin.ErrUserIDRequired, connect.CodeInvalidArgument, reasonUserIDRequired},
 		{admin.ErrGrantAmountRange, connect.CodeInvalidArgument, reasonGrantAmountRange},
 		{admin.ErrGrantIDRequired, connect.CodeInvalidArgument, reasonGrantIDRequired},
+		{admin.ErrGrantIDConflict, connect.CodeFailedPrecondition, reasonGrantIDConflict},
 		{admin.ErrUnknownCapability, connect.CodeInvalidArgument, reasonUnknownCapability},
 		{admin.ErrProviderRequired, connect.CodeInvalidArgument, reasonProviderRequired},
 		{admin.ErrProviderKeyRequired, connect.CodeInvalidArgument, reasonProviderKeyRequired},

@@ -127,6 +127,60 @@ func TestEffectiveUnusableKeyRowIsHardError(t *testing.T) {
 	}
 }
 
+// A stable effective config reuses the cached built adapters; a changed selection or a
+// key rotation changes the fingerprint and rebuilds. "testllm" registers a stub client so
+// the keyed builds run without a vendor subpackage import.
+func TestCurrentCachesOnStableConfigAndRebuildsOnChange(t *testing.T) {
+	RegisterLLMProvider("testllm", func(ProviderConfig) (LLMClient, error) {
+		return stubLLMClient{}, nil
+	})
+	reader := fakeConfigReader{
+		selections: map[string]fakeSelection{"llm": {provider: "testllm", model: "m1"}},
+		keys:       map[string][]byte{"testllm": []byte("key-1")},
+	}
+	source := &RuntimeConfigSource{reader: reader, decrypter: plainDecrypter{}}
+	resolving := &ResolvingAdapters{source: source, meter: NewMeter()}
+	ctx := context.Background()
+
+	if _, err := resolving.current(ctx); err != nil {
+		t.Fatalf("current(initial) failed: %v", err)
+	}
+	firstFP, firstBuilt := resolving.fp, resolving.built
+
+	// Stable config → cached reuse (same built adapters, same fingerprint).
+	if _, err := resolving.current(ctx); err != nil {
+		t.Fatalf("current(stable) failed: %v", err)
+	}
+	if resolving.built != firstBuilt || resolving.fp != firstFP {
+		t.Fatal("stable config rebuilt the adapters, want cached reuse")
+	}
+
+	// Key rotation → fingerprint change → rebuild.
+	reader.keys["testllm"] = []byte("key-2")
+	if _, err := resolving.current(ctx); err != nil {
+		t.Fatalf("current(rotated key) failed: %v", err)
+	}
+	if resolving.built == firstBuilt || resolving.fp == firstFP {
+		t.Fatal("key rotation did not rebuild the adapters")
+	}
+	rotatedFP, rotatedBuilt := resolving.fp, resolving.built
+
+	// Selection change (model) → rebuild again.
+	reader.selections["llm"] = fakeSelection{provider: "testllm", model: "m2"}
+	if _, err := resolving.current(ctx); err != nil {
+		t.Fatalf("current(changed model) failed: %v", err)
+	}
+	if resolving.built == rotatedBuilt || resolving.fp == rotatedFP {
+		t.Fatal("selection change did not rebuild the adapters")
+	}
+}
+
+type stubLLMClient struct{}
+
+func (stubLLMClient) CompleteJSON(context.Context, LLMRequest) (LLMResponse, error) {
+	return LLMResponse{JSON: []byte("{}")}, nil
+}
+
 // The happy path is unchanged: a keyed selection resolves to the DB config with the
 // decrypted key and a DB fingerprint distinct from the env one.
 func TestEffectiveKeyedSelectionResolvesDBConfig(t *testing.T) {

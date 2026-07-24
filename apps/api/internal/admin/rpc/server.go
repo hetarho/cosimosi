@@ -313,6 +313,8 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeInvalidArgument, reasonGrantAmountRange, err, nil)
 	case errors.Is(err, admin.ErrGrantIDRequired):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonGrantIDRequired, err, nil)
+	case errors.Is(err, admin.ErrGrantIDConflict):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonGrantIDConflict, err, nil)
 	case errors.Is(err, admin.ErrUnknownCapability):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownCapability, err, nil)
 	case errors.Is(err, admin.ErrProviderRequired):

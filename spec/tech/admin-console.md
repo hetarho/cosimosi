@@ -22,8 +22,12 @@ set. `IsAdmin(userID)` = seed-id ∪ (seed-email resolved via `AccountDirectory.
 `admin_users` row. The `admin/rpc.AuthorizationInterceptor` is attached to the admin service handler **only** (via
 `connect.WithInterceptors` appended after the shared chain), so it runs after the plan-04 auth interceptor has put the
 user id in context. It returns `PermissionDenied` for a non-admin; `GetAdminSelf` (the FE probe) is exempt. Seed admins
-are undemotable (`RevokeAdmin` refuses them). When `COSIMOSI_DEV_AUTH` is on (dev bypass, never production), `IsAdmin`
-short-circuits to `true` for any authenticated caller so `pnpm dev` reaches `/admin` without seeded ids.
+are undemotable — `RevokeAdmin` refuses **both** id seeds and email seeds (the target's email is resolved via
+`AccountDirectory.EmailFor`, mirroring `IsAdmin`'s matching; unlike `IsAdmin`'s read-only fall-through, a directory
+failure here fails **closed** — proceeding could delete the DB promotion that keeps an email-seed admin effective
+during that same outage, and would record a misleading `revoke_admin` audit row). When `COSIMOSI_DEV_AUTH` is on (dev
+bypass, never production), `IsAdmin` short-circuits to `true` for any authenticated caller so `pnpm dev` reaches
+`/admin` without seeded ids.
 
 ## 3. Storage (migration 00015)
 
@@ -71,12 +75,26 @@ and the two processes must be deployed with the secret from the same source.
 
 ## 6. Stardust grant
 
-`admin.GrantStardust` validates `0 < amount ≤ twinkle.admin_grant_max`, credits **additional** balance via
-`twinkle.EarnAdminGrant` (idempotent by the client grant id), then records the `admin_stardust_grants` + audit rows in
-one admin transaction (also keyed by the grant id). The two sides are an **idempotent pairing** (not one cross-context
-transaction — contexts stay decoupled), safe under retry because both dedup on the same id.
+`admin.GrantStardust` validates `0 < amount ≤ twinkle.admin_grant_max`, **records first, credits second**: the
+`admin_stardust_grants` + audit rows are written in one admin transaction (keyed by the grant id), then the
+**additional** balance is credited via `twinkle.EarnAdminGrant` (idempotent per user + grant id). The globally-unique
+grant row is the idempotency lock — a grant id already recorded for a **different** target/amount is refused with
+`ErrGrantIDConflict` (→ `ADMIN_GRANT_ID_CONFLICT`) _before_ any credit (twinkle's dedup is per-user only, so
+credit-first would let a reused id credit another user with no grant/audit row); a true replay (same target + amount)
+re-runs the credit as a dedup no-op and returns the balance, and a crash between record and credit heals on that
+replay. The two sides remain an **idempotent pairing** (not one cross-context transaction — contexts stay decoupled).
+The grant id is **required and server-enforced**: an empty id is refused with `ErrGrantIDRequired`
+(→ `ADMIN_GRANT_ID_REQUIRED`), never auto-minted — a minted id would make a retried direct-RPC call double-credit.
 
-## 7. Frontend
+## 7. Test coverage
+
+DB-backed integration tests (`internal/admin/pg/store_integration_test.go`, `internal/twinkle/pg/…`) are
+**local-only**: they gate on `COSIMOSI_TEST_DATABASE_URL`/`DATABASE_URL` and skip when unset. CI provisions **no
+Postgres service**, so a green CI proves the unit/contract layer only, never the DB transaction paths — run
+`pnpm infra:up && pnpm db:migrate` and the gated tests locally before trusting a DB-touching change. (Revisit
+alongside the CI-toolchain work if a CI Postgres service is ever added.)
+
+## 8. Frontend
 
 Web-only `pages/admin` composes `features/admin-ai-config`, `admin-users`, `admin-usage`, `admin-jobs`, mounted under
 the authenticated route subtree at `/admin`; the page gates on `GetAdminSelf` (UX mirror; the BE interceptor is

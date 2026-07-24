@@ -61,6 +61,26 @@ func (q *Queries) GetProviderKey(ctx context.Context, provider string) (AiProvid
 	return i, err
 }
 
+const getTwinkleGrant = `-- name: GetTwinkleGrant :one
+SELECT id, granted_by, target_user, amount, note, created_at
+FROM admin_stardust_grants
+WHERE id = $1
+`
+
+func (q *Queries) GetTwinkleGrant(ctx context.Context, id string) (AdminStardustGrant, error) {
+	row := q.db.QueryRow(ctx, getTwinkleGrant, id)
+	var i AdminStardustGrant
+	err := row.Scan(
+		&i.ID,
+		&i.GrantedBy,
+		&i.TargetUser,
+		&i.Amount,
+		&i.Note,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertAdminAuditLog = `-- name: InsertAdminAuditLog :exec
 INSERT INTO admin_audit_log (id, actor, action, target, detail)
 VALUES ($1, $2, $3, $4, $5)

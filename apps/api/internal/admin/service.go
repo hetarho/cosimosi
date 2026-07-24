@@ -194,6 +194,20 @@ func (s *Service) RevokeAdmin(ctx context.Context, actor string, userID string) 
 	if _, isSeed := s.seedIDs[target]; isSeed {
 		return true, ErrSeedAdminUndemotable
 	}
+	// Email seeds are as undemotable as id seeds (mirrors isSeedIdentity). Unlike IsAdmin's
+	// read-only fall-through, a directory failure here fails CLOSED: proceeding would delete a
+	// DB promotion that may be the target's only effective admin bit during the same outage
+	// (IsAdmin also falls back to the DB row then), and would record a revoke_admin audit for a
+	// seed the env still protects. Revoke is rare — refusing on a flaky lookup costs nothing.
+	if len(s.seedEmails) > 0 {
+		email, err := s.directory.EmailFor(ctx, target)
+		if err != nil {
+			return false, err
+		}
+		if _, isSeed := s.seedEmails[strings.ToLower(strings.TrimSpace(email))]; isSeed {
+			return true, ErrSeedAdminUndemotable
+		}
+	}
 	audit := s.auditEntry(actor, ActionRevokeAdmin, target, nil)
 	if _, err := s.store.Revoke(ctx, target, audit); err != nil {
 		return false, err
@@ -272,14 +286,12 @@ func (s *Service) GrantStardust(ctx context.Context, actor string, userID string
 		return 0, ErrGrantAmountRange
 	}
 	// The client supplies grant_id so a retried grant is idempotent end to end (the twinkle earn
-	// and the admin_stardust_grants row both key off it); an empty id mints one (no dedup).
+	// and the admin_stardust_grants row both key off it). An empty id is refused: minting one
+	// server-side would make a retried direct-RPC call double-credit — the money-path idempotency
+	// is server-enforced, not client convention.
 	grantID = strings.TrimSpace(grantID)
 	if grantID == "" {
-		grantID = s.newID()
-	}
-	total, err := s.stardust.Grant(ctx, target, amount, grantID)
-	if err != nil {
-		return 0, err
+		return 0, ErrGrantIDRequired
 	}
 	grant := TwinkleGrant{
 		ID:         grantID,
@@ -293,7 +305,27 @@ func (s *Service) GrantStardust(ctx context.Context, actor string, userID string
 		"amount":   itoa(amount),
 		"grant_id": grantID,
 	})
-	if _, err := s.store.RecordGrant(ctx, grant, audit); err != nil {
+	// Record BEFORE crediting: the globally-unique grant row is the idempotency lock. Twinkle
+	// dedups per (user, grant id) only, so crediting first would let a grant id reused for a
+	// DIFFERENT user credit them with no grant/audit row. Recording first turns that reuse into
+	// a refusal below, and a crash between record and credit heals on replay (the credit dedups).
+	applied, err := s.store.RecordGrant(ctx, grant, audit)
+	if err != nil {
+		return 0, err
+	}
+	if !applied {
+		existing, err := s.store.GetGrant(ctx, grantID)
+		if err != nil {
+			return 0, err
+		}
+		if existing == nil || existing.TargetUser != target || existing.Amount != amount {
+			return 0, ErrGrantIDConflict
+		}
+		// A true replay of the same grant: fall through — the credit below is a dedup no-op
+		// that returns the current balance.
+	}
+	total, err := s.stardust.Grant(ctx, target, amount, grantID)
+	if err != nil {
 		return 0, err
 	}
 	return total, nil

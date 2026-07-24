@@ -1,10 +1,13 @@
 package admin
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
+	"github.com/cosimosi/api/internal/platform/secretbox"
 	"github.com/cosimosi/api/internal/platform/values"
 )
 
@@ -57,6 +60,15 @@ func (s *fakeStore) RecordGrant(_ context.Context, grant TwinkleGrant, audit Aud
 	s.grants = append(s.grants, grant)
 	s.audits = append(s.audits, audit)
 	return true, nil
+}
+func (s *fakeStore) GetGrant(_ context.Context, grantID string) (*TwinkleGrant, error) {
+	for _, g := range s.grants {
+		if g.ID == grantID {
+			grant := g
+			return &grant, nil
+		}
+	}
+	return nil, nil
 }
 func (s *fakeStore) ListGrants(context.Context, int, int) ([]TwinkleGrant, bool, error) {
 	return s.grants, false, nil
@@ -113,18 +125,27 @@ func (d fakeDirectory) EmailFor(_ context.Context, userID string) (string, error
 
 type fakeGranter struct {
 	granted map[string]int
+	deduped map[string]struct{}
 	calls   int
 }
 
 func (g *fakeGranter) Balance(context.Context, string) (Balance, error) {
 	return Balance{Basic: 100, Additional: 0, Total: 100}, nil
 }
-func (g *fakeGranter) Grant(_ context.Context, targetUserID string, amount int, _ string) (int, error) {
+
+// Grant mirrors the real twinkle earn's per-(user, grant id) dedup, so the idempotency tests
+// can fail if a replay reaches the credit twice.
+func (g *fakeGranter) Grant(_ context.Context, targetUserID string, amount int, grantID string) (int, error) {
 	g.calls++
 	if g.granted == nil {
 		g.granted = map[string]int{}
+		g.deduped = map[string]struct{}{}
 	}
-	g.granted[targetUserID] += amount
+	dedup := targetUserID + "\x00" + grantID
+	if _, seen := g.deduped[dedup]; !seen {
+		g.deduped[dedup] = struct{}{}
+		g.granted[targetUserID] += amount
+	}
 	return g.granted[targetUserID], nil
 }
 
@@ -227,6 +248,59 @@ func TestRevokeSeedAdminIsRefused(t *testing.T) {
 	}
 }
 
+// A seed admin identified by EMAIL in ADMIN_USER_IDS is as undemotable as an id seed: a revoke
+// targeting their resolved uuid is refused, and the response reports isAdmin=true, not a
+// misleading false.
+func TestRevokeSeedAdminByEmailIsRefused(t *testing.T) {
+	store := newFakeStore()
+	svc := newTestService(t, store, func(d *ServiceDeps) {
+		d.SeedAdmins = "admin@example.com"
+		d.Directory = fakeDirectory{accounts: map[string]DirectoryAccount{
+			"email-user": {UserID: "email-user", Email: "Admin@Example.com"},
+		}}
+	})
+	isAdmin, err := svc.RevokeAdmin(context.Background(), "actor", "email-user")
+	if !errors.Is(err, ErrSeedAdminUndemotable) {
+		t.Fatalf("RevokeAdmin(email seed) err = %v, want ErrSeedAdminUndemotable", err)
+	}
+	if !isAdmin {
+		t.Error("RevokeAdmin(email seed) reported isAdmin=false for a still-admin seed")
+	}
+	// A non-seed user is still revocable when email seeds exist.
+	if _, err := svc.RevokeAdmin(context.Background(), "actor", "plain-user"); err != nil {
+		t.Fatalf("RevokeAdmin(non-seed) err = %v, want nil", err)
+	}
+}
+
+// When email seeds exist and the directory lookup fails, the revoke fails CLOSED: nothing is
+// deleted, no revoke_admin audit is written, and no misleading isAdmin=false is returned.
+func TestRevokeAdminFailsClosedOnDirectoryError(t *testing.T) {
+	store := newFakeStore()
+	store.promoted["email-user"] = PromotedAdmin{UserID: "email-user"}
+	svc := newTestService(t, store, func(d *ServiceDeps) {
+		d.SeedAdmins = "admin@example.com"
+		d.Directory = failingDirectory{}
+	})
+	if _, err := svc.RevokeAdmin(context.Background(), "actor", "email-user"); err == nil {
+		t.Fatal("RevokeAdmin with a failing directory succeeded, want an error")
+	}
+	if _, stillPromoted := store.promoted["email-user"]; !stillPromoted {
+		t.Error("revoke proceeded despite the directory failure")
+	}
+	if len(store.audits) != 0 {
+		t.Errorf("audit rows = %d, want 0 (no revoke happened)", len(store.audits))
+	}
+}
+
+type failingDirectory struct{}
+
+func (failingDirectory) ListUsers(context.Context, int, int, string) ([]DirectoryAccount, bool, error) {
+	return nil, false, errors.New("directory down")
+}
+func (failingDirectory) EmailFor(context.Context, string) (string, error) {
+	return "", errors.New("directory down")
+}
+
 func TestGrantStardustCapAndIdempotency(t *testing.T) {
 	store := newFakeStore()
 	granter := &fakeGranter{}
@@ -239,6 +313,14 @@ func TestGrantStardustCapAndIdempotency(t *testing.T) {
 	if _, err := svc.GrantStardust(ctx, "actor", "u1", values.TwinkleAdminGrantMax+1, "", ""); !errors.Is(err, ErrGrantAmountRange) {
 		t.Fatalf("over-cap amount err = %v, want ErrGrantAmountRange", err)
 	}
+	// An empty grant id is refused, never auto-minted: the money-path idempotency is
+	// server-enforced, and no credit happens on the refused call.
+	if _, err := svc.GrantStardust(ctx, "actor", "u1", 50, "", "  "); !errors.Is(err, ErrGrantIDRequired) {
+		t.Fatalf("empty grant id err = %v, want ErrGrantIDRequired", err)
+	}
+	if granter.calls != 0 {
+		t.Fatalf("granter called %d times before a valid grant id, want 0", granter.calls)
+	}
 	total, err := svc.GrantStardust(ctx, "actor", "u1", 50, "gift", "grant-1")
 	if err != nil {
 		t.Fatalf("GrantStardust: %v", err)
@@ -246,15 +328,31 @@ func TestGrantStardustCapAndIdempotency(t *testing.T) {
 	if total != 50 {
 		t.Errorf("total = %d, want 50", total)
 	}
-	// A replay with the same grant id records no second grant row (idempotent).
-	if _, err := svc.GrantStardust(ctx, "actor", "u1", 50, "gift", "grant-1"); err != nil {
+	// A replay with the same grant id records no second grant row AND credits nothing twice.
+	replayTotal, err := svc.GrantStardust(ctx, "actor", "u1", 50, "gift", "grant-1")
+	if err != nil {
 		t.Fatalf("replay: %v", err)
+	}
+	if replayTotal != 50 || granter.granted["u1"] != 50 {
+		t.Errorf("replay credited again: total=%d granted=%d, want 50/50", replayTotal, granter.granted["u1"])
 	}
 	if len(store.grants) != 1 {
 		t.Errorf("grants recorded = %d, want 1 (idempotent)", len(store.grants))
 	}
 	if len(store.audits) == 0 {
 		t.Error("expected an audit row for the grant")
+	}
+	// The same grant id for a DIFFERENT grant (other user or amount) is refused before any
+	// credit — the id is the idempotency key of one logical grant, never reusable.
+	callsBefore := granter.calls
+	if _, err := svc.GrantStardust(ctx, "actor", "u2", 50, "", "grant-1"); !errors.Is(err, ErrGrantIDConflict) {
+		t.Fatalf("cross-user id reuse err = %v, want ErrGrantIDConflict", err)
+	}
+	if _, err := svc.GrantStardust(ctx, "actor", "u1", 60, "", "grant-1"); !errors.Is(err, ErrGrantIDConflict) {
+		t.Fatalf("changed-amount id reuse err = %v, want ErrGrantIDConflict", err)
+	}
+	if granter.calls != callsBefore || granter.granted["u2"] != 0 {
+		t.Errorf("a refused id reuse still reached the credit (calls %d→%d, u2=%d)", callsBefore, granter.calls, granter.granted["u2"])
 	}
 }
 
@@ -288,6 +386,32 @@ func TestSetProviderKeyEncryptsAndMasks(t *testing.T) {
 		if p.KeyHint == key {
 			t.Error("ListProviderKeys returned the plaintext key")
 		}
+	}
+}
+
+// The hint SHAPE is asserted with the real secretbox cipher (the fakeCipher's constant hint
+// can never equal the key, so the fake-based assertion cannot fail if masking breaks).
+func TestSetProviderKeyHintShapeWithRealCipher(t *testing.T) {
+	box, err := secretbox.New(bytes.Repeat([]byte{7}, 32))
+	if err != nil {
+		t.Fatalf("secretbox.New: %v", err)
+	}
+	store := newFakeStore()
+	svc := newTestService(t, store, func(d *ServiceDeps) { d.Cipher = box })
+	key := "sk-live-abcdefgh"
+
+	info, err := svc.SetProviderKey(context.Background(), "actor", "openai", key)
+	if err != nil {
+		t.Fatalf("SetProviderKey: %v", err)
+	}
+	if info.KeyHint != secretbox.Hint(key) {
+		t.Errorf("hint = %q, want the real masked hint %q", info.KeyHint, secretbox.Hint(key))
+	}
+	if !strings.HasPrefix(info.KeyHint, "…") || strings.Contains(info.KeyHint, key) || len(info.KeyHint) >= len(key) {
+		t.Errorf("hint %q is not a short masked tail of the key", info.KeyHint)
+	}
+	if stored := store.keys["openai"]; stored == nil || bytes.Contains(stored.APIKeyEncrypted, []byte(key)) {
+		t.Error("stored ciphertext must not embed the plaintext key")
 	}
 }
 

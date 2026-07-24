@@ -25,6 +25,11 @@ INSERT INTO admin_stardust_grants (id, granted_by, target_user, amount, note)
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (id) DO NOTHING;
 
+-- name: GetTwinkleGrant :one
+SELECT id, granted_by, target_user, amount, note, created_at
+FROM admin_stardust_grants
+WHERE id = $1;
+
 -- name: ListTwinkleGrants :many
 SELECT id, granted_by, target_user, amount, note, created_at
 FROM admin_stardust_grants
