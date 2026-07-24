@@ -20,7 +20,7 @@ import { LaunchButton, useLaunchedNeuronsStore } from '../../../features/launch-
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { WriteDiaryFields, useDiaryDraftStore } from '../../../features/write-diary/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { useProposalStore } from '@cosimosi/universe'
 
 // The diary date defaults to *today in the user's own timezone* ([W5]). `toISOString()` would emit
@@ -45,6 +45,7 @@ function errorMessage(kind: string | null): string | null {
 // model's projection (the optimistic star + the awaken it announces). Editing is session-only: the
 // widget edits the pre-launch proposal, never a GetUniverse memory ([W4]).
 export function WritingFlowSheet() {
+  const showError = useErrorToast()
   const [snapshot, send] = useMachine(writingFlowMachine)
   const status = snapshot.value as WritingFlowStatus
   const error = errorMessage(snapshot.context.error)
@@ -94,8 +95,11 @@ export function WritingFlowSheet() {
         setFromResponse(response)
         send({ type: 'SPLIT_OK' })
       })
-      .catch(() => send({ type: 'SPLIT_ERR', error: 'split' }))
-  }, [transport, body, diaryDate, setFromResponse, send])
+      .catch((caught) => {
+        showError(caught)
+        send({ type: 'SPLIT_ERR', error: 'split' })
+      })
+  }, [transport, body, diaryDate, setFromResponse, showError, send])
 
   const runRevise = useCallback(
     (instruction: string) => {
@@ -105,9 +109,12 @@ export function WritingFlowSheet() {
           setFromResponse(response)
           send({ type: 'REVISE_OK' })
         })
-        .catch(() => send({ type: 'REVISE_ERR', error: 'revise' }))
+        .catch((caught) => {
+          showError(caught)
+          send({ type: 'REVISE_ERR', error: 'revise' })
+        })
     },
-    [transport, body, diaryDate, proposal, setFromResponse, send],
+    [transport, body, diaryDate, proposal, setFromResponse, showError, send],
   )
 
   const runLaunch = useCallback(() => {
@@ -134,8 +141,21 @@ export function WritingFlowSheet() {
           .catch(() => undefined)
         send({ type: 'LAUNCH_OK' })
       })
-      .catch(() => send({ type: 'LAUNCH_ERR', error: 'launch' }))
-  }, [transport, body, diaryDate, proposal, announce, announceAdvance, queryClient, send])
+      .catch((caught) => {
+        showError(caught)
+        send({ type: 'LAUNCH_ERR', error: 'launch' })
+      })
+  }, [
+    transport,
+    body,
+    diaryDate,
+    proposal,
+    announce,
+    announceAdvance,
+    queryClient,
+    showError,
+    send,
+  ])
 
   const editThen = useCallback(
     (apply: () => void) => {

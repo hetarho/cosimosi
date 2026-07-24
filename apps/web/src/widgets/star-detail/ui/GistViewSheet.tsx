@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 
 import { useChargeRequestStore } from '@cosimosi/twinkle'
+import { classifyErrorRecovery } from '@cosimosi/errors'
 import { Button, Dialog } from '@cosimosi/ui'
 import {
   classifyPaidActionError,
@@ -15,6 +16,7 @@ import {
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { SpendCostDisplay, gistViewSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
+import { useErrorToast } from '../../../shared/model/index.ts'
 
 // widgets/star-detail ui ([R8][G4], A5): the gist-view (요지 보기) surface, priced before it
 // happens. Selecting a neocortical gist body opens this over the canvas; the cost display shows the
@@ -33,6 +35,7 @@ export function GistViewSheet({
   stage: number
   onClose: () => void
 }) {
+  const showError = useErrorToast()
   const transport = useTransport()
   const requestCharge = useChargeRequestStore((state) => state.request)
   const invalidateBalance = useInvalidateTwinkleBalance()
@@ -80,15 +83,28 @@ export function GistViewSheet({
       // so the retry replays the receipt directly (§ retry button), revealing the paid gist without
       // a second debit and without re-quoting a now-depleted balance (A2/A5).
       const kind = classifyPaidActionError(error)
+      showError(error)
       if (kind === 'known-refusal') {
         if (paidSession.finish(activeAttempt)) setBusy(false)
         setAttempt(paidSession.begin(targetKey))
+        if (classifyErrorRecovery(error) === 'charge') requestCharge()
       }
       setErrorKind(kind)
     } finally {
       if (paidSession.finish(activeAttempt)) setBusy(false)
     }
-  }, [attempt, targetKey, busy, paidSession, transport, episodicMemoryId, stage, invalidateBalance])
+  }, [
+    attempt,
+    targetKey,
+    busy,
+    paidSession,
+    transport,
+    episodicMemoryId,
+    stage,
+    invalidateBalance,
+    requestCharge,
+    showError,
+  ])
 
   // Close is inert while the paid read is in flight (A4): the close button, backdrop, and Escape
   // cannot dismiss a busy view.

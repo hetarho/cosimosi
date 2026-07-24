@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	adminv1connect "github.com/cosimosi/api/internal/gen/cosimosi/admin/v1/adminv1connect"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
 // Authorizer is the admin-membership check the interceptor consults (satisfied by admin.Service).
@@ -31,17 +32,17 @@ func AuthorizationInterceptor(authorizer Authorizer) connect.UnaryInterceptorFun
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			userID, ok := platform.UserIDFromContext(ctx)
 			if !ok || userID == "" {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+				return nil, apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, errors.New("unauthenticated"), nil)
 			}
 			if req.Spec().Procedure == probeProcedure {
 				return next(ctx, req) // the "am I admin?" probe is open to any authenticated user
 			}
 			isAdmin, err := authorizer.IsAdmin(ctx, userID)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, err)
+				return nil, apperr.Internal(err)
 			}
 			if !isAdmin {
-				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("admin access required"))
+				return nil, apperr.Domain(connect.CodePermissionDenied, reasonForbidden, errors.New("admin access required"), nil)
 			}
 			return next(ctx, req)
 		}

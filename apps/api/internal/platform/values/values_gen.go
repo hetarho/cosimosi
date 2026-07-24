@@ -9,6 +9,11 @@ const (
 	ClientCacheOptimisticRollbackMs = 10000
 )
 
+// errors
+const (
+	ErrorsToastAutoDismissMs = 6000
+)
+
 // auth_session
 const (
 	AuthSessionAccessTokenRefreshSkewMs = 60000

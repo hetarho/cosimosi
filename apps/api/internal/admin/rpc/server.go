@@ -9,6 +9,7 @@ import (
 	"github.com/cosimosi/api/internal/admin"
 	adminv1 "github.com/cosimosi/api/internal/gen/cosimosi/admin/v1"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/apperr"
 	"github.com/cosimosi/api/internal/platform/secretbox"
 )
 
@@ -242,7 +243,7 @@ func (s *Server) GetJobHealth(ctx context.Context, _ *connect.Request[adminv1.Ge
 func callerID(ctx context.Context) (string, error) {
 	userID, ok := platform.UserIDFromContext(ctx)
 	if !ok || userID == "" {
-		return "", connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+		return "", apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, errors.New("unauthenticated"), nil)
 	}
 	return userID, nil
 }
@@ -305,21 +306,30 @@ func formatTime(t time.Time) string {
 func domainError(err error) error {
 	switch {
 	case errors.Is(err, admin.ErrSeedAdminUndemotable):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.Is(err, admin.ErrUserIDRequired),
-		errors.Is(err, admin.ErrGrantAmountRange),
-		errors.Is(err, admin.ErrGrantIDRequired),
-		errors.Is(err, admin.ErrUnknownCapability),
-		errors.Is(err, admin.ErrProviderRequired),
-		errors.Is(err, admin.ErrProviderKeyRequired),
-		errors.Is(err, admin.ErrUnknownProvider),
-		errors.Is(err, admin.ErrProviderCapabilityMismatch):
-		return connect.NewError(connect.CodeInvalidArgument, err)
-	case errors.Is(err, admin.ErrProviderNotImplemented),
-		errors.Is(err, admin.ErrProviderKeyMissing),
-		errors.Is(err, secretbox.ErrDisabled):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonSeedAdminUndemotable, err, nil)
+	case errors.Is(err, admin.ErrUserIDRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonUserIDRequired, err, nil)
+	case errors.Is(err, admin.ErrGrantAmountRange):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonGrantAmountRange, err, nil)
+	case errors.Is(err, admin.ErrGrantIDRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonGrantIDRequired, err, nil)
+	case errors.Is(err, admin.ErrUnknownCapability):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownCapability, err, nil)
+	case errors.Is(err, admin.ErrProviderRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonProviderRequired, err, nil)
+	case errors.Is(err, admin.ErrProviderKeyRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonProviderKeyRequired, err, nil)
+	case errors.Is(err, admin.ErrUnknownProvider):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownProvider, err, nil)
+	case errors.Is(err, admin.ErrProviderCapabilityMismatch):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonProviderCapabilityMismatch, err, nil)
+	case errors.Is(err, admin.ErrProviderNotImplemented):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonProviderNotImplemented, err, nil)
+	case errors.Is(err, admin.ErrProviderKeyMissing):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonProviderKeyMissing, err, nil)
+	case errors.Is(err, secretbox.ErrDisabled):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonSecretboxDisabled, err, nil)
 	default:
-		return err
+		return apperr.Internal(err)
 	}
 }

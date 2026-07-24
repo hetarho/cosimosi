@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/internal/platform/apperr"
 	"github.com/cosimosi/api/internal/platform/observability"
 )
 
@@ -98,19 +99,25 @@ func StructuredErrorInterceptor(reporter observability.Reporter) connect.UnaryIn
 			if err == nil {
 				return resp, nil
 			}
+			requestID := requestIDFromContextOrRequest(ctx, req)
 			code := connect.CodeOf(err)
 			if code != connect.CodeInternal && code != connect.CodeUnknown {
-				return resp, err
+				return resp, apperr.WithRequestID(err, requestID)
 			}
 			errorType := safeErrorType(err)
 			reporter.CaptureException(ctx, stableReportError("unexpected rpc error", errorType), observability.MustAttributes(map[string]string{
 				"source":     "rpc",
 				"method":     req.Spec().Procedure,
-				"request_id": RequestIDFromContext(ctx),
+				"request_id": requestID,
 				"rpc_code":   code.String(),
+				"reason":     apperr.ReasonInternal,
 				"error_type": errorType,
 			}))
-			return resp, connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+			debugDetail := ""
+			if apperr.ExposeDetail() {
+				debugDetail = err.Error()
+			}
+			return resp, apperr.MaskedInternal(requestID, debugDetail)
 		}
 	}
 }
@@ -124,17 +131,23 @@ func PanicRecoveryInterceptor(logger *log.Logger, reporter observability.Reporte
 			defer func() {
 				if recovered := recover(); recovered != nil {
 					panicType := safePanicType(recovered)
+					requestID := requestIDFromContextOrRequest(ctx, req)
 					if logger != nil {
-						logger.Printf("rpc panic method=%s request_id=%s", req.Spec().Procedure, requestIDFromContextOrRequest(ctx, req))
+						logger.Printf("rpc panic method=%s request_id=%s", req.Spec().Procedure, requestID)
 					}
 					reporter.CaptureException(ctx, stableReportError("rpc panic recovered", panicType), observability.MustAttributes(map[string]string{
 						"source":     "rpc_panic",
 						"method":     req.Spec().Procedure,
-						"request_id": requestIDFromContextOrRequest(ctx, req),
+						"request_id": requestID,
 						"rpc_code":   connect.CodeInternal.String(),
+						"reason":     apperr.ReasonInternal,
 						"panic_type": panicType,
 					}))
-					err = connect.NewError(connect.CodeInternal, errors.New("internal server error"))
+					debugDetail := ""
+					if apperr.ExposeDetail() {
+						debugDetail = fmt.Sprint(recovered)
+					}
+					err = apperr.MaskedInternal(requestID, debugDetail)
 				}
 			}()
 			return next(ctx, req)
@@ -147,7 +160,10 @@ func requestIDFromContextOrRequest(ctx context.Context, req connect.AnyRequest) 
 		return requestID
 	}
 	requestID, _ := normalizeRequestID(req.Header().Get(requestIDHeader))
-	return requestID
+	if requestID != "" {
+		return requestID
+	}
+	return NewID()
 }
 
 func normalizeRequestID(value string) (string, bool) {

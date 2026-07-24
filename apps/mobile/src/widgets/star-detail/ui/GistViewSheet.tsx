@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTransport } from '@connectrpc/connect-query'
 
 import { useChargeRequestStore } from '@cosimosi/twinkle'
+import { classifyErrorRecovery } from '@cosimosi/errors'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
 import {
   classifyPaidActionError,
@@ -16,6 +17,7 @@ import {
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { SpendCostDisplay, gistViewSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
+import { useErrorToast } from '../../../shared/model/index.ts'
 
 // widgets/star-detail ui (RN fork, [R8][G4], A5): the gist-view (요지 보기) surface, priced before
 // it happens. The cost display shows the gist quote and, only on its proceed, the ViewSemantic read
@@ -33,6 +35,7 @@ export function GistViewSheet({
   stage: number
   onClose: () => void
 }) {
+  const showError = useErrorToast()
   const transport = useTransport()
   const requestCharge = useChargeRequestStore((state) => state.request)
   const invalidateBalance = useInvalidateTwinkleBalance()
@@ -77,15 +80,28 @@ export function GistViewSheet({
       // Ambiguous → keep the id so the retry replays the committed receipt directly (no re-quote);
       // known refusal → fresh id, re-quote (A2/A5).
       const kind = classifyPaidActionError(error)
+      showError(error)
       if (kind === 'known-refusal') {
         if (paidSession.finish(activeAttempt)) setBusy(false)
         setAttempt(paidSession.begin(targetKey))
+        if (classifyErrorRecovery(error) === 'charge') requestCharge()
       }
       setErrorKind(kind)
     } finally {
       if (paidSession.finish(activeAttempt)) setBusy(false)
     }
-  }, [attempt, targetKey, busy, paidSession, transport, episodicMemoryId, stage, invalidateBalance])
+  }, [
+    attempt,
+    targetKey,
+    busy,
+    paidSession,
+    transport,
+    episodicMemoryId,
+    stage,
+    invalidateBalance,
+    requestCharge,
+    showError,
+  ])
 
   const close = useCallback(() => {
     if (busy) return

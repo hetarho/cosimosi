@@ -18,3 +18,15 @@ message PingResponse {
   google.protobuf.Timestamp server_time = 2;
   string request_id = 3;
 }
+
+// ErrorInfo is attached as a Connect error detail on every failed RPC. The Connect
+// code remains the coarse transport signal; reason is the stable machine contract.
+message ErrorInfo {
+  string reason = 1;
+  string domain = 2;
+  string request_id = 3;
+  // Metadata may carry only safe structured context, never private content or secrets.
+  map<string, string> metadata = 4;
+  // Raw internal detail is populated only outside production when explicitly enabled.
+  string debug_detail = 5;
+}

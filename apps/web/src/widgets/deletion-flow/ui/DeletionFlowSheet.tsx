@@ -17,7 +17,7 @@ import {
   useSuggestLetGo,
 } from '../../../features/let-go/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { useDeletionDraftStore } from '@cosimosi/universe'
 
 // widgets/deletion-flow ([X1][X4]): the modal host over the running canvas (no renderer remount,
@@ -27,6 +27,7 @@ import { useDeletionDraftStore } from '@cosimosi/universe'
 // never three or a visual entity — and opens on the shared deletion-target store, which lets it be
 // mounted on both the universe and the diary-reader routes.
 export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
+  const showError = useErrorToast()
   const target = useDeletionTargetStore((state) => state.target)
   const clearTarget = useDeletionTargetStore((state) => state.clear)
 
@@ -96,11 +97,12 @@ export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
     try {
       await release(diaryId)
       send({ type: 'DONE' })
-    } catch {
+    } catch (caught) {
+      showError(caught)
       setError(true)
       send({ type: 'ERROR' })
     }
-  }, [diaryId, release, send])
+  }, [diaryId, release, showError, send])
 
   const runSuggest = useCallback(async () => {
     if (!episodicMemoryId) return
@@ -117,11 +119,12 @@ export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
         response.heavyState?.detected ?? false,
       )
       send({ type: 'DONE' })
-    } catch {
+    } catch (caught) {
+      showError(caught)
       setError(true)
       send({ type: 'ERROR' })
     }
-  }, [episodicMemoryId, phrase, suggest, setSuggestion, send])
+  }, [episodicMemoryId, phrase, suggest, setSuggestion, showError, send])
 
   const runSeal = useCallback(async () => {
     if (!episodicMemoryId) return
@@ -130,11 +133,12 @@ export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
     try {
       await letGo(episodicMemoryId, selectedNeuronIds)
       send({ type: 'DONE' })
-    } catch {
+    } catch (caught) {
+      showError(caught)
       setError(true)
       send({ type: 'ERROR' })
     }
-  }, [episodicMemoryId, selectedNeuronIds, letGo, send])
+  }, [episodicMemoryId, selectedNeuronIds, letGo, showError, send])
 
   const back = useCallback(() => {
     setError(false)

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/platform/v1/platform.proto.
  */
 export const file_cosimosi_platform_v1_platform: GenFile = /*@__PURE__*/
-  fileDesc("CiNjb3NpbW9zaS9wbGF0Zm9ybS92MS9wbGF0Zm9ybS5wcm90bxIUY29zaW1vc2kucGxhdGZvcm0udjEiDQoLUGluZ1JlcXVlc3QiZAoMUGluZ1Jlc3BvbnNlEg8KB21lc3NhZ2UYASABKAkSLwoLc2VydmVyX3RpbWUYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnJlcXVlc3RfaWQYAyABKAkyZQoPUGxhdGZvcm1TZXJ2aWNlElIKBFBpbmcSIS5jb3NpbW9zaS5wbGF0Zm9ybS52MS5QaW5nUmVxdWVzdBoiLmNvc2ltb3NpLnBsYXRmb3JtLnYxLlBpbmdSZXNwb25zZSIDkAIBQuEBChhjb20uY29zaW1vc2kucGxhdGZvcm0udjFCDVBsYXRmb3JtUHJvdG9QAVpEZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3BsYXRmb3JtL3YxO3BsYXRmb3JtdjGiAgNDUFiqAhRDb3NpbW9zaS5QbGF0Zm9ybS5WMcoCFENvc2ltb3NpXFBsYXRmb3JtXFYx4gIgQ29zaW1vc2lcUGxhdGZvcm1cVjFcR1BCTWV0YWRhdGHqAhZDb3NpbW9zaTo6UGxhdGZvcm06OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("CiNjb3NpbW9zaS9wbGF0Zm9ybS92MS9wbGF0Zm9ybS5wcm90bxIUY29zaW1vc2kucGxhdGZvcm0udjEiDQoLUGluZ1JlcXVlc3QiZAoMUGluZ1Jlc3BvbnNlEg8KB21lc3NhZ2UYASABKAkSLwoLc2VydmVyX3RpbWUYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCnJlcXVlc3RfaWQYAyABKAkixwEKCUVycm9ySW5mbxIOCgZyZWFzb24YASABKAkSDgoGZG9tYWluGAIgASgJEhIKCnJlcXVlc3RfaWQYAyABKAkSPwoIbWV0YWRhdGEYBCADKAsyLS5jb3NpbW9zaS5wbGF0Zm9ybS52MS5FcnJvckluZm8uTWV0YWRhdGFFbnRyeRIUCgxkZWJ1Z19kZXRhaWwYBSABKAkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBMmUKD1BsYXRmb3JtU2VydmljZRJSCgRQaW5nEiEuY29zaW1vc2kucGxhdGZvcm0udjEuUGluZ1JlcXVlc3QaIi5jb3NpbW9zaS5wbGF0Zm9ybS52MS5QaW5nUmVzcG9uc2UiA5ACAULhAQoYY29tLmNvc2ltb3NpLnBsYXRmb3JtLnYxQg1QbGF0Zm9ybVByb3RvUAFaRGdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS9wbGF0Zm9ybS92MTtwbGF0Zm9ybXYxogIDQ1BYqgIUQ29zaW1vc2kuUGxhdGZvcm0uVjHKAhRDb3NpbW9zaVxQbGF0Zm9ybVxWMeICIENvc2ltb3NpXFBsYXRmb3JtXFYxXEdQQk1ldGFkYXRh6gIWQ29zaW1vc2k6OlBsYXRmb3JtOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message cosimosi.platform.v1.PingRequest
@@ -53,6 +53,50 @@ export type PingResponse = Message<"cosimosi.platform.v1.PingResponse"> & {
  */
 export const PingResponseSchema: GenMessage<PingResponse> = /*@__PURE__*/
   messageDesc(file_cosimosi_platform_v1_platform, 1);
+
+/**
+ * ErrorInfo is attached as a Connect error detail on every failed RPC. The Connect
+ * code remains the coarse transport signal; reason is the stable machine contract.
+ *
+ * @generated from message cosimosi.platform.v1.ErrorInfo
+ */
+export type ErrorInfo = Message<"cosimosi.platform.v1.ErrorInfo"> & {
+  /**
+   * @generated from field: string reason = 1;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string domain = 2;
+   */
+  domain: string;
+
+  /**
+   * @generated from field: string request_id = 3;
+   */
+  requestId: string;
+
+  /**
+   * Metadata may carry only safe structured context, never private content or secrets.
+   *
+   * @generated from field: map<string, string> metadata = 4;
+   */
+  metadata: { [key: string]: string };
+
+  /**
+   * Raw internal detail is populated only outside production when explicitly enabled.
+   *
+   * @generated from field: string debug_detail = 5;
+   */
+  debugDetail: string;
+};
+
+/**
+ * Describes the message cosimosi.platform.v1.ErrorInfo.
+ * Use `create(ErrorInfoSchema)` to create a new message.
+ */
+export const ErrorInfoSchema: GenMessage<ErrorInfo> = /*@__PURE__*/
+  messageDesc(file_cosimosi_platform_v1_platform, 2);
 
 /**
  * @generated from service cosimosi.platform.v1.PlatformService

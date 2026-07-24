@@ -22,6 +22,9 @@ services:
       # trusts only fake-token-<COSIMOSI_DEV_USER_ID>. See scripts/seed-dev-universe.sql and .env.example.
       COSIMOSI_DEV_AUTH: '${COSIMOSI_DEV_AUTH:-}'
       COSIMOSI_DEV_USER_ID: '${COSIMOSI_DEV_USER_ID:-}'
+      # Optional local-only diagnostics. Exact "verbose" exposes raw internal causes only in the
+      # ErrorInfo debug_detail field; empty/unknown values stay masked.
+      COSIMOSI_ERROR_DETAIL: '${COSIMOSI_ERROR_DETAIL:-}'
       # Admin console (plan 58): seed admins, the at-rest key-encryption master key (REQUIRED to
       # store provider API keys), and the Supabase service-role key that powers the user list. All
       # from the root .env; empty = off. See .env.example.

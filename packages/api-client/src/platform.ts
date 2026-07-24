@@ -11,8 +11,12 @@ import { createConnectTransport } from '@connectrpc/connect-web'
 
 import { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
 
-export { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
-export type { PingRequest, PingResponse } from './gen/cosimosi/platform/v1/platform_pb.ts'
+export { ErrorInfoSchema, PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
+export type {
+  ErrorInfo,
+  PingRequest,
+  PingResponse,
+} from './gen/cosimosi/platform/v1/platform_pb.ts'
 export type { Transport as ApiTransport } from '@connectrpc/connect'
 export { timestampDate } from '@bufbuild/protobuf/wkt'
 

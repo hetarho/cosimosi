@@ -12,6 +12,7 @@ import (
 	memoryv1 "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
 var ErrServiceRequired = errors.New("memory rpc server requires the memory service")
@@ -276,7 +277,7 @@ func sealCandidates(candidates []memory.SealCandidate) []*memoryv1.SealCandidate
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
-		return platform.UserScope{}, connect.NewError(connect.CodeUnauthenticated, err)
+		return platform.UserScope{}, apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, err, nil)
 	}
 	return scope, nil
 }
@@ -284,7 +285,7 @@ func userScope(ctx context.Context) (platform.UserScope, error) {
 func parseDiaryDate(raw string) (time.Time, error) {
 	diaryDate, err := time.Parse(time.DateOnly, raw)
 	if err != nil {
-		return time.Time{}, connect.NewError(connect.CodeInvalidArgument, err)
+		return time.Time{}, apperr.Domain(connect.CodeInvalidArgument, reasonDiaryDateInvalid, err, nil)
 	}
 	return diaryDate, nil
 }
@@ -292,54 +293,74 @@ func parseDiaryDate(raw string) (time.Time, error) {
 // domainError maps the use-case's canonical errors onto Connect codes.
 func domainError(err error) error {
 	switch {
-	case errors.Is(err, memory.ErrEncodeInputRequired),
-		errors.Is(err, memory.ErrLaunchInvalidMemories),
-		errors.Is(err, memory.ErrRecallInputRequired),
-		errors.Is(err, memory.ErrViewSemanticInputRequired),
-		errors.Is(err, memory.ErrProvenanceInputRequired),
-		errors.Is(err, memory.ErrExportFormatRequired),
-		errors.Is(err, memory.ErrDiaryPageTokenInvalid),
-		errors.Is(err, memory.ErrReleaseInputRequired),
-		errors.Is(err, memory.ErrLetGoInvalidApproved),
-		errors.Is(err, memory.ErrOperationIDRequired):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, memory.ErrEncodeInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonEncodeInputRequired, err, nil)
+	case errors.Is(err, memory.ErrLaunchInvalidMemories):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonLaunchInvalidMemories, err, nil)
+	case errors.Is(err, memory.ErrRecallInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonRecallInputRequired, err, nil)
+	case errors.Is(err, memory.ErrViewSemanticInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonViewSemanticInputRequired, err, nil)
+	case errors.Is(err, memory.ErrProvenanceInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonProvenanceInputRequired, err, nil)
+	case errors.Is(err, memory.ErrExportFormatRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonExportFormatRequired, err, nil)
+	case errors.Is(err, memory.ErrDiaryPageTokenInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonDiaryPageTokenInvalid, err, nil)
+	case errors.Is(err, memory.ErrReleaseInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonReleaseInputRequired, err, nil)
+	case errors.Is(err, memory.ErrLetGoInvalidApproved):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonLetGoInvalidApproved, err, nil)
+	case errors.Is(err, memory.ErrOperationIDRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonOperationIDRequired, err, nil)
 	case errors.Is(err, memory.ErrOperationConflict):
 		// Same client operation id, different canonical input (A2): replaying the receipt
 		// would return the wrong result, so the client must mint a fresh id.
-		return connect.NewError(connect.CodeAlreadyExists, err)
-	case errors.Is(err, memory.ErrRecallMemoryNotFound),
-		errors.Is(err, memory.ErrRecallNoLiveMemories),
-		errors.Is(err, memory.ErrViewSemanticMemoryNotFound),
-		errors.Is(err, memory.ErrProvenanceMemoryNotFound),
-		errors.Is(err, memory.ErrReleaseMemoryNotFound),
-		errors.Is(err, memory.ErrReleaseNoLiveMemories),
-		errors.Is(err, memory.ErrRestoreNotReleased):
-		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, memory.ErrRecallMemoryUnavailable),
-		errors.Is(err, memory.ErrViewSemanticStageNotRisen),
-		errors.Is(err, memory.ErrReleaseMemoryUnavailable),
-		errors.Is(err, memory.ErrAlreadyReleased),
-		errors.Is(err, memory.ErrRestoreWindowExpired),
-		errors.Is(err, memory.ErrSyncConsentRequired):
+		return apperr.Domain(connect.CodeAlreadyExists, reasonOperationConflict, err, nil)
+	case errors.Is(err, memory.ErrRecallMemoryNotFound):
+		return apperr.Domain(connect.CodeNotFound, reasonRecallMemoryNotFound, err, nil)
+	case errors.Is(err, memory.ErrRecallNoLiveMemories):
+		return apperr.Domain(connect.CodeNotFound, reasonRecallNoLiveMemories, err, nil)
+	case errors.Is(err, memory.ErrViewSemanticMemoryNotFound):
+		return apperr.Domain(connect.CodeNotFound, reasonViewSemanticMemoryNotFound, err, nil)
+	case errors.Is(err, memory.ErrProvenanceMemoryNotFound):
+		return apperr.Domain(connect.CodeNotFound, reasonProvenanceMemoryNotFound, err, nil)
+	case errors.Is(err, memory.ErrReleaseMemoryNotFound):
+		return apperr.Domain(connect.CodeNotFound, reasonReleaseMemoryNotFound, err, nil)
+	case errors.Is(err, memory.ErrReleaseNoLiveMemories):
+		return apperr.Domain(connect.CodeNotFound, reasonReleaseNoLiveMemories, err, nil)
+	case errors.Is(err, memory.ErrRestoreNotReleased):
+		return apperr.Domain(connect.CodeNotFound, reasonRestoreNotReleased, err, nil)
+	case errors.Is(err, memory.ErrRecallMemoryUnavailable):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonRecallMemoryUnavailable, err, nil)
+	case errors.Is(err, memory.ErrViewSemanticStageNotRisen):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonViewSemanticStageNotRisen, err, nil)
+	case errors.Is(err, memory.ErrReleaseMemoryUnavailable):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonReleaseMemoryUnavailable, err, nil)
+	case errors.Is(err, memory.ErrAlreadyReleased):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonAlreadyReleased, err, nil)
+	case errors.Is(err, memory.ErrRestoreWindowExpired):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonRestoreWindowExpired, err, nil)
+	case errors.Is(err, memory.ErrSyncConsentRequired):
 		// Consent-required is a pre-spend precondition failure (A1/A5): nothing was charged, so
-		// the client safely refreshes sync-status and shows the consent modal before retrying.
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		// the client can show the consent modal and retry under a fresh operation id.
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonSyncConsentRequired, err, nil)
 	case errors.Is(err, memory.ErrInsufficientTwinkle):
-		return connect.NewError(connect.CodeResourceExhausted, err)
+		return apperr.Domain(connect.CodeResourceExhausted, reasonInsufficientTwinkle, err, nil)
 	case errors.Is(err, memory.ErrEncodeRetryExhausted):
-		return connect.NewError(connect.CodeResourceExhausted, err)
+		return apperr.Domain(connect.CodeResourceExhausted, reasonEncodeRetryExhausted, err, nil)
 	case errors.Is(err, memory.ErrEncodeInvalidSplit):
 		// An extractor adapter emitting an out-of-schema shape is a server-side
 		// contract breach, not a client mistake.
-		return connect.NewError(connect.CodeInternal, err)
+		return apperr.Internal(err)
 	case errors.Is(err, memory.ErrConsolidateTxRequired):
 		// A progression transaction that cannot consolidate is a composition-root
 		// wiring fault, never a client mistake.
-		return connect.NewError(connect.CodeInternal, err)
+		return apperr.Internal(err)
 	case errors.Is(err, memory.ErrScopeRequired):
-		return connect.NewError(connect.CodeUnauthenticated, err)
+		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
 	default:
-		return err
+		return apperr.Internal(err)
 	}
 }
 
@@ -425,7 +446,7 @@ func domainExportFormat(format memoryv1.ExportFormat) (memory.ExportFormat, erro
 	case memoryv1.ExportFormat_EXPORT_FORMAT_MD:
 		return memory.ExportFormatMD, nil
 	default:
-		return "", connect.NewError(connect.CodeInvalidArgument, memory.ErrExportFormatRequired)
+		return "", apperr.Domain(connect.CodeInvalidArgument, reasonExportFormatRequired, memory.ErrExportFormatRequired, nil)
 	}
 }
 

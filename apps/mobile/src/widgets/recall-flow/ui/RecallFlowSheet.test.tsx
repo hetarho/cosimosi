@@ -1,10 +1,10 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 
-import { createRouterTransport, type Transport } from '@connectrpc/connect'
+import { Code, ConnectError, createRouterTransport, type Transport } from '@connectrpc/connect'
 import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-import { MemoryService } from '@cosimosi/api-client'
+import { ErrorInfoSchema, MemoryService } from '@cosimosi/api-client'
 import { createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
@@ -15,6 +15,7 @@ import {
 } from '@cosimosi/universe'
 
 import { useRecallDraftStore } from '@cosimosi/universe'
+import { ErrorToastContext } from '../../../shared/model/index.ts'
 import { RecallFlowSheet } from './RecallFlowSheet.tsx'
 
 // The cost gate's quote hook is mocked to a fixed covered quote so the flow reaches the rewrite
@@ -51,16 +52,18 @@ afterEach(() => {
   for (const client of queryClients.splice(0)) client.clear()
 })
 
-function renderSheet(transport: Transport) {
+function renderSheet(transport: Transport, showError: (error: unknown) => void = () => {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
   })
   queryClients.push(queryClient)
   return render(
     <QueryClientProvider client={queryClient}>
-      <TransportProvider transport={transport}>
-        <RecallFlowSheet />
-      </TransportProvider>
+      <ErrorToastContext.Provider value={showError}>
+        <TransportProvider transport={transport}>
+          <RecallFlowSheet />
+        </TransportProvider>
+      </ErrorToastContext.Provider>
     </QueryClientProvider>,
   )
 }
@@ -79,6 +82,37 @@ beforeEach(() => {
 })
 
 describe('RecallFlowSheet (mobile)', () => {
+  it('surfaces a settled SyncStatus failure through the shared error seam', async () => {
+    const error = new ConnectError('internal server error', Code.Internal, undefined, [
+      {
+        desc: ErrorInfoSchema,
+        value: {
+          reason: 'INTERNAL',
+          domain: 'platform',
+          requestId: 'request-sync-status',
+        },
+      },
+    ])
+    const transport = createRouterTransport(({ service }) => {
+      service(MemoryService, {
+        syncStatus: () => {
+          throw error
+        },
+      })
+    })
+    const showError = jest.fn()
+    useRecallTargetStore.getState().request('m1')
+
+    renderSheet(transport, showError)
+
+    await waitFor(() => expect(showError).toHaveBeenCalledTimes(1))
+    const surfaced = showError.mock.calls[0]?.[0]
+    expect(surfaced).toBeInstanceOf(ConnectError)
+    expect((surfaced as ConnectError).findDetails(ErrorInfoSchema)[0]?.requestId).toBe(
+      'request-sync-status',
+    )
+  })
+
   it('drives the sync-consent gate from the SERVER status, not a local date (A1/R008)', async () => {
     // The client clock is at today; only the server says a sync is still needed. A local-date
     // check would skip consent — the server-driven read must still gate it.

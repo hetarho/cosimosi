@@ -6,6 +6,7 @@ import {
   type UnaryRequest,
   type UnaryResponse,
 } from '@connectrpc/connect'
+import { ErrorInfoSchema } from '@cosimosi/api-client'
 import { describe, expect, it } from 'vitest'
 
 import { createTelemetryRequestIdInterceptor } from './connect.ts'
@@ -43,6 +44,55 @@ describe('request id interceptor', () => {
     ).rejects.toThrow('internal server error')
 
     expect(observability.snapshot.requestId).toBe('request-error')
+  })
+
+  it('prefers the structured ErrorInfo id when response metadata is absent', async () => {
+    const observability = createObservabilityFacade()
+    const interceptor = createTelemetryRequestIdInterceptor(observability)
+
+    await expect(
+      interceptor(async () => {
+        throw new ConnectError('internal server error', Code.Internal, undefined, [
+          {
+            desc: ErrorInfoSchema,
+            value: {
+              reason: 'INTERNAL',
+              domain: 'platform',
+              requestId: 'request-from-detail',
+            },
+          },
+        ])
+      })(fakeRequest()),
+    ).rejects.toThrow('internal server error')
+
+    expect(observability.snapshot.requestId).toBe('request-from-detail')
+  })
+
+  it('falls back to response metadata when the detail id is unsafe', async () => {
+    const observability = createObservabilityFacade()
+    const interceptor = createTelemetryRequestIdInterceptor(observability)
+
+    await expect(
+      interceptor(async () => {
+        throw new ConnectError(
+          'internal server error',
+          Code.Internal,
+          new Headers({ 'x-request-id': 'request-safe-fallback' }),
+          [
+            {
+              desc: ErrorInfoSchema,
+              value: {
+                reason: 'INTERNAL',
+                domain: 'platform',
+                requestId: 'authorization=secret',
+              },
+            },
+          ],
+        )
+      })(fakeRequest()),
+    ).rejects.toThrow('internal server error')
+
+    expect(observability.snapshot.requestId).toBe('request-safe-fallback')
   })
 
   it('ignores unsafe request ids from response metadata', async () => {

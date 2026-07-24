@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
 const authorizationHeader = "Authorization"
@@ -55,7 +56,7 @@ func AuthInterceptor(verifier AuthTokenVerifier, publicProcedures []string) conn
 
 			identity, err := verifier.VerifyAccessToken(ctx, token)
 			if errors.Is(err, ErrAuthVerifierUnavailable) {
-				return nil, connect.NewError(connect.CodeUnavailable, errors.New("auth verifier unavailable"))
+				return nil, apperr.Domain(connect.CodeUnavailable, apperr.ReasonPlatformAuthVerifierUnavailable, errors.New("auth verifier unavailable"), nil)
 			}
 			if err != nil || identity.UserID == "" {
 				return nil, unauthenticatedError()
@@ -85,5 +86,5 @@ func bearerToken(value string) (string, bool) {
 }
 
 func unauthenticatedError() error {
-	return connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	return apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, errors.New("unauthenticated"), nil)
 }

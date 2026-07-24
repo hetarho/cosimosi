@@ -11,6 +11,7 @@ import (
 	"github.com/cosimosi/api/internal/account"
 	accountv1 "github.com/cosimosi/api/internal/gen/cosimosi/account/v1"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
 var ErrServiceRequired = errors.New("account rpc server requires the account service")
@@ -53,7 +54,7 @@ func (s *Server) SetPalettePreference(ctx context.Context, req *connect.Request[
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
-		return platform.UserScope{}, connect.NewError(connect.CodeUnauthenticated, err)
+		return platform.UserScope{}, apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, err, nil)
 	}
 	return scope, nil
 }
@@ -62,10 +63,10 @@ func userScope(ctx context.Context) (platform.UserScope, error) {
 func domainError(err error) error {
 	switch {
 	case errors.Is(err, account.ErrUnknownPaletteID):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownPalette, err, nil)
 	case errors.Is(err, account.ErrScopeRequired):
-		return connect.NewError(connect.CodeUnauthenticated, err)
+		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
 	default:
-		return err
+		return apperr.Internal(err)
 	}
 }

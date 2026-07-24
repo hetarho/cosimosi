@@ -15,6 +15,10 @@ client_cache:
   default_retry_count: 1
   optimistic_rollback_ms: 10000
 
+errors:
+  # Keep transient error feedback visible long enough to read without requiring manual dismissal.
+  toast_auto_dismiss_ms: 6000
+
 auth_session:
   # Refresh before expiry so transport calls do not fall through to anonymous RPCs.
   access_token_refresh_skew_ms: 60000

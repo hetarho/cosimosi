@@ -9,6 +9,7 @@ import { VALUES } from '@cosimosi/config'
 import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
 import { remainingRestoreDays, useReleasedGroupsStore } from '@cosimosi/universe'
 
+import { ErrorToastContext } from '../../../shared/model/index.ts'
 import { RestoreSection } from './RestoreSection.tsx'
 
 // Cleared after each test: clearing cancels pending cache gc timers, which would otherwise
@@ -26,9 +27,11 @@ function renderSection(transport: Transport) {
   queryClients.push(queryClient)
   return render(
     <QueryClientProvider client={queryClient}>
-      <TransportProvider transport={transport}>
-        <RestoreSection />
-      </TransportProvider>
+      <ErrorToastContext.Provider value={() => {}}>
+        <TransportProvider transport={transport}>
+          <RestoreSection />
+        </TransportProvider>
+      </ErrorToastContext.Provider>
     </QueryClientProvider>,
   )
 }

@@ -6,6 +6,7 @@ import { Button, tokens } from '@cosimosi/ui'
 import { remainingRestoreDays, useReleasedGroupsStore } from '@cosimosi/universe'
 
 import { m } from '../../../shared/i18n/index.ts'
+import { useErrorToast } from '../../../shared/model/index.ts'
 import { useRestoreMemory } from '@cosimosi/universe/react'
 
 // features/restore-memory ui (RN fork, [X2]): the "지운 일기" section a host mounts. It lists this
@@ -14,6 +15,7 @@ import { useRestoreMemory } from '@cosimosi/universe/react'
 // days (never hardcoded), and a 되돌리기 that re-inserts the affected stars. Renders nothing when
 // there is nothing to restore.
 export function RestoreSection() {
+  const showError = useErrorToast()
   const groups = useReleasedGroupsStore((state) => state.groups)
   const restore = useRestoreMemory()
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -26,13 +28,14 @@ export function RestoreSection() {
       setErrorId(null)
       try {
         await restore(diaryId)
-      } catch {
+      } catch (caught) {
+        showError(caught)
         setErrorId(diaryId)
       } finally {
         setPendingId(null)
       }
     },
-    [restore],
+    [restore, showError],
   )
 
   if (groups.length === 0) return null

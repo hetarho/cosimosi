@@ -118,6 +118,86 @@ func (x *PingResponse) GetRequestId() string {
 	return ""
 }
 
+// ErrorInfo is attached as a Connect error detail on every failed RPC. The Connect
+// code remains the coarse transport signal; reason is the stable machine contract.
+type ErrorInfo struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Reason    string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
+	Domain    string                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
+	RequestId string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	// Metadata may carry only safe structured context, never private content or secrets.
+	Metadata map[string]string `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Raw internal detail is populated only outside production when explicitly enabled.
+	DebugDetail   string `protobuf:"bytes,5,opt,name=debug_detail,json=debugDetail,proto3" json:"debug_detail,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ErrorInfo) Reset() {
+	*x = ErrorInfo{}
+	mi := &file_cosimosi_platform_v1_platform_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ErrorInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ErrorInfo) ProtoMessage() {}
+
+func (x *ErrorInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_platform_v1_platform_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ErrorInfo.ProtoReflect.Descriptor instead.
+func (*ErrorInfo) Descriptor() ([]byte, []int) {
+	return file_cosimosi_platform_v1_platform_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ErrorInfo) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ErrorInfo) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *ErrorInfo) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ErrorInfo) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *ErrorInfo) GetDebugDetail() string {
+	if x != nil {
+		return x.DebugDetail
+	}
+	return ""
+}
+
 var File_cosimosi_platform_v1_platform_proto protoreflect.FileDescriptor
 
 const file_cosimosi_platform_v1_platform_proto_rawDesc = "" +
@@ -129,7 +209,17 @@ const file_cosimosi_platform_v1_platform_proto_rawDesc = "" +
 	"\vserver_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"serverTime\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x03 \x01(\tR\trequestId2e\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\"\x85\x02\n" +
+	"\tErrorInfo\x12\x16\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x12I\n" +
+	"\bmetadata\x18\x04 \x03(\v2-.cosimosi.platform.v1.ErrorInfo.MetadataEntryR\bmetadata\x12!\n" +
+	"\fdebug_detail\x18\x05 \x01(\tR\vdebugDetail\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012e\n" +
 	"\x0fPlatformService\x12R\n" +
 	"\x04Ping\x12!.cosimosi.platform.v1.PingRequest\x1a\".cosimosi.platform.v1.PingResponse\"\x03\x90\x02\x01B\xe1\x01\n" +
 	"\x18com.cosimosi.platform.v1B\rPlatformProtoP\x01ZDgithub.com/cosimosi/api/internal/gen/cosimosi/platform/v1;platformv1\xa2\x02\x03CPX\xaa\x02\x14Cosimosi.Platform.V1\xca\x02\x14Cosimosi\\Platform\\V1\xe2\x02 Cosimosi\\Platform\\V1\\GPBMetadata\xea\x02\x16Cosimosi::Platform::V1b\x06proto3"
@@ -146,21 +236,24 @@ func file_cosimosi_platform_v1_platform_proto_rawDescGZIP() []byte {
 	return file_cosimosi_platform_v1_platform_proto_rawDescData
 }
 
-var file_cosimosi_platform_v1_platform_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_cosimosi_platform_v1_platform_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_cosimosi_platform_v1_platform_proto_goTypes = []any{
 	(*PingRequest)(nil),           // 0: cosimosi.platform.v1.PingRequest
 	(*PingResponse)(nil),          // 1: cosimosi.platform.v1.PingResponse
-	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*ErrorInfo)(nil),             // 2: cosimosi.platform.v1.ErrorInfo
+	nil,                           // 3: cosimosi.platform.v1.ErrorInfo.MetadataEntry
+	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
 }
 var file_cosimosi_platform_v1_platform_proto_depIdxs = []int32{
-	2, // 0: cosimosi.platform.v1.PingResponse.server_time:type_name -> google.protobuf.Timestamp
-	0, // 1: cosimosi.platform.v1.PlatformService.Ping:input_type -> cosimosi.platform.v1.PingRequest
-	1, // 2: cosimosi.platform.v1.PlatformService.Ping:output_type -> cosimosi.platform.v1.PingResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	4, // 0: cosimosi.platform.v1.PingResponse.server_time:type_name -> google.protobuf.Timestamp
+	3, // 1: cosimosi.platform.v1.ErrorInfo.metadata:type_name -> cosimosi.platform.v1.ErrorInfo.MetadataEntry
+	0, // 2: cosimosi.platform.v1.PlatformService.Ping:input_type -> cosimosi.platform.v1.PingRequest
+	1, // 3: cosimosi.platform.v1.PlatformService.Ping:output_type -> cosimosi.platform.v1.PingResponse
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_platform_v1_platform_proto_init() }
@@ -174,7 +267,7 @@ func file_cosimosi_platform_v1_platform_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_platform_v1_platform_proto_rawDesc), len(file_cosimosi_platform_v1_platform_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

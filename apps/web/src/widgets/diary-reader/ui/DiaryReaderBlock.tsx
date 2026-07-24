@@ -4,6 +4,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createSyncStatusQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
+import { classifyErrorRecovery } from '@cosimosi/errors'
 import { useChargeRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog } from '@cosimosi/ui'
 import {
@@ -28,7 +29,7 @@ import { DiaryList, useDiaryArchive } from '../../../features/read-diary-list/in
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { useInvalidateUniverse } from '@cosimosi/universe/react'
 
 // widgets/diary-reader ([D2][D3]): the archive block. It composes the free read (read-diary-list)
@@ -40,6 +41,7 @@ import { useInvalidateUniverse } from '@cosimosi/universe/react'
 // are inert — and a late completion is fenced to the active operation. It hardcodes no price (CC3)
 // and navigates only through the `onExit` seam its app-layer host supplies.
 export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
+  const showError = useErrorToast()
   const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive()
   const [openedDiaryId, setOpenedDiaryId] = useState<string | null>(null)
   const [jumpDiaryId, setJumpDiaryId] = useState<string | null>(null)
@@ -64,6 +66,10 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
   // read (refetched at proceed time below), never a local Date — so a cold deep-link, a UTC-boundary
   // client, or clock skew can never spend + advance the clock without an explicit yes.
   const syncStatusQuery = useQuery(createSyncStatusQueryOptions(transport))
+
+  useEffect(() => {
+    if (syncStatusQuery.error) showError(syncStatusQuery.error)
+  }, [syncStatusQuery.error, showError])
 
   useEffect(() => () => paidSession.invalidate(), [paidSession])
 
@@ -135,25 +141,24 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
           // and return to the quote, keeping the operation id so a deliberate re-submit still
           // cannot double-spend (A2).
           invalidateUniverse()
+          showError(error)
           send({ type: 'ERROR' })
           return
         }
         // Known refusal — nothing committed; the next attempt is a fresh spend, so mint a new id.
         // Only an un-consented sync race re-shows the consent modal; once consent was given, a
         // balance/target/conflict refusal re-quotes instead of looping consent (A5).
-        if (!consent) {
-          const status = await syncStatusQuery.refetch()
-          if (!paidSession.isActive(activeAttempt)) return
+        const recovery = classifyErrorRecovery(error, consent)
+        if (recovery === 'sync-consent') {
           paidSession.finish(activeAttempt)
           setAttempt(paidSession.begin(diaryId))
-          if (status.data?.needsSync) {
-            send({ type: 'CONSENT_REQUIRED' })
-            return
-          }
-        } else {
-          paidSession.finish(activeAttempt)
-          setAttempt(paidSession.begin(diaryId))
+          send({ type: 'CONSENT_REQUIRED' })
+          return
         }
+        showError(error)
+        if (recovery === 'charge') requestCharge()
+        paidSession.finish(activeAttempt)
+        setAttempt(paidSession.begin(diaryId))
         send({ type: 'ERROR' })
       } finally {
         paidSession.finish(activeAttempt)
@@ -168,7 +173,8 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
       invalidateUniverse,
       invalidateBalance,
       invalidateSyncStatus,
-      syncStatusQuery,
+      requestCharge,
+      showError,
       onExit,
       send,
     ],

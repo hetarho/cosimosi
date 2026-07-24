@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	memoryv1 "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1"
 	"github.com/cosimosi/api/internal/memory"
+	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
 // The handler is the proto↔domain anti-corruption boundary (§2.7): these tests pin the pure
@@ -186,8 +187,8 @@ func TestDomainExportFormatMapsEnumAndRejectsUnspecified(t *testing.T) {
 	if got, err := domainExportFormat(memoryv1.ExportFormat_EXPORT_FORMAT_MD); err != nil || got != memory.ExportFormatMD {
 		t.Fatalf("MD = (%v, %v), want (md, nil)", got, err)
 	}
-	if _, err := domainExportFormat(memoryv1.ExportFormat_EXPORT_FORMAT_UNSPECIFIED); connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("unspecified format err = %v, want InvalidArgument", err)
+	if _, err := domainExportFormat(memoryv1.ExportFormat_EXPORT_FORMAT_UNSPECIFIED); connect.CodeOf(err) != connect.CodeInvalidArgument || errorReason(t, err) != reasonExportFormatRequired {
+		t.Fatalf("unspecified format err = %v, want InvalidArgument/%s", err, reasonExportFormatRequired)
 	}
 }
 
@@ -223,36 +224,69 @@ func TestParseDiaryDate(t *testing.T) {
 	if !got.Equal(time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatalf("parsed date wrong: %v", got)
 	}
-	if _, err := parseDiaryDate("not-a-date"); connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("bad date should be InvalidArgument, got %v", err)
+	if _, err := parseDiaryDate("not-a-date"); connect.CodeOf(err) != connect.CodeInvalidArgument || errorReason(t, err) != reasonDiaryDateInvalid {
+		t.Fatalf("bad date should be InvalidArgument/%s, got %v", reasonDiaryDateInvalid, err)
 	}
 }
 
 func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 	cases := []struct {
-		err  error
-		want connect.Code
+		err        error
+		wantCode   connect.Code
+		wantReason string
 	}{
-		{memory.ErrEncodeInputRequired, connect.CodeInvalidArgument},
-		{memory.ErrLaunchInvalidMemories, connect.CodeInvalidArgument},
-		{memory.ErrEncodeRetryExhausted, connect.CodeResourceExhausted},
-		{memory.ErrEncodeInvalidSplit, connect.CodeInternal},
-		{memory.ErrScopeRequired, connect.CodeUnauthenticated},
-		{memory.ErrProvenanceInputRequired, connect.CodeInvalidArgument},
-		{memory.ErrProvenanceMemoryNotFound, connect.CodeNotFound},
-		{memory.ErrExportFormatRequired, connect.CodeInvalidArgument},
-		{memory.ErrOperationIDRequired, connect.CodeInvalidArgument},
-		{memory.ErrOperationConflict, connect.CodeAlreadyExists},
-		{memory.ErrSyncConsentRequired, connect.CodeFailedPrecondition},
+		{memory.ErrEncodeInputRequired, connect.CodeInvalidArgument, reasonEncodeInputRequired},
+		{memory.ErrLaunchInvalidMemories, connect.CodeInvalidArgument, reasonLaunchInvalidMemories},
+		{memory.ErrRecallInputRequired, connect.CodeInvalidArgument, reasonRecallInputRequired},
+		{memory.ErrViewSemanticInputRequired, connect.CodeInvalidArgument, reasonViewSemanticInputRequired},
+		{memory.ErrProvenanceInputRequired, connect.CodeInvalidArgument, reasonProvenanceInputRequired},
+		{memory.ErrExportFormatRequired, connect.CodeInvalidArgument, reasonExportFormatRequired},
+		{memory.ErrDiaryPageTokenInvalid, connect.CodeInvalidArgument, reasonDiaryPageTokenInvalid},
+		{memory.ErrReleaseInputRequired, connect.CodeInvalidArgument, reasonReleaseInputRequired},
+		{memory.ErrLetGoInvalidApproved, connect.CodeInvalidArgument, reasonLetGoInvalidApproved},
+		{memory.ErrOperationIDRequired, connect.CodeInvalidArgument, reasonOperationIDRequired},
+		{memory.ErrOperationConflict, connect.CodeAlreadyExists, reasonOperationConflict},
+		{memory.ErrRecallMemoryNotFound, connect.CodeNotFound, reasonRecallMemoryNotFound},
+		{memory.ErrRecallNoLiveMemories, connect.CodeNotFound, reasonRecallNoLiveMemories},
+		{memory.ErrViewSemanticMemoryNotFound, connect.CodeNotFound, reasonViewSemanticMemoryNotFound},
+		{memory.ErrProvenanceMemoryNotFound, connect.CodeNotFound, reasonProvenanceMemoryNotFound},
+		{memory.ErrReleaseMemoryNotFound, connect.CodeNotFound, reasonReleaseMemoryNotFound},
+		{memory.ErrReleaseNoLiveMemories, connect.CodeNotFound, reasonReleaseNoLiveMemories},
+		{memory.ErrRestoreNotReleased, connect.CodeNotFound, reasonRestoreNotReleased},
+		{memory.ErrRecallMemoryUnavailable, connect.CodeFailedPrecondition, reasonRecallMemoryUnavailable},
+		{memory.ErrViewSemanticStageNotRisen, connect.CodeFailedPrecondition, reasonViewSemanticStageNotRisen},
+		{memory.ErrReleaseMemoryUnavailable, connect.CodeFailedPrecondition, reasonReleaseMemoryUnavailable},
+		{memory.ErrAlreadyReleased, connect.CodeFailedPrecondition, reasonAlreadyReleased},
+		{memory.ErrRestoreWindowExpired, connect.CodeFailedPrecondition, reasonRestoreWindowExpired},
+		{memory.ErrSyncConsentRequired, connect.CodeFailedPrecondition, reasonSyncConsentRequired},
+		{memory.ErrInsufficientTwinkle, connect.CodeResourceExhausted, reasonInsufficientTwinkle},
+		{memory.ErrEncodeRetryExhausted, connect.CodeResourceExhausted, reasonEncodeRetryExhausted},
+		{memory.ErrEncodeInvalidSplit, connect.CodeInternal, apperr.ReasonInternal},
+		{memory.ErrConsolidateTxRequired, connect.CodeInternal, apperr.ReasonInternal},
+		{memory.ErrScopeRequired, connect.CodeUnauthenticated, reasonScopeRequired},
 	}
 	for _, c := range cases {
-		if got := connect.CodeOf(domainError(c.err)); got != c.want {
-			t.Fatalf("domainError(%v) = %v, want %v", c.err, got, c.want)
+		got := domainError(c.err)
+		if gotCode := connect.CodeOf(got); gotCode != c.wantCode {
+			t.Fatalf("domainError(%v) code = %v, want %v", c.err, gotCode, c.wantCode)
+		}
+		if gotReason := errorReason(t, got); gotReason != c.wantReason {
+			t.Fatalf("domainError(%v) reason = %q, want %q", c.err, gotReason, c.wantReason)
 		}
 	}
-	// A non-canonical error passes through unwrapped (no synthetic code).
+
 	other := errors.New("boom")
-	if got := domainError(other); !errors.Is(got, other) {
-		t.Fatalf("unknown error should pass through, got %v", got)
+	got := domainError(other)
+	if connect.CodeOf(got) != connect.CodeInternal || errorReason(t, got) != apperr.ReasonInternal || !errors.Is(got, other) {
+		t.Fatalf("unknown error should be internal and retain its cause, got %v", got)
 	}
+}
+
+func errorReason(t *testing.T, err error) string {
+	t.Helper()
+	info, ok := apperr.Info(err)
+	if !ok {
+		t.Fatal("ErrorInfo detail missing")
+	}
+	return info.GetReason()
 }

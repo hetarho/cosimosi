@@ -19,7 +19,7 @@ import {
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 
 // The store round trip reports the platform so a receipt is scoped to it.
 const PLATFORM = Platform.OS
@@ -31,14 +31,19 @@ const PLATFORM = Platform.OS
 // only the phase in the machine (§3.2). Shares model/api + the machine with web verbatim; a
 // shortfall reaches this sheet through the decoupled charge-request store.
 export function StardustOverlay() {
+  const showError = useErrorToast()
   const transport = useTransport()
   // Owns the single GetBalance fetch → populates the shared balance mirror the HUD reads.
-  useTwinkleBalanceQuery()
+  const balanceQuery = useTwinkleBalanceQuery()
   const invalidateBalance = useInvalidateTwinkleBalance()
 
   const [snapshot, send] = useMachine(stardustMachine)
   const phase = snapshot.value as StardustPhase
   const [errored, setErrored] = useState(false)
+
+  useEffect(() => {
+    if (balanceQuery.error) showError(balanceQuery.error)
+  }, [balanceQuery.error, showError])
 
   const chargeRequested = useChargeRequestStore((state) => state.requested)
   const clearChargeRequest = useChargeRequestStore((state) => state.clear)
@@ -74,11 +79,12 @@ export function StardustOverlay() {
         invalidateBalance()
         send({ type: 'DONE' })
       })
-      .catch(() => {
+      .catch((caught) => {
+        showError(caught)
         setErrored(true)
         send({ type: 'ERROR' })
       })
-  }, [transport, invalidateBalance, send])
+  }, [transport, invalidateBalance, showError, send])
 
   const onInvite = useCallback(
     (inviteCode: string) => {
@@ -89,12 +95,13 @@ export function StardustOverlay() {
           invalidateBalance()
           send({ type: 'DONE' })
         })
-        .catch(() => {
+        .catch((caught) => {
+          showError(caught)
           setErrored(true)
           send({ type: 'ERROR' })
         })
     },
-    [transport, invalidateBalance, send],
+    [transport, invalidateBalance, showError, send],
   )
 
   const onClose = useCallback(() => send({ type: 'CLOSE' }), [send])

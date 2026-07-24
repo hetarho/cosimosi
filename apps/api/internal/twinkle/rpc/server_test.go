@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	twinklev1 "github.com/cosimosi/api/internal/gen/cosimosi/twinkle/v1"
+	"github.com/cosimosi/api/internal/platform/apperr"
 	"github.com/cosimosi/api/internal/twinkle"
 )
 
@@ -39,24 +40,39 @@ func TestEarnHandlersRejectUnauthenticatedRequestsBeforeTrustProcessing(t *testi
 func TestDomainErrorMapsTrustBoundaryRefusals(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		err  error
-		want connect.Code
+		err        error
+		wantCode   connect.Code
+		wantReason string
 	}{
-		{twinkle.ErrPaymentVerificationUnavailable, connect.CodeUnavailable},
-		{twinkle.ErrInviteResolutionUnavailable, connect.CodeUnavailable},
-		{twinkle.ErrPaymentBeneficiaryMismatch, connect.CodePermissionDenied},
-		{twinkle.ErrInviteBeneficiaryMismatch, connect.CodePermissionDenied},
-		{twinkle.ErrPaymentNotVerified, connect.CodeFailedPrecondition},
-		{twinkle.ErrInviteNotEligible, connect.CodeFailedPrecondition},
-		{twinkle.ErrInviteGrantConflict, connect.CodeFailedPrecondition},
+		{twinkle.ErrInviteInputRequired, connect.CodeInvalidArgument, reasonInviteInputRequired},
+		{twinkle.ErrChargeInputRequired, connect.CodeInvalidArgument, reasonChargeInputRequired},
+		{twinkle.ErrQuoteInputRequired, connect.CodeInvalidArgument, reasonQuoteInputRequired},
+		{twinkle.ErrQuoteTargetNotFound, connect.CodeNotFound, reasonQuoteTargetNotFound},
+		{twinkle.ErrInsufficientTwinkle, connect.CodeResourceExhausted, reasonInsufficient},
+		{twinkle.ErrPaymentVerificationUnavailable, connect.CodeUnavailable, reasonPaymentVerificationUnavailable},
+		{twinkle.ErrInviteResolutionUnavailable, connect.CodeUnavailable, reasonInviteResolutionUnavailable},
+		{twinkle.ErrPaymentBeneficiaryMismatch, connect.CodePermissionDenied, reasonPaymentBeneficiaryMismatch},
+		{twinkle.ErrInviteBeneficiaryMismatch, connect.CodePermissionDenied, reasonInviteBeneficiaryMismatch},
+		{twinkle.ErrPaymentNotVerified, connect.CodeFailedPrecondition, reasonPaymentNotVerified},
+		{twinkle.ErrInviteNotEligible, connect.CodeFailedPrecondition, reasonInviteNotEligible},
+		{twinkle.ErrInviteGrantConflict, connect.CodeFailedPrecondition, reasonInviteGrantConflict},
+		{twinkle.ErrQuoteTargetUnavailable, connect.CodeFailedPrecondition, reasonQuoteTargetUnavailable},
+		{twinkle.ErrScopeRequired, connect.CodeUnauthenticated, reasonScopeRequired},
 	}
 	for _, test := range cases {
-		if got := connect.CodeOf(domainError(test.err)); got != test.want {
-			t.Fatalf("domainError(%v) = %v, want %v", test.err, got, test.want)
+		got := domainError(test.err)
+		if gotCode := connect.CodeOf(got); gotCode != test.wantCode {
+			t.Fatalf("domainError(%v) code = %v, want %v", test.err, gotCode, test.wantCode)
+		}
+		info, ok := apperr.Info(got)
+		if !ok || info.GetReason() != test.wantReason || info.GetDomain() != "twinkle" {
+			t.Fatalf("domainError(%v) info = %#v, want reason %q", test.err, info, test.wantReason)
 		}
 	}
 	other := errors.New("boom")
-	if got := domainError(other); !errors.Is(got, other) {
-		t.Fatalf("unknown error should pass through, got %v", got)
+	got := domainError(other)
+	info, ok := apperr.Info(got)
+	if connect.CodeOf(got) != connect.CodeInternal || !ok || info.GetReason() != apperr.ReasonInternal || !errors.Is(got, other) {
+		t.Fatalf("unknown error should be internal and retain its cause, got %v", got)
 	}
 }

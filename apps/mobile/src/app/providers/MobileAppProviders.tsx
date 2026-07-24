@@ -1,12 +1,13 @@
 import { type ReactNode } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import { m } from '@cosimosi/i18n'
+import { presentAppError } from '@cosimosi/errors'
 import {
   ObservedErrorBoundary,
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react'
-import { Button } from '@cosimosi/ui'
+import { Button, tokens } from '@cosimosi/ui'
 import type { ApiTransport } from '@cosimosi/api-client'
 import type { AuthFacade } from '@cosimosi/auth'
 import type { ClientCacheQueryClient } from '@cosimosi/client-cache'
@@ -15,6 +16,7 @@ import type { ObservabilityFacade } from '@cosimosi/observability'
 
 import { MobileAuthProvider, type MobileSupabaseAuthOptions } from './auth-provider.tsx'
 import { MobileI18nProvider } from './i18n-provider.tsx'
+import { MobileErrorProvider } from './error-provider.tsx'
 import {
   MobileObservabilityProvider,
   MobileObservabilitySessionBridge,
@@ -46,10 +48,11 @@ export interface MobileAppProvidersProps {
  *   2. ErrorBoundary  — catches render failures in every provider beneath it.
  *   3. i18n           — negotiates the active locale.
  *   4. Theme          — applies design-system tokens to the native surface.
- *   5. Session (auth) — owns the session facade + secure-storage seam.
- *   6. Transport + QueryClient — one provider; the transport reads the live session.
- *   7. MachineActors  — app-wide XState actors (shell lifecycle).
- *   8. children       — NavigationRoot.
+ *   5. Error toast    — renders shared error presentations with native UI.
+ *   6. Session (auth) — owns the session facade + secure-storage seam.
+ *   7. Transport + QueryClient — one provider; the transport reads the live session.
+ *   8. MachineActors  — app-wide XState actors (shell lifecycle).
+ *   9. children       — NavigationRoot.
  *
  * Every long-lived provider lives here; feature slices never instantiate their
  * own. Each provider accepts a fake/test adapter so the shell renders in host
@@ -72,16 +75,18 @@ export function MobileAppProviders({
       <ObservedErrorBoundary fallback={MobileAppErrorFallback}>
         <MobileI18nProvider locale={locale} deviceLocale={deviceLocale}>
           <MobileThemeProvider>
-            <MobileAuthProvider facade={authFacade} supabase={supabase} devUserId={devUserId}>
-              <MobileObservabilitySessionBridge />
-              <MobileClientCacheProvider
-                queryClient={queryClient}
-                transport={transport}
-                apiBaseUrl={apiBaseUrl}
-              >
-                <MachineActorsProvider>{children}</MachineActorsProvider>
-              </MobileClientCacheProvider>
-            </MobileAuthProvider>
+            <MobileErrorProvider>
+              <MobileAuthProvider facade={authFacade} supabase={supabase} devUserId={devUserId}>
+                <MobileObservabilitySessionBridge />
+                <MobileClientCacheProvider
+                  queryClient={queryClient}
+                  transport={transport}
+                  apiBaseUrl={apiBaseUrl}
+                >
+                  <MachineActorsProvider>{children}</MachineActorsProvider>
+                </MobileClientCacheProvider>
+              </MobileAuthProvider>
+            </MobileErrorProvider>
           </MobileThemeProvider>
         </MobileI18nProvider>
       </ObservedErrorBoundary>
@@ -89,9 +94,11 @@ export function MobileAppProviders({
   )
 }
 
-function MobileAppErrorFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackProps) {
+function MobileAppErrorFallback({ error, resetErrorBoundary }: ObservedErrorBoundaryFallbackProps) {
+  const presentation = presentAppError(error)
   return (
     <View style={styles.errorFallback}>
+      <Text style={styles.errorMessage}>{presentation.message}</Text>
       <Button onPress={resetErrorBoundary}>{m.common_retry()}</Button>
     </View>
   )
@@ -103,5 +110,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
+  },
+  errorMessage: {
+    color: tokens.color.text,
+    marginBottom: 16,
+    textAlign: 'center',
   },
 })

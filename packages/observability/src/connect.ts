@@ -1,4 +1,5 @@
 import { ConnectError, type Interceptor } from '@connectrpc/connect'
+import { toAppError } from '@cosimosi/errors/core'
 
 import type { ObservabilityFacade } from './facade.ts'
 
@@ -16,7 +17,10 @@ export function createTelemetryRequestIdInterceptor(
       if (isSafeRequestId(requestId)) observability.setRequestId(requestId)
       return res
     } catch (error) {
-      const requestId = ConnectError.from(error).metadata.get(headerName)
+      const detailRequestId = toAppError(error).requestId
+      const requestId = isSafeRequestId(detailRequestId)
+        ? detailRequestId
+        : ConnectError.from(error).metadata.get(headerName)
       if (isSafeRequestId(requestId)) observability.setRequestId(requestId)
       throw error
     }

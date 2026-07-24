@@ -5,6 +5,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createSyncStatusQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
+import { classifyErrorRecovery } from '@cosimosi/errors'
 import { useChargeRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
 import {
@@ -29,7 +30,7 @@ import { DiaryList, useDiaryArchive } from '../../../features/read-diary-list/in
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { useInvalidateUniverse } from '@cosimosi/universe/react'
 
 // widgets/diary-reader (RN fork, [D2][D3]): the archive block. It composes the free read
@@ -41,6 +42,7 @@ import { useInvalidateUniverse } from '@cosimosi/universe/react'
 // the active operation. Hardcodes no price (CC3); navigates only via the `onExit` seam. Shares
 // model with the web fork.
 export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
+  const showError = useErrorToast()
   const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive()
   const [openedDiaryId, setOpenedDiaryId] = useState<string | null>(null)
   const [jumpDiaryId, setJumpDiaryId] = useState<string | null>(null)
@@ -62,6 +64,10 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
   const invalidateUniverse = useInvalidateUniverse()
 
   const syncStatusQuery = useQuery(createSyncStatusQueryOptions(transport))
+
+  useEffect(() => {
+    if (syncStatusQuery.error) showError(syncStatusQuery.error)
+  }, [syncStatusQuery.error, showError])
 
   useEffect(() => () => paidSession.invalidate(), [paidSession])
 
@@ -125,22 +131,21 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
         invalidateBalance()
         if (classifyPaidActionError(error) === 'ambiguous') {
           invalidateUniverse()
+          showError(error)
           send({ type: 'ERROR' })
           return
         }
-        if (!consent) {
-          const status = await syncStatusQuery.refetch()
-          if (!paidSession.isActive(activeAttempt)) return
+        const recovery = classifyErrorRecovery(error, consent)
+        if (recovery === 'sync-consent') {
           paidSession.finish(activeAttempt)
           setAttempt(paidSession.begin(diaryId))
-          if (status.data?.needsSync) {
-            send({ type: 'CONSENT_REQUIRED' })
-            return
-          }
-        } else {
-          paidSession.finish(activeAttempt)
-          setAttempt(paidSession.begin(diaryId))
+          send({ type: 'CONSENT_REQUIRED' })
+          return
         }
+        showError(error)
+        if (recovery === 'charge') requestCharge()
+        paidSession.finish(activeAttempt)
+        setAttempt(paidSession.begin(diaryId))
         send({ type: 'ERROR' })
       } finally {
         paidSession.finish(activeAttempt)
@@ -155,7 +160,8 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
       invalidateUniverse,
       invalidateBalance,
       invalidateSyncStatus,
-      syncStatusQuery,
+      requestCharge,
+      showError,
       onExit,
       send,
     ],

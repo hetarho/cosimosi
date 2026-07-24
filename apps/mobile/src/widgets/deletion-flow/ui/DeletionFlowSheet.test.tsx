@@ -13,6 +13,7 @@ import {
   useReleasedGroupsStore,
 } from '@cosimosi/universe'
 
+import { ErrorToastContext } from '../../../shared/model/index.ts'
 import { DeletionFlowSheet } from './DeletionFlowSheet.tsx'
 
 // Cleared after each test: clearing cancels pending cache gc timers, which would otherwise
@@ -30,9 +31,11 @@ function renderSheet(transport: Transport) {
   queryClients.push(queryClient)
   return render(
     <QueryClientProvider client={queryClient}>
-      <TransportProvider transport={transport}>
-        <DeletionFlowSheet />
-      </TransportProvider>
+      <ErrorToastContext.Provider value={() => {}}>
+        <TransportProvider transport={transport}>
+          <DeletionFlowSheet />
+        </TransportProvider>
+      </ErrorToastContext.Provider>
     </QueryClientProvider>,
   )
 }

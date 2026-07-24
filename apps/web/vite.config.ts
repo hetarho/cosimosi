@@ -46,6 +46,7 @@ export default defineConfig(({ command, mode }) => {
         '@cosimosi/client-cache',
         '@cosimosi/config',
         '@cosimosi/emotion',
+        '@cosimosi/errors',
         '@cosimosi/force-sim',
         '@cosimosi/i18n',
         '@cosimosi/memory',

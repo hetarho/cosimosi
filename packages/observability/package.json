@@ -13,12 +13,14 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@connectrpc/connect": "^2.1.2"
+    "@connectrpc/connect": "^2.1.2",
+    "@cosimosi/errors": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=19"
   },
   "devDependencies": {
+    "@cosimosi/api-client": "workspace:*",
     "@types/react": "^19.2.17",
     "react": "^19.2.7",
     "typescript": "^6.0.3",

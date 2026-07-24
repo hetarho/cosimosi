@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	twinklev1 "github.com/cosimosi/api/internal/gen/cosimosi/twinkle/v1"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/apperr"
 	"github.com/cosimosi/api/internal/twinkle"
 )
 
@@ -94,7 +95,7 @@ func (s *Server) Charge(ctx context.Context, req *connect.Request[twinklev1.Char
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
-		return platform.UserScope{}, connect.NewError(connect.CodeUnauthenticated, err)
+		return platform.UserScope{}, apperr.Domain(connect.CodeUnauthenticated, apperr.ReasonPlatformUnauthenticated, err, nil)
 	}
 	return scope, nil
 }
@@ -110,35 +111,42 @@ func quoteTarget(msg *twinklev1.QuoteSpendRequest) (twinkle.QuoteKind, string, i
 	case twinklev1.SpendKind_SPEND_KIND_DIARY_RECALL:
 		return twinkle.QuoteKindDiaryRecall, msg.GetDiaryId(), 0, nil
 	default:
-		return "", "", 0, connect.NewError(connect.CodeInvalidArgument, twinkle.ErrQuoteInputRequired)
+		return "", "", 0, apperr.Domain(connect.CodeInvalidArgument, reasonQuoteInputRequired, twinkle.ErrQuoteInputRequired, nil)
 	}
 }
 
 // domainError maps the use-case's canonical errors onto Connect codes.
 func domainError(err error) error {
 	switch {
-	case errors.Is(err, twinkle.ErrInviteInputRequired),
-		errors.Is(err, twinkle.ErrChargeInputRequired),
-		errors.Is(err, twinkle.ErrQuoteInputRequired):
-		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, twinkle.ErrInviteInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonInviteInputRequired, err, nil)
+	case errors.Is(err, twinkle.ErrChargeInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonChargeInputRequired, err, nil)
+	case errors.Is(err, twinkle.ErrQuoteInputRequired):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonQuoteInputRequired, err, nil)
 	case errors.Is(err, twinkle.ErrQuoteTargetNotFound):
-		return connect.NewError(connect.CodeNotFound, err)
+		return apperr.Domain(connect.CodeNotFound, reasonQuoteTargetNotFound, err, nil)
 	case errors.Is(err, twinkle.ErrInsufficientTwinkle):
-		return connect.NewError(connect.CodeResourceExhausted, err)
-	case errors.Is(err, twinkle.ErrPaymentVerificationUnavailable),
-		errors.Is(err, twinkle.ErrInviteResolutionUnavailable):
-		return connect.NewError(connect.CodeUnavailable, err)
-	case errors.Is(err, twinkle.ErrPaymentBeneficiaryMismatch),
-		errors.Is(err, twinkle.ErrInviteBeneficiaryMismatch):
-		return connect.NewError(connect.CodePermissionDenied, err)
-	case errors.Is(err, twinkle.ErrInviteNotEligible),
-		errors.Is(err, twinkle.ErrInviteGrantConflict),
-		errors.Is(err, twinkle.ErrPaymentNotVerified),
-		errors.Is(err, twinkle.ErrQuoteTargetUnavailable):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return apperr.Domain(connect.CodeResourceExhausted, reasonInsufficient, err, nil)
+	case errors.Is(err, twinkle.ErrPaymentVerificationUnavailable):
+		return apperr.Domain(connect.CodeUnavailable, reasonPaymentVerificationUnavailable, err, nil)
+	case errors.Is(err, twinkle.ErrInviteResolutionUnavailable):
+		return apperr.Domain(connect.CodeUnavailable, reasonInviteResolutionUnavailable, err, nil)
+	case errors.Is(err, twinkle.ErrPaymentBeneficiaryMismatch):
+		return apperr.Domain(connect.CodePermissionDenied, reasonPaymentBeneficiaryMismatch, err, nil)
+	case errors.Is(err, twinkle.ErrInviteBeneficiaryMismatch):
+		return apperr.Domain(connect.CodePermissionDenied, reasonInviteBeneficiaryMismatch, err, nil)
+	case errors.Is(err, twinkle.ErrInviteNotEligible):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonInviteNotEligible, err, nil)
+	case errors.Is(err, twinkle.ErrInviteGrantConflict):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonInviteGrantConflict, err, nil)
+	case errors.Is(err, twinkle.ErrPaymentNotVerified):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonPaymentNotVerified, err, nil)
+	case errors.Is(err, twinkle.ErrQuoteTargetUnavailable):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonQuoteTargetUnavailable, err, nil)
 	case errors.Is(err, twinkle.ErrScopeRequired):
-		return connect.NewError(connect.CodeUnauthenticated, err)
+		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
 	default:
-		return err
+		return apperr.Internal(err)
 	}
 }

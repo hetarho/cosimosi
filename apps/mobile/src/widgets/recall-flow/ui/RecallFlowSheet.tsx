@@ -5,6 +5,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createMemoryServiceQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
+import { classifyErrorRecovery } from '@cosimosi/errors'
 import { useChargeRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
 import {
@@ -31,7 +32,7 @@ import { CurrentMemoryText } from '../../../features/current-memory-text/index.t
 import { RecallResult, RecallRewrite } from '../../../features/recall-star/index.ts'
 import { SpendCostDisplay, recallSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { useRecallDraftStore } from '@cosimosi/universe'
 
 // widgets/recall-flow (RN fork, [R1]): the summon-and-rewrite flow as a modal over the running
@@ -41,6 +42,7 @@ import { useRecallDraftStore } from '@cosimosi/universe'
 // local Date (A1); the paid call carries a client operation id (A2) and the in-flight state is
 // non-dismissible + fenced (A4). Shares all model with the web fork.
 export function RecallFlowSheet() {
+  const showError = useErrorToast()
   const memoryId = useRecallTargetStore((state) => state.memoryId)
   const clearTarget = useRecallTargetStore((state) => state.clear)
   const universeTime = useUniverseClockStore((state) => state.currentUniverseTime)
@@ -65,6 +67,10 @@ export function RecallFlowSheet() {
 
   const syncStatusQuery = useQuery(createSyncStatusQueryOptions(transport))
   const needsSync = syncStatusQuery.data?.needsSync ?? false
+
+  useEffect(() => {
+    if (syncStatusQuery.error) showError(syncStatusQuery.error)
+  }, [syncStatusQuery.error, showError])
 
   const sessionRef = useRef<PaidActionSession | null>(null)
   if (sessionRef.current === null) sessionRef.current = createPaidActionSession()
@@ -174,25 +180,24 @@ export function RecallFlowSheet() {
         // The recall MAY have committed; keep the operation id AND the passed cost gate so the
         // re-confirm replays the committed receipt directly — never re-quoting, so a now-depleted
         // balance cannot block recovery of what was paid for (A2/A5).
+        showError(error)
         send({ type: 'ERROR' })
         return
       }
       // Known refusal — nothing committed; the next attempt is a fresh spend under a new id. Only
       // an un-consented sync race returns to the consent modal; once consent was given, a
       // balance/target/conflict refusal re-quotes (charge path) instead of looping consent (A5).
-      if (!consented) {
-        const status = await syncStatusQuery.refetch()
-        if (!paidSession.isActive(activeAttempt)) return
+      const recovery = classifyErrorRecovery(error, consented)
+      if (recovery === 'sync-consent') {
         if (paidSession.finish(activeAttempt)) setSubmitting(false)
         setAttempt(paidSession.begin(activeMemoryId))
-        if (status.data?.needsSync) {
-          send({ type: 'CONSENT_REQUIRED' })
-          return
-        }
-      } else {
-        if (paidSession.finish(activeAttempt)) setSubmitting(false)
-        setAttempt(paidSession.begin(activeMemoryId))
+        send({ type: 'CONSENT_REQUIRED' })
+        return
       }
+      showError(error)
+      if (recovery === 'charge') requestCharge()
+      if (paidSession.finish(activeAttempt)) setSubmitting(false)
+      setAttempt(paidSession.begin(activeMemoryId))
       setCostPassed(false)
       send({ type: 'ERROR' })
     } finally {
@@ -210,7 +215,8 @@ export function RecallFlowSheet() {
     invalidateMemory,
     invalidateBalance,
     paidSession,
-    syncStatusQuery,
+    requestCharge,
+    showError,
     send,
   ])
 

@@ -6,6 +6,9 @@ export const VALUES = {
     defaultRetryCount: 1,
     optimisticRollbackMs: 10000,
   },
+  errors: {
+    toastAutoDismissMs: 6000,
+  },
   authSession: {
     accessTokenRefreshSkewMs: 60000,
   },

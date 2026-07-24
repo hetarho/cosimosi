@@ -78,21 +78,31 @@ The API request-id middleware/interceptor remains the source for `X-Request-Id`.
 Client-provided ids are accepted only when they are short ASCII tokens
 (`A-Z`, `a-z`, `0-9`, `.`, `_`, `-`, `:`); unsafe values are replaced with a
 server-generated id before they can reach logs or telemetry. Responses and Connect
-metadata expose the safe id as before. The frontend Connect interceptor stores only
-safe response/error request ids in the observability facade; app error boundaries
-include that id in later error reports.
+metadata expose the safe id as before. Every failed Connect response also carries
+the same authoritative id in `cosimosi.platform.v1.ErrorInfo.request_id`. The
+frontend Connect interceptor prefers this detail-carried id, validates it with the
+same safe-token rule, and retains response metadata as an older-server fallback.
+App error boundaries and error toasts use the detail id as the operator-visible
+correlation key.
 
 API unexpected failures are handled in two places:
 
 - `StructuredErrorInterceptor` reports `CodeInternal`/`CodeUnknown` errors, then maps
-  the client-facing error to stable `CodeInternal: internal server error`. Reports
-  include a safe `error_type` discriminator instead of raw error messages.
+  the client-facing error to stable `CodeInternal: internal server error` with
+  `reason=INTERNAL`, `domain=platform`, and the request id. Production/default leaves
+  `debug_detail` empty; only the exact runtime setting
+  `COSIMOSI_ERROR_DETAIL=verbose` copies the raw pre-mask error into that dedicated
+  field. The ordinary message and metadata are always masked. Unknown gate values
+  fail closed. Reports include a safe `error_type` discriminator instead of raw
+  error messages.
 - `PanicRecoveryInterceptor` recovers panics, reports a safe panic event, and returns
   the same stable internal error. Reports include a safe `panic_type` discriminator
   instead of the recovered panic value.
 
-Known application/auth errors keep their existing canonical Connect codes and are not
-reported as unexpected failures.
+Known application/auth errors keep their canonical Connect codes and safe messages,
+gain the same request id, and are not reported as unexpected failures. Their stable
+reason/domain/metadata contract is defined in
+[`policy/platform/errors.md`](../policy/platform/errors.md).
 
 ## 5. Feature flags
 
@@ -128,7 +138,8 @@ Runtime secrets and endpoints are environment/ops configuration:
 
 - web: `VITE_SENTRY_DSN`, `VITE_APP_VERSION`, `VITE_POSTHOG_KEY`,
   `VITE_POSTHOG_HOST`, `VITE_COSIMOSI_FLAG_*`;
-- API: `COSIMOSI_SENTRY_DSN`, `COSIMOSI_RELEASE`;
+- API: `COSIMOSI_SENTRY_DSN`, `COSIMOSI_RELEASE`, and the fail-closed diagnostic gate
+  `COSIMOSI_ERROR_DETAIL`;
 - mobile: provider props (`sentryDsn`, `release`, optional native PostHog-compatible
   client) plus `COSIMOSI_FLAG_*` build-time/runtime environment overrides read
   through the same registry parser as web.
