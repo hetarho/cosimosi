@@ -21,9 +21,8 @@ import (
 
 const providerName = "deepseek"
 
-// deepseek-v4-flash is the current general-purpose value model. The legacy
-// deepseek-chat alias is scheduled for retirement on 2026-07-24. Deployments can
-// select another current DeepSeek model through COSIMOSI_LLM_MODEL.
+// deepseek-v4-flash is the default general-purpose model for this adapter.
+// Deployments can select another current DeepSeek model through COSIMOSI_LLM_MODEL.
 const (
 	defaultModel           = "deepseek-v4-flash"
 	endpoint               = "https://api.deepseek.com/chat/completions"

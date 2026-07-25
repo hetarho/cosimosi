@@ -54,8 +54,9 @@ handlers.
 
 Selection rule for each capability: **key absent → the keyless deterministic mock; key present → that provider's client,
 wrapped in the metering seam; an unknown or recognized-but-unimplemented provider name → a startup error, never a silent
-default.** The contract slots are `anthropic · openai · deepseek · zai · gemini` (LLM) and `voyage · openai · gemini`
-(embedding). Implemented adapters are **Anthropic** (`claude-opus-4-8`) and **DeepSeek**
+default.** The runtime registry identifiers are `anthropic · openai · deepseek · glm · gemini · kimi` (LLM) and
+`voyage · openai · gemini` (embedding); `glm` is the operator-facing identifier for the Z.ai/Zhipu slot. Implemented
+adapters are **Anthropic** (`claude-opus-4-8`) and **DeepSeek**
 (`deepseek-v4-flash`) for LLM, and **Voyage AI** (`voyage-3.5`) for embedding; each default is overridable with its
 capability's `COSIMOSI_*_MODEL`. Adding another slot is a new subpackage + one blank import in `cmd/*`, no consumer
 change. There is no values key or feature flag for provider selection — provider identity, model ids, and keys are

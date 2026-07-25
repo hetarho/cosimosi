@@ -41,6 +41,7 @@ const NARRATION = [
   /\bmid-flight\b/i,
   /\boriginal journey\b/i,
   /\bas discussed\b/i,
+  /\b(?:scheduled|slated) for (?:retirement|removal|deprecation)\b/i,
 ]
 
 // Path-scoped rules apply only under the listed path fragments. The bare acceptance-criteria
@@ -70,6 +71,9 @@ if (process.argv.includes('--probe')) {
     ['// the R001 regression', ''],
     ['// the AI config reader (T010)', ''],
     ['// during Epic B the clock advances', ''],
+    ['// this alias is scheduled for retirement next quarter', ''],
+    ['// this shim is slated for removal after rollout', ''],
+    ['// this endpoint is scheduled for deprecation', ''],
     // the acceptance-criteria form, scoped to the AI/admin backend contexts
     ['// fails here, never at row-insert time (A7)', 'apps/api/internal/ai/voyage/client.go'],
     ['// no vendor error escapes (A5)', 'apps/api/internal/admin/service.go'],
@@ -79,6 +83,7 @@ if (process.argv.includes('--probe')) {
     ['// surfaced for the awaken animation ([E7a])', ''],
     ['// atomically with the launch (§2.6)', ''],
     ['// bump the counter', ''], // no marker of any kind
+    ['// a past-dated diary leaves the universe clock unchanged', ''],
     // the same Ax form OUTSIDE the scoped contexts is left to the earlier-epic convention
     ['// exactly-once over the interval (A4/A10)', 'apps/api/internal/memory/consolidate.go'],
     [
