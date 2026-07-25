@@ -28,6 +28,7 @@ export function UniverseCanvas({
   children,
   dpr = [1, 2],
   fov = 55,
+  far = 1400,
   forceWebGL = false,
 }: UniverseCanvasProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,7 +57,7 @@ export function UniverseCanvas({
     root.current.configure({
       size,
       events,
-      camera: { fov, position: [0, 0, 90] },
+      camera: { fov, far, position: [0, 0, 90] },
       // Async gl factory: R3F awaits it before starting the render loop, so the WebGPU
       // backend is initialized before the first render() (a bare renderer would throw
       // "render() called before the backend is initialized").
@@ -95,7 +96,7 @@ export function UniverseCanvas({
       renderer.current?.dispose()
       renderer.current = null
     }
-  }, [children, dpr, fov, forceWebGL])
+  }, [children, dpr, fov, far, forceWebGL])
 
   return <Canvas ref={canvasRef} style={styles.fill} />
 }

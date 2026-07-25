@@ -42,7 +42,7 @@ function timerModulation(arousal: number, connectionStrength: number): number {
 
 // gistCoordinate places a gist body: x, y copied verbatim from the emergent hippocampal coordinates (the
 // neocortex has no force-sim, [I5]), z a stage-progressive linear map into the reserved neocortex band
-// [neocortexZMin, neocortexZMax] (15..25), disjoint from the hippocampus band ([C5][C6][V9]).
+// [neocortexZMin, neocortexZMax] (27..45), disjoint from the hippocampus band ([C5][C6][V9]).
 export function gistCoordinate(
   hippocampalX: number,
   hippocampalY: number,

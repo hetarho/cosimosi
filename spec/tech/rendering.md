@@ -18,7 +18,7 @@ differs on native). Slices import `@cosimosi/3d-renderer`, never `three` directl
 ```
 packages/3d-renderer/src/                                                              GENERIC core (names no concrete bg)
 ├── shader-art/   noise · field · pattern · finish · sdf · geometry (+ tsl helper)  — pure TSL building blocks
-├── layers/       Background (node) · StarField · CameraControls (demo orbit) · PostFX (bloom)  — type-agnostic R3F layers
+├── layers/       Background (node) · StarField · CameraControls (demo trackball) · PostFX (bloom)  — type-agnostic R3F layers
 ├── canvas/       UniverseCanvas (web R3F + WebGPURenderer)                          — the only platform-forked surface
 ├── asset-source · skin-context · SkinProvider                                       — §3.4 port + skin seam
 ├── assets/       CONCRETE looks (use the core; depend on it, not vice-versa)
@@ -62,12 +62,36 @@ R3F runs its own reconciler, so context from the DOM/RN tree outside `<Canvas>` 
 The active skin is read with `useSkin()` at the boundary; `UniverseScene` resolves the background node and passes it as a
 prop to `Background` (and `skin.bloom` to `PostFX`) — never via context across the canvas.
 
-### Camera (demo orbit)
+### Camera (demo trackball)
 
-`UniverseScene` mounts `CameraControls` — three's `OrbitControls` (drag = rotate, wheel/pinch = zoom, inertial damping;
-pan off; distance clamped). It updates in a default-priority `useFrame`, before `PostFX`'s priority-1 render. This is a
-**demo inspection rig**, not product navigation — the real universe camera/fly rig is Epic A `universe-canvas`
-([U3][V0]). It attaches to the canvas DOM element and stays **inert on hosts without one** (native gesture nav is Epic A).
+`UniverseScene` mounts `CameraControls` — three's `TrackballControls` (drag = rotate, wheel/pinch = zoom, inertial
+damping; pan off; distance clamped). Trackball rather than `OrbitControls` so rotation never blocks: it holds no fixed
+up-vector, so the view tumbles past the poles and keeps spinning in any direction, where `OrbitControls` clamps the
+polar angle to `[0, π]` and sticks at top/bottom. Pointer motion is mapped through the element's on-screen size, so
+canvas resizes are announced via `handleResize()` (the shared `observeElementResize` seam in `layers/dom-controls.ts`).
+It updates in a default-priority `useFrame`, before `PostFX`'s priority-1 render. This is a **demo inspection rig**, not
+product navigation — the real universe camera/fly rig is Epic A `universe-canvas` ([U3][V0]). It attaches to the canvas
+DOM element and stays **inert on hosts without one** (native gesture nav is Epic A).
+
+### Backdrop scale (one ordering, four numbers)
+
+The backdrop nests, and every layer of it must stay in this order:
+
+**camera zoom-out limit < `StarField` radius < `SkySphere` radius < `UniverseCanvas` far plane.**
+
+Each `<` is load-bearing. A camera that outruns the star shell sees the field as a ball hanging in the middle of the
+frame instead of a sky around it; a camera that leaves the sky sphere loses the background entirely (it is painted on the
+sphere's inner face); and a sky beyond the far plane is clipped into a growing hole straight ahead as you pull back.
+The far plane is therefore set explicitly on the canvas — R3F's own default (1000) is too near for an enclosing sky —
+and the zoom-out limits live with the rigs (`UNIVERSE_CAMERA_RIG.maxDistance` for the product, the demo
+`CameraControls`'s own clamp for `/test`).
+
+`StarField` scatters from a seeded PRNG (Park-Miller, the latent field's precedent) rather than a Fibonacci lattice:
+independent random draws give the clumps and voids a real sky has, where an index-driven spread leaves a traceable
+spiral. Radius is volume-uniform (cube root) so the field doesn't pack onto its inner shells, star size rides its own
+distance so every shell keeps roughly one on-screen size, and the twinkle's phase, rate, pulse shape, and steady glow
+are each an independent per-instance hash — a shared rate or a smooth phase walk makes the whole field pulse as one
+travelling wave.
 
 ### Post-processing
 
@@ -145,8 +169,9 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
   **empty** universe (never a zero-stacked one); the shared graph builder coerces out-of-range **and non-finite**
   stored magnitudes into the sim's finite domain so a skewed or corrupt row cannot kill the scene, and structurally
   emits neuron↔neuron edges only [I4][I6] from connectivity alone [I3].
-- **Navigation** is the product `NavigationRig` (zoom · rotate · pan via OrbitControls where a DOM canvas exists —
-  inert on native for the MVP — plus machine-driven focus/fly glides). It replaces the demo `CameraControls` for the
+- **Navigation** is the product `NavigationRig` (zoom · rotate · pan via `TrackballControls` where a DOM canvas exists
+  — inert on native for the MVP — plus machine-driven focus/fly glides). Trackball, so free rotation is unbounded in
+  every direction (no polar clamp, no pole stall); glides disable the controls and drive the camera directly. It replaces the demo `CameraControls` for the
   universe scene; the demo layer remains for `/test`/`UniverseScene`. The camera/selection modes live in the XState
   navigation machine (`@cosimosi/universe`, ids-only context), polled per frame via `getSnapshot()`. Arrival is a pure,
   unit-tested latch (`navigation-latch.ts`): it fires ARRIVED once when the camera settles inside the epsilon shell,
@@ -295,7 +320,7 @@ gist bodies) above — one scene, the plan-23 camera rig, no mode toggle, no sec
 - **Abstraction is z + a diffuse look, never shape** ([V5]). `gist-star-body.ts` (`@cosimosi/3d-renderer`) is its own
   TSL `VisualBodySource` — a facing-falloff glow ball (additive, depth-tested but never depth-written) with
   per-instance tint + softness attributes; the episodic seed channel is untouched by stage.
-- **The gap depth cue is `BandFog`** — a stack of horizontal `DoubleSide` additive glow discs across the z 10–15 gap,
+- **The gap depth cue is `BandFog`** — a stack of horizontal `DoubleSide` additive glow discs across the z 18–27 gap,
   visible from above and below, raycast-invisible, and depth-write-free (peak at the gap center, zero at both band edges;
   intensity `rendering.gist_rise_layer_fog`): a rendering affordance marking the boundary, never a wall and never a
   click shield.

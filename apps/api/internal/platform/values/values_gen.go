@@ -31,22 +31,22 @@ const (
 	RenderingMaxPixelRatio         = 2
 	RenderingEmotionSkyExposure    = 0.62
 	RenderingInstanceBucketSize    = 4096
-	RenderingStarSizeMin           = 0.9
-	RenderingStarSizeMax           = 3.2
+	RenderingStarSizeMin           = 0.7
+	RenderingStarSizeMax           = 2.4
 	RenderingStarBrightnessMin     = 0.15
 	RenderingStarBrightnessMax     = 1
 	RenderingFilamentWidthMin      = 0.04
 	RenderingFilamentWidthMax      = 0.35
 	RenderingFilamentBrightnessMin = 0.12
 	RenderingFilamentBrightnessMax = 0.85
-	RenderingCellStarPointSize     = 0.35
-	RenderingLatentStarCount       = 800
-	RenderingLatentStarCountMobile = 300
-	RenderingLatentFieldRadius     = 34
-	RenderingLatentStarSize        = 0.14
+	RenderingCellStarPointSize     = 0.26
+	RenderingLatentStarCount       = 1800
+	RenderingLatentStarCountMobile = 700
+	RenderingLatentFieldRadius     = 56
+	RenderingLatentStarSize        = 0.12
 	RenderingAwakenCapacity        = 32
-	RenderingGistStarSizeMin       = 0.7
-	RenderingGistStarSizeMax       = 2.4
+	RenderingGistStarSizeMin       = 0.55
+	RenderingGistStarSizeMax       = 1.8
 	RenderingGistStarDiffuse       = 0.55
 	RenderingGistRiseLayerFog      = 0.35
 )
@@ -70,8 +70,8 @@ var (
 
 // nebula
 const (
-	NebulaBleedRadiusCoefficient = 12
-	NebulaMinBleedRadius         = 3
+	NebulaBleedRadiusCoefficient = 18
+	NebulaMinBleedRadius         = 4.5
 	NebulaFalloffExponent        = 3.5
 	NebulaMaxContributors        = 96
 	NebulaFieldResolutionWeb     = 24
@@ -222,16 +222,16 @@ const (
 // force_sim
 const (
 	ForceSimCharge          = 0.035
-	ForceSimLinkDistance    = 12
-	ForceSimCenterStrength  = 0.018
-	ForceSimRepulsion       = 2.4
+	ForceSimLinkDistance    = 20
+	ForceSimCenterStrength  = 0.008
+	ForceSimRepulsion       = 5
 	ForceSimTickAlphaDecay  = 0.022
 	ForceSimVelocityDamping = 0.62
 	ForceSimMinAlpha        = 0.02
 	ForceSimHippocampusZMin = 0
-	ForceSimHippocampusZMax = 10
-	ForceSimNeocortexZMin   = 15
-	ForceSimNeocortexZMax   = 25
+	ForceSimHippocampusZMax = 18
+	ForceSimNeocortexZMin   = 27
+	ForceSimNeocortexZMax   = 45
 	ForceSimSeed            = 190019
 )
 

@@ -2,8 +2,8 @@
   "tolerance": 1e-9,
   "values": {
     "gist_units_per_stage": 10,
-    "neocortex_z_min": 15,
-    "neocortex_z_max": 25,
+    "neocortex_z_min": 27,
+    "neocortex_z_max": 45,
     "max_stage": 4
   },
   "cases": [
@@ -115,7 +115,7 @@
       "expected_coord": {
         "x": 3.5,
         "y": -7.25,
-        "z": 15
+        "z": 27
       }
     },
     {
@@ -128,7 +128,7 @@
       "expected_coord": {
         "x": 3.5,
         "y": -7.25,
-        "z": 17.5
+        "z": 31.5
       }
     },
     {
@@ -141,7 +141,7 @@
       "expected_coord": {
         "x": 3.5,
         "y": -7.25,
-        "z": 20
+        "z": 36
       }
     },
     {
@@ -154,7 +154,7 @@
       "expected_coord": {
         "x": 3.5,
         "y": -7.25,
-        "z": 22.5
+        "z": 40.5
       }
     },
     {
@@ -167,7 +167,7 @@
       "expected_coord": {
         "x": 3.5,
         "y": -7.25,
-        "z": 25
+        "z": 45
       }
     }
   ]

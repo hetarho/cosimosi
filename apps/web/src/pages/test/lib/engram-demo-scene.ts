@@ -4,7 +4,9 @@ import type { EpisodicMemory, Neuron, NeuronActivation, Synapse } from '@cosimos
 // A small self-contained universe for the /test surface: a handful of neurons, eight episodic
 // memories anchored to them, and the synapses their co-activations imply. Positions live in a
 // static coordinate buffer (the demo has no force-sim — the render layers read this buffer per
-// frame exactly like production) so every engram-cell body draws with real domain facts:
+// frame exactly like production) and are spaced to the scale the sim actually settles at under
+// `force_sim.link_distance`/`center_strength`, so design work here reads like the real universe
+// rather than a tighter cluster. Every engram-cell body draws with real domain facts:
 // star size/brightness from strength, tint from mood, filaments over neuron↔neuron synapses.
 // Deterministic: same scene every mount, so design work compares like-for-like.
 
@@ -19,12 +21,12 @@ interface NeuronSeed {
 
 // Neuron ids are pre-sorted lexicographically so synapse endpoints canonicalize by simple compare.
 const NEURON_SEEDS: readonly NeuronSeed[] = [
-  { id: 'n-cat', name: 'Byeol, the cat', neuronType: 'entity', position: [4, 3, 5] },
-  { id: 'n-coffee', name: 'Coffee', neuronType: 'semantic', position: [3, -7, 2] },
-  { id: 'n-kitchen', name: 'The kitchen', neuronType: 'spatial', position: [-3, 9, -3] },
-  { id: 'n-mother', name: 'Mother', neuronType: 'entity', position: [-7, 5, 2] },
-  { id: 'n-rain', name: 'Rain', neuronType: 'semantic', position: [8, -2, -2] },
-  { id: 'n-sea', name: 'The winter sea', neuronType: 'spatial', position: [-10, -6, -4] },
+  { id: 'n-cat', name: 'Byeol, the cat', neuronType: 'entity', position: [7, 5.2, 8.8] },
+  { id: 'n-coffee', name: 'Coffee', neuronType: 'semantic', position: [5.2, -12.2, 3.5] },
+  { id: 'n-kitchen', name: 'The kitchen', neuronType: 'spatial', position: [-5.2, 15.8, -5.2] },
+  { id: 'n-mother', name: 'Mother', neuronType: 'entity', position: [-12.2, 8.8, 3.5] },
+  { id: 'n-rain', name: 'Rain', neuronType: 'semantic', position: [14, -3.5, -3.5] },
+  { id: 'n-sea', name: 'The winter sea', neuronType: 'spatial', position: [-17.5, -10.5, -7] },
 ]
 
 interface MemorySeed {

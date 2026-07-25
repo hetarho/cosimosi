@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, Vector3 } from 'three/webgpu'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { TrackballControls } from 'three/addons/controls/TrackballControls.js'
 
-import { canAttachDomControls } from './dom-controls.ts'
+import { canAttachDomControls, observeElementResize } from './dom-controls.ts'
 import {
   createArrivalLatchState,
   stepArrivalLatch,
@@ -38,8 +38,11 @@ export interface NavigationRigProps {
 }
 
 // Shared R3F layer: the product navigation rig. Free navigation (zoom · rotate · pan) is
-// OrbitControls over the canvas DOM element — pan enabled, clamps from props — and stays
-// inert on hosts without DOM events (native gesture input is a future input sibling).
+// TrackballControls over the canvas DOM element — pan enabled, distance clamps from props — and
+// stays inert on hosts without DOM events (native gesture input is a future input sibling).
+// TrackballControls (not OrbitControls) so rotation NEVER blocks: it holds no fixed up-vector, so
+// the universe tumbles past the poles and keeps spinning infinitely in any direction, where
+// OrbitControls hard-clamps the polar angle to [0, π] and sticks at top/bottom.
 // focus/fly glides are exp-damped camera moves toward the polled pose target; the control
 // modes themselves live in the consumer's state machine, which this rig only reads.
 // Damping needs update() every frame, so it runs in useFrame at default priority — before
@@ -56,7 +59,7 @@ export function NavigationRig({
 }: NavigationRigProps) {
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
-  const controlsRef = useRef<OrbitControls | null>(null)
+  const controlsRef = useRef<TrackballControls | null>(null)
   const lookTarget = useMemo(() => new Vector3(), [])
   const targetVec = useMemo(() => new Vector3(), [])
   const approach = useMemo(() => new Vector3(), [])
@@ -66,15 +69,23 @@ export function NavigationRig({
   useEffect(() => {
     const el = gl.domElement
     if (!canAttachDomControls(el)) return
-    const controls = new OrbitControls(camera, el)
-    controls.enableDamping = true
-    controls.enablePan = true
+    const controls = new TrackballControls(camera, el)
+    // Inertial damping (staticMoving off): the throw keeps gliding, never latching to a stop.
+    controls.staticMoving = false
+    controls.dynamicDampingFactor = 0.15
+    controls.rotateSpeed = 1.4
+    controls.zoomSpeed = 1.2
+    controls.panSpeed = 0.6
     controls.minDistance = minDistance
     controls.maxDistance = maxDistance
     controls.target.copy(lookTarget)
     controlsRef.current = controls
+    // The trackball maps pointer motion through the element's on-screen size, so a canvas resize
+    // must be announced or the rotation math drifts.
+    const unobserve = observeElementResize(el, () => controls.handleResize())
     return () => {
       controlsRef.current = null
+      unobserve()
       controls.dispose()
     }
   }, [camera, gl, lookTarget, maxDistance, minDistance])

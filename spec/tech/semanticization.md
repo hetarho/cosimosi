@@ -29,8 +29,8 @@ SDK, or randomness. No new sqlc query, migration, proto field, or RPC: the unit 
   the forgetting slow-factor (job's `forgetting.{arousal,connection}_slow_coefficient`), so a high-arousal / well-connected
   memory gistifies slower just as it forgets slower. Arousal only, never valence ([F6][F7][I3]).
 - **`GistCoordinate(hippocampalX, hippocampalY, stage)`** — `x, y` copied verbatim; `z = neocortex_z_min +
-(clamp(stage,0,max)/max)·(neocortex_z_max − neocortex_z_min)`, inside the reserved neocortex band (15..25), disjoint
-  from the hippocampus band (0..10) ([C5][C6][V9][I5]). The map shape is code; only the band bounds are values (reused).
+(clamp(stage,0,max)/max)·(neocortex_z_max − neocortex_z_min)`, inside the reserved neocortex band (27..45), disjoint
+  from the hippocampus band (0..18) ([C5][C6][V9][I5]). The map shape is code; only the band bounds are values (reused).
 
 ## 4. Values and formulas
 

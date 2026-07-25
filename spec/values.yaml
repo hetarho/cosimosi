@@ -59,8 +59,8 @@ rendering:
   instance_bucket_size: 4096
   # Star (episodic-memory) instance scale range — world radius mapped from EffectiveStrength
   # (base_strength + recall accumulation). Bigger memory → bigger star [V3].
-  star_size_min: 0.9
-  star_size_max: 3.2
+  star_size_min: 0.7
+  star_size_max: 2.4
   # Star brightness range mapped from EffectiveBrightness [V2]. Epic A resolves full (max);
   # min is the decay floor Epic D dims toward — a star is dimmed, never deleted.
   star_brightness_min: 0.15
@@ -74,29 +74,29 @@ rendering:
   filament_brightness_max: 0.85
   # Cell-star (neuron) constant point radius in world units — seedless, no emotion color; a
   # neuron carries information, not emotion [V5]. Degree-driven sizing stays reserved.
-  cell_star_point_size: 0.35
+  cell_star_point_size: 0.26
   # Latent-star field ([E7a][V7]): gray not-yet-recruited engram points scattered through the
   # hippocampus z-band (force_sim.hippocampus_z_*), filling the visible volume. Rendering-only,
   # no DB. Web = open-beta density; mobile MVP lowers the instance count (§3.5).
-  latent_star_count: 800
-  latent_star_count_mobile: 300
+  latent_star_count: 1800
+  latent_star_count_mobile: 700
   # World radius of the x,y disc the field scatters within (z comes from the hippocampus band).
-  latent_field_radius: 34
+  latent_field_radius: 56
   # Latent point world radius — small and dim; below cell_star_point_size so a real neuron reads
   # as brighter/larger than the silent field it wakes from.
-  latent_star_size: 0.14
+  latent_star_size: 0.12
   # Awaken flare pool ceiling: max concurrent birth flares rendered at once. A launch rarely births
   # more than a few new neurons; an overflowing burst is not lost — the excess flares on the next
   # pass (the animation look/motion stays in code; only this pool cap is tuning).
   awaken_capacity: 32
   # Gist-star (neocortical body, [V3][V5][V9]) instance scale range mapped from EffectiveStrength —
   # kept below the episodic star_size_* so a gist reads as a quieter echo of its memory.
-  gist_star_size_min: 0.7
-  gist_star_size_max: 2.4
+  gist_star_size_min: 0.55
+  gist_star_size_max: 1.8
   # Base softness of the diffuse gist body (0..1) — the [V5] "gistified" look distinguishing it
   # from the sharp episodic seed body; deeper stages read progressively more diffuse from here.
   gist_star_diffuse: 0.55
-  # Depth-cue haze intensity across the hippocampus↔neocortex gap (z 10–15, [V9]) — a restrained
+  # Depth-cue haze intensity across the hippocampus↔neocortex gap (z 18–27, [V9]) — a restrained
   # rendering affordance marking the layer boundary, never a wall.
   gist_rise_layer_fog: 0.35
 
@@ -110,9 +110,9 @@ nebula:
   # EffectiveStrength → bleed radius (world units). Stronger stars bleed wider [M4]. Kept modest so
   # kernels stay local: in a dense cluster many wide kernels sum additively and wash the core to
   # white, so radius is tuned to bleed between neighbors without flooding the center.
-  bleed_radius_coefficient: 12
+  bleed_radius_coefficient: 18
   # Floor radius so even the weakest star reads as a tight local glow rather than vanishing [M4].
-  min_bleed_radius: 3
+  min_bleed_radius: 4.5
   # Local-region density falloff sharpness — higher concentrates color near the star, so overlapping
   # regions still bleed but each keeps a dense core and the diffuse mid-field haze (which is what
   # sums toward white where stars cluster) stays thin.
@@ -363,12 +363,20 @@ admin:
 force_sim:
   # Synapse spring coefficient; stronger synapses pull their neurons toward link_distance faster.
   charge: 0.035
-  # Target rest length for neuron-to-neuron synapse springs in layout units.
-  link_distance: 12
+  # Target rest length for neuron-to-neuron synapse springs in layout units. This is the universe's
+  # scale knob: the cluster seed radii derive from it, and the rendered body sizes
+  # (rendering.star_size_*, cell_star_point_size, gist_star_size_*) must stay well under the spacing
+  # it produces, or big stars overlap their neighbours instead of hanging apart in space.
+  link_distance: 20
   # Center pull coefficient; connectivity scales this so self-relevant nodes settle nearer the origin.
-  center_strength: 0.018
-  # Barnes-Hut repulsion coefficient for baseline pattern separation.
-  repulsion: 2.4
+  # This — not link_distance — is what sets how tightly the whole universe balls up: the springs reach
+  # their rest length long before the center force stops squeezing, so spacing is won here. Weakening
+  # it stretches the cloud while keeping the relative gradient (a well-connected node still sits
+  # nearer the origin than a lonely one).
+  center_strength: 0.008
+  # Barnes-Hut repulsion coefficient for baseline pattern separation — the local lever: it decides how
+  # close the closest pair ends up, where center_strength decides the cloud's overall size.
+  repulsion: 5
   # Per-tick alpha cooling, tuned for stable convergence without freezing the first launch.
   tick_alpha_decay: 0.022
   # Velocity retained per tick (1 = no damping); lower settles the layout faster but stiffer.
@@ -376,9 +384,9 @@ force_sim:
   # Alpha floor so the layout keeps a little residual motion instead of freezing hard.
   min_alpha: 0.02
   hippocampus_z_min: 0
-  hippocampus_z_max: 10
-  neocortex_z_min: 15
-  neocortex_z_max: 25
+  hippocampus_z_max: 18
+  neocortex_z_min: 27
+  neocortex_z_max: 45
   seed: 190019
 
 diary_reader:

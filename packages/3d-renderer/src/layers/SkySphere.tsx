@@ -29,7 +29,11 @@ export interface SkySphereProps {
   readonly reducedMotion?: boolean
   /** Alpha override; when omitted, the selected effect's generated tuning is used. */
   readonly opacity?: number
-  /** Sphere radius — big enough to enclose the scene. */
+  /**
+   * Sphere radius. It sits between the star shell and the canvas far plane (see `UniverseCanvas`):
+   * the sky is drawn on its INNER surface, so a camera that leaves the sphere loses the background
+   * entirely, and a sphere past the far plane is clipped into a hole straight ahead.
+   */
   readonly radius?: number
 }
 
@@ -71,7 +75,7 @@ export function SkySphere({
   effect = DEFAULT_SKY_EFFECT,
   reducedMotion = false,
   opacity,
-  radius = 400,
+  radius = 700,
 }: SkySphereProps) {
   const gradient = useMemo(() => buildEmotionGradientTexture(stops), [])
   const time = useMemo(() => uniform(0), [])

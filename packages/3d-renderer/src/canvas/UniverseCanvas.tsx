@@ -11,6 +11,13 @@ export interface UniverseCanvasProps {
   /** devicePixelRatio (single or [min,max]); the app caps it from rendering.max_pixel_ratio. */
   readonly dpr?: number | [number, number]
   readonly fov?: number
+  /**
+   * Far clip plane. It must clear the whole backdrop from the farthest framing — the layers nest as
+   * camera zoom-out limit < StarField shell < SkySphere radius < this — or the sky is cut away
+   * straight ahead and the scene opens onto a hole. (R3F's own default is 1000, too near for the
+   * enclosing sky.)
+   */
+  readonly far?: number
   /** Pin the WebGL2 fallback (skip WebGPU) — for parity testing. */
   readonly forceWebGL?: boolean
   /**
@@ -38,6 +45,7 @@ export function UniverseCanvas({
   children,
   dpr = [1, 2],
   fov = 55,
+  far = 1400,
   forceWebGL = false,
   transparent = false,
 }: UniverseCanvasProps) {
@@ -46,7 +54,7 @@ export function UniverseCanvas({
     <Canvas
       frameloop={frameloop}
       dpr={dpr}
-      camera={{ fov, position: [0, 0, 90] }}
+      camera={{ fov, far, position: [0, 0, 90] }}
       style={transparent ? { background: 'transparent' } : undefined}
       onCreated={(state) => state.setSize(state.size.width, state.size.height)}
       gl={(props) => {
