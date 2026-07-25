@@ -2,6 +2,7 @@ import { createRootRouteWithContext, createRoute, notFound } from '@tanstack/rea
 
 import { type SessionStatus } from '@cosimosi/auth'
 
+import { DesignShowcasePage } from '../../pages/design/index.ts'
 import { TestPage } from '../../pages/test/index.ts'
 import { authGuardBeforeLoad } from './guards/auth-gate.ts'
 import { NotFoundScreen } from './not-found.tsx'
@@ -86,8 +87,20 @@ const testRoute = createRoute({
   component: TestPage,
 })
 
+// The design showcase is the review surface for the 2D language — a dev-only page behind the same
+// diagnostics gate as /test, and outside the authenticated subtree because it reads no product data.
+const designRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/design',
+  beforeLoad: ({ context }) => {
+    if (!context.diagnosticsEnabled) throw notFound()
+  },
+  component: DesignShowcasePage,
+})
+
 export const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, settingsRoute, adminRoute]),
   loginRoute,
   testRoute,
+  designRoute,
 ])

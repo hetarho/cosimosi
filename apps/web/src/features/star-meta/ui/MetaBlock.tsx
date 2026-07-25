@@ -18,7 +18,7 @@ function StarGlyph({ memory }: { memory: EpisodicMemory }) {
   return (
     <div
       aria-hidden
-      className="size-16 shrink-0 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+      className="bloom-soft size-16 shrink-0"
       style={{
         background: moodColor(memory.emotion.mood),
         borderRadius: `${rounding}% ${100 - rounding}% ${rounding}% ${100 - rounding}%`,

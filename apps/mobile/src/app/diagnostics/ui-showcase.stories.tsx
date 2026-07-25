@@ -14,8 +14,9 @@ import {
   Toast,
   Tooltip,
   VisuallyHidden,
+  defaultThemeKey,
   tokens,
-  useTheme,
+  useBackground,
 } from '@cosimosi/ui'
 
 // Dev surface to eyeball every primitive on React Native. The `.stories.tsx` name
@@ -35,7 +36,7 @@ export function UiShowcase() {
   const [toastOpen, setToastOpen] = useState(false)
   const [checked, setChecked] = useState(true)
   const [on, setOn] = useState(false)
-  const { theme, background, setBackground } = useTheme()
+  const { background, setBackground } = useBackground()
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -115,9 +116,9 @@ export function UiShowcase() {
         <Skeleton width={48} height={48} rounded="full" />
       </Section>
 
-      <Section title="Theme seam (presentation only)">
+      <Section title="Background seam (presentation only)">
         <Text style={styles.note}>
-          theme: {theme} · background: {background.tone}
+          theme: {defaultThemeKey} · background: {background.tone}
         </Text>
         <Button
           color="neutral"

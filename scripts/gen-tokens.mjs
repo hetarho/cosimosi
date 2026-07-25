@@ -21,9 +21,10 @@ for (const group of CSS_TOKEN_GROUPS) {
   }
 }
 
-// One `--color-*` override block per theme (a theme = a universe: aurora · ember).
-const themeBlocks = Object.entries(themes).map(([key, palette]) => {
-  const rows = Object.entries(palette).map(([role, value]) => `  --color-${role}: ${value};`)
+// One `--color-*` override block per registered theme (a theme = a universe). The registry in
+// palette.ts is the only list — a theme added there appears here with no edit to this script.
+const themeBlocks = Object.entries(themes).map(([key, theme]) => {
+  const rows = Object.entries(theme.palette).map(([role, value]) => `  --color-${role}: ${value};`)
   return `[data-theme='${key}'] {\n${rows.join('\n')}\n}`
 })
 

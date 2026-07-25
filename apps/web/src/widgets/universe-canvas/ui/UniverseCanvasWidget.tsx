@@ -301,7 +301,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
           forgotten text + recovery live in the star-detail panel. */}
       {glimpseText && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center px-4">
-          <p className="max-w-[min(90vw,40rem)] truncate rounded-full border border-border bg-surface/80 px-4 py-1.5 text-sm text-text-muted backdrop-blur">
+          <p className="max-w-measure truncate rounded-full border border-border bg-surface/80 px-4 py-1.5 text-sm text-text-muted backdrop-blur">
             {glimpseText}
           </p>
         </div>

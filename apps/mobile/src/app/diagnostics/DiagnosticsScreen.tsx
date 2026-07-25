@@ -7,7 +7,7 @@ import { createPlatformClient } from '@cosimosi/api-client'
 import { m } from '@cosimosi/i18n'
 import { platformFeatureFlags } from '@cosimosi/observability'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
-import { Button, tokens, useTheme } from '@cosimosi/ui'
+import { Button, defaultThemeKey, tokens } from '@cosimosi/ui'
 
 import { diagnosticsSurfaceFlag, mobileAppVersion } from '../../shared/config/index.ts'
 import { useActiveLocale } from '../../shared/i18n/index.ts'
@@ -31,7 +31,6 @@ export function DiagnosticsScreen({ navigation }: RootStackScreenProps<'Diagnost
   const observability = useObservabilityFacade()
   const enabled = observability.getFeatureFlag(diagnosticsSurfaceFlag)
   const locale = useActiveLocale()
-  const { theme } = useTheme()
   const session = useSessionSnapshot()
   const queryClient = useQueryClient()
   const transport = useMobileApiTransport()
@@ -81,7 +80,7 @@ export function DiagnosticsScreen({ navigation }: RootStackScreenProps<'Diagnost
 
       <Row label={m.mobile_diagnostics_app_version()} value={mobileAppVersion} />
       <Row label={m.mobile_diagnostics_locale()} value={locale} />
-      <Row label={m.mobile_diagnostics_theme()} value={theme} />
+      <Row label={m.mobile_diagnostics_theme()} value={defaultThemeKey} />
       <Row label={m.mobile_diagnostics_session_status()} value={session.status} />
       <Row label={m.mobile_diagnostics_api_base_url()} value={apiBaseUrl} />
       <Row

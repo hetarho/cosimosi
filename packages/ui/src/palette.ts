@@ -1,22 +1,26 @@
 /**
- * The colour system — a TWO-LAYER token architecture (the single source of colour truth).
+ * The colour system — a TWO-LAYER token architecture (the single source of colour truth) and the
+ * theme registry.
  *
  * LAYER 1 — the primitive palette (`p`): clean OKLCH *ramps*, one per hue family
  * (navy · lavender · chartreuse · … like `red-50 … red-950`). Each ramp shares one perceptual
  * lightness scale and a chroma curve that peaks where that hue is most vivid, so every ramp is
  * smooth and internally consistent. These are the ONLY raw colour literals in the system.
  *
- * LAYER 2 — the semantic tokens (`themes`): each theme (a *universe*: aurora · ember) maps its
- * colour roles to a palette STEP — it never holds a raw colour. Because roles reference shared
- * ramp steps, two roles can't drift into subtly-different colours: e.g. `primary` and `focus-ring`
- * are both lavender steps, and `danger`/`success`/`warning` resolve to the SAME step across themes.
+ * LAYER 2 — the semantic tokens (`themes`): each theme (a *universe*) maps its colour roles to a
+ * palette STEP — it never holds a raw colour. Because roles reference shared ramp steps, two roles
+ * can't drift into subtly-different colours: e.g. `primary` and `focus-ring` are both lavender
+ * steps. The roles cover the whole surface of the 2D language, including the physical-light
+ * constants (`specular`/`depth`) the glass material is built from — so nothing downstream of this
+ * file names a colour.
  *
- * Consumption is unchanged: `gen-tokens.mjs` emits a `--color-*` block per theme (semantic only —
- * the palette stays authoring-side), web swaps themes via `data-theme`, the RN bridge + WCAG check
- * derive sRGB via lib/oklch. Add a universe = add a theme here + a 3D skin of the same key.
+ * ADDING A THEME IS A DATA CHANGE IN THIS FILE, NOTHING ELSE. Add a `ThemeDefinition` to `THEMES`
+ * and `pnpm gen:tokens` emits its `[data-theme='<key>']` block; `ThemeKey`, the showcase's theme
+ * list, the WCAG contrast suite, and the RN bridge all derive from the registry. Switching the
+ * active theme is one edit: `defaultThemeKey`. `palette.test.ts` fails the build if any of that
+ * stops being true. The 3D universe skins (`@cosimosi/3d-renderer`) are a SEPARATE axis with their
+ * own registry — a theme here does not require one there.
  */
-
-export type ThemeKey = 'aurora' | 'ember'
 
 /** The colour roles a theme fills. Mirrors tokens.ts `color` and tokens.test.ts pairs. */
 export interface ThemePalette {
@@ -41,6 +45,23 @@ export interface ThemePalette {
   'warning-foreground': string
   'focus-ring': string
   overlay: string
+  /**
+   * The lit edge of the glass material — the specular highlight on a rim, a gloss gradient, a
+   * thumb. Physical light rather than brand colour, but a theme still owns it: a warm universe
+   * wants a warm highlight, and a light-ground theme would have to invert it.
+   */
+  specular: string
+  /** The shadow colour every elevation is mixed from — the theme's ground, pushed to near-black. */
+  depth: string
+}
+
+/** A registered theme: its identity, the copy the showcase reads, and its role map. */
+export interface ThemeDefinition {
+  /** Display name (the design showcase's theme list reads this — never a hardcoded label). */
+  readonly label: string
+  /** One line on what the universe feels like. */
+  readonly blurb: string
+  readonly palette: ThemePalette
 }
 
 // ── Layer 1: primitive palette ─────────────────────────────────────────────────
@@ -79,19 +100,16 @@ function ramp(hue: number, peakL: number, maxChroma: number): Record<Step, strin
 /** Add an alpha channel to an `oklch(L C H)` literal (for the translucent overlay role). */
 const withAlpha = (oklch: string, alpha: number): string => oklch.replace(/\)$/, ` / ${alpha})`)
 
-// The ramps. Neutrals carry a whisper of hue (cool navy / warm umber); accents peak where each hue
-// is most saturated. { hue°, peakLightness, maxChroma }.
+// The ramps. The neutral carries a whisper of hue (cool navy); accents peak where each hue is most
+// saturated. { hue°, peakLightness, maxChroma }.
 const p = {
   navy: ramp(269, 0.35, 0.05), // cool neutral (aurora ground + text) — chroma peaks dark so grounds keep their navy identity
-  umber: ramp(35, 0.4, 0.042), // warm neutral (ember ground + text) — chroma peaks dark for a smouldering ground
   lavender: ramp(298, 0.63, 0.2), // aurora primary — neon violet (chroma pushed to match chartreuse's vividity)
   chartreuse: ramp(122, 0.86, 0.18), // aurora secondary
   mint: ramp(168, 0.78, 0.175), // aurora tertiary — neon teal (chroma pushed to match chartreuse's vividity)
-  coral: ramp(47, 0.72, 0.16), // ember primary
-  rose: ramp(8, 0.62, 0.16), // ember secondary
-  gold: ramp(85, 0.86, 0.15), // warning (both) + ember tertiary
-  red: ramp(22, 0.58, 0.18), // danger (both)
-  green: ramp(156, 0.74, 0.14), // success (both)
+  gold: ramp(85, 0.86, 0.15), // warning
+  red: ramp(22, 0.58, 0.18), // danger
+  green: ramp(156, 0.74, 0.14), // success
 } as const
 
 // ── Layer 2: semantic tokens (role → palette step) ─────────────────────────────
@@ -119,36 +137,36 @@ const aurora: ThemePalette = {
   'warning-foreground': p.gold[950],
   'focus-ring': p.lavender[300],
   overlay: withAlpha(p.navy[950], 0.66),
+  // Starlight is white on a cool ground; depth is the navy ground pushed below the darkest step, so
+  // shadows read as the universe's own darkness rather than a grey film over it.
+  specular: 'oklch(1 0 0)',
+  depth: 'oklch(0.06 0.018 269)',
 }
 
-/** Ember — warm cosmic: umber ground · coral · rose · gold. */
-const ember: ThemePalette = {
-  bg: p.umber[950],
-  surface: p.umber[900],
-  'surface-raised': p.umber[800],
-  text: p.umber[50],
-  'text-muted': p.umber[200],
-  'text-subtle': p.umber[300],
-  border: p.umber[700],
-  primary: p.coral[400],
-  'primary-foreground': p.coral[950],
-  secondary: p.rose[400],
-  'secondary-foreground': p.rose[950],
-  tertiary: p.gold[300],
-  'tertiary-foreground': p.gold[950],
-  danger: p.red[400],
-  'danger-foreground': p.red[950],
-  success: p.green[300],
-  'success-foreground': p.green[950],
-  warning: p.gold[200],
-  'warning-foreground': p.gold[950],
-  'focus-ring': p.coral[300],
-  overlay: withAlpha(p.umber[950], 0.66),
+/**
+ * The theme registry — the only list of themes in the codebase. Every consumer derives from it.
+ */
+const THEMES = {
+  aurora: {
+    label: 'Aurora',
+    blurb: 'Cool borealis — navy ground · lavender · chartreuse · mint.',
+    palette: aurora,
+  },
+} satisfies Record<string, ThemeDefinition>
+
+export const themes: Record<ThemeKey, ThemeDefinition> = THEMES
+
+/** Derived from the registry — adding a theme widens this type with no edit here. */
+export type ThemeKey = keyof typeof THEMES
+
+export const THEME_KEYS = Object.keys(THEMES) as ThemeKey[]
+
+export function isThemeKey(value: string): value is ThemeKey {
+  return value in THEMES
 }
 
-export const themes: Record<ThemeKey, ThemePalette> = { aurora, ember }
-
+/** The active universe. Switching the whole app's 2D skin is this one edit. */
 export const defaultThemeKey: ThemeKey = 'aurora'
 
 /** The active theme's resolved role map — the static `@theme`, the RN bridge, and TS reads use this. */
-export const palette: ThemePalette = themes[defaultThemeKey]
+export const palette: ThemePalette = THEMES[defaultThemeKey].palette

@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Test_Harness_Ui_Test_DescriptionInputs */
 
 const en_test_harness_ui_test_description = /** @type {(inputs: Test_Harness_Ui_Test_DescriptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`The whole design language on one surface: switch a universe preset (Aurora / Ember) to re-skin the 3D universe and every 2D component at once — universe+UI, the full component catalog, and a composed screen.`)
+	return /** @type {LocalizedString} */ (`The live 3D universe with real product chrome floating over it: drive the emotions present in the field, swap the sky, and see how glass reads against a scene that is actually moving. The 2D language itself lives on the design showcase at /design.`)
 };
 
 const ko_test_harness_ui_test_description = /** @type {(inputs: Test_Harness_Ui_Test_DescriptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`디자인 언어 전체를 한 화면에서: 우주 프리셋(Aurora / Ember)을 바꾸면 3D 우주와 모든 2D 컴포넌트가 한 번에 리스킨됩니다 — 우주+UI, 전체 컴포넌트 카탈로그, 조합 화면.`)
+	return /** @type {LocalizedString} */ (`살아 있는 3D 우주 위에 실제 제품 크롬을 띄운 화면입니다. 우주에 존재하는 감정을 조절하고 하늘을 바꿔가며, 실제로 움직이는 장면 위에서 글래스가 어떻게 읽히는지 확인합니다. 2D 언어 자체는 /design 쇼케이스에 있습니다.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "The whole design language on one surface: switch a universe preset (Aurora / Ember) to re-skin the 3D universe and every 2D component at once — universe+UI, ..." |
+* | "The live 3D universe with real product chrome floating over it: drive the emotions present in the field, swap the sky, and see how glass reads against a scen..." |
 *
 * @param {Test_Harness_Ui_Test_DescriptionInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

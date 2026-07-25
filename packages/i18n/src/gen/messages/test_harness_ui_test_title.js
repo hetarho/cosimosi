@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Test_Harness_Ui_Test_TitleInputs */
 
 const en_test_harness_ui_test_title = /** @type {(inputs: Test_Harness_Ui_Test_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`UI test`)
+	return /** @type {LocalizedString} */ (`Universe + chrome`)
 };
 
 const ko_test_harness_ui_test_title = /** @type {(inputs: Test_Harness_Ui_Test_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`UI test`)
+	return /** @type {LocalizedString} */ (`Universe + chrome`)
 };
 
 /**
 * | output |
 * | --- |
-* | "UI test" |
+* | "Universe + chrome" |
 *
 * @param {Test_Harness_Ui_Test_TitleInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

@@ -1,11 +1,15 @@
 # tech: design system
 
 > As-built rules for cosimosi's design-system foundation (tokens, accessible UI
-> primitives, theme/background seam) shared by web and mobile. The architectural
+> primitives, the background seam) shared by web and mobile. The architectural
 > frame lives in [ARCHITECTURE.md](../ARCHITECTURE.md) §3.1 (`shared/ui`), §3.4
 > (the rendering projection seam), and §5 (i18n'd copy); this doc is the detailed
-> rulebook the foundation (plan/09) installed. Product colors, the universe
-> renderer, and customization are **not** part of this layer.
+> rulebook the foundation (plan/09) installed. The universe renderer and
+> customization are **not** part of this layer.
+>
+> This doc owns the **mechanism**. What the interface actually looks like — the colour, type,
+> spacing, material, motion and state decisions the mechanism carries — is
+> [design-language.md](design-language.md).
 
 ## 1. Where it lives
 
@@ -17,12 +21,13 @@ package's `exports` conditions.
 
 | Concern                                        | Location                                                           |
 | ---------------------------------------------- | ------------------------------------------------------------------ |
+| Colour source + theme registry                 | `packages/ui/src/palette.ts`                                       |
 | Canonical token source (DOM-free TS map)       | `packages/ui/src/tokens.ts`                                        |
 | Generated Tailwind `@theme` (web + NativeWind) | `packages/ui/src/theme.gen.css` (committed, via `pnpm gen:tokens`) |
 | Web base styles (reduced-motion, sr-only)      | `packages/ui/src/base.css`                                         |
 | Primitives                                     | `packages/ui/src/primitives/<name>.tsx` + `<name>.native.tsx`      |
 | a11y helpers                                   | `packages/ui/src/a11y/*`                                           |
-| Theme/background seam                          | `packages/ui/src/theme/*`                                          |
+| Background seam                                | `packages/ui/src/theme/*`                                          |
 | Web entry (web barrel)                         | `packages/ui/src/index.ts` (`exports` `default`)                   |
 | RN entry (native barrel)                       | `packages/ui/src/index.native.ts` (`exports` `react-native`)       |
 
@@ -44,8 +49,23 @@ generated file (`pnpm check:gen` enforces freshness). Two consumers:
   style/color props (e.g. `ActivityIndicator` color), and tests import `tokens`.
 
 Only foundation tokens that should _not_ fight Tailwind's defaults are emitted
-(`CSS_TOKEN_GROUPS` = color, radius, shadow, duration, ease, ring, z). Spacing and
-font-size stay TS-only — Tailwind's built-in scales already cover those utilities.
+(`CSS_TOKEN_GROUPS` = color, container, radius, shadow, duration, ease, ring, z).
+Spacing and font-size stay TS-only — Tailwind's built-in scales already cover those
+utilities.
+
+**Colour is a layer above the token map.** `tokens.color` _is_ the active theme's role map, resolved
+from the registry in `palette.ts` (ramps → semantic roles → themes). The generator emits the active
+theme into `@theme` **plus one `[data-theme='<key>']` override block per registered theme**, so
+adding a theme is a data change in `palette.ts` and nothing else — no generator, CSS, app, or type
+edit. `defaultThemeKey` selects the active one; the web boundary (`apps/web/src/main.tsx`) stamps it
+on the document root so portalled chrome re-skins with the page, and React Native resolves the same
+registry statically through `native-styles.ts`.
+
+Every value in the theme-invariant groups is either geometry or timing. The one exception used to be
+elevation, which hardcoded a near-black; shadows now mix `var(--color-depth)`, and the glass
+material's lit edge mixes `var(--color-specular)`, so both follow the theme.
+`packages/ui/src/palette.test.ts` fails the build if a colour literal reappears below the palette
+layer, and `scripts/lint-style-escapes.mjs` fails it if one appears in a product slice.
 
 Design tokens / theme CSS are **not** `spec/values.yaml` config (values.yaml is for
 numeric product tuning). Tokens live in code, as a token map + generated CSS.
@@ -124,13 +144,31 @@ Hand-rolled (no headless-UI dependency):
   `prefers-reduced-motion`; `useReducedMotion` (web `matchMedia`, native
   `AccessibilityInfo`) lets components drop JS-driven motion.
 - Token text pairs meet WCAG AA (4.5:1); `tokens.test.ts` checks every documented
-  pair via `a11y/contrast.ts`.
+  pair via `a11y/contrast.ts`, for **every registered theme** — a theme is contrast-gated the
+  moment it is added, before anything can ship it.
 
-## 6. Theme / background seam
+## 6. Background seam
 
-`theme/theme-store.ts` is **presentation state only**: theme name + a non-domain
-background descriptor (`tone`, optional palette `accent`), with subscribe/get/set
-and a `useTheme` hook. It cannot mutate domain, cache, emotion, engram strength,
-recall state, or graph layout — it imports none of those. Future universe-background
-parameters attach behind this same seam; domain→visual mapping (e.g. emotion→color)
-belongs to the rendering projection (ARCHITECTURE §3.4), never here.
+`theme/background-store.ts` is **presentation state only**: a non-domain background descriptor
+(`tone`, optional palette `accent`), with subscribe/get/set and a `useBackground` hook. It cannot
+mutate domain, cache, emotion, engram strength, recall state, or graph layout — it imports none of
+those. Future universe-background parameters attach behind this same seam; domain→visual mapping
+(e.g. emotion→color) belongs to the rendering projection (ARCHITECTURE §3.4), never here.
+
+The colour theme is deliberately **not** in this store. A theme is static data resolved once at the
+composition boundary (§2); routing it through a runtime store would give the codebase a second,
+drifting answer to "which theme is active".
+
+## 7. Review surfaces
+
+Two dev-only routes, both behind the diagnostics gate, with different jobs:
+
+| Route     | Answers         | Contents                                                                       |
+| --------- | --------------- | ------------------------------------------------------------------------------ |
+| `/design` | "is it right?"  | the design showcase — tokens, every primitive in every state, composed chrome  |
+| `/test`   | "does it work?" | the platform harness — transport, auth, cache, values, i18n, the live universe |
+
+`/design` reads no domain data and needs no GPU, so it opens instantly and reproduces exactly; it is
+the surface [policy/ux/design-review.md](../policy/ux/design-review.md) scores. Its static
+interaction states come from `base.css`'s `.state-hover` / `.state-pressed` / `.state-focus`
+wrappers, which are extra selectors on the real rules rather than copies of them.

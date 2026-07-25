@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-} from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import {
@@ -17,7 +11,6 @@ import {
   UniverseCanvas,
   resolveSkyEffect,
   useSkin,
-  type SkinKey,
   type SkyEffectKey,
 } from '@cosimosi/3d-renderer'
 import {
@@ -38,71 +31,29 @@ import {
   Card,
   Checkbox,
   Dialog,
-  IconButton,
-  Skeleton,
   Switch,
-  TextArea,
-  TextField,
-  Toast,
-  Tooltip,
   cx,
   useReducedMotion,
-  type BadgeVariant,
-  type ButtonVariant,
-  type ButtonColor,
   type ControlSize,
 } from '@cosimosi/ui'
 
 import { buildEngramDemoScene, type EngramDemoScene } from './engram-demo-scene.ts'
 
-// The single UI test surface, split into three tabs that share one skin. A preset is a
-// *universe*: one switch drives the 3D skin and the 2D theme together (data-theme on the
-// document root re-skins portals too), so every tab re-skins at once. Captions are demo data,
-// intentionally outside the product i18n catalog (a dev-only /test surface).
-const PRESETS: readonly { key: SkinKey; label: string; blurb: string }[] = [
-  { key: 'aurora', label: 'Aurora', blurb: 'Cool borealis — lavender · chartreuse · mint.' },
-  { key: 'ember', label: 'Ember', blurb: 'Warm cosmic — ember-coral · rose · gold.' },
-]
+/**
+ * The live universe with real product chrome floating over it.
+ *
+ * This panel answers what only a running scene can: whether glass still reads when the thing behind
+ * it is moving, and how the field responds as the universe's emotions shift. The 2D language itself
+ * — tokens, the primitive catalogue, composed screens — is reviewed on the design showcase
+ * (/design), which needs no GPU and no domain stores; keeping the two apart stops this surface from
+ * drifting into a second, half-maintained component gallery.
+ *
+ * Captions are demo data, intentionally outside the product i18n catalogue (a dev-only surface).
+ */
 
 // Quick "how many emotions" presets — pick a count 1..N and the universe fills to that many emotions
 // (geometrically descending shares); the sliders below still fine-tune each share afterwards.
 const EMOTION_COUNTS = Array.from({ length: MAX_SHOWCASE_EMOTIONS }, (_, i) => i + 1)
-
-const TABS = [
-  { key: 'universe', label: 'Universe + UI' },
-  { key: 'ui', label: 'UI only' },
-  { key: 'system', label: 'Design system' },
-] as const
-type TabKey = (typeof TABS)[number]['key']
-
-// Buttons are two axes now: appearance (contained/outlined/text) × colour. The matrix shows each
-// appearance as a row across every colour.
-const BUTTON_APPEARANCES: readonly { variant: ButtonVariant; label: string }[] = [
-  { variant: 'contained', label: 'Contained' },
-  { variant: 'outlined', label: 'Outlined' },
-  { variant: 'text', label: 'Text' },
-]
-const BUTTON_COLORS: readonly ButtonColor[] = [
-  'primary',
-  'secondary',
-  'tertiary',
-  'neutral',
-  'danger',
-]
-const CONTROL_SIZES: readonly ControlSize[] = ['sm', 'md', 'lg']
-const BADGE_VARIANTS: readonly BadgeVariant[] = [
-  'neutral',
-  'primary',
-  'success',
-  'warning',
-  'danger',
-]
-
-const ACCENTS: readonly { name: string; bg: string; fg: string }[] = [
-  { name: 'Primary', bg: 'bg-primary', fg: 'text-primary-foreground' },
-  { name: 'Secondary', bg: 'bg-secondary', fg: 'text-secondary-foreground' },
-  { name: 'Tertiary', bg: 'bg-tertiary', fg: 'text-tertiary-foreground' },
-]
 
 // Human labels for the moods the demo scene uses (dev-only /test copy, not product i18n).
 const MOOD_LABEL: Record<Mood, string> = {
@@ -121,101 +72,21 @@ const MOOD_LABEL: Record<Mood, string> = {
   EMPTINESS: 'Emptiness',
 }
 
-// Presentation-only excerpts keyed by the demo memory id — episodic bodies are not part of the
-// universe read model, so these live with the view, not the domain scene.
-const SNIPPETS: Record<string, string> = {
-  'm-window':
-    'Rain against the glass, a page left open to the same line. Nothing asked to be finished.',
-  'm-dusk-kitchen':
-    'Onions in the pan, the radio low. She hummed the part she never remembered the words to.',
-  'm-cat-home': 'Three days of an empty bowl, then paw prints on the sill at dawn.',
-  'm-winter-sea': 'The water was the colour of old coins. We did not say much on the way back.',
-  'm-cold-coffee':
-    'Made it, forgot it, found it cold by the window. Poured it out without tasting.',
-  'm-laughing-rain': 'We ran for the awning and missed it entirely — soaked, laughing at nothing.',
-  'm-unsent-letter': 'Wrote it twice, folded it once, left it in the drawer with the others.',
-  'm-morning-light':
-    'First light on the counter, the whole day still unspent. Just the cup, warm in both hands.',
-}
-
 const T = {
-  // Tabs
-  tablistLabel: 'UI test views',
-  // Universe overlay
   hud: '우주의 시간 · Y1 · D28',
-  overlayCardTitle: 'A quiet afternoon',
-  overlayCardBody: 'A surface floating over the live universe.',
-  recall: '회고하기',
-  history: '변천사',
-  write: 'Write a diary',
-  // Universe backdrop controls
   emotionCountLabel: 'How many emotions',
   emotionsTitle: 'Emotions in this universe',
   emotionsHint: 'Drag a share — the rest give or take to keep the total at 100%',
   addEmotion: 'Add an emotion',
   primaryTag: 'primary',
   backgroundTitle: 'Backdrop',
-  // Diary list (UI only)
-  diaryTitle: 'Diary',
-  universeCrumb: 'Universe',
-  searchPlaceholder: 'Search memories',
-  searchLabel: 'Search memories',
-  sortRecent: 'Recent',
-  sortStrongest: 'Strongest',
-  back: 'Back',
-  more: 'More',
-  memories: 'memories',
-  strength: 'Strength',
-  notRecalled: 'Not yet recalled',
-  // Component catalog (Design system)
-  buttonsMatrix: 'Buttons · appearance × colour',
-  sizesLabel: 'Sizes',
-  buttonsStates: 'Buttons · states',
-  iconButtons: 'Icon buttons',
-  badges: 'Badges',
-  fields: 'Fields',
-  toggles: 'Toggles',
-  overlays: 'Overlays',
-  loading: 'Loading — skeleton',
-  accentsTitle: 'Brand accents',
-  cards: 'Cards',
   cardSolid: 'Solid',
-  cardSolidBody: 'Elevated opaque content surface — lists, panels, forms.',
   cardGlass: 'Glass',
-  cardGlassBody: 'Frosted material for chrome floating over the universe.',
-  leadingIcon: 'leading icon',
-  trailingIcon: 'trailing icon',
-  loadingButton: 'loading',
-  disabledButton: 'disabled',
-  dangerDisabled: 'danger disabled',
-  loadingIconAction: 'loading icon action',
-  fieldLabel: 'Label',
-  placeholder: 'Placeholder',
-  fieldWithDescription: 'With description',
-  fieldDescription: 'Helper text under the field.',
-  fieldInvalid: 'Invalid',
-  fieldError: 'This field is required.',
-  fieldDisabled: 'Disabled',
-  textArea: 'Text area',
-  textAreaPlaceholder: 'Multi-line input',
-  switchLabel: 'Switch',
-  switchDisabled: 'Disabled',
-  checkboxLabel: 'Checkbox',
-  checkboxDisabled: 'Disabled',
-  tooltipContent: 'I am a tooltip',
-  tooltipTrigger: 'Hover for tooltip',
-  showToast: 'Show toast',
-  toastBody: 'Saved — this is a toast.',
-  // Card comparison + demo card contents
-  cardsCompare: 'Cards · glass vs solid',
-  cardsCompareHint: 'Glass shows the scene through it; solid stays opaque',
   demoStatus: 'Active',
   demoNotify: 'Notifications',
   demoRemember: 'Remember me',
   demoAction: 'Save',
   demoAlt: 'Cancel',
-  // Modal / Dialog
-  modal: 'Modal / Dialog',
   modalOpen: 'Open dialog',
   dialogTitle: 'Release this star?',
   dialogBody: 'This memory will fade from the universe. You can’t undo this.',
@@ -225,112 +96,16 @@ const T = {
   dialogConfirm: 'Release',
 }
 
-const TABPANEL_ID = 'ui-test-tabpanel'
-
-function UiTestInner() {
-  const { skinKey, setSkinKey } = useSkin()
-  const [tab, setTab] = useState<TabKey>('universe')
-  const scene = useMemo(() => buildEngramDemoScene(), [])
-
-  // WAI-ARIA tabs pattern: arrow/Home/End move between tabs with automatic activation, and only
-  // the selected tab is in the Tab sequence (roving tabindex, set on each tab below).
-  const handleTablistKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const current = TABS.findIndex((entry) => entry.key === tab)
-    let next: number | null = null
-    if (event.key === 'ArrowRight') next = (current + 1) % TABS.length
-    else if (event.key === 'ArrowLeft') next = (current - 1 + TABS.length) % TABS.length
-    else if (event.key === 'Home') next = 0
-    else if (event.key === 'End') next = TABS.length - 1
-    if (next === null) return
-    event.preventDefault()
-    const nextKey = TABS[next].key
-    setTab(nextKey)
-    document.getElementById(`ui-test-tab-${nextKey}`)?.focus()
-  }
-
-  // Theme the whole document (portals included) while this panel is mounted; restore on leave.
-  useEffect(() => {
-    const el = document.documentElement
-    const previous = el.getAttribute('data-theme')
-    el.setAttribute('data-theme', skinKey)
-    return () => {
-      if (previous === null) el.removeAttribute('data-theme')
-      else el.setAttribute('data-theme', previous)
-    }
-  }, [skinKey])
-
-  return (
-    <div className="flex flex-col gap-6 text-text">
-      <div className="flex flex-wrap items-center gap-3">
-        {PRESETS.map((preset) => (
-          <Button
-            key={preset.key}
-            color={preset.key === skinKey ? 'primary' : 'neutral'}
-            onClick={() => setSkinKey(preset.key)}
-          >
-            {preset.label}
-          </Button>
-        ))}
-        <span className="text-sm text-text-muted">
-          {PRESETS.find((p) => p.key === skinKey)?.blurb}
-        </span>
-      </div>
-
-      <div
-        role="tablist"
-        aria-label={T.tablistLabel}
-        onKeyDown={handleTablistKeyDown}
-        className="flex flex-wrap gap-2 border-b border-border pb-3"
-      >
-        {TABS.map((entry) => {
-          const active = entry.key === tab
-          return (
-            <Button
-              key={entry.key}
-              role="tab"
-              id={`ui-test-tab-${entry.key}`}
-              aria-selected={active}
-              aria-controls={TABPANEL_ID}
-              tabIndex={active ? 0 : -1}
-              variant={active ? 'contained' : 'text'}
-              color={active ? 'primary' : 'neutral'}
-              onClick={() => setTab(entry.key)}
-            >
-              {entry.label}
-            </Button>
-          )
-        })}
-      </div>
-
-      <div
-        id={TABPANEL_ID}
-        role="tabpanel"
-        aria-labelledby={`ui-test-tab-${tab}`}
-        tabIndex={0}
-        className="rounded-md"
-      >
-        {tab === 'universe' ? <UniverseTabPanel scene={scene} /> : null}
-        {tab === 'ui' ? (
-          <div className="flex flex-col gap-6">
-            <CardComparison />
-            <DiaryListScreen memories={scene.memories} />
-          </div>
-        ) : null}
-        {tab === 'system' ? <ComponentCatalog /> : null}
-      </div>
-    </div>
-  )
-}
-
 export function UiTestPanel() {
+  // The skin still tunes the scene's camera and bloom; the 2D theme is applied once at the app's
+  // composition boundary, so nothing here touches `data-theme`.
   return (
     <SkinProvider defaultSkin="aurora">
-      <UiTestInner />
+      <UniversePanel />
     </SkinProvider>
   )
 }
 
-// ── Universe + UI ──────────────────────────────────────────────────────────
 // The live 3D scene floating over an emotion-driven backdrop, with glass product UI on top.
 // The backdrop carries the *emotions present in the universe* (1..13) as shares that always total
 // 100%: dragging one emotion's share makes the rest give or take in proportion to their current
@@ -423,7 +198,8 @@ function setWeight(
   return next
 }
 
-function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
+function UniversePanel() {
+  const scene = useMemo(() => buildEngramDemoScene(), [])
   const [weights, setWeights] = useState<ReadonlyMap<Mood, number>>(() =>
     initialWeights(scene.memories),
   )
@@ -460,13 +236,15 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
 
       {/* The emotion sky is now a real body INSIDE the scene (the enclosing sphere), not a DOM layer
           behind a transparent canvas: 3D universe (z-0) · glass chrome (z-10). */}
-      <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-border bg-black/50">
+      <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-border bg-bg">
         <div className="absolute inset-0 z-0">
           <EngramUniverseCanvas scene={scene} effect={effect.key} emotions={emotions} />
         </div>
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-4">
           <div className="flex items-start justify-between gap-2">
-            <Badge variant="neutral">{T.hud}</Badge>
+            <Badge variant="neutral" data-on-scene>
+              {T.hud}
+            </Badge>
             <div className="pointer-events-auto flex items-center gap-2">
               <span className="glass-subtle rounded-full px-3 py-1 text-xs text-text-muted">
                 {effect.label}
@@ -488,6 +266,7 @@ function UniverseTabPanel({ scene }: { scene: EngramDemoScene }) {
 
 // Quick emotion-count presets: one button per count 1..N. Picking a count fills the universe with
 // that many emotions (the showcase distribution); the sliders below still fine-tune each share.
+
 function EmotionCountPresets({ count, onPick }: { count: number; onPick: (n: number) => void }) {
   return (
     <section className="flex flex-wrap items-center gap-2">
@@ -563,7 +342,7 @@ function EmotionControls({
               <span className="flex w-28 shrink-0 items-center gap-1.5 text-xs font-medium text-text">
                 <span className="truncate">{MOOD_LABEL[mood]}</span>
                 {isPrimary ? (
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-text-subtle">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
                     {T.primaryTag}
                   </span>
                 ) : null}
@@ -696,7 +475,7 @@ function EngramUniverseCanvas({
   const positions = useMemo(() => ({ current: scene.positions }), [scene])
 
   // Own the singleton read-model stores while mounted — the product universe widget is never
-  // mounted on the /test surface — and clear them on unmount so a later tab starts clean.
+  // mounted on the /test surface — and clear them on unmount so a later panel starts clean.
   useEffect(() => {
     useNeuronStore.getState().setAll(scene.neurons)
     useEpisodicMemoryStore.getState().setAll(scene.memories)
@@ -730,9 +509,9 @@ function EngramUniverseCanvas({
   )
 }
 
-// Opens the design-system Dialog (glass-strong, portalled over a scrim). Dropped into each tab so
-// the modal can be seen over the universe, over the diary page, and in the catalog — it always
-// renders full-viewport over the current tab regardless of where its trigger lives.
+// The design-system Dialog over the live scene — the one overlay whose scrim and glass have to be
+// judged against a moving background rather than a flat page.
+
 function DialogDemo({ size = 'md' }: { size?: ControlSize }) {
   const [open, setOpen] = useState(false)
   return (
@@ -765,7 +544,7 @@ function DialogDemo({ size = 'md' }: { size?: ControlSize }) {
 
 // A card filled with real controls, in both surface variants — the clearest way to see the
 // glass↔solid difference: over the universe the glass card frosts the scene through it while the
-// solid card stays opaque; on a plain page the glass reads as a lighter translucent panel.
+// solid card stays opaque.
 function DemoCard({ variant }: { variant: 'solid' | 'glass' }) {
   const [notify, setNotify] = useState(variant === 'glass')
   const [remember, setRemember] = useState(true)
@@ -789,319 +568,3 @@ function DemoCard({ variant }: { variant: 'solid' | 'glass' }) {
 }
 
 // Side-by-side glass vs solid, used on the UI-only page (plain surface) and the Design-system tab.
-function CardComparison() {
-  return (
-    <section className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
-            {T.cardsCompare}
-          </h3>
-          <span className="text-xs text-text-subtle">{T.cardsCompareHint}</span>
-        </div>
-        <DialogDemo size="sm" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <DemoCard variant="glass" />
-        <DemoCard variant="solid" />
-      </div>
-    </section>
-  )
-}
-
-// ── UI only ────────────────────────────────────────────────────────────────
-// A composed diary-list product screen, built entirely from design-system primitives over the
-// same demo memories the universe draws — so the 2D list and the 3D scene stay one dataset.
-function DiaryListScreen({ memories }: { memories: readonly EpisodicMemory[] }) {
-  const ordered = useMemo(
-    () => [...memories].sort((a, b) => b.createdUniverseTime.localeCompare(a.createdUniverseTime)),
-    [memories],
-  )
-  return (
-    <div className="card-surface overflow-hidden rounded-2xl">
-      <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
-        <div className="flex items-center gap-3">
-          <IconButton size="sm" variant="text" color="neutral" label={T.back} icon={<Chevron />} />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-text">{T.diaryTitle}</span>
-            <span className="text-xs text-text-subtle">
-              {`${ordered.length} ${T.memories} · ${T.universeCrumb}`}
-            </span>
-          </div>
-        </div>
-        <Button leadingIcon={<StarIcon />}>{T.write}</Button>
-      </header>
-      <div className="flex flex-col gap-4 p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-56 flex-1">
-            <TextField aria-label={T.searchLabel} placeholder={T.searchPlaceholder} />
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="primary">{T.sortRecent}</Badge>
-            <Badge variant="neutral">{T.sortStrongest}</Badge>
-          </div>
-        </div>
-        <div className="grid max-h-120 gap-3 overflow-y-auto pr-1">
-          {ordered.map((memory) => (
-            <DiaryCard key={memory.id} memory={memory} />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function DiaryCard({ memory }: { memory: EpisodicMemory }) {
-  return (
-    <article className="card-surface flex flex-col gap-3 rounded-2xl p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <MoodTag mood={memory.emotion.mood} />
-            <Badge variant="neutral">{formatUniverseDay(memory.createdUniverseTime)}</Badge>
-          </div>
-          <h4 className="truncate text-base font-semibold text-text">{memory.name}</h4>
-        </div>
-        <IconButton
-          size="sm"
-          variant="text"
-          color="neutral"
-          label={T.more}
-          icon={<EllipsisIcon />}
-        />
-      </div>
-      <p className="line-clamp-2 text-sm leading-6 text-text-muted">{SNIPPETS[memory.id] ?? ''}</p>
-      <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-        <span className="text-xs text-text-subtle">{recalledLabel(memory)}</span>
-        <StrengthMeter value={memory.baseStrength} />
-      </div>
-    </article>
-  )
-}
-
-function MoodTag({ mood }: { mood: Mood }) {
-  return (
-    <Badge variant="neutral">
-      <span aria-hidden className="badge-dot" style={{ backgroundColor: moodColor(mood) }} />
-      {MOOD_LABEL[mood]}
-    </Badge>
-  )
-}
-
-function StrengthMeter({ value }: { value: number }) {
-  const pct = Math.round(Math.min(1, Math.max(0, value)) * 100)
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-text-subtle">{T.strength}</span>
-      <div
-        role="progressbar"
-        aria-label={T.strength}
-        aria-valuenow={pct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        className="h-1.5 w-20 overflow-hidden rounded-full bg-border"
-      >
-        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
-
-function formatUniverseDay(iso: string): string {
-  const day = Number.parseInt(iso.slice(8, 10), 10)
-  return Number.isFinite(day) ? `Y1 · D${day}` : iso
-}
-
-function recalledLabel(memory: EpisodicMemory): string {
-  if (memory.recallCount === 0) return T.notRecalled
-  const last = memory.lastRecalledUniverseTime
-  const times = `Recalled ${memory.recallCount}×`
-  return last ? `${times} · last ${formatUniverseDay(last)}` : times
-}
-
-// ── Design system ────────────────────────────────────────────────────────────
-// The raw primitive catalog — every component in its variant/size/state matrix.
-function ComponentCatalog() {
-  const [toastOpen, setToastOpen] = useState(false)
-  const [switchOn, setSwitchOn] = useState(false)
-  const [checked, setChecked] = useState(true)
-
-  return (
-    <div className="flex flex-col gap-6">
-      <Section title={T.accentsTitle}>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {ACCENTS.map((a) => (
-            <div
-              key={a.name}
-              className={`flex h-14 items-center justify-center rounded-md text-sm font-semibold ${a.bg} ${a.fg}`}
-            >
-              {a.name}
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title={T.cards}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DemoCard variant="glass" />
-          <DemoCard variant="solid" />
-        </div>
-      </Section>
-
-      <Section title={T.modal}>
-        <DialogDemo />
-      </Section>
-
-      <Section title={T.buttonsMatrix}>
-        <div className="grid gap-4">
-          {BUTTON_APPEARANCES.map((appr) => (
-            <div key={appr.variant} className="flex flex-wrap items-center gap-3">
-              <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">
-                {appr.label}
-              </span>
-              {BUTTON_COLORS.map((c) => (
-                <Button key={c} variant={appr.variant} color={c}>
-                  {c}
-                </Button>
-              ))}
-            </div>
-          ))}
-          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-            <span className="w-24 text-xs uppercase tracking-wide text-text-subtle">
-              {T.sizesLabel}
-            </span>
-            {CONTROL_SIZES.map((size) => (
-              <Button key={size} size={size}>
-                {size}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      <Section title={T.buttonsStates}>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button leadingIcon={<StarIcon />}>{T.leadingIcon}</Button>
-          <Button trailingIcon={<StarIcon />} color="neutral">
-            {T.trailingIcon}
-          </Button>
-          <Button loading>{T.loadingButton}</Button>
-          <Button disabled>{T.disabledButton}</Button>
-          <Button color="danger" disabled>
-            {T.dangerDisabled}
-          </Button>
-        </div>
-      </Section>
-
-      <Section title={T.iconButtons}>
-        <div className="flex flex-wrap items-center gap-3">
-          {BUTTON_COLORS.map((c) => (
-            <IconButton
-              key={c}
-              variant="contained"
-              color={c}
-              label={`${c} icon action`}
-              icon={<StarIcon />}
-            />
-          ))}
-          <IconButton label={T.loadingIconAction} loading icon={<StarIcon />} />
-        </div>
-      </Section>
-
-      <Section title={T.badges}>
-        <div className="flex flex-wrap items-center gap-3">
-          {BADGE_VARIANTS.map((variant) => (
-            <Badge key={variant} variant={variant}>
-              {variant}
-            </Badge>
-          ))}
-        </div>
-      </Section>
-
-      <Section title={T.fields}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label={T.fieldLabel} placeholder={T.placeholder} />
-          <TextField
-            label={T.fieldWithDescription}
-            description={T.fieldDescription}
-            placeholder={T.placeholder}
-          />
-          <TextField label={T.fieldInvalid} error={T.fieldError} placeholder={T.placeholder} />
-          <TextField label={T.fieldDisabled} placeholder={T.placeholder} disabled />
-          <TextArea label={T.textArea} placeholder={T.textAreaPlaceholder} rows={3} />
-        </div>
-      </Section>
-
-      <Section title={T.toggles}>
-        <div className="flex flex-wrap items-center gap-6">
-          <Switch label={T.switchLabel} checked={switchOn} onCheckedChange={setSwitchOn} />
-          <Switch label={T.switchDisabled} checked={false} disabled />
-          <Checkbox label={T.checkboxLabel} checked={checked} onCheckedChange={setChecked} />
-          <Checkbox label={T.checkboxDisabled} checked={false} disabled />
-        </div>
-      </Section>
-
-      <Section title={T.overlays}>
-        <div className="flex flex-wrap items-center gap-3">
-          <Tooltip content={T.tooltipContent}>
-            <Button color="neutral">{T.tooltipTrigger}</Button>
-          </Tooltip>
-          <Button onClick={() => setToastOpen(true)}>{T.showToast}</Button>
-          <Toast open={toastOpen} onOpenChange={setToastOpen} variant="success" durationMs={2400}>
-            {T.toastBody}
-          </Toast>
-        </div>
-      </Section>
-
-      <Section title={T.loading}>
-        <div className="grid max-w-sm gap-2">
-          <Skeleton width="100%" height={16} />
-          <Skeleton width="80%" height={16} />
-          <Skeleton width="60%" height={16} />
-        </div>
-      </Section>
-    </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">{title}</h3>
-      <Card>{children}</Card>
-    </section>
-  )
-}
-
-function StarIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4" fill="currentColor">
-      <path d="M10 1.5l2.6 5.27 5.82.85-4.21 4.1.99 5.8L10 14.9l-5.2 2.72.99-5.8L1.58 7.62l5.82-.85L10 1.5z" />
-    </svg>
-  )
-}
-
-function Chevron() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function EllipsisIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4" fill="currentColor">
-      <circle cx="4" cy="10" r="1.5" />
-      <circle cx="10" cy="10" r="1.5" />
-      <circle cx="16" cy="10" r="1.5" />
-    </svg>
-  )
-}

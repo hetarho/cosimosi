@@ -50,8 +50,9 @@
  * The 2D language over the live universe: chrome floats as frosted glass rather than
  * opaque cards, so the emotion-lit background reads through it. A glass surface is a
  * theme-tinted translucent fill + a backdrop blur/saturate + a hairline border + an
- * inner top highlight (the lit glass edge). Every value derives from the theme vars,
- * so glass reskins with `[data-theme]`.
+ * inner top highlight (the lit glass edge). Every value derives from the theme vars —
+ * including the lit edge (`--color-specular`) and the shadow (`--color-depth`), which are
+ * theme roles rather than raw white/black — so glass reskins with `[data-theme]`.
  *
  * These live in `@layer components` (Tailwind v4 declares theme < base < components <
  * utilities): so any Tailwind utility a consumer adds — `rounded-*`, `border-*`,
@@ -69,11 +70,11 @@
     /* Directional specular rim — a bright thin top edge + a faint lower lip — reads as a curved
        lit lens instead of a flat uniform border (the dated glassmorphism tell). The higher
        saturate below keeps the material clear + colour-forward (Liquid Glass), not milky. */
-    border: 1px solid color-mix(in oklab, white 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-specular) 12%, transparent);
     box-shadow:
       var(--shadow-lg),
-      inset 0 1px 0 0 color-mix(in oklab, white 30%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 8%, transparent);
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 30%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, var(--color-specular) 8%, transparent);
   }
   .glass-subtle {
     background-color: color-mix(in oklab, var(--color-surface) 32%, transparent);
@@ -158,36 +159,38 @@
   }
 
   /* Contained — filled liquid-glass lens (tint + specular rim + gloss + coloured glow). Colour-forward:
-     the role tint carries the fill, the white gloss/rim is trimmed to a thin lit edge (not a milky
-     film), and the hairline border is tinted with the role colour instead of pure white. */
+     the role tint carries the fill, the specular gloss/rim is trimmed to a thin lit edge (not a
+     milky film), and the hairline border is tinted with the role colour instead of the bare rim. */
   .btn-contained {
     color: var(--color-text);
     background-color: color-mix(in oklab, var(--btn-c) var(--btn-fill), transparent);
     background-image: linear-gradient(
       180deg,
-      color-mix(in oklab, white 5.5%, transparent) 0%,
-      color-mix(in oklab, white 1%, transparent) 40%,
+      color-mix(in oklab, var(--color-specular) 5.5%, transparent) 0%,
+      color-mix(in oklab, var(--color-specular) 1%, transparent) 40%,
       transparent 100%
     );
     border: 1px solid color-mix(in oklab, var(--btn-c) 38%, transparent);
     box-shadow:
-      inset 0 1px 0.5px 0 color-mix(in oklab, white 14%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 4%, transparent),
-      0 1px 1px -0.5px color-mix(in oklab, black 38%, transparent),
+      inset 0 1px 0.5px 0 color-mix(in oklab, var(--color-specular) 14%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, var(--color-specular) 4%, transparent),
+      0 1px 1px -0.5px color-mix(in oklab, var(--color-depth) 38%, transparent),
       0 6px 16px -12px var(--btn-glow, transparent);
   }
-  .btn-contained:hover {
+  .btn-contained:hover,
+  .state-hover .btn-contained {
     background-color: color-mix(in oklab, var(--btn-c) var(--btn-fill-h), transparent);
     border-color: color-mix(in oklab, var(--btn-c) 52%, transparent);
     box-shadow:
-      inset 0 1px 0.5px 0 color-mix(in oklab, white 19%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 5%, transparent),
-      0 1px 1px -0.5px color-mix(in oklab, black 38%, transparent),
+      inset 0 1px 0.5px 0 color-mix(in oklab, var(--color-specular) 19%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, var(--color-specular) 5%, transparent),
+      0 1px 1px -0.5px color-mix(in oklab, var(--color-depth) 38%, transparent),
       0 8px 22px -11px var(--btn-glow, transparent);
   }
-  .btn-contained:active {
+  .btn-contained:active,
+  .state-pressed .btn-contained {
     box-shadow:
-      inset 0 1px 3px 0 color-mix(in oklab, black 20%, transparent),
+      inset 0 1px 3px 0 color-mix(in oklab, var(--color-depth) 20%, transparent),
       0 3px 10px -11px var(--btn-glow, transparent);
   }
 
@@ -198,11 +201,13 @@
     border: 1px solid color-mix(in oklab, var(--btn-c) 45%, transparent);
     box-shadow: 0 0 12px -2px color-mix(in oklab, var(--btn-c) 40%, transparent);
   }
-  .btn-outlined:hover {
+  .btn-outlined:hover,
+  .state-hover .btn-outlined {
     border-color: color-mix(in oklab, var(--btn-c) 60%, transparent);
     box-shadow: 0 0 13px -2px color-mix(in oklab, var(--btn-c) 55%, transparent);
   }
-  .btn-outlined:active {
+  .btn-outlined:active,
+  .state-pressed .btn-outlined {
     box-shadow: 0 0 8px -3px color-mix(in oklab, var(--btn-c) 45%, transparent);
   }
 
@@ -220,7 +225,8 @@
      stays a near-transparent whisper). drop-shadow (not text-shadow) so it eases in via the button's
      existing `transition` — and it hugs the glyphs since the fill is transparent. Neutral's --btn-c is
      the quiet surface colour, so its bloom is intentionally faint. */
-  .btn-text:hover {
+  .btn-text:hover,
+  .state-hover .btn-text {
     background-color: color-mix(in oklab, var(--btn-c) 6%, transparent);
     filter: drop-shadow(0 0 6px color-mix(in oklab, var(--btn-c) 60%, transparent))
       drop-shadow(0 0 14px color-mix(in oklab, var(--btn-c) 32%, transparent));
@@ -235,10 +241,10 @@
 @layer components {
   .card-surface {
     background-color: var(--color-surface);
-    border: 1px solid color-mix(in oklab, white 8%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-specular) 8%, transparent);
     box-shadow:
       var(--shadow-md),
-      inset 0 1px 0 0 color-mix(in oklab, white 8%, transparent);
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 8%, transparent);
   }
 }
 
@@ -252,12 +258,12 @@
   .toast-surface {
     background-color: color-mix(in oklab, var(--color-surface-raised) 60%, transparent);
     color: var(--color-text);
-    border: 1px solid color-mix(in oklab, white 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-specular) 14%, transparent);
     -webkit-backdrop-filter: blur(18px) saturate(1.7);
     backdrop-filter: blur(18px) saturate(1.7);
     box-shadow:
       var(--shadow-lg),
-      inset 0 1px 0 0 color-mix(in oklab, white 12%, transparent);
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 12%, transparent);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .toast-surface {
@@ -318,8 +324,8 @@
     -webkit-backdrop-filter: blur(6px) saturate(1.8);
     backdrop-filter: blur(6px) saturate(1.8);
     box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 6%, transparent);
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 22%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, var(--color-specular) 6%, transparent);
     transition:
       background-color var(--duration-fast) var(--ease-standard),
       border-color var(--duration-fast) var(--ease-standard),
@@ -349,7 +355,7 @@
   .badge-danger {
     background-color: color-mix(in oklab, var(--badge-c) 10%, transparent);
     border-color: color-mix(in oklab, var(--badge-c) 45%, transparent);
-    color: color-mix(in oklab, var(--badge-c) 85%, white);
+    color: color-mix(in oklab, var(--badge-c) 85%, var(--color-specular));
   }
   .badge-primary {
     --badge-c: var(--color-primary);
@@ -367,20 +373,20 @@
      chroma doesn't wash out. */
   .badge-primary,
   .badge-warning {
-    color: color-mix(in oklab, var(--badge-c) 92%, white);
+    color: color-mix(in oklab, var(--badge-c) 92%, var(--color-specular));
   }
   /* Toggled filter chip — denser tint + stronger rim + near-white text, still no solid fill. */
   .badge[aria-pressed='true'],
   .badge[data-selected] {
     background-color: color-mix(in oklab, var(--badge-c) 16%, transparent);
     border-color: color-mix(in oklab, var(--badge-c) 60%, transparent);
-    color: color-mix(in oklab, var(--badge-c) 92%, white);
+    color: color-mix(in oklab, var(--badge-c) 92%, var(--color-specular));
   }
   /* Emphasis / active ONLY — a TIGHT coloured halo (negative spread, never a diffuse neon wash). */
   .badge[data-emphasis] {
     box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 6%, transparent),
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 22%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, var(--color-specular) 6%, transparent),
       0 0 12px -2px color-mix(in oklab, var(--badge-c) 45%, transparent);
   }
   /* On-scene floor: over the raw universe a chip must raise its fill to opaque density so small
@@ -424,10 +430,10 @@
     block-size: 1.5rem;
     border-radius: var(--radius-full);
     background-color: color-mix(in oklab, var(--color-surface-raised) 82%, transparent);
-    border: 1px solid color-mix(in oklab, white 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-specular) 12%, transparent);
     box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
-      inset 0 -1px 1px 0 color-mix(in oklab, white 6%, transparent);
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 22%, transparent),
+      inset 0 -1px 1px 0 color-mix(in oklab, var(--color-specular) 6%, transparent);
     transition:
       background-color var(--duration-base) var(--ease-standard),
       border-color var(--duration-base) var(--ease-standard),
@@ -437,7 +443,7 @@
     background-color: color-mix(in oklab, var(--color-primary) 30%, var(--color-surface-raised));
     border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
     box-shadow:
-      inset 0 1px 0 0 color-mix(in oklab, white 22%, transparent),
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 22%, transparent),
       0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent),
       0 0 12px -2px color-mix(in oklab, var(--color-primary) 65%, transparent);
   }
@@ -448,10 +454,10 @@
     inline-size: 1.25rem;
     block-size: 1.25rem;
     border-radius: var(--radius-full);
-    background-color: color-mix(in oklab, white 90%, transparent);
+    background-color: color-mix(in oklab, var(--color-specular) 90%, transparent);
     box-shadow:
       var(--shadow-sm),
-      inset 0 1px 0 0 color-mix(in oklab, white 60%, transparent);
+      inset 0 1px 0 0 color-mix(in oklab, var(--color-specular) 60%, transparent);
     transform: translateY(-50%);
     transition:
       transform var(--duration-base) var(--ease-standard),
@@ -476,16 +482,16 @@
 @layer components {
   .field-surface {
     background-color: color-mix(in oklab, var(--color-bg) 60%, transparent);
-    border: 1px solid color-mix(in oklab, white 10%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-specular) 10%, transparent);
     color: var(--color-text);
     -webkit-backdrop-filter: blur(10px) saturate(1.6);
     backdrop-filter: blur(10px) saturate(1.6);
     /* Deeper carved well: a soft deep top shadow + a tighter crisp one, and a faint light lip on the
        far (bottom) inner wall — the field reads as recessed into the surface, not painted on it. */
     box-shadow:
-      inset 0 2px 5px -1px color-mix(in oklab, black 42%, transparent),
-      inset 0 1px 2px 0 color-mix(in oklab, black 28%, transparent),
-      inset 0 -1px 0 0 color-mix(in oklab, white 7%, transparent);
+      inset 0 2px 5px -1px color-mix(in oklab, var(--color-depth) 42%, transparent),
+      inset 0 1px 2px 0 color-mix(in oklab, var(--color-depth) 28%, transparent),
+      inset 0 -1px 0 0 color-mix(in oklab, var(--color-specular) 7%, transparent);
     transition:
       background-color var(--duration-base) var(--ease-standard),
       border-color var(--duration-base) var(--ease-standard),
@@ -494,16 +500,18 @@
   .field-surface::placeholder {
     color: var(--color-text-subtle);
   }
-  .field-surface:hover:not(:disabled) {
-    border-color: color-mix(in oklab, white 18%, transparent);
+  .field-surface:hover:not(:disabled),
+  .state-hover .field-surface:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-specular) 18%, transparent);
   }
   .field-surface:focus,
-  .field-surface:focus-visible {
+  .field-surface:focus-visible,
+  .state-focus .field-surface {
     outline: none;
     border-color: color-mix(in oklab, var(--color-primary) 65%, transparent);
     box-shadow:
-      inset 0 2px 5px -1px color-mix(in oklab, black 34%, transparent),
-      inset 0 1px 2px 0 color-mix(in oklab, black 22%, transparent),
+      inset 0 2px 5px -1px color-mix(in oklab, var(--color-depth) 34%, transparent),
+      inset 0 1px 2px 0 color-mix(in oklab, var(--color-depth) 22%, transparent),
       0 0 0 3px color-mix(in oklab, var(--color-primary) 22%, transparent);
   }
   .field-surface[aria-invalid='true'] {
@@ -513,8 +521,8 @@
   .field-surface[aria-invalid='true']:focus-visible {
     border-color: color-mix(in oklab, var(--color-danger) 65%, transparent);
     box-shadow:
-      inset 0 2px 5px -1px color-mix(in oklab, black 34%, transparent),
-      inset 0 1px 2px 0 color-mix(in oklab, black 22%, transparent),
+      inset 0 2px 5px -1px color-mix(in oklab, var(--color-depth) 34%, transparent),
+      inset 0 1px 2px 0 color-mix(in oklab, var(--color-depth) 22%, transparent),
       0 0 0 3px color-mix(in oklab, var(--color-danger) 22%, transparent);
   }
   .field-surface[data-valid='true'] {
@@ -524,8 +532,8 @@
   .field-surface[data-valid='true']:focus-visible {
     border-color: color-mix(in oklab, var(--color-success) 65%, transparent);
     box-shadow:
-      inset 0 2px 5px -1px color-mix(in oklab, black 34%, transparent),
-      inset 0 1px 2px 0 color-mix(in oklab, black 22%, transparent),
+      inset 0 2px 5px -1px color-mix(in oklab, var(--color-depth) 34%, transparent),
+      inset 0 1px 2px 0 color-mix(in oklab, var(--color-depth) 22%, transparent),
       0 0 0 3px color-mix(in oklab, var(--color-success) 22%, transparent);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -550,16 +558,17 @@
     inline-size: 1.125rem;
     block-size: 1.125rem;
     border-radius: 0.375rem;
-    border: 1px solid color-mix(in oklab, white 14%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-specular) 14%, transparent);
     background-color: color-mix(in oklab, var(--color-bg) 55%, transparent);
-    box-shadow: inset 0 1px 2px 0 color-mix(in oklab, black 22%, transparent);
+    box-shadow: inset 0 1px 2px 0 color-mix(in oklab, var(--color-depth) 22%, transparent);
     transition:
       background-color var(--duration-fast) var(--ease-standard),
       border-color var(--duration-fast) var(--ease-standard),
       box-shadow var(--duration-fast) var(--ease-standard);
   }
-  .checkbox:hover:not(:disabled) {
-    border-color: color-mix(in oklab, white 24%, transparent);
+  .checkbox:hover:not(:disabled),
+  .state-hover .checkbox:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-specular) 24%, transparent);
   }
   /* Checked = vivid fill + a tight primary glow (chosen in the component lab, "E"): the box lifts and
      lights up rather than staying a quiet recessed tint. */
@@ -567,7 +576,7 @@
     background-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
     border-color: color-mix(in oklab, var(--color-primary) 70%, transparent);
     box-shadow:
-      inset 0 1px 2px 0 color-mix(in oklab, black 10%, transparent),
+      inset 0 1px 2px 0 color-mix(in oklab, var(--color-depth) 10%, transparent),
       0 0 10px -2px color-mix(in oklab, var(--color-primary) 55%, transparent);
   }
   /* Tick — a rotated open box corner, scaled in when checked. */
@@ -578,7 +587,7 @@
     inset-inline-start: 0.34rem;
     inline-size: 0.3rem;
     block-size: 0.58rem;
-    border: solid color-mix(in oklab, var(--color-primary) 90%, white);
+    border: solid color-mix(in oklab, var(--color-primary) 90%, var(--color-specular));
     border-width: 0 2px 2px 0;
     transform: rotate(45deg) scale(0);
     transform-origin: center;
@@ -586,6 +595,47 @@
   }
   .checkbox:checked::after {
     transform: rotate(45deg) scale(1);
+  }
+}
+
+/* ── Bloom ────────────────────────────────────────────────────────────────────
+ * A soft self-luminous halo — the DOM echo of the renderer's post-processing bloom, for the few 2D
+ * elements that read as light sources rather than surfaces (a star-body preview in a panel, a lit
+ * marker). The halo is the theme's specular light, so it never becomes a stale white patch when the
+ * universe changes. It is emphasis, not decoration: a surface that is not emitting light does not
+ * get one.
+ */
+@layer components {
+  .bloom-soft {
+    box-shadow: 0 0 20px 0 color-mix(in oklab, var(--color-specular) 15%, transparent);
+  }
+}
+
+/* ── State preview ────────────────────────────────────────────────────────────
+ * `:hover` / `:active` / `:focus-visible` only exist under a live pointer or keyboard, so a
+ * catalogue can't show them side by side — and a designer reviewing the language has to see the
+ * whole state set at once. Wrapping a control in `.state-hover` / `.state-pressed` / `.state-focus`
+ * holds it in that state.
+ *
+ * These are hooks, not copies: hover/pressed are extra SELECTORS on the real rules above, so a
+ * restyle can never leave the preview showing a state the product no longer has. Focus is the one
+ * exception — the ring is a Tailwind `focus-visible:` utility on the primitive, not a rule here —
+ * so `.state-focus` redraws the same ring geometry (`--ring-width`/`--ring-offset`/
+ * `--color-focus-ring`) as an overlay, leaving the control's own material untouched.
+ */
+@layer components {
+  .state-focus {
+    position: relative;
+    display: inline-flex;
+    border-radius: var(--radius-md);
+  }
+  .state-focus::after {
+    content: '';
+    position: absolute;
+    inset: calc(-1 * (var(--ring-offset) + var(--ring-width)));
+    border-radius: inherit;
+    border: var(--ring-width) solid var(--color-focus-ring);
+    pointer-events: none;
   }
 }
 

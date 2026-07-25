@@ -26,6 +26,15 @@ export const tokens = {
    *  pairs are contrast-checked (tokens.test.ts). Runtime theme swap = `data-theme`. */
   color: palette,
 
+  /**
+   * Reading measures — how wide a column of text may grow before the eye loses the line start.
+   * Emitted into Tailwind's `--container-*` namespace, so `max-w-measure` is the one way to cap a
+   * text column; the viewport term keeps it honest on a narrow screen.
+   */
+  container: {
+    measure: 'min(90vw, 40rem)',
+  },
+
   /** Corner radii. */
   radius: {
     sm: '0.25rem',
@@ -35,11 +44,15 @@ export const tokens = {
     full: '9999px',
   },
 
-  /** Elevation as web box-shadows; native maps the same intent to its shadow props. */
+  /**
+   * Elevation as web box-shadows; native maps the same intent to its shadow props. Only the
+   * geometry is fixed here — the colour is the theme's `depth` role, so a new theme reskins its
+   * shadows with everything else instead of casting the previous theme's darkness.
+   */
   shadow: {
-    sm: '0 1px 2px rgba(2, 4, 10, 0.5)',
-    md: '0 6px 18px rgba(2, 4, 10, 0.55)',
-    lg: '0 18px 48px rgba(2, 4, 10, 0.6)',
+    sm: '0 1px 2px color-mix(in oklab, var(--color-depth) 50%, transparent)',
+    md: '0 6px 18px color-mix(in oklab, var(--color-depth) 55%, transparent)',
+    lg: '0 18px 48px color-mix(in oklab, var(--color-depth) 60%, transparent)',
   },
 
   /** Transition durations. */
@@ -97,6 +110,7 @@ export const tokens = {
 /** Token groups the generator writes into `theme.gen.css`. */
 export const CSS_TOKEN_GROUPS = [
   'color',
+  'container',
   'radius',
   'shadow',
   'duration',

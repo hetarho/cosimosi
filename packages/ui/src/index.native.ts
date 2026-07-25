@@ -15,18 +15,28 @@ export {
 } from './a11y/contrast.ts'
 export { useReducedMotion } from './a11y/use-reduced-motion.native.ts'
 
-export { useTheme, type UseThemeResult } from './theme/use-theme.ts'
+// The theme registry — the only list of themes. Native resolves the active theme statically
+// (native-styles.ts bridges `palette` to RN colours); there is no `data-theme` equivalent.
 export {
-  getThemeState,
-  setTheme,
+  themes,
+  palette,
+  THEME_KEYS,
+  defaultThemeKey,
+  isThemeKey,
+  type ThemeKey,
+  type ThemeDefinition,
+  type ThemePalette,
+} from './palette.ts'
+
+export { useBackground, type UseBackgroundResult } from './theme/use-background.ts'
+export {
+  getBackgroundState,
   setBackground,
-  resetTheme,
-  subscribeTheme,
-  type ThemeName,
-  type ThemeState,
+  resetBackground,
+  subscribeBackground,
   type BackgroundState,
   type BackgroundTone,
-} from './theme/theme-store.ts'
+} from './theme/background-store.ts'
 
 export type {
   ButtonVariant,

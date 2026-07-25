@@ -27,8 +27,10 @@ function textPairs(c: ThemePalette): ReadonlyArray<[fg: string, bg: string, labe
   ]
 }
 
-describe.each(Object.entries(themes))('token contrast — %s', (_themeKey, color) => {
-  it.each(textPairs(color))('%s clears AA for text', (fg, bg) => {
+// Every REGISTERED theme is checked, not just the active one — a theme added to the registry is
+// contrast-gated the moment it exists, before anything can ship it.
+describe.each(Object.entries(themes))('token contrast — %s', (_themeKey, theme) => {
+  it.each(textPairs(theme.palette))('%s clears AA for text', (fg, bg) => {
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(WCAG_AA_TEXT)
   })
 })

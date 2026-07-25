@@ -29,8 +29,8 @@ never import the library; they navigate through the seam in §4.
   File-based routing is not used — it scatters route files and fights FSD.
 - Current routes: a pathless **`authenticated`** layout route (the auth gate, §8) parenting `/` → `UniverseHomePage`
   (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/settings` → `SettingsPage`
-  (`pages/settings`, plan 52); outside it, `/login` → `LoginPage` (`pages/login`, plan 53) and `/test` → `TestPage`
-  (`pages/test`). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
+  (`pages/settings`, plan 52); outside it, `/login` → `LoginPage` (`pages/login`, plan 53), `/test` → `TestPage`
+  (`pages/test`), and `/design` → `DesignShowcasePage` (`pages/design`, the design showcase). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
   wrapper** that reads `useAppNavigate` and injects `onOpenReader`/`onExit`-style callbacks into the page — the
   navigation seam stays inside `app/routes/`.
 - **Adding a route** (done by a presentation plan): add a `createRoute` in `route-tree.tsx`, point it at a `pages/`
@@ -58,10 +58,11 @@ This is the web counterpart of the mobile shell's `RootStackParamList`.
 (`= useNavigate`). Consumers import these from `app/routes`, never from `@tanstack/react-router`, so the library stays
 confined to the segment.
 
-## 5. The `/test` gate
+## 5. The dev-only gates — `/test` and `/design`
 
-`/test` is a dev-only surface (the plan/12 harness). Its `beforeLoad` throws `notFound()` unless
-`context.diagnosticsEnabled` is true. `WebRouterProvider` resolves that flag as
+`/test` is the plan/12 platform harness; `/design` is the design showcase the design review reads
+(both dev-only, both outside the authenticated subtree since neither reads product data). Each
+`beforeLoad` throws `notFound()` unless `context.diagnosticsEnabled` is true. `WebRouterProvider` resolves that flag as
 `import.meta.env.DEV || getFeatureFlag('platform.diagnosticsSurface')`: **always reachable under the Vite dev server**,
 and in a **production build only when the diagnostics flag is explicitly on** (otherwise `/test` resolves to the
 not-found screen). The flag key lives in `shared/config/diagnosticsSurfaceFlag` and is read from the observability

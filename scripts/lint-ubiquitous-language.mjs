@@ -94,17 +94,18 @@ const isVisualEntityPath = (path) => {
 // Surfaces that legitimately name rendering vocabulary yet are NOT the domain-mirror slices this
 // lint protects (episodic-memory/neuron/synapse + their api mappers + domain Go): the app-layer
 // route/navigation composition mounts visual slices (a screen mounting the universe widget + a HUD
-// notice), the `/test` harness renders demo panels for them, and generated config carries the
-// values.yaml group names verbatim. Scoped to route/navigation so app/providers, app/model, and the
-// domain-mirror slices all stay scanned.
+// notice), the dev-only surfaces (`pages/test`, `pages/design`) render demo panels and design
+// specimens for them, and generated config carries the values.yaml group names verbatim. Scoped to
+// route/navigation so app/providers, app/model, and the domain-mirror slices all stay scanned.
 const isCompositionPath = (segments) =>
   segments[0] === 'apps' &&
   segments[2] === 'src' &&
   segments[3] === 'app' &&
   (segments[4] === 'routes' || segments[4] === 'navigation')
-const isTestHarnessPath = (segments) => {
+const DEV_SURFACE_PAGES = new Set(['test', 'design'])
+const isDevSurfacePath = (segments) => {
   const pagesAt = segments.indexOf('pages')
-  return pagesAt >= 0 && segments[pagesAt + 1] === 'test'
+  return pagesAt >= 0 && DEV_SURFACE_PAGES.has(segments[pagesAt + 1])
 }
 // The stardust economy overlay (별가루/Twinkle) is spec-named `widgets/stardust`, so its barrel
 // export `StardustOverlay` unavoidably matches the rendering term "star" — yet it is the economy
@@ -156,7 +157,7 @@ for (const file of files) {
     isVisualPath(file.path) ||
     isVisualEntityPath(file.path) ||
     isCompositionPath(segments) ||
-    isTestHarnessPath(segments) ||
+    isDevSurfacePath(segments) ||
     isStardustEconomyPath(segments) ||
     isGeneratedFile(file.text)
 
