@@ -77,6 +77,9 @@ func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMRes
 
 	msg, err := c.api.Messages.New(ctx, params)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ai.LLMResponse{}, ctxErr
+		}
 		return ai.LLMResponse{}, mapError(err)
 	}
 
@@ -122,7 +125,7 @@ func mapError(err error) error {
 		}
 	}
 	// Transport-level failure before any response (timeout, connection reset) — retry.
-	return &ai.RateLimitedError{Provider: providerName, Err: fmt.Errorf("anthropic transport error: %v", err)}
+	return &ai.RateLimitedError{Provider: providerName, Err: fmt.Errorf("anthropic transport error: %w", err)}
 }
 
 func retryAfter(apiErr *sdk.Error) time.Duration {

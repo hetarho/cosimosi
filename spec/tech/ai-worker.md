@@ -78,10 +78,13 @@ uniformly to every provider:
   served a poisoned entry.
 - Over-limit calls return a typed `CostLimitError` whose retry time is the next UTC calendar day.
 
-Every provider client normalizes vendor failures into the shared typed error set — the only errors that cross out of
-`internal/ai`: `RateLimitedError` (retryable), `AuthFailedError` (terminal), `CostLimitError` (cost-capped), and
-`MalformedStructuredOutputError` (schema violation; the retry decision belongs to the port adapter). No vendor SDK error
-type escapes the package.
+Every provider client normalizes vendor failures into the shared typed error set:
+`RateLimitedError` (retryable), `AuthFailedError` (terminal), `CostLimitError` (cost-capped), and
+`MalformedStructuredOutputError` (schema violation; the retry decision belongs to the port adapter). Caller
+cancellation and caller deadlines are the deliberate exception: an adapter returns `ctx.Err()` unchanged so RPC
+cancellation and worker shutdown remain standard context control flow. A genuine transport fault while the request
+context is active stays retryable and preserves its cause through the typed error chain. No vendor SDK error type
+escapes the package.
 
 ## 3. Jobs Queue
 

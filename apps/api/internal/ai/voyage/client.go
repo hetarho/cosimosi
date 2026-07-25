@@ -10,7 +10,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -29,9 +31,10 @@ const providerName = "voyage"
 // not DB, not admin-editable. A self-hosted/proxy override, if ever needed, would be
 // this adapter's own deliberate env seam.
 const (
-	defaultModel   = "voyage-3.5"
-	endpoint       = "https://api.voyageai.com/v1/embeddings"
-	requestTimeout = 30 * time.Second
+	defaultModel           = "voyage-3.5"
+	endpoint               = "https://api.voyageai.com/v1/embeddings"
+	requestTimeout         = 30 * time.Second
+	maxErrorBodyDrainBytes = 64 << 10
 	// inputTypeDocument marks these as stored (recall/search) embeddings, not queries.
 	inputTypeDocument = "document"
 )
@@ -128,16 +131,33 @@ func (c *Client) Embed(ctx context.Context, req ai.EmbeddingRequest) (ai.Embeddi
 
 	resp, err := c.http.Do(httpReq)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ai.EmbeddingResponse{}, ctxErr
+		}
 		return ai.EmbeddingResponse{}, &ai.RateLimitedError{Provider: providerName, Err: err}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		drainErrorBody(resp.Body)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ai.EmbeddingResponse{}, ctxErr
+		}
 		return ai.EmbeddingResponse{}, mapStatus(resp)
 	}
 
+	reader := &errorRecordingReader{reader: resp.Body}
 	var decoded embedResponseBody
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+	if err := json.NewDecoder(reader).Decode(&decoded); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ai.EmbeddingResponse{}, ctxErr
+		}
+		if reader.err != nil {
+			return ai.EmbeddingResponse{}, &ai.RateLimitedError{
+				Provider: providerName,
+				Err:      fmt.Errorf("voyage response body read: %w", reader.err),
+			}
+		}
 		return ai.EmbeddingResponse{}, &ai.MalformedStructuredOutputError{Provider: providerName, Err: err}
 	}
 	if len(decoded.Data) != len(req.Texts) {
@@ -167,6 +187,25 @@ func (c *Client) Embed(ctx context.Context, req ai.EmbeddingRequest) (ai.Embeddi
 		vectors[i] = item.Embedding
 	}
 	return ai.EmbeddingResponse{Vectors: vectors}, nil
+}
+
+func drainErrorBody(body io.Reader) {
+	// The extra byte lets an exact-threshold body reach its underlying EOF while
+	// still bounding a larger vendor response.
+	_, _ = io.Copy(io.Discard, io.LimitReader(body, maxErrorBodyDrainBytes+1))
+}
+
+type errorRecordingReader struct {
+	reader io.Reader
+	err    error
+}
+
+func (r *errorRecordingReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) {
+		r.err = err
+	}
+	return n, err
 }
 
 // mapStatus collapses a non-200 Voyage response into the typed set: throttling and

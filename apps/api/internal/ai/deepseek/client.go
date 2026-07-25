@@ -25,10 +25,11 @@ const providerName = "deepseek"
 // deepseek-chat alias is scheduled for retirement on 2026-07-24. Deployments can
 // select another current DeepSeek model through COSIMOSI_LLM_MODEL.
 const (
-	defaultModel     = "deepseek-v4-flash"
-	endpoint         = "https://api.deepseek.com/chat/completions"
-	requestTimeout   = 60 * time.Second
-	maxResponseBytes = 4 << 20
+	defaultModel           = "deepseek-v4-flash"
+	endpoint               = "https://api.deepseek.com/chat/completions"
+	requestTimeout         = 60 * time.Second
+	maxResponseBytes       = 4 << 20
+	maxErrorBodyDrainBytes = 64 << 10
 )
 
 func init() {
@@ -145,20 +146,33 @@ func (c *Client) CompleteJSON(ctx context.Context, req ai.LLMRequest) (ai.LLMRes
 
 	resp, err := c.http.Do(httpReq)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ai.LLMResponse{}, ctxErr
+		}
 		return ai.LLMResponse{}, &ai.RateLimitedError{
 			Provider: providerName,
-			Err:      fmt.Errorf("deepseek transport error: %v", err),
+			Err:      fmt.Errorf("deepseek transport error: %w", err),
 		}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		drainErrorBody(resp.Body)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ai.LLMResponse{}, ctxErr
+		}
 		return ai.LLMResponse{}, mapStatus(resp)
 	}
 
 	rawResponse, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
-		return ai.LLMResponse{}, &ai.MalformedStructuredOutputError{Provider: providerName, Err: err}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ai.LLMResponse{}, ctxErr
+		}
+		return ai.LLMResponse{}, &ai.RateLimitedError{
+			Provider: providerName,
+			Err:      fmt.Errorf("deepseek response body read: %w", err),
+		}
 	}
 	if len(rawResponse) > maxResponseBytes {
 		return ai.LLMResponse{}, &ai.MalformedStructuredOutputError{
@@ -248,6 +262,12 @@ func malformed(message string) error {
 		Provider: providerName,
 		Err:      fmt.Errorf("%s", message),
 	}
+}
+
+func drainErrorBody(body io.Reader) {
+	// The extra byte lets an exact-threshold body reach its underlying EOF while
+	// still bounding a larger vendor response.
+	_, _ = io.Copy(io.Discard, io.LimitReader(body, maxErrorBodyDrainBytes+1))
 }
 
 // mapStatus collapses every non-200 DeepSeek response into the shared typed set.

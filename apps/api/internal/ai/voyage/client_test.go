@@ -3,9 +3,14 @@ package voyage
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/cosimosi/api/internal/ai"
 	"github.com/cosimosi/api/internal/platform/values"
@@ -117,6 +122,183 @@ func TestEmbedMapsStatusErrors(t *testing.T) {
 	}
 }
 
+func TestEmbedPreservesCallerCancellation(t *testing.T) {
+	started := make(chan struct{})
+	client := newTransportTestClient(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		close(started)
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	}))
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := client.Embed(ctx, ai.EmbeddingRequest{Texts: []string{"a"}, Dim: values.AiEmbeddingDim})
+		errCh <- err
+	}()
+	<-started
+	cancel()
+
+	err := <-errCh
+	if err != ctx.Err() {
+		t.Fatalf("error = %v, want unchanged %v", err, ctx.Err())
+	}
+	if ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, caller cancellation must not be rate-limited", err)
+	}
+}
+
+func TestEmbedPreservesCallerDeadline(t *testing.T) {
+	started := make(chan struct{})
+	client := newTransportTestClient(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		close(started)
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	}))
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	_, err := client.Embed(ctx, ai.EmbeddingRequest{Texts: []string{"a"}, Dim: values.AiEmbeddingDim})
+	if err != ctx.Err() {
+		t.Fatalf("error = %v, want unchanged %v", err, ctx.Err())
+	}
+	if ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, caller deadline must not be rate-limited", err)
+	}
+	select {
+	case <-started:
+	default:
+		t.Fatal("request deadline expired before the transport started")
+	}
+}
+
+func TestEmbedPreservesGenuineTransportCause(t *testing.T) {
+	cause := errors.New("connection reset")
+	client := newTransportTestClient(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, cause
+	}))
+
+	_, err := client.Embed(context.Background(), ai.EmbeddingRequest{Texts: []string{"a"}, Dim: values.AiEmbeddingDim})
+	if !ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, want RateLimitedError", err)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatalf("error chain = %v, want transport cause", err)
+	}
+}
+
+func TestEmbedPreservesResponseBodyTransportCause(t *testing.T) {
+	cause := errors.New("body connection reset")
+	client := newTransportTestClient(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       &errorBody{err: cause},
+			Request:    req,
+		}, nil
+	}))
+
+	_, err := client.Embed(
+		context.Background(),
+		ai.EmbeddingRequest{Texts: []string{"a"}, Dim: values.AiEmbeddingDim},
+	)
+	if !ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, want RateLimitedError", err)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatalf("error chain = %v, want response-body transport cause", err)
+	}
+}
+
+func TestEmbedPreservesCancellationDuringResponseBodyRead(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusTooManyRequests} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			started := make(chan struct{})
+			client := newTransportTestClient(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: status,
+					Header:     make(http.Header),
+					Body:       &contextBody{ctx: req.Context(), started: started},
+					Request:    req,
+				}, nil
+			}))
+			ctx, cancel := context.WithCancel(context.Background())
+			errCh := make(chan error, 1)
+			go func() {
+				_, err := client.Embed(
+					ctx,
+					ai.EmbeddingRequest{Texts: []string{"a"}, Dim: values.AiEmbeddingDim},
+				)
+				errCh <- err
+			}()
+			<-started
+			cancel()
+
+			err := <-errCh
+			if err != ctx.Err() {
+				t.Fatalf("status %d error = %v, want unchanged %v", status, err, ctx.Err())
+			}
+			if ai.IsRateLimited(err) || ai.IsAuthFailed(err) || ai.IsMalformedStructuredOutput(err) {
+				t.Fatalf("status %d error = %v, body-read cancellation must stay untyped", status, err)
+			}
+		})
+	}
+}
+
+func TestEmbedDrainsErrorBodyBeforeClose(t *testing.T) {
+	cases := []struct {
+		name       string
+		body       string
+		wantRead   int
+		wantSawEOF bool
+	}{
+		{"small body reaches EOF", "provider details", len("provider details"), true},
+		{
+			"exact threshold reaches EOF",
+			strings.Repeat("x", maxErrorBodyDrainBytes),
+			maxErrorBodyDrainBytes,
+			true,
+		},
+		{
+			"oversized body stays bounded",
+			strings.Repeat("x", maxErrorBodyDrainBytes+2),
+			maxErrorBodyDrainBytes + 1,
+			false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := &observedBody{reader: strings.NewReader(tc.body)}
+			client := newTransportTestClient(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusTooManyRequests,
+					Header:     make(http.Header),
+					Body:       body,
+					Request:    req,
+				}, nil
+			}))
+
+			_, err := client.Embed(
+				context.Background(),
+				ai.EmbeddingRequest{Texts: []string{"a"}, Dim: values.AiEmbeddingDim},
+			)
+			if !ai.IsRateLimited(err) {
+				t.Fatalf("error = %v, want RateLimitedError", err)
+			}
+			if body.bytesRead != tc.wantRead {
+				t.Fatalf("bytes read = %d, want %d", body.bytesRead, tc.wantRead)
+			}
+			if body.sawEOF != tc.wantSawEOF {
+				t.Fatalf("saw EOF = %v, want %v", body.sawEOF, tc.wantSawEOF)
+			}
+			if !body.closed {
+				t.Fatal("error response body was not closed")
+			}
+			if body.bytesAtClose != tc.wantRead {
+				t.Fatalf("bytes read before close = %d, want %d", body.bytesAtClose, tc.wantRead)
+			}
+		})
+	}
+}
+
 // newTestClient builds the adapter, then points its endpoint at a fake server.
 // Production New offers no endpoint override (the endpoint is adapter-owned,
 // change 03), so the test reaches the unexported field directly.
@@ -128,6 +310,70 @@ func newTestClient(t *testing.T, baseURL string) ai.EmbeddingClient {
 	}
 	client.(*Client).endpoint = baseURL
 	return client
+}
+
+func newTransportTestClient(t *testing.T, transport http.RoundTripper) *Client {
+	t.Helper()
+	client := newTestClient(t, "https://voyage.invalid").(*Client)
+	client.http = &http.Client{Transport: transport}
+	return client
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+type observedBody struct {
+	reader       *strings.Reader
+	bytesRead    int
+	bytesAtClose int
+	sawEOF       bool
+	closed       bool
+}
+
+func (b *observedBody) Read(p []byte) (int, error) {
+	n, err := b.reader.Read(p)
+	b.bytesRead += n
+	if errors.Is(err, io.EOF) {
+		b.sawEOF = true
+	}
+	return n, err
+}
+
+func (b *observedBody) Close() error {
+	b.bytesAtClose = b.bytesRead
+	b.closed = true
+	return nil
+}
+
+type contextBody struct {
+	ctx     context.Context
+	started chan struct{}
+	once    sync.Once
+}
+
+func (b *contextBody) Read([]byte) (int, error) {
+	b.once.Do(func() { close(b.started) })
+	<-b.ctx.Done()
+	return 0, b.ctx.Err()
+}
+
+func (*contextBody) Close() error {
+	return nil
+}
+
+type errorBody struct {
+	err error
+}
+
+func (b *errorBody) Read([]byte) (int, error) {
+	return 0, b.err
+}
+
+func (*errorBody) Close() error {
+	return nil
 }
 
 func embedInputCount(t *testing.T, r *http.Request) int {

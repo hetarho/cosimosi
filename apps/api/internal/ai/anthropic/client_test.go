@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -89,6 +90,93 @@ func TestCompleteJSONRejectsMalformedStructuredOutput(t *testing.T) {
 	}
 }
 
+func TestCompleteJSONPreservesCallerCancellation(t *testing.T) {
+	started := make(chan struct{})
+	client := newTransportTestClient(roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		close(started)
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	}))
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := client.CompleteJSON(ctx, ai.LLMRequest{Prompt: "x", MaxOutputTokens: 1200})
+		errCh <- err
+	}()
+	<-started
+	cancel()
+
+	err := <-errCh
+	if err != ctx.Err() {
+		t.Fatalf("error = %v, want unchanged %v", err, ctx.Err())
+	}
+	if ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, caller cancellation must not be rate-limited", err)
+	}
+}
+
+func TestCompleteJSONPreservesCallerDeadline(t *testing.T) {
+	started := make(chan struct{})
+	client := newTransportTestClient(roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		close(started)
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	}))
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	_, err := client.CompleteJSON(ctx, ai.LLMRequest{Prompt: "x", MaxOutputTokens: 1200})
+	if err != ctx.Err() {
+		t.Fatalf("error = %v, want unchanged %v", err, ctx.Err())
+	}
+	if ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, caller deadline must not be rate-limited", err)
+	}
+	select {
+	case <-started:
+	default:
+		t.Fatal("request deadline expired before the transport started")
+	}
+}
+
+func TestCompleteJSONPreservesGenuineTransportCause(t *testing.T) {
+	cause := errors.New("connection reset")
+	client := newTransportTestClient(roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, cause
+	}))
+
+	_, err := client.CompleteJSON(context.Background(), ai.LLMRequest{Prompt: "x", MaxOutputTokens: 1200})
+	if !ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, want RateLimitedError", err)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatalf("error chain = %v, want transport cause", err)
+	}
+	var vendor *sdk.Error
+	if errors.As(err, &vendor) {
+		t.Fatalf("vendor *sdk.Error escaped internal/ai: %v", err)
+	}
+}
+
+func TestCompleteJSONPreservesResponseBodyTransportCause(t *testing.T) {
+	cause := errors.New("body connection reset")
+	client := newTransportTestClient(roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       &errorBody{err: cause},
+			Request:    req,
+		}, nil
+	}))
+
+	_, err := client.CompleteJSON(context.Background(), ai.LLMRequest{Prompt: "x", MaxOutputTokens: 1200})
+	if !ai.IsRateLimited(err) {
+		t.Fatalf("error = %v, want RateLimitedError", err)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatalf("error chain = %v, want response-body transport cause", err)
+	}
+}
+
 // newTestClient builds the adapter pointed at a fake server. Production New offers no
 // endpoint override (the endpoint is adapter-owned, change 03), so the test constructs
 // the Client directly with the SDK's base-URL option.
@@ -98,6 +186,36 @@ func newTestClient(t *testing.T, baseURL string) ai.LLMClient {
 		api:   sdk.NewClient(option.WithAPIKey("test-key"), option.WithBaseURL(baseURL)),
 		model: defaultModel,
 	}
+}
+
+func newTransportTestClient(transport http.RoundTripper) ai.LLMClient {
+	return &Client{
+		api: sdk.NewClient(
+			option.WithAPIKey("test-key"),
+			option.WithBaseURL("https://anthropic.invalid"),
+			option.WithHTTPClient(&http.Client{Transport: transport}),
+			option.WithMaxRetries(0),
+		),
+		model: defaultModel,
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+type errorBody struct {
+	err error
+}
+
+func (b *errorBody) Read([]byte) (int, error) {
+	return 0, b.err
+}
+
+func (*errorBody) Close() error {
+	return nil
 }
 
 func TestNewRequiresAPIKey(t *testing.T) {

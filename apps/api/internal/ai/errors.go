@@ -9,7 +9,9 @@ import (
 // The typed error set is the only vocabulary of provider failure allowed to cross
 // out of internal/ai. Each provider client normalizes every vendor SDK / HTTP
 // failure into one of these so the job backoff and the RPC error mapping stay
-// provider-independent — no vendor error type ever reaches a consumer.
+// provider-independent — no vendor error type ever reaches a consumer. Caller
+// cancellation and deadlines remain standard context errors because they are
+// control-flow signals, not provider failures.
 //
 // The set is: rate-limited (retryable) · auth-failed (terminal) · cost-capped ·
 // malformed-structured-output. cost-capped is [CostLimitError] (metering.go); it
