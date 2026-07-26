@@ -7,6 +7,19 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 )
 
+// UserZone is memory's consumer-owned real-clock boundary. The composition root resolves
+// account's published IANA name into a runtime location before it crosses this port.
+type UserZone interface {
+	ZoneFor(ctx context.Context, scope platform.UserScope) (*time.Location, error)
+}
+
+// UTCUserZone preserves the pre-profile behavior for tests and minimal composition roots.
+type UTCUserZone struct{}
+
+func (UTCUserZone) ZoneFor(context.Context, platform.UserScope) (*time.Location, error) {
+	return time.UTC, nil
+}
+
 type Extractor interface {
 	Split(ctx context.Context, body string, diaryDate time.Time, existingNeurons []ExistingNeuron) (ExtractResult, error)
 	ReviseSplit(ctx context.Context, prior ExtractResult, instruction string) (ExtractResult, error)

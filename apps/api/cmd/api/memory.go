@@ -5,8 +5,10 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/cosimosi/api/internal/account"
 	adminpg "github.com/cosimosi/api/internal/admin/pg"
 	"github.com/cosimosi/api/internal/ai"
 	memoryv1connect "github.com/cosimosi/api/internal/gen/cosimosi/memory/v1/memoryv1connect"
@@ -47,6 +49,12 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	adminStore := adminpg.NewStore(pool.PgxPool())
 	cipher, decrypter := adminCipher(logger)
 	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), meter, logger)
+	directory := newAccountDirectory()
+	accountOption, accountService, err := accountServiceOption(pool, accountDirectoryAdapter{source: directory})
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	// The twinkle service is built first (memory's gate and earn port wrap it); its
 	// spend-signal reader binds back to the memory service just below — the one
 	// two-way seam, closed here where every concrete is visible.
@@ -98,6 +106,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		// no worker registration is needed.
 		Releases:      store,
 		SealSuggester: adapters.SealSuggester,
+		UserZone:      accountUserZone{service: accountService},
 	})
 	if err != nil {
 		pool.Close()
@@ -114,11 +123,6 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	accountOption, err := accountServiceOption(pool)
-	if err != nil {
-		pool.Close()
-		return nil, noop, err
-	}
 	adminOption, err := adminServiceOption(adminDeps{
 		store:     adminStore,
 		twinkle:   twinkleService,
@@ -126,7 +130,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		meter:     meter,
 		cipher:    cipher,
 		models:    aiModelCatalog{reader: adminStore, decrypter: decrypter},
-		directory: newAccountDirectory(),
+		directory: adminAccountDirectory{source: directory},
 	})
 	if err != nil {
 		pool.Close()
@@ -140,4 +144,20 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
 	return []platform.HandlerOption{memoryOption, twinkleOption, accountOption, adminOption}, pool.Close, nil
+}
+
+type accountUserZone struct {
+	service *account.Service
+}
+
+func (a accountUserZone) ZoneFor(ctx context.Context, scope platform.UserScope) (*time.Location, error) {
+	name, err := a.service.ZoneFor(ctx, scope)
+	if err != nil {
+		return nil, err
+	}
+	location, err := time.LoadLocation(name)
+	if err != nil {
+		return time.UTC, nil
+	}
+	return location, nil
 }

@@ -115,8 +115,8 @@ func TestViewableGistStageIsTheRisenBoundedStage(t *testing.T) {
 func TestSignalUniverseTimeNeverPrecedesTheClock(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	// A clock ahead of real today (the +1-day launch slack) keeps the signal at the
-	// clock — a signal may never derive from before the universe's present ([I10]).
+	// A legacy or otherwise ahead clock keeps the signal at the clock — a signal may never
+	// derive from before the universe's present ([I10]).
 	ahead := fixtureToday().AddDate(0, 0, 1)
 	fixture.launches.clock = &ahead
 	fixture.seedRecallable("m1", EpisodicMemory{CreatedUniverseTime: ahead, BaseStrength: 0.5}, nil, nil)

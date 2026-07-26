@@ -1,10 +1,8 @@
-// Package account is a supporting context for per-user account preferences (ARCHITECTURE §2.2).
-// Today it owns exactly one preference — the chosen emotion-palette id — behind a small get/set
-// behavior, integrated only through that published behavior and never by another context reaching
-// into its table.
+// Package account is the supporting context for a user's product profile, authentication-provider
+// linkage, invite capabilities, and presentation preferences (ARCHITECTURE §2.2).
 //
-// It computes no color. The palette id is an opaque first-party key it validates against the
-// registry allow-list; the color table the id selects lives entirely on the client. This keeps
-// the preference structurally unable to reach the meaning layer: the only value it stores is a
-// scalar id, never a mood, coordinate, position, or strength.
+// Supabase Auth remains authoritative for credentials, email, verification, and provider
+// membership. Account owns nickname, timezone, locale, linkage timestamps, and invite bindings.
+// Its published ZoneFor behavior is the sole source of the real-clock day boundary consumed by
+// other contexts; those consumers never read account tables directly.
 package account

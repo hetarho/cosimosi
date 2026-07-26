@@ -6,6 +6,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/cosimosi/api/internal/account"
@@ -25,6 +26,74 @@ func NewServer(service *account.Service) (*Server, error) {
 		return nil, ErrServiceRequired
 	}
 	return &Server{service: service}, nil
+}
+
+func (s *Server) GetProfile(ctx context.Context, _ *connect.Request[accountv1.GetProfileRequest]) (*connect.Response[accountv1.GetProfileResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	profile, err := s.service.GetProfile(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	response := &accountv1.GetProfileResponse{}
+	if profile != nil {
+		response.Profile = profileMessage(*profile)
+	}
+	return connect.NewResponse(response), nil
+}
+
+func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[accountv1.UpdateProfileRequest]) (*connect.Response[accountv1.UpdateProfileResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	profile, err := s.service.UpdateProfile(ctx, scope, account.UpdateProfileInput{
+		Nickname: req.Msg.GetNickname(),
+		Timezone: req.Msg.GetTimezone(),
+		Locale:   req.Msg.GetLocale(),
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&accountv1.UpdateProfileResponse{Profile: profileMessage(profile)}), nil
+}
+
+func (s *Server) ListAuthProviders(ctx context.Context, _ *connect.Request[accountv1.ListAuthProvidersRequest]) (*connect.Response[accountv1.ListAuthProvidersResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	providers, err := s.service.ListAuthProviders(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	response := &accountv1.ListAuthProvidersResponse{
+		Providers: make([]*accountv1.LinkedAuthProvider, 0, len(providers)),
+	}
+	for _, provider := range providers {
+		response.Providers = append(response.Providers, &accountv1.LinkedAuthProvider{
+			Kind:     providerKindMessage(provider.Kind),
+			LinkedAt: formatTime(provider.LinkedAt),
+		})
+	}
+	return connect.NewResponse(response), nil
+}
+
+func (s *Server) GetInviteLink(ctx context.Context, _ *connect.Request[accountv1.GetInviteLinkRequest]) (*connect.Response[accountv1.GetInviteLinkResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	link, err := s.service.GetInviteLink(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&accountv1.GetInviteLinkResponse{
+		Token:     link.Token,
+		ExpiresAt: link.ExpiresAt.Format(time.RFC3339),
+	}), nil
 }
 
 func (s *Server) GetPalettePreference(ctx context.Context, _ *connect.Request[accountv1.GetPalettePreferenceRequest]) (*connect.Response[accountv1.PalettePreference], error) {
@@ -62,6 +131,16 @@ func userScope(ctx context.Context) (platform.UserScope, error) {
 // domainError maps the use-case's canonical errors onto Connect codes.
 func domainError(err error) error {
 	switch {
+	case errors.Is(err, account.ErrNotProvisioned):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonNotProvisioned, err, nil)
+	case errors.Is(err, account.ErrNicknameInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonNicknameInvalid, err, nil)
+	case errors.Is(err, account.ErrTimezoneInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonTimezoneInvalid, err, nil)
+	case errors.Is(err, account.ErrLocaleInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonLocaleInvalid, err, nil)
+	case errors.Is(err, account.ErrInviteLinkUnavailable):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonInviteLinkUnavailable, err, nil)
 	case errors.Is(err, account.ErrUnknownPaletteID):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownPalette, err, nil)
 	case errors.Is(err, account.ErrScopeRequired):
@@ -69,4 +148,32 @@ func domainError(err error) error {
 	default:
 		return apperr.Internal(err)
 	}
+}
+
+func profileMessage(view account.ProfileView) *accountv1.Profile {
+	return &accountv1.Profile{
+		Nickname:  view.Profile.Nickname,
+		Timezone:  view.Profile.Timezone,
+		Locale:    view.Profile.Locale,
+		Email:     view.Email,
+		CreatedAt: formatTime(view.Profile.CreatedAt),
+	}
+}
+
+func providerKindMessage(kind account.AuthProviderKind) accountv1.AuthProviderKind {
+	switch kind {
+	case account.AuthProviderGoogle:
+		return accountv1.AuthProviderKind_AUTH_PROVIDER_KIND_GOOGLE
+	case account.AuthProviderPassword:
+		return accountv1.AuthProviderKind_AUTH_PROVIDER_KIND_PASSWORD
+	default:
+		return accountv1.AuthProviderKind_AUTH_PROVIDER_KIND_UNSPECIFIED
+	}
+}
+
+func formatTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.UTC().Format(time.RFC3339)
 }

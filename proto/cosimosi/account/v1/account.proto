@@ -2,14 +2,27 @@ syntax = "proto3";
 
 package cosimosi.account.v1;
 
-// AccountService owns the per-user account preference contract. Today it carries exactly one
-// preference: the chosen emotion-palette id.
+// AccountService owns the authenticated user's profile, provider-linkage, invite-link, and
+// presentation-preference contract.
 //
-// Structural defense: the write's ONLY field is palette_id. There is no mood, color, coordinate,
-// memory id, position, or strength field anywhere in this file — so a preference write has no
-// field in which to reach the meaning layer. The palette is swappable presentation; a memory's
-// emotion and its position/strength are not, and the shape of this contract is what guarantees it.
+// Structural defense: no request can name a user id, and the writable profile surface is exactly
+// nickname, timezone, and locale. No mood, coordinate, memory id, position, or strength can cross
+// this boundary.
 service AccountService {
+  // Read the caller's profile. An absent profile message means the account is not provisioned.
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Replace the caller's complete editable profile surface.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  // Read the caller's currently linked authentication methods.
+  rpc ListAuthProviders(ListAuthProvidersRequest) returns (ListAuthProvidersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Derive a fresh signed invite capability without storing it.
+  rpc GetInviteLink(GetInviteLinkRequest) returns (GetInviteLinkResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
   // NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).
   rpc GetPalettePreference(GetPalettePreferenceRequest) returns (PalettePreference) {
@@ -18,6 +31,54 @@ service AccountService {
   // Store the caller's palette id. Accepts only an id known to the first-party registry; an
   // unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
   rpc SetPalettePreference(SetPalettePreferenceRequest) returns (PalettePreference);
+}
+
+message GetProfileRequest {}
+
+message GetProfileResponse {
+  Profile profile = 1;
+}
+
+message Profile {
+  string nickname = 1;
+  string timezone = 2;
+  string locale = 3;
+  string email = 4;
+  string created_at = 5;
+}
+
+message UpdateProfileRequest {
+  string nickname = 1;
+  string timezone = 2;
+  string locale = 3;
+}
+
+message UpdateProfileResponse {
+  Profile profile = 1;
+}
+
+message ListAuthProvidersRequest {}
+
+message ListAuthProvidersResponse {
+  repeated LinkedAuthProvider providers = 1;
+}
+
+message LinkedAuthProvider {
+  AuthProviderKind kind = 1;
+  string linked_at = 2;
+}
+
+enum AuthProviderKind {
+  AUTH_PROVIDER_KIND_UNSPECIFIED = 0;
+  AUTH_PROVIDER_KIND_GOOGLE = 1;
+  AUTH_PROVIDER_KIND_PASSWORD = 2;
+}
+
+message GetInviteLinkRequest {}
+
+message GetInviteLinkResponse {
+  string token = 1;
+  string expires_at = 2;
 }
 
 // Caller = the authenticated user (scope from the auth context); no request fields.

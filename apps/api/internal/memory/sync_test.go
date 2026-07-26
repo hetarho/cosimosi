@@ -14,6 +14,59 @@ func fixtureToday() time.Time {
 	return time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 }
 
+type fixedUserZone struct {
+	location *time.Location
+}
+
+func (f fixedUserZone) ZoneFor(context.Context, platform.UserScope) (*time.Location, error) {
+	return f.location, nil
+}
+
+func TestRealClockDayBoundariesUseTheUsersZoneAtAllFourSites(t *testing.T) {
+	t.Parallel()
+	seoul, err := time.LoadLocation("Asia/Seoul")
+	if err != nil {
+		t.Fatalf("LoadLocation failed: %v", err)
+	}
+	now := time.Date(2026, 7, 1, 15, 0, 0, 0, time.UTC)
+	seoulToday := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+
+	launchFixture := newFixture(t)
+	launchFixture.service.now = func() time.Time { return now }
+	launchFixture.service.userZone = fixedUserZone{location: seoul}
+	if _, err := launchFixture.service.PersistEncoded(context.Background(), testScope(t), "body", seoulToday, confirmedFixture()); err != nil {
+		t.Fatalf("launch rejected the user's current day: %v", err)
+	}
+
+	statusFixture := newFixture(t)
+	statusFixture.service.now = func() time.Time { return now }
+	statusFixture.service.userZone = fixedUserZone{location: seoul}
+	status, err := statusFixture.service.SyncStatus(context.Background(), testScope(t))
+	if err != nil || !status.Today.Equal(seoulToday) {
+		t.Fatalf("SyncStatus = %#v, %v; want Seoul today %v", status, err, seoulToday)
+	}
+	synced, err := statusFixture.service.SyncToToday(context.Background(), testScope(t))
+	if err != nil || !synced.Current.Equal(seoulToday) {
+		t.Fatalf("SyncToToday = %#v, %v; want Seoul today %v", synced, err, seoulToday)
+	}
+
+	signalFixture := newFixture(t)
+	signalFixture.service.now = func() time.Time { return now }
+	signalFixture.service.userZone = fixedUserZone{location: seoul}
+	signalToday, err := signalFixture.service.signalUniverseTime(context.Background(), testScope(t))
+	if err != nil || !signalToday.Equal(seoulToday) {
+		t.Fatalf("signalUniverseTime = %v, %v; want Seoul today %v", signalToday, err, seoulToday)
+	}
+}
+
+func TestUTCUserZoneIsTheDefaultBinding(t *testing.T) {
+	t.Parallel()
+	location, err := (UTCUserZone{}).ZoneFor(context.Background(), testScope(t))
+	if err != nil || location != time.UTC {
+		t.Fatalf("UTCUserZone = %v, %v", location, err)
+	}
+}
+
 func TestSyncToTodayAdvancesClockAndReturnsInterval(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)

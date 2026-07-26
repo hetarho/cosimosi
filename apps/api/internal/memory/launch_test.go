@@ -724,9 +724,9 @@ func TestPersistEncodedRejectsInvalidConfirmedSplit(t *testing.T) {
 func TestPersistEncodedRejectsFutureDatedDiary(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	// Fixture "now" is 2026-07-02; +1 day of timezone slack allows 2026-07-03,
-	// so 2026-07-04 must be rejected before it can poison the monotonic clock.
-	future := time.Date(2026, 7, 4, 0, 0, 0, 0, time.UTC)
+	// Fixture "now" is 2026-07-02 in the default UTC zone. The former whole-day offset
+	// compensation is gone, so the next calendar day must be refused.
+	future := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
 	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", future, confirmedFixture())
 	if !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("future date err = %v, want ErrEncodeInputRequired", err)
@@ -735,9 +735,9 @@ func TestPersistEncodedRejectsFutureDatedDiary(t *testing.T) {
 		t.Fatal("a future-dated launch must be rejected before the transaction")
 	}
 
-	allowed := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
+	allowed := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 	if _, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", allowed, confirmedFixture()); err != nil {
-		t.Fatalf("date within timezone slack must launch, got: %v", err)
+		t.Fatalf("the user's current calendar date must launch, got: %v", err)
 	}
 }
 

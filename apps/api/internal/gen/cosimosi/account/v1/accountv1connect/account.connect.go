@@ -33,6 +33,18 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// AccountServiceGetProfileProcedure is the fully-qualified name of the AccountService's GetProfile
+	// RPC.
+	AccountServiceGetProfileProcedure = "/cosimosi.account.v1.AccountService/GetProfile"
+	// AccountServiceUpdateProfileProcedure is the fully-qualified name of the AccountService's
+	// UpdateProfile RPC.
+	AccountServiceUpdateProfileProcedure = "/cosimosi.account.v1.AccountService/UpdateProfile"
+	// AccountServiceListAuthProvidersProcedure is the fully-qualified name of the AccountService's
+	// ListAuthProviders RPC.
+	AccountServiceListAuthProvidersProcedure = "/cosimosi.account.v1.AccountService/ListAuthProviders"
+	// AccountServiceGetInviteLinkProcedure is the fully-qualified name of the AccountService's
+	// GetInviteLink RPC.
+	AccountServiceGetInviteLinkProcedure = "/cosimosi.account.v1.AccountService/GetInviteLink"
 	// AccountServiceGetPalettePreferenceProcedure is the fully-qualified name of the AccountService's
 	// GetPalettePreference RPC.
 	AccountServiceGetPalettePreferenceProcedure = "/cosimosi.account.v1.AccountService/GetPalettePreference"
@@ -43,6 +55,14 @@ const (
 
 // AccountServiceClient is a client for the cosimosi.account.v1.AccountService service.
 type AccountServiceClient interface {
+	// Read the caller's profile. An absent profile message means the account is not provisioned.
+	GetProfile(context.Context, *connect.Request[v1.GetProfileRequest]) (*connect.Response[v1.GetProfileResponse], error)
+	// Replace the caller's complete editable profile surface.
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	// Read the caller's currently linked authentication methods.
+	ListAuthProviders(context.Context, *connect.Request[v1.ListAuthProvidersRequest]) (*connect.Response[v1.ListAuthProvidersResponse], error)
+	// Derive a fresh signed invite capability without storing it.
+	GetInviteLink(context.Context, *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error)
 	// Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
 	// NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).
 	GetPalettePreference(context.Context, *connect.Request[v1.GetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
@@ -62,6 +82,33 @@ func NewAccountServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	accountServiceMethods := v1.File_cosimosi_account_v1_account_proto.Services().ByName("AccountService").Methods()
 	return &accountServiceClient{
+		getProfile: connect.NewClient[v1.GetProfileRequest, v1.GetProfileResponse](
+			httpClient,
+			baseURL+AccountServiceGetProfileProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("GetProfile")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
+			httpClient,
+			baseURL+AccountServiceUpdateProfileProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("UpdateProfile")),
+			connect.WithClientOptions(opts...),
+		),
+		listAuthProviders: connect.NewClient[v1.ListAuthProvidersRequest, v1.ListAuthProvidersResponse](
+			httpClient,
+			baseURL+AccountServiceListAuthProvidersProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("ListAuthProviders")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getInviteLink: connect.NewClient[v1.GetInviteLinkRequest, v1.GetInviteLinkResponse](
+			httpClient,
+			baseURL+AccountServiceGetInviteLinkProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("GetInviteLink")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getPalettePreference: connect.NewClient[v1.GetPalettePreferenceRequest, v1.PalettePreference](
 			httpClient,
 			baseURL+AccountServiceGetPalettePreferenceProcedure,
@@ -80,8 +127,32 @@ func NewAccountServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // accountServiceClient implements AccountServiceClient.
 type accountServiceClient struct {
+	getProfile           *connect.Client[v1.GetProfileRequest, v1.GetProfileResponse]
+	updateProfile        *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	listAuthProviders    *connect.Client[v1.ListAuthProvidersRequest, v1.ListAuthProvidersResponse]
+	getInviteLink        *connect.Client[v1.GetInviteLinkRequest, v1.GetInviteLinkResponse]
 	getPalettePreference *connect.Client[v1.GetPalettePreferenceRequest, v1.PalettePreference]
 	setPalettePreference *connect.Client[v1.SetPalettePreferenceRequest, v1.PalettePreference]
+}
+
+// GetProfile calls cosimosi.account.v1.AccountService.GetProfile.
+func (c *accountServiceClient) GetProfile(ctx context.Context, req *connect.Request[v1.GetProfileRequest]) (*connect.Response[v1.GetProfileResponse], error) {
+	return c.getProfile.CallUnary(ctx, req)
+}
+
+// UpdateProfile calls cosimosi.account.v1.AccountService.UpdateProfile.
+func (c *accountServiceClient) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return c.updateProfile.CallUnary(ctx, req)
+}
+
+// ListAuthProviders calls cosimosi.account.v1.AccountService.ListAuthProviders.
+func (c *accountServiceClient) ListAuthProviders(ctx context.Context, req *connect.Request[v1.ListAuthProvidersRequest]) (*connect.Response[v1.ListAuthProvidersResponse], error) {
+	return c.listAuthProviders.CallUnary(ctx, req)
+}
+
+// GetInviteLink calls cosimosi.account.v1.AccountService.GetInviteLink.
+func (c *accountServiceClient) GetInviteLink(ctx context.Context, req *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error) {
+	return c.getInviteLink.CallUnary(ctx, req)
 }
 
 // GetPalettePreference calls cosimosi.account.v1.AccountService.GetPalettePreference.
@@ -96,6 +167,14 @@ func (c *accountServiceClient) SetPalettePreference(ctx context.Context, req *co
 
 // AccountServiceHandler is an implementation of the cosimosi.account.v1.AccountService service.
 type AccountServiceHandler interface {
+	// Read the caller's profile. An absent profile message means the account is not provisioned.
+	GetProfile(context.Context, *connect.Request[v1.GetProfileRequest]) (*connect.Response[v1.GetProfileResponse], error)
+	// Replace the caller's complete editable profile surface.
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	// Read the caller's currently linked authentication methods.
+	ListAuthProviders(context.Context, *connect.Request[v1.ListAuthProvidersRequest]) (*connect.Response[v1.ListAuthProvidersResponse], error)
+	// Derive a fresh signed invite capability without storing it.
+	GetInviteLink(context.Context, *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error)
 	// Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
 	// NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).
 	GetPalettePreference(context.Context, *connect.Request[v1.GetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
@@ -111,6 +190,33 @@ type AccountServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	accountServiceMethods := v1.File_cosimosi_account_v1_account_proto.Services().ByName("AccountService").Methods()
+	accountServiceGetProfileHandler := connect.NewUnaryHandler(
+		AccountServiceGetProfileProcedure,
+		svc.GetProfile,
+		connect.WithSchema(accountServiceMethods.ByName("GetProfile")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountServiceUpdateProfileHandler := connect.NewUnaryHandler(
+		AccountServiceUpdateProfileProcedure,
+		svc.UpdateProfile,
+		connect.WithSchema(accountServiceMethods.ByName("UpdateProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountServiceListAuthProvidersHandler := connect.NewUnaryHandler(
+		AccountServiceListAuthProvidersProcedure,
+		svc.ListAuthProviders,
+		connect.WithSchema(accountServiceMethods.ByName("ListAuthProviders")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountServiceGetInviteLinkHandler := connect.NewUnaryHandler(
+		AccountServiceGetInviteLinkProcedure,
+		svc.GetInviteLink,
+		connect.WithSchema(accountServiceMethods.ByName("GetInviteLink")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	accountServiceGetPalettePreferenceHandler := connect.NewUnaryHandler(
 		AccountServiceGetPalettePreferenceProcedure,
 		svc.GetPalettePreference,
@@ -126,6 +232,14 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 	)
 	return "/cosimosi.account.v1.AccountService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case AccountServiceGetProfileProcedure:
+			accountServiceGetProfileHandler.ServeHTTP(w, r)
+		case AccountServiceUpdateProfileProcedure:
+			accountServiceUpdateProfileHandler.ServeHTTP(w, r)
+		case AccountServiceListAuthProvidersProcedure:
+			accountServiceListAuthProvidersHandler.ServeHTTP(w, r)
+		case AccountServiceGetInviteLinkProcedure:
+			accountServiceGetInviteLinkHandler.ServeHTTP(w, r)
 		case AccountServiceGetPalettePreferenceProcedure:
 			accountServiceGetPalettePreferenceHandler.ServeHTTP(w, r)
 		case AccountServiceSetPalettePreferenceProcedure:
@@ -138,6 +252,22 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 
 // UnimplementedAccountServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAccountServiceHandler struct{}
+
+func (UnimplementedAccountServiceHandler) GetProfile(context.Context, *connect.Request[v1.GetProfileRequest]) (*connect.Response[v1.GetProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.GetProfile is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.UpdateProfile is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) ListAuthProviders(context.Context, *connect.Request[v1.ListAuthProvidersRequest]) (*connect.Response[v1.ListAuthProvidersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.ListAuthProviders is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) GetInviteLink(context.Context, *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.GetInviteLink is not implemented"))
+}
 
 func (UnimplementedAccountServiceHandler) GetPalettePreference(context.Context, *connect.Request[v1.GetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.GetPalettePreference is not implemented"))

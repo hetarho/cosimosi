@@ -29,6 +29,14 @@ supabase_auth:
   # Rate-limit forced JWKS refreshes after key misses.
   jwks_miss_refresh_interval_ms: 60000
 
+account:
+  # Profile nicknames are trimmed and measured in Unicode code points, not bytes.
+  nickname_min_length: 2
+  # Fits the /me field and future compact list rows without truncation.
+  nickname_max_length: 24
+  # Stateless invite capabilities expire this many days after their signed issued-at.
+  invite_link_ttl_days: 7
+
 rendering:
   # Active universe background skin (preset key in @cosimosi/3d-renderer UNIVERSE_SKINS:
   # aurora | ember | void | dawn | emotion). Build-time selection; re-skin by changing this.

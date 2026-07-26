@@ -17,6 +17,18 @@ This is the presentation-side complement to server/RPC user scoping. It does not
 memories or records. It prevents an already-loaded A snapshot, draft, target, balance, release group,
 or action from appearing or firing under B's credentials.
 
+## Supabase and product-account split
+
+Supabase Auth remains authoritative for credentials, email, email verification, and current provider membership.
+The promoted `internal/platform/supabase` GoTrue Admin adapter exposes those directory facts as platform-owned DTOs;
+it imports no product context.
+
+The product-owned `users` row adds only nickname, IANA timezone, shipped locale, creation time, and the withdrawal
+marker. It deliberately has no email column. `auth_providers` records the first product-observed linkage timestamp,
+while directory identities remain membership truth. `platform.UserIdentity` and the authenticated
+`platform.UserScope` still carry only the Supabase subject, so callers cannot inject profile or directory fields
+through the auth boundary.
+
 ## Reset registry
 
 Every stateful domain package owns one public reset seam for its user-scoped singletons. The app aggregator calls those

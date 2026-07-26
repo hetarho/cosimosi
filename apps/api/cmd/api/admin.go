@@ -10,7 +10,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/cosimosi/api/internal/admin"
-	"github.com/cosimosi/api/internal/admin/directory"
 	adminpg "github.com/cosimosi/api/internal/admin/pg"
 	adminrpc "github.com/cosimosi/api/internal/admin/rpc"
 	"github.com/cosimosi/api/internal/ai"
@@ -18,6 +17,7 @@ import (
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/secretbox"
+	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
 )
@@ -87,17 +87,48 @@ func adminServiceOption(deps adminDeps) (platform.HandlerOption, error) {
 	}), nil
 }
 
-// newAccountDirectory selects the Supabase Auth Admin API adapter when a service-role key is
-// configured, else the keyless fake (an empty dev user list rather than a hard failure).
-func newAccountDirectory() admin.AccountDirectory {
+type accountDirectorySource interface {
+	ListUsers(ctx context.Context, page int, pageSize int, query string) ([]platformsupabase.Account, bool, error)
+	EmailFor(ctx context.Context, userID string) (string, error)
+	EmailVerifiedAt(ctx context.Context, userID string) (time.Time, error)
+	Identities(ctx context.Context, userID string) ([]string, error)
+}
+
+type adminAccountDirectory struct {
+	source accountDirectorySource
+}
+
+func (a adminAccountDirectory) ListUsers(ctx context.Context, page int, pageSize int, query string) ([]admin.DirectoryAccount, bool, error) {
+	accounts, hasMore, err := a.source.ListUsers(ctx, page, pageSize, query)
+	if err != nil {
+		return nil, false, err
+	}
+	result := make([]admin.DirectoryAccount, 0, len(accounts))
+	for _, account := range accounts {
+		result = append(result, admin.DirectoryAccount{
+			UserID:   account.UserID,
+			Email:    account.Email,
+			SignupAt: account.SignupAt,
+		})
+	}
+	return result, hasMore, nil
+}
+
+func (a adminAccountDirectory) EmailFor(ctx context.Context, userID string) (string, error) {
+	return a.source.EmailFor(ctx, userID)
+}
+
+// newAccountDirectory selects one platform concrete shared by account and admin through their
+// separate composition-root adapters.
+func newAccountDirectory() accountDirectorySource {
 	baseURL := os.Getenv("SUPABASE_PROJECT_URL")
 	if baseURL == "" {
 		baseURL = os.Getenv("SUPABASE_URL")
 	}
-	if sb, ok := directory.NewSupabase(baseURL, os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), &http.Client{Timeout: 5 * time.Second}); ok {
+	if sb, ok := platformsupabase.NewDirectory(baseURL, os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), &http.Client{Timeout: 5 * time.Second}); ok {
 		return sb
 	}
-	return directory.Fake{}
+	return platformsupabase.Fake{}
 }
 
 // adminTwinkleGranter binds admin's stardust seam to the twinkle economy (별가루 증정): balance read

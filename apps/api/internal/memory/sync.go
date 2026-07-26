@@ -40,10 +40,10 @@ func (s *Service) SyncToToday(ctx context.Context, scope platform.UserScope) (Sy
 	return result, nil
 }
 
-// SyncStatus is the server-authoritative sync-status read ([R1a], A1): the UTC "today" a
+// SyncStatus is the server-authoritative sync-status read ([R1a], A1): the user's "today" a
 // recall/whole-diary recall would sync to and whether the clock currently lags it, computed from
 // the same guard baseline (clock, or the latest launched memory while the clock is unborn) and the
-// same UTC `now` the recall sync uses — so the client drives the consent decision from the server
+// same zoned `now` the recall sync uses — so the client drives the consent decision from the server
 // clock, never a local Date. A pure read: no lock, no advance, no Twinkle.
 func (s *Service) SyncStatus(ctx context.Context, scope platform.UserScope) (SyncStatus, error) {
 	if scope.UserID() == "" {
@@ -59,11 +59,14 @@ func (s *Service) SyncStatus(ctx context.Context, scope platform.UserScope) (Syn
 			return SyncStatus{}, err
 		}
 	}
-	today := utcDate(s.now())
+	today, err := s.userToday(ctx, scope)
+	if err != nil {
+		return SyncStatus{}, err
+	}
 	return SyncStatus{Today: today, NeedsSync: syncNeedsConsent(guard, today)}, nil
 }
 
-// SyncStatus is the read's result: the server's UTC "today" (the sync target) and whether a sync
+// SyncStatus is the read's result: the user's "today" (the sync target) and whether a sync
 // would advance the clock (needs consent, [R1a]).
 type SyncStatus struct {
 	Today     time.Time
@@ -110,7 +113,10 @@ func (s *Service) syncToToday(ctx context.Context, scope platform.UserScope, tx 
 	// forward, the caller must have consented — decided from the SERVER clock, never a client
 	// Date. Refused before any spend/effect, so nothing is charged and the client can safely
 	// re-consent (the recall's operation id stays reusable — no receipt was written).
-	today := utcDate(s.now())
+	today, err := s.userToday(ctx, scope)
+	if err != nil {
+		return SyncResult{}, err
+	}
 	if !consent && syncNeedsConsent(guard, today) {
 		return SyncResult{}, ErrSyncConsentRequired
 	}

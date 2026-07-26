@@ -154,9 +154,21 @@ export const twinkleRpcCachePolicies = [
   },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
-// The palette-preference read is GET-eligible but per-user — privately cacheable, never shared CDN
-// (§2.7/§4). The set is a plain POST and needs no entry (a non-idempotent write is passed through).
+// Account reads are GET-eligible but per-user — privately cacheable, never shared CDN (§2.7/§4).
+// Mutations remain plain POSTs and need no entries.
 export const accountRpcCachePolicies = [
+  {
+    method: AccountService.method.getProfile,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
+    method: AccountService.method.listAuthProviders,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
+    method: AccountService.method.getInviteLink,
+    policy: userScopedUnaryReadPolicy,
+  },
   {
     method: AccountService.method.getPalettePreference,
     policy: userScopedUnaryReadPolicy,

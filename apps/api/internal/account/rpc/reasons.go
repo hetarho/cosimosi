@@ -1,6 +1,11 @@
 package rpc
 
 const (
-	reasonUnknownPalette = "ACCOUNT_UNKNOWN_PALETTE"
-	reasonScopeRequired  = "ACCOUNT_SCOPE_REQUIRED"
+	reasonUnknownPalette        = "ACCOUNT_UNKNOWN_PALETTE"
+	reasonScopeRequired         = "ACCOUNT_SCOPE_REQUIRED"
+	reasonNotProvisioned        = "ACCOUNT_NOT_PROVISIONED"
+	reasonNicknameInvalid       = "ACCOUNT_NICKNAME_INVALID"
+	reasonTimezoneInvalid       = "ACCOUNT_TIMEZONE_INVALID"
+	reasonLocaleInvalid         = "ACCOUNT_LOCALE_INVALID"
+	reasonInviteLinkUnavailable = "ACCOUNT_INVITE_LINK_UNAVAILABLE"
 )

@@ -48,6 +48,13 @@ type AiProviderKey struct {
 	UpdatedAt       pgtype.Timestamptz
 }
 
+type AuthProvider struct {
+	UserID         string
+	Provider       string
+	ProviderUserID string
+	LinkedAt       pgtype.Timestamptz
+}
+
 type Diary struct {
 	ID        string
 	UserID    string
@@ -86,6 +93,16 @@ type EpisodicMemory struct {
 	RepresentationRevision   int64
 	PendingSemanticStage     pgtype.Int2
 	PendingSemanticRiseAt    pgtype.Date
+}
+
+type Invite struct {
+	ID            string
+	UserID        string
+	InviteeUserID string
+	Token         string
+	CreatedAt     pgtype.Timestamptz
+	BoundAt       pgtype.Timestamptz
+	RewardedAt    pgtype.Timestamptz
 }
 
 type Job struct {
@@ -221,4 +238,13 @@ type UniverseState struct {
 	CurrentUniverseTime pgtype.Date
 	UpdatedAt           pgtype.Timestamptz
 	ConsolidatedThrough pgtype.Date
+}
+
+type User struct {
+	UserID    string
+	Nickname  string
+	Timezone  string
+	Locale    string
+	CreatedAt pgtype.Timestamptz
+	DeletedAt pgtype.Timestamptz
 }

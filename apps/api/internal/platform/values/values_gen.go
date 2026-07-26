@@ -25,6 +25,13 @@ const (
 	SupabaseAuthJwksMissRefreshIntervalMs = 60000
 )
 
+// account
+const (
+	AccountNicknameMinLength = 2
+	AccountNicknameMaxLength = 24
+	AccountInviteLinkTtlDays = 7
+)
+
 // rendering
 const (
 	RenderingActiveSkin            = "emotion"

@@ -16,6 +16,11 @@ export const VALUES = {
     jwksCacheTtlMs: 600000,
     jwksMissRefreshIntervalMs: 60000,
   },
+  account: {
+    nicknameMinLength: 2,
+    nicknameMaxLength: 24,
+    inviteLinkTtlDays: 7,
+  },
   rendering: {
     activeSkin: "emotion",
     maxPixelRatio: 2,

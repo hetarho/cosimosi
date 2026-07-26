@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
@@ -23,6 +26,17 @@ describe('locale catalog', () => {
   it('ships English and Korean with English as the default', () => {
     expect([...supportedLocales]).toEqual(['en', 'ko'])
     expect(defaultLocale).toBe('en')
+  })
+
+  it('matches the canonical locale fixture mirrored by the backend', () => {
+    const fixturePath = fileURLToPath(new URL('../fixtures/locales.json', import.meta.url))
+    const backendFixturePath = fileURLToPath(
+      new URL('../../../apps/api/internal/account/testdata/locales.json', import.meta.url),
+    )
+    const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as string[]
+
+    expect([...fixture].sort()).toEqual([...supportedLocales].sort())
+    expect(readFileSync(backendFixturePath, 'utf8')).toEqual(readFileSync(fixturePath, 'utf8'))
   })
 })
 

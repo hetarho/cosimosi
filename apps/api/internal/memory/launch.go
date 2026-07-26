@@ -46,11 +46,13 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 	if body == "" || diaryDate.IsZero() {
 		return LaunchResult{}, ErrEncodeInputRequired
 	}
-	// A diary records a lived day: a future-dated launch would advance the
-	// monotonic universe clock past real time and permanently past-date every
-	// later diary [I10], so it is rejected. One day of slack covers the maximum
-	// UTC offset (UTC+14) between the user's local date and the server's.
-	if latestAllowed := utcDate(s.now()).AddDate(0, 0, 1); diaryDate.After(latestAllowed) {
+	// A future-dated launch would advance the monotonic universe clock past real time and
+	// permanently past-date later diaries [I10], so the user's profile zone defines today.
+	today, err := s.userToday(ctx, scope)
+	if err != nil {
+		return LaunchResult{}, err
+	}
+	if diaryDate.After(today) {
 		return LaunchResult{}, fmt.Errorf("%w: diary date %s is in the future",
 			ErrEncodeInputRequired, diaryDate.Format(time.DateOnly))
 	}
@@ -59,7 +61,7 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 	}
 
 	var result LaunchResult
-	err := s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
+	err = s.launches.InLaunchTx(ctx, func(tx LaunchTx) error {
 		// Serialize this user's launches for the whole transaction before the
 		// guard read. The advisory lock covers the birth window a locked clock
 		// read cannot — an unborn clock has no row to FOR UPDATE, so without it
@@ -321,4 +323,20 @@ func neuronKey(name string, neuronType NeuronType) string {
 func utcDate(value time.Time) time.Time {
 	utc := value.UTC()
 	return time.Date(utc.Year(), utc.Month(), utc.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func dateInLocation(value time.Time, location *time.Location) time.Time {
+	if location == nil {
+		location = time.UTC
+	}
+	local := value.In(location)
+	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func (s *Service) userToday(ctx context.Context, scope platform.UserScope) (time.Time, error) {
+	location, err := s.userZone.ZoneFor(ctx, scope)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return dateInLocation(s.now(), location), nil
 }

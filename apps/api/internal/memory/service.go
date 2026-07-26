@@ -55,6 +55,7 @@ type Service struct {
 	diaries         DiaryReader
 	releases        ReleaseRepo
 	sealSuggester   SealSuggester
+	userZone        UserZone
 	now             func() time.Time
 	newID           func() string
 	newSeed         func() int64
@@ -112,6 +113,9 @@ type ServiceDeps struct {
 	// repository or its AI seam — the domain executes, the AI only suggests.
 	Releases      ReleaseRepo
 	SealSuggester SealSuggester
+	// UserZone resolves the real-clock day boundary. Nil selects UTCUserZone, preserving the
+	// shipped behavior for minimal roots while production binds account's published zone.
+	UserZone UserZone
 	// Now/NewID/NewSeed are test seams; nil selects the real clock and
 	// crypto/rand-backed generators.
 	Now     func() time.Time
@@ -177,6 +181,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.SealSuggester == nil {
 		return nil, ErrSealSuggesterRequired
 	}
+	if deps.UserZone == nil {
+		deps.UserZone = UTCUserZone{}
+	}
 	service := &Service{
 		extractor:       deps.Extractor,
 		embedder:        deps.Embedder,
@@ -197,6 +204,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		diaries:         deps.Diaries,
 		releases:        deps.Releases,
 		sealSuggester:   deps.SealSuggester,
+		userZone:        deps.UserZone,
 		now:             deps.Now,
 		newID:           deps.NewID,
 		newSeed:         deps.NewSeed,

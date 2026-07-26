@@ -2,15 +2,213 @@
 // @generated from file cosimosi/account/v1/account.proto (package cosimosi.account.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file cosimosi/account/v1/account.proto.
  */
 export const file_cosimosi_account_v1_account: GenFile = /*@__PURE__*/
-  fileDesc("CiFjb3NpbW9zaS9hY2NvdW50L3YxL2FjY291bnQucHJvdG8SE2Nvc2ltb3NpLmFjY291bnQudjEiHQobR2V0UGFsZXR0ZVByZWZlcmVuY2VSZXF1ZXN0IjEKG1NldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdBISCgpwYWxldHRlX2lkGAEgASgJIicKEVBhbGV0dGVQcmVmZXJlbmNlEhIKCnBhbGV0dGVfaWQYASABKAky+QEKDkFjY291bnRTZXJ2aWNlEnUKFEdldFBhbGV0dGVQcmVmZXJlbmNlEjAuY29zaW1vc2kuYWNjb3VudC52MS5HZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QaJi5jb3NpbW9zaS5hY2NvdW50LnYxLlBhbGV0dGVQcmVmZXJlbmNlIgOQAgEScAoUU2V0UGFsZXR0ZVByZWZlcmVuY2USMC5jb3NpbW9zaS5hY2NvdW50LnYxLlNldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdBomLmNvc2ltb3NpLmFjY291bnQudjEuUGFsZXR0ZVByZWZlcmVuY2VC2QEKF2NvbS5jb3NpbW9zaS5hY2NvdW50LnYxQgxBY2NvdW50UHJvdG9QAVpCZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL2FjY291bnQvdjE7YWNjb3VudHYxogIDQ0FYqgITQ29zaW1vc2kuQWNjb3VudC5WMcoCE0Nvc2ltb3NpXEFjY291bnRcVjHiAh9Db3NpbW9zaVxBY2NvdW50XFYxXEdQQk1ldGFkYXRh6gIVQ29zaW1vc2k6OkFjY291bnQ6OlYxYgZwcm90bzM");
+  fileDesc("CiFjb3NpbW9zaS9hY2NvdW50L3YxL2FjY291bnQucHJvdG8SE2Nvc2ltb3NpLmFjY291bnQudjEiEwoRR2V0UHJvZmlsZVJlcXVlc3QiQwoSR2V0UHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiYAoHUHJvZmlsZRIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSDQoFZW1haWwYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCSJKChRVcGRhdGVQcm9maWxlUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkiRgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiGgoYTGlzdEF1dGhQcm92aWRlcnNSZXF1ZXN0IlcKGUxpc3RBdXRoUHJvdmlkZXJzUmVzcG9uc2USOgoJcHJvdmlkZXJzGAEgAygLMicuY29zaW1vc2kuYWNjb3VudC52MS5MaW5rZWRBdXRoUHJvdmlkZXIiXAoSTGlua2VkQXV0aFByb3ZpZGVyEjMKBGtpbmQYASABKA4yJS5jb3NpbW9zaS5hY2NvdW50LnYxLkF1dGhQcm92aWRlcktpbmQSEQoJbGlua2VkX2F0GAIgASgJIhYKFEdldEludml0ZUxpbmtSZXF1ZXN0IjoKFUdldEludml0ZUxpbmtSZXNwb25zZRINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJIh0KG0dldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdCIxChtTZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QSEgoKcGFsZXR0ZV9pZBgBIAEoCSInChFQYWxldHRlUHJlZmVyZW5jZRISCgpwYWxldHRlX2lkGAEgASgJKnYKEEF1dGhQcm92aWRlcktpbmQSIgoeQVVUSF9QUk9WSURFUl9LSU5EX1VOU1BFQ0lGSUVEEAASHQoZQVVUSF9QUk9WSURFUl9LSU5EX0dPT0dMRRABEh8KG0FVVEhfUFJPVklERVJfS0lORF9QQVNTV09SRBACMqsFCg5BY2NvdW50U2VydmljZRJiCgpHZXRQcm9maWxlEiYuY29zaW1vc2kuYWNjb3VudC52MS5HZXRQcm9maWxlUmVxdWVzdBonLmNvc2ltb3NpLmFjY291bnQudjEuR2V0UHJvZmlsZVJlc3BvbnNlIgOQAgESZgoNVXBkYXRlUHJvZmlsZRIpLmNvc2ltb3NpLmFjY291bnQudjEuVXBkYXRlUHJvZmlsZVJlcXVlc3QaKi5jb3NpbW9zaS5hY2NvdW50LnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZRJ3ChFMaXN0QXV0aFByb3ZpZGVycxItLmNvc2ltb3NpLmFjY291bnQudjEuTGlzdEF1dGhQcm92aWRlcnNSZXF1ZXN0Gi4uY29zaW1vc2kuYWNjb3VudC52MS5MaXN0QXV0aFByb3ZpZGVyc1Jlc3BvbnNlIgOQAgESawoNR2V0SW52aXRlTGluaxIpLmNvc2ltb3NpLmFjY291bnQudjEuR2V0SW52aXRlTGlua1JlcXVlc3QaKi5jb3NpbW9zaS5hY2NvdW50LnYxLkdldEludml0ZUxpbmtSZXNwb25zZSIDkAIBEnUKFEdldFBhbGV0dGVQcmVmZXJlbmNlEjAuY29zaW1vc2kuYWNjb3VudC52MS5HZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QaJi5jb3NpbW9zaS5hY2NvdW50LnYxLlBhbGV0dGVQcmVmZXJlbmNlIgOQAgEScAoUU2V0UGFsZXR0ZVByZWZlcmVuY2USMC5jb3NpbW9zaS5hY2NvdW50LnYxLlNldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdBomLmNvc2ltb3NpLmFjY291bnQudjEuUGFsZXR0ZVByZWZlcmVuY2VC2QEKF2NvbS5jb3NpbW9zaS5hY2NvdW50LnYxQgxBY2NvdW50UHJvdG9QAVpCZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL2FjY291bnQvdjE7YWNjb3VudHYxogIDQ0FYqgITQ29zaW1vc2kuQWNjb3VudC5WMcoCE0Nvc2ltb3NpXEFjY291bnRcVjHiAh9Db3NpbW9zaVxBY2NvdW50XFYxXEdQQk1ldGFkYXRh6gIVQ29zaW1vc2k6OkFjY291bnQ6OlYxYgZwcm90bzM");
+
+/**
+ * @generated from message cosimosi.account.v1.GetProfileRequest
+ */
+export type GetProfileRequest = Message<"cosimosi.account.v1.GetProfileRequest"> & {
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetProfileRequest.
+ * Use `create(GetProfileRequestSchema)` to create a new message.
+ */
+export const GetProfileRequestSchema: GenMessage<GetProfileRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 0);
+
+/**
+ * @generated from message cosimosi.account.v1.GetProfileResponse
+ */
+export type GetProfileResponse = Message<"cosimosi.account.v1.GetProfileResponse"> & {
+  /**
+   * @generated from field: cosimosi.account.v1.Profile profile = 1;
+   */
+  profile?: Profile | undefined;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetProfileResponse.
+ * Use `create(GetProfileResponseSchema)` to create a new message.
+ */
+export const GetProfileResponseSchema: GenMessage<GetProfileResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 1);
+
+/**
+ * @generated from message cosimosi.account.v1.Profile
+ */
+export type Profile = Message<"cosimosi.account.v1.Profile"> & {
+  /**
+   * @generated from field: string nickname = 1;
+   */
+  nickname: string;
+
+  /**
+   * @generated from field: string timezone = 2;
+   */
+  timezone: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+
+  /**
+   * @generated from field: string email = 4;
+   */
+  email: string;
+
+  /**
+   * @generated from field: string created_at = 5;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.Profile.
+ * Use `create(ProfileSchema)` to create a new message.
+ */
+export const ProfileSchema: GenMessage<Profile> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 2);
+
+/**
+ * @generated from message cosimosi.account.v1.UpdateProfileRequest
+ */
+export type UpdateProfileRequest = Message<"cosimosi.account.v1.UpdateProfileRequest"> & {
+  /**
+   * @generated from field: string nickname = 1;
+   */
+  nickname: string;
+
+  /**
+   * @generated from field: string timezone = 2;
+   */
+  timezone: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.UpdateProfileRequest.
+ * Use `create(UpdateProfileRequestSchema)` to create a new message.
+ */
+export const UpdateProfileRequestSchema: GenMessage<UpdateProfileRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 3);
+
+/**
+ * @generated from message cosimosi.account.v1.UpdateProfileResponse
+ */
+export type UpdateProfileResponse = Message<"cosimosi.account.v1.UpdateProfileResponse"> & {
+  /**
+   * @generated from field: cosimosi.account.v1.Profile profile = 1;
+   */
+  profile?: Profile | undefined;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.UpdateProfileResponse.
+ * Use `create(UpdateProfileResponseSchema)` to create a new message.
+ */
+export const UpdateProfileResponseSchema: GenMessage<UpdateProfileResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 4);
+
+/**
+ * @generated from message cosimosi.account.v1.ListAuthProvidersRequest
+ */
+export type ListAuthProvidersRequest = Message<"cosimosi.account.v1.ListAuthProvidersRequest"> & {
+};
+
+/**
+ * Describes the message cosimosi.account.v1.ListAuthProvidersRequest.
+ * Use `create(ListAuthProvidersRequestSchema)` to create a new message.
+ */
+export const ListAuthProvidersRequestSchema: GenMessage<ListAuthProvidersRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 5);
+
+/**
+ * @generated from message cosimosi.account.v1.ListAuthProvidersResponse
+ */
+export type ListAuthProvidersResponse = Message<"cosimosi.account.v1.ListAuthProvidersResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.account.v1.LinkedAuthProvider providers = 1;
+   */
+  providers: LinkedAuthProvider[];
+};
+
+/**
+ * Describes the message cosimosi.account.v1.ListAuthProvidersResponse.
+ * Use `create(ListAuthProvidersResponseSchema)` to create a new message.
+ */
+export const ListAuthProvidersResponseSchema: GenMessage<ListAuthProvidersResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 6);
+
+/**
+ * @generated from message cosimosi.account.v1.LinkedAuthProvider
+ */
+export type LinkedAuthProvider = Message<"cosimosi.account.v1.LinkedAuthProvider"> & {
+  /**
+   * @generated from field: cosimosi.account.v1.AuthProviderKind kind = 1;
+   */
+  kind: AuthProviderKind;
+
+  /**
+   * @generated from field: string linked_at = 2;
+   */
+  linkedAt: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.LinkedAuthProvider.
+ * Use `create(LinkedAuthProviderSchema)` to create a new message.
+ */
+export const LinkedAuthProviderSchema: GenMessage<LinkedAuthProvider> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 7);
+
+/**
+ * @generated from message cosimosi.account.v1.GetInviteLinkRequest
+ */
+export type GetInviteLinkRequest = Message<"cosimosi.account.v1.GetInviteLinkRequest"> & {
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetInviteLinkRequest.
+ * Use `create(GetInviteLinkRequestSchema)` to create a new message.
+ */
+export const GetInviteLinkRequestSchema: GenMessage<GetInviteLinkRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 8);
+
+/**
+ * @generated from message cosimosi.account.v1.GetInviteLinkResponse
+ */
+export type GetInviteLinkResponse = Message<"cosimosi.account.v1.GetInviteLinkResponse"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * @generated from field: string expires_at = 2;
+   */
+  expiresAt: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetInviteLinkResponse.
+ * Use `create(GetInviteLinkResponseSchema)` to create a new message.
+ */
+export const GetInviteLinkResponseSchema: GenMessage<GetInviteLinkResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 9);
 
 /**
  * Caller = the authenticated user (scope from the auth context); no request fields.
@@ -25,7 +223,7 @@ export type GetPalettePreferenceRequest = Message<"cosimosi.account.v1.GetPalett
  * Use `create(GetPalettePreferenceRequestSchema)` to create a new message.
  */
 export const GetPalettePreferenceRequestSchema: GenMessage<GetPalettePreferenceRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 0);
+  messageDesc(file_cosimosi_account_v1_account, 10);
 
 /**
  * palette_id is the entire writable surface.
@@ -44,7 +242,7 @@ export type SetPalettePreferenceRequest = Message<"cosimosi.account.v1.SetPalett
  * Use `create(SetPalettePreferenceRequestSchema)` to create a new message.
  */
 export const SetPalettePreferenceRequestSchema: GenMessage<SetPalettePreferenceRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 1);
+  messageDesc(file_cosimosi_account_v1_account, 11);
 
 /**
  * The resolved palette id (the default id when the user never set one).
@@ -63,20 +261,85 @@ export type PalettePreference = Message<"cosimosi.account.v1.PalettePreference">
  * Use `create(PalettePreferenceSchema)` to create a new message.
  */
 export const PalettePreferenceSchema: GenMessage<PalettePreference> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 2);
+  messageDesc(file_cosimosi_account_v1_account, 12);
 
 /**
- * AccountService owns the per-user account preference contract. Today it carries exactly one
- * preference: the chosen emotion-palette id.
+ * @generated from enum cosimosi.account.v1.AuthProviderKind
+ */
+export enum AuthProviderKind {
+  /**
+   * @generated from enum value: AUTH_PROVIDER_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: AUTH_PROVIDER_KIND_GOOGLE = 1;
+   */
+  GOOGLE = 1,
+
+  /**
+   * @generated from enum value: AUTH_PROVIDER_KIND_PASSWORD = 2;
+   */
+  PASSWORD = 2,
+}
+
+/**
+ * Describes the enum cosimosi.account.v1.AuthProviderKind.
+ */
+export const AuthProviderKindSchema: GenEnum<AuthProviderKind> = /*@__PURE__*/
+  enumDesc(file_cosimosi_account_v1_account, 0);
+
+/**
+ * AccountService owns the authenticated user's profile, provider-linkage, invite-link, and
+ * presentation-preference contract.
  *
- * Structural defense: the write's ONLY field is palette_id. There is no mood, color, coordinate,
- * memory id, position, or strength field anywhere in this file — so a preference write has no
- * field in which to reach the meaning layer. The palette is swappable presentation; a memory's
- * emotion and its position/strength are not, and the shape of this contract is what guarantees it.
+ * Structural defense: no request can name a user id, and the writable profile surface is exactly
+ * nickname, timezone, and locale. No mood, coordinate, memory id, position, or strength can cross
+ * this boundary.
  *
  * @generated from service cosimosi.account.v1.AccountService
  */
 export const AccountService: GenService<{
+  /**
+   * Read the caller's profile. An absent profile message means the account is not provisioned.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.GetProfile
+   */
+  getProfile: {
+    methodKind: "unary";
+    input: typeof GetProfileRequestSchema;
+    output: typeof GetProfileResponseSchema;
+  },
+  /**
+   * Replace the caller's complete editable profile surface.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.UpdateProfile
+   */
+  updateProfile: {
+    methodKind: "unary";
+    input: typeof UpdateProfileRequestSchema;
+    output: typeof UpdateProfileResponseSchema;
+  },
+  /**
+   * Read the caller's currently linked authentication methods.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.ListAuthProviders
+   */
+  listAuthProviders: {
+    methodKind: "unary";
+    input: typeof ListAuthProvidersRequestSchema;
+    output: typeof ListAuthProvidersResponseSchema;
+  },
+  /**
+   * Derive a fresh signed invite capability without storing it.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.GetInviteLink
+   */
+  getInviteLink: {
+    methodKind: "unary";
+    input: typeof GetInviteLinkRequestSchema;
+    output: typeof GetInviteLinkResponseSchema;
+  },
   /**
    * Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
    * NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).

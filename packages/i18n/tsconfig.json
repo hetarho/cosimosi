@@ -11,6 +11,7 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
+    "types": ["node"],
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     // The Paraglide output is typed JS (JSDoc) — read it for types, don't type-check it.

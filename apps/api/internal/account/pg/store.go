@@ -7,10 +7,13 @@ package pg
 import (
 	"context"
 	"errors"
+	"time"
 
 	dbgen "github.com/cosimosi/api/db/gen"
+	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -54,6 +57,76 @@ func (s Store) UpsertPalettePreference(ctx context.Context, scope platform.UserS
 	})
 }
 
+func (s Store) GetUserProfile(ctx context.Context, scope platform.UserScope) (account.Profile, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return account.Profile{}, false, err
+	}
+	row, err := s.queries.GetUserProfile(ctx, scope.UserID())
+	if errors.Is(err, pgx.ErrNoRows) {
+		return account.Profile{}, false, nil
+	}
+	if err != nil {
+		return account.Profile{}, false, err
+	}
+	return profileFromRow(row), true, nil
+}
+
+func (s Store) UpdateUserProfile(ctx context.Context, scope platform.UserScope, input account.UpdateProfileInput) (account.Profile, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return account.Profile{}, false, err
+	}
+	row, err := s.queries.UpdateUserProfile(ctx, dbgen.UpdateUserProfileParams{
+		Nickname: input.Nickname,
+		Timezone: input.Timezone,
+		Locale:   input.Locale,
+		UserID:   scope.UserID(),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return account.Profile{}, false, nil
+	}
+	if err != nil {
+		return account.Profile{}, false, err
+	}
+	return profileFromRow(row), true, nil
+}
+
+func (s Store) ListAuthProviders(ctx context.Context, scope platform.UserScope) ([]account.AuthProvider, error) {
+	if err := s.ready(scope); err != nil {
+		return nil, err
+	}
+	rows, err := s.queries.ListAuthProviders(ctx, scope.UserID())
+	if err != nil {
+		return nil, err
+	}
+	providers := make([]account.AuthProvider, 0, len(rows))
+	for _, row := range rows {
+		providers = append(providers, account.AuthProvider{
+			Kind:           account.AuthProviderKind(row.Provider),
+			ProviderUserID: row.ProviderUserID,
+			LinkedAt:       timeValue(row.LinkedAt),
+		})
+	}
+	return providers, nil
+}
+
+func (s Store) RecordAuthProvider(ctx context.Context, scope platform.UserScope, kind account.AuthProviderKind, providerUserID string) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	return s.queries.RecordAuthProvider(ctx, dbgen.RecordAuthProviderParams{
+		UserID:         scope.UserID(),
+		Provider:       string(kind),
+		ProviderUserID: providerUserID,
+	})
+}
+
+func (s Store) CountRewardedInvitesByInviter(ctx context.Context, scope platform.UserScope) (int64, error) {
+	if err := s.ready(scope); err != nil {
+		return 0, err
+	}
+	return s.queries.CountRewardedInvitesByInviter(ctx, scope.UserID())
+}
+
 func (s Store) ready(scope platform.UserScope) error {
 	if scope.UserID() == "" {
 		return ErrUserScopeRequired
@@ -62,4 +135,30 @@ func (s Store) ready(scope platform.UserScope) error {
 		return ErrQueriesRequired
 	}
 	return nil
+}
+
+func profileFromRow(row dbgen.User) account.Profile {
+	return account.Profile{
+		UserID:    row.UserID,
+		Nickname:  row.Nickname,
+		Timezone:  row.Timezone,
+		Locale:    row.Locale,
+		CreatedAt: timeValue(row.CreatedAt),
+		DeletedAt: timePtr(row.DeletedAt),
+	}
+}
+
+func timeValue(value pgtype.Timestamptz) time.Time {
+	if !value.Valid {
+		return time.Time{}
+	}
+	return value.Time.UTC()
+}
+
+func timePtr(value pgtype.Timestamptz) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	normalized := value.Time.UTC()
+	return &normalized
 }

@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/observability"

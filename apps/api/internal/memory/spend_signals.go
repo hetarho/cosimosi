@@ -112,7 +112,10 @@ func (s *Service) signalUniverseTime(ctx context.Context, scope platform.UserSco
 			return time.Time{}, err
 		}
 	}
-	today := utcDate(s.now())
+	today, err := s.userToday(ctx, scope)
+	if err != nil {
+		return time.Time{}, err
+	}
 	if baseline != nil && baseline.After(today) {
 		return *baseline, nil
 	}
