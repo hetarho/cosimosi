@@ -58,6 +58,14 @@ service AdminService {
   // providers (DB override, applied without redeploy). No key here — keys are set per provider.
   rpc SetAIConfig(SetAIConfigRequest) returns (SetAIConfigResponse);
 
+  // The model ids a keyed provider currently serves for one capability — fetched live from the
+  // vendor (or the adapter's curated set when the vendor has no listing endpoint). Advisory input
+  // help for SetAIConfig, which stays free of model-list validation. The stored key is used
+  // server-side only; it never crosses this contract. Side-effect-free.
+  rpc ListProviderModels(ListProviderModelsRequest) returns (ListProviderModelsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   // Today's AI call usage against the metering caps (read-only; process-local snapshot).
   rpc GetAIUsage(GetAIUsageRequest) returns (GetAIUsageResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -214,6 +222,20 @@ message SetAIConfigRequest {
 }
 message SetAIConfigResponse {
   CapabilitySelection selection = 1;
+}
+
+// One model id a provider currently serves. display_name is optional vendor sugar; id is what
+// SetAIConfigRequest.model takes.
+message ProviderModel {
+  string id = 1;
+  string display_name = 2;
+}
+message ListProviderModelsRequest {
+  string provider = 1;
+  AICapability capability = 2;
+}
+message ListProviderModelsResponse {
+  repeated ProviderModel models = 1;
 }
 
 message AIUsageCapability {

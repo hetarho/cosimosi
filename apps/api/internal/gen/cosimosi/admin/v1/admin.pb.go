@@ -1670,6 +1670,156 @@ func (x *SetAIConfigResponse) GetSelection() *CapabilitySelection {
 	return nil
 }
 
+// One model id a provider currently serves. display_name is optional vendor sugar; id is what
+// SetAIConfigRequest.model takes.
+type ProviderModel struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProviderModel) Reset() {
+	*x = ProviderModel{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProviderModel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProviderModel) ProtoMessage() {}
+
+func (x *ProviderModel) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProviderModel.ProtoReflect.Descriptor instead.
+func (*ProviderModel) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ProviderModel) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ProviderModel) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+type ListProviderModelsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	Capability    AICapability           `protobuf:"varint,2,opt,name=capability,proto3,enum=cosimosi.admin.v1.AICapability" json:"capability,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProviderModelsRequest) Reset() {
+	*x = ListProviderModelsRequest{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProviderModelsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProviderModelsRequest) ProtoMessage() {}
+
+func (x *ListProviderModelsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProviderModelsRequest.ProtoReflect.Descriptor instead.
+func (*ListProviderModelsRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ListProviderModelsRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ListProviderModelsRequest) GetCapability() AICapability {
+	if x != nil {
+		return x.Capability
+	}
+	return AICapability_AI_CAPABILITY_UNSPECIFIED
+}
+
+type ListProviderModelsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Models        []*ProviderModel       `protobuf:"bytes,1,rep,name=models,proto3" json:"models,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProviderModelsResponse) Reset() {
+	*x = ListProviderModelsResponse{}
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProviderModelsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProviderModelsResponse) ProtoMessage() {}
+
+func (x *ListProviderModelsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProviderModelsResponse.ProtoReflect.Descriptor instead.
+func (*ListProviderModelsResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ListProviderModelsResponse) GetModels() []*ProviderModel {
+	if x != nil {
+		return x.Models
+	}
+	return nil
+}
+
 type AIUsageCapability struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Capability    AICapability           `protobuf:"varint,1,opt,name=capability,proto3,enum=cosimosi.admin.v1.AICapability" json:"capability,omitempty"`
@@ -1681,7 +1831,7 @@ type AIUsageCapability struct {
 
 func (x *AIUsageCapability) Reset() {
 	*x = AIUsageCapability{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[29]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1693,7 +1843,7 @@ func (x *AIUsageCapability) String() string {
 func (*AIUsageCapability) ProtoMessage() {}
 
 func (x *AIUsageCapability) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[29]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1706,7 +1856,7 @@ func (x *AIUsageCapability) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AIUsageCapability.ProtoReflect.Descriptor instead.
 func (*AIUsageCapability) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{29}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *AIUsageCapability) GetCapability() AICapability {
@@ -1738,7 +1888,7 @@ type GetAIUsageRequest struct {
 
 func (x *GetAIUsageRequest) Reset() {
 	*x = GetAIUsageRequest{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[30]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1750,7 +1900,7 @@ func (x *GetAIUsageRequest) String() string {
 func (*GetAIUsageRequest) ProtoMessage() {}
 
 func (x *GetAIUsageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[30]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1763,7 +1913,7 @@ func (x *GetAIUsageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAIUsageRequest.ProtoReflect.Descriptor instead.
 func (*GetAIUsageRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{30}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{33}
 }
 
 type GetAIUsageResponse struct {
@@ -1778,7 +1928,7 @@ type GetAIUsageResponse struct {
 
 func (x *GetAIUsageResponse) Reset() {
 	*x = GetAIUsageResponse{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[31]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1790,7 +1940,7 @@ func (x *GetAIUsageResponse) String() string {
 func (*GetAIUsageResponse) ProtoMessage() {}
 
 func (x *GetAIUsageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[31]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1803,7 +1953,7 @@ func (x *GetAIUsageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAIUsageResponse.ProtoReflect.Descriptor instead.
 func (*GetAIUsageResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{31}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetAIUsageResponse) GetCapabilities() []*AIUsageCapability {
@@ -1842,7 +1992,7 @@ type GetJobHealthRequest struct {
 
 func (x *GetJobHealthRequest) Reset() {
 	*x = GetJobHealthRequest{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[32]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1854,7 +2004,7 @@ func (x *GetJobHealthRequest) String() string {
 func (*GetJobHealthRequest) ProtoMessage() {}
 
 func (x *GetJobHealthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[32]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1867,7 +2017,7 @@ func (x *GetJobHealthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobHealthRequest.ProtoReflect.Descriptor instead.
 func (*GetJobHealthRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{32}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{35}
 }
 
 type GetJobHealthResponse struct {
@@ -1883,7 +2033,7 @@ type GetJobHealthResponse struct {
 
 func (x *GetJobHealthResponse) Reset() {
 	*x = GetJobHealthResponse{}
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[33]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1895,7 +2045,7 @@ func (x *GetJobHealthResponse) String() string {
 func (*GetJobHealthResponse) ProtoMessage() {}
 
 func (x *GetJobHealthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[33]
+	mi := &file_cosimosi_admin_v1_admin_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1908,7 +2058,7 @@ func (x *GetJobHealthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobHealthResponse.ProtoReflect.Descriptor instead.
 func (*GetJobHealthResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{33}
+	return file_cosimosi_admin_v1_admin_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *GetJobHealthResponse) GetPending() int64 {
@@ -2067,7 +2217,17 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +
 	"\x05model\x18\x03 \x01(\tR\x05model\"[\n" +
 	"\x13SetAIConfigResponse\x12D\n" +
-	"\tselection\x18\x01 \x01(\v2&.cosimosi.admin.v1.CapabilitySelectionR\tselection\"\x92\x01\n" +
+	"\tselection\x18\x01 \x01(\v2&.cosimosi.admin.v1.CapabilitySelectionR\tselection\"B\n" +
+	"\rProviderModel\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"x\n" +
+	"\x19ListProviderModelsRequest\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12?\n" +
+	"\n" +
+	"capability\x18\x02 \x01(\x0e2\x1f.cosimosi.admin.v1.AICapabilityR\n" +
+	"capability\"V\n" +
+	"\x1aListProviderModelsResponse\x128\n" +
+	"\x06models\x18\x01 \x03(\v2 .cosimosi.admin.v1.ProviderModelR\x06models\"\x92\x01\n" +
 	"\x11AIUsageCapability\x12?\n" +
 	"\n" +
 	"capability\x18\x01 \x01(\x0e2\x1f.cosimosi.admin.v1.AICapabilityR\n" +
@@ -2091,7 +2251,7 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\fAICapability\x12\x1d\n" +
 	"\x19AI_CAPABILITY_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11AI_CAPABILITY_LLM\x10\x01\x12\x1b\n" +
-	"\x17AI_CAPABILITY_EMBEDDING\x10\x022\x90\v\n" +
+	"\x17AI_CAPABILITY_EMBEDDING\x10\x022\x88\f\n" +
 	"\fAdminService\x12d\n" +
 	"\fGetAdminSelf\x12&.cosimosi.admin.v1.GetAdminSelfRequest\x1a'.cosimosi.admin.v1.GetAdminSelfResponse\"\x03\x90\x02\x01\x12^\n" +
 	"\n" +
@@ -2106,7 +2266,8 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\x0eSetProviderKey\x12(.cosimosi.admin.v1.SetProviderKeyRequest\x1a).cosimosi.admin.v1.SetProviderKeyResponse\x12k\n" +
 	"\x10ClearProviderKey\x12*.cosimosi.admin.v1.ClearProviderKeyRequest\x1a+.cosimosi.admin.v1.ClearProviderKeyResponse\x12a\n" +
 	"\vGetAIConfig\x12%.cosimosi.admin.v1.GetAIConfigRequest\x1a&.cosimosi.admin.v1.GetAIConfigResponse\"\x03\x90\x02\x01\x12\\\n" +
-	"\vSetAIConfig\x12%.cosimosi.admin.v1.SetAIConfigRequest\x1a&.cosimosi.admin.v1.SetAIConfigResponse\x12^\n" +
+	"\vSetAIConfig\x12%.cosimosi.admin.v1.SetAIConfigRequest\x1a&.cosimosi.admin.v1.SetAIConfigResponse\x12v\n" +
+	"\x12ListProviderModels\x12,.cosimosi.admin.v1.ListProviderModelsRequest\x1a-.cosimosi.admin.v1.ListProviderModelsResponse\"\x03\x90\x02\x01\x12^\n" +
 	"\n" +
 	"GetAIUsage\x12$.cosimosi.admin.v1.GetAIUsageRequest\x1a%.cosimosi.admin.v1.GetAIUsageResponse\"\x03\x90\x02\x01\x12d\n" +
 	"\fGetJobHealth\x12&.cosimosi.admin.v1.GetJobHealthRequest\x1a'.cosimosi.admin.v1.GetJobHealthResponse\"\x03\x90\x02\x01B\xc9\x01\n" +
@@ -2126,43 +2287,46 @@ func file_cosimosi_admin_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_admin_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_cosimosi_admin_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_cosimosi_admin_v1_admin_proto_goTypes = []any{
-	(AICapability)(0),                 // 0: cosimosi.admin.v1.AICapability
-	(*GetAdminSelfRequest)(nil),       // 1: cosimosi.admin.v1.GetAdminSelfRequest
-	(*GetAdminSelfResponse)(nil),      // 2: cosimosi.admin.v1.GetAdminSelfResponse
-	(*AdminEntry)(nil),                // 3: cosimosi.admin.v1.AdminEntry
-	(*ListAdminsRequest)(nil),         // 4: cosimosi.admin.v1.ListAdminsRequest
-	(*ListAdminsResponse)(nil),        // 5: cosimosi.admin.v1.ListAdminsResponse
-	(*GrantAdminRequest)(nil),         // 6: cosimosi.admin.v1.GrantAdminRequest
-	(*GrantAdminResponse)(nil),        // 7: cosimosi.admin.v1.GrantAdminResponse
-	(*RevokeAdminRequest)(nil),        // 8: cosimosi.admin.v1.RevokeAdminRequest
-	(*RevokeAdminResponse)(nil),       // 9: cosimosi.admin.v1.RevokeAdminResponse
-	(*AdminUser)(nil),                 // 10: cosimosi.admin.v1.AdminUser
-	(*ListUsersRequest)(nil),          // 11: cosimosi.admin.v1.ListUsersRequest
-	(*ListUsersResponse)(nil),         // 12: cosimosi.admin.v1.ListUsersResponse
-	(*GrantStardustRequest)(nil),      // 13: cosimosi.admin.v1.GrantStardustRequest
-	(*GrantStardustResponse)(nil),     // 14: cosimosi.admin.v1.GrantStardustResponse
-	(*TwinkleGrant)(nil),              // 15: cosimosi.admin.v1.TwinkleGrant
-	(*ListTwinkleGrantsRequest)(nil),  // 16: cosimosi.admin.v1.ListTwinkleGrantsRequest
-	(*ListTwinkleGrantsResponse)(nil), // 17: cosimosi.admin.v1.ListTwinkleGrantsResponse
-	(*ProviderKey)(nil),               // 18: cosimosi.admin.v1.ProviderKey
-	(*ListProviderKeysRequest)(nil),   // 19: cosimosi.admin.v1.ListProviderKeysRequest
-	(*ListProviderKeysResponse)(nil),  // 20: cosimosi.admin.v1.ListProviderKeysResponse
-	(*SetProviderKeyRequest)(nil),     // 21: cosimosi.admin.v1.SetProviderKeyRequest
-	(*SetProviderKeyResponse)(nil),    // 22: cosimosi.admin.v1.SetProviderKeyResponse
-	(*ClearProviderKeyRequest)(nil),   // 23: cosimosi.admin.v1.ClearProviderKeyRequest
-	(*ClearProviderKeyResponse)(nil),  // 24: cosimosi.admin.v1.ClearProviderKeyResponse
-	(*CapabilitySelection)(nil),       // 25: cosimosi.admin.v1.CapabilitySelection
-	(*GetAIConfigRequest)(nil),        // 26: cosimosi.admin.v1.GetAIConfigRequest
-	(*GetAIConfigResponse)(nil),       // 27: cosimosi.admin.v1.GetAIConfigResponse
-	(*SetAIConfigRequest)(nil),        // 28: cosimosi.admin.v1.SetAIConfigRequest
-	(*SetAIConfigResponse)(nil),       // 29: cosimosi.admin.v1.SetAIConfigResponse
-	(*AIUsageCapability)(nil),         // 30: cosimosi.admin.v1.AIUsageCapability
-	(*GetAIUsageRequest)(nil),         // 31: cosimosi.admin.v1.GetAIUsageRequest
-	(*GetAIUsageResponse)(nil),        // 32: cosimosi.admin.v1.GetAIUsageResponse
-	(*GetJobHealthRequest)(nil),       // 33: cosimosi.admin.v1.GetJobHealthRequest
-	(*GetJobHealthResponse)(nil),      // 34: cosimosi.admin.v1.GetJobHealthResponse
+	(AICapability)(0),                  // 0: cosimosi.admin.v1.AICapability
+	(*GetAdminSelfRequest)(nil),        // 1: cosimosi.admin.v1.GetAdminSelfRequest
+	(*GetAdminSelfResponse)(nil),       // 2: cosimosi.admin.v1.GetAdminSelfResponse
+	(*AdminEntry)(nil),                 // 3: cosimosi.admin.v1.AdminEntry
+	(*ListAdminsRequest)(nil),          // 4: cosimosi.admin.v1.ListAdminsRequest
+	(*ListAdminsResponse)(nil),         // 5: cosimosi.admin.v1.ListAdminsResponse
+	(*GrantAdminRequest)(nil),          // 6: cosimosi.admin.v1.GrantAdminRequest
+	(*GrantAdminResponse)(nil),         // 7: cosimosi.admin.v1.GrantAdminResponse
+	(*RevokeAdminRequest)(nil),         // 8: cosimosi.admin.v1.RevokeAdminRequest
+	(*RevokeAdminResponse)(nil),        // 9: cosimosi.admin.v1.RevokeAdminResponse
+	(*AdminUser)(nil),                  // 10: cosimosi.admin.v1.AdminUser
+	(*ListUsersRequest)(nil),           // 11: cosimosi.admin.v1.ListUsersRequest
+	(*ListUsersResponse)(nil),          // 12: cosimosi.admin.v1.ListUsersResponse
+	(*GrantStardustRequest)(nil),       // 13: cosimosi.admin.v1.GrantStardustRequest
+	(*GrantStardustResponse)(nil),      // 14: cosimosi.admin.v1.GrantStardustResponse
+	(*TwinkleGrant)(nil),               // 15: cosimosi.admin.v1.TwinkleGrant
+	(*ListTwinkleGrantsRequest)(nil),   // 16: cosimosi.admin.v1.ListTwinkleGrantsRequest
+	(*ListTwinkleGrantsResponse)(nil),  // 17: cosimosi.admin.v1.ListTwinkleGrantsResponse
+	(*ProviderKey)(nil),                // 18: cosimosi.admin.v1.ProviderKey
+	(*ListProviderKeysRequest)(nil),    // 19: cosimosi.admin.v1.ListProviderKeysRequest
+	(*ListProviderKeysResponse)(nil),   // 20: cosimosi.admin.v1.ListProviderKeysResponse
+	(*SetProviderKeyRequest)(nil),      // 21: cosimosi.admin.v1.SetProviderKeyRequest
+	(*SetProviderKeyResponse)(nil),     // 22: cosimosi.admin.v1.SetProviderKeyResponse
+	(*ClearProviderKeyRequest)(nil),    // 23: cosimosi.admin.v1.ClearProviderKeyRequest
+	(*ClearProviderKeyResponse)(nil),   // 24: cosimosi.admin.v1.ClearProviderKeyResponse
+	(*CapabilitySelection)(nil),        // 25: cosimosi.admin.v1.CapabilitySelection
+	(*GetAIConfigRequest)(nil),         // 26: cosimosi.admin.v1.GetAIConfigRequest
+	(*GetAIConfigResponse)(nil),        // 27: cosimosi.admin.v1.GetAIConfigResponse
+	(*SetAIConfigRequest)(nil),         // 28: cosimosi.admin.v1.SetAIConfigRequest
+	(*SetAIConfigResponse)(nil),        // 29: cosimosi.admin.v1.SetAIConfigResponse
+	(*ProviderModel)(nil),              // 30: cosimosi.admin.v1.ProviderModel
+	(*ListProviderModelsRequest)(nil),  // 31: cosimosi.admin.v1.ListProviderModelsRequest
+	(*ListProviderModelsResponse)(nil), // 32: cosimosi.admin.v1.ListProviderModelsResponse
+	(*AIUsageCapability)(nil),          // 33: cosimosi.admin.v1.AIUsageCapability
+	(*GetAIUsageRequest)(nil),          // 34: cosimosi.admin.v1.GetAIUsageRequest
+	(*GetAIUsageResponse)(nil),         // 35: cosimosi.admin.v1.GetAIUsageResponse
+	(*GetJobHealthRequest)(nil),        // 36: cosimosi.admin.v1.GetJobHealthRequest
+	(*GetJobHealthResponse)(nil),       // 37: cosimosi.admin.v1.GetJobHealthResponse
 }
 var file_cosimosi_admin_v1_admin_proto_depIdxs = []int32{
 	3,  // 0: cosimosi.admin.v1.ListAdminsResponse.admins:type_name -> cosimosi.admin.v1.AdminEntry
@@ -2175,41 +2339,45 @@ var file_cosimosi_admin_v1_admin_proto_depIdxs = []int32{
 	25, // 7: cosimosi.admin.v1.GetAIConfigResponse.selections:type_name -> cosimosi.admin.v1.CapabilitySelection
 	0,  // 8: cosimosi.admin.v1.SetAIConfigRequest.capability:type_name -> cosimosi.admin.v1.AICapability
 	25, // 9: cosimosi.admin.v1.SetAIConfigResponse.selection:type_name -> cosimosi.admin.v1.CapabilitySelection
-	0,  // 10: cosimosi.admin.v1.AIUsageCapability.capability:type_name -> cosimosi.admin.v1.AICapability
-	30, // 11: cosimosi.admin.v1.GetAIUsageResponse.capabilities:type_name -> cosimosi.admin.v1.AIUsageCapability
-	1,  // 12: cosimosi.admin.v1.AdminService.GetAdminSelf:input_type -> cosimosi.admin.v1.GetAdminSelfRequest
-	4,  // 13: cosimosi.admin.v1.AdminService.ListAdmins:input_type -> cosimosi.admin.v1.ListAdminsRequest
-	6,  // 14: cosimosi.admin.v1.AdminService.GrantAdmin:input_type -> cosimosi.admin.v1.GrantAdminRequest
-	8,  // 15: cosimosi.admin.v1.AdminService.RevokeAdmin:input_type -> cosimosi.admin.v1.RevokeAdminRequest
-	11, // 16: cosimosi.admin.v1.AdminService.ListUsers:input_type -> cosimosi.admin.v1.ListUsersRequest
-	13, // 17: cosimosi.admin.v1.AdminService.GrantStardust:input_type -> cosimosi.admin.v1.GrantStardustRequest
-	16, // 18: cosimosi.admin.v1.AdminService.ListTwinkleGrants:input_type -> cosimosi.admin.v1.ListTwinkleGrantsRequest
-	19, // 19: cosimosi.admin.v1.AdminService.ListProviderKeys:input_type -> cosimosi.admin.v1.ListProviderKeysRequest
-	21, // 20: cosimosi.admin.v1.AdminService.SetProviderKey:input_type -> cosimosi.admin.v1.SetProviderKeyRequest
-	23, // 21: cosimosi.admin.v1.AdminService.ClearProviderKey:input_type -> cosimosi.admin.v1.ClearProviderKeyRequest
-	26, // 22: cosimosi.admin.v1.AdminService.GetAIConfig:input_type -> cosimosi.admin.v1.GetAIConfigRequest
-	28, // 23: cosimosi.admin.v1.AdminService.SetAIConfig:input_type -> cosimosi.admin.v1.SetAIConfigRequest
-	31, // 24: cosimosi.admin.v1.AdminService.GetAIUsage:input_type -> cosimosi.admin.v1.GetAIUsageRequest
-	33, // 25: cosimosi.admin.v1.AdminService.GetJobHealth:input_type -> cosimosi.admin.v1.GetJobHealthRequest
-	2,  // 26: cosimosi.admin.v1.AdminService.GetAdminSelf:output_type -> cosimosi.admin.v1.GetAdminSelfResponse
-	5,  // 27: cosimosi.admin.v1.AdminService.ListAdmins:output_type -> cosimosi.admin.v1.ListAdminsResponse
-	7,  // 28: cosimosi.admin.v1.AdminService.GrantAdmin:output_type -> cosimosi.admin.v1.GrantAdminResponse
-	9,  // 29: cosimosi.admin.v1.AdminService.RevokeAdmin:output_type -> cosimosi.admin.v1.RevokeAdminResponse
-	12, // 30: cosimosi.admin.v1.AdminService.ListUsers:output_type -> cosimosi.admin.v1.ListUsersResponse
-	14, // 31: cosimosi.admin.v1.AdminService.GrantStardust:output_type -> cosimosi.admin.v1.GrantStardustResponse
-	17, // 32: cosimosi.admin.v1.AdminService.ListTwinkleGrants:output_type -> cosimosi.admin.v1.ListTwinkleGrantsResponse
-	20, // 33: cosimosi.admin.v1.AdminService.ListProviderKeys:output_type -> cosimosi.admin.v1.ListProviderKeysResponse
-	22, // 34: cosimosi.admin.v1.AdminService.SetProviderKey:output_type -> cosimosi.admin.v1.SetProviderKeyResponse
-	24, // 35: cosimosi.admin.v1.AdminService.ClearProviderKey:output_type -> cosimosi.admin.v1.ClearProviderKeyResponse
-	27, // 36: cosimosi.admin.v1.AdminService.GetAIConfig:output_type -> cosimosi.admin.v1.GetAIConfigResponse
-	29, // 37: cosimosi.admin.v1.AdminService.SetAIConfig:output_type -> cosimosi.admin.v1.SetAIConfigResponse
-	32, // 38: cosimosi.admin.v1.AdminService.GetAIUsage:output_type -> cosimosi.admin.v1.GetAIUsageResponse
-	34, // 39: cosimosi.admin.v1.AdminService.GetJobHealth:output_type -> cosimosi.admin.v1.GetJobHealthResponse
-	26, // [26:40] is the sub-list for method output_type
-	12, // [12:26] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	0,  // 10: cosimosi.admin.v1.ListProviderModelsRequest.capability:type_name -> cosimosi.admin.v1.AICapability
+	30, // 11: cosimosi.admin.v1.ListProviderModelsResponse.models:type_name -> cosimosi.admin.v1.ProviderModel
+	0,  // 12: cosimosi.admin.v1.AIUsageCapability.capability:type_name -> cosimosi.admin.v1.AICapability
+	33, // 13: cosimosi.admin.v1.GetAIUsageResponse.capabilities:type_name -> cosimosi.admin.v1.AIUsageCapability
+	1,  // 14: cosimosi.admin.v1.AdminService.GetAdminSelf:input_type -> cosimosi.admin.v1.GetAdminSelfRequest
+	4,  // 15: cosimosi.admin.v1.AdminService.ListAdmins:input_type -> cosimosi.admin.v1.ListAdminsRequest
+	6,  // 16: cosimosi.admin.v1.AdminService.GrantAdmin:input_type -> cosimosi.admin.v1.GrantAdminRequest
+	8,  // 17: cosimosi.admin.v1.AdminService.RevokeAdmin:input_type -> cosimosi.admin.v1.RevokeAdminRequest
+	11, // 18: cosimosi.admin.v1.AdminService.ListUsers:input_type -> cosimosi.admin.v1.ListUsersRequest
+	13, // 19: cosimosi.admin.v1.AdminService.GrantStardust:input_type -> cosimosi.admin.v1.GrantStardustRequest
+	16, // 20: cosimosi.admin.v1.AdminService.ListTwinkleGrants:input_type -> cosimosi.admin.v1.ListTwinkleGrantsRequest
+	19, // 21: cosimosi.admin.v1.AdminService.ListProviderKeys:input_type -> cosimosi.admin.v1.ListProviderKeysRequest
+	21, // 22: cosimosi.admin.v1.AdminService.SetProviderKey:input_type -> cosimosi.admin.v1.SetProviderKeyRequest
+	23, // 23: cosimosi.admin.v1.AdminService.ClearProviderKey:input_type -> cosimosi.admin.v1.ClearProviderKeyRequest
+	26, // 24: cosimosi.admin.v1.AdminService.GetAIConfig:input_type -> cosimosi.admin.v1.GetAIConfigRequest
+	28, // 25: cosimosi.admin.v1.AdminService.SetAIConfig:input_type -> cosimosi.admin.v1.SetAIConfigRequest
+	31, // 26: cosimosi.admin.v1.AdminService.ListProviderModels:input_type -> cosimosi.admin.v1.ListProviderModelsRequest
+	34, // 27: cosimosi.admin.v1.AdminService.GetAIUsage:input_type -> cosimosi.admin.v1.GetAIUsageRequest
+	36, // 28: cosimosi.admin.v1.AdminService.GetJobHealth:input_type -> cosimosi.admin.v1.GetJobHealthRequest
+	2,  // 29: cosimosi.admin.v1.AdminService.GetAdminSelf:output_type -> cosimosi.admin.v1.GetAdminSelfResponse
+	5,  // 30: cosimosi.admin.v1.AdminService.ListAdmins:output_type -> cosimosi.admin.v1.ListAdminsResponse
+	7,  // 31: cosimosi.admin.v1.AdminService.GrantAdmin:output_type -> cosimosi.admin.v1.GrantAdminResponse
+	9,  // 32: cosimosi.admin.v1.AdminService.RevokeAdmin:output_type -> cosimosi.admin.v1.RevokeAdminResponse
+	12, // 33: cosimosi.admin.v1.AdminService.ListUsers:output_type -> cosimosi.admin.v1.ListUsersResponse
+	14, // 34: cosimosi.admin.v1.AdminService.GrantStardust:output_type -> cosimosi.admin.v1.GrantStardustResponse
+	17, // 35: cosimosi.admin.v1.AdminService.ListTwinkleGrants:output_type -> cosimosi.admin.v1.ListTwinkleGrantsResponse
+	20, // 36: cosimosi.admin.v1.AdminService.ListProviderKeys:output_type -> cosimosi.admin.v1.ListProviderKeysResponse
+	22, // 37: cosimosi.admin.v1.AdminService.SetProviderKey:output_type -> cosimosi.admin.v1.SetProviderKeyResponse
+	24, // 38: cosimosi.admin.v1.AdminService.ClearProviderKey:output_type -> cosimosi.admin.v1.ClearProviderKeyResponse
+	27, // 39: cosimosi.admin.v1.AdminService.GetAIConfig:output_type -> cosimosi.admin.v1.GetAIConfigResponse
+	29, // 40: cosimosi.admin.v1.AdminService.SetAIConfig:output_type -> cosimosi.admin.v1.SetAIConfigResponse
+	32, // 41: cosimosi.admin.v1.AdminService.ListProviderModels:output_type -> cosimosi.admin.v1.ListProviderModelsResponse
+	35, // 42: cosimosi.admin.v1.AdminService.GetAIUsage:output_type -> cosimosi.admin.v1.GetAIUsageResponse
+	37, // 43: cosimosi.admin.v1.AdminService.GetJobHealth:output_type -> cosimosi.admin.v1.GetJobHealthResponse
+	29, // [29:44] is the sub-list for method output_type
+	14, // [14:29] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_admin_v1_admin_proto_init() }
@@ -2223,7 +2391,7 @@ func file_cosimosi_admin_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_admin_v1_admin_proto_rawDesc), len(file_cosimosi_admin_v1_admin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   34,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

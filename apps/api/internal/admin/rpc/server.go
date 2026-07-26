@@ -205,6 +205,22 @@ func (s *Server) SetAIConfig(ctx context.Context, req *connect.Request[adminv1.S
 	return connect.NewResponse(&adminv1.SetAIConfigResponse{Selection: selectionToProto(selection)}), nil
 }
 
+func (s *Server) ListProviderModels(ctx context.Context, req *connect.Request[adminv1.ListProviderModelsRequest]) (*connect.Response[adminv1.ListProviderModelsResponse], error) {
+	capability, err := capabilityFromProto(req.Msg.GetCapability())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	models, err := s.service.ListProviderModels(ctx, capability, req.Msg.GetProvider())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	out := make([]*adminv1.ProviderModel, 0, len(models))
+	for _, m := range models {
+		out = append(out, &adminv1.ProviderModel{Id: m.ID, DisplayName: m.DisplayName})
+	}
+	return connect.NewResponse(&adminv1.ListProviderModelsResponse{Models: out}), nil
+}
+
 func (s *Server) GetAIUsage(ctx context.Context, _ *connect.Request[adminv1.GetAIUsageRequest]) (*connect.Response[adminv1.GetAIUsageResponse], error) {
 	usage, err := s.service.GetAIUsage(ctx)
 	if err != nil {
@@ -329,6 +345,8 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonProviderNotImplemented, err, nil)
 	case errors.Is(err, admin.ErrProviderKeyMissing):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonProviderKeyMissing, err, nil)
+	case errors.Is(err, admin.ErrModelListingUnavailable):
+		return apperr.Domain(connect.CodeUnavailable, reasonModelListingUnavailable, err, nil)
 	case errors.Is(err, secretbox.ErrDisabled):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonSecretboxDisabled, err, nil)
 	default:

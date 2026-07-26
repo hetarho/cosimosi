@@ -113,6 +113,13 @@ type ProviderKeyInfo struct {
 	UpdatedAt            time.Time
 }
 
+// ProviderModel is one model id a provider currently serves (the ModelCatalog port's row).
+// DisplayName is optional vendor sugar; ID is what a capability selection's model field takes.
+type ProviderModel struct {
+	ID          string
+	DisplayName string
+}
+
 // CapabilitySelection is what GetAIConfig returns per capability — the selected provider + model.
 // Source is where it comes from: "db", "env", or "unset".
 type CapabilitySelection struct {

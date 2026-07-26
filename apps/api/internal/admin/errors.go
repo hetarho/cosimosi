@@ -12,6 +12,7 @@ var (
 	ErrJobsRequired      = errors.New("admin service requires a job health reader")
 	ErrCipherRequired    = errors.New("admin service requires an API-key cipher")
 	ErrCatalogRequired   = errors.New("admin service requires an AI provider catalog")
+	ErrModelsRequired    = errors.New("admin service requires an AI model catalog")
 
 	// ErrUserIDRequired rejects an admin action with no target user id.
 	ErrUserIDRequired = errors.New("admin action requires a target user id")
@@ -39,4 +40,8 @@ var (
 	ErrProviderCapabilityMismatch = errors.New("AI provider does not support this capability")
 	// ErrProviderKeyMissing rejects selecting a provider that has no stored API key.
 	ErrProviderKeyMissing = errors.New("AI provider has no API key configured")
+	// ErrModelListingUnavailable reports that the vendor's live model listing could not be
+	// fetched (vendor outage, rejected key, unusable stored key). The listing is advisory —
+	// the console degrades to manual model entry; nothing else is affected.
+	ErrModelListingUnavailable = errors.New("AI provider model listing is unavailable")
 )

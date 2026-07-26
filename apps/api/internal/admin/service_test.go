@@ -180,6 +180,21 @@ func (fakeCatalog) SupportsEmbedding(p string) bool    { return p == "openai" }
 func (fakeCatalog) ImplementedLLM(p string) bool       { return p == "openai" || p == "anthropic" }
 func (fakeCatalog) ImplementedEmbedding(p string) bool { return p == "openai" }
 
+// fakeModels records the port call and answers a fixed list (or the configured error).
+type fakeModels struct {
+	models []ProviderModel
+	err    error
+	calls  []string
+}
+
+func (f *fakeModels) ListModels(_ context.Context, capability AICapability, provider string) ([]ProviderModel, error) {
+	f.calls = append(f.calls, string(capability)+"/"+provider)
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.models, nil
+}
+
 func newTestService(t *testing.T, store Store, deps func(*ServiceDeps)) *Service {
 	t.Helper()
 	d := ServiceDeps{
@@ -191,6 +206,7 @@ func newTestService(t *testing.T, store Store, deps func(*ServiceDeps)) *Service
 		Jobs:      fakeJobs{},
 		Cipher:    fakeCipher{},
 		Catalog:   fakeCatalog{},
+		Models:    &fakeModels{},
 		NewID:     func() string { return "id-1" },
 	}
 	if deps != nil {
@@ -441,5 +457,49 @@ func TestSetAIConfigRequiresSupportKeyAndImplementation(t *testing.T) {
 	}
 	if sel.Provider != "openai" || sel.Source != "db" {
 		t.Errorf("selection = %+v, want openai/db", sel)
+	}
+}
+
+// ListProviderModels runs the same eligibility chain as SetAIConfig before touching the port, and
+// the port error passes through untranslated (the rpc edge maps ErrModelListingUnavailable).
+func TestListProviderModelsGatesLikeSetAIConfigThenDelegates(t *testing.T) {
+	store := newFakeStore()
+	models := &fakeModels{models: []ProviderModel{{ID: "gpt-a"}, {ID: "gpt-b", DisplayName: "GPT B"}}}
+	svc := newTestService(t, store, func(d *ServiceDeps) { d.Models = models })
+	ctx := context.Background()
+
+	if _, err := svc.ListProviderModels(ctx, "video", "openai"); !errors.Is(err, ErrUnknownCapability) {
+		t.Fatalf("unknown-capability err = %v, want ErrUnknownCapability", err)
+	}
+	if _, err := svc.ListProviderModels(ctx, CapabilityLLM, "nope"); !errors.Is(err, ErrUnknownProvider) {
+		t.Fatalf("unknown-provider err = %v, want ErrUnknownProvider", err)
+	}
+	if _, err := svc.ListProviderModels(ctx, CapabilityEmbedding, "anthropic"); !errors.Is(err, ErrProviderCapabilityMismatch) {
+		t.Fatalf("embedding-on-anthropic err = %v, want ErrProviderCapabilityMismatch", err)
+	}
+	if _, err := svc.ListProviderModels(ctx, CapabilityLLM, "openai"); !errors.Is(err, ErrProviderKeyMissing) {
+		t.Fatalf("no-key err = %v, want ErrProviderKeyMissing", err)
+	}
+	if len(models.calls) != 0 {
+		t.Fatalf("port was called %v times before eligibility passed", models.calls)
+	}
+
+	if _, err := svc.SetProviderKey(ctx, "actor", "openai", "sk"); err != nil {
+		t.Fatalf("SetProviderKey: %v", err)
+	}
+	got, err := svc.ListProviderModels(ctx, CapabilityLLM, " OpenAI ")
+	if err != nil {
+		t.Fatalf("ListProviderModels: %v", err)
+	}
+	if len(got) != 2 || got[0].ID != "gpt-a" || got[1].DisplayName != "GPT B" {
+		t.Errorf("models = %+v, want the port's list", got)
+	}
+	if len(models.calls) != 1 || models.calls[0] != "llm/openai" {
+		t.Errorf("port calls = %v, want normalized [llm/openai]", models.calls)
+	}
+
+	models.err = ErrModelListingUnavailable
+	if _, err := svc.ListProviderModels(ctx, CapabilityLLM, "openai"); !errors.Is(err, ErrModelListingUnavailable) {
+		t.Fatalf("vendor-failure err = %v, want ErrModelListingUnavailable", err)
 	}
 }

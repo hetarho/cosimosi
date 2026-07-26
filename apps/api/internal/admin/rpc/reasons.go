@@ -14,5 +14,6 @@ const (
 	reasonProviderCapabilityMismatch = "ADMIN_PROVIDER_CAPABILITY_MISMATCH"
 	reasonProviderNotImplemented     = "ADMIN_PROVIDER_NOT_IMPLEMENTED"
 	reasonProviderKeyMissing         = "ADMIN_PROVIDER_KEY_MISSING"
+	reasonModelListingUnavailable    = "ADMIN_MODEL_LISTING_UNAVAILABLE"
 	reasonSecretboxDisabled          = "ADMIN_SECRETBOX_DISABLED"
 )

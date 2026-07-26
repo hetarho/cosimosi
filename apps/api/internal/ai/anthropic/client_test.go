@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -240,5 +241,40 @@ func TestNewSelectsModel(t *testing.T) {
 	}
 	if got := client.(*Client).model; got != "claude-custom" {
 		t.Fatalf("model = %q, want override", got)
+	}
+}
+
+func TestListModelsFetchesVendorListAndNormalizesErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !strings.Contains(r.URL.Path, "/models") {
+			t.Errorf("request = %s %s, want GET …/models", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		// claude-old reports no structured-output support — CompleteJSON could never use it,
+		// so the listing must drop it.
+		_, _ = w.Write([]byte(`{"data":[{"type":"model","id":"claude-a","display_name":"Claude A","created_at":"2026-01-01T00:00:00Z","capabilities":{"structured_outputs":{"supported":true}}},{"type":"model","id":"claude-old","display_name":"Claude Old","created_at":"2024-01-01T00:00:00Z","capabilities":{"structured_outputs":{"supported":false}}},{"type":"model","id":"claude-b","display_name":"Claude B","created_at":"2026-01-01T00:00:00Z","capabilities":{"structured_outputs":{"supported":true}}}],"has_more":false,"first_id":"claude-a","last_id":"claude-b"}`))
+	}))
+	defer server.Close()
+
+	models, err := listModels(context.Background(), ai.ProviderConfig{APIKey: "k"}, option.WithBaseURL(server.URL))
+	if err != nil {
+		t.Fatalf("listModels: %v", err)
+	}
+	want := []ai.ModelInfo{{ID: "claude-a", DisplayName: "Claude A"}, {ID: "claude-b", DisplayName: "Claude B"}}
+	if len(models) != len(want) || models[0] != want[0] || models[1] != want[1] {
+		t.Fatalf("models = %+v, want %+v (structured-output-unsupported model dropped)", models, want)
+	}
+
+	if _, err := listModels(context.Background(), ai.ProviderConfig{}); err == nil {
+		t.Fatal("empty key was accepted")
+	}
+
+	failing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer failing.Close()
+	var authErr *ai.AuthFailedError
+	if _, err := listModels(context.Background(), ai.ProviderConfig{APIKey: "bad"}, option.WithBaseURL(failing.URL), option.WithMaxRetries(0)); !errors.As(err, &authErr) {
+		t.Fatalf("401 err = %v, want AuthFailedError", err)
 	}
 }

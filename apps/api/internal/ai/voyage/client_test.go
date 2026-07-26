@@ -401,3 +401,30 @@ func writeEmbeddings(w http.ResponseWriter, count, dim int) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }
+
+// The curated listing must only offer models New would accept for the pinned embedding
+// dimension — the console never sees a model the factory would then reject.
+func TestListModelsOffersOnlyDimensionCompatibleModels(t *testing.T) {
+	models, err := ListModels(context.Background(), ai.ProviderConfig{})
+	if err != nil {
+		t.Fatalf("ListModels: %v", err)
+	}
+	if len(models) == 0 {
+		t.Fatal("curated list is empty")
+	}
+	seenDefault := false
+	for i, m := range models {
+		if i > 0 && models[i-1].ID >= m.ID {
+			t.Errorf("list not sorted: %q before %q", models[i-1].ID, m.ID)
+		}
+		if m.ID == defaultModel {
+			seenDefault = true
+		}
+		if _, err := New(ai.ProviderConfig{APIKey: "k", Model: m.ID}); err != nil {
+			t.Errorf("listed model %q rejected by New: %v", m.ID, err)
+		}
+	}
+	if !seenDefault {
+		t.Errorf("curated list %+v does not include the default model %q", models, defaultModel)
+	}
+}

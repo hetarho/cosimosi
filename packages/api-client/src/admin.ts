@@ -1,7 +1,7 @@
 import { createClient, type Client, type Transport } from '@connectrpc/connect'
 import { createQueryOptions } from '@connectrpc/connect-query-core'
 
-import { AdminService } from './gen/cosimosi/admin/v1/admin_pb.ts'
+import { AdminService, type AICapability } from './gen/cosimosi/admin/v1/admin_pb.ts'
 
 export { AdminService } from './gen/cosimosi/admin/v1/admin_pb.ts'
 export {
@@ -16,9 +16,11 @@ export {
   type GrantStardustRequest,
   type ListAdminsResponse,
   type ListProviderKeysResponse,
+  type ListProviderModelsResponse,
   type ListTwinkleGrantsResponse,
   type ListUsersResponse,
   type ProviderKey,
+  type ProviderModel,
   type SetAIConfigRequest,
   type TwinkleGrant,
 } from './gen/cosimosi/admin/v1/admin_pb.ts'
@@ -57,6 +59,13 @@ export function createListProviderKeysQueryOptions(transport: Transport) {
 
 export function createGetAIConfigQueryOptions(transport: Transport) {
   return createQueryOptions(AdminService.method.getAIConfig, {}, { transport })
+}
+
+export function createListProviderModelsQueryOptions(
+  transport: Transport,
+  input: { provider: string; capability: AICapability },
+) {
+  return createQueryOptions(AdminService.method.listProviderModels, input, { transport })
 }
 
 export function createGetAIUsageQueryOptions(transport: Transport) {

@@ -27,8 +27,13 @@ const providerName = "anthropic"
 // model at implement; override per deployment with COSIMOSI_LLM_MODEL.
 const defaultModel = "claude-opus-4-8"
 
+// modelListLimit is one page's worth of the vendor's model catalog — far above the number of
+// models Anthropic serves, so a single request covers the full set.
+const modelListLimit = 100
+
 func init() {
 	ai.RegisterLLMProvider(providerName, New)
+	ai.RegisterLLMModelLister(providerName, ListModels)
 }
 
 // Client realizes ai.LLMClient over the Anthropic Messages API. Structured output is
@@ -137,4 +142,40 @@ func retryAfter(apiErr *sdk.Error) time.Duration {
 		return 0
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+// ListModels fetches the model ids Anthropic currently serves through the SDK's model-listing
+// API, with the same vendor-error normalization as CompleteJSON.
+func ListModels(ctx context.Context, cfg ai.ProviderConfig) ([]ai.ModelInfo, error) {
+	return listModels(ctx, cfg)
+}
+
+func listModels(ctx context.Context, cfg ai.ProviderConfig, opts ...option.RequestOption) ([]ai.ModelInfo, error) {
+	key := strings.TrimSpace(cfg.APIKey)
+	if key == "" {
+		return nil, fmt.Errorf("anthropic: api key is required")
+	}
+	client := sdk.NewClient(append([]option.RequestOption{option.WithAPIKey(key)}, opts...)...)
+	page, err := client.Models.List(ctx, sdk.ModelListParams{Limit: sdk.Int(modelListLimit)})
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		return nil, mapError(err)
+	}
+	out := make([]ai.ModelInfo, 0, len(page.Data))
+	for _, m := range page.Data {
+		id := strings.TrimSpace(m.ID)
+		if id == "" {
+			continue
+		}
+		// CompleteJSON forces the native structured-output format, so a model the vendor
+		// reports as not supporting it would fail every call — never offer it (the same
+		// only-what-the-adapter-accepts rule as voyage's dimension filter).
+		if !m.Capabilities.StructuredOutputs.Supported {
+			continue
+		}
+		out = append(out, ai.ModelInfo{ID: id, DisplayName: m.DisplayName})
+	}
+	return out, nil
 }

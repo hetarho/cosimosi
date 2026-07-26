@@ -388,6 +388,12 @@
   "admin_model_none_available": "키가 설정된 공급자가 없어요. 먼저 위에서 키를 등록하세요.",
   "admin_model_provider_placeholder": "공급자 선택",
   "admin_model_placeholder": "예: claude-opus-4-8",
+  "admin_model_default_option": "공급자 기본 모델",
+  "admin_model_custom_option": "모델 ID 직접 입력…",
+  "admin_model_unlisted_suffix": "(현재 목록에 없음)",
+  "admin_model_loading": "모델 목록 불러오는 중…",
+  "admin_model_list_failed": "모델 목록을 가져오지 못했어요 — ID를 직접 입력하세요.",
+  "admin_model_pick_from_list": "목록에서 선택",
   "admin_users_search_placeholder": "이메일 또는 ID",
   "admin_load_error": "불러오지 못했어요 — API 서버 상태를 확인하세요.",
   "admin_provider_empty": "표시할 공급자가 없어요."

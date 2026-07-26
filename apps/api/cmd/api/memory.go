@@ -125,6 +125,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		memory:    store,
 		meter:     meter,
 		cipher:    cipher,
+		models:    aiModelCatalog{reader: adminStore, decrypter: decrypter},
 		directory: newAccountDirectory(),
 	})
 	if err != nil {

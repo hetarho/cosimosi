@@ -122,3 +122,12 @@ type ProviderCatalog interface {
 	ImplementedLLM(provider string) bool
 	ImplementedEmbedding(provider string) bool
 }
+
+// ModelCatalog lists the model ids a keyed provider currently serves for one capability — the
+// advisory feed behind the console's model dropdown (change 04). The composition-root adapter
+// resolves the stored key and queries the vendor (or the adapter's curated set); the raw key is
+// used strictly on that side of the port, so it never enters this context. A vendor/lookup
+// failure surfaces as ErrModelListingUnavailable — the console degrades to manual entry.
+type ModelCatalog interface {
+	ListModels(ctx context.Context, capability AICapability, provider string) ([]ProviderModel, error)
+}

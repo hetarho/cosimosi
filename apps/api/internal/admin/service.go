@@ -21,6 +21,7 @@ type Service struct {
 	jobs       JobHealthReader
 	cipher     Cipher
 	catalog    ProviderCatalog
+	models     ModelCatalog
 	envConfig  AIEnvConfig
 	seedIDs    map[string]struct{}
 	seedEmails map[string]struct{}
@@ -40,6 +41,7 @@ type ServiceDeps struct {
 	Jobs       JobHealthReader
 	Cipher     Cipher
 	Catalog    ProviderCatalog
+	Models     ModelCatalog
 	EnvConfig  AIEnvConfig
 	SeedAdmins string
 	// DevMode makes every authenticated caller an admin — set ONLY from the dev-auth bypass
@@ -68,6 +70,8 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		return nil, ErrCipherRequired
 	case deps.Catalog == nil:
 		return nil, ErrCatalogRequired
+	case deps.Models == nil:
+		return nil, ErrModelsRequired
 	}
 	ids, emails := parseSeedAdmins(deps.SeedAdmins)
 	svc := &Service{
@@ -79,6 +83,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		jobs:       deps.Jobs,
 		cipher:     deps.Cipher,
 		catalog:    deps.Catalog,
+		models:     deps.Models,
 		envConfig:  deps.EnvConfig,
 		seedIDs:    ids,
 		seedEmails: emails,
@@ -539,6 +544,40 @@ func (s *Service) SetAIConfig(ctx context.Context, actor string, capability AICa
 		UpdatedBy:  cfg.UpdatedBy,
 		UpdatedAt:  cfg.UpdatedAt,
 	}, nil
+}
+
+// ListProviderModels returns the model ids a provider currently serves for one capability — the
+// advisory feed behind the console's model dropdown. The same eligibility chain as SetAIConfig
+// gates it (known slot → capability support → implemented → stored key), so the console never
+// queries a vendor it could not select; the fetch itself goes through the ModelCatalog port and
+// the stored key never enters this context. SetAIConfig stays advisory-free: nothing here
+// validates a selection against the returned list.
+func (s *Service) ListProviderModels(ctx context.Context, capability AICapability, provider string) ([]ProviderModel, error) {
+	if !KnownCapability(capability) {
+		return nil, ErrUnknownCapability
+	}
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider == "" {
+		return nil, ErrProviderRequired
+	}
+	if !s.knownProvider(provider) {
+		return nil, ErrUnknownProvider
+	}
+	supports, implemented := s.capabilitySupport(capability, provider)
+	if !supports {
+		return nil, ErrProviderCapabilityMismatch
+	}
+	if !implemented {
+		return nil, ErrProviderNotImplemented
+	}
+	key, err := s.store.GetProviderKey(ctx, provider)
+	if err != nil {
+		return nil, err
+	}
+	if key == nil {
+		return nil, ErrProviderKeyMissing
+	}
+	return s.models.ListModels(ctx, capability, provider)
 }
 
 func (s *Service) knownProvider(provider string) bool {

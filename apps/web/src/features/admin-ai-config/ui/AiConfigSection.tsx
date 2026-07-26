@@ -8,6 +8,7 @@ import {
   createAdminClient,
   createGetAIConfigQueryOptions,
   createListProviderKeysQueryOptions,
+  createListProviderModelsQueryOptions,
   type ProviderKey,
 } from '@cosimosi/api-client'
 import { Badge, Button, TextField } from '@cosimosi/ui'
@@ -172,6 +173,9 @@ export function ModelSelectSection() {
   )
 }
 
+// The model select's sentinel for "type the id yourself" — never a real vendor model id.
+const CUSTOM_MODEL_OPTION = '__custom__'
+
 function CapabilityRow({
   capability,
   label,
@@ -190,8 +194,24 @@ function CapabilityRow({
   const showError = useErrorToast()
   const [provider, setProvider] = useState(selection?.provider ?? '')
   const [model, setModel] = useState(selection?.model ?? '')
+  const [customEntry, setCustomEntry] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // The vendor's live model list for the selected provider — advisory input help only. A failed
+  // fetch degrades to manual entry below (no retries: the operator should not wait through
+  // backoff to type an id); saving stays possible either way.
+  const modelsQuery = useQuery({
+    ...createListProviderModelsQueryOptions(transport, { provider, capability }),
+    enabled: provider !== '',
+    retry: false,
+  })
+  const listedModels = modelsQuery.data?.models ?? []
+  const listingFailed = provider !== '' && modelsQuery.isError
+  const manualEntry = customEntry || listingFailed
+  // The saved/current id may predate the list or be a brand-new vendor model — keep it
+  // selectable rather than silently dropping it.
+  const unlisted = model !== '' && !listedModels.some((entry) => entry.id === model)
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
@@ -204,50 +224,110 @@ function CapabilityRow({
       {providers.length === 0 ? (
         <span className="text-sm text-text-muted">{m.admin_model_none_available()}</span>
       ) : (
-        <div className="flex flex-wrap items-end gap-3">
-          <select
-            aria-label={label}
-            className={SELECT_CLASS}
-            value={provider}
-            onChange={(event) => setProvider(event.target.value)}
-          >
-            <option value="">{m.admin_model_provider_placeholder()}</option>
-            {providers.map((p) => (
-              <option key={p.provider} value={p.provider}>
-                {p.provider}
-              </option>
-            ))}
-          </select>
-          <div className="min-w-48 flex-1">
-            <TextField
-              label={m.admin_ai_model()}
-              placeholder={m.admin_model_placeholder()}
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-            />
+        <>
+          <div className="flex flex-wrap items-end gap-3">
+            <select
+              aria-label={label}
+              className={SELECT_CLASS}
+              value={provider}
+              onChange={(event) => {
+                const next = event.target.value
+                setProvider(next)
+                setCustomEntry(false)
+                // A model id belongs to its provider — carrying one across a provider switch
+                // (invisibly, while the new list loads) could save a stale cross-vendor pair.
+                // Returning to the saved provider restores the saved model; anywhere else
+                // starts from the adapter default.
+                setModel(next === selection?.provider ? selection.model : '')
+              }}
+            >
+              <option value="">{m.admin_model_provider_placeholder()}</option>
+              {providers.map((p) => (
+                <option key={p.provider} value={p.provider}>
+                  {p.provider}
+                </option>
+              ))}
+            </select>
+            <div className="min-w-48 flex-1">
+              {manualEntry ? (
+                <TextField
+                  label={m.admin_ai_model()}
+                  placeholder={m.admin_model_placeholder()}
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                />
+              ) : (
+                <select
+                  aria-label={m.admin_ai_model()}
+                  className={`${SELECT_CLASS} w-full`}
+                  value={modelsQuery.isLoading ? '' : model}
+                  disabled={provider === '' || modelsQuery.isLoading}
+                  onChange={(event) => {
+                    if (event.target.value === CUSTOM_MODEL_OPTION) {
+                      setCustomEntry(true)
+                      return
+                    }
+                    setModel(event.target.value)
+                  }}
+                >
+                  {modelsQuery.isLoading ? (
+                    <option value="">{m.admin_model_loading()}</option>
+                  ) : (
+                    <>
+                      <option value="">{m.admin_model_default_option()}</option>
+                      {unlisted ? (
+                        <option value={model}>
+                          {model} {m.admin_model_unlisted_suffix()}
+                        </option>
+                      ) : null}
+                      {listedModels.map((entry) => (
+                        <option key={entry.id} value={entry.id}>
+                          {entry.displayName !== '' && entry.displayName !== entry.id
+                            ? `${entry.id} — ${entry.displayName}`
+                            : entry.id}
+                        </option>
+                      ))}
+                      <option value={CUSTOM_MODEL_OPTION}>{m.admin_model_custom_option()}</option>
+                    </>
+                  )}
+                </select>
+              )}
+            </div>
+            <Button
+              color="primary"
+              size="sm"
+              loading={busy}
+              disabled={provider === ''}
+              onClick={() => {
+                setBusy(true)
+                setSaved(false)
+                client
+                  .setAIConfig({ capability, provider, model })
+                  .then(() => {
+                    setSaved(true)
+                    onChanged()
+                  })
+                  .catch(showError)
+                  .finally(() => setBusy(false))
+              }}
+            >
+              {m.admin_ai_save()}
+            </Button>
+            {saved ? <span className="text-sm text-text-muted">{m.admin_ai_saved()}</span> : null}
           </div>
-          <Button
-            color="primary"
-            size="sm"
-            loading={busy}
-            disabled={provider === ''}
-            onClick={() => {
-              setBusy(true)
-              setSaved(false)
-              client
-                .setAIConfig({ capability, provider, model })
-                .then(() => {
-                  setSaved(true)
-                  onChanged()
-                })
-                .catch(showError)
-                .finally(() => setBusy(false))
-            }}
-          >
-            {m.admin_ai_save()}
-          </Button>
-          {saved ? <span className="text-sm text-text-muted">{m.admin_ai_saved()}</span> : null}
-        </div>
+          {listingFailed ? (
+            <span className="text-sm text-danger">{m.admin_model_list_failed()}</span>
+          ) : null}
+          {customEntry && !listingFailed ? (
+            <button
+              type="button"
+              className="self-start text-sm text-text-muted underline underline-offset-2"
+              onClick={() => setCustomEntry(false)}
+            >
+              {m.admin_model_pick_from_list()}
+            </button>
+          ) : null}
+        </>
       )}
     </div>
   )

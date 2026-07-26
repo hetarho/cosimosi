@@ -53,6 +53,22 @@ var modelDimensions = map[string][]int{
 
 func init() {
 	ai.RegisterEmbeddingProvider(providerName, New)
+	ai.RegisterEmbeddingModelLister(providerName, ListModels)
+}
+
+// ListModels answers from the adapter-owned modelDimensions catalog — Voyage has no public
+// model-listing endpoint — filtered to the models New would accept for values.AiEmbeddingDim,
+// so the console never offers a model the factory would then reject.
+func ListModels(_ context.Context, _ ai.ProviderConfig) ([]ai.ModelInfo, error) {
+	out := make([]ai.ModelInfo, 0, len(modelDimensions))
+	for model, supported := range modelDimensions {
+		if !contains(supported, values.AiEmbeddingDim) {
+			continue
+		}
+		out = append(out, ai.ModelInfo{ID: model})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
 }
 
 type Client struct {

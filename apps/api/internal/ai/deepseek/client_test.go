@@ -449,6 +449,51 @@ func TestProviderRegistersWithFactory(t *testing.T) {
 	}
 }
 
+func TestListModelsFetchesVendorList(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %q, want GET", r.Method)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer key" {
+			t.Errorf("Authorization = %q, want Bearer key", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"deepseek-chat","object":"model","owned_by":"deepseek"},{"id":" ","object":"model","owned_by":"deepseek"},{"id":"deepseek-reasoner","object":"model","owned_by":"deepseek"}]}`))
+	}))
+	defer server.Close()
+
+	models, err := listModels(context.Background(), server.URL, ai.ProviderConfig{APIKey: "key"}, server.Client())
+	if err != nil {
+		t.Fatalf("listModels: %v", err)
+	}
+	want := []ai.ModelInfo{{ID: "deepseek-chat"}, {ID: "deepseek-reasoner"}}
+	if len(models) != len(want) || models[0] != want[0] || models[1] != want[1] {
+		t.Fatalf("models = %+v, want %+v (blank ids dropped)", models, want)
+	}
+}
+
+func TestListModelsRequiresAPIKeyAndMapsStatusErrors(t *testing.T) {
+	if _, err := listModels(context.Background(), "http://unused.invalid", ai.ProviderConfig{}, http.DefaultClient); err == nil {
+		t.Fatal("empty key was accepted")
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+	var authErr *ai.AuthFailedError
+	if _, err := listModels(context.Background(), server.URL, ai.ProviderConfig{APIKey: "bad"}, server.Client()); !errors.As(err, &authErr) {
+		t.Fatalf("401 err = %v, want AuthFailedError", err)
+	}
+}
+
+func TestListerRegistersWithModelRegistry(t *testing.T) {
+	if _, err := ai.ListLLMModels(context.Background(), ai.CapabilityConfig{Provider: providerName}); err == nil ||
+		!strings.Contains(err.Error(), "api key is required") {
+		t.Fatalf("keyless registry dispatch err = %v, want the adapter's key-required error", err)
+	}
+}
+
 // stopContentServer returns a fake DeepSeek that replies with finish_reason "stop" and the given
 // raw content string as the assistant message.
 func stopContentServer(content string) *httptest.Server {

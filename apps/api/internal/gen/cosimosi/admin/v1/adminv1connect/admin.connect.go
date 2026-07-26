@@ -66,6 +66,9 @@ const (
 	// AdminServiceSetAIConfigProcedure is the fully-qualified name of the AdminService's SetAIConfig
 	// RPC.
 	AdminServiceSetAIConfigProcedure = "/cosimosi.admin.v1.AdminService/SetAIConfig"
+	// AdminServiceListProviderModelsProcedure is the fully-qualified name of the AdminService's
+	// ListProviderModels RPC.
+	AdminServiceListProviderModelsProcedure = "/cosimosi.admin.v1.AdminService/ListProviderModels"
 	// AdminServiceGetAIUsageProcedure is the fully-qualified name of the AdminService's GetAIUsage RPC.
 	AdminServiceGetAIUsageProcedure = "/cosimosi.admin.v1.AdminService/GetAIUsage"
 	// AdminServiceGetJobHealthProcedure is the fully-qualified name of the AdminService's GetJobHealth
@@ -103,6 +106,11 @@ type AdminServiceClient interface {
 	// Select one capability's provider + model among the keyed, capability-compatible, implemented
 	// providers (DB override, applied without redeploy). No key here — keys are set per provider.
 	SetAIConfig(context.Context, *connect.Request[v1.SetAIConfigRequest]) (*connect.Response[v1.SetAIConfigResponse], error)
+	// The model ids a keyed provider currently serves for one capability — fetched live from the
+	// vendor (or the adapter's curated set when the vendor has no listing endpoint). Advisory input
+	// help for SetAIConfig, which stays free of model-list validation. The stored key is used
+	// server-side only; it never crosses this contract. Side-effect-free.
+	ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error)
 	// Today's AI call usage against the metering caps (read-only; process-local snapshot).
 	GetAIUsage(context.Context, *connect.Request[v1.GetAIUsageRequest]) (*connect.Response[v1.GetAIUsageResponse], error)
 	// Aggregate background-job queue health (read-only).
@@ -198,6 +206,13 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(adminServiceMethods.ByName("SetAIConfig")),
 			connect.WithClientOptions(opts...),
 		),
+		listProviderModels: connect.NewClient[v1.ListProviderModelsRequest, v1.ListProviderModelsResponse](
+			httpClient,
+			baseURL+AdminServiceListProviderModelsProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ListProviderModels")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		getAIUsage: connect.NewClient[v1.GetAIUsageRequest, v1.GetAIUsageResponse](
 			httpClient,
 			baseURL+AdminServiceGetAIUsageProcedure,
@@ -217,20 +232,21 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // adminServiceClient implements AdminServiceClient.
 type adminServiceClient struct {
-	getAdminSelf      *connect.Client[v1.GetAdminSelfRequest, v1.GetAdminSelfResponse]
-	listAdmins        *connect.Client[v1.ListAdminsRequest, v1.ListAdminsResponse]
-	grantAdmin        *connect.Client[v1.GrantAdminRequest, v1.GrantAdminResponse]
-	revokeAdmin       *connect.Client[v1.RevokeAdminRequest, v1.RevokeAdminResponse]
-	listUsers         *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
-	grantStardust     *connect.Client[v1.GrantStardustRequest, v1.GrantStardustResponse]
-	listTwinkleGrants *connect.Client[v1.ListTwinkleGrantsRequest, v1.ListTwinkleGrantsResponse]
-	listProviderKeys  *connect.Client[v1.ListProviderKeysRequest, v1.ListProviderKeysResponse]
-	setProviderKey    *connect.Client[v1.SetProviderKeyRequest, v1.SetProviderKeyResponse]
-	clearProviderKey  *connect.Client[v1.ClearProviderKeyRequest, v1.ClearProviderKeyResponse]
-	getAIConfig       *connect.Client[v1.GetAIConfigRequest, v1.GetAIConfigResponse]
-	setAIConfig       *connect.Client[v1.SetAIConfigRequest, v1.SetAIConfigResponse]
-	getAIUsage        *connect.Client[v1.GetAIUsageRequest, v1.GetAIUsageResponse]
-	getJobHealth      *connect.Client[v1.GetJobHealthRequest, v1.GetJobHealthResponse]
+	getAdminSelf       *connect.Client[v1.GetAdminSelfRequest, v1.GetAdminSelfResponse]
+	listAdmins         *connect.Client[v1.ListAdminsRequest, v1.ListAdminsResponse]
+	grantAdmin         *connect.Client[v1.GrantAdminRequest, v1.GrantAdminResponse]
+	revokeAdmin        *connect.Client[v1.RevokeAdminRequest, v1.RevokeAdminResponse]
+	listUsers          *connect.Client[v1.ListUsersRequest, v1.ListUsersResponse]
+	grantStardust      *connect.Client[v1.GrantStardustRequest, v1.GrantStardustResponse]
+	listTwinkleGrants  *connect.Client[v1.ListTwinkleGrantsRequest, v1.ListTwinkleGrantsResponse]
+	listProviderKeys   *connect.Client[v1.ListProviderKeysRequest, v1.ListProviderKeysResponse]
+	setProviderKey     *connect.Client[v1.SetProviderKeyRequest, v1.SetProviderKeyResponse]
+	clearProviderKey   *connect.Client[v1.ClearProviderKeyRequest, v1.ClearProviderKeyResponse]
+	getAIConfig        *connect.Client[v1.GetAIConfigRequest, v1.GetAIConfigResponse]
+	setAIConfig        *connect.Client[v1.SetAIConfigRequest, v1.SetAIConfigResponse]
+	listProviderModels *connect.Client[v1.ListProviderModelsRequest, v1.ListProviderModelsResponse]
+	getAIUsage         *connect.Client[v1.GetAIUsageRequest, v1.GetAIUsageResponse]
+	getJobHealth       *connect.Client[v1.GetJobHealthRequest, v1.GetJobHealthResponse]
 }
 
 // GetAdminSelf calls cosimosi.admin.v1.AdminService.GetAdminSelf.
@@ -293,6 +309,11 @@ func (c *adminServiceClient) SetAIConfig(ctx context.Context, req *connect.Reque
 	return c.setAIConfig.CallUnary(ctx, req)
 }
 
+// ListProviderModels calls cosimosi.admin.v1.AdminService.ListProviderModels.
+func (c *adminServiceClient) ListProviderModels(ctx context.Context, req *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error) {
+	return c.listProviderModels.CallUnary(ctx, req)
+}
+
 // GetAIUsage calls cosimosi.admin.v1.AdminService.GetAIUsage.
 func (c *adminServiceClient) GetAIUsage(ctx context.Context, req *connect.Request[v1.GetAIUsageRequest]) (*connect.Response[v1.GetAIUsageResponse], error) {
 	return c.getAIUsage.CallUnary(ctx, req)
@@ -333,6 +354,11 @@ type AdminServiceHandler interface {
 	// Select one capability's provider + model among the keyed, capability-compatible, implemented
 	// providers (DB override, applied without redeploy). No key here — keys are set per provider.
 	SetAIConfig(context.Context, *connect.Request[v1.SetAIConfigRequest]) (*connect.Response[v1.SetAIConfigResponse], error)
+	// The model ids a keyed provider currently serves for one capability — fetched live from the
+	// vendor (or the adapter's curated set when the vendor has no listing endpoint). Advisory input
+	// help for SetAIConfig, which stays free of model-list validation. The stored key is used
+	// server-side only; it never crosses this contract. Side-effect-free.
+	ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error)
 	// Today's AI call usage against the metering caps (read-only; process-local snapshot).
 	GetAIUsage(context.Context, *connect.Request[v1.GetAIUsageRequest]) (*connect.Response[v1.GetAIUsageResponse], error)
 	// Aggregate background-job queue health (read-only).
@@ -424,6 +450,13 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(adminServiceMethods.ByName("SetAIConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceListProviderModelsHandler := connect.NewUnaryHandler(
+		AdminServiceListProviderModelsProcedure,
+		svc.ListProviderModels,
+		connect.WithSchema(adminServiceMethods.ByName("ListProviderModels")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	adminServiceGetAIUsageHandler := connect.NewUnaryHandler(
 		AdminServiceGetAIUsageProcedure,
 		svc.GetAIUsage,
@@ -464,6 +497,8 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceGetAIConfigHandler.ServeHTTP(w, r)
 		case AdminServiceSetAIConfigProcedure:
 			adminServiceSetAIConfigHandler.ServeHTTP(w, r)
+		case AdminServiceListProviderModelsProcedure:
+			adminServiceListProviderModelsHandler.ServeHTTP(w, r)
 		case AdminServiceGetAIUsageProcedure:
 			adminServiceGetAIUsageHandler.ServeHTTP(w, r)
 		case AdminServiceGetJobHealthProcedure:
@@ -523,6 +558,10 @@ func (UnimplementedAdminServiceHandler) GetAIConfig(context.Context, *connect.Re
 
 func (UnimplementedAdminServiceHandler) SetAIConfig(context.Context, *connect.Request[v1.SetAIConfigRequest]) (*connect.Response[v1.SetAIConfigResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.admin.v1.AdminService.SetAIConfig is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.admin.v1.AdminService.ListProviderModels is not implemented"))
 }
 
 func (UnimplementedAdminServiceHandler) GetAIUsage(context.Context, *connect.Request[v1.GetAIUsageRequest]) (*connect.Response[v1.GetAIUsageResponse], error) {

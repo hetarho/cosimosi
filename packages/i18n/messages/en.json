@@ -388,6 +388,12 @@
   "admin_model_none_available": "No keyed provider yet. Set a key above first.",
   "admin_model_provider_placeholder": "Select a provider",
   "admin_model_placeholder": "e.g. claude-opus-4-8",
+  "admin_model_default_option": "Provider default",
+  "admin_model_custom_option": "Enter a model id…",
+  "admin_model_unlisted_suffix": "(not in the current list)",
+  "admin_model_loading": "Loading model list…",
+  "admin_model_list_failed": "Couldn't fetch the model list — enter the id directly.",
+  "admin_model_pick_from_list": "Back to the list",
   "admin_users_search_placeholder": "email or id",
   "admin_load_error": "Failed to load — check the API server.",
   "admin_provider_empty": "No providers to show."

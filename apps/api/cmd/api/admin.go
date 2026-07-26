@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -47,6 +48,7 @@ type adminDeps struct {
 	memory    memorypg.Store
 	meter     *ai.Meter
 	cipher    admin.Cipher
+	models    admin.ModelCatalog
 	directory admin.AccountDirectory
 }
 
@@ -63,6 +65,7 @@ func adminServiceOption(deps adminDeps) (platform.HandlerOption, error) {
 		Jobs:       adminJobHealth{store: deps.memory},
 		Cipher:     deps.cipher,
 		Catalog:    aiProviderCatalog{},
+		Models:     deps.models,
 		EnvConfig:  adminEnvConfig{},
 		SeedAdmins: os.Getenv("ADMIN_USER_IDS"),
 		// Dev-auth mode (COSIMOSI_DEV_AUTH) makes every signed-in user an admin so `pnpm dev`
@@ -172,6 +175,50 @@ func (a adminJobHealth) Health(ctx context.Context) (admin.JobHealth, error) {
 		Failed:       counts["failed"],
 		DeadLettered: dead,
 	}, nil
+}
+
+// aiModelCatalog binds the admin console's ModelCatalog port over the stored-key read (the same
+// admin store the runtime config source uses), the secretbox decrypter, and the AI registry's
+// model listers. The raw key is resolved and consumed HERE, on the composition-root side of the
+// port — it never enters the admin context, mirroring the runtime config source's key handling.
+// Every lookup/vendor failure is normalized to admin.ErrModelListingUnavailable (with the cause
+// in the message) so the console degrades to manual entry instead of surfacing an internal error.
+type aiModelCatalog struct {
+	reader    ai.ConfigReader
+	decrypter ai.KeyDecrypter
+}
+
+func (c aiModelCatalog) ListModels(ctx context.Context, capability admin.AICapability, provider string) ([]admin.ProviderModel, error) {
+	encryptedKey, found, err := c.reader.ReadProviderKey(ctx, provider)
+	if err != nil {
+		return nil, err // a DB failure is an internal fault, not a vendor-listing degradation
+	}
+	var apiKey string
+	if found && len(encryptedKey) > 0 && c.decrypter != nil {
+		plaintext, err := c.decrypter.Decrypt(encryptedKey)
+		if err != nil {
+			return nil, fmt.Errorf("%w: decrypt %s key: %v", admin.ErrModelListingUnavailable, provider, err)
+		}
+		apiKey = string(plaintext)
+	}
+	cfg := ai.CapabilityConfig{Provider: provider, APIKey: apiKey}
+	var models []ai.ModelInfo
+	switch capability {
+	case admin.CapabilityLLM:
+		models, err = ai.ListLLMModels(ctx, cfg)
+	case admin.CapabilityEmbedding:
+		models, err = ai.ListEmbeddingModels(ctx, cfg)
+	default:
+		return nil, admin.ErrUnknownCapability
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", admin.ErrModelListingUnavailable, err)
+	}
+	out := make([]admin.ProviderModel, 0, len(models))
+	for _, m := range models {
+		out = append(out, admin.ProviderModel{ID: m.ID, DisplayName: m.DisplayName})
+	}
+	return out, nil
 }
 
 // aiProviderCatalog binds the admin console's ProviderCatalog port to the AI registry (slots +

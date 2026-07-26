@@ -26,6 +26,7 @@ const providerName = "deepseek"
 const (
 	defaultModel           = "deepseek-v4-flash"
 	endpoint               = "https://api.deepseek.com/chat/completions"
+	modelsEndpoint         = "https://api.deepseek.com/models"
 	requestTimeout         = 60 * time.Second
 	maxResponseBytes       = 4 << 20
 	maxErrorBodyDrainBytes = 64 << 10
@@ -33,6 +34,7 @@ const (
 
 func init() {
 	ai.RegisterLLMProvider(providerName, New)
+	ai.RegisterLLMModelLister(providerName, ListModels)
 }
 
 // Client realizes ai.LLMClient over DeepSeek's OpenAI-compatible Chat
@@ -290,4 +292,73 @@ func retryAfter(resp *http.Response) time.Duration {
 		return 0
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+// ListModels fetches the model ids DeepSeek currently serves — the OpenAI-compatible
+// GET /models sibling of the chat endpoint, same Bearer auth, same error taxonomy.
+func ListModels(ctx context.Context, cfg ai.ProviderConfig) ([]ai.ModelInfo, error) {
+	return listModels(ctx, modelsEndpoint, cfg, &http.Client{Timeout: requestTimeout})
+}
+
+func listModels(ctx context.Context, url string, cfg ai.ProviderConfig, httpClient *http.Client) ([]ai.ModelInfo, error) {
+	key := strings.TrimSpace(cfg.APIKey)
+	if key == "" {
+		return nil, fmt.Errorf("deepseek: api key is required")
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, &ai.RateLimitedError{Provider: providerName, Err: err}
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+key)
+
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		return nil, &ai.RateLimitedError{
+			Provider: providerName,
+			Err:      fmt.Errorf("deepseek transport error: %w", err),
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		drainErrorBody(resp.Body)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		return nil, mapStatus(resp)
+	}
+
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		return nil, &ai.RateLimitedError{
+			Provider: providerName,
+			Err:      fmt.Errorf("deepseek response body read: %w", err),
+		}
+	}
+	if len(raw) > maxResponseBytes {
+		return nil, malformed(fmt.Sprintf("model list exceeds %d bytes", maxResponseBytes))
+	}
+	var decoded struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return nil, &ai.MalformedStructuredOutputError{Provider: providerName, Err: err}
+	}
+	out := make([]ai.ModelInfo, 0, len(decoded.Data))
+	for _, m := range decoded.Data {
+		id := strings.TrimSpace(m.ID)
+		if id == "" {
+			continue
+		}
+		out = append(out, ai.ModelInfo{ID: id})
+	}
+	return out, nil
 }
