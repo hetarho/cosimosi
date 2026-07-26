@@ -232,33 +232,29 @@ describe('web auth gate', () => {
     }
   })
 
-  // Settings (plan 52) A2: /settings sits under the same authenticated layout — a signed-out
+  // My page stays under the same authenticated layout — a signed-out
   // arrival is redirected by the shared guard (the page implements no redirect of its own).
-  it('redirects a signed-out /settings arrival to /login through the shared gate', async () => {
+  it('redirects a signed-out /me arrival to /login through the shared gate', async () => {
     const router = createAppRouter({
       diagnosticsEnabled: false,
       getSessionStatus: () => 'signedOut',
-      initialEntries: ['/settings'],
+      initialEntries: ['/me'],
     })
     await router.load()
     expect(router.state.redirect).toMatchObject({
-      options: { to: '/login', search: { from: '/settings' } },
+      options: { to: '/login', search: { from: '/me' } },
     })
   })
 
-  // Settings (plan 52) A1/A3/A6/A7/A8: an authenticated /settings renders the sectioned
-  // composition — the identity from the session snapshot (no fetch), the sign-out action, the
-  // registry palettes, and the reserved staging slot — and structurally offers NO form control
-  // anywhere (nothing on the page can set an emotion, a position, or a strength).
-  it('serves the settings page for an authenticated session with no form control anywhere', async () => {
-    const fakes = createTestHarnessFakes({ userId: 'settings-test-user' })
+  it('serves the deep-linked achievements tab with all five tab ids and no decoration', async () => {
+    const fakes = createTestHarnessFakes({ userId: 'me-test-user' })
     const observability = createObservabilityFacade()
     await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
-    seedDefaultPalette(fakes, 'settings-test-user')
+    seedDefaultPalette(fakes, 'me-test-user')
     const router = createAppRouter({
       diagnosticsEnabled: false,
       getSessionStatus: () => fakes.authFacade.snapshot.status,
-      initialEntries: ['/settings'],
+      initialEntries: ['/me?tab=achievements'],
     })
     await router.load()
 
@@ -274,21 +270,28 @@ describe('web auth gate', () => {
         />,
       )
 
-      expect(html).toContain('Settings')
+      expect(html).toContain('You')
+      expect(html).toContain('Profile')
+      expect(html).toContain('Achievements')
+      expect(html).toContain('Diary management')
       expect(html).toContain('Account')
-      expect(html).toContain('Palette')
-      expect(html).toContain('Staging')
-      expect(html).toContain('settings-test-user')
-      expect(html).toContain('Sign out')
-      expect(html).toContain('Muted dusk')
-      expect(html).toContain('This space opens later.')
-      for (const control of ['<input', '<select', '<textarea', '<option']) {
-        expect(html).not.toContain(control)
-      }
+      expect(html).toContain('This record is not available yet.')
+      expect(html).not.toContain('Palette')
+      expect(html).not.toContain('Camera mood')
     } finally {
       fakes.dispose()
       observability.dispose()
     }
+  })
+
+  it('does not register the retired settings route', async () => {
+    const router = createAppRouter({
+      diagnosticsEnabled: false,
+      getSessionStatus: () => 'authenticated',
+      initialEntries: [['', 'settings'].join('/')],
+    })
+    await router.load()
+    expect(router.state.matches.at(-1)?.routeId).toBe('__root__')
   })
 
   // A4/A6: an authenticated session renders the universe as the main page (`/`), and a zero-memory

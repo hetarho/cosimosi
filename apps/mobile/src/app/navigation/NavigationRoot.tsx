@@ -12,7 +12,7 @@ import { gateDecision, pendingInvite } from '@cosimosi/auth'
 
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
-import { SettingsPage } from '../../pages/settings/index.ts'
+import { MePage } from '../../pages/me/index.ts'
 import { TestPage } from '../../pages/test/index.ts'
 import { UniversePage } from '../../pages/universe/index.ts'
 import {
@@ -23,6 +23,7 @@ import {
 } from '../../shared/native/index.ts'
 import { DiagnosticsScreen } from '../diagnostics/index.ts'
 import {
+  MobileLocaleBootstrap,
   MobilePaletteBootstrap,
   MobileProfileGate,
   useSessionSnapshot,
@@ -39,7 +40,7 @@ function UniverseRoute({ navigation }: RootStackScreenProps<'Universe'>) {
     <UniversePage
       active={active}
       onOpenDiary={() => navigation.navigate(ROUTES.diaryReader)}
-      onOpenSettings={() => navigation.navigate(ROUTES.settings)}
+      onOpenMe={() => navigation.navigate(ROUTES.me)}
     />
   )
 }
@@ -49,8 +50,8 @@ function DiaryReaderRoute({ navigation }: RootStackScreenProps<'DiaryReader'>) {
   return <DiaryReaderPage active={active} onExit={() => navigation.navigate(ROUTES.universe)} />
 }
 
-function SettingsRoute({ navigation }: RootStackScreenProps<'Settings'>) {
-  return <SettingsPage onBack={() => navigation.navigate(ROUTES.universe)} />
+function MeRoute({ navigation }: RootStackScreenProps<'Me'>) {
+  return <MePage onBack={() => navigation.navigate(ROUTES.universe)} />
 }
 
 function TestRoute({ navigation }: RootStackScreenProps<'Test'>) {
@@ -81,7 +82,7 @@ const mobileLinking: LinkingOptions<RootStackParamList> = {
       [ROUTES.test]: 'test',
       [ROUTES.universe]: 'universe',
       [ROUTES.diaryReader]: 'diary',
-      [ROUTES.settings]: 'settings',
+      [ROUTES.me]: 'me',
     },
   },
 }
@@ -141,7 +142,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
           <>
             <Stack.Screen name={ROUTES.universe} component={UniverseRoute} />
             <Stack.Screen name={ROUTES.diaryReader} component={DiaryReaderRoute} />
-            <Stack.Screen name={ROUTES.settings} component={SettingsRoute} />
+            <Stack.Screen name={ROUTES.me} component={MeRoute} />
             <Stack.Screen name={ROUTES.diagnostics} component={DiagnosticsScreen} />
             <Stack.Screen name={ROUTES.test} component={TestRoute} />
           </>
@@ -165,6 +166,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
   )
   return stack === 'universe' ? (
     <MobileProfileGate>
+      <MobileLocaleBootstrap />
       <MobilePaletteBootstrap>{navigation}</MobilePaletteBootstrap>
     </MobileProfileGate>
   ) : (

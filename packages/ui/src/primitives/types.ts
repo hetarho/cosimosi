@@ -110,3 +110,17 @@ export interface SkeletonOwnProps {
 export interface VisuallyHiddenProps {
   children: ReactNode
 }
+
+export interface TabItem {
+  value: string
+  label: string
+  /** The id of the panel controlled by this tab. */
+  panelId: string
+}
+
+export interface TabsOwnProps {
+  items: readonly TabItem[]
+  value: string
+  onValueChange: (value: string) => void
+  ariaLabel: string
+}

@@ -10,6 +10,7 @@ import { Dialog } from './dialog.tsx'
 import { IconButton } from './icon-button.tsx'
 import { Skeleton } from './skeleton.tsx'
 import { Switch } from './switch.tsx'
+import { Tabs } from './tabs.tsx'
 import { TextField } from './text-field.tsx'
 import { Toast } from './toast.tsx'
 import { Tooltip } from './tooltip.tsx'
@@ -93,6 +94,36 @@ describe('Switch', () => {
     expect(toggle).toHaveFocus()
     await user.keyboard(' ')
     expect(toggle).toHaveAttribute('aria-checked', 'true')
+  })
+})
+
+describe('Tabs', () => {
+  it('moves selection and roving focus with arrow keys', async () => {
+    const user = userEvent.setup()
+    function Controlled() {
+      const [value, setValue] = useState('profile')
+      return (
+        <Tabs
+          ariaLabel="Account"
+          value={value}
+          onValueChange={setValue}
+          items={[
+            { value: 'profile', label: 'Profile', panelId: 'profile-panel' },
+            { value: 'diary', label: 'Diary', panelId: 'diary-panel' },
+          ]}
+        />
+      )
+    }
+    render(<Controlled />)
+
+    const profile = screen.getByRole('tab', { name: 'Profile' })
+    const diary = screen.getByRole('tab', { name: 'Diary' })
+    expect(profile).toHaveAttribute('aria-selected', 'true')
+    profile.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(diary).toHaveFocus()
+    expect(diary).toHaveAttribute('aria-selected', 'true')
+    expect(diary).toHaveAttribute('aria-controls', 'diary-panel')
   })
 })
 

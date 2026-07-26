@@ -21,8 +21,8 @@ export const ROUTES = {
   universe: 'Universe',
   /** The immutable diary archive — the quiet keeping-place ([D2]). */
   diaryReader: 'DiaryReader',
-  /** The one settings surface — account · palette · the reserved staging slot ([52]). */
-  settings: 'Settings',
+  /** The signed-in account home — five fixed tabs ([U9]). */
+  me: 'Me',
 } as const
 
 export type RootStackParamList = {
@@ -33,7 +33,7 @@ export type RootStackParamList = {
   Test: undefined
   Universe: undefined
   DiaryReader: undefined
-  Settings: undefined
+  Me: undefined
 }
 
 export type RootStackScreenProps<RouteName extends keyof RootStackParamList> =

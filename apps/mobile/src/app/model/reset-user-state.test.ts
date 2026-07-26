@@ -1,4 +1,5 @@
 import { pendingInvite, recordSignupCompletion, takeSignupCompletion } from '@cosimosi/auth'
+import { getActiveLocale, setActiveLocale } from '@cosimosi/i18n'
 
 import { MOBILE_USER_STATE_RESET_INVENTORY, resetMobileUserState } from './reset-user-state.ts'
 
@@ -13,5 +14,14 @@ describe('resetMobileUserState signup seams', () => {
     expect(pendingInvite.consume()).toBe('opaque')
     expect(MOBILE_USER_STATE_RESET_INVENTORY).toContain('signup-completion')
     expect(MOBILE_USER_STATE_RESET_INVENTORY).not.toContain('pending-invite')
+  })
+
+  it('returns locale state to device negotiation', () => {
+    setActiveLocale('ko')
+
+    resetMobileUserState('new-user')
+
+    expect(getActiveLocale()).toBe('en')
+    expect(MOBILE_USER_STATE_RESET_INVENTORY).toContain('locale')
   })
 })

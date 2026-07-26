@@ -46,10 +46,10 @@ function RendererFallback({ resetErrorBoundary }: ObservedErrorBoundaryFallbackP
 export interface UniversePageProps {
   active: boolean
   onOpenDiary: () => void
-  onOpenSettings: () => void
+  onOpenMe: () => void
 }
 
-export function UniversePage({ active, onOpenDiary, onOpenSettings }: UniversePageProps) {
+export function UniversePage({ active, onOpenDiary, onOpenMe }: UniversePageProps) {
   // The navigation/selection actor is owned HERE (the page layer) so the canvas and the star-detail
   // panel share one selection — the canvas machine stays the single owner (§3.2), as on web.
   const navigationActorRef = useActorRef(universeNavigationMachine)
@@ -128,11 +128,11 @@ export function UniversePage({ active, onOpenDiary, onOpenSettings }: UniversePa
       <View style={styles.stardust}>
         <StardustOverlay />
       </View>
-      {/* The quiet ways into the archive ([D2]) and settings ([52]) — restrained affordances,
+      {/* The quiet ways into the archive ([D2]) and the signed-in account home — restrained affordances,
           not persistent chrome. */}
       <View style={styles.diary}>
-        <Button color="neutral" size="sm" onPress={onOpenSettings}>
-          {m.settings_title()}
+        <Button color="neutral" size="sm" onPress={onOpenMe}>
+          {m.me_title()}
         </Button>
         <Button color="neutral" size="sm" onPress={onOpenDiary}>
           {m.diary_reader_title()}

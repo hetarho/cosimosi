@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { pendingInvite, recordSignupCompletion, takeSignupCompletion } from '@cosimosi/auth'
+import { getActiveLocale, setActiveLocale } from '@cosimosi/i18n'
 
 import { useAdvanceAnnouncementStore } from '../../features/accelerate-time/index.ts'
 import { usePalettePreferenceStore } from '../../features/change-palette/index.ts'
@@ -14,6 +15,7 @@ import { useDiaryDraftStore } from '../../features/write-diary/index.ts'
 import { useDeletionDraftStore } from '../../widgets/deletion-flow/index.ts'
 import { useRecallDraftStore } from '../../widgets/recall-flow/index.ts'
 import { useProposalStore } from '../../widgets/writing-flow/index.ts'
+import { writeStoredLocale } from '../../shared/lib/locale-storage.ts'
 import { resetWebUserState, WEB_USER_STATE_RESET_INVENTORY } from './reset-user-state.ts'
 
 describe('resetWebUserState', () => {
@@ -66,5 +68,15 @@ describe('resetWebUserState', () => {
     expect(pendingInvite.consume()).toBe('opaque')
     expect(WEB_USER_STATE_RESET_INVENTORY).toContain('signup-completion')
     expect(WEB_USER_STATE_RESET_INVENTORY).not.toContain('pending-invite')
+  })
+
+  it('returns locale state to the durable signed-out preference', () => {
+    writeStoredLocale('en')
+    setActiveLocale('ko')
+
+    resetWebUserState('new-user')
+
+    expect(getActiveLocale()).toBe('en')
+    expect(WEB_USER_STATE_RESET_INVENTORY).toContain('locale')
   })
 })

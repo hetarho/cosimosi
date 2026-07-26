@@ -1,4 +1,4 @@
-import { Linking, TextInput } from 'react-native'
+import { Linking, Share, TextInput } from 'react-native'
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { createRouterTransport } from '@connectrpc/connect'
@@ -7,11 +7,14 @@ import type { LinkingOptions } from '@react-navigation/native'
 
 import {
   AccountService,
+  AuthProviderKind,
   createGetUniverseQueryKey,
+  ExportFormat,
   MemoryService,
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
 import { pendingInvite, takeSignupCompletion } from '@cosimosi/auth'
+import { VALUES } from '@cosimosi/config'
 import { DEFAULT_PALETTE_ID, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { setClientCacheData } from '@cosimosi/client-cache'
 import { m } from '@cosimosi/i18n'
@@ -69,11 +72,21 @@ function createMobileAppTransport(
       locale: string
       inviteToken: string
     }) => void
+    onUpdateProfile?: (request: { nickname: string; timezone: string; locale: string }) => void
+    onWithdraw?: () => void
+    onExport?: (format: ExportFormat) => void
     getPalettePreference?: () => string
     setPalettePreference?: (paletteId: string) => Promise<string>
   } = {},
 ) {
   let profilePresent = options.profilePresent !== false
+  let currentProfile = {
+    nickname: 'Test user',
+    timezone: 'UTC',
+    locale: 'en',
+    email: 'test@example.test',
+    createdAt: '2026-07-26T00:00:00Z',
+  }
   return createRouterTransport(({ service }) => {
     service(AccountService, {
       getProfile: () => {
@@ -82,13 +95,7 @@ function createMobileAppTransport(
         return !profilePresent
           ? {}
           : {
-              profile: {
-                nickname: 'Test user',
-                timezone: 'UTC',
-                locale: 'en',
-                email: 'test@example.test',
-                createdAt: '2026-07-26T00:00:00Z',
-              },
+              profile: currentProfile,
             }
       },
       signUp(request) {
@@ -104,6 +111,39 @@ function createMobileAppTransport(
           timezone: request.timezone,
           locale: request.locale,
           inviteBound: request.inviteToken !== '',
+        }
+      },
+      updateProfile(request) {
+        options.onUpdateProfile?.({
+          nickname: request.nickname,
+          timezone: request.timezone,
+          locale: request.locale,
+        })
+        currentProfile = {
+          ...currentProfile,
+          nickname: request.nickname,
+          timezone: request.timezone,
+          locale: request.locale,
+        }
+        return { profile: currentProfile }
+      },
+      listAuthProviders: () => ({
+        providers: [
+          {
+            kind: AuthProviderKind.GOOGLE,
+            linkedAt: '2026-07-26T00:00:00Z',
+          },
+        ],
+      }),
+      getInviteLink: () => ({
+        token: 'invite-token',
+        expiresAt: '2026-08-02T00:00:00Z',
+      }),
+      withdraw: () => {
+        options.onWithdraw?.()
+        return {
+          withdrawnAt: '2026-07-26T00:00:00Z',
+          restoreDeadlineAt: '2026-08-25T00:00:00Z',
         }
       },
       getPalettePreference: () => {
@@ -124,6 +164,14 @@ function createMobileAppTransport(
       getUniverse: () => {
         options.onGetUniverse?.()
         return emptyUniverse
+      },
+      export: (request) => {
+        options.onExport?.(request.format)
+        return {
+          content: new TextEncoder().encode('date,body\\n2026-07-26,hello'),
+          contentType: 'text/plain',
+          filename: request.format === ExportFormat.CSV ? 'diaries.csv' : 'diaries.md',
+        }
       },
     })
   })
@@ -493,17 +541,12 @@ describe('mobile auth gate', () => {
     expect(names).toContain('Universe')
   })
 
-  it('isolates every client-state category across universe, diary, settings, A → logout → B', async () => {
+  it('isolates every client-state category across universe and diary, A → logout → B', async () => {
     let paletteReads = 0
-    let resolveLatePalette = (_paletteId: string) => {}
-    const latePalette = new Promise<string>((resolve) => {
-      resolveLatePalette = resolve
-    })
     const fakes = createMobileShellFakes({
       userId: 'user-a',
       transport: createMobileAppTransport({
         getPalettePreference: () => (++paletteReads === 1 ? 'muted-dusk' : DEFAULT_PALETTE_ID),
-        setPalettePreference: () => latePalette,
       }),
     })
     const view = renderShell(fakes)
@@ -518,11 +561,7 @@ describe('mobile auth gate', () => {
       fireEvent.press(screen.getByRole('button', { name: m.diary_reader_title() }))
       await waitFor(() => expect(screen.getByText(m.diary_reader_back())).toBeTruthy())
       fireEvent.press(screen.getByRole('button', { name: m.diary_reader_back() }))
-      await waitFor(() =>
-        expect(screen.getByRole('button', { name: m.settings_title() })).toBeTruthy(),
-      )
-      fireEvent.press(screen.getByRole('button', { name: m.settings_title() }))
-      await waitFor(() => expect(screen.getByText(m.settings_section_account())).toBeTruthy())
+      await waitFor(() => expect(screen.getByRole('button', { name: m.me_title() })).toBeTruthy())
 
       await act(async () => {
         seedEveryMobileUserState()
@@ -532,10 +571,6 @@ describe('mobile auth gate', () => {
       act(() => {
         consent = requestTimeSyncConsent()
       })
-      fireEvent.press(screen.getByRole('button', { name: m.palette_name_cosimosi_default() }))
-      await waitFor(() =>
-        expect(usePalettePreferenceStore.getState().paletteId).toBe(DEFAULT_PALETTE_ID),
-      )
 
       await act(() => fakes.authFacade.signOut())
       await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
@@ -550,18 +585,13 @@ describe('mobile auth gate', () => {
       expectEveryMobileUserStateEmpty()
       expect(fakes.queryClient.getQueryData(['user-a-only'])).toBeUndefined()
 
-      await act(async () => {
-        resolveLatePalette('muted-dusk')
-        await latePalette
-      })
       expect(usePalettePreferenceStore.getState()).toMatchObject({
         paletteId: DEFAULT_PALETTE_ID,
         confirmedPaletteId: DEFAULT_PALETTE_ID,
       })
 
-      fireEvent.press(screen.getByRole('button', { name: m.settings_title() }))
-      await waitFor(() => expect(screen.getByText('fake-user-user-b@example.test')).toBeTruthy())
-      expect(screen.queryByText('user-a')).toBeNull()
+      fireEvent.press(screen.getByRole('button', { name: m.me_title() }))
+      await waitFor(() => expect(screen.getByText(m.me_tab_profile())).toBeTruthy())
     } finally {
       view.unmount()
       fakes.dispose()
@@ -569,7 +599,7 @@ describe('mobile auth gate', () => {
   })
 })
 
-describe('mobile settings screen', () => {
+describe('mobile me screen', () => {
   afterEach(() => {
     act(() => {
       usePalettePreferenceStore.getState().setPaletteId(DEFAULT_PALETTE_ID)
@@ -577,36 +607,38 @@ describe('mobile settings screen', () => {
     })
   })
 
-  async function openSettings(fakes: MobileShellFakes) {
+  async function openMe(fakes: MobileShellFakes) {
     const view = renderShell(fakes)
-    await waitFor(() => expect(screen.getByText(m.settings_title())).toBeTruthy())
-    fireEvent.press(screen.getByText(m.settings_title()))
-    await waitFor(() => expect(screen.getByText(m.settings_section_account())).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(m.me_title())).toBeTruthy())
+    fireEvent.press(screen.getByText(m.me_title()))
+    await waitFor(() => expect(screen.getByText(m.me_nickname_label())).toBeTruthy())
     return view
   }
 
-  // A1/A3/A6/A11: the universe affordance reaches the registered SettingsScreen; the composition
-  // renders the identity from the snapshot, the registry palettes with the stored preference
-  // marked, and the reserved staging slot — from the same message keys as web.
-  it('opens settings from the universe with the three sections composed', async () => {
+  it('opens Me with five local-state tabs and no decoration controls', async () => {
     const fakes = createMobileShellFakes({
-      userId: 'settings-test-user',
+      userId: 'me-test-user',
       transport: createMobileAppTransport(),
     })
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
-    const view = await openSettings(fakes)
+    const view = await openMe(fakes)
     try {
-      expect(screen.getByText('settings-test-user')).toBeTruthy()
-      expect(screen.getByText(m.settings_section_palette())).toBeTruthy()
-      expect(screen.getByText(m.palette_name_cosimosi_default())).toBeTruthy()
-      expect(screen.getByText(m.palette_name_muted_dusk())).toBeTruthy()
-      expect(screen.getByText(m.settings_palette_selected())).toBeTruthy()
-      expect(screen.getByText(m.settings_staging_notice())).toBeTruthy()
-      expect(screen.getByText(m.settings_staging_boundary())).toBeTruthy()
-      // A7 structurally: nothing on the page edits anything — no switch/slider/text input exists.
-      expect(screen.queryAllByRole('switch')).toHaveLength(0)
-      expect(screen.queryAllByRole('adjustable')).toHaveLength(0)
-      expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(0)
+      expect(screen.getAllByRole('tab')).toHaveLength(5)
+      expect(screen.getByText(m.me_tab_profile())).toBeTruthy()
+      expect(screen.getByText(m.me_tab_stardust())).toBeTruthy()
+      expect(screen.getByText(m.me_tab_achievements())).toBeTruthy()
+      expect(screen.getByText(m.me_tab_diary())).toBeTruthy()
+      expect(screen.getByText(m.me_tab_account())).toBeTruthy()
+      expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(1)
+      expect(screen.queryByText(m.settings_palette_selected())).toBeNull()
+
+      fireEvent.press(screen.getByText(m.me_tab_achievements()))
+      expect(screen.getByText(m.me_achievements_pending())).toBeTruthy()
+      fireEvent.press(screen.getByText(m.me_tab_diary()))
+      expect(screen.getByText(m.me_export_action())).toBeTruthy()
+      fireEvent.press(screen.getByText(m.me_tab_account()))
+      await waitFor(() => expect(screen.getByText('test@example.test')).toBeTruthy())
+      await waitFor(() => expect(screen.getByText(m.me_provider_google())).toBeTruthy())
     } finally {
       view.unmount()
       fakes.dispose()
@@ -617,63 +649,88 @@ describe('mobile settings screen', () => {
   // the plan-53 gate lands on login (the section itself never navigates).
   it('signs out through the confirm step and returns to login; cancel stays put', async () => {
     const fakes = createMobileShellFakes({
-      userId: 'settings-test-user',
+      userId: 'me-test-user',
       transport: createMobileAppTransport(),
     })
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
-    const view = await openSettings(fakes)
+    const view = await openMe(fakes)
     try {
-      fireEvent.press(screen.getByText(m.settings_sign_out()))
-      await waitFor(() => expect(screen.getByText(m.settings_sign_out_confirm())).toBeTruthy())
+      fireEvent.press(screen.getByText(m.me_tab_account()))
+      fireEvent.press(screen.getByText(m.me_sign_out()))
+      await waitFor(() => expect(screen.getByText(m.me_sign_out_confirm())).toBeTruthy())
       fireEvent.press(screen.getByText(m.common_cancel()))
-      await waitFor(() => expect(screen.queryByText(m.settings_sign_out_confirm())).toBeNull())
-      expect(screen.getByText(m.settings_section_account())).toBeTruthy()
+      await waitFor(() => expect(screen.queryByText(m.me_sign_out_confirm())).toBeNull())
+      expect(screen.getByText(m.me_tab_account())).toBeTruthy()
       expect(fakes.authFacade.snapshot.status).toBe('authenticated')
 
-      fireEvent.press(screen.getByText(m.settings_sign_out()))
-      await waitFor(() => expect(screen.getByText(m.settings_sign_out_confirm())).toBeTruthy())
-      fireEvent.press(screen.getAllByText(m.settings_sign_out()).at(-1) as never)
+      fireEvent.press(screen.getByText(m.me_sign_out()))
+      await waitFor(() => expect(screen.getByText(m.me_sign_out_confirm())).toBeTruthy())
+      fireEvent.press(screen.getAllByText(m.me_sign_out()).at(-1) as never)
       await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
       expect(fakes.authFacade.snapshot.status).toBe('signedOut')
-      expect(screen.queryByText(m.settings_section_account())).toBeNull()
+      expect(screen.queryByText(m.me_tab_account())).toBeNull()
     } finally {
       view.unmount()
       fakes.dispose()
     }
   })
 
-  // A4: selecting a palette goes through [51]'s set-and-apply — the optimistic flip is immediate,
-  // and when the controlled persist is rejected the store reverts. A bare setMoodPalette call
-  // would do neither.
-  it('routes a palette selection through set-and-apply (optimistic flip, revert on failure)', async () => {
-    let rejectPersist = (_error: Error) => {}
-    let persistStarted = false
-    const persistBlocked = new Promise<string>((_resolve, reject) => {
-      rejectPersist = reject
-    })
+  it('exports both formats through the native share sheet without query retention', async () => {
+    const formats: ExportFormat[] = []
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' })
     const fakes = createMobileShellFakes({
-      userId: 'settings-test-user',
+      userId: 'me-test-user',
       transport: createMobileAppTransport({
-        setPalettePreference: () => {
-          persistStarted = true
-          return persistBlocked
+        onExport: (format) => formats.push(format),
+      }),
+    })
+    setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
+    const view = await openMe(fakes)
+    try {
+      fireEvent.press(screen.getByText(m.me_tab_diary()))
+      fireEvent.press(screen.getByText(m.me_export_action()))
+      await waitFor(() => expect(formats).toEqual([ExportFormat.CSV]))
+      fireEvent.press(screen.getByText(m.me_export_format_md()))
+      fireEvent.press(screen.getByText(m.me_export_action()))
+      await waitFor(() => expect(formats).toEqual([ExportFormat.CSV, ExportFormat.MD]))
+      expect(share).toHaveBeenCalledTimes(2)
+      expect(fakes.queryClient.getQueryCache().findAll({ queryKey: ['export'] })).toHaveLength(0)
+    } finally {
+      share.mockRestore()
+      view.unmount()
+      fakes.dispose()
+    }
+  })
+
+  it('offers export at withdrawal, interpolates retention, then withdraws and signs out', async () => {
+    let withdrawals = 0
+    const fakes = createMobileShellFakes({
+      userId: 'me-test-user',
+      transport: createMobileAppTransport({
+        onWithdraw: () => {
+          withdrawals += 1
         },
       }),
     })
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
-    const view = await openSettings(fakes)
+    const view = await openMe(fakes)
     try {
-      fireEvent.press(
-        screen.getByRole('button', { name: m.palette_name_muted_dusk(), disabled: false }),
-      )
-      await waitFor(() => expect(persistStarted).toBe(true))
-      await waitFor(() => expect(usePalettePreferenceStore.getState().paletteId).toBe('muted-dusk'))
-      await act(() => {
-        rejectPersist(new Error('server refused'))
-      })
-      await waitFor(() =>
-        expect(usePalettePreferenceStore.getState().paletteId).toBe(DEFAULT_PALETTE_ID),
-      )
+      fireEvent.press(screen.getByText(m.me_tab_account()))
+      fireEvent.press(screen.getByText(m.withdraw_start()))
+      expect(
+        screen.getByText(
+          m.withdraw_description({
+            days: String(VALUES.release.softDeleteRetentionDays),
+          }),
+        ),
+      ).toBeTruthy()
+      expect(screen.getByText(m.withdraw_export_offer())).toBeTruthy()
+      expect(screen.getByText(m.me_export_action())).toBeTruthy()
+
+      fireEvent.press(screen.getByText(m.withdraw_confirm()))
+      await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
+      expect(withdrawals).toBe(1)
+      expect(fakes.authFacade.snapshot.status).toBe('signedOut')
     } finally {
       view.unmount()
       fakes.dispose()

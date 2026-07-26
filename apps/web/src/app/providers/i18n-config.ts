@@ -1,8 +1,5 @@
 import { resolveLocale, type Locale } from '@cosimosi/i18n'
 
-/** Where an explicit web locale choice is stored (a future language switcher writes here). */
-export const WEB_LOCALE_STORAGE_KEY = 'cosimosi.locale'
-
 export interface WebLocaleSources {
   /** A previously stored explicit choice, if any. */
   stored?: string | null

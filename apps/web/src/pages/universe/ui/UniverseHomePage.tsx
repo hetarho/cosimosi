@@ -46,10 +46,10 @@ function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFal
 // app-layer navigation seam to the diary archive (the page never reaches the router itself).
 export function UniverseHomePage({
   onOpenReader,
-  onOpenSettings,
+  onOpenMe,
 }: {
   onOpenReader?: () => void
-  onOpenSettings?: () => void
+  onOpenMe?: () => void
 }) {
   // The navigation/selection actor is owned HERE (the app layer) so the canvas and the
   // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
@@ -129,12 +129,12 @@ export function UniverseHomePage({
           <div className="flex flex-col items-end gap-3">
             <UniverseTimeOverlay />
             <StardustOverlay />
-            {/* The quiet way into the archive ([D2]) and settings ([52]) — restrained
+            {/* The quiet way into the archive ([D2]) and the signed-in account home — restrained
                 affordances, not a persistent chrome bar. pointer-events-auto so they stay
                 tappable over the non-interactive HUD. */}
             <div className="pointer-events-auto flex gap-2">
-              <Button color="neutral" size="sm" onClick={() => onOpenSettings?.()}>
-                {m.settings_title()}
+              <Button color="neutral" size="sm" onClick={() => onOpenMe?.()}>
+                {m.me_title()}
               </Button>
               <Button color="neutral" size="sm" onClick={() => onOpenReader?.()}>
                 {m.diary_reader_title()}

@@ -10,9 +10,9 @@ import { gateDecision, type SessionStatus } from '@cosimosi/auth'
 // (GetUniverse) never mounts for a signed-out session ([U1][A8]). Reads the status through the [04]
 // facade accessor in the router context; it never touches Supabase or the session machine.
 //
-// `from` carries the pathname only (not the full href): the login route replays it as a route `to`,
-// which takes a path, not a query string — v1's product routes hold no state in the query (the diary
-// reader parks its target in a store, not the URL), so the pathname is the whole return target.
+// `from` carries the pathname only (not the full href): the login route replays it as a route `to`.
+// `/me` tab state is reload-stable for an authenticated session; a signed-out auth round trip
+// intentionally returns to that page's default profile tab instead of replaying arbitrary search.
 export function authGuardBeforeLoad(
   getSessionStatus: () => SessionStatus,
   location: ParsedLocation,

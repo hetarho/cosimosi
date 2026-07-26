@@ -131,12 +131,39 @@ export default defineConfig([
     },
   },
   {
-    // The settings vertical (plan 52): the one settings page hosts three sectioned features —
-    // account-settings (sign-out + identity) and customize-staging (the reserved [P4] slot) exist
-    // only there BY DESIGN (§3.1: a feature is one user surface; the page composes, never absorbs).
-    // change-palette is not exempted — its second consumer (the app-init palette apply) already
-    // counts. Scoped so a genuinely insignificant future slice still gets flagged.
-    files: ['./src/features/account-settings/**', './src/features/customize-staging/**'],
+    // The profile editor is one account action hosted by the /me profile tab. Its RPC/query
+    // substance stays in shared packages; the slice owns only platform UI.
+    files: ['./src/features/account-profile/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
+    // Withdrawal is one terminal account action hosted by the /me account tab.
+    files: ['./src/features/withdraw-account/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
+    // The inviter share surface is one profile fact hosted by the /me profile tab.
+    files: ['./src/features/invite-link/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
+    // The extended provider/sign-out feature remains one account action hosted by /me.
+    files: ['./src/features/account-settings/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
+    // Export is deliberately mounted twice inside the same page slice (diary tab and withdrawal
+    // confirmation). Steiger counts source slices rather than mount sites, so it observes one
+    // reference even though the UI has two independently reachable compositions.
+    files: ['./src/features/export-diaries/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },

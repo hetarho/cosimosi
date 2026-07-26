@@ -55,6 +55,8 @@ export type {
   BadgeOwnProps,
   CardOwnProps,
   SkeletonOwnProps,
+  TabItem,
+  TabsOwnProps,
 } from './primitives/types.ts'
 
 export { Button, type ButtonProps } from './primitives/button.native.tsx'
@@ -70,3 +72,4 @@ export { Badge, type BadgeProps } from './primitives/badge.native.tsx'
 export { Card, type CardProps } from './primitives/card.native.tsx'
 export { Skeleton, type SkeletonProps } from './primitives/skeleton.native.tsx'
 export { VisuallyHidden, type VisuallyHiddenProps } from './primitives/visually-hidden.native.tsx'
+export { Tabs, type TabsProps } from './primitives/tabs.native.tsx'

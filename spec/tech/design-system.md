@@ -124,8 +124,8 @@ win deterministically through the `style={[base, …, props.style]}` array.
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
 **Shipped now:** Button, IconButton, TextField, TextArea, Switch, Checkbox, Dialog,
-Tooltip, Toast, Badge, Skeleton, VisuallyHidden. **Deferred** (added when a Phase-4
-slice needs them, promote-on-use): Select/Menu, Tabs, SegmentedControl,
+Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs. **Deferred** (added when a Phase-4
+slice needs them, promote-on-use): Select/Menu, SegmentedControl,
 Slider/Stepper, Drawer.
 
 ## 5. Accessibility baseline
@@ -140,6 +140,10 @@ Hand-rolled (no headless-UI dependency):
   its own focus), so `useFocusTrap` is web-only.
 - Disabled controls are conveyed visually and semantically (`disabled` / RN
   `accessibilityState`). A loading control is disabled and `aria-busy`.
+- Tabs are controlled (`value` + `onValueChange`) so navigation state remains in the app layer. Web exposes a
+  labelled `tablist`, `tab`/`tabpanel` relationships, selected state, roving focus, ArrowLeft/ArrowRight wrapping,
+  and Home/End movement. Native exposes the same values and labels as a horizontally scrollable
+  `tablist`/`tab` row with selected accessibility state.
 - Reduced motion: `base.css` neutralizes CSS transitions/animations under
   `prefers-reduced-motion`; `useReducedMotion` (web `matchMedia`, native
   `AccessibilityInfo`) lets components drop JS-driven motion.

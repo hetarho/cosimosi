@@ -6,12 +6,13 @@ import { gateDecision, pendingInvite } from '@cosimosi/auth'
 import { m } from '@cosimosi/i18n'
 
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
+import { LocaleBootstrap } from '../providers/locale-bootstrap.tsx'
 import { PaletteBootstrap } from '../providers/palette-bootstrap.tsx'
 import { ProfileGate } from '../providers/profile-gate.tsx'
 import { AdminPage } from '../../pages/admin/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
-import { SettingsPage } from '../../pages/settings/index.ts'
+import { MePage, parseMeTab, type MeTabId } from '../../pages/me/index.ts'
 import { UniverseHomePage } from '../../pages/universe/index.ts'
 import { loginReturnTarget } from './guards/auth-gate.ts'
 import { useAppNavigate } from './navigation.ts'
@@ -35,7 +36,7 @@ export function AuthHold() {
 // signed-out arrival to /login, so this decides only what a passing session renders. If the user
 // signs out WHILE mounted, the live snapshot flips to a login decision and this navigates to /login
 // (the guard only runs on entry). GetUniverse (and any product read below) mounts only through
-// <Outlet/>, so it never issues without a session ([U1][A8]). Future product routes (e.g. /settings)
+// <Outlet/>, so it never issues without a session ([U1][A8]). Future product routes (e.g. /me)
 // mount under this same guard.
 //
 // Only the initial `bootstrapping` hides the universe behind the neutral hold (no read yet). A
@@ -59,6 +60,7 @@ export function AuthenticatedLayout() {
   if (status === 'authenticated' || status === 'refreshing') {
     return (
       <ProfileGate>
+        <LocaleBootstrap />
         <PaletteBootstrap>
           <Outlet />
         </PaletteBootstrap>
@@ -77,7 +79,7 @@ export function UniverseRoute() {
   return (
     <UniverseHomePage
       onOpenReader={() => navigate({ to: '/diary' })}
-      onOpenSettings={() => navigate({ to: '/settings' })}
+      onOpenMe={() => navigate({ to: '/me', search: { tab: 'profile' } })}
     />
   )
 }
@@ -87,9 +89,16 @@ export function DiaryReaderRoute() {
   return <DiaryReaderPage onExit={() => navigate({ to: '/' })} />
 }
 
-export function SettingsRoute() {
+export function MeRoute() {
   const navigate = useAppNavigate()
-  return <SettingsPage onExit={() => navigate({ to: '/' })} />
+  const search = useSearch({ strict: false }) as { tab?: MeTabId }
+  return (
+    <MePage
+      activeTab={parseMeTab(search.tab)}
+      onTabChange={(tab) => navigate({ to: '/me', search: { tab }, replace: true })}
+      onExit={() => navigate({ to: '/' })}
+    />
+  )
 }
 
 // The admin console route (web-only, the admin console). It mounts under the authenticated subtree; the page

@@ -1,28 +1,49 @@
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
+import { useTransport } from '@connectrpc/connect-query'
+import { useQuery } from '@tanstack/react-query'
+
+import {
+  AuthProviderKind,
+  createGetProfileQueryOptions,
+  createListAuthProvidersQueryOptions,
+} from '@cosimosi/api-client'
+import { useAccountSession } from '@cosimosi/auth/react'
 import { Button, tokens } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { useAccountSession } from '@cosimosi/auth/react'
 
-// The basic account section (RN mirror of the web ui over the same api): the read-only identity
-// line and sign-out behind a plain confirm step (never an accidental single tap). Account holds
-// nothing else in v1. The confirm is local control-state (idle → confirming), trivial by design
-// (§3.2).
 export function AccountSection() {
+  const transport = useTransport()
   const { userId, signingOut, signOut } = useAccountSession()
   const [confirming, setConfirming] = useState(false)
+  const profile = useQuery(createGetProfileQueryOptions(transport))
+  const providers = useQuery(createListAuthProvidersQueryOptions(transport))
 
   return (
     <View style={styles.root}>
       <View style={styles.identityRow}>
-        <Text style={styles.label}>{m.settings_identity_label()}</Text>
-        <Text style={styles.identity}>{userId ?? ''}</Text>
+        <Text style={styles.label}>{m.me_identity_label()}</Text>
+        <Text style={styles.identity}>{profile.data?.profile?.email || userId || ''}</Text>
+      </View>
+      <View style={styles.providers}>
+        <Text style={styles.label}>{m.me_provider_label()}</Text>
+        {(providers.data?.providers ?? []).map((provider) => {
+          const label = providerLabel(provider.kind)
+          return label ? (
+            <View key={`${provider.kind}-${provider.linkedAt}`} style={styles.identityRow}>
+              <Text style={styles.identity}>{label}</Text>
+              <Text style={styles.label}>
+                {m.me_provider_linked_at({ linkedAt: provider.linkedAt })}
+              </Text>
+            </View>
+          ) : null
+        })}
       </View>
       {confirming ? (
         <View style={styles.confirmRow}>
-          <Text style={styles.confirm}>{m.settings_sign_out_confirm()}</Text>
+          <Text style={styles.confirm}>{m.me_sign_out_confirm()}</Text>
           <View style={styles.actions}>
             <Button color="neutral" size="sm" onPress={() => setConfirming(false)}>
               {m.common_cancel()}
@@ -37,14 +58,14 @@ export function AccountSection() {
                 signOut().catch(() => undefined)
               }}
             >
-              {m.settings_sign_out()}
+              {m.me_sign_out()}
             </Button>
           </View>
         </View>
       ) : (
         <View style={styles.signOutRow}>
           <Button color="neutral" size="sm" onPress={() => setConfirming(true)}>
-            {m.settings_sign_out()}
+            {m.me_sign_out()}
           </Button>
         </View>
       )}
@@ -52,8 +73,15 @@ export function AccountSection() {
   )
 }
 
+function providerLabel(kind: AuthProviderKind): string | null {
+  if (kind === AuthProviderKind.GOOGLE) return m.me_provider_google()
+  if (kind === AuthProviderKind.PASSWORD) return m.me_provider_password()
+  return null
+}
+
 const styles = StyleSheet.create({
   root: { gap: 16 },
+  providers: { gap: 8 },
   identityRow: {
     alignItems: 'baseline',
     flexDirection: 'row',

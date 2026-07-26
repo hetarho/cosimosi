@@ -3,6 +3,7 @@ import { createRootRouteWithContext, createRoute, notFound } from '@tanstack/rea
 import { type SessionStatus } from '@cosimosi/auth'
 
 import { DesignShowcasePage } from '../../pages/design/index.ts'
+import { parseMeTab, type MeTabId } from '../../pages/me/index.ts'
 import { TestPage } from '../../pages/test/index.ts'
 import { authGuardBeforeLoad } from './guards/auth-gate.ts'
 import { NotFoundScreen } from './not-found.tsx'
@@ -12,7 +13,7 @@ import {
   DiaryReaderRoute,
   InviteRoute,
   LoginRoute,
-  SettingsRoute,
+  MeRoute,
   SignupRoute,
   UniverseRoute,
 } from './route-screens.tsx'
@@ -33,7 +34,7 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 })
 
 // The authenticated app subtree (pathless): its guard runs before any product route mounts, so the
-// gate is inherited by every route under it (the universe, the archive, and the settings page once
+// gate is inherited by every route under it (the universe, the archive, and the my page surface
 // it lands). The diagnostics /test route sits OUTSIDE it (its own gate), and /login is public.
 const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -54,10 +55,14 @@ const diaryReaderRoute = createRoute({
   component: DiaryReaderRoute,
 })
 
-const settingsRoute = createRoute({
+const meRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
-  path: '/settings',
-  component: SettingsRoute,
+  path: '/me',
+  validateSearch: (search: Record<string, unknown>): { tab?: MeTabId } => {
+    const tab = parseMeTab(search.tab)
+    return { tab: search.tab === tab ? tab : undefined }
+  },
+  component: MeRoute,
 })
 
 // The admin console mounts under the authenticated subtree (so it inherits the auth gate); the page
@@ -113,7 +118,7 @@ const designRoute = createRoute({
 })
 
 export const routeTree = rootRoute.addChildren([
-  authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, settingsRoute, adminRoute]),
+  authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, meRoute, adminRoute]),
   loginRoute,
   signupRoute,
   inviteRoute,

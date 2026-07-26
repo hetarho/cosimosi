@@ -2,6 +2,7 @@
 // device concern the shell touches — device locale, secure token storage, inbound
 // links, safe-area metrics — is wrapped here so feature/domain slices stay pure.
 export { readDeviceLocale } from './device-locale.ts'
+export { writeStoredLocale, resetMobileLocaleUserState } from './locale-storage.ts'
 export {
   createInMemorySecureTokenStorage,
   type SecureTokenStorage,

@@ -14,12 +14,15 @@ import {
 import { GetUniverseResponseSchema, MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
 
 export { MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
+export { ExportFormat } from './gen/cosimosi/memory/v1/memory_pb.ts'
 export type {
   ConfirmedMemory,
   DiaryDto,
   DiarySplitRef,
   EmotionDto,
   EpisodicMemoryDto,
+  ExportRequest,
+  ExportResponse,
   GetDiariesRequest,
   GetDiariesResponse,
   GetUniverseRequest,

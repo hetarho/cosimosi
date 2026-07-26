@@ -28,8 +28,8 @@ never import the library; they navigate through the seam in §4.
   `<Outlet/>`, `notFoundComponent` is the localized screen), `createRoute` per screen, composed with `addChildren`.
   File-based routing is not used — it scatters route files and fights FSD.
 - Current routes: a pathless **`authenticated`** layout route (the auth gate, §8) parenting `/` → `UniverseHomePage`
-  (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/settings` → `SettingsPage`
-  (`pages/settings`, plan 52); outside it, `/login` and `/signup` → the two `LoginPage` modes,
+  (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/me` → `MePage`
+  (`pages/me`, plan 64); outside it, `/login` and `/signup` → the two `LoginPage` modes,
   `/invite/$token` → invite capture then replacement with `/signup`, `/test` → `TestPage`, and
   `/design` → `DesignShowcasePage` (`pages/design`, the design showcase). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
   wrapper** that reads `useAppNavigate` and injects `onOpenReader`/`onExit`-style callbacks into the page — the
@@ -85,6 +85,10 @@ facade — the same key and facade the mobile shell uses to gate its `Diagnostic
 
 - **Query strings are ignored for route matching** (`/test?probe=1` resolves to `/test`) — this preserves the behavior
   of the retired hand-rolled path normalizer and covers real cases (OAuth/tracking params on a URL).
+- **`/me` owns one validated query value**: `tab` accepts `profile`, `stardust`, `achievements`, `diary`, or
+  `account`. `validateSearch` drops an unknown value; `MeRoute` resolves a missing value to `profile`. Tab changes
+  replace the current history entry, remain deep-linkable, and survive reload without introducing a tab state
+  machine.
 - **Trailing slashes are not normalized** (`/test/` does not match `/test`). This is unhandled by design for the
   current two-route set; a presentation plan that introduces a real information architecture owns the trailing-slash
   policy for its routes.
@@ -101,7 +105,8 @@ parity, §3.5):
 
 - **Web** — every product route mounts under a pathless **`authenticated` layout route**. Its `beforeLoad` runs
   `authGuardBeforeLoad` (`routes/guards/auth-gate.ts`): a settled signed-out arrival is `redirect`ed to `/login`
-  carrying the requested **pathname** as `from` (pathname only — v1 product routes hold no state in the query). The
+  carrying the requested **pathname** as `from` (pathname only — an auth round trip returns `/me` to its default
+  profile tab rather than replaying arbitrary search). The
   layout component then renders from the **live** snapshot: initial `bootstrapping` → a neutral hold; `authenticated`
   / `refreshing` → `<Outlet/>` (the universe stays mounted through a token refresh); a session that settles signed-out
   **while mounted** navigates to `/login` with the current pathname. Product reads (`GetUniverse`) mount only under
@@ -121,8 +126,9 @@ parity, §3.5):
   the same mapping: login decision → the `Login` stack; `bootstrapping` → the `Boot` splash; otherwise the
   `Universe` stack (`refreshing` keeps it mounted — a cold entry is never `refreshing`). React Navigation swaps the
   mounted stack on decision change, so sign-in/sign-out routing needs no manual resets. Product composition lives in
-  `pages/{login,universe,diary-reader,settings}`; module-private route adapters pass callback/data props, while the
-  neutral `BootScreen` alone remains under `app/navigation/screens`. The shell-era `ShellHome` screen is retired.
+  `pages/{login,universe,diary-reader,me}`; module-private route adapters pass callback/data props, while the
+  neutral `BootScreen` alone remains under `app/navigation/screens`. `Me` carries no route parameter, keeps its tab
+  locally, and is reachable through the `'me'` deep link. The shell-era `ShellHome` screen is retired.
 - **Sign-out** routes to login on both apps by the same observation; nothing persisted is deleted. Before the new
   auth-scope subtree commits, the scope boundary clears the full Query cache (including injected clients) plus every
   registered user mirror, draft, target, deferred action, release/balance mirror, and palette epoch. A re-sign-in then

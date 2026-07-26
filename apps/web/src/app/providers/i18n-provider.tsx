@@ -3,7 +3,8 @@ import { useEffect, type ReactNode } from 'react'
 import { setActiveLocale, type Locale } from '@cosimosi/i18n'
 
 import { useActiveLocale } from '../../shared/i18n/index.ts'
-import { resolveWebLocale, WEB_LOCALE_STORAGE_KEY } from './i18n-config.ts'
+import { readStoredLocale } from '../../shared/lib/locale-storage.ts'
+import { resolveWebLocale } from './i18n-config.ts'
 
 interface WebI18nProviderProps {
   children?: ReactNode
@@ -35,12 +36,4 @@ export function WebI18nProvider({ children, locale: override }: WebI18nProviderP
   }, [locale])
 
   return <>{children}</>
-}
-
-function readStoredLocale(): string | null {
-  try {
-    return window.localStorage.getItem(WEB_LOCALE_STORAGE_KEY)
-  } catch {
-    return null
-  }
 }
