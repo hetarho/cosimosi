@@ -14,7 +14,7 @@
 
 ## Grounding
 
-- Constitution ([I1]–[I11]): [00.overview](00.overview.md) §3 (_The constitution_)
+- Constitution ([I1]–[I13]): [00.overview](00.overview.md) §3 (_The constitution_)
 - tech / policy / concept basis: <!-- the docs this depends on -->
 
 ## Design

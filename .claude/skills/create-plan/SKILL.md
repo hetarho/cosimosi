@@ -32,8 +32,10 @@ forks) until you can write each section concretely:
 - **Acceptance Criteria** — the testable criteria that make it "true" (these become the job's acceptance criteria).
 - **Policy / Values Impact** — which policy rules, and which spec/values.yaml numbers the feature sets or changes.
 
-Honor the invariants **[I1]–[I11]** (00.overview §3, *The constitution*) — if the request would break one (e.g. delete stars, mutate the
-original diary, server-side coords), flag it and resolve with the user before writing.
+Honor the invariants **[I1]–[I13]** (00.overview §3, *The constitution*) — if the request would break one (e.g. delete stars, mutate the
+original diary, server-side coords), flag it and resolve with the user before writing. Two are self-scoping: **[I12]**
+governs public copy (landing · blog · demo · store listings), and **[I13]** exempts the demo — for a demo plan, verify
+**isolation** from the real code path instead of invariant compliance.
 
 ## Step 2 — Scaffold + fill
 
