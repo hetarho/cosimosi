@@ -111,6 +111,20 @@ jobs:
             set -eu
             cd "/srv/cosimosi-${ENV_NAME}"
 
+            require_nonempty_env() {
+              env_key="$1"
+              if ! grep -Eq "^${env_key}=.+" .env; then
+                echo "required runtime env ${env_key} is missing or empty" >&2
+                exit 1
+              fi
+            }
+
+            # Fail before pull/quiesce when the Auth Admin adapter cannot compose. Without
+            # these server-only values both API and worker deliberately refuse production.
+            require_nonempty_env SUPABASE_PROJECT_URL
+            require_nonempty_env SUPABASE_SERVICE_ROLE_KEY
+            require_nonempty_env COSIMOSI_CORS_ORIGINS
+
             compose() {
               docker compose -f docker-compose.prod.yml "$@"
             }
@@ -184,3 +198,26 @@ jobs:
             #    file (e.g. the old per-stack caddy) instead of leaving them running.
             compose up -d --remove-orphans api worker
             docker image prune -f
+
+      - name: Verify production health and CORS preflight
+        if: ${{ github.ref_name == 'main' }}
+        env:
+          API_ORIGIN: https://api.cosimosi.haeram.me
+          WEB_ORIGIN: https://cosimosi.haeram.me
+        run: |
+          set -eu
+          curl --retry 10 --retry-all-errors --retry-delay 2 \
+            --fail --silent --show-error \
+            --output /dev/null "${API_ORIGIN}/health"
+
+          headers_file="$(mktemp)"
+          trap 'rm -f "$headers_file"' EXIT
+          curl --fail --silent --show-error \
+            --dump-header "$headers_file" --output /dev/null \
+            --request OPTIONS \
+            --header "Origin: ${WEB_ORIGIN}" \
+            --header 'Access-Control-Request-Method: GET' \
+            --header 'Access-Control-Request-Headers: authorization,connect-protocol-version,content-type' \
+            "${API_ORIGIN}/cosimosi.account.v1.AccountService/GetProfile?connect=v1&encoding=json"
+          grep --fixed-strings --ignore-case \
+            "access-control-allow-origin: ${WEB_ORIGIN}" "$headers_file"

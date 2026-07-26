@@ -79,10 +79,12 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
   statement가 충돌(42P05). describe_exec는 unnamed(풀러 안전)+describe(타입 인식)라 42P05도, jsonb
   22P02도 안 난다. simple_protocol/exec 금지 — 타입 정보를 버려 jsonb를 깨뜨림) · `DIRECT_DATABASE_URL`(5432) · `PORT=8080` ·
   `API_UPSTREAM`(`cosimosi-api-staging`|`cosimosi-api-prod` — edge 네트워크에서의 DNS 별칭) ·
-  `COSIMOSI_CORS_ORIGINS`(해당 환경 프론트 origin, 쉼표로 여러 개) · `SUPABASE_PROJECT_URL` · `AI_EMBEDDER`/`OPENAI_API_KEY` ·
-  `SENTRY_DSN`/`SENTRY_ENVIRONMENT` · `COSIMOSI_ERROR_DETAIL`. Use the exact value `verbose` only temporarily for
-  staging diagnostics; **production must keep it empty**. Empty, misspelled, and unknown values all keep the cause
-  masked. 키 문서화는 `.env.production.example`.
+  `COSIMOSI_CORS_ORIGINS`(해당 환경 프론트 origin, 쉼표로 여러 개) · `SUPABASE_PROJECT_URL` ·
+  `SUPABASE_SERVICE_ROLE_KEY`(**서버 전용**, Auth Admin API와 withdrawal credential purge에 필수; `VITE_*`로
+  노출 금지) · `AI_EMBEDDER`/`OPENAI_API_KEY` · `SENTRY_DSN`/`SENTRY_ENVIRONMENT` ·
+  `COSIMOSI_ERROR_DETAIL`. Use the exact value `verbose` only temporarily for staging diagnostics; **production must
+  keep it empty**. Empty, misspelled, and unknown values all keep the cause masked. 키 문서화는
+  `.env.production.example`.
 - 도커 외부 네트워크 `edge`(`docker network create edge`)로 Caddy↔api가 통신한다.
   Caddy는 스택마다 띄우지 않는다 — 80/443 충돌.
 - 서버 점검 한 줄: `ssh -i ~/.ssh/lightsail-cosimosi.pem ubuntu@43.203.82.239 'docker ps'`
