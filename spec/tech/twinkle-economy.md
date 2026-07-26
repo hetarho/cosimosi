@@ -1,8 +1,9 @@
 # tech: twinkle economy
 
 > As-built rules for the `internal/twinkle` bounded context and its storage. The architecture frame is
-> [ARCHITECTURE.md](../ARCHITECTURE.md) §2.2–§2.6 and §4; plan [43.stardust-ledger](../plan/43.stardust-ledger.md)
-> owns the product shape; the domain policy is
+> [ARCHITECTURE.md](../ARCHITECTURE.md) §2.2–§2.6 and §4; plans
+> [43.stardust-ledger](../plan/43.stardust-ledger.md) and
+> [61.signup-and-invite-usecase](../plan/61.signup-and-invite-usecase.md) own the product shape; the domain policy is
 > [policy/domain/twinkle-economy.md](../policy/domain/twinkle-economy.md).
 
 ## 1. Boundaries
@@ -12,8 +13,9 @@ memory never imports twinkle. The two meet only at the composition root (`cmd/ap
 cross-context adapters live (CC2/CC8). The context ships as one package plus its persistence and transport seams:
 
 - `internal/twinkle` — the domain + use-cases: `Balance`, `BalanceRecord`, `LedgerEntry`, the closed `EntryKind`
-  (`earn|spend`) / `EntryReason` (`payment|invite|write_diary|recall|gist_view`) sets, the pure functions below, and
-  the `Service` use-cases (`GetBalance` / `CheckAndSpend` / `EarnOnWrite` / `ClaimInvite` / `Charge` / `QuoteSpend`).
+  (`earn|spend`) / `EntryReason` (`payment|invite|write_diary|signup_bonus|recall|gist_view`) sets, the pure functions
+  below, and the `Service` use-cases (`GetBalance` / `CheckAndSpend` / `EarnOnWrite` / `EarnSignupBonus` /
+  `ClaimInvite` / `Charge` / `QuoteSpend`).
   No proto, sqlc, pgx, or SDK import; the pure functions take `now` as an argument (the Service's clock is a seam).
 - `internal/twinkle/pg` — the context's **only** sqlc/pgx package: the concrete `Store` over `twinkle_balances` +
   `twinkle_ledger_entries` with row↔domain mapping at this edge, plus `InLedgerTx` (the own-transaction runner). It
@@ -103,8 +105,9 @@ window never rolls the anchor backward (`GREATEST`); a rolled window starts its 
 composing use-case appends the dedup-keyed ledger entry **first** in the same transaction and skips the delta when
 the append reports a retry — that pairing is what makes a retried earn/spend idempotent end to end. The dedup keys
 are use-case policy: `write_diary:<diaryID>` (once per diary), `invite_signup:<signupID>` (invitee side),
-`invite:<signupID>` (inviter side), and a `payment:` key derived from the normalized provider + provider transaction
-identity. **Spends carry an operation-derived key too** — `spend:<operationID>:<memoryID>`, minted at the composition
+`invite:<signupID>` (inviter side), `signup_bonus:<userID>` (once per account), and a `payment:` key derived from the
+normalized provider + provider transaction identity. **Spends carry an operation-derived key too** —
+`spend:<operationID>:<memoryID>`, minted at the composition
 root from the paid action's client operation id (per-action for a single recall/view, per-member when a whole-diary
 recall shares one operation id across its members), so a duplicate spend append applies no second balance delta (A3).
 Payment keys are globally single-use; other keys remain user-scoped.
@@ -122,10 +125,16 @@ caller as not-enough-twinkle at the true window state.
   now pass their memory transaction). A zero-priced intent writes nothing.
 - **`EarnOnWrite(scope, ledger, diaryID)`** — the write grant, `twinkle.earn_write` to additional, dedup-keyed per
   diary; requires the launch's transaction-bound store (`ErrEarnTxRequired` otherwise).
+- **`EarnSignupBonus(scope)`** — an own-transaction `twinkle.earn_signup_bonus` grant to additional with reason
+  `signup_bonus`, dedup-keyed per account.
 - **`ClaimInvite(scope, inviteCode)`** — passes the opaque code and authenticated invitee to `InviteResolver`; only a
   trusted result binding one signup identity, an existing distinct inviter, and that invitee can credit. Both sides
-  derive keys from the signup identity and commit atomically. `UnavailableInviteResolver` is the production default,
-  so raw/fabricated account ids carry no value.
+  derive keys from the signup identity and commit atomically. Production binds the account-backed resolver and fails
+  to boot without it; the resolver also requires account's private post-launch settlement context, so the legacy
+  wire method remains fail-closed until plan 66 removes it. Inside the ledger transaction, an inviter-keyed advisory
+  lock and count of existing `invite:<signupID>` entries enforce the lifetime cap against both concurrency and the
+  credits-before-account-stamp crash window. An exact dedup replay is allowed at the cap so `rewarded_at` can recover.
+  Raw or fabricated account ids carry no value.
 - **`Charge(scope, packID, provider, receipt)`** — asks `StorePaymentVerifier` for a trusted claim and validates its
   normalized provider transaction identity, provider, known pack, exact catalog amount, and authenticated beneficiary.
   The opaque receipt never becomes a ledger key or an error detail. `UnavailablePaymentVerifier` is the production
@@ -164,19 +173,21 @@ constraint is the partial unique payment-key index, because a provider transacti
 
 ## 6. Values (`spec/values.yaml` → `twinkle.*`)
 
-| key                        | value | meaning                                                    |
-| -------------------------- | ----- | ---------------------------------------------------------- |
-| `basic_daily_amount`       | 100   | daily basic grant, resets each UTC day, never carries [G2] |
-| `recall_base_cost`         | 5     | 회고 base term before the depth term [G4][F4]              |
-| `recall_depth_coefficient` | 10    | price rise per unit of accessibility weight [G4][F4]       |
-| `recall_max_cost`          | 40    | 회고 cap — a silent engram stays recallable [G4][G5]       |
-| `gist_base_cost`           | 10    | 요지 열람 price at gist stage 1 [G4][R8]                   |
-| `gist_stage_discount`      | 3     | discount per deeper gist stage [G4][R8]                    |
-| `gist_min_cost`            | 3     | gist-view floor — cheap but never free [G4][G1]            |
-| `earn_write`               | 100   | write grant per launched diary → additional [G3]           |
-| `earn_invite_inviter`      | 500   | inviter grant on a valid signup [G3]                       |
-| `earn_invite_invitee`      | 500   | new friend's grant on a valid signup [G3]                  |
-| `charge_pack`              | 100   | the single v1 pack a verified Charge credits [G3]          |
+| key                             | value | meaning                                                    |
+| ------------------------------- | ----- | ---------------------------------------------------------- |
+| `basic_daily_amount`            | 100   | daily basic grant, resets each UTC day, never carries [G2] |
+| `recall_base_cost`              | 5     | 회고 base term before the depth term [G4][F4]              |
+| `recall_depth_coefficient`      | 10    | price rise per unit of accessibility weight [G4][F4]       |
+| `recall_max_cost`               | 40    | 회고 cap — a silent engram stays recallable [G4][G5]       |
+| `gist_base_cost`                | 10    | 요지 열람 price at gist stage 1 [G4][R8]                   |
+| `gist_stage_discount`           | 3     | discount per deeper gist stage [G4][R8]                    |
+| `gist_min_cost`                 | 3     | gist-view floor — cheap but never free [G4][G1]            |
+| `earn_write`                    | 100   | write grant per launched diary → additional [G3]           |
+| `earn_invite_inviter`           | 500   | inviter grant on a valid signup [G3]                       |
+| `earn_invite_invitee`           | 500   | new friend's grant on a valid signup [G3]                  |
+| `earn_signup_bonus`             | 500   | one-time post-launch signup grant → additional [G3]        |
+| `invite_reward_max_per_inviter` | 10    | lifetime rewarded-invite cap per inviter [G6]              |
+| `charge_pack`                   | 100   | the single v1 pack a verified Charge credits [G3]          |
 
 With the shipped `forgetting.cost_weight_*` (weight ∈ [1, 4]) the effective 회고 price runs 15 (fresh) → 40
 (capped); a day's grant covers roughly six fresh recalls or a mix of recalls and gist views. The [G5] relationship

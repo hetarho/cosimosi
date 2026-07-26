@@ -7,20 +7,114 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countRewardedInvitesByInviter = `-- name: CountRewardedInvitesByInviter :one
+const bindInviteToInvitee = `-- name: BindInviteToInvitee :one
 
+INSERT INTO invites (id, user_id, invitee_user_id, token, created_at, bound_at)
+SELECT $1,
+       $2,
+       $3,
+       $4,
+       $5,
+       $6
+FROM users
+WHERE users.user_id = $2
+  AND users.deleted_at IS NULL
+  AND $2 <> $3
+ON CONFLICT (token) DO NOTHING
+RETURNING id
+`
+
+type BindInviteToInviteeParams struct {
+	ID            string
+	UserID        string
+	InviteeUserID string
+	Token         string
+	CreatedAt     pgtype.Timestamptz
+	BoundAt       pgtype.Timestamptz
+}
+
+// Invite aggregate reads use the inviter's user_id as their scope ([U1][U8][G6]).
+// Bind from the verified capability payload only. The authenticated invitee is a parameter,
+// while the inviter-shaped user_id is accepted only when that product-owned user is still live.
+// A replayed token is an expected best-effort refusal. The invitee uniqueness race is
+// classified at the pg edge; every other constraint violation (especially an id collision)
+// remains an infrastructure/integrity error.
+func (q *Queries) BindInviteToInvitee(ctx context.Context, arg BindInviteToInviteeParams) (string, error) {
+	row := q.db.QueryRow(ctx, bindInviteToInvitee,
+		arg.ID,
+		arg.UserID,
+		arg.InviteeUserID,
+		arg.Token,
+		arg.CreatedAt,
+		arg.BoundAt,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const countRewardedInvitesByInviter = `-- name: CountRewardedInvitesByInviter :one
 SELECT count(*)
 FROM invites
 WHERE user_id = $1
   AND rewarded_at IS NOT NULL
 `
 
-// Invite aggregate reads use the inviter's user_id as their scope ([U1][U8][G6]).
 func (q *Queries) CountRewardedInvitesByInviter(ctx context.Context, userID string) (int64, error) {
 	row := q.db.QueryRow(ctx, countRewardedInvitesByInviter, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const findSettleableInviteForInvitee = `-- name: FindSettleableInviteForInvitee :one
+SELECT invites.id,
+       invites.user_id AS inviter_user_id,
+       invites.token
+FROM invites
+JOIN users ON users.user_id = invites.user_id
+WHERE invites.invitee_user_id = $1
+  AND invites.user_id <> $1
+  AND invites.rewarded_at IS NULL
+  AND users.deleted_at IS NULL
+LIMIT 1
+`
+
+type FindSettleableInviteForInviteeRow struct {
+	ID            string
+	InviterUserID string
+	Token         string
+}
+
+// Deliberately invitee-scoped: one authenticated invitee can own at most one row, and this
+// returns only the settlement identity. The persistence gate cannot express invitee_user_id as
+// the authenticated scope, so this one relationship read is explicitly allowlisted.
+func (q *Queries) FindSettleableInviteForInvitee(ctx context.Context, inviteeUserID string) (FindSettleableInviteForInviteeRow, error) {
+	row := q.db.QueryRow(ctx, findSettleableInviteForInvitee, inviteeUserID)
+	var i FindSettleableInviteForInviteeRow
+	err := row.Scan(&i.ID, &i.InviterUserID, &i.Token)
+	return i, err
+}
+
+const markInviteRewarded = `-- name: MarkInviteRewarded :exec
+UPDATE invites
+SET rewarded_at = $1
+WHERE user_id = $2
+  AND id = $3
+  AND rewarded_at IS NULL
+`
+
+type MarkInviteRewardedParams struct {
+	RewardedAt pgtype.Timestamptz
+	UserID     string
+	ID         string
+}
+
+func (q *Queries) MarkInviteRewarded(ctx context.Context, arg MarkInviteRewardedParams) error {
+	_, err := q.db.Exec(ctx, markInviteRewarded, arg.RewardedAt, arg.UserID, arg.ID)
+	return err
 }

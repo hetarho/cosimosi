@@ -7,16 +7,86 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getUserProfile = `-- name: GetUserProfile :one
+const createUserIfAbsent = `-- name: CreateUserIfAbsent :one
 
+WITH created AS (
+    INSERT INTO users (user_id, nickname, timezone, locale)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id) DO NOTHING
+    RETURNING user_id, nickname, timezone, locale, created_at, deleted_at
+),
+recorded_provider AS (
+    INSERT INTO auth_providers (user_id, provider, provider_user_id)
+    SELECT created.user_id, $5, $6
+    FROM created
+    WHERE $5::text <> ''
+      AND $6::text <> ''
+    ON CONFLICT (user_id, provider) DO NOTHING
+    RETURNING user_id
+)
+SELECT created.user_id,
+       created.nickname,
+       created.timezone,
+       created.locale,
+       created.created_at,
+       created.deleted_at
+FROM created
+LEFT JOIN recorded_provider ON recorded_provider.user_id = created.user_id
+`
+
+type CreateUserIfAbsentParams struct {
+	UserID         string
+	Nickname       string
+	Timezone       string
+	Locale         string
+	Provider       string
+	ProviderUserID string
+}
+
+type CreateUserIfAbsentRow struct {
+	UserID    string
+	Nickname  string
+	Timezone  string
+	Locale    string
+	CreatedAt pgtype.Timestamptz
+	DeletedAt pgtype.Timestamptz
+}
+
+// Account profile reads and updates are always scoped to the authenticated user ([U1]).
+// CreateUserIfAbsent is the signup birth write. When the directory supplied a known provider,
+// its append-only linkage is recorded in the same statement as the new profile; a retry that
+// loses the ON CONFLICT race returns no created row and writes neither table.
+func (q *Queries) CreateUserIfAbsent(ctx context.Context, arg CreateUserIfAbsentParams) (CreateUserIfAbsentRow, error) {
+	row := q.db.QueryRow(ctx, createUserIfAbsent,
+		arg.UserID,
+		arg.Nickname,
+		arg.Timezone,
+		arg.Locale,
+		arg.Provider,
+		arg.ProviderUserID,
+	)
+	var i CreateUserIfAbsentRow
+	err := row.Scan(
+		&i.UserID,
+		&i.Nickname,
+		&i.Timezone,
+		&i.Locale,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getUserProfile = `-- name: GetUserProfile :one
 SELECT user_id, nickname, timezone, locale, created_at, deleted_at
 FROM users
 WHERE user_id = $1
 `
 
-// Account profile reads and updates are always scoped to the authenticated user ([U1]).
 func (q *Queries) GetUserProfile(ctx context.Context, userID string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserProfile, userID)
 	var i User

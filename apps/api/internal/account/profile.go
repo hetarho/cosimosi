@@ -4,10 +4,8 @@ import (
 	"context"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/cosimosi/api/internal/platform"
-	"github.com/cosimosi/api/internal/platform/values"
 )
 
 // DefaultTimezone is the fail-safe day boundary for an absent or no-longer-resolvable stored
@@ -45,6 +43,9 @@ func (s *Service) UpdateProfile(ctx context.Context, scope platform.UserScope, i
 	if scope.UserID() == "" {
 		return ProfileView{}, ErrScopeRequired
 	}
+	if err := s.requireSignup(ctx, scope); err != nil {
+		return ProfileView{}, err
+	}
 	normalized, err := validateProfileInput(input)
 	if err != nil {
 		return ProfileView{}, err
@@ -54,13 +55,24 @@ func (s *Service) UpdateProfile(ctx context.Context, scope platform.UserScope, i
 		return ProfileView{}, err
 	}
 	if !found {
-		return ProfileView{}, ErrNotProvisioned
+		return ProfileView{}, ErrSignupRequired
 	}
 	email, err := s.directory.EmailFor(ctx, scope.UserID())
 	if err != nil {
 		return ProfileView{}, err
 	}
 	return ProfileView{Profile: normalizeStoredProfile(profile), Email: email}, nil
+}
+
+func (s *Service) requireSignup(ctx context.Context, scope platform.UserScope) error {
+	_, found, err := s.store.GetUserProfile(ctx, scope)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrSignupRequired
+	}
+	return nil
 }
 
 // ZoneFor publishes the IANA name only. Runtime resolution belongs to each consumer's
@@ -80,16 +92,13 @@ func (s *Service) ZoneFor(ctx context.Context, scope platform.UserScope) (string
 }
 
 func validateProfileInput(input UpdateProfileInput) (UpdateProfileInput, error) {
-	input.Nickname = strings.TrimSpace(input.Nickname)
-	length := utf8.RuneCountInString(input.Nickname)
-	if length < values.AccountNicknameMinLength || length > values.AccountNicknameMaxLength {
-		return UpdateProfileInput{}, ErrNicknameInvalid
+	nickname, err := normalizeNickname(input.Nickname)
+	if err != nil {
+		return UpdateProfileInput{}, err
 	}
+	input.Nickname = nickname
 	input.Timezone = strings.TrimSpace(input.Timezone)
-	if input.Timezone == "" {
-		return UpdateProfileInput{}, ErrTimezoneInvalid
-	}
-	if _, err := time.LoadLocation(input.Timezone); err != nil {
+	if input.Timezone == "" || !resolvesTimezone(input.Timezone) {
 		return UpdateProfileInput{}, ErrTimezoneInvalid
 	}
 	input.Locale = strings.TrimSpace(input.Locale)
@@ -99,6 +108,16 @@ func validateProfileInput(input UpdateProfileInput) (UpdateProfileInput, error) 
 		return UpdateProfileInput{}, ErrLocaleInvalid
 	}
 	return input, nil
+}
+
+func resolvesTimezone(name string) bool {
+	// time.LoadLocation accepts "Local" as a process-specific special case. Profiles
+	// must remain portable IANA/UTC identifiers, never inherit the API host's zone.
+	if name == "Local" {
+		return false
+	}
+	_, err := time.LoadLocation(name)
+	return err == nil
 }
 
 func normalizeStoredProfile(profile Profile) Profile {

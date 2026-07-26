@@ -353,6 +353,14 @@ twinkle:
   # [G3] Twinkle granted to the newly-signed-up friend on a valid signup (the invite earn
   # path); credited exactly once per signup.
   earn_invite_invitee: 500
+  # [U11][G3] One-time onboarding grant after the account launches its first star. Equal to
+  # the invitee leg so arriving without an invite is still meaningfully funded, while the
+  # launch cost floor and dedup key keep it from becoming a login/attendance reward.
+  earn_signup_bonus: 500
+  # [G6] Lifetime number of rewarded invite signups per inviter. Ten rewards let genuine
+  # sharing remain useful while bounding the inviter-side farming exposure at 5,000 Twinkle;
+  # later links still bind, but no longer pay either invite leg once this cap is reached.
+  invite_reward_max_per_inviter: 10
   # [G3] The single v1 payment-pack grant a verified Charge credits to additional balance
   # (a multi-pack table is content, not a scalar; the price structure is product config).
   charge_pack: 100

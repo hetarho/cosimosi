@@ -89,6 +89,17 @@ func (NoEarnOnWrite) OnDiaryLaunched(context.Context, platform.UserScope, Econom
 	return nil
 }
 
+// SignupSettlementPort is the post-commit deferred account-settlement seam ([U11][G6]).
+// No payload can expose meaning-layer facts, and no error can roll back an already-committed
+// launch. Production binds the observing adapter; tests and economy-less roots bind the no-op.
+type SignupSettlementPort interface {
+	OnEngramsLaunched(ctx context.Context, scope platform.UserScope)
+}
+
+type NoSignupSettlement struct{}
+
+func (NoSignupSettlement) OnEngramsLaunched(context.Context, platform.UserScope) {}
+
 // GraphMutationLocker is the consumer-visible serialization seam shared by every
 // per-user memory-graph writer. The transaction-scoped lock is always acquired
 // first, before release rows, clock rows, or graph rows, and needs no pre-existing

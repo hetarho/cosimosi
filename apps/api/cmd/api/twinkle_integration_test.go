@@ -130,6 +130,9 @@ func TestProductionTwinkleExternalEarnsFailClosedWithoutAdapters(t *testing.T) {
 	cleanupEconomyTestRows(t, pool, userID)
 	scope := economyScope(t, userID)
 	service := economyTwinkleService(t, pool)
+	if _, err := newTwinkleService(pool, &memorySpendSignals{}, nil); !errors.Is(err, twinkle.ErrInviteResolverRequired) {
+		t.Fatalf("newTwinkleService without resolver err = %v, want ErrInviteResolverRequired", err)
+	}
 
 	if _, err := service.Charge(ctx, scope, twinkle.DefaultChargePackID, "app-store", "arbitrary-non-empty-receipt"); !errors.Is(err, twinkle.ErrPaymentVerificationUnavailable) {
 		t.Fatalf("Charge err = %v, want ErrPaymentVerificationUnavailable", err)
@@ -144,7 +147,7 @@ func TestProductionTwinkleExternalEarnsFailClosedWithoutAdapters(t *testing.T) {
 
 func economyTwinkleService(t *testing.T, pool *platformdb.Pool) *twinkle.Service {
 	t.Helper()
-	service, err := newTwinkleService(pool, &memorySpendSignals{})
+	service, err := newTwinkleService(pool, &memorySpendSignals{}, twinkle.UnavailableInviteResolver{})
 	if err != nil {
 		t.Fatalf("newTwinkleService failed: %v", err)
 	}

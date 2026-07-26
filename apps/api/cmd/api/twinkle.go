@@ -31,11 +31,15 @@ var errEconomyTxUnusable = errors.New("economy tx does not expose a database han
 // newTwinkleService builds the twinkle context over the shared pool. External earn
 // paths stay fail-closed until real store and account/signup adapters are
 // explicitly selected here; write earns and metered spends remain available.
-func newTwinkleService(pool *platformdb.Pool, signals *memorySpendSignals) (*twinkle.Service, error) {
+func newTwinkleService(
+	pool *platformdb.Pool,
+	signals *memorySpendSignals,
+	inviteResolver twinkle.InviteResolver,
+) (*twinkle.Service, error) {
 	return twinkle.NewService(twinkle.ServiceDeps{
 		Ledger:         twinklepg.NewStore(pool.PgxPool()),
 		Verifier:       twinkle.UnavailablePaymentVerifier{},
-		InviteResolver: twinkle.UnavailableInviteResolver{},
+		InviteResolver: inviteResolver,
 		Signals:        signals,
 	})
 }

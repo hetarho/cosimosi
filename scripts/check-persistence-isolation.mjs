@@ -34,6 +34,9 @@ const globalQueries = new Set([
   'memory/jobs.sql#ClaimDueJob',
   'memory/jobs.sql#PurgeTerminalJobs',
   'twinkle/ledger.sql#TwinkleLedgerDedupExists',
+  // One authenticated invitee can own at most one bound invite. The statement returns only
+  // settlement identity, but the gate recognizes user_id rather than invitee_user_id as scope.
+  'account/invites.sql#FindSettleableInviteForInvitee',
   // Admin console job-queue health (plan 58): global operator reads of the shared queue, like
   // ClaimDueJob/PurgeTerminalJobs — aggregate status counts, no per-user scope.
   'memory/admin_stats.sql#CountJobsByStatus',

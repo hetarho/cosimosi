@@ -114,46 +114,48 @@ func (f *fakeUniverseReader) GetUniverse(_ context.Context, _ platform.UserScope
 }
 
 type serviceFixture struct {
-	extractor       *fakeExtractor
-	embedder        *fakeEmbedder
-	candidates      *fakeCandidateRepo
-	launches        *fakeLaunchStore
-	universe        *fakeUniverseReader
-	linker          *fakeLinker
-	progression     *fakeProgression
-	spendGate       *fakeSpendGate
-	earn            *fakeEarnPort
-	predictionError *fakePredictionError
-	gists           *fakeGistReader
-	provenance      *fakeProvenanceReader
-	exports         *fakeExportReader
-	diaries         *fakeDiaryReader
-	releases        *fakeReleaseRepo
-	sealSuggester   *fakeSealSuggester
-	service         *Service
-	seeds           []int64
+	extractor        *fakeExtractor
+	embedder         *fakeEmbedder
+	candidates       *fakeCandidateRepo
+	launches         *fakeLaunchStore
+	universe         *fakeUniverseReader
+	linker           *fakeLinker
+	progression      *fakeProgression
+	spendGate        *fakeSpendGate
+	earn             *fakeEarnPort
+	signupSettlement *fakeSignupSettlement
+	predictionError  *fakePredictionError
+	gists            *fakeGistReader
+	provenance       *fakeProvenanceReader
+	exports          *fakeExportReader
+	diaries          *fakeDiaryReader
+	releases         *fakeReleaseRepo
+	sealSuggester    *fakeSealSuggester
+	service          *Service
+	seeds            []int64
 }
 
 func newFixture(t *testing.T) *serviceFixture {
 	t.Helper()
 	launches := &fakeLaunchStore{}
 	fixture := &serviceFixture{
-		extractor:       &fakeExtractor{splitResult: validSplit()},
-		embedder:        &fakeEmbedder{},
-		candidates:      &fakeCandidateRepo{},
-		launches:        launches,
-		universe:        &fakeUniverseReader{},
-		linker:          &fakeLinker{},
-		progression:     &fakeProgression{store: launches},
-		spendGate:       &fakeSpendGate{},
-		earn:            &fakeEarnPort{},
-		predictionError: &fakePredictionError{},
-		gists:           &fakeGistReader{},
-		provenance:      &fakeProvenanceReader{},
-		exports:         &fakeExportReader{},
-		diaries:         &fakeDiaryReader{},
-		releases:        &fakeReleaseRepo{},
-		sealSuggester:   &fakeSealSuggester{},
+		extractor:        &fakeExtractor{splitResult: validSplit()},
+		embedder:         &fakeEmbedder{},
+		candidates:       &fakeCandidateRepo{},
+		launches:         launches,
+		universe:         &fakeUniverseReader{},
+		linker:           &fakeLinker{},
+		progression:      &fakeProgression{store: launches},
+		spendGate:        &fakeSpendGate{},
+		earn:             &fakeEarnPort{},
+		signupSettlement: &fakeSignupSettlement{launches: launches},
+		predictionError:  &fakePredictionError{},
+		gists:            &fakeGistReader{},
+		provenance:       &fakeProvenanceReader{},
+		exports:          &fakeExportReader{},
+		diaries:          &fakeDiaryReader{},
+		releases:         &fakeReleaseRepo{},
+		sealSuggester:    &fakeSealSuggester{},
 	}
 	// The paid gist-view transaction reads gists through the launch store, delegating to the same
 	// fakeGistReader the quote reads (one gist data source, as the single pg store is).
@@ -163,6 +165,50 @@ func newFixture(t *testing.T) *serviceFixture {
 	// reshape entropy is deterministic in tests.
 	seedCalls := 0
 	service, err := NewService(ServiceDeps{
+		Extractor:        fixture.extractor,
+		Embedder:         fixture.embedder,
+		Candidates:       fixture.candidates,
+		Launches:         fixture.launches,
+		Universe:         fixture.universe,
+		Linker:           fixture.linker,
+		Progression:      fixture.progression,
+		Recalls:          fixture.launches,
+		SpendGate:        fixture.spendGate,
+		Earn:             fixture.earn,
+		SignupSettlement: fixture.signupSettlement,
+		PredictionError:  fixture.predictionError,
+		Gists:            fixture.gists,
+		ViewSemantics:    fixture.launches,
+		Signals:          fixture.launches,
+		Provenance:       fixture.provenance,
+		Exports:          fixture.exports,
+		Diaries:          fixture.diaries,
+		Releases:         fixture.releases,
+		SealSuggester:    fixture.sealSuggester,
+		Now:              func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
+		NewID: func() string {
+			ids++
+			return fmt.Sprintf("id-%d", ids)
+		},
+		NewSeed: func() int64 {
+			seedCalls++
+			if seedCalls <= len(fixture.seeds) {
+				return fixture.seeds[seedCalls-1]
+			}
+			return 42
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewService failed: %v", err)
+	}
+	fixture.service = service
+	return fixture
+}
+
+func TestNewServiceRejectsUnboundSignupSettlement(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	_, err := NewService(ServiceDeps{
 		Extractor:       fixture.extractor,
 		Embedder:        fixture.embedder,
 		Candidates:      fixture.candidates,
@@ -182,24 +228,10 @@ func newFixture(t *testing.T) *serviceFixture {
 		Diaries:         fixture.diaries,
 		Releases:        fixture.releases,
 		SealSuggester:   fixture.sealSuggester,
-		Now:             func() time.Time { return time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC) },
-		NewID: func() string {
-			ids++
-			return fmt.Sprintf("id-%d", ids)
-		},
-		NewSeed: func() int64 {
-			seedCalls++
-			if seedCalls <= len(fixture.seeds) {
-				return fixture.seeds[seedCalls-1]
-			}
-			return 42
-		},
 	})
-	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
+	if !errors.Is(err, ErrSignupSettlementRequired) {
+		t.Fatalf("NewService without signup settlement err = %v, want ErrSignupSettlementRequired", err)
 	}
-	fixture.service = service
-	return fixture
 }
 
 func TestEncodeReturnsValidSplitAndPersistsNothing(t *testing.T) {
@@ -378,25 +410,26 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.candidates.inBody = []ExistingNeuron{{ID: "n-1", Name: "market", Type: NeuronTypeSpatial}}
 	service, err := NewService(ServiceDeps{
-		Extractor:       fixture.extractor,
-		Embedder:        failingEmbedder{},
-		Candidates:      fixture.candidates,
-		Launches:        fixture.launches,
-		Universe:        fixture.universe,
-		Linker:          fixture.linker,
-		Progression:     fixture.progression,
-		Recalls:         fixture.launches,
-		SpendGate:       fixture.spendGate,
-		Earn:            fixture.earn,
-		PredictionError: fixture.predictionError,
-		Gists:           fixture.gists,
-		ViewSemantics:   fixture.launches,
-		Signals:         fixture.launches,
-		Provenance:      fixture.provenance,
-		Exports:         fixture.exports,
-		Diaries:         fixture.diaries,
-		Releases:        fixture.releases,
-		SealSuggester:   fixture.sealSuggester,
+		Extractor:        fixture.extractor,
+		Embedder:         failingEmbedder{},
+		Candidates:       fixture.candidates,
+		Launches:         fixture.launches,
+		Universe:         fixture.universe,
+		Linker:           fixture.linker,
+		Progression:      fixture.progression,
+		Recalls:          fixture.launches,
+		SpendGate:        fixture.spendGate,
+		Earn:             fixture.earn,
+		SignupSettlement: NoSignupSettlement{},
+		PredictionError:  fixture.predictionError,
+		Gists:            fixture.gists,
+		ViewSemantics:    fixture.launches,
+		Signals:          fixture.launches,
+		Provenance:       fixture.provenance,
+		Exports:          fixture.exports,
+		Diaries:          fixture.diaries,
+		Releases:         fixture.releases,
+		SealSuggester:    fixture.sealSuggester,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

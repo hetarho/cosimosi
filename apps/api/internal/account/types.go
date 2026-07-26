@@ -24,6 +24,13 @@ type UpdateProfileInput struct {
 	Locale   string
 }
 
+type SignUpInput struct {
+	Nickname    string
+	Timezone    string
+	Locale      string
+	InviteToken string
+}
+
 type AuthProviderKind string
 
 const (
@@ -46,4 +53,33 @@ type VerifiedInviteToken struct {
 	InviterUserID string
 	IssuedAt      time.Time
 	Token         string
+}
+
+// Invite is the bound capability fact. A row is born only when a verified link is accepted.
+type Invite struct {
+	ID            string
+	InviterUserID string
+	InviteeUserID string
+	Token         string
+	CreatedAt     time.Time
+	BoundAt       time.Time
+}
+
+// SettleableInvite is the minimum relationship identity needed by deferred settlement.
+type SettleableInvite struct {
+	InviteID      string
+	InviterUserID string
+	InviteeUserID string
+	Token         string
+}
+
+type InviteSettlementRequest struct {
+	Token         string
+	InviteeUserID string
+}
+
+type SettledInvite struct {
+	InviteID      string
+	InviterUserID string
+	InviteeUserID string
 }

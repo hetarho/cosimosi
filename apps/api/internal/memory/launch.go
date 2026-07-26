@@ -189,6 +189,12 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 	if err != nil {
 		return LaunchResult{}, err
 	}
+	if !result.PastDated {
+		// Deferred signup settlement is intentionally after the launch transaction commits.
+		// It carries only the authenticated scope, cannot inspect the launched meaning, and
+		// cannot fail the committed launch.
+		s.signupSettlement.OnEngramsLaunched(ctx, scope)
+	}
 	return result, nil
 }
 

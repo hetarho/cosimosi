@@ -50,7 +50,14 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	cipher, decrypter := adminCipher(logger)
 	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), meter, logger)
 	directory := newAccountDirectory()
-	accountOption, accountService, err := accountServiceOption(pool, accountDirectoryAdapter{source: directory})
+	inviteGranter := &accountInviteRewardGranter{}
+	signupBonusGranter := &accountSignupBonusGranter{}
+	accountOption, accountService, err := accountServiceOption(
+		pool,
+		accountDirectoryAdapter{source: directory},
+		inviteGranter,
+		signupBonusGranter,
+	)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
@@ -59,11 +66,13 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	// spend-signal reader binds back to the memory service just below — the one
 	// two-way seam, closed here where every concrete is visible.
 	signals := &memorySpendSignals{}
-	twinkleService, err := newTwinkleService(pool, signals)
+	twinkleService, err := newTwinkleService(pool, signals, accountInviteResolver{service: accountService})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
+	inviteGranter.service = twinkleService
+	signupBonusGranter.service = twinkleService
 	service, err := memory.NewService(memory.ServiceDeps{
 		Extractor:  adapters.Extractor,
 		Embedder:   adapters.Embedder,
@@ -81,10 +90,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		// replaced here); Earn is the write grant fired inside the launch
 		// transaction ([G3]); PredictionError is the LLM semantic-compare (keyless
 		// mock when no key). All bound here, the only place that sees the concretes.
-		Recalls:         store,
-		SpendGate:       twinkleSpendGate{service: twinkleService},
-		Earn:            twinkleEarnPort{service: twinkleService},
-		PredictionError: adapters.PredictionError,
+		Recalls:          store,
+		SpendGate:        twinkleSpendGate{service: twinkleService},
+		Earn:             twinkleEarnPort{service: twinkleService},
+		SignupSettlement: accountSignupSettlement{service: accountService, logger: logger},
+		PredictionError:  adapters.PredictionError,
 		// The gist-view read shares the same store and the same SpendGate
 		// instance as recall — one spend-and-check seam for both metered actions.
 		Gists: store,
@@ -138,12 +148,25 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	}
 	logger.Printf("memory service registered ai_mode=%s", adapters.Mode)
 	logger.Print("twinkle service registered (economy gate live)")
-	logger.Print("account service registered (palette preference)")
+	logger.Print("account service registered (profile, signup, invite settlement)")
 	logger.Print("admin service registered (operator console — admin-gated)")
 	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
 	return []platform.HandlerOption{memoryOption, twinkleOption, accountOption, adminOption}, pool.Close, nil
+}
+
+// accountSignupSettlement is memory's post-commit observer. A settlement error is observable but
+// can never turn an already-committed episodic-memory launch into a failure.
+type accountSignupSettlement struct {
+	service *account.Service
+	logger  *log.Logger
+}
+
+func (s accountSignupSettlement) OnEngramsLaunched(ctx context.Context, scope platform.UserScope) {
+	if err := s.service.SettleSignup(ctx, scope); err != nil {
+		s.logger.Printf("settle signup after episodic-memory launch user_id=%s: %v", scope.UserID(), err)
+	}
 }
 
 type accountUserZone struct {

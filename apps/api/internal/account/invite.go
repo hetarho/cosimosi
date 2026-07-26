@@ -52,6 +52,9 @@ func (s *Service) GetInviteLink(ctx context.Context, scope platform.UserScope) (
 	if scope.UserID() == "" {
 		return InviteLink{}, ErrScopeRequired
 	}
+	if err := s.requireSignup(ctx, scope); err != nil {
+		return InviteLink{}, err
+	}
 	issuedAt := s.now().UTC().Truncate(time.Second)
 	nonce := make([]byte, inviteNonceBytes)
 	if _, err := rand.Read(nonce); err != nil {

@@ -84,6 +84,36 @@ func (q *Queries) GetTwinkleBalance(ctx context.Context, userID string) (Twinkle
 	return i, err
 }
 
+const getTwinkleInviteRewardState = `-- name: GetTwinkleInviteRewardState :one
+SELECT count(*)::bigint AS reward_count,
+       coalesce(bool_or(dedup_key = $1), false)::bool AS replay
+FROM twinkle_ledger_entries
+WHERE user_id = $2
+  AND kind = 'earn'
+  AND reason = 'invite'
+  AND dedup_key LIKE 'invite:%'
+`
+
+type GetTwinkleInviteRewardStateParams struct {
+	DedupKey pgtype.Text
+	UserID   string
+}
+
+type GetTwinkleInviteRewardStateRow struct {
+	RewardCount int64
+	Replay      bool
+}
+
+// The ledger is the crash-safe backstop for the account invite count: credits exist before
+// invites.rewarded_at, so a post-credit crash must still consume one lifetime slot. A replay
+// of this exact inviter key remains admissible at the cap so account can stamp rewarded_at.
+func (q *Queries) GetTwinkleInviteRewardState(ctx context.Context, arg GetTwinkleInviteRewardStateParams) (GetTwinkleInviteRewardStateRow, error) {
+	row := q.db.QueryRow(ctx, getTwinkleInviteRewardState, arg.DedupKey, arg.UserID)
+	var i GetTwinkleInviteRewardStateRow
+	err := row.Scan(&i.RewardCount, &i.Replay)
+	return i, err
+}
+
 const insertTwinkleBalance = `-- name: InsertTwinkleBalance :one
 INSERT INTO twinkle_balances (
     user_id,
@@ -129,6 +159,20 @@ func (q *Queries) InsertTwinkleBalance(ctx context.Context, arg InsertTwinkleBal
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const lockTwinkleInviteRewardsByInviter = `-- name: LockTwinkleInviteRewardsByInviter :one
+SELECT pg_advisory_xact_lock(hashtextextended($1, 610091))
+`
+
+// Serialize the inviter-side lifetime cap inside the same transaction that writes both invite
+// legs. A transaction advisory lock leaves no row or reservation behind and is released on
+// commit, rollback, or connection loss.
+func (q *Queries) LockTwinkleInviteRewardsByInviter(ctx context.Context, userID string) (interface{}, error) {
+	row := q.db.QueryRow(ctx, lockTwinkleInviteRewardsByInviter, userID)
+	var pg_advisory_xact_lock interface{}
+	err := row.Scan(&pg_advisory_xact_lock)
+	return pg_advisory_xact_lock, err
 }
 
 const twinkleLedgerDedupExists = `-- name: TwinkleLedgerDedupExists :one

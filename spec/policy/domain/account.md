@@ -53,3 +53,22 @@ gain a profile-zone dependency.
   rejects malformed, tampered, or expired tokens.
 - Tokens are never looked up to discover an inviter. Bind-time uniqueness in `invites` makes a consumed token and an
   invitee binding single-use.
+
+## Signup and invite-settlement rules
+
+- `SignUp` is the only account provisioning mutation. It accepts nickname, client-detected timezone, negotiated
+  locale, and an optional link token; it never accepts a provider claim, amount, or balance.
+- Signup is once-born and idempotent. The first successful insert fixes the profile and its directory-observed
+  initial provider; retries return that profile and neither overwrite it nor bind another invite.
+- Every account RPC except `GetProfile` and `SignUp` requires an existing live profile. An authenticated user without
+  a `users` row receives `ACCOUNT_SIGNUP_REQUIRED`.
+- Invite binding is best-effort and happens only during first signup. Invalid, expired, self, consumed, or
+  withdrawn-inviter links bind nothing and do not fail signup.
+- Signup itself pays nothing. The one-time signup bonus and any two-sided invite reward settle only after a
+  non-past-dated diary launches stars.
+- An invite reward requires a distinct live inviter, the launched-star trigger, fewer than
+  `twinkle.invite_reward_max_per_inviter` prior rewarded invites for that inviter, and a verified invitee email
+  (`GOOGLE` linkage is implicitly verified).
+- Credits are written before `invites.rewarded_at`. Ledger dedup keys
+  `invite:<inviteID>`, `invite_signup:<inviteID>`, and `signup_bonus:<userID>` make replay and crash recovery
+  exactly-once; settled rewards are never reversed.

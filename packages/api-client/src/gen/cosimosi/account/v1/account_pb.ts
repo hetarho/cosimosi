@@ -10,7 +10,71 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/account/v1/account.proto.
  */
 export const file_cosimosi_account_v1_account: GenFile = /*@__PURE__*/
-  fileDesc("CiFjb3NpbW9zaS9hY2NvdW50L3YxL2FjY291bnQucHJvdG8SE2Nvc2ltb3NpLmFjY291bnQudjEiEwoRR2V0UHJvZmlsZVJlcXVlc3QiQwoSR2V0UHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiYAoHUHJvZmlsZRIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSDQoFZW1haWwYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCSJKChRVcGRhdGVQcm9maWxlUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkiRgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiGgoYTGlzdEF1dGhQcm92aWRlcnNSZXF1ZXN0IlcKGUxpc3RBdXRoUHJvdmlkZXJzUmVzcG9uc2USOgoJcHJvdmlkZXJzGAEgAygLMicuY29zaW1vc2kuYWNjb3VudC52MS5MaW5rZWRBdXRoUHJvdmlkZXIiXAoSTGlua2VkQXV0aFByb3ZpZGVyEjMKBGtpbmQYASABKA4yJS5jb3NpbW9zaS5hY2NvdW50LnYxLkF1dGhQcm92aWRlcktpbmQSEQoJbGlua2VkX2F0GAIgASgJIhYKFEdldEludml0ZUxpbmtSZXF1ZXN0IjoKFUdldEludml0ZUxpbmtSZXNwb25zZRINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJIh0KG0dldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdCIxChtTZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QSEgoKcGFsZXR0ZV9pZBgBIAEoCSInChFQYWxldHRlUHJlZmVyZW5jZRISCgpwYWxldHRlX2lkGAEgASgJKnYKEEF1dGhQcm92aWRlcktpbmQSIgoeQVVUSF9QUk9WSURFUl9LSU5EX1VOU1BFQ0lGSUVEEAASHQoZQVVUSF9QUk9WSURFUl9LSU5EX0dPT0dMRRABEh8KG0FVVEhfUFJPVklERVJfS0lORF9QQVNTV09SRBACMqsFCg5BY2NvdW50U2VydmljZRJiCgpHZXRQcm9maWxlEiYuY29zaW1vc2kuYWNjb3VudC52MS5HZXRQcm9maWxlUmVxdWVzdBonLmNvc2ltb3NpLmFjY291bnQudjEuR2V0UHJvZmlsZVJlc3BvbnNlIgOQAgESZgoNVXBkYXRlUHJvZmlsZRIpLmNvc2ltb3NpLmFjY291bnQudjEuVXBkYXRlUHJvZmlsZVJlcXVlc3QaKi5jb3NpbW9zaS5hY2NvdW50LnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZRJ3ChFMaXN0QXV0aFByb3ZpZGVycxItLmNvc2ltb3NpLmFjY291bnQudjEuTGlzdEF1dGhQcm92aWRlcnNSZXF1ZXN0Gi4uY29zaW1vc2kuYWNjb3VudC52MS5MaXN0QXV0aFByb3ZpZGVyc1Jlc3BvbnNlIgOQAgESawoNR2V0SW52aXRlTGluaxIpLmNvc2ltb3NpLmFjY291bnQudjEuR2V0SW52aXRlTGlua1JlcXVlc3QaKi5jb3NpbW9zaS5hY2NvdW50LnYxLkdldEludml0ZUxpbmtSZXNwb25zZSIDkAIBEnUKFEdldFBhbGV0dGVQcmVmZXJlbmNlEjAuY29zaW1vc2kuYWNjb3VudC52MS5HZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QaJi5jb3NpbW9zaS5hY2NvdW50LnYxLlBhbGV0dGVQcmVmZXJlbmNlIgOQAgEScAoUU2V0UGFsZXR0ZVByZWZlcmVuY2USMC5jb3NpbW9zaS5hY2NvdW50LnYxLlNldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdBomLmNvc2ltb3NpLmFjY291bnQudjEuUGFsZXR0ZVByZWZlcmVuY2VC2QEKF2NvbS5jb3NpbW9zaS5hY2NvdW50LnYxQgxBY2NvdW50UHJvdG9QAVpCZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL2FjY291bnQvdjE7YWNjb3VudHYxogIDQ0FYqgITQ29zaW1vc2kuQWNjb3VudC5WMcoCE0Nvc2ltb3NpXEFjY291bnRcVjHiAh9Db3NpbW9zaVxBY2NvdW50XFYxXEdQQk1ldGFkYXRh6gIVQ29zaW1vc2k6OkFjY291bnQ6OlYxYgZwcm90bzM");
+  fileDesc("CiFjb3NpbW9zaS9hY2NvdW50L3YxL2FjY291bnQucHJvdG8SE2Nvc2ltb3NpLmFjY291bnQudjEiWQoNU2lnblVwUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSFAoMaW52aXRlX3Rva2VuGAQgASgJIloKDlNpZ25VcFJlc3BvbnNlEhAKCG5pY2tuYW1lGAEgASgJEhAKCHRpbWV6b25lGAIgASgJEg4KBmxvY2FsZRgDIAEoCRIUCgxpbnZpdGVfYm91bmQYBCABKAgiEwoRR2V0UHJvZmlsZVJlcXVlc3QiQwoSR2V0UHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiYAoHUHJvZmlsZRIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSDQoFZW1haWwYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCSJKChRVcGRhdGVQcm9maWxlUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkiRgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiGgoYTGlzdEF1dGhQcm92aWRlcnNSZXF1ZXN0IlcKGUxpc3RBdXRoUHJvdmlkZXJzUmVzcG9uc2USOgoJcHJvdmlkZXJzGAEgAygLMicuY29zaW1vc2kuYWNjb3VudC52MS5MaW5rZWRBdXRoUHJvdmlkZXIiXAoSTGlua2VkQXV0aFByb3ZpZGVyEjMKBGtpbmQYASABKA4yJS5jb3NpbW9zaS5hY2NvdW50LnYxLkF1dGhQcm92aWRlcktpbmQSEQoJbGlua2VkX2F0GAIgASgJIhYKFEdldEludml0ZUxpbmtSZXF1ZXN0IjoKFUdldEludml0ZUxpbmtSZXNwb25zZRINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJIh0KG0dldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdCIxChtTZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QSEgoKcGFsZXR0ZV9pZBgBIAEoCSInChFQYWxldHRlUHJlZmVyZW5jZRISCgpwYWxldHRlX2lkGAEgASgJKnYKEEF1dGhQcm92aWRlcktpbmQSIgoeQVVUSF9QUk9WSURFUl9LSU5EX1VOU1BFQ0lGSUVEEAASHQoZQVVUSF9QUk9WSURFUl9LSU5EX0dPT0dMRRABEh8KG0FVVEhfUFJPVklERVJfS0lORF9QQVNTV09SRBACMv4FCg5BY2NvdW50U2VydmljZRJRCgZTaWduVXASIi5jb3NpbW9zaS5hY2NvdW50LnYxLlNpZ25VcFJlcXVlc3QaIy5jb3NpbW9zaS5hY2NvdW50LnYxLlNpZ25VcFJlc3BvbnNlEmIKCkdldFByb2ZpbGUSJi5jb3NpbW9zaS5hY2NvdW50LnYxLkdldFByb2ZpbGVSZXF1ZXN0GicuY29zaW1vc2kuYWNjb3VudC52MS5HZXRQcm9maWxlUmVzcG9uc2UiA5ACARJmCg1VcGRhdGVQcm9maWxlEikuY29zaW1vc2kuYWNjb3VudC52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBoqLmNvc2ltb3NpLmFjY291bnQudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlEncKEUxpc3RBdXRoUHJvdmlkZXJzEi0uY29zaW1vc2kuYWNjb3VudC52MS5MaXN0QXV0aFByb3ZpZGVyc1JlcXVlc3QaLi5jb3NpbW9zaS5hY2NvdW50LnYxLkxpc3RBdXRoUHJvdmlkZXJzUmVzcG9uc2UiA5ACARJrCg1HZXRJbnZpdGVMaW5rEikuY29zaW1vc2kuYWNjb3VudC52MS5HZXRJbnZpdGVMaW5rUmVxdWVzdBoqLmNvc2ltb3NpLmFjY291bnQudjEuR2V0SW52aXRlTGlua1Jlc3BvbnNlIgOQAgESdQoUR2V0UGFsZXR0ZVByZWZlcmVuY2USMC5jb3NpbW9zaS5hY2NvdW50LnYxLkdldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdBomLmNvc2ltb3NpLmFjY291bnQudjEuUGFsZXR0ZVByZWZlcmVuY2UiA5ACARJwChRTZXRQYWxldHRlUHJlZmVyZW5jZRIwLmNvc2ltb3NpLmFjY291bnQudjEuU2V0UGFsZXR0ZVByZWZlcmVuY2VSZXF1ZXN0GiYuY29zaW1vc2kuYWNjb3VudC52MS5QYWxldHRlUHJlZmVyZW5jZULZAQoXY29tLmNvc2ltb3NpLmFjY291bnQudjFCDEFjY291bnRQcm90b1ABWkJnaXRodWIuY29tL2Nvc2ltb3NpL2FwaS9pbnRlcm5hbC9nZW4vY29zaW1vc2kvYWNjb3VudC92MTthY2NvdW50djGiAgNDQViqAhNDb3NpbW9zaS5BY2NvdW50LlYxygITQ29zaW1vc2lcQWNjb3VudFxWMeICH0Nvc2ltb3NpXEFjY291bnRcVjFcR1BCTWV0YWRhdGHqAhVDb3NpbW9zaTo6QWNjb3VudDo6VjFiBnByb3RvMw");
+
+/**
+ * @generated from message cosimosi.account.v1.SignUpRequest
+ */
+export type SignUpRequest = Message<"cosimosi.account.v1.SignUpRequest"> & {
+  /**
+   * @generated from field: string nickname = 1;
+   */
+  nickname: string;
+
+  /**
+   * @generated from field: string timezone = 2;
+   */
+  timezone: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+
+  /**
+   * @generated from field: string invite_token = 4;
+   */
+  inviteToken: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.SignUpRequest.
+ * Use `create(SignUpRequestSchema)` to create a new message.
+ */
+export const SignUpRequestSchema: GenMessage<SignUpRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 0);
+
+/**
+ * @generated from message cosimosi.account.v1.SignUpResponse
+ */
+export type SignUpResponse = Message<"cosimosi.account.v1.SignUpResponse"> & {
+  /**
+   * @generated from field: string nickname = 1;
+   */
+  nickname: string;
+
+  /**
+   * @generated from field: string timezone = 2;
+   */
+  timezone: string;
+
+  /**
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+
+  /**
+   * @generated from field: bool invite_bound = 4;
+   */
+  inviteBound: boolean;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.SignUpResponse.
+ * Use `create(SignUpResponseSchema)` to create a new message.
+ */
+export const SignUpResponseSchema: GenMessage<SignUpResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 1);
 
 /**
  * @generated from message cosimosi.account.v1.GetProfileRequest
@@ -23,7 +87,7 @@ export type GetProfileRequest = Message<"cosimosi.account.v1.GetProfileRequest">
  * Use `create(GetProfileRequestSchema)` to create a new message.
  */
 export const GetProfileRequestSchema: GenMessage<GetProfileRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 0);
+  messageDesc(file_cosimosi_account_v1_account, 2);
 
 /**
  * @generated from message cosimosi.account.v1.GetProfileResponse
@@ -40,7 +104,7 @@ export type GetProfileResponse = Message<"cosimosi.account.v1.GetProfileResponse
  * Use `create(GetProfileResponseSchema)` to create a new message.
  */
 export const GetProfileResponseSchema: GenMessage<GetProfileResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 1);
+  messageDesc(file_cosimosi_account_v1_account, 3);
 
 /**
  * @generated from message cosimosi.account.v1.Profile
@@ -77,7 +141,7 @@ export type Profile = Message<"cosimosi.account.v1.Profile"> & {
  * Use `create(ProfileSchema)` to create a new message.
  */
 export const ProfileSchema: GenMessage<Profile> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 2);
+  messageDesc(file_cosimosi_account_v1_account, 4);
 
 /**
  * @generated from message cosimosi.account.v1.UpdateProfileRequest
@@ -104,7 +168,7 @@ export type UpdateProfileRequest = Message<"cosimosi.account.v1.UpdateProfileReq
  * Use `create(UpdateProfileRequestSchema)` to create a new message.
  */
 export const UpdateProfileRequestSchema: GenMessage<UpdateProfileRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 3);
+  messageDesc(file_cosimosi_account_v1_account, 5);
 
 /**
  * @generated from message cosimosi.account.v1.UpdateProfileResponse
@@ -121,7 +185,7 @@ export type UpdateProfileResponse = Message<"cosimosi.account.v1.UpdateProfileRe
  * Use `create(UpdateProfileResponseSchema)` to create a new message.
  */
 export const UpdateProfileResponseSchema: GenMessage<UpdateProfileResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 4);
+  messageDesc(file_cosimosi_account_v1_account, 6);
 
 /**
  * @generated from message cosimosi.account.v1.ListAuthProvidersRequest
@@ -134,7 +198,7 @@ export type ListAuthProvidersRequest = Message<"cosimosi.account.v1.ListAuthProv
  * Use `create(ListAuthProvidersRequestSchema)` to create a new message.
  */
 export const ListAuthProvidersRequestSchema: GenMessage<ListAuthProvidersRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 5);
+  messageDesc(file_cosimosi_account_v1_account, 7);
 
 /**
  * @generated from message cosimosi.account.v1.ListAuthProvidersResponse
@@ -151,7 +215,7 @@ export type ListAuthProvidersResponse = Message<"cosimosi.account.v1.ListAuthPro
  * Use `create(ListAuthProvidersResponseSchema)` to create a new message.
  */
 export const ListAuthProvidersResponseSchema: GenMessage<ListAuthProvidersResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 6);
+  messageDesc(file_cosimosi_account_v1_account, 8);
 
 /**
  * @generated from message cosimosi.account.v1.LinkedAuthProvider
@@ -173,7 +237,7 @@ export type LinkedAuthProvider = Message<"cosimosi.account.v1.LinkedAuthProvider
  * Use `create(LinkedAuthProviderSchema)` to create a new message.
  */
 export const LinkedAuthProviderSchema: GenMessage<LinkedAuthProvider> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 7);
+  messageDesc(file_cosimosi_account_v1_account, 9);
 
 /**
  * @generated from message cosimosi.account.v1.GetInviteLinkRequest
@@ -186,7 +250,7 @@ export type GetInviteLinkRequest = Message<"cosimosi.account.v1.GetInviteLinkReq
  * Use `create(GetInviteLinkRequestSchema)` to create a new message.
  */
 export const GetInviteLinkRequestSchema: GenMessage<GetInviteLinkRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 8);
+  messageDesc(file_cosimosi_account_v1_account, 10);
 
 /**
  * @generated from message cosimosi.account.v1.GetInviteLinkResponse
@@ -208,7 +272,7 @@ export type GetInviteLinkResponse = Message<"cosimosi.account.v1.GetInviteLinkRe
  * Use `create(GetInviteLinkResponseSchema)` to create a new message.
  */
 export const GetInviteLinkResponseSchema: GenMessage<GetInviteLinkResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 9);
+  messageDesc(file_cosimosi_account_v1_account, 11);
 
 /**
  * Caller = the authenticated user (scope from the auth context); no request fields.
@@ -223,7 +287,7 @@ export type GetPalettePreferenceRequest = Message<"cosimosi.account.v1.GetPalett
  * Use `create(GetPalettePreferenceRequestSchema)` to create a new message.
  */
 export const GetPalettePreferenceRequestSchema: GenMessage<GetPalettePreferenceRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 10);
+  messageDesc(file_cosimosi_account_v1_account, 12);
 
 /**
  * palette_id is the entire writable surface.
@@ -242,7 +306,7 @@ export type SetPalettePreferenceRequest = Message<"cosimosi.account.v1.SetPalett
  * Use `create(SetPalettePreferenceRequestSchema)` to create a new message.
  */
 export const SetPalettePreferenceRequestSchema: GenMessage<SetPalettePreferenceRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 11);
+  messageDesc(file_cosimosi_account_v1_account, 13);
 
 /**
  * The resolved palette id (the default id when the user never set one).
@@ -261,7 +325,7 @@ export type PalettePreference = Message<"cosimosi.account.v1.PalettePreference">
  * Use `create(PalettePreferenceSchema)` to create a new message.
  */
 export const PalettePreferenceSchema: GenMessage<PalettePreference> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 12);
+  messageDesc(file_cosimosi_account_v1_account, 14);
 
 /**
  * @generated from enum cosimosi.account.v1.AuthProviderKind
@@ -300,6 +364,17 @@ export const AuthProviderKindSchema: GenEnum<AuthProviderKind> = /*@__PURE__*/
  * @generated from service cosimosi.account.v1.AccountService
  */
 export const AccountService: GenService<{
+  /**
+   * Perform the caller's once-per-account first write. The opaque invite token can only arrive
+   * from link capture; signup binds it but never pays a reward.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.SignUp
+   */
+  signUp: {
+    methodKind: "unary";
+    input: typeof SignUpRequestSchema;
+    output: typeof SignUpResponseSchema;
+  },
   /**
    * Read the caller's profile. An absent profile message means the account is not provisioned.
    *

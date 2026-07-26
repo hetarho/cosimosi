@@ -10,25 +10,26 @@ import (
 )
 
 var (
-	ErrExtractorRequired       = errors.New("memory service requires an extractor")
-	ErrEmbedderRequired        = errors.New("memory service requires an embedder")
-	ErrCandidatesRequired      = errors.New("memory service requires a neuron candidate repo")
-	ErrLaunchesRequired        = errors.New("memory service requires a launch repo")
-	ErrUniverseRequired        = errors.New("memory service requires a universe reader")
-	ErrLinkerRequired          = errors.New("memory service requires a linker")
-	ErrProgressionRequired     = errors.New("memory service requires an advance progression hook")
-	ErrRecallsRequired         = errors.New("memory service requires a recall repo")
-	ErrSpendGateRequired       = errors.New("memory service requires a spend gate")
-	ErrEarnRequired            = errors.New("memory service requires an earn port")
-	ErrPredictionErrorRequired = errors.New("memory service requires a prediction-error port")
-	ErrGistsRequired           = errors.New("memory service requires a gist reader")
-	ErrViewSemanticsRequired   = errors.New("memory service requires a view-semantic repo")
-	ErrSignalsRequired         = errors.New("memory service requires a spend-signal repo")
-	ErrProvenanceRequired      = errors.New("memory service requires a provenance reader")
-	ErrExportsRequired         = errors.New("memory service requires an export reader")
-	ErrDiariesRequired         = errors.New("memory service requires a diary reader")
-	ErrReleasesRequired        = errors.New("memory service requires a release repo")
-	ErrSealSuggesterRequired   = errors.New("memory service requires a seal suggester")
+	ErrExtractorRequired        = errors.New("memory service requires an extractor")
+	ErrEmbedderRequired         = errors.New("memory service requires an embedder")
+	ErrCandidatesRequired       = errors.New("memory service requires a neuron candidate repo")
+	ErrLaunchesRequired         = errors.New("memory service requires a launch repo")
+	ErrUniverseRequired         = errors.New("memory service requires a universe reader")
+	ErrLinkerRequired           = errors.New("memory service requires a linker")
+	ErrProgressionRequired      = errors.New("memory service requires an advance progression hook")
+	ErrRecallsRequired          = errors.New("memory service requires a recall repo")
+	ErrSpendGateRequired        = errors.New("memory service requires a spend gate")
+	ErrEarnRequired             = errors.New("memory service requires an earn port")
+	ErrSignupSettlementRequired = errors.New("memory service requires a signup settlement port")
+	ErrPredictionErrorRequired  = errors.New("memory service requires a prediction-error port")
+	ErrGistsRequired            = errors.New("memory service requires a gist reader")
+	ErrViewSemanticsRequired    = errors.New("memory service requires a view-semantic repo")
+	ErrSignalsRequired          = errors.New("memory service requires a spend-signal repo")
+	ErrProvenanceRequired       = errors.New("memory service requires a provenance reader")
+	ErrExportsRequired          = errors.New("memory service requires an export reader")
+	ErrDiariesRequired          = errors.New("memory service requires a diary reader")
+	ErrReleasesRequired         = errors.New("memory service requires a release repo")
+	ErrSealSuggesterRequired    = errors.New("memory service requires a seal suggester")
 )
 
 // Service owns the encode use-cases: Encode / ReviseSplit previews and
@@ -36,29 +37,30 @@ var (
 // semantic-neuron, dedup, caps, and the monotonic launch guard — lives here, not
 // in the RPC handlers (ARCHITECTURE §2.9#7).
 type Service struct {
-	extractor       Extractor
-	embedder        Embedder
-	candidates      NeuronCandidateRepo
-	launches        LaunchRepo
-	universe        UniverseReader
-	linker          Linker
-	progression     AdvanceProgression
-	recalls         RecallRepo
-	spendGate       SpendGate
-	earn            EarnPort
-	predictionError PredictionError
-	gists           GistReader
-	viewSemantics   ViewSemanticRepo
-	signals         SpendSignalRepo
-	provenance      ProvenanceReader
-	exports         ExportReader
-	diaries         DiaryReader
-	releases        ReleaseRepo
-	sealSuggester   SealSuggester
-	userZone        UserZone
-	now             func() time.Time
-	newID           func() string
-	newSeed         func() int64
+	extractor        Extractor
+	embedder         Embedder
+	candidates       NeuronCandidateRepo
+	launches         LaunchRepo
+	universe         UniverseReader
+	linker           Linker
+	progression      AdvanceProgression
+	recalls          RecallRepo
+	spendGate        SpendGate
+	earn             EarnPort
+	signupSettlement SignupSettlementPort
+	predictionError  PredictionError
+	gists            GistReader
+	viewSemantics    ViewSemanticRepo
+	signals          SpendSignalRepo
+	provenance       ProvenanceReader
+	exports          ExportReader
+	diaries          DiaryReader
+	releases         ReleaseRepo
+	sealSuggester    SealSuggester
+	userZone         UserZone
+	now              func() time.Time
+	newID            func() string
+	newSeed          func() int64
 }
 
 type ServiceDeps struct {
@@ -87,6 +89,9 @@ type ServiceDeps struct {
 	// required (NoEarnOnWrite for economy-less composition) so no composition root
 	// can launch diaries with the grant seam silently unbound.
 	Earn EarnPort
+	// SignupSettlement is fired after a successful admitted launch commits. It is required so
+	// production cannot silently omit the deferred signup/invite reward path.
+	SignupSettlement SignupSettlementPort
 	// Gists is the gist-view read port ([R8]); required so no composition root can
 	// wire the view path without its per-user-scoped read (the quote's standalone signal).
 	Gists GistReader
@@ -154,6 +159,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Earn == nil {
 		return nil, ErrEarnRequired
 	}
+	if deps.SignupSettlement == nil {
+		return nil, ErrSignupSettlementRequired
+	}
 	if deps.PredictionError == nil {
 		return nil, ErrPredictionErrorRequired
 	}
@@ -185,29 +193,30 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		deps.UserZone = UTCUserZone{}
 	}
 	service := &Service{
-		extractor:       deps.Extractor,
-		embedder:        deps.Embedder,
-		candidates:      deps.Candidates,
-		launches:        deps.Launches,
-		universe:        deps.Universe,
-		linker:          deps.Linker,
-		progression:     deps.Progression,
-		recalls:         deps.Recalls,
-		spendGate:       deps.SpendGate,
-		earn:            deps.Earn,
-		predictionError: deps.PredictionError,
-		gists:           deps.Gists,
-		viewSemantics:   deps.ViewSemantics,
-		signals:         deps.Signals,
-		provenance:      deps.Provenance,
-		exports:         deps.Exports,
-		diaries:         deps.Diaries,
-		releases:        deps.Releases,
-		sealSuggester:   deps.SealSuggester,
-		userZone:        deps.UserZone,
-		now:             deps.Now,
-		newID:           deps.NewID,
-		newSeed:         deps.NewSeed,
+		extractor:        deps.Extractor,
+		embedder:         deps.Embedder,
+		candidates:       deps.Candidates,
+		launches:         deps.Launches,
+		universe:         deps.Universe,
+		linker:           deps.Linker,
+		progression:      deps.Progression,
+		recalls:          deps.Recalls,
+		spendGate:        deps.SpendGate,
+		earn:             deps.Earn,
+		signupSettlement: deps.SignupSettlement,
+		predictionError:  deps.PredictionError,
+		gists:            deps.Gists,
+		viewSemantics:    deps.ViewSemantics,
+		signals:          deps.Signals,
+		provenance:       deps.Provenance,
+		exports:          deps.Exports,
+		diaries:          deps.Diaries,
+		releases:         deps.Releases,
+		sealSuggester:    deps.SealSuggester,
+		userZone:         deps.UserZone,
+		now:              deps.Now,
+		newID:            deps.NewID,
+		newSeed:          deps.NewSeed,
 	}
 	if service.now == nil {
 		service.now = func() time.Time { return time.Now().UTC() }

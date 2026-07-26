@@ -86,3 +86,21 @@ SELECT EXISTS (
           OR (reason = 'payment' AND sqlc.arg(entry_reason)::text = 'payment')
       )
 );
+
+-- Serialize the inviter-side lifetime cap inside the same transaction that writes both invite
+-- legs. A transaction advisory lock leaves no row or reservation behind and is released on
+-- commit, rollback, or connection loss.
+-- name: LockTwinkleInviteRewardsByInviter :one
+SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(user_id), 610091));
+
+-- The ledger is the crash-safe backstop for the account invite count: credits exist before
+-- invites.rewarded_at, so a post-credit crash must still consume one lifetime slot. A replay
+-- of this exact inviter key remains admissible at the cap so account can stamp rewarded_at.
+-- name: GetTwinkleInviteRewardState :one
+SELECT count(*)::bigint AS reward_count,
+       coalesce(bool_or(dedup_key = sqlc.arg(dedup_key)), false)::bool AS replay
+FROM twinkle_ledger_entries
+WHERE user_id = sqlc.arg(user_id)
+  AND kind = 'earn'
+  AND reason = 'invite'
+  AND dedup_key LIKE 'invite:%';

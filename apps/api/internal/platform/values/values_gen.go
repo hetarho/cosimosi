@@ -207,18 +207,20 @@ var (
 
 // twinkle
 const (
-	TwinkleBasicDailyAmount       = 100
-	TwinkleRecallBaseCost         = 5
-	TwinkleRecallDepthCoefficient = 10
-	TwinkleRecallMaxCost          = 40
-	TwinkleGistBaseCost           = 10
-	TwinkleGistStageDiscount      = 3
-	TwinkleGistMinCost            = 3
-	TwinkleEarnWrite              = 100
-	TwinkleEarnInviteInviter      = 500
-	TwinkleEarnInviteInvitee      = 500
-	TwinkleChargePack             = 100
-	TwinkleAdminGrantMax          = 100000
+	TwinkleBasicDailyAmount          = 100
+	TwinkleRecallBaseCost            = 5
+	TwinkleRecallDepthCoefficient    = 10
+	TwinkleRecallMaxCost             = 40
+	TwinkleGistBaseCost              = 10
+	TwinkleGistStageDiscount         = 3
+	TwinkleGistMinCost               = 3
+	TwinkleEarnWrite                 = 100
+	TwinkleEarnInviteInviter         = 500
+	TwinkleEarnInviteInvitee         = 500
+	TwinkleEarnSignupBonus           = 500
+	TwinkleInviteRewardMaxPerInviter = 10
+	TwinkleChargePack                = 100
+	TwinkleAdminGrantMax             = 100000
 )
 
 // admin

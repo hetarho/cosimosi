@@ -98,6 +98,29 @@ func (f *fakeLedger) AppendLedgerEntry(_ context.Context, scope platform.UserSco
 	return true, nil
 }
 
+func (f *fakeLedger) LockInviteRewardsByInviter(context.Context, platform.UserScope) error {
+	return nil
+}
+
+func (f *fakeLedger) GetInviteRewardState(
+	_ context.Context,
+	scope platform.UserScope,
+	dedupKey string,
+) (int64, bool, error) {
+	var count int64
+	replay := false
+	for _, existing := range f.entries {
+		if existing.userID != scope.UserID() || existing.entry.Kind != EntryKindEarn ||
+			existing.entry.Reason != ReasonInvite || existing.entry.DedupKey == nil ||
+			!strings.HasPrefix(*existing.entry.DedupKey, "invite:") {
+			continue
+		}
+		count++
+		replay = replay || *existing.entry.DedupKey == dedupKey
+	}
+	return count, replay, nil
+}
+
 func (f *fakeLedger) InLedgerTx(ctx context.Context, fn func(tx LedgerStore) error) error {
 	f.txCount++
 	// All-or-nothing: snapshot, run, restore on error.
@@ -528,6 +551,28 @@ func TestEarnOnWriteGrantsOncePerDiaryIntoAdditional(t *testing.T) {
 	}
 }
 
+func TestEarnSignupBonusGrantsGeneralOncePerAccount(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "new-account")
+
+	for range 2 {
+		balance, err := fixture.service.EarnSignupBonus(context.Background(), scope)
+		if err != nil {
+			t.Fatalf("EarnSignupBonus failed: %v", err)
+		}
+		if balance.Additional != values.TwinkleEarnSignupBonus {
+			t.Fatalf("additional = %d, want one signup bonus %d", balance.Additional, values.TwinkleEarnSignupBonus)
+		}
+	}
+	entries := fixture.ledger.userEntries("new-account")
+	if len(entries) != 1 || entries[0].Kind != EntryKindEarn ||
+		entries[0].Reason != ReasonSignupBonus || entries[0].Amount != values.TwinkleEarnSignupBonus ||
+		entries[0].DedupKey == nil || *entries[0].DedupKey != "signup_bonus:new-account" {
+		t.Fatalf("entries = %+v, want one GENERAL signup_bonus row", entries)
+	}
+}
+
 // --- earn: invite ---------------------------------------------------------------
 
 func TestClaimInviteCreditsBothSidesExactlyOnce(t *testing.T) {
@@ -565,6 +610,42 @@ func TestClaimInviteCreditsBothSidesExactlyOnce(t *testing.T) {
 	}
 	if len(fixture.ledger.userEntries("friend-1")) != 1 {
 		t.Fatal("the invitee earned twice across two codes — the signup must credit once")
+	}
+}
+
+func TestClaimInviteEnforcesLifetimeCapAndAdmitsExactReplay(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	inviterID := "capped-inviter"
+	for index := range values.TwinkleInviteRewardMaxPerInviter {
+		inviteeID := fmt.Sprintf("friend-%d", index)
+		code := fmt.Sprintf("code-%d", index)
+		fixture.resolver.claims[inviteResolutionKey(code, inviteeID)] = ResolvedSignup{
+			SignupID:      fmt.Sprintf("signup-%d", index),
+			InviterUserID: inviterID,
+			InviteeUserID: inviteeID,
+		}
+		if _, err := fixture.service.ClaimInvite(context.Background(), twinkleScope(t, inviteeID), code); err != nil {
+			t.Fatalf("ClaimInvite(%d) failed: %v", index, err)
+		}
+	}
+	blockedID := "blocked-friend"
+	fixture.resolver.claims[inviteResolutionKey("blocked-code", blockedID)] = ResolvedSignup{
+		SignupID:      "blocked-signup",
+		InviterUserID: inviterID,
+		InviteeUserID: blockedID,
+	}
+	if _, err := fixture.service.ClaimInvite(context.Background(), twinkleScope(t, blockedID), "blocked-code"); !errors.Is(err, ErrInviteNotEligible) {
+		t.Fatalf("over-cap ClaimInvite err = %v, want ErrInviteNotEligible", err)
+	}
+	if got := len(fixture.ledger.userEntries(inviterID)); got != values.TwinkleInviteRewardMaxPerInviter {
+		t.Fatalf("inviter reward rows = %d, want cap %d", got, values.TwinkleInviteRewardMaxPerInviter)
+	}
+	if _, err := fixture.service.ClaimInvite(context.Background(), twinkleScope(t, "friend-0"), "code-0"); err != nil {
+		t.Fatalf("at-cap exact replay failed: %v", err)
+	}
+	if got := len(fixture.ledger.userEntries(inviterID)); got != values.TwinkleInviteRewardMaxPerInviter {
+		t.Fatalf("replay changed inviter reward rows to %d", got)
 	}
 }
 
@@ -888,11 +969,19 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 
 func TestEarnReasonsAreAClosedSetWithNoLoginBonus(t *testing.T) {
 	t.Parallel()
-	// [G3]: the earn paths are payment, invite, write, plus the discretionary admin_grant
+	// [G3]: the earn paths are payment, invite, write, signup bonus, plus the discretionary admin_grant
 	// (별가루 증정, the admin console). No login/attendance reason exists anywhere in the domain's closed
 	// set; the daily basic reset ([G2]) plays that role by design — admin_grant is an operator
 	// gift, not a recurring/automatic bonus.
-	reasons := []EntryReason{ReasonPayment, ReasonInvite, ReasonWriteDiary, ReasonRecall, ReasonGistView, ReasonAdminGrant}
+	reasons := []EntryReason{
+		ReasonPayment,
+		ReasonInvite,
+		ReasonWriteDiary,
+		ReasonSignupBonus,
+		ReasonRecall,
+		ReasonGistView,
+		ReasonAdminGrant,
+	}
 	for _, reason := range reasons {
 		lowered := strings.ToLower(string(reason))
 		if strings.Contains(lowered, "login") || strings.Contains(lowered, "attendance") {

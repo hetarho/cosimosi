@@ -23,6 +23,8 @@ type LedgerStore interface {
 	GetBalanceRecord(ctx context.Context, scope platform.UserScope) (*BalanceRecord, error)
 	ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, resetWindow time.Time, additionalDelta int, basicSpentDelta int) (BalanceRecord, error)
 	AppendLedgerEntry(ctx context.Context, scope platform.UserScope, entry LedgerEntry) (bool, error)
+	LockInviteRewardsByInviter(ctx context.Context, scope platform.UserScope) error
+	GetInviteRewardState(ctx context.Context, scope platform.UserScope, dedupKey string) (rewardCount int64, replay bool, err error)
 }
 
 // LedgerRepo is the standalone ledger seam: the pool-bound reads plus the

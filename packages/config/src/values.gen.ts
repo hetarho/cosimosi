@@ -133,6 +133,8 @@ export const VALUES = {
     earnWrite: 100,
     earnInviteInviter: 500,
     earnInviteInvitee: 500,
+    earnSignupBonus: 500,
+    inviteRewardMaxPerInviter: 10,
     chargePack: 100,
     adminGrantMax: 100000,
   },

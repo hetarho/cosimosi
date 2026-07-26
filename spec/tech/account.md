@@ -14,8 +14,10 @@ Migration `00016_account_identity.sql` creates three product-owned, user-scoped 
 - `invites(id, user_id, invitee_user_id, token, created_at, bound_at, rewarded_at)` — unique token, unique invitee,
   non-self, bound-only rows, and no `deleted_at`.
 
-Static sqlc queries live in `db/queries/account`. Every statement is conjunctively scoped by `user_id`; neither the
-global-query nor platform-table persistence allowlist is widened. `account/pg` is the only row-to-domain seam.
+Static sqlc queries live in `db/queries/account`. Every statement is conjunctively scoped by `user_id` except
+`FindSettleableInviteForInvitee`, the single-row authenticated-invitee lookup recorded in the global-query
+allowlist. `BindInviteToInvitee` remains conjunctively inviter-scoped and needs no exception. The platform-table
+allowlist is unchanged. `account/pg` is the only row-to-domain seam.
 
 ## Package and transport shape
 
@@ -24,9 +26,9 @@ The context stays one flat Go package split by aggregate files: `profile.go`, `a
 packages remain the persistence and Connect adapters. Domain files import no proto, sqlc, pgx, or neighboring
 context.
 
-`cosimosi.account.v1.AccountService` publishes `GetProfile`, `UpdateProfile`, `ListAuthProviders`, and
-`GetInviteLink` alongside the existing palette methods. No request can name a user id. All three read RPCs are
-classified exactly once as private user-scoped `NO_SIDE_EFFECTS` reads.
+`cosimosi.account.v1.AccountService` publishes `GetProfile`, `UpdateProfile`, `ListAuthProviders`,
+`GetInviteLink`, and the `SignUp` mutation alongside the existing palette methods. No request can name a user id.
+All three read RPCs are classified exactly once as private user-scoped `NO_SIDE_EFFECTS` reads.
 
 ## Supabase directory
 
@@ -63,9 +65,37 @@ The token format is:
 `base64url(inviter) . base64url(issued_at_unix) . base64url(32-byte nonce) . base64url(HMAC-SHA256(payload))`
 
 `INVITE_TOKEN_SIGNING_KEY` is standard base64 and must decode to at least 32 bytes. Construction, the signer’s
-zero value, and missing configuration all fail closed. Issuance and verification perform no database access.
-Verification checks the MAC with `hmac.Equal` before decoding trusted payload fields and enforces the generated
-invite TTL. A bind persists the presented token later; there is deliberately no select-by-token query.
+zero value, and missing configuration all fail closed. Issuance first reads only the caller's live profile, then
+derives the token without reading or writing `invites`; verification performs no database access. Verification
+checks the MAC with `hmac.Equal` before decoding trusted payload fields and enforces the generated invite TTL. A bind
+persists the presented token later; there is deliberately no select-by-token query.
+
+## Signup and deferred settlement
+
+`SignUp` validates a trimmed rune-bounded nickname and a resolvable IANA timezone, coerces an unknown negotiated
+locale to `en`, reads the first known provider from the directory, and runs the data-changing
+`CreateUserIfAbsent` CTE plus optional `AcceptInvite` in one account transaction. The CTE inserts `users` and the
+initial `auth_providers` row atomically only for the winning first insert; conflict callers read and return the
+existing profile. Only the winner may bind. A bind infrastructure failure rolls back profile birth, so a retry can
+perform the same first write instead of being stranded unbound.
+
+`AcceptInvite` verifies the HMAC token, takes the inviter id from its authenticated payload, and inserts the
+bound-only `invites` row against a live inviter. Unique token and invitee constraints turn consumed links and
+concurrent binds into `invite_bound=false`. There is no token lookup and no `AcceptInvite` RPC.
+
+`memory.SignupSettlementPort` fires after a successful launch transaction and only when the diary was not
+past-dated. Its production adapter calls `account.Service.SettleSignup`; the no-error, scope-only port means
+settlement cannot fail a committed launch or inspect memory content. Production construction requires this port,
+the concrete account-backed `twinkle.InviteResolver`, and both account-owned granter ports.
+
+Settlement is an idempotent cross-context pairing rather than a shared transaction: account probes the invite,
+serializes by inviter on a dedicated session advisory lock, twinkle writes both dedup-keyed credits, account stamps
+`rewarded_at`, and twinkle independently writes the dedup-keyed signup bonus. Credits-first ordering makes a crash
+before the stamp recoverable by replay. Twinkle also serializes and counts inviter ledger credits inside its own
+transaction; this crash-safe backstop prevents a credited-but-unstamped invite from opening an extra cap slot and
+admits an exact dedup replay so the stamp can recover. The account-private settlement context marker makes the real
+resolver fail closed from the legacy `ClaimInvite` RPC. The as-built values are a `500` signup bonus and a lifetime
+cap of `10` rewarded invites per inviter.
 
 ## Cross-language fixtures and generated values
 

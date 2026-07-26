@@ -70,6 +70,142 @@ func (AuthProviderKind) EnumDescriptor() ([]byte, []int) {
 	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{0}
 }
 
+type SignUpRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nickname      string                 `protobuf:"bytes,1,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	Timezone      string                 `protobuf:"bytes,2,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	Locale        string                 `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	InviteToken   string                 `protobuf:"bytes,4,opt,name=invite_token,json=inviteToken,proto3" json:"invite_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignUpRequest) Reset() {
+	*x = SignUpRequest{}
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignUpRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignUpRequest) ProtoMessage() {}
+
+func (x *SignUpRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignUpRequest.ProtoReflect.Descriptor instead.
+func (*SignUpRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *SignUpRequest) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+func (x *SignUpRequest) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+func (x *SignUpRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *SignUpRequest) GetInviteToken() string {
+	if x != nil {
+		return x.InviteToken
+	}
+	return ""
+}
+
+type SignUpResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nickname      string                 `protobuf:"bytes,1,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	Timezone      string                 `protobuf:"bytes,2,opt,name=timezone,proto3" json:"timezone,omitempty"`
+	Locale        string                 `protobuf:"bytes,3,opt,name=locale,proto3" json:"locale,omitempty"`
+	InviteBound   bool                   `protobuf:"varint,4,opt,name=invite_bound,json=inviteBound,proto3" json:"invite_bound,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignUpResponse) Reset() {
+	*x = SignUpResponse{}
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignUpResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignUpResponse) ProtoMessage() {}
+
+func (x *SignUpResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignUpResponse.ProtoReflect.Descriptor instead.
+func (*SignUpResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SignUpResponse) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+func (x *SignUpResponse) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+func (x *SignUpResponse) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *SignUpResponse) GetInviteBound() bool {
+	if x != nil {
+		return x.InviteBound
+	}
+	return false
+}
+
 type GetProfileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -78,7 +214,7 @@ type GetProfileRequest struct {
 
 func (x *GetProfileRequest) Reset() {
 	*x = GetProfileRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[0]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -90,7 +226,7 @@ func (x *GetProfileRequest) String() string {
 func (*GetProfileRequest) ProtoMessage() {}
 
 func (x *GetProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[0]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -103,7 +239,7 @@ func (x *GetProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileRequest.ProtoReflect.Descriptor instead.
 func (*GetProfileRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{0}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{2}
 }
 
 type GetProfileResponse struct {
@@ -115,7 +251,7 @@ type GetProfileResponse struct {
 
 func (x *GetProfileResponse) Reset() {
 	*x = GetProfileResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[1]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -127,7 +263,7 @@ func (x *GetProfileResponse) String() string {
 func (*GetProfileResponse) ProtoMessage() {}
 
 func (x *GetProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[1]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -140,7 +276,7 @@ func (x *GetProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileResponse.ProtoReflect.Descriptor instead.
 func (*GetProfileResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{1}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetProfileResponse) GetProfile() *Profile {
@@ -163,7 +299,7 @@ type Profile struct {
 
 func (x *Profile) Reset() {
 	*x = Profile{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[2]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -175,7 +311,7 @@ func (x *Profile) String() string {
 func (*Profile) ProtoMessage() {}
 
 func (x *Profile) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[2]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -188,7 +324,7 @@ func (x *Profile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Profile.ProtoReflect.Descriptor instead.
 func (*Profile) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{2}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Profile) GetNickname() string {
@@ -237,7 +373,7 @@ type UpdateProfileRequest struct {
 
 func (x *UpdateProfileRequest) Reset() {
 	*x = UpdateProfileRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[3]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -249,7 +385,7 @@ func (x *UpdateProfileRequest) String() string {
 func (*UpdateProfileRequest) ProtoMessage() {}
 
 func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[3]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -262,7 +398,7 @@ func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProfileRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProfileRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{3}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UpdateProfileRequest) GetNickname() string {
@@ -295,7 +431,7 @@ type UpdateProfileResponse struct {
 
 func (x *UpdateProfileResponse) Reset() {
 	*x = UpdateProfileResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[4]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -307,7 +443,7 @@ func (x *UpdateProfileResponse) String() string {
 func (*UpdateProfileResponse) ProtoMessage() {}
 
 func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[4]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -320,7 +456,7 @@ func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProfileResponse.ProtoReflect.Descriptor instead.
 func (*UpdateProfileResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{4}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UpdateProfileResponse) GetProfile() *Profile {
@@ -338,7 +474,7 @@ type ListAuthProvidersRequest struct {
 
 func (x *ListAuthProvidersRequest) Reset() {
 	*x = ListAuthProvidersRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[5]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -350,7 +486,7 @@ func (x *ListAuthProvidersRequest) String() string {
 func (*ListAuthProvidersRequest) ProtoMessage() {}
 
 func (x *ListAuthProvidersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[5]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -363,7 +499,7 @@ func (x *ListAuthProvidersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuthProvidersRequest.ProtoReflect.Descriptor instead.
 func (*ListAuthProvidersRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{5}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{7}
 }
 
 type ListAuthProvidersResponse struct {
@@ -375,7 +511,7 @@ type ListAuthProvidersResponse struct {
 
 func (x *ListAuthProvidersResponse) Reset() {
 	*x = ListAuthProvidersResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[6]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -387,7 +523,7 @@ func (x *ListAuthProvidersResponse) String() string {
 func (*ListAuthProvidersResponse) ProtoMessage() {}
 
 func (x *ListAuthProvidersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[6]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -400,7 +536,7 @@ func (x *ListAuthProvidersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuthProvidersResponse.ProtoReflect.Descriptor instead.
 func (*ListAuthProvidersResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{6}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListAuthProvidersResponse) GetProviders() []*LinkedAuthProvider {
@@ -420,7 +556,7 @@ type LinkedAuthProvider struct {
 
 func (x *LinkedAuthProvider) Reset() {
 	*x = LinkedAuthProvider{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[7]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -432,7 +568,7 @@ func (x *LinkedAuthProvider) String() string {
 func (*LinkedAuthProvider) ProtoMessage() {}
 
 func (x *LinkedAuthProvider) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[7]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +581,7 @@ func (x *LinkedAuthProvider) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkedAuthProvider.ProtoReflect.Descriptor instead.
 func (*LinkedAuthProvider) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{7}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *LinkedAuthProvider) GetKind() AuthProviderKind {
@@ -470,7 +606,7 @@ type GetInviteLinkRequest struct {
 
 func (x *GetInviteLinkRequest) Reset() {
 	*x = GetInviteLinkRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[8]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -482,7 +618,7 @@ func (x *GetInviteLinkRequest) String() string {
 func (*GetInviteLinkRequest) ProtoMessage() {}
 
 func (x *GetInviteLinkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[8]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -495,7 +631,7 @@ func (x *GetInviteLinkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInviteLinkRequest.ProtoReflect.Descriptor instead.
 func (*GetInviteLinkRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{8}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{10}
 }
 
 type GetInviteLinkResponse struct {
@@ -508,7 +644,7 @@ type GetInviteLinkResponse struct {
 
 func (x *GetInviteLinkResponse) Reset() {
 	*x = GetInviteLinkResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[9]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -520,7 +656,7 @@ func (x *GetInviteLinkResponse) String() string {
 func (*GetInviteLinkResponse) ProtoMessage() {}
 
 func (x *GetInviteLinkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[9]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -533,7 +669,7 @@ func (x *GetInviteLinkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInviteLinkResponse.ProtoReflect.Descriptor instead.
 func (*GetInviteLinkResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{9}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetInviteLinkResponse) GetToken() string {
@@ -559,7 +695,7 @@ type GetPalettePreferenceRequest struct {
 
 func (x *GetPalettePreferenceRequest) Reset() {
 	*x = GetPalettePreferenceRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[10]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -571,7 +707,7 @@ func (x *GetPalettePreferenceRequest) String() string {
 func (*GetPalettePreferenceRequest) ProtoMessage() {}
 
 func (x *GetPalettePreferenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[10]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -584,7 +720,7 @@ func (x *GetPalettePreferenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPalettePreferenceRequest.ProtoReflect.Descriptor instead.
 func (*GetPalettePreferenceRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{10}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{12}
 }
 
 // palette_id is the entire writable surface.
@@ -597,7 +733,7 @@ type SetPalettePreferenceRequest struct {
 
 func (x *SetPalettePreferenceRequest) Reset() {
 	*x = SetPalettePreferenceRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[11]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -609,7 +745,7 @@ func (x *SetPalettePreferenceRequest) String() string {
 func (*SetPalettePreferenceRequest) ProtoMessage() {}
 
 func (x *SetPalettePreferenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[11]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -622,7 +758,7 @@ func (x *SetPalettePreferenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPalettePreferenceRequest.ProtoReflect.Descriptor instead.
 func (*SetPalettePreferenceRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{11}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SetPalettePreferenceRequest) GetPaletteId() string {
@@ -642,7 +778,7 @@ type PalettePreference struct {
 
 func (x *PalettePreference) Reset() {
 	*x = PalettePreference{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -654,7 +790,7 @@ func (x *PalettePreference) String() string {
 func (*PalettePreference) ProtoMessage() {}
 
 func (x *PalettePreference) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -667,7 +803,7 @@ func (x *PalettePreference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PalettePreference.ProtoReflect.Descriptor instead.
 func (*PalettePreference) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{12}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PalettePreference) GetPaletteId() string {
@@ -681,7 +817,17 @@ var File_cosimosi_account_v1_account_proto protoreflect.FileDescriptor
 
 const file_cosimosi_account_v1_account_proto_rawDesc = "" +
 	"\n" +
-	"!cosimosi/account/v1/account.proto\x12\x13cosimosi.account.v1\"\x13\n" +
+	"!cosimosi/account/v1/account.proto\x12\x13cosimosi.account.v1\"\x82\x01\n" +
+	"\rSignUpRequest\x12\x1a\n" +
+	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x1a\n" +
+	"\btimezone\x18\x02 \x01(\tR\btimezone\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\x12!\n" +
+	"\finvite_token\x18\x04 \x01(\tR\vinviteToken\"\x83\x01\n" +
+	"\x0eSignUpResponse\x12\x1a\n" +
+	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x1a\n" +
+	"\btimezone\x18\x02 \x01(\tR\btimezone\x12\x16\n" +
+	"\x06locale\x18\x03 \x01(\tR\x06locale\x12!\n" +
+	"\finvite_bound\x18\x04 \x01(\bR\vinviteBound\"\x13\n" +
 	"\x11GetProfileRequest\"L\n" +
 	"\x12GetProfileResponse\x126\n" +
 	"\aprofile\x18\x01 \x01(\v2\x1c.cosimosi.account.v1.ProfileR\aprofile\"\x8e\x01\n" +
@@ -719,8 +865,9 @@ const file_cosimosi_account_v1_account_proto_rawDesc = "" +
 	"\x10AuthProviderKind\x12\"\n" +
 	"\x1eAUTH_PROVIDER_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19AUTH_PROVIDER_KIND_GOOGLE\x10\x01\x12\x1f\n" +
-	"\x1bAUTH_PROVIDER_KIND_PASSWORD\x10\x022\xab\x05\n" +
-	"\x0eAccountService\x12b\n" +
+	"\x1bAUTH_PROVIDER_KIND_PASSWORD\x10\x022\xfe\x05\n" +
+	"\x0eAccountService\x12Q\n" +
+	"\x06SignUp\x12\".cosimosi.account.v1.SignUpRequest\x1a#.cosimosi.account.v1.SignUpResponse\x12b\n" +
 	"\n" +
 	"GetProfile\x12&.cosimosi.account.v1.GetProfileRequest\x1a'.cosimosi.account.v1.GetProfileResponse\"\x03\x90\x02\x01\x12f\n" +
 	"\rUpdateProfile\x12).cosimosi.account.v1.UpdateProfileRequest\x1a*.cosimosi.account.v1.UpdateProfileResponse\x12w\n" +
@@ -743,42 +890,46 @@ func file_cosimosi_account_v1_account_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_account_v1_account_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_cosimosi_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_cosimosi_account_v1_account_proto_goTypes = []any{
 	(AuthProviderKind)(0),               // 0: cosimosi.account.v1.AuthProviderKind
-	(*GetProfileRequest)(nil),           // 1: cosimosi.account.v1.GetProfileRequest
-	(*GetProfileResponse)(nil),          // 2: cosimosi.account.v1.GetProfileResponse
-	(*Profile)(nil),                     // 3: cosimosi.account.v1.Profile
-	(*UpdateProfileRequest)(nil),        // 4: cosimosi.account.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil),       // 5: cosimosi.account.v1.UpdateProfileResponse
-	(*ListAuthProvidersRequest)(nil),    // 6: cosimosi.account.v1.ListAuthProvidersRequest
-	(*ListAuthProvidersResponse)(nil),   // 7: cosimosi.account.v1.ListAuthProvidersResponse
-	(*LinkedAuthProvider)(nil),          // 8: cosimosi.account.v1.LinkedAuthProvider
-	(*GetInviteLinkRequest)(nil),        // 9: cosimosi.account.v1.GetInviteLinkRequest
-	(*GetInviteLinkResponse)(nil),       // 10: cosimosi.account.v1.GetInviteLinkResponse
-	(*GetPalettePreferenceRequest)(nil), // 11: cosimosi.account.v1.GetPalettePreferenceRequest
-	(*SetPalettePreferenceRequest)(nil), // 12: cosimosi.account.v1.SetPalettePreferenceRequest
-	(*PalettePreference)(nil),           // 13: cosimosi.account.v1.PalettePreference
+	(*SignUpRequest)(nil),               // 1: cosimosi.account.v1.SignUpRequest
+	(*SignUpResponse)(nil),              // 2: cosimosi.account.v1.SignUpResponse
+	(*GetProfileRequest)(nil),           // 3: cosimosi.account.v1.GetProfileRequest
+	(*GetProfileResponse)(nil),          // 4: cosimosi.account.v1.GetProfileResponse
+	(*Profile)(nil),                     // 5: cosimosi.account.v1.Profile
+	(*UpdateProfileRequest)(nil),        // 6: cosimosi.account.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),       // 7: cosimosi.account.v1.UpdateProfileResponse
+	(*ListAuthProvidersRequest)(nil),    // 8: cosimosi.account.v1.ListAuthProvidersRequest
+	(*ListAuthProvidersResponse)(nil),   // 9: cosimosi.account.v1.ListAuthProvidersResponse
+	(*LinkedAuthProvider)(nil),          // 10: cosimosi.account.v1.LinkedAuthProvider
+	(*GetInviteLinkRequest)(nil),        // 11: cosimosi.account.v1.GetInviteLinkRequest
+	(*GetInviteLinkResponse)(nil),       // 12: cosimosi.account.v1.GetInviteLinkResponse
+	(*GetPalettePreferenceRequest)(nil), // 13: cosimosi.account.v1.GetPalettePreferenceRequest
+	(*SetPalettePreferenceRequest)(nil), // 14: cosimosi.account.v1.SetPalettePreferenceRequest
+	(*PalettePreference)(nil),           // 15: cosimosi.account.v1.PalettePreference
 }
 var file_cosimosi_account_v1_account_proto_depIdxs = []int32{
-	3,  // 0: cosimosi.account.v1.GetProfileResponse.profile:type_name -> cosimosi.account.v1.Profile
-	3,  // 1: cosimosi.account.v1.UpdateProfileResponse.profile:type_name -> cosimosi.account.v1.Profile
-	8,  // 2: cosimosi.account.v1.ListAuthProvidersResponse.providers:type_name -> cosimosi.account.v1.LinkedAuthProvider
+	5,  // 0: cosimosi.account.v1.GetProfileResponse.profile:type_name -> cosimosi.account.v1.Profile
+	5,  // 1: cosimosi.account.v1.UpdateProfileResponse.profile:type_name -> cosimosi.account.v1.Profile
+	10, // 2: cosimosi.account.v1.ListAuthProvidersResponse.providers:type_name -> cosimosi.account.v1.LinkedAuthProvider
 	0,  // 3: cosimosi.account.v1.LinkedAuthProvider.kind:type_name -> cosimosi.account.v1.AuthProviderKind
-	1,  // 4: cosimosi.account.v1.AccountService.GetProfile:input_type -> cosimosi.account.v1.GetProfileRequest
-	4,  // 5: cosimosi.account.v1.AccountService.UpdateProfile:input_type -> cosimosi.account.v1.UpdateProfileRequest
-	6,  // 6: cosimosi.account.v1.AccountService.ListAuthProviders:input_type -> cosimosi.account.v1.ListAuthProvidersRequest
-	9,  // 7: cosimosi.account.v1.AccountService.GetInviteLink:input_type -> cosimosi.account.v1.GetInviteLinkRequest
-	11, // 8: cosimosi.account.v1.AccountService.GetPalettePreference:input_type -> cosimosi.account.v1.GetPalettePreferenceRequest
-	12, // 9: cosimosi.account.v1.AccountService.SetPalettePreference:input_type -> cosimosi.account.v1.SetPalettePreferenceRequest
-	2,  // 10: cosimosi.account.v1.AccountService.GetProfile:output_type -> cosimosi.account.v1.GetProfileResponse
-	5,  // 11: cosimosi.account.v1.AccountService.UpdateProfile:output_type -> cosimosi.account.v1.UpdateProfileResponse
-	7,  // 12: cosimosi.account.v1.AccountService.ListAuthProviders:output_type -> cosimosi.account.v1.ListAuthProvidersResponse
-	10, // 13: cosimosi.account.v1.AccountService.GetInviteLink:output_type -> cosimosi.account.v1.GetInviteLinkResponse
-	13, // 14: cosimosi.account.v1.AccountService.GetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
-	13, // 15: cosimosi.account.v1.AccountService.SetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
-	10, // [10:16] is the sub-list for method output_type
-	4,  // [4:10] is the sub-list for method input_type
+	1,  // 4: cosimosi.account.v1.AccountService.SignUp:input_type -> cosimosi.account.v1.SignUpRequest
+	3,  // 5: cosimosi.account.v1.AccountService.GetProfile:input_type -> cosimosi.account.v1.GetProfileRequest
+	6,  // 6: cosimosi.account.v1.AccountService.UpdateProfile:input_type -> cosimosi.account.v1.UpdateProfileRequest
+	8,  // 7: cosimosi.account.v1.AccountService.ListAuthProviders:input_type -> cosimosi.account.v1.ListAuthProvidersRequest
+	11, // 8: cosimosi.account.v1.AccountService.GetInviteLink:input_type -> cosimosi.account.v1.GetInviteLinkRequest
+	13, // 9: cosimosi.account.v1.AccountService.GetPalettePreference:input_type -> cosimosi.account.v1.GetPalettePreferenceRequest
+	14, // 10: cosimosi.account.v1.AccountService.SetPalettePreference:input_type -> cosimosi.account.v1.SetPalettePreferenceRequest
+	2,  // 11: cosimosi.account.v1.AccountService.SignUp:output_type -> cosimosi.account.v1.SignUpResponse
+	4,  // 12: cosimosi.account.v1.AccountService.GetProfile:output_type -> cosimosi.account.v1.GetProfileResponse
+	7,  // 13: cosimosi.account.v1.AccountService.UpdateProfile:output_type -> cosimosi.account.v1.UpdateProfileResponse
+	9,  // 14: cosimosi.account.v1.AccountService.ListAuthProviders:output_type -> cosimosi.account.v1.ListAuthProvidersResponse
+	12, // 15: cosimosi.account.v1.AccountService.GetInviteLink:output_type -> cosimosi.account.v1.GetInviteLinkResponse
+	15, // 16: cosimosi.account.v1.AccountService.GetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
+	15, // 17: cosimosi.account.v1.AccountService.SetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
+	11, // [11:18] is the sub-list for method output_type
+	4,  // [4:11] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -795,7 +946,7 @@ func file_cosimosi_account_v1_account_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_account_v1_account_proto_rawDesc), len(file_cosimosi_account_v1_account_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

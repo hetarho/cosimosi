@@ -95,6 +95,17 @@ type fakeEarnPort struct {
 	txs      []EconomyTx
 }
 
+type fakeSignupSettlement struct {
+	launches      *fakeLaunchStore
+	userIDs       []string
+	calledWhileTx bool
+}
+
+func (f *fakeSignupSettlement) OnEngramsLaunched(_ context.Context, scope platform.UserScope) {
+	f.calledWhileTx = f.launches != nil && f.launches.staging != nil
+	f.userIDs = append(f.userIDs, scope.UserID())
+}
+
 func (f *fakeEarnPort) OnDiaryLaunched(_ context.Context, scope platform.UserScope, tx EconomyTx, diaryID string) error {
 	if scope.UserID() == "" {
 		return errors.New("scope missing")
@@ -471,6 +482,12 @@ func TestPersistEncodedLaunchesAtomicallyWithDedup(t *testing.T) {
 	if len(fixture.linker.launched) != 2 {
 		t.Fatalf("link seam received %d memories, want 2", len(fixture.linker.launched))
 	}
+	if len(fixture.signupSettlement.userIDs) != 1 || fixture.signupSettlement.userIDs[0] != testScope(t).UserID() {
+		t.Fatalf("signup settlement calls = %#v, want one scoped post-launch call", fixture.signupSettlement.userIDs)
+	}
+	if fixture.signupSettlement.calledWhileTx {
+		t.Fatal("signup settlement ran before the launch transaction committed")
+	}
 }
 
 func TestPersistEncodedMidStepFailureLeavesNoPartialRows(t *testing.T) {
@@ -511,6 +528,9 @@ func TestPersistEncodedPastDatedSavesDiaryLaunchesNothing(t *testing.T) {
 	}
 	if fixture.linker.calls != 0 {
 		t.Fatal("the link seam must not run for a past-dated diary")
+	}
+	if len(fixture.signupSettlement.userIDs) != 0 {
+		t.Fatal("a past-dated diary must not trigger signup settlement")
 	}
 	// The clock stays unmoved and the response interval is {clock, clock}.
 	if state.clockAdvance != nil {
@@ -675,6 +695,9 @@ func TestPersistEncodedClockAdvanceFailureRollsBackLaunch(t *testing.T) {
 	state := fixture.launches.committed
 	if len(state.diaries)+len(state.memories)+len(state.jobs) != 0 || fixture.launches.clock != nil {
 		t.Fatal("a failed clock advance must roll the whole launch back")
+	}
+	if len(fixture.signupSettlement.userIDs) != 0 {
+		t.Fatal("a failed launch must not trigger signup settlement")
 	}
 }
 

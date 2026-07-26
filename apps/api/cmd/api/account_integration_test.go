@@ -3,20 +3,42 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/cosimosi/api/internal/account"
+	accountpg "github.com/cosimosi/api/internal/account/pg"
 	"github.com/cosimosi/api/internal/platform"
+	platformdb "github.com/cosimosi/api/internal/platform/db"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
+	"github.com/cosimosi/api/internal/platform/values"
+	"github.com/cosimosi/api/internal/twinkle"
 )
 
 type profileZoneStore struct {
 	profile account.Profile
 }
 
+func (s profileZoneStore) InSignupTx(ctx context.Context, fn func(account.Store) error) error {
+	return fn(s)
+}
+
+func (profileZoneStore) WithInviteSettlementLock(
+	_ context.Context,
+	_ platform.UserScope,
+	fn func() error,
+) error {
+	return fn()
+}
+
 func (s profileZoneStore) GetUserProfile(context.Context, platform.UserScope) (account.Profile, bool, error) {
 	return s.profile, true, nil
+}
+
+func (profileZoneStore) CreateUserIfAbsent(context.Context, platform.UserScope, account.SignUpInput, *account.AuthProvider) (account.Profile, bool, error) {
+	return account.Profile{}, false, nil
 }
 
 func (profileZoneStore) UpdateUserProfile(context.Context, platform.UserScope, account.UpdateProfileInput) (account.Profile, bool, error) {
@@ -39,16 +61,38 @@ func (profileZoneStore) RecordAuthProvider(context.Context, platform.UserScope, 
 	return nil
 }
 
+func (profileZoneStore) BindInviteToInvitee(context.Context, platform.UserScope, account.Invite) (bool, error) {
+	return false, nil
+}
+
+func (profileZoneStore) FindSettleableInviteForInvitee(context.Context, platform.UserScope) (*account.SettleableInvite, error) {
+	return nil, nil
+}
+
 func (profileZoneStore) CountRewardedInvitesByInviter(context.Context, platform.UserScope) (int64, error) {
 	return 0, nil
 }
+
+func (profileZoneStore) MarkInviteRewarded(context.Context, platform.UserScope, string, time.Time) error {
+	return nil
+}
+
+type accountNoInviteGranter struct{}
+
+func (accountNoInviteGranter) Grant(context.Context, platform.UserScope, string) error { return nil }
+
+type accountNoSignupBonusGranter struct{}
+
+func (accountNoSignupBonusGranter) Grant(context.Context, platform.UserScope) error { return nil }
 
 func TestProductionMemoryZoneAdapterBindsAccountReader(t *testing.T) {
 	t.Parallel()
 	source := platformsupabase.Fake{}
 	service, err := account.NewService(account.ServiceDeps{
-		Store:     profileZoneStore{profile: account.Profile{UserID: "u1", Timezone: "Asia/Seoul"}},
-		Directory: accountDirectoryAdapter{source: source},
+		Store:              profileZoneStore{profile: account.Profile{UserID: "u1", Timezone: "Asia/Seoul"}},
+		Directory:          accountDirectoryAdapter{source: source},
+		InviteGranter:      accountNoInviteGranter{},
+		SignupBonusGranter: accountNoSignupBonusGranter{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -111,4 +155,214 @@ func TestAdminAndAccountAdaptersTranslateTheSamePlatformDirectory(t *testing.T) 
 	if err != nil || len(accounts) != 1 || accounts[0].SignupAt != createdAt {
 		t.Fatalf("admin adapter accounts = %#v, %v", accounts, err)
 	}
+}
+
+var errInjectedRewardMark = errors.New("injected rewarded-at failure")
+
+type failOnceRewardMarkStore struct {
+	account.Store
+	failNext bool
+}
+
+func (s *failOnceRewardMarkStore) MarkInviteRewarded(
+	ctx context.Context,
+	scope platform.UserScope,
+	inviteID string,
+	rewardedAt time.Time,
+) error {
+	if s.failNext {
+		s.failNext = false
+		return errInjectedRewardMark
+	}
+	return s.Store.MarkInviteRewarded(ctx, scope, inviteID, rewardedAt)
+}
+
+func TestSignupSettlementCreditsFirstAndCrashReplayConverges(t *testing.T) {
+	pool := openEconomyTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-signup-settlement-%d", time.Now().UnixNano())
+	inviterID := base + "-inviter"
+	inviteeID := base + "-invitee"
+	cleanupSignupSettlementRows(t, pool, inviterID, inviteeID)
+
+	source := platformsupabase.Fake{
+		Accounts: []platformsupabase.Account{
+			{UserID: inviterID, EmailVerifiedAt: time.Now().UTC()},
+			{UserID: inviteeID, EmailVerifiedAt: time.Now().UTC()},
+		},
+		IdentitiesByUser: map[string][]string{
+			inviterID: {"google"},
+			inviteeID: {"google"},
+		},
+	}
+	store := &failOnceRewardMarkStore{Store: accountpg.NewStore(pool.PgxPool())}
+	inviteGranter := &accountInviteRewardGranter{}
+	bonusGranter := &accountSignupBonusGranter{}
+	signer, err := account.NewHMACInviteSigner(make([]byte, 32))
+	if err != nil {
+		t.Fatalf("NewHMACInviteSigner failed: %v", err)
+	}
+	accountService, err := account.NewService(account.ServiceDeps{
+		Store:              store,
+		Directory:          accountDirectoryAdapter{source: source},
+		InviteSigner:       signer,
+		InviteGranter:      inviteGranter,
+		SignupBonusGranter: bonusGranter,
+	})
+	if err != nil {
+		t.Fatalf("account.NewService failed: %v", err)
+	}
+	twinkleService, err := newTwinkleService(
+		pool,
+		&memorySpendSignals{},
+		accountInviteResolver{service: accountService},
+	)
+	if err != nil {
+		t.Fatalf("newTwinkleService failed: %v", err)
+	}
+	inviteGranter.service = twinkleService
+	bonusGranter.service = twinkleService
+
+	inviterScope := economyScope(t, inviterID)
+	inviteeScope := economyScope(t, inviteeID)
+	if _, _, err := accountService.SignUp(ctx, inviterScope, account.SignUpInput{
+		Nickname: "inviter",
+		Timezone: "UTC",
+		Locale:   "en",
+	}); err != nil {
+		t.Fatalf("inviter SignUp failed: %v", err)
+	}
+	link, err := accountService.GetInviteLink(ctx, inviterScope)
+	if err != nil {
+		t.Fatalf("GetInviteLink failed: %v", err)
+	}
+	if _, bound, err := accountService.SignUp(ctx, inviteeScope, account.SignUpInput{
+		Nickname:    "invitee",
+		Timezone:    "UTC",
+		Locale:      "en",
+		InviteToken: link.Token,
+	}); err != nil || !bound {
+		t.Fatalf("invitee SignUp = bound %v err %v", bound, err)
+	}
+	if rows := countSignupSettlementLedgerRows(t, pool, inviterID, inviteeID); rows != 0 {
+		t.Fatalf("signup wrote %d ledger rows, want 0", rows)
+	}
+	if _, err := twinkleService.ClaimInvite(ctx, inviteeScope, link.Token); !errors.Is(err, twinkle.ErrInviteNotEligible) {
+		t.Fatalf("pre-launch wire-shaped ClaimInvite err = %v, want ErrInviteNotEligible", err)
+	}
+	if rows := countSignupSettlementLedgerRows(t, pool, inviterID, inviteeID); rows != 0 {
+		t.Fatalf("pre-launch ClaimInvite wrote %d ledger rows, want 0", rows)
+	}
+
+	store.failNext = true
+	if err := accountService.SettleSignup(ctx, inviteeScope); !errors.Is(err, errInjectedRewardMark) {
+		t.Fatalf("first SettleSignup err = %v, want injected mark failure", err)
+	}
+	var rewardedAt *time.Time
+	if err := pool.PgxPool().QueryRow(ctx,
+		"SELECT rewarded_at FROM invites WHERE invitee_user_id = $1",
+		inviteeID,
+	).Scan(&rewardedAt); err != nil || rewardedAt != nil {
+		t.Fatalf("rewarded_at after injected crash = %v err %v, want NULL", rewardedAt, err)
+	}
+	if rows := countSignupSettlementLedgerRows(t, pool, inviterID, inviteeID); rows != 3 {
+		t.Fatalf("ledger rows after credits-before-mark crash = %d, want 3", rows)
+	}
+
+	if err := accountService.SettleSignup(ctx, inviteeScope); err != nil {
+		t.Fatalf("replayed SettleSignup failed: %v", err)
+	}
+	if rows := countSignupSettlementLedgerRows(t, pool, inviterID, inviteeID); rows != 3 {
+		t.Fatalf("ledger rows after replay = %d, want the same 3", rows)
+	}
+	var inviteID string
+	if err := pool.PgxPool().QueryRow(ctx,
+		"SELECT id, rewarded_at FROM invites WHERE invitee_user_id = $1",
+		inviteeID,
+	).Scan(&inviteID, &rewardedAt); err != nil || rewardedAt == nil {
+		t.Fatalf("rewarded_at after replay = %v err %v, want stamped", rewardedAt, err)
+	}
+	keyRows, err := pool.PgxPool().Query(ctx,
+		"SELECT dedup_key FROM twinkle_ledger_entries WHERE user_id = ANY($1::text[])",
+		[]string{inviterID, inviteeID},
+	)
+	if err != nil {
+		t.Fatalf("read settlement dedup keys: %v", err)
+	}
+	defer keyRows.Close()
+	keys := map[string]bool{}
+	for keyRows.Next() {
+		var key string
+		if err := keyRows.Scan(&key); err != nil {
+			t.Fatalf("scan settlement dedup key: %v", err)
+		}
+		keys[key] = true
+	}
+	if err := keyRows.Err(); err != nil {
+		t.Fatalf("iterate settlement dedup keys: %v", err)
+	}
+	for _, want := range []string{"invite:" + inviteID, "invite_signup:" + inviteID, "signup_bonus:" + inviteeID} {
+		if !keys[want] {
+			t.Fatalf("settlement dedup keys = %#v, missing %q", keys, want)
+		}
+	}
+
+	inviterBalance, err := twinkleService.GetBalance(ctx, inviterScope)
+	if err != nil {
+		t.Fatalf("inviter balance failed: %v", err)
+	}
+	inviteeBalance, err := twinkleService.GetBalance(ctx, inviteeScope)
+	if err != nil {
+		t.Fatalf("invitee balance failed: %v", err)
+	}
+	if inviterBalance.Additional != values.TwinkleEarnInviteInviter {
+		t.Fatalf("inviter additional = %d, want %d", inviterBalance.Additional, values.TwinkleEarnInviteInviter)
+	}
+	wantInvitee := values.TwinkleEarnInviteInvitee + values.TwinkleEarnSignupBonus
+	if inviteeBalance.Additional != wantInvitee {
+		t.Fatalf("invitee additional = %d, want %d", inviteeBalance.Additional, wantInvitee)
+	}
+}
+
+func countSignupSettlementLedgerRows(t *testing.T, pool *platformdb.Pool, userIDs ...string) int {
+	t.Helper()
+	var rows int
+	if err := pool.PgxPool().QueryRow(
+		context.Background(),
+		"SELECT count(*) FROM twinkle_ledger_entries WHERE user_id = ANY($1::text[])",
+		userIDs,
+	).Scan(&rows); err != nil {
+		t.Fatalf("count settlement ledger rows: %v", err)
+	}
+	return rows
+}
+
+func cleanupSignupSettlementRows(t *testing.T, pool *platformdb.Pool, userIDs ...string) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, err := pool.PgxPool().Exec(ctx,
+			"DELETE FROM invites WHERE user_id = ANY($1::text[]) OR invitee_user_id = ANY($1::text[])",
+			userIDs,
+		); err != nil {
+			t.Fatalf("cleanup invites: %v", err)
+		}
+		for _, table := range []string{
+			"twinkle_ledger_entries",
+			"twinkle_balances",
+			"auth_providers",
+			"palette_preferences",
+			"users",
+		} {
+			if _, err := pool.PgxPool().Exec(ctx,
+				"DELETE FROM "+table+" WHERE user_id = ANY($1::text[])",
+				userIDs,
+			); err != nil {
+				t.Fatalf("cleanup %s: %v", table, err)
+			}
+		}
+	})
 }

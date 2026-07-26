@@ -2,7 +2,8 @@
 
 > Domain policy for the 별가루 (Twinkle) recall economy. Owned by plans
 > [43.stardust-ledger](../../plan/43.stardust-ledger.md) (ledger/balance/curves) and
-> [44.earn-spend-usecase](../../plan/44.earn-spend-usecase.md) (earn/spend/quote); the as-built
+> [44.earn-spend-usecase](../../plan/44.earn-spend-usecase.md) (earn/spend/quote), and
+> [61.signup-and-invite-usecase](../../plan/61.signup-and-invite-usecase.md) (signup settlement); the as-built
 > context rules live in [tech/twinkle-economy.md](../../tech/twinkle-economy.md). Reinforces PRD
 > §5.9 [G1][G2][G3][G4][G5][G6].
 
@@ -17,8 +18,8 @@ never a price curve.
 
 - **Basic** — a fixed daily grant (`twinkle.basic_daily_amount`) that refills at the start of each **real UTC calendar
   day** and never carries unspent remainder forward. It is a **derivation** against "now", not a stored counter.
-- **Additional** — the permanent, carrying balance charges accumulate (payment / invite / write rewards, [G3]). A
-  stored counter, decremented only by spend overflow.
+- **Additional** — the permanent, carrying balance charges accumulate (payment / invite / write / one-time signup
+  rewards, [G3]). A stored counter, decremented only by spend overflow.
 
 **The spend order is fixed: basic first, additional only for the overflow** ([G2]). Everyday recall inside the daily
 grant never touches the paid wallet ([G5]). Neither tier ever goes negative: an unaffordable spend is rejected (or
@@ -37,17 +38,20 @@ balance and prices pre-spend with the mirrored curves, but never advances the ba
 engine, isolated to the twinkle context: the economy paces the user's real-world daily habit ([M5][G5]), and a
 universe-time refill would never refill a user who only views.
 
-**Twinkle earns only via write / invite-both-sides / verified payment — there is no login or attendance bonus**
-([G3]); the daily basic reset plays that role by design. Every earn credits **additional** only — basic is the daily
-derivation and is never earned:
+**Twinkle earns only via write / invite-both-sides / one-time signup / verified payment — there is no login or
+attendance bonus** ([G3]); the daily basic reset plays that role by design. Every earn credits **additional** only —
+basic is the daily derivation and is never earned:
 
 - **Write** — `twinkle.earn_write` once **per launched diary** (not per memory, so splitting a diary into more
   memories inflates nothing), granted inside the launch transaction; a past-dated diary that launches no episodic
   memory earns nothing (the grant rides the monotonic launch guard, [I10]).
-- **Invite** — an opaque invite code carries no value by itself. A trusted account/signup resolver must bind one
-  eligible signup identity to an existing distinct inviter and the authenticated invitee. Both sides then credit
-  atomically and exactly once for that trusted identity; resolver unavailability, invalidity, dedup conflict, or
-  persistence failure credits neither side. Concrete anti-abuse criteria remain behind the resolver ([G6]).
+- **Invite** — an opaque invite code carries no value by itself. Account settlement requires a distinct live
+  inviter, a launched-star trigger, a verified invitee email (`GOOGLE` is implicit), and fewer than
+  `twinkle.invite_reward_max_per_inviter` prior rewarded invites. Both sides then credit atomically and exactly once
+  for the bound invite identity with keys `invite:<inviteID>` and `invite_signup:<inviteID>`.
+- **Signup bonus** — `twinkle.earn_signup_bonus` credits once per account with reason `signup_bonus` and key
+  `signup_bonus:<userID>`. It is reachable only from the same post-launch settlement hook; signup and login pay
+  nothing.
 - **Payment** — `Charge` credits only from a store-verifier claim binding the normalized provider transaction,
   provider, known pack, authoritative amount, and authenticated beneficiary. A provider transaction is globally
   single-use across users. No configured verifier means an explicit unavailable refusal; arbitrary receipt text can

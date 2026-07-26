@@ -28,6 +28,28 @@ func NewServer(service *account.Service) (*Server, error) {
 	return &Server{service: service}, nil
 }
 
+func (s *Server) SignUp(ctx context.Context, req *connect.Request[accountv1.SignUpRequest]) (*connect.Response[accountv1.SignUpResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	profile, inviteBound, err := s.service.SignUp(ctx, scope, account.SignUpInput{
+		Nickname:    req.Msg.GetNickname(),
+		Timezone:    req.Msg.GetTimezone(),
+		Locale:      req.Msg.GetLocale(),
+		InviteToken: req.Msg.GetInviteToken(),
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&accountv1.SignUpResponse{
+		Nickname:    profile.Nickname,
+		Timezone:    profile.Timezone,
+		Locale:      profile.Locale,
+		InviteBound: inviteBound,
+	}), nil
+}
+
 func (s *Server) GetProfile(ctx context.Context, _ *connect.Request[accountv1.GetProfileRequest]) (*connect.Response[accountv1.GetProfileResponse], error) {
 	scope, err := userScope(ctx)
 	if err != nil {
@@ -131,6 +153,8 @@ func userScope(ctx context.Context) (platform.UserScope, error) {
 // domainError maps the use-case's canonical errors onto Connect codes.
 func domainError(err error) error {
 	switch {
+	case errors.Is(err, account.ErrSignupRequired):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonSignupRequired, err, nil)
 	case errors.Is(err, account.ErrNotProvisioned):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonNotProvisioned, err, nil)
 	case errors.Is(err, account.ErrNicknameInvalid):

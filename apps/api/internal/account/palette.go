@@ -26,6 +26,9 @@ func (s *Service) GetPalettePreference(ctx context.Context, scope platform.UserS
 	if scope.UserID() == "" {
 		return "", ErrScopeRequired
 	}
+	if err := s.requireSignup(ctx, scope); err != nil {
+		return "", err
+	}
 	id, found, err := s.store.GetPalettePreference(ctx, scope)
 	if err != nil {
 		return "", err
@@ -39,6 +42,9 @@ func (s *Service) GetPalettePreference(ctx context.Context, scope platform.UserS
 func (s *Service) SetPalettePreference(ctx context.Context, scope platform.UserScope, paletteID string) (string, error) {
 	if scope.UserID() == "" {
 		return "", ErrScopeRequired
+	}
+	if err := s.requireSignup(ctx, scope); err != nil {
+		return "", err
 	}
 	if !s.knownPalette(paletteID) {
 		return "", ErrUnknownPaletteID

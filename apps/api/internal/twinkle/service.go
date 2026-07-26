@@ -15,8 +15,8 @@ import (
 
 // The earn/spend use-cases — the orchestration of the Twinkle economy over the
 // pure ledger model in ledger.go: the real SpendGate the recall/gist-view
-// consumers call ([CC2][G1]), the three earn paths (write / invite / verified
-// payment, [G3]), the balance read, and the server quote ([G4]). Every policy —
+// consumers call ([CC2][G1]), the earn paths (write / invite / signup bonus /
+// verified payment, [G3]), the balance read, and the server quote ([G4]). Every policy —
 // pricing, spend order, earn reasons, idempotency, and trusted-claim validation — lives here or in
 // the pure domain, never in a handler (§2.9#7). There is deliberately NO
 // login/attendance earn path ([G3]): the daily basic reset is that role.
@@ -271,6 +271,23 @@ func (s *Service) EarnOnWrite(ctx context.Context, scope platform.UserScope, led
 	return err
 }
 
+// EarnSignupBonus credits the one-time onboarding grant to additional (GENERAL)
+// Twinkle. The authenticated account id is the idempotency identity, so repeated
+// settlement hooks can safely converge through the ledger's unique dedup key.
+func (s *Service) EarnSignupBonus(ctx context.Context, scope platform.UserScope) (Balance, error) {
+	if scope.UserID() == "" {
+		return Balance{}, ErrScopeRequired
+	}
+	err := s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+		_, err := s.earn(ctx, scope, tx, ReasonSignupBonus, values.TwinkleEarnSignupBonus, "signup_bonus:"+scope.UserID())
+		return err
+	})
+	if err != nil {
+		return Balance{}, err
+	}
+	return s.GetBalance(ctx, scope)
+}
+
 // EarnAdminGrant credits `amount` additional Twinkle to the scoped user as an operator gift
 // (별가루 증정, the admin console). It runs in its own ledger transaction and is idempotent by dedupKey —
 // the admin console's grant id — so a replay returns the current balance without double-crediting.
@@ -331,13 +348,24 @@ func (s *Service) ClaimInvite(ctx context.Context, scope platform.UserScope, inv
 		return Balance{}, ErrInviteInputRequired
 	}
 	err = s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+		inviterDedupKey := "invite:" + signupID
+		if err := tx.LockInviteRewardsByInviter(ctx, inviterScope); err != nil {
+			return err
+		}
+		rewardCount, replay, err := tx.GetInviteRewardState(ctx, inviterScope, inviterDedupKey)
+		if err != nil {
+			return err
+		}
+		if !replay && rewardCount >= int64(values.TwinkleInviteRewardMaxPerInviter) {
+			return ErrInviteNotEligible
+		}
 		inviteeApplied, err := s.earn(ctx, scope, tx, ReasonInvite, values.TwinkleEarnInviteInvitee,
 			"invite_signup:"+signupID)
 		if err != nil {
 			return err
 		}
 		inviterApplied, err := s.earn(ctx, inviterScope, tx, ReasonInvite, values.TwinkleEarnInviteInviter,
-			"invite:"+signupID)
+			inviterDedupKey)
 		if err != nil {
 			return err
 		}

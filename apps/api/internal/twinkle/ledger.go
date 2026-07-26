@@ -47,16 +47,17 @@ const (
 )
 
 // EntryReason is the closed earn/spend source set ([G3][G1]) — a TEXT closed set like
-// neuron_type, not a PG enum. Earn reasons: payment, invite, write_diary, admin_grant. Spend
-// reasons: recall (회고), gist_view (요지 별 열람).
+// neuron_type, not a PG enum. Earn reasons: payment, invite, write_diary, signup_bonus,
+// admin_grant. Spend reasons: recall (회고), gist_view (요지 별 열람).
 type EntryReason string
 
 const (
-	ReasonPayment    EntryReason = "payment"
-	ReasonInvite     EntryReason = "invite"
-	ReasonWriteDiary EntryReason = "write_diary"
-	ReasonRecall     EntryReason = "recall"
-	ReasonGistView   EntryReason = "gist_view"
+	ReasonPayment     EntryReason = "payment"
+	ReasonInvite      EntryReason = "invite"
+	ReasonWriteDiary  EntryReason = "write_diary"
+	ReasonSignupBonus EntryReason = "signup_bonus"
+	ReasonRecall      EntryReason = "recall"
+	ReasonGistView    EntryReason = "gist_view"
 	// ReasonAdminGrant is an operator gift (별가루 증정, the admin console): credited to additional balance
 	// from the admin console, capped by the admin context (never a login/attendance bonus [G3] —
 	// this is a discretionary support/promotion grant, not a recurring earn).

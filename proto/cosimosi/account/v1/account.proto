@@ -9,6 +9,9 @@ package cosimosi.account.v1;
 // nickname, timezone, and locale. No mood, coordinate, memory id, position, or strength can cross
 // this boundary.
 service AccountService {
+  // Perform the caller's once-per-account first write. The opaque invite token can only arrive
+  // from link capture; signup binds it but never pays a reward.
+  rpc SignUp(SignUpRequest) returns (SignUpResponse);
   // Read the caller's profile. An absent profile message means the account is not provisioned.
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -31,6 +34,20 @@ service AccountService {
   // Store the caller's palette id. Accepts only an id known to the first-party registry; an
   // unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
   rpc SetPalettePreference(SetPalettePreferenceRequest) returns (PalettePreference);
+}
+
+message SignUpRequest {
+  string nickname = 1;
+  string timezone = 2;
+  string locale = 3;
+  string invite_token = 4;
+}
+
+message SignUpResponse {
+  string nickname = 1;
+  string timezone = 2;
+  string locale = 3;
+  bool invite_bound = 4;
 }
 
 message GetProfileRequest {}

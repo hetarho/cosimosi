@@ -12,6 +12,9 @@ func (s *Service) ListAuthProviders(ctx context.Context, scope platform.UserScop
 	if scope.UserID() == "" {
 		return nil, ErrScopeRequired
 	}
+	if err := s.requireSignup(ctx, scope); err != nil {
+		return nil, err
+	}
 	stored, err := s.store.ListAuthProviders(ctx, scope)
 	if err != nil {
 		return nil, err

@@ -9,6 +9,7 @@ export const ERROR_REASONS = {
   accountUnknownPalette: 'ACCOUNT_UNKNOWN_PALETTE',
   accountScopeRequired: 'ACCOUNT_SCOPE_REQUIRED',
   accountNotProvisioned: 'ACCOUNT_NOT_PROVISIONED',
+  accountSignupRequired: 'ACCOUNT_SIGNUP_REQUIRED',
   accountNicknameInvalid: 'ACCOUNT_NICKNAME_INVALID',
   accountTimezoneInvalid: 'ACCOUNT_TIMEZONE_INVALID',
   accountLocaleInvalid: 'ACCOUNT_LOCALE_INVALID',

@@ -224,6 +224,32 @@ func (s Store) AppendLedgerEntry(ctx context.Context, scope platform.UserScope, 
 	return false, nil
 }
 
+func (s Store) LockInviteRewardsByInviter(ctx context.Context, scope platform.UserScope) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	_, err := s.queries.LockTwinkleInviteRewardsByInviter(ctx, scope.UserID())
+	return err
+}
+
+func (s Store) GetInviteRewardState(
+	ctx context.Context,
+	scope platform.UserScope,
+	dedupKey string,
+) (int64, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return 0, false, err
+	}
+	state, err := s.queries.GetTwinkleInviteRewardState(ctx, dbgen.GetTwinkleInviteRewardStateParams{
+		UserID:   scope.UserID(),
+		DedupKey: pgText(&dedupKey),
+	})
+	if err != nil {
+		return 0, false, err
+	}
+	return state.RewardCount, state.Replay, nil
+}
+
 func (s Store) ready(scope platform.UserScope) error {
 	if scope.UserID() == "" {
 		return ErrUserScopeRequired
