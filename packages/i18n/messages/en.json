@@ -132,6 +132,8 @@
   "test_harness_theme_description": "Switch a universe preset (Aurora / Ember) — one control drives the 3D skin and the 2D theme together, shown over a universe+UI view and a UI-only view.",
   "test_harness_ui_test_title": "Universe + chrome",
   "test_harness_ui_test_description": "The live 3D universe with real product chrome floating over it: drive the emotions present in the field, swap the sky, and see how glass reads against a scene that is actually moving. The 2D language itself lives on the design showcase at /design.",
+  "test_harness_star_shape_title": "Star shapes",
+  "test_harness_star_shape_description": "One star per emotion, and a candidate look to try on all of them at once. Pick a shape and the whole field takes it, with size and brightness held equal so form and feeling are the only things changing. Drag to tumble, wheel to fly in.",
   "universe_nebula_notice_title": "The universe's hue",
   "universe_nebula_notice_body": "This color is the emotions you return to — not the average of what you felt, but the memories you reopen, bled into light.",
   "universe_home_write": "Write a diary",

@@ -38,6 +38,17 @@ export {
   STAR_INSTANCE_BRIGHTNESS,
   STAR_INSTANCE_SEED,
 } from './assets/bodies/star-body.ts'
+// The star-shape bench: candidate looks for the big star, all on the star body's channel contract.
+export {
+  DEFAULT_STAR_SHAPE,
+  STAR_SHAPES,
+  STAR_SHAPE_INSTANCE_SCALE,
+  createStarShapeBodySource,
+  resolveStarShape,
+  type StarShape,
+  type StarShapeKey,
+  type StarShapeOptions,
+} from './assets/bodies/star-shapes.ts'
 export { createCellStarBodySource } from './assets/bodies/cell-star-body.ts'
 export { createFilamentBodySource, FILAMENT_VERTEX_COLOR } from './assets/bodies/filament-body.ts'
 export {
