@@ -21,6 +21,10 @@ func (t NeuronType) Valid() bool {
 	}
 }
 
+func AllNeuronTypes() []NeuronType {
+	return []NeuronType{NeuronTypeSemantic, NeuronTypeSpatial, NeuronTypeEntity}
+}
+
 type JobKind string
 
 const (

@@ -86,6 +86,35 @@ func TestExtractorSchemaForcedDTOHasNoInvariantBreakingFields(t *testing.T) {
 	}
 }
 
+// mood and neuron type are closed domain sets; the schema must pin them so a real
+// provider cannot answer outside what normalizeMood/normalizeNeuronType accept.
+func TestExtractorSchemaPinsMoodAndNeuronTypeEnums(t *testing.T) {
+	schema := ExtractOutputSchema()
+	memoryItem := schema["properties"].(map[string]any)["memories"].(map[string]any)["items"].(map[string]any)
+	memoryProps := memoryItem["properties"].(map[string]any)
+
+	moodEnum := memoryProps["mood"].(map[string]any)["enum"].([]string)
+	for _, value := range moodEnum {
+		if _, err := normalizeMood(value); err != nil {
+			t.Fatalf("schema mood %q rejected by normalizeMood: %v", value, err)
+		}
+	}
+	if len(moodEnum) != len(memory.AllMoods()) {
+		t.Fatalf("schema mood enum has %d entries, domain has %d", len(moodEnum), len(memory.AllMoods()))
+	}
+
+	neuronProps := memoryProps["neurons"].(map[string]any)["items"].(map[string]any)["properties"].(map[string]any)
+	typeEnum := neuronProps["type"].(map[string]any)["enum"].([]string)
+	for _, value := range typeEnum {
+		if _, err := normalizeNeuronType(value); err != nil {
+			t.Fatalf("schema neuron type %q rejected by normalizeNeuronType: %v", value, err)
+		}
+	}
+	if len(typeEnum) != len(memory.AllNeuronTypes()) {
+		t.Fatalf("schema neuron type enum has %d entries, domain has %d", len(typeEnum), len(memory.AllNeuronTypes()))
+	}
+}
+
 // The metering seam wraps every real LLM path: the per-call token cap is applied to the
 // vendor request, the daily cap trips on distinct inputs, and an identical input is
 // served from cache without re-billing.

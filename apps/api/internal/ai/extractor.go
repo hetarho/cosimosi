@@ -136,6 +136,19 @@ func normalizeNeuronType(value string) (memory.NeuronType, error) {
 }
 
 func ExtractOutputSchema() JSONSchema {
+	// mood and neuron type are closed domain sets. The enum keeps the model inside
+	// them — a free string lets a real provider answer "mixed" (or a phrase in the
+	// diary's language), which normalizeMood/normalizeNeuronType must then reject.
+	moods := memory.AllMoods()
+	moodEnum := make([]string, len(moods))
+	for i, mood := range moods {
+		moodEnum[i] = string(mood)
+	}
+	neuronTypes := memory.AllNeuronTypes()
+	neuronTypeEnum := make([]string, len(neuronTypes))
+	for i, neuronType := range neuronTypes {
+		neuronTypeEnum[i] = string(neuronType)
+	}
 	return JSONSchema{
 		"type":                 "object",
 		"additionalProperties": false,
@@ -149,7 +162,7 @@ func ExtractOutputSchema() JSONSchema {
 					"required":             []string{"name", "mood", "neurons"},
 					"properties": map[string]any{
 						"name": map[string]any{"type": "string"},
-						"mood": map[string]any{"type": "string"},
+						"mood": map[string]any{"type": "string", "enum": moodEnum},
 						"neurons": map[string]any{
 							"type": "array",
 							"items": map[string]any{
@@ -158,7 +171,7 @@ func ExtractOutputSchema() JSONSchema {
 								"required":             []string{"name", "type"},
 								"properties": map[string]any{
 									"name": map[string]any{"type": "string"},
-									"type": map[string]any{"type": "string"},
+									"type": map[string]any{"type": "string", "enum": neuronTypeEnum},
 								},
 							},
 						},
