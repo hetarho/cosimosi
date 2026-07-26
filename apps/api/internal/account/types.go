@@ -83,3 +83,8 @@ type SettledInvite struct {
 	InviterUserID string
 	InviteeUserID string
 }
+
+type WithdrawalWindow struct {
+	WithdrawnAt       time.Time
+	RestoreDeadlineAt time.Time
+}

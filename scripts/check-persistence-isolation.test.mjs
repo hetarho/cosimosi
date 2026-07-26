@@ -315,6 +315,17 @@ test('passes scoped UPDATE ... FROM and DELETE with an owned predicate', (t) => 
   assert.deepEqual(findPersistenceViolations(roots), [])
 })
 
+test('fails a scoped product DELETE that is not in the [I1] hard-delete allowlist', (t) => {
+  const roots = withSql(t, {
+    'migrations/0001.sql': 'CREATE TABLE records (id text PRIMARY KEY, user_id text NOT NULL);',
+    'queries/records/purge.sql':
+      '-- name: UnlistedPurge :exec\nDELETE FROM records WHERE user_id = sqlc.arg(user_id);',
+  })
+  const violations = findPersistenceViolations(roots)
+  assert.equal(violations.length, 1)
+  assert.match(violations[0], /\[I1\] hard-delete allowlist/)
+})
+
 // The strengthened checker must hold on the real corpus: every live migration and query
 // is either genuinely user-scoped or explicitly allowlisted as a platform/global scan.
 test('the real repository corpus passes the strengthened checker', () => {

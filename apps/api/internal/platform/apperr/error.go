@@ -27,6 +27,7 @@ const (
 	ReasonUnknown                         = "UNKNOWN"
 	ReasonPlatformUnauthenticated         = "PLATFORM_UNAUTHENTICATED"
 	ReasonPlatformAuthVerifierUnavailable = "PLATFORM_AUTH_VERIFIER_UNAVAILABLE"
+	ReasonPlatformAccountWithdrawn        = "PLATFORM_ACCOUNT_WITHDRAWN"
 )
 
 // Domain constructs an expected error. Its message is safe to send to a client.

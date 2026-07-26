@@ -2,10 +2,13 @@ package supabase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -68,5 +71,58 @@ func TestDirectoryFallsBackOnlyWhenConfigurationIsAbsent(t *testing.T) {
 	}
 	if _, err := (Fake{}).Identities(context.Background(), "u1"); !errors.Is(err, ErrDirectoryUnavailable) {
 		t.Fatalf("keyless identity lookup err = %v, want ErrDirectoryUnavailable", err)
+	}
+}
+
+func TestDirectoryBansUnbansAndDeletesUsersThroughAdminAPI(t *testing.T) {
+	t.Parallel()
+	const serviceKey = "service-role"
+	var requests []string
+	handler := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("apikey") != serviceKey ||
+			request.Header.Get("Authorization") != "Bearer "+serviceKey {
+			http.Error(response, "missing service role", http.StatusUnauthorized)
+			return
+		}
+		var body map[string]string
+		if request.Method == http.MethodPut {
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Errorf("decode body: %v", err)
+			}
+		}
+		requests = append(requests, request.Method+" "+request.URL.Path+" "+body["ban_duration"])
+		if strings.Contains(request.URL.Path, "missing") {
+			http.NotFound(response, request)
+			return
+		}
+		response.WriteHeader(http.StatusNoContent)
+	})
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	directory, ok := NewDirectory(server.URL, serviceKey, server.Client())
+	if !ok {
+		t.Fatal("NewDirectory returned ok=false")
+	}
+	ctx := context.Background()
+	if err := directory.SetUserBanned(ctx, "u1", true); err != nil {
+		t.Fatalf("SetUserBanned(true): %v", err)
+	}
+	if err := directory.SetUserBanned(ctx, "u1", false); err != nil {
+		t.Fatalf("SetUserBanned(false): %v", err)
+	}
+	if err := directory.DeleteUser(ctx, "u1"); err != nil {
+		t.Fatalf("DeleteUser: %v", err)
+	}
+	if err := directory.DeleteUser(ctx, "missing"); err != nil {
+		t.Fatalf("DeleteUser(missing): %v", err)
+	}
+	want := []string{
+		"PUT /auth/v1/admin/users/u1 876000h",
+		"PUT /auth/v1/admin/users/u1 none",
+		"DELETE /auth/v1/admin/users/u1 ",
+		"DELETE /auth/v1/admin/users/missing ",
+	}
+	if !reflect.DeepEqual(requests, want) {
+		t.Fatalf("requests = %#v, want %#v", requests, want)
 	}
 }

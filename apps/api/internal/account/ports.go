@@ -49,3 +49,34 @@ type InviteRewardGranter interface {
 type SignupBonusGranter interface {
 	Grant(ctx context.Context, scope platform.UserScope) error
 }
+
+// WithdrawalStore owns users.deleted_at and the account context's purge statements.
+// InWithdrawalTx serializes restore and sweep on the User row while every foreign-context
+// purge still commits in its own transaction.
+type WithdrawalStore interface {
+	InWithdrawalTx(ctx context.Context, fn func(WithdrawalStore) error) error
+	WithdrawalStatus(ctx context.Context, scope platform.UserScope) (withdrawnAt time.Time, found bool, err error)
+	WithdrawalStatusForUpdate(ctx context.Context, scope platform.UserScope) (withdrawnAt time.Time, found bool, err error)
+	MarkWithdrawn(ctx context.Context, scope platform.UserScope, withdrawnAt time.Time) (time.Time, bool, error)
+	ClearWithdrawal(ctx context.Context, scope platform.UserScope, withdrawnAt time.Time) (bool, error)
+	PurgeAccountDependents(ctx context.Context, scope platform.UserScope) error
+	PurgeAccountUser(ctx context.Context, scope platform.UserScope) (bool, error)
+}
+
+// UserDataPurger is one owning context's idempotent, per-user purge leg.
+type UserDataPurger interface {
+	PurgeName() string
+	PurgeUser(ctx context.Context, scope platform.UserScope) error
+}
+
+// WithdrawalSweepScheduler is account's narrow view of memory's durable user-job seam.
+type WithdrawalSweepScheduler interface {
+	Schedule(ctx context.Context, scope platform.UserScope, dueAt time.Time) error
+	Cancel(ctx context.Context, scope platform.UserScope) error
+}
+
+// CredentialDirectory is the only identity mutation surface account withdrawal consumes.
+type CredentialDirectory interface {
+	SetUserBanned(ctx context.Context, userID string, banned bool) error
+	DeleteUser(ctx context.Context, userID string) error
+}

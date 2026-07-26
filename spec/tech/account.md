@@ -1,7 +1,8 @@
 # tech: account profile and identity model
 
-> As-built backend shape for plan [60](../plan/60.account-profile-model.md). The `account` supporting context owns
-> product profile behavior while Supabase Auth remains the credential and email authority.
+> As-built backend shape for plans [60](../plan/60.account-profile-model.md),
+> [61](../plan/61.signup-and-invite-usecase.md), and [62](../plan/62.withdrawal-usecase.md). The `account` supporting
+> context owns product profile and lifecycle behavior while Supabase Auth remains the credential and email authority.
 
 ## Persistence
 
@@ -41,6 +42,11 @@ same concrete independently into:
 
 The keyless `supabase.Fake` remains the development/test fallback. Account provider reads use stored rows when its
 identity lookup is unavailable.
+
+For withdrawal, `supabase.Directory` additionally implements the narrow `CredentialDirectory` mutation port. It
+updates the Auth user with `ban_duration=876000h` (or `none` for operator recovery) and permanently deletes through the
+server-only Admin endpoint; a missing user is idempotent success. API and worker composition reject the keyless fake
+when `SENTRY_ENVIRONMENT=production`.
 
 ## Timezone publication and consumption
 
@@ -102,3 +108,35 @@ cap of `10` rewarded invites per inviter.
 The locale contract is mirrored byte-for-byte at `packages/i18n/fixtures/locales.json` and
 `internal/account/testdata/locales.json`, with TypeScript and Go drift guards. Generated values provide nickname
 bounds `2…24` runes and a 7-day invite TTL.
+
+## Withdrawal admission and scheduling
+
+`Withdraw` and `RestoreAccount` are mutations on the existing AccountService with empty requests, so authenticated
+scope is unforgeable and neither method is cache-classified. The responses carry RFC3339 UTC timestamps.
+`platform.WithdrawnScopeInterceptor` consumes only `AccountStatusReader`; the composition root binds the account
+service and exactly one exemption, `AccountServiceRestoreAccountProcedure`. It runs after authentication and before
+all registered context handlers, fails closed when the reader is absent or errors, and treats an absent `users` row
+as an unprovisioned account rather than a withdrawal.
+
+The queue remains memory-owned. `memory.UserJobService` publishes a payload-free `UserJobSpec`; it alone constructs
+the empty payload and `(user, scope.UserID())` target. Dedup key `withdrawal:<userID>` makes enqueue replay-safe.
+`memory.NewJobRunner` accepts composition-root extra handlers and rejects duplicate kinds. Both worker roots bind
+`withdrawal_sweep` to `account.Service.SweepWithdrawnAccount`; withdrawal failures bypass the terminal claim ceiling
+and remain durably retryable.
+
+## Withdrawal purge ownership
+
+Migration `00017_withdrawal_sweep.sql` permits revisionless `user` job targets and amends the Twinkle table comments.
+Purge SQL stays in each owning context:
+
+- memory removes receipts, release effects/groups, provenance, activations, graph rows, diaries, universe state, and
+  all user jobs except the running sweep;
+- twinkle removes only the withdrawing user's ledger and balance;
+- account removes auth-provider rows, invites where `invites.user_id` is the withdrawing inviter, the palette
+  preference, and finally `users`.
+
+`SweepWithdrawnAccount` locks the account row, re-derives the deadline, and runs named legs memory → twinkle before
+account dependents. It then bans and deletes the Supabase credential and deletes `users` last. Each earlier leg owns
+its transaction and is replay-safe. The exact sqlc hard-delete allowlist in `lint:persistence` prevents another call
+site, while the DB integration test derives all `user_id` product tables from migrations, cross-checks the live schema,
+and allows only the in-flight identity-only job row to survive.

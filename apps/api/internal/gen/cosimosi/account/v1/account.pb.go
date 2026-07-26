@@ -813,6 +813,177 @@ func (x *PalettePreference) GetPaletteId() string {
 	return ""
 }
 
+// Scope comes only from the authenticated context. There is deliberately no user_id,
+// purge_now, skip_window, immediate-delete, reason, or exit-survey field, and there is no
+// PurgeAccount RPC. A client cannot bypass the retention window.
+type WithdrawRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WithdrawRequest) Reset() {
+	*x = WithdrawRequest{}
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WithdrawRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WithdrawRequest) ProtoMessage() {}
+
+func (x *WithdrawRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WithdrawRequest.ProtoReflect.Descriptor instead.
+func (*WithdrawRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{15}
+}
+
+type WithdrawResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	WithdrawnAt       string                 `protobuf:"bytes,1,opt,name=withdrawn_at,json=withdrawnAt,proto3" json:"withdrawn_at,omitempty"`
+	RestoreDeadlineAt string                 `protobuf:"bytes,2,opt,name=restore_deadline_at,json=restoreDeadlineAt,proto3" json:"restore_deadline_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *WithdrawResponse) Reset() {
+	*x = WithdrawResponse{}
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WithdrawResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WithdrawResponse) ProtoMessage() {}
+
+func (x *WithdrawResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WithdrawResponse.ProtoReflect.Descriptor instead.
+func (*WithdrawResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *WithdrawResponse) GetWithdrawnAt() string {
+	if x != nil {
+		return x.WithdrawnAt
+	}
+	return ""
+}
+
+func (x *WithdrawResponse) GetRestoreDeadlineAt() string {
+	if x != nil {
+		return x.RestoreDeadlineAt
+	}
+	return ""
+}
+
+type RestoreAccountRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreAccountRequest) Reset() {
+	*x = RestoreAccountRequest{}
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreAccountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreAccountRequest) ProtoMessage() {}
+
+func (x *RestoreAccountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreAccountRequest.ProtoReflect.Descriptor instead.
+func (*RestoreAccountRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{17}
+}
+
+type RestoreAccountResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RestoredAt    string                 `protobuf:"bytes,1,opt,name=restored_at,json=restoredAt,proto3" json:"restored_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreAccountResponse) Reset() {
+	*x = RestoreAccountResponse{}
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreAccountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreAccountResponse) ProtoMessage() {}
+
+func (x *RestoreAccountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreAccountResponse.ProtoReflect.Descriptor instead.
+func (*RestoreAccountResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RestoreAccountResponse) GetRestoredAt() string {
+	if x != nil {
+		return x.RestoredAt
+	}
+	return ""
+}
+
 var File_cosimosi_account_v1_account_proto protoreflect.FileDescriptor
 
 const file_cosimosi_account_v1_account_proto_rawDesc = "" +
@@ -861,11 +1032,19 @@ const file_cosimosi_account_v1_account_proto_rawDesc = "" +
 	"palette_id\x18\x01 \x01(\tR\tpaletteId\"2\n" +
 	"\x11PalettePreference\x12\x1d\n" +
 	"\n" +
-	"palette_id\x18\x01 \x01(\tR\tpaletteId*v\n" +
+	"palette_id\x18\x01 \x01(\tR\tpaletteId\"\x11\n" +
+	"\x0fWithdrawRequest\"e\n" +
+	"\x10WithdrawResponse\x12!\n" +
+	"\fwithdrawn_at\x18\x01 \x01(\tR\vwithdrawnAt\x12.\n" +
+	"\x13restore_deadline_at\x18\x02 \x01(\tR\x11restoreDeadlineAt\"\x17\n" +
+	"\x15RestoreAccountRequest\"9\n" +
+	"\x16RestoreAccountResponse\x12\x1f\n" +
+	"\vrestored_at\x18\x01 \x01(\tR\n" +
+	"restoredAt*v\n" +
 	"\x10AuthProviderKind\x12\"\n" +
 	"\x1eAUTH_PROVIDER_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19AUTH_PROVIDER_KIND_GOOGLE\x10\x01\x12\x1f\n" +
-	"\x1bAUTH_PROVIDER_KIND_PASSWORD\x10\x022\xfe\x05\n" +
+	"\x1bAUTH_PROVIDER_KIND_PASSWORD\x10\x022\xc2\a\n" +
 	"\x0eAccountService\x12Q\n" +
 	"\x06SignUp\x12\".cosimosi.account.v1.SignUpRequest\x1a#.cosimosi.account.v1.SignUpResponse\x12b\n" +
 	"\n" +
@@ -874,7 +1053,9 @@ const file_cosimosi_account_v1_account_proto_rawDesc = "" +
 	"\x11ListAuthProviders\x12-.cosimosi.account.v1.ListAuthProvidersRequest\x1a..cosimosi.account.v1.ListAuthProvidersResponse\"\x03\x90\x02\x01\x12k\n" +
 	"\rGetInviteLink\x12).cosimosi.account.v1.GetInviteLinkRequest\x1a*.cosimosi.account.v1.GetInviteLinkResponse\"\x03\x90\x02\x01\x12u\n" +
 	"\x14GetPalettePreference\x120.cosimosi.account.v1.GetPalettePreferenceRequest\x1a&.cosimosi.account.v1.PalettePreference\"\x03\x90\x02\x01\x12p\n" +
-	"\x14SetPalettePreference\x120.cosimosi.account.v1.SetPalettePreferenceRequest\x1a&.cosimosi.account.v1.PalettePreferenceB\xd9\x01\n" +
+	"\x14SetPalettePreference\x120.cosimosi.account.v1.SetPalettePreferenceRequest\x1a&.cosimosi.account.v1.PalettePreference\x12W\n" +
+	"\bWithdraw\x12$.cosimosi.account.v1.WithdrawRequest\x1a%.cosimosi.account.v1.WithdrawResponse\x12i\n" +
+	"\x0eRestoreAccount\x12*.cosimosi.account.v1.RestoreAccountRequest\x1a+.cosimosi.account.v1.RestoreAccountResponseB\xd9\x01\n" +
 	"\x17com.cosimosi.account.v1B\fAccountProtoP\x01ZBgithub.com/cosimosi/api/internal/gen/cosimosi/account/v1;accountv1\xa2\x02\x03CAX\xaa\x02\x13Cosimosi.Account.V1\xca\x02\x13Cosimosi\\Account\\V1\xe2\x02\x1fCosimosi\\Account\\V1\\GPBMetadata\xea\x02\x15Cosimosi::Account::V1b\x06proto3"
 
 var (
@@ -890,7 +1071,7 @@ func file_cosimosi_account_v1_account_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_account_v1_account_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_cosimosi_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_cosimosi_account_v1_account_proto_goTypes = []any{
 	(AuthProviderKind)(0),               // 0: cosimosi.account.v1.AuthProviderKind
 	(*SignUpRequest)(nil),               // 1: cosimosi.account.v1.SignUpRequest
@@ -908,6 +1089,10 @@ var file_cosimosi_account_v1_account_proto_goTypes = []any{
 	(*GetPalettePreferenceRequest)(nil), // 13: cosimosi.account.v1.GetPalettePreferenceRequest
 	(*SetPalettePreferenceRequest)(nil), // 14: cosimosi.account.v1.SetPalettePreferenceRequest
 	(*PalettePreference)(nil),           // 15: cosimosi.account.v1.PalettePreference
+	(*WithdrawRequest)(nil),             // 16: cosimosi.account.v1.WithdrawRequest
+	(*WithdrawResponse)(nil),            // 17: cosimosi.account.v1.WithdrawResponse
+	(*RestoreAccountRequest)(nil),       // 18: cosimosi.account.v1.RestoreAccountRequest
+	(*RestoreAccountResponse)(nil),      // 19: cosimosi.account.v1.RestoreAccountResponse
 }
 var file_cosimosi_account_v1_account_proto_depIdxs = []int32{
 	5,  // 0: cosimosi.account.v1.GetProfileResponse.profile:type_name -> cosimosi.account.v1.Profile
@@ -921,15 +1106,19 @@ var file_cosimosi_account_v1_account_proto_depIdxs = []int32{
 	11, // 8: cosimosi.account.v1.AccountService.GetInviteLink:input_type -> cosimosi.account.v1.GetInviteLinkRequest
 	13, // 9: cosimosi.account.v1.AccountService.GetPalettePreference:input_type -> cosimosi.account.v1.GetPalettePreferenceRequest
 	14, // 10: cosimosi.account.v1.AccountService.SetPalettePreference:input_type -> cosimosi.account.v1.SetPalettePreferenceRequest
-	2,  // 11: cosimosi.account.v1.AccountService.SignUp:output_type -> cosimosi.account.v1.SignUpResponse
-	4,  // 12: cosimosi.account.v1.AccountService.GetProfile:output_type -> cosimosi.account.v1.GetProfileResponse
-	7,  // 13: cosimosi.account.v1.AccountService.UpdateProfile:output_type -> cosimosi.account.v1.UpdateProfileResponse
-	9,  // 14: cosimosi.account.v1.AccountService.ListAuthProviders:output_type -> cosimosi.account.v1.ListAuthProvidersResponse
-	12, // 15: cosimosi.account.v1.AccountService.GetInviteLink:output_type -> cosimosi.account.v1.GetInviteLinkResponse
-	15, // 16: cosimosi.account.v1.AccountService.GetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
-	15, // 17: cosimosi.account.v1.AccountService.SetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
-	11, // [11:18] is the sub-list for method output_type
-	4,  // [4:11] is the sub-list for method input_type
+	16, // 11: cosimosi.account.v1.AccountService.Withdraw:input_type -> cosimosi.account.v1.WithdrawRequest
+	18, // 12: cosimosi.account.v1.AccountService.RestoreAccount:input_type -> cosimosi.account.v1.RestoreAccountRequest
+	2,  // 13: cosimosi.account.v1.AccountService.SignUp:output_type -> cosimosi.account.v1.SignUpResponse
+	4,  // 14: cosimosi.account.v1.AccountService.GetProfile:output_type -> cosimosi.account.v1.GetProfileResponse
+	7,  // 15: cosimosi.account.v1.AccountService.UpdateProfile:output_type -> cosimosi.account.v1.UpdateProfileResponse
+	9,  // 16: cosimosi.account.v1.AccountService.ListAuthProviders:output_type -> cosimosi.account.v1.ListAuthProvidersResponse
+	12, // 17: cosimosi.account.v1.AccountService.GetInviteLink:output_type -> cosimosi.account.v1.GetInviteLinkResponse
+	15, // 18: cosimosi.account.v1.AccountService.GetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
+	15, // 19: cosimosi.account.v1.AccountService.SetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
+	17, // 20: cosimosi.account.v1.AccountService.Withdraw:output_type -> cosimosi.account.v1.WithdrawResponse
+	19, // 21: cosimosi.account.v1.AccountService.RestoreAccount:output_type -> cosimosi.account.v1.RestoreAccountResponse
+	13, // [13:22] is the sub-list for method output_type
+	4,  // [4:13] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -946,7 +1135,7 @@ func file_cosimosi_account_v1_account_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_account_v1_account_proto_rawDesc), len(file_cosimosi_account_v1_account_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   15,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

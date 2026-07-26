@@ -19,10 +19,11 @@ import (
 //   - SuggestLetGo / LetGo: letting-go seals this-memory-only semantic neurons the AI SUGGESTS and the
 //     user APPROVES; it is permanent — no deleted_at, no timer, no ledger, no restore ([X4][X5]). The
 //     memory's emotion/color/seed and its spatial/entity neurons are untouched — a silent engram.
-//   - Sweep: the ONLY hard delete of user data. It removes solely release groups the user soft-deleted
-//     once their restore deadline arrives, honoring [I1] by construction (it originates no deletion of
-//     its own). Release atomically schedules the durable target; the normal worker loop executes it
-//     without a cron. The opportunistic pre-Release sweep remains a secondary cleanup path.
+//   - Sweep: the diary call site of the single user-originated retention hard-delete mechanism;
+//     account withdrawal is its account-scoped call site. It removes solely release groups the user
+//     soft-deleted once their restore deadline arrives, honoring [I1] by construction (it originates
+//     no deletion of its own). Release atomically schedules the durable target; the normal worker loop
+//     executes it without a cron. The opportunistic pre-Release sweep remains a secondary cleanup path.
 //
 // The system never originates deletion; the AI never executes one. Orphan-ness and approved-id validity
 // are server-side decisions (§2.9#8): every read, seal, unseal, delete, and suggestion is per-user scoped.
@@ -327,8 +328,9 @@ func (s *Service) LetGo(ctx context.Context, scope platform.UserScope, memoryID 
 	return result, nil
 }
 
-// Sweep is the retention sweeper ([X2][I1]) — the ONLY hard delete of user data. In one transaction it
-// removes every release group whose deleted_at has reached the retention cutoff: the released (still-soft-deleted)
+// Sweep is the diary call site of the single retention hard-delete mechanism ([X2][I1]); account
+// withdrawal is its account-scoped call site. In one transaction it removes every release group whose
+// deleted_at has reached the retention cutoff: the released (still-soft-deleted)
 // memories and their retained provenance (via the memory-provenance cascade), their activations, the exclusive sealed
 // orphan neurons no other memory references (with their embeddings + edges), and the original Diary
 // row/body — in FK-safe order, per-user scoped. It never touches a live (deleted_at IS NULL) row and never

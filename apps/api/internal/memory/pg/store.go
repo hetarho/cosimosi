@@ -248,6 +248,23 @@ func (s Store) Complete(ctx context.Context, job memory.Job) error {
 	return ignoreLostLease(err)
 }
 
+func (s Store) CancelUserJob(
+	ctx context.Context,
+	scope platform.UserScope,
+	kind memory.JobKind,
+	dedupKey string,
+) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	_, err := s.queries.CancelUserJob(ctx, dbgen.CancelUserJobParams{
+		UserID:   scope.UserID(),
+		Kind:     string(kind),
+		DedupKey: pgtype.Text{String: dedupKey, Valid: true},
+	})
+	return err
+}
+
 func (s Store) Retry(ctx context.Context, job memory.Job, nextAttempts int32, nextRunAt time.Time) error {
 	if err := s.readyJob(job); err != nil {
 		return err

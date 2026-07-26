@@ -12,6 +12,10 @@ type Service struct {
 	inviteSigner       InviteSigner
 	inviteGranter      InviteRewardGranter
 	signupBonusGranter SignupBonusGranter
+	withdrawals        WithdrawalStore
+	purgers            []UserDataPurger
+	scheduler          WithdrawalSweepScheduler
+	credentials        CredentialDirectory
 	now                func() time.Time
 	newID              func() string
 	paletteIDs         map[string]struct{}
@@ -23,6 +27,10 @@ type ServiceDeps struct {
 	InviteSigner       InviteSigner
 	InviteGranter      InviteRewardGranter
 	SignupBonusGranter SignupBonusGranter
+	Withdrawals        WithdrawalStore
+	Purgers            []UserDataPurger
+	Scheduler          WithdrawalSweepScheduler
+	Credentials        CredentialDirectory
 	Now                func() time.Time
 	NewID              func() string
 }
@@ -39,6 +47,33 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	}
 	if deps.SignupBonusGranter == nil {
 		return nil, ErrSignupBonusGranterRequired
+	}
+	withdrawalConfigured := deps.Withdrawals != nil || deps.Scheduler != nil ||
+		deps.Credentials != nil || len(deps.Purgers) > 0
+	purgers := append([]UserDataPurger(nil), deps.Purgers...)
+	if withdrawalConfigured {
+		if deps.Withdrawals == nil {
+			return nil, ErrWithdrawalStoreRequired
+		}
+		if deps.Scheduler == nil {
+			return nil, ErrWithdrawalSchedulerRequired
+		}
+		if deps.Credentials == nil {
+			return nil, ErrCredentialDirectoryRequired
+		}
+		if len(purgers) == 0 {
+			return nil, ErrPurgersRequired
+		}
+		purgerNames := make(map[string]struct{}, len(purgers))
+		for _, purger := range purgers {
+			if purger == nil || purger.PurgeName() == "" {
+				return nil, ErrPurgerNameRequired
+			}
+			if _, exists := purgerNames[purger.PurgeName()]; exists {
+				return nil, ErrDuplicatePurger
+			}
+			purgerNames[purger.PurgeName()] = struct{}{}
+		}
 	}
 	if deps.InviteSigner == nil {
 		deps.InviteSigner = UnavailableInviteSigner{}
@@ -59,6 +94,10 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		inviteSigner:       deps.InviteSigner,
 		inviteGranter:      deps.InviteGranter,
 		signupBonusGranter: deps.SignupBonusGranter,
+		withdrawals:        deps.Withdrawals,
+		purgers:            purgers,
+		scheduler:          deps.Scheduler,
+		credentials:        deps.Credentials,
 		now:                deps.Now,
 		newID:              deps.NewID,
 		paletteIDs:         allowed,

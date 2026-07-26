@@ -43,6 +43,44 @@ const globalQueries = new Set([
   'memory/admin_stats.sql#CountDeadLetteredJobs',
 ])
 
+// [I1] hard-delete gate. Product rows may be deleted only by the two
+// user-originated retention mechanisms and queue lifecycle maintenance.
+const hardDeleteQueries = new Set([
+  'memory/release.sql#DeleteReleaseNeuronSealEffects',
+  'memory/release.sql#DeleteReleaseRetentionJobs',
+  'memory/release.sql#PurgeReleaseJobs',
+  'memory/release.sql#DeleteReleaseActivations',
+  'memory/release.sql#DeleteReleaseSynapses',
+  'memory/release.sql#DeleteReleaseEmbeddings',
+  'memory/release.sql#DeleteReleaseNeurons',
+  'memory/release.sql#DeleteReleaseMemories',
+  'memory/release.sql#DeleteReleaseDiary',
+  'memory/release.sql#DeleteReleaseGroup',
+  'memory/jobs.sql#PurgeTerminalJobs',
+  'memory/jobs.sql#CancelUserJob',
+  'memory/purge_user.sql#PurgeUserJobTargets',
+  'memory/purge_user.sql#PurgeUserJobs',
+  'memory/purge_user.sql#PurgeUserPaidActionReceipts',
+  'memory/purge_user.sql#PurgeUserReleaseSynapseDeltas',
+  'memory/purge_user.sql#PurgeUserReleaseSealedNeurons',
+  'memory/purge_user.sql#PurgeUserReleaseMemories',
+  'memory/purge_user.sql#PurgeUserReleaseGroups',
+  'memory/purge_user.sql#PurgeUserMemoryProvenance',
+  'memory/purge_user.sql#PurgeUserNeuronActivations',
+  'memory/purge_user.sql#PurgeUserSynapses',
+  'memory/purge_user.sql#PurgeUserEmbeddings',
+  'memory/purge_user.sql#PurgeUserEpisodicMemories',
+  'memory/purge_user.sql#PurgeUserNeurons',
+  'memory/purge_user.sql#PurgeUserDiaries',
+  'memory/purge_user.sql#PurgeUserUniverseState',
+  'twinkle/purge_user.sql#PurgeUserTwinkleLedger',
+  'twinkle/purge_user.sql#PurgeUserTwinkleBalance',
+  'account/withdrawal.sql#PurgeAccountAuthProviders',
+  'account/withdrawal.sql#PurgeAccountInvites',
+  'account/withdrawal.sql#PurgeAccountPalettePreference',
+  'account/withdrawal.sql#PurgeAccountUser',
+])
+
 // Blank SQL comments, single-quoted string literals, and dollar-quoted bodies in one
 // left-to-right pass — whichever delimiter opens first wins. A '(' / ')' / ';' / '--'
 // / '$$' inside a literal or comment would otherwise fool the table paren-scanner or
@@ -784,6 +822,7 @@ export function segmentSqlcQueries(rawSource) {
 
 export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
   const violations = []
+  const productUserTables = new Set()
 
   for (const file of sqlFiles(migrationsRoot)) {
     const rel = relative(repoRoot, file).replaceAll('\\', '/')
@@ -798,6 +837,8 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
         violations.push(
           `${rel}: product table ${table} must declare an owned user_id column (a reference, expression, or *_user_id column does not count) or be listed as platform-owned`,
         )
+      } else {
+        productUserTables.add(table.toLowerCase())
       }
     }
   }
@@ -809,8 +850,19 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
     const raw = readFileSync(file, 'utf8')
     for (const { name, sql } of segmentSqlcQueries(raw)) {
       const label = `apps/api/db/queries/${rel}#${name ?? 'unnamed'}`
-      if (name && globalQueries.has(`${rel}#${name}`)) continue
+      const queryKey = `${rel}#${name ?? 'unnamed'}`
       const stripped = stripSqlNoise(sql)
+      for (const match of stripped.matchAll(
+        /\bDELETE\s+FROM\s+(?:(?:"[^"]+"|[A-Za-z0-9_]+)\.)?(?:"([^"]+)"|([A-Za-z0-9_]+))/gi,
+      )) {
+        const table = (match[1] ?? match[2]).toLowerCase()
+        if (productUserTables.has(table) && !hardDeleteQueries.has(queryKey)) {
+          violations.push(
+            `${label}: DELETE from user product table "${table}" is not in the [I1] hard-delete allowlist`,
+          )
+        }
+      }
+      if (name && globalQueries.has(`${rel}#${name}`)) continue
       for (const statementSql of stripped.split(';')) {
         if (!statementSql.trim()) continue
         const grouped = groupTokens(tokenizeSql(statementSql))

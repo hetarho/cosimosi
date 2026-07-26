@@ -53,6 +53,11 @@ const (
 	// AccountServiceSetPalettePreferenceProcedure is the fully-qualified name of the AccountService's
 	// SetPalettePreference RPC.
 	AccountServiceSetPalettePreferenceProcedure = "/cosimosi.account.v1.AccountService/SetPalettePreference"
+	// AccountServiceWithdrawProcedure is the fully-qualified name of the AccountService's Withdraw RPC.
+	AccountServiceWithdrawProcedure = "/cosimosi.account.v1.AccountService/Withdraw"
+	// AccountServiceRestoreAccountProcedure is the fully-qualified name of the AccountService's
+	// RestoreAccount RPC.
+	AccountServiceRestoreAccountProcedure = "/cosimosi.account.v1.AccountService/RestoreAccount"
 )
 
 // AccountServiceClient is a client for the cosimosi.account.v1.AccountService service.
@@ -74,6 +79,11 @@ type AccountServiceClient interface {
 	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
 	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
 	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
+	// Account-scoped soft deletion; restorable for release.soft_delete_retention_days.
+	Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error)
+	// Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
+	// may call.
+	RestoreAccount(context.Context, *connect.Request[v1.RestoreAccountRequest]) (*connect.Response[v1.RestoreAccountResponse], error)
 }
 
 // NewAccountServiceClient constructs a client for the cosimosi.account.v1.AccountService service.
@@ -133,6 +143,18 @@ func NewAccountServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(accountServiceMethods.ByName("SetPalettePreference")),
 			connect.WithClientOptions(opts...),
 		),
+		withdraw: connect.NewClient[v1.WithdrawRequest, v1.WithdrawResponse](
+			httpClient,
+			baseURL+AccountServiceWithdrawProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("Withdraw")),
+			connect.WithClientOptions(opts...),
+		),
+		restoreAccount: connect.NewClient[v1.RestoreAccountRequest, v1.RestoreAccountResponse](
+			httpClient,
+			baseURL+AccountServiceRestoreAccountProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("RestoreAccount")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -145,6 +167,8 @@ type accountServiceClient struct {
 	getInviteLink        *connect.Client[v1.GetInviteLinkRequest, v1.GetInviteLinkResponse]
 	getPalettePreference *connect.Client[v1.GetPalettePreferenceRequest, v1.PalettePreference]
 	setPalettePreference *connect.Client[v1.SetPalettePreferenceRequest, v1.PalettePreference]
+	withdraw             *connect.Client[v1.WithdrawRequest, v1.WithdrawResponse]
+	restoreAccount       *connect.Client[v1.RestoreAccountRequest, v1.RestoreAccountResponse]
 }
 
 // SignUp calls cosimosi.account.v1.AccountService.SignUp.
@@ -182,6 +206,16 @@ func (c *accountServiceClient) SetPalettePreference(ctx context.Context, req *co
 	return c.setPalettePreference.CallUnary(ctx, req)
 }
 
+// Withdraw calls cosimosi.account.v1.AccountService.Withdraw.
+func (c *accountServiceClient) Withdraw(ctx context.Context, req *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error) {
+	return c.withdraw.CallUnary(ctx, req)
+}
+
+// RestoreAccount calls cosimosi.account.v1.AccountService.RestoreAccount.
+func (c *accountServiceClient) RestoreAccount(ctx context.Context, req *connect.Request[v1.RestoreAccountRequest]) (*connect.Response[v1.RestoreAccountResponse], error) {
+	return c.restoreAccount.CallUnary(ctx, req)
+}
+
 // AccountServiceHandler is an implementation of the cosimosi.account.v1.AccountService service.
 type AccountServiceHandler interface {
 	// Perform the caller's once-per-account first write. The opaque invite token can only arrive
@@ -201,6 +235,11 @@ type AccountServiceHandler interface {
 	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
 	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
 	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
+	// Account-scoped soft deletion; restorable for release.soft_delete_retention_days.
+	Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error)
+	// Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
+	// may call.
+	RestoreAccount(context.Context, *connect.Request[v1.RestoreAccountRequest]) (*connect.Response[v1.RestoreAccountResponse], error)
 }
 
 // NewAccountServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -256,6 +295,18 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 		connect.WithSchema(accountServiceMethods.ByName("SetPalettePreference")),
 		connect.WithHandlerOptions(opts...),
 	)
+	accountServiceWithdrawHandler := connect.NewUnaryHandler(
+		AccountServiceWithdrawProcedure,
+		svc.Withdraw,
+		connect.WithSchema(accountServiceMethods.ByName("Withdraw")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountServiceRestoreAccountHandler := connect.NewUnaryHandler(
+		AccountServiceRestoreAccountProcedure,
+		svc.RestoreAccount,
+		connect.WithSchema(accountServiceMethods.ByName("RestoreAccount")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.account.v1.AccountService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AccountServiceSignUpProcedure:
@@ -272,6 +323,10 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 			accountServiceGetPalettePreferenceHandler.ServeHTTP(w, r)
 		case AccountServiceSetPalettePreferenceProcedure:
 			accountServiceSetPalettePreferenceHandler.ServeHTTP(w, r)
+		case AccountServiceWithdrawProcedure:
+			accountServiceWithdrawHandler.ServeHTTP(w, r)
+		case AccountServiceRestoreAccountProcedure:
+			accountServiceRestoreAccountHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -307,4 +362,12 @@ func (UnimplementedAccountServiceHandler) GetPalettePreference(context.Context, 
 
 func (UnimplementedAccountServiceHandler) SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.SetPalettePreference is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.Withdraw is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) RestoreAccount(context.Context, *connect.Request[v1.RestoreAccountRequest]) (*connect.Response[v1.RestoreAccountResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.RestoreAccount is not implemented"))
 }

@@ -30,6 +30,8 @@ func TestDomainErrorMapsAccountErrors(t *testing.T) {
 		{account.ErrTimezoneInvalid, connect.CodeInvalidArgument, reasonTimezoneInvalid},
 		{account.ErrLocaleInvalid, connect.CodeInvalidArgument, reasonLocaleInvalid},
 		{account.ErrInviteLinkUnavailable, connect.CodeFailedPrecondition, reasonInviteLinkUnavailable},
+		{account.ErrNotWithdrawn, connect.CodeFailedPrecondition, reasonNotWithdrawn},
+		{account.ErrRestoreWindowExpired, connect.CodeFailedPrecondition, reasonRestoreWindowExpired},
 	} {
 		got := domainError(testCase.err)
 		info, ok := apperr.Info(got)

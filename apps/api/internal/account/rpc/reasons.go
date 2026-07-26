@@ -9,4 +9,6 @@ const (
 	reasonTimezoneInvalid       = "ACCOUNT_TIMEZONE_INVALID"
 	reasonLocaleInvalid         = "ACCOUNT_LOCALE_INVALID"
 	reasonInviteLinkUnavailable = "ACCOUNT_INVITE_LINK_UNAVAILABLE"
+	reasonNotWithdrawn          = "ACCOUNT_NOT_WITHDRAWN"
+	reasonRestoreWindowExpired  = "ACCOUNT_RESTORE_WINDOW_EXPIRED"
 )

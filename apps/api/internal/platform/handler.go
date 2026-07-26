@@ -19,6 +19,8 @@ type handlerConfig struct {
 	corsOrigins      []string
 	authVerifier     AuthTokenVerifier
 	publicProcedures []string
+	accountStatus    AccountStatusReader
+	withdrawnExempt  []string
 	platformService  platformv1connect.PlatformServiceHandler
 	observability    observability.Reporter
 	services         []RPCServiceBuilder
@@ -52,6 +54,18 @@ func WithAuthVerifier(verifier AuthTokenVerifier) HandlerOption {
 func WithPublicProcedures(procedures []string) HandlerOption {
 	return func(cfg *handlerConfig) {
 		cfg.publicProcedures = append([]string(nil), procedures...)
+	}
+}
+
+func WithAccountStatusReader(reader AccountStatusReader) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.accountStatus = reader
+	}
+}
+
+func WithWithdrawnScopeExemptProcedures(procedures []string) HandlerOption {
+	return func(cfg *handlerConfig) {
+		cfg.withdrawnExempt = append([]string(nil), procedures...)
 	}
 }
 
@@ -94,13 +108,17 @@ func NewHandler(logger *log.Logger, opts ...HandlerOption) http.Handler {
 		_, _ = w.Write([]byte("hello world"))
 	})
 
-	interceptors := connect.WithInterceptors(
+	chain := []connect.Interceptor{
 		PanicRecoveryInterceptor(cfg.logger, cfg.observability),
 		RequestIDInterceptor(),
 		StructuredErrorInterceptor(cfg.observability),
 		LoggingInterceptor(cfg.logger),
 		AuthInterceptor(cfg.authVerifier, cfg.publicProcedures),
-	)
+	}
+	if len(cfg.services) > 0 {
+		chain = append(chain, WithdrawnScopeInterceptor(cfg.accountStatus, cfg.withdrawnExempt))
+	}
+	interceptors := connect.WithInterceptors(chain...)
 	path, handler := platformv1connect.NewPlatformServiceHandler(cfg.platformService, interceptors)
 	mux.Handle(path, handler)
 	for _, build := range cfg.services {

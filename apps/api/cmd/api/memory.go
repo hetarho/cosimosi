@@ -52,7 +52,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	directory := newAccountDirectory()
 	inviteGranter := &accountInviteRewardGranter{}
 	signupBonusGranter := &accountSignupBonusGranter{}
-	accountOption, accountService, err := accountServiceOption(
+	accountOptions, accountService, err := accountServiceOption(
 		pool,
 		accountDirectoryAdapter{source: directory},
 		inviteGranter,
@@ -153,7 +153,9 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
-	return []platform.HandlerOption{memoryOption, twinkleOption, accountOption, adminOption}, pool.Close, nil
+	options := []platform.HandlerOption{memoryOption, twinkleOption, adminOption}
+	options = append(options, accountOptions...)
+	return options, pool.Close, nil
 }
 
 // accountSignupSettlement is memory's post-commit observer. A settlement error is observable but

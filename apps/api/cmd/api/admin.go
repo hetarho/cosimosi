@@ -92,6 +92,8 @@ type accountDirectorySource interface {
 	EmailFor(ctx context.Context, userID string) (string, error)
 	EmailVerifiedAt(ctx context.Context, userID string) (time.Time, error)
 	Identities(ctx context.Context, userID string) ([]string, error)
+	SetUserBanned(ctx context.Context, userID string, banned bool) error
+	DeleteUser(ctx context.Context, userID string) error
 }
 
 type adminAccountDirectory struct {

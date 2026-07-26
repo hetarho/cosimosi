@@ -1,9 +1,10 @@
 # policy/ux: deletion & letting-go
 
 > UX policy for the delete / letting-go / restore flow. Plan [50.deletion-ui](../../plan/50.deletion-ui.md) owns the
-> implementation; the backend contract is plans [49.release-usecase](../../plan/49.release-usecase.md) (the four RPCs +
-> the 30-day window) over [48.deletion-rules](../../plan/48.deletion-rules.md). Reinforces [I1][I2][I3][I5][I11] and PRD
-> [X1]–[X7][W6].
+> implementation; the diary backend contract is plans [49.release-usecase](../../plan/49.release-usecase.md) (the four
+> RPCs + the 30-day window) over [48.deletion-rules](../../plan/48.deletion-rules.md). Account-wide withdrawal reuses
+> the same window through [62.withdrawal-usecase](../../plan/62.withdrawal-usecase.md), with its screen owned by
+> [64.my-page](../../plan/64.my-page.md). Reinforces [I1][I2][I3][I5][I11] and PRD [X1]–[X7][W6].
 
 ## Deletion is the user's explicit act — never the system's
 
@@ -35,6 +36,15 @@ Letting-go copy frames the act as **symbolic release / blurring** and claims **n
 implies the app substitutes for care ([X7]). When the backend flags a **heavy-state** signal on the `SuggestLetGo`
 response, the flow surfaces a gentle, **non-blocking** professional-resource notice before the approve step — advisory,
 never gating; the detection is the backend's, the UI only renders it.
+
+## Account withdrawal reuses the same promise
+
+Account withdrawal is account-scoped rather than diary-scoped, but it offers the same 30-day change-of-mind window
+and no permanent-delete-now control. The confirmation must offer the existing CSV/MD Export before `Withdraw`.
+Afterward, ordinary product surfaces stay inaccessible and the restore screen is driven by
+`PLATFORM_ACCOUNT_WITHDRAWN` metadata; only `RestoreAccount` remains callable. Nothing is purged, reversed, or
+re-granted during the window. The scheduled backend sweep removes the user's product data and credential only after
+the deadline.
 
 ## The meaning layer is untouchable; the record is immutable
 

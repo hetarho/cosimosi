@@ -53,6 +53,24 @@ func (s Store) InSignupTx(ctx context.Context, fn func(account.Store) error) err
 	return tx.Commit(ctx)
 }
 
+func (s Store) InWithdrawalTx(ctx context.Context, fn func(account.WithdrawalStore) error) error {
+	if s.pool == nil {
+		return ErrTransactionPoolRequired
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	txStore := Store{queries: dbgen.New(tx)}
+	if err := fn(txStore); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s Store) WithInviteSettlementLock(
 	ctx context.Context,
 	inviterScope platform.UserScope,
@@ -214,6 +232,100 @@ func (s Store) RecordAuthProvider(ctx context.Context, scope platform.UserScope,
 		Provider:       string(kind),
 		ProviderUserID: providerUserID,
 	})
+}
+
+func (s Store) WithdrawalStatus(
+	ctx context.Context,
+	scope platform.UserScope,
+) (time.Time, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return time.Time{}, false, err
+	}
+	deletedAt, err := s.queries.AccountWithdrawalStatus(ctx, scope.UserID())
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return timeValue(deletedAt), true, nil
+}
+
+func (s Store) WithdrawalStatusForUpdate(
+	ctx context.Context,
+	scope platform.UserScope,
+) (time.Time, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return time.Time{}, false, err
+	}
+	deletedAt, err := s.queries.AccountWithdrawalStatusForUpdate(ctx, scope.UserID())
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return timeValue(deletedAt), true, nil
+}
+
+func (s Store) MarkWithdrawn(
+	ctx context.Context,
+	scope platform.UserScope,
+	withdrawnAt time.Time,
+) (time.Time, bool, error) {
+	if err := s.ready(scope); err != nil {
+		return time.Time{}, false, err
+	}
+	stamped, err := s.queries.MarkAccountWithdrawn(ctx, dbgen.MarkAccountWithdrawnParams{
+		DeletedAt: pgtype.Timestamptz{Time: withdrawnAt.UTC(), Valid: true},
+		UserID:    scope.UserID(),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return timeValue(stamped), true, nil
+}
+
+func (s Store) ClearWithdrawal(
+	ctx context.Context,
+	scope platform.UserScope,
+	withdrawnAt time.Time,
+) (bool, error) {
+	if err := s.ready(scope); err != nil {
+		return false, err
+	}
+	rows, err := s.queries.ClearAccountWithdrawal(ctx, dbgen.ClearAccountWithdrawalParams{
+		UserID:    scope.UserID(),
+		DeletedAt: pgtype.Timestamptz{Time: withdrawnAt.UTC(), Valid: true},
+	})
+	return rows == 1, err
+}
+
+func (s Store) PurgeAccountDependents(ctx context.Context, scope platform.UserScope) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	for _, purge := range []func(context.Context, string) error{
+		s.queries.PurgeAccountAuthProviders,
+		s.queries.PurgeAccountInvites,
+		s.queries.PurgeAccountPalettePreference,
+	} {
+		if err := purge(ctx, scope.UserID()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s Store) PurgeAccountUser(ctx context.Context, scope platform.UserScope) (bool, error) {
+	if err := s.ready(scope); err != nil {
+		return false, err
+	}
+	rows, err := s.queries.PurgeAccountUser(ctx, scope.UserID())
+	return rows == 1, err
 }
 
 func (s Store) BindInviteToInvitee(

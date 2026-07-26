@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 )
 
 const terminalJobCleanupBatchSize int32 = 100
+
+var ErrDuplicateJobHandler = errors.New("memory worker job handler kind is already registered")
 
 type WorkerConfig struct {
 	MaxAttempts  int32
@@ -49,6 +52,7 @@ func NewDefaultJobRunner(
 	semanticizer Semanticizer,
 	pollInterval time.Duration,
 	logger *log.Logger,
+	extraHandlers ...map[JobKind]jobqueue.Handler[Job],
 ) (jobqueue.Runner[Job], error) {
 	return NewJobRunner(
 		store,
@@ -60,6 +64,7 @@ func NewDefaultJobRunner(
 		embedder,
 		semanticizer,
 		DefaultWorkerConfig(pollInterval, logger),
+		extraHandlers...,
 	)
 }
 
@@ -73,6 +78,7 @@ func NewJobRunner(
 	embedder Embedder,
 	semanticizer Semanticizer,
 	cfg WorkerConfig,
+	extraHandlers ...map[JobKind]jobqueue.Handler[Job],
 ) (jobqueue.Runner[Job], error) {
 	now := cfg.Now
 	if now == nil {
@@ -90,6 +96,18 @@ func NewJobRunner(
 		string(JobKindSemanticize): NewSemanticizeJobHandler(semanticizer, sources, semanticStagesWriter),
 		string(JobKindConsolidate): NewConsolidateJobHandler(embedder, sources, embeddingWriter),
 		string(JobKindRetention):   NewRetentionSweepJobHandler(sweeper, now),
+	}
+	for _, extra := range extraHandlers {
+		for kind, handler := range extra {
+			key := string(kind)
+			if _, exists := handlers[key]; exists {
+				return jobqueue.Runner[Job]{}, ErrDuplicateJobHandler
+			}
+			if key == "" || handler == nil {
+				continue
+			}
+			handlers[key] = handler
+		}
 	}
 	return jobqueue.NewRunner[Job](maintained, handlers, jobqueue.Config{
 		MaxAttempts:  cfg.MaxAttempts,
@@ -125,7 +143,7 @@ func (q maintenanceQueue) ClaimDue(ctx context.Context, now time.Time) (Job, err
 }
 
 func (q maintenanceQueue) Fail(ctx context.Context, job Job, nextAttempts int32) error {
-	if job.Kind != JobKindRetention {
+	if job.Kind != JobKindRetention && job.Kind != JobKindWithdrawal {
 		return q.JobQueue.Fail(ctx, job, nextAttempts)
 	}
 	delay := q.backoff

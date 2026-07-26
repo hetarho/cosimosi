@@ -34,6 +34,8 @@ type ConsolidateJobPayload struct{}
 
 type RetentionSweepJobPayload struct{}
 
+type WithdrawalSweepJobPayload struct{}
+
 // EmbedJobSource and SemanticizeJobSource are current, live source snapshots read
 // immediately before an external call. The pg adapter returns no source when the
 // job lease, liveness, target, or expected revision no longer matches.
@@ -76,6 +78,10 @@ type JobSemanticStagesWriter interface {
 
 type DueReleaseSweeper interface {
 	SweepRelease(ctx context.Context, scope platform.UserScope, releaseID string, now time.Time) (bool, error)
+}
+
+type DueWithdrawalSweeper interface {
+	SweepWithdrawnAccount(ctx context.Context, scope platform.UserScope, now time.Time) error
 }
 
 type jobEnqueuer interface {
@@ -174,6 +180,37 @@ func NewRetentionSweepJobHandler(sweeper DueReleaseSweeper, now func() time.Time
 	}
 }
 
+type withdrawalSweepJobContextKey struct{}
+
+func WithdrawalSweepJobID(ctx context.Context) (string, bool) {
+	jobID, ok := ctx.Value(withdrawalSweepJobContextKey{}).(string)
+	return jobID, ok && jobID != ""
+}
+
+func NewWithdrawalSweepJobHandler(sweeper DueWithdrawalSweeper, now func() time.Time) func(context.Context, Job) error {
+	if now == nil {
+		now = func() time.Time { return time.Now().UTC() }
+	}
+	return func(ctx context.Context, job Job) error {
+		if err := validateJob(job, JobTargetUser, true); err != nil {
+			return err
+		}
+		if job.Targets[0].ID != job.UserID || job.Targets[0].ExpectedRevision != 0 {
+			return fmt.Errorf("%w: withdrawal target must name the job user", ErrJobPayload)
+		}
+		var payload WithdrawalSweepJobPayload
+		if err := decodePayload(job.Payload, &payload); err != nil {
+			return err
+		}
+		scope, err := platform.NewUserScope(job.UserID)
+		if err != nil {
+			return ErrJobUserRequired
+		}
+		ctx = context.WithValue(ctx, withdrawalSweepJobContextKey{}, job.ID)
+		return sweeper.SweepWithdrawnAccount(ctx, scope, now())
+	}
+}
+
 // embedCurrentSources is the shared current-read -> external call -> fenced-write
 // tail. Missing, sealed, deleted, or superseded targets never appear in sources;
 // a race after the call is stopped by the conditional writer.
@@ -218,7 +255,7 @@ func validateJob(job Job, targetKind JobTargetKind, exactlyOne bool) error {
 		if target.Kind != targetKind || target.ID == "" {
 			return fmt.Errorf("%w: invalid %s target", ErrJobPayload, targetKind)
 		}
-		if targetKind == JobTargetRelease {
+		if targetKind == JobTargetRelease || targetKind == JobTargetUser {
 			if target.ExpectedRevision != 0 {
 				return fmt.Errorf("%w: release target has a revision", ErrJobPayload)
 			}

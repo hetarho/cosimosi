@@ -16,9 +16,13 @@ import (
 	_ "github.com/cosimosi/api/internal/ai/deepseek"
 	_ "github.com/cosimosi/api/internal/ai/voyage"
 
+	"github.com/cosimosi/api/internal/account"
+	accountpg "github.com/cosimosi/api/internal/account/pg"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
+	"github.com/cosimosi/api/internal/platform/jobqueue"
+	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
 const (
@@ -39,6 +43,30 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		return nil, err
 	}
 	store := memorypg.NewStore(pool.PgxPool())
+	accountStore := accountpg.NewStore(pool.PgxPool())
+	userJobs, err := memory.NewUserJobService(store, nil, nil)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	directory := accountDirectoryAdapter{source: newAccountDirectory()}
+	accountService, err := account.NewService(account.ServiceDeps{
+		Store:              accountStore,
+		Directory:          directory,
+		InviteGranter:      &accountInviteRewardGranter{},
+		SignupBonusGranter: &accountSignupBonusGranter{},
+		Withdrawals:        accountStore,
+		Purgers: []account.UserDataPurger{
+			accountMemoryPurger{store: store},
+			accountTwinklePurger{store: twinklepg.NewStore(pool.PgxPool())},
+		},
+		Scheduler:   accountWithdrawalScheduler{jobs: userJobs},
+		Credentials: directory,
+	})
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
 	adapters, err := ai.NewAdaptersFromEnv(ai.FactoryOptions{})
 	if err != nil {
 		pool.Close()
@@ -50,6 +78,9 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		adapters.Semanticizer,
 		devWorkerPollInterval,
 		logger,
+		map[memory.JobKind]jobqueue.Handler[memory.Job]{
+			memory.JobKindWithdrawal: memory.NewWithdrawalSweepJobHandler(accountService, nil),
+		},
 	)
 	if err != nil {
 		pool.Close()

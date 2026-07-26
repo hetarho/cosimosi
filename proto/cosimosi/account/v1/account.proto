@@ -34,6 +34,11 @@ service AccountService {
   // Store the caller's palette id. Accepts only an id known to the first-party registry; an
   // unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
   rpc SetPalettePreference(SetPalettePreferenceRequest) returns (PalettePreference);
+  // Account-scoped soft deletion; restorable for release.soft_delete_retention_days.
+  rpc Withdraw(WithdrawRequest) returns (WithdrawResponse);
+  // Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
+  // may call.
+  rpc RestoreAccount(RestoreAccountRequest) returns (RestoreAccountResponse);
 }
 
 message SignUpRequest {
@@ -109,4 +114,20 @@ message SetPalettePreferenceRequest {
 // The resolved palette id (the default id when the user never set one).
 message PalettePreference {
   string palette_id = 1;
+}
+
+// Scope comes only from the authenticated context. There is deliberately no user_id,
+// purge_now, skip_window, immediate-delete, reason, or exit-survey field, and there is no
+// PurgeAccount RPC. A client cannot bypass the retention window.
+message WithdrawRequest {}
+
+message WithdrawResponse {
+  string withdrawn_at = 1;
+  string restore_deadline_at = 2;
+}
+
+message RestoreAccountRequest {}
+
+message RestoreAccountResponse {
+  string restored_at = 1;
 }

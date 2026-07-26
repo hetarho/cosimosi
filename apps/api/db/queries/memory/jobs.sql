@@ -45,6 +45,14 @@ RETURNING
     id, user_id, kind, payload, status, attempts, next_run_at, created_at,
     lease_generation, dedup_key, terminal_at, cancelled_by_release_id;
 
+-- Restore cancels the one account-withdrawal trigger by its user-scoped dedup identity.
+-- The target cascades with the job; a missing row is an idempotent success.
+-- name: CancelUserJob :execrows
+DELETE FROM jobs
+WHERE user_id = sqlc.arg(user_id)
+  AND kind = sqlc.arg(kind)
+  AND dedup_key = sqlc.arg(dedup_key);
+
 -- name: RetryJob :one
 UPDATE jobs
 SET status = 'pending',

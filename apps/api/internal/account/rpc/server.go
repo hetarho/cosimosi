@@ -142,6 +142,41 @@ func (s *Server) SetPalettePreference(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(&accountv1.PalettePreference{PaletteId: paletteID}), nil
 }
 
+func (s *Server) Withdraw(
+	ctx context.Context,
+	_ *connect.Request[accountv1.WithdrawRequest],
+) (*connect.Response[accountv1.WithdrawResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	window, err := s.service.Withdraw(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&accountv1.WithdrawResponse{
+		WithdrawnAt:       formatTime(window.WithdrawnAt),
+		RestoreDeadlineAt: formatTime(window.RestoreDeadlineAt),
+	}), nil
+}
+
+func (s *Server) RestoreAccount(
+	ctx context.Context,
+	_ *connect.Request[accountv1.RestoreAccountRequest],
+) (*connect.Response[accountv1.RestoreAccountResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	restoredAt, err := s.service.RestoreAccount(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&accountv1.RestoreAccountResponse{
+		RestoredAt: formatTime(restoredAt),
+	}), nil
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -165,6 +200,10 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeInvalidArgument, reasonLocaleInvalid, err, nil)
 	case errors.Is(err, account.ErrInviteLinkUnavailable):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonInviteLinkUnavailable, err, nil)
+	case errors.Is(err, account.ErrNotWithdrawn):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonNotWithdrawn, err, nil)
+	case errors.Is(err, account.ErrRestoreWindowExpired):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonRestoreWindowExpired, err, nil)
 	case errors.Is(err, account.ErrUnknownPaletteID):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownPalette, err, nil)
 	case errors.Is(err, account.ErrScopeRequired):

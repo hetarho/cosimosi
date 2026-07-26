@@ -34,6 +34,7 @@ const (
 	JobKindExtract     JobKind = "extract"
 	JobKindConsolidate JobKind = "consolidate"
 	JobKindRetention   JobKind = "retention_sweep"
+	JobKindWithdrawal  JobKind = "withdrawal_sweep"
 )
 
 type JobStatus string
@@ -52,6 +53,7 @@ const (
 	JobTargetMemory  JobTargetKind = "episodic_memory"
 	JobTargetNeuron  JobTargetKind = "neuron"
 	JobTargetRelease JobTargetKind = "release_group"
+	JobTargetUser    JobTargetKind = "user"
 )
 
 // JobTarget is identity/revision metadata indexed outside the payload. It lets
@@ -228,7 +230,7 @@ func (j Job) JobLeaseGeneration() int64 {
 	// Retention work is the sole durable trigger for an inactive user's explicit
 	// Release. It retries past the generic dead-letter claim ceiling; the actual
 	// LeaseGeneration field still fences its database operations.
-	if j.Kind == JobKindRetention {
+	if j.Kind == JobKindRetention || j.Kind == JobKindWithdrawal {
 		return 0
 	}
 	return j.LeaseGeneration

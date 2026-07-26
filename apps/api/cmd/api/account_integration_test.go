@@ -11,6 +11,7 @@ import (
 	"github.com/cosimosi/api/internal/account"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
 	"github.com/cosimosi/api/internal/platform"
+	"github.com/cosimosi/api/internal/platform/apperr"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
 	"github.com/cosimosi/api/internal/platform/values"
@@ -130,6 +131,19 @@ func TestInviteSignerConfigurationFailsClosed(t *testing.T) {
 	}
 	if _, ok := signer.(account.HMACInviteSigner); !ok {
 		t.Fatalf("valid signer = %T, want HMACInviteSigner", signer)
+	}
+}
+
+func TestProductionAccountCompositionRejectsKeylessCredentialDirectory(t *testing.T) {
+	t.Setenv(apperr.EnvDeployEnvironment, "production")
+	_, _, err := accountServiceOption(
+		nil,
+		accountDirectoryAdapter{source: platformsupabase.Fake{}},
+		accountNoInviteGranter{},
+		accountNoSignupBonusGranter{},
+	)
+	if err == nil {
+		t.Fatal("production account composition accepted a keyless credential directory")
 	}
 }
 

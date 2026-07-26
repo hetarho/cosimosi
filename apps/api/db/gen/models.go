@@ -213,6 +213,7 @@ type Synapse struct {
 	CreatedAt                 pgtype.Timestamptz
 }
 
+// Authoritative per-user balance; the only DELETE is the user-originated, post-retention account withdrawal sweep.
 type TwinkleBalance struct {
 	UserID               string
 	Additional           int32
@@ -221,6 +222,7 @@ type TwinkleBalance struct {
 	UpdatedAt            pgtype.Timestamptz
 }
 
+// Append-only against system behavior; the only DELETE is the user-originated, post-retention account withdrawal sweep.
 type TwinkleLedgerEntry struct {
 	ID             string
 	UserID         string

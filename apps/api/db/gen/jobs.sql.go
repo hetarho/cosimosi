@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelUserJob = `-- name: CancelUserJob :execrows
+DELETE FROM jobs
+WHERE user_id = $1
+  AND kind = $2
+  AND dedup_key = $3
+`
+
+type CancelUserJobParams struct {
+	UserID   string
+	Kind     string
+	DedupKey pgtype.Text
+}
+
+// Restore cancels the one account-withdrawal trigger by its user-scoped dedup identity.
+// The target cascades with the job; a missing row is an idempotent success.
+func (q *Queries) CancelUserJob(ctx context.Context, arg CancelUserJobParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelUserJob, arg.UserID, arg.Kind, arg.DedupKey)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimDueJob = `-- name: ClaimDueJob :one
 
 WITH next_job AS (

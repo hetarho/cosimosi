@@ -54,6 +54,23 @@ func TestMaintenanceQueueKeepsRetentionFailuresDurablyRetryable(t *testing.T) {
 		t.Fatalf("retention claim ceiling value = %d, want 0 for durable retry", got)
 	}
 
+	withdrawal := revisionedJob(JobKindWithdrawal, JobTarget{
+		Kind: JobTargetUser,
+		ID:   "user-1",
+	})
+	withdrawal.LeaseGeneration = int64(values.AiJobMaxClaims) + 100
+	if err := maintained.Fail(context.Background(), withdrawal, int32(values.AiJobMaxAttempts)); err != nil {
+		t.Fatalf("withdrawal Fail failed: %v", err)
+	}
+	if queue.retries != 2 || queue.fails != 0 || withdrawal.JobLeaseGeneration() != 0 {
+		t.Fatalf(
+			"withdrawal transition = retries %d fails %d lease ceiling %d, want durable retry",
+			queue.retries,
+			queue.fails,
+			withdrawal.JobLeaseGeneration(),
+		)
+	}
+
 	ordinary := revisionedJob(JobKindEmbed, JobTarget{Kind: JobTargetNeuron, ID: "n1", ExpectedRevision: 1})
 	if err := maintained.Fail(context.Background(), ordinary, 5); err != nil {
 		t.Fatalf("ordinary Fail failed: %v", err)

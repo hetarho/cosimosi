@@ -4,6 +4,7 @@
 package supabase
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -26,11 +27,13 @@ type Account struct {
 	SignupAt        time.Time
 }
 
-// Fake is the keyless in-memory directory used by tests, development, and the production
-// fallback when a service-role key is not configured.
+// Fake is the keyless in-memory directory used by tests and development. Production
+// account-withdrawal composition rejects it because it cannot mutate credentials.
 type Fake struct {
 	Accounts         []Account
 	IdentitiesByUser map[string][]string
+	BannedUsers      map[string]bool
+	DeletedUsers     map[string]bool
 }
 
 func (f Fake) ListUsers(_ context.Context, page int, pageSize int, query string) ([]Account, bool, error) {
@@ -73,6 +76,20 @@ func (f Fake) Identities(_ context.Context, userID string) ([]string, error) {
 	return append([]string(nil), identities...), nil
 }
 
+func (f Fake) SetUserBanned(_ context.Context, userID string, banned bool) error {
+	if f.BannedUsers != nil {
+		f.BannedUsers[userID] = banned
+	}
+	return nil
+}
+
+func (f Fake) DeleteUser(_ context.Context, userID string) error {
+	if f.DeletedUsers != nil {
+		f.DeletedUsers[userID] = true
+	}
+	return nil
+}
+
 func (f Fake) account(userID string) (Account, bool) {
 	for _, account := range f.Accounts {
 		if account.UserID == userID {
@@ -87,6 +104,18 @@ type Directory struct {
 	baseURL    string
 	serviceKey string
 	client     *http.Client
+}
+
+// CredentialMutationsAvailable distinguishes the real server-only Admin API adapter
+// from keyless read fallbacks at composition time. Production roots use it to refuse
+// a withdrawal worker that could delete product rows without deleting the credential.
+func CredentialMutationsAvailable(source any) bool {
+	switch source.(type) {
+	case Directory, *Directory:
+		return true
+	default:
+		return false
+	}
 }
 
 // NewDirectory returns ok=false when the URL or service-role key is absent, allowing the
@@ -167,6 +196,26 @@ func (s Directory) Identities(ctx context.Context, userID string) ([]string, err
 	return identities, nil
 }
 
+// SetUserBanned uses GoTrue's server-only admin update contract. A century-long
+// duration is Supabase's documented durable-ban shape; "none" removes a ban.
+func (s Directory) SetUserBanned(ctx context.Context, userID string, banned bool) error {
+	duration := "none"
+	if banned {
+		duration = "876000h"
+	}
+	body, err := json.Marshal(map[string]string{"ban_duration": duration})
+	if err != nil {
+		return err
+	}
+	return s.mutateUser(ctx, http.MethodPut, userID, body)
+}
+
+// DeleteUser permanently removes the Auth user. A missing user is an idempotent
+// success so a crash after credential deletion can replay the sweep safely.
+func (s Directory) DeleteUser(ctx context.Context, userID string) error {
+	return s.mutateUser(ctx, http.MethodDelete, userID, nil)
+}
+
 func (s Directory) user(ctx context.Context, userID string) (supabaseUser, error) {
 	endpoint := fmt.Sprintf("%s/auth/v1/admin/users/%s", s.baseURL, url.PathEscape(userID))
 	var user supabaseUser
@@ -192,6 +241,31 @@ func (s Directory) get(ctx context.Context, endpoint string, out any) error {
 		return fmt.Errorf("supabase admin api: status %s", strconv.Itoa(response.StatusCode))
 	}
 	return json.NewDecoder(response.Body).Decode(out)
+}
+
+func (s Directory) mutateUser(ctx context.Context, method string, userID string, body []byte) error {
+	endpoint := fmt.Sprintf("%s/auth/v1/admin/users/%s", s.baseURL, url.PathEscape(userID))
+	request, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("apikey", s.serviceKey)
+	request.Header.Set("Authorization", "Bearer "+s.serviceKey)
+	if len(body) > 0 {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	response, err := s.client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return fmt.Errorf("supabase admin api: status %s", strconv.Itoa(response.StatusCode))
+	}
+	return nil
 }
 
 func mapAccount(user supabaseUser) Account {
