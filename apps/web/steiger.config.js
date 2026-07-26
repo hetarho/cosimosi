@@ -142,6 +142,15 @@ export default defineConfig([
     },
   },
   {
+    // Signup is one cross-platform entry action. Its pure control state and RPC seam live in
+    // shared packages; the app slice intentionally contains only the platform-specific nickname
+    // and invite acknowledgment UI composed by the app-layer profile gate.
+    files: ['./src/features/sign-up/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
     // The admin console vertical (plan 58): the one web-only /admin page composes four sectioned
     // operator features — AI provider config, users + stardust grant, AI usage, and job health.
     // Each is one operator surface (§3.1: the page composes, never absorbs) and exists only there

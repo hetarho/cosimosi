@@ -20,6 +20,25 @@ describe('createSupabaseAuthAdapter', () => {
     )
   })
 
+  it('returns the signup session when present and null when confirmation is required', async () => {
+    const now = Date.UTC(2026, 5, 29, 12, 0, 0)
+    const session = supabaseSession({ accessToken: 't', expiresAt: now + 60_000 })
+    const signedIn = createSupabaseAuthAdapter(fakeSupabaseClient(session), { now: () => now })
+    const confirmationRequired = createSupabaseAuthAdapter(fakeSupabaseClient(null), {
+      now: () => now,
+    })
+
+    await expect(
+      signedIn.signUpWithPassword({ email: 'new@example.com', password: 'secret' }),
+    ).resolves.toEqual({ userId: 'supabase-user-1', expiresAt: now + 60_000 })
+    await expect(
+      confirmationRequired.signUpWithPassword({
+        email: 'new@example.com',
+        password: 'secret',
+      }),
+    ).resolves.toBeNull()
+  })
+
   it('refreshes expired sessions before returning access tokens', async () => {
     const now = Date.UTC(2026, 5, 29, 12, 0, 0)
     let refreshCalls = 0
@@ -154,6 +173,7 @@ function fakeSupabaseClient(
     auth: {
       getSession: async () => ({ data: { session }, error: null }),
       signInWithPassword: async () => ({ data: { session }, error: null }),
+      signUp: async () => ({ data: { session }, error: null }),
       signInWithOAuth: async (args: { provider: string; options: Record<string, unknown> }) => {
         options.onSignInWithOAuth?.(args)
         return { data: { url: options.oauthUrl ?? 'https://consent.example/' }, error: null }

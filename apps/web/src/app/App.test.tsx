@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   createGetPalettePreferenceQueryKey,
+  createGetProfileQueryKey,
   createGetUniverseQueryKey,
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
@@ -44,6 +45,15 @@ const emptyUniverse = {
 
 function seedDefaultPalette(fakes: ReturnType<typeof createTestHarnessFakes>, userId: string) {
   resetWebUserState(userId)
+  setClientCacheData(fakes.queryClient, createGetProfileQueryKey(fakes.transport), {
+    profile: {
+      nickname: 'Test user',
+      timezone: 'UTC',
+      locale: 'en',
+      email: 'test@example.test',
+      createdAt: '2026-07-26T00:00:00Z',
+    },
+  } as never)
   setClientCacheData(fakes.queryClient, createGetPalettePreferenceQueryKey(fakes.transport), {
     paletteId: DEFAULT_PALETTE_ID,
   } as never)

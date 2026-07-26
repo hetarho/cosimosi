@@ -28,6 +28,15 @@ export function authGuardBeforeLoad(
 // a crafted /login?from=/login must not pin an authenticated user to the login screen. Anything
 // else falls back to the universe.
 export function loginReturnTarget(from: string | undefined): string {
-  if (!from || !from.startsWith('/') || from.startsWith('//') || from === '/login') return '/'
+  if (
+    !from ||
+    !from.startsWith('/') ||
+    from.startsWith('//') ||
+    from === '/login' ||
+    from === '/signup' ||
+    from.startsWith('/invite/')
+  ) {
+    return '/'
+  }
   return from
 }

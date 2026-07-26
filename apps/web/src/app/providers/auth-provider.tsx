@@ -6,7 +6,9 @@ import {
   createAuthFacade,
   createSupabaseAuthAdapter,
   createSupabaseAuthClient,
+  bindPendingInviteStorage,
   type AuthFacade,
+  type PendingInviteStorage,
 } from '@cosimosi/auth'
 import { AuthProvider, useAuthFacade } from '@cosimosi/auth/react'
 
@@ -16,11 +18,37 @@ interface WebAuthProviderProps {
 }
 
 export function WebAuthProvider({ children, facade }: WebAuthProviderProps) {
+  bindPendingInviteStorage(webPendingInviteStorage)
   return (
     <AuthProvider facade={facade} createFacade={createDefaultWebAuthFacade}>
       <OAuthErrorReturn>{children}</OAuthErrorReturn>
     </AuthProvider>
   )
+}
+
+const webPendingInviteStorage: PendingInviteStorage = {
+  getItem(key) {
+    try {
+      return typeof window === 'undefined' ? null : window.sessionStorage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+  setItem(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value)
+    } catch {
+      // Storage can be unavailable in hardened/private contexts; signup remains
+      // usable and the opaque invite simply cannot survive the OAuth redirect.
+    }
+  },
+  removeItem(key) {
+    try {
+      if (typeof window !== 'undefined') window.sessionStorage.removeItem(key)
+    } catch {
+      // See setItem: absence is an inert invite, never a signup failure branch.
+    }
+  },
 }
 
 // A denied/failed Google consent redirects back to `/` with `?error=…` and NO session:

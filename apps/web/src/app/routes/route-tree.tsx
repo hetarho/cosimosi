@@ -10,8 +10,10 @@ import {
   AdminRoute,
   AuthenticatedLayout,
   DiaryReaderRoute,
+  InviteRoute,
   LoginRoute,
   SettingsRoute,
+  SignupRoute,
   UniverseRoute,
 } from './route-screens.tsx'
 
@@ -75,6 +77,18 @@ const loginRoute = createRoute({
   component: LoginRoute,
 })
 
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signup',
+  component: SignupRoute,
+})
+
+const inviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/invite/$token',
+  component: InviteRoute,
+})
+
 const testRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/test',
@@ -101,6 +115,8 @@ const designRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, settingsRoute, adminRoute]),
   loginRoute,
+  signupRoute,
+  inviteRoute,
   testRoute,
   designRoute,
 ])

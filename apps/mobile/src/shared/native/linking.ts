@@ -17,6 +17,7 @@ export const mobileLinkingPrefixes = ['cosimosi://'] as const
  * so the navigation linking config filters it out.
  */
 export const mobileAuthCallbackUrl = 'cosimosi://auth-callback'
+const mobileInvitePrefix = 'cosimosi://invite/'
 
 // Exact-address match: the callback host must END at the registered address (only a
 // query/fragment/path may follow), so a look-alike host such as
@@ -25,6 +26,22 @@ export function isAuthCallbackUrl(url: string): boolean {
   if (!url.startsWith(mobileAuthCallbackUrl)) return false
   const rest = url.slice(mobileAuthCallbackUrl.length)
   return rest === '' || rest.startsWith('?') || rest.startsWith('#') || rest.startsWith('/')
+}
+
+export function inviteTokenFromUrl(url: string): string | null {
+  if (!url.startsWith(mobileInvitePrefix)) return null
+  const encodedToken = url.slice(mobileInvitePrefix.length)
+  if (!encodedToken || /[/?#]/.test(encodedToken)) return null
+  try {
+    const token = decodeURIComponent(encodedToken).trim()
+    return token && !/[/?#]/.test(token) ? token : null
+  } catch {
+    return null
+  }
+}
+
+export function isInviteUrl(url: string): boolean {
+  return inviteTokenFromUrl(url) !== null
 }
 
 /** Open a URL outside the app (the system browser for OAuth consent). */
@@ -45,6 +62,23 @@ export function subscribeToAuthCallbackUrls(onUrl: (url: string) => void): () =>
     if (!url || !isAuthCallbackUrl(url) || url === lastDelivered) return
     lastDelivered = url
     onUrl(url)
+  }
+  Linking.getInitialURL()
+    .then(deliver)
+    .catch(() => undefined)
+  const subscription = Linking.addEventListener('url', ({ url }) => deliver(url))
+  return () => subscription.remove()
+}
+
+/** Capture invite links at the shell seam; they are auth-entry events, not screens. */
+export function subscribeToInviteUrls(onToken: (token: string) => void): () => void {
+  let lastDelivered: string | null = null
+  const deliver = (url: string | null) => {
+    if (!url || url === lastDelivered) return
+    const token = inviteTokenFromUrl(url)
+    if (!token) return
+    lastDelivered = url
+    onToken(token)
   }
   Linking.getInitialURL()
     .then(deliver)

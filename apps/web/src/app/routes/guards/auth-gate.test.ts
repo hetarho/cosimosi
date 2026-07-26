@@ -52,7 +52,15 @@ describe('loginReturnTarget', () => {
   // `from` is user-visible URL input: reject anything that is not an internal single-slash
   // pathname, and never return to /login itself (a crafted from must not pin a signed-in user
   // to the login screen).
-  for (const hostile of ['/login', '//evil.example', 'https://evil.example', 'diary', '']) {
+  for (const hostile of [
+    '/login',
+    '/signup',
+    '/invite/opaque',
+    '//evil.example',
+    'https://evil.example',
+    'diary',
+    '',
+  ]) {
     it(`rejects ${JSON.stringify(hostile)} back to the universe`, () => {
       expect(loginReturnTarget(hostile)).toBe('/')
     })

@@ -125,6 +125,45 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
         signInFlight -= 1
       }
     },
+    async signUpWithPassword(credentials: SignInCredentials) {
+      const operationEpoch = ++epoch
+      signInFlight += 1
+      externalOAuthPending = false
+      const previousSuppressAdapterRefresh = suppressAdapterRefresh
+      suppressAdapterRefresh = true
+      actor.send({ type: 'SIGN_IN_START' })
+      try {
+        const session = await adapter.signUpWithPassword(credentials)
+        if (disposed || operationEpoch !== epoch) {
+          return session ? ('signedIn' as const) : ('confirmationRequired' as const)
+        }
+        if (session) {
+          locallySignedOut = false
+          suppressAdapterRefresh = false
+          actor.send({
+            type: 'SIGN_IN_SUCCESS',
+            userId: session.userId,
+            expiresAt: session.expiresAt,
+          })
+          return 'signedIn' as const
+        }
+        // Email confirmation is an expected successful credential-creation
+        // outcome. Settle the existing session domain back to signedOut; the
+        // local signup machine owns the confirmationSent presentation.
+        locallySignedOut = true
+        suppressAdapterRefresh = true
+        actor.send({ type: 'SIGN_OUT' })
+        return 'confirmationRequired' as const
+      } catch (error) {
+        if (!disposed && operationEpoch === epoch) {
+          suppressAdapterRefresh = previousSuppressAdapterRefresh
+          actor.send({ type: 'SIGN_IN_FAILURE', error: errorMessage(error) })
+        }
+        throw error
+      } finally {
+        signInFlight -= 1
+      }
+    },
     async signInWithGoogle() {
       const operationEpoch = ++epoch
       signInFlight += 1

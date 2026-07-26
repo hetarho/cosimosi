@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 
-import { Outlet, useLocation, useSearch } from '@tanstack/react-router'
+import { Outlet, useLocation, useParams, useSearch } from '@tanstack/react-router'
 
-import { gateDecision } from '@cosimosi/auth'
+import { gateDecision, pendingInvite } from '@cosimosi/auth'
 import { m } from '@cosimosi/i18n'
 
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
 import { PaletteBootstrap } from '../providers/palette-bootstrap.tsx'
+import { ProfileGate } from '../providers/profile-gate.tsx'
 import { AdminPage } from '../../pages/admin/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
@@ -57,9 +58,11 @@ export function AuthenticatedLayout() {
   }, [decision, navigate, location.pathname])
   if (status === 'authenticated' || status === 'refreshing') {
     return (
-      <PaletteBootstrap>
-        <Outlet />
-      </PaletteBootstrap>
+      <ProfileGate>
+        <PaletteBootstrap>
+          <Outlet />
+        </PaletteBootstrap>
+      </ProfileGate>
     )
   }
   return <AuthHold />
@@ -116,5 +119,33 @@ export function LoginRoute() {
     }
   }, [authenticated, search.from, navigate])
   if (decision === 'hold') return <AuthHold />
-  return <LoginPage />
+  return <LoginPage onModeChange={() => navigate({ to: '/signup' })} />
+}
+
+export function SignupRoute() {
+  const { status } = useSessionSnapshot()
+  const navigate = useAppNavigate()
+  const decision = gateDecision(status)
+  useEffect(() => {
+    if (decision === 'universe') navigate({ to: '/' })
+  }, [decision, navigate])
+  if (decision === 'hold') return <AuthHold />
+  return <LoginPage mode="signUp" onModeChange={() => navigate({ to: '/login' })} />
+}
+
+export function InviteRoute() {
+  const { token } = useParams({ strict: false }) as { token: string }
+  const { status } = useSessionSnapshot()
+  const navigate = useAppNavigate()
+  const decision = gateDecision(status)
+
+  useEffect(() => {
+    pendingInvite.capture(token)
+    navigate({ to: '/signup', replace: true })
+  }, [navigate, token])
+
+  useEffect(() => {
+    if (decision === 'universe') navigate({ to: '/', replace: true })
+  }, [decision, navigate])
+  return <AuthHold />
 }

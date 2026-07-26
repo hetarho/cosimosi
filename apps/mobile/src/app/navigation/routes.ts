@@ -11,6 +11,8 @@ export const ROUTES = {
   boot: 'Boot',
   /** The sign-in entry — the unauthenticated default; there is no landing route before it. */
   login: 'Login',
+  /** Public credential-creation entry inside the signed-out stack. */
+  signUp: 'SignUp',
   /** Dev-only provider health surface (gated by the diagnostics flag; deep-link reachable). */
   diagnostics: 'Diagnostics',
   /** Dev-only on-device design showcase (gated by the diagnostics flag; deep-link reachable). */
@@ -26,6 +28,7 @@ export const ROUTES = {
 export type RootStackParamList = {
   Boot: undefined
   Login: undefined
+  SignUp: undefined
   Diagnostics: undefined
   Test: undefined
   Universe: undefined

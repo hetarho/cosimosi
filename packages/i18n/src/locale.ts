@@ -44,6 +44,19 @@ export function resolveLocale(candidates: ReadonlyArray<string | null | undefine
   return defaultLocale
 }
 
+/**
+ * Read the platform-reported IANA timezone without assuming Intl support.
+ * Older Hermes/runtime configurations may omit or throw from this API.
+ */
+export function resolveDeviceTimeZone(): string | undefined {
+  try {
+    const timeZone = Intl?.DateTimeFormat?.().resolvedOptions().timeZone
+    return typeof timeZone === 'string' && timeZone.trim() ? timeZone : undefined
+  } catch {
+    return undefined
+  }
+}
+
 let activeLocale: Locale = defaultLocale
 const listeners = new Set<() => void>()
 

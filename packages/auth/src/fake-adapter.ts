@@ -67,6 +67,10 @@ export class FakeAuthAdapter implements AuthAdapter {
     return this.session
   }
 
+  async signUpWithPassword(credentials: SignInCredentials): Promise<AuthSession> {
+    return this.signIn(credentials)
+  }
+
   async signInWithGoogle(): Promise<AuthSession | null> {
     if (this.signInError) throw new Error(this.signInError)
     return this.establishOAuthSession()

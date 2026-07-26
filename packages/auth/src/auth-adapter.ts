@@ -48,6 +48,11 @@ export interface AuthAdapter {
   bootstrap(): Promise<AuthSession | null>
   signIn(credentials: SignInCredentials): Promise<AuthSession>
   /**
+   * Create a password credential. A null session means the credential was created
+   * but email confirmation is required before Supabase establishes a session.
+   */
+  signUpWithPassword(credentials: SignInCredentials): Promise<AuthSession | null>
+  /**
    * Begin the Google OAuth flow. Resolves the session when the sign-in completes
    * within the call (fake adapter); resolves null when the flow continues outside
    * the app (web full-page redirect / mobile system browser) — completion then
@@ -75,6 +80,7 @@ export interface AuthAdapter {
 export interface AuthFacade {
   readonly snapshot: SessionSnapshot
   signIn(credentials: SignInCredentials): Promise<void>
+  signUpWithPassword(credentials: SignInCredentials): Promise<'signedIn' | 'confirmationRequired'>
   /** Begin Google OAuth; the machine may settle later when the flow leaves the app. */
   signInWithGoogle(): Promise<void>
   /** Finish an externally-continued OAuth flow from its callback URL (mobile deep link). */

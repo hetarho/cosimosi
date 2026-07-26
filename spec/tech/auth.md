@@ -29,6 +29,24 @@ while directory identities remain membership truth. `platform.UserIdentity` and 
 `platform.UserScope` still carry only the Supabase subject, so callers cannot inject profile or directory fields
 through the auth boundary.
 
+## Signup credential and profile gate
+
+`AuthAdapter.signUpWithPassword` returns an authenticated session or `null` when Supabase created
+the credential but requires email confirmation. `AuthFacade.signUpWithPassword` exposes those as
+the explicit outcomes `'signedIn'` and `'confirmationRequired'`. A session uses the existing
+authenticated transition; confirmation-required settles through the existing `SIGN_OUT`
+transition. The session status set and `gateDecision` arms are unchanged. The local
+`signupCredentialMachine` alone owns `form → creating → confirmationSent | failed`.
+
+Both apps place `GetProfile` gates above their palette bootstrap. A present profile releases routed
+children; an unset profile field renders the nickname step; a rejected read renders neutral retry
+and sign-out controls. The gate never interprets transport error text. Because the routed subtree
+is withheld, a profile-less session cannot mount palette or product reads.
+
+The nickname command reuses `asyncCommandMachine` and calls `SignUp` with the trimmed nickname,
+runtime IANA timezone (`UTC` fallback), negotiated locale, and any held invite token. Profile data
+remains Query data; the machines contain control metadata only.
+
 ## Reset registry
 
 Every stateful domain package owns one public reset seam for its user-scoped singletons. The app aggregator calls those
@@ -45,8 +63,17 @@ cross-route action channel:
 `@cosimosi/twinkle` owns `resetTwinkleUserState()` for the two-tier balance mirror and charge-request channel.
 `@cosimosi/emotion/react` owns the palette display/confirmed mirror plus its persistence epoch reset.
 
-Each app's `app/model/reset-user-state.ts` is therefore a parity-checked composition of the universe, Twinkle, and
-palette reset APIs. It owns no second store inventory.
+Each app's `app/model/reset-user-state.ts` is therefore a parity-checked composition of the universe, Twinkle,
+palette, and signup-completion reset APIs. It owns no second store inventory.
+
+`@cosimosi/auth` owns two deliberately different signup-lifetime seams:
+
+- the one-shot signup-completion signal belongs to the authenticated user and is registered in
+  both reset inventories;
+- the pending-invite holder is deliberately absent from those inventories because it must survive
+  the anonymous-to-user transition and a Google OAuth round trip. Web injects `sessionStorage`;
+  mobile injects process memory. The holder clears only when `SignUp` consumes it or the profile
+  gate resolves an established profile.
 
 Adding a module-global user-owned store or deferred action channel requires adding its empty/default
 reset to the owning aggregate and extending the inventory/reset regression. Component-local state

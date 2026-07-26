@@ -9,6 +9,7 @@ import {
   m,
   matchLocale,
   resolveLocale,
+  resolveDeviceTimeZone,
   setActiveLocale,
   subscribeLocale,
   supportedLocales,
@@ -69,6 +70,24 @@ describe('resolveLocale', () => {
   it('falls back to the default when nothing matches', () => {
     expect(resolveLocale([])).toBe(defaultLocale)
     expect(resolveLocale([null, undefined, '', 'fr', 'de'])).toBe(defaultLocale)
+  })
+})
+
+describe('resolveDeviceTimeZone', () => {
+  it('returns the runtime timezone when Intl reports one', () => {
+    expect(resolveDeviceTimeZone()).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  })
+
+  it('returns undefined when the runtime timezone API throws', () => {
+    const original = Intl.DateTimeFormat
+    Intl.DateTimeFormat = (() => {
+      throw new Error('Intl unavailable')
+    }) as unknown as typeof Intl.DateTimeFormat
+    try {
+      expect(resolveDeviceTimeZone()).toBeUndefined()
+    } finally {
+      Intl.DateTimeFormat = original
+    }
   })
 })
 

@@ -43,6 +43,43 @@ describe('createAuthFacade', () => {
     expect(await facade.getAccessToken()).toBeNull()
   })
 
+  it('returns signedIn when password signup establishes a session', async () => {
+    const facade = createAuthFacade({ adapter: new FakeAuthAdapter({ now: () => 1_000 }) })
+
+    await flush()
+    await expect(
+      facade.signUpWithPassword({ email: 'new@example.com', password: 'secret' }),
+    ).resolves.toBe('signedIn')
+    expect(facade.snapshot.status).toBe('authenticated')
+    expect(facade.snapshot.userId).toBe('fake-user-new@example.com')
+  })
+
+  it('returns confirmationRequired and settles signedOut when signup has no session', async () => {
+    const base = new FakeAuthAdapter()
+    const adapter: AuthAdapter = {
+      bootstrap: () => base.bootstrap(),
+      signIn: (credentials) => base.signIn(credentials),
+      signUpWithPassword: async () => null,
+      signInWithGoogle: () => base.signInWithGoogle(),
+      completeOAuthSignIn: (callbackUrl) => base.completeOAuthSignIn(callbackUrl),
+      signOut: () => base.signOut(),
+      refresh: () => base.refresh(),
+      getAccessToken: () => base.getAccessToken(),
+      onChange: (listener) => base.onChange(listener),
+    }
+    const facade = createAuthFacade({ adapter })
+
+    await flush()
+    await expect(
+      facade.signUpWithPassword({ email: 'new@example.com', password: 'secret' }),
+    ).resolves.toBe('confirmationRequired')
+    expect(facade.snapshot).toMatchObject({
+      status: 'signedOut',
+      userId: null,
+      error: null,
+    })
+  })
+
   it('surfaces bootstrap failures as failed session snapshots', async () => {
     const facade = createAuthFacade({
       adapter: new FakeAuthAdapter({ bootstrapError: 'storage unavailable' }),
@@ -60,6 +97,7 @@ describe('createAuthFacade', () => {
     const adapter: AuthAdapter = {
       bootstrap: () => bootstrap.promise,
       signIn: (credentials) => base.signIn(credentials),
+      signUpWithPassword: (credentials) => base.signUpWithPassword(credentials),
       signInWithGoogle: () => base.signInWithGoogle(),
       completeOAuthSignIn: (callbackUrl) => base.completeOAuthSignIn(callbackUrl),
       signOut: () => base.signOut(),
@@ -88,6 +126,7 @@ describe('createAuthFacade', () => {
       const adapter: AuthAdapter = {
         bootstrap: () => bootstrap.promise,
         signIn: async () => ({ userId: 'unused', expiresAt: 1 }),
+        signUpWithPassword: async () => ({ userId: 'unused', expiresAt: 1 }),
         signInWithGoogle: async () => null,
         completeOAuthSignIn: async () => ({ userId: 'unused', expiresAt: 1 }),
         signOut: async () => {},
@@ -158,6 +197,7 @@ describe('createAuthFacade', () => {
     const adapter: AuthAdapter = {
       bootstrap: () => base.bootstrap(),
       signIn: (credentials) => base.signIn(credentials),
+      signUpWithPassword: (credentials) => base.signUpWithPassword(credentials),
       signInWithGoogle: () => pendingOpen.promise,
       completeOAuthSignIn: async () => ({ userId: 'unused', expiresAt: 1 }),
       signOut: () => base.signOut(),
@@ -207,6 +247,7 @@ describe('createAuthFacade', () => {
     const adapter: AuthAdapter = {
       bootstrap: () => bootstrap.promise,
       signIn: async () => ({ userId: 'unused', expiresAt: 1 }),
+      signUpWithPassword: async () => ({ userId: 'unused', expiresAt: 1 }),
       signInWithGoogle: async () => null,
       completeOAuthSignIn: () => completion,
       signOut: async () => {},
@@ -249,6 +290,7 @@ describe('createAuthFacade', () => {
     const adapter: AuthAdapter = {
       bootstrap: () => base.bootstrap(),
       signIn: () => pendingSignIn.promise,
+      signUpWithPassword: (credentials) => base.signUpWithPassword(credentials),
       signInWithGoogle: async () => null,
       completeOAuthSignIn: async () => ({ userId: 'unused', expiresAt: 1 }),
       signOut: () => base.signOut(),
@@ -383,6 +425,7 @@ describe('createAuthFacade', () => {
     const throwingAdapter: AuthAdapter = {
       bootstrap: () => adapter.bootstrap(),
       signIn: (credentials) => adapter.signIn(credentials),
+      signUpWithPassword: (credentials) => adapter.signUpWithPassword(credentials),
       signInWithGoogle: () => adapter.signInWithGoogle(),
       completeOAuthSignIn: (callbackUrl) => adapter.completeOAuthSignIn(callbackUrl),
       signOut: () => adapter.signOut(),
@@ -427,6 +470,7 @@ function externalOAuthAdapter({ completeError = 'oauth failed' } = {}): AuthAdap
   return {
     bootstrap: () => base.bootstrap(),
     signIn: (credentials) => base.signIn(credentials),
+    signUpWithPassword: (credentials) => base.signUpWithPassword(credentials),
     signInWithGoogle: async () => null,
     completeOAuthSignIn: async (callbackUrl) => {
       if (callbackUrl.includes('error=')) throw new Error(completeError)

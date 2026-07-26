@@ -29,8 +29,9 @@ never import the library; they navigate through the seam in §4.
   File-based routing is not used — it scatters route files and fights FSD.
 - Current routes: a pathless **`authenticated`** layout route (the auth gate, §8) parenting `/` → `UniverseHomePage`
   (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/settings` → `SettingsPage`
-  (`pages/settings`, plan 52); outside it, `/login` → `LoginPage` (`pages/login`, plan 53), `/test` → `TestPage`
-  (`pages/test`), and `/design` → `DesignShowcasePage` (`pages/design`, the design showcase). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
+  (`pages/settings`, plan 52); outside it, `/login` and `/signup` → the two `LoginPage` modes,
+  `/invite/$token` → invite capture then replacement with `/signup`, `/test` → `TestPage`, and
+  `/design` → `DesignShowcasePage` (`pages/design`, the design showcase). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
   wrapper** that reads `useAppNavigate` and injects `onOpenReader`/`onExit`-style callbacks into the page — the
   navigation seam stays inside `app/routes/`.
 - **Adding a route** (done by a presentation plan): add a `createRoute` in `route-tree.tsx`, point it at a `pages/`
@@ -71,9 +72,10 @@ facade — the same key and facade the mobile shell uses to gate its `Diagnostic
 ## 6. Composition and testing
 
 - `WebRouterProvider` mounts `<RouterProvider>` as the routed child of the provider stack (observability → error
-  boundary → i18n → auth → cache/session-scope boundary → router), so every route sees all providers. Authenticated
-  product routes add the palette commit gate immediately around their outlet; login and diagnostics do not wait for a
-  user preference. It resolves `diagnosticsEnabled`
+  boundary → i18n → auth → cache/session-scope boundary → router), so every route sees all providers. The
+  authenticated subtree first passes the profile gate, which withholds both palette and product
+  reads until `GetProfile` returns a profile, then adds the palette commit gate around its outlet.
+  Login and diagnostics wait for neither gate. It resolves `diagnosticsEnabled`
   from the observability facade and memoizes the router on `[router, initialEntries, diagnosticsEnabled]`.
 - **Tests / storybook** render at a chosen route without a DOM: build a router with
   `createAppRouter({ diagnosticsEnabled, initialEntries })` (in-memory history), `await router.load()`, then inject it
@@ -105,9 +107,14 @@ parity, §3.5):
   **while mounted** navigates to `/login` with the current pathname. Product reads (`GetUniverse`) mount only under
   the layout, so none can issue without a session. The router context carries a live `getSessionStatus` accessor
   (wired from the [04] facade in `WebRouterProvider`) — the guard never touches Supabase or the session machine.
-- **`/login`** — a public route composing the [04] facade's `signIn`. On reaching `authenticated` it navigates to
+- **`/login` and `/signup`** — public routes composing the auth facade's sign-in and signup
+  commands. Both hold while the session settles, bounce authenticated users to the product, and
+  navigate reciprocally. `/invite/$token` captures into the pending-invite holder and replaces its
+  history entry with `/signup`, so the opaque token leaves the address bar and back history.
+  On reaching `authenticated`, `/login` navigates to
   `loginReturnTarget(from)` — `from` is user-visible URL input, validated at use: only an internal single-slash
-  pathname is replayed (never `//host`/absolute URLs, never `/login` itself), else `/`. While
+  pathname is replayed (never `//host`/absolute URLs and never `/login`, `/signup`, or
+  `/invite/...`), else `/`. While
   `bootstrapping`/`refreshing` the route renders the neutral hold, not the form (the no-flash rule applies to `/login`
   too); `signingIn` stays on the form.
 - **Mobile mirror** — `app/navigation/NavigationRoot.tsx` selects the authoritative stack from the same snapshot via

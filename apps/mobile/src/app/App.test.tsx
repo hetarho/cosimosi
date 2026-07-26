@@ -1,4 +1,4 @@
-import { TextInput } from 'react-native'
+import { Linking, TextInput } from 'react-native'
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { createRouterTransport } from '@connectrpc/connect'
@@ -11,6 +11,7 @@ import {
   MemoryService,
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
+import { pendingInvite, takeSignupCompletion } from '@cosimosi/auth'
 import { DEFAULT_PALETTE_ID, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { setClientCacheData } from '@cosimosi/client-cache'
 import { m } from '@cosimosi/i18n'
@@ -57,15 +58,60 @@ const emptyUniverse = {
 
 function createMobileAppTransport(
   options: {
+    profilePresent?: boolean
+    profileError?: boolean
+    onGetProfile?: () => void
+    onGetUniverse?: () => void
+    onGetPalettePreference?: () => void
+    onSignUp?: (request: {
+      nickname: string
+      timezone: string
+      locale: string
+      inviteToken: string
+    }) => void
     getPalettePreference?: () => string
     setPalettePreference?: (paletteId: string) => Promise<string>
   } = {},
 ) {
+  let profilePresent = options.profilePresent !== false
   return createRouterTransport(({ service }) => {
     service(AccountService, {
-      getPalettePreference: () => ({
-        paletteId: options.getPalettePreference?.() ?? DEFAULT_PALETTE_ID,
-      }),
+      getProfile: () => {
+        options.onGetProfile?.()
+        if (options.profileError) throw new Error('profile refused')
+        return !profilePresent
+          ? {}
+          : {
+              profile: {
+                nickname: 'Test user',
+                timezone: 'UTC',
+                locale: 'en',
+                email: 'test@example.test',
+                createdAt: '2026-07-26T00:00:00Z',
+              },
+            }
+      },
+      signUp(request) {
+        options.onSignUp?.({
+          nickname: request.nickname,
+          timezone: request.timezone,
+          locale: request.locale,
+          inviteToken: request.inviteToken,
+        })
+        profilePresent = true
+        return {
+          nickname: request.nickname,
+          timezone: request.timezone,
+          locale: request.locale,
+          inviteBound: request.inviteToken !== '',
+        }
+      },
+      getPalettePreference: () => {
+        options.onGetPalettePreference?.()
+        return {
+          paletteId: options.getPalettePreference?.() ?? DEFAULT_PALETTE_ID,
+        }
+      },
       async setPalettePreference(request) {
         return {
           paletteId: options.setPalettePreference
@@ -75,7 +121,10 @@ function createMobileAppTransport(
       },
     })
     service(MemoryService, {
-      getUniverse: () => emptyUniverse,
+      getUniverse: () => {
+        options.onGetUniverse?.()
+        return emptyUniverse
+      },
     })
   })
 }
@@ -249,6 +298,127 @@ describe('mobile auth gate', () => {
     }
   })
 
+  it('navigates reciprocally between sign-in and sign-up with both methods visible', async () => {
+    const fakes = createMobileShellFakes({})
+    const view = renderShell(fakes)
+    try {
+      await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
+      fireEvent.press(screen.getByText(m.login_to_signup()))
+      await waitFor(() => expect(screen.getByText(m.signup_title())).toBeTruthy())
+      expect(screen.getByText(m.signup_google())).toBeTruthy()
+      expect(screen.getByText(m.signup_submit())).toBeTruthy()
+
+      fireEvent.press(screen.getByText(m.signup_to_login()))
+      await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
+    } finally {
+      view.unmount()
+      fakes.dispose()
+    }
+  })
+
+  it('captures an exact invite deep link and opens signup without a code field', async () => {
+    const initialUrl = jest
+      .spyOn(Linking, 'getInitialURL')
+      .mockResolvedValue('cosimosi://invite/opaque-token')
+    const fakes = createMobileShellFakes({})
+    const view = renderShell(fakes)
+    try {
+      await waitFor(() => expect(screen.getByText(m.signup_title())).toBeTruthy())
+      expect(screen.getByText(m.invite_acknowledgment())).toBeTruthy()
+      expect(pendingInvite.peek()).toBe('opaque-token')
+      expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(2)
+    } finally {
+      view.unmount()
+      fakes.dispose()
+      pendingInvite.clear()
+      initialUrl.mockResolvedValue(null)
+    }
+  })
+
+  it('withholds every product read and shows one nickname field when profile is absent', async () => {
+    let profileReads = 0
+    let paletteReads = 0
+    let universeReads = 0
+    const fakes = createMobileShellFakes({
+      userId: 'new-user',
+      transport: createMobileAppTransport({
+        profilePresent: false,
+        onGetProfile: () => {
+          profileReads += 1
+        },
+        onGetPalettePreference: () => {
+          paletteReads += 1
+        },
+        onGetUniverse: () => {
+          universeReads += 1
+        },
+      }),
+    })
+    const view = renderShell(fakes)
+    try {
+      await waitFor(() => expect(screen.getByText(m.signup_nickname_title())).toBeTruthy())
+      expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(1)
+      expect(profileReads).toBe(1)
+      expect(paletteReads).toBe(0)
+      expect(universeReads).toBe(0)
+    } finally {
+      view.unmount()
+      fakes.dispose()
+    }
+  })
+
+  it('shows the neutral retry-or-sign-out arm only for a refused profile read', async () => {
+    const fakes = createMobileShellFakes({
+      userId: 'refused-user',
+      transport: createMobileAppTransport({ profileError: true }),
+    })
+    const view = renderShell(fakes)
+    try {
+      await waitFor(() => expect(screen.getByText(m.signup_profile_refused())).toBeTruthy())
+      expect(screen.getByText(m.signup_profile_retry())).toBeTruthy()
+      expect(screen.getByText(m.signup_profile_sign_out())).toBeTruthy()
+      expect(screen.queryByText(m.signup_nickname_title())).toBeNull()
+    } finally {
+      view.unmount()
+      fakes.dispose()
+    }
+  })
+
+  it('completes the one nickname write and releases the existing empty-universe beginning', async () => {
+    let payload:
+      { nickname: string; timezone: string; locale: string; inviteToken: string } | undefined
+    const fakes = createMobileShellFakes({
+      userId: 'new-user',
+      transport: createMobileAppTransport({
+        profilePresent: false,
+        onSignUp: (request) => {
+          payload = request
+        },
+      }),
+    })
+    setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
+    const view = renderShell(fakes)
+    try {
+      await waitFor(() => expect(screen.getByText(m.signup_nickname_title())).toBeTruthy())
+      pendingInvite.capture('stale-token')
+      fireEvent.changeText(screen.UNSAFE_getByType(TextInput), 'Nova')
+      fireEvent.press(screen.getByText(m.signup_nickname_submit()))
+
+      await waitFor(() => expect(screen.getByText(m.universe_first_run_welcome())).toBeTruthy())
+      expect(payload).toMatchObject({
+        nickname: 'Nova',
+        locale: 'en',
+        inviteToken: 'stale-token',
+      })
+      expect(payload?.timezone).toBeTruthy()
+      expect(takeSignupCompletion()).toBe(true)
+      expect(takeSignupCompletion()).toBe(false)
+    } finally {
+      view.unmount()
+      fakes.dispose()
+    }
+  })
+
   it('holds the neutral splash while the session bootstraps — never a signed-out flash', async () => {
     const fakes = createMobileShellFakes({
       userId: 'gate-test-user',
@@ -290,7 +460,11 @@ describe('mobile auth gate', () => {
   })
 
   it('reaches the dev diagnostics surface by deep link without leaking secrets', async () => {
-    const fakes = createMobileShellFakes({ userId: 'gate-test-user', diagnosticsEnabled: true })
+    const fakes = createMobileShellFakes({
+      userId: 'gate-test-user',
+      diagnosticsEnabled: true,
+      transport: createMobileAppTransport(),
+    })
     const view = renderShell(fakes, {
       prefixes: ['cosimosi://'],
       config: {

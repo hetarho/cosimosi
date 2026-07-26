@@ -27,6 +27,7 @@ export {
   defaultLocale,
   matchLocale,
   resolveLocale,
+  resolveDeviceTimeZone,
   getActiveLocale,
   setActiveLocale,
   subscribeLocale,

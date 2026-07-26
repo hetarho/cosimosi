@@ -84,6 +84,11 @@ export function createSupabaseAuthAdapter(
       if (error) throw error
       return requireAuthSession(data.session, now)
     },
+    async signUpWithPassword(credentials: SignInCredentials) {
+      const { data, error } = await client.auth.signUp(credentials)
+      if (error) throw error
+      return toAuthSession(data.session, now)
+    },
     async signInWithGoogle() {
       if (!google) throw new Error('Google sign-in is not configured for this adapter')
       const external = google.openUrl !== undefined

@@ -2,6 +2,8 @@ import { useEffect, type ReactNode } from 'react'
 
 import {
   FakeAuthAdapter,
+  bindPendingInviteStorage,
+  createMemoryPendingInviteStorage,
   createAuthFacade,
   createSupabaseAuthAdapter,
   createSupabaseAuthClient,
@@ -43,6 +45,7 @@ export function MobileAuthProvider({
   supabase,
   devUserId,
 }: MobileAuthProviderProps) {
+  bindPendingInviteStorage(mobilePendingInviteStorage)
   return (
     <AuthProvider
       facade={facade}
@@ -55,6 +58,8 @@ export function MobileAuthProvider({
     </AuthProvider>
   )
 }
+
+const mobilePendingInviteStorage = createMemoryPendingInviteStorage()
 
 /**
  * Forwards inbound `cosimosi://auth-callback` deep links to the facade's OAuth
