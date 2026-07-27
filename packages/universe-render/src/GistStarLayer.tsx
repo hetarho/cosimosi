@@ -233,7 +233,7 @@ export function GistStarLayer({
       positions={positions}
       channels={snapshot.channels}
       getInstancePosition={getInstancePosition}
-      onNodePointerDown={onSelect ? handleSelect : undefined}
+      onNodeClick={onSelect ? handleSelect : undefined}
     />
   )
 }

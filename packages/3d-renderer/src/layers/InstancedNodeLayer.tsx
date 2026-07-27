@@ -64,7 +64,11 @@ export interface InstancedNodeLayerProps {
   readonly channels?: InstanceChannels
   /** Per-frame derived positions; when absent, instances read contiguous buffer slots. */
   readonly getInstancePosition?: InstancePositionMapper
-  readonly onNodePointerDown?: (nodeIndex: number) => void
+  /**
+   * Activates after pointer release so sibling DOM camera controls can finish their gesture
+   * before selection/focus changes disable them.
+   */
+  readonly onNodeClick?: (nodeIndex: number) => void
   readonly onNodeDoubleClick?: (nodeIndex: number) => void
   /** Hover: the node index under the pointer, or null when the pointer leaves the mesh. */
   readonly onNodeHover?: (nodeIndex: number | null) => void
@@ -87,7 +91,7 @@ export function InstancedNodeLayer({
   scale = 1,
   channels,
   getInstancePosition,
-  onNodePointerDown,
+  onNodeClick,
   onNodeDoubleClick,
   onNodeHover,
 }: InstancedNodeLayerProps) {
@@ -244,12 +248,12 @@ export function InstancedNodeLayer({
       }}
       args={[body.geometry, body.material, instanceCount]}
       frustumCulled={false}
-      onPointerDown={
-        onNodePointerDown
-          ? (event: ThreeEvent<PointerEvent>) => {
+      onClick={
+        onNodeClick
+          ? (event: ThreeEvent<MouseEvent>) => {
               event.stopPropagation()
               const index = pick(event.instanceId)
-              if (index !== null) onNodePointerDown(index)
+              if (index !== null) onNodeClick(index)
             }
           : undefined
       }

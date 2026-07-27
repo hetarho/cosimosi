@@ -29,7 +29,7 @@ export function CellStarLayer({ positions, onFocus, onFly }: CellStarLayerProps)
       count={ids.length}
       positions={positions}
       scale={cellStarChannels().size}
-      onNodePointerDown={onFocus}
+      onNodeClick={onFocus}
       onNodeDoubleClick={onFly}
     />
   )

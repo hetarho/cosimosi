@@ -76,7 +76,7 @@ export function StarLayer({
       positions={positions}
       firstNodeIndex={firstNodeIndex}
       channels={channels}
-      onNodePointerDown={onFocus}
+      onNodeClick={onFocus}
       onNodeDoubleClick={onFly}
       onNodeHover={onHover}
     />
