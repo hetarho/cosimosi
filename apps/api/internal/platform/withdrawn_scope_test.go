@@ -59,9 +59,7 @@ func TestWithdrawnScopeRefusesBeforeContextReadWithStableMetadata(t *testing.T) 
 	if !ok {
 		t.Fatalf("ErrorInfo missing from %v", err)
 	}
-	deadline := withdrawnAt.Add(
-		time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour,
-	)
+	deadline := withdrawnAt.Add(values.AccountWithdrawalRetentionWindow())
 	if info.GetReason() != apperr.ReasonPlatformAccountWithdrawn ||
 		info.GetMetadata()["withdrawn_at"] != withdrawnAt.Format(time.RFC3339) ||
 		info.GetMetadata()["restore_deadline_at"] != deadline.Format(time.RFC3339) {

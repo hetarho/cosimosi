@@ -27,9 +27,10 @@ const (
 
 // account
 const (
-	AccountNicknameMinLength = 2
-	AccountNicknameMaxLength = 24
-	AccountInviteLinkTtlDays = 7
+	AccountNicknameMinLength       = 2
+	AccountNicknameMaxLength       = 24
+	AccountInviteLinkTtlDays       = 7
+	AccountWithdrawalRetentionDays = 30
 )
 
 // rendering

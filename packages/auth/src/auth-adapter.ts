@@ -95,6 +95,11 @@ export interface AuthFacade {
    */
   cancelSignIn(): void
   signOut(): Promise<void>
+  /**
+   * End only the in-memory session when a server mutation has already made the
+   * authenticated session unusable and adapter sign-out cannot complete.
+   */
+  forceLocalSignOut(): void
   refresh(): Promise<void>
   /** Transport hook used by the Connect auth interceptor. */
   getAccessToken(): Promise<string | null>

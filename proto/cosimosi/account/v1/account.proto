@@ -34,7 +34,7 @@ service AccountService {
   // Store the caller's palette id. Accepts only an id known to the first-party registry; an
   // unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
   rpc SetPalettePreference(SetPalettePreferenceRequest) returns (PalettePreference);
-  // Account-scoped soft deletion; restorable for release.soft_delete_retention_days.
+  // Account-scoped soft deletion; restorable for account.withdrawal_retention_days.
   rpc Withdraw(WithdrawRequest) returns (WithdrawResponse);
   // Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
   // may call.

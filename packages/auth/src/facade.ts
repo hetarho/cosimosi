@@ -27,6 +27,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
   let disposed = false
   let locallySignedOut = false
   let suppressAdapterRefresh = false
+  let forcedLocalSignOut = false
   // True only between a Google flow leaving the app (adapter resolved null) and its
   // completion/abandonment. cancelSignIn is gated on it so a host's blanket
   // "foreground/pageshow → cancel" wiring can never abandon an in-flight password
@@ -66,6 +67,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
         actor.send({ type: 'SIGN_OUT' })
         break
       case 'authenticated':
+        if (forcedLocalSignOut) return
         if (change.source === 'tokenRefreshed' && suppressAdapterRefresh) return
         if (snapshot.userId && snapshot.expiresAt !== null) {
           locallySignedOut = false
@@ -107,6 +109,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
       try {
         const session = await adapter.signIn(credentials)
         if (!disposed && operationEpoch === epoch) {
+          forcedLocalSignOut = false
           locallySignedOut = false
           suppressAdapterRefresh = false
           actor.send({
@@ -138,6 +141,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
           return session ? ('signedIn' as const) : ('confirmationRequired' as const)
         }
         if (session) {
+          forcedLocalSignOut = false
           locallySignedOut = false
           suppressAdapterRefresh = false
           actor.send({
@@ -180,6 +184,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
         if (!disposed && operationEpoch === epoch) {
           if (session) {
             externalOAuthPending = false
+            forcedLocalSignOut = false
             locallySignedOut = false
             suppressAdapterRefresh = false
             actor.send({
@@ -217,6 +222,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
       try {
         const session = await adapter.completeOAuthSignIn(callbackUrl)
         if (!disposed && operationEpoch === epoch) {
+          forcedLocalSignOut = false
           locallySignedOut = false
           suppressAdapterRefresh = false
           actor.send({
@@ -254,6 +260,7 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
       const previousEpoch = epoch
       const previousLocallySignedOut = locallySignedOut
       const previousSuppressAdapterRefresh = suppressAdapterRefresh
+      const previousForcedLocalSignOut = forcedLocalSignOut
       const previousSnapshot = { ...actor.getSnapshot().context }
       const operationEpoch = ++epoch
       locallySignedOut = true
@@ -266,17 +273,28 @@ export function createAuthFacade({ adapter }: CreateAuthFacadeOptions): AuthFaca
           epoch = previousEpoch
           locallySignedOut = previousLocallySignedOut
           suppressAdapterRefresh = previousSuppressAdapterRefresh
+          forcedLocalSignOut = previousForcedLocalSignOut
           actor.send({ type: 'RESTORE', snapshot: previousSnapshot })
         }
         throw error
       }
     },
+    forceLocalSignOut() {
+      epoch += 1
+      locallySignedOut = true
+      suppressAdapterRefresh = true
+      forcedLocalSignOut = true
+      externalOAuthPending = false
+      if (!disposed) actor.send({ type: 'SIGN_OUT' })
+    },
     async refresh() {
+      if (forcedLocalSignOut) return
       const operationEpoch = ++epoch
       actor.send({ type: 'REFRESH_START' })
       try {
         const session = await adapter.refresh()
         if (!disposed && operationEpoch === epoch) {
+          forcedLocalSignOut = false
           locallySignedOut = false
           suppressAdapterRefresh = false
           actor.send({

@@ -13,11 +13,31 @@ var (
 	ErrUserJobSpecInvalid   = errors.New("memory user-job spec is invalid")
 )
 
-type UserJobSpec struct {
+type userJobSpec struct {
 	Kind     JobKind
 	DedupKey string
 	DueAt    time.Time
 }
+
+type UserJobIdentity struct {
+	kind     JobKind
+	dedupKey string
+}
+
+// WithdrawalSweepJobIdentity is the single constructor for the durable identity shared by
+// withdrawal enqueue and cancellation. Callers cannot supply a second kind or key shape.
+func WithdrawalSweepJobIdentity(scope platform.UserScope) (UserJobIdentity, error) {
+	if scope.UserID() == "" {
+		return UserJobIdentity{}, ErrScopeRequired
+	}
+	return UserJobIdentity{
+		kind:     JobKindWithdrawal,
+		dedupKey: "withdrawal:" + scope.UserID(),
+	}, nil
+}
+
+func (i UserJobIdentity) Kind() JobKind    { return i.kind }
+func (i UserJobIdentity) DedupKey() string { return i.dedupKey }
 
 type UserJobStore interface {
 	EnqueueJob(ctx context.Context, scope platform.UserScope, job Job) (Job, error)
@@ -45,10 +65,28 @@ func NewUserJobService(store UserJobStore, now func() time.Time, newID func() st
 	return UserJobService{store: store, now: now, newID: newID}, nil
 }
 
-func (s UserJobService) ScheduleUserJob(
+// Schedule implements account's withdrawal scheduler port without exposing memory's generic
+// queue shape to either composition root.
+func (s UserJobService) Schedule(
 	ctx context.Context,
 	scope platform.UserScope,
-	spec UserJobSpec,
+	dueAt time.Time,
+) error {
+	identity, err := WithdrawalSweepJobIdentity(scope)
+	if err != nil {
+		return err
+	}
+	return s.scheduleUserJob(ctx, scope, userJobSpec{
+		Kind:     identity.Kind(),
+		DedupKey: identity.DedupKey(),
+		DueAt:    dueAt,
+	})
+}
+
+func (s UserJobService) scheduleUserJob(
+	ctx context.Context,
+	scope platform.UserScope,
+	spec userJobSpec,
 ) error {
 	if scope.UserID() == "" {
 		return ErrScopeRequired
@@ -74,17 +112,12 @@ func (s UserJobService) ScheduleUserJob(
 	return err
 }
 
-func (s UserJobService) CancelUserJob(
-	ctx context.Context,
-	scope platform.UserScope,
-	kind JobKind,
-	dedupKey string,
-) error {
-	if scope.UserID() == "" {
-		return ErrScopeRequired
+// Cancel derives the same memory-owned identity as Schedule, making enqueue/cancel drift
+// unrepresentable in API and worker composition.
+func (s UserJobService) Cancel(ctx context.Context, scope platform.UserScope) error {
+	identity, err := WithdrawalSweepJobIdentity(scope)
+	if err != nil {
+		return err
 	}
-	if kind != JobKindWithdrawal || dedupKey == "" {
-		return ErrUserJobSpecInvalid
-	}
-	return s.store.CancelUserJob(ctx, scope, kind, dedupKey)
+	return s.store.CancelUserJob(ctx, scope, identity.Kind(), identity.DedupKey())
 }

@@ -24,6 +24,133 @@ import (
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
+func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing.T) {
+	pool := openWithdrawalTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-withdrawal-lifecycle-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupWithdrawalRows(t, pool, userID, userID, base+"-cleanup")
+	if _, err := pool.PgxPool().Exec(ctx, `
+		INSERT INTO users (user_id, nickname, timezone, locale)
+		VALUES ($1, 'withdraw', 'UTC', 'en')`,
+		userID,
+	); err != nil {
+		t.Fatalf("seed account failed: %v", err)
+	}
+
+	banned := map[string]bool{}
+	deleted := map[string]bool{}
+	directory := accountDirectoryAdapter{source: platformsupabase.Fake{
+		BannedUsers:  banned,
+		DeletedUsers: deleted,
+	}}
+	t.Setenv(envInviteTokenSigningKey, "")
+	_, service, err := accountServiceOption(
+		pool,
+		directory,
+		accountNoInviteGranter{},
+		accountNoSignupBonusGranter{},
+	)
+	if err != nil {
+		t.Fatalf("accountServiceOption failed: %v", err)
+	}
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+
+	first, err := service.Withdraw(ctx, scope)
+	if err != nil {
+		t.Fatalf("Withdraw(first) failed: %v", err)
+	}
+	identity, err := memory.WithdrawalSweepJobIdentity(scope)
+	if err != nil {
+		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
+	}
+	var firstJobID string
+	var firstDedupKey string
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT id, dedup_key
+		FROM jobs
+		WHERE user_id = $1 AND kind = $2`,
+		userID,
+		string(memory.JobKindWithdrawal),
+	).Scan(&firstJobID, &firstDedupKey); err != nil {
+		t.Fatalf("read first withdrawal job failed: %v", err)
+	}
+	if firstDedupKey != identity.DedupKey() {
+		t.Fatalf("scheduled dedup key = %q, want %q", firstDedupKey, identity.DedupKey())
+	}
+
+	if _, withdrawn, err := service.WithdrawnAt(ctx, userID); err != nil || !withdrawn {
+		t.Fatalf("WithdrawnAt before restore = withdrawn %v err %v", withdrawn, err)
+	}
+	if _, err := service.RestoreAccount(ctx, scope); err != nil {
+		t.Fatalf("RestoreAccount failed: %v", err)
+	}
+	if _, withdrawn, err := service.WithdrawnAt(ctx, userID); err != nil || withdrawn {
+		t.Fatalf("WithdrawnAt after restore = withdrawn %v err %v", withdrawn, err)
+	}
+	var cancelledJobs int
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT count(*)
+		FROM jobs
+		WHERE user_id = $1 AND kind = $2`,
+		userID,
+		string(memory.JobKindWithdrawal),
+	).Scan(&cancelledJobs); err != nil || cancelledJobs != 0 {
+		t.Fatalf("jobs after restore = %d, err %v, want zero", cancelledJobs, err)
+	}
+
+	second, err := service.Withdraw(ctx, scope)
+	if err != nil {
+		t.Fatalf("Withdraw(second) failed: %v", err)
+	}
+	if second.WithdrawnAt.Before(first.WithdrawnAt) {
+		t.Fatalf("second withdrawal moved backwards: first %v second %v", first, second)
+	}
+	var secondJobID string
+	if err := pool.PgxPool().QueryRow(ctx, `
+		SELECT id
+		FROM jobs
+		WHERE user_id = $1 AND kind = $2 AND dedup_key = $3`,
+		userID,
+		string(memory.JobKindWithdrawal),
+		identity.DedupKey(),
+	).Scan(&secondJobID); err != nil {
+		t.Fatalf("read second withdrawal job failed: %v", err)
+	}
+	handler := memory.NewWithdrawalSweepJobHandler(
+		service,
+		func() time.Time { return second.RestoreDeadlineAt },
+	)
+	if err := handler(ctx, memory.Job{
+		ID:      secondJobID,
+		UserID:  userID,
+		Kind:    memory.JobKindWithdrawal,
+		Payload: []byte(`{}`),
+		Targets: []memory.JobTarget{{
+			Kind: memory.JobTargetUser,
+			ID:   userID,
+		}},
+	}); err != nil {
+		t.Fatalf("withdrawal sweep failed: %v", err)
+	}
+	var remainingUsers int
+	if err := pool.PgxPool().QueryRow(
+		ctx,
+		"SELECT count(*) FROM users WHERE user_id = $1",
+		userID,
+	).Scan(&remainingUsers); err != nil || remainingUsers != 0 {
+		t.Fatalf("users after sweep = %d, err %v, want zero", remainingUsers, err)
+	}
+	if !banned[userID] || !deleted[userID] {
+		t.Fatalf("credential sequence = banned %v deleted %v, want both", banned, deleted)
+	}
+}
+
 func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 	pool := openWithdrawalTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -213,7 +340,7 @@ func seedWithdrawalTables(
 		INSERT INTO users (user_id, nickname, timezone, locale, deleted_at)
 		VALUES ($1, 'withdraw', 'UTC', 'en', $2)`,
 		userID,
-		now.Add(-time.Duration(values.ReleaseSoftDeleteRetentionDays)*24*time.Hour-time.Hour),
+		now.Add(-values.AccountWithdrawalRetentionWindow()-time.Hour),
 	)
 	exec("auth_providers", `
 		INSERT INTO auth_providers (user_id, provider, provider_user_id)
@@ -306,6 +433,14 @@ func seedWithdrawalTables(
 		INSERT INTO release_synapse_deltas (release_id, user_id, synapse_id, applied_delta)
 		VALUES ($1, $2, $3, 0.1)`, releaseID, userID, synapseID)
 
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	withdrawalIdentity, err := memory.WithdrawalSweepJobIdentity(scope)
+	if err != nil {
+		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
+	}
 	exec("jobs", `
 		INSERT INTO jobs
 			(id, user_id, kind, payload, status, next_run_at, created_at, dedup_key)
@@ -315,7 +450,7 @@ func seedWithdrawalTables(
 		keepJobID,
 		userID,
 		now,
-		"withdrawal:"+userID,
+		withdrawalIdentity.DedupKey(),
 		base+"-discard-job",
 		base+"-discard-dedup",
 	)

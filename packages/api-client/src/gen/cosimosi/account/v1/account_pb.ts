@@ -507,7 +507,7 @@ export const AccountService: GenService<{
     output: typeof PalettePreferenceSchema;
   },
   /**
-   * Account-scoped soft deletion; restorable for release.soft_delete_retention_days.
+   * Account-scoped soft deletion; restorable for account.withdrawal_retention_days.
    *
    * @generated from rpc cosimosi.account.v1.AccountService.Withdraw
    */

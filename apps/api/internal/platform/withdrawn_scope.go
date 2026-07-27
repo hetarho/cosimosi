@@ -39,9 +39,7 @@ func WithdrawnScopeInterceptor(
 				return next(ctx, req)
 			}
 			withdrawnAt = withdrawnAt.UTC()
-			deadline := withdrawnAt.Add(
-				time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour,
-			)
+			deadline := withdrawnAt.Add(values.AccountWithdrawalRetentionWindow())
 			return nil, apperr.Domain(
 				connect.CodePermissionDenied,
 				apperr.ReasonPlatformAccountWithdrawn,

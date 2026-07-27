@@ -20,6 +20,7 @@ export const VALUES = {
     nicknameMinLength: 2,
     nicknameMaxLength: 24,
     inviteLinkTtlDays: 7,
+    withdrawalRetentionDays: 30,
   },
   rendering: {
     activeSkin: "emotion",

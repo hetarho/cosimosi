@@ -47,6 +47,15 @@ The nickname command reuses `asyncCommandMachine` and calls `SignUp` with the tr
 runtime IANA timezone (`UTC` fallback), negotiated locale, and any held invite token. Profile data
 remains Query data; the machines contain control metadata only.
 
+## Committed withdrawal session teardown
+
+`commitWithdrawalAndEndSession` is the shared web/mobile coordinator for the account-withdrawal commit boundary. It
+does not touch auth if `Withdraw` fails. Once `Withdraw` succeeds, it attempts the normal adapter sign-out; if that
+network operation fails, `AuthFacade.forceLocalSignOut` still advances the session epoch, suppresses late adapter
+authentication events, clears the transport token view, and drives the scope boundary to reset user-owned state. The
+already committed withdrawal therefore never renders as a failed mutation or leaves an active local session against
+an account every RPC refuses.
+
 ## Reset registry
 
 Every stateful domain package owns one public reset seam for its user-scoped singletons. The app aggregator calls those

@@ -405,6 +405,47 @@ describe('createAuthFacade', () => {
     expect(facade.snapshot.userId).toBe('u')
   })
 
+  it('can force local teardown after adapter sign-out fails', async () => {
+    const adapter = new FakeAuthAdapter({
+      initial: { userId: 'u', expiresAt: 60_000 },
+      signOutError: 'network unavailable',
+      now: () => 1_000,
+    })
+    const facade = createAuthFacade({ adapter })
+
+    await flush()
+    await expect(facade.signOut()).rejects.toThrow('network unavailable')
+
+    facade.forceLocalSignOut()
+    expect(facade.snapshot.status).toBe('signedOut')
+    expect(facade.snapshot.userId).toBeNull()
+    await expect(facade.getAccessToken()).resolves.toBeNull()
+
+    adapter.emit(
+      { status: 'authenticated', userId: 'u', expiresAt: 1_001, error: null },
+      'signedIn',
+    )
+    expect(facade.snapshot.status).toBe('signedOut')
+  })
+
+  it('accepts a later cross-tab sign-in after an ordinary sign-out', async () => {
+    const adapter = new FakeAuthAdapter({
+      initial: { userId: 'u', expiresAt: 60_000 },
+      now: () => 1_000,
+    })
+    const facade = createAuthFacade({ adapter })
+
+    await flush()
+    await facade.signOut()
+    adapter.emit(
+      { status: 'authenticated', userId: 'other', expiresAt: 60_000, error: null },
+      'signedIn',
+    )
+
+    expect(facade.snapshot.status).toBe('authenticated')
+    expect(facade.snapshot.userId).toBe('other')
+  })
+
   it('keeps the authenticated snapshot when refresh fails transiently', async () => {
     const adapter = new FakeAuthAdapter({
       initial: { userId: 'u', expiresAt: 999 },

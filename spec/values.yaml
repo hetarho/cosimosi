@@ -36,6 +36,9 @@ account:
   nickname_max_length: 24
   # Stateless invite capabilities expire this many days after their signed issued-at.
   invite_link_ttl_days: 7
+  # A withdrawn account remains restorable for this many real-clock UTC days before its
+  # user-owned sweep may hard-delete it. Independent from diary-release retention.
+  withdrawal_retention_days: 30
 
 rendering:
   # Active universe background skin (preset key in @cosimosi/3d-renderer UNIVERSE_SKINS:
@@ -422,6 +425,6 @@ release:
   # [X2] The full-delete restore window: a diary release is a soft-delete kept restorable for this
   # many real-clock (wall-clock UTC) days, after which the retention sweep hard-deletes it. The single
   # boundary of the "30 days to change your mind" promise — real-world time, not universe-time, so it
-  # is independent of launches/recalls. Only full delete uses it; letting-go is permanent and has NO
+  # is independent of launches/recalls and account withdrawal. Letting-go is permanent and has NO
   # timer key (that absence is the [X5] guarantee).
   soft_delete_retention_days: 30

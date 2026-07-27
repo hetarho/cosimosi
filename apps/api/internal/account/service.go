@@ -16,6 +16,7 @@ type Service struct {
 	purgers            []UserDataPurger
 	scheduler          WithdrawalSweepScheduler
 	credentials        CredentialDirectory
+	withdrawalStatuses withdrawalStatusCache
 	now                func() time.Time
 	newID              func() string
 	paletteIDs         map[string]struct{}

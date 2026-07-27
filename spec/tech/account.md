@@ -111,7 +111,7 @@ cap of `10` rewarded invites per inviter.
 
 The locale contract is mirrored byte-for-byte at `packages/i18n/fixtures/locales.json` and
 `internal/account/testdata/locales.json`, with TypeScript and Go drift guards. Generated values provide nickname
-bounds `2…24` runes and a 7-day invite TTL.
+bounds `2…24` runes, a 7-day invite TTL, and the independent 30-day account-withdrawal retention window.
 
 ## Withdrawal admission and scheduling
 
@@ -122,8 +122,17 @@ service and exactly one exemption, `AccountServiceRestoreAccountProcedure`. It r
 all registered context handlers, fails closed when the reader is absent or errors, and treats an absent `users` row
 as an unprovisioned account rather than a withdrawal.
 
-The queue remains memory-owned. `memory.UserJobService` publishes a payload-free `UserJobSpec`; it alone constructs
-the empty payload and `(user, scope.UserID())` target. Dedup key `withdrawal:<userID>` makes enqueue replay-safe.
+The account service caches the published withdrawn fact for five seconds per user in a 4,096-entry LRU, with a
+generation fence around misses. `Withdraw` replaces the entry after commit and `RestoreAccount` invalidates it
+immediately after its clearing transaction commits, before cancellation; a concurrent older miss therefore cannot
+reintroduce stale withdrawn state. The current production topology declares one API container per environment in
+`docker-compose.prod.yml`, which is the consistency boundary for this local cache. A future multi-replica API must
+replace it with a coherently invalidated shared status source before scaling out. Both the account behavior and
+platform metadata deadline use the one Go-side duration derived from `account.withdrawal_retention_days`.
+
+The queue remains memory-owned. `memory.WithdrawalSweepJobIdentity(scope)` is the only constructor for the
+`withdrawal:<userID>` dedup identity. `memory.UserJobService` directly implements account's `Schedule`/`Cancel` port
+and alone constructs the empty payload and `(user, scope.UserID())` target, so API and worker cannot drift.
 `memory.NewJobRunner` accepts composition-root extra handlers and rejects duplicate kinds. Both worker roots bind
 `withdrawal_sweep` to `account.Service.SweepWithdrawnAccount`; withdrawal failures bypass the terminal claim ceiling
 and remain durably retryable.
@@ -142,6 +151,14 @@ Purge SQL stays in each owning context:
 - twinkle removes only the withdrawing user's ledger and balance;
 - account removes auth-provider rows, invites where `invites.user_id` is the withdrawing inviter, the palette
   preference, and finally `users`.
+
+Memory and Twinkle each publish their own `WithdrawalPurger`; API, dev worker, and production worker inject those
+types directly into account's consumer-owned port. No binary-local scheduler/purger adapter or duplicate missing-job
+error remains.
+
+Web and mobile keep their platform-specific withdrawal UI, but share
+`commitWithdrawalAndEndSession` from `@cosimosi/auth`: only a failed `Withdraw` is a failed mutation. Once the server
+commit succeeds, adapter sign-out is attempted and a failure falls back to an in-memory session teardown.
 
 `SweepWithdrawnAccount` locks the account row, re-derives the deadline, and runs named legs memory → twinkle before
 account dependents. It then bans and deletes the Supabase credential and deletes `users` last. Each earlier leg owns

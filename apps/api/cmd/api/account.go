@@ -58,6 +58,29 @@ type accountServiceDirectory interface {
 	account.CredentialDirectory
 }
 
+type withdrawalComposition struct {
+	scheduler account.WithdrawalSweepScheduler
+	purgers   []account.UserDataPurger
+}
+
+func newWithdrawalComposition(
+	jobStore memory.UserJobStore,
+	memoryPurgeRepo memory.UserPurgeRepo,
+	twinklePurgeRepo twinkle.UserPurgeRepo,
+) (withdrawalComposition, error) {
+	userJobs, err := memory.NewUserJobService(jobStore, nil, nil)
+	if err != nil {
+		return withdrawalComposition{}, err
+	}
+	return withdrawalComposition{
+		scheduler: userJobs,
+		purgers: []account.UserDataPurger{
+			memory.NewWithdrawalPurger(memoryPurgeRepo),
+			twinkle.NewWithdrawalPurger(twinklePurgeRepo),
+		},
+	}, nil
+}
+
 func accountServiceOption(
 	pool *platformdb.Pool,
 	directory accountServiceDirectory,
@@ -74,7 +97,11 @@ func accountServiceOption(
 	accountStore := accountpg.NewStore(pool.PgxPool())
 	memoryStore := memorypg.NewStore(pool.PgxPool())
 	twinkleStore := twinklepg.NewStore(pool.PgxPool())
-	userJobs, err := memory.NewUserJobService(memoryStore, nil, nil)
+	withdrawalAdapters, err := newWithdrawalComposition(
+		memoryStore,
+		memoryStore,
+		twinkleStore,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -85,12 +112,9 @@ func accountServiceOption(
 		InviteGranter:      inviteGranter,
 		SignupBonusGranter: signupBonusGranter,
 		Withdrawals:        accountStore,
-		Purgers: []account.UserDataPurger{
-			accountMemoryPurger{store: memoryStore},
-			accountTwinklePurger{store: twinkleStore},
-		},
-		Scheduler:   accountWithdrawalScheduler{jobs: userJobs},
-		Credentials: directory,
+		Purgers:            withdrawalAdapters.purgers,
+		Scheduler:          withdrawalAdapters.scheduler,
+		Credentials:        directory,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -120,55 +144,6 @@ func requireProductionCredentialDirectory(directory accountServiceDirectory) err
 		return errors.New("production account withdrawal requires Supabase Admin API credentials")
 	}
 	return nil
-}
-
-type accountWithdrawalScheduler struct {
-	jobs memory.UserJobService
-}
-
-func (s accountWithdrawalScheduler) Schedule(
-	ctx context.Context,
-	scope platform.UserScope,
-	dueAt time.Time,
-) error {
-	return s.jobs.ScheduleUserJob(ctx, scope, memory.UserJobSpec{
-		Kind:     memory.JobKindWithdrawal,
-		DedupKey: "withdrawal:" + scope.UserID(),
-		DueAt:    dueAt,
-	})
-}
-
-func (s accountWithdrawalScheduler) Cancel(ctx context.Context, scope platform.UserScope) error {
-	return s.jobs.CancelUserJob(
-		ctx,
-		scope,
-		memory.JobKindWithdrawal,
-		"withdrawal:"+scope.UserID(),
-	)
-}
-
-type accountMemoryPurger struct {
-	store memory.UserPurgeRepo
-}
-
-func (accountMemoryPurger) PurgeName() string { return "memory" }
-
-func (p accountMemoryPurger) PurgeUser(ctx context.Context, scope platform.UserScope) error {
-	jobID, ok := memory.WithdrawalSweepJobID(ctx)
-	if !ok {
-		return errors.New("memory purge requires the in-flight withdrawal job id")
-	}
-	return memory.PurgeUser(ctx, p.store, scope, jobID)
-}
-
-type accountTwinklePurger struct {
-	store twinkle.UserPurgeRepo
-}
-
-func (accountTwinklePurger) PurgeName() string { return "twinkle" }
-
-func (p accountTwinklePurger) PurgeUser(ctx context.Context, scope platform.UserScope) error {
-	return twinkle.PurgeUser(ctx, p.store, scope)
 }
 
 // accountInviteResolver translates the account context's eligible bound invite into Twinkle's

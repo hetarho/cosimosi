@@ -59,12 +59,12 @@ func TestUserJobServiceOwnsWithdrawalPayloadAndTargetShape(t *testing.T) {
 		t.Fatalf("NewUserScope failed: %v", err)
 	}
 
-	if err := service.ScheduleUserJob(context.Background(), scope, UserJobSpec{
-		Kind:     JobKindWithdrawal,
-		DedupKey: "withdrawal:withdrawal-user",
-		DueAt:    dueAt,
-	}); err != nil {
-		t.Fatalf("ScheduleUserJob failed: %v", err)
+	identity, err := WithdrawalSweepJobIdentity(scope)
+	if err != nil {
+		t.Fatalf("WithdrawalSweepJobIdentity failed: %v", err)
+	}
+	if err := service.Schedule(context.Background(), scope, dueAt); err != nil {
+		t.Fatalf("Schedule failed: %v", err)
 	}
 	if len(store.enqueued) != 1 {
 		t.Fatalf("enqueued jobs = %d, want 1", len(store.enqueued))
@@ -75,7 +75,7 @@ func TestUserJobServiceOwnsWithdrawalPayloadAndTargetShape(t *testing.T) {
 		job.Kind != JobKindWithdrawal ||
 		string(job.Payload) != "{}" ||
 		job.DedupKey == nil ||
-		*job.DedupKey != "withdrawal:withdrawal-user" ||
+		*job.DedupKey != identity.DedupKey() ||
 		!job.NextRunAt.Equal(dueAt) ||
 		len(job.Targets) != 1 ||
 		job.Targets[0].Kind != JobTargetUser ||
@@ -84,18 +84,13 @@ func TestUserJobServiceOwnsWithdrawalPayloadAndTargetShape(t *testing.T) {
 		t.Fatalf("withdrawal job = %#v", job)
 	}
 
-	if err := service.CancelUserJob(
-		context.Background(),
-		scope,
-		JobKindWithdrawal,
-		"withdrawal:withdrawal-user",
-	); err != nil {
-		t.Fatalf("CancelUserJob failed: %v", err)
+	if err := service.Cancel(context.Background(), scope); err != nil {
+		t.Fatalf("Cancel failed: %v", err)
 	}
 	if len(store.cancelled) != 1 ||
 		store.cancelled[0].userID != scope.UserID() ||
-		store.cancelled[0].kind != JobKindWithdrawal ||
-		store.cancelled[0].dedupKey != "withdrawal:withdrawal-user" {
+		store.cancelled[0].kind != identity.Kind() ||
+		store.cancelled[0].dedupKey != *job.DedupKey {
 		t.Fatalf("cancelled jobs = %#v", store.cancelled)
 	}
 }

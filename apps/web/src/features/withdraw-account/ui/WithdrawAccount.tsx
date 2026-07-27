@@ -4,7 +4,8 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useMutation } from '@tanstack/react-query'
 
 import { withdraw } from '@cosimosi/api-client'
-import { useAccountSession } from '@cosimosi/auth/react'
+import { commitWithdrawalAndEndSession } from '@cosimosi/auth'
+import { useAuthFacade } from '@cosimosi/auth/react'
 import { VALUES } from '@cosimosi/config'
 import { Button, Card } from '@cosimosi/ui'
 
@@ -13,15 +14,12 @@ import { useErrorToast } from '../../../shared/model/index.ts'
 
 export function WithdrawAccount({ exportOffer }: { exportOffer: ReactNode }) {
   const transport = useTransport()
-  const { signOut } = useAccountSession()
+  const auth = useAuthFacade()
   const showError = useErrorToast()
   const [confirming, setConfirming] = useState(false)
   const mutation = useMutation({
     gcTime: 0,
-    mutationFn: async () => {
-      await withdraw(transport)
-      await signOut()
-    },
+    mutationFn: () => commitWithdrawalAndEndSession(() => withdraw(transport), auth),
     onError: showError,
   })
 
@@ -41,7 +39,7 @@ export function WithdrawAccount({ exportOffer }: { exportOffer: ReactNode }) {
         <h2 className="text-sm font-medium text-text">{m.withdraw_title()}</h2>
         <p className="text-sm text-text-muted">
           {m.withdraw_description({
-            days: String(VALUES.release.softDeleteRetentionDays),
+            days: String(VALUES.account.withdrawalRetentionDays),
           })}
         </p>
         <p className="text-sm text-text-muted">{m.withdraw_export_offer()}</p>

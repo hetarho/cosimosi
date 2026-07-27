@@ -44,7 +44,11 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 	}
 	store := memorypg.NewStore(pool.PgxPool())
 	accountStore := accountpg.NewStore(pool.PgxPool())
-	userJobs, err := memory.NewUserJobService(store, nil, nil)
+	withdrawalAdapters, err := newWithdrawalComposition(
+		store,
+		store,
+		twinklepg.NewStore(pool.PgxPool()),
+	)
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -56,12 +60,9 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		InviteGranter:      &accountInviteRewardGranter{},
 		SignupBonusGranter: &accountSignupBonusGranter{},
 		Withdrawals:        accountStore,
-		Purgers: []account.UserDataPurger{
-			accountMemoryPurger{store: store},
-			accountTwinklePurger{store: twinklepg.NewStore(pool.PgxPool())},
-		},
-		Scheduler:   accountWithdrawalScheduler{jobs: userJobs},
-		Credentials: directory,
+		Purgers:            withdrawalAdapters.purgers,
+		Scheduler:          withdrawalAdapters.scheduler,
+		Credentials:        directory,
 	})
 	if err != nil {
 		pool.Close()

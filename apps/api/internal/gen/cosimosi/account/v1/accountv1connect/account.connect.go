@@ -79,7 +79,7 @@ type AccountServiceClient interface {
 	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
 	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
 	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
-	// Account-scoped soft deletion; restorable for release.soft_delete_retention_days.
+	// Account-scoped soft deletion; restorable for account.withdrawal_retention_days.
 	Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error)
 	// Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
 	// may call.
@@ -235,7 +235,7 @@ type AccountServiceHandler interface {
 	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
 	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
 	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
-	// Account-scoped soft deletion; restorable for release.soft_delete_retention_days.
+	// Account-scoped soft deletion; restorable for account.withdrawal_retention_days.
 	Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error)
 	// Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
 	// may call.

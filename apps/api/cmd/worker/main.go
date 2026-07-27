@@ -41,6 +41,29 @@ import (
 
 const workerPollInterval = time.Second
 
+type withdrawalComposition struct {
+	scheduler account.WithdrawalSweepScheduler
+	purgers   []account.UserDataPurger
+}
+
+func newWithdrawalComposition(
+	jobStore memory.UserJobStore,
+	memoryPurgeRepo memory.UserPurgeRepo,
+	twinklePurgeRepo twinkle.UserPurgeRepo,
+) (withdrawalComposition, error) {
+	userJobs, err := memory.NewUserJobService(jobStore, nil, nil)
+	if err != nil {
+		return withdrawalComposition{}, err
+	}
+	return withdrawalComposition{
+		scheduler: userJobs,
+		purgers: []account.UserDataPurger{
+			memory.NewWithdrawalPurger(memoryPurgeRepo),
+			twinkle.NewWithdrawalPurger(twinklePurgeRepo),
+		},
+	}, nil
+}
+
 func main() {
 	logger := log.Default()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -84,7 +107,11 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 	adminStore := adminpg.NewStore(pool.PgxPool())
 	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), ai.NewMeter(), logger)
 	accountStore := accountpg.NewStore(pool.PgxPool())
-	userJobs, err := memory.NewUserJobService(store, nil, nil)
+	withdrawalAdapters, err := newWithdrawalComposition(
+		store,
+		store,
+		twinklepg.NewStore(pool.PgxPool()),
+	)
 	if err != nil {
 		return nil, "", err
 	}
@@ -98,12 +125,9 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		InviteGranter:      workerNoInviteGranter{},
 		SignupBonusGranter: workerNoSignupBonusGranter{},
 		Withdrawals:        accountStore,
-		Purgers: []account.UserDataPurger{
-			workerMemoryPurger{store: store},
-			workerTwinklePurger{store: twinklepg.NewStore(pool.PgxPool())},
-		},
-		Scheduler:   workerWithdrawalScheduler{jobs: userJobs},
-		Credentials: directory,
+		Purgers:            withdrawalAdapters.purgers,
+		Scheduler:          withdrawalAdapters.scheduler,
+		Credentials:        directory,
 	})
 	if err != nil {
 		return nil, "", err
@@ -171,53 +195,4 @@ type workerNoSignupBonusGranter struct{}
 
 func (workerNoSignupBonusGranter) Grant(context.Context, platform.UserScope) error {
 	return errWorkerSignupBonusUnavailable
-}
-
-type workerWithdrawalScheduler struct {
-	jobs memory.UserJobService
-}
-
-func (s workerWithdrawalScheduler) Schedule(
-	ctx context.Context,
-	scope platform.UserScope,
-	dueAt time.Time,
-) error {
-	return s.jobs.ScheduleUserJob(ctx, scope, memory.UserJobSpec{
-		Kind:     memory.JobKindWithdrawal,
-		DedupKey: "withdrawal:" + scope.UserID(),
-		DueAt:    dueAt,
-	})
-}
-
-func (s workerWithdrawalScheduler) Cancel(ctx context.Context, scope platform.UserScope) error {
-	return s.jobs.CancelUserJob(
-		ctx,
-		scope,
-		memory.JobKindWithdrawal,
-		"withdrawal:"+scope.UserID(),
-	)
-}
-
-type workerMemoryPurger struct {
-	store memory.UserPurgeRepo
-}
-
-func (workerMemoryPurger) PurgeName() string { return "memory" }
-
-func (p workerMemoryPurger) PurgeUser(ctx context.Context, scope platform.UserScope) error {
-	jobID, ok := memory.WithdrawalSweepJobID(ctx)
-	if !ok {
-		return errors.New("memory purge requires the in-flight withdrawal job id")
-	}
-	return memory.PurgeUser(ctx, p.store, scope, jobID)
-}
-
-type workerTwinklePurger struct {
-	store twinkle.UserPurgeRepo
-}
-
-func (workerTwinklePurger) PurgeName() string { return "twinkle" }
-
-func (p workerTwinklePurger) PurgeUser(ctx context.Context, scope platform.UserScope) error {
-	return twinkle.PurgeUser(ctx, p.store, scope)
 }

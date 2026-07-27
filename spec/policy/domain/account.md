@@ -78,12 +78,16 @@ gain a profile-zone dependency.
 ## Withdrawal and restore rules
 
 - `users.deleted_at` is the sole withdrawal marker and the source for the restore deadline. Both account withdrawal
-  and diary release use `release.soft_delete_retention_days`; there is no account-specific retention value.
-- `Withdraw` first schedules one deduplicated `withdrawal_sweep` job, then stamps real-clock UTC. A retry returns the
-  original window and cannot extend it. A job left by a failed mark is inert because every sweep re-reads the marker.
+  and its sweep use `account.withdrawal_retention_days`; diary release retains its independent
+  `release.soft_delete_retention_days`.
+- `Withdraw` first proves the `users` row exists, then schedules one deduplicated `withdrawal_sweep` job and stamps
+  real-clock UTC. A never-provisioned scope schedules nothing. A retry returns the original window and cannot extend it.
+  A job left by a failed mark is inert because every sweep re-reads the marker.
 - A withdrawn authenticated scope may call only `RestoreAccount`. The platform admission gate refuses every other
   registered procedure before its context handler runs, including `SignUp`, and includes the withdrawal and deadline
   timestamps in `PLATFORM_ACCOUNT_WITHDRAWN`.
+- The admission read is cached briefly per user. `Withdraw` replaces the cached fact and `RestoreAccount` invalidates
+  it immediately after commit, before cancellation, so the next request cannot see stale withdrawn state.
 - `RestoreAccount` clears the marker only before the deadline and then cancels the job. Cancellation failure is safe:
   the stale job sees a live account and no-ops. Restore writes no balance, reward, ownership, or achievement
   compensation.

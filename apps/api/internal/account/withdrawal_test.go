@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -21,6 +22,7 @@ type fakeWithdrawalStore struct {
 	events         *[]string
 	dependentCalls int
 	userCalls      int
+	statusCalls    int
 }
 
 func (f *fakeWithdrawalStore) InWithdrawalTx(
@@ -34,6 +36,7 @@ func (f *fakeWithdrawalStore) WithdrawalStatus(
 	context.Context,
 	platform.UserScope,
 ) (time.Time, bool, error) {
+	f.statusCalls++
 	return f.withdrawnAt, f.found, nil
 }
 
@@ -217,7 +220,7 @@ func TestWithdrawPairsOneDeadlineAndPreservesOriginalWindow(t *testing.T) {
 		t.Fatalf("Withdraw(second) failed: %v", err)
 	}
 
-	retention := time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour
+	retention := values.AccountWithdrawalRetentionWindow()
 	wantAt := now.UTC()
 	if !first.WithdrawnAt.Equal(wantAt) ||
 		!first.RestoreDeadlineAt.Equal(wantAt.Add(retention)) ||
@@ -248,6 +251,29 @@ func TestWithdrawScheduleFailureCannotMarkAccount(t *testing.T) {
 	}
 	if !store.withdrawnAt.IsZero() {
 		t.Fatalf("withdrawnAt = %v, want no mark after enqueue failure", store.withdrawnAt)
+	}
+}
+
+func TestWithdrawWithoutProfileDoesNotScheduleSweep(t *testing.T) {
+	store := &fakeWithdrawalStore{}
+	scheduler := &fakeWithdrawalScheduler{}
+	service := newWithdrawalTestService(
+		t,
+		store,
+		scheduler,
+		[]UserDataPurger{&fakeUserDataPurger{name: "memory"}},
+		&fakeCredentialDirectory{},
+		time.Now(),
+	)
+
+	if _, err := service.Withdraw(
+		context.Background(),
+		mustScope(t, "unprovisioned-user"),
+	); !errors.Is(err, ErrSignupRequired) {
+		t.Fatalf("Withdraw error = %v, want ErrSignupRequired", err)
+	}
+	if len(scheduler.scheduled) != 0 {
+		t.Fatalf("scheduled jobs = %d, want zero", len(scheduler.scheduled))
 	}
 }
 
@@ -292,7 +318,7 @@ func TestWithdrawCrashAfterScheduleLeavesAnInertSweep(t *testing.T) {
 
 func TestRestoreAccountRefusalsAndFailedCancelRemainSweepSafe(t *testing.T) {
 	now := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
-	retention := time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour
+	retention := values.AccountWithdrawalRetentionWindow()
 
 	for _, testCase := range []struct {
 		name        string
@@ -346,9 +372,68 @@ func TestRestoreAccountRefusalsAndFailedCancelRemainSweepSafe(t *testing.T) {
 	}
 }
 
+func TestWithdrawnStatusCacheAvoidsRepeatedReadsAndInvalidatesOnRestore(t *testing.T) {
+	now := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
+	store := &fakeWithdrawalStore{found: true, withdrawnAt: now.Add(-time.Hour)}
+	service := newWithdrawalTestService(
+		t,
+		store,
+		&fakeWithdrawalScheduler{},
+		[]UserDataPurger{&fakeUserDataPurger{name: "memory"}},
+		&fakeCredentialDirectory{},
+		now,
+	)
+	scope := mustScope(t, "restore-user")
+
+	for range 2 {
+		withdrawnAt, withdrawn, err := service.WithdrawnAt(context.Background(), scope.UserID())
+		if err != nil || !withdrawn || !withdrawnAt.Equal(store.withdrawnAt) {
+			t.Fatalf("WithdrawnAt = (%v, %v, %v)", withdrawnAt, withdrawn, err)
+		}
+	}
+	if store.statusCalls != 1 {
+		t.Fatalf("status reads before restore = %d, want one", store.statusCalls)
+	}
+
+	if _, err := service.RestoreAccount(context.Background(), scope); err != nil {
+		t.Fatalf("RestoreAccount failed: %v", err)
+	}
+	if _, withdrawn, err := service.WithdrawnAt(context.Background(), scope.UserID()); err != nil || withdrawn {
+		t.Fatalf("WithdrawnAt after restore = withdrawn %v err %v, want live", withdrawn, err)
+	}
+	if store.statusCalls != 2 {
+		t.Fatalf("status reads after restore = %d, want cache miss read", store.statusCalls)
+	}
+}
+
+func TestWithdrawalStatusCacheIsBoundedAndMutationFencesOldMisses(t *testing.T) {
+	now := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
+	cache := withdrawalStatusCache{}
+
+	_, _, _, oldGeneration := cache.read("racing-user", now)
+	cache.invalidate("racing-user")
+	if cache.writeIfCurrent("racing-user", now, true, now, oldGeneration) {
+		t.Fatal("status read that began before invalidation repopulated the cache")
+	}
+
+	for index := range withdrawalStatusCacheMaxEntries + 1 {
+		cache.replace(fmt.Sprintf("user-%d", index), time.Time{}, false, now)
+	}
+	if len(cache.entries) != withdrawalStatusCacheMaxEntries {
+		t.Fatalf(
+			"cache entries = %d, want bounded at %d",
+			len(cache.entries),
+			withdrawalStatusCacheMaxEntries,
+		)
+	}
+	if _, exists := cache.entries["user-0"]; exists {
+		t.Fatal("least-recently-used cache entry was not evicted")
+	}
+}
+
 func TestWithdrawalSweepRechecksDeadlineAndOrdersCompletionMarkerLast(t *testing.T) {
 	now := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
-	retention := time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour
+	retention := values.AccountWithdrawalRetentionWindow()
 	events := []string{}
 	store := &fakeWithdrawalStore{
 		found:       true,
@@ -401,7 +486,7 @@ func TestWithdrawalSweepRechecksDeadlineAndOrdersCompletionMarkerLast(t *testing
 
 func TestWithdrawalSweepReplaysSafelyAfterEveryLegFailure(t *testing.T) {
 	now := time.Date(2026, 7, 26, 0, 0, 0, 0, time.UTC)
-	retention := time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour
+	retention := values.AccountWithdrawalRetentionWindow()
 	for _, failure := range []string{"memory", "twinkle", "dependents", "ban", "delete", "user"} {
 		t.Run(failure, func(t *testing.T) {
 			events := []string{}
