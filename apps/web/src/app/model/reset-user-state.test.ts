@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { pendingInvite, recordSignupCompletion, takeSignupCompletion } from '@cosimosi/auth'
-import { getActiveLocale, setActiveLocale } from '@cosimosi/i18n'
+import { getActiveLocale, setActiveLocale } from '../../shared/i18n/index.ts'
 
 import { useAdvanceAnnouncementStore } from '../../features/accelerate-time/index.ts'
 import { usePalettePreferenceStore } from '../../features/change-palette/index.ts'

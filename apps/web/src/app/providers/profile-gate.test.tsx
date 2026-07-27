@@ -9,7 +9,7 @@ import { AccountService } from '@cosimosi/api-client'
 import { FakeAuthAdapter, createAuthFacade, pendingInvite } from '@cosimosi/auth'
 import { createClientCacheQueryClient } from '@cosimosi/client-cache'
 import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 

@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { createRouterTransport } from '@connectrpc/connect'
 import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { AccountService } from '@cosimosi/api-client'
-import { getActiveLocale, setActiveLocale } from '@cosimosi/i18n'
 
+import { LocaleRenderBoundary, m, setActiveLocale } from '../../shared/i18n/index.ts'
+import { WebI18nProvider } from './i18n-provider.tsx'
 import { LocaleBootstrap } from './locale-bootstrap.tsx'
 
 afterEach(() => {
@@ -33,14 +34,23 @@ it('applies the server locale without withholding its sibling render', async () 
   })
 
   render(
-    <TransportProvider transport={transport}>
-      <QueryClientProvider client={queryClient}>
-        <LocaleBootstrap />
-        <span>product-child</span>
-      </QueryClientProvider>
-    </TransportProvider>,
+    <WebI18nProvider locale="en">
+      <LocaleRenderBoundary>
+        {() => (
+          <TransportProvider transport={transport}>
+            <QueryClientProvider client={queryClient}>
+              <LocaleBootstrap />
+              <MessageProbe />
+            </QueryClientProvider>
+          </TransportProvider>
+        )}
+      </LocaleRenderBoundary>
+    </WebI18nProvider>,
   )
 
-  expect(screen.getByText('product-child')).toBeTruthy()
-  await vi.waitFor(() => expect(getActiveLocale()).toBe('ko'))
+  expect(await screen.findByText('나')).toBeTruthy()
 })
+
+function MessageProbe() {
+  return <span>{m.me_title()}</span>
+}

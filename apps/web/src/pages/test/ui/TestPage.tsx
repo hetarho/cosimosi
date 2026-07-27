@@ -11,7 +11,7 @@ import {
   readTestPanelMessage,
   type TestPanelCapability,
   type TestPanelDefinition,
-} from '../../../shared/test-panel/index.ts'
+} from '../model/registry.ts'
 import { PHASE_ONE_TEST_CAPABILITIES, platformTestPanels } from '../lib/platform-panels.ts'
 
 const ACTIVE_PANEL_ARIA_CURRENT = 'page' as const

@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { pendingInvite } from '@cosimosi/auth'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
 import { createTestHarnessFakes } from '../../pages/test/index.ts'

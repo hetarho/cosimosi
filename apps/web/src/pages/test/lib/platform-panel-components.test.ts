@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
+import { defaultLocale, setActiveLocale } from '../../../shared/i18n/index.ts'
 import type { PingResponse } from '@cosimosi/api-client'
 
 import { formatPingServerTime } from './platform-panel-format.ts'

@@ -10,7 +10,7 @@ import {
 import type { SessionStatus } from '@cosimosi/auth'
 import { setClientCacheData } from '@cosimosi/client-cache'
 import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
+import { defaultLocale, setActiveLocale } from '../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
 import { createTestHarnessFakes } from '../pages/test/index.ts'

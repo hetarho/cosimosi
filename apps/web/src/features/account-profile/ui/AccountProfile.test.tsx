@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRouterTransport } from '@connectrpc/connect'
 import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { AccountService, type UpdateProfileRequest } from '@cosimosi/api-client'
-import { getActiveLocale, setActiveLocale } from '@cosimosi/i18n'
+import { getActiveLocale, setActiveLocale } from '../../../shared/i18n/index.ts'
 
 import { readStoredLocale, writeStoredLocale } from '../../../shared/lib/locale-storage.ts'
 import { ErrorToastContext } from '../../../shared/model/index.ts'
@@ -63,12 +63,15 @@ describe('AccountProfile', () => {
   it('applies and stores locale before the write, then rolls both back on refusal', async () => {
     const order: string[] = []
     const showError = vi.fn()
+    let rejectUpdate!: (error: Error) => void
     writeStoredLocale('en')
     renderProfile(
       {
         updateProfile() {
           order.push(`${getActiveLocale()}:${readStoredLocale()}`)
-          throw new Error('refused')
+          return new Promise((_, reject) => {
+            rejectUpdate = reject
+          })
         },
       },
       showError,
@@ -77,10 +80,14 @@ describe('AccountProfile', () => {
 
     await user.click(await screen.findByRole('button', { name: '한국어' }))
 
+    expect(await screen.findByText('언어')).toBeTruthy()
+    await act(async () => rejectUpdate(new Error('refused')))
     await waitFor(() => expect(showError).toHaveBeenCalledTimes(1))
     expect(order).toEqual(['ko:ko'])
     expect(getActiveLocale()).toBe('en')
     expect(readStoredLocale()).toBe('en')
+    expect(screen.getByText('Language')).toBeTruthy()
+    expect(screen.queryByText('언어')).toBeNull()
   })
 })
 

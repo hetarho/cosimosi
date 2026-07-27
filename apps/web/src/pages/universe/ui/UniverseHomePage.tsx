@@ -9,7 +9,7 @@ import {
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 import {
   universeNavigationMachine,
   useDeletionTargetStore,

@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
-import { m } from '@cosimosi/i18n'
+import { LocaleRenderBoundary, m } from '../../shared/i18n/index.ts'
 import { presentAppError } from '@cosimosi/errors'
 import {
   ObservedErrorBoundary,
@@ -74,20 +74,24 @@ export function MobileAppProviders({
     <MobileObservabilityProvider facade={observabilityFacade}>
       <ObservedErrorBoundary fallback={MobileAppErrorFallback}>
         <MobileI18nProvider locale={locale} deviceLocale={deviceLocale}>
-          <MobileThemeProvider>
-            <MobileErrorProvider>
-              <MobileAuthProvider facade={authFacade} supabase={supabase} devUserId={devUserId}>
-                <MobileObservabilitySessionBridge />
-                <MobileClientCacheProvider
-                  queryClient={queryClient}
-                  transport={transport}
-                  apiBaseUrl={apiBaseUrl}
-                >
-                  <MachineActorsProvider>{children}</MachineActorsProvider>
-                </MobileClientCacheProvider>
-              </MobileAuthProvider>
-            </MobileErrorProvider>
-          </MobileThemeProvider>
+          <LocaleRenderBoundary>
+            {() => (
+              <MobileThemeProvider>
+                <MobileErrorProvider>
+                  <MobileAuthProvider facade={authFacade} supabase={supabase} devUserId={devUserId}>
+                    <MobileObservabilitySessionBridge />
+                    <MobileClientCacheProvider
+                      queryClient={queryClient}
+                      transport={transport}
+                      apiBaseUrl={apiBaseUrl}
+                    >
+                      <MachineActorsProvider>{children}</MachineActorsProvider>
+                    </MobileClientCacheProvider>
+                  </MobileAuthProvider>
+                </MobileErrorProvider>
+              </MobileThemeProvider>
+            )}
+          </LocaleRenderBoundary>
         </MobileI18nProvider>
       </ObservedErrorBoundary>
     </MobileObservabilityProvider>

@@ -13,13 +13,13 @@ import { validateNickname } from '@cosimosi/auth'
 import { VALUES } from '@cosimosi/config'
 import {
   getActiveLocale,
+  m,
   resolveDeviceTimeZone,
   setActiveLocale,
   type Locale,
-} from '@cosimosi/i18n'
+} from '../../../shared/i18n/index.ts'
 import { Button, Card, TextField } from '@cosimosi/ui'
 
-import { m } from '../../../shared/i18n/index.ts'
 import { writeStoredLocale } from '../../../shared/lib/locale-storage.ts'
 import { useErrorToast } from '../../../shared/model/index.ts'
 

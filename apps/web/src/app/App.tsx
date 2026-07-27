@@ -4,13 +4,12 @@ import {
 } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { presentAppError } from '@cosimosi/errors'
-import { m } from '@cosimosi/i18n'
 import type { ApiTransport } from '@cosimosi/api-client'
 import type { AuthFacade } from '@cosimosi/auth'
 import type { ClientCacheQueryClient } from '@cosimosi/client-cache'
-import type { Locale } from '@cosimosi/i18n'
 import type { ObservabilityFacade } from '@cosimosi/observability'
 
+import { LocaleRenderBoundary, m, type Locale } from '../shared/i18n/index.ts'
 import { WebAuthProvider } from './providers/auth-provider.tsx'
 import { WebI18nProvider } from './providers/i18n-provider.tsx'
 import { WebErrorProvider } from './providers/error-provider.tsx'
@@ -43,14 +42,18 @@ export default function App({
     <WebObservabilityProvider facade={observabilityFacade}>
       <ObservedErrorBoundary fallback={WebAppErrorFallback}>
         <WebI18nProvider locale={locale}>
-          <WebErrorProvider>
-            <WebAuthProvider facade={authFacade}>
-              <WebObservabilitySessionBridge />
-              <WebClientCacheProvider queryClient={queryClient} transport={transport}>
-                <WebRouterProvider router={router} />
-              </WebClientCacheProvider>
-            </WebAuthProvider>
-          </WebErrorProvider>
+          <LocaleRenderBoundary>
+            {() => (
+              <WebErrorProvider>
+                <WebAuthProvider facade={authFacade}>
+                  <WebObservabilitySessionBridge />
+                  <WebClientCacheProvider queryClient={queryClient} transport={transport}>
+                    <WebRouterProvider router={router} />
+                  </WebClientCacheProvider>
+                </WebAuthProvider>
+              </WebErrorProvider>
+            )}
+          </LocaleRenderBoundary>
         </WebI18nProvider>
       </ObservedErrorBoundary>
     </WebObservabilityProvider>

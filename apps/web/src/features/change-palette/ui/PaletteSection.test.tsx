@@ -6,9 +6,8 @@ import { TransportProvider } from '@connectrpc/connect-query'
 import { createPlatformMockTransport } from '@cosimosi/api-client'
 import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { usePalettePreferenceStore } from '@cosimosi/emotion/react'
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 
-import { m } from '../../../shared/i18n/index.ts'
+import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
 import { PaletteSection } from './PaletteSection.tsx'
 
 function renderSection(): string {

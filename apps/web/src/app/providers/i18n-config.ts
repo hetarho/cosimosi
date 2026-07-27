@@ -1,4 +1,4 @@
-import { resolveLocale, type Locale } from '@cosimosi/i18n'
+import { resolveLocale, type Locale } from '../../shared/i18n/index.ts'
 
 export interface WebLocaleSources {
   /** A previously stored explicit choice, if any. */

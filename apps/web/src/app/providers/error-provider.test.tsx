@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ErrorInfoSchema } from '@cosimosi/api-client'
 import { VALUES } from '@cosimosi/config'
 import { ERROR_REASONS } from '@cosimosi/errors'
-import { m, setActiveLocale } from '@cosimosi/i18n'
+import { m, setActiveLocale } from '../../shared/i18n/index.ts'
 
 import { useErrorToast } from '../../shared/model/index.ts'
 import { WebErrorProvider } from './error-provider.tsx'

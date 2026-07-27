@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 
 import { FakeAuthAdapter, createAuthFacade, type AuthAdapter } from '@cosimosi/auth'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 
 import { LoginPage } from '../../pages/login/index.ts'
 import { WebAuthProvider } from './auth-provider.tsx'

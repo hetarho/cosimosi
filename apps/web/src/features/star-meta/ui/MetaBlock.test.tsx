@@ -3,10 +3,9 @@ import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createEmotion } from '@cosimosi/emotion'
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 import type { EpisodicMemory, Neuron } from '@cosimosi/memory'
 
-import { m, moodLabel } from '../../../shared/i18n/index.ts'
+import { defaultLocale, m, moodLabel, setActiveLocale } from '../../../shared/i18n/index.ts'
 import { MetaBlock } from './MetaBlock.tsx'
 
 const memory = {

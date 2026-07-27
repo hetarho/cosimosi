@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { createGetPalettePreferenceQueryOptions } from '@cosimosi/api-client'
 import { DEFAULT_PALETTE_ID, resolvePaletteById } from '@cosimosi/emotion'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 
 import {
   initializePaletteSession,

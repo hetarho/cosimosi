@@ -2,9 +2,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
-
-import { m } from '../../../shared/i18n/index.ts'
+import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
 import { DeleteConfirm } from './DeleteConfirm.tsx'
 
 function render(affectedNames: readonly string[]) {

@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { Outlet, useLocation, useParams, useSearch } from '@tanstack/react-router'
 
 import { gateDecision, pendingInvite } from '@cosimosi/auth'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 
 import { useSessionSnapshot } from '../../shared/auth/index.ts'
 import { LocaleBootstrap } from '../providers/locale-bootstrap.tsx'

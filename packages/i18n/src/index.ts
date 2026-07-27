@@ -13,8 +13,8 @@
  *   `setActiveLocale(...)`; components observe it through `subscribeLocale` +
  *   `getActiveLocale` (e.g. React's `useSyncExternalStore`).
  *
- * The React binding seam (provider + hook) lives in each app under app/, because
- * locale negotiation is platform-specific; this package owns only the pure parts.
+ * The optional React hook lives at `@cosimosi/i18n/react`; each app re-exports it
+ * from `shared/i18n` and owns only its platform-specific negotiation provider.
  *
  * Message sources are packages/i18n/messages/{en,ko}.json; `pnpm gen:messages`
  * compiles them into ./gen (committed, freshness-checked by check:gen). Canonical

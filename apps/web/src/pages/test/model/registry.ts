@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { m } from '@cosimosi/i18n'
+import { m } from '../../../shared/i18n/index.ts'
 
 export type TestPanelCapability =
   | 'transport'

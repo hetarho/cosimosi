@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { defaultLocale, m, setActiveLocale } from '@cosimosi/i18n'
+import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
 import { gistViewSpend, recallSpend } from '@cosimosi/twinkle'
 import { useSpendQuote } from '@cosimosi/twinkle/react'
 

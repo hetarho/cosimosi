@@ -14,7 +14,7 @@ import {
   createTestPanelRegistry,
   type TestPanelCapability,
   type TestPanelDefinition,
-} from '../../../shared/test-panel/index.ts'
+} from '../model/registry.ts'
 
 export const PHASE_ONE_TEST_CAPABILITIES = [
   'transport',

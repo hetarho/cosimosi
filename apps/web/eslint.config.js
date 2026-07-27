@@ -80,16 +80,10 @@ export default defineConfig([
     },
   },
   {
-    // three.js / R3F live only inside the @cosimosi/3d-renderer package (plan/14);
-    // slices consume that package boundary, never three/R3F directly.
-    files: [
-      'src/main.tsx',
-      'src/app/**/*.{ts,tsx}',
-      'src/pages/**/*.{ts,tsx}',
-      'src/widgets/**/*.{ts,tsx}',
-      'src/features/**/*.{ts,tsx}',
-      'src/entities/**/*.{ts,tsx}',
-    ],
+    // Product code consumes renderer and i18n packages through their owned seams.
+    // The i18n barrel and locale-storage adapter are the only direct package imports.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/shared/i18n/**', 'src/shared/lib/locale-storage.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -99,6 +93,11 @@ export default defineConfig([
               group: ['three', 'three/*', '@react-three/fiber'],
               message:
                 'Import three/R3F only via the @cosimosi/3d-renderer package, not directly in a slice.',
+            },
+            {
+              group: ['@cosimosi/i18n', '@cosimosi/i18n/*'],
+              message:
+                'Import i18n through src/shared/i18n/index.ts; only the seam and locale-storage adapter import the package directly.',
             },
           ],
         },

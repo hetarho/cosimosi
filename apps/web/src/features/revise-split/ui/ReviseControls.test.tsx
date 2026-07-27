@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { MOODS } from '@cosimosi/emotion'
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
+import { defaultLocale, setActiveLocale } from '../../../shared/i18n/index.ts'
 
 import { ReviseControls, type EditableMemoryView } from './ReviseControls.tsx'
 

@@ -2,8 +2,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
-import { m } from '@cosimosi/i18n'
+import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
 
 import { requestTimeSyncConsent, useTimeSyncConsentStore } from '@cosimosi/universe'
 import { ConfirmTimeSyncDialog } from './ConfirmTimeSyncDialog.tsx'

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { createGetProfileQueryOptions } from '@cosimosi/api-client'
 import { pendingInvite } from '@cosimosi/auth'
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 import { Button, Card } from '@cosimosi/ui'
 
 import { NicknameStep } from '../../features/sign-up/index.ts'

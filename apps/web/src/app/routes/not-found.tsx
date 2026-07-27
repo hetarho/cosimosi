@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 
-import { m } from '@cosimosi/i18n'
+import { m } from '../../shared/i18n/index.ts'
 import { Button } from '@cosimosi/ui'
 
 /** Rendered for any unmatched path, and for /test when the diagnostics flag is off. */

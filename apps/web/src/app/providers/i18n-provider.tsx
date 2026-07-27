@@ -1,8 +1,11 @@
 import { useEffect, type ReactNode } from 'react'
 
-import { setActiveLocale, type Locale } from '@cosimosi/i18n'
-
-import { useActiveLocale } from '../../shared/i18n/index.ts'
+import {
+  ActiveLocaleProvider,
+  setActiveLocale,
+  useActiveLocale,
+  type Locale,
+} from '../../shared/i18n/index.ts'
 import { readStoredLocale } from '../../shared/lib/locale-storage.ts'
 import { resolveWebLocale } from './i18n-config.ts'
 
@@ -28,12 +31,21 @@ export function WebI18nProvider({ children, locale: override }: WebI18nProviderP
     )
   }, [override])
 
+  return (
+    <ActiveLocaleProvider>
+      <DocumentLocaleSync>{children}</DocumentLocaleSync>
+    </ActiveLocaleProvider>
+  )
+}
+
+function DocumentLocaleSync({ children }: { children?: ReactNode }) {
+  const locale = useActiveLocale()
+
   // Keep <html lang> in sync for assistive tech; index.html ships a static lang
   // and this corrects it to the resolved locale.
-  const locale = useActiveLocale()
   useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
 
-  return <>{children}</>
+  return children
 }

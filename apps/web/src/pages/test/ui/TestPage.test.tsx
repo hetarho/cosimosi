@@ -2,12 +2,9 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
+import { defaultLocale, setActiveLocale } from '../../../shared/i18n/index.ts'
 
-import {
-  createTestPanelRegistry,
-  type TestPanelDefinition,
-} from '../../../shared/test-panel/index.ts'
+import { createTestPanelRegistry, type TestPanelDefinition } from '../model/registry.ts'
 import { TestPage } from './TestPage.tsx'
 
 describe('test harness page shell', () => {

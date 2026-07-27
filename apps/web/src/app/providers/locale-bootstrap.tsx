@@ -4,7 +4,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import { createGetProfileQueryOptions } from '@cosimosi/api-client'
-import { setActiveLocale, supportedLocales, type Locale } from '@cosimosi/i18n'
+import { setActiveLocale, supportedLocales, type Locale } from '../../shared/i18n/index.ts'
 
 export function LocaleBootstrap() {
   const transport = useTransport()
