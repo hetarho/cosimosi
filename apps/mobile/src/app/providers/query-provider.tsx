@@ -12,6 +12,8 @@ import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClientProvider } from '@tanstack/react-query'
 
 import { type ApiTransport } from '@cosimosi/api-client'
+import { SessionScopeBoundary } from '@cosimosi/auth/react'
+import { resetUserState } from '@cosimosi/auth/user-state'
 import {
   clearOwnedClientCache,
   resolveClientCacheQueryClient,
@@ -19,10 +21,9 @@ import {
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
-import { SessionScopeBoundary } from '@cosimosi/auth/react'
 
-import { resetMobileUserState } from '../model/reset-user-state.ts'
 import { resolveMobileApiBaseUrl } from '../../shared/config/index.ts'
+import { resetMobileLocaleUserState } from '../../shared/native/locale-storage.ts'
 import { useAuthFacade } from './auth-provider.tsx'
 
 interface MobileApiContextValue {
@@ -59,7 +60,10 @@ export function MobileClientCacheProvider({
   const resetScope = useCallback(
     (nextScopeKey: string) => {
       resolvedQueryClient.clear()
-      resetMobileUserState(nextScopeKey)
+      resetUserState(nextScopeKey, {
+        name: 'locale',
+        reset: resetMobileLocaleUserState,
+      })
     },
     [resolvedQueryClient],
   )

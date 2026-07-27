@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { basename, join, relative, resolve, sep } from 'node:path'
+import ts from 'typescript'
 import { repoRoot, section, ok, note, fail } from './lib.mjs'
 
 const APPS = ['apps/web', 'apps/mobile']
@@ -25,7 +26,8 @@ const APP_ROOT_ALLOW = new Set([
 const MOBILE_NAVIGATION_SCREEN_ALLOW = new Set(['BootScreen.tsx'])
 const CODE_EXT = /\.(ts|tsx|js|jsx|css)$/
 const PURE_MODULE_EXT = /\.(ts|tsx|js|jsx)$/
-const PURE_MODULE_SEGMENT = /(^|\/)(api|model|lib|config|shared)(\/|$)/
+const PURE_MODULE_SEGMENT =
+  /(^|\/)(api|model|lib|config|shared)(\/|$)|(^|\/)app\/(providers|model)(\/|$)/
 const GENERIC_SEGMENTS = new Set([
   'components',
   'hooks',
@@ -59,6 +61,24 @@ function portableRelative(from, to) {
 
 function digest(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
+}
+
+function normalizedDigest(path) {
+  const source = readFileSync(path, 'utf8')
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.JSX, source)
+  const identifiers = new Map()
+  const hash = createHash('sha256')
+
+  for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    if (token === ts.SyntaxKind.Identifier || token === ts.SyntaxKind.PrivateIdentifier) {
+      const identifier = scanner.getTokenText()
+      if (!identifiers.has(identifier)) identifiers.set(identifier, identifiers.size)
+      hash.update(`identifier:${identifiers.get(identifier)}\n`)
+      continue
+    }
+    hash.update(`${token}:${scanner.getTokenText()}\n`)
+  }
+  return hash.digest('hex')
 }
 
 export function findFsdLayoutProblems(root = repoRoot, apps = APPS) {
@@ -121,9 +141,12 @@ export function findFsdLayoutProblems(root = repoRoot, apps = APPS) {
       ) {
         continue
       }
-      if (digest(webPath) === digest(mobilePath)) {
+      const byteIdentical = digest(webPath) === digest(mobilePath)
+      const normalizedEquivalent =
+        byteIdentical || normalizedDigest(webPath) === normalizedDigest(mobilePath)
+      if (normalizedEquivalent) {
         problems.push(
-          `${modulePath} — byte-identical pure module exists in both apps. ` +
+          `${modulePath} — ${byteIdentical ? 'byte-identical' : 'normalized-equivalent'} pure module exists in both apps. ` +
             `Promote the implementation to its owning domain package and let both apps import it.`,
         )
       }

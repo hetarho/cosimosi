@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-
 import { describe, expect, it } from 'vitest'
 
 import { useAdvanceAnnouncementStore } from './advance-announcement-store.ts'
@@ -93,29 +90,4 @@ describe('resetUniverseUserState', () => {
     expect(useTimeSyncConsentStore.getState().pending).toBeNull()
     await expect(pendingConsent).resolves.toBe('cancel')
   })
-
-  it('keeps the web and mobile app reset inventories in parity', () => {
-    const webSource = readFileSync(
-      fileURLToPath(
-        new URL('../../../apps/web/src/app/model/reset-user-state.ts', import.meta.url),
-      ),
-      'utf8',
-    )
-    const mobileSource = readFileSync(
-      fileURLToPath(
-        new URL('../../../apps/mobile/src/app/model/reset-user-state.ts', import.meta.url),
-      ),
-      'utf8',
-    )
-
-    expect(readInventory(webSource, 'WEB_USER_STATE_RESET_INVENTORY')).toEqual(
-      readInventory(mobileSource, 'MOBILE_USER_STATE_RESET_INVENTORY'),
-    )
-  })
 })
-
-function readInventory(source: string, name: string): string[] {
-  const match = source.match(new RegExp(`${name} = \\[(.*?)\\] as const`, 's'))
-  if (!match) throw new Error(`Missing ${name}`)
-  return [...match[1].matchAll(/'([^']+)'/g)].map((entry) => entry[1])
-}

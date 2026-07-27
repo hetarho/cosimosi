@@ -9,7 +9,7 @@ import { inspectClientCache, setClientCacheData } from '@cosimosi/client-cache'
 import { VALUES } from '@cosimosi/config'
 import { Badge, Button, type BadgeVariant } from '@cosimosi/ui'
 
-import { useAuthFacade, useSessionSnapshot } from '../../../shared/auth/index.ts'
+import { useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
 import {
   m,
   setActiveLocale,

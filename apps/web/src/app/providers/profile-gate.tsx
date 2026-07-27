@@ -5,19 +5,17 @@ import { useQuery } from '@tanstack/react-query'
 
 import { createGetProfileQueryOptions } from '@cosimosi/api-client'
 import { pendingInvite } from '@cosimosi/auth'
+import { useAuthFacade } from '@cosimosi/auth/react'
 import { m } from '../../shared/i18n/index.ts'
 import { Button, Card } from '@cosimosi/ui'
 
 import { NicknameStep } from '../../features/sign-up/index.ts'
-import { useAuthFacade, useSessionSnapshot } from '../../shared/auth/index.ts'
 
 export function ProfileGate({ children }: { children?: ReactNode }) {
   const transport = useTransport()
   const facade = useAuthFacade()
-  const { userId } = useSessionSnapshot()
   const profile = useQuery({
     ...createGetProfileQueryOptions(transport),
-    enabled: userId !== null,
     retry: false,
   })
   const profilePresent = profile.data?.profile !== undefined

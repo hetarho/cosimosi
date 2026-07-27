@@ -15,6 +15,7 @@ import { LoginPage } from '../../pages/login/index.ts'
 import { MePage } from '../../pages/me/index.ts'
 import { TestPage } from '../../pages/test/index.ts'
 import { UniversePage } from '../../pages/universe/index.ts'
+import { LocaleBootstrap } from '../../shared/i18n/index.ts'
 import {
   isAuthCallbackUrl,
   isInviteUrl,
@@ -23,7 +24,6 @@ import {
 } from '../../shared/native/index.ts'
 import { DiagnosticsScreen } from '../diagnostics/index.ts'
 import {
-  MobileLocaleBootstrap,
   MobilePaletteBootstrap,
   MobileProfileGate,
   useSessionSnapshot,
@@ -166,7 +166,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
   )
   return stack === 'universe' ? (
     <MobileProfileGate>
-      <MobileLocaleBootstrap />
+      <LocaleBootstrap />
       <MobilePaletteBootstrap>{navigation}</MobilePaletteBootstrap>
     </MobileProfileGate>
   ) : (

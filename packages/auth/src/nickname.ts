@@ -13,11 +13,13 @@ export interface NicknameValidation {
 export function validateNickname(value: string): NicknameValidation {
   const nickname = value.trim()
   const codePointLength = [...nickname].length
+  const containsRefusedCharacter = /[\p{Cc}\p{Zl}\p{Zp}]/u.test(nickname)
   return {
     nickname,
     codePointLength,
     valid:
       codePointLength >= VALUES.account.nicknameMinLength &&
-      codePointLength <= VALUES.account.nicknameMaxLength,
+      codePointLength <= VALUES.account.nicknameMaxLength &&
+      !containsRefusedCharacter,
   }
 }

@@ -1,5 +1,6 @@
 export {
   ActiveLocaleProvider,
+  LocaleBootstrap,
   LocaleRenderBoundary,
   m,
   resolveLocale,

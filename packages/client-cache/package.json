@@ -18,7 +18,7 @@
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/observability": "workspace:*",
-    "@tanstack/query-core": "^5.101.1"
+    "@tanstack/query-core": "^5.101.4"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

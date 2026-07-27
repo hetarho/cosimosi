@@ -80,8 +80,10 @@ presented token later; there is deliberately no select-by-token query.
 
 ## Signup and deferred settlement
 
-`SignUp` validates a trimmed rune-bounded nickname and a resolvable IANA timezone, coerces an unknown negotiated
-locale to `en`, reads the first known provider from the directory, and runs the data-changing
+`SignUp` validates a trimmed rune-bounded nickname, rejects control characters and Unicode line/paragraph separators,
+and validates a resolvable IANA timezone. The advisory TypeScript predicate rejects the same character classes;
+`packages/auth/fixtures/nickname-validation.json` is the single accept/reject case table asserted by both TS and Go.
+Signup coerces an unknown negotiated locale to `en`, reads the first known provider from the directory, and runs the data-changing
 `CreateUserIfAbsent` CTE plus optional `AcceptInvite` in one account transaction. The CTE inserts `users` and the
 initial `auth_providers` row atomically only for the winning first insert; conflict callers read and return the
 existing profile. Only the winner may bind. A bind infrastructure failure rolls back profile birth, so a retry can
@@ -110,8 +112,10 @@ cap of `10` rewarded invites per inviter.
 ## Cross-language fixtures and generated values
 
 The locale contract is mirrored byte-for-byte at `packages/i18n/fixtures/locales.json` and
-`internal/account/testdata/locales.json`, with TypeScript and Go drift guards. Generated values provide nickname
-bounds `2…24` runes, a 7-day invite TTL, and the independent 30-day account-withdrawal retention window.
+`internal/account/testdata/locales.json`, with TypeScript and Go drift guards. Nickname accept/reject cases live once
+at `packages/auth/fixtures/nickname-validation.json`; both runtimes assert the same trimmed Unicode, boundary,
+control-character, and line-separator cases. Generated values provide nickname bounds `2…24` runes, a 7-day invite
+TTL, and the independent 30-day account-withdrawal retention window.
 
 ## Withdrawal admission and scheduling
 

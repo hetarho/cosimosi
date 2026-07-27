@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { createActor } from 'xstate'
 import { describe, expect, it } from 'vitest'
 
@@ -18,16 +20,35 @@ import {
 import { signupCredentialMachine } from './signup.machine.ts'
 import { sessionMachine } from './session-machine.ts'
 
+interface NicknameFixture {
+  name: string
+  nickname: string
+  normalized: string
+  valid: boolean
+  boundary?: 'minimum' | 'maximum' | 'below-minimum' | 'above-maximum'
+}
+
+const nicknameFixtures = JSON.parse(
+  readFileSync(new URL('../fixtures/nickname-validation.json', import.meta.url), 'utf8'),
+) as NicknameFixture[]
+
 describe('signup shared state', () => {
-  it('validates trimmed Unicode code points against generated bounds', () => {
-    expect(validateNickname('  코시모시  ')).toMatchObject({
-      nickname: '코시모시',
-      codePointLength: 4,
-      valid: true,
+  it.each(nicknameFixtures)('validates the shared nickname case: $name', (fixture) => {
+    const result = validateNickname(fixture.nickname)
+
+    expect(result).toMatchObject({
+      nickname: fixture.normalized,
+      valid: fixture.valid,
     })
-    expect(validateNickname('🌌🌱')).toMatchObject({ codePointLength: 2, valid: true })
-    expect(validateNickname(' ')).toMatchObject({ codePointLength: 0, valid: false })
-    expect(validateNickname('a'.repeat(VALUES.account.nicknameMaxLength + 1)).valid).toBe(false)
+    if (fixture.boundary) {
+      const expectedLength = {
+        minimum: VALUES.account.nicknameMinLength,
+        maximum: VALUES.account.nicknameMaxLength,
+        'below-minimum': VALUES.account.nicknameMinLength - 1,
+        'above-maximum': VALUES.account.nicknameMaxLength + 1,
+      }[fixture.boundary]
+      expect(result.codePointLength).toBe(expectedLength)
+    }
   })
 
   it('holds, consumes, and clears one opaque invite token', () => {

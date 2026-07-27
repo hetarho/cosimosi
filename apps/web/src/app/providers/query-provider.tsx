@@ -4,6 +4,8 @@ import { TransportProvider } from '@connectrpc/connect-query'
 import { QueryClientProvider } from '@tanstack/react-query'
 
 import { type ApiTransport } from '@cosimosi/api-client'
+import { SessionScopeBoundary, useAuthFacade } from '@cosimosi/auth/react'
+import { resetUserState } from '@cosimosi/auth/user-state'
 import {
   clearOwnedClientCache,
   resolveClientCacheQueryClient,
@@ -11,10 +13,8 @@ import {
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
-import { SessionScopeBoundary } from '@cosimosi/auth/react'
 
-import { resetWebUserState } from '../model/reset-user-state.ts'
-import { useAuthFacade } from '../../shared/auth/index.ts'
+import { resetWebLocaleUserState } from '../../shared/lib/locale-storage.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
 
 interface WebClientCacheProviderProps {
@@ -43,7 +43,10 @@ export function WebClientCacheProvider({
   const resetScope = useCallback(
     (nextScopeKey: string) => {
       resolvedQueryClient.clear()
-      resetWebUserState(nextScopeKey)
+      resetUserState(nextScopeKey, {
+        name: 'locale',
+        reset: resetWebLocaleUserState,
+      })
     },
     [resolvedQueryClient],
   )

@@ -17,7 +17,7 @@
     "@connectrpc/connect": "^2.1.2",
     "@connectrpc/connect-query-core": "^2.2.0",
     "@connectrpc/connect-web": "^2.1.2",
-    "@tanstack/query-core": "^5.101.1"
+    "@tanstack/query-core": "^5.101.4"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

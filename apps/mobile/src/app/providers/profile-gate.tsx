@@ -6,19 +6,17 @@ import { useQuery } from '@tanstack/react-query'
 
 import { createGetProfileQueryOptions } from '@cosimosi/api-client'
 import { pendingInvite } from '@cosimosi/auth'
+import { useAuthFacade } from '@cosimosi/auth/react'
 import { m } from '@cosimosi/i18n'
 import { Button, Card, tokens } from '@cosimosi/ui'
 
 import { NicknameStep } from '../../features/sign-up/index.ts'
-import { useAuthFacade, useSessionSnapshot } from './auth-provider.tsx'
 
 export function MobileProfileGate({ children }: { children?: ReactNode }) {
   const transport = useTransport()
   const facade = useAuthFacade()
-  const { userId } = useSessionSnapshot()
   const profile = useQuery({
     ...createGetProfileQueryOptions(transport),
-    enabled: userId !== null,
     retry: false,
   })
   const profilePresent = profile.data?.profile !== undefined

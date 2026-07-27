@@ -319,8 +319,9 @@ apps/web/src/
 > client, generated config) live in `packages/`. **Both apps are consumers from the start**, so pure code is designed
 > cross-platform up front and placed in `packages/` directly — not built web-first and extracted later.
 > The root `lint:fsd:layout` gate enforces this placement: mobile product composition cannot live under
-> `app/navigation/screens` (only the neutral boot shell may), and byte-identical same-relative pure modules under
-> app-local `api`/`model`/`lib`/`config`/`shared` paths fail until promoted to their owning package.
+> `app/navigation/screens` (only the neutral boot shell may), and normalized-equivalent same-relative pure modules
+> under app-local `api`/`model`/`lib`/`config`/`shared` paths or `app/providers`/`app/model` fail until promoted to
+> their owning package. Identifier-only renames and comment/format churn do not evade this comparison.
 
 **Where each file goes (segments).** Inside _any_ slice, files are grouped by _technical role_ — never by generic
 `components/`/`hooks/`/`types/` folders:

@@ -4,7 +4,7 @@ import { signupCredentialMachine } from '@cosimosi/auth'
 import { Button, Card, TextField } from '@cosimosi/ui'
 
 import { InviteAcknowledgment } from '../../../features/sign-up/index.ts'
-import { useAuthFacade, useSessionSnapshot } from '../../../shared/auth/index.ts'
+import { useAuthFacade, useSessionSnapshot } from '@cosimosi/auth/react'
 import { m } from '../../../shared/i18n/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
 

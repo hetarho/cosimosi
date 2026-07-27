@@ -12,7 +12,7 @@ import {
   paletteSessionMatches,
   usePalettePreferenceStore,
 } from '../../features/change-palette/index.ts'
-import { useSessionSnapshot } from '../../shared/auth/index.ts'
+import { useSessionSnapshot } from '@cosimosi/auth/react'
 
 export function PaletteBootstrap({ children }: { children?: ReactNode }) {
   const transport = useTransport()

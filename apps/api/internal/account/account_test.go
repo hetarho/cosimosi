@@ -8,9 +8,11 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/values"
@@ -761,6 +763,58 @@ func TestSignUpHasExactlyFourInputsAndCreatesDirectoryProviderWithoutCrediting(t
 	}
 	if !store.lastBound.CreatedAt.Equal(now) || !store.lastBound.BoundAt.Equal(now.Add(time.Minute)) {
 		t.Fatalf("bound timestamps = created %v bound %v, want distinct issue/bind times", store.lastBound.CreatedAt, store.lastBound.BoundAt)
+	}
+}
+
+func TestNicknameValidationMatchesSharedFixture(t *testing.T) {
+	t.Parallel()
+	data, err := os.ReadFile("../../../../packages/auth/fixtures/nickname-validation.json")
+	if err != nil {
+		t.Fatalf("read shared nickname fixture: %v", err)
+	}
+	var fixtures []struct {
+		Name       string `json:"name"`
+		Nickname   string `json:"nickname"`
+		Normalized string `json:"normalized"`
+		Valid      bool   `json:"valid"`
+		Boundary   string `json:"boundary"`
+	}
+	if err := json.Unmarshal(data, &fixtures); err != nil {
+		t.Fatalf("decode shared nickname fixture: %v", err)
+	}
+
+	for _, fixture := range fixtures {
+		t.Run(fixture.Name, func(t *testing.T) {
+			normalized, normalizeErr := normalizeNickname(fixture.Nickname)
+			if fixture.Valid {
+				if normalizeErr != nil {
+					t.Fatalf("normalizeNickname() error = %v", normalizeErr)
+				}
+				if normalized != fixture.Normalized {
+					t.Fatalf("normalizeNickname() = %q, want %q", normalized, fixture.Normalized)
+				}
+			} else if !errors.Is(normalizeErr, ErrNicknameInvalid) {
+				t.Fatalf("normalizeNickname() error = %v, want ErrNicknameInvalid", normalizeErr)
+			}
+
+			length := utf8.RuneCountInString(strings.TrimSpace(fixture.Nickname))
+			var expectedLength int
+			switch fixture.Boundary {
+			case "minimum":
+				expectedLength = values.AccountNicknameMinLength
+			case "maximum":
+				expectedLength = values.AccountNicknameMaxLength
+			case "below-minimum":
+				expectedLength = values.AccountNicknameMinLength - 1
+			case "above-maximum":
+				expectedLength = values.AccountNicknameMaxLength + 1
+			default:
+				return
+			}
+			if length != expectedLength {
+				t.Fatalf("fixture length = %d, want generated boundary %d", length, expectedLength)
+			}
+		})
 	}
 }
 

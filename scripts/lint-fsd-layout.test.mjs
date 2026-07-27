@@ -49,3 +49,31 @@ test('rejects a byte-identical same-relative pure module in both apps', () => {
 
   assert.ok(problems.some((problem) => problem.includes('byte-identical pure module')))
 })
+
+test('rejects a duplicated provider from the app layer', () => {
+  const root = fixture()
+  put(root, 'apps/web/src/app/providers/locale-bootstrap.ts')
+  put(root, 'apps/mobile/src/app/providers/locale-bootstrap.ts')
+
+  const problems = findFsdLayoutProblems(root)
+
+  assert.ok(problems.some((problem) => problem.includes('pure module')))
+})
+
+test('rejects normalized-equivalent modules whose exported identifier was renamed', () => {
+  const root = fixture()
+  put(
+    root,
+    'apps/web/src/app/providers/locale-bootstrap.ts',
+    'export function LocaleBootstrap() { return null }\n',
+  )
+  put(
+    root,
+    'apps/mobile/src/app/providers/locale-bootstrap.ts',
+    'export function MobileLocaleBootstrap() { return null }\n',
+  )
+
+  const problems = findFsdLayoutProblems(root)
+
+  assert.ok(problems.some((problem) => problem.includes('normalized-equivalent pure module')))
+})

@@ -20,6 +20,7 @@ export {
   supportedLocales,
   type Locale,
 } from './index.ts'
+export { LocaleBootstrap } from './locale-bootstrap.ts'
 
 const ActiveLocaleContext = createContext<Locale | null>(null)
 

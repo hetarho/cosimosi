@@ -5,7 +5,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
 
 import { diagnosticsSurfaceFlag } from '../../shared/config/index.ts'
-import { useAuthFacade } from '../../shared/auth/index.ts'
+import { useAuthFacade } from '@cosimosi/auth/react'
 import { createAppRouter } from './router.ts'
 
 type AppRouter = ReturnType<typeof createAppRouter>

@@ -8,14 +8,15 @@ import {
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
 import type { SessionStatus } from '@cosimosi/auth'
+import { resetUserState } from '@cosimosi/auth/user-state'
 import { setClientCacheData } from '@cosimosi/client-cache'
 import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { defaultLocale, setActiveLocale } from '../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
 import { createTestHarnessFakes } from '../pages/test/index.ts'
+import { resetWebLocaleUserState } from '../shared/lib/locale-storage.ts'
 import App from './App.tsx'
-import { resetWebUserState } from './model/reset-user-state.ts'
 import { createAppRouter } from './routes/index.ts'
 
 // The router resolves its route asynchronously, so SSR tests build a router at the
@@ -44,7 +45,7 @@ const emptyUniverse = {
 } as unknown as GetUniverseResponse
 
 function seedDefaultPalette(fakes: ReturnType<typeof createTestHarnessFakes>, userId: string) {
-  resetWebUserState(userId)
+  resetUserState(userId, { name: 'locale', reset: resetWebLocaleUserState })
   setClientCacheData(fakes.queryClient, createGetProfileQueryKey(fakes.transport), {
     profile: {
       nickname: 'Test user',

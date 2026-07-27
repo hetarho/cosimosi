@@ -20,7 +20,7 @@ import {
   useObservabilitySnapshot,
 } from '@cosimosi/observability/react'
 
-import { useSessionSnapshot } from '../../shared/auth/index.ts'
+import { useSessionSnapshot } from '@cosimosi/auth/react'
 
 interface WebObservabilityProviderProps {
   children?: ReactNode

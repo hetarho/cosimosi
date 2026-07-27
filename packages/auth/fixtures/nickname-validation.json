@@ -1,0 +1,66 @@
+[
+  {
+    "name": "minimum length",
+    "nickname": "ab",
+    "normalized": "ab",
+    "valid": true,
+    "boundary": "minimum"
+  },
+  {
+    "name": "maximum length",
+    "nickname": "abcdefghijklmnopqrstuvwx",
+    "normalized": "abcdefghijklmnopqrstuvwx",
+    "valid": true,
+    "boundary": "maximum"
+  },
+  {
+    "name": "below minimum",
+    "nickname": "a",
+    "normalized": "a",
+    "valid": false,
+    "boundary": "below-minimum"
+  },
+  {
+    "name": "above maximum",
+    "nickname": "abcdefghijklmnopqrstuvwxy",
+    "normalized": "abcdefghijklmnopqrstuvwxy",
+    "valid": false,
+    "boundary": "above-maximum"
+  },
+  {
+    "name": "trimmed unicode",
+    "nickname": "  코시모시  ",
+    "normalized": "코시모시",
+    "valid": true
+  },
+  {
+    "name": "emoji code points",
+    "nickname": "🌌🌱",
+    "normalized": "🌌🌱",
+    "valid": true
+  },
+  {
+    "name": "control character",
+    "nickname": "valid\u0000name",
+    "normalized": "valid\u0000name",
+    "valid": false
+  },
+  {
+    "name": "newline",
+    "nickname": "valid\nname",
+    "normalized": "valid\nname",
+    "valid": false
+  },
+  {
+    "name": "line separator",
+    "nickname": "valid\u2028name",
+    "normalized": "valid\u2028name",
+    "valid": false
+  },
+  {
+    "name": "paragraph separator",
+    "nickname": "valid\u2029name",
+    "normalized": "valid\u2029name",
+    "valid": false
+  }
+]

@@ -2,6 +2,7 @@ export {
   ActiveLocaleProvider,
   defaultLocale,
   getActiveLocale,
+  LocaleBootstrap,
   LocaleRenderBoundary,
   m,
   matchLocale,

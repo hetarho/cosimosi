@@ -5,4 +5,4 @@ export {
   useMachine,
   useSelector,
 } from './xstate-react.ts'
-export { ErrorToastContext, useErrorToast, type ShowErrorToast } from './error-toast.ts'
+export { ErrorToastContext, useErrorToast, type ShowErrorToast } from '@cosimosi/errors/react'

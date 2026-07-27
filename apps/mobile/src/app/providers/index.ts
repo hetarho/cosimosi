@@ -10,7 +10,6 @@ export { MobileI18nProvider } from './i18n-provider.tsx'
 export { MobileErrorProvider } from './error-provider.tsx'
 export { MobilePaletteBootstrap } from './palette-bootstrap.tsx'
 export { MobileProfileGate } from './profile-gate.tsx'
-export { MobileLocaleBootstrap } from './locale-bootstrap.tsx'
 export {
   MobileObservabilityProvider,
   MobileObservabilitySessionBridge,

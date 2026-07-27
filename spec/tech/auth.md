@@ -41,7 +41,9 @@ transition. The session status set and `gateDecision` arms are unchanged. The lo
 Both apps place `GetProfile` gates above their palette bootstrap. A present profile releases routed
 children; an unset profile field renders the nickname step; a rejected read renders neutral retry
 and sign-out controls. The gate never interprets transport error text. Because the routed subtree
-is withheld, a profile-less session cannot mount palette or product reads.
+is withheld, a profile-less session cannot mount palette or product reads. The gate is mounted only
+for authenticated or refreshing sessions and therefore issues the query unconditionally; it carries
+no disabled-query branch that could present TanStack Query's idle-pending state as an endless hold.
 
 The nickname command reuses `asyncCommandMachine` and calls `SignUp` with the trimmed nickname,
 runtime IANA timezone (`UTC` fallback), negotiated locale, and any held invite token. Profile data
@@ -72,14 +74,16 @@ cross-route action channel:
 `@cosimosi/twinkle` owns `resetTwinkleUserState()` for the two-tier balance mirror and charge-request channel.
 `@cosimosi/emotion/react` owns the palette display/confirmed mirror plus its persistence epoch reset.
 
-Each app's `app/model/reset-user-state.ts` is therefore a parity-checked composition of the universe, Twinkle,
-palette, and signup-completion reset APIs. It owns no second store inventory.
+`@cosimosi/auth/user-state` owns the one ordered `USER_STATE_RESET_REGISTRY`, composed from the universe, Twinkle, palette,
+and signup-completion reset seams. Both app cache providers call `resetUserState` and contribute only one
+platform-specific entry named `locale`. A reset seam added to the shared registry therefore runs on both platforms
+without maintaining two source lists; platform negotiation remains outside the package.
 
 `@cosimosi/auth` owns two deliberately different signup-lifetime seams:
 
 - the one-shot signup-completion signal belongs to the authenticated user and is registered in
-  both reset inventories;
-- the pending-invite holder is deliberately absent from those inventories because it must survive
+  the shared reset inventory;
+- the pending-invite holder is deliberately absent from that inventory because it must survive
   the anonymous-to-user transition and a Google OAuth round trip. Web injects `sessionStorage`;
   mobile injects process memory. The holder clears only when `SignUp` consumes it or the profile
   gate resolves an established profile.
