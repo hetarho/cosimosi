@@ -57,5 +57,5 @@ export function MobilePaletteBootstrap({ children }: { children?: ReactNode }) {
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 24 },
-  label: { color: tokens.color['text-muted'], fontSize: 14 },
+  label: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
 })

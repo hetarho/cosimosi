@@ -58,5 +58,5 @@ const styles = StyleSheet.create({
   card: { gap: 12 },
   row: { flexDirection: 'row', gap: 8 },
   action: { alignItems: 'flex-end' },
-  muted: { color: tokens.color['text-muted'], fontSize: 14 },
+  muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
 })

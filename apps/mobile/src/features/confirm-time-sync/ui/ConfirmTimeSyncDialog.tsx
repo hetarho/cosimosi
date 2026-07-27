@@ -38,6 +38,6 @@ export function ConfirmTimeSyncDialog({ open, onAccept, onReject }: ConfirmTimeS
 
 const styles = StyleSheet.create({
   content: { gap: 16 },
-  body: { color: tokens.color.text, fontSize: 14, lineHeight: 21 },
+  body: { color: tokens.color.text, fontSize: tokens.fontSize.sm, lineHeight: 21 },
   actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12 },
 })

@@ -90,6 +90,6 @@ export function NicknameStep({ onCompleted }: NicknameStepProps) {
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'center', padding: 24 },
   card: { gap: 16 },
-  title: { color: tokens.color.text, fontSize: 20, fontWeight: '600' },
-  error: { color: tokens.color.danger, fontSize: 14 },
+  title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
+  error: { color: tokens.color.danger, fontSize: tokens.fontSize.sm },
 })

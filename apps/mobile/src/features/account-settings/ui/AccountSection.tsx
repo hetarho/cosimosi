@@ -88,10 +88,15 @@ const styles = StyleSheet.create({
     gap: 16,
     justifyContent: 'space-between',
   },
-  label: { color: tokens.color['text-muted'], fontSize: 14 },
-  identity: { color: tokens.color.text, flexShrink: 1, fontSize: 14, textAlign: 'right' },
+  label: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
+  identity: {
+    color: tokens.color.text,
+    flexShrink: 1,
+    fontSize: tokens.fontSize.sm,
+    textAlign: 'right',
+  },
   confirmRow: { gap: 12 },
-  confirm: { color: tokens.color.text, fontSize: 14 },
+  confirm: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
   actions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
   signOutRow: { alignItems: 'flex-end' },
 })

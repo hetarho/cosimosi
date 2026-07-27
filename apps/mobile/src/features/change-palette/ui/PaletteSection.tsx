@@ -68,5 +68,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   rowDimmed: { opacity: 0.6 },
-  name: { color: tokens.color.text, fontSize: 14 },
+  name: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
 })

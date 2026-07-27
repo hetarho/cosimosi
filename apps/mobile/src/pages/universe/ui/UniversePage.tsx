@@ -178,11 +178,15 @@ const styles = StyleSheet.create({
   hud: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: tokens.spacing[3] },
   welcome: {
     color: tokens.color['text-muted'],
-    fontSize: 14,
+    fontSize: tokens.fontSize.sm,
     textAlign: 'center',
     maxWidth: 320,
     paddingHorizontal: 24,
   },
   fallback: { flex: 1, gap: 16, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  fallbackText: { color: tokens.color['text-muted'], fontSize: 15, textAlign: 'center' },
+  fallbackText: {
+    color: tokens.color['text-muted'],
+    fontSize: tokens.fontSize.sm,
+    textAlign: 'center',
+  },
 })

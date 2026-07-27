@@ -104,8 +104,12 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'space-between',
   },
-  title: { color: tokens.color.text, fontSize: 18, fontWeight: '500' },
+  title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   section: { gap: 12 },
   accountTab: { gap: 24 },
-  sectionTitle: { color: tokens.color['text-muted'], fontSize: 14, fontWeight: '500' },
+  sectionTitle: {
+    color: tokens.color['text-muted'],
+    fontSize: tokens.fontSize.sm,
+    fontWeight: '500',
+  },
 })

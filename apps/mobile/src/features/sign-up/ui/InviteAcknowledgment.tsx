@@ -10,5 +10,5 @@ export function InviteAcknowledgment() {
 }
 
 const styles = StyleSheet.create({
-  text: { color: tokens.color['text-muted'], fontSize: 14 },
+  text: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
 })

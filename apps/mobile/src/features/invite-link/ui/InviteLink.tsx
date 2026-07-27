@@ -51,8 +51,8 @@ export function InviteLink() {
 
 const styles = StyleSheet.create({
   card: { gap: 12 },
-  title: { color: tokens.color.text, fontSize: 14, fontWeight: '600' },
-  link: { color: tokens.color.text, fontSize: 14 },
-  muted: { color: tokens.color['text-muted'], fontSize: 14 },
+  title: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '600' },
+  link: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
+  muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   action: { alignItems: 'flex-end' },
 })

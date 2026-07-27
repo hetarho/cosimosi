@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: tokens.spacing[2],
   },
-  label: { color: tokens.color['text-muted'], fontSize: 12 },
-  value: { color: tokens.color.text, fontSize: 14, fontVariant: ['tabular-nums'] },
-  empty: { color: tokens.color['text-subtle'], fontSize: 13 },
+  label: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.xs },
+  value: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontVariant: ['tabular-nums'] },
+  empty: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.sm },
 })

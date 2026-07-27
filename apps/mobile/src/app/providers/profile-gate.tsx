@@ -63,5 +63,5 @@ function ProfileGateHold() {
 const styles = StyleSheet.create({
   root: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 24 },
   card: { gap: 16, width: '100%' },
-  label: { color: tokens.color['text-muted'], fontSize: 14 },
+  label: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
 })

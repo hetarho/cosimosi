@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: tokens.radius.md,
     padding: 12,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: tokens.fontSize.sm,
+    lineHeight: 24,
   },
 })

@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.spacing[3],
   },
-  title: { color: tokens.color.text, fontSize: tokens.fontSize.lg, fontWeight: '500' },
+  title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   rowActions: {
     flexDirection: 'row',

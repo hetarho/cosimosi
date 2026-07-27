@@ -133,7 +133,7 @@ function SkyShowcase({ onBack }: { onBack: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  blurb: { color: tokens.color['text-muted'], fontSize: 13 },
+  blurb: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   canvas: { flex: 1 },
   chip: {
     borderColor: tokens.color.border,
@@ -144,17 +144,17 @@ const styles = StyleSheet.create({
   },
   chipRow: { flexDirection: 'row', gap: 8 },
   chipSelected: { borderColor: tokens.color.primary },
-  chipText: { color: tokens.color['text-subtle'], fontSize: 13 },
-  chipTextSelected: { color: tokens.color.text, fontSize: 13 },
+  chipText: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.sm },
+  chipTextSelected: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
   controls: { backgroundColor: tokens.color.bg, gap: 12, padding: 16, paddingBottom: 32 },
-  countLabel: { color: tokens.color['text-subtle'], fontSize: 12 },
+  countLabel: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   screen: { backgroundColor: tokens.color.bg, flex: 1 },
-  title: { color: tokens.color.text, fontSize: 16, fontWeight: '500' },
+  title: { color: tokens.color.text, fontSize: tokens.fontSize.base, fontWeight: '500' },
   unavailable: {
     alignItems: 'center',
     backgroundColor: tokens.color.bg,

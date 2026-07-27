@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   rowItems: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[2] },
-  glyph: { color: tokens.color.text, fontSize: 18 },
+  glyph: { color: tokens.color.text, fontSize: tokens.fontSize.lg },
   dialogActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

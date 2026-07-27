@@ -159,7 +159,7 @@ export function LoginPage({ mode = 'signIn', onModeChange }: LoginPageProps) {
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'center', padding: 24 },
   card: { gap: 16 },
-  title: { color: tokens.color.text, fontSize: 20, fontWeight: '600' },
-  label: { color: tokens.color['text-muted'], fontSize: 14 },
-  error: { color: tokens.color.danger, fontSize: 14 },
+  title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
+  label: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
+  error: { color: tokens.color.danger, fontSize: tokens.fontSize.sm },
 })
