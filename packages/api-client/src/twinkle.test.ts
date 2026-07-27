@@ -42,13 +42,14 @@ describe('twinkle transport facade', () => {
     expect(quotedStage).toBe(2)
   })
 
-  it('marks the two reads NO_SIDE_EFFECTS and the two earns not', () => {
+  it('marks every method NO_SIDE_EFFECTS — the contract is read-only by design', () => {
     // 1 = google.protobuf.MethodOptions.NO_SIDE_EFFECTS (the client-cache policy
-    // interceptor's GET-eligibility constant).
+    // interceptor's GET-eligibility constant). Twinkle moves as a consequence of a memory action,
+    // a purchase or a claim — never as a user step of its own — so there is nothing here to mutate.
     expect(TwinkleService.method.getBalance.idempotency).toBe(1)
     expect(TwinkleService.method.quoteSpend.idempotency).toBe(1)
-    expect(TwinkleService.method.claimInvite.idempotency).not.toBe(1)
-    expect(TwinkleService.method.charge.idempotency).not.toBe(1)
+    expect(TwinkleService.method.getLedger.idempotency).toBe(1)
+    expect(Object.keys(TwinkleService.method)).toEqual(['getBalance', 'quoteSpend', 'getLedger'])
   })
 
   it('creates TanStack Query options for GetBalance without React or app globals', () => {

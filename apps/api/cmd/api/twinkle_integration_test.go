@@ -9,12 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/values"
 	"github.com/cosimosi/api/internal/twinkle"
+	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
 // The cross-context economy seam, proven on a real database (the composition root
@@ -121,7 +124,9 @@ func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	}
 }
 
-func TestProductionTwinkleExternalEarnsFailClosedWithoutAdapters(t *testing.T) {
+// Narrowed to the invite resolver: payment is gone from the product, so the only external trust seam
+// left is the account/signup one. The point survives — an unbound seam refuses rather than credits.
+func TestProductionTwinkleInviteEarnFailsClosedWithoutItsAdapter(t *testing.T) {
 	pool := openEconomyTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -139,14 +144,83 @@ func TestProductionTwinkleExternalEarnsFailClosedWithoutAdapters(t *testing.T) {
 		t.Fatalf("newTwinkleService without zone reader err = %v, want ErrZoneReaderRequired", err)
 	}
 
-	if _, err := service.Charge(ctx, scope, twinkle.DefaultChargePackID, "app-store", "arbitrary-non-empty-receipt"); !errors.Is(err, twinkle.ErrPaymentVerificationUnavailable) {
-		t.Fatalf("Charge err = %v, want ErrPaymentVerificationUnavailable", err)
-	}
 	if _, err := service.ClaimInvite(ctx, scope, "fabricated-account-id"); !errors.Is(err, twinkle.ErrInviteResolutionUnavailable) {
 		t.Fatalf("ClaimInvite err = %v, want ErrInviteResolutionUnavailable", err)
 	}
 	if rows := countLedgerRows(t, pool, userID); rows != 0 {
-		t.Fatalf("external earn ledger rows = %d, want 0 while adapters are unavailable", rows)
+		t.Fatalf("external earn ledger rows = %d, want 0 while the adapter is unavailable", rows)
+	}
+}
+
+// A4: a purchase debit commits with the transaction that caused it, or not at all. The store context's
+// Decorate owns that transaction; this asserts the seam it will bind — a rolled-back caller transaction
+// leaves no ledger row and no balance change ([G7][P8]).
+func TestPurchaseSpendJoinsAndRollsBackWithTheCallersTransaction(t *testing.T) {
+	pool := openEconomyTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	userID := fmt.Sprintf("test-economy-%d-purchase", time.Now().UnixNano())
+	cleanupEconomyTestRows(t, pool, userID)
+	scope := economyScope(t, userID)
+	service := economyTwinkleService(t, pool)
+
+	// Fund GENERAL through a real earn so the purchase has something to draw from.
+	if err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return service.EarnOnWrite(ctx, scope, twinklepg.NewStore(tx), "diary-purchase-seed")
+	}); err != nil {
+		t.Fatalf("seed earn failed: %v", err)
+	}
+
+	// A caller transaction that rolls back must take the debit with it.
+	rollback := errors.New("the decorate that caused this failed")
+	err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := service.CheckAndSpend(ctx, scope, twinklepg.NewStore(tx), twinkle.PurchaseSpendIntent(30, "purchase:rolled-back")); err != nil {
+			return err
+		}
+		return rollback
+	})
+	if !errors.Is(err, rollback) {
+		t.Fatalf("InTx err = %v, want the injected rollback", err)
+	}
+	balance, err := service.GetBalance(ctx, scope)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if balance.General != values.TwinkleEarnWrite {
+		t.Fatalf("general = %d, want the seed %d — a rolled-back purchase debited anyway",
+			balance.General, values.TwinkleEarnWrite)
+	}
+
+	// Committed, it lands once: a GENERAL-only spend row and the matching debit.
+	if err := pool.InTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		return service.CheckAndSpend(ctx, scope, twinklepg.NewStore(tx), twinkle.PurchaseSpendIntent(30, "purchase:committed"))
+	}); err != nil {
+		t.Fatalf("committed purchase failed: %v", err)
+	}
+	balance, err = service.GetBalance(ctx, scope)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if balance.General != values.TwinkleEarnWrite-30 {
+		t.Fatalf("general = %d, want %d after the purchase", balance.General, values.TwinkleEarnWrite-30)
+	}
+	page, err := service.GetLedger(ctx, scope, 0, "")
+	if err != nil {
+		t.Fatalf("GetLedger failed: %v", err)
+	}
+	purchases := 0
+	for _, view := range page.Entries {
+		if view.Entry.Reason != twinkle.ReasonOrnamentPurchase {
+			continue
+		}
+		purchases++
+		if view.Entry.FromSmall != 0 || view.Entry.FromGeneral != 30 {
+			t.Fatalf("purchase row = %+v, want GENERAL-only ([P9])", view.Entry)
+		}
+	}
+	if purchases != 1 {
+		t.Fatalf("purchase rows in the history = %d, want exactly 1", purchases)
 	}
 }
 
@@ -224,25 +298,24 @@ func cleanupEconomyTestRows(t *testing.T, pool *platformdb.Pool, userID string) 
 	})
 }
 
-// The twinkleIntent mapping is pure — assert the kind→reason and signal carry
-// without a database.
+// The twinkleIntent mapping is pure — assert it against twinkle's own constructors rather than by
+// reading fields, which are unexported precisely so a caller cannot assemble a mixed intent.
 func TestTwinkleIntentMapsKindsAndSignals(t *testing.T) {
 	t.Parallel()
+	recallKey := spendDedupKey(memory.RecallSpendIntent("op-1", "m1", 0))
 	recall, err := twinkleIntent(memory.RecallSpendIntent("op-1", "m1", 2.5))
-	if err != nil || recall.Reason != twinkle.ReasonRecall || recall.AccessibilityCost != 2.5 {
-		t.Fatalf("recall intent = %+v (err %v), want reason recall carrying weight 2.5", recall, err)
+	if err != nil || recall != twinkle.RecallSpendIntent(2.5, recallKey) {
+		t.Fatalf("recall intent = %+v (err %v), want a recall intent carrying weight 2.5 and its op key", recall, err)
 	}
 	// The operation id + target derive the spend's dedup key (A3) — per-action for a single
 	// recall, per-member when a whole-diary recall shares one operation id across its members.
-	if recall.DedupKey == "" || recall.DedupKey != spendDedupKey(memory.RecallSpendIntent("op-1", "m1", 0)) {
-		t.Fatalf("recall dedup key = %q, want the canonical operation/target key", recall.DedupKey)
+	if recallKey == "" {
+		t.Fatal("the recall intent carries no dedup key")
 	}
+	gistKey := spendDedupKey(memory.GistViewSpendIntent("op-2", "m1", 1))
 	gist, err := twinkleIntent(memory.GistViewSpendIntent("op-2", "m1", 3))
-	if err != nil || gist.Reason != twinkle.ReasonGistView || gist.SemanticStage != 3 {
-		t.Fatalf("gist intent = %+v (err %v), want reason gist_view carrying stage 3", gist, err)
-	}
-	if gist.DedupKey == "" || gist.DedupKey != spendDedupKey(memory.GistViewSpendIntent("op-2", "m1", 1)) {
-		t.Fatalf("gist dedup key = %q, want the canonical operation/target key", gist.DedupKey)
+	if err != nil || gist != twinkle.GistViewSpendIntent(3, gistKey) {
+		t.Fatalf("gist intent = %+v (err %v), want a gist-view intent carrying stage 3 and its op key", gist, err)
 	}
 	// Field boundaries are unambiguous: delimiter-like ids cannot alias another operation/target.
 	if spendDedupKey(memory.RecallSpendIntent("a:b", "c", 0)) == spendDedupKey(memory.RecallSpendIntent("a", "b:c", 0)) {

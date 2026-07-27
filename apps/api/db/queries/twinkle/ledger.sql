@@ -104,3 +104,18 @@ WHERE user_id = sqlc.arg(user_id)
   AND kind = 'earn'
   AND reason = 'invite'
   AND dedup_key LIKE 'invite:%';
+
+-- The chronological history read ([G7][U9]): newest first, keyset-paged on (created_at, id) so a
+-- page boundary cannot skip or duplicate a row when an entry lands mid-scroll — which OFFSET would.
+-- Ties on created_at break on the backend-minted id: arbitrary, but total and stable. Conjunctively
+-- user-scoped over the one relation, so a cross-user page is unrepresentable rather than validated.
+-- name: ListTwinkleLedgerPage :many
+SELECT id, kind, reason, amount, from_basic, from_additional, created_at
+FROM twinkle_ledger_entries
+WHERE user_id = sqlc.arg(user_id)
+  AND (
+      sqlc.narg(cursor_created_at)::timestamptz IS NULL
+      OR (created_at, id) < (sqlc.narg(cursor_created_at)::timestamptz, sqlc.narg(cursor_id)::text)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg(page_size);

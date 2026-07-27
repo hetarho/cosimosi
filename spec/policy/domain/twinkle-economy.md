@@ -60,9 +60,24 @@ measured condition ([I10]).
 - **The refill is lazy and writes nothing on read.** A balance read derives the fresh grant; the anchor rolls forward on
   the next write. There is no cron and no grant row ([G7] — the daily refill is a derivation, not a ledger event).
 
-**Twinkle earns only via write / invite-both-sides / one-time signup / verified payment — there is no login or
-attendance bonus** ([G3]); the daily `SMALL` reset plays that role by design. Every earn credits **`GENERAL`** only —
-`SMALL` is the daily derivation and is never earned:
+**Every economic event is exactly one row of one append-only ledger** ([G7]) — 구매 · 수령 · 적립 · 소모 alike, so the
+history has a single source and nothing happens off the books. The `reason` set is **closed and owned by one plan**
+([66.earn-and-purchase-spend](../../plan/66.earn-and-purchase-spend.md)): `daily_grant` · `write_diary` · `invite` ·
+`invite_signup` · `signup_bonus` · `achievement_claim` · `admin_grant` · `recall` · `gist_view` ·
+`ornament_purchase` · `payment`. Two of them are deliberately unwritable, and the guard is the **absent entry point**
+rather than a validation branch:
+
+- **`daily_grant` is never written.** The daily `SMALL` refill is a derivation, not an event — no cron, no row, and no
+  wire value, so no client can mistake the refill for a transaction ([T4]). It is named in the set only so the
+  economy's one non-event is stated rather than left as a silent hole.
+- **`payment` is retained with no write path.** Payment (스토어/PG) is deferred to v3, and it was **removed rather than
+  disabled** — a guaranteed-fail button is worse than an absent one. Rows written before it left stay readable and
+  foldable ([I1] — nothing is deleted, including the history of a feature that left).
+
+**Twinkle earns only via daily grant / write / achievement / invite-both-sides / one-time signup — there is no login,
+attendance or payment earn** ([G3]); the daily `SMALL` reset plays the attendance role by design. Every earn credits
+**`GENERAL`** only — `SMALL` is the daily derivation and is never earned — and every earn is **idempotent per dedup
+key**, appending its row before applying its delta so a replay skips the credit entirely:
 
 - **Write** — `twinkle.earn_write` once **per launched diary** (not per memory, so splitting a diary into more
   memories inflates nothing), granted inside the launch transaction; a past-dated diary that launches no episodic
@@ -74,10 +89,26 @@ attendance bonus** ([G3]); the daily `SMALL` reset plays that role by design. Ev
 - **Signup bonus** — `twinkle.earn_signup_bonus` credits once per account with reason `signup_bonus` and key
   `signup_bonus:<userID>`. It is reachable only from the same post-launch settlement hook; signup and login pay
   nothing.
-- **Payment** — `Charge` credits only from a store-verifier claim binding the normalized provider transaction,
-  provider, known pack, authoritative amount, and authenticated beneficiary. A provider transaction is globally
-  single-use across users. No configured verifier means an explicit unavailable refusal; arbitrary receipt text can
-  never mint Twinkle.
+- **Achievement** — the reward credits once per **claim** (`achievement:<claimID>`), because claiming is an explicit
+  act: a user who met a condition twice over still earns once, and a replayed claim credits nothing more. The credit
+  decides no eligibility — whether the achievement is achieved, and what it is worth, belong to the achievement
+  context. It runs in its own transaction so a claim stamped with its reward uncredited heals on replay.
+
+**A purchase is a spend like any other, drawn only from `GENERAL`** ([P9]): twinkle is told the catalog total and never
+learns what was bought — the intent carries an amount and a dedup key and no ornament id, kind or color, so an ornament
+cannot reach the ledger ([I11]). The debit commits inside the transaction that caused it, so a failed 꾸미기 저장 leaves
+no row and no balance change. `SMALL`-funding a purchase is refused twice over: by the plan function and by a database
+CHECK.
+
+**A refusal says how much is missing, and counts only what could have paid** ([P8]): the denial carries
+`{cost, eligible, shortfall}` where `eligible` is the balance usable for _that_ purpose. So the same balance can cover
+a recall and refuse a purchase — which is the protection, not a bug — and the consumer names the item while the economy
+names the numbers.
+
+**The history is one chronological read** ([G7][U9]), newest first, keyset-paged. It exposes no dedup key (they embed
+diary, signup and claim ids) and no per-reason payload — the reason _is_ the caption. Each entry's date is resolved in
+the user's own timezone server-side, so the history's day headers agree with the `SMALL` reset boundary the same user
+watches refill.
 
 **The spend is a consequence of the memory action, never a separate step**: recall and gist-view hand the gate a
 `SpendIntent` (kind + depth signal + the paid action's client operation id — **never a price**); the gate prices it via

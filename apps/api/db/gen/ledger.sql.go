@@ -161,6 +161,72 @@ func (q *Queries) InsertTwinkleBalance(ctx context.Context, arg InsertTwinkleBal
 	return i, err
 }
 
+const listTwinkleLedgerPage = `-- name: ListTwinkleLedgerPage :many
+SELECT id, kind, reason, amount, from_basic, from_additional, created_at
+FROM twinkle_ledger_entries
+WHERE user_id = $1
+  AND (
+      $2::timestamptz IS NULL
+      OR (created_at, id) < ($2::timestamptz, $3::text)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $4
+`
+
+type ListTwinkleLedgerPageParams struct {
+	UserID          string
+	CursorCreatedAt pgtype.Timestamptz
+	CursorID        pgtype.Text
+	PageSize        int32
+}
+
+type ListTwinkleLedgerPageRow struct {
+	ID             string
+	Kind           string
+	Reason         string
+	Amount         int32
+	FromBasic      int32
+	FromAdditional int32
+	CreatedAt      pgtype.Timestamptz
+}
+
+// The chronological history read ([G7][U9]): newest first, keyset-paged on (created_at, id) so a
+// page boundary cannot skip or duplicate a row when an entry lands mid-scroll — which OFFSET would.
+// Ties on created_at break on the backend-minted id: arbitrary, but total and stable. Conjunctively
+// user-scoped over the one relation, so a cross-user page is unrepresentable rather than validated.
+func (q *Queries) ListTwinkleLedgerPage(ctx context.Context, arg ListTwinkleLedgerPageParams) ([]ListTwinkleLedgerPageRow, error) {
+	rows, err := q.db.Query(ctx, listTwinkleLedgerPage,
+		arg.UserID,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTwinkleLedgerPageRow
+	for rows.Next() {
+		var i ListTwinkleLedgerPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Reason,
+			&i.Amount,
+			&i.FromBasic,
+			&i.FromAdditional,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockTwinkleInviteRewardsByInviter = `-- name: LockTwinkleInviteRewardsByInviter :one
 SELECT pg_advisory_xact_lock(hashtextextended($1, 610091))
 `

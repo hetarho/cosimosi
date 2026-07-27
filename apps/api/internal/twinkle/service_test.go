@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -121,6 +122,36 @@ func (f *fakeLedger) GetInviteRewardState(
 	return count, replay, nil
 }
 
+// ListLedgerPage mirrors the store's keyset semantics in memory: newest first on (created_at, id),
+// strictly after the cursor, capped by limit — so the paging tests assert the real contract.
+func (f *fakeLedger) ListLedgerPage(_ context.Context, scope platform.UserScope, cursor *LedgerCursor, limit int) ([]LedgerEntry, error) {
+	if scope.UserID() == "" {
+		return nil, errors.New("scope missing")
+	}
+	rows := f.userEntries(scope.UserID())
+	sort.Slice(rows, func(i, j int) bool {
+		if !rows[i].CreatedAt.Equal(rows[j].CreatedAt) {
+			return rows[i].CreatedAt.After(rows[j].CreatedAt)
+		}
+		return rows[i].ID > rows[j].ID
+	})
+	page := []LedgerEntry{}
+	for _, row := range rows {
+		if cursor != nil {
+			after := row.CreatedAt.After(cursor.CreatedAt) ||
+				(row.CreatedAt.Equal(cursor.CreatedAt) && row.ID >= cursor.ID)
+			if after {
+				continue
+			}
+		}
+		if len(page) == limit {
+			break
+		}
+		page = append(page, row)
+	}
+	return page, nil
+}
+
 func (f *fakeLedger) InLedgerTx(ctx context.Context, fn func(tx LedgerStore) error) error {
 	f.txCount++
 	// All-or-nothing: snapshot, run, restore on error.
@@ -197,24 +228,6 @@ func (f *fakeUserZone) ZoneFor(_ context.Context, scope platform.UserScope) (str
 	return f.fallback, nil
 }
 
-type strictPaymentVerifier struct {
-	claims map[string]VerifiedPayment
-	err    error
-	calls  int
-}
-
-func (v *strictPaymentVerifier) Verify(_ context.Context, request PaymentVerificationRequest) (VerifiedPayment, error) {
-	v.calls++
-	if v.err != nil {
-		return VerifiedPayment{}, v.err
-	}
-	claim, ok := v.claims[request.Receipt]
-	if !ok {
-		return VerifiedPayment{}, ErrPaymentNotVerified
-	}
-	return claim, nil
-}
-
 type strictInviteResolver struct {
 	claims map[string]ResolvedSignup
 	err    error
@@ -242,7 +255,6 @@ func (r *strictInviteResolver) Resolve(_ context.Context, request InviteResoluti
 type twinkleFixture struct {
 	ledger   *fakeLedger
 	signals  *fakeSignals
-	verifier *strictPaymentVerifier
 	resolver *strictInviteResolver
 	zones    *fakeUserZone
 	service  *Service
@@ -257,14 +269,12 @@ func newTwinkleFixture(t *testing.T) *twinkleFixture {
 	fixture := &twinkleFixture{
 		ledger:   newFakeLedger(),
 		signals:  &fakeSignals{recall: map[string]float64{}, gist: map[string]int{}, diary: map[string][]float64{}},
-		verifier: &strictPaymentVerifier{claims: map[string]VerifiedPayment{}},
 		resolver: &strictInviteResolver{claims: map[string]ResolvedSignup{}},
 		zones:    &fakeUserZone{names: map[string]string{}, fallback: "UTC"},
 	}
 	ids := 0
 	service, err := NewService(ServiceDeps{
 		Ledger:         fixture.ledger,
-		Verifier:       fixture.verifier,
 		InviteResolver: fixture.resolver,
 		Signals:        fixture.signals,
 		UserZone:       fixture.zones,
@@ -301,7 +311,6 @@ func TestNewServiceRequiresEveryTrustBoundary(t *testing.T) {
 	// adapter that a composition root could bind here instead.
 	if _, err := NewService(ServiceDeps{
 		Ledger:         fixture.ledger,
-		Verifier:       fixture.verifier,
 		InviteResolver: fixture.resolver,
 		Signals:        fixture.signals,
 	}); !errors.Is(err, ErrZoneReaderRequired) {
@@ -360,7 +369,7 @@ func TestSpendAnchorsTheWindowAndNeverMovesItBackward(t *testing.T) {
 	weight := float64(values.ForgettingCostWeightCap)
 	cost := RecallCost(weight)
 	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger,
-		SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight, DedupKey: "spend:east"}); err != nil {
+		RecallSpendIntent(weight, "spend:east")); err != nil {
 		t.Fatalf("eastward spend failed: %v", err)
 	}
 	anchored := fixture.ledger.records["user-1"]
@@ -373,7 +382,7 @@ func TestSpendAnchorsTheWindowAndNeverMovesItBackward(t *testing.T) {
 	// grant for a date already anchored past.
 	fixture.zones.names["user-1"] = "Pacific/Niue"
 	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger,
-		SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight, DedupKey: "spend:west"}); err != nil {
+		RecallSpendIntent(weight, "spend:west")); err != nil {
 		t.Fatalf("westward spend failed: %v", err)
 	}
 	after := fixture.ledger.records["user-1"]
@@ -425,7 +434,7 @@ func TestCheckAndSpendPricesRecallViaTheCurveAndSplitsSmallFirst(t *testing.T) {
 	}
 
 	weight := float64(values.ForgettingCostWeightCap)
-	err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight})
+	err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, RecallSpendIntent(weight, ""))
 	if err != nil {
 		t.Fatalf("CheckAndSpend failed: %v", err)
 	}
@@ -457,7 +466,7 @@ func TestCheckAndSpendIsIdempotentPerDedupKey(t *testing.T) {
 	}
 
 	weight := float64(values.ForgettingCostWeightCap)
-	intent := SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight, DedupKey: "spend:op-1:m1"}
+	intent := RecallSpendIntent(weight, "spend:op-1:m1")
 
 	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, intent); err != nil {
 		t.Fatalf("first spend failed: %v", err)
@@ -494,7 +503,7 @@ func TestCheckAndSpendOverflowsIntoGeneralWithTheExactSplit(t *testing.T) {
 	if wantCost <= 10 {
 		t.Fatalf("fixture assumption broken: cap recall cost %d must exceed the 10 small left", wantCost)
 	}
-	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight}); err != nil {
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, RecallSpendIntent(weight, "")); err != nil {
 		t.Fatalf("CheckAndSpend failed: %v", err)
 	}
 	entries := fixture.ledger.userEntries("user-1")
@@ -513,7 +522,7 @@ func TestCheckAndSpendPricesGistViewViaItsCurve(t *testing.T) {
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
 
-	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, SpendIntent{Reason: ReasonGistView, SemanticStage: 3}); err != nil {
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, GistViewSpendIntent(3, "")); err != nil {
 		t.Fatalf("CheckAndSpend failed: %v", err)
 	}
 	entries := fixture.ledger.userEntries("user-1")
@@ -533,7 +542,7 @@ func TestCheckAndSpendInsufficientRefusesAndWritesNothing(t *testing.T) {
 	writesBefore := fixture.ledger.writes
 	entriesBefore := len(fixture.ledger.entries)
 
-	err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, SpendIntent{Reason: ReasonRecall, AccessibilityCost: 1})
+	err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, RecallSpendIntent(1, ""))
 	if !errors.Is(err, ErrInsufficientTwinkle) {
 		t.Fatalf("err = %v, want the canonical ErrInsufficientTwinkle", err)
 	}
@@ -545,7 +554,9 @@ func TestCheckAndSpendInsufficientRefusesAndWritesNothing(t *testing.T) {
 func TestCheckAndSpendUnknownReasonIsAWiringFault(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
-	err := fixture.service.CheckAndSpend(context.Background(), twinkleScope(t, "user-1"), fixture.ledger, SpendIntent{Reason: ReasonPayment})
+	// A zero-value intent is what a caller gets by bypassing the constructors — it carries no reason,
+	// so it is refused as the composition fault it is rather than priced as something.
+	err := fixture.service.CheckAndSpend(context.Background(), twinkleScope(t, "user-1"), fixture.ledger, SpendIntent{})
 	if !errors.Is(err, ErrSpendIntentInvalid) {
 		t.Fatalf("err = %v, want ErrSpendIntentInvalid", err)
 	}
@@ -556,14 +567,14 @@ func TestCheckAndSpendWithoutCallerTxRunsItsOwn(t *testing.T) {
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
 
-	if err := fixture.service.CheckAndSpend(context.Background(), scope, nil, SpendIntent{Reason: ReasonGistView, SemanticStage: 1}); err != nil {
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, nil, GistViewSpendIntent(1, "")); err != nil {
 		t.Fatalf("CheckAndSpend failed: %v", err)
 	}
 	if fixture.ledger.txCount != 1 {
 		t.Fatalf("own transactions = %d, want 1 for the tx-less gist view", fixture.ledger.txCount)
 	}
 	// With a caller tx handle the gate must NOT open its own.
-	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, SpendIntent{Reason: ReasonGistView, SemanticStage: 1}); err != nil {
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, GistViewSpendIntent(1, "")); err != nil {
 		t.Fatalf("CheckAndSpend(caller tx) failed: %v", err)
 	}
 	if fixture.ledger.txCount != 1 {
@@ -911,125 +922,13 @@ func TestClaimInviteRejectsWhenOnlyTheInviteeDedupKeyAlreadyExists(t *testing.T)
 	}
 }
 
-// --- earn: payment ---------------------------------------------------------------
-
-func TestChargeCreditsOnlyVerifiedReceiptsIdempotently(t *testing.T) {
-	t.Parallel()
-	fixture := newTwinkleFixture(t)
-	scope := twinkleScope(t, "user-1")
-	fixture.verifier.claims["receipt-blob-1"] = VerifiedPayment{
-		ProviderTransactionID: "transaction-1",
-		Provider:              "app-store",
-		PackID:                DefaultChargePackID,
-		Amount:                values.TwinkleChargePack,
-		BeneficiaryUserID:     "user-1",
-	}
-
-	balance, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", "receipt-blob-1")
-	if err != nil {
-		t.Fatalf("Charge failed: %v", err)
-	}
-	if balance.General != values.TwinkleChargePack {
-		t.Fatalf("general = %d, want the verified pack grant %d", balance.General, values.TwinkleChargePack)
-	}
-	// The same receipt replayed credits nothing more.
-	replay, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", "receipt-blob-1")
-	if err != nil {
-		t.Fatalf("Charge replay failed: %v", err)
-	}
-	if replay.Total() != balance.Total() || len(fixture.ledger.userEntries("user-1")) != 1 {
-		t.Fatal("a replayed receipt must be idempotent")
-	}
-	// An unknown pack fails verification and credits nothing.
-	if _, err := fixture.service.Charge(context.Background(), scope, "pack-unknown", "app-store", "receipt-blob-2"); !errors.Is(err, ErrPaymentNotVerified) {
-		t.Fatalf("unknown pack err = %v, want ErrPaymentNotVerified", err)
-	}
-	if len(fixture.ledger.userEntries("user-1")) != 1 {
-		t.Fatal("an unverified receipt must credit nothing")
-	}
-	if _, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "", ""); !errors.Is(err, ErrChargeInputRequired) {
-		t.Fatalf("empty input err = %v, want ErrChargeInputRequired", err)
-	}
-}
-
-func TestChargeRejectsUnboundOrMalformedVerifiedClaims(t *testing.T) {
-	t.Parallel()
-	fixture := newTwinkleFixture(t)
-	scope := twinkleScope(t, "user-1")
-	base := VerifiedPayment{
-		ProviderTransactionID: "transaction-1",
-		Provider:              "app-store",
-		PackID:                DefaultChargePackID,
-		Amount:                values.TwinkleChargePack,
-		BeneficiaryUserID:     "user-1",
-	}
-	cases := []struct {
-		name  string
-		claim VerifiedPayment
-		want  error
-	}{
-		{name: "beneficiary", claim: func() VerifiedPayment { c := base; c.BeneficiaryUserID = "user-2"; return c }(), want: ErrPaymentBeneficiaryMismatch},
-		{name: "padded beneficiary", claim: func() VerifiedPayment { c := base; c.BeneficiaryUserID = " user-1 "; return c }(), want: ErrPaymentBeneficiaryMismatch},
-		{name: "transaction", claim: func() VerifiedPayment { c := base; c.ProviderTransactionID = ""; return c }(), want: ErrPaymentNotVerified},
-		{name: "unnormalized transaction", claim: func() VerifiedPayment { c := base; c.ProviderTransactionID = " transaction-1 "; return c }(), want: ErrPaymentNotVerified},
-		{name: "provider", claim: func() VerifiedPayment { c := base; c.Provider = "play-store"; return c }(), want: ErrPaymentNotVerified},
-		{name: "pack", claim: func() VerifiedPayment { c := base; c.PackID = "unknown"; return c }(), want: ErrPaymentNotVerified},
-		{name: "amount", claim: func() VerifiedPayment { c := base; c.Amount = 0; return c }(), want: ErrPaymentNotVerified},
-	}
-	for _, test := range cases {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			receipt := "receipt-" + test.name
-			fixture.verifier.claims[receipt] = test.claim
-			if _, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", receipt); !errors.Is(err, test.want) {
-				t.Fatalf("Charge err = %v, want %v", err, test.want)
-			}
-		})
-	}
-	if len(fixture.ledger.entries) != 0 || fixture.ledger.born["user-1"] {
-		t.Fatal("invalid verified claims must not credit or birth a balance")
-	}
-}
-
-func TestChargeSanitizesVerifierFailuresAndGloballyDeduplicatesTransactions(t *testing.T) {
-	t.Parallel()
-	fixture := newTwinkleFixture(t)
-	first := twinkleScope(t, "user-1")
-	second := twinkleScope(t, "user-2")
-
-	fixture.verifier.err = errors.New("provider secret receipt detail")
-	if _, err := fixture.service.Charge(context.Background(), first, DefaultChargePackID, "app-store", "secret-receipt"); !errors.Is(err, ErrPaymentNotVerified) || strings.Contains(err.Error(), "secret") {
-		t.Fatalf("verifier failure err = %v, want sanitized ErrPaymentNotVerified", err)
-	}
-	fixture.verifier.err = nil
-	claim := VerifiedPayment{
-		ProviderTransactionID: "transaction-global",
-		Provider:              "app-store",
-		PackID:                DefaultChargePackID,
-		Amount:                values.TwinkleChargePack,
-		BeneficiaryUserID:     "user-1",
-	}
-	fixture.verifier.claims["receipt-1"] = claim
-	if _, err := fixture.service.Charge(context.Background(), first, DefaultChargePackID, "app-store", "receipt-1"); err != nil {
-		t.Fatalf("first Charge failed: %v", err)
-	}
-	claim.BeneficiaryUserID = "user-2"
-	fixture.verifier.claims["receipt-2"] = claim
-	secondBalance, err := fixture.service.Charge(context.Background(), second, DefaultChargePackID, "app-store", "receipt-2")
-	if err != nil {
-		t.Fatalf("cross-user replay failed: %v", err)
-	}
-	if secondBalance.General != 0 || len(fixture.ledger.entries) != 1 {
-		t.Fatalf("cross-user replay balance=%+v entries=%d, want no second grant", secondBalance, len(fixture.ledger.entries))
-	}
-}
+// --- the fail-closed trust seam ---------------------------------------------------
 
 func TestFailClosedEarnAdaptersReturnCanonicalUnavailableErrors(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	service, err := NewService(ServiceDeps{
 		Ledger:         fixture.ledger,
-		Verifier:       UnavailablePaymentVerifier{},
 		InviteResolver: UnavailableInviteResolver{},
 		Signals:        fixture.signals,
 		UserZone:       fixture.zones,
@@ -1040,14 +939,11 @@ func TestFailClosedEarnAdaptersReturnCanonicalUnavailableErrors(t *testing.T) {
 		t.Fatalf("NewService failed: %v", err)
 	}
 	scope := twinkleScope(t, "user-1")
-	if _, err := service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", "arbitrary-receipt"); !errors.Is(err, ErrPaymentVerificationUnavailable) {
-		t.Fatalf("Charge err = %v, want ErrPaymentVerificationUnavailable", err)
-	}
 	if _, err := service.ClaimInvite(context.Background(), scope, "arbitrary-code"); !errors.Is(err, ErrInviteResolutionUnavailable) {
 		t.Fatalf("ClaimInvite err = %v, want ErrInviteResolutionUnavailable", err)
 	}
 	if len(fixture.ledger.entries) != 0 || fixture.ledger.writes != 0 {
-		t.Fatal("unavailable trust adapters must reach no ledger write")
+		t.Fatal("an unavailable trust adapter must reach no ledger write")
 	}
 }
 
@@ -1098,7 +994,7 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 	if _, err := fixture.service.GetBalance(ctx, none); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("GetBalance err = %v, want ErrScopeRequired", err)
 	}
-	if err := fixture.service.CheckAndSpend(ctx, none, fixture.ledger, SpendIntent{Reason: ReasonRecall}); !errors.Is(err, ErrScopeRequired) {
+	if err := fixture.service.CheckAndSpend(ctx, none, fixture.ledger, RecallSpendIntent(0, "")); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("CheckAndSpend err = %v, want ErrScopeRequired", err)
 	}
 	if err := fixture.service.EarnOnWrite(ctx, none, fixture.ledger, "d1"); !errors.Is(err, ErrScopeRequired) {
@@ -1107,8 +1003,11 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 	if _, err := fixture.service.ClaimInvite(ctx, none, "code"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("ClaimInvite err = %v, want ErrScopeRequired", err)
 	}
-	if _, err := fixture.service.Charge(ctx, none, DefaultChargePackID, "ios", "r"); !errors.Is(err, ErrScopeRequired) {
-		t.Fatalf("Charge err = %v, want ErrScopeRequired", err)
+	if _, err := fixture.service.EarnAchievementReward(ctx, none, "claim-1", 10); !errors.Is(err, ErrScopeRequired) {
+		t.Fatalf("EarnAchievementReward err = %v, want ErrScopeRequired", err)
+	}
+	if _, err := fixture.service.GetLedger(ctx, none, 0, ""); !errors.Is(err, ErrScopeRequired) {
+		t.Fatalf("GetLedger err = %v, want ErrScopeRequired", err)
 	}
 	if _, err := fixture.service.QuoteSpend(ctx, none, SpendKindRecall, "m1", 0); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("QuoteSpend err = %v, want ErrScopeRequired", err)
@@ -1118,27 +1017,325 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 	}
 }
 
-// --- the [G3] closed earn set -------------------------------------------------------
+// --- the [G3][G7] closed reason set -------------------------------------------------
 
-func TestEarnReasonsAreAClosedSetWithNoLoginBonus(t *testing.T) {
+func TestEntryReasonsAreAClosedSetWithNoLoginBonus(t *testing.T) {
 	t.Parallel()
-	// [G3]: the earn paths are payment, invite, write, signup bonus, plus the discretionary admin_grant
-	// (별가루 증정, the admin console). No login/attendance reason exists anywhere in the domain's closed
-	// set; the daily SMALL reset ([G2]) plays that role by design — admin_grant is an operator
-	// gift, not a recurring/automatic bonus.
-	reasons := []EntryReason{
-		ReasonPayment,
-		ReasonInvite,
-		ReasonWriteDiary,
-		ReasonSignupBonus,
-		ReasonRecall,
-		ReasonGistView,
-		ReasonAdminGrant,
+
+	// The whole set, enumerated with its classification. A twelfth reason fails this test, which is
+	// what makes "one plan owns the set" enforceable rather than merely documented ([G7]).
+	classification := map[EntryReason]struct {
+		spend         bool
+		smallEligible bool
+	}{
+		ReasonDailyGrant:       {spend: false, smallEligible: false},
+		ReasonWriteDiary:       {spend: false, smallEligible: false},
+		ReasonInvite:           {spend: false, smallEligible: false},
+		ReasonInviteSignup:     {spend: false, smallEligible: false},
+		ReasonSignupBonus:      {spend: false, smallEligible: false},
+		ReasonAchievementClaim: {spend: false, smallEligible: false},
+		ReasonAdminGrant:       {spend: false, smallEligible: false},
+		ReasonPayment:          {spend: false, smallEligible: false},
+		ReasonRecall:           {spend: true, smallEligible: true},
+		ReasonGistView:         {spend: true, smallEligible: true},
+		ReasonOrnamentPurchase: {spend: true, smallEligible: false},
 	}
-	for _, reason := range reasons {
+	if len(classification) != 11 {
+		t.Fatalf("the reason set has %d members, want exactly 11 — a new reason belongs to plan 66 alone", len(classification))
+	}
+	for reason, want := range classification {
+		if got := reason.IsSpend(); got != want.spend {
+			t.Fatalf("%q.IsSpend() = %v, want %v", reason, got, want.spend)
+		}
+		if got := reason.SmallEligible(); got != want.smallEligible {
+			t.Fatalf("%q.SmallEligible() = %v, want %v", reason, got, want.smallEligible)
+		}
+		// [G3]: no login/attendance reason exists anywhere in the set — the daily SMALL reset plays
+		// that role by design, and admin_grant is a discretionary gift, not a recurring bonus.
 		lowered := strings.ToLower(string(reason))
-		if strings.Contains(lowered, "login") || strings.Contains(lowered, "attendance") {
+		if strings.Contains(lowered, "login") || strings.Contains(lowered, "attendance") ||
+			strings.Contains(lowered, "streak") || strings.Contains(lowered, "checkin") {
 			t.Fatalf("reason %q smells like a login/attendance bonus — [G3] forbids it", reason)
 		}
+	}
+	// An unlisted reason classifies as an earn that cannot touch SMALL — fail-closed in both answers.
+	unknown := EntryReason("some_future_reason")
+	if unknown.IsSpend() || unknown.SmallEligible() || unknown.SpendKind() != "" {
+		t.Fatal("an unlisted reason must classify fail-closed")
+	}
+}
+
+func TestDailyGrantAndPaymentAreReachableFromNoEntryPoint(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	ctx := context.Background()
+	scope := twinkleScope(t, "user-1")
+
+	// A9/A13: the guard is the ABSENT METHOD. There is no exported Earn(reason, amount), so the only
+	// way to reach the ledger is through the six named entry points — and none of them can be talked
+	// into writing either of these two reasons. Exercise every one of them, then assert.
+	if err := fixture.service.EarnOnWrite(ctx, scope, fixture.ledger, "diary-1"); err != nil {
+		t.Fatalf("EarnOnWrite failed: %v", err)
+	}
+	if _, err := fixture.service.EarnSignupBonus(ctx, scope); err != nil {
+		t.Fatalf("EarnSignupBonus failed: %v", err)
+	}
+	if _, err := fixture.service.EarnAchievementReward(ctx, scope, "claim-1", 30); err != nil {
+		t.Fatalf("EarnAchievementReward failed: %v", err)
+	}
+	if _, err := fixture.service.EarnAdminGrant(ctx, scope, 40, "grant-1"); err != nil {
+		t.Fatalf("EarnAdminGrant failed: %v", err)
+	}
+	if err := fixture.service.CheckAndSpend(ctx, scope, fixture.ledger, GistViewSpendIntent(1, "gv-1")); err != nil {
+		t.Fatalf("CheckAndSpend failed: %v", err)
+	}
+	if err := fixture.service.CheckAndSpend(ctx, scope, fixture.ledger, PurchaseSpendIntent(20, "buy-1")); err != nil {
+		t.Fatalf("CheckAndSpend(purchase) failed: %v", err)
+	}
+	fixture.resolver.claims[inviteResolutionKey("code", "friend")] = ResolvedSignup{
+		SignupID: "signup-1", InviterUserID: "user-1", InviteeUserID: "friend",
+	}
+	if _, err := fixture.service.ClaimInvite(ctx, twinkleScope(t, "friend"), "code"); err != nil {
+		t.Fatalf("ClaimInvite failed: %v", err)
+	}
+
+	if len(fixture.ledger.entries) == 0 {
+		t.Fatal("the sweep wrote nothing — the assertion below would be vacuous")
+	}
+	for _, recorded := range fixture.ledger.entries {
+		switch recorded.entry.Reason {
+		case ReasonDailyGrant:
+			t.Fatal("a daily_grant row was written — the refill is a derivation, never an event ([G7][T4])")
+		case ReasonPayment:
+			t.Fatal("a payment row was written — payment is deferred to v3 and has no write path")
+		}
+	}
+}
+
+// --- the purchase debit ([P9]) --------------------------------------------------------
+
+func TestPurchaseSpendDrawsGeneralOnlyAndJoinsTheCallersTransaction(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	// A full SMALL allowance and enough GENERAL: the purchase must ignore SMALL entirely.
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 200, 0); err != nil {
+		t.Fatalf("seed failed: %v", err)
+	}
+
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, PurchaseSpendIntent(60, "purchase:op-1")); err != nil {
+		t.Fatalf("CheckAndSpend(purchase) failed: %v", err)
+	}
+	entries := fixture.ledger.userEntries("user-1")
+	entry := entries[len(entries)-1]
+	if entry.Reason != ReasonOrnamentPurchase || entry.Kind != EntryKindSpend || entry.Amount != 60 {
+		t.Fatalf("entry = %+v, want a 60 ornament_purchase spend", entry)
+	}
+	if entry.FromSmall != 0 || entry.FromGeneral != 60 {
+		t.Fatalf("split = {small %d, general %d}, want GENERAL-only {0, 60} ([P9])", entry.FromSmall, entry.FromGeneral)
+	}
+	record := fixture.ledger.records["user-1"]
+	if record.General != 140 || record.SmallSpentThisWindow != 0 {
+		t.Fatalf("record = %+v, want GENERAL debited and the SMALL window untouched", record)
+	}
+	// The caller's transaction carries it: the gate opened none of its own.
+	if fixture.ledger.txCount != 0 {
+		t.Fatalf("own transactions = %d, want 0 — a purchase commits with the Decorate that caused it", fixture.ledger.txCount)
+	}
+	// A replayed purchase (same dedup key) applies no second debit.
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, PurchaseSpendIntent(60, "purchase:op-1")); err != nil {
+		t.Fatalf("replayed purchase failed: %v", err)
+	}
+	if fixture.ledger.records["user-1"].General != 140 {
+		t.Fatal("a replayed purchase debited twice")
+	}
+
+	// A purchase has no price of its own to fall back on: a non-positive total is a wiring fault.
+	for _, amount := range []int{0, -1} {
+		if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, PurchaseSpendIntent(amount, "bad")); !errors.Is(err, ErrPurchaseAmountInvalid) {
+			t.Fatalf("PurchaseSpendIntent(%d) err = %v, want ErrPurchaseAmountInvalid", amount, err)
+		}
+	}
+}
+
+func TestInsufficiencyIsTypedAndKindAware(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	// GENERAL 10, SMALL full: a 60 purchase is short by 50 even though the total balance covers it —
+	// which is exactly the [G5] protection the two kinds exist for.
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 10, 0); err != nil {
+		t.Fatalf("seed failed: %v", err)
+	}
+	writesBefore := fixture.ledger.writes
+
+	err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, PurchaseSpendIntent(60, "buy"))
+	if !errors.Is(err, ErrInsufficientTwinkle) {
+		t.Fatalf("err = %v, want it to satisfy errors.Is(ErrInsufficientTwinkle)", err)
+	}
+	var denial *InsufficientTwinkle
+	if !errors.As(err, &denial) {
+		t.Fatalf("err = %v, want a *InsufficientTwinkle carrying the arithmetic", err)
+	}
+	if denial.Cost != 60 || denial.Eligible != 10 || denial.Shortfall != 50 {
+		t.Fatalf("denial = %+v, want {60, 10, 50} — GENERAL alone is eligible for a purchase", *denial)
+	}
+	if got := denial.Detail(); got["cost"] != "60" || got["eligible"] != "10" || got["shortfall"] != "50" {
+		t.Fatalf("Detail() = %v, want the three figures as strings", got)
+	}
+	if fixture.ledger.writes != writesBefore {
+		t.Fatal("a refused spend must write nothing")
+	}
+
+	// The same balance, priced for a recall: SMALL counts, so eligible is both kinds.
+	fixture.signals.recall["m1"] = 0
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, RecallSpendIntent(0, "r")); err != nil {
+		t.Fatalf("a recall at the same balance was refused: %v", err)
+	}
+}
+
+// --- the new earn entry points ---------------------------------------------------------
+
+func TestEarnAchievementRewardCreditsGeneralOncePerClaim(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+
+	for range 2 {
+		balance, err := fixture.service.EarnAchievementReward(context.Background(), scope, "claim-7", 120)
+		if err != nil {
+			t.Fatalf("EarnAchievementReward failed: %v", err)
+		}
+		if balance.General != 120 {
+			t.Fatalf("general = %d, want one 120 reward", balance.General)
+		}
+	}
+	entries := fixture.ledger.userEntries("user-1")
+	if len(entries) != 1 || entries[0].Reason != ReasonAchievementClaim || entries[0].Kind != EntryKindEarn ||
+		entries[0].DedupKey == nil || *entries[0].DedupKey != "achievement:claim-7" {
+		t.Fatalf("entries = %+v, want one achievement_claim earn keyed by the claim", entries)
+	}
+	if fixture.ledger.records["user-1"].SmallSpentThisWindow != 0 {
+		t.Fatal("the reward touched the SMALL window — SMALL is never earned ([G2])")
+	}
+	// It is a credit primitive: it decides no eligibility, only that the inputs could be a reward.
+	if _, err := fixture.service.EarnAchievementReward(context.Background(), scope, "  ", 10); !errors.Is(err, ErrRewardClaimRequired) {
+		t.Fatalf("blank claim id err = %v, want ErrRewardClaimRequired", err)
+	}
+	if _, err := fixture.service.EarnAchievementReward(context.Background(), scope, "claim-8", 0); !errors.Is(err, ErrGrantAmountInvalid) {
+		t.Fatalf("zero reward err = %v, want ErrGrantAmountInvalid", err)
+	}
+}
+
+func TestClaimInviteSplitsTheTwoLegsByReason(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	invitee := twinkleScope(t, "friend-1")
+	fixture.resolver.claims[inviteResolutionKey("code", "friend-1")] = ResolvedSignup{
+		SignupID: "signup-1", InviterUserID: "inviter-1", InviteeUserID: "friend-1",
+	}
+
+	if _, err := fixture.service.ClaimInvite(context.Background(), invitee, "code"); err != nil {
+		t.Fatalf("ClaimInvite failed: %v", err)
+	}
+	inviter := fixture.ledger.userEntries("inviter-1")
+	if len(inviter) != 1 || inviter[0].Reason != ReasonInvite ||
+		inviter[0].DedupKey == nil || *inviter[0].DedupKey != "invite:signup-1" {
+		t.Fatalf("inviter entries = %+v, want one `invite` row keyed invite:signup-1", inviter)
+	}
+	friend := fixture.ledger.userEntries("friend-1")
+	if len(friend) != 1 || friend[0].Reason != ReasonInviteSignup ||
+		friend[0].DedupKey == nil || *friend[0].DedupKey != "invite_signup:signup-1" {
+		t.Fatalf("invitee entries = %+v, want one `invite_signup` row keyed invite_signup:signup-1", friend)
+	}
+}
+
+// --- the history read ([G7]) -----------------------------------------------------------
+
+func TestGetLedgerPagesNewestFirstWithinTheCap(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	base := twinkleNow()
+	for index := range 5 {
+		key := fmt.Sprintf("k%d", index)
+		fixture.ledger.entries = append(fixture.ledger.entries, recordedEntry{
+			userID: "user-1",
+			entry: LedgerEntry{
+				ID: fmt.Sprintf("entry-%d", index), Kind: EntryKindEarn, Reason: ReasonWriteDiary,
+				Amount: 10, DedupKey: &key, CreatedAt: base.Add(time.Duration(index) * time.Minute),
+			},
+		})
+	}
+
+	first, err := fixture.service.GetLedger(context.Background(), scope, 2, "")
+	if err != nil {
+		t.Fatalf("GetLedger failed: %v", err)
+	}
+	if len(first.Entries) != 2 || first.Entries[0].Entry.ID != "entry-4" || first.Entries[1].Entry.ID != "entry-3" {
+		t.Fatalf("page 1 = %+v, want the two newest", first.Entries)
+	}
+	if first.NextPageToken == "" {
+		t.Fatal("page 1 has no next token but the history continues")
+	}
+	second, err := fixture.service.GetLedger(context.Background(), scope, 2, first.NextPageToken)
+	if err != nil {
+		t.Fatalf("GetLedger(page 2) failed: %v", err)
+	}
+	if len(second.Entries) != 2 || second.Entries[0].Entry.ID != "entry-2" {
+		t.Fatalf("page 2 = %+v, want the next two with no overlap", second.Entries)
+	}
+	last, err := fixture.service.GetLedger(context.Background(), scope, 2, second.NextPageToken)
+	if err != nil {
+		t.Fatalf("GetLedger(page 3) failed: %v", err)
+	}
+	if len(last.Entries) != 1 || last.NextPageToken != "" {
+		t.Fatalf("page 3 = %+v (next %q), want the last row and no token", last.Entries, last.NextPageToken)
+	}
+
+	// The cap is the default AND the ceiling: asking for more than the page size gets the page size.
+	full, err := fixture.service.GetLedger(context.Background(), scope, values.TwinkleLedgerPageSize+500, "")
+	if err != nil {
+		t.Fatalf("GetLedger(oversized) failed: %v", err)
+	}
+	if len(full.Entries) != 5 {
+		t.Fatalf("oversized page returned %d entries, want all 5 (clamped, not refused)", len(full.Entries))
+	}
+
+	// A fabricated token is refused rather than silently restarting the history.
+	if _, err := fixture.service.GetLedger(context.Background(), scope, 0, "not-a-cursor!!"); !errors.Is(err, ErrLedgerCursorInvalid) {
+		t.Fatalf("bad token err = %v, want ErrLedgerCursorInvalid", err)
+	}
+}
+
+func TestGetLedgerResolvesTheDayInTheUsersZone(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	// 2026-07-14T23:00Z is still the 14th in UTC and already the 15th in Seoul. The history's day
+	// header must agree with the user's own SMALL reset boundary, not the server's ([U7]).
+	key := "k"
+	fixture.ledger.entries = append(fixture.ledger.entries, recordedEntry{
+		userID: "user-1",
+		entry: LedgerEntry{
+			ID: "entry-1", Kind: EntryKindEarn, Reason: ReasonSignupBonus, Amount: 500,
+			DedupKey: &key, CreatedAt: time.Date(2026, 7, 14, 23, 0, 0, 0, time.UTC),
+		},
+	})
+
+	page, err := fixture.service.GetLedger(context.Background(), scope, 0, "")
+	if err != nil {
+		t.Fatalf("GetLedger failed: %v", err)
+	}
+	if got := page.Entries[0].OccurredOn.Format(time.DateOnly); got != "2026-07-14" {
+		t.Fatalf("occurred_on (UTC user) = %s, want 2026-07-14", got)
+	}
+	fixture.zones.names["user-1"] = "Asia/Seoul"
+	page, err = fixture.service.GetLedger(context.Background(), scope, 0, "")
+	if err != nil {
+		t.Fatalf("GetLedger(Seoul) failed: %v", err)
+	}
+	if got := page.Entries[0].OccurredOn.Format(time.DateOnly); got != "2026-07-15" {
+		t.Fatalf("occurred_on (Seoul user) = %s, want 2026-07-15", got)
 	}
 }

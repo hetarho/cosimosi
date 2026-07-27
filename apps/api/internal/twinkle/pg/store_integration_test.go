@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/values"
@@ -286,90 +288,200 @@ func TestTwinkleLedgerAppendIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestPaymentTransactionIsSingleUseAcrossRetriesAndUsers(t *testing.T) {
+// A13: payment left the product (PRD §8.3 defers it to v3), but the ledger is append-only, so the
+// GLOBAL partial uniqueness index on payment dedup keys (migration 00010) is RETAINED as a historical
+// guard and is asserted through the append itself rather than the removed Charge use-case. A provider
+// transaction cannot be replayed across accounts, and a historical payment row still folds into the
+// balance and still renders in the history.
+func TestHistoricalPaymentRowsStayGloballySingleUseAndReadable(t *testing.T) {
 	pool := openTwinkleTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	base := fmt.Sprintf("test-payment-replay-%d", time.Now().UnixNano())
+	base := fmt.Sprintf("test-payment-history-%d", time.Now().UnixNano())
 	firstID := base + "-first"
 	secondID := base + "-second"
-	concurrentID := base + "-concurrent"
-	for _, userID := range []string{firstID, secondID, concurrentID} {
+	for _, userID := range []string{firstID, secondID} {
 		cleanupTwinkleTestRows(t, pool, userID)
 	}
-	verifier := &echoPaymentVerifier{}
-	service, err := twinkle.NewService(twinkle.ServiceDeps{
-		Ledger:         NewStore(pool.PgxPool()),
-		Verifier:       verifier,
-		InviteResolver: twinkle.UnavailableInviteResolver{},
-		Signals:        emptySpendSignals{},
-		UserZone:       utcUserZone{},
-	})
-	if err != nil {
-		t.Fatalf("NewService failed: %v", err)
-	}
-
+	store := NewStore(pool.PgxPool())
 	first := mustUserScope(t, firstID)
-	verifier.transactionID = base + "-same-user"
-	for range 2 {
-		if _, err := service.Charge(ctx, first, twinkle.DefaultChargePackID, "app-store", "opaque-receipt"); err != nil {
-			t.Fatalf("same-user Charge failed: %v", err)
-		}
-	}
-	assertPaymentState(t, pool, firstID, verifier.transactionID, values.TwinkleChargePack, 1)
-
-	concurrent := mustUserScope(t, concurrentID)
-	verifier.transactionID = base + "-concurrent"
-	var wg sync.WaitGroup
-	errs := make([]error, 2)
-	for i := range errs {
-		wg.Add(1)
-		go func(slot int) {
-			defer wg.Done()
-			_, errs[slot] = service.Charge(ctx, concurrent, twinkle.DefaultChargePackID, "app-store", "opaque-receipt")
-		}(i)
-	}
-	wg.Wait()
-	for _, err := range errs {
-		if err != nil {
-			t.Fatalf("concurrent Charge failed: %v", err)
-		}
-	}
-	assertPaymentState(t, pool, concurrentID, verifier.transactionID, values.TwinkleChargePack, 1)
-
-	verifier.transactionID = base + "-cross-user"
-	if _, err := service.Charge(ctx, first, twinkle.DefaultChargePackID, "app-store", "opaque-receipt"); err != nil {
-		t.Fatalf("first cross-user Charge failed: %v", err)
-	}
 	second := mustUserScope(t, secondID)
-	if _, err := service.Charge(ctx, second, twinkle.DefaultChargePackID, "app-store", "same-transaction-new-account"); err != nil {
-		t.Fatalf("cross-user replay Charge failed: %v", err)
+	key := paymentKeyForTest("app-store", base+"-transaction")
+
+	entry := twinkle.LedgerEntry{
+		ID:        base + "-row-1",
+		Kind:      twinkle.EntryKindEarn,
+		Reason:    twinkle.ReasonPayment,
+		Amount:    100,
+		DedupKey:  &key,
+		CreatedAt: time.Now().UTC(),
 	}
-	assertPaymentState(t, pool, secondID, verifier.transactionID, 0, 0)
-	var globalRows int
+	applied, err := store.AppendLedgerEntry(ctx, first, entry)
+	if err != nil || !applied {
+		t.Fatalf("historical payment append = (%v, %v), want applied", applied, err)
+	}
+	if _, err := store.ApplyBalanceDelta(ctx, first, dateOnly(time.Now().UTC()), 100, 0); err != nil {
+		t.Fatalf("fold the historical payment into the balance failed: %v", err)
+	}
+
+	// The same provider transaction under a different account: the global index refuses it, and the
+	// store reports the refusal as an idempotent no-op rather than an error.
+	replay := entry
+	replay.ID = base + "-row-2"
+	applied, err = store.AppendLedgerEntry(ctx, second, replay)
+	if err != nil {
+		t.Fatalf("cross-user payment replay errored: %v", err)
+	}
+	if applied {
+		t.Fatal("one provider transaction credited two accounts — the global payment index is gone")
+	}
+	assertPaymentState(t, pool, firstID, base+"-transaction", 100, 1)
+	assertPaymentState(t, pool, secondID, base+"-transaction", 0, 0)
+
+	// Still readable: the retired reason folds into the balance and comes back in the history.
+	record, err := store.GetBalanceRecord(ctx, first)
+	if err != nil || record == nil || record.General != 100 {
+		t.Fatalf("balance record = %+v (err %v), want the historical payment folded in", record, err)
+	}
+	page, err := store.ListLedgerPage(ctx, first, nil, 10)
+	if err != nil {
+		t.Fatalf("ListLedgerPage failed: %v", err)
+	}
+	if len(page) != 1 || page[0].Reason != twinkle.ReasonPayment {
+		t.Fatalf("history = %+v, want the historical payment row", page)
+	}
+}
+
+// A3: the [P9] guarantee is enforced by the schema too, not only by PlanSpend. A hand-crafted INSERT
+// that funds an ornament purchase from SMALL must be refused by migration 00019's constraint — which
+// is what makes the guarantee survive a caller that bypasses the use-case entirely.
+func TestOrnamentPurchaseFromSmallIsRefusedByTheConstraint(t *testing.T) {
+	pool := openTwinkleTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userID := fmt.Sprintf("test-purchase-check-%d", time.Now().UnixNano())
+	cleanupTwinkleTestRows(t, pool, userID)
+
+	_, err := pool.PgxPool().Exec(ctx,
+		`INSERT INTO twinkle_ledger_entries (id, user_id, kind, reason, amount, from_basic, from_additional, created_at)
+		 VALUES ($1, $2, 'spend', 'ornament_purchase', 10, 10, 0, now())`,
+		userID+"-bad", userID)
+	if err == nil {
+		t.Fatal("an ornament_purchase funded from SMALL was accepted — the [P9] CHECK is missing")
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.ConstraintName != "twinkle_ledger_entries_purchase_general_only" {
+		t.Fatalf("rejection = %v, want the purchase_general_only CHECK", err)
+	}
+
+	// The same purchase drawn from GENERAL is accepted — the constraint bans the funding source, not
+	// the reason.
+	if _, err := pool.PgxPool().Exec(ctx,
+		`INSERT INTO twinkle_ledger_entries (id, user_id, kind, reason, amount, from_basic, from_additional, created_at)
+		 VALUES ($1, $2, 'spend', 'ornament_purchase', 10, 0, 10, now())`,
+		userID+"-good", userID); err != nil {
+		t.Fatalf("a GENERAL-funded ornament purchase was refused: %v", err)
+	}
+}
+
+// [G7]: the daily refill is a derivation, and the guard has to hold at the LAST boundary before the
+// table — not only at the service, which this adapter can be called around. `payment` stays writable
+// on purpose: those rows exist, and the retained global-uniqueness guard above needs to write one.
+func TestTheAdapterRefusesToWriteADailyGrantRow(t *testing.T) {
+	pool := openTwinkleTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userID := fmt.Sprintf("test-daily-grant-%d", time.Now().UnixNano())
+	cleanupTwinkleTestRows(t, pool, userID)
+	store := NewStore(pool.PgxPool())
+	scope := mustUserScope(t, userID)
+	key := userID + "-key"
+
+	applied, err := store.AppendLedgerEntry(ctx, scope, twinkle.LedgerEntry{
+		ID:        userID + "-grant",
+		Kind:      twinkle.EntryKindEarn,
+		Reason:    twinkle.ReasonDailyGrant,
+		Amount:    100,
+		DedupKey:  &key,
+		CreatedAt: time.Now().UTC(),
+	})
+	if !errors.Is(err, ErrUnwritableReason) || applied {
+		t.Fatalf("daily_grant append = (%v, %v), want ErrUnwritableReason and no row", applied, err)
+	}
+	var rows int
 	if err := pool.PgxPool().QueryRow(ctx,
-		"SELECT count(*) FROM twinkle_ledger_entries WHERE reason = 'payment' AND dedup_key = $1",
-		paymentKeyForTest("app-store", verifier.transactionID)).Scan(&globalRows); err != nil {
-		t.Fatalf("count global payment rows failed: %v", err)
+		"SELECT count(*) FROM twinkle_ledger_entries WHERE user_id = $1", userID).Scan(&rows); err != nil {
+		t.Fatalf("count rows failed: %v", err)
 	}
-	if globalRows != 1 {
-		t.Fatalf("global payment rows = %d, want exactly 1", globalRows)
+	if rows != 0 {
+		t.Fatalf("rows = %d, want 0 — the refill must never be a row", rows)
 	}
 }
 
-type echoPaymentVerifier struct {
-	transactionID string
-}
+// A11: the page is a keyset, not an offset — a row landing mid-scroll must not shift the boundary and
+// duplicate or skip a neighbour. Two entries sharing a created_at prove the id half of the key.
+func TestListLedgerPageIsAStableKeysetNewestFirst(t *testing.T) {
+	pool := openTwinkleTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-func (v *echoPaymentVerifier) Verify(_ context.Context, request twinkle.PaymentVerificationRequest) (twinkle.VerifiedPayment, error) {
-	return twinkle.VerifiedPayment{
-		ProviderTransactionID: v.transactionID,
-		Provider:              request.Provider,
-		PackID:                request.PackID,
-		Amount:                values.TwinkleChargePack,
-		BeneficiaryUserID:     request.BeneficiaryUserID,
-	}, nil
+	userID := fmt.Sprintf("test-ledger-page-%d", time.Now().UnixNano())
+	cleanupTwinkleTestRows(t, pool, userID)
+	store := NewStore(pool.PgxPool())
+	scope := mustUserScope(t, userID)
+
+	shared := time.Now().UTC().Truncate(time.Microsecond)
+	for index, stamp := range []time.Time{shared.Add(-2 * time.Minute), shared, shared} {
+		key := fmt.Sprintf("%s-key-%d", userID, index)
+		applied, err := store.AppendLedgerEntry(ctx, scope, twinkle.LedgerEntry{
+			ID:        fmt.Sprintf("%s-entry-%d", userID, index),
+			Kind:      twinkle.EntryKindEarn,
+			Reason:    twinkle.ReasonWriteDiary,
+			Amount:    10,
+			DedupKey:  &key,
+			CreatedAt: stamp,
+		})
+		if err != nil || !applied {
+			t.Fatalf("seed append %d = (%v, %v)", index, applied, err)
+		}
+	}
+
+	page, err := store.ListLedgerPage(ctx, scope, nil, 2)
+	if err != nil {
+		t.Fatalf("ListLedgerPage failed: %v", err)
+	}
+	if len(page) != 2 {
+		t.Fatalf("page = %d rows, want 2", len(page))
+	}
+	// Newest first, and the id breaks the created_at tie deterministically (descending).
+	if page[0].ID <= page[1].ID {
+		t.Fatalf("tie order = %s then %s, want descending ids", page[0].ID, page[1].ID)
+	}
+	next, err := store.ListLedgerPage(ctx, scope,
+		&twinkle.LedgerCursor{CreatedAt: page[1].CreatedAt, ID: page[1].ID}, 2)
+	if err != nil {
+		t.Fatalf("ListLedgerPage(cursor) failed: %v", err)
+	}
+	if len(next) != 1 {
+		t.Fatalf("page 2 = %d rows, want the single remaining row", len(next))
+	}
+	for _, seen := range page {
+		if next[0].ID == seen.ID {
+			t.Fatalf("page 2 repeated %s from page 1", seen.ID)
+		}
+	}
+	// A cross-user read is unrepresentable: the scope is the query's own predicate.
+	other := mustUserScope(t, userID+"-other")
+	empty, err := store.ListLedgerPage(ctx, other, nil, 10)
+	if err != nil {
+		t.Fatalf("ListLedgerPage(other user) failed: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Fatalf("another user's page returned %d rows", len(empty))
+	}
 }
 
 // utcUserZone stands in for the composition root's account adapter where the test has no profile.

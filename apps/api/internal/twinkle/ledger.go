@@ -74,23 +74,87 @@ const (
 	EntryKindSpend EntryKind = "spend"
 )
 
-// EntryReason is the closed earn/spend source set ([G3][G1]) — a TEXT closed set like
-// neuron_type, not a PG enum. Earn reasons: payment, invite, write_diary, signup_bonus,
-// admin_grant. Spend reasons: recall (회고), gist_view (요지 별 열람).
+// EntryReason is the closed earn/spend source set ([G3][G1][G7]) — a TEXT closed set like
+// neuron_type, deliberately NOT a PG enum and with no CHECK on the column: a closed-set CHECK on an
+// append-only ledger costs a migration per reason and risks failing historical rows. The domain owns
+// the set; the schema owns the arithmetic invariants (plus the one [P9] reason-shaped CHECK, which
+// guards money).
+//
+// This file is the set's SOLE owner. A plan that needs a new economic event does not add a reason
+// here on its way past — the reasons are enumerated whole by a test that a twelfth value fails.
+//
+// Two members are deliberately unwritable, and the guard is the ABSENT METHOD rather than a
+// validation branch: there is no exported Earn(reason, amount), so every writable reason is reachable
+// from exactly one named entry point — EarnOnWrite, ClaimInvite (both legs), EarnSignupBonus,
+// EarnAchievementReward, EarnAdminGrant, CheckAndSpend — and these two are reachable from none.
 type EntryReason string
 
 const (
-	ReasonPayment     EntryReason = "payment"
-	ReasonInvite      EntryReason = "invite"
-	ReasonWriteDiary  EntryReason = "write_diary"
-	ReasonSignupBonus EntryReason = "signup_bonus"
-	ReasonRecall      EntryReason = "recall"
-	ReasonGistView    EntryReason = "gist_view"
+	// ReasonDailyGrant is RESERVED AND NEVER WRITTEN ([G7][T4]): the daily SMALL refill is a
+	// derivation from the stored window anchor, not an event. It has no entry point, no cron and no
+	// wire value, so no client can mistake the refill for a transaction. It exists here only so the
+	// closed set names the economy's one non-event instead of leaving a silent hole.
+	ReasonDailyGrant EntryReason = "daily_grant"
+	// ReasonPayment is RETAINED WITH NO WRITE PATH (PRD §8.3 defers 스토어/PG to v3): historical rows
+	// must stay readable and foldable into the balance ([I1] — nothing is deleted, including history
+	// whose feature left).
+	ReasonPayment EntryReason = "payment"
+
+	ReasonWriteDiary EntryReason = "write_diary"
+	// ReasonInvite / ReasonInviteSignup are the two legs of one signup, split so the history can say
+	// "친구가 가입했다" to the inviter and "초대로 시작했다" to the invitee from the reason alone.
+	ReasonInvite       EntryReason = "invite"
+	ReasonInviteSignup EntryReason = "invite_signup"
+	ReasonSignupBonus  EntryReason = "signup_bonus"
+	// ReasonAchievementClaim is the reward credited when a user CLAIMS an achievement — claiming is an
+	// explicit act, so the credit is keyed by the claim, never by the achievement being met.
+	ReasonAchievementClaim EntryReason = "achievement_claim"
 	// ReasonAdminGrant is an operator gift (별가루 증정, the admin console): credited to GENERAL
 	// balance from the admin console, capped by the admin context (never a login/attendance bonus
 	// [G3] — this is a discretionary support/promotion grant, not a recurring earn).
 	ReasonAdminGrant EntryReason = "admin_grant"
+
+	ReasonRecall   EntryReason = "recall"
+	ReasonGistView EntryReason = "gist_view"
+	// ReasonOrnamentPurchase is the decoration debit ([P9]): GENERAL only, guarded both by PlanSpend's
+	// purpose argument and by the migration CHECK — prose in neither place.
+	ReasonOrnamentPurchase EntryReason = "ornament_purchase"
 )
+
+// IsSpend is the ledger-log direction of a reason: a reason either takes Twinkle out or puts it in,
+// never both. A closed switch — an unlisted reason reads as an earn's opposite, which is to say the
+// classification test is what keeps this honest, not the default arm.
+func (r EntryReason) IsSpend() bool {
+	switch r {
+	case ReasonRecall, ReasonGistView, ReasonOrnamentPurchase:
+		return true
+	default:
+		return false
+	}
+}
+
+// SpendKind is the ONE bridge between the persisted ledger vocabulary and the purpose vocabulary a
+// spend is planned against. An earn reason — or an unlisted one — maps to the empty kind, which
+// SmallEligible answers false for, so nothing can reach the recall allowance through this seam by
+// omission. A DIARY_RECALL action needs no reason of its own: it writes one `recall` row per member.
+func (r EntryReason) SpendKind() SpendKind {
+	switch r {
+	case ReasonRecall:
+		return SpendKindRecall
+	case ReasonGistView:
+		return SpendKindGistView
+	case ReasonOrnamentPurchase:
+		return SpendKindPurchase
+	default:
+		return ""
+	}
+}
+
+// SmallEligible asks the eligibility question in the ledger's vocabulary, and answers it by
+// delegating to the one place it is decided.
+func (r EntryReason) SmallEligible() bool {
+	return SmallEligible(r.SpendKind())
+}
 
 // LedgerEntry is one append-only earn/spend log row ([I1] spirit — history is never updated
 // or deleted). DedupKey makes a retried earn/spend idempotent; nil opts out of dedup.
@@ -103,6 +167,29 @@ type LedgerEntry struct {
 	FromGeneral int
 	DedupKey    *string
 	CreatedAt   time.Time
+}
+
+// LedgerView is one ledger row as the history reads it ([G7][U9]): the stored entry plus the local
+// calendar date its day header belongs to. The date is resolved server-side because the day boundary
+// is the user's, not the device's ([U7]) — a device-local grouping would draw headers that disagree
+// with the SMALL reset boundary the same user just watched refill.
+type LedgerView struct {
+	Entry      LedgerEntry
+	OccurredOn time.Time
+}
+
+// LedgerPage is one keyset page of the history, newest first. An empty NextPageToken means the
+// history ends here — not that the page was short, which a client cannot otherwise distinguish.
+type LedgerPage struct {
+	Entries       []LedgerView
+	NextPageToken string
+}
+
+// LedgerCursor is the decoded page boundary: the last row of the previous page. The pair is total —
+// created_at alone is not, since two entries in one transaction share it.
+type LedgerCursor struct {
+	CreatedAt time.Time
+	ID        string
 }
 
 // SpendPlan is PlanSpend's per-kind draw: how much of a cost comes from SMALL and how much from

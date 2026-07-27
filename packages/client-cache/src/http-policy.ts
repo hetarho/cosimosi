@@ -152,6 +152,10 @@ export const twinkleRpcCachePolicies = [
     method: TwinkleService.method.quoteSpend,
     policy: userScopedUnaryReadPolicy,
   },
+  {
+    method: TwinkleService.method.getLedger,
+    policy: userScopedUnaryReadPolicy,
+  },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
 // Account reads are GET-eligible but per-user — privately cacheable, never shared CDN (§2.7/§4).

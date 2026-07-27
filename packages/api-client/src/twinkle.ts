@@ -9,19 +9,25 @@ import { createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-q
 
 import {
   GetBalanceResponseSchema,
+  GetLedgerResponseSchema,
   QuoteSpendResponseSchema,
   TwinkleService,
+  type GetLedgerRequest,
   type QuoteSpendRequest,
 } from './gen/cosimosi/twinkle/v1/twinkle_pb.ts'
 
-export { SpendKind, TwinkleService } from './gen/cosimosi/twinkle/v1/twinkle_pb.ts'
+export {
+  LedgerEntryKind,
+  LedgerEntryReason,
+  SpendKind,
+  TwinkleService,
+} from './gen/cosimosi/twinkle/v1/twinkle_pb.ts'
 export type {
-  ChargeRequest,
-  ChargeResponse,
-  ClaimInviteRequest,
-  ClaimInviteResponse,
   GetBalanceRequest,
   GetBalanceResponse,
+  GetLedgerRequest,
+  GetLedgerResponse,
+  LedgerEntry,
   QuoteSpendRequest,
   QuoteSpendResponse,
 } from './gen/cosimosi/twinkle/v1/twinkle_pb.ts'
@@ -33,6 +39,7 @@ export function createTwinkleClient(transport: Transport): Client<typeof Twinkle
 export function createTwinkleMockTransport(handlers: {
   getBalance?: () => MessageInitShape<typeof GetBalanceResponseSchema>
   quoteSpend?: (request: QuoteSpendRequest) => MessageInitShape<typeof QuoteSpendResponseSchema>
+  getLedger?: (request: GetLedgerRequest) => MessageInitShape<typeof GetLedgerResponseSchema>
 }): Transport {
   return createRouterTransport(({ service }) => {
     service(TwinkleService, {
@@ -41,6 +48,9 @@ export function createTwinkleMockTransport(handlers: {
       },
       quoteSpend(request) {
         return handlers.quoteSpend?.(request) ?? {}
+      },
+      getLedger(request) {
+        return handlers.getLedger?.(request) ?? {}
       },
     })
   })
@@ -84,4 +94,23 @@ export function createQuoteSpendQueryOptions(
   transport: Transport,
 ) {
   return createQueryOptions(TwinkleService.method.quoteSpend, input, { transport })
+}
+
+export function createGetLedgerQueryKey(
+  input: MessageInitShape<typeof TwinkleService.method.getLedger.input>,
+  transport?: Transport,
+) {
+  return createConnectQueryKey({
+    schema: TwinkleService.method.getLedger,
+    input,
+    transport,
+    cardinality: 'finite',
+  })
+}
+
+export function createGetLedgerQueryOptions(
+  input: MessageInitShape<typeof TwinkleService.method.getLedger.input>,
+  transport: Transport,
+) {
+  return createQueryOptions(TwinkleService.method.getLedger, input, { transport })
 }

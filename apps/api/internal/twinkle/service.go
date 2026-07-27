@@ -2,10 +2,10 @@ package twinkle
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,14 +16,14 @@ import (
 // The earn/spend use-cases — the orchestration of the Twinkle economy over the
 // pure ledger model in ledger.go: the real SpendGate the recall/gist-view
 // consumers call ([CC2][G1]), the earn paths (write / invite / signup bonus /
-// verified payment, [G3]), the balance read, and the server quote ([G4]). Every policy —
+// achievement reward, [G3]), the purchase debit ([P9]), the balance read, the ledger
+// history ([G7]) and the server quote ([G4]). Every policy —
 // pricing, spend order, earn reasons, idempotency, and trusted-claim validation — lives here or in
 // the pure domain, never in a handler (§2.9#7). There is deliberately NO
 // login/attendance earn path ([G3]): the daily SMALL reset is that role.
 
 var (
 	ErrLedgerRequired         = errors.New("twinkle service requires a ledger repo")
-	ErrVerifierRequired       = errors.New("twinkle service requires a store payment verifier")
 	ErrInviteResolverRequired = errors.New("twinkle service requires an invite resolver")
 	ErrSignalsRequired        = errors.New("twinkle service requires a spend-signal reader")
 	// ErrZoneReaderRequired keeps the [U7] day boundary bound: production may not boot with an
@@ -47,17 +47,21 @@ var (
 	// ErrSpendIntentInvalid rejects a SpendIntent whose reason is not a spend
 	// reason — a composition fault, not a user input.
 	ErrSpendIntentInvalid = errors.New("twinkle spend intent carries no spendable reason")
+	// ErrPurchaseAmountInvalid rejects a non-positive purchase total. The catalog owns the price; this
+	// only refuses a total that cannot be one.
+	ErrPurchaseAmountInvalid = errors.New("twinkle purchase amount must be positive")
+	// ErrRewardClaimRequired rejects an achievement reward with no claim identity — without one the
+	// credit has no idempotency key and a retried claim would pay twice.
+	ErrRewardClaimRequired = errors.New("twinkle achievement reward requires a claim id")
+	// ErrLedgerCursorInvalid rejects a page token the client did not get from a previous page. Cursors
+	// are opaque and echoed, never constructed.
+	ErrLedgerCursorInvalid = errors.New("twinkle ledger page token is not a valid cursor")
 	// Invite refusals reveal no account-directory detail to the transport.
 	ErrInviteInputRequired         = errors.New("invite claim requires an invite code")
 	ErrInviteResolutionUnavailable = errors.New("invite verification is unavailable")
 	ErrInviteBeneficiaryMismatch   = errors.New("invite claim beneficiary does not match the authenticated user")
 	ErrInviteNotEligible           = errors.New("invite claim is not an eligible signup")
 	ErrInviteGrantConflict         = errors.New("invite signup grant is inconsistent with existing ledger state")
-	// Payment refusals reveal no provider or receipt detail to the transport.
-	ErrChargeInputRequired            = errors.New("charge requires a pack, provider, and receipt")
-	ErrPaymentVerificationUnavailable = errors.New("store payment verification is unavailable")
-	ErrPaymentBeneficiaryMismatch     = errors.New("payment beneficiary does not match the authenticated user")
-	ErrPaymentNotVerified             = errors.New("store payment transaction is not verified")
 	// ErrQuoteInputRequired rejects a quote without its required action inputs.
 	ErrQuoteInputRequired = errors.New("spend quote requires a kind, target id, and action inputs")
 	// ErrQuoteTargetNotFound / ErrQuoteTargetUnavailable are the canonical quote-target
@@ -69,23 +73,43 @@ var (
 	ErrQuoteTargetUnavailable = errors.New("spend quote target is unavailable")
 )
 
-// DefaultChargePackID is the single v1 payment pack ([G3]); its grant size is
-// twinkle.charge_pack. A multi-pack catalog is content for a later unit, not a
-// scalar — new packs extend the verifier, not this contract.
-const DefaultChargePackID = "twinkle_pack_default"
-
-// SpendIntent is what a metered action hands the gate: the spend reason, the depth signal
-// that prices it — the accessibility cost weight for a recall, the viewed gist stage for a gist
-// view ([CC3][G4]) — and the operation-derived dedup key that makes the spend idempotent. It
-// carries no price and no memory type; the composition root maps the consumer's intent onto it.
-// DedupKey empty opts a spend out of dedup (the append then guards only backend-minted id
+// SpendIntent is what a metered action hands the gate: the spend's reason, the signal that prices it,
+// and the operation-derived dedup key that makes the spend idempotent. It carries no memory type and
+// no store type; the composition root maps the consumer's intent onto it.
+//
+// The fields are UNEXPORTED and the three constructors below are the only way to build one, because
+// the mix that must be impossible is a value question, not a validation question: a recall intent has
+// no field for an amount, so a caller can never set a recall's own price ([CC3] — pricing belongs to
+// the curves alone), and a purchase intent has no field for a decay depth or a gist stage, so a curve
+// can never price an ornament.
+//
+// An empty dedup key opts a spend out of dedup (the append then guards only backend-minted id
 // collisions); a real paid action always supplies one, so a duplicate append applies no second
 // balance delta (A3).
 type SpendIntent struct {
-	Reason            EntryReason
-	AccessibilityCost float64
-	SemanticStage     int
-	DedupKey          string
+	reason            EntryReason
+	accessibilityCost float64
+	semanticStage     int
+	amount            int
+	dedupKey          string
+}
+
+// RecallSpendIntent meters a 회고: the accessibility cost weight the forgetting unit computed is the
+// only signal, and RecallCost turns it into a price ([CC3][G4]).
+func RecallSpendIntent(accessibilityCost float64, dedupKey string) SpendIntent {
+	return SpendIntent{reason: ReasonRecall, accessibilityCost: accessibilityCost, dedupKey: dedupKey}
+}
+
+// GistViewSpendIntent meters a 요지 별 열람 at the stage the reader selected ([R8][G4]).
+func GistViewSpendIntent(semanticStage int, dedupKey string) SpendIntent {
+	return SpendIntent{reason: ReasonGistView, semanticStage: semanticStage, dedupKey: dedupKey}
+}
+
+// PurchaseSpendIntent meters an ornament purchase ([P9]). `amount` is the caller's AUTHORITATIVE
+// catalog total — twinkle is told what it costs and never learns what was bought, so an ornament id,
+// kind or color cannot reach the ledger ([I11]).
+func PurchaseSpendIntent(amount int, dedupKey string) SpendIntent {
+	return SpendIntent{reason: ReasonOrnamentPurchase, amount: amount, dedupKey: dedupKey}
 }
 
 // SpendKind names the PURPOSE a spend is planned against ([G4][P9]) — the recall/gist-view actions
@@ -114,11 +138,52 @@ type Quote struct {
 	Shortfall int
 }
 
+// InsufficientTwinkle is the denial with its arithmetic attached ([G1][P8]), so a consumer can tell
+// the user HOW MUCH they are short without twinkle knowing what they were buying. Eligible is the
+// balance actually usable for THIS purpose — GENERAL alone for a purchase, both kinds for the recall
+// family — which is why a purchase can be refused at a balance that would have covered a recall.
+//
+// It wraps the canonical sentinel, so every errors.Is(err, ErrInsufficientTwinkle) site keeps working,
+// including memory's gate mapping and twinklepg's raced-overdraw rejection.
+type InsufficientTwinkle struct {
+	Cost      int
+	Eligible  int
+	Shortfall int
+}
+
+func (e *InsufficientTwinkle) Error() string {
+	return fmt.Sprintf("%s: cost %d exceeds the %d eligible for this purpose (short %d)",
+		ErrInsufficientTwinkle.Error(), e.Cost, e.Eligible, e.Shortfall)
+}
+
+func (e *InsufficientTwinkle) Unwrap() error { return ErrInsufficientTwinkle }
+
+// Detail is the denial as the shipped apperr metadata channel carries it — the one way this reaches a
+// client. The consumer names the item; twinkle only names the numbers.
+func (e *InsufficientTwinkle) Detail() map[string]string {
+	return map[string]string{
+		"cost":      strconv.Itoa(e.Cost),
+		"eligible":  strconv.Itoa(e.Eligible),
+		"shortfall": strconv.Itoa(e.Shortfall),
+	}
+}
+
+func newInsufficientTwinkle(balance Balance, cost int, kind SpendKind) *InsufficientTwinkle {
+	eligible := max(0, balance.General)
+	if SmallEligible(kind) {
+		eligible += max(0, balance.Small)
+	}
+	return &InsufficientTwinkle{
+		Cost:      cost,
+		Eligible:  eligible,
+		Shortfall: ShortfallFor(balance.Small, balance.General, cost, kind),
+	}
+}
+
 // Service owns the earn/spend use-cases. All concretes arrive through the
 // consumer-owned ports; cross-context signals arrive as scalars (CC8).
 type Service struct {
 	ledger         LedgerRepo
-	verifier       StorePaymentVerifier
 	inviteResolver InviteResolver
 	signals        SpendSignalReader
 	userZone       UserZoneReader
@@ -128,7 +193,6 @@ type Service struct {
 
 type ServiceDeps struct {
 	Ledger         LedgerRepo
-	Verifier       StorePaymentVerifier
 	InviteResolver InviteResolver
 	Signals        SpendSignalReader
 	UserZone       UserZoneReader
@@ -141,9 +205,6 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Ledger == nil {
 		return nil, ErrLedgerRequired
 	}
-	if deps.Verifier == nil {
-		return nil, ErrVerifierRequired
-	}
 	if deps.InviteResolver == nil {
 		return nil, ErrInviteResolverRequired
 	}
@@ -155,7 +216,6 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	}
 	service := &Service{
 		ledger:         deps.Ledger,
-		verifier:       deps.Verifier,
 		inviteResolver: deps.InviteResolver,
 		signals:        deps.Signals,
 		userZone:       deps.UserZone,
@@ -225,10 +285,13 @@ func (s *Service) CheckAndSpend(ctx context.Context, scope platform.UserScope, l
 }
 
 func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
-	cost, kind, err := spendPrice(intent)
+	cost, err := spendPrice(intent)
 	if err != nil {
 		return err
 	}
+	// The purpose comes from the reason, so the row that gets written and the tier that pays for it
+	// are decided by the same value ([P9]).
+	kind := intent.reason.SpendKind()
 	if cost == 0 {
 		// A zero-priced action spends nothing; the ledger stays clean (the log
 		// CHECKs amount > 0, and a zero row would record a non-event).
@@ -246,21 +309,21 @@ func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, l
 	balance := DeriveBalance(now, zone, recordOrLazyBirth(record))
 	plan := PlanSpend(balance.Small, balance.General, cost, kind)
 	if !plan.OK {
-		return ErrInsufficientTwinkle
+		return newInsufficientTwinkle(balance, cost, kind)
 	}
 	// Append the dedup-keyed spend row FIRST — exactly like earn: a false means this
 	// operation's spend already landed (a duplicate/replay), so skip the balance delta and the
 	// draw is applied once end to end (A3). This is the spend-side idempotency the recall/view
 	// receipt layer backstops; together, no retry double-charges.
 	var dedupKey *string
-	if intent.DedupKey != "" {
-		key := intent.DedupKey
+	if intent.dedupKey != "" {
+		key := intent.dedupKey
 		dedupKey = &key
 	}
 	applied, err := ledger.AppendLedgerEntry(ctx, scope, LedgerEntry{
 		ID:          s.newID(),
 		Kind:        EntryKindSpend,
-		Reason:      intent.Reason,
+		Reason:      intent.reason,
 		Amount:      cost,
 		FromSmall:   plan.FromSmall,
 		FromGeneral: plan.FromGeneral,
@@ -277,18 +340,23 @@ func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, l
 	return err
 }
 
-// spendPrice maps a SpendIntent to its Twinkle cost AND the purpose that cost is planned against
-// ([CC3][G4][P9]) — one switch over the closed reason set, so the price and the SMALL eligibility
-// of a spend can never disagree about what the spend is. The only place a spend is priced; callers
-// never compute or carry a price.
-func spendPrice(intent SpendIntent) (int, SpendKind, error) {
-	switch intent.Reason {
+// spendPrice maps a SpendIntent to its Twinkle cost ([CC3][G4]) — the only place a metered action is
+// priced; callers never compute or carry a price. The one exception is a purchase, whose price is not
+// a curve at all but the catalog total another context already computed: twinkle validates that it
+// could be a price and passes it through.
+func spendPrice(intent SpendIntent) (int, error) {
+	switch intent.reason {
 	case ReasonRecall:
-		return RecallCost(intent.AccessibilityCost), SpendKindRecall, nil
+		return RecallCost(intent.accessibilityCost), nil
 	case ReasonGistView:
-		return GistViewCost(intent.SemanticStage), SpendKindGistView, nil
+		return GistViewCost(intent.semanticStage), nil
+	case ReasonOrnamentPurchase:
+		if intent.amount <= 0 {
+			return 0, fmt.Errorf("%w: %d", ErrPurchaseAmountInvalid, intent.amount)
+		}
+		return intent.amount, nil
 	default:
-		return 0, "", fmt.Errorf("%w: %q", ErrSpendIntentInvalid, intent.Reason)
+		return 0, fmt.Errorf("%w: %q", ErrSpendIntentInvalid, intent.reason)
 	}
 }
 
@@ -350,6 +418,34 @@ func (s *Service) EarnAdminGrant(ctx context.Context, scope platform.UserScope, 
 	return s.GetBalance(ctx, scope)
 }
 
+// EarnAchievementReward credits an achievement's reward to GENERAL, keyed by the CLAIM rather than by
+// the achievement: claiming is an explicit act ([A3]), so a user who has met a condition twice over
+// still earns once per claim, and a replayed claim credits nothing more.
+//
+// It is a credit PRIMITIVE and decides no eligibility — whether the achievement is achieved, and what
+// its reward is worth, belong to the achievement context. It runs in its own ledger transaction rather
+// than the claim's: a claim stamped with its reward uncredited heals on replay, whereas a shared
+// transaction would make achievement the owner of twinkle's tables.
+func (s *Service) EarnAchievementReward(ctx context.Context, scope platform.UserScope, claimID string, amount int) (Balance, error) {
+	if scope.UserID() == "" {
+		return Balance{}, ErrScopeRequired
+	}
+	if strings.TrimSpace(claimID) == "" {
+		return Balance{}, ErrRewardClaimRequired
+	}
+	if amount <= 0 {
+		return Balance{}, ErrGrantAmountInvalid
+	}
+	err := s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
+		_, err := s.earn(ctx, scope, tx, ReasonAchievementClaim, amount, "achievement:"+claimID)
+		return err
+	})
+	if err != nil {
+		return Balance{}, err
+	}
+	return s.GetBalance(ctx, scope)
+}
+
 // ClaimInvite resolves the opaque code through the trusted account/signup seam
 // before opening the atomic ledger transaction. Only the returned signup identity
 // and account ids participate in validation and deduplication; caller-shaped ids
@@ -398,7 +494,7 @@ func (s *Service) ClaimInvite(ctx context.Context, scope platform.UserScope, inv
 		if !replay && rewardCount >= int64(values.TwinkleInviteRewardMaxPerInviter) {
 			return ErrInviteNotEligible
 		}
-		inviteeApplied, err := s.earn(ctx, scope, tx, ReasonInvite, values.TwinkleEarnInviteInvitee,
+		inviteeApplied, err := s.earn(ctx, scope, tx, ReasonInviteSignup, values.TwinkleEarnInviteInvitee,
 			"invite_signup:"+signupID)
 		if err != nil {
 			return err
@@ -419,63 +515,8 @@ func (s *Service) ClaimInvite(ctx context.Context, scope platform.UserScope, inv
 	return s.GetBalance(ctx, scope)
 }
 
-// Charge credits only a verifier-authenticated claim bound to the current user,
-// provider, known pack, authoritative amount, and normalized provider transaction.
-// The transaction identity, not the opaque receipt, derives the global dedup key.
-func (s *Service) Charge(ctx context.Context, scope platform.UserScope, packID string, provider string, receipt string) (Balance, error) {
-	if scope.UserID() == "" {
-		return Balance{}, ErrScopeRequired
-	}
-	requestedPack := strings.TrimSpace(packID)
-	requestedProvider := normalizePaymentProvider(provider)
-	if requestedPack == "" || requestedProvider == "" || strings.TrimSpace(receipt) == "" {
-		return Balance{}, ErrChargeInputRequired
-	}
-	verified, err := s.verifier.Verify(ctx, PaymentVerificationRequest{
-		PackID:            requestedPack,
-		Provider:          requestedProvider,
-		Receipt:           receipt,
-		BeneficiaryUserID: scope.UserID(),
-	})
-	if err != nil {
-		if errors.Is(err, ErrPaymentVerificationUnavailable) {
-			return Balance{}, ErrPaymentVerificationUnavailable
-		}
-		return Balance{}, ErrPaymentNotVerified
-	}
-	if verified.BeneficiaryUserID != scope.UserID() {
-		return Balance{}, ErrPaymentBeneficiaryMismatch
-	}
-	verifiedProvider := normalizePaymentProvider(verified.Provider)
-	transactionID := strings.TrimSpace(verified.ProviderTransactionID)
-	if verifiedProvider == "" || verifiedProvider != requestedProvider ||
-		transactionID == "" || transactionID != verified.ProviderTransactionID ||
-		verified.PackID != requestedPack || verified.PackID != DefaultChargePackID ||
-		verified.Amount != values.TwinkleChargePack {
-		return Balance{}, ErrPaymentNotVerified
-	}
-	dedupKey := paymentTransactionKey(verifiedProvider, transactionID)
-	err = s.ledger.InLedgerTx(ctx, func(tx LedgerStore) error {
-		_, err := s.earn(ctx, scope, tx, ReasonPayment, verified.Amount, dedupKey)
-		return err
-	})
-	if err != nil {
-		return Balance{}, err
-	}
-	return s.GetBalance(ctx, scope)
-}
-
-func normalizePaymentProvider(provider string) string {
-	return strings.ToLower(strings.TrimSpace(provider))
-}
-
 func isCanonicalClaimID(value string) bool {
 	return value != "" && value == strings.TrimSpace(value)
-}
-
-func paymentTransactionKey(provider string, transactionID string) string {
-	digest := sha256.Sum256([]byte(fmt.Sprintf("%d:%s%s", len(provider), provider, transactionID)))
-	return "payment:" + hex.EncodeToString(digest[:])
 }
 
 // QuoteSpend is CheckAndSpend's read-only twin ([G4]): resolve the authoritative
@@ -550,6 +591,81 @@ func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind 
 	default:
 		return 0, fmt.Errorf("%w: kind %q", ErrQuoteInputRequired, kind)
 	}
+}
+
+// GetLedger reads one page of the user's history, newest first ([G7][U9]) — the single surface where
+// 구매·수령·적립·소모 are all readable in one chronological list. Read-only: no row, no delta, no clock
+// advance.
+//
+// Each entry carries the calendar date it belongs to in the USER's zone, resolved here rather than on
+// the device ([U7]): the same boundary the SMALL refill uses, so the history's day headers and the
+// user's daily allowance agree about when a day turned.
+//
+// pageSize is clamped to twinkle.ledger_page_size as both the default AND the hard cap, so a client
+// cannot ask for an unbounded slice of its own history.
+func (s *Service) GetLedger(ctx context.Context, scope platform.UserScope, pageSize int, pageToken string) (LedgerPage, error) {
+	if scope.UserID() == "" {
+		return LedgerPage{}, ErrScopeRequired
+	}
+	var cursor *LedgerCursor
+	if strings.TrimSpace(pageToken) != "" {
+		decoded, err := decodeLedgerCursor(pageToken)
+		if err != nil {
+			return LedgerPage{}, ErrLedgerCursorInvalid
+		}
+		cursor = &decoded
+	}
+	// The cap is the default and the ceiling both: an unset size gets the full page, an oversized one
+	// is clamped rather than refused (a client asking for too much wants a page, not an error).
+	limit := values.TwinkleLedgerPageSize
+	if pageSize > 0 && pageSize < limit {
+		limit = pageSize
+	}
+	zone, err := s.zone(ctx, scope)
+	if err != nil {
+		return LedgerPage{}, err
+	}
+	// One row beyond the page: its existence is what distinguishes "the history continues" from "the
+	// page happened to end exactly here", without a second count query.
+	entries, err := s.ledger.ListLedgerPage(ctx, scope, cursor, limit+1)
+	if err != nil {
+		return LedgerPage{}, err
+	}
+	next := ""
+	if len(entries) > limit {
+		last := entries[limit-1]
+		next = encodeLedgerCursor(LedgerCursor{CreatedAt: last.CreatedAt, ID: last.ID})
+		entries = entries[:limit]
+	}
+	views := make([]LedgerView, 0, len(entries))
+	for _, entry := range entries {
+		views = append(views, LedgerView{Entry: entry, OccurredOn: ResetWindowOf(entry.CreatedAt, zone)})
+	}
+	return LedgerPage{Entries: views, NextPageToken: next}, nil
+}
+
+// The cursor is an opaque "<created_at>|<id>" pair, base64url-encoded — an internal keyset position the
+// client only echoes back, never parses. RFC3339Nano because two entries written in one transaction
+// can share a microsecond-truncated timestamp, and the id is what breaks that tie.
+func encodeLedgerCursor(cursor LedgerCursor) string {
+	raw := cursor.CreatedAt.UTC().Format(time.RFC3339Nano) + "|" + cursor.ID
+	return base64.RawURLEncoding.EncodeToString([]byte(raw))
+}
+
+func decodeLedgerCursor(token string) (LedgerCursor, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return LedgerCursor{}, err
+	}
+	stamp, id, found := strings.Cut(string(raw), "|")
+	if !found || id == "" {
+		return LedgerCursor{}, errors.New("malformed twinkle ledger cursor")
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		return LedgerCursor{}, err
+	}
+	return LedgerCursor{CreatedAt: parsed, ID: id}, nil
 }
 
 // earn appends one dedup-keyed earn entry and, when it genuinely applied (not a

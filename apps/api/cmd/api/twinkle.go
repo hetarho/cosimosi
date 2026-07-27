@@ -29,9 +29,9 @@ import (
 // cannot bind a ledger store to — never a client mistake.
 var errEconomyTxUnusable = errors.New("economy tx does not expose a database handle")
 
-// newTwinkleService builds the twinkle context over the shared pool. External earn
-// paths stay fail-closed until real store and account/signup adapters are
-// explicitly selected here; write earns and metered spends remain available.
+// newTwinkleService builds the twinkle context over the shared pool. The invite seam stays
+// fail-closed until a real account/signup adapter is explicitly selected here; write earns and
+// metered spends remain available.
 func newTwinkleService(
 	pool *platformdb.Pool,
 	signals *memorySpendSignals,
@@ -40,7 +40,6 @@ func newTwinkleService(
 ) (*twinkle.Service, error) {
 	return twinkle.NewService(twinkle.ServiceDeps{
 		Ledger:         twinklepg.NewStore(pool.PgxPool()),
-		Verifier:       twinkle.UnavailablePaymentVerifier{},
 		InviteResolver: inviteResolver,
 		Signals:        signals,
 		UserZone:       userZone,
@@ -137,9 +136,9 @@ func economyLedger(tx memory.EconomyTx) (twinkle.LedgerStore, error) {
 func twinkleIntent(spend memory.SpendIntent) (twinkle.SpendIntent, error) {
 	switch spend.Kind {
 	case memory.SpendKindRecall:
-		return twinkle.SpendIntent{Reason: twinkle.ReasonRecall, AccessibilityCost: spend.AccessibilityCost, DedupKey: spendDedupKey(spend)}, nil
+		return twinkle.RecallSpendIntent(spend.AccessibilityCost, spendDedupKey(spend)), nil
 	case memory.SpendKindViewGist:
-		return twinkle.SpendIntent{Reason: twinkle.ReasonGistView, SemanticStage: int(spend.Stage), DedupKey: spendDedupKey(spend)}, nil
+		return twinkle.GistViewSpendIntent(int(spend.Stage), spendDedupKey(spend)), nil
 	default:
 		return twinkle.SpendIntent{}, fmt.Errorf("%w: %q", twinkle.ErrSpendIntentInvalid, spend.Kind)
 	}

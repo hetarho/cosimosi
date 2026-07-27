@@ -39,27 +39,22 @@ const (
 	// TwinkleServiceQuoteSpendProcedure is the fully-qualified name of the TwinkleService's QuoteSpend
 	// RPC.
 	TwinkleServiceQuoteSpendProcedure = "/cosimosi.twinkle.v1.TwinkleService/QuoteSpend"
-	// TwinkleServiceClaimInviteProcedure is the fully-qualified name of the TwinkleService's
-	// ClaimInvite RPC.
-	TwinkleServiceClaimInviteProcedure = "/cosimosi.twinkle.v1.TwinkleService/ClaimInvite"
-	// TwinkleServiceChargeProcedure is the fully-qualified name of the TwinkleService's Charge RPC.
-	TwinkleServiceChargeProcedure = "/cosimosi.twinkle.v1.TwinkleService/Charge"
+	// TwinkleServiceGetLedgerProcedure is the fully-qualified name of the TwinkleService's GetLedger
+	// RPC.
+	TwinkleServiceGetLedgerProcedure = "/cosimosi.twinkle.v1.TwinkleService/GetLedger"
 )
 
 // TwinkleServiceClient is a client for the cosimosi.twinkle.v1.TwinkleService service.
 type TwinkleServiceClient interface {
-	// balance read — the HUD source (plan 45); no side effects, user-scoped.
+	// balance read — the HUD source; no side effects, user-scoped.
 	GetBalance(context.Context, *connect.Request[v1.GetBalanceRequest]) (*connect.Response[v1.GetBalanceResponse], error)
 	// spend quote — server-priced, read-only; the UI displays this before
 	// recall/gist-view/diary-jump. Writes no ledger row; the real spend re-derives
 	// everything at action time.
 	QuoteSpend(context.Context, *connect.Request[v1.QuoteSpendRequest]) (*connect.Response[v1.QuoteSpendResponse], error)
-	// invite claim — both-sides credit on a valid signup; idempotent per
-	// (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
-	ClaimInvite(context.Context, *connect.Request[v1.ClaimInviteRequest]) (*connect.Response[v1.ClaimInviteResponse], error)
-	// payment charge — verifies a store receipt before crediting GENERAL Twinkle
-	// [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
-	Charge(context.Context, *connect.Request[v1.ChargeRequest]) (*connect.Response[v1.ChargeResponse], error)
+	// ledger history — 구매·수령·적립·소모 in one chronological list ([G7][U9]), keyset-paged
+	// newest-first. Read-only, user-scoped.
+	GetLedger(context.Context, *connect.Request[v1.GetLedgerRequest]) (*connect.Response[v1.GetLedgerResponse], error)
 }
 
 // NewTwinkleServiceClient constructs a client for the cosimosi.twinkle.v1.TwinkleService service.
@@ -87,16 +82,11 @@ func NewTwinkleServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
-		claimInvite: connect.NewClient[v1.ClaimInviteRequest, v1.ClaimInviteResponse](
+		getLedger: connect.NewClient[v1.GetLedgerRequest, v1.GetLedgerResponse](
 			httpClient,
-			baseURL+TwinkleServiceClaimInviteProcedure,
-			connect.WithSchema(twinkleServiceMethods.ByName("ClaimInvite")),
-			connect.WithClientOptions(opts...),
-		),
-		charge: connect.NewClient[v1.ChargeRequest, v1.ChargeResponse](
-			httpClient,
-			baseURL+TwinkleServiceChargeProcedure,
-			connect.WithSchema(twinkleServiceMethods.ByName("Charge")),
+			baseURL+TwinkleServiceGetLedgerProcedure,
+			connect.WithSchema(twinkleServiceMethods.ByName("GetLedger")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -104,10 +94,9 @@ func NewTwinkleServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // twinkleServiceClient implements TwinkleServiceClient.
 type twinkleServiceClient struct {
-	getBalance  *connect.Client[v1.GetBalanceRequest, v1.GetBalanceResponse]
-	quoteSpend  *connect.Client[v1.QuoteSpendRequest, v1.QuoteSpendResponse]
-	claimInvite *connect.Client[v1.ClaimInviteRequest, v1.ClaimInviteResponse]
-	charge      *connect.Client[v1.ChargeRequest, v1.ChargeResponse]
+	getBalance *connect.Client[v1.GetBalanceRequest, v1.GetBalanceResponse]
+	quoteSpend *connect.Client[v1.QuoteSpendRequest, v1.QuoteSpendResponse]
+	getLedger  *connect.Client[v1.GetLedgerRequest, v1.GetLedgerResponse]
 }
 
 // GetBalance calls cosimosi.twinkle.v1.TwinkleService.GetBalance.
@@ -120,30 +109,22 @@ func (c *twinkleServiceClient) QuoteSpend(ctx context.Context, req *connect.Requ
 	return c.quoteSpend.CallUnary(ctx, req)
 }
 
-// ClaimInvite calls cosimosi.twinkle.v1.TwinkleService.ClaimInvite.
-func (c *twinkleServiceClient) ClaimInvite(ctx context.Context, req *connect.Request[v1.ClaimInviteRequest]) (*connect.Response[v1.ClaimInviteResponse], error) {
-	return c.claimInvite.CallUnary(ctx, req)
-}
-
-// Charge calls cosimosi.twinkle.v1.TwinkleService.Charge.
-func (c *twinkleServiceClient) Charge(ctx context.Context, req *connect.Request[v1.ChargeRequest]) (*connect.Response[v1.ChargeResponse], error) {
-	return c.charge.CallUnary(ctx, req)
+// GetLedger calls cosimosi.twinkle.v1.TwinkleService.GetLedger.
+func (c *twinkleServiceClient) GetLedger(ctx context.Context, req *connect.Request[v1.GetLedgerRequest]) (*connect.Response[v1.GetLedgerResponse], error) {
+	return c.getLedger.CallUnary(ctx, req)
 }
 
 // TwinkleServiceHandler is an implementation of the cosimosi.twinkle.v1.TwinkleService service.
 type TwinkleServiceHandler interface {
-	// balance read — the HUD source (plan 45); no side effects, user-scoped.
+	// balance read — the HUD source; no side effects, user-scoped.
 	GetBalance(context.Context, *connect.Request[v1.GetBalanceRequest]) (*connect.Response[v1.GetBalanceResponse], error)
 	// spend quote — server-priced, read-only; the UI displays this before
 	// recall/gist-view/diary-jump. Writes no ledger row; the real spend re-derives
 	// everything at action time.
 	QuoteSpend(context.Context, *connect.Request[v1.QuoteSpendRequest]) (*connect.Response[v1.QuoteSpendResponse], error)
-	// invite claim — both-sides credit on a valid signup; idempotent per
-	// (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
-	ClaimInvite(context.Context, *connect.Request[v1.ClaimInviteRequest]) (*connect.Response[v1.ClaimInviteResponse], error)
-	// payment charge — verifies a store receipt before crediting GENERAL Twinkle
-	// [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
-	Charge(context.Context, *connect.Request[v1.ChargeRequest]) (*connect.Response[v1.ChargeResponse], error)
+	// ledger history — 구매·수령·적립·소모 in one chronological list ([G7][U9]), keyset-paged
+	// newest-first. Read-only, user-scoped.
+	GetLedger(context.Context, *connect.Request[v1.GetLedgerRequest]) (*connect.Response[v1.GetLedgerResponse], error)
 }
 
 // NewTwinkleServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -167,16 +148,11 @@ func NewTwinkleServiceHandler(svc TwinkleServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	twinkleServiceClaimInviteHandler := connect.NewUnaryHandler(
-		TwinkleServiceClaimInviteProcedure,
-		svc.ClaimInvite,
-		connect.WithSchema(twinkleServiceMethods.ByName("ClaimInvite")),
-		connect.WithHandlerOptions(opts...),
-	)
-	twinkleServiceChargeHandler := connect.NewUnaryHandler(
-		TwinkleServiceChargeProcedure,
-		svc.Charge,
-		connect.WithSchema(twinkleServiceMethods.ByName("Charge")),
+	twinkleServiceGetLedgerHandler := connect.NewUnaryHandler(
+		TwinkleServiceGetLedgerProcedure,
+		svc.GetLedger,
+		connect.WithSchema(twinkleServiceMethods.ByName("GetLedger")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/cosimosi.twinkle.v1.TwinkleService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -185,10 +161,8 @@ func NewTwinkleServiceHandler(svc TwinkleServiceHandler, opts ...connect.Handler
 			twinkleServiceGetBalanceHandler.ServeHTTP(w, r)
 		case TwinkleServiceQuoteSpendProcedure:
 			twinkleServiceQuoteSpendHandler.ServeHTTP(w, r)
-		case TwinkleServiceClaimInviteProcedure:
-			twinkleServiceClaimInviteHandler.ServeHTTP(w, r)
-		case TwinkleServiceChargeProcedure:
-			twinkleServiceChargeHandler.ServeHTTP(w, r)
+		case TwinkleServiceGetLedgerProcedure:
+			twinkleServiceGetLedgerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -206,10 +180,6 @@ func (UnimplementedTwinkleServiceHandler) QuoteSpend(context.Context, *connect.R
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.twinkle.v1.TwinkleService.QuoteSpend is not implemented"))
 }
 
-func (UnimplementedTwinkleServiceHandler) ClaimInvite(context.Context, *connect.Request[v1.ClaimInviteRequest]) (*connect.Response[v1.ClaimInviteResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.twinkle.v1.TwinkleService.ClaimInvite is not implemented"))
-}
-
-func (UnimplementedTwinkleServiceHandler) Charge(context.Context, *connect.Request[v1.ChargeRequest]) (*connect.Response[v1.ChargeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.twinkle.v1.TwinkleService.Charge is not implemented"))
+func (UnimplementedTwinkleServiceHandler) GetLedger(context.Context, *connect.Request[v1.GetLedgerRequest]) (*connect.Response[v1.GetLedgerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.twinkle.v1.TwinkleService.GetLedger is not implemented"))
 }

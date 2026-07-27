@@ -2,16 +2,20 @@ syntax = "proto3";
 
 package cosimosi.twinkle.v1;
 
-// TwinkleService owns the Twinkle economy's client contract (plan 44): the balance
-// read, the server-priced spend quote, and the two mutating earn RPCs (invite claim,
-// verified payment charge).
+// TwinkleService owns the Twinkle economy's client contract: the balance read, the server-priced
+// spend quote, and the chronological ledger history ([G7]).
 //
-// NOTE: the write-earn has NO RPC — it fires from memory's LaunchStars via the
-// consumer-owned EarnPort, in-transaction. The spend has NO RPC — it fires from
-// recall/view via the consumer-owned SpendGate this unit binds. The economy stays a
-// consequence of the memory actions, not a separate user step.
+// EVERY RPC HERE IS READ-ONLY, and that is the design, not an accident. Twinkle moves as a
+// consequence of something else: the write-earn fires from memory's launch via the consumer-owned
+// EarnPort, in-transaction; a spend fires from recall/view via the consumer-owned SpendGate; a
+// purchase debit fires from inside the store context's own transaction; an achievement reward from the
+// claim. The invite credit and the signup bonus are settled server-side from the launch path, so they
+// need no RPC either. The economy is never a separate user step, so it needs no mutating contract.
+//
+// Payment (스토어/PG) is deferred to v3 (PRD §8.3) — removed here rather than disabled, so no client
+// can render a button that is guaranteed to fail.
 service TwinkleService {
-  // balance read — the HUD source (plan 45); no side effects, user-scoped.
+  // balance read — the HUD source; no side effects, user-scoped.
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -21,12 +25,11 @@ service TwinkleService {
   rpc QuoteSpend(QuoteSpendRequest) returns (QuoteSpendResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // invite claim — both-sides credit on a valid signup; idempotent per
-  // (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
-  rpc ClaimInvite(ClaimInviteRequest) returns (ClaimInviteResponse);
-  // payment charge — verifies a store receipt before crediting GENERAL Twinkle
-  // [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
-  rpc Charge(ChargeRequest) returns (ChargeResponse);
+  // ledger history — 구매·수령·적립·소모 in one chronological list ([G7][U9]), keyset-paged
+  // newest-first. Read-only, user-scoped.
+  rpc GetLedger(GetLedgerRequest) returns (GetLedgerResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message GetBalanceRequest {}
@@ -66,22 +69,66 @@ message QuoteSpendResponse {
   int64 shortfall = 3;
 }
 
-// invitee redeems the inviter's code.
-message ClaimInviteRequest {
-  string invite_code = 1;
+// The ledger-log direction of one entry: Twinkle came in or went out, never both.
+enum LedgerEntryKind {
+  LEDGER_ENTRY_KIND_UNSPECIFIED = 0;
+  LEDGER_ENTRY_KIND_EARN = 1;
+  LEDGER_ENTRY_KIND_SPEND = 2;
 }
 
-// idempotent: replay returns the same total.
-message ClaimInviteResponse {
-  int64 balance_total = 1;
+// Why one entry exists. Mirrors the domain's closed set, with two deliberate absences:
+//
+//   - NO DAILY_GRANT — the daily SMALL refill is a DERIVATION from the stored window anchor, not an
+//     event, so it has no row and no wire value. A client cannot mistake the refill for a
+//     transaction; the history renders it as a labelled day marker from the same derivation.
+//   - PAYMENT is present for HISTORICAL rows only. Payment is deferred to v3 (PRD §8.3) and nothing
+//     writes this reason, but the ledger is append-only, so rows written before it left must stay
+//     readable ([I1]).
+enum LedgerEntryReason {
+  LEDGER_ENTRY_REASON_UNSPECIFIED = 0;
+  LEDGER_ENTRY_REASON_WRITE_DIARY = 1;
+  LEDGER_ENTRY_REASON_INVITE = 2;
+  LEDGER_ENTRY_REASON_INVITE_SIGNUP = 3;
+  LEDGER_ENTRY_REASON_SIGNUP_BONUS = 4;
+  LEDGER_ENTRY_REASON_ACHIEVEMENT_CLAIM = 5;
+  LEDGER_ENTRY_REASON_ADMIN_GRANT = 6;
+  LEDGER_ENTRY_REASON_RECALL = 7;
+  LEDGER_ENTRY_REASON_GIST_VIEW = 8;
+  LEDGER_ENTRY_REASON_ORNAMENT_PURCHASE = 9;
+  LEDGER_ENTRY_REASON_PAYMENT = 10;
 }
 
-message ChargeRequest {
-  string pack_id = 1;
-  string platform = 2;
-  string receipt = 3;
+// No user_id: the scope is the JWT, so a cross-user read is unrepresentable rather than validated.
+message GetLedgerRequest {
+  // 0 → twinkle.ledger_page_size, which is also the hard cap.
+  int32 page_size = 1;
+  // Opaque; echo back next_page_token. Never construct one.
+  string page_token = 2;
 }
 
-message ChargeResponse {
-  int64 balance_total = 1;
+message GetLedgerResponse {
+  repeated LedgerEntry entries = 1;
+  // Empty when the history ends here.
+  string next_page_token = 2;
+}
+
+// One row of the single append-only ledger. Deliberately carries NO dedup_key (it embeds diary,
+// signup and claim ids — a leak with no product use) and NO per-reason payload (an ornament_id would
+// put store vocabulary in the twinkle contract; the reason IS the caption).
+message LedgerEntry {
+  string id = 1;
+  LedgerEntryKind kind = 2;
+  LedgerEntryReason reason = 3;
+  int64 amount = 4;
+  // How the amount was drawn, for a spend. from_small follows the domain's kind names; the columns
+  // keep their older basic/additional spelling.
+  int64 from_small = 5;
+  int64 from_general = 6;
+  // The calendar date this entry belongs to, ALREADY RESOLVED IN THE USER'S TIMEZONE (YYYY-MM-DD).
+  // The server is the day-boundary authority ([U7]) — a device-local grouping would draw day headers
+  // that disagree with the SMALL reset boundary, so the client groups by this string and performs no
+  // timezone arithmetic of its own.
+  string occurred_on = 7;
+  // RFC3339, for the within-day ordering and the time shown on the row.
+  string occurred_at = 8;
 }

@@ -3,8 +3,8 @@ import { useTwinkleBalanceStore } from './twinkle-balance-store.ts'
 
 export {
   PaymentUnavailableError,
-  chargeTwinkle,
-  claimInvite,
+  redeemInvite,
+  InviteRedemptionUnavailableError,
   startStorePurchase,
 } from './charge.ts'
 export { useChargeRequestStore, type ChargeRequestState } from './charge-request-store.ts'

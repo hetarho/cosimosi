@@ -36,6 +36,12 @@ var (
 	// basic spend delta (PlanSpend never produces one; a refund is not a domain operation) —
 	// values that would otherwise wrap through the int32 cast or mint basic silently.
 	ErrDeltaOutOfRange = errors.New("twinkle delta or amount is out of range")
+	// ErrUnwritableReason refuses a ledger reason that names a non-event. See AppendLedgerEntry.
+	ErrUnwritableReason = errors.New("twinkle ledger reason has no write path")
+	// ErrPageSizeOutOfRange refuses a history page size the LIMIT clause cannot take, rather than
+	// letting a negative one surface as a raw Postgres syntax error. The use-case clamps before it gets
+	// here; this catches a direct caller.
+	ErrPageSizeOutOfRange = errors.New("twinkle ledger page size is out of range")
 	// ErrUnexpectedLedgerConflict distinguishes a backend-minted entry-id collision
 	// from the two intentional dedup guards. Treating every ON CONFLICT no-op as a
 	// replay could otherwise drop a legitimate balance delta silently.
@@ -191,6 +197,17 @@ func (s Store) AppendLedgerEntry(ctx context.Context, scope platform.UserScope, 
 	if !fitsInt32(entry.Amount) || !fitsInt32(entry.FromSmall) || !fitsInt32(entry.FromGeneral) {
 		return false, ErrDeltaOutOfRange
 	}
+	// [G7]'s last gate. The use-cases already cannot write a daily grant — there is no entry point for
+	// one — but this adapter takes a whole LedgerEntry from any in-repo caller, so the guarantee "the
+	// refill is a derivation, never an event" would otherwise stop at the service boundary. A single
+	// stray row here would make the history claim a transaction that never happened.
+	//
+	// `payment` is deliberately NOT refused: those rows legitimately exist. Payment left the product,
+	// but the ledger is append-only, so the adapter that must keep reading them must also be able to
+	// write one — which is how the retained global-uniqueness guard stays testable.
+	if entry.Reason == twinkle.ReasonDailyGrant {
+		return false, ErrUnwritableReason
+	}
 	affected, err := s.queries.AppendTwinkleLedgerEntry(ctx, dbgen.AppendTwinkleLedgerEntryParams{
 		ID:             entry.ID,
 		UserID:         scope.UserID(),
@@ -249,6 +266,49 @@ func (s Store) GetInviteRewardState(
 		return 0, false, err
 	}
 	return state.RewardCount, state.Replay, nil
+}
+
+// ListLedgerPage reads one keyset page of the user's history ([G7]). The cursor pair is passed as
+// two nullable arguments rather than two queries, so the "first page" and "next page" cases share one
+// static statement (§2.6). This is also a place both spellings meet: the columns are from_basic /
+// from_additional, the domain fields FromSmall / FromGeneral.
+func (s Store) ListLedgerPage(
+	ctx context.Context,
+	scope platform.UserScope,
+	cursor *twinkle.LedgerCursor,
+	limit int,
+) ([]twinkle.LedgerEntry, error) {
+	if err := s.ready(scope); err != nil {
+		return nil, err
+	}
+	if limit <= 0 || !fitsInt32(limit) {
+		return nil, ErrPageSizeOutOfRange
+	}
+	params := dbgen.ListTwinkleLedgerPageParams{
+		UserID:   scope.UserID(),
+		PageSize: int32(limit),
+	}
+	if cursor != nil {
+		params.CursorCreatedAt = pgTime(cursor.CreatedAt)
+		params.CursorID = pgtype.Text{String: cursor.ID, Valid: true}
+	}
+	rows, err := s.queries.ListTwinkleLedgerPage(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]twinkle.LedgerEntry, 0, len(rows))
+	for _, row := range rows {
+		entries = append(entries, twinkle.LedgerEntry{
+			ID:          row.ID,
+			Kind:        twinkle.EntryKind(row.Kind),
+			Reason:      twinkle.EntryReason(row.Reason),
+			Amount:      int(row.Amount),
+			FromSmall:   int(row.FromBasic),
+			FromGeneral: int(row.FromAdditional),
+			CreatedAt:   row.CreatedAt.Time.UTC(),
+		})
+	}
+	return entries, nil
 }
 
 func (s Store) ready(scope platform.UserScope) error {

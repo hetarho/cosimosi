@@ -76,6 +76,137 @@ func (SpendKind) EnumDescriptor() ([]byte, []int) {
 	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{0}
 }
 
+// The ledger-log direction of one entry: Twinkle came in or went out, never both.
+type LedgerEntryKind int32
+
+const (
+	LedgerEntryKind_LEDGER_ENTRY_KIND_UNSPECIFIED LedgerEntryKind = 0
+	LedgerEntryKind_LEDGER_ENTRY_KIND_EARN        LedgerEntryKind = 1
+	LedgerEntryKind_LEDGER_ENTRY_KIND_SPEND       LedgerEntryKind = 2
+)
+
+// Enum value maps for LedgerEntryKind.
+var (
+	LedgerEntryKind_name = map[int32]string{
+		0: "LEDGER_ENTRY_KIND_UNSPECIFIED",
+		1: "LEDGER_ENTRY_KIND_EARN",
+		2: "LEDGER_ENTRY_KIND_SPEND",
+	}
+	LedgerEntryKind_value = map[string]int32{
+		"LEDGER_ENTRY_KIND_UNSPECIFIED": 0,
+		"LEDGER_ENTRY_KIND_EARN":        1,
+		"LEDGER_ENTRY_KIND_SPEND":       2,
+	}
+)
+
+func (x LedgerEntryKind) Enum() *LedgerEntryKind {
+	p := new(LedgerEntryKind)
+	*p = x
+	return p
+}
+
+func (x LedgerEntryKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LedgerEntryKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_cosimosi_twinkle_v1_twinkle_proto_enumTypes[1].Descriptor()
+}
+
+func (LedgerEntryKind) Type() protoreflect.EnumType {
+	return &file_cosimosi_twinkle_v1_twinkle_proto_enumTypes[1]
+}
+
+func (x LedgerEntryKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use LedgerEntryKind.Descriptor instead.
+func (LedgerEntryKind) EnumDescriptor() ([]byte, []int) {
+	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{1}
+}
+
+// Why one entry exists. Mirrors the domain's closed set, with two deliberate absences:
+//
+//   - NO DAILY_GRANT — the daily SMALL refill is a DERIVATION from the stored window anchor, not an
+//     event, so it has no row and no wire value. A client cannot mistake the refill for a
+//     transaction; the history renders it as a labelled day marker from the same derivation.
+//   - PAYMENT is present for HISTORICAL rows only. Payment is deferred to v3 (PRD §8.3) and nothing
+//     writes this reason, but the ledger is append-only, so rows written before it left must stay
+//     readable ([I1]).
+type LedgerEntryReason int32
+
+const (
+	LedgerEntryReason_LEDGER_ENTRY_REASON_UNSPECIFIED       LedgerEntryReason = 0
+	LedgerEntryReason_LEDGER_ENTRY_REASON_WRITE_DIARY       LedgerEntryReason = 1
+	LedgerEntryReason_LEDGER_ENTRY_REASON_INVITE            LedgerEntryReason = 2
+	LedgerEntryReason_LEDGER_ENTRY_REASON_INVITE_SIGNUP     LedgerEntryReason = 3
+	LedgerEntryReason_LEDGER_ENTRY_REASON_SIGNUP_BONUS      LedgerEntryReason = 4
+	LedgerEntryReason_LEDGER_ENTRY_REASON_ACHIEVEMENT_CLAIM LedgerEntryReason = 5
+	LedgerEntryReason_LEDGER_ENTRY_REASON_ADMIN_GRANT       LedgerEntryReason = 6
+	LedgerEntryReason_LEDGER_ENTRY_REASON_RECALL            LedgerEntryReason = 7
+	LedgerEntryReason_LEDGER_ENTRY_REASON_GIST_VIEW         LedgerEntryReason = 8
+	LedgerEntryReason_LEDGER_ENTRY_REASON_ORNAMENT_PURCHASE LedgerEntryReason = 9
+	LedgerEntryReason_LEDGER_ENTRY_REASON_PAYMENT           LedgerEntryReason = 10
+)
+
+// Enum value maps for LedgerEntryReason.
+var (
+	LedgerEntryReason_name = map[int32]string{
+		0:  "LEDGER_ENTRY_REASON_UNSPECIFIED",
+		1:  "LEDGER_ENTRY_REASON_WRITE_DIARY",
+		2:  "LEDGER_ENTRY_REASON_INVITE",
+		3:  "LEDGER_ENTRY_REASON_INVITE_SIGNUP",
+		4:  "LEDGER_ENTRY_REASON_SIGNUP_BONUS",
+		5:  "LEDGER_ENTRY_REASON_ACHIEVEMENT_CLAIM",
+		6:  "LEDGER_ENTRY_REASON_ADMIN_GRANT",
+		7:  "LEDGER_ENTRY_REASON_RECALL",
+		8:  "LEDGER_ENTRY_REASON_GIST_VIEW",
+		9:  "LEDGER_ENTRY_REASON_ORNAMENT_PURCHASE",
+		10: "LEDGER_ENTRY_REASON_PAYMENT",
+	}
+	LedgerEntryReason_value = map[string]int32{
+		"LEDGER_ENTRY_REASON_UNSPECIFIED":       0,
+		"LEDGER_ENTRY_REASON_WRITE_DIARY":       1,
+		"LEDGER_ENTRY_REASON_INVITE":            2,
+		"LEDGER_ENTRY_REASON_INVITE_SIGNUP":     3,
+		"LEDGER_ENTRY_REASON_SIGNUP_BONUS":      4,
+		"LEDGER_ENTRY_REASON_ACHIEVEMENT_CLAIM": 5,
+		"LEDGER_ENTRY_REASON_ADMIN_GRANT":       6,
+		"LEDGER_ENTRY_REASON_RECALL":            7,
+		"LEDGER_ENTRY_REASON_GIST_VIEW":         8,
+		"LEDGER_ENTRY_REASON_ORNAMENT_PURCHASE": 9,
+		"LEDGER_ENTRY_REASON_PAYMENT":           10,
+	}
+)
+
+func (x LedgerEntryReason) Enum() *LedgerEntryReason {
+	p := new(LedgerEntryReason)
+	*p = x
+	return p
+}
+
+func (x LedgerEntryReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LedgerEntryReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_cosimosi_twinkle_v1_twinkle_proto_enumTypes[2].Descriptor()
+}
+
+func (LedgerEntryReason) Type() protoreflect.EnumType {
+	return &file_cosimosi_twinkle_v1_twinkle_proto_enumTypes[2]
+}
+
+func (x LedgerEntryReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use LedgerEntryReason.Descriptor instead.
+func (LedgerEntryReason) EnumDescriptor() ([]byte, []int) {
+	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{2}
+}
+
 type GetBalanceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -306,28 +437,31 @@ func (x *QuoteSpendResponse) GetShortfall() int64 {
 	return 0
 }
 
-// invitee redeems the inviter's code.
-type ClaimInviteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	InviteCode    string                 `protobuf:"bytes,1,opt,name=invite_code,json=inviteCode,proto3" json:"invite_code,omitempty"`
+// No user_id: the scope is the JWT, so a cross-user read is unrepresentable rather than validated.
+type GetLedgerRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 0 → twinkle.ledger_page_size, which is also the hard cap.
+	PageSize int32 `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Opaque; echo back next_page_token. Never construct one.
+	PageToken     string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClaimInviteRequest) Reset() {
-	*x = ClaimInviteRequest{}
+func (x *GetLedgerRequest) Reset() {
+	*x = GetLedgerRequest{}
 	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClaimInviteRequest) String() string {
+func (x *GetLedgerRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClaimInviteRequest) ProtoMessage() {}
+func (*GetLedgerRequest) ProtoMessage() {}
 
-func (x *ClaimInviteRequest) ProtoReflect() protoreflect.Message {
+func (x *GetLedgerRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -339,40 +473,48 @@ func (x *ClaimInviteRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClaimInviteRequest.ProtoReflect.Descriptor instead.
-func (*ClaimInviteRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetLedgerRequest.ProtoReflect.Descriptor instead.
+func (*GetLedgerRequest) Descriptor() ([]byte, []int) {
 	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ClaimInviteRequest) GetInviteCode() string {
+func (x *GetLedgerRequest) GetPageSize() int32 {
 	if x != nil {
-		return x.InviteCode
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetLedgerRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
 	}
 	return ""
 }
 
-// idempotent: replay returns the same total.
-type ClaimInviteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BalanceTotal  int64                  `protobuf:"varint,1,opt,name=balance_total,json=balanceTotal,proto3" json:"balance_total,omitempty"`
+type GetLedgerResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Entries []*LedgerEntry         `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	// Empty when the history ends here.
+	NextPageToken string `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClaimInviteResponse) Reset() {
-	*x = ClaimInviteResponse{}
+func (x *GetLedgerResponse) Reset() {
+	*x = GetLedgerResponse{}
 	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClaimInviteResponse) String() string {
+func (x *GetLedgerResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClaimInviteResponse) ProtoMessage() {}
+func (*GetLedgerResponse) ProtoMessage() {}
 
-func (x *ClaimInviteResponse) ProtoReflect() protoreflect.Message {
+func (x *GetLedgerResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -384,41 +526,63 @@ func (x *ClaimInviteResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClaimInviteResponse.ProtoReflect.Descriptor instead.
-func (*ClaimInviteResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetLedgerResponse.ProtoReflect.Descriptor instead.
+func (*GetLedgerResponse) Descriptor() ([]byte, []int) {
 	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ClaimInviteResponse) GetBalanceTotal() int64 {
+func (x *GetLedgerResponse) GetEntries() []*LedgerEntry {
 	if x != nil {
-		return x.BalanceTotal
+		return x.Entries
 	}
-	return 0
+	return nil
 }
 
-type ChargeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PackId        string                 `protobuf:"bytes,1,opt,name=pack_id,json=packId,proto3" json:"pack_id,omitempty"`
-	Platform      string                 `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
-	Receipt       string                 `protobuf:"bytes,3,opt,name=receipt,proto3" json:"receipt,omitempty"`
+func (x *GetLedgerResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+// One row of the single append-only ledger. Deliberately carries NO dedup_key (it embeds diary,
+// signup and claim ids — a leak with no product use) and NO per-reason payload (an ornament_id would
+// put store vocabulary in the twinkle contract; the reason IS the caption).
+type LedgerEntry struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Kind   LedgerEntryKind        `protobuf:"varint,2,opt,name=kind,proto3,enum=cosimosi.twinkle.v1.LedgerEntryKind" json:"kind,omitempty"`
+	Reason LedgerEntryReason      `protobuf:"varint,3,opt,name=reason,proto3,enum=cosimosi.twinkle.v1.LedgerEntryReason" json:"reason,omitempty"`
+	Amount int64                  `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	// How the amount was drawn, for a spend. from_small follows the domain's kind names; the columns
+	// keep their older basic/additional spelling.
+	FromSmall   int64 `protobuf:"varint,5,opt,name=from_small,json=fromSmall,proto3" json:"from_small,omitempty"`
+	FromGeneral int64 `protobuf:"varint,6,opt,name=from_general,json=fromGeneral,proto3" json:"from_general,omitempty"`
+	// The calendar date this entry belongs to, ALREADY RESOLVED IN THE USER'S TIMEZONE (YYYY-MM-DD).
+	// The server is the day-boundary authority ([U7]) — a device-local grouping would draw day headers
+	// that disagree with the SMALL reset boundary, so the client groups by this string and performs no
+	// timezone arithmetic of its own.
+	OccurredOn string `protobuf:"bytes,7,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
+	// RFC3339, for the within-day ordering and the time shown on the row.
+	OccurredAt    string `protobuf:"bytes,8,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ChargeRequest) Reset() {
-	*x = ChargeRequest{}
+func (x *LedgerEntry) Reset() {
+	*x = LedgerEntry{}
 	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ChargeRequest) String() string {
+func (x *LedgerEntry) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChargeRequest) ProtoMessage() {}
+func (*LedgerEntry) ProtoMessage() {}
 
-func (x *ChargeRequest) ProtoReflect() protoreflect.Message {
+func (x *LedgerEntry) ProtoReflect() protoreflect.Message {
 	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -430,74 +594,65 @@ func (x *ChargeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChargeRequest.ProtoReflect.Descriptor instead.
-func (*ChargeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LedgerEntry.ProtoReflect.Descriptor instead.
+func (*LedgerEntry) Descriptor() ([]byte, []int) {
 	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ChargeRequest) GetPackId() string {
+func (x *LedgerEntry) GetId() string {
 	if x != nil {
-		return x.PackId
+		return x.Id
 	}
 	return ""
 }
 
-func (x *ChargeRequest) GetPlatform() string {
+func (x *LedgerEntry) GetKind() LedgerEntryKind {
 	if x != nil {
-		return x.Platform
+		return x.Kind
 	}
-	return ""
+	return LedgerEntryKind_LEDGER_ENTRY_KIND_UNSPECIFIED
 }
 
-func (x *ChargeRequest) GetReceipt() string {
+func (x *LedgerEntry) GetReason() LedgerEntryReason {
 	if x != nil {
-		return x.Receipt
+		return x.Reason
 	}
-	return ""
+	return LedgerEntryReason_LEDGER_ENTRY_REASON_UNSPECIFIED
 }
 
-type ChargeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BalanceTotal  int64                  `protobuf:"varint,1,opt,name=balance_total,json=balanceTotal,proto3" json:"balance_total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ChargeResponse) Reset() {
-	*x = ChargeResponse{}
-	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ChargeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ChargeResponse) ProtoMessage() {}
-
-func (x *ChargeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_twinkle_v1_twinkle_proto_msgTypes[7]
+func (x *LedgerEntry) GetAmount() int64 {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ChargeResponse.ProtoReflect.Descriptor instead.
-func (*ChargeResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *ChargeResponse) GetBalanceTotal() int64 {
-	if x != nil {
-		return x.BalanceTotal
+		return x.Amount
 	}
 	return 0
+}
+
+func (x *LedgerEntry) GetFromSmall() int64 {
+	if x != nil {
+		return x.FromSmall
+	}
+	return 0
+}
+
+func (x *LedgerEntry) GetFromGeneral() int64 {
+	if x != nil {
+		return x.FromGeneral
+	}
+	return 0
+}
+
+func (x *LedgerEntry) GetOccurredOn() string {
+	if x != nil {
+		return x.OccurredOn
+	}
+	return ""
+}
+
+func (x *LedgerEntry) GetOccurredAt() string {
+	if x != nil {
+		return x.OccurredAt
+	}
+	return ""
 }
 
 var File_cosimosi_twinkle_v1_twinkle_proto protoreflect.FileDescriptor
@@ -518,30 +673,54 @@ const file_cosimosi_twinkle_v1_twinkle_proto_rawDesc = "" +
 	"\x12QuoteSpendResponse\x12\x12\n" +
 	"\x04cost\x18\x01 \x01(\x03R\x04cost\x12\x18\n" +
 	"\acovered\x18\x02 \x01(\bR\acovered\x12\x1c\n" +
-	"\tshortfall\x18\x03 \x01(\x03R\tshortfall\"5\n" +
-	"\x12ClaimInviteRequest\x12\x1f\n" +
-	"\vinvite_code\x18\x01 \x01(\tR\n" +
-	"inviteCode\":\n" +
-	"\x13ClaimInviteResponse\x12#\n" +
-	"\rbalance_total\x18\x01 \x01(\x03R\fbalanceTotal\"^\n" +
-	"\rChargeRequest\x12\x17\n" +
-	"\apack_id\x18\x01 \x01(\tR\x06packId\x12\x1a\n" +
-	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x18\n" +
-	"\areceipt\x18\x03 \x01(\tR\areceipt\"5\n" +
-	"\x0eChargeResponse\x12#\n" +
-	"\rbalance_total\x18\x01 \x01(\x03R\fbalanceTotal*u\n" +
+	"\tshortfall\x18\x03 \x01(\x03R\tshortfall\"N\n" +
+	"\x10GetLedgerRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"w\n" +
+	"\x11GetLedgerResponse\x12:\n" +
+	"\aentries\x18\x01 \x03(\v2 .cosimosi.twinkle.v1.LedgerEntryR\aentries\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xb3\x02\n" +
+	"\vLedgerEntry\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x128\n" +
+	"\x04kind\x18\x02 \x01(\x0e2$.cosimosi.twinkle.v1.LedgerEntryKindR\x04kind\x12>\n" +
+	"\x06reason\x18\x03 \x01(\x0e2&.cosimosi.twinkle.v1.LedgerEntryReasonR\x06reason\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12\x1d\n" +
+	"\n" +
+	"from_small\x18\x05 \x01(\x03R\tfromSmall\x12!\n" +
+	"\ffrom_general\x18\x06 \x01(\x03R\vfromGeneral\x12\x1f\n" +
+	"\voccurred_on\x18\a \x01(\tR\n" +
+	"occurredOn\x12\x1f\n" +
+	"\voccurred_at\x18\b \x01(\tR\n" +
+	"occurredAt*u\n" +
 	"\tSpendKind\x12\x1a\n" +
 	"\x16SPEND_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11SPEND_KIND_RECALL\x10\x01\x12\x18\n" +
 	"\x14SPEND_KIND_GIST_VIEW\x10\x02\x12\x1b\n" +
-	"\x17SPEND_KIND_DIARY_RECALL\x10\x032\x8d\x03\n" +
+	"\x17SPEND_KIND_DIARY_RECALL\x10\x03*m\n" +
+	"\x0fLedgerEntryKind\x12!\n" +
+	"\x1dLEDGER_ENTRY_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16LEDGER_ENTRY_KIND_EARN\x10\x01\x12\x1b\n" +
+	"\x17LEDGER_ENTRY_KIND_SPEND\x10\x02*\xa9\x03\n" +
+	"\x11LedgerEntryReason\x12#\n" +
+	"\x1fLEDGER_ENTRY_REASON_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fLEDGER_ENTRY_REASON_WRITE_DIARY\x10\x01\x12\x1e\n" +
+	"\x1aLEDGER_ENTRY_REASON_INVITE\x10\x02\x12%\n" +
+	"!LEDGER_ENTRY_REASON_INVITE_SIGNUP\x10\x03\x12$\n" +
+	" LEDGER_ENTRY_REASON_SIGNUP_BONUS\x10\x04\x12)\n" +
+	"%LEDGER_ENTRY_REASON_ACHIEVEMENT_CLAIM\x10\x05\x12#\n" +
+	"\x1fLEDGER_ENTRY_REASON_ADMIN_GRANT\x10\x06\x12\x1e\n" +
+	"\x1aLEDGER_ENTRY_REASON_RECALL\x10\a\x12!\n" +
+	"\x1dLEDGER_ENTRY_REASON_GIST_VIEW\x10\b\x12)\n" +
+	"%LEDGER_ENTRY_REASON_ORNAMENT_PURCHASE\x10\t\x12\x1f\n" +
+	"\x1bLEDGER_ENTRY_REASON_PAYMENT\x10\n" +
+	"2\xb9\x02\n" +
 	"\x0eTwinkleService\x12b\n" +
 	"\n" +
 	"GetBalance\x12&.cosimosi.twinkle.v1.GetBalanceRequest\x1a'.cosimosi.twinkle.v1.GetBalanceResponse\"\x03\x90\x02\x01\x12b\n" +
 	"\n" +
-	"QuoteSpend\x12&.cosimosi.twinkle.v1.QuoteSpendRequest\x1a'.cosimosi.twinkle.v1.QuoteSpendResponse\"\x03\x90\x02\x01\x12`\n" +
-	"\vClaimInvite\x12'.cosimosi.twinkle.v1.ClaimInviteRequest\x1a(.cosimosi.twinkle.v1.ClaimInviteResponse\x12Q\n" +
-	"\x06Charge\x12\".cosimosi.twinkle.v1.ChargeRequest\x1a#.cosimosi.twinkle.v1.ChargeResponseB\xd9\x01\n" +
+	"QuoteSpend\x12&.cosimosi.twinkle.v1.QuoteSpendRequest\x1a'.cosimosi.twinkle.v1.QuoteSpendResponse\"\x03\x90\x02\x01\x12_\n" +
+	"\tGetLedger\x12%.cosimosi.twinkle.v1.GetLedgerRequest\x1a&.cosimosi.twinkle.v1.GetLedgerResponse\"\x03\x90\x02\x01B\xd9\x01\n" +
 	"\x17com.cosimosi.twinkle.v1B\fTwinkleProtoP\x01ZBgithub.com/cosimosi/api/internal/gen/cosimosi/twinkle/v1;twinklev1\xa2\x02\x03CTX\xaa\x02\x13Cosimosi.Twinkle.V1\xca\x02\x13Cosimosi\\Twinkle\\V1\xe2\x02\x1fCosimosi\\Twinkle\\V1\\GPBMetadata\xea\x02\x15Cosimosi::Twinkle::V1b\x06proto3"
 
 var (
@@ -556,34 +735,36 @@ func file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP() []byte {
 	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescData
 }
 
-var file_cosimosi_twinkle_v1_twinkle_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_twinkle_v1_twinkle_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_cosimosi_twinkle_v1_twinkle_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_cosimosi_twinkle_v1_twinkle_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_cosimosi_twinkle_v1_twinkle_proto_goTypes = []any{
-	(SpendKind)(0),              // 0: cosimosi.twinkle.v1.SpendKind
-	(*GetBalanceRequest)(nil),   // 1: cosimosi.twinkle.v1.GetBalanceRequest
-	(*GetBalanceResponse)(nil),  // 2: cosimosi.twinkle.v1.GetBalanceResponse
-	(*QuoteSpendRequest)(nil),   // 3: cosimosi.twinkle.v1.QuoteSpendRequest
-	(*QuoteSpendResponse)(nil),  // 4: cosimosi.twinkle.v1.QuoteSpendResponse
-	(*ClaimInviteRequest)(nil),  // 5: cosimosi.twinkle.v1.ClaimInviteRequest
-	(*ClaimInviteResponse)(nil), // 6: cosimosi.twinkle.v1.ClaimInviteResponse
-	(*ChargeRequest)(nil),       // 7: cosimosi.twinkle.v1.ChargeRequest
-	(*ChargeResponse)(nil),      // 8: cosimosi.twinkle.v1.ChargeResponse
+	(SpendKind)(0),             // 0: cosimosi.twinkle.v1.SpendKind
+	(LedgerEntryKind)(0),       // 1: cosimosi.twinkle.v1.LedgerEntryKind
+	(LedgerEntryReason)(0),     // 2: cosimosi.twinkle.v1.LedgerEntryReason
+	(*GetBalanceRequest)(nil),  // 3: cosimosi.twinkle.v1.GetBalanceRequest
+	(*GetBalanceResponse)(nil), // 4: cosimosi.twinkle.v1.GetBalanceResponse
+	(*QuoteSpendRequest)(nil),  // 5: cosimosi.twinkle.v1.QuoteSpendRequest
+	(*QuoteSpendResponse)(nil), // 6: cosimosi.twinkle.v1.QuoteSpendResponse
+	(*GetLedgerRequest)(nil),   // 7: cosimosi.twinkle.v1.GetLedgerRequest
+	(*GetLedgerResponse)(nil),  // 8: cosimosi.twinkle.v1.GetLedgerResponse
+	(*LedgerEntry)(nil),        // 9: cosimosi.twinkle.v1.LedgerEntry
 }
 var file_cosimosi_twinkle_v1_twinkle_proto_depIdxs = []int32{
 	0, // 0: cosimosi.twinkle.v1.QuoteSpendRequest.kind:type_name -> cosimosi.twinkle.v1.SpendKind
-	1, // 1: cosimosi.twinkle.v1.TwinkleService.GetBalance:input_type -> cosimosi.twinkle.v1.GetBalanceRequest
-	3, // 2: cosimosi.twinkle.v1.TwinkleService.QuoteSpend:input_type -> cosimosi.twinkle.v1.QuoteSpendRequest
-	5, // 3: cosimosi.twinkle.v1.TwinkleService.ClaimInvite:input_type -> cosimosi.twinkle.v1.ClaimInviteRequest
-	7, // 4: cosimosi.twinkle.v1.TwinkleService.Charge:input_type -> cosimosi.twinkle.v1.ChargeRequest
-	2, // 5: cosimosi.twinkle.v1.TwinkleService.GetBalance:output_type -> cosimosi.twinkle.v1.GetBalanceResponse
-	4, // 6: cosimosi.twinkle.v1.TwinkleService.QuoteSpend:output_type -> cosimosi.twinkle.v1.QuoteSpendResponse
-	6, // 7: cosimosi.twinkle.v1.TwinkleService.ClaimInvite:output_type -> cosimosi.twinkle.v1.ClaimInviteResponse
-	8, // 8: cosimosi.twinkle.v1.TwinkleService.Charge:output_type -> cosimosi.twinkle.v1.ChargeResponse
-	5, // [5:9] is the sub-list for method output_type
-	1, // [1:5] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	9, // 1: cosimosi.twinkle.v1.GetLedgerResponse.entries:type_name -> cosimosi.twinkle.v1.LedgerEntry
+	1, // 2: cosimosi.twinkle.v1.LedgerEntry.kind:type_name -> cosimosi.twinkle.v1.LedgerEntryKind
+	2, // 3: cosimosi.twinkle.v1.LedgerEntry.reason:type_name -> cosimosi.twinkle.v1.LedgerEntryReason
+	3, // 4: cosimosi.twinkle.v1.TwinkleService.GetBalance:input_type -> cosimosi.twinkle.v1.GetBalanceRequest
+	5, // 5: cosimosi.twinkle.v1.TwinkleService.QuoteSpend:input_type -> cosimosi.twinkle.v1.QuoteSpendRequest
+	7, // 6: cosimosi.twinkle.v1.TwinkleService.GetLedger:input_type -> cosimosi.twinkle.v1.GetLedgerRequest
+	4, // 7: cosimosi.twinkle.v1.TwinkleService.GetBalance:output_type -> cosimosi.twinkle.v1.GetBalanceResponse
+	6, // 8: cosimosi.twinkle.v1.TwinkleService.QuoteSpend:output_type -> cosimosi.twinkle.v1.QuoteSpendResponse
+	8, // 9: cosimosi.twinkle.v1.TwinkleService.GetLedger:output_type -> cosimosi.twinkle.v1.GetLedgerResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_twinkle_v1_twinkle_proto_init() }
@@ -596,8 +777,8 @@ func file_cosimosi_twinkle_v1_twinkle_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_twinkle_v1_twinkle_proto_rawDesc), len(file_cosimosi_twinkle_v1_twinkle_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   8,
+			NumEnums:      3,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

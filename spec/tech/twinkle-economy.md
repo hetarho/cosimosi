@@ -13,20 +13,22 @@ memory never imports twinkle. The two meet only at the composition root (`cmd/ap
 cross-context adapters live (CC2/CC8). The context ships as one package plus its persistence and transport seams:
 
 - `internal/twinkle` — the domain + use-cases: `Balance`, `BalanceRecord`, `LedgerEntry`, the closed `EntryKind`
-  (`earn|spend`) / `EntryReason` (`payment|invite|write_diary|signup_bonus|recall|gist_view`) sets, the pure functions
-  below, and the `Service` use-cases (`GetBalance` / `CheckAndSpend` / `EarnOnWrite` / `EarnSignupBonus` /
-  `ClaimInvite` / `Charge` / `QuoteSpend`).
+  (`earn|spend`) / `EntryReason` (§2b) sets, the pure functions below, and the `Service` use-cases (`GetBalance` /
+  `GetLedger` / `QuoteSpend` / `CheckAndSpend` / `EarnOnWrite` / `EarnSignupBonus` / `EarnAchievementReward` /
+  `EarnAdminGrant` / `ClaimInvite`).
   No proto, sqlc, pgx, or SDK import; the pure functions take `now` as an argument (the Service's clock is a seam).
 - `internal/twinkle/pg` — the context's **only** sqlc/pgx package: the concrete `Store` over `twinkle_balances` +
   `twinkle_ledger_entries` with row↔domain mapping at this edge, plus `InLedgerTx` (the own-transaction runner). It
   declares **no repository interface** — the `LedgerStore`/`LedgerRepo` ports are consumer-owned by the use-cases.
 - `internal/twinkle/rpc` — thin Connect handlers for `twinkle.v1.TwinkleService` (`GetBalance`, `QuoteSpend`,
-  `ClaimInvite`, `Charge`): proto↔domain map + call, no policy. `GetBalance`/`QuoteSpend` are `NO_SIDE_EFFECTS`;
-  `ClaimInvite`/`Charge` mutate and are idempotent per their keys. **Earn-on-write and the spend have no RPC** —
-  they are cross-context port calls inside memory's transactions.
+  `GetLedger`): proto↔domain map + call, no policy. **All three are `NO_SIDE_EFFECTS`, and the contract has no
+  mutating RPC at all** — that is the design. Twinkle moves as a consequence of something else: the write earn fires
+  from memory's launch through `EarnPort`, a spend through `SpendGate`, a purchase from inside the store context's own
+  transaction, a reward from a claim, and the invite/signup credits from the server-side settlement of a signup. The
+  economy is never a separate user step, so it needs no mutating contract.
 
 The frontend IO/state boundary is the separate `@cosimosi/twinkle` package: balance Query + invalidation, the
-two-tier Zustand mirror, pending-spend/quote adapters, charge/invite actions, the generated-config-backed charge-pack
+two-kind Zustand mirror, pending-spend/quote adapters, the generated-config-backed charge-pack
 projection, and the charge-request channel live there once for web and mobile. React Query hooks use its explicit
 `@cosimosi/twinkle/react` seam. Deterministic pricing formulas remain in `@cosimosi/twinkle-logic`; the IO/state
 package does not absorb or duplicate them.
@@ -77,6 +79,86 @@ that date at UTC midnight so it is directly comparable with — and writable as 
   such alias and would read UTC. `LocationOf` maps it to UTC so the two sides stay identical, and the golden fixture
   carries a `"Local"` case so that parity is pinned rather than merely asserted here. (Profile _writes_ already reject
   it; this covers a historical or hand-edited row.)
+
+## 2b. The `EntryReason` closed set (sole ownership)
+
+`twinkle.EntryReason` is exactly eleven values, in one const block in `ledger.go`, and
+[66.earn-and-purchase-spend](../plan/66.earn-and-purchase-spend.md) is its **sole owner** — a plan that needs a new
+economic event does not add a reason on its way past.
+
+| reason              | entry point                | amount                                      | dedup key                  | transaction            |
+| ------------------- | -------------------------- | ------------------------------------------- | -------------------------- | ---------------------- |
+| `daily_grant`       | **none**                   | `twinkle.small_daily_amount`                | —                          | derived, never written |
+| `write_diary`       | `EarnOnWrite`              | `twinkle.earn_write`                        | `write_diary:<diaryID>`    | memory's launch tx     |
+| `invite`            | `ClaimInvite`, inviter leg | `twinkle.earn_invite_inviter`               | `invite:<signupID>`        | own ledger tx          |
+| `invite_signup`     | `ClaimInvite`, invitee leg | `twinkle.earn_invite_invitee`               | `invite_signup:<signupID>` | own ledger tx          |
+| `signup_bonus`      | `EarnSignupBonus`          | `twinkle.earn_signup_bonus`                 | `signup_bonus:<userID>`    | own ledger tx          |
+| `achievement_claim` | `EarnAchievementReward`    | the caller's validated reward               | `achievement:<claimID>`    | own ledger tx          |
+| `admin_grant`       | `EarnAdminGrant`           | operator amount ≤ `twinkle.admin_grant_max` | the console's grant id     | own ledger tx          |
+| `recall`            | `CheckAndSpend`            | `RecallCost(weight)`                        | `spend:<opID>:<memoryID>`  | the recall's tx        |
+| `gist_view`         | `CheckAndSpend`            | `GistViewCost(stage)`                       | `spend:<opID>:<memoryID>`  | caller's or its own    |
+| `ornament_purchase` | `CheckAndSpend`            | the caller's catalog total                  | the caller's purchase key  | the Decorate's tx      |
+| `payment`           | **none**                   | —                                           | —                          | retained, historical   |
+
+**Every writable reason has exactly one named entry point, and the two unwritable ones have none — the guard is the
+ABSENT METHOD.** There is no exported `Earn(reason, amount)`, so `daily_grant` and `payment` are unreachable by
+construction rather than by a validation branch. `TestEntryReasonsAreAClosedSetWithNoLoginBonus` enumerates the set
+whole with its classification, so a twelfth value fails the build, and
+`TestDailyGrantAndPaymentAreReachableFromNoEntryPoint` exercises all six entry points and asserts neither reason
+appears.
+
+`EntryReason.IsSpend()` gives the log direction; `EntryReason.SpendKind()` is the **one** bridge from the persisted
+vocabulary to the purpose vocabulary, and `EntryReason.SmallEligible()` delegates through it — so eligibility is
+decided in exactly one place no matter which vocabulary asks. `spendPrice` returns only the cost; the kind comes from
+the reason, so a spend's price and its SMALL eligibility cannot disagree about what the spend is.
+
+**No PG `CHECK` on `reason` and no PG enum.** A closed-set CHECK on an append-only ledger costs a migration per reason
+and risks failing historical rows; the domain owns the set, the schema owns the arithmetic invariants. The one
+reason-shaped CHECK that does exist is [P9]'s, because that one guards money (§4).
+
+### `SpendIntent` is opaque, built by three constructors
+
+```go
+func RecallSpendIntent(accessibilityCost float64, dedupKey string) SpendIntent   // reason = recall
+func GistViewSpendIntent(semanticStage int, dedupKey string) SpendIntent         // reason = gist_view
+func PurchaseSpendIntent(amount int, dedupKey string) SpendIntent                // reason = ornament_purchase
+```
+
+The fields are unexported because the mix that must be impossible is a **value** question, not a validation one: a
+recall intent has no field for an amount (so a caller can never set a recall's own price — [CC3] survives) and a
+purchase intent has no field for a decay depth or gist stage (so a curve can never price an ornament). A purchase's
+amount is the caller's authoritative catalog total, refused only when non-positive (`ErrPurchaseAmountInvalid`);
+twinkle is told what it costs and never learns what was bought, so no ornament id, kind or color can reach the ledger
+([I11]).
+
+### Typed insufficiency
+
+`*InsufficientTwinkle{Cost, Eligible, Shortfall}` **wraps** `ErrInsufficientTwinkle`, so every shipped `errors.Is` site
+keeps working — including memory's gate mapping and `twinklepg`'s `ErrBasicGrantExceeded`. `Eligible` is the balance
+usable for _that_ purpose (`General` alone for a purchase, both kinds for the recall family), so the same balance can
+cover a recall and refuse a purchase — the [G5] protection, not a bug. It reaches the client through the shipped
+`apperr.Domain(..., metadata)` `map[string]string` channel via `Detail()`, never as a message a consumer must parse:
+[72] maps it onto `STORE_INSUFFICIENT_TWINKLE` with the item name it alone knows.
+
+### `GetLedger` — the one read [G7] needs
+
+Keyset-paged newest-first over `(created_at, id)`, never `LIMIT/OFFSET`: an entry landing mid-scroll must not shift a
+page boundary and duplicate or skip a neighbour. One static sqlc query (`ListTwinkleLedgerPage`) serves both the first
+page and a continuation through two nullable cursor arguments. The cursor is an opaque
+`base64url("<created_at RFC3339Nano>|<id>")` mirroring `encodeDiaryCursor`; ties on `created_at` break on the
+backend-minted id — arbitrary, but total and stable. The use-case asks the store for one row beyond the page, which is
+how "the history continues" is distinguished from "the page ended exactly here" without a second count query.
+`page_size` clamps to `twinkle.ledger_page_size` as **both** default and hard cap. A fabricated token is refused
+(`ErrLedgerCursorInvalid`) rather than silently restarting the history.
+
+Each entry carries `occurred_on` — the date **already resolved in the user's timezone**, from the same
+`ResetWindowOf` the SMALL refill uses — plus `occurred_at` for within-day ordering. The server is the day-boundary
+authority ([U7]), so the history's day headers cannot disagree with the allowance the same user just watched refill.
+The wire row carries **no `dedup_key`** (they embed diary, signup and claim ids — a leak with no product use) and **no
+per-reason payload** (an `ornament_id` would put store vocabulary in the twinkle contract; the reason _is_ the caption).
+The wire `LedgerEntryReason` has **no `DAILY_GRANT` member**, so the economy's one non-event is unrepresentable as a row
+_and_ as a wire value; both enum mappers send an unknown value to `UNSPECIFIED`, so a row a newer server wrote renders
+as "something happened" in an older client rather than as the wrong thing.
 
 ## 3. The pure functions (golden-parity TS↔Go)
 
@@ -155,7 +237,10 @@ dedup_key)` is the general idempotency guard (`NULL` opts out — PG treats NULL
   partial global unique index on non-null payment keys; its preflight aborts with the duplicate keys when historical
   cross-user replay exists and never repairs history by mutation. Reconstruction invariants
   are DB-enforced: `CHECK (amount > 0)`, non-negative `from_basic`/`from_additional`, and a spend's amount must
-  equal its two-tier split. `kind`/`reason` are TEXT closed sets owned by the domain, not PG enums.
+  equal its two-kind split. `kind`/`reason` are TEXT closed sets owned by the domain, not PG enums — with one
+  reason-shaped exception, migration `00019`'s
+  `CHECK (reason NOT IN ('ornament_purchase') OR from_basic = 0)`: [P9] guards money, so it is stated in the schema as
+  well as in `PlanSpend`'s purpose argument, and the guarantee survives a caller that bypasses the use-case.
 
 ### The write path (`Store.ApplyBalanceDelta`)
 
@@ -178,8 +263,8 @@ window never rolls the anchor backward (`GREATEST`); a rolled window starts its 
 composing use-case appends the dedup-keyed ledger entry **first** in the same transaction and skips the delta when
 the append reports a retry — that pairing is what makes a retried earn/spend idempotent end to end. The dedup keys
 are use-case policy: `write_diary:<diaryID>` (once per diary), `invite_signup:<signupID>` (invitee side),
-`invite:<signupID>` (inviter side), `signup_bonus:<userID>` (once per account), and a `payment:` key derived from the
-normalized provider + provider transaction identity. **Spends carry an operation-derived key too** —
+`invite:<signupID>` (inviter side), `signup_bonus:<userID>` (once per account), `achievement:<claimID>` (once per
+claim), and — historically only — a `payment:` key derived from the normalized provider + transaction identity. **Spends carry an operation-derived key too** —
 `spend:<operationID>:<memoryID>`, minted at the composition
 root from the paid action's client operation id (per-action for a single recall/view, per-member when a whole-diary
 recall shares one operation id across its members), so a duplicate spend append applies no second balance delta (A3).
@@ -202,16 +287,18 @@ caller as not-enough-twinkle at the true window state.
   `signup_bonus`, dedup-keyed per account.
 - **`ClaimInvite(scope, inviteCode)`** — passes the opaque code and authenticated invitee to `InviteResolver`; only a
   trusted result binding one signup identity, an existing distinct inviter, and that invitee can credit. Both sides
-  derive keys from the signup identity and commit atomically. Production binds the account-backed resolver and fails
-  to boot without it; the resolver also requires account's private post-launch settlement context, so the legacy
-  wire method remains fail-closed until plan 66 removes it. Inside the ledger transaction, an inviter-keyed advisory
-  lock and count of existing `invite:<signupID>` entries enforce the lifetime cap against both concurrency and the
+  derive keys from the signup identity and commit atomically. The two legs carry **different reasons** — the inviter
+  is `invite`, the invitee `invite_signup` — so the history can say "친구가 가입했다" to one and "초대로 시작했다" to the
+  other from the reason alone. Production binds the account-backed resolver and fails to boot without it; the RPC is
+  gone from the wire, so the only caller is the settlement adapter. Inside the ledger transaction, an inviter-keyed
+  advisory lock and count of existing `invite:<signupID>` entries enforce the lifetime cap against both concurrency and
+  the
   credits-before-account-stamp crash window. An exact dedup replay is allowed at the cap so `rewarded_at` can recover.
   Raw or fabricated account ids carry no value.
-- **`Charge(scope, packID, provider, receipt)`** — asks `StorePaymentVerifier` for a trusted claim and validates its
-  normalized provider transaction identity, provider, known pack, exact catalog amount, and authenticated beneficiary.
-  The opaque receipt never becomes a ledger key or an error detail. `UnavailablePaymentVerifier` is the production
-  default until a real store adapter is explicitly bound at `cmd/api`.
+- **`EarnAchievementReward(scope, claimID, amount)`** — credits the reward to GENERAL in its own transaction, keyed by
+  the **claim** (`achievement:<claimID>`) because claiming is an explicit act. A credit primitive: it decides no
+  eligibility, and running outside the claim's transaction is what lets a claim stamped with its reward uncredited heal
+  on replay instead of making `achievement` the owner of twinkle's tables.
 - **`GetBalance(scope)`** / **`QuoteSpend(scope, kind, targetID, semanticStage)`** — read-only: derive the balance (lazy-birth
   default for an absent row, no write, no window roll); the quote resolves its depth signal through the
   `SpendSignalReader` port, prices with the same curves, and returns `{cost, covered, shortfall}` (gist-view validates
@@ -261,7 +348,9 @@ never drift the action's price from its quote.
 Both tables carry `user_id`; every query filters by it; every store method requires a non-empty
 `platform.UserScope` (`ErrUserScopeRequired`). Product reads/writes remain user-scoped; the one deliberate global
 constraint is the partial unique payment-key index, because a provider transaction cannot belong to two users.
-`pnpm lint:persistence` enforces query scoping.
+`ListTwinkleLedgerPage` is conjunctively scoped over the one relation and `GetLedgerRequest` carries no `user_id` — the
+scope is the JWT, so a cross-user history read is unrepresentable rather than validated. `pnpm lint:persistence`
+enforces query scoping.
 
 ## 6. Values (`spec/values.yaml` → `twinkle.*`)
 
@@ -279,10 +368,30 @@ constraint is the partial unique payment-key index, because a provider transacti
 | `earn_invite_invitee`           | 500   | new friend's grant on a valid signup [G3]                                 |
 | `earn_signup_bonus`             | 500   | one-time post-launch signup grant → GENERAL [G3]                          |
 | `invite_reward_max_per_inviter` | 10    | lifetime rewarded-invite cap per inviter [G6]                             |
-| `charge_pack`                   | 100   | the single v1 pack a verified Charge credits [G3]                         |
+| `charge_pack`                   | 100   | **retired**; the key survives only until plan 67 deletes its last reader  |
+| `ledger_page_size`              | 50    | GetLedger page default AND hard cap [G7][U9]                              |
 
 With the shipped `forgetting.cost_weight_*` (weight ∈ [1, 4]) the effective 회고 price runs 15 (fresh) → 40
 (capped); a day's grant covers roughly six fresh recalls or a mix of recalls and gist views. The [G5] relationship
 `small_daily_amount ≥ 5 expected daily ruminations × cheap recall (15)` is pinned by a test over the generated
-constants. The pack **price table** (₩/$ per pack) is product content, not a value; `DefaultChargePackID` is the one
-v1 pack id (code).
+constants. Catalogs are code, not values: an ornament price table and an achievement reward table are context content
+owned by `store` and `achievement`.
+
+### Payment retirement (server half)
+
+Payment (스토어/PG) is deferred to v3 (PRD §8.3) and was **removed rather than disabled** — production bound a
+guaranteed-fail verifier and the client always threw, so shipping it reachable ships a broken button and an
+error-recovery flow pointing nowhere. Gone: `rpc Charge` + its two messages, `Service.Charge`,
+`normalizePaymentProvider`, `paymentTransactionKey`, `DefaultChargePackID`, `ServiceDeps.Verifier` and its nil guard,
+the `StorePaymentVerifier` port with `PaymentVerificationRequest`/`VerifiedPayment`, `UnavailablePaymentVerifier`, the
+five payment errors and the four `TWINKLE_PAYMENT*`/`TWINKLE_CHARGE*` transport reasons.
+
+**Retained deliberately, as historical guards:** the `payment` `EntryReason`; migration `00010`'s
+`twinkle_ledger_payment_transaction_key_unique` partial index and its `DO $$` preflight (the ledger is append-only —
+dropping the index buys nothing and re-adding it in v3 costs the same preflight); the `reason = 'payment'` arm of
+`TwinkleLedgerDedupExists`; and `LEDGER_ENTRY_REASON_PAYMENT` on the wire. A pre-existing payment row still folds into
+the balance and still renders in `GetLedger`, and one provider transaction still cannot credit two accounts.
+
+`rpc ClaimInvite` also leaves the wire while `Service.ClaimInvite` and the `InviteResolver` port stay callable from the
+composition root: an invite is link-bound ([U8]), so the credit is settled server-side from the signup path and the
+user never types a code. The `TWINKLE_INVITE_*` transport reasons stay for that adapter's refusals.

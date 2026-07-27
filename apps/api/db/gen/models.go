@@ -226,9 +226,10 @@ type TwinkleBalance struct {
 
 // Append-only against system behavior; the only DELETE is the user-originated, post-retention account withdrawal sweep.
 type TwinkleLedgerEntry struct {
-	ID             string
-	UserID         string
-	Kind           string
+	ID     string
+	UserID string
+	Kind   string
+	// closed set (plan 66): daily_grant(reserved, never written) | write_diary | invite | invite_signup | signup_bonus | achievement_claim | admin_grant | recall | gist_view | ornament_purchase | payment(historical)
 	Reason         string
 	Amount         int32
 	FromBasic      int32

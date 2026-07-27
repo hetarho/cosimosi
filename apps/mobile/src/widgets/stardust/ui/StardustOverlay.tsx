@@ -12,8 +12,7 @@ import {
   CHARGE_PACK,
   ChargeSheet,
   WriteEarnFeedback,
-  chargeTwinkle,
-  claimInvite,
+  redeemInvite,
   startStorePurchase,
 } from '../../../features/charge-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
@@ -72,9 +71,6 @@ export function StardustOverlay() {
     setErrored(false)
     send({ type: 'PAY' })
     startStorePurchase(CHARGE_PACK.id, PLATFORM)
-      .then((receipt) =>
-        chargeTwinkle(transport, { packId: CHARGE_PACK.id, platform: PLATFORM, receipt }),
-      )
       .then(() => {
         invalidateBalance()
         send({ type: 'DONE' })
@@ -84,13 +80,13 @@ export function StardustOverlay() {
         setErrored(true)
         send({ type: 'ERROR' })
       })
-  }, [transport, invalidateBalance, showError, send])
+  }, [invalidateBalance, showError, send])
 
   const onInvite = useCallback(
     (inviteCode: string) => {
       setErrored(false)
       send({ type: 'INVITE' })
-      claimInvite(transport, inviteCode)
+      redeemInvite(transport, inviteCode)
         .then(() => {
           invalidateBalance()
           send({ type: 'DONE' })

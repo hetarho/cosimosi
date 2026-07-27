@@ -1,10 +1,11 @@
-import { createTwinkleClient, type ApiTransport } from '@cosimosi/api-client'
+import { type ApiTransport } from '@cosimosi/api-client'
 
-// The deferred store-purchase seam: v1 ships the earn contract (Charge) but not the
-// platform store SDK (store-integration deferred), so the FE never fabricates a receipt
-// to credit locally ([G3] — production value is granted only by the backend after it
-// verifies a real receipt). Rejecting with this — rather than inventing a receipt — keeps
-// the pay path honest until the real adapter is bound.
+// Two earn affordances the sheet still renders and this build cannot complete. Both reject rather
+// than fabricate, because a client that invents value is worse than a client that says no.
+
+// Payment (스토어/PG) is deferred to v3 (PRD §8.3): the server contract is gone, and the platform
+// store SDK was never bound. Rejecting here — rather than inventing a receipt to credit locally —
+// keeps the pay path honest until a real adapter exists.
 export class PaymentUnavailableError extends Error {
   constructor(packId: string, platform: string) {
     super(`store purchase for pack "${packId}" on ${platform} is not available in this build`)
@@ -12,28 +13,22 @@ export class PaymentUnavailableError extends Error {
   }
 }
 
-// In production this drives the platform store SDK and resolves the verified receipt for
-// the pack; it is unbound in v1, so it rejects. The pay path surfaces the tier + CTA, but
-// a purchase completes only once the real store adapter replaces this seam.
+// In production this would drive the platform store SDK and resolve a verified receipt; nothing binds
+// it, so it rejects.
 export async function startStorePurchase(packId: string, platform: string): Promise<string> {
   throw new PaymentUnavailableError(packId, platform)
 }
 
-// features/charge-twinkle api: send a store receipt to twinkle.v1 Charge ([G3]). The FE
-// never credits locally — the backend verifies the receipt and returns the new total; the
-// sheet refetches GetBalance on success so the credit shows.
-export async function chargeTwinkle(
-  transport: ApiTransport,
-  request: { packId: string; platform: string; receipt: string },
-): Promise<bigint> {
-  const response = await createTwinkleClient(transport).charge(request)
-  return response.balanceTotal
+// An invite is LINK-BOUND ([U8]): the user never types a code, and the both-sides credit is settled
+// server-side when the invited friend's signup settles. So there is no redemption RPC to call — a
+// typed code has nowhere to go, and saying so is more honest than a silent no-op.
+export class InviteRedemptionUnavailableError extends Error {
+  constructor() {
+    super('an invite is redeemed by following its link, not by entering a code')
+    this.name = 'InviteRedemptionUnavailableError'
+  }
 }
 
-// Redeem an inviter's code via twinkle.v1 ClaimInvite: the both-sides grant lands on a
-// valid signup (the anti-abuse gate [G6] is the server's); the sheet refetches GetBalance
-// so the credit shows.
-export async function claimInvite(transport: ApiTransport, inviteCode: string): Promise<bigint> {
-  const response = await createTwinkleClient(transport).claimInvite({ inviteCode })
-  return response.balanceTotal
+export async function redeemInvite(_transport: ApiTransport, _inviteCode: string): Promise<bigint> {
+  throw new InviteRedemptionUnavailableError()
 }

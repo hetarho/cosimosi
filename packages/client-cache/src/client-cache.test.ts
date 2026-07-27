@@ -315,9 +315,9 @@ describe('client cache facade', () => {
       .sort()
 
     expect(registeredReadKeys).toEqual(generatedReadKeys)
-    // Twelve platform/user reads plus nine admin-console reads. Keep this explicit count so a new
+    // Thirteen platform/user reads plus nine admin-console reads. Keep this explicit count so a new
     // NO_SIDE_EFFECTS RPC cannot be added without reviewing its client-cache policy.
-    expect(generatedReadKeys).toHaveLength(21)
+    expect(generatedReadKeys).toHaveLength(22)
     expect(() =>
       assertRpcCachePolicyCoverage(
         apiServiceDescriptors,

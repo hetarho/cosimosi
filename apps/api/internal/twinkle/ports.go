@@ -9,8 +9,8 @@ import (
 
 // The earn/spend use-cases' consumer-owned ports (§2.4/§2.9#6). Declared HERE
 // because the twinkle use-cases are the consumers: the ledger store they compose
-// their transactions from, the depth-signal reads a quote prices, the store-payment
-// verifier ([G3]), and the trusted invite/signup resolver ([G6]). Domain-shaped in
+// their transactions from, the depth-signal reads a quote prices, the SMALL day
+// boundary ([U7]), and the trusted invite/signup resolver ([G6]). Domain-shaped in
 // and out — no proto, sqlc, pgx, or SDK type crosses any of them, and no memory
 // type either: depth signals arrive as scalars (§2.2, CC8).
 
@@ -25,6 +25,10 @@ type LedgerStore interface {
 	AppendLedgerEntry(ctx context.Context, scope platform.UserScope, entry LedgerEntry) (bool, error)
 	LockInviteRewardsByInviter(ctx context.Context, scope platform.UserScope) error
 	GetInviteRewardState(ctx context.Context, scope platform.UserScope, dedupKey string) (rewardCount int64, replay bool, err error)
+	// ListLedgerPage reads one keyset page of the user's history, newest first. A nil cursor starts at
+	// the newest row; `limit` is the store's ceiling, and the use-case asks for one extra row to learn
+	// whether a next page exists without a second count query.
+	ListLedgerPage(ctx context.Context, scope platform.UserScope, cursor *LedgerCursor, limit int) ([]LedgerEntry, error)
 }
 
 // LedgerRepo is the standalone ledger seam: the pool-bound reads plus the
@@ -59,35 +63,6 @@ type SpendSignalReader interface {
 	// ViewableGistStage is the gist stage a view of the memory reaches — the
 	// gist-view quote's signal ([R8]).
 	ViewableGistStage(ctx context.Context, scope platform.UserScope, memoryID string) (int, error)
-}
-
-// PaymentVerificationRequest is the untrusted purchase material Charge hands to
-// the configured store adapter. BeneficiaryUserID always comes from the
-// authenticated scope, never from the wire request.
-type PaymentVerificationRequest struct {
-	PackID            string
-	Provider          string
-	Receipt           string
-	BeneficiaryUserID string
-}
-
-// VerifiedPayment is a verifier-authenticated purchase claim. The adapter binds
-// one normalized provider transaction to its provider, catalog pack,
-// authoritative amount, and authenticated beneficiary.
-type VerifiedPayment struct {
-	ProviderTransactionID string
-	Provider              string
-	PackID                string
-	Amount                int
-	BeneficiaryUserID     string
-}
-
-// StorePaymentVerifier is the external-service port ([G3], §2.8) Charge consults
-// before crediting anything. Production uses the fail-closed unavailable
-// adapter until a real store adapter is explicitly configured at the composition
-// root.
-type StorePaymentVerifier interface {
-	Verify(ctx context.Context, request PaymentVerificationRequest) (VerifiedPayment, error)
 }
 
 // InviteResolutionRequest carries an opaque code plus the authenticated invitee

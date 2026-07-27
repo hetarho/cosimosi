@@ -7,6 +7,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
 	twinklev1 "github.com/cosimosi/api/internal/gen/cosimosi/twinkle/v1"
@@ -64,32 +65,76 @@ func (s *Server) QuoteSpend(ctx context.Context, req *connect.Request[twinklev1.
 	}), nil
 }
 
-func (s *Server) ClaimInvite(ctx context.Context, req *connect.Request[twinklev1.ClaimInviteRequest]) (*connect.Response[twinklev1.ClaimInviteResponse], error) {
+// GetLedger returns one keyset page of the caller's history ([G7]). Thin: clamp nothing, decide
+// nothing — the use-case owns the page size cap, the cursor and the timezone the dates are resolved in.
+func (s *Server) GetLedger(ctx context.Context, req *connect.Request[twinklev1.GetLedgerRequest]) (*connect.Response[twinklev1.GetLedgerResponse], error) {
 	scope, err := userScope(ctx)
 	if err != nil {
 		return nil, err
 	}
-	balance, err := s.service.ClaimInvite(ctx, scope, req.Msg.GetInviteCode())
+	page, err := s.service.GetLedger(ctx, scope, int(req.Msg.GetPageSize()), req.Msg.GetPageToken())
 	if err != nil {
 		return nil, domainError(err)
 	}
-	return connect.NewResponse(&twinklev1.ClaimInviteResponse{
-		BalanceTotal: int64(balance.Total()),
+	entries := make([]*twinklev1.LedgerEntry, 0, len(page.Entries))
+	for _, view := range page.Entries {
+		entries = append(entries, &twinklev1.LedgerEntry{
+			Id:          view.Entry.ID,
+			Kind:        ledgerEntryKind(view.Entry.Kind),
+			Reason:      ledgerEntryReason(view.Entry.Reason),
+			Amount:      int64(view.Entry.Amount),
+			FromSmall:   int64(view.Entry.FromSmall),
+			FromGeneral: int64(view.Entry.FromGeneral),
+			OccurredOn:  view.OccurredOn.Format(time.DateOnly),
+			OccurredAt:  view.Entry.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+	return connect.NewResponse(&twinklev1.GetLedgerResponse{
+		Entries:       entries,
+		NextPageToken: page.NextPageToken,
 	}), nil
 }
 
-func (s *Server) Charge(ctx context.Context, req *connect.Request[twinklev1.ChargeRequest]) (*connect.Response[twinklev1.ChargeResponse], error) {
-	scope, err := userScope(ctx)
-	if err != nil {
-		return nil, err
+// ledgerEntryKind / ledgerEntryReason are the domain→proto half of the anti-corruption boundary. Both
+// map an unknown value to UNSPECIFIED rather than guessing: a row written by a newer server must
+// render as "something happened" in an older client, never as the wrong thing.
+func ledgerEntryKind(kind twinkle.EntryKind) twinklev1.LedgerEntryKind {
+	switch kind {
+	case twinkle.EntryKindEarn:
+		return twinklev1.LedgerEntryKind_LEDGER_ENTRY_KIND_EARN
+	case twinkle.EntryKindSpend:
+		return twinklev1.LedgerEntryKind_LEDGER_ENTRY_KIND_SPEND
+	default:
+		return twinklev1.LedgerEntryKind_LEDGER_ENTRY_KIND_UNSPECIFIED
 	}
-	balance, err := s.service.Charge(ctx, scope, req.Msg.GetPackId(), req.Msg.GetPlatform(), req.Msg.GetReceipt())
-	if err != nil {
-		return nil, domainError(err)
+}
+
+// daily_grant is absent on purpose: it is never written, and the wire enum has no member for it.
+func ledgerEntryReason(reason twinkle.EntryReason) twinklev1.LedgerEntryReason {
+	switch reason {
+	case twinkle.ReasonWriteDiary:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_WRITE_DIARY
+	case twinkle.ReasonInvite:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_INVITE
+	case twinkle.ReasonInviteSignup:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_INVITE_SIGNUP
+	case twinkle.ReasonSignupBonus:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_SIGNUP_BONUS
+	case twinkle.ReasonAchievementClaim:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_ACHIEVEMENT_CLAIM
+	case twinkle.ReasonAdminGrant:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_ADMIN_GRANT
+	case twinkle.ReasonRecall:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_RECALL
+	case twinkle.ReasonGistView:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_GIST_VIEW
+	case twinkle.ReasonOrnamentPurchase:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_ORNAMENT_PURCHASE
+	case twinkle.ReasonPayment:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_PAYMENT
+	default:
+		return twinklev1.LedgerEntryReason_LEDGER_ENTRY_REASON_UNSPECIFIED
 	}
-	return connect.NewResponse(&twinklev1.ChargeResponse{
-		BalanceTotal: int64(balance.Total()),
-	}), nil
 }
 
 func userScope(ctx context.Context) (platform.UserScope, error) {
@@ -120,28 +165,28 @@ func domainError(err error) error {
 	switch {
 	case errors.Is(err, twinkle.ErrInviteInputRequired):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonInviteInputRequired, err, nil)
-	case errors.Is(err, twinkle.ErrChargeInputRequired):
-		return apperr.Domain(connect.CodeInvalidArgument, reasonChargeInputRequired, err, nil)
 	case errors.Is(err, twinkle.ErrQuoteInputRequired):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonQuoteInputRequired, err, nil)
 	case errors.Is(err, twinkle.ErrQuoteTargetNotFound):
 		return apperr.Domain(connect.CodeNotFound, reasonQuoteTargetNotFound, err, nil)
+	case errors.Is(err, twinkle.ErrLedgerCursorInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonLedgerCursorInvalid, err, nil)
 	case errors.Is(err, twinkle.ErrInsufficientTwinkle):
+		// The denial carries its own arithmetic when it has any ([P8]): how much, and how much of it
+		// this purpose could actually pay with. The consumer names the item; twinkle names the numbers.
+		var insufficient *twinkle.InsufficientTwinkle
+		if errors.As(err, &insufficient) {
+			return apperr.Domain(connect.CodeResourceExhausted, reasonInsufficient, err, insufficient.Detail())
+		}
 		return apperr.Domain(connect.CodeResourceExhausted, reasonInsufficient, err, nil)
-	case errors.Is(err, twinkle.ErrPaymentVerificationUnavailable):
-		return apperr.Domain(connect.CodeUnavailable, reasonPaymentVerificationUnavailable, err, nil)
 	case errors.Is(err, twinkle.ErrInviteResolutionUnavailable):
 		return apperr.Domain(connect.CodeUnavailable, reasonInviteResolutionUnavailable, err, nil)
-	case errors.Is(err, twinkle.ErrPaymentBeneficiaryMismatch):
-		return apperr.Domain(connect.CodePermissionDenied, reasonPaymentBeneficiaryMismatch, err, nil)
 	case errors.Is(err, twinkle.ErrInviteBeneficiaryMismatch):
 		return apperr.Domain(connect.CodePermissionDenied, reasonInviteBeneficiaryMismatch, err, nil)
 	case errors.Is(err, twinkle.ErrInviteNotEligible):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonInviteNotEligible, err, nil)
 	case errors.Is(err, twinkle.ErrInviteGrantConflict):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonInviteGrantConflict, err, nil)
-	case errors.Is(err, twinkle.ErrPaymentNotVerified):
-		return apperr.Domain(connect.CodeFailedPrecondition, reasonPaymentNotVerified, err, nil)
 	case errors.Is(err, twinkle.ErrQuoteTargetUnavailable):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonQuoteTargetUnavailable, err, nil)
 	case errors.Is(err, twinkle.ErrScopeRequired):

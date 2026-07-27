@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/twinkle/v1/twinkle.proto.
  */
 export const file_cosimosi_twinkle_v1_twinkle: GenFile = /*@__PURE__*/
-  fileDesc("CiFjb3NpbW9zaS90d2lua2xlL3YxL3R3aW5rbGUucHJvdG8SE2Nvc2ltb3NpLnR3aW5rbGUudjEiEwoRR2V0QmFsYW5jZVJlcXVlc3QiQwoSR2V0QmFsYW5jZVJlc3BvbnNlEg0KBXNtYWxsGAEgASgDEg8KB2dlbmVyYWwYAiABKAMSDQoFdG90YWwYAyABKAMihwEKEVF1b3RlU3BlbmRSZXF1ZXN0EiwKBGtpbmQYASABKA4yHi5jb3NpbW9zaS50d2lua2xlLnYxLlNwZW5kS2luZBIaChJlcGlzb2RpY19tZW1vcnlfaWQYAiABKAkSEAoIZGlhcnlfaWQYAyABKAkSFgoOc2VtYW50aWNfc3RhZ2UYBCABKAUiRgoSUXVvdGVTcGVuZFJlc3BvbnNlEgwKBGNvc3QYASABKAMSDwoHY292ZXJlZBgCIAEoCBIRCglzaG9ydGZhbGwYAyABKAMiKQoSQ2xhaW1JbnZpdGVSZXF1ZXN0EhMKC2ludml0ZV9jb2RlGAEgASgJIiwKE0NsYWltSW52aXRlUmVzcG9uc2USFQoNYmFsYW5jZV90b3RhbBgBIAEoAyJDCg1DaGFyZ2VSZXF1ZXN0Eg8KB3BhY2tfaWQYASABKAkSEAoIcGxhdGZvcm0YAiABKAkSDwoHcmVjZWlwdBgDIAEoCSInCg5DaGFyZ2VSZXNwb25zZRIVCg1iYWxhbmNlX3RvdGFsGAEgASgDKnUKCVNwZW5kS2luZBIaChZTUEVORF9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRU1BFTkRfS0lORF9SRUNBTEwQARIYChRTUEVORF9LSU5EX0dJU1RfVklFVxACEhsKF1NQRU5EX0tJTkRfRElBUllfUkVDQUxMEAMyjQMKDlR3aW5rbGVTZXJ2aWNlEmIKCkdldEJhbGFuY2USJi5jb3NpbW9zaS50d2lua2xlLnYxLkdldEJhbGFuY2VSZXF1ZXN0GicuY29zaW1vc2kudHdpbmtsZS52MS5HZXRCYWxhbmNlUmVzcG9uc2UiA5ACARJiCgpRdW90ZVNwZW5kEiYuY29zaW1vc2kudHdpbmtsZS52MS5RdW90ZVNwZW5kUmVxdWVzdBonLmNvc2ltb3NpLnR3aW5rbGUudjEuUXVvdGVTcGVuZFJlc3BvbnNlIgOQAgESYAoLQ2xhaW1JbnZpdGUSJy5jb3NpbW9zaS50d2lua2xlLnYxLkNsYWltSW52aXRlUmVxdWVzdBooLmNvc2ltb3NpLnR3aW5rbGUudjEuQ2xhaW1JbnZpdGVSZXNwb25zZRJRCgZDaGFyZ2USIi5jb3NpbW9zaS50d2lua2xlLnYxLkNoYXJnZVJlcXVlc3QaIy5jb3NpbW9zaS50d2lua2xlLnYxLkNoYXJnZVJlc3BvbnNlQtkBChdjb20uY29zaW1vc2kudHdpbmtsZS52MUIMVHdpbmtsZVByb3RvUAFaQmdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS90d2lua2xlL3YxO3R3aW5rbGV2MaICA0NUWKoCE0Nvc2ltb3NpLlR3aW5rbGUuVjHKAhNDb3NpbW9zaVxUd2lua2xlXFYx4gIfQ29zaW1vc2lcVHdpbmtsZVxWMVxHUEJNZXRhZGF0YeoCFUNvc2ltb3NpOjpUd2lua2xlOjpWMWIGcHJvdG8z");
+  fileDesc("CiFjb3NpbW9zaS90d2lua2xlL3YxL3R3aW5rbGUucHJvdG8SE2Nvc2ltb3NpLnR3aW5rbGUudjEiEwoRR2V0QmFsYW5jZVJlcXVlc3QiQwoSR2V0QmFsYW5jZVJlc3BvbnNlEg0KBXNtYWxsGAEgASgDEg8KB2dlbmVyYWwYAiABKAMSDQoFdG90YWwYAyABKAMihwEKEVF1b3RlU3BlbmRSZXF1ZXN0EiwKBGtpbmQYASABKA4yHi5jb3NpbW9zaS50d2lua2xlLnYxLlNwZW5kS2luZBIaChJlcGlzb2RpY19tZW1vcnlfaWQYAiABKAkSEAoIZGlhcnlfaWQYAyABKAkSFgoOc2VtYW50aWNfc3RhZ2UYBCABKAUiRgoSUXVvdGVTcGVuZFJlc3BvbnNlEgwKBGNvc3QYASABKAMSDwoHY292ZXJlZBgCIAEoCBIRCglzaG9ydGZhbGwYAyABKAMiOQoQR2V0TGVkZ2VyUmVxdWVzdBIRCglwYWdlX3NpemUYASABKAUSEgoKcGFnZV90b2tlbhgCIAEoCSJfChFHZXRMZWRnZXJSZXNwb25zZRIxCgdlbnRyaWVzGAEgAygLMiAuY29zaW1vc2kudHdpbmtsZS52MS5MZWRnZXJFbnRyeRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAki6QEKC0xlZGdlckVudHJ5EgoKAmlkGAEgASgJEjIKBGtpbmQYAiABKA4yJC5jb3NpbW9zaS50d2lua2xlLnYxLkxlZGdlckVudHJ5S2luZBI2CgZyZWFzb24YAyABKA4yJi5jb3NpbW9zaS50d2lua2xlLnYxLkxlZGdlckVudHJ5UmVhc29uEg4KBmFtb3VudBgEIAEoAxISCgpmcm9tX3NtYWxsGAUgASgDEhQKDGZyb21fZ2VuZXJhbBgGIAEoAxITCgtvY2N1cnJlZF9vbhgHIAEoCRITCgtvY2N1cnJlZF9hdBgIIAEoCSp1CglTcGVuZEtpbmQSGgoWU1BFTkRfS0lORF9VTlNQRUNJRklFRBAAEhUKEVNQRU5EX0tJTkRfUkVDQUxMEAESGAoUU1BFTkRfS0lORF9HSVNUX1ZJRVcQAhIbChdTUEVORF9LSU5EX0RJQVJZX1JFQ0FMTBADKm0KD0xlZGdlckVudHJ5S2luZBIhCh1MRURHRVJfRU5UUllfS0lORF9VTlNQRUNJRklFRBAAEhoKFkxFREdFUl9FTlRSWV9LSU5EX0VBUk4QARIbChdMRURHRVJfRU5UUllfS0lORF9TUEVORBACKqkDChFMZWRnZXJFbnRyeVJlYXNvbhIjCh9MRURHRVJfRU5UUllfUkVBU09OX1VOU1BFQ0lGSUVEEAASIwofTEVER0VSX0VOVFJZX1JFQVNPTl9XUklURV9ESUFSWRABEh4KGkxFREdFUl9FTlRSWV9SRUFTT05fSU5WSVRFEAISJQohTEVER0VSX0VOVFJZX1JFQVNPTl9JTlZJVEVfU0lHTlVQEAMSJAogTEVER0VSX0VOVFJZX1JFQVNPTl9TSUdOVVBfQk9OVVMQBBIpCiVMRURHRVJfRU5UUllfUkVBU09OX0FDSElFVkVNRU5UX0NMQUlNEAUSIwofTEVER0VSX0VOVFJZX1JFQVNPTl9BRE1JTl9HUkFOVBAGEh4KGkxFREdFUl9FTlRSWV9SRUFTT05fUkVDQUxMEAcSIQodTEVER0VSX0VOVFJZX1JFQVNPTl9HSVNUX1ZJRVcQCBIpCiVMRURHRVJfRU5UUllfUkVBU09OX09STkFNRU5UX1BVUkNIQVNFEAkSHwobTEVER0VSX0VOVFJZX1JFQVNPTl9QQVlNRU5UEAoyuQIKDlR3aW5rbGVTZXJ2aWNlEmIKCkdldEJhbGFuY2USJi5jb3NpbW9zaS50d2lua2xlLnYxLkdldEJhbGFuY2VSZXF1ZXN0GicuY29zaW1vc2kudHdpbmtsZS52MS5HZXRCYWxhbmNlUmVzcG9uc2UiA5ACARJiCgpRdW90ZVNwZW5kEiYuY29zaW1vc2kudHdpbmtsZS52MS5RdW90ZVNwZW5kUmVxdWVzdBonLmNvc2ltb3NpLnR3aW5rbGUudjEuUXVvdGVTcGVuZFJlc3BvbnNlIgOQAgESXwoJR2V0TGVkZ2VyEiUuY29zaW1vc2kudHdpbmtsZS52MS5HZXRMZWRnZXJSZXF1ZXN0GiYuY29zaW1vc2kudHdpbmtsZS52MS5HZXRMZWRnZXJSZXNwb25zZSIDkAIBQtkBChdjb20uY29zaW1vc2kudHdpbmtsZS52MUIMVHdpbmtsZVByb3RvUAFaQmdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS90d2lua2xlL3YxO3R3aW5rbGV2MaICA0NUWKoCE0Nvc2ltb3NpLlR3aW5rbGUuVjHKAhNDb3NpbW9zaVxUd2lua2xlXFYx4gIfQ29zaW1vc2lcVHdpbmtsZVxWMVxHUEJNZXRhZGF0YeoCFUNvc2ltb3NpOjpUd2lua2xlOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message cosimosi.twinkle.v1.GetBalanceRequest
@@ -121,86 +121,122 @@ export const QuoteSpendResponseSchema: GenMessage<QuoteSpendResponse> = /*@__PUR
   messageDesc(file_cosimosi_twinkle_v1_twinkle, 3);
 
 /**
- * invitee redeems the inviter's code.
+ * No user_id: the scope is the JWT, so a cross-user read is unrepresentable rather than validated.
  *
- * @generated from message cosimosi.twinkle.v1.ClaimInviteRequest
+ * @generated from message cosimosi.twinkle.v1.GetLedgerRequest
  */
-export type ClaimInviteRequest = Message<"cosimosi.twinkle.v1.ClaimInviteRequest"> & {
+export type GetLedgerRequest = Message<"cosimosi.twinkle.v1.GetLedgerRequest"> & {
   /**
-   * @generated from field: string invite_code = 1;
+   * 0 → twinkle.ledger_page_size, which is also the hard cap.
+   *
+   * @generated from field: int32 page_size = 1;
    */
-  inviteCode: string;
+  pageSize: number;
+
+  /**
+   * Opaque; echo back next_page_token. Never construct one.
+   *
+   * @generated from field: string page_token = 2;
+   */
+  pageToken: string;
 };
 
 /**
- * Describes the message cosimosi.twinkle.v1.ClaimInviteRequest.
- * Use `create(ClaimInviteRequestSchema)` to create a new message.
+ * Describes the message cosimosi.twinkle.v1.GetLedgerRequest.
+ * Use `create(GetLedgerRequestSchema)` to create a new message.
  */
-export const ClaimInviteRequestSchema: GenMessage<ClaimInviteRequest> = /*@__PURE__*/
+export const GetLedgerRequestSchema: GenMessage<GetLedgerRequest> = /*@__PURE__*/
   messageDesc(file_cosimosi_twinkle_v1_twinkle, 4);
 
 /**
- * idempotent: replay returns the same total.
- *
- * @generated from message cosimosi.twinkle.v1.ClaimInviteResponse
+ * @generated from message cosimosi.twinkle.v1.GetLedgerResponse
  */
-export type ClaimInviteResponse = Message<"cosimosi.twinkle.v1.ClaimInviteResponse"> & {
+export type GetLedgerResponse = Message<"cosimosi.twinkle.v1.GetLedgerResponse"> & {
   /**
-   * @generated from field: int64 balance_total = 1;
+   * @generated from field: repeated cosimosi.twinkle.v1.LedgerEntry entries = 1;
    */
-  balanceTotal: bigint;
+  entries: LedgerEntry[];
+
+  /**
+   * Empty when the history ends here.
+   *
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
 };
 
 /**
- * Describes the message cosimosi.twinkle.v1.ClaimInviteResponse.
- * Use `create(ClaimInviteResponseSchema)` to create a new message.
+ * Describes the message cosimosi.twinkle.v1.GetLedgerResponse.
+ * Use `create(GetLedgerResponseSchema)` to create a new message.
  */
-export const ClaimInviteResponseSchema: GenMessage<ClaimInviteResponse> = /*@__PURE__*/
+export const GetLedgerResponseSchema: GenMessage<GetLedgerResponse> = /*@__PURE__*/
   messageDesc(file_cosimosi_twinkle_v1_twinkle, 5);
 
 /**
- * @generated from message cosimosi.twinkle.v1.ChargeRequest
+ * One row of the single append-only ledger. Deliberately carries NO dedup_key (it embeds diary,
+ * signup and claim ids — a leak with no product use) and NO per-reason payload (an ornament_id would
+ * put store vocabulary in the twinkle contract; the reason IS the caption).
+ *
+ * @generated from message cosimosi.twinkle.v1.LedgerEntry
  */
-export type ChargeRequest = Message<"cosimosi.twinkle.v1.ChargeRequest"> & {
+export type LedgerEntry = Message<"cosimosi.twinkle.v1.LedgerEntry"> & {
   /**
-   * @generated from field: string pack_id = 1;
+   * @generated from field: string id = 1;
    */
-  packId: string;
+  id: string;
 
   /**
-   * @generated from field: string platform = 2;
+   * @generated from field: cosimosi.twinkle.v1.LedgerEntryKind kind = 2;
    */
-  platform: string;
+  kind: LedgerEntryKind;
 
   /**
-   * @generated from field: string receipt = 3;
+   * @generated from field: cosimosi.twinkle.v1.LedgerEntryReason reason = 3;
    */
-  receipt: string;
+  reason: LedgerEntryReason;
+
+  /**
+   * @generated from field: int64 amount = 4;
+   */
+  amount: bigint;
+
+  /**
+   * How the amount was drawn, for a spend. from_small follows the domain's kind names; the columns
+   * keep their older basic/additional spelling.
+   *
+   * @generated from field: int64 from_small = 5;
+   */
+  fromSmall: bigint;
+
+  /**
+   * @generated from field: int64 from_general = 6;
+   */
+  fromGeneral: bigint;
+
+  /**
+   * The calendar date this entry belongs to, ALREADY RESOLVED IN THE USER'S TIMEZONE (YYYY-MM-DD).
+   * The server is the day-boundary authority ([U7]) — a device-local grouping would draw day headers
+   * that disagree with the SMALL reset boundary, so the client groups by this string and performs no
+   * timezone arithmetic of its own.
+   *
+   * @generated from field: string occurred_on = 7;
+   */
+  occurredOn: string;
+
+  /**
+   * RFC3339, for the within-day ordering and the time shown on the row.
+   *
+   * @generated from field: string occurred_at = 8;
+   */
+  occurredAt: string;
 };
 
 /**
- * Describes the message cosimosi.twinkle.v1.ChargeRequest.
- * Use `create(ChargeRequestSchema)` to create a new message.
+ * Describes the message cosimosi.twinkle.v1.LedgerEntry.
+ * Use `create(LedgerEntrySchema)` to create a new message.
  */
-export const ChargeRequestSchema: GenMessage<ChargeRequest> = /*@__PURE__*/
+export const LedgerEntrySchema: GenMessage<LedgerEntry> = /*@__PURE__*/
   messageDesc(file_cosimosi_twinkle_v1_twinkle, 6);
-
-/**
- * @generated from message cosimosi.twinkle.v1.ChargeResponse
- */
-export type ChargeResponse = Message<"cosimosi.twinkle.v1.ChargeResponse"> & {
-  /**
-   * @generated from field: int64 balance_total = 1;
-   */
-  balanceTotal: bigint;
-};
-
-/**
- * Describes the message cosimosi.twinkle.v1.ChargeResponse.
- * Use `create(ChargeResponseSchema)` to create a new message.
- */
-export const ChargeResponseSchema: GenMessage<ChargeResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_twinkle_v1_twinkle, 7);
 
 /**
  * The purposes a client may ask the server to price. Deliberately a SUBSET of the Go SpendKind:
@@ -238,20 +274,127 @@ export const SpendKindSchema: GenEnum<SpendKind> = /*@__PURE__*/
   enumDesc(file_cosimosi_twinkle_v1_twinkle, 0);
 
 /**
- * TwinkleService owns the Twinkle economy's client contract (plan 44): the balance
- * read, the server-priced spend quote, and the two mutating earn RPCs (invite claim,
- * verified payment charge).
+ * The ledger-log direction of one entry: Twinkle came in or went out, never both.
  *
- * NOTE: the write-earn has NO RPC — it fires from memory's LaunchStars via the
- * consumer-owned EarnPort, in-transaction. The spend has NO RPC — it fires from
- * recall/view via the consumer-owned SpendGate this unit binds. The economy stays a
- * consequence of the memory actions, not a separate user step.
+ * @generated from enum cosimosi.twinkle.v1.LedgerEntryKind
+ */
+export enum LedgerEntryKind {
+  /**
+   * @generated from enum value: LEDGER_ENTRY_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_KIND_EARN = 1;
+   */
+  EARN = 1,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_KIND_SPEND = 2;
+   */
+  SPEND = 2,
+}
+
+/**
+ * Describes the enum cosimosi.twinkle.v1.LedgerEntryKind.
+ */
+export const LedgerEntryKindSchema: GenEnum<LedgerEntryKind> = /*@__PURE__*/
+  enumDesc(file_cosimosi_twinkle_v1_twinkle, 1);
+
+/**
+ * Why one entry exists. Mirrors the domain's closed set, with two deliberate absences:
+ *
+ *   - NO DAILY_GRANT — the daily SMALL refill is a DERIVATION from the stored window anchor, not an
+ *     event, so it has no row and no wire value. A client cannot mistake the refill for a
+ *     transaction; the history renders it as a labelled day marker from the same derivation.
+ *   - PAYMENT is present for HISTORICAL rows only. Payment is deferred to v3 (PRD §8.3) and nothing
+ *     writes this reason, but the ledger is append-only, so rows written before it left must stay
+ *     readable ([I1]).
+ *
+ * @generated from enum cosimosi.twinkle.v1.LedgerEntryReason
+ */
+export enum LedgerEntryReason {
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_WRITE_DIARY = 1;
+   */
+  WRITE_DIARY = 1,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_INVITE = 2;
+   */
+  INVITE = 2,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_INVITE_SIGNUP = 3;
+   */
+  INVITE_SIGNUP = 3,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_SIGNUP_BONUS = 4;
+   */
+  SIGNUP_BONUS = 4,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_ACHIEVEMENT_CLAIM = 5;
+   */
+  ACHIEVEMENT_CLAIM = 5,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_ADMIN_GRANT = 6;
+   */
+  ADMIN_GRANT = 6,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_RECALL = 7;
+   */
+  RECALL = 7,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_GIST_VIEW = 8;
+   */
+  GIST_VIEW = 8,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_ORNAMENT_PURCHASE = 9;
+   */
+  ORNAMENT_PURCHASE = 9,
+
+  /**
+   * @generated from enum value: LEDGER_ENTRY_REASON_PAYMENT = 10;
+   */
+  PAYMENT = 10,
+}
+
+/**
+ * Describes the enum cosimosi.twinkle.v1.LedgerEntryReason.
+ */
+export const LedgerEntryReasonSchema: GenEnum<LedgerEntryReason> = /*@__PURE__*/
+  enumDesc(file_cosimosi_twinkle_v1_twinkle, 2);
+
+/**
+ * TwinkleService owns the Twinkle economy's client contract: the balance read, the server-priced
+ * spend quote, and the chronological ledger history ([G7]).
+ *
+ * EVERY RPC HERE IS READ-ONLY, and that is the design, not an accident. Twinkle moves as a
+ * consequence of something else: the write-earn fires from memory's launch via the consumer-owned
+ * EarnPort, in-transaction; a spend fires from recall/view via the consumer-owned SpendGate; a
+ * purchase debit fires from inside the store context's own transaction; an achievement reward from the
+ * claim. The invite credit and the signup bonus are settled server-side from the launch path, so they
+ * need no RPC either. The economy is never a separate user step, so it needs no mutating contract.
+ *
+ * Payment (스토어/PG) is deferred to v3 (PRD §8.3) — removed here rather than disabled, so no client
+ * can render a button that is guaranteed to fail.
  *
  * @generated from service cosimosi.twinkle.v1.TwinkleService
  */
 export const TwinkleService: GenService<{
   /**
-   * balance read — the HUD source (plan 45); no side effects, user-scoped.
+   * balance read — the HUD source; no side effects, user-scoped.
    *
    * @generated from rpc cosimosi.twinkle.v1.TwinkleService.GetBalance
    */
@@ -273,26 +416,15 @@ export const TwinkleService: GenService<{
     output: typeof QuoteSpendResponseSchema;
   },
   /**
-   * invite claim — both-sides credit on a valid signup; idempotent per
-   * (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
+   * ledger history — 구매·수령·적립·소모 in one chronological list ([G7][U9]), keyset-paged
+   * newest-first. Read-only, user-scoped.
    *
-   * @generated from rpc cosimosi.twinkle.v1.TwinkleService.ClaimInvite
+   * @generated from rpc cosimosi.twinkle.v1.TwinkleService.GetLedger
    */
-  claimInvite: {
+  getLedger: {
     methodKind: "unary";
-    input: typeof ClaimInviteRequestSchema;
-    output: typeof ClaimInviteResponseSchema;
-  },
-  /**
-   * payment charge — verifies a store receipt before crediting GENERAL Twinkle
-   * [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
-   *
-   * @generated from rpc cosimosi.twinkle.v1.TwinkleService.Charge
-   */
-  charge: {
-    methodKind: "unary";
-    input: typeof ChargeRequestSchema;
-    output: typeof ChargeResponseSchema;
+    input: typeof GetLedgerRequestSchema;
+    output: typeof GetLedgerResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_twinkle_v1_twinkle, 0);
