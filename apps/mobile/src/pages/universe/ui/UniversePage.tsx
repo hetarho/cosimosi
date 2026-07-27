@@ -21,6 +21,7 @@ import {
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
+import { useScreenInsets } from '../../../shared/native/index.ts'
 import { DeletionFlowSheet } from '../../../widgets/deletion-flow/index.ts'
 import { RecallFlowSheet } from '../../../widgets/recall-flow/index.ts'
 import { StardustOverlay } from '../../../widgets/stardust/index.ts'
@@ -53,6 +54,7 @@ export function UniversePage({ active, onOpenDiary, onOpenMe }: UniversePageProp
   // The navigation/selection actor is owned HERE (the page layer) so the canvas and the star-detail
   // panel share one selection — the canvas machine stays the single owner (§3.2), as on web.
   const navigationActorRef = useActorRef(universeNavigationMachine)
+  const insets = useScreenInsets()
   // Only the focused screen consumes the shared deletion target — the diary-reader screen stays
   // mounted underneath in the native stack, so an unfocused sheet must not also open the flow.
 
@@ -121,27 +123,30 @@ export function UniversePage({ active, onOpenDiary, onOpenMe }: UniversePageProp
           )}
         </QueryErrorResetBoundary>
       </View>
-      <View style={styles.notice}>
+      {/* The top chrome is ONE column below the device inset, not three absolutely-placed rows: fixed
+          offsets guessed each row's height, so the balance panel and the account/archive buttons
+          overlapped as soon as either grew — and all of it sat under the status bar. */}
+      <View style={[styles.topChrome, { top: insets.top + tokens.spacing[3] }]}>
         <NebulaNotice />
-      </View>
-      {/* The persistent Twinkle balance + charge host ([G2][G3]), top-right below the notice. */}
-      <View style={styles.stardust}>
-        <StardustOverlay />
-      </View>
-      {/* The quiet ways into the archive ([D2]) and the signed-in account home — restrained affordances,
-          not persistent chrome. */}
-      <View style={styles.diary}>
-        <Button color="neutral" size="sm" onPress={onOpenMe}>
-          {m.me_title()}
-        </Button>
-        <Button color="neutral" size="sm" onPress={onOpenDiary}>
-          {m.diary_reader_title()}
-        </Button>
+        {/* The persistent Twinkle balance + charge host ([G2][G3]). */}
+        <View style={styles.topRight}>
+          <StardustOverlay />
+        </View>
+        {/* The quiet ways into the archive ([D2]) and the signed-in account home — restrained
+            affordances, not persistent chrome. */}
+        <View style={styles.topRight}>
+          <Button color="neutral" size="sm" onPress={onOpenMe}>
+            {m.me_title()}
+          </Button>
+          <Button color="neutral" size="sm" onPress={onOpenDiary}>
+            {m.diary_reader_title()}
+          </Button>
+        </View>
       </View>
       {/* Mounted at the screen root so its absolute veil/HUD span the full screen; before the
           write action so the veil dims the scene + notice but never the primary affordance. */}
       <UniverseTimeOverlay />
-      <View style={styles.hud}>
+      <View style={[styles.hud, { bottom: insets.bottom + tokens.spacing[6] }]}>
         {firstRun ? <Text style={styles.welcome}>{m.universe_first_run_welcome()}</Text> : null}
         <WritingFlowSheet />
       </View>
@@ -163,10 +168,14 @@ export function UniversePage({ active, onOpenDiary, onOpenMe }: UniversePageProp
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  notice: { position: 'absolute', left: 16, right: 16, top: 24 },
-  stardust: { position: 'absolute', right: 16, top: 72 },
-  diary: { alignItems: 'flex-end', gap: 8, position: 'absolute', right: 16, top: 120 },
-  hud: { position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center', gap: 12 },
+  topChrome: {
+    position: 'absolute',
+    left: tokens.spacing[4],
+    right: tokens.spacing[4],
+    gap: tokens.spacing[2],
+  },
+  topRight: { alignItems: 'flex-end', gap: tokens.spacing[2] },
+  hud: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: tokens.spacing[3] },
   welcome: {
     color: tokens.color['text-muted'],
     fontSize: 14,

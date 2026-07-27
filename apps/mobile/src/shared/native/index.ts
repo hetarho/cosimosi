@@ -17,4 +17,4 @@ export {
   subscribeToAuthCallbackUrls,
   subscribeToInviteUrls,
 } from './linking.ts'
-export { fallbackSafeAreaMetrics, resolvedSafeAreaMetrics } from './safe-area.ts'
+export { fallbackSafeAreaMetrics, resolvedSafeAreaMetrics, useScreenInsets } from './safe-area.ts'

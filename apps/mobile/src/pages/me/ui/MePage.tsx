@@ -9,6 +9,7 @@ import { AccountSection } from '../../../features/account-settings/index.ts'
 import { ExportDiaries } from '../../../features/export-diaries/index.ts'
 import { InviteLink } from '../../../features/invite-link/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
+import { useScreenInsets } from '../../../shared/native/index.ts'
 
 const meTabs = ['profile', 'stardust', 'achievements', 'diary', 'account'] as const
 type MeTabId = (typeof meTabs)[number]
@@ -24,9 +25,21 @@ const tabViews: Readonly<Record<MeTabId, { title: () => string; Body: ComponentT
 export function MePage({ onBack }: { onBack: () => void }) {
   const [activeTab, setActiveTab] = useState<MeTabId>('profile')
   const { Body } = tabViews[activeTab]
+  const insets = useScreenInsets()
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[
+        styles.content,
+        // The header clears the device chrome by the live inset; the guessed constant it replaced put
+        // the title under the status bar on any device with a taller one.
+        {
+          paddingTop: insets.top + tokens.spacing[4],
+          paddingBottom: insets.bottom + tokens.spacing[8],
+        },
+      ]}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>{m.me_title()}</Text>
         <Button color="neutral" size="sm" onPress={onBack}>
@@ -84,7 +97,7 @@ function AccountTab() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: tokens.color.bg, flex: 1 },
-  content: { gap: 32, padding: 24, paddingTop: 48 },
+  content: { gap: tokens.spacing[8], paddingHorizontal: tokens.spacing[6] },
   header: {
     alignItems: 'center',
     flexDirection: 'row',

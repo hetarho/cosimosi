@@ -2,6 +2,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { Badge, Button, defaultThemeKey, themes, tokens } from '@cosimosi/ui'
 
+import { useScreenInsets } from '../../../shared/native/index.ts'
+
 import { FoundationsPanel } from '../lib/foundations-panel.tsx'
 import { PatternsPanel } from '../lib/patterns-panel.tsx'
 import { PrimitivesPanel } from '../lib/primitives-panel.tsx'
@@ -20,9 +22,18 @@ import { T } from '../lib/showcase-copy.ts'
  */
 export function DesignShowcasePage({ onBack }: { onBack: () => void }) {
   const activeTheme = themes[defaultThemeKey]
+  const insets = useScreenInsets()
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: insets.top + tokens.spacing[4],
+            paddingBottom: insets.bottom + tokens.spacing[8],
+          },
+        ]}
+      >
         <View style={styles.header}>
           <View style={styles.themeRow}>
             <Badge variant="primary">{activeTheme.label}</Badge>
@@ -46,14 +57,7 @@ export function DesignShowcasePage({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: tokens.color.bg },
-  content: {
-    padding: tokens.spacing[4],
-    // The status bar has no inset here (the shell hides the header), so the first line clears it the
-    // way the other pages do rather than by reaching for a safe-area hook in `pages`.
-    paddingTop: tokens.spacing[8] * 2,
-    paddingBottom: tokens.spacing[8],
-    gap: tokens.spacing[6],
-  },
+  content: { paddingHorizontal: tokens.spacing[4], gap: tokens.spacing[6] },
   header: { gap: tokens.spacing[2] },
   themeRow: {
     flexDirection: 'row',

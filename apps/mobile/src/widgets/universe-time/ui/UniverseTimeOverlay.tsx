@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 
+import { tokens } from '@cosimosi/ui'
+
 import {
   isEmptyAdvance,
   universeTimeMachine,
@@ -18,6 +20,7 @@ import {
 } from '../../../features/confirm-time-sync/index.ts'
 import { UniverseTimeHud } from '../../../features/universe-clock-hud/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
+import { useScreenInsets } from '../../../shared/native/index.ts'
 import { releaseAdvance } from '@cosimosi/universe'
 
 // widgets/universe-time (RN fork): the time overlay over the running canvas — the HUD, the
@@ -27,6 +30,7 @@ import { releaseAdvance } from '@cosimosi/universe'
 // and HUD position against the full screen; the veil precedes the HUD so the sweeping date stays
 // crisp above the dimmed scene.
 export function UniverseTimeOverlay() {
+  const insets = useScreenInsets()
   const [snapshot, send] = useMachine(universeTimeMachine)
   const phase = snapshot.value as UniverseTimePhase
 
@@ -110,7 +114,9 @@ export function UniverseTimeOverlay() {
       {playing ? (
         <AccelerateTime interval={playing.interval} onTick={setSweepTime} onDone={done} />
       ) : null}
-      <View style={styles.hud} pointerEvents="none">
+      {/* The clock clears the device chrome by the live inset — it sat under the status bar and the
+          dynamic island on any device that has one. */}
+      <View style={[styles.hud, { top: insets.top + tokens.spacing[3] }]} pointerEvents="none">
         <UniverseTimeHud overrideTime={playing ? sweepTime : null} />
       </View>
       <ConfirmTimeSyncDialog open={phase === 'confirming'} onAccept={accept} onReject={reject} />
@@ -119,5 +125,5 @@ export function UniverseTimeOverlay() {
 }
 
 const styles = StyleSheet.create({
-  hud: { position: 'absolute', right: 16, top: 24, alignItems: 'flex-end' },
+  hud: { position: 'absolute', right: tokens.spacing[4], alignItems: 'flex-end' },
 })

@@ -7,11 +7,15 @@ export type TabsProps = TabsOwnProps
 
 export function Tabs({ items, value, onValueChange, ariaLabel }: TabsProps) {
   return (
+    // The SURFACE is the scroll viewport, not the content: when the rim travelled with the tabs it
+    // was clipped off at the screen edge, so a strip wider than the screen read as broken chrome
+    // rather than as a strip with more to the right.
     <ScrollView
       horizontal
       accessibilityRole="tablist"
       accessibilityLabel={ariaLabel}
       showsHorizontalScrollIndicator={false}
+      style={styles.strip}
       contentContainerStyle={styles.list}
     >
       {items.map((item) => {
@@ -38,14 +42,14 @@ export function Tabs({ items, value, onValueChange, ariaLabel }: TabsProps) {
 }
 
 const styles = StyleSheet.create({
-  list: {
-    gap: space[1],
+  strip: {
+    flexGrow: 0,
     borderColor: color.border,
     borderRadius: radius.lg,
     borderWidth: 1,
     backgroundColor: color.surface,
-    padding: space[1],
   },
+  list: { gap: space[1], padding: space[1] },
   tab: {
     borderRadius: radius.md,
     paddingHorizontal: space[3],
