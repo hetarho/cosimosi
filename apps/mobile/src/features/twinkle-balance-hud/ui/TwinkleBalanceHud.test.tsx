@@ -13,12 +13,12 @@ describe('TwinkleBalanceHud (mobile)', () => {
     useTwinkleBalanceStore.getState().clear()
   })
 
-  it('renders basic, additional, and the derived total from a GetBalance fixture (A1)', () => {
+  it('renders both kinds and the derived total from a GetBalance fixture (A1)', () => {
     useTwinkleBalanceStore.getState().setBalance(120n, 35n)
     const view = render(<TwinkleBalanceHud />)
     expect(view.getByText('155')).toBeTruthy() // total = 120 + 35, derived
-    expect(view.getByText(`${m.twinkle_balance_basic_label()} 120`)).toBeTruthy()
-    expect(view.getByText(`${m.twinkle_balance_additional_label()} 35`)).toBeTruthy()
+    expect(view.getByText(`${m.twinkle_balance_small_label()} 120`)).toBeTruthy()
+    expect(view.getByText(`${m.twinkle_balance_general_label()} 35`)).toBeTruthy()
   })
 
   it('reflects a refetched balance after a spend (A1)', () => {

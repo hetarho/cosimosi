@@ -23,11 +23,11 @@ export function TwinkleBalanceHud() {
       </span>
       <span className="flex justify-end gap-3 text-xs text-text-muted tabular-nums">
         <span>
-          {m.twinkle_balance_basic_label()} {loaded ? String(small) : '—'}
+          {m.twinkle_balance_small_label()} {loaded ? String(small) : '—'}
         </span>
         <span aria-hidden>·</span>
         <span>
-          {m.twinkle_balance_additional_label()} {loaded ? String(general) : '—'}
+          {m.twinkle_balance_general_label()} {loaded ? String(general) : '—'}
         </span>
       </span>
     </section>

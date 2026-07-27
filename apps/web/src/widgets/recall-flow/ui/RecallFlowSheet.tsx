@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createMemoryServiceQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors'
-import { useChargeRequestStore } from '@cosimosi/twinkle'
+import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog } from '@cosimosi/ui'
 import {
   applyRecallResult,
@@ -55,7 +55,7 @@ export function RecallFlowSheet() {
   // recall quote first; only on its proceed does the rewrite reveal. A basic-affordable recall
   // proceeds straight through (A9); a shortfall opens the charge sheet (A4).
   const [costPassed, setCostPassed] = useState(false)
-  const requestCharge = useChargeRequestStore((state) => state.request)
+  const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const invalidateBalance = useInvalidateTwinkleBalance()
 
   const rewrite = useRecallDraftStore((state) => state.rewrite)
@@ -216,7 +216,7 @@ export function RecallFlowSheet() {
         return
       }
       showError(error)
-      if (recovery === 'charge') requestCharge()
+      if (recovery === 'earn') requestEarnGuide()
       if (paidSession.finish(activeAttempt)) setSubmitting(false)
       setAttempt(paidSession.begin(activeMemoryId))
       setCostPassed(false)
@@ -236,7 +236,7 @@ export function RecallFlowSheet() {
     invalidateMemory,
     invalidateBalance,
     paidSession,
-    requestCharge,
+    requestEarnGuide,
     showError,
     send,
   ])
@@ -267,7 +267,7 @@ export function RecallFlowSheet() {
               pending={recallSpend(memoryId)}
               onProceed={() => setCostPassed(true)}
               onCancel={close}
-              onCharge={requestCharge}
+              onEarn={requestEarnGuide}
             />
           ))}
         {phase === 'result' && result && (

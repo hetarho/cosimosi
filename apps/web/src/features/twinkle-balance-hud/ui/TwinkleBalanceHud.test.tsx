@@ -20,8 +20,8 @@ describe('TwinkleBalanceHud (web)', () => {
 
   it('renders both tiers distinctly, with a placeholder until the first read resolves', () => {
     const html = renderToString(createElement(TwinkleBalanceHud))
-    expect(html).toContain(m.twinkle_balance_basic_label())
-    expect(html).toContain(m.twinkle_balance_additional_label())
+    expect(html).toContain(m.twinkle_balance_small_label())
+    expect(html).toContain(m.twinkle_balance_general_label())
     // A placeholder, never a false zero, before GetBalance settles.
     expect(html).toContain('—')
   })

@@ -13,7 +13,7 @@ import { createClientCacheQueryClient } from '@cosimosi/client-cache'
 import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
-import { useChargeRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
+import { useEarnRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
 import {
   useEpisodicMemoryStore,
   useRecallTargetStore,
@@ -119,7 +119,7 @@ describe('web client cache provider config', () => {
     useTwinkleBalanceStore.setState({ small: 4n, general: 7n, loaded: true })
     useReleasedGroupsStore.setState({ groups: [{} as never] })
     useRecallTargetStore.setState({ memoryId: 'memory-a' })
-    useChargeRequestStore.setState({ requested: true })
+    useEarnRequestStore.setState({ requested: true })
     useAdvanceAnnouncementStore.setState({ pending: {} as never })
     useLaunchedNeuronsStore.setState({ newNeuronIds: ['neuron-a'] })
     useDiaryDraftStore.setState({ body: 'A private draft', diaryDate: '2026-07-22' })
@@ -185,7 +185,7 @@ describe('web client cache provider config', () => {
       })
       expect(useReleasedGroupsStore.getState().groups).toEqual([])
       expect(useRecallTargetStore.getState().memoryId).toBeNull()
-      expect(useChargeRequestStore.getState().requested).toBe(false)
+      expect(useEarnRequestStore.getState().requested).toBe(false)
       expect(useAdvanceAnnouncementStore.getState().pending).toBeNull()
       expect(useLaunchedNeuronsStore.getState().newNeuronIds).toEqual([])
       expect(useDiaryDraftStore.getState()).toMatchObject({ body: '', diaryDate: '' })

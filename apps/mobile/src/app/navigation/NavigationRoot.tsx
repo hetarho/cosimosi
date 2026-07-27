@@ -66,6 +66,9 @@ function UniverseRoute({ navigation }: RootStackScreenProps<'Universe'>) {
       active={active}
       onOpenDiary={() => navigation.navigate(ROUTES.diaryReader)}
       onOpenMe={() => navigation.navigate(ROUTES.me)}
+      // Where earning is actually claimed ([A4]) — the shell owns the tab id because it owns the
+      // route; the page and the widget below it know only the intent.
+      onOpenAchievements={() => navigation.navigate(ROUTES.me, { tab: 'achievements' })}
     />
   )
 }
@@ -75,8 +78,10 @@ function DiaryReaderRoute({ navigation }: RootStackScreenProps<'DiaryReader'>) {
   return <DiaryReaderPage active={active} onExit={() => navigation.navigate(ROUTES.universe)} />
 }
 
-function MeRoute({ navigation }: RootStackScreenProps<'Me'>) {
-  return <MePage onBack={() => navigation.navigate(ROUTES.universe)} />
+function MeRoute({ navigation, route }: RootStackScreenProps<'Me'>) {
+  return (
+    <MePage initialTab={route.params?.tab} onBack={() => navigation.navigate(ROUTES.universe)} />
+  )
 }
 
 function TestRoute({ navigation }: RootStackScreenProps<'Test'>) {

@@ -21,10 +21,10 @@ export function TwinkleBalanceHud() {
       <Text style={styles.total}>{loaded ? String(total) : '—'}</Text>
       <View style={styles.breakdown}>
         <Text style={styles.sub}>
-          {`${m.twinkle_balance_basic_label()} ${loaded ? String(small) : '—'}`}
+          {`${m.twinkle_balance_small_label()} ${loaded ? String(small) : '—'}`}
         </Text>
         <Text style={styles.sub}>
-          {`${m.twinkle_balance_additional_label()} ${loaded ? String(general) : '—'}`}
+          {`${m.twinkle_balance_general_label()} ${loaded ? String(general) : '—'}`}
         </Text>
       </View>
     </View>

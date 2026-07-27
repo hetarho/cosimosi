@@ -22,7 +22,7 @@ function render() {
       pending: recallSpend('memory-1'),
       onProceed: () => {},
       onCancel: () => {},
-      onCharge: () => {},
+      onEarn: () => {},
     }),
   )
 }
@@ -48,7 +48,7 @@ describe('SpendCostDisplay (web)', () => {
     } as ReturnType<typeof useSpendQuote>)
     const html = render()
     expect(html).toContain(m.twinkle_cost_proceed())
-    expect(html).not.toContain(m.twinkle_cost_charge())
+    expect(html).not.toContain(m.twinkle_cost_earn())
   })
 
   it('a shortfall shows the amount short and offers charge instead of dead-ending (A4)', () => {
@@ -58,7 +58,7 @@ describe('SpendCostDisplay (web)', () => {
     } as ReturnType<typeof useSpendQuote>)
     const html = render()
     expect(html).toContain('13') // the shortfall amount
-    expect(html).toContain(m.twinkle_cost_charge())
+    expect(html).toContain(m.twinkle_cost_earn())
     expect(html).not.toContain(m.twinkle_cost_proceed())
   })
 
@@ -72,7 +72,7 @@ describe('SpendCostDisplay (web)', () => {
         pending: gistViewSpend('memory-1', 2),
         onProceed: () => {},
         onCancel: () => {},
-        onCharge: () => {},
+        onEarn: () => {},
       }),
     )
     expect(html).toContain('3')

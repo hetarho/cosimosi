@@ -6,13 +6,14 @@ import { AccountProfile } from '../../../features/account-profile/index.ts'
 import { AccountSection } from '../../../features/account-settings/index.ts'
 import { ExportDiaries } from '../../../features/export-diaries/index.ts'
 import { InviteLink } from '../../../features/invite-link/index.ts'
+import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { ME_TABS, type MeTabId } from '../model/tabs.ts'
 
 const TAB_VIEWS: Readonly<Record<MeTabId, { title: () => string; Body: ComponentType }>> = {
   profile: { title: m.me_tab_profile, Body: ProfileTab },
-  stardust: { title: m.me_tab_stardust, Body: StardustPending },
+  stardust: { title: m.me_tab_stardust, Body: TwinkleLedgerTab },
   achievements: { title: m.me_tab_achievements, Body: AchievementsPending },
   diary: { title: m.me_tab_diary, Body: ExportDiaries },
   account: { title: m.me_tab_account, Body: AccountTab },
@@ -58,10 +59,6 @@ export function MePage({ activeTab, onTabChange, onExit }: MePageProps) {
       </div>
     </main>
   )
-}
-
-function StardustPending() {
-  return <p className="text-sm text-text-muted">{m.me_stardust_pending()}</p>
 }
 
 function AchievementsPending() {

@@ -139,7 +139,6 @@ export const VALUES = {
     earnInviteInvitee: 500,
     earnSignupBonus: 500,
     inviteRewardMaxPerInviter: 10,
-    chargePack: 100,
     ledgerPageSize: 50,
     adminGrantMax: 100000,
   },

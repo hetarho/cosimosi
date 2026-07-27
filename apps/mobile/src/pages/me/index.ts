@@ -1,1 +1,1 @@
-export { MePage } from './ui/MePage.tsx'
+export { MePage, type MeTabId } from './ui/MePage.tsx'

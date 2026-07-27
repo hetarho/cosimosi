@@ -61,17 +61,13 @@ export const ERROR_REASONS = {
   memoryEncodeRetryExhausted: 'MEMORY_ENCODE_RETRY_EXHAUSTED',
   memoryScopeRequired: 'MEMORY_SCOPE_REQUIRED',
   twinkleInviteInputRequired: 'TWINKLE_INVITE_INPUT_REQUIRED',
-  twinkleChargeInputRequired: 'TWINKLE_CHARGE_INPUT_REQUIRED',
   twinkleQuoteInputRequired: 'TWINKLE_QUOTE_INPUT_REQUIRED',
   twinkleQuoteTargetNotFound: 'TWINKLE_QUOTE_TARGET_NOT_FOUND',
   twinkleInsufficient: 'TWINKLE_INSUFFICIENT',
-  twinklePaymentVerificationUnavailable: 'TWINKLE_PAYMENT_VERIFICATION_UNAVAILABLE',
   twinkleInviteResolutionUnavailable: 'TWINKLE_INVITE_RESOLUTION_UNAVAILABLE',
-  twinklePaymentBeneficiaryMismatch: 'TWINKLE_PAYMENT_BENEFICIARY_MISMATCH',
   twinkleInviteBeneficiaryMismatch: 'TWINKLE_INVITE_BENEFICIARY_MISMATCH',
   twinkleInviteNotEligible: 'TWINKLE_INVITE_NOT_ELIGIBLE',
   twinkleInviteGrantConflict: 'TWINKLE_INVITE_GRANT_CONFLICT',
-  twinklePaymentNotVerified: 'TWINKLE_PAYMENT_NOT_VERIFIED',
   twinkleQuoteTargetUnavailable: 'TWINKLE_QUOTE_TARGET_UNAVAILABLE',
   twinkleScopeRequired: 'TWINKLE_SCOPE_REQUIRED',
 } as const
@@ -88,7 +84,10 @@ export interface AppError {
   retriable: boolean
 }
 
-export type ErrorRecovery = 'sync-consent' | 'charge' | 'none'
+// What the user can DO about an error, not what went wrong. `earn` replaced `charge` when payment
+// left the product: a shortfall opens an explanation of how stardust gathers, never a purchase — the
+// recovery a user actually has ([G3]).
+export type ErrorRecovery = 'sync-consent' | 'earn' | 'none'
 
 export function toAppError(error: unknown): AppError {
   if (isAppError(error)) return error
@@ -129,7 +128,7 @@ export function classifyErrorRecovery(error: unknown, syncConsentGiven = false):
     isReason(error, ERROR_REASONS.memoryInsufficientTwinkle) ||
     isReason(error, ERROR_REASONS.twinkleInsufficient)
   ) {
-    return 'charge'
+    return 'earn'
   }
   return 'none'
 }

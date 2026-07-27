@@ -170,7 +170,6 @@ export {
 } from './universe-time.machine.ts'
 
 // Stardust economy control-state; the Twinkle data/IO package owns balances and charge requests.
-export { stardustMachine, type StardustPhase, type StardustEvent } from './stardust.machine.ts'
 export { requestViewSemantic, type ViewSemanticInput } from './view-semantic.ts'
 
 // Awaken (entry choreography) logic + idempotency registry

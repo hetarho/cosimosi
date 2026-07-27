@@ -385,9 +385,6 @@ twinkle:
   # sharing remain useful while bounding the inviter-side farming exposure at 5,000 Twinkle;
   # later links still bind, but no longer pay either invite leg once this cap is reached.
   invite_reward_max_per_inviter: 10
-  # [G3] The single v1 payment-pack grant a verified Charge credits to GENERAL balance
-  # (a multi-pack table is content, not a scalar; the price structure is product config).
-  charge_pack: 100
   # [G7][U9] GetLedger page size — the default AND the hard cap, so a client cannot ask for an
   # unbounded slice of its own history. Matches the admin user list's page size: the same "one
   # comfortable screenful, keyset-paged" judgment, and the ledger row is smaller.

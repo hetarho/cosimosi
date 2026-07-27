@@ -238,35 +238,26 @@ shows `features/spend-cost-display` before revealing the rewrite and proceeds
 only on its confirm, gated by a local "shown → proceeded" boolean — so the
 shared machine stays untouched (the cost display carries its own tiny control,
 plan 45). A spend refused at commit (a stale-quote shortfall) resets that gate
-and refetches, so the display re-quotes into the charge path rather than
+and refetches, so the display re-quotes into the earn guide rather than
 dead-ending.
 
-### 6.4 `stardustMachine` (the charge sheet)
+### 6.4 The stardust overlay has NO machine (and why)
 
-`idle → charging → (paying | inviting) → idle`, context empty — the economy
-overlay's charge-sheet phase (plan 45). Every figure rides outside the machine
-(A10):
+The economy overlay once ran one: a charge sheet whose `paying`/`inviting` were genuinely exclusive
+async phases, un-closable mid-flight so no credit could show before the backend confirmed it. Both
+mutations left the product — payment is deferred to v3 (PRD §8.3) and the invite credit is settled
+server-side from the signup path — and what remained was `idle ↔ open`.
 
-- the **two-tier balance** lives in the `@cosimosi/twinkle` `useTwinkleBalanceStore` mirror
-  (synced from `GetBalance`; `total` is derived `basic + additional`, never
-  stored); the **pending-spend cost** is the `QuoteSpend` Query read the cost
-  display owns; the **charge result** is the earn mutation's returned total —
-  none of them in context;
-- `charging` is the sheet open (the payment + invite paths); `PAY`/`INVITE`
-  drive the async earn (a store round trip + verified `Charge`, or `ClaimInvite`)
-  through `paying`/`inviting`. `DONE` → `idle` with the balance refetched;
-  `ERROR` → `charging`, retriable — a failed earn credits nothing and never
-  dead-ends;
-- `paying`/`inviting` **cannot be closed mid-flight** (no `CLOSE` there): a
-  store round trip + backend verification must resolve before the sheet
-  releases, so no credit shows before the backend confirms it;
-- the sheet opens both from a **shortfall** in the cost display (through the
-  decoupled `@cosimosi/twinkle` `useChargeRequestStore` signal, so the spend flows never import the
-  overlay) and from a restrained **proactive** affordance beside the balance.
+**A two-state shell is data, not control state.** §3.2 reserves XState for exclusive phases; the earn
+guide issues no request at all, so there is no in-flight state to be exclusive about, no race to
+serialize and no failure to route. `widgets/stardust` holds the guide's open flag as local `useState`,
+and the figures ride outside it exactly as they did before: the two-kind balance in the
+`@cosimosi/twinkle` `useTwinkleBalanceStore` mirror (synced from `GetBalance`), the pending-spend cost
+in the `QuoteSpend` Query read the cost display owns, and the history in the `GetLedger` infinite Query.
 
-web and mobile import the machine + the balance/charge-request stores verbatim
-from `packages/universe`; only the HUD/sheet hosts fork (§6/§3.5). There is no
-login-bonus path anywhere ([G3]); the daily basic grant plays that role.
+The shortfall→guide seam is a **Zustand request store** (`useEarnRequestStore`), not an event on a
+shared machine: the spend flows and the overlay never import each other, and the overlay consumes the
+request and clears it.
 
 ### 6.5 `diaryReaderMachine` (the diary-reader jump)
 
@@ -326,7 +317,7 @@ host page drives.
   `LetGo` seals nothing.
 - **The loading states `deleting`/`suggesting`/`sealing` carry no `CANCEL`** (only
   the interactive states do), and the sheet's close/backdrop is inert while a call
-  is in flight — mirroring `stardustMachine`'s un-closable `paying`/`inviting`
+  is in flight — the same discipline the retired stardust charge sheet applied to its own async phases
   (§6.4). This closes the stale-completion race: a call can never be abandoned
   mid-flight to open another branch, so an old async `DONE`/`ERROR` cannot land on
   the wrong branch.

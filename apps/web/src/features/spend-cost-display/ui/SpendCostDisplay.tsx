@@ -15,18 +15,18 @@ function costLabel(kind: SpendKind): string {
 // gist-view flows compose before spending. It renders the server quote verbatim — the
 // price (recall costlier the deeper the decay, gist cheaper the deeper the gist), whether
 // the balance covers it, and on a shortfall the amount short + a charge affordance rather
-// than a dead end ([G3]). It returns a decision only through onProceed/onCancel/onCharge
+// than a dead end ([G3]). It returns a decision only through onProceed/onCancel/onEarn
 // and never calls spend itself (A4); the composing flow fires the spend on proceed.
 export function SpendCostDisplay({
   pending,
   onProceed,
   onCancel,
-  onCharge,
+  onEarn,
 }: {
   pending: PendingSpend
   onProceed: () => void
   onCancel: () => void
-  onCharge: () => void
+  onEarn: () => void
 }) {
   const query = useSpendQuote(pending)
   const quote = query.data
@@ -79,8 +79,8 @@ export function SpendCostDisplay({
             <Button color="neutral" size="sm" onClick={onCancel}>
               {m.twinkle_cost_cancel()}
             </Button>
-            <Button color="primary" size="sm" onClick={onCharge}>
-              {m.twinkle_cost_charge()}
+            <Button color="primary" size="sm" onClick={onEarn}>
+              {m.twinkle_cost_earn()}
             </Button>
           </div>
         </>

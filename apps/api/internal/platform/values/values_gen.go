@@ -223,7 +223,6 @@ const (
 	TwinkleEarnInviteInvitee         = 500
 	TwinkleEarnSignupBonus           = 500
 	TwinkleInviteRewardMaxPerInviter = 10
-	TwinkleChargePack                = 100
 	TwinkleLedgerPageSize            = 50
 	TwinkleAdminGrantMax             = 100000
 )

@@ -1,61 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Platform, StyleSheet, View } from 'react-native'
-
-import { useTransport } from '@connectrpc/connect-query'
+import { StyleSheet, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
-import { useChargeRequestStore } from '@cosimosi/twinkle'
+import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
 import { Button, tokens } from '@cosimosi/ui'
-import { stardustMachine, type StardustPhase } from '@cosimosi/universe'
-import {
-  CHARGE_PACK,
-  ChargeSheet,
-  WriteEarnFeedback,
-  redeemInvite,
-  startStorePurchase,
-} from '../../../features/charge-twinkle/index.ts'
+
+import { EarnGuideSheet, WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { TwinkleBalanceHud } from '../../../features/twinkle-balance-hud/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
-import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
+import { useErrorToast } from '../../../shared/model/index.ts'
 
-// The store round trip reports the platform so a receipt is scoped to it.
-const PLATFORM = Platform.OS
-
-// widgets/stardust (RN fork, [G2][G3], A10/A13): the persistent economy overlay over the
-// running canvas — it composes the balance HUD, the charge sheet, and the write-earn
-// feedback, and owns the charge-sheet machine + the earn orchestration. It never remounts
-// the renderer and imports no three/visual entity (§3.4); the figures live in Query/config,
-// only the phase in the machine (§3.2). Shares model/api + the machine with web verbatim; a
-// shortfall reaches this sheet through the decoupled charge-request store.
-export function StardustOverlay() {
+// widgets/stardust (RN fork, [G2][G3]): the persistent economy overlay over the running canvas — it
+// composes the balance HUD, the earn guide, and the write-earn feedback. It never remounts the
+// renderer and imports no three/visual entity (§3.4); the figures live in Query/config (§3.2). Shares
+// every model/api module with web verbatim; only this shell forks for RN primitives.
+//
+// The guide's open/closed state is LOCAL, not a machine: §3.2 reserves XState for genuinely exclusive
+// phases, and the guide issues no request — there is no in-flight state to be exclusive about, so a
+// boolean is the honest model.
+export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: () => void }) {
   const showError = useErrorToast()
-  const transport = useTransport()
   // Owns the single GetBalance fetch → populates the shared balance mirror the HUD reads.
   const balanceQuery = useTwinkleBalanceQuery()
   const invalidateBalance = useInvalidateTwinkleBalance()
 
-  const [snapshot, send] = useMachine(stardustMachine)
-  const phase = snapshot.value as StardustPhase
-  const [errored, setErrored] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
 
   useEffect(() => {
     if (balanceQuery.error) showError(balanceQuery.error)
   }, [balanceQuery.error, showError])
 
-  const chargeRequested = useChargeRequestStore((state) => state.requested)
-  const clearChargeRequest = useChargeRequestStore((state) => state.clear)
+  // A shortfall in a cost display (recall / gist-view) requests the guide through the decoupled seam,
+  // so the spend flows and this widget never import each other (§3.1).
+  const earnRequested = useEarnRequestStore((state) => state.requested)
+  const clearEarnRequest = useEarnRequestStore((state) => state.clear)
   useEffect(() => {
-    if (!chargeRequested) return
-    setErrored(false)
-    send({ type: 'OPEN_CHARGE' })
-    clearChargeRequest()
-  }, [chargeRequested, send, clearChargeRequest])
+    if (!earnRequested) return
+    setGuideOpen(true)
+    clearEarnRequest()
+  }, [earnRequested, clearEarnRequest])
 
-  // Write-earn feedback rides the writing flow's existing public launch-completion (the
-  // launched-neurons announce, [27]): a star-creating launch earned Twinkle server-side, so
-  // refetch the balance and show the restrained reward once. Composed, never rebuilt.
+  // Write-earn feedback rides the writing flow's existing public launch-completion: a star-creating
+  // launch earned Twinkle server-side, so refetch the balance and show the restrained reward once.
   const launchedNeuronIds = useLaunchedNeuronsStore((state) => state.newNeuronIds)
   const seenLaunchRef = useRef(launchedNeuronIds)
   const [earnShown, setEarnShown] = useState(false)
@@ -67,71 +55,32 @@ export function StardustOverlay() {
     setEarnShown(true)
   }, [launchedNeuronIds, invalidateBalance])
 
-  const onPay = useCallback(() => {
-    setErrored(false)
-    send({ type: 'PAY' })
-    startStorePurchase(CHARGE_PACK.id, PLATFORM)
-      .then(() => {
-        invalidateBalance()
-        send({ type: 'DONE' })
-      })
-      .catch((caught) => {
-        showError(caught)
-        setErrored(true)
-        send({ type: 'ERROR' })
-      })
-  }, [invalidateBalance, showError, send])
-
-  const onInvite = useCallback(
-    (inviteCode: string) => {
-      setErrored(false)
-      send({ type: 'INVITE' })
-      redeemInvite(transport, inviteCode)
-        .then(() => {
-          invalidateBalance()
-          send({ type: 'DONE' })
-        })
-        .catch((caught) => {
-          showError(caught)
-          setErrored(true)
-          send({ type: 'ERROR' })
-        })
-    },
-    [transport, invalidateBalance, showError, send],
-  )
-
-  const onClose = useCallback(() => send({ type: 'CLOSE' }), [send])
-
-  // A restrained proactive entry to the earn paths ([G3]): a shortfall is not the only way
-  // in, so invite + payment stay reachable when the balance is ample. Shown only while the
-  // sheet is closed (a shortfall opens it via the charge-request store above).
-  const openCharge = useCallback(() => {
-    setErrored(false)
-    send({ type: 'OPEN_CHARGE' })
-  }, [send])
+  const openGuide = useCallback(() => setGuideOpen(true), [])
+  const closeGuide = useCallback(() => setGuideOpen(false), [])
 
   return (
     <View style={styles.root}>
       <TwinkleBalanceHud />
-      {phase === 'idle' ? (
-        <Button color="neutral" size="sm" onPress={openCharge}>
-          {m.twinkle_charge_title()}
+      {/* A restrained proactive way in ([G3]): a shortfall is not the only reason to wonder how
+          별가루 gathers. Shown only while the guide is closed. */}
+      {guideOpen ? null : (
+        <Button color="neutral" size="sm" onPress={openGuide}>
+          {m.twinkle_earn_title()}
         </Button>
-      ) : null}
+      )}
       {earnShown ? (
         <WriteEarnFeedback
           amount={VALUES.twinkle.earnWrite}
           onDismiss={() => setEarnShown(false)}
         />
       ) : null}
-      <ChargeSheet
-        open={phase !== 'idle'}
-        paying={phase === 'paying'}
-        inviting={phase === 'inviting'}
-        errored={errored}
-        onPay={onPay}
-        onInvite={onInvite}
-        onClose={onClose}
+      <EarnGuideSheet
+        open={guideOpen}
+        onOpenAchievements={() => {
+          closeGuide()
+          onOpenAchievements?.()
+        }}
+        onClose={closeGuide}
       />
     </View>
   )

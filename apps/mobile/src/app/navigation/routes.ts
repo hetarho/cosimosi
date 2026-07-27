@@ -1,5 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 
+import type { MeTabId } from '../../pages/me/index.ts'
+
 /**
  * Typed route registry for the mobile shell. This file and NavigationRoot are the
  * only places that know the navigation library. The shell owns
@@ -27,7 +29,7 @@ export const ROUTES = {
   universe: 'Universe',
   /** The immutable diary archive — the quiet keeping-place ([D2]). */
   diaryReader: 'DiaryReader',
-  /** The signed-in account home — five fixed tabs ([U9]). */
+  /** The signed-in account home — five fixed tabs ([U9]); `tab` opens one of them directly. */
   me: 'Me',
 } as const
 
@@ -40,7 +42,7 @@ export type RootStackParamList = {
   Design: undefined
   Universe: undefined
   DiaryReader: undefined
-  Me: undefined
+  Me: { tab?: MeTabId } | undefined
 }
 
 export type RootStackScreenProps<RouteName extends keyof RootStackParamList> =

@@ -84,7 +84,7 @@ describe('toAppError', () => {
     expect(isReason(new Error('no'), ERROR_REASONS.memorySyncConsentRequired)).toBe(false)
   })
 
-  it('derives only reason-specific consent and charge recovery', () => {
+  it('derives only reason-specific consent and earn recovery', () => {
     const consent = connectError(Code.FailedPrecondition, {
       reason: ERROR_REASONS.memorySyncConsentRequired,
       domain: 'memory',
@@ -105,7 +105,7 @@ describe('toAppError', () => {
     expect(classifyErrorRecovery(consent)).toBe('sync-consent')
     expect(classifyErrorRecovery(consent, true)).toBe('none')
     expect(classifyErrorRecovery(otherPrecondition)).toBe('none')
-    expect(classifyErrorRecovery(insufficient)).toBe('charge')
+    expect(classifyErrorRecovery(insufficient)).toBe('earn')
     expect(classifyErrorRecovery(otherExhausted)).toBe('none')
   })
 })

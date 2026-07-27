@@ -25,7 +25,7 @@ describe('SpendCostDisplay (mobile)', () => {
       isError: false,
     })
     const onProceed = jest.fn()
-    const onCharge = jest.fn()
+    const onEarn = jest.fn()
     const fetchSpy = jest.spyOn(globalThis, 'fetch')
 
     const view = render(
@@ -33,14 +33,14 @@ describe('SpendCostDisplay (mobile)', () => {
         pending={recallSpend('memory-1')}
         onProceed={onProceed}
         onCancel={jest.fn()}
-        onCharge={onCharge}
+        onEarn={onEarn}
       />,
     )
 
     expect(view.getByText('8')).toBeTruthy() // the server figure, verbatim
     fireEvent.press(view.getByText(m.twinkle_cost_proceed()))
     expect(onProceed).toHaveBeenCalledTimes(1)
-    expect(onCharge).not.toHaveBeenCalled()
+    expect(onEarn).not.toHaveBeenCalled()
     expect(fetchSpy).not.toHaveBeenCalled() // returns a decision; never spends
     fetchSpy.mockRestore()
   })
@@ -51,20 +51,20 @@ describe('SpendCostDisplay (mobile)', () => {
       isError: false,
     })
     const onProceed = jest.fn()
-    const onCharge = jest.fn()
+    const onEarn = jest.fn()
 
     const view = render(
       <SpendCostDisplay
         pending={recallSpend('memory-1')}
         onProceed={onProceed}
         onCancel={jest.fn()}
-        onCharge={onCharge}
+        onEarn={onEarn}
       />,
     )
 
     expect(view.getByText('13')).toBeTruthy() // the shortfall amount
-    fireEvent.press(view.getByText(m.twinkle_cost_charge()))
-    expect(onCharge).toHaveBeenCalledTimes(1)
+    fireEvent.press(view.getByText(m.twinkle_cost_earn()))
+    expect(onEarn).toHaveBeenCalledTimes(1)
     expect(onProceed).not.toHaveBeenCalled()
   })
 
@@ -79,7 +79,7 @@ describe('SpendCostDisplay (mobile)', () => {
         pending={gistViewSpend('memory-1', 2)}
         onProceed={jest.fn()}
         onCancel={jest.fn()}
-        onCharge={jest.fn()}
+        onEarn={jest.fn()}
       />,
     )
 

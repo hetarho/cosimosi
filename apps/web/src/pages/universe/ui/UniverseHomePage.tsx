@@ -47,9 +47,13 @@ function UniverseCanvasFallback({ resetErrorBoundary }: ObservedErrorBoundaryFal
 export function UniverseHomePage({
   onOpenReader,
   onOpenMe,
+  onOpenAchievements,
 }: {
   onOpenReader?: () => void
   onOpenMe?: () => void
+  // The earn guide's one affordance. It is a separate intent rather than a tab argument so that no
+  // page or widget has to name a route or import another page's tab type (§3.1).
+  onOpenAchievements?: () => void
 }) {
   // The navigation/selection actor is owned HERE (the app layer) so the canvas and the
   // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
@@ -128,7 +132,7 @@ export function UniverseHomePage({
               persistent Twinkle balance + charge host ([G2][G3]) sit beneath it, top-right. */}
           <div className="flex flex-col items-end gap-3">
             <UniverseTimeOverlay />
-            <StardustOverlay />
+            <StardustOverlay onOpenAchievements={onOpenAchievements} />
             {/* The quiet way into the archive ([D2]) and the signed-in account home — restrained
                 affordances, not a persistent chrome bar. pointer-events-auto so they stay
                 tappable over the non-interactive HUD. */}

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { useChargeRequestStore } from './charge-request-store.ts'
+import { useEarnRequestStore } from './earn-request-store.ts'
 import { resetTwinkleUserState } from './index.ts'
 import { twinkleTotal, useTwinkleBalanceStore } from './twinkle-balance-store.ts'
 
@@ -36,11 +36,11 @@ describe('twinkle balance mirror', () => {
 
   it('resets every Twinkle-owned user singleton together', () => {
     useTwinkleBalanceStore.getState().setBalance(5n, 5n)
-    useChargeRequestStore.getState().request()
+    useEarnRequestStore.getState().request()
 
     resetTwinkleUserState()
 
     expect(useTwinkleBalanceStore.getState()).toMatchObject({ small: 0n, general: 0n })
-    expect(useChargeRequestStore.getState().requested).toBe(false)
+    expect(useEarnRequestStore.getState().requested).toBe(false)
   })
 })

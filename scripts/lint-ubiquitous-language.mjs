@@ -20,6 +20,14 @@ if (!renderingTerms.length)
 
 const roots = ['apps/api', 'apps/web/src', 'apps/mobile/src', 'apps/blog/src', 'packages', 'proto']
 const extensions = new Set(['.go', '.sql', '.proto', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
+// The i18n catalogues are scanned for SYNONYMS ONLY. They are where a retired user-facing name would
+// actually survive a rename — the code stops compiling, a JSON string does not — so the synonym rules
+// have to reach them. The RENDERING-term scan must not: `star_detail_*` and friends are legitimate key
+// names there, and a visual word in a user-facing string is the poetic register, which is the point.
+const messageCatalogues = new Set([
+  'packages/i18n/messages/ko.json',
+  'packages/i18n/messages/en.json',
+])
 const ignoredSegments = new Set([
   'node_modules',
   'dist',
@@ -244,6 +252,8 @@ const walk = (dir) => {
       walk(full)
     } else if (stat.isFile() && extensions.has(extname(full))) {
       files.push({ path: rel, text: readFileSync(full, 'utf8') })
+    } else if (stat.isFile() && messageCatalogues.has(rel.split(sep).join('/'))) {
+      files.push({ path: rel, text: readFileSync(full, 'utf8'), synonymsOnly: true })
     }
   }
 }
@@ -346,7 +356,7 @@ for (const file of files) {
     isStardustEconomyPath(segments) ||
     isGeneratedFile(file.text)
 
-  if (!visualAllowed) {
+  if (!visualAllowed && !file.synonymsOnly) {
     for (const term of renderingTerms) {
       if (renderingPatterns(term).some((pattern) => pattern.test(file.text))) {
         violations.push(`${file.path}: rendering term "${term}" is outside a visual/UI path`)

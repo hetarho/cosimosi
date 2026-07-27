@@ -5,7 +5,11 @@ import {
   type Client,
   type Transport,
 } from '@connectrpc/connect'
-import { createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-query-core'
+import {
+  createConnectQueryKey,
+  createInfiniteQueryOptions,
+  createQueryOptions,
+} from '@connectrpc/connect-query-core'
 
 import {
   GetBalanceResponseSchema,
@@ -96,21 +100,18 @@ export function createQuoteSpendQueryOptions(
   return createQueryOptions(TwinkleService.method.quoteSpend, input, { transport })
 }
 
-export function createGetLedgerQueryKey(
-  input: MessageInitShape<typeof TwinkleService.method.getLedger.input>,
-  transport?: Transport,
-) {
-  return createConnectQueryKey({
-    schema: TwinkleService.method.getLedger,
-    input,
-    transport,
-    cardinality: 'finite',
-  })
-}
-
-export function createGetLedgerQueryOptions(
-  input: MessageInitShape<typeof TwinkleService.method.getLedger.input>,
-  transport: Transport,
-) {
-  return createQueryOptions(TwinkleService.method.getLedger, input, { transport })
+// The ledger history is paginated newest-first with a keyset cursor ([G7]): page_token carries the
+// opaque position, an empty next_page_token marks the last page. The caller passes the page size
+// (config-owned, never hardcoded here); the server clamps it to the same cap either way.
+export function createGetLedgerInfiniteQueryOptions(transport: Transport, pageSize: number) {
+  return createInfiniteQueryOptions(
+    TwinkleService.method.getLedger,
+    { pageSize, pageToken: '' },
+    {
+      transport,
+      pageParamKey: 'pageToken',
+      getNextPageParam: (lastPage) =>
+        lastPage.nextPageToken === '' ? undefined : lastPage.nextPageToken,
+    },
+  )
 }

@@ -18,7 +18,7 @@ import { VALUES } from '@cosimosi/config'
 import { DEFAULT_PALETTE_ID, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { setClientCacheData } from '@cosimosi/client-cache'
 import { m } from '@cosimosi/i18n'
-import { useChargeRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
+import { useEarnRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
 import {
   useAwakenRegistryStore,
   useDeletionTargetStore,
@@ -250,7 +250,7 @@ function seedEveryMobileUserState() {
   useRecallTargetStore.setState({ memoryId: 'memory-a' })
   useOpenDiaryTargetStore.setState({ memoryId: 'memory-a' })
   usePendingFlyTargetStore.setState({ nodeId: 'memory-a' })
-  useChargeRequestStore.setState({ requested: true })
+  useEarnRequestStore.setState({ requested: true })
   useDeletionTargetStore.setState({ target: { mode: 'delete', diaryId: 'diary-a' } })
   useLatentConsumedStore.setState({ consumed: new Set([1]) })
   useAwakenRegistryStore.setState({ claimed: new Set(['neuron-a']) })
@@ -287,7 +287,7 @@ function expectEveryMobileUserStateEmpty() {
   expect(useRecallTargetStore.getState().memoryId).toBeNull()
   expect(useOpenDiaryTargetStore.getState().memoryId).toBeNull()
   expect(usePendingFlyTargetStore.getState().nodeId).toBeNull()
-  expect(useChargeRequestStore.getState().requested).toBe(false)
+  expect(useEarnRequestStore.getState().requested).toBe(false)
   expect(useDeletionTargetStore.getState().target).toBeNull()
   expect(useLatentConsumedStore.getState().consumed.size).toBe(0)
   expect(useAwakenRegistryStore.getState().claimed.size).toBe(0)

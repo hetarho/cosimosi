@@ -48,9 +48,17 @@ export interface UniversePageProps {
   active: boolean
   onOpenDiary: () => void
   onOpenMe: () => void
+  // The earn guide's one affordance. A separate intent rather than a tab argument, so no page or
+  // widget has to name a route or import another page's tab type (§3.1).
+  onOpenAchievements: () => void
 }
 
-export function UniversePage({ active, onOpenDiary, onOpenMe }: UniversePageProps) {
+export function UniversePage({
+  active,
+  onOpenDiary,
+  onOpenMe,
+  onOpenAchievements,
+}: UniversePageProps) {
   // The navigation/selection actor is owned HERE (the page layer) so the canvas and the star-detail
   // panel share one selection — the canvas machine stays the single owner (§3.2), as on web.
   const navigationActorRef = useActorRef(universeNavigationMachine)
@@ -130,7 +138,7 @@ export function UniversePage({ active, onOpenDiary, onOpenMe }: UniversePageProp
         <NebulaNotice />
         {/* The persistent Twinkle balance + charge host ([G2][G3]). */}
         <View style={styles.topRight}>
-          <StardustOverlay />
+          <StardustOverlay onOpenAchievements={onOpenAchievements} />
         </View>
         {/* The quiet ways into the archive ([D2]) and the signed-in account home — restrained
             affordances, not persistent chrome. */}

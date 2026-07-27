@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 
-import { useChargeRequestStore } from '@cosimosi/twinkle'
+import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { classifyErrorRecovery } from '@cosimosi/errors'
 import { Button, Dialog } from '@cosimosi/ui'
 import {
@@ -37,7 +37,7 @@ export function GistViewSheet({
 }) {
   const showError = useErrorToast()
   const transport = useTransport()
-  const requestCharge = useChargeRequestStore((state) => state.request)
+  const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const invalidateBalance = useInvalidateTwinkleBalance()
 
   const [text, setText] = useState<string | null>(null)
@@ -87,7 +87,7 @@ export function GistViewSheet({
       if (kind === 'known-refusal') {
         if (paidSession.finish(activeAttempt)) setBusy(false)
         setAttempt(paidSession.begin(targetKey))
-        if (classifyErrorRecovery(error) === 'charge') requestCharge()
+        if (classifyErrorRecovery(error) === 'earn') requestEarnGuide()
       }
       setErrorKind(kind)
     } finally {
@@ -102,7 +102,7 @@ export function GistViewSheet({
     episodicMemoryId,
     stage,
     invalidateBalance,
-    requestCharge,
+    requestEarnGuide,
     showError,
   ])
 
@@ -152,7 +152,7 @@ export function GistViewSheet({
             pending={gistViewSpend(episodicMemoryId, stage)}
             onProceed={proceed}
             onCancel={close}
-            onCharge={requestCharge}
+            onEarn={requestEarnGuide}
           />
         )}
       </div>

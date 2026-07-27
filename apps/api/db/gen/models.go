@@ -229,7 +229,7 @@ type TwinkleLedgerEntry struct {
 	ID     string
 	UserID string
 	Kind   string
-	// closed set (plan 66): daily_grant(reserved, never written) | write_diary | invite | invite_signup | signup_bonus | achievement_claim | admin_grant | recall | gist_view | ornament_purchase | payment(historical)
+	// closed set, owned by the twinkle domain: daily_grant(reserved, never written) | write_diary | invite | invite_signup | signup_bonus | achievement_claim | admin_grant | recall | gist_view | ornament_purchase | payment(historical, no write path)
 	Reason         string
 	Amount         int32
 	FromBasic      int32

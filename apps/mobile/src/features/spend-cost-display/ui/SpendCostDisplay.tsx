@@ -22,12 +22,12 @@ export function SpendCostDisplay({
   pending,
   onProceed,
   onCancel,
-  onCharge,
+  onEarn,
 }: {
   pending: PendingSpend
   onProceed: () => void
   onCancel: () => void
-  onCharge: () => void
+  onEarn: () => void
 }) {
   const query = useSpendQuote(pending)
   const quote = query.data
@@ -80,8 +80,8 @@ export function SpendCostDisplay({
             <Button color="neutral" size="sm" onPress={onCancel}>
               {m.twinkle_cost_cancel()}
             </Button>
-            <Button color="primary" size="sm" onPress={onCharge}>
-              {m.twinkle_cost_charge()}
+            <Button color="primary" size="sm" onPress={onEarn}>
+              {m.twinkle_cost_earn()}
             </Button>
           </View>
         </>

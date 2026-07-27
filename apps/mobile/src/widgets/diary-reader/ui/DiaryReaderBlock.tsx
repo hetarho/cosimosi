@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createSyncStatusQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors'
-import { useChargeRequestStore } from '@cosimosi/twinkle'
+import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { Button, Dialog, tokens } from '@cosimosi/ui'
 import {
   classifyPaidActionError,
@@ -58,7 +58,7 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
   const queryClient = useQueryClient()
   const announceAdvance = useAdvanceAnnouncementStore((state) => state.announce)
   const requestFlyTarget = usePendingFlyTargetStore((state) => state.request)
-  const requestCharge = useChargeRequestStore((state) => state.request)
+  const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const openFullDelete = useDeletionTargetStore((state) => state.openFullDelete)
   const invalidateBalance = useInvalidateTwinkleBalance()
   const invalidateUniverse = useInvalidateUniverse()
@@ -143,7 +143,7 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
           return
         }
         showError(error)
-        if (recovery === 'charge') requestCharge()
+        if (recovery === 'earn') requestEarnGuide()
         paidSession.finish(activeAttempt)
         setAttempt(paidSession.begin(diaryId))
         send({ type: 'ERROR' })
@@ -160,7 +160,7 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
       invalidateUniverse,
       invalidateBalance,
       invalidateSyncStatus,
-      requestCharge,
+      requestEarnGuide,
       showError,
       onExit,
       send,
@@ -269,7 +269,7 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
               pending={diaryRecallSpend(jumpDiaryId)}
               onProceed={proceedQuote}
               onCancel={cancelQuote}
-              onCharge={requestCharge}
+              onEarn={requestEarnGuide}
             />
           ) : (
             <Text style={styles.muted}>{m.diary_reader_jumping()}</Text>
