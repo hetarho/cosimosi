@@ -34,7 +34,10 @@ export function Dialog({
         aria-label={title ? undefined : ariaLabel}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className="glass-strong relative z-10 m-4 w-full max-w-md rounded-2xl p-6 focus-visible:outline-none"
+        // The panel is bounded by the viewport and scrolls its own body: a dialog that composes a
+        // real editing surface can outgrow the screen, and a surface that interrupts must never
+        // push its actions past the bottom edge. The header stays put; only the body scrolls.
+        className="glass-strong relative z-10 m-4 flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col rounded-2xl p-6 focus-visible:outline-none"
       >
         <div className="flex items-start justify-between gap-4">
           {title ? (
@@ -58,7 +61,7 @@ export function Dialog({
             {description}
           </p>
         ) : null}
-        <div className="mt-4 text-text">{children}</div>
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto text-text">{children}</div>
       </div>
     </div>,
     document.body,

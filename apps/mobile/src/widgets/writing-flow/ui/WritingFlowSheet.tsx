@@ -5,7 +5,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createGetUniverseQueryKey, createGetUniverseQueryOptions } from '@cosimosi/api-client'
-import { Button, Dialog, tokens } from '@cosimosi/ui'
+import { Alert, Button, Dialog, Skeleton, tokens } from '@cosimosi/ui'
 import {
   advanceAnnouncementFromLaunch,
   insertLaunchedMemories,
@@ -37,6 +37,22 @@ function errorMessage(kind: string | null): string | null {
   if (kind === 'revise') return m.writing_flow_error_revise()
   if (kind === 'launch') return m.writing_flow_error_launch()
   return null
+}
+
+// A pending phase is a wait with a shape (design-language §9 loading), matching the web sheet: the
+// note says what is happening and the placeholders stand where the proposal will land, so the sheet
+// does not collapse to a single line and snap back.
+function PendingPhase({ label, placeholders = 0 }: { label: string; placeholders?: number }) {
+  return (
+    <View style={styles.pending} accessibilityLiveRegion="polite">
+      <Text style={styles.muted}>{label}</Text>
+      {placeholders > 0
+        ? Array.from({ length: placeholders }, (_, index) => (
+            <Skeleton key={index} width="100%" height={72} rounded="lg" />
+          ))
+        : null}
+    </View>
+  )
 }
 
 // widgets/writing-flow (RN fork): the "일기 쓰기" affordance + a Modal that composes the four
@@ -188,7 +204,9 @@ export function WritingFlowSheet() {
         closeLabel={m.writing_flow_close()}
       >
         <ScrollView contentContainerStyle={styles.content}>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {/* The toast reports the failure once; the inline alert is the record that stays until
+              the user acts on it (§9). */}
+          {error ? <Alert variant="danger">{error}</Alert> : null}
 
           {status === 'writing' ? (
             <>
@@ -196,14 +214,17 @@ export function WritingFlowSheet() {
               {body.trim().length === 0 ? (
                 <Text style={styles.hint}>{m.writing_flow_empty_body_hint()}</Text>
               ) : null}
-              <Button color="primary" disabled={body.trim().length === 0} onPress={runSplit}>
-                {m.writing_flow_split_action()}
-              </Button>
+              {/* The committing action sits last, on the right (§4). */}
+              <View style={styles.actionRow}>
+                <Button color="primary" disabled={body.trim().length === 0} onPress={runSplit}>
+                  {m.writing_flow_split_action()}
+                </Button>
+              </View>
             </>
           ) : null}
 
           {status === 'splitting' ? (
-            <Text style={styles.muted}>{m.writing_flow_splitting()}</Text>
+            <PendingPhase label={m.writing_flow_splitting()} placeholders={2} />
           ) : null}
 
           {status === 'reviewing' ? (
@@ -221,8 +242,15 @@ export function WritingFlowSheet() {
                 onSplit={(index) => editThen(() => splitMemory(index))}
                 onRevise={runRevise}
               />
+              {/* Decreasing emphasis left to right, the committing action last and the way out
+                  beside it as text (§4); a hairline separates the group from the edits above. */}
               <View style={styles.footer}>
-                <Button color="neutral" disabled={busy} onPress={() => send({ type: 'BACK' })}>
+                <Button
+                  variant="text"
+                  color="neutral"
+                  disabled={busy}
+                  onPress={() => send({ type: 'BACK' })}
+                >
                   {m.writing_flow_back_action()}
                 </Button>
                 <LaunchButton
@@ -235,13 +263,13 @@ export function WritingFlowSheet() {
           ) : null}
 
           {status === 'revising' ? (
-            <Text style={styles.muted}>{m.writing_flow_revising()}</Text>
+            <PendingPhase label={m.writing_flow_revising()} placeholders={2} />
           ) : null}
 
           {status === 'launching' ? (
             <>
               <ProposedMemoryList memories={proposal} />
-              <Text style={styles.muted}>{m.writing_flow_launching()}</Text>
+              <PendingPhase label={m.writing_flow_launching()} />
             </>
           ) : null}
         </ScrollView>
@@ -251,9 +279,20 @@ export function WritingFlowSheet() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 16 },
-  error: { color: tokens.color.danger, fontSize: 13 },
-  hint: { color: tokens.color['text-subtle'], fontSize: 13 },
-  muted: { color: tokens.color['text-muted'], fontSize: 13 },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  // Panel rhythm: a step of 5 between the phase blocks, tighter steps inside each (§4).
+  content: { gap: tokens.spacing[5] },
+  hint: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.sm, lineHeight: 24 },
+  muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm, lineHeight: 24 },
+  pending: { gap: tokens.spacing[3] },
+  actionRow: { flexDirection: 'row', justifyContent: 'flex-end' },
+  footer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: tokens.spacing[3],
+    borderTopWidth: 1,
+    borderTopColor: tokens.color.border,
+    paddingTop: tokens.spacing[4],
+  },
 })

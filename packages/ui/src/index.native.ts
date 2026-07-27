@@ -3,7 +3,12 @@
 // the reduced-motion source for AccessibilityInfo. useFocusTrap is web-only — RN
 // modals manage their own focus — so it is intentionally not re-exported here.
 
-export { tokens, type Tokens, type ColorToken } from './tokens.ts'
+// `tokens` on native is the SAME map with RN-safe colours (native-styles.ts): RN StyleSheet cannot
+// parse the OKLCH the web pipeline is authored in, and it drops what it cannot parse — a screen
+// styled from the raw map renders with no ground and no ink. One source, one import name, per-platform
+// encoding — the same arrangement the primitives already use.
+export { nativeTokens as tokens } from './native-styles.ts'
+export { type Tokens, type ColorToken } from './tokens.ts'
 export { cx } from './lib/cx.ts'
 
 export {
@@ -43,6 +48,7 @@ export type {
   ButtonColor,
   ControlSize,
   BadgeVariant,
+  AlertVariant,
   ToastVariant,
   CardVariant,
   ButtonOwnProps,
@@ -53,6 +59,7 @@ export type {
   TooltipOwnProps,
   ToastOwnProps,
   BadgeOwnProps,
+  AlertOwnProps,
   CardOwnProps,
   SkeletonOwnProps,
   TabItem,
@@ -69,6 +76,7 @@ export { Dialog, type DialogProps } from './primitives/dialog.native.tsx'
 export { Tooltip, type TooltipProps } from './primitives/tooltip.native.tsx'
 export { Toast, type ToastProps } from './primitives/toast.native.tsx'
 export { Badge, type BadgeProps } from './primitives/badge.native.tsx'
+export { Alert, type AlertProps } from './primitives/alert.native.tsx'
 export { Card, type CardProps } from './primitives/card.native.tsx'
 export { Skeleton, type SkeletonProps } from './primitives/skeleton.native.tsx'
 export { VisuallyHidden, type VisuallyHiddenProps } from './primitives/visually-hidden.native.tsx'

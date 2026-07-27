@@ -52,10 +52,15 @@ const hex2 = (n: number): string => n.toString(16).padStart(2, '0')
 /**
  * OKLCH → a React-Native-safe color string: `#rrggbb`, or `rgba(r, g, b, a)` when the
  * OKLCH carries alpha. A non-OKLCH input is returned unchanged (already RN-valid).
+ *
+ * `alpha` multiplies the color's own alpha, so native can reproduce the web recipes that mix a role
+ * colour into transparency (`color-mix(in oklab, var(--color-x) 50%, transparent)`) instead of
+ * approximating them with a full-strength colour — the two platforms then read the same weight.
  */
-export function oklchToRnColor(input: string): string {
+export function oklchToRnColor(input: string, alpha = 1): string {
   const parsed = parseOklch(input)
   if (!parsed) return input
+  parsed.alpha *= alpha
   const { r, g, b } = oklchToLinearRgb(parsed)
   const R = to255(r)
   const G = to255(g)

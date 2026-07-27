@@ -143,9 +143,15 @@ export const T = {
 
   feedbackTitle: 'Feedback',
   feedbackBlurb:
-    'What the interface shows while it has nothing to show. A skeleton holds the shape of what is coming; a spinner marks a control that is busy.',
+    'What the interface shows while it has nothing to show. A skeleton holds the shape of what is coming; a spinner marks a control that is busy; an inline alert is the row that stays after the toast has gone.',
   skeletonLabel: 'Skeleton',
   spinnerLabel: 'Spinner',
+  alertLabel: 'Inline alert',
+  alertDanger: 'The stars did not rise. Nothing was saved — try again.',
+  alertWarning:
+    'This date is ahead of your universe’s present, so it is kept as a diary without lighting a star.',
+  alertInfo: 'The universe advanced while you were writing.',
+  alertSuccess: 'Your stars are up.',
 
   // Patterns
   writingTitle: 'Writing flow',
@@ -158,7 +164,8 @@ export const T = {
     'The rain stopped sometime in the afternoon and I did not notice until the light changed. I read the same page four times and kept none of it.',
   writingSplit: 'Split into stars',
   writingProposed: 'Proposed stars',
-  writingLaunch: 'Launch',
+  writingLaunch: 'Send up the stars',
+  writingBack: 'Back to writing',
 
   detailTitle: 'Star detail',
   detailBlurb:

@@ -15,8 +15,14 @@ export const ROUTES = {
   signUp: 'SignUp',
   /** Dev-only provider health surface (gated by the diagnostics flag; deep-link reachable). */
   diagnostics: 'Diagnostics',
-  /** Dev-only on-device design showcase (gated by the diagnostics flag; deep-link reachable). */
+  /** Dev-only on-device 3D/platform harness (gated by the diagnostics flag; deep-link reachable). */
   test: 'Test',
+  /**
+   * Dev-only 2D design showcase — the native half of the design-review surface. Registered in BOTH
+   * stacks and reads no product data, mirroring the web route that sits outside the authenticated
+   * subtree: a language review must not need a session.
+   */
+  design: 'Design',
   /** The 3D memory universe — the shared @cosimosi/3d-renderer scene; the authenticated default. */
   universe: 'Universe',
   /** The immutable diary archive — the quiet keeping-place ([D2]). */
@@ -31,6 +37,7 @@ export type RootStackParamList = {
   SignUp: undefined
   Diagnostics: undefined
   Test: undefined
+  Design: undefined
   Universe: undefined
   DiaryReader: undefined
   Me: undefined

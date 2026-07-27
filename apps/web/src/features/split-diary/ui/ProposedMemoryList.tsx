@@ -1,4 +1,4 @@
-import { m, moodLabel } from '../../../shared/i18n/index.ts'
+import { MoodChip, NeuronChips } from '../../../entities/episodic-memory/index.ts'
 
 // Display-only view shape (structural): a proposed memory shows its name, primary mood, the diary
 // passage it was encoded from, and neuron membership — nothing else. Edit controls live in
@@ -21,23 +21,26 @@ export interface ProposedMemoryListProps {
 // ([W2a]), primary emotion ([W2]), and the passage of the diary it was encoded from. No position /
 // color / strength / time is shown — the editable surface is name / emotion / passage / membership
 // ([W4a][I3]).
+//
+// Visual language: rimmed, unfilled rows — the sheet they sit in is glass, and a second opaque
+// surface inside it would kill the material (§5). The name carries the hierarchy, the passage reads
+// as secondary copy, and the emotion arrives as a chip from the entity layer (§2.3).
 export function ProposedMemoryList({ memories }: ProposedMemoryListProps) {
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-3">
       {memories.map((memory) => (
-        <li key={memory.id} className="rounded-md border border-border bg-surface p-3">
-          <p className="font-medium text-text">{memory.name}</p>
-          <p className="text-sm whitespace-pre-wrap text-text">{memory.sourceText}</p>
-          <p className="flex gap-1 text-sm text-text-muted">
-            <span>{m.writing_flow_emotion_label()}</span>
-            <span>{moodLabel(memory.mood)}</span>
+        <li
+          key={memory.id}
+          className="flex flex-col gap-2 rounded-xl border border-border px-4 py-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="min-w-0 truncate text-base font-semibold text-text">{memory.name}</p>
+            <MoodChip mood={memory.mood} />
+          </div>
+          <p className="text-sm leading-6 whitespace-pre-wrap text-text-muted">
+            {memory.sourceText}
           </p>
-          {memory.neurons.length > 0 ? (
-            <p className="flex flex-wrap gap-1 text-sm text-text-subtle">
-              <span>{m.writing_flow_neuron_label()}</span>
-              <span>{memory.neurons.map((neuron) => neuron.name).join(' · ')}</span>
-            </p>
-          ) : null}
+          <NeuronChips neurons={memory.neurons} />
         </li>
       ))}
     </ul>

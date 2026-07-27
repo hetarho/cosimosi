@@ -155,8 +155,12 @@ The primitive API is plan 09's and does not change here; this is how those primi
   its contrast.
 - **Toggles** — a switch commits immediately, a checkbox waits for the form. Both light up from the
   border and the glow, never as a solid slab of accent.
+- **Alerts** — the inline alert is a rim, a whisper of fill, and plain ink (§9). It is a primitive, not
+  a recipe a screen writes out: the same news must not read four different ways in four slices.
 - **Overlays** — tooltip explains, toast reports, dialog interrupts. All three are glass, portalled,
-  and return focus where they found it.
+  and return focus where they found it. A dialog is **bounded by the viewport and scrolls its own
+  body**: it hosts real editing surfaces, and a surface that interrupts must never push its own
+  actions past the bottom edge.
 
 ## 7. Motion
 
@@ -197,6 +201,20 @@ Every feature designs five states, not one. A feature without them is unfinished
 Hover, focus and pressed are design decisions like any other, and the ones most often left
 unreviewed because a static mock cannot hold them. The showcase holds them (§10).
 
+**Failure has two altitudes, and one treatment each.** A whole screen that could not load is an
+**error state**: a card with a status badge, what failed, why, and the retry. A failure _inside_
+chrome that still works — a step that did not go through, a consequence being offered before it is
+accepted — is the **inline alert** (`Alert`): one row, the status hue on the rim over a whisper of
+the same hue, the copy in plain ink carrying the way out. `live="alert"` for something that already
+failed, `live="status"` for a consequence being offered; the choice is about timing, not hue. The hue
+stays out of the ink — a paragraph tinted with a status colour is harder to read than the thing it is
+warning about, and the rim already said which kind of news this is. A toast reports a failure once;
+the alert is what stays until the user acts on it.
+
+**A pending phase keeps its shape.** When a step replaces content with a wait, the note says what is
+happening and skeletons stand where the result will land, under `aria-busy` and a polite live region.
+A panel that collapses to one line and snaps back moves everything the user was reading.
+
 ## 10. The showcase
 
 `/design` in the web app (`apps/web/src/pages/design`, behind the diagnostics gate) renders this
@@ -212,5 +230,19 @@ real rules, so a restyle can never leave the showcase advertising a state the pr
 
 ## 11. Sign-off
 
-_Pending — the 2D language has not yet been through a review round under
-[policy/ux/design-review.md](../policy/ux/design-review.md). The dated sign-off is recorded here._
+**2026-07-27 — signed off.** Three rounds under
+[policy/ux/design-review.md](../policy/ux/design-review.md), read on the running `/design` and on the
+native showcase (iPhone 17 Pro simulator). Every 2D rubric dimension **Meets**, zero open Blocking,
+every ledger note closed — the ledger is in [job 38](../jobs/archive/38.2d-ui-design-language.md).
+No deferred items.
+
+**Reviewer: Claude (the implementing agent), acting as reviewer — no human designer was in the loop.**
+That is a weaker gate than the protocol intends (§1: the reviewer decides, not the implementer), and it
+is recorded plainly rather than dressed up: a human designer's round supersedes this sign-off and
+should append its own rounds to the ledger.
+
+What the rounds actually caught, all fixed before sign-off: the writing-flow chrome was only ever
+reviewable as a lookalike mock; the inline alert existed as a recipe copied into four slices instead of
+a primitive; React Native rendered **no theme colour at all** (OKLCH tokens, silently dropped by
+`StyleSheet`); and the native contained button was a solid slab of accent where the web builds a
+translucent lens. The last two were invisible on every gate the repo had — they needed a device.

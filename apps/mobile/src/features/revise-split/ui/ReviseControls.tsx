@@ -5,6 +5,7 @@ import { VALUES } from '@cosimosi/config'
 import { MOODS } from '@cosimosi/emotion'
 import { Button, TextArea, TextField, tokens } from '@cosimosi/ui'
 
+import { MoodDot, NeuronChips } from '../../../entities/episodic-memory/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 export interface EditableMemoryView {
@@ -32,6 +33,11 @@ export interface ReviseControlsProps {
 // instruction ([W4a]). Mood is a chip row (RN has no <select>); merge/split honor the encode 2–5
 // bound from generated config. Only name / emotion / passage / membership are editable — no
 // position/color/strength/time ([I3]).
+//
+// Visual language (web parity): one rimmed, unfilled card per memory (§5), the structural edits as
+// low-emphasis outlined controls so the launch stays the sheet's only committing action (§6), and
+// the selected mood chip lighting up from its rim and ink rather than filling with a slab of accent
+// (§6 toggles).
 export function ReviseControls({
   memories,
   onRename,
@@ -62,41 +68,51 @@ export function ReviseControls({
               value={memory.sourceText}
               onChangeText={(value) => onSetSourceText(index, value)}
             />
-            <Text style={styles.label}>{m.writing_flow_emotion_label()}</Text>
-            <View style={styles.chips}>
-              {MOODS.map((mood) => {
-                const selected = mood === memory.mood
-                return (
-                  <Pressable
-                    key={mood}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    disabled={busy}
-                    onPress={() => onSetMood(index, mood)}
-                    style={[styles.chip, selected ? styles.chipSelected : null]}
-                  >
-                    <Text style={selected ? styles.chipTextSelected : styles.chipText}>
-                      {moodLabel(mood)}
-                    </Text>
-                  </Pressable>
-                )
-              })}
+            <View style={styles.moodField}>
+              {/* The selected mood's colour rides beside the label as a dot: emotion is domain
+                  output shown next to the control, never mixed into the control itself (§2.3). */}
+              <View style={styles.labelRow}>
+                <MoodDot mood={memory.mood} />
+                <Text style={styles.label}>{m.writing_flow_emotion_label()}</Text>
+              </View>
+              <View style={styles.chips}>
+                {MOODS.map((mood) => {
+                  const selected = mood === memory.mood
+                  return (
+                    <Pressable
+                      key={mood}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      disabled={busy}
+                      onPress={() => onSetMood(index, mood)}
+                      style={[styles.chip, selected ? styles.chipSelected : null]}
+                    >
+                      <Text style={selected ? styles.chipTextSelected : styles.chipText}>
+                        {moodLabel(mood)}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
             </View>
-            {memory.neurons.length > 0 ? (
-              <Text style={styles.neurons}>
-                {m.writing_flow_neuron_label()}{' '}
-                {memory.neurons.map((neuron) => neuron.name).join(' · ')}
-              </Text>
-            ) : null}
+            <NeuronChips neurons={memory.neurons} />
             <View style={styles.actions}>
               <Button
+                variant="outlined"
                 color="neutral"
+                size="sm"
                 disabled={busy || !canMerge || index >= memories.length - 1}
                 onPress={() => onMerge(index)}
               >
                 {m.writing_flow_merge_action()}
               </Button>
-              <Button color="neutral" disabled={busy || !canSplit} onPress={() => onSplit(index)}>
+              <Button
+                variant="outlined"
+                color="neutral"
+                size="sm"
+                disabled={busy || !canSplit}
+                onPress={() => onSplit(index)}
+              >
                 {m.writing_flow_split_memory_action()}
               </Button>
             </View>
@@ -112,7 +128,9 @@ export function ReviseControls({
           onChangeText={setInstruction}
         />
         <Button
-          color="neutral"
+          variant="outlined"
+          color="primary"
+          style={styles.reviseAction}
           disabled={busy || instruction.trim().length === 0}
           onPress={() => {
             onRevise(instruction)
@@ -127,19 +145,23 @@ export function ReviseControls({
 }
 
 const styles = StyleSheet.create({
-  root: { gap: 16 },
-  cards: { gap: 12 },
-  revise: { gap: 8 },
+  root: { gap: tokens.spacing[5] },
+  cards: { gap: tokens.spacing[3] },
+  revise: { gap: tokens.spacing[2] },
+  reviseAction: { alignSelf: 'flex-end' },
   card: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 8,
-    backgroundColor: tokens.color.surface,
-    padding: 12,
-    gap: 8,
+    borderRadius: 12,
+    padding: tokens.spacing[4],
+    gap: tokens.spacing[3],
   },
-  label: { color: tokens.color.text, fontSize: 13, fontWeight: '500' },
+  moodField: { gap: 6 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  label: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '500' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  // Selected lights up from the rim + ink over a quiet raised surface — the same outline-first read
+  // as the Badge, never a solid slab of accent.
   chip: {
     borderWidth: 1,
     borderColor: tokens.color.border,
@@ -147,9 +169,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  chipSelected: { borderColor: tokens.color.primary, backgroundColor: tokens.color.primary },
-  chipText: { color: tokens.color['text-muted'], fontSize: 13 },
-  chipTextSelected: { color: tokens.color['primary-foreground'], fontSize: 13 },
-  neurons: { color: tokens.color['text-subtle'], fontSize: 13 },
-  actions: { flexDirection: 'row', gap: 8 },
+  chipSelected: {
+    borderColor: tokens.color.primary,
+    backgroundColor: tokens.color['surface-raised'],
+  },
+  chipText: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
+  chipTextSelected: { color: tokens.color.primary, fontSize: tokens.fontSize.sm },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[2] },
 })

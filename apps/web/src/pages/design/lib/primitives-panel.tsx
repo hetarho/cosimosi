@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -357,6 +358,23 @@ function FeedbackSection() {
             <Button loading>{T.stateLoading}</Button>
             <IconButton variant="contained" loading label={T.stateLoading} icon={<StarIcon />} />
           </div>
+        </Card>
+        {/* All four alert roles side by side: the rim is the only thing that changes, so a reviewer
+            can see at once that no variant is louder than the copy it carries. */}
+        <Card className="flex flex-col gap-3 sm:col-span-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
+            {T.alertLabel}
+          </span>
+          <Alert variant="danger">{T.alertDanger}</Alert>
+          <Alert variant="warning" live="status">
+            {T.alertWarning}
+          </Alert>
+          <Alert variant="info" live="status">
+            {T.alertInfo}
+          </Alert>
+          <Alert variant="success" live="status">
+            {T.alertSuccess}
+          </Alert>
         </Card>
       </div>
     </Section>

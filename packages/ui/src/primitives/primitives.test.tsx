@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { Alert } from './alert.tsx'
 import { Badge } from './badge.tsx'
 import { Button } from './button.tsx'
 import { Checkbox } from './checkbox.tsx'
@@ -185,6 +186,23 @@ describe('Toast', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('Alert', () => {
+  // The distinction the primitive exists to keep: a failure interrupts, a consequence being offered
+  // is announced politely. A screen that picks the wrong one either shouts or goes unheard.
+  it('interrupts for a failure and stays polite for an offered consequence', () => {
+    const { rerender } = render(<Alert variant="danger">It did not go through</Alert>)
+    expect(screen.getByRole('alert')).toHaveTextContent('It did not go through')
+
+    rerender(
+      <Alert variant="warning" live="status">
+        Kept as a diary
+      </Alert>,
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Kept as a diary')
   })
 })
 

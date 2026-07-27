@@ -26,6 +26,19 @@ export const color = Object.fromEntries(
   Object.entries(tokens.color).map(([role, value]) => [role, oklchToRnColor(value)]),
 ) as Record<ColorToken, string>
 
+/**
+ * The whole token map, with RN-safe colours — what `@cosimosi/ui`'s **native entry** exports as
+ * `tokens`, so `tokens.color.bg` is a value React Native can actually paint.
+ *
+ * `tokens.ts` authors colour in OKLCH for the web pipeline, and RN `StyleSheet` silently DROPS a
+ * colour it cannot parse: a screen styled straight from the shared map came out with no ground and no
+ * ink at all, while the primitives (which read `color` above) looked right — the failure is invisible
+ * until someone looks at a device. Exporting the converted map under the same name keeps one token
+ * source and one import for app code; only the encoding differs per platform, exactly as it does for
+ * the primitives. `native-tokens.test.ts` holds the line.
+ */
+export const nativeTokens = { ...tokens, color } as const
+
 /** Corner radii in px (RN has no rem). */
 export const radius = {
   sm: remToPx(tokens.radius.sm),

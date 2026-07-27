@@ -43,6 +43,7 @@ export type {
   ButtonColor,
   ControlSize,
   BadgeVariant,
+  AlertVariant,
   ToastVariant,
   CardVariant,
   ButtonOwnProps,
@@ -53,6 +54,7 @@ export type {
   TooltipOwnProps,
   ToastOwnProps,
   BadgeOwnProps,
+  AlertOwnProps,
   CardOwnProps,
   SkeletonOwnProps,
   TabItem,
@@ -69,6 +71,7 @@ export { Dialog, type DialogProps } from './primitives/dialog.tsx'
 export { Tooltip, type TooltipProps } from './primitives/tooltip.tsx'
 export { Toast, type ToastProps } from './primitives/toast.tsx'
 export { Badge, type BadgeProps } from './primitives/badge.tsx'
+export { Alert, type AlertProps } from './primitives/alert.tsx'
 export { Card, type CardProps } from './primitives/card.tsx'
 export { Skeleton, type SkeletonProps } from './primitives/skeleton.tsx'
 export { VisuallyHidden, type VisuallyHiddenProps } from './primitives/visually-hidden.tsx'

@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
 import { gateDecision, pendingInvite } from '@cosimosi/auth'
 
+import { DesignShowcasePage } from '../../pages/design/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { LoginPage } from '../../pages/login/index.ts'
 import { MePage } from '../../pages/me/index.ts'
@@ -58,6 +59,12 @@ function TestRoute({ navigation }: RootStackScreenProps<'Test'>) {
   return <TestPage onBack={() => navigation.navigate(ROUTES.universe)} />
 }
 
+// The design showcase is reachable from either stack, so "back" goes wherever the user came from
+// rather than assuming a signed-in universe behind it.
+function DesignRoute({ navigation }: RootStackScreenProps<'Design'>) {
+  return <DesignShowcasePage onBack={() => navigation.goBack()} />
+}
+
 function LoginRoute({ navigation }: RootStackScreenProps<'Login'>) {
   return <LoginPage onModeChange={() => navigation.navigate(ROUTES.signUp)} />
 }
@@ -80,6 +87,7 @@ const mobileLinking: LinkingOptions<RootStackParamList> = {
     screens: {
       [ROUTES.diagnostics]: 'diagnostics',
       [ROUTES.test]: 'test',
+      [ROUTES.design]: 'design',
       [ROUTES.universe]: 'universe',
       [ROUTES.diaryReader]: 'diary',
       [ROUTES.me]: 'me',
@@ -145,17 +153,20 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
             <Stack.Screen name={ROUTES.me} component={MeRoute} />
             <Stack.Screen name={ROUTES.diagnostics} component={DiagnosticsScreen} />
             <Stack.Screen name={ROUTES.test} component={TestRoute} />
+            <Stack.Screen name={ROUTES.design} component={DesignRoute} />
           </>
         ) : stack === 'login' ? (
           inviteEntry ? (
             <>
               <Stack.Screen name={ROUTES.signUp} component={SignUpRoute} />
               <Stack.Screen name={ROUTES.login} component={LoginRoute} />
+              <Stack.Screen name={ROUTES.design} component={DesignRoute} />
             </>
           ) : (
             <>
               <Stack.Screen name={ROUTES.login} component={LoginRoute} />
               <Stack.Screen name={ROUTES.signUp} component={SignUpRoute} />
+              <Stack.Screen name={ROUTES.design} component={DesignRoute} />
             </>
           )
         ) : (

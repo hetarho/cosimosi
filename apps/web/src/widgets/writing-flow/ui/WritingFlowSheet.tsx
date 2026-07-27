@@ -4,7 +4,7 @@ import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createGetUniverseQueryKey, createGetUniverseQueryOptions } from '@cosimosi/api-client'
-import { Button, Dialog } from '@cosimosi/ui'
+import { Alert, Button, Dialog, Skeleton } from '@cosimosi/ui'
 import {
   advanceAnnouncementFromLaunch,
   insertLaunchedMemories,
@@ -36,6 +36,25 @@ function errorMessage(kind: string | null): string | null {
   if (kind === 'revise') return m.writing_flow_error_revise()
   if (kind === 'launch') return m.writing_flow_error_launch()
   return null
+}
+
+// A pending phase is a wait with a shape (design-language §9 loading): the note says what is
+// happening and the placeholders stand where the proposal will land, so the sheet does not collapse
+// to a single line and snap back. `aria-busy` + a polite live region announce it without moving
+// focus; the skeletons are decorative and stay out of the accessibility tree.
+function PendingPhase({ label, placeholders = 0 }: { label: string; placeholders?: number }) {
+  return (
+    <div className="flex flex-col gap-3" aria-busy="true" aria-live="polite">
+      <p className="text-sm leading-6 text-text-muted">{label}</p>
+      {placeholders > 0 ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: placeholders }, (_, index) => (
+            <Skeleton key={index} height={72} rounded="lg" />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 // widgets/writing-flow: the "일기 쓰기" affordance + the modal that composes the four features by
@@ -188,33 +207,36 @@ export function WritingFlowSheet() {
         title={m.writing_flow_title()}
         closeLabel={m.writing_flow_close()}
       >
-        <div className="flex flex-col gap-4">
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+        {/* Panel rhythm: gap-5 between the phase blocks, tighter steps inside each (§4). */}
+        <div className="flex flex-col gap-5">
+          {/* The toast reports the failure once; the inline alert is the record that stays until
+              the user acts on it (§9). */}
+          {error ? <Alert variant="danger">{error}</Alert> : null}
 
           {status === 'writing' ? (
             <>
               <WriteDiaryFields />
               {body.trim().length === 0 ? (
-                <p className="text-sm text-text-subtle">{m.writing_flow_empty_body_hint()}</p>
+                <p className="text-sm leading-6 text-text-subtle">
+                  {m.writing_flow_empty_body_hint()}
+                </p>
               ) : null}
-              <Button
-                color="primary"
-                className="self-start"
-                disabled={body.trim().length === 0}
-                onClick={runSplit}
-              >
-                {m.writing_flow_split_action()}
-              </Button>
+              {/* The committing action sits last on the right (§4). */}
+              <div className="flex justify-end">
+                <Button color="primary" disabled={body.trim().length === 0} onClick={runSplit}>
+                  {m.writing_flow_split_action()}
+                </Button>
+              </div>
             </>
           ) : null}
 
           {status === 'splitting' ? (
-            <p className="text-sm text-text-muted">{m.writing_flow_splitting()}</p>
+            <PendingPhase label={m.writing_flow_splitting()} placeholders={2} />
           ) : null}
 
           {status === 'reviewing' ? (
             <>
-              <p className="text-sm text-text-muted">{m.writing_flow_review_hint()}</p>
+              <p className="text-sm leading-6 text-text-muted">{m.writing_flow_review_hint()}</p>
               <ReviseControls
                 memories={proposal}
                 busy={busy}
@@ -227,8 +249,15 @@ export function WritingFlowSheet() {
                 onSplit={(index) => editThen(() => splitMemory(index))}
                 onRevise={runRevise}
               />
-              <div className="flex items-center justify-between gap-3">
-                <Button color="neutral" disabled={busy} onClick={() => send({ type: 'BACK' })}>
+              {/* Decreasing emphasis left to right, the committing action last and the way out
+                  beside it as text (§4). A hairline separates the group from the edits above it. */}
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
+                <Button
+                  variant="text"
+                  color="neutral"
+                  disabled={busy}
+                  onClick={() => send({ type: 'BACK' })}
+                >
                   {m.writing_flow_back_action()}
                 </Button>
                 <LaunchButton
@@ -241,13 +270,13 @@ export function WritingFlowSheet() {
           ) : null}
 
           {status === 'revising' ? (
-            <p className="text-sm text-text-muted">{m.writing_flow_revising()}</p>
+            <PendingPhase label={m.writing_flow_revising()} placeholders={2} />
           ) : null}
 
           {status === 'launching' ? (
             <>
               <ProposedMemoryList memories={proposal} />
-              <p className="text-sm text-text-muted">{m.writing_flow_launching()}</p>
+              <PendingPhase label={m.writing_flow_launching()} />
             </>
           ) : null}
         </div>

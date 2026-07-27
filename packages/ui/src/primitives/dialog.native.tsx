@@ -51,9 +51,12 @@ const styles = StyleSheet.create({
     backgroundColor: color.overlay,
     paddingHorizontal: space[4],
   },
+  // Bounded by the screen like the web panel: a dialog that composes a real editing surface can
+  // outgrow the viewport, and its host ScrollView only scrolls once the panel stops growing.
   panel: {
     width: '100%',
     maxWidth: 448,
+    maxHeight: '85%',
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: color.border,
@@ -70,5 +73,7 @@ const styles = StyleSheet.create({
   close: { padding: space[1] },
   closeGlyph: { color: color['text-muted'], fontSize: fontSize.base },
   description: { marginTop: space[1], color: color['text-muted'], fontSize: fontSize.sm },
-  body: { marginTop: space[4] },
+  // flexShrink lets the bounded panel hand the leftover height to the body, so a ScrollView the
+  // consumer puts inside actually scrolls instead of stretching the panel past the screen.
+  body: { marginTop: space[4], flexShrink: 1 },
 })

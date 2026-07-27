@@ -1,6 +1,7 @@
 import { moodColor, type Mood } from '@cosimosi/emotion'
 import { Badge, Button, Card, IconButton, Skeleton, TextArea, TextField } from '@cosimosi/ui'
 
+import { ProposedMemoryList, type ProposedMemoryView } from '../../../features/split-diary/index.ts'
 import { ChevronIcon, EllipsisIcon, StarIcon } from './showcase-icons.tsx'
 import { T } from './showcase-copy.ts'
 import { LitBackdrop, Section, Specimen, Stage } from './showcase-shell.tsx'
@@ -68,9 +69,25 @@ const DEMO_MEMORIES: readonly {
   },
 ]
 
-const PROPOSED: readonly { name: string; mood: Mood }[] = [
-  { name: 'The rain stopping', mood: 'CALM' },
-  { name: 'The same page, four times', mood: 'TIRED' },
+// Demo input for the shipped proposal list. The writing pattern renders the product's own
+// `ProposedMemoryList`, not a lookalike: a review that reads a mock is reviewing chrome the user
+// never sees, and the mock had already drifted from the shipped rows once.
+const PROPOSED: readonly ProposedMemoryView[] = [
+  {
+    id: 'p-rain',
+    name: 'The rain stopping',
+    mood: 'CALM',
+    sourceText:
+      'The rain stopped sometime in the afternoon and I did not notice until the light changed.',
+    neurons: [{ name: 'rain' }, { name: 'afternoon' }],
+  },
+  {
+    id: 'p-page',
+    name: 'The same page, four times',
+    mood: 'TIRED',
+    sourceText: 'I read the same page four times and kept none of it.',
+    neurons: [{ name: 'book' }],
+  },
 ]
 
 export function PatternsPanel() {
@@ -109,20 +126,14 @@ function WritingSection() {
             <span className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
               {T.writingProposed}
             </span>
-            {PROPOSED.map((proposed) => (
-              <div
-                key={proposed.name}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <MoodDot mood={proposed.mood} />
-                  <span className="truncate text-sm text-text">{proposed.name}</span>
-                </span>
-                <Badge variant="neutral">{T.moodLabels[proposed.mood]}</Badge>
-              </div>
-            ))}
-            <div className="flex justify-end">
-              <Button color="secondary">{T.writingLaunch}</Button>
+            <ProposedMemoryList memories={PROPOSED} />
+            {/* The shipped footer: decreasing emphasis left to right, the committing action last and
+                the way out beside it as text. One contained button in the group. */}
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
+              <Button variant="text" color="neutral">
+                {T.writingBack}
+              </Button>
+              <Button color="primary">{T.writingLaunch}</Button>
             </div>
           </div>
         </div>
@@ -314,16 +325,7 @@ function StatesSection() {
 // ── Shared bits ───────────────────────────────────────────────────────────────
 // The emotion colour comes from the emotion package, not from this page: mood → colour is a domain
 // projection, and a review surface that invented its own would be reviewing the wrong palette.
-function MoodDot({ mood }: { mood: Mood }) {
-  return (
-    <span
-      aria-hidden
-      className="size-2.5 shrink-0 rounded-full"
-      style={{ backgroundColor: moodColor(mood) }}
-    />
-  )
-}
-
+// (The proposal rows get theirs from the shipped entity chip, which does the same.)
 function MoodBadge({ mood }: { mood: Mood }) {
   return (
     <Badge variant="neutral">

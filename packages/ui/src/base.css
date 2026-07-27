@@ -413,6 +413,34 @@
   }
 }
 
+/* ── Inline alert ─────────────────────────────────────────────────────────────
+ * The row that stays on the surface after the toast has gone — a failure the user still has to act
+ * on, or a consequence being offered before they accept it. Same var-carrier shape as `.badge`: one
+ * `--alert-c` drives the rim and a whisper of fill, and the copy stays plain ink, because a
+ * paragraph tinted with a status colour is harder to read than the thing it warns about. No
+ * backdrop-filter: an alert appears inside chrome that already has the material.
+ */
+@layer components {
+  .alert {
+    --alert-c: var(--color-danger);
+    border: 1px solid color-mix(in oklab, var(--alert-c) 50%, transparent);
+    background-color: color-mix(in oklab, var(--alert-c) 10%, transparent);
+    color: var(--color-text-muted);
+  }
+  .alert-info {
+    --alert-c: var(--color-primary);
+  }
+  .alert-success {
+    --alert-c: var(--color-success);
+  }
+  .alert-warning {
+    --alert-c: var(--color-warning);
+  }
+  .alert-danger {
+    --alert-c: var(--color-danger);
+  }
+}
+
 /* ── Switch ───────────────────────────────────────────────────────────────────
  * A translucent track (no backdrop-filter — small control, same flicker/GPU reason as the buttons).
  * Turning ON brings the hue in via the BORDER + a two-part primary glow (the field-focus ring at 22%

@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native'
 
-import { TextArea, TextField } from '@cosimosi/ui'
+import { TextArea, TextField, tokens } from '@cosimosi/ui'
 import { useDiaryDraftStore } from '@cosimosi/universe'
 
 import { m } from '../../../shared/i18n/index.ts'
@@ -32,5 +32,6 @@ export function WriteDiaryFields() {
 }
 
 const styles = StyleSheet.create({
-  fields: { gap: 16 },
+  // One field group, the inside-a-panel step (§4) — read from the token scale, not a loose 16.
+  fields: { gap: tokens.spacing[4] },
 })

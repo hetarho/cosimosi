@@ -19,6 +19,7 @@ export type ButtonColor = 'primary' | 'secondary' | 'tertiary' | 'neutral' | 'da
 export type ControlSize = 'sm' | 'md' | 'lg'
 export type BadgeVariant = 'neutral' | 'primary' | 'success' | 'warning' | 'danger'
 export type ToastVariant = 'info' | 'success' | 'warning' | 'danger'
+export type AlertVariant = 'info' | 'success' | 'warning' | 'danger'
 export type CardVariant = 'solid' | 'glass'
 
 export interface ButtonOwnProps {
@@ -92,6 +93,17 @@ export interface ToastOwnProps {
 
 export interface BadgeOwnProps {
   variant?: BadgeVariant
+  children?: ReactNode
+}
+
+export interface AlertOwnProps {
+  variant?: AlertVariant
+  /**
+   * How assistive tech is told. `alert` (default) for something that already failed — it interrupts;
+   * `status` for a consequence being offered, which is announced politely. The choice is about
+   * timing, not hue: a warning the user is about to accept is a `status`.
+   */
+  live?: 'alert' | 'status'
   children?: ReactNode
 }
 
