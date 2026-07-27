@@ -222,6 +222,7 @@ INSERT INTO episodic_memories (
     user_id,
     diary_id,
     name,
+    source_text,
     current_text,
     seed,
     mood,
@@ -250,12 +251,14 @@ INSERT INTO episodic_memories (
     $13,
     $14,
     $15,
-    $16
+    $16,
+    $17
 )
 RETURNING
     id,
     diary_id,
     name,
+    source_text,
     current_text,
     seed,
     mood,
@@ -277,6 +280,7 @@ type InsertEpisodicMemoryParams struct {
 	UserID                   string
 	DiaryID                  string
 	Name                     string
+	SourceText               pgtype.Text
 	CurrentText              string
 	Seed                     pgtype.Int8
 	Mood                     string
@@ -295,6 +299,7 @@ type InsertEpisodicMemoryRow struct {
 	ID                       string
 	DiaryID                  string
 	Name                     string
+	SourceText               pgtype.Text
 	CurrentText              string
 	Seed                     pgtype.Int8
 	Mood                     string
@@ -317,6 +322,7 @@ func (q *Queries) InsertEpisodicMemory(ctx context.Context, arg InsertEpisodicMe
 		arg.UserID,
 		arg.DiaryID,
 		arg.Name,
+		arg.SourceText,
 		arg.CurrentText,
 		arg.Seed,
 		arg.Mood,
@@ -335,6 +341,7 @@ func (q *Queries) InsertEpisodicMemory(ctx context.Context, arg InsertEpisodicMe
 		&i.ID,
 		&i.DiaryID,
 		&i.Name,
+		&i.SourceText,
 		&i.CurrentText,
 		&i.Seed,
 		&i.Mood,

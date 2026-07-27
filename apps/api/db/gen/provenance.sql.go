@@ -162,6 +162,7 @@ const loadMemoryProvenanceBaseline = `-- name: LoadMemoryProvenanceBaseline :one
 
 SELECT
     em.created_universe_time,
+    em.source_text,
     d.body AS diary_body
 FROM episodic_memories em
 JOIN diaries d
@@ -179,6 +180,7 @@ type LoadMemoryProvenanceBaselineParams struct {
 
 type LoadMemoryProvenanceBaselineRow struct {
 	CreatedUniverseTime pgtype.Date
+	SourceText          pgtype.Text
 	DiaryBody           string
 }
 
@@ -187,12 +189,14 @@ type LoadMemoryProvenanceBaselineRow struct {
 // path (reconsolidation.sql). Every statement is scoped to the authenticated user
 // ([U1], §4, lint:persistence).
 // The creation facts the created/original baseline is synthesized from at read ([CC5][I2]): the
-// memory's created_universe_time and its immutable Diary body (the objective record via diary_id) —
-// never current_text, never a stored row. A soft-deleted memory is invisible, so the panel that opens
-// it is not-found. The join is user-scoped on both sides so no cross-user diary body can leak.
+// memory's created_universe_time and the passage it was encoded from — never current_text (which
+// reconsolidation moves), never a stored row. The immutable Diary body comes along as the fallback
+// for memories encoded before per-memory passages existed, whose source_text is NULL. A soft-deleted
+// memory is invisible, so the panel that opens it is not-found. The join is user-scoped on both sides
+// so no cross-user diary body can leak.
 func (q *Queries) LoadMemoryProvenanceBaseline(ctx context.Context, arg LoadMemoryProvenanceBaselineParams) (LoadMemoryProvenanceBaselineRow, error) {
 	row := q.db.QueryRow(ctx, loadMemoryProvenanceBaseline, arg.UserID, arg.MemoryID)
 	var i LoadMemoryProvenanceBaselineRow
-	err := row.Scan(&i.CreatedUniverseTime, &i.DiaryBody)
+	err := row.Scan(&i.CreatedUniverseTime, &i.SourceText, &i.DiaryBody)
 	return i, err
 }

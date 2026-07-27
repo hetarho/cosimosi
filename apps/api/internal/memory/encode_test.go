@@ -25,19 +25,26 @@ func testDiaryDate() time.Time {
 	return time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
 }
 
+// testDiaryBody is the body every encode test splits, and validSplit quotes it exactly: the
+// source-text rule compares each passage against the body the use-case was handed, so a fixture
+// that quoted nothing would fail every test for the wrong reason.
+const testDiaryBody = "Morning market run for groceries. Lunch with Mina, catching up."
+
 func validSplit() ExtractResult {
 	return ExtractResult{Memories: []ExtractedMemory{
 		{
-			Name: "Morning market run",
-			Mood: MoodJoy,
+			Name:       "Morning market run",
+			Mood:       MoodJoy,
+			SourceText: "Morning market run for groceries.",
 			Neurons: []ExtractedNeuron{
 				{Name: "grocery shopping", Type: NeuronTypeSemantic},
 				{Name: "market", Type: NeuronTypeSpatial},
 			},
 		},
 		{
-			Name: "Lunch with Mina",
-			Mood: MoodCalm,
+			Name:       "Lunch with Mina",
+			Mood:       MoodCalm,
+			SourceText: "Lunch with Mina, catching up.",
 			Neurons: []ExtractedNeuron{
 				{Name: "catching up", Type: NeuronTypeSemantic},
 				{Name: "Mina", Type: NeuronTypeEntity},
@@ -55,6 +62,7 @@ type fakeExtractor struct {
 	splitBody    string
 	splitDate    time.Time
 	splitNeurons []ExistingNeuron
+	reviseBodies []string
 	revisePriors []ExtractResult
 	instructions []string
 }
@@ -67,7 +75,8 @@ func (f *fakeExtractor) Split(_ context.Context, body string, diaryDate time.Tim
 	return f.splitResult, f.splitErr
 }
 
-func (f *fakeExtractor) ReviseSplit(_ context.Context, prior ExtractResult, instruction string) (ExtractResult, error) {
+func (f *fakeExtractor) ReviseSplit(_ context.Context, body string, prior ExtractResult, instruction string) (ExtractResult, error) {
+	f.reviseBodies = append(f.reviseBodies, body)
 	f.revisePriors = append(f.revisePriors, prior)
 	f.instructions = append(f.instructions, instruction)
 	if f.reviseErr != nil {
@@ -244,7 +253,7 @@ func TestEncodeReturnsValidSplitAndPersistsNothing(t *testing.T) {
 	}
 	fixture.embedder.vectors = [][]float32{{0.5, 0.5}}
 
-	result, err := fixture.service.Encode(context.Background(), testScope(t), "market lunch with Mina", testDiaryDate())
+	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -273,15 +282,16 @@ func TestEncodeRepairsOutOfRangeCountWithoutClamping(t *testing.T) {
 	tooMany := ExtractResult{}
 	for i := 0; i < values.EncodeMaxMemories+1; i++ {
 		tooMany.Memories = append(tooMany.Memories, ExtractedMemory{
-			Name:    fmt.Sprintf("memory %d", i),
-			Mood:    MoodJoy,
-			Neurons: []ExtractedNeuron{{Name: "concept", Type: NeuronTypeSemantic}},
+			Name:       fmt.Sprintf("memory %d", i),
+			Mood:       MoodJoy,
+			SourceText: "Morning market run",
+			Neurons:    []ExtractedNeuron{{Name: "concept", Type: NeuronTypeSemantic}},
 		})
 	}
 	fixture.extractor.splitResult = tooMany
 	fixture.extractor.reviseQueue = []ExtractResult{validSplit()}
 
-	result, err := fixture.service.Encode(context.Background(), testScope(t), "body", testDiaryDate())
+	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -302,7 +312,7 @@ func TestEncodeMissingSemanticNeuronIsRepairedNeverPlaceholder(t *testing.T) {
 	repaired := validSplit()
 	fixture.extractor.reviseQueue = []ExtractResult{repaired}
 
-	result, err := fixture.service.Encode(context.Background(), testScope(t), "body", testDiaryDate())
+	result, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode failed: %v", err)
 	}
@@ -322,13 +332,14 @@ func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	single := ExtractResult{Memories: []ExtractedMemory{{
-		Name:    "only one",
-		Mood:    MoodJoy,
-		Neurons: []ExtractedNeuron{{Name: "concept", Type: NeuronTypeSemantic}},
+		Name:       "only one",
+		Mood:       MoodJoy,
+		SourceText: testDiaryBody,
+		Neurons:    []ExtractedNeuron{{Name: "concept", Type: NeuronTypeSemantic}},
 	}}}
 	fixture.extractor.splitResult = single
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), "body", testDiaryDate())
+	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeRetryExhausted) {
 		t.Fatalf("err = %v, want ErrEncodeRetryExhausted", err)
 	}
@@ -347,7 +358,7 @@ func TestEncodeRejectsInvalidNeuronTypeWithoutRetry(t *testing.T) {
 	invalid.Memories[0].Neurons[0].Type = NeuronType("temporal")
 	fixture.extractor.splitResult = invalid
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), "body", testDiaryDate())
+	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeInvalidSplit) {
 		t.Fatalf("err = %v, want ErrEncodeInvalidSplit", err)
 	}
@@ -363,7 +374,7 @@ func TestEncodeRejectsUnknownMood(t *testing.T) {
 	invalid.Memories[0].Mood = Mood("EUPHORIA")
 	fixture.extractor.splitResult = invalid
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), "body", testDiaryDate())
+	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeInvalidSplit) {
 		t.Fatalf("err = %v, want ErrEncodeInvalidSplit", err)
 	}
@@ -376,7 +387,7 @@ func TestEncodeOversizedResultIsRepairable(t *testing.T) {
 	oversized.Memories[0].Name = strings.Repeat("경험", values.EncodeMaxOutputTokens)
 	fixture.extractor.splitResult = oversized
 
-	_, err := fixture.service.Encode(context.Background(), testScope(t), "body", testDiaryDate())
+	_, err := fixture.service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if !errors.Is(err, ErrEncodeRetryExhausted) {
 		t.Fatalf("err = %v, want ErrEncodeRetryExhausted after size repairs", err)
 	}
@@ -435,7 +446,7 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 		t.Fatalf("NewService failed: %v", err)
 	}
 
-	result, err := service.Encode(context.Background(), testScope(t), "market day", testDiaryDate())
+	result, err := service.Encode(context.Background(), testScope(t), testDiaryBody, testDiaryDate())
 	if err != nil {
 		t.Fatalf("Encode must degrade to name-match candidates, got: %v", err)
 	}
@@ -452,13 +463,13 @@ func TestReviseSplitValidatesPreviousAndRepairs(t *testing.T) {
 	fixture := newFixture(t)
 	invalidPrevious := validSplit()
 	invalidPrevious.Memories[0].Neurons[0].Type = NeuronType("time")
-	if _, err := fixture.service.ReviseSplit(context.Background(), testScope(t), invalidPrevious, "merge them"); !errors.Is(err, ErrEncodeInputRequired) {
+	if _, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, invalidPrevious, "merge them"); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("invalid previous err = %v, want ErrEncodeInputRequired", err)
 	}
 
 	fixture = newFixture(t)
 	fixture.extractor.reviseQueue = []ExtractResult{validSplit()}
-	result, err := fixture.service.ReviseSplit(context.Background(), testScope(t), validSplit(), "merge the meeting and lunch")
+	result, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "merge the meeting and lunch")
 	if err != nil {
 		t.Fatalf("ReviseSplit failed: %v", err)
 	}
@@ -471,7 +482,7 @@ func TestReviseSplitValidatesPreviousAndRepairs(t *testing.T) {
 	if fixture.extractor.splitCalls != 0 {
 		t.Fatal("revise must reuse the revise variant, not re-split")
 	}
-	if _, err := fixture.service.ReviseSplit(context.Background(), testScope(t), validSplit(), "  "); !errors.Is(err, ErrEncodeInputRequired) {
+	if _, err := fixture.service.ReviseSplit(context.Background(), testScope(t), testDiaryBody, validSplit(), "  "); !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("empty instruction err = %v, want ErrEncodeInputRequired", err)
 	}
 }

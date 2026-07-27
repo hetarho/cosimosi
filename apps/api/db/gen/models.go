@@ -93,6 +93,8 @@ type EpisodicMemory struct {
 	RepresentationRevision   int64
 	PendingSemanticStage     pgtype.Int2
 	PendingSemanticRiseAt    pgtype.Date
+	// Immutable encode-time diary passage in the writer's words; NULL for memories launched before per-memory passages.
+	SourceText pgtype.Text
 }
 
 type Invite struct {

@@ -6,9 +6,12 @@ package cosimosi.memory.v1;
 // LaunchStars) and the GetUniverse read contract (shape owned by plan 23).
 //
 // [W4a] structural defense: the encode schema carries ONLY
-// {memories:[{name, mood, neurons:[{name, type}]}]}. No position, color, strength,
-// seed, time, or delete field exists anywhere in it, so a prompt injection has no
-// field in which to emit an invariant-violating value ([I1][I3][I5][I10]).
+// {memories:[{name, mood, source_text, neurons:[{name, type}]}]}. No position, color,
+// strength, seed, time, or delete field exists anywhere in it, so a prompt injection has
+// no field in which to emit an invariant-violating value ([I1][I3][I5][I10]).
+// source_text is the one prose field, and it is closed the other way: the domain checks
+// every word of it against the diary (memory/sourcetext.go), so the model can return the
+// writer's own account or nothing.
 service MemoryService {
   // Synchronous preview split — the user sees and edits it [W2]; persists nothing.
   // Invokes the LLM (cost-metered), so it is NOT marked NO_SIDE_EFFECTS.
@@ -92,6 +95,12 @@ message ProposedMemory {
   // (e.g. "JOY") — the same representation records persist.
   string mood = 2;
   repeated ProposedNeuron neurons = 3;
+  // The passage of the diary this memory was encoded from, in the writer's own words:
+  // quoted, with only a typo or a dangling cut-edge ending repaired. It becomes the
+  // memory's initial current_text at launch [R8a]. Prose, but not a hole in the [W4a]
+  // boundary — the domain verifies every word of it against the diary before accepting
+  // the split, so an injection can at most echo the writer back at themselves.
+  string source_text = 4;
 }
 
 message ProposedNeuron {
@@ -111,6 +120,10 @@ message ConfirmedMemory {
   string name = 1;
   string mood = 2;
   repeated ProposedNeuron neurons = 3;
+  // The passage as the user confirmed it — possibly hand-edited in the write session
+  // [W4], which is why the server re-validates it only structurally here: the writer
+  // editing their own account is not something the server defends against.
+  string source_text = 4;
 }
 
 message LaunchStarsResponse {

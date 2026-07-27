@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
 import { MOODS } from '@cosimosi/emotion'
-import { Button, TextField, tokens } from '@cosimosi/ui'
+import { Button, TextArea, TextField, tokens } from '@cosimosi/ui'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
@@ -12,6 +12,7 @@ export interface EditableMemoryView {
   readonly id: string
   readonly name: string
   readonly mood: string
+  readonly sourceText: string
   readonly neurons: readonly { readonly name: string }[]
 }
 
@@ -19,20 +20,23 @@ export interface ReviseControlsProps {
   readonly memories: readonly EditableMemoryView[]
   readonly onRename: (index: number, name: string) => void
   readonly onSetMood: (index: number, mood: string) => void
+  readonly onSetSourceText: (index: number, sourceText: string) => void
   readonly onMerge: (index: number) => void
   readonly onSplit: (index: number) => void
   readonly onRevise: (instruction: string) => void
   readonly busy?: boolean
 }
 
-// features/revise-split ui (RN fork): hand-edit controls (rename · mood selection · memory
-// merge/split — the neuron-membership edits [W4][E10]) + the natural-language instruction ([W4a]).
-// Mood is a chip row (RN has no <select>); merge/split honor the encode 2–5 bound from generated
-// config. Only name / emotion / membership are editable — no position/color/strength/time ([I3]).
+// features/revise-split ui (RN fork): hand-edit controls (rename · mood selection · passage
+// correction · memory merge/split — the neuron-membership edits [W4][E10]) + the natural-language
+// instruction ([W4a]). Mood is a chip row (RN has no <select>); merge/split honor the encode 2–5
+// bound from generated config. Only name / emotion / passage / membership are editable — no
+// position/color/strength/time ([I3]).
 export function ReviseControls({
   memories,
   onRename,
   onSetMood,
+  onSetSourceText,
   onMerge,
   onSplit,
   onRevise,
@@ -51,6 +55,12 @@ export function ReviseControls({
               label={m.writing_flow_name_label()}
               value={memory.name}
               onChangeText={(value) => onRename(index, value)}
+            />
+            <TextArea
+              label={m.writing_flow_source_text_label()}
+              description={m.writing_flow_source_text_hint()}
+              value={memory.sourceText}
+              onChangeText={(value) => onSetSourceText(index, value)}
             />
             <Text style={styles.label}>{m.writing_flow_emotion_label()}</Text>
             <View style={styles.chips}>

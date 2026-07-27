@@ -136,9 +136,14 @@ type Diary struct {
 }
 
 type EpisodicMemory struct {
-	ID                       string
-	DiaryID                  string
-	Name                     string
+	ID      string
+	DiaryID string
+	Name    string
+	// SourceText is the diary passage this memory was encoded from, fixed at launch. It seeds
+	// CurrentText and then stays put while CurrentText moves with reconsolidation ([R8a]), so
+	// the created/original baseline in 변천사 still reads true after a rewrite. Empty for
+	// memories launched before per-memory passages existed — those fall back to the Diary body.
+	SourceText               string
 	CurrentText              string
 	Seed                     *int64
 	Emotion                  Emotion

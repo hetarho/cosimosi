@@ -35,11 +35,24 @@ type ProvenanceEntry struct {
 }
 
 // MemoryOrigin holds the creation facts the created/original baseline is synthesized from: the
-// immutable Diary body (the objective record via diary_id, [I2][D4]) and the memory's creation
-// universe-time. It is never current_text and never a stored memory_provenance row ([CC5][A2]).
+// passage this memory was encoded from and its creation universe-time. It is never current_text
+// (reconsolidation moves that, and the baseline must still read true afterwards) and never a
+// stored memory_provenance row ([CC5][A2]). DiaryBody is the immutable objective record via
+// diary_id ([I2][D4]), carried as the fallback for memories encoded before per-memory passages.
 type MemoryOrigin struct {
+	SourceText          string
 	DiaryBody           string
 	CreatedUniverseTime time.Time
+}
+
+// BaselineText is what the created/original entry shows: this memory's own passage, or the whole
+// Diary for a memory that predates per-memory passages — which is what that memory was actually
+// created with, so its history stays truthful instead of retconned.
+func (o MemoryOrigin) BaselineText() string {
+	if o.SourceText != "" {
+		return o.SourceText
+	}
+	return o.DiaryBody
 }
 
 // ProvenanceReader is the GetProvenance use-case's consumer-owned read port (§2.4): the baseline
@@ -77,7 +90,7 @@ func (s *Service) GetProvenance(ctx context.Context, scope platform.UserScope, m
 	entries = append(entries, ProvenanceEntry{
 		Kind:         ProvenanceKindCreated,
 		Source:       ProvenanceSourceOriginal,
-		Text:         origin.DiaryBody,
+		Text:         origin.BaselineText(),
 		UniverseTime: origin.CreatedUniverseTime,
 	})
 	for _, row := range rows {

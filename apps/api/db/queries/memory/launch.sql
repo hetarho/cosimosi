@@ -20,6 +20,7 @@ INSERT INTO episodic_memories (
     user_id,
     diary_id,
     name,
+    source_text,
     current_text,
     seed,
     mood,
@@ -48,12 +49,14 @@ INSERT INTO episodic_memories (
     $13,
     $14,
     $15,
-    $16
+    $16,
+    $17
 )
 RETURNING
     id,
     diary_id,
     name,
+    source_text,
     current_text,
     seed,
     mood,

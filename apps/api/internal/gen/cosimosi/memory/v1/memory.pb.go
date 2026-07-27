@@ -240,8 +240,14 @@ type ProposedMemory struct {
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// One primary mood from the 13-mood enum [M1], carried as its bare name string
 	// (e.g. "JOY") — the same representation records persist.
-	Mood          string            `protobuf:"bytes,2,opt,name=mood,proto3" json:"mood,omitempty"`
-	Neurons       []*ProposedNeuron `protobuf:"bytes,3,rep,name=neurons,proto3" json:"neurons,omitempty"`
+	Mood    string            `protobuf:"bytes,2,opt,name=mood,proto3" json:"mood,omitempty"`
+	Neurons []*ProposedNeuron `protobuf:"bytes,3,rep,name=neurons,proto3" json:"neurons,omitempty"`
+	// The passage of the diary this memory was encoded from, in the writer's own words:
+	// quoted, with only a typo or a dangling cut-edge ending repaired. It becomes the
+	// memory's initial current_text at launch [R8a]. Prose, but not a hole in the [W4a]
+	// boundary — the domain verifies every word of it against the diary before accepting
+	// the split, so an injection can at most echo the writer back at themselves.
+	SourceText    string `protobuf:"bytes,4,opt,name=source_text,json=sourceText,proto3" json:"source_text,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -295,6 +301,13 @@ func (x *ProposedMemory) GetNeurons() []*ProposedNeuron {
 		return x.Neurons
 	}
 	return nil
+}
+
+func (x *ProposedMemory) GetSourceText() string {
+	if x != nil {
+		return x.SourceText
+	}
+	return ""
 }
 
 type ProposedNeuron struct {
@@ -412,10 +425,14 @@ func (x *LaunchStarsRequest) GetMemories() []*ConfirmedMemory {
 }
 
 type ConfirmedMemory struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Mood          string                 `protobuf:"bytes,2,opt,name=mood,proto3" json:"mood,omitempty"`
-	Neurons       []*ProposedNeuron      `protobuf:"bytes,3,rep,name=neurons,proto3" json:"neurons,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Mood    string                 `protobuf:"bytes,2,opt,name=mood,proto3" json:"mood,omitempty"`
+	Neurons []*ProposedNeuron      `protobuf:"bytes,3,rep,name=neurons,proto3" json:"neurons,omitempty"`
+	// The passage as the user confirmed it — possibly hand-edited in the write session
+	// [W4], which is why the server re-validates it only structurally here: the writer
+	// editing their own account is not something the server defends against.
+	SourceText    string `protobuf:"bytes,4,opt,name=source_text,json=sourceText,proto3" json:"source_text,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -469,6 +486,13 @@ func (x *ConfirmedMemory) GetNeurons() []*ProposedNeuron {
 		return x.Neurons
 	}
 	return nil
+}
+
+func (x *ConfirmedMemory) GetSourceText() string {
+	if x != nil {
+		return x.SourceText
+	}
+	return ""
 }
 
 type LaunchStarsResponse struct {
@@ -2670,11 +2694,13 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\bprevious\x18\x03 \x01(\v2&.cosimosi.memory.v1.SplitDiaryResponseR\bprevious\x12 \n" +
 	"\vinstruction\x18\x04 \x01(\tR\vinstruction\"T\n" +
 	"\x12SplitDiaryResponse\x12>\n" +
-	"\bmemories\x18\x01 \x03(\v2\".cosimosi.memory.v1.ProposedMemoryR\bmemories\"v\n" +
+	"\bmemories\x18\x01 \x03(\v2\".cosimosi.memory.v1.ProposedMemoryR\bmemories\"\x97\x01\n" +
 	"\x0eProposedMemory\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04mood\x18\x02 \x01(\tR\x04mood\x12<\n" +
-	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\"8\n" +
+	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\x12\x1f\n" +
+	"\vsource_text\x18\x04 \x01(\tR\n" +
+	"sourceText\"8\n" +
 	"\x0eProposedNeuron\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\"\x88\x01\n" +
@@ -2682,11 +2708,13 @@ const file_cosimosi_memory_v1_memory_proto_rawDesc = "" +
 	"\x04body\x18\x01 \x01(\tR\x04body\x12\x1d\n" +
 	"\n" +
 	"diary_date\x18\x02 \x01(\tR\tdiaryDate\x12?\n" +
-	"\bmemories\x18\x03 \x03(\v2#.cosimosi.memory.v1.ConfirmedMemoryR\bmemories\"w\n" +
+	"\bmemories\x18\x03 \x03(\v2#.cosimosi.memory.v1.ConfirmedMemoryR\bmemories\"\x98\x01\n" +
 	"\x0fConfirmedMemory\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04mood\x18\x02 \x01(\tR\x04mood\x12<\n" +
-	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\"\xd4\x01\n" +
+	"\aneurons\x18\x03 \x03(\v2\".cosimosi.memory.v1.ProposedNeuronR\aneurons\x12\x1f\n" +
+	"\vsource_text\x18\x04 \x01(\tR\n" +
+	"sourceText\"\xd4\x01\n" +
 	"\x13LaunchStarsResponse\x12\x1d\n" +
 	"\n" +
 	"memory_ids\x18\x01 \x03(\tR\tmemoryIds\x12$\n" +

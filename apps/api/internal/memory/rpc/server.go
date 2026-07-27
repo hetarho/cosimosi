@@ -50,7 +50,7 @@ func (s *Server) ReviseSplit(ctx context.Context, req *connect.Request[memoryv1.
 		return nil, err
 	}
 	previous := memory.ExtractResult{Memories: domainMemories(req.Msg.GetPrevious().GetMemories())}
-	result, err := s.service.ReviseSplit(ctx, scope, previous, req.Msg.GetInstruction())
+	result, err := s.service.ReviseSplit(ctx, scope, req.Msg.GetBody(), previous, req.Msg.GetInstruction())
 	if err != nil {
 		return nil, domainError(err)
 	}
@@ -369,6 +369,7 @@ func domainError(err error) error {
 type memoryDto interface {
 	GetName() string
 	GetMood() string
+	GetSourceText() string
 	GetNeurons() []*memoryv1.ProposedNeuron
 }
 
@@ -376,9 +377,10 @@ func domainMemories[T memoryDto](items []T) []memory.ExtractedMemory {
 	memories := make([]memory.ExtractedMemory, 0, len(items))
 	for _, item := range items {
 		memories = append(memories, memory.ExtractedMemory{
-			Name:    item.GetName(),
-			Mood:    memory.Mood(item.GetMood()),
-			Neurons: domainNeurons(item.GetNeurons()),
+			Name:       item.GetName(),
+			Mood:       memory.Mood(item.GetMood()),
+			SourceText: item.GetSourceText(),
+			Neurons:    domainNeurons(item.GetNeurons()),
 		})
 	}
 	return memories
@@ -461,9 +463,10 @@ func splitResponse(result memory.ExtractResult) *memoryv1.SplitDiaryResponse {
 			})
 		}
 		memories = append(memories, &memoryv1.ProposedMemory{
-			Name:    extracted.Name,
-			Mood:    string(extracted.Mood),
-			Neurons: neurons,
+			Name:       extracted.Name,
+			Mood:       string(extracted.Mood),
+			SourceText: extracted.SourceText,
+			Neurons:    neurons,
 		})
 	}
 	return &memoryv1.SplitDiaryResponse{Memories: memories}

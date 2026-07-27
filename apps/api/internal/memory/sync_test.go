@@ -34,7 +34,7 @@ func TestRealClockDayBoundariesUseTheUsersZoneAtAllFourSites(t *testing.T) {
 	launchFixture := newFixture(t)
 	launchFixture.service.now = func() time.Time { return now }
 	launchFixture.service.userZone = fixedUserZone{location: seoul}
-	if _, err := launchFixture.service.PersistEncoded(context.Background(), testScope(t), "body", seoulToday, confirmedFixture()); err != nil {
+	if _, err := launchFixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, seoulToday, confirmedFixture()); err != nil {
 		t.Fatalf("launch rejected the user's current day: %v", err)
 	}
 

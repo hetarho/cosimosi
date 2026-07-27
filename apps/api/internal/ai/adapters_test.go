@@ -120,7 +120,7 @@ func TestExtractorSchemaPinsMoodAndNeuronTypeEnums(t *testing.T) {
 // served from cache without re-billing.
 func TestMeteredLLMSeamAppliesTokenCapCostLimitAndCache(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
-	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","neurons":[{"name":"market","type":"semantic"}]}]}`)}
+	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]}]}`)}
 	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(1, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealExtractor failed: %v", err)
@@ -277,7 +277,7 @@ func TestBoundedCacheEvictsOldestEntries(t *testing.T) {
 
 func TestMeteredLLMSeamCacheIsBounded(t *testing.T) {
 	ctx := platform.ContextWithUserID(context.Background(), "user-1")
-	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","neurons":[{"name":"market","type":"semantic"}]}]}`)}
+	client := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]}]}`)}
 	extractor, err := NewRealExtractor(newMeteredLLMClient(client, newMeter(aiAdapterCacheMaxEntries+10, fixedNow)))
 	if err != nil {
 		t.Fatalf("NewRealExtractor failed: %v", err)

@@ -22,7 +22,10 @@ func (UTCUserZone) ZoneFor(context.Context, platform.UserScope) (*time.Location,
 
 type Extractor interface {
 	Split(ctx context.Context, body string, diaryDate time.Time, existingNeurons []ExistingNeuron) (ExtractResult, error)
-	ReviseSplit(ctx context.Context, prior ExtractResult, instruction string) (ExtractResult, error)
+	// ReviseSplit takes the diary body as well as the prior result because a revise must be
+	// able to re-quote source_text from the original — a repair that only sees the prior
+	// split can never recover a passage the model got wrong.
+	ReviseSplit(ctx context.Context, body string, prior ExtractResult, instruction string) (ExtractResult, error)
 }
 
 type Embedder interface {
@@ -231,9 +234,13 @@ type ExtractResult struct {
 }
 
 type ExtractedMemory struct {
-	Name    string
-	Mood    Mood
-	Neurons []ExtractedNeuron
+	Name string
+	Mood Mood
+	// SourceText is the passage of the diary this memory was encoded from, in the writer's
+	// own words (sourcetext.go). It becomes the memory's initial CurrentText at launch;
+	// reconsolidation rewrites it from there ([R8a]).
+	SourceText string
+	Neurons    []ExtractedNeuron
 }
 
 type ExtractedNeuron struct {

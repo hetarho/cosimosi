@@ -24,7 +24,7 @@ func TestRateLimitedErrorHonorsRetryAfterHint(t *testing.T) {
 }
 
 func TestFactorySelectsProvidersIndependentlyPerCapability(t *testing.T) {
-	llmStub := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","neurons":[{"name":"market","type":"semantic"}]}]}`)}
+	llmStub := &fakeLLMClient{response: []byte(`{"memories":[{"name":"Market","mood":"CALM","source_text":"market","neurons":[{"name":"market","type":"semantic"}]}]}`)}
 	embStub := &fakeEmbeddingClient{}
 	RegisterLLMProvider("teststub", func(ProviderConfig) (LLMClient, error) { return llmStub, nil })
 	RegisterEmbeddingProvider("teststub", func(ProviderConfig) (EmbeddingClient, error) { return embStub, nil })

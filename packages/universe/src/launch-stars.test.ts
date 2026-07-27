@@ -42,7 +42,14 @@ describe('insertLaunchedMemories', () => {
 
   it('optimistically inserts one memory per returned id, memory-level only', () => {
     insertLaunchedMemories(
-      [{ name: 'New memory', mood: 'JOY', neurons: [{ name: 'n1', type: 'entity' }] }],
+      [
+        {
+          name: 'New memory',
+          mood: 'JOY',
+          sourceText: 'A new memory happened.',
+          neurons: [{ name: 'n1', type: 'entity' }],
+        },
+      ],
       ['mem-1'],
       '2026-06-01',
     )
@@ -57,15 +64,19 @@ describe('insertLaunchedMemories', () => {
   })
 
   it('inserts nothing for a past-dated launch (server returns no ids), leaving the store untouched', () => {
-    insertLaunchedMemories([{ name: 'Kept', mood: 'SAD', neurons: [] }], [], '2020-01-01')
+    insertLaunchedMemories(
+      [{ name: 'Kept', mood: 'SAD', sourceText: 'Kept.', neurons: [] }],
+      [],
+      '2020-01-01',
+    )
     expect(useEpisodicMemoryStore.getState().ids).toEqual(['old'])
   })
 
   it('appends only as many memories as the server returned ids', () => {
     insertLaunchedMemories(
       [
-        { name: 'First', mood: 'JOY', neurons: [] },
-        { name: 'Second', mood: 'SAD', neurons: [] },
+        { name: 'First', mood: 'JOY', sourceText: 'First.', neurons: [] },
+        { name: 'Second', mood: 'SAD', sourceText: 'Second.', neurons: [] },
       ],
       ['mem-1'],
       '2026-06-01',

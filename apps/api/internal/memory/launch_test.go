@@ -371,16 +371,18 @@ func (f *fakeProgression) OnAdvance(_ context.Context, scope platform.UserScope,
 func confirmedFixture() []ExtractedMemory {
 	return []ExtractedMemory{
 		{
-			Name: "Morning market run",
-			Mood: MoodJoy,
+			Name:       "Morning market run",
+			Mood:       MoodJoy,
+			SourceText: "Morning market run for groceries.",
 			Neurons: []ExtractedNeuron{
 				{Name: "grocery shopping", Type: NeuronTypeSemantic},
 				{Name: "Market", Type: NeuronTypeSpatial},
 			},
 		},
 		{
-			Name: "Lunch with Mina",
-			Mood: MoodCalm,
+			Name:       "Lunch with Mina",
+			Mood:       MoodCalm,
+			SourceText: "Lunch with Mina, catching up.",
 			Neurons: []ExtractedNeuron{
 				{Name: "catching up", Type: NeuronTypeSemantic},
 				{Name: "market", Type: NeuronTypeSpatial},
@@ -397,7 +399,7 @@ func TestPersistEncodedLaunchesAtomicallyWithDedup(t *testing.T) {
 	// so persist must reference the existing id, not create a duplicate row.
 	fixture.launches.existing = []ExistingNeuron{{ID: "existing-mina", Name: "Mina", Type: NeuronTypeEntity}}
 
-	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}
@@ -495,7 +497,7 @@ func TestPersistEncodedMidStepFailureLeavesNoPartialRows(t *testing.T) {
 	for _, method := range []string{"InsertEpisodicMemory", "UpsertNeuron", "InsertNeuronActivation", "EnqueueJob"} {
 		fixture := newFixture(t)
 		fixture.launches.failMethod = method
-		_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+		_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 		if !errors.Is(err, errInjectedFailure) {
 			t.Fatalf("failMethod=%s err = %v, want the injected failure", method, err)
 		}
@@ -512,7 +514,7 @@ func TestPersistEncodedPastDatedSavesDiaryLaunchesNothing(t *testing.T) {
 	clock := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 	fixture.launches.clock = &clock
 
-	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}
@@ -555,7 +557,7 @@ func TestPersistEncodedEarnsOncePerLaunchedDiary(t *testing.T) {
 
 	// confirmedFixture launches TWO memories from one diary — the grant must still
 	// fire exactly once, per diary, carried on the launch transaction handle.
-	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}
@@ -575,7 +577,7 @@ func TestPersistEncodedEarnFailureRollsBackLaunch(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.earn.failErr = errInjectedFailure
 
-	if _, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture()); !errors.Is(err, errInjectedFailure) {
+	if _, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture()); !errors.Is(err, errInjectedFailure) {
 		t.Fatalf("err = %v, want the injected earn failure", err)
 	}
 	// A launch and its grant commit or roll back together: nothing committed.
@@ -591,7 +593,7 @@ func TestPersistEncodedSameDateLaunches(t *testing.T) {
 	clock := testDiaryDate()
 	fixture.launches.clock = &clock
 
-	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}
@@ -615,7 +617,7 @@ func TestPersistEncodedPreClockUniverseGuardsAgainstLatestLaunched(t *testing.T)
 	fixture.launches.latestLaunched = &latest
 	pastDate := latest.AddDate(0, 0, -10)
 
-	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", pastDate, confirmedFixture())
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, pastDate, confirmedFixture())
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}
@@ -636,7 +638,7 @@ func TestPersistEncodedAdvancesClockAndReturnsInterval(t *testing.T) {
 	previous := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)
 	fixture.launches.clock = &previous
 
-	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}
@@ -665,7 +667,7 @@ func TestPersistEncodedFirstLaunchBirthsClockWithNilPrevious(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 
-	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	result, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}
@@ -688,7 +690,7 @@ func TestPersistEncodedClockAdvanceFailureRollsBackLaunch(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.launches.failMethod = "AdvanceUniverseClock"
 
-	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if !errors.Is(err, errInjectedFailure) {
 		t.Fatalf("err = %v, want the injected failure", err)
 	}
@@ -706,7 +708,7 @@ func TestPersistEncodedProgressionFailureRollsBackLaunch(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.progression.err = errors.New("progression handler failed")
 
-	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err == nil {
 		t.Fatal("a progression failure inside the transaction must fail the launch")
 	}
@@ -734,7 +736,7 @@ func TestPersistEncodedRejectsInvalidConfirmedSplit(t *testing.T) {
 	}
 	for name, confirmed := range cases {
 		fixture := newFixture(t)
-		_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmed)
+		_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmed)
 		if !errors.Is(err, ErrLaunchInvalidMemories) {
 			t.Fatalf("%s: err = %v, want ErrLaunchInvalidMemories", name, err)
 		}
@@ -750,7 +752,7 @@ func TestPersistEncodedRejectsFutureDatedDiary(t *testing.T) {
 	// Fixture "now" is 2026-07-02 in the default UTC zone. The former whole-day offset
 	// compensation is gone, so the next calendar day must be refused.
 	future := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
-	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", future, confirmedFixture())
+	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, future, confirmedFixture())
 	if !errors.Is(err, ErrEncodeInputRequired) {
 		t.Fatalf("future date err = %v, want ErrEncodeInputRequired", err)
 	}
@@ -759,7 +761,7 @@ func TestPersistEncodedRejectsFutureDatedDiary(t *testing.T) {
 	}
 
 	allowed := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
-	if _, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", allowed, confirmedFixture()); err != nil {
+	if _, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, allowed, confirmedFixture()); err != nil {
 		t.Fatalf("the user's current calendar date must launch, got: %v", err)
 	}
 }
@@ -779,7 +781,7 @@ func TestPersistEncodedLinkSeamFailureAbortsTheLaunch(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	fixture.linker.err = errors.New("link failed")
-	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmedFixture())
+	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture())
 	if err == nil {
 		t.Fatal("a link failure inside the transaction must fail the launch")
 	}
@@ -843,7 +845,7 @@ func TestPersistEncodedDuplicateNeuronInOneMemoryActivatesOnce(t *testing.T) {
 	confirmed := confirmedFixture()
 	confirmed[0].Neurons = append(confirmed[0].Neurons, ExtractedNeuron{Name: "grocery shopping", Type: NeuronTypeSemantic})
 
-	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), "diary body", testDiaryDate(), confirmed)
+	_, err := fixture.service.PersistEncoded(context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmed)
 	if err != nil {
 		t.Fatalf("PersistEncoded failed: %v", err)
 	}

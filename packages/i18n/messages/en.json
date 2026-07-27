@@ -203,6 +203,8 @@
   "writing_flow_name_label": "Name",
   "writing_flow_emotion_label": "Feeling",
   "writing_flow_neuron_label": "Neurons",
+  "writing_flow_source_text_label": "Memory text",
+  "writing_flow_source_text_hint": "The part of the diary this star came from, in your own words — edit it if you like.",
   "writing_flow_merge_action": "Merge with next",
   "writing_flow_split_memory_action": "Split in two",
   "writing_flow_instruction_placeholder": "Say how to change it — e.g. merge the meeting and lunch into one star.",

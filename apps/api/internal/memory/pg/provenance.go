@@ -28,6 +28,7 @@ func (s Store) MemoryOrigin(ctx context.Context, scope platform.UserScope, memor
 		return memory.MemoryOrigin{}, err
 	}
 	return memory.MemoryOrigin{
+		SourceText:          row.SourceText.String,
 		DiaryBody:           row.DiaryBody,
 		CreatedUniverseTime: dateValue(row.CreatedUniverseTime),
 	}, nil

@@ -47,17 +47,18 @@ func (s *Service) Encode(ctx context.Context, scope platform.UserScope, body str
 	if err != nil {
 		return ExtractResult{}, err
 	}
-	return s.repairUntilValid(ctx, result)
+	return s.repairUntilValid(ctx, body, result)
 }
 
 // ReviseSplit re-runs the split from a natural-language instruction + the prior
 // result [W4a], against the same schema-forced output and the same invariants.
-func (s *Service) ReviseSplit(ctx context.Context, scope platform.UserScope, previous ExtractResult, instruction string) (ExtractResult, error) {
+func (s *Service) ReviseSplit(ctx context.Context, scope platform.UserScope, body string, previous ExtractResult, instruction string) (ExtractResult, error) {
 	if scope.UserID() == "" {
 		return ExtractResult{}, ErrScopeRequired
 	}
+	body = strings.TrimSpace(body)
 	instruction = strings.TrimSpace(instruction)
-	if instruction == "" || len(previous.Memories) == 0 {
+	if body == "" || instruction == "" || len(previous.Memories) == 0 {
 		return ExtractResult{}, ErrEncodeInputRequired
 	}
 	// The prior result arrives from the client; a hand-crafted request must not
@@ -65,11 +66,11 @@ func (s *Service) ReviseSplit(ctx context.Context, scope platform.UserScope, pre
 	if err := validateSplitStructure(previous); err != nil {
 		return ExtractResult{}, fmt.Errorf("%w: previous result: %v", ErrEncodeInputRequired, err)
 	}
-	result, err := s.extractor.ReviseSplit(ctx, previous, instruction)
+	result, err := s.extractor.ReviseSplit(ctx, body, previous, instruction)
 	if err != nil {
 		return ExtractResult{}, err
 	}
-	return s.repairUntilValid(ctx, result)
+	return s.repairUntilValid(ctx, body, result)
 }
 
 // dedupCandidates assembles the candidate set for the extractor's conservative
@@ -110,19 +111,19 @@ func (s *Service) dedupCandidates(ctx context.Context, scope platform.UserScope,
 // repairable violation (count out of range [E2], missing semantic neuron [E4],
 // output over budget) re-prompts through the revise variant — never a silent
 // clamp, never a placeholder neuron — bounded by encode.max_revise_retries.
-func (s *Service) repairUntilValid(ctx context.Context, result ExtractResult) (ExtractResult, error) {
+func (s *Service) repairUntilValid(ctx context.Context, body string, result ExtractResult) (ExtractResult, error) {
 	for attempt := 0; ; attempt++ {
 		if err := validateSplitStructure(result); err != nil {
 			return ExtractResult{}, err
 		}
-		violation := repairableViolation(result)
+		violation := repairableViolation(body, result)
 		if violation == "" {
 			return result, nil
 		}
 		if attempt >= values.EncodeMaxReviseRetries {
 			return ExtractResult{}, fmt.Errorf("%w: %s", ErrEncodeRetryExhausted, violation)
 		}
-		next, err := s.extractor.ReviseSplit(ctx, result, violation)
+		next, err := s.extractor.ReviseSplit(ctx, body, result, violation)
 		if err != nil {
 			return ExtractResult{}, err
 		}
@@ -138,6 +139,9 @@ func validateSplitStructure(result ExtractResult) error {
 	for _, proposed := range result.Memories {
 		if strings.TrimSpace(proposed.Name) == "" {
 			return fmt.Errorf("%w: memory requires a name", ErrEncodeInvalidSplit)
+		}
+		if strings.TrimSpace(proposed.SourceText) == "" {
+			return fmt.Errorf("%w: memory %q requires a source text", ErrEncodeInvalidSplit, proposed.Name)
 		}
 		if _, ok := MoodCoordinate(proposed.Mood); !ok {
 			return fmt.Errorf("%w: mood %q is not in the 13-mood enum", ErrEncodeInvalidSplit, proposed.Mood)
@@ -156,7 +160,7 @@ func validateSplitStructure(result ExtractResult) error {
 
 // repairableViolation returns the re-prompt instruction for the first invariant
 // the result misses, or "" when the result is acceptable.
-func repairableViolation(result ExtractResult) string {
+func repairableViolation(body string, result ExtractResult) string {
 	if !memoryCountInRange(len(result.Memories)) {
 		return fmt.Sprintf(
 			"Return between %d and %d memories, split on event boundaries (place, person, activity, or topic shifts) — never on emotion shifts.",
@@ -172,6 +176,13 @@ func repairableViolation(result ExtractResult) string {
 			)
 		}
 	}
+	if violation := SourceTextViolation(body, result.Memories); violation != "" {
+		return violation
+	}
+	// Last, because it is the only violation the model cannot fix without dropping content:
+	// the source texts must quote the whole diary, so an over-budget result means the diary
+	// itself is too long, and re-prompting for a smaller one would ask the model to break the
+	// coverage rule it was just held to.
 	if estimateOutputTokens(result) > values.EncodeMaxOutputTokens {
 		return "The result is too large. Use shorter memory names and keep only the essential neurons."
 	}
@@ -205,8 +216,12 @@ func estimateOutputTokens(result ExtractResult) int {
 	tokens := 0
 	ascii := len(`{"memories":[]}`)
 	for _, proposed := range result.Memories {
-		ascii += len(`{"name":"","mood":"","neurons":[]},`) + len(proposed.Mood)
+		ascii += len(`{"name":"","mood":"","source_text":"","neurons":[]},`) + len(proposed.Mood)
 		asciiPart, runeTokens := splitCharCounts(proposed.Name)
+		ascii, tokens = ascii+asciiPart, tokens+runeTokens
+		// The source texts quote the whole diary between them, so they dominate this
+		// estimate — the budget is sized for a diary, not for a list of names.
+		asciiPart, runeTokens = splitCharCounts(proposed.SourceText)
 		ascii, tokens = ascii+asciiPart, tokens+runeTokens
 		for _, neuron := range proposed.Neurons {
 			ascii += len(`{"name":"","type":""},`) + len(neuron.Type)

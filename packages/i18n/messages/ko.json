@@ -203,6 +203,8 @@
   "writing_flow_name_label": "이름",
   "writing_flow_emotion_label": "감정",
   "writing_flow_neuron_label": "뉴런",
+  "writing_flow_source_text_label": "기억의 내용",
+  "writing_flow_source_text_hint": "일기에서 이 별이 가져온 부분이에요. 당신이 쓴 말 그대로 담았어요 — 고치고 싶으면 고쳐요.",
   "writing_flow_merge_action": "다음과 합치기",
   "writing_flow_split_memory_action": "둘로 나누기",
   "writing_flow_instruction_placeholder": "말로 고쳐요 — 예: 회의랑 점심을 한 별로 합쳐줘.",

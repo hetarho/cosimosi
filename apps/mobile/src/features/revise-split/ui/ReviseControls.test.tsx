@@ -8,12 +8,19 @@ import { ReviseControls, type EditableMemoryView } from './ReviseControls.tsx'
 
 // The RN counterpart of the web ReviseControls test: both pin the [W4a][I3] editable-surface
 // invariant against the *rendered control set* — the only mutable fields are name, emotion
-// (a bounded selection of MOODS), and neuron membership. Neither platform may expose a control that
-// sets a memory's strength / position / color / time. Web asserts the DOM control set; this asserts
+// (a bounded selection of MOODS), the diary passage, and neuron membership. Neither platform may
+// expose a control that
+// set a memory's strength / position / color / time. Web asserts the DOM control set; this asserts
 // the RN control set, so the mobile Pressable fork can no longer drift a scalar control in unseen.
 
 const memories: EditableMemoryView[] = [
-  { id: 'a', name: 'Morning', mood: 'JOY', neurons: [{ name: 'cafe' }] },
+  {
+    id: 'a',
+    name: 'Morning',
+    mood: 'JOY',
+    sourceText: 'The cafe was quiet.',
+    neurons: [{ name: 'cafe' }],
+  },
 ]
 
 const noop = () => {}
@@ -28,6 +35,7 @@ describe('ReviseControls editable surface (mobile)', () => {
       <ReviseControls
         memories={memories}
         onRename={noop}
+        onSetSourceText={noop}
         onSetMood={noop}
         onMerge={noop}
         onSplit={noop}

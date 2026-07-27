@@ -56,7 +56,7 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 		return LaunchResult{}, fmt.Errorf("%w: diary date %s is in the future",
 			ErrEncodeInputRequired, diaryDate.Format(time.DateOnly))
 	}
-	if err := validateConfirmedSplit(confirmed); err != nil {
+	if err := validateConfirmedSplit(body, confirmed); err != nil {
 		return LaunchResult{}, err
 	}
 
@@ -135,9 +135,10 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 				ID:      s.newID(),
 				DiaryID: diary.ID,
 				Name:    strings.TrimSpace(confirmedMemory.Name),
-				// The initial "current memory text" is the original account —
-				// recall/reconsolidation rewrites it later, never the Diary ([R8a][I2]).
-				CurrentText:         body,
+				// The initial "current memory text" is this memory's own passage of the
+				// diary, in the writer's words — one star, one scene. Recall/
+				// reconsolidation rewrites it later, never the Diary ([R8a][I2]).
+				CurrentText:         strings.TrimSpace(confirmedMemory.SourceText),
 				Seed:                &seed,
 				Emotion:             emotion,
 				BaseStrength:        ArousalToInitialStrength(emotion.Arousal),
@@ -305,7 +306,7 @@ func (s *Service) enqueue(ctx context.Context, scope platform.UserScope, tx Prog
 // memories: count within [encode.min_memories, encode.max_memories] [E2], every
 // memory ≥ encode.min_semantic_neurons semantic neurons [E4], valid mood/type
 // [M1][E3]. Violations are invalid input here — there is no LLM to repair.
-func validateConfirmedSplit(confirmed []ExtractedMemory) error {
+func validateConfirmedSplit(body string, confirmed []ExtractedMemory) error {
 	if !memoryCountInRange(len(confirmed)) {
 		return fmt.Errorf("%w: %d memories outside [%d, %d]",
 			ErrLaunchInvalidMemories, len(confirmed), values.EncodeMinMemories, values.EncodeMaxMemories)
@@ -316,6 +317,14 @@ func validateConfirmedSplit(confirmed []ExtractedMemory) error {
 	for _, confirmedMemory := range confirmed {
 		if !hasRequiredSemanticNeurons(confirmedMemory) {
 			return fmt.Errorf("%w: memory %q carries too few semantic neurons",
+				ErrLaunchInvalidMemories, confirmedMemory.Name)
+		}
+		// A passage is bounded by the diary it came from, but its WORDS are not checked
+		// here: by launch time it may be the writer's own edit, and the writer cannot be
+		// wrong about their own account ([W4]). The fidelity rule guards the extractor
+		// (sourcetext.go), and it already ran in the preview.
+		if len([]rune(confirmedMemory.SourceText)) > len([]rune(body)) {
+			return fmt.Errorf("%w: memory %q carries a source text longer than the diary",
 				ErrLaunchInvalidMemories, confirmedMemory.Name)
 		}
 	}

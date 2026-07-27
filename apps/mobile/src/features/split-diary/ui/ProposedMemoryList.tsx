@@ -10,6 +10,7 @@ export interface ProposedMemoryView {
   readonly id: string
   readonly name: string
   readonly mood: string
+  readonly sourceText: string
   readonly neurons: readonly { readonly name: string }[]
 }
 
@@ -17,14 +18,16 @@ export interface ProposedMemoryListProps {
   readonly memories: readonly ProposedMemoryView[]
 }
 
-// features/split-diary ui (RN): the 2–5 proposed memories, each with name + primary emotion +
-// neuron membership. No position / color / strength / time is shown ([W4a][I3]).
+// features/split-diary ui (RN): the 2–5 proposed memories, each with name + the diary passage it
+// was encoded from + primary emotion + neuron membership. No position / color / strength / time is
+// shown ([W4a][I3]).
 export function ProposedMemoryList({ memories }: ProposedMemoryListProps) {
   return (
     <View style={styles.list}>
       {memories.map((memory) => (
         <View key={memory.id} style={styles.card}>
           <Text style={styles.name}>{memory.name}</Text>
+          <Text style={styles.sourceText}>{memory.sourceText}</Text>
           <Text style={styles.meta}>
             {m.writing_flow_emotion_label()} {moodLabel(memory.mood)}
           </Text>
@@ -51,6 +54,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   name: { color: tokens.color.text, fontWeight: '500' },
+  sourceText: { color: tokens.color.text, fontSize: 13 },
   meta: { color: tokens.color['text-muted'], fontSize: 13 },
   neurons: { color: tokens.color['text-subtle'], fontSize: 13 },
 })

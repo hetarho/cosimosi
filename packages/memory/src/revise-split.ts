@@ -6,6 +6,7 @@ import { createMemoryClient, type SplitDiaryResponse } from '@cosimosi/api-clien
 export interface ProposedMemoryInput {
   readonly name: string
   readonly mood: string
+  readonly sourceText: string
   readonly neurons: readonly { readonly name: string; readonly type: string }[]
 }
 
@@ -31,6 +32,7 @@ export async function requestReviseSplit(
       memories: input.previous.map((memory) => ({
         name: memory.name,
         mood: memory.mood,
+        sourceText: memory.sourceText,
         neurons: memory.neurons.map((neuron) => ({ name: neuron.name, type: neuron.type })),
       })),
     },

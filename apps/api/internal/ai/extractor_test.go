@@ -79,10 +79,11 @@ func TestRevisePromptRestatesTheRulesAndThePriorSplit(t *testing.T) {
 	prior := memory.ExtractResult{Memories: []memory.ExtractedMemory{{
 		Name:    "아침 출근길",
 		Mood:    memory.MoodRelief,
-		Neurons: []memory.ExtractedNeuron{{Name: "지하철", Type: memory.NeuronTypeSpatial}},
+		SourceText: "아침에 지하철을 탔다",
+		Neurons:    []memory.ExtractedNeuron{{Name: "지하철", Type: memory.NeuronTypeSpatial}},
 	}}}
 
-	prompt := revisePrompt(prior, "출근길과 점심을 한 별로 합쳐줘")
+	prompt := revisePrompt("아침 출근길 지하철을 탔다", prior, "출근길과 점심을 한 별로 합쳐줘")
 
 	for name, fragment := range map[string]string{
 		"the extraction rules":  "EVENT boundaries",
@@ -90,7 +91,10 @@ func TestRevisePromptRestatesTheRulesAndThePriorSplit(t *testing.T) {
 		"the prior memory name": "아침 출근길",
 		"the prior mood":        "RELIEF",
 		"the prior neuron":      "지하철 (spatial)",
+		"the prior passage":     "아침에 지하철을 탔다",
 		"the instruction":       "출근길과 점심을 한 별로 합쳐줘",
+		// A revise must re-quote from the diary; the prior split is what it is correcting.
+		"the diary body": "아침 출근길 지하철을 탔다",
 	} {
 		if !strings.Contains(prompt, fragment) {
 			t.Errorf("revise prompt is missing %s (%q)", name, fragment)

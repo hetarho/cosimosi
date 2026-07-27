@@ -24,11 +24,10 @@ func (MockExtractor) Split(_ context.Context, body string, _ time.Time, _ []memo
 	return mockExtract(body, ""), nil
 }
 
-func (MockExtractor) ReviseSplit(_ context.Context, prior memory.ExtractResult, instruction string) (memory.ExtractResult, error) {
-	body := instruction
-	if len(prior.Memories) > 0 {
-		body = prior.Memories[0].Name + " " + instruction
-	}
+// The revise mock re-splits the DIARY, not the instruction: the passages it returns must still
+// quote the writer, so the body is the only text it may draw them from. The instruction only
+// salts the names, which is what makes a revise visibly different from the split it corrects.
+func (MockExtractor) ReviseSplit(_ context.Context, body string, _ memory.ExtractResult, instruction string) (memory.ExtractResult, error) {
 	return mockExtract(body, instruction), nil
 }
 
@@ -122,12 +121,28 @@ func mockExtract(body string, salt string) memory.ExtractResult {
 			},
 		)
 		memories = append(memories, memory.ExtractedMemory{
-			Name:    fmt.Sprintf("%s %d", name, i+1),
-			Mood:    mockMood(fmt.Sprintf("%s%s%d", body, salt, i)),
-			Neurons: neurons,
+			Name:       fmt.Sprintf("%s %d", name, i+1),
+			Mood:       mockMood(fmt.Sprintf("%s%s%d", body, salt, i)),
+			SourceText: mockSourceText(body, i, count),
+			Neurons:    neurons,
 		})
 	}
 	return memory.ExtractResult{Memories: memories}
+}
+
+// mockSourceText cuts the body into consecutive word runs, one per mock memory. Consecutive
+// (not the round-robin tokenSlice deals for neuron names) because the passages must partition
+// the diary verbatim to satisfy the fidelity and coverage rules the use-case enforces —
+// tokenSlice dedupes, so its output would under-cover a diary that repeats a word. A body with
+// fewer words than memories gives every memory the whole body: still verbatim, still covering.
+func mockSourceText(body string, index int, count int) string {
+	words := strings.Fields(body)
+	if len(words) < count {
+		return body
+	}
+	start := index * len(words) / count
+	end := (index + 1) * len(words) / count
+	return strings.Join(words[start:end], " ")
 }
 
 // tokenSlice deals the body tokens round-robin across the mock memories so each

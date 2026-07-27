@@ -177,12 +177,12 @@ func (e resolvingExtractor) Split(ctx context.Context, body string, diaryDate ti
 	return a.Extractor.Split(ctx, body, diaryDate, existing)
 }
 
-func (e resolvingExtractor) ReviseSplit(ctx context.Context, prior memory.ExtractResult, instruction string) (memory.ExtractResult, error) {
+func (e resolvingExtractor) ReviseSplit(ctx context.Context, body string, prior memory.ExtractResult, instruction string) (memory.ExtractResult, error) {
 	a, err := e.r.current(ctx)
 	if err != nil {
 		return memory.ExtractResult{}, err
 	}
-	return a.Extractor.ReviseSplit(ctx, prior, instruction)
+	return a.Extractor.ReviseSplit(ctx, body, prior, instruction)
 }
 
 type resolvingEmbedder struct{ r *ResolvingAdapters }

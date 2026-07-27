@@ -70,6 +70,7 @@ export function WritingFlowSheet() {
   const setFromResponse = useProposalStore((state) => state.setFromResponse)
   const rename = useProposalStore((state) => state.rename)
   const setMood = useProposalStore((state) => state.setMood)
+  const setSourceText = useProposalStore((state) => state.setSourceText)
   const merge = useProposalStore((state) => state.merge)
   const splitMemory = useProposalStore((state) => state.split)
   const resetProposal = useProposalStore((state) => state.reset)
@@ -219,6 +220,9 @@ export function WritingFlowSheet() {
                 busy={busy}
                 onRename={(index, name) => editThen(() => rename(index, name))}
                 onSetMood={(index, mood) => editThen(() => setMood(index, mood))}
+                onSetSourceText={(index, sourceText) =>
+                  editThen(() => setSourceText(index, sourceText))
+                }
                 onMerge={(index) => editThen(() => merge(index))}
                 onSplit={(index) => editThen(() => splitMemory(index))}
                 onRevise={runRevise}

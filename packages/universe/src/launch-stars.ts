@@ -8,10 +8,12 @@ import type { EpisodicMemory } from '@cosimosi/memory'
 
 import { useEpisodicMemoryStore } from './episodic-memory-store.ts'
 
-// The confirmed split as plain values (the editable surface: name / mood / neuron membership only).
+// The confirmed split as plain values (the editable surface: name / mood / source text / neuron
+// membership).
 export interface ConfirmedMemoryInput {
   readonly name: string
   readonly mood: string
+  readonly sourceText: string
   readonly neurons: readonly { readonly name: string; readonly type: string }[]
 }
 
@@ -36,6 +38,7 @@ export async function requestLaunchStars(
     memories: input.memories.map((memory) => ({
       name: memory.name,
       mood: memory.mood,
+      sourceText: memory.sourceText,
       neurons: memory.neurons.map((neuron) => ({ name: neuron.name, type: neuron.type })),
     })),
   })
@@ -89,10 +92,11 @@ function optimisticMemory(
     seed: null,
     activations: [],
     // A freshly launched star is vivid: no decay-stage text yet, no neighbor offset. The current
-    // text is not in the confirmed-split input; it arrives on the next GetUniverse read.
+    // text starts as the confirmed passage — the same value the server writes — so the star opens
+    // with its own scene instead of blank until the next GetUniverse read.
     decayStages: [],
     forgettingOffsetDays: 0,
-    currentText: '',
+    currentText: memory.sourceText,
     // A just-launched memory has risen no gist stage yet ([C6a] — the timer starts now).
     semanticStage: 0,
   }

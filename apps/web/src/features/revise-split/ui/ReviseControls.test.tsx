@@ -8,15 +8,27 @@ import { defaultLocale, setActiveLocale } from '../../../shared/i18n/index.ts'
 import { ReviseControls, type EditableMemoryView } from './ReviseControls.tsx'
 
 const memories: EditableMemoryView[] = [
-  { id: 'a', name: 'Morning', mood: 'JOY', neurons: [{ name: 'cafe' }] },
-  { id: 'b', name: 'Meeting', mood: 'STRESS', neurons: [{ name: 'office' }] },
+  {
+    id: 'a',
+    name: 'Morning',
+    mood: 'JOY',
+    sourceText: 'The cafe was quiet.',
+    neurons: [{ name: 'cafe' }],
+  },
+  {
+    id: 'b',
+    name: 'Meeting',
+    mood: 'STRESS',
+    sourceText: 'The office meeting ran long.',
+    neurons: [{ name: 'office' }],
+  },
 ]
 
 const noop = () => {}
 
 // The web half of the [W4a][I3] editable-surface invariant: the only mutable fields are name,
-// emotion (a bounded selection of MOODS), and neuron membership — never a control that sets a
-// memory's strength / position / color / time. The mobile Pressable fork asserts the same control
+// emotion (a bounded selection of MOODS), the diary passage, and neuron membership — never a
+// control that sets a memory's strength / position / color / time. The mobile Pressable fork asserts the same control
 // set in its own ReviseControls.test.tsx so the invariant holds on both platforms.
 describe('ReviseControls editable surface', () => {
   beforeEach(() => {
@@ -29,6 +41,7 @@ describe('ReviseControls editable surface', () => {
         memories,
         onRename: noop,
         onSetMood: noop,
+        onSetSourceText: noop,
         onMerge: noop,
         onSplit: noop,
         onRevise: noop,

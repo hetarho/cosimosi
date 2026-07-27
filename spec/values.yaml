@@ -144,7 +144,10 @@ ai:
   # Voyage 4-family embeddings default to 1024 dimensions while still allowing smaller/larger Matryoshka outputs.
   embedding_dim: 1024
   # Generic max-output guard for one real LLM call; provider/model specifics stay runtime config.
-  per_call_token_cap: 1200
+  # Sits above encode.max_output_tokens — the encode split is the largest response the product
+  # asks for (it carries the diary redistributed across the memories), so a call that outgrows
+  # its own use-case guard is caught there first, with this as the backstop for every other call.
+  per_call_token_cap: 7000
   # Real AI adapters meter billable calls per user on a UTC calendar-day window.
   daily_call_cap: 200
   # Worker failures retry this many total attempts before the row is kept as failed.
@@ -219,7 +222,26 @@ encode:
   max_revise_retries: 3
   # Output budget the use-case enforces on the returned split (estimated tokens);
   # kept below ai.per_call_token_cap so the encode guard trips before the generic guard.
-  max_output_tokens: 1000
+  # The split carries each memory's source_text, so the response holds the diary
+  # redistributed across the memories — the budget is sized for the diary itself, not for
+  # a handful of names. Korean runes count one token each in the estimate, so this admits
+  # roughly a 5000-character entry plus the JSON structure around it.
+  max_output_tokens: 6000
+  # Fraction of the diary's tokens the source_texts must jointly account for. Below 1.0
+  # because sentence-boundary repair legitimately drops connective fragments; high enough
+  # that a split silently discarding a scene is a repair condition ([E1] partitions the
+  # diary, it does not sample it).
+  source_text_min_coverage: 0.9
+  # Fraction of one source_text's tokens allowed to differ from the diary verbatim. This is
+  # the repair budget — typo fixes plus the ending fixed at a cut edge. A passage needs one
+  # or two; a model paraphrasing under the guise of repair needs far more. Applied as
+  # max(1, ceil(ratio x tokens)) so a short passage still gets its one cut-edge repair.
+  source_text_max_repaired_ratio: 0.1
+  # Edit distance within which a non-verbatim token still counts as a repair of a diary
+  # token rather than a substitution for it. Sized for the longest legitimate ending change
+  # at a cut edge ("먹었는데" -> "먹었다" is 3); a typo is 1. A substituted word is caught by
+  # the shared-first-character rule regardless of distance, so this can afford the headroom.
+  source_text_max_repair_edit_distance: 3
   # Embedding-assist dedup: minimum cosine similarity for a neuron to surface as a
   # canonicalization candidate. Conservative — only near-identical wordings qualify,
   # keeping the merge bias toward "true synonyms only".

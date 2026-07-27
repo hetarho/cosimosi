@@ -2,17 +2,18 @@ import { useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import { MOODS } from '@cosimosi/emotion'
-import { Button, TextField } from '@cosimosi/ui'
+import { Button, TextArea, TextField } from '@cosimosi/ui'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
-// The editable view — only name / mood / neuron membership; there is structurally no field for
-// position / color / strength / time here ([W4a][I3]).
+// The editable view — only name / mood / source text / neuron membership; there is structurally no
+// field for position / color / strength / time here ([W4a][I3]).
 export interface EditableMemoryView {
   /** Session-local key for stable reconciliation across merge/split reorder; not a wire/visible field. */
   readonly id: string
   readonly name: string
   readonly mood: string
+  readonly sourceText: string
   readonly neurons: readonly { readonly name: string }[]
 }
 
@@ -20,6 +21,7 @@ export interface ReviseControlsProps {
   readonly memories: readonly EditableMemoryView[]
   readonly onRename: (index: number, name: string) => void
   readonly onSetMood: (index: number, mood: string) => void
+  readonly onSetSourceText: (index: number, sourceText: string) => void
   /** Merge memory `index` with the one after it. */
   readonly onMerge: (index: number) => void
   /** Split memory `index` into two. */
@@ -29,8 +31,8 @@ export interface ReviseControlsProps {
   readonly busy?: boolean
 }
 
-// features/revise-split ui: the hand-edit controls (rename · primary-emotion selection · memory
-// merge/split — the neuron-membership edits [W4][E10]) PLUS the natural-language instruction that
+// features/revise-split ui: the hand-edit controls (rename · primary-emotion selection · passage
+// correction · memory merge/split — the neuron-membership edits [W4][E10]) PLUS the natural-language instruction that
 // re-runs the split ([W4a]). Both reach the same result; the widget applies hand-edits locally and
 // replaces the proposal on an NL revise. Merge/split honor the encode 2–5 bound ([E2], surfaced
 // from generated config, never hardcoded).
@@ -38,6 +40,7 @@ export function ReviseControls({
   memories,
   onRename,
   onSetMood,
+  onSetSourceText,
   onMerge,
   onSplit,
   onRevise,
@@ -59,6 +62,13 @@ export function ReviseControls({
               label={m.writing_flow_name_label()}
               value={memory.name}
               onChange={(event) => onRename(index, event.target.value)}
+            />
+            <TextArea
+              label={m.writing_flow_source_text_label()}
+              description={m.writing_flow_source_text_hint()}
+              value={memory.sourceText}
+              rows={4}
+              onChange={(event) => onSetSourceText(index, event.target.value)}
             />
             <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
               <span>{m.writing_flow_emotion_label()}</span>

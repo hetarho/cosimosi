@@ -90,7 +90,7 @@ const (
 // ai
 const (
 	AiEmbeddingDim             = 1024
-	AiPerCallTokenCap          = 1200
+	AiPerCallTokenCap          = 7000
 	AiDailyCallCap             = 200
 	AiJobMaxAttempts           = 5
 	AiJobBackoffBaseMs         = 60000
@@ -146,15 +146,18 @@ const (
 
 // encode
 const (
-	EncodeMinMemories              = 2
-	EncodeMaxMemories              = 5
-	EncodeMinSemanticNeurons       = 1
-	EncodeMaxReviseRetries         = 3
-	EncodeMaxOutputTokens          = 1000
-	EncodeDedupSimilarityThreshold = 0.85
-	EncodeDedupTopK                = 8
-	EncodeDedupBodyMatchLimit      = 32
-	EncodeActivationWeight         = 1
+	EncodeMinMemories                     = 2
+	EncodeMaxMemories                     = 5
+	EncodeMinSemanticNeurons              = 1
+	EncodeMaxReviseRetries                = 3
+	EncodeMaxOutputTokens                 = 6000
+	EncodeSourceTextMinCoverage           = 0.9
+	EncodeSourceTextMaxRepairedRatio      = 0.1
+	EncodeSourceTextMaxRepairEditDistance = 3
+	EncodeDedupSimilarityThreshold        = 0.85
+	EncodeDedupTopK                       = 8
+	EncodeDedupBodyMatchLimit             = 32
+	EncodeActivationWeight                = 1
 )
 
 // synapse

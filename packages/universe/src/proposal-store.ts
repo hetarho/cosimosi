@@ -7,6 +7,7 @@ import {
   mergeMemory,
   renameMemory,
   setMemoryMood,
+  setMemorySourceText,
   splitMemory,
   type ProposedMemoryDraft,
 } from './proposal.ts'
@@ -19,6 +20,7 @@ export interface ProposalState {
   setFromResponse: (response: SplitDiaryResponse) => void
   rename: (index: number, name: string) => void
   setMood: (index: number, mood: string) => void
+  setSourceText: (index: number, sourceText: string) => void
   merge: (index: number) => void
   split: (index: number) => void
   reset: () => void
@@ -31,6 +33,8 @@ export const useProposalStore = create<ProposalState>()((set) => ({
     set((state) => ({ memories: renameMemory(state.memories, index, name) })),
   setMood: (index, mood) =>
     set((state) => ({ memories: setMemoryMood(state.memories, index, mood) })),
+  setSourceText: (index, sourceText) =>
+    set((state) => ({ memories: setMemorySourceText(state.memories, index, sourceText) })),
   merge: (index) => set((state) => ({ memories: mergeMemory(state.memories, index) })),
   split: (index) => set((state) => ({ memories: splitMemory(state.memories, index) })),
   reset: () => set({ memories: [] }),

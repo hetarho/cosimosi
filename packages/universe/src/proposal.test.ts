@@ -15,6 +15,7 @@ const sample: ProposedMemoryDraft[] = [
     id: 'a',
     name: 'Morning',
     mood: 'JOY',
+    sourceText: 'The cafe was quiet. I read for an hour.',
     neurons: [
       { name: 'cafe', type: 'entity' },
       { name: 'quiet', type: 'semantic' },
@@ -24,23 +25,38 @@ const sample: ProposedMemoryDraft[] = [
     id: 'b',
     name: 'Meeting',
     mood: 'STRESS',
+    sourceText: 'The office meeting ran long.',
     neurons: [
       { name: 'quiet', type: 'semantic' },
       { name: 'office', type: 'spatial' },
     ],
   },
-  { id: 'c', name: 'Evening', mood: 'CALM', neurons: [{ name: 'home', type: 'spatial' }] },
+  {
+    id: 'c',
+    name: 'Evening',
+    mood: 'CALM',
+    sourceText: 'Home at last.',
+    neurons: [{ name: 'home', type: 'spatial' }],
+  },
 ]
 
 describe('draftsFromResponse', () => {
   it('maps a split response to the editable proposal (name / mood / membership)', () => {
     const response = {
-      memories: [{ name: 'A', mood: 'JOY', neurons: [{ name: 'n1', type: 'entity' }] }],
+      memories: [
+        {
+          name: 'A',
+          mood: 'JOY',
+          sourceText: 'A happened.',
+          neurons: [{ name: 'n1', type: 'entity' }],
+        },
+      ],
     } as unknown as SplitDiaryResponse
     const [draft] = draftsFromResponse(response)
     expect(draft).toMatchObject({
       name: 'A',
       mood: 'JOY',
+      sourceText: 'A happened.',
       neurons: [{ name: 'n1', type: 'entity' }],
     })
   })
@@ -101,7 +117,13 @@ describe('hand-edit helpers', () => {
 
   it('splits a single-neuron memory by copying the neuron to both sides', () => {
     const one: ProposedMemoryDraft[] = [
-      { id: 'solo', name: 'Solo', mood: 'CALM', neurons: [{ name: 'sea', type: 'entity' }] },
+      {
+        id: 'solo',
+        name: 'Solo',
+        mood: 'CALM',
+        sourceText: 'The sea was flat.',
+        neurons: [{ name: 'sea', type: 'entity' }],
+      },
     ]
     const next = splitMemory(one, 0)
     expect(next).toHaveLength(2)
@@ -114,6 +136,7 @@ describe('hand-edit helpers', () => {
       id: `x${index}`,
       name: `M${index}`,
       mood: 'CALM',
+      sourceText: `Scene ${index}.`,
       neurons: [{ name: 'n', type: 'entity' }],
     }))
     expect(splitMemory(five, 0)).toEqual(five)

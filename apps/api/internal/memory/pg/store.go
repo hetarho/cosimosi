@@ -78,6 +78,7 @@ func (s Store) InsertEpisodicMemory(ctx context.Context, scope platform.UserScop
 		UserID:                   scope.UserID(),
 		DiaryID:                  episodicMemory.DiaryID,
 		Name:                     episodicMemory.Name,
+		SourceText:               pgtype.Text{String: episodicMemory.SourceText, Valid: episodicMemory.SourceText != ""},
 		CurrentText:              episodicMemory.CurrentText,
 		Seed:                     pgInt8(episodicMemory.Seed),
 		Mood:                     string(episodicMemory.Emotion.Mood),
@@ -665,6 +666,7 @@ func mapEpisodicMemory(row dbgen.InsertEpisodicMemoryRow) memory.EpisodicMemory 
 		ID:          row.ID,
 		DiaryID:     row.DiaryID,
 		Name:        row.Name,
+		SourceText:  row.SourceText.String,
 		CurrentText: row.CurrentText,
 		Seed:        int64Ptr(row.Seed),
 		Emotion: memory.Emotion{
