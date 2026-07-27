@@ -152,6 +152,14 @@ The primitive API is plan 09's and does not change here; this is how those primi
   that blooms on hover.
 - **Fields** are recessed wells: a carved inner shadow, a hairline rim, the scene faintly readable
   through them. Colour never enters the fill — validation rides the border and the focus ring.
+- **A bounded choice is a picker, and it wears the same well.** The affordance says the set is closed —
+  the user chooses from what exists and cannot extend it — which is why a mood is a picker and not a
+  free field. **The platform control is kept, deliberately**: on web the element is a real `<select>`, so
+  the option menu is the OS's and its keyboard, type-ahead and assistive-tech behaviour are inherited
+  rather than approximated. The design system supplies only the material, so a picker and a text field
+  read as one family. React Native has no such element, so there the field opens a modal option list —
+  ours, so it borrows the dialog's manners: dismissing changes nothing, and the current value is marked.
+  Where a chip row would sprawl across a small screen, the picker collapses it.
 - **Badges** are outline-first: colour lives in the rim, the text, and an optional dot; the fill
   stays a whisper. Over the raw universe they raise their fill (`data-on-scene`) so small text keeps
   its contrast.

@@ -1,8 +1,8 @@
-import { useId, useState } from 'react'
+import { useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import { MOODS } from '@cosimosi/emotion'
-import { Button, TextArea, TextField } from '@cosimosi/ui'
+import { Button, Select, TextArea, TextField } from '@cosimosi/ui'
 
 import { MoodDot, NeuronChips } from '../../../entities/episodic-memory/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
@@ -31,13 +31,6 @@ export interface ReviseControlsProps {
   readonly onRevise: (instruction: string) => void
   readonly busy?: boolean
 }
-
-// There is no Select primitive in the design system, so the native control wears the design
-// system's own field recipe (`field-surface` — the recessed well, its focus ring and validation
-// rim included) instead of a rim and fill painted on here. Geometry matches TextField `md`.
-const SELECT_CLASS =
-  'field-surface w-full rounded-lg px-3 text-base text-text h-10 ' +
-  'disabled:opacity-50 disabled:pointer-events-none'
 
 // features/revise-split ui: the hand-edit controls (rename · primary-emotion selection · passage
 // correction · memory merge/split — the neuron-membership edits [W4][E10]) PLUS the natural-language instruction that
@@ -136,6 +129,9 @@ export function ReviseControls({
 // The mood field mirrors TextField's label rhythm, and the selected mood's colour rides beside the
 // label as a dot — the emotion is domain output shown next to the control, never mixed into the
 // control's own fill (§2.3). The label still carries the meaning, so the dot can be ignored.
+// The emotion is a BOUNDED selection of MOODS and nothing else ([W4a][I3]): no scalar, no date, no
+// colour. A picker is the affordance that says so — the set is the whole set, and the user cannot
+// extend it.
 function MoodField({
   mood,
   disabled,
@@ -145,26 +141,22 @@ function MoodField({
   disabled?: boolean
   onChange: (mood: string) => void
 }) {
-  const fieldId = useId()
+  // Built per render, not once at module load: the labels are i18n output, and a module-scope list
+  // would freeze them at whatever locale happened to be active when the bundle evaluated.
+  const items = MOODS.map((option) => ({ value: option, label: moodLabel(option) }))
+
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={fieldId} className="flex items-center gap-2 text-sm font-medium text-text">
-        <MoodDot mood={mood} />
-        {m.writing_flow_emotion_label()}
-      </label>
-      <select
-        id={fieldId}
-        className={SELECT_CLASS}
-        value={mood}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {MOODS.map((option) => (
-          <option key={option} value={option}>
-            {moodLabel(option)}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      items={items}
+      value={mood}
+      onValueChange={onChange}
+      disabled={disabled}
+      label={
+        <span className="flex items-center gap-2">
+          <MoodDot mood={mood} />
+          {m.writing_flow_emotion_label()}
+        </span>
+      }
+    />
   )
 }

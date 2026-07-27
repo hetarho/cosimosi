@@ -1,9 +1,10 @@
-import { render } from '@testing-library/react-native'
+import { render, userEvent } from '@testing-library/react-native'
 import { TextInput } from 'react-native'
 
 import { MOODS } from '@cosimosi/emotion'
 import { defaultLocale, setActiveLocale } from '@cosimosi/i18n'
 
+import { m } from '../../../shared/i18n/index.ts'
 import { ReviseControls, type EditableMemoryView } from './ReviseControls.tsx'
 
 // The RN counterpart of the web ReviseControls test: both pin the [W4a][I3] editable-surface
@@ -30,7 +31,8 @@ describe('ReviseControls editable surface (mobile)', () => {
     setActiveLocale(defaultLocale)
   })
 
-  it('exposes only name / emotion selection / neuron membership — no strength/position/time control', () => {
+  it('exposes only name / emotion selection / neuron membership — no strength/position/time control', async () => {
+    const user = userEvent.setup()
     const view = render(
       <ReviseControls
         memories={memories}
@@ -47,14 +49,18 @@ describe('ReviseControls editable surface (mobile)', () => {
     expect(view.getByDisplayValue('Morning')).toBeTruthy()
     expect(view.getByText(/cafe/)).toBeTruthy()
 
-    // Emotion is a *bounded selection* of the fixed mood set: one selectable chip per mood (they
-    // are the buttons carrying a `selected` state), with exactly one currently selected. A
-    // pick-from-set control, never a free scalar.
-    const moodChips = view
+    // Emotion is a *bounded selection* of the fixed mood set. The affordance is a picker now, so the
+    // probe follows it through the trigger into its option list — the set has to be provably the whole
+    // set and nothing more, whatever the control looks like.
+    const trigger = view.getByLabelText(m.writing_flow_emotion_label())
+    expect(trigger.props.accessibilityState?.expanded).toBe(false)
+    await user.press(trigger)
+
+    const options = view
       .getAllByRole('button')
       .filter((node) => node.props.accessibilityState?.selected !== undefined)
-    expect(moodChips).toHaveLength(MOODS.length)
-    expect(moodChips.filter((node) => node.props.accessibilityState.selected)).toHaveLength(1)
+    expect(options).toHaveLength(MOODS.length)
+    expect(options.filter((node) => node.props.accessibilityState.selected)).toHaveLength(1)
 
     // The closed surface: nothing adjustable (slider/stepper) exists, and no text field takes a
     // numeric/date entry — the RN affordances that could set strength/position/time.

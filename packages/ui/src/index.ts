@@ -57,6 +57,8 @@ export type {
   AlertOwnProps,
   CardOwnProps,
   SkeletonOwnProps,
+  SelectItem,
+  SelectOwnProps,
   TabItem,
   TabsOwnProps,
 } from './primitives/types.ts'
@@ -64,6 +66,7 @@ export type {
 export { Button, type ButtonProps } from './primitives/button.tsx'
 export { IconButton, type IconButtonProps } from './primitives/icon-button.tsx'
 export { TextField, type TextFieldProps } from './primitives/text-field.tsx'
+export { Select, type SelectProps } from './primitives/select.tsx'
 export { TextArea, type TextAreaProps } from './primitives/text-area.tsx'
 export { Switch, type SwitchProps } from './primitives/switch.tsx'
 export { Checkbox, type CheckboxProps } from './primitives/checkbox.tsx'

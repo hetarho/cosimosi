@@ -94,6 +94,13 @@ export const T = {
   fieldEmailError: 'Enter a valid email',
   fieldNote: 'Note',
   fieldNotePlaceholder: 'Write something…',
+  selectLabel: 'Bounded choice',
+  selectHint:
+    "The trigger wears the same well; the list is ours, so it borrows the dialog's manners.",
+  selectError: 'Pick one to continue',
+  selectFirst: 'First option',
+  selectSecond: 'Second option',
+  selectThird: 'Third option',
   switchLabel: 'Wi-Fi',
   checkboxLabel: 'Remember this choice',
   tooltipTrigger: 'Press and hold',

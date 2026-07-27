@@ -12,6 +12,7 @@ import { IconButton } from './icon-button.tsx'
 import { Skeleton } from './skeleton.tsx'
 import { Switch } from './switch.tsx'
 import { Tabs } from './tabs.tsx'
+import { Select } from './select.tsx'
 import { TextField } from './text-field.tsx'
 import { Toast } from './toast.tsx'
 import { Tooltip } from './tooltip.tsx'
@@ -78,6 +79,63 @@ describe('TextField', () => {
     const describedBy = input.getAttribute('aria-describedby') ?? ''
     expect(describedBy.split(' ')).toHaveLength(2)
     expect(screen.getByText('Required')).toBeInTheDocument()
+  })
+})
+
+describe('Select', () => {
+  const items = [
+    { value: 'calm', label: 'Calm' },
+    { value: 'joy', label: 'Joy' },
+  ] as const
+
+  it('associates label, description and error like the other fields', () => {
+    render(
+      <Select
+        items={items}
+        value="calm"
+        onValueChange={() => {}}
+        label="Mood"
+        description="How it felt"
+        error="Pick one"
+      />,
+    )
+    const select = screen.getByLabelText('Mood')
+    expect(select).toHaveAttribute('aria-invalid', 'true')
+    // ONE aria-describedby carrying both, in reading order — two attributes would let a reader hear the
+    // description and miss why the field is invalid.
+    const describedBy = select.getAttribute('aria-describedby') ?? ''
+    expect(describedBy.split(' ')).toHaveLength(2)
+    expect(screen.getByText('Pick one')).toBeInTheDocument()
+  })
+
+  it('is a real select, so the keyboard works without being re-implemented', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(<Select items={items} value="calm" onValueChange={onValueChange} label="Mood" />)
+    const select = screen.getByRole('combobox', { name: 'Mood' })
+
+    expect(select.tagName).toBe('SELECT')
+    expect(screen.getAllByRole('option')).toHaveLength(items.length)
+    await user.selectOptions(select, 'joy')
+    expect(onValueChange).toHaveBeenCalledWith('joy')
+  })
+
+  it('is named by ariaLabel when it carries no visible label', () => {
+    render(<Select items={items} value="calm" onValueChange={() => {}} ariaLabel="Mood" />)
+    expect(screen.getByRole('combobox', { name: 'Mood' })).toBeInTheDocument()
+  })
+
+  it('blocks interaction when disabled', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <Select items={items} value="calm" onValueChange={onValueChange} label="Mood" disabled />,
+    )
+    const select = screen.getByRole('combobox', { name: 'Mood' })
+
+    expect(select).toBeDisabled()
+    await user.click(select)
+    expect(onValueChange).not.toHaveBeenCalled()
   })
 })
 

@@ -8,6 +8,7 @@ import {
   Checkbox,
   Dialog,
   IconButton,
+  Select,
   Skeleton,
   Switch,
   TextArea,
@@ -59,6 +60,14 @@ const INTERACTIVE_STATES: readonly PreviewState[] = [
   'loading',
 ]
 const SURFACE_STATES: readonly PreviewState[] = ['default', 'hover', 'focus', 'disabled']
+
+// A bounded set, shown as one: the specimen exists so a reviewer can see the well, the sizes and the
+// invalid rim on a picker, not to demonstrate a domain vocabulary.
+const SELECT_ITEMS = [
+  { value: 'first', label: 'First option' },
+  { value: 'second', label: 'Second option' },
+  { value: 'third', label: 'Third option' },
+] as const
 
 export function PrimitivesPanel() {
   return (
@@ -258,10 +267,58 @@ function FieldSection() {
         />
         <TextField label={T.fieldInvalid} error={T.fieldError} placeholder={T.fieldPlaceholder} />
         <TextField label={T.fieldDisabled} placeholder={T.fieldPlaceholder} disabled />
+        <Select
+          label={T.selectLabel}
+          items={SELECT_ITEMS}
+          value={SELECT_ITEMS[0].value}
+          onValueChange={() => {}}
+        />
+        <Select
+          label={T.selectDescribed}
+          description={T.fieldDescription}
+          items={SELECT_ITEMS}
+          value={SELECT_ITEMS[0].value}
+          onValueChange={() => {}}
+        />
+        <Select
+          label={T.selectInvalid}
+          error={T.fieldError}
+          items={SELECT_ITEMS}
+          value={SELECT_ITEMS[0].value}
+          onValueChange={() => {}}
+        />
+        <Select
+          label={T.selectDisabled}
+          items={SELECT_ITEMS}
+          value={SELECT_ITEMS[0].value}
+          onValueChange={() => {}}
+          disabled
+        />
         <div className="sm:col-span-2">
           <TextArea label={T.textAreaLabel} placeholder={T.textAreaPlaceholder} rows={3} />
         </div>
       </div>
+
+      {/* Focus is the state a screenshot cannot catch, so the review surface stages it explicitly —
+          the same StateMatrix the other fields use. */}
+      <Specimen label={T.selectLabel} note={T.selectStates}>
+        <Stage className="flex-col">
+          <StateMatrix
+            states={SURFACE_STATES}
+            render={(state) => (
+              <div className="w-52">
+                <Select
+                  ariaLabel={T.selectLabel}
+                  items={SELECT_ITEMS}
+                  value={SELECT_ITEMS[0].value}
+                  onValueChange={() => {}}
+                  disabled={state === 'disabled'}
+                />
+              </div>
+            )}
+          />
+        </Stage>
+      </Specimen>
     </Section>
   )
 }

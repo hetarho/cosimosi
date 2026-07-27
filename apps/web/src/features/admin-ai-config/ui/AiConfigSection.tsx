@@ -11,14 +11,10 @@ import {
   createListProviderModelsQueryOptions,
   type ProviderKey,
 } from '@cosimosi/api-client'
-import { Badge, Button, TextField } from '@cosimosi/ui'
+import { Badge, Button, Select, TextField } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast } from '../../../shared/model/index.ts'
-
-// Native select styled to match the design-system field surface (there is no Select primitive).
-const SELECT_CLASS =
-  'field-surface h-10 rounded-lg px-3 text-base text-text disabled:opacity-50 disabled:pointer-events-none'
 
 // Provider API keys are managed once per provider (not per capability). Each capability then selects
 // among the keyed providers. The key input is WRITE-ONLY — only "set/unset" + a masked hint shows.
@@ -226,12 +222,14 @@ function CapabilityRow({
       ) : (
         <>
           <div className="flex flex-wrap items-end gap-3">
-            <select
-              aria-label={label}
-              className={SELECT_CLASS}
+            <Select
+              ariaLabel={label}
+              items={[
+                { value: '', label: m.admin_model_provider_placeholder() },
+                ...providers.map((p) => ({ value: p.provider, label: p.provider })),
+              ]}
               value={provider}
-              onChange={(event) => {
-                const next = event.target.value
+              onValueChange={(next) => {
                 setProvider(next)
                 setCustomEntry(false)
                 // A model id belongs to its provider — carrying one across a provider switch
@@ -240,57 +238,54 @@ function CapabilityRow({
                 // starts from the adapter default.
                 setModel(next === selection?.provider ? selection.model : '')
               }}
-            >
-              <option value="">{m.admin_model_provider_placeholder()}</option>
-              {providers.map((p) => (
-                <option key={p.provider} value={p.provider}>
-                  {p.provider}
-                </option>
-              ))}
-            </select>
+            />
             <div className="min-w-48 flex-1">
               {manualEntry ? (
                 <TextField
                   label={m.admin_ai_model()}
                   placeholder={m.admin_model_placeholder()}
+                  // Why this control replaced the list, said beside it and programmatically associated
+                  // — the field is not invalid, the list is simply missing.
+                  description={listingFailed ? m.admin_model_list_failed() : undefined}
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
                 />
               ) : (
-                <select
-                  aria-label={m.admin_ai_model()}
-                  className={`${SELECT_CLASS} w-full`}
+                <Select
+                  label={m.admin_ai_model()}
+                  items={
+                    modelsQuery.isLoading
+                      ? [{ value: '', label: m.admin_model_loading() }]
+                      : [
+                          { value: '', label: m.admin_model_default_option() },
+                          ...(unlisted
+                            ? [
+                                {
+                                  value: model,
+                                  label: `${model} ${m.admin_model_unlisted_suffix()}`,
+                                },
+                              ]
+                            : []),
+                          ...listedModels.map((entry) => ({
+                            value: entry.id,
+                            label:
+                              entry.displayName !== '' && entry.displayName !== entry.id
+                                ? `${entry.id} — ${entry.displayName}`
+                                : entry.id,
+                          })),
+                          { value: CUSTOM_MODEL_OPTION, label: m.admin_model_custom_option() },
+                        ]
+                  }
                   value={modelsQuery.isLoading ? '' : model}
                   disabled={provider === '' || modelsQuery.isLoading}
-                  onChange={(event) => {
-                    if (event.target.value === CUSTOM_MODEL_OPTION) {
+                  onValueChange={(next) => {
+                    if (next === CUSTOM_MODEL_OPTION) {
                       setCustomEntry(true)
                       return
                     }
-                    setModel(event.target.value)
+                    setModel(next)
                   }}
-                >
-                  {modelsQuery.isLoading ? (
-                    <option value="">{m.admin_model_loading()}</option>
-                  ) : (
-                    <>
-                      <option value="">{m.admin_model_default_option()}</option>
-                      {unlisted ? (
-                        <option value={model}>
-                          {model} {m.admin_model_unlisted_suffix()}
-                        </option>
-                      ) : null}
-                      {listedModels.map((entry) => (
-                        <option key={entry.id} value={entry.id}>
-                          {entry.displayName !== '' && entry.displayName !== entry.id
-                            ? `${entry.id} — ${entry.displayName}`
-                            : entry.id}
-                        </option>
-                      ))}
-                      <option value={CUSTOM_MODEL_OPTION}>{m.admin_model_custom_option()}</option>
-                    </>
-                  )}
-                </select>
+                />
               )}
             </div>
             <Button
@@ -315,9 +310,6 @@ function CapabilityRow({
             </Button>
             {saved ? <span className="text-sm text-text-muted">{m.admin_ai_saved()}</span> : null}
           </div>
-          {listingFailed ? (
-            <span className="text-sm text-danger">{m.admin_model_list_failed()}</span>
-          ) : null}
           {customEntry && !listingFailed ? (
             <button
               type="button"

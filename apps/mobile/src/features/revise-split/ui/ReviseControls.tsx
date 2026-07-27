@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
 import { MOODS } from '@cosimosi/emotion'
-import { Button, TextArea, TextField, tokens } from '@cosimosi/ui'
+import { Button, Select, TextArea, TextField, tokens } from '@cosimosi/ui'
 
 import { MoodDot, NeuronChips } from '../../../entities/episodic-memory/index.ts'
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
@@ -30,14 +30,12 @@ export interface ReviseControlsProps {
 
 // features/revise-split ui (RN fork): hand-edit controls (rename · mood selection · passage
 // correction · memory merge/split — the neuron-membership edits [W4][E10]) + the natural-language
-// instruction ([W4a]). Mood is a chip row (RN has no <select>); merge/split honor the encode 2–5
+// instruction ([W4a]). Mood is a bounded picker; merge/split honor the encode 2–5
 // bound from generated config. Only name / emotion / passage / membership are editable — no
 // position/color/strength/time ([I3]).
 //
 // Visual language (web parity): one rimmed, unfilled card per memory (§5), the structural edits as
-// low-emphasis outlined controls so the launch stays the sheet's only committing action (§6), and
-// the selected mood chip lighting up from its rim and ink rather than filling with a slab of accent
-// (§6 toggles).
+// low-emphasis outlined controls so the launch stays the sheet's only committing action (§6).
 export function ReviseControls({
   memories,
   onRename,
@@ -75,25 +73,15 @@ export function ReviseControls({
                 <MoodDot mood={memory.mood} />
                 <Text style={styles.label}>{m.writing_flow_emotion_label()}</Text>
               </View>
-              <View style={styles.chips}>
-                {MOODS.map((mood) => {
-                  const selected = mood === memory.mood
-                  return (
-                    <Pressable
-                      key={mood}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      disabled={busy}
-                      onPress={() => onSetMood(index, mood)}
-                      style={[styles.chip, selected ? styles.chipSelected : null]}
-                    >
-                      <Text style={selected ? styles.chipTextSelected : styles.chipText}>
-                        {moodLabel(mood)}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
+              {/* The emotion stays a BOUNDED selection of MOODS ([W4a][I3]) — only the affordance
+                  changed. Built per render because the labels are i18n output. */}
+              <Select
+                ariaLabel={m.writing_flow_emotion_label()}
+                items={MOODS.map((mood) => ({ value: mood, label: moodLabel(mood) }))}
+                value={memory.mood}
+                disabled={busy}
+                onValueChange={(mood) => onSetMood(index, mood)}
+              />
             </View>
             <NeuronChips neurons={memory.neurons} />
             <View style={styles.actions}>
@@ -159,21 +147,5 @@ const styles = StyleSheet.create({
   moodField: { gap: tokens.spacing[2] },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[2] },
   label: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '500' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[2] },
-  // Selected lights up from the rim + ink over a quiet raised surface — the same outline-first read
-  // as the Badge, never a solid slab of accent.
-  chip: {
-    borderWidth: 1,
-    borderColor: tokens.color.border,
-    borderRadius: tokens.radius.full,
-    paddingHorizontal: tokens.spacing[3],
-    paddingVertical: tokens.spacing[1],
-  },
-  chipSelected: {
-    borderColor: tokens.color.primary,
-    backgroundColor: tokens.color['surface-raised'],
-  },
-  chipText: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
-  chipTextSelected: { color: tokens.color.primary, fontSize: tokens.fontSize.sm },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[2] },
 })

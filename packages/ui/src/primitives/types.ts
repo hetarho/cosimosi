@@ -130,6 +130,21 @@ export interface TabItem {
   panelId: string
 }
 
+export interface SelectItem {
+  value: string
+  label: string
+}
+
+export interface SelectOwnProps {
+  /** The whole bounded set, in the order it should read. A picker is for a set the user cannot extend. */
+  items: readonly SelectItem[]
+  value: string
+  onValueChange: (value: string) => void
+  /** Accessible name when no visible `label` is given (so the control is never unnamed). */
+  ariaLabel?: string
+  disabled?: boolean
+}
+
 export interface TabsOwnProps {
   items: readonly TabItem[]
   value: string

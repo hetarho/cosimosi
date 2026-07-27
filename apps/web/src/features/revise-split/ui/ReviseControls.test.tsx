@@ -49,6 +49,8 @@ describe('ReviseControls editable surface', () => {
     )
     // The allowed control set: name is editable text, emotion is a bounded <select> offering exactly
     // the fixed mood set (one <option> per mood, per rendered memory), and neuron membership is shown.
+    // The assertion is on the RENDERED control set, not on how the slice builds it — the picker comes
+    // from the design system now, and [W4a][I3] has to hold whatever the affordance is made of.
     expect(html).toContain('value="Morning"')
     expect(html).toContain('<select')
     expect((html.match(/<option/g) ?? []).length).toBe(MOODS.length * memories.length)

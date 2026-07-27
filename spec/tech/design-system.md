@@ -123,10 +123,13 @@ win deterministically through the `style={[base, …, props.style]}` array.
 - Controlled/uncontrolled where conventional (Switch, Checkbox). A control with no
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
-**Shipped now:** Button, IconButton, TextField, TextArea, Switch, Checkbox, Dialog,
+**Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog,
 Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs. **Deferred** (added when a Phase-4
-slice needs them, promote-on-use): Select/Menu, SegmentedControl,
-Slider/Stepper, Drawer.
+slice needs them, promote-on-use): Menu, SegmentedControl, Slider/Stepper, Drawer.
+
+Slider/Stepper stays deferred for a reason worth stating: a continuous scalar has no place on the
+writing flow's editable surface ([W4a][I3]), so the one obvious consumer must never exist. Promoting it
+on use means it arrives only if something else genuinely needs one.
 
 ## 5. Accessibility baseline
 
@@ -140,6 +143,14 @@ Hand-rolled (no headless-UI dependency):
   its own focus), so `useFocusTrap` is web-only.
 - Disabled controls are conveyed visually and semantically (`disabled` / RN
   `accessibilityState`). A loading control is disabled and `aria-busy`.
+- Select is a **bounded choice**, and the platform control is kept rather than rebuilt: web renders a real
+  `<select>`, so the option menu, type-ahead, keyboard model and every assistive-tech affordance are
+  inherited and correct. It carries the same field contract as TextField — label association, one
+  `aria-describedby` carrying description then error, `aria-invalid` when invalid, and `ariaLabel` for a
+  labelless control. RN has no such element, so the native sibling is a field-shaped Pressable
+  (`accessibilityState.expanded`, `accessibilityValue` for the current label) opening an RN `Modal`
+  option list whose options carry `accessibilityState.selected`; `Modal` manages its own focus, exactly
+  as `Dialog` does, so `useFocusTrap` stays web-only. Dismissing the list leaves the value unchanged.
 - Tabs are controlled (`value` + `onValueChange`) so navigation state remains in the app layer. Web exposes a
   labelled `tablist`, `tab`/`tabpanel` relationships, selected state, roving focus, ArrowLeft/ArrowRight wrapping,
   and Home/End movement. Native exposes the same values and labels as a horizontally scrollable

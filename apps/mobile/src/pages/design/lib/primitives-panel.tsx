@@ -8,6 +8,7 @@ import {
   Checkbox,
   Dialog,
   IconButton,
+  Select,
   Skeleton,
   Switch,
   TextArea,
@@ -39,10 +40,19 @@ const SIZES: readonly ControlSize[] = ['sm', 'md', 'lg']
 // out five times — and the catalogue cannot fall behind the type.
 const BADGES: readonly BadgeVariant[] = ['neutral', 'primary', 'success', 'warning', 'danger']
 
+// A bounded set, shown as one: the specimen exists so a reviewer can see the trigger's well, the
+// invalid rim and the option list — not to demonstrate a domain vocabulary.
+const SELECT_ITEMS = [
+  { value: 'first', label: T.selectFirst },
+  { value: 'second', label: T.selectSecond },
+  { value: 'third', label: T.selectThird },
+] as const
+
 export function PrimitivesPanel() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   const [wifi, setWifi] = useState(true)
+  const [pickedOption, setPickedOption] = useState<string>(SELECT_ITEMS[0].value)
   const [remember, setRemember] = useState(false)
 
   return (
@@ -137,6 +147,31 @@ export function PrimitivesPanel() {
           <TextField label={T.fieldEmail} defaultValue="nope" error={T.fieldEmailError} />
           <TextArea label={T.fieldNote} placeholder={T.fieldNotePlaceholder} />
           <TextField label={T.fieldEmail} editable={false} value={T.stateDisabled} />
+          {/* The open option list is the half a web reviewer cannot see — on web it is the OS's menu,
+              here it is ours. It is reviewed by tapping this specimen on a device; the primitive owns
+              its own open state, and adding an `open` prop just to stage a screenshot would put a
+              showcase concern into the API. */}
+          <Select
+            label={T.selectLabel}
+            description={T.selectHint}
+            items={SELECT_ITEMS}
+            value={pickedOption}
+            onValueChange={setPickedOption}
+          />
+          <Select
+            label={T.selectLabel}
+            error={T.selectError}
+            items={SELECT_ITEMS}
+            value={pickedOption}
+            onValueChange={setPickedOption}
+          />
+          <Select
+            label={T.stateDisabled}
+            items={SELECT_ITEMS}
+            value={pickedOption}
+            onValueChange={setPickedOption}
+            disabled
+          />
         </Stage>
       </Specimen>
 

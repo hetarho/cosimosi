@@ -116,6 +116,12 @@ export const T = {
   fieldDisabled: 'Disabled',
   textAreaLabel: 'Text area',
   textAreaPlaceholder: 'Multi-line input',
+  selectLabel: 'Bounded choice',
+  selectDescribed: 'With description',
+  selectInvalid: 'Invalid',
+  selectDisabled: 'Disabled',
+  selectStates:
+    'A real select element wearing the well — the platform menu and its keyboard are inherited, not rebuilt.',
 
   toggleTitle: 'Toggles',
   toggleBlurb:
