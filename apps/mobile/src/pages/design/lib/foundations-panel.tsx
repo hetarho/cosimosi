@@ -38,13 +38,10 @@ const TYPE_ROLES: readonly { role: string; style: object }[] = [
 ]
 
 const SPACING_STEPS = [1, 2, 3, 4, 5, 6, 8] as const
-const RADIUS_STEPS = [
-  { label: 'sm', value: 4 },
-  { label: 'md', value: 8 },
-  { label: 'lg', value: 12 },
-  { label: 'xl', value: 16 },
-  { label: 'full', value: 999 },
-] as const
+const RADIUS_STEPS = (['sm', 'md', 'lg', 'xl', 'full'] as const).map((label) => ({
+  label,
+  value: tokens.radius[label],
+}))
 
 export function FoundationsPanel() {
   return (
@@ -103,12 +100,12 @@ const styles = StyleSheet.create({
   swatch: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: tokens.radius.md,
     borderWidth: 1,
     borderColor: tokens.color.border,
   },
   swatchLabel: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
-  typeRow: { gap: 2 },
+  typeRow: { gap: tokens.spacing[1] },
   typeRole: {
     color: tokens.color['text-subtle'],
     fontSize: tokens.fontSize.xs,
@@ -118,8 +115,8 @@ const styles = StyleSheet.create({
   scaleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[3] },
   scaleLabel: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs, width: 28 },
   scaleValue: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
-  scaleBar: { height: 8, borderRadius: 999, backgroundColor: tokens.color.primary },
-  radiusCell: { alignItems: 'center', gap: 6 },
+  scaleBar: { height: 8, borderRadius: tokens.radius.full, backgroundColor: tokens.color.primary },
+  radiusCell: { alignItems: 'center', gap: tokens.spacing[2] },
   radiusBox: {
     width: 44,
     height: 44,

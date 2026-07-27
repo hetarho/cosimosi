@@ -137,10 +137,10 @@ const styles = StyleSheet.create({
   canvas: { flex: 1 },
   chip: {
     borderColor: tokens.color.border,
-    borderRadius: 999,
+    borderRadius: tokens.radius.full,
     borderWidth: 1,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: tokens.spacing[2],
   },
   chipRow: { flexDirection: 'row', gap: 8 },
   chipSelected: { borderColor: tokens.color.primary },

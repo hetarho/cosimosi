@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   row: {
     alignItems: 'center',
     borderColor: tokens.color.border,
-    borderRadius: 12,
+    borderRadius: tokens.radius.lg,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,

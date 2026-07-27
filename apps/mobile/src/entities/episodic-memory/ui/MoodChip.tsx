@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native'
 
 import { moodColor, type Mood } from '@cosimosi/emotion'
-import { Badge } from '@cosimosi/ui'
+import { Badge, tokens } from '@cosimosi/ui'
 
 import { moodLabel } from '../../../shared/i18n/index.ts'
 
@@ -24,6 +24,6 @@ export function MoodChip({ mood }: { mood: string }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 10, height: 10, borderRadius: 999 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[2] },
+  dot: { width: 10, height: 10, borderRadius: tokens.radius.full },
 })

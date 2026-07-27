@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { color, nativeTokens, space } from './native-styles.ts'
+import { color, nativeTokens, radius, space } from './native-styles.ts'
 import { tokens } from './tokens.ts'
 
 /**
@@ -25,10 +25,19 @@ describe('native token map', () => {
     expect(nativeTokens.color).toBe(color)
   })
 
-  it('keeps every non-colour group identical to the shared map', () => {
+  it('carries radii as numbers, since RN has no rem', () => {
+    for (const [step, value] of Object.entries(nativeTokens.radius)) {
+      expect(typeof value, step).toBe('number')
+    }
+    // Same scale, different encoding: 0.75rem is 12px, and `full` is a pill either way.
+    expect(nativeTokens.radius.lg).toBe(12)
+    expect(nativeTokens.radius).toBe(radius)
+    expect(Object.keys(nativeTokens.radius)).toEqual(Object.keys(tokens.radius))
+  })
+
+  it('keeps the groups RN can already use identical to the shared map', () => {
     expect(nativeTokens.spacing).toBe(tokens.spacing)
     expect(nativeTokens.fontSize).toBe(tokens.fontSize)
-    expect(nativeTokens.radius).toBe(tokens.radius)
     expect(space).toBe(tokens.spacing)
   })
 })

@@ -8,7 +8,10 @@
 // styled from the raw map renders with no ground and no ink. One source, one import name, per-platform
 // encoding — the same arrangement the primitives already use.
 export { nativeTokens as tokens } from './native-styles.ts'
-export { type Tokens, type ColorToken } from './tokens.ts'
+// `Tokens` describes the map this entry actually exports (RN-safe colour + radius), so the type and
+// the value never disagree about what a native consumer is holding.
+export type { NativeTokens as Tokens } from './native-styles.ts'
+export { type ColorToken } from './tokens.ts'
 export { cx } from './lib/cx.ts'
 
 export {

@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   row: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 8,
+    borderRadius: tokens.radius.md,
     backgroundColor: tokens.color.surface,
   },
   header: {
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacing[2],
     paddingVertical: tokens.spacing[1],
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 8, height: 8, borderRadius: tokens.radius.sm },
   chipText: { color: tokens.color.text, fontSize: tokens.fontSize.xs },
   footer: { alignItems: 'center', paddingVertical: tokens.spacing[2] },
 })

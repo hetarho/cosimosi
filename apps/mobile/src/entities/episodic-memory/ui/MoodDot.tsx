@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native'
 
 import { moodColor, type Mood } from '@cosimosi/emotion'
+import { tokens } from '@cosimosi/ui'
 
 // entities/episodic-memory ui (RN fork): a memory's `Emotion` as a bare dot, for the places a chip
 // would be too much — beside a field label, in a dense row. Decorative by construction: the colour is
@@ -17,5 +18,5 @@ export function MoodDot({ mood }: { mood: string }) {
 }
 
 const styles = StyleSheet.create({
-  dot: { width: 10, height: 10, borderRadius: 999 },
+  dot: { width: 10, height: 10, borderRadius: tokens.radius.full },
 })

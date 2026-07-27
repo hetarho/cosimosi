@@ -109,7 +109,9 @@ importance (`text` → `text-muted` → `text-subtle`).
 ## 4. Spacing, density, hierarchy
 
 - One scale (`tokens.spacing`, 4px-based). Density is chosen by picking a step, never by inventing a
-  value between two.
+  value between two. The radius scale works the same way. Both reach React Native through the native
+  token map (`tokens.radius.lg`, not a hand-written `12`) — a scale that a platform cannot read stops
+  being a scale, because the screens quietly write the numbers themselves.
 - **Inside a control** 2–3 · **inside a panel** 4–5 · **between panels** 6–8 · **between page
   sections** the section rhythm (a heading, a rule, then its content).
 - Hierarchy is built in this order, and each is used only when the one before it is not enough:

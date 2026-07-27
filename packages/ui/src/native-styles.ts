@@ -26,19 +26,6 @@ export const color = Object.fromEntries(
   Object.entries(tokens.color).map(([role, value]) => [role, oklchToRnColor(value)]),
 ) as Record<ColorToken, string>
 
-/**
- * The whole token map, with RN-safe colours — what `@cosimosi/ui`'s **native entry** exports as
- * `tokens`, so `tokens.color.bg` is a value React Native can actually paint.
- *
- * `tokens.ts` authors colour in OKLCH for the web pipeline, and RN `StyleSheet` silently DROPS a
- * colour it cannot parse: a screen styled straight from the shared map came out with no ground and no
- * ink at all, while the primitives (which read `color` above) looked right — the failure is invisible
- * until someone looks at a device. Exporting the converted map under the same name keeps one token
- * source and one import for app code; only the encoding differs per platform, exactly as it does for
- * the primitives. `native-tokens.test.ts` holds the line.
- */
-export const nativeTokens = { ...tokens, color } as const
-
 /** Corner radii in px (RN has no rem). */
 export const radius = {
   sm: remToPx(tokens.radius.sm),
@@ -53,3 +40,19 @@ export const space = tokens.spacing
 
 /** Font sizes in px. */
 export const fontSize = tokens.fontSize
+
+/**
+ * The whole token map in the encodings React Native can use — what `@cosimosi/ui`'s **native entry**
+ * exports as `tokens`, so `tokens.color.bg` and `tokens.radius.lg` are values RN can actually apply.
+ *
+ * Two groups need converting, and both failed silently before this existed. Colour is authored in
+ * OKLCH for the web pipeline and RN `StyleSheet` DROPS a colour it cannot parse — a screen styled
+ * from the shared map came out with no ground and no ink while the primitives (reading `color` above)
+ * looked right. Radius is authored in `rem`, which RN has no notion of, so `borderRadius` fell back to
+ * a square corner; the screens worked around it by writing `8` and `999` inline, which is how a
+ * radius scale stops being a scale. Same source, per-platform encoding — the arrangement the
+ * primitives already use. `native-tokens.test.ts` holds the line.
+ */
+export const nativeTokens = { ...tokens, color, radius } as const
+
+export type NativeTokens = typeof nativeTokens

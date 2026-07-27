@@ -152,22 +152,22 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 12,
+    borderRadius: tokens.radius.lg,
     padding: tokens.spacing[4],
     gap: tokens.spacing[3],
   },
-  moodField: { gap: 6 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  moodField: { gap: tokens.spacing[2] },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[2] },
   label: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '500' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing[2] },
   // Selected lights up from the rim + ink over a quiet raised surface — the same outline-first read
   // as the Badge, never a solid slab of accent.
   chip: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderRadius: tokens.radius.full,
+    paddingHorizontal: tokens.spacing[3],
+    paddingVertical: tokens.spacing[1],
   },
   chipSelected: {
     borderColor: tokens.color.primary,

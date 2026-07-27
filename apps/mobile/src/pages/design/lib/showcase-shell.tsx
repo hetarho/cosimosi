@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.color.surface,
     borderColor: tokens.color.border,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: tokens.radius.xl,
     padding: tokens.spacing[4],
     gap: tokens.spacing[3],
   },

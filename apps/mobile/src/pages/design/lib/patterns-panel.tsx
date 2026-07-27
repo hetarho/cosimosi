@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.color.border,
     paddingTop: tokens.spacing[3],
   },
-  starPreview: { width: 48, height: 48, borderRadius: 16 },
+  starPreview: { width: 48, height: 48, borderRadius: tokens.radius.xl },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spacing[2] },
   body: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm, lineHeight: 24 },
   subtle: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.color.bg,
     borderColor: tokens.color.border,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: tokens.radius.xl,
     padding: tokens.spacing[4],
     gap: tokens.spacing[6],
   },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   listRow: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 12,
+    borderRadius: tokens.radius.lg,
     padding: tokens.spacing[3],
     gap: tokens.spacing[2],
   },
@@ -259,9 +259,9 @@ const styles = StyleSheet.create({
   meterTrack: {
     width: 80,
     height: 6,
-    borderRadius: 999,
+    borderRadius: tokens.radius.full,
     backgroundColor: tokens.color.border,
     overflow: 'hidden',
   },
-  meterFill: { height: 6, borderRadius: 999, backgroundColor: tokens.color.primary },
+  meterFill: { height: 6, borderRadius: tokens.radius.full, backgroundColor: tokens.color.primary },
 })

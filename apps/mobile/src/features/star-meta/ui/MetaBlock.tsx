@@ -23,7 +23,7 @@ function StarGlyph({ memory }: { memory: EpisodicMemory }) {
         styles.glyph,
         {
           backgroundColor: moodColor(memory.emotion.mood),
-          borderRadius: 8 + Math.round(seed * 20),
+          borderRadius: tokens.radius.md + Math.round(seed * 20),
           transform: [{ rotate: `${Math.round(seed * 360)}deg` }],
         },
       ]}

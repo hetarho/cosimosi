@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     gap: tokens.spacing[1],
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 8,
+    borderRadius: tokens.radius.md,
     padding: tokens.spacing[3],
   },
   title: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '500' },

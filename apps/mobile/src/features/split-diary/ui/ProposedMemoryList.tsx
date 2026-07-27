@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 12,
+    borderRadius: tokens.radius.lg,
     paddingHorizontal: tokens.spacing[4],
     paddingVertical: tokens.spacing[3],
     gap: tokens.spacing[2],

@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.color['surface-raised'],
     borderColor: tokens.color.border,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: tokens.radius.md,
     padding: 12,
     fontSize: 13,
     lineHeight: 20,

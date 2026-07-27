@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   chip: {
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 999,
+    borderRadius: tokens.radius.full,
     paddingHorizontal: tokens.spacing[2],
     paddingVertical: tokens.spacing[1],
     color: tokens.color.text,
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     gap: tokens.spacing[1],
     borderWidth: 1,
     borderColor: tokens.color.border,
-    borderRadius: 8,
+    borderRadius: tokens.radius.md,
     padding: tokens.spacing[3],
   },
   body: { color: tokens.color.text, fontSize: tokens.fontSize.sm },
