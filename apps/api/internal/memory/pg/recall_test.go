@@ -80,7 +80,7 @@ func TestRecallReconsolidatesAndReinforcesEndToEnd(t *testing.T) {
 		t.Fatalf("reconsolidated = false, want true for a content change")
 	}
 	if result.Seed != 9001 || result.CurrentText != "a wholly different afternoon fishing trip" {
-		t.Fatalf("result = %+v, want new seed 9001 + rewritten text", result)
+		t.Fatalf("result = %s, want new seed 9001 + rewritten text", diagnosticValue(result))
 	}
 	if !result.Sync.Current.Equal(recallServiceDay()) {
 		t.Fatalf("sync current = %v, want the service day", result.Sync.Current)

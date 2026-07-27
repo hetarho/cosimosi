@@ -193,7 +193,7 @@ func TestExportReadsAreScopedAndHonorTheExclusion(t *testing.T) {
 	}
 	// A8: the soft-deleted memory is excluded; only the live one is handed out.
 	if len(memories) != 1 || memories[0].DiaryID != diaryID {
-		t.Fatalf("live memories = %+v, want only the one live memory", memories)
+		t.Fatalf("live memories = %s, want only the one live memory", diagnosticValue(memories))
 	}
 	if memories[0].Name != "kept memory" {
 		t.Fatalf("live memory name = %q, want the kept memory (not the let-go one)", memories[0].Name)

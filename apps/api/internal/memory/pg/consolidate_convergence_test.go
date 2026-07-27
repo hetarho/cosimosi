@@ -117,7 +117,12 @@ func TestCompleteSemanticizeJobFinalizesPendingRiseExactlyOnce(t *testing.T) {
 		t.Fatalf("read job failed: %v", err)
 	}
 	if stage != 2 || pendingStage != nil || pendingRise != nil {
-		t.Fatalf("finalized = stage %d pending %v/%v, want visible stage 2 with pending cleared", stage, pendingStage, pendingRise)
+		t.Fatalf(
+			"finalized = stage %d pending %v/%v, want visible stage 2 with pending cleared",
+			stage,
+			valueOrNil(pendingStage),
+			valueOrNil(pendingRise),
+		)
 	}
 	if stagesJSON != `["one", "two", "three", "four"]` {
 		t.Fatalf("stored ladder = %s", stagesJSON)
@@ -131,7 +136,16 @@ func TestCompleteSemanticizeJobFinalizesPendingRiseExactlyOnce(t *testing.T) {
 	}
 	for i, event := range events {
 		if event.Stage == nil || int(*event.Stage) != i+1 || event.Text != generated[i] || !event.UniverseTime.Equal(riseAt) {
-			t.Fatalf("event[%d] = %+v, want stage %d text %q at the crossing %v", i, event, i+1, generated[i], riseAt)
+			t.Fatalf(
+				"event[%d] = {stage %v text %q universe_time %v}, want stage %d text %q at the crossing %v",
+				i,
+				valueOrNil(event.Stage),
+				event.Text,
+				event.UniverseTime,
+				i+1,
+				generated[i],
+				riseAt,
+			)
 		}
 	}
 
@@ -334,11 +348,11 @@ func TestConsolidationWatermarkIsScopedMonotoneAndRollbackRetryable(t *testing.T
 		t.Fatalf("SetConsolidationWatermark (older) failed: %v", err)
 	}
 	if got := readWatermark(userID); got == nil || !got.UTC().Equal(day.AddDate(0, 0, 10)) {
-		t.Fatalf("watermark = %v, want the GREATEST-held day+10", got)
+		t.Fatalf("watermark = %v, want the GREATEST-held day+10", valueOrNil(got))
 	}
 	// Scoped: the other user's marker is untouched.
 	if got := readWatermark(otherID); got != nil {
-		t.Fatalf("other user's watermark = %v, want NULL", got)
+		t.Fatalf("other user's watermark = %v, want NULL", valueOrNil(got))
 	}
 
 	// A rolled-back attempt leaves the marker (and the interval) retryable.
@@ -354,7 +368,7 @@ func TestConsolidationWatermarkIsScopedMonotoneAndRollbackRetryable(t *testing.T
 		t.Fatalf("Rollback failed: %v", err)
 	}
 	if got := readWatermark(userID); got == nil || !got.UTC().Equal(day.AddDate(0, 0, 10)) {
-		t.Fatalf("watermark after rollback = %v, want unchanged day+10", got)
+		t.Fatalf("watermark after rollback = %v, want unchanged day+10", valueOrNil(got))
 	}
 
 	// The locked read errors loudly when no universe_state row exists — the hook can
@@ -376,8 +390,11 @@ func TestSyncDefersRiseThenWorkerMaterializesIt(t *testing.T) {
 
 	base := fmt.Sprintf("test-defer-rise-%d", time.Now().UnixNano())
 	userID := base + "-user"
+	otherUserID := base + "-other-user"
 	cleanupMemoryTestRows(t, pool, userID)
+	cleanupMemoryTestRows(t, pool, otherUserID)
 	scope, _ := platform.NewUserScope(userID)
+	otherScope, _ := platform.NewUserScope(otherUserID)
 	store := NewStore(pool.PgxPool())
 	created := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	today := consolidateServiceDay()
@@ -428,15 +445,60 @@ func TestSyncDefersRiseThenWorkerMaterializesIt(t *testing.T) {
 	if events := readSemanticProvenance(t, pool, userID, episodicMemory.ID); len(events) != 0 {
 		t.Fatalf("a ladderless crossing appended %d events, want none until text exists", len(events))
 	}
+	semanticizeJobID := findJobIDForTarget(
+		t,
+		ctx,
+		pool,
+		userID,
+		memory.JobKindSemanticize,
+		memory.JobTargetMemory,
+		episodicMemory.ID,
+	)
 
 	// The worker regenerates from live source and its completion materializes the rise.
-	runner, err := memory.NewDefaultJobRunner(store, ai.NewMockEmbedder(), ai.NewMockSemanticizer(), time.Millisecond, nil)
+	queue := &recordingJobQueue{Store: store}
+	runner, err := memory.NewDefaultJobRunner(queue, ai.NewMockEmbedder(), ai.NewMockSemanticizer(), time.Millisecond, nil)
 	if err != nil {
 		t.Fatalf("NewDefaultJobRunner failed: %v", err)
 	}
-	worked, err := runner.RunOnce(ctx)
-	if err != nil || !worked {
-		t.Fatalf("RunOnce = (%t, %v), want a claimed semanticize job", worked, err)
+	unrelatedAt := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	unrelatedJobID := base + "-unrelated-job"
+	if _, err := store.EnqueueJob(ctx, otherScope, memory.Job{
+		ID:        unrelatedJobID,
+		Kind:      memory.JobKind("unrelated-test"),
+		Payload:   []byte(`{}`),
+		Status:    memory.JobStatusPending,
+		NextRunAt: unrelatedAt,
+		CreatedAt: unrelatedAt,
+		Targets: []memory.JobTarget{{
+			Kind: memory.JobTargetRelease,
+			ID:   base + "-unrelated-target",
+		}},
+	}); err != nil {
+		t.Fatalf("enqueue unrelated due job failed: %v", err)
+	}
+	drainJobToDone(t, ctx, pool, runner, queue, userID, semanticizeJobID)
+	unrelatedClaimIndex := -1
+	targetClaimIndex := -1
+	for index, claimedJob := range queue.claims {
+		switch claimedJob.ID {
+		case unrelatedJobID:
+			if unrelatedClaimIndex == -1 {
+				unrelatedClaimIndex = index
+			}
+		case semanticizeJobID:
+			if targetClaimIndex == -1 {
+				targetClaimIndex = index
+			}
+		}
+	}
+	if unrelatedClaimIndex == -1 ||
+		targetClaimIndex == -1 ||
+		unrelatedClaimIndex >= targetClaimIndex {
+		t.Fatalf(
+			"claims = %s, want unrelated due job before target semanticize job",
+			queue.claimSummary(),
+		)
 	}
 
 	var stagesJSON *string
@@ -448,7 +510,13 @@ func TestSyncDefersRiseThenWorkerMaterializesIt(t *testing.T) {
 		t.Fatalf("read materialized memory failed: %v", err)
 	}
 	if int(stage) != wantStage || pendingAfter != nil || stagesJSON == nil {
-		t.Fatalf("materialized = stage %d pending %v ladder %v, want stage %d with a stored ladder and no pending", stage, pendingAfter, stagesJSON, wantStage)
+		t.Fatalf(
+			"materialized = stage %d pending %v ladder %v, want stage %d with a stored ladder and no pending",
+			stage,
+			valueOrNil(pendingAfter),
+			valueOrNil(stagesJSON),
+			wantStage,
+		)
 	}
 	events := readSemanticProvenance(t, pool, userID, episodicMemory.ID)
 	if len(events) != wantStage {
@@ -456,7 +524,14 @@ func TestSyncDefersRiseThenWorkerMaterializesIt(t *testing.T) {
 	}
 	for i, event := range events {
 		if event.Stage == nil || int(*event.Stage) != i+1 || event.Text == "" || !event.UniverseTime.Equal(today) {
-			t.Fatalf("event[%d] = %+v, want non-empty stage %d at the crossing", i, event, i+1)
+			t.Fatalf(
+				"event[%d] = {stage %v text %q universe_time %v}, want non-empty stage %d at the crossing",
+				i,
+				valueOrNil(event.Stage),
+				event.Text,
+				event.UniverseTime,
+				i+1,
+			)
 		}
 	}
 }

@@ -158,7 +158,7 @@ func TestGetUniverseReturnsOnlyVisibleGraph(t *testing.T) {
 		t.Fatalf("GetUniverse activations = %v, want only visible activation", got)
 	}
 	if len(facts.Synapses) != 1 || facts.Synapses[0].ID != visibleSynapse.ID {
-		t.Fatalf("GetUniverse synapses = %+v, want only visible synapse", facts.Synapses)
+		t.Fatalf("GetUniverse synapses = %s, want only visible synapse", diagnosticValue(facts.Synapses))
 	}
 }
 
@@ -242,7 +242,7 @@ func TestUpsertSynapseConflictAdvancesSingleRow(t *testing.T) {
 		t.Fatalf("SynapseStrengths failed: %v", err)
 	}
 	if len(strengths) != 1 || !near32(float32(strengths[0].Strength), 0.6) {
-		t.Fatalf("SynapseStrengths = %+v, want one pair at the last written base 0.6", strengths)
+		t.Fatalf("SynapseStrengths = %s, want one pair at the last written base 0.6", diagnosticValue(strengths))
 	}
 }
 
@@ -306,11 +306,11 @@ func TestSynapseReadsAreUserScoped(t *testing.T) {
 	}
 
 	if strengths, err := store.SynapseStrengths(ctx, scopeB, []string{nA1.ID, nA2.ID}); err != nil || len(strengths) != 0 {
-		t.Fatalf("user B SynapseStrengths = (%+v, %v), want empty", strengths, err)
+		t.Fatalf("user B SynapseStrengths = (%s, %v), want empty", diagnosticValue(strengths), err)
 	}
 	strengthsA, err := store.SynapseStrengths(ctx, scopeA, []string{nA1.ID, nA2.ID})
 	if err != nil || len(strengthsA) != 1 || !near32(float32(strengthsA[0].Strength), 0.4) {
-		t.Fatalf("user A SynapseStrengths = (%+v, %v), want one pair at 0.4", strengthsA, err)
+		t.Fatalf("user A SynapseStrengths = (%s, %v), want one pair at 0.4", diagnosticValue(strengthsA), err)
 	}
 
 	if activations, err := store.CoActivations(ctx, scopeB, []string{nA1.ID, nA2.ID}); err != nil || len(activations) != 0 {
@@ -325,7 +325,7 @@ func TestSynapseReadsAreUserScoped(t *testing.T) {
 	}
 	for _, activation := range activations {
 		if activation.MemoryID != memA.ID || !activation.MemoryDate.Equal(day) {
-			t.Fatalf("CoActivation = %+v, want memory %s dated %v", activation, memA.ID, day)
+			t.Fatalf("CoActivation = %s, want memory %s dated %v", diagnosticValue(activation), memA.ID, day)
 		}
 	}
 }
@@ -426,7 +426,7 @@ func TestClaimDueJobsAreDisjointAcrossConcurrentClaimants(t *testing.T) {
 			t.Fatalf("ClaimDue failed: %v", err)
 		case job := <-claims:
 			if job.UserID != userID || job.Status != memory.JobStatusRunning {
-				t.Fatalf("claimed job = %+v", job)
+				t.Fatalf("claimed job = %s", diagnosticValue(job))
 			}
 			if job.ID == "" {
 				t.Fatal("claimed job id is empty")
@@ -493,7 +493,7 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 		t.Fatalf("first ClaimDue failed: %v", err)
 	}
 	if claimed.ID != job.ID || claimed.Status != memory.JobStatusRunning || !claimed.NextRunAt.Equal(jobLeaseUntil(now)) {
-		t.Fatalf("claimed job = %+v", claimed)
+		t.Fatalf("claimed job = %s", diagnosticValue(claimed))
 	}
 
 	if _, err := store.ClaimDue(ctx, now.Add(jobLeaseDuration()-time.Second)); !errors.Is(err, jobqueue.ErrNoJob) {
@@ -505,7 +505,7 @@ func TestRunningJobCanBeReclaimedAfterLeaseExpires(t *testing.T) {
 		t.Fatalf("reclaim ClaimDue failed: %v", err)
 	}
 	if reclaimed.ID != job.ID || reclaimed.Status != memory.JobStatusRunning {
-		t.Fatalf("reclaimed job = %+v", reclaimed)
+		t.Fatalf("reclaimed job = %s", diagnosticValue(reclaimed))
 	}
 }
 
@@ -821,11 +821,14 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 		t.Fatalf("GetUniverse before failed: %v", err)
 	}
 	if len(before.EpisodicMemories) != 1 || before.EpisodicMemories[0].SemanticStages != nil {
-		t.Fatalf("semantic stages before worker = %+v, want one memory with nil stages", before.EpisodicMemories)
+		t.Fatalf(
+			"semantic stages before worker = %s, want one memory with nil stages",
+			diagnosticValue(before.EpisodicMemories),
+		)
 	}
 
 	now := day.Add(time.Hour)
-	for _, job := range []memory.Job{
+	jobs := []memory.Job{
 		{
 			ID: base + "-job-embed", Kind: memory.JobKindEmbed, Payload: []byte(`{}`),
 			Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now,
@@ -836,13 +839,15 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 			Status: memory.JobStatusPending, NextRunAt: now, CreatedAt: now,
 			Targets: []memory.JobTarget{{Kind: memory.JobTargetMemory, ID: episodicMemory.ID, ExpectedRevision: episodicMemory.RepresentationRevision}},
 		},
-	} {
+	}
+	for _, job := range jobs {
 		if _, err := store.EnqueueJob(ctx, scope, job); err != nil {
 			t.Fatalf("EnqueueJob %s failed: %v", job.ID, err)
 		}
 	}
+	queue := &recordingJobQueue{Store: store}
 	runner, err := memory.NewJobRunner(
-		store,
+		queue,
 		store,
 		store,
 		store,
@@ -860,14 +865,8 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewJobRunner failed: %v", err)
 	}
-	for i := 0; i < 2; i++ {
-		worked, err := runner.RunOnce(ctx)
-		if err != nil {
-			t.Fatalf("RunOnce %d failed: %v", i, err)
-		}
-		if !worked {
-			t.Fatalf("RunOnce %d did not claim a job", i)
-		}
+	for _, job := range jobs {
+		drainJobToDone(t, ctx, pool, runner, queue, userID, job.ID)
 	}
 
 	if got := readEmbeddingCount(t, pool, userID, neuron.ID); got != 1 {
@@ -878,7 +877,10 @@ func TestWorkerJobsFillEmbeddingsAndSemanticStagesOnNextRead(t *testing.T) {
 		t.Fatalf("GetUniverse after failed: %v", err)
 	}
 	if len(after.EpisodicMemories) != 1 || after.EpisodicMemories[0].SemanticStages == nil {
-		t.Fatalf("semantic stages after worker = %+v, want filled stages", after.EpisodicMemories)
+		t.Fatalf(
+			"semantic stages after worker = %s, want filled stages",
+			diagnosticValue(after.EpisodicMemories),
+		)
 	}
 	if body := readDiaryBody(t, pool, userID, diary.ID); body != "original diary body" {
 		t.Fatalf("diary body = %q, want original unchanged", body)
@@ -1048,7 +1050,7 @@ func TestLaunchTxAdvancesClockAtomicallyAndUniverseReadsIt(t *testing.T) {
 		t.Fatalf("GetUniverse failed: %v", err)
 	}
 	if facts.UniverseClock != nil {
-		t.Fatalf("pre-clock facts clock = %v, want nil (fallback path)", facts.UniverseClock)
+		t.Fatalf("pre-clock facts clock = %v, want nil (fallback path)", valueOrNil(facts.UniverseClock))
 	}
 
 	// A launch-shaped transaction advances the clock atomically with its rows.
@@ -1075,7 +1077,7 @@ func TestLaunchTxAdvancesClockAtomicallyAndUniverseReadsIt(t *testing.T) {
 		t.Fatalf("GetUniverse after advance failed: %v", err)
 	}
 	if facts.UniverseClock == nil || !facts.UniverseClock.Equal(later) {
-		t.Fatalf("facts clock = %v, want the stored %v", facts.UniverseClock, later)
+		t.Fatalf("facts clock = %v, want the stored %v", valueOrNil(facts.UniverseClock), later)
 	}
 
 	// A failed transaction rolls the advance back with the rows.
@@ -1094,7 +1096,7 @@ func TestLaunchTxAdvancesClockAtomicallyAndUniverseReadsIt(t *testing.T) {
 		t.Fatalf("UniverseClock after rollback failed: %v", err)
 	}
 	if clock == nil || !clock.Equal(later) {
-		t.Fatalf("clock after rollback = %v, want unchanged %v", clock, later)
+		t.Fatalf("clock after rollback = %v, want unchanged %v", valueOrNil(clock), later)
 	}
 }
 
@@ -1126,7 +1128,7 @@ func TestUniverseClockLazyBirthAndMonotonicUpsert(t *testing.T) {
 		t.Fatalf("UniverseClock before birth failed: %v", err)
 	}
 	if clock != nil {
-		t.Fatalf("unborn clock = %v, want nil", clock)
+		t.Fatalf("unborn clock = %v, want nil", valueOrNil(clock))
 	}
 
 	first := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
@@ -1172,7 +1174,7 @@ func TestUniverseClockLazyBirthAndMonotonicUpsert(t *testing.T) {
 		t.Fatalf("UniverseClock other failed: %v", err)
 	}
 	if otherClock != nil {
-		t.Fatalf("other user's clock = %v, want nil", otherClock)
+		t.Fatalf("other user's clock = %v, want nil", valueOrNil(otherClock))
 	}
 
 	readBack, err := store.UniverseClock(ctx, scope)
@@ -1180,7 +1182,7 @@ func TestUniverseClockLazyBirthAndMonotonicUpsert(t *testing.T) {
 		t.Fatalf("UniverseClock read-back failed: %v", err)
 	}
 	if readBack == nil || !readBack.Equal(later) {
-		t.Fatalf("read-back clock = %v, want %v", readBack, later)
+		t.Fatalf("read-back clock = %v, want %v", valueOrNil(readBack), later)
 	}
 }
 
@@ -1282,7 +1284,11 @@ func TestLockGraphMutationSerializesConcurrentBirth(t *testing.T) {
 	// The lock forced B to observe A's committed birth rather than the nil clock
 	// it would have raced to concurrently.
 	if bSaw == nil || !bSaw.Equal(born) {
-		t.Fatalf("tx B saw clock %v, want A's committed %v (the advisory lock did not serialize the birth window)", bSaw, born)
+		t.Fatalf(
+			"tx B saw clock %v, want A's committed %v (the advisory lock did not serialize the birth window)",
+			valueOrNil(bSaw),
+			born,
+		)
 	}
 	// That serialized read is exactly what past-dates a concurrent earlier diary:
 	// B guards against the born clock, not the nil it would otherwise have seen.
@@ -1372,14 +1378,17 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 		t.Fatalf("EpisodicMemoryGist failed: %v", err)
 	}
 	if gist.SemanticStage != 2 || gist.SemanticStages == nil || *gist.SemanticStages != stages {
-		t.Fatalf("gist = %+v, want stage 2 + the saved texts", gist)
+		t.Fatalf("gist = %s, want stage 2 + the saved texts", diagnosticValue(gist))
 	}
 	unrisenGist, err := store.EpisodicMemoryGist(ctx, scope, unrisen.ID)
 	if err != nil {
 		t.Fatalf("EpisodicMemoryGist unrisen failed: %v", err)
 	}
 	if unrisenGist.SemanticStages != nil {
-		t.Fatalf("unrisen stages = %+v, want nil for a NULL semantic_stages", unrisenGist.SemanticStages)
+		t.Fatalf(
+			"unrisen stages = %s, want nil for a NULL semantic_stages",
+			diagnosticValue(unrisenGist.SemanticStages),
+		)
 	}
 
 	// The full use-case over the real store returns the stored stage text…
@@ -1389,7 +1398,7 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 		t.Fatalf("ViewSemantic failed: %v", err)
 	}
 	if result.Text != "stage two" || result.Stage != 2 || result.ReachedStage != 2 {
-		t.Fatalf("result = %+v, want stage two's text + meta", result)
+		t.Fatalf("result = %s, want stage two's text + meta", diagnosticValue(result))
 	}
 	// …refuses the unrisen stage server-authoritatively (A3)…
 	if _, err := service.ViewSemantic(ctx, scope, "op-view-2", risen.ID, 3); !errors.Is(err, memory.ErrViewSemanticStageNotRisen) {
@@ -1402,7 +1411,11 @@ func TestViewSemanticEndToEndReadsWithoutWriting(t *testing.T) {
 
 	// Write-probe (A1/A7): the viewed row is byte-identical and no clock row was born.
 	if after := readSnapshot(risen.ID); after != before {
-		t.Fatalf("row changed by a view: before %+v, after %+v", before, after)
+		t.Fatalf(
+			"row changed by a view: before %s, after %s",
+			diagnosticValue(before),
+			diagnosticValue(after),
+		)
 	}
 	var clockRows int
 	if err := pool.PgxPool().QueryRow(ctx,
@@ -1458,7 +1471,6 @@ func cleanupMemoryTestRows(t *testing.T, pool *platformdb.Pool, userID string) {
 			"release_memories",
 			"release_groups",
 			"universe_state",
-			"jobs",
 			"embeddings",
 			"synapses",
 			"neuron_activations",
@@ -1467,6 +1479,22 @@ func cleanupMemoryTestRows(t *testing.T, pool *platformdb.Pool, userID string) {
 			"diaries",
 		}
 		for _, table := range tables {
+			if _, err := pool.PgxPool().Exec(ctx, "DELETE FROM "+table+" WHERE user_id = $1", userID); err != nil {
+				t.Fatalf("cleanup %s failed: %v", table, err)
+			}
+		}
+	})
+	cleanupMemoryTestJobs(t, pool, userID)
+}
+
+func cleanupMemoryTestJobs(t *testing.T, pool *platformdb.Pool, userID string) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		for _, table := range []string{"job_targets", "jobs"} {
 			if _, err := pool.PgxPool().Exec(ctx, "DELETE FROM "+table+" WHERE user_id = $1", userID); err != nil {
 				t.Fatalf("cleanup %s failed: %v", table, err)
 			}

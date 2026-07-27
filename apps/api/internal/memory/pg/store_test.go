@@ -57,7 +57,11 @@ func TestSynapseParamsCanonicalizeNeuronPair(t *testing.T) {
 		t.Fatalf("first pair = (%q, %q), want canonical order", first.NeuronAID, first.NeuronBID)
 	}
 	if first.UserID != second.UserID || first.NeuronAID != second.NeuronAID || first.NeuronBID != second.NeuronBID {
-		t.Fatalf("canonical identity mismatch: first=%+v second=%+v", first, second)
+		t.Fatalf(
+			"canonical identity mismatch: first=%s second=%s",
+			diagnosticValue(first),
+			diagnosticValue(second),
+		)
 	}
 }
 
@@ -89,7 +93,7 @@ func TestRowDomainMapping(t *testing.T) {
 		CreatedAt: pgTime(instant),
 	})
 	if diary.ID != "diary-1" || diary.Body != "body" || !diary.DiaryDate.Equal(day) || !diary.CreatedAt.Equal(instant) {
-		t.Fatalf("mapDiary = %+v", diary)
+		t.Fatalf("mapDiary = %s", diagnosticValue(diary))
 	}
 
 	episodicMemory := mapEpisodicMemory(dbgen.InsertEpisodicMemoryRow{
@@ -111,13 +115,13 @@ func TestRowDomainMapping(t *testing.T) {
 		DeletedAt:                pgTime(instant),
 	})
 	if episodicMemory.Seed == nil || *episodicMemory.Seed != seed || episodicMemory.LastRecalledUniverseTime == nil || episodicMemory.DeletedAt == nil {
-		t.Fatalf("mapEpisodicMemory lost nullable fields: %+v", episodicMemory)
+		t.Fatalf("mapEpisodicMemory lost nullable fields: %s", diagnosticValue(episodicMemory))
 	}
 	if episodicMemory.Emotion.Mood != memory.MoodCalm || !near(episodicMemory.BaseStrength, 0.6) || episodicMemory.SemanticStage != 1 {
-		t.Fatalf("mapEpisodicMemory mapped fields incorrectly: %+v", episodicMemory)
+		t.Fatalf("mapEpisodicMemory mapped fields incorrectly: %s", diagnosticValue(episodicMemory))
 	}
 	if !near(episodicMemory.Emotion.Valence, 0.7) || !near(episodicMemory.Emotion.Arousal, 0.2) || !near(episodicMemory.Emotion.Intensity, 0.5) {
-		t.Fatalf("mapEpisodicMemory mapped emotion incorrectly: %+v", episodicMemory.Emotion)
+		t.Fatalf("mapEpisodicMemory mapped emotion incorrectly: %s", diagnosticValue(episodicMemory.Emotion))
 	}
 
 	neuron := mapNeuron(dbgen.UpsertNeuronRow{
@@ -127,7 +131,7 @@ func TestRowDomainMapping(t *testing.T) {
 		CreatedAt:  pgTime(instant),
 	})
 	if neuron.Name == nil || *neuron.Name != name || neuron.Type != memory.NeuronTypeSpatial || !neuron.CreatedAt.Equal(instant) {
-		t.Fatalf("mapNeuron = %+v", neuron)
+		t.Fatalf("mapNeuron = %s", diagnosticValue(neuron))
 	}
 
 	activation := mapNeuronActivation(dbgen.InsertNeuronActivationRow{
@@ -136,7 +140,7 @@ func TestRowDomainMapping(t *testing.T) {
 		Weight:           0.75,
 	})
 	if activation.EpisodicMemoryID != "memory-1" || activation.NeuronID != "neuron-1" || activation.Weight != 0.75 {
-		t.Fatalf("mapNeuronActivation = %+v", activation)
+		t.Fatalf("mapNeuronActivation = %s", diagnosticValue(activation))
 	}
 
 	synapse := mapSynapse(dbgen.UpsertSynapseRow{
@@ -149,7 +153,7 @@ func TestRowDomainMapping(t *testing.T) {
 		CreatedAt:                 pgTime(instant),
 	})
 	if synapse.NeuronAID != "neuron-a" || synapse.NeuronBID != "neuron-b" || synapse.CoActivationCount != 3 {
-		t.Fatalf("mapSynapse = %+v", synapse)
+		t.Fatalf("mapSynapse = %s", diagnosticValue(synapse))
 	}
 
 	job := mapJob(dbgen.Job{
@@ -163,7 +167,7 @@ func TestRowDomainMapping(t *testing.T) {
 		CreatedAt: pgTime(instant),
 	})
 	if job.UserID != "user-1" || job.Kind != memory.JobKindEmbed || job.Status != memory.JobStatusPending || job.Attempts != 1 {
-		t.Fatalf("mapJob = %+v", job)
+		t.Fatalf("mapJob = %s", diagnosticValue(job))
 	}
 }
 
@@ -196,7 +200,7 @@ func TestEmbeddingRowMappingParsesPgvectorLiteral(t *testing.T) {
 		t.Fatalf("mapEmbedding failed: %v", err)
 	}
 	if embedding.NeuronID != "neuron-1" || !reflect.DeepEqual(embedding.Vector, []float32{0.25, -1.5}) {
-		t.Fatalf("mapEmbedding = %+v", embedding)
+		t.Fatalf("mapEmbedding = %s", diagnosticValue(embedding))
 	}
 }
 
@@ -204,14 +208,14 @@ func TestSemanticStagesMappingPreservesNullAndFourStages(t *testing.T) {
 	t.Parallel()
 
 	if stages := semanticStagesPtr(nil); stages != nil {
-		t.Fatalf("nil semantic stages = %v, want nil", stages)
+		t.Fatalf("nil semantic stages = %v, want nil", valueOrNil(stages))
 	}
 	stages := semanticStagesPtr([]byte(`["one","two","three","four"]`))
 	if stages == nil || *stages != (memory.SemanticStages{"one", "two", "three", "four"}) {
-		t.Fatalf("semanticStagesPtr = %v", stages)
+		t.Fatalf("semanticStagesPtr = %v", valueOrNil(stages))
 	}
 	if stages := semanticStagesPtr([]byte(`["one"]`)); stages != nil {
-		t.Fatalf("short semantic stages = %v, want nil", stages)
+		t.Fatalf("short semantic stages = %v, want nil", valueOrNil(stages))
 	}
 }
 

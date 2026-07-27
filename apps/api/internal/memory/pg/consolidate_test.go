@@ -351,7 +351,7 @@ func TestConsolidationQueriesAreUserScopedAndMonotone(t *testing.T) {
 		t.Fatalf("ListMemoriesForConsolidation failed: %v", err)
 	}
 	if len(mine) != 1 || mine[0].ID != base+"-mine" {
-		t.Fatalf("scoped read = %+v, want only the caller's memory", mine)
+		t.Fatalf("scoped read = %s, want only the caller's memory", diagnosticValue(mine))
 	}
 
 	// A stage write scoped to the caller cannot move another user's row — and GREATEST
@@ -394,6 +394,6 @@ func TestConsolidationQueriesAreUserScopedAndMonotone(t *testing.T) {
 		t.Fatalf("ListSynapseStrengths failed: %v", err)
 	}
 	if len(strengths) != 0 {
-		t.Fatalf("other scope synapse read = %+v, want empty", strengths)
+		t.Fatalf("other scope synapse read = %s, want empty", diagnosticValue(strengths))
 	}
 }

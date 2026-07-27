@@ -157,7 +157,7 @@ func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 		t.Fatalf("Release failed: %v", err)
 	}
 	if len(result.EpisodicMemoryIDs) != 1 || result.EpisodicMemoryIDs[0] != g.m1 || !result.DeletedAt.Equal(clock) {
-		t.Fatalf("release result = %+v, want [m1] at %v", result, clock)
+		t.Fatalf("release result = %s, want [m1] at %v", diagnosticValue(result), clock)
 	}
 	// Ledger written: one group + one memory + one sealed orphan + one synapse delta.
 	if n := count("SELECT count(*) FROM release_groups WHERE user_id = $1", userID); n != 1 {
@@ -236,7 +236,7 @@ func TestReleaseThenRestoreEndToEnd(t *testing.T) {
 		t.Fatalf("Restore failed: %v", err)
 	}
 	if len(restore.EpisodicMemoryIDs) != 1 || restore.EpisodicMemoryIDs[0] != g.m1 {
-		t.Fatalf("restore result = %+v, want [m1]", restore)
+		t.Fatalf("restore result = %s, want [m1]", diagnosticValue(restore))
 	}
 	if n := count("SELECT count(*) FROM release_groups WHERE user_id = $1", userID); n != 0 {
 		t.Fatalf("release group not retired on restore: %d", n)
@@ -440,7 +440,7 @@ func TestClaimedSemanticJobCannotPublishAfterRelease(t *testing.T) {
 	}
 	claimed, err := store.ClaimDue(ctx, releaseAt)
 	if err != nil || claimed.ID != job.ID {
-		t.Fatalf("claim semantic job = (%+v, %v)", claimed, err)
+		t.Fatalf("claim semantic job = (%s, %v)", diagnosticValue(claimed), err)
 	}
 	service := newReleaseService(t, store, func() time.Time { return releaseAt })
 	if _, err := service.Release(ctx, scope, g.d1); err != nil {
@@ -487,9 +487,28 @@ func TestScheduledRetentionWorkerSweepsWithoutAnotherUserRPC(t *testing.T) {
 	if _, err := service.Release(ctx, scope, g.d1); err != nil {
 		t.Fatalf("Release failed: %v", err)
 	}
+	var releaseID string
+	if err := pool.PgxPool().QueryRow(
+		ctx,
+		"SELECT id FROM release_groups WHERE user_id = $1 AND diary_id = $2",
+		userID,
+		g.d1,
+	).Scan(&releaseID); err != nil {
+		t.Fatalf("read release id failed: %v", err)
+	}
+	retentionJobID := findJobIDForTarget(
+		t,
+		ctx,
+		pool,
+		userID,
+		memory.JobKindRetention,
+		memory.JobTargetRelease,
+		releaseID,
+	)
 	due := releaseAt.Add(time.Duration(values.ReleaseSoftDeleteRetentionDays) * 24 * time.Hour)
+	queue := &recordingJobQueue{Store: store}
 	runner, err := memory.NewJobRunner(
-		store, store, store, store, memory.NewRetentionSweeper(store), store,
+		queue, store, store, store, memory.NewRetentionSweeper(store), store,
 		ai.NewMockEmbedder(), ai.NewMockSemanticizer(), memory.WorkerConfig{
 			MaxAttempts:  int32(values.AiJobMaxAttempts),
 			MaxClaims:    int32(values.AiJobMaxClaims),
@@ -501,10 +520,7 @@ func TestScheduledRetentionWorkerSweepsWithoutAnotherUserRPC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewJobRunner failed: %v", err)
 	}
-	worked, err := runner.RunOnce(ctx)
-	if err != nil || !worked {
-		t.Fatalf("RunOnce = (%t, %v), want due retention work", worked, err)
-	}
+	drainJobToDone(t, ctx, pool, runner, queue, userID, retentionJobID)
 	var memories, diaries, groups int
 	if err := pool.PgxPool().QueryRow(ctx, `
 		SELECT
@@ -676,13 +692,17 @@ func TestSuggestAndLetGoEndToEnd(t *testing.T) {
 		t.Fatalf("SuggestLetGo failed: %v", err)
 	}
 	if len(suggestion.Candidates) != 1 || suggestion.Candidates[0].NeuronID != g.orphan {
-		t.Fatalf("candidates = %+v, want only the orphan semantic neuron", suggestion.Candidates)
+		t.Fatalf("candidates = %s, want only the orphan semantic neuron", diagnosticValue(suggestion.Candidates))
 	}
 	if suggestion.HeavyState.Detected {
-		t.Fatalf("heavy_state = %+v, want undetected for neutral words", suggestion.HeavyState)
+		t.Fatalf("heavy_state = %s, want undetected for neutral words", diagnosticValue(suggestion.HeavyState))
 	}
 	if after := allRowCounts(t, ctx, pg, userID); !reflect.DeepEqual(after, rowCountBefore) {
-		t.Fatalf("SuggestLetGo persisted state: before %+v after %+v", rowCountBefore, after)
+		t.Fatalf(
+			"SuggestLetGo persisted state: before %s after %s",
+			diagnosticValue(rowCountBefore),
+			diagnosticValue(after),
+		)
 	}
 
 	// A6: a shared neuron id is rejected server-side, nothing sealed.

@@ -52,7 +52,7 @@ func TestDiaryPageIsReverseChronKeysetAndScoped(t *testing.T) {
 		t.Fatalf("DiaryPage failed: %v", err)
 	}
 	if len(all) != 3 || all[0].ID != base+"-d3" || all[1].ID != base+"-d2" || all[2].ID != base+"-d1" {
-		t.Fatalf("order = %+v, want [d3, d2, d1] reverse-chron, other user excluded", all)
+		t.Fatalf("order = %s, want [d3, d2, d1] reverse-chron, other user excluded", diagnosticValue(all))
 	}
 
 	// Keyset: a 2-limit page then a cursor after the second row yields the third only.
@@ -61,7 +61,7 @@ func TestDiaryPageIsReverseChronKeysetAndScoped(t *testing.T) {
 		t.Fatalf("DiaryPage page 1 failed: %v", err)
 	}
 	if len(firstTwo) != 2 || firstTwo[1].ID != base+"-d2" {
-		t.Fatalf("page 1 = %+v, want [d3, d2]", firstTwo)
+		t.Fatalf("page 1 = %s, want [d3, d2]", diagnosticValue(firstTwo))
 	}
 	cursor := &memory.DiaryCursor{DiaryDate: firstTwo[1].DiaryDate, ID: firstTwo[1].ID}
 	rest, err := store.DiaryPage(ctx, scope, cursor, 2)
@@ -69,7 +69,7 @@ func TestDiaryPageIsReverseChronKeysetAndScoped(t *testing.T) {
 		t.Fatalf("DiaryPage page 2 failed: %v", err)
 	}
 	if len(rest) != 1 || rest[0].ID != base+"-d1" {
-		t.Fatalf("page 2 = %+v, want [d1] (strictly after the cursor)", rest)
+		t.Fatalf("page 2 = %s, want [d1] (strictly after the cursor)", diagnosticValue(rest))
 	}
 }
 
@@ -138,9 +138,9 @@ func TestDiarySplitRefsExcludeSoftDeletedAndVerbatimBody(t *testing.T) {
 	}
 	// A4/[I1]: only the live memory's ref; the soft-deleted one and the empty diary contribute none.
 	if len(refs) != 1 || refs[0].EpisodicMemoryID != live.ID || refs[0].Name != "kept memory" {
-		t.Fatalf("refs = %+v, want only the one live split ref", refs)
+		t.Fatalf("refs = %s, want only the one live split ref", diagnosticValue(refs))
 	}
 	if refs[0].DiaryID != diaryID || !refs[0].CreatedUniverseTime.Equal(launch) {
-		t.Fatalf("ref = %+v, want diary %s at launch %v", refs[0], diaryID, launch)
+		t.Fatalf("ref = %s, want diary %s at launch %v", diagnosticValue(refs[0]), diaryID, launch)
 	}
 }

@@ -116,7 +116,7 @@ func TestReleaseSealOwnershipMigrationRepairsOnlyReleaseOriginAndRoundTrips(t *t
 			t.Fatalf("read seal %s failed: %v", id, err)
 		}
 		if want == nil && got != nil || want != nil && (got == nil || !got.Equal(*want)) {
-			t.Fatalf("seal %s = %v, want %v", id, got, want)
+			t.Fatalf("seal %s = %v, want %v", id, valueOrNil(got), valueOrNil(want))
 		}
 	}
 	replacedAt := time.Date(2026, 6, 20, 0, 0, 0, 0, time.UTC)

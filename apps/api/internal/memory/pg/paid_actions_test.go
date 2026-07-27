@@ -65,7 +65,11 @@ func TestRecallReceiptReplayIsIdempotentEndToEnd(t *testing.T) {
 		t.Fatalf("replay recall failed: %v", err)
 	}
 	if second.Reconsolidated != first.Reconsolidated || second.CurrentText != first.CurrentText || second.Seed != first.Seed || second.RecallCount != first.RecallCount {
-		t.Fatalf("replay result = %+v, want the committed first result %+v", second, first)
+		t.Fatalf(
+			"replay result = %s, want the committed first result %s",
+			diagnosticValue(second),
+			diagnosticValue(first),
+		)
 	}
 	if readRecallCount() != countAfterFirst {
 		t.Fatalf("recall_count moved on replay: %d → %d, want unchanged", countAfterFirst, readRecallCount())
@@ -170,7 +174,7 @@ func TestGistAndDiaryReceiptsReplayAgainstRealStore(t *testing.T) {
 		t.Fatalf("replayed ViewSemantic failed: %v", err)
 	}
 	if replayedView != firstView {
-		t.Fatalf("replayed view = %+v, want %+v", replayedView, firstView)
+		t.Fatalf("replayed view = %s, want %s", diagnosticValue(replayedView), diagnosticValue(firstView))
 	}
 
 	firstDiary, err := service.RecallDiaryStars(ctx, scope, base+"-diary-op", base+"-diary", true)
@@ -182,7 +186,11 @@ func TestGistAndDiaryReceiptsReplayAgainstRealStore(t *testing.T) {
 		t.Fatalf("replayed diary recall failed: %v", err)
 	}
 	if len(firstDiary.EpisodicMemoryIDs) != 2 || len(replayedDiary.EpisodicMemoryIDs) != 2 {
-		t.Fatalf("diary results = %+v / %+v, want two members", firstDiary, replayedDiary)
+		t.Fatalf(
+			"diary results = %s / %s, want two members",
+			diagnosticValue(firstDiary),
+			diagnosticValue(replayedDiary),
+		)
 	}
 
 	var receipts, recalledOnce int

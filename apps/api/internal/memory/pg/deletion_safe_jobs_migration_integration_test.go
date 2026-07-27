@@ -126,7 +126,12 @@ func TestDeletionSafeJobsMigrationScrubsLegacyPayloadsAndRoundTrips(t *testing.T
 		t.Fatalf("inspect migrated running job failed: %v", err)
 	}
 	if status != "cancelled" || lease != 6 || cancelledBy == nil || *cancelledBy != "r1" {
-		t.Fatalf("migrated released job = status %q lease %d cancelled_by %v, want cancelled/6/r1", status, lease, cancelledBy)
+		t.Fatalf(
+			"migrated released job = status %q lease %d cancelled_by %v, want cancelled/6/r1",
+			status,
+			lease,
+			valueOrNil(cancelledBy),
+		)
 	}
 	var failedTerminal bool
 	if err := conn.QueryRow(ctx, `SELECT terminal_at IS NOT NULL FROM jobs WHERE id = 'j-failed'`).Scan(&failedTerminal); err != nil {

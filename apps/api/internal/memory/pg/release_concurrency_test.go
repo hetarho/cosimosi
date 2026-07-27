@@ -261,7 +261,7 @@ func TestGraphMutationLockSerializesReleaseRecallAndConsolidation(t *testing.T) 
 			t.Fatalf("user B RecallDiaryStars blocked on user A graph lock: %v", err)
 		}
 		if len(otherResult.EpisodicMemoryIDs) != 1 || otherResult.EpisodicMemoryIDs[0] != otherGraph.m1 {
-			t.Fatalf("user B recall result = %+v, want [%s]", otherResult, otherGraph.m1)
+			t.Fatalf("user B recall result = %s, want [%s]", diagnosticValue(otherResult), otherGraph.m1)
 		}
 		otherWant := float32(memory.Potentiate(float64(otherGraph.preSharedContribution), values.SynapsePotentiationRate))
 		if got := readSynapseStrength(t, ctx, pool, otherUserID, otherGraph.syn); got != otherWant {
