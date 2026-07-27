@@ -49,6 +49,7 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
 | `SSH_HOST`/`SSH_USER`/`SSH_KEY`                                                      | GitHub repo secrets                                                   | Actions→VPS 배포 접속 (43.203.82.239 / ubuntu / 배포 전용 ed25519 개인키)                                                                                                                                   |
 | `DIRECT_DATABASE_URL`                                                                | GitHub repo secret                                                    | goose 마이그레이션용 Supabase 직접 연결(5432, session pooler)                                                                                                                                               |
 | `DEPLOY_ENABLED=true`                                                                | GitHub repo **variable**                                              | 배포 스위치 — 지우면 rollout이 건너뛰어짐(빌드 검증만)                                                                                                                                                      |
+| `API_ORIGIN`/`WEB_ORIGIN`                                                            | GitHub **Environment variables** (`production`/`staging`)             | 배포 후 health/CORS 검증의 독립 기대값. prod=`https://api.cosimosi.haeram.me`/`https://cosimosi.haeram.me`; staging은 staging API와 실제 허용할 프론트 origin                                               |
 | `VITE_API_URL`/`VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`                   | Cloudflare Worker → Settings → Build → Variables and secrets          | 프론트 빌드 타임 주입(번들에 박히는 공개값)                                                                                                                                                                 |
 | `VITE_SENTRY_DSN`/`VITE_SENTRY_ENVIRONMENT` · `VITE_POSTHOG_KEY`/`VITE_POSTHOG_HOST` | Cloudflare Worker → Settings → Build → Variables and secrets          | 프론트 관측(spec 18): Sentry 에러·트레이싱, PostHog 제품 지표. **비우면 전부 no-op.** release 태그(`VITE_APP_VERSION`)는 설정 불필요 — vite.config가 Workers Builds의 `WORKERS_CI_COMMIT_SHA`에서 자동 주입 |
 | `cosimosi build token`                                                               | Cloudflare가 자동 관리 (Worker → Settings → Build → API token)        | Workers Builds의 배포 인증. **빌드가 10001 인증 에러로 죽으면 여기서 새 토큰 생성**                                                                                                                         |
@@ -81,9 +82,12 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
   `API_UPSTREAM`(`cosimosi-api-staging`|`cosimosi-api-prod` — edge 네트워크에서의 DNS 별칭) ·
   `COSIMOSI_CORS_ORIGINS`(해당 환경 프론트 origin, 쉼표로 여러 개) · `SUPABASE_PROJECT_URL` ·
   `SUPABASE_SERVICE_ROLE_KEY`(**서버 전용**, Auth Admin API와 withdrawal credential purge에 필수; `VITE_*`로
-  노출 금지) · `AI_EMBEDDER`/`OPENAI_API_KEY` · `SENTRY_DSN`/`SENTRY_ENVIRONMENT` ·
-  `COSIMOSI_ERROR_DETAIL`. Use the exact value `verbose` only temporarily for staging diagnostics; **production must
-  keep it empty**. Empty, misspelled, and unknown values all keep the cause masked. 키 문서화는
+  노출 금지) · `INVITE_TOKEN_SIGNING_KEY`(표준 base64 32바이트 이상, 초대 링크 HMAC 및 가입 시 초대 바인딩에
+  필수; `openssl rand -base64 32`) · `AI_EMBEDDER`/`OPENAI_API_KEY` · `SENTRY_DSN`/`SENTRY_ENVIRONMENT` ·
+  `COSIMOSI_ERROR_DETAIL`. `SUPABASE_PROJECT_URL`·`SUPABASE_SERVICE_ROLE_KEY`·`INVITE_TOKEN_SIGNING_KEY`·
+  `COSIMOSI_CORS_ORIGINS` 중 하나라도 비거나 초대 키가 올바른 base64 32바이트 미만이면 배포가
+  pull/quiesce 전에 중단된다. Use the exact value `verbose` only temporarily for staging diagnostics;
+  **production must keep it empty**. Empty, misspelled, and unknown values all keep the cause masked. 키 문서화는
   `.env.production.example`.
 - 도커 외부 네트워크 `edge`(`docker network create edge`)로 Caddy↔api가 통신한다.
   Caddy는 스택마다 띄우지 않는다 — 80/443 충돌.
@@ -123,8 +127,9 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 6. **배포 키**: `ssh-keygen -t ed25519 -f ~/.ssh/cosimosi-deploy -N "" -C cosimosi-github-actions-deploy`
    → 공개키를 VPS `~/.ssh/authorized_keys`에 추가.
 7. **GitHub** (Settings → Secrets and variables → Actions): secrets `SSH_HOST`(Static IP),
-   `SSH_USER`(`ubuntu`), `SSH_KEY`(`~/.ssh/cosimosi-deploy` 내용), `DIRECT_DATABASE_URL`(5432) →
-   전부 끝난 뒤 variable `DEPLOY_ENABLED=true`.
+   `SSH_USER`(`ubuntu`), `SSH_KEY`(`~/.ssh/cosimosi-deploy` 내용), `DIRECT_DATABASE_URL`(5432), Environment variables
+   `API_ORIGIN`/`WEB_ORIGIN`(각각 `production`/`staging`의 기대 origin) → 전부 끝난 뒤 variable
+   `DEPLOY_ENABLED=true`.
 8. **기동**: 각 스택에서 `docker compose -f docker-compose.prod.yml up -d`, `/srv/edge`에서
    `docker compose up -d`. 이후는 머지가 알아서 배포한다(§2).
 9. **Cloudflare Worker**(프론트): 리포 import(이름 `cosimosi` = `wrangler.jsonc`의 name),
@@ -160,3 +165,6 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 - **Supabase 무료 티어는 7일 무활동 시 일시정지** — 출시 전 keep-alive(주기적 `SELECT 1`) 필요.
 - **Supabase redirect 허용목록에 없는 origin은 Site URL로 폴백** — 프리뷰/로컬에서 로그인하면
   prod로 떨어지는 증상의 원인.
+- **백엔드 배포 검증은 staging/prod 공통** — 롤아웃 뒤 Environment variable `API_ORIGIN`의 `/health`와
+  독립 기대값 `WEB_ORIGIN`을 사용한 preflight를 검사한다. 런타임 CORS 설정 자체를 기대값으로 재사용하지
+  않으므로 잘못된 환경 origin도 실패한다.

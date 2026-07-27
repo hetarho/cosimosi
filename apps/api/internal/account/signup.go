@@ -135,8 +135,11 @@ func (s *Service) acceptInvite(
 		return false, ErrScopeRequired
 	}
 	verified, err := s.VerifyInviteToken(strings.TrimSpace(token))
-	if err != nil {
+	if errors.Is(err, ErrInviteTokenInvalid) || errors.Is(err, ErrInviteTokenExpired) {
 		return false, nil
+	}
+	if err != nil {
+		return false, err
 	}
 	if verified.InviterUserID == inviteeScope.UserID() {
 		return false, nil

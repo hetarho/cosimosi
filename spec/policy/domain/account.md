@@ -63,7 +63,9 @@ gain a profile-zone dependency.
 - Every account RPC except `GetProfile` and `SignUp` requires an existing live profile. An authenticated user without
   a `users` row receives `ACCOUNT_SIGNUP_REQUIRED`.
 - Invite binding is best-effort and happens only during first signup. Invalid, expired, self, consumed, or
-  withdrawn-inviter links bind nothing and do not fail signup.
+  withdrawn-inviter links bind nothing and do not fail signup. An unavailable signing capability is an operational
+  fault rather than an invalid invite: production refuses it at composition, and any reached binding surfaces the
+  error so profile birth rolls back.
 - Signup itself pays nothing. The one-time signup bonus and any two-sided invite reward settle only after a
   non-past-dated diary launches stars.
 - An invite reward requires a distinct live inviter, the launched-star trigger, fewer than

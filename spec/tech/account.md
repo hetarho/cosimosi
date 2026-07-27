@@ -71,10 +71,12 @@ The token format is:
 `base64url(inviter) . base64url(issued_at_unix) . base64url(32-byte nonce) . base64url(HMAC-SHA256(payload))`
 
 `INVITE_TOKEN_SIGNING_KEY` is standard base64 and must decode to at least 32 bytes. Construction, the signer’s
-zero value, and missing configuration all fail closed. Issuance first reads only the caller's live profile, then
-derives the token without reading or writing `invites`; verification performs no database access. Verification
-checks the MAC with `hmac.Equal` before decoding trusted payload fields and enforces the generated invite TTL. A bind
-persists the presented token later; there is deliberately no select-by-token query.
+zero value, and missing configuration all fail closed. Production composition refuses to boot when the key is absent;
+development and tests may compose the unavailable signer, whose capability error is propagated by invite binding
+rather than disguised as an invalid token. Issuance first reads only the caller's live profile, then derives the token
+without reading or writing `invites`; verification performs no database access. Verification checks the MAC with
+`hmac.Equal` before decoding trusted payload fields and enforces the generated invite TTL. A bind persists the
+presented token later; there is deliberately no select-by-token query.
 
 ## Signup and deferred settlement
 
@@ -87,7 +89,9 @@ perform the same first write instead of being stranded unbound.
 
 `AcceptInvite` verifies the HMAC token, takes the inviter id from its authenticated payload, and inserts the
 bound-only `invites` row against a live inviter. Unique token and invitee constraints turn consumed links and
-concurrent binds into `invite_bound=false`. There is no token lookup and no `AcceptInvite` RPC.
+concurrent binds into `invite_bound=false`. Invalid and expired tokens remain best-effort refusals; signer
+unavailability and unexpected verification faults surface so the signup transaction rolls back observably. There is
+no token lookup and no `AcceptInvite` RPC.
 
 `memory.SignupSettlementPort` fires after a successful launch transaction and only when the diary was not
 past-dated. Its production adapter calls `account.Service.SettleSignup`; the no-error, scope-only port means
@@ -123,6 +127,10 @@ the empty payload and `(user, scope.UserID())` target. Dedup key `withdrawal:<us
 `memory.NewJobRunner` accepts composition-root extra handlers and rejects duplicate kinds. Both worker roots bind
 `withdrawal_sweep` to `account.Service.SweepWithdrawnAccount`; withdrawal failures bypass the terminal claim ceiling
 and remain durably retryable.
+
+The worker composes error-returning unavailable invite/signup-bonus granters because its only account entry point is
+the withdrawal sweep. An accidental future call to `SettleSignup` therefore fails the job loudly instead of reporting
+success without credits.
 
 ## Withdrawal purge ownership
 

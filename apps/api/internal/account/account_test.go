@@ -963,6 +963,34 @@ func TestAcceptInviteRefusalsAreBestEffort(t *testing.T) {
 	}
 }
 
+func TestAcceptInviteSurfacesUnavailableSigner(t *testing.T) {
+	t.Parallel()
+	store := &fakeStore{}
+	service := newTestService(t, store)
+
+	bound, err := service.AcceptInvite(
+		context.Background(),
+		mustScope(t, "invitee"),
+		"payload.issue.nonce.YQ",
+	)
+	if bound || !errors.Is(err, ErrInviteLinkUnavailable) {
+		t.Fatalf("unavailable signer = bound %v err %v, want ErrInviteLinkUnavailable", bound, err)
+	}
+
+	_, bound, err = service.SignUp(context.Background(), mustScope(t, "new-user"), SignUpInput{
+		Nickname:    "new user",
+		Timezone:    "UTC",
+		Locale:      "en",
+		InviteToken: "payload.issue.nonce.YQ",
+	})
+	if bound || !errors.Is(err, ErrInviteLinkUnavailable) {
+		t.Fatalf("signup with unavailable signer = bound %v err %v", bound, err)
+	}
+	if _, committed := store.profiles["new-user"]; committed {
+		t.Fatal("unavailable invite signer committed an unbound profile")
+	}
+}
+
 func TestResolveInviteSettlementAppliesPermanentGatesBeforeDirectory(t *testing.T) {
 	t.Parallel()
 	invite := SettleableInvite{

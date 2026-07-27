@@ -234,6 +234,14 @@ func (g accountSignupBonusGranter) Grant(ctx context.Context, scope platform.Use
 func inviteSignerFromEnv() (account.InviteSigner, error) {
 	encoded := strings.TrimSpace(os.Getenv(envInviteTokenSigningKey))
 	if encoded == "" {
+		if strings.EqualFold(
+			strings.TrimSpace(os.Getenv(apperr.EnvDeployEnvironment)),
+			"production",
+		) {
+			return nil, errors.New(
+				"production account invite capability requires INVITE_TOKEN_SIGNING_KEY",
+			)
+		}
 		return account.UnavailableInviteSigner{}, nil
 	}
 	key, err := base64.StdEncoding.DecodeString(encoded)

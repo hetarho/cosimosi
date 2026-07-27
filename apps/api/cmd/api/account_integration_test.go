@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -110,6 +111,7 @@ func TestProductionMemoryZoneAdapterBindsAccountReader(t *testing.T) {
 }
 
 func TestInviteSignerConfigurationFailsClosed(t *testing.T) {
+	t.Setenv(apperr.EnvDeployEnvironment, "")
 	t.Setenv(envInviteTokenSigningKey, "")
 	signer, err := inviteSignerFromEnv()
 	if err != nil {
@@ -134,8 +136,32 @@ func TestInviteSignerConfigurationFailsClosed(t *testing.T) {
 	}
 }
 
+func TestProductionAccountCompositionRejectsMissingInviteSigningKey(t *testing.T) {
+	t.Setenv(apperr.EnvDeployEnvironment, "production")
+	t.Setenv(envInviteTokenSigningKey, "")
+	source, ok := platformsupabase.NewDirectory(
+		"https://example.supabase.co",
+		"server-only-test-key",
+		nil,
+	)
+	if !ok {
+		t.Fatal("test Supabase directory did not compose")
+	}
+
+	_, _, err := accountServiceOption(
+		nil,
+		accountDirectoryAdapter{source: source},
+		accountNoInviteGranter{},
+		accountNoSignupBonusGranter{},
+	)
+	if err == nil || !strings.Contains(err.Error(), envInviteTokenSigningKey) {
+		t.Fatalf("production account composition err = %v, want missing %s refusal", err, envInviteTokenSigningKey)
+	}
+}
+
 func TestProductionAccountCompositionRejectsKeylessCredentialDirectory(t *testing.T) {
 	t.Setenv(apperr.EnvDeployEnvironment, "production")
+	t.Setenv(envInviteTokenSigningKey, base64.StdEncoding.EncodeToString(make([]byte, 32)))
 	_, _, err := accountServiceOption(
 		nil,
 		accountDirectoryAdapter{source: platformsupabase.Fake{}},

@@ -154,11 +154,24 @@ func newWorkerAccountDirectory() (workerAccountDirectory, error) {
 
 type workerNoInviteGranter struct{}
 
-func (workerNoInviteGranter) Grant(context.Context, platform.UserScope, string) error { return nil }
+var (
+	errWorkerInviteSettlementUnavailable = errors.New(
+		"invite settlement is not available in the worker process",
+	)
+	errWorkerSignupBonusUnavailable = errors.New(
+		"signup bonus settlement is not available in the worker process",
+	)
+)
+
+func (workerNoInviteGranter) Grant(context.Context, platform.UserScope, string) error {
+	return errWorkerInviteSettlementUnavailable
+}
 
 type workerNoSignupBonusGranter struct{}
 
-func (workerNoSignupBonusGranter) Grant(context.Context, platform.UserScope) error { return nil }
+func (workerNoSignupBonusGranter) Grant(context.Context, platform.UserScope) error {
+	return errWorkerSignupBonusUnavailable
+}
 
 type workerWithdrawalScheduler struct {
 	jobs memory.UserJobService
