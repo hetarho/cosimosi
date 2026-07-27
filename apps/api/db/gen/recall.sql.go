@@ -159,7 +159,7 @@ type LoadEpisodicMemoryForRecallRow struct {
 	RepresentationRevision   int64
 }
 
-// Recall use-case reads/writes (plan 33 / job 44), run by the recall transaction. The write
+// Recall use-case reads/writes run in the recall transaction. The write
 // side (anchors, LTP via UpsertSynapse in launch.sql, neighbor ± + provenance in
 // reconsolidation.sql) and these reads land in one transaction. Every statement is scoped to
 // the authenticated user ([U1], §4, lint:persistence). The Diary is never written here ([I2]).

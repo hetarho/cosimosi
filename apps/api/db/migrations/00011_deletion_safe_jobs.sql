@@ -1,6 +1,6 @@
 -- +goose Up
--- Queue privacy and retention safety (job 67). This migration is deliberately
--- fail-closed for active legacy rows: source-bearing payloads are converted to
+-- Queue privacy and retention safety are deliberately fail-closed for active legacy rows:
+-- source-bearing payloads are converted to
 -- indexed identities/revisions in one transaction, never copied forward.
 LOCK TABLE jobs IN SHARE ROW EXCLUSIVE MODE;
 LOCK TABLE episodic_memories IN SHARE ROW EXCLUSIVE MODE;

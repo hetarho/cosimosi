@@ -94,9 +94,9 @@ type ListNeuronCandidatesInBodyRow struct {
 	RepresentationRevision int64
 }
 
-// Encode use-case queries (plan 20): dedup-candidate assembly and persist-time
-// neuron resolution. Every query is user-scoped. (The monotonic launch guard
-// reads the universe_state clock — clock.sql — since plan 30.)
+// Encode use-case queries assemble dedup candidates and resolve neurons at persist time.
+// Every query is user-scoped. The monotonic launch guard reads the universe_state clock
+// through clock.sql.
 func (q *Queries) ListNeuronCandidatesInBody(ctx context.Context, arg ListNeuronCandidatesInBodyParams) ([]ListNeuronCandidatesInBodyRow, error) {
 	rows, err := q.db.Query(ctx, listNeuronCandidatesInBody, arg.UserID, arg.Column2, arg.Limit)
 	if err != nil {

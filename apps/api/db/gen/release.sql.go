@@ -161,7 +161,7 @@ type DeleteReleaseMemoriesParams struct {
 	EpisodicMemoryIds []string
 }
 
-// The released memories (their retained memory_provenance rides job 43's ON DELETE CASCADE). Only ever a
+// The released memories carry retained memory_provenance through the parent memory's ON DELETE CASCADE. Only ever a
 // still-soft-deleted row — a restored (deleted_at IS NULL) memory is never touched ([I1]).
 func (q *Queries) DeleteReleaseMemories(ctx context.Context, arg DeleteReleaseMemoriesParams) error {
 	_, err := q.db.Exec(ctx, deleteReleaseMemories, arg.UserID, arg.EpisodicMemoryIds)
@@ -272,12 +272,12 @@ type GetReleaseGroupForDiaryRow struct {
 	DeletedAt pgtype.Timestamptz
 }
 
-// Release use-case (plan 49, Epic H): the release-effect ledger writes/reads, the restore reversal
+// Release use-case: the release-effect ledger writes/reads, the restore reversal
 // writes, the this-memory-only-semantic candidate read, and the retention sweep. The sweep DELETEs
 // (and the shared release_groups delete restore/sweep both use to retire a release) are the ONLY DELETE
 // statements in db/queries — every one is user-scoped ([U1], §4) and release-group-bound, and no DELETE
 // of memory/neuron data ever touches a deleted_at IS NULL (live) row or a shared neuron ([I1]). The
-// soft-delete/seal/contribution-Depress writes are job 59's (reused, never duplicated here). No UPDATE
+// soft-delete/seal/contribution-Depress writes reuse the deletion operations rather than duplicating them here. No UPDATE
 // diaries anywhere — the Diary body is immutable while retained ([I2]); the sweep removes the whole row
 // as the user's explicit post-window deletion.
 // The live release group for one diary, if any — the already-released guard (Release) and the restore
@@ -377,7 +377,7 @@ type InsertReleaseSealedNeuronsParams struct {
 	SealedAt  pgtype.Timestamptz
 }
 
-// Record only the neurons this release actually changed from unsealed to sealed, together with the
+// Record only the neurons this release transitions from unsealed to sealed, together with the
 // exact timestamp that proves ownership of the reversible release-origin effect.
 func (q *Queries) InsertReleaseSealedNeurons(ctx context.Context, arg InsertReleaseSealedNeuronsParams) error {
 	_, err := q.db.Exec(ctx, insertReleaseSealedNeurons,

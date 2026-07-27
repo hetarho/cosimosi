@@ -10,14 +10,22 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { repoRoot, section, ok, note, fail } from './lib.mjs'
 
-const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages']
+const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages', 'scripts']
 // tests/stories/fixtures and generated Go (sqlc/proto/values) are exempt.
 const SKIP_FILE =
-  /(\.(test|spec|stories|probe)\.[jt]sx?$|_test\.go$|_gen\.go$|\.sql\.go$|\.pb\.go$|_connect\.go$)/
-const CODE_EXT = /\.(go|[jt]sx?)$/
-// only lines that carry a comment marker are inspected (so string literals aren't flagged);
-// Go and TS/JS share the // and /* */ markers.
+  /(\.(test|spec|stories|probe)\.(?:[mc]?[jt]sx?)$|_test\.go$|_gen\.go$|\.sql\.go$|\.pb\.go$|_connect\.go$)/
+const CODE_EXT = /\.(go|[mc]?[jt]sx?|sql)$/
+// The guard necessarily contains its own negative fixtures and pattern documentation. The job
+// scaffolder has one narrower line exemption for the public CLI example that contains a source kind.
+const EXEMPT_FILES = new Set(['scripts/lint-comment-history.mjs'])
+const EXEMPT_LINES = new Map([
+  ['scripts/new-job.mjs', /^\s*\/\/\s+pnpm spec:job (?:plan|change|refactor) \d+\b/],
+])
+// Only lines that carry a comment marker are inspected. SQL uses -- while the other scanned
+// languages use their own markers; keeping them separate avoids treating a JS decrement as SQL.
 const COMMENT = /(\/\/|\/\*|^\s*\*|\{\s*\/\*|<!--)/
+const SQL_COMMENT = /(--|\/\*|^\s*\*)/
+const hasComment = (line, file = '') => (file.endsWith('.sql') ? SQL_COMMENT : COMMENT).test(line)
 // high-confidence process/history markers (verified zero false-positives on the current tree).
 // Plan/job/finding numbers and epic names are ticket-like references the timeless-comment rule
 // forbids. Two things are deliberately NOT flagged: requirement-ID anchors that *name a rule*
@@ -57,7 +65,7 @@ const scopedHit = (line, file) =>
   SCOPED_NARRATION.find((rule) => rule.paths.some((p) => file.includes(p)) && rule.re.test(line))
 
 const narrates = (line, file = '') =>
-  COMMENT.test(line) && (NARRATION.find((re) => re.test(line)) || scopedHit(line, file))
+  hasComment(line, file) && (NARRATION.find((re) => re.test(line)) || scopedHit(line, file))
 
 // `--probe` self-test: proves the guard catches the process/plan forms and leaves the
 // allowed design-rationale anchors (requirement IDs, § section pointers) untouched.
@@ -66,6 +74,7 @@ if (process.argv.includes('--probe')) {
   // Each case is [line, file]; file is only meaningful for the path-scoped Ax rule.
   const mustCatch = [
     ['// this mirrors plan 20 exactly', ''],
+    ['-- this SQL follows plan 20 exactly', 'apps/api/db/queries/memory/probe.sql'],
     ['\t// Link (plan 21) runs last', ''], // Go comment
     ['// Job 27 provides the implementation', ''],
     ['// the R001 regression', ''],
@@ -125,8 +134,10 @@ const problems = []
 for (const file of files) {
   const lines = readFileSync(file, 'utf8').split('\n')
   const relative = file.replace(repoRoot + '/', '')
+  if (EXEMPT_FILES.has(relative)) continue
   lines.forEach((line, i) => {
-    if (!COMMENT.test(line)) return
+    if (EXEMPT_LINES.get(relative)?.test(line)) return
+    if (!hasComment(line, relative)) return
     const hit = NARRATION.find((re) => re.test(line)) || scopedHit(line, relative)?.re
     if (hit) {
       problems.push(

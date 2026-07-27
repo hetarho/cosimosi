@@ -1,5 +1,5 @@
--- Link use-case reads (plan 21): the two reads Link consumes on top of the
--- plan-16 baseline synapse upsert (UpsertSynapse, in launch.sql). Every query is
+-- Link consumes these two reads on top of the baseline synapse upsert
+-- (UpsertSynapse in launch.sql). Every query is
 -- user-scoped ([U1], ARCHITECTURE §4). The graph grows only from neuron reuse +
 -- Hebbian co-firing + the temporal bonus — no embeddings row is ever read [L3].
 

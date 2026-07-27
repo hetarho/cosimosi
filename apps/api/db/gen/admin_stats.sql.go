@@ -58,8 +58,8 @@ const countUserDiaries = `-- name: CountUserDiaries :one
 SELECT count(*)::bigint AS count FROM diaries WHERE user_id = $1
 `
 
-// Non-content aggregate reads the admin console consumes through memory's published behavior
-// (plan 58). The per-user counts are user-scoped; the job-queue counts are deliberately global
+// Non-content aggregate reads the admin console consumes through memory's published behavior.
+// The per-user counts are user-scoped; the job-queue counts are deliberately global
 // (an operator queue-health read, allowlisted in check-persistence-isolation.mjs).
 func (q *Queries) CountUserDiaries(ctx context.Context, userID string) (int64, error) {
 	row := q.db.QueryRow(ctx, countUserDiaries, userID)

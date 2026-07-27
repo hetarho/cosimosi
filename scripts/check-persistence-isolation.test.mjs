@@ -326,6 +326,28 @@ test('fails a scoped product DELETE that is not in the [I1] hard-delete allowlis
   assert.match(violations[0], /\[I1\] hard-delete allowlist/)
 })
 
+test('fails TRUNCATE TABLE for every product table outside the [I1] hard-delete allowlist', (t) => {
+  const roots = withSql(t, {
+    'migrations/0001.sql': [
+      'CREATE TABLE records (id text PRIMARY KEY, user_id text NOT NULL);',
+      'CREATE TABLE diaries (id text PRIMARY KEY, user_id text NOT NULL);',
+    ].join('\n'),
+    'queries/records/purge.sql': [
+      '-- name: UnlistedTruncate :exec',
+      'TRUNCATE ONLY records;',
+      '-- name: UnlistedTruncateList :exec',
+      'TRUNCATE TABLE public.records, diaries RESTART IDENTITY CASCADE;',
+    ].join('\n'),
+  })
+  const hardDeleteViolations = findPersistenceViolations(roots).filter((violation) =>
+    violation.includes('[I1] hard-delete allowlist'),
+  )
+  assert.equal(hardDeleteViolations.length, 3)
+  assert.match(hardDeleteViolations[0], /TRUNCATE of user product table/)
+  assert.match(hardDeleteViolations[1], /TRUNCATE of user product table/)
+  assert.match(hardDeleteViolations[2], /TRUNCATE of user product table/)
+})
+
 // The strengthened checker must hold on the real corpus: every live migration and query
 // is either genuinely user-scoped or explicitly allowlisted as a platform/global scan.
 test('the real repository corpus passes the strengthened checker', () => {

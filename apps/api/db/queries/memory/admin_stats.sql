@@ -1,5 +1,5 @@
--- Non-content aggregate reads the admin console consumes through memory's published behavior
--- (plan 58). The per-user counts are user-scoped; the job-queue counts are deliberately global
+-- Non-content aggregate reads the admin console consumes through memory's published behavior.
+-- The per-user counts are user-scoped; the job-queue counts are deliberately global
 -- (an operator queue-health read, allowlisted in check-persistence-isolation.mjs).
 
 -- name: CountUserDiaries :one

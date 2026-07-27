@@ -38,7 +38,7 @@ WHERE NOT EXISTS (
       AND n.user_id = rsn.user_id
 );
 
--- Repair the pre-job-68 overlap failure non-destructively. A retained activation outside the effect's
+-- Repair invalid overlapping release ownership non-destructively. A retained activation outside the effect's
 -- own release set makes that release-origin seal invalid, even when the outside owner is itself
 -- soft-deleted and still inside retention. Only a current timestamp-matched release seal is cleared;
 -- LetGo-only and replacement seals are preserved. Diary bodies, provenance, and history are untouched.

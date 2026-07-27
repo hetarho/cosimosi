@@ -1,15 +1,10 @@
 #!/usr/bin/env node
-// Spec & workflow hygiene — two gaps that let stale/inconsistent workflow docs teach future agents the wrong thing
-// (code-review 03, R003 + R004). Neither is covered by any existing gate.
+// Spec & workflow hygiene keeps executable documentation and the job board internally consistent.
 //
-//   A (R003)  Workflow-skill links resolve. Every SKILL.md under .claude/skills + .codex/skills must not link to a
-//             file that doesn't exist — the exact bug where /create-plan pointed at a non-existent plan/21 & plan/30
-//             (and at the wrong depth). Anchor fragments and {{placeholders}} are skipped; only the file part of a
-//             relative link is checked. (Scaffold templates are excluded: their links are relative to the scaffold
-//             *destination* — spec/jobs, spec/plan, … — not to scripts/templates/, so they can't be resolved in place.)
-//   B (R004)  Job status ↔ location consistency. A `status: done` job must live under spec/jobs/archive/ (never left
-//             in spec/jobs/, the "done but unarchived" bug from job 17); a `status: todo|doing` job must NOT be in
-//             archive/. This keeps the jobs board trustworthy for the workflow that carries architecture into code.
+//   A  Workflow-skill links resolve. Anchor fragments and {{placeholders}} are skipped; only the file part of a
+//      relative link is checked. Scaffold-template links are relative to the generated destination, not the template.
+//   B  Job status ↔ location consistency. A `status: done` job belongs under spec/jobs/archive/; a
+//      `status: todo|doing` job belongs under spec/jobs/. This keeps the board trustworthy.
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'

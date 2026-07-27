@@ -1,6 +1,6 @@
--- Encode use-case queries (plan 20): dedup-candidate assembly and persist-time
--- neuron resolution. Every query is user-scoped. (The monotonic launch guard
--- reads the universe_state clock — clock.sql — since plan 30.)
+-- Encode use-case queries assemble dedup candidates and resolve neurons at persist time.
+-- Every query is user-scoped. The monotonic launch guard reads the universe_state clock
+-- through clock.sql.
 
 -- name: ListNeuronCandidatesInBody :many
 SELECT id, name, neuron_type, representation_revision

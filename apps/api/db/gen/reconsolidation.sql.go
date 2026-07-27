@@ -25,9 +25,9 @@ type AddForgettingOffsetParams struct {
 	MemoryIds []string
 }
 
-// Reconsolidation write-side queries ([R5][R8a], plan 32). Orchestrated by the recall use-case (job
-// 44) inside one transaction; the read side (변천사 + baseline synthesis) is plan 46 (Epic G) and
-// lives elsewhere. Every statement is scoped to the authenticated user ([U1], §4, lint:persistence).
+// Reconsolidation write-side queries ([R5][R8a]) run inside the recall transaction; the read side
+// (변천사 + baseline synthesis) lives elsewhere. Every statement is scoped to the authenticated
+// user ([U1], §4, lint:persistence).
 // Additively nudges the forgetting offset of a recalled memory's NEIGHBORS ([R5]): the caller
 // passes the neighbor id set (the recalled memory itself is excluded — it recovers wholly [F5]) and the
 // signed delta. `+=` accumulates across recalls; DEFAULT 0 means an untouched row stays put.
@@ -73,7 +73,7 @@ type AppendMemoryProvenanceParams struct {
 
 // Appends one 변천사 row ([R8a][D1], A8). Append-only: there is deliberately NO UPDATE and NO DELETE
 // query on memory_provenance in this repo (retained rows are immutable; the parent memory's ON DELETE
-// CASCADE is the only removal — Epic H's user full-delete sweep). created_at is DB-assigned with
+// CASCADE is the only removal — the user full-delete sweep). created_at is DB-assigned with
 // clock_timestamp() — the transaction-constant now() would tie for the multiple rows one
 // consolidation appends inside a single advance (a multi-stage gist jump), and created_at is the
 // deterministic tiebreak same-universe-day timeline readers sort by.

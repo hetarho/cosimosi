@@ -1,4 +1,4 @@
--- Consolidation use-case writes (plan 41 / job 52), run INSIDE the advance transaction the
+-- Consolidation use-case writes run INSIDE the advance transaction the
 -- progression hook fires on launch and sync ([T4]) — the interval read reuses
 -- ListUniverseEpisodicMemories (universe.sql), the same non-deleted per-user shape the read
 -- path sees. Every statement is scoped to the authenticated user (§4, lint:persistence).
@@ -112,7 +112,7 @@ WHERE user_id = sqlc.arg(user_id)
 -- The Downscale input ([C4]): the user's synapses that actually slept through the interval —
 -- an edge last activated at/after the advance target was linked in this very transaction (or
 -- replay-refreshed) and did not exist through the slept days, so it is excluded.
--- Both endpoint neurons must be alive ([X3], plan 48): a sealed-endpoint edge leaves the dynamics via
+-- Both endpoint neurons must be alive ([X3]): a sealed-endpoint edge leaves the dynamics via
 -- the canonical alive-predicate, so it is never Downscaled — no invisible-but-still-renormalizing ghost.
 -- name: ListSynapseStrengthsForDownscale :many
 SELECT s.id, s.strength

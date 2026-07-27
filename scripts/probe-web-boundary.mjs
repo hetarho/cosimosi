@@ -6,8 +6,8 @@ import { fail, ok, repoRoot, section } from './lib.mjs'
 
 // This probe proves the FSD boundary rules actually fire — a green `eslint` config could silently
 // stop enforcing them. It injects temp fixtures under src/, runs `lint:boundaries`, and asserts
-// the forbidden imports are caught and the allowed ones are not. Cases (plan 23 layering + plan
-// 24's `@x` anti-corruption seam):
+// the forbidden imports are caught and the allowed ones are not. Cases cover layer direction and
+// the `@x` anti-corruption seam:
 //   FORBIDDEN  entities → pages                          (layer direction)
 //   FORBIDDEN  entities → another entity's private model (no same-layer reach past `@x`)
 //   FORBIDDEN  an `@x` file → another slice's model      (`@x` reaches only its OWN slice)

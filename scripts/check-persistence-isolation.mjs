@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { fail, ok, repoRoot, section } from './lib.mjs'
 
 const platformQueryDirs = new Set(['platform'])
-// The admin console (plan 58) is the one sanctioned cross-user surface (§4): its tables hold
+// The admin console is a sanctioned cross-user surface (§4): its tables hold
 // operator state (promoted admins, provider config, grant/audit records), not per-user product
 // data, and every admin.v1 method is admin-authorization-gated. They carry no UserScope filter by
 // design, so they are treated like platform tables here — exempt from the per-user isolation rule.
@@ -37,7 +37,7 @@ const globalQueries = new Set([
   // One authenticated invitee can own at most one bound invite. The statement returns only
   // settlement identity, but the gate recognizes user_id rather than invitee_user_id as scope.
   'account/invites.sql#FindSettleableInviteForInvitee',
-  // Admin console job-queue health (plan 58): global operator reads of the shared queue, like
+  // Admin console job-queue health uses global operator reads of the shared queue, like
   // ClaimDueJob/PurgeTerminalJobs — aggregate status counts, no per-user scope.
   'memory/admin_stats.sql#CountJobsByStatus',
   'memory/admin_stats.sql#CountDeadLetteredJobs',
@@ -852,13 +852,30 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
       const label = `apps/api/db/queries/${rel}#${name ?? 'unnamed'}`
       const queryKey = `${rel}#${name ?? 'unnamed'}`
       const stripped = stripSqlNoise(sql)
+      const hardDeleteTargets = []
       for (const match of stripped.matchAll(
         /\bDELETE\s+FROM\s+(?:(?:"[^"]+"|[A-Za-z0-9_]+)\.)?(?:"([^"]+)"|([A-Za-z0-9_]+))/gi,
       )) {
-        const table = (match[1] ?? match[2]).toLowerCase()
+        hardDeleteTargets.push({ operation: 'DELETE', table: match[1] ?? match[2] })
+      }
+      for (const match of stripped.matchAll(
+        /\bTRUNCATE\s+(?:TABLE\s+)?([\s\S]*?)(?=\b(?:RESTART|CONTINUE)\s+IDENTITY\b|\b(?:CASCADE|RESTRICT)\b|;|$)/gi,
+      )) {
+        for (const target of splitTopLevel(match[1], ',')) {
+          const parsed =
+            /^\s*(?:ONLY\s+)?(?:(?:"[^"]+"|[A-Za-z0-9_]+)\.)?(?:"([^"]+)"|([A-Za-z0-9_]+))(?:\s*\*)?\s*$/i.exec(
+              target,
+            )
+          if (parsed) {
+            hardDeleteTargets.push({ operation: 'TRUNCATE', table: parsed[1] ?? parsed[2] })
+          }
+        }
+      }
+      for (const target of hardDeleteTargets) {
+        const table = target.table.toLowerCase()
         if (productUserTables.has(table) && !hardDeleteQueries.has(queryKey)) {
           violations.push(
-            `${label}: DELETE from user product table "${table}" is not in the [I1] hard-delete allowlist`,
+            `${label}: ${target.operation} of user product table "${table}" is not in the [I1] hard-delete allowlist`,
           )
         }
       }

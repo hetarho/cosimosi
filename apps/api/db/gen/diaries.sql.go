@@ -40,7 +40,7 @@ type ListDiariesPageRow struct {
 	DiaryDate pgtype.Date
 }
 
-// Diary-reader archive reads (plan 47, Epic G). SELECTs only: the reader never mutates a Diary ([I2]).
+// Diary-reader archive reads are SELECT-only: the reader never mutates a Diary ([I2]).
 // Every statement is scoped to the authenticated user ([U1], §4, lint:persistence).
 // One reverse-chronological page of the user's immutable diaries ([D2]), keyset-paginated on
 // (diary_date, id) so a growing archive stays stable under new writes. A null cursor starts at the

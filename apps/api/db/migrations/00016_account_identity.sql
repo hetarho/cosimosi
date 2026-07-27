@@ -1,6 +1,6 @@
 -- +goose Up
 
--- users — plan 60's account profile row ([U1][U6][U7]). The user_id primary key is the
+-- users — account profile row ([U1][U6][U7]). The user_id primary key is the
 -- persistence-isolation scope, while email remains authoritative in Supabase Auth.
 CREATE TABLE users (
     user_id    TEXT PRIMARY KEY,
@@ -11,7 +11,7 @@ CREATE TABLE users (
     deleted_at TIMESTAMPTZ
 );
 
--- auth_providers — plan 60's append-only sign-in-method linkage ([U5]). Supabase owns current
+-- auth_providers — append-only sign-in-method linkage ([U5]). Supabase owns current
 -- membership; this row records when the product first observed each member of the closed set.
 CREATE TABLE auth_providers (
     user_id          TEXT NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE auth_providers (
     CHECK (provider IN ('GOOGLE', 'PASSWORD'))
 );
 
--- invites — plan 60's bound invite capability row ([U1][U8][G6]). There is no users foreign key
+-- invites — bound invite capability row ([U1][U8][G6]). There is no users foreign key
 -- because withdrawal retention must preserve an inviter's settlement history without a cascade.
 CREATE TABLE invites (
     id              TEXT PRIMARY KEY,

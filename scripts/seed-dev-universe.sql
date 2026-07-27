@@ -1,5 +1,5 @@
 -- Dev-only seed: a small, coherent memory universe for the VITE_DEV_USER_ID / dev bypass
--- user ('dev-user'), so `pnpm dev` renders a real graph without the writing flow (job 32).
+-- user ('dev-user'), so `pnpm dev` renders a real graph without the writing flow.
 -- Re-runnable: it clears only this dev user's rows, then re-inserts. Never run against a
 -- real user's data. Apply with:  psql "$DATABASE_URL" -f scripts/seed-dev-universe.sql
 --

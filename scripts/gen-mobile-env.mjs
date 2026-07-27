@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generate the mobile dev sign-in bypass user id from the root .env, so web, api, and mobile
-// share ONE COSIMOSI_DEV_USER_ID with no hand-sync (code-review 03 / R003). Runs on mobile dev
+// share ONE COSIMOSI_DEV_USER_ID with no hand-sync. Runs on mobile dev
 // start (the mobile package's start/ios/android scripts). Intentionally NOT part of `pnpm gen` /
 // check-generated.mjs — its source is the local, gitignored .env, so a per-developer override
 // must not fail the generated-freshness gate. The committed default is 'dev-user' (matches

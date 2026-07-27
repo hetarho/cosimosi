@@ -1,6 +1,6 @@
--- Deletion rules (plan 48, Epic H): the sealing/soft-delete writes + the classification data reads +
+-- Deletion rules: the sealing/soft-delete writes + the classification data reads +
 -- the contribution-LTD step. NO DELETE statement anywhere — the system never hard-deletes ([I1]); the
--- only hard delete is job 60's user-initiated 30-day sweep. No UPDATE diaries (the Diary is immutable,
+-- only hard delete is the user-initiated post-retention sweep. No UPDATE diaries (the Diary is immutable,
 -- [I2]). Every statement is scoped to the authenticated user ([U1], §4, lint:persistence).
 
 -- The removal set's live neuron ids: the distinct unsealed neurons activated by the given memories,
@@ -34,7 +34,7 @@ WHERE na.user_id = sqlc.arg(user_id)
   AND na.neuron_id = ANY(sqlc.arg(neuron_ids)::text[]);
 
 -- Full delete's soft-delete ([X1][X2]): mark every still-live memory born from the diary deleted, at the
--- caller-supplied timestamp (job 60 passes real-clock UTC). Returns the affected ids so the caller knows
+-- caller-supplied real-clock UTC timestamp. Returns the affected ids so the caller knows
 -- the removal set. The Diary row is untouched ([I2]); rows persist for the restore window.
 -- name: SoftDeleteDiaryMemories :many
 UPDATE episodic_memories
@@ -45,7 +45,7 @@ WHERE user_id = sqlc.arg(user_id)
 RETURNING id;
 
 -- Seal an explicit orphan-neuron id set (only those not already sealed — idempotent). No unseal here;
--- restore is job 60's.
+-- restore belongs to the paired restore path.
 -- name: SealNeurons :many
 UPDATE neurons
 SET sealed_at = sqlc.arg(sealed_at)

@@ -7,8 +7,8 @@
 -- a hit. Written in the SAME transaction as the debit + sync/effects, so the receipt and its side
 -- effects commit wholly or not at all (A3). NEVER updated (a committed receipt is immutable [I1]);
 -- deleted only when its retained target is hard-deleted, via the target FK cascade — the receipt is
--- meaningful only while its target exists, and the 30-day post-delete sweep is the sole hard delete
--- (Epic H), so a receipt needs no independent retention timer.
+-- meaningful only while its target exists, and the 30-day post-delete sweep is the sole hard delete,
+-- so a receipt needs no independent retention timer.
 -- Composite candidate keys let the receipt FKs enforce that the retained target belongs to the
 -- same user as the receipt; globally unique ids alone would not encode that tenant relationship.
 ALTER TABLE diaries

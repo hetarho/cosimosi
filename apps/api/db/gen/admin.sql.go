@@ -140,7 +140,7 @@ SELECT EXISTS (
 ) AS promoted
 `
 
-// Admin console persistence (plan 58). All statements are deliberately cross-user (an operator
+// Admin console persistence is deliberately cross-user (an operator
 // surface, not per-user product data), so the admin tables are allowlisted in
 // check-persistence-isolation.mjs — see that file's platformTables set.
 func (q *Queries) IsPromotedAdmin(ctx context.Context, userID string) (bool, error) {

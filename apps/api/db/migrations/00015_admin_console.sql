@@ -1,6 +1,6 @@
 -- +goose Up
 
--- admin_users — DB-promoted admins (plan 58). The env-seed ADMIN_USER_IDS set is the undemotable
+-- admin_users — DB-promoted admins. The env-seed ADMIN_USER_IDS set is the undemotable
 -- trust anchor and is NOT stored here; this table holds only the runtime-promoted additions.
 -- Effective admin = env-seed ∪ this table. Cross-user by design (an operator surface, not per-user
 -- product data), so its statements carry no UserScope filter and its table is allowlisted in
