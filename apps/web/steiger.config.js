@@ -22,9 +22,13 @@ export default defineConfig([
   {
     // The writing-flow vertical: four single-action feature slices composed by one widget, and that
     // widget mounted by the universe page. A single reference is the FSD grain here — a feature is
-    // one user action (§3.1), not a slice to merge away. Scoped to these slices so a genuinely
-    // insignificant future slice still gets flagged.
+    // one user action (§3.1), not a slice to merge away. The episodic-memory entity holds the
+    // proposal's shared display atoms (mood chip, neuron chips) that the preview and the editor both
+    // render; every consumer sits in a slice this block already exempts, so the rule counts no
+    // references for it — the same shape as the universe-clock entity below. Scoped to these slices
+    // so a genuinely insignificant future slice still gets flagged.
     files: [
+      './src/entities/episodic-memory/**',
       './src/features/write-diary/**',
       './src/features/split-diary/**',
       './src/features/revise-split/**',
