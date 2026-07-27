@@ -12,7 +12,7 @@ export const SkinContext = createContext<SkinContextValue | null>(null)
 
 /** Resolve the build-time active skin key (from generated config) to a valid SkinKey. */
 export function resolveActiveSkin(activeSkin: string): SkinKey {
-  return isSkinKey(activeSkin) ? activeSkin : 'aurora'
+  return isSkinKey(activeSkin) ? activeSkin : 'emotion'
 }
 
 export function skinValue(skinKey: SkinKey, setSkinKey: (key: SkinKey) => void): SkinContextValue {

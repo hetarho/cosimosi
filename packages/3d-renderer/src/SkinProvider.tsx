@@ -7,7 +7,7 @@ import type { SkinKey } from './assets/skins/presets.ts'
 // end-user runtime switcher ([P4]) drives it without any consumer change.
 export function SkinProvider({
   children,
-  defaultSkin = 'aurora',
+  defaultSkin = 'emotion',
 }: {
   children: ReactNode
   defaultSkin?: SkinKey

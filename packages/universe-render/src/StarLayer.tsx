@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
 
 import {
+  DEFAULT_STAR_SHAPE,
   InstancedNodeLayer,
   STAR_INSTANCE_BRIGHTNESS,
   STAR_INSTANCE_SEED,
+  STAR_INSTANCE_SCALE,
   STAR_INSTANCE_TINT,
-  createStarBodySource,
+  createStarShapeBodySource,
   type CoordinateBufferRef,
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
@@ -17,6 +19,8 @@ export interface StarLayerProps {
   /** Memories occupy buffer slots [firstNodeIndex, firstNodeIndex + count) after the neurons. */
   readonly firstNodeIndex: number
   readonly universeTime: string | null
+  /** Freezes the seed-derived living relief while preserving each star's static pose. */
+  readonly reducedMotion?: boolean
   readonly onFocus?: (index: number) => void
   readonly onFly?: (index: number) => void
   /** Hover glimpse: the star index under the pointer, or null when it leaves ([F1] word-loss preview). */
@@ -32,11 +36,15 @@ export function StarLayer({
   positions,
   firstNodeIndex,
   universeTime,
+  reducedMotion = false,
   onFocus,
   onFly,
   onHover,
 }: StarLayerProps) {
-  const bodySource = useMemo(() => createStarBodySource(), [])
+  const bodySource = useMemo(
+    () => createStarShapeBodySource(DEFAULT_STAR_SHAPE, { animate: !reducedMotion }),
+    [reducedMotion],
+  )
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)
 
@@ -64,6 +72,7 @@ export function StarLayer({
         { name: STAR_INSTANCE_BRIGHTNESS, array: brightness, itemSize: 1 },
         { name: STAR_INSTANCE_SEED, array: seed, itemSize: 1 },
       ],
+      vertexScaleAttribute: STAR_INSTANCE_SCALE,
     }
   }, [byId, ids, universeTime])
 

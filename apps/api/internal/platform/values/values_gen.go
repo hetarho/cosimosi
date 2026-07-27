@@ -80,7 +80,7 @@ var (
 const (
 	NebulaBleedRadiusCoefficient = 18
 	NebulaMinBleedRadius         = 4.5
-	NebulaFalloffExponent        = 3.5
+	NebulaFalloffExponent        = 4.5
 	NebulaMaxContributors        = 96
 	NebulaFieldResolutionWeb     = 24
 	NebulaFieldResolutionMobile  = 10

@@ -3,6 +3,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three/webgpu'
 
 import type { VisualBodyKind, VisualBodySource } from '../asset-source.ts'
+import { syncVertexScale } from './instance-visibility.ts'
 
 /**
  * The latest simulation coordinate buffer (interleaved xyz, stride 3). A mutable ref the
@@ -25,14 +26,20 @@ export interface InstanceAttributeChannel {
 
 /**
  * Per-instance appearance channels (§3.3): a per-instance uniform scale plus arbitrary named
- * attributes. Values recompute only when the read model / universe time changes — never per
- * frame — so the arrays' identity is the upload trigger, not the frame loop.
+ * attributes. Appearance values recompute only when the read model / universe time changes. The
+ * optional vertex scale is additionally masked only when coordinate visibility changes.
  */
 export interface InstanceChannels {
   /** Per-instance uniform scale (world size); overrides the flat `scale` when present. */
   readonly scales?: ArrayLike<number> | null
   /** Per-instance attributes fed to the body material as instance attributes. */
   readonly attributes?: readonly InstanceAttributeChannel[]
+  /**
+   * Optional float attribute mirroring `scales` for vertex displacement. The layer owns this
+   * attribute so the same missing-coordinate decision that zeroes an instance matrix also zeroes
+   * shader displacement; otherwise an offset added after instancing can re-inflate a hidden slot.
+   */
+  readonly vertexScaleAttribute?: string
 }
 
 /**
@@ -152,22 +159,19 @@ export function InstancedNodeLayer({
     if (!mesh || !body || count <= 0) return
     let added = false
     for (const channel of channels?.attributes ?? []) {
-      const existing = mesh.geometry.getAttribute(channel.name) as
-        THREE.InstancedBufferAttribute | undefined
-      if (existing && existing.array.length === channel.array.length) {
-        ;(existing.array as Float32Array).set(channel.array)
-        existing.needsUpdate = true
-      } else {
-        // A count change keeps the memoized body geometry, so the previous attribute is still
-        // attached — dispose its GPU buffer before replacing it, or it leaks (the body's
-        // dispose cleanup runs only on unmount/body swap, not on a count change).
-        existing?.dispose()
-        mesh.geometry.setAttribute(
-          channel.name,
-          new THREE.InstancedBufferAttribute(channel.array, channel.itemSize),
-        )
-        added = true
+      added = uploadInstanceAttribute(mesh.geometry, channel) || added
+    }
+    if (channels?.vertexScaleAttribute) {
+      const vertexScales = new Float32Array(count)
+      for (let i = 0; i < count; i++) {
+        vertexScales[i] = channels.scales?.[i] ?? scale
       }
+      added =
+        uploadInstanceAttribute(mesh.geometry, {
+          name: channels.vertexScaleAttribute,
+          array: vertexScales,
+          itemSize: 1,
+        }) || added
     }
     // A newly attached/replaced attribute changes the geometry's attribute set: invalidate any
     // shader the node builder may already have compiled against the prior set, so it recompiles
@@ -186,6 +190,13 @@ export function InstancedNodeLayer({
       return
     }
     const scales = channels?.scales ?? null
+    const vertexScaleAttribute = channels?.vertexScaleAttribute
+      ? (mesh.geometry.getAttribute(
+          channels.vertexScaleAttribute,
+        ) as THREE.InstancedBufferAttribute | null)
+      : null
+    const vertexScales = (vertexScaleAttribute?.array as Float32Array | undefined) ?? null
+    let vertexScalesChanged = false
     // Uniform-scale path (e.g. cell-stars): compose the scale once, then only the translation
     // column changes per instance. Per-instance scales (stars) recompose the matrix each instance.
     if (!scales) matrix.makeScale(scale, scale, scale)
@@ -201,6 +212,7 @@ export function InstancedNodeLayer({
       let z: number
       if (getInstancePosition) {
         if (!getInstancePosition(i, buffer, derivedPosition, elapsed)) {
+          vertexScalesChanged = syncVertexScale(vertexScales, i, 0) || vertexScalesChanged
           mesh.setMatrixAt(i, zeroMatrix)
           continue
         }
@@ -210,6 +222,7 @@ export function InstancedNodeLayer({
       } else {
         const offset = (firstNodeIndex + i) * COORDINATE_STRIDE
         if (offset < 0 || offset + 2 >= buffer.length) {
+          vertexScalesChanged = syncVertexScale(vertexScales, i, 0) || vertexScalesChanged
           mesh.setMatrixAt(i, zeroMatrix)
           continue
         }
@@ -219,7 +232,10 @@ export function InstancedNodeLayer({
       }
       if (scales) {
         const size = scales[i] ?? scale
+        vertexScalesChanged = syncVertexScale(vertexScales, i, size) || vertexScalesChanged
         matrix.makeScale(size, size, size)
+      } else {
+        vertexScalesChanged = syncVertexScale(vertexScales, i, scale) || vertexScalesChanged
       }
       matrix.setPosition(x, y, z)
       mesh.setMatrixAt(i, matrix)
@@ -227,6 +243,7 @@ export function InstancedNodeLayer({
     mesh.count = count
     mesh.visible = true
     mesh.instanceMatrix.needsUpdate = true
+    if (vertexScalesChanged && vertexScaleAttribute) vertexScaleAttribute.needsUpdate = true
   })
 
   if (!body) return null
@@ -285,6 +302,28 @@ export function InstancedNodeLayer({
       }
     />
   )
+}
+
+function uploadInstanceAttribute(
+  geometry: THREE.BufferGeometry,
+  channel: InstanceAttributeChannel,
+): boolean {
+  const existing = geometry.getAttribute(channel.name) as THREE.InstancedBufferAttribute | undefined
+  if (existing && existing.array.length === channel.array.length) {
+    ;(existing.array as Float32Array).set(channel.array)
+    existing.needsUpdate = true
+    return false
+  }
+
+  // A count change keeps the memoized body geometry, so the previous attribute is still attached —
+  // dispose its GPU buffer before replacing it, or it leaks (the body's disposal cleanup runs only
+  // on unmount/body swap, not on a count change).
+  existing?.dispose()
+  geometry.setAttribute(
+    channel.name,
+    new THREE.InstancedBufferAttribute(channel.array, channel.itemSize),
+  )
+  return true
 }
 
 function disposeBody(object: THREE.Object3D) {

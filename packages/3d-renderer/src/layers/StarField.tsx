@@ -123,7 +123,6 @@ export function StarField({
 
   const frozen = useRef(false)
   useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += delta * spin
     if (reducedMotion) {
       if (!frozen.current) {
         time.value = FROZEN_TIME
@@ -132,6 +131,7 @@ export function StarField({
       return
     }
     frozen.current = false
+    if (ref.current) ref.current.rotation.y += delta * spin
     time.value += delta
   })
 

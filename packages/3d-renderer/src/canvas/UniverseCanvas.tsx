@@ -11,6 +11,8 @@ export interface UniverseCanvasProps {
   /** devicePixelRatio (single or [min,max]); the app caps it from rendering.max_pixel_ratio. */
   readonly dpr?: number | [number, number]
   readonly fov?: number
+  /** Opaque scene clear color. The active sky owns this bare-night value. */
+  readonly clearColor?: number
   /**
    * Far clip plane. It must clear the whole backdrop from the farthest framing — the layers nest as
    * camera zoom-out limit < StarField shell < SkySphere radius < this — or the sky is cut away
@@ -21,9 +23,8 @@ export interface UniverseCanvasProps {
   /** Pin the WebGL2 fallback (skip WebGPU) — for parity testing. */
   readonly forceWebGL?: boolean
   /**
-   * Clear to transparent instead of the scene background, so a DOM/CSS layer behind the
-   * canvas shows through (the emotion-lit background sits under the scene, chrome floats
-   * over it). The scene must also omit the `<Background>` layer for this to read.
+   * Clear to transparent instead of `clearColor`, so a DOM/CSS layer behind the canvas shows
+   * through (the emotion-lit background sits under the scene, chrome floats over it).
    */
   readonly transparent?: boolean
 }
@@ -46,6 +47,7 @@ export function UniverseCanvas({
   dpr = [1, 2],
   fov = 55,
   far = 1400,
+  clearColor = 0x000000,
   forceWebGL = false,
   transparent = false,
 }: UniverseCanvasProps) {
@@ -69,7 +71,7 @@ export function UniverseCanvas({
         // R3F already requests an alpha context (default `alpha: true` → premultiplied swapchain),
         // so transparency needs only a zero-alpha clear: the DOM background behind the canvas then
         // shows through the scene's empty space, and the bloom pipeline preserves the per-pixel alpha.
-        if (transparent) renderer.setClearColor(0x000000, 0)
+        renderer.setClearColor(transparent ? 0x000000 : clearColor, transparent ? 0 : 1)
         // Start the render loop only once WebGPU is ready (see the frameloop note above).
         void renderer.init().then(() => setFrameloop('always'))
         return renderer

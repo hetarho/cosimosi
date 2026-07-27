@@ -5,7 +5,7 @@
 import './jsx-elements.ts'
 
 export * from './shader-art/index.ts'
-// Skins (typed instances) + background types (each owns props + node-builder) + the registry.
+// Skins (typed instances) for the one shipped emotion sky.
 export {
   UNIVERSE_SKINS,
   SKIN_KEYS,
@@ -13,13 +13,6 @@ export {
   type SkinKey,
   type UniverseSkin,
 } from './assets/skins/presets.ts'
-export {
-  resolveBackgroundNode,
-  type BackgroundType,
-  type BackgroundSpec,
-} from './assets/backgrounds/registry.ts'
-export { nebulaBackgroundNode, type NebulaProps } from './assets/backgrounds/nebula.ts'
-export { gradientBackgroundNode, type GradientProps } from './assets/backgrounds/gradient.ts'
 export {
   SkinContext,
   useSkin,
@@ -33,16 +26,15 @@ export { createPrimitiveBodySource, type PrimitiveBodySpec } from './primitive-b
 // Concrete visual bodies: the star / cell-star / filament looks, each through the
 // asset-source port. Per-instance channel attribute names travel with the body they feed.
 export {
-  createStarBodySource,
   STAR_INSTANCE_TINT,
   STAR_INSTANCE_BRIGHTNESS,
   STAR_INSTANCE_SEED,
+  STAR_INSTANCE_SCALE,
 } from './assets/bodies/star-body.ts'
 // The star-shape bench: candidate looks for the big star, all on the star body's channel contract.
 export {
   DEFAULT_STAR_SHAPE,
   STAR_SHAPES,
-  STAR_SHAPE_INSTANCE_SCALE,
   createStarShapeBodySource,
   resolveStarShape,
   type StarShape,
@@ -56,7 +48,6 @@ export {
   GIST_INSTANCE_TINT,
   GIST_INSTANCE_DIFFUSE,
 } from './assets/bodies/gist-star-body.ts'
-export { Background } from './layers/Background.tsx'
 export { StarField, type StarFieldProps } from './layers/StarField.tsx'
 export { LatentField, type LatentFieldProps } from './layers/LatentField.tsx'
 export { ColorField, type ColorFieldProps } from './layers/ColorField.tsx'
@@ -95,5 +86,4 @@ export {
 } from './layers/NavigationRig.tsx'
 export { FrameTick } from './layers/FrameTick.tsx'
 export { PostFX, type BloomParams } from './layers/PostFX.tsx'
-export { UniverseScene } from './assets/UniverseScene.tsx'
 export { UniverseCanvas, type UniverseCanvasProps } from './canvas/UniverseCanvas.tsx'

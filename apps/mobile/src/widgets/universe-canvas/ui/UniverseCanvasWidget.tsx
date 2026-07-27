@@ -3,7 +3,6 @@ import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
 import {
-  Background,
   BandFog,
   FrameTick,
   NavigationRig,
@@ -13,7 +12,6 @@ import {
   StarField,
   UniverseCanvas,
   resolveActiveSkin,
-  resolveBackgroundNode,
   useSkin,
   type NavigationPose,
 } from '@cosimosi/3d-renderer'
@@ -62,7 +60,6 @@ type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
 
 function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: NavigationActorRef }) {
   const { skin } = useSkin()
-  const backgroundNode = useMemo(() => resolveBackgroundNode(skin.background), [skin.background])
   const { universe } = useUniverse()
   const graph = useMemo(() => (universe ? buildUniverseGraph(universe) : null), [universe])
   const nodeIndex = useMemo(() => (graph ? createForceSimNodeIndex(graph) : null), [graph])
@@ -172,18 +169,18 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   // it; neuron/synapse layers carry no emotion color and stay mounted.
   const paletteVersion = usePaletteVersion()
 
-  // The enclosing emotion sky ([57]): mounted when the active skin declares the `sky` background —
-  // the universe's own emotions drive the sphere's palette ramp ([I3], color only). Slices depend
-  // on the palette version so a live palette swap re-colors through the unchanged moodColor seam
-  // (the sphere repaints its ramp in place; the material rebuilds only if the emotion count moves).
-  const skyEffect = skin.background.type === 'sky' ? skin.background.props.effect : null
+  // The enclosing emotion sky ([57]) is the one shipped backdrop: the universe's own emotions
+  // drive its palette ramp ([I3], color only), while the canvas clears to the same bare night.
+  // Slices depend on the palette version so a live palette swap re-colors through the unchanged
+  // moodColor seam (the sphere repaints in place; material count changes alone rebuild it).
+  const skyEffect = skin.sky.effect
   const reducedMotion = useReducedMotion()
   const skyStops = useMemo(() => {
     // The version is a genuine input: moodColor reads the module-level palette it stamps.
     // eslint-disable-next-line no-void
     void paletteVersion
-    return skyEffect && universe ? universeEmotionSlices(universe.memories) : []
-  }, [skyEffect, universe, paletteVersion])
+    return universe ? universeEmotionSlices(universe.memories) : []
+  }, [universe, paletteVersion])
 
   // The launch flow announces genuinely-created neuron ids here; the awaken plays for the fresh
   // ones (idempotent via the awaken registry). Empty until the first launch of this session.
@@ -233,10 +230,13 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   )
 
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
-      <Background node={backgroundNode} />
-      {skyEffect && <SkySphere stops={skyStops} effect={skyEffect} reducedMotion={reducedMotion} />}
-      <StarField />
+    <UniverseCanvas
+      dpr={[1, VALUES.rendering.maxPixelRatio]}
+      fov={skin.camera.fov}
+      clearColor={skin.sky.night}
+    >
+      <SkySphere stops={skyStops} effect={skyEffect} reducedMotion={reducedMotion} />
+      <StarField reducedMotion={reducedMotion} />
       {/* Emotion color field: additive mood-color blend behind the latent field and bodies
           (renderOrder -2). Reduced fidelity from the same TSL source via fieldResolutionMobile. */}
       <NebulaField
@@ -252,6 +252,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
         universeTime={universe?.universeTime ?? null}
+        reducedMotion={reducedMotion}
         onFocus={focusMemory}
         onFly={flyToMemory}
       />

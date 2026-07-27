@@ -19,7 +19,6 @@
 // scale channel. Sampling a noise field off `positionLocal` would anchor the surface to the sky
 // instead of the star, and turning `positionLocal` would move the star rather than rotate it.
 import {
-  cos,
   dot,
   float,
   mix,
@@ -37,25 +36,21 @@ import * as THREE from 'three/webgpu'
 import type { VisualBodySource } from '../../asset-source.ts'
 import { domainWarp } from '../../shader-art/field.ts'
 import { iridescent } from '../../shader-art/finish.ts'
-import { displaceGeometry } from '../../shader-art/geometry.ts'
+import { seededTurn } from '../../shader-art/motion.ts'
 import { fbm01, ridged, worley } from '../../shader-art/noise.ts'
 import { cellEdge, contourSteps, isoLine } from '../../shader-art/pattern.ts'
 import { asFloatNode, asVec3Node, attributeFloatNode, attributeVec3Node } from '../../tsl.ts'
 import {
   STAR_INSTANCE_BRIGHTNESS,
+  STAR_EMISSIVE_GAIN,
   STAR_INSTANCE_SEED,
+  STAR_INSTANCE_SCALE,
   STAR_INSTANCE_TINT,
   createStarBodySource,
 } from './star-body.ts'
 
-/**
- * Per-instance world scale (float) — the same number the layer feeds as the instance's uniform
- * scale. Bodies here displace and turn themselves in body units and multiply by this to reach world
- * units, so a look holds its proportions at any star size (see the coordinate-space note above).
- */
-export const STAR_SHAPE_INSTANCE_SCALE = 'aStarShapeScale'
-
 const TAU = Math.PI * 2
+const RIGID_TURN_SPEED = 2.25
 
 /** The one fixed key light every lit look shades against (unit, body axes == world axes). */
 const KEY_LIGHT = normalize(vec3(0.42, 0.74, 0.52))
@@ -64,17 +59,13 @@ const KEY_LIGHT = normalize(vec3(0.42, 0.74, 0.52))
 const HIGHLIGHT = vec3(1, 0.97, 0.92)
 
 export interface StarShapeOptions {
-  /** Let time-driven surfaces (the plasma flow) move; false freezes them for reduced motion. */
+  /** Let rigid turns and living surfaces move; false freezes the seed-derived pose. */
   readonly animate?: boolean
 }
 
 export interface StarShape {
   /** Stable id (kebab-case), also the body id the layer requests. */
   readonly key: string
-  /** Display name. */
-  readonly label: string
-  /** One line naming the form and the surface it wears. */
-  readonly blurb: string
   /** Builds this look's body source; each resolve yields a fresh mesh (the layer owns disposal). */
   readonly source: (options: StarShapeOptions) => VisualBodySource
 }
@@ -94,7 +85,7 @@ function instanceInputs(): InstanceInputs {
     seed: attributeFloatNode(STAR_INSTANCE_SEED),
     tint: attributeVec3Node(STAR_INSTANCE_TINT),
     brightness: attributeFloatNode(STAR_INSTANCE_BRIGHTNESS),
-    scale: attributeFloatNode(STAR_SHAPE_INSTANCE_SCALE),
+    scale: attributeFloatNode(STAR_INSTANCE_SCALE),
   }
 }
 
@@ -110,32 +101,16 @@ function displaced(relief: unknown, scale: InstanceInputs['scale']) {
 
 // ── shared shading / orientation ─────────────────────────────────────────────────────────────
 
-function rotateX(v: unknown, angle: unknown) {
-  const p = asVec3Node(v)
-  const a = asFloatNode(angle)
-  const c = cos(a)
-  const s = sin(a)
-  return vec3(p.x, p.y.mul(c).sub(p.z.mul(s)), p.y.mul(s).add(p.z.mul(c)))
-}
-
-function rotateY(v: unknown, angle: unknown) {
-  const p = asVec3Node(v)
-  const a = asFloatNode(angle)
-  const c = cos(a)
-  const s = sin(a)
-  return vec3(p.x.mul(c).add(p.z.mul(s)), p.y, p.z.mul(c).sub(p.x.mul(s)))
-}
-
-/** A static per-instance rotation read from the seed — so a field of identical polyhedra doesn't
- *  read as a row of clones. Applied to a body-space vector; pair it with `turnedInto` for position. */
-function turn(v: unknown, seed: InstanceInputs['seed']) {
-  return rotateY(rotateX(v, seed.mul(4.7).add(0.6)), seed.mul(TAU))
-}
-
 /** The turned body's world position: the instance's own point plus the world-space delta the turn
  *  moved this vertex by. Turning `positionLocal` itself would swing the star around the origin. */
-function turnedInto(seed: InstanceInputs['seed'], scale: InstanceInputs['scale']) {
-  return positionLocal.add(turn(positionGeometry, seed).sub(positionGeometry).mul(scale))
+function turnedInto(
+  seed: InstanceInputs['seed'],
+  scale: InstanceInputs['scale'],
+  animate: boolean,
+) {
+  return positionLocal.add(
+    seededTurn(positionGeometry, seed, animate, RIGID_TURN_SPEED).sub(positionGeometry).mul(scale),
+  )
 }
 
 /** Half-lambert against the key light: a face turned away dims but never goes to pure black, so a
@@ -154,6 +129,15 @@ function flowPhase(animate: boolean, rate: number) {
   return animate ? asFloatNode(time).mul(rate) : float(0)
 }
 
+function surfaceDrift(seed: InstanceInputs['seed'], animate: boolean, rate: number) {
+  const phase = flowPhase(animate, rate)
+  return vec3(
+    phase.mul(seed.mul(0.21).add(0.7)),
+    phase.mul(seed.mul(0.13).add(0.45)).mul(float(-1)),
+    phase.mul(seed.mul(0.17).add(0.3)),
+  )
+}
+
 /** Wrap a mesh builder as a body source — a fresh mesh per resolve, as the port requires. */
 function meshSource(build: () => THREE.Mesh): VisualBodySource {
   return { resolve: build }
@@ -164,27 +148,25 @@ function meshSource(build: () => THREE.Mesh): VisualBodySource {
 // Cut facet: 20 flat faces, one tone each. The hardest-edged look in the set — the emotion reads as
 // a stone that was cut rather than a body that grew, and the lit crowns flare toward white so the
 // silhouette holds its corners through the bloom.
-function buildFacetBody(): THREE.Mesh {
+function buildFacetBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
-  material.positionNode = turnedInto(seed, scale)
-  const shade = keyShade(turn(normalGeometry, seed), 0.14, 1.9)
-  const flare = shade.pow(float(8)).mul(float(0.3))
-  material.colorNode = tint
-    .mul(shade.mul(float(1.9)))
-    .add(HIGHLIGHT.mul(flare))
-    .mul(brightness)
+  material.positionNode = turnedInto(seed, scale, animate)
+  const shade = keyShade(seededTurn(normalGeometry, seed, animate, RIGID_TURN_SPEED), 0.14, 1.9)
+  const glow = shade.mul(float(0.55)).add(float(0.72)).mul(float(STAR_EMISSIVE_GAIN))
+  const flare = shade.pow(float(8)).mul(float(0.22))
+  material.colorNode = tint.mul(glow).add(HIGHLIGHT.mul(flare)).mul(brightness)
   return new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), material)
 }
 
 // Prism: twelve pentagonal faces under a thin-film sheen — the hue slides per face while the mood
 // stays the dominant half of the mix, so the star is unmistakably its emotion and still catches
 // light like a jewel.
-function buildPrismBody(): THREE.Mesh {
+function buildPrismBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
-  material.positionNode = turnedInto(seed, scale)
-  const normal = turn(normalGeometry, seed)
+  material.positionNode = turnedInto(seed, scale, animate)
+  const normal = seededTurn(normalGeometry, seed, animate, RIGID_TURN_SPEED)
   const shade = keyShade(normal, 0.18, 1.4)
   const phase = asFloatNode(dot(asVec3Node(normal), KEY_LIGHT))
     .mul(float(3.1))
@@ -199,17 +181,50 @@ function buildPrismBody(): THREE.Mesh {
 // Geode: a cracked crystal shell. Worley cells pull their interiors in and leave the boundaries
 // standing, then those same edges light up as veins — the emotion glowing out of the fractures
 // rather than off the surface.
-function buildGeodeBody(): THREE.Mesh {
+function buildGeodeBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
-  const field = positionGeometry.mul(float(2.4)).add(seedOffset(seed))
+  const phase = flowPhase(animate, 0.64)
+  const drift = surfaceDrift(seed, animate, 0.24)
+  const field = domainWarp(positionGeometry.mul(float(2.2)).add(seedOffset(seed)).add(drift), {
+    amount: 0.38,
+    octaves: 2,
+  })
   const { f1, f2 } = worley(field, 1)
-  material.positionNode = displaced(f1.mul(float(0.4)).sub(float(0.14)), scale)
+  const unevenFlow = asFloatNode(
+    fbm01(
+      domainWarp(
+        positionGeometry
+          .mul(float(1.15))
+          .add(seedOffset(seed))
+          .add(surfaceDrift(seed, animate, 0.19)),
+        { amount: 0.72, octaves: 2 },
+      ),
+      { octaves: 3 },
+    ),
+  )
+  const crystalWave = sin(
+    positionGeometry.x
+      .mul(float(2.2))
+      .add(positionGeometry.y.mul(float(1.35)))
+      .add(positionGeometry.z.mul(float(2.65)))
+      .add(unevenFlow.mul(float(TAU * 1.4)))
+      .sub(phase.mul(seed.mul(float(0.35)).add(float(1.05))))
+      .add(seed.mul(TAU)),
+  )
+    .mul(float(0.5))
+    .add(float(0.5))
+  const crystalRelief = f1
+    .mul(float(0.32))
+    .sub(float(0.14))
+    .add(crystalWave.sub(float(0.5)).mul(float(0.18)))
+  material.positionNode = displaced(crystalRelief, scale)
   const veins = asFloatNode(cellEdge(f1, f2, 6))
+  const veinPulse = crystalWave.mul(float(0.35)).add(float(0.75))
   const shade = keyShade(normalGeometry, 0.2, 1.3)
   material.colorNode = tint
     .mul(shade.mul(float(0.9)))
-    .add(mix(tint, HIGHLIGHT, float(0.35)).mul(veins.mul(float(1.8))))
+    .add(mix(tint, HIGHLIGHT, float(0.35)).mul(veins.mul(veinPulse).mul(float(1.8))))
     .mul(brightness)
   return new THREE.Mesh(new THREE.IcosahedronGeometry(1, 3), material)
 }
@@ -217,10 +232,30 @@ function buildGeodeBody(): THREE.Mesh {
 // Bubble: a hollow shell with nothing in the middle — all the light sits at the limb, tinted by a
 // thin-film sheen. Double-sided and additive, so the far wall glows through the near one and two
 // overlapping stars read as soap film rather than as two discs.
-function buildBubbleBody(): THREE.Mesh {
-  const { seed, tint, brightness } = instanceInputs()
+function buildBubbleBody(animate: boolean): THREE.Mesh {
+  const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
-  // A sphere needs no body-space work: the view normal is the same whichever way the ball is turned.
+  const phase = flowPhase(animate, 0.48)
+  const field = domainWarp(
+    positionGeometry
+      .mul(float(0.9))
+      .add(seedOffset(seed))
+      .add(surfaceDrift(seed, animate, 0.12)),
+    { amount: 0.55, octaves: 2 },
+  )
+  const softWave = sin(
+    positionGeometry.x
+      .mul(float(1.7))
+      .add(positionGeometry.y.mul(float(2.1)))
+      .add(positionGeometry.z.mul(float(1.3)))
+      .add(phase)
+      .add(seed.mul(TAU)),
+  )
+  const swell = asFloatNode(fbm01(field, { octaves: 3 }))
+    .sub(float(0.5))
+    .mul(float(0.36))
+    .add(softWave.mul(float(0.055)))
+  material.positionNode = displaced(swell, scale)
   const facing = asFloatNode(normalView.z).abs().clamp(0, 1)
   const rim = facing.oneMinus().pow(float(2.4))
   const film = iridescent(rim.mul(float(5.5)).add(seed.mul(TAU)), {
@@ -240,42 +275,91 @@ function buildBubbleBody(): THREE.Mesh {
   return new THREE.Mesh(new THREE.SphereGeometry(1, 40, 40), material)
 }
 
-// Spire: the six-point star — a small core with sharp spikes down the three axes, cut into flat
-// crystalline facets. The most graphic silhouette here, legible at any distance, and the only look
-// whose form is carved into the geometry (CPU displacement, so the facets get true normals) rather
-// than into the shader.
-const SPIRE_CORE = 0.28
-const SPIRE_SHARPNESS = 7
+// Spire: the eight-point star — a broad core with low pyramids toward the cube corners, cut into
+// flat crystalline facets. Its form is carved into the geometry rather than into the shader.
+const SPIRE_CORE = 0.48
+const SPIRE_TIP_RADIUS = 0.9
 
-function buildSpireBody(): THREE.Mesh {
+function buildEightPointSpireGeometry(): THREE.BufferGeometry {
+  const positions: number[] = []
+  const appendFace = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => {
+    const normal = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a))
+    const centroid = new THREE.Vector3().addVectors(a, b).add(c)
+    const [second, third] = normal.dot(centroid) >= 0 ? [b, c] : [c, b]
+    positions.push(a.x, a.y, a.z, second.x, second.y, second.z, third.x, third.y, third.z)
+  }
+
+  for (const xSign of [-1, 1]) {
+    for (const ySign of [-1, 1]) {
+      for (const zSign of [-1, 1]) {
+        const tip = new THREE.Vector3(xSign, ySign, zSign)
+          .normalize()
+          .multiplyScalar(SPIRE_TIP_RADIUS)
+        const x = new THREE.Vector3(xSign * SPIRE_CORE, 0, 0)
+        const y = new THREE.Vector3(0, ySign * SPIRE_CORE, 0)
+        const z = new THREE.Vector3(0, 0, zSign * SPIRE_CORE)
+        appendFace(tip, x, y)
+        appendFace(tip, y, z)
+        appendFace(tip, z, x)
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geometry.computeVertexNormals()
+  return geometry
+}
+
+function buildSpireBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
-  material.positionNode = turnedInto(seed, scale)
-  const shade = keyShade(turn(normalGeometry, seed), 0.16, 1.5)
+  material.positionNode = turnedInto(seed, scale, animate)
+  const shade = keyShade(seededTurn(normalGeometry, seed, animate, RIGID_TURN_SPEED), 0.16, 1.5)
   // The tips are the point of this look, so they carry the light: body radius doubles as the falloff.
-  const tip = positionGeometry.length().smoothstep(float(SPIRE_CORE + 0.2), float(1))
+  const tip = positionGeometry
+    .length()
+    .smoothstep(float(SPIRE_CORE + 0.16), float(SPIRE_TIP_RADIUS))
   material.colorNode = tint
     .mul(shade.mul(float(1.6)))
     .add(mix(tint, HIGHLIGHT, float(0.4)).mul(tip.mul(float(0.8))))
     .mul(brightness)
-  // Vertices of a subdivided polyhedron sit on the unit sphere, so the direction's dominant axis
-  // gives the spike profile: 1 along ±x/±y/±z, collapsing to the core along the diagonals.
-  const geometry = displaceGeometry(new THREE.OctahedronGeometry(1, 4), (x, y, z) => {
-    const axis = Math.max(Math.abs(x), Math.abs(y), Math.abs(z))
-    return SPIRE_CORE + (1 - SPIRE_CORE) * axis ** SPIRE_SHARPNESS - 1
-  })
-  return new THREE.Mesh(geometry, material)
+  return new THREE.Mesh(buildEightPointSpireGeometry(), material)
 }
 
 // Urchin: a dim body under a coat of needles, each needle incandescent at the tip. Where the facet
 // looks cut and the orb looks grown, this one looks defensive — worth seeing next to a high-arousal
 // emotion.
-function buildUrchinBody(): THREE.Mesh {
+function buildUrchinBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
   const field = positionGeometry.mul(float(3.6)).add(seedOffset(seed))
   const { f1 } = worley(field, 1)
-  const needle = f1.oneMinus().clamp(0, 1).pow(float(6))
+  const phase = flowPhase(animate, 0.92)
+  const wavePhase = positionGeometry.x
+    .mul(float(4.4))
+    .add(positionGeometry.y.mul(float(3.2)))
+    .add(positionGeometry.z.mul(float(3.7)))
+    .sub(phase)
+    .add(seed.mul(TAU))
+  const leadingWave = sin(wavePhase).mul(float(0.5)).add(float(0.5))
+  const trailingWave = sin(
+    positionGeometry.x
+      .mul(float(-2.1))
+      .add(positionGeometry.y.mul(float(3.8)))
+      .add(positionGeometry.z.mul(float(1.9)))
+      .add(phase.mul(float(0.63)))
+      .add(seed.mul(float(3.4))),
+  )
+    .mul(float(0.5))
+    .add(float(0.5))
+  const spikePulse = leadingWave
+    .mul(float(0.72))
+    .add(trailingWave.mul(float(0.28)))
+    .pow(float(1.35))
+    .mul(float(0.2))
+    .add(float(0.8))
+  const needle = f1.oneMinus().clamp(0, 1).pow(float(6)).mul(spikePulse)
   material.positionNode = displaced(needle.mul(float(0.95)), scale)
   const shade = keyShade(normalGeometry, 0.16, 1.2)
   material.colorNode = tint
@@ -285,12 +369,17 @@ function buildUrchinBody(): THREE.Mesh {
   return new THREE.Mesh(new THREE.SphereGeometry(1, 96, 96), material)
 }
 
-// Plasma: a churning surface — warped fbm banded into hot steps with ridged filaments over it, and
-// the only look that moves on its own. The emotion behaves like burning gas instead of solid matter.
+// Plasma: a churning surface — warped fbm banded into hot steps with ridged filaments over it. Its
+// relief surges like burning gas instead of rotating as a solid body.
 function buildPlasmaBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
-  const drift = vec3(float(0), flowPhase(animate, 0.14), float(0))
+  const phase = flowPhase(animate, 0.32)
+  const drift = vec3(
+    sin(phase.mul(float(0.7)).add(seed.mul(TAU))).mul(float(0.28)),
+    phase,
+    sin(phase.mul(float(0.53)).add(seed.mul(float(3.7)))).mul(float(0.24)),
+  )
   const field = domainWarp(positionGeometry.mul(float(0.9)).add(seedOffset(seed)).add(drift), {
     amount: 0.9,
     octaves: 2,
@@ -298,7 +387,14 @@ function buildPlasmaBody(animate: boolean): THREE.Mesh {
   const heat = asFloatNode(fbm01(field.mul(float(0.8)), { octaves: 2 }))
   const bands = asFloatNode(contourSteps(heat, 4))
   const veins = asFloatNode(ridged(field.mul(float(1.2)), { octaves: 2 })).pow(float(6))
-  material.positionNode = displaced(heat.sub(float(0.5)).mul(float(0.22)), scale)
+  const surge = sin(
+    positionGeometry.y
+      .mul(float(2.2))
+      .add(positionGeometry.x.mul(float(1.1)))
+      .sub(phase.mul(float(1.6)))
+      .add(seed.mul(TAU)),
+  ).mul(float(0.04))
+  material.positionNode = displaced(heat.sub(float(0.5)).mul(float(0.24)).add(surge), scale)
   material.colorNode = tint
     .mul(bands.mul(float(1.3)).add(float(0.28)))
     .add(mix(tint, HIGHLIGHT, float(0.5)).mul(veins.mul(float(0.6))))
@@ -309,13 +405,27 @@ function buildPlasmaBody(animate: boolean): THREE.Mesh {
 // Contour: a lumpy hull wearing its own topographic map — the relief that shapes the body is the
 // same value the isolines are drawn from, so the lines describe the form exactly. A quiet,
 // cartographic reading of a memory.
-function buildContourBody(): THREE.Mesh {
+function buildContourBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
-  const field = positionGeometry.mul(float(0.85)).add(seedOffset(seed))
+  const phase = flowPhase(animate, 0.3)
+  const field = positionGeometry
+    .mul(float(0.85))
+    .add(seedOffset(seed))
+    .add(surfaceDrift(seed, animate, 0.12))
   const relief = asFloatNode(fbm01(field, { octaves: 3 }))
-  material.positionNode = displaced(relief.sub(float(0.5)).mul(float(0.44)), scale)
-  const lines = asFloatNode(isoLine(relief, 6, 4))
+  const contourTide = sin(
+    positionGeometry.y
+      .mul(float(3.4))
+      .add(positionGeometry.x.mul(float(1.2)))
+      .sub(phase)
+      .add(seed.mul(TAU)),
+  )
+    .mul(float(0.5))
+    .add(float(0.5))
+  const terrain = relief.mul(float(0.88)).add(contourTide.mul(float(0.12)))
+  material.positionNode = displaced(terrain.sub(float(0.5)).mul(float(0.44)), scale)
+  const lines = asFloatNode(isoLine(terrain, 6, 4))
   const shade = keyShade(normalGeometry, 0.24, 1.1)
   material.colorNode = tint
     .mul(shade.mul(float(0.6)))
@@ -327,19 +437,38 @@ function buildContourBody(): THREE.Mesh {
 // Haze: no surface at all. A facing falloff eaten by soft noise, additive — the emotion as a breath
 // of light with no edge to point at. The soft end of the range, and the closest to the gist body's
 // vocabulary, kept here so the contrast against a hard-edged look is visible in one screen.
-function buildHazeBody(): THREE.Mesh {
+function buildHazeBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness } = instanceInputs()
   const material = new THREE.MeshBasicNodeMaterial()
   const facing = asFloatNode(normalView.z).abs().clamp(0, 1)
   const falloff = facing.pow(float(1.5))
+  const phase = flowPhase(animate, 0.78)
   const puff = asFloatNode(
-    fbm01(positionGeometry.mul(float(2.4)).add(seedOffset(seed)), { octaves: 3 }),
+    fbm01(
+      positionGeometry
+        .mul(float(2.4))
+        .add(seedOffset(seed))
+        .add(surfaceDrift(seed, animate, 0.21)),
+      { octaves: 3 },
+    ),
   )
+  const breath = sin(
+    positionGeometry.x
+      .mul(float(2.1))
+      .add(positionGeometry.y.mul(float(1.6)))
+      .add(phase)
+      .add(seed.mul(TAU)),
+  )
+    .mul(float(0.12))
+    .add(float(0.88))
   material.colorNode = tint
     .mul(falloff.add(puff.mul(float(0.24))))
     .mul(float(1.9))
     .mul(brightness)
-  material.opacityNode = falloff.mul(puff.mul(float(0.5)).add(float(0.6))).clamp(0, 1)
+  material.opacityNode = falloff
+    .mul(puff.mul(float(0.5)).add(float(0.6)))
+    .mul(breath)
+    .clamp(0, 1)
   material.transparent = true
   material.blending = THREE.AdditiveBlending
   material.depthWrite = false
@@ -351,63 +480,43 @@ function buildHazeBody(): THREE.Mesh {
 export const STAR_SHAPES = [
   {
     key: 'orb',
-    label: 'Seed orb',
-    blurb: 'The shipped star: a sphere in ridged relief, its form read from the seed.',
-    source: () => createStarBodySource(),
+    source: ({ animate = true }) => createStarBodySource({ animate }),
   },
   {
     key: 'facet',
-    label: 'Cut facet',
-    blurb: 'Twenty flat faces, one tone each — a stone that was cut, not grown.',
-    source: () => meshSource(buildFacetBody),
+    source: ({ animate = true }) => meshSource(() => buildFacetBody(animate)),
   },
   {
     key: 'prism',
-    label: 'Prism',
-    blurb: 'A twelve-faced jewel with a thin-film sheen sliding face to face.',
-    source: () => meshSource(buildPrismBody),
+    source: ({ animate = true }) => meshSource(() => buildPrismBody(animate)),
   },
   {
     key: 'geode',
-    label: 'Geode',
-    blurb: 'A cracked crystal shell, the emotion glowing out of its veins.',
-    source: () => meshSource(buildGeodeBody),
+    source: ({ animate = true }) => meshSource(() => buildGeodeBody(animate)),
   },
   {
     key: 'bubble',
-    label: 'Bubble',
-    blurb: 'A hollow film — all the light at the limb, nothing in the middle.',
-    source: () => meshSource(buildBubbleBody),
+    source: ({ animate = true }) => meshSource(() => buildBubbleBody(animate)),
   },
   {
     key: 'spire',
-    label: 'Six-point spire',
-    blurb: 'A small core with sharp spikes down the axes — the graphic silhouette.',
-    source: () => meshSource(buildSpireBody),
+    source: ({ animate = true }) => meshSource(() => buildSpireBody(animate)),
   },
   {
     key: 'urchin',
-    label: 'Urchin',
-    blurb: 'A dim body under a coat of needles, incandescent at the tips.',
-    source: () => meshSource(buildUrchinBody),
+    source: ({ animate = true }) => meshSource(() => buildUrchinBody(animate)),
   },
   {
     key: 'plasma',
-    label: 'Plasma',
-    blurb: 'Burning gas: warped noise banded into hot steps, and the only look that moves.',
     source: ({ animate = true }) => meshSource(() => buildPlasmaBody(animate)),
   },
   {
     key: 'contour',
-    label: 'Contour',
-    blurb: 'A lumpy hull wearing its own topographic map.',
-    source: () => meshSource(buildContourBody),
+    source: ({ animate = true }) => meshSource(() => buildContourBody(animate)),
   },
   {
     key: 'haze',
-    label: 'Haze',
-    blurb: 'No surface at all — a breath of light with no edge to point at.',
-    source: () => meshSource(buildHazeBody),
+    source: ({ animate = true }) => meshSource(() => buildHazeBody(animate)),
   },
 ] as const satisfies readonly StarShape[]
 

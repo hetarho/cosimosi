@@ -2,22 +2,21 @@ import { useMemo, useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import {
-  Background,
   CameraControls,
   ColorField,
   InstancedNodeLayer,
   PostFX,
   STAR_INSTANCE_BRIGHTNESS,
   STAR_INSTANCE_SEED,
+  STAR_INSTANCE_SCALE,
   STAR_INSTANCE_TINT,
   STAR_SHAPES,
-  STAR_SHAPE_INSTANCE_SCALE,
   SkinProvider,
+  SkySphere,
   StarField,
   UniverseCanvas,
   createStarShapeBodySource,
   resolveActiveSkin,
-  resolveBackgroundNode,
   resolveStarShape,
   useSkin,
   type CoordinateBufferRef,
@@ -26,8 +25,10 @@ import {
 } from '@cosimosi/3d-renderer'
 import { MOODS, createEmotion, moodColor } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { buildContributors, starChannels } from '@cosimosi/universe'
+import { buildContributors, starChannels, universeEmotionSlices } from '@cosimosi/universe'
 import { Switch, cx, useReducedMotion } from '@cosimosi/ui'
+
+import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
 /**
  * The star-shape bench: a mock universe holding one star per emotion, and a button per candidate
@@ -39,15 +40,54 @@ import { Switch, cx, useReducedMotion } from '@cosimosi/ui'
  * are held equal so shape and emotion are the only variables in the frame. The size buttons scale
  * the whole field at once when a form needs inspecting up close (the camera also flies in — drag to
  * tumble, wheel to zoom).
- *
- * Captions here are demo data, deliberately outside the product i18n catalogue (a dev-only surface).
  */
 
-const T = {
-  shapeTitle: 'Star shape',
-  sizeTitle: 'Size',
-  nebula: 'Emotion nebula',
-  emotionsTitle: 'One star per emotion',
+interface StarShapeCopy {
+  readonly name: () => string
+  readonly description: () => string
+}
+
+const STAR_SHAPE_COPY: Record<StarShapeKey, StarShapeCopy> = {
+  orb: {
+    name: m.test_harness_star_shape_orb_name,
+    description: m.test_harness_star_shape_orb_description,
+  },
+  facet: {
+    name: m.test_harness_star_shape_facet_name,
+    description: m.test_harness_star_shape_facet_description,
+  },
+  prism: {
+    name: m.test_harness_star_shape_prism_name,
+    description: m.test_harness_star_shape_prism_description,
+  },
+  geode: {
+    name: m.test_harness_star_shape_geode_name,
+    description: m.test_harness_star_shape_geode_description,
+  },
+  bubble: {
+    name: m.test_harness_star_shape_bubble_name,
+    description: m.test_harness_star_shape_bubble_description,
+  },
+  spire: {
+    name: m.test_harness_star_shape_spire_name,
+    description: m.test_harness_star_shape_spire_description,
+  },
+  urchin: {
+    name: m.test_harness_star_shape_urchin_name,
+    description: m.test_harness_star_shape_urchin_description,
+  },
+  plasma: {
+    name: m.test_harness_star_shape_plasma_name,
+    description: m.test_harness_star_shape_plasma_description,
+  },
+  contour: {
+    name: m.test_harness_star_shape_contour_name,
+    description: m.test_harness_star_shape_contour_description,
+  },
+  haze: {
+    name: m.test_harness_star_shape_haze_name,
+    description: m.test_harness_star_shape_haze_description,
+  },
 }
 
 // Thirteen stars on one ring at z=0: equal distance from the camera, so no star gets a free pass
@@ -96,40 +136,44 @@ export function StarShapePanel() {
   const [sizeScale, setSizeScale] = useState<number>(2)
   const [nebula, setNebula] = useState(false)
   const active = resolveStarShape(shape)
+  const activeCopy = STAR_SHAPE_COPY[active.key]
 
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
       <div className="flex flex-col gap-4">
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
-            {T.shapeTitle}
+            {m.test_harness_star_shape_control()}
           </h3>
           <div className="flex flex-wrap gap-2">
-            {STAR_SHAPES.map((entry) => (
-              <button
-                key={entry.key}
-                type="button"
-                onClick={() => setShape(entry.key)}
-                aria-pressed={entry.key === active.key}
-                title={entry.blurb}
-                className={cx(
-                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                  entry.key === active.key
-                    ? 'border-primary text-text'
-                    : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
-                )}
-              >
-                {entry.label}
-              </button>
-            ))}
+            {STAR_SHAPES.map((entry) => {
+              const copy = STAR_SHAPE_COPY[entry.key]
+              return (
+                <button
+                  key={entry.key}
+                  type="button"
+                  onClick={() => setShape(entry.key)}
+                  aria-pressed={entry.key === active.key}
+                  title={copy.description()}
+                  className={cx(
+                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    entry.key === active.key
+                      ? 'border-primary text-text'
+                      : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
+                  )}
+                >
+                  {copy.name()}
+                </button>
+              )
+            })}
           </div>
-          <p className="text-xs text-text-subtle">{active.blurb}</p>
+          <p className="text-xs text-text-subtle">{activeCopy.description()}</p>
         </section>
 
         <section className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
-              {T.sizeTitle}
+              {m.test_harness_star_shape_size()}
             </span>
             {SIZE_PRESETS.map((preset) => (
               <button
@@ -148,7 +192,11 @@ export function StarShapePanel() {
               </button>
             ))}
           </div>
-          <Switch label={T.nebula} checked={nebula} onCheckedChange={setNebula} />
+          <Switch
+            label={m.test_harness_star_shape_nebula()}
+            checked={nebula}
+            onCheckedChange={setNebula}
+          />
         </section>
 
         <div className="aspect-4/3 overflow-hidden rounded-2xl border border-border bg-bg">
@@ -175,17 +223,21 @@ function StarShapeCanvas({
 }) {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
-  const backgroundNode = useMemo(() => resolveBackgroundNode(skin.background), [skin.background])
   const scene = useMemo(() => buildStarShapeScene(), [])
   const positions = useMemo<CoordinateBufferRef>(() => ({ current: scene.positions }), [scene])
+  const skyStops = useMemo(() => universeEmotionSlices(scene.memories), [scene])
   const contributors = useMemo(
     () => buildContributors(scene.memories, { firstNodeIndex: 0 }),
     [scene],
   )
 
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
-      <Background node={backgroundNode} />
+    <UniverseCanvas
+      dpr={[1, VALUES.rendering.maxPixelRatio]}
+      fov={skin.camera.fov}
+      clearColor={skin.sky.night}
+    >
+      <SkySphere stops={skyStops} effect={skin.sky.effect} reducedMotion={reducedMotion} />
       <StarField reducedMotion={reducedMotion} />
       {nebula ? (
         <ColorField
@@ -249,10 +301,10 @@ function StarShapeLayer({
         { name: STAR_INSTANCE_TINT, array: tint, itemSize: 3 },
         { name: STAR_INSTANCE_BRIGHTNESS, array: brightness, itemSize: 1 },
         { name: STAR_INSTANCE_SEED, array: seed, itemSize: 1 },
-        // The shapes displace and turn themselves in body units, so they need the world size the
-        // instance matrix applies — the same array, handed over as a readable channel.
-        { name: STAR_SHAPE_INSTANCE_SCALE, array: scales, itemSize: 1 },
       ],
+      // The layer mirrors this scale into the shader and masks it when a coordinate slot is absent,
+      // so body-space displacement cannot re-inflate an instance hidden by a zero-scale matrix.
+      vertexScaleAttribute: STAR_INSTANCE_SCALE,
     }
   }, [memories, sizeScale])
 
@@ -273,7 +325,7 @@ function MoodLegend() {
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle">
-        {T.emotionsTitle}
+        {m.test_harness_star_shape_emotions()}
       </h3>
       <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
         {MOODS.map((mood) => (
@@ -283,7 +335,7 @@ function MoodLegend() {
               className="size-2 rounded-full"
               style={{ backgroundColor: moodColor(mood) }}
             />
-            {mood.toLowerCase()}
+            {moodLabel(mood)}
           </li>
         ))}
       </ul>

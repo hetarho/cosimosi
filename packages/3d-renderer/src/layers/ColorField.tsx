@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { clamp, float, normalView } from 'three/tsl'
+import { clamp, dot, float, sqrt, uv } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
-import { asVec3Node, attributeVec3Node } from '../tsl.ts'
+import { attributeVec3Node } from '../tsl.ts'
 import type { CoordinateBufferRef } from './InstancedNodeLayer.tsx'
 
 /** Per-contributor emotion color (vec3, linear 0..1) — filled by the field's tints channel. */
@@ -55,27 +55,33 @@ export function ColorField({
 }: ColorFieldProps) {
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
   const matrix = useMemo(() => new THREE.Matrix4(), [])
+  const position = useMemo(() => new THREE.Vector3(), [])
+  const rotation = useMemo(() => new THREE.Quaternion(), [])
+  const scale = useMemo(() => new THREE.Vector3(), [])
   // A zero-scale matrix collapses an instance to a point (invisible) — used for contributors whose
   // coordinate isn't in the live buffer yet, so they never draw a glow at the world origin.
   const zeroMatrix = useMemo(() => new THREE.Matrix4().makeScale(0, 0, 0), [])
   const segments = Math.max(3, Math.round(resolution))
   const instanceCount = Math.max(1, count)
 
-  const geometry = useMemo(() => new THREE.SphereGeometry(1, segments, segments), [segments])
+  const geometry = useMemo(() => new THREE.CircleGeometry(1, segments), [segments])
   const material = useMemo(() => {
     const mat = new THREE.MeshBasicNodeMaterial()
     mat.transparent = true
     mat.blending = THREE.AdditiveBlending
     mat.depthWrite = false
     mat.depthTest = false
-    const tint = attributeVec3Node(FIELD_INSTANCE_TINT)
-    // View-facing radial falloff: normalView.z is 1 where the sphere surface faces the camera
-    // (the kernel's dense core) and fades to 0 at the silhouette — so a plain sphere reads as a
-    // soft glow with no billboarding. `pow(exponent)` sharpens the core; the amplitude is the
-    // additive weight (AdditiveBlending premultiplies src by this alpha, so contributions sum).
-    const facing = clamp(asVec3Node(normalView).z, float(0), float(1))
+    const tint = attributeVec3Node(FIELD_INSTANCE_TINT).toVarying('vFieldTint')
+    // Reconstruct the old sphere-facing profile on a flat, centered disc: this preserves the soft
+    // falloff while avoiding the perspective offset between a sphere's bright front surface and
+    // its world-space origin. The amplitude is the additive weight (AdditiveBlending premultiplies
+    // src by this alpha, so contributions sum).
+    const centered = uv().sub(float(0.5)).mul(float(2))
+    const radiusSquared = dot(centered, centered)
+    const facing = sqrt(clamp(float(1).sub(radiusSquared), float(0), float(1)))
+    const edgeFeather = facing.smoothstep(float(0.35), float(0.95)).pow(float(3))
     mat.colorNode = tint
-    mat.opacityNode = facing.pow(float(falloffExponent)).mul(float(baseIntensity))
+    mat.opacityNode = facing.pow(float(falloffExponent)).mul(edgeFeather).mul(float(baseIntensity))
     return mat
   }, [falloffExponent, baseIntensity])
 
@@ -106,7 +112,7 @@ export function ColorField({
     [geometry, material],
   )
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const mesh = meshRef.current
     if (!mesh) return
     const buffer = positions.current
@@ -114,6 +120,7 @@ export function ColorField({
       mesh.visible = false
       return
     }
+    camera.getWorldQuaternion(rotation)
     for (let i = 0; i < count; i++) {
       const offset = (nodeIndices[i] ?? 0) * 3
       // No live coordinate for this contributor yet — e.g. a memory inserted optimistically before
@@ -124,8 +131,11 @@ export function ColorField({
         continue
       }
       const size = radii[i] ?? 0
-      matrix.makeScale(size, size, size)
-      matrix.setPosition(buffer[offset] ?? 0, buffer[offset + 1] ?? 0, buffer[offset + 2] ?? 0)
+      position.set(buffer[offset] ?? 0, buffer[offset + 1] ?? 0, buffer[offset + 2] ?? 0)
+      scale.setScalar(size)
+      // A screen-parallel billboard keeps the disc's alpha peak exactly on the contributor's
+      // projected coordinate, even when the camera orbits and the contributor sits off-axis.
+      matrix.compose(position, rotation, scale)
       mesh.setMatrixAt(i, matrix)
     }
     mesh.count = count

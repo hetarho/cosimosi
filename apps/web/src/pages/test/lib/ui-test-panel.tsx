@@ -100,7 +100,7 @@ export function UiTestPanel() {
   // The skin still tunes the scene's camera and bloom; the 2D theme is applied once at the app's
   // composition boundary, so nothing here touches `data-theme`.
   return (
-    <SkinProvider defaultSkin="aurora">
+    <SkinProvider defaultSkin="emotion">
       <UniversePanel />
     </SkinProvider>
   )
@@ -488,7 +488,11 @@ function EngramUniverseCanvas({
   }, [scene])
 
   return (
-    <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
+    <UniverseCanvas
+      dpr={[1, VALUES.rendering.maxPixelRatio]}
+      fov={skin.camera.fov}
+      clearColor={skin.sky.night}
+    >
       <SkySphere stops={emotions} effect={effect} reducedMotion={reducedMotion} />
       <StarField reducedMotion={reducedMotion} />
       <NebulaField positions={positions} firstNodeIndex={scene.firstMemoryIndex} />
@@ -497,6 +501,7 @@ function EngramUniverseCanvas({
         positions={positions}
         firstNodeIndex={scene.firstMemoryIndex}
         universeTime={scene.universeTime}
+        reducedMotion={reducedMotion}
       />
       <FilamentLayer
         positions={positions}

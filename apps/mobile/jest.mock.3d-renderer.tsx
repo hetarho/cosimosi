@@ -10,8 +10,6 @@ const Noop = () => null
 export const UniverseCanvas = Passthrough
 export const SkinProvider = Passthrough
 export const SkySphere = Noop
-export const UniverseScene = Noop
-export const Background = Noop
 export const StarField = Noop
 export const LatentField = Noop
 export const ColorField = Noop
@@ -23,7 +21,8 @@ export const FatLineLayer = Noop
 export const NavigationRig = Noop
 export const FrameTick = Noop
 export const createPrimitiveBodySource = () => ({ resolve: () => ({}) })
-export const createStarBodySource = () => ({ resolve: () => ({}) })
+export const DEFAULT_STAR_SHAPE = 'orb'
+export const createStarShapeBodySource = () => ({ resolve: () => ({}) })
 export const createCellStarBodySource = () => ({ resolve: () => ({}) })
 export const createFilamentBodySource = () => ({ resolve: () => ({}) })
 export const createGistStarBodySource = () => ({ resolve: () => ({}) })
@@ -31,10 +30,10 @@ export const COORDINATE_STRIDE = 3
 export const STAR_INSTANCE_TINT = 'aStarTint'
 export const STAR_INSTANCE_BRIGHTNESS = 'aStarBrightness'
 export const STAR_INSTANCE_SEED = 'aStarSeed'
+export const STAR_INSTANCE_SCALE = 'aStarScale'
 export const GIST_INSTANCE_TINT = 'aGistTint'
 export const GIST_INSTANCE_DIFFUSE = 'aGistDiffuse'
 export const FILAMENT_VERTEX_COLOR = 'aFilamentColor'
-export const resolveBackgroundNode = () => null
 export const SKY_EFFECTS = [
   {
     key: 'grainient',
@@ -50,20 +49,13 @@ export const DEFAULT_SKY_EFFECT = 'grainient'
 export const resolveSkyEffect = () => SKY_EFFECTS[0]
 export const useSkin = () => ({
   skin: {
-    key: 'aurora',
-    label: 'Aurora',
-    background: {
-      type: 'nebula',
-      props: {
-        clear: [0.01, 0.02, 0.05],
-        palette: [0x070a1a, 0x1b2a6b, 0x2f8f9d],
-        pattern: { warp: 0.55, freq: 1.6, detail: 1.4 },
-      },
-    },
+    key: 'emotion',
+    label: 'Emotion Sky',
+    sky: { effect: 'grainient', night: 0x0a0a12 },
     camera: { fov: 55 },
     bloom: { strength: 1, radius: 0.5, threshold: 0.2 },
   },
-  skinKey: 'aurora',
+  skinKey: 'emotion',
   setSkinKey: () => {},
 })
 export const resolveActiveSkin = (key: string) => key

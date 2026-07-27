@@ -19,7 +19,7 @@ describe('star shape catalogue', () => {
       const mesh = object as THREE.Mesh
       expect(mesh.material, shape.key).toBeDefined()
       mesh.geometry.computeBoundingSphere()
-      // Authored at unit radius; the CPU-displaced spikes only ever pull vertices inward.
+      // Every candidate is authored inside the unit sphere.
       expect(mesh.geometry.boundingSphere?.radius, shape.key).toBeGreaterThan(0)
       expect(mesh.geometry.boundingSphere?.radius, shape.key).toBeLessThanOrEqual(1.001)
       mesh.geometry.dispose()
@@ -27,11 +27,55 @@ describe('star shape catalogue', () => {
     }
   })
 
-  it('freezes the moving surface when motion is unwanted', () => {
-    const still = createStarShapeBodySource('plasma', { animate: false })
-    const moving = createStarShapeBodySource('plasma', { animate: true })
-    expect(still.resolve({ kind: 'shader', id: 'plasma' })).toBeInstanceOf(THREE.Mesh)
-    expect(moving.resolve({ kind: 'shader', id: 'plasma' })).toBeInstanceOf(THREE.Mesh)
+  it('builds every look in animated and reduced-motion modes', () => {
+    for (const shape of STAR_SHAPES) {
+      const still = createStarShapeBodySource(shape.key, { animate: false }).resolve({
+        kind: 'shader',
+        id: shape.key,
+      })
+      const moving = createStarShapeBodySource(shape.key, { animate: true }).resolve({
+        kind: 'shader',
+        id: shape.key,
+      })
+      expect(still, shape.key).toBeInstanceOf(THREE.Mesh)
+      expect(moving, shape.key).toBeInstanceOf(THREE.Mesh)
+      for (const object of [still, moving]) {
+        const mesh = object as THREE.Mesh
+        mesh.geometry.dispose()
+        ;(mesh.material as THREE.Material).dispose()
+      }
+    }
+  })
+
+  it('gives the spire exactly eight shortened tips around a broad core', () => {
+    const object = createStarShapeBodySource('spire', { animate: false }).resolve({
+      kind: 'shader',
+      id: 'spire',
+    })
+    const mesh = object as THREE.Mesh
+    const position = mesh.geometry.getAttribute('position')
+    const directions = new Set<string>()
+    const tipRadii: number[] = []
+    const coreRadii: number[] = []
+    for (let i = 0; i < position.count; i++) {
+      const x = position.getX(i)
+      const y = position.getY(i)
+      const z = position.getZ(i)
+      const radius = Math.hypot(x, y, z)
+      if (radius > 0.89) {
+        directions.add(`${Math.sign(x)},${Math.sign(y)},${Math.sign(z)}`)
+        tipRadii.push(radius)
+      } else {
+        coreRadii.push(radius)
+      }
+    }
+    expect(directions).toEqual(
+      new Set(['-1,-1,-1', '-1,-1,1', '-1,1,-1', '-1,1,1', '1,-1,-1', '1,-1,1', '1,1,-1', '1,1,1']),
+    )
+    expect(tipRadii.every((radius) => Math.abs(radius - 0.9) < 0.001)).toBe(true)
+    expect(coreRadii.every((radius) => Math.abs(radius - 0.48) < 0.001)).toBe(true)
+    mesh.geometry.dispose()
+    ;(mesh.material as THREE.Material).dispose()
   })
 
   it('falls back to the shipped star for an unknown key', () => {

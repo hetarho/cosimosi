@@ -29,6 +29,7 @@ export function UniverseCanvas({
   dpr = [1, 2],
   fov = 55,
   far = 1400,
+  clearColor = 0x000000,
   forceWebGL = false,
 }: UniverseCanvasProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,6 +69,7 @@ export function UniverseCanvas({
           forceWebGL,
           antialias: true,
         })
+        gpuRenderer.setClearColor(clearColor, 1)
         renderer.current = gpuRenderer
         await gpuRenderer.init()
         // react-native-webgpu needs an explicit present() after each on-screen frame (the web
@@ -96,7 +98,7 @@ export function UniverseCanvas({
       renderer.current?.dispose()
       renderer.current = null
     }
-  }, [children, dpr, fov, far, forceWebGL])
+  }, [children, dpr, fov, far, clearColor, forceWebGL])
 
   return <Canvas ref={canvasRef} style={styles.fill} />
 }

@@ -16,15 +16,15 @@ default → `src/index.ts` — and `index.native.ts` re-exports the web entry (t
 differs on native). Slices import `@cosimosi/3d-renderer`, never `three` directly.
 
 ```
-packages/3d-renderer/src/                                                              GENERIC core (names no concrete bg)
+packages/3d-renderer/src/                                                              GENERIC shared renderer
 ├── shader-art/   noise · field · pattern · finish · sdf · geometry (+ tsl helper)  — pure TSL building blocks
-├── layers/       Background (node) · StarField · CameraControls (demo trackball) · PostFX (bloom)  — type-agnostic R3F layers
+├── layers/       SkySphere · StarField · CameraControls (demo trackball) · PostFX (bloom)  — R3F layers
 ├── canvas/       UniverseCanvas (web R3F + WebGPURenderer)                          — the only platform-forked surface
 ├── asset-source · skin-context · SkinProvider                                       — §3.4 port + skin seam
 ├── assets/       CONCRETE looks (use the core; depend on it, not vice-versa)
-│   ├── backgrounds/  nebula · gradient (each: Props + node-builder) + registry (BackgroundSpec + resolveBackgroundNode)
-│   ├── skins/        presets (typed instances: {background:{type,props}, bloom, camera})
-│   └── UniverseScene composition: resolves the bg node + wires the layers
+│   ├── bodies/       star catalogue · cell-star · filament · gist
+│   ├── sky/          emotion ramp + registered TSL sky effects
+│   └── skins/        typed ambiance instances ({sky, bloom, camera})
 └── index.ts / index.native.ts / jsx-elements.ts
 ```
 
@@ -37,41 +37,34 @@ React, or DOM. Skins **compose** these into a look. Authoring is **TSL only** (t
 GLSL — so one source serves web + native. (Rich artistic layering/mixing is later product work; the foundation makes
 the effects library-shaped.)
 
-### Backgrounds, skins, and the registry
+### Emotion sky and the skin seam
 
-A background is a **typed** thing. Each **background type** owns its own props shape **and** its own TSL node-builder,
-paired in a discriminated union (`BackgroundSpec`) and dispatched by **one registry** — `resolveBackgroundNode(spec)`
-(`assets/backgrounds/`: `nebula` + `gradient` today; adding a type = its module + one registry case — no layer/host/seam
-change). A **skin** is a _typed instance_ of non-domain ambiance: `UniverseSkin = { key, label, background: {type, props},
-bloom, camera }` (`assets/skins/presets.ts`). Type-specific params live in `background.props` (nebula:
-palette/pattern/clear); **scene-level** ambiance — `bloom` (post) and `camera` (fov) — stays at the skin top level, so
-`PostFX`/`UniverseCanvas` never index a type-specific props bag. The **active skin** is one build-time constant —
-`rendering.active_skin` (`spec/values.yaml` → `@cosimosi/config`). The seam is `SkinProvider` + `useSkin()`
-(`resolveActiveSkin` maps the constant); a future end-user runtime switcher ([P4]) replaces the source with no consumer
-change. **Invariant:** a skin/background is presentation-only — it never sets per-memory emotion/position/strength ([I3][I11]).
+The shipped backdrop is one **typed emotion sky**, not a flat background-type registry. `UniverseSkin = { key, label,
+sky: { effect, night }, bloom, camera }` (`assets/skins/presets.ts`): `SkySphere` resolves `effect` through the
+`SKY_EFFECTS` catalogue, while `UniverseCanvas.clearColor` owns the opaque bare-night color behind its translucent
+surface. The old gradient/nebula node builders, `Background` layer, registry, and unused `UniverseScene` composition
+were retired when the emotion sky became the product backdrop; a main scene cannot accidentally mount both systems.
 
-**Generic core vs assets.** The toolkit (`shader-art`), scene layers (`layers/`), canvas host, skin seam, and
-asset-source port name **no** concrete background type; the type→node-builder dispatch and the concrete looks
-(`nebula`/`gradient`/skins/`UniverseScene`) live in `assets/`, which depends on the core — not vice-versa. `Background`
-takes a resolved `node`; `PostFX` takes `bloom` params. (The seam reads the skin _table_ from `assets/skins` — its
-content — but references no background type/node-builder.)
+Scene-level ambiance — `bloom` (post) and `camera` (fov) — stays at the skin top level. The active skin is the
+build-time `rendering.active_skin` value (`spec/values.yaml` → `@cosimosi/config`), resolved through `SkinProvider` +
+`useSkin()`. The seam stays typed for future ambiance variants, but only the shipped `emotion` skin is currently
+authored. **Invariant:** a skin/sky is presentation-only — it never sets per-memory emotion, position, or strength
+([I3][I11]).
 
 ### Across the R3F reconciler
 
 R3F runs its own reconciler, so context from the DOM/RN tree outside `<Canvas>` does **not** reach in-canvas children.
-The active skin is read with `useSkin()` at the boundary; `UniverseScene` resolves the background node and passes it as a
-prop to `Background` (and `skin.bloom` to `PostFX`) — never via context across the canvas.
+The active skin is read with `useSkin()` at the app composition boundary; the host passes `skin.sky.night` to
+`UniverseCanvas`, `skin.sky.effect` to `SkySphere`, and `skin.bloom` to `PostFX` — never via context across the canvas.
 
 ### Camera (demo trackball)
 
-`UniverseScene` mounts `CameraControls` — three's `TrackballControls` (drag = rotate, wheel/pinch = zoom, inertial
-damping; pan off; distance clamped). Trackball rather than `OrbitControls` so rotation never blocks: it holds no fixed
-up-vector, so the view tumbles past the poles and keeps spinning in any direction, where `OrbitControls` clamps the
-polar angle to `[0, π]` and sticks at top/bottom. Pointer motion is mapped through the element's on-screen size, so
-canvas resizes are announced via `handleResize()` (the shared `observeElementResize` seam in `layers/dom-controls.ts`).
-It updates in a default-priority `useFrame`, before `PostFX`'s priority-1 render. This is a **demo inspection rig**, not
-product navigation — the real universe camera/fly rig is Epic A `universe-canvas` ([U3][V0]). It attaches to the canvas
-DOM element and stays **inert on hosts without one** (native gesture nav is Epic A).
+`CameraControls` is the test-harness inspection rig: three's `TrackballControls` (drag = rotate, wheel/pinch = zoom,
+inertial damping; pan off; distance clamped). Trackball rather than `OrbitControls` so rotation never blocks: it holds
+no fixed up-vector, so the view tumbles past the poles and keeps spinning in any direction. Pointer motion is mapped
+through the element's on-screen size, so canvas resizes are announced via `handleResize()` (the shared
+`observeElementResize` seam in `layers/dom-controls.ts`). It updates before `PostFX`'s priority-1 render. Product
+navigation remains the `NavigationRig` composed by the universe canvas widgets ([U3][V0]).
 
 ### Backdrop scale (one ordering, four numbers)
 
@@ -91,7 +84,7 @@ independent random draws give the clumps and voids a real sky has, where an inde
 spiral. Radius is volume-uniform (cube root) so the field doesn't pack onto its inner shells, star size rides its own
 distance so every shell keeps roughly one on-screen size, and the twinkle's phase, rate, pulse shape, and steady glow
 are each an independent per-instance hash — a shared rate or a smooth phase walk makes the whole field pulse as one
-travelling wave.
+travelling wave. Reduced motion freezes both that twinkle clock and the field's slow spin.
 
 ### Post-processing
 
@@ -101,10 +94,10 @@ over `pass(scene, camera)`, parameterized by the skin. It takes the render loop 
 
 ## Consumers
 
-- **Web:** `apps/web/src/pages/universe` is the **main page (`/`)** — full-bleed `UniverseCanvas` (background + stars +
+- **Web:** `apps/web/src/pages/universe` is the **main page (`/`)** — full-bleed `UniverseCanvas` (emotion sky + stars +
   bloom) with floating HUD buttons. The old design-system showcase page is retired; design-system primitives are
-  verified via the `/test` harness `Design system` panel. The `/test` **rendering-foundation** panel
-  (`pages/test/lib/render-demo-panel`) drives the package with a live skin switcher.
+  verified via the `/test` harness `Design system` panel; the sky, star-form, and nebula panels exercise the shared
+  product renderer independently.
 - **Mobile:** `apps/mobile/src/pages/universe/ui/UniversePage.tsx` (registered by the app-layer `Universe` route
   adapter) renders the **same** package scene, error-boundaried so a WebGPU/native failure shows a fallback instead of
   crashing.
@@ -208,9 +201,19 @@ The three **rendering entities** turn the domain-mirror graph into bodies. Their
   packages as visual paths so the vocabulary is native there, still forbidden in `@cosimosi/memory` + `apps/api`).
 - **`star` (episodic-memory).** An instanced TSL big-star (`star-body.ts`, `shader` source): a unit sphere whose
   surface is displaced by ridged noise keyed on a per-instance **seed**, so two seeds take different coherent forms
-  [V5]; the seed is immutable input (rendered, never mutated/animated — the Epic-C `Reshape` seam). Four independent
-  channels, each a pure function of stored facts (`entities/star/model`): **size** = `effectiveStrength` → per-instance
-  matrix scale in `star_size_min…max` [V3]; **brightness** = the real read-time `effectiveBrightness` (forgetting fade:
+  [V5]. `StarLayer` resolves `DEFAULT_STAR_SHAPE` through the same `star-shapes.ts` catalogue used by the test bench;
+  the current shipped selection is the seed-form `orb`, so review and product cannot silently diverge. Motion follows
+  the form instead of applying one turn to every body: fixed crystal geometry (cut facet,
+  prism, eight-point spire) rotates in place about x/y/z with a seed-derived starting pose and brisk angular velocity,
+  while procedural bodies (seed form, geode, bubble, urchin, plasma, contour, haze) keep their center and orientation
+  and evolve their relief/noise field. The broad eight-point spire uses low crystalline pyramids rather than needle
+  tips. The geode's warped seed-noise breaks up its travelling wave, while the urchin's quieter wave keeps every spike
+  between 80–100% of its authored length; haze moves faster but remains low-amplitude. Reduced motion freezes either
+  kind at its seed-derived pose. Time changes only the presentation phase; the seed value remains immutable input
+  (rendered, never mutated/animated — the Epic-C `Reshape` seam). Four independent channels, each a pure function of
+  stored facts (`entities/star/model`):
+  **size** = `effectiveStrength` → per-instance matrix scale in `star_size_min…max` [V3]; **brightness** = the real
+  read-time `effectiveBrightness` (forgetting fade:
   offset-inclusive universe-days since last recall, slowed by arousal + connection strength) → per-instance attribute.
   Its own range already equals `[star_brightness_min, star_brightness_max]` (`forgetting.brightness_floor` is aligned to
   `star_brightness_min`), so `starChannels` **clamps it in place — it does NOT re-lerp a `[0,1]` fraction** (that would
@@ -271,13 +274,19 @@ region, stronger stars bleed wider, and the universe's global tone **emerges** f
 modeled, or surfaced as an average-tone readout ([M4][M5][I5][§3.4]).
 
 - **`ColorField` layer (`@cosimosi/3d-renderer`).** The domain-agnostic realization is **additive world-space soft-glow
-  kernels**, not a full-screen uniform-array loop pass: one `InstancedMesh` of unit spheres with a TSL
-  `MeshBasicNodeMaterial` whose `opacityNode` is a **view-facing radial falloff** (`clamp(normalView.z,0,1) ^
-falloff_exponent × base_intensity`), so a plain sphere reads as a soft glow with no billboarding. `AdditiveBlending`,
+  kernels**, not a full-screen uniform-array loop pass: one `InstancedMesh` of camera-facing unit-circle billboards with
+  a TSL `MeshBasicNodeMaterial`. With `centeredUv = 2 × uv - 1`, each disc reconstructs the former sphere profile as
+  `facing = sqrt(clamp(1 - dot(centeredUv, centeredUv), 0, 1))`, then applies
+  `facing ^ falloff_exponent × smoothstep(0.35,0.95,facing)³ × base_intensity`. Cubing the broad feather moves the
+  perceptual cutoff well inside each finite disc rim, so overlapping kernels read as a continuous gradient. Keeping the
+  disc origin at its contributor coordinate and updating its instance rotation from the camera's world quaternion each
+  frame makes the alpha peak project exactly over the star instead of drifting toward a sphere's front surface.
+  `AdditiveBlending`,
   `depthTest`/`depthWrite` off, `renderOrder = -2`, so contributions **sum** in the framebuffer (many colors coexist and
   bleed, the tone emerges) and the latent field (-1) + every real body draw on top. Positions are read per frame from the
-  coordinate buffer into instance matrices (§3.3); the per-contributor tint is an instance attribute uploaded only when
-  the read model changes. Colors in, pixels out — the layer holds no emotion, palette, or domain import. This reuses the
+  coordinate buffer into centered billboard instance matrices (§3.3); the per-contributor tint is an instance attribute
+  uploaded only when the read model changes. Colors in, pixels out — the layer holds no emotion, palette, or domain
+  import. This reuses the
   proven `InstancedNodeLayer`/`LatentField` per-frame pattern and avoids an untested TSL `Loop`/`uniformArray` full-screen
   shader with WebGL2-fallback risk; additive framebuffer compositing is the screen-space realization the plan left open.
 - **`entities/nebula` (visual entity).** `lib/contributors.ts` is a pure projection: each rendered memory →
@@ -288,11 +297,13 @@ bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` kee
   with `firstNodeIndex = neuronCount` (memories share the star layer's buffer slots); `ui/NebulaNotice.tsx` is the
   honest-mirror HUD disclosure (i18n copy, renders no color; the one bit still app-local, a forked DOM/RN component).
   The read model is read from the shared `@cosimosi/universe` episodic-memory store.
-- **Layer coexistence.** The nebula (domain emotion color) composites over the plan-14 skin background and behind the
-  latent field + bodies. The skin never reads emotion; the nebula never sets ambiance — neither writes to the domain.
+- **Layer coexistence.** The nebula (per-memory domain emotion color) composites over the emotion-sky ambiance and
+  behind the latent field + bodies. The skin selects the sky effect but does not derive memory meaning; the nebula
+  never sets ambiance — neither writes to the domain.
 - **Optimistic-launch interaction (plan 27).** A just-launched memory enters the `episodic-memory` store before its
-  force-sim node exists, so its nebula kernel (and its star) render at the world origin until the next `GetUniverse`
-  refetch rebuilds the graph and the sim positions it — the §2.8 optimistic degradation ("position fills on next read").
+  force-sim node exists, so its nebula kernel and star keep their instance slots but collapse to zero scale until the next
+  `GetUniverse` refetch rebuilds the graph and the sim positions them. The §2.8 optimistic degradation ("position fills
+  on next read") therefore never flashes false geometry at the world origin.
 - **Mobile (§3.5).** The projection (`buildContributors`) + the `NebulaField` layer are the shared package modules; the
   mount passes `nebula.field_resolution_mobile` (coarser kernels). `NebulaNotice` is forked per-app (RN View/Text vs
   DOM); the `ColorField` TSL layer is shared — no `*.native`.

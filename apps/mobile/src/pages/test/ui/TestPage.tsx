@@ -3,7 +3,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
 import {
-  DEFAULT_SKY_EFFECT,
   PostFX,
   SKY_EFFECTS,
   SkinProvider,
@@ -59,9 +58,7 @@ export function TestPage({ onBack }: { onBack: () => void }) {
 function SkyShowcase({ onBack }: { onBack: () => void }) {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
-  const [effectKey, setEffectKey] = useState<SkyEffectKey>(
-    skin.background.type === 'sky' ? skin.background.props.effect : DEFAULT_SKY_EFFECT,
-  )
+  const [effectKey, setEffectKey] = useState<SkyEffectKey>(skin.sky.effect)
   const active = resolveSkyEffect(effectKey)
   const [count, setCount] = useState<number>(active.defaultCount)
   const emotions = useMemo(() => showcaseEmotions(count), [count])
@@ -69,7 +66,11 @@ function SkyShowcase({ onBack }: { onBack: () => void }) {
   return (
     <View style={styles.screen}>
       <View style={styles.canvas}>
-        <UniverseCanvas dpr={[1, VALUES.rendering.maxPixelRatio]} fov={skin.camera.fov}>
+        <UniverseCanvas
+          dpr={[1, VALUES.rendering.maxPixelRatio]}
+          fov={skin.camera.fov}
+          clearColor={skin.sky.night}
+        >
           <SkySphere stops={emotions} effect={effectKey} reducedMotion={reducedMotion} />
           <StarField reducedMotion={reducedMotion} />
           <PostFX bloom={skin.bloom} />

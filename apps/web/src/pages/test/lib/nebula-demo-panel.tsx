@@ -4,7 +4,6 @@ import { VALUES } from '@cosimosi/config'
 import { MOODS, createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
 import {
-  Background,
   CameraControls,
   ColorField,
   PostFX,
@@ -12,7 +11,6 @@ import {
   StarField,
   UniverseCanvas,
   resolveActiveSkin,
-  resolveBackgroundNode,
   useSkin,
 } from '@cosimosi/3d-renderer'
 import { Button } from '@cosimosi/ui'
@@ -56,16 +54,15 @@ function buildDemoScene() {
 
 function NebulaDemoScene({ forceWebGL }: { forceWebGL: boolean }) {
   const { skin } = useSkin()
-  const backgroundNode = useMemo(() => resolveBackgroundNode(skin.background), [skin.background])
   const scene = useMemo(() => buildDemoScene(), [])
   const positions = useMemo(() => ({ current: scene.positions }), [scene])
   return (
     <UniverseCanvas
       dpr={[1, VALUES.rendering.maxPixelRatio]}
       fov={skin.camera.fov}
+      clearColor={skin.sky.night}
       forceWebGL={forceWebGL}
     >
-      <Background node={backgroundNode} />
       <StarField />
       <ColorField
         positions={positions}

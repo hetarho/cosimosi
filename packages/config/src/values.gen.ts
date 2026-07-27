@@ -50,7 +50,7 @@ export const VALUES = {
   nebula: {
     bleedRadiusCoefficient: 18,
     minBleedRadius: 4.5,
-    falloffExponent: 3.5,
+    falloffExponent: 4.5,
     maxContributors: 96,
     fieldResolutionWeb: 24,
     fieldResolutionMobile: 10,
