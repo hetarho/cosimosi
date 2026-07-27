@@ -457,11 +457,11 @@ func TestConcurrentLaunchBeforeReleasePreservesSharedNeuron(t *testing.T) {
 	go func() {
 		_, err := launchService.PersistEncoded(ctx, scope, "new diary", day.AddDate(0, 0, 1), []memory.ExtractedMemory{
 			{
-				Name: "new one", Mood: memory.MoodCalm,
+				Name: "new one", Mood: memory.MoodCalm, SourceText: "new",
 				Neurons: []memory.ExtractedNeuron{{Name: "shared", Type: memory.NeuronTypeSemantic}},
 			},
 			{
-				Name: "new two", Mood: memory.MoodJoy,
+				Name: "new two", Mood: memory.MoodJoy, SourceText: "diary",
 				Neurons: []memory.ExtractedNeuron{{Name: "shared", Type: memory.NeuronTypeSemantic}},
 			},
 		})

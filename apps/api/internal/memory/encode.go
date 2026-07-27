@@ -23,6 +23,13 @@ var (
 	// mood/type, blank name). Unlike a repairable violation this is an adapter
 	// contract breach — re-prompting cannot fix a port that ignores the schema.
 	ErrEncodeInvalidSplit = errors.New("memory encode received an invalid split")
+	// ErrEncodeBodyTooLong is the canonical over-budget error for the diary itself.
+	// Since each memory carries its own passage, the split response holds the diary
+	// redistributed across the memories — so the body, not the model's verbosity,
+	// decides whether the result fits encode.max_output_tokens. The writer is told
+	// before a single LLM call, instead of after the repair budget burns down on a
+	// violation no re-prompt can fix (a shorter split would break coverage).
+	ErrEncodeBodyTooLong = errors.New("memory encode diary body exceeds the output budget")
 	// ErrScopeRequired guards every use-case entry point (§4 per-user isolation).
 	ErrScopeRequired = errors.New("memory use-case requires an authenticated user scope")
 )
@@ -38,6 +45,9 @@ func (s *Service) Encode(ctx context.Context, scope platform.UserScope, body str
 	body = strings.TrimSpace(body)
 	if body == "" || diaryDate.IsZero() {
 		return ExtractResult{}, ErrEncodeInputRequired
+	}
+	if err := bodyWithinOutputBudget(body); err != nil {
+		return ExtractResult{}, err
 	}
 	candidates, err := s.dedupCandidates(ctx, scope, body)
 	if err != nil {
@@ -60,6 +70,9 @@ func (s *Service) ReviseSplit(ctx context.Context, scope platform.UserScope, bod
 	instruction = strings.TrimSpace(instruction)
 	if body == "" || instruction == "" || len(previous.Memories) == 0 {
 		return ExtractResult{}, ErrEncodeInputRequired
+	}
+	if err := bodyWithinOutputBudget(body); err != nil {
+		return ExtractResult{}, err
 	}
 	// The prior result arrives from the client; a hand-crafted request must not
 	// smuggle an invalid shape past the domain just because the LLM never saw it.
@@ -179,14 +192,29 @@ func repairableViolation(body string, result ExtractResult) string {
 	if violation := SourceTextViolation(body, result.Memories); violation != "" {
 		return violation
 	}
-	// Last, because it is the only violation the model cannot fix without dropping content:
-	// the source texts must quote the whole diary, so an over-budget result means the diary
-	// itself is too long, and re-prompting for a smaller one would ask the model to break the
-	// coverage rule it was just held to.
+	// Last, and only for what the model can still fix: the passages are already pinned to the
+	// diary (bodyWithinOutputBudget cleared it before the call), so any remaining excess is the
+	// names and neurons around them. Asking for a smaller result would otherwise be asking the
+	// model to break the coverage rule it was just held to.
 	if estimateOutputTokens(result) > values.EncodeMaxOutputTokens {
 		return "The result is too large. Use shorter memory names and keep only the essential neurons."
 	}
 	return ""
+}
+
+// bodyWithinOutputBudget refuses a diary whose passages alone cannot fit encode.max_output_tokens.
+// It is checked on the way IN, before any LLM call: the split must quote the whole diary back
+// ([E1]), so an over-long body is not something a re-prompt can repair — the repair budget would
+// burn down ping-ponging between "too large" and "you dropped a scene". Estimated against a
+// single-memory split so the check measures the body itself and not the split's overhead, and
+// with the same token model the output guard uses, so the two cannot drift apart.
+func bodyWithinOutputBudget(body string) error {
+	estimate := estimateOutputTokens(ExtractResult{Memories: []ExtractedMemory{{SourceText: body}}})
+	if estimate > values.EncodeMaxOutputTokens {
+		return fmt.Errorf("%w: %d estimated tokens over the %d budget",
+			ErrEncodeBodyTooLong, estimate, values.EncodeMaxOutputTokens)
+	}
+	return nil
 }
 
 // memoryCountInRange and hasRequiredSemanticNeurons are the single owners of the

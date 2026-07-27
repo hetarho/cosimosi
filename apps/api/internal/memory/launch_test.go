@@ -492,6 +492,54 @@ func TestPersistEncodedLaunchesAtomicallyWithDedup(t *testing.T) {
 	}
 }
 
+func TestPersistEncodedGivesEachMemoryItsOwnPassage(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+
+	if _, err := fixture.service.PersistEncoded(
+		context.Background(), testScope(t), testDiaryBody, testDiaryDate(), confirmedFixture(),
+	); err != nil {
+		t.Fatalf("PersistEncoded failed: %v", err)
+	}
+
+	// A2: one EpisodicMemory, one scene. Before this change every row of an N-way split held the
+	// whole diary, so two memories from one entry opened onto identical text at the detail panel,
+	// decay, the gist ladder, and 변천사 alike.
+	texts := map[string]bool{}
+	for _, episodicMemory := range fixture.launches.committed.memories {
+		if episodicMemory.CurrentText == testDiaryBody {
+			t.Fatalf("memory %q holds the whole diary as its current text", episodicMemory.Name)
+		}
+		if episodicMemory.SourceText != episodicMemory.CurrentText {
+			t.Fatalf("memory %q: source text %q != initial current text %q",
+				episodicMemory.Name, episodicMemory.SourceText, episodicMemory.CurrentText)
+		}
+		texts[episodicMemory.CurrentText] = true
+	}
+	if len(texts) != len(confirmedFixture()) {
+		t.Fatalf("distinct current texts = %d, want one per memory", len(texts))
+	}
+}
+
+func TestPersistEncodedAcceptsAPassageTheWriterRewrote(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	edited := confirmedFixture()
+	// Words the diary never contained. The extractor would be re-prompted for this
+	// (SourceTextViolation); the writer is not — they cannot be wrong about their own account,
+	// and the fidelity rule exists to stop the MODEL from rewriting them ([W4]).
+	edited[0].SourceText = "장 보러 다녀왔다"
+
+	if _, err := fixture.service.PersistEncoded(
+		context.Background(), testScope(t), testDiaryBody, testDiaryDate(), edited,
+	); err != nil {
+		t.Fatalf("a writer-edited passage must launch, got: %v", err)
+	}
+	if SourceTextViolation(testDiaryBody, edited) == "" {
+		t.Fatal("the fixture no longer exercises a passage the extractor rule would reject")
+	}
+}
+
 func TestPersistEncodedMidStepFailureLeavesNoPartialRows(t *testing.T) {
 	t.Parallel()
 	for _, method := range []string{"InsertEpisodicMemory", "UpsertNeuron", "InsertNeuronActivation", "EnqueueJob"} {
@@ -727,12 +775,21 @@ func TestPersistEncodedRejectsInvalidConfirmedSplit(t *testing.T) {
 	badMood[0].Mood = Mood("SPARKLY")
 	badType := confirmedFixture()
 	badType[0].Neurons[0].Type = NeuronType("time")
+	// A5: persist re-validates the passage STRUCTURALLY only — present, non-blank, and no longer
+	// than the diary it claims to quote. Its words are not re-checked, because by launch time a
+	// passage may be the writer's own edit ([W4]).
+	blankPassage := confirmedFixture()
+	blankPassage[0].SourceText = "   "
+	longerThanDiary := confirmedFixture()
+	longerThanDiary[0].SourceText = testDiaryBody + " and then some."
 
 	cases := map[string][]ExtractedMemory{
-		"count below minimum":     tooFew,
-		"missing semantic neuron": noSemantic,
-		"unknown mood":            badMood,
-		"invalid neuron type":     badType,
+		"count below minimum":       tooFew,
+		"missing semantic neuron":   noSemantic,
+		"unknown mood":              badMood,
+		"invalid neuron type":       badType,
+		"blank passage":             blankPassage,
+		"passage longer than diary": longerThanDiary,
 	}
 	for name, confirmed := range cases {
 		fixture := newFixture(t)

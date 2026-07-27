@@ -295,6 +295,10 @@ func domainError(err error) error {
 	switch {
 	case errors.Is(err, memory.ErrEncodeInputRequired):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonEncodeInputRequired, err, nil)
+	case errors.Is(err, memory.ErrEncodeBodyTooLong):
+		// Invalid argument, not resource-exhausted: the diary is too long to be split into
+		// passages that quote it, and only the writer can shorten it — no retry helps.
+		return apperr.Domain(connect.CodeInvalidArgument, reasonEncodeBodyTooLong, err, nil)
 	case errors.Is(err, memory.ErrLaunchInvalidMemories):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonLaunchInvalidMemories, err, nil)
 	case errors.Is(err, memory.ErrRecallInputRequired):

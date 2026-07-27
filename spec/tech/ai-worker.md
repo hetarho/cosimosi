@@ -13,8 +13,13 @@
 - `Semanticizer`
 
 The port DTOs are memory-owned and schema-forced. `ExtractResult` can only carry
-`{memories:[{name, mood, neurons:[{name, type}]}]}`; there is no position, color, strength, time, delete, proto, sqlc,
-or SDK type in the shape.
+`{memories:[{name, mood, source_text, neurons:[{name, type}]}]}`; there is no position, color, strength, time, delete,
+proto, sqlc, or SDK type in the shape. `source_text` — the passage of the diary a memory was encoded from — is the one
+prose field, and the adapter owns only the **task knowledge** for it (the prompt rules: quote the writer, repair a typo
+or a dangling cut-edge ending, never substitute/rephrase/summarize/reorder/invent, order and cover the diary). Whether
+a returned passage actually _is_ the writer's words is decided in `internal/memory` (`sourcetext.go`), not here — the
+adapter cannot mark its own homework. `ReviseSplit` takes the **body** alongside the prior result for the same reason:
+a repair must be able to re-quote the diary rather than copy the output it is correcting.
 
 `internal/ai` contains concrete port adapters for those ports. It may import memory DTO types to satisfy the ports, but
 it does not own split/dedup/synapse/linking/diary behavior. The port adapters (`RealExtractor`, `RealEmbedder`,

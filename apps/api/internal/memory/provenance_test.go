@@ -46,7 +46,11 @@ func TestGetProvenanceSynthesizesCreatedBaselineForAZeroRowStar(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	fixture.provenance.origin = map[string]MemoryOrigin{
-		"m1": {DiaryBody: "the original diary body", CreatedUniverseTime: day(2026, 6, 1)},
+		"m1": {
+			SourceText:          "the passage this memory was encoded from",
+			DiaryBody:           "the original diary body, of which the passage is one scene",
+			CreatedUniverseTime: day(2026, 6, 1),
+		},
 	}
 
 	entries, err := fixture.service.GetProvenance(context.Background(), testScope(t), "m1")
@@ -54,7 +58,8 @@ func TestGetProvenanceSynthesizesCreatedBaselineForAZeroRowStar(t *testing.T) {
 		t.Fatalf("GetProvenance failed: %v", err)
 	}
 	// A2: a memory that has never been reconsolidated/semanticized still returns a one-entry history,
-	// synthesized at read — created/original, whose text is the immutable Diary body ([CC5][I2]).
+	// synthesized at read — created/original, whose text is the passage this memory was encoded from
+	// ([CC5][I2]). Two memories from one diary therefore no longer share a baseline.
 	if len(entries) != 1 {
 		t.Fatalf("entries = %d, want a single synthesized baseline", len(entries))
 	}
@@ -62,19 +67,38 @@ func TestGetProvenanceSynthesizesCreatedBaselineForAZeroRowStar(t *testing.T) {
 	if baseline.Kind != ProvenanceKindCreated || baseline.Source != ProvenanceSourceOriginal {
 		t.Fatalf("baseline = %s/%s, want created/original", baseline.Kind, baseline.Source)
 	}
-	if baseline.Text != "the original diary body" {
-		t.Fatalf("baseline text = %q, want the Diary body", baseline.Text)
+	if baseline.Text != "the passage this memory was encoded from" {
+		t.Fatalf("baseline text = %q, want this memory's own passage", baseline.Text)
 	}
 	if !baseline.UniverseTime.Equal(day(2026, 6, 1)) {
 		t.Fatalf("baseline universe_time = %v, want the creation date", baseline.UniverseTime)
 	}
 }
 
-func TestGetProvenanceOrdersBaselineFirstThenAppendedRowsAndBaselineIsTheDiaryNotCurrentText(t *testing.T) {
+func TestGetProvenanceBaselineFallsBackToTheDiaryForAMemoryWithoutAPassage(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	// A memory launched before per-memory passages existed: its source_text is NULL and its
+	// current_text was the whole diary, so the whole diary IS what it was created with.
+	// Retconning a passage onto it would make its history read false.
+	fixture.provenance.origin = map[string]MemoryOrigin{
+		"m1": {DiaryBody: "the original diary body", CreatedUniverseTime: day(2026, 6, 1)},
+	}
+
+	entries, err := fixture.service.GetProvenance(context.Background(), testScope(t), "m1")
+	if err != nil {
+		t.Fatalf("GetProvenance failed: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Text != "the original diary body" {
+		t.Fatalf("baseline = %+v, want the Diary body as the pre-passage fallback", entries)
+	}
+}
+
+func TestGetProvenanceOrdersBaselineFirstThenAppendedRowsAndBaselineIsTheOriginNotCurrentText(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
 	fixture.provenance.origin = map[string]MemoryOrigin{
-		"m1": {DiaryBody: "born from the diary", CreatedUniverseTime: day(2026, 6, 1)},
+		"m1": {SourceText: "born from the diary", DiaryBody: "the whole day", CreatedUniverseTime: day(2026, 6, 1)},
 	}
 	// The reader returns the appended rows already universe-time ordered (its contract, backed by the
 	// timeline index). The rewritten narrative differs from the Diary body.
@@ -103,10 +127,11 @@ func TestGetProvenanceOrdersBaselineFirstThenAppendedRowsAndBaselineIsTheDiaryNo
 			t.Fatalf("entry[%d] = %+v, want %+v", i, entry, want[i])
 		}
 	}
-	// A2/[I2] honesty: even after a reconsolidation the baseline reads the Diary body, never the
-	// mutated representation — the objective record is not overwritten in the history.
+	// A2/[I2] honesty: even after a reconsolidation the baseline reads the encode-time passage,
+	// never the mutated representation — the origin is not overwritten in the history. This is why
+	// source_text is stored rather than read back off current_text, which reconsolidation moves.
 	if entries[0].Text != "born from the diary" {
-		t.Fatalf("baseline text = %q, want the immutable Diary body", entries[0].Text)
+		t.Fatalf("baseline text = %q, want the immutable encode-time passage", entries[0].Text)
 	}
 	// A3: the entry shape is exactly {kind, source, text, universe_time} — there is no distortion flag
 	// on the domain result (guaranteed by the ProvenanceEntry type; distortion is read, not announced).

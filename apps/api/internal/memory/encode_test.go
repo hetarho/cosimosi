@@ -351,6 +351,39 @@ func TestEncodeRetryBudgetExhaustedReturnsCanonicalError(t *testing.T) {
 	}
 }
 
+// A diary too long to be quoted back is refused on the way IN. Since each memory carries its own
+// passage, the response holds the diary redistributed across the memories — so an over-long body
+// is unfixable by re-prompting (a shorter split breaks coverage), and spending the repair budget
+// discovering that would bill the writer three LLM calls to be told their entry is too long.
+func TestEncodeRefusesADiaryTooLongToQuoteBeforeCallingTheExtractor(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	// Korean runes count one token each in the estimate, so the budget is reached in runes.
+	tooLong := strings.Repeat("오늘은 아주 긴 하루였다. ", values.EncodeMaxOutputTokens)
+
+	_, err := fixture.service.Encode(context.Background(), testScope(t), tooLong, testDiaryDate())
+	if !errors.Is(err, ErrEncodeBodyTooLong) {
+		t.Fatalf("err = %v, want ErrEncodeBodyTooLong", err)
+	}
+	if fixture.extractor.splitCalls != 0 {
+		t.Fatalf("split calls = %d, want 0 — the writer is told before the LLM is billed", fixture.extractor.splitCalls)
+	}
+
+	// The same guard covers the revise entry point, which re-quotes from the same body.
+	_, err = fixture.service.ReviseSplit(context.Background(), testScope(t), tooLong, validSplit(), "merge them")
+	if !errors.Is(err, ErrEncodeBodyTooLong) {
+		t.Fatalf("revise err = %v, want ErrEncodeBodyTooLong", err)
+	}
+	if len(fixture.extractor.instructions) != 0 {
+		t.Fatalf("revise calls = %d, want 0", len(fixture.extractor.instructions))
+	}
+
+	// An ordinary diary is unaffected — the guard is a ceiling, not a new input rule.
+	if err := bodyWithinOutputBudget(testDiaryBody); err != nil {
+		t.Fatalf("an ordinary diary tripped the budget: %v", err)
+	}
+}
+
 func TestEncodeRejectsInvalidNeuronTypeWithoutRetry(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)

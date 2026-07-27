@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -143,12 +144,17 @@ func TestSourceTextIgnoresPunctuationAndSpacingDifferences(t *testing.T) {
 	}
 }
 
-func TestBlankSourceTextIsDetected(t *testing.T) {
+// A blank passage is a schema breach, not a judgement the model can be re-prompted out of, so
+// validateSplitStructure rejects it outright before the fidelity rule ever sees the split.
+func TestBlankSourceTextIsAStructuralBreach(t *testing.T) {
 	t.Parallel()
-	if !BlankSourceText([]ExtractedMemory{{Name: "a", SourceText: "  "}}) {
-		t.Error("a whitespace-only passage must read as blank")
+	err := validateSplitStructure(ExtractResult{Memories: []ExtractedMemory{
+		{Name: "a", Mood: MoodCalm, SourceText: "  ", Neurons: []ExtractedNeuron{{Name: "n", Type: NeuronTypeSemantic}}},
+	}})
+	if err == nil {
+		t.Fatal("a whitespace-only passage must be rejected")
 	}
-	if BlankSourceText([]ExtractedMemory{{Name: "a", SourceText: "비가 왔다"}}) {
-		t.Error("a real passage must not read as blank")
+	if !errors.Is(err, ErrEncodeInvalidSplit) {
+		t.Errorf("err = %v, want ErrEncodeInvalidSplit — a blank passage is not re-promptable", err)
 	}
 }

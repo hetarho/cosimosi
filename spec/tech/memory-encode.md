@@ -20,6 +20,10 @@
   memories in the same `REPEATABLE READ` snapshot (Epic A derivation; the `universe_state` clock is Epic B); empty
   until the first launch.
 
+`ProposedMemory`/`ConfirmedMemory` carry `{name, mood, source_text, neurons}`. `source_text` is the diary passage the
+memory was encoded from, in the writer's own words; it is the only prose the encode contract carries and the [W4a]
+boundary is otherwise unchanged — still no position, color, strength, seed, universe-time, or delete field.
+
 Dates cross the wire as ISO `YYYY-MM-DD` strings; the handler parses with `time.DateOnly` and the pg adapter stores
 `DATE`. All four RPCs resolve `platform.UserScope` from the auth context; none is in `publicProcedures`, so they are
 auth-protected by default.
@@ -34,12 +38,30 @@ proto↔domain and call it (§2.9#7):
   embedder degrades the assist instead of failing the preview; merged and deduped by id), calls `Extractor.Split`,
   then enforces: count in
   `[encode.min_memories, encode.max_memories]`, ≥ `encode.min_semantic_neurons` semantic neuron per memory, types in
-  {semantic, spatial, entity}, estimated output ≤ `encode.max_output_tokens`. Repairable violations re-prompt through
-  `Extractor.ReviseSplit(prior, instruction)` up to `encode.max_revise_retries`, then `ErrEncodeRetryExhausted`
-  (→ `CodeResourceExhausted`). Structural breaches (unknown mood/type, blank name) are `ErrEncodeInvalidSplit`
-  immediately — an adapter contract breach is not re-prompted.
+  {semantic, spatial, entity}, **source-text fidelity + coverage** (below), estimated output ≤
+  `encode.max_output_tokens`. Repairable violations re-prompt through
+  `Extractor.ReviseSplit(body, prior, instruction)` up to `encode.max_revise_retries`, then `ErrEncodeRetryExhausted`
+  (→ `CodeResourceExhausted`). Structural breaches (unknown mood/type, blank name, blank source text) are
+  `ErrEncodeInvalidSplit` immediately — an adapter contract breach is not re-prompted. The revise variant takes the
+  **body** as well as the prior split: a repair must be able to re-quote the diary, and a model shown only its own
+  prior output can never recover a passage it got wrong.
 - **`ReviseSplit`** — validates the client-supplied prior result structurally, then the same enforcement loop.
-- **`PersistEncoded`** — re-validates the confirmed split (a hand-crafted `LaunchStars` cannot bypass the policy)
+- **Source-text fidelity + coverage (`sourcetext.go`, pure)** — each proposed memory carries `SourceText`, the passage
+  of the diary that scene occupies, and the domain verifies it against the body rather than trusting the prompt: every
+  passage token must be traceable to a diary token — verbatim, or within
+  `encode.source_text_max_repair_edit_distance` of one **while sharing its first rune** (a typo fix and an ending
+  change keep the head of the word, a synonym does not; without that rule edit distance alone would admit short
+  substitutions) — with non-verbatim tokens budgeted at `max(1, ceil(encode.source_text_max_repaired_ratio × tokens))`
+  per passage, and the passages jointly covering `encode.source_text_min_coverage` of the body's tokens by
+  **occurrence count**, so dropping one of three repetitions of a scene cannot read as covered. Tokens are eojeol
+  (maximal letter/digit runs), distance is Levenshtein over **runes** — one mistyped Korean syllable is one edit, not
+  three. Every failure is repairable: the violation text _is_ the re-prompt. This is the [W4a] structural defense
+  applied to the one encode field that carries prose — free text cannot violate [I3]/[I5]/[I10], but it could
+  silently overwrite the writer's own account, so a prompt injection can at most echo the writer back at themselves.
+- **`PersistEncoded`** — re-validates the confirmed split (a hand-crafted `LaunchStars` cannot bypass the policy;
+  the passage is re-checked **structurally only** — present, non-blank, no longer than the submitted body — and the
+  fidelity rule above is deliberately _not_ re-applied, because by launch time a passage may be the writer's own
+  edit and the writer cannot be wrong about their own account [W4])
   and **rejects a future-dated diary** (beyond UTC today + 1 day of timezone slack — a future date would advance the
   monotonic clock past real time and permanently past-date every later diary), then in **one transaction**
   (`LaunchRepo.InLaunchTx`): `universe_state` clock read (in-tx, plan 30) → Diary insert (append-only, [I2]) → the
@@ -48,7 +70,9 @@ proto↔domain and call it (§2.9#7):
   and plan 27's writing flow shows the notice before launching) → neuron resolution (exact lowercased (name, type)
   against existing neurons; in-batch dedupe; genuinely new neurons created once) → `EpisodicMemory` inserts (`seed`
   generated, `base_strength = ArousalToInitialStrength(arousal)`, `created_universe_time = diary_date`,
-  `current_text` = the diary body until reconsolidation rewrites it [R8a]) → `NeuronActivation` inserts
+  `source_text` = `current_text` = **this memory's own passage** of the diary, the confirmed `SourceText`; the two
+  diverge from the first reconsolidation onward — `current_text` moves, `source_text` is the birth record [R8a]) →
+  `NeuronActivation` inserts
   (`encode.activation_weight`, uniform in Epic A) → the **`Linker` seam** → `embed` (one job, new neurons only) +
   `semanticize` (one per memory) enqueue → **`AdvanceUniverseClock(diary_date)`** (the `GREATEST` upsert) →
   **`AdvanceProgression.OnAdvance(scope, tx, from, to)`** — the whole launch, clock advance, and hook land wholly or
@@ -106,11 +130,28 @@ All are `user_id`-scoped (`pnpm lint:persistence`). `Store.InLaunchTx` binds one
 `Store` implementing `memory.LaunchTx`; a store built over a plain `DBTX` (no `BeginTx`) returns
 `ErrTxStarterRequired`.
 
+`episodic_memories.source_text` (nullable, `00018`) holds the encode-time passage. It is written once at launch and
+never updated — the birth record `current_text` drifts away from, which is why the provenance baseline reads it
+rather than reconstructing one. **NULL means "launched before per-memory passages existed"**, and
+`MemoryOrigin.BaselineText()` falls back to the Diary body for those rows: that whole-diary text is what they were
+actually created with, and there is no backfill because an LLM re-run would rewrite the basis under decay and gist
+stages already generated from it ([C7]).
+
 ## 4. Values (`spec/values.yaml` `encode.*`)
 
-`min_memories` 2 · `max_memories` 5 · `min_semantic_neurons` 1 · `max_revise_retries` 3 · `max_output_tokens` 1000 ·
+`min_memories` 2 · `max_memories` 5 · `min_semantic_neurons` 1 · `max_revise_retries` 3 · `max_output_tokens` 6000 ·
+`source_text_min_coverage` 0.9 · `source_text_max_repaired_ratio` 0.1 · `source_text_max_repair_edit_distance` 3 ·
 `dedup_similarity_threshold` 0.85 · `dedup_top_k` 8 · `dedup_body_match_limit` 32 · `activation_weight` 1.0.
 Generated into `internal/platform/values` and `packages/config/src/values.gen.ts`; never hardcoded at call sites.
+The output budget is sized for a **diary**, not a list of names — the passages quote the whole entry between them, so
+they dominate `estimateOutputTokens`; `ai.per_call_token_cap` (7000) was raised with it so encode's own guard still
+trips before the generic one. Because the body now decides whether the response fits, `Encode`/`ReviseSplit` check it
+**on the way in** (`bodyWithinOutputBudget`, estimated with the same token model so the two cannot drift): a diary too
+long to be quoted back returns `ErrEncodeBodyTooLong` (→ `CodeInvalidArgument`, `MEMORY_ENCODE_BODY_TOO_LONG`) before
+a single LLM call. It is deliberately not a repair condition — a shorter split would break the coverage rule, so the
+repair budget would burn down ping-ponging between "too large" and "you dropped a scene", and only the writer can
+shorten the entry. The over-budget check that remains in the repair loop runs **last** and now covers only what the
+model can still trim: the names and neurons around the pinned passages.
 
 ## 5. Composition root
 
@@ -118,4 +159,8 @@ Generated into `internal/platform/values` and `packages/config/src/values.gen.ts
 adapters and `Progression: memory.NewConsolidator(nil)`, the advance-time sleep) → `memoryrpc.NewServer` →
 `platform.WithRPCService` (the generic Connect-service mount that reuses the platform interceptor chain). Without
 `DATABASE_URL` the API boots and only skips the memory service. The keyless `MockExtractor` emits
-`values.EncodeMinMemories` memories, each with a semantic neuron, so the dev flow passes the encode invariants.
+`values.EncodeMinMemories` memories, each with a semantic neuron, so the dev flow passes the encode invariants — its
+passages are **consecutive word runs of the body**, verbatim and covering by construction, so the fidelity and
+coverage rules hold in the keyless flow too. (Consecutive, not the round-robin deal it uses for neuron names: that
+deal dedupes, so it would under-cover a diary that repeats a word.) Its revise variant re-splits the **diary**, never
+the instruction — a passage may only ever be drawn from the writer's text.

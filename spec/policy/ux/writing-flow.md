@@ -12,11 +12,16 @@ launch writes.
 ## Editing is session-only, meaning-inputs only
 
 - **Within the write session** the user may rename a memory, change its primary emotion (a simple mood selection),
-  merge / split memories, and correct neuron normalization — via **touch and natural language**, which reach the same
-  result.
-- **The editable surface exposes only name / emotion / neuron membership.** There is structurally **no** control for
-  position, color, strength, or time anywhere in the flow — the schema-forced request/response carries none, so neither
-  the user nor a prompt-injected model can set a placement input ([I3][W4a]).
+  correct the passage it was encoded from, merge / split memories, and correct neuron normalization — via **touch and
+  natural language**, which reach the same result.
+- **The editable surface exposes only name / emotion / passage / neuron membership.** There is structurally **no**
+  control for position, color, strength, or time anywhere in the flow — the schema-forced request/response carries
+  none, so neither the user nor a prompt-injected model can set a placement input ([I3][W4a]).
+- **The passage is shown because it is what the star will hold.** Each proposed memory carries the piece of the diary
+  it was laid down from, in the writer's own words, and that text becomes the memory's first representation. The
+  extractor is held to quoting it; the writer is not — a hand-edit here is the writer correcting their own account and
+  passes no fidelity check. The `Diary` itself is untouched either way ([I2]); the passage that changes is the star's,
+  not the entry's.
 - **Launched stars are immutable except via natural processes.** Once launched, a star is a persisted past memory and is
   never directly editable from this flow; its representation changes only through recall / forgetting / consolidation,
   and the `Diary` is persisted **immutable** and only at launch ([I2]).

@@ -135,9 +135,13 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 				ID:      s.newID(),
 				DiaryID: diary.ID,
 				Name:    strings.TrimSpace(confirmedMemory.Name),
-				// The initial "current memory text" is this memory's own passage of the
-				// diary, in the writer's words — one star, one scene. Recall/
-				// reconsolidation rewrites it later, never the Diary ([R8a][I2]).
+				// One EpisodicMemory, one scene: it is born holding its own passage of
+				// the diary, in the writer's words. The same value lands twice on purpose —
+				// current_text is the living representation that recall/reconsolidation
+				// rewrites, source_text is the birth record that must still read true
+				// afterwards, which is what 변천사의 created/original entry shows
+				// ([R8a][I2]).
+				SourceText:          strings.TrimSpace(confirmedMemory.SourceText),
 				CurrentText:         strings.TrimSpace(confirmedMemory.SourceText),
 				Seed:                &seed,
 				Emotion:             emotion,

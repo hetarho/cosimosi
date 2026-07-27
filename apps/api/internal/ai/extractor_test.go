@@ -77,8 +77,8 @@ func TestSplitPromptSaysSoWhenThereAreNoExistingNeurons(t *testing.T) {
 // the rules rather than in place of them.
 func TestRevisePromptRestatesTheRulesAndThePriorSplit(t *testing.T) {
 	prior := memory.ExtractResult{Memories: []memory.ExtractedMemory{{
-		Name:    "아침 출근길",
-		Mood:    memory.MoodRelief,
+		Name:       "아침 출근길",
+		Mood:       memory.MoodRelief,
 		SourceText: "아침에 지하철을 탔다",
 		Neurons:    []memory.ExtractedNeuron{{Name: "지하철", Type: memory.NeuronTypeSpatial}},
 	}}}

@@ -33,6 +33,7 @@ export const ERROR_REASONS = {
   adminSecretboxDisabled: 'ADMIN_SECRETBOX_DISABLED',
   memoryDiaryDateInvalid: 'MEMORY_DIARY_DATE_INVALID',
   memoryEncodeInputRequired: 'MEMORY_ENCODE_INPUT_REQUIRED',
+  memoryEncodeBodyTooLong: 'MEMORY_ENCODE_BODY_TOO_LONG',
   memoryLaunchInvalidMemories: 'MEMORY_LAUNCH_INVALID_MEMORIES',
   memoryRecallInputRequired: 'MEMORY_RECALL_INPUT_REQUIRED',
   memoryViewSemanticInputRequired: 'MEMORY_VIEW_SEMANTIC_INPUT_REQUIRED',

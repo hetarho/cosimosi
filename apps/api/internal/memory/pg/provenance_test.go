@@ -61,9 +61,17 @@ func TestMemoryOriginReadsTheDiaryBodyAndIsPerUserScoped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MemoryOrigin failed: %v", err)
 	}
-	// A2/[I2]: the baseline text is the Diary body, not current_text; the universe-time is creation.
+	// A2/[I2]: the baseline facts are the origin text and the creation universe-time, never
+	// current_text. seedDiaryAndMemory writes no source_text, so this is also the pre-change shape:
+	// a memory launched before per-memory passages reads NULL and falls back to the Diary body.
+	if origin.SourceText != "" {
+		t.Fatalf("origin source text = %q, want empty for a memory with no passage", origin.SourceText)
+	}
 	if origin.DiaryBody != "the immutable diary body" {
 		t.Fatalf("origin body = %q, want the Diary body", origin.DiaryBody)
+	}
+	if origin.BaselineText() != "the immutable diary body" {
+		t.Fatalf("baseline = %q, want the Diary body as the pre-passage fallback", origin.BaselineText())
 	}
 	if !origin.CreatedUniverseTime.Equal(day) {
 		t.Fatalf("origin universe_time = %v, want %v", origin.CreatedUniverseTime, day)
@@ -80,6 +88,56 @@ func TestMemoryOriginReadsTheDiaryBodyAndIsPerUserScoped(t *testing.T) {
 	}
 	if _, err := store.MemoryOrigin(ctx, scope, memoryID); err != memory.ErrProvenanceMemoryNotFound {
 		t.Fatalf("soft-deleted MemoryOrigin err = %v, want ErrProvenanceMemoryNotFound", err)
+	}
+}
+
+func TestMemoryOriginReadsEachMemorysOwnPassage(t *testing.T) {
+	pool := openMemoryTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-prov-passage-%d", time.Now().UnixNano())
+	userID := base + "-user"
+	cleanupMemoryTestRows(t, pool, userID)
+	scope, err := platform.NewUserScope(userID)
+	if err != nil {
+		t.Fatalf("NewUserScope failed: %v", err)
+	}
+	store := NewStore(pool.PgxPool())
+	day := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	emotion, ok := memory.NewEmotion(memory.MoodCalm)
+	if !ok {
+		t.Fatal("NewEmotion(MoodCalm) failed")
+	}
+	diary, err := store.InsertDiary(ctx, scope, memory.Diary{
+		ID: base + "-diary", Body: "아침에 비가 왔다. 저녁에는 개었다.", DiaryDate: day, CreatedAt: day,
+	})
+	if err != nil {
+		t.Fatalf("InsertDiary failed: %v", err)
+	}
+	// Two memories from ONE diary: the point of the change is that they no longer share a baseline.
+	passages := map[string]string{
+		base + "-rain": "아침에 비가 왔다.",
+		base + "-dusk": "저녁에는 개었다.",
+	}
+	for id, passage := range passages {
+		if _, err := store.InsertEpisodicMemory(ctx, scope, memory.EpisodicMemory{
+			ID: id, DiaryID: diary.ID, Name: id, SourceText: passage, CurrentText: passage,
+			Emotion: emotion, BaseStrength: 0.5, CreatedUniverseTime: day,
+		}); err != nil {
+			t.Fatalf("InsertEpisodicMemory(%s) failed: %v", id, err)
+		}
+	}
+
+	for id, passage := range passages {
+		origin, err := store.MemoryOrigin(ctx, scope, id)
+		if err != nil {
+			t.Fatalf("MemoryOrigin(%s) failed: %v", id, err)
+		}
+		if origin.SourceText != passage || origin.BaselineText() != passage {
+			t.Fatalf("origin(%s) = %q/%q, want the memory's own passage %q",
+				id, origin.SourceText, origin.BaselineText(), passage)
+		}
 	}
 }
 

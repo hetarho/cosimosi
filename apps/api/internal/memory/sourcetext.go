@@ -89,17 +89,6 @@ func SourceTextViolation(body string, memories []ExtractedMemory) string {
 	return ""
 }
 
-// BlankSourceText reports whether any memory arrived without a passage. Unlike the fidelity
-// rule this is a schema breach, not a judgement the model can be re-prompted out of.
-func BlankSourceText(memories []ExtractedMemory) bool {
-	for _, proposed := range memories {
-		if strings.TrimSpace(proposed.SourceText) == "" {
-			return true
-		}
-	}
-	return false
-}
-
 // repairBudget is how many of a passage's tokens may differ from the diary. The floor of one
 // exists because a passage cut mid-sentence needs its ending repaired no matter how short it
 // is, and a ratio alone would forbid that on a five-word scene.

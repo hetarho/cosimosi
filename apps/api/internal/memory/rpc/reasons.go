@@ -3,6 +3,7 @@ package rpc
 const (
 	reasonDiaryDateInvalid           = "MEMORY_DIARY_DATE_INVALID"
 	reasonEncodeInputRequired        = "MEMORY_ENCODE_INPUT_REQUIRED"
+	reasonEncodeBodyTooLong          = "MEMORY_ENCODE_BODY_TOO_LONG"
 	reasonLaunchInvalidMemories      = "MEMORY_LAUNCH_INVALID_MEMORIES"
 	reasonRecallInputRequired        = "MEMORY_RECALL_INPUT_REQUIRED"
 	reasonViewSemanticInputRequired  = "MEMORY_VIEW_SEMANTIC_INPUT_REQUIRED"
