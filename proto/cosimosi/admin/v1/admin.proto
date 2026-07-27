@@ -32,7 +32,7 @@ service AdminService {
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Grant additional (permanent) stardust to a user (별가루 증정) — an append-only admin_grant
+  // Grant GENERAL (permanent) stardust to a user (별가루 증정) — an append-only admin_grant
   // earn, capped by twinkle.admin_grant_max, idempotent per grant_id.
   rpc GrantStardust(GrantStardustRequest) returns (GrantStardustResponse);
   // The admin stardust grant history for accountability. Side-effect-free.
@@ -123,8 +123,8 @@ message AdminUser {
   string signup_at = 3;  // RFC3339
   bool is_admin = 4;
   bool is_seed_admin = 5;
-  int64 basic = 6;
-  int64 additional = 7;
+  int64 small = 6;
+  int64 general = 7;
   int64 total = 8;
   int64 diary_count = 9;
   int64 episodic_memory_count = 10;

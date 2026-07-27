@@ -487,8 +487,8 @@ type AdminUser struct {
 	SignupAt            string                 `protobuf:"bytes,3,opt,name=signup_at,json=signupAt,proto3" json:"signup_at,omitempty"` // RFC3339
 	IsAdmin             bool                   `protobuf:"varint,4,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
 	IsSeedAdmin         bool                   `protobuf:"varint,5,opt,name=is_seed_admin,json=isSeedAdmin,proto3" json:"is_seed_admin,omitempty"`
-	Basic               int64                  `protobuf:"varint,6,opt,name=basic,proto3" json:"basic,omitempty"`
-	Additional          int64                  `protobuf:"varint,7,opt,name=additional,proto3" json:"additional,omitempty"`
+	Small               int64                  `protobuf:"varint,6,opt,name=small,proto3" json:"small,omitempty"`
+	General             int64                  `protobuf:"varint,7,opt,name=general,proto3" json:"general,omitempty"`
 	Total               int64                  `protobuf:"varint,8,opt,name=total,proto3" json:"total,omitempty"`
 	DiaryCount          int64                  `protobuf:"varint,9,opt,name=diary_count,json=diaryCount,proto3" json:"diary_count,omitempty"`
 	EpisodicMemoryCount int64                  `protobuf:"varint,10,opt,name=episodic_memory_count,json=episodicMemoryCount,proto3" json:"episodic_memory_count,omitempty"`
@@ -561,16 +561,16 @@ func (x *AdminUser) GetIsSeedAdmin() bool {
 	return false
 }
 
-func (x *AdminUser) GetBasic() int64 {
+func (x *AdminUser) GetSmall() int64 {
 	if x != nil {
-		return x.Basic
+		return x.Small
 	}
 	return 0
 }
 
-func (x *AdminUser) GetAdditional() int64 {
+func (x *AdminUser) GetGeneral() int64 {
 	if x != nil {
-		return x.Additional
+		return x.General
 	}
 	return 0
 }
@@ -2122,17 +2122,15 @@ const file_cosimosi_admin_v1_admin_proto_rawDesc = "" +
 	"\x12RevokeAdminRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"0\n" +
 	"\x13RevokeAdminResponse\x12\x19\n" +
-	"\bis_admin\x18\x01 \x01(\bR\aisAdmin\"\xb7\x02\n" +
+	"\bis_admin\x18\x01 \x01(\bR\aisAdmin\"\xb1\x02\n" +
 	"\tAdminUser\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
 	"\tsignup_at\x18\x03 \x01(\tR\bsignupAt\x12\x19\n" +
 	"\bis_admin\x18\x04 \x01(\bR\aisAdmin\x12\"\n" +
 	"\ris_seed_admin\x18\x05 \x01(\bR\visSeedAdmin\x12\x14\n" +
-	"\x05basic\x18\x06 \x01(\x03R\x05basic\x12\x1e\n" +
-	"\n" +
-	"additional\x18\a \x01(\x03R\n" +
-	"additional\x12\x14\n" +
+	"\x05small\x18\x06 \x01(\x03R\x05small\x12\x18\n" +
+	"\ageneral\x18\a \x01(\x03R\ageneral\x12\x14\n" +
 	"\x05total\x18\b \x01(\x03R\x05total\x12\x1f\n" +
 	"\vdiary_count\x18\t \x01(\x03R\n" +
 	"diaryCount\x122\n" +

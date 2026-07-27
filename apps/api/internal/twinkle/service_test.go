@@ -49,27 +49,27 @@ func (f *fakeLedger) GetBalanceRecord(_ context.Context, scope platform.UserScop
 	return &record, nil
 }
 
-func (f *fakeLedger) ApplyBalanceDelta(_ context.Context, scope platform.UserScope, resetWindow time.Time, additionalDelta int, basicSpentDelta int) (BalanceRecord, error) {
+func (f *fakeLedger) ApplyBalanceDelta(_ context.Context, scope platform.UserScope, resetWindow time.Time, generalDelta int, smallSpentDelta int) (BalanceRecord, error) {
 	if scope.UserID() == "" {
 		return BalanceRecord{}, errors.New("scope missing")
 	}
 	f.writes++
 	window := time.Date(resetWindow.UTC().Year(), resetWindow.UTC().Month(), resetWindow.UTC().Day(), 0, 0, 0, 0, time.UTC)
 	record := f.records[scope.UserID()]
-	spent := record.BasicSpentThisWindow + basicSpentDelta
-	if record.BasicResetWindow.Before(window) {
-		spent = basicSpentDelta
+	spent := record.SmallSpentThisWindow + smallSpentDelta
+	if record.SmallResetWindow.Before(window) {
+		spent = smallSpentDelta
 	}
-	if spent > values.TwinkleBasicDailyAmount {
+	if spent > values.TwinkleSmallDailyAmount {
 		return BalanceRecord{}, fmt.Errorf("%w: %w", errFakeOversell, ErrInsufficientTwinkle)
 	}
-	additional := record.Additional + additionalDelta
-	if additional < 0 {
+	general := record.General + generalDelta
+	if general < 0 {
 		return BalanceRecord{}, errFakeOversell
 	}
-	next := BalanceRecord{Additional: additional, BasicSpentThisWindow: spent, BasicResetWindow: window}
-	if record.BasicResetWindow.After(window) {
-		next.BasicResetWindow = record.BasicResetWindow
+	next := BalanceRecord{General: general, SmallSpentThisWindow: spent, SmallResetWindow: window}
+	if record.SmallResetWindow.After(window) {
+		next.SmallResetWindow = record.SmallResetWindow
 	}
 	f.records[scope.UserID()] = next
 	f.born[scope.UserID()] = true
@@ -179,6 +179,24 @@ func (f *fakeSignals) ViewableGistStage(_ context.Context, _ platform.UserScope,
 	return f.gist[memoryID], nil
 }
 
+// fakeUserZone stands in for the composition root's account adapter: an IANA name per user, so a
+// test can move a user's day boundary the way the /me control does.
+type fakeUserZone struct {
+	names    map[string]string
+	fallback string
+	err      error
+}
+
+func (f *fakeUserZone) ZoneFor(_ context.Context, scope platform.UserScope) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	if name, ok := f.names[scope.UserID()]; ok {
+		return name, nil
+	}
+	return f.fallback, nil
+}
+
 type strictPaymentVerifier struct {
 	claims map[string]VerifiedPayment
 	err    error
@@ -226,6 +244,7 @@ type twinkleFixture struct {
 	signals  *fakeSignals
 	verifier *strictPaymentVerifier
 	resolver *strictInviteResolver
+	zones    *fakeUserZone
 	service  *Service
 }
 
@@ -240,6 +259,7 @@ func newTwinkleFixture(t *testing.T) *twinkleFixture {
 		signals:  &fakeSignals{recall: map[string]float64{}, gist: map[string]int{}, diary: map[string][]float64{}},
 		verifier: &strictPaymentVerifier{claims: map[string]VerifiedPayment{}},
 		resolver: &strictInviteResolver{claims: map[string]ResolvedSignup{}},
+		zones:    &fakeUserZone{names: map[string]string{}, fallback: "UTC"},
 	}
 	ids := 0
 	service, err := NewService(ServiceDeps{
@@ -247,6 +267,7 @@ func newTwinkleFixture(t *testing.T) *twinkleFixture {
 		Verifier:       fixture.verifier,
 		InviteResolver: fixture.resolver,
 		Signals:        fixture.signals,
+		UserZone:       fixture.zones,
 		Now:            twinkleNow,
 		NewID: func() string {
 			ids++
@@ -269,12 +290,115 @@ func twinkleScope(t *testing.T, userID string) platform.UserScope {
 	return scope
 }
 
+// --- the day boundary ([G2][U7]) -----------------------------------------------
+
+func TestNewServiceRequiresEveryTrustBoundary(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+
+	// A5: the zone reader is required exactly like the ledger and the signal reader. Production
+	// cannot boot with the SMALL reset boundary unbound, and the package exports no permissive UTC
+	// adapter that a composition root could bind here instead.
+	if _, err := NewService(ServiceDeps{
+		Ledger:         fixture.ledger,
+		Verifier:       fixture.verifier,
+		InviteResolver: fixture.resolver,
+		Signals:        fixture.signals,
+	}); !errors.Is(err, ErrZoneReaderRequired) {
+		t.Fatalf("NewService(no zone reader) err = %v, want ErrZoneReaderRequired", err)
+	}
+}
+
+func TestGetBalanceReadsTheUsersOwnCalendarDay(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	// The anchor is 07-14 with the day fully spent. At 2026-07-14T23:00Z that is still 07-14 in
+	// UTC — but already 07-15 in Seoul, so a Seoul diarist's day has turned and SMALL refills.
+	fixture.ledger.records["user-1"] = BalanceRecord{
+		General:              5,
+		SmallSpentThisWindow: values.TwinkleSmallDailyAmount,
+		SmallResetWindow:     twinkleToday(),
+	}
+	fixture.ledger.born["user-1"] = true
+	lateEvening := time.Date(2026, 7, 14, 23, 0, 0, 0, time.UTC)
+	fixture.service.now = func() time.Time { return lateEvening }
+
+	balance, err := fixture.service.GetBalance(context.Background(), scope)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if balance.Small != 0 {
+		t.Fatalf("small = %d, want 0 — the UTC user's day has not turned", balance.Small)
+	}
+
+	fixture.zones.names["user-1"] = "Asia/Seoul"
+	balance, err = fixture.service.GetBalance(context.Background(), scope)
+	if err != nil {
+		t.Fatalf("GetBalance(Seoul) failed: %v", err)
+	}
+	if balance.Small != values.TwinkleSmallDailyAmount {
+		t.Fatalf("small = %d, want a fresh grant %d — the Seoul user's day HAS turned", balance.Small, values.TwinkleSmallDailyAmount)
+	}
+
+	// [G5]: an unknown or blank zone reads as UTC and never suppresses the refill or errors.
+	for _, name := range []string{"", "   ", "Not/AZone"} {
+		fixture.zones.names["user-1"] = name
+		if _, err := fixture.service.GetBalance(context.Background(), scope); err != nil {
+			t.Fatalf("GetBalance(zone %q) err = %v, want the UTC fallback and no error", name, err)
+		}
+	}
+}
+
+func TestSpendAnchorsTheWindowAndNeverMovesItBackward(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	// A6: eastward first. At 2026-07-14T12:00Z a Kiritimati (UTC+14) user is already on 07-15, so
+	// the spend anchors the window there.
+	fixture.zones.names["user-1"] = "Pacific/Kiritimati"
+	weight := float64(values.ForgettingCostWeightCap)
+	cost := RecallCost(weight)
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger,
+		SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight, DedupKey: "spend:east"}); err != nil {
+		t.Fatalf("eastward spend failed: %v", err)
+	}
+	anchored := fixture.ledger.records["user-1"]
+	if got := anchored.SmallResetWindow.Format(time.DateOnly); got != "2026-07-15" {
+		t.Fatalf("anchor = %s, want the user's local 2026-07-15", got)
+	}
+
+	// Then westward, at the SAME instant: Niue (UTC−11) reads 07-14. The stored anchor must not
+	// move back, and the derived SMALL must be the conservative grant − spent, never a second full
+	// grant for a date already anchored past.
+	fixture.zones.names["user-1"] = "Pacific/Niue"
+	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger,
+		SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight, DedupKey: "spend:west"}); err != nil {
+		t.Fatalf("westward spend failed: %v", err)
+	}
+	after := fixture.ledger.records["user-1"]
+	if got := after.SmallResetWindow.Format(time.DateOnly); got != "2026-07-15" {
+		t.Fatalf("anchor moved to %s, want it pinned at 2026-07-15 (GREATEST)", got)
+	}
+	if after.SmallSpentThisWindow != 2*cost {
+		t.Fatalf("spent = %d, want both draws accumulated in one window %d", after.SmallSpentThisWindow, 2*cost)
+	}
+	balance, err := fixture.service.GetBalance(context.Background(), scope)
+	if err != nil {
+		t.Fatalf("GetBalance failed: %v", err)
+	}
+	if balance.Small != values.TwinkleSmallDailyAmount-2*cost {
+		t.Fatalf("small = %d, want the conservative grant − spent %d — a zone toggle must not mint a grant",
+			balance.Small, values.TwinkleSmallDailyAmount-2*cost)
+	}
+}
+
 // --- the [G5] affordability contract ------------------------------------------
 
 func TestCoreLoopProtectionRelationship(t *testing.T) {
 	t.Parallel()
 	// [G5] as a relationship over the GENERATED constants, not a magic number: the
-	// daily basic grant must cover a typical day's ruminative recalls at the cheap
+	// daily SMALL grant must cover a typical day's ruminative recalls at the cheap
 	// end of the recall curve, so the gate only ever bites excess. The
 	// expected-daily-ruminations figure is this test's documented product
 	// assumption (a handful of everyday recalls, [M5]).
@@ -283,21 +407,21 @@ func TestCoreLoopProtectionRelationship(t *testing.T) {
 	if cheapRecallCost <= 0 {
 		t.Fatalf("cheap recall cost = %d, want > 0 (never free, [G1])", cheapRecallCost)
 	}
-	if values.TwinkleBasicDailyAmount < expectedDailyRuminations*cheapRecallCost {
-		t.Fatalf("basic_daily_amount %d < %d expected ruminations × cheap recall %d — the gate would bite everyday rumination ([G5])",
-			values.TwinkleBasicDailyAmount, expectedDailyRuminations, cheapRecallCost)
+	if values.TwinkleSmallDailyAmount < expectedDailyRuminations*cheapRecallCost {
+		t.Fatalf("small_daily_amount %d < %d expected ruminations × cheap recall %d — the gate would bite everyday rumination ([G5])",
+			values.TwinkleSmallDailyAmount, expectedDailyRuminations, cheapRecallCost)
 	}
 }
 
 // --- gate ----------------------------------------------------------------------
 
-func TestCheckAndSpendPricesRecallViaTheCurveAndSplitsBasicFirst(t *testing.T) {
+func TestCheckAndSpendPricesRecallViaTheCurveAndSplitsSmallFirst(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
-	// Additional balance exists; the draw must still exhaust basic first ([G2]).
+	// GENERAL balance exists; the draw must still exhaust SMALL first ([G2]).
 	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 50, 0); err != nil {
-		t.Fatalf("seed additional failed: %v", err)
+		t.Fatalf("seed general failed: %v", err)
 	}
 
 	weight := float64(values.ForgettingCostWeightCap)
@@ -314,13 +438,13 @@ func TestCheckAndSpendPricesRecallViaTheCurveAndSplitsBasicFirst(t *testing.T) {
 	if entry.Kind != EntryKindSpend || entry.Reason != ReasonRecall || entry.Amount != wantCost {
 		t.Fatalf("entry = %+v, want a recall spend of the curve price %d — the caller never priced it", entry, wantCost)
 	}
-	// Exact split: the whole cost fits basic, additional untouched.
-	if entry.FromBasic != wantCost || entry.FromAdditional != 0 {
-		t.Fatalf("split = {basic %d, additional %d}, want basic-first {%d, 0}", entry.FromBasic, entry.FromAdditional, wantCost)
+	// Exact split: the whole cost fits SMALL, GENERAL untouched.
+	if entry.FromSmall != wantCost || entry.FromGeneral != 0 {
+		t.Fatalf("split = {small %d, general %d}, want SMALL-first {%d, 0}", entry.FromSmall, entry.FromGeneral, wantCost)
 	}
 	record := fixture.ledger.records["user-1"]
-	if record.Additional != 50 || record.BasicSpentThisWindow != wantCost {
-		t.Fatalf("record = %+v, want additional preserved and basic spent %d", record, wantCost)
+	if record.General != 50 || record.SmallSpentThisWindow != wantCost {
+		t.Fatalf("record = %+v, want general preserved and small spent %d", record, wantCost)
 	}
 }
 
@@ -329,7 +453,7 @@ func TestCheckAndSpendIsIdempotentPerDedupKey(t *testing.T) {
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
 	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 100, 0); err != nil {
-		t.Fatalf("seed additional failed: %v", err)
+		t.Fatalf("seed general failed: %v", err)
 	}
 
 	weight := float64(values.ForgettingCostWeightCap)
@@ -356,31 +480,31 @@ func TestCheckAndSpendIsIdempotentPerDedupKey(t *testing.T) {
 	}
 }
 
-func TestCheckAndSpendOverflowsIntoAdditionalWithTheExactSplit(t *testing.T) {
+func TestCheckAndSpendOverflowsIntoGeneralWithTheExactSplit(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
-	// Drain basic to 10 remaining; give additional 100.
-	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 100, values.TwinkleBasicDailyAmount-10); err != nil {
+	// Drain SMALL to 10 remaining; give GENERAL 100.
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 100, values.TwinkleSmallDailyAmount-10); err != nil {
 		t.Fatalf("seed failed: %v", err)
 	}
 
 	weight := float64(values.ForgettingCostWeightCap)
 	wantCost := RecallCost(weight) // > 10 by the tuned values
 	if wantCost <= 10 {
-		t.Fatalf("fixture assumption broken: cap recall cost %d must exceed the 10 basic left", wantCost)
+		t.Fatalf("fixture assumption broken: cap recall cost %d must exceed the 10 small left", wantCost)
 	}
 	if err := fixture.service.CheckAndSpend(context.Background(), scope, fixture.ledger, SpendIntent{Reason: ReasonRecall, AccessibilityCost: weight}); err != nil {
 		t.Fatalf("CheckAndSpend failed: %v", err)
 	}
 	entries := fixture.ledger.userEntries("user-1")
 	entry := entries[len(entries)-1]
-	if entry.FromBasic != 10 || entry.FromAdditional != wantCost-10 {
-		t.Fatalf("split = {%d, %d}, want basic exhausted first {10, %d} ([G2])", entry.FromBasic, entry.FromAdditional, wantCost-10)
+	if entry.FromSmall != 10 || entry.FromGeneral != wantCost-10 {
+		t.Fatalf("split = {%d, %d}, want SMALL exhausted first {10, %d} ([G2])", entry.FromSmall, entry.FromGeneral, wantCost-10)
 	}
 	record := fixture.ledger.records["user-1"]
-	if record.Additional != 100-(wantCost-10) {
-		t.Fatalf("additional = %d, want the overflow deducted", record.Additional)
+	if record.General != 100-(wantCost-10) {
+		t.Fatalf("general = %d, want the overflow deducted", record.General)
 	}
 }
 
@@ -402,8 +526,8 @@ func TestCheckAndSpendInsufficientRefusesAndWritesNothing(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
-	// Exhaust today's basic entirely; no additional exists.
-	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 0, values.TwinkleBasicDailyAmount); err != nil {
+	// Exhaust today's SMALL entirely; no GENERAL exists.
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 0, values.TwinkleSmallDailyAmount); err != nil {
 		t.Fatalf("seed failed: %v", err)
 	}
 	writesBefore := fixture.ledger.writes
@@ -458,21 +582,21 @@ func TestQuoteSpendMatchesTheGatePricingAndWritesNothing(t *testing.T) {
 	fixture.signals.diary["d1"] = []float64{1, float64(values.ForgettingCostWeightCap)}
 	writesBefore := fixture.ledger.writes
 
-	recallQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindRecall, "m1", 0)
+	recallQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindRecall, "m1", 0)
 	if err != nil {
 		t.Fatalf("QuoteSpend(recall) failed: %v", err)
 	}
 	if recallQuote.Cost != RecallCost(float64(values.ForgettingCostWeightCap)) {
 		t.Fatalf("recall quote = %+v, want the gate's RecallCost", recallQuote)
 	}
-	gistQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindGistView, "m2", 2)
+	gistQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m2", 2)
 	if err != nil {
 		t.Fatalf("QuoteSpend(gist) failed: %v", err)
 	}
 	if gistQuote.Cost != GistViewCost(2) {
 		t.Fatalf("gist quote = %+v, want selected-stage GistViewCost(2)", gistQuote)
 	}
-	diaryQuote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindDiaryRecall, "d1", 0)
+	diaryQuote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1", 0)
 	if err != nil {
 		t.Fatalf("QuoteSpend(diary) failed: %v", err)
 	}
@@ -483,9 +607,9 @@ func TestQuoteSpendMatchesTheGatePricingAndWritesNothing(t *testing.T) {
 	if fixture.ledger.writes != writesBefore || fixture.ledger.txCount != 0 || len(fixture.ledger.entries) != 0 {
 		t.Fatal("a quote must write nothing")
 	}
-	// Coverage math: a fresh user covers the cheap quote within basic.
+	// Coverage math: a fresh user covers the cheap quote within SMALL.
 	if !recallQuote.Covered || recallQuote.Shortfall != 0 {
-		t.Fatalf("recall quote = %+v, want covered within the fresh basic grant", recallQuote)
+		t.Fatalf("recall quote = %+v, want covered within the fresh SMALL grant", recallQuote)
 	}
 }
 
@@ -495,10 +619,10 @@ func TestQuoteSpendGistRequiresASelectedRisenStage(t *testing.T) {
 	scope := twinkleScope(t, "user-1")
 	fixture.signals.gist["m1"] = 2
 
-	if _, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindGistView, "m1", 0); !errors.Is(err, ErrQuoteInputRequired) {
+	if _, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m1", 0); !errors.Is(err, ErrQuoteInputRequired) {
 		t.Fatalf("stage-zero quote err = %v, want ErrQuoteInputRequired", err)
 	}
-	if _, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindGistView, "m1", 3); !errors.Is(err, ErrQuoteTargetUnavailable) {
+	if _, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindGistView, "m1", 3); !errors.Is(err, ErrQuoteTargetUnavailable) {
 		t.Fatalf("unrisen-stage quote err = %v, want ErrQuoteTargetUnavailable", err)
 	}
 }
@@ -507,13 +631,13 @@ func TestQuoteSpendReportsShortfall(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
-	// Exhaust basic; the diary batch then overflows an empty additional.
-	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 0, values.TwinkleBasicDailyAmount); err != nil {
+	// Exhaust SMALL; the diary batch then overflows an empty GENERAL.
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 0, values.TwinkleSmallDailyAmount); err != nil {
 		t.Fatalf("seed failed: %v", err)
 	}
 	fixture.signals.diary["d1"] = []float64{1, 1, 1}
 
-	quote, err := fixture.service.QuoteSpend(context.Background(), scope, QuoteKindDiaryRecall, "d1", 0)
+	quote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1", 0)
 	if err != nil {
 		t.Fatalf("QuoteSpend failed: %v", err)
 	}
@@ -523,9 +647,37 @@ func TestQuoteSpendReportsShortfall(t *testing.T) {
 	}
 }
 
+func TestQuoteSpendShortfallIsKindAwareAndUnquotableKindsAreRefused(t *testing.T) {
+	t.Parallel()
+	fixture := newTwinkleFixture(t)
+	scope := twinkleScope(t, "user-1")
+	// SMALL half-drained, a little GENERAL: the quote's shortfall must be exactly what the kinds
+	// that may pay cannot absorb (A9), not `cost − every tier`.
+	if _, err := fixture.ledger.ApplyBalanceDelta(context.Background(), scope, twinkleToday(), 10, values.TwinkleSmallDailyAmount-30); err != nil {
+		t.Fatalf("seed failed: %v", err)
+	}
+	fixture.signals.diary["d1"] = []float64{1, 1, 1, 1, 1}
+
+	quote, err := fixture.service.QuoteSpend(context.Background(), scope, SpendKindDiaryRecall, "d1", 0)
+	if err != nil {
+		t.Fatalf("QuoteSpend failed: %v", err)
+	}
+	if want := ShortfallFor(30, 10, quote.Cost, SpendKindDiaryRecall); quote.Shortfall != want {
+		t.Fatalf("shortfall = %d, want the kind-aware %d", quote.Shortfall, want)
+	}
+
+	// A10: a purpose SMALL may not pay for is not quotable at all — the recall pricer has no
+	// purchase arm, so no quote can ever report a purchase as covered by the recall allowance.
+	for _, kind := range []SpendKind{SpendKindPurchase, SpendKind("a_future_kind")} {
+		if _, err := fixture.service.QuoteSpend(context.Background(), scope, kind, "d1", 0); !errors.Is(err, ErrQuoteInputRequired) {
+			t.Fatalf("QuoteSpend(%q) err = %v, want ErrQuoteInputRequired", kind, err)
+		}
+	}
+}
+
 // --- earn: write ---------------------------------------------------------------
 
-func TestEarnOnWriteGrantsOncePerDiaryIntoAdditional(t *testing.T) {
+func TestEarnOnWriteGrantsOncePerDiaryIntoGeneral(t *testing.T) {
 	t.Parallel()
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
@@ -542,8 +694,8 @@ func TestEarnOnWriteGrantsOncePerDiaryIntoAdditional(t *testing.T) {
 		t.Fatalf("entries = %+v, want exactly one write_diary earn of %d", entries, values.TwinkleEarnWrite)
 	}
 	record := fixture.ledger.records["user-1"]
-	if record.Additional != values.TwinkleEarnWrite || record.BasicSpentThisWindow != 0 {
-		t.Fatalf("record = %+v, want the grant on ADDITIONAL only ([G2])", record)
+	if record.General != values.TwinkleEarnWrite || record.SmallSpentThisWindow != 0 {
+		t.Fatalf("record = %+v, want the grant on GENERAL only ([G2])", record)
 	}
 	// The grant demands the launch transaction — a nil handle is a wiring fault.
 	if err := fixture.service.EarnOnWrite(context.Background(), scope, nil, "diary-2"); !errors.Is(err, ErrEarnTxRequired) {
@@ -561,8 +713,8 @@ func TestEarnSignupBonusGrantsGeneralOncePerAccount(t *testing.T) {
 		if err != nil {
 			t.Fatalf("EarnSignupBonus failed: %v", err)
 		}
-		if balance.Additional != values.TwinkleEarnSignupBonus {
-			t.Fatalf("additional = %d, want one signup bonus %d", balance.Additional, values.TwinkleEarnSignupBonus)
+		if balance.General != values.TwinkleEarnSignupBonus {
+			t.Fatalf("general = %d, want one signup bonus %d", balance.General, values.TwinkleEarnSignupBonus)
 		}
 	}
 	entries := fixture.ledger.userEntries("new-account")
@@ -587,8 +739,8 @@ func TestClaimInviteCreditsBothSidesExactlyOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ClaimInvite failed: %v", err)
 	}
-	if balance.Additional != values.TwinkleEarnInviteInvitee {
-		t.Fatalf("invitee additional = %d, want %d", balance.Additional, values.TwinkleEarnInviteInvitee)
+	if balance.General != values.TwinkleEarnInviteInvitee {
+		t.Fatalf("invitee general = %d, want %d", balance.General, values.TwinkleEarnInviteInvitee)
 	}
 	inviterEntries := fixture.ledger.userEntries("inviter-1")
 	if len(inviterEntries) != 1 || inviterEntries[0].Amount != values.TwinkleEarnInviteInviter || inviterEntries[0].Reason != ReasonInvite {
@@ -777,8 +929,8 @@ func TestChargeCreditsOnlyVerifiedReceiptsIdempotently(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Charge failed: %v", err)
 	}
-	if balance.Additional != values.TwinkleChargePack {
-		t.Fatalf("additional = %d, want the verified pack grant %d", balance.Additional, values.TwinkleChargePack)
+	if balance.General != values.TwinkleChargePack {
+		t.Fatalf("general = %d, want the verified pack grant %d", balance.General, values.TwinkleChargePack)
 	}
 	// The same receipt replayed credits nothing more.
 	replay, err := fixture.service.Charge(context.Background(), scope, DefaultChargePackID, "app-store", "receipt-blob-1")
@@ -867,7 +1019,7 @@ func TestChargeSanitizesVerifierFailuresAndGloballyDeduplicatesTransactions(t *t
 	if err != nil {
 		t.Fatalf("cross-user replay failed: %v", err)
 	}
-	if secondBalance.Additional != 0 || len(fixture.ledger.entries) != 1 {
+	if secondBalance.General != 0 || len(fixture.ledger.entries) != 1 {
 		t.Fatalf("cross-user replay balance=%+v entries=%d, want no second grant", secondBalance, len(fixture.ledger.entries))
 	}
 }
@@ -880,6 +1032,7 @@ func TestFailClosedEarnAdaptersReturnCanonicalUnavailableErrors(t *testing.T) {
 		Verifier:       UnavailablePaymentVerifier{},
 		InviteResolver: UnavailableInviteResolver{},
 		Signals:        fixture.signals,
+		UserZone:       fixture.zones,
 		Now:            twinkleNow,
 		NewID:          func() string { return "entry" },
 	})
@@ -905,29 +1058,29 @@ func TestGetBalanceDerivesWithoutWriting(t *testing.T) {
 	fixture := newTwinkleFixture(t)
 	scope := twinkleScope(t, "user-1")
 
-	// Lazy birth: a user with no row derives the full basic grant.
+	// Lazy birth: a user with no row derives the full SMALL grant.
 	balance, err := fixture.service.GetBalance(context.Background(), scope)
 	if err != nil {
 		t.Fatalf("GetBalance failed: %v", err)
 	}
-	if balance.Basic != values.TwinkleBasicDailyAmount || balance.Additional != 0 || balance.Total() != values.TwinkleBasicDailyAmount {
-		t.Fatalf("balance = %+v, want the lazy-birth full basic", balance)
+	if balance.Small != values.TwinkleSmallDailyAmount || balance.General != 0 || balance.Total() != values.TwinkleSmallDailyAmount {
+		t.Fatalf("balance = %+v, want the lazy-birth full SMALL", balance)
 	}
 	if fixture.ledger.writes != 0 || fixture.ledger.born["user-1"] {
 		t.Fatal("GetBalance must never write or birth a row")
 	}
 
-	// A stored record from a PAST window derives a fresh full basic today (no carry),
+	// A stored record from a PAST window derives a fresh full SMALL today (no carry),
 	// still without writing the roll-forward.
-	fixture.ledger.records["user-1"] = BalanceRecord{Additional: 7, BasicSpentThisWindow: values.TwinkleBasicDailyAmount, BasicResetWindow: twinkleToday().AddDate(0, 0, -1)}
+	fixture.ledger.records["user-1"] = BalanceRecord{General: 7, SmallSpentThisWindow: values.TwinkleSmallDailyAmount, SmallResetWindow: twinkleToday().AddDate(0, 0, -1)}
 	fixture.ledger.born["user-1"] = true
 	writesBefore := fixture.ledger.writes
 	balance, err = fixture.service.GetBalance(context.Background(), scope)
 	if err != nil {
 		t.Fatalf("GetBalance failed: %v", err)
 	}
-	if balance.Basic != values.TwinkleBasicDailyAmount || balance.Additional != 7 {
-		t.Fatalf("balance = %+v, want a fresh full basic + stored additional", balance)
+	if balance.Small != values.TwinkleSmallDailyAmount || balance.General != 7 {
+		t.Fatalf("balance = %+v, want a fresh full SMALL + stored GENERAL", balance)
 	}
 	if fixture.ledger.writes != writesBefore {
 		t.Fatal("the new-window derivation must not write the roll-forward on read")
@@ -957,7 +1110,7 @@ func TestEveryUseCaseRejectsAMissingScope(t *testing.T) {
 	if _, err := fixture.service.Charge(ctx, none, DefaultChargePackID, "ios", "r"); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("Charge err = %v, want ErrScopeRequired", err)
 	}
-	if _, err := fixture.service.QuoteSpend(ctx, none, QuoteKindRecall, "m1", 0); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.service.QuoteSpend(ctx, none, SpendKindRecall, "m1", 0); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("QuoteSpend err = %v, want ErrScopeRequired", err)
 	}
 	if len(fixture.ledger.entries) != 0 || fixture.ledger.writes != 0 {
@@ -971,7 +1124,7 @@ func TestEarnReasonsAreAClosedSetWithNoLoginBonus(t *testing.T) {
 	t.Parallel()
 	// [G3]: the earn paths are payment, invite, write, signup bonus, plus the discretionary admin_grant
 	// (별가루 증정, the admin console). No login/attendance reason exists anywhere in the domain's closed
-	// set; the daily basic reset ([G2]) plays that role by design — admin_grant is an operator
+	// set; the daily SMALL reset ([G2]) plays that role by design — admin_grant is an operator
 	// gift, not a recurring/automatic bonus.
 	reasons := []EntryReason{
 		ReasonPayment,

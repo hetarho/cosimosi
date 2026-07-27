@@ -32,7 +32,7 @@ func TestTwinkleBalanceLazyBirthAndDelta(t *testing.T) {
 	store := NewStore(pool.PgxPool())
 	today := time.Date(2026, 7, 14, 0, 0, 0, 0, time.UTC)
 
-	// Lazy birth: no row until the first write; the caller derives a full-basic balance.
+	// Lazy birth: no row until the first write; the caller derives a full-SMALL balance.
 	record, err := store.GetBalanceRecord(ctx, scope)
 	if err != nil {
 		t.Fatalf("GetBalanceRecord(absent) failed: %v", err)
@@ -40,9 +40,9 @@ func TestTwinkleBalanceLazyBirthAndDelta(t *testing.T) {
 	if record != nil {
 		t.Fatalf("GetBalanceRecord(absent) = %+v, want nil", record)
 	}
-	born := twinkle.DeriveBalance(today, twinkle.BalanceRecord{BasicResetWindow: today})
-	if born.Basic != values.TwinkleBasicDailyAmount || born.Additional != 0 {
-		t.Fatalf("lazy-birth balance = %+v, want full basic %d", born, values.TwinkleBasicDailyAmount)
+	born := twinkle.DeriveBalance(today, time.UTC, twinkle.BalanceRecord{SmallResetWindow: today})
+	if born.Small != values.TwinkleSmallDailyAmount || born.General != 0 {
+		t.Fatalf("lazy-birth balance = %+v, want full SMALL %d", born, values.TwinkleSmallDailyAmount)
 	}
 
 	// An earn births the row; a spend draws both tiers in one delta.
@@ -53,19 +53,19 @@ func TestTwinkleBalanceLazyBirthAndDelta(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyBalanceDelta(spend) failed: %v", err)
 	}
-	want := twinkle.BalanceRecord{Additional: 30, BasicSpentThisWindow: 30, BasicResetWindow: today}
+	want := twinkle.BalanceRecord{General: 30, SmallSpentThisWindow: 30, SmallResetWindow: today}
 	if got != want {
 		t.Fatalf("record after spend = %+v, want %+v", got, want)
 	}
 
 	// The upsert stays one row per user and rolls a stale window forward: the fresh window's
-	// basic spend starts from just this delta (no carry of the old window's spend).
+	// SMALL spend starts from just this delta (no carry of the old window's spend).
 	tomorrow := today.AddDate(0, 0, 1)
 	got, err = store.ApplyBalanceDelta(ctx, scope, tomorrow, 0, 5)
 	if err != nil {
 		t.Fatalf("ApplyBalanceDelta(rolled window) failed: %v", err)
 	}
-	want = twinkle.BalanceRecord{Additional: 30, BasicSpentThisWindow: 5, BasicResetWindow: tomorrow}
+	want = twinkle.BalanceRecord{General: 30, SmallSpentThisWindow: 5, SmallResetWindow: tomorrow}
 	if got != want {
 		t.Fatalf("record after window roll = %+v, want %+v", got, want)
 	}
@@ -82,7 +82,7 @@ func TestTwinkleBalanceLazyBirthAndDelta(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyBalanceDelta(stale window) failed: %v", err)
 	}
-	want = twinkle.BalanceRecord{Additional: 30, BasicSpentThisWindow: 12, BasicResetWindow: tomorrow}
+	want = twinkle.BalanceRecord{General: 30, SmallSpentThisWindow: 12, SmallResetWindow: tomorrow}
 	if got != want {
 		t.Fatalf("record after stale-window delta = %+v, want %+v", got, want)
 	}
@@ -100,12 +100,12 @@ func TestTwinkleBalanceLazyBirthAndDelta(t *testing.T) {
 
 	// The grant guard refuses a basic draw past the daily grant — whether the window's spend
 	// is already near the cap (a raced/stale plan) or the row does not exist yet.
-	if _, err := store.ApplyBalanceDelta(ctx, scope, tomorrow, 0, values.TwinkleBasicDailyAmount); !errors.Is(err, ErrBasicGrantExceeded) {
+	if _, err := store.ApplyBalanceDelta(ctx, scope, tomorrow, 0, values.TwinkleSmallDailyAmount); !errors.Is(err, ErrBasicGrantExceeded) {
 		t.Fatalf("ApplyBalanceDelta(draw past grant) err = %v, want ErrBasicGrantExceeded", err)
 	}
 	unborn := mustUserScope(t, userID+"-unborn")
 	cleanupTwinkleTestRows(t, pool, userID+"-unborn")
-	if _, err := store.ApplyBalanceDelta(ctx, unborn, tomorrow, 0, values.TwinkleBasicDailyAmount+1); !errors.Is(err, ErrBasicGrantExceeded) {
+	if _, err := store.ApplyBalanceDelta(ctx, unborn, tomorrow, 0, values.TwinkleSmallDailyAmount+1); !errors.Is(err, ErrBasicGrantExceeded) {
 		t.Fatalf("ApplyBalanceDelta(first-write draw past grant) err = %v, want ErrBasicGrantExceeded", err)
 	}
 
@@ -185,14 +185,14 @@ func TestTwinkleLedgerAppendIsIdempotent(t *testing.T) {
 
 	dedup := base + "-recall-1"
 	entry := twinkle.LedgerEntry{
-		ID:             base + "-entry-1",
-		Kind:           twinkle.EntryKindSpend,
-		Reason:         twinkle.ReasonRecall,
-		Amount:         15,
-		FromBasic:      15,
-		FromAdditional: 0,
-		DedupKey:       &dedup,
-		CreatedAt:      day,
+		ID:          base + "-entry-1",
+		Kind:        twinkle.EntryKindSpend,
+		Reason:      twinkle.ReasonRecall,
+		Amount:      15,
+		FromSmall:   15,
+		FromGeneral: 0,
+		DedupKey:    &dedup,
+		CreatedAt:   day,
 	}
 	applied, err := store.AppendLedgerEntry(ctx, scope, entry)
 	if err != nil {
@@ -248,14 +248,14 @@ func TestTwinkleLedgerAppendIsIdempotent(t *testing.T) {
 	invalid.ID = base + "-entry-zero"
 	invalid.DedupKey = nil
 	invalid.Amount = 0
-	invalid.FromBasic = 0
+	invalid.FromSmall = 0
 	if _, err := store.AppendLedgerEntry(ctx, scope, invalid); err == nil {
 		t.Fatal("AppendLedgerEntry(amount 0) succeeded, want CHECK violation")
 	}
 	invalid = entry
 	invalid.ID = base + "-entry-split"
 	invalid.DedupKey = nil
-	invalid.FromBasic = 3
+	invalid.FromSmall = 3
 	if _, err := store.AppendLedgerEntry(ctx, scope, invalid); err == nil {
 		t.Fatal("AppendLedgerEntry(spend split mismatch) succeeded, want CHECK violation")
 	}
@@ -304,6 +304,7 @@ func TestPaymentTransactionIsSingleUseAcrossRetriesAndUsers(t *testing.T) {
 		Verifier:       verifier,
 		InviteResolver: twinkle.UnavailableInviteResolver{},
 		Signals:        emptySpendSignals{},
+		UserZone:       utcUserZone{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -369,6 +370,13 @@ func (v *echoPaymentVerifier) Verify(_ context.Context, request twinkle.PaymentV
 		Amount:                values.TwinkleChargePack,
 		BeneficiaryUserID:     request.BeneficiaryUserID,
 	}, nil
+}
+
+// utcUserZone stands in for the composition root's account adapter where the test has no profile.
+type utcUserZone struct{}
+
+func (utcUserZone) ZoneFor(context.Context, platform.UserScope) (string, error) {
+	return "UTC", nil
 }
 
 type emptySpendSignals struct{}

@@ -24,21 +24,24 @@ service TwinkleService {
   // invite claim — both-sides credit on a valid signup; idempotent per
   // (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
   rpc ClaimInvite(ClaimInviteRequest) returns (ClaimInviteResponse);
-  // payment charge — verifies a store receipt before crediting additional Twinkle
+  // payment charge — verifies a store receipt before crediting GENERAL Twinkle
   // [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
   rpc Charge(ChargeRequest) returns (ChargeResponse);
 }
 
 message GetBalanceRequest {}
 
-// The derived two-tier balance [G2]: daily-reset basic, permanent additional, and
-// their spendable total.
+// The derived two-kind balance [G2]: recall-only SMALL, which refills on the user's own
+// calendar day, universal permanent GENERAL, and their spendable total.
 message GetBalanceResponse {
-  int64 basic = 1;
-  int64 additional = 2;
+  int64 small = 1;
+  int64 general = 2;
   int64 total = 3;
 }
 
+// The purposes a client may ask the server to price. Deliberately a SUBSET of the Go SpendKind:
+// there is no SPEND_KIND_PURCHASE, because an ornament is catalog-priced by the store context and
+// must never reach the recall pricer [P9].
 enum SpendKind {
   SPEND_KIND_UNSPECIFIED = 0;
   SPEND_KIND_RECALL = 1;

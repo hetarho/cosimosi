@@ -116,7 +116,7 @@ describe('web client cache provider config', () => {
     await expect.poll(() => facade.snapshot.userId).toBe('user-a')
     queryClient.setQueryData(['scope-probe'], 'user-a query')
     useEpisodicMemoryStore.setState({ byId: { 'memory-a': {} as never }, ids: ['memory-a'] })
-    useTwinkleBalanceStore.setState({ basic: 4n, additional: 7n, loaded: true })
+    useTwinkleBalanceStore.setState({ small: 4n, general: 7n, loaded: true })
     useReleasedGroupsStore.setState({ groups: [{} as never] })
     useRecallTargetStore.setState({ memoryId: 'memory-a' })
     useChargeRequestStore.setState({ requested: true })
@@ -179,8 +179,8 @@ describe('web client cache provider config', () => {
       expect(committed).not.toContain('user-b:memory-a')
       await expect(consent).resolves.toBe('cancel')
       expect(useTwinkleBalanceStore.getState()).toMatchObject({
-        basic: 0n,
-        additional: 0n,
+        small: 0n,
+        general: 0n,
         loaded: false,
       })
       expect(useReleasedGroupsStore.getState().groups).toEqual([])

@@ -38,9 +38,9 @@ func (s *Server) GetBalance(ctx context.Context, _ *connect.Request[twinklev1.Ge
 		return nil, domainError(err)
 	}
 	return connect.NewResponse(&twinklev1.GetBalanceResponse{
-		Basic:      int64(balance.Basic),
-		Additional: int64(balance.Additional),
-		Total:      int64(balance.Total()),
+		Small:   int64(balance.Small),
+		General: int64(balance.General),
+		Total:   int64(balance.Total()),
 	}), nil
 }
 
@@ -102,14 +102,14 @@ func userScope(ctx context.Context) (platform.UserScope, error) {
 
 // quoteTarget maps the wire kind + its target field onto the domain quote input:
 // recall/gist-view quote an episodic memory, the diary batch quotes a diary.
-func quoteTarget(msg *twinklev1.QuoteSpendRequest) (twinkle.QuoteKind, string, int, error) {
+func quoteTarget(msg *twinklev1.QuoteSpendRequest) (twinkle.SpendKind, string, int, error) {
 	switch msg.GetKind() {
 	case twinklev1.SpendKind_SPEND_KIND_RECALL:
-		return twinkle.QuoteKindRecall, msg.GetEpisodicMemoryId(), 0, nil
+		return twinkle.SpendKindRecall, msg.GetEpisodicMemoryId(), 0, nil
 	case twinklev1.SpendKind_SPEND_KIND_GIST_VIEW:
-		return twinkle.QuoteKindGistView, msg.GetEpisodicMemoryId(), int(msg.GetSemanticStage()), nil
+		return twinkle.SpendKindGistView, msg.GetEpisodicMemoryId(), int(msg.GetSemanticStage()), nil
 	case twinklev1.SpendKind_SPEND_KIND_DIARY_RECALL:
-		return twinkle.QuoteKindDiaryRecall, msg.GetDiaryId(), 0, nil
+		return twinkle.SpendKindDiaryRecall, msg.GetDiaryId(), 0, nil
 	default:
 		return "", "", 0, apperr.Domain(connect.CodeInvalidArgument, reasonQuoteInputRequired, twinkle.ErrQuoteInputRequired, nil)
 	}

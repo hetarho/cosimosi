@@ -146,7 +146,7 @@ func (g adminTwinkleGranter) Balance(ctx context.Context, userID string) (admin.
 	if err != nil {
 		return admin.Balance{}, err
 	}
-	return admin.Balance{Basic: balance.Basic, Additional: balance.Additional, Total: balance.Total()}, nil
+	return admin.Balance{Small: balance.Small, General: balance.General, Total: balance.Total()}, nil
 }
 
 func (g adminTwinkleGranter) Grant(ctx context.Context, targetUserID string, amount int, grantID string) (int, error) {

@@ -1,7 +1,7 @@
 {
   "tolerance": 1e-9,
   "values": {
-    "basic_daily_amount": 100,
+    "small_daily_amount": 100,
     "recall_base_cost": 5,
     "recall_depth_coefficient": 10,
     "recall_max_cost": 40,
@@ -12,180 +12,429 @@
   "cases": [
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": 1.0 },
+      "inputs": {
+        "accessibility_cost": 1
+      },
       "expected": 15
     },
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": 1.5 },
+      "inputs": {
+        "accessibility_cost": 1.5
+      },
       "expected": 20
     },
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": 2.0 },
+      "inputs": {
+        "accessibility_cost": 2
+      },
       "expected": 25
     },
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": 2.75 },
+      "inputs": {
+        "accessibility_cost": 2.75
+      },
       "expected": 33
     },
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": 3.5 },
+      "inputs": {
+        "accessibility_cost": 3.5
+      },
       "expected": 40
     },
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": 4.0 },
+      "inputs": {
+        "accessibility_cost": 4
+      },
       "expected": 40
     },
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": 0 },
+      "inputs": {
+        "accessibility_cost": 0
+      },
       "expected": 5
     },
     {
       "function": "recall_cost",
-      "inputs": { "accessibility_cost": -1 },
+      "inputs": {
+        "accessibility_cost": -1
+      },
       "expected": 5
     },
     {
       "function": "gist_view_cost",
-      "inputs": { "semantic_stage": 1 },
+      "inputs": {
+        "semantic_stage": 1
+      },
       "expected": 10
     },
     {
       "function": "gist_view_cost",
-      "inputs": { "semantic_stage": 2 },
+      "inputs": {
+        "semantic_stage": 2
+      },
       "expected": 7
     },
     {
       "function": "gist_view_cost",
-      "inputs": { "semantic_stage": 3 },
+      "inputs": {
+        "semantic_stage": 3
+      },
       "expected": 4
     },
     {
       "function": "gist_view_cost",
-      "inputs": { "semantic_stage": 4 },
+      "inputs": {
+        "semantic_stage": 4
+      },
       "expected": 3
     },
     {
       "function": "gist_view_cost",
-      "inputs": { "semantic_stage": 0 },
+      "inputs": {
+        "semantic_stage": 0
+      },
       "expected": 10
     },
     {
       "function": "gist_view_cost",
-      "inputs": { "semantic_stage": 6 },
+      "inputs": {
+        "semantic_stage": 6
+      },
       "expected": 3
     },
     {
       "function": "plan_spend",
-      "inputs": { "basic_remaining": 100, "additional": 0, "cost": 100 },
-      "expected_plan": { "from_basic": 100, "from_additional": 0, "ok": true }
+      "inputs": {
+        "small_remaining": 100,
+        "general": 0,
+        "cost": 100,
+        "kind": "recall"
+      },
+      "expected_plan": {
+        "from_small": 100,
+        "from_general": 0,
+        "ok": true
+      }
     },
     {
       "function": "plan_spend",
-      "inputs": { "basic_remaining": 30, "additional": 50, "cost": 70 },
-      "expected_plan": { "from_basic": 30, "from_additional": 40, "ok": true }
+      "inputs": {
+        "small_remaining": 30,
+        "general": 50,
+        "cost": 70,
+        "kind": "recall"
+      },
+      "expected_plan": {
+        "from_small": 30,
+        "from_general": 40,
+        "ok": true
+      }
     },
     {
       "function": "plan_spend",
-      "inputs": { "basic_remaining": 10, "additional": 5, "cost": 20 },
-      "expected_plan": { "from_basic": 10, "from_additional": 10, "ok": false }
+      "inputs": {
+        "small_remaining": 10,
+        "general": 5,
+        "cost": 20,
+        "kind": "recall"
+      },
+      "expected_plan": {
+        "from_small": 10,
+        "from_general": 10,
+        "ok": false
+      }
     },
     {
       "function": "plan_spend",
-      "inputs": { "basic_remaining": 0, "additional": 0, "cost": 0 },
-      "expected_plan": { "from_basic": 0, "from_additional": 0, "ok": true }
+      "inputs": {
+        "small_remaining": 0,
+        "general": 0,
+        "cost": 0,
+        "kind": "recall"
+      },
+      "expected_plan": {
+        "from_small": 0,
+        "from_general": 0,
+        "ok": true
+      }
     },
     {
       "function": "plan_spend",
-      "inputs": { "basic_remaining": 100, "additional": 20, "cost": 15 },
-      "expected_plan": { "from_basic": 15, "from_additional": 0, "ok": true }
+      "inputs": {
+        "small_remaining": 100,
+        "general": 20,
+        "cost": 15,
+        "kind": "gist_view"
+      },
+      "expected_plan": {
+        "from_small": 15,
+        "from_general": 0,
+        "ok": true
+      }
     },
     {
       "function": "plan_spend",
-      "inputs": { "basic_remaining": 0, "additional": 40, "cost": 25 },
-      "expected_plan": { "from_basic": 0, "from_additional": 25, "ok": true }
+      "inputs": {
+        "small_remaining": 0,
+        "general": 40,
+        "cost": 25,
+        "kind": "diary_recall"
+      },
+      "expected_plan": {
+        "from_small": 0,
+        "from_general": 25,
+        "ok": true
+      }
     },
     {
       "function": "plan_spend",
-      "inputs": { "basic_remaining": 50, "additional": 10, "cost": -5 },
-      "expected_plan": { "from_basic": 0, "from_additional": 0, "ok": true }
+      "inputs": {
+        "small_remaining": 50,
+        "general": 10,
+        "cost": -5,
+        "kind": "recall"
+      },
+      "expected_plan": {
+        "from_small": 0,
+        "from_general": 0,
+        "ok": true
+      }
     },
     {
-      "function": "basic_remaining",
+      "function": "plan_spend",
+      "inputs": {
+        "small_remaining": 100,
+        "general": 60,
+        "cost": 40,
+        "kind": "recall"
+      },
+      "expected_plan": {
+        "from_small": 40,
+        "from_general": 0,
+        "ok": true
+      }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": {
+        "small_remaining": 100,
+        "general": 60,
+        "cost": 40,
+        "kind": "purchase"
+      },
+      "expected_plan": {
+        "from_small": 0,
+        "from_general": 40,
+        "ok": true
+      }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": {
+        "small_remaining": 100,
+        "general": 0,
+        "cost": 40,
+        "kind": "recall"
+      },
+      "expected_plan": {
+        "from_small": 40,
+        "from_general": 0,
+        "ok": true
+      }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": {
+        "small_remaining": 100,
+        "general": 0,
+        "cost": 40,
+        "kind": "purchase"
+      },
+      "expected_plan": {
+        "from_small": 0,
+        "from_general": 40,
+        "ok": false
+      }
+    },
+    {
+      "function": "plan_spend",
+      "inputs": {
+        "small_remaining": 100,
+        "general": 0,
+        "cost": 40,
+        "kind": "a_future_kind"
+      },
+      "expected_plan": {
+        "from_small": 0,
+        "from_general": 40,
+        "ok": false
+      }
+    },
+    {
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-14T09:00:00Z",
+        "zone": "UTC",
         "reset_window": "2026-07-13",
         "spent_this_window": 40
       },
       "expected": 100
     },
     {
-      "function": "basic_remaining",
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-14T09:00:00Z",
+        "zone": "UTC",
         "reset_window": "2026-07-14",
         "spent_this_window": 40
       },
       "expected": 60
     },
     {
-      "function": "basic_remaining",
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-14T23:59:59Z",
+        "zone": "UTC",
         "reset_window": "2026-07-14",
         "spent_this_window": 100
       },
       "expected": 0
     },
     {
-      "function": "basic_remaining",
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-14T23:59:59Z",
+        "zone": "UTC",
         "reset_window": "2026-07-14",
         "spent_this_window": 130
       },
       "expected": 0
     },
     {
-      "function": "basic_remaining",
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-14T23:59:59Z",
+        "zone": "UTC",
         "reset_window": "2026-07-14",
         "spent_this_window": 30
       },
       "expected": 70
     },
     {
-      "function": "basic_remaining",
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-15T00:00:00Z",
+        "zone": "UTC",
         "reset_window": "2026-07-14",
         "spent_this_window": 30
       },
       "expected": 100
     },
     {
-      "function": "basic_remaining",
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-13T12:00:00Z",
+        "zone": "UTC",
         "reset_window": "2026-07-14",
         "spent_this_window": 30
       },
       "expected": 70
     },
     {
-      "function": "basic_remaining",
+      "function": "small_remaining",
       "inputs": {
         "now": "2026-07-14T09:00:00Z",
+        "zone": "UTC",
         "reset_window": "2026-07-14",
         "spent_this_window": -10
       },
       "expected": 100
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-14T16:00:00Z",
+        "zone": "Asia/Seoul",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 100
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-14T14:00:00Z",
+        "zone": "Asia/Seoul",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-14T11:00:00Z",
+        "zone": "Pacific/Kiritimati",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 100
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-14T11:00:00Z",
+        "zone": "Pacific/Niue",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-14T11:00:00Z",
+        "zone": "",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-14T11:00:00Z",
+        "zone": "Not/AZone",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-14T16:00:00Z",
+        "zone": "Local",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
+    },
+    {
+      "function": "small_remaining",
+      "inputs": {
+        "now": "2026-07-15T05:00:00Z",
+        "zone": "Pacific/Niue",
+        "reset_window": "2026-07-14",
+        "spent_this_window": 30
+      },
+      "expected": 70
     }
   ]
 }

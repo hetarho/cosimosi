@@ -236,7 +236,7 @@ function seedEveryMobileUserState() {
       memories: [{ episodicMemoryId: 'memory-a', name: 'A private memory', mood: 'JOY' }],
     },
   ])
-  useTwinkleBalanceStore.setState({ basic: 4n, additional: 7n, loaded: true })
+  useTwinkleBalanceStore.setState({ small: 4n, general: 7n, loaded: true })
   useReleasedGroupsStore.setState({
     groups: [
       {
@@ -279,8 +279,8 @@ function expectEveryMobileUserStateEmpty() {
   expect(useUniverseClockStore.getState().currentUniverseTime).toBeNull()
   expect(useDiaryStore.getState()).toMatchObject({ byId: {}, ids: [] })
   expect(useTwinkleBalanceStore.getState()).toMatchObject({
-    basic: 0n,
-    additional: 0n,
+    small: 0n,
+    general: 0n,
     loaded: false,
   })
   expect(useReleasedGroupsStore.getState().groups).toEqual([])

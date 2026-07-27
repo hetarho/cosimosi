@@ -348,6 +348,7 @@ func TestSignupSettlementCreditsFirstAndCrashReplayConverges(t *testing.T) {
 		pool,
 		&memorySpendSignals{},
 		accountInviteResolver{service: accountService},
+		accountTwinkleZone{service: accountService},
 	)
 	if err != nil {
 		t.Fatalf("newTwinkleService failed: %v", err)
@@ -447,12 +448,12 @@ func TestSignupSettlementCreditsFirstAndCrashReplayConverges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invitee balance failed: %v", err)
 	}
-	if inviterBalance.Additional != values.TwinkleEarnInviteInviter {
-		t.Fatalf("inviter additional = %d, want %d", inviterBalance.Additional, values.TwinkleEarnInviteInviter)
+	if inviterBalance.General != values.TwinkleEarnInviteInviter {
+		t.Fatalf("inviter general = %d, want %d", inviterBalance.General, values.TwinkleEarnInviteInviter)
 	}
 	wantInvitee := values.TwinkleEarnInviteInvitee + values.TwinkleEarnSignupBonus
-	if inviteeBalance.Additional != wantInvitee {
-		t.Fatalf("invitee additional = %d, want %d", inviteeBalance.Additional, wantInvitee)
+	if inviteeBalance.General != wantInvitee {
+		t.Fatalf("invitee general = %d, want %d", inviteeBalance.General, wantInvitee)
 	}
 }
 

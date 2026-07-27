@@ -57,7 +57,7 @@ type TwinkleServiceClient interface {
 	// invite claim — both-sides credit on a valid signup; idempotent per
 	// (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
 	ClaimInvite(context.Context, *connect.Request[v1.ClaimInviteRequest]) (*connect.Response[v1.ClaimInviteResponse], error)
-	// payment charge — verifies a store receipt before crediting additional Twinkle
+	// payment charge — verifies a store receipt before crediting GENERAL Twinkle
 	// [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
 	Charge(context.Context, *connect.Request[v1.ChargeRequest]) (*connect.Response[v1.ChargeResponse], error)
 }
@@ -141,7 +141,7 @@ type TwinkleServiceHandler interface {
 	// invite claim — both-sides credit on a valid signup; idempotent per
 	// (inviter, invitee). Mutates the ledger — NOT NO_SIDE_EFFECTS.
 	ClaimInvite(context.Context, *connect.Request[v1.ClaimInviteRequest]) (*connect.Response[v1.ClaimInviteResponse], error)
-	// payment charge — verifies a store receipt before crediting additional Twinkle
+	// payment charge — verifies a store receipt before crediting GENERAL Twinkle
 	// [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
 	Charge(context.Context, *connect.Request[v1.ChargeRequest]) (*connect.Response[v1.ChargeResponse], error)
 }

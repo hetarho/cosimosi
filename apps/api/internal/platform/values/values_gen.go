@@ -211,7 +211,7 @@ var (
 
 // twinkle
 const (
-	TwinkleBasicDailyAmount          = 100
+	TwinkleSmallDailyAmount          = 100
 	TwinkleRecallBaseCost            = 5
 	TwinkleRecallDepthCoefficient    = 10
 	TwinkleRecallMaxCost             = 40

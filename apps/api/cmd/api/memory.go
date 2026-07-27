@@ -66,7 +66,12 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	// spend-signal reader binds back to the memory service just below — the one
 	// two-way seam, closed here where every concrete is visible.
 	signals := &memorySpendSignals{}
-	twinkleService, err := newTwinkleService(pool, signals, accountInviteResolver{service: accountService})
+	twinkleService, err := newTwinkleService(
+		pool,
+		signals,
+		accountInviteResolver{service: accountService},
+		accountTwinkleZone{service: accountService},
+	)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err

@@ -74,7 +74,7 @@ type DirectoryAccount struct {
 type TwinkleGranter interface {
 	// Balance reads a user's two-tier balance.
 	Balance(ctx context.Context, userID string) (Balance, error)
-	// Grant credits `amount` additional Twinkle to targetUserID as an admin gift, idempotent by
+	// Grant credits `amount` GENERAL Twinkle to targetUserID as an admin gift, idempotent by
 	// grantID, and returns the balance total after the grant.
 	Grant(ctx context.Context, targetUserID string, amount int, grantID string) (total int, err error)
 }

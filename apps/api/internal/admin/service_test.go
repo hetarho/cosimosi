@@ -130,7 +130,7 @@ type fakeGranter struct {
 }
 
 func (g *fakeGranter) Balance(context.Context, string) (Balance, error) {
-	return Balance{Basic: 100, Additional: 0, Total: 100}, nil
+	return Balance{Small: 100, General: 0, Total: 100}, nil
 }
 
 // Grant mirrors the real twinkle earn's per-(user, grant id) dedup, so the idempotency tests

@@ -127,7 +127,7 @@ export const VALUES = {
     costWeightCurve: 2,
   },
   twinkle: {
-    basicDailyAmount: 100,
+    smallDailyAmount: 100,
     recallBaseCost: 5,
     recallDepthCoefficient: 10,
     recallMaxCost: 40,

@@ -89,7 +89,7 @@ type AdminServiceClient interface {
 	RevokeAdmin(context.Context, *connect.Request[v1.RevokeAdminRequest]) (*connect.Response[v1.RevokeAdminResponse], error)
 	// Paginated, searchable account list — metadata only ([I2]). Side-effect-free.
 	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
-	// Grant additional (permanent) stardust to a user (별가루 증정) — an append-only admin_grant
+	// Grant GENERAL (permanent) stardust to a user (별가루 증정) — an append-only admin_grant
 	// earn, capped by twinkle.admin_grant_max, idempotent per grant_id.
 	GrantStardust(context.Context, *connect.Request[v1.GrantStardustRequest]) (*connect.Response[v1.GrantStardustResponse], error)
 	// The admin stardust grant history for accountability. Side-effect-free.
@@ -337,7 +337,7 @@ type AdminServiceHandler interface {
 	RevokeAdmin(context.Context, *connect.Request[v1.RevokeAdminRequest]) (*connect.Response[v1.RevokeAdminResponse], error)
 	// Paginated, searchable account list — metadata only ([I2]). Side-effect-free.
 	ListUsers(context.Context, *connect.Request[v1.ListUsersRequest]) (*connect.Response[v1.ListUsersResponse], error)
-	// Grant additional (permanent) stardust to a user (별가루 증정) — an append-only admin_grant
+	// Grant GENERAL (permanent) stardust to a user (별가루 증정) — an append-only admin_grant
 	// earn, capped by twinkle.admin_grant_max, idempotent per grant_id.
 	GrantStardust(context.Context, *connect.Request[v1.GrantStardustRequest]) (*connect.Response[v1.GrantStardustResponse], error)
 	// The admin stardust grant history for accountability. Side-effect-free.

@@ -67,8 +67,8 @@ func TestEconomySpendJoinsTheMemoryTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBalance failed: %v", err)
 	}
-	if want := values.TwinkleBasicDailyAmount - wantCost; balance.Basic != want {
-		t.Fatalf("basic after spend = %d, want %d (the committed debit)", balance.Basic, want)
+	if want := values.TwinkleSmallDailyAmount - wantCost; balance.Small != want {
+		t.Fatalf("small after spend = %d, want %d (the committed debit)", balance.Small, want)
 	}
 }
 
@@ -116,8 +116,8 @@ func TestEconomyEarnOnWriteJoinsTheLaunchTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetBalance failed: %v", err)
 	}
-	if balance.Additional != values.TwinkleEarnWrite {
-		t.Fatalf("additional = %d, want the single write grant %d", balance.Additional, values.TwinkleEarnWrite)
+	if balance.General != values.TwinkleEarnWrite {
+		t.Fatalf("general = %d, want the single write grant %d", balance.General, values.TwinkleEarnWrite)
 	}
 }
 
@@ -130,8 +130,13 @@ func TestProductionTwinkleExternalEarnsFailClosedWithoutAdapters(t *testing.T) {
 	cleanupEconomyTestRows(t, pool, userID)
 	scope := economyScope(t, userID)
 	service := economyTwinkleService(t, pool)
-	if _, err := newTwinkleService(pool, &memorySpendSignals{}, nil); !errors.Is(err, twinkle.ErrInviteResolverRequired) {
+	if _, err := newTwinkleService(pool, &memorySpendSignals{}, nil, staticTwinkleZone("UTC")); !errors.Is(err, twinkle.ErrInviteResolverRequired) {
 		t.Fatalf("newTwinkleService without resolver err = %v, want ErrInviteResolverRequired", err)
+	}
+	// The [U7] day boundary is a trust boundary too: an unbound zone reader refuses to boot, so no
+	// deployment can silently fall back to reading every user's day in UTC.
+	if _, err := newTwinkleService(pool, &memorySpendSignals{}, twinkle.UnavailableInviteResolver{}, nil); !errors.Is(err, twinkle.ErrZoneReaderRequired) {
+		t.Fatalf("newTwinkleService without zone reader err = %v, want ErrZoneReaderRequired", err)
 	}
 
 	if _, err := service.Charge(ctx, scope, twinkle.DefaultChargePackID, "app-store", "arbitrary-non-empty-receipt"); !errors.Is(err, twinkle.ErrPaymentVerificationUnavailable) {
@@ -147,11 +152,18 @@ func TestProductionTwinkleExternalEarnsFailClosedWithoutAdapters(t *testing.T) {
 
 func economyTwinkleService(t *testing.T, pool *platformdb.Pool) *twinkle.Service {
 	t.Helper()
-	service, err := newTwinkleService(pool, &memorySpendSignals{}, twinkle.UnavailableInviteResolver{})
+	service, err := newTwinkleService(pool, &memorySpendSignals{}, twinkle.UnavailableInviteResolver{}, staticTwinkleZone("UTC"))
 	if err != nil {
 		t.Fatalf("newTwinkleService failed: %v", err)
 	}
 	return service
+}
+
+// staticTwinkleZone stands in for the account-backed adapter where the test has no profile row.
+type staticTwinkleZone string
+
+func (z staticTwinkleZone) ZoneFor(context.Context, platform.UserScope) (string, error) {
+	return string(z), nil
 }
 
 func countLedgerRows(t *testing.T, pool *platformdb.Pool, userID string) int {

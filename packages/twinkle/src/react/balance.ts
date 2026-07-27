@@ -6,9 +6,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createGetBalanceQueryOptions, createTwinkleServiceQueryKey } from '@cosimosi/api-client'
 import { useTwinkleBalanceStore } from '../twinkle-balance-store.ts'
 
-// entities/twinkle api: the twinkle.v1 GetBalance read mapped into the shared two-tier
+// entities/twinkle api: the twinkle.v1 GetBalance read mapped into the shared two-kind
 // balance mirror (§3.4 proto→domain). The HUD reads the store; this hook owns the fetch
-// and syncs `basic`/`additional` on every resolution. basic is always granted
+// and syncs `small`/`general` on every resolution. SMALL is always granted
 // server-side ([G5]), so a resolved read is never empty. No polling (§2.7) — the balance
 // refetches only when a spend or earn resolves, via useInvalidateTwinkleBalance.
 export function useTwinkleBalanceQuery() {
@@ -16,7 +16,7 @@ export function useTwinkleBalanceQuery() {
   const query = useQuery(createGetBalanceQueryOptions(transport))
   const setBalance = useTwinkleBalanceStore((state) => state.setBalance)
   useEffect(() => {
-    if (query.data) setBalance(query.data.basic, query.data.additional)
+    if (query.data) setBalance(query.data.small, query.data.general)
   }, [query.data, setBalance])
   return query
 }

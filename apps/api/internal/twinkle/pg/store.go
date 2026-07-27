@@ -87,7 +87,7 @@ func (s Store) InLedgerTx(ctx context.Context, fn func(tx twinkle.LedgerStore) e
 
 // GetBalanceRecord reads the user's stored balance facts. A user who never earned or spent
 // owns no row yet — that reads as nil (not an error): the lazy-birth default, which the
-// caller derives as a full-basic balance with today's window (twinkle.DeriveBalance).
+// caller derives as a full-SMALL balance with today's window (twinkle.DeriveBalance).
 func (s Store) GetBalanceRecord(ctx context.Context, scope platform.UserScope) (*twinkle.BalanceRecord, error) {
 	if err := s.ready(scope); err != nil {
 		return nil, err
@@ -106,7 +106,8 @@ func (s Store) GetBalanceRecord(ctx context.Context, scope platform.UserScope) (
 // ApplyBalanceDelta commits one earn/spend against the single balance row (the row lock
 // serializes concurrent spends; the DB CHECKs reject a negative tier and the in-query grant
 // guard rejects a basic draw past the daily grant, so a plan raced against a stale read can
-// never oversell either tier). resetWindow is the caller's current UTC day; a stale stored
+// never oversell either tier). resetWindow is the caller's current LOCAL calendar day (the
+// use-case resolves it from the user's timezone); a stale stored
 // anchor rolls forward here (the lazy reset's one write). additionalDelta is signed (earn +,
 // spend −); basicSpentDelta is the basic-tier draw being added to the window's spend, never
 // negative. This method is NOT dedup-guarded — idempotency of the earn/spend pair is the
@@ -132,7 +133,7 @@ func (s Store) ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, 
 		AdditionalDelta: int32(additionalDelta),
 		BasicSpentDelta: int32(basicSpentDelta),
 		ResetWindow:     pgDate(resetWindow),
-		BasicGrant:      int32(values.TwinkleBasicDailyAmount),
+		BasicGrant:      int32(values.TwinkleSmallDailyAmount),
 	}
 	row, err := s.queries.UpdateTwinkleBalanceDelta(ctx, updateParams)
 	if err == nil {
@@ -146,7 +147,7 @@ func (s Store) ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, 
 		AdditionalDelta: int32(additionalDelta),
 		BasicSpentDelta: int32(basicSpentDelta),
 		ResetWindow:     pgDate(resetWindow),
-		BasicGrant:      int32(values.TwinkleBasicDailyAmount),
+		BasicGrant:      int32(values.TwinkleSmallDailyAmount),
 	})
 	if err == nil {
 		return mapBalanceRecord(born), nil
@@ -187,7 +188,7 @@ func (s Store) AppendLedgerEntry(ctx context.Context, scope platform.UserScope, 
 	if err := s.ready(scope); err != nil {
 		return false, err
 	}
-	if !fitsInt32(entry.Amount) || !fitsInt32(entry.FromBasic) || !fitsInt32(entry.FromAdditional) {
+	if !fitsInt32(entry.Amount) || !fitsInt32(entry.FromSmall) || !fitsInt32(entry.FromGeneral) {
 		return false, ErrDeltaOutOfRange
 	}
 	affected, err := s.queries.AppendTwinkleLedgerEntry(ctx, dbgen.AppendTwinkleLedgerEntryParams{
@@ -196,8 +197,8 @@ func (s Store) AppendLedgerEntry(ctx context.Context, scope platform.UserScope, 
 		Kind:           string(entry.Kind),
 		Reason:         string(entry.Reason),
 		Amount:         int32(entry.Amount),
-		FromBasic:      int32(entry.FromBasic),
-		FromAdditional: int32(entry.FromAdditional),
+		FromBasic:      int32(entry.FromSmall),
+		FromAdditional: int32(entry.FromGeneral),
 		DedupKey:       pgText(entry.DedupKey),
 		CreatedAt:      pgTime(timeOrNow(entry.CreatedAt)),
 	})
@@ -268,9 +269,9 @@ func fitsInt32(value int) bool {
 
 func mapBalanceRecord(row dbgen.TwinkleBalance) twinkle.BalanceRecord {
 	return twinkle.BalanceRecord{
-		Additional:           int(row.Additional),
-		BasicSpentThisWindow: int(row.BasicSpentThisWindow),
-		BasicResetWindow:     dateValue(row.BasicResetWindow),
+		General:              int(row.Additional),
+		SmallSpentThisWindow: int(row.BasicSpentThisWindow),
+		SmallResetWindow:     dateValue(row.BasicResetWindow),
 	}
 }
 

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/twinkle/v1/twinkle.proto.
  */
 export const file_cosimosi_twinkle_v1_twinkle: GenFile = /*@__PURE__*/
-  fileDesc("CiFjb3NpbW9zaS90d2lua2xlL3YxL3R3aW5rbGUucHJvdG8SE2Nvc2ltb3NpLnR3aW5rbGUudjEiEwoRR2V0QmFsYW5jZVJlcXVlc3QiRgoSR2V0QmFsYW5jZVJlc3BvbnNlEg0KBWJhc2ljGAEgASgDEhIKCmFkZGl0aW9uYWwYAiABKAMSDQoFdG90YWwYAyABKAMihwEKEVF1b3RlU3BlbmRSZXF1ZXN0EiwKBGtpbmQYASABKA4yHi5jb3NpbW9zaS50d2lua2xlLnYxLlNwZW5kS2luZBIaChJlcGlzb2RpY19tZW1vcnlfaWQYAiABKAkSEAoIZGlhcnlfaWQYAyABKAkSFgoOc2VtYW50aWNfc3RhZ2UYBCABKAUiRgoSUXVvdGVTcGVuZFJlc3BvbnNlEgwKBGNvc3QYASABKAMSDwoHY292ZXJlZBgCIAEoCBIRCglzaG9ydGZhbGwYAyABKAMiKQoSQ2xhaW1JbnZpdGVSZXF1ZXN0EhMKC2ludml0ZV9jb2RlGAEgASgJIiwKE0NsYWltSW52aXRlUmVzcG9uc2USFQoNYmFsYW5jZV90b3RhbBgBIAEoAyJDCg1DaGFyZ2VSZXF1ZXN0Eg8KB3BhY2tfaWQYASABKAkSEAoIcGxhdGZvcm0YAiABKAkSDwoHcmVjZWlwdBgDIAEoCSInCg5DaGFyZ2VSZXNwb25zZRIVCg1iYWxhbmNlX3RvdGFsGAEgASgDKnUKCVNwZW5kS2luZBIaChZTUEVORF9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRU1BFTkRfS0lORF9SRUNBTEwQARIYChRTUEVORF9LSU5EX0dJU1RfVklFVxACEhsKF1NQRU5EX0tJTkRfRElBUllfUkVDQUxMEAMyjQMKDlR3aW5rbGVTZXJ2aWNlEmIKCkdldEJhbGFuY2USJi5jb3NpbW9zaS50d2lua2xlLnYxLkdldEJhbGFuY2VSZXF1ZXN0GicuY29zaW1vc2kudHdpbmtsZS52MS5HZXRCYWxhbmNlUmVzcG9uc2UiA5ACARJiCgpRdW90ZVNwZW5kEiYuY29zaW1vc2kudHdpbmtsZS52MS5RdW90ZVNwZW5kUmVxdWVzdBonLmNvc2ltb3NpLnR3aW5rbGUudjEuUXVvdGVTcGVuZFJlc3BvbnNlIgOQAgESYAoLQ2xhaW1JbnZpdGUSJy5jb3NpbW9zaS50d2lua2xlLnYxLkNsYWltSW52aXRlUmVxdWVzdBooLmNvc2ltb3NpLnR3aW5rbGUudjEuQ2xhaW1JbnZpdGVSZXNwb25zZRJRCgZDaGFyZ2USIi5jb3NpbW9zaS50d2lua2xlLnYxLkNoYXJnZVJlcXVlc3QaIy5jb3NpbW9zaS50d2lua2xlLnYxLkNoYXJnZVJlc3BvbnNlQtkBChdjb20uY29zaW1vc2kudHdpbmtsZS52MUIMVHdpbmtsZVByb3RvUAFaQmdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS90d2lua2xlL3YxO3R3aW5rbGV2MaICA0NUWKoCE0Nvc2ltb3NpLlR3aW5rbGUuVjHKAhNDb3NpbW9zaVxUd2lua2xlXFYx4gIfQ29zaW1vc2lcVHdpbmtsZVxWMVxHUEJNZXRhZGF0YeoCFUNvc2ltb3NpOjpUd2lua2xlOjpWMWIGcHJvdG8z");
+  fileDesc("CiFjb3NpbW9zaS90d2lua2xlL3YxL3R3aW5rbGUucHJvdG8SE2Nvc2ltb3NpLnR3aW5rbGUudjEiEwoRR2V0QmFsYW5jZVJlcXVlc3QiQwoSR2V0QmFsYW5jZVJlc3BvbnNlEg0KBXNtYWxsGAEgASgDEg8KB2dlbmVyYWwYAiABKAMSDQoFdG90YWwYAyABKAMihwEKEVF1b3RlU3BlbmRSZXF1ZXN0EiwKBGtpbmQYASABKA4yHi5jb3NpbW9zaS50d2lua2xlLnYxLlNwZW5kS2luZBIaChJlcGlzb2RpY19tZW1vcnlfaWQYAiABKAkSEAoIZGlhcnlfaWQYAyABKAkSFgoOc2VtYW50aWNfc3RhZ2UYBCABKAUiRgoSUXVvdGVTcGVuZFJlc3BvbnNlEgwKBGNvc3QYASABKAMSDwoHY292ZXJlZBgCIAEoCBIRCglzaG9ydGZhbGwYAyABKAMiKQoSQ2xhaW1JbnZpdGVSZXF1ZXN0EhMKC2ludml0ZV9jb2RlGAEgASgJIiwKE0NsYWltSW52aXRlUmVzcG9uc2USFQoNYmFsYW5jZV90b3RhbBgBIAEoAyJDCg1DaGFyZ2VSZXF1ZXN0Eg8KB3BhY2tfaWQYASABKAkSEAoIcGxhdGZvcm0YAiABKAkSDwoHcmVjZWlwdBgDIAEoCSInCg5DaGFyZ2VSZXNwb25zZRIVCg1iYWxhbmNlX3RvdGFsGAEgASgDKnUKCVNwZW5kS2luZBIaChZTUEVORF9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRU1BFTkRfS0lORF9SRUNBTEwQARIYChRTUEVORF9LSU5EX0dJU1RfVklFVxACEhsKF1NQRU5EX0tJTkRfRElBUllfUkVDQUxMEAMyjQMKDlR3aW5rbGVTZXJ2aWNlEmIKCkdldEJhbGFuY2USJi5jb3NpbW9zaS50d2lua2xlLnYxLkdldEJhbGFuY2VSZXF1ZXN0GicuY29zaW1vc2kudHdpbmtsZS52MS5HZXRCYWxhbmNlUmVzcG9uc2UiA5ACARJiCgpRdW90ZVNwZW5kEiYuY29zaW1vc2kudHdpbmtsZS52MS5RdW90ZVNwZW5kUmVxdWVzdBonLmNvc2ltb3NpLnR3aW5rbGUudjEuUXVvdGVTcGVuZFJlc3BvbnNlIgOQAgESYAoLQ2xhaW1JbnZpdGUSJy5jb3NpbW9zaS50d2lua2xlLnYxLkNsYWltSW52aXRlUmVxdWVzdBooLmNvc2ltb3NpLnR3aW5rbGUudjEuQ2xhaW1JbnZpdGVSZXNwb25zZRJRCgZDaGFyZ2USIi5jb3NpbW9zaS50d2lua2xlLnYxLkNoYXJnZVJlcXVlc3QaIy5jb3NpbW9zaS50d2lua2xlLnYxLkNoYXJnZVJlc3BvbnNlQtkBChdjb20uY29zaW1vc2kudHdpbmtsZS52MUIMVHdpbmtsZVByb3RvUAFaQmdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS90d2lua2xlL3YxO3R3aW5rbGV2MaICA0NUWKoCE0Nvc2ltb3NpLlR3aW5rbGUuVjHKAhNDb3NpbW9zaVxUd2lua2xlXFYx4gIfQ29zaW1vc2lcVHdpbmtsZVxWMVxHUEJNZXRhZGF0YeoCFUNvc2ltb3NpOjpUd2lua2xlOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message cosimosi.twinkle.v1.GetBalanceRequest
@@ -26,21 +26,21 @@ export const GetBalanceRequestSchema: GenMessage<GetBalanceRequest> = /*@__PURE_
   messageDesc(file_cosimosi_twinkle_v1_twinkle, 0);
 
 /**
- * The derived two-tier balance [G2]: daily-reset basic, permanent additional, and
- * their spendable total.
+ * The derived two-kind balance [G2]: recall-only SMALL, which refills on the user's own
+ * calendar day, universal permanent GENERAL, and their spendable total.
  *
  * @generated from message cosimosi.twinkle.v1.GetBalanceResponse
  */
 export type GetBalanceResponse = Message<"cosimosi.twinkle.v1.GetBalanceResponse"> & {
   /**
-   * @generated from field: int64 basic = 1;
+   * @generated from field: int64 small = 1;
    */
-  basic: bigint;
+  small: bigint;
 
   /**
-   * @generated from field: int64 additional = 2;
+   * @generated from field: int64 general = 2;
    */
-  additional: bigint;
+  general: bigint;
 
   /**
    * @generated from field: int64 total = 3;
@@ -203,6 +203,10 @@ export const ChargeResponseSchema: GenMessage<ChargeResponse> = /*@__PURE__*/
   messageDesc(file_cosimosi_twinkle_v1_twinkle, 7);
 
 /**
+ * The purposes a client may ask the server to price. Deliberately a SUBSET of the Go SpendKind:
+ * there is no SPEND_KIND_PURCHASE, because an ornament is catalog-priced by the store context and
+ * must never reach the recall pricer [P9].
+ *
  * @generated from enum cosimosi.twinkle.v1.SpendKind
  */
 export enum SpendKind {
@@ -280,7 +284,7 @@ export const TwinkleService: GenService<{
     output: typeof ClaimInviteResponseSchema;
   },
   /**
-   * payment charge — verifies a store receipt before crediting additional Twinkle
+   * payment charge — verifies a store receipt before crediting GENERAL Twinkle
    * [G3]; idempotent per verified receipt. Mutates the ledger — NOT NO_SIDE_EFFECTS.
    *
    * @generated from rpc cosimosi.twinkle.v1.TwinkleService.Charge

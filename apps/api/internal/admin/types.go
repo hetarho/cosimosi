@@ -32,11 +32,11 @@ type AdminEntry struct {
 	GrantedAt time.Time
 }
 
-// Balance is the target user's two-tier Twinkle balance, read through the stardust port.
+// Balance is the target user's two-kind Twinkle balance, read through the stardust port.
 type Balance struct {
-	Basic      int
-	Additional int
-	Total      int
+	Small   int
+	General int
+	Total   int
 }
 
 // UserSummary is one account row for the admin user list — metadata only ([I2]): identity,

@@ -21,6 +21,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The purposes a client may ask the server to price. Deliberately a SUBSET of the Go SpendKind:
+// there is no SPEND_KIND_PURCHASE, because an ornament is catalog-priced by the store context and
+// must never reach the recall pricer [P9].
 type SpendKind int32
 
 const (
@@ -109,12 +112,12 @@ func (*GetBalanceRequest) Descriptor() ([]byte, []int) {
 	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{0}
 }
 
-// The derived two-tier balance [G2]: daily-reset basic, permanent additional, and
-// their spendable total.
+// The derived two-kind balance [G2]: recall-only SMALL, which refills on the user's own
+// calendar day, universal permanent GENERAL, and their spendable total.
 type GetBalanceResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Basic         int64                  `protobuf:"varint,1,opt,name=basic,proto3" json:"basic,omitempty"`
-	Additional    int64                  `protobuf:"varint,2,opt,name=additional,proto3" json:"additional,omitempty"`
+	Small         int64                  `protobuf:"varint,1,opt,name=small,proto3" json:"small,omitempty"`
+	General       int64                  `protobuf:"varint,2,opt,name=general,proto3" json:"general,omitempty"`
 	Total         int64                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -150,16 +153,16 @@ func (*GetBalanceResponse) Descriptor() ([]byte, []int) {
 	return file_cosimosi_twinkle_v1_twinkle_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetBalanceResponse) GetBasic() int64 {
+func (x *GetBalanceResponse) GetSmall() int64 {
 	if x != nil {
-		return x.Basic
+		return x.Small
 	}
 	return 0
 }
 
-func (x *GetBalanceResponse) GetAdditional() int64 {
+func (x *GetBalanceResponse) GetGeneral() int64 {
 	if x != nil {
-		return x.Additional
+		return x.General
 	}
 	return 0
 }
@@ -502,12 +505,10 @@ var File_cosimosi_twinkle_v1_twinkle_proto protoreflect.FileDescriptor
 const file_cosimosi_twinkle_v1_twinkle_proto_rawDesc = "" +
 	"\n" +
 	"!cosimosi/twinkle/v1/twinkle.proto\x12\x13cosimosi.twinkle.v1\"\x13\n" +
-	"\x11GetBalanceRequest\"`\n" +
+	"\x11GetBalanceRequest\"Z\n" +
 	"\x12GetBalanceResponse\x12\x14\n" +
-	"\x05basic\x18\x01 \x01(\x03R\x05basic\x12\x1e\n" +
-	"\n" +
-	"additional\x18\x02 \x01(\x03R\n" +
-	"additional\x12\x14\n" +
+	"\x05small\x18\x01 \x01(\x03R\x05small\x12\x18\n" +
+	"\ageneral\x18\x02 \x01(\x03R\ageneral\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x03R\x05total\"\xb7\x01\n" +
 	"\x11QuoteSpendRequest\x122\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1e.cosimosi.twinkle.v1.SpendKindR\x04kind\x12,\n" +

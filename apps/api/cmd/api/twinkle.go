@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	dbgen "github.com/cosimosi/api/db/gen"
+	"github.com/cosimosi/api/internal/account"
 	twinklev1connect "github.com/cosimosi/api/internal/gen/cosimosi/twinkle/v1/twinklev1connect"
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
@@ -35,13 +36,27 @@ func newTwinkleService(
 	pool *platformdb.Pool,
 	signals *memorySpendSignals,
 	inviteResolver twinkle.InviteResolver,
+	userZone twinkle.UserZoneReader,
 ) (*twinkle.Service, error) {
 	return twinkle.NewService(twinkle.ServiceDeps{
 		Ledger:         twinklepg.NewStore(pool.PgxPool()),
 		Verifier:       twinkle.UnavailablePaymentVerifier{},
 		InviteResolver: inviteResolver,
 		Signals:        signals,
+		UserZone:       userZone,
 	})
+}
+
+// accountTwinkleZone is the only binding of twinkle's UserZoneReader ([G2][U7]): account's published
+// profile read, published as the IANA NAME twinkle's port asks for. It resolves nothing itself —
+// twinkle owns the name→location step and the UTC fallback, so no permissive adapter can bind the
+// boundary away. account.ZoneFor already answers DefaultTimezone for a user with no profile row.
+type accountTwinkleZone struct {
+	service *account.Service
+}
+
+func (a accountTwinkleZone) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
+	return a.service.ZoneFor(ctx, scope)
 }
 
 // twinkleServiceOption registers the TwinkleService Connect handler.

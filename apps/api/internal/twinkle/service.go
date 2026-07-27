@@ -19,13 +19,17 @@ import (
 // verified payment, [G3]), the balance read, and the server quote ([G4]). Every policy —
 // pricing, spend order, earn reasons, idempotency, and trusted-claim validation — lives here or in
 // the pure domain, never in a handler (§2.9#7). There is deliberately NO
-// login/attendance earn path ([G3]): the daily basic reset is that role.
+// login/attendance earn path ([G3]): the daily SMALL reset is that role.
 
 var (
 	ErrLedgerRequired         = errors.New("twinkle service requires a ledger repo")
 	ErrVerifierRequired       = errors.New("twinkle service requires a store payment verifier")
 	ErrInviteResolverRequired = errors.New("twinkle service requires an invite resolver")
 	ErrSignalsRequired        = errors.New("twinkle service requires a spend-signal reader")
+	// ErrZoneReaderRequired keeps the [U7] day boundary bound: production may not boot with an
+	// unresolved SMALL reset window. The package deliberately exports no permissive UTC adapter
+	// for a composition root to bind here by accident.
+	ErrZoneReaderRequired = errors.New("twinkle service requires a user zone reader")
 	// ErrScopeRequired mirrors the transport guard: every derivation, quote, earn,
 	// and spend is scoped to an authenticated user (§4).
 	ErrScopeRequired = errors.New("twinkle requires an authenticated user scope")
@@ -84,14 +88,21 @@ type SpendIntent struct {
 	DedupKey          string
 }
 
-// QuoteKind names the spend a quote prices ([G4]): the same recall/gist-view
-// actions the gate meters, plus the whole-diary recall batch ([D3]).
-type QuoteKind string
+// SpendKind names the PURPOSE a spend is planned against ([G4][P9]) — the recall/gist-view actions
+// the gate meters, the whole-diary recall batch ([D3]), and an ornament purchase. It is what
+// SmallEligible reads, and it stays distinct from EntryReason, the persisted ledger vocabulary: a
+// DIARY_RECALL spend still writes one `recall` row per member memory.
+//
+// The set is deliberately a SUPERSET of the wire enum twinkle.v1.SpendKind, which carries no
+// PURCHASE value: no client can ask the recall pricer to price an ornament, and a purchase reaches
+// the economy only through the store context's internal spend gate.
+type SpendKind string
 
 const (
-	QuoteKindRecall      QuoteKind = "recall"
-	QuoteKindGistView    QuoteKind = "gist_view"
-	QuoteKindDiaryRecall QuoteKind = "diary_recall"
+	SpendKindRecall      SpendKind = "recall"
+	SpendKindGistView    SpendKind = "gist_view"
+	SpendKindDiaryRecall SpendKind = "diary_recall"
+	SpendKindPurchase    SpendKind = "purchase"
 )
 
 // Quote is the server-derived spend preview ([G4]): the priced cost, whether the
@@ -110,6 +121,7 @@ type Service struct {
 	verifier       StorePaymentVerifier
 	inviteResolver InviteResolver
 	signals        SpendSignalReader
+	userZone       UserZoneReader
 	now            func() time.Time
 	newID          func() string
 }
@@ -119,6 +131,7 @@ type ServiceDeps struct {
 	Verifier       StorePaymentVerifier
 	InviteResolver InviteResolver
 	Signals        SpendSignalReader
+	UserZone       UserZoneReader
 	// Now/NewID are test seams; nil selects the real UTC clock and the platform id.
 	Now   func() time.Time
 	NewID func() string
@@ -137,11 +150,15 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Signals == nil {
 		return nil, ErrSignalsRequired
 	}
+	if deps.UserZone == nil {
+		return nil, ErrZoneReaderRequired
+	}
 	service := &Service{
 		ledger:         deps.Ledger,
 		verifier:       deps.Verifier,
 		inviteResolver: deps.InviteResolver,
 		signals:        deps.Signals,
+		userZone:       deps.UserZone,
 		now:            deps.Now,
 		newID:          deps.NewID,
 	}
@@ -154,22 +171,40 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	return service, nil
 }
 
-// GetBalance derives the two-tier balance at real now ([G2]): a read, never a
+// GetBalance derives the two-kind balance at real now ([G2]): a read, never a
 // write — no row is born, no window rolls forward, nothing is earned or spent. An
-// absent row is the lazy-birth default (full basic, zero additional).
+// absent row is the lazy-birth default (full SMALL, zero GENERAL).
 func (s *Service) GetBalance(ctx context.Context, scope platform.UserScope) (Balance, error) {
 	if scope.UserID() == "" {
 		return Balance{}, ErrScopeRequired
+	}
+	zone, err := s.zone(ctx, scope)
+	if err != nil {
+		return Balance{}, err
 	}
 	record, err := s.ledger.GetBalanceRecord(ctx, scope)
 	if err != nil {
 		return Balance{}, err
 	}
-	return DeriveBalance(s.now(), recordOrLazyBirth(record)), nil
+	return DeriveBalance(s.now(), zone, recordOrLazyBirth(record)), nil
+}
+
+// zone resolves the scoped user's SMALL reset boundary once per use-case ([G2][U7]). An empty,
+// blank or unknown IANA name resolves to UTC without an error — the [G5] direction: a user whose
+// profile is missing or whose zone the runtime cannot load still gets today's refill. Only a
+// genuine port failure (the read itself broke) propagates, because that is a DB error, not an
+// absent zone. time/tzdata is imported by cmd/api and cmd/worker so LoadLocation is hermetic on
+// the distroless image.
+func (s *Service) zone(ctx context.Context, scope platform.UserScope) (*time.Location, error) {
+	name, err := s.userZone.ZoneFor(ctx, scope)
+	if err != nil {
+		return nil, err
+	}
+	return LocationOf(name), nil
 }
 
 // CheckAndSpend is the real spend gate ([CC2][G1]): price the intent from its depth
-// signal via the kind-split curves, derive the balance, plan the draw basic-first
+// signal via the kind-split curves, derive the balance, plan the draw SMALL-first
 // ([G2]), and — only when the plan fits — append the spend row and apply the guarded
 // delta. On a plan that does not fit it returns the canonical ErrInsufficientTwinkle
 // and writes nothing: the caller's action is refused, not partially charged, and
@@ -190,7 +225,7 @@ func (s *Service) CheckAndSpend(ctx context.Context, scope platform.UserScope, l
 }
 
 func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, ledger LedgerStore, intent SpendIntent) error {
-	cost, err := spendPrice(intent)
+	cost, kind, err := spendPrice(intent)
 	if err != nil {
 		return err
 	}
@@ -199,13 +234,17 @@ func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, l
 		// CHECKs amount > 0, and a zero row would record a non-event).
 		return nil
 	}
+	zone, err := s.zone(ctx, scope)
+	if err != nil {
+		return err
+	}
 	record, err := ledger.GetBalanceRecord(ctx, scope)
 	if err != nil {
 		return err
 	}
 	now := s.now()
-	balance := DeriveBalance(now, recordOrLazyBirth(record))
-	plan := PlanSpend(balance.Basic, balance.Additional, cost)
+	balance := DeriveBalance(now, zone, recordOrLazyBirth(record))
+	plan := PlanSpend(balance.Small, balance.General, cost, kind)
 	if !plan.OK {
 		return ErrInsufficientTwinkle
 	}
@@ -219,14 +258,14 @@ func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, l
 		dedupKey = &key
 	}
 	applied, err := ledger.AppendLedgerEntry(ctx, scope, LedgerEntry{
-		ID:             s.newID(),
-		Kind:           EntryKindSpend,
-		Reason:         intent.Reason,
-		Amount:         cost,
-		FromBasic:      plan.FromBasic,
-		FromAdditional: plan.FromAdditional,
-		DedupKey:       dedupKey,
-		CreatedAt:      now,
+		ID:          s.newID(),
+		Kind:        EntryKindSpend,
+		Reason:      intent.Reason,
+		Amount:      cost,
+		FromSmall:   plan.FromSmall,
+		FromGeneral: plan.FromGeneral,
+		DedupKey:    dedupKey,
+		CreatedAt:   now,
 	})
 	if err != nil {
 		return err
@@ -234,26 +273,27 @@ func (s *Service) checkAndSpend(ctx context.Context, scope platform.UserScope, l
 	if !applied {
 		return nil
 	}
-	_, err = ledger.ApplyBalanceDelta(ctx, scope, now, -plan.FromAdditional, plan.FromBasic)
+	_, err = ledger.ApplyBalanceDelta(ctx, scope, ResetWindowOf(now, zone), -plan.FromGeneral, plan.FromSmall)
 	return err
 }
 
-// spendPrice maps a SpendIntent to its Twinkle cost through the kind-split curves
-// ([CC3][G4]) — the only place a spend is priced; callers never compute or carry a
-// price.
-func spendPrice(intent SpendIntent) (int, error) {
+// spendPrice maps a SpendIntent to its Twinkle cost AND the purpose that cost is planned against
+// ([CC3][G4][P9]) — one switch over the closed reason set, so the price and the SMALL eligibility
+// of a spend can never disagree about what the spend is. The only place a spend is priced; callers
+// never compute or carry a price.
+func spendPrice(intent SpendIntent) (int, SpendKind, error) {
 	switch intent.Reason {
 	case ReasonRecall:
-		return RecallCost(intent.AccessibilityCost), nil
+		return RecallCost(intent.AccessibilityCost), SpendKindRecall, nil
 	case ReasonGistView:
-		return GistViewCost(intent.SemanticStage), nil
+		return GistViewCost(intent.SemanticStage), SpendKindGistView, nil
 	default:
-		return 0, fmt.Errorf("%w: %q", ErrSpendIntentInvalid, intent.Reason)
+		return 0, "", fmt.Errorf("%w: %q", ErrSpendIntentInvalid, intent.Reason)
 	}
 }
 
 // EarnOnWrite is the write grant ([G3]): one fixed earn per launched diary,
-// credited to additional, dedup-keyed by the diary id so a diary can never grant
+// credited to GENERAL, dedup-keyed by the diary id so a diary can never grant
 // twice — not per memory, so splitting a diary into more memories inflates nothing.
 // ledger must be the launch's transaction-bound store: the grant lands atomically
 // with the launch or not at all.
@@ -271,8 +311,7 @@ func (s *Service) EarnOnWrite(ctx context.Context, scope platform.UserScope, led
 	return err
 }
 
-// EarnSignupBonus credits the one-time onboarding grant to additional (GENERAL)
-// Twinkle. The authenticated account id is the idempotency identity, so repeated
+// EarnSignupBonus credits the one-time onboarding grant to GENERAL Twinkle. The authenticated account id is the idempotency identity, so repeated
 // settlement hooks can safely converge through the ledger's unique dedup key.
 func (s *Service) EarnSignupBonus(ctx context.Context, scope platform.UserScope) (Balance, error) {
 	if scope.UserID() == "" {
@@ -288,12 +327,12 @@ func (s *Service) EarnSignupBonus(ctx context.Context, scope platform.UserScope)
 	return s.GetBalance(ctx, scope)
 }
 
-// EarnAdminGrant credits `amount` additional Twinkle to the scoped user as an operator gift
+// EarnAdminGrant credits `amount` GENERAL Twinkle to the scoped user as an operator gift
 // (별가루 증정, the admin console). It runs in its own ledger transaction and is idempotent by dedupKey —
 // the admin console's grant id — so a replay returns the current balance without double-crediting.
 // It is the twinkle side of the grant only: the admin context validates the per-grant cap and
 // writes its own audit rows; twinkle refuses only a non-positive amount and credits a validated
-// gift to additional balance ([G2] — basic is the daily reset, never earned).
+// gift to GENERAL balance ([G2] — SMALL is the daily reset, never earned).
 func (s *Service) EarnAdminGrant(ctx context.Context, scope platform.UserScope, amount int, dedupKey string) (Balance, error) {
 	if scope.UserID() == "" {
 		return Balance{}, ErrScopeRequired
@@ -443,7 +482,7 @@ func paymentTransactionKey(provider string, transactionID string) string {
 // depth signal server-side, price with the same curves, derive the same balance,
 // plan the same draw — and write nothing: no ledger row, no window roll, no clock
 // advance. A stale quote is simply refused later by the authoritative spend.
-func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind QuoteKind, targetID string, semanticStage int) (Quote, error) {
+func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind SpendKind, targetID string, semanticStage int) (Quote, error) {
 	if scope.UserID() == "" {
 		return Quote{}, ErrScopeRequired
 	}
@@ -454,28 +493,34 @@ func (s *Service) QuoteSpend(ctx context.Context, scope platform.UserScope, kind
 	if err != nil {
 		return Quote{}, err
 	}
+	zone, err := s.zone(ctx, scope)
+	if err != nil {
+		return Quote{}, err
+	}
 	record, err := s.ledger.GetBalanceRecord(ctx, scope)
 	if err != nil {
 		return Quote{}, err
 	}
-	balance := DeriveBalance(s.now(), recordOrLazyBirth(record))
-	plan := PlanSpend(balance.Basic, balance.Additional, cost)
-	shortfall := 0
-	if !plan.OK {
-		shortfall = cost - balance.Basic - balance.Additional
-	}
-	return Quote{Cost: cost, Covered: plan.OK, Shortfall: shortfall}, nil
+	balance := DeriveBalance(s.now(), zone, recordOrLazyBirth(record))
+	plan := PlanSpend(balance.Small, balance.General, cost, kind)
+	return Quote{
+		Cost:    cost,
+		Covered: plan.OK,
+		// Tier-aware ([G4][P9]): counting SMALL against a purpose that may not spend it would
+		// report a purchase as covered by an allowance it cannot touch.
+		Shortfall: ShortfallFor(balance.Small, balance.General, cost, kind),
+	}, nil
 }
 
-func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind QuoteKind, targetID string, semanticStage int) (int, error) {
+func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind SpendKind, targetID string, semanticStage int) (int, error) {
 	switch kind {
-	case QuoteKindRecall:
+	case SpendKindRecall:
 		weight, err := s.signals.RecallAccessibility(ctx, scope, targetID)
 		if err != nil {
 			return 0, err
 		}
 		return RecallCost(weight), nil
-	case QuoteKindGistView:
+	case SpendKindGistView:
 		if semanticStage < 1 {
 			return 0, fmt.Errorf("%w: gist semantic stage", ErrQuoteInputRequired)
 		}
@@ -487,7 +532,7 @@ func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind 
 			return 0, ErrQuoteTargetUnavailable
 		}
 		return GistViewCost(semanticStage), nil
-	case QuoteKindDiaryRecall:
+	case SpendKindDiaryRecall:
 		weights, err := s.signals.DiaryRecallAccessibilities(ctx, scope, targetID)
 		if err != nil {
 			return 0, err
@@ -499,16 +544,31 @@ func (s *Service) quoteCost(ctx context.Context, scope platform.UserScope, kind 
 			total += RecallCost(weight)
 		}
 		return total, nil
+	// SpendKindPurchase deliberately has NO arm and the wire enum carries no PURCHASE value: an
+	// ornament is catalog-priced by the store context, never by the recall pricer, so it falls to
+	// the ErrQuoteInputRequired default below.
 	default:
 		return 0, fmt.Errorf("%w: kind %q", ErrQuoteInputRequired, kind)
 	}
 }
 
 // earn appends one dedup-keyed earn entry and, when it genuinely applied (not a
-// replay), credits additional balance ([G2] — basic is the daily reset and is never
+// replay), credits GENERAL balance ([G2] — SMALL is the daily reset and is never
 // earned). The append goes first so a replayed pair skips the delta — end-to-end
 // idempotency per key. Returns whether this call applied.
+//
+// The zone is resolved for the credited scope, not the caller's: ClaimInvite credits the inviter
+// too, and the anchor this write rolls forward is that user's own calendar date. Passing a UTC date
+// instead would push a UTC−n user's anchor a day ahead and swallow their next refill ([G5]).
 func (s *Service) earn(ctx context.Context, scope platform.UserScope, ledger LedgerStore, reason EntryReason, amount int, dedupKey string) (bool, error) {
+	zone, err := s.zone(ctx, scope)
+	if err != nil {
+		return false, err
+	}
+	// One clock read for the pair: the entry's timestamp and the window it anchors must describe the
+	// same instant, or an earn landing on a local midnight could log itself into one day and roll the
+	// window into another.
+	now := s.now()
 	key := dedupKey
 	applied, err := ledger.AppendLedgerEntry(ctx, scope, LedgerEntry{
 		ID:        s.newID(),
@@ -516,7 +576,7 @@ func (s *Service) earn(ctx context.Context, scope platform.UserScope, ledger Led
 		Reason:    reason,
 		Amount:    amount,
 		DedupKey:  &key,
-		CreatedAt: s.now(),
+		CreatedAt: now,
 	})
 	if err != nil {
 		return false, err
@@ -524,14 +584,14 @@ func (s *Service) earn(ctx context.Context, scope platform.UserScope, ledger Led
 	if !applied {
 		return false, nil
 	}
-	if _, err := ledger.ApplyBalanceDelta(ctx, scope, s.now(), amount, 0); err != nil {
+	if _, err := ledger.ApplyBalanceDelta(ctx, scope, ResetWindowOf(now, zone), amount, 0); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
 // recordOrLazyBirth is the absent-row default: a user who never earned or spent
-// derives a full basic grant with zero additional (the zero record's stale window
+// derives a full SMALL grant with zero GENERAL (the zero record's stale window
 // derives fresh).
 func recordOrLazyBirth(record *BalanceRecord) BalanceRecord {
 	if record == nil {

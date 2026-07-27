@@ -33,38 +33,89 @@ package does not absorb or duplicate them.
 
 ## 2. The balance model
 
-`Balance = { Basic, Additional }` (whole Twinkle units).
+`Balance = { Small, General }` (whole Twinkle units), plus `TwinkleKind ∈ {SMALL, GENERAL}` and the per-kind accessor
+`Balance.Of(kind)`. `TwinkleKind` is a TEXT-style closed set like `EntryKind` and is **never persisted as a column
+value** — the row stores the GENERAL counter and the SMALL window anchor, so the kind is a way of reading a row.
 
-- **`Additional`** is a stored, carrying counter on the one balance row per user.
-- **`Basic` is derived, never stored**: `BasicRemaining(now, resetWindow, spentThisWindow)` yields the full
-  `twinkle.basic_daily_amount` when `now` is in a later UTC calendar day than the anchor (the prior window's unspent
-  basic is discarded — no carry), else `grant − spent` clamped to `[0, grant]`. A `now` at/before the anchor's day
-  derives conservatively as the anchored window — the derivation never over-grants. `DeriveBalance(now, record)`
-  reads both tiers off the stored record; a user with no row yet derives as a full-basic lazy-birth default.
+- **`General`** is a stored, carrying counter on the one balance row per user.
+- **`Small` is derived, never stored**: `SmallRemaining(now, zone, resetWindow, spentThisWindow)` yields the full
+  `twinkle.small_daily_amount` when `now` falls on a later **local** calendar date than the anchor (the prior window's
+  unspent SMALL is discarded — no carry), else `grant − spent` clamped to `[0, grant]`. A `now` at/before the anchor's
+  date derives conservatively as the anchored window — the derivation never over-grants, which is also what stops a
+  westward timezone change from minting a grant. `DeriveBalance(now, zone, record)` reads both kinds off the stored
+  record; a user with no row yet derives as a full-SMALL lazy-birth default.
 - **The reset is lazy** — no cron, no scheduled job ([T4]): the derivation "resets" at read, and the row's
-  `basic_reset_window` anchor rolls forward on the first write in a new day. The window rule is `date(now, UTC)` —
-  the `ai.daily_call_cap` UTC-day convention reused, and the **one intentional real-time crossing** in the engine,
-  isolated to this context (universe time is never read here).
+  `basic_reset_window` anchor rolls forward on the first write in a new day. It is the **one intentional real-time
+  crossing** in the engine, isolated to this context (universe time is never read here).
+
+### The day boundary and its port
+
+`ResetWindowOf(now, zone) → date` is the single day-boundary rule: the user's own **local** calendar date, returned as
+that date at UTC midnight so it is directly comparable with — and writable as — the stored `DATE` anchor.
+
+- **The zone arrives as a scalar through a consumer-owned port.** `twinkle.UserZoneReader { ZoneFor(ctx, scope)
+(string, error) }` in `internal/twinkle/ports.go` returns an **IANA name**, so no `account` type and no
+  `*time.Location` crosses the boundary (§2.2/§2.4); `internal/twinkle` imports neither `internal/account` nor any
+  `users` query. The only binding is `accountTwinkleZone` in `apps/api/cmd/api/twinkle.go` over `account.ZoneFor`, and
+  `NewService` fails with `ErrZoneReaderRequired` when it is nil — production cannot boot with the boundary unbound.
+  The package deliberately exports **no** permissive UTC adapter, so a composition root cannot bind the [U7] boundary
+  away by accident.
+- **`LocationOf(name)` owns the fallback**: empty, blank and unknown names all resolve to `time.UTC` **without an
+  error** ([G5] — a missing zone may never deny a refill). Only a genuine port failure propagates, because that is a
+  DB error, not an absent zone.
+- **`_ "time/tzdata"` is imported by `cmd/api` and `cmd/worker`**, which is what makes `LoadLocation` hermetic on
+  `gcr.io/distroless/static-debian12` (it ships no `/usr/share/zoneinfo`). A dev/CI machine _has_ a system zone
+  database, so a runtime resolution check alone cannot catch a deleted import — `cmd/api/timezone_test.go` therefore
+  asserts both the resolution and the import.
+- **The anchor is monotone.** `db/queries/twinkle/ledger.sql` advances it through
+  `basic_reset_window = GREATEST(basic_reset_window, $reset_window)`, and both `checkAndSpend` and `earn` pass
+  `ResetWindowOf(now, zone)` — never a bare `now`. `earn` resolves the zone of the **credited** scope, not the caller's:
+  `ClaimInvite` credits the inviter too, and passing a UTC date for a UTC−n user would push their anchor a day ahead and
+  swallow their next refill.
+- **`"Local"` is rejected explicitly.** `time.LoadLocation` accepts it as a Go-specific alias for the _process's_ zone,
+  which would make a user's day depend on where the server runs — and the TS mirror, resolving through `Intl`, has no
+  such alias and would read UTC. `LocationOf` maps it to UTC so the two sides stay identical, and the golden fixture
+  carries a `"Local"` case so that parity is pinned rather than merely asserted here. (Profile _writes_ already reject
+  it; this covers a historical or hand-edited row.)
 
 ## 3. The pure functions (golden-parity TS↔Go)
 
-`RecallCost`, `GistViewCost`, `PlanSpend`, and `BasicRemaining` live once in Go (`internal/twinkle`) and once in TS
-(`packages/twinkle-logic`), read the same generated `twinkle.*` constants, and are pinned identical by
-`apps/api/internal/twinkle/testdata/stardust-ledger-golden.json` (both test suites assert every fixture case and
-fail on an unknown case). The FE prices pre-spend and shows which tier will pay; the server enforces.
+`RecallCost`, `GistViewCost`, `PlanSpend`, `SmallEligible`, `ShortfallFor`, `ResetWindowOf` and `SmallRemaining` live
+once in Go (`internal/twinkle`) and once in TS (`packages/twinkle-logic`), read the same generated `twinkle.*`
+constants, and are pinned identical by `apps/api/internal/twinkle/testdata/stardust-ledger-golden.json` (both test
+suites assert every fixture case and fail on an unknown case). The FE prices pre-spend and shows which kind will pay;
+the server enforces.
 
-- `PlanSpend(basicRemaining, additional, cost) → {FromBasic, FromAdditional, OK}` — `fromBasic = min(cost,
-basicRemaining)`, overflow to additional, `ok` only when the overflow fits; inputs are bounded at 0 so neither
-  tier can plan negative. It plans; it never writes.
+**The fixture is Go-generated, not hand-authored:** regenerate it with
+`UPDATE_GOLDEN=1 go test ./internal/twinkle/ -run TestWriteStardustLedgerGolden`
+(`pnpm test:api` runs the reader; the writer skips without the env var). Its `values` block and case keys use the
+`small_*` / `from_small` / `from_general` spelling, `small_remaining` cases carry a `zone` NAME, and `plan_spend` cases
+carry a `kind` — including an eligible and an ineligible kind **at the same balance**, so the case proves the kind split
+rather than the arithmetic.
+
+- `PlanSpend(smallRemaining, general, cost, kind) → {FromSmall, FromGeneral, OK}` — for a `SmallEligible` kind
+  `fromSmall = min(cost, smallRemaining)` with the overflow to GENERAL; for **any other kind `fromSmall = 0`**. `ok`
+  only when the GENERAL part fits; inputs are bounded at 0 so neither kind can plan negative. It plans; it never writes.
+- `SmallEligible(kind) → bool` — a closed switch over `RECALL`/`GIST_VIEW`/`DIARY_RECALL` whose **default arm returns
+  false**, so an unlisted or later-added `SpendKind` is ineligible by construction ([P9][I11]). The eligible set is not
+  a new judgment: it is the shipped paid-read set (`memory.PaidActionKind`), and [G4] prices a diary jump as the sum of
+  its per-memory recalls, so a diary recall _is_ a recall.
+- `ShortfallFor(smallRemaining, general, cost, kind) → int` — `plan.FromGeneral − max(0, general)` when the plan does
+  not fit, else 0. Kind-aware by construction: it replaced `cost − small − general`, which over-reported coverage the
+  moment a non-recall kind existed.
 - `RecallCost(accessibilityCost) → int` = `round(recall_base_cost + recall_depth_coefficient · accessibilityCost)`
   clamped to `recall_max_cost` — **non-decreasing** in the accessibility weight
   ([tech/forgetting-decay.md](forgetting-decay.md) owns that signal; CC3 — no decay math here, no price constant
   there).
 - `GistViewCost(semanticStage) → int` = `gist_base_cost − gist_stage_discount · (stage − 1)` floored at
   `gist_min_cost` — **non-increasing** over the gistified stages 1..4; stage inputs below 1 price as stage 1.
-- The TS `utcDay` pins zone-less datetime strings to UTC before parsing (JS `Date.parse` reads them as local time,
-  which would shift the day boundary by the viewer's offset); non-parseable inputs fall back to the conservative
-  same-window derivation.
+- The TS `resetWindowOf(now, zone)` returns the local date as `YYYY-MM-DD` (lexicographically comparable, and directly
+  usable for local-day grouping) or `null` for a non-parseable timestamp, which `smallRemaining` treats as the
+  conservative same-window derivation. It pins zone-less datetime strings to UTC before parsing (JS `Date.parse` reads
+  them as local time, which would shift the boundary by the viewer's offset) and resolves the zone with
+  `Intl.DateTimeFormat` inside a try/catch that falls back to UTC — so an unknown zone, or a React Native runtime whose
+  `Intl` lacks time-zone support, degrades to the pre-timezone behavior instead of throwing. **No production FE path
+  calls the derivation**: the kind is read from `GetBalance` and displayed.
 - The curve shapes, clamps, spend order, and the reset-window rule are **code**; only the seven coefficients are
   `spec/values.yaml` (`twinkle.*`).
 
@@ -72,6 +123,28 @@ basicRemaining)`, overflow to additional, `ok` only when the overflow fits; inpu
 
 **A balance row + an append-only event log**, not a pure event-sourced ledger: the hot-path read is one PK lookup;
 the log preserves auditability, idempotency, and reconstructability.
+
+**The persisted spelling is the OLD one, deliberately, and exactly one file may speak both.** The kinds were renamed
+from provenance to purpose without a rename migration: an append-only ledger gains nothing from one and the shipped
+CHECK constraints would be put at risk ([I1] — this plan ships no `.sql` at all). The mapping is therefore fixed here,
+once:
+
+| domain (`internal/twinkle`)          | column                                     |
+| ------------------------------------ | ------------------------------------------ |
+| `Balance.Small` (derived)            | — (derived from the two below)             |
+| `Balance.General`                    | `twinkle_balances.additional`              |
+| `BalanceRecord.SmallSpentThisWindow` | `twinkle_balances.basic_spent_this_window` |
+| `BalanceRecord.SmallResetWindow`     | `twinkle_balances.basic_reset_window`      |
+| `LedgerEntry.FromSmall`              | `twinkle_ledger_entries.from_basic`        |
+| `LedgerEntry.FromGeneral`            | `twinkle_ledger_entries.from_additional`   |
+
+`apps/api/internal/twinkle/pg/store.go` is the **only** file permitted to speak both spellings — precisely the
+row↔domain role §2.4 gives the pg adapter. Its DB-side vocabulary (`ErrBasicGrantExceeded`, the `BasicGrant` query
+argument, the `basicSpentDelta` parameter) stays as-is; only its **domain** field references moved, and the grant
+argument now reads `values.TwinkleSmallDailyAmount`. `pnpm lint:language` enforces this: the retired tier identifiers
+are rejected everywhere under `apps/api/internal`, `apps/*/src`, `packages` and `proto` **except** `apps/api/db/**` and
+`apps/api/internal/twinkle/pg/**`. `00007_twinkle_ledger.sql` is a shipped migration and is not edited — its now-wrong
+"UTC calendar day" DDL comment is corrected _here_, not there.
 
 - `twinkle_balances` — one authoritative row per user (`user_id` PK): `additional`, `basic_spent_this_window`,
   `basic_reset_window`, `updated_at`; `CHECK (additional >= 0)`, `CHECK (basic_spent_this_window >= 0)`. Server-
@@ -118,14 +191,14 @@ caller as not-enough-twinkle at the true window state.
 
 - **`CheckAndSpend(scope, ledger, intent)`** — the real `SpendGate` behavior ([CC2][G1]): price the intent
   (`RecallCost(accessibilityCost)` / `GistViewCost(semanticStage)` — the caller passes only signals), derive the
-  balance, `PlanSpend` basic→additional, and on `ok` append the **dedup-keyed** spend row first (the intent's
+  balance, `PlanSpend` SMALL→GENERAL for the recall family, and on `ok` append the **dedup-keyed** spend row first (the intent's
   `DedupKey`), then skip `ApplyBalanceDelta` when the append reports an already-applied retry — the same idempotent
   pairing as `earn`, so a duplicate operation draws the balance once (A3). On `!ok` return `ErrInsufficientTwinkle` and
   write **nothing**. `ledger` is the caller's transaction-bound store (the economy seam; both recall and the gist view
   now pass their memory transaction). A zero-priced intent writes nothing.
-- **`EarnOnWrite(scope, ledger, diaryID)`** — the write grant, `twinkle.earn_write` to additional, dedup-keyed per
+- **`EarnOnWrite(scope, ledger, diaryID)`** — the write grant, `twinkle.earn_write` to GENERAL, dedup-keyed per
   diary; requires the launch's transaction-bound store (`ErrEarnTxRequired` otherwise).
-- **`EarnSignupBonus(scope)`** — an own-transaction `twinkle.earn_signup_bonus` grant to additional with reason
+- **`EarnSignupBonus(scope)`** — an own-transaction `twinkle.earn_signup_bonus` grant to GENERAL with reason
   `signup_bonus`, dedup-keyed per account.
 - **`ClaimInvite(scope, inviteCode)`** — passes the opaque code and authenticated invitee to `InviteResolver`; only a
   trusted result binding one signup identity, an existing distinct inviter, and that invitee can credit. Both sides
@@ -144,7 +217,26 @@ caller as not-enough-twinkle at the true window state.
   `SpendSignalReader` port, prices with the same curves, and returns `{cost, covered, shortfall}` (gist-view validates
   the selected stage against the reached stage and prices that selection; diary-recall = the per-memory `RecallCost`
   sum, [D3]). Both descriptors use the client transport's `userScopedUnaryReadPolicy`, so they are authenticated GETs
-  and never shared-CDN cacheable.
+  and never shared-CDN cacheable. The shortfall is **kind-aware** (`ShortfallFor`), so a purpose SMALL cannot pay never
+  reports itself covered by the recall allowance.
+
+### `SpendKind`: a Go superset of a deliberately smaller wire enum
+
+`twinkle.SpendKind` is `recall | gist_view | diary_recall | purchase`; the wire enum `twinkle.v1.SpendKind` carries
+**no `SPEND_KIND_PURCHASE`**, and `quoteCost` has **no purchase arm** — an unquotable kind falls to the existing
+`ErrQuoteInputRequired` default. So no client can ask the recall pricer to price an ornament; an ornament is
+catalog-priced by the `store` context and reaches the economy only through its own internal spend gate. `SpendKind` (the
+purpose a spend is _planned_ against) also stays distinct from `EntryReason` (the persisted ledger vocabulary): a
+`DIARY_RECALL` spend still writes one `recall` row per member memory. Ineligibility is **not** an error — there is no
+`ErrSmallNotEligible`; a purchase simply draws zero from SMALL, and the only denial remains `ErrInsufficientTwinkle`.
+
+`spendPrice(intent)` returns the cost **and** the kind from one switch over the closed reason set, so a spend's price and
+its SMALL eligibility can never disagree about what the spend is.
+
+**No `buf breaking` gate exists.** `proto/buf.yaml` configures it, but no script or CI workflow invokes it — the
+`basic`/`additional` → `small`/`general` field renames (numbers unchanged) therefore had no gate to clear. `pnpm gen` +
+`pnpm check:gen` are the only contract gates in the loop; treat wire-compat as a review responsibility, not a checked
+one.
 
 ## 4b. The cross-context economy seam (composition root only)
 
@@ -173,24 +265,24 @@ constraint is the partial unique payment-key index, because a provider transacti
 
 ## 6. Values (`spec/values.yaml` → `twinkle.*`)
 
-| key                             | value | meaning                                                    |
-| ------------------------------- | ----- | ---------------------------------------------------------- |
-| `basic_daily_amount`            | 100   | daily basic grant, resets each UTC day, never carries [G2] |
-| `recall_base_cost`              | 5     | 회고 base term before the depth term [G4][F4]              |
-| `recall_depth_coefficient`      | 10    | price rise per unit of accessibility weight [G4][F4]       |
-| `recall_max_cost`               | 40    | 회고 cap — a silent engram stays recallable [G4][G5]       |
-| `gist_base_cost`                | 10    | 요지 열람 price at gist stage 1 [G4][R8]                   |
-| `gist_stage_discount`           | 3     | discount per deeper gist stage [G4][R8]                    |
-| `gist_min_cost`                 | 3     | gist-view floor — cheap but never free [G4][G1]            |
-| `earn_write`                    | 100   | write grant per launched diary → additional [G3]           |
-| `earn_invite_inviter`           | 500   | inviter grant on a valid signup [G3]                       |
-| `earn_invite_invitee`           | 500   | new friend's grant on a valid signup [G3]                  |
-| `earn_signup_bonus`             | 500   | one-time post-launch signup grant → additional [G3]        |
-| `invite_reward_max_per_inviter` | 10    | lifetime rewarded-invite cap per inviter [G6]              |
-| `charge_pack`                   | 100   | the single v1 pack a verified Charge credits [G3]          |
+| key                             | value | meaning                                                                   |
+| ------------------------------- | ----- | ------------------------------------------------------------------------- |
+| `small_daily_amount`            | 100   | daily SMALL grant, resets on the user's local day, never carries [G2][U7] |
+| `recall_base_cost`              | 5     | 회고 base term before the depth term [G4][F4]                             |
+| `recall_depth_coefficient`      | 10    | price rise per unit of accessibility weight [G4][F4]                      |
+| `recall_max_cost`               | 40    | 회고 cap — a silent engram stays recallable [G4][G5]                      |
+| `gist_base_cost`                | 10    | 요지 열람 price at gist stage 1 [G4][R8]                                  |
+| `gist_stage_discount`           | 3     | discount per deeper gist stage [G4][R8]                                   |
+| `gist_min_cost`                 | 3     | gist-view floor — cheap but never free [G4][G1]                           |
+| `earn_write`                    | 100   | write grant per launched diary → GENERAL [G3]                             |
+| `earn_invite_inviter`           | 500   | inviter grant on a valid signup [G3]                                      |
+| `earn_invite_invitee`           | 500   | new friend's grant on a valid signup [G3]                                 |
+| `earn_signup_bonus`             | 500   | one-time post-launch signup grant → GENERAL [G3]                          |
+| `invite_reward_max_per_inviter` | 10    | lifetime rewarded-invite cap per inviter [G6]                             |
+| `charge_pack`                   | 100   | the single v1 pack a verified Charge credits [G3]                         |
 
 With the shipped `forgetting.cost_weight_*` (weight ∈ [1, 4]) the effective 회고 price runs 15 (fresh) → 40
 (capped); a day's grant covers roughly six fresh recalls or a mix of recalls and gist views. The [G5] relationship
-`basic_daily_amount ≥ 5 expected daily ruminations × cheap recall (15)` is pinned by a test over the generated
+`small_daily_amount ≥ 5 expected daily ruminations × cheap recall (15)` is pinned by a test over the generated
 constants. The pack **price table** (₩/$ per pack) is product content, not a value; `DefaultChargePackID` is the one
 v1 pack id (code).

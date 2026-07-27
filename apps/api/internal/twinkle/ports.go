@@ -21,7 +21,7 @@ import (
 // so a spend/earn joins the recall/launch it belongs to ([CC2]).
 type LedgerStore interface {
 	GetBalanceRecord(ctx context.Context, scope platform.UserScope) (*BalanceRecord, error)
-	ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, resetWindow time.Time, additionalDelta int, basicSpentDelta int) (BalanceRecord, error)
+	ApplyBalanceDelta(ctx context.Context, scope platform.UserScope, resetWindow time.Time, generalDelta int, smallSpentDelta int) (BalanceRecord, error)
 	AppendLedgerEntry(ctx context.Context, scope platform.UserScope, entry LedgerEntry) (bool, error)
 	LockInviteRewardsByInviter(ctx context.Context, scope platform.UserScope) error
 	GetInviteRewardState(ctx context.Context, scope platform.UserScope, dedupKey string) (rewardCount int64, replay bool, err error)
@@ -33,6 +33,16 @@ type LedgerStore interface {
 type LedgerRepo interface {
 	LedgerStore
 	InLedgerTx(ctx context.Context, fn func(tx LedgerStore) error) error
+}
+
+// UserZoneReader is the SMALL reset boundary's authority ([G2][U7]): the scoped user's IANA zone
+// NAME. A scalar deliberately — no account type and no *time.Location crosses the boundary, so this
+// context never imports account and never queries users (§2.2/§2.4); resolving the name to a
+// location is the service's job, and an unresolvable one reads as UTC ([G5]: a missing zone may
+// never deny a refill). The concrete adapter lives at the composition root over account's published
+// profile read.
+type UserZoneReader interface {
+	ZoneFor(ctx context.Context, scope platform.UserScope) (string, error)
 }
 
 // SpendSignalReader resolves the authoritative depth signals a quote prices
