@@ -125,7 +125,14 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
 const styles = StyleSheet.create({
   screen: { backgroundColor: tokens.color.bg, flex: 1 },
   content: { gap: 12, padding: 24 },
-  unavailable: { alignItems: 'center', flex: 1, gap: 16, justifyContent: 'center', padding: 24 },
+  unavailable: {
+    alignItems: 'center',
+    backgroundColor: tokens.color.bg,
+    flex: 1,
+    gap: tokens.spacing[4],
+    justifyContent: 'center',
+    padding: tokens.spacing[6],
+  },
   title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   description: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm, lineHeight: 24 },
   sectionTitle: {

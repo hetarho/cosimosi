@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 
 import {
   createNavigationContainerRef,
+  DarkTheme,
   NavigationContainer,
   useIsFocused,
   type LinkingOptions,
+  type Theme,
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
 import { gateDecision, pendingInvite } from '@cosimosi/auth'
+import { tokens } from '@cosimosi/ui'
 
 import { DesignShowcasePage } from '../../pages/design/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
@@ -31,6 +34,27 @@ import {
 } from '../providers/index.ts'
 import { ROUTES, type RootStackParamList, type RootStackScreenProps } from './routes.ts'
 import { BootScreen } from './screens/BootScreen.tsx'
+
+/**
+ * The navigator's own surface colours, from the design tokens.
+ *
+ * React Navigation paints a background per screen card from its theme, ABOVE the shell's themed
+ * surface — so with its light default a screen that set no background of its own came up as the
+ * library's grey, with our near-white ink on top of it. That is not something a screen can fix from
+ * the inside; the container is where the ground belongs.
+ */
+const navigationTheme: Theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: tokens.color.bg,
+    card: tokens.color.surface,
+    text: tokens.color.text,
+    border: tokens.color.border,
+    primary: tokens.color.primary,
+    notification: tokens.color.danger,
+  },
+}
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const navigationRef = createNavigationContainerRef<RootStackParamList>()
@@ -144,7 +168,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
   }, [stack])
 
   const navigation = (
-    <NavigationContainer ref={navigationRef} linking={linking ?? undefined}>
+    <NavigationContainer ref={navigationRef} theme={navigationTheme} linking={linking ?? undefined}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {stack === 'universe' ? (
           <>
