@@ -47,6 +47,7 @@ import {
   STAR_INSTANCE_SCALE,
   STAR_INSTANCE_TINT,
   createStarBodySource,
+  starLife,
 } from './star-body.ts'
 
 const TAU = Math.PI * 2
@@ -107,9 +108,12 @@ function turnedInto(
   seed: InstanceInputs['seed'],
   scale: InstanceInputs['scale'],
   animate: boolean,
+  life: unknown,
 ) {
   return positionLocal.add(
-    seededTurn(positionGeometry, seed, animate, RIGID_TURN_SPEED).sub(positionGeometry).mul(scale),
+    seededTurn(positionGeometry, seed, animate, asFloatNode(life).mul(RIGID_TURN_SPEED))
+      .sub(positionGeometry)
+      .mul(scale),
   )
 }
 
@@ -125,12 +129,15 @@ function keyShade(normal: unknown, ambient: number, contrast: number) {
     .add(float(ambient))
 }
 
-function flowPhase(animate: boolean, rate: number) {
-  return animate ? asFloatNode(time).mul(rate) : float(0)
+// Every animated body reads its phase from here, so `life` reaching this one place slows all ten of
+// them together: a star that is no longer returned to quiets down whatever its own motion happens to
+// be — a turn, a swell, a travelling wave (see `starLife`).
+function flowPhase(animate: boolean, rate: number, life: unknown) {
+  return animate ? asFloatNode(time).mul(rate).mul(asFloatNode(life)) : float(0)
 }
 
-function surfaceDrift(seed: InstanceInputs['seed'], animate: boolean, rate: number) {
-  const phase = flowPhase(animate, rate)
+function surfaceDrift(seed: InstanceInputs['seed'], animate: boolean, rate: number, life: unknown) {
+  const phase = flowPhase(animate, rate, life)
   return vec3(
     phase.mul(seed.mul(0.21).add(0.7)),
     phase.mul(seed.mul(0.13).add(0.45)).mul(float(-1)),
@@ -150,9 +157,14 @@ function meshSource(build: () => THREE.Mesh): VisualBodySource {
 // silhouette holds its corners through the bloom.
 function buildFacetBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
-  material.positionNode = turnedInto(seed, scale, animate)
-  const shade = keyShade(seededTurn(normalGeometry, seed, animate, RIGID_TURN_SPEED), 0.14, 1.9)
+  material.positionNode = turnedInto(seed, scale, animate, life)
+  const shade = keyShade(
+    seededTurn(normalGeometry, seed, animate, asFloatNode(life).mul(RIGID_TURN_SPEED)),
+    0.14,
+    1.9,
+  )
   const glow = shade.mul(float(0.55)).add(float(0.72)).mul(float(STAR_EMISSIVE_GAIN))
   const flare = shade.pow(float(8)).mul(float(0.22))
   material.colorNode = tint.mul(glow).add(HIGHLIGHT.mul(flare)).mul(brightness)
@@ -164,9 +176,10 @@ function buildFacetBody(animate: boolean): THREE.Mesh {
 // light like a jewel.
 function buildPrismBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
-  material.positionNode = turnedInto(seed, scale, animate)
-  const normal = seededTurn(normalGeometry, seed, animate, RIGID_TURN_SPEED)
+  material.positionNode = turnedInto(seed, scale, animate, life)
+  const normal = seededTurn(normalGeometry, seed, animate, asFloatNode(life).mul(RIGID_TURN_SPEED))
   const shade = keyShade(normal, 0.18, 1.4)
   const phase = asFloatNode(dot(asVec3Node(normal), KEY_LIGHT))
     .mul(float(3.1))
@@ -183,9 +196,10 @@ function buildPrismBody(animate: boolean): THREE.Mesh {
 // rather than off the surface.
 function buildGeodeBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
-  const phase = flowPhase(animate, 0.64)
-  const drift = surfaceDrift(seed, animate, 0.24)
+  const phase = flowPhase(animate, 0.64, life)
+  const drift = surfaceDrift(seed, animate, 0.24, life)
   const field = domainWarp(positionGeometry.mul(float(2.2)).add(seedOffset(seed)).add(drift), {
     amount: 0.38,
     octaves: 2,
@@ -197,7 +211,7 @@ function buildGeodeBody(animate: boolean): THREE.Mesh {
         positionGeometry
           .mul(float(1.15))
           .add(seedOffset(seed))
-          .add(surfaceDrift(seed, animate, 0.19)),
+          .add(surfaceDrift(seed, animate, 0.19, life)),
         { amount: 0.72, octaves: 2 },
       ),
       { octaves: 3 },
@@ -234,13 +248,14 @@ function buildGeodeBody(animate: boolean): THREE.Mesh {
 // overlapping stars read as soap film rather than as two discs.
 function buildBubbleBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
-  const phase = flowPhase(animate, 0.48)
+  const phase = flowPhase(animate, 0.48, life)
   const field = domainWarp(
     positionGeometry
       .mul(float(0.9))
       .add(seedOffset(seed))
-      .add(surfaceDrift(seed, animate, 0.12)),
+      .add(surfaceDrift(seed, animate, 0.12, life)),
     { amount: 0.55, octaves: 2 },
   )
   const softWave = sin(
@@ -313,9 +328,14 @@ function buildEightPointSpireGeometry(): THREE.BufferGeometry {
 
 function buildSpireBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
-  material.positionNode = turnedInto(seed, scale, animate)
-  const shade = keyShade(seededTurn(normalGeometry, seed, animate, RIGID_TURN_SPEED), 0.16, 1.5)
+  material.positionNode = turnedInto(seed, scale, animate, life)
+  const shade = keyShade(
+    seededTurn(normalGeometry, seed, animate, asFloatNode(life).mul(RIGID_TURN_SPEED)),
+    0.16,
+    1.5,
+  )
   // The tips are the point of this look, so they carry the light: body radius doubles as the falloff.
   const tip = positionGeometry
     .length()
@@ -332,10 +352,11 @@ function buildSpireBody(animate: boolean): THREE.Mesh {
 // emotion.
 function buildUrchinBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
   const field = positionGeometry.mul(float(3.6)).add(seedOffset(seed))
   const { f1 } = worley(field, 1)
-  const phase = flowPhase(animate, 0.92)
+  const phase = flowPhase(animate, 0.92, life)
   const wavePhase = positionGeometry.x
     .mul(float(4.4))
     .add(positionGeometry.y.mul(float(3.2)))
@@ -373,8 +394,9 @@ function buildUrchinBody(animate: boolean): THREE.Mesh {
 // relief surges like burning gas instead of rotating as a solid body.
 function buildPlasmaBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
-  const phase = flowPhase(animate, 0.32)
+  const phase = flowPhase(animate, 0.32, life)
   const drift = vec3(
     sin(phase.mul(float(0.7)).add(seed.mul(TAU))).mul(float(0.28)),
     phase,
@@ -407,12 +429,13 @@ function buildPlasmaBody(animate: boolean): THREE.Mesh {
 // cartographic reading of a memory.
 function buildContourBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness, scale } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
-  const phase = flowPhase(animate, 0.3)
+  const phase = flowPhase(animate, 0.3, life)
   const field = positionGeometry
     .mul(float(0.85))
     .add(seedOffset(seed))
-    .add(surfaceDrift(seed, animate, 0.12))
+    .add(surfaceDrift(seed, animate, 0.12, life))
   const relief = asFloatNode(fbm01(field, { octaves: 3 }))
   const contourTide = sin(
     positionGeometry.y
@@ -439,16 +462,17 @@ function buildContourBody(animate: boolean): THREE.Mesh {
 // vocabulary, kept here so the contrast against a hard-edged look is visible in one screen.
 function buildHazeBody(animate: boolean): THREE.Mesh {
   const { seed, tint, brightness } = instanceInputs()
+  const life = starLife(brightness)
   const material = new THREE.MeshBasicNodeMaterial()
   const facing = asFloatNode(normalView.z).abs().clamp(0, 1)
   const falloff = facing.pow(float(1.5))
-  const phase = flowPhase(animate, 0.78)
+  const phase = flowPhase(animate, 0.78, life)
   const puff = asFloatNode(
     fbm01(
       positionGeometry
         .mul(float(2.4))
         .add(seedOffset(seed))
-        .add(surfaceDrift(seed, animate, 0.21)),
+        .add(surfaceDrift(seed, animate, 0.21, life)),
       { octaves: 3 },
     ),
   )

@@ -17,6 +17,7 @@ import { MAX_SHOWCASE_EMOTIONS, showcaseEmotions } from '@cosimosi/emotion'
 import { cx, useReducedMotion } from '@cosimosi/ui'
 
 import { NebulaDemoPanel } from './nebula-panel.tsx'
+import { StatesPanel } from './states-panel.tsx'
 import { Section } from './showcase-shell.tsx'
 import { StarShapePanel } from './star-forms-panel.tsx'
 import { T } from './showcase-copy.ts'
@@ -42,6 +43,10 @@ export function UniversePanel() {
 
       <Section id="nebula" title={T.nebulaTitle} blurb={T.nebulaBlurb}>
         <NebulaDemoPanel />
+      </Section>
+
+      <Section id="states-3d" title={T.statesTitle3D} blurb={T.statesBlurb3D}>
+        <StatesPanel />
       </Section>
     </>
   )

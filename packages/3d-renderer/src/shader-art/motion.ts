@@ -44,11 +44,17 @@ function rotateZ(vector: unknown, angle: unknown) {
  * Turns a body-space vector around all three axes without moving its instance origin. Each seed
  * produces a stable starting pose and its own angular velocity; disabling motion preserves that
  * pose while removing the time input. `speed` only scales the animated portion, so changing it
- * never changes the seed-derived resting pose.
+ * never changes the seed-derived resting pose — it may be a node, so a per-instance factor (a star's
+ * remaining life, say) can slow one body's turn without touching its pose.
  */
-export function seededTurn(vector: unknown, seedValue: unknown, animate: boolean, speed = 1) {
+export function seededTurn(
+  vector: unknown,
+  seedValue: unknown,
+  animate: boolean,
+  speed: unknown = 1,
+) {
   const seed = asFloatNode(seedValue)
-  const elapsed = animate ? asFloatNode(time).mul(float(speed)) : float(0)
+  const elapsed = animate ? asFloatNode(time).mul(asFloatNode(speed)) : float(0)
   const x = seed
     .mul(4.7)
     .add(0.6)

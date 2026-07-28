@@ -56,6 +56,7 @@ export const SHOWCASE_GROUPS: readonly ShowcaseGroup[] = [
       { id: 'star-forms', label: T.starFormsTitle },
       { id: 'sky', label: T.skyTitle },
       { id: 'nebula', label: T.nebulaTitle },
+      { id: 'states-3d', label: T.statesTitle3D },
     ],
   },
 ]

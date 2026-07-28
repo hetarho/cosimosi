@@ -1,3 +1,4 @@
+import { LIFE_FLOOR } from './star-body.ts'
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three/webgpu'
 
@@ -80,5 +81,16 @@ describe('star shape catalogue', () => {
 
   it('falls back to the shipped star for an unknown key', () => {
     expect(resolveStarShape('no-such-shape').key).toBe('orb')
+  })
+})
+
+// The one thing forgetting is allowed to take besides light is MOVEMENT (see `starLife`). The curve
+// itself only resolves on a GPU, so what is guarded here is the contract around it: a star at the
+// silent-engram floor keeps a whisper of movement rather than freezing into a prop, and it never
+// moves more than a memory just returned to.
+describe('forgetting and movement', () => {
+  it('leaves a forgotten star quiet but not frozen', () => {
+    expect(LIFE_FLOOR).toBeGreaterThan(0)
+    expect(LIFE_FLOOR).toBeLessThan(1)
   })
 })

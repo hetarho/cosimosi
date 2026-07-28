@@ -429,20 +429,40 @@ point is that the same memory exists on both sides of it.
 
 ## 18. State treatments
 
-**Open — this section is the seam T009 fills, and it is deliberately empty rather than guessed at.**
+§13 leaves forgetting almost nothing to spend. Size is strength's, hue and chroma are the emotion's,
+brightness it already has. What is spoken for by no stored fact is **movement** — and that turns out to
+be the honest channel, because a body that has stopped moving reads as one that has stopped being
+returned to.
 
-The mechanics all shipped and the channels exist; what has no design yet is the _look_ of:
+- **Forgetting takes light, and it takes the breath.** A star's motion amplitude and rate follow its
+  brightness (`starLife`), so a memory long unvisited sits almost still beside one still turning. Three
+  boundaries hold it: the **form keeps its amplitude** at both ends — the breath shallows around its own
+  mean rather than toward zero, because the seed-form is identity and identity does not fade; the floor
+  is **not** zero, so a silent engram keeps a whisper of movement rather than becoming a prop (it is
+  dimmed, never deleted [F2]); and it reaches every body through the three shared motion helpers, so a
+  turn, a swell and a travelling wave all quiet by the same rule.
 
-- **forgetting** — today it is the brightness channel falling to the silent-engram floor, and nothing
-  else. Whether a memory should also lose colour (desaturate) or lose its outline is undecided. Size
-  cannot move: it is strength's.
-- **word-loss** — decay-stage text erosion is visible in 2D only. Whether the 3D body says anything
-  about it is undecided.
-- **gist rising** — a memory exists as two bodies once a stage has risen. How the pair reads — tethered,
-  the original receding, or nothing but the height — is undecided.
-- **awakening** — a flare plays in a latent mote's place and hands off to the real cell-star. It is
-  currently emotion-free white-gold, which agrees with §13 (a neuron has no emotion); whether its
-  duration reads is unverified.
+  Desaturation was considered and rejected. Chroma is the emotion's vividness (§16) — ANGER is the most
+  saturated colour in the table and NEUTRAL almost colourless — so a faded ANGER would read as a fresh
+  NEUTRAL. A channel with two owners says nothing.
+
+- **Word-loss says nothing in 3D, deliberately.** Brightness already carries that the memory has
+  eroded; _which_ words went is read up close, in the 2D hover glimpse and the star panel. Words are
+  read, not seen from across a universe, and a star that tried to spell out its erosion would be
+  claiming a resolution the medium does not have.
+
+- **Gist rising reads by height alone.** A risen stage leaves its episodic star where it was, so one
+  memory sits as two bodies over the same x and y; that a second one exists above **is** the
+  relationship, and §17's band haze already marks the crossing. A tether was considered and rejected: it
+  would be a new visual concept with no name in the ubiquitous language (a filament is a synapse, which
+  this is not), and it would crowd a sky whose whole premise is space. Dimming the original was rejected
+  too — the only channel available for it is brightness, which belongs to forgetting, so a consolidated
+  memory would read as a forgotten one.
+
+- **Awakening is a flare, and it carries no feeling.** A grey latent mote is replaced by a white-gold
+  flare that grows and hands off to the real cell-star. It is emotion-free on purpose, which is §13's
+  rule about neurons, not an omission. Whether its 1.1 seconds reads is an on-device question, not a
+  design one.
 
 ## 19. Choreography
 
@@ -471,8 +491,10 @@ a sign-off surface has to outlast it.
 
 The emotion count on the showcase is a **review convenience**, not a property of any sky (§15).
 
-**Known gaps, recorded rather than left to be rediscovered:** the designed states (§18) are on neither
-surface, and the mobile group carries the sky without the body types.
+**Known gaps, recorded rather than left to be rediscovered:** the forgetting row is on the web surface;
+the gist pair and the awaken flare are reviewed on the live universe rather than in the showcase, because
+both read from the episodic store and the showcase does not seed it. The mobile group carries the sky
+without the body types.
 
 ## 21. Sign-off (3D)
 
@@ -483,4 +505,4 @@ Where it stands: six working rounds (S1–S6) are in [job 39](../jobs/39.3d-asse
 all of them on the star bench rather than the full rubric, with their notes open pending a re-check on the
 running surface. No round has yet scored all seven dimensions, and no on-device GPU pass has been run —
 so §15's recipes and headroom values, and the bodies of §14, are unverified by eye at the time of writing.
-§18 and §19 must be designed before a round can score dimensions 4 and 5 at all.
+§19 must be designed before a round can score dimension 5 at all.

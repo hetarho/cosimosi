@@ -221,6 +221,31 @@ export const T = {
   skyBlurb:
     'A shader-lit sphere enclosing the scene, not a wash behind it — look around inside it. Each sky arranges the same four axes differently, and every colour comes from the universe\u2019s own feelings. Hand any sky any number of emotions: more feelings means smaller territories, never a muddier wash.',
   skyEmotionCount: 'How many emotions',
+  statesTitle3D: 'States',
+  statesBlurb3D:
+    'What a memory looks like as it is forgotten, as it rises, and as a neuron wakes. Three of the four are decisions to leave the design alone, and they say so — a state that should read as nothing is a design choice like any other.',
+  statesForgettingLabel: 'Forgetting',
+  statesForgettingNote:
+    'One memory at five lengths of absence. Mood, strength and seed are identical across the row, so the only variable is time. It loses light and it loses MOVEMENT — never size, which is strength, and never hue or chroma, which are the feeling. Watch for a few seconds: a single frame cannot show it.',
+  statesMotionLabel: 'Motion',
+  statesElapsed: (days: number) => (days === 0 ? 'today' : `${days}d`),
+  statesWordLossLabel: 'Word loss',
+  statesWordLossNote:
+    'Nothing here, deliberately. Brightness already says the memory has eroded; which words went is read up close, in the 2D hover glimpse and the star panel. Words are read, not seen from across a universe.',
+  statesWordLossStages: [
+    '첫 겨울 바다에서 헤엄쳤다',
+    '첫 겨울 xxxx 헤엄쳤다',
+    'xxxx xxxx xxxx 헤엄쳤다',
+  ],
+  statesStage: (index: number) => `stage ${index}`,
+  statesReviewedLive: 'Reviewed on the live universe — both read from the episodic store.',
+  statesGistLabel: 'Gist risen',
+  statesGistNote:
+    'Height alone, with the band haze between the two layers doing the work. A risen stage leaves its episodic star where it was, so one memory sits as two bodies over the same x and y — that a second one exists above is the relationship, and drawing a line between them would only crowd the sky. Reviewed on the live universe, where both layers are populated.',
+  statesAwakenLabel: 'Awakening',
+  statesAwakenNote:
+    'Unchanged: a grey latent mote is replaced by a white-gold flare that grows and hands off to the real neuron. It carries no emotion colour, which agrees with a neuron having no feeling. Whether its 1.1 seconds reads is an on-device question.',
+
   nebulaTitle: 'Emotion colour field',
   nebulaBlurb:
     'The nebula is not a body. It is what a region of the universe looks like when the memories in it bleed their colour into the space between them.',

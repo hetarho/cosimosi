@@ -7,13 +7,15 @@
 import { float, normalGeometry, positionGeometry, positionLocal, sin, time, vec3 } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
+import { VALUES } from '@cosimosi/config'
+
 import type { VisualBodySource } from '../../asset-source.ts'
 import { fbm, ridged } from '../../shader-art/noise.ts'
 import { asFloatNode, attributeFloatNode, attributeVec3Node } from '../../tsl.ts'
 
 /** Per-instance emotion color (vec3, linear 0..1) — filled by the star layer's channels. */
 export const STAR_INSTANCE_TINT = 'aStarTint'
-/** Per-instance brightness (float) — resolves full while forgetting decay is unmodeled; the [V2] seam. */
+/** Per-instance brightness (float) — `EffectiveBrightness`, the read-time forgetting fade [V2]. */
 export const STAR_INSTANCE_BRIGHTNESS = 'aStarBrightness'
 /** Per-instance seed (float, normalized) — drives the immutable seed-form [V5][A7]. */
 export const STAR_INSTANCE_SEED = 'aStarSeed'
@@ -32,6 +34,33 @@ const SURFACE_CONTRAST = 0.35
 // not product tuning in values.yaml.
 export const STAR_EMISSIVE_GAIN = 0.95
 
+/** The movement a star at the silent-engram floor keeps — quiet, but not frozen. */
+export const LIFE_FLOOR = 0.16
+
+/**
+ * How much life a star still has, from its brightness channel — 1 for a memory just returned to,
+ * falling to `LIFE_FLOOR` for one at the silent-engram floor.
+ *
+ * This is the one thing forgetting is allowed to take besides light. Size belongs to strength and
+ * hue and chroma belong to the emotion, so a fading star cannot shrink and cannot pale — but its
+ * MOVEMENT is spoken for by nothing, and a body that stops moving reads as one that has stopped being
+ * returned to. What subsides is the motion, never the form: the seed's relief stays at full
+ * amplitude, so a forgotten star is still recognisably itself, just still.
+ *
+ * The floor is not zero. A star is dimmed and never deleted, so it keeps a whisper of movement rather
+ * than becoming a prop.
+ */
+export function starLife(brightness: unknown) {
+  const { starBrightnessMin: min, starBrightnessMax: max } = VALUES.rendering
+  const span = Math.max(max - min, 1e-4)
+  return asFloatNode(brightness)
+    .sub(min)
+    .div(span)
+    .clamp(0, 1)
+    .mul(1 - LIFE_FLOOR)
+    .add(LIFE_FLOOR)
+}
+
 export interface StarBodyOptions {
   /** Animate the seed-form's living relief; false freezes its seed-derived pose. */
   readonly animate?: boolean
@@ -48,12 +77,17 @@ function createStarMaterial(animate: boolean): THREE.MeshBasicNodeMaterial {
   // coherent form. Three out-of-phase loops carry that field over the surface, so the star's
   // irregularity itself evolves instead of a fixed lump merely rotating. The seed remains an
   // immutable input (rendered, never mutated/animated [A7]).
-  const phase = animate ? asFloatNode(time).mul(float(0.22)) : float(0)
+  // Forgetting subsides the movement, not the form (see `starLife`): the phase runs slower and the
+  // travelling breath shallows around its OWN mean, so the relief keeps the same amplitude at both
+  // ends of the range. A breath that shallowed toward zero instead would shrink the seed-form as the
+  // memory faded, and the form is identity — it may not carry forgetting.
+  const life = starLife(brightness)
+  const phase = animate ? asFloatNode(time).mul(float(0.22)).mul(life) : float(0)
   const drift = vec3(
     sin(phase.add(seed.mul(Math.PI * 2))).mul(float(0.32)),
     sin(phase.mul(float(0.73)).add(seed.mul(float(2.1)))).mul(float(0.28)),
     sin(phase.mul(float(0.51)).add(seed.mul(float(4.7)))).mul(float(0.34)),
-  )
+  ).mul(life)
   const field = positionGeometry
     .mul(FORM_FREQUENCY)
     .add(vec3(seed.mul(4.1), seed.mul(1.7), seed.mul(0.3)))
@@ -67,13 +101,14 @@ function createStarMaterial(animate: boolean): THREE.MeshBasicNodeMaterial {
       .add(seed.mul(Math.PI * 2)),
   )
     .mul(float(0.12))
+    .mul(life)
     .add(float(0.88))
   const relief = ridged(field, { octaves: 3 }).mul(FORM_RELIEF).mul(travellingBreath)
   material.positionNode = positionLocal.add(normalGeometry.mul(relief).mul(scale))
 
-  // Color is emotion only [I3]: the per-instance tint, given a subtle seed-keyed surface
-  // shimmer for texture, then scaled by the brightness channel (resolves full while forgetting
-  // decay is unmodeled, [V2]).
+  // Color is emotion only [I3]: the per-instance tint, given a subtle seed-keyed surface shimmer for
+  // texture, then scaled by the brightness channel — the read-time forgetting fade, floored at the
+  // silent-engram minimum [V2][F2].
   const shimmer = fbm(field.mul(2)).mul(0.5).add(0.5).mul(SURFACE_CONTRAST)
   material.colorNode = tint
     .mul(float(1).add(shimmer))
