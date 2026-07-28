@@ -2,50 +2,42 @@ import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { TransportProvider } from '@connectrpc/connect-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-import { createPlatformMockTransport } from '@cosimosi/api-client'
-import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
-import { usePalettePreferenceStore } from '@cosimosi/emotion/react'
+import { createAccountMockTransport } from '@cosimosi/api-client'
+import { MOODS } from '@cosimosi/emotion'
 
-import { defaultLocale, m, setActiveLocale } from '../../../shared/i18n/index.ts'
+import { defaultLocale, m, moodLabel, setActiveLocale } from '../../../shared/i18n/index.ts'
 import { PaletteSection } from './PaletteSection.tsx'
 
 function renderSection(): string {
+  const queryClient = new QueryClient()
   return renderToString(
-    <TransportProvider transport={createPlatformMockTransport(() => ({ message: 'pong' }))}>
-      <PaletteSection />
+    <TransportProvider transport={createAccountMockTransport({})}>
+      <QueryClientProvider client={queryClient}>
+        <PaletteSection />
+      </QueryClientProvider>
     </TransportProvider>,
   )
 }
 
 describe('PaletteSection', () => {
   afterEach(() => {
-    usePalettePreferenceStore.getState().setPaletteId(DEFAULT_PALETTE_ID)
     setActiveLocale(defaultLocale)
   })
 
-  // A4/A5: the picker offers exactly the registry — every entry named through i18n, nothing else
-  // (no free editor exists; the registry is the guardrail surface).
-  it('lists the registry palettes by their localized names', () => {
+  it('renders one editable row for every feeling', () => {
     const html = renderSection()
-    expect(html).toContain(m.palette_name_cosimosi_default())
-    expect(html).toContain(m.palette_name_muted_dusk())
-    for (const control of ['<input', '<select', '<textarea']) {
-      expect(html).not.toContain(control)
-    }
+    expect(html).toContain(m.palette_editor_title())
+    for (const mood of MOODS) expect(html).toContain(moodLabel(mood))
   })
 
-  // A4: the stored preference is marked as the current choice — exactly one mark, sitting inside
-  // the stored palette's row. (renderToString reads the store's initial state — zustand serves
-  // getInitialState as the SSR snapshot — so the marked row is the default one here; the live
-  // mark-follows-store behavior is covered by the mobile RTL flow.)
-  it('marks the stored preference on its own row, once', () => {
+  it('offers three recommendations per mood without fabricating a ratio', () => {
     const html = renderSection()
-    const marked = html.indexOf(m.settings_palette_selected())
-    expect(marked).toBeGreaterThan(html.indexOf(m.palette_name_cosimosi_default()))
-    expect(marked).toBeLessThan(html.indexOf(m.palette_name_muted_dusk()))
-    expect(html.indexOf(m.settings_palette_selected())).toBe(
-      html.lastIndexOf(m.settings_palette_selected()),
+    expect(html.match(new RegExp(m.palette_recommendation_label(), 'g'))).toHaveLength(
+      MOODS.length * 3,
     )
+    expect(html).toContain(m.palette_recommendation_usual())
+    expect(html).not.toContain('%')
   })
 })

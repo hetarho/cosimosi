@@ -13,6 +13,7 @@ import {
   inviteLinkPath,
 } from './pending-invite.ts'
 import {
+  hasSignupCompletion,
   recordSignupCompletion,
   resetSignupUserState,
   takeSignupCompletion,
@@ -66,8 +67,11 @@ describe('signup shared state', () => {
 
   it('records signup completion as a one-shot signal', () => {
     resetSignupUserState()
+    expect(hasSignupCompletion()).toBe(false)
     recordSignupCompletion()
+    expect(hasSignupCompletion()).toBe(true)
     expect(takeSignupCompletion()).toBe(true)
+    expect(hasSignupCompletion()).toBe(false)
     expect(takeSignupCompletion()).toBe(false)
   })
 

@@ -1,15 +1,21 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
 import { createGetProfileQueryOptions } from '@cosimosi/api-client'
-import { pendingInvite } from '@cosimosi/auth'
+import {
+  hasSignupCompletion,
+  pendingInvite,
+  recordSignupCompletion,
+  takeSignupCompletion,
+} from '@cosimosi/auth'
 import { useAuthFacade } from '@cosimosi/auth/react'
 import { m } from '../../shared/i18n/index.ts'
 import { Button, Card } from '@cosimosi/ui'
 
 import { NicknameStep } from '../../features/sign-up/index.ts'
+import { ChooseMoodColors } from '../../features/choose-mood-colors/index.ts'
 
 export function ProfileGate({ children }: { children?: ReactNode }) {
   const transport = useTransport()
@@ -19,10 +25,16 @@ export function ProfileGate({ children }: { children?: ReactNode }) {
     retry: false,
   })
   const profilePresent = profile.data?.profile !== undefined
+  const [colorGate, setColorGate] = useState<'show' | 'done'>(() =>
+    hasSignupCompletion() ? 'show' : 'done',
+  )
 
   useEffect(() => {
     if (profilePresent) pendingInvite.clear()
   }, [profilePresent])
+  useEffect(() => {
+    if (colorGate === 'show') takeSignupCompletion()
+  }, [colorGate])
 
   if (profile.isPending) return <ProfileGateHold />
   if (profile.isError) {
@@ -42,7 +54,18 @@ export function ProfileGate({ children }: { children?: ReactNode }) {
     return (
       <NicknameStep
         onCompleted={async () => {
+          setColorGate(takeSignupCompletion() ? 'show' : 'done')
           await profile.refetch()
+        }}
+      />
+    )
+  }
+  if (colorGate === 'show') {
+    return (
+      <ChooseMoodColors
+        onContinue={() => {
+          recordSignupCompletion()
+          setColorGate('done')
         }}
       />
     )

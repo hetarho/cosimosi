@@ -153,6 +153,20 @@ type MemoryProvenance struct {
 	SemanticStage    pgtype.Int2
 }
 
+type MoodColor struct {
+	UserID    string
+	Mood      string
+	Color     string
+	UpdatedAt pgtype.Timestamptz
+}
+
+type MoodColorCount struct {
+	Mood      string
+	HueBucket int16
+	Color     string
+	Count     int64
+}
+
 type Neuron struct {
 	ID                     string
 	UserID                 string

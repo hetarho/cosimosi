@@ -142,6 +142,72 @@ func (s *Server) SetPalettePreference(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(&accountv1.PalettePreference{PaletteId: paletteID}), nil
 }
 
+func (s *Server) GetMoodColors(
+	ctx context.Context,
+	_ *connect.Request[accountv1.GetMoodColorsRequest],
+) (*connect.Response[accountv1.GetMoodColorsResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	colors, err := s.service.GetMoodColors(ctx, scope)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	response := &accountv1.GetMoodColorsResponse{
+		Colors: make([]*accountv1.MoodColor, 0, len(colors)),
+	}
+	for _, color := range colors {
+		response.Colors = append(response.Colors, moodColorMessage(color))
+	}
+	return connect.NewResponse(response), nil
+}
+
+func (s *Server) SetMoodColor(
+	ctx context.Context,
+	req *connect.Request[accountv1.SetMoodColorRequest],
+) (*connect.Response[accountv1.MoodColor], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	color, err := s.service.SetMoodColor(
+		ctx,
+		scope,
+		account.Mood(req.Msg.GetMood()),
+		account.Color(req.Msg.GetColor()),
+	)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(moodColorMessage(color)), nil
+}
+
+func (s *Server) GetMoodColorStats(
+	ctx context.Context,
+	req *connect.Request[accountv1.GetMoodColorStatsRequest],
+) (*connect.Response[accountv1.GetMoodColorStatsResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stats, err := s.service.GetMoodColorStats(ctx, scope, account.Mood(req.Msg.GetMood()))
+	if err != nil {
+		return nil, domainError(err)
+	}
+	response := &accountv1.GetMoodColorStatsResponse{
+		Stats: make([]*accountv1.MoodColorStat, 0, len(stats)),
+	}
+	for _, stat := range stats {
+		response.Stats = append(response.Stats, &accountv1.MoodColorStat{
+			Bucket:      stat.Bucket,
+			Share:       stat.Share,
+			SwatchColor: string(stat.SwatchColor),
+		})
+	}
+	return connect.NewResponse(response), nil
+}
+
 func (s *Server) Withdraw(
 	ctx context.Context,
 	_ *connect.Request[accountv1.WithdrawRequest],
@@ -206,11 +272,17 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonRestoreWindowExpired, err, nil)
 	case errors.Is(err, account.ErrUnknownPaletteID):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownPalette, err, nil)
+	case errors.Is(err, account.ErrMoodInvalid), errors.Is(err, account.ErrColorInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonMoodColorInvalid, err, nil)
 	case errors.Is(err, account.ErrScopeRequired):
 		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
 	default:
 		return apperr.Internal(err)
 	}
+}
+
+func moodColorMessage(color account.MoodColor) *accountv1.MoodColor {
+	return &accountv1.MoodColor{Mood: string(color.Mood), Color: string(color.Color)}
 }
 
 func profileMessage(view account.ProfileView) *accountv1.Profile {

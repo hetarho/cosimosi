@@ -14,6 +14,9 @@ type Store interface {
 	WithInviteSettlementLock(ctx context.Context, inviterScope platform.UserScope, fn func() error) error
 	GetPalettePreference(ctx context.Context, scope platform.UserScope) (paletteID string, found bool, err error)
 	UpsertPalettePreference(ctx context.Context, scope platform.UserScope, paletteID string) (string, error)
+	ListMoodColors(ctx context.Context, scope platform.UserScope) ([]MoodColor, error)
+	SetMoodColor(ctx context.Context, scope platform.UserScope, color MoodColor, bucket int32) (MoodColor, error)
+	ListMoodColorStats(ctx context.Context, mood Mood, recommendationCount int32) ([]MoodColorStatCount, error)
 	GetUserProfile(ctx context.Context, scope platform.UserScope) (profile Profile, found bool, err error)
 	CreateUserIfAbsent(ctx context.Context, scope platform.UserScope, input SignUpInput, provider *AuthProvider) (profile Profile, created bool, err error)
 	UpdateUserProfile(ctx context.Context, scope platform.UserScope, input UpdateProfileInput) (profile Profile, found bool, err error)

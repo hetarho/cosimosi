@@ -6,6 +6,7 @@ import { m } from '@cosimosi/i18n'
 
 import { AccountProfile } from '../../../features/account-profile/index.ts'
 import { AccountSection } from '../../../features/account-settings/index.ts'
+import { PaletteSection } from '../../../features/change-palette/index.ts'
 import { ExportDiaries } from '../../../features/export-diaries/index.ts'
 import { InviteLink } from '../../../features/invite-link/index.ts'
 import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
@@ -92,6 +93,7 @@ function ProfileTab() {
   return (
     <View style={styles.accountTab}>
       <AccountProfile />
+      <PaletteSection />
       <InviteLink />
     </View>
   )

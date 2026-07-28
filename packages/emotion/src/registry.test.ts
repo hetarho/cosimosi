@@ -12,6 +12,8 @@ import {
   paletteIds,
   resolvePaletteById,
 } from './registry.ts'
+import { MOODS } from './mood.ts'
+import { deltaEOkLab } from './oklab.ts'
 import { defaultMoodPalette } from './palette.ts'
 
 describe('palette registry', () => {
@@ -21,6 +23,19 @@ describe('palette registry', () => {
     expect(entries.length).toBeGreaterThanOrEqual(2)
     for (const palette of entries) {
       expect(() => assertCompletePalette(palette)).not.toThrow()
+    }
+  })
+
+  it('keeps every mood distinct in every recommendation table', () => {
+    for (const [id, palette] of Object.entries(PALETTES)) {
+      for (let first = 0; first < MOODS.length; first += 1) {
+        for (let second = first + 1; second < MOODS.length; second += 1) {
+          expect(
+            deltaEOkLab(palette.colors[MOODS[first]], palette.colors[MOODS[second]]),
+            `${id}: ${MOODS[first]} and ${MOODS[second]} read as one colour`,
+          ).toBeGreaterThanOrEqual(0.05)
+        }
+      }
     }
   })
 

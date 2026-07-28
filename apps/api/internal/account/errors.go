@@ -22,6 +22,8 @@ var (
 	ErrTimezoneInvalid             = errors.New("account timezone is invalid")
 	ErrLocaleInvalid               = errors.New("account locale is invalid")
 	ErrUnknownPaletteID            = errors.New("palette id is not a known registry palette")
+	ErrMoodInvalid                 = errors.New("account mood is invalid")
+	ErrColorInvalid                = errors.New("account color is invalid")
 	ErrAuthProviderInvalid         = errors.New("account auth provider is invalid")
 	ErrInviteLinkUnavailable       = errors.New("account invite link is unavailable")
 	ErrInviteTokenInvalid          = errors.New("account invite token is invalid")

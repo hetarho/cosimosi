@@ -187,6 +187,15 @@ export default defineConfig([
     },
   },
   {
+    // Plan 51's two color actions are deliberately thin app-local UI over shared emotion logic:
+    // the first-signin chooser is composed once by the profile gate, and the later editor once by
+    // /me. Merging either into those hosts would erase the action boundary and web/mobile parity.
+    files: ['./src/features/choose-mood-colors/**', './src/features/change-palette/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
     // The admin console vertical (plan 58): the one web-only /admin page composes four sectioned
     // operator features — AI provider config, users + stardust grant, AI usage, and job health.
     // Each is one operator surface (§3.1: the page composes, never absorbs) and exists only there

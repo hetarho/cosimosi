@@ -1,0 +1,7 @@
+[
+  { "input": "#bb44aa", "snapped": "#ca53b8", "bucket": 11 },
+  { "input": "#777777", "snapped": "#898989", "bucket": 12 },
+  { "input": "#e6b731", "snapped": "#e6b731", "bucket": 2 },
+  { "input": "#70a6f5", "snapped": "#70a6f5", "bucket": 8 },
+  { "input": "#123456", "snapped": "#688cb4", "bucket": 8 }
+]

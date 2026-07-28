@@ -858,6 +858,9 @@ importers:
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../config
+      '@cosimosi/emotion':
+        specifier: workspace:*
+        version: link:../emotion
       '@cosimosi/universe':
         specifier: workspace:*
         version: link:../universe

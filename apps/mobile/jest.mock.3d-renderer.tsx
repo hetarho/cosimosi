@@ -58,3 +58,12 @@ export const useSkin = () => ({
   setSkinKey: () => {},
 })
 export const resolveActiveSkin = (key: string) => key
+export const UNIVERSE_SKINS = {
+  emotion: {
+    key: 'emotion',
+    label: 'Emotion Sky',
+    sky: { effect: 'grainient', night: 0x0a0a12 },
+    camera: { fov: 55 },
+    bloom: { strength: 1, radius: 0.5, threshold: 0.2 },
+  },
+}

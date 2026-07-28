@@ -34,6 +34,16 @@ service AccountService {
   // Store the caller's palette id. Accepts only an id known to the first-party registry; an
   // unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
   rpc SetPalettePreference(SetPalettePreferenceRequest) returns (PalettePreference);
+  // Read only the caller's explicitly chosen mood rows. Missing moods remain authored defaults.
+  rpc GetMoodColors(GetMoodColorsRequest) returns (GetMoodColorsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Snap and store one mood color, updating the aggregate counter in the same transaction.
+  rpc SetMoodColor(SetMoodColorRequest) returns (MoodColor);
+  // Read aggregate-only recommendations for one mood. No individual account is addressable.
+  rpc GetMoodColorStats(GetMoodColorStatsRequest) returns (GetMoodColorStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Account-scoped soft deletion; restorable for account.withdrawal_retention_days.
   rpc Withdraw(WithdrawRequest) returns (WithdrawResponse);
   // Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
@@ -114,6 +124,36 @@ message SetPalettePreferenceRequest {
 // The resolved palette id (the default id when the user never set one).
 message PalettePreference {
   string palette_id = 1;
+}
+
+message GetMoodColorsRequest {}
+
+message GetMoodColorsResponse {
+  repeated MoodColor colors = 1;
+}
+
+message SetMoodColorRequest {
+  string mood = 1;
+  string color = 2;
+}
+
+message MoodColor {
+  string mood = 1;
+  string color = 2;
+}
+
+message GetMoodColorStatsRequest {
+  string mood = 1;
+}
+
+message GetMoodColorStatsResponse {
+  repeated MoodColorStat stats = 1;
+}
+
+message MoodColorStat {
+  int32 bucket = 1;
+  optional double share = 2;
+  string swatch_color = 3;
 }
 
 // Scope comes only from the authenticated context. There is deliberately no user_id,

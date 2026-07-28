@@ -2,6 +2,7 @@ import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  createGetMoodColorsQueryKey,
   createGetPalettePreferenceQueryKey,
   createGetProfileQueryKey,
   createGetUniverseQueryKey,
@@ -54,6 +55,9 @@ function seedDefaultPalette(fakes: ReturnType<typeof createTestHarnessFakes>, us
       email: 'test@example.test',
       createdAt: '2026-07-26T00:00:00Z',
     },
+  } as never)
+  setClientCacheData(fakes.queryClient, createGetMoodColorsQueryKey(fakes.transport), {
+    colors: [],
   } as never)
   setClientCacheData(fakes.queryClient, createGetPalettePreferenceQueryKey(fakes.transport), {
     paletteId: DEFAULT_PALETTE_ID,

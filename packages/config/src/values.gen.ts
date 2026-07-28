@@ -76,6 +76,12 @@ export const VALUES = {
   },
   palette: {
     axisWarnValenceThreshold: 0.6,
+    recommendationCount: 3,
+    statMinSample: 10,
+    hueBucketDegrees: 30,
+    nearNeutralChromaMax: 0.04,
+    similarDeltaEMin: 0.05,
+    onboardingFieldRadius: 18,
   },
   encode: {
     minMemories: 2,

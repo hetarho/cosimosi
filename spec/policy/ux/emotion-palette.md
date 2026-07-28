@@ -44,22 +44,38 @@ stage changes a body's z and its diffuse look, never its color; abstraction is e
 reaches the gist's z or geometry. (Atmosphere-only tints — the layer-gap haze, the skin background — are neutral
 space-tones, deliberately outside the emotion seam.)
 
-## The palette registry & per-user preference (plan 51, as-built)
+## Authored fallback and per-mood choices (plan 51, as-built)
 
-A user may choose the emotion palette from a **named registry** in `packages/emotion` (≥2 palettes keyed by a stable
-id; `DEFAULT_PALETTE_ID = 'cosimosi-default'`). The choice is a **single `palette_id` scalar** stored per user via the
-`account.v1.AccountService` (`Get`/`SetPalettePreference`) — `palette_id` is the **entire writable surface**, so a
-preference write structurally cannot reach the meaning layer ([I11][P2]); the backend stores only the id and computes
-no color. An unknown id is rejected on write and coerced to the default on read, and the write is validated against a
-first-party allow-list (kept in sync with the client registry by a byte-identical id fixture). At authenticated app
-entry, palette-dependent children remain behind a neutral commit gate until the stored id or deterministic default has
-been canonically applied through `setMoodPalette`; the first universe commit therefore cannot flash another palette.
-Unknown ids become the default id and palette together. A live swap re-colors immediately through the one `moodColor`
-seam with no rendering-code change and no `GetUniverse` refetch. Persistence tracks server-confirmed truth separately
-from optimistic display state, rolls failures back to that truth, and discards queued or late work from an obsolete
-auth-session epoch.
+A user's current color preference is per mood:
 
-**Axis-consistency is warn-only.** A pure `checkPaletteAxisConsistency` flags warm/cool ↔ valence mismatches as
-**warnings**, never a hard block ([P3]); HSL saturation attenuates hue evidence, making grayscale exactly neutral and
-near-gray evidence weak. Every shipped palette passes. The registry is frontend-only content — the palette tables,
-ids, and the hue formula live in code, never in `values.yaml` (only the warn threshold is a value).
+- `cosimosi-default` is the complete fallback table;
+- an optional per-mood row overrides one feeling's color;
+- named first-party palettes remain recommendation/content sets, while the earlier registry-id
+  contract remains backward-compatible.
+
+A mood without a row always uses its authored `cosimosi-default` color. The authenticated app gate
+overlays the per-mood rows on that table and applies the complete result through `setMoodPalette`
+before palette-dependent children mount. Live choices use the same seam and never require
+`GetUniverse`.
+
+Per-mood colors are lowercase `#rrggbb` and server-snapped to the nearest existing emotion
+lightness step (`0.80`, `0.72`, `0.63`). Hue and chroma remain the user's within 8-bit encoding
+tolerance. A color within the configured OkLab ΔE of another chosen mood raises a visible notice
+but is still accepted.
+
+Each mood shows three recommendations. Aggregate candidates are counted by twelve configured
+OkLCH hue buckets plus one near-neutral bucket. The most-chosen exact color in a bucket is its
+swatch. A bucket below the configured sample floor carries no ratio at all; authored fallbacks used
+to fill an incomplete recommendation list never invent a ratio.
+
+The recommendation aggregate contains mood, bucket, swatch, and count only. It has no user id and
+no individual-account read. The first-signin screen and My page editor may write only the
+authenticated user's one mood row.
+
+Skipping first-signin color choice writes no color and no durable seen/skipped marker. Absence stays
+an honest preference state.
+
+**Axis-consistency is warn-only.** `checkPaletteAxisConsistency` flags warm/cool ↔ valence
+mismatches as warnings, never hard blocks ([P3]). The per-mood near-duplicate notice follows the
+same warn-only principle. Palette tables and formulas remain code/content; only genuine tuning
+scalars live in `values.yaml`.

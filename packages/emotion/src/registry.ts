@@ -10,19 +10,19 @@ export const DEFAULT_PALETTE_ID = 'cosimosi-default'
 // as a coherent second palette rather than a random remap. Routed through defineMoodPalette so
 // it inherits the same completeness guarantee as the default (all 13 moods present).
 const mutedDuskPalette: MoodPalette = defineMoodPalette('muted-dusk', {
-  JOY: '#e8c07d',
-  CALM: '#dcae82',
-  SAD: '#6d84a6',
-  ANGER: '#7d75a8',
-  FEAR: '#6c6fb0',
-  LOVE: '#d98a9e',
-  NEUTRAL: '#b0aeb0',
-  EXCITEMENT: '#e0906b',
-  GRATITUDE: '#d8b26a',
-  RELIEF: '#d4c07a',
-  STRESS: '#74709e',
-  TIRED: '#7c8aa0',
-  EMPTINESS: '#6f7686',
+  JOY: '#f2b036',
+  CALM: '#57b9a1',
+  SAD: '#5dabf2',
+  ANGER: '#e54479',
+  FEAR: '#ab91f2',
+  LOVE: '#df85a4',
+  NEUTRAL: '#a8a49c',
+  EXCITEMENT: '#f47d67',
+  GRATITUDE: '#ffa16c',
+  RELIEF: '#97d083',
+  STRESS: '#b562c8',
+  TIRED: '#7eadbd',
+  EMPTINESS: '#9ba1cb',
 })
 
 // The id → palette authority. The default registers under its stable id (its color table is

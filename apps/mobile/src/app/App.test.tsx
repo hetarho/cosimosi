@@ -13,7 +13,7 @@ import {
   MemoryService,
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
-import { pendingInvite, takeSignupCompletion } from '@cosimosi/auth'
+import { pendingInvite, resetSignupUserState, takeSignupCompletion } from '@cosimosi/auth'
 import { VALUES } from '@cosimosi/config'
 import { DEFAULT_PALETTE_ID, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { setClientCacheData } from '@cosimosi/client-cache'
@@ -66,6 +66,7 @@ function createMobileAppTransport(
     onGetProfile?: () => void
     onGetUniverse?: () => void
     onGetPalettePreference?: () => void
+    onGetMoodColors?: () => void
     onSignUp?: (request: {
       nickname: string
       timezone: string
@@ -76,7 +77,9 @@ function createMobileAppTransport(
     onWithdraw?: () => void
     onExport?: (format: ExportFormat) => void
     getPalettePreference?: () => string
+    getMoodColors?: () => Array<{ mood: string; color: string }>
     setPalettePreference?: (paletteId: string) => Promise<string>
+    onSetMoodColor?: (request: { mood: string; color: string }) => void
   } = {},
 ) {
   let profilePresent = options.profilePresent !== false
@@ -159,6 +162,15 @@ function createMobileAppTransport(
             : request.paletteId,
         }
       },
+      getMoodColors: () => {
+        options.onGetMoodColors?.()
+        return { colors: options.getMoodColors?.() ?? [] }
+      },
+      setMoodColor: (request) => {
+        options.onSetMoodColor?.({ mood: request.mood, color: request.color })
+        return { mood: request.mood, color: request.color }
+      },
+      getMoodColorStats: () => ({ stats: [] }),
     })
     service(MemoryService, {
       getUniverse: () => {
@@ -394,7 +406,7 @@ describe('mobile auth gate', () => {
         onGetProfile: () => {
           profileReads += 1
         },
-        onGetPalettePreference: () => {
+        onGetMoodColors: () => {
           paletteReads += 1
         },
         onGetUniverse: () => {
@@ -432,15 +444,19 @@ describe('mobile auth gate', () => {
     }
   })
 
-  it('completes the one nickname write and releases the existing empty-universe beginning', async () => {
+  it('places the color screen after nickname, then hands the first universe signal on', async () => {
     let payload:
       { nickname: string; timezone: string; locale: string; inviteToken: string } | undefined
+    let moodColorWrites = 0
     const fakes = createMobileShellFakes({
       userId: 'new-user',
       transport: createMobileAppTransport({
         profilePresent: false,
         onSignUp: (request) => {
           payload = request
+        },
+        onSetMoodColor: () => {
+          moodColorWrites += 1
         },
       }),
     })
@@ -452,18 +468,52 @@ describe('mobile auth gate', () => {
       fireEvent.changeText(screen.UNSAFE_getByType(TextInput), 'Nova')
       fireEvent.press(screen.getByText(m.signup_nickname_submit()))
 
-      await waitFor(() => expect(screen.getByText(m.universe_first_run_welcome())).toBeTruthy())
+      await waitFor(() => expect(screen.getByText(m.mood_color_onboarding_title())).toBeTruthy())
+      expect(screen.queryByText(m.universe_first_run_welcome())).toBeNull()
       expect(payload).toMatchObject({
         nickname: 'Nova',
         locale: 'en',
         inviteToken: 'stale-token',
       })
       expect(payload?.timezone).toBeTruthy()
+      expect(takeSignupCompletion()).toBe(false)
+      fireEvent.press(screen.getByText(m.mood_color_onboarding_skip()))
+      await waitFor(() => expect(screen.getByText(m.universe_first_run_welcome())).toBeTruthy())
+      expect(moodColorWrites).toBe(0)
       expect(takeSignupCompletion()).toBe(true)
       expect(takeSignupCompletion()).toBe(false)
     } finally {
       view.unmount()
       fakes.dispose()
+    }
+  })
+
+  it('applies and persists a recommendation live on the color screen', async () => {
+    let saved: { mood: string; color: string } | undefined
+    const fakes = createMobileShellFakes({
+      userId: 'color-onboarding-user',
+      transport: createMobileAppTransport({
+        profilePresent: false,
+        onSetMoodColor: (request) => {
+          saved = request
+        },
+      }),
+    })
+    const view = renderShell(fakes)
+    try {
+      await waitFor(() => expect(screen.getByText(m.signup_nickname_title())).toBeTruthy())
+      fireEvent.changeText(screen.UNSAFE_getByType(TextInput), 'Nova')
+      fireEvent.press(screen.getByText(m.signup_nickname_submit()))
+      await waitFor(() => expect(screen.getByText(m.mood_color_onboarding_title())).toBeTruthy())
+      fireEvent.press(screen.getAllByLabelText(m.palette_recommendation_label())[1])
+      await waitFor(() => expect(saved).toBeDefined())
+      expect(saved?.mood).toBe('JOY')
+      expect(moodColor('JOY')).toBe(saved?.color)
+    } finally {
+      view.unmount()
+      fakes.dispose()
+      resetSignupUserState()
+      resetMoodPalette()
     }
   })
 
@@ -542,21 +592,17 @@ describe('mobile auth gate', () => {
   })
 
   it('isolates every client-state category across universe and diary, A → logout → B', async () => {
-    let paletteReads = 0
+    let colorReads = 0
     const fakes = createMobileShellFakes({
       userId: 'user-a',
       transport: createMobileAppTransport({
-        getPalettePreference: () => (++paletteReads === 1 ? 'muted-dusk' : DEFAULT_PALETTE_ID),
+        getMoodColors: () => (++colorReads === 1 ? [{ mood: 'JOY', color: '#f2b036' }] : []),
       }),
     })
     const view = renderShell(fakes)
     try {
       await waitFor(() => expect(screen.getByText(m.universe_first_run_welcome())).toBeTruthy())
-      expect(usePalettePreferenceStore.getState()).toMatchObject({
-        paletteId: 'muted-dusk',
-        confirmedPaletteId: 'muted-dusk',
-      })
-      expect(moodColor('JOY')).toBe('#e8c07d')
+      expect(moodColor('JOY')).toBe('#f2b036')
 
       fireEvent.press(screen.getByRole('button', { name: m.diary_reader_title() }))
       await waitFor(() => expect(screen.getByText(m.diary_reader_back())).toBeTruthy())

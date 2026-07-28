@@ -22,6 +22,9 @@ const platformTables = new Set([
   'ai_provider_config',
   'admin_stardust_grants',
   'admin_audit_log',
+  // Deliberately anonymous mood-level recommendation counters. Individual choices remain in
+  // mood_colors with user_id; this projection stores only mood, bucket, swatch, and count.
+  'mood_color_counts',
 ])
 // Deliberately global statements, allowlisted by `<dir>/<file>#<sqlc name>`. Each must be a
 // platform-owned scan whose own SQL comment states why it crosses users; product reads/writes
@@ -78,6 +81,7 @@ const hardDeleteQueries = new Set([
   'account/withdrawal.sql#PurgeAccountAuthProviders',
   'account/withdrawal.sql#PurgeAccountInvites',
   'account/withdrawal.sql#PurgeAccountPalettePreference',
+  'account/withdrawal.sql#PurgeAccountMoodColors',
   'account/withdrawal.sql#PurgeAccountUser',
 ])
 

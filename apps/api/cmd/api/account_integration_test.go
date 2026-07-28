@@ -145,6 +145,18 @@ func (profileZoneStore) UpsertPalettePreference(context.Context, platform.UserSc
 	return "", nil
 }
 
+func (profileZoneStore) ListMoodColors(context.Context, platform.UserScope) ([]account.MoodColor, error) {
+	return nil, nil
+}
+
+func (profileZoneStore) SetMoodColor(context.Context, platform.UserScope, account.MoodColor, int32) (account.MoodColor, error) {
+	return account.MoodColor{}, nil
+}
+
+func (profileZoneStore) ListMoodColorStats(context.Context, account.Mood, int32) ([]account.MoodColorStatCount, error) {
+	return nil, nil
+}
+
 func (profileZoneStore) ListAuthProviders(context.Context, platform.UserScope) ([]account.AuthProvider, error) {
 	return nil, nil
 }

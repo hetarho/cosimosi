@@ -15,6 +15,19 @@ Migration `00016_account_identity.sql` creates three product-owned, user-scoped 
 - `invites(id, user_id, invitee_user_id, token, created_at, bound_at, rewarded_at)` — unique token, unique invitee,
   non-self, bound-only rows, and no `deleted_at`.
 
+Palette storage coexists in three tables:
+
+- `palette_preferences(user_id, palette_id, updated_at)` retains the legacy first-party registry-id
+  contract but does not define an absent per-mood row's fallback;
+- `mood_colors(user_id, mood, color, updated_at)` has one optional lowercase color per mood;
+- `mood_color_counts(mood, hue_bucket, color, count)` is a deliberately anonymous aggregate with
+  no user id.
+
+`SetMoodColor` serializes each `(user_id, mood)` transaction with a transaction advisory lock so
+two simultaneous first writes cannot increment the aggregate twice. It decrements the old exact
+swatch, upserts the user row, and increments the new exact swatch atomically. Identical retries do
+not move a counter.
+
 Static sqlc queries live in `db/queries/account`. Every statement is conjunctively scoped by `user_id` except
 `FindSettleableInviteForInvitee`, the single-row authenticated-invitee lookup recorded in the global-query
 allowlist. `BindInviteToInvitee` remains conjunctively inviter-scoped and needs no exception. The platform-table
@@ -28,8 +41,15 @@ packages remain the persistence and Connect adapters. Domain files import no pro
 context.
 
 `cosimosi.account.v1.AccountService` publishes `GetProfile`, `UpdateProfile`, `ListAuthProviders`,
-`GetInviteLink`, and the `SignUp` mutation alongside the existing palette methods. No request can name a user id.
-All three read RPCs are classified exactly once as private user-scoped `NO_SIDE_EFFECTS` reads.
+`GetInviteLink`, and the `SignUp` mutation alongside coarse and per-mood palette methods. No request
+can name a user id. `GetMoodColors` returns only the caller's explicit rows. `SetMoodColor` accepts
+only closed-set mood plus lowercase `#rrggbb`, then snaps lightness before storage.
+`GetMoodColorStats` returns exactly bucket, optional share, and swatch color; it has no individual
+account field. Side-effect-free reads are `NO_SIDE_EFFECTS`.
+
+The context's OkLab/OkLCH port is pinned to the TypeScript package by
+`internal/account/testdata/mood-color-parity.json`. The generated palette values control bucket
+width, near-neutral chroma, recommendation count, and share floor.
 
 ## Supabase directory
 
@@ -154,7 +174,8 @@ Purge SQL stays in each owning context:
   all user jobs except the running sweep;
 - twinkle removes only the withdrawing user's ledger and balance;
 - account removes auth-provider rows, invites where `invites.user_id` is the withdrawing inviter, the palette
-  preference, and finally `users`.
+  preference, per-mood color rows, and finally `users`. Anonymous aggregate counts retain no
+  account key.
 
 Memory and Twinkle each publish their own `WithdrawalPurger`; API, dev worker, and production worker inject those
 types directly into account's consumer-owned port. No binary-local scheduler/purger adapter or duplicate missing-job

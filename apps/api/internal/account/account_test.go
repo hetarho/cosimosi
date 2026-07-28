@@ -22,6 +22,8 @@ type fakeStore struct {
 	mu             sync.Mutex
 	settlementMu   sync.Mutex
 	palettes       map[string]string
+	moodColors     map[string]map[Mood]Color
+	moodColorStats map[Mood][]MoodColorStatCount
 	profiles       map[string]Profile
 	providers      map[string][]AuthProvider
 	invites        map[string]SettleableInvite
@@ -109,6 +111,51 @@ func (f *fakeStore) UpsertPalettePreference(_ context.Context, scope platform.Us
 	}
 	f.palettes[scope.UserID()] = paletteID
 	return paletteID, nil
+}
+
+func (f *fakeStore) ListMoodColors(_ context.Context, scope platform.UserScope) ([]MoodColor, error) {
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	rows := make([]MoodColor, 0, len(f.moodColors[scope.UserID()]))
+	for mood, color := range f.moodColors[scope.UserID()] {
+		rows = append(rows, MoodColor{Mood: mood, Color: color})
+	}
+	return rows, nil
+}
+
+func (f *fakeStore) SetMoodColor(
+	_ context.Context,
+	scope platform.UserScope,
+	color MoodColor,
+	_ int32,
+) (MoodColor, error) {
+	if f.putErr != nil {
+		return MoodColor{}, f.putErr
+	}
+	if f.moodColors == nil {
+		f.moodColors = map[string]map[Mood]Color{}
+	}
+	if f.moodColors[scope.UserID()] == nil {
+		f.moodColors[scope.UserID()] = map[Mood]Color{}
+	}
+	f.moodColors[scope.UserID()][color.Mood] = color.Color
+	return color, nil
+}
+
+func (f *fakeStore) ListMoodColorStats(
+	_ context.Context,
+	mood Mood,
+	recommendationCount int32,
+) ([]MoodColorStatCount, error) {
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	rows := f.moodColorStats[mood]
+	if len(rows) > int(recommendationCount) {
+		rows = rows[:recommendationCount]
+	}
+	return append([]MoodColorStatCount(nil), rows...), nil
 }
 
 func (f *fakeStore) GetUserProfile(_ context.Context, scope platform.UserScope) (Profile, bool, error) {

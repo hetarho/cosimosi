@@ -14,6 +14,7 @@
   "dependencies": {
     "@cosimosi/3d-renderer": "workspace:*",
     "@cosimosi/config": "workspace:*",
+    "@cosimosi/emotion": "workspace:*",
     "@cosimosi/universe": "workspace:*"
   },
   "peerDependencies": {

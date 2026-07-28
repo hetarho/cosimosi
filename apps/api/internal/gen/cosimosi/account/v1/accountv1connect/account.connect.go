@@ -53,6 +53,15 @@ const (
 	// AccountServiceSetPalettePreferenceProcedure is the fully-qualified name of the AccountService's
 	// SetPalettePreference RPC.
 	AccountServiceSetPalettePreferenceProcedure = "/cosimosi.account.v1.AccountService/SetPalettePreference"
+	// AccountServiceGetMoodColorsProcedure is the fully-qualified name of the AccountService's
+	// GetMoodColors RPC.
+	AccountServiceGetMoodColorsProcedure = "/cosimosi.account.v1.AccountService/GetMoodColors"
+	// AccountServiceSetMoodColorProcedure is the fully-qualified name of the AccountService's
+	// SetMoodColor RPC.
+	AccountServiceSetMoodColorProcedure = "/cosimosi.account.v1.AccountService/SetMoodColor"
+	// AccountServiceGetMoodColorStatsProcedure is the fully-qualified name of the AccountService's
+	// GetMoodColorStats RPC.
+	AccountServiceGetMoodColorStatsProcedure = "/cosimosi.account.v1.AccountService/GetMoodColorStats"
 	// AccountServiceWithdrawProcedure is the fully-qualified name of the AccountService's Withdraw RPC.
 	AccountServiceWithdrawProcedure = "/cosimosi.account.v1.AccountService/Withdraw"
 	// AccountServiceRestoreAccountProcedure is the fully-qualified name of the AccountService's
@@ -79,6 +88,12 @@ type AccountServiceClient interface {
 	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
 	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
 	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
+	// Read only the caller's explicitly chosen mood rows. Missing moods remain authored defaults.
+	GetMoodColors(context.Context, *connect.Request[v1.GetMoodColorsRequest]) (*connect.Response[v1.GetMoodColorsResponse], error)
+	// Snap and store one mood color, updating the aggregate counter in the same transaction.
+	SetMoodColor(context.Context, *connect.Request[v1.SetMoodColorRequest]) (*connect.Response[v1.MoodColor], error)
+	// Read aggregate-only recommendations for one mood. No individual account is addressable.
+	GetMoodColorStats(context.Context, *connect.Request[v1.GetMoodColorStatsRequest]) (*connect.Response[v1.GetMoodColorStatsResponse], error)
 	// Account-scoped soft deletion; restorable for account.withdrawal_retention_days.
 	Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error)
 	// Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
@@ -143,6 +158,26 @@ func NewAccountServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(accountServiceMethods.ByName("SetPalettePreference")),
 			connect.WithClientOptions(opts...),
 		),
+		getMoodColors: connect.NewClient[v1.GetMoodColorsRequest, v1.GetMoodColorsResponse](
+			httpClient,
+			baseURL+AccountServiceGetMoodColorsProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("GetMoodColors")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		setMoodColor: connect.NewClient[v1.SetMoodColorRequest, v1.MoodColor](
+			httpClient,
+			baseURL+AccountServiceSetMoodColorProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("SetMoodColor")),
+			connect.WithClientOptions(opts...),
+		),
+		getMoodColorStats: connect.NewClient[v1.GetMoodColorStatsRequest, v1.GetMoodColorStatsResponse](
+			httpClient,
+			baseURL+AccountServiceGetMoodColorStatsProcedure,
+			connect.WithSchema(accountServiceMethods.ByName("GetMoodColorStats")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		withdraw: connect.NewClient[v1.WithdrawRequest, v1.WithdrawResponse](
 			httpClient,
 			baseURL+AccountServiceWithdrawProcedure,
@@ -167,6 +202,9 @@ type accountServiceClient struct {
 	getInviteLink        *connect.Client[v1.GetInviteLinkRequest, v1.GetInviteLinkResponse]
 	getPalettePreference *connect.Client[v1.GetPalettePreferenceRequest, v1.PalettePreference]
 	setPalettePreference *connect.Client[v1.SetPalettePreferenceRequest, v1.PalettePreference]
+	getMoodColors        *connect.Client[v1.GetMoodColorsRequest, v1.GetMoodColorsResponse]
+	setMoodColor         *connect.Client[v1.SetMoodColorRequest, v1.MoodColor]
+	getMoodColorStats    *connect.Client[v1.GetMoodColorStatsRequest, v1.GetMoodColorStatsResponse]
 	withdraw             *connect.Client[v1.WithdrawRequest, v1.WithdrawResponse]
 	restoreAccount       *connect.Client[v1.RestoreAccountRequest, v1.RestoreAccountResponse]
 }
@@ -206,6 +244,21 @@ func (c *accountServiceClient) SetPalettePreference(ctx context.Context, req *co
 	return c.setPalettePreference.CallUnary(ctx, req)
 }
 
+// GetMoodColors calls cosimosi.account.v1.AccountService.GetMoodColors.
+func (c *accountServiceClient) GetMoodColors(ctx context.Context, req *connect.Request[v1.GetMoodColorsRequest]) (*connect.Response[v1.GetMoodColorsResponse], error) {
+	return c.getMoodColors.CallUnary(ctx, req)
+}
+
+// SetMoodColor calls cosimosi.account.v1.AccountService.SetMoodColor.
+func (c *accountServiceClient) SetMoodColor(ctx context.Context, req *connect.Request[v1.SetMoodColorRequest]) (*connect.Response[v1.MoodColor], error) {
+	return c.setMoodColor.CallUnary(ctx, req)
+}
+
+// GetMoodColorStats calls cosimosi.account.v1.AccountService.GetMoodColorStats.
+func (c *accountServiceClient) GetMoodColorStats(ctx context.Context, req *connect.Request[v1.GetMoodColorStatsRequest]) (*connect.Response[v1.GetMoodColorStatsResponse], error) {
+	return c.getMoodColorStats.CallUnary(ctx, req)
+}
+
 // Withdraw calls cosimosi.account.v1.AccountService.Withdraw.
 func (c *accountServiceClient) Withdraw(ctx context.Context, req *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error) {
 	return c.withdraw.CallUnary(ctx, req)
@@ -235,6 +288,12 @@ type AccountServiceHandler interface {
 	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
 	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
 	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
+	// Read only the caller's explicitly chosen mood rows. Missing moods remain authored defaults.
+	GetMoodColors(context.Context, *connect.Request[v1.GetMoodColorsRequest]) (*connect.Response[v1.GetMoodColorsResponse], error)
+	// Snap and store one mood color, updating the aggregate counter in the same transaction.
+	SetMoodColor(context.Context, *connect.Request[v1.SetMoodColorRequest]) (*connect.Response[v1.MoodColor], error)
+	// Read aggregate-only recommendations for one mood. No individual account is addressable.
+	GetMoodColorStats(context.Context, *connect.Request[v1.GetMoodColorStatsRequest]) (*connect.Response[v1.GetMoodColorStatsResponse], error)
 	// Account-scoped soft deletion; restorable for account.withdrawal_retention_days.
 	Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error)
 	// Undo withdrawal inside the retention window. This is the one procedure a withdrawn scope
@@ -295,6 +354,26 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 		connect.WithSchema(accountServiceMethods.ByName("SetPalettePreference")),
 		connect.WithHandlerOptions(opts...),
 	)
+	accountServiceGetMoodColorsHandler := connect.NewUnaryHandler(
+		AccountServiceGetMoodColorsProcedure,
+		svc.GetMoodColors,
+		connect.WithSchema(accountServiceMethods.ByName("GetMoodColors")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountServiceSetMoodColorHandler := connect.NewUnaryHandler(
+		AccountServiceSetMoodColorProcedure,
+		svc.SetMoodColor,
+		connect.WithSchema(accountServiceMethods.ByName("SetMoodColor")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountServiceGetMoodColorStatsHandler := connect.NewUnaryHandler(
+		AccountServiceGetMoodColorStatsProcedure,
+		svc.GetMoodColorStats,
+		connect.WithSchema(accountServiceMethods.ByName("GetMoodColorStats")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	accountServiceWithdrawHandler := connect.NewUnaryHandler(
 		AccountServiceWithdrawProcedure,
 		svc.Withdraw,
@@ -323,6 +402,12 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 			accountServiceGetPalettePreferenceHandler.ServeHTTP(w, r)
 		case AccountServiceSetPalettePreferenceProcedure:
 			accountServiceSetPalettePreferenceHandler.ServeHTTP(w, r)
+		case AccountServiceGetMoodColorsProcedure:
+			accountServiceGetMoodColorsHandler.ServeHTTP(w, r)
+		case AccountServiceSetMoodColorProcedure:
+			accountServiceSetMoodColorHandler.ServeHTTP(w, r)
+		case AccountServiceGetMoodColorStatsProcedure:
+			accountServiceGetMoodColorStatsHandler.ServeHTTP(w, r)
 		case AccountServiceWithdrawProcedure:
 			accountServiceWithdrawHandler.ServeHTTP(w, r)
 		case AccountServiceRestoreAccountProcedure:
@@ -362,6 +447,18 @@ func (UnimplementedAccountServiceHandler) GetPalettePreference(context.Context, 
 
 func (UnimplementedAccountServiceHandler) SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.SetPalettePreference is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) GetMoodColors(context.Context, *connect.Request[v1.GetMoodColorsRequest]) (*connect.Response[v1.GetMoodColorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.GetMoodColors is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) SetMoodColor(context.Context, *connect.Request[v1.SetMoodColorRequest]) (*connect.Response[v1.MoodColor], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.SetMoodColor is not implemented"))
+}
+
+func (UnimplementedAccountServiceHandler) GetMoodColorStats(context.Context, *connect.Request[v1.GetMoodColorStatsRequest]) (*connect.Response[v1.GetMoodColorStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.GetMoodColorStats is not implemented"))
 }
 
 func (UnimplementedAccountServiceHandler) Withdraw(context.Context, *connect.Request[v1.WithdrawRequest]) (*connect.Response[v1.WithdrawResponse], error) {

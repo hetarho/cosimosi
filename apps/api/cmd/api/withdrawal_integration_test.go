@@ -173,6 +173,23 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		keepJobID,
 		now,
 	)
+	aggregateColor := fmt.Sprintf("#%06x", uint64(time.Now().UnixNano())&0xffffff)
+	if _, err := pool.PgxPool().Exec(ctx, `
+		INSERT INTO mood_color_counts (mood, hue_bucket, color, count)
+		VALUES ('CALM', 5, $1, 7)`, aggregateColor); err != nil {
+		t.Fatalf("seed anonymous mood color aggregate failed: %v", err)
+	}
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanupCancel()
+		if _, err := pool.PgxPool().Exec(
+			cleanupCtx,
+			"DELETE FROM mood_color_counts WHERE mood = 'CALM' AND color = $1",
+			aggregateColor,
+		); err != nil {
+			t.Errorf("cleanup anonymous mood color aggregate failed: %v", err)
+		}
+	})
 	productTables := migrationDeclaredUserTables(t)
 	databaseTables := databaseUserTables(t, ctx, pool)
 	if got, want := sortedSetKeys(productTables), sortedSetKeys(databaseTables); !equalStrings(got, want) {
@@ -266,6 +283,18 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 	if !banned[userID] || !deleted[userID] {
 		t.Fatalf("credential sequence = banned %v deleted %v, want both", banned, deleted)
 	}
+	var anonymousCount int64
+	if err := pool.PgxPool().QueryRow(
+		ctx,
+		"SELECT count FROM mood_color_counts WHERE mood = 'CALM' AND color = $1",
+		aggregateColor,
+	).Scan(&anonymousCount); err != nil || anonymousCount != 7 {
+		t.Fatalf(
+			"anonymous historical mood color count = %d, err %v, want 7",
+			anonymousCount,
+			err,
+		)
+	}
 
 	assertWithdrawalNegativeRows(t, ctx, pool, base, userID, otherUserID)
 }
@@ -358,6 +387,9 @@ func seedWithdrawalTables(
 	exec("palette_preferences", `
 		INSERT INTO palette_preferences (user_id, palette_id)
 		VALUES ($1, 'muted-dusk')`, userID)
+	exec("mood_colors", `
+		INSERT INTO mood_colors (user_id, mood, color)
+		VALUES ($1, 'CALM', '#5eb093')`, userID)
 
 	exec("twinkle_balances", `
 		INSERT INTO twinkle_balances
@@ -622,6 +654,7 @@ func cleanupWithdrawalRows(
 			"DELETE FROM auth_providers WHERE user_id = $1",
 			"DELETE FROM invites WHERE user_id = $1 OR invitee_user_id = $1",
 			"DELETE FROM palette_preferences WHERE user_id = $1",
+			"DELETE FROM mood_colors WHERE user_id = $1",
 			"DELETE FROM users WHERE user_id = $1",
 			"DELETE FROM admin_users WHERE user_id = $1",
 			"DELETE FROM twinkle_ledger_entries WHERE user_id = $1",

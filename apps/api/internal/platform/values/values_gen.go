@@ -156,6 +156,12 @@ var (
 // palette
 const (
 	PaletteAxisWarnValenceThreshold = 0.6
+	PaletteRecommendationCount      = 3
+	PaletteStatMinSample            = 10
+	PaletteHueBucketDegrees         = 30
+	PaletteNearNeutralChromaMax     = 0.04
+	PaletteSimilarDeltaEMin         = 0.05
+	PaletteOnboardingFieldRadius    = 18
 )
 
 // encode

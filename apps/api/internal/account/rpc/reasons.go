@@ -2,6 +2,7 @@ package rpc
 
 const (
 	reasonUnknownPalette        = "ACCOUNT_UNKNOWN_PALETTE"
+	reasonMoodColorInvalid      = "ACCOUNT_MOOD_COLOR_INVALID"
 	reasonScopeRequired         = "ACCOUNT_SCOPE_REQUIRED"
 	reasonNotProvisioned        = "ACCOUNT_NOT_PROVISIONED"
 	reasonSignupRequired        = "ACCOUNT_SIGNUP_REQUIRED"

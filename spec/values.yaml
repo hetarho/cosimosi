@@ -231,6 +231,22 @@ palette:
   # a hard block. Tuned so every shipped registry palette passes with margin (the default's
   # sharpest contradiction sits at ~0.4) while a genuinely inverted palette still trips.
   axis_warn_valence_threshold: 0.6
+  # Number of aggregate-backed candidates shown for one mood. The query accepts this generated
+  # limit instead of owning a SQL literal.
+  recommendation_count: 3
+  # A bucket may expose its share only after this many choices. Smaller samples still contribute a
+  # swatch recommendation, but the UI renders no ratio.
+  stat_min_sample: 10
+  # Equal-width hue sectors on the OkLCH circle. Twelve 30-degree buckets cover chromatic colors.
+  hue_bucket_degrees: 30
+  # Colors at or below this OkLCH chroma enter the thirteenth, near-neutral bucket.
+  near_neutral_chroma_max: 0.04
+  # Warn when two mood colors are this close in OkLab. This remains below the authored default
+  # table's minimum pairwise separation (0.0545), so the shipped defaults do not self-warn.
+  similar_delta_e_min: 0.05
+  # World radius for the thirteen-star onboarding field. It stays inside the portrait camera's
+  # narrow axis so every selectable mood remains on-screen on mobile.
+  onboarding_field_radius: 18
 
 encode:
   # Event-boundary split bounds per diary; outside this range the extractor is re-prompted, never clamped.

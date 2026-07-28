@@ -8,22 +8,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AccountService } from '@cosimosi/api-client'
 import { FakeAuthAdapter, createAuthFacade } from '@cosimosi/auth'
 import { createClientCacheQueryClient } from '@cosimosi/client-cache'
-import {
-  DEFAULT_PALETTE_ID,
-  defaultMoodPalette,
-  moodColor,
-  PALETTES,
-  resetMoodPalette,
-} from '@cosimosi/emotion'
+import { moodColor, PALETTES, resetMoodPalette } from '@cosimosi/emotion'
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 
-import {
-  changePalette,
-  resetPaletteSession,
-  usePalettePreferenceStore,
-  usePaletteVersion,
-} from '../../features/change-palette/index.ts'
+import { usePaletteVersion } from '../../features/change-palette/index.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { PaletteBootstrap } from './palette-bootstrap.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
@@ -31,26 +20,27 @@ import { WebClientCacheProvider } from './query-provider.tsx'
 describe('PaletteBootstrap', () => {
   afterEach(() => {
     resetMoodPalette()
-    usePalettePreferenceStore.getState().reset()
   })
 
-  it('withholds palette-dependent children until their first commit has the stored palette', async () => {
+  it('withholds children until stored mood rows overlay the authored default', async () => {
     const actEnvironment = globalThis as typeof globalThis & {
       IS_REACT_ACT_ENVIRONMENT?: boolean
     }
     actEnvironment.IS_REACT_ACT_ENVIRONMENT = true
-    let releasePreference = () => {}
-    const preferenceBlocked = new Promise<void>((resolve) => {
-      releasePreference = resolve
+    let releaseColors = () => {}
+    const colorsBlocked = new Promise<void>((resolve) => {
+      releaseColors = resolve
     })
     const transport = createRouterTransport(({ service }) => {
       service(AccountService, {
-        async getPalettePreference() {
-          await preferenceBlocked
+        getPalettePreference() {
           return { paletteId: 'muted-dusk' }
         },
-        setPalettePreference(request) {
-          return { paletteId: request.paletteId }
+        async getMoodColors() {
+          await colorsBlocked
+          return {
+            colors: [{ mood: 'JOY', color: PALETTES['cosimosi-default'].colors.JOY }],
+          }
         },
       })
     })
@@ -63,15 +53,13 @@ describe('PaletteBootstrap', () => {
     const queryClient = createClientCacheQueryClient()
     const container = document.createElement('div')
     const root = createRoot(container)
-    const committedColors: string[] = []
+    const committedColors: Array<{ joy: string; calm: string }> = []
     await expect.poll(() => facade.snapshot.userId).toBe('palette-user')
-    resetPaletteSession('palette-user')
-
     function PaletteProbe() {
       usePaletteVersion()
-      const color = moodColor('JOY')
-      committedColors.push(color)
-      return <span>{color}</span>
+      const colors = { joy: moodColor('JOY'), calm: moodColor('CALM') }
+      committedColors.push(colors)
+      return <span>{`${colors.joy}|${colors.calm}`}</span>
     }
 
     try {
@@ -90,16 +78,16 @@ describe('PaletteBootstrap', () => {
       })
       expect(committedColors).toEqual([])
 
-      releasePreference()
-      await vi.waitFor(() => expect(container.textContent).toBe(PALETTES['muted-dusk'].colors.JOY))
+      releaseColors()
+      await vi.waitFor(() =>
+        expect(container.textContent).toBe(
+          `${PALETTES['cosimosi-default'].colors.JOY}|${PALETTES['cosimosi-default'].colors.CALM}`,
+        ),
+      )
 
-      expect(committedColors[0]).toBe(PALETTES['muted-dusk'].colors.JOY)
-
-      await act(() => changePalette(transport, DEFAULT_PALETTE_ID, 'palette-user'))
-      expect(container.textContent).toBe(defaultMoodPalette.colors.JOY)
-      expect(usePalettePreferenceStore.getState()).toMatchObject({
-        paletteId: DEFAULT_PALETTE_ID,
-        confirmedPaletteId: DEFAULT_PALETTE_ID,
+      expect(committedColors[0]).toEqual({
+        joy: PALETTES['cosimosi-default'].colors.JOY,
+        calm: PALETTES['cosimosi-default'].colors.CALM,
       })
     } finally {
       await act(async () => root.unmount())

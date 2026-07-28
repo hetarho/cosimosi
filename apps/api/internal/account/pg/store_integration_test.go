@@ -82,6 +82,90 @@ func TestPalettePreferenceUpsertAndUserScope(t *testing.T) {
 	}
 }
 
+func TestMoodColorWriteKeepsOnePerUserAndMovesAggregateAtomically(t *testing.T) {
+	pool := openAccountTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	base := fmt.Sprintf("test-mood-color-%d", time.Now().UnixNano())
+	userA := base + "-a"
+	userB := base + "-b"
+	userC := base + "-c"
+	cleanupAccountTestRows(t, pool, userA, userB, userC)
+	store := NewStore(pool.PgxPool())
+	scopeA := mustUserScope(t, userA)
+	scopeB := mustUserScope(t, userB)
+	scopeC := mustUserScope(t, userC)
+
+	first := account.MoodColor{Mood: account.MoodJoy, Color: "#ca53b8"}
+	if _, err := store.SetMoodColor(ctx, scopeA, first, account.HueBucket(first.Color)); err != nil {
+		t.Fatalf("SetMoodColor(first): %v", err)
+	}
+	replacement := account.MoodColor{Mood: account.MoodJoy, Color: "#688cb4"}
+	if _, err := store.SetMoodColor(
+		ctx,
+		scopeA,
+		replacement,
+		account.HueBucket(replacement.Color),
+	); err != nil {
+		t.Fatalf("SetMoodColor(replacement): %v", err)
+	}
+	rows, err := store.ListMoodColors(ctx, scopeA)
+	if err != nil || len(rows) != 1 || rows[0] != replacement {
+		t.Fatalf("ListMoodColors = %+v err %v, want replacement only", rows, err)
+	}
+	stats, err := store.ListMoodColorStats(ctx, account.MoodJoy, 3)
+	if err != nil || len(stats) != 1 || stats[0].BucketCount != 1 ||
+		stats[0].TotalCount != 1 || stats[0].SwatchColor != replacement.Color {
+		t.Fatalf("stats after replacement = %+v err %v", stats, err)
+	}
+	if _, err := store.SetMoodColor(
+		ctx,
+		scopeB,
+		replacement,
+		account.HueBucket(replacement.Color),
+	); err != nil {
+		t.Fatalf("SetMoodColor(second user): %v", err)
+	}
+	stats, err = store.ListMoodColorStats(ctx, account.MoodJoy, 3)
+	if err != nil || len(stats) != 1 || stats[0].BucketCount != 2 || stats[0].TotalCount != 2 {
+		t.Fatalf("stats after second user = %+v err %v", stats, err)
+	}
+
+	// Two simultaneous first writes still leave one user row and one aggregate contribution.
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	for _, candidate := range []account.MoodColor{
+		{Mood: account.MoodCalm, Color: "#5eb093"},
+		{Mood: account.MoodCalm, Color: "#85a870"},
+	} {
+		go func(candidate account.MoodColor) {
+			<-start
+			_, err := store.SetMoodColor(
+				ctx,
+				scopeC,
+				candidate,
+				account.HueBucket(candidate.Color),
+			)
+			errs <- err
+		}(candidate)
+	}
+	close(start)
+	for range 2 {
+		if err := <-errs; err != nil {
+			t.Fatalf("concurrent SetMoodColor: %v", err)
+		}
+	}
+	rows, err = store.ListMoodColors(ctx, scopeC)
+	if err != nil || len(rows) != 1 || rows[0].Mood != account.MoodCalm {
+		t.Fatalf("concurrent ListMoodColors = %+v err %v, want one CALM row", rows, err)
+	}
+	stats, err = store.ListMoodColorStats(ctx, account.MoodCalm, 3)
+	if err != nil || len(stats) != 1 || stats[0].BucketCount != 1 || stats[0].TotalCount != 1 {
+		t.Fatalf("stats after concurrent first writes = %+v err %v", stats, err)
+	}
+}
+
 func TestSignUpPersistsProviderAndBoundInviteIdempotentlyWithoutLedgerWrites(t *testing.T) {
 	pool := openAccountTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -312,9 +396,21 @@ func cleanupAccountTestRows(t *testing.T, pool *platformdb.Pool, userIDs ...stri
 		defer cancel()
 
 		for _, userID := range userIDs {
+			if _, err := pool.PgxPool().Exec(ctx, "DELETE FROM mood_colors WHERE user_id = $1", userID); err != nil {
+				t.Fatalf("cleanup mood_colors failed: %v", err)
+			}
 			if _, err := pool.PgxPool().Exec(ctx, "DELETE FROM palette_preferences WHERE user_id = $1", userID); err != nil {
 				t.Fatalf("cleanup palette_preferences failed: %v", err)
 			}
+		}
+		if _, err := pool.PgxPool().Exec(ctx, `
+			DELETE FROM mood_color_counts counts
+			WHERE NOT EXISTS (
+				SELECT 1 FROM mood_colors colors
+				WHERE colors.mood = counts.mood AND colors.color = counts.color
+			)
+		`); err != nil {
+			t.Fatalf("cleanup mood_color_counts failed: %v", err)
 		}
 	})
 }

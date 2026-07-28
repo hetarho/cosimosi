@@ -14,3 +14,16 @@ export {
 } from './preference/palette-preference-store.ts'
 export { readPalettePreference } from './preference/read-palette-preference.ts'
 export { usePaletteVersion } from './preference/use-palette-version.ts'
+export {
+  applyMoodColors,
+  completeMoodColorRecommendations,
+  moodColorRows,
+  readMoodColorRecommendations,
+  readMoodColors,
+  writeMoodColor,
+  type MoodColorRecommendation,
+} from './preference/mood-colors.ts'
+export {
+  useMoodColorEditor,
+  type MoodColorEditorState,
+} from './preference/use-mood-color-editor.ts'

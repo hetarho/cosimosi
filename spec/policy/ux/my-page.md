@@ -7,9 +7,13 @@ universe. It has exactly five tabs in this order: profile, stardust, achievement
 management, and account. Web keeps the active tab in the `tab` query parameter so links and reloads
 preserve it; mobile keeps it as local screen state. Missing or unknown web values show profile.
 
-Decoration does not live here. My page offers no palette, background, shader, camera, effect, or
-other control that can reach a star's meaning or presentation. The former settings staging slot is
-retired rather than filled.
+The Profile tab includes the emotion-color editor: one row for each of the thirteen moods, its
+current resolved swatch, and three recommendations. A choice recolors the running presentation
+through the single palette seam and persists only that mood. A near-duplicate notice never blocks,
+and a statistical ratio appears only when its bucket meets the configured sample floor.
+
+No other decoration lives here. My page offers no background, shader, camera, or effect control,
+and the color editor cannot reach a star's meaning, brightness, position, or connections.
 
 ## Profile facts are edited one at a time
 

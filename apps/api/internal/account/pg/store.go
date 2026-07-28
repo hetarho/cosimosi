@@ -128,6 +128,121 @@ func (s Store) UpsertPalettePreference(ctx context.Context, scope platform.UserS
 	})
 }
 
+func (s Store) ListMoodColors(
+	ctx context.Context,
+	scope platform.UserScope,
+) ([]account.MoodColor, error) {
+	if err := s.ready(scope); err != nil {
+		return nil, err
+	}
+	rows, err := s.queries.ListMoodColors(ctx, scope.UserID())
+	if err != nil {
+		return nil, err
+	}
+	colors := make([]account.MoodColor, 0, len(rows))
+	for _, row := range rows {
+		colors = append(colors, account.MoodColor{
+			Mood:  account.Mood(row.Mood),
+			Color: account.Color(row.Color),
+		})
+	}
+	return colors, nil
+}
+
+func (s Store) SetMoodColor(
+	ctx context.Context,
+	scope platform.UserScope,
+	color account.MoodColor,
+	bucket int32,
+) (account.MoodColor, error) {
+	if err := s.ready(scope); err != nil {
+		return account.MoodColor{}, err
+	}
+	if s.pool == nil {
+		return account.MoodColor{}, ErrTransactionPoolRequired
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return account.MoodColor{}, err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	queries := dbgen.New(tx)
+	if err := queries.LockMoodColorWrite(ctx, dbgen.LockMoodColorWriteParams{
+		UserID: scope.UserID(),
+		Mood:   string(color.Mood),
+	}); err != nil {
+		return account.MoodColor{}, err
+	}
+	old, err := queries.GetMoodColorForUpdate(ctx, dbgen.GetMoodColorForUpdateParams{
+		UserID: scope.UserID(),
+		Mood:   string(color.Mood),
+	})
+	oldFound := err == nil
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return account.MoodColor{}, err
+	}
+	if oldFound && old.Color == string(color.Color) {
+		return account.MoodColor{Mood: account.Mood(old.Mood), Color: account.Color(old.Color)}, tx.Commit(ctx)
+	}
+	if oldFound {
+		if err := queries.DecrementMoodColorCount(ctx, dbgen.DecrementMoodColorCountParams{
+			Mood:      old.Mood,
+			HueBucket: int16(account.HueBucket(account.Color(old.Color))),
+			Color:     old.Color,
+		}); err != nil {
+			return account.MoodColor{}, err
+		}
+	}
+	row, err := queries.UpsertMoodColor(ctx, dbgen.UpsertMoodColorParams{
+		UserID: scope.UserID(),
+		Mood:   string(color.Mood),
+		Color:  string(color.Color),
+	})
+	if err != nil {
+		return account.MoodColor{}, err
+	}
+	if err := queries.IncrementMoodColorCount(ctx, dbgen.IncrementMoodColorCountParams{
+		Mood:      row.Mood,
+		HueBucket: int16(bucket),
+		Color:     row.Color,
+	}); err != nil {
+		return account.MoodColor{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return account.MoodColor{}, err
+	}
+	return account.MoodColor{Mood: account.Mood(row.Mood), Color: account.Color(row.Color)}, nil
+}
+
+func (s Store) ListMoodColorStats(
+	ctx context.Context,
+	mood account.Mood,
+	recommendationCount int32,
+) ([]account.MoodColorStatCount, error) {
+	if s.queries == nil {
+		return nil, ErrQueriesRequired
+	}
+	rows, err := s.queries.ListMoodColorStats(ctx, dbgen.ListMoodColorStatsParams{
+		RecommendationCount: recommendationCount,
+		Mood:                string(mood),
+	})
+	if err != nil {
+		return nil, err
+	}
+	stats := make([]account.MoodColorStatCount, 0, len(rows))
+	for _, row := range rows {
+		stats = append(stats, account.MoodColorStatCount{
+			Bucket:      int32(row.HueBucket),
+			BucketCount: row.BucketCount,
+			TotalCount:  row.TotalCount,
+			SwatchColor: account.Color(row.SwatchColor),
+		})
+	}
+	return stats, nil
+}
+
 func (s Store) GetUserProfile(ctx context.Context, scope platform.UserScope) (account.Profile, bool, error) {
 	if err := s.ready(scope); err != nil {
 		return account.Profile{}, false, err
@@ -312,6 +427,7 @@ func (s Store) PurgeAccountDependents(ctx context.Context, scope platform.UserSc
 		s.queries.PurgeAccountAuthProviders,
 		s.queries.PurgeAccountInvites,
 		s.queries.PurgeAccountPalettePreference,
+		s.queries.PurgeAccountMoodColors,
 	} {
 		if err := purge(ctx, scope.UserID()); err != nil {
 			return err

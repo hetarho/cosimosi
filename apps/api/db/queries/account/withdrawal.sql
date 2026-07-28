@@ -38,6 +38,10 @@ WHERE user_id = sqlc.arg(user_id);
 DELETE FROM palette_preferences
 WHERE user_id = sqlc.arg(user_id);
 
+-- name: PurgeAccountMoodColors :exec
+DELETE FROM mood_colors
+WHERE user_id = sqlc.arg(user_id);
+
 -- Completion marker: called only after every context leg and credential deletion.
 -- name: PurgeAccountUser :execrows
 DELETE FROM users

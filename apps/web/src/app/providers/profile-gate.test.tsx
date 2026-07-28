@@ -8,7 +8,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AccountService } from '@cosimosi/api-client'
 import { FakeAuthAdapter, createAuthFacade, pendingInvite } from '@cosimosi/auth'
 import { createClientCacheQueryClient } from '@cosimosi/client-cache'
-import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { m } from '../../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
@@ -109,9 +108,12 @@ describe('ProfileGate', () => {
             },
           }
         },
-        getPalettePreference() {
+        getMoodColors() {
           paletteReads += 1
-          return { paletteId: DEFAULT_PALETTE_ID }
+          return { colors: [] }
+        },
+        getPalettePreference() {
+          return { paletteId: 'cosimosi-default' }
         },
         signUp(request) {
           signupRequests.push({

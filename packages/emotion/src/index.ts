@@ -40,3 +40,23 @@ export {
 } from './slices.ts'
 export { checkPaletteAxisConsistency, type PaletteAxisWarning } from './axis-consistency.ts'
 export { arousalToInitialStrength } from './strength.ts'
+export {
+  NEAR_NEUTRAL_HUE_BUCKET,
+  colorToOkLab,
+  colorToOkLch,
+  deltaEOkLab,
+  hueBucket,
+  okLabToColor,
+  okLabToOkLch,
+  okLchToColor,
+  okLchToOkLab,
+  type OkLab,
+  type OkLch,
+} from './oklab.ts'
+export {
+  EMOTION_LIGHTNESS_STEPS,
+  nearDuplicateMood,
+  resolveMoodColors,
+  snapToEmotionStep,
+  type MoodColorRow,
+} from './mood-color.ts'

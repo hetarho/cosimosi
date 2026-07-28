@@ -181,6 +181,14 @@ export const accountRpcCachePolicies = [
     method: AccountService.method.getPalettePreference,
     policy: userScopedUnaryReadPolicy,
   },
+  {
+    method: AccountService.method.getMoodColors,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
+    method: AccountService.method.getMoodColorStats,
+    policy: userScopedUnaryReadPolicy,
+  },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
 // Every admin console read is authenticated + admin-gated operator data: GET-eligible but never

@@ -10,3 +10,4 @@ export { LatentStarField, type LatentStarFieldProps } from './LatentStarField.ts
 export { NebulaField, type NebulaFieldProps } from './NebulaField.tsx'
 export { AwakenNeuron, type AwakenNeuronProps } from './AwakenNeuron.tsx'
 export { GistStarLayer, type GistRiseEvent, type GistStarLayerProps } from './GistStarLayer.tsx'
+export { MoodStarLayer, type MoodStarLayerProps } from './MoodStarLayer.tsx'

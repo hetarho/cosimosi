@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/account/v1/account.proto.
  */
 export const file_cosimosi_account_v1_account: GenFile = /*@__PURE__*/
-  fileDesc("CiFjb3NpbW9zaS9hY2NvdW50L3YxL2FjY291bnQucHJvdG8SE2Nvc2ltb3NpLmFjY291bnQudjEiWQoNU2lnblVwUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSFAoMaW52aXRlX3Rva2VuGAQgASgJIloKDlNpZ25VcFJlc3BvbnNlEhAKCG5pY2tuYW1lGAEgASgJEhAKCHRpbWV6b25lGAIgASgJEg4KBmxvY2FsZRgDIAEoCRIUCgxpbnZpdGVfYm91bmQYBCABKAgiEwoRR2V0UHJvZmlsZVJlcXVlc3QiQwoSR2V0UHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiYAoHUHJvZmlsZRIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSDQoFZW1haWwYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCSJKChRVcGRhdGVQcm9maWxlUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkiRgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiGgoYTGlzdEF1dGhQcm92aWRlcnNSZXF1ZXN0IlcKGUxpc3RBdXRoUHJvdmlkZXJzUmVzcG9uc2USOgoJcHJvdmlkZXJzGAEgAygLMicuY29zaW1vc2kuYWNjb3VudC52MS5MaW5rZWRBdXRoUHJvdmlkZXIiXAoSTGlua2VkQXV0aFByb3ZpZGVyEjMKBGtpbmQYASABKA4yJS5jb3NpbW9zaS5hY2NvdW50LnYxLkF1dGhQcm92aWRlcktpbmQSEQoJbGlua2VkX2F0GAIgASgJIhYKFEdldEludml0ZUxpbmtSZXF1ZXN0IjoKFUdldEludml0ZUxpbmtSZXNwb25zZRINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJIh0KG0dldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdCIxChtTZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QSEgoKcGFsZXR0ZV9pZBgBIAEoCSInChFQYWxldHRlUHJlZmVyZW5jZRISCgpwYWxldHRlX2lkGAEgASgJIhEKD1dpdGhkcmF3UmVxdWVzdCJFChBXaXRoZHJhd1Jlc3BvbnNlEhQKDHdpdGhkcmF3bl9hdBgBIAEoCRIbChNyZXN0b3JlX2RlYWRsaW5lX2F0GAIgASgJIhcKFVJlc3RvcmVBY2NvdW50UmVxdWVzdCItChZSZXN0b3JlQWNjb3VudFJlc3BvbnNlEhMKC3Jlc3RvcmVkX2F0GAEgASgJKnYKEEF1dGhQcm92aWRlcktpbmQSIgoeQVVUSF9QUk9WSURFUl9LSU5EX1VOU1BFQ0lGSUVEEAASHQoZQVVUSF9QUk9WSURFUl9LSU5EX0dPT0dMRRABEh8KG0FVVEhfUFJPVklERVJfS0lORF9QQVNTV09SRBACMsIHCg5BY2NvdW50U2VydmljZRJRCgZTaWduVXASIi5jb3NpbW9zaS5hY2NvdW50LnYxLlNpZ25VcFJlcXVlc3QaIy5jb3NpbW9zaS5hY2NvdW50LnYxLlNpZ25VcFJlc3BvbnNlEmIKCkdldFByb2ZpbGUSJi5jb3NpbW9zaS5hY2NvdW50LnYxLkdldFByb2ZpbGVSZXF1ZXN0GicuY29zaW1vc2kuYWNjb3VudC52MS5HZXRQcm9maWxlUmVzcG9uc2UiA5ACARJmCg1VcGRhdGVQcm9maWxlEikuY29zaW1vc2kuYWNjb3VudC52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBoqLmNvc2ltb3NpLmFjY291bnQudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlEncKEUxpc3RBdXRoUHJvdmlkZXJzEi0uY29zaW1vc2kuYWNjb3VudC52MS5MaXN0QXV0aFByb3ZpZGVyc1JlcXVlc3QaLi5jb3NpbW9zaS5hY2NvdW50LnYxLkxpc3RBdXRoUHJvdmlkZXJzUmVzcG9uc2UiA5ACARJrCg1HZXRJbnZpdGVMaW5rEikuY29zaW1vc2kuYWNjb3VudC52MS5HZXRJbnZpdGVMaW5rUmVxdWVzdBoqLmNvc2ltb3NpLmFjY291bnQudjEuR2V0SW52aXRlTGlua1Jlc3BvbnNlIgOQAgESdQoUR2V0UGFsZXR0ZVByZWZlcmVuY2USMC5jb3NpbW9zaS5hY2NvdW50LnYxLkdldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdBomLmNvc2ltb3NpLmFjY291bnQudjEuUGFsZXR0ZVByZWZlcmVuY2UiA5ACARJwChRTZXRQYWxldHRlUHJlZmVyZW5jZRIwLmNvc2ltb3NpLmFjY291bnQudjEuU2V0UGFsZXR0ZVByZWZlcmVuY2VSZXF1ZXN0GiYuY29zaW1vc2kuYWNjb3VudC52MS5QYWxldHRlUHJlZmVyZW5jZRJXCghXaXRoZHJhdxIkLmNvc2ltb3NpLmFjY291bnQudjEuV2l0aGRyYXdSZXF1ZXN0GiUuY29zaW1vc2kuYWNjb3VudC52MS5XaXRoZHJhd1Jlc3BvbnNlEmkKDlJlc3RvcmVBY2NvdW50EiouY29zaW1vc2kuYWNjb3VudC52MS5SZXN0b3JlQWNjb3VudFJlcXVlc3QaKy5jb3NpbW9zaS5hY2NvdW50LnYxLlJlc3RvcmVBY2NvdW50UmVzcG9uc2VC2QEKF2NvbS5jb3NpbW9zaS5hY2NvdW50LnYxQgxBY2NvdW50UHJvdG9QAVpCZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL2FjY291bnQvdjE7YWNjb3VudHYxogIDQ0FYqgITQ29zaW1vc2kuQWNjb3VudC5WMcoCE0Nvc2ltb3NpXEFjY291bnRcVjHiAh9Db3NpbW9zaVxBY2NvdW50XFYxXEdQQk1ldGFkYXRh6gIVQ29zaW1vc2k6OkFjY291bnQ6OlYxYgZwcm90bzM");
+  fileDesc("CiFjb3NpbW9zaS9hY2NvdW50L3YxL2FjY291bnQucHJvdG8SE2Nvc2ltb3NpLmFjY291bnQudjEiWQoNU2lnblVwUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSFAoMaW52aXRlX3Rva2VuGAQgASgJIloKDlNpZ25VcFJlc3BvbnNlEhAKCG5pY2tuYW1lGAEgASgJEhAKCHRpbWV6b25lGAIgASgJEg4KBmxvY2FsZRgDIAEoCRIUCgxpbnZpdGVfYm91bmQYBCABKAgiEwoRR2V0UHJvZmlsZVJlcXVlc3QiQwoSR2V0UHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiYAoHUHJvZmlsZRIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkSDQoFZW1haWwYBCABKAkSEgoKY3JlYXRlZF9hdBgFIAEoCSJKChRVcGRhdGVQcm9maWxlUmVxdWVzdBIQCghuaWNrbmFtZRgBIAEoCRIQCgh0aW1lem9uZRgCIAEoCRIOCgZsb2NhbGUYAyABKAkiRgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEi0KB3Byb2ZpbGUYASABKAsyHC5jb3NpbW9zaS5hY2NvdW50LnYxLlByb2ZpbGUiGgoYTGlzdEF1dGhQcm92aWRlcnNSZXF1ZXN0IlcKGUxpc3RBdXRoUHJvdmlkZXJzUmVzcG9uc2USOgoJcHJvdmlkZXJzGAEgAygLMicuY29zaW1vc2kuYWNjb3VudC52MS5MaW5rZWRBdXRoUHJvdmlkZXIiXAoSTGlua2VkQXV0aFByb3ZpZGVyEjMKBGtpbmQYASABKA4yJS5jb3NpbW9zaS5hY2NvdW50LnYxLkF1dGhQcm92aWRlcktpbmQSEQoJbGlua2VkX2F0GAIgASgJIhYKFEdldEludml0ZUxpbmtSZXF1ZXN0IjoKFUdldEludml0ZUxpbmtSZXNwb25zZRINCgV0b2tlbhgBIAEoCRISCgpleHBpcmVzX2F0GAIgASgJIh0KG0dldFBhbGV0dGVQcmVmZXJlbmNlUmVxdWVzdCIxChtTZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QSEgoKcGFsZXR0ZV9pZBgBIAEoCSInChFQYWxldHRlUHJlZmVyZW5jZRISCgpwYWxldHRlX2lkGAEgASgJIhYKFEdldE1vb2RDb2xvcnNSZXF1ZXN0IkcKFUdldE1vb2RDb2xvcnNSZXNwb25zZRIuCgZjb2xvcnMYASADKAsyHi5jb3NpbW9zaS5hY2NvdW50LnYxLk1vb2RDb2xvciIyChNTZXRNb29kQ29sb3JSZXF1ZXN0EgwKBG1vb2QYASABKAkSDQoFY29sb3IYAiABKAkiKAoJTW9vZENvbG9yEgwKBG1vb2QYASABKAkSDQoFY29sb3IYAiABKAkiKAoYR2V0TW9vZENvbG9yU3RhdHNSZXF1ZXN0EgwKBG1vb2QYASABKAkiTgoZR2V0TW9vZENvbG9yU3RhdHNSZXNwb25zZRIxCgVzdGF0cxgBIAMoCzIiLmNvc2ltb3NpLmFjY291bnQudjEuTW9vZENvbG9yU3RhdCJTCg1Nb29kQ29sb3JTdGF0Eg4KBmJ1Y2tldBgBIAEoBRISCgVzaGFyZRgCIAEoAUgAiAEBEhQKDHN3YXRjaF9jb2xvchgDIAEoCUIICgZfc2hhcmUiEQoPV2l0aGRyYXdSZXF1ZXN0IkUKEFdpdGhkcmF3UmVzcG9uc2USFAoMd2l0aGRyYXduX2F0GAEgASgJEhsKE3Jlc3RvcmVfZGVhZGxpbmVfYXQYAiABKAkiFwoVUmVzdG9yZUFjY291bnRSZXF1ZXN0Ii0KFlJlc3RvcmVBY2NvdW50UmVzcG9uc2USEwoLcmVzdG9yZWRfYXQYASABKAkqdgoQQXV0aFByb3ZpZGVyS2luZBIiCh5BVVRIX1BST1ZJREVSX0tJTkRfVU5TUEVDSUZJRUQQABIdChlBVVRIX1BST1ZJREVSX0tJTkRfR09PR0xFEAESHwobQVVUSF9QUk9WSURFUl9LSU5EX1BBU1NXT1JEEAIyggoKDkFjY291bnRTZXJ2aWNlElEKBlNpZ25VcBIiLmNvc2ltb3NpLmFjY291bnQudjEuU2lnblVwUmVxdWVzdBojLmNvc2ltb3NpLmFjY291bnQudjEuU2lnblVwUmVzcG9uc2USYgoKR2V0UHJvZmlsZRImLmNvc2ltb3NpLmFjY291bnQudjEuR2V0UHJvZmlsZVJlcXVlc3QaJy5jb3NpbW9zaS5hY2NvdW50LnYxLkdldFByb2ZpbGVSZXNwb25zZSIDkAIBEmYKDVVwZGF0ZVByb2ZpbGUSKS5jb3NpbW9zaS5hY2NvdW50LnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0GiouY29zaW1vc2kuYWNjb3VudC52MS5VcGRhdGVQcm9maWxlUmVzcG9uc2USdwoRTGlzdEF1dGhQcm92aWRlcnMSLS5jb3NpbW9zaS5hY2NvdW50LnYxLkxpc3RBdXRoUHJvdmlkZXJzUmVxdWVzdBouLmNvc2ltb3NpLmFjY291bnQudjEuTGlzdEF1dGhQcm92aWRlcnNSZXNwb25zZSIDkAIBEmsKDUdldEludml0ZUxpbmsSKS5jb3NpbW9zaS5hY2NvdW50LnYxLkdldEludml0ZUxpbmtSZXF1ZXN0GiouY29zaW1vc2kuYWNjb3VudC52MS5HZXRJbnZpdGVMaW5rUmVzcG9uc2UiA5ACARJ1ChRHZXRQYWxldHRlUHJlZmVyZW5jZRIwLmNvc2ltb3NpLmFjY291bnQudjEuR2V0UGFsZXR0ZVByZWZlcmVuY2VSZXF1ZXN0GiYuY29zaW1vc2kuYWNjb3VudC52MS5QYWxldHRlUHJlZmVyZW5jZSIDkAIBEnAKFFNldFBhbGV0dGVQcmVmZXJlbmNlEjAuY29zaW1vc2kuYWNjb3VudC52MS5TZXRQYWxldHRlUHJlZmVyZW5jZVJlcXVlc3QaJi5jb3NpbW9zaS5hY2NvdW50LnYxLlBhbGV0dGVQcmVmZXJlbmNlEmsKDUdldE1vb2RDb2xvcnMSKS5jb3NpbW9zaS5hY2NvdW50LnYxLkdldE1vb2RDb2xvcnNSZXF1ZXN0GiouY29zaW1vc2kuYWNjb3VudC52MS5HZXRNb29kQ29sb3JzUmVzcG9uc2UiA5ACARJYCgxTZXRNb29kQ29sb3ISKC5jb3NpbW9zaS5hY2NvdW50LnYxLlNldE1vb2RDb2xvclJlcXVlc3QaHi5jb3NpbW9zaS5hY2NvdW50LnYxLk1vb2RDb2xvchJ3ChFHZXRNb29kQ29sb3JTdGF0cxItLmNvc2ltb3NpLmFjY291bnQudjEuR2V0TW9vZENvbG9yU3RhdHNSZXF1ZXN0Gi4uY29zaW1vc2kuYWNjb3VudC52MS5HZXRNb29kQ29sb3JTdGF0c1Jlc3BvbnNlIgOQAgESVwoIV2l0aGRyYXcSJC5jb3NpbW9zaS5hY2NvdW50LnYxLldpdGhkcmF3UmVxdWVzdBolLmNvc2ltb3NpLmFjY291bnQudjEuV2l0aGRyYXdSZXNwb25zZRJpCg5SZXN0b3JlQWNjb3VudBIqLmNvc2ltb3NpLmFjY291bnQudjEuUmVzdG9yZUFjY291bnRSZXF1ZXN0GisuY29zaW1vc2kuYWNjb3VudC52MS5SZXN0b3JlQWNjb3VudFJlc3BvbnNlQtkBChdjb20uY29zaW1vc2kuYWNjb3VudC52MUIMQWNjb3VudFByb3RvUAFaQmdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS9hY2NvdW50L3YxO2FjY291bnR2MaICA0NBWKoCE0Nvc2ltb3NpLkFjY291bnQuVjHKAhNDb3NpbW9zaVxBY2NvdW50XFYx4gIfQ29zaW1vc2lcQWNjb3VudFxWMVxHUEJNZXRhZGF0YeoCFUNvc2ltb3NpOjpBY2NvdW50OjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message cosimosi.account.v1.SignUpRequest
@@ -328,6 +328,141 @@ export const PalettePreferenceSchema: GenMessage<PalettePreference> = /*@__PURE_
   messageDesc(file_cosimosi_account_v1_account, 14);
 
 /**
+ * @generated from message cosimosi.account.v1.GetMoodColorsRequest
+ */
+export type GetMoodColorsRequest = Message<"cosimosi.account.v1.GetMoodColorsRequest"> & {
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetMoodColorsRequest.
+ * Use `create(GetMoodColorsRequestSchema)` to create a new message.
+ */
+export const GetMoodColorsRequestSchema: GenMessage<GetMoodColorsRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 15);
+
+/**
+ * @generated from message cosimosi.account.v1.GetMoodColorsResponse
+ */
+export type GetMoodColorsResponse = Message<"cosimosi.account.v1.GetMoodColorsResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.account.v1.MoodColor colors = 1;
+   */
+  colors: MoodColor[];
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetMoodColorsResponse.
+ * Use `create(GetMoodColorsResponseSchema)` to create a new message.
+ */
+export const GetMoodColorsResponseSchema: GenMessage<GetMoodColorsResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 16);
+
+/**
+ * @generated from message cosimosi.account.v1.SetMoodColorRequest
+ */
+export type SetMoodColorRequest = Message<"cosimosi.account.v1.SetMoodColorRequest"> & {
+  /**
+   * @generated from field: string mood = 1;
+   */
+  mood: string;
+
+  /**
+   * @generated from field: string color = 2;
+   */
+  color: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.SetMoodColorRequest.
+ * Use `create(SetMoodColorRequestSchema)` to create a new message.
+ */
+export const SetMoodColorRequestSchema: GenMessage<SetMoodColorRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 17);
+
+/**
+ * @generated from message cosimosi.account.v1.MoodColor
+ */
+export type MoodColor = Message<"cosimosi.account.v1.MoodColor"> & {
+  /**
+   * @generated from field: string mood = 1;
+   */
+  mood: string;
+
+  /**
+   * @generated from field: string color = 2;
+   */
+  color: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.MoodColor.
+ * Use `create(MoodColorSchema)` to create a new message.
+ */
+export const MoodColorSchema: GenMessage<MoodColor> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 18);
+
+/**
+ * @generated from message cosimosi.account.v1.GetMoodColorStatsRequest
+ */
+export type GetMoodColorStatsRequest = Message<"cosimosi.account.v1.GetMoodColorStatsRequest"> & {
+  /**
+   * @generated from field: string mood = 1;
+   */
+  mood: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetMoodColorStatsRequest.
+ * Use `create(GetMoodColorStatsRequestSchema)` to create a new message.
+ */
+export const GetMoodColorStatsRequestSchema: GenMessage<GetMoodColorStatsRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 19);
+
+/**
+ * @generated from message cosimosi.account.v1.GetMoodColorStatsResponse
+ */
+export type GetMoodColorStatsResponse = Message<"cosimosi.account.v1.GetMoodColorStatsResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.account.v1.MoodColorStat stats = 1;
+   */
+  stats: MoodColorStat[];
+};
+
+/**
+ * Describes the message cosimosi.account.v1.GetMoodColorStatsResponse.
+ * Use `create(GetMoodColorStatsResponseSchema)` to create a new message.
+ */
+export const GetMoodColorStatsResponseSchema: GenMessage<GetMoodColorStatsResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 20);
+
+/**
+ * @generated from message cosimosi.account.v1.MoodColorStat
+ */
+export type MoodColorStat = Message<"cosimosi.account.v1.MoodColorStat"> & {
+  /**
+   * @generated from field: int32 bucket = 1;
+   */
+  bucket: number;
+
+  /**
+   * @generated from field: optional double share = 2;
+   */
+  share?: number | undefined;
+
+  /**
+   * @generated from field: string swatch_color = 3;
+   */
+  swatchColor: string;
+};
+
+/**
+ * Describes the message cosimosi.account.v1.MoodColorStat.
+ * Use `create(MoodColorStatSchema)` to create a new message.
+ */
+export const MoodColorStatSchema: GenMessage<MoodColorStat> = /*@__PURE__*/
+  messageDesc(file_cosimosi_account_v1_account, 21);
+
+/**
  * Scope comes only from the authenticated context. There is deliberately no user_id,
  * purge_now, skip_window, immediate-delete, reason, or exit-survey field, and there is no
  * PurgeAccount RPC. A client cannot bypass the retention window.
@@ -342,7 +477,7 @@ export type WithdrawRequest = Message<"cosimosi.account.v1.WithdrawRequest"> & {
  * Use `create(WithdrawRequestSchema)` to create a new message.
  */
 export const WithdrawRequestSchema: GenMessage<WithdrawRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 15);
+  messageDesc(file_cosimosi_account_v1_account, 22);
 
 /**
  * @generated from message cosimosi.account.v1.WithdrawResponse
@@ -364,7 +499,7 @@ export type WithdrawResponse = Message<"cosimosi.account.v1.WithdrawResponse"> &
  * Use `create(WithdrawResponseSchema)` to create a new message.
  */
 export const WithdrawResponseSchema: GenMessage<WithdrawResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 16);
+  messageDesc(file_cosimosi_account_v1_account, 23);
 
 /**
  * @generated from message cosimosi.account.v1.RestoreAccountRequest
@@ -377,7 +512,7 @@ export type RestoreAccountRequest = Message<"cosimosi.account.v1.RestoreAccountR
  * Use `create(RestoreAccountRequestSchema)` to create a new message.
  */
 export const RestoreAccountRequestSchema: GenMessage<RestoreAccountRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 17);
+  messageDesc(file_cosimosi_account_v1_account, 24);
 
 /**
  * @generated from message cosimosi.account.v1.RestoreAccountResponse
@@ -394,7 +529,7 @@ export type RestoreAccountResponse = Message<"cosimosi.account.v1.RestoreAccount
  * Use `create(RestoreAccountResponseSchema)` to create a new message.
  */
 export const RestoreAccountResponseSchema: GenMessage<RestoreAccountResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_account_v1_account, 18);
+  messageDesc(file_cosimosi_account_v1_account, 25);
 
 /**
  * @generated from enum cosimosi.account.v1.AuthProviderKind
@@ -505,6 +640,36 @@ export const AccountService: GenService<{
     methodKind: "unary";
     input: typeof SetPalettePreferenceRequestSchema;
     output: typeof PalettePreferenceSchema;
+  },
+  /**
+   * Read only the caller's explicitly chosen mood rows. Missing moods remain authored defaults.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.GetMoodColors
+   */
+  getMoodColors: {
+    methodKind: "unary";
+    input: typeof GetMoodColorsRequestSchema;
+    output: typeof GetMoodColorsResponseSchema;
+  },
+  /**
+   * Snap and store one mood color, updating the aggregate counter in the same transaction.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.SetMoodColor
+   */
+  setMoodColor: {
+    methodKind: "unary";
+    input: typeof SetMoodColorRequestSchema;
+    output: typeof MoodColorSchema;
+  },
+  /**
+   * Read aggregate-only recommendations for one mood. No individual account is addressable.
+   *
+   * @generated from rpc cosimosi.account.v1.AccountService.GetMoodColorStats
+   */
+  getMoodColorStats: {
+    methodKind: "unary";
+    input: typeof GetMoodColorStatsRequestSchema;
+    output: typeof GetMoodColorStatsResponseSchema;
   },
   /**
    * Account-scoped soft deletion; restorable for account.withdrawal_retention_days.

@@ -14,13 +14,29 @@ An authenticated session does not imply a complete product account. Before any p
 palette read, or universe read mounts, the app-layer profile gate reads `GetProfile` and chooses one
 of three outcomes:
 
-- profile present — release the product subtree;
+- profile present — release the product subtree, unless the in-memory first-signin color handoff is
+  waiting;
 - profile absent — show the nickname step;
 - read refused — show neutral retry and sign-out controls.
 
 Profile absence is an unset response field, never inferred from an error string. The nickname step
 is not a restorable wizard page: email confirmation or a later sign-in reaches the same gate from
 the profile's absence.
+
+## Color follows nickname, not credentials
+
+After a successful first nickname write, both apps show one color screen before the universe. It is
+separate from the nickname gate: nickname remains the only signup field. The screen presents the
+thirteen moods together as thirteen real stars against the night sky, with three color
+recommendations for the selected mood.
+
+Choosing a recommendation updates and stores that mood immediately. The action "continue with
+recommendations for the rest" is always reachable; it stores nothing for untouched moods, creates
+no durable seen/skipped record, and enters the universe immediately.
+
+Exposure rides the existing take-once in-memory signup-completion handoff, not absence of color
+rows. The color gate consumes the handoff while visible and re-arms it when releasing the universe
+so the first-signin tour still receives its original trigger.
 
 ## Invite entry
 

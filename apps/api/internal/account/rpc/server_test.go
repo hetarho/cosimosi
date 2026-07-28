@@ -29,6 +29,8 @@ func TestDomainErrorMapsAccountErrors(t *testing.T) {
 		{account.ErrNicknameInvalid, connect.CodeInvalidArgument, reasonNicknameInvalid},
 		{account.ErrTimezoneInvalid, connect.CodeInvalidArgument, reasonTimezoneInvalid},
 		{account.ErrLocaleInvalid, connect.CodeInvalidArgument, reasonLocaleInvalid},
+		{account.ErrMoodInvalid, connect.CodeInvalidArgument, reasonMoodColorInvalid},
+		{account.ErrColorInvalid, connect.CodeInvalidArgument, reasonMoodColorInvalid},
 		{account.ErrInviteLinkUnavailable, connect.CodeFailedPrecondition, reasonInviteLinkUnavailable},
 		{account.ErrNotWithdrawn, connect.CodeFailedPrecondition, reasonNotWithdrawn},
 		{account.ErrRestoreWindowExpired, connect.CodeFailedPrecondition, reasonRestoreWindowExpired},
@@ -45,6 +47,24 @@ func TestDomainErrorMapsAccountErrors(t *testing.T) {
 	info, ok := apperr.Info(got)
 	if connect.CodeOf(got) != connect.CodeInternal || !ok || info.GetReason() != apperr.ReasonInternal || !errors.Is(got, cause) {
 		t.Fatalf("unknown error should be internal and retain its cause, got %v", got)
+	}
+}
+
+func TestMoodColorStatsWireCarriesAggregateFieldsOnly(t *testing.T) {
+	t.Parallel()
+
+	statsFields := (&accountv1.MoodColorStat{}).ProtoReflect().Descriptor().Fields()
+	if statsFields.Len() != 3 {
+		t.Fatalf("mood color stat fields = %d, want exactly 3", statsFields.Len())
+	}
+	for i, want := range []string{"bucket", "share", "swatch_color"} {
+		if got := string(statsFields.Get(i).Name()); got != want {
+			t.Fatalf("mood color stat field %d = %q, want %q", i, got, want)
+		}
+	}
+	responseFields := (&accountv1.GetMoodColorStatsResponse{}).ProtoReflect().Descriptor().Fields()
+	if responseFields.Len() != 1 || string(responseFields.Get(0).Name()) != "stats" {
+		t.Fatalf("mood color stats response exposes unexpected fields: %v", responseFields)
 	}
 }
 
@@ -151,6 +171,18 @@ func (absentProfileStore) GetPalettePreference(context.Context, platform.UserSco
 
 func (absentProfileStore) UpsertPalettePreference(context.Context, platform.UserScope, string) (string, error) {
 	return "", nil
+}
+
+func (absentProfileStore) ListMoodColors(context.Context, platform.UserScope) ([]account.MoodColor, error) {
+	return nil, nil
+}
+
+func (absentProfileStore) SetMoodColor(context.Context, platform.UserScope, account.MoodColor, int32) (account.MoodColor, error) {
+	return account.MoodColor{}, nil
+}
+
+func (absentProfileStore) ListMoodColorStats(context.Context, account.Mood, int32) ([]account.MoodColorStatCount, error) {
+	return nil, nil
 }
 
 func (absentProfileStore) GetUserProfile(context.Context, platform.UserScope) (account.Profile, bool, error) {
