@@ -13,6 +13,8 @@ export interface FilamentLayerProps {
   /** Neuron id → coordinate-buffer slot; the ONLY slots a filament endpoint can name [I4][I6]. */
   readonly neuronIndexById: Readonly<Record<string, number>>
   readonly universeTime: string | null
+  /** Holds every strand at its own static shimmer phase instead of letting the pulse run. */
+  readonly reducedMotion?: boolean
 }
 
 // The instanced R3F binding for the synapse fat-line: it reads the synapse mirror via @x and
@@ -21,8 +23,16 @@ export interface FilamentLayerProps {
 // the graph builder), so endpoints are always two neurons — never a star↔star line. The
 // coordinate buffer is read per frame inside the layer; channels recompute only on read-model
 // / universe-time change (§3.3).
-export function FilamentLayer({ positions, neuronIndexById, universeTime }: FilamentLayerProps) {
-  const bodySource = useMemo(() => createFilamentBodySource(), [])
+export function FilamentLayer({
+  positions,
+  neuronIndexById,
+  universeTime,
+  reducedMotion = false,
+}: FilamentLayerProps) {
+  const bodySource = useMemo(
+    () => createFilamentBodySource({ animate: !reducedMotion }),
+    [reducedMotion],
+  )
   const byId = useSynapseStore((state) => state.byId)
   const ids = useSynapseStore((state) => state.ids)
 

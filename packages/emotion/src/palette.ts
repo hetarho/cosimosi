@@ -7,22 +7,40 @@ export interface MoodPalette {
   readonly colors: Readonly<Record<Mood, Color>>
 }
 
+// The product's emotion colours. Authored in OkLCH on the 2D language's shared perceptual lightness
+// scale (`packages/ui/src/palette.ts`): every entry lands on step 300 (L 0.80), 400 (0.72) or 500
+// (0.63), so an emotion colour and the chrome beside it belong to one family. Three channels, each
+// with one job:
+//
+//   hue        is the feeling's identity. The warm arc (rose → coral → amber → gold → green) is
+//              pleasant, the cool arc (teal → blue → violet → magenta) unpleasant — the reading
+//              `checkPaletteAxisConsistency` guards.
+//   chroma     is how vivid the feeling is: ANGER is the most saturated colour in the table,
+//              NEUTRAL almost colourless.
+//   lightness  follows the HUE, never the feeling's intensity — each hue sits on the step where it
+//              is most itself (yellow is only gold when light, magenta only crimson when deep).
+//              Emotion may not spend the brightness channel: the rendered brightness of an
+//              EpisodicMemory carries its EffectiveStrength, so two memories of equal strength
+//              must not differ in luminance because of their mood.
+//
+// `palette.test.ts` guards both invariants — every entry on one of the three steps, and no two moods
+// closer than 0.05 in OkLab. Thirteen feelings have to stay thirteen colours against a dark ground.
 export const defaultMoodPalette: MoodPalette = {
   name: 'cosimosi-default',
   colors: {
-    JOY: '#ffd166',
-    CALM: '#6ec6b8',
-    SAD: '#4f7cac',
-    ANGER: '#b44c7a',
-    FEAR: '#5b5fef',
-    LOVE: '#ff5c8a',
-    NEUTRAL: '#aeb4bf',
-    EXCITEMENT: '#ff7a59',
-    GRATITUDE: '#f2c14e',
-    RELIEF: '#8fd694',
-    STRESS: '#7e5ccf',
-    TIRED: '#7f8fa6',
-    EMPTINESS: '#5d6470',
+    JOY: '#e6b731', // gold · h88 C.150 step300
+    CALM: '#4eb9ad', // teal · h185 C.100 step400
+    SAD: '#70a6f5', // blue · h258 C.130 step400
+    ANGER: '#e84461', // crimson · h15 C.200 step500
+    FEAR: '#b98cea', // violet · h305 C.140 step400
+    LOVE: '#e28597', // rose · h8 C.115 step400
+    NEUTRAL: '#a7a59c', // warm grey · h95 C.012 step400
+    EXCITEMENT: '#f18154', // coral · h42 C.150 step400
+    GRATITUDE: '#ffa65e', // amber · h58 C.137 step300
+    RELIEF: '#86d391', // spring green · h148 C.120 step300
+    STRESS: '#c05db9', // magenta · h330 C.170 step500
+    TIRED: '#82abc1', // dusty steel blue · h232 C.055 step400
+    EMPTINESS: '#a29fc9', // violet grey · h288 C.060 step400
   },
 }
 

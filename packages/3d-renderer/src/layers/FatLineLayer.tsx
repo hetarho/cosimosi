@@ -3,7 +3,11 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three/webgpu'
 
 import type { VisualBodyKind, VisualBodySource } from '../asset-source.ts'
-import { FILAMENT_VERTEX_COLOR } from '../assets/bodies/filament-body.ts'
+import {
+  FILAMENT_VERTEX_COLOR,
+  FILAMENT_VERTEX_EDGE,
+  buildFilamentFrame,
+} from '../assets/bodies/filament-body.ts'
 import type { CoordinateBufferRef } from './InstancedNodeLayer.tsx'
 
 // Fallback axes for the billboard perpendicular when the edge is seen end-on (view ∥ edge).
@@ -58,6 +62,10 @@ export function FatLineLayer({
       FILAMENT_VERTEX_COLOR,
       new THREE.BufferAttribute(new Float32Array(capacity * 4 * 3), 3),
     )
+    // The ribbon frame the body shades against (side across the width, along between the endpoints,
+    // per-edge shimmer phase) — static geometry data, written once with the index buffer and never
+    // touched per frame. The corner order below is the layout `buildFilamentFrame` encodes.
+    const frame = buildFilamentFrame(capacity)
     const index = new Uint32Array(capacity * 6)
     for (let edge = 0; edge < capacity; edge++) {
       const base = edge * 4
@@ -69,6 +77,7 @@ export function FatLineLayer({
       index[slot + 4] = base + 1
       index[slot + 5] = base + 3
     }
+    ribbon.setAttribute(FILAMENT_VERTEX_EDGE, new THREE.BufferAttribute(frame, 3))
     ribbon.setIndex(new THREE.BufferAttribute(index, 1))
     ribbon.setDrawRange(0, 0)
     return ribbon

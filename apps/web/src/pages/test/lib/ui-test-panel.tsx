@@ -507,6 +507,7 @@ function EngramUniverseCanvas({
         positions={positions}
         neuronIndexById={scene.neuronIndexById}
         universeTime={scene.universeTime}
+        reducedMotion={reducedMotion}
       />
       <CameraControls />
       <PostFX bloom={skin.bloom} />

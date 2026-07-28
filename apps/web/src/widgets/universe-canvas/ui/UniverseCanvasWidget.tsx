@@ -256,7 +256,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
           positions={bridge.coordinates}
           firstNodeIndex={neuronCount}
         />
-        <LatentStarField field={latentField} />
+        <LatentStarField field={latentField} reducedMotion={reducedMotion} />
         <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
         <StarLayer
           key={`star-${paletteVersion}`}
@@ -272,6 +272,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
           positions={bridge.coordinates}
           neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
           universeTime={universe?.universeTime ?? null}
+          reducedMotion={reducedMotion}
         />
         {/* The neocortex band ([V9]): gist bodies at the memories' copied x,y, risen z — plus
             the restrained gap haze that makes the two bands read as depth, never a wall. */}

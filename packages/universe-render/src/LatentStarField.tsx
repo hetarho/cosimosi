@@ -6,13 +6,15 @@ import { useLatentConsumedStore, type LatentField as LatentFieldData } from '@co
 
 export interface LatentStarFieldProps {
   readonly field: LatentFieldData
+  /** Freezes the dust's drift and per-mote breath to a static frame. */
+  readonly reducedMotion?: boolean
 }
 
 // The gray latent-neuron background layer (visual entity, §3.1/§3.4): it projects NOTHING from
 // the domain mirror — it is ambiance. The field data is generated once (model/) and passed in;
 // this component only binds it to the renderer's background layer through @cosimosi/3d-renderer
 // (never `three`). Consumed points (awakened by features/awaken-neuron) drop out via the store.
-export function LatentStarField({ field }: LatentStarFieldProps) {
+export function LatentStarField({ field, reducedMotion = false }: LatentStarFieldProps) {
   const consumed = useLatentConsumedStore((state) => state.consumed)
   return (
     <LatentField
@@ -22,6 +24,7 @@ export function LatentStarField({ field }: LatentStarFieldProps) {
       color={LATENT_STAR_COLOR}
       drift={LATENT_STAR_DRIFT}
       consumed={consumed}
+      reducedMotion={reducedMotion}
     />
   )
 }

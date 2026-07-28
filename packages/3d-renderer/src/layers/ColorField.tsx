@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { clamp, dot, float, sqrt, uv } from 'three/tsl'
+import { clamp, dot, float, mix, positionLocal, sqrt, uv } from 'three/tsl'
 import * as THREE from 'three/webgpu'
 
+import { fbm01 } from '../shader-art/noise.ts'
 import { attributeVec3Node } from '../tsl.ts'
+
+// The field's cloud grammar (code, like the star's seed-form graph — not values.yaml tuning): how
+// large the gas structure is in world units, and how far it may thin or thicken the mid-field.
+const CLOUD_FREQUENCY = 0.035
+const CLOUD_DEPTH = 0.45
 import type { CoordinateBufferRef } from './InstancedNodeLayer.tsx'
 
 /** Per-contributor emotion color (vec3, linear 0..1) — filled by the field's tints channel. */
@@ -80,8 +86,24 @@ export function ColorField({
     const radiusSquared = dot(centered, centered)
     const facing = sqrt(clamp(float(1).sub(radiusSquared), float(0), float(1)))
     const edgeFeather = facing.smoothstep(float(0.35), float(0.95)).pow(float(3))
+    // Gas, not a lens flare: a low-frequency cloud thins and thickens the field's MID-BAND, so the
+    // glow has internal structure instead of reading as a machined radial gradient. The noise is
+    // sampled in WORLD space (the instance transform is baked into positionLocal), so the structure
+    // belongs to the region of the universe rather than to the screen — the camera moves through it,
+    // and two neighbouring contributors agree where the cloud is thick. The band mask holds the
+    // cloud away from both the centre and the rim, so the peak stays exactly on the contributor's
+    // coordinate and the silhouette still fades to nothing before its own edge.
+    const band = facing
+      .smoothstep(float(0), float(0.35))
+      .mul(float(1).sub(facing.smoothstep(float(0.8), float(1))))
+    const cloud = fbm01(positionLocal.mul(float(CLOUD_FREQUENCY)), { octaves: 2 })
+    const density = mix(float(1), cloud.mul(float(2)), band.mul(float(CLOUD_DEPTH)))
     mat.colorNode = tint
-    mat.opacityNode = facing.pow(float(falloffExponent)).mul(edgeFeather).mul(float(baseIntensity))
+    mat.opacityNode = facing
+      .pow(float(falloffExponent))
+      .mul(edgeFeather)
+      .mul(density)
+      .mul(float(baseIntensity))
     return mat
   }, [falloffExponent, baseIntensity])
 
