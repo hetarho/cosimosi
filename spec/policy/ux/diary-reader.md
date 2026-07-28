@@ -84,3 +84,39 @@ why, rather than watching the archive become an error mid-keystroke. Changing an
 fresh keyset page, scrolls to the top, and closes the opened row, because the opened entry may not be
 in the new result set. A star's 원본 일기 deep link searches the **whole** archive: active conditions
 are lifted first, since paging a filtered one would run out of pages and drop the request.
+
+## 달력 뷰 — the archive has two shapes and one identity ([D12])
+
+The calendar is a **view of `/diary`, not a destination**. The list is the default, a two-option toggle
+(목록 / 달력) is the only way in, and every other reader affordance survives the switch: the header, the
+restore section, the search and filter controls, the star deep-link consumer and the deletion mount all stay
+mounted, so entering the calendar drops nothing. Only the body swaps. There is no new route and no new
+screen. The sort control is the one thing hidden while the calendar shows — it orders the list, and a control
+that steers nothing visible is noise.
+
+**A day's color is the top slice of that day's strength-weighted emotions** — the same blend the universe
+paints ([M4]), collapsed to one mood. A day may hold several diaries and many moods; the mark asserts the
+loudest, never an average, and never a per-diary representative (which the list deliberately does not have
+either). The mark is a filled disc under the day number, and nothing animates.
+
+**A written day always shows.** With no live mood — a past-dated diary that launched nothing, or one whose
+memories were all let go — it shows as a **border-token outline**, because the writing happened even when the
+remembering did not survive. `NEUTRAL`'s color is never used to stand in for absence. An **unwritten** day is
+a third state, distinct from both: plain recessed text, not a control at all. Out-of-month cells are present
+for grid shape and read the same inert way.
+
+**The calendar is free and time-frozen.** Entering it, stepping months and selecting a day cost nothing and
+move no clock ([D11][T3]). It holds **no paid affordance at all** — unlike the list, it has no action slot a
+spend could be mounted through — so the free/paid boundary needs no visual warning here. It also shows **no
+diary text of any kind**: its read carries none, so a snippet is unrepresentable rather than merely forbidden
+([D10]).
+
+**Clicking a day lands on that day's writing, filtered** — the date range narrows to exactly that day and the
+view returns to the list, so a day holding several diaries shows all of them. Never a guessed single entry,
+and no auto-expand: one rule for one and for many.
+
+**Stepping is prev/next only**, one month at a time, unbounded, with the month label between them. There is no
+"today" button and no month picker — on web the `month` param plus Back already return the reader, and the
+archive's voice is restrained. A month with no entries reads as a quiet line ("이 달엔 아무것도 적지 않았어요."),
+not an error. A month still loading shows the loading state rather than a partial set of marks, because a
+half-loaded month would assert the wrong color for a day.

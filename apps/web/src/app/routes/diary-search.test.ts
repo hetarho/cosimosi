@@ -34,6 +34,33 @@ describe('parseDiarySearch', () => {
     expect(parseDiarySearch({ sort: 'sideways' }).sort).toBeUndefined()
     expect(parseDiarySearch({ sort: 'oldest' }).sort).toBe('oldest')
   })
+
+  it('keeps `view=calendar` and drops every other value, so a bare /diary stays bare ([D12])', () => {
+    expect(parseDiarySearch({ view: 'calendar' }).view).toBe('calendar')
+    expect(parseDiarySearch({ view: 'list' }).view).toBeUndefined()
+    expect(parseDiarySearch({ view: 'sideways' }).view).toBeUndefined()
+  })
+
+  it('accepts only a well-formed YYYY-MM month', () => {
+    expect(parseDiarySearch({ month: '2026-05' }).month).toBe('2026-05')
+    expect(parseDiarySearch({ month: '2026-13' }).month).toBeUndefined()
+    expect(parseDiarySearch({ month: '2026-00' }).month).toBeUndefined()
+    expect(parseDiarySearch({ month: '2026-5' }).month).toBeUndefined()
+    expect(parseDiarySearch({ month: '2026-05-01' }).month).toBeUndefined()
+  })
+})
+
+describe('view state stays out of the conditions mappers ([D12])', () => {
+  it('carries neither view nor month into the archive read input', () => {
+    const input = diaryQueryFromSearch({ view: 'calendar', month: '2026-05' })
+    expect(Object.keys(input).sort()).toEqual(['from', 'moods', 'query', 'sort', 'to'])
+  })
+
+  it('reconstructs neither view nor month from the read input', () => {
+    const params = diarySearchFromQuery({ from: '2026-05-04', to: '2026-05-04' })
+    expect(params.view).toBeUndefined()
+    expect(params.month).toBeUndefined()
+  })
 })
 
 describe('diaryQueryFromSearch / diarySearchFromQuery', () => {
@@ -79,5 +106,13 @@ describe('searchWithUpdate', () => {
       moods: [...(previous.moods ?? []), 'SAD'],
     }))
     expect(withJoy.moods).toEqual(['JOY', 'SAD'])
+  })
+
+  it('carries view and month across a conditions change, so typing does not leave the calendar', () => {
+    const next = searchWithUpdate({ view: 'calendar', month: '2026-05' }, (previous) => ({
+      ...previous,
+      query: '커피',
+    }))
+    expect(next).toMatchObject({ q: '커피', view: 'calendar', month: '2026-05' })
   })
 })

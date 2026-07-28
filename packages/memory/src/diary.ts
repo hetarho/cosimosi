@@ -1,4 +1,4 @@
-import type { DiaryDto } from '@cosimosi/api-client'
+import type { DiaryDayDto, DiaryDto } from '@cosimosi/api-client'
 import { MOODS, type Mood } from '@cosimosi/emotion'
 
 export interface DiarySplitMember {
@@ -30,6 +30,33 @@ export function diariesFromDtos(dtos: readonly DiaryDto[]): Diary[] {
       name: member.name,
       mood: member.mood,
     })),
+  }))
+}
+
+export interface DiaryDayMood {
+  readonly mood: string
+  readonly weight: number
+}
+
+export interface DiaryDay {
+  readonly diaryDate: string
+  readonly moods: readonly DiaryDayMood[]
+}
+
+// entities/diary api ([D12]): the FE mirror of the GetDiaryCalendar read. It stays NESTED rather than
+// flattening to (date, mood, weight) triples, because a written day whose diaries launched nothing or
+// whose memories were all let go arrives with an EMPTY `moods` list — in a flat list it would contribute
+// no row at all and become indistinguishable from a day never written, which is exactly the distinction
+// the neutral-outline mark rests on ([M3][X4]). The nesting is also [68]'s Go shape (DiaryDay/DiaryDayMood).
+//
+// `diaryDate` is carried as the verbatim `YYYY-MM-DD` string: `diary_date` is a user-entered LOCAL
+// calendar date with no time component, so parsing it into a Date would apply a UTC shift and could move
+// a mark a day for any user west of UTC ([W5]). The `weight` is `EffectiveStrength`-derived server-side
+// and is copied verbatim — nothing is recomputed here ([M4][V3]).
+export function diaryDaysFromDtos(dtos: readonly DiaryDayDto[]): DiaryDay[] {
+  return dtos.map((day) => ({
+    diaryDate: day.diaryDate,
+    moods: day.moods.map((entry) => ({ mood: entry.mood, weight: entry.weight })),
   }))
 }
 

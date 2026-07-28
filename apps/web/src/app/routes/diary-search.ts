@@ -10,9 +10,15 @@ export interface DiarySearchParams {
   from?: string
   to?: string
   sort?: 'newest' | 'oldest'
+  // View state, NOT archive conditions ([D12]): which shape of the archive is showing and which month the
+  // calendar is on. They deliberately stay out of the three conditions mappers below — routing a view key
+  // through them would make a view switch look like a conditions change and reset the archive.
+  view?: 'calendar'
+  month?: string
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+const ISO_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
 
 // The URL is user-editable, so every field is validated here and an unusable one is dropped rather
 // than forwarded: a hand-typed `?sort=sideways` or `?moods=nonsense` leaves the archive in its default
@@ -33,7 +39,12 @@ export function parseDiarySearch(search: Record<string, unknown>): DiarySearchPa
     typeof search.from === 'string' && ISO_DATE.test(search.from) ? search.from : undefined
   const to = typeof search.to === 'string' && ISO_DATE.test(search.to) ? search.to : undefined
   const sort = search.sort === 'oldest' ? 'oldest' : undefined
-  return { q, moods: moods.length > 0 ? [...moods] : undefined, from, to, sort }
+  // `list` is the absent default, so a bare `/diary` stays bare and mounting the calendar is the only
+  // thing that writes a `view` key at all.
+  const view = search.view === 'calendar' ? 'calendar' : undefined
+  const month =
+    typeof search.month === 'string' && ISO_MONTH.test(search.month) ? search.month : undefined
+  return { q, moods: moods.length > 0 ? [...moods] : undefined, from, to, sort, view, month }
 }
 
 // The archive read speaks the generated request shape, so the app layer is the only place the two
@@ -62,9 +73,17 @@ export function diarySearchFromQuery(query: GetDiariesInput): DiarySearchParams 
 
 // Merges a conditions update onto the LIVE search rather than a captured snapshot — the router hands
 // the previous search in, so two controls touched inside one navigation round trip both survive.
+//
+// `view`/`month` are carried across untouched: they are view state, and the conditions mappers above do
+// not round-trip them, so without this a keystroke in the search field would drop the reader out of the
+// calendar mid-typing.
 export function searchWithUpdate(
   previous: DiarySearchParams,
   update: DiaryConditionsUpdate,
 ): DiarySearchParams {
-  return diarySearchFromQuery(update(diaryQueryFromSearch(previous)))
+  return {
+    ...diarySearchFromQuery(update(diaryQueryFromSearch(previous))),
+    view: previous.view,
+    month: previous.month,
+  }
 }

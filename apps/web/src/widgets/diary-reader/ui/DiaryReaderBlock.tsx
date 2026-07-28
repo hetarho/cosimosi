@@ -18,6 +18,7 @@ import {
   diaryReaderMachine,
   diaryRecallAdvanceAnnouncement,
   requestRecallDiaryStars,
+  resolveCalendarMonth,
   useDeletionTargetStore,
   useOpenDiaryTargetStore,
   usePendingFlyTargetStore,
@@ -34,6 +35,7 @@ import { DiaryList, useDiaryArchive } from '../../../features/read-diary-list/in
 import { HighlightedBody, SearchDiary } from '../../../features/search-diary/index.ts'
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
+import { DiaryCalendar, useDiaryCalendar } from '../../../features/diary-calendar/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
 import { useInvalidateUniverse, type DiaryConditionsUpdate } from '@cosimosi/universe/react'
@@ -50,12 +52,23 @@ export function DiaryReaderBlock({
   onExit,
   query,
   onQueryChange,
+  view = 'list',
+  onViewChange,
+  month,
+  onMonthChange,
 }: {
   onExit: () => void
   // The archive's conditions live with this widget's host — the URL on web, screen state on mobile —
   // so a filtered archive survives a reload and Back restores the previous conditions ([D7][D8]).
   query: GetDiariesInput
   onQueryChange: (update: DiaryConditionsUpdate) => void
+  // Which shape of the archive is showing, and which month the calendar is on. Both live with the host
+  // for the same reason the conditions do ([D12]); `month` is absent until the reader steps a month, so
+  // mounting the calendar adds no history entry.
+  view?: 'list' | 'calendar'
+  onViewChange: (view: 'list' | 'calendar') => void
+  month?: string
+  onMonthChange: (month: string) => void
 }) {
   const showError = useErrorToast()
   const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive(query)
@@ -85,6 +98,26 @@ export function DiaryReaderBlock({
   const clearConditions = useCallback(() => {
     changeQuery((previous) => ({ ...previous, query: '', moods: [], from: '', to: '' }))
   }, [changeQuery])
+
+  // The month is RESOLVED rather than stored, from the archive page the list has already fetched, and is
+  // never written back — mounting the calendar must add no history entry, while stepping does ([D12]).
+  const displayedMonth = resolveCalendarMonth(
+    month,
+    diaries.map((diary) => diary.diaryDate),
+    new Date(),
+  )
+  const calendar = useDiaryCalendar(displayedMonth, view === 'calendar')
+
+  // Selecting a day narrows the archive to exactly that day and shows the list, so a day holding several
+  // diaries lands on all of them rather than on a guessed single entry ([D12][D8]). `changeQuery` clears
+  // the opened entry too, which is what puts the reader at the top of the fresh keyset page.
+  const selectDay = useCallback(
+    (date: string) => {
+      changeQuery((previous) => ({ ...previous, from: date, to: date }))
+      onViewChange('list')
+    },
+    [changeQuery, onViewChange],
+  )
 
   const [snapshot, send] = useMachine(diaryReaderMachine)
   const phase = snapshot.value as DiaryReaderPhase
@@ -302,65 +335,94 @@ export function DiaryReaderBlock({
 
       <SearchDiary value={query} onChange={changeQuery} />
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-text-muted">{m.diary_reader_sort_label()}</span>
+      <div className="flex flex-wrap items-center gap-2">
         <SegmentedControl
-          ariaLabel={m.diary_reader_sort_label()}
-          value={query.sort === DiarySort.OLDEST ? 'oldest' : 'newest'}
-          onValueChange={(next) =>
-            changeQuery((previous) => ({
-              ...previous,
-              sort: next === 'oldest' ? DiarySort.OLDEST : DiarySort.NEWEST,
-            }))
-          }
+          ariaLabel={m.calendar_view_label()}
+          value={view}
+          onValueChange={(next) => onViewChange(next === 'calendar' ? 'calendar' : 'list')}
           items={[
-            { value: 'newest', label: m.diary_reader_sort_newest() },
-            { value: 'oldest', label: m.diary_reader_sort_oldest() },
+            { value: 'list', label: m.calendar_list_view_action() },
+            { value: 'calendar', label: m.calendar_view_action() },
           ]}
         />
+        {/* The sort orders the LIST, so it is hidden while the calendar shows — a control that steers
+            nothing visible is noise. */}
+        {view === 'list' && (
+          <>
+            <span className="text-sm text-text-muted">{m.diary_reader_sort_label()}</span>
+            <SegmentedControl
+              ariaLabel={m.diary_reader_sort_label()}
+              value={query.sort === DiarySort.OLDEST ? 'oldest' : 'newest'}
+              onValueChange={(next) =>
+                changeQuery((previous) => ({
+                  ...previous,
+                  sort: next === 'oldest' ? DiarySort.OLDEST : DiarySort.NEWEST,
+                }))
+              }
+              items={[
+                { value: 'newest', label: m.diary_reader_sort_newest() },
+                { value: 'oldest', label: m.diary_reader_sort_oldest() },
+              ]}
+            />
+          </>
+        )}
       </div>
 
-      <DiaryList
-        diaries={diaries}
-        openedDiaryId={openedDiaryId}
-        onOpen={setOpenedDiaryId}
-        onClose={() => setOpenedDiaryId(null)}
-        isLoading={isLoading}
-        isError={isError}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
-        onLoadMore={loadMore}
-        emptyState={conditionsActive ? 'no-results' : 'archive'}
-        onClearConditions={conditionsActive ? clearConditions : undefined}
-        scrollResetKey={JSON.stringify([
-          query.query,
-          query.moods,
-          query.from,
-          query.to,
-          query.sort,
-        ])}
-        renderBodyText={(text) => <HighlightedBody text={text} query={query.query ?? ''} />}
-        renderActions={(diary) => (
-          <div className="flex flex-col gap-3">
-            <RecallDiaryStarsAction
-              liveCount={diary.memories.length}
-              onInitiate={() => initiateJump(diary.id)}
-            />
-            {/* Destructive is not the same as paid, so the delete sits on its own line behind a rule
+      {/* Only the BODY branches: the header, the restore section, the search controls and the deep-link
+          consumer effect above stay mounted across the switch, and the page-level deletion mount is
+          untouched — entering the calendar drops none of them ([D12]). */}
+      {view === 'calendar' ? (
+        <DiaryCalendar
+          month={displayedMonth}
+          onMonthChange={onMonthChange}
+          onSelectDay={selectDay}
+          marks={calendar.marks}
+          isLoading={calendar.isLoading}
+          isError={calendar.isError}
+        />
+      ) : (
+        <DiaryList
+          diaries={diaries}
+          openedDiaryId={openedDiaryId}
+          onOpen={setOpenedDiaryId}
+          onClose={() => setOpenedDiaryId(null)}
+          isLoading={isLoading}
+          isError={isError}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMore}
+          emptyState={conditionsActive ? 'no-results' : 'archive'}
+          onClearConditions={conditionsActive ? clearConditions : undefined}
+          scrollResetKey={JSON.stringify([
+            query.query,
+            query.moods,
+            query.from,
+            query.to,
+            query.sort,
+          ])}
+          renderBodyText={(text) => <HighlightedBody text={text} query={query.query ?? ''} />}
+          renderActions={(diary) => (
+            <div className="flex flex-col gap-3">
+              <RecallDiaryStarsAction
+                liveCount={diary.memories.length}
+                onInitiate={() => initiateJump(diary.id)}
+              />
+              {/* Destructive is not the same as paid, so the delete sits on its own line behind a rule
                 rather than shoulder to shoulder with the one control that spends ([D11]). */}
-            <div className="border-t border-border pt-3">
-              <Button
-                color="danger"
-                size="sm"
-                onClick={() => openFullDelete(diary.id)}
-                disabled={diary.memories.length === 0}
-              >
-                {m.deletion_delete_entry_action()}
-              </Button>
+              <div className="border-t border-border pt-3">
+                <Button
+                  color="danger"
+                  size="sm"
+                  onClick={() => openFullDelete(diary.id)}
+                  disabled={diary.memories.length === 0}
+                >
+                  {m.deletion_delete_entry_action()}
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      />
+          )}
+        />
+      )}
 
       {jumpDiaryId && phase === 'confirming' && (
         <ConfirmTimeSyncDialog open onAccept={acceptSync} onReject={rejectSync} />

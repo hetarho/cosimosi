@@ -105,11 +105,37 @@ export function DiaryReaderRoute() {
       }),
     [navigate],
   )
+  // Mounting the calendar must add NO history entry — the toggle is a way of looking, not a place — so the
+  // view swap replaces. Stepping a month is a move the reader may want to undo, so it pushes ([D12]).
+  const onViewChange = useCallback(
+    (view: 'list' | 'calendar') =>
+      navigate({
+        to: '/diary',
+        search: (previous: DiarySearchParams): DiarySearchParams => ({
+          ...previous,
+          view: view === 'calendar' ? 'calendar' : undefined,
+        }),
+        replace: true,
+      }),
+    [navigate],
+  )
+  const onMonthChange = useCallback(
+    (month: string) =>
+      navigate({
+        to: '/diary',
+        search: (previous: DiarySearchParams) => ({ ...previous, month }),
+      }),
+    [navigate],
+  )
   return (
     <DiaryReaderPage
       onExit={() => navigate({ to: '/' })}
       query={query}
       onQueryChange={onQueryChange}
+      view={search.view === 'calendar' ? 'calendar' : 'list'}
+      onViewChange={onViewChange}
+      month={search.month}
+      onMonthChange={onMonthChange}
     />
   )
 }

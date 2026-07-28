@@ -10,6 +10,7 @@ import {
   type RestoreResponse,
 } from '@cosimosi/api-client'
 import { applyRestoreResult, requestRestore } from '../deletion.ts'
+import { useInvalidateDiaryCalendar } from './use-invalidate-diary-calendar.ts'
 
 // features/restore-memory api ([X2]): the single Restore call over the generated client. On success
 // the group's captured snapshots are re-inserted into the episodic-memory mirror and the group is
@@ -18,6 +19,7 @@ import { applyRestoreResult, requestRestore } from '../deletion.ts'
 export function useRestoreMemory(): (diaryId: string) => Promise<RestoreResponse> {
   const transport = useTransport()
   const queryClient = useQueryClient()
+  const invalidateCalendar = useInvalidateDiaryCalendar()
   return useCallback(
     async (diaryId: string) => {
       const response = await requestRestore(transport, { diaryId })
@@ -35,8 +37,11 @@ export function useRestoreMemory(): (diaryId: string) => Promise<RestoreResponse
           queryKey: createGetDiariesInfiniteQueryKey(transport),
         })
         .catch(() => undefined)
+      // Restore re-admits the diary to the calendar read, so its day regains its mark — exclusion was
+      // never a copied flag, so nothing has to be re-derived to bring it back ([D12][X2][I1]).
+      invalidateCalendar()
       return response
     },
-    [transport, queryClient],
+    [transport, queryClient, invalidateCalendar],
   )
 }

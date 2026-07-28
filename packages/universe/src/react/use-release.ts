@@ -10,6 +10,7 @@ import {
   type ReleaseResponse,
 } from '@cosimosi/api-client'
 import { applyReleaseResult, requestRelease } from '../deletion.ts'
+import { useInvalidateDiaryCalendar } from './use-invalidate-diary-calendar.ts'
 
 // features/delete-memory api ([X1][X2]): the single Release call over the generated client. On
 // success the returned ids are optimistically removed from the episodic-memory mirror and the
@@ -19,6 +20,7 @@ import { applyReleaseResult, requestRelease } from '../deletion.ts'
 export function useReleaseMemory(): (diaryId: string) => Promise<ReleaseResponse> {
   const transport = useTransport()
   const queryClient = useQueryClient()
+  const invalidateCalendar = useInvalidateDiaryCalendar()
   return useCallback(
     async (diaryId: string) => {
       const response = await requestRelease(transport, { diaryId })
@@ -36,8 +38,11 @@ export function useReleaseMemory(): (diaryId: string) => Promise<ReleaseResponse
           queryKey: createGetDiariesInfiniteQueryKey(transport),
         })
         .catch(() => undefined)
+      // A released diary drops out of the calendar read's anti-join too, so its day loses its mark
+      // entirely when the release was that day's only writing ([D12][X2]).
+      invalidateCalendar()
       return response
     },
-    [transport, queryClient],
+    [transport, queryClient, invalidateCalendar],
   )
 }

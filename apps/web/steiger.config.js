@@ -107,10 +107,14 @@ export default defineConfig([
     // recall action, composed by one reader widget and mounted by the reader page — the same
     // one-surface grain as the verticals above. The diary entity is the vertical's shared
     // read-model (substance in @cosimosi/universe). A single reference is the FSD grain here, not
-    // a slice to merge away. Scoped so a genuinely insignificant future slice still gets flagged.
+    // a slice to merge away. diary-calendar is the SECOND SHAPE of the same vertical — the archive's month
+    // view, peer to read-diary-list's row view — so it belongs in this scope rather than a block of its own,
+    // which would claim it is a separate vertical. Scoped so a genuinely insignificant future slice still
+    // gets flagged.
     files: [
       './src/entities/diary/**',
       './src/features/read-diary-list/**',
+      './src/features/diary-calendar/**',
       './src/features/search-diary/**',
       './src/features/recall-diary-stars/**',
       './src/widgets/diary-reader/**',

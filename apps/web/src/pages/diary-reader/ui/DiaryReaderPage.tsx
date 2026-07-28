@@ -12,16 +12,34 @@ export function DiaryReaderPage({
   onExit,
   query,
   onQueryChange,
+  view,
+  onViewChange,
+  month,
+  onMonthChange,
 }: {
   onExit: () => void
   query: GetDiariesInput
   onQueryChange: (update: DiaryConditionsUpdate) => void
+  view: 'list' | 'calendar'
+  onViewChange: (view: 'list' | 'calendar') => void
+  month?: string
+  onMonthChange: (month: string) => void
 }) {
   return (
     <main className="min-h-dvh overflow-y-auto bg-background text-text">
       <div className="mx-auto w-full max-w-2xl px-4 py-6">
-        <DiaryReaderBlock onExit={onExit} query={query} onQueryChange={onQueryChange} />
+        <DiaryReaderBlock
+          onExit={onExit}
+          query={query}
+          onQueryChange={onQueryChange}
+          view={view}
+          onViewChange={onViewChange}
+          month={month}
+          onMonthChange={onMonthChange}
+        />
       </div>
+      {/* Mounted OUTSIDE the view branch, so a full-delete opened from the list survives a switch to the
+          calendar and back ([D12]). */}
       <DeletionFlowSheet />
     </main>
   )

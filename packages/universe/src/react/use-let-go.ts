@@ -9,6 +9,7 @@ import {
   type SuggestLetGoResponse,
 } from '@cosimosi/api-client'
 import { requestLetGo, requestSuggestLetGo } from '../deletion.ts'
+import { useInvalidateDiaryCalendar } from './use-invalidate-diary-calendar.ts'
 
 // features/let-go api step 1 ([X6]): SuggestLetGo over the generated client — the LLM-latency call
 // that returns the this-memory-only semantic candidates + the heavy-state hint. It seals nothing.
@@ -35,14 +36,18 @@ export function useLetGo(): (
 ) => Promise<LetGoResponse> {
   const transport = useTransport()
   const queryClient = useQueryClient()
+  const invalidateCalendar = useInvalidateDiaryCalendar()
   return useCallback(
     async (episodicMemoryId: string, approvedNeuronIds: readonly string[]) => {
       const response = await requestLetGo(transport, { episodicMemoryId, approvedNeuronIds })
       queryClient
         .invalidateQueries({ queryKey: createGetUniverseQueryKey(transport) })
         .catch(() => undefined)
+      // The calendar's marks are the day's live moods, so letting go can take a day's LAST one and flip
+      // its mark from a color to the outline — the one archive read a seal changes besides the universe.
+      invalidateCalendar()
       return response
     },
-    [transport, queryClient],
+    [transport, queryClient, invalidateCalendar],
   )
 }

@@ -65,6 +65,32 @@ and Connect Query bindings are exposed only through `@cosimosi/emotion/react` fo
 `@cosimosi/emotion/i18n` seam owns `moodLabel(wireMood)`: its exhaustive mood-to-message projection falls back to
 neutral for an unknown DTO value, and app `shared/i18n` barrels re-export it without a web/mobile copy.
 
+### 3.1 The per-day representative mood ([D12])
+
+The diary calendar collapses a day's emotions to **one** mood for its mark, and it does so with the existing
+field projection rather than a second color model: `dayRepresentativeMood(rows)` in
+`packages/universe/src/diary-calendar.ts` is `toEmotionSlices(Map<Mood, weight>)[0]?.mood ?? null` — the **top
+slice**, inheriting that function's `weight desc, mood.localeCompare` tie-break and its drop-≤0 normalization.
+So a day's color is the same strength-weighted blend a backdrop paints ([M4]), reduced to its loudest emotion;
+it is never an average and never a per-diary representative.
+
+Three seam rules hold, and they are the reason this lives beside the palette rules rather than in the widget:
+
+- **The weight arrives on the wire.** `DiaryDayMoodDto` carries `mood` (bare enum name) + `weight`, where the
+  weight is `EffectiveStrength`-derived **server-side**. The client sums duplicate `(day, mood)` rows and
+  normalizes through `toEmotionSlices`; it applies no decay and recomputes no strength ([V3]).
+- **No color crosses the wire, and none enters the pure layer.** `DayMark` is `{ mood: Mood | null }` with no
+  `color` field — `dayRepresentativeMood` deliberately discards the slice's resolved `color`, and the widget
+  calls `moodColor` at render time. A palette swap therefore recolors the calendar with no code change ([M6]).
+- **An unknown mood coerces to absence, not to a color.** An unrecognized `mood` string cannot key the
+  `Map<Mood, number>` and so drops out, which yields `null` → the border-token outline. `NEUTRAL`'s hue is
+  never used to stand in for "unknown" or for "nothing survives" ([M3]) — the same unknown→default discipline
+  as `resolvePaletteById`.
+
+`mood: null` means **written, but holding no live mood** (launched nothing, or all memories let go) and is
+distinct from a day absent from the mark map, which was never written. The projection is presentation-only and
+has **no Go twin**: the server never renders a calendar, and `toEmotionSlices` is unmirrored by rule.
+
 ## 4. Arousal Strength Parity
 
 Go `memory.ArousalToInitialStrength(arousal float64)` and TS `arousalToInitialStrength(arousal)` implement the same

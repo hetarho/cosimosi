@@ -439,6 +439,16 @@ diary_reader:
   search_min_query_length: 2
   # Calendar pages are written-day-grained; 31 keeps every civil month in one server-owned page.
   calendar_month_page_size: 31
+  # [D12] How long a fetched month stays fresh. Shorter than client_cache.default_stale_ms, because the
+  # marks are derived from live memory strength: letting go or releasing while the list view is showing
+  # would otherwise leave a stale month painted when the calendar is toggled back on.
+  calendar_stale_ms: 10000
+  # [D12] Months prefetched either side of the displayed one, so prev/next does not flash a loading grid.
+  # 1 covers a step in each direction — the only movement the view offers — and 0 disables prefetch.
+  calendar_prefetch_months: 1
+  # [D12] The weekday in the grid's first column (0 = Sunday … 6 = Saturday). One product-wide calendar
+  # shape on both locales; deriving it from the active locale would make it a formula, not a value.
+  calendar_week_start_day: 0
   # [D6] Code points of the immutable body a closed row previews before the ellipsis. The row has no
   # title, so the preview carries the recognition load; the length is the contract and CSS clamping /
   # numberOfLines is only a narrow-viewport guard.

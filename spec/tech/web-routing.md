@@ -75,6 +75,30 @@ Three seams keep the rest of the app router-free:
   are exactly that pair. Writes use `replace: true`, so a typed phrase does not bury the universe under
   a history entry per keystroke.
 
+### 3.2 Search params — `/diary`'s view state ([D12])
+
+Two further `/diary` keys carry **view** state rather than conditions: `view` (only `calendar` is kept —
+`list` is the absent default, so a bare `/diary` stays bare) and `month` (`YYYY-MM`, validated by regex).
+They ride the same validate-or-drop discipline, and three rules keep them from behaving like conditions:
+
+- They are **absent from `diaryQueryFromSearch` / `diarySearchFromQuery`**. Those two map the
+  `GetDiariesRequest` conditions, and routing a view key through them would make a view switch look like a
+  conditions change — which resets the keyset page and closes the opened row.
+- `searchWithUpdate` therefore **carries `view`/`month` across untouched**. Without that, a keystroke in the
+  search field would drop the reader out of the calendar mid-typing, because the conditions round trip does
+  not reproduce them.
+- **`view` writes `replace`, `month` writes push.** Mounting the calendar is a way of looking, not a place,
+  so it adds no history entry; stepping a month is a move worth undoing, so Back returns the previous month.
+
+The day click-through is two navigations in one handler — the date range, then the view — and it relies on
+the update-function merge above: the second updater sees the first's search, so the chosen day's
+`from`/`to` survives the switch back to the list. `diary-view-navigation.test.ts` pins that composition and
+the replace/push history semantics, because both are router behavior rather than app logic.
+
+The initial month is **resolved, not stored**: with no `month` key the calendar opens on the month of the
+newest diary already in the archive cache, else the device-local current month. The resolved value is never
+written back, which is what keeps mounting free of a history entry.
+
 ## 4. Navigation seam
 
 `pages` / `features` navigate through `routes/navigation.ts`, which re-exports `Link` and `useAppNavigate`

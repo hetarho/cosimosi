@@ -16,6 +16,11 @@ export function DiaryReaderPage({ active, onExit }: { active: boolean; onExit: (
   // URL to be the authority the way there is on web ([D7][D8]). The shape is the generated request,
   // so both platforms feed one archive query.
   const [query, setQuery] = useState<GetDiariesInput>({ sort: DiarySort.NEWEST })
+  // The view and the displayed month are screen-local for the same reason the conditions are: there is no
+  // address bar here to be their authority ([D12]). `month` starts absent so the calendar opens on the
+  // month the archive resolves for it rather than on a value this screen guessed.
+  const [view, setView] = useState<'list' | 'calendar'>('list')
+  const [month, setMonth] = useState<string | undefined>(undefined)
   return (
     // The archive's own header clears the device chrome by the live inset — a guessed constant hid
     // the title and the way out behind the status bar.
@@ -24,7 +29,13 @@ export function DiaryReaderPage({ active, onExit }: { active: boolean; onExit: (
         onExit={onExit}
         query={query}
         onQueryChange={(update) => setQuery(update)}
+        view={view}
+        onViewChange={setView}
+        month={month}
+        onMonthChange={setMonth}
       />
+      {/* Mounted OUTSIDE the view branch, so a full-delete opened from the list survives a switch to the
+          calendar and back ([D12]). */}
       <DeletionFlowSheet active={active} />
     </View>
   )

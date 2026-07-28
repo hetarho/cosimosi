@@ -68,7 +68,18 @@ export { requestSyncStatus } from './sync-status.ts'
 // jump machine + its RPC/acceleration hand-off, and the two cross-route one-slot channels
 // (deep-link into the reader, camera fly back out).
 export { useDiaryStore, type DiaryState } from './diary-store.ts'
-export type { Diary, DiarySplitMember } from '@cosimosi/memory'
+export type { Diary, DiaryDay, DiaryDayMood, DiarySplitMember } from '@cosimosi/memory'
+// The calendar's pure month/mark projection ([D12]) — string dates + integer arithmetic only, no color.
+export {
+  buildMonthGrid,
+  dayRepresentativeMood,
+  monthDateRange,
+  monthMarks,
+  resolveCalendarMonth,
+  stepMonth,
+  type DayMark,
+  type MonthCell,
+} from './diary-calendar.ts'
 export {
   diaryReaderMachine,
   type DiaryReaderPhase,

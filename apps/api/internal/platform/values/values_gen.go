@@ -253,6 +253,9 @@ const (
 	DiaryReaderPageSize                   = 20
 	DiaryReaderSearchMinQueryLength       = 2
 	DiaryReaderCalendarMonthPageSize      = 31
+	DiaryReaderCalendarStaleMs            = 10000
+	DiaryReaderCalendarPrefetchMonths     = 1
+	DiaryReaderCalendarWeekStartDay       = 0
 	DiaryReaderBodyPreviewLength          = 100
 	DiaryReaderRowMoodDotMax              = 4
 	DiaryReaderInfiniteScrollRootMarginPx = 400

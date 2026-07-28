@@ -14,6 +14,7 @@ export {
 } from './mappers.ts'
 export {
   diariesFromDtos,
+  diaryDaysFromDtos,
   diaryMoods,
   diaryPreview,
   highlightSegments,
@@ -21,6 +22,8 @@ export {
   isKeywordSearchable,
   shouldAdoptCommitted,
   type Diary,
+  type DiaryDay,
+  type DiaryDayMood,
   type DiarySplitMember,
   type DiaryTextSegment,
 } from './diary.ts'

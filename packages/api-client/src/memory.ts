@@ -62,6 +62,9 @@ export type {
 } from './gen/cosimosi/memory/v1/memory_pb.ts'
 
 export type GetDiariesInput = MessageInitShape<typeof MemoryService.method.getDiaries.input>
+export type GetDiaryCalendarInput = MessageInitShape<
+  typeof MemoryService.method.getDiaryCalendar.input
+>
 
 export function createMemoryClient(transport: Transport): Client<typeof MemoryService> {
   return createClient(MemoryService, transport)
@@ -151,6 +154,35 @@ export function createGetDiariesInfiniteQueryOptions(transport: Transport, input
 export function createGetDiariesInfiniteQueryKey(transport: Transport) {
   return createConnectQueryKey({
     schema: MemoryService.method.getDiaries,
+    transport,
+    cardinality: 'infinite',
+  })
+}
+
+// The calendar month read ([D12]). The from/to range is part of the key, so stepping to another month is
+// a new key and a natural fetch; page_token is replaced by each keyset day cursor. Free and time-frozen
+// (NO_SIDE_EFFECTS): the request carries no consent, no operation id and no search query, and the method
+// already holds its single http-policy classification — a second one hard-fails the transport (§2.7).
+export function createGetDiaryCalendarInfiniteQueryOptions(
+  transport: Transport,
+  input: GetDiaryCalendarInput,
+) {
+  return createInfiniteQueryOptions(
+    MemoryService.method.getDiaryCalendar,
+    { ...input, pageToken: '' },
+    {
+      transport,
+      pageParamKey: 'pageToken',
+      getNextPageParam: (lastPage) =>
+        lastPage.nextPageToken === '' ? undefined : lastPage.nextPageToken,
+    },
+  )
+}
+
+// Omitting input makes this a partial key for every month, so one invalidation refreshes them all.
+export function createGetDiaryCalendarInfiniteQueryKey(transport: Transport) {
+  return createConnectQueryKey({
+    schema: MemoryService.method.getDiaryCalendar,
     transport,
     cardinality: 'infinite',
   })
