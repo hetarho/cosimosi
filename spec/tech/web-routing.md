@@ -53,6 +53,28 @@ declare module '@tanstack/react-router' {
 Every `Link to=…` / `navigate({ to })` is then compile-time path-checked — an unknown path fails `pnpm typecheck`.
 This is the web counterpart of the mobile shell's `RootStackParamList`.
 
+### 3.1 Search params — `/diary`'s conditions ([D7][D8])
+
+`/diary` is the one route whose search params carry product state: `q` (keyword), `moods`, `from`, `to`
+and `sort`. `validateSearch` runs `parseDiarySearch`, which **validates or drops** every field rather
+than forwarding it: an unknown mood, a date that is not a full ISO day, an unknown sort, and a keyword
+below `diary_reader.search_min_query_length` all fall back to the default view. The URL is
+user-editable, so a hand-shortened link must land on the archive rather than on a refusal the reader
+cannot act on.
+
+Three seams keep the rest of the app router-free:
+
+- `app/routes/diary-search.ts` is the only place the URL's short keys and the generated
+  `GetDiariesRequest` shape meet. Nothing below the app layer holds a hand-written mirror of the
+  conditions.
+- `route-screens.tsx` injects the parsed conditions plus a setter as props (the job-58 callback seam),
+  so `pages/*` and `widgets/*` import no router.
+- The setter takes an **update function** and hands it to `navigate({ search: (previous) => … })`, so a
+  merge always happens against the live search. A plain object patch would let two controls touched
+  inside one navigation round trip overwrite each other's pick — the debounced keyword and a mood chip
+  are exactly that pair. Writes use `replace: true`, so a typed phrase does not bury the universe under
+  a history entry per keystroke.
+
 ## 4. Navigation seam
 
 `pages` / `features` navigate through `routes/navigation.ts`, which re-exports `Link` and `useAppNavigate`

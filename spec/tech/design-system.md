@@ -124,8 +124,15 @@ win deterministically through the `style={[base, …, props.style]}` array.
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
 **Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog,
-Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs. **Deferred** (added when a Phase-4
-slice needs them, promote-on-use): Menu, SegmentedControl, Slider/Stepper, Drawer.
+Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs, SegmentedControl. **Deferred** (added when a
+Phase-4 slice needs them, promote-on-use): Menu, Slider/Stepper, Drawer.
+
+`SegmentedControl` is a **radiogroup**, not a second Tabs: its segments select a value and swap no
+panel, so it carries no `aria-controls` and a reader hears a checked state rather than a tab position.
+All options stay visible, which is what separates it from `Select`. Roving focus keeps the group to one
+tab stop; a `value` outside the item set falls back to the first segment as the focus anchor, so a
+caller bug can never leave the group keyboard-unreachable. Promoted on use by the diary archive's
+newest/oldest order control ([D7]).
 
 Slider/Stepper stays deferred for a reason worth stating: a continuous scalar has no place on the
 writing flow's editable surface ([W4a][I3]), so the one obvious consumer must never exist. Promoting it

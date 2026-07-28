@@ -151,3 +151,18 @@ export interface TabsOwnProps {
   onValueChange: (value: string) => void
   ariaLabel: string
 }
+
+export interface SegmentedControlItem {
+  value: string
+  label: string
+}
+
+export interface SegmentedControlOwnProps {
+  /** The whole bounded set, laid out side by side — all options stay visible, unlike Select. */
+  items: readonly SegmentedControlItem[]
+  value: string
+  onValueChange: (value: string) => void
+  /** Accessible name for the group, so the choice is never announced unlabelled. */
+  ariaLabel: string
+  disabled?: boolean
+}

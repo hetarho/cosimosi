@@ -4,10 +4,15 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createSyncStatusQueryKey, createSyncStatusQueryOptions } from '@cosimosi/api-client'
+import {
+  createSyncStatusQueryKey,
+  createSyncStatusQueryOptions,
+  DiarySort,
+  type GetDiariesInput,
+} from '@cosimosi/api-client'
 import { classifyErrorRecovery } from '@cosimosi/errors'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
-import { Button, Dialog, tokens } from '@cosimosi/ui'
+import { Button, Dialog, SegmentedControl, tokens } from '@cosimosi/ui'
 import {
   classifyPaidActionError,
   createPaidActionSession,
@@ -27,11 +32,12 @@ import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/i
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
 import { RestoreSection } from '../../../features/restore-memory/index.ts'
 import { DiaryList, useDiaryArchive } from '../../../features/read-diary-list/index.ts'
+import { HighlightedBody, SearchDiary } from '../../../features/search-diary/index.ts'
 import { RecallDiaryStarsAction } from '../../../features/recall-diary-stars/index.ts'
 import { SpendCostDisplay, diaryRecallSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { useErrorToast, useMachine } from '../../../shared/model/index.ts'
-import { useInvalidateUniverse } from '@cosimosi/universe/react'
+import { useInvalidateUniverse, type DiaryConditionsUpdate } from '@cosimosi/universe/react'
 
 // widgets/diary-reader (RN fork, [D2][D3]): the archive block. It composes the free read
 // (read-diary-list) with the one paid action (recall-diary-stars) and owns the jump machine + the
@@ -41,15 +47,45 @@ import { useInvalidateUniverse } from '@cosimosi/universe/react'
 // recalling (A4) — header back / Dialog close / cancel inert — and a late completion is fenced to
 // the active operation. Hardcodes no price (CC3); navigates only via the `onExit` seam. Shares
 // model with the web fork.
-export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
+export function DiaryReaderBlock({
+  onExit,
+  query,
+  onQueryChange,
+}: {
+  onExit: () => void
+  // The archive's conditions live with this widget's host — screen state here, the URL on web — so the
+  // same shape drives one archive query on both platforms ([D7][D8]).
+  query: GetDiariesInput
+  onQueryChange: (update: DiaryConditionsUpdate) => void
+}) {
   const showError = useErrorToast()
-  const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive()
+  const { diaries, isLoading, isError, hasMore, isLoadingMore, loadMore } = useDiaryArchive(query)
   const [openedDiaryId, setOpenedDiaryId] = useState<string | null>(null)
   const [jumpDiaryId, setJumpDiaryId] = useState<string | null>(null)
   const sessionRef = useRef<PaidActionSession | null>(null)
   if (sessionRef.current === null) sessionRef.current = createPaidActionSession()
   const paidSession = sessionRef.current
   const [attempt, setAttempt] = useState<PaidActionAttempt | null>(null)
+
+  // Any condition change starts a fresh keyset page, so the opened entry may not be in the new result
+  // set and the reader should be looking at the top of it ([D7]).
+  const changeQuery = useCallback(
+    (update: DiaryConditionsUpdate) => {
+      setOpenedDiaryId(null)
+      onQueryChange(update)
+    },
+    [onQueryChange],
+  )
+
+  const conditionsActive =
+    (query.query ?? '') !== '' ||
+    (query.moods ?? []).length > 0 ||
+    (query.from ?? '') !== '' ||
+    (query.to ?? '') !== ''
+
+  const clearConditions = useCallback(() => {
+    changeQuery((previous) => ({ ...previous, query: '', moods: [], from: '', to: '' }))
+  }, [changeQuery])
 
   const [snapshot, send] = useMachine(diaryReaderMachine)
   const phase = snapshot.value as DiaryReaderPhase
@@ -89,9 +125,25 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
       clearDeepLink()
       return
     }
+    // The archive the star's diary must be found in is the whole archive: paging a filtered one would
+    // run out of pages and drop the request, so the conditions are lifted first and the search then
+    // continues over every entry.
+    if (conditionsActive) {
+      clearConditions()
+      return
+    }
     if (hasMore && !isLoadingMore) loadMore()
     else if (!hasMore) clearDeepLink()
-  }, [deepLinkMemoryId, diaries, hasMore, isLoadingMore, loadMore, clearDeepLink])
+  }, [
+    deepLinkMemoryId,
+    diaries,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+    clearDeepLink,
+    conditionsActive,
+    clearConditions,
+  ])
 
   const runRecall = useCallback(
     async (diaryId: string, consent: boolean) => {
@@ -223,10 +275,33 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
           {m.diary_reader_back()}
         </Button>
       </View>
-
-      <RestoreSection />
+      {/* [D11] said once, plainly: everything on this page is free and the universe clock is still. */}
+      <Text style={styles.freeNote}>{m.diary_reader_free_note()}</Text>
 
       <DiaryList
+        listHeader={
+          <View style={styles.listHeader}>
+            <RestoreSection />
+            <SearchDiary value={query} onChange={changeQuery} />
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>{m.diary_reader_sort_label()}</Text>
+              <SegmentedControl
+                ariaLabel={m.diary_reader_sort_label()}
+                value={query.sort === DiarySort.OLDEST ? 'oldest' : 'newest'}
+                onValueChange={(next) =>
+                  changeQuery((previous) => ({
+                    ...previous,
+                    sort: next === 'oldest' ? DiarySort.OLDEST : DiarySort.NEWEST,
+                  }))
+                }
+                items={[
+                  { value: 'newest', label: m.diary_reader_sort_newest() },
+                  { value: 'oldest', label: m.diary_reader_sort_oldest() },
+                ]}
+              />
+            </View>
+          </View>
+        }
         diaries={diaries}
         openedDiaryId={openedDiaryId}
         onOpen={setOpenedDiaryId}
@@ -236,20 +311,34 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
         hasMore={hasMore}
         isLoadingMore={isLoadingMore}
         onLoadMore={loadMore}
+        emptyState={conditionsActive ? 'no-results' : 'archive'}
+        onClearConditions={conditionsActive ? clearConditions : undefined}
+        scrollResetKey={JSON.stringify([
+          query.query,
+          query.moods,
+          query.from,
+          query.to,
+          query.sort,
+        ])}
+        renderBodyText={(text) => <HighlightedBody text={text} query={query.query ?? ''} />}
         renderActions={(diary) => (
           <View style={styles.rowActions}>
             <RecallDiaryStarsAction
               liveCount={diary.memories.length}
               onInitiate={() => initiateJump(diary.id)}
             />
-            <Button
-              color="danger"
-              size="sm"
-              onPress={() => openFullDelete(diary.id)}
-              disabled={diary.memories.length === 0}
-            >
-              {m.deletion_delete_entry_action()}
-            </Button>
+            {/* Destructive is not the same as paid, so the delete sits on its own line behind a rule
+                rather than shoulder to shoulder with the one control that spends ([D11]). */}
+            <View style={styles.destructiveRow}>
+              <Button
+                color="danger"
+                size="sm"
+                onPress={() => openFullDelete(diary.id)}
+                disabled={diary.memories.length === 0}
+              >
+                {m.deletion_delete_entry_action()}
+              </Button>
+            </View>
           </View>
         )}
       />
@@ -281,6 +370,10 @@ export function DiaryReaderBlock({ onExit }: { onExit: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  freeNote: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
+  listHeader: { gap: tokens.spacing[4], paddingBottom: tokens.spacing[2] },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[2] },
+  sortLabel: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
   block: { flex: 1, gap: tokens.spacing[4] },
   header: {
     flexDirection: 'row',
@@ -290,10 +383,11 @@ const styles = StyleSheet.create({
   },
   title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
-  rowActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: tokens.spacing[2],
+  rowActions: { gap: tokens.spacing[3] },
+  destructiveRow: {
+    alignItems: 'flex-start',
+    borderTopColor: tokens.color.border,
+    borderTopWidth: 1,
+    paddingTop: tokens.spacing[3],
   },
 })

@@ -1,8 +1,9 @@
-import { type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
+import { VALUES } from '@cosimosi/config'
 import { moodColor, type Mood } from '@cosimosi/emotion'
-import type { Diary, DiarySplitMember } from '@cosimosi/memory'
+import { diaryMoods, diaryPreview, type Diary, type DiarySplitMember } from '@cosimosi/memory'
 import { Button, tokens } from '@cosimosi/ui'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
@@ -17,15 +18,29 @@ export interface DiaryListProps {
   hasMore: boolean
   isLoadingMore: boolean
   onLoadMore: () => void
+  // Which nothing-to-show this is. Only the composing widget knows whether conditions are active, and
+  // it tells the list in two words rather than handing over the conditions themselves ([D10]).
+  emptyState: 'archive' | 'no-results'
+  onClearConditions?: () => void
+  // Rendered above the first row INSIDE the list, so the conditions scroll away with the archive the
+  // way they do on web — pinned above a flex:1 list they would leave the rows a sliver of the screen.
+  listHeader?: ReactNode
+  // Changes whenever the archive's conditions do. A fresh keyset page starts at the top, so the
+  // reader should be looking there rather than mid-way down the previous result set ([D7]).
+  scrollResetKey?: string
   // The opened entry's spend affordance is injected by the composing widget (the jump is a paid
   // action this free read feature must not own); nothing renders for a diary with no live star.
   renderActions?: (diary: Diary) => ReactNode
+  // Renders a stretch of the diary's own body — the seam the search feature marks its hits through.
+  // The list never sees the keyword, so no query can reach a memory's text ([D10]).
+  renderBodyText?: (text: string) => ReactNode
 }
 
-// features/read-diary-list ui (RN fork, [D2]): the immutable archive as a reverse-chronological
-// FlatList. A row opens to the diary's verbatim body ([I2][D4]) and its split membership as
-// mood-colored chips ([D3]); an all-let-go diary opens with no chips and a quiet note. Reading
-// opens/reads freely — this surface spends nothing and moves no clock. Shares api with web verbatim.
+// features/read-diary-list ui (RN fork, [D2][D6][D7]): the immutable archive as a reverse-chronological
+// FlatList. A closed row is date + a bounded preview of the verbatim body + the count of stars born
+// from it + its distinct mood dots — no title exists at any layer. A row opens to the whole body
+// ([I2][D4]) and its split membership as mood-colored chips ([D3]). Reading, previewing and scrolling
+// are free — this surface spends nothing and moves no clock ([D11][T3]). Shares api with web verbatim.
 export function DiaryList({
   diaries,
   openedDiaryId,
@@ -36,25 +51,74 @@ export function DiaryList({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  emptyState,
+  onClearConditions,
+  listHeader,
+  scrollResetKey,
   renderActions,
+  renderBodyText,
 }: DiaryListProps) {
+  const listRef = useRef<FlatList<Diary> | null>(null)
+  const lastResetKey = useRef(scrollResetKey)
+  useEffect(() => {
+    // Arriving is not a condition change: only a later key rewinds the list.
+    if (lastResetKey.current === scrollResetKey) return
+    lastResetKey.current = scrollResetKey
+    listRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [scrollResetKey])
+
   if (isLoading) {
-    return <Text style={styles.notice}>{m.diary_reader_loading()}</Text>
+    return (
+      <View>
+        {listHeader}
+        <Text style={styles.notice}>{m.diary_reader_loading()}</Text>
+      </View>
+    )
   }
   if (isError) {
-    return <Text style={styles.notice}>{m.diary_reader_error()}</Text>
+    return (
+      <View>
+        {listHeader}
+        <Text style={styles.notice}>{m.diary_reader_error()}</Text>
+      </View>
+    )
   }
   if (diaries.length === 0) {
-    return <Text style={styles.notice}>{m.diary_reader_empty()}</Text>
+    // An empty archive and a filtered-to-nothing archive are different facts and read differently.
+    return emptyState === 'no-results' ? (
+      <View style={styles.emptyBlock}>
+        {listHeader}
+        <Text style={styles.notice}>{m.diary_reader_no_results()}</Text>
+        {onClearConditions && (
+          <Button color="neutral" size="sm" onPress={onClearConditions}>
+            {m.diary_reader_clear_conditions()}
+          </Button>
+        )}
+      </View>
+    ) : (
+      <View>
+        {listHeader}
+        <Text style={styles.notice}>{m.diary_reader_empty()}</Text>
+      </View>
+    )
   }
 
   return (
     <FlatList
+      ref={listRef}
       data={diaries}
       keyExtractor={(diary) => diary.id}
       contentContainerStyle={styles.list}
+      ListHeaderComponent={listHeader === undefined ? null : <>{listHeader}</>}
+      onEndReachedThreshold={VALUES.diaryReader.infiniteScrollEndThreshold}
+      // FlatList fires this once per content-length change, and the guard keeps a second page from
+      // being asked for while the first is still in flight.
+      onEndReached={() => {
+        if (hasMore && !isLoadingMore) onLoadMore()
+      }}
       renderItem={({ item }) => {
         const opened = item.id === openedDiaryId
+        const preview = diaryPreview(item.body, VALUES.diaryReader.bodyPreviewLength)
         return (
           <View style={styles.row}>
             <Pressable
@@ -65,14 +129,17 @@ export function DiaryList({
             >
               <Text style={styles.date}>{item.diaryDate}</Text>
               {!opened && (
-                <Text style={styles.preview} numberOfLines={1}>
-                  {item.body}
+                <Text style={styles.preview} numberOfLines={2}>
+                  {renderBodyText ? renderBodyText(preview) : preview}
                 </Text>
               )}
+              <DiaryRowFooter memories={item.memories} />
             </Pressable>
             {opened && (
               <View style={styles.opened}>
-                <Text style={styles.body}>{item.body}</Text>
+                <Text style={styles.body}>
+                  {renderBodyText ? renderBodyText(item.body) : item.body}
+                </Text>
                 {item.memories.length > 0 ? (
                   <DiaryChips members={item.memories} />
                 ) : (
@@ -85,15 +152,47 @@ export function DiaryList({
         )
       }}
       ListFooterComponent={
-        hasMore ? (
-          <View style={styles.footer}>
-            <Button color="neutral" size="sm" onPress={onLoadMore} disabled={isLoadingMore}>
-              {m.diary_reader_load_more()}
-            </Button>
-          </View>
-        ) : null
+        isLoadingMore ? (
+          <Text style={styles.footerNote}>{m.diary_reader_loading_more()}</Text>
+        ) : hasMore ? null : (
+          <Text style={styles.footerNote}>{m.diary_reader_archive_end()}</Text>
+        )
       }
     />
+  )
+}
+
+// The row's recognition line: how many stars this entry launched, and which feelings they carry.
+function DiaryRowFooter({ memories }: { memories: readonly DiarySplitMember[] }) {
+  const moods = diaryMoods(memories)
+  const shown = moods.slice(0, VALUES.diaryReader.rowMoodDotMax)
+  const remainder = moods.length - shown.length
+  const spoken =
+    moods.length > 0
+      ? `${m.diary_reader_star_count({ count: memories.length })}. ${m.diary_reader_mood_list({
+          moods: moods.map(moodLabel).join(', '),
+        })}`
+      : m.diary_reader_star_count({ count: memories.length })
+  return (
+    // One accessibility element for the whole line, so the count and the feelings are announced
+    // together and the colour swatches are not read as unnamed views. `accessible` is what makes the
+    // label reachable on iOS; without it the label exists on a view the reader never visits.
+    <View style={styles.footerLine} accessible accessibilityLabel={spoken}>
+      <Text style={styles.count}>{m.diary_reader_star_count({ count: memories.length })}</Text>
+      {shown.map((mood) => (
+        <View
+          key={mood}
+          accessible={false}
+          importantForAccessibility="no"
+          style={[styles.dot, { backgroundColor: moodColor(mood) }]}
+        />
+      ))}
+      {remainder > 0 && (
+        <Text accessible={false} importantForAccessibility="no" style={styles.count}>
+          {m.diary_reader_mood_more({ count: remainder })}
+        </Text>
+      )}
+    </View>
   )
 }
 
@@ -120,6 +219,7 @@ const styles = StyleSheet.create({
     fontSize: tokens.fontSize.sm,
     padding: tokens.spacing[6],
   },
+  emptyBlock: { alignItems: 'flex-start', gap: tokens.spacing[2], padding: tokens.spacing[2] },
   list: { gap: tokens.spacing[2], paddingBottom: tokens.spacing[8] },
   row: {
     borderWidth: 1,
@@ -134,6 +234,8 @@ const styles = StyleSheet.create({
   },
   date: { color: tokens.color.text, fontSize: tokens.fontSize.sm, fontWeight: '500' },
   preview: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm },
+  footerLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[1] },
+  count: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
   opened: {
     gap: tokens.spacing[4],
     paddingHorizontal: tokens.spacing[4],
@@ -154,5 +256,10 @@ const styles = StyleSheet.create({
   },
   dot: { width: 8, height: 8, borderRadius: tokens.radius.sm },
   chipText: { color: tokens.color.text, fontSize: tokens.fontSize.xs },
-  footer: { alignItems: 'center', paddingVertical: tokens.spacing[2] },
+  footerNote: {
+    color: tokens.color['text-subtle'],
+    fontSize: tokens.fontSize.sm,
+    paddingVertical: tokens.spacing[2],
+    textAlign: 'center',
+  },
 })

@@ -1,4 +1,4 @@
-import { Button } from '@cosimosi/ui'
+import { Badge, Button } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
 
@@ -16,10 +16,18 @@ export function RecallDiaryStarsAction({
   onInitiate: () => void
 }) {
   return (
-    <div className="flex justify-start">
-      <Button color="primary" size="sm" onClick={onInitiate} disabled={liveCount === 0}>
-        {m.diary_reader_recall_action()}
-      </Button>
+    // [D11] makes the free/paid line visible, not merely true: this is the one control on the page
+    // that spends, and it says so beside itself. Still no amount — the quote belongs to the modal.
+    <div className="flex flex-col items-start gap-1">
+      <span className="inline-flex items-center gap-1.5">
+        <Button color="primary" size="sm" onClick={onInitiate} disabled={liveCount === 0}>
+          {m.diary_reader_recall_action()}
+        </Button>
+        {/* The marker rides beside the control, not inside its label, so the copy stays one sentence
+            in both locales and the badge is what carries "this one costs". */}
+        <Badge variant="neutral">{m.twinkle_balance_general_label()}</Badge>
+      </span>
+      <p className="text-xs text-text-subtle">{m.diary_reader_paid_hint()}</p>
     </div>
   )
 }

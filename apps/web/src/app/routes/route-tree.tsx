@@ -5,6 +5,7 @@ import { type SessionStatus } from '@cosimosi/auth'
 import { DesignShowcasePage } from '../../pages/design/index.ts'
 import { parseMeTab, type MeTabId } from '../../pages/me/index.ts'
 import { TestPage } from '../../pages/test/index.ts'
+import { parseDiarySearch, type DiarySearchParams } from './diary-search.ts'
 import { authGuardBeforeLoad } from './guards/auth-gate.ts'
 import { NotFoundScreen } from './not-found.tsx'
 import {
@@ -52,6 +53,9 @@ const universeRoute = createRoute({
 const diaryReaderRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/diary',
+  // [D7][D8]: the archive's conditions live in the address bar, so a filtered, sorted archive is a
+  // shareable link and Back restores the previous conditions.
+  validateSearch: (search: Record<string, unknown>): DiarySearchParams => parseDiarySearch(search),
   component: DiaryReaderRoute,
 })
 

@@ -337,6 +337,23 @@ screen opens the flow (web routes unmount, so they need no gate). The deletion
 stores are cleared on sign-out (where the universe mirrors are), so a release
 never leaks across users in one process.
 
+### 6.1 What the diary archive's conditions are NOT
+
+The archive's keyword, mood filter, date range, order and pagination are **data**, not control state:
+Query owns the pages, the URL (web) or screen state (mobile) owns the conditions, and
+`useDiaryConditions` owns only the uncommitted drafts. No machine was added for them, and
+`diaryReaderMachine` still holds exactly the paid-jump phases. A machine here would be a second source
+of truth for a routed field and would need syncing back to the address bar (§3.2's rule, applied).
+
+The drafts exist for one reason worth stating: a condition the read would refuse must never be
+committed. `useDiaryConditions` debounces the keyword and both dates, withholds a keyword below the
+server minimum, withholds a half-typed or inverted range, and — when a condition changes behind it —
+adopts the new value **unless** the incoming value is merely the trimmed form of what is already typed.
+That last test is what keeps a commit from eating a trailing space mid-phrase or replacing the syllable
+a composing IME is still assembling. The rules themselves are pure functions in `@cosimosi/memory`
+(`isKeywordSearchable` · `isDateRangeUsable` · `shouldAdoptCommitted`), so both platforms search on
+identical terms and the rules are unit-tested without a DOM.
+
 ## 7. Tests
 
 Every catalog machine has:

@@ -37,6 +37,9 @@ export function useDiaryArchive(input: GetDiariesInput = {}): DiaryArchive {
   useEffect(() => {
     useDiaryStore.getState().setAll(diaries)
   }, [diaries])
+  // Deliberately re-created per render (useInfiniteQuery returns a fresh result object): a consumer
+  // whose scroll observer depends on this identity re-attaches after every commit, which is what lets
+  // it pick the sentinel back up once the loading state clears. Memoizing this would remove that.
   const loadMore = useCallback(() => {
     query.fetchNextPage().catch(() => undefined)
   }, [query])

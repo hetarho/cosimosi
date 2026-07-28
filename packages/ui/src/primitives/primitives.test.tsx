@@ -9,6 +9,7 @@ import { Button } from './button.tsx'
 import { Checkbox } from './checkbox.tsx'
 import { Dialog } from './dialog.tsx'
 import { IconButton } from './icon-button.tsx'
+import { SegmentedControl } from './segmented-control.tsx'
 import { Skeleton } from './skeleton.tsx'
 import { Switch } from './switch.tsx'
 import { Tabs } from './tabs.tsx'
@@ -183,6 +184,63 @@ describe('Tabs', () => {
     expect(diary).toHaveFocus()
     expect(diary).toHaveAttribute('aria-selected', 'true')
     expect(diary).toHaveAttribute('aria-controls', 'diary-panel')
+  })
+})
+
+describe('SegmentedControl', () => {
+  it('exposes a radiogroup and moves selection with arrow keys', async () => {
+    const user = userEvent.setup()
+    function Controlled() {
+      const [value, setValue] = useState('newest')
+      return (
+        <SegmentedControl
+          ariaLabel="Sort"
+          value={value}
+          onValueChange={setValue}
+          items={[
+            { value: 'newest', label: 'Newest' },
+            { value: 'oldest', label: 'Oldest' },
+          ]}
+        />
+      )
+    }
+    render(<Controlled />)
+
+    expect(screen.getByRole('radiogroup', { name: 'Sort' })).toBeInTheDocument()
+    const newest = screen.getByRole('radio', { name: 'Newest' })
+    const oldest = screen.getByRole('radio', { name: 'Oldest' })
+    expect(newest).toHaveAttribute('aria-checked', 'true')
+    expect(oldest).toHaveAttribute('tabindex', '-1')
+
+    newest.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(oldest).toHaveFocus()
+    expect(oldest).toHaveAttribute('aria-checked', 'true')
+    // It selects a value rather than swapping a panel, so no segment controls one.
+    expect(oldest).not.toHaveAttribute('aria-controls')
+  })
+
+  it('wraps around at the ends', async () => {
+    const user = userEvent.setup()
+    function Controlled() {
+      const [value, setValue] = useState('newest')
+      return (
+        <SegmentedControl
+          ariaLabel="Sort"
+          value={value}
+          onValueChange={setValue}
+          items={[
+            { value: 'newest', label: 'Newest' },
+            { value: 'oldest', label: 'Oldest' },
+          ]}
+        />
+      )
+    }
+    render(<Controlled />)
+
+    screen.getByRole('radio', { name: 'Newest' }).focus()
+    await user.keyboard('{ArrowLeft}')
+    expect(screen.getByRole('radio', { name: 'Oldest' })).toHaveAttribute('aria-checked', 'true')
   })
 })
 

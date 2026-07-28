@@ -250,9 +250,14 @@ const (
 
 // diary_reader
 const (
-	DiaryReaderPageSize              = 20
-	DiaryReaderSearchMinQueryLength  = 2
-	DiaryReaderCalendarMonthPageSize = 31
+	DiaryReaderPageSize                   = 20
+	DiaryReaderSearchMinQueryLength       = 2
+	DiaryReaderCalendarMonthPageSize      = 31
+	DiaryReaderBodyPreviewLength          = 100
+	DiaryReaderRowMoodDotMax              = 4
+	DiaryReaderInfiniteScrollRootMarginPx = 400
+	DiaryReaderInfiniteScrollEndThreshold = 0.5
+	DiaryReaderSearchDebounceMs           = 300
 )
 
 // deletion

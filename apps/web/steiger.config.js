@@ -111,6 +111,7 @@ export default defineConfig([
     files: [
       './src/entities/diary/**',
       './src/features/read-diary-list/**',
+      './src/features/search-diary/**',
       './src/features/recall-diary-stars/**',
       './src/widgets/diary-reader/**',
     ],

@@ -12,7 +12,18 @@ export {
   universeFromResponse,
   type UniverseSnapshot,
 } from './mappers.ts'
-export { diariesFromDtos, type Diary, type DiarySplitMember } from './diary.ts'
+export {
+  diariesFromDtos,
+  diaryMoods,
+  diaryPreview,
+  highlightSegments,
+  isDateRangeUsable,
+  isKeywordSearchable,
+  shouldAdoptCommitted,
+  type Diary,
+  type DiarySplitMember,
+  type DiaryTextSegment,
+} from './diary.ts'
 export {
   requestReviseSplit,
   type ProposedMemoryInput,

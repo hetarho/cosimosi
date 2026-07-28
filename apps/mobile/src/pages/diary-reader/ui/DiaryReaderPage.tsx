@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 
+import { DiarySort, type GetDiariesInput } from '@cosimosi/api-client'
 import { tokens } from '@cosimosi/ui'
 
 import { DeletionFlowSheet } from '../../../widgets/deletion-flow/index.ts'
@@ -10,11 +12,19 @@ import { useScreenInsets } from '../../../shared/native/index.ts'
 // React Navigation. The deletion flow consumes its shared target only while this page is active.
 export function DiaryReaderPage({ active, onExit }: { active: boolean; onExit: () => void }) {
   const insets = useScreenInsets()
+  // The archive's conditions are screen-local here: React Native has no address bar, so there is no
+  // URL to be the authority the way there is on web ([D7][D8]). The shape is the generated request,
+  // so both platforms feed one archive query.
+  const [query, setQuery] = useState<GetDiariesInput>({ sort: DiarySort.NEWEST })
   return (
     // The archive's own header clears the device chrome by the live inset — a guessed constant hid
     // the title and the way out behind the status bar.
     <View style={[styles.screen, { paddingTop: insets.top + tokens.spacing[4] }]}>
-      <DiaryReaderBlock onExit={onExit} />
+      <DiaryReaderBlock
+        onExit={onExit}
+        query={query}
+        onQueryChange={(update) => setQuery(update)}
+      />
       <DeletionFlowSheet active={active} />
     </View>
   )

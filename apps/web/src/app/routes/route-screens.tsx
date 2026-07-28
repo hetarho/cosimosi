@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 
 import { Outlet, useLocation, useParams, useSearch } from '@tanstack/react-router'
 
 import { gateDecision, pendingInvite } from '@cosimosi/auth'
+import type { DiaryConditionsUpdate } from '@cosimosi/universe/react'
 import { useSessionSnapshot } from '@cosimosi/auth/react'
 import { LocaleBootstrap, m } from '../../shared/i18n/index.ts'
 
@@ -10,6 +11,7 @@ import { PaletteBootstrap } from '../providers/palette-bootstrap.tsx'
 import { ProfileGate } from '../providers/profile-gate.tsx'
 import { AdminPage } from '../../pages/admin/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
+import { diaryQueryFromSearch, searchWithUpdate, type DiarySearchParams } from './diary-search.ts'
 import { LoginPage } from '../../pages/login/index.ts'
 import { MePage, parseMeTab, type MeTabId } from '../../pages/me/index.ts'
 import { UniverseHomePage } from '../../pages/universe/index.ts'
@@ -88,7 +90,28 @@ export function UniverseRoute() {
 
 export function DiaryReaderRoute() {
   const navigate = useAppNavigate()
-  return <DiaryReaderPage onExit={() => navigate({ to: '/' })} />
+  const search = useSearch({ strict: false }) as DiarySearchParams
+  // Both are held stable across renders because they reach the archive read's query key and the
+  // search feature's commit effect: a fresh object or callback on every render would churn both.
+  const query = useMemo(() => diaryQueryFromSearch(search), [search])
+  // Replace rather than push: a debounced keystroke must not bury the universe under a hundred
+  // history entries, while a deliberate Back still leaves the archive ([D7]).
+  const onQueryChange = useCallback(
+    (update: DiaryConditionsUpdate) =>
+      navigate({
+        to: '/diary',
+        search: (previous: DiarySearchParams) => searchWithUpdate(previous, update),
+        replace: true,
+      }),
+    [navigate],
+  )
+  return (
+    <DiaryReaderPage
+      onExit={() => navigate({ to: '/' })}
+      query={query}
+      onQueryChange={onQueryChange}
+    />
+  )
 }
 
 export function MeRoute() {

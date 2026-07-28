@@ -439,6 +439,23 @@ diary_reader:
   search_min_query_length: 2
   # Calendar pages are written-day-grained; 31 keeps every civil month in one server-owned page.
   calendar_month_page_size: 31
+  # [D6] Code points of the immutable body a closed row previews before the ellipsis. The row has no
+  # title, so the preview carries the recognition load; the length is the contract and CSS clamping /
+  # numberOfLines is only a narrow-viewport guard.
+  body_preview_length: 100
+  # Distinct mood dots a row draws before collapsing the rest into "+N". One below encode.max_memories
+  # so a diary that launched five differently-felt stars still reveals the marker rather than silently
+  # dropping a mood.
+  row_mood_dot_max: 4
+  # [D7] How far below the viewport the web sentinel asks for the next keyset page — roughly half a
+  # screen of prefetch, so the list grows before the reader reaches the bottom.
+  infinite_scroll_root_margin_px: 400
+  # The mobile FlatList onEndReachedThreshold: a ratio of visible length, not pixels, which is why it
+  # cannot share the key above.
+  infinite_scroll_end_threshold: 0.5
+  # [D9] Idle time after the last keystroke before the keyword is committed and refetched. Above a fast
+  # typist's inter-key gap, so one typed phrase costs one GetDiaries round trip.
+  search_debounce_ms: 300
 
 deletion:
   # [X1][X4] LTD step passed to Depress when a removed memory withdraws its contribution from a

@@ -27,4 +27,12 @@ describe('RecallDiaryStarsAction (web)', () => {
   it('is disabled when the diary has no live star', () => {
     expect(render(0)).toMatch(/disabled=""/)
   })
+
+  it('marks itself as the one door that spends, and still quotes no amount ([D11])', () => {
+    const html = render(2)
+    expect(html).toContain(m.diary_reader_paid_hint())
+    expect(html).toContain(m.twinkle_balance_general_label())
+    // No price: the quote belongs to the jump dialog, never to a row.
+    expect(html.replace(/<[^>]*>/g, '')).not.toMatch(/\d/)
+  })
 })

@@ -61,6 +61,8 @@ export type {
   SelectOwnProps,
   TabItem,
   TabsOwnProps,
+  SegmentedControlItem,
+  SegmentedControlOwnProps,
 } from './primitives/types.ts'
 
 export { Button, type ButtonProps } from './primitives/button.tsx'
@@ -79,3 +81,4 @@ export { Card, type CardProps } from './primitives/card.tsx'
 export { Skeleton, type SkeletonProps } from './primitives/skeleton.tsx'
 export { VisuallyHidden, type VisuallyHiddenProps } from './primitives/visually-hidden.tsx'
 export { Tabs, type TabsProps } from './primitives/tabs.tsx'
+export { SegmentedControl, type SegmentedControlProps } from './primitives/segmented-control.tsx'

@@ -163,6 +163,11 @@ export const VALUES = {
     pageSize: 20,
     searchMinQueryLength: 2,
     calendarMonthPageSize: 31,
+    bodyPreviewLength: 100,
+    rowMoodDotMax: 4,
+    infiniteScrollRootMarginPx: 400,
+    infiniteScrollEndThreshold: 0.5,
+    searchDebounceMs: 300,
   },
   deletion: {
     contributionWeakenAmount: 0.15,

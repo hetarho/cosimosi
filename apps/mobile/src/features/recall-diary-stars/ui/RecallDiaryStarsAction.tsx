@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
-import { Button } from '@cosimosi/ui'
+import { Badge, Button, tokens } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
 
@@ -18,14 +18,24 @@ export function RecallDiaryStarsAction({
   onInitiate: () => void
 }) {
   return (
+    // [D11] makes the free/paid line visible, not merely true: this is the one control on the page
+    // that spends, and it says so beside itself. Still no amount — the quote belongs to the modal.
     <View style={styles.action}>
-      <Button color="primary" size="sm" onPress={onInitiate} disabled={liveCount === 0}>
-        {m.diary_reader_recall_action()}
-      </Button>
+      <View style={styles.control}>
+        <Button color="primary" size="sm" onPress={onInitiate} disabled={liveCount === 0}>
+          {m.diary_reader_recall_action()}
+        </Button>
+        {/* The marker rides beside the control, not inside its label, so the copy stays one sentence
+            in both locales and the badge is what carries "this one costs". */}
+        <Badge variant="neutral">{m.twinkle_balance_general_label()}</Badge>
+      </View>
+      <Text style={styles.hint}>{m.diary_reader_paid_hint()}</Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  action: { alignItems: 'flex-start' },
+  action: { alignItems: 'flex-start', gap: tokens.spacing[1] },
+  control: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing[2] },
+  hint: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.xs },
 })
