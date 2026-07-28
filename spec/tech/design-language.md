@@ -5,10 +5,10 @@
 > the a11y baseline); this doc owns the _decisions_ that mechanism carries. The architectural frame
 > is [ARCHITECTURE.md](../ARCHITECTURE.md) §3.1 (`shared/ui`) and §3.4 (the 2D↔3D boundary).
 >
-> This is the **2D section** — DOM chrome, on web and React Native. The 3D universe (star bodies,
-> the sky, the emotion palette values) is authored by [plan 57](../plan/57.3d-assets-and-background-design.md)
-> and documented in the 3D section of this file when that job lands. Where the two meet — chrome
-> floating over a live scene — the rule below is the 2D side of it.
+> It comes in two parts. **§1–11 is the 2D language** — DOM chrome, on web and React Native.
+> **§12–21 is the 3D universe** — the bodies, the sky, and the emotion colours those bodies wear,
+> authored by [plan 57](../plan/57.3d-assets-and-background-design.md). Where the two meet — chrome
+> floating over a live scene — each part carries its own side of the rule.
 >
 > The review protocol that gates changes to this document is
 > [policy/ux/design-review.md](../policy/ux/design-review.md).
@@ -231,8 +231,9 @@ A panel that collapses to one line and snaps back moves everything the user was 
 document as a running surface: the token foundations read from the registry, every primitive in
 every state, and the composed chrome the primitives build. It is the artefact a design review reads.
 
-It is deliberately separate from `/test`, which verifies platform wiring and the live 3D universe.
-The showcase needs no GPU and no domain read, so it opens instantly and reproduces exactly.
+The 2D groups need no GPU and no domain read, so they open instantly and reproduce exactly. The
+`Universe` group (§20) does need a GPU, and it is on the same page on purpose — see §20 for why.
+`/test` is a different thing: it verifies platform wiring, and it is scaffolding that goes away.
 
 The interaction states are shown with the design system's own rules, not with copies of them: the
 `.state-hover` / `.state-pressed` / `.state-focus` wrappers in `base.css` are extra selectors on the
@@ -256,3 +257,230 @@ reviewable as a lookalike mock; the inline alert existed as a recipe copied into
 a primitive; React Native rendered **no theme colour at all** (OKLCH tokens, silently dropped by
 `StyleSheet`); and the native contained button was a solid slab of accent where the web builds a
 translucent lens. The last two were invisible on every gate the repo had — they needed a device.
+
+---
+
+# Part II — the 3D universe
+
+> §12–21. The mechanism is [tech/rendering.md](rendering.md) (R3F, WebGPU, TSL, instancing); this part
+> owns what the universe **looks like**. Everything here is presentation: it sets no coordinates, reads
+> no clock, and writes nothing back to the domain.
+
+## 12. The premise
+
+The 2D language exists so you can read without covering the universe. This part is the universe.
+
+- **A body says what it is.** Every shape, every brightness, every colour is a stored fact projected —
+  never decoration laid on top of one. If you cannot name which fact a visual difference came from, the
+  difference should not exist.
+- **The scene is a place, not a picture.** The sky is a body that encloses you, the nebula is what a
+  region looks like, the depth between layers is space. Nothing is a screen-space wash, because a wash
+  moves with your head instead of staying where it is.
+- **Emergence is not authored.** Constellations, the global tone of a nebula, the shape of a cluster —
+  these come out of the parts and have no type, no table, and no place in this document. What is
+  authored is each part.
+
+## 13. The projection
+
+Four channels, and each has exactly one owner. This is the load-bearing rule of the whole part,
+because a channel with two owners is a channel that says nothing.
+
+| Channel        | Carries                                                 | Owned by                        |
+| -------------- | ------------------------------------------------------- | ------------------------------- |
+| **size**       | `EffectiveStrength` — how much the memory is            | plan 24 [V3]                    |
+| **brightness** | `EffectiveBrightness` — how recently it was returned to | plans 24 · 37 · 39 [V2][F1][F2] |
+| **colour**     | the primary emotion, and nothing else                   | plan 17 [I3]                    |
+| **shape**      | the stored `seed`, immutable                            | plan 24 [V5]                    |
+
+Three consequences that look like small choices and are not:
+
+- **Emotion may not spend brightness.** A star's rendered luminance is its colour's own lightness times
+  its brightness channel, so a mood free to be very light or very dark would make two memories of equal
+  strength read as unequal because of how they felt. This is why the palette (§16) is not "bright =
+  happy" and why its lightness is fixed to a ladder.
+- **A neuron has no emotion and no seed.** It carries information, not feeling, so the cell-star is one
+  colour and one size for all of them [V5]. A latent neuron has no identity either — the field is one
+  colour and one size throughout [E7a][V7].
+- **A synapse has no direction.** It joins two neurons; there is no from and no to. Nothing may flow one
+  way along a filament and invent an order the domain never stored.
+
+## 14. The bodies
+
+Ten star shapes are registered (`assets/bodies/star-shapes.ts`), every one reading the **same** four
+per-instance channels, so a look can be swapped under a live universe without touching a layer. The
+registry is the design, not a shortlist: [plan 71](../plan/71.ornament-catalog-model.md) widens this
+seam into the `STAR_SHADER` ornament, so each row is a legitimate alternative rather than a candidate
+that lost. **`facet` — 다듬은 별빛 — is the free entry point**; `orb` stays as the bench's baseline (it
+_is_ the primitive body source) without being what a universe wears.
+
+Form and motion are one decision per body, not two:
+
+- **Fixed polyhedra may turn in place.** A silhouette that cannot deform has nothing else to do with
+  time, so facet, prism and the eight-point compass carry a seed-varied rotation.
+- **Irregular bodies must change their form instead.** A body whose surface can move and merely rotates
+  reads as a prop on a turntable. Seed-form, geode, bubble, urchin, plasma, contour and haze hold still
+  and let their relief, cells, swell, spikes, heat, terrain or opacity evolve.
+- **Motion has a ceiling.** An animated feature stays within 80–100% of its authored form. Past that a
+  living surface stops reading as alive and starts reading as grotesque.
+
+The other four bodies each say what they are:
+
+- **Cell-star (Neuron) — a membrane, and it does not move.** Its interior shades down under its own
+  silhouette (a view-space grazing rim, so it holds from any angle with no light in the scene), which
+  reads as a small cell holding something. Deliberately motionless: the memory body breathes, the neuron
+  holds. What a universe feels is alive; what it knows is stable.
+- **Filament (Synapse) — a cord of light, pulsing inward from both ends.** The ribbon's centre line
+  carries the colour and both rims fall to nothing, so a thick synapse reads as a bright cord and a thin
+  one as a thread. The shimmer travels inward from A and B **together**, per §13's no-direction rule.
+- **Latent field — dust, not beads.** Each mote fades at its own silhouette and composites additively,
+  so a clump pools into haze instead of stacking hard dots, and each breathes on its own slow phase. One
+  colour, one size: the only thing distinguishing a mote is when it happens to be brightest.
+- **Nebula — gas, not a lens flare.** The mid-band is multiplied by a low-frequency cloud sampled in
+  **world space**, so the structure belongs to the region rather than to the screen — the camera moves
+  through it and two neighbouring contributors agree where the cloud is thick. The band mask holds the
+  cloud off both centre and rim, so the peak stays on the contributor's exact coordinate and the
+  silhouette fades before its own edge. Its kernel is a camera-facing billboard at that coordinate, so
+  camera movement cannot shift the field peak off its star.
+- **Gist body — the same memory, softer and higher.** A risen stage is a diffuse glow, distinguished from
+  its episodic star by z-height and softness only, never by reparameterizing the seed [V5].
+
+## 15. The sky
+
+The sky is a **body**: a sphere drawn on its inner surface, enclosing the scene. Not a background layer,
+not a screen-space gradient — those move with the camera and read as a photograph you are standing in
+front of.
+
+Backgrounds are the product's core revenue surface and have to grow without bound, so the catalogue is a
+set of **arrangements** rather than a set of hand-written shaders. Four composable axes, and a backdrop
+is a recipe over them:
+
+| Axis        | Module                             | Offers                                                     |
+| ----------- | ---------------------------------- | ---------------------------------------------------------- |
+| **domain**  | `assets/sky/sky-domain.ts`         | bands · angle-to-anchor · tangent patches · cells · clouds |
+| **field**   | `shader-art/noise.ts` · `field.ts` | fbm · ridged · worley · gnoise · domain warp               |
+| **emotion** | `assets/sky/sky-emotion.ts`        | anchors · territories · the full-chroma blend              |
+| **finish**  | `assets/sky/sky-finish.ts`         | width · rings · quantize · mark size · headroom            |
+
+A primitive added to an axis multiplies across every recipe; a trick inlined into one recipe helps one
+recipe. That is where the work goes, and it is why twelve recipes ship without twelve bespoke shaders.
+
+Five rules hold the axes honest:
+
+- **No chart, ever.** Every domain is a function of the surface direction alone. A chart that flattens
+  the sphere onto a plane must gather it somewhere, and the gather is visible as a pinch — a sheet of
+  paper drawn to a point. Where a recipe needs local 2D coordinates it uses a tangent patch around its
+  own anchor, whose one degenerate point is the antipode, a hemisphere from the feature it describes.
+- **Weight buys area.** A cap of angular radius `acos(1 − 2w)` covers exactly `w` of the sphere, and
+  those radii sum to the whole sphere across a normalized weight set. A feeling's territory **is** its
+  share.
+- **Weight never buys depth.** A faint feeling is a narrow stripe of its own true colour, never the same
+  region rendered paler. A hue diluted toward the night is a hue nobody can name, and naming it is the
+  whole job of a palette.
+- **Weight buys size, never opacity.** A mark drawn at low alpha does not read as faint; it reads as
+  absent, and then as flickering when it crosses the threshold of visibility. Thin at full colour reads
+  as what it is: a small amount of something.
+- **A feature's place is a lattice, not a ring.** Features spread by the Fibonacci lattice, and a
+  feature's size comes from its own weight — never from the count, never from the gap to its neighbours.
+  Thirteen feelings are thirteen ordinary places, not one crowded circle.
+
+**The light budget.** The stars, the nebula field and the bloom pass all ADD their light over the sky,
+and addition over an already-bright surface passes 1 in every channel at once — which is white. So each
+recipe states the ceiling it holds itself under (`rendering.emotion_sky_headroom.*`), applied as a soft
+roll-off so structure survives at the top of the range rather than flattening onto it. The wider and
+brighter a recipe fills the frame, the lower its ceiling. **The headroom is the sky's alone** — the
+shared compositing path is untouched, so the bodies keep the brightnesses they were tuned at.
+
+**No recipe caps how many feelings it takes.** The emotion axis already divides the sphere by weight, so
+a sky handed thirteen feelings shows thirteen smaller territories rather than a muddier version of five.
+
+**`grainient` is what a universe opens on** — one feeling washed over everything, the quietest the
+registry can be and the floor the richer skies are bought up from.
+
+## 16. The emotion palette values
+
+Thirteen colours (`packages/emotion/src/palette.ts`), authored in OkLCH on the **2D language's own
+perceptual lightness scale** (§2.1). Every one lands on step `300` (L 0.80), `400` (0.72) or `500`
+(0.63). That is what makes the 2D↔3D match structural rather than a promise: chrome and bodies read the
+same table through the one `moodColor` seam, and the emotion colours sit on the same ladder the chrome's
+ramps do.
+
+Three channels, one job each:
+
+- **Hue is identity.** The warm arc (rose → coral → amber → gold → green) is pleasant, the cool arc
+  (teal → blue → violet → magenta) unpleasant — the reading `checkPaletteAxisConsistency` guards, as a
+  warning and never a block [P3].
+- **Chroma is vividness.** ANGER is the most saturated colour in the table; NEUTRAL is almost
+  colourless; TIRED and EMPTINESS are deliberately muted.
+- **Lightness follows the hue, never the feeling.** Each hue sits on the step where it is most itself —
+  yellow is only gold when light, magenta only crimson when deep. §13's brightness rule is why.
+
+Two properties are guarded in `palette.test.ts` so the design cannot drift silently: every colour is on
+one of the three steps, and no pair is closer than the authored minimum separation in OkLab. Thirteen
+feelings have to stay thirteen colours against a dark ground.
+
+## 17. Depth, and the two layers
+
+The universe has two bands on z — the hippocampal layer where episodic stars live (0–18) and the
+neocortical layer a risen gist rises into (from 27) — with a deliberate gap between them.
+
+The gap is read as **atmosphere, not as a wall**: a depth haze across 18–27 marks the boundary while
+leaving what sits in front of it legible. A layer boundary you cannot see through is a ceiling, and the
+point is that the same memory exists on both sides of it.
+
+## 18. State treatments
+
+**Open — this section is the seam T009 fills, and it is deliberately empty rather than guessed at.**
+
+The mechanics all shipped and the channels exist; what has no design yet is the _look_ of:
+
+- **forgetting** — today it is the brightness channel falling to the silent-engram floor, and nothing
+  else. Whether a memory should also lose colour (desaturate) or lose its outline is undecided. Size
+  cannot move: it is strength's.
+- **word-loss** — decay-stage text erosion is visible in 2D only. Whether the 3D body says anything
+  about it is undecided.
+- **gist rising** — a memory exists as two bodies once a stage has risen. How the pair reads — tethered,
+  the original receding, or nothing but the height — is undecided.
+- **awakening** — a flare plays in a latent mote's place and hands off to the real cell-star. It is
+  currently emotion-free white-gold, which agrees with §13 (a neuron has no emotion); whether its
+  duration reads is unverified.
+
+## 19. Choreography
+
+**Open — this section is the seam T010 fills.**
+
+The rubric asks whether the time-acceleration and consolidation sequences read as one motion rather than
+a jump cut. What has to be decided is which consequences are shown and which pass quietly: whether the
+sky flows, whether stars dim together, whether a gist is seen rising, whether a slept synapse is seen
+thinning.
+
+## 20. The showcase
+
+The `Universe` group on `/design` — a fourth group beside Foundations · Primitives · Patterns, on both
+apps. It is on the same page as the chrome on purpose: the rubric asks whether the two look like one
+product, whether the glass is lit by the sky it floats on, and that cannot be answered from two separate
+surfaces.
+
+It cannot live on `/test`. The test harness is scaffolding that is removed once development is done, and
+a sign-off surface has to outlast it.
+
+- **Web** — the candidate bodies at one size and one brightness so only form and feeling differ; a
+  recipe switcher over the enclosing sphere with a free emotion count; the colour field with its
+  forced-WebGL2 remount.
+- **Mobile** — the sky off the same TSL source, so a difference between the surfaces is a real parity
+  finding rather than two authors' idea of the same sky. The frame budget is only real on a device.
+
+The emotion count on the showcase is a **review convenience**, not a property of any sky (§15).
+
+**Known gaps, recorded rather than left to be rediscovered:** the designed states (§18) are on neither
+surface, and the mobile group carries the sky without the body types.
+
+## 21. Sign-off (3D)
+
+**Not signed off.** The gate is [policy/ux/design-review.md](../policy/ux/design-review.md) §7: every 3D
+rubric dimension **Meets**, zero open Blocking, recorded as a dated sign-off with its ledger.
+
+Where it stands: six working rounds (S1–S6) are in [job 39](../jobs/39.3d-assets-and-background-design.md),
+all of them on the star bench rather than the full rubric, with their notes open pending a re-check on the
+running surface. No round has yet scored all seven dimensions, and no on-device GPU pass has been run —
+so §15's recipes and headroom values, and the bodies of §14, are unverified by eye at the time of writing.
+§18 and §19 must be designed before a round can score dimensions 4 and 5 at all.
