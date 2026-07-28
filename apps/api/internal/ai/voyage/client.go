@@ -25,13 +25,13 @@ import (
 
 const providerName = "voyage"
 
-// defaultModel is the recorded Voyage model for this seam. voyage-3.5 defaults to a
+// defaultModel is the recorded Voyage model for this seam. voyage-4 defaults to a
 // 1024-dimension vector and supports the output_dimension parameter for others.
 // endpoint is adapter-owned vendor knowledge (change 03): it is not config — not env,
 // not DB, not admin-editable. A self-hosted/proxy override, if ever needed, would be
 // this adapter's own deliberate env seam.
 const (
-	defaultModel           = "voyage-3.5"
+	defaultModel           = "voyage-4"
 	endpoint               = "https://api.voyageai.com/v1/embeddings"
 	requestTimeout         = 30 * time.Second
 	maxErrorBodyDrainBytes = 64 << 10
@@ -43,12 +43,19 @@ const (
 // model absent from this table is rejected at construction rather than guessed at.
 // Multi-value entries support the output_dimension request parameter; single-value
 // entries have a fixed native dimension and reject output_dimension.
+//
+// The catalog is deliberately ONE GENERATION WIDE. Cosine similarity is only meaningful
+// within a single embedding space, and `embeddings` stores one vector per neuron with no
+// model column — so a catalog spanning generations lets a config change quietly seed
+// incomparable vectors into the same HNSW index, silently degrading the [E10] dedup kNN
+// and the encode.dedup_similarity_threshold tuned against it. The voyage-4 family shares
+// one embedding space across its three sizes, so switching among THESE is safe. Widening
+// this table to another generation is not a catalog edit — it requires re-embedding every
+// stored row and re-tuning the threshold.
 var modelDimensions = map[string][]int{
-	"voyage-3.5":      {256, 512, 1024, 2048},
-	"voyage-3.5-lite": {256, 512, 1024, 2048},
-	"voyage-3-large":  {256, 512, 1024, 2048},
-	"voyage-3":        {1024},
-	"voyage-3-lite":   {512},
+	"voyage-4-large": {256, 512, 1024, 2048},
+	"voyage-4":       {256, 512, 1024, 2048},
+	"voyage-4-lite":  {256, 512, 1024, 2048},
 }
 
 func init() {

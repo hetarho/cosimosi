@@ -17,14 +17,73 @@ import (
 )
 
 func TestNewEnforcesDimensionContractAtConstruction(t *testing.T) {
-	// voyage-3-lite has a fixed 512-dim output; it cannot honor ai.embedding_dim (1024),
-	// so wiring must fail here, not at row-insert time (A7).
-	if _, err := New(ai.ProviderConfig{APIKey: "key", Model: "voyage-3-lite"}); err == nil {
+	// Every model in the live catalog honors ai.embedding_dim, so the incompatible case
+	// needs a fixture: a fixed-dimension entry that cannot produce the pinned dimension.
+	// Registering it here keeps the guard exercised without parking a model the product
+	// must never select in the shipped catalog.
+	const fixture = "voyage-test-fixed-dim"
+	modelDimensions[fixture] = []int{values.AiEmbeddingDim / 2}
+	t.Cleanup(func() { delete(modelDimensions, fixture) })
+
+	_, err := New(ai.ProviderConfig{APIKey: "key", Model: fixture})
+	if err == nil {
 		t.Fatal("New with dimension-incompatible model succeeded, want construction error")
+	}
+	// The failure must be the dimension contract, not the unknown-model branch — those
+	// are different guards and only one of them is under test here (A7).
+	if !strings.Contains(err.Error(), "cannot produce dimension") {
+		t.Errorf("error = %v, want the dimension-contract rejection", err)
 	}
 	// The default model does honor ai.embedding_dim.
 	if _, err := New(ai.ProviderConfig{APIKey: "key"}); err != nil {
 		t.Fatalf("New with default model failed: %v", err)
+	}
+}
+
+// The voyage-4 family is selectable via COSIMOSI_EMBEDDING_MODEL: each size honors
+// ai.embedding_dim and takes output_dimension, so wiring must accept all three.
+func TestNewAcceptsVoyage4Family(t *testing.T) {
+	for _, model := range []string{"voyage-4", "voyage-4-large", "voyage-4-lite"} {
+		client, err := New(ai.ProviderConfig{APIKey: "key", Model: model})
+		if err != nil {
+			t.Fatalf("New with model %q failed: %v", model, err)
+		}
+		concrete, ok := client.(*Client)
+		if !ok {
+			t.Fatalf("New returned %T, want *Client", client)
+		}
+		if concrete.model != model {
+			t.Errorf("model = %q, want %q", concrete.model, model)
+		}
+		if concrete.dim != values.AiEmbeddingDim {
+			t.Errorf("dim = %d, want %d", concrete.dim, values.AiEmbeddingDim)
+		}
+		// A multi-dimension model must send output_dimension so the vendor cannot
+		// fall back to a native size that mismatches the pinned contract.
+		if !concrete.sendOutputDimension {
+			t.Errorf("model %q: sendOutputDimension = false, want true", model)
+		}
+	}
+}
+
+// The catalog must stay one embedding generation wide, default included. `embeddings`
+// holds one vector per neuron with no model column, so a catalog spanning generations
+// would let a config change seed incomparable vectors into the same HNSW index — the
+// [E10] dedup kNN degrades silently, with no error anywhere. Widening this is a
+// re-embed, not a catalog edit; this test is the guard that forces that conversation.
+func TestCatalogIsOneEmbeddingGenerationWide(t *testing.T) {
+	const generation = "voyage-4"
+	for model := range modelDimensions {
+		if !strings.HasPrefix(model, generation) {
+			t.Errorf("catalog carries %q, outside the %s generation: mixing embedding "+
+				"spaces in one embeddings table corrupts dedup similarity", model, generation)
+		}
+	}
+	if !strings.HasPrefix(defaultModel, generation) {
+		t.Errorf("defaultModel = %q, outside the %s generation", defaultModel, generation)
+	}
+	if _, ok := modelDimensions[defaultModel]; !ok {
+		t.Errorf("defaultModel %q is not in the catalog", defaultModel)
 	}
 }
 

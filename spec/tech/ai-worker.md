@@ -62,8 +62,17 @@ wrapped in the metering seam; an unknown or recognized-but-unimplemented provide
 default.** The runtime registry identifiers are `anthropic · openai · deepseek · glm · gemini · kimi` (LLM) and
 `voyage · openai · gemini` (embedding); `glm` is the operator-facing identifier for the Z.ai/Zhipu slot. Implemented
 adapters are **Anthropic** (`claude-opus-4-8`) and **DeepSeek**
-(`deepseek-v4-flash`) for LLM, and **Voyage AI** (`voyage-3.5`) for embedding; each default is overridable with its
-capability's `COSIMOSI_*_MODEL`. Adding another slot is a new subpackage + one blank import in `cmd/*`, no consumer
+(`deepseek-v4-flash`) for LLM, and **Voyage AI** (`voyage-4`) for embedding; each default is overridable with its
+capability's `COSIMOSI_*_MODEL`. The Voyage adapter carries a curated model catalog (adapter-owned vendor knowledge) and
+rejects an unlisted model at construction rather than guessing its dimensions. That catalog is **exactly one embedding
+generation wide** — the **voyage-4 family** (`voyage-4` default · `voyage-4-large` · `voyage-4-lite`), which shares a
+single embedding space across its three sizes and honors `output_dimension`, so switching among them leaves stored
+vectors comparable. The 3.x models are **deliberately absent, not merely un-defaulted**: `embeddings` holds one vector
+per neuron with **no model column**, so a catalog spanning generations would let a config change seed incomparable
+vectors into the same HNSW index and silently degrade the [E10] dedup kNN and the `encode.dedup_similarity_threshold`
+tuned against it — with no error raised anywhere. Widening the catalog to another generation is therefore not a catalog
+edit: it requires re-embedding every stored row and re-tuning that threshold. A package-level test enforces the
+one-generation invariant. Adding another slot is a new subpackage + one blank import in `cmd/*`, no consumer
 change. There is no values key or feature flag for provider selection — provider identity, model ids, and keys are
 env/secrets only. The provider **endpoint is adapter-owned** (change 03): each adapter carries its own endpoint
 (DeepSeek and Voyage as package constants, Anthropic via the SDK default) — it is never env, DB, or admin config. If a
