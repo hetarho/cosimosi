@@ -844,6 +844,29 @@ export function segmentSqlcQueries(rawSource) {
     .filter(({ sql }) => stripSqlNoise(sql).trim().length > 0)
 }
 
+// A hard-delete or global-statement allowance names one sqlc statement by `<dir>/<file>#<name>`.
+// When that statement is renamed or deleted the entry becomes a pre-approval nobody reviewed:
+// whoever next writes a query under the stale name inherits permission to hard-delete a user table
+// without passing this gate. This answers "do the allowlists still describe the real tree?", which
+// is only meaningful against the repo's own queries — findPersistenceViolations runs over fixture
+// roots too, where every real key would look orphaned.
+export function findStaleAllowlistEntries(queriesRoot) {
+  const live = new Set()
+  for (const file of sqlFiles(queriesRoot)) {
+    const rel = relative(queriesRoot, file).replaceAll('\\', '/')
+    for (const { name } of segmentSqlcQueries(readFileSync(file, 'utf8'))) {
+      if (name) live.add(`${rel}#${name}`)
+    }
+  }
+  return [...new Set([...hardDeleteQueries, ...globalQueries])]
+    .sort()
+    .filter((key) => !live.has(key))
+    .map(
+      (key) =>
+        `scripts/check-persistence-isolation.mjs: allowlisted "${key}" matches no sqlc statement — remove the stale entry`,
+    )
+}
+
 export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
   const violations = []
   const productUserTables = new Set()
@@ -871,24 +894,6 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
     }
     for (const table of droppedTables(source)) {
       productUserTables.delete(table)
-    }
-  }
-
-  // A hard-delete allowance names one sqlc statement. When that statement is renamed or deleted the
-  // entry becomes a pre-approval nobody reviewed: whoever next writes a query under the stale name
-  // gets to hard-delete a user table without passing this gate. Fail on the orphan instead.
-  const liveQueryKeys = new Set()
-  for (const file of sqlFiles(queriesRoot)) {
-    const rel = relative(queriesRoot, file).replaceAll('\\', '/')
-    for (const { name } of segmentSqlcQueries(readFileSync(file, 'utf8'))) {
-      if (name) liveQueryKeys.add(`${rel}#${name}`)
-    }
-  }
-  for (const key of [...hardDeleteQueries, ...globalQueries].sort()) {
-    if (!liveQueryKeys.has(key)) {
-      violations.push(
-        `scripts/check-persistence-isolation.mjs: allowlisted "${key}" matches no sqlc statement — remove the stale entry`,
-      )
     }
   }
 
@@ -979,10 +984,14 @@ function isDirectRun() {
 
 if (isDirectRun()) {
   section('persistence isolation')
-  const violations = findPersistenceViolations({
-    migrationsRoot: join(repoRoot, 'apps/api/db/migrations'),
-    queriesRoot: join(repoRoot, 'apps/api/db/queries'),
-  })
+  const queriesRoot = join(repoRoot, 'apps/api/db/queries')
+  const violations = [
+    ...findPersistenceViolations({
+      migrationsRoot: join(repoRoot, 'apps/api/db/migrations'),
+      queriesRoot,
+    }),
+    ...findStaleAllowlistEntries(queriesRoot),
+  ]
   if (violations.length) {
     console.error(violations.join('\n'))
     fail('persistence isolation guard failed')

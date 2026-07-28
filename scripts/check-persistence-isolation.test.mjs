@@ -7,6 +7,8 @@ import { test } from 'node:test'
 import {
   createTableBodies,
   findPersistenceViolations,
+  findStaleAllowlistEntries,
+  migrationUpSection,
   segmentSqlcQueries,
   stripSqlNoise,
   tableColumnNames,
@@ -356,4 +358,53 @@ test('the real repository corpus passes the strengthened checker', () => {
     queriesRoot: join(repoRoot, 'apps/api/db/queries'),
   })
   assert.deepEqual(violations, [])
+})
+
+// ---------------------------------------------------------------------------
+// A migration's Up half is the schema; its Down half is the inverse.
+// ---------------------------------------------------------------------------
+
+test('migrationUpSection reads the Up half only, so a Down CREATE cannot resurrect a table', () => {
+  const up = migrationUpSection(
+    '-- +goose Up\nDROP TABLE gone;\n\n-- +goose Down\nCREATE TABLE gone (\n  user_id TEXT\n);\n',
+  )
+  assert.match(up, /DROP TABLE gone/)
+  assert.doesNotMatch(up, /CREATE TABLE gone/)
+})
+
+test('migrationUpSection reads a marker-less file whole rather than skipping it (fail-closed)', () => {
+  assert.match(
+    migrationUpSection('CREATE TABLE loose (\n  user_id TEXT\n);\n'),
+    /CREATE TABLE loose/,
+  )
+})
+
+test('a table dropped in an Up stops counting as a live product table', (t) => {
+  const roots = withSql(t, {
+    'migrations/00001_add.sql':
+      '-- +goose Up\nCREATE TABLE retired (\n  user_id TEXT NOT NULL\n);\n\n-- +goose Down\nDROP TABLE retired;\n',
+    'migrations/00002_drop.sql':
+      '-- +goose Up\nDROP TABLE retired;\n\n-- +goose Down\nCREATE TABLE retired (\n  user_id TEXT NOT NULL\n);\n',
+    // A DELETE that would need the [I1] hard-delete allowlist if `retired` still existed.
+    'queries/records/q.sql':
+      '-- name: PurgeRetired :exec\nDELETE FROM retired WHERE user_id = sqlc.arg(user_id);\n',
+  })
+  assert.deepEqual(findPersistenceViolations(roots), [])
+})
+
+// ---------------------------------------------------------------------------
+// The allowlists are checked against the real tree, not a fixture.
+// ---------------------------------------------------------------------------
+
+test('findStaleAllowlistEntries is clean against the repo it guards', () => {
+  assert.deepEqual(findStaleAllowlistEntries(join(repoRoot, 'apps/api/db/queries')), [])
+})
+
+test('findStaleAllowlistEntries names every allowlisted statement an empty tree cannot supply', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'cosimosi-allow-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const stale = findStaleAllowlistEntries(root)
+  assert.ok(stale.length > 0, 'an empty tree orphans every entry')
+  assert.ok(stale.every((line) => /matches no sqlc statement/.test(line)))
+  assert.ok(stale.some((line) => line.includes('account/withdrawal.sql#PurgeAccountUser')))
 })
