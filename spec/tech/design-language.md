@@ -527,8 +527,23 @@ without the body types.
 **Not signed off.** The gate is [policy/ux/design-review.md](../policy/ux/design-review.md) §7: every 3D
 rubric dimension **Meets**, zero open Blocking, recorded as a dated sign-off with its ledger.
 
-Where it stands: six working rounds (S1–S6) are in [job 39](../jobs/39.3d-assets-and-background-design.md),
-all of them on the star bench rather than the full rubric, with their notes open pending a re-check on the
-running surface. No round has yet scored all seven dimensions, and no on-device GPU pass has been run —
-so §15's recipes and headroom values, and the bodies of §14, are unverified by eye at the time of writing.
-Both §18 and §19 are now designed, so all seven dimensions are scoreable.
+**Round R1 — 2026-07-29 — six of seven dimensions Meets, one Needs-work.** The first round to score all
+seven, read on the running `/design` Universe group on Apple Metal 3. Its table and its one note are in
+[job 39](../jobs/39.3d-assets-and-background-design.md); the six earlier working rounds (S1–S6) were star
+bench reviews and are folded into dimensions 1 and 2.
+
+What the round caught, which no gate in this repo could: **the default sky filled the frame.** A fold
+moves the coordinate a colour is read at, so it changes hue without ever going dark — handed one feeling,
+every pixel of the grain sky resolved to the same value and §15's own rule that a sky is a place with
+things in it rather than a filled surface was quietly false for the two recipes that had no coverage gate.
+Both now gate on the fold's own depth. The fix is in and its **on-screen re-check is outstanding**, which
+is the single item between this document and a sign-off.
+
+**Also deferred, with a home:** React Native has had no device pass. The web canvas holds 8.3 ms median at
+2880×1800 with four canvases and both backends compile clean, but the mobile frame budget — the nebula's
+two-octave cloud in particular — is unmeasured. Its home is the mobile `Universe` group (§20), read on
+hardware.
+
+**When it is signed off, the reviewer must be named.** [Job 38's 2D sign-off](../jobs/archive/38.2d-ui-design-language.md)
+was taken by the implementing agent acting as reviewer, and §11 records plainly that this is a weaker gate
+than the protocol intends. The same caveat will apply here unless a human designer runs the round.

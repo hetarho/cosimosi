@@ -1,9 +1,9 @@
-import { normalize, sin, vec3 } from 'three/tsl'
+import { float, normalize, sin, smoothstep, vec3 } from 'three/tsl'
 
 import { gnoise } from '../../shader-art/noise'
-import { skyDir, skyDrift } from './sky-domain.ts'
+import { skyCloud, skyDir, skyDrift } from './sky-domain.ts'
 import { emotionField } from './sky-emotion.ts'
-import { skyFinish } from './sky-finish.ts'
+import { skyFinish, skyVoid } from './sky-finish.ts'
 import { filmGrain, skySeconds, type SkyNodeArgs } from './sky-node.ts'
 
 // Grainstorm — the same marble as Grainient, printed instead of lit: the grain is the surface, not a
@@ -19,7 +19,9 @@ import { filmGrain, skySeconds, type SkyNodeArgs } from './sky-node.ts'
 // eats the very thing that makes the gradient readable, and the sky turns to television static with a
 // hint of hue. So the colour is deliberately harder here — territories with visible boundaries, chroma
 // pushed away from the midpoint — and the grain is coarse enough to read as tooth rather than noise.
-// Grainient stays the quiet one; this is the one you notice.
+// Grainient stays the quiet one; this is the one you notice. Its depth gate is TIGHTER than
+// Grainient's: heavy grain over a wide fill reads as television static, so the printed marble holds
+// less of the sky and leaves more of the night for the grain to sit against.
 
 /** Grain amplitude in the finish — an order above Grainient's whisper. */
 const GRAIN = 0.16
@@ -30,6 +32,9 @@ const TOOTH_AMOUNT = 0.13
 const CONTRAST = 1.42
 /** Territories read harder than Grainient's, so the grain has edges to sit against. */
 const SHARPNESS = 2.4
+/** Where the printed marble thins to nothing, and where it is fully itself. */
+const PRINT_FLOOR = 0.24
+const PRINT_FULL = 0.9
 
 export function grainstormSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
   const t = skySeconds(time, 0.25)
@@ -42,18 +47,22 @@ export function grainstormSkyNode({ gradient, time, count, weights, headroom }: 
     p.z.add(sin(p.x.mul(2.5).sub(t)).mul(0.25)),
   )
 
+  const direction = normalize(warped)
   const emotion = emotionField({
     gradient,
     count,
     weights,
-    dir: normalize(warped),
+    dir: direction,
     sharpness: SHARPNESS,
   })
+
+  // The marble's own depth, off the same folded direction — the ink only lands where the fold is thick.
+  const coverage = smoothstep(float(PRINT_FLOOR), float(PRINT_FULL), skyCloud(direction, 1.15, 3))
 
   // The coarse layer. Sampled off the same warped frame as the colour, so the tooth belongs to the
   // marble and travels with it instead of sitting on the glass in front of it.
   const tooth = gnoise(warped.mul(TOOTH_SCALE)).mul(TOOTH_AMOUNT)
-  const printed = emotion.color.add(tooth).add(filmGrain(GRAIN * 0.5))
+  const printed = skyVoid(emotion.color.add(tooth), coverage).add(filmGrain(GRAIN * 0.5))
 
   return skyFinish(printed, { contrast: CONTRAST, grain: GRAIN, headroom })
 }
