@@ -165,6 +165,14 @@ export {
   type AdvanceAnnouncementState,
 } from './advance-announcement-store.ts'
 export {
+  ADVANCE_SKY_PEAK_RATE,
+  advanceSkyRate,
+  advanceSkyRateFor,
+  resetAdvanceSkyRate,
+  useAdvanceSweepStore,
+  type AdvanceSweepState,
+} from './advance-sweep-store.ts'
+export {
   cancelPendingTimeSyncConsent,
   requestTimeSyncConsent,
   useTimeSyncConsentStore,

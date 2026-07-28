@@ -17,12 +17,13 @@ export interface AdvanceAnnouncement {
   readonly revealNeuronIds: readonly string[]
 }
 
-// One rAF frame of the sweep, computed once for both apps: the HUD date, the veil intensity
-// envelope (0 → 1 → 0 across the sweep), and whether the transition is complete. Kept pure so the
-// two platform hosts share the timing and only fork the opacity write (§3.5).
+// One rAF frame of the sweep, computed once for both apps: the HUD date, the transition's shape
+// (0 → 1 → 0 across the sweep), and whether it is complete. Kept pure so the two platform hosts
+// share the timing and fork only what they drive with it (§3.5).
 export interface AdvanceSweepFrame {
   readonly universeTime: string
-  readonly veilIntensity: number
+  /** The transition's shape, 0 → 1 → 0 — what the hosts ease their effect in and out on. */
+  readonly envelope: number
   readonly done: boolean
 }
 
@@ -74,7 +75,7 @@ export function advanceSweepFrame(interval: AdvanceInterval, elapsedMs: number):
   const t = Math.min(1, Math.max(0, elapsedMs / advanceDurationMs(interval)))
   return {
     universeTime: sampleAdvanceDate(interval, t),
-    veilIntensity: Math.sin(Math.PI * t),
+    envelope: Math.sin(Math.PI * t),
     done: t >= 1,
   }
 }

@@ -1,5 +1,6 @@
 import { useAwakenRegistryStore } from './awaken-registry.ts'
 import { useAdvanceAnnouncementStore } from './advance-announcement-store.ts'
+import { resetAdvanceSkyRate, useAdvanceSweepStore } from './advance-sweep-store.ts'
 import { useDeletionTargetStore } from './deletion-target-store.ts'
 import { useDeletionDraftStore } from './deletion-draft-store.ts'
 import { useDiaryDraftStore } from './diary-draft-store.ts'
@@ -37,6 +38,8 @@ export function resetUniverseUserState(): void {
   useLatentConsumedStore.getState().reset()
   useAwakenRegistryStore.getState().reset()
   useAdvanceAnnouncementStore.getState().reset()
+  useAdvanceSweepStore.getState().reset()
+  resetAdvanceSkyRate()
   useLaunchedNeuronsStore.getState().reset()
   useDiaryDraftStore.getState().clear()
   useProposalStore.getState().reset()

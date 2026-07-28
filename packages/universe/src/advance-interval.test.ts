@@ -58,11 +58,11 @@ describe('advanceSweepFrame', () => {
       universeTime: '2026-07-01',
       done: false,
     })
-    expect(advanceSweepFrame(interval, 0).veilIntensity).toBeCloseTo(0)
-    expect(advanceSweepFrame(interval, duration / 2).veilIntensity).toBeCloseTo(1)
+    expect(advanceSweepFrame(interval, 0).envelope).toBeCloseTo(0)
+    expect(advanceSweepFrame(interval, duration / 2).envelope).toBeCloseTo(1)
     const end = advanceSweepFrame(interval, duration)
     expect(end).toMatchObject({ universeTime: '2026-07-08', done: true })
-    expect(end.veilIntensity).toBeCloseTo(0)
+    expect(end.envelope).toBeCloseTo(0)
   })
 
   it('always terminates for a malformed interval instead of stranding the loop', () => {

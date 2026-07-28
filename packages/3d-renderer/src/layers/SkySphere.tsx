@@ -27,6 +27,15 @@ export interface SkySphereProps {
   readonly effect?: SkyEffectKey
   /** Freeze the animation to a static frame. */
   readonly reducedMotion?: boolean
+  /**
+   * How much faster the sky's own time should run right now, read every frame — 1 at rest.
+   *
+   * A ref rather than a value because the host writes it per frame during a time acceleration, and a
+   * per-frame value may never be React state. The sky is what says time is passing: running its
+   * seconds uniform fast is the effect, where a sheet over the canvas would say the transition is
+   * happening to the viewer rather than to the place.
+   */
+  readonly rateRef?: { readonly current: number }
   /** Alpha override; when omitted, the selected effect's generated tuning is used. */
   readonly opacity?: number
   /**
@@ -84,6 +93,7 @@ export function SkySphere({
   reducedMotion = false,
   opacity,
   radius = 700,
+  rateRef,
 }: SkySphereProps) {
   const gradient = useMemo(() => buildEmotionGradientTexture(stops), [])
   const time = useMemo(() => uniform(0), [])
@@ -133,7 +143,10 @@ export function SkySphere({
       return
     }
     frozen.current = false
-    time.value += delta
+    // A non-finite or negative rate would strand or rewind the sky, so it is coerced rather than
+    // trusted — the host writing it is a rAF loop in another widget.
+    const rate = rateRef ? rateRef.current : 1
+    time.value += delta * (Number.isFinite(rate) && rate > 0 ? rate : 1)
   })
 
   return <mesh geometry={geometry} material={material} frustumCulled={false} renderOrder={-3} />

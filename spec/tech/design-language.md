@@ -466,12 +466,38 @@ returned to.
 
 ## 19. Choreography
 
-**Open — this section is the seam T010 fills.**
+**Time passing happens to the place, not to the screen.** So the sky says it: while an acceleration
+plays, the sky's own seconds run fast and ease back to rest on the transition's envelope. There is no
+veil. A translucent sheet over the canvas — which is what this used to be — reads as something happening
+to the viewer, and worse, it hides the very consequences the acceleration exists to show.
 
-The rubric asks whether the time-acceleration and consolidation sequences read as one motion rather than
-a jump cut. What has to be decided is which consequences are shown and which pass quietly: whether the
-sky flows, whether stars dim together, whether a gist is seen rising, whether a slept synapse is seen
-thinning.
+**The consequences are watched, not discovered.** An acceleration is the only moment a user can see
+_why_ time matters, so two of them play inside it:
+
+- **The stars quiet.** The scene projects at the sweep's **sampled** clock rather than the committed one,
+  so brightness — and with it the breath of §18 — walks down across the sweep. Months of absence are
+  watched happening instead of found already done. The sampled clock opens on the date the viewer last
+  saw, never on the new one, because opening on the new one would brighten every star for a frame before
+  dimming it back.
+- **A gist is seen rising.** The rise already animates over its own beat and already publishes when a
+  stage newly rises; what the choreography adds is that it belongs inside the sweep rather than
+  whenever its data happened to land.
+
+**A slept synapse thinning is deliberately not shown.** Filaments are numerous, and many of them
+changing width at once turns a legible consequence into a screen that stirs. The `Downscale` is real and
+readable afterwards, on the strand itself.
+
+**Reduced motion skips the transition rather than slowing it** — it lands on the final clock and lets the
+settled frame speak, because the sweep carries nothing the settled frame does not already hold.
+
+**Both platforms drive it identically.** The sweep once forked (a DOM layer on web, an `Animated.View`
+on native) precisely because each was rendering a veil. With the scene doing the talking, both hosts
+write the same two channels and render nothing, so §3.5's parity here is real rather than mirrored.
+
+The two channels leave the transition at very different rates, which is why they are two mechanisms: the
+sampled clock is store state (a handful of updates per sweep, the budget the HUD already spends), and the
+sky's rate is a plain ref written every frame, read inside the canvas's own frame loop — a per-frame
+value may never be React state.
 
 ## 20. The showcase
 
@@ -505,4 +531,4 @@ Where it stands: six working rounds (S1–S6) are in [job 39](../jobs/39.3d-asse
 all of them on the star bench rather than the full rubric, with their notes open pending a re-check on the
 running surface. No round has yet scored all seven dimensions, and no on-device GPU pass has been run —
 so §15's recipes and headroom values, and the bodies of §14, are unverified by eye at the time of writing.
-§19 must be designed before a round can score dimension 5 at all.
+Both §18 and §19 are now designed, so all seven dimensions are scoreable.

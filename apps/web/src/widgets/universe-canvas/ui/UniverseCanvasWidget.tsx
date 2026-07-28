@@ -24,8 +24,10 @@ import {
   generateLatentField,
   gistNodeId,
   recentlyActiveNeuronIds,
+  advanceSkyRate,
   universeEmotionSlices,
   universeNavigationMachine,
+  useAdvanceSweepStore,
   useEpisodicMemoryStore,
   usePendingFlyTargetStore,
   type AwakenAnchor,
@@ -180,6 +182,13 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   // it; neuron/synapse layers carry no emotion color and stay mounted.
   const paletteVersion = usePaletteVersion()
 
+  // The clock the SCENE projects at. While a time acceleration plays it is the sweep's sampled date,
+  // so the stars' brightness walks down in front of the viewer instead of being found already down;
+  // otherwise it is the committed read clock. It changes at most once per sampled step, never per
+  // frame, so subscribing here costs a handful of renders per acceleration.
+  const sweepTime = useAdvanceSweepStore((state) => state.sampledTime)
+  const sceneTime = sweepTime ?? universe?.universeTime ?? null
+
   // The enclosing emotion sky ([57]) is the one shipped backdrop: the universe's own emotions
   // drive its palette ramp ([I3], color only), while the canvas clears to the same bare night.
   // Slices depend on the palette version so a live palette swap re-colors through the unchanged
@@ -249,7 +258,12 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
         fov={skin.camera.fov}
         clearColor={skin.sky.night}
       >
-        <SkySphere stops={skyStops} effect={skyEffect} reducedMotion={reducedMotion} />
+        <SkySphere
+          stops={skyStops}
+          effect={skyEffect}
+          reducedMotion={reducedMotion}
+          rateRef={advanceSkyRate}
+        />
         <StarField reducedMotion={reducedMotion} />
         {/* Emotion color field: additive mood-color blend behind the latent field and bodies
             (renderOrder -2). Memories share the star layer's buffer slots [neuronCount, …). */}
@@ -264,7 +278,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
           key={`star-${paletteVersion}`}
           positions={bridge.coordinates}
           firstNodeIndex={neuronCount}
-          universeTime={universe?.universeTime ?? null}
+          universeTime={sceneTime}
           reducedMotion={reducedMotion}
           onFocus={focusMemory}
           onFly={flyToMemory}
@@ -273,7 +287,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
         <FilamentLayer
           positions={bridge.coordinates}
           neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
-          universeTime={universe?.universeTime ?? null}
+          universeTime={sceneTime}
           reducedMotion={reducedMotion}
         />
         {/* The neocortex band ([V9]): gist bodies at the memories' copied x,y, risen z — plus
