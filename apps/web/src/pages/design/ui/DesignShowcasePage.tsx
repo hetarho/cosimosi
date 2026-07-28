@@ -4,6 +4,7 @@ import { FoundationsPanel } from '../lib/foundations-panel.tsx'
 import { PatternsPanel } from '../lib/patterns-panel.tsx'
 import { PrimitivesPanel } from '../lib/primitives-panel.tsx'
 import { SHOWCASE_GROUPS } from '../lib/showcase-sections.ts'
+import { UniversePanel } from '../lib/universe-panel.tsx'
 import { T } from '../lib/showcase-copy.ts'
 
 /**
@@ -39,6 +40,7 @@ export function DesignShowcasePage() {
           <FoundationsPanel />
           <PrimitivesPanel />
           <PatternsPanel />
+          <UniversePanel />
         </div>
       </div>
     </main>

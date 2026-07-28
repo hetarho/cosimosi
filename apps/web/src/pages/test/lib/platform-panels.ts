@@ -7,8 +7,6 @@ import {
   TransportPingPanel,
   ValuesPanel,
 } from './platform-panel-components.tsx'
-import { NebulaDemoPanel } from './nebula-demo-panel.tsx'
-import { StarShapePanel } from './star-shape-panel.tsx'
 import { UiTestPanel } from './ui-test-panel.tsx'
 import {
   createTestPanelRegistry,
@@ -60,22 +58,6 @@ export const platformTestPanels = createTestPanelRegistry([
     descriptionKey: 'test_harness_i18n_description',
     requiredCapabilities: ['i18n'],
     render: () => createElement(I18nPanel),
-  },
-  {
-    id: 'nebula-color-field',
-    titleKey: 'test_harness_nebula_title',
-    descriptionKey: 'test_harness_nebula_description',
-    // No capability gate: the panel self-handles GPU absence (WebGPU → WebGL2 → none).
-    requiredCapabilities: [],
-    render: () => createElement(NebulaDemoPanel),
-  },
-  {
-    id: 'star-shape',
-    titleKey: 'test_harness_star_shape_title',
-    descriptionKey: 'test_harness_star_shape_description',
-    // No capability gate: the mounted canvas self-handles GPU absence (WebGPU → WebGL2 → none).
-    requiredCapabilities: [],
-    render: () => createElement(StarShapePanel),
   },
   {
     id: 'ui-test',

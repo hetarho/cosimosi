@@ -47,6 +47,17 @@ export const SHOWCASE_GROUPS: readonly ShowcaseGroup[] = [
       { id: 'states', label: T.statesTitle },
     ],
   },
+  {
+    // The 3D half of the language. It sits in the same showcase as the chrome because the two are
+    // reviewed against each other — "is the glass lit by the sky it floats on" is a rubric dimension,
+    // and it cannot be answered from two separate surfaces.
+    label: T.groupUniverse,
+    sections: [
+      { id: 'star-forms', label: T.starFormsTitle },
+      { id: 'sky', label: T.skyTitle },
+      { id: 'nebula', label: T.nebulaTitle },
+    ],
+  },
 ]
 
 export const SHOWCASE_SECTION_IDS = SHOWCASE_GROUPS.flatMap((group) =>

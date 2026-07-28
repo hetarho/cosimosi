@@ -20,6 +20,7 @@ export const T = {
   groupFoundations: 'Foundations',
   groupPrimitives: 'Primitives',
   groupPatterns: 'Patterns',
+  groupUniverse: 'Universe',
 
   // Foundations — theme
   themeTitle: 'Theme',
@@ -211,6 +212,18 @@ export const T = {
   errorHeading: 'The universe did not load',
   errorBody: 'The connection dropped before the stars arrived.',
   errorAction: 'Try again',
+
+  // Universe — the 3D review surface
+  starFormsTitle: 'Star forms',
+  starFormsBlurb:
+    'Every candidate body a memory star can wear, at one size and one brightness so only the form and its feeling differ. Drag to turn the scene, scroll to come closer.',
+  skyTitle: 'Emotion skies',
+  skyBlurb:
+    'A shader-lit sphere enclosing the scene, not a wash behind it — look around inside it. Each sky arranges the same four axes differently, and every colour comes from the universe\u2019s own feelings. Hand any sky any number of emotions: more feelings means smaller territories, never a muddier wash.',
+  skyEmotionCount: 'How many emotions',
+  nebulaTitle: 'Emotion colour field',
+  nebulaBlurb:
+    'The nebula is not a body. It is what a region of the universe looks like when the memories in it bleed their colour into the space between them.',
 
   // Demo data
   moodLabels: {

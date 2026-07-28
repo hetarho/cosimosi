@@ -8,6 +8,7 @@ import { FoundationsPanel } from '../lib/foundations-panel.tsx'
 import { PatternsPanel } from '../lib/patterns-panel.tsx'
 import { PrimitivesPanel } from '../lib/primitives-panel.tsx'
 import { T } from '../lib/showcase-copy.ts'
+import { UniversePanel } from '../lib/universe-panel.tsx'
 
 /**
  * The native design showcase — the mobile half of the surface a design review reads.
@@ -50,6 +51,7 @@ export function DesignShowcasePage({ onBack }: { onBack: () => void }) {
         <FoundationsPanel />
         <PrimitivesPanel />
         <PatternsPanel />
+        <UniversePanel />
       </ScrollView>
     </View>
   )

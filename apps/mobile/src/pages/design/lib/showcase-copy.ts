@@ -24,6 +24,12 @@ export const T = {
   spacingLabel: 'Spacing',
   radiusLabel: 'Radius',
 
+  universeTitle: 'Universe',
+  skyLabel: 'Emotion skies',
+  skyNote:
+    'The one shared TSL source on the native WebGPU canvas: the enclosing sky sphere, every recipe, and the way each divides itself among the feelings it is handed — inspected on real hardware, which is the only place the frame budget is real.',
+  skyCountLabel: 'How many emotions',
+
   primitivesTitle: 'Primitives',
   buttonLabel: 'Button',
   iconButtonLabel: 'Icon button',
