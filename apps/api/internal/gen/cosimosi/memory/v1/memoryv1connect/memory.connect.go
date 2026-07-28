@@ -64,6 +64,9 @@ const (
 	// MemoryServiceGetDiariesProcedure is the fully-qualified name of the MemoryService's GetDiaries
 	// RPC.
 	MemoryServiceGetDiariesProcedure = "/cosimosi.memory.v1.MemoryService/GetDiaries"
+	// MemoryServiceGetDiaryCalendarProcedure is the fully-qualified name of the MemoryService's
+	// GetDiaryCalendar RPC.
+	MemoryServiceGetDiaryCalendarProcedure = "/cosimosi.memory.v1.MemoryService/GetDiaryCalendar"
 	// MemoryServiceReleaseProcedure is the fully-qualified name of the MemoryService's Release RPC.
 	MemoryServiceReleaseProcedure = "/cosimosi.memory.v1.MemoryService/Release"
 	// MemoryServiceRestoreProcedure is the fully-qualified name of the MemoryService's Restore RPC.
@@ -113,9 +116,11 @@ type MemoryServiceClient interface {
 	// Whole-account export of the immutable Diary + memories as a downloadable file [W6][D4]. The Diary is
 	// the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
 	Export(context.Context, *connect.Request[v1.ExportRequest]) (*connect.Response[v1.ExportResponse], error)
-	// The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
-	// diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
+	// The diary-reader archive read [D2]: immutable Diary entries with chronological keyset paging
+	// and optional body/date/live-memory-mood filters. Free — no clock, no Twinkle, GET-eligible.
 	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
+	// Written diary days and their live-memory mood weights. Colorless, free, and time-frozen.
+	GetDiaryCalendar(context.Context, *connect.Request[v1.GetDiaryCalendarRequest]) (*connect.Response[v1.GetDiaryCalendarResponse], error)
 	// full delete — diary-scoped soft-delete + 30-day restore window ([X1][X2]); persists a soft-delete, no hard delete.
 	Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error)
 	// undo a full delete within the retention window ([X2]).
@@ -208,6 +213,13 @@ func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getDiaryCalendar: connect.NewClient[v1.GetDiaryCalendarRequest, v1.GetDiaryCalendarResponse](
+			httpClient,
+			baseURL+MemoryServiceGetDiaryCalendarProcedure,
+			connect.WithSchema(memoryServiceMethods.ByName("GetDiaryCalendar")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		release: connect.NewClient[v1.ReleaseRequest, v1.ReleaseResponse](
 			httpClient,
 			baseURL+MemoryServiceReleaseProcedure,
@@ -248,6 +260,7 @@ type memoryServiceClient struct {
 	getProvenance    *connect.Client[v1.GetProvenanceRequest, v1.GetProvenanceResponse]
 	export           *connect.Client[v1.ExportRequest, v1.ExportResponse]
 	getDiaries       *connect.Client[v1.GetDiariesRequest, v1.GetDiariesResponse]
+	getDiaryCalendar *connect.Client[v1.GetDiaryCalendarRequest, v1.GetDiaryCalendarResponse]
 	release          *connect.Client[v1.ReleaseRequest, v1.ReleaseResponse]
 	restore          *connect.Client[v1.RestoreRequest, v1.RestoreResponse]
 	suggestLetGo     *connect.Client[v1.SuggestLetGoRequest, v1.SuggestLetGoResponse]
@@ -309,6 +322,11 @@ func (c *memoryServiceClient) GetDiaries(ctx context.Context, req *connect.Reque
 	return c.getDiaries.CallUnary(ctx, req)
 }
 
+// GetDiaryCalendar calls cosimosi.memory.v1.MemoryService.GetDiaryCalendar.
+func (c *memoryServiceClient) GetDiaryCalendar(ctx context.Context, req *connect.Request[v1.GetDiaryCalendarRequest]) (*connect.Response[v1.GetDiaryCalendarResponse], error) {
+	return c.getDiaryCalendar.CallUnary(ctx, req)
+}
+
 // Release calls cosimosi.memory.v1.MemoryService.Release.
 func (c *memoryServiceClient) Release(ctx context.Context, req *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error) {
 	return c.release.CallUnary(ctx, req)
@@ -367,9 +385,11 @@ type MemoryServiceHandler interface {
 	// Whole-account export of the immutable Diary + memories as a downloadable file [W6][D4]. The Diary is
 	// the objective record and is never a mutable provenance entry [I2]; read-only, no clock, no Twinkle.
 	Export(context.Context, *connect.Request[v1.ExportRequest]) (*connect.Response[v1.ExportResponse], error)
-	// The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
-	// diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
+	// The diary-reader archive read [D2]: immutable Diary entries with chronological keyset paging
+	// and optional body/date/live-memory-mood filters. Free — no clock, no Twinkle, GET-eligible.
 	GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error)
+	// Written diary days and their live-memory mood weights. Colorless, free, and time-frozen.
+	GetDiaryCalendar(context.Context, *connect.Request[v1.GetDiaryCalendarRequest]) (*connect.Response[v1.GetDiaryCalendarResponse], error)
 	// full delete — diary-scoped soft-delete + 30-day restore window ([X1][X2]); persists a soft-delete, no hard delete.
 	Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error)
 	// undo a full delete within the retention window ([X2]).
@@ -458,6 +478,13 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoryServiceGetDiaryCalendarHandler := connect.NewUnaryHandler(
+		MemoryServiceGetDiaryCalendarProcedure,
+		svc.GetDiaryCalendar,
+		connect.WithSchema(memoryServiceMethods.ByName("GetDiaryCalendar")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	memoryServiceReleaseHandler := connect.NewUnaryHandler(
 		MemoryServiceReleaseProcedure,
 		svc.Release,
@@ -506,6 +533,8 @@ func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOp
 			memoryServiceExportHandler.ServeHTTP(w, r)
 		case MemoryServiceGetDiariesProcedure:
 			memoryServiceGetDiariesHandler.ServeHTTP(w, r)
+		case MemoryServiceGetDiaryCalendarProcedure:
+			memoryServiceGetDiaryCalendarHandler.ServeHTTP(w, r)
 		case MemoryServiceReleaseProcedure:
 			memoryServiceReleaseHandler.ServeHTTP(w, r)
 		case MemoryServiceRestoreProcedure:
@@ -565,6 +594,10 @@ func (UnimplementedMemoryServiceHandler) Export(context.Context, *connect.Reques
 
 func (UnimplementedMemoryServiceHandler) GetDiaries(context.Context, *connect.Request[v1.GetDiariesRequest]) (*connect.Response[v1.GetDiariesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.GetDiaries is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) GetDiaryCalendar(context.Context, *connect.Request[v1.GetDiaryCalendarRequest]) (*connect.Response[v1.GetDiaryCalendarResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.memory.v1.MemoryService.GetDiaryCalendar is not implemented"))
 }
 
 func (UnimplementedMemoryServiceHandler) Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error) {

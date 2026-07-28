@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DiarySort,
   MemoryService,
+  createGetDiariesInfiniteQueryKey,
   createGetDiariesInfiniteQueryOptions,
   createGetDiariesQueryKey,
   createGetDiariesQueryOptions,
@@ -90,7 +92,12 @@ describe('memory transport facade', () => {
 
   it('drives GetDiaries pagination off next_page_token (empty = last page)', () => {
     const transport = createMemoryMockTransport(universeFixture)
-    const infinite = createGetDiariesInfiniteQueryOptions(transport, 20)
+    const infinite = createGetDiariesInfiniteQueryOptions(transport, {
+      pageSize: 20,
+      query: '커피',
+      moods: ['JOY'],
+      sort: DiarySort.OLDEST,
+    })
 
     expect(infinite.initialPageParam).toBe('')
     const more = {
@@ -105,6 +112,8 @@ describe('memory transport facade', () => {
     }
     expect(infinite.getNextPageParam(more, [more], 'cursor-1', [''])).toBe('cursor-2')
     expect(infinite.getNextPageParam(last, [last], 'cursor-2', [''])).toBeUndefined()
+    expect(infinite.queryKey[1]).toHaveProperty('input')
+    expect(createGetDiariesInfiniteQueryKey(transport)[1]).not.toHaveProperty('input')
   })
 
   it('carries stored facts only on the universe read (no position or coordinate field)', async () => {

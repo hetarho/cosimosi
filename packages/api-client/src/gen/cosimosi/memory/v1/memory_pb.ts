@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/memory/v1/memory.proto.
  */
 export const file_cosimosi_memory_v1_memory: GenFile = /*@__PURE__*/
-  fileDesc("Ch9jb3NpbW9zaS9tZW1vcnkvdjEvbWVtb3J5LnByb3RvEhJjb3NpbW9zaS5tZW1vcnkudjEiNQoRU3BsaXREaWFyeVJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJIoUBChJSZXZpc2VTcGxpdFJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJEjgKCHByZXZpb3VzGAMgASgLMiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRITCgtpbnN0cnVjdGlvbhgEIAEoCSJKChJTcGxpdERpYXJ5UmVzcG9uc2USNAoIbWVtb3JpZXMYASADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWRNZW1vcnkidgoOUHJvcG9zZWRNZW1vcnkSDAoEbmFtZRgBIAEoCRIMCgRtb29kGAIgASgJEjMKB25ldXJvbnMYAyADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWROZXVyb24SEwoLc291cmNlX3RleHQYBCABKAkiLAoOUHJvcG9zZWROZXVyb24SDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJIm0KEkxhdW5jaFN0YXJzUmVxdWVzdBIMCgRib2R5GAEgASgJEhIKCmRpYXJ5X2RhdGUYAiABKAkSNQoIbWVtb3JpZXMYAyADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuQ29uZmlybWVkTWVtb3J5IncKD0NvbmZpcm1lZE1lbW9yeRIMCgRuYW1lGAEgASgJEgwKBG1vb2QYAiABKAkSMwoHbmV1cm9ucxgDIAMoCzIiLmNvc2ltb3NpLm1lbW9yeS52MS5Qcm9wb3NlZE5ldXJvbhITCgtzb3VyY2VfdGV4dBgEIAEoCSKMAQoTTGF1bmNoU3RhcnNSZXNwb25zZRISCgptZW1vcnlfaWRzGAEgAygJEhYKDm5ld19uZXVyb25faWRzGAIgAygJEhIKCnBhc3RfZGF0ZWQYAyABKAgSHgoWcHJldmlvdXNfdW5pdmVyc2VfdGltZRgEIAEoCRIVCg11bml2ZXJzZV90aW1lGAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCLHAQoTR2V0VW5pdmVyc2VSZXNwb25zZRI3CghtZW1vcmllcxgBIAMoCzIlLmNvc2ltb3NpLm1lbW9yeS52MS5FcGlzb2RpY01lbW9yeUR0bxIuCgduZXVyb25zGAIgAygLMh0uY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkR0bxIwCghzeW5hcHNlcxgDIAMoCzIeLmNvc2ltb3NpLm1lbW9yeS52MS5TeW5hcHNlRHRvEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiTwoKRW1vdGlvbkR0bxIMCgRtb29kGAEgASgJEg8KB3ZhbGVuY2UYAiABKAESDwoHYXJvdXNhbBgDIAEoARIRCglpbnRlbnNpdHkYBCABKAEiOAoTTmV1cm9uQWN0aXZhdGlvbkR0bxIRCgluZXVyb25faWQYASABKAkSDgoGd2VpZ2h0GAIgASgCIrIDChFFcGlzb2RpY01lbW9yeUR0bxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KB2Vtb3Rpb24YAyABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuRW1vdGlvbkR0bxIVCg1iYXNlX3N0cmVuZ3RoGAQgASgBEhQKDHJlY2FsbF9jb3VudBgFIAEoBRIdChVjcmVhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkSKAobbGFzdF9yZWNhbGxlZF91bml2ZXJzZV90aW1lGAcgASgJSACIAQESEQoEc2VlZBgIIAEoA0gBiAEBEjwKC2FjdGl2YXRpb25zGAkgAygLMicuY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkFjdGl2YXRpb25EdG8SFAoMZGVjYXlfc3RhZ2VzGAogAygJEh4KFmZvcmdldHRpbmdfb2Zmc2V0X2RheXMYCyABKAESFAoMY3VycmVudF90ZXh0GAwgASgJEhYKDnNlbWFudGljX3N0YWdlGA0gASgFQh4KHF9sYXN0X3JlY2FsbGVkX3VuaXZlcnNlX3RpbWVCBwoFX3NlZWQiXgoJTmV1cm9uRHRvEgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARITCgtuZXVyb25fdHlwZRgDIAEoCRIUCgxjb25uZWN0aXZpdHkYBCABKAVCBwoFX25hbWUilwEKClN5bmFwc2VEdG8SCgoCaWQYASABKAkSEwoLbmV1cm9uX2FfaWQYAiABKAkSEwoLbmV1cm9uX2JfaWQYAyABKAkSEAoIc3RyZW5ndGgYBCABKAISGwoTY29fYWN0aXZhdGlvbl9jb3VudBgFIAEoBRIkChxsYXN0X2FjdGl2YXRlZF91bml2ZXJzZV90aW1lGAYgASgJImQKDVJlY2FsbFJlcXVlc3QSEQoJbWVtb3J5X2lkGAEgASgJEhQKDHJld3JpdGVfdGV4dBgCIAEoCRIUCgxvcGVyYXRpb25faWQYAyABKAkSFAoMc3luY19jb25zZW50GAQgASgIIrUBCg5SZWNhbGxSZXNwb25zZRIWCg5yZWNvbnNvbGlkYXRlZBgBIAEoCBIUCgxjdXJyZW50X3RleHQYAiABKAkSDAoEc2VlZBgDIAEoAxIUCgxyZWNhbGxfY291bnQYBCABKAUSGgoSZWZmZWN0aXZlX3N0cmVuZ3RoGAUgASgCEh4KFnByZXZpb3VzX3VuaXZlcnNlX3RpbWUYBiABKAkSFQoNdW5pdmVyc2VfdGltZRgHIAEoCSJXChdSZWNhbGxEaWFyeVN0YXJzUmVxdWVzdBIQCghkaWFyeV9pZBgBIAEoCRIUCgxvcGVyYXRpb25faWQYAiABKAkSFAoMc3luY19jb25zZW50GAMgASgIIlYKE1ZpZXdTZW1hbnRpY1JlcXVlc3QSGgoSZXBpc29kaWNfbWVtb3J5X2lkGAEgASgJEg0KBXN0YWdlGAIgASgFEhQKDG9wZXJhdGlvbl9pZBgDIAEoCSJKChRWaWV3U2VtYW50aWNSZXNwb25zZRIMCgR0ZXh0GAEgASgJEg0KBXN0YWdlGAIgASgFEhUKDXJlYWNoZWRfc3RhZ2UYAyABKAUigAEKGFJlY2FsbERpYXJ5U3RhcnNSZXNwb25zZRIQCghkaWFyeV9pZBgBIAEoCRIbChNlcGlzb2RpY19tZW1vcnlfaWRzGAIgAygJEh4KFnByZXZpb3VzX3VuaXZlcnNlX3RpbWUYAyABKAkSFQoNdW5pdmVyc2VfdGltZRgEIAEoCSITChFTeW5jU3RhdHVzUmVxdWVzdCI3ChJTeW5jU3RhdHVzUmVzcG9uc2USDQoFdG9kYXkYASABKAkSEgoKbmVlZHNfc3luYxgCIAEoCCIyChRHZXRQcm92ZW5hbmNlUmVxdWVzdBIaChJlcGlzb2RpY19tZW1vcnlfaWQYASABKAkiTQoVR2V0UHJvdmVuYW5jZVJlc3BvbnNlEjQKB2VudHJpZXMYASADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuUHJvdmVuYW5jZUVudHJ5IlQKD1Byb3ZlbmFuY2VFbnRyeRIMCgRraW5kGAEgASgJEg4KBnNvdXJjZRgCIAEoCRIMCgR0ZXh0GAMgASgJEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiQQoNRXhwb3J0UmVxdWVzdBIwCgZmb3JtYXQYASABKA4yIC5jb3NpbW9zaS5tZW1vcnkudjEuRXhwb3J0Rm9ybWF0IkkKDkV4cG9ydFJlc3BvbnNlEg8KB2NvbnRlbnQYASABKAwSFAoMY29udGVudF90eXBlGAIgASgJEhAKCGZpbGVuYW1lGAMgASgJIjoKEUdldERpYXJpZXNSZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIlwKEkdldERpYXJpZXNSZXNwb25zZRItCgdkaWFyaWVzGAEgAygLMhwuY29zaW1vc2kubWVtb3J5LnYxLkRpYXJ5RHRvEhcKD25leHRfcGFnZV90b2tlbhgCIAEoCSKMAQoIRGlhcnlEdG8SCgoCaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgpkaWFyeV9kYXRlGAMgASgJEh0KFWNyZWF0ZWRfdW5pdmVyc2VfdGltZRgEIAEoCRIzCghtZW1vcmllcxgFIAMoCzIhLmNvc2ltb3NpLm1lbW9yeS52MS5EaWFyeVNwbGl0UmVmIkcKDURpYXJ5U3BsaXRSZWYSGgoSZXBpc29kaWNfbWVtb3J5X2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEbW9vZBgDIAEoCSIiCg5SZWxlYXNlUmVxdWVzdBIQCghkaWFyeV9pZBgBIAEoCSJUCg9SZWxlYXNlUmVzcG9uc2USEAoIZGlhcnlfaWQYASABKAkSGwoTZXBpc29kaWNfbWVtb3J5X2lkcxgCIAMoCRISCgpkZWxldGVkX2F0GAMgASgJIiIKDlJlc3RvcmVSZXF1ZXN0EhAKCGRpYXJ5X2lkGAEgASgJIkAKD1Jlc3RvcmVSZXNwb25zZRIQCghkaWFyeV9pZBgBIAEoCRIbChNlcGlzb2RpY19tZW1vcnlfaWRzGAIgAygJIkAKE1N1Z2dlc3RMZXRHb1JlcXVlc3QSGgoSZXBpc29kaWNfbWVtb3J5X2lkGAEgASgJEg0KBXdvcmRzGAIgASgJIoIBChRTdWdnZXN0TGV0R29SZXNwb25zZRI1CgpjYW5kaWRhdGVzGAEgAygLMiEuY29zaW1vc2kubWVtb3J5LnYxLlNlYWxDYW5kaWRhdGUSMwoLaGVhdnlfc3RhdGUYAiABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuSGVhdnlTdGF0ZSJACg1TZWFsQ2FuZGlkYXRlEhEKCW5ldXJvbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnJlYXNvbhgDIAEoCSIwCgpIZWF2eVN0YXRlEhAKCGRldGVjdGVkGAEgASgIEhAKCHNldmVyaXR5GAIgASgJIkcKDExldEdvUmVxdWVzdBIaChJlcGlzb2RpY19tZW1vcnlfaWQYASABKAkSGwoTYXBwcm92ZWRfbmV1cm9uX2lkcxgCIAMoCSIqCg1MZXRHb1Jlc3BvbnNlEhkKEXNlYWxlZF9uZXVyb25faWRzGAEgAygJKloKDEV4cG9ydEZvcm1hdBIdChlFWFBPUlRfRk9STUFUX1VOU1BFQ0lGSUVEEAASFQoRRVhQT1JUX0ZPUk1BVF9DU1YQARIUChBFWFBPUlRfRk9STUFUX01EEAIykQsKDU1lbW9yeVNlcnZpY2USWwoKU3BsaXREaWFyeRIlLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVxdWVzdBomLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVzcG9uc2USXQoLUmV2aXNlU3BsaXQSJi5jb3NpbW9zaS5tZW1vcnkudjEuUmV2aXNlU3BsaXRSZXF1ZXN0GiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRJeCgtMYXVuY2hTdGFycxImLmNvc2ltb3NpLm1lbW9yeS52MS5MYXVuY2hTdGFyc1JlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuTGF1bmNoU3RhcnNSZXNwb25zZRJjCgtHZXRVbml2ZXJzZRImLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRVbml2ZXJzZVJlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuR2V0VW5pdmVyc2VSZXNwb25zZSIDkAIBEk8KBlJlY2FsbBIhLmNvc2ltb3NpLm1lbW9yeS52MS5SZWNhbGxSZXF1ZXN0GiIuY29zaW1vc2kubWVtb3J5LnYxLlJlY2FsbFJlc3BvbnNlEm0KEFJlY2FsbERpYXJ5U3RhcnMSKy5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsRGlhcnlTdGFyc1JlcXVlc3QaLC5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsRGlhcnlTdGFyc1Jlc3BvbnNlEmEKDFZpZXdTZW1hbnRpYxInLmNvc2ltb3NpLm1lbW9yeS52MS5WaWV3U2VtYW50aWNSZXF1ZXN0GiguY29zaW1vc2kubWVtb3J5LnYxLlZpZXdTZW1hbnRpY1Jlc3BvbnNlEmAKClN5bmNTdGF0dXMSJS5jb3NpbW9zaS5tZW1vcnkudjEuU3luY1N0YXR1c1JlcXVlc3QaJi5jb3NpbW9zaS5tZW1vcnkudjEuU3luY1N0YXR1c1Jlc3BvbnNlIgOQAgESaQoNR2V0UHJvdmVuYW5jZRIoLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRQcm92ZW5hbmNlUmVxdWVzdBopLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRQcm92ZW5hbmNlUmVzcG9uc2UiA5ACARJUCgZFeHBvcnQSIS5jb3NpbW9zaS5tZW1vcnkudjEuRXhwb3J0UmVxdWVzdBoiLmNvc2ltb3NpLm1lbW9yeS52MS5FeHBvcnRSZXNwb25zZSIDkAIBEmAKCkdldERpYXJpZXMSJS5jb3NpbW9zaS5tZW1vcnkudjEuR2V0RGlhcmllc1JlcXVlc3QaJi5jb3NpbW9zaS5tZW1vcnkudjEuR2V0RGlhcmllc1Jlc3BvbnNlIgOQAgESUgoHUmVsZWFzZRIiLmNvc2ltb3NpLm1lbW9yeS52MS5SZWxlYXNlUmVxdWVzdBojLmNvc2ltb3NpLm1lbW9yeS52MS5SZWxlYXNlUmVzcG9uc2USUgoHUmVzdG9yZRIiLmNvc2ltb3NpLm1lbW9yeS52MS5SZXN0b3JlUmVxdWVzdBojLmNvc2ltb3NpLm1lbW9yeS52MS5SZXN0b3JlUmVzcG9uc2USYQoMU3VnZ2VzdExldEdvEicuY29zaW1vc2kubWVtb3J5LnYxLlN1Z2dlc3RMZXRHb1JlcXVlc3QaKC5jb3NpbW9zaS5tZW1vcnkudjEuU3VnZ2VzdExldEdvUmVzcG9uc2USTAoFTGV0R28SIC5jb3NpbW9zaS5tZW1vcnkudjEuTGV0R29SZXF1ZXN0GiEuY29zaW1vc2kubWVtb3J5LnYxLkxldEdvUmVzcG9uc2VC0QEKFmNvbS5jb3NpbW9zaS5tZW1vcnkudjFCC01lbW9yeVByb3RvUAFaQGdpdGh1Yi5jb20vY29zaW1vc2kvYXBpL2ludGVybmFsL2dlbi9jb3NpbW9zaS9tZW1vcnkvdjE7bWVtb3J5djGiAgNDTViqAhJDb3NpbW9zaS5NZW1vcnkuVjHKAhJDb3NpbW9zaVxNZW1vcnlcVjHiAh5Db3NpbW9zaVxNZW1vcnlcVjFcR1BCTWV0YWRhdGHqAhRDb3NpbW9zaTo6TWVtb3J5OjpWMWIGcHJvdG8z");
+  fileDesc("Ch9jb3NpbW9zaS9tZW1vcnkvdjEvbWVtb3J5LnByb3RvEhJjb3NpbW9zaS5tZW1vcnkudjEiNQoRU3BsaXREaWFyeVJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJIoUBChJSZXZpc2VTcGxpdFJlcXVlc3QSDAoEYm9keRgBIAEoCRISCgpkaWFyeV9kYXRlGAIgASgJEjgKCHByZXZpb3VzGAMgASgLMiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRITCgtpbnN0cnVjdGlvbhgEIAEoCSJKChJTcGxpdERpYXJ5UmVzcG9uc2USNAoIbWVtb3JpZXMYASADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWRNZW1vcnkidgoOUHJvcG9zZWRNZW1vcnkSDAoEbmFtZRgBIAEoCRIMCgRtb29kGAIgASgJEjMKB25ldXJvbnMYAyADKAsyIi5jb3NpbW9zaS5tZW1vcnkudjEuUHJvcG9zZWROZXVyb24SEwoLc291cmNlX3RleHQYBCABKAkiLAoOUHJvcG9zZWROZXVyb24SDAoEbmFtZRgBIAEoCRIMCgR0eXBlGAIgASgJIm0KEkxhdW5jaFN0YXJzUmVxdWVzdBIMCgRib2R5GAEgASgJEhIKCmRpYXJ5X2RhdGUYAiABKAkSNQoIbWVtb3JpZXMYAyADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuQ29uZmlybWVkTWVtb3J5IncKD0NvbmZpcm1lZE1lbW9yeRIMCgRuYW1lGAEgASgJEgwKBG1vb2QYAiABKAkSMwoHbmV1cm9ucxgDIAMoCzIiLmNvc2ltb3NpLm1lbW9yeS52MS5Qcm9wb3NlZE5ldXJvbhITCgtzb3VyY2VfdGV4dBgEIAEoCSKMAQoTTGF1bmNoU3RhcnNSZXNwb25zZRISCgptZW1vcnlfaWRzGAEgAygJEhYKDm5ld19uZXVyb25faWRzGAIgAygJEhIKCnBhc3RfZGF0ZWQYAyABKAgSHgoWcHJldmlvdXNfdW5pdmVyc2VfdGltZRgEIAEoCRIVCg11bml2ZXJzZV90aW1lGAUgASgJIhQKEkdldFVuaXZlcnNlUmVxdWVzdCLHAQoTR2V0VW5pdmVyc2VSZXNwb25zZRI3CghtZW1vcmllcxgBIAMoCzIlLmNvc2ltb3NpLm1lbW9yeS52MS5FcGlzb2RpY01lbW9yeUR0bxIuCgduZXVyb25zGAIgAygLMh0uY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkR0bxIwCghzeW5hcHNlcxgDIAMoCzIeLmNvc2ltb3NpLm1lbW9yeS52MS5TeW5hcHNlRHRvEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiTwoKRW1vdGlvbkR0bxIMCgRtb29kGAEgASgJEg8KB3ZhbGVuY2UYAiABKAESDwoHYXJvdXNhbBgDIAEoARIRCglpbnRlbnNpdHkYBCABKAEiOAoTTmV1cm9uQWN0aXZhdGlvbkR0bxIRCgluZXVyb25faWQYASABKAkSDgoGd2VpZ2h0GAIgASgCIrIDChFFcGlzb2RpY01lbW9yeUR0bxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEi8KB2Vtb3Rpb24YAyABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuRW1vdGlvbkR0bxIVCg1iYXNlX3N0cmVuZ3RoGAQgASgBEhQKDHJlY2FsbF9jb3VudBgFIAEoBRIdChVjcmVhdGVkX3VuaXZlcnNlX3RpbWUYBiABKAkSKAobbGFzdF9yZWNhbGxlZF91bml2ZXJzZV90aW1lGAcgASgJSACIAQESEQoEc2VlZBgIIAEoA0gBiAEBEjwKC2FjdGl2YXRpb25zGAkgAygLMicuY29zaW1vc2kubWVtb3J5LnYxLk5ldXJvbkFjdGl2YXRpb25EdG8SFAoMZGVjYXlfc3RhZ2VzGAogAygJEh4KFmZvcmdldHRpbmdfb2Zmc2V0X2RheXMYCyABKAESFAoMY3VycmVudF90ZXh0GAwgASgJEhYKDnNlbWFudGljX3N0YWdlGA0gASgFQh4KHF9sYXN0X3JlY2FsbGVkX3VuaXZlcnNlX3RpbWVCBwoFX3NlZWQiXgoJTmV1cm9uRHRvEgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARITCgtuZXVyb25fdHlwZRgDIAEoCRIUCgxjb25uZWN0aXZpdHkYBCABKAVCBwoFX25hbWUilwEKClN5bmFwc2VEdG8SCgoCaWQYASABKAkSEwoLbmV1cm9uX2FfaWQYAiABKAkSEwoLbmV1cm9uX2JfaWQYAyABKAkSEAoIc3RyZW5ndGgYBCABKAISGwoTY29fYWN0aXZhdGlvbl9jb3VudBgFIAEoBRIkChxsYXN0X2FjdGl2YXRlZF91bml2ZXJzZV90aW1lGAYgASgJImQKDVJlY2FsbFJlcXVlc3QSEQoJbWVtb3J5X2lkGAEgASgJEhQKDHJld3JpdGVfdGV4dBgCIAEoCRIUCgxvcGVyYXRpb25faWQYAyABKAkSFAoMc3luY19jb25zZW50GAQgASgIIrUBCg5SZWNhbGxSZXNwb25zZRIWCg5yZWNvbnNvbGlkYXRlZBgBIAEoCBIUCgxjdXJyZW50X3RleHQYAiABKAkSDAoEc2VlZBgDIAEoAxIUCgxyZWNhbGxfY291bnQYBCABKAUSGgoSZWZmZWN0aXZlX3N0cmVuZ3RoGAUgASgCEh4KFnByZXZpb3VzX3VuaXZlcnNlX3RpbWUYBiABKAkSFQoNdW5pdmVyc2VfdGltZRgHIAEoCSJXChdSZWNhbGxEaWFyeVN0YXJzUmVxdWVzdBIQCghkaWFyeV9pZBgBIAEoCRIUCgxvcGVyYXRpb25faWQYAiABKAkSFAoMc3luY19jb25zZW50GAMgASgIIlYKE1ZpZXdTZW1hbnRpY1JlcXVlc3QSGgoSZXBpc29kaWNfbWVtb3J5X2lkGAEgASgJEg0KBXN0YWdlGAIgASgFEhQKDG9wZXJhdGlvbl9pZBgDIAEoCSJKChRWaWV3U2VtYW50aWNSZXNwb25zZRIMCgR0ZXh0GAEgASgJEg0KBXN0YWdlGAIgASgFEhUKDXJlYWNoZWRfc3RhZ2UYAyABKAUigAEKGFJlY2FsbERpYXJ5U3RhcnNSZXNwb25zZRIQCghkaWFyeV9pZBgBIAEoCRIbChNlcGlzb2RpY19tZW1vcnlfaWRzGAIgAygJEh4KFnByZXZpb3VzX3VuaXZlcnNlX3RpbWUYAyABKAkSFQoNdW5pdmVyc2VfdGltZRgEIAEoCSITChFTeW5jU3RhdHVzUmVxdWVzdCI3ChJTeW5jU3RhdHVzUmVzcG9uc2USDQoFdG9kYXkYASABKAkSEgoKbmVlZHNfc3luYxgCIAEoCCIyChRHZXRQcm92ZW5hbmNlUmVxdWVzdBIaChJlcGlzb2RpY19tZW1vcnlfaWQYASABKAkiTQoVR2V0UHJvdmVuYW5jZVJlc3BvbnNlEjQKB2VudHJpZXMYASADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuUHJvdmVuYW5jZUVudHJ5IlQKD1Byb3ZlbmFuY2VFbnRyeRIMCgRraW5kGAEgASgJEg4KBnNvdXJjZRgCIAEoCRIMCgR0ZXh0GAMgASgJEhUKDXVuaXZlcnNlX3RpbWUYBCABKAkiQQoNRXhwb3J0UmVxdWVzdBIwCgZmb3JtYXQYASABKA4yIC5jb3NpbW9zaS5tZW1vcnkudjEuRXhwb3J0Rm9ybWF0IkkKDkV4cG9ydFJlc3BvbnNlEg8KB2NvbnRlbnQYASABKAwSFAoMY29udGVudF90eXBlGAIgASgJEhAKCGZpbGVuYW1lGAMgASgJIp8BChFHZXREaWFyaWVzUmVxdWVzdBIRCglwYWdlX3NpemUYASABKAUSEgoKcGFnZV90b2tlbhgCIAEoCRINCgVxdWVyeRgDIAEoCRINCgVtb29kcxgEIAMoCRIMCgRmcm9tGAUgASgJEgoKAnRvGAYgASgJEisKBHNvcnQYByABKA4yHS5jb3NpbW9zaS5tZW1vcnkudjEuRGlhcnlTb3J0IlwKEkdldERpYXJpZXNSZXNwb25zZRItCgdkaWFyaWVzGAEgAygLMhwuY29zaW1vc2kubWVtb3J5LnYxLkRpYXJ5RHRvEhcKD25leHRfcGFnZV90b2tlbhgCIAEoCSKMAQoIRGlhcnlEdG8SCgoCaWQYASABKAkSDAoEYm9keRgCIAEoCRISCgpkaWFyeV9kYXRlGAMgASgJEh0KFWNyZWF0ZWRfdW5pdmVyc2VfdGltZRgEIAEoCRIzCghtZW1vcmllcxgFIAMoCzIhLmNvc2ltb3NpLm1lbW9yeS52MS5EaWFyeVNwbGl0UmVmIkcKDURpYXJ5U3BsaXRSZWYSGgoSZXBpc29kaWNfbWVtb3J5X2lkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEbW9vZBgDIAEoCSJHChdHZXREaWFyeUNhbGVuZGFyUmVxdWVzdBIMCgRmcm9tGAEgASgJEgoKAnRvGAIgASgJEhIKCnBhZ2VfdG9rZW4YAyABKAkiYgoYR2V0RGlhcnlDYWxlbmRhclJlc3BvbnNlEi0KBGRheXMYASADKAsyHy5jb3NpbW9zaS5tZW1vcnkudjEuRGlhcnlEYXlEdG8SFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIlUKC0RpYXJ5RGF5RHRvEhIKCmRpYXJ5X2RhdGUYASABKAkSMgoFbW9vZHMYAiADKAsyIy5jb3NpbW9zaS5tZW1vcnkudjEuRGlhcnlEYXlNb29kRHRvIi8KD0RpYXJ5RGF5TW9vZER0bxIMCgRtb29kGAEgASgJEg4KBndlaWdodBgCIAEoAiIiCg5SZWxlYXNlUmVxdWVzdBIQCghkaWFyeV9pZBgBIAEoCSJUCg9SZWxlYXNlUmVzcG9uc2USEAoIZGlhcnlfaWQYASABKAkSGwoTZXBpc29kaWNfbWVtb3J5X2lkcxgCIAMoCRISCgpkZWxldGVkX2F0GAMgASgJIiIKDlJlc3RvcmVSZXF1ZXN0EhAKCGRpYXJ5X2lkGAEgASgJIkAKD1Jlc3RvcmVSZXNwb25zZRIQCghkaWFyeV9pZBgBIAEoCRIbChNlcGlzb2RpY19tZW1vcnlfaWRzGAIgAygJIkAKE1N1Z2dlc3RMZXRHb1JlcXVlc3QSGgoSZXBpc29kaWNfbWVtb3J5X2lkGAEgASgJEg0KBXdvcmRzGAIgASgJIoIBChRTdWdnZXN0TGV0R29SZXNwb25zZRI1CgpjYW5kaWRhdGVzGAEgAygLMiEuY29zaW1vc2kubWVtb3J5LnYxLlNlYWxDYW5kaWRhdGUSMwoLaGVhdnlfc3RhdGUYAiABKAsyHi5jb3NpbW9zaS5tZW1vcnkudjEuSGVhdnlTdGF0ZSJACg1TZWFsQ2FuZGlkYXRlEhEKCW5ldXJvbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBnJlYXNvbhgDIAEoCSIwCgpIZWF2eVN0YXRlEhAKCGRldGVjdGVkGAEgASgIEhAKCHNldmVyaXR5GAIgASgJIkcKDExldEdvUmVxdWVzdBIaChJlcGlzb2RpY19tZW1vcnlfaWQYASABKAkSGwoTYXBwcm92ZWRfbmV1cm9uX2lkcxgCIAMoCSIqCg1MZXRHb1Jlc3BvbnNlEhkKEXNlYWxlZF9uZXVyb25faWRzGAEgAygJKloKDEV4cG9ydEZvcm1hdBIdChlFWFBPUlRfRk9STUFUX1VOU1BFQ0lGSUVEEAASFQoRRVhQT1JUX0ZPUk1BVF9DU1YQARIUChBFWFBPUlRfRk9STUFUX01EEAIqVQoJRGlhcnlTb3J0EhoKFkRJQVJZX1NPUlRfVU5TUEVDSUZJRUQQABIVChFESUFSWV9TT1JUX05FV0VTVBABEhUKEURJQVJZX1NPUlRfT0xERVNUEAIyhQwKDU1lbW9yeVNlcnZpY2USWwoKU3BsaXREaWFyeRIlLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVxdWVzdBomLmNvc2ltb3NpLm1lbW9yeS52MS5TcGxpdERpYXJ5UmVzcG9uc2USXQoLUmV2aXNlU3BsaXQSJi5jb3NpbW9zaS5tZW1vcnkudjEuUmV2aXNlU3BsaXRSZXF1ZXN0GiYuY29zaW1vc2kubWVtb3J5LnYxLlNwbGl0RGlhcnlSZXNwb25zZRJeCgtMYXVuY2hTdGFycxImLmNvc2ltb3NpLm1lbW9yeS52MS5MYXVuY2hTdGFyc1JlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuTGF1bmNoU3RhcnNSZXNwb25zZRJjCgtHZXRVbml2ZXJzZRImLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRVbml2ZXJzZVJlcXVlc3QaJy5jb3NpbW9zaS5tZW1vcnkudjEuR2V0VW5pdmVyc2VSZXNwb25zZSIDkAIBEk8KBlJlY2FsbBIhLmNvc2ltb3NpLm1lbW9yeS52MS5SZWNhbGxSZXF1ZXN0GiIuY29zaW1vc2kubWVtb3J5LnYxLlJlY2FsbFJlc3BvbnNlEm0KEFJlY2FsbERpYXJ5U3RhcnMSKy5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsRGlhcnlTdGFyc1JlcXVlc3QaLC5jb3NpbW9zaS5tZW1vcnkudjEuUmVjYWxsRGlhcnlTdGFyc1Jlc3BvbnNlEmEKDFZpZXdTZW1hbnRpYxInLmNvc2ltb3NpLm1lbW9yeS52MS5WaWV3U2VtYW50aWNSZXF1ZXN0GiguY29zaW1vc2kubWVtb3J5LnYxLlZpZXdTZW1hbnRpY1Jlc3BvbnNlEmAKClN5bmNTdGF0dXMSJS5jb3NpbW9zaS5tZW1vcnkudjEuU3luY1N0YXR1c1JlcXVlc3QaJi5jb3NpbW9zaS5tZW1vcnkudjEuU3luY1N0YXR1c1Jlc3BvbnNlIgOQAgESaQoNR2V0UHJvdmVuYW5jZRIoLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRQcm92ZW5hbmNlUmVxdWVzdBopLmNvc2ltb3NpLm1lbW9yeS52MS5HZXRQcm92ZW5hbmNlUmVzcG9uc2UiA5ACARJUCgZFeHBvcnQSIS5jb3NpbW9zaS5tZW1vcnkudjEuRXhwb3J0UmVxdWVzdBoiLmNvc2ltb3NpLm1lbW9yeS52MS5FeHBvcnRSZXNwb25zZSIDkAIBEmAKCkdldERpYXJpZXMSJS5jb3NpbW9zaS5tZW1vcnkudjEuR2V0RGlhcmllc1JlcXVlc3QaJi5jb3NpbW9zaS5tZW1vcnkudjEuR2V0RGlhcmllc1Jlc3BvbnNlIgOQAgEScgoQR2V0RGlhcnlDYWxlbmRhchIrLmNvc2ltb3NpLm1lbW9yeS52MS5HZXREaWFyeUNhbGVuZGFyUmVxdWVzdBosLmNvc2ltb3NpLm1lbW9yeS52MS5HZXREaWFyeUNhbGVuZGFyUmVzcG9uc2UiA5ACARJSCgdSZWxlYXNlEiIuY29zaW1vc2kubWVtb3J5LnYxLlJlbGVhc2VSZXF1ZXN0GiMuY29zaW1vc2kubWVtb3J5LnYxLlJlbGVhc2VSZXNwb25zZRJSCgdSZXN0b3JlEiIuY29zaW1vc2kubWVtb3J5LnYxLlJlc3RvcmVSZXF1ZXN0GiMuY29zaW1vc2kubWVtb3J5LnYxLlJlc3RvcmVSZXNwb25zZRJhCgxTdWdnZXN0TGV0R28SJy5jb3NpbW9zaS5tZW1vcnkudjEuU3VnZ2VzdExldEdvUmVxdWVzdBooLmNvc2ltb3NpLm1lbW9yeS52MS5TdWdnZXN0TGV0R29SZXNwb25zZRJMCgVMZXRHbxIgLmNvc2ltb3NpLm1lbW9yeS52MS5MZXRHb1JlcXVlc3QaIS5jb3NpbW9zaS5tZW1vcnkudjEuTGV0R29SZXNwb25zZULRAQoWY29tLmNvc2ltb3NpLm1lbW9yeS52MUILTWVtb3J5UHJvdG9QAVpAZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL21lbW9yeS92MTttZW1vcnl2MaICA0NNWKoCEkNvc2ltb3NpLk1lbW9yeS5WMcoCEkNvc2ltb3NpXE1lbW9yeVxWMeICHkNvc2ltb3NpXE1lbW9yeVxWMVxHUEJNZXRhZGF0YeoCFENvc2ltb3NpOjpNZW1vcnk6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message cosimosi.memory.v1.SplitDiaryRequest
@@ -961,11 +961,44 @@ export type GetDiariesRequest = Message<"cosimosi.memory.v1.GetDiariesRequest"> 
   pageSize: number;
 
   /**
-   * Opaque cursor from a prior GetDiariesResponse.next_page_token; empty starts at the newest entry.
+   * Opaque cursor from a prior response; it is bound to the selected sort direction.
    *
    * @generated from field: string page_token = 2;
    */
   pageToken: string;
+
+  /**
+   * Case-insensitive substring of the immutable Diary body only.
+   *
+   * @generated from field: string query = 3;
+   */
+  query: string;
+
+  /**
+   * A diary matches when any still-live memory has one of these bare mood names.
+   *
+   * @generated from field: repeated string moods = 4;
+   */
+  moods: string[];
+
+  /**
+   * Inclusive ISO DATE bounds; either side may be empty.
+   *
+   * @generated from field: string from = 5;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string to = 6;
+   */
+  to: string;
+
+  /**
+   * UNSPECIFIED preserves the shipped newest-first behavior.
+   *
+   * @generated from field: cosimosi.memory.v1.DiarySort sort = 7;
+   */
+  sort: DiarySort;
 };
 
 /**
@@ -976,7 +1009,7 @@ export const GetDiariesRequestSchema: GenMessage<GetDiariesRequest> = /*@__PURE_
   messageDesc(file_cosimosi_memory_v1_memory, 28);
 
 /**
- * Reverse-chronological by diary_date. next_page_token empty = the last page.
+ * Chronological in the requested direction. next_page_token empty = the last page.
  *
  * @generated from message cosimosi.memory.v1.GetDiariesResponse
  */
@@ -1075,6 +1108,103 @@ export const DiarySplitRefSchema: GenMessage<DiarySplitRef> = /*@__PURE__*/
   messageDesc(file_cosimosi_memory_v1_memory, 31);
 
 /**
+ * @generated from message cosimosi.memory.v1.GetDiaryCalendarRequest
+ */
+export type GetDiaryCalendarRequest = Message<"cosimosi.memory.v1.GetDiaryCalendarRequest"> & {
+  /**
+   * Required inclusive ISO DATE bounds.
+   *
+   * @generated from field: string from = 1;
+   */
+  from: string;
+
+  /**
+   * @generated from field: string to = 2;
+   */
+  to: string;
+
+  /**
+   * Opaque ascending day cursor. Page size is server-owned.
+   *
+   * @generated from field: string page_token = 3;
+   */
+  pageToken: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.GetDiaryCalendarRequest.
+ * Use `create(GetDiaryCalendarRequestSchema)` to create a new message.
+ */
+export const GetDiaryCalendarRequestSchema: GenMessage<GetDiaryCalendarRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 32);
+
+/**
+ * @generated from message cosimosi.memory.v1.GetDiaryCalendarResponse
+ */
+export type GetDiaryCalendarResponse = Message<"cosimosi.memory.v1.GetDiaryCalendarResponse"> & {
+  /**
+   * @generated from field: repeated cosimosi.memory.v1.DiaryDayDto days = 1;
+   */
+  days: DiaryDayDto[];
+
+  /**
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.GetDiaryCalendarResponse.
+ * Use `create(GetDiaryCalendarResponseSchema)` to create a new message.
+ */
+export const GetDiaryCalendarResponseSchema: GenMessage<GetDiaryCalendarResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 33);
+
+/**
+ * @generated from message cosimosi.memory.v1.DiaryDayDto
+ */
+export type DiaryDayDto = Message<"cosimosi.memory.v1.DiaryDayDto"> & {
+  /**
+   * @generated from field: string diary_date = 1;
+   */
+  diaryDate: string;
+
+  /**
+   * @generated from field: repeated cosimosi.memory.v1.DiaryDayMoodDto moods = 2;
+   */
+  moods: DiaryDayMoodDto[];
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.DiaryDayDto.
+ * Use `create(DiaryDayDtoSchema)` to create a new message.
+ */
+export const DiaryDayDtoSchema: GenMessage<DiaryDayDto> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 34);
+
+/**
+ * @generated from message cosimosi.memory.v1.DiaryDayMoodDto
+ */
+export type DiaryDayMoodDto = Message<"cosimosi.memory.v1.DiaryDayMoodDto"> & {
+  /**
+   * @generated from field: string mood = 1;
+   */
+  mood: string;
+
+  /**
+   * @generated from field: float weight = 2;
+   */
+  weight: number;
+};
+
+/**
+ * Describes the message cosimosi.memory.v1.DiaryDayMoodDto.
+ * Use `create(DiaryDayMoodDtoSchema)` to create a new message.
+ */
+export const DiaryDayMoodDtoSchema: GenMessage<DiaryDayMoodDto> = /*@__PURE__*/
+  messageDesc(file_cosimosi_memory_v1_memory, 35);
+
+/**
  * @generated from message cosimosi.memory.v1.ReleaseRequest
  */
 export type ReleaseRequest = Message<"cosimosi.memory.v1.ReleaseRequest"> & {
@@ -1089,7 +1219,7 @@ export type ReleaseRequest = Message<"cosimosi.memory.v1.ReleaseRequest"> & {
  * Use `create(ReleaseRequestSchema)` to create a new message.
  */
 export const ReleaseRequestSchema: GenMessage<ReleaseRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 32);
+  messageDesc(file_cosimosi_memory_v1_memory, 36);
 
 /**
  * @generated from message cosimosi.memory.v1.ReleaseResponse
@@ -1118,7 +1248,7 @@ export type ReleaseResponse = Message<"cosimosi.memory.v1.ReleaseResponse"> & {
  * Use `create(ReleaseResponseSchema)` to create a new message.
  */
 export const ReleaseResponseSchema: GenMessage<ReleaseResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 33);
+  messageDesc(file_cosimosi_memory_v1_memory, 37);
 
 /**
  * @generated from message cosimosi.memory.v1.RestoreRequest
@@ -1135,7 +1265,7 @@ export type RestoreRequest = Message<"cosimosi.memory.v1.RestoreRequest"> & {
  * Use `create(RestoreRequestSchema)` to create a new message.
  */
 export const RestoreRequestSchema: GenMessage<RestoreRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 34);
+  messageDesc(file_cosimosi_memory_v1_memory, 38);
 
 /**
  * @generated from message cosimosi.memory.v1.RestoreResponse
@@ -1157,7 +1287,7 @@ export type RestoreResponse = Message<"cosimosi.memory.v1.RestoreResponse"> & {
  * Use `create(RestoreResponseSchema)` to create a new message.
  */
 export const RestoreResponseSchema: GenMessage<RestoreResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 35);
+  messageDesc(file_cosimosi_memory_v1_memory, 39);
 
 /**
  * @generated from message cosimosi.memory.v1.SuggestLetGoRequest
@@ -1181,7 +1311,7 @@ export type SuggestLetGoRequest = Message<"cosimosi.memory.v1.SuggestLetGoReques
  * Use `create(SuggestLetGoRequestSchema)` to create a new message.
  */
 export const SuggestLetGoRequestSchema: GenMessage<SuggestLetGoRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 36);
+  messageDesc(file_cosimosi_memory_v1_memory, 40);
 
 /**
  * @generated from message cosimosi.memory.v1.SuggestLetGoResponse
@@ -1205,7 +1335,7 @@ export type SuggestLetGoResponse = Message<"cosimosi.memory.v1.SuggestLetGoRespo
  * Use `create(SuggestLetGoResponseSchema)` to create a new message.
  */
 export const SuggestLetGoResponseSchema: GenMessage<SuggestLetGoResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 37);
+  messageDesc(file_cosimosi_memory_v1_memory, 41);
 
 /**
  * @generated from message cosimosi.memory.v1.SealCandidate
@@ -1234,7 +1364,7 @@ export type SealCandidate = Message<"cosimosi.memory.v1.SealCandidate"> & {
  * Use `create(SealCandidateSchema)` to create a new message.
  */
 export const SealCandidateSchema: GenMessage<SealCandidate> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 38);
+  messageDesc(file_cosimosi_memory_v1_memory, 42);
 
 /**
  * @generated from message cosimosi.memory.v1.HeavyState
@@ -1258,7 +1388,7 @@ export type HeavyState = Message<"cosimosi.memory.v1.HeavyState"> & {
  * Use `create(HeavyStateSchema)` to create a new message.
  */
 export const HeavyStateSchema: GenMessage<HeavyState> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 39);
+  messageDesc(file_cosimosi_memory_v1_memory, 43);
 
 /**
  * @generated from message cosimosi.memory.v1.LetGoRequest
@@ -1282,7 +1412,7 @@ export type LetGoRequest = Message<"cosimosi.memory.v1.LetGoRequest"> & {
  * Use `create(LetGoRequestSchema)` to create a new message.
  */
 export const LetGoRequestSchema: GenMessage<LetGoRequest> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 40);
+  messageDesc(file_cosimosi_memory_v1_memory, 44);
 
 /**
  * @generated from message cosimosi.memory.v1.LetGoResponse
@@ -1299,7 +1429,7 @@ export type LetGoResponse = Message<"cosimosi.memory.v1.LetGoResponse"> & {
  * Use `create(LetGoResponseSchema)` to create a new message.
  */
 export const LetGoResponseSchema: GenMessage<LetGoResponse> = /*@__PURE__*/
-  messageDesc(file_cosimosi_memory_v1_memory, 41);
+  messageDesc(file_cosimosi_memory_v1_memory, 45);
 
 /**
  * @generated from enum cosimosi.memory.v1.ExportFormat
@@ -1326,6 +1456,32 @@ export enum ExportFormat {
  */
 export const ExportFormatSchema: GenEnum<ExportFormat> = /*@__PURE__*/
   enumDesc(file_cosimosi_memory_v1_memory, 0);
+
+/**
+ * @generated from enum cosimosi.memory.v1.DiarySort
+ */
+export enum DiarySort {
+  /**
+   * @generated from enum value: DIARY_SORT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DIARY_SORT_NEWEST = 1;
+   */
+  NEWEST = 1,
+
+  /**
+   * @generated from enum value: DIARY_SORT_OLDEST = 2;
+   */
+  OLDEST = 2,
+}
+
+/**
+ * Describes the enum cosimosi.memory.v1.DiarySort.
+ */
+export const DiarySortSchema: GenEnum<DiarySort> = /*@__PURE__*/
+  enumDesc(file_cosimosi_memory_v1_memory, 1);
 
 /**
  * MemoryService owns the encode write contract (plan 20: SplitDiary / ReviseSplit /
@@ -1459,8 +1615,8 @@ export const MemoryService: GenService<{
     output: typeof ExportResponseSchema;
   },
   /**
-   * The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
-   * diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
+   * The diary-reader archive read [D2]: immutable Diary entries with chronological keyset paging
+   * and optional body/date/live-memory-mood filters. Free — no clock, no Twinkle, GET-eligible.
    *
    * @generated from rpc cosimosi.memory.v1.MemoryService.GetDiaries
    */
@@ -1468,6 +1624,16 @@ export const MemoryService: GenService<{
     methodKind: "unary";
     input: typeof GetDiariesRequestSchema;
     output: typeof GetDiariesResponseSchema;
+  },
+  /**
+   * Written diary days and their live-memory mood weights. Colorless, free, and time-frozen.
+   *
+   * @generated from rpc cosimosi.memory.v1.MemoryService.GetDiaryCalendar
+   */
+  getDiaryCalendar: {
+    methodKind: "unary";
+    input: typeof GetDiaryCalendarRequestSchema;
+    output: typeof GetDiaryCalendarResponseSchema;
   },
   /**
    * full delete — diary-scoped soft-delete + 30-day restore window ([X1][X2]); persists a soft-delete, no hard delete.

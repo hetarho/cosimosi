@@ -9,7 +9,6 @@ import {
   createGetUniverseQueryKey,
   type ReleaseResponse,
 } from '@cosimosi/api-client'
-import { VALUES } from '@cosimosi/config'
 import { applyReleaseResult, requestRelease } from '../deletion.ts'
 
 // features/delete-memory api ([X1][X2]): the single Release call over the generated client. On
@@ -34,7 +33,7 @@ export function useReleaseMemory(): (diaryId: string) => Promise<ReleaseResponse
       // live-memory chips + delete action stay stale after a release.
       queryClient
         .invalidateQueries({
-          queryKey: createGetDiariesInfiniteQueryKey(transport, VALUES.diaryReader.pageSize),
+          queryKey: createGetDiariesInfiniteQueryKey(transport),
         })
         .catch(() => undefined)
       return response

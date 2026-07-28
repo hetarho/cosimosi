@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/values"
@@ -12,22 +13,41 @@ import (
 // fakeDiaryReader holds the full reverse-chronological diary set and honors the cursor + limit exactly
 // as the keyset SQL would, so the use-case's pagination/hasMore/next-token logic is exercised end to end.
 type fakeDiaryReader struct {
-	pages      []DiaryPageRow
-	splits     map[string][]DiarySplitRow
-	pageCalls  int
-	splitCalls int
-	lastLimit  int
+	pages          []DiaryPageRow
+	splits         map[string][]DiarySplitRow
+	calendarDays   []time.Time
+	calendarInputs []DiaryDayMoodInput
+	pageCalls      int
+	splitCalls     int
+	lastLimit      int
+	lastFilter     DiaryFilter
+	lastSort       DiarySort
 }
 
-func (f *fakeDiaryReader) DiaryPage(_ context.Context, scope platform.UserScope, cursor *DiaryCursor, limit int) ([]DiaryPageRow, error) {
+func (f *fakeDiaryReader) DiaryPage(
+	_ context.Context,
+	scope platform.UserScope,
+	filter DiaryFilter,
+	sort DiarySort,
+	cursor *DiaryCursor,
+	limit int,
+) ([]DiaryPageRow, error) {
 	if scope.UserID() == "" {
 		return nil, errors.New("scope missing")
 	}
 	f.pageCalls++
 	f.lastLimit = limit
+	f.lastFilter = filter
+	f.lastSort = sort
+	pages := append([]DiaryPageRow(nil), f.pages...)
+	if sort == DiarySortOldest {
+		for left, right := 0, len(pages)-1; left < right; left, right = left+1, right-1 {
+			pages[left], pages[right] = pages[right], pages[left]
+		}
+	}
 	start := 0
 	if cursor != nil {
-		for i, row := range f.pages {
+		for i, row := range pages {
 			if row.DiaryDate.Equal(cursor.DiaryDate) && row.ID == cursor.ID {
 				start = i + 1
 				break
@@ -35,10 +55,10 @@ func (f *fakeDiaryReader) DiaryPage(_ context.Context, scope platform.UserScope,
 		}
 	}
 	end := start + limit
-	if end > len(f.pages) {
-		end = len(f.pages)
+	if end > len(pages) {
+		end = len(pages)
 	}
-	return append([]DiaryPageRow(nil), f.pages[start:end]...), nil
+	return pages[start:end], nil
 }
 
 func (f *fakeDiaryReader) DiarySplitRefs(_ context.Context, scope platform.UserScope, diaryIDs []string) ([]DiarySplitRow, error) {
@@ -49,6 +69,43 @@ func (f *fakeDiaryReader) DiarySplitRefs(_ context.Context, scope platform.UserS
 	var out []DiarySplitRow
 	for _, id := range diaryIDs {
 		out = append(out, f.splits[id]...)
+	}
+	return out, nil
+}
+
+func (f *fakeDiaryReader) DiaryDays(_ context.Context, scope platform.UserScope, _ time.Time, _ time.Time, cursor *DiaryCalendarCursor, limit int) ([]time.Time, error) {
+	if scope.UserID() == "" {
+		return nil, errors.New("scope missing")
+	}
+	start := 0
+	if cursor != nil {
+		for i, date := range f.calendarDays {
+			if date.Equal(cursor.DiaryDate) {
+				start = i + 1
+				break
+			}
+		}
+	}
+	end := start + limit + 1
+	if end > len(f.calendarDays) {
+		end = len(f.calendarDays)
+	}
+	return append([]time.Time(nil), f.calendarDays[start:end]...), nil
+}
+
+func (f *fakeDiaryReader) DiaryDayMoodInputs(_ context.Context, scope platform.UserScope, diaryDates []time.Time) ([]DiaryDayMoodInput, error) {
+	if scope.UserID() == "" {
+		return nil, errors.New("scope missing")
+	}
+	wanted := make(map[string]struct{}, len(diaryDates))
+	for _, date := range diaryDates {
+		wanted[date.Format(time.DateOnly)] = struct{}{}
+	}
+	var out []DiaryDayMoodInput
+	for _, input := range f.calendarInputs {
+		if _, ok := wanted[input.DiaryDate.Format(time.DateOnly)]; ok {
+			out = append(out, input)
+		}
 	}
 	return out, nil
 }
@@ -68,7 +125,7 @@ func TestGetDiariesReturnsReverseChronPageWithSplitRefs(t *testing.T) {
 		// d1 is memory-less (past-dated, no memory launched).
 	}
 
-	page, err := fixture.service.GetDiaries(context.Background(), testScope(t), 10, "")
+	page, err := fixture.service.GetDiaries(context.Background(), testScope(t), DiaryQuery{PageSize: 10})
 	if err != nil {
 		t.Fatalf("GetDiaries failed: %v", err)
 	}
@@ -105,7 +162,7 @@ func TestGetDiariesPaginatesWithKeysetToken(t *testing.T) {
 		{ID: "d1", Body: "one", DiaryDate: day(2026, 6, 10)},
 	}
 
-	first, err := fixture.service.GetDiaries(context.Background(), testScope(t), 2, "")
+	first, err := fixture.service.GetDiaries(context.Background(), testScope(t), DiaryQuery{PageSize: 2})
 	if err != nil {
 		t.Fatalf("first page failed: %v", err)
 	}
@@ -120,7 +177,7 @@ func TestGetDiariesPaginatesWithKeysetToken(t *testing.T) {
 		t.Fatalf("page fetch limit = %d, want page_size+1 = 3", fixture.diaries.lastLimit)
 	}
 
-	second, err := fixture.service.GetDiaries(context.Background(), testScope(t), 2, first.NextPageToken)
+	second, err := fixture.service.GetDiaries(context.Background(), testScope(t), DiaryQuery{PageSize: 2, PageToken: first.NextPageToken})
 	if err != nil {
 		t.Fatalf("second page failed: %v", err)
 	}
@@ -136,7 +193,7 @@ func TestGetDiariesClampsPageSizeToTheConfiguredMax(t *testing.T) {
 	t.Parallel()
 	for _, requested := range []int{0, -5, values.DiaryReaderPageSize + 100} {
 		fixture := newFixture(t)
-		if _, err := fixture.service.GetDiaries(context.Background(), testScope(t), requested, ""); err != nil {
+		if _, err := fixture.service.GetDiaries(context.Background(), testScope(t), DiaryQuery{PageSize: requested}); err != nil {
 			t.Fatalf("GetDiaries(%d) failed: %v", requested, err)
 		}
 		// The clamp is invisible on the wire but bounds the fetch: default+1 for the has-more probe.
@@ -149,22 +206,156 @@ func TestGetDiariesClampsPageSizeToTheConfiguredMax(t *testing.T) {
 func TestGetDiariesRejectsBadTokenAndScope(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
-	if _, err := fixture.service.GetDiaries(context.Background(), testScope(t), 10, "!!!not-base64!!!"); !errors.Is(err, ErrDiaryPageTokenInvalid) {
+	if _, err := fixture.service.GetDiaries(context.Background(), testScope(t), DiaryQuery{PageSize: 10, PageToken: "!!!not-base64!!!"}); !errors.Is(err, ErrDiaryPageTokenInvalid) {
 		t.Fatalf("bad token err = %v, want ErrDiaryPageTokenInvalid", err)
 	}
-	if _, err := fixture.service.GetDiaries(context.Background(), platform.UserScope{}, 10, ""); !errors.Is(err, ErrScopeRequired) {
+	if _, err := fixture.service.GetDiaries(context.Background(), platform.UserScope{}, DiaryQuery{PageSize: 10}); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("empty scope err = %v, want ErrScopeRequired", err)
 	}
 }
 
 func TestDiaryCursorRoundTrips(t *testing.T) {
 	t.Parallel()
-	cursor := DiaryCursor{DiaryDate: day(2026, 6, 15), ID: "diary-42"}
+	cursor := DiaryCursor{DiaryDate: day(2026, 6, 15), ID: "diary-42", Sort: DiarySortOldest}
 	decoded, err := decodeDiaryCursor(encodeDiaryCursor(cursor))
 	if err != nil {
 		t.Fatalf("decode failed: %v", err)
 	}
-	if !decoded.DiaryDate.Equal(cursor.DiaryDate) || decoded.ID != cursor.ID {
+	if !decoded.DiaryDate.Equal(cursor.DiaryDate) || decoded.ID != cursor.ID || decoded.Sort != cursor.Sort {
 		t.Fatalf("round-trip = %+v, want %+v", decoded, cursor)
+	}
+}
+
+func TestGetDiariesRejectsInvalidFiltersAndDirectionMismatch(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	scope := testScope(t)
+
+	if _, err := fixture.service.GetDiaries(context.Background(), scope, DiaryQuery{
+		Filter: DiaryFilter{Keyword: " x "},
+	}); !errors.Is(err, ErrDiarySearchQueryTooShort) {
+		t.Fatalf("short query err = %v, want ErrDiarySearchQueryTooShort", err)
+	}
+	if _, err := fixture.service.GetDiaries(context.Background(), scope, DiaryQuery{
+		Filter: DiaryFilter{Moods: []Mood{"UNKNOWN"}},
+	}); !errors.Is(err, ErrDiaryMoodFilterInvalid) {
+		t.Fatalf("unknown mood err = %v, want ErrDiaryMoodFilterInvalid", err)
+	}
+	from, to := day(2026, 7, 2), day(2026, 7, 1)
+	if _, err := fixture.service.GetDiaries(context.Background(), scope, DiaryQuery{
+		Filter: DiaryFilter{From: &from, To: &to},
+	}); !errors.Is(err, ErrDiaryDateRangeInvalid) {
+		t.Fatalf("inverted range err = %v, want ErrDiaryDateRangeInvalid", err)
+	}
+
+	token := encodeDiaryCursor(DiaryCursor{
+		DiaryDate: day(2026, 7, 1),
+		ID:        "d1",
+		Sort:      DiarySortOldest,
+	})
+	if _, err := fixture.service.GetDiaries(context.Background(), scope, DiaryQuery{
+		Sort:      DiarySortNewest,
+		PageToken: token,
+	}); !errors.Is(err, ErrDiaryPageTokenInvalid) {
+		t.Fatalf("direction mismatch err = %v, want ErrDiaryPageTokenInvalid", err)
+	}
+}
+
+func TestGetDiariesEscapesUserWildcardsLiterally(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	if _, err := fixture.service.GetDiaries(context.Background(), testScope(t), DiaryQuery{
+		Filter: DiaryFilter{Keyword: `100%_\path`},
+	}); err != nil {
+		t.Fatalf("GetDiaries failed: %v", err)
+	}
+	if fixture.diaries.lastFilter.Keyword != `100\%\_\\path` {
+		t.Fatalf("bound keyword = %q, want escaped wildcard literals", fixture.diaries.lastFilter.Keyword)
+	}
+}
+
+func TestGetDiaryCalendarGroupsEffectiveStrengthAndKeepsEmptyDays(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	first := day(2026, 7, 1)
+	empty := day(2026, 7, 2)
+	fixture.diaries.calendarDays = []time.Time{first, empty}
+	fixture.diaries.calendarInputs = []DiaryDayMoodInput{
+		{DiaryDate: first, Mood: MoodJoy, BaseStrength: 0.4, RecallCount: 0},
+		{DiaryDate: first, Mood: MoodJoy, BaseStrength: 0.5, RecallCount: 2},
+		{DiaryDate: first, Mood: MoodCalm, BaseStrength: 0.3, RecallCount: 1},
+	}
+
+	page, err := fixture.service.GetDiaryCalendar(context.Background(), testScope(t), DiaryCalendarQuery{
+		From: first,
+		To:   empty,
+	})
+	if err != nil {
+		t.Fatalf("GetDiaryCalendar failed: %v", err)
+	}
+	if len(page.Days) != 2 || len(page.Days[1].Moods) != 0 {
+		t.Fatalf("calendar = %+v, want two written days and an empty mood list on the second", page)
+	}
+	byMood := make(map[Mood]float64)
+	for _, mood := range page.Days[0].Moods {
+		byMood[mood.Mood] = mood.Weight
+	}
+	wantJoy := EffectiveStrength(0.4, 0) + EffectiveStrength(0.5, 2)
+	if byMood[MoodJoy] != wantJoy {
+		t.Fatalf("JOY weight = %v, want %v", byMood[MoodJoy], wantJoy)
+	}
+	if byMood[MoodCalm] != EffectiveStrength(0.3, 1) {
+		t.Fatalf("CALM weight = %v, want EffectiveStrength", byMood[MoodCalm])
+	}
+}
+
+func TestGetDiaryCalendarRejectsInvalidWindowAndCursor(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	from, to := day(2026, 7, 2), day(2026, 7, 1)
+	if _, err := fixture.service.GetDiaryCalendar(context.Background(), testScope(t), DiaryCalendarQuery{
+		From: from,
+		To:   to,
+	}); !errors.Is(err, ErrDiaryDateRangeInvalid) {
+		t.Fatalf("inverted window err = %v, want ErrDiaryDateRangeInvalid", err)
+	}
+	if _, err := fixture.service.GetDiaryCalendar(context.Background(), testScope(t), DiaryCalendarQuery{
+		From:      to,
+		To:        from,
+		PageToken: "not-base64!",
+	}); !errors.Is(err, ErrDiaryPageTokenInvalid) {
+		t.Fatalf("bad cursor err = %v, want ErrDiaryPageTokenInvalid", err)
+	}
+}
+
+func TestGetDiaryCalendarUsesServerOwnedDayPages(t *testing.T) {
+	t.Parallel()
+	fixture := newFixture(t)
+	from := day(2026, 1, 1)
+	for offset := 0; offset < values.DiaryReaderCalendarMonthPageSize+1; offset++ {
+		fixture.diaries.calendarDays = append(fixture.diaries.calendarDays, from.AddDate(0, 0, offset))
+	}
+	to := fixture.diaries.calendarDays[len(fixture.diaries.calendarDays)-1]
+
+	first, err := fixture.service.GetDiaryCalendar(context.Background(), testScope(t), DiaryCalendarQuery{
+		From: from,
+		To:   to,
+	})
+	if err != nil {
+		t.Fatalf("first page failed: %v", err)
+	}
+	if len(first.Days) != values.DiaryReaderCalendarMonthPageSize || first.NextPageToken == "" {
+		t.Fatalf("first page = %d days / token %q, want server cap + cursor", len(first.Days), first.NextPageToken)
+	}
+	second, err := fixture.service.GetDiaryCalendar(context.Background(), testScope(t), DiaryCalendarQuery{
+		From:      from,
+		To:        to,
+		PageToken: first.NextPageToken,
+	})
+	if err != nil {
+		t.Fatalf("second page failed: %v", err)
+	}
+	if len(second.Days) != 1 || second.NextPageToken != "" || !second.Days[0].DiaryDate.Equal(to) {
+		t.Fatalf("second page = %+v, want the final whole day", second)
 	}
 }

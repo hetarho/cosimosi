@@ -197,11 +197,61 @@ func (s *Server) GetDiaries(ctx context.Context, req *connect.Request[memoryv1.G
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.service.GetDiaries(ctx, scope, int(req.Msg.GetPageSize()), req.Msg.GetPageToken())
+	from, err := parseOptionalDiaryDate(req.Msg.GetFrom())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	to, err := parseOptionalDiaryDate(req.Msg.GetTo())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	sort, err := domainDiarySort(req.Msg.GetSort())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	moods := make([]memory.Mood, len(req.Msg.GetMoods()))
+	for i, mood := range req.Msg.GetMoods() {
+		moods[i] = memory.Mood(mood)
+	}
+	page, err := s.service.GetDiaries(ctx, scope, memory.DiaryQuery{
+		Filter: memory.DiaryFilter{
+			Keyword: req.Msg.GetQuery(),
+			Moods:   moods,
+			From:    from,
+			To:      to,
+		},
+		Sort:      sort,
+		PageSize:  int(req.Msg.GetPageSize()),
+		PageToken: req.Msg.GetPageToken(),
+	})
 	if err != nil {
 		return nil, domainError(err)
 	}
 	return connect.NewResponse(diariesResponse(page)), nil
+}
+
+func (s *Server) GetDiaryCalendar(ctx context.Context, req *connect.Request[memoryv1.GetDiaryCalendarRequest]) (*connect.Response[memoryv1.GetDiaryCalendarResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	from, err := parseRequiredDiaryDate(req.Msg.GetFrom())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	to, err := parseRequiredDiaryDate(req.Msg.GetTo())
+	if err != nil {
+		return nil, domainError(err)
+	}
+	page, err := s.service.GetDiaryCalendar(ctx, scope, memory.DiaryCalendarQuery{
+		From:      from,
+		To:        to,
+		PageToken: req.Msg.GetPageToken(),
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(diaryCalendarResponse(page)), nil
 }
 
 func (s *Server) Release(ctx context.Context, req *connect.Request[memoryv1.ReleaseRequest]) (*connect.Response[memoryv1.ReleaseResponse], error) {
@@ -290,6 +340,28 @@ func parseDiaryDate(raw string) (time.Time, error) {
 	return diaryDate, nil
 }
 
+func parseOptionalDiaryDate(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	value, err := time.Parse(time.DateOnly, raw)
+	if err != nil {
+		return nil, memory.ErrDiaryDateRangeInvalid
+	}
+	return &value, nil
+}
+
+func parseRequiredDiaryDate(raw string) (time.Time, error) {
+	if raw == "" {
+		return time.Time{}, memory.ErrDiaryDateRangeInvalid
+	}
+	value, err := time.Parse(time.DateOnly, raw)
+	if err != nil {
+		return time.Time{}, memory.ErrDiaryDateRangeInvalid
+	}
+	return value, nil
+}
+
 // domainError maps the use-case's canonical errors onto Connect codes.
 func domainError(err error) error {
 	switch {
@@ -311,6 +383,14 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeInvalidArgument, reasonExportFormatRequired, err, nil)
 	case errors.Is(err, memory.ErrDiaryPageTokenInvalid):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonDiaryPageTokenInvalid, err, nil)
+	case errors.Is(err, memory.ErrDiarySearchQueryTooShort):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonDiarySearchQueryTooShort, err, nil)
+	case errors.Is(err, memory.ErrDiaryMoodFilterInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonDiaryMoodFilterInvalid, err, nil)
+	case errors.Is(err, memory.ErrDiaryDateRangeInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonDiaryDateRangeInvalid, err, nil)
+	case errors.Is(err, memory.ErrDiarySortInvalid):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonDiarySortInvalid, err, nil)
 	case errors.Is(err, memory.ErrReleaseInputRequired):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonReleaseInputRequired, err, nil)
 	case errors.Is(err, memory.ErrLetGoInvalidApproved):
@@ -440,6 +520,35 @@ func diariesResponse(page memory.DiaryPage) *memoryv1.GetDiariesResponse {
 		})
 	}
 	return &memoryv1.GetDiariesResponse{Diaries: diaries, NextPageToken: page.NextPageToken}
+}
+
+func diaryCalendarResponse(page memory.DiaryCalendarPage) *memoryv1.GetDiaryCalendarResponse {
+	days := make([]*memoryv1.DiaryDayDto, 0, len(page.Days))
+	for _, day := range page.Days {
+		moods := make([]*memoryv1.DiaryDayMoodDto, 0, len(day.Moods))
+		for _, mood := range day.Moods {
+			moods = append(moods, &memoryv1.DiaryDayMoodDto{
+				Mood:   string(mood.Mood),
+				Weight: float32(mood.Weight),
+			})
+		}
+		days = append(days, &memoryv1.DiaryDayDto{
+			DiaryDate: day.DiaryDate.Format(time.DateOnly),
+			Moods:     moods,
+		})
+	}
+	return &memoryv1.GetDiaryCalendarResponse{Days: days, NextPageToken: page.NextPageToken}
+}
+
+func domainDiarySort(sort memoryv1.DiarySort) (memory.DiarySort, error) {
+	switch sort {
+	case memoryv1.DiarySort_DIARY_SORT_UNSPECIFIED, memoryv1.DiarySort_DIARY_SORT_NEWEST:
+		return memory.DiarySortNewest, nil
+	case memoryv1.DiarySort_DIARY_SORT_OLDEST:
+		return memory.DiarySortOldest, nil
+	default:
+		return "", memory.ErrDiarySortInvalid
+	}
 }
 
 // domainExportFormat maps the proto ExportFormat enum onto the domain format; an unspecified/unknown

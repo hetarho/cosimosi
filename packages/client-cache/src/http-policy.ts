@@ -138,6 +138,10 @@ export const memoryRpcCachePolicies = [
     policy: userScopedUnaryReadPolicy,
   },
   {
+    method: MemoryService.method.getDiaryCalendar,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
     method: MemoryService.method.syncStatus,
     policy: userScopedUnaryReadPolicy,
   },

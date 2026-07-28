@@ -14,9 +14,11 @@ import {
 import { GetUniverseResponseSchema, MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
 
 export { MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
-export { ExportFormat } from './gen/cosimosi/memory/v1/memory_pb.ts'
+export { DiarySort, ExportFormat } from './gen/cosimosi/memory/v1/memory_pb.ts'
 export type {
   ConfirmedMemory,
+  DiaryDayDto,
+  DiaryDayMoodDto,
   DiaryDto,
   DiarySplitRef,
   EmotionDto,
@@ -25,6 +27,8 @@ export type {
   ExportResponse,
   GetDiariesRequest,
   GetDiariesResponse,
+  GetDiaryCalendarRequest,
+  GetDiaryCalendarResponse,
   GetUniverseRequest,
   GetUniverseResponse,
   HeavyState,
@@ -56,6 +60,8 @@ export type {
   ViewSemanticRequest,
   ViewSemanticResponse,
 } from './gen/cosimosi/memory/v1/memory_pb.ts'
+
+export type GetDiariesInput = MessageInitShape<typeof MemoryService.method.getDiaries.input>
 
 export function createMemoryClient(transport: Transport): Client<typeof MemoryService> {
   return createClient(MemoryService, transport)
@@ -126,13 +132,11 @@ export function createGetDiariesQueryOptions(
   return createQueryOptions(MemoryService.method.getDiaries, input, { transport })
 }
 
-// The diary archive read is paginated (reverse-chronological by diary_date, [D2]): page_token
-// carries the opaque cursor, an empty next_page_token marks the last page. The caller passes the
-// page size (config-owned, never hardcoded here); 0 lets the server apply its default/clamp.
-export function createGetDiariesInfiniteQueryOptions(transport: Transport, pageSize: number) {
+// The request input is part of the key, while page_token is replaced by each keyset page cursor.
+export function createGetDiariesInfiniteQueryOptions(transport: Transport, input: GetDiariesInput) {
   return createInfiniteQueryOptions(
     MemoryService.method.getDiaries,
-    { pageSize, pageToken: '' },
+    { ...input, pageToken: '' },
     {
       transport,
       pageParamKey: 'pageToken',
@@ -142,10 +146,12 @@ export function createGetDiariesInfiniteQueryOptions(transport: Transport, pageS
   )
 }
 
-// The invalidation key for the PAGINATED archive read — derived from the same options the reader
-// registers, so it matches exactly. The finite GetDiaries key does NOT match the infinite query,
-// so a mutation that changes the archive (release/restore) must invalidate this one for the
-// reader's live-memory chips + per-diary actions to refresh.
-export function createGetDiariesInfiniteQueryKey(transport: Transport, pageSize: number) {
-  return createGetDiariesInfiniteQueryOptions(transport, pageSize).queryKey
+// Omitting input makes this a partial key for every search/filter/sort variant. The finite
+// GetDiaries key still does NOT match because its cardinality differs.
+export function createGetDiariesInfiniteQueryKey(transport: Transport) {
+  return createConnectQueryKey({
+    schema: MemoryService.method.getDiaries,
+    transport,
+    cardinality: 'infinite',
+  })
 }

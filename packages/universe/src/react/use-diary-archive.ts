@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useTransport } from '@connectrpc/connect-query'
 import { useInfiniteQuery } from '@tanstack/react-query'
 
-import { createGetDiariesInfiniteQueryOptions } from '@cosimosi/api-client'
+import { createGetDiariesInfiniteQueryOptions, type GetDiariesInput } from '@cosimosi/api-client'
 import { VALUES } from '@cosimosi/config'
 import { diariesFromDtos, type Diary } from '@cosimosi/memory'
 
@@ -18,14 +18,17 @@ export interface DiaryArchive {
   loadMore: () => void
 }
 
-// features/read-diary-list api ([D2]): the free GetDiaries archive read, paginated
-// reverse-chronological. page_size comes from config (never hardcoded); the next page loads
+// features/read-diary-list api ([D2]): the free GetDiaries archive read, paginated in the
+// requested chronological direction. page_size comes from config (never hardcoded); the next page loads
 // lazily off next_page_token. Every resolution maps DTO→domain and fills the shared diary
 // read-model. Free — no clock, no Twinkle (§2.7 GET-eligible); only the jump spends.
-export function useDiaryArchive(): DiaryArchive {
+export function useDiaryArchive(input: GetDiariesInput = {}): DiaryArchive {
   const transport = useTransport()
   const query = useInfiniteQuery(
-    createGetDiariesInfiniteQueryOptions(transport, VALUES.diaryReader.pageSize),
+    createGetDiariesInfiniteQueryOptions(transport, {
+      ...input,
+      pageSize: VALUES.diaryReader.pageSize,
+    }),
   )
   const diaries = useMemo(
     () => diariesFromDtos((query.data?.pages ?? []).flatMap((page) => page.diaries)),

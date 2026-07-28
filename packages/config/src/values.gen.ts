@@ -161,6 +161,8 @@ export const VALUES = {
   },
   diaryReader: {
     pageSize: 20,
+    searchMinQueryLength: 2,
+    calendarMonthPageSize: 31,
   },
   deletion: {
     contributionWeakenAmount: 0.15,

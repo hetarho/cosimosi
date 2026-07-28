@@ -1,8 +1,10 @@
 # policy/ux: diary reader
 
 > UX policy for the 일기장 (diary reader) archive and its "이 일기로 태어난 별 보기" jump. Plan
-> [47](../../plan/47.diary-reader-page.md) owns the implementation; the `GetDiaries` read shape is plan 47 (query in the
-> memory context, [16](../../plan/16.memory-aggregate-schema.md)); the whole-diary recall + reinforce bundle are plans
+> [47](../../plan/47.diary-reader-page.md) owns the reader and
+> [68](../../plan/68.diary-search-and-filter.md) owns archive search/filter/calendar visibility; the `GetDiaries` read
+> shape originates in plan 47 (query in the memory context,
+> [16](../../plan/16.memory-aggregate-schema.md)); the whole-diary recall + reinforce bundle are plans
 > [33](../../plan/33.recall-usecase.md) / [44](../../plan/44.earn-spend-usecase.md); the sync-consent modal +
 > acceleration are plan [31](../../plan/31.time-acceleration-ui.md). Reinforces [I1], [I2], [I8], [I10], [G4].
 
@@ -13,6 +15,10 @@ opening an entry, reading the **full body verbatim**, and viewing the split (the
 a name + primary-emotion color chip) are all **free** ([G4]) — no 별가루 spent, no clock advanced. The reader **never**
 mutates, deletes, or re-splits a `Diary` ([I2][D4]); a diary whose memories were all let go still lists as an
 original-only record, with no chips ([I1]).
+
+A released diary disappears from every archive view — list, search, filters, and calendar — while its release group
+exists. Restore removes that group and the diary returns to every view without rewriting the original or requiring
+another archive-specific write.
 
 ## The universe is primary; the reader is supporting
 

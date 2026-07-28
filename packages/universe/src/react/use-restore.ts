@@ -9,7 +9,6 @@ import {
   createGetUniverseQueryKey,
   type RestoreResponse,
 } from '@cosimosi/api-client'
-import { VALUES } from '@cosimosi/config'
 import { applyRestoreResult, requestRestore } from '../deletion.ts'
 
 // features/restore-memory api ([X2]): the single Restore call over the generated client. On success
@@ -33,7 +32,7 @@ export function useRestoreMemory(): (diaryId: string) => Promise<RestoreResponse
       // restored diary's chips + actions reappear.
       queryClient
         .invalidateQueries({
-          queryKey: createGetDiariesInfiniteQueryKey(transport, VALUES.diaryReader.pageSize),
+          queryKey: createGetDiariesInfiniteQueryKey(transport),
         })
         .catch(() => undefined)
       return response

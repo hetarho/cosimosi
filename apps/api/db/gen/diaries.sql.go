@@ -11,30 +11,135 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listDiariesPage = `-- name: ListDiariesPage :many
-
+const listDiariesPageAsc = `-- name: ListDiariesPageAsc :many
 SELECT
-    id,
-    body,
-    diary_date
-FROM diaries
-WHERE user_id = $1
+    d.id,
+    d.body,
+    d.diary_date
+FROM diaries AS d
+WHERE d.user_id = $1
   AND (
     $2::date IS NULL
-    OR (diary_date, id) < ($2::date, $3::text)
+    OR (d.diary_date, d.id) > ($2::date, $3::text)
   )
-ORDER BY diary_date DESC, id DESC
-LIMIT $4
+  AND ($4::date IS NULL OR d.diary_date >= $4::date)
+  AND ($5::date IS NULL OR d.diary_date <= $5::date)
+  AND ($6::text IS NULL OR d.body ILIKE '%' || $6::text || '%')
+  AND (
+    cardinality($7::text[]) = 0
+    OR EXISTS (
+      SELECT 1
+      FROM episodic_memories AS em
+      WHERE em.user_id = $1
+        AND em.diary_id = d.id
+        AND em.deleted_at IS NULL
+        AND em.mood = ANY($7::text[])
+    )
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM release_groups AS rg
+    WHERE rg.user_id = $1
+      AND rg.diary_id = d.id
+  )
+ORDER BY d.diary_date ASC, d.id ASC
+LIMIT $8
 `
 
-type ListDiariesPageParams struct {
+type ListDiariesPageAscParams struct {
 	UserID     string
 	CursorDate pgtype.Date
 	CursorID   pgtype.Text
+	FromDate   pgtype.Date
+	ToDate     pgtype.Date
+	Keyword    pgtype.Text
+	Moods      []string
 	PageLimit  int32
 }
 
-type ListDiariesPageRow struct {
+type ListDiariesPageAscRow struct {
+	ID        string
+	Body      string
+	DiaryDate pgtype.Date
+}
+
+func (q *Queries) ListDiariesPageAsc(ctx context.Context, arg ListDiariesPageAscParams) ([]ListDiariesPageAscRow, error) {
+	rows, err := q.db.Query(ctx, listDiariesPageAsc,
+		arg.UserID,
+		arg.CursorDate,
+		arg.CursorID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.Keyword,
+		arg.Moods,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDiariesPageAscRow
+	for rows.Next() {
+		var i ListDiariesPageAscRow
+		if err := rows.Scan(&i.ID, &i.Body, &i.DiaryDate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDiariesPageDesc = `-- name: ListDiariesPageDesc :many
+
+SELECT
+    d.id,
+    d.body,
+    d.diary_date
+FROM diaries AS d
+WHERE d.user_id = $1
+  AND (
+    $2::date IS NULL
+    OR (d.diary_date, d.id) < ($2::date, $3::text)
+  )
+  AND ($4::date IS NULL OR d.diary_date >= $4::date)
+  AND ($5::date IS NULL OR d.diary_date <= $5::date)
+  AND ($6::text IS NULL OR d.body ILIKE '%' || $6::text || '%')
+  AND (
+    cardinality($7::text[]) = 0
+    OR EXISTS (
+      SELECT 1
+      FROM episodic_memories AS em
+      WHERE em.user_id = $1
+        AND em.diary_id = d.id
+        AND em.deleted_at IS NULL
+        AND em.mood = ANY($7::text[])
+    )
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM release_groups AS rg
+    WHERE rg.user_id = $1
+      AND rg.diary_id = d.id
+  )
+ORDER BY d.diary_date DESC, d.id DESC
+LIMIT $8
+`
+
+type ListDiariesPageDescParams struct {
+	UserID     string
+	CursorDate pgtype.Date
+	CursorID   pgtype.Text
+	FromDate   pgtype.Date
+	ToDate     pgtype.Date
+	Keyword    pgtype.Text
+	Moods      []string
+	PageLimit  int32
+}
+
+type ListDiariesPageDescRow struct {
 	ID        string
 	Body      string
 	DiaryDate pgtype.Date
@@ -42,29 +147,143 @@ type ListDiariesPageRow struct {
 
 // Diary-reader archive reads are SELECT-only: the reader never mutates a Diary ([I2]).
 // Every statement is scoped to the authenticated user ([U1], §4, lint:persistence).
-// One reverse-chronological page of the user's immutable diaries ([D2]), keyset-paginated on
-// (diary_date, id) so a growing archive stays stable under new writes. A null cursor starts at the
-// newest entry; otherwise the page continues strictly before the cursor tuple. The use-case fetches
-// one extra row (page_limit = page_size + 1) to decide whether a next page exists. diaries has no
-// deleted_at — the Diary is never soft-deleted, so a memory-less past-dated diary still lists ([I1]).
-func (q *Queries) ListDiariesPage(ctx context.Context, arg ListDiariesPageParams) ([]ListDiariesPageRow, error) {
-	rows, err := q.db.Query(ctx, listDiariesPage,
+// Separate static queries keep chronological direction inside persistence-isolation lint's SQL surface.
+func (q *Queries) ListDiariesPageDesc(ctx context.Context, arg ListDiariesPageDescParams) ([]ListDiariesPageDescRow, error) {
+	rows, err := q.db.Query(ctx, listDiariesPageDesc,
 		arg.UserID,
 		arg.CursorDate,
 		arg.CursorID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.Keyword,
+		arg.Moods,
 		arg.PageLimit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListDiariesPageRow
+	var items []ListDiariesPageDescRow
 	for rows.Next() {
-		var i ListDiariesPageRow
+		var i ListDiariesPageDescRow
 		if err := rows.Scan(&i.ID, &i.Body, &i.DiaryDate); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDiaryDayMoodInputs = `-- name: ListDiaryDayMoodInputs :many
+SELECT
+    d.diary_date,
+    em.mood,
+    em.base_strength,
+    em.recall_count
+FROM diaries AS d
+JOIN episodic_memories AS em
+  ON em.user_id = $1
+ AND em.diary_id = d.id
+ AND em.deleted_at IS NULL
+WHERE d.user_id = $1
+  AND d.diary_date = ANY($2::date[])
+  AND NOT EXISTS (
+    SELECT 1
+    FROM release_groups AS rg
+    WHERE rg.user_id = $1
+      AND rg.diary_id = d.id
+  )
+`
+
+type ListDiaryDayMoodInputsParams struct {
+	UserID     string
+	DiaryDates []pgtype.Date
+}
+
+type ListDiaryDayMoodInputsRow struct {
+	DiaryDate    pgtype.Date
+	Mood         string
+	BaseStrength float32
+	RecallCount  int32
+}
+
+// The EffectiveStrength formula stays in the domain; SQL returns only its stored inputs.
+func (q *Queries) ListDiaryDayMoodInputs(ctx context.Context, arg ListDiaryDayMoodInputsParams) ([]ListDiaryDayMoodInputsRow, error) {
+	rows, err := q.db.Query(ctx, listDiaryDayMoodInputs, arg.UserID, arg.DiaryDates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDiaryDayMoodInputsRow
+	for rows.Next() {
+		var i ListDiaryDayMoodInputsRow
+		if err := rows.Scan(
+			&i.DiaryDate,
+			&i.Mood,
+			&i.BaseStrength,
+			&i.RecallCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDiaryDaysInWindow = `-- name: ListDiaryDaysInWindow :many
+SELECT DISTINCT d.diary_date
+FROM diaries AS d
+WHERE d.user_id = $1
+  AND d.diary_date >= $2::date
+  AND d.diary_date <= $3::date
+  AND (
+    $4::date IS NULL
+    OR d.diary_date > $4::date
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM release_groups AS rg
+    WHERE rg.user_id = $1
+      AND rg.diary_id = d.id
+  )
+ORDER BY d.diary_date ASC
+LIMIT $5::int + 1
+`
+
+type ListDiaryDaysInWindowParams struct {
+	UserID     string
+	FromDate   pgtype.Date
+	ToDate     pgtype.Date
+	CursorDate pgtype.Date
+	PageLimit  int32
+}
+
+// Calendar pagination is day-grained, so multiple diaries written on one day never split across pages.
+func (q *Queries) ListDiaryDaysInWindow(ctx context.Context, arg ListDiaryDaysInWindowParams) ([]pgtype.Date, error) {
+	rows, err := q.db.Query(ctx, listDiaryDaysInWindow,
+		arg.UserID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.CursorDate,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Date
+	for rows.Next() {
+		var diary_date pgtype.Date
+		if err := rows.Scan(&diary_date); err != nil {
+			return nil, err
+		}
+		items = append(items, diary_date)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

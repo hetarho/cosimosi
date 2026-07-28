@@ -57,9 +57,13 @@ service MemoryService {
   rpc Export(ExportRequest) returns (ExportResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // The diary-reader archive read [D2]: the user's immutable Diary entries, reverse-chronological by
-  // diary_date, paginated. Free — no clock, no Twinkle, GET-eligible.
+  // The diary-reader archive read [D2]: immutable Diary entries with chronological keyset paging
+  // and optional body/date/live-memory-mood filters. Free — no clock, no Twinkle, GET-eligible.
   rpc GetDiaries(GetDiariesRequest) returns (GetDiariesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Written diary days and their live-memory mood weights. Colorless, free, and time-frozen.
+  rpc GetDiaryCalendar(GetDiaryCalendarRequest) returns (GetDiaryCalendarResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // full delete — diary-scoped soft-delete + 30-day restore window ([X1][X2]); persists a soft-delete, no hard delete.
@@ -341,14 +345,29 @@ message ExportResponse {
   string filename = 3;
 }
 
+enum DiarySort {
+  DIARY_SORT_UNSPECIFIED = 0;
+  DIARY_SORT_NEWEST = 1;
+  DIARY_SORT_OLDEST = 2;
+}
+
 message GetDiariesRequest {
   // Entries per page (server default/clamp = diary_reader.page_size); 0 means the server default.
   int32 page_size = 1;
-  // Opaque cursor from a prior GetDiariesResponse.next_page_token; empty starts at the newest entry.
+  // Opaque cursor from a prior response; it is bound to the selected sort direction.
   string page_token = 2;
+  // Case-insensitive substring of the immutable Diary body only.
+  string query = 3;
+  // A diary matches when any still-live memory has one of these bare mood names.
+  repeated string moods = 4;
+  // Inclusive ISO DATE bounds; either side may be empty.
+  string from = 5;
+  string to = 6;
+  // UNSPECIFIED preserves the shipped newest-first behavior.
+  DiarySort sort = 7;
 }
 
-// Reverse-chronological by diary_date. next_page_token empty = the last page.
+// Chronological in the requested direction. next_page_token empty = the last page.
 message GetDiariesResponse {
   repeated DiaryDto diaries = 1;
   string next_page_token = 2;
@@ -372,6 +391,29 @@ message DiarySplitRef {
   string name = 2;
   // The primary mood, bare enum name (e.g. "JOY") — the client maps it to a color [I3].
   string mood = 3;
+}
+
+message GetDiaryCalendarRequest {
+  // Required inclusive ISO DATE bounds.
+  string from = 1;
+  string to = 2;
+  // Opaque ascending day cursor. Page size is server-owned.
+  string page_token = 3;
+}
+
+message GetDiaryCalendarResponse {
+  repeated DiaryDayDto days = 1;
+  string next_page_token = 2;
+}
+
+message DiaryDayDto {
+  string diary_date = 1;
+  repeated DiaryDayMoodDto moods = 2;
+}
+
+message DiaryDayMoodDto {
+  string mood = 1;
+  float weight = 2;
 }
 
 message ReleaseRequest {

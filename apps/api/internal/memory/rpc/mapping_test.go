@@ -229,6 +229,21 @@ func TestParseDiaryDate(t *testing.T) {
 	}
 }
 
+func TestParseDiaryFilterDatesAndSort(t *testing.T) {
+	if _, err := parseOptionalDiaryDate("2026-02-30"); !errors.Is(err, memory.ErrDiaryDateRangeInvalid) {
+		t.Fatalf("bad optional date err = %v, want ErrDiaryDateRangeInvalid", err)
+	}
+	if _, err := parseRequiredDiaryDate(""); !errors.Is(err, memory.ErrDiaryDateRangeInvalid) {
+		t.Fatalf("missing required date err = %v, want ErrDiaryDateRangeInvalid", err)
+	}
+	if got, err := domainDiarySort(memoryv1.DiarySort_DIARY_SORT_UNSPECIFIED); err != nil || got != memory.DiarySortNewest {
+		t.Fatalf("unspecified sort = %q / %v, want NEWEST", got, err)
+	}
+	if _, err := domainDiarySort(memoryv1.DiarySort(99)); !errors.Is(err, memory.ErrDiarySortInvalid) {
+		t.Fatalf("unknown sort err = %v, want ErrDiarySortInvalid", err)
+	}
+}
+
 func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 	cases := []struct {
 		err        error
@@ -242,6 +257,10 @@ func TestDomainErrorMapsCanonicalErrors(t *testing.T) {
 		{memory.ErrProvenanceInputRequired, connect.CodeInvalidArgument, reasonProvenanceInputRequired},
 		{memory.ErrExportFormatRequired, connect.CodeInvalidArgument, reasonExportFormatRequired},
 		{memory.ErrDiaryPageTokenInvalid, connect.CodeInvalidArgument, reasonDiaryPageTokenInvalid},
+		{memory.ErrDiarySearchQueryTooShort, connect.CodeInvalidArgument, reasonDiarySearchQueryTooShort},
+		{memory.ErrDiaryMoodFilterInvalid, connect.CodeInvalidArgument, reasonDiaryMoodFilterInvalid},
+		{memory.ErrDiaryDateRangeInvalid, connect.CodeInvalidArgument, reasonDiaryDateRangeInvalid},
+		{memory.ErrDiarySortInvalid, connect.CodeInvalidArgument, reasonDiarySortInvalid},
 		{memory.ErrReleaseInputRequired, connect.CodeInvalidArgument, reasonReleaseInputRequired},
 		{memory.ErrLetGoInvalidApproved, connect.CodeInvalidArgument, reasonLetGoInvalidApproved},
 		{memory.ErrOperationIDRequired, connect.CodeInvalidArgument, reasonOperationIDRequired},

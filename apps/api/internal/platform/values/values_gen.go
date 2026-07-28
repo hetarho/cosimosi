@@ -250,7 +250,9 @@ const (
 
 // diary_reader
 const (
-	DiaryReaderPageSize = 20
+	DiaryReaderPageSize              = 20
+	DiaryReaderSearchMinQueryLength  = 2
+	DiaryReaderCalendarMonthPageSize = 31
 )
 
 // deletion

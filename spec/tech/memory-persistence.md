@@ -263,3 +263,32 @@ non-destructively repairs live/retained overlap, preserves LetGo replacements, a
 for repaired live neurons. Targeted Restore/sweep paths serialize on the exact group row with `FOR UPDATE` (without `SKIP LOCKED`), so a
 boundary race cannot skip the group or interleave into a half-swept restored diary. The opportunistic pre-Release sweep
 remains a secondary cleanup path, not the durable trigger; no cron is introduced.
+
+## 9. Diary archive search, filters, and calendar
+
+Plan [68](../plan/68.diary-search-and-filter.md) extends the existing `GetDiaries` read and adds
+`GetDiaryCalendar`. Both are per-user, SELECT-only reads over the immutable diary record: they receive no universe
+clock, spend gate, or economy transaction, and `apps/api/db/queries/memory/diaries.sql` contains no write statement.
+Released diaries are reversibly hidden by a `NOT EXISTS` anti-join on `release_groups`; no release flag is copied onto
+`diaries`, so Restore makes the diary visible again by removing the ledger row.
+
+**Search and direction paging.** Migration `00020_diary_search_trgm.sql` enables `pg_trgm` and creates
+`diaries_body_trgm_idx`, a GIN `gin_trgm_ops` index over `diaries.body`. Keyword matching is a case-insensitive
+substring predicate over that immutable body only. User wildcard characters are escaped before binding.
+`tsvector` was measured and rejected: the PostgreSQL `simple` configuration does not make a query such as `커피`
+match the Korean token `커피를`, while trigram substring search does, and no Korean analyzer extension is present in
+the deployment image.
+
+The list has two static sqlc statements, `ListDiariesPageDesc` and `ListDiariesPageAsc`; their nullable keyword/date/
+cursor predicates are otherwise identical. The mood condition is an `EXISTS` semi-join over live
+`episodic_memories`, preserving one result row per diary even when a diary has several memories. Ordering is only
+`(diary_date, id)`. The opaque cursor carries the direction as well as the date/id boundary, and the use-case refuses
+a token whose direction disagrees with the requested sort. No dynamic SQL or runtime-built `ORDER BY` exists.
+
+**Day-grained calendar.** `ListDiaryDaysInWindow` first pages distinct written days in ascending order with a
+date-only cursor and the server-owned `diary_reader.calendar_month_page_size`. `ListDiaryDayMoodInputs` then returns
+only each selected day's live-memory mood, base strength, and recall count. The use-case groups those inputs by
+`(day, mood)` in Go and sums the canonical `EffectiveStrength` function; the formula is not reimplemented in SQL.
+Because day selection precedes mood loading, a written day whose memories are all gone remains present with an empty
+mood list, and no day can be split between pages. Calendar messages carry neither diary identifiers nor colors; color
+composition remains a client projection.
