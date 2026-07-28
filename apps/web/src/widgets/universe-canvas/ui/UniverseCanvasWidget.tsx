@@ -189,6 +189,8 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   const skyStops = useMemo(() => {
     // The version is a genuine input: moodColor reads the module-level palette it stamps.
     void paletteVersion
+    // Every feeling the universe holds goes to the sky. The emotion axis divides the sphere by
+    // weight, so more feelings means smaller territories, never a muddier wash.
     return universe ? universeEmotionSlices(universe.memories) : []
   }, [universe, paletteVersion])
 

@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Test_Harness_Sky_DescriptionInputs */
 
 const en_test_harness_sky_description = /** @type {(inputs: Test_Harness_Sky_DescriptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`A shader-lit sphere wrapping the star scene — drag to look around inside it. Thirteen react-bits-derived effects, each sampling the universe's emotion palette; pick an effect and how many emotions it holds. Effects tagged 'adapted' re-create a look their screen-space source can't wear on a sphere.`)
+	return /** @type {LocalizedString} */ (`A shader-lit sphere wrapping the star scene — drag to look around inside it. Twelve skies, each a different arrangement of domain, field, emotion partition and finish; every colour comes from the universe's own feelings. Hand any sky any number of emotions — more feelings means smaller territories, never a muddier wash.`)
 };
 
 const ko_test_harness_sky_description = /** @type {(inputs: Test_Harness_Sky_DescriptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`별 장면을 감싸는 셰이더 구 — 드래그해서 내부를 둘러보세요. react-bits 기반 13가지 효과가 각각 우주의 감정 팔레트를 샘플링합니다. 효과와 감정 개수를 고르세요. 'adapted' 태그는 화면공간 원본을 구 표면용으로 재해석한 것입니다.`)
+	return /** @type {LocalizedString} */ (`별 장면을 감싸는 셰이더 구 — 드래그해서 내부를 둘러보세요. 열두 가지 하늘이 각각 정의역·필드·감정 분할·마감을 다르게 조합한 것이고, 색은 모두 우주의 감정에서 옵니다. 감정 개수는 어느 하늘에서든 자유롭게 골라 보세요 — 감정이 많아지면 영역이 작아질 뿐, 탁해지지 않습니다.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "A shader-lit sphere wrapping the star scene — drag to look around inside it. Thirteen react-bits-derived effects, each sampling the universe's emotion palett..." |
+* | "A shader-lit sphere wrapping the star scene — drag to look around inside it. Twelve skies, each a different arrangement of domain, field, emotion partition a..." |
 *
 * @param {Test_Harness_Sky_DescriptionInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

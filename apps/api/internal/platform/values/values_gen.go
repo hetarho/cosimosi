@@ -62,6 +62,7 @@ const (
 var (
 	RenderingEmotionSkyOpacity = map[string]float64{
 		"grainient":       0.74,
+		"grainstorm":      0.82,
 		"iridescence":     0.76,
 		"soft_aurora":     0.86,
 		"liquid_ether":    0.74,
@@ -69,10 +70,23 @@ var (
 		"plasma_wave":     0.92,
 		"ferrofluid":      0.92,
 		"floating_lines":  0.88,
-		"ripple_grid":     0.9,
 		"evil_eye":        0.92,
 		"lightfall":       0.92,
 		"pixel_blast":     0.94,
+	}
+	RenderingEmotionSkyHeadroom = map[string]float64{
+		"grainient":       0.72,
+		"grainstorm":      0.66,
+		"iridescence":     0.7,
+		"soft_aurora":     0.58,
+		"liquid_ether":    0.7,
+		"prismatic_burst": 0.8,
+		"plasma_wave":     0.82,
+		"ferrofluid":      0.68,
+		"floating_lines":  0.84,
+		"evil_eye":        0.8,
+		"lightfall":       0.84,
+		"pixel_blast":     0.88,
 	}
 )
 

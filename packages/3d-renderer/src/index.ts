@@ -64,7 +64,6 @@ export {
   resolveSkyEffect,
   type SkyEffect,
   type SkyEffectKey,
-  type SkyFidelity,
 } from './assets/sky/sky-effects.ts'
 export {
   COORDINATE_STRIDE,

@@ -1,10 +1,11 @@
-import { atan, clamp, cos, float, fract, length, min, sin, smoothstep, vec3, vec4 } from 'three/tsl'
+import { clamp, cos, float, length, min, sin, smoothstep, vec3, vec4 } from 'three/tsl'
 
 import { asFloatNode, asVec3Node } from '../../tsl'
+import { skyDir } from './sky-domain.ts'
+import { emotionField } from './sky-emotion.ts'
+import { skyFinish } from './sky-finish.ts'
 import {
   floatAcc,
-  sampleRamp,
-  skyDir,
   skyFrontAngle,
   skySeconds,
   spin,
@@ -13,21 +14,30 @@ import {
   type SkyNodeArgs,
 } from './sky-node.ts'
 
-// PrismaticBurst — a faithful port of react-bits' PrismaticBurst (the one source that already
-// samples a gradient texture), mapped SEAMLESSLY onto the sphere: each fragment volume-marches along
-// its OWN 3D surface direction (`skyDir`) rather than a projected screen ray, so the burst wraps the
-// scene with no seam and no pole. The march accumulates energy where a bent interference pattern
-// fires; that energy is coloured by the emotion of its ANGULAR SECTOR (the ramp fanned around the
-// burst centre), so the emotion count cuts the burst into that many coloured pie-slice rays. Step
-// count is toned for the sphere.
+// PrismaticBurst — rays of light fired outward through a bent interference pattern.
+//
+// domain   the surface direction, volume-marched per fragment — each pixel walks its own ray, so the
+//          burst wraps the scene with nothing projected and nothing to gather
+// field    a bent interference pattern sampled along the march, accumulating energy where it fires
+// emotion  the territory blend, so a ray carries the feeling of the region it crosses
+// finish   an outward falloff, then the headroom
+//
+// WEAK FEELINGS KEEP THEIR HUE. The rays were coloured by sampling the ramp at the AZIMUTH — a thin
+// sector for a low-weighted feeling, which a sparse ray pattern then mostly missed, so a faint feeling
+// was not merely small on screen, it was absent from it. (The ramp made that worse by mixing low-weight
+// colours toward the night; that is fixed at the source in `emotion-gradient`.) A territory is a region
+// of the sphere rather than a wedge of a ramp coordinate, so every feeling gets rays through it, and
+// its colour there is its own at full chroma.
 
 const PI = Math.PI
 const STEPS = 16
 const AMP = 0.3
 const JITTER = 0.05
 const INTENSITY = 1.6
+/** How much of the far side the territory blend washes, so the back is not dead black. */
+const AMBIENT = 0.09
 
-/** The source's `bendAngle` — three summed sines that twist the march coordinates. */
+/** Three summed sines that twist the march coordinates. */
 function bendAngle(q: unknown, t: unknown) {
   const qv = asVec3Node(q)
   const tt = asFloatNode(t)
@@ -37,24 +47,18 @@ function bendAngle(q: unknown, t: unknown) {
     .add(sin(qv.z.mul(0.6).add(tt.mul(0.7))).mul(0.6))
 }
 
-export function prismaticBurstSkyNode({ gradient, time }: SkyNodeArgs) {
+export function prismaticBurstSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
   const t = skySeconds(time, 1)
-  const dir = skyDir() // per-fragment 3D ray — no screen projection, no seam
+  const dir = skyDir()
   const n = valueNoise(dir.xy.mul(60)) // per-pixel step jitter
 
-  // the self-animating 2D rotation applied to the march's xz each step (source's `M2`)
+  // The self-animating rotation applied to the march's xz each step.
   const cc = cos(t.mul(0.2).add(vec4(0, 33, 11, 0)))
 
-  // Emotion colour by ANGULAR SECTOR: the azimuth around the burst's radial centre picks the ramp
-  // band, so the palette fans out as pie-slice rays — N emotions cut N coloured sectors (each sector's
-  // arc ∝ its weight), and changing the count visibly re-slices the burst rather than only re-tinting
-  // a radial cycle no one could read.
-  const azHue = fract(
-    atan(dir.y, dir.x)
-      .mul(1 / (2 * PI))
-      .add(0.5),
-  )
-  const emo = sampleRamp(gradient, azHue).mul(2)
+  // A ray takes the colour of the territory it crosses. Sharp enough that the sectors read as distinct
+  // coloured fans rather than one wash, soft enough that they do not show a hard edge mid-ray.
+  const emotion = emotionField({ gradient, count, weights, dir, sharpness: 2.2 })
+  const emo = emotion.color.mul(2)
 
   let col = vec3Acc()
   let marchT = floatAcc(0.01)
@@ -69,7 +73,7 @@ export function prismaticBurstSkyNode({ gradient, time }: SkyNodeArgs) {
     const a1 = grow.mul(AMP).mul(bendAngle(Pl.mul(0.6), t))
     const a2 = grow.mul(AMP * 0.5).mul(bendAngle(Pl.zyx.mul(0.5).add(3.1), t.mul(0.9)))
 
-    // bend the coordinates through two rotations, then read the interference pattern
+    // Bend the coordinates through two rotations, then read the interference pattern.
     const xz = spin(Pl.xz, a1)
     const xy = spin(vec3(xz.x, Pl.y, xz.y).xy, a2)
     const Pb = vec3(xy.x, xy.y, xz.y)
@@ -84,10 +88,8 @@ export function prismaticBurstSkyNode({ gradient, time }: SkyNodeArgs) {
     marchT = marchT.add(stepLen)
   }
 
-  // Edge fade over the seamless front-angle radius: darkens the core so rays stream OUTWARD. A plain
-  // monotonic smootherstep (no extra pow/mix step) — the earlier `mix` re-brightened a mid band and
-  // read as a hard concentric RING sitting in front of the rays; dropping it leaves a clean outward
-  // falloff, so the burst is only streaks with no disc. r ∈ [0,1] by construction.
+  // Outward falloff over the seamless front angle, so the rays stream out rather than sitting on a disc.
+  // Monotonic by construction: any re-brightened mid band reads as a hard concentric ring in front.
   const r = skyFrontAngle().div(PI)
   const s = r
     .mul(r)
@@ -95,10 +97,10 @@ export function prismaticBurstSkyNode({ gradient, time }: SkyNodeArgs) {
     .mul(r.mul(r.mul(6).sub(15)).add(10))
   const lit = col.mul(clamp(s, float(0), float(1))).mul(INTENSITY)
 
-  // Faint far-side wash so the back isn't dead black — kept to the rear third only (smoothstep from
-  // r=0.55) so it never forms a ring around the burst, with a whisper of noise so it isn't a plate.
-  const ambient = sampleRamp(gradient, fract(r.mul(0.6).sub(t.mul(0.02))))
+  // The far side, kept to the rear third so it never forms a ring, with a whisper of noise so it is not
+  // a flat plate.
+  const ambient = emotion.color
     .mul(smoothstep(float(0.55), float(1), r))
-    .mul(float(0.09).add(n.mul(0.04)))
-  return clamp(lit.add(ambient), float(0), float(1))
+    .mul(float(AMBIENT).add(n.mul(0.04)))
+  return skyFinish(lit.add(ambient), { contrast: 1.02, grain: 0.02, headroom })
 }

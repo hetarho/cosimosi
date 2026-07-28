@@ -522,7 +522,9 @@ export const STAR_SHAPES = [
 
 export type StarShapeKey = (typeof STAR_SHAPES)[number]['key']
 
-export const DEFAULT_STAR_SHAPE: StarShapeKey = 'orb'
+/** The shape every universe opens on — the free entry point. `orb` remains the bench's baseline (it
+ *  IS the primitive body source), so it stays in the registry without being what a universe wears. */
+export const DEFAULT_STAR_SHAPE: StarShapeKey = 'facet'
 
 /** Resolve a shape key to its definition (falls back to the shipped star). Keeps the narrow key
  *  literals, so callers get a `StarShapeKey` rather than a widened `string`. */

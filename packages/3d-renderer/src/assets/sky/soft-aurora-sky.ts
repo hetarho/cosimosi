@@ -1,22 +1,40 @@
-import { abs, clamp, exp, float, max, vec3 } from 'three/tsl'
+import { abs, exp, float, max, vec3 } from 'three/tsl'
 
-import { fbm01, gnoise } from '../../shader-art/noise'
-import { sampleRamp, skyDir, skySeconds, type SkyNodeArgs } from './sky-node.ts'
+import { gnoise } from '../../shader-art/noise'
+import { skyBand, skyDir, type SkyAnchor } from './sky-domain.ts'
+import { emotionField } from './sky-emotion.ts'
+import { skyFinish } from './sky-finish.ts'
+import { skySeconds, type SkyNodeArgs } from './sky-node.ts'
 
-// SoftAurora — react-bits' SoftAurora (layered noise ribbons flared by an exponential ridge) mapped
-// SEAMLESSLY onto the sphere: the ribbons hang by LATITUDE (the surface direction's y), which is
-// continuous around the sphere, and the warp + color come from 3D noise on the surface direction —
-// so no wrap seam, no pole pinch. Each curtain draws its color from the emotion ramp; the count sets
-// how many bands of feeling the aurora sweeps through.
+// SoftAurora — curtains of light hanging in the sky, each carrying a feeling.
+//
+// domain   great-circle bands about two tilted axes; a curtain is a band, so it has no ends and no
+//          point to gather at
+// field    gnoise warping each band, flared by an exponential ridge into a soft crest
+// emotion  the territory blend read along the curtain, so a curtain changes feeling across its length
+//          instead of being one flat tint
+// finish   under the sky's headroom — the reason this recipe is authored at this brightness at all
+//
+// HEADROOM. This is the widest bright thing the sky can be, and the stars, the nebula field and the
+// bloom pass all ADD their light on top of it. Addition over an already-bright surface passes 1 in
+// every channel at once, which is white — so a star seen against a lit curtain lost its colour, and
+// its whole neighbourhood with it. The curtains therefore hold themselves under a ceiling and leave
+// the rest of the range for the light that lands on them.
 
 const SCALE = 1.6
 const SPREAD = 1.1
 const BRIGHTNESS = 1.05
 
-/** One aurora ribbon: a latitude band warped by 3D noise and flared by an exponential ridge. */
-function ribbon(dir: ReturnType<typeof skyDir>, t: unknown, center: number) {
+/** The two axes the curtains hang about — tilted apart so they cross rather than stack. */
+const CURTAIN_AXES: readonly SkyAnchor[] = [
+  [0.08, 0.99, 0.05],
+  [-0.22, 0.95, 0.2],
+]
+
+/** One curtain: a band warped by 3D noise, flared by an exponential ridge into a soft crest. */
+function curtain(dir: ReturnType<typeof skyDir>, t: unknown, axis: SkyAnchor, center: number) {
   const n = gnoise(dir.mul(SCALE).add(vec3(0, 0, t as never)))
-  const band = dir.y.mul(2.2).sub(center)
+  const band = skyBand(dir, axis).mul(2.2).sub(center)
   return max(
     exp(
       float(1)
@@ -27,14 +45,20 @@ function ribbon(dir: ReturnType<typeof skyDir>, t: unknown, center: number) {
   ).mul(0.3)
 }
 
-export function softAuroraSkyNode({ gradient, time }: SkyNodeArgs) {
+export function softAuroraSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
   const dir = skyDir()
   const t = skySeconds(time, 0.24)
 
-  // two curtains at different heights, each drawing a drifting slice of the palette from 3D noise
-  const c1 = sampleRamp(gradient, fbm01(dir.mul(0.8).add(vec3(0, 0, t.mul(0.3)))))
-  const c2 = sampleRamp(gradient, fbm01(dir.mul(0.8).add(vec3(4.1, 1.7, t.mul(0.2)))))
-  const col = c1.mul(ribbon(dir, t, 0.35)).add(c2.mul(ribbon(dir, t.add(1.7), -0.15)))
+  // One emotion field, read once. Each curtain multiplies it by its own crest, so where two curtains
+  // overlap the feelings blend the way light does rather than one hue winning the pixel.
+  const emotion = emotionField({ gradient, count, weights, dir, sharpness: 1.4 })
+  const crest = curtain(dir, t, CURTAIN_AXES[0], 0.35).add(
+    curtain(dir, t.add(1.7), CURTAIN_AXES[1], -0.15),
+  )
 
-  return clamp(col.mul(BRIGHTNESS), float(0), float(1))
+  return skyFinish(emotion.color.mul(crest).mul(BRIGHTNESS), {
+    contrast: 1.04,
+    grain: 0.02,
+    headroom,
+  })
 }

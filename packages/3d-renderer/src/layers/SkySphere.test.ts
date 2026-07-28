@@ -22,6 +22,7 @@ describe('emotion sky material', () => {
       count: 1,
       weights: [1],
       opacity: 0.82,
+      headroom: 0.7,
     })
 
     expect(material.transparent).toBe(true)
@@ -42,6 +43,7 @@ describe('emotion sky material', () => {
       count: 1,
       weights: [1],
       opacity: 2,
+      headroom: 0.7,
     })
 
     expect(material.transparent).toBe(false)

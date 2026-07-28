@@ -267,7 +267,7 @@
   "not_found_home_action": "Back to your universe",
   "test_harness_background_showcase_reduced_motion": "Reduced motion — frozen",
   "test_harness_sky_title": "Emotion sky (3D)",
-  "test_harness_sky_description": "A shader-lit sphere wrapping the star scene — drag to look around inside it. Thirteen react-bits-derived effects, each sampling the universe's emotion palette; pick an effect and how many emotions it holds. Effects tagged 'adapted' re-create a look their screen-space source can't wear on a sphere.",
+  "test_harness_sky_description": "A shader-lit sphere wrapping the star scene — drag to look around inside it. Twelve skies, each a different arrangement of domain, field, emotion partition and finish; every colour comes from the universe's own feelings. Hand any sky any number of emotions — more feelings means smaller territories, never a muddier wash.",
   "star_detail_title": "Look at this star",
   "star_detail_title_neuron": "Neuron",
   "star_detail_recall": "Recall",

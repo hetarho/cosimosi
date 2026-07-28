@@ -4,15 +4,13 @@ import { VALUES } from '@cosimosi/config'
 
 import { buildEmotionGradientTexture } from './emotion-gradient.ts'
 
-// The ramp's priority semantics: band WIDTH follows weight, band DEPTH follows weight too but on a
-// steeper curve. The full palette stays under a shared exposure ceiling without count-based
-// attenuation; lesser emotions then fade toward the bare night base as
-// `(share / topShare) ** DEPTH_CURVE`.
+// The ramp's one semantic: an emotion's weight buys it band WIDTH and nothing else. Every band
+// reaches the same depth under a shared exposure ceiling, at every count, so a faint feeling is a
+// narrow stripe of its own colour rather than a washed-out one — a hue diluted toward the night is a
+// hue nobody can name.
 
 const NIGHT_BASE = [10, 10, 18] as const
 
-/** Mirror of the ramp's depth-fade exponent (see emotion-gradient.ts). */
-const DEPTH_CURVE = 1.5
 const EXPOSURE = VALUES.rendering.emotionSkyExposure
 
 /** Read the ramp pixel nearest to t∈[0,1]. */
@@ -37,14 +35,29 @@ describe('emotion gradient ramp', () => {
     texture.dispose()
   })
 
-  it('keeps the primary deepest and fades lesser emotions toward the night base', () => {
-    // Red holds 2/3 of the universe, blue 1/3 — blue sits at half the primary's priority.
+  it('gives the primary a wider band without giving it a deeper colour', () => {
+    // Red holds 2/3 of the universe, blue 1/3. Blue's band is half as wide and exactly as deep.
     const texture = buildEmotionGradientTexture([
       { color: '#ff0000', weight: 2 },
       { color: '#0000ff', weight: 1 },
     ])
     expect(pixel(texture, 0.05)).toEqual(faded([255, 0, 0], EXPOSURE))
-    expect(pixel(texture, 0.95)).toEqual(faded([0, 0, 255], EXPOSURE * 0.5 ** DEPTH_CURVE))
+    expect(pixel(texture, 0.95)).toEqual(faded([0, 0, 255], EXPOSURE))
+    // Bands blend centre-to-centre (red's at 1/3, blue's at 5/6), so each colour owns the ramp around
+    // its own centre — the widths themselves are asserted against the layout in sky-emotion.test.ts.
+    expect(pixel(texture, 0.4)[0]).toBeGreaterThan(pixel(texture, 0.4)[2])
+    expect(pixel(texture, 0.7)[2]).toBeGreaterThan(pixel(texture, 0.7)[0])
+    texture.dispose()
+  })
+
+  it('holds an almost-absent feeling at its own full colour', () => {
+    // The failure this guards: a 3%-share emotion rendered as night-tinted mud, so its ring or line
+    // blinks out of the sky instead of reading as a thin stripe of its colour.
+    const texture = buildEmotionGradientTexture([
+      { color: '#ff0000', weight: 97 },
+      { color: '#0000ff', weight: 3 },
+    ])
+    expect(pixel(texture, 0.995)).toEqual(faded([0, 0, 255], EXPOSURE))
     texture.dispose()
   })
 

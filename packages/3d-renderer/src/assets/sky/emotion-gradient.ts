@@ -2,16 +2,16 @@ import * as THREE from 'three/webgpu'
 
 import { VALUES } from '@cosimosi/config'
 
-// A 1D palette ramp baked from the universe's emotions, sampled by the sky shaders. An emotion's
-// weight is its PRIORITY in the universe, and it shapes its band twice over: the band's WIDTH is
-// proportional to the weight (the primary feeling claims the most sky), and the band's DEPTH fades
-// with rank. A shared exposure ceiling keeps the enclosing full-frame body below bloom-heavy white
-// without dimming the palette further as emotion count grows. Lesser feelings sink farther toward
-// the bare night base, so a faint emotion reads as a pale wash, not an equal stripe. The
-// count/priority-driven structure lives HERE (CPU), where it's exact, so the TSL effects stay
-// faithful to their react-bits originals and just sample this ramp.
+// A 1D palette ramp baked from the universe's emotions, sampled by the sky recipes. An emotion's
+// weight buys it AREA and nothing else: its band's WIDTH is proportional to its share, so the primary
+// feeling claims the most sky, while every band carries its colour at the same full depth. A faint
+// feeling is a narrow stripe of its true colour, never a washed-out one — a colour diluted toward the
+// night loses the hue that identifies it, which is the one thing a palette exists to carry. A shared
+// exposure ceiling keeps the enclosing full-frame body below bloom-heavy white; it applies equally to
+// every emotion and does not tighten as the count grows.
 //
-// This mirrors how several react-bits shaders take a `sampler2D` gradient uniform.
+// The band layout lives HERE (CPU), where it is exact, and `emotionRampCenters` publishes it so a
+// recipe placing per-emotion features can sample each feeling's own colour rather than guessing.
 
 export interface GradientStop {
   /** Emotion color — `#rrggbb`, `#rgb`, or 0xRRGGBB. */
@@ -25,14 +25,30 @@ const GRADIENT_WIDTH = 256
 /** The bare night the sky is made of where no emotion reaches (`#0a0a12`). */
 const NIGHT_BASE: readonly [number, number, number] = [10, 10, 18]
 
+/** Normalized shares for a set of stops, primary-first — the band widths, and the only thing an
+ *  emotion's weight decides. Shared with `emotionRampCenters` so the ramp and any recipe reading it
+ *  agree on the layout by construction. */
+function normalizedShares(stops: readonly GradientStop[]): number[] {
+  const total = stops.reduce((sum, s) => sum + Math.max(s.weight, 0), 0)
+  return stops.map((s) =>
+    total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
+  )
+}
+
 /**
- * How sharply band DEPTH falls behind the primary emotion. Relative strength is
- * `(share / topShare) ** DEPTH_CURVE`, so `1` fades linearly with weight and larger values sink the
- * lesser emotions toward the night base faster — a low-share feeling reads as a near-transparent
- * wash rather than a merely dimmer stripe.
- * TUNE THIS (with the showcase weight spread) to taste while eyeballing the /test emotion-sky panel.
+ * Where each emotion's band sits along the ramp, in [0, 1] — the running midpoint of its share. A
+ * recipe that draws one feature per emotion samples the ramp at `centers[i]` to get that feeling's
+ * own colour instead of whatever hue the field value happened to land on.
  */
-const DEPTH_CURVE = 1.5
+export function emotionRampCenters(stops: readonly GradientStop[]): number[] {
+  const centers: number[] = []
+  let acc = 0
+  for (const share of normalizedShares(stops)) {
+    centers.push(acc + share / 2)
+    acc += share
+  }
+  return centers
+}
 
 /** Parse a hex color (string or number) to sRGB bytes [0..255]. */
 function toRgb(color: string | number): [number, number, number] {
@@ -52,36 +68,21 @@ export function updateEmotionGradientTexture(
   stops: readonly GradientStop[],
 ): void {
   const data = texture.image.data as Uint8ClampedArray | Uint8Array
-  const total = stops.reduce((sum, s) => sum + Math.max(s.weight, 0), 0)
-  const shares = stops.map((s) =>
-    total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
-  )
-  const topShare = shares.reduce((max, share) => Math.max(max, share), 0)
-  // The palette is a full-frame light source and is bloomed with the rest of the scene. Cap its
-  // exposure independently of emotion priority, but do not attenuate it by emotion count: doing so
-  // collapses a many-emotion gradient toward the night base until its color zones disappear.
+  // The palette is a full-frame light source and is bloomed with the rest of the scene, so it carries
+  // one exposure ceiling. It is the SAME ceiling for every emotion — weight buys area, never depth —
+  // and it does not tighten with the count, which would collapse a many-emotion sky toward the night.
   const paletteExposure = VALUES.rendering.emotionSkyExposure
 
-  // Priority-deep band colors: the primary emotion is the deepest within the exposure budget; the
-  // rest fade toward the night base in proportion to how far behind the primary they sit.
-  const rgb = stops.map((s, i) => {
-    const relativeStrength = topShare > 0 ? ((shares[i] ?? 0) / topShare) ** DEPTH_CURVE : 0
-    const strength = paletteExposure * relativeStrength
+  const rgb = stops.map((s) => {
     const c = toRgb(s.color)
     return [
-      NIGHT_BASE[0] + (c[0] - NIGHT_BASE[0]) * strength,
-      NIGHT_BASE[1] + (c[1] - NIGHT_BASE[1]) * strength,
-      NIGHT_BASE[2] + (c[2] - NIGHT_BASE[2]) * strength,
+      NIGHT_BASE[0] + (c[0] - NIGHT_BASE[0]) * paletteExposure,
+      NIGHT_BASE[1] + (c[1] - NIGHT_BASE[1]) * paletteExposure,
+      NIGHT_BASE[2] + (c[2] - NIGHT_BASE[2]) * paletteExposure,
     ] as [number, number, number]
   })
 
-  // Band centers along [0,1] (running weight midpoint), like a cumulative color-stop layout.
-  const centers: number[] = []
-  let acc = 0
-  for (const share of shares) {
-    centers.push(acc + share / 2)
-    acc += share
-  }
+  const centers = emotionRampCenters(stops)
 
   for (let x = 0; x < GRADIENT_WIDTH; x++) {
     const t = (x + 0.5) / GRADIENT_WIDTH

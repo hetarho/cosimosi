@@ -46,6 +46,7 @@ interface SkyMaterialOptions {
   readonly count: number
   readonly weights: readonly number[]
   readonly opacity: number
+  readonly headroom: number
 }
 
 // Package-internal construction seam: the emotion layer uses normal alpha over the black void and
@@ -58,6 +59,7 @@ export function createSkyMaterial({
   count,
   weights,
   opacity,
+  headroom,
 }: SkyMaterialOptions): THREE.MeshBasicNodeMaterial {
   const mat = new THREE.MeshBasicNodeMaterial()
   const alpha = Math.max(0, Math.min(1, opacity))
@@ -66,7 +68,13 @@ export function createSkyMaterial({
   mat.depthWrite = false
   mat.depthTest = true
   mat.opacityNode = float(alpha)
-  mat.colorNode = resolveSkyEffect(effect).build({ gradient, time, count, weights }) as never
+  mat.colorNode = resolveSkyEffect(effect).build({
+    gradient,
+    time,
+    count,
+    weights,
+    headroom,
+  }) as never
   return mat
 }
 
@@ -90,11 +98,21 @@ export function SkySphere({
       total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
     )
   }, [stops])
-  const effectOpacity = opacity ?? resolveSkyEffect(effect).opacity
+  const resolved = resolveSkyEffect(effect)
+  const effectOpacity = opacity ?? resolved.opacity
+  const headroom = resolved.headroom
 
   const material = useMemo(() => {
-    return createSkyMaterial({ gradient, time, effect, count, weights, opacity: effectOpacity })
-  }, [gradient, time, effect, count, weights, effectOpacity])
+    return createSkyMaterial({
+      gradient,
+      time,
+      effect,
+      count,
+      weights,
+      opacity: effectOpacity,
+      headroom,
+    })
+  }, [gradient, time, effect, count, weights, effectOpacity, headroom])
 
   // Repaint the ramp when the emotions change (no material rebuild).
   useEffect(() => updateEmotionGradientTexture(gradient, stops), [gradient, stops])

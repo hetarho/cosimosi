@@ -54,6 +54,8 @@ rendering:
   # visible even when one emotion fills the palette ramp.
   emotion_sky_opacity:
     grainient: 0.74
+    # Denser than Grainient: the grain needs a solid surface under it or it reads as static.
+    grainstorm: 0.82
     iridescence: 0.76
     soft_aurora: 0.86
     liquid_ether: 0.74
@@ -61,10 +63,30 @@ rendering:
     plasma_wave: 0.92
     ferrofluid: 0.92
     floating_lines: 0.88
-    ripple_grid: 0.9
     evil_eye: 0.92
     lightfall: 0.92
     pixel_blast: 0.94
+  # Per-recipe luminance ceiling the sky holds itself under, leaving the rest of the range for the
+  # light ADDED on top of it — stars, the nebula colour field, and the bloom pass. Addition over an
+  # already-bright surface passes 1 in every channel at once, which is white: that is what made a star
+  # seen against a wide lit backdrop lose its colour and its neighbourhood with it. So the wider and
+  # brighter a recipe fills the frame, the lower its ceiling. Sparse mark recipes (lines, dots) barely
+  # need one; full-frame curtains and fluids need the most.
+  emotion_sky_headroom:
+    grainient: 0.72
+    # Lower than Grainient's: heavy grain adds its own high-frequency luminance on top of the colour,
+    # so the colour has to start further below the ceiling for the sum to stay off white.
+    grainstorm: 0.66
+    iridescence: 0.7
+    soft_aurora: 0.58
+    liquid_ether: 0.7
+    prismatic_burst: 0.8
+    plasma_wave: 0.82
+    ferrofluid: 0.68
+    floating_lines: 0.84
+    evil_eye: 0.8
+    lightfall: 0.84
+    pixel_blast: 0.88
   # InstancedMesh bucket capacity — nodes batch into fixed-size instanced draws.
   instance_bucket_size: 4096
   # Star (episodic-memory) instance scale range — world radius mapped from EffectiveStrength

@@ -39,10 +39,9 @@ export const SKY_EFFECTS = [
     key: 'grainient',
     label: 'Grainient',
     blurb: '',
-    fidelity: 'faithful',
     build: () => null,
     opacity: 0.9,
-    defaultCount: 5,
+    headroom: 0.72,
   },
 ]
 export const DEFAULT_SKY_EFFECT = 'grainient'

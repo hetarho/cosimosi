@@ -1,31 +1,59 @@
-import { clamp, float, pow, vec3 } from 'three/tsl'
+import { float, pow, smoothstep, vec3 } from 'three/tsl'
 
 import { domainWarp } from '../../shader-art/field'
 import { fbm01 } from '../../shader-art/noise'
-import { sampleRamp, skyDir, skyFinish, skySeconds, type SkyNodeArgs } from './sky-node.ts'
+import { skyDir, skyDrift } from './sky-domain.ts'
+import { emotionField } from './sky-emotion.ts'
+import { skyFinish, skyVoid } from './sky-finish.ts'
+import { skySeconds, type SkyNodeArgs } from './sky-node.ts'
 
-// LiquidEther — a sphere-adapted approximation, NOT a line-for-line port. The react-bits original
-// is a real-time Navier–Stokes fluid simulation (multi-pass render targets) that cannot run as a
-// single sky node. What carries over is its LOOK: dye smeared by a slow velocity field, marbling
-// together. We recreate it with a time-advected domain warp of the 3D surface direction — so the
-// flow wraps the whole sphere with no seam and no pole — sampling the emotion ramp, plus a ridge
-// sheen for the liquid gloss. Richest across many emotions, which marble together.
+// LiquidEther — dye smeared through slow water, marbling. The look is a fluid sim's; the structure
+// here is a time-advected domain warp, which wraps the whole sphere and needs no render targets.
+//
+// domain   the surface direction, advected by an fbm domain warp — the "velocity field"
+// field    two fbm samples of the warped frame: the dye's body and its swirl
+// emotion  territories read at the WARPED direction, so the flow drags the feelings apart and folds
+//          them into one another
+// finish   the night gated back in, then contrast + grain under the headroom
+//
+// THE BLACK STAYS BLACK. The dye is a thing floating IN the void, not a coat of paint over it: where
+// the fluid is thin the bare night shows through untouched, and it is the fluid's own density that
+// decides where that is. A second feeling arriving divides the clouds — it does not fill in the gaps
+// between them, which is what made two emotions read as an invasion of the dark rather than as more
+// dye in the same water.
 
-export function liquidEtherSkyNode({ gradient, time }: SkyNodeArgs) {
+/** Below this density the fluid has not reached, and the night is left alone. */
+const DYE_ONSET = 0.34
+/** Above this it is fully dye. Between the two, an edge you can see the night through. */
+const DYE_FULL = 0.78
+
+export function liquidEtherSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
   const t = skySeconds(time, 0.08)
 
-  // advect the 3D sample frame by an fbm domain warp — the "velocity field" smearing the dye
-  const warped = domainWarp(
-    skyDir()
-      .mul(2.4)
-      .add(vec3(0, 0, t)),
-    { amount: 1.2, octaves: 4 },
-  )
-  const flow = fbm01(warped.mul(0.5))
-  const swirl = fbm01(warped.add(vec3(3.1, 1.7, 0)))
-  const g = clamp(flow.mul(0.7).add(swirl.mul(0.3)), float(0), float(1))
+  // Advect the sample frame by an fbm domain warp — the velocity field that smears the dye.
+  const warped = domainWarp(skyDrift(skyDir().mul(2.4), t, [0, 0, 1]), {
+    amount: 1.2,
+    octaves: 4,
+  })
 
-  const base = sampleRamp(gradient, g)
+  // The dye's own density. This is what carves the clouds out of the void, so it must NOT come from
+  // the emotions: adding a feeling has to divide the fluid, never thicken it.
+  const body = fbm01(warped.mul(0.5))
+  const swirl = fbm01(warped.add(vec3(3.1, 1.7, 0)))
+  const density = body.mul(0.7).add(swirl.mul(0.3))
+  const presence = smoothstep(float(DYE_ONSET), float(DYE_FULL), density)
+
+  // The feelings divide the dye. Read at the warped direction so a territory is carried by the flow;
+  // a middling sharpness keeps two colours as two visible bodies of dye rather than one grey mix.
+  const emotion = emotionField({
+    gradient,
+    count,
+    weights,
+    dir: warped.normalize(),
+    sharpness: 1.8,
+  })
+
   const sheen = pow(fbm01(warped.mul(2)), 3).mul(0.4)
-  return skyFinish(base.add(base.mul(sheen)), { contrast: 1.08, grain: 0.02 })
+  const dye = emotion.color.add(emotion.color.mul(sheen))
+  return skyFinish(skyVoid(dye, presence), { contrast: 1.08, grain: 0.02, headroom })
 }

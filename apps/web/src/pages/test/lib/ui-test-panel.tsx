@@ -437,13 +437,6 @@ function BackgroundSwitcher({
                   : 'border-border text-text-subtle hover:border-text-subtle hover:text-text',
               )}
             >
-              <span
-                aria-hidden
-                className={cx(
-                  'size-1.5 rounded-full',
-                  entry.fidelity === 'faithful' ? 'bg-primary' : 'bg-text-subtle',
-                )}
-              />
               {entry.label}
             </button>
           )
@@ -459,8 +452,7 @@ function BackgroundSwitcher({
 // and renders the real render layers over a static coordinate buffer — no force-sim, no backend.
 // So the memory stars, cell-star neurons, synapse filaments, and emotion nebula all draw from
 // genuine domain facts. The emotion sky is a real body enclosing the scene (the BackSide sphere),
-// shaded by the chosen react-bits effect off the universe's palette. The skin still tunes camera +
-// bloom.
+// shaded by the chosen recipe off the universe's palette. The skin still tunes camera + bloom.
 function EngramUniverseCanvas({
   scene,
   effect,

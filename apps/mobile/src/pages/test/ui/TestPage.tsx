@@ -19,9 +19,9 @@ import { Button, tokens, useReducedMotion } from '@cosimosi/ui'
 
 import { diagnosticsSurfaceFlag } from '../../../shared/config/index.ts'
 
-// The on-device design showcase — the mobile mirror of the web /test surface's emotion-sky panel.
-// It proves the ONE shared TSL source on the React Native WebGPU canvas: the
-// enclosing SkySphere, every react-bits-derived effect, and the emotion-count reshaping, inspected
+// The on-device design showcase — the mobile mirror of the web emotion-sky panel. It proves the ONE
+// shared TSL source on the React Native WebGPU canvas: the enclosing SkySphere, every sky recipe, and
+// the way each divides itself among the feelings it is handed, inspected
 // on real hardware. Reachable only while the diagnostics-surface flag is on (deep link `test`),
 // like the diagnostics screen. Captions are demo data, intentionally outside the product i18n
 // catalog (a dev-only surface, parity with web).
@@ -31,6 +31,9 @@ const T = {
   back: 'Back',
   countLabel: 'How many emotions',
 }
+
+/** The count the showcase opens on — a review convenience, not a property of any sky. */
+const OPENING_EMOTIONS = 5
 
 export function TestPage({ onBack }: { onBack: () => void }) {
   const observability = useObservabilityFacade()
@@ -53,14 +56,16 @@ export function TestPage({ onBack }: { onBack: () => void }) {
 }
 
 // The showcase proper: the sky-sphere over the starfield with the skin's camera + bloom, and the
-// effect/count switchers beneath. Switching an effect opens on its preferred emotion count (the
-// count it reads best at); the count row then explores 1..N freely, exactly like the web panel.
+// effect/count switchers beneath. Switching a sky keeps whatever count is set, because no sky caps
+// how many feelings it takes — the count row explores 1..N freely, exactly like the web panel.
 function SkyShowcase({ onBack }: { onBack: () => void }) {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
   const [effectKey, setEffectKey] = useState<SkyEffectKey>(skin.sky.effect)
   const active = resolveSkyEffect(effectKey)
-  const [count, setCount] = useState<number>(active.defaultCount)
+  // The count the showcase opens on — a review convenience, not a property of any sky: every recipe
+  // takes any number of feelings and divides itself by their weights.
+  const [count, setCount] = useState<number>(OPENING_EMOTIONS)
   const emotions = useMemo(() => showcaseEmotions(count), [count])
 
   return (
@@ -94,7 +99,6 @@ function SkyShowcase({ onBack }: { onBack: () => void }) {
                   accessibilityState={{ selected }}
                   onPress={() => {
                     setEffectKey(entry.key)
-                    setCount(entry.defaultCount)
                   }}
                   style={[styles.chip, selected && styles.chipSelected]}
                 >
