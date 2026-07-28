@@ -384,9 +384,6 @@ func seedWithdrawalTables(
 		base+"-counter-invite", otherUserID, userID, base+"-counter-token", now); err != nil {
 		t.Fatalf("seed counterpart invite failed: %v", err)
 	}
-	exec("palette_preferences", `
-		INSERT INTO palette_preferences (user_id, palette_id)
-		VALUES ($1, 'muted-dusk')`, userID)
 	exec("mood_colors", `
 		INSERT INTO mood_colors (user_id, mood, color)
 		VALUES ($1, 'CALM', '#5eb093')`, userID)
@@ -518,6 +515,7 @@ func migrationDeclaredUserTables(t *testing.T) map[string]struct{} {
 		t.Fatalf("migration glob = %v, files %d", err, len(migrationFiles))
 	}
 	createTable := regexp.MustCompile(`(?i)^CREATE TABLE(?: IF NOT EXISTS)? ([a-z_][a-z0-9_]*) \($`)
+	dropTable := regexp.MustCompile(`(?i)^DROP TABLE(?: IF EXISTS)? ([a-z_][a-z0-9_]*)\s*;`)
 	userColumn := regexp.MustCompile(`(?i)^user_id\s+`)
 	platformTables := map[string]struct{}{
 		"admin_users":           {},
@@ -533,11 +531,32 @@ func migrationDeclaredUserTables(t *testing.T) map[string]struct{} {
 			t.Fatalf("open migration %s: %v", migrationFile, err)
 		}
 		currentTable := ""
+		// Only the Up half declares the migrated schema. A Down block is the inverse — its CREATE
+		// re-raises a table this migration just dropped — so reading it would re-add a table the
+		// database no longer has. Migrations are globbed in name order, which is apply order, so
+		// applying each Up in turn (including its drops) lands on the final schema.
+		inUp := false
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
+			if strings.EqualFold(line, "-- +goose Up") {
+				inUp = true
+				continue
+			}
+			if strings.EqualFold(line, "-- +goose Down") {
+				inUp = false
+				currentTable = ""
+				continue
+			}
+			if !inUp {
+				continue
+			}
 			if match := createTable.FindStringSubmatch(line); len(match) == 2 {
 				currentTable = strings.ToLower(match[1])
+				continue
+			}
+			if match := dropTable.FindStringSubmatch(line); len(match) == 2 {
+				delete(tables, strings.ToLower(match[1]))
 				continue
 			}
 			if currentTable == "" {
@@ -653,7 +672,6 @@ func cleanupWithdrawalRows(
 		for _, statement := range []string{
 			"DELETE FROM auth_providers WHERE user_id = $1",
 			"DELETE FROM invites WHERE user_id = $1 OR invitee_user_id = $1",
-			"DELETE FROM palette_preferences WHERE user_id = $1",
 			"DELETE FROM mood_colors WHERE user_id = $1",
 			"DELETE FROM users WHERE user_id = $1",
 			"DELETE FROM admin_users WHERE user_id = $1",

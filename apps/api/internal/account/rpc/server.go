@@ -118,30 +118,6 @@ func (s *Server) GetInviteLink(ctx context.Context, _ *connect.Request[accountv1
 	}), nil
 }
 
-func (s *Server) GetPalettePreference(ctx context.Context, _ *connect.Request[accountv1.GetPalettePreferenceRequest]) (*connect.Response[accountv1.PalettePreference], error) {
-	scope, err := userScope(ctx)
-	if err != nil {
-		return nil, err
-	}
-	paletteID, err := s.service.GetPalettePreference(ctx, scope)
-	if err != nil {
-		return nil, domainError(err)
-	}
-	return connect.NewResponse(&accountv1.PalettePreference{PaletteId: paletteID}), nil
-}
-
-func (s *Server) SetPalettePreference(ctx context.Context, req *connect.Request[accountv1.SetPalettePreferenceRequest]) (*connect.Response[accountv1.PalettePreference], error) {
-	scope, err := userScope(ctx)
-	if err != nil {
-		return nil, err
-	}
-	paletteID, err := s.service.SetPalettePreference(ctx, scope, req.Msg.GetPaletteId())
-	if err != nil {
-		return nil, domainError(err)
-	}
-	return connect.NewResponse(&accountv1.PalettePreference{PaletteId: paletteID}), nil
-}
-
 func (s *Server) GetMoodColors(
 	ctx context.Context,
 	_ *connect.Request[accountv1.GetMoodColorsRequest],
@@ -270,8 +246,6 @@ func domainError(err error) error {
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonNotWithdrawn, err, nil)
 	case errors.Is(err, account.ErrRestoreWindowExpired):
 		return apperr.Domain(connect.CodeFailedPrecondition, reasonRestoreWindowExpired, err, nil)
-	case errors.Is(err, account.ErrUnknownPaletteID):
-		return apperr.Domain(connect.CodeInvalidArgument, reasonUnknownPalette, err, nil)
 	case errors.Is(err, account.ErrMoodInvalid), errors.Is(err, account.ErrColorInvalid):
 		return apperr.Domain(connect.CodeInvalidArgument, reasonMoodColorInvalid, err, nil)
 	case errors.Is(err, account.ErrScopeRequired):

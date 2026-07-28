@@ -80,7 +80,6 @@ const hardDeleteQueries = new Set([
   'twinkle/purge_user.sql#PurgeUserTwinkleBalance',
   'account/withdrawal.sql#PurgeAccountAuthProviders',
   'account/withdrawal.sql#PurgeAccountInvites',
-  'account/withdrawal.sql#PurgeAccountPalettePreference',
   'account/withdrawal.sql#PurgeAccountMoodColors',
   'account/withdrawal.sql#PurgeAccountUser',
 ])
@@ -169,6 +168,27 @@ export function createTableBodies(source) {
     tables.push({ table: match[1], body: end === -1 ? null : source.slice(open + 1, end) })
   }
   return tables
+}
+
+// The Up half of a goose migration, i.e. everything the migration actually applies. Markers are
+// line comments, so this must run before stripSqlNoise erases them. A file without an Up marker is
+// read whole rather than skipped — fail-closed, since dropping it silently would hide its tables.
+export function migrationUpSection(rawSource) {
+  const up = /^[ \t]*--[ \t]*\+goose[ \t]+Up[ \t]*$/im.exec(rawSource)
+  if (!up) return rawSource
+  const rest = rawSource.slice(up.index + up[0].length)
+  const down = /^[ \t]*--[ \t]*\+goose[ \t]+Down[ \t]*$/im.exec(rest)
+  return down ? rest.slice(0, down.index) : rest
+}
+
+export function droppedTables(source) {
+  const dropped = new Set()
+  for (const match of source.matchAll(
+    /\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:(?:"[^"]+"|[A-Za-z0-9_]+)\.)?(?:"([^"]+)"|([A-Za-z0-9_]+))/gi,
+  )) {
+    dropped.add((match[1] ?? match[2]).toLowerCase())
+  }
+  return dropped
 }
 
 const TABLE_CONSTRAINT_KEYWORDS = new Set([
@@ -828,9 +848,13 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
   const violations = []
   const productUserTables = new Set()
 
-  for (const file of sqlFiles(migrationsRoot)) {
+  // Migration filenames are their apply order, and only the Up half describes the schema the
+  // product actually runs against: a Down block's CREATE re-raises a table its own Up just
+  // dropped. Replaying the Ups in order — drops included — is what keeps a retired table out of
+  // the set, so its name stops being a live product table the moment it stops existing.
+  for (const file of sqlFiles(migrationsRoot).sort()) {
     const rel = relative(repoRoot, file).replaceAll('\\', '/')
-    const source = stripSqlNoise(readFileSync(file, 'utf8'))
+    const source = stripSqlNoise(migrationUpSection(readFileSync(file, 'utf8')))
     for (const { table, body } of createTableBodies(source)) {
       if (platformTables.has(table)) continue
       if (body === null) {
@@ -844,6 +868,27 @@ export function findPersistenceViolations({ migrationsRoot, queriesRoot }) {
       } else {
         productUserTables.add(table.toLowerCase())
       }
+    }
+    for (const table of droppedTables(source)) {
+      productUserTables.delete(table)
+    }
+  }
+
+  // A hard-delete allowance names one sqlc statement. When that statement is renamed or deleted the
+  // entry becomes a pre-approval nobody reviewed: whoever next writes a query under the stale name
+  // gets to hard-delete a user table without passing this gate. Fail on the orphan instead.
+  const liveQueryKeys = new Set()
+  for (const file of sqlFiles(queriesRoot)) {
+    const rel = relative(queriesRoot, file).replaceAll('\\', '/')
+    for (const { name } of segmentSqlcQueries(readFileSync(file, 'utf8'))) {
+      if (name) liveQueryKeys.add(`${rel}#${name}`)
+    }
+  }
+  for (const key of [...hardDeleteQueries, ...globalQueries].sort()) {
+    if (!liveQueryKeys.has(key)) {
+      violations.push(
+        `scripts/check-persistence-isolation.mjs: allowlisted "${key}" matches no sqlc statement — remove the stale entry`,
+      )
     }
   }
 

@@ -137,14 +137,6 @@ func (profileZoneStore) UpdateUserProfile(context.Context, platform.UserScope, a
 	return account.Profile{}, false, nil
 }
 
-func (profileZoneStore) GetPalettePreference(context.Context, platform.UserScope) (string, bool, error) {
-	return "", false, nil
-}
-
-func (profileZoneStore) UpsertPalettePreference(context.Context, platform.UserScope, string) (string, error) {
-	return "", nil
-}
-
 func (profileZoneStore) ListMoodColors(context.Context, platform.UserScope) ([]account.MoodColor, error) {
 	return nil, nil
 }
@@ -497,7 +489,6 @@ func cleanupSignupSettlementRows(t *testing.T, pool *platformdb.Pool, userIDs ..
 			"twinkle_ledger_entries",
 			"twinkle_balances",
 			"auth_providers",
-			"palette_preferences",
 			"users",
 		} {
 			if _, err := pool.PgxPool().Exec(ctx,

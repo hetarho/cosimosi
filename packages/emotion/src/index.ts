@@ -23,15 +23,7 @@ export {
   type Color,
   type MoodPalette,
 } from './palette.ts'
-export {
-  DEFAULT_PALETTE_ID,
-  PALETTES,
-  listPalettes,
-  paletteById,
-  paletteIds,
-  resolvePaletteById,
-  type ResolvedMoodPalette,
-} from './registry.ts'
+export { ALTERNATIVE_MOOD_COLORS } from './alternative-mood-colors.ts'
 export {
   MAX_SHOWCASE_EMOTIONS,
   showcaseEmotions,

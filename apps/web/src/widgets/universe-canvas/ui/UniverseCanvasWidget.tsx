@@ -44,7 +44,7 @@ import {
   StarLayer,
 } from '@cosimosi/universe-render'
 
-import { usePaletteVersion } from '../../../features/change-palette/index.ts'
+import { usePaletteVersion } from '../../../features/change-mood-colors/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useUniverse } from '@cosimosi/universe/react'

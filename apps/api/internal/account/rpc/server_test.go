@@ -22,7 +22,6 @@ func TestDomainErrorMapsAccountErrors(t *testing.T) {
 		wantCode   connect.Code
 		wantReason string
 	}{
-		{account.ErrUnknownPaletteID, connect.CodeInvalidArgument, reasonUnknownPalette},
 		{account.ErrScopeRequired, connect.CodeUnauthenticated, reasonScopeRequired},
 		{account.ErrNotProvisioned, connect.CodeFailedPrecondition, reasonNotProvisioned},
 		{account.ErrSignupRequired, connect.CodeFailedPrecondition, reasonSignupRequired},
@@ -163,14 +162,6 @@ func (absentProfileStore) WithInviteSettlementLock(
 	fn func() error,
 ) error {
 	return fn()
-}
-
-func (absentProfileStore) GetPalettePreference(context.Context, platform.UserScope) (string, bool, error) {
-	return "", false, nil
-}
-
-func (absentProfileStore) UpsertPalettePreference(context.Context, platform.UserScope, string) (string, error) {
-	return "", nil
 }
 
 func (absentProfileStore) ListMoodColors(context.Context, platform.UserScope) ([]account.MoodColor, error) {

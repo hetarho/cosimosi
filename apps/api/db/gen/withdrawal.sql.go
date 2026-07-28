@@ -112,16 +112,6 @@ func (q *Queries) PurgeAccountMoodColors(ctx context.Context, userID string) err
 	return err
 }
 
-const purgeAccountPalettePreference = `-- name: PurgeAccountPalettePreference :exec
-DELETE FROM palette_preferences
-WHERE user_id = $1
-`
-
-func (q *Queries) PurgeAccountPalettePreference(ctx context.Context, userID string) error {
-	_, err := q.db.Exec(ctx, purgeAccountPalettePreference, userID)
-	return err
-}
-
 const purgeAccountUser = `-- name: PurgeAccountUser :execrows
 DELETE FROM users
 WHERE user_id = $1

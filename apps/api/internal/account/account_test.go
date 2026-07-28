@@ -21,7 +21,6 @@ import (
 type fakeStore struct {
 	mu             sync.Mutex
 	settlementMu   sync.Mutex
-	palettes       map[string]string
 	moodColors     map[string]map[Mood]Color
 	moodColorStats map[Mood][]MoodColorStatCount
 	profiles       map[string]Profile
@@ -92,25 +91,6 @@ func cloneProviderMap(source map[string][]AuthProvider) map[string][]AuthProvide
 		cloned[key] = append([]AuthProvider(nil), value...)
 	}
 	return cloned
-}
-
-func (f *fakeStore) GetPalettePreference(_ context.Context, scope platform.UserScope) (string, bool, error) {
-	if f.getErr != nil {
-		return "", false, f.getErr
-	}
-	id, ok := f.palettes[scope.UserID()]
-	return id, ok, nil
-}
-
-func (f *fakeStore) UpsertPalettePreference(_ context.Context, scope platform.UserScope, paletteID string) (string, error) {
-	if f.putErr != nil {
-		return "", f.putErr
-	}
-	if f.palettes == nil {
-		f.palettes = map[string]string{}
-	}
-	f.palettes[scope.UserID()] = paletteID
-	return paletteID, nil
 }
 
 func (f *fakeStore) ListMoodColors(_ context.Context, scope platform.UserScope) ([]MoodColor, error) {
@@ -458,63 +438,6 @@ func TestNewServiceRequiresDependencies(t *testing.T) {
 	}
 }
 
-func TestGetReturnsDefaultWhenPaletteUnset(t *testing.T) {
-	t.Parallel()
-	service := newTestService(t, &fakeStore{profiles: map[string]Profile{"u1": provisionedProfile("u1")}})
-
-	got, err := service.GetPalettePreference(context.Background(), mustScope(t, "u1"))
-	if err != nil {
-		t.Fatalf("GetPalettePreference failed: %v", err)
-	}
-	if got != DefaultPaletteID {
-		t.Fatalf("unset get = %q, want %q", got, DefaultPaletteID)
-	}
-}
-
-func TestSetThenGetPaletteRoundTrips(t *testing.T) {
-	t.Parallel()
-	store := &fakeStore{profiles: map[string]Profile{"u1": provisionedProfile("u1")}}
-	service := newTestService(t, store)
-	scope := mustScope(t, "u1")
-
-	set, err := service.SetPalettePreference(context.Background(), scope, "muted-dusk")
-	if err != nil || set != "muted-dusk" {
-		t.Fatalf("SetPalettePreference = %q, %v", set, err)
-	}
-	got, err := service.GetPalettePreference(context.Background(), scope)
-	if err != nil || got != "muted-dusk" {
-		t.Fatalf("GetPalettePreference = %q, %v", got, err)
-	}
-}
-
-func TestSetRejectsUnknownPaletteID(t *testing.T) {
-	t.Parallel()
-	store := &fakeStore{profiles: map[string]Profile{"u1": provisionedProfile("u1")}}
-	service := newTestService(t, store)
-	scope := mustScope(t, "u1")
-
-	if _, err := service.SetPalettePreference(context.Background(), scope, "not-a-palette"); !errors.Is(err, ErrUnknownPaletteID) {
-		t.Fatalf("set(unknown) err = %v, want ErrUnknownPaletteID", err)
-	}
-	if _, ok := store.palettes["u1"]; ok {
-		t.Fatal("a rejected palette write must not persist")
-	}
-}
-
-func TestGetCoercesUnknownStoredPaletteIDToDefault(t *testing.T) {
-	t.Parallel()
-	store := &fakeStore{
-		palettes: map[string]string{"u1": "retired-palette"},
-		profiles: map[string]Profile{"u1": provisionedProfile("u1")},
-	}
-	service := newTestService(t, store)
-
-	got, err := service.GetPalettePreference(context.Background(), mustScope(t, "u1"))
-	if err != nil || got != DefaultPaletteID {
-		t.Fatalf("unknown stored id get = %q, %v; want %q", got, err, DefaultPaletteID)
-	}
-}
-
 func TestGetProfileTreatsUnprovisionedAsAbsentWithoutWriting(t *testing.T) {
 	t.Parallel()
 	store := &fakeStore{}
@@ -549,11 +472,14 @@ func TestUnprovisionedAccountReadsProfileButOtherRPCBehaviorsRequireSignup(t *te
 	if _, err := service.GetInviteLink(context.Background(), scope); !errors.Is(err, ErrSignupRequired) {
 		t.Fatalf("GetInviteLink err = %v, want ErrSignupRequired", err)
 	}
-	if _, err := service.GetPalettePreference(context.Background(), scope); !errors.Is(err, ErrSignupRequired) {
-		t.Fatalf("GetPalettePreference err = %v, want ErrSignupRequired", err)
+	if _, err := service.GetMoodColors(context.Background(), scope); !errors.Is(err, ErrSignupRequired) {
+		t.Fatalf("GetMoodColors err = %v, want ErrSignupRequired", err)
 	}
-	if _, err := service.SetPalettePreference(context.Background(), scope, DefaultPaletteID); !errors.Is(err, ErrSignupRequired) {
-		t.Fatalf("SetPalettePreference err = %v, want ErrSignupRequired", err)
+	if _, err := service.SetMoodColor(context.Background(), scope, "CALM", "#4eb9ad"); !errors.Is(err, ErrSignupRequired) {
+		t.Fatalf("SetMoodColor err = %v, want ErrSignupRequired", err)
+	}
+	if _, err := service.GetMoodColorStats(context.Background(), scope, "CALM"); !errors.Is(err, ErrSignupRequired) {
+		t.Fatalf("GetMoodColorStats err = %v, want ErrSignupRequired", err)
 	}
 }
 
@@ -1363,17 +1289,18 @@ func TestScopeRequired(t *testing.T) {
 	service := newTestService(t, &fakeStore{})
 	var anonymous platform.UserScope
 
-	if _, err := service.GetPalettePreference(context.Background(), anonymous); !errors.Is(err, ErrScopeRequired) {
-		t.Fatalf("get(anonymous) err = %v, want ErrScopeRequired", err)
+	if _, err := service.GetMoodColors(context.Background(), anonymous); !errors.Is(err, ErrScopeRequired) {
+		t.Fatalf("GetMoodColors(anonymous) err = %v, want ErrScopeRequired", err)
+	}
+	if _, err := service.SetMoodColor(context.Background(), anonymous, "CALM", "#4eb9ad"); !errors.Is(err, ErrScopeRequired) {
+		t.Fatalf("SetMoodColor(anonymous) err = %v, want ErrScopeRequired", err)
+	}
+	if _, err := service.GetMoodColorStats(context.Background(), anonymous, "CALM"); !errors.Is(err, ErrScopeRequired) {
+		t.Fatalf("GetMoodColorStats(anonymous) err = %v, want ErrScopeRequired", err)
 	}
 	if _, err := service.GetProfile(context.Background(), anonymous); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("GetProfile(anonymous) err = %v, want ErrScopeRequired", err)
 	}
-}
-
-func TestRegistryAllowListMatchesFixture(t *testing.T) {
-	t.Parallel()
-	assertStringFixture(t, "testdata/palette-ids.json", RegistryPaletteIDs())
 }
 
 func TestShippedLocalesMatchFixture(t *testing.T) {

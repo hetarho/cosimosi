@@ -19,7 +19,6 @@ type Service struct {
 	withdrawalStatuses withdrawalStatusCache
 	now                func() time.Time
 	newID              func() string
-	paletteIDs         map[string]struct{}
 }
 
 type ServiceDeps struct {
@@ -85,10 +84,6 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.NewID == nil {
 		deps.NewID = platform.NewID
 	}
-	allowed := make(map[string]struct{}, len(registryPaletteIDs))
-	for _, id := range registryPaletteIDs {
-		allowed[id] = struct{}{}
-	}
 	return &Service{
 		store:              deps.Store,
 		directory:          deps.Directory,
@@ -101,6 +96,5 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		credentials:        deps.Credentials,
 		now:                deps.Now,
 		newID:              deps.NewID,
-		paletteIDs:         allowed,
 	}, nil
 }

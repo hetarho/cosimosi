@@ -7,7 +7,6 @@ export const ERROR_REASONS = {
   platformUnauthenticated: 'PLATFORM_UNAUTHENTICATED',
   platformAuthVerifierUnavailable: 'PLATFORM_AUTH_VERIFIER_UNAVAILABLE',
   platformAccountWithdrawn: 'PLATFORM_ACCOUNT_WITHDRAWN',
-  accountUnknownPalette: 'ACCOUNT_UNKNOWN_PALETTE',
   accountScopeRequired: 'ACCOUNT_SCOPE_REQUIRED',
   accountNotProvisioned: 'ACCOUNT_NOT_PROVISIONED',
   accountSignupRequired: 'ACCOUNT_SIGNUP_REQUIRED',

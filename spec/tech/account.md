@@ -15,10 +15,8 @@ Migration `00016_account_identity.sql` creates three product-owned, user-scoped 
 - `invites(id, user_id, invitee_user_id, token, created_at, bound_at, rewarded_at)` — unique token, unique invitee,
   non-self, bound-only rows, and no `deleted_at`.
 
-Palette storage coexists in three tables:
+Color storage is two tables:
 
-- `palette_preferences(user_id, palette_id, updated_at)` retains the legacy first-party registry-id
-  contract but does not define an absent per-mood row's fallback;
 - `mood_colors(user_id, mood, color, updated_at)` has one optional lowercase color per mood;
 - `mood_color_counts(mood, hue_bucket, color, count)` is a deliberately anonymous aggregate with
   no user id.

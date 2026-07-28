@@ -15,7 +15,6 @@ import {
   GetProfileResponseSchema,
   ListAuthProvidersResponseSchema,
   MoodColorSchema,
-  PalettePreferenceSchema,
   SignUpRequestSchema,
   SignUpResponseSchema,
   UpdateProfileRequestSchema,
@@ -23,7 +22,6 @@ import {
   WithdrawResponseSchema,
   type SignUpRequest,
   type SetMoodColorRequest,
-  type SetPalettePreferenceRequest,
   type UpdateProfileRequest,
 } from './gen/cosimosi/account/v1/account_pb.ts'
 
@@ -32,18 +30,15 @@ export type {
   GetInviteLinkResponse,
   GetMoodColorsResponse,
   GetMoodColorStatsResponse,
-  GetPalettePreferenceRequest,
   GetProfileRequest,
   GetProfileResponse,
   LinkedAuthProvider,
   ListAuthProvidersResponse,
   MoodColor,
   MoodColorStat,
-  PalettePreference,
   Profile,
   SignUpRequest,
   SignUpResponse,
-  SetPalettePreferenceRequest,
   SetMoodColorRequest,
   UpdateProfileRequest,
   UpdateProfileResponse,
@@ -52,13 +47,6 @@ export type {
 
 export function createAccountClient(transport: Transport): Client<typeof AccountService> {
   return createClient(AccountService, transport)
-}
-
-// Persist the chosen palette id; resolves to the stored preference (the server echoes the id it
-// kept). This is only the persistence call — applying the color swap is the caller's, so a single
-// seam owns the re-color.
-export function setPalettePreference(transport: Transport, paletteId: string) {
-  return createAccountClient(transport).setPalettePreference({ paletteId })
 }
 
 export function setMoodColor(transport: Transport, mood: string, color: string) {
@@ -89,19 +77,6 @@ export function createAccountServiceQueryKey(transport?: Transport) {
     transport,
     cardinality: undefined,
   })
-}
-
-export function createGetPalettePreferenceQueryKey(transport?: Transport) {
-  return createConnectQueryKey({
-    schema: AccountService.method.getPalettePreference,
-    input: {},
-    transport,
-    cardinality: 'finite',
-  })
-}
-
-export function createGetPalettePreferenceQueryOptions(transport: Transport) {
-  return createQueryOptions(AccountService.method.getPalettePreference, {}, { transport })
 }
 
 export function createGetMoodColorsQueryKey(transport?: Transport) {
@@ -178,10 +153,6 @@ export function createAccountMockTransport(handlers: {
   listAuthProviders?: () => MessageInitShape<typeof ListAuthProvidersResponseSchema>
   getInviteLink?: () => MessageInitShape<typeof GetInviteLinkResponseSchema>
   withdraw?: () => MessageInitShape<typeof WithdrawResponseSchema>
-  getPalettePreference?: () => MessageInitShape<typeof PalettePreferenceSchema>
-  setPalettePreference?: (
-    request: SetPalettePreferenceRequest,
-  ) => MessageInitShape<typeof PalettePreferenceSchema>
   getMoodColors?: () => MessageInitShape<typeof GetMoodColorsResponseSchema>
   setMoodColor?: (request: SetMoodColorRequest) => MessageInitShape<typeof MoodColorSchema>
   getMoodColorStats?: (mood: string) => MessageInitShape<typeof GetMoodColorStatsResponseSchema>
@@ -220,12 +191,6 @@ export function createAccountMockTransport(handlers: {
       },
       withdraw() {
         return handlers.withdraw?.() ?? {}
-      },
-      getPalettePreference() {
-        return handlers.getPalettePreference?.() ?? {}
-      },
-      setPalettePreference(request) {
-        return handlers.setPalettePreference?.(request) ?? { paletteId: request.paletteId }
       },
       getMoodColors() {
         return handlers.getMoodColors?.() ?? { colors: [] }

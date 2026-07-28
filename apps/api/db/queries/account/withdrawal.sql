@@ -34,10 +34,6 @@ WHERE user_id = sqlc.arg(user_id);
 DELETE FROM invites
 WHERE user_id = sqlc.arg(user_id);
 
--- name: PurgeAccountPalettePreference :exec
-DELETE FROM palette_preferences
-WHERE user_id = sqlc.arg(user_id);
-
 -- name: PurgeAccountMoodColors :exec
 DELETE FROM mood_colors
 WHERE user_id = sqlc.arg(user_id);

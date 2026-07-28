@@ -1,17 +1,20 @@
 import { VALUES } from '@cosimosi/config'
 import { describe, expect, it } from 'vitest'
 
+import { ALTERNATIVE_MOOD_COLORS } from './alternative-mood-colors.ts'
 import { checkPaletteAxisConsistency, colorWarmth } from './axis-consistency.ts'
 import { MOODS, moodCoordinate, type Mood } from './mood.ts'
-import { PALETTES } from './registry.ts'
-import { defineMoodPalette, type Color } from './palette.ts'
+import { defaultMoodPalette, defineMoodPalette, type Color } from './palette.ts'
 
 describe('palette axis consistency', () => {
-  it('reports no warnings for any shipped registry palette', () => {
-    for (const [id, palette] of Object.entries(PALETTES)) {
-      const warnings = checkPaletteAxisConsistency(palette)
-      expect(warnings, `${id} should be axis-consistent`).toEqual([])
-    }
+  // Both authored tables, not just the one that colors a fresh account: the alternative table
+  // reaches a user's sky through the offline recommendations, so a [P3] inversion there would be
+  // shipped advice to break the axis.
+  it.each([
+    ['default', defaultMoodPalette],
+    ['alternative recommendations', defineMoodPalette('alternative', ALTERNATIVE_MOOD_COLORS)],
+  ])('reports no warnings for the %s colors', (_name, palette) => {
+    expect(checkPaletteAxisConsistency(palette)).toEqual([])
   })
 
   it('warns when hue contradicts valence beyond the threshold', () => {

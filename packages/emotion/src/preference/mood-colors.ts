@@ -3,10 +3,10 @@ import type { Transport } from '@connectrpc/connect'
 import { createAccountClient, setMoodColor as persistMoodColor } from '@cosimosi/api-client'
 import { VALUES } from '@cosimosi/config'
 
+import { ALTERNATIVE_MOOD_COLORS } from '../alternative-mood-colors.ts'
 import { MOODS, type Mood } from '../mood.ts'
 import { colorToOkLch, okLchToColor } from '../oklab.ts'
 import { defaultMoodPalette, setMoodPalette, type Color, type MoodPalette } from '../palette.ts'
-import { PALETTES } from '../registry.ts'
 import { resolveMoodColors, snapToEmotionStep, type MoodColorRow } from '../mood-color.ts'
 
 export interface MoodColorRecommendation {
@@ -71,7 +71,7 @@ export function completeMoodColorRecommendations(
   const lch = colorToOkLch(base)
   const fallback = [
     base,
-    PALETTES['muted-dusk'].colors[mood],
+    ALTERNATIVE_MOOD_COLORS[mood],
     okLchToColor({
       ...lch,
       h: (lch.h + VALUES.palette.hueBucketDegrees / 2) % 360,

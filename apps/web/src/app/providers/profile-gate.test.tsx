@@ -112,9 +112,6 @@ describe('ProfileGate', () => {
           paletteReads += 1
           return { colors: [] }
         },
-        getPalettePreference() {
-          return { paletteId: 'cosimosi-default' }
-        },
         signUp(request) {
           signupRequests.push({
             nickname: request.nickname,

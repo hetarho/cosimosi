@@ -178,10 +178,6 @@ export const accountRpcCachePolicies = [
     policy: userScopedUnaryReadPolicy,
   },
   {
-    method: AccountService.method.getPalettePreference,
-    policy: userScopedUnaryReadPolicy,
-  },
-  {
     method: AccountService.method.getMoodColors,
     policy: userScopedUnaryReadPolicy,
   },

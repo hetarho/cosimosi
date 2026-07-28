@@ -686,133 +686,6 @@ func (x *GetInviteLinkResponse) GetExpiresAt() string {
 	return ""
 }
 
-// Caller = the authenticated user (scope from the auth context); no request fields.
-type GetPalettePreferenceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetPalettePreferenceRequest) Reset() {
-	*x = GetPalettePreferenceRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetPalettePreferenceRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetPalettePreferenceRequest) ProtoMessage() {}
-
-func (x *GetPalettePreferenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetPalettePreferenceRequest.ProtoReflect.Descriptor instead.
-func (*GetPalettePreferenceRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{12}
-}
-
-// palette_id is the entire writable surface.
-type SetPalettePreferenceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PaletteId     string                 `protobuf:"bytes,1,opt,name=palette_id,json=paletteId,proto3" json:"palette_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetPalettePreferenceRequest) Reset() {
-	*x = SetPalettePreferenceRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetPalettePreferenceRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetPalettePreferenceRequest) ProtoMessage() {}
-
-func (x *SetPalettePreferenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetPalettePreferenceRequest.ProtoReflect.Descriptor instead.
-func (*SetPalettePreferenceRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *SetPalettePreferenceRequest) GetPaletteId() string {
-	if x != nil {
-		return x.PaletteId
-	}
-	return ""
-}
-
-// The resolved palette id (the default id when the user never set one).
-type PalettePreference struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PaletteId     string                 `protobuf:"bytes,1,opt,name=palette_id,json=paletteId,proto3" json:"palette_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PalettePreference) Reset() {
-	*x = PalettePreference{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PalettePreference) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PalettePreference) ProtoMessage() {}
-
-func (x *PalettePreference) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PalettePreference.ProtoReflect.Descriptor instead.
-func (*PalettePreference) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *PalettePreference) GetPaletteId() string {
-	if x != nil {
-		return x.PaletteId
-	}
-	return ""
-}
-
 type GetMoodColorsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -821,7 +694,7 @@ type GetMoodColorsRequest struct {
 
 func (x *GetMoodColorsRequest) Reset() {
 	*x = GetMoodColorsRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[15]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -833,7 +706,7 @@ func (x *GetMoodColorsRequest) String() string {
 func (*GetMoodColorsRequest) ProtoMessage() {}
 
 func (x *GetMoodColorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[15]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -846,7 +719,7 @@ func (x *GetMoodColorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMoodColorsRequest.ProtoReflect.Descriptor instead.
 func (*GetMoodColorsRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{15}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{12}
 }
 
 type GetMoodColorsResponse struct {
@@ -858,7 +731,7 @@ type GetMoodColorsResponse struct {
 
 func (x *GetMoodColorsResponse) Reset() {
 	*x = GetMoodColorsResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[16]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -870,7 +743,7 @@ func (x *GetMoodColorsResponse) String() string {
 func (*GetMoodColorsResponse) ProtoMessage() {}
 
 func (x *GetMoodColorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[16]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -883,7 +756,7 @@ func (x *GetMoodColorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMoodColorsResponse.ProtoReflect.Descriptor instead.
 func (*GetMoodColorsResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{16}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetMoodColorsResponse) GetColors() []*MoodColor {
@@ -903,7 +776,7 @@ type SetMoodColorRequest struct {
 
 func (x *SetMoodColorRequest) Reset() {
 	*x = SetMoodColorRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[17]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -915,7 +788,7 @@ func (x *SetMoodColorRequest) String() string {
 func (*SetMoodColorRequest) ProtoMessage() {}
 
 func (x *SetMoodColorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[17]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -928,7 +801,7 @@ func (x *SetMoodColorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMoodColorRequest.ProtoReflect.Descriptor instead.
 func (*SetMoodColorRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{17}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SetMoodColorRequest) GetMood() string {
@@ -955,7 +828,7 @@ type MoodColor struct {
 
 func (x *MoodColor) Reset() {
 	*x = MoodColor{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[18]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -967,7 +840,7 @@ func (x *MoodColor) String() string {
 func (*MoodColor) ProtoMessage() {}
 
 func (x *MoodColor) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[18]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -980,7 +853,7 @@ func (x *MoodColor) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoodColor.ProtoReflect.Descriptor instead.
 func (*MoodColor) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{18}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *MoodColor) GetMood() string {
@@ -1006,7 +879,7 @@ type GetMoodColorStatsRequest struct {
 
 func (x *GetMoodColorStatsRequest) Reset() {
 	*x = GetMoodColorStatsRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[19]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1018,7 +891,7 @@ func (x *GetMoodColorStatsRequest) String() string {
 func (*GetMoodColorStatsRequest) ProtoMessage() {}
 
 func (x *GetMoodColorStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[19]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1031,7 +904,7 @@ func (x *GetMoodColorStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMoodColorStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetMoodColorStatsRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{19}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetMoodColorStatsRequest) GetMood() string {
@@ -1050,7 +923,7 @@ type GetMoodColorStatsResponse struct {
 
 func (x *GetMoodColorStatsResponse) Reset() {
 	*x = GetMoodColorStatsResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[20]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1062,7 +935,7 @@ func (x *GetMoodColorStatsResponse) String() string {
 func (*GetMoodColorStatsResponse) ProtoMessage() {}
 
 func (x *GetMoodColorStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[20]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1075,7 +948,7 @@ func (x *GetMoodColorStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMoodColorStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetMoodColorStatsResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{20}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetMoodColorStatsResponse) GetStats() []*MoodColorStat {
@@ -1096,7 +969,7 @@ type MoodColorStat struct {
 
 func (x *MoodColorStat) Reset() {
 	*x = MoodColorStat{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[21]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1108,7 +981,7 @@ func (x *MoodColorStat) String() string {
 func (*MoodColorStat) ProtoMessage() {}
 
 func (x *MoodColorStat) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[21]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1121,7 +994,7 @@ func (x *MoodColorStat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoodColorStat.ProtoReflect.Descriptor instead.
 func (*MoodColorStat) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{21}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *MoodColorStat) GetBucket() int32 {
@@ -1156,7 +1029,7 @@ type WithdrawRequest struct {
 
 func (x *WithdrawRequest) Reset() {
 	*x = WithdrawRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[22]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1168,7 +1041,7 @@ func (x *WithdrawRequest) String() string {
 func (*WithdrawRequest) ProtoMessage() {}
 
 func (x *WithdrawRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[22]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1181,7 +1054,7 @@ func (x *WithdrawRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawRequest.ProtoReflect.Descriptor instead.
 func (*WithdrawRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{22}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{19}
 }
 
 type WithdrawResponse struct {
@@ -1194,7 +1067,7 @@ type WithdrawResponse struct {
 
 func (x *WithdrawResponse) Reset() {
 	*x = WithdrawResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[23]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1206,7 +1079,7 @@ func (x *WithdrawResponse) String() string {
 func (*WithdrawResponse) ProtoMessage() {}
 
 func (x *WithdrawResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[23]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1219,7 +1092,7 @@ func (x *WithdrawResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawResponse.ProtoReflect.Descriptor instead.
 func (*WithdrawResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{23}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *WithdrawResponse) GetWithdrawnAt() string {
@@ -1244,7 +1117,7 @@ type RestoreAccountRequest struct {
 
 func (x *RestoreAccountRequest) Reset() {
 	*x = RestoreAccountRequest{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[24]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1256,7 +1129,7 @@ func (x *RestoreAccountRequest) String() string {
 func (*RestoreAccountRequest) ProtoMessage() {}
 
 func (x *RestoreAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[24]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1269,7 +1142,7 @@ func (x *RestoreAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreAccountRequest.ProtoReflect.Descriptor instead.
 func (*RestoreAccountRequest) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{24}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{21}
 }
 
 type RestoreAccountResponse struct {
@@ -1281,7 +1154,7 @@ type RestoreAccountResponse struct {
 
 func (x *RestoreAccountResponse) Reset() {
 	*x = RestoreAccountResponse{}
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[25]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1293,7 +1166,7 @@ func (x *RestoreAccountResponse) String() string {
 func (*RestoreAccountResponse) ProtoMessage() {}
 
 func (x *RestoreAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cosimosi_account_v1_account_proto_msgTypes[25]
+	mi := &file_cosimosi_account_v1_account_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1306,7 +1179,7 @@ func (x *RestoreAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreAccountResponse.ProtoReflect.Descriptor instead.
 func (*RestoreAccountResponse) Descriptor() ([]byte, []int) {
-	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{25}
+	return file_cosimosi_account_v1_account_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RestoreAccountResponse) GetRestoredAt() string {
@@ -1357,14 +1230,7 @@ const file_cosimosi_account_v1_account_proto_rawDesc = "" +
 	"\x15GetInviteLinkResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\tR\texpiresAt\"\x1d\n" +
-	"\x1bGetPalettePreferenceRequest\"<\n" +
-	"\x1bSetPalettePreferenceRequest\x12\x1d\n" +
-	"\n" +
-	"palette_id\x18\x01 \x01(\tR\tpaletteId\"2\n" +
-	"\x11PalettePreference\x12\x1d\n" +
-	"\n" +
-	"palette_id\x18\x01 \x01(\tR\tpaletteId\"\x16\n" +
+	"expires_at\x18\x02 \x01(\tR\texpiresAt\"\x16\n" +
 	"\x14GetMoodColorsRequest\"O\n" +
 	"\x15GetMoodColorsResponse\x126\n" +
 	"\x06colors\x18\x01 \x03(\v2\x1e.cosimosi.account.v1.MoodColorR\x06colors\"?\n" +
@@ -1394,17 +1260,14 @@ const file_cosimosi_account_v1_account_proto_rawDesc = "" +
 	"\x10AuthProviderKind\x12\"\n" +
 	"\x1eAUTH_PROVIDER_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19AUTH_PROVIDER_KIND_GOOGLE\x10\x01\x12\x1f\n" +
-	"\x1bAUTH_PROVIDER_KIND_PASSWORD\x10\x022\x82\n" +
-	"\n" +
+	"\x1bAUTH_PROVIDER_KIND_PASSWORD\x10\x022\x99\b\n" +
 	"\x0eAccountService\x12Q\n" +
 	"\x06SignUp\x12\".cosimosi.account.v1.SignUpRequest\x1a#.cosimosi.account.v1.SignUpResponse\x12b\n" +
 	"\n" +
 	"GetProfile\x12&.cosimosi.account.v1.GetProfileRequest\x1a'.cosimosi.account.v1.GetProfileResponse\"\x03\x90\x02\x01\x12f\n" +
 	"\rUpdateProfile\x12).cosimosi.account.v1.UpdateProfileRequest\x1a*.cosimosi.account.v1.UpdateProfileResponse\x12w\n" +
 	"\x11ListAuthProviders\x12-.cosimosi.account.v1.ListAuthProvidersRequest\x1a..cosimosi.account.v1.ListAuthProvidersResponse\"\x03\x90\x02\x01\x12k\n" +
-	"\rGetInviteLink\x12).cosimosi.account.v1.GetInviteLinkRequest\x1a*.cosimosi.account.v1.GetInviteLinkResponse\"\x03\x90\x02\x01\x12u\n" +
-	"\x14GetPalettePreference\x120.cosimosi.account.v1.GetPalettePreferenceRequest\x1a&.cosimosi.account.v1.PalettePreference\"\x03\x90\x02\x01\x12p\n" +
-	"\x14SetPalettePreference\x120.cosimosi.account.v1.SetPalettePreferenceRequest\x1a&.cosimosi.account.v1.PalettePreference\x12k\n" +
+	"\rGetInviteLink\x12).cosimosi.account.v1.GetInviteLinkRequest\x1a*.cosimosi.account.v1.GetInviteLinkResponse\"\x03\x90\x02\x01\x12k\n" +
 	"\rGetMoodColors\x12).cosimosi.account.v1.GetMoodColorsRequest\x1a*.cosimosi.account.v1.GetMoodColorsResponse\"\x03\x90\x02\x01\x12X\n" +
 	"\fSetMoodColor\x12(.cosimosi.account.v1.SetMoodColorRequest\x1a\x1e.cosimosi.account.v1.MoodColor\x12w\n" +
 	"\x11GetMoodColorStats\x12-.cosimosi.account.v1.GetMoodColorStatsRequest\x1a..cosimosi.account.v1.GetMoodColorStatsResponse\"\x03\x90\x02\x01\x12W\n" +
@@ -1425,69 +1288,62 @@ func file_cosimosi_account_v1_account_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_account_v1_account_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_cosimosi_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_cosimosi_account_v1_account_proto_goTypes = []any{
-	(AuthProviderKind)(0),               // 0: cosimosi.account.v1.AuthProviderKind
-	(*SignUpRequest)(nil),               // 1: cosimosi.account.v1.SignUpRequest
-	(*SignUpResponse)(nil),              // 2: cosimosi.account.v1.SignUpResponse
-	(*GetProfileRequest)(nil),           // 3: cosimosi.account.v1.GetProfileRequest
-	(*GetProfileResponse)(nil),          // 4: cosimosi.account.v1.GetProfileResponse
-	(*Profile)(nil),                     // 5: cosimosi.account.v1.Profile
-	(*UpdateProfileRequest)(nil),        // 6: cosimosi.account.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil),       // 7: cosimosi.account.v1.UpdateProfileResponse
-	(*ListAuthProvidersRequest)(nil),    // 8: cosimosi.account.v1.ListAuthProvidersRequest
-	(*ListAuthProvidersResponse)(nil),   // 9: cosimosi.account.v1.ListAuthProvidersResponse
-	(*LinkedAuthProvider)(nil),          // 10: cosimosi.account.v1.LinkedAuthProvider
-	(*GetInviteLinkRequest)(nil),        // 11: cosimosi.account.v1.GetInviteLinkRequest
-	(*GetInviteLinkResponse)(nil),       // 12: cosimosi.account.v1.GetInviteLinkResponse
-	(*GetPalettePreferenceRequest)(nil), // 13: cosimosi.account.v1.GetPalettePreferenceRequest
-	(*SetPalettePreferenceRequest)(nil), // 14: cosimosi.account.v1.SetPalettePreferenceRequest
-	(*PalettePreference)(nil),           // 15: cosimosi.account.v1.PalettePreference
-	(*GetMoodColorsRequest)(nil),        // 16: cosimosi.account.v1.GetMoodColorsRequest
-	(*GetMoodColorsResponse)(nil),       // 17: cosimosi.account.v1.GetMoodColorsResponse
-	(*SetMoodColorRequest)(nil),         // 18: cosimosi.account.v1.SetMoodColorRequest
-	(*MoodColor)(nil),                   // 19: cosimosi.account.v1.MoodColor
-	(*GetMoodColorStatsRequest)(nil),    // 20: cosimosi.account.v1.GetMoodColorStatsRequest
-	(*GetMoodColorStatsResponse)(nil),   // 21: cosimosi.account.v1.GetMoodColorStatsResponse
-	(*MoodColorStat)(nil),               // 22: cosimosi.account.v1.MoodColorStat
-	(*WithdrawRequest)(nil),             // 23: cosimosi.account.v1.WithdrawRequest
-	(*WithdrawResponse)(nil),            // 24: cosimosi.account.v1.WithdrawResponse
-	(*RestoreAccountRequest)(nil),       // 25: cosimosi.account.v1.RestoreAccountRequest
-	(*RestoreAccountResponse)(nil),      // 26: cosimosi.account.v1.RestoreAccountResponse
+	(AuthProviderKind)(0),             // 0: cosimosi.account.v1.AuthProviderKind
+	(*SignUpRequest)(nil),             // 1: cosimosi.account.v1.SignUpRequest
+	(*SignUpResponse)(nil),            // 2: cosimosi.account.v1.SignUpResponse
+	(*GetProfileRequest)(nil),         // 3: cosimosi.account.v1.GetProfileRequest
+	(*GetProfileResponse)(nil),        // 4: cosimosi.account.v1.GetProfileResponse
+	(*Profile)(nil),                   // 5: cosimosi.account.v1.Profile
+	(*UpdateProfileRequest)(nil),      // 6: cosimosi.account.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),     // 7: cosimosi.account.v1.UpdateProfileResponse
+	(*ListAuthProvidersRequest)(nil),  // 8: cosimosi.account.v1.ListAuthProvidersRequest
+	(*ListAuthProvidersResponse)(nil), // 9: cosimosi.account.v1.ListAuthProvidersResponse
+	(*LinkedAuthProvider)(nil),        // 10: cosimosi.account.v1.LinkedAuthProvider
+	(*GetInviteLinkRequest)(nil),      // 11: cosimosi.account.v1.GetInviteLinkRequest
+	(*GetInviteLinkResponse)(nil),     // 12: cosimosi.account.v1.GetInviteLinkResponse
+	(*GetMoodColorsRequest)(nil),      // 13: cosimosi.account.v1.GetMoodColorsRequest
+	(*GetMoodColorsResponse)(nil),     // 14: cosimosi.account.v1.GetMoodColorsResponse
+	(*SetMoodColorRequest)(nil),       // 15: cosimosi.account.v1.SetMoodColorRequest
+	(*MoodColor)(nil),                 // 16: cosimosi.account.v1.MoodColor
+	(*GetMoodColorStatsRequest)(nil),  // 17: cosimosi.account.v1.GetMoodColorStatsRequest
+	(*GetMoodColorStatsResponse)(nil), // 18: cosimosi.account.v1.GetMoodColorStatsResponse
+	(*MoodColorStat)(nil),             // 19: cosimosi.account.v1.MoodColorStat
+	(*WithdrawRequest)(nil),           // 20: cosimosi.account.v1.WithdrawRequest
+	(*WithdrawResponse)(nil),          // 21: cosimosi.account.v1.WithdrawResponse
+	(*RestoreAccountRequest)(nil),     // 22: cosimosi.account.v1.RestoreAccountRequest
+	(*RestoreAccountResponse)(nil),    // 23: cosimosi.account.v1.RestoreAccountResponse
 }
 var file_cosimosi_account_v1_account_proto_depIdxs = []int32{
 	5,  // 0: cosimosi.account.v1.GetProfileResponse.profile:type_name -> cosimosi.account.v1.Profile
 	5,  // 1: cosimosi.account.v1.UpdateProfileResponse.profile:type_name -> cosimosi.account.v1.Profile
 	10, // 2: cosimosi.account.v1.ListAuthProvidersResponse.providers:type_name -> cosimosi.account.v1.LinkedAuthProvider
 	0,  // 3: cosimosi.account.v1.LinkedAuthProvider.kind:type_name -> cosimosi.account.v1.AuthProviderKind
-	19, // 4: cosimosi.account.v1.GetMoodColorsResponse.colors:type_name -> cosimosi.account.v1.MoodColor
-	22, // 5: cosimosi.account.v1.GetMoodColorStatsResponse.stats:type_name -> cosimosi.account.v1.MoodColorStat
+	16, // 4: cosimosi.account.v1.GetMoodColorsResponse.colors:type_name -> cosimosi.account.v1.MoodColor
+	19, // 5: cosimosi.account.v1.GetMoodColorStatsResponse.stats:type_name -> cosimosi.account.v1.MoodColorStat
 	1,  // 6: cosimosi.account.v1.AccountService.SignUp:input_type -> cosimosi.account.v1.SignUpRequest
 	3,  // 7: cosimosi.account.v1.AccountService.GetProfile:input_type -> cosimosi.account.v1.GetProfileRequest
 	6,  // 8: cosimosi.account.v1.AccountService.UpdateProfile:input_type -> cosimosi.account.v1.UpdateProfileRequest
 	8,  // 9: cosimosi.account.v1.AccountService.ListAuthProviders:input_type -> cosimosi.account.v1.ListAuthProvidersRequest
 	11, // 10: cosimosi.account.v1.AccountService.GetInviteLink:input_type -> cosimosi.account.v1.GetInviteLinkRequest
-	13, // 11: cosimosi.account.v1.AccountService.GetPalettePreference:input_type -> cosimosi.account.v1.GetPalettePreferenceRequest
-	14, // 12: cosimosi.account.v1.AccountService.SetPalettePreference:input_type -> cosimosi.account.v1.SetPalettePreferenceRequest
-	16, // 13: cosimosi.account.v1.AccountService.GetMoodColors:input_type -> cosimosi.account.v1.GetMoodColorsRequest
-	18, // 14: cosimosi.account.v1.AccountService.SetMoodColor:input_type -> cosimosi.account.v1.SetMoodColorRequest
-	20, // 15: cosimosi.account.v1.AccountService.GetMoodColorStats:input_type -> cosimosi.account.v1.GetMoodColorStatsRequest
-	23, // 16: cosimosi.account.v1.AccountService.Withdraw:input_type -> cosimosi.account.v1.WithdrawRequest
-	25, // 17: cosimosi.account.v1.AccountService.RestoreAccount:input_type -> cosimosi.account.v1.RestoreAccountRequest
-	2,  // 18: cosimosi.account.v1.AccountService.SignUp:output_type -> cosimosi.account.v1.SignUpResponse
-	4,  // 19: cosimosi.account.v1.AccountService.GetProfile:output_type -> cosimosi.account.v1.GetProfileResponse
-	7,  // 20: cosimosi.account.v1.AccountService.UpdateProfile:output_type -> cosimosi.account.v1.UpdateProfileResponse
-	9,  // 21: cosimosi.account.v1.AccountService.ListAuthProviders:output_type -> cosimosi.account.v1.ListAuthProvidersResponse
-	12, // 22: cosimosi.account.v1.AccountService.GetInviteLink:output_type -> cosimosi.account.v1.GetInviteLinkResponse
-	15, // 23: cosimosi.account.v1.AccountService.GetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
-	15, // 24: cosimosi.account.v1.AccountService.SetPalettePreference:output_type -> cosimosi.account.v1.PalettePreference
-	17, // 25: cosimosi.account.v1.AccountService.GetMoodColors:output_type -> cosimosi.account.v1.GetMoodColorsResponse
-	19, // 26: cosimosi.account.v1.AccountService.SetMoodColor:output_type -> cosimosi.account.v1.MoodColor
-	21, // 27: cosimosi.account.v1.AccountService.GetMoodColorStats:output_type -> cosimosi.account.v1.GetMoodColorStatsResponse
-	24, // 28: cosimosi.account.v1.AccountService.Withdraw:output_type -> cosimosi.account.v1.WithdrawResponse
-	26, // 29: cosimosi.account.v1.AccountService.RestoreAccount:output_type -> cosimosi.account.v1.RestoreAccountResponse
-	18, // [18:30] is the sub-list for method output_type
-	6,  // [6:18] is the sub-list for method input_type
+	13, // 11: cosimosi.account.v1.AccountService.GetMoodColors:input_type -> cosimosi.account.v1.GetMoodColorsRequest
+	15, // 12: cosimosi.account.v1.AccountService.SetMoodColor:input_type -> cosimosi.account.v1.SetMoodColorRequest
+	17, // 13: cosimosi.account.v1.AccountService.GetMoodColorStats:input_type -> cosimosi.account.v1.GetMoodColorStatsRequest
+	20, // 14: cosimosi.account.v1.AccountService.Withdraw:input_type -> cosimosi.account.v1.WithdrawRequest
+	22, // 15: cosimosi.account.v1.AccountService.RestoreAccount:input_type -> cosimosi.account.v1.RestoreAccountRequest
+	2,  // 16: cosimosi.account.v1.AccountService.SignUp:output_type -> cosimosi.account.v1.SignUpResponse
+	4,  // 17: cosimosi.account.v1.AccountService.GetProfile:output_type -> cosimosi.account.v1.GetProfileResponse
+	7,  // 18: cosimosi.account.v1.AccountService.UpdateProfile:output_type -> cosimosi.account.v1.UpdateProfileResponse
+	9,  // 19: cosimosi.account.v1.AccountService.ListAuthProviders:output_type -> cosimosi.account.v1.ListAuthProvidersResponse
+	12, // 20: cosimosi.account.v1.AccountService.GetInviteLink:output_type -> cosimosi.account.v1.GetInviteLinkResponse
+	14, // 21: cosimosi.account.v1.AccountService.GetMoodColors:output_type -> cosimosi.account.v1.GetMoodColorsResponse
+	16, // 22: cosimosi.account.v1.AccountService.SetMoodColor:output_type -> cosimosi.account.v1.MoodColor
+	18, // 23: cosimosi.account.v1.AccountService.GetMoodColorStats:output_type -> cosimosi.account.v1.GetMoodColorStatsResponse
+	21, // 24: cosimosi.account.v1.AccountService.Withdraw:output_type -> cosimosi.account.v1.WithdrawResponse
+	23, // 25: cosimosi.account.v1.AccountService.RestoreAccount:output_type -> cosimosi.account.v1.RestoreAccountResponse
+	16, // [16:26] is the sub-list for method output_type
+	6,  // [6:16] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -1498,14 +1354,14 @@ func file_cosimosi_account_v1_account_proto_init() {
 	if File_cosimosi_account_v1_account_proto != nil {
 		return
 	}
-	file_cosimosi_account_v1_account_proto_msgTypes[21].OneofWrappers = []any{}
+	file_cosimosi_account_v1_account_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_account_v1_account_proto_rawDesc), len(file_cosimosi_account_v1_account_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   26,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

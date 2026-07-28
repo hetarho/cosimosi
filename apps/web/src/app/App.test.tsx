@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   createGetMoodColorsQueryKey,
-  createGetPalettePreferenceQueryKey,
   createGetProfileQueryKey,
   createGetUniverseQueryKey,
   type GetUniverseResponse,
@@ -11,7 +10,6 @@ import {
 import type { SessionStatus } from '@cosimosi/auth'
 import { resetUserState } from '@cosimosi/auth/user-state'
 import { setClientCacheData } from '@cosimosi/client-cache'
-import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
 import { defaultLocale, setActiveLocale } from '../shared/i18n/index.ts'
 import { createObservabilityFacade } from '@cosimosi/observability'
 
@@ -45,7 +43,7 @@ const emptyUniverse = {
   universeTime: '',
 } as unknown as GetUniverseResponse
 
-function seedDefaultPalette(fakes: ReturnType<typeof createTestHarnessFakes>, userId: string) {
+function seedDefaultColors(fakes: ReturnType<typeof createTestHarnessFakes>, userId: string) {
   resetUserState(userId, { name: 'locale', reset: resetWebLocaleUserState })
   setClientCacheData(fakes.queryClient, createGetProfileQueryKey(fakes.transport), {
     profile: {
@@ -58,9 +56,6 @@ function seedDefaultPalette(fakes: ReturnType<typeof createTestHarnessFakes>, us
   } as never)
   setClientCacheData(fakes.queryClient, createGetMoodColorsQueryKey(fakes.transport), {
     colors: [],
-  } as never)
-  setClientCacheData(fakes.queryClient, createGetPalettePreferenceQueryKey(fakes.transport), {
-    paletteId: DEFAULT_PALETTE_ID,
   } as never)
 }
 
@@ -255,7 +250,7 @@ describe('web auth gate', () => {
     const fakes = createTestHarnessFakes({ userId: 'me-test-user' })
     const observability = createObservabilityFacade()
     await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
-    seedDefaultPalette(fakes, 'me-test-user')
+    seedDefaultColors(fakes, 'me-test-user')
     const router = createAppRouter({
       diagnosticsEnabled: false,
       getSessionStatus: () => fakes.authFacade.snapshot.status,
@@ -307,7 +302,7 @@ describe('web auth gate', () => {
     const fakes = createTestHarnessFakes({ userId: 'universe-test-user' })
     const observability = createObservabilityFacade()
     await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
-    seedDefaultPalette(fakes, 'universe-test-user')
+    seedDefaultColors(fakes, 'universe-test-user')
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
     const router = createAppRouter({
       diagnosticsEnabled: false,

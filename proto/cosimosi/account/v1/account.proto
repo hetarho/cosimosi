@@ -26,14 +26,6 @@ service AccountService {
   rpc GetInviteLink(GetInviteLinkRequest) returns (GetInviteLinkResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  // Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
-  // NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).
-  rpc GetPalettePreference(GetPalettePreferenceRequest) returns (PalettePreference) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  // Store the caller's palette id. Accepts only an id known to the first-party registry; an
-  // unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
-  rpc SetPalettePreference(SetPalettePreferenceRequest) returns (PalettePreference);
   // Read only the caller's explicitly chosen mood rows. Missing moods remain authored defaults.
   rpc GetMoodColors(GetMoodColorsRequest) returns (GetMoodColorsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -111,19 +103,6 @@ message GetInviteLinkRequest {}
 message GetInviteLinkResponse {
   string token = 1;
   string expires_at = 2;
-}
-
-// Caller = the authenticated user (scope from the auth context); no request fields.
-message GetPalettePreferenceRequest {}
-
-// palette_id is the entire writable surface.
-message SetPalettePreferenceRequest {
-  string palette_id = 1;
-}
-
-// The resolved palette id (the default id when the user never set one).
-message PalettePreference {
-  string palette_id = 1;
 }
 
 message GetMoodColorsRequest {}

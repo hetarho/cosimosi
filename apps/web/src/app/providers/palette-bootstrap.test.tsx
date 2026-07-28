@@ -8,11 +8,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AccountService } from '@cosimosi/api-client'
 import { FakeAuthAdapter, createAuthFacade } from '@cosimosi/auth'
 import { createClientCacheQueryClient } from '@cosimosi/client-cache'
-import { moodColor, PALETTES, resetMoodPalette } from '@cosimosi/emotion'
+import { defaultMoodPalette, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 
-import { usePaletteVersion } from '../../features/change-palette/index.ts'
+import { usePaletteVersion } from '../../features/change-mood-colors/index.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { PaletteBootstrap } from './palette-bootstrap.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
@@ -31,16 +31,14 @@ describe('PaletteBootstrap', () => {
     const colorsBlocked = new Promise<void>((resolve) => {
       releaseColors = resolve
     })
+    // A stored JOY that differs from the authored default, so releasing children before the
+    // overlay is applied would be visible as the default color in the first commit.
+    const storedJoy = '#4eb9ad'
     const transport = createRouterTransport(({ service }) => {
       service(AccountService, {
-        getPalettePreference() {
-          return { paletteId: 'muted-dusk' }
-        },
         async getMoodColors() {
           await colorsBlocked
-          return {
-            colors: [{ mood: 'JOY', color: PALETTES['cosimosi-default'].colors.JOY }],
-          }
+          return { colors: [{ mood: 'JOY', color: storedJoy }] }
         },
       })
     })
@@ -80,14 +78,12 @@ describe('PaletteBootstrap', () => {
 
       releaseColors()
       await vi.waitFor(() =>
-        expect(container.textContent).toBe(
-          `${PALETTES['cosimosi-default'].colors.JOY}|${PALETTES['cosimosi-default'].colors.CALM}`,
-        ),
+        expect(container.textContent).toBe(`${storedJoy}|${defaultMoodPalette.colors.CALM}`),
       )
 
       expect(committedColors[0]).toEqual({
-        joy: PALETTES['cosimosi-default'].colors.JOY,
-        calm: PALETTES['cosimosi-default'].colors.CALM,
+        joy: storedJoy,
+        calm: defaultMoodPalette.colors.CALM,
       })
     } finally {
       await act(async () => root.unmount())

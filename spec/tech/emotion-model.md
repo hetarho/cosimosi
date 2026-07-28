@@ -45,13 +45,15 @@ moodColor(mood: Mood): Color
 palette table. A substitute palette is supplied as `Record<Mood, Color>` through `setMoodPalette`; the seam takes only a
 `Mood` and returns only a `Color`, so it cannot write back to emotion facts or feed layout, strength, or synapse logic.
 
-**Palette registry + per-mood preference (plan 51).** `registry.ts` exposes complete first-party
-`MoodPalette` tables under stable ids as authored recommendation/content sets. The legacy
-`palette_preferences.palette_id` contract remains compatible but is not the missing-row fallback.
-`mood_colors` optionally overrides individual moods; `resolveMoodColors(rows)` overlays them on
-`cosimosi-default`, and `applyMoodColors` sends the complete table through the unchanged
-`setMoodPalette` seam. Web and mobile app-layer gates wait for the preference reads before releasing
-palette-dependent children. Live writes recolor through that seam without `GetUniverse`.
+**Per-mood preference (plan 51).** A user's colors are stored one mood at a time. `mood_colors`
+optionally overrides individual moods; `resolveMoodColors(rows)` overlays them on the authored
+`defaultMoodPalette`, and `applyMoodColors` sends the complete table through the unchanged
+`setMoodPalette` seam. There is no palette id and no catalog of named tables: absence of a row _is_
+the default, so nothing needs to name it. `alternative-mood-colors.ts` holds a second authored
+reading of the thirteen feelings used only as an offline recommendation candidate — content, never a
+selectable set. Web and mobile app-layer gates wait for `GetMoodColors` before releasing
+palette-dependent children, and release on the authored default when the read fails. Live writes
+recolor through that seam without `GetUniverse`.
 
 `oklab.ts` owns sRGB ↔ OkLab/OkLCH conversion, OkLab ΔE, and hue-bucket projection.
 `mood-color.ts` owns lightness snapping, near-duplicate detection, and partial-row overlay.
@@ -90,7 +92,7 @@ Three seam rules hold, and they are the reason this lives beside the palette rul
 - **An unknown mood coerces to absence, not to a color.** An unrecognized `mood` string cannot key the
   `Map<Mood, number>` and so drops out, which yields `null` → the border-token outline. `NEUTRAL`'s hue is
   never used to stand in for "unknown" or for "nothing survives" ([M3]) — the same unknown→default discipline
-  as `resolvePaletteById`.
+  the palette seam applies to an unrecognized mood.
 
 `mood: null` means **written, but holding no live mood** (launched nothing, or all memories let go) and is
 distinct from a day absent from the mark map, which was never written. The projection is presentation-only and

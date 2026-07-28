@@ -10,7 +10,13 @@ import { createPlatformMockTransport, type ApiTransport } from '@cosimosi/api-cl
 import { FakeAuthAdapter, createAuthFacade } from '@cosimosi/auth'
 import { useSessionSnapshot } from '@cosimosi/auth/react'
 import { createClientCacheQueryClient } from '@cosimosi/client-cache'
-import { DEFAULT_PALETTE_ID } from '@cosimosi/emotion'
+import {
+  MOODS,
+  defaultMoodPalette,
+  defineMoodPalette,
+  moodColor,
+  setMoodPalette,
+} from '@cosimosi/emotion'
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 import { useEarnRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
@@ -21,7 +27,6 @@ import {
 } from '@cosimosi/universe'
 
 import { useAdvanceAnnouncementStore } from '../../features/accelerate-time/index.ts'
-import { usePalettePreferenceStore } from '../../features/change-palette/index.ts'
 import {
   requestTimeSyncConsent,
   useTimeSyncConsentStore,
@@ -131,10 +136,12 @@ describe('web client cache provider config', () => {
       selectedNeuronIds: ['neuron-a'],
       heavyDetected: true,
     })
-    usePalettePreferenceStore.setState({
-      paletteId: 'muted-dusk',
-      confirmedPaletteId: 'muted-dusk',
-    })
+    setMoodPalette(
+      defineMoodPalette(
+        'another-account',
+        Object.fromEntries(MOODS.map((mood) => [mood, '#123456'])) as never,
+      ),
+    )
     const consent = requestTimeSyncConsent()
 
     function Probe() {
@@ -198,10 +205,7 @@ describe('web client cache provider config', () => {
         heavyDetected: false,
       })
       expect(useTimeSyncConsentStore.getState().pending).toBeNull()
-      expect(usePalettePreferenceStore.getState()).toMatchObject({
-        paletteId: DEFAULT_PALETTE_ID,
-        confirmedPaletteId: DEFAULT_PALETTE_ID,
-      })
+      expect(moodColor('JOY')).toBe(defaultMoodPalette.colors.JOY)
 
       queryClient.setQueryData(['user-b-only'], 'user-b query')
       useEpisodicMemoryStore.setState({ byId: { 'memory-b': {} as never }, ids: ['memory-b'] })

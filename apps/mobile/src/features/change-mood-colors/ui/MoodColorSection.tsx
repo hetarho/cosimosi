@@ -18,7 +18,7 @@ import { Card, tokens } from '@cosimosi/ui'
 
 import { m, moodLabel } from '../../../shared/i18n/index.ts'
 
-export function PaletteSection() {
+export function MoodColorSection() {
   const transport = useTransport()
   const query = useQuery({ ...createGetMoodColorsQueryOptions(transport), retry: false })
   const rows = useMemo(() => moodColorRows(query.data?.colors ?? []), [query.data?.colors])

@@ -1,4 +1,4 @@
-import { resetPaletteSession, usePalettePreferenceStore } from '@cosimosi/emotion/react'
+import { resetMoodPalette } from '@cosimosi/emotion'
 import { resetTwinkleUserState } from '@cosimosi/twinkle'
 import { resetUniverseUserState } from '@cosimosi/universe'
 
@@ -14,13 +14,9 @@ export type PlatformUserStateReset = UserStateResetEntry
 const USER_STATE_RESET_REGISTRY: readonly UserStateResetEntry[] = [
   { name: 'universe', reset: resetUniverseUserState },
   { name: 'twinkle', reset: resetTwinkleUserState },
-  {
-    name: 'palette',
-    reset: (nextScopeKey) => {
-      resetPaletteSession(nextScopeKey)
-      usePalettePreferenceStore.getState().reset()
-    },
-  },
+  // Colors are per-user, so the previous account's must be off the render seam before the next
+  // account's read applies its own — otherwise the incoming universe flashes someone else's sky.
+  { name: 'palette', reset: () => resetMoodPalette() },
   { name: 'signup-completion', reset: resetSignupUserState },
 ]
 

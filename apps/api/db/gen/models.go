@@ -184,12 +184,6 @@ type NeuronActivation struct {
 	Weight           float32
 }
 
-type PalettePreference struct {
-	UserID    string
-	PaletteID string
-	UpdatedAt pgtype.Timestamptz
-}
-
 type ReleaseGroup struct {
 	ID        string
 	UserID    string

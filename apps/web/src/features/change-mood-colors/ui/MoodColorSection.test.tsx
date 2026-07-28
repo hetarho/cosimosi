@@ -8,20 +8,20 @@ import { createAccountMockTransport } from '@cosimosi/api-client'
 import { MOODS } from '@cosimosi/emotion'
 
 import { defaultLocale, m, moodLabel, setActiveLocale } from '../../../shared/i18n/index.ts'
-import { PaletteSection } from './PaletteSection.tsx'
+import { MoodColorSection } from './MoodColorSection.tsx'
 
 function renderSection(): string {
   const queryClient = new QueryClient()
   return renderToString(
     <TransportProvider transport={createAccountMockTransport({})}>
       <QueryClientProvider client={queryClient}>
-        <PaletteSection />
+        <MoodColorSection />
       </QueryClientProvider>
     </TransportProvider>,
   )
 }
 
-describe('PaletteSection', () => {
+describe('MoodColorSection', () => {
   afterEach(() => {
     setActiveLocale(defaultLocale)
   })

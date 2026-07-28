@@ -48,12 +48,11 @@ space-tones, deliberately outside the emotion seam.)
 
 A user's current color preference is per mood:
 
-- `cosimosi-default` is the complete fallback table;
-- an optional per-mood row overrides one feeling's color;
-- named first-party palettes remain recommendation/content sets, while the earlier registry-id
-  contract remains backward-compatible.
+- the authored default is the complete fallback table;
+- an optional per-mood row overrides one feeling's color.
 
-A mood without a row always uses its authored `cosimosi-default` color. The authenticated app gate
+There is no palette set to pick from and nothing stores which one you picked: a feeling either has a
+color you chose or it keeps the authored one. A mood without a row always uses its authored color. The authenticated app gate
 overlays the per-mood rows on that table and applies the complete result through `setMoodPalette`
 before palette-dependent children mount. Live choices use the same seam and never require
 `GetUniverse`.

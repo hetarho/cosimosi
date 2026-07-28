@@ -1,7 +1,6 @@
-// Package pg is the account context's only sqlc/pgx seam (ARCHITECTURE §2.6): the concrete
-// PreferenceStore over palette_preferences with the row↔domain mapping at this edge — no dbgen
-// type escapes inward. It declares no repository interface; the port is consumer-owned by the
-// account use-case.
+// Package pg is the account context's only sqlc/pgx seam (ARCHITECTURE §2.6): the concrete Store
+// over the account's tables with the row↔domain mapping at this edge — no dbgen type escapes
+// inward. It declares no repository interface; the port is consumer-owned by the account use-case.
 package pg
 
 import (
@@ -98,34 +97,6 @@ func (s Store) WithInviteSettlementLock(
 		err = errors.Join(err, unlockErr)
 	}()
 	return fn()
-}
-
-// GetPalettePreference reads the user's stored palette id. A user who never chose one owns no row
-// — that reads as found=false (not an error), which the use-case resolves to the default id.
-func (s Store) GetPalettePreference(ctx context.Context, scope platform.UserScope) (string, bool, error) {
-	if err := s.ready(scope); err != nil {
-		return "", false, err
-	}
-	id, err := s.queries.GetPalettePreference(ctx, scope.UserID())
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, err
-	}
-	return id, true, nil
-}
-
-// UpsertPalettePreference stores the user's chosen palette id (one row per user) and returns the
-// stored value. Per-user scoped: the row key is the authenticated user's id.
-func (s Store) UpsertPalettePreference(ctx context.Context, scope platform.UserScope, paletteID string) (string, error) {
-	if err := s.ready(scope); err != nil {
-		return "", err
-	}
-	return s.queries.UpsertPalettePreference(ctx, dbgen.UpsertPalettePreferenceParams{
-		UserID:    scope.UserID(),
-		PaletteID: paletteID,
-	})
 }
 
 func (s Store) ListMoodColors(
@@ -426,7 +397,6 @@ func (s Store) PurgeAccountDependents(ctx context.Context, scope platform.UserSc
 	for _, purge := range []func(context.Context, string) error{
 		s.queries.PurgeAccountAuthProviders,
 		s.queries.PurgeAccountInvites,
-		s.queries.PurgeAccountPalettePreference,
 		s.queries.PurgeAccountMoodColors,
 	} {
 		if err := purge(ctx, scope.UserID()); err != nil {

@@ -68,7 +68,8 @@ describe('mood palette seam', () => {
 })
 
 // The two invariants the default palette is designed around (see palette.ts). They hold for the
-// default only — a registry alternative is bound by the axis guardrail, not by this design.
+// authored default only: a user's per-mood choices are snapped onto the lightness steps but are not
+// held apart from each other, and ALTERNATIVE_MOOD_COLORS answers to the axis guardrail alone.
 describe('default palette design invariants', () => {
   // The 2D language's shared lightness scale (packages/ui/src/palette.ts): steps 300 / 400 / 500.
   const STEPS = [0.8, 0.72, 0.63]

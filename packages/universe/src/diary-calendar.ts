@@ -168,8 +168,7 @@ export function resolveCalendarMonth(
  *
  * The slice's `color` is discarded on purpose: `toEmotionSlices` resolves one internally, and taking it
  * would put a hue in the pure layer (§3.4). An unrecognized mood string cannot key the Map and so drops
- * out, coercing the day to the outline rather than to a color — the same unknown→default discipline as
- * `resolvePaletteById` ([M3]).
+ * out, coercing the day to the outline rather than to a color — an unknown mood never borrows a hue ([M3]).
  */
 export function dayRepresentativeMood(rows: readonly DiaryDayMood[]): Mood | null {
   const weights = new Map<Mood, number>()

@@ -190,7 +190,7 @@ export default defineConfig([
     // Plan 51's two color actions are deliberately thin app-local UI over shared emotion logic:
     // the first-signin chooser is composed once by the profile gate, and the later editor once by
     // /me. Merging either into those hosts would erase the action boundary and web/mobile parity.
-    files: ['./src/features/choose-mood-colors/**', './src/features/change-palette/**'],
+    files: ['./src/features/choose-mood-colors/**', './src/features/change-mood-colors/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },

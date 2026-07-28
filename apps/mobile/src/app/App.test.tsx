@@ -15,7 +15,7 @@ import {
 } from '@cosimosi/api-client'
 import { pendingInvite, resetSignupUserState, takeSignupCompletion } from '@cosimosi/auth'
 import { VALUES } from '@cosimosi/config'
-import { DEFAULT_PALETTE_ID, moodColor, resetMoodPalette } from '@cosimosi/emotion'
+import { defaultMoodPalette, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { setClientCacheData } from '@cosimosi/client-cache'
 import { m } from '@cosimosi/i18n'
 import { useEarnRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
@@ -35,7 +35,6 @@ import {
 } from '@cosimosi/universe'
 
 import { useAdvanceAnnouncementStore } from '../features/accelerate-time/index.ts'
-import { usePalettePreferenceStore } from '../features/change-palette/index.ts'
 import {
   requestTimeSyncConsent,
   useTimeSyncConsentStore,
@@ -65,7 +64,6 @@ function createMobileAppTransport(
     profileError?: boolean
     onGetProfile?: () => void
     onGetUniverse?: () => void
-    onGetPalettePreference?: () => void
     onGetMoodColors?: () => void
     onSignUp?: (request: {
       nickname: string
@@ -76,9 +74,7 @@ function createMobileAppTransport(
     onUpdateProfile?: (request: { nickname: string; timezone: string; locale: string }) => void
     onWithdraw?: () => void
     onExport?: (format: ExportFormat) => void
-    getPalettePreference?: () => string
     getMoodColors?: () => Array<{ mood: string; color: string }>
-    setPalettePreference?: (paletteId: string) => Promise<string>
     onSetMoodColor?: (request: { mood: string; color: string }) => void
   } = {},
 ) {
@@ -147,19 +143,6 @@ function createMobileAppTransport(
         return {
           withdrawnAt: '2026-07-26T00:00:00Z',
           restoreDeadlineAt: '2026-08-25T00:00:00Z',
-        }
-      },
-      getPalettePreference: () => {
-        options.onGetPalettePreference?.()
-        return {
-          paletteId: options.getPalettePreference?.() ?? DEFAULT_PALETTE_ID,
-        }
-      },
-      async setPalettePreference(request) {
-        return {
-          paletteId: options.setPalettePreference
-            ? await options.setPalettePreference(request.paletteId)
-            : request.paletteId,
         }
       },
       getMoodColors: () => {
@@ -315,10 +298,7 @@ function expectEveryMobileUserStateEmpty() {
     heavyDetected: false,
   })
   expect(useTimeSyncConsentStore.getState().pending).toBeNull()
-  expect(usePalettePreferenceStore.getState()).toMatchObject({
-    paletteId: DEFAULT_PALETTE_ID,
-    confirmedPaletteId: DEFAULT_PALETTE_ID,
-  })
+  expect(moodColor('JOY')).toBe(defaultMoodPalette.colors.JOY)
 }
 
 describe('mobile auth gate', () => {
@@ -631,11 +611,6 @@ describe('mobile auth gate', () => {
       expectEveryMobileUserStateEmpty()
       expect(fakes.queryClient.getQueryData(['user-a-only'])).toBeUndefined()
 
-      expect(usePalettePreferenceStore.getState()).toMatchObject({
-        paletteId: DEFAULT_PALETTE_ID,
-        confirmedPaletteId: DEFAULT_PALETTE_ID,
-      })
-
       fireEvent.press(screen.getByRole('button', { name: m.me_title() }))
       await waitFor(() => expect(screen.getByText(m.me_tab_profile())).toBeTruthy())
     } finally {
@@ -647,10 +622,7 @@ describe('mobile auth gate', () => {
 
 describe('mobile me screen', () => {
   afterEach(() => {
-    act(() => {
-      usePalettePreferenceStore.getState().setPaletteId(DEFAULT_PALETTE_ID)
-      resetMoodPalette()
-    })
+    act(() => resetMoodPalette())
   })
 
   async function openMe(fakes: MobileShellFakes) {
@@ -676,7 +648,7 @@ describe('mobile me screen', () => {
       expect(screen.getByText(m.me_tab_diary())).toBeTruthy()
       expect(screen.getByText(m.me_tab_account())).toBeTruthy()
       expect(screen.UNSAFE_queryAllByType(TextInput)).toHaveLength(1)
-      expect(screen.queryByText(m.settings_palette_selected())).toBeNull()
+      expect(screen.getByText(m.palette_editor_title())).toBeTruthy()
 
       fireEvent.press(screen.getByText(m.me_tab_achievements()))
       expect(screen.getByText(m.me_achievements_pending())).toBeTruthy()

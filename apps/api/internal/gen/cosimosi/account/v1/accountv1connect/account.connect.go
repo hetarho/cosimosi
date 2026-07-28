@@ -47,12 +47,6 @@ const (
 	// AccountServiceGetInviteLinkProcedure is the fully-qualified name of the AccountService's
 	// GetInviteLink RPC.
 	AccountServiceGetInviteLinkProcedure = "/cosimosi.account.v1.AccountService/GetInviteLink"
-	// AccountServiceGetPalettePreferenceProcedure is the fully-qualified name of the AccountService's
-	// GetPalettePreference RPC.
-	AccountServiceGetPalettePreferenceProcedure = "/cosimosi.account.v1.AccountService/GetPalettePreference"
-	// AccountServiceSetPalettePreferenceProcedure is the fully-qualified name of the AccountService's
-	// SetPalettePreference RPC.
-	AccountServiceSetPalettePreferenceProcedure = "/cosimosi.account.v1.AccountService/SetPalettePreference"
 	// AccountServiceGetMoodColorsProcedure is the fully-qualified name of the AccountService's
 	// GetMoodColors RPC.
 	AccountServiceGetMoodColorsProcedure = "/cosimosi.account.v1.AccountService/GetMoodColors"
@@ -82,12 +76,6 @@ type AccountServiceClient interface {
 	ListAuthProviders(context.Context, *connect.Request[v1.ListAuthProvidersRequest]) (*connect.Response[v1.ListAuthProvidersResponse], error)
 	// Derive a fresh signed invite capability without storing it.
 	GetInviteLink(context.Context, *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error)
-	// Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
-	// NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).
-	GetPalettePreference(context.Context, *connect.Request[v1.GetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
-	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
-	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
-	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
 	// Read only the caller's explicitly chosen mood rows. Missing moods remain authored defaults.
 	GetMoodColors(context.Context, *connect.Request[v1.GetMoodColorsRequest]) (*connect.Response[v1.GetMoodColorsResponse], error)
 	// Snap and store one mood color, updating the aggregate counter in the same transaction.
@@ -145,19 +133,6 @@ func NewAccountServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
-		getPalettePreference: connect.NewClient[v1.GetPalettePreferenceRequest, v1.PalettePreference](
-			httpClient,
-			baseURL+AccountServiceGetPalettePreferenceProcedure,
-			connect.WithSchema(accountServiceMethods.ByName("GetPalettePreference")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-			connect.WithClientOptions(opts...),
-		),
-		setPalettePreference: connect.NewClient[v1.SetPalettePreferenceRequest, v1.PalettePreference](
-			httpClient,
-			baseURL+AccountServiceSetPalettePreferenceProcedure,
-			connect.WithSchema(accountServiceMethods.ByName("SetPalettePreference")),
-			connect.WithClientOptions(opts...),
-		),
 		getMoodColors: connect.NewClient[v1.GetMoodColorsRequest, v1.GetMoodColorsResponse](
 			httpClient,
 			baseURL+AccountServiceGetMoodColorsProcedure,
@@ -195,18 +170,16 @@ func NewAccountServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // accountServiceClient implements AccountServiceClient.
 type accountServiceClient struct {
-	signUp               *connect.Client[v1.SignUpRequest, v1.SignUpResponse]
-	getProfile           *connect.Client[v1.GetProfileRequest, v1.GetProfileResponse]
-	updateProfile        *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
-	listAuthProviders    *connect.Client[v1.ListAuthProvidersRequest, v1.ListAuthProvidersResponse]
-	getInviteLink        *connect.Client[v1.GetInviteLinkRequest, v1.GetInviteLinkResponse]
-	getPalettePreference *connect.Client[v1.GetPalettePreferenceRequest, v1.PalettePreference]
-	setPalettePreference *connect.Client[v1.SetPalettePreferenceRequest, v1.PalettePreference]
-	getMoodColors        *connect.Client[v1.GetMoodColorsRequest, v1.GetMoodColorsResponse]
-	setMoodColor         *connect.Client[v1.SetMoodColorRequest, v1.MoodColor]
-	getMoodColorStats    *connect.Client[v1.GetMoodColorStatsRequest, v1.GetMoodColorStatsResponse]
-	withdraw             *connect.Client[v1.WithdrawRequest, v1.WithdrawResponse]
-	restoreAccount       *connect.Client[v1.RestoreAccountRequest, v1.RestoreAccountResponse]
+	signUp            *connect.Client[v1.SignUpRequest, v1.SignUpResponse]
+	getProfile        *connect.Client[v1.GetProfileRequest, v1.GetProfileResponse]
+	updateProfile     *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	listAuthProviders *connect.Client[v1.ListAuthProvidersRequest, v1.ListAuthProvidersResponse]
+	getInviteLink     *connect.Client[v1.GetInviteLinkRequest, v1.GetInviteLinkResponse]
+	getMoodColors     *connect.Client[v1.GetMoodColorsRequest, v1.GetMoodColorsResponse]
+	setMoodColor      *connect.Client[v1.SetMoodColorRequest, v1.MoodColor]
+	getMoodColorStats *connect.Client[v1.GetMoodColorStatsRequest, v1.GetMoodColorStatsResponse]
+	withdraw          *connect.Client[v1.WithdrawRequest, v1.WithdrawResponse]
+	restoreAccount    *connect.Client[v1.RestoreAccountRequest, v1.RestoreAccountResponse]
 }
 
 // SignUp calls cosimosi.account.v1.AccountService.SignUp.
@@ -232,16 +205,6 @@ func (c *accountServiceClient) ListAuthProviders(ctx context.Context, req *conne
 // GetInviteLink calls cosimosi.account.v1.AccountService.GetInviteLink.
 func (c *accountServiceClient) GetInviteLink(ctx context.Context, req *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error) {
 	return c.getInviteLink.CallUnary(ctx, req)
-}
-
-// GetPalettePreference calls cosimosi.account.v1.AccountService.GetPalettePreference.
-func (c *accountServiceClient) GetPalettePreference(ctx context.Context, req *connect.Request[v1.GetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error) {
-	return c.getPalettePreference.CallUnary(ctx, req)
-}
-
-// SetPalettePreference calls cosimosi.account.v1.AccountService.SetPalettePreference.
-func (c *accountServiceClient) SetPalettePreference(ctx context.Context, req *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error) {
-	return c.setPalettePreference.CallUnary(ctx, req)
 }
 
 // GetMoodColors calls cosimosi.account.v1.AccountService.GetMoodColors.
@@ -282,12 +245,6 @@ type AccountServiceHandler interface {
 	ListAuthProviders(context.Context, *connect.Request[v1.ListAuthProvidersRequest]) (*connect.Response[v1.ListAuthProvidersResponse], error)
 	// Derive a fresh signed invite capability without storing it.
 	GetInviteLink(context.Context, *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error)
-	// Read the caller's stored palette id (the default id when unset). Side-effect-free unary read:
-	// NO_SIDE_EFFECTS opts Connect clients into HTTP GET (never shared-CDN-cached; user-scoped).
-	GetPalettePreference(context.Context, *connect.Request[v1.GetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
-	// Store the caller's palette id. Accepts only an id known to the first-party registry; an
-	// unknown id is rejected. Mutates the stored preference — NOT NO_SIDE_EFFECTS.
-	SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error)
 	// Read only the caller's explicitly chosen mood rows. Missing moods remain authored defaults.
 	GetMoodColors(context.Context, *connect.Request[v1.GetMoodColorsRequest]) (*connect.Response[v1.GetMoodColorsResponse], error)
 	// Snap and store one mood color, updating the aggregate counter in the same transaction.
@@ -341,19 +298,6 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	accountServiceGetPalettePreferenceHandler := connect.NewUnaryHandler(
-		AccountServiceGetPalettePreferenceProcedure,
-		svc.GetPalettePreference,
-		connect.WithSchema(accountServiceMethods.ByName("GetPalettePreference")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	accountServiceSetPalettePreferenceHandler := connect.NewUnaryHandler(
-		AccountServiceSetPalettePreferenceProcedure,
-		svc.SetPalettePreference,
-		connect.WithSchema(accountServiceMethods.ByName("SetPalettePreference")),
-		connect.WithHandlerOptions(opts...),
-	)
 	accountServiceGetMoodColorsHandler := connect.NewUnaryHandler(
 		AccountServiceGetMoodColorsProcedure,
 		svc.GetMoodColors,
@@ -398,10 +342,6 @@ func NewAccountServiceHandler(svc AccountServiceHandler, opts ...connect.Handler
 			accountServiceListAuthProvidersHandler.ServeHTTP(w, r)
 		case AccountServiceGetInviteLinkProcedure:
 			accountServiceGetInviteLinkHandler.ServeHTTP(w, r)
-		case AccountServiceGetPalettePreferenceProcedure:
-			accountServiceGetPalettePreferenceHandler.ServeHTTP(w, r)
-		case AccountServiceSetPalettePreferenceProcedure:
-			accountServiceSetPalettePreferenceHandler.ServeHTTP(w, r)
 		case AccountServiceGetMoodColorsProcedure:
 			accountServiceGetMoodColorsHandler.ServeHTTP(w, r)
 		case AccountServiceSetMoodColorProcedure:
@@ -439,14 +379,6 @@ func (UnimplementedAccountServiceHandler) ListAuthProviders(context.Context, *co
 
 func (UnimplementedAccountServiceHandler) GetInviteLink(context.Context, *connect.Request[v1.GetInviteLinkRequest]) (*connect.Response[v1.GetInviteLinkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.GetInviteLink is not implemented"))
-}
-
-func (UnimplementedAccountServiceHandler) GetPalettePreference(context.Context, *connect.Request[v1.GetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.GetPalettePreference is not implemented"))
-}
-
-func (UnimplementedAccountServiceHandler) SetPalettePreference(context.Context, *connect.Request[v1.SetPalettePreferenceRequest]) (*connect.Response[v1.PalettePreference], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.account.v1.AccountService.SetPalettePreference is not implemented"))
 }
 
 func (UnimplementedAccountServiceHandler) GetMoodColors(context.Context, *connect.Request[v1.GetMoodColorsRequest]) (*connect.Response[v1.GetMoodColorsResponse], error) {
