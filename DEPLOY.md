@@ -83,7 +83,8 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
   `COSIMOSI_CORS_ORIGINS`(해당 환경 프론트 origin, 쉼표로 여러 개) · `SUPABASE_PROJECT_URL` ·
   `SUPABASE_SERVICE_ROLE_KEY`(**서버 전용**, Auth Admin API와 withdrawal credential purge에 필수; `VITE_*`로
   노출 금지) · `INVITE_TOKEN_SIGNING_KEY`(표준 base64 32바이트 이상, 초대 링크 HMAC 및 가입 시 초대 바인딩에
-  필수; `openssl rand -base64 32`) · `AI_EMBEDDER`/`OPENAI_API_KEY` · `SENTRY_DSN`/`SENTRY_ENVIRONMENT` ·
+  필수; `openssl rand -base64 32`) · `COSIMOSI_LLM_*`/`COSIMOSI_EMBEDDING_*` (관리자 콘솔 미선택 시
+  provider별 env fallback) · `SENTRY_DSN`/`SENTRY_ENVIRONMENT` ·
   `COSIMOSI_ERROR_DETAIL`. `SUPABASE_PROJECT_URL`·`SUPABASE_SERVICE_ROLE_KEY`·`INVITE_TOKEN_SIGNING_KEY`·
   `COSIMOSI_CORS_ORIGINS` 중 하나라도 비거나 초대 키가 올바른 base64 32바이트 미만이면 배포가
   pull/quiesce 전에 중단된다. Use the exact value `verbose` only temporarily for staging diagnostics;
