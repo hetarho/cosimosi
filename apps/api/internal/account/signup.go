@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -251,6 +252,17 @@ func (s *Service) SettleSignup(ctx context.Context, scope platform.UserScope) er
 						return nil
 					}
 					return grantErr
+				}
+				// The inviter's counter is reported BEFORE rewarded_at is stamped, deliberately:
+				// a report failure then leaves the invite settleable, so the next SettleSignup
+				// heals it (the credit is dedup-keyed and replays as a no-op). Stamping first
+				// would make a failed report unrecoverable, and the only row reading this counter
+				// has a target of one — so a retry counting twice costs nothing, while losing the
+				// count would cost the achievement.
+				if err := s.achievements.RecordProgress(
+					ctx, inviterScope, nil, CounterInviteSettled, 1,
+				); err != nil {
+					return fmt.Errorf("record invite settled: %w", err)
 				}
 				return s.store.MarkInviteRewarded(ctx, inviterScope, invite.InviteID, s.now().UTC())
 			})

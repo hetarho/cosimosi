@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/achievement/v1/achievement.proto.
  */
 export const file_cosimosi_achievement_v1_achievement: GenFile = /*@__PURE__*/
-  fileDesc("Ciljb3NpbW9zaS9hY2hpZXZlbWVudC92MS9hY2hpZXZlbWVudC5wcm90bxIXY29zaW1vc2kuYWNoaWV2ZW1lbnQudjEiGQoXTGlzdEFjaGlldmVtZW50c1JlcXVlc3Qi8AEKEEFjaGlldmVtZW50RW50cnkSFgoOYWNoaWV2ZW1lbnRfaWQYASABKAkSNgoEYXhpcxgCIAEoDjIoLmNvc2ltb3NpLmFjaGlldmVtZW50LnYxLkFjaGlldmVtZW50QXhpcxIOCgZ0YXJnZXQYAyABKAMSEAoIcHJvZ3Jlc3MYBCABKAMSFgoOcmV3YXJkX3R3aW5rbGUYBSABKAUSGgoScmV3YXJkX29ybmFtZW50X2lkGAYgASgJEhAKCGFjaGlldmVkGAcgASgIEg8KB2NsYWltZWQYCCABKAgSEwoLYWNoaWV2ZWRfYXQYCSABKAkiVgoYTGlzdEFjaGlldmVtZW50c1Jlc3BvbnNlEjoKB2VudHJpZXMYASADKAsyKS5jb3NpbW9zaS5hY2hpZXZlbWVudC52MS5BY2hpZXZlbWVudEVudHJ5KvQCCg9BY2hpZXZlbWVudEF4aXMSIAocQUNISUVWRU1FTlRfQVhJU19VTlNQRUNJRklFRBAAEiUKIUFDSElFVkVNRU5UX0FYSVNfRklSU1RfRVhQRVJJRU5DRRABEiAKHEFDSElFVkVNRU5UX0FYSVNfRElBUllfVE9UQUwQAhIfChtBQ0hJRVZFTUVOVF9BWElTX1NUQVJfVE9UQUwQAxIhCh1BQ0hJRVZFTUVOVF9BWElTX1JFQ0FMTF9UT1RBTBAEEh8KG0FDSElFVkVNRU5UX0FYSVNfR0lTVF9ERVBUSBAFEigKJEFDSElFVkVNRU5UX0FYSVNfRk9SR0VUVElOR19SRUNPVkVSWRAGEiMKH0FDSElFVkVNRU5UX0FYSVNfTkVVUk9OX1NIQVJJTkcQBxIhCh1BQ0hJRVZFTUVOVF9BWElTX01PT0RfVkFSSUVUWRAIEh8KG0FDSElFVkVNRU5UX0FYSVNfREVDT1JBVElPThAJMpIBChJBY2hpZXZlbWVudFNlcnZpY2USfAoQTGlzdEFjaGlldmVtZW50cxIwLmNvc2ltb3NpLmFjaGlldmVtZW50LnYxLkxpc3RBY2hpZXZlbWVudHNSZXF1ZXN0GjEuY29zaW1vc2kuYWNoaWV2ZW1lbnQudjEuTGlzdEFjaGlldmVtZW50c1Jlc3BvbnNlIgOQAgFC+QEKG2NvbS5jb3NpbW9zaS5hY2hpZXZlbWVudC52MUIQQWNoaWV2ZW1lbnRQcm90b1ABWkpnaXRodWIuY29tL2Nvc2ltb3NpL2FwaS9pbnRlcm5hbC9nZW4vY29zaW1vc2kvYWNoaWV2ZW1lbnQvdjE7YWNoaWV2ZW1lbnR2MaICA0NBWKoCF0Nvc2ltb3NpLkFjaGlldmVtZW50LlYxygIXQ29zaW1vc2lcQWNoaWV2ZW1lbnRcVjHiAiNDb3NpbW9zaVxBY2hpZXZlbWVudFxWMVxHUEJNZXRhZGF0YeoCGUNvc2ltb3NpOjpBY2hpZXZlbWVudDo6VjFiBnByb3RvMw");
+  fileDesc("Ciljb3NpbW9zaS9hY2hpZXZlbWVudC92MS9hY2hpZXZlbWVudC5wcm90bxIXY29zaW1vc2kuYWNoaWV2ZW1lbnQudjEiGQoXTGlzdEFjaGlldmVtZW50c1JlcXVlc3Qi8AEKEEFjaGlldmVtZW50RW50cnkSFgoOYWNoaWV2ZW1lbnRfaWQYASABKAkSNgoEYXhpcxgCIAEoDjIoLmNvc2ltb3NpLmFjaGlldmVtZW50LnYxLkFjaGlldmVtZW50QXhpcxIOCgZ0YXJnZXQYAyABKAMSEAoIcHJvZ3Jlc3MYBCABKAMSFgoOcmV3YXJkX3R3aW5rbGUYBSABKAUSGgoScmV3YXJkX29ybmFtZW50X2lkGAYgASgJEhAKCGFjaGlldmVkGAcgASgIEg8KB2NsYWltZWQYCCABKAgSEwoLYWNoaWV2ZWRfYXQYCSABKAkiVgoYTGlzdEFjaGlldmVtZW50c1Jlc3BvbnNlEjoKB2VudHJpZXMYASADKAsyKS5jb3NpbW9zaS5hY2hpZXZlbWVudC52MS5BY2hpZXZlbWVudEVudHJ5IjEKF0NsYWltQWNoaWV2ZW1lbnRSZXF1ZXN0EhYKDmFjaGlldmVtZW50X2lkGAEgASgJImcKGENsYWltQWNoaWV2ZW1lbnRSZXNwb25zZRIXCg9ncmFudGVkX3R3aW5rbGUYASABKAMSGwoTZ3JhbnRlZF9vcm5hbWVudF9pZBgCIAEoCRIVCg10d2lua2xlX3RvdGFsGAMgASgDKvQCCg9BY2hpZXZlbWVudEF4aXMSIAocQUNISUVWRU1FTlRfQVhJU19VTlNQRUNJRklFRBAAEiUKIUFDSElFVkVNRU5UX0FYSVNfRklSU1RfRVhQRVJJRU5DRRABEiAKHEFDSElFVkVNRU5UX0FYSVNfRElBUllfVE9UQUwQAhIfChtBQ0hJRVZFTUVOVF9BWElTX1NUQVJfVE9UQUwQAxIhCh1BQ0hJRVZFTUVOVF9BWElTX1JFQ0FMTF9UT1RBTBAEEh8KG0FDSElFVkVNRU5UX0FYSVNfR0lTVF9ERVBUSBAFEigKJEFDSElFVkVNRU5UX0FYSVNfRk9SR0VUVElOR19SRUNPVkVSWRAGEiMKH0FDSElFVkVNRU5UX0FYSVNfTkVVUk9OX1NIQVJJTkcQBxIhCh1BQ0hJRVZFTUVOVF9BWElTX01PT0RfVkFSSUVUWRAIEh8KG0FDSElFVkVNRU5UX0FYSVNfREVDT1JBVElPThAJMosCChJBY2hpZXZlbWVudFNlcnZpY2USfAoQTGlzdEFjaGlldmVtZW50cxIwLmNvc2ltb3NpLmFjaGlldmVtZW50LnYxLkxpc3RBY2hpZXZlbWVudHNSZXF1ZXN0GjEuY29zaW1vc2kuYWNoaWV2ZW1lbnQudjEuTGlzdEFjaGlldmVtZW50c1Jlc3BvbnNlIgOQAgESdwoQQ2xhaW1BY2hpZXZlbWVudBIwLmNvc2ltb3NpLmFjaGlldmVtZW50LnYxLkNsYWltQWNoaWV2ZW1lbnRSZXF1ZXN0GjEuY29zaW1vc2kuYWNoaWV2ZW1lbnQudjEuQ2xhaW1BY2hpZXZlbWVudFJlc3BvbnNlQvkBChtjb20uY29zaW1vc2kuYWNoaWV2ZW1lbnQudjFCEEFjaGlldmVtZW50UHJvdG9QAVpKZ2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL2FjaGlldmVtZW50L3YxO2FjaGlldmVtZW50djGiAgNDQViqAhdDb3NpbW9zaS5BY2hpZXZlbWVudC5WMcoCF0Nvc2ltb3NpXEFjaGlldmVtZW50XFYx4gIjQ29zaW1vc2lcQWNoaWV2ZW1lbnRcVjFcR1BCTWV0YWRhdGHqAhlDb3NpbW9zaTo6QWNoaWV2ZW1lbnQ6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message cosimosi.achievement.v1.ListAchievementsRequest
@@ -110,6 +110,60 @@ export const ListAchievementsResponseSchema: GenMessage<ListAchievementsResponse
   messageDesc(file_cosimosi_achievement_v1_achievement, 2);
 
 /**
+ * The id alone. No user_id, no amount, no reward and no counter: a client cannot propose what it
+ * earned, and no method in this service accepts a counter at all — progress is only ever a
+ * consequence of a real product action.
+ *
+ * @generated from message cosimosi.achievement.v1.ClaimAchievementRequest
+ */
+export type ClaimAchievementRequest = Message<"cosimosi.achievement.v1.ClaimAchievementRequest"> & {
+  /**
+   * @generated from field: string achievement_id = 1;
+   */
+  achievementId: string;
+};
+
+/**
+ * Describes the message cosimosi.achievement.v1.ClaimAchievementRequest.
+ * Use `create(ClaimAchievementRequestSchema)` to create a new message.
+ */
+export const ClaimAchievementRequestSchema: GenMessage<ClaimAchievementRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_achievement_v1_achievement, 3);
+
+/**
+ * @generated from message cosimosi.achievement.v1.ClaimAchievementResponse
+ */
+export type ClaimAchievementResponse = Message<"cosimosi.achievement.v1.ClaimAchievementResponse"> & {
+  /**
+   * GENERAL only — there is no kind field anywhere on this service.
+   *
+   * @generated from field: int64 granted_twinkle = 1;
+   */
+  grantedTwinkle: bigint;
+
+  /**
+   * Empty for a stardust reward; exactly one of the two is set.
+   *
+   * @generated from field: string granted_ornament_id = 2;
+   */
+  grantedOrnamentId: string;
+
+  /**
+   * The balance after the credit, for the reveal.
+   *
+   * @generated from field: int64 twinkle_total = 3;
+   */
+  twinkleTotal: bigint;
+};
+
+/**
+ * Describes the message cosimosi.achievement.v1.ClaimAchievementResponse.
+ * Use `create(ClaimAchievementResponseSchema)` to create a new message.
+ */
+export const ClaimAchievementResponseSchema: GenMessage<ClaimAchievementResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_achievement_v1_achievement, 4);
+
+/**
  * The [A2] axes — the UI's grouping key. No group label crosses the wire.
  *
  * @generated from enum cosimosi.achievement.v1.AchievementAxis
@@ -201,6 +255,19 @@ export const AchievementService: GenService<{
     methodKind: "unary";
     input: typeof ListAchievementsRequestSchema;
     output: typeof ListAchievementsResponseSchema;
+  },
+  /**
+   * The explicit claim: stamps claimed_at, then pays the reward. A mutation — never
+   * NO_SIDE_EFFECTS, so it carries no client-cache classification. A repeat claim is an idempotent
+   * replay returning the same reward, not a refusal: refusing would strand a reward in the crash
+   * window between the stamp and the credit.
+   *
+   * @generated from rpc cosimosi.achievement.v1.AchievementService.ClaimAchievement
+   */
+  claimAchievement: {
+    methodKind: "unary";
+    input: typeof ClaimAchievementRequestSchema;
+    output: typeof ClaimAchievementResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_achievement_v1_achievement, 0);

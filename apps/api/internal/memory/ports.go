@@ -92,6 +92,43 @@ func (NoEarnOnWrite) OnDiaryLaunched(context.Context, platform.UserScope, Econom
 	return nil
 }
 
+// AchievementRecorder is the consumer-owned progress-report seam ([A6][I11], §2.4): this context
+// reports counter facts from inside the transaction that produced them, so a rolled-back launch,
+// recall, view or release advances nothing.
+//
+// Four properties are the whole point, and all four are structural rather than reviewed:
+//
+//   - The payload CANNOT describe a memory. A key and a delta — no id, name, mood, strength, stage,
+//     text or date. A caller that wanted an achievement to rewrite an EpisodicMemory has nowhere to
+//     name one.
+//   - The return carries no value. `error` alone, so an achievement outcome cannot influence the
+//     write that produced the fact — which is what makes the unlock notice a READ on the next
+//     ListAchievements rather than something pushed back through here.
+//   - The producer reduces before it reports. Decay depth, gist stage and mood are compared against
+//     their thresholds HERE and cross as counts, so the achievement side needs no vocabulary for a
+//     meaning-layer measurement.
+//   - A recorder error aborts the causing transaction. Deliberate: the pre-recall decay depth is
+//     unrecoverable afterwards, so a counter that silently diverged from the facts could never be
+//     repaired. NoEarnOnWrite's silent-nothing is NOT the model to copy here.
+type AchievementRecorder interface {
+	RecordProgress(ctx context.Context, scope platform.UserScope, tx EconomyTx, counterKey string, delta int) error
+}
+
+// NoAchievementRecorder is the achievement-less binding: counting is not a precondition for
+// writing, recalling or letting go. Production binds the real recorder — cmd/api refuses to boot
+// without it — so this reaches only tests and economy-less roots.
+type NoAchievementRecorder struct{}
+
+func (NoAchievementRecorder) RecordProgress(
+	context.Context,
+	platform.UserScope,
+	EconomyTx,
+	string,
+	int,
+) error {
+	return nil
+}
+
 // SignupSettlementPort is the post-commit deferred account-settlement seam ([U11][G6]).
 // No payload can expose meaning-layer facts, and no error can roll back an already-committed
 // launch. Production binds the observing adapter; tests and economy-less roots bind the no-op.

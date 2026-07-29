@@ -712,6 +712,7 @@ func newReleaseService(t *testing.T, repo *fakeReleaseRepo, suggester *fakeSealS
 		Recalls:          launches,
 		SpendGate:        &fakeSpendGate{},
 		Earn:             &fakeEarnPort{},
+		Achievements:     NoAchievementRecorder{},
 		SignupSettlement: NoSignupSettlement{},
 		PredictionError:  &fakePredictionError{},
 		Gists:            &fakeGistReader{},

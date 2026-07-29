@@ -26,6 +26,8 @@ import (
 
 	"github.com/cosimosi/api/internal/account"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
+	"github.com/cosimosi/api/internal/achievement"
+	achievementpg "github.com/cosimosi/api/internal/achievement/pg"
 	adminpg "github.com/cosimosi/api/internal/admin/pg"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
@@ -35,6 +37,8 @@ import (
 	"github.com/cosimosi/api/internal/platform/jobqueue"
 	"github.com/cosimosi/api/internal/platform/secretbox"
 	platformsupabase "github.com/cosimosi/api/internal/platform/supabase"
+	"github.com/cosimosi/api/internal/store"
+	storepg "github.com/cosimosi/api/internal/store/pg"
 	"github.com/cosimosi/api/internal/twinkle"
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
@@ -46,7 +50,12 @@ type withdrawalComposition struct {
 	purgers   []account.UserDataPurger
 }
 
+// newWithdrawalComposition assembles the sweep this process actually runs. Every context that owns
+// per-user rows must be represented: this binary is the production sweep, so a missing leg leaves that
+// context's rows behind a hard-deleted account ([I1][U1]). The store and achievement legs arrive as
+// built purgers because each purges its own two tables in one transaction it owns.
 func newWithdrawalComposition(
+	pool *platformdb.Pool,
 	jobStore memory.UserJobStore,
 	memoryPurgeRepo memory.UserPurgeRepo,
 	twinklePurgeRepo twinkle.UserPurgeRepo,
@@ -60,6 +69,8 @@ func newWithdrawalComposition(
 		purgers: []account.UserDataPurger{
 			memory.NewWithdrawalPurger(memoryPurgeRepo),
 			twinkle.NewWithdrawalPurger(twinklePurgeRepo),
+			store.NewWithdrawalPurger(storepg.NewStore(pool.PgxPool())),
+			achievement.NewWithdrawalPurger(achievementpg.NewStore(pool.PgxPool())),
 		},
 	}, nil
 }
@@ -94,7 +105,7 @@ func run(ctx context.Context, logger *log.Logger) error {
 }
 
 func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(context.Context) error }, string, error) {
-	store := memorypg.NewStore(pool.PgxPool())
+	memoryStore := memorypg.NewStore(pool.PgxPool())
 	// Runtime AI config (the admin console): the worker resolves the same DB → env → keyless mock provider
 	// config the API writes (both read ai_provider_config), so a SetAIConfig reaches the worker
 	// without a redeploy. Its own meter counts its own process's calls.
@@ -108,8 +119,9 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 	adapters := ai.NewResolvingAdapters(ai.NewRuntimeConfigSource(adminStore, decrypter), ai.NewMeter(), logger)
 	accountStore := accountpg.NewStore(pool.PgxPool())
 	withdrawalAdapters, err := newWithdrawalComposition(
-		store,
-		store,
+		pool,
+		memoryStore,
+		memoryStore,
 		twinklepg.NewStore(pool.PgxPool()),
 	)
 	if err != nil {
@@ -124,16 +136,19 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		Directory:          directory,
 		InviteGranter:      workerNoInviteGranter{},
 		SignupBonusGranter: workerNoSignupBonusGranter{},
-		Withdrawals:        accountStore,
-		Purgers:            withdrawalAdapters.purgers,
-		Scheduler:          withdrawalAdapters.scheduler,
-		Credentials:        directory,
+		// This process settles no signup — it runs the job queue — so its recorder REFUSES rather than
+		// counting nothing: an unexpected settlement here should be loud, not silently uncounted.
+		Achievements: workerNoAchievementRecorder{},
+		Withdrawals:  accountStore,
+		Purgers:      withdrawalAdapters.purgers,
+		Scheduler:    withdrawalAdapters.scheduler,
+		Credentials:  directory,
 	})
 	if err != nil {
 		return nil, "", err
 	}
 	runner, err := memory.NewDefaultJobRunner(
-		store,
+		memoryStore,
 		adapters.Embedder,
 		adapters.Semanticizer,
 		workerPollInterval,
@@ -185,6 +200,9 @@ var (
 	errWorkerSignupBonusUnavailable = errors.New(
 		"signup bonus settlement is not available in the worker process",
 	)
+	errWorkerAchievementRecordingUnavailable = errors.New(
+		"achievement progress recording is not available in the worker process",
+	)
 )
 
 func (workerNoInviteGranter) Grant(context.Context, platform.UserScope, string) error {
@@ -195,4 +213,16 @@ type workerNoSignupBonusGranter struct{}
 
 func (workerNoSignupBonusGranter) Grant(context.Context, platform.UserScope) error {
 	return errWorkerSignupBonusUnavailable
+}
+
+type workerNoAchievementRecorder struct{}
+
+func (workerNoAchievementRecorder) RecordProgress(
+	context.Context,
+	platform.UserScope,
+	any,
+	string,
+	int,
+) error {
+	return errWorkerAchievementRecordingUnavailable
 }

@@ -32,6 +32,7 @@ func newReleaseService(t *testing.T, store Store, now func() time.Time) *memory.
 		Recalls:          store,
 		SpendGate:        memory.AllowAllSpendGate{},
 		Earn:             memory.NoEarnOnWrite{},
+		Achievements:     memory.NoAchievementRecorder{},
 		SignupSettlement: memory.NoSignupSettlement{},
 		PredictionError:  adapters.PredictionError,
 		Gists:            store,

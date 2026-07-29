@@ -127,9 +127,10 @@ func (f *fakeOrnamentRepo) PurgeUser(_ context.Context, scope platform.UserScope
 func newTestService(t *testing.T, repo *fakeOrnamentRepo) *store.Service {
 	t.Helper()
 	service, err := store.NewService(store.ServiceDeps{
-		Ownerships: repo,
-		Selections: repo,
-		Purge:      repo,
+		Ownerships:   repo,
+		Selections:   repo,
+		Purge:        repo,
+		Achievements: store.NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

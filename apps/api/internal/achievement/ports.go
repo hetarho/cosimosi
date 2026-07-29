@@ -42,3 +42,24 @@ type Repo interface {
 	UserPurgeRepo
 	InAchievementTx(ctx context.Context, fn func(tx Store) error) error
 }
+
+// The two reward legs a claim pays, consumer-owned and bound at the composition root — this context
+// imports neither the economy nor the ornament catalog. Both are paid AFTER the claim commits, as an
+// idempotent pairing keyed on the claim id rather than as one cross-context transaction, which would
+// make this context the transaction owner of another context's tables (§2.3).
+//
+// Neither port has a kind parameter, which is where [A3]'s "no SMALL reward" actually holds: there is
+// no argument in which a tier could be named, so the earn credits the permanent balance by
+// construction.
+
+// TwinkleGranter credits a claim's stardust and answers the balance after it, for the reveal. The
+// claim id is the dedup key, so a replayed claim credits nothing and still reports the same total.
+type TwinkleGranter interface {
+	EarnAchievementReward(ctx context.Context, scope platform.UserScope, claimID string, amount int) (generalTotal int, err error)
+}
+
+// OrnamentGranter records permanent ownership of a capstone's ornament. Idempotent on the ownership
+// row, so a replay grants once.
+type OrnamentGranter interface {
+	Grant(ctx context.Context, scope platform.UserScope, claimID string, ornamentID string) error
+}

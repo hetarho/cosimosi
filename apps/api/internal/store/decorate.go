@@ -50,6 +50,18 @@ func CounterOrnamentKindDecorated(kind OrnamentKind) string {
 	return counterOrnamentKindDecoratedPrefix + string(kind)
 }
 
+// AchievementCounterKeys is every key this context can emit, the kind family expanded. The
+// composition root reconciles it against the keys the achievement catalog reads and refuses to boot
+// on a difference — the only check that can catch a rename, since a producing context cannot import
+// the catalog's constants.
+func AchievementCounterKeys() []string {
+	keys := []string{CounterDecorationSaved, CounterOrnamentOwned}
+	for _, kind := range AllOrnamentKinds() {
+		keys = append(keys, CounterOrnamentKindDecorated(kind))
+	}
+	return keys
+}
+
 // InsufficientTwinkle is the save's refusal, carrying the numbers the economy computed plus the one
 // thing only the catalog knows: which item the balance ran out on. `store` never recomputes a
 // shortfall — the composition-root adapter forwards the economy's own.
@@ -308,6 +320,15 @@ func applySelection(
 
 // record reports the save's counter facts inside the transaction. A save that changed nothing reports
 // nothing at all — there is no fact in it.
+//
+// `ownedAfter` is this transaction's own view: the ownership list it read plus what its insert
+// acquired. Two saves committing concurrently from the same starting snapshot therefore both report
+// the smaller total, and the counter LAGS the table by one until the next save. That is left alone
+// deliberately: the counter is a high-water mark, so a lag can only delay an achievement by one save
+// and can never overstate ownership, and closing it would mean serializing every decoration save
+// behind an advisory lock for the sake of a count. A future reader tempted to re-read the list here
+// should note that a re-read inside a READ COMMITTED transaction still cannot see the other save's
+// uncommitted insert, so it would fix nothing.
 func (s *Service) record(
 	ctx context.Context,
 	scope platform.UserScope,

@@ -20,6 +20,7 @@ var (
 	ErrRecallsRequired          = errors.New("memory service requires a recall repo")
 	ErrSpendGateRequired        = errors.New("memory service requires a spend gate")
 	ErrEarnRequired             = errors.New("memory service requires an earn port")
+	ErrAchievementsRequired     = errors.New("memory service requires an achievement recorder")
 	ErrSignupSettlementRequired = errors.New("memory service requires a signup settlement port")
 	ErrPredictionErrorRequired  = errors.New("memory service requires a prediction-error port")
 	ErrGistsRequired            = errors.New("memory service requires a gist reader")
@@ -47,6 +48,7 @@ type Service struct {
 	recalls          RecallRepo
 	spendGate        SpendGate
 	earn             EarnPort
+	achievements     AchievementRecorder
 	signupSettlement SignupSettlementPort
 	predictionError  PredictionError
 	gists            GistReader
@@ -89,6 +91,10 @@ type ServiceDeps struct {
 	// required (NoEarnOnWrite for economy-less composition) so no composition root
 	// can launch diaries with the grant seam silently unbound.
 	Earn EarnPort
+	// Achievements is the counter-report seam fired inside the launch/recall/view/release
+	// transactions ([A6]); required (NoAchievementRecorder for achievement-less composition) so no
+	// composition root can run those paths with the report seam silently unbound.
+	Achievements AchievementRecorder
 	// SignupSettlement is fired after a successful admitted launch commits. It is required so
 	// production cannot silently omit the deferred signup/invite reward path.
 	SignupSettlement SignupSettlementPort
@@ -159,6 +165,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Earn == nil {
 		return nil, ErrEarnRequired
 	}
+	if deps.Achievements == nil {
+		return nil, ErrAchievementsRequired
+	}
 	if deps.SignupSettlement == nil {
 		return nil, ErrSignupSettlementRequired
 	}
@@ -203,6 +212,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		recalls:          deps.Recalls,
 		spendGate:        deps.SpendGate,
 		earn:             deps.Earn,
+		achievements:     deps.Achievements,
 		signupSettlement: deps.SignupSettlement,
 		predictionError:  deps.PredictionError,
 		gists:            deps.Gists,

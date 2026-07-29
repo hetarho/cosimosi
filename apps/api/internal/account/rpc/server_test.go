@@ -121,6 +121,7 @@ func TestSignUpHandlerMapsOnlyThePinnedWireFields(t *testing.T) {
 		Directory:          emptyDirectory{},
 		InviteGranter:      emptyInviteGranter{},
 		SignupBonusGranter: emptySignupBonusGranter{},
+		Achievements:       account.NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -237,6 +238,7 @@ func TestGetProfileKeepsUnprovisionedProfileMessageAbsent(t *testing.T) {
 		Directory:          emptyDirectory{},
 		InviteGranter:      emptyInviteGranter{},
 		SignupBonusGranter: emptySignupBonusGranter{},
+		Achievements:       account.NoAchievementRecorder{},
 		Now:                func() time.Time { return time.Time{} },
 	})
 	if err != nil {

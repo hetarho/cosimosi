@@ -143,6 +143,12 @@ func (s *Service) ViewSemantic(ctx context.Context, scope platform.UserScope, op
 			Stage:        int16(stage),
 			ReachedStage: gist.SemanticStage,
 		}
+		// The 요지화-도달 axis is observed HERE rather than when the worker raises a stage: the
+		// value reported is the stage actually served, and the counter's reach mode keeps the
+		// high-water mark, so viewing a shallower stage afterwards lowers nothing.
+		if err := s.recordViewSemanticProgress(ctx, scope, tx, stage); err != nil {
+			return err
+		}
 		return s.writeReceipt(ctx, scope, tx, PaidActionReceipt{
 			OperationID:        operationID,
 			Kind:               PaidActionViewSemantic,

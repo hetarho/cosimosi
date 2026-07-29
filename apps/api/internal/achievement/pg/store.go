@@ -311,11 +311,14 @@ func (s Store) PurgeUser(ctx context.Context, scope platform.UserScope) error {
 	defer func() {
 		_ = tx.Rollback(ctx)
 	}()
+	// Counters BEFORE progress, matching the order a counter report takes them: one global lock order
+	// across every path that touches both tables is what keeps a sweep and an in-flight launch for the
+	// same user from deadlocking AB/BA. There is no FK between them, so the order is free to choose.
 	queries := s.queries.WithTx(tx)
-	if err := queries.PurgeUserAchievementProgress(ctx, scope.UserID()); err != nil {
+	if err := queries.PurgeUserAchievementCounters(ctx, scope.UserID()); err != nil {
 		return err
 	}
-	if err := queries.PurgeUserAchievementCounters(ctx, scope.UserID()); err != nil {
+	if err := queries.PurgeUserAchievementProgress(ctx, scope.UserID()); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

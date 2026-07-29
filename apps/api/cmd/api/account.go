@@ -91,6 +91,7 @@ func accountServiceOption(
 	directory accountServiceDirectory,
 	inviteGranter account.InviteRewardGranter,
 	signupBonusGranter account.SignupBonusGranter,
+	achievements account.AchievementRecorder,
 	storePurger account.UserDataPurger,
 	achievementPurger account.UserDataPurger,
 ) ([]platform.HandlerOption, *account.Service, error) {
@@ -120,6 +121,7 @@ func accountServiceOption(
 		InviteSigner:       signer,
 		InviteGranter:      inviteGranter,
 		SignupBonusGranter: signupBonusGranter,
+		Achievements:       achievements,
 		Withdrawals:        accountStore,
 		Purgers:            withdrawalAdapters.purgers,
 		Scheduler:          withdrawalAdapters.scheduler,

@@ -6,6 +6,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -15,7 +16,12 @@ import (
 	"github.com/cosimosi/api/internal/platform/apperr"
 )
 
-var ErrServiceRequired = errors.New("achievement rpc server requires the achievement service")
+var (
+	ErrServiceRequired = errors.New("achievement rpc server requires the achievement service")
+	// errClaimInputRequired is the handler's own refusal of a blank id — an argument fault, distinct
+	// from the domain's "this id is not published".
+	errClaimInputRequired = errors.New("claim requires an achievement id")
+)
 
 type Server struct {
 	service *achievement.Service
@@ -61,6 +67,31 @@ func (s *Server) ListAchievements(
 	return connect.NewResponse(&achievementv1.ListAchievementsResponse{Entries: dto}), nil
 }
 
+// ClaimAchievement is thin: map the id in, call the use-case, map the result and the refusals out.
+// The atomicity, the replay behavior and which leg pays all belong to the use-case (§2.9 #7).
+func (s *Server) ClaimAchievement(
+	ctx context.Context,
+	req *connect.Request[achievementv1.ClaimAchievementRequest],
+) (*connect.Response[achievementv1.ClaimAchievementResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	achievementID := strings.TrimSpace(req.Msg.GetAchievementId())
+	if achievementID == "" {
+		return nil, apperr.Domain(connect.CodeInvalidArgument, reasonInputRequired, errClaimInputRequired, nil)
+	}
+	result, err := s.service.ClaimAchievement(ctx, scope, achievementID)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return connect.NewResponse(&achievementv1.ClaimAchievementResponse{
+		GrantedTwinkle:    int64(result.TwinkleAmount),
+		GrantedOrnamentId: result.OrnamentID,
+		TwinkleTotal:      int64(result.TwinkleTotal),
+	}), nil
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -94,11 +125,19 @@ func protoAxis(axis achievement.Axis) achievementv1.AchievementAxis {
 	}
 }
 
-// domainError maps the context's canonical errors onto Connect codes.
+// domainError maps the context's canonical errors onto Connect codes. A granter failure is
+// deliberately its own reason rather than an internal error: the claim IS recorded, and the next
+// attempt replays it — the client should be told to retry, not that something broke.
 func domainError(err error) error {
 	switch {
 	case errors.Is(err, achievement.ErrScopeRequired):
 		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
+	case errors.Is(err, achievement.ErrUnknownAchievementID):
+		return apperr.Domain(connect.CodeNotFound, reasonNotFound, err, nil)
+	case errors.Is(err, achievement.ErrAchievementNotAchieved):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonNotAchieved, err, nil)
+	case errors.Is(err, achievement.ErrRewardUnavailable):
+		return apperr.Domain(connect.CodeUnavailable, reasonRewardUnavailable, err, nil)
 	default:
 		return apperr.Internal(err)
 	}

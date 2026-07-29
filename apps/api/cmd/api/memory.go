@@ -52,11 +52,16 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	directory := newAccountDirectory()
 	inviteGranter := &accountInviteRewardGranter{}
 	signupBonusGranter := &accountSignupBonusGranter{}
+	// The achievement recorder is bound at the end: a claim pays through twinkle and store, so the
+	// achievement service cannot exist until after the producers that report to it. The holder is
+	// handed out now and filled once, the same late-bind the invite granter above uses.
+	achievementRecorders := &achievementRecorderBinding{pool: pool}
 	accountOptions, accountService, err := accountServiceOption(
 		pool,
 		accountDirectoryAdapter{source: directory},
 		inviteGranter,
 		signupBonusGranter,
+		accountAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
 		storeWithdrawalPurgerFor(pool),
 		achievementWithdrawalPurgerFor(pool),
 	)
@@ -97,9 +102,12 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		// replaced here); Earn is the write grant fired inside the launch
 		// transaction ([G3]); PredictionError is the LLM semantic-compare (keyless
 		// mock when no key). All bound here, the only place that sees the concretes.
-		Recalls:          store,
-		SpendGate:        twinkleSpendGate{service: twinkleService},
-		Earn:             twinkleEarnPort{service: twinkleService},
+		Recalls:   store,
+		SpendGate: twinkleSpendGate{service: twinkleService},
+		Earn:      twinkleEarnPort{service: twinkleService},
+		// Counter reports ride the launch/recall/view/release transactions ([A6]); the concrete
+		// binds a counter store onto the producer's own handle, so a rollback advances nothing.
+		Achievements:     memoryAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
 		SignupSettlement: accountSignupSettlement{service: accountService, logger: logger},
 		PredictionError:  adapters.PredictionError,
 		// The gist-view read shares the same store and the same SpendGate
@@ -143,7 +151,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	// The store service is built after twinkle because a save's debit joins the save's transaction
 	// through the economy; the withdrawal sweep takes its purge leg over the pool instead, so the two
 	// contexts still meet only here.
-	storeService, err := newStoreService(pool, twinkleService)
+	storeService, err := newStoreService(
+		pool,
+		twinkleService,
+		storeAchievementRecorder{achievementRecorder{binding: achievementRecorders}},
+	)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
@@ -153,11 +165,17 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
-	achievementService, err := newAchievementService(pool)
+	// Built last, because it pays through both of the services above; binding it closes the cycle
+	// the producers were handed a holder for.
+	achievementService, err := newAchievementService(pool, achievementDeps{
+		twinkle: twinkleService,
+		store:   storeService,
+	})
 	if err != nil {
 		pool.Close()
 		return nil, noop, err
 	}
+	achievementRecorders.bind(achievementService)
 	achievementOption, err := achievementServiceOption(achievementService)
 	if err != nil {
 		pool.Close()

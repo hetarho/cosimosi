@@ -32,6 +32,7 @@ func newRecallService(t *testing.T, store Store, launches memory.LaunchRepo, uni
 		Recalls:          store,
 		SpendGate:        memory.AllowAllSpendGate{},
 		Earn:             memory.NoEarnOnWrite{},
+		Achievements:     memory.NoAchievementRecorder{},
 		SignupSettlement: memory.NoSignupSettlement{},
 		PredictionError:  adapters.PredictionError,
 		Gists:            store,

@@ -25,7 +25,11 @@ import (
 // never a client mistake.
 var errDecorateTxUnusable = errors.New("store decorate tx does not expose a database handle")
 
-func newStoreService(pool *platformdb.Pool, twinkleService *twinkle.Service) (*store.Service, error) {
+func newStoreService(
+	pool *platformdb.Pool,
+	twinkleService *twinkle.Service,
+	achievements store.AchievementRecorder,
+) (*store.Service, error) {
 	repo := storepg.NewStore(pool.PgxPool())
 	return store.NewService(store.ServiceDeps{
 		Ownerships: repo,
@@ -33,8 +37,8 @@ func newStoreService(pool *platformdb.Pool, twinkleService *twinkle.Service) (*s
 		Purge:      repo,
 		Decorate:   repo,
 		Spend:      storeSpendGate{service: twinkleService},
-		// The concrete achievement recorder arrives with the achievement context; until then a save
-		// records nothing, which is the shipped no-op default inside the store service.
+		// The save's counter reports ride its own transaction, so a refused save counts nothing.
+		Achievements: achievements,
 	})
 }
 

@@ -36,6 +36,9 @@ const (
 	// AchievementServiceListAchievementsProcedure is the fully-qualified name of the
 	// AchievementService's ListAchievements RPC.
 	AchievementServiceListAchievementsProcedure = "/cosimosi.achievement.v1.AchievementService/ListAchievements"
+	// AchievementServiceClaimAchievementProcedure is the fully-qualified name of the
+	// AchievementService's ClaimAchievement RPC.
+	AchievementServiceClaimAchievementProcedure = "/cosimosi.achievement.v1.AchievementService/ClaimAchievement"
 )
 
 // AchievementServiceClient is a client for the cosimosi.achievement.v1.AchievementService service.
@@ -43,6 +46,11 @@ type AchievementServiceClient interface {
 	// The whole catalog with this caller's progress, in a server-fixed order. Free, read-only, no
 	// clock advance.
 	ListAchievements(context.Context, *connect.Request[v1.ListAchievementsRequest]) (*connect.Response[v1.ListAchievementsResponse], error)
+	// The explicit claim: stamps claimed_at, then pays the reward. A mutation — never
+	// NO_SIDE_EFFECTS, so it carries no client-cache classification. A repeat claim is an idempotent
+	// replay returning the same reward, not a refusal: refusing would strand a reward in the crash
+	// window between the stamp and the credit.
+	ClaimAchievement(context.Context, *connect.Request[v1.ClaimAchievementRequest]) (*connect.Response[v1.ClaimAchievementResponse], error)
 }
 
 // NewAchievementServiceClient constructs a client for the
@@ -63,17 +71,29 @@ func NewAchievementServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		claimAchievement: connect.NewClient[v1.ClaimAchievementRequest, v1.ClaimAchievementResponse](
+			httpClient,
+			baseURL+AchievementServiceClaimAchievementProcedure,
+			connect.WithSchema(achievementServiceMethods.ByName("ClaimAchievement")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // achievementServiceClient implements AchievementServiceClient.
 type achievementServiceClient struct {
 	listAchievements *connect.Client[v1.ListAchievementsRequest, v1.ListAchievementsResponse]
+	claimAchievement *connect.Client[v1.ClaimAchievementRequest, v1.ClaimAchievementResponse]
 }
 
 // ListAchievements calls cosimosi.achievement.v1.AchievementService.ListAchievements.
 func (c *achievementServiceClient) ListAchievements(ctx context.Context, req *connect.Request[v1.ListAchievementsRequest]) (*connect.Response[v1.ListAchievementsResponse], error) {
 	return c.listAchievements.CallUnary(ctx, req)
+}
+
+// ClaimAchievement calls cosimosi.achievement.v1.AchievementService.ClaimAchievement.
+func (c *achievementServiceClient) ClaimAchievement(ctx context.Context, req *connect.Request[v1.ClaimAchievementRequest]) (*connect.Response[v1.ClaimAchievementResponse], error) {
+	return c.claimAchievement.CallUnary(ctx, req)
 }
 
 // AchievementServiceHandler is an implementation of the cosimosi.achievement.v1.AchievementService
@@ -82,6 +102,11 @@ type AchievementServiceHandler interface {
 	// The whole catalog with this caller's progress, in a server-fixed order. Free, read-only, no
 	// clock advance.
 	ListAchievements(context.Context, *connect.Request[v1.ListAchievementsRequest]) (*connect.Response[v1.ListAchievementsResponse], error)
+	// The explicit claim: stamps claimed_at, then pays the reward. A mutation — never
+	// NO_SIDE_EFFECTS, so it carries no client-cache classification. A repeat claim is an idempotent
+	// replay returning the same reward, not a refusal: refusing would strand a reward in the crash
+	// window between the stamp and the credit.
+	ClaimAchievement(context.Context, *connect.Request[v1.ClaimAchievementRequest]) (*connect.Response[v1.ClaimAchievementResponse], error)
 }
 
 // NewAchievementServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -98,10 +123,18 @@ func NewAchievementServiceHandler(svc AchievementServiceHandler, opts ...connect
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	achievementServiceClaimAchievementHandler := connect.NewUnaryHandler(
+		AchievementServiceClaimAchievementProcedure,
+		svc.ClaimAchievement,
+		connect.WithSchema(achievementServiceMethods.ByName("ClaimAchievement")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.achievement.v1.AchievementService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AchievementServiceListAchievementsProcedure:
 			achievementServiceListAchievementsHandler.ServeHTTP(w, r)
+		case AchievementServiceClaimAchievementProcedure:
+			achievementServiceClaimAchievementHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -113,4 +146,8 @@ type UnimplementedAchievementServiceHandler struct{}
 
 func (UnimplementedAchievementServiceHandler) ListAchievements(context.Context, *connect.Request[v1.ListAchievementsRequest]) (*connect.Response[v1.ListAchievementsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.achievement.v1.AchievementService.ListAchievements is not implemented"))
+}
+
+func (UnimplementedAchievementServiceHandler) ClaimAchievement(context.Context, *connect.Request[v1.ClaimAchievementRequest]) (*connect.Response[v1.ClaimAchievementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.achievement.v1.AchievementService.ClaimAchievement is not implemented"))
 }

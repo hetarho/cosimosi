@@ -156,7 +156,14 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operatio
 		// 3. Spend Twinkle for the recall: the intent carries the post-sync accessibility
 		// signal + the operation id (its dedup key) and joins this transaction, so a denial
 		// aborts the whole recall, resetting and charging nothing (§CC2).
-		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(recallAnchorOf(memory), sync.Current))); err != nil {
+		// One pre-recall snapshot serves both the price and the 망각·회복 judgement, taken before
+		// the reinforce below resets the anchors.
+		anchor := recallAnchorOf(memory)
+		recovered := 0
+		if recallRecoversDecay(anchor, sync.Current) {
+			recovered = 1
+		}
+		if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, memoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
 			return err
 		}
 		// 4. Prediction-error judgement — an LLM semantic compare of content ([R6]).
@@ -186,7 +193,12 @@ func (s *Service) Recall(ctx context.Context, scope platform.UserScope, operatio
 			result.CurrentText = rewriteText
 			result.Seed = newSeed
 		}
-		// 7. Commit the receipt in the SAME transaction as the debit + effects (A3): a
+		// 7. Report the counter facts inside the same transaction, so a later failure leaves no
+		// counter advanced.
+		if err := s.recordRecallProgress(ctx, scope, tx, 1, recovered); err != nil {
+			return err
+		}
+		// 8. Commit the receipt in the SAME transaction as the debit + effects (A3): a
 		// response-loss retry of this operation id now replays `result` without redoing work.
 		return s.writeReceipt(ctx, scope, tx, PaidActionReceipt{
 			OperationID:        operationID,
@@ -258,8 +270,15 @@ func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope
 		// operation-id + member-id, so a replayed diary recall re-charges no member (A3). A
 		// denial aborts the whole transaction — atomic, resets nothing.
 		ids := make([]string, 0, len(anchors))
+		// The 망각·회복 judgement rides along the pricing pass, on the same pre-recall snapshot:
+		// once the reinforce below resets each anchor the depth is gone, and there is no recompute
+		// path afterwards.
+		recovered := 0
 		for _, anchor := range anchors {
 			ids = append(ids, anchor.EpisodicMemoryID)
+			if recallRecoversDecay(anchor, sync.Current) {
+				recovered++
+			}
 			if err := s.spendGate.CheckAndSpend(ctx, scope, tx, RecallSpendIntent(operationID, anchor.EpisodicMemoryID, recallAccessibilitySignal(anchor, sync.Current))); err != nil {
 				return err
 			}
@@ -268,6 +287,10 @@ func (s *Service) RecallDiaryStars(ctx context.Context, scope platform.UserScope
 			if _, err := s.reinforce(ctx, scope, tx, id, sync.Current); err != nil {
 				return err
 			}
+		}
+		// A whole-diary recall counts each member, matching the ledger's one-row-per-member shape.
+		if err := s.recordRecallProgress(ctx, scope, tx, len(ids), recovered); err != nil {
+			return err
 		}
 		result = RecallDiaryStarsResult{DiaryID: diaryID, EpisodicMemoryIDs: ids, Sync: sync}
 		return s.writeReceipt(ctx, scope, tx, PaidActionReceipt{

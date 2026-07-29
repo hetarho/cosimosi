@@ -9,53 +9,6 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 )
 
-type fakeRepo struct {
-	counters map[CounterKey]int64
-	progress []ProgressRecord
-	purged   []string
-}
-
-func (f *fakeRepo) ListCounters(context.Context, platform.UserScope) (map[CounterKey]int64, error) {
-	return f.counters, nil
-}
-
-func (f *fakeRepo) ListProgress(context.Context, platform.UserScope) ([]ProgressRecord, error) {
-	return f.progress, nil
-}
-
-func (f *fakeRepo) GetProgress(context.Context, platform.UserScope, string) (*ProgressRecord, error) {
-	return nil, nil
-}
-
-func (f *fakeRepo) TouchCounter(context.Context, platform.UserScope, CounterKey) (bool, error) {
-	return false, nil
-}
-
-func (f *fakeRepo) AddCounter(context.Context, platform.UserScope, CounterKey, int64) (int64, error) {
-	return 0, nil
-}
-
-func (f *fakeRepo) RaiseCounter(context.Context, platform.UserScope, CounterKey, int64) (int64, error) {
-	return 0, nil
-}
-
-func (f *fakeRepo) MarkAchieved(context.Context, platform.UserScope, string) (bool, error) {
-	return false, nil
-}
-
-func (f *fakeRepo) MarkClaimed(context.Context, platform.UserScope, string, string) (bool, error) {
-	return false, nil
-}
-
-func (f *fakeRepo) PurgeUser(_ context.Context, scope platform.UserScope) error {
-	f.purged = append(f.purged, scope.UserID())
-	return nil
-}
-
-func (f *fakeRepo) InAchievementTx(ctx context.Context, fn func(tx Store) error) error {
-	return fn(f)
-}
-
 func testScope(t *testing.T) platform.UserScope {
 	t.Helper()
 	scope, err := platform.NewUserScope("achievement-test-user")
@@ -67,7 +20,11 @@ func testScope(t *testing.T) platform.UserScope {
 
 func newTestService(t *testing.T, repo Repo) *Service {
 	t.Helper()
-	service, err := NewService(AchievementServiceDeps{Repo: repo})
+	service, err := NewService(AchievementServiceDeps{
+		Repo:      repo,
+		Twinkle:   &fakeTwinkleGranter{},
+		Ornaments: &fakeOrnamentGranter{},
+	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -132,7 +89,7 @@ func TestRequireCatalogIDRefusesAnUnpublishedID(t *testing.T) {
 // read is always a superset of what was true when the progress row was written.
 func TestListAchievementsNeverContradictsItself(t *testing.T) {
 	t.Parallel()
-	repo := &tornReadRepo{fakeRepo: fakeRepo{}}
+	repo := &tornReadStore{fakeStore: *newFakeStore()}
 	service := newTestService(t, repo)
 	entries, err := service.ListAchievements(context.Background(), testScope(t))
 	if err != nil {
@@ -150,29 +107,91 @@ func TestListAchievementsNeverContradictsItself(t *testing.T) {
 
 // tornReadRepo answers the worst interleaving the read can meet: the progress row exists, and the
 // counter read that follows sees the write that produced it.
-type tornReadRepo struct {
-	fakeRepo
+type tornReadStore struct {
+	fakeStore
 	progressRead      bool
 	progressReadFirst bool
 }
 
-func (r *tornReadRepo) ListProgress(context.Context, platform.UserScope) ([]ProgressRecord, error) {
+func (r *tornReadStore) ListProgress(context.Context, platform.UserScope) ([]ProgressRecord, error) {
 	r.progressRead = true
 	r.progressReadFirst = true
 	return []ProgressRecord{{AchievementID: "diary_5"}}, nil
 }
 
-func (r *tornReadRepo) ListCounters(context.Context, platform.UserScope) (map[CounterKey]int64, error) {
+func (r *tornReadStore) ListCounters(context.Context, platform.UserScope) (map[CounterKey]int64, error) {
 	if !r.progressRead {
 		r.progressReadFirst = false
 	}
 	return map[CounterKey]int64{CounterDiaryWritten: 5}, nil
 }
 
-func TestNewServiceRequiresRepo(t *testing.T) {
+// fakeTwinkleGranter and fakeOrnamentGranter record what a claim paid. Both count calls, because a
+// replay must credit through the same dedup key rather than a second time.
+type fakeTwinkleGranter struct {
+	calls   int
+	claimID string
+	amount  int
+	total   int
+	err     error
+}
+
+func (g *fakeTwinkleGranter) EarnAchievementReward(
+	_ context.Context,
+	_ platform.UserScope,
+	claimID string,
+	amount int,
+) (int, error) {
+	g.calls++
+	g.claimID = claimID
+	g.amount = amount
+	if g.err != nil {
+		return 0, g.err
+	}
+	g.total += amount
+	return g.total, nil
+}
+
+type fakeOrnamentGranter struct {
+	calls      int
+	claimID    string
+	ornamentID string
+	err        error
+}
+
+func (g *fakeOrnamentGranter) Grant(
+	_ context.Context,
+	_ platform.UserScope,
+	claimID string,
+	ornamentID string,
+) error {
+	g.calls++
+	g.claimID = claimID
+	g.ornamentID = ornamentID
+	return g.err
+}
+
+func TestNewServiceRequiresItsDependencies(t *testing.T) {
 	t.Parallel()
-	if _, err := NewService(AchievementServiceDeps{}); !errors.Is(err, ErrRepoRequired) {
+	if _, err := NewService(AchievementServiceDeps{
+		Twinkle:   &fakeTwinkleGranter{},
+		Ornaments: &fakeOrnamentGranter{},
+	}); !errors.Is(err, ErrRepoRequired) {
 		t.Fatalf("NewService without repo = %v, want ErrRepoRequired", err)
+	}
+	// Unconditional, in every environment: a service that records claims it cannot pay would strand
+	// rewards in the one window the claim/payout pairing exists to heal.
+	if _, err := NewService(AchievementServiceDeps{
+		Repo:    newFakeStore(),
+		Twinkle: &fakeTwinkleGranter{},
+	}); !errors.Is(err, ErrGrantersRequired) {
+		t.Fatalf("NewService without the ornament granter = %v, want ErrGrantersRequired", err)
+	}
+	if _, err := NewService(AchievementServiceDeps{
+		Repo:      newFakeStore(),
+		Ornaments: &fakeOrnamentGranter{},
+	}); !errors.Is(err, ErrGrantersRequired) {
+		t.Fatalf("NewService without the twinkle granter = %v, want ErrGrantersRequired", err)
 	}
 }
 
@@ -180,7 +199,7 @@ func TestNewServiceRequiresRepo(t *testing.T) {
 // order ([A4][U9]).
 func TestListAchievementsAnswersFullCatalogAtZero(t *testing.T) {
 	t.Parallel()
-	service := newTestService(t, &fakeRepo{})
+	service := newTestService(t, newFakeStore())
 	entries, err := service.ListAchievements(context.Background(), testScope(t))
 	if err != nil {
 		t.Fatalf("ListAchievements failed: %v", err)
@@ -201,12 +220,10 @@ func TestListAchievementsAnswersFullCatalogAtZero(t *testing.T) {
 
 func TestListAchievementsDerivesAndClampsProgress(t *testing.T) {
 	t.Parallel()
-	service := newTestService(t, &fakeRepo{
-		counters: map[CounterKey]int64{
-			CounterDiaryWritten:       3541,
-			CounterSemanticStageDepth: 2,
-		},
-	})
+	store := newFakeStore()
+	store.counters[CounterDiaryWritten] = 3541
+	store.counters[CounterSemanticStageDepth] = 2
+	service := newTestService(t, store)
 	entries, err := service.ListAchievements(context.Background(), testScope(t))
 	if err != nil {
 		t.Fatalf("ListAchievements failed: %v", err)
@@ -238,12 +255,12 @@ func TestListAchievementsReadsStoredProgressFacts(t *testing.T) {
 	t.Parallel()
 	achievedAt := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
 	claimedAt := achievedAt.Add(time.Hour)
-	service := newTestService(t, &fakeRepo{
-		progress: []ProgressRecord{
-			{AchievementID: "first_diary", AchievedAt: achievedAt, ClaimedAt: &claimedAt, ClaimID: "claim-1"},
-			{AchievementID: "first_recall", AchievedAt: achievedAt},
-		},
-	})
+	store := newFakeStore()
+	store.achievedAt["first_diary"] = achievedAt
+	store.achievedAt["first_recall"] = achievedAt
+	store.claimedAt["first_diary"] = claimedAt
+	store.claimIDs["first_diary"] = "first_diary"
+	service := newTestService(t, store)
 	entries, err := service.ListAchievements(context.Background(), testScope(t))
 	if err != nil {
 		t.Fatalf("ListAchievements failed: %v", err)
@@ -271,7 +288,7 @@ func TestListAchievementsReadsStoredProgressFacts(t *testing.T) {
 
 func TestListAchievementsRequiresScope(t *testing.T) {
 	t.Parallel()
-	service := newTestService(t, &fakeRepo{})
+	service := newTestService(t, newFakeStore())
 	if _, err := service.ListAchievements(context.Background(), platform.UserScope{}); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("unscoped read = %v, want ErrScopeRequired", err)
 	}
@@ -279,7 +296,7 @@ func TestListAchievementsRequiresScope(t *testing.T) {
 
 func TestPurgeUserGuardsAndDelegates(t *testing.T) {
 	t.Parallel()
-	repo := &fakeRepo{}
+	repo := newFakeStore()
 	service := newTestService(t, repo)
 	if err := service.PurgeUser(context.Background(), platform.UserScope{}); !errors.Is(err, ErrScopeRequired) {
 		t.Fatalf("unscoped purge = %v, want ErrScopeRequired", err)

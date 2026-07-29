@@ -132,6 +132,7 @@ type serviceFixture struct {
 	progression      *fakeProgression
 	spendGate        *fakeSpendGate
 	earn             *fakeEarnPort
+	achievements     *fakeAchievementRecorder
 	signupSettlement *fakeSignupSettlement
 	predictionError  *fakePredictionError
 	gists            *fakeGistReader
@@ -157,6 +158,7 @@ func newFixture(t *testing.T) *serviceFixture {
 		progression:      &fakeProgression{store: launches},
 		spendGate:        &fakeSpendGate{},
 		earn:             &fakeEarnPort{},
+		achievements:     &fakeAchievementRecorder{},
 		signupSettlement: &fakeSignupSettlement{launches: launches},
 		predictionError:  &fakePredictionError{},
 		gists:            &fakeGistReader{},
@@ -184,6 +186,7 @@ func newFixture(t *testing.T) *serviceFixture {
 		Recalls:          fixture.launches,
 		SpendGate:        fixture.spendGate,
 		Earn:             fixture.earn,
+		Achievements:     fixture.achievements,
 		SignupSettlement: fixture.signupSettlement,
 		PredictionError:  fixture.predictionError,
 		Gists:            fixture.gists,
@@ -228,6 +231,7 @@ func TestNewServiceRejectsUnboundSignupSettlement(t *testing.T) {
 		Recalls:         fixture.launches,
 		SpendGate:       fixture.spendGate,
 		Earn:            fixture.earn,
+		Achievements:    NoAchievementRecorder{},
 		PredictionError: fixture.predictionError,
 		Gists:           fixture.gists,
 		ViewSemantics:   fixture.launches,
@@ -464,6 +468,7 @@ func TestEncodeDegradesToNameMatchWhenEmbedderFails(t *testing.T) {
 		Recalls:          fixture.launches,
 		SpendGate:        fixture.spendGate,
 		Earn:             fixture.earn,
+		Achievements:     NoAchievementRecorder{},
 		SignupSettlement: NoSignupSettlement{},
 		PredictionError:  fixture.predictionError,
 		Gists:            fixture.gists,

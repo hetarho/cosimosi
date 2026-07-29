@@ -8,6 +8,7 @@ var (
 	ErrDirectoryRequired           = errors.New("account service requires an account directory")
 	ErrInviteGranterRequired       = errors.New("account service requires an invite reward granter")
 	ErrSignupBonusGranterRequired  = errors.New("account service requires a signup bonus granter")
+	ErrAchievementsRequired        = errors.New("account service requires an achievement recorder")
 	ErrWithdrawalStoreRequired     = errors.New("account service requires a withdrawal store")
 	ErrWithdrawalSchedulerRequired = errors.New("account service requires a withdrawal sweep scheduler")
 	ErrCredentialDirectoryRequired = errors.New("account service requires a credential directory")

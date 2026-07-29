@@ -285,6 +285,116 @@ func (x *ListAchievementsResponse) GetEntries() []*AchievementEntry {
 	return nil
 }
 
+// The id alone. No user_id, no amount, no reward and no counter: a client cannot propose what it
+// earned, and no method in this service accepts a counter at all — progress is only ever a
+// consequence of a real product action.
+type ClaimAchievementRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AchievementId string                 `protobuf:"bytes,1,opt,name=achievement_id,json=achievementId,proto3" json:"achievement_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimAchievementRequest) Reset() {
+	*x = ClaimAchievementRequest{}
+	mi := &file_cosimosi_achievement_v1_achievement_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimAchievementRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimAchievementRequest) ProtoMessage() {}
+
+func (x *ClaimAchievementRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_achievement_v1_achievement_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimAchievementRequest.ProtoReflect.Descriptor instead.
+func (*ClaimAchievementRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_achievement_v1_achievement_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ClaimAchievementRequest) GetAchievementId() string {
+	if x != nil {
+		return x.AchievementId
+	}
+	return ""
+}
+
+type ClaimAchievementResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// GENERAL only — there is no kind field anywhere on this service.
+	GrantedTwinkle int64 `protobuf:"varint,1,opt,name=granted_twinkle,json=grantedTwinkle,proto3" json:"granted_twinkle,omitempty"`
+	// Empty for a stardust reward; exactly one of the two is set.
+	GrantedOrnamentId string `protobuf:"bytes,2,opt,name=granted_ornament_id,json=grantedOrnamentId,proto3" json:"granted_ornament_id,omitempty"`
+	// The balance after the credit, for the reveal.
+	TwinkleTotal  int64 `protobuf:"varint,3,opt,name=twinkle_total,json=twinkleTotal,proto3" json:"twinkle_total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimAchievementResponse) Reset() {
+	*x = ClaimAchievementResponse{}
+	mi := &file_cosimosi_achievement_v1_achievement_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimAchievementResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimAchievementResponse) ProtoMessage() {}
+
+func (x *ClaimAchievementResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_achievement_v1_achievement_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimAchievementResponse.ProtoReflect.Descriptor instead.
+func (*ClaimAchievementResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_achievement_v1_achievement_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ClaimAchievementResponse) GetGrantedTwinkle() int64 {
+	if x != nil {
+		return x.GrantedTwinkle
+	}
+	return 0
+}
+
+func (x *ClaimAchievementResponse) GetGrantedOrnamentId() string {
+	if x != nil {
+		return x.GrantedOrnamentId
+	}
+	return ""
+}
+
+func (x *ClaimAchievementResponse) GetTwinkleTotal() int64 {
+	if x != nil {
+		return x.TwinkleTotal
+	}
+	return 0
+}
+
 var File_cosimosi_achievement_v1_achievement_proto protoreflect.FileDescriptor
 
 const file_cosimosi_achievement_v1_achievement_proto_rawDesc = "" +
@@ -303,7 +413,13 @@ const file_cosimosi_achievement_v1_achievement_proto_rawDesc = "" +
 	"\vachieved_at\x18\t \x01(\tR\n" +
 	"achievedAt\"_\n" +
 	"\x18ListAchievementsResponse\x12C\n" +
-	"\aentries\x18\x01 \x03(\v2).cosimosi.achievement.v1.AchievementEntryR\aentries*\xf4\x02\n" +
+	"\aentries\x18\x01 \x03(\v2).cosimosi.achievement.v1.AchievementEntryR\aentries\"@\n" +
+	"\x17ClaimAchievementRequest\x12%\n" +
+	"\x0eachievement_id\x18\x01 \x01(\tR\rachievementId\"\x98\x01\n" +
+	"\x18ClaimAchievementResponse\x12'\n" +
+	"\x0fgranted_twinkle\x18\x01 \x01(\x03R\x0egrantedTwinkle\x12.\n" +
+	"\x13granted_ornament_id\x18\x02 \x01(\tR\x11grantedOrnamentId\x12#\n" +
+	"\rtwinkle_total\x18\x03 \x01(\x03R\ftwinkleTotal*\xf4\x02\n" +
 	"\x0fAchievementAxis\x12 \n" +
 	"\x1cACHIEVEMENT_AXIS_UNSPECIFIED\x10\x00\x12%\n" +
 	"!ACHIEVEMENT_AXIS_FIRST_EXPERIENCE\x10\x01\x12 \n" +
@@ -314,9 +430,10 @@ const file_cosimosi_achievement_v1_achievement_proto_rawDesc = "" +
 	"$ACHIEVEMENT_AXIS_FORGETTING_RECOVERY\x10\x06\x12#\n" +
 	"\x1fACHIEVEMENT_AXIS_NEURON_SHARING\x10\a\x12!\n" +
 	"\x1dACHIEVEMENT_AXIS_MOOD_VARIETY\x10\b\x12\x1f\n" +
-	"\x1bACHIEVEMENT_AXIS_DECORATION\x10\t2\x92\x01\n" +
+	"\x1bACHIEVEMENT_AXIS_DECORATION\x10\t2\x8b\x02\n" +
 	"\x12AchievementService\x12|\n" +
-	"\x10ListAchievements\x120.cosimosi.achievement.v1.ListAchievementsRequest\x1a1.cosimosi.achievement.v1.ListAchievementsResponse\"\x03\x90\x02\x01B\xf9\x01\n" +
+	"\x10ListAchievements\x120.cosimosi.achievement.v1.ListAchievementsRequest\x1a1.cosimosi.achievement.v1.ListAchievementsResponse\"\x03\x90\x02\x01\x12w\n" +
+	"\x10ClaimAchievement\x120.cosimosi.achievement.v1.ClaimAchievementRequest\x1a1.cosimosi.achievement.v1.ClaimAchievementResponseB\xf9\x01\n" +
 	"\x1bcom.cosimosi.achievement.v1B\x10AchievementProtoP\x01ZJgithub.com/cosimosi/api/internal/gen/cosimosi/achievement/v1;achievementv1\xa2\x02\x03CAX\xaa\x02\x17Cosimosi.Achievement.V1\xca\x02\x17Cosimosi\\Achievement\\V1\xe2\x02#Cosimosi\\Achievement\\V1\\GPBMetadata\xea\x02\x19Cosimosi::Achievement::V1b\x06proto3"
 
 var (
@@ -332,20 +449,24 @@ func file_cosimosi_achievement_v1_achievement_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_achievement_v1_achievement_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cosimosi_achievement_v1_achievement_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_cosimosi_achievement_v1_achievement_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_cosimosi_achievement_v1_achievement_proto_goTypes = []any{
 	(AchievementAxis)(0),             // 0: cosimosi.achievement.v1.AchievementAxis
 	(*ListAchievementsRequest)(nil),  // 1: cosimosi.achievement.v1.ListAchievementsRequest
 	(*AchievementEntry)(nil),         // 2: cosimosi.achievement.v1.AchievementEntry
 	(*ListAchievementsResponse)(nil), // 3: cosimosi.achievement.v1.ListAchievementsResponse
+	(*ClaimAchievementRequest)(nil),  // 4: cosimosi.achievement.v1.ClaimAchievementRequest
+	(*ClaimAchievementResponse)(nil), // 5: cosimosi.achievement.v1.ClaimAchievementResponse
 }
 var file_cosimosi_achievement_v1_achievement_proto_depIdxs = []int32{
 	0, // 0: cosimosi.achievement.v1.AchievementEntry.axis:type_name -> cosimosi.achievement.v1.AchievementAxis
 	2, // 1: cosimosi.achievement.v1.ListAchievementsResponse.entries:type_name -> cosimosi.achievement.v1.AchievementEntry
 	1, // 2: cosimosi.achievement.v1.AchievementService.ListAchievements:input_type -> cosimosi.achievement.v1.ListAchievementsRequest
-	3, // 3: cosimosi.achievement.v1.AchievementService.ListAchievements:output_type -> cosimosi.achievement.v1.ListAchievementsResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
+	4, // 3: cosimosi.achievement.v1.AchievementService.ClaimAchievement:input_type -> cosimosi.achievement.v1.ClaimAchievementRequest
+	3, // 4: cosimosi.achievement.v1.AchievementService.ListAchievements:output_type -> cosimosi.achievement.v1.ListAchievementsResponse
+	5, // 5: cosimosi.achievement.v1.AchievementService.ClaimAchievement:output_type -> cosimosi.achievement.v1.ClaimAchievementResponse
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
@@ -362,7 +483,7 @@ func file_cosimosi_achievement_v1_achievement_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_achievement_v1_achievement_proto_rawDesc), len(file_cosimosi_achievement_v1_achievement_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

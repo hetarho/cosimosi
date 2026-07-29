@@ -23,7 +23,8 @@ type ServiceDeps struct {
 	// joins it through. A root that binds neither still serves the reads.
 	Decorate DecorateRepo
 	Spend    SpendGate
-	// Achievements defaults to the no-op recorder: counting is not a precondition for decorating.
+	// Achievements is the counter-report seam a save fires; required (the no-op for achievement-less
+	// composition) so no root can save decorations with the seam silently unbound.
 	Achievements AchievementRecorder
 }
 
@@ -40,9 +41,11 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Ownerships == nil || deps.Selections == nil || deps.Purge == nil {
 		return nil, ErrStoreRequired
 	}
-	achievements := deps.Achievements
-	if achievements == nil {
-		achievements = NoAchievementRecorder{}
+	// Required, like every other context's recorder: a root that silently defaulted to the no-op would
+	// lose this save's three counters entirely, and that is precisely the drift the boot reconciliation
+	// exists to make impossible.
+	if deps.Achievements == nil {
+		return nil, ErrAchievementsRequired
 	}
 	return &Service{
 		ownerships:   deps.Ownerships,
@@ -50,7 +53,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		purge:        deps.Purge,
 		decorate:     deps.Decorate,
 		spend:        deps.Spend,
-		achievements: achievements,
+		achievements: deps.Achievements,
 	}, nil
 }
 

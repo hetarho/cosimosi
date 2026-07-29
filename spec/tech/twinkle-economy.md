@@ -94,12 +94,19 @@ economic event does not add a reason on its way past.
 | `invite`            | `ClaimInvite`, inviter leg | `twinkle.earn_invite_inviter`               | `invite:<signupID>`        | own ledger tx          |
 | `invite_signup`     | `ClaimInvite`, invitee leg | `twinkle.earn_invite_invitee`               | `invite_signup:<signupID>` | own ledger tx          |
 | `signup_bonus`      | `EarnSignupBonus`          | `twinkle.earn_signup_bonus`                 | `signup_bonus:<userID>`    | own ledger tx          |
-| `achievement_claim` | `EarnAchievementReward`    | the caller's validated reward               | `achievement:<claimID>`    | own ledger tx          |
+| `achievement_claim` | `EarnAchievementReward`    | the reward tier the catalog set             | `achievement:<claimID>`    | own ledger tx          |
 | `admin_grant`       | `EarnAdminGrant`           | operator amount ≤ `twinkle.admin_grant_max` | the console's grant id     | own ledger tx          |
 | `recall`            | `CheckAndSpend`            | `RecallCost(weight)`                        | `spend:<opID>:<memoryID>`  | the recall's tx        |
 | `gist_view`         | `CheckAndSpend`            | `GistViewCost(stage)`                       | `spend:<opID>:<memoryID>`  | caller's or its own    |
 | `ornament_purchase` | `CheckAndSpend`            | the caller's catalog total                  | the caller's purchase key  | the Decorate's tx      |
 | `payment`           | **none**                   | —                                           | —                          | retained, historical   |
+
+An achievement claim is an **ordinary append-only earn row** and nothing more: the claim id is derived from the
+achievement id, so `achievement:<claimID>` makes every replay recompute the identical dedup key and the credit lands once
+however many times the claim is retried. It shows in `/me`'s stardust history exactly like a write earn — there is no
+second ledger, no achievement-specific balance, and no reward path that bypasses this table. The amount is the catalog's
+tier resolved from `achievement.reward_tier_{1,2,3}`, and `EarnAchievementReward` credits `GENERAL` unconditionally, which
+is where "no `SMALL` reward" holds without a kind parameter existing anywhere on the path.
 
 **Every writable reason has exactly one named entry point, and the two unwritable ones have none — the guard is the
 ABSENT METHOD.** There is no exported `Earn(reason, amount)`, so `daily_grant` and `payment` are unreachable by

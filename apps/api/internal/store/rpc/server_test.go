@@ -19,9 +19,10 @@ func newTestServer(t *testing.T) *Server {
 	t.Helper()
 	repo := pg.NewStore(nil)
 	service, err := store.NewService(store.ServiceDeps{
-		Ownerships: repo,
-		Selections: repo,
-		Purge:      repo,
+		Ownerships:   repo,
+		Selections:   repo,
+		Purge:        repo,
+		Achievements: store.NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)

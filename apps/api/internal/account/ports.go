@@ -81,3 +81,37 @@ type CredentialDirectory interface {
 	SetUserBanned(ctx context.Context, userID string, banned bool) error
 	DeleteUser(ctx context.Context, userID string) error
 }
+
+// AchievementRecorder is account's consumer-owned progress-report seam ([A6][I11]): a key and a
+// delta, and no field in which an account fact could travel. The transaction handle is `any` —
+// account's invite settlement runs as a locked sequence of statements rather than one transaction,
+// so the concrete adapter binds a pool-bound store; the parameter exists so the port matches the
+// producer shape the other contexts use.
+type AchievementRecorder interface {
+	RecordProgress(ctx context.Context, scope platform.UserScope, tx any, counterKey string, delta int) error
+}
+
+// NoAchievementRecorder is the achievement-less binding: a settled invite counts nothing. Production
+// binds the real recorder — cmd/api refuses to boot without it.
+type NoAchievementRecorder struct{}
+
+func (NoAchievementRecorder) RecordProgress(
+	context.Context,
+	platform.UserScope,
+	any,
+	string,
+	int,
+) error {
+	return nil
+}
+
+// CounterInviteSettled counts a settled valid signup under the INVITER's scope — the [A2] axis is
+// "친구 초대 성공", an inviter fact, so the invitee gets no counter. Its spelling and mode belong to
+// the achievement catalog; the composition root reconciles this set against the keys the catalog
+// reads and refuses to boot on a difference.
+const CounterInviteSettled = "invite_settled"
+
+// AchievementCounterKeys is every key this context can emit.
+func AchievementCounterKeys() []string {
+	return []string{CounterInviteSettled}
+}

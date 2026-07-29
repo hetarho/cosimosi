@@ -181,6 +181,12 @@ func (s *Service) PersistEncoded(ctx context.Context, scope platform.UserScope, 
 		if err := s.linker.LinkLaunched(ctx, scope, tx, launched); err != nil {
 			return err
 		}
+		// The counter facts, reported after the activations are persisted so the sharing depth is
+		// read from the graph this launch just made ([A6]). Same transaction, so a rollback here
+		// leaves no counter advanced.
+		if err := s.recordLaunchProgress(ctx, scope, tx, diary.ID, launched); err != nil {
+			return err
+		}
 		if err := s.enqueueAsyncJobs(ctx, scope, tx, launched, newNeurons); err != nil {
 			return err
 		}

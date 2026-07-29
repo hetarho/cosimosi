@@ -12,6 +12,7 @@ type Service struct {
 	inviteSigner       InviteSigner
 	inviteGranter      InviteRewardGranter
 	signupBonusGranter SignupBonusGranter
+	achievements       AchievementRecorder
 	withdrawals        WithdrawalStore
 	purgers            []UserDataPurger
 	scheduler          WithdrawalSweepScheduler
@@ -27,12 +28,15 @@ type ServiceDeps struct {
 	InviteSigner       InviteSigner
 	InviteGranter      InviteRewardGranter
 	SignupBonusGranter SignupBonusGranter
-	Withdrawals        WithdrawalStore
-	Purgers            []UserDataPurger
-	Scheduler          WithdrawalSweepScheduler
-	Credentials        CredentialDirectory
-	Now                func() time.Time
-	NewID              func() string
+	// Achievements is the counter-report seam a settled invite fires; required (the no-op for
+	// achievement-less composition) so no root can settle invites with the seam silently unbound.
+	Achievements AchievementRecorder
+	Withdrawals  WithdrawalStore
+	Purgers      []UserDataPurger
+	Scheduler    WithdrawalSweepScheduler
+	Credentials  CredentialDirectory
+	Now          func() time.Time
+	NewID        func() string
 }
 
 func NewService(deps ServiceDeps) (*Service, error) {
@@ -47,6 +51,9 @@ func NewService(deps ServiceDeps) (*Service, error) {
 	}
 	if deps.SignupBonusGranter == nil {
 		return nil, ErrSignupBonusGranterRequired
+	}
+	if deps.Achievements == nil {
+		return nil, ErrAchievementsRequired
 	}
 	withdrawalConfigured := deps.Withdrawals != nil || deps.Scheduler != nil ||
 		deps.Credentials != nil || len(deps.Purgers) > 0
@@ -90,6 +97,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		inviteSigner:       deps.InviteSigner,
 		inviteGranter:      deps.InviteGranter,
 		signupBonusGranter: deps.SignupBonusGranter,
+		achievements:       deps.Achievements,
 		withdrawals:        deps.Withdrawals,
 		purgers:            purgers,
 		scheduler:          deps.Scheduler,

@@ -27,7 +27,7 @@ func TestDecorateBuysAndDebitsInOneTransaction(t *testing.T) {
 	cleanupStoreRows(t, pool, userID)
 	scope := economyScope(t, userID)
 	twinkleService := economyTwinkleService(t, pool)
-	storeService, err := newStoreService(pool, twinkleService)
+	storeService, err := newStoreService(pool, twinkleService, store.NoAchievementRecorder{})
 	if err != nil {
 		t.Fatalf("newStoreService failed: %v", err)
 	}

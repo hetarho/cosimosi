@@ -53,6 +53,7 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		directory,
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		account.NoAchievementRecorder{},
 		storeWithdrawalPurgerForTest(t, pool),
 		achievementWithdrawalPurgerFor(pool),
 	)
@@ -226,6 +227,7 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		directory,
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		account.NoAchievementRecorder{},
 		storeWithdrawalPurgerForTest(t, pool),
 		achievementWithdrawalPurgerFor(pool),
 	)

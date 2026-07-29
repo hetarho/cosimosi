@@ -20,9 +20,30 @@ var (
 	// adding to a reach counter would turn 단계 도달 into a count, so four stage-1 views could
 	// unlock the stage-4 row.
 	ErrCounterModeMismatch = errors.New("achievement counter was written in the wrong mode")
-	// ErrUnknownAchievementID refuses a progress write for an id the catalog does not publish. A
-	// typo would otherwise leave a durable row no read can ever answer for.
+	// ErrUnknownAchievementID refuses any reference to an id the catalog does not publish — a progress
+	// write (where a typo would leave a durable row no read can answer for) and a claim alike. One
+	// sentinel, because both are the same fact and two identical messages would be indistinguishable
+	// in a log.
 	ErrUnknownAchievementID = errors.New("achievement does not publish this achievement id")
+	// ErrGrantersRequired is a wiring fault — the service was built without the reward legs a claim
+	// pays through. Unconditional, in every environment: an achievement that cannot pay is worse
+	// than one that cannot be claimed.
+	ErrGrantersRequired = errors.New("achievement service requires its reward granters")
+	// ErrProgressDeltaInvalid refuses a report the key's mode cannot accept: an accumulate key
+	// reported as zero or less (a caller with nothing to add), or a reach key reported as negative.
+	// Always a producer bug — no axis in the vocabulary is decrementable — never a user action.
+	ErrProgressDeltaInvalid = errors.New("achievement progress delta is not reportable for this counter")
+	// ErrDerivedCounterNotReportable refuses a producer pushing a counter this context maintains
+	// itself. Distinctness is a property only the counter table's owner can prove: thirteen JOY
+	// entries pushed as mood_variety would read as thirteen moods.
+	ErrDerivedCounterNotReportable = errors.New("this achievement counter is derived, not reported")
+	// ErrAchievementNotAchieved refuses a claim whose condition has not been met. A met condition is
+	// a PRECONDITION for the reward, never the payout itself ([A4]) — so nothing is credited here.
+	ErrAchievementNotAchieved = errors.New("this achievement has not been achieved")
+	// ErrRewardUnavailable is a payout leg refusing AFTER the claim was recorded. The claim stands
+	// and the next attempt replays it through the same dedup keys, so this is a retry signal, not a
+	// lost reward.
+	ErrRewardUnavailable = errors.New("achievement reward could not be paid yet")
 	// ErrClaimIDRequired refuses an empty claim id. The DDL CHECK only pairs claimed_at with
 	// claim_id, and an empty string satisfies it — but it is the dedup key both reward legs carry,
 	// so an empty one would collapse every claim into a single dedup identity.

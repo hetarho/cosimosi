@@ -94,10 +94,67 @@ currency that buys ornaments; a reward that could be paid in `SMALL` would let a
 reward that could name a palette would put a feeling's color behind a wall. Both are unrepresentable instead of
 forbidden.
 
+## Who reports what, and when
+
+Progress arrives by **push**, from inside the transaction that made the fact true — so a rolled-back
+launch, recall, view, release or save advances nothing. Each producing context declares its own port,
+whose entire payload is `(scope, tx, counterKey, delta)` and whose only return is `error`: no signature
+on the path can carry a memory id, a name, a mood, a strength, a stage, a text or a timestamp, and no
+value can flow back into the producing write.
+
+| Counter                          | Reported by                                 | Δ per event                                                       |
+| -------------------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| `diary_written`                  | `memory.PersistEncoded`                     | +1 per launched diary — never per memory                          |
+| `episodic_memory_launched`       | `memory.PersistEncoded`                     | +the launched row count                                           |
+| `neuron_shared`                  | `memory.PersistEncoded`                     | +1 per neuron reaching its 2nd membership                         |
+| `neuron_share_depth`             | `memory.PersistEncoded`                     | the most memories now sharing one `Neuron` (**reach**)            |
+| `mood_recorded:<MOOD>`           | `memory.PersistEncoded`                     | +1 per memory, key built from the closed mood enum                |
+| `recall_performed`               | `memory.Recall` · `memory.RecallDiaryStars` | +1 **per recalled memory**                                        |
+| `decay_recovered`                | `memory.Recall` · `memory.RecallDiaryStars` | +1 per memory whose pre-recall stage ≥ `recovery_decay_stage_min` |
+| `gist_viewed`                    | `memory.ViewSemantic`                       | +1                                                                |
+| `semantic_stage_depth`           | `memory.ViewSemantic`                       | the stage just served (**reach**)                                 |
+| `episodic_memory_released`       | `memory.Release`                            | +1 per soft-deleted memory                                        |
+| `decoration_saved`               | `store.Decorate`                            | +1 per save that changed something                                |
+| `ornament_owned`                 | `store.Decorate`                            | the ownership count after the save (**reach**)                    |
+| `ornament_kind_decorated:<KIND>` | `store.Decorate`                            | +1 per kind whose applied id actually changed                     |
+| `invite_settled`                 | `account`'s invite settlement               | +1, under the **inviter's** scope                                 |
+
+Five decisions are embedded in that table:
+
+**A past-dated diary advances nothing** ([I10][T1]). The launch reports sit after the monotonic launch
+guard, at the same point as the write-earn grant: the diary is saved — the objective record always
+lands — and grants and counts nothing. Anything else is the invite farm with a different name.
+
+**`decay_recovered` is judged at the recall moment**, from the same pre-recall anchor snapshot the spend
+is priced from, before the reinforce resets it. There is no recompute path afterwards, which is the
+single reason progress is pushed rather than derived on a later read.
+
+**요지화 도달 is observed at the VIEW moment**, not when a worker raises a stage: `ViewSemantic` reports
+the stage it actually served and the reach mode keeps the high-water mark. The call-site list above is
+exhaustive and contains no worker-side site, so a stage nobody has read is not a depth anyone reached.
+(This amends [A2], which described the axis as the risen stage.)
+
+**The inviter's counter is reported under a scope minted from the resolved inviter id**, and the invitee
+gets none: the axis is 친구 초대 성공, an inviter fact. The report lands **before** `rewarded_at` is
+stamped, so a report failure leaves the invite settleable and the next settlement heals it — the credit
+is dedup-keyed and replays as a no-op. Stamping first would make a failed report unrecoverable, and the
+only row reading this counter has a target of one, so a retry counting twice costs nothing while losing
+the count would cost the achievement.
+
+**A recorder error aborts the causing transaction**, deliberately. A counter that can silently diverge
+from the facts is unfixable later, because there is nothing to recompute from — loud failure beats
+silent loss, and the economy-less write-earn's silent-nothing is not the model to copy.
+
+**A renamed key cannot start the server.** Each producing context exports its emitted key set and the
+catalog exposes the keys its rows read; the composition root — the one place that sees every context —
+asserts set equality in **both** directions at wiring time. A renamed key, an orphan key, and a
+condition reading a key nobody emits are all boot failures rather than a silently frozen counter or an
+unreachable achievement. The same wiring refuses a reward naming an ornament the store catalog does not
+publish as achievement-only, and refuses to construct the service at all with any recorder or granter
+unbound.
+
 ## What this does NOT decide
 
-- **The producer call sites, the recorder ports and the claim use-case** — the six sanctioned pushes, `RecordProgress`,
-  `ClaimAchievement`, both reward legs and the fail-closed boot gate are plan 75's.
 - **Copy, the tab, the claim affordance and the unlock notice** — plan 76's, in
   [policy/ux/achievements.md](../ux/achievements.md) when it lands.
 - **The ledger reason** — `achievement_claim` and every `twinkle_ledger_entries` rule belong to

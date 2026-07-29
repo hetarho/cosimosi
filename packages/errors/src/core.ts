@@ -80,9 +80,14 @@ export const ERROR_REASONS = {
   storeOrnamentUnknown: 'STORE_ORNAMENT_UNKNOWN',
   storeOrnamentNotPurchasable: 'STORE_ORNAMENT_NOT_PURCHASABLE',
   storeScopeRequired: 'STORE_SCOPE_REQUIRED',
-  // The achievement read's only refusal: nothing is requested, so an unauthenticated caller is the
-  // one failure mode there is.
+  // The achievement refusals. achievementRewardUnavailable is a granter refusal AFTER the claim was
+  // recorded: the claim stands and the next attempt replays it, so its copy must not read as a lost
+  // reward.
   achievementScopeRequired: 'ACHIEVEMENT_SCOPE_REQUIRED',
+  achievementInputRequired: 'ACHIEVEMENT_INPUT_REQUIRED',
+  achievementNotFound: 'ACHIEVEMENT_NOT_FOUND',
+  achievementNotAchieved: 'ACHIEVEMENT_NOT_ACHIEVED',
+  achievementRewardUnavailable: 'ACHIEVEMENT_REWARD_UNAVAILABLE',
 } as const
 
 export type ErrorReason = (typeof ERROR_REASONS)[keyof typeof ERROR_REASONS]

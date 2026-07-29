@@ -22,6 +22,11 @@ service AchievementService {
   rpc ListAchievements(ListAchievementsRequest) returns (ListAchievementsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // The explicit claim: stamps claimed_at, then pays the reward. A mutation — never
+  // NO_SIDE_EFFECTS, so it carries no client-cache classification. A repeat claim is an idempotent
+  // replay returning the same reward, not a refusal: refusing would strand a reward in the crash
+  // window between the stamp and the credit.
+  rpc ClaimAchievement(ClaimAchievementRequest) returns (ClaimAchievementResponse);
 }
 
 // The [A2] axes — the UI's grouping key. No group label crosses the wire.
@@ -59,4 +64,20 @@ message AchievementEntry {
 
 message ListAchievementsResponse {
   repeated AchievementEntry entries = 1;
+}
+
+// The id alone. No user_id, no amount, no reward and no counter: a client cannot propose what it
+// earned, and no method in this service accepts a counter at all — progress is only ever a
+// consequence of a real product action.
+message ClaimAchievementRequest {
+  string achievement_id = 1;
+}
+
+message ClaimAchievementResponse {
+  // GENERAL only — there is no kind field anywhere on this service.
+  int64 granted_twinkle = 1;
+  // Empty for a stardust reward; exactly one of the two is set.
+  string granted_ornament_id = 2;
+  // The balance after the credit, for the reveal.
+  int64 twinkle_total = 3;
 }

@@ -20,11 +20,11 @@ sweep that actually runs). It ships as one package plus its two seams:
   errors. No proto, sqlc or pgx import.
 - `internal/achievement/pg` — the context's **only** sqlc/pgx package: the concrete `Store` over
   `achievement_counters` + `achievement_progress`, row↔domain mapping at this edge. It declares no repository
-  interface — the ports are consumer-owned. Six of its nine methods (`TouchCounter`, `AddCounter`, `RaiseCounter`,
-  `MarkAchieved`, `MarkClaimed`, `GetProgress`) have no caller yet **by design**: this plan owns every `achievement`
-  statement (the single-owner-DDL rule), and the tracking use-case composes them over a producer's transaction.
-- `internal/achievement/rpc` — a thin Connect handler for `achievement.v1.AchievementService.ListAchievements`,
-  `NO_SIDE_EFFECTS`: enum map + call, no policy. One refusal, `ACHIEVEMENT_SCOPE_REQUIRED`.
+  interface — the ports are consumer-owned.
+- `internal/achievement/rpc` — thin Connect handlers for `achievement.v1.AchievementService`: `ListAchievements`
+  (`NO_SIDE_EFFECTS`) and `ClaimAchievement` (a mutation, so it carries no client-cache classification). Enum map +
+  call, no policy. Five refusals: `ACHIEVEMENT_SCOPE_REQUIRED`, `_INPUT_REQUIRED`, `_NOT_FOUND`, `_NOT_ACHIEVED`,
+  `_REWARD_UNAVAILABLE`.
 
 The frontend has **no mirror of the catalog, the targets or the evaluation** — `packages/api-client/src/achievement.ts`
 carries the generated client, the query key/options and a mock transport, and nothing else. The server sends
@@ -232,11 +232,89 @@ Deliberately **not** values: the catalog rows (ids, axes, targets, the axis→co
 capstones), the counter-key strings and their modes, the `Achieved`/`Progress` formulas, the achievement count, the
 `AchievementAxis`/`RewardTier` enum members, the DDL, and the proto contract.
 
-## 9. What is deliberately absent
+## 9. Tracking — the two write use-cases
 
-- **No `RecordProgress` and no producer port** — nothing wired today can record progress by accident. The recorder
-  ports in `memory`/`store`/`account`, their call sites, the variety bump composition, `ClaimAchievement`, both reward
-  legs and the fail-closed boot gate belong to the tracking use-case.
+`RecordProgress(ctx, scope, store Store, counterKey, delta)` takes a store **already bound to the caller's
+transaction** (the shape twinkle's `CheckAndSpend` uses), which is what makes "a rolled-back launch advances no counter"
+structural: there is no path in it that opens a transaction of its own. It refuses a non-positive delta
+(`ErrProgressDeltaInvalid` — a wiring fault, since no axis is decrementable), refuses an unknown key, and refuses a
+**derived** key: a producer pushing `mood_variety` would be counting distinctness it cannot prove. Then
+`TouchCounter` (whose `created` return raises the family's variety counter in the same transaction) →
+`AddCounter`/`RaiseCounter` **dispatched on the key's declared mode, never on anything the caller said** → `MarkAchieved`
+for every catalog row on that counter whose target the returned value now meets. Evaluation is `counter >= target` over
+two integers with no time input.
+
+`ClaimAchievement(ctx, scope, achievementID) (ClaimResult, error)` is the explicit claim, and its ORDER is the design:
+
+1. Resolve the catalog row (`ErrAchievementNotFound`).
+2. In this context's own transaction, one conditional update through `MarkClaimed`. The row is the lock, so concurrent
+   claims serialize and exactly one sees a change. Zero rows changed has two causes and only the row distinguishes them:
+   **already claimed** → fall through as a replay; **absent** → check the counter and **promote**. The promotion is not a
+   convenience: the READ derives `achieved` from the counter, so anything it displays as achieved must be claimable, and
+   the two legitimately disagree whenever a release adds a tier on an existing counter or lowers a target — rows are
+   written only when a counter is next reported, so every qualifying user would otherwise be shown a claim button that
+   answers "not achieved". A counter still short of its target is the genuine refusal: nothing is promoted and nothing
+   credited, because a met condition is a precondition and an unmet one is not a payout waiting to happen.
+3. Commit, **then** pay through the two granter ports — an idempotent pairing, not one cross-context transaction, which
+   would make this context the transaction owner of the ledger's and the ornament catalog's tables.
+
+That leaves exactly one intermediate state — claimed but uncredited, after a crash — and it is **recoverable rather than
+lost**: a repeat claim replays and pays through the same dedup keys, so the ledger credits once and the reward arrives.
+This is why a second claim is a replay returning the same reward and **not** an `ALREADY_CLAIMED` refusal: refusing would
+strand the reward in precisely the window this pairing exists to heal. A granter refusal surfaces as
+`ACHIEVEMENT_REWARD_UNAVAILABLE` rather than an internal error, because the claim stands and the client should retry.
+
+The claim id is **derived, not minted** — it is the achievement id, already unique per user under the progress table's
+primary key and the ledger's `UNIQUE (user_id, dedup_key)`. A random id would buy no uniqueness the pair does not already
+have, and every replay would recompute a different key. The ledger entry is an ordinary append-only `achievement_claim`
+earn, so `/me`'s stardust history shows it like everything else.
+
+**A replay resolves the reward from the catalog as it is NOW**, because the reward is not stored — only `claimed_at` and
+`claim_id` are. Within one deployment that is exactly right (the catalog cannot change under a running server) and the
+ledger row stays the authoritative record of what was credited. Across deployments it has one consequence worth naming:
+**changing a shipped row's reward is a data change, not a content edit.** Re-tiering a claimed row makes a later replay
+report today's amount (the credit itself is dedup-guarded, so nothing is paid twice), and re-pointing a claimed capstone
+at a different ornament would grant that second ornament too, since ownership is idempotent on `(user_id, ornament_id)`
+rather than on the claim. Storing the resolved reward on `achievement_progress` would close this, at the cost of the
+columns plan 74 deliberately does not have; until a reward is actually re-pointed, the cheaper guard is knowing that such
+an edit needs a migration and a backfill decision.
+
+## 10. The composition root's four edges (`cmd/api/achievement.go`)
+
+- **Three recorder adapters** (`memory`/`store`/`account`), each type-asserting the producer's opaque tx to
+  `interface{ DB() dbgen.DBTX }` and binding `achievementpg.NewStore(handle)` onto it — the shipped economy-seam pattern:
+  the two contexts share the transaction and never the queries. A handle-less tx is a wiring fault, refused rather than
+  silently written through the pool. Account's settlement is the one caller that passes no tx (it is a locked sequence of
+  statements, not one transaction), so its report is written over the pool and heals by replay instead of by rollback.
+- **The binding is late** (`achievementRecorderBinding`): the producing services are constructed before the achievement
+  service exists, because a claim pays through twinkle and store, which are built after account. The root hands the
+  producers a holder and binds the service once — the same shape the invite-reward granter uses for the twinkle↔account
+  cycle. An unbound recorder **refuses**, so a producer reporting too early fails its transaction rather than dropping
+  the fact.
+- **Two granter adapters** over `twinkle.Service.EarnAchievementReward` (narrowing its `Balance` to the `GENERAL` total)
+  and `store.Service.GrantOwnership`. Neither carries a kind parameter, which is where "no `SMALL` reward" holds.
+  `ornament_owned` is reported from the save's own view of ownership — the list it read plus what it acquired — so two
+  concurrent saves both report the smaller total and the counter lags the table by one until the next save. Left alone
+  deliberately: a high-water mark can only be late, never wrong, and closing it would serialize every decoration save
+  behind an advisory lock for the sake of a count.
+
+- **Two boot reconciliations**, both of which can only run here: the counter-key set equality in both directions (a
+  producer emitting a _derived_ key is refused too — the recorder rejects it at runtime, so it would fail every
+  transaction it reported from), and every reward ornament resolving in the store catalog as achievement-only.
+  `achievement.NewService` additionally refuses a nil granter **unconditionally, in every environment** — a service that
+  records claims it cannot pay would strand rewards — and every producing context now requires its recorder for the same
+  reason, `store` included: a root that silently defaulted to the no-op would lose that context's counters entirely,
+  which is exactly the drift these guards exist to prevent.
+
+**There are two composition roots, and both must carry every leg.** `cmd/api` serves requests (and runs a dev worker);
+`cmd/worker` is the binary the container runs the job queue with, including the withdrawal sweep. A seam bound in one and
+forgotten in the other is invisible to a build: `cmd/worker` settles no signup, so it binds an account recorder that
+refuses, and it registers **all four** purge legs (memory · twinkle · store · achievement) because it is the sweep that
+actually runs — a missing leg there leaves that context's rows behind a hard-deleted account ([I1][U1]). Its own test
+constructs the runner so that a forgotten required seam fails CI rather than the deploy.
+
+## 11. What is deliberately absent
+
 - **No `achievements` table** and no admin surface — a stardust gift stays `admin_grant`.
 - **No TS mirror of the catalog, the targets or the evaluation**, and no golden fixture.
 - **No clock, in any file — tests included.** `grep -rn 'time.Now' internal/achievement` matches only the comments

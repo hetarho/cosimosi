@@ -144,6 +144,12 @@ func (s *Service) Release(ctx context.Context, scope platform.UserScope, diaryID
 			return err
 		}
 
+		// 놓아주기 counts here and nowhere else: LetGo seals neurons and releases nothing, and a
+		// Restore does not lower this counter — the release happened ([I1]).
+		if err := s.recordReleaseProgress(ctx, scope, tx, len(memoryIDs)); err != nil {
+			return err
+		}
+
 		result = ReleaseResult{DiaryID: diaryID, EpisodicMemoryIDs: memoryIDs, DeletedAt: deletedAt}
 		return nil
 	})

@@ -388,7 +388,12 @@ func TestDecorateRefusesWithoutScopeOrWiring(t *testing.T) {
 	}
 	// A service built for the reads alone refuses to save rather than half-saving.
 	repo := newFakeOrnamentRepo()
-	readOnly, err := store.NewService(store.ServiceDeps{Ownerships: repo, Selections: repo, Purge: repo})
+	readOnly, err := store.NewService(store.ServiceDeps{
+		Ownerships:   repo,
+		Selections:   repo,
+		Purge:        repo,
+		Achievements: store.NoAchievementRecorder{},
+	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}

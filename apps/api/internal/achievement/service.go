@@ -11,22 +11,32 @@ import (
 // (§2.9 #3), plus the withdrawal purge leg. RecordProgress and ClaimAchievement belong to the
 // tracking use-case — nothing here can record progress.
 
-// AchievementServiceDeps is {Repo} and nothing else — no clock, no Now func, no id minter.
-// Compare twinkle.ServiceDeps, which DOES carry a zone reader because a daily reset window needs
-// one; achievement has no legitimate use for a clock, so it is not given one ([A1a]).
+// AchievementServiceDeps carries a store and the two reward legs — **no clock, no Now func, no
+// time-typed field, no id minter**. Compare twinkle.ServiceDeps, which DOES carry a zone reader
+// because a daily reset window needs one; achievement has no legitimate use for a clock, so it is
+// not given one and a real-time condition stays unexpressible ([A1a]).
 type AchievementServiceDeps struct {
 	Repo Repo
+	// Twinkle and Ornaments are the claim's two payout legs. Both are required unconditionally, in
+	// every environment: a service that records claims it cannot pay would strand rewards.
+	Twinkle   TwinkleGranter
+	Ornaments OrnamentGranter
 }
 
 type Service struct {
-	repo Repo
+	repo      Repo
+	twinkle   TwinkleGranter
+	ornaments OrnamentGranter
 }
 
 func NewService(deps AchievementServiceDeps) (*Service, error) {
 	if deps.Repo == nil {
 		return nil, ErrRepoRequired
 	}
-	return &Service{repo: deps.Repo}, nil
+	if deps.Twinkle == nil || deps.Ornaments == nil {
+		return nil, ErrGrantersRequired
+	}
+	return &Service{repo: deps.Repo, twinkle: deps.Twinkle, ornaments: deps.Ornaments}, nil
 }
 
 // ListAchievements answers EVERY catalog row for the caller, in the catalog's own server-fixed

@@ -63,10 +63,13 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		Directory:          directory,
 		InviteGranter:      &accountInviteRewardGranter{},
 		SignupBonusGranter: &accountSignupBonusGranter{},
-		Withdrawals:        accountStore,
-		Purgers:            withdrawalAdapters.purgers,
-		Scheduler:          withdrawalAdapters.scheduler,
-		Credentials:        directory,
+		// The worker runs the withdrawal sweep and settles no signup, so its recorder REFUSES rather
+		// than counting nothing: an unexpected settlement here should be loud, not silently uncounted.
+		Achievements: accountAchievementUnavailable{},
+		Withdrawals:  accountStore,
+		Purgers:      withdrawalAdapters.purgers,
+		Scheduler:    withdrawalAdapters.scheduler,
+		Credentials:  directory,
 	})
 	if err != nil {
 		pool.Close()

@@ -184,6 +184,7 @@ func newWithdrawalTestService(
 		Directory:          &fakeDirectory{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 		Withdrawals:        store,
 		Scheduler:          scheduler,
 		Purgers:            purgers,
@@ -555,6 +556,7 @@ func TestNewServiceRejectsIncompleteWithdrawalBundle(t *testing.T) {
 		Directory:          &fakeDirectory{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	}
 	store := &fakeWithdrawalStore{}
 	scheduler := &fakeWithdrawalScheduler{}

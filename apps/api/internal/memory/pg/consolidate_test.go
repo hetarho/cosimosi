@@ -32,6 +32,7 @@ func newConsolidateService(t *testing.T, store Store) *memory.Service {
 		Recalls:          store,
 		SpendGate:        memory.AllowAllSpendGate{},
 		Earn:             memory.NoEarnOnWrite{},
+		Achievements:     memory.NoAchievementRecorder{},
 		SignupSettlement: memory.NoSignupSettlement{},
 		PredictionError:  adapters.PredictionError,
 		Gists:            store,

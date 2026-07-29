@@ -124,7 +124,13 @@ var catalog = []Achievement{
 // catalogByID indexes the table for lookup. Building it at import makes a duplicate id a panic on
 // first import rather than a wrong answer on a user's claim — the store catalog's stance, and the
 // reason the index is built rather than the table scanned.
-var catalogByID = indexCatalog()
+var (
+	catalogByID      = indexCatalog()
+	catalogByCounter = indexCatalogByCounter()
+	// catalogCounterKeys is what the composition root reconciles the producers' emitted keys
+	// against — the keys the catalog actually READS, so an orphan key on either side fails the boot.
+	catalogCounterKeys = sortedCounterKeys(catalogByCounter)
+)
 
 func indexCatalog() map[string]Achievement {
 	index := make(map[string]Achievement, len(catalog))
@@ -144,8 +150,41 @@ func Catalog() []Achievement {
 	return slices.Clone(catalog)
 }
 
+// indexCatalogByCounter groups the rows a counter's value is evaluated against. Order follows the
+// table, so the candidates of one axis stay in ascending-target order.
+func indexCatalogByCounter() map[CounterKey][]Achievement {
+	index := map[CounterKey][]Achievement{}
+	for _, row := range catalog {
+		index[row.Condition.Counter] = append(index[row.Condition.Counter], row)
+	}
+	return index
+}
+
+func sortedCounterKeys(index map[CounterKey][]Achievement) []CounterKey {
+	keys := make([]CounterKey, 0, len(index))
+	for key := range index {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
 // LookupAchievement resolves one row; false for an id the catalog does not publish.
 func LookupAchievement(id string) (Achievement, bool) {
 	row, ok := catalogByID[id]
 	return row, ok
+}
+
+// AchievementsByCounter is the candidate set a counter write is evaluated against — one axis's tiers,
+// in ascending-target order. An empty result is a no-op, and the boot reconciliation makes that
+// branch dead in a correct build.
+func AchievementsByCounter(key CounterKey) []Achievement {
+	return catalogByCounter[key]
+}
+
+// CatalogCounterKeys is every counter the catalog reads. The composition root asserts set equality
+// against the union of the producers' emitted keys, in both directions — a renamed key, an orphan
+// key, or a catalog row reading a key nobody emits cannot start the server.
+func CatalogCounterKeys() []CounterKey {
+	return slices.Clone(catalogCounterKeys)
 }

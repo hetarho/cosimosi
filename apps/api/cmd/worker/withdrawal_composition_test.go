@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
+	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/cosimosi/api/internal/memory"
 	"github.com/cosimosi/api/internal/platform"
 	"github.com/cosimosi/api/internal/platform/apperr"
+	platformdb "github.com/cosimosi/api/internal/platform/db"
 )
 
 func TestProductionWorkerRejectsMissingCredentialDirectory(t *testing.T) {
@@ -38,6 +42,13 @@ func TestWorkerSettlementGrantersFailLoudly(t *testing.T) {
 		errWorkerSignupBonusUnavailable,
 	) {
 		t.Fatalf("worker signup bonus granter err = %v", err)
+	}
+	// This process settles no signup, so the recorder refuses rather than counting nothing: an
+	// unexpected settlement here should be loud.
+	if err := (workerNoAchievementRecorder{}).RecordProgress(
+		context.Background(), scope, nil, "invite_settled", 1,
+	); !errors.Is(err, errWorkerAchievementRecordingUnavailable) {
+		t.Fatalf("worker achievement recorder err = %v", err)
 	}
 }
 
@@ -88,6 +99,7 @@ func TestWorkerWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
 	t.Parallel()
 	store := &withdrawalCompositionMemoryStore{}
 	composition, err := newWithdrawalComposition(
+		nil,
 		store,
 		store,
 		withdrawalCompositionTwinkleStore{},
@@ -123,9 +135,44 @@ func TestWorkerWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
 			identity.DedupKey(),
 		)
 	}
-	if len(composition.purgers) != 2 ||
-		composition.purgers[0].PurgeName() != "memory" ||
-		composition.purgers[1].PurgeName() != "twinkle" {
-		t.Fatalf("withdrawal purgers = %#v", composition.purgers)
+	// THIS process is the production sweep, so a missing leg is not a cosmetic gap — it leaves that
+	// context's rows behind a hard-deleted account ([I1][U1]). Every context owning per-user tables
+	// must appear, in the order the sweep runs them.
+	wantLegs := []string{"memory", "twinkle", "store", "achievement"}
+	if len(composition.purgers) != len(wantLegs) {
+		t.Fatalf("withdrawal purgers = %d legs, want %d (%v)", len(composition.purgers), len(wantLegs), wantLegs)
+	}
+	for i, want := range wantLegs {
+		if got := composition.purgers[i].PurgeName(); got != want {
+			t.Fatalf("purge leg %d = %q, want %q", i, got, want)
+		}
+	}
+}
+
+// The boot proof. `account.NewService` requires every seam unconditionally, so a root that forgets one
+// dies on start rather than at the first request — and this binary is the one the container runs, so
+// nothing else would have caught it: the API's own dev worker is wired separately.
+func TestWorkerRunnerBootsWithEveryAccountSeamBound(t *testing.T) {
+	url := os.Getenv("COSIMOSI_TEST_DATABASE_URL")
+	if url == "" {
+		url = os.Getenv(platformdb.EnvDatabaseURL)
+	}
+	if url == "" {
+		t.Skip("set COSIMOSI_TEST_DATABASE_URL or DATABASE_URL after starting the local postgres service")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	pool, err := platformdb.Open(ctx, platformdb.Config{URL: url})
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	runner, mode, err := newWorkerRunner(pool, log.New(io.Discard, "", 0))
+	if err != nil {
+		t.Fatalf("the worker binary cannot boot: %v", err)
+	}
+	if runner == nil || mode == "" {
+		t.Fatalf("newWorkerRunner returned runner %v mode %q", runner, mode)
 	}
 }

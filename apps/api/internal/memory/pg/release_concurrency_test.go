@@ -136,6 +136,7 @@ func newGraphConcurrencyServiceWith(
 		Recalls:          store,
 		SpendGate:        spendGate,
 		Earn:             earn,
+		Achievements:     memory.NoAchievementRecorder{},
 		SignupSettlement: memory.NoSignupSettlement{},
 		PredictionError:  adapters.PredictionError,
 		Gists:            store,

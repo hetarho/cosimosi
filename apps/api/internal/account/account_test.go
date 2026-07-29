@@ -392,6 +392,7 @@ func newTestService(t *testing.T, store Store) *Service {
 		InviteSigner:       UnavailableInviteSigner{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -554,6 +555,7 @@ func TestProfileEmailIsReadThroughAndStoredTimezoneCoerces(t *testing.T) {
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -612,6 +614,7 @@ func TestListAuthProvidersUsesDirectoryClosedSetAndStoredTimestamps(t *testing.T
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -641,6 +644,7 @@ func TestListAuthProvidersFallsBackToStoredRowsOnDirectoryFailure(t *testing.T) 
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -698,6 +702,7 @@ func TestSignUpHasExactlyFourInputsAndCreatesDirectoryProviderWithoutCrediting(t
 		InviteSigner:       signer,
 		InviteGranter:      inviteGranter,
 		SignupBonusGranter: bonusGranter,
+		Achievements:       NoAchievementRecorder{},
 		Now: func() time.Time {
 			nowCalls++
 			if nowCalls >= 3 {
@@ -828,6 +833,7 @@ func TestSignUpValidationIdempotencyConcurrencyAndDirectoryDegradation(t *testin
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -904,6 +910,7 @@ func TestSignUpRollsBackProfileWhenInviteBindingInfrastructureFails(t *testing.T
 		InviteSigner:       signer,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 		Now:                func() time.Time { return now },
 		NewID:              func() string { return "invite-atomic" },
 	})
@@ -950,6 +957,7 @@ func TestAcceptInviteRefusalsAreBestEffort(t *testing.T) {
 		InviteSigner:       signer,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 		Now:                func() time.Time { return now },
 		NewID: func() string {
 			nextID++
@@ -1040,6 +1048,7 @@ func TestResolveInviteSettlementAppliesPermanentGatesBeforeDirectory(t *testing.
 		Directory:          directory,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -1095,6 +1104,7 @@ func TestSettleSignupRequiresProvisionedAccountAndSerializesInviterCap(t *testin
 		Directory:          &fakeDirectory{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: bonus,
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService(missing) failed: %v", err)
@@ -1130,6 +1140,7 @@ func TestSettleSignupRequiresProvisionedAccountAndSerializesInviterCap(t *testin
 		Directory:          directory,
 		InviteGranter:      granter,
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -1179,6 +1190,7 @@ func TestSettleSignupCreditsBeforeMarkAndAlwaysAttemptsBonus(t *testing.T) {
 		Directory:          &fakeDirectory{},
 		InviteGranter:      inviteGranter,
 		SignupBonusGranter: bonusGranter,
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -1228,6 +1240,7 @@ func TestInviteTokenRoundTripTamperMalformedExpiryAndOnlySignupStoreRead(t *test
 		InviteSigner:       signer,
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 		Now:                func() time.Time { return now },
 	})
 	if err != nil {
@@ -1275,6 +1288,7 @@ func TestInviteLinkFailsClosedWithoutSigningKey(t *testing.T) {
 		InviteSigner:       HMACInviteSigner{},
 		InviteGranter:      &fakeInviteGranter{},
 		SignupBonusGranter: &fakeSignupBonusGranter{},
+		Achievements:       NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService with zero-value signer failed: %v", err)

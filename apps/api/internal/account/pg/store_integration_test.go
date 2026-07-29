@@ -147,6 +147,7 @@ func TestSignUpPersistsProviderAndBoundInviteIdempotentlyWithoutLedgerWrites(t *
 		InviteSigner:       signer,
 		InviteGranter:      signupTestInviteGranter{},
 		SignupBonusGranter: signupTestBonusGranter{},
+		Achievements:       account.NoAchievementRecorder{},
 		Now:                func() time.Time { return time.Now().UTC() },
 		NewID:              func() string { return base + "-invite" },
 	})

@@ -215,6 +215,7 @@ func TestProductionMemoryZoneAdapterBindsAccountReader(t *testing.T) {
 		Directory:          accountDirectoryAdapter{source: source},
 		InviteGranter:      accountNoInviteGranter{},
 		SignupBonusGranter: accountNoSignupBonusGranter{},
+		Achievements:       account.NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -273,6 +274,7 @@ func TestProductionAccountCompositionRejectsMissingInviteSigningKey(t *testing.T
 		accountDirectoryAdapter{source: source},
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		account.NoAchievementRecorder{},
 		withdrawalCompositionStorePurger{},
 		withdrawalCompositionAchievementPurger{},
 	)
@@ -289,6 +291,7 @@ func TestProductionAccountCompositionRejectsKeylessCredentialDirectory(t *testin
 		accountDirectoryAdapter{source: platformsupabase.Fake{}},
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		account.NoAchievementRecorder{},
 		withdrawalCompositionStorePurger{},
 		withdrawalCompositionAchievementPurger{},
 	)
@@ -374,6 +377,7 @@ func TestSignupSettlementCreditsFirstAndCrashReplayConverges(t *testing.T) {
 		InviteSigner:       signer,
 		InviteGranter:      inviteGranter,
 		SignupBonusGranter: bonusGranter,
+		Achievements:       account.NoAchievementRecorder{},
 	})
 	if err != nil {
 		t.Fatalf("account.NewService failed: %v", err)
