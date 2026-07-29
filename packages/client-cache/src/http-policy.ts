@@ -2,6 +2,7 @@ import type { Interceptor } from '@connectrpc/connect'
 
 import {
   AccountService,
+  AchievementService,
   AdminService,
   MemoryService,
   PlatformService,
@@ -202,6 +203,15 @@ export const storeRpcCachePolicies = [
   },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
+// The achievement catalog read is per-user (it carries the caller's progress): GET-eligible,
+// privately cacheable, never shared-CDN (§2.7/§4).
+export const achievementRpcCachePolicies = [
+  {
+    method: AchievementService.method.listAchievements,
+    policy: userScopedUnaryReadPolicy,
+  },
+] as const satisfies readonly RpcCachePolicyEntry[]
+
 // Every admin console read is authenticated + admin-gated operator data: GET-eligible but never
 // shared-CDN cacheable (§2.7/§4). The mutations (GrantAdmin/RevokeAdmin/GrantStardust/SetAIConfig)
 // are plain POSTs and need no entry.
@@ -223,6 +233,7 @@ export const clientCacheRpcCachePolicies = [
   ...twinkleRpcCachePolicies,
   ...accountRpcCachePolicies,
   ...storeRpcCachePolicies,
+  ...achievementRpcCachePolicies,
   ...adminRpcCachePolicies,
 ] as const satisfies readonly RpcCachePolicyEntry[]
 

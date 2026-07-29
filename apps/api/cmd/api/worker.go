@@ -51,6 +51,7 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		store,
 		twinklepg.NewStore(pool.PgxPool()),
 		storeWithdrawalPurgerFor(pool),
+		achievementWithdrawalPurgerFor(pool),
 	)
 	if err != nil {
 		pool.Close()

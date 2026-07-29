@@ -83,6 +83,8 @@ const hardDeleteQueries = new Set([
   'store/decorate.sql#DeleteOrnamentSelection',
   'store/purge_user.sql#PurgeUserOrnamentOwnerships',
   'store/purge_user.sql#PurgeUserOrnamentSelections',
+  'achievement/achievement.sql#PurgeUserAchievementCounters',
+  'achievement/achievement.sql#PurgeUserAchievementProgress',
   'account/withdrawal.sql#PurgeAccountAuthProviders',
   'account/withdrawal.sql#PurgeAccountInvites',
   'account/withdrawal.sql#PurgeAccountMoodColors',

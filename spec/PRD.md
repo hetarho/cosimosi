@@ -120,7 +120,7 @@ cosimosi는 _기억 신경과학의 엔그램 이론에서 영감을 받아_, �
 | 장식 종류      | `OrnamentKind`                                 | —                  | `BACKGROUND`(배경) / `STAR_SHADER`(별 셰이더) 둘로 닫힘. 감정 색은 꾸미기가 아니다([P10]).                                        |
 | 소유           | `OrnamentOwnership` (`ornament_ownerships`)    | —                  | 구매·업적으로 획득한 영구 소유 이력. **UI에 "보관함"으로 노출하지 않는다**([P7]).                                                 |
 | 적용 상태      | `OrnamentSelection` (`ornament_selections`)    | 지금 내 우주       | 종류별 현재 적용값 1개. 저장 시점에 확정([P8]).                                                                                   |
-| 업적           | `Achievement` (`achievements`)                 | 업적               | 정적 정의 — 조건·보상.                                                                                                            |
+| 업적           | `Achievement`                                  | 업적               | 정적 정의 — 조건·보상. 카탈로그는 **테이블 아님 — Go 코드**([A2]).                                                                |
 | 업적 진행      | `AchievementProgress` (`achievement_progress`) | —                  | 사용자별 진행도·달성 시각·**수령 여부**([A4]).                                                                                    |
 | 데모 시나리오  | `DemoScenario`                                 | —                  | **FE 전용·DB 없음.** 고정 시퀀스 정의([Z3]).                                                                                      |
 | 데모 일기 세트 | `DemoDiarySet`                                 | —                  | **FE 전용·DB 없음.** 뉴런이 겹치도록 설계된 일기 3편 묶음([Z4]).                                                                  |

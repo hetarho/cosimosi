@@ -8,6 +8,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AchievementCounter struct {
+	UserID string
+	// a member of the closed counter vocabulary owned by the achievement context's in-code catalog; an unknown key is a wiring fault refused before this table is reached ([A2])
+	CounterKey string
+	Value      int64
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type AchievementProgress struct {
+	UserID        string
+	AchievementID string
+	AchievedAt    pgtype.Timestamptz
+	ClaimedAt     pgtype.Timestamptz
+	// the idempotent-pairing key both reward legs carry; set exactly when claimed_at is
+	ClaimID pgtype.Text
+}
+
 type AdminAuditLog struct {
 	ID        string
 	Actor     string

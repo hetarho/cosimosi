@@ -58,6 +58,7 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		inviteGranter,
 		signupBonusGranter,
 		storeWithdrawalPurgerFor(pool),
+		achievementWithdrawalPurgerFor(pool),
 	)
 	if err != nil {
 		pool.Close()
@@ -152,6 +153,16 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
+	achievementService, err := newAchievementService(pool)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	achievementOption, err := achievementServiceOption(achievementService)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	adminOption, err := adminServiceOption(adminDeps{
 		store:     adminStore,
 		twinkle:   twinkleService,
@@ -170,10 +181,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	logger.Print("account service registered (profile, signup, invite settlement)")
 	logger.Print("admin service registered (operator console — admin-gated)")
 	logger.Print("store service registered (ornament catalog reads)")
+	logger.Print("achievement service registered (catalog + progress read)")
 	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
-	options := []platform.HandlerOption{memoryOption, twinkleOption, adminOption, storeOption}
+	options := []platform.HandlerOption{memoryOption, twinkleOption, adminOption, storeOption, achievementOption}
 	options = append(options, accountOptions...)
 	return options, pool.Close, nil
 }

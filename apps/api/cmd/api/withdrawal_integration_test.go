@@ -54,6 +54,7 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
 		storeWithdrawalPurgerForTest(t, pool),
+		achievementWithdrawalPurgerFor(pool),
 	)
 	if err != nil {
 		t.Fatalf("accountServiceOption failed: %v", err)
@@ -226,6 +227,7 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
 		storeWithdrawalPurgerForTest(t, pool),
+		achievementWithdrawalPurgerFor(pool),
 	)
 	if err != nil {
 		t.Fatalf("accountServiceOption failed: %v", err)
@@ -397,6 +399,13 @@ func seedWithdrawalTables(
 	exec("ornament_selections", `
 		INSERT INTO ornament_selections (user_id, kind, ornament_id)
 		VALUES ($1, 'BACKGROUND', 'background.grainstorm')`, userID)
+
+	exec("achievement_counters", `
+		INSERT INTO achievement_counters (user_id, counter_key, value)
+		VALUES ($1, 'diary_written', 3)`, userID)
+	exec("achievement_progress", `
+		INSERT INTO achievement_progress (user_id, achievement_id, claimed_at, claim_id)
+		VALUES ($1, 'first_diary', $2, $3)`, userID, now, base+"-claim")
 
 	exec("twinkle_balances", `
 		INSERT INTO twinkle_balances
@@ -692,6 +701,8 @@ func cleanupWithdrawalRows(
 			"DELETE FROM mood_colors WHERE user_id = $1",
 			"DELETE FROM ornament_selections WHERE user_id = $1",
 			"DELETE FROM ornament_ownerships WHERE user_id = $1",
+			"DELETE FROM achievement_progress WHERE user_id = $1",
+			"DELETE FROM achievement_counters WHERE user_id = $1",
 			"DELETE FROM users WHERE user_id = $1",
 			"DELETE FROM admin_users WHERE user_id = $1",
 			"DELETE FROM twinkle_ledger_entries WHERE user_id = $1",

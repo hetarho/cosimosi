@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package cosimosi.achievement.v1;
+
+// AchievementService owns the achievement read contract: the whole catalog with this caller's
+// progress.
+//
+// Structural defense, and the reason this file is shaped the way it is:
+//
+//   * No message names a user. Scope comes from the authenticated caller; the request is empty
+//     by design ([U1]).
+//   * There is NO TwinkleKind field anywhere, so a SMALL reward is unsayable on the wire ([A3]).
+//   * There is NO user-facing string: titles, bodies and axis labels are FE-side, resolved from
+//     achievement_id / the axis enum (the mood_<value> + moodLabel precedent). The server can
+//     NAME an achievement, never describe one.
+//   * Progress is derived server-side (min(counter, target)) and arrives resolved; no condition
+//     table, target formula or evaluation ever reaches a client — the server is the only
+//     evaluator.
+service AchievementService {
+  // The whole catalog with this caller's progress, in a server-fixed order. Free, read-only, no
+  // clock advance.
+  rpc ListAchievements(ListAchievementsRequest) returns (ListAchievementsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// The [A2] axes — the UI's grouping key. No group label crosses the wire.
+enum AchievementAxis {
+  ACHIEVEMENT_AXIS_UNSPECIFIED = 0;
+  ACHIEVEMENT_AXIS_FIRST_EXPERIENCE = 1;
+  ACHIEVEMENT_AXIS_DIARY_TOTAL = 2;
+  ACHIEVEMENT_AXIS_STAR_TOTAL = 3;
+  ACHIEVEMENT_AXIS_RECALL_TOTAL = 4;
+  ACHIEVEMENT_AXIS_GIST_DEPTH = 5;
+  ACHIEVEMENT_AXIS_FORGETTING_RECOVERY = 6;
+  ACHIEVEMENT_AXIS_NEURON_SHARING = 7;
+  ACHIEVEMENT_AXIS_MOOD_VARIETY = 8;
+  ACHIEVEMENT_AXIS_DECORATION = 9;
+}
+
+message ListAchievementsRequest {}
+
+message AchievementEntry {
+  // Stable catalog id; the FE resolves all copy from it.
+  string achievement_id = 1;
+  AchievementAxis axis = 2;
+  int64 target = 3;
+  // min(counter, target) — derived server-side, never stored.
+  int64 progress = 4;
+  // GENERAL amount resolved from values; 0 for an ornament reward.
+  int32 reward_twinkle = 5;
+  // Empty for a stardust reward.
+  string reward_ornament_id = 6;
+  bool achieved = 7;
+  bool claimed = 8;
+  // RFC3339 UTC; empty while unachieved (the memory.v1 string-time convention).
+  string achieved_at = 9;
+}
+
+message ListAchievementsResponse {
+  repeated AchievementEntry entries = 1;
+}

@@ -153,6 +153,12 @@ export const VALUES = {
     backgroundPrice: 300,
     starShaderPrice: 600,
   },
+  achievement: {
+    rewardTier1: 50,
+    rewardTier2: 150,
+    rewardTier3: 400,
+    recoveryDecayStageMin: 2,
+  },
   admin: {
     userListPageSize: 50,
   },

@@ -132,6 +132,14 @@ func kindOf(id OrnamentID) (OrnamentKind, bool) {
 	return "", false
 }
 
+// AllOrnamentKinds is the DECLARED closed set, in read order. Exported because a drift guard has to
+// compare against the declaration, not against the kinds the catalog happens to have rows for: a
+// kind added to the enum with no row yet is exactly the case that would slip past a derived set and
+// then push a counter key nothing knows.
+func AllOrnamentKinds() []OrnamentKind {
+	return slices.Clone(ornamentKinds)
+}
+
 // Ornaments is every published row, in the one stable order a catalog read answers in. It is the
 // only way to enumerate the catalog from outside this package — the achievement pairing test and the
 // panel's read both go through it, so nobody keeps a second list.

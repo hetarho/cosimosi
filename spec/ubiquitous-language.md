@@ -78,8 +78,9 @@
 | `OrnamentKind`                                 | 장식 종류      | `BACKGROUND`(배경) / `STAR_SHADER`(별 셰이더) 둘로 닫힌 집합. 감정 색은 꾸미기가 아니다 — `MoodColor`가 따로 소유하며 전부 무료.                                                                            |
 | `OrnamentOwnership` (`ornament_ownerships`)    | 소유           | 구매·업적으로 획득한 영구 소유 이력. **UI에 "보관함"으로 노출하지 않는다** — 내부 표현.                                                                                                                     |
 | `OrnamentSelection` (`ornament_selections`)    | 적용 상태      | 종류별 현재 적용값 1개. 저장 시점에 확정(`Decorate`). 시적: _지금 내 우주_.                                                                                                                                 |
-| `Achievement` (`achievements`)                 | 업적           | 정적 정의 — 조건 · 보상. 조건은 누적 횟수·개수·단계 도달만(현실 시간 조건 금지). 시적: _업적_.                                                                                                              |
-| `AchievementProgress` (`achievement_progress`) | 업적 진행      | 사용자별 진행도 · 달성 시각 · **수령 여부**(`claimed_at`). 수령은 명시적 행위.                                                                                                                              |
+| `Achievement`                                  | 업적           | 정적 정의 — 조건 · 보상. 카탈로그는 **테이블이 아니라 Go 코드**다. 조건은 `AchievementCounter` 하나와 정수 목표의 짝이며 누적 횟수·개수·단계 도달만(현실 시간 조건 금지). 시적: _업적_.                     |
+| `AchievementCounter` (`achievement_counters`)  | 업적 카운터    | 조건이 평가되는 누적 사실. `(user, counter_key)` 한 행 — 누적형은 합, 도달형은 최고 수위. 이벤트 행도 이벤트 시각도 없다(연속 기록 조건이 스키마에서 답 불가).                                              |
+| `AchievementProgress` (`achievement_progress`) | 업적 진행      | 파생 불가능한 두 사실 — 달성 시각 · **수령 여부**(`claimed_at`). 진행도 자체는 저장하지 않고 읽을 때 계산한다. 수령은 명시적 행위.                                                                          |
 | `DemoScenario`                                 | 데모 시나리오  | **FE 전용 · DB 없음.** 고정 시퀀스 정의. 온보딩과 같은 엔진을 공유하며 주입 데이터만 다르다.                                                                                                                |
 | `DemoDiarySet`                                 | 데모 일기 세트 | **FE 전용 · DB 없음.** 뉴런이 겹치도록 설계된 일기 3편 묶음. 세트 단위여야 별자리 창발이 보인다.                                                                                                            |
 

@@ -80,6 +80,9 @@ export const ERROR_REASONS = {
   storeOrnamentUnknown: 'STORE_ORNAMENT_UNKNOWN',
   storeOrnamentNotPurchasable: 'STORE_ORNAMENT_NOT_PURCHASABLE',
   storeScopeRequired: 'STORE_SCOPE_REQUIRED',
+  // The achievement read's only refusal: nothing is requested, so an unauthenticated caller is the
+  // one failure mode there is.
+  achievementScopeRequired: 'ACHIEVEMENT_SCOPE_REQUIRED',
 } as const
 
 export type ErrorReason = (typeof ERROR_REASONS)[keyof typeof ERROR_REASONS]

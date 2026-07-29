@@ -446,6 +446,28 @@ store:
   # scarcer kind is a decision rather than a wall.
   star_shader_price: 600
 
+# Achievements (plan 74): the reward a tier resolves to, and the one cross-context condition
+# threshold. Catalog rows (ids, axes, targets, the axis→counter mapping, the two ornament
+# capstones) are content and live as a Go table in the achievement context; the Achieved/Progress
+# formulas are code. Only these scalars are tuning. `claim_toast_ms` and `unlock_notice_max`
+# belong to this group too but are owned and written by plan 76.
+achievement:
+  # [A3][G3] GENERAL Twinkle paid by a tier-1 achievement — the firsts and the shallow tiers,
+  # the most common reward. Half of twinkle.earn_write, so a first-experience reward reads as
+  # meaningful without becoming a shortcut past writing.
+  reward_tier_1: 50
+  # [A3] The mid-tier reward: more than a diary's write earn, less than half an invite leg.
+  reward_tier_2: 150
+  # [A3][G3] The deep-tier reward — the largest stardust payout in the product outside an
+  # invite/signup leg (which pay 500), so the deepest catalog rows stay below the social path.
+  reward_tier_3: 400
+  # [A2] Minimum PRE-recall decay stage (1..forgetting.stage_word_removal_ratios.length) for a
+  # recall to count as a 망각·회복 event on `decay_recovered`. A value rather than catalog
+  # content because plan 75 reads it at a memory call site, and values.yaml is the only
+  # cross-context config channel (ARCHITECTURE §4). Stage 2 = the middle of the decay ladder:
+  # visibly forgotten, not yet near-silent.
+  recovery_decay_stage_min: 2
+
 # Admin console operational surface (plan 58): tuning for the web-only /admin console. Admin
 # identity (ADMIN_USER_IDS), the config encryption key, and the Supabase service-role key are
 # env secrets, not values.

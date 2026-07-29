@@ -253,6 +253,14 @@ const (
 	StoreStarShaderPrice = 600
 )
 
+// achievement
+const (
+	AchievementRewardTier1           = 50
+	AchievementRewardTier2           = 150
+	AchievementRewardTier3           = 400
+	AchievementRecoveryDecayStageMin = 2
+)
+
 // admin
 const (
 	AdminUserListPageSize = 50
