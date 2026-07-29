@@ -16,6 +16,9 @@ import { starChannels, useEpisodicMemoryStore } from '@cosimosi/universe'
 
 export interface StarLayerProps {
   readonly positions: CoordinateBufferRef
+  /** The star-shape registry key this universe wears — a decoration choice, not a domain fact.
+   *  Unknown keys resolve to the shipped body, so a retired shape never blanks the universe. */
+  readonly shape?: string
   /** Memories occupy buffer slots [firstNodeIndex, firstNodeIndex + count) after the neurons. */
   readonly firstNodeIndex: number
   readonly universeTime: string | null
@@ -34,6 +37,7 @@ export interface StarLayerProps {
 // read per frame inside the layer, never here.
 export function StarLayer({
   positions,
+  shape = DEFAULT_STAR_SHAPE,
   firstNodeIndex,
   universeTime,
   reducedMotion = false,
@@ -42,8 +46,8 @@ export function StarLayer({
   onHover,
 }: StarLayerProps) {
   const bodySource = useMemo(
-    () => createStarShapeBodySource(DEFAULT_STAR_SHAPE, { animate: !reducedMotion }),
-    [reducedMotion],
+    () => createStarShapeBodySource(shape, { animate: !reducedMotion }),
+    [shape, reducedMotion],
   )
   const byId = useEpisodicMemoryStore((state) => state.byId)
   const ids = useEpisodicMemoryStore((state) => state.ids)

@@ -67,6 +67,17 @@ func (withdrawalCompositionTwinkleStore) PurgeUser(
 	return nil
 }
 
+type withdrawalCompositionStorePurger struct{}
+
+func (withdrawalCompositionStorePurger) PurgeName() string { return "store" }
+
+func (withdrawalCompositionStorePurger) PurgeUser(
+	context.Context,
+	platform.UserScope,
+) error {
+	return nil
+}
+
 func TestAPIWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
 	t.Parallel()
 	store := &withdrawalCompositionMemoryStore{}
@@ -74,6 +85,7 @@ func TestAPIWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
 		store,
 		store,
 		withdrawalCompositionTwinkleStore{},
+		withdrawalCompositionStorePurger{},
 	)
 	if err != nil {
 		t.Fatalf("newWithdrawalComposition failed: %v", err)
@@ -106,9 +118,10 @@ func TestAPIWithdrawalCompositionUsesOneMemoryIdentity(t *testing.T) {
 			identity.DedupKey(),
 		)
 	}
-	if len(composition.purgers) != 2 ||
+	if len(composition.purgers) != 3 ||
 		composition.purgers[0].PurgeName() != "memory" ||
-		composition.purgers[1].PurgeName() != "twinkle" {
+		composition.purgers[1].PurgeName() != "twinkle" ||
+		composition.purgers[2].PurgeName() != "store" {
 		t.Fatalf("withdrawal purgers = %#v", composition.purgers)
 	}
 }
@@ -247,6 +260,7 @@ func TestProductionAccountCompositionRejectsMissingInviteSigningKey(t *testing.T
 		accountDirectoryAdapter{source: source},
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		withdrawalCompositionStorePurger{},
 	)
 	if err == nil || !strings.Contains(err.Error(), envInviteTokenSigningKey) {
 		t.Fatalf("production account composition err = %v, want missing %s refusal", err, envInviteTokenSigningKey)
@@ -261,6 +275,7 @@ func TestProductionAccountCompositionRejectsKeylessCredentialDirectory(t *testin
 		accountDirectoryAdapter{source: platformsupabase.Fake{}},
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		withdrawalCompositionStorePurger{},
 	)
 	if err == nil {
 		t.Fatal("production account composition accepted a keyless credential directory")

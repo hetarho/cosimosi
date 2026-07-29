@@ -52,11 +52,19 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	directory := newAccountDirectory()
 	inviteGranter := &accountInviteRewardGranter{}
 	signupBonusGranter := &accountSignupBonusGranter{}
+	// The store context is built before account so the withdrawal sweep can take its purge leg. It
+	// consumes nothing in return — the edge is one-way.
+	storeService, err := newStoreService(pool)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	accountOptions, accountService, err := accountServiceOption(
 		pool,
 		accountDirectoryAdapter{source: directory},
 		inviteGranter,
 		signupBonusGranter,
+		storeWithdrawalPurger(storeService),
 	)
 	if err != nil {
 		pool.Close()
@@ -138,6 +146,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		pool.Close()
 		return nil, noop, err
 	}
+	storeOption, err := storeServiceOption(storeService)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
 	adminOption, err := adminServiceOption(adminDeps{
 		store:     adminStore,
 		twinkle:   twinkleService,
@@ -155,10 +168,11 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	logger.Print("twinkle service registered (economy gate live)")
 	logger.Print("account service registered (profile, signup, invite settlement)")
 	logger.Print("admin service registered (operator console — admin-gated)")
+	logger.Print("store service registered (ornament catalog reads)")
 	memoryOption := platform.WithRPCService(func(opts ...connect.HandlerOption) (string, http.Handler) {
 		return memoryv1connect.NewMemoryServiceHandler(server, opts...)
 	})
-	options := []platform.HandlerOption{memoryOption, twinkleOption, adminOption}
+	options := []platform.HandlerOption{memoryOption, twinkleOption, adminOption, storeOption}
 	options = append(options, accountOptions...)
 	return options, pool.Close, nil
 }

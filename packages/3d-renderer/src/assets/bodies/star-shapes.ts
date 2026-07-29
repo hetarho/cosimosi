@@ -550,10 +550,16 @@ export type StarShapeKey = (typeof STAR_SHAPES)[number]['key']
  *  IS the primitive body source), so it stays in the registry without being what a universe wears. */
 export const DEFAULT_STAR_SHAPE: StarShapeKey = 'facet'
 
-/** Resolve a shape key to its definition (falls back to the shipped star). Keeps the narrow key
- *  literals, so callers get a `StarShapeKey` rather than a widened `string`. */
+/** Resolve a shape key to its definition. An unknown or retired key falls back to the DEFAULT — the
+ *  same look an undecorated universe wears — rather than to whatever sits first in the registry, so
+ *  reordering the bench cannot change what a stale key renders as. Keeps the narrow key literals, so
+ *  callers get a `StarShapeKey` rather than a widened `string`. */
 export function resolveStarShape(key: string): (typeof STAR_SHAPES)[number] {
-  return STAR_SHAPES.find((shape) => shape.key === key) ?? STAR_SHAPES[0]
+  return (
+    STAR_SHAPES.find((shape) => shape.key === key) ??
+    STAR_SHAPES.find((shape) => shape.key === DEFAULT_STAR_SHAPE) ??
+    STAR_SHAPES[0]
+  )
 }
 
 /** The body source for a shape key — hand it to an instanced layer alongside the star channels. */

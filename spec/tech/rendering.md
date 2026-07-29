@@ -51,6 +51,29 @@ build-time `rendering.active_skin` value (`spec/values.yaml` → `@cosimosi/conf
 authored. **Invariant:** a skin/sky is presentation-only — it never sets per-memory emotion, position, or strength
 ([I3][I11]).
 
+**`rendering.active_skin` now means the SCENE DEFAULT, not the sky.** Two of the skin's contents became per-user
+decoration choices (plan 71): which `SKY_EFFECTS` entry shades the sphere, and which `STAR_SHAPES` body the memory
+stars are built from. The `SkinKey` union does **not** grow for either — a skin still owns `bloom`, `camera` and the
+bare-night clear color, none of which is ever sellable, and the `emotion` skin's authored `sky.effect` is what the
+default background ornament id mirrors (asserted from the fixture in `assets/ornament-ids.test.ts`).
+
+### The two selection seams (plan 71)
+
+Both apps' canvas widgets read the applied selection through `useAppliedOrnaments()` (`@cosimosi/store/react`) and hand
+the two registry keys down as props:
+
+- **Sky.** `SkySphere`'s `effect` prop takes a plain `string` rather than the narrow `SkyEffectKey` union, because the
+  key arrives as an opaque decoration id from outside the renderer; `resolveSkyEffect` performs the resolution and the
+  retired-key fallback here, where the registry lives (§3.4 — the visual vocabulary never crosses back out).
+- **Star body.** `StarLayer` takes the shape to build (`createStarShapeBodySource(shape)`) instead of hardwiring
+  `DEFAULT_STAR_SHAPE`, and a shape change remounts **only that layer** through its existing key
+  (`star-${paletteVersion}-${shape}`). The renderer is never remounted (plan 14's rule); `InstancedNodeLayer` still owns
+  and disposes the material. `StarShapeOptions` carries `animate` alone — the builder has **no writable handle** to
+  tint, brightness, seed or the layer-applied scale, and `EMISSIVE_GAIN` is not a shape field, so a bought shape cannot
+  lift a faded star back over the bloom threshold ([V2][F1][I11]).
+
+Until the selection read lands, each kind shows its own default — the same picture an undecorated universe shows.
+
 ### Across the R3F reconciler
 
 R3F runs its own reconciler, so context from the DOM/RN tree outside `<Canvas>` does **not** reach in-canvas children.

@@ -247,6 +247,12 @@ const (
 	TwinkleAdminGrantMax             = 100000
 )
 
+// store
+const (
+	StoreBackgroundPrice = 300
+	StoreStarShaderPrice = 600
+)
+
 // admin
 const (
 	AdminUserListPageSize = 50

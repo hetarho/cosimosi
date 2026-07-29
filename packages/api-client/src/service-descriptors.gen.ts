@@ -4,6 +4,7 @@ import { AccountService } from './gen/cosimosi/account/v1/account_pb.ts'
 import { AdminService } from './gen/cosimosi/admin/v1/admin_pb.ts'
 import { MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
 import { PlatformService } from './gen/cosimosi/platform/v1/platform_pb.ts'
+import { StoreService } from './gen/cosimosi/store/v1/store_pb.ts'
 import { TwinkleService } from './gen/cosimosi/twinkle/v1/twinkle_pb.ts'
 
 export const apiServiceDescriptors = [
@@ -11,5 +12,6 @@ export const apiServiceDescriptors = [
   AdminService,
   MemoryService,
   PlatformService,
+  StoreService,
   TwinkleService,
 ] as const

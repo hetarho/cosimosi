@@ -432,6 +432,20 @@ twinkle:
   # audited. Provider identity/keys stay env/DB secrets, never values (plan 28).
   admin_grant_max: 100000
 
+# Universe decoration (plan 71): what an ornament costs, priced BY KIND — there is no per-row
+# price anywhere, so a single number moves a whole kind. Ornament ids, the catalog's rows and
+# their acquisition paths are content and live as a Go table in the store context; the shader and
+# sky constants a row resolves to are the renderer's visual grammar. Only these two scalars are
+# tuning.
+store:
+  # [P9][G3] The GENERAL Twinkle price of any purchasable background. The entry price: three
+  # launched diaries at twinkle.earn_write, so a few days of writing buys the first sky.
+  background_price: 300
+  # [P9][P11] The price of any purchasable star shape — dearer than a background because it
+  # changes the star itself, the one body a memory is. Still inside a week of writing, so the
+  # scarcer kind is a decision rather than a wall.
+  star_shader_price: 600
+
 # Admin console operational surface (plan 58): tuning for the web-only /admin console. Admin
 # identity (ADMIN_USER_IDS), the config encryption key, and the Supabase service-role key are
 # env secrets, not values.

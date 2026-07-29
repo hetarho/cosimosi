@@ -2,7 +2,12 @@ import { LIFE_FLOOR } from './star-body.ts'
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three/webgpu'
 
-import { STAR_SHAPES, createStarShapeBodySource, resolveStarShape } from './star-shapes.ts'
+import {
+  DEFAULT_STAR_SHAPE,
+  STAR_SHAPES,
+  createStarShapeBodySource,
+  resolveStarShape,
+} from './star-shapes.ts'
 
 // The catalogue's contract, not its looks: every entry must actually build (a TSL graph that throws
 // only shows up as a blank canvas otherwise), carry a unit-radius mesh so the layer's per-instance
@@ -79,8 +84,11 @@ describe('star shape catalogue', () => {
     ;(mesh.material as THREE.Material).dispose()
   })
 
-  it('falls back to the shipped star for an unknown key', () => {
-    expect(resolveStarShape('no-such-shape').key).toBe('orb')
+  // A retired or stale key renders the DEFAULT look — the same one an undecorated universe wears —
+  // rather than whatever happens to sit first in the bench.
+  it('falls back to the default shape for an unknown key', () => {
+    expect(resolveStarShape('no-such-shape').key).toBe(DEFAULT_STAR_SHAPE)
+    expect(STAR_SHAPES[0].key).not.toBe(DEFAULT_STAR_SHAPE)
   })
 })
 

@@ -8,11 +8,7 @@ import {
   updateEmotionGradientTexture,
   type GradientStop,
 } from '../assets/sky/emotion-gradient.ts'
-import {
-  DEFAULT_SKY_EFFECT,
-  resolveSkyEffect,
-  type SkyEffectKey,
-} from '../assets/sky/sky-effects.ts'
+import { DEFAULT_SKY_EFFECT, resolveSkyEffect } from '../assets/sky/sky-effects.ts'
 
 // The emotion sky: a large sphere drawn on its INNER surface (BackSide), enclosing the whole
 // universe scene, shaded by a TSL effect. Not a flat screen-space wash — a real body wrapping
@@ -23,8 +19,10 @@ import {
 export interface SkySphereProps {
   /** The universe's emotions (color + weight); reshapes the palette ramp. */
   readonly stops: readonly GradientStop[]
-  /** Which react-bits-derived effect shades the sphere (defaults to Grainient). */
-  readonly effect?: SkyEffectKey
+  /** Which effect shades the sphere (defaults to Grainient). A plain key rather than the narrow
+   *  union, because the effect a universe wears arrives as an opaque decoration id from outside the
+   *  renderer; resolution — including the fallback for a retired key — belongs here (§3.4). */
+  readonly effect?: string
   /** Freeze the animation to a static frame. */
   readonly reducedMotion?: boolean
   /**
@@ -51,7 +49,7 @@ const FROZEN_TIME = 12
 interface SkyMaterialOptions {
   readonly gradient: THREE.Texture
   readonly time: unknown
-  readonly effect: SkyEffectKey
+  readonly effect: string
   readonly count: number
   readonly weights: readonly number[]
   readonly opacity: number

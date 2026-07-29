@@ -33,6 +33,7 @@ import {
   type AwakenAnchor,
   type UniverseNavigationMode,
 } from '@cosimosi/universe'
+import { useAppliedOrnaments } from '@cosimosi/store/react'
 import { useReducedMotion } from '@cosimosi/ui'
 import {
   AwakenNeuron,
@@ -193,7 +194,10 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   // drive its palette ramp ([I3], color only), while the canvas clears to the same bare night.
   // Slices depend on the palette version so a live palette swap re-colors through the unchanged
   // moodColor seam (the sphere repaints in place; material count changes alone rebuild it).
-  const skyEffect = skin.sky.effect
+  // What this universe wears ([P4]): the sky and the star's shape are the user's, while the skin
+  // keeps the scene defaults that are never for sale — bloom, camera, the bare night ([V10][I11]).
+  const applied = useAppliedOrnaments()
+  const skyEffect = applied.BACKGROUND
   const reducedMotion = useReducedMotion()
   const skyStops = useMemo(() => {
     // The version is a genuine input: moodColor reads the module-level palette it stamps.
@@ -275,7 +279,8 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
         <LatentStarField field={latentField} reducedMotion={reducedMotion} />
         <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
         <StarLayer
-          key={`star-${paletteVersion}`}
+          key={`star-${paletteVersion}-${applied.STAR_SHADER}`}
+          shape={applied.STAR_SHADER}
           positions={bridge.coordinates}
           firstNodeIndex={neuronCount}
           universeTime={sceneTime}

@@ -184,6 +184,22 @@ type NeuronActivation struct {
 	Weight           float32
 }
 
+type OrnamentOwnership struct {
+	UserID     string
+	OrnamentID string
+	// the [P9]/[P11] audit trail: purchase | achievement
+	AcquiredVia string
+	AcquiredAt  pgtype.Timestamptz
+}
+
+type OrnamentSelection struct {
+	UserID string
+	// closed set, owned by the store domain: BACKGROUND | STAR_SHADER — the two staging-layer surfaces decoration opens. A feeling's color is not one of them: mood_colors owns that, and an emotion color is not for sale ([P10] as amended).
+	Kind       string
+	OrnamentID string
+	SelectedAt pgtype.Timestamptz
+}
+
 type ReleaseGroup struct {
 	ID        string
 	UserID    string

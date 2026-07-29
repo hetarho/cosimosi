@@ -5,6 +5,7 @@ import {
   AdminService,
   MemoryService,
   PlatformService,
+  StoreService,
   TwinkleService,
   apiServiceDescriptors,
 } from '@cosimosi/api-client'
@@ -187,6 +188,20 @@ export const accountRpcCachePolicies = [
   },
 ] as const satisfies readonly RpcCachePolicyEntry[]
 
+// The decoration catalog and the applied selection are both per-user reads: GET-eligible, privately
+// cacheable, never shared-CDN (§2.7/§4). A price reaches the client only inside these responses, so
+// a shared cache would serve one user's ownership to another.
+export const storeRpcCachePolicies = [
+  {
+    method: StoreService.method.getCatalog,
+    policy: userScopedUnaryReadPolicy,
+  },
+  {
+    method: StoreService.method.getSelection,
+    policy: userScopedUnaryReadPolicy,
+  },
+] as const satisfies readonly RpcCachePolicyEntry[]
+
 // Every admin console read is authenticated + admin-gated operator data: GET-eligible but never
 // shared-CDN cacheable (§2.7/§4). The mutations (GrantAdmin/RevokeAdmin/GrantStardust/SetAIConfig)
 // are plain POSTs and need no entry.
@@ -207,6 +222,7 @@ export const clientCacheRpcCachePolicies = [
   ...memoryRpcCachePolicies,
   ...twinkleRpcCachePolicies,
   ...accountRpcCachePolicies,
+  ...storeRpcCachePolicies,
   ...adminRpcCachePolicies,
 ] as const satisfies readonly RpcCachePolicyEntry[]
 

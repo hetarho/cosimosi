@@ -149,6 +149,10 @@ export const VALUES = {
     ledgerPageSize: 50,
     adminGrantMax: 100000,
   },
+  store: {
+    backgroundPrice: 300,
+    starShaderPrice: 600,
+  },
   admin: {
     userListPageSize: 50,
   },

@@ -44,10 +44,18 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 	}
 	store := memorypg.NewStore(pool.PgxPool())
 	accountStore := accountpg.NewStore(pool.PgxPool())
+	// The sweep RUNS here, so every purge leg the API registers has to be registered here too — a
+	// missing one leaves that context's rows behind a hard-deleted account.
+	storeService, err := newStoreService(pool)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
 	withdrawalAdapters, err := newWithdrawalComposition(
 		store,
 		store,
 		twinklepg.NewStore(pool.PgxPool()),
+		storeWithdrawalPurger(storeService),
 	)
 	if err != nil {
 		pool.Close()

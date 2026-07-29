@@ -108,6 +108,29 @@ func (q *Queries) PurgeUserNeurons(ctx context.Context, userID string) error {
 	return err
 }
 
+const purgeUserOrnamentOwnerships = `-- name: PurgeUserOrnamentOwnerships :exec
+
+DELETE FROM ornament_ownerships
+WHERE user_id = $1
+`
+
+// Account withdrawal's store leg: the user's own ownership history and their applied
+// selections, hard-deleted by the user's own sweep — the single exception [I1] names.
+func (q *Queries) PurgeUserOrnamentOwnerships(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, purgeUserOrnamentOwnerships, userID)
+	return err
+}
+
+const purgeUserOrnamentSelections = `-- name: PurgeUserOrnamentSelections :exec
+DELETE FROM ornament_selections
+WHERE user_id = $1
+`
+
+func (q *Queries) PurgeUserOrnamentSelections(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, purgeUserOrnamentSelections, userID)
+	return err
+}
+
 const purgeUserPaidActionReceipts = `-- name: PurgeUserPaidActionReceipts :exec
 DELETE FROM memory_paid_action_receipts
 WHERE user_id = $1

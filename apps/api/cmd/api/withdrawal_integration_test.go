@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosimosi/api/internal/account"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
@@ -52,6 +53,7 @@ func TestWithdrawRestoreWithdrawSweepLifecycleAndCacheAgainstDatabase(t *testing
 		directory,
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		storeWithdrawalPurgerForTest(t, pool),
 	)
 	if err != nil {
 		t.Fatalf("accountServiceOption failed: %v", err)
@@ -223,6 +225,7 @@ func TestWithdrawalSweepPurgesEveryMigrationDeclaredUserTable(t *testing.T) {
 		directory,
 		accountNoInviteGranter{},
 		accountNoSignupBonusGranter{},
+		storeWithdrawalPurgerForTest(t, pool),
 	)
 	if err != nil {
 		t.Fatalf("accountServiceOption failed: %v", err)
@@ -387,6 +390,13 @@ func seedWithdrawalTables(
 	exec("mood_colors", `
 		INSERT INTO mood_colors (user_id, mood, color)
 		VALUES ($1, 'CALM', '#5eb093')`, userID)
+
+	exec("ornament_ownerships", `
+		INSERT INTO ornament_ownerships (user_id, ornament_id, acquired_via)
+		VALUES ($1, 'background.grainstorm', 'purchase')`, userID)
+	exec("ornament_selections", `
+		INSERT INTO ornament_selections (user_id, kind, ornament_id)
+		VALUES ($1, 'BACKGROUND', 'background.grainstorm')`, userID)
 
 	exec("twinkle_balances", `
 		INSERT INTO twinkle_balances
@@ -655,6 +665,17 @@ func openWithdrawalTestPool(t *testing.T) *platformdb.Pool {
 	return pool
 }
 
+// storeWithdrawalPurgerForTest binds the real store purge leg, so the sweep coverage test exercises
+// the same wiring the API and the worker do rather than a stub that always succeeds.
+func storeWithdrawalPurgerForTest(t *testing.T, pool *platformdb.Pool) account.UserDataPurger {
+	t.Helper()
+	service, err := newStoreService(pool)
+	if err != nil {
+		t.Fatalf("newStoreService failed: %v", err)
+	}
+	return storeWithdrawalPurger(service)
+}
+
 func cleanupWithdrawalRows(
 	t *testing.T,
 	pool *platformdb.Pool,
@@ -673,6 +694,8 @@ func cleanupWithdrawalRows(
 			"DELETE FROM auth_providers WHERE user_id = $1",
 			"DELETE FROM invites WHERE user_id = $1 OR invitee_user_id = $1",
 			"DELETE FROM mood_colors WHERE user_id = $1",
+			"DELETE FROM ornament_selections WHERE user_id = $1",
+			"DELETE FROM ornament_ownerships WHERE user_id = $1",
 			"DELETE FROM users WHERE user_id = $1",
 			"DELETE FROM admin_users WHERE user_id = $1",
 			"DELETE FROM twinkle_ledger_entries WHERE user_id = $1",

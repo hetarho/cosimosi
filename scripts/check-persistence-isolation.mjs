@@ -78,6 +78,8 @@ const hardDeleteQueries = new Set([
   'memory/purge_user.sql#PurgeUserUniverseState',
   'twinkle/purge_user.sql#PurgeUserTwinkleLedger',
   'twinkle/purge_user.sql#PurgeUserTwinkleBalance',
+  'store/purge_user.sql#PurgeUserOrnamentOwnerships',
+  'store/purge_user.sql#PurgeUserOrnamentSelections',
   'account/withdrawal.sql#PurgeAccountAuthProviders',
   'account/withdrawal.sql#PurgeAccountInvites',
   'account/withdrawal.sql#PurgeAccountMoodColors',

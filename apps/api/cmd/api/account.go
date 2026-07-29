@@ -67,6 +67,7 @@ func newWithdrawalComposition(
 	jobStore memory.UserJobStore,
 	memoryPurgeRepo memory.UserPurgeRepo,
 	twinklePurgeRepo twinkle.UserPurgeRepo,
+	storePurger account.UserDataPurger,
 ) (withdrawalComposition, error) {
 	userJobs, err := memory.NewUserJobService(jobStore, nil, nil)
 	if err != nil {
@@ -77,6 +78,9 @@ func newWithdrawalComposition(
 		purgers: []account.UserDataPurger{
 			memory.NewWithdrawalPurger(memoryPurgeRepo),
 			twinkle.NewWithdrawalPurger(twinklePurgeRepo),
+			// The store leg arrives as a built purger rather than a repo: its two tables are purged in
+			// one transaction owned by the store context, and the tables postdate the sweep itself.
+			storePurger,
 		},
 	}, nil
 }
@@ -86,6 +90,7 @@ func accountServiceOption(
 	directory accountServiceDirectory,
 	inviteGranter account.InviteRewardGranter,
 	signupBonusGranter account.SignupBonusGranter,
+	storePurger account.UserDataPurger,
 ) ([]platform.HandlerOption, *account.Service, error) {
 	if err := requireProductionCredentialDirectory(directory); err != nil {
 		return nil, nil, err
@@ -101,6 +106,7 @@ func accountServiceOption(
 		memoryStore,
 		memoryStore,
 		twinkleStore,
+		storePurger,
 	)
 	if err != nil {
 		return nil, nil, err

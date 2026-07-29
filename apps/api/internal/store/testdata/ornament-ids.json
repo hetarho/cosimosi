@@ -1,0 +1,35 @@
+{
+  "note": "The ornament id vocabulary, shared by the Go catalog and the renderer registries. Read by BOTH runtimes: apps/api/internal/store/catalog_test.go and packages/3d-renderer/src/assets/ornament-ids.test.ts. One file, so byte-identity is not something to guard. The lists' lengths are derived, never asserted as numbers.",
+  "defaults": {
+    "BACKGROUND": "background.grainient",
+    "STAR_SHADER": "star_shader.facet"
+  },
+  "ids": {
+    "BACKGROUND": [
+      "background.evil-eye",
+      "background.ferrofluid",
+      "background.floating-lines",
+      "background.grainient",
+      "background.grainstorm",
+      "background.iridescence",
+      "background.lightfall",
+      "background.liquid-ether",
+      "background.pixel-blast",
+      "background.plasma-wave",
+      "background.prismatic-burst",
+      "background.soft-aurora"
+    ],
+    "STAR_SHADER": [
+      "star_shader.bubble",
+      "star_shader.contour",
+      "star_shader.facet",
+      "star_shader.geode",
+      "star_shader.haze",
+      "star_shader.orb",
+      "star_shader.plasma",
+      "star_shader.prism",
+      "star_shader.spire",
+      "star_shader.urchin"
+    ]
+  }
+}

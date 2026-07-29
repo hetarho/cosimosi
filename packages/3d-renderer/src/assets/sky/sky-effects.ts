@@ -152,8 +152,14 @@ export type SkyEffectKey = (typeof SKY_EFFECTS)[number]['key']
 
 export const DEFAULT_SKY_EFFECT: SkyEffectKey = 'grainient'
 
-/** Resolve an effect key to its definition (falls back to the default effect). Keeps the narrow
- *  key literal so callers get a `SkyEffectKey`, not a widened `string`. */
+/** Resolve an effect key to its definition. An unknown or retired key falls back to the DEFAULT by
+ *  name, not to whatever sits first in the catalogue, so reordering the rows cannot change what a
+ *  stale key renders as. Keeps the narrow key literal so callers get a `SkyEffectKey`, not a widened
+ *  `string`. */
 export function resolveSkyEffect(key: string): (typeof SKY_EFFECTS)[number] {
-  return SKY_EFFECTS.find((effect) => effect.key === key) ?? SKY_EFFECTS[0]
+  return (
+    SKY_EFFECTS.find((effect) => effect.key === key) ??
+    SKY_EFFECTS.find((effect) => effect.key === DEFAULT_SKY_EFFECT) ??
+    SKY_EFFECTS[0]
+  )
 }
