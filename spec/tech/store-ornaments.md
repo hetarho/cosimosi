@@ -26,9 +26,21 @@ as one package plus its two seams:
 - `internal/store/rpc` — thin Connect handlers for `store.v1.StoreService` (`GetCatalog`, `GetSelection`), both
   `NO_SIDE_EFFECTS`: enum map + call, no policy.
 
-The frontend mirror is `@cosimosi/store`: the DTO types, the id↔registry-key split, and (via `@cosimosi/store/react`)
-`useAppliedOrnaments()` — the one hook both apps read the applied selection through. It holds no color and no shader
-constant; what an id looks like is the renderer's.
+The frontend mirror is `@cosimosi/store`, and it holds no colour and no shader constant — what an id looks like is the
+renderer's:
+
+- `ornament.ts` — the DTO types, the id↔registry-key split, each kind's default.
+- `ornament-names.ts` + `i18n.ts` — one localized name per published id, written out rather than assembled from the id
+  (a constructed message key is invisible to the i18n tooling, so a missing name would be a blank row nobody notices).
+  A test asserts the pair against the same id fixture, so this is the **third** reader of that one file.
+- `ornament-preview-store.ts` — `{ previewActive, previewed, confirmed }`. See §9.
+- `decoration.machine.ts` — the panel's phase. See §9.
+- `decoration-request-store.ts` — the one-slot open signal, so the HUD affordance can open a widget without a widget
+  importing a widget (§3.1).
+- `save-eligibility.ts` — `ornamentCost` (the `none | price | condition` discriminant) and `saveVerdict` (the five arms).
+  Display arithmetic only.
+- `react.ts` — `useAppliedOrnaments()` (what the universe wears), `useOrnamentCatalog()` (the one grouped read) and
+  `useSaveDecoration()` (the save + invalidation + scope guard). Both apps read all three; only `ui` forks (§3.5).
 
 ## 2. The two tables (migration `00024_store_ornaments.sql`)
 
@@ -177,7 +189,36 @@ No pure function in this context mirrors TS↔Go and none should: a price is a l
 `owned`/`selected` are set membership over rows only the server holds. The duplicated artifact is _data_, so the guard
 is a fixture rather than a golden math pair.
 
-## 8. Composition root
+## 8. The panel's lifecycle (plan 73)
+
+**The preview is kept nowhere.** No `persist` middleware, no URL parameter, no server write — so a reload, a route
+change, a crash, a sign-out and a user switch all restore the confirmed selection _by construction_ rather than through a
+handler someone has to remember. `resetStoreUserState()` is registered in `@cosimosi/auth`'s shared reset registry, so
+both apps get scope-change revert for free. `preview()` is a **no-op while `previewActive` is false**, so nothing outside
+an open panel can install one.
+
+**The machine's transient states are the guarantee.** `committing` and `reverting` are states, not transition actions, so
+there is no path from an open panel to `closed` that skips one of them — a panel cannot be closed without either
+committing what it previewed or putting it back. `saving` carries no `CLOSE` at all, so a resolved save can never land on
+a panel that has moved on. The context holds a phase and the last failure reason; no ornament id enters it.
+
+**A boot read never disturbs a live preview**: `adopt()` updates `confirmed` (what a revert will return to) and leaves
+`previewed` alone while the panel is open.
+
+**One translation point** (§3.4): the canvas widget reads `previewActive ? previewed : confirmed`, resolves each id to a
+registry key, and hands the two keys to `SkySphere` and `StarLayer`. `widgets/decoration-panel` never imports the
+renderer — it installs a preview and this reads it. A sky change repaints in place; a shape change remounts only the star
+layer through its existing key.
+
+**The save commits from the response.** `useSaveDecoration` promotes the server's returned selection (never the request),
+then invalidates catalog, selection and balance rather than writing any cache (§3.2). It reads the auth facade's snapshot
+at **resolve** time, so a save that lands after a user switch resolves to null and commits nothing.
+
+**The boot gate waits on both per-user reads** — mood colours and the applied selection — because entering on the
+authored defaults and then jumping to the user's own choices would make every sign-in flicker. An error settles a read
+too: unreachable choices mean entering on the defaults, not waiting behind a gate that will never open.
+
+## 9. Composition root
 
 `cmd/api/store.go` builds the service over the shared pool (`newStoreService`), exposes the sweep leg
 (`storeWithdrawalPurger`) and registers the handler (`storeServiceOption`). The store service is built **before**

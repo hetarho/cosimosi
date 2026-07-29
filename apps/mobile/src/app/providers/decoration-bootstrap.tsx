@@ -4,15 +4,24 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery } from '@tanstack/react-query'
 
-import { createGetMoodColorsQueryOptions } from '@cosimosi/api-client'
+import {
+  createGetMoodColorsQueryOptions,
+  createGetSelectionQueryOptions,
+} from '@cosimosi/api-client'
 import { MOODS, defaultMoodPalette, moodColor, resolveMoodColors } from '@cosimosi/emotion'
 import { m } from '@cosimosi/i18n'
 import { tokens } from '@cosimosi/ui'
 
 import { applyMoodColors, moodColorRows } from '@cosimosi/emotion/react'
+import { ornamentSelectionRows, useOrnamentPreviewStore } from '@cosimosi/store'
 import { useSessionSnapshot } from './auth-provider.tsx'
 
-export function MobilePaletteBootstrap({ children }: { children?: ReactNode }) {
+// The gate that keeps the universe from painting itself twice: what a memory's colour looks like AND
+// what the universe wears are both per-user, so entering on the authored defaults and then jumping to
+// the user's own choices would make every sign-in flicker. Both reads settle first — an error settles
+// them too, because a user whose choices are unreachable should enter on the defaults rather than wait
+// behind a gate that will never open.
+export function MobileDecorationBootstrap({ children }: { children?: ReactNode }) {
   const transport = useTransport()
   const { userId } = useSessionSnapshot()
   const colors = useQuery({
@@ -20,10 +29,15 @@ export function MobilePaletteBootstrap({ children }: { children?: ReactNode }) {
     enabled: userId !== null,
     retry: false,
   })
+  const selection = useQuery({
+    ...createGetSelectionQueryOptions(transport),
+    enabled: userId !== null,
+    retry: false,
+  })
+  const adoptSelection = useOrnamentPreviewStore((state) => state.adopt)
   const [releasedScopeKey, setReleasedScopeKey] = useState<string | null>(null)
-  // An error settles the read too: a user whose colors are unreachable enters the universe on the
-  // authored default rather than waiting behind a gate that will never open.
   const colorsSettled = colors.isError || colors.data !== undefined
+  const selectionSettled = selection.isError || selection.data !== undefined
   const rows = moodColorRows(colors.data?.colors ?? [])
   const fallback = defaultMoodPalette
   const resolved = resolveMoodColors(rows, fallback)
@@ -31,7 +45,13 @@ export function MobilePaletteBootstrap({ children }: { children?: ReactNode }) {
     userId !== null &&
     colorsSettled &&
     MOODS.every((mood) => moodColor(mood) === resolved.colors[mood])
-  const ready = userId !== null && (releasedScopeKey === userId || alreadyApplied)
+  const ready =
+    userId !== null && selectionSettled && (releasedScopeKey === userId || alreadyApplied)
+
+  useEffect(() => {
+    if (!selection.data) return
+    adoptSelection(ornamentSelectionRows(selection.data.selections))
+  }, [selection.data, adoptSelection])
 
   useEffect(() => {
     if (!userId || !colorsSettled || releasedScopeKey === userId) return

@@ -77,6 +77,28 @@ export interface DialogOwnProps {
   children?: ReactNode
 }
 
+/**
+ * A surface that opens BESIDE the thing it is about, never on top of it. It has no `scrim`,
+ * `overlay` or `modal` prop, and that absence is the point: the universe behind a Sheet stays
+ * visible and interactive, because the whole reason to open one is to watch a change land in it.
+ * A surface that must interrupt is a `Dialog` — the two are different promises, not two settings.
+ */
+export interface SheetOwnProps {
+  open: boolean
+  onClose: () => void
+  title?: ReactNode
+  description?: ReactNode
+  /** Accessible name for the surface when no visible `title` is rendered. */
+  ariaLabel?: string
+  /** Accessible name for the close affordance (consumer passes localized copy). */
+  closeLabel: string
+  /** Block the close affordance while a commit is in flight, so a save cannot be orphaned. */
+  closeDisabled?: boolean
+  /** Pinned below the scrolling body — the surface's one commit action. */
+  footer?: ReactNode
+  children?: ReactNode
+}
+
 export interface TooltipOwnProps {
   content: ReactNode
   children: ReactNode

@@ -1,4 +1,5 @@
 import { resetMoodPalette } from '@cosimosi/emotion'
+import { resetStoreUserState } from '@cosimosi/store'
 import { resetTwinkleUserState } from '@cosimosi/twinkle'
 import { resetUniverseUserState } from '@cosimosi/universe'
 
@@ -17,6 +18,9 @@ const USER_STATE_RESET_REGISTRY: readonly UserStateResetEntry[] = [
   // Colors are per-user, so the previous account's must be off the render seam before the next
   // account's read applies its own — otherwise the incoming universe flashes someone else's sky.
   { name: 'palette', reset: () => resetMoodPalette() },
+  // A live decoration preview belongs to the account that opened it: the incoming universe must not
+  // open wearing the previous user's sky, not even for a frame.
+  { name: 'store', reset: resetStoreUserState },
   { name: 'signup-completion', reset: resetSignupUserState },
 ]
 

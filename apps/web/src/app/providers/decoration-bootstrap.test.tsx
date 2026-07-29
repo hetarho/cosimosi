@@ -14,10 +14,10 @@ import { ObservabilityProvider } from '@cosimosi/observability/react'
 
 import { usePaletteVersion } from '../../features/change-mood-colors/index.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
-import { PaletteBootstrap } from './palette-bootstrap.tsx'
+import { DecorationBootstrap } from './decoration-bootstrap.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
 
-describe('PaletteBootstrap', () => {
+describe('DecorationBootstrap', () => {
   afterEach(() => {
     resetMoodPalette()
   })
@@ -66,9 +66,9 @@ describe('PaletteBootstrap', () => {
           <ObservabilityProvider facade={observability}>
             <WebAuthProvider facade={facade}>
               <WebClientCacheProvider queryClient={queryClient} transport={transport}>
-                <PaletteBootstrap>
+                <DecorationBootstrap>
                   <PaletteProbe />
-                </PaletteBootstrap>
+                </DecorationBootstrap>
               </WebClientCacheProvider>
             </WebAuthProvider>
           </ObservabilityProvider>,

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createGetMoodColorsQueryKey,
   createGetProfileQueryKey,
+  createGetSelectionQueryKey,
   createGetUniverseQueryKey,
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
@@ -56,6 +57,11 @@ function seedDefaultColors(fakes: ReturnType<typeof createTestHarnessFakes>, use
   } as never)
   setClientCacheData(fakes.queryClient, createGetMoodColorsQueryKey(fakes.transport), {
     colors: [],
+  } as never)
+  // The boot gate waits on what the universe wears as well as what a feeling looks like, so both reads
+  // have to settle before the app renders anything past the loading line.
+  setClientCacheData(fakes.queryClient, createGetSelectionQueryKey(fakes.transport), {
+    selections: [],
   } as never)
 }
 

@@ -144,6 +144,13 @@ export const T = {
   dialogBody:
     'The memory fades from the universe and the diary keeps its text. This cannot be undone.',
   dialogClose: 'Close',
+  sheetTrigger: 'Open sheet',
+  sheetTitle: 'Decorate your universe',
+  sheetBody:
+    'Nothing is dimmed and nothing is trapped — what this is about stays visible beside it.',
+  sheetClose: 'Close',
+  sheetRow: 'A row you can pick',
+  sheetSave: 'Save',
   dialogDontAsk: 'Don’t ask again',
   dialogCancel: 'Cancel',
   dialogConfirm: 'Release',

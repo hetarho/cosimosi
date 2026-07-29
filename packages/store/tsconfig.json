@@ -11,6 +11,9 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
+    // The Paraglide message output is typed JS (JSDoc) — read it for types, don't type-check it.
+    "allowJs": true,
+    "checkJs": false,
     "types": ["node"],
     "noUnusedLocals": true,
     "noUnusedParameters": true

@@ -1,10 +1,20 @@
 # policy/ux: universe decoration (우주 꾸미기)
 
 > UX policy for how decoration is browsed, shown and applied. The catalog-facing half is owned by plan
-> [71.ornament-catalog-model](../../plan/71.ornament-catalog-model.md); the panel, its preview and its copy are
-> [73.decoration-panel](../../plan/73.decoration-panel.md)'s and land here when that unit ships. The domain rules (what
-> an ornament may change, permanence, pricing by kind) are
-> [policy/domain/ornament-catalog.md](../domain/ornament-catalog.md). Reinforces PRD §5.7 [P4][P6]–[P11] and [V10][I11].
+> [71.ornament-catalog-model](../../plan/71.ornament-catalog-model.md); the panel, its preview and its copy by
+> [73.decoration-panel](../../plan/73.decoration-panel.md). The domain rules (what an ornament may change, permanence,
+> pricing by kind) are [policy/domain/ornament-catalog.md](../domain/ornament-catalog.md). Reinforces PRD §5.7
+> [P4][P6]–[P11] and [V10][I11].
+
+## The panel opens beside the universe, never over it
+
+꾸미기 is a **sheet over the universe page**, not a page of its own ([P5]): it takes the right edge on a wide screen and
+the lower third on a narrow one, and the universe keeps the rest — visible, and still camera-interactive. Nothing is
+dimmed and no focus is trapped, because the whole reason to open it is to watch a change land in the place it changes.
+The renderer is never remounted to show a choice; only the layer that changed rebuilds.
+
+The way in is one restrained affordance in the HUD's existing row, beside the archive and the account home — not a new
+chrome bar and not a persistent panel.
 
 ## Everything is in one list, and ownership shows up as a price
 
@@ -35,6 +45,12 @@ place, and the universe itself is never remounted or reloaded to show a change. 
 kind shows its free default — the same picture an undecorated universe shows — so a slow read looks like an
 undecorated universe rather than a broken one.
 
+## A row is a name, and the universe is the preview
+
+A row shows **a name and a price, or a name and nothing** — no thumbnail, no blurb, no swatch. Choosing it applies it to
+the real universe at once, so the sky itself is the description, and what a name has to do is be sayable: the shortfall
+line points at one. Names are the client's ([P6]) — the server sends ids and never learns what an ornament looks like.
+
 ## Saving says what happened, and nothing more
 
 A refused save says that **nothing was saved** — the atomicity, plainly — rather than a generic "not enough". The
@@ -43,6 +59,16 @@ item, because only the surface can turn an id into a name. Recovery points at ea
 
 A save that changed nothing is not an error and says nothing: it succeeds quietly. And what a save charged is the
 server's number — the surface may show a total before saving, but it is advisory, and the receipt is what came back.
+
+**A save in flight cannot be dismissed.** The close affordance is disabled while it resolves, so a completed save never
+lands on a panel that has moved on.
+
+## Leaving is reverting
+
+Closing without saving restores the confirmed selection completely, and so does everything else that counts as leaving:
+a route change, a reload, backgrounding the mobile screen, signing out, switching account. The preview is **kept
+nowhere** — not in storage, not in a URL, not on the server — so this is what happens by construction rather than what a
+handler remembers to do. The only durable write is 저장.
 
 **Absence of a choice is the free default, everywhere.** A user who never opens the panel is not missing anything and
 has nothing granted to them; the default is what they already wear.

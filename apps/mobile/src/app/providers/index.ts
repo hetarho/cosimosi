@@ -8,7 +8,7 @@ export {
 } from './auth-provider.tsx'
 export { MobileI18nProvider } from './i18n-provider.tsx'
 export { MobileErrorProvider } from './error-provider.tsx'
-export { MobilePaletteBootstrap } from './palette-bootstrap.tsx'
+export { MobileDecorationBootstrap } from './decoration-bootstrap.tsx'
 export { MobileProfileGate } from './profile-gate.tsx'
 export {
   MobileObservabilityProvider,

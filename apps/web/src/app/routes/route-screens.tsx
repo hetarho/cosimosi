@@ -7,7 +7,7 @@ import type { DiaryConditionsUpdate } from '@cosimosi/universe/react'
 import { useSessionSnapshot } from '@cosimosi/auth/react'
 import { LocaleBootstrap, m } from '../../shared/i18n/index.ts'
 
-import { PaletteBootstrap } from '../providers/palette-bootstrap.tsx'
+import { DecorationBootstrap } from '../providers/decoration-bootstrap.tsx'
 import { ProfileGate } from '../providers/profile-gate.tsx'
 import { AdminPage } from '../../pages/admin/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
@@ -62,9 +62,9 @@ export function AuthenticatedLayout() {
     return (
       <ProfileGate>
         <LocaleBootstrap />
-        <PaletteBootstrap>
+        <DecorationBootstrap>
           <Outlet />
-        </PaletteBootstrap>
+        </DecorationBootstrap>
       </ProfileGate>
     )
   }

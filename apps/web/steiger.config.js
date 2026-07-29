@@ -40,6 +40,22 @@ export default defineConfig([
     },
   },
   {
+    // The decoration vertical (plan 73): two single-action features composed by one panel widget,
+    // mounted by the universe page — the same one-action grain as writing-flow and universe-time
+    // above. Previewing an ornament and saving the choice are two different acts with different
+    // guarantees (one is inert and reversible, one is the epic's only durable write), so merging them
+    // would hide the difference the whole unit is built around. Scoped so a genuinely insignificant
+    // future slice still gets flagged.
+    files: [
+      './src/features/preview-ornament/**',
+      './src/features/buy-ornament/**',
+      './src/widgets/decoration-panel/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
     // The universe-time vertical (plan 31): three single-surface features composed by one widget,
     // mounted by the universe page — the same one-action grain as writing-flow above. Epic C adds
     // the second reference (recall-flow-ui opens confirm-time-sync); merging them away would undo

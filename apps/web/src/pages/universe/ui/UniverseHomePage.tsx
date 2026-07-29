@@ -10,6 +10,7 @@ import {
 } from '@cosimosi/observability/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
+import { useDecorationRequestStore } from '@cosimosi/store'
 import {
   universeNavigationMachine,
   useDeletionTargetStore,
@@ -20,6 +21,7 @@ import {
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
+import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
 import { DeletionFlowSheet } from '../../../widgets/deletion-flow/index.ts'
 import { RecallFlowSheet } from '../../../widgets/recall-flow/index.ts'
 import { StardustOverlay } from '../../../widgets/stardust/index.ts'
@@ -72,6 +74,7 @@ export function UniverseHomePage({
   // where the reader opens the owning diary ([D2]).
   const requestRecallTarget = useRecallTargetStore((state) => state.request)
   const requestOpenDiary = useOpenDiaryTargetStore((state) => state.request)
+  const requestDecoration = useDecorationRequestStore((state) => state.request)
   const openLetGo = useDeletionTargetStore((state) => state.openLetGo)
   const openFullDelete = useDeletionTargetStore((state) => state.openFullDelete)
   const handleRecallRequested = useCallback(
@@ -137,6 +140,11 @@ export function UniverseHomePage({
                 affordances, not a persistent chrome bar. pointer-events-auto so they stay
                 tappable over the non-interactive HUD. */}
             <div className="pointer-events-auto flex gap-2">
+              {/* 꾸미기 joins the same restrained row as the archive and the account home ([P5]): the
+                  panel opens over the canvas, so the affordance belongs to the HUD, not to a route. */}
+              <Button color="neutral" size="sm" onClick={requestDecoration}>
+                {m.store_open_action()}
+              </Button>
               <Button color="neutral" size="sm" onClick={() => onOpenMe?.()}>
                 {m.me_title()}
               </Button>
@@ -167,6 +175,8 @@ export function UniverseHomePage({
       <RecallFlowSheet />
       {/* The deletion + letting-go flow — opens over the canvas from the panel's delete/놓아주기. */}
       <DeletionFlowSheet />
+      {/* 우주 꾸미기 — a scrim-less sheet beside the universe it changes, opened from the HUD. */}
+      <DecorationPanelSheet />
     </main>
   )
 }

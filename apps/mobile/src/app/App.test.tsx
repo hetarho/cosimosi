@@ -11,6 +11,7 @@ import {
   createGetUniverseQueryKey,
   ExportFormat,
   MemoryService,
+  StoreService,
   type GetUniverseResponse,
 } from '@cosimosi/api-client'
 import { pendingInvite, resetSignupUserState, takeSignupCompletion } from '@cosimosi/auth'
@@ -154,6 +155,13 @@ function createMobileAppTransport(
         return { mood: request.mood, color: request.color }
       },
       getMoodColorStats: () => ({ stats: [] }),
+    })
+    // The boot gate waits on what the universe wears as well as what a feeling looks like, so the
+    // shell needs this read to settle before it renders anything past the splash.
+    service(StoreService, {
+      getCatalog: () => ({ ornaments: [] }),
+      getSelection: () => ({ selections: [] }),
+      decorate: () => ({ selection: [], spentTwinkle: 0n }),
     })
     service(MemoryService, {
       getUniverse: () => {

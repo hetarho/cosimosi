@@ -21,7 +21,8 @@
     "@cosimosi/twinkle": "workspace:*",
     "@cosimosi/universe": "workspace:*",
     "@supabase/supabase-js": "^2.108.2",
-    "xstate": "^5.32.2"
+    "xstate": "^5.32.2",
+    "@cosimosi/store": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=19"

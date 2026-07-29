@@ -6,7 +6,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./react": "./src/react.ts"
+    "./react": "./src/react.ts",
+    "./i18n": "./src/i18n.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -14,7 +15,11 @@
   },
   "dependencies": {
     "@connectrpc/connect": "^2.1.2",
-    "@cosimosi/api-client": "workspace:*"
+    "@cosimosi/api-client": "workspace:*",
+    "zustand": "^5.0.14",
+    "xstate": "^5.32.2",
+    "@cosimosi/i18n": "workspace:*",
+    "@cosimosi/auth": "workspace:*"
   },
   "devDependencies": {
     "@connectrpc/connect-query": "^2.2.0",

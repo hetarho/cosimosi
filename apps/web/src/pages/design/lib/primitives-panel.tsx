@@ -7,6 +7,7 @@ import {
   Card,
   Checkbox,
   Dialog,
+  Sheet,
   IconButton,
   Select,
   Skeleton,
@@ -348,6 +349,7 @@ function ToggleSection() {
 // ── Overlays ──────────────────────────────────────────────────────────────────
 function OverlaySection() {
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   return (
     <Section id="overlay" title={T.overlayTitle} blurb={T.overlayBlurb}>
@@ -359,6 +361,9 @@ function OverlaySection() {
           {T.toastTrigger}
         </Button>
         <Button onClick={() => setDialogOpen(true)}>{T.dialogTrigger}</Button>
+        <Button color="neutral" onClick={() => setSheetOpen(true)}>
+          {T.sheetTrigger}
+        </Button>
       </Stage>
 
       <Toast open={toastOpen} onOpenChange={setToastOpen} variant="success" durationMs={2400}>
@@ -384,6 +389,19 @@ function OverlaySection() {
           </div>
         </div>
       </Dialog>
+
+      {/* The scrim-less sibling, shown next to Dialog on purpose: the difference between them is what
+          stays visible behind, and that only reads when the two are side by side. */}
+      <Sheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title={T.sheetTitle}
+        description={T.sheetBody}
+        closeLabel={T.sheetClose}
+        footer={<Button color="primary">{T.sheetSave}</Button>}
+      >
+        <p className="text-sm text-text-muted">{T.sheetRow}</p>
+      </Sheet>
     </Section>
   )
 }

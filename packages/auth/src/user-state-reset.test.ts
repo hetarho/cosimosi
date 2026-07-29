@@ -32,6 +32,7 @@ describe('user state reset registry', () => {
       'universe',
       'twinkle',
       'palette',
+      'store',
       'signup-completion',
     ])
     expect(extendUserStateResetInventory(localeLeg)).toEqual([

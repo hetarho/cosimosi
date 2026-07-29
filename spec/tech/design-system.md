@@ -123,9 +123,17 @@ win deterministically through the `style={[base, …, props.style]}` array.
 - Controlled/uncontrolled where conventional (Switch, Checkbox). A control with no
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
-**Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog,
+**Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog, Sheet,
 Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs, SegmentedControl. **Deferred** (added when a
 Phase-4 slice needs them, promote-on-use): Menu, Slider/Stepper, Drawer.
+
+`Sheet` is the surface that opens **beside** what it is about, and it is a separate primitive rather than a `Dialog`
+setting: it renders no backdrop, traps no focus and is not a portal, so the thing behind it stays visible and
+interactive. That is why it has **no `scrim` / `overlay` / `modal` prop at all** — the forbidden thing has no field, so
+"a sheet that dims the universe" cannot be configured into existence. A surface that must interrupt is a `Dialog`; the
+two are different promises, not two settings of one. Escape is unbound for the same reason (nothing is dimmed to escape
+from), and `closeDisabled` lets a host block the one way out while a commit is in flight. Promoted on use by the
+decoration panel, which exists to be watched against the running universe.
 
 `SegmentedControl` is a **radiogroup**, not a second Tabs: its segments select a value and swap no
 panel, so it carries no `aria-controls` and a reader hears a checked state rather than a tab position.

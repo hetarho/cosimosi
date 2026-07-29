@@ -51,6 +51,7 @@ export type {
   FieldOwnProps,
   ToggleOwnProps,
   DialogOwnProps,
+  SheetOwnProps,
   TooltipOwnProps,
   ToastOwnProps,
   BadgeOwnProps,
@@ -73,6 +74,7 @@ export { TextArea, type TextAreaProps } from './primitives/text-area.tsx'
 export { Switch, type SwitchProps } from './primitives/switch.tsx'
 export { Checkbox, type CheckboxProps } from './primitives/checkbox.tsx'
 export { Dialog, type DialogProps } from './primitives/dialog.tsx'
+export { Sheet, type SheetProps } from './primitives/sheet.tsx'
 export { Tooltip, type TooltipProps } from './primitives/tooltip.tsx'
 export { Toast, type ToastProps } from './primitives/toast.tsx'
 export { Badge, type BadgeProps } from './primitives/badge.tsx'

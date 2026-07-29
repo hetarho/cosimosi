@@ -437,6 +437,9 @@ importers:
       '@cosimosi/emotion':
         specifier: workspace:*
         version: link:../emotion
+      '@cosimosi/store':
+        specifier: workspace:*
+        version: link:../store
       '@cosimosi/twinkle':
         specifier: workspace:*
         version: link:../twinkle
@@ -717,6 +720,18 @@ importers:
       '@cosimosi/api-client':
         specifier: workspace:*
         version: link:../api-client
+      '@cosimosi/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@cosimosi/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      xstate:
+        specifier: ^5.32.2
+        version: 5.32.2
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.17)(immer@10.2.0)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
     devDependencies:
       '@connectrpc/connect-query':
         specifier: ^2.2.0

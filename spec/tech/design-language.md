@@ -235,6 +235,9 @@ The 2D groups need no GPU and no domain read, so they open instantly and reprodu
 `Universe` group (§20) does need a GPU, and it is on the same page on purpose — see §20 for why.
 `/test` is a different thing: it verifies platform wiring, and it is scaffolding that goes away.
 
+`Sheet` sits beside `Dialog` in the Overlays group deliberately: what separates them is what stays visible behind, and
+that only reads when the two are opened one after the other on the same screen.
+
 The interaction states are shown with the design system's own rules, not with copies of them: the
 `.state-hover` / `.state-pressed` / `.state-focus` wrappers in `base.css` are extra selectors on the
 real rules, so a restyle can never leave the showcase advertising a state the product no longer has.

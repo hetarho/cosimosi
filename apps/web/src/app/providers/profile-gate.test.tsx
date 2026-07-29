@@ -13,7 +13,7 @@ import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 
 import { WebAuthProvider } from './auth-provider.tsx'
-import { PaletteBootstrap } from './palette-bootstrap.tsx'
+import { DecorationBootstrap } from './decoration-bootstrap.tsx'
 import { ProfileGate } from './profile-gate.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
 
@@ -140,9 +140,9 @@ describe('ProfileGate', () => {
           <WebAuthProvider facade={facade}>
             <WebClientCacheProvider queryClient={queryClient} transport={transport}>
               <ProfileGate>
-                <PaletteBootstrap>
+                <DecorationBootstrap>
                   <span>product-child</span>
-                </PaletteBootstrap>
+                </DecorationBootstrap>
               </ProfileGate>
             </WebClientCacheProvider>
           </WebAuthProvider>

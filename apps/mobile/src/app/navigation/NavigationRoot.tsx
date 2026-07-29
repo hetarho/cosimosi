@@ -28,7 +28,7 @@ import {
 } from '../../shared/native/index.ts'
 import { DiagnosticsScreen } from '../diagnostics/index.ts'
 import {
-  MobilePaletteBootstrap,
+  MobileDecorationBootstrap,
   MobileProfileGate,
   useSessionSnapshot,
 } from '../providers/index.ts'
@@ -207,7 +207,7 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
   return stack === 'universe' ? (
     <MobileProfileGate>
       <LocaleBootstrap />
-      <MobilePaletteBootstrap>{navigation}</MobilePaletteBootstrap>
+      <MobileDecorationBootstrap>{navigation}</MobileDecorationBootstrap>
     </MobileProfileGate>
   ) : (
     navigation
