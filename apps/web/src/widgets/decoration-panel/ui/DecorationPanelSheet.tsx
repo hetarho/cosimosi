@@ -5,6 +5,7 @@ import {
   useDecorationRequestStore,
   useOrnamentPreviewStore,
 } from '@cosimosi/store'
+import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useOrnamentCatalog, useSaveDecoration } from '@cosimosi/store/react'
 import { Sheet } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
@@ -29,6 +30,9 @@ export function DecorationPanelSheet() {
   const revertPreview = useOrnamentPreviewStore((state) => state.revert)
   const { catalog } = useOrnamentCatalog()
   const save = useSaveDecoration()
+  // A save records three counters, so the achievement read is refreshed on resolution — the seam
+  // this panel's own job left for the achievement surface to wire.
+  const invalidateAchievements = useInvalidateAchievements()
 
   useEffect(() => {
     if (!requested) return
@@ -60,11 +64,12 @@ export function DecorationPanelSheet() {
     if (actorRef.getSnapshot().value !== 'saving') return
     const { saved, reason } = await save()
     if (saved) {
+      invalidateAchievements()
       actorRef.send({ type: 'SAVED' })
     } else {
       actorRef.send({ type: 'FAILED', reason: reason ?? '' })
     }
-  }, [actorRef, save])
+  }, [actorRef, save, invalidateAchievements])
 
   const open = phase === 'browsing' || phase === 'saving'
   if (!open) return null

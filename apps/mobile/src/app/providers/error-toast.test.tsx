@@ -9,9 +9,9 @@ import { ERROR_REASONS } from '@cosimosi/errors'
 import { m, setActiveLocale } from '@cosimosi/i18n'
 
 import { useErrorToast } from '../../shared/model/index.ts'
-import { MobileErrorProvider } from './error-provider.tsx'
+import { MobileToastProvider } from './toast-provider.tsx'
 
-describe('MobileErrorProvider', () => {
+describe('the mobile error toast', () => {
   beforeEach(() => {
     setActiveLocale('en')
     jest.useFakeTimers()
@@ -23,7 +23,7 @@ describe('MobileErrorProvider', () => {
 
   it('renders the same reason copy without correlation-id noise and uses generated duration', () => {
     render(
-      <MobileErrorProvider>
+      <MobileToastProvider>
         <Trigger
           error={errorWithDetail(Code.ResourceExhausted, {
             reason: ERROR_REASONS.twinkleInsufficient,
@@ -31,7 +31,7 @@ describe('MobileErrorProvider', () => {
             requestId: 'request-domain',
           })}
         />
-      </MobileErrorProvider>,
+      </MobileToastProvider>,
     )
 
     fireEvent.press(screen.getByText('trigger'))
@@ -46,7 +46,7 @@ describe('MobileErrorProvider', () => {
 
   it('renders the internal correlation id but never debug detail', () => {
     render(
-      <MobileErrorProvider>
+      <MobileToastProvider>
         <Trigger
           error={errorWithDetail(Code.Internal, {
             reason: ERROR_REASONS.internal,
@@ -55,7 +55,7 @@ describe('MobileErrorProvider', () => {
             debugDetail: 'database exploded',
           })}
         />
-      </MobileErrorProvider>,
+      </MobileToastProvider>,
     )
 
     fireEvent.press(screen.getByText('trigger'))

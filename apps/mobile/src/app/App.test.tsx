@@ -659,7 +659,9 @@ describe('mobile me screen', () => {
       expect(screen.getByText(m.palette_editor_title())).toBeTruthy()
 
       fireEvent.press(screen.getByText(m.me_tab_achievements()))
-      expect(screen.getByText(m.me_achievements_pending())).toBeTruthy()
+      // The tab now lists the catalog. The fake transport answers no entries, so the empty line is
+      // what proves the real body mounted rather than the retired placeholder.
+      await waitFor(() => expect(screen.getByText(m.achievement_empty())).toBeTruthy())
       fireEvent.press(screen.getByText(m.me_tab_diary()))
       expect(screen.getByText(m.me_export_action())).toBeTruthy()
       fireEvent.press(screen.getByText(m.me_tab_account()))

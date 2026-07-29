@@ -16,7 +16,7 @@ import type { ObservabilityFacade } from '@cosimosi/observability'
 
 import { MobileAuthProvider, type MobileSupabaseAuthOptions } from './auth-provider.tsx'
 import { MobileI18nProvider } from './i18n-provider.tsx'
-import { MobileErrorProvider } from './error-provider.tsx'
+import { MobileToastProvider } from './toast-provider.tsx'
 import {
   MobileObservabilityProvider,
   MobileObservabilitySessionBridge,
@@ -77,7 +77,9 @@ export function MobileAppProviders({
           <LocaleRenderBoundary>
             {() => (
               <MobileThemeProvider>
-                <MobileErrorProvider>
+                {/* The toast queue wraps the error provider: the error path pushes into it rather
+                    than rendering its own toast, so exactly one Toast exists in the tree. */}
+                <MobileToastProvider>
                   <MobileAuthProvider facade={authFacade} supabase={supabase} devUserId={devUserId}>
                     <MobileObservabilitySessionBridge />
                     <MobileClientCacheProvider
@@ -88,7 +90,7 @@ export function MobileAppProviders({
                       <MachineActorsProvider>{children}</MachineActorsProvider>
                     </MobileClientCacheProvider>
                   </MobileAuthProvider>
-                </MobileErrorProvider>
+                </MobileToastProvider>
               </MobileThemeProvider>
             )}
           </LocaleRenderBoundary>

@@ -7,7 +7,7 @@ export {
   type MobileSupabaseAuthOptions,
 } from './auth-provider.tsx'
 export { MobileI18nProvider } from './i18n-provider.tsx'
-export { MobileErrorProvider } from './error-provider.tsx'
+export { MobileToastProvider } from './toast-provider.tsx'
 export { MobileDecorationBootstrap } from './decoration-bootstrap.tsx'
 export { MobileProfileGate } from './profile-gate.tsx'
 export {

@@ -34,6 +34,7 @@ import {
 } from '../providers/index.ts'
 import { ROUTES, type RootStackParamList, type RootStackScreenProps } from './routes.ts'
 import { BootScreen } from './screens/BootScreen.tsx'
+import { AchievementNoticeHost } from '../../features/achievement-notice/index.ts'
 
 /**
  * The navigator's own surface colours, from the design tokens.
@@ -207,6 +208,10 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
   return stack === 'universe' ? (
     <MobileProfileGate>
       <LocaleBootstrap />
+      {/* Mounted in the authenticated branch and nowhere else. That one placement is three guards at
+          once: a signed-out visitor never fetches ListAchievements, no unauthenticated stack can
+          mount the watcher, and sign-out unmounts the snapshot the diff compares against. */}
+      <AchievementNoticeHost />
       <MobileDecorationBootstrap>{navigation}</MobileDecorationBootstrap>
     </MobileProfileGate>
   ) : (

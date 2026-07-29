@@ -24,6 +24,7 @@ import {
   type RecallFlowPhase,
 } from '@cosimosi/universe'
 
+import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
@@ -57,6 +58,9 @@ export function RecallFlowSheet() {
   const [costPassed, setCostPassed] = useState(false)
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const invalidateBalance = useInvalidateTwinkleBalance()
+  // Every action that can record progress refreshes the achievement read on resolution, which is
+  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
+  const invalidateAchievements = useInvalidateAchievements()
 
   const rewrite = useRecallDraftStore((state) => state.rewrite)
   const result = useRecallDraftStore((state) => state.result)
@@ -192,6 +196,10 @@ export function RecallFlowSheet() {
       })
       invalidateMemory()
       invalidateBalance()
+      // The balance is refreshed on BOTH paths because a refused paid action can still have moved it;
+      // achievements are refreshed only on success. A failed action recorded no progress, and refetching
+      // after it could surface an unlock notice that reads as though the failure had earned something.
+      invalidateAchievements()
       send({ type: 'DONE' })
     } catch (error) {
       if (!paidSession.isActive(activeAttempt)) return
@@ -235,6 +243,7 @@ export function RecallFlowSheet() {
     setResult,
     invalidateMemory,
     invalidateBalance,
+    invalidateAchievements,
     paidSession,
     requestEarnGuide,
     showError,

@@ -27,6 +27,7 @@ import {
   type PaidActionSession,
 } from '@cosimosi/universe'
 
+import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { useAdvanceAnnouncementStore } from '../../../features/accelerate-time/index.ts'
 import { ConfirmTimeSyncDialog } from '../../../features/confirm-time-sync/index.ts'
@@ -129,6 +130,9 @@ export function DiaryReaderBlock({
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const openFullDelete = useDeletionTargetStore((state) => state.openFullDelete)
   const invalidateBalance = useInvalidateTwinkleBalance()
+  // Every action that can record progress refreshes the achievement read on resolution, which is
+  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
+  const invalidateAchievements = useInvalidateAchievements()
   const invalidateUniverse = useInvalidateUniverse()
 
   // The consent decision is server-authoritative ([R1a], A1): needsSync comes from the sync-status
@@ -214,6 +218,11 @@ export function DiaryReaderBlock({
         if (firstStar) requestFlyTarget(firstStar)
         invalidateUniverse()
         invalidateBalance()
+        // The balance is refreshed on BOTH paths because a refused paid action can still have moved
+        // it; achievements are refreshed only here. A failed action recorded no progress, and
+        // refetching after one could surface an unlock notice that reads as though it had earned
+        // something.
+        invalidateAchievements()
         invalidateSyncStatus()
         send({ type: 'DONE' })
         setJumpDiaryId(null)
@@ -257,6 +266,7 @@ export function DiaryReaderBlock({
       requestFlyTarget,
       invalidateUniverse,
       invalidateBalance,
+      invalidateAchievements,
       invalidateSyncStatus,
       requestEarnGuide,
       showError,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 
+import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { Dialog, tokens } from '@cosimosi/ui'
 import { VALUES } from '@cosimosi/config'
 import {
@@ -30,6 +31,7 @@ import { useDeletionDraftStore } from '@cosimosi/universe'
 // with web verbatim.
 export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
   const showError = useErrorToast()
+  const invalidateAchievements = useInvalidateAchievements()
   const target = useDeletionTargetStore((state) => state.target)
   const clearTarget = useDeletionTargetStore((state) => state.clear)
 
@@ -98,13 +100,16 @@ export function DeletionFlowSheet({ active = true }: { active?: boolean }) {
     send({ type: 'CONFIRM' })
     try {
       await release(diaryId)
+      // A let-go records progress but moves no Twinkle, so this widget invalidated nothing before —
+      // the one progress-recording surface with no balance to refresh.
+      invalidateAchievements()
       send({ type: 'DONE' })
     } catch (caught) {
       showError(caught)
       setError(true)
       send({ type: 'ERROR' })
     }
-  }, [diaryId, release, showError, send])
+  }, [diaryId, release, showError, send, invalidateAchievements])
 
   const runSuggest = useCallback(async () => {
     if (!episodicMemoryId) return

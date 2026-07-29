@@ -66,6 +66,22 @@ function reasonMessage(reason: string): string | undefined {
       return m.error_memory_restore_window_expired()
     case ERROR_REASONS.adminForbidden:
       return m.error_admin_forbidden()
+    case ERROR_REASONS.achievementScopeRequired:
+      return m.error_achievement_scope_required()
+    case ERROR_REASONS.achievementInputRequired:
+      return m.error_achievement_input_required()
+    // Both mean the list the user pressed from was stale, so the surface refetches AND says so —
+    // silently refreshing under a press reads as the button having done nothing.
+    case ERROR_REASONS.achievementNotFound:
+      return m.error_achievement_not_found()
+    case ERROR_REASONS.achievementNotAchieved:
+      return m.error_achievement_not_achieved()
+    // The claim WAS recorded and only the payout failed, so the copy says the reward is kept and to
+    // try again. There is deliberately no ALREADY_CLAIMED reason to map: a repeat claim is a replay
+    // that pays, and disabling the button on this one would strand the reward in the very window the
+    // replay exists to heal.
+    case ERROR_REASONS.achievementRewardUnavailable:
+      return m.error_achievement_reward_unavailable()
     default:
       return undefined
   }

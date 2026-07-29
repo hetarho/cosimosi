@@ -12,7 +12,7 @@ import type { ObservabilityFacade } from '@cosimosi/observability'
 import { LocaleRenderBoundary, m, type Locale } from '../shared/i18n/index.ts'
 import { WebAuthProvider } from './providers/auth-provider.tsx'
 import { WebI18nProvider } from './providers/i18n-provider.tsx'
-import { WebErrorProvider } from './providers/error-provider.tsx'
+import { WebToastProvider } from './providers/toast-provider.tsx'
 import {
   WebObservabilityProvider,
   WebObservabilitySessionBridge,
@@ -44,14 +44,16 @@ export default function App({
         <WebI18nProvider locale={locale}>
           <LocaleRenderBoundary>
             {() => (
-              <WebErrorProvider>
+              /* The toast queue wraps the error provider: the error path pushes into it rather than
+                 rendering its own toast, so exactly one Toast exists in the tree. */
+              <WebToastProvider>
                 <WebAuthProvider facade={authFacade}>
                   <WebObservabilitySessionBridge />
                   <WebClientCacheProvider queryClient={queryClient} transport={transport}>
                     <WebRouterProvider router={router} />
                   </WebClientCacheProvider>
                 </WebAuthProvider>
-              </WebErrorProvider>
+              </WebToastProvider>
             )}
           </LocaleRenderBoundary>
         </WebI18nProvider>

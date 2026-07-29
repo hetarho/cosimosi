@@ -16,6 +16,7 @@
   "dependencies": {
     "@connectrpc/connect-query": "^2.2.0",
     "@cosimosi/3d-renderer": "workspace:*",
+    "@cosimosi/achievement": "workspace:*",
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/client-cache": "workspace:*",

@@ -40,52 +40,66 @@ client presentation, API logs, and unexpected-error telemetry.
 `FE` means the current shared presentation/recovery seam has reason-specific
 behavior. `fallback` means localized copy comes from the coarse Connect code.
 
-| Reason(s)                                                                                                                                | Domain   | Connect code               | FE                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- | ------------------------------ |
-| `INTERNAL`                                                                                                                               | platform | Internal                   | generic copy + request id      |
-| `PLATFORM_UNAUTHENTICATED`                                                                                                               | platform | Unauthenticated            | coarse                         |
-| `PLATFORM_AUTH_VERIFIER_UNAVAILABLE`                                                                                                     | platform | Unavailable                | coarse                         |
-| `PLATFORM_ACCOUNT_WITHDRAWN`                                                                                                             | platform | PermissionDenied           | job 93 restore screen          |
-| `PLATFORM_<CONNECT_CODE>`                                                                                                                | platform | matching non-internal code | coarse                         |
-| `ACCOUNT_SCOPE_REQUIRED`                                                                                                                 | account  | Unauthenticated            | fallback                       |
-| `ACCOUNT_NOT_PROVISIONED`                                                                                                                | account  | FailedPrecondition         | fallback                       |
-| `ACCOUNT_SIGNUP_REQUIRED`                                                                                                                | account  | FailedPrecondition         | fallback                       |
-| `ACCOUNT_NICKNAME_INVALID`, `ACCOUNT_TIMEZONE_INVALID`, `ACCOUNT_LOCALE_INVALID`                                                         | account  | InvalidArgument            | fallback                       |
-| `ACCOUNT_INVITE_LINK_UNAVAILABLE`                                                                                                        | account  | FailedPrecondition         | fallback                       |
-| `ACCOUNT_NOT_WITHDRAWN`, `ACCOUNT_RESTORE_WINDOW_EXPIRED`                                                                                | account  | FailedPrecondition         | job 93 restore flow            |
-| `ADMIN_FORBIDDEN`                                                                                                                        | admin    | PermissionDenied           | reason copy                    |
-| `ADMIN_SEED_ADMIN_UNDEMOTABLE`                                                                                                           | admin    | FailedPrecondition         | fallback                       |
-| `ADMIN_USER_ID_REQUIRED`, `ADMIN_GRANT_AMOUNT_RANGE`, `ADMIN_GRANT_ID_REQUIRED`                                                          | admin    | InvalidArgument            | fallback                       |
-| `ADMIN_UNKNOWN_CAPABILITY`, `ADMIN_PROVIDER_REQUIRED`, `ADMIN_PROVIDER_KEY_REQUIRED`                                                     | admin    | InvalidArgument            | fallback                       |
-| `ADMIN_UNKNOWN_PROVIDER`, `ADMIN_PROVIDER_CAPABILITY_MISMATCH`                                                                           | admin    | InvalidArgument            | fallback                       |
-| `ADMIN_PROVIDER_NOT_IMPLEMENTED`, `ADMIN_PROVIDER_KEY_MISSING`, `ADMIN_SECRETBOX_DISABLED`, `ADMIN_GRANT_ID_CONFLICT`                    | admin    | FailedPrecondition         | fallback                       |
-| `MEMORY_DIARY_DATE_INVALID`, `MEMORY_ENCODE_INPUT_REQUIRED`, `MEMORY_LAUNCH_INVALID_MEMORIES`                                            | memory   | InvalidArgument            | fallback                       |
-| `MEMORY_RECALL_INPUT_REQUIRED`, `MEMORY_VIEW_SEMANTIC_INPUT_REQUIRED`, `MEMORY_PROVENANCE_INPUT_REQUIRED`                                | memory   | InvalidArgument            | fallback                       |
-| `MEMORY_EXPORT_FORMAT_REQUIRED`, `MEMORY_DIARY_PAGE_TOKEN_INVALID`, `MEMORY_RELEASE_INPUT_REQUIRED`                                      | memory   | InvalidArgument            | fallback                       |
-| `MEMORY_LET_GO_INVALID_APPROVED`, `MEMORY_OPERATION_ID_REQUIRED`                                                                         | memory   | InvalidArgument            | fallback                       |
-| `MEMORY_OPERATION_CONFLICT`                                                                                                              | memory   | AlreadyExists              | reason copy                    |
-| `MEMORY_RECALL_MEMORY_NOT_FOUND`, `MEMORY_VIEW_SEMANTIC_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_MEMORY_NOT_FOUND`                             | memory   | NotFound                   | target-not-found copy          |
-| `MEMORY_RECALL_NO_LIVE_MEMORIES`, `MEMORY_PROVENANCE_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_NO_LIVE_MEMORIES`, `MEMORY_RESTORE_NOT_RELEASED` | memory   | NotFound                   | fallback                       |
-| `MEMORY_RECALL_MEMORY_UNAVAILABLE`, `MEMORY_RELEASE_MEMORY_UNAVAILABLE`                                                                  | memory   | FailedPrecondition         | target-unavailable copy        |
-| `MEMORY_VIEW_SEMANTIC_STAGE_NOT_RISEN`                                                                                                   | memory   | FailedPrecondition         | reason copy                    |
-| `MEMORY_ALREADY_RELEASED`                                                                                                                | memory   | FailedPrecondition         | reason copy                    |
-| `MEMORY_RESTORE_WINDOW_EXPIRED`                                                                                                          | memory   | FailedPrecondition         | reason copy                    |
-| `MEMORY_SYNC_CONSENT_REQUIRED`                                                                                                           | memory   | FailedPrecondition         | consent recovery + reason copy |
-| `MEMORY_INSUFFICIENT_TWINKLE`                                                                                                            | memory   | ResourceExhausted          | earn recovery + stardust copy  |
-| `MEMORY_ENCODE_RETRY_EXHAUSTED`                                                                                                          | memory   | ResourceExhausted          | fallback                       |
-| `MEMORY_SCOPE_REQUIRED`                                                                                                                  | memory   | Unauthenticated            | fallback                       |
-| `TWINKLE_INVITE_INPUT_REQUIRED`, `TWINKLE_QUOTE_INPUT_REQUIRED`, `TWINKLE_LEDGER_CURSOR_INVALID`                                         | twinkle  | InvalidArgument            | fallback                       |
-| `TWINKLE_QUOTE_TARGET_NOT_FOUND`                                                                                                         | twinkle  | NotFound                   | fallback                       |
-| `TWINKLE_INSUFFICIENT`                                                                                                                   | twinkle  | ResourceExhausted          | earn recovery + reason copy    |
-| `TWINKLE_INVITE_RESOLUTION_UNAVAILABLE`                                                                                                  | twinkle  | Unavailable                | fallback                       |
-| `TWINKLE_INVITE_BENEFICIARY_MISMATCH`                                                                                                    | twinkle  | PermissionDenied           | fallback                       |
-| `TWINKLE_INVITE_NOT_ELIGIBLE`, `TWINKLE_INVITE_GRANT_CONFLICT`                                                                           | twinkle  | FailedPrecondition         | fallback                       |
-| `TWINKLE_QUOTE_TARGET_UNAVAILABLE`                                                                                                       | twinkle  | FailedPrecondition         | fallback                       |
-| `TWINKLE_SCOPE_REQUIRED`                                                                                                                 | twinkle  | Unauthenticated            | fallback                       |
-| `STORE_ORNAMENT_UNKNOWN`                                                                                                                 | store    | InvalidArgument            | fallback                       |
-| `STORE_ORNAMENT_NOT_PURCHASABLE`                                                                                                         | store    | FailedPrecondition         | fallback                       |
-| `STORE_INSUFFICIENT_TWINKLE`                                                                                                             | store    | ResourceExhausted          | earn recovery + reason copy    |
-| `STORE_SCOPE_REQUIRED`                                                                                                                   | store    | Unauthenticated            | fallback                       |
+| Reason(s)                                                                                                                                | Domain      | Connect code               | FE                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------------------------- | --------------------------------- |
+| `INTERNAL`                                                                                                                               | platform    | Internal                   | generic copy + request id         |
+| `PLATFORM_UNAUTHENTICATED`                                                                                                               | platform    | Unauthenticated            | coarse                            |
+| `PLATFORM_AUTH_VERIFIER_UNAVAILABLE`                                                                                                     | platform    | Unavailable                | coarse                            |
+| `PLATFORM_ACCOUNT_WITHDRAWN`                                                                                                             | platform    | PermissionDenied           | job 93 restore screen             |
+| `PLATFORM_<CONNECT_CODE>`                                                                                                                | platform    | matching non-internal code | coarse                            |
+| `ACCOUNT_SCOPE_REQUIRED`                                                                                                                 | account     | Unauthenticated            | fallback                          |
+| `ACCOUNT_NOT_PROVISIONED`                                                                                                                | account     | FailedPrecondition         | fallback                          |
+| `ACCOUNT_SIGNUP_REQUIRED`                                                                                                                | account     | FailedPrecondition         | fallback                          |
+| `ACCOUNT_NICKNAME_INVALID`, `ACCOUNT_TIMEZONE_INVALID`, `ACCOUNT_LOCALE_INVALID`                                                         | account     | InvalidArgument            | fallback                          |
+| `ACCOUNT_INVITE_LINK_UNAVAILABLE`                                                                                                        | account     | FailedPrecondition         | fallback                          |
+| `ACCOUNT_NOT_WITHDRAWN`, `ACCOUNT_RESTORE_WINDOW_EXPIRED`                                                                                | account     | FailedPrecondition         | job 93 restore flow               |
+| `ADMIN_FORBIDDEN`                                                                                                                        | admin       | PermissionDenied           | reason copy                       |
+| `ADMIN_SEED_ADMIN_UNDEMOTABLE`                                                                                                           | admin       | FailedPrecondition         | fallback                          |
+| `ADMIN_USER_ID_REQUIRED`, `ADMIN_GRANT_AMOUNT_RANGE`, `ADMIN_GRANT_ID_REQUIRED`                                                          | admin       | InvalidArgument            | fallback                          |
+| `ADMIN_UNKNOWN_CAPABILITY`, `ADMIN_PROVIDER_REQUIRED`, `ADMIN_PROVIDER_KEY_REQUIRED`                                                     | admin       | InvalidArgument            | fallback                          |
+| `ADMIN_UNKNOWN_PROVIDER`, `ADMIN_PROVIDER_CAPABILITY_MISMATCH`                                                                           | admin       | InvalidArgument            | fallback                          |
+| `ADMIN_PROVIDER_NOT_IMPLEMENTED`, `ADMIN_PROVIDER_KEY_MISSING`, `ADMIN_SECRETBOX_DISABLED`, `ADMIN_GRANT_ID_CONFLICT`                    | admin       | FailedPrecondition         | fallback                          |
+| `MEMORY_DIARY_DATE_INVALID`, `MEMORY_ENCODE_INPUT_REQUIRED`, `MEMORY_LAUNCH_INVALID_MEMORIES`                                            | memory      | InvalidArgument            | fallback                          |
+| `MEMORY_RECALL_INPUT_REQUIRED`, `MEMORY_VIEW_SEMANTIC_INPUT_REQUIRED`, `MEMORY_PROVENANCE_INPUT_REQUIRED`                                | memory      | InvalidArgument            | fallback                          |
+| `MEMORY_EXPORT_FORMAT_REQUIRED`, `MEMORY_DIARY_PAGE_TOKEN_INVALID`, `MEMORY_RELEASE_INPUT_REQUIRED`                                      | memory      | InvalidArgument            | fallback                          |
+| `MEMORY_LET_GO_INVALID_APPROVED`, `MEMORY_OPERATION_ID_REQUIRED`                                                                         | memory      | InvalidArgument            | fallback                          |
+| `MEMORY_OPERATION_CONFLICT`                                                                                                              | memory      | AlreadyExists              | reason copy                       |
+| `MEMORY_RECALL_MEMORY_NOT_FOUND`, `MEMORY_VIEW_SEMANTIC_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_MEMORY_NOT_FOUND`                             | memory      | NotFound                   | target-not-found copy             |
+| `MEMORY_RECALL_NO_LIVE_MEMORIES`, `MEMORY_PROVENANCE_MEMORY_NOT_FOUND`, `MEMORY_RELEASE_NO_LIVE_MEMORIES`, `MEMORY_RESTORE_NOT_RELEASED` | memory      | NotFound                   | fallback                          |
+| `MEMORY_RECALL_MEMORY_UNAVAILABLE`, `MEMORY_RELEASE_MEMORY_UNAVAILABLE`                                                                  | memory      | FailedPrecondition         | target-unavailable copy           |
+| `MEMORY_VIEW_SEMANTIC_STAGE_NOT_RISEN`                                                                                                   | memory      | FailedPrecondition         | reason copy                       |
+| `MEMORY_ALREADY_RELEASED`                                                                                                                | memory      | FailedPrecondition         | reason copy                       |
+| `MEMORY_RESTORE_WINDOW_EXPIRED`                                                                                                          | memory      | FailedPrecondition         | reason copy                       |
+| `MEMORY_SYNC_CONSENT_REQUIRED`                                                                                                           | memory      | FailedPrecondition         | consent recovery + reason copy    |
+| `MEMORY_INSUFFICIENT_TWINKLE`                                                                                                            | memory      | ResourceExhausted          | earn recovery + stardust copy     |
+| `MEMORY_ENCODE_RETRY_EXHAUSTED`                                                                                                          | memory      | ResourceExhausted          | fallback                          |
+| `MEMORY_SCOPE_REQUIRED`                                                                                                                  | memory      | Unauthenticated            | fallback                          |
+| `TWINKLE_INVITE_INPUT_REQUIRED`, `TWINKLE_QUOTE_INPUT_REQUIRED`, `TWINKLE_LEDGER_CURSOR_INVALID`                                         | twinkle     | InvalidArgument            | fallback                          |
+| `TWINKLE_QUOTE_TARGET_NOT_FOUND`                                                                                                         | twinkle     | NotFound                   | fallback                          |
+| `TWINKLE_INSUFFICIENT`                                                                                                                   | twinkle     | ResourceExhausted          | earn recovery + reason copy       |
+| `TWINKLE_INVITE_RESOLUTION_UNAVAILABLE`                                                                                                  | twinkle     | Unavailable                | fallback                          |
+| `TWINKLE_INVITE_BENEFICIARY_MISMATCH`                                                                                                    | twinkle     | PermissionDenied           | fallback                          |
+| `TWINKLE_INVITE_NOT_ELIGIBLE`, `TWINKLE_INVITE_GRANT_CONFLICT`                                                                           | twinkle     | FailedPrecondition         | fallback                          |
+| `TWINKLE_QUOTE_TARGET_UNAVAILABLE`                                                                                                       | twinkle     | FailedPrecondition         | fallback                          |
+| `TWINKLE_SCOPE_REQUIRED`                                                                                                                 | twinkle     | Unauthenticated            | fallback                          |
+| `STORE_ORNAMENT_UNKNOWN`                                                                                                                 | store       | InvalidArgument            | fallback                          |
+| `STORE_ORNAMENT_NOT_PURCHASABLE`                                                                                                         | store       | FailedPrecondition         | fallback                          |
+| `STORE_INSUFFICIENT_TWINKLE`                                                                                                             | store       | ResourceExhausted          | earn recovery + reason copy       |
+| `STORE_SCOPE_REQUIRED`                                                                                                                   | store       | Unauthenticated            | fallback                          |
+| `ACHIEVEMENT_SCOPE_REQUIRED`                                                                                                             | achievement | Unauthenticated            | reason copy                       |
+| `ACHIEVEMENT_INPUT_REQUIRED`                                                                                                             | achievement | InvalidArgument            | reason copy                       |
+| `ACHIEVEMENT_NOT_FOUND`                                                                                                                  | achievement | NotFound                   | reason copy + refetch the list    |
+| `ACHIEVEMENT_NOT_ACHIEVED`                                                                                                               | achievement | FailedPrecondition         | reason copy + refetch the list    |
+| `ACHIEVEMENT_REWARD_UNAVAILABLE`                                                                                                         | achievement | Unavailable                | reason copy, button STAYS enabled |
+
+**`ACHIEVEMENT_REWARD_UNAVAILABLE` is the one refusal whose copy must not sound like a loss.** The claim WAS recorded and
+only the payout failed, so the reward is kept and the next attempt replays it through the same dedup keys — the copy says
+so, and the claim button **stays enabled**. Disabling it would strand the reward in exactly the crash window the replay
+exists to heal. For the same reason there is **no `ALREADY_CLAIMED` reason at all**: a repeat claim is a replay that pays,
+so it is success, not an error to map.
+
+`ACHIEVEMENT_NOT_FOUND` and `ACHIEVEMENT_NOT_ACHIEVED` both mean the list the press came from was stale, so they toast
+**and** refetch — silently refreshing under a press reads as the button having done nothing.
 
 `STORE_INSUFFICIENT_TWINKLE` is deliberately **not** a reuse of `TWINKLE_INSUFFICIENT`: that copy cannot say what
 happened to the save, and this one must — "nothing was saved" is the honest line, because the whole save is refused as

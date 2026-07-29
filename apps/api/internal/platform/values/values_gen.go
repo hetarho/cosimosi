@@ -259,6 +259,8 @@ const (
 	AchievementRewardTier2           = 150
 	AchievementRewardTier3           = 400
 	AchievementRecoveryDecayStageMin = 2
+	AchievementClaimToastMs          = 4000
+	AchievementUnlockNoticeMax       = 2
 )
 
 // admin

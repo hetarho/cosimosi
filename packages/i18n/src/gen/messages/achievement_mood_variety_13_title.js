@@ -1,0 +1,29 @@
+/* eslint-disable */
+import { getLocale, experimentalStaticLocale } from '../runtime.js';
+
+/** @typedef {import('../runtime.js').LocalizedString} LocalizedString */
+
+/** @typedef {{}} Achievement_Mood_Variety_13_TitleInputs */
+
+const en_achievement_mood_variety_13_title = /** @type {(inputs: Achievement_Mood_Variety_13_TitleInputs) => LocalizedString} */ () => {
+	return /** @type {LocalizedString} */ (`All thirteen feelings`)
+};
+
+const ko_achievement_mood_variety_13_title = /** @type {(inputs: Achievement_Mood_Variety_13_TitleInputs) => LocalizedString} */ () => {
+	return /** @type {LocalizedString} */ (`감정 열셋 전부`)
+};
+
+/**
+* | output |
+* | --- |
+* | "All thirteen feelings" |
+*
+* @param {Achievement_Mood_Variety_13_TitleInputs} inputs
+* @param {{ locale?: "en" | "ko" }} options
+* @returns {LocalizedString}
+*/
+export const achievement_mood_variety_13_title = /** @type {((inputs?: Achievement_Mood_Variety_13_TitleInputs, options?: { locale?: "en" | "ko" }) => LocalizedString) & import('../runtime.js').MessageMetadata<Achievement_Mood_Variety_13_TitleInputs, { locale?: "en" | "ko" }, {}>} */ ((inputs = {}, options = {}) => {
+	const locale = experimentalStaticLocale ?? options.locale ?? getLocale()
+	if (locale === "en") return en_achievement_mood_variety_13_title(inputs)
+	return ko_achievement_mood_variety_13_title(inputs)
+});

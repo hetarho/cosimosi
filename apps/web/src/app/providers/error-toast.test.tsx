@@ -11,9 +11,9 @@ import { ERROR_REASONS } from '@cosimosi/errors'
 import { m, setActiveLocale } from '../../shared/i18n/index.ts'
 
 import { useErrorToast } from '../../shared/model/index.ts'
-import { WebErrorProvider } from './error-provider.tsx'
+import { WebToastProvider } from './toast-provider.tsx'
 
-describe('WebErrorProvider', () => {
+describe('the web error toast', () => {
   beforeEach(() => {
     setActiveLocale('en')
     vi.useFakeTimers()
@@ -83,9 +83,14 @@ async function renderProvider(error: ConnectError) {
 
   await act(async () => {
     root.render(
-      <WebErrorProvider>
+      // The error path pushes into the shared queue now, so the host that renders the one Toast has
+      // to be present — the assertions below are unchanged, which is the point: no consumer of
+      // useErrorToast knows the toast moved.
+      // The host owns the one Toast AND wires the error seam into it, so mounting it is the whole
+      // wiring. The assertions below are unchanged: no useErrorToast consumer knows the toast moved.
+      <WebToastProvider>
         <Probe />
-      </WebErrorProvider>,
+      </WebToastProvider>,
     )
   })
 

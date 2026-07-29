@@ -281,7 +281,12 @@ describe('web auth gate', () => {
       expect(html).toContain('Achievements')
       expect(html).toContain('Diary management')
       expect(html).toContain('Account')
-      expect(html).toContain('This record is not available yet.')
+      // /me?tab=achievements lands on the LIST, not a placeholder. The panel element belongs to MePage
+      // and was there before, so it proves nothing; what proves the real body mounted is the list's own
+      // pending surface — server-rendered, the read has not resolved, so the list renders its skeleton.
+      // Swapping the body for a stub would fail this.
+      expect(html).toContain('animate-pulse')
+      expect(html).toContain('height:160px')
       expect(html).not.toContain('Palette')
       expect(html).not.toContain('Camera mood')
     } finally {

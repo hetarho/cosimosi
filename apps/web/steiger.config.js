@@ -228,6 +228,19 @@ export default defineConfig([
     },
   },
   {
+    // The achievement vertical (plan 76): the /me tab's list and the session-long unlock notice. Two
+    // slices because they are two user moments — one you go to and read, one that finds you once and
+    // says nothing more — and each has exactly one host by design: the tab is composed by /me, the
+    // notice host is mounted by the authenticated layout (which is also the guard that a signed-out
+    // visitor never fetches the list). Merging the list into /me would put a claim's orchestration in
+    // a page, and merging the notice into the layout would hide that it is a feature at all. Scoped so
+    // a genuinely insignificant future slice still gets flagged.
+    files: ['./src/features/achievement-list/**', './src/features/achievement-notice/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
     // The features layer's slice count is spec-governed (one plan authors each slice deliberately;
     // the inventory mirrors apps/mobile 1:1), so the fixed ungrouped-slice threshold (20) is not a
     // drift signal here — regrouping into slice folders would churn every import and the

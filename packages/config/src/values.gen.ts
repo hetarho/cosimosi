@@ -158,6 +158,8 @@ export const VALUES = {
     rewardTier2: 150,
     rewardTier3: 400,
     recoveryDecayStageMin: 2,
+    claimToastMs: 4000,
+    unlockNoticeMax: 2,
   },
   admin: {
     userListPageSize: 50,

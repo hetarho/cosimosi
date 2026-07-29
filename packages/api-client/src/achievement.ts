@@ -30,6 +30,16 @@ export function createAchievementClient(transport: Transport): Client<typeof Ach
   return createClient(AchievementService, transport)
 }
 
+// The whole-service key, for the invalidation an action that may have recorded progress fires: one
+// call refreshes the list however many rows a single action moved.
+export function createAchievementServiceQueryKey(transport?: Transport) {
+  return createConnectQueryKey({
+    schema: AchievementService,
+    transport,
+    cardinality: undefined,
+  })
+}
+
 export function createListAchievementsQueryKey(transport?: Transport) {
   return createConnectQueryKey({
     schema: AchievementService.method.listAchievements,

@@ -5,6 +5,17 @@
 export { tokens, type Tokens, type ColorToken } from './tokens.ts'
 export { cx } from './lib/cx.ts'
 
+// The queued-toast seam: one Toast in the tree, two owners pushing into it.
+export {
+  SESSION_SCOPED_TOAST_OWNERS,
+  ToastQueueContext,
+  usePushToast,
+  useToastQueue,
+  type PushToast,
+  type ToastEntry,
+  type ToastQueue,
+} from './toast-queue.ts'
+
 export {
   contrastRatio,
   relativeLuminance,
@@ -58,6 +69,7 @@ export type {
   AlertOwnProps,
   CardOwnProps,
   SkeletonOwnProps,
+  ProgressOwnProps,
   SelectItem,
   SelectOwnProps,
   TabItem,
@@ -81,6 +93,7 @@ export { Badge, type BadgeProps } from './primitives/badge.tsx'
 export { Alert, type AlertProps } from './primitives/alert.tsx'
 export { Card, type CardProps } from './primitives/card.tsx'
 export { Skeleton, type SkeletonProps } from './primitives/skeleton.tsx'
+export { Progress, type ProgressProps } from './primitives/progress.tsx'
 export { VisuallyHidden, type VisuallyHiddenProps } from './primitives/visually-hidden.tsx'
 export { Tabs, type TabsProps } from './primitives/tabs.tsx'
 export { SegmentedControl, type SegmentedControlProps } from './primitives/segmented-control.tsx'

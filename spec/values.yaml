@@ -467,6 +467,14 @@ achievement:
   # cross-context config channel (ARCHITECTURE §4). Stage 2 = the middle of the decay ladder:
   # visibly forgotten, not yet near-silent.
   recovery_decay_stage_min: 2
+  # [A5] How long the unlock notice dwells. Longer than a glance, and deliberately SHORTER than
+  # errors.toast_auto_dismiss_ms (6000): an error has to be read, an achievement only noticed —
+  # the tab is where it is confirmed. The notice must not interrupt the universe.
+  claim_toast_ms: 4000
+  # [A5] Most unlock notices enqueued per read resolution; the rest are dropped rather than
+  # queued. A diary that crosses several thresholds at once should read as one moment, not a
+  # burst — and the tab already lists every one of them.
+  unlock_notice_max: 2
 
 # Admin console operational surface (plan 58): tuning for the web-only /admin console. Admin
 # identity (ADMIN_USER_IDS), the config encryption key, and the Supabase service-role key are

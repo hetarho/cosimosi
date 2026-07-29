@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native'
 
 import { VALUES } from '@cosimosi/config'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
+import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
 import { Button, tokens } from '@cosimosi/ui'
 
@@ -25,6 +26,9 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
   // Owns the single GetBalance fetch → populates the shared balance mirror the HUD reads.
   const balanceQuery = useTwinkleBalanceQuery()
   const invalidateBalance = useInvalidateTwinkleBalance()
+  // Every action that can record progress refreshes the achievement read on resolution, which is
+  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
+  const invalidateAchievements = useInvalidateAchievements()
 
   const [guideOpen, setGuideOpen] = useState(false)
 
@@ -52,8 +56,9 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
     seenLaunchRef.current = launchedNeuronIds
     if (launchedNeuronIds.length === 0) return
     invalidateBalance()
+    invalidateAchievements()
     setEarnShown(true)
-  }, [launchedNeuronIds, invalidateBalance])
+  }, [launchedNeuronIds, invalidateBalance, invalidateAchievements])
 
   const openGuide = useCallback(() => setGuideOpen(true), [])
   const closeGuide = useCallback(() => setGuideOpen(false), [])

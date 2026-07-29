@@ -135,6 +135,16 @@ export interface CardOwnProps {
   children?: ReactNode
 }
 
+// A DETERMINATE meter, and only that: `value` and `max` are read verbatim from the two server
+// integers an achievement row carries. There is deliberately no indeterminate mode and no computed
+// ratio prop — a meter whose fill the caller computes is a meter that can disagree with its label.
+export interface ProgressOwnProps {
+  value: number
+  max: number
+  /** Announced to assistive tech; the visible label is the caller's, beside the meter. */
+  ariaLabel: string
+}
+
 export interface SkeletonOwnProps {
   width?: number | string
   height?: number | string

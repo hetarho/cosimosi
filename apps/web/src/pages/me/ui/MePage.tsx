@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 
 import { Button, Tabs } from '@cosimosi/ui'
 
+import { AchievementList } from '../../../features/achievement-list/index.ts'
 import { AccountProfile } from '../../../features/account-profile/index.ts'
 import { AccountSection } from '../../../features/account-settings/index.ts'
 import { MoodColorSection } from '../../../features/change-mood-colors/index.ts'
@@ -15,7 +16,7 @@ import { ME_TABS, type MeTabId } from '../model/tabs.ts'
 const TAB_VIEWS: Readonly<Record<MeTabId, { title: () => string; Body: ComponentType }>> = {
   profile: { title: m.me_tab_profile, Body: ProfileTab },
   stardust: { title: m.me_tab_stardust, Body: TwinkleLedgerTab },
-  achievements: { title: m.me_tab_achievements, Body: AchievementsPending },
+  achievements: { title: m.me_tab_achievements, Body: AchievementList },
   diary: { title: m.me_tab_diary, Body: ExportDiaries },
   account: { title: m.me_tab_account, Body: AccountTab },
 }
@@ -60,10 +61,6 @@ export function MePage({ activeTab, onTabChange, onExit }: MePageProps) {
       </div>
     </main>
   )
-}
-
-function AchievementsPending() {
-  return <p className="text-sm text-text-muted">{m.me_achievements_pending()}</p>
 }
 
 function ProfileTab() {

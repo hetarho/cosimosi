@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Button, Tabs, tokens } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 
+import { AchievementList } from '../../../features/achievement-list/index.ts'
 import { AccountProfile } from '../../../features/account-profile/index.ts'
 import { AccountSection } from '../../../features/account-settings/index.ts'
 import { MoodColorSection } from '../../../features/change-mood-colors/index.ts'
@@ -19,7 +20,7 @@ export type MeTabId = (typeof meTabs)[number]
 const tabViews: Readonly<Record<MeTabId, { title: () => string; Body: ComponentType }>> = {
   profile: { title: m.me_tab_profile, Body: ProfileTab },
   stardust: { title: m.me_tab_stardust, Body: TwinkleLedgerTab },
-  achievements: { title: m.me_tab_achievements, Body: AchievementsPending },
+  achievements: { title: m.me_tab_achievements, Body: AchievementList },
   diary: { title: m.me_tab_diary, Body: ExportDiaries },
   account: { title: m.me_tab_account, Body: AccountTab },
 }
@@ -85,10 +86,6 @@ function isMeTab(value: string): value is MeTabId {
   return (meTabs as readonly string[]).includes(value)
 }
 
-function AchievementsPending() {
-  return <Text style={styles.sectionTitle}>{m.me_achievements_pending()}</Text>
-}
-
 function ProfileTab() {
   return (
     <View style={styles.accountTab}>
@@ -120,9 +117,4 @@ const styles = StyleSheet.create({
   title: { color: tokens.color.text, fontSize: tokens.fontSize['2xl'], fontWeight: '600' },
   section: { gap: 12 },
   accountTab: { gap: 24 },
-  sectionTitle: {
-    color: tokens.color['text-muted'],
-    fontSize: tokens.fontSize.sm,
-    fontWeight: '500',
-  },
 })

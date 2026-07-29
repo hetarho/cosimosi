@@ -14,6 +14,7 @@ import {
   type PaidActionSession,
 } from '@cosimosi/universe'
 
+import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { SpendCostDisplay, gistViewSpend } from '../../../features/spend-cost-display/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
@@ -39,6 +40,9 @@ export function GistViewSheet({
   const transport = useTransport()
   const requestEarnGuide = useEarnRequestStore((state) => state.request)
   const invalidateBalance = useInvalidateTwinkleBalance()
+  // Every action that can record progress refreshes the achievement read on resolution, which is
+  // also what feeds the unlock notice's diff — there is no push and no polling anywhere.
+  const invalidateAchievements = useInvalidateAchievements()
 
   const [text, setText] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -74,6 +78,10 @@ export function GistViewSheet({
       if (!paidSession.isActive(activeAttempt)) return
       setText(response.text)
       invalidateBalance()
+      // The balance is refreshed on BOTH paths because a refused paid action can still have moved it;
+      // achievements are refreshed only on success. A failed action recorded no progress, and refetching
+      // after it could surface an unlock notice that reads as though the failure had earned something.
+      invalidateAchievements()
     } catch (error) {
       if (!paidSession.isActive(activeAttempt)) return
       invalidateBalance()
@@ -99,6 +107,7 @@ export function GistViewSheet({
     episodicMemoryId,
     stage,
     invalidateBalance,
+    invalidateAchievements,
     requestEarnGuide,
     showError,
   ])

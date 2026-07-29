@@ -17,6 +17,7 @@ import { MePage, parseMeTab, type MeTabId } from '../../pages/me/index.ts'
 import { UniverseHomePage } from '../../pages/universe/index.ts'
 import { loginReturnTarget } from './guards/auth-gate.ts'
 import { useAppNavigate } from './navigation.ts'
+import { AchievementNoticeHost } from '../../features/achievement-notice/index.ts'
 
 // The route components live apart from the route-tree config so this file exports
 // components only (react-refresh's only-export-components contract); route-tree.tsx
@@ -62,6 +63,10 @@ export function AuthenticatedLayout() {
     return (
       <ProfileGate>
         <LocaleBootstrap />
+        {/* Mounted here and nowhere else. That one placement is three guards at once: a signed-out
+            visitor never fetches ListAchievements, /demo cannot mount the watcher, and sign-out
+            unmounts the snapshot the diff compares against. */}
+        <AchievementNoticeHost />
         <DecorationBootstrap>
           <Outlet />
         </DecorationBootstrap>

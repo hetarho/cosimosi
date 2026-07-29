@@ -202,3 +202,23 @@ Two dev-only routes, both behind the diagnostics gate, with different jobs:
 the surface [policy/ux/design-review.md](../policy/ux/design-review.md) scores. Its static
 interaction states come from `base.css`'s `.state-hover` / `.state-pressed` / `.state-focus`
 wrappers, which are extra selectors on the real rules rather than copies of them.
+
+## 8. The `Progress` primitive and the one-Toast contract
+
+A **determinate** meter, and only that: `value` and `max` are the two server integers an achievement row carries, read
+verbatim. There is no indeterminate mode and no precomputed-ratio prop, because a meter whose fill the caller computes is
+a meter that can disagree with the number printed beside it. `role="progressbar"` on web and
+`accessibilityRole="progressbar"` + `accessibilityValue` on native announce the same pair, so the two platforms report
+identically. The width is an inline style deliberately — it is data, not a style choice, and there is no utility class for
+"however far this user has got".
+
+### The one-Toast contract
+
+`packages/ui` owns a **queued** toast seam (`ToastQueueContext` · `usePushToast` · `ToastEntry`), platform-pure: React
+only, no DOM and no i18n, and `message` is an already-resolved string. Each app's `app/providers/toast-provider.tsx`
+holds the queue and renders **the head entry only** through the shipped `Toast`, shifting on dismiss or timeout.
+
+**Exactly one `Toast` element exists in the tree, and that is the contract a new surface joins rather than works around.**
+Two owners push today — the error path and the achievement unlock notice — and two independently-rendered toasts overlap
+into something unreadable. The error provider therefore no longer holds its own state and `Toast`; it pushes. Because
+`ErrorToastContext` and `presentAppError` are untouched, no `useErrorToast` consumer knows this moved.

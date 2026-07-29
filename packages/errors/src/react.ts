@@ -13,3 +13,10 @@ export function useErrorToast(): ShowErrorToast {
   if (!showError) throw new Error('useErrorToast must be used inside an error-toast provider')
   return showError
 }
+
+export {
+  ERROR_TOAST_OWNER,
+  ErrorToastProvider,
+  type ErrorToastProviderProps,
+  type ErrorToastQueue,
+} from './react-toast.tsx'
