@@ -228,6 +228,20 @@ export {
   type ContributorParams,
 } from './contributors.ts'
 export { universeEmotionSlices } from './universe-emotion-slices.ts'
+export {
+  SHOWCASE_ELAPSED_DAYS,
+  SHOWCASE_UNIVERSE_TIME,
+  ambientShowcaseScene,
+  awakenShowcaseField,
+  forgettingShowcaseScene,
+  gistShowcaseScene,
+  moodRingShowcaseScene,
+  starFormsShowcaseScene,
+  type AmbientShowcaseScene,
+  type ForgettingShowcaseScene,
+  type GistShowcaseScene,
+  type MoodRingShowcaseScene,
+} from './showcase-scene.ts'
 
 // Read-model stores (data, §3.2) — populated per GetUniverse read, read by the render bindings
 export { useEpisodicMemoryStore, type EpisodicMemoryState } from './episodic-memory-store.ts'

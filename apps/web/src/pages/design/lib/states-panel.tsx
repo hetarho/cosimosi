@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import {
   CameraControls,
+  GIST_INSTANCE_DIFFUSE,
+  GIST_INSTANCE_TINT,
   InstancedNodeLayer,
   PostFX,
   STAR_INSTANCE_BRIGHTNESS,
@@ -13,99 +15,67 @@ import {
   SkySphere,
   StarField,
   UniverseCanvas,
+  createGistStarBodySource,
   createStarShapeBodySource,
   resolveActiveSkin,
   useSkin,
   type CoordinateBufferRef,
   type InstanceChannels,
 } from '@cosimosi/3d-renderer'
-import { createEmotion } from '@cosimosi/emotion'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { starChannels, universeEmotionSlices } from '@cosimosi/universe'
-import { Switch, useReducedMotion } from '@cosimosi/ui'
+import { AwakenNeuron, LatentStarField } from '@cosimosi/universe-render'
+import {
+  SHOWCASE_ELAPSED_DAYS,
+  SHOWCASE_UNIVERSE_TIME,
+  awakenShowcaseField,
+  forgettingShowcaseScene,
+  gistShowcaseScene,
+  starChannels,
+  universeEmotionSlices,
+  useLatentConsumedStore,
+  type ForgettingShowcaseScene,
+  type GistShowcaseScene,
+} from '@cosimosi/universe'
+import { Button, Switch, useReducedMotion } from '@cosimosi/ui'
 
 import { T } from './showcase-copy.ts'
 import { Specimen } from './showcase-shell.tsx'
 
 /**
- * The forgetting row: one memory, drawn as it reads after several lengths of absence.
+ * The three things a memory can be seen doing, each read as a difference rather than described.
  *
- * Everything else in the frame is held identical — one mood, one strength, one seed — so the only
- * variable is how long it has been since the memory was returned to. That is the whole point of the
- * specimen: the rubric asks whether forgetting is *readable*, and it can only be read as a
- * difference between neighbours.
+ * Forgetting is a row of one memory at five ages: what differs is light and MOVEMENT, because a
+ * fading star may not shrink (size is strength's) and may not pale (hue and chroma are the
+ * emotion's). Watch it for a few seconds — a single frame cannot show this specimen's subject.
  *
- * What differs is light and MOVEMENT. A fading star does not shrink (size is strength's) and does not
- * pale (hue and chroma are the emotion's); its breath quiets instead, until a long-closed memory sits
- * almost still beside one that is still turning. Watch it for a few seconds — a single frame cannot
- * show this specimen's subject, which is exactly why it is here rather than in a screenshot.
+ * Rising is a pair: the same memory, remembered and abstracted. Height carries the whole statement.
+ *
+ * Awakening is a flare that hands off: a mote of dust becomes a neuron, once, in place.
  */
 
-/** Days since the last recall, left to right — recent to long closed. */
-const ELAPSED_DAYS = [0, 20, 60, 150, 400] as const
-const UNIVERSE_TIME = '2026-01-28'
-const BASE_STRENGTH = 0.7
-/** One mood for the whole row: the specimen is about time, not about feeling. */
-const ROW_MOOD = 'CALM' as const
-const ROW_SEED = 991_027n
-const SPACING = 9
+/** Bench magnification — the row is read at arm's length, not from the universe's own distance. */
+const STAR_MAGNIFICATION = 2.4
+const AWAKEN_DUST_SCALE = 5
+const SHAPE_KEY = 'facet'
 
-interface ForgettingScene {
-  readonly memories: readonly EpisodicMemory[]
-  readonly positions: Float32Array
-}
-
-/** Wind the created/last-recalled day back by `days` from the scene's universe time. */
-function dayBefore(days: number): string {
-  const [year, month, day] = UNIVERSE_TIME.split('-').map(Number)
-  const at = Date.UTC(year, month - 1, day) - days * 86_400_000
-  return new Date(at).toISOString().slice(0, 10)
-}
-
-function buildForgettingScene(): ForgettingScene {
-  const positions = new Float32Array(ELAPSED_DAYS.length * 3)
-  const memories = ELAPSED_DAYS.map((days, i) => {
-    positions[i * 3] = (i - (ELAPSED_DAYS.length - 1) / 2) * SPACING
-    positions[i * 3 + 1] = 0
-    positions[i * 3 + 2] = 0
-    const recalled = dayBefore(days)
-    return {
-      id: `forgetting-${days}`,
-      name: String(days),
-      emotion: createEmotion(ROW_MOOD),
-      baseStrength: BASE_STRENGTH,
-      recallCount: 0,
-      createdUniverseTime: recalled,
-      lastRecalledUniverseTime: recalled,
-      // One seed across the row: the form must be recognisably the same memory at every age, because
-      // the form is identity and identity does not fade.
-      seed: ROW_SEED,
-      activations: [],
-      decayStages: [],
-      forgettingOffsetDays: 0,
-      currentText: ROW_MOOD,
-      semanticStage: 0,
-    } satisfies EpisodicMemory
-  })
-  return { memories, positions }
-}
+/** The flare picks its seed anywhere in the field, which is what a first neuron does. */
+const NO_ANCHORS = () => []
 
 export function StatesPanel() {
   const [animate, setAnimate] = useState(true)
-  const scene = useMemo(buildForgettingScene, [])
+  const forgetting = useMemo(forgettingShowcaseScene, [])
+  const gist = useMemo(gistShowcaseScene, [])
 
   return (
     <div className="flex flex-col gap-8">
       <Specimen label={T.statesForgettingLabel} note={T.statesForgettingNote}>
         <div className="flex flex-col gap-3">
           <Switch checked={animate} onCheckedChange={setAnimate} label={T.statesMotionLabel} />
-          <div className="h-96 overflow-hidden rounded-2xl border border-border">
-            <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-              <ForgettingCanvas scene={scene} animate={animate} />
-            </SkinProvider>
-          </div>
+          <Stage>
+            <ForgettingCanvas scene={forgetting} animate={animate} />
+          </Stage>
           <ol className="flex justify-between text-xs tabular-nums text-text-subtle">
-            {ELAPSED_DAYS.map((days) => (
+            {SHOWCASE_ELAPSED_DAYS.map((days) => (
               <li key={days}>{T.statesElapsed(days)}</li>
             ))}
           </ol>
@@ -128,17 +98,38 @@ export function StatesPanel() {
       </Specimen>
 
       <Specimen label={T.statesGistLabel} note={T.statesGistNote}>
-        <p className="text-sm text-text-subtle">{T.statesReviewedLive}</p>
+        <div className="flex flex-col gap-3">
+          <Stage>
+            <GistCanvas scene={gist} animate={animate} />
+          </Stage>
+          <p className="text-xs text-text-subtle">{T.statesGistLegend}</p>
+        </div>
       </Specimen>
 
       <Specimen label={T.statesAwakenLabel} note={T.statesAwakenNote}>
-        <p className="text-sm text-text-subtle">{T.statesReviewedLive}</p>
+        <AwakenSpecimen animate={animate} />
       </Specimen>
     </div>
   )
 }
 
-function ForgettingCanvas({ scene, animate }: { scene: ForgettingScene; animate: boolean }) {
+function Stage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="h-96 overflow-hidden rounded-2xl border border-border">
+      <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
+        {children}
+      </SkinProvider>
+    </div>
+  )
+}
+
+function ForgettingCanvas({
+  scene,
+  animate,
+}: {
+  scene: ForgettingShowcaseScene
+  animate: boolean
+}) {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
   const positions = useMemo<CoordinateBufferRef>(
@@ -156,15 +147,132 @@ function ForgettingCanvas({ scene, animate }: { scene: ForgettingScene; animate:
     >
       <SkySphere stops={skyStops} effect={skin.sky.effect} reducedMotion={!moving} />
       <StarField reducedMotion={!moving} />
-      <ForgettingLayer memories={scene.memories} positions={positions} animate={moving} />
+      <EpisodicLayer memories={scene.memories} positions={positions} animate={moving} />
       <CameraControls />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )
 }
 
-/** The production channels, unchanged — the row is a real projection, not a mock of one. */
-function ForgettingLayer({
+/**
+ * The pair: both memories' episodic bodies on one line, and the risen one's gist bodies above their
+ * own original. The original is NOT dimmed — dimming is forgetting's channel, and spending it here
+ * would make an abstracted memory look like a neglected one.
+ */
+function GistCanvas({ scene, animate }: { scene: GistShowcaseScene; animate: boolean }) {
+  const { skin } = useSkin()
+  const reducedMotion = useReducedMotion()
+  const moving = animate && !reducedMotion
+  const positions = useMemo<CoordinateBufferRef>(
+    () => ({ current: scene.positions }),
+    [scene.positions],
+  )
+  const gistPositions = useMemo<CoordinateBufferRef>(
+    () => ({ current: scene.gistPositions }),
+    [scene.gistPositions],
+  )
+  const skyStops = useMemo(() => universeEmotionSlices(scene.memories), [scene.memories])
+  const gistSource = useMemo(() => createGistStarBodySource(), [])
+  const gistChannels = useMemo<InstanceChannels>(
+    () => ({
+      scales: scene.gistScales,
+      attributes: [
+        { name: GIST_INSTANCE_TINT, array: scene.gistTints, itemSize: 3 },
+        { name: GIST_INSTANCE_DIFFUSE, array: scene.gistSoftness, itemSize: 1 },
+      ],
+    }),
+    [scene],
+  )
+
+  return (
+    <UniverseCanvas
+      dpr={[1, VALUES.rendering.maxPixelRatio]}
+      fov={skin.camera.fov}
+      clearColor={skin.sky.night}
+    >
+      <SkySphere stops={skyStops} effect={skin.sky.effect} reducedMotion={!moving} />
+      <StarField reducedMotion={!moving} />
+      <EpisodicLayer memories={scene.memories} positions={positions} animate={moving} />
+      <InstancedNodeLayer
+        source={gistSource}
+        bodyId="gist-star"
+        kind="shader"
+        count={scene.gistCount}
+        positions={gistPositions}
+        channels={gistChannels}
+      />
+      <CameraControls />
+      <PostFX bloom={skin.bloom} />
+    </UniverseCanvas>
+  )
+}
+
+/**
+ * The flare, replayable. Each press births a new neuron id, because the choreography is idempotent
+ * per id by design — a real launch flares once and never again for that neuron.
+ */
+function AwakenSpecimen({ animate }: { animate: boolean }) {
+  const [launches, setLaunches] = useState<readonly string[]>([])
+  const field = useMemo(awakenShowcaseField, [])
+
+  // The specimen consumes latent motes through the real store, so it restores exactly what it found:
+  // a review surface may not leave the live universe missing dust it never awakened.
+  useEffect(() => {
+    const before = [...useLatentConsumedStore.getState().consumed]
+    return () => {
+      const store = useLatentConsumedStore.getState()
+      store.reset()
+      if (before.length > 0) store.consume(before)
+    }
+  }, [])
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Button
+        color="neutral"
+        className="self-start"
+        onClick={() => setLaunches((ids) => [...ids, `showcase-awaken-${ids.length}`])}
+      >
+        {T.statesAwakenReplay}
+      </Button>
+      <Stage>
+        <AwakenCanvas field={field} launches={launches} animate={animate} />
+      </Stage>
+      <p className="text-xs text-text-subtle">{T.statesAwakenLegend}</p>
+    </div>
+  )
+}
+
+function AwakenCanvas({
+  field,
+  launches,
+  animate,
+}: {
+  field: ReturnType<typeof awakenShowcaseField>
+  launches: readonly string[]
+  animate: boolean
+}) {
+  const { skin } = useSkin()
+  const reducedMotion = useReducedMotion()
+  const moving = animate && !reducedMotion
+
+  return (
+    <UniverseCanvas
+      dpr={[1, VALUES.rendering.maxPixelRatio]}
+      fov={skin.camera.fov}
+      clearColor={skin.sky.night}
+    >
+      <StarField reducedMotion={!moving} />
+      <LatentStarField field={field} reducedMotion={!moving} sizeScale={AWAKEN_DUST_SCALE} />
+      <AwakenNeuron field={field} newNeuronIds={launches} resolveAnchors={NO_ANCHORS} />
+      <CameraControls />
+      <PostFX bloom={skin.bloom} />
+    </UniverseCanvas>
+  )
+}
+
+/** The production channels, unchanged — every specimen is a real projection, not a mock of one. */
+function EpisodicLayer({
   memories,
   positions,
   animate,
@@ -173,7 +281,7 @@ function ForgettingLayer({
   positions: CoordinateBufferRef
   animate: boolean
 }) {
-  const source = useMemo(() => createStarShapeBodySource('facet', { animate }), [animate])
+  const source = useMemo(() => createStarShapeBodySource(SHAPE_KEY, { animate }), [animate])
   const channels = useMemo<InstanceChannels>(() => {
     const count = memories.length
     const scales = new Float32Array(count)
@@ -181,8 +289,8 @@ function ForgettingLayer({
     const brightness = new Float32Array(count)
     const seed = new Float32Array(count)
     memories.forEach((memory, i) => {
-      const channel = starChannels(memory, UNIVERSE_TIME)
-      scales[i] = channel.size * 2.4
+      const channel = starChannels(memory, SHOWCASE_UNIVERSE_TIME)
+      scales[i] = channel.size * STAR_MAGNIFICATION
       tint[i * 3] = channel.color[0]
       tint[i * 3 + 1] = channel.color[1]
       tint[i * 3 + 2] = channel.color[2]
@@ -203,7 +311,7 @@ function ForgettingLayer({
   return (
     <InstancedNodeLayer
       source={source}
-      bodyId="facet"
+      bodyId={SHAPE_KEY}
       kind="shader"
       count={memories.length}
       positions={positions}

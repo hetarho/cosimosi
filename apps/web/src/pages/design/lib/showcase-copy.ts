@@ -238,13 +238,36 @@ export const T = {
     'xxxx xxxx xxxx 헤엄쳤다',
   ],
   statesStage: (index: number) => `stage ${index}`,
-  statesReviewedLive: 'Reviewed on the live universe — both read from the episodic store.',
   statesGistLabel: 'Gist risen',
   statesGistNote:
-    'Height alone, with the band haze between the two layers doing the work. A risen stage leaves its episodic star where it was, so one memory sits as two bodies over the same x and y — that a second one exists above is the relationship, and drawing a line between them would only crowd the sky. Reviewed on the live universe, where both layers are populated.',
+    'Height alone. The pair is one memory twice: the left column is remembered only, the right has risen, so its gist bodies sit above their own original over the same x and y. That a second body exists above IS the relationship — a line between them would only crowd the sky, and dimming the original would spend forgetting\u2019s channel on abstraction.',
+  statesGistLegend:
+    'Left: episodic only. Right: two risen stages over their own star — softer the higher they go, and the original keeps its light.',
   statesAwakenLabel: 'Awakening',
   statesAwakenNote:
-    'Unchanged: a grey latent mote is replaced by a white-gold flare that grows and hands off to the real neuron. It carries no emotion colour, which agrees with a neuron having no feeling. Whether its 1.1 seconds reads is an on-device question.',
+    'A grey latent mote is replaced by a white-gold flare that grows and hands off to the real neuron. It carries no emotion colour, which agrees with a neuron having no feeling. The flare is idempotent per neuron, so each press births a new one — a real launch flares once and never again.',
+  statesAwakenReplay: 'Wake a neuron',
+  statesAwakenLegend:
+    'The flare lasts 1.1 seconds and takes its mote with it. Whether that reads on a phone is still an on-device question.',
+
+  ambientTitle: 'Ambient bodies',
+  ambientBlurb:
+    'The three bodies a universe is mostly made of, read together because each is defined against the others. None of them carries a feeling — colour is the one thing here that is not a variable.',
+  ambientLabel: 'Neuron, synapse, latent dust',
+  ambientNote:
+    'A neuron is a membrane that holds still; a synapse is a cord whose light runs inward from both ends, never one way, because it joins an A and a B rather than a from and a to; the dust is what has not become anything yet. Turn the motion off and only the neuron looks unchanged \u2014 that is the design.',
+  ambientLegend: [
+    { term: 'Cell-star', detail: 'The neuron: dim inside, lit at its own silhouette. Motionless.' },
+    {
+      term: 'Filament',
+      detail:
+        'Three synapses, strong to faint. Width is strength; the shimmer meets in the middle.',
+    },
+    {
+      term: 'Latent field',
+      detail: 'Dust that pools where it clumps and breathes on its own phase.',
+    },
+  ],
 
   nebulaTitle: 'Emotion colour field',
   nebulaBlurb:

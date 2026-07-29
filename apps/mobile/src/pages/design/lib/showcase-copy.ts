@@ -29,6 +29,26 @@ export const T = {
   skyNote:
     'The one shared TSL source on the native WebGPU canvas: the enclosing sky sphere, every recipe, and the way each divides itself among the feelings it is handed — inspected on real hardware, which is the only place the frame budget is real.',
   skyCountLabel: 'How many emotions',
+  starFormsLabel: 'Star forms',
+  starFormsNote:
+    'Every candidate body a memory star can wear, drawn through the shipped channel path at one strength so only the form differs. The same row the web group shows — a difference between the two is a parity finding.',
+  ambientLabel: 'Neuron, synapse, latent dust',
+  ambientNote:
+    'The three bodies that carry no feeling. A neuron is a membrane and holds still; a synapse is a cord whose shimmer runs inward from both ends; the dust breathes on its own phase and pools where it clumps.',
+  nebulaLabel: 'Emotion colour field',
+  nebulaNote:
+    'The colour field at the mobile tessellation — the specimen to watch on a device, since its two-octave cloud is the only place this language spends real fragment budget.',
+  forgettingLabel: 'Forgetting',
+  forgettingNote:
+    'One memory at five lengths of absence. It loses light and it loses movement — never size, which is strength, and never hue, which is the feeling. Watch it for a few seconds.',
+  forgettingToday: 'today',
+  gistLabel: 'Gist risen',
+  gistNote:
+    'One memory twice: remembered on the left, risen on the right, its gist bodies above their own original. Height is the whole statement — the original is not dimmed, because dimming belongs to forgetting.',
+  awakenLabel: 'Awakening',
+  awakenNote:
+    'A grey mote is replaced by a white-gold flare that grows and hands off to the real neuron, carrying no emotion colour. Each press wakes a new one; whether its 1.1 seconds reads on a phone is what this specimen is here to answer.',
+  awakenReplay: 'Wake a neuron',
 
   primitivesTitle: 'Primitives',
   buttonLabel: 'Button',

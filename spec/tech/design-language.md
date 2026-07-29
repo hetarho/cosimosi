@@ -509,41 +509,62 @@ surfaces.
 It cannot live on `/test`. The test harness is scaffolding that is removed once development is done, and
 a sign-off surface has to outlast it.
 
-- **Web** — the candidate bodies at one size and one brightness so only form and feeling differ; a
-  recipe switcher over the enclosing sphere with a free emotion count; the colour field with its
-  forced-WebGL2 remount.
-- **Mobile** — the sky off the same TSL source, so a difference between the surfaces is a real parity
-  finding rather than two authors' idea of the same sky. The frame budget is only real on a device.
+Every body type and every designed state is in it, on **both** apps:
+
+| Specimen       | What it isolates                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Star forms     | The candidate bodies at one strength and one feeling, so only form differs               |
+| Emotion skies  | A recipe switcher over the enclosing sphere, at any emotion count                        |
+| Ambient bodies | Neuron · synapse · latent dust in one frame — the three that carry no feeling            |
+| Emotion field  | The nebula, web with its forced-WebGL2 remount, mobile at the mobile tessellation        |
+| States         | Forgetting (five ages of one memory) · word loss (2D) · the gist pair · the awaken flare |
+
+Two rules hold the specimens honest. **A specimen is a real projection** — every body is drawn through
+the same channel path production uses (`starChannels`, `projectFilaments`, `gistStarInstances`,
+`buildContributors`) over fixture domain facts, so what is reviewed is the shipped body and not a mock of
+it; the fixtures themselves are one shared module (`packages/universe/src/showcase-scene.ts`) so web and
+mobile read the SAME specimen and a difference between the surfaces is a parity finding. And **a bench
+magnifies, declared**: production sizes are tuned for a universe seen from its own distance, so the
+scalar-sized bodies are enlarged together by named constants rather than by a quietly closer camera.
+
+A bench also may not spend live state. The latent binding takes its consumed set explicitly on a
+showcase (consumption indexes into the field it happened on), and the awaken specimen restores the
+consumed set it found when it unmounts.
 
 The emotion count on the showcase is a **review convenience**, not a property of any sky (§15).
 
-**Known gaps, recorded rather than left to be rediscovered:** the forgetting row is on the web surface;
-the gist pair and the awaken flare are reviewed on the live universe rather than in the showcase, because
-both read from the episodic store and the showcase does not seed it. The mobile group carries the sky
-without the body types.
-
 ## 21. Sign-off (3D)
 
-**Not signed off.** The gate is [policy/ux/design-review.md](../policy/ux/design-review.md) §7: every 3D
-rubric dimension **Meets**, zero open Blocking, recorded as a dated sign-off with its ledger.
+**Signed off — 2026-07-29 — by the project's designer** (the repo owner, reading the running `/design`
+Universe group). Every 3D rubric dimension **Meets**, zero open Blocking; the gate is
+[policy/ux/design-review.md](../policy/ux/design-review.md) §7 and the ledger it asks for is in
+[job 39](../jobs/archive/39.3d-assets-and-background-design.md).
 
-**Round R1 — 2026-07-29 — six of seven dimensions Meets, one Needs-work.** The first round to score all
-seven, read on the running `/design` Universe group on Apple Metal 3. Its table and its one note are in
-[job 39](../jobs/39.3d-assets-and-background-design.md); the six earlier working rounds (S1–S6) were star
-bench reviews and are folded into dimensions 1 and 2.
-
-What the round caught, which no gate in this repo could: **the default sky filled the frame.** A fold
-moves the coordinate a colour is read at, so it changes hue without ever going dark — handed one feeling,
-every pixel of the grain sky resolved to the same value and §15's own rule that a sky is a place with
+**How it got there.** Round **R1** (2026-07-29) was the first to score all seven dimensions, on Apple
+Metal 3: six Meets, one Needs-work. The six earlier rounds (S1–S6) were star-bench working reviews and
+fold into dimensions 1 and 2. R1's single note — **the default sky filled the frame** — is now resolved:
+a fold moves the coordinate a colour is read at, so it changes hue without ever going dark, and handed one
+feeling every pixel of the grain sky resolved to the same value. §15's own rule that a sky is a place with
 things in it rather than a filled surface was quietly false for the two recipes that had no coverage gate.
-Both now gate on the fold's own depth. The fix is in and its **on-screen re-check is outstanding**, which
-is the single item between this document and a sign-off.
+Both now gate on the fold's own depth, and the reviewer confirmed the night showing through.
 
-**Also deferred, with a home:** React Native has had no device pass. The web canvas holds 8.3 ms median at
-2880×1800 with four canvases and both backends compile clean, but the mobile frame budget — the nebula's
-two-octave cloud in particular — is unmeasured. Its home is the mobile `Universe` group (§20), read on
-hardware.
+That is the round's real value, and worth stating: **no gate in this repo could have caught it.** The
+shader compiled, the arithmetic was right, every test passed, and the sky was still wrong.
 
-**When it is signed off, the reviewer must be named.** [Job 38's 2D sign-off](../jobs/archive/38.2d-ui-design-language.md)
-was taken by the implementing agent acting as reviewer, and §11 records plainly that this is a weaker gate
-than the protocol intends. The same caveat will apply here unless a human designer runs the round.
+**Deferred, listed as the protocol requires:**
+
+- **React Native has had no device pass.** The web canvas holds 8.3 ms median at 2880×1800 with four live
+  canvases and both backends compile clean, but the mobile frame budget — the nebula's two-octave cloud in
+  particular — is unmeasured. Its home is the mobile `Universe` group (§20), read on hardware.
+- **The specimens added at close have not been read on screen.** Ambient bodies, the gist pair, the awaken
+  flare and the mobile group landed after R1 to close the showcase's coverage. They draw bodies this
+  document already describes, through the channel path already scored, and they change no body's look —
+  but they are new surface, and the next round reads them first.
+- **`muted-dusk`'s ANGER↔STRESS sit at ΔE 0.024** — one colour, at two feelings. Owned by
+  [change 07](../changes/archive/07.per-mood-emotion-color-onboarding.md), not by this language.
+
+**The gate is weaker than the protocol intends, in one respect that is recorded rather than hidden.** The
+rounds were driven by an implementing agent (headless Chrome over CDP) and the design calls were made by
+the project's owner reading its output, not by an independent designer running the surface. §11 records
+the same caveat for the 2D sign-off. A later round with a designer at the keyboard is a stronger gate and
+this language is not closed to it.

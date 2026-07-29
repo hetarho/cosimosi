@@ -123,3 +123,20 @@ deferred items. Only then does the job move to `done`.
 A signed-off language is not frozen. A later change that touches a scored dimension re-opens that
 dimension: one round, that dimension plus anything downstream of it, appended to the ledger of the
 change's own job. The full rubric is re-run only when the language itself is revised.
+
+**Both languages are signed off** — 2D on 2026-07-27 (job 38), 3D on 2026-07-29 (job 39), each recorded
+in its own sign-off section of [tech/design-language.md](../../tech/design-language.md) §11 · §21 with its
+reviewer and its deferred list. From here the protocol runs in re-review mode: a change to a body, a sky,
+a state treatment or a token re-opens the dimension it touches, in the ledger of that change's own job.
+
+## 9. What a round is worth
+
+Recorded because it is the argument for paying for rounds at all. Both languages' first full round caught
+something no automated gate in this repo could have: the 2D round found chrome that passed contrast and
+still read as flat, and the 3D round found a default sky that filled the entire frame — the shader
+compiled, the arithmetic was right, every test passed, and the sky was still wrong.
+
+The corollary is the honest limit of these two sign-offs. The rounds were driven by an implementing agent
+and the calls were made by the project's owner reading its output, so a genuinely independent designer has
+not yet run either surface. The protocol is written for one who does; §7's gate does not become weaker
+because the reviewer was close to the work, but the finding rate does.

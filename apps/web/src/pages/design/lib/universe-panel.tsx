@@ -16,6 +16,7 @@ import {
 import { MAX_SHOWCASE_EMOTIONS, showcaseEmotions } from '@cosimosi/emotion'
 import { cx, useReducedMotion } from '@cosimosi/ui'
 
+import { AmbientPanel } from './ambient-panel.tsx'
 import { NebulaDemoPanel } from './nebula-panel.tsx'
 import { StatesPanel } from './states-panel.tsx'
 import { Section } from './showcase-shell.tsx'
@@ -39,6 +40,10 @@ export function UniversePanel() {
 
       <Section id="sky" title={T.skyTitle} blurb={T.skyBlurb}>
         <SkySection />
+      </Section>
+
+      <Section id="ambient" title={T.ambientTitle} blurb={T.ambientBlurb}>
+        <AmbientPanel />
       </Section>
 
       <Section id="nebula" title={T.nebulaTitle} blurb={T.nebulaBlurb}>
