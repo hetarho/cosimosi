@@ -38,6 +38,8 @@ const (
 	// StoreServiceGetSelectionProcedure is the fully-qualified name of the StoreService's GetSelection
 	// RPC.
 	StoreServiceGetSelectionProcedure = "/cosimosi.store.v1.StoreService/GetSelection"
+	// StoreServiceDecorateProcedure is the fully-qualified name of the StoreService's Decorate RPC.
+	StoreServiceDecorateProcedure = "/cosimosi.store.v1.StoreService/Decorate"
 )
 
 // StoreServiceClient is a client for the cosimosi.store.v1.StoreService service.
@@ -47,6 +49,9 @@ type StoreServiceClient interface {
 	GetCatalog(context.Context, *connect.Request[v1.GetCatalogRequest]) (*connect.Response[v1.GetCatalogResponse], error)
 	// Read what the universe wears right now: exactly one entry per kind, defaults included.
 	GetSelection(context.Context, *connect.Request[v1.GetSelectionRequest]) (*connect.Response[v1.GetSelectionResponse], error)
+	// Buy the unowned members of the submitted selection and apply the whole selection, atomically.
+	// Mutates ownership, the applied rows and the Twinkle ledger — deliberately NOT NO_SIDE_EFFECTS.
+	Decorate(context.Context, *connect.Request[v1.DecorateRequest]) (*connect.Response[v1.DecorateResponse], error)
 }
 
 // NewStoreServiceClient constructs a client for the cosimosi.store.v1.StoreService service. By
@@ -74,6 +79,12 @@ func NewStoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		decorate: connect.NewClient[v1.DecorateRequest, v1.DecorateResponse](
+			httpClient,
+			baseURL+StoreServiceDecorateProcedure,
+			connect.WithSchema(storeServiceMethods.ByName("Decorate")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -81,6 +92,7 @@ func NewStoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 type storeServiceClient struct {
 	getCatalog   *connect.Client[v1.GetCatalogRequest, v1.GetCatalogResponse]
 	getSelection *connect.Client[v1.GetSelectionRequest, v1.GetSelectionResponse]
+	decorate     *connect.Client[v1.DecorateRequest, v1.DecorateResponse]
 }
 
 // GetCatalog calls cosimosi.store.v1.StoreService.GetCatalog.
@@ -93,6 +105,11 @@ func (c *storeServiceClient) GetSelection(ctx context.Context, req *connect.Requ
 	return c.getSelection.CallUnary(ctx, req)
 }
 
+// Decorate calls cosimosi.store.v1.StoreService.Decorate.
+func (c *storeServiceClient) Decorate(ctx context.Context, req *connect.Request[v1.DecorateRequest]) (*connect.Response[v1.DecorateResponse], error) {
+	return c.decorate.CallUnary(ctx, req)
+}
+
 // StoreServiceHandler is an implementation of the cosimosi.store.v1.StoreService service.
 type StoreServiceHandler interface {
 	// Read the whole catalog — owned and unowned alike — with the caller's ownership, current
@@ -100,6 +117,9 @@ type StoreServiceHandler interface {
 	GetCatalog(context.Context, *connect.Request[v1.GetCatalogRequest]) (*connect.Response[v1.GetCatalogResponse], error)
 	// Read what the universe wears right now: exactly one entry per kind, defaults included.
 	GetSelection(context.Context, *connect.Request[v1.GetSelectionRequest]) (*connect.Response[v1.GetSelectionResponse], error)
+	// Buy the unowned members of the submitted selection and apply the whole selection, atomically.
+	// Mutates ownership, the applied rows and the Twinkle ledger — deliberately NOT NO_SIDE_EFFECTS.
+	Decorate(context.Context, *connect.Request[v1.DecorateRequest]) (*connect.Response[v1.DecorateResponse], error)
 }
 
 // NewStoreServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -123,12 +143,20 @@ func NewStoreServiceHandler(svc StoreServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	storeServiceDecorateHandler := connect.NewUnaryHandler(
+		StoreServiceDecorateProcedure,
+		svc.Decorate,
+		connect.WithSchema(storeServiceMethods.ByName("Decorate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cosimosi.store.v1.StoreService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case StoreServiceGetCatalogProcedure:
 			storeServiceGetCatalogHandler.ServeHTTP(w, r)
 		case StoreServiceGetSelectionProcedure:
 			storeServiceGetSelectionHandler.ServeHTTP(w, r)
+		case StoreServiceDecorateProcedure:
+			storeServiceDecorateHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -144,4 +172,8 @@ func (UnimplementedStoreServiceHandler) GetCatalog(context.Context, *connect.Req
 
 func (UnimplementedStoreServiceHandler) GetSelection(context.Context, *connect.Request[v1.GetSelectionRequest]) (*connect.Response[v1.GetSelectionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.store.v1.StoreService.GetSelection is not implemented"))
+}
+
+func (UnimplementedStoreServiceHandler) Decorate(context.Context, *connect.Request[v1.DecorateRequest]) (*connect.Response[v1.DecorateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cosimosi.store.v1.StoreService.Decorate is not implemented"))
 }

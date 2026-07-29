@@ -426,6 +426,119 @@ func (x *GetSelectionResponse) GetSelections() []*OrnamentSelection {
 	return nil
 }
 
+// The complete selection, one named field per kind. Named fields rather than a repeated or map shape,
+// so a duplicate kind and an unknown kind are both unrepresentable. An empty id means that kind's free
+// default.
+//
+// There is no amount, price or total field, and that is the guard rather than server-side validation:
+// the charge is derived from the rows the save's own insert acquired, so a stale or tampered client
+// total cannot change what is billed.
+type DecorateRequest struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	BackgroundOrnamentId string                 `protobuf:"bytes,1,opt,name=background_ornament_id,json=backgroundOrnamentId,proto3" json:"background_ornament_id,omitempty"`
+	StarShaderOrnamentId string                 `protobuf:"bytes,2,opt,name=star_shader_ornament_id,json=starShaderOrnamentId,proto3" json:"star_shader_ornament_id,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *DecorateRequest) Reset() {
+	*x = DecorateRequest{}
+	mi := &file_cosimosi_store_v1_store_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecorateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecorateRequest) ProtoMessage() {}
+
+func (x *DecorateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_store_v1_store_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecorateRequest.ProtoReflect.Descriptor instead.
+func (*DecorateRequest) Descriptor() ([]byte, []int) {
+	return file_cosimosi_store_v1_store_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DecorateRequest) GetBackgroundOrnamentId() string {
+	if x != nil {
+		return x.BackgroundOrnamentId
+	}
+	return ""
+}
+
+func (x *DecorateRequest) GetStarShaderOrnamentId() string {
+	if x != nil {
+		return x.StarShaderOrnamentId
+	}
+	return ""
+}
+
+type DecorateResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The confirmed state, in the same shape GetSelection answers — one selection type for the client.
+	Selection []*OrnamentSelection `protobuf:"bytes,1,rep,name=selection,proto3" json:"selection,omitempty"`
+	// What this save charged; 0 for a free re-select, which is a successful no-op.
+	SpentTwinkle  int64 `protobuf:"varint,2,opt,name=spent_twinkle,json=spentTwinkle,proto3" json:"spent_twinkle,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DecorateResponse) Reset() {
+	*x = DecorateResponse{}
+	mi := &file_cosimosi_store_v1_store_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecorateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecorateResponse) ProtoMessage() {}
+
+func (x *DecorateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cosimosi_store_v1_store_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecorateResponse.ProtoReflect.Descriptor instead.
+func (*DecorateResponse) Descriptor() ([]byte, []int) {
+	return file_cosimosi_store_v1_store_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DecorateResponse) GetSelection() []*OrnamentSelection {
+	if x != nil {
+		return x.Selection
+	}
+	return nil
+}
+
+func (x *DecorateResponse) GetSpentTwinkle() int64 {
+	if x != nil {
+		return x.SpentTwinkle
+	}
+	return 0
+}
+
 var File_cosimosi_store_v1_store_proto protoreflect.FileDescriptor
 
 const file_cosimosi_store_v1_store_proto_rawDesc = "" +
@@ -450,7 +563,13 @@ const file_cosimosi_store_v1_store_proto_rawDesc = "" +
 	"\x14GetSelectionResponse\x12D\n" +
 	"\n" +
 	"selections\x18\x01 \x03(\v2$.cosimosi.store.v1.OrnamentSelectionR\n" +
-	"selections*j\n" +
+	"selections\"~\n" +
+	"\x0fDecorateRequest\x124\n" +
+	"\x16background_ornament_id\x18\x01 \x01(\tR\x14backgroundOrnamentId\x125\n" +
+	"\x17star_shader_ornament_id\x18\x02 \x01(\tR\x14starShaderOrnamentId\"{\n" +
+	"\x10DecorateResponse\x12B\n" +
+	"\tselection\x18\x01 \x03(\v2$.cosimosi.store.v1.OrnamentSelectionR\tselection\x12#\n" +
+	"\rspent_twinkle\x18\x02 \x01(\x03R\fspentTwinkle*j\n" +
 	"\fOrnamentKind\x12\x1d\n" +
 	"\x19ORNAMENT_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18ORNAMENT_KIND_BACKGROUND\x10\x01\x12\x1d\n" +
@@ -459,11 +578,12 @@ const file_cosimosi_store_v1_store_proto_rawDesc = "" +
 	" ORNAMENT_ACQUISITION_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19ORNAMENT_ACQUISITION_FREE\x10\x01\x12!\n" +
 	"\x1dORNAMENT_ACQUISITION_PURCHASE\x10\x02\x12$\n" +
-	" ORNAMENT_ACQUISITION_ACHIEVEMENT\x10\x032\xd4\x01\n" +
+	" ORNAMENT_ACQUISITION_ACHIEVEMENT\x10\x032\xa9\x02\n" +
 	"\fStoreService\x12^\n" +
 	"\n" +
 	"GetCatalog\x12$.cosimosi.store.v1.GetCatalogRequest\x1a%.cosimosi.store.v1.GetCatalogResponse\"\x03\x90\x02\x01\x12d\n" +
-	"\fGetSelection\x12&.cosimosi.store.v1.GetSelectionRequest\x1a'.cosimosi.store.v1.GetSelectionResponse\"\x03\x90\x02\x01B\xc9\x01\n" +
+	"\fGetSelection\x12&.cosimosi.store.v1.GetSelectionRequest\x1a'.cosimosi.store.v1.GetSelectionResponse\"\x03\x90\x02\x01\x12S\n" +
+	"\bDecorate\x12\".cosimosi.store.v1.DecorateRequest\x1a#.cosimosi.store.v1.DecorateResponseB\xc9\x01\n" +
 	"\x15com.cosimosi.store.v1B\n" +
 	"StoreProtoP\x01Z>github.com/cosimosi/api/internal/gen/cosimosi/store/v1;storev1\xa2\x02\x03CSX\xaa\x02\x11Cosimosi.Store.V1\xca\x02\x11Cosimosi\\Store\\V1\xe2\x02\x1dCosimosi\\Store\\V1\\GPBMetadata\xea\x02\x13Cosimosi::Store::V1b\x06proto3"
 
@@ -480,7 +600,7 @@ func file_cosimosi_store_v1_store_proto_rawDescGZIP() []byte {
 }
 
 var file_cosimosi_store_v1_store_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_cosimosi_store_v1_store_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_cosimosi_store_v1_store_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_cosimosi_store_v1_store_proto_goTypes = []any{
 	(OrnamentKind)(0),            // 0: cosimosi.store.v1.OrnamentKind
 	(OrnamentAcquisition)(0),     // 1: cosimosi.store.v1.OrnamentAcquisition
@@ -490,6 +610,8 @@ var file_cosimosi_store_v1_store_proto_goTypes = []any{
 	(*GetSelectionRequest)(nil),  // 5: cosimosi.store.v1.GetSelectionRequest
 	(*OrnamentSelection)(nil),    // 6: cosimosi.store.v1.OrnamentSelection
 	(*GetSelectionResponse)(nil), // 7: cosimosi.store.v1.GetSelectionResponse
+	(*DecorateRequest)(nil),      // 8: cosimosi.store.v1.DecorateRequest
+	(*DecorateResponse)(nil),     // 9: cosimosi.store.v1.DecorateResponse
 }
 var file_cosimosi_store_v1_store_proto_depIdxs = []int32{
 	0, // 0: cosimosi.store.v1.Ornament.kind:type_name -> cosimosi.store.v1.OrnamentKind
@@ -497,15 +619,18 @@ var file_cosimosi_store_v1_store_proto_depIdxs = []int32{
 	3, // 2: cosimosi.store.v1.GetCatalogResponse.ornaments:type_name -> cosimosi.store.v1.Ornament
 	0, // 3: cosimosi.store.v1.OrnamentSelection.kind:type_name -> cosimosi.store.v1.OrnamentKind
 	6, // 4: cosimosi.store.v1.GetSelectionResponse.selections:type_name -> cosimosi.store.v1.OrnamentSelection
-	2, // 5: cosimosi.store.v1.StoreService.GetCatalog:input_type -> cosimosi.store.v1.GetCatalogRequest
-	5, // 6: cosimosi.store.v1.StoreService.GetSelection:input_type -> cosimosi.store.v1.GetSelectionRequest
-	4, // 7: cosimosi.store.v1.StoreService.GetCatalog:output_type -> cosimosi.store.v1.GetCatalogResponse
-	7, // 8: cosimosi.store.v1.StoreService.GetSelection:output_type -> cosimosi.store.v1.GetSelectionResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 5: cosimosi.store.v1.DecorateResponse.selection:type_name -> cosimosi.store.v1.OrnamentSelection
+	2, // 6: cosimosi.store.v1.StoreService.GetCatalog:input_type -> cosimosi.store.v1.GetCatalogRequest
+	5, // 7: cosimosi.store.v1.StoreService.GetSelection:input_type -> cosimosi.store.v1.GetSelectionRequest
+	8, // 8: cosimosi.store.v1.StoreService.Decorate:input_type -> cosimosi.store.v1.DecorateRequest
+	4, // 9: cosimosi.store.v1.StoreService.GetCatalog:output_type -> cosimosi.store.v1.GetCatalogResponse
+	7, // 10: cosimosi.store.v1.StoreService.GetSelection:output_type -> cosimosi.store.v1.GetSelectionResponse
+	9, // 11: cosimosi.store.v1.StoreService.Decorate:output_type -> cosimosi.store.v1.DecorateResponse
+	9, // [9:12] is the sub-list for method output_type
+	6, // [6:9] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_cosimosi_store_v1_store_proto_init() }
@@ -519,7 +644,7 @@ func file_cosimosi_store_v1_store_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cosimosi_store_v1_store_proto_rawDesc), len(file_cosimosi_store_v1_store_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

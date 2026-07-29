@@ -82,6 +82,16 @@ behavior. `fallback` means localized copy comes from the coarse Connect code.
 | `TWINKLE_INVITE_NOT_ELIGIBLE`, `TWINKLE_INVITE_GRANT_CONFLICT`                                                                           | twinkle  | FailedPrecondition         | fallback                       |
 | `TWINKLE_QUOTE_TARGET_UNAVAILABLE`                                                                                                       | twinkle  | FailedPrecondition         | fallback                       |
 | `TWINKLE_SCOPE_REQUIRED`                                                                                                                 | twinkle  | Unauthenticated            | fallback                       |
+| `STORE_ORNAMENT_UNKNOWN`                                                                                                                 | store    | InvalidArgument            | fallback                       |
+| `STORE_ORNAMENT_NOT_PURCHASABLE`                                                                                                         | store    | FailedPrecondition         | fallback                       |
+| `STORE_INSUFFICIENT_TWINKLE`                                                                                                             | store    | ResourceExhausted          | earn recovery + reason copy    |
+| `STORE_SCOPE_REQUIRED`                                                                                                                   | store    | Unauthenticated            | fallback                       |
+
+`STORE_INSUFFICIENT_TWINKLE` is deliberately **not** a reuse of `TWINKLE_INSUFFICIENT`: that copy cannot say what
+happened to the save, and this one must — "nothing was saved" is the honest line, because the whole save is refused as
+one thing. It is the one reason whose metadata names a domain object (`ornament_id`, beside the economy's own
+`cost`/`eligible`/`shortfall`), so the panel can point at the row the balance ran out on; the generic copy never names
+an item, since only the surface can resolve an id to a name.
 
 The platform reason constants and per-context `rpc/reasons.go` registries are the
 code source for this table. Adding a canonical domain error requires a unique reason,

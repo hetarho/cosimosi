@@ -60,6 +60,30 @@ alike, with ownership as a boolean beside a price. The contract has no inventory
 so the concept cannot be built without changing the contract. The UX consequence — ownership revealed by price alone —
 is [policy/ux/decoration.md](../ux/decoration.md)'s.
 
+## Saving is one thing, or it is nothing
+
+**A save is atomic** ([P8]). Buying the unowned members of a selection and applying that selection are one operation:
+a failure anywhere leaves no ownership row, no applied row and no ledger row. There is no state in which a user has
+been charged for something they are not wearing, or is wearing something they did not pay for.
+
+**The charge is what the save actually acquired**, never what the client says it is buying. The request carries no
+amount at all, and the total is summed over the ownership inserts that reported acquiring a row — so two concurrent
+identical saves charge the full price exactly once and zero the second time, and a stale or tampered client total
+changes nothing.
+
+**Re-selecting what you own is free, and a save that changes nothing is a successful no-op** — it writes no ledger row
+and reports no achievement progress. Wearing something you own is not a transaction.
+
+**An insufficient balance refuses the whole save**, names the item the balance ran out on, and states that nothing was
+saved. Not a partial purchase, not a queued one: refused ([I1] — refused, never erased).
+
+**Reverting a kind to its default is free and keeps what you bought.** The applied row is removed (absence is the
+default) and the ownership row stays: taking a sky off is not selling it back.
+
+**A save reports only counters** — how many ornaments are owned, that a save happened, which kinds moved. The recorder's
+payload has no field for a memory, a mood or any text, so no meaning-bearing fact can ride the decoration path
+([A6][I11]).
+
 ## Why
 
 Money and achievement must not be able to buy meaning ([I11]). The weakest way to promise that is a review rule over a

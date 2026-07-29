@@ -15,6 +15,7 @@ type fakeOrnamentRepo struct {
 	inserted   []store.OrnamentOwnership
 	purged     []string
 	listErr    error
+	insertErr  error
 }
 
 func newFakeOrnamentRepo() *fakeOrnamentRepo {
@@ -39,16 +40,19 @@ func (f *fakeOrnamentRepo) InsertOrnamentOwnership(
 	scope platform.UserScope,
 	ornamentID store.OrnamentID,
 	acquiredVia store.OrnamentAcquisition,
-) error {
+) (bool, error) {
+	if f.insertErr != nil {
+		return false, f.insertErr
+	}
 	for _, existing := range f.ownerships[scope.UserID()] {
 		if existing.OrnamentID == ornamentID {
-			return nil
+			return false, nil
 		}
 	}
 	ownership := store.OrnamentOwnership{OrnamentID: ornamentID, AcquiredVia: acquiredVia}
 	f.ownerships[scope.UserID()] = append(f.ownerships[scope.UserID()], ownership)
 	f.inserted = append(f.inserted, ownership)
-	return nil
+	return true, nil
 }
 
 func (f *fakeOrnamentRepo) ListOrnamentSelections(
@@ -59,6 +63,58 @@ func (f *fakeOrnamentRepo) ListOrnamentSelections(
 		return nil, f.listErr
 	}
 	return f.selections[scope.UserID()], nil
+}
+
+// clone/adopt let the fake stand in for a transaction: a staged copy is discarded on refusal, so a
+// test can assert that a refused save left the tables exactly as they were.
+func (f *fakeOrnamentRepo) clone() *fakeOrnamentRepo {
+	staged := newFakeOrnamentRepo()
+	staged.listErr = f.listErr
+	staged.insertErr = f.insertErr
+	for userID, rows := range f.ownerships {
+		staged.ownerships[userID] = append([]store.OrnamentOwnership(nil), rows...)
+	}
+	for userID, rows := range f.selections {
+		staged.selections[userID] = append([]store.OrnamentSelection(nil), rows...)
+	}
+	return staged
+}
+
+func (f *fakeOrnamentRepo) adopt(staged *fakeOrnamentRepo) {
+	f.ownerships = staged.ownerships
+	f.selections = staged.selections
+	f.inserted = append(f.inserted, staged.inserted...)
+}
+
+func (f *fakeOrnamentRepo) UpsertOrnamentSelection(
+	_ context.Context,
+	scope platform.UserScope,
+	selection store.OrnamentSelection,
+) error {
+	rows := f.selections[scope.UserID()]
+	for i, existing := range rows {
+		if existing.Kind == selection.Kind {
+			rows[i] = selection
+			return nil
+		}
+	}
+	f.selections[scope.UserID()] = append(rows, selection)
+	return nil
+}
+
+func (f *fakeOrnamentRepo) DeleteOrnamentSelection(
+	_ context.Context,
+	scope platform.UserScope,
+	kind store.OrnamentKind,
+) error {
+	kept := make([]store.OrnamentSelection, 0, len(f.selections[scope.UserID()]))
+	for _, existing := range f.selections[scope.UserID()] {
+		if existing.Kind != kind {
+			kept = append(kept, existing)
+		}
+	}
+	f.selections[scope.UserID()] = kept
+	return nil
 }
 
 func (f *fakeOrnamentRepo) PurgeUser(_ context.Context, scope platform.UserScope) error {
@@ -284,7 +340,7 @@ func TestEveryReadRefusesAnUnauthenticatedScope(t *testing.T) {
 func TestWithdrawalPurgerNamesTheContextAndDelegates(t *testing.T) {
 	t.Parallel()
 	repo := newFakeOrnamentRepo()
-	purger := store.NewWithdrawalPurger(newTestService(t, repo))
+	purger := store.NewWithdrawalPurger(repo)
 	if purger.PurgeName() != "store" {
 		t.Errorf("PurgeName = %q, want store", purger.PurgeName())
 	}
@@ -297,5 +353,8 @@ func TestWithdrawalPurgerNamesTheContextAndDelegates(t *testing.T) {
 	}
 	if err := store.NewWithdrawalPurger(nil).PurgeUser(context.Background(), scope); !errors.Is(err, store.ErrStoreRequired) {
 		t.Error("an unwired purger silently succeeded")
+	}
+	if err := purger.PurgeUser(context.Background(), platform.UserScope{}); !errors.Is(err, store.ErrScopeRequired) {
+		t.Error("a scopeless sweep leg silently succeeded")
 	}
 }

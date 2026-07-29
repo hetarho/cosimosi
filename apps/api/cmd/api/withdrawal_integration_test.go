@@ -669,11 +669,7 @@ func openWithdrawalTestPool(t *testing.T) *platformdb.Pool {
 // the same wiring the API and the worker do rather than a stub that always succeeds.
 func storeWithdrawalPurgerForTest(t *testing.T, pool *platformdb.Pool) account.UserDataPurger {
 	t.Helper()
-	service, err := newStoreService(pool)
-	if err != nil {
-		t.Fatalf("newStoreService failed: %v", err)
-	}
-	return storeWithdrawalPurger(service)
+	return storeWithdrawalPurgerFor(pool)
 }
 
 func cleanupWithdrawalRows(

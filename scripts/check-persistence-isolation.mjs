@@ -78,6 +78,9 @@ const hardDeleteQueries = new Set([
   'memory/purge_user.sql#PurgeUserUniverseState',
   'twinkle/purge_user.sql#PurgeUserTwinkleLedger',
   'twinkle/purge_user.sql#PurgeUserTwinkleBalance',
+  // Reverting a kind to its free default removes the applied row: absence IS the default, so this is
+  // the user's own save changing their own staging, never the deletion of anything they wrote.
+  'store/decorate.sql#DeleteOrnamentSelection',
   'store/purge_user.sql#PurgeUserOrnamentOwnerships',
   'store/purge_user.sql#PurgeUserOrnamentSelections',
   'account/withdrawal.sql#PurgeAccountAuthProviders',

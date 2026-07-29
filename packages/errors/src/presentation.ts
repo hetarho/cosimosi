@@ -29,7 +29,8 @@ function severityFor(error: AppError): ErrorSeverity {
   if (
     error.retriable ||
     error.reason === ERROR_REASONS.twinkleInsufficient ||
-    error.reason === ERROR_REASONS.memoryInsufficientTwinkle
+    error.reason === ERROR_REASONS.memoryInsufficientTwinkle ||
+    error.reason === ERROR_REASONS.storeInsufficientTwinkle
   ) {
     return 'warning'
   }
@@ -41,6 +42,11 @@ function reasonMessage(reason: string): string | undefined {
     case ERROR_REASONS.twinkleInsufficient:
     case ERROR_REASONS.memoryInsufficientTwinkle:
       return m.error_twinkle_insufficient()
+    // The generic resource-exhausted line would say nothing about the save, and the atomicity is the
+    // honest thing to say. The item-specific line belongs to the panel, which has the metadata and a
+    // row to point at.
+    case ERROR_REASONS.storeInsufficientTwinkle:
+      return m.error_store_insufficient()
     case ERROR_REASONS.memorySyncConsentRequired:
       return m.error_memory_sync_consent_required()
     case ERROR_REASONS.memoryOperationConflict:

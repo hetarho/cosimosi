@@ -19,22 +19,38 @@ type ServiceDeps struct {
 	Ownerships OwnershipStore
 	Selections SelectionStore
 	Purge      UserPurgeRepo
+	// Decorate and Spend are the save's legs: the transaction runner, and the economy edge the debit
+	// joins it through. A root that binds neither still serves the reads.
+	Decorate DecorateRepo
+	Spend    SpendGate
+	// Achievements defaults to the no-op recorder: counting is not a precondition for decorating.
+	Achievements AchievementRecorder
 }
 
 type Service struct {
-	ownerships OwnershipStore
-	selections SelectionStore
-	purge      UserPurgeRepo
+	ownerships   OwnershipStore
+	selections   SelectionStore
+	purge        UserPurgeRepo
+	decorate     DecorateRepo
+	spend        SpendGate
+	achievements AchievementRecorder
 }
 
 func NewService(deps ServiceDeps) (*Service, error) {
 	if deps.Ownerships == nil || deps.Selections == nil || deps.Purge == nil {
 		return nil, ErrStoreRequired
 	}
+	achievements := deps.Achievements
+	if achievements == nil {
+		achievements = NoAchievementRecorder{}
+	}
 	return &Service{
-		ownerships: deps.Ownerships,
-		selections: deps.Selections,
-		purge:      deps.Purge,
+		ownerships:   deps.Ownerships,
+		selections:   deps.Selections,
+		purge:        deps.Purge,
+		decorate:     deps.Decorate,
+		spend:        deps.Spend,
+		achievements: achievements,
 	}, nil
 }
 
@@ -141,7 +157,7 @@ func (s *Service) GrantOwnership(
 		return fmt.Errorf("%w: %s is acquired by %s, not %s",
 			ErrAcquisitionNotGrantable, ornamentID, ornament.Acquisition, acquiredVia)
 	}
-	if err := s.ownerships.InsertOrnamentOwnership(ctx, scope, ornamentID, acquiredVia); err != nil {
+	if _, err := s.ownerships.InsertOrnamentOwnership(ctx, scope, ornamentID, acquiredVia); err != nil {
 		return fmt.Errorf("insert ornament ownership: %w", err)
 	}
 	return nil
@@ -150,10 +166,7 @@ func (s *Service) GrantOwnership(
 // PurgeUser deletes the withdrawing user's own ownership and selection rows, and is the only delete
 // path this context has ([I1][U1]).
 func (s *Service) PurgeUser(ctx context.Context, scope platform.UserScope) error {
-	if scope.UserID() == "" {
-		return ErrScopeRequired
-	}
-	if err := s.purge.PurgeUser(ctx, scope); err != nil {
+	if err := purgeUser(ctx, s.purge, scope); err != nil {
 		return fmt.Errorf("purge user ornaments: %w", err)
 	}
 	return nil

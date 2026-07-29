@@ -75,6 +75,38 @@ func (s *Server) GetSelection(
 	return connect.NewResponse(&storev1.GetSelectionResponse{Selections: selections}), nil
 }
 
+// Decorate is the one mutation on this service. Thin: map the named id fields onto the domain
+// selection, call the use-case, and translate its refusal — the atomicity, the pricing and the
+// item-blaming all belong to the use-case (§2.9 #7).
+func (s *Server) Decorate(
+	ctx context.Context,
+	req *connect.Request[storev1.DecorateRequest],
+) (*connect.Response[storev1.DecorateResponse], error) {
+	scope, err := userScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	requested := store.Selection{
+		store.KindBackground: store.OrnamentID(req.Msg.GetBackgroundOrnamentId()),
+		store.KindStarShader: store.OrnamentID(req.Msg.GetStarShaderOrnamentId()),
+	}
+	applied, spent, err := s.service.Decorate(ctx, scope, requested)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	selection := make([]*storev1.OrnamentSelection, 0, len(applied))
+	for _, entry := range applied {
+		selection = append(selection, &storev1.OrnamentSelection{
+			Kind:       protoKind(entry.Kind),
+			OrnamentId: string(entry.OrnamentID),
+		})
+	}
+	return connect.NewResponse(&storev1.DecorateResponse{
+		Selection:    selection,
+		SpentTwinkle: int64(spent),
+	}), nil
+}
+
 func userScope(ctx context.Context) (platform.UserScope, error) {
 	scope, err := platform.UserScopeFromContext(ctx)
 	if err != nil {
@@ -107,11 +139,23 @@ func protoAcquisition(acquisition store.OrnamentAcquisition) storev1.OrnamentAcq
 	}
 }
 
-// domainError maps the reads' canonical errors onto Connect codes. The two reads take no input, so
-// there is no client-facing refusal beyond an unauthenticated scope.
+// domainError maps the context's canonical errors onto Connect codes. The refusal metadata is the
+// domain's own Detail() — the shortfall is forwarded, never recomputed here.
 func domainError(err error) error {
-	if errors.Is(err, store.ErrScopeRequired) {
+	switch {
+	case errors.Is(err, store.ErrScopeRequired):
 		return apperr.Domain(connect.CodeUnauthenticated, reasonScopeRequired, err, nil)
+	case errors.Is(err, store.ErrUnknownOrnamentID):
+		return apperr.Domain(connect.CodeInvalidArgument, reasonOrnamentUnknown, err, nil)
+	case errors.Is(err, store.ErrOrnamentNotPurchasable):
+		return apperr.Domain(connect.CodeFailedPrecondition, reasonOrnamentNotPurchasable, err, nil)
+	case errors.Is(err, store.ErrInsufficientTwinkle):
+		var insufficient *store.InsufficientTwinkle
+		if errors.As(err, &insufficient) {
+			return apperr.Domain(connect.CodeResourceExhausted, reasonInsufficientTwinkle, err, insufficient.Detail())
+		}
+		return apperr.Domain(connect.CodeResourceExhausted, reasonInsufficientTwinkle, err, nil)
+	default:
+		return apperr.Internal(err)
 	}
-	return apperr.Internal(err)
 }

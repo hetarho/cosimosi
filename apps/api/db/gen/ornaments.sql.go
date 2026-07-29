@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const insertOrnamentOwnership = `-- name: InsertOrnamentOwnership :exec
+const insertOrnamentOwnership = `-- name: InsertOrnamentOwnership :execrows
 INSERT INTO ornament_ownerships (user_id, ornament_id, acquired_via)
 VALUES ($1, $2, $3)
 ON CONFLICT (user_id, ornament_id) DO NOTHING
@@ -25,9 +25,16 @@ type InsertOrnamentOwnershipParams struct {
 
 // The primary key IS the dedup key, so a replayed purchase or achievement claim never
 // double-grants and an existing row is never overwritten — ownership is permanent ([P9][I1]).
-func (q *Queries) InsertOrnamentOwnership(ctx context.Context, arg InsertOrnamentOwnershipParams) error {
-	_, err := q.db.Exec(ctx, insertOrnamentOwnership, arg.UserID, arg.OrnamentID, arg.AcquiredVia)
-	return err
+//
+// :execrows because the affected-row count is load-bearing, not diagnostic: DO NOTHING skips a row
+// the user already owns, so 1 means THIS statement acquired it. That is what a save's charge is
+// summed over — two concurrent identical saves serialize on the primary key, and the loser is told 0.
+func (q *Queries) InsertOrnamentOwnership(ctx context.Context, arg InsertOrnamentOwnershipParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertOrnamentOwnership, arg.UserID, arg.OrnamentID, arg.AcquiredVia)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listOrnamentOwnerships = `-- name: ListOrnamentOwnerships :many

@@ -24,7 +24,8 @@ cross-context adapters live (CC2/CC8). The context ships as one package plus its
   `GetLedger`): proto↔domain map + call, no policy. **All three are `NO_SIDE_EFFECTS`, and the contract has no
   mutating RPC at all** — that is the design. Twinkle moves as a consequence of something else: the write earn fires
   from memory's launch through `EarnPort`, a spend through `SpendGate`, a purchase from inside the store context's own
-  transaction, a reward from a claim, and the invite/signup credits from the server-side settlement of a signup. The
+  transaction (**one ledger row per save**, amount = the save's whole charge, never one row per ornament — the entry
+  carries no item reference, so the history renders a purchase as a single line), a reward from a claim, and the invite/signup credits from the server-side settlement of a signup. The
   economy is never a separate user step, so it needs no mutating contract.
 
 The frontend IO/state boundary is the separate `@cosimosi/twinkle` package: balance Query + invalidation, the

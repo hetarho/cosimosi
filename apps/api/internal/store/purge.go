@@ -14,21 +14,34 @@ type UserPurgeRepo interface {
 }
 
 // WithdrawalPurger is store's published, idempotent account-withdrawal purge leg, satisfying the
-// account context's UserDataPurger port. It is bound at the composition root because the store
-// tables did not exist when the withdrawal sweep shipped.
+// account context's UserDataPurger port. It is bound at the composition root because the store tables
+// did not exist when the withdrawal sweep shipped.
+//
+// It takes the repository rather than the service (twinkle's shipped shape): a sweep needs nothing the
+// service composes — no catalog, no economy — and the worker that runs the sweep should not have to
+// build a save path to delete rows.
 type WithdrawalPurger struct {
-	service *Service
+	repo UserPurgeRepo
 }
 
-func NewWithdrawalPurger(service *Service) WithdrawalPurger {
-	return WithdrawalPurger{service: service}
+func NewWithdrawalPurger(repo UserPurgeRepo) WithdrawalPurger {
+	return WithdrawalPurger{repo: repo}
 }
 
 func (WithdrawalPurger) PurgeName() string { return "store" }
 
 func (p WithdrawalPurger) PurgeUser(ctx context.Context, scope platform.UserScope) error {
-	if p.service == nil {
+	return purgeUser(ctx, p.repo, scope)
+}
+
+// purgeUser is the one guard both entry points share: the service's published behavior and the sweep's
+// leg refuse the same way.
+func purgeUser(ctx context.Context, repo UserPurgeRepo, scope platform.UserScope) error {
+	if scope.UserID() == "" {
+		return ErrScopeRequired
+	}
+	if repo == nil {
 		return ErrStoreRequired
 	}
-	return p.service.PurgeUser(ctx, scope)
+	return repo.PurgeUser(ctx, scope)
 }

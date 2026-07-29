@@ -52,19 +52,12 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 	directory := newAccountDirectory()
 	inviteGranter := &accountInviteRewardGranter{}
 	signupBonusGranter := &accountSignupBonusGranter{}
-	// The store context is built before account so the withdrawal sweep can take its purge leg. It
-	// consumes nothing in return — the edge is one-way.
-	storeService, err := newStoreService(pool)
-	if err != nil {
-		pool.Close()
-		return nil, noop, err
-	}
 	accountOptions, accountService, err := accountServiceOption(
 		pool,
 		accountDirectoryAdapter{source: directory},
 		inviteGranter,
 		signupBonusGranter,
-		storeWithdrawalPurger(storeService),
+		storeWithdrawalPurgerFor(pool),
 	)
 	if err != nil {
 		pool.Close()
@@ -142,6 +135,14 @@ func domainServiceOptions(ctx context.Context, logger *log.Logger) ([]platform.H
 		return nil, noop, err
 	}
 	twinkleOption, err := twinkleServiceOption(twinkleService)
+	if err != nil {
+		pool.Close()
+		return nil, noop, err
+	}
+	// The store service is built after twinkle because a save's debit joins the save's transaction
+	// through the economy; the withdrawal sweep takes its purge leg over the pool instead, so the two
+	// contexts still meet only here.
+	storeService, err := newStoreService(pool, twinkleService)
 	if err != nil {
 		pool.Close()
 		return nil, noop, err

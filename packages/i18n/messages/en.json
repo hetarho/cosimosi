@@ -382,6 +382,7 @@
   "twinkle_earn_invite_bonus_label": "Each of you receives",
   "twinkle_write_earn_notice": "Writing your diary earned you stardust.",
   "error_twinkle_insufficient": "You don't have enough stardust for that.",
+  "error_store_insufficient": "Not enough stardust — nothing was saved.",
   "error_memory_sync_consent_required": "Review and accept memory sync before continuing.",
   "error_memory_operation_conflict": "That action is already being processed. Try again in a moment.",
   "error_memory_target_not_found": "That memory could not be found.",

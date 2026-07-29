@@ -35,5 +35,14 @@ place, and the universe itself is never remounted or reloaded to show a change. 
 kind shows its free default — the same picture an undecorated universe shows — so a slow read looks like an
 undecorated universe rather than a broken one.
 
+## Saving says what happened, and nothing more
+
+A refused save says that **nothing was saved** — the atomicity, plainly — rather than a generic "not enough". The
+refusal carries which item the balance ran out on so the surface can point at that row; the generic line never names an
+item, because only the surface can turn an id into a name. Recovery points at earning, never at buying Twinkle.
+
+A save that changed nothing is not an error and says nothing: it succeeds quietly. And what a save charged is the
+server's number — the surface may show a total before saving, but it is advisory, and the receipt is what came back.
+
 **Absence of a choice is the free default, everywhere.** A user who never opens the panel is not missing anything and
 has nothing granted to them; the default is what they already wear.

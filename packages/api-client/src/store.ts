@@ -8,6 +8,9 @@ import {
 import { createConnectQueryKey, createQueryOptions } from '@connectrpc/connect-query-core'
 
 import {
+  DecorateRequestSchema,
+  DecorateResponseSchema,
+  type DecorateRequest,
   GetCatalogResponseSchema,
   GetSelectionResponseSchema,
   StoreService,
@@ -19,6 +22,8 @@ export {
   StoreService,
 } from './gen/cosimosi/store/v1/store_pb.ts'
 export type {
+  DecorateRequest,
+  DecorateResponse,
   GetCatalogResponse,
   GetSelectionResponse,
   Ornament,
@@ -27,6 +32,15 @@ export type {
 
 export function createStoreClient(transport: Transport): Client<typeof StoreService> {
   return createClient(StoreService, transport)
+}
+
+/** The one decoration write: buy the unowned members of the selection and apply it, atomically. The
+ *  request carries no amount — the charge is the server's, derived from what it actually acquired. */
+export function decorate(
+  transport: Transport,
+  request: MessageInitShape<typeof DecorateRequestSchema>,
+) {
+  return createStoreClient(transport).decorate(request)
 }
 
 export function createGetCatalogQueryKey(transport?: Transport) {
@@ -58,6 +72,7 @@ export function createGetSelectionQueryOptions(transport: Transport) {
 export function createStoreMockTransport(handlers: {
   getCatalog?: () => MessageInitShape<typeof GetCatalogResponseSchema>
   getSelection?: () => MessageInitShape<typeof GetSelectionResponseSchema>
+  decorate?: (request: DecorateRequest) => MessageInitShape<typeof DecorateResponseSchema>
 }): Transport {
   return createRouterTransport(({ service }) => {
     service(StoreService, {
@@ -66,6 +81,9 @@ export function createStoreMockTransport(handlers: {
       },
       getSelection() {
         return handlers.getSelection?.() ?? { selections: [] }
+      },
+      decorate(request) {
+        return handlers.decorate?.(request) ?? { selection: [], spentTwinkle: 0n }
       },
     })
   })

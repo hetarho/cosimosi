@@ -77,13 +77,15 @@ func TestStoreRepositoryRoundTripAndScopedPurge(t *testing.T) {
 	scope := mustUserScope(t, userID)
 	other := mustUserScope(t, otherUserID)
 
-	if err := repo.InsertOrnamentOwnership(ctx, scope, "background.lightfall", store.AcquisitionPurchase); err != nil {
-		t.Fatalf("InsertOrnamentOwnership failed: %v", err)
+	acquired, err := repo.InsertOrnamentOwnership(ctx, scope, "background.lightfall", store.AcquisitionPurchase)
+	if err != nil || !acquired {
+		t.Fatalf("InsertOrnamentOwnership = acquired %v, err %v", acquired, err)
 	}
-	// The primary key is the dedup key: a replayed grant is a no-op, and the first acquisition path
-	// stands ([P9][P11]).
-	if err := repo.InsertOrnamentOwnership(ctx, scope, "background.lightfall", store.AcquisitionAchievement); err != nil {
-		t.Fatalf("replayed InsertOrnamentOwnership failed: %v", err)
+	// The primary key is the dedup key: a replayed grant reports acquiring nothing — which is what a
+	// save's charge is summed over — and the first acquisition path stands ([P9][P11]).
+	acquired, err = repo.InsertOrnamentOwnership(ctx, scope, "background.lightfall", store.AcquisitionAchievement)
+	if err != nil || acquired {
+		t.Fatalf("replayed InsertOrnamentOwnership = acquired %v, err %v", acquired, err)
 	}
 	ownerships, err := repo.ListOrnamentOwnerships(ctx, scope)
 	if err != nil {
@@ -112,7 +114,7 @@ func TestStoreRepositoryRoundTripAndScopedPurge(t *testing.T) {
 		t.Fatalf("selections = %+v, want only the replacement", selections)
 	}
 
-	if err := repo.InsertOrnamentOwnership(ctx, other, "background.lightfall", store.AcquisitionPurchase); err != nil {
+	if _, err := repo.InsertOrnamentOwnership(ctx, other, "background.lightfall", store.AcquisitionPurchase); err != nil {
 		t.Fatalf("InsertOrnamentOwnership(other) failed: %v", err)
 	}
 	if err := repo.UpsertOrnamentSelection(ctx, other, applied); err != nil {

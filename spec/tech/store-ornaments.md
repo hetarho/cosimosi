@@ -102,10 +102,59 @@ there, because it is a programming error the DDL would reject anyway.
 - `PurgeUser(ctx, scope)` delegates to the pg leg, which deletes both tables **in one transaction** so a retried sweep
   never finds a selection surviving its ownership history.
 
+## 5b. The save (`Decorate`, plan 72)
+
+`Decorate(ctx, scope, Selection) ([]OrnamentSelection, int, error)` in `decorate.go`. `Selection` is
+`map[OrnamentKind]OrnamentID` — a **complete** state, not a patch, where an absent or empty id means that kind's free
+default. In order:
+
+1. **Validate before any write** — every non-empty id must resolve in the catalog **and** its kind must be the one it
+   arrived under (`ErrUnknownOrnamentID`). A kind mismatch is refused, because the field an id arrives on is part of
+   the claim.
+2. **Open one transaction** (`InDecorateTx`). Its surface (`DecorateTx`) exposes the ownership list, the ownership
+   insert, the selection list, the selection upsert and the selection delete — and **no ownership delete**, so a refund,
+   an expiry or a re-purchase is not something the save could get wrong: it cannot express them.
+3. **Classify** against the caller's ownership. An unowned `ACHIEVEMENT` row is refused here
+   (`ErrOrnamentNotPurchasable`) rather than priced; an owned one is free to wear.
+4. **Acquire** each unowned purchasable id. `InsertOrnamentOwnership` returns whether **this statement** acquired the
+   row — `ON CONFLICT DO NOTHING` means an affected count of 0 is "already owned". That boolean, not a preceding read,
+   is the authoritative newly-acquired set: two concurrent identical saves serialize on the primary key and the loser
+   is charged nothing.
+5. **Price** the acquired rows from the catalog. Zero acquired ⇒ zero charge and the spend leg is skipped entirely, so
+   re-selecting what you own writes no ledger row.
+6. **Spend** through `SpendGate` (only when the total is positive), on the save's own transaction.
+7. **Apply** per kind: upsert a non-empty id, **delete** the row for an empty one. Absence stays the single
+   representation of a default, so the two representations cannot drift.
+8. **Record** the counter facts — and only if something changed, so re-saving cannot farm one.
+9. **Return** the confirmed selection (resolved exactly as the read resolves it) and the charge.
+
+The ledger dedup key is `"ornament_purchase:" + hex(sha256(<length-prefixed sorted acquired ids>))`, mirroring
+`spendDedupKey` in `cmd/api/twinkle.go`. Single-use by construction: ownership is permanent, so the same set can never
+be acquired twice; a retry folds onto the same key.
+
+**The refusal names the item.** `store.InsufficientTwinkle` carries the economy's own `cost`/`eligible`/`shortfall`
+(forwarded by the composition-root adapter, never recomputed) plus the one thing only the catalog knows: the blocking
+`ornament_id`, found by filling the acquired set cheapest-first against what was available. BE-only — a refusal detail,
+mirrored nowhere.
+
+**The spend leg** is `storeSpendGate` in `cmd/api/store.go`: it resolves the ledger store from the `EconomyTx` carrier
+(`DB() dbgen.DBTX`, the `memory/pg` accessor pattern) so the debit joins the save's transaction, maps onto the shipped
+`twinkle.PurchaseSpendIntent(amount, dedupKey)`, and translates the denial back into `store`'s vocabulary. One ledger
+row **per save**, not per ornament; `twinkle` learns an amount and a key, never what was bought; `store` never reads a
+balance.
+
+**Achievement facts** go through `AchievementRecorder` (a counter key and a delta, nothing else — no memory id, mood or
+text field exists on it): `decoration_saved` +1, `ornament_owned` = the count after the save, and
+`ornament_kind_decorated:<KIND>` +1 per kind whose applied id actually moved. The family member is built from the enum,
+never from input. `NoAchievementRecorder` is the shipped default.
+
 ## 6. The contract (`cosimosi.store.v1`)
 
-Two unary `NO_SIDE_EFFECTS` reads, classified exactly once each in `packages/client-cache/src/http-policy.ts` as
-user-scoped GET with `sharedCdn: false` — the production transport hard-fails on a missing, duplicate or
+Two unary `NO_SIDE_EFFECTS` reads plus `Decorate`, the one mutation — deliberately not `NO_SIDE_EFFECTS`, so it needs
+no cache classification at all. `DecorateRequest` carries one named id field per kind (a duplicate or unknown kind is
+unrepresentable) and **no amount, price or total**: the charge is derived from what the save acquired, so a stale or
+tampered client total cannot change what is billed. The two reads are classified exactly once each in
+`packages/client-cache/src/http-policy.ts` as user-scoped GET with `sharedCdn: false` — the production transport hard-fails on a missing, duplicate or
 proto-incompatible classification before I/O, which is the guard; no runtime check is written (§2.7).
 
 The wire's **shape** is the [P7]/[V10] guard, and `internal/store/rpc/server_test.go` asserts it on the descriptors:

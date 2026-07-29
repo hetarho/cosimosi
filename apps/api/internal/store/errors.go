@@ -19,4 +19,17 @@ var (
 	// row: FREE is owned by everyone through the ABSENCE of a row, so writing one would invent a
 	// second encoding of the same fact ([P10]).
 	ErrAcquisitionNotGrantable = errors.New("store ownership can only be acquired by purchase or achievement")
+	// ErrInsufficientTwinkle is the whole save refused ([P8]): nothing bought, nothing applied. The
+	// typed InsufficientTwinkle carries the numbers and the item; this is what callers match on.
+	ErrInsufficientTwinkle = errors.New("not enough twinkle to save this decoration")
 )
+
+// asInsufficient / isInsufficient are errors.As / errors.Is for the save's refusal, kept here so the
+// use-case reads as prose.
+func asInsufficient(err error, target **InsufficientTwinkle) bool {
+	return errors.As(err, target)
+}
+
+func isInsufficient(err error) bool {
+	return errors.Is(err, ErrInsufficientTwinkle)
+}

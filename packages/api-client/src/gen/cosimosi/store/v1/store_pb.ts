@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file cosimosi/store/v1/store.proto.
  */
 export const file_cosimosi_store_v1_store: GenFile = /*@__PURE__*/
-  fileDesc("Ch1jb3NpbW9zaS9zdG9yZS92MS9zdG9yZS5wcm90bxIRY29zaW1vc2kuc3RvcmUudjEiEwoRR2V0Q2F0YWxvZ1JlcXVlc3QiuwEKCE9ybmFtZW50EhMKC29ybmFtZW50X2lkGAEgASgJEi0KBGtpbmQYAiABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSOwoLYWNxdWlzaXRpb24YAyABKA4yJi5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEFjcXVpc2l0aW9uEg0KBXByaWNlGAQgASgDEg0KBW93bmVkGAUgASgIEhAKCHNlbGVjdGVkGAYgASgIIkQKEkdldENhdGFsb2dSZXNwb25zZRIuCglvcm5hbWVudHMYASADKAsyGy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudCIVChNHZXRTZWxlY3Rpb25SZXF1ZXN0IlcKEU9ybmFtZW50U2VsZWN0aW9uEi0KBGtpbmQYASABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSEwoLb3JuYW1lbnRfaWQYAiABKAkiUAoUR2V0U2VsZWN0aW9uUmVzcG9uc2USOAoKc2VsZWN0aW9ucxgBIAMoCzIkLmNvc2ltb3NpLnN0b3JlLnYxLk9ybmFtZW50U2VsZWN0aW9uKmoKDE9ybmFtZW50S2luZBIdChlPUk5BTUVOVF9LSU5EX1VOU1BFQ0lGSUVEEAASHAoYT1JOQU1FTlRfS0lORF9CQUNLR1JPVU5EEAESHQoZT1JOQU1FTlRfS0lORF9TVEFSX1NIQURFUhACKqMBChNPcm5hbWVudEFjcXVpc2l0aW9uEiQKIE9STkFNRU5UX0FDUVVJU0lUSU9OX1VOU1BFQ0lGSUVEEAASHQoZT1JOQU1FTlRfQUNRVUlTSVRJT05fRlJFRRABEiEKHU9STkFNRU5UX0FDUVVJU0lUSU9OX1BVUkNIQVNFEAISJAogT1JOQU1FTlRfQUNRVUlTSVRJT05fQUNISUVWRU1FTlQQAzLUAQoMU3RvcmVTZXJ2aWNlEl4KCkdldENhdGFsb2cSJC5jb3NpbW9zaS5zdG9yZS52MS5HZXRDYXRhbG9nUmVxdWVzdBolLmNvc2ltb3NpLnN0b3JlLnYxLkdldENhdGFsb2dSZXNwb25zZSIDkAIBEmQKDEdldFNlbGVjdGlvbhImLmNvc2ltb3NpLnN0b3JlLnYxLkdldFNlbGVjdGlvblJlcXVlc3QaJy5jb3NpbW9zaS5zdG9yZS52MS5HZXRTZWxlY3Rpb25SZXNwb25zZSIDkAIBQskBChVjb20uY29zaW1vc2kuc3RvcmUudjFCClN0b3JlUHJvdG9QAVo+Z2l0aHViLmNvbS9jb3NpbW9zaS9hcGkvaW50ZXJuYWwvZ2VuL2Nvc2ltb3NpL3N0b3JlL3YxO3N0b3JldjGiAgNDU1iqAhFDb3NpbW9zaS5TdG9yZS5WMcoCEUNvc2ltb3NpXFN0b3JlXFYx4gIdQ29zaW1vc2lcU3RvcmVcVjFcR1BCTWV0YWRhdGHqAhNDb3NpbW9zaTo6U3RvcmU6OlYxYgZwcm90bzM");
+  fileDesc("Ch1jb3NpbW9zaS9zdG9yZS92MS9zdG9yZS5wcm90bxIRY29zaW1vc2kuc3RvcmUudjEiEwoRR2V0Q2F0YWxvZ1JlcXVlc3QiuwEKCE9ybmFtZW50EhMKC29ybmFtZW50X2lkGAEgASgJEi0KBGtpbmQYAiABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSOwoLYWNxdWlzaXRpb24YAyABKA4yJi5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEFjcXVpc2l0aW9uEg0KBXByaWNlGAQgASgDEg0KBW93bmVkGAUgASgIEhAKCHNlbGVjdGVkGAYgASgIIkQKEkdldENhdGFsb2dSZXNwb25zZRIuCglvcm5hbWVudHMYASADKAsyGy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudCIVChNHZXRTZWxlY3Rpb25SZXF1ZXN0IlcKEU9ybmFtZW50U2VsZWN0aW9uEi0KBGtpbmQYASABKA4yHy5jb3NpbW9zaS5zdG9yZS52MS5Pcm5hbWVudEtpbmQSEwoLb3JuYW1lbnRfaWQYAiABKAkiUAoUR2V0U2VsZWN0aW9uUmVzcG9uc2USOAoKc2VsZWN0aW9ucxgBIAMoCzIkLmNvc2ltb3NpLnN0b3JlLnYxLk9ybmFtZW50U2VsZWN0aW9uIlIKD0RlY29yYXRlUmVxdWVzdBIeChZiYWNrZ3JvdW5kX29ybmFtZW50X2lkGAEgASgJEh8KF3N0YXJfc2hhZGVyX29ybmFtZW50X2lkGAIgASgJImIKEERlY29yYXRlUmVzcG9uc2USNwoJc2VsZWN0aW9uGAEgAygLMiQuY29zaW1vc2kuc3RvcmUudjEuT3JuYW1lbnRTZWxlY3Rpb24SFQoNc3BlbnRfdHdpbmtsZRgCIAEoAypqCgxPcm5hbWVudEtpbmQSHQoZT1JOQU1FTlRfS0lORF9VTlNQRUNJRklFRBAAEhwKGE9STkFNRU5UX0tJTkRfQkFDS0dST1VORBABEh0KGU9STkFNRU5UX0tJTkRfU1RBUl9TSEFERVIQAiqjAQoTT3JuYW1lbnRBY3F1aXNpdGlvbhIkCiBPUk5BTUVOVF9BQ1FVSVNJVElPTl9VTlNQRUNJRklFRBAAEh0KGU9STkFNRU5UX0FDUVVJU0lUSU9OX0ZSRUUQARIhCh1PUk5BTUVOVF9BQ1FVSVNJVElPTl9QVVJDSEFTRRACEiQKIE9STkFNRU5UX0FDUVVJU0lUSU9OX0FDSElFVkVNRU5UEAMyqQIKDFN0b3JlU2VydmljZRJeCgpHZXRDYXRhbG9nEiQuY29zaW1vc2kuc3RvcmUudjEuR2V0Q2F0YWxvZ1JlcXVlc3QaJS5jb3NpbW9zaS5zdG9yZS52MS5HZXRDYXRhbG9nUmVzcG9uc2UiA5ACARJkCgxHZXRTZWxlY3Rpb24SJi5jb3NpbW9zaS5zdG9yZS52MS5HZXRTZWxlY3Rpb25SZXF1ZXN0GicuY29zaW1vc2kuc3RvcmUudjEuR2V0U2VsZWN0aW9uUmVzcG9uc2UiA5ACARJTCghEZWNvcmF0ZRIiLmNvc2ltb3NpLnN0b3JlLnYxLkRlY29yYXRlUmVxdWVzdBojLmNvc2ltb3NpLnN0b3JlLnYxLkRlY29yYXRlUmVzcG9uc2VCyQEKFWNvbS5jb3NpbW9zaS5zdG9yZS52MUIKU3RvcmVQcm90b1ABWj5naXRodWIuY29tL2Nvc2ltb3NpL2FwaS9pbnRlcm5hbC9nZW4vY29zaW1vc2kvc3RvcmUvdjE7c3RvcmV2MaICA0NTWKoCEUNvc2ltb3NpLlN0b3JlLlYxygIRQ29zaW1vc2lcU3RvcmVcVjHiAh1Db3NpbW9zaVxTdG9yZVxWMVxHUEJNZXRhZGF0YeoCE0Nvc2ltb3NpOjpTdG9yZTo6VjFiBnByb3RvMw");
 
 /**
  * @generated from message cosimosi.store.v1.GetCatalogRequest
@@ -140,6 +140,62 @@ export const GetSelectionResponseSchema: GenMessage<GetSelectionResponse> = /*@_
   messageDesc(file_cosimosi_store_v1_store, 5);
 
 /**
+ * The complete selection, one named field per kind. Named fields rather than a repeated or map shape,
+ * so a duplicate kind and an unknown kind are both unrepresentable. An empty id means that kind's free
+ * default.
+ *
+ * There is no amount, price or total field, and that is the guard rather than server-side validation:
+ * the charge is derived from the rows the save's own insert acquired, so a stale or tampered client
+ * total cannot change what is billed.
+ *
+ * @generated from message cosimosi.store.v1.DecorateRequest
+ */
+export type DecorateRequest = Message<"cosimosi.store.v1.DecorateRequest"> & {
+  /**
+   * @generated from field: string background_ornament_id = 1;
+   */
+  backgroundOrnamentId: string;
+
+  /**
+   * @generated from field: string star_shader_ornament_id = 2;
+   */
+  starShaderOrnamentId: string;
+};
+
+/**
+ * Describes the message cosimosi.store.v1.DecorateRequest.
+ * Use `create(DecorateRequestSchema)` to create a new message.
+ */
+export const DecorateRequestSchema: GenMessage<DecorateRequest> = /*@__PURE__*/
+  messageDesc(file_cosimosi_store_v1_store, 6);
+
+/**
+ * @generated from message cosimosi.store.v1.DecorateResponse
+ */
+export type DecorateResponse = Message<"cosimosi.store.v1.DecorateResponse"> & {
+  /**
+   * The confirmed state, in the same shape GetSelection answers — one selection type for the client.
+   *
+   * @generated from field: repeated cosimosi.store.v1.OrnamentSelection selection = 1;
+   */
+  selection: OrnamentSelection[];
+
+  /**
+   * What this save charged; 0 for a free re-select, which is a successful no-op.
+   *
+   * @generated from field: int64 spent_twinkle = 2;
+   */
+  spentTwinkle: bigint;
+};
+
+/**
+ * Describes the message cosimosi.store.v1.DecorateResponse.
+ * Use `create(DecorateResponseSchema)` to create a new message.
+ */
+export const DecorateResponseSchema: GenMessage<DecorateResponse> = /*@__PURE__*/
+  messageDesc(file_cosimosi_store_v1_store, 7);
+
+/**
  * The surfaces decoration opens. Closed at two — a sky, and the body shape a memory is shown as.
  * They are the staging
  * layer, and nothing meaning-bearing — a position, a strength, an emotion, a forgetting stage — is
@@ -242,6 +298,17 @@ export const StoreService: GenService<{
     methodKind: "unary";
     input: typeof GetSelectionRequestSchema;
     output: typeof GetSelectionResponseSchema;
+  },
+  /**
+   * Buy the unowned members of the submitted selection and apply the whole selection, atomically.
+   * Mutates ownership, the applied rows and the Twinkle ledger — deliberately NOT NO_SIDE_EFFECTS.
+   *
+   * @generated from rpc cosimosi.store.v1.StoreService.Decorate
+   */
+  decorate: {
+    methodKind: "unary";
+    input: typeof DecorateRequestSchema;
+    output: typeof DecorateResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_cosimosi_store_v1_store, 0);

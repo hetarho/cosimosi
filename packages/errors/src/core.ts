@@ -73,6 +73,13 @@ export const ERROR_REASONS = {
   twinkleInviteGrantConflict: 'TWINKLE_INVITE_GRANT_CONFLICT',
   twinkleQuoteTargetUnavailable: 'TWINKLE_QUOTE_TARGET_UNAVAILABLE',
   twinkleScopeRequired: 'TWINKLE_SCOPE_REQUIRED',
+  // The decoration save's own refusals. storeInsufficientTwinkle is deliberately NOT
+  // twinkleInsufficient: this one means the WHOLE save was refused, and it carries the ornament the
+  // balance ran out on in its metadata.
+  storeInsufficientTwinkle: 'STORE_INSUFFICIENT_TWINKLE',
+  storeOrnamentUnknown: 'STORE_ORNAMENT_UNKNOWN',
+  storeOrnamentNotPurchasable: 'STORE_ORNAMENT_NOT_PURCHASABLE',
+  storeScopeRequired: 'STORE_SCOPE_REQUIRED',
 } as const
 
 export type ErrorReason = (typeof ERROR_REASONS)[keyof typeof ERROR_REASONS]

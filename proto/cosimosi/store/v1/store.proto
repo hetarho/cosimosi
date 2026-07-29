@@ -25,6 +25,9 @@ service StoreService {
   rpc GetSelection(GetSelectionRequest) returns (GetSelectionResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Buy the unowned members of the submitted selection and apply the whole selection, atomically.
+  // Mutates ownership, the applied rows and the Twinkle ledger — deliberately NOT NO_SIDE_EFFECTS.
+  rpc Decorate(DecorateRequest) returns (DecorateResponse);
 }
 
 // The surfaces decoration opens. Closed at two — a sky, and the body shape a memory is shown as.
@@ -72,4 +75,23 @@ message OrnamentSelection {
 
 message GetSelectionResponse {
   repeated OrnamentSelection selections = 1;
+}
+
+// The complete selection, one named field per kind. Named fields rather than a repeated or map shape,
+// so a duplicate kind and an unknown kind are both unrepresentable. An empty id means that kind's free
+// default.
+//
+// There is no amount, price or total field, and that is the guard rather than server-side validation:
+// the charge is derived from the rows the save's own insert acquired, so a stale or tampered client
+// total cannot change what is billed.
+message DecorateRequest {
+  string background_ornament_id = 1;
+  string star_shader_ornament_id = 2;
+}
+
+message DecorateResponse {
+  // The confirmed state, in the same shape GetSelection answers — one selection type for the client.
+  repeated OrnamentSelection selection = 1;
+  // What this save charged; 0 for a free re-select, which is a successful no-op.
+  int64 spent_twinkle = 2;
 }

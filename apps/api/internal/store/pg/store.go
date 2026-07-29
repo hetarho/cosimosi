@@ -24,6 +24,7 @@ var (
 
 type Store struct {
 	queries *dbgen.Queries
+	db      dbgen.DBTX
 	txer    txStarter
 }
 
@@ -32,11 +33,40 @@ type txStarter interface {
 }
 
 func NewStore(db dbgen.DBTX) Store {
-	built := Store{queries: dbgen.New(db)}
+	built := Store{queries: dbgen.New(db), db: db}
 	if txer, ok := db.(txStarter); ok {
 		built.txer = txer
 	}
 	return built
+}
+
+// DB exposes the query handle this store is bound to — the pool, or the open transaction inside
+// InDecorateTx. It exists for the composition root's economy seam: the root binds the twinkle ledger
+// store onto the very same transaction a save runs in, so the purchase and its debit commit or roll
+// back together. Context behavior never calls it — the handle stays opaque behind store.EconomyTx.
+func (s Store) DB() dbgen.DBTX {
+	return s.db
+}
+
+// InDecorateTx runs one save inside one transaction, over a store bound to it ([P8]).
+func (s Store) InDecorateTx(ctx context.Context, fn func(tx store.DecorateTx) error) error {
+	if s.queries == nil {
+		return ErrQueriesRequired
+	}
+	if s.txer == nil {
+		return ErrTxStarterRequired
+	}
+	tx, err := s.txer.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+	if err := fn(Store{queries: s.queries.WithTx(tx), db: tx}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (s Store) ready(scope platform.UserScope) error {
@@ -71,20 +101,26 @@ func (s Store) ListOrnamentOwnerships(
 	return ownerships, nil
 }
 
+// InsertOrnamentOwnership reports whether THIS statement acquired the row: ON CONFLICT DO NOTHING
+// skips a row the user already owns, so an affected count of 1 is the acquisition and 0 is the replay.
 func (s Store) InsertOrnamentOwnership(
 	ctx context.Context,
 	scope platform.UserScope,
 	ornamentID store.OrnamentID,
 	acquiredVia store.OrnamentAcquisition,
-) error {
+) (bool, error) {
 	if err := s.ready(scope); err != nil {
-		return err
+		return false, err
 	}
-	return s.queries.InsertOrnamentOwnership(ctx, dbgen.InsertOrnamentOwnershipParams{
+	inserted, err := s.queries.InsertOrnamentOwnership(ctx, dbgen.InsertOrnamentOwnershipParams{
 		UserID:      scope.UserID(),
 		OrnamentID:  string(ornamentID),
 		AcquiredVia: string(acquiredVia),
 	})
+	if err != nil {
+		return false, err
+	}
+	return inserted > 0, nil
 }
 
 func (s Store) ListOrnamentSelections(
@@ -109,7 +145,7 @@ func (s Store) ListOrnamentSelections(
 }
 
 // UpsertOrnamentSelection applies one kind's ornament. It takes no transaction of its own: the
-// Decorate use-case builds a Store over its transaction handle so the selection lands with the
+// Decorate use-case runs it over the transaction InDecorateTx opened, so the selection lands with the
 // purchase it was paid for, or with neither.
 func (s Store) UpsertOrnamentSelection(
 	ctx context.Context,
@@ -123,6 +159,21 @@ func (s Store) UpsertOrnamentSelection(
 		UserID:     scope.UserID(),
 		Kind:       string(selection.Kind),
 		OrnamentID: string(selection.OrnamentID),
+	})
+}
+
+// DeleteOrnamentSelection reverts one kind to its free default by removing the applied row.
+func (s Store) DeleteOrnamentSelection(
+	ctx context.Context,
+	scope platform.UserScope,
+	kind store.OrnamentKind,
+) error {
+	if err := s.ready(scope); err != nil {
+		return err
+	}
+	return s.queries.DeleteOrnamentSelection(ctx, dbgen.DeleteOrnamentSelectionParams{
+		UserID: scope.UserID(),
+		Kind:   string(kind),
 	})
 }
 
