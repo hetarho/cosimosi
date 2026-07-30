@@ -201,4 +201,7 @@ export const VALUES = {
     captionDwellMs: 4500,
     highlightPulseMs: 1800,
   },
+  demo: {
+    timeTravelStepDays: 45,
+  },
 } as const

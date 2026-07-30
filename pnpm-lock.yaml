@@ -242,6 +242,9 @@ importers:
       '@cosimosi/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cosimosi/demo':
+        specifier: workspace:*
+        version: link:../../packages/demo
       '@cosimosi/emotion':
         specifier: workspace:*
         version: link:../../packages/emotion

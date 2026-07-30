@@ -575,3 +575,13 @@ sequence:
   # blinking, and ignored entirely under reduced motion (the ring goes static — the highlight is
   # decorative, so removing its motion removes nothing the run depends on).
   highlight_pulse_ms: 1800
+
+demo:
+  # [Z2][Z3]-5/7 Universe-days one time-travel press advances the demo clock. Sized so a single press
+  # already shows dimming and the first word loss (the decay stage interval is 30 universe-days,
+  # stretched by the slow factor), and three or four presses reach a gist rise (a gist unit is 10
+  # universe-days, similarly stretched) — the demo's whole job is compressing days into seconds, so a
+  # step small enough to need a dozen presses would defeat it. There is deliberately NO monotonicity,
+  # cost or consent key beside this one: the demo clock is exempt, and that exemption is expressible
+  # only here because no shared code knows the demo exists.
+  time_travel_step_days: 45

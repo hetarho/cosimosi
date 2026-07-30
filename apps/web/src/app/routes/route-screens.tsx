@@ -10,6 +10,7 @@ import { LocaleBootstrap, m } from '../../shared/i18n/index.ts'
 import { DecorationBootstrap } from '../providers/decoration-bootstrap.tsx'
 import { ProfileGate } from '../providers/profile-gate.tsx'
 import { AdminPage } from '../../pages/admin/index.ts'
+import { DemoPage } from '../../pages/demo/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { diaryQueryFromSearch, searchWithUpdate, type DiarySearchParams } from './diary-search.ts'
 import { LoginPage } from '../../pages/login/index.ts'
@@ -163,6 +164,14 @@ export function MeRoute() {
 export function AdminRoute() {
   const navigate = useAppNavigate()
   return <AdminPage onExit={() => navigate({ to: '/' })} />
+}
+
+// The public demo route. The only thing the page needs from the router is where the closing CTA
+// goes, so it takes a callback and imports no router — the same seam as UniverseRoute/LoginRoute.
+// There is no session check here on purpose: the demo is for people who do not have one.
+export function DemoRoute() {
+  const navigate = useAppNavigate()
+  return <DemoPage onSignUp={() => navigate({ to: '/signup' })} />
 }
 
 // The login entry: on a successful sign-in the session reaches authenticated, so this returns the

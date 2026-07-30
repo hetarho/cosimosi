@@ -31,7 +31,8 @@ never import the library; they navigate through the seam in §4.
   (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/me` → `MePage`
   (`pages/me`, plan 64); outside it, `/login` and `/signup` → the two `LoginPage` modes,
   `/invite/$token` → invite capture then replacement with `/signup`, `/test` → `TestPage`, and
-  `/design` → `DesignShowcasePage` (`pages/design`, the design showcase). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
+  `/design` → `DesignShowcasePage` (`pages/design`, the design showcase), and `/demo` → `DemoPage`
+  (`pages/demo`, the public trailer, §5a). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
   wrapper** that reads `useAppNavigate` and injects `onOpenReader`/`onExit`-style callbacks into the page — the
   navigation seam stays inside `app/routes/`.
 - **Adding a route** (done by a presentation plan): add a `createRoute` in `route-tree.tsx`, point it at a `pages/`
@@ -114,6 +115,62 @@ confined to the segment.
 and in a **production build only when the diagnostics flag is explicitly on** (otherwise `/test` resolves to the
 not-found screen). The flag key lives in `shared/config/diagnosticsSurfaceFlag` and is read from the observability
 facade — the same key and facade the mobile shell uses to gate its `Diagnostics` screen.
+
+## 5a. The public `/demo` route and the demo isolation closure
+
+`/demo` sits under `rootRoute` beside `/login`, **outside** the authenticated subtree, with **no
+`beforeLoad` of any kind** — not the auth guard (a signed-out visitor is its entire audience) and not
+the diagnostics gate that covers `/test` and `/design`. Sitting outside the authenticated layout is
+also what keeps `PaletteBootstrap`, `ProfileGate`, `DecorationBootstrap` and the achievement notice
+host off it. Deployment needs no change: the Worker's SPA not-found handling already serves any deep
+link ([DEPLOY.md](../../DEPLOY.md) §1). `DemoRoute` supplies the one thing the page needs from the
+router — where the closing CTA goes — so the page imports no router, the same seam as
+`UniverseRoute`/`LoginRoute`.
+
+The demo is formally exempt from the invariants, and an exempt sandbox is safe only while it is
+unreachable from the real code path. That is enforced by a **demo-scoped `no-restricted-imports`
+block** on `src/pages/demo/**` in `apps/web/eslint.config.js`, which should be read as a **closure,
+not an allowlist**:
+
+| Banned from `pages/demo`                                                                                                                   | What it closes                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `@connectrpc/*`                                                                                                                            | the only source of `useTransport()`                                            |
+| `@cosimosi/api-client`, `@cosimosi/client-cache`                                                                                           | the generated clients and the query/cache seam                                 |
+| `@cosimosi/{universe,twinkle,memory,store,achievement}/react`                                                                              | the server-backed read mirrors                                                 |
+| `@cosimosi/emotion/react`'s `writeMoodColor` · `readMoodColors` · `readMoodColorRecommendations` · `useMoodColorEditor` (by `importNames`) | the colour writes that reach `AccountService`                                  |
+| `@cosimosi/twinkle`, `@cosimosi/twinkle-logic`, `@cosimosi/store`                                                                          | prices, balances, ownership and `Decorate`                                     |
+| `widgets/*`, `features/*`, `entities/*` — except `widgets/sequence-guide` and `features/highlight-next-control`                            | narrows the normally-legal `pages → widgets` edge (the `pages/test` precedent) |
+
+**Why it needs no maintained symbol allowlist.** Every RPC-issuing function in `packages/*` takes an
+`ApiTransport` as its first argument, and every hook that hides one calls `useTransport()`. A page
+starved of both cannot issue a server call by accident, whatever barrel export drifts into scope
+later. The two chrome carve-outs are safe for the same reason from the other side:
+`@cosimosi/sequence` depends on `xstate` + `zustand` only, so it is provably server-free.
+
+**Two mechanical traps.** ESLint flat config **replaces** rule options per matching file rather than
+merging them, so the demo block must **restate** the `three` / `@react-three/fiber` and `@cosimosi/i18n`
+bans — otherwise they would be silently lost for exactly the files that mount the renderer. And the
+positive half of the boundary — **no `isDemo` flag, prop, parameter or branch in `packages/*`,
+`features/*` or `entities/*`** — is a standing ban discharged by adding none; `lint:fsd:layout` R4
+catches a copy-pasted mirror, and the demo fixtures have no field a demo-only value could be written
+into.
+
+`scripts/probe-demo-isolation.mjs` (wired into `pnpm test:guards`) proves the block bites: it writes
+throwaway files under `pages/demo`, runs ESLint on them, and asserts each forbidden import is reported
+and each permitted one is not. A lint rule nobody has seen fail is a rule nobody knows is wired.
+
+**The precise reading of "frontend-only":** no `apps/api` RPC, no DB write, no LLM port. Platform
+telemetry and the app-shell auth bootstrap run above every route, including this one, and are out of
+scope. **Never mounted on `/demo`:** `UniverseCanvasWidget` (its `useUniverse()` throws
+unauthenticated), `StardustOverlay`, `UniverseTimeOverlay`, `WritingFlowSheet` (its split is an LLM
+call), `RecallFlowSheet`, `DeletionFlowSheet`, and `DetailPanel`'s provenance / gist reads.
+
+**Mobile parity is waived in writing.** The demo is a Visitor surface reached from the landing page,
+and the Visitor gets web-funnel behaviours only — the same waiver the admin console carries
+(`spec/policy/ops/admin.md` §6). It is stated because `scripts/lint-fsd-layout.mjs` does not enforce
+web↔mobile page peering, so an unstated waiver is a silently broken rule. `steiger` needs **no**
+exemption: every shipped `insignificant-slice` block targets `entities|features|widgets`, and a page
+slice is not "insignificant" (verified — `lint:fsd` is green with none added).
 
 ## 6. Composition and testing
 

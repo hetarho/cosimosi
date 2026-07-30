@@ -32,5 +32,6 @@ export {
   resolveDemoDiarySet,
   resolveDemoEpoch,
   type DemoGistTexts,
+  type DemoReconsolidatedTexts,
   type ResolvedDemoDiarySet,
 } from './resolve.ts'

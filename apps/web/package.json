@@ -24,6 +24,7 @@
     "@cosimosi/auth": "workspace:*",
     "@cosimosi/client-cache": "workspace:*",
     "@cosimosi/config": "workspace:*",
+    "@cosimosi/demo": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
     "@cosimosi/errors": "workspace:*",
     "@cosimosi/force-sim": "workspace:*",

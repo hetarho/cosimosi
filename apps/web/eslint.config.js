@@ -104,4 +104,94 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // The demo isolation closure. Read it as a CLOSURE, not an allowlist: every function in
+    // packages/* that issues an RPC takes an ApiTransport as its first argument, and every hook that
+    // hides one calls useTransport() from @connectrpc/connect-query. A page starved of both cannot
+    // issue a server call by accident, whatever barrel export drifts into scope later — which is what
+    // makes the demo's rule exemption harmless without a maintained list of forbidden symbols.
+    //
+    // Two mechanical traps this block has to answer. ESLint flat config REPLACES rule options per
+    // matching file rather than merging them, so the three/R3F and i18n bans above must be RESTATED
+    // here or they would be silently lost for exactly the files that mount the renderer. And the
+    // positive half of the boundary — no isDemo flag, prop or branch in packages/*, features/* or
+    // entities/* — is discharged by the demo adding none; lint:fsd:layout R4 catches a copy-pasted
+    // mirror, and there is no field on the fixtures a demo-only value could be written into.
+    files: ['src/pages/demo/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@cosimosi/emotion/react',
+              importNames: [
+                'writeMoodColor',
+                'readMoodColors',
+                'readMoodColorRecommendations',
+                'useMoodColorEditor',
+              ],
+              message:
+                'These reach AccountService. The demo may only call applyMoodColors, which stamps the module-level palette and touches no server.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['three', 'three/*', '@react-three/fiber'],
+              message:
+                'Import three/R3F only via the @cosimosi/3d-renderer package, not directly in a slice.',
+            },
+            {
+              group: ['@cosimosi/i18n', '@cosimosi/i18n/*'],
+              message:
+                'Import i18n through src/shared/i18n/index.ts; only the seam and locale-storage adapter import the package directly.',
+            },
+            {
+              group: ['@connectrpc/*'],
+              message:
+                'The only source of useTransport(). The demo is frontend-only: no RPC, no DB write, no LLM call.',
+            },
+            {
+              group: ['@cosimosi/api-client', '@cosimosi/api-client/*', '@cosimosi/client-cache'],
+              message:
+                'The generated clients and the query/cache seam. The demo writes domain shapes straight into the stores and needs neither.',
+            },
+            {
+              group: [
+                '@cosimosi/universe/react',
+                '@cosimosi/twinkle/react',
+                '@cosimosi/memory/react',
+                '@cosimosi/store/react',
+                '@cosimosi/achievement/react',
+              ],
+              message:
+                'Server-backed read mirrors. The demo has no session — useUniverse() would throw — and its data is shipped fixtures.',
+            },
+            {
+              group: ['@cosimosi/twinkle', '@cosimosi/twinkle-logic', '@cosimosi/store'],
+              message:
+                'These carry prices, balances, ownership and Decorate. No currency, cost, purchase or payment surface may render on /demo, and the absence of a path to one is what makes that structural.',
+            },
+            {
+              // Narrows the normally-legal pages -> widgets edge: the demo composes packages/*
+              // directly, the way pages/test does. The two negations are the sequence chrome, which
+              // MUST come from the app layer because each app hand-writes its own `ui` — and which is
+              // safe to reach because @cosimosi/sequence depends on xstate + zustand only.
+              group: [
+                '**/widgets/*',
+                '!**/widgets/sequence-guide',
+                '!**/widgets/sequence-guide/**',
+                '**/features/*',
+                '!**/features/highlight-next-control',
+                '!**/features/highlight-next-control/**',
+                '**/entities/*',
+              ],
+              message:
+                'The demo composes packages/* directly (the pages/test precedent). Only the sequence chrome (widgets/sequence-guide, features/highlight-next-control) may be reached from the app layer.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

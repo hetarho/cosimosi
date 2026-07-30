@@ -20,10 +20,16 @@ export interface DemoGistTexts {
   readonly stages: readonly string[]
 }
 
+// The reconsolidated readings, likewise beside the snapshot rather than on the mirror: a recall in
+// the real product rewrites `currentText` through a use-case, so there is no second text field to
+// widen `EpisodicMemory` with. Keyed by memory id; only a scenario's recall target has one.
+export type DemoReconsolidatedTexts = Readonly<Record<string, string>>
+
 export interface ResolvedDemoDiarySet {
   readonly snapshot: UniverseSnapshot
   readonly diaries: Diary[]
   readonly gistTexts: readonly DemoGistTexts[]
+  readonly reconsolidatedTexts: DemoReconsolidatedTexts
 }
 
 // The newest fixture diary lands on the visitor's own today, so the demo never opens on a universe
@@ -64,6 +70,7 @@ export function resolveDemoDiarySet(
 
   const memories: EpisodicMemory[] = []
   const gistTexts: DemoGistTexts[] = []
+  const reconsolidatedTexts: Record<string, string> = {}
   const diaries: Diary[] = []
 
   for (const diary of structure.diaries) {
@@ -94,6 +101,9 @@ export function resolveDemoDiarySet(
         semanticStage: 0,
       })
       gistTexts.push({ episodicMemoryId: memory.id, stages: memoryText.semanticStages })
+      if (memoryText.reconsolidatedText) {
+        reconsolidatedTexts[memory.id] = memoryText.reconsolidatedText
+      }
       members.push({ episodicMemoryId: memory.id, name: memoryText.name, mood: memory.mood })
     }
 
@@ -131,6 +141,7 @@ export function resolveDemoDiarySet(
     },
     diaries,
     gistTexts,
+    reconsolidatedTexts,
   }
 }
 

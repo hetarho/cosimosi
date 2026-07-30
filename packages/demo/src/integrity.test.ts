@@ -170,6 +170,12 @@ describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
       expect(structure.diaries.some((diary) => diary.id === set.scenario.firstDiaryId)).toBe(true)
       expect(memoryIds.has(set.scenario.recallMemoryId)).toBe(true)
       expect(memoryIds.has(set.scenario.gistRiseMemoryId)).toBe(true)
+      for (const locale of LOCALES) {
+        // The recall beat swaps the text, so the target must have something to swap to in every
+        // locale — an absence here would show a recall that changed only the memory's form.
+        const { reconsolidatedTexts } = resolveDemoDiarySet(set, locale, EPOCH)
+        expect(reconsolidatedTexts[set.scenario.recallMemoryId]).toBeTruthy()
+      }
       expect(set.scenario.ornamentTastes.length).toBeGreaterThan(0)
       for (const taste of set.scenario.ornamentTastes) {
         expect(Object.keys(taste).sort()).toEqual(['kind', 'ornamentId'])

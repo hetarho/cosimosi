@@ -203,6 +203,8 @@ export const WINTER_SEA_SET: DemoDiarySet = {
                 'The xxxx xxxx was xxxx on xxxx we xxxx home. Someone had xxxx xxxx peel drying on the xxxx xxxx xxxx xxxx a xxxx animal.',
                 'The xxxx xxxx was xxxx xxxx xxxx we xxxx home. Someone xxxx xxxx xxxx xxxx xxxx on the xxxx xxxx xxxx xxxx xxxx xxxx animal.',
               ],
+              reconsolidatedText:
+                'It was the peel I remembered, not the light — left on the table to dry, curled up like a small animal, in a kitchen warm enough to bother.',
             },
           },
         },
@@ -331,6 +333,8 @@ export const WINTER_SEA_SET: DemoDiarySet = {
                 '집에 xxxx xxxx 부엌 불이 xxxx 켜져 있었다. 누군가 xxxx xxxx 말리려 xxxx xxxx 짐승처럼 오그라들어 있었다.',
                 '집에 xxxx xxxx xxxx xxxx xxxx xxxx 있었다. 누군가 xxxx xxxx xxxx xxxx xxxx 짐승처럼 오그라들어 있었다.',
               ],
+              reconsolidatedText:
+                '기억에 남은 건 불이 아니라 껍질이었다. 작은 짐승처럼 오그라든 채 식탁에서 말라가고 있었고, 부엌은 그럴 만큼 따뜻했다.',
             },
           },
         },

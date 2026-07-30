@@ -224,6 +224,8 @@ export const MOVING_BOXES_SET: DemoDiarySet = {
                 'He xxxx xxxx minutes on the xxxx by the xxxx xxxx where a xxxx xxxx go. He xxxx xxxx xxxx the xxxx xxxx xxxx was xxxx way of xxxx something xxxx it.',
                 'He xxxx xxxx xxxx on the xxxx by xxxx xxxx xxxx xxxx xxxx xxxx xxxx go. He xxxx xxxx xxxx the xxxx xxxx xxxx was xxxx xxxx xxxx xxxx xxxx xxxx it.',
               ],
+              reconsolidatedText:
+                'He measured the wall twice, which I only noticed later. The old room went unmentioned both times.',
             },
             'm-west-light-at-six': {
               name: 'The west light at six',
@@ -352,6 +354,8 @@ export const MOVING_BOXES_SET: DemoDiarySet = {
                 '아버지는 문 옆 벽에 xxxx 분을 xxxx 선반을 xxxx xxxx xxxx 있을지 정했다. 옛 xxxx 대해서는 xxxx 말도 하지 xxxx xxxx xxxx xxxx xxxx 방식이었다.',
                 '아버지는 xxxx xxxx 벽에 xxxx 분을 xxxx xxxx xxxx xxxx xxxx 있을지 정했다. 옛 xxxx 대해서는 xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx 방식이었다.',
               ],
+              reconsolidatedText:
+                '아버지는 그 벽을 두 번 재었다. 나중에야 알아차렸다. 두 번 다 옛 방 이야기는 없었다.',
             },
             'm-west-light-at-six': {
               name: '여섯 시의 서쪽 빛',

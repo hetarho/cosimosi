@@ -13,6 +13,7 @@ import {
   AuthenticatedLayout,
   DiaryReaderRoute,
   InviteRoute,
+  DemoRoute,
   LoginRoute,
   MeRoute,
   SignupRoute,
@@ -98,6 +99,17 @@ const inviteRoute = createRoute({
   component: InviteRoute,
 })
 
+// The public demo. Under `rootRoute` beside /login and OUTSIDE the authenticated subtree, with no
+// `beforeLoad` of any kind: unlike /test and /design it is not diagnostics-gated, and unlike the
+// product routes it must not run the auth guard — a signed-out visitor arriving from the landing page
+// is its entire audience. Sitting outside the authenticated layout is also what keeps
+// `PaletteBootstrap` and the achievement watcher off it.
+const demoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/demo',
+  component: DemoRoute,
+})
+
 const testRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/test',
@@ -126,6 +138,7 @@ export const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
   inviteRoute,
+  demoRoute,
   testRoute,
   designRoute,
 ])

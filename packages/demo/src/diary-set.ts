@@ -82,6 +82,10 @@ export interface DemoMemoryText {
   /** Word-loss texts for stages 1..N, N = `forgetting.stage_word_removal_ratios`' length. Stage 0
    *  is `currentText` itself. Stored facts in production too — the client never redacts. */
   readonly decayStages: readonly string[]
+  /** How the memory reads after it has been recalled once — the same scene, come back a little
+   *  changed [I8]. Present only on a set's recall target, because that is the only memory any
+   *  scenario reconsolidates; the integrity suite proves the target has one. */
+  readonly reconsolidatedText?: string
 }
 
 export interface DemoDiaryText {

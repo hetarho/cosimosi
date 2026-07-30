@@ -36,7 +36,7 @@ a page-side waiver rather than a property of the fixtures. No other package or a
 | Half          | Holds                                                                                                                                                                               | Reviewed against       |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | **structure** | set id · neuron ids + `NeuronType` · per-diary day offset · per-diary memory ids · per-memory `Mood` + `intensity` · activation weights · `seed` · synapse rows · `sharedNeuronIds` | [I3] · [I4] · [I6]     |
-| **text**      | diary body · memory `name` · `currentText` · four gist-stage texts · N word-loss texts · neuron display names                                                                       | [I12] + literary voice |
+| **text**      | diary body · memory `name` · `currentText` · four gist-stage texts · N word-loss texts · the recall target's `reconsolidatedText` · neuron display names                            | [I12] + literary voice |
 
 The text half is `Readonly<Record<Locale, DemoDiarySetText>>` over `@cosimosi/i18n`'s `Locale`, and that type **is** the
 locale-completeness guard: a `.ts` data module is outside `lint:raw-strings`' reach (it inspects JSX text and a fixed
@@ -93,7 +93,12 @@ domain math — the inverse of `elapsedUniverseDays`' difference, which has no m
 - a **`Diary[]`** in `packages/memory`'s mirror shape, body verbatim ([I2][D4]);
 - a **gist-text sidecar** (`DemoGistTexts[]`) carrying the four gist strings per memory. These are **not** added to
   `EpisodicMemory`: gist text is a paid `ViewSemantic` read, so the production mirror has no field for it, and widening
-  the shared type for the sandbox would be an `isDemo` leak into `packages/memory`.
+  the shared type for the sandbox would be an `isDemo` leak into `packages/memory`;
+- a **`reconsolidatedTexts`** map, likewise beside the snapshot rather than on the mirror. `reconsolidatedText` is
+  optional and authored only on a set's recall target — the only memory any scenario reconsolidates — because in
+  production the equivalent text is whatever the diarist re-narrates through the recall use-case, so there is no second
+  text field on the shared type to widen. The integrity suite proves the target carries one in every locale, since a
+  recall that changed only the star's form would show reconsolidation as a cosmetic event.
 
 `universeTime` resolves to the newest diary's date — the universe's time right after its last launch. Domain shapes are
 written straight into the stores, skipping the proto/DTO mappers, so no `bigint`↔`int64` handling and no api-client type

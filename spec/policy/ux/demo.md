@@ -38,6 +38,29 @@ remembered afterwards.
   placeholder. The ornament taste carries catalog ids and nothing else ([Z8]).
 - **Nothing carries over.** No fixture, and nothing derived from one, is written anywhere durable ([Z7]).
 
+## Must Hold — the page
+
+- **The demo is a trailer, not a product.** It starts its tour on **every** entry and is skippable at
+  every step. Nobody has to finish it to see the point, and nobody is asked to confirm leaving.
+- **Time travel is free and unmetered.** One control pushes the universe forward, and there is no
+  monotonicity check, no launch precondition, no sync-consent step, no ceiling and no cost. That
+  exemption exists only on this page, and only because the demo passes its own date down as the
+  universe time the render layers already accept — no shared code has a bypass to offer.
+- **No currency, price, cost, quote, purchase, achievement or payment surface appears.** "Unlimited
+  stardust" is discharged by **absence**, not by a large number: a balance on a page that never
+  charges anything is noise at best and a payment smell at worst. The absence is structural — the
+  demo cannot reach a price table, a spend gate or the save flow at all.
+- **The ornament taste shows items without cost or ownership.** It changes the sky, the shape a memory
+  takes and the colour a feeling gets, live, from catalog ids — and touches no memory's position,
+  size, brightness, emotion or seed. Bloom and the camera stay what they always are.
+- **The visitor acts; the tour points and waits.** Every beat advances because someone pressed the
+  real control. Nothing is performed on their behalf.
+- **Nothing survives leaving.** The read models, the clock, the awaken registry and the palette are all
+  cleared on the way out, and nothing was ever written to storage, a URL or a server — so a visitor
+  who signs up afterwards starts from a genuinely empty universe.
+- **The honesty line is on screen, not buried in a beat.** This is a public page, and the one
+  conclusion a visitor must never be allowed to form is that they are looking at a brain.
+
 ## Copy Implication
 
 The voice is the diarist's, not the product's: these read as entries someone actually wrote, restrained and specific,

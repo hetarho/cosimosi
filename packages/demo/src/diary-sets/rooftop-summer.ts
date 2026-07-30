@@ -263,6 +263,8 @@ export const ROOFTOP_SUMMER_SET: DemoDiarySet = {
                 'The xxxx xxxx xxxx xxxx the heat xxxx in the evening. Everyone on the xxxx xxxx xxxx xxxx xxxx and xxxx on the xxxx we xxxx not.',
                 'The xxxx xxxx xxxx xxxx the xxxx xxxx xxxx xxxx evening. Everyone on xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx the xxxx we xxxx not.',
               ],
+              reconsolidatedText:
+                'What I kept was the sound of everyone below walking faster, and the two of us on the rooftop deciding not to.',
             },
             'm-he-stayed-till-it-stopped': {
               name: 'He stayed until it stopped',
@@ -391,6 +393,8 @@ export const ROOFTOP_SUMMER_SET: DemoDiarySet = {
                 '더위가 xxxx 처음 xxxx xxxx 된 비가 xxxx 내렸다. 아래 거리의 xxxx 사람이 xxxx xxxx xxxx 위의 xxxx 그러지 않았다.',
                 '더위가 xxxx xxxx xxxx xxxx 된 비가 xxxx 내렸다. 아래 xxxx xxxx 사람이 xxxx xxxx xxxx xxxx xxxx xxxx 않았다.',
               ],
+              reconsolidatedText:
+                '남은 것은 아래에서 모두가 걸음을 빨리하는 소리, 그리고 옥상의 우리 둘이 그러지 않기로 한 순간이었다.',
             },
             'm-he-stayed-till-it-stopped': {
               name: '그칠 때까지 있었다',

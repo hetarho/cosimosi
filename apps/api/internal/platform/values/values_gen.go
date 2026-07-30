@@ -314,3 +314,8 @@ const (
 	SequenceCaptionDwellMs   = 4500
 	SequenceHighlightPulseMs = 1800
 )
+
+// demo
+const (
+	DemoTimeTravelStepDays = 45
+)
