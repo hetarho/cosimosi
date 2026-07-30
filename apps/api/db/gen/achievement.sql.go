@@ -83,7 +83,7 @@ func (q *Queries) CreateAchievementCounter(ctx context.Context, arg CreateAchiev
 }
 
 const getAchievementProgress = `-- name: GetAchievementProgress :one
-SELECT achievement_id, achieved_at, claimed_at, claim_id
+SELECT achievement_id, achieved_at, claimed_at, claim_id, paid_at
 FROM achievement_progress
 WHERE user_id = $1
   AND achievement_id = $2
@@ -99,6 +99,7 @@ type GetAchievementProgressRow struct {
 	AchievedAt    pgtype.Timestamptz
 	ClaimedAt     pgtype.Timestamptz
 	ClaimID       pgtype.Text
+	PaidAt        pgtype.Timestamptz
 }
 
 func (q *Queries) GetAchievementProgress(ctx context.Context, arg GetAchievementProgressParams) (GetAchievementProgressRow, error) {
@@ -109,6 +110,7 @@ func (q *Queries) GetAchievementProgress(ctx context.Context, arg GetAchievement
 		&i.AchievedAt,
 		&i.ClaimedAt,
 		&i.ClaimID,
+		&i.PaidAt,
 	)
 	return i, err
 }
@@ -153,7 +155,7 @@ func (q *Queries) ListAchievementCounters(ctx context.Context, userID string) ([
 }
 
 const listAchievementProgress = `-- name: ListAchievementProgress :many
-SELECT achievement_id, achieved_at, claimed_at, claim_id
+SELECT achievement_id, achieved_at, claimed_at, claim_id, paid_at
 FROM achievement_progress
 WHERE user_id = $1
 ORDER BY achievement_id
@@ -164,6 +166,7 @@ type ListAchievementProgressRow struct {
 	AchievedAt    pgtype.Timestamptz
 	ClaimedAt     pgtype.Timestamptz
 	ClaimID       pgtype.Text
+	PaidAt        pgtype.Timestamptz
 }
 
 func (q *Queries) ListAchievementProgress(ctx context.Context, userID string) ([]ListAchievementProgressRow, error) {
@@ -180,6 +183,7 @@ func (q *Queries) ListAchievementProgress(ctx context.Context, userID string) ([
 			&i.AchievedAt,
 			&i.ClaimedAt,
 			&i.ClaimID,
+			&i.PaidAt,
 		); err != nil {
 			return nil, err
 		}
@@ -257,4 +261,32 @@ func (q *Queries) RaiseAchievementCounter(ctx context.Context, arg RaiseAchievem
 	var value int64
 	err := row.Scan(&value)
 	return value, err
+}
+
+const settleAchievementClaim = `-- name: SettleAchievementClaim :execrows
+UPDATE achievement_progress
+SET paid_at = now()
+WHERE user_id = $1
+  AND achievement_id = $2
+  AND claim_id = $3
+  AND claimed_at IS NOT NULL
+  AND paid_at IS NULL
+`
+
+type SettleAchievementClaimParams struct {
+	UserID        string
+	AchievementID string
+	ClaimID       pgtype.Text
+}
+
+// The settle stamp: the reward reached the other context. Conjunctively scoped and guarded on the
+// row already being claimed and not yet paid, so it can never invent the pair the DDL CHECK forbids.
+// :execrows because a replay legitimately changes nothing — the sweep re-runs an idempotent leg for a
+// claim someone else already settled, and zero rows is that outcome, not an error ([A4]).
+func (q *Queries) SettleAchievementClaim(ctx context.Context, arg SettleAchievementClaimParams) (int64, error) {
+	result, err := q.db.Exec(ctx, settleAchievementClaim, arg.UserID, arg.AchievementID, arg.ClaimID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

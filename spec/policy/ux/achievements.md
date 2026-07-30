@@ -9,12 +9,17 @@
 
 **The list is the server's answer, rendered.** The tab shows the whole catalog in the **server-fixed order**, grouped
 under the nine axis headings, with unachieved rows present and readable. The surface sorts nothing, filters nothing and
-evaluates nothing: `progress`, `target`, `achieved`, `claimed` and the reward amount all arrive resolved. A client that
-recomputed any of them would be a second evaluator, and two evaluators disagree eventually.
+evaluates nothing: `progress`, `target`, `achieved`, `claimed`, `rewardSettled` and the reward amount all arrive
+resolved. A client that recomputed any of them would be a second evaluator, and two evaluators disagree eventually.
 
-**A row is exactly one of `locked` · `claimable` · `claimed`**, derived by a pure function from the two server booleans.
-There is **no optimistic claimed state and no optimistic patch anywhere**, so a failed claim cannot leave a row looking
-paid — the row reverts by never having moved.
+**A row is exactly one of `locked` · `claimable` · `unpaid` · `claimed`**, derived by a pure function from the three
+server booleans. There is **no optimistic claimed state and no optimistic patch anywhere**, so a failed claim cannot
+leave a row looking paid — the row reverts by never having moved.
+
+**`unpaid` is a claim whose reward never landed, and it keeps its affordance.** It renders the same button with retry
+copy (받기 다시 시도) and explicitly **not** the received line, and it says the reward has not arrived rather than
+anything implying it was lost. The one summary above the list counts it as waiting, so the count and the visible buttons
+agree.
 
 **The claim is a press, and only a press** ([A4]). It fires from a handler, never from an effect, a mount or a focus, and
 there is no auto-claim path in the codebase. The request carries the achievement id and nothing else — no amount, no
@@ -58,9 +63,11 @@ moved.
 
 **A repeat claim is success, not an error.** There is no `ALREADY_CLAIMED` reason to map, because the server replays and
 pays. `ACHIEVEMENT_REWARD_UNAVAILABLE` means the claim **was recorded** and only the payout failed, so its copy says the
-reward is kept and **the button stays enabled** — disabling it would strand the reward in the exact crash window the
-replay exists to heal. `ACHIEVEMENT_NOT_ACHIEVED` / `ACHIEVEMENT_NOT_FOUND` mean the list was stale: they toast **and**
-refetch.
+reward is kept and the row keeps a pressable button.
+
+**Every claim refusal refetches**, the payout one included. The server reports a recorded-but-unpaid claim as its own
+state, so the refetch returns an actionable `unpaid` row — the affordance survives the invalidation instead of depending
+on this surface's cache staying stale while a dozen unrelated call sites invalidate the same read.
 
 **Copy completeness is a content gate; claimability is a correctness one.** Every string resolves through the
 `achievement_*` message family, and an id with no copy entry falls back to a plain label while keeping its progress meter

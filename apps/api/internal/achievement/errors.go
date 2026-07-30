@@ -44,6 +44,10 @@ var (
 	// and the next attempt replays it through the same dedup keys, so this is a retry signal, not a
 	// lost reward.
 	ErrRewardUnavailable = errors.New("achievement reward could not be paid yet")
+	// ErrSettlementSchedulerRequired is a wiring fault — the service was built without the drain a
+	// claim arms. Unconditional: a root that could not schedule it would silently reinstate the
+	// "press again or lose it" recovery this seam replaced.
+	ErrSettlementSchedulerRequired = errors.New("achievement service requires its settlement scheduler")
 	// ErrClaimIDRequired refuses an empty claim id. The DDL CHECK only pairs claimed_at with
 	// claim_id, and an empty string satisfies it — but it is the dedup key both reward legs carry,
 	// so an empty one would collapse every claim into a single dedup identity.

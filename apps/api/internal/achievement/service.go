@@ -21,12 +21,19 @@ type AchievementServiceDeps struct {
 	// every environment: a service that records claims it cannot pay would strand rewards.
 	Twinkle   TwinkleGranter
 	Ornaments OrnamentGranter
+	// Settlements is the drain a claim arms inside its own transaction. Required for the same reason
+	// the recorder seams are: a root that silently defaulted to no drain would leave every crash
+	// between the stamp and the credit waiting on the user to press again, and that is exactly the
+	// dependency this seam exists to remove. A root that runs no queue binds NoSettlementScheduler
+	// and says so.
+	Settlements SettlementScheduler
 }
 
 type Service struct {
-	repo      Repo
-	twinkle   TwinkleGranter
-	ornaments OrnamentGranter
+	repo        Repo
+	twinkle     TwinkleGranter
+	ornaments   OrnamentGranter
+	settlements SettlementScheduler
 }
 
 func NewService(deps AchievementServiceDeps) (*Service, error) {
@@ -36,7 +43,15 @@ func NewService(deps AchievementServiceDeps) (*Service, error) {
 	if deps.Twinkle == nil || deps.Ornaments == nil {
 		return nil, ErrGrantersRequired
 	}
-	return &Service{repo: deps.Repo, twinkle: deps.Twinkle, ornaments: deps.Ornaments}, nil
+	if deps.Settlements == nil {
+		return nil, ErrSettlementSchedulerRequired
+	}
+	return &Service{
+		repo:        deps.Repo,
+		twinkle:     deps.Twinkle,
+		ornaments:   deps.Ornaments,
+		settlements: deps.Settlements,
+	}, nil
 }
 
 // ListAchievements answers EVERY catalog row for the caller, in the catalog's own server-fixed
@@ -82,7 +97,11 @@ func (s *Service) ListAchievements(ctx context.Context, scope platform.UserScope
 			entry.Achieved = true
 			entry.Progress = row.Condition.Target
 			entry.AchievedAt = record.AchievedAt
-			entry.Claimed = record.ClaimedAt != nil
+			// Two facts, never one. A claim commits its stamp before any credit moves, so a claimed
+			// row whose reward has not landed is a state the user can be in — and answering it as
+			// "received" is what hid a stranded reward behind a button the client stopped drawing.
+			entry.Claimed = record.Claimed()
+			entry.RewardSettled = record.Settled()
 		}
 		entries = append(entries, entry)
 	}

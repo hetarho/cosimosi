@@ -16,12 +16,13 @@ export interface AchievementRowProps {
   onClaim: (achievementId: string) => void
 }
 
-// The native fork of the row: same server-verbatim meter and same `claimState` over the two server
+// The native fork of the row: same server-verbatim meter and same `claimState` over the three server
 // booleans — only the elements differ.
 export function AchievementRow({ entry, claiming, onClaim }: AchievementRowProps) {
   const state = claimState(entry)
   const body = achievementBody(entry.id)
   const title = achievementTitle(entry.id)
+  const pressable = state === 'claimable' || state === 'unpaid'
 
   return (
     <View style={styles.row}>
@@ -35,13 +36,15 @@ export function AchievementRow({ entry, claiming, onClaim }: AchievementRowProps
       <Progress value={entry.progress} max={entry.target} ariaLabel={title} />
       <View style={styles.line}>
         <Text style={styles.meta}>
-          {entry.rewardOrnamentId
-            ? m.achievement_reward_ornament()
-            : m.achievement_reward_twinkle({ amount: entry.rewardTwinkle })}
+          {state === 'unpaid'
+            ? m.achievement_reward_pending()
+            : entry.rewardOrnamentId
+              ? m.achievement_reward_ornament()
+              : m.achievement_reward_twinkle({ amount: entry.rewardTwinkle })}
         </Text>
-        {state === 'claimable' ? (
+        {pressable ? (
           <Button size="sm" disabled={claiming} onPress={() => onClaim(entry.id)}>
-            {m.achievement_claim()}
+            {state === 'unpaid' ? m.achievement_claim_retry() : m.achievement_claim()}
           </Button>
         ) : null}
         {state === 'claimed' ? <Text style={styles.meta}>{m.achievement_claimed()}</Text> : null}

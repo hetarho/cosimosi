@@ -38,18 +38,21 @@ achievement_counters (user_id, counter_key, value, updated_at)
     PRIMARY KEY (user_id, counter_key)
     CHECK (value >= 0)
 
-achievement_progress (user_id, achievement_id, achieved_at, claimed_at, claim_id)
+achievement_progress (user_id, achievement_id, achieved_at, claimed_at, claim_id, paid_at)
     PRIMARY KEY (user_id, achievement_id)
     CHECK ((claimed_at IS NULL) = (claim_id IS NULL))
+    CHECK (paid_at IS NULL OR claimed_at IS NOT NULL)
 ```
 
-Three load-bearing absences and two load-bearing constraints:
+Three load-bearing absences and three load-bearing constraints:
 
 - **No per-event row and no event timestamp** — the schema half of the [A1a] guard. `achievement_counters` holds one
   aggregate per key, so "how many days in a row" is not a query someone forgot to forbid; it is unanswerable from this
   schema.
 - **No `progress` column** — progress is `min(counter, target)` at read (§2.9 #3). What is stored is only what cannot
-  be derived: _when_ the condition was first met, and _when_ the reward was received.
+  be derived: _when_ the condition was first met, _when_ the user asked for the reward, and _when_ the reward actually
+  landed. The last one is stored for the same reason as the other two: it records whether a credit reached another
+  context, which no counter here can recompute.
 - **No meaning-bearing column of any kind** — no memory id, strength, mood, position, stage or text, which is the
   schema half of [A6]/[I11].
 - **`CHECK (value >= 0)`** plus the domain's refusal of a backwards write: counters cannot go backwards.
@@ -59,14 +62,18 @@ Three load-bearing absences and two load-bearing constraints:
   make the second reward vanish into the ledger's replay check) and **`CHECK (claim_id IS NULL OR btrim(claim_id) <> '')`**
   (the pairing CHECK accepts `''` on its own, which would collapse every claim into one dedup identity). Multiple NULLs
   remain fine — an unclaimed row has neither column.
+- **`CHECK (paid_at IS NULL OR claimed_at IS NOT NULL)`** — the lifecycle runs one way only. `claimed_at` means the user
+  pressed the button; `paid_at` means the reward landed. They are separate columns because the stamp commits _before_
+  any credit moves (that ordering is the double-payout guard), so the window between them is a state a row genuinely
+  sits in — and a paid row that was never claimed is not a state the lifecycle has.
 
-Both timestamps are written by **SQL `now()`** — the DDL default on insert, `SET claimed_at = now()` on claim. That is
-not stylistic: it is what lets the Go context own no clock. No index beyond the two primary keys exists; every read is
+All three timestamps are written by **SQL `now()`** — the DDL default on insert, `SET claimed_at = now()` on claim,
+`SET paid_at = now()` on settle. That is not stylistic: it is what lets the Go context own no clock. No index beyond the two primary keys exists; every read is
 `WHERE user_id = $1`, which the PK prefix serves.
 
 ## 3. sqlc statements (`db/queries/achievement/achievement.sql`)
 
-Nine statements, plain static sqlc, all conjunctively `user_id`-scoped, **no date arithmetic on any column**:
+Ten statements, plain static sqlc, all conjunctively `user_id`-scoped, **no date arithmetic on any column**:
 
 | statement                                                       | kind        | purpose                                                            |
 | --------------------------------------------------------------- | ----------- | ------------------------------------------------------------------ |
@@ -78,10 +85,11 @@ Nine statements, plain static sqlc, all conjunctively `user_id`-scoped, **no dat
 | `RaiseAchievementCounter`                                       | `:one`      | `GREATEST(value, $1) RETURNING value` (reach keys)                 |
 | `MarkAchievementAchieved`                                       | `:execrows` | `ON CONFLICT DO NOTHING` — the PK keeps the first `achieved_at`    |
 | `ClaimAchievementReward`                                        | `:execrows` | `… AND claimed_at IS NULL` — a second claim affects 0 rows         |
+| `SettleAchievementClaim`                                        | `:execrows` | `SET paid_at = now()` where claimed under this id and not yet paid |
 | `PurgeUserAchievementCounters` / `PurgeUserAchievementProgress` | `:exec`     | the withdrawal sweep's purge, allowlisted in the [I1] delete gate  |
 
-`:execrows` on the three write guards is **load-bearing, not diagnostic**: the affected-row count is the first-touch
-signal, the not-yet-achieved answer and the not-yet-claimed answer respectively. Both upserts use
+`:execrows` on the four write guards is **load-bearing, not diagnostic**: the affected-row count is the first-touch
+signal, the not-yet-achieved answer, the not-yet-claimed answer and the not-yet-paid answer respectively. Both upserts use
 `ON CONFLICT … DO NOTHING` (never `DO UPDATE`), so the isolation gate's conflict-target rule is satisfied by the primary
 key itself, and `pnpm lint:persistence` passes with no `globalQueries` or `platformTables` entry.
 
@@ -153,9 +161,14 @@ passes every test until a real recorder is bound.
 type Store interface {           // tx-bindable: NewStore(dbgen.DBTX)
     ListCounters / ListProgress / GetProgress
     TouchCounter (created bool) / AddCounter / RaiseCounter
-    MarkAchieved (marked bool) / MarkClaimed (claimed bool)
+    MarkAchieved (marked bool) / MarkClaimed (claimed bool) / SettleClaim (settled bool)
 }
 type Repo interface { Store; UserPurgeRepo; InAchievementTx(ctx, func(tx Store) error) error }
+
+type ClaimTx any                 // the open claim transaction, opaque to this context
+type SettlementScheduler interface {
+    ScheduleSettlement(ctx, scope, tx ClaimTx, achievementID string) error
+}
 ```
 
 **`Store` carries no purge**, and that absence is the point: a counter write composed inside `InAchievementTx` would
@@ -167,14 +180,24 @@ carries both.
 composition root can bind a counter write onto a producer's own transaction through the
 `interface{ DB() dbgen.DBTX }` assertion — the same seam the decoration save's debit uses.
 
-`AchievementServiceDeps` is **`{Repo}` and nothing else**: no clock, no `Now`, no id minter. `twinkle.ServiceDeps` does
-carry a zone reader because a daily reset window needs one; achievement has no legitimate use for a clock, so it is not
-given one.
+`AchievementServiceDeps` is `{Repo, Twinkle, Ornaments, Settlements}` — and, load-bearingly, **no clock, no `Now`, no id
+minter**. `twinkle.ServiceDeps` does carry a zone reader because a daily reset window needs one; achievement has no
+legitimate use for a clock, so it is not given one. All four deps are required in every environment: a service that
+records claims it cannot pay would strand rewards, and one that cannot arm the drain would put recovery back on the user
+noticing.
+
+`SettlementScheduler` is consumer-owned and takes the **open claim transaction**, in the shape of `store.SpendGate`.
+The concrete is bound at the composition root over `memory`'s user-job seam, so the enqueue commits with the
+`claimed_at` stamp. Only the root sees both, and `achievement` never learns that a job queue exists.
 
 `ListAchievements` answers every catalog row for the caller: two reads, then `Progress = min(counter, target)` and
 `Achieved = counter >= target` derived per row. Where an `achievement_progress` row exists, the **stored fact wins** —
-`Achieved` is forced true and `AchievedAt`/`Claimed` come from the row, so a row is never un-achieved by a counter
-reading. A user with rows in neither table gets the full catalog at zero progress.
+`Achieved` is forced true and `AchievedAt`/`Claimed`/`RewardSettled` come from the row, so a row is never un-achieved by
+a counter reading. A user with rows in neither table gets the full catalog at zero progress.
+
+`Claimed` and `RewardSettled` are two facts, never one. Collapsing them (`Claimed = ClaimedAt != nil` alone) is what made
+a claimed-but-uncredited row indistinguishable from a paid one, so the client hid the affordance and the only thing
+holding the recovery window open was a stale cache.
 
 **Progress is read before counters, and the order is load-bearing.** These are two statements, so a recorder committing
 between them is visible to one and not the other. Reading progress first makes the counter read a strictly later
@@ -194,7 +217,7 @@ Four domain functions own the write rules, so no adapter decides them:
   four stage-1 gist views unlock the stage-4 row.
 - `RequireCatalogID` — an unpublished id cannot leave a durable row no read will ever answer for.
 
-`MarkClaimed` additionally refuses an empty claim id (the Go half of the DDL guards above).
+`MarkClaimed` and `SettleClaim` additionally refuse an empty claim id (the Go half of the DDL guards above).
 
 Both counter writes are `:one` UPDATEs, so a first-ever write for a key would surface `pgx.ErrNoRows`. `writeCounter`
 creates the row and retries once — the twinkle balance store's shape, and for the same reason: without it a user's
@@ -209,7 +232,9 @@ roots.
 
 One unary `NO_SIDE_EFFECTS` method, `ListAchievements`, with an **empty request** — scope comes from
 `platform.UserScope`, never the wire. `AchievementEntry` carries `achievement_id`, `axis`, `target`, `progress`,
-`reward_twinkle`, `reward_ornament_id`, `achieved`, `claimed`, `achieved_at` (RFC3339 UTC, empty while unachieved).
+`reward_twinkle`, `reward_ornament_id`, `achieved`, `claimed`, `achieved_at` (RFC3339 UTC, empty while unachieved) and
+`reward_settled`. The last one is named for the state, not the column: `claimed && !reward_settled` is the recoverable
+window, and a client renders it as a retry rather than as received.
 
 **No `user_id` field on any message, no `TwinkleKind` field, and no user-facing string** — titles, bodies and axis labels
 are resolved client-side from the id / the axis enum, following the `mood_<value>` + `moodLabel` precedent.
@@ -255,22 +280,34 @@ two integers with no time input.
    written only when a counter is next reported, so every qualifying user would otherwise be shown a claim button that
    answers "not achieved". A counter still short of its target is the genuine refusal: nothing is promoted and nothing
    credited, because a met condition is a precondition and an unmet one is not a payout waiting to happen.
-3. Commit, **then** pay through the two granter ports — an idempotent pairing, not one cross-context transaction, which
-   would make this context the transaction owner of the ledger's and the ornament catalog's tables.
+3. Inside that same transaction, arm the drain through `SettlementScheduler` — so a claim that rolls back schedules
+   nothing, and a process death after the commit still leaves a job that will pay.
+4. Commit, **then** pay through the two granter ports — an idempotent pairing, not one cross-context transaction, which
+   would make this context the transaction owner of the ledger's and the ornament catalog's tables. On success, stamp
+   `paid_at` through `SettleClaim`.
 
 That leaves exactly one intermediate state — claimed but uncredited, after a crash — and it is **recoverable rather than
-lost**: a repeat claim replays and pays through the same dedup keys, so the ledger credits once and the reward arrives.
-This is why a second claim is a replay returning the same reward and **not** an `ALREADY_CLAIMED` refusal: refusing would
-strand the reward in precisely the window this pairing exists to heal. A granter refusal surfaces as
-`ACHIEVEMENT_REWARD_UNAVAILABLE` rather than an internal error, because the claim stands and the client should retry.
+lost**, by two mechanisms that need nobody to notice the gap:
+
+- **The row says so.** `paid_at` is stamped only once a leg returns, so the read answers claimed-and-unsettled and the
+  client keeps a retry affordance (`unpaid`) instead of rendering the row as received. A repeat claim then replays and
+  pays through the same dedup keys, so the ledger credits once. This is why a second claim is a replay returning the
+  same reward and **not** an `ALREADY_CLAIMED` refusal: refusing would strand the reward in the very window this pairing
+  exists to heal. A granter refusal surfaces as `ACHIEVEMENT_REWARD_UNAVAILABLE` rather than an internal error, because
+  the claim stands and the client should retry.
+- **The worker drains it anyway.** See §9.1.
+
+A settle failure **after** a successful credit is deliberately not reported: the reward has arrived and only the stamp is
+missing, so surfacing `ACHIEVEMENT_REWARD_UNAVAILABLE` would tell a user who already holds their reward that it could not
+be paid. The row stays unsettled and the drain re-runs an idempotent leg and re-stamps.
 
 The claim id is **derived, not minted** — it is the achievement id, already unique per user under the progress table's
 primary key and the ledger's `UNIQUE (user_id, dedup_key)`. A random id would buy no uniqueness the pair does not already
 have, and every replay would recompute a different key. The ledger entry is an ordinary append-only `achievement_claim`
 earn, so `/me`'s stardust history shows it like everything else.
 
-**A replay resolves the reward from the catalog as it is NOW**, because the reward is not stored — only `claimed_at` and
-`claim_id` are. Within one deployment that is exactly right (the catalog cannot change under a running server) and the
+**A replay resolves the reward from the catalog as it is NOW**, because the reward is not stored — only `claimed_at`,
+`claim_id` and `paid_at` are. Within one deployment that is exactly right (the catalog cannot change under a running server) and the
 ledger row stays the authoritative record of what was credited. Across deployments it has one consequence worth naming:
 **changing a shipped row's reward is a data change, not a content edit.** Re-tiering a claimed row makes a later replay
 report today's amount (the credit itself is dedup-guarded, so nothing is paid twice), and re-pointing a claimed capstone
@@ -279,7 +316,30 @@ rather than on the claim. Storing the resolved reward on `achievement_progress` 
 columns plan 74 deliberately does not have; until a reward is actually re-pointed, the cheaper guard is knowing that such
 an edit needs a migration and a backfill decision.
 
-## 10. The composition root's four edges (`cmd/api/achievement.go`)
+### 9.1 The settle drain — the worker leg
+
+`SettleClaims(ctx, scope)` lists this user's progress rows, keeps those that are claimed and not settled, and replays
+`payReward` for each. It is user-scoped by construction: the job names one user and every statement under it is
+conjunctively scoped, so **no `globalQueries` exemption is added** — the one global scan the system sanctions
+(`memory/jobs.sql#ClaimDueJob`) stays the only one. Every unsettled row is attempted before the first failure is
+reported, so one row that keeps failing cannot starve the user's other rewards.
+
+The drain is scheduled as a `memory` user job of kind `achievement_settle`, enqueued **inside the claim transaction** by
+a root adapter that binds `memorypg.NewStore` onto the claim's own handle — the mirror image of the recorder adapters,
+which bind a counter store onto a producer's. Its dedup identity is per **claim**, not per user
+(`achievement_settle:<user>:<achievement>`): the enqueue dedups against terminal rows too, so a per-user key would let
+one finished drain swallow the next claim's for as long as the terminal row survives queue cleanup.
+
+**The drain never dead-letters, and has no attempt cap.** `memory.retriedIndefinitely` admits the kind to the
+retry-forever path the retention and withdrawal sweeps already use, because the failure it retries is transient by
+construction: the composition root refuses to boot on a catalog row with no payable leg, with both legs, or with an
+ornament the store does not publish, so a permanently unpayable claim cannot reach the handler. A capped drain would
+silently give up on a reward the product already told the user they had received.
+
+Both worker roots register the handler — `cmd/worker` (the production queue) and `cmd/api`'s dev worker. An unhandled
+kind of a never-dead-lettered leg would otherwise spin forever.
+
+## 10. The composition root's five edges (`cmd/api/achievement.go`)
 
 - **Three recorder adapters** (`memory`/`store`/`account`), each type-asserting the producer's opaque tx to
   `interface{ DB() dbgen.DBTX }` and binding `achievementpg.NewStore(handle)` onto it — the shipped economy-seam pattern:
@@ -298,19 +358,26 @@ an edit needs a migration and a backfill decision.
   deliberately: a high-water mark can only be late, never wrong, and closing it would serialize every decoration save
   behind an advisory lock for the sake of a count.
 
+- **One settlement-scheduler adapter**, binding `memory`'s user-job seam onto the claim's own transaction (§9.1).
 - **Two boot reconciliations**, both of which can only run here: the counter-key set equality in both directions (a
   producer emitting a _derived_ key is refused too — the recorder rejects it at runtime, so it would fail every
-  transaction it reported from), and every reward ornament resolving in the store catalog as achievement-only.
-  `achievement.NewService` additionally refuses a nil granter **unconditionally, in every environment** — a service that
-  records claims it cannot pay would strand rewards — and every producing context now requires its recorder for the same
+  transaction it reported from), and `reconcileAchievementRewards` — every reward being exactly one leg, and every
+  reward ornament resolving in the store catalog as achievement-only. The **XOR arm is not defense-in-depth** over the
+  catalog self-test: a neither-leg row pays `0`, twinkle refuses a grant of `0`, and every claimer of that row lands in
+  the unpaid state deterministically with the drain retrying a leg that can never succeed. It is the case §9.1's
+  unbounded retry is allowed to assume away, and this guard is what makes the assumption true.
+  `achievement.NewService` additionally refuses a nil granter or a nil scheduler **unconditionally, in every
+  environment** — a service that records claims it cannot pay would strand rewards, and one with no drain would put
+  recovery back on the user noticing — and every producing context now requires its recorder for the same
   reason, `store` included: a root that silently defaulted to the no-op would lose that context's counters entirely,
   which is exactly the drift these guards exist to prevent.
 
 **There are two composition roots, and both must carry every leg.** `cmd/api` serves requests (and runs a dev worker);
-`cmd/worker` is the binary the container runs the job queue with, including the withdrawal sweep. A seam bound in one and
-forgotten in the other is invisible to a build: `cmd/worker` settles no signup, so it binds an account recorder that
-refuses, and it registers **all four** purge legs (memory · twinkle · store · achievement) because it is the sweep that
-actually runs — a missing leg there leaves that context's rows behind a hard-deleted account ([I1][U1]). Its own test
+`cmd/worker` is the binary the container runs the job queue with, including the withdrawal sweep and the settle drain. A
+seam bound in one and forgotten in the other is invisible to a build: `cmd/worker` settles no signup and takes no claim,
+so it binds an account recorder and a settlement scheduler that both refuse; it builds its own twinkle and store services
+so the drain pays through the **same published behavior** the API does; and it registers **all four** purge legs
+(memory · twinkle · store · achievement) because it is the sweep that actually runs — a missing leg there leaves that context's rows behind a hard-deleted account ([I1][U1]). Its own test
 constructs the runner so that a forgotten required seam fails CI rather than the deploy.
 
 ## 11. What is deliberately absent

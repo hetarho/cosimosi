@@ -15,6 +15,9 @@ export interface AchievementView {
   rewardOrnamentId: string
   achieved: boolean
   claimed: boolean
+  // Whether the claimed reward actually landed. Separate from `claimed` because the server stamps
+  // the claim before it moves any credit, so the two answers genuinely differ in the window between.
+  rewardSettled: boolean
 }
 
 export { AchievementAxis }
@@ -31,6 +34,7 @@ export function toAchievementView(entry: AchievementEntry): AchievementView {
     rewardOrnamentId: entry.rewardOrnamentId,
     achieved: entry.achieved,
     claimed: entry.claimed,
+    rewardSettled: entry.rewardSettled,
   }
 }
 

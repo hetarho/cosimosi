@@ -36,6 +36,8 @@ type RetentionSweepJobPayload struct{}
 
 type WithdrawalSweepJobPayload struct{}
 
+type AchievementSettleJobPayload struct{}
+
 // EmbedJobSource and SemanticizeJobSource are current, live source snapshots read
 // immediately before an external call. The pg adapter returns no source when the
 // job lease, liveness, target, or expected revision no longer matches.
@@ -82,6 +84,12 @@ type DueReleaseSweeper interface {
 
 type DueWithdrawalSweeper interface {
 	SweepWithdrawnAccount(ctx context.Context, scope platform.UserScope, now time.Time) error
+}
+
+// DueAchievementSettler drains one user's claimed-but-unpaid rewards. The concrete is the
+// achievement service, bound at the composition root: memory owns the queue, never the claim.
+type DueAchievementSettler interface {
+	SettleClaims(ctx context.Context, scope platform.UserScope) error
 }
 
 type jobEnqueuer interface {
@@ -208,6 +216,38 @@ func NewWithdrawalSweepJobHandler(sweeper DueWithdrawalSweeper, now func() time.
 		}
 		ctx = context.WithValue(ctx, withdrawalSweepJobContextKey{}, job.ID)
 		return sweeper.SweepWithdrawnAccount(ctx, scope, now())
+	}
+}
+
+// NewAchievementSettleJobHandler drains the claims one user has stamped but not been paid for. It
+// carries no clock and no achievement id: the job names a user, the settler re-reads which of that
+// user's rows are still unpaid, and both reward legs are idempotent on the stored claim id — so a
+// replay of an already-settled row credits nothing.
+//
+// There is deliberately NO attempt cap and no dead-letter surface. A capped drain would silently
+// give up on a reward the product already told the user they received, and the failure it would give
+// up on is transient by construction: the composition root refuses to boot on a catalog row with no
+// payable leg, with both legs, or with an ornament the store does not publish, so a permanently
+// unpayable claim cannot reach this handler. retriedIndefinitely admits the kind to the queue's
+// existing retry-forever path (backoff retry, no claim ceiling), which is the same treatment the
+// withdrawal sweep already relies on for the same reason.
+func NewAchievementSettleJobHandler(settler DueAchievementSettler) func(context.Context, Job) error {
+	return func(ctx context.Context, job Job) error {
+		if err := validateJob(job, JobTargetUser, true); err != nil {
+			return err
+		}
+		if job.Targets[0].ID != job.UserID || job.Targets[0].ExpectedRevision != 0 {
+			return fmt.Errorf("%w: achievement settle target must name the job user", ErrJobPayload)
+		}
+		var payload AchievementSettleJobPayload
+		if err := decodePayload(job.Payload, &payload); err != nil {
+			return err
+		}
+		scope, err := platform.NewUserScope(job.UserID)
+		if err != nil {
+			return ErrJobUserRequired
+		}
+		return settler.SettleClaims(ctx, scope)
 	}
 }
 

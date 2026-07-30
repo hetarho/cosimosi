@@ -23,8 +23,36 @@ func TestAchievementBootGuardsPassForTheShippedWiring(t *testing.T) {
 	if err := reconcileAchievementCounterKeys(); err != nil {
 		t.Fatalf("the shipped producers and catalog disagree: %v", err)
 	}
-	if err := reconcileAchievementRewardOrnaments(); err != nil {
-		t.Fatalf("a shipped reward names an unusable ornament: %v", err)
+	if err := reconcileAchievementRewards(); err != nil {
+		t.Fatalf("a shipped reward is malformed: %v", err)
+	}
+}
+
+// The reward guard has teeth on both malformed shapes, driven through the SHIPPED body. A neither-leg
+// row is the one that matters most: it pays 0, twinkle refuses a zero grant, and every claimer of it
+// would land in the claimed-but-unpaid state deterministically — with the settle drain retrying a leg
+// that can never succeed.
+func TestAchievementRewardReconciliationRefusesBothMalformedShapes(t *testing.T) {
+	t.Parallel()
+	for name, reward := range map[string]achievement.Reward{
+		"neither leg": {},
+		"both legs":   {Tier: achievement.RewardTier1, OrnamentID: "star_shader.spire"},
+	} {
+		malformed := []achievement.Achievement{{
+			ID:        "malformed_row",
+			Axis:      achievement.AxisFirstExperience,
+			Condition: achievement.Condition{Counter: achievement.CounterDiaryWritten, Target: 1},
+			Reward:    reward,
+		}}
+		err := reconcileRewards(malformed)
+		if err == nil {
+			t.Fatalf("%s was accepted", name)
+		}
+		// A boot refusal is read once, in a log, by someone who cannot debug it interactively — it has
+		// to name the row.
+		if !strings.Contains(err.Error(), "malformed_row") {
+			t.Fatalf("%s refusal does not name the row: %v", name, err)
+		}
 	}
 }
 
@@ -122,7 +150,7 @@ func TestWorkerAccountRecorderRefusesRatherThanCountingNothing(t *testing.T) {
 		nil,
 		"invite_settled",
 		1,
-	); !errors.Is(err, errAchievementSettlementUnavailable) {
-		t.Fatalf("worker recorder = %v, want errAchievementSettlementUnavailable", err)
+	); !errors.Is(err, errAchievementSignupRecordingUnavailable) {
+		t.Fatalf("worker recorder = %v, want errAchievementSignupRecordingUnavailable", err)
 	}
 }

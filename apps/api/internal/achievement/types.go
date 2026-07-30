@@ -60,24 +60,37 @@ type Achievement struct {
 	Reward    Reward
 }
 
-// ProgressRecord is one achievement_progress row: the two facts that cannot be derived from a
+// ProgressRecord is one achievement_progress row: the facts that cannot be derived from a
 // counter. AchievedAt is never cleared once written ([I1]); ClaimedAt and ClaimID are set together
-// or not at all (the DDL CHECK).
+// or not at all (the DDL CHECK). PaidAt is stored for the same reason the other two are — it records
+// whether a credit reached ANOTHER context, which no counter here can recompute.
 type ProgressRecord struct {
 	AchievementID string
 	AchievedAt    time.Time
 	ClaimedAt     *time.Time
 	ClaimID       string
+	PaidAt        *time.Time
 }
 
+// Claimed and Settled are the claim lifecycle read as two independent facts. They are separate
+// because the stamp and the payout are separated in time by design, so "the user pressed the button"
+// and "the reward landed" are genuinely different answers — collapsing them is what made a stranded
+// reward invisible.
+func (r ProgressRecord) Claimed() bool { return r.ClaimedAt != nil }
+func (r ProgressRecord) Settled() bool { return r.PaidAt != nil }
+
 // Entry is one catalog row answered for one caller: the row, and what is true of it for them —
-// all of it derived at read time except the two ProgressRecord facts (ARCHITECTURE §2.9 #3).
+// all of it derived at read time except the ProgressRecord facts (ARCHITECTURE §2.9 #3).
 type Entry struct {
 	Achievement
 	// Progress is min(counter, target) — computed at read, never stored.
 	Progress int64
 	Achieved bool
 	Claimed  bool
+	// RewardSettled is whether the claimed reward actually landed. Claimed && !RewardSettled is the
+	// recoverable intermediate state, and a client renders a retry affordance for it rather than
+	// hiding the row behind "received".
+	RewardSettled bool
 	// AchievedAt is zero while unachieved.
 	AchievedAt time.Time
 }

@@ -18,12 +18,20 @@ func testScope(t *testing.T) platform.UserScope {
 	return scope
 }
 
-func newTestService(t *testing.T, repo Repo) *Service {
+// testRepo is the fake's full surface: the repository, plus the settlement scheduler it doubles as
+// so a claim test can see what the claim transaction armed.
+type testRepo interface {
+	Repo
+	SettlementScheduler
+}
+
+func newTestService(t *testing.T, repo testRepo) *Service {
 	t.Helper()
 	service, err := NewService(AchievementServiceDeps{
-		Repo:      repo,
-		Twinkle:   &fakeTwinkleGranter{},
-		Ornaments: &fakeOrnamentGranter{},
+		Repo:        repo,
+		Twinkle:     &fakeTwinkleGranter{},
+		Ornaments:   &fakeOrnamentGranter{},
+		Settlements: repo,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
@@ -193,6 +201,15 @@ func TestNewServiceRequiresItsDependencies(t *testing.T) {
 	}); !errors.Is(err, ErrGrantersRequired) {
 		t.Fatalf("NewService without the twinkle granter = %v, want ErrGrantersRequired", err)
 	}
+	// Also unconditional: a root with no drain would put every crash between the stamp and the credit
+	// back on the user to notice and press again.
+	if _, err := NewService(AchievementServiceDeps{
+		Repo:      newFakeStore(),
+		Twinkle:   &fakeTwinkleGranter{},
+		Ornaments: &fakeOrnamentGranter{},
+	}); !errors.Is(err, ErrSettlementSchedulerRequired) {
+		t.Fatalf("NewService without the settlement scheduler = %v, want ErrSettlementSchedulerRequired", err)
+	}
 }
 
 // A user with no rows in either table gets the full catalog at zero progress, in the catalog's own
@@ -212,7 +229,7 @@ func TestListAchievementsAnswersFullCatalogAtZero(t *testing.T) {
 		if entry.ID != rows[i].ID {
 			t.Fatalf("entry %d = %q, want the catalog order's %q", i, entry.ID, rows[i].ID)
 		}
-		if entry.Progress != 0 || entry.Achieved || entry.Claimed || !entry.AchievedAt.IsZero() {
+		if entry.Progress != 0 || entry.Achieved || entry.Claimed || entry.RewardSettled || !entry.AchievedAt.IsZero() {
 			t.Fatalf("%s: fresh user entry = %+v, want zero progress", entry.ID, entry)
 		}
 	}
@@ -283,6 +300,35 @@ func TestListAchievementsReadsStoredProgressFacts(t *testing.T) {
 		if entry.Progress != entry.Condition.Target {
 			t.Fatalf("%s: achieved with progress %d/%d", id, entry.Progress, entry.Condition.Target)
 		}
+	}
+}
+
+// Claimed and settled are two facts on the wire, not one. A claimed-and-unpaid row must read
+// differently from a claimed-and-paid one, or the client hides the affordance the recovery needs.
+func TestListAchievementsReportsUnpaidDistinctlyFromPaid(t *testing.T) {
+	t.Parallel()
+	achievedAt := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	store := newFakeStore()
+	for _, id := range []string{"first_diary", "first_recall"} {
+		store.achievedAt[id] = achievedAt
+		store.claimedAt[id] = achievedAt.Add(time.Hour)
+		store.claimIDs[id] = id
+	}
+	store.paidAt["first_diary"] = achievedAt.Add(2 * time.Hour)
+	service := newTestService(t, store)
+	entries, err := service.ListAchievements(context.Background(), testScope(t))
+	if err != nil {
+		t.Fatalf("ListAchievements failed: %v", err)
+	}
+	byID := make(map[string]Entry, len(entries))
+	for _, entry := range entries {
+		byID[entry.ID] = entry
+	}
+	if entry := byID["first_diary"]; !entry.Claimed || !entry.RewardSettled {
+		t.Fatalf("a settled claim = %+v, want claimed and settled", entry)
+	}
+	if entry := byID["first_recall"]; !entry.Claimed || entry.RewardSettled {
+		t.Fatalf("an unsettled claim = %+v, want claimed and NOT settled", entry)
 	}
 }
 

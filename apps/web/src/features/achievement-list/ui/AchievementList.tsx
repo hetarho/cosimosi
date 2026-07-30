@@ -8,7 +8,6 @@ import {
   type ClaimOutcome,
 } from '@cosimosi/achievement/react'
 import { createGetCatalogQueryKey } from '@cosimosi/api-client'
-import { ERROR_REASONS, isReason } from '@cosimosi/errors'
 import { asyncCommandMachine } from '@cosimosi/state-machine'
 import { useInvalidateTwinkleBalance } from '@cosimosi/twinkle/react'
 import { Skeleton } from '@cosimosi/ui'
@@ -77,15 +76,11 @@ export function AchievementList() {
       if (!mounted.current) return
       send({ type: 'REJECT', error: 'claim-failed', attempt })
       showError(caught)
-      // Both of these mean the list this press came from was stale, so it is refetched. Every other
-      // refusal — including the payout one, where the claim IS recorded — leaves the row as it is so
-      // the button stays pressable and the replay can heal it.
-      if (
-        isReason(caught, ERROR_REASONS.achievementNotAchieved) ||
-        isReason(caught, ERROR_REASONS.achievementNotFound)
-      ) {
-        invalidateAchievements()
-      }
+      // Every claim refusal refetches, including the payout one. The server now reports a recorded
+      // claim whose reward never landed as its own state, so the refetch returns an actionable
+      // `unpaid` row instead of hiding the button — and the recovery no longer depends on this
+      // component's cache staying stale while a dozen unrelated call sites invalidate it.
+      invalidateAchievements()
     }
   }
 

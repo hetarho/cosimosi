@@ -18,10 +18,15 @@ import (
 
 	"github.com/cosimosi/api/internal/account"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
+	"github.com/cosimosi/api/internal/achievement"
+	achievementpg "github.com/cosimosi/api/internal/achievement/pg"
 	"github.com/cosimosi/api/internal/memory"
 	memorypg "github.com/cosimosi/api/internal/memory/pg"
+	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/jobqueue"
+	"github.com/cosimosi/api/internal/store"
+	"github.com/cosimosi/api/internal/twinkle"
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
 
@@ -80,6 +85,13 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		pool.Close()
 		return nil, err
 	}
+	// The settle drain RUNS here too. Without it the claim-settle kind is an unhandled kind, and an
+	// unhandled kind of a never-dead-lettered leg would spin in the dev queue forever.
+	settler, err := newDevWorkerAchievementSettler(pool, accountService)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
 	runner, err := memory.NewDefaultJobRunner(
 		store,
 		adapters.Embedder,
@@ -87,7 +99,8 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		devWorkerPollInterval,
 		logger,
 		map[memory.JobKind]jobqueue.Handler[memory.Job]{
-			memory.JobKindWithdrawal: memory.NewWithdrawalSweepJobHandler(accountService, nil),
+			memory.JobKindWithdrawal:        memory.NewWithdrawalSweepJobHandler(accountService, nil),
+			memory.JobKindAchievementSettle: memory.NewAchievementSettleJobHandler(settler),
 		},
 	)
 	if err != nil {
@@ -109,6 +122,86 @@ func maybeStartDevWorker(ctx context.Context, logger *log.Logger) (func(), error
 		<-done
 		pool.Close()
 	}, nil
+}
+
+// newDevWorkerAchievementSettler builds the drain leg for the in-process dev worker. It is a second
+// composition rather than a share of the API's: this worker opens its own pool, and the settle path
+// only needs the two payout legs — not the spend quoting or invite settlement the API's twinkle
+// service also carries, both of which are fail-closed here.
+func newDevWorkerAchievementSettler(
+	pool *platformdb.Pool,
+	accountService *account.Service,
+) (*achievement.Service, error) {
+	twinkleService, err := twinkle.NewService(twinkle.ServiceDeps{
+		Ledger:         twinklepg.NewStore(pool.PgxPool()),
+		InviteResolver: twinkle.UnavailableInviteResolver{},
+		Signals:        devWorkerNoSpendSignals{},
+		UserZone:       accountTwinkleZone{service: accountService},
+	})
+	if err != nil {
+		return nil, err
+	}
+	storeService, err := newStoreService(pool, twinkleService, devWorkerNoStoreAchievementRecorder{})
+	if err != nil {
+		return nil, err
+	}
+	return achievement.NewService(achievement.AchievementServiceDeps{
+		Repo:      achievementpg.NewStore(pool.PgxPool()),
+		Twinkle:   achievementTwinkleGranter{service: twinkleService},
+		Ornaments: achievementOrnamentGranter{service: storeService},
+		// This worker drains claims and never takes one, so the scheduler refuses rather than
+		// stamping a claim whose drain nobody armed.
+		Settlements: devWorkerNoSettlementScheduler{},
+	})
+}
+
+var (
+	errDevWorkerSpendQuotingUnavailable = errors.New(
+		"twinkle spend quoting is not available in the dev worker",
+	)
+	errDevWorkerDecorationRecordingUnavailable = errors.New(
+		"decoration progress recording is not available in the dev worker",
+	)
+	errDevWorkerClaimSchedulingUnavailable = errors.New(
+		"achievement claims are not taken in the dev worker",
+	)
+)
+
+type devWorkerNoSpendSignals struct{}
+
+func (devWorkerNoSpendSignals) RecallAccessibility(context.Context, platform.UserScope, string) (float64, error) {
+	return 0, errDevWorkerSpendQuotingUnavailable
+}
+
+func (devWorkerNoSpendSignals) DiaryRecallAccessibilities(context.Context, platform.UserScope, string) ([]float64, error) {
+	return nil, errDevWorkerSpendQuotingUnavailable
+}
+
+func (devWorkerNoSpendSignals) ViewableGistStage(context.Context, platform.UserScope, string) (int, error) {
+	return 0, errDevWorkerSpendQuotingUnavailable
+}
+
+type devWorkerNoStoreAchievementRecorder struct{}
+
+func (devWorkerNoStoreAchievementRecorder) RecordProgress(
+	context.Context,
+	platform.UserScope,
+	store.EconomyTx,
+	string,
+	int,
+) error {
+	return errDevWorkerDecorationRecordingUnavailable
+}
+
+type devWorkerNoSettlementScheduler struct{}
+
+func (devWorkerNoSettlementScheduler) ScheduleSettlement(
+	context.Context,
+	platform.UserScope,
+	achievement.ClaimTx,
+	string,
+) error {
+	return errDevWorkerClaimSchedulingUnavailable
 }
 
 func truthy(value string) bool {

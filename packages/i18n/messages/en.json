@@ -597,6 +597,8 @@
   "achievement_reward_ornament": "An ornament, only from here",
   "achievement_claim": "Receive",
   "achievement_claimed": "Received",
+  "achievement_claim_retry": "Try receiving again",
+  "achievement_reward_pending": "The reward has not arrived yet.",
   "achievement_progress_label": "{progress} of {target}",
   "achievement_notice": "{title} — waiting in your records.",
   "achievement_reveal_title": "Received",

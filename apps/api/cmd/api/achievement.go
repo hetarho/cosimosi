@@ -15,6 +15,7 @@ import (
 	achievementrpc "github.com/cosimosi/api/internal/achievement/rpc"
 	achievementv1connect "github.com/cosimosi/api/internal/gen/cosimosi/achievement/v1/achievementv1connect"
 	"github.com/cosimosi/api/internal/memory"
+	memorypg "github.com/cosimosi/api/internal/memory/pg"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/store"
@@ -32,23 +33,27 @@ var (
 	// errAchievementRecorderUnbound is the wiring fault of a producer reporting before the root
 	// finished binding. It fails the producing transaction rather than dropping the report.
 	errAchievementRecorderUnbound = errors.New("achievement recorder was not bound to a service")
-	// errAchievementSettlementUnavailable is what a root that cannot settle invites answers if the
-	// path is somehow reached — the fail-closed shape, not a silent no-op (the worker runs the
-	// withdrawal sweep and never settles a signup).
-	errAchievementSettlementUnavailable = errors.New("this root does not record achievement progress")
+	// errAchievementSignupRecordingUnavailable is what a root that settles no signup answers if the
+	// account recorder is somehow reached — the fail-closed shape, not a silent no-op (the worker runs
+	// the withdrawal sweep and the settle drain, and takes no signup). It is deliberately not named
+	// "settlement": in this file that word now belongs to a claim's payout drain.
+	errAchievementSignupRecordingUnavailable = errors.New("this root does not record achievement progress")
 )
 
 func newAchievementService(pool *platformdb.Pool, deps achievementDeps) (*achievement.Service, error) {
 	if err := reconcileAchievementCounterKeys(); err != nil {
 		return nil, err
 	}
-	if err := reconcileAchievementRewardOrnaments(); err != nil {
+	if err := reconcileAchievementRewards(); err != nil {
 		return nil, err
 	}
 	return achievement.NewService(achievement.AchievementServiceDeps{
 		Repo:      achievementpg.NewStore(pool.PgxPool()),
 		Twinkle:   achievementTwinkleGranter{service: deps.twinkle},
 		Ornaments: achievementOrnamentGranter{service: deps.store},
+		// The drain rides the claim's own transaction; the enqueue is memory's, the claim is
+		// achievement's, and this is the only place both are visible.
+		Settlements: achievementSettlementScheduler{},
 	})
 }
 
@@ -129,11 +134,39 @@ func reconcileCounterKeys(emittedKeys []string) error {
 	return nil
 }
 
-// reconcileAchievementRewardOrnaments refuses to boot on a reward naming an ornament the store
-// catalog does not publish as achievement-only. The composition root is the only place both catalogs
-// are visible, so an invalid reward id fails here rather than half-paying a claim.
-func reconcileAchievementRewardOrnaments() error {
-	for _, row := range achievement.Catalog() {
+// reconcileAchievementRewards refuses to boot on a malformed reward: one that names no leg or both,
+// and one that names an ornament the store catalog does not publish as achievement-only. The
+// composition root is the only place both catalogs are visible, so an invalid reward id fails here
+// rather than half-paying a claim.
+//
+// The XOR arm is not defense-in-depth over the catalog self-test. A neither-leg row pays 0, twinkle
+// refuses a grant of 0, and the refusal reaches the user as "the reward could not be paid" — so
+// every claimer of that row lands in the unpaid state deterministically, and the settle drain would
+// retry it forever. That is the case the drain's unbounded retry is allowed to assume away, and this
+// guard is what makes the assumption true.
+func reconcileAchievementRewards() error {
+	return reconcileRewards(achievement.Catalog())
+}
+
+// reconcileRewards is the guard's body, parameterized on the rows so a test can drive a malformed
+// catalog through the SHIPPED comparison rather than a copy of it — the shape reconcileCounterKeys
+// already takes.
+func reconcileRewards(rows []achievement.Achievement) error {
+	for _, row := range rows {
+		hasTier := row.Reward.Tier != achievement.RewardTierNone
+		hasOrnament := row.Reward.OrnamentID != ""
+		if hasTier && hasOrnament {
+			return fmt.Errorf(
+				"achievement %s rewards both a stardust tier and ornament %s; a reward is exactly one leg",
+				row.ID, row.Reward.OrnamentID,
+			)
+		}
+		if !hasTier && !hasOrnament {
+			return fmt.Errorf(
+				"achievement %s rewards neither a stardust tier nor an ornament; a reward is exactly one leg",
+				row.ID,
+			)
+		}
 		if row.Reward.OrnamentID == "" {
 			continue
 		}
@@ -298,6 +331,34 @@ func (g achievementOrnamentGranter) Grant(
 	return g.service.GrantOwnership(ctx, scope, store.OrnamentID(ornamentID), store.AcquisitionAchievement)
 }
 
+// achievementSettlementScheduler is the drain's enqueue leg, and it binds a JOB store onto the
+// claim's own transaction — the mirror image of the recorder adapters above, which bind a counter
+// store onto a producer's. The claim stamp and the enqueue therefore commit together: a crash before
+// the commit leaves neither, and a crash after it leaves a job that will pay the reward without the
+// user pressing anything.
+//
+// memory's user-job seam is reused rather than a second queue introduced. That keeps the one global
+// scan this system sanctions (ClaimDueJob) the only one, so no achievement statement has to leave
+// its user scope and no globalQueries exemption is needed.
+type achievementSettlementScheduler struct{}
+
+func (achievementSettlementScheduler) ScheduleSettlement(
+	ctx context.Context,
+	scope platform.UserScope,
+	tx achievement.ClaimTx,
+	achievementID string,
+) error {
+	carrier, ok := tx.(interface{ DB() dbgen.DBTX })
+	if !ok || carrier.DB() == nil {
+		return errRecorderTxUnusable
+	}
+	jobs, err := memory.NewUserJobService(memorypg.NewStore(carrier.DB()), nil, nil)
+	if err != nil {
+		return err
+	}
+	return jobs.ScheduleAchievementSettlement(ctx, scope, achievementID)
+}
+
 // accountAchievementUnavailable is the fail-closed account recorder for a root that never settles a
 // signup (the worker, which runs only the withdrawal sweep). It refuses rather than silently
 // counting nothing, so a path that unexpectedly reached it is loud.
@@ -310,7 +371,7 @@ func (accountAchievementUnavailable) RecordProgress(
 	string,
 	int,
 ) error {
-	return errAchievementSettlementUnavailable
+	return errAchievementSignupRecordingUnavailable
 }
 
 // achievementWithdrawalPurgerFor is the sweep's achievement leg, satisfying account's

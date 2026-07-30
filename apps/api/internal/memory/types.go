@@ -35,7 +35,19 @@ const (
 	JobKindConsolidate JobKind = "consolidate"
 	JobKindRetention   JobKind = "retention_sweep"
 	JobKindWithdrawal  JobKind = "withdrawal_sweep"
+	// JobKindAchievementSettle drains a claim whose stamp committed but whose reward has not landed.
+	// It sits in this vocabulary for the same reason the withdrawal sweep does: the queue is
+	// memory-owned, and the alternative — a periodic cross-user scan of another context's product
+	// table — would need a global-scan exemption that queue-driven, user-scoped work does not.
+	JobKindAchievementSettle JobKind = "achievement_settle"
 )
+
+// retriedIndefinitely marks the kinds that must never dead-letter. Each is the sole durable trigger
+// for something a user cannot re-request: an inactive user's Release, a withdrawn account's purge,
+// and a claimed reward's credit. Dead-lettering one silently keeps the thing that was promised.
+func retriedIndefinitely(kind JobKind) bool {
+	return kind == JobKindRetention || kind == JobKindWithdrawal || kind == JobKindAchievementSettle
+}
 
 type JobStatus string
 
@@ -232,10 +244,9 @@ func (j Job) JobID() string {
 }
 
 func (j Job) JobLeaseGeneration() int64 {
-	// Retention work is the sole durable trigger for an inactive user's explicit
-	// Release. It retries past the generic dead-letter claim ceiling; the actual
-	// LeaseGeneration field still fences its database operations.
-	if j.Kind == JobKindRetention || j.Kind == JobKindWithdrawal {
+	// The indefinitely-retried kinds pass the generic dead-letter claim ceiling; the actual
+	// LeaseGeneration field still fences their database operations.
+	if retriedIndefinitely(j.Kind) {
 		return 0
 	}
 	return j.LeaseGeneration

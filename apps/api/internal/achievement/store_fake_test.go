@@ -15,7 +15,7 @@ import (
 //
 // Every method mirrors the SQL's own semantics, which is what makes assertions about idempotency and
 // mode meaningful here: `TouchCounter` reports first touch, `AddCounter`/`RaiseCounter` refuse the
-// wrong mode, `MarkAchieved`/`MarkClaimed` report whether THIS call changed the row.
+// wrong mode, `MarkAchieved`/`MarkClaimed`/`SettleClaim` report whether THIS call changed the row.
 type fakeStore struct {
 	counters   map[CounterKey]int64
 	modes      map[CounterKey]CounterMode
@@ -23,12 +23,16 @@ type fakeStore struct {
 	achievedAt map[string]time.Time
 	claimedAt  map[string]time.Time
 	claimIDs   map[string]string
+	paidAt     map[string]time.Time
 
 	// Failure and observation knobs.
-	failTouchOn CounterKey
-	claimCalls  int
-	commitError error
-	purged      []string
+	failTouchOn  CounterKey
+	claimCalls   int
+	settleCalls  int
+	settleError  error
+	commitError  error
+	purged       []string
+	scheduledFor []string
 }
 
 func newFakeStore() *fakeStore {
@@ -38,6 +42,7 @@ func newFakeStore() *fakeStore {
 		achievedAt: map[string]time.Time{},
 		claimedAt:  map[string]time.Time{},
 		claimIDs:   map[string]string{},
+		paidAt:     map[string]time.Time{},
 	}
 }
 
@@ -73,6 +78,10 @@ func (f *fakeStore) GetProgress(_ context.Context, _ platform.UserScope, achieve
 		stamp := claimed
 		record.ClaimedAt = &stamp
 		record.ClaimID = f.claimIDs[achievementID]
+	}
+	if paid, isPaid := f.paidAt[achievementID]; isPaid {
+		stamp := paid
+		record.PaidAt = &stamp
 	}
 	return &record, nil
 }
@@ -127,6 +136,33 @@ func (f *fakeStore) MarkClaimed(_ context.Context, _ platform.UserScope, achieve
 	f.claimedAt[achievementID] = time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 	f.claimIDs[achievementID] = claimID
 	return true, nil
+}
+
+// SettleClaim mirrors the SQL exactly: it changes a row only when one exists, is claimed under this
+// claim id, and is not yet paid.
+func (f *fakeStore) SettleClaim(_ context.Context, _ platform.UserScope, achievementID string, claimID string) (bool, error) {
+	f.settleCalls++
+	if f.settleError != nil {
+		return false, f.settleError
+	}
+	if _, claimed := f.claimedAt[achievementID]; !claimed {
+		return false, nil
+	}
+	if f.claimIDs[achievementID] != claimID {
+		return false, nil
+	}
+	if _, paid := f.paidAt[achievementID]; paid {
+		return false, nil
+	}
+	f.paidAt[achievementID] = time.Date(2026, 7, 2, 0, 0, 1, 0, time.UTC)
+	return true, nil
+}
+
+// scheduleSettlement is the fake's SettlementScheduler leg, recording what the claim transaction
+// enqueued so a test can assert the drain was scheduled with the stamp rather than after it.
+func (f *fakeStore) ScheduleSettlement(_ context.Context, _ platform.UserScope, _ ClaimTx, achievementID string) error {
+	f.scheduledFor = append(f.scheduledFor, achievementID)
+	return nil
 }
 
 func (f *fakeStore) PurgeUser(_ context.Context, scope platform.UserScope) error {

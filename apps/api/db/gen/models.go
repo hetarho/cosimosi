@@ -23,6 +23,8 @@ type AchievementProgress struct {
 	ClaimedAt     pgtype.Timestamptz
 	// the idempotent-pairing key both reward legs carry; set exactly when claimed_at is
 	ClaimID pgtype.Text
+	// when the reward reached the other context; NULL while a claim is stamped but uncredited, which is the state the settle sweep drains
+	PaidAt pgtype.Timestamptz
 }
 
 type AdminAuditLog struct {

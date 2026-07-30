@@ -36,6 +36,22 @@ func WithdrawalSweepJobIdentity(scope platform.UserScope) (UserJobIdentity, erro
 	}, nil
 }
 
+// AchievementSettleJobIdentity is the settle drain's durable identity. It is keyed per CLAIM rather
+// than per user because the enqueue dedups against terminal rows too: a per-user key would let one
+// finished drain swallow the next claim's, for as long as the terminal row survives cleanup.
+func AchievementSettleJobIdentity(scope platform.UserScope, achievementID string) (UserJobIdentity, error) {
+	if scope.UserID() == "" {
+		return UserJobIdentity{}, ErrScopeRequired
+	}
+	if achievementID == "" {
+		return UserJobIdentity{}, ErrUserJobSpecInvalid
+	}
+	return UserJobIdentity{
+		kind:     JobKindAchievementSettle,
+		dedupKey: "achievement_settle:" + scope.UserID() + ":" + achievementID,
+	}, nil
+}
+
 func (i UserJobIdentity) Kind() JobKind    { return i.kind }
 func (i UserJobIdentity) DedupKey() string { return i.dedupKey }
 
@@ -83,6 +99,32 @@ func (s UserJobService) Schedule(
 	})
 }
 
+// ScheduleAchievementSettlement arms the drain for one claimed reward, due immediately. It is
+// separate from Schedule because the two identities are separate: no caller can pass a kind, so a
+// producer cannot enqueue into another leg's vocabulary by mistake.
+func (s UserJobService) ScheduleAchievementSettlement(
+	ctx context.Context,
+	scope platform.UserScope,
+	achievementID string,
+) error {
+	identity, err := AchievementSettleJobIdentity(scope, achievementID)
+	if err != nil {
+		return err
+	}
+	return s.scheduleUserJob(ctx, scope, userJobSpec{
+		Kind:     identity.Kind(),
+		DedupKey: identity.DedupKey(),
+		DueAt:    s.now().UTC(),
+	})
+}
+
+// userJobKinds is the closed set this seam may enqueue. It exists so admitting a new leg is one edit
+// beside its identity constructor, and so nothing else in the queue's vocabulary can be reached from
+// a user-scoped scheduler.
+func userJobKind(kind JobKind) bool {
+	return kind == JobKindWithdrawal || kind == JobKindAchievementSettle
+}
+
 func (s UserJobService) scheduleUserJob(
 	ctx context.Context,
 	scope platform.UserScope,
@@ -91,7 +133,7 @@ func (s UserJobService) scheduleUserJob(
 	if scope.UserID() == "" {
 		return ErrScopeRequired
 	}
-	if spec.Kind != JobKindWithdrawal || spec.DedupKey == "" || spec.DueAt.IsZero() {
+	if !userJobKind(spec.Kind) || spec.DedupKey == "" || spec.DueAt.IsZero() {
 		return ErrUserJobSpecInvalid
 	}
 	dedupKey := spec.DedupKey

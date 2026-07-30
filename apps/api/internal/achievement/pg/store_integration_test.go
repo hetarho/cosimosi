@@ -192,6 +192,78 @@ func TestMarkAndClaimAreIdempotent(t *testing.T) {
 	}
 }
 
+// The settle stamp and the DDL CHECK that keeps the lifecycle one-directional, against a real
+// Postgres: a claimed row settles once, a replay changes nothing, and no statement or hand-written
+// UPDATE can produce a paid row that was never claimed.
+func TestSettleClaimStampsOnceAndCannotPrecedeTheClaim(t *testing.T) {
+	pool := openAchievementTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	scope := newTestScope(t, "settle")
+	cleanupAchievementTestRows(t, pool, scope.UserID())
+	repo := NewStore(pool.PgxPool())
+
+	if _, err := repo.MarkAchieved(ctx, scope, "first_diary"); err != nil {
+		t.Fatalf("MarkAchieved failed: %v", err)
+	}
+	// An achieved-but-unclaimed row has nothing to settle.
+	settled, err := repo.SettleClaim(ctx, scope, "first_diary", "first_diary")
+	if err != nil || settled {
+		t.Fatalf("SettleClaim before the claim = %v, %v; want zero rows", settled, err)
+	}
+	if _, err := repo.MarkClaimed(ctx, scope, "first_diary", "first_diary"); err != nil {
+		t.Fatalf("MarkClaimed failed: %v", err)
+	}
+	record, err := repo.GetProgress(ctx, scope, "first_diary")
+	if err != nil || record.PaidAt != nil {
+		t.Fatalf("a fresh claim = %+v, %v; want unsettled", record, err)
+	}
+
+	settled, err = repo.SettleClaim(ctx, scope, "first_diary", "first_diary")
+	if err != nil || !settled {
+		t.Fatalf("first SettleClaim = %v, %v; want settled", settled, err)
+	}
+	record, err = repo.GetProgress(ctx, scope, "first_diary")
+	if err != nil || record.PaidAt == nil {
+		t.Fatalf("settled record = %+v, %v", record, err)
+	}
+	paidAt := *record.PaidAt
+
+	// A replay reads as zero rows rather than an error, and never moves the stamp.
+	settled, err = repo.SettleClaim(ctx, scope, "first_diary", "first_diary")
+	if err != nil || settled {
+		t.Fatalf("second SettleClaim = %v, %v; want zero rows", settled, err)
+	}
+	record, err = repo.GetProgress(ctx, scope, "first_diary")
+	if err != nil || !record.PaidAt.Equal(paidAt) {
+		t.Fatalf("paid_at moved: %v -> %v (%v)", paidAt, record.PaidAt, err)
+	}
+
+	// A settle under a different claim id belongs to a different claim and must not land.
+	if _, err := repo.MarkAchieved(ctx, scope, "first_recall"); err != nil {
+		t.Fatalf("MarkAchieved failed: %v", err)
+	}
+	if _, err := repo.MarkClaimed(ctx, scope, "first_recall", "first_recall"); err != nil {
+		t.Fatalf("MarkClaimed failed: %v", err)
+	}
+	settled, err = repo.SettleClaim(ctx, scope, "first_recall", "someone-elses-claim")
+	if err != nil || settled {
+		t.Fatalf("SettleClaim with a foreign claim id = %v, %v; want zero rows", settled, err)
+	}
+
+	// The DDL CHECK is the last word: even a statement written by hand cannot pay an unclaimed row.
+	if _, err := repo.MarkAchieved(ctx, scope, "first_gist_view"); err != nil {
+		t.Fatalf("MarkAchieved failed: %v", err)
+	}
+	_, err = pool.PgxPool().Exec(ctx,
+		"UPDATE achievement_progress SET paid_at = now() WHERE user_id = $1 AND achievement_id = $2",
+		scope.UserID(), "first_gist_view",
+	)
+	if err == nil {
+		t.Fatal("the DDL accepted a paid row that was never claimed")
+	}
+}
+
 func TestPurgeUserTouchesOnlyTheCaller(t *testing.T) {
 	pool := openAchievementTestPool(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -143,7 +143,11 @@ type AchievementEntry struct {
 	Achieved         bool   `protobuf:"varint,7,opt,name=achieved,proto3" json:"achieved,omitempty"`
 	Claimed          bool   `protobuf:"varint,8,opt,name=claimed,proto3" json:"claimed,omitempty"`
 	// RFC3339 UTC; empty while unachieved (the memory.v1 string-time convention).
-	AchievedAt    string `protobuf:"bytes,9,opt,name=achieved_at,json=achievedAt,proto3" json:"achieved_at,omitempty"`
+	AchievedAt string `protobuf:"bytes,9,opt,name=achieved_at,json=achievedAt,proto3" json:"achieved_at,omitempty"`
+	// Whether the claimed reward actually landed. claimed && !reward_settled is the recoverable
+	// window between the claim's commit and its credit: a client keeps the affordance on the row and
+	// labels it as a retry, rather than rendering it as received.
+	RewardSettled bool `protobuf:"varint,10,opt,name=reward_settled,json=rewardSettled,proto3" json:"reward_settled,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -239,6 +243,13 @@ func (x *AchievementEntry) GetAchievedAt() string {
 		return x.AchievedAt
 	}
 	return ""
+}
+
+func (x *AchievementEntry) GetRewardSettled() bool {
+	if x != nil {
+		return x.RewardSettled
+	}
+	return false
 }
 
 type ListAchievementsResponse struct {
@@ -400,7 +411,7 @@ var File_cosimosi_achievement_v1_achievement_proto protoreflect.FileDescriptor
 const file_cosimosi_achievement_v1_achievement_proto_rawDesc = "" +
 	"\n" +
 	")cosimosi/achievement/v1/achievement.proto\x12\x17cosimosi.achievement.v1\"\x19\n" +
-	"\x17ListAchievementsRequest\"\xd7\x02\n" +
+	"\x17ListAchievementsRequest\"\xfe\x02\n" +
 	"\x10AchievementEntry\x12%\n" +
 	"\x0eachievement_id\x18\x01 \x01(\tR\rachievementId\x12<\n" +
 	"\x04axis\x18\x02 \x01(\x0e2(.cosimosi.achievement.v1.AchievementAxisR\x04axis\x12\x16\n" +
@@ -411,7 +422,9 @@ const file_cosimosi_achievement_v1_achievement_proto_rawDesc = "" +
 	"\bachieved\x18\a \x01(\bR\bachieved\x12\x18\n" +
 	"\aclaimed\x18\b \x01(\bR\aclaimed\x12\x1f\n" +
 	"\vachieved_at\x18\t \x01(\tR\n" +
-	"achievedAt\"_\n" +
+	"achievedAt\x12%\n" +
+	"\x0ereward_settled\x18\n" +
+	" \x01(\bR\rrewardSettled\"_\n" +
 	"\x18ListAchievementsResponse\x12C\n" +
 	"\aentries\x18\x01 \x03(\v2).cosimosi.achievement.v1.AchievementEntryR\aentries\"@\n" +
 	"\x17ClaimAchievementRequest\x12%\n" +

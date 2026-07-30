@@ -121,9 +121,9 @@ func NewJobRunner(
 
 // maintenanceQueue puts bounded queue cleanup in the worker's existing polling
 // loop. Cleanup is the one documented global maintenance scan and fails open so
-// transient housekeeping errors never stop due product work. Retention failures
-// remain retryable indefinitely: they are the only durable trigger an inactive
-// user's explicit Release can rely on.
+// transient housekeeping errors never stop due product work. The kinds
+// retriedIndefinitely names never dead-letter here: each is the only durable
+// trigger for something the user cannot ask for a second time.
 type maintenanceQueue struct {
 	JobQueue
 	cleaner TerminalJobCleaner
@@ -143,7 +143,7 @@ func (q maintenanceQueue) ClaimDue(ctx context.Context, now time.Time) (Job, err
 }
 
 func (q maintenanceQueue) Fail(ctx context.Context, job Job, nextAttempts int32) error {
-	if job.Kind != JobKindRetention && job.Kind != JobKindWithdrawal {
+	if !retriedIndefinitely(job.Kind) {
 		return q.JobQueue.Fail(ctx, job, nextAttempts)
 	}
 	delay := q.backoff

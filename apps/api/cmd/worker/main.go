@@ -147,6 +147,10 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 	if err != nil {
 		return nil, "", err
 	}
+	settler, err := newAchievementSettler(pool, accountService)
+	if err != nil {
+		return nil, "", err
+	}
 	runner, err := memory.NewDefaultJobRunner(
 		memoryStore,
 		adapters.Embedder,
@@ -154,13 +158,51 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 		workerPollInterval,
 		logger,
 		map[memory.JobKind]jobqueue.Handler[memory.Job]{
-			memory.JobKindWithdrawal: memory.NewWithdrawalSweepJobHandler(accountService, nil),
+			memory.JobKindWithdrawal:        memory.NewWithdrawalSweepJobHandler(accountService, nil),
+			memory.JobKindAchievementSettle: memory.NewAchievementSettleJobHandler(settler),
 		},
 	)
 	if err != nil {
 		return nil, "", err
 	}
 	return runner, adapters.Mode, nil
+}
+
+// newAchievementSettler builds the drain leg this process runs. The worker pays through the SAME
+// published behavior the API does — twinkle's achievement earn and store's ownership grant — so a
+// drained claim and a pressed one credit through one code path and one pair of dedup keys.
+//
+// Everything twinkle and store need for the paths this process does NOT run is fail-closed rather
+// than wired: it quotes no spend, settles no invite and saves no decoration, and a permissive stub
+// would let a path that unexpectedly reached one of them succeed quietly.
+func newAchievementSettler(pool *platformdb.Pool, accountService *account.Service) (*achievement.Service, error) {
+	twinkleService, err := twinkle.NewService(twinkle.ServiceDeps{
+		Ledger:         twinklepg.NewStore(pool.PgxPool()),
+		InviteResolver: twinkle.UnavailableInviteResolver{},
+		Signals:        workerNoSpendSignals{},
+		UserZone:       workerTwinkleZone{service: accountService},
+	})
+	if err != nil {
+		return nil, err
+	}
+	ornaments := storepg.NewStore(pool.PgxPool())
+	storeService, err := store.NewService(store.ServiceDeps{
+		Ownerships:   ornaments,
+		Selections:   ornaments,
+		Purge:        ornaments,
+		Achievements: workerNoStoreAchievementRecorder{},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return achievement.NewService(achievement.AchievementServiceDeps{
+		Repo:      achievementpg.NewStore(pool.PgxPool()),
+		Twinkle:   workerTwinkleGranter{service: twinkleService},
+		Ornaments: workerOrnamentGranter{service: storeService},
+		// This process drains claims and never takes one, so a claim reaching it would be a wiring
+		// fault: it refuses rather than stamping one whose drain nobody armed.
+		Settlements: workerNoSettlementScheduler{},
+	})
 }
 
 type workerAccountDirectory interface {
@@ -203,6 +245,12 @@ var (
 	errWorkerAchievementRecordingUnavailable = errors.New(
 		"achievement progress recording is not available in the worker process",
 	)
+	errWorkerSpendQuotingUnavailable = errors.New(
+		"twinkle spend quoting is not available in the worker process",
+	)
+	errWorkerClaimSchedulingUnavailable = errors.New(
+		"achievement claims are not taken in the worker process",
+	)
 )
 
 func (workerNoInviteGranter) Grant(context.Context, platform.UserScope, string) error {
@@ -225,4 +273,92 @@ func (workerNoAchievementRecorder) RecordProgress(
 	int,
 ) error {
 	return errWorkerAchievementRecordingUnavailable
+}
+
+// workerNoStoreAchievementRecorder is the same refusal in store's own tx vocabulary — the port's
+// parameter is store.EconomyTx, so the `any`-shaped recorder above does not satisfy it.
+type workerNoStoreAchievementRecorder struct{}
+
+func (workerNoStoreAchievementRecorder) RecordProgress(
+	context.Context,
+	platform.UserScope,
+	store.EconomyTx,
+	string,
+	int,
+) error {
+	return errWorkerAchievementRecordingUnavailable
+}
+
+// workerNoSpendSignals refuses every quote signal: this process prices nothing, so a quote reaching
+// it means twinkle was asked for something the worker has no memory reads to answer.
+type workerNoSpendSignals struct{}
+
+func (workerNoSpendSignals) RecallAccessibility(context.Context, platform.UserScope, string) (float64, error) {
+	return 0, errWorkerSpendQuotingUnavailable
+}
+
+func (workerNoSpendSignals) DiaryRecallAccessibilities(context.Context, platform.UserScope, string) ([]float64, error) {
+	return nil, errWorkerSpendQuotingUnavailable
+}
+
+func (workerNoSpendSignals) ViewableGistStage(context.Context, platform.UserScope, string) (int, error) {
+	return 0, errWorkerSpendQuotingUnavailable
+}
+
+// workerNoSettlementScheduler refuses to arm a drain, because this process never takes a claim. It
+// is loud rather than silent: a claim stamped here with no drain behind it would reinstate exactly
+// the "press again or lose it" recovery the drain replaced.
+type workerNoSettlementScheduler struct{}
+
+func (workerNoSettlementScheduler) ScheduleSettlement(
+	context.Context,
+	platform.UserScope,
+	achievement.ClaimTx,
+	string,
+) error {
+	return errWorkerClaimSchedulingUnavailable
+}
+
+// workerTwinkleZone is the worker's binding of twinkle's UserZoneReader, over account's published
+// profile read — the same edge the API root binds, so the earn's balance derivation reads one clock
+// boundary rather than a worker-local guess.
+type workerTwinkleZone struct {
+	service *account.Service
+}
+
+func (z workerTwinkleZone) ZoneFor(ctx context.Context, scope platform.UserScope) (string, error) {
+	return z.service.ZoneFor(ctx, scope)
+}
+
+// workerTwinkleGranter and workerOrnamentGranter are the drain's two payout legs, over the same
+// published behavior the API root binds. The claim id is the dedup key on both, so a drain that
+// replays an already-paid leg credits nothing.
+type workerTwinkleGranter struct {
+	service *twinkle.Service
+}
+
+func (g workerTwinkleGranter) EarnAchievementReward(
+	ctx context.Context,
+	scope platform.UserScope,
+	claimID string,
+	amount int,
+) (int, error) {
+	balance, err := g.service.EarnAchievementReward(ctx, scope, claimID, amount)
+	if err != nil {
+		return 0, err
+	}
+	return balance.General, nil
+}
+
+type workerOrnamentGranter struct {
+	service *store.Service
+}
+
+func (g workerOrnamentGranter) Grant(
+	ctx context.Context,
+	scope platform.UserScope,
+	_ string,
+	ornamentID string,
+) error {
+	return g.service.GrantOwnership(ctx, scope, store.OrnamentID(ornamentID), store.AcquisitionAchievement)
 }

@@ -20,27 +20,39 @@ function view(overrides: Partial<AchievementView> = {}): AchievementView {
     rewardOrnamentId: '',
     achieved: false,
     claimed: false,
+    rewardSettled: false,
     ...overrides,
   }
 }
 
 describe('claim state', () => {
-  it('is exactly one of three, derived from the two server booleans', () => {
+  it('is exactly one of four, derived from the three server booleans', () => {
     expect(claimState(view())).toBe('locked')
     expect(claimState(view({ achieved: true }))).toBe('claimable')
-    expect(claimState(view({ achieved: true, claimed: true }))).toBe('claimed')
-    // A claimed row is necessarily achieved, and the reward is already gone — claimed wins.
-    expect(claimState(view({ achieved: false, claimed: true }))).toBe('claimed')
+    expect(claimState(view({ achieved: true, claimed: true, rewardSettled: true }))).toBe('claimed')
+    // A claimed row is necessarily achieved, and a settled reward is already gone — claimed wins.
+    expect(claimState(view({ achieved: false, claimed: true, rewardSettled: true }))).toBe(
+      'claimed',
+    )
   })
 
-  it('counts only what is waiting, from the same booleans the rows read', () => {
+  it('separates a claim whose reward never landed from one that is finished', () => {
+    // The state R001 named: the server recorded the claim, the credit did not arrive, and rendering
+    // it as `claimed` is what removed the only affordance that could recover it.
+    expect(claimState(view({ achieved: true, claimed: true }))).toBe('unpaid')
+  })
+
+  it('counts every row still waiting for its reward, from the booleans the rows read', () => {
     expect(
       claimableCount([
         view({ id: 'a', achieved: true }),
-        view({ id: 'b', achieved: true, claimed: true }),
+        view({ id: 'b', achieved: true, claimed: true, rewardSettled: true }),
         view({ id: 'c' }),
+        // Claimed but unsettled: the reward has not arrived, so it is still waiting — and the row
+        // under this summary renders a retry button, which "nothing waiting" would contradict.
+        view({ id: 'd', achieved: true, claimed: true }),
       ]),
-    ).toBe(1)
+    ).toBe(2)
   })
 })
 

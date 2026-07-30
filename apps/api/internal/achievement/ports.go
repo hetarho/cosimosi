@@ -17,8 +17,8 @@ import (
 // the owner provides, the use-case composes.
 //
 // TouchCounter's boolean is the first-touch signal the derived variety counters are bumped on;
-// MarkAchieved's and MarkClaimed's report whether THIS call changed the row, so a replay reads as
-// false rather than as a second grant.
+// MarkAchieved's, MarkClaimed's and SettleClaim's report whether THIS call changed the row, so a
+// replay reads as false rather than as a second grant.
 type Store interface {
 	ListCounters(ctx context.Context, scope platform.UserScope) (map[CounterKey]int64, error)
 	ListProgress(ctx context.Context, scope platform.UserScope) ([]ProgressRecord, error)
@@ -28,6 +28,10 @@ type Store interface {
 	RaiseCounter(ctx context.Context, scope platform.UserScope, key CounterKey, level int64) (int64, error)
 	MarkAchieved(ctx context.Context, scope platform.UserScope, achievementID string) (marked bool, err error)
 	MarkClaimed(ctx context.Context, scope platform.UserScope, achievementID string, claimID string) (claimed bool, err error)
+	// SettleClaim stamps the reward as landed, for a row that is already claimed under this claim id
+	// and not yet paid. It can only ever move a row forward through the lifecycle, so a settle for a
+	// row nobody claimed is a no-op rather than a way to invent a paid-but-unclaimed state.
+	SettleClaim(ctx context.Context, scope platform.UserScope, achievementID string, claimID string) (settled bool, err error)
 }
 
 // There is deliberately **no purge on Store**: a counter write composed inside InAchievementTx would
@@ -62,4 +66,17 @@ type TwinkleGranter interface {
 // row, so a replay grants once.
 type OrnamentGranter interface {
 	Grant(ctx context.Context, scope platform.UserScope, claimID string, ornamentID string) error
+}
+
+// ClaimTx is the open claim transaction, opaque here: only the composition root knows the concrete,
+// so this context cannot reach into the job queue's tables and the queue's owner is not imported
+// (the shape store's SpendGate already uses for the ledger).
+type ClaimTx any
+
+// SettlementScheduler enqueues the drain for the claim being stamped, INSIDE the claim's own
+// transaction. That placement is the whole point: a process death between the commit and the payout
+// leaves the job enqueued, so recovery does not need the user to press again — and a rolled-back
+// claim schedules nothing.
+type SettlementScheduler interface {
+	ScheduleSettlement(ctx context.Context, scope platform.UserScope, tx ClaimTx, achievementID string) error
 }

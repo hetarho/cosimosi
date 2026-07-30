@@ -60,6 +60,10 @@ message AchievementEntry {
   bool claimed = 8;
   // RFC3339 UTC; empty while unachieved (the memory.v1 string-time convention).
   string achieved_at = 9;
+  // Whether the claimed reward actually landed. claimed && !reward_settled is the recoverable
+  // window between the claim's commit and its credit: a client keeps the affordance on the row and
+  // labels it as a retry, rather than rendering it as received.
+  bool reward_settled = 10;
 }
 
 message ListAchievementsResponse {

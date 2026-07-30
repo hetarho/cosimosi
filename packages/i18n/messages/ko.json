@@ -597,6 +597,8 @@
   "achievement_reward_ornament": "여기서만 얻는 장식",
   "achievement_claim": "받기",
   "achievement_claimed": "받았어요",
+  "achievement_claim_retry": "받기 다시 시도",
+  "achievement_reward_pending": "보상이 아직 도착하지 않았어요.",
   "achievement_progress_label": "{target} 중 {progress}",
   "achievement_notice": "{title} — 기록에서 기다리고 있어요.",
   "achievement_reveal_title": "받았어요",

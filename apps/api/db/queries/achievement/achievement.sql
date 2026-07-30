@@ -12,13 +12,13 @@ WHERE user_id = sqlc.arg(user_id)
 ORDER BY counter_key;
 
 -- name: ListAchievementProgress :many
-SELECT achievement_id, achieved_at, claimed_at, claim_id
+SELECT achievement_id, achieved_at, claimed_at, claim_id, paid_at
 FROM achievement_progress
 WHERE user_id = sqlc.arg(user_id)
 ORDER BY achievement_id;
 
 -- name: GetAchievementProgress :one
-SELECT achievement_id, achieved_at, claimed_at, claim_id
+SELECT achievement_id, achieved_at, claimed_at, claim_id, paid_at
 FROM achievement_progress
 WHERE user_id = sqlc.arg(user_id)
   AND achievement_id = sqlc.arg(achievement_id);
@@ -66,6 +66,19 @@ SET claimed_at = now(), claim_id = sqlc.arg(claim_id)
 WHERE user_id = sqlc.arg(user_id)
   AND achievement_id = sqlc.arg(achievement_id)
   AND claimed_at IS NULL;
+
+-- The settle stamp: the reward reached the other context. Conjunctively scoped and guarded on the
+-- row already being claimed and not yet paid, so it can never invent the pair the DDL CHECK forbids.
+-- :execrows because a replay legitimately changes nothing — the sweep re-runs an idempotent leg for a
+-- claim someone else already settled, and zero rows is that outcome, not an error ([A4]).
+-- name: SettleAchievementClaim :execrows
+UPDATE achievement_progress
+SET paid_at = now()
+WHERE user_id = sqlc.arg(user_id)
+  AND achievement_id = sqlc.arg(achievement_id)
+  AND claim_id = sqlc.arg(claim_id)
+  AND claimed_at IS NOT NULL
+  AND paid_at IS NULL;
 
 -- Account withdrawal's achievement leg: the user's own counters and progress, hard-deleted by
 -- their own sweep with claimed_at intact until the row goes — the single exception [I1] names.

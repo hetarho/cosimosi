@@ -68,6 +68,12 @@ strength, a mood, a position, a forgetting stage or any text. An achievement lit
 moves**; `PRIMARY KEY (user_id, achievement_id)` is the double-payout guard, and `claim_id` is the dedup key both
 reward legs carry.
 
+**A claim that is paid at most once must also be paid at least once.** The stamp commits before any credit moves, so
+"the user pressed the button" and "the reward landed" are separate facts and the row carries both: `paid_at` is stamped
+only once a reward leg returns. A claimed-and-unsettled row is a state the read reports, not a gap the surface hides —
+and it is drained by a worker job the claim transaction itself enqueues, so recovery does not depend on the user
+noticing. Both legs stay idempotent on `claim_id`, so a replay credits once however it is triggered.
+
 **Progress is derived, never stored.** `Progress = min(counter, target)` and `Achieved = counter >= target` are
 computed at read; `achievement_progress` stores only what cannot be derived — when the condition was first met and when
 the reward was received. A user who has never achieved anything has **zero rows** in it and still gets the whole

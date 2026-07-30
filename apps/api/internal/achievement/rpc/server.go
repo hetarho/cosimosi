@@ -61,6 +61,7 @@ func (s *Server) ListAchievements(
 			RewardOrnamentId: entry.Reward.OrnamentID,
 			Achieved:         entry.Achieved,
 			Claimed:          entry.Claimed,
+			RewardSettled:    entry.RewardSettled,
 			AchievedAt:       achievedAt,
 		})
 	}

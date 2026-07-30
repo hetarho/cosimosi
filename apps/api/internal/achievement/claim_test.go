@@ -10,7 +10,14 @@ import (
 
 func newClaimService(t *testing.T, repo *fakeStore, twinkle *fakeTwinkleGranter, ornaments *fakeOrnamentGranter) *Service {
 	t.Helper()
-	service, err := NewService(AchievementServiceDeps{Repo: repo, Twinkle: twinkle, Ornaments: ornaments})
+	service, err := NewService(AchievementServiceDeps{
+		Repo:      repo,
+		Twinkle:   twinkle,
+		Ornaments: ornaments,
+		// The fake is its own scheduler, so a test can assert the drain was armed inside the claim
+		// transaction rather than after it.
+		Settlements: repo,
+	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
@@ -194,6 +201,123 @@ func TestClaimPromotesACounterTheReadAlreadyCallsAchieved(t *testing.T) {
 	}
 	if twinkle.calls != 1 {
 		t.Fatalf("promoted claim credited %d times", twinkle.calls)
+	}
+}
+
+// The success path closes the pair: the stamp says the reward landed, and the drain was armed inside
+// the claim transaction rather than after it.
+func TestClaimSettlesAndArmsTheDrainInsideTheTransaction(t *testing.T) {
+	t.Parallel()
+	repo := newFakeStore()
+	repo.achieve("first_diary")
+	service := newClaimService(t, repo, &fakeTwinkleGranter{}, &fakeOrnamentGranter{})
+
+	if _, err := service.ClaimAchievement(context.Background(), testScope(t), "first_diary"); err != nil {
+		t.Fatalf("claim failed: %v", err)
+	}
+	if _, paid := repo.paidAt["first_diary"]; !paid {
+		t.Fatal("a paid claim was left unsettled, which is the state the drain retries forever")
+	}
+	if len(repo.scheduledFor) != 1 || repo.scheduledFor[0] != "first_diary" {
+		t.Fatalf("scheduled drains = %v, want exactly the claimed row", repo.scheduledFor)
+	}
+}
+
+// A payout refusal leaves the row claimed AND unsettled — the state the read reports and the drain
+// picks up. Neither the stamp nor the drain is rolled back with it.
+func TestClaimLeavesTheRowUnsettledWhenThePayoutRefuses(t *testing.T) {
+	t.Parallel()
+	repo := newFakeStore()
+	repo.achieve("first_recall")
+	twinkle := &fakeTwinkleGranter{err: errors.New("ledger unavailable")}
+	service := newClaimService(t, repo, twinkle, &fakeOrnamentGranter{})
+	ctx := context.Background()
+	scope := testScope(t)
+
+	if _, err := service.ClaimAchievement(ctx, scope, "first_recall"); !errors.Is(err, ErrRewardUnavailable) {
+		t.Fatalf("payout refusal = %v, want ErrRewardUnavailable", err)
+	}
+	if _, claimed := repo.claimedAt["first_recall"]; !claimed {
+		t.Fatal("the stamp was rolled back, which would lose the reward instead of recording the debt")
+	}
+	if _, paid := repo.paidAt["first_recall"]; paid {
+		t.Fatal("an unpaid reward was stamped as settled")
+	}
+	if len(repo.scheduledFor) != 1 {
+		t.Fatalf("scheduled drains = %v, want the claim transaction to have armed one", repo.scheduledFor)
+	}
+
+	// The drain replays the idempotent leg and settles, with no press from the user.
+	twinkle.err = nil
+	if err := service.SettleClaims(ctx, scope); err != nil {
+		t.Fatalf("SettleClaims failed: %v", err)
+	}
+	if _, paid := repo.paidAt["first_recall"]; !paid {
+		t.Fatal("the drain did not settle the claim")
+	}
+	// A second drain finds nothing to do and credits nothing more.
+	credited := twinkle.calls
+	if err := service.SettleClaims(ctx, scope); err != nil {
+		t.Fatalf("second SettleClaims failed: %v", err)
+	}
+	if twinkle.calls != credited {
+		t.Fatalf("the drain credited %d more times over a settled row", twinkle.calls-credited)
+	}
+}
+
+// A settle failure AFTER a successful credit is not a payout failure: the reward has arrived, so the
+// claim reports success and the row simply stays unsettled for the drain to re-stamp.
+func TestClaimSucceedsWhenOnlyTheSettleStampFails(t *testing.T) {
+	t.Parallel()
+	repo := newFakeStore()
+	repo.achieve("first_diary")
+	repo.settleError = errors.New("stamp unavailable")
+	twinkle := &fakeTwinkleGranter{}
+	service := newClaimService(t, repo, twinkle, &fakeOrnamentGranter{})
+
+	result, err := service.ClaimAchievement(context.Background(), testScope(t), "first_diary")
+	if err != nil {
+		t.Fatalf("a credited claim whose stamp failed = %v, want success", err)
+	}
+	if result.TwinkleAmount <= 0 {
+		t.Fatalf("claim paid %+v", result)
+	}
+	if _, paid := repo.paidAt["first_diary"]; paid {
+		t.Fatal("the failing stamp somehow landed")
+	}
+	if twinkle.calls != 1 {
+		t.Fatalf("credited %d times", twinkle.calls)
+	}
+}
+
+// A replay of an unsettled claim pays through and settles: the press is still a valid recovery, not
+// only the worker's drain.
+func TestReplayOfAnUnsettledClaimPaysThroughAndSettles(t *testing.T) {
+	t.Parallel()
+	repo := newFakeStore()
+	repo.achieve("first_recall")
+	twinkle := &fakeTwinkleGranter{err: errors.New("ledger unavailable")}
+	service := newClaimService(t, repo, twinkle, &fakeOrnamentGranter{})
+	ctx := context.Background()
+	scope := testScope(t)
+
+	if _, err := service.ClaimAchievement(ctx, scope, "first_recall"); !errors.Is(err, ErrRewardUnavailable) {
+		t.Fatalf("first claim = %v, want ErrRewardUnavailable", err)
+	}
+	twinkle.err = nil
+	if _, err := service.ClaimAchievement(ctx, scope, "first_recall"); err != nil {
+		t.Fatalf("replayed claim failed: %v", err)
+	}
+	if _, paid := repo.paidAt["first_recall"]; !paid {
+		t.Fatal("the replay paid but did not settle")
+	}
+	// A settled row needs no drain, so the replay after it arms nothing new.
+	armed := len(repo.scheduledFor)
+	if _, err := service.ClaimAchievement(ctx, scope, "first_recall"); err != nil {
+		t.Fatalf("third claim failed: %v", err)
+	}
+	if len(repo.scheduledFor) != armed {
+		t.Fatalf("a settled row armed another drain: %v", repo.scheduledFor)
 	}
 }
 

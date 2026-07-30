@@ -122,7 +122,7 @@ func (s Store) ListProgress(
 	}
 	records := make([]achievement.ProgressRecord, 0, len(rows))
 	for _, row := range rows {
-		records = append(records, progressRecord(row.AchievementID, row.AchievedAt, row.ClaimedAt, row.ClaimID))
+		records = append(records, progressRecord(row.AchievementID, row.AchievedAt, row.ClaimedAt, row.ClaimID, row.PaidAt))
 	}
 	return records, nil
 }
@@ -145,7 +145,7 @@ func (s Store) GetProgress(
 	if err != nil {
 		return nil, err
 	}
-	record := progressRecord(row.AchievementID, row.AchievedAt, row.ClaimedAt, row.ClaimID)
+	record := progressRecord(row.AchievementID, row.AchievedAt, row.ClaimedAt, row.ClaimID, row.PaidAt)
 	return &record, nil
 }
 
@@ -295,6 +295,35 @@ func (s Store) MarkClaimed(
 	return claimed > 0, nil
 }
 
+// SettleClaim reports whether THIS statement stamped the payout. The statement's own arms carry the
+// precondition — already claimed under this claim id, not yet paid — so a replay reads as false and a
+// paid-but-unclaimed row is unreachable from here as well as from the DDL CHECK.
+func (s Store) SettleClaim(
+	ctx context.Context,
+	scope platform.UserScope,
+	achievementID string,
+	claimID string,
+) (bool, error) {
+	if err := s.ready(scope); err != nil {
+		return false, err
+	}
+	if err := achievement.RequireCatalogID(achievementID); err != nil {
+		return false, err
+	}
+	if claimID == "" {
+		return false, achievement.ErrClaimIDRequired
+	}
+	settled, err := s.queries.SettleAchievementClaim(ctx, dbgen.SettleAchievementClaimParams{
+		UserID:        scope.UserID(),
+		AchievementID: achievementID,
+		ClaimID:       pgtype.Text{String: claimID, Valid: true},
+	})
+	if err != nil {
+		return false, err
+	}
+	return settled > 0, nil
+}
+
 // PurgeUser hard-deletes the withdrawing user's own rows, both tables in one transaction so a
 // retried sweep never finds progress surviving its counters ([I1][U1]).
 func (s Store) PurgeUser(ctx context.Context, scope platform.UserScope) error {
@@ -329,6 +358,7 @@ func progressRecord(
 	achievedAt pgtype.Timestamptz,
 	claimedAt pgtype.Timestamptz,
 	claimID pgtype.Text,
+	paidAt pgtype.Timestamptz,
 ) achievement.ProgressRecord {
 	record := achievement.ProgressRecord{
 		AchievementID: achievementID,
@@ -338,6 +368,10 @@ func progressRecord(
 		claimed := claimedAt.Time
 		record.ClaimedAt = &claimed
 		record.ClaimID = claimID.String
+	}
+	if paidAt.Valid {
+		paid := paidAt.Time
+		record.PaidAt = &paid
 	}
 	return record
 }
