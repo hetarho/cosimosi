@@ -75,10 +75,9 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
 └── cosimosi-prod/             # main이 배포되는 스택 (구성 동일)
 ```
 
-- 스택 `.env` 키: `IMAGE_TAG`(배포가 갱신) · `DATABASE_URL`(**6543 트랜잭션 풀러 +
-  `?default_query_exec_mode=describe_exec` 필수** — 풀러가 백엔드 연결을 공유해 pgx named prepared
-  statement가 충돌(42P05). describe_exec는 unnamed(풀러 안전)+describe(타입 인식)라 42P05도, jsonb
-  22P02도 안 난다. simple_protocol/exec 금지 — 타입 정보를 버려 jsonb를 깨뜨림) · `DIRECT_DATABASE_URL`(5432) · `PORT=8080` ·
+- 스택 `.env` 키: `IMAGE_TAG`(배포가 갱신) · `DATABASE_URL`(**5432 세션 풀러 +
+  `?default_query_exec_mode=describe_exec`** — 상주 API는 트랜잭션 풀러(6543)에 붙이지 않는다. §7의
+  함정 참고) · `DIRECT_DATABASE_URL`(5432) · `PORT=8080` ·
   `API_UPSTREAM`(`cosimosi-api-staging`|`cosimosi-api-prod` — edge 네트워크에서의 DNS 별칭) ·
   `COSIMOSI_CORS_ORIGINS`(해당 환경 프론트 origin, 쉼표로 여러 개) · `SUPABASE_PROJECT_URL` ·
   `SUPABASE_SERVICE_ROLE_KEY`(**서버 전용**, Auth Admin API와 withdrawal credential purge에 필수; `VITE_*`로
@@ -152,12 +151,24 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 
 ## 7. 함정 모음 (한 번씩 실제로 밟은 것들)
 
-- **트랜잭션 풀러(6543) + pgx** → `DATABASE_URL`에 `?default_query_exec_mode=describe_exec`
-  필수. 없으면(기본 cache_statement) named prepared statement 충돌로 42P05 재시작 루프.
-  ⚠️ `simple_protocol`/`exec`는 금지 — 42P05는 피하지만 타입 정보를 버려 JSONB `[]byte` 파라미터를
-  bytea로 인코딩 → 모든 jsonb insert가 22P02(`invalid input syntax for type json`)로 실패.
-  describe_exec만 unnamed(풀러 안전)+describe(타입 인식) 둘 다 만족. DDL/마이그레이션은 풀러 금지 —
-  5432 직접 연결(`DIRECT_DATABASE_URL`).
+- **상주 API는 세션 풀러(5432)로 붙는다 — 트랜잭션 풀러(6543)는 pgx와 함께 쓸 수 없다.**
+  풀러 모드별로 pgx가 갈 수 있는 길이 없다:
+  - 기본 `cache_statement`는 named prepared statement가 공유 연결에서 충돌해 42P05.
+  - `simple_protocol`/`exec`는 타입 정보를 버려 JSONB `[]byte` 파라미터를 bytea로 인코딩 →
+    jsonb insert가 22P02(`invalid input syntax for type json`)로 실패.
+  - `describe_exec`는 unnamed prepared statement로 **왕복을 두 번** 한다. 트랜잭션 모드 풀러는
+    그 사이에 서버 연결을 바꿔치기하므로, 동시 요청이 몰릴 때 한 쿼리의 bind가 다른 쿼리의 parse
+    위에 떨어진다 — `unnamed prepared statement does not exist`(26000),
+    `bind message has N result formats but query has M columns`(08P01),
+    `number of field descriptions must equal number of values`. pgx가 문서에 직접 적어둔 제약이다
+    (`QueryExecModeDescribeExec`: _"may cause problems with connection poolers that switch the
+    underlying connection between round trips"_).
+    2026-07-30 prod에서 RPC의 46%가 이걸로 500이 났다 — 재시도하면 통과하니 로그를 봐야 보인다.
+
+  세션 풀러(5432)는 클라이언트 연결에 서버 연결을 붙여두므로 두 왕복이 같은 연결에 남고,
+  `describe_exec`의 타입 인식도 그대로다. 호스트·유저명은 6543과 동일하고 **포트만** 다르다.
+  DDL/마이그레이션도 같은 5432(`DIRECT_DATABASE_URL`).
+
 - **Caddy는 한 마리** — 스택마다 띄우면 두 번째가 `Bind for 0.0.0.0:80 failed`.
 - **GHCR 로그인은 ubuntu 계정으로**(sudo ✕) — 배포가 ubuntu로 pull한다.
 - **DNS 회색 구름** — 주황(프록시)이면 Let's Encrypt 발급 실패.
