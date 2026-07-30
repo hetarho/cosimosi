@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package cosimosi.memory.v1;
 
-// MemoryService owns the encode write contract (plan 20: SplitDiary / ReviseSplit /
-// LaunchStars) and the GetUniverse read contract (shape owned by plan 23).
+// MemoryService owns the encode write contract — SplitDiary / ReviseSplit / LaunchStars — and the
+// GetUniverse read contract.
 //
 // [W4a] structural defense: the encode schema carries ONLY
 // {memories:[{name, mood, source_text, neurons:[{name, type}]}]}. No position, color,
@@ -16,12 +16,12 @@ service MemoryService {
   // Synchronous preview split — the user sees and edits it [W2]; persists nothing.
   // Invokes the LLM (cost-metered), so it is NOT marked NO_SIDE_EFFECTS.
   rpc SplitDiary(SplitDiaryRequest) returns (SplitDiaryResponse);
-  // Natural-language edit re-run [W4a]; same schema-forced output. Returns
-  // SplitDiaryResponse by design (plan 20): a revise re-enters the same preview
-  // loop, so chained revises feed `previous` without a conversion.
+  // Natural-language edit re-run [W4a]; same schema-forced output. Returning SplitDiaryResponse is
+  // deliberate: a revise re-enters the same preview loop, so chained revises feed `previous`
+  // without a conversion.
   rpc ReviseSplit(ReviseSplitRequest) returns (SplitDiaryResponse);
-  // Persist-and-launch: atomically commits the user-confirmed split (plan 20
-  // PersistEncoded). Optimistic write — returns ids only (ARCHITECTURE §2.8).
+  // Persist-and-launch: atomically commits the user-confirmed split. Optimistic write — returns
+  // ids only (ARCHITECTURE §2.8).
   rpc LaunchStars(LaunchStarsRequest) returns (LaunchStarsResponse);
   // Per-user universe read carrying stored facts only — no positions or derived
   // values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
@@ -134,8 +134,7 @@ message LaunchStarsResponse {
   // Optimistic write: ids only; embeddings/gist fill on the next read (§2.8).
   repeated string memory_ids = 1;
   // Neurons genuinely created by this launch (not deduped onto existing ones) —
-  // newness is a server-only decision, surfaced for the awaken animation
-  // (plan 25, [E7a]).
+  // newness is a server-only decision, surfaced for the awaken animation ([E7a]).
   repeated string new_neuron_ids = 2;
   // The monotonic launch guard's authoritative outcome [I10][T1]: the diary was
   // saved but no memory was created because its date precedes the universe's
@@ -143,7 +142,7 @@ message LaunchStarsResponse {
   // empty memory_ids coincidence.
   bool past_dated = 3;
   // The universe clock before/after this launch's advance (ISO DATE) — the
-  // interval the acceleration animation plays over [T2] (plan 31). Empty
+  // interval the acceleration animation plays over [T2]. Empty
   // previous_universe_time = the first-ever launch (no prior clock, the same
   // empty-until-set convention as GetUniverseResponse.universe_time); a
   // past-dated launch carries the unmoved clock in both (no acceleration).
@@ -253,7 +252,7 @@ message RecallResponse {
   // The bumped read-time size [R3][V3].
   float effective_strength = 5;
   // The universe clock before/after the sync (ISO DATE) — the interval the
-  // acceleration replay plays over [T2] (plan 31); empty previous = the unborn clock.
+  // acceleration replay plays over [T2]; empty previous = the unborn clock.
   string previous_universe_time = 6;
   string universe_time = 7;
 }

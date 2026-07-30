@@ -228,8 +228,7 @@ export type LaunchStarsResponse = Message<"cosimosi.memory.v1.LaunchStarsRespons
 
   /**
    * Neurons genuinely created by this launch (not deduped onto existing ones) —
-   * newness is a server-only decision, surfaced for the awaken animation
-   * (plan 25, [E7a]).
+   * newness is a server-only decision, surfaced for the awaken animation ([E7a]).
    *
    * @generated from field: repeated string new_neuron_ids = 2;
    */
@@ -247,7 +246,7 @@ export type LaunchStarsResponse = Message<"cosimosi.memory.v1.LaunchStarsRespons
 
   /**
    * The universe clock before/after this launch's advance (ISO DATE) — the
-   * interval the acceleration animation plays over [T2] (plan 31). Empty
+   * interval the acceleration animation plays over [T2]. Empty
    * previous_universe_time = the first-ever launch (no prior clock, the same
    * empty-until-set convention as GetUniverseResponse.universe_time); a
    * past-dated launch carries the unmoved clock in both (no acceleration).
@@ -634,7 +633,7 @@ export type RecallResponse = Message<"cosimosi.memory.v1.RecallResponse"> & {
 
   /**
    * The universe clock before/after the sync (ISO DATE) — the interval the
-   * acceleration replay plays over [T2] (plan 31); empty previous = the unborn clock.
+   * acceleration replay plays over [T2]; empty previous = the unborn clock.
    *
    * @generated from field: string previous_universe_time = 6;
    */
@@ -1484,8 +1483,8 @@ export const DiarySortSchema: GenEnum<DiarySort> = /*@__PURE__*/
   enumDesc(file_cosimosi_memory_v1_memory, 1);
 
 /**
- * MemoryService owns the encode write contract (plan 20: SplitDiary / ReviseSplit /
- * LaunchStars) and the GetUniverse read contract (shape owned by plan 23).
+ * MemoryService owns the encode write contract — SplitDiary / ReviseSplit / LaunchStars — and the
+ * GetUniverse read contract.
  *
  * [W4a] structural defense: the encode schema carries ONLY
  * {memories:[{name, mood, source_text, neurons:[{name, type}]}]}. No position, color,
@@ -1510,9 +1509,9 @@ export const MemoryService: GenService<{
     output: typeof SplitDiaryResponseSchema;
   },
   /**
-   * Natural-language edit re-run [W4a]; same schema-forced output. Returns
-   * SplitDiaryResponse by design (plan 20): a revise re-enters the same preview
-   * loop, so chained revises feed `previous` without a conversion.
+   * Natural-language edit re-run [W4a]; same schema-forced output. Returning SplitDiaryResponse is
+   * deliberate: a revise re-enters the same preview loop, so chained revises feed `previous`
+   * without a conversion.
    *
    * @generated from rpc cosimosi.memory.v1.MemoryService.ReviseSplit
    */
@@ -1522,8 +1521,8 @@ export const MemoryService: GenService<{
     output: typeof SplitDiaryResponseSchema;
   },
   /**
-   * Persist-and-launch: atomically commits the user-confirmed split (plan 20
-   * PersistEncoded). Optimistic write — returns ids only (ARCHITECTURE §2.8).
+   * Persist-and-launch: atomically commits the user-confirmed split. Optimistic write — returns
+   * ids only (ARCHITECTURE §2.8).
    *
    * @generated from rpc cosimosi.memory.v1.MemoryService.LaunchStars
    */

@@ -60,6 +60,81 @@ test('rejects a duplicated provider from the app layer', () => {
   assert.ok(problems.some((problem) => problem.includes('pure module')))
 })
 
+// R4 reaches `ui` too, which is where a platform-pure hook shell most plausibly lands — and where a
+// byte-identical 56-line host once shipped with this gate green.
+test('rejects a platform-pure ui module duplicated in both apps', () => {
+  const root = fixture()
+  const body = `import { useEffect, useRef, useState } from 'react'
+
+export function NoticeHost({ push }) {
+  const [seen, setSeen] = useState(0)
+  const last = useRef(null)
+  useEffect(() => {
+    if (last.current === seen) return
+    last.current = seen
+    push(seen)
+  }, [seen, push])
+  return null
+}
+`
+  put(root, 'apps/web/src/features/notice/ui/NoticeHost.tsx', body)
+  put(root, 'apps/mobile/src/features/notice/ui/NoticeHost.tsx', body)
+
+  const problems = findFsdLayoutProblems(root)
+
+  assert.ok(problems.some((problem) => problem.includes('NoticeHost.tsx')))
+})
+
+test('allows a ui pair that genuinely differs per platform', () => {
+  const root = fixture()
+  put(
+    root,
+    'apps/web/src/features/notice/ui/NoticeBanner.tsx',
+    `export function NoticeBanner({ message }) {
+  const trimmed = message.trim()
+  if (!trimmed) return null
+  return <div className="banner">{trimmed}</div>
+}
+`,
+  )
+  put(
+    root,
+    'apps/mobile/src/features/notice/ui/NoticeBanner.tsx',
+    `import { Text } from 'react-native'
+
+export function NoticeBanner({ message }) {
+  const trimmed = message.trim()
+  if (!trimmed) return null
+  return <Text>{trimmed}</Text>
+}
+`,
+  )
+
+  assert.deepEqual(findFsdLayoutProblems(root), [])
+})
+
+test('allows an identical ui shell that only wires an app-local dependency', () => {
+  const root = fixture()
+  // Two apps injecting their own copy resolver into one packaged hook end up with the same few
+  // lines. There is nothing left to promote, so flagging it would demand a change that cannot be
+  // made — the line R4 draws is at behavior, not at similarity.
+  const shell = `import { useNotice } from '@cosimosi/achievement/react'
+import { useToastQueue } from '@cosimosi/ui'
+
+import { m } from '../../../shared/i18n/index.ts'
+
+export function NoticeHost() {
+  const queue = useToastQueue()
+  useNotice({ queue, formatNotice: (id) => m.notice({ id }) })
+  return null
+}
+`
+  put(root, 'apps/web/src/features/notice/ui/NoticeHost.tsx', shell)
+  put(root, 'apps/mobile/src/features/notice/ui/NoticeHost.tsx', shell)
+
+  assert.deepEqual(findFsdLayoutProblems(root), [])
+})
+
 test('rejects normalized-equivalent modules whose exported identifier was renamed', () => {
   const root = fixture()
   put(

@@ -10,11 +10,14 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { repoRoot, section, ok, note, fail } from './lib.mjs'
 
-const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages', 'scripts']
+// `proto` is in scope because it is the ONE transport contract the Go server and both TS clients
+// share (§2.7): its comments propagate verbatim into generated code the guard below deliberately
+// exempts, so narration left here reaches three languages while staying invisible everywhere else.
+const SRC_GLOBS = ['apps/web/src', 'apps/mobile/src', 'apps/api', 'packages', 'proto', 'scripts']
 // tests/stories/fixtures and generated Go (sqlc/proto/values) are exempt.
 const SKIP_FILE =
   /(\.(test|spec|stories|probe)\.(?:[mc]?[jt]sx?)$|_test\.go$|_gen\.go$|\.sql\.go$|\.pb\.go$|_connect\.go$)/
-const CODE_EXT = /\.(go|[mc]?[jt]sx?|sql)$/
+const CODE_EXT = /\.(go|[mc]?[jt]sx?|sql|proto)$/
 // The guard necessarily contains its own negative fixtures and pattern documentation. The job
 // scaffolder has one narrower line exemption for the public CLI example that contains a source kind.
 const EXEMPT_FILES = new Set(['scripts/lint-comment-history.mjs'])
@@ -23,6 +26,7 @@ const EXEMPT_LINES = new Map([
 ])
 // Only lines that carry a comment marker are inspected. SQL uses -- while the other scanned
 // languages use their own markers; keeping them separate avoids treating a JS decrement as SQL.
+// proto uses // and /* */, so COMMENT already covers it.
 const COMMENT = /(\/\/|\/\*|^\s*\*|\{\s*\/\*|<!--)/
 const SQL_COMMENT = /(--|\/\*|^\s*\*)/
 const hasComment = (line, file = '') => (file.endsWith('.sql') ? SQL_COMMENT : COMMENT).test(line)
@@ -75,6 +79,7 @@ if (process.argv.includes('--probe')) {
   const mustCatch = [
     ['// this mirrors plan 20 exactly', ''],
     ['-- this SQL follows plan 20 exactly', 'apps/api/db/queries/memory/probe.sql'],
+    ['// the write contract plan 20 shipped', 'proto/cosimosi/memory/v1/probe.proto'],
     ['\t// Link (plan 21) runs last', ''], // Go comment
     ['// Job 27 provides the implementation', ''],
     ['// the R001 regression', ''],

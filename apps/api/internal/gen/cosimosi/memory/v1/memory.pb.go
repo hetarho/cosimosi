@@ -549,8 +549,7 @@ type LaunchStarsResponse struct {
 	// Optimistic write: ids only; embeddings/gist fill on the next read (§2.8).
 	MemoryIds []string `protobuf:"bytes,1,rep,name=memory_ids,json=memoryIds,proto3" json:"memory_ids,omitempty"`
 	// Neurons genuinely created by this launch (not deduped onto existing ones) —
-	// newness is a server-only decision, surfaced for the awaken animation
-	// (plan 25, [E7a]).
+	// newness is a server-only decision, surfaced for the awaken animation ([E7a]).
 	NewNeuronIds []string `protobuf:"bytes,2,rep,name=new_neuron_ids,json=newNeuronIds,proto3" json:"new_neuron_ids,omitempty"`
 	// The monotonic launch guard's authoritative outcome [I10][T1]: the diary was
 	// saved but no memory was created because its date precedes the universe's
@@ -558,7 +557,7 @@ type LaunchStarsResponse struct {
 	// empty memory_ids coincidence.
 	PastDated bool `protobuf:"varint,3,opt,name=past_dated,json=pastDated,proto3" json:"past_dated,omitempty"`
 	// The universe clock before/after this launch's advance (ISO DATE) — the
-	// interval the acceleration animation plays over [T2] (plan 31). Empty
+	// interval the acceleration animation plays over [T2]. Empty
 	// previous_universe_time = the first-ever launch (no prior clock, the same
 	// empty-until-set convention as GetUniverseResponse.universe_time); a
 	// past-dated launch carries the unmoved clock in both (no acceleration).
@@ -1260,7 +1259,7 @@ type RecallResponse struct {
 	// The bumped read-time size [R3][V3].
 	EffectiveStrength float32 `protobuf:"fixed32,5,opt,name=effective_strength,json=effectiveStrength,proto3" json:"effective_strength,omitempty"`
 	// The universe clock before/after the sync (ISO DATE) — the interval the
-	// acceleration replay plays over [T2] (plan 31); empty previous = the unborn clock.
+	// acceleration replay plays over [T2]; empty previous = the unborn clock.
 	PreviousUniverseTime string `protobuf:"bytes,6,opt,name=previous_universe_time,json=previousUniverseTime,proto3" json:"previous_universe_time,omitempty"`
 	UniverseTime         string `protobuf:"bytes,7,opt,name=universe_time,json=universeTime,proto3" json:"universe_time,omitempty"`
 	unknownFields        protoimpl.UnknownFields

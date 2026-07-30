@@ -83,12 +83,12 @@ type MemoryServiceClient interface {
 	// Synchronous preview split — the user sees and edits it [W2]; persists nothing.
 	// Invokes the LLM (cost-metered), so it is NOT marked NO_SIDE_EFFECTS.
 	SplitDiary(context.Context, *connect.Request[v1.SplitDiaryRequest]) (*connect.Response[v1.SplitDiaryResponse], error)
-	// Natural-language edit re-run [W4a]; same schema-forced output. Returns
-	// SplitDiaryResponse by design (plan 20): a revise re-enters the same preview
-	// loop, so chained revises feed `previous` without a conversion.
+	// Natural-language edit re-run [W4a]; same schema-forced output. Returning SplitDiaryResponse is
+	// deliberate: a revise re-enters the same preview loop, so chained revises feed `previous`
+	// without a conversion.
 	ReviseSplit(context.Context, *connect.Request[v1.ReviseSplitRequest]) (*connect.Response[v1.SplitDiaryResponse], error)
-	// Persist-and-launch: atomically commits the user-confirmed split (plan 20
-	// PersistEncoded). Optimistic write — returns ids only (ARCHITECTURE §2.8).
+	// Persist-and-launch: atomically commits the user-confirmed split. Optimistic write — returns
+	// ids only (ARCHITECTURE §2.8).
 	LaunchStars(context.Context, *connect.Request[v1.LaunchStarsRequest]) (*connect.Response[v1.LaunchStarsResponse], error)
 	// Per-user universe read carrying stored facts only — no positions or derived
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect
@@ -352,12 +352,12 @@ type MemoryServiceHandler interface {
 	// Synchronous preview split — the user sees and edits it [W2]; persists nothing.
 	// Invokes the LLM (cost-metered), so it is NOT marked NO_SIDE_EFFECTS.
 	SplitDiary(context.Context, *connect.Request[v1.SplitDiaryRequest]) (*connect.Response[v1.SplitDiaryResponse], error)
-	// Natural-language edit re-run [W4a]; same schema-forced output. Returns
-	// SplitDiaryResponse by design (plan 20): a revise re-enters the same preview
-	// loop, so chained revises feed `previous` without a conversion.
+	// Natural-language edit re-run [W4a]; same schema-forced output. Returning SplitDiaryResponse is
+	// deliberate: a revise re-enters the same preview loop, so chained revises feed `previous`
+	// without a conversion.
 	ReviseSplit(context.Context, *connect.Request[v1.ReviseSplitRequest]) (*connect.Response[v1.SplitDiaryResponse], error)
-	// Persist-and-launch: atomically commits the user-confirmed split (plan 20
-	// PersistEncoded). Optimistic write — returns ids only (ARCHITECTURE §2.8).
+	// Persist-and-launch: atomically commits the user-confirmed split. Optimistic write — returns
+	// ids only (ARCHITECTURE §2.8).
 	LaunchStars(context.Context, *connect.Request[v1.LaunchStarsRequest]) (*connect.Response[v1.LaunchStarsResponse], error)
 	// Per-user universe read carrying stored facts only — no positions or derived
 	// values [I5]. Side-effect-free unary read: NO_SIDE_EFFECTS opts Connect

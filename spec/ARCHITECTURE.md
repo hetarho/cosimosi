@@ -322,6 +322,11 @@ apps/web/src/
 > `app/navigation/screens` (only the neutral boot shell may), and normalized-equivalent same-relative pure modules
 > under app-local `api`/`model`/`lib`/`config`/`shared` paths or `app/providers`/`app/model` fail until promoted to
 > their owning package. Identifier-only renames and comment/format churn do not evade this comparison.
+> **`ui` is in scope too, conditionally** — a `ui` file joins the comparison when it carries no platform marker (no
+> React Native or `react-dom` import, no DOM global, no lowercase JSX intrinsic) **and** holds more than a wiring
+> shell's worth of statements. Both halves are load-bearing: the first keeps a genuinely forked component out, and the
+> second keeps out the identical two-line shells two apps end up with when each injects its own copy resolver into one
+> packaged hook — there is nothing left in those to promote.
 
 **Where each file goes (segments).** Inside _any_ slice, files are grouped by _technical role_ — never by generic
 `components/`/`hooks/`/`types/` folders:
@@ -439,6 +444,10 @@ apps/mobile/
   `eslint --max-warnings=0`), and the mobile Jest harness fails a test on unexpected `console.error`/`console.warn`
   and fails a suite that leaves a long-lived timer pending (`apps/mobile/jest.guards.js`) — a green exit code never
   coexists with lifecycle noise, and no gate uses force-exit or warning suppression to stay green.
+- **A gate's scope is part of the rule.** `lint:comments` (comments explain current code, never process or history)
+  scans `apps/{web,mobile}/src` · `apps/api` · `packages` · `proto` · `scripts`, `.proto` included — the transport
+  contract is the highest-leverage comment surface there is, because its comments propagate verbatim into generated
+  code the guard deliberately exempts. Generated output stays exempt; the point is that its **source** is not.
 - **Derived state, not stored state.** State that varies continuously with time is _computed at read time_ from the
   last-event timestamp, never written per tick; only discrete events persist. The server stays authoritative over the
   source data while anything derivable from it (appearance, layout) is a pure function — kept out of the store.
