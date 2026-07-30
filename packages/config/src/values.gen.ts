@@ -197,4 +197,8 @@ export const VALUES = {
   release: {
     softDeleteRetentionDays: 30,
   },
+  sequence: {
+    captionDwellMs: 4500,
+    highlightPulseMs: 1800,
+  },
 } as const

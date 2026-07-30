@@ -337,7 +337,7 @@ screen opens the flow (web routes unmount, so they need no gate). The deletion
 stores are cleared on sign-out (where the universe mirrors are), so a release
 never leaks across users in one process.
 
-### 6.1 What the diary archive's conditions are NOT
+### 6.7 What the diary archive's conditions are NOT
 
 The archive's keyword, mood filter, date range, order and pagination are **data**, not control state:
 Query owns the pages, the URL (web) or screen state (mobile) owns the conditions, and
@@ -353,6 +353,64 @@ That last test is what keeps a commit from eating a trailing space mid-phrase or
 a composing IME is still assembling. The rules themselves are pure functions in `@cosimosi/memory`
 (`isKeywordSearchable` · `isDateRangeUsable` · `shouldAdoptCommitted`), so both platforms search on
 identical terms and the rules are unit-tested without a DOM.
+
+### 6.8 `sequenceRunMachine` (the guided-step engine)
+
+`idle → running → completed | skipped | abandoned`, in `packages/sequence` — its own package rather
+than `packages/universe` because it must be importable from a page starved of every server-backed
+mirror, and because its dependency list is load-bearing (below). Context is exactly
+`{ runId, stepIndex, stepCount, outcome }` — four control fields, JSON-serializable, asserted by the
+package's own context test.
+
+The script never enters context, which is the §3 rule at its strictest applied to a machine that
+obviously _could_ hold one: `stepCount` is supplied on `START` precisely so the machine can know the
+last step without holding the steps. `currentStep` / `progress` / `isActive` in `select.ts` join
+snapshot and script outside the machine.
+
+**The echo guard.** `ADVANCE` carries `fromStepIndex`, the index the caller observed, and is guarded
+out unless it equals `context.stepIndex` — the `asyncCommandMachine` `attempt`-echo precedent. A double
+tap, a duplicated host signal and a dwell timer left over from a superseded step all arrive stale and
+are rejected at the machine rather than by caller discipline. `ADVANCE` on the last step lands in
+`completed`.
+
+**`SKIP` is unconditional in `running`**, which is how "the skip is always available" becomes a
+transition table instead of a UI habit — and the step model has no field with which to opt out.
+`ABANDON` is the host's own teardown, distinguishable from a skip so an onboarding host can treat them
+differently. **Every terminal state accepts `START` again**, which is what makes a replay a start
+rather than a reset ritual: no teardown by the caller, and no residue from the previous pass.
+
+**The machine never reads a clock.** Dwell timing lives in the `/react` seam as a `setTimeout` keyed on
+the step index and cleared on every change and on unmount (the `panelMachine` `openedAt` discipline), so
+the machine stays a pure `(state, event) → state` and no suite leaves a pending timer. The dwell
+duration is a _parameter of the hook_, not an import: the package's dependencies are `xstate` + `zustand`
+only, so the generated `sequence.caption_dwell_ms` constant is read by the app chrome and passed in.
+
+**The step model's omissions are the contract** (`script.ts`): no `run`/`onEnter`/`action`/`effect`
+field, no `skippable`, no string caption (it is an i18n accessor), no domain number, no data payload, no
+`isDemo`/`hostKind`. The first of those is why the same engine can run over a real signed-in account —
+"the engine performed the step for the user" is unrepresentable, so monotonic universe time, diary
+immutability, the untouched meaning layer and paid recall all stay in force during a tour without the
+engine knowing they exist. `Anchor` and `Signal` are host-owned string-literal unions, so a mistyped
+anchor is a compile error in the host while the engine stays host-agnostic.
+
+**The anchor registry** (`anchor-registry.ts`) is a Zustand store of `anchorId → { measure() }` —
+data, not machine context (§3). `measure()` returns a **promise**, which is the only shape one seam can
+have on both platforms: web reads `getBoundingClientRect()`, native's `measureInWindow` is
+callback-based. Rects are in **logical (density-independent) pixels relative to the app window**, so both
+platforms hand back comparable numbers. They are re-measured on step change, on registry change, and on
+a host-driven `remeasure()` (resize / orientation — the engine cannot subscribe to either) — **never per
+frame**. An unresolvable anchor yields `null` rather than throwing: the caption is the guaranteed
+channel and the highlight is an enhancement, so there is no timeout and no error path.
+
+**The caption placement rule** `resolveCaptionPlacement(anchorRect, viewport, bandHeight)` is pure and
+returns `'bottom' | 'top'`, flipping only when the highlighted rect intersects the bottom band. Not
+cosmetic: the shipped universe page puts the writing sheet bottom-center, exactly where the first
+onboarding beat points.
+
+`resetSequenceUserState()` clears the registry and is registered in `@cosimosi/auth`'s shared
+user-state reset inventory. The run needs no entry — it lives in a host-owned actor that dies with the
+host — but the registry is module-level, so without this an onboarding run's registered controls would
+survive into the next account's subtree.
 
 ## 7. Tests
 

@@ -689,5 +689,7 @@
   "achievement_ornament_15_body": "하늘이 입을 수 있는 것 거의 전부예요.",
   "achievement_ornament_kind_2_title": "두 종류 다",
   "achievement_ornament_kind_2_body": "뒤의 하늘과, 기억이 갖는 모양.",
-  "achievement_axis_other": "그 밖에"
+  "achievement_axis_other": "그 밖에",
+  "sequence_skip_action": "건너뛰기",
+  "sequence_progress": "{total} 중 {current}"
 }

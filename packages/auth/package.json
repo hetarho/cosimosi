@@ -18,11 +18,12 @@
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
+    "@cosimosi/sequence": "workspace:*",
+    "@cosimosi/store": "workspace:*",
     "@cosimosi/twinkle": "workspace:*",
     "@cosimosi/universe": "workspace:*",
     "@supabase/supabase-js": "^2.108.2",
-    "xstate": "^5.32.2",
-    "@cosimosi/store": "workspace:*"
+    "xstate": "^5.32.2"
   },
   "peerDependencies": {
     "react": ">=19"

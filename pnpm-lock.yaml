@@ -82,6 +82,9 @@ importers:
       '@cosimosi/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@cosimosi/sequence':
+        specifier: workspace:*
+        version: link:../../packages/sequence
       '@cosimosi/state-machine':
         specifier: workspace:*
         version: link:../../packages/state-machine
@@ -260,6 +263,9 @@ importers:
       '@cosimosi/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@cosimosi/sequence':
+        specifier: workspace:*
+        version: link:../../packages/sequence
       '@cosimosi/state-machine':
         specifier: workspace:*
         version: link:../../packages/state-machine
@@ -480,6 +486,9 @@ importers:
       '@cosimosi/emotion':
         specifier: workspace:*
         version: link:../emotion
+      '@cosimosi/sequence':
+        specifier: workspace:*
+        version: link:../sequence
       '@cosimosi/store':
         specifier: workspace:*
         version: link:../store
@@ -760,6 +769,34 @@ importers:
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@types/node@26.1.1)(jsdom@29.1.1)(vite@8.1.0(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+
+  packages/sequence:
+    dependencies:
+      xstate:
+        specifier: ^5.32.2
+        version: 5.32.2
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.17)(immer@10.2.0)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.2
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      '@xstate/react':
+        specifier: ^6.1.0
+        version: 6.1.0(@types/react@19.2.17)(react@19.2.7)(xstate@5.32.2)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@24.13.2)(jsdom@29.1.1)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
 
   packages/state-machine:
     dependencies:

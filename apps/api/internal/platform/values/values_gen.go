@@ -308,3 +308,9 @@ const (
 const (
 	ReleaseSoftDeleteRetentionDays = 30
 )
+
+// sequence
+const (
+	SequenceCaptionDwellMs   = 4500
+	SequenceHighlightPulseMs = 1800
+)

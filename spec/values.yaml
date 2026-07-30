@@ -563,3 +563,15 @@ release:
   # is independent of launches/recalls and account withdrawal. Letting-go is permanent and has NO
   # timer key (that absence is the [X5] guarantee).
   soft_delete_retention_days: 30
+
+sequence:
+  # [O2] How long a `dwell` step's caption holds before the run advances itself — reading time for one
+  # unhurried line, not a pace the user has to keep up with. It is a tuning scalar rather than a
+  # per-script number because both hosts (the public demo and the onboarding tour) read the same one:
+  # a caption that reads comfortably in a trailer reads comfortably in a tour. A step that waits on
+  # something the USER must do is a `signal` step and never consults this.
+  caption_dwell_ms: 4500
+  # [O2] One pulse period of the spotlight ring. Slow enough to read as breathing rather than
+  # blinking, and ignored entirely under reduced motion (the ring goes static — the highlight is
+  # decorative, so removing its motion removes nothing the run depends on).
+  highlight_pulse_ms: 1800

@@ -241,6 +241,25 @@ export default defineConfig([
     },
   },
   {
+    // The sequence-engine chrome (plan 78): three chrome slices composed by one guide widget, which
+    // the host page mounts over whatever screen is beneath. Each is a distinct guarantee, not a
+    // component — the highlight is decorative and may render nothing, the caption is the channel that
+    // must never fail, and the skip is the one interactive element the chrome owns and the only slice
+    // a user can press. Merging them would hide exactly the distinction the engine is built around,
+    // and each has one host by design because a run has one chrome. Every model-level artifact is
+    // shared verbatim through @cosimosi/sequence; only these `ui` segments are per-app. Scoped so a
+    // genuinely insignificant future slice still gets flagged.
+    files: [
+      './src/features/highlight-next-control/**',
+      './src/features/show-sequence-caption/**',
+      './src/features/skip-sequence/**',
+      './src/widgets/sequence-guide/**',
+    ],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
     // The features layer's slice count is spec-governed (one plan authors each slice deliberately;
     // the inventory mirrors apps/mobile 1:1), so the fixed ungrouped-slice threshold (20) is not a
     // drift signal here — regrouping into slice folders would churn every import and the

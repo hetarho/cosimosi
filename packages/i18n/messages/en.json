@@ -689,5 +689,7 @@
   "achievement_ornament_15_body": "Almost everything the sky can wear.",
   "achievement_ornament_kind_2_title": "Both kinds",
   "achievement_ornament_kind_2_body": "The sky behind, and the shape a memory takes.",
-  "achievement_axis_other": "More"
+  "achievement_axis_other": "More",
+  "sequence_skip_action": "Skip",
+  "sequence_progress": "{current} of {total}"
 }

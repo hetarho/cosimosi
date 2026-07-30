@@ -1,4 +1,5 @@
 import { resetMoodPalette } from '@cosimosi/emotion'
+import { resetSequenceUserState } from '@cosimosi/sequence'
 import { resetStoreUserState } from '@cosimosi/store'
 import { resetTwinkleUserState } from '@cosimosi/twinkle'
 import { resetUniverseUserState } from '@cosimosi/universe'
@@ -21,6 +22,9 @@ const USER_STATE_RESET_REGISTRY: readonly UserStateResetEntry[] = [
   // A live decoration preview belongs to the account that opened it: the incoming universe must not
   // open wearing the previous user's sky, not even for a frame.
   { name: 'store', reset: resetStoreUserState },
+  // The anchor registry is module-level, so an onboarding run's registered controls would otherwise
+  // survive into the next account's subtree and let a tour point at a control that is no longer there.
+  { name: 'sequence', reset: () => resetSequenceUserState() },
   { name: 'signup-completion', reset: resetSignupUserState },
 ]
 
