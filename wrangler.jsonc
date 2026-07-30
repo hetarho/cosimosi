@@ -3,7 +3,7 @@
   // 별도 Worker 스크립트("main") 없이 빌드 산출물만 올린다. Cloudflare가 리포를 Workers로
   // import하는 경우 `npx wrangler deploy`가 이 파일을 읽는다.
   //
-  // Build command(대시보드): pnpm --filter @cosimosi/web build  → apps/web/dist 생성
+  // Build command(대시보드): pnpm build:site  → 블로그+웹 빌드 후 apps/web/dist 생성 (DEPLOY.md §2)
   // Deploy command(대시보드): npx wrangler deploy            → 아래 assets 업로드
   //
   // ⚠️ VITE_* 환경변수는 빌드 타임에 박히므로 대시보드 Variables에 넣어야 한다
@@ -14,8 +14,13 @@
   "assets": {
     // 빌드 산출물 디렉터리 (wrangler.jsonc 기준 상대 경로 = 리포 루트 기준).
     "directory": "./apps/web/dist",
-    // SPA: 매칭되는 파일이 없는 경로(/universe, /dormant, 새로고침)는 200으로 index.html을
+    // SPA: 매칭되는 파일이 없는 경로(/universe, /diary, 새로고침)는 200으로 index.html을
     // 돌려준다 — 없으면 딥링크가 404가 난다.
     "not_found_handling": "single-page-application",
+    // 디렉터리 인덱스 해석을 상속하지 않고 명시한다. 블로그(`/blog/**`)는 Astro가
+    // `trailingSlash: 'always'` + `format: 'directory'`로 내보내므로 `/blog`와 `/blog/` 둘 다
+    // `blog/index.html`로 풀려야 한다 — 이 값이 그걸 보장한다. 앱 라우트는 정적 파일이 없어
+    // 여기서 걸리지 않고 위의 SPA 폴백으로 내려가므로, 제품 라우트의 동작은 바뀌지 않는다.
+    "html_handling": "auto-trailing-slash",
   },
 }

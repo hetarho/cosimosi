@@ -1,0 +1,33 @@
+---
+import { getCollection, render } from 'astro:content'
+
+import PostLayout from '../layouts/PostLayout.astro'
+
+// One route per non-draft post, at `/blog/<slug>/`. The slug is the filename, which is why filenames are
+// English kebab-case while the prose stays Korean: a URL is code.
+//
+// Drafts are excluded here as well as from the index, the feed and the sitemap — one switch, and no way
+// for the four surfaces to disagree about what is published.
+export async function getStaticPaths() {
+  const posts = (await getCollection('posts', ({ data }) => !data.draft)).sort(
+    (a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime(),
+  )
+  const RELATED_LIMIT = 2
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: {
+      post,
+      related: posts
+        .filter((other) => other.id !== post.id && other.data.pillar === post.data.pillar)
+        .slice(0, RELATED_LIMIT),
+    },
+  }))
+}
+
+const { post, related } = Astro.props
+const { Content } = await render(post)
+---
+
+<PostLayout post={post} related={related}>
+  <Content />
+</PostLayout>

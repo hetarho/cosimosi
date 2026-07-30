@@ -1,8 +1,8 @@
 # policy/ux: public copy
 
 > The rules every sentence on a public surface obeys — the landing page, the demo, the blog, and the app-store listing.
-> Plan [81](../../plan/81.landing-page.md) creates this doc and owns the landing's half; [82](../../plan/82.blog-site.md)
-> extends it with the blog's. Reinforces [I12][K1][K2][K3][M5]; introduces no new invariant.
+> Plans [81](../../plan/81.landing-page.md) and [82](../../plan/82.blog-site.md) own it between them — 81 the landing's
+> half, 82 the blog's — and `scripts/lint-public-copy.mjs` mechanizes it over the blog's essays. Reinforces [I12][K1][K2][K3][M5]; introduces no new invariant.
 
 ## Rule
 
@@ -38,9 +38,32 @@ rule that punished the disclaimer would push the copy into saying nothing at all
 - **Tier one, the product surfaces:** the lay summary a non-specialist reads. Five strands, one paragraph each, no
   citations. §1.5's promise is that neuroscience knowledge is never required of a user, and a landing page with a citation
   list is a landing page that will eventually cite something the product does not implement.
-- **Tier two, the blog:** the papers, the DOIs, and what was and was not taken from them.
+- **Tier two, the blog:** the papers, the DOIs, and what was and was not taken from them. **At least one cited source per
+  post**, enforced by the collection schema rather than by review — a post that explains the science cannot ship uncited,
+  and the DOIs it declares are what its machine-readable citations are built from.
 
 The tiers share the five strand ids so a reader can cross from one to the other, and nothing else.
+
+### Say what the product does NOT do
+
+The blog's job is not only to be accurate about what was built; it is to be explicit about what was not. Where research
+describes a phenomenon the product deliberately does not simulate, the post **says so** rather than leaving the reader to
+assume. Mood-congruent recall is the worked example: the research is real, the product does not act on the reader's
+current mood, and the post states that plainly. Silence on the point would read as a quiet yes.
+
+That is also why the guards over public copy exempt denials. A rule that flagged "감정은 별의 자리를 정하지 않습니다"
+would push the copy into saying nothing at all — quieter, but not more honest.
+
+### Posts are not localized
+
+A post's `lang` is the whole of its per-language story. A translation is a **separate post** with its own slug and its own
+`lang`, never a localized variant of the same file: these are authored essays, and one file carrying two languages is how
+a half-translated post ships.
+
+### No repository-internal path in public copy
+
+A public sentence never links a path inside the repo. It is not a URL a reader can open, and on the deployed origin a
+relative one resolves against the app instead. Where the requirement↔evidence mapping needs naming, name it in prose.
 
 ### The landing page's information architecture
 
@@ -57,9 +80,11 @@ definition**, the five theory cards, the blog link, and the closing CTA pair.
 
 ### One origin
 
-Public surfaces live on the product origin. The blog is a **subpath** of it, never a subdomain and never a second domain;
-no doc names an origin other than the deployed one, whose SSOT is [DEPLOY.md](../../../DEPLOY.md) §1. The origin root's
-`robots.txt` and `sitemap.xml` belong to the app, not to the blog served beneath it.
+Public surfaces live on the product origin. The blog is a **subpath** of it, never a subdomain and never a second domain:
+a subdomain would split the domain's authority in two and make every landing↔post link cross-origin. No doc names an
+origin other than the deployed one, whose SSOT is [DEPLOY.md](../../../DEPLOY.md) §1. The origin root's `robots.txt` and
+`sitemap.xml` belong to the app, not to the blog served beneath it — the blog ships neither, and publishes only its own
+`/blog/sitemap.xml`.
 
 ### Store-listing copy
 

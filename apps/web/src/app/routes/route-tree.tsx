@@ -11,6 +11,7 @@ import { NotFoundScreen } from './not-found.tsx'
 import {
   AdminRoute,
   AuthenticatedLayout,
+  BlogNotFoundRoute,
   DiaryReaderRoute,
   InviteRoute,
   DemoRoute,
@@ -125,6 +126,16 @@ const demoRoute = createRoute({
   component: DemoRoute,
 })
 
+// The `/blog/**` miss. Public, under `rootRoute` beside /login and /demo, with no `beforeLoad` of any kind:
+// a stale link to an essay must not ask anyone to sign in or depend on a diagnostics flag. It can never
+// shadow a real post — the Worker's asset handler resolves static files first, so the SPA only executes on
+// a genuine miss.
+const blogNotFoundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/blog/$',
+  component: BlogNotFoundRoute,
+})
+
 const testRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/test',
@@ -155,6 +166,7 @@ export const routeTree = rootRoute.addChildren([
   signupRoute,
   inviteRoute,
   demoRoute,
+  blogNotFoundRoute,
   testRoute,
   designRoute,
 ])

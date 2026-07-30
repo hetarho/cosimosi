@@ -17,6 +17,7 @@ import { DecorationBootstrap } from '../providers/decoration-bootstrap.tsx'
 import { ProfileGate } from '../providers/profile-gate.tsx'
 import { AdminPage } from '../../pages/admin/index.ts'
 import { DemoPage } from '../../pages/demo/index.ts'
+import { BlogNotFoundPage } from '../../pages/blog-not-found/index.ts'
 import { LandingPage } from '../../pages/landing/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { diaryQueryFromSearch, searchWithUpdate, type DiarySearchParams } from './diary-search.ts'
@@ -112,6 +113,19 @@ export function LandingRoute() {
       onSelectLocale={onSelectLocale}
       onTryDemo={() => navigate({ to: '/demo' })}
       onSignUp={() => navigate({ to: '/signup' })}
+    />
+  )
+}
+
+// A miss under `/blog/**`. The blog itself is static HTML the asset handler serves, so this only ever runs
+// when nothing matched — a stale link or a typo. `window.location` rather than a router navigation, because
+// `/blog/` is outside this router: a client navigation would land straight back here.
+export function BlogNotFoundRoute() {
+  return (
+    <BlogNotFoundPage
+      onBackToBlog={() => {
+        window.location.href = '/blog/'
+      }}
     />
   )
 }

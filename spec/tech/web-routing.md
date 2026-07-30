@@ -32,14 +32,23 @@ never import the library; they navigate through the seam in §4.
   `MePage` (`pages/me`, plan 64); outside it, **`/` → `LandingPage`** (`pages/landing`, the public front door, §5b),
   `/login` and `/signup` → the two `LoginPage` modes,
   `/invite/$token` → invite capture then replacement with `/signup`, `/test` → `TestPage`, and
-  `/design` → `DesignShowcasePage` (`pages/design`, the design showcase), and `/demo` → `DemoPage`
-  (`pages/demo`, the public trailer, §5a). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
+  `/design` → `DesignShowcasePage` (`pages/design`, the design showcase), `/demo` → `DemoPage`
+  (`pages/demo`, the public trailer, §5a), and the splat `/blog/$` → `BlogNotFoundPage` (`pages/blog-not-found`, §5c). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
   wrapper** that reads `useAppNavigate` and injects `onOpenReader`/`onExit`-style callbacks into the page — the
   navigation seam stays inside `app/routes/`.
 - **Adding a route** (done by a presentation plan): add a `createRoute` in `route-tree.tsx`, point it at a `pages/`
   screen, and register it in `addChildren` — **under the `authenticated` layout route** for any product surface (it
   inherits the auth gate, §8). A **public** surface goes under `rootRoute` with no `beforeLoad` and, if it is a page a
   stranger lands on, inside the public-page import closure (§5a/§5b). Nothing outside `app/routes/` changes.
+
+### 5c. The `/blog/**` miss (plan 82)
+
+`/blog/**` is **not** this router's — the Worker's asset handler serves the Astro-built blog staged into
+`apps/web/dist/blog`. The splat route `/blog/$` under `rootRoute` (no `beforeLoad`, no session, no diagnostics flag) only
+executes on a genuine miss, because static assets resolve first. It renders blog-shaped chrome so a stale essay link is not
+answered in the app's voice, and it goes back to `/blog/` through `window.location` rather than a navigation — a client
+navigation would land straight back on itself. `not_found_handling: "single-page-application"` returns HTTP 200, so it is
+a soft 404 mitigated by `noindex`; see [blog-site.md](blog-site.md) §5.
 
 ### 5b. The public root (plan 81)
 

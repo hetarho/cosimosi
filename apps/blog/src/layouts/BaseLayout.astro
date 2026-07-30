@@ -1,0 +1,91 @@
+---
+import '../styles/blog.css'
+import { OG_IMAGE, absolute, path } from '../site.ts'
+
+// The document shell every blog page shares: the head, the header, the footer, and the one stylesheet.
+//
+// Every internal href here is derived from `path()`, never written as a literal. Astro's `base` does not
+// rewrite authored strings, so a literal `/rss.xml` would point at the origin root — where the app's SPA
+// answers it with the not-found screen instead of a feed.
+interface Props {
+  readonly title: string
+  readonly description: string
+  readonly lang?: 'ko' | 'en'
+  /** Path under the blog base, e.g. `''` for the index or `'<slug>/'` for a post. */
+  readonly canonicalPath?: string
+  readonly ogType?: 'website' | 'article'
+  readonly noindex?: boolean
+}
+
+const {
+  title,
+  description,
+  lang = 'ko',
+  canonicalPath = '',
+  ogType = 'website',
+  noindex = false,
+} = Astro.props
+
+const canonical = absolute(canonicalPath, Astro.site)
+const ogImage = absolute(OG_IMAGE, Astro.site)
+---
+
+<!doctype html>
+<html lang={lang === 'ko' ? 'ko' : 'en'}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content={noindex ? 'noindex' : 'index, follow'} />
+    <link rel="canonical" href={canonical} />
+    {/* The favicon belongs to the origin root, which the app owns. Same origin, so it resolves. */}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="alternate"
+      href={path('rss.xml')}
+      type="application/rss+xml"
+      title="cosimosi blog RSS"
+    />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content="cosimosi blog" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {/* A raster, not the SVG this used to be: the major social crawlers do not render SVG, so shares
+        showed nothing at all. */}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">본문으로 건너뛰기</a>
+    <header class="site-header">
+      <a class="brand" href={path()}>
+        <strong>cosimosi</strong>
+        <small>memory universe notes</small>
+      </a>
+      <nav aria-label="Blog links">
+        <a href={path()}>글 목록</a>
+        <a href={path('rss.xml')}>RSS</a>
+        <a href="/">cosimosi</a>
+      </nav>
+    </header>
+    <main id="content">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>
+        각 글은 참고한 논문을 본문 아래에 밝혀 둡니다. 어떤 요구사항이 어떤 근거에서 나왔는지는
+        제품 기획서의 신경과학 절이 기준이고, 이 글들은 그중 한두 조각을 골라 편하게 풀어 쓴
+        버전이에요. cosimosi는 기억 연구에서 영감을 받은 일기이고, 누군가의 뇌를 재현한 모형이
+        아닙니다.
+      </p>
+    </footer>
+  </body>
+</html>

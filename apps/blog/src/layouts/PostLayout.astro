@@ -1,0 +1,108 @@
+---
+import type { CollectionEntry } from 'astro:content'
+
+import BaseLayout from './BaseLayout.astro'
+import { OG_IMAGE, absolute, path } from '../site.ts'
+
+// One essay. The head work lives in the base layout; what this adds is the article chrome, the citations
+// the schema guaranteed exist, up to a few same-pillar posts, and the one CTA pair that closes the funnel
+// the landing page opens.
+interface Props {
+  readonly post: CollectionEntry<'posts'>
+  readonly related: readonly CollectionEntry<'posts'>[]
+}
+
+const { post, related } = Astro.props
+const { title, description, pubDate, updated, lang, pillar, sources } = post.data
+const canonicalPath = `${post.id}/`
+
+const formatDate = (date: Date) =>
+  date.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+
+// The DOIs the schema requires are made machine-readable here as well as visible below — one source of
+// truth, two audiences.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description,
+  inLanguage: lang === 'ko' ? 'ko-KR' : 'en-US',
+  datePublished: pubDate.toISOString(),
+  ...(updated ? { dateModified: updated.toISOString() } : {}),
+  url: absolute(canonicalPath, Astro.site),
+  image: absolute(OG_IMAGE, Astro.site),
+  publisher: { '@type': 'Organization', name: 'cosimosi' },
+  citation: sources.map((source) => ({
+    '@type': 'CreativeWork',
+    name: source.label,
+    identifier: `https://doi.org/${source.doi}`,
+  })),
+}
+---
+
+<BaseLayout
+  title={`${title} — cosimosi blog`}
+  description={description}
+  lang={lang}
+  canonicalPath={canonicalPath}
+  ogType="article"
+>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="post">
+    <p class="eyebrow">{pillar}</p>
+    <h1>{title}</h1>
+    <p class="meta">
+      <span>{formatDate(pubDate)}</span>
+      {updated ? <span>· 고침 {formatDate(updated)}</span> : null}
+      <span class="chip">{lang}</span>
+    </p>
+
+    <div class="post-body">
+      <slot />
+    </div>
+
+    <section class="sources" aria-labelledby="sources-title">
+      <h2 id="sources-title">참고한 연구</h2>
+      <ol>
+        {
+          sources.map((source) => (
+            <li>
+              {source.label} — <code>{source.doi}</code>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    {
+      related.length > 0 && (
+        <section class="related" aria-labelledby="related-title">
+          <h2 id="related-title">같은 갈래의 글</h2>
+          <ul class="post-list">
+            {related.map((entry) => (
+              <li>
+                <a href={path(`${entry.id}/`)}>
+                  <strong>{entry.data.title}</strong>
+                  <p>{entry.data.description}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {/* The demo first, then the ask — the same order the landing page uses, for the same reason: nobody
+        owes us an account before they have seen the thing move. */}
+    <nav class="cta" aria-label="cosimosi">
+      <a href="/demo">움직이는 걸 보기</a>
+      <a href="/">cosimosi 둘러보기</a>
+    </nav>
+  </article>
+</BaseLayout>

@@ -34,9 +34,12 @@ DB/Auth: Supabase 프로젝트 behdksjirevqcqbfajqc (서울 ap-northeast-2)
 `IMAGE_TAG=<sha>` 기록 → `compose pull && up -d --remove-orphans`. 마이그레이션이 실패하면 api는
 교체되지 않는다. 수동 재배포: GitHub Actions 탭 → Deploy backend → **Run workflow**(브랜치 선택).
 
-**프론트** — Cloudflare Workers Builds(네이티브 Git 연동)가 push를 감지해 빌드한다.
-`main` → `npx wrangler deploy`(프로덕션 승격), 그 외 브랜치 → `npx wrangler versions upload`
-(프리뷰 버전만). 빌드 변수는 **공용 1세트**라 develop 프리뷰도 prod 값으로 빌드된다(분기는 spec 32).
+**프론트** — Cloudflare Workers Builds(네이티브 Git 연동)가 push를 감지해 빌드한다. 빌드 커맨드는
+**`pnpm build:site`** 하나다: 블로그 빌드 → 웹 빌드 → `scripts/stage-blog.mjs`가 `apps/blog/dist`를
+`apps/web/dist/blog/`로 옮긴다. **순서가 중요하다** — Vite가 `outDir`를 비우므로 웹 빌드보다 먼저
+스테이징하면 조용히 지워진다. 스테이징 스크립트가 그 실수와 산출물 누락을 둘 다 빌드 에러로 만든다
+(`spec/tech/blog-site.md` §1). `main` → `npx wrangler deploy`(프로덕션 승격), 그 외 브랜치 →
+`npx wrangler versions upload`(프리뷰 버전만). 빌드 변수는 **공용 1세트**라 develop 프리뷰도 prod 값으로 빌드된다(분기는 spec 32).
 수동 재빌드: Worker → Deployments → 해당 빌드 → **Retry build**.
 
 **프론트 배포 확인**: Worker `cosimosi` → Deployments → Version History에서 버전 클릭 →
@@ -137,7 +140,7 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 8. **기동**: 각 스택에서 `docker compose -f docker-compose.prod.yml up -d`, `/srv/edge`에서
    `docker compose up -d`. 이후는 머지가 알아서 배포한다(§2).
 9. **Cloudflare Worker**(프론트): 리포 import(이름 `cosimosi` = `wrangler.jsonc`의 name),
-   production 브랜치 `main`, build `pnpm --filter @cosimosi/web build`, deploy `npx wrangler deploy`,
+   production 브랜치 `main`, build `pnpm build:site`, deploy `npx wrangler deploy`,
    version `npx wrangler versions upload`, 변수 3종(§3) 입력, 커스텀 도메인 `cosimosi.haeram.me` 연결.
 10. **Supabase Auth**: Google provider(Client ID/Secret — GCP 리디렉션 URI에
     `https://<ref>.supabase.co/auth/v1/callback`), URL Configuration의 Site URL
