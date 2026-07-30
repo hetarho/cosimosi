@@ -64,6 +64,7 @@ type recordedProgress struct {
 
 type fakeRecorder struct {
 	progress []recordedProgress
+	err      error
 }
 
 func (r *fakeRecorder) RecordProgress(
@@ -74,7 +75,7 @@ func (r *fakeRecorder) RecordProgress(
 	delta int,
 ) error {
 	r.progress = append(r.progress, recordedProgress{key: counterKey, delta: delta})
-	return nil
+	return r.err
 }
 
 type decorateHarness struct {

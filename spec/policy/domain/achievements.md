@@ -121,7 +121,7 @@ value can flow back into the producing write.
 | `semantic_stage_depth`           | `memory.ViewSemantic`                       | the stage just served (**reach**)                                 |
 | `episodic_memory_released`       | `memory.Release`                            | +1 per soft-deleted memory                                        |
 | `decoration_saved`               | `store.Decorate`                            | +1 per save that changed something                                |
-| `ornament_owned`                 | `store.Decorate`                            | the ownership count after the save (**reach**)                    |
+| `ornament_owned`                 | `store.Decorate` · `store.GrantOwnership`   | the ownership count after the save or grant (**reach**)           |
 | `ornament_kind_decorated:<KIND>` | `store.Decorate`                            | +1 per kind whose applied id actually changed                     |
 | `invite_settled`                 | `account`'s invite settlement               | +1, under the **inviter's** scope                                 |
 

@@ -128,7 +128,7 @@ never at the call site.
 | `neuron_share_depth`             | reach                           | the most memories sharing one `Neuron`                | 별자리 규모 (as [A2] redefines it) |
 | `episodic_memory_released`       | accumulate                      | a letting-go                                          | 첫 경험                            |
 | `decoration_saved`               | accumulate                      | a `Decorate` save                                     | 꾸미기 · 첫 경험                   |
-| `ornament_owned`                 | reach                           | ornaments owned after a save                          | 꾸미기                             |
+| `ornament_owned`                 | reach                           | ornaments owned after a save **or a grant**           | 꾸미기                             |
 | `invite_settled`                 | accumulate                      | a settled valid signup                                | 첫 경험                            |
 | `mood_recorded:<MOOD>`           | accumulate (family, 13 members) | a memory recorded with that mood                      | feeds 감정 수집                    |
 | `ornament_kind_decorated:<KIND>` | accumulate (family, 2 members)  | a save that changed that kind                         | feeds 꾸미기                       |
@@ -362,7 +362,11 @@ kind of a never-dead-lettered leg would otherwise spin forever.
   the fact.
 - **Two granter adapters** over `twinkle.Service.EarnAchievementReward` (narrowing its `Balance` to the `GENERAL` total)
   and `store.Service.GrantOwnership`. Neither carries a kind parameter, which is where "no `SMALL` reward" holds.
-  `ornament_owned` is reported from the save's own view of ownership — the list it read plus what it acquired — so two
+  `ornament_owned` is reported by BOTH ownership legs: the save, and the grant itself (which runs in its own
+  transaction for exactly that reason — otherwise a capstone claim grew ownership without moving the counter its own
+  tiers read, and the total waited for a decoration save that may never come). It is a reach counter, so a second
+  report of the same total is a no-op rather than a double count.
+  A save reports from its own view of ownership — the list it read plus what it acquired — so two
   concurrent saves both report the smaller total and the counter lags the table by one until the next save. Left alone
   deliberately: a high-water mark can only be late, never wrong, and closing it would serialize every decoration save
   behind an advisory lock for the sake of a count.

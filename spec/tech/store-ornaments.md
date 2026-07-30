@@ -109,7 +109,10 @@ there, because it is a programming error the DDL would reject anyway.
 - `Selection(ctx, scope)` answers **exactly one entry per kind**; an absent row and an unknown or retired stored id
   both coerce to that kind's default. A read must always answer — while a write must never guess, which is why
   `GrantOwnership` refuses an unpublished id (`ErrUnknownOrnamentID`) instead of coercing.
-- `GrantOwnership(ctx, scope, id, via)` is the append both legs land through; `AcquisitionFree` is refused
+- `GrantOwnership(ctx, scope, id, via)` is the append both legs land through; it runs in its own transaction so the
+  ownership row and the `ornament_owned` counter commit together, and a counter-report failure rolls the grant back
+  (losing the count would leave a fact nothing re-derives; a failed grant is retried by the claim that called it).
+  `AcquisitionFree` is refused
   (`ErrAcquisitionNotGrantable`) because a free row is owned through the ABSENCE of a row.
 - `PurgeUser(ctx, scope)` delegates to the pg leg, which deletes both tables **in one transaction** so a retried sweep
   never finds a selection surviving its ownership history.

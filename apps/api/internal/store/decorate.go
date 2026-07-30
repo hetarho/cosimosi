@@ -329,6 +329,9 @@ func applySelection(
 // behind an advisory lock for the sake of a count. A future reader tempted to re-read the list here
 // should note that a re-read inside a READ COMMITTED transaction still cannot see the other save's
 // uncommitted insert, so it would fix nothing.
+//
+// That concurrent-save lag is the ONLY one: the other ownership leg, an achievement grant, reports the
+// total for itself inside its own transaction, so it never waits for a save that may never come.
 func (s *Service) record(
 	ctx context.Context,
 	scope platform.UserScope,
@@ -342,8 +345,8 @@ func (s *Service) record(
 	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterDecorationSaved, 1); err != nil {
 		return fmt.Errorf("record decoration saved: %w", err)
 	}
-	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterOrnamentOwned, ownedAfter); err != nil {
-		return fmt.Errorf("record ornament owned: %w", err)
+	if err := s.recordOwnershipTotal(ctx, scope, tx, ownedAfter); err != nil {
+		return err
 	}
 	for _, kind := range changedKinds {
 		key := CounterOrnamentKindDecorated(kind)
@@ -366,4 +369,21 @@ func confirmedSelection(wanted []Ornament) []OrnamentSelection {
 		applied = append(applied, OrnamentSelection{Kind: ornament.Kind, OrnamentID: id})
 	}
 	return applied
+}
+
+// recordOwnershipTotal is the one ownership report both acquisition legs make. It is a REACH value —
+// the count after this transaction's insert, not a delta — so reporting the same total twice is a
+// no-op and an extra report can only ever be correct. Shared rather than duplicated because the two
+// legs must agree on what the counter means: a delta from one and a total from the other would make
+// the tiers unreachable or reachable twice over.
+func (s *Service) recordOwnershipTotal(
+	ctx context.Context,
+	scope platform.UserScope,
+	tx EconomyTx,
+	ownedAfter int,
+) error {
+	if err := s.achievements.RecordProgress(ctx, scope, tx, CounterOrnamentOwned, ownedAfter); err != nil {
+		return fmt.Errorf("record ornament owned: %w", err)
+	}
+	return nil
 }

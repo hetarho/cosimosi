@@ -126,16 +126,27 @@ func (f *fakeOrnamentRepo) PurgeUser(_ context.Context, scope platform.UserScope
 
 func newTestService(t *testing.T, repo *fakeOrnamentRepo) *store.Service {
 	t.Helper()
+	service, _ := newGrantService(t, repo)
+	return service
+}
+
+// newGrantService binds the two seams a grant now needs — the transaction it runs in and a CAPTURING
+// recorder, since the shipped NoAchievementRecorder records nothing and a test over it would assert
+// against a no-op.
+func newGrantService(t *testing.T, repo *fakeOrnamentRepo) (*store.Service, *fakeRecorder) {
+	t.Helper()
+	recorder := &fakeRecorder{}
 	service, err := store.NewService(store.ServiceDeps{
 		Ownerships:   repo,
 		Selections:   repo,
 		Purge:        repo,
-		Achievements: store.NoAchievementRecorder{},
+		Decorate:     &fakeDecorateRepo{repo: repo},
+		Achievements: recorder,
 	})
 	if err != nil {
 		t.Fatalf("NewService failed: %v", err)
 	}
-	return service
+	return service, recorder
 }
 
 func testScope(t *testing.T, userID string) platform.UserScope {
@@ -289,6 +300,73 @@ func TestGrantOwnershipValidatesIDsAndAcquisitionAndIsIdempotent(t *testing.T) {
 		repo.inserted[0].AcquiredVia != store.AcquisitionPurchase ||
 		repo.inserted[1].AcquiredVia != store.AcquisitionAchievement {
 		t.Errorf("inserted ownerships = %+v, want one purchase then one achievement row", repo.inserted)
+	}
+}
+
+// A capstone claim used to grow ownership without moving the counter its own tiers read, so the total
+// waited for the user's next decoration save. Both legs report now, and both report the TOTAL: the
+// counter is a high-water mark, so a repeated report is a no-op rather than a double count.
+func TestGrantOwnershipReportsTheOwnershipTotal(t *testing.T) {
+	t.Parallel()
+	repo := newFakeOrnamentRepo()
+	service, recorder := newGrantService(t, repo)
+	scope := testScope(t, "grant-counter-user")
+	ctx := context.Background()
+
+	if err := service.GrantOwnership(ctx, scope, "star_shader.spire", store.AcquisitionAchievement); err != nil {
+		t.Fatalf("GrantOwnership failed: %v", err)
+	}
+	if len(recorder.progress) != 1 || recorder.progress[0] != (recordedProgress{key: store.CounterOrnamentOwned, delta: 1}) {
+		t.Fatalf("progress = %+v, want one ornament_owned total of 1", recorder.progress)
+	}
+	// A second grant of the same ornament inserts nothing and re-reports the same total — which the
+	// reach counter absorbs. The purchase leg's own report through a decoration save is the same shape.
+	if err := service.GrantOwnership(ctx, scope, "star_shader.spire", store.AcquisitionAchievement); err != nil {
+		t.Fatalf("replayed GrantOwnership failed: %v", err)
+	}
+	if len(repo.inserted) != 1 {
+		t.Errorf("inserted = %+v, want the replay to have granted nothing", repo.inserted)
+	}
+	if len(recorder.progress) != 2 || recorder.progress[1] != (recordedProgress{key: store.CounterOrnamentOwned, delta: 1}) {
+		t.Fatalf("progress = %+v, want the replay to re-report the same total", recorder.progress)
+	}
+
+	// A second, different ornament moves the total.
+	if err := service.GrantOwnership(ctx, scope, "background.floating-lines", store.AcquisitionAchievement); err != nil {
+		t.Fatalf("second GrantOwnership failed: %v", err)
+	}
+	if last := recorder.progress[len(recorder.progress)-1]; last.delta != 2 {
+		t.Errorf("progress after a second ornament = %+v, want a total of 2", last)
+	}
+}
+
+// A report failure fails the whole grant, and the insert goes with it. Losing the count instead would
+// leave a fact nothing re-derives; failing is recoverable, because the claim that called this wraps a
+// granter error as a retryable refusal and replays the idempotent grant.
+func TestGrantOwnershipRollsBackWhenTheCounterReportFails(t *testing.T) {
+	t.Parallel()
+	repo := newFakeOrnamentRepo()
+	recorder := &fakeRecorder{err: errors.New("counter store unavailable")}
+	tx := &fakeDecorateRepo{repo: repo}
+	service, err := store.NewService(store.ServiceDeps{
+		Ownerships:   repo,
+		Selections:   repo,
+		Purge:        repo,
+		Decorate:     tx,
+		Achievements: recorder,
+	})
+	if err != nil {
+		t.Fatalf("NewService failed: %v", err)
+	}
+	scope := testScope(t, "grant-rollback-user")
+
+	if err := service.GrantOwnership(
+		context.Background(), scope, "star_shader.spire", store.AcquisitionAchievement,
+	); err == nil {
+		t.Fatal("a failed counter report still reported a successful grant")
+	}
+	if len(repo.inserted) != 0 || tx.rollbacks != 1 {
+		t.Errorf("inserted = %+v rollbacks = %d, want the insert rolled back with the report", repo.inserted, tx.rollbacks)
 	}
 }
 

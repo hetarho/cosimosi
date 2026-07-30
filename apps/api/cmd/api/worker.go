@@ -25,7 +25,6 @@ import (
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/platform/jobqueue"
-	"github.com/cosimosi/api/internal/store"
 	"github.com/cosimosi/api/internal/twinkle"
 	twinklepg "github.com/cosimosi/api/internal/twinkle/pg"
 )
@@ -141,11 +140,19 @@ func newDevWorkerAchievementSettler(
 	if err != nil {
 		return nil, err
 	}
-	storeService, err := newStoreService(pool, twinkleService, devWorkerNoStoreAchievementRecorder{})
+	// store and achievement need each other here too: an ornament grant reports its ownership counter
+	// through the achievement service, which pays through the store service. Same late binding the API
+	// root uses, because the drain drives both halves.
+	recorders := &achievementRecorderBinding{pool: pool}
+	storeService, err := newStoreService(
+		pool,
+		twinkleService,
+		storeAchievementRecorder{achievementRecorder{binding: recorders}},
+	)
 	if err != nil {
 		return nil, err
 	}
-	return achievement.NewService(achievement.AchievementServiceDeps{
+	settler, err := achievement.NewService(achievement.AchievementServiceDeps{
 		Repo:      achievementpg.NewStore(pool.PgxPool()),
 		Twinkle:   achievementTwinkleGranter{service: twinkleService},
 		Ornaments: achievementOrnamentGranter{service: storeService},
@@ -153,14 +160,16 @@ func newDevWorkerAchievementSettler(
 		// stamping a claim whose drain nobody armed.
 		Settlements: devWorkerNoSettlementScheduler{},
 	})
+	if err != nil {
+		return nil, err
+	}
+	recorders.bind(settler)
+	return settler, nil
 }
 
 var (
 	errDevWorkerSpendQuotingUnavailable = errors.New(
 		"twinkle spend quoting is not available in the dev worker",
-	)
-	errDevWorkerDecorationRecordingUnavailable = errors.New(
-		"decoration progress recording is not available in the dev worker",
 	)
 	errDevWorkerClaimSchedulingUnavailable = errors.New(
 		"achievement claims are not taken in the dev worker",
@@ -179,18 +188,6 @@ func (devWorkerNoSpendSignals) DiaryRecallAccessibilities(context.Context, platf
 
 func (devWorkerNoSpendSignals) ViewableGistStage(context.Context, platform.UserScope, string) (int, error) {
 	return 0, errDevWorkerSpendQuotingUnavailable
-}
-
-type devWorkerNoStoreAchievementRecorder struct{}
-
-func (devWorkerNoStoreAchievementRecorder) RecordProgress(
-	context.Context,
-	platform.UserScope,
-	store.EconomyTx,
-	string,
-	int,
-) error {
-	return errDevWorkerDecorationRecordingUnavailable
 }
 
 type devWorkerNoSettlementScheduler struct{}

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosimosi/api/internal/achievement"
+	achievementpg "github.com/cosimosi/api/internal/achievement/pg"
 	"github.com/cosimosi/api/internal/platform"
 	platformdb "github.com/cosimosi/api/internal/platform/db"
 	"github.com/cosimosi/api/internal/store"
@@ -157,6 +159,91 @@ func cleanupStoreRows(t *testing.T, pool *platformdb.Pool, userID string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		for _, table := range []string{"ornament_selections", "ornament_ownerships"} {
+			if _, err := pool.PgxPool().Exec(
+				ctx,
+				"DELETE FROM "+table+" WHERE user_id = $1",
+				userID,
+			); err != nil {
+				t.Errorf("cleanup %s failed: %v", table, err)
+			}
+		}
+	})
+}
+
+// The sequence R007 named, end to end on a real database: claim an ornament capstone, and read the
+// ownership counter WITHOUT a decoration save in between. A grant used to grow ownership silently, so
+// the tiers that count ornaments only caught up on the user's next save — a unit test on
+// GrantOwnership alone would not have seen it, because the gap was between two contexts.
+func TestClaimingAnOrnamentCapstoneMovesTheOwnershipCounter(t *testing.T) {
+	pool := openEconomyTestPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	userID := fmt.Sprintf("test-capstone-%d-user", time.Now().UnixNano())
+	cleanupEconomyTestRows(t, pool, userID)
+	cleanupStoreRows(t, pool, userID)
+	cleanupAchievementRows(t, pool, userID)
+	scope := economyScope(t, userID)
+
+	// The same cycle both roots close: store reports through achievement, achievement pays through
+	// store. Built here rather than reused, because a test root binds its own concretes.
+	recorders := &achievementRecorderBinding{pool: pool}
+	twinkleService := economyTwinkleService(t, pool)
+	storeService, err := newStoreService(
+		pool,
+		twinkleService,
+		storeAchievementRecorder{achievementRecorder{binding: recorders}},
+	)
+	if err != nil {
+		t.Fatalf("newStoreService failed: %v", err)
+	}
+	achievementService, err := newAchievementService(pool, achievementDeps{
+		twinkle: twinkleService,
+		store:   storeService,
+	})
+	if err != nil {
+		t.Fatalf("newAchievementService failed: %v", err)
+	}
+	recorders.bind(achievementService)
+
+	capstone, published := achievement.LookupAchievement("star_500")
+	if !published {
+		t.Fatal("the catalog does not publish star_500")
+	}
+	counters := achievementpg.NewStore(pool.PgxPool())
+	if err := achievementService.RecordProgress(
+		ctx, scope, counters, capstone.Condition.Counter, int(capstone.Condition.Target),
+	); err != nil {
+		t.Fatalf("RecordProgress failed: %v", err)
+	}
+
+	result, err := achievementService.ClaimAchievement(ctx, scope, capstone.ID)
+	if err != nil {
+		t.Fatalf("ClaimAchievement failed: %v", err)
+	}
+	if result.OrnamentID != capstone.Reward.OrnamentID {
+		t.Fatalf("claim granted %q, want the capstone's ornament %q", result.OrnamentID, capstone.Reward.OrnamentID)
+	}
+	if owned := countStoreRows(t, ctx, pool, "ornament_ownerships", userID); owned != 1 {
+		t.Fatalf("ownership rows = %d, want the granted capstone", owned)
+	}
+
+	after, err := counters.ListCounters(ctx, scope)
+	if err != nil {
+		t.Fatalf("ListCounters failed: %v", err)
+	}
+	if after[achievement.CounterOrnamentOwned] != 1 {
+		t.Fatalf("%s = %d, want 1 with no decoration save in between",
+			achievement.CounterOrnamentOwned, after[achievement.CounterOrnamentOwned])
+	}
+}
+
+func cleanupAchievementRows(t *testing.T, pool *platformdb.Pool, userID string) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		for _, table := range []string{"achievement_progress", "achievement_counters", "jobs"} {
 			if _, err := pool.PgxPool().Exec(
 				ctx,
 				"DELETE FROM "+table+" WHERE user_id = $1",

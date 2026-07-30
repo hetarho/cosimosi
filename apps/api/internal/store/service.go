@@ -140,6 +140,12 @@ func (s *Service) Selection(ctx context.Context, scope platform.UserScope) ([]Or
 // achievement-only row as a purchase would buy something unbuyable, and granting a purchasable row as
 // an achievement would write an audit trail that never happened. Checking the row rather than the
 // argument is also why a purchase leg that forgets RequirePurchasable still cannot get through.
+//
+// The grant runs in a transaction so the insert and the ownership count commit together. Without it a
+// capstone claim grew ownership without moving the counter its own tiers read, and the total only
+// caught up on the user's next decoration save — a lag no surface could show and no user could act on.
+// Every guard above stays OUTSIDE the transaction: they are input validation, and a caller fault must
+// not open a write.
 func (s *Service) GrantOwnership(
 	ctx context.Context,
 	scope platform.UserScope,
@@ -160,10 +166,28 @@ func (s *Service) GrantOwnership(
 		return fmt.Errorf("%w: %s is acquired by %s, not %s",
 			ErrAcquisitionNotGrantable, ornamentID, ornament.Acquisition, acquiredVia)
 	}
-	if _, err := s.ownerships.InsertOrnamentOwnership(ctx, scope, ornamentID, acquiredVia); err != nil {
-		return fmt.Errorf("insert ornament ownership: %w", err)
+	// Checked after the caller faults, so a bad argument still reads as a bad argument rather than as
+	// this root's wiring.
+	if s.decorate == nil {
+		return ErrStoreRequired
 	}
-	return nil
+	return s.decorate.InDecorateTx(ctx, func(tx DecorateTx) error {
+		if _, err := tx.InsertOrnamentOwnership(ctx, scope, ornamentID, acquiredVia); err != nil {
+			return fmt.Errorf("insert ornament ownership: %w", err)
+		}
+		// Read AFTER the insert, inside the same transaction, so the total includes it whether or not
+		// this call is the one that created the row.
+		owned, err := tx.ListOrnamentOwnerships(ctx, scope)
+		if err != nil {
+			return fmt.Errorf("list ornament ownerships: %w", err)
+		}
+		// A report failure fails the whole grant, deliberately. The alternative — keep the ownership
+		// and drop the count — loses a fact with no repair path: counters only move forward and
+		// nothing re-derives this one, so the tier would stay unreachable until the user happened to
+		// re-decorate. Failing is recoverable instead: the achievement claim wraps a granter error as
+		// a retryable refusal, and its settle drain replays this grant, which is idempotent.
+		return s.recordOwnershipTotal(ctx, scope, tx, len(owned))
+	})
 }
 
 // PurgeUser deletes the withdrawing user's own ownership and selection rows, and is the only delete

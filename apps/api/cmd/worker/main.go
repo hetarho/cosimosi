@@ -24,6 +24,7 @@ import (
 	_ "github.com/cosimosi/api/internal/ai/deepseek"
 	_ "github.com/cosimosi/api/internal/ai/voyage"
 
+	dbgen "github.com/cosimosi/api/db/gen"
 	"github.com/cosimosi/api/internal/account"
 	accountpg "github.com/cosimosi/api/internal/account/pg"
 	"github.com/cosimosi/api/internal/achievement"
@@ -176,6 +177,10 @@ func newWorkerRunner(pool *platformdb.Pool, logger *log.Logger) (interface{ Run(
 // than wired: it quotes no spend, settles no invite and saves no decoration, and a permissive stub
 // would let a path that unexpectedly reached one of them succeed quietly.
 func newAchievementSettler(pool *platformdb.Pool, accountService *account.Service) (*achievement.Service, error) {
+	// store and achievement need each other: a grant reports a counter through the achievement
+	// service, and the achievement service pays through the store service. The API root closes this
+	// cycle with a late binding and so does this one, because the drain drives both halves.
+	binding := &workerAchievementBinding{}
 	twinkleService, err := twinkle.NewService(twinkle.ServiceDeps{
 		Ledger:         twinklepg.NewStore(pool.PgxPool()),
 		InviteResolver: twinkle.UnavailableInviteResolver{},
@@ -187,15 +192,21 @@ func newAchievementSettler(pool *platformdb.Pool, accountService *account.Servic
 	}
 	ornaments := storepg.NewStore(pool.PgxPool())
 	storeService, err := store.NewService(store.ServiceDeps{
-		Ownerships:   ornaments,
-		Selections:   ornaments,
-		Purge:        ornaments,
-		Achievements: workerNoStoreAchievementRecorder{},
+		Ownerships: ornaments,
+		Selections: ornaments,
+		Purge:      ornaments,
+		// A grant runs in its own transaction so the ownership row and the ornament-owned counter
+		// commit together, so this root binds the transaction runner even though it saves no
+		// decoration. Spend stays unbound: the drain never charges.
+		Decorate: ornaments,
+		// The grant's counter report is a real report, not decoration progress — it goes through the
+		// recorder the achievement context binds, exactly as it does in the API root.
+		Achievements: workerStoreAchievementRecorder{binding: binding},
 	})
 	if err != nil {
 		return nil, err
 	}
-	return achievement.NewService(achievement.AchievementServiceDeps{
+	settler, err := achievement.NewService(achievement.AchievementServiceDeps{
 		Repo:      achievementpg.NewStore(pool.PgxPool()),
 		Twinkle:   workerTwinkleGranter{service: twinkleService},
 		Ornaments: workerOrnamentGranter{service: storeService},
@@ -203,6 +214,43 @@ func newAchievementSettler(pool *platformdb.Pool, accountService *account.Servic
 		// fault: it refuses rather than stamping one whose drain nobody armed.
 		Settlements: workerNoSettlementScheduler{},
 	})
+	if err != nil {
+		return nil, err
+	}
+	binding.bind(settler)
+	return settler, nil
+}
+
+type workerAchievementBinding struct {
+	service *achievement.Service
+}
+
+func (b *workerAchievementBinding) bind(service *achievement.Service) { b.service = service }
+
+// workerStoreAchievementRecorder binds a counter store onto the GRANT's own transaction, so the
+// ownership row and the ornament-owned total commit together — the same edge the API root binds for
+// a decoration save.
+type workerStoreAchievementRecorder struct {
+	binding *workerAchievementBinding
+}
+
+func (r workerStoreAchievementRecorder) RecordProgress(
+	ctx context.Context,
+	scope platform.UserScope,
+	tx store.EconomyTx,
+	counterKey string,
+	delta int,
+) error {
+	if r.binding == nil || r.binding.service == nil {
+		return errWorkerAchievementRecordingUnavailable
+	}
+	carrier, ok := tx.(interface{ DB() dbgen.DBTX })
+	if !ok || carrier.DB() == nil {
+		return errWorkerRecorderTxUnusable
+	}
+	return r.binding.service.RecordProgress(
+		ctx, scope, achievementpg.NewStore(carrier.DB()), achievement.CounterKey(counterKey), delta,
+	)
 }
 
 type workerAccountDirectory interface {
@@ -251,6 +299,9 @@ var (
 	errWorkerClaimSchedulingUnavailable = errors.New(
 		"achievement claims are not taken in the worker process",
 	)
+	errWorkerRecorderTxUnusable = errors.New(
+		"producer tx does not expose a database handle",
+	)
 )
 
 func (workerNoInviteGranter) Grant(context.Context, platform.UserScope, string) error {
@@ -269,20 +320,6 @@ func (workerNoAchievementRecorder) RecordProgress(
 	context.Context,
 	platform.UserScope,
 	any,
-	string,
-	int,
-) error {
-	return errWorkerAchievementRecordingUnavailable
-}
-
-// workerNoStoreAchievementRecorder is the same refusal in store's own tx vocabulary — the port's
-// parameter is store.EconomyTx, so the `any`-shaped recorder above does not satisfy it.
-type workerNoStoreAchievementRecorder struct{}
-
-func (workerNoStoreAchievementRecorder) RecordProgress(
-	context.Context,
-	platform.UserScope,
-	store.EconomyTx,
 	string,
 	int,
 ) error {
