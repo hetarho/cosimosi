@@ -232,7 +232,9 @@ roots.
 
 One unary `NO_SIDE_EFFECTS` method, `ListAchievements`, with an **empty request** — scope comes from
 `platform.UserScope`, never the wire. `AchievementEntry` carries `achievement_id`, `axis`, `target`, `progress`,
-`reward_twinkle`, `reward_ornament_id`, `achieved`, `claimed`, `achieved_at` (RFC3339 UTC, empty while unachieved) and
+`reward_twinkle` (`int64`, matching every other Twinkle quantity on the wire — twinkle.v1's balances, costs and ledger
+amounts — so one client never reads the same currency at two widths), `reward_ornament_id`, `achieved`, `claimed`,
+`achieved_at` (RFC3339 UTC, empty while unachieved) and
 `reward_settled`. The last one is named for the state, not the column: `claimed && !reward_settled` is the recoverable
 window, and a client renders it as a retry rather than as received.
 
@@ -243,6 +245,13 @@ are resolved client-side from the id / the axis enum, following the `mood_<value
 Classified exactly once in `packages/client-cache/src/http-policy.ts` (`achievementRpcCachePolicies`) as an
 authenticated, user-scoped, non-shared-CDN GET; the transport hard-fails on a missing or duplicate classification
 before any I/O, and the coverage test's explicit read count is the second guard.
+
+`rpc/server_test.go` holds the adapter to being an adapter. Two of its assertions are structural rather than
+example-based: **axis totality is driven from `achievement.Catalog()`**, so a tenth axis added without a proto arm fails
+a test instead of serializing as `UNSPECIFIED` under a heading no client can resolve (the FE groups by the wire value on
+purpose, so it cannot notice); and the reward's **wire width is asserted on the two descriptors**, so the read and the
+claim response cannot drift apart again. `domainError` is table-tested over every sentinel the handler classifies plus
+the unclassified ones that must stay internal.
 
 ## 8. Values
 

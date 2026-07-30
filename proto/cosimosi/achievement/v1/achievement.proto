@@ -52,8 +52,10 @@ message AchievementEntry {
   int64 target = 3;
   // min(counter, target) — derived server-side, never stored.
   int64 progress = 4;
-  // GENERAL amount resolved from values; 0 for an ornament reward.
-  int32 reward_twinkle = 5;
+  // GENERAL amount resolved from values; 0 for an ornament reward. int64 to match every other
+  // Twinkle quantity on the wire (twinkle.v1's balances, costs and ledger amounts), so one client
+  // never reads the same currency at two widths.
+  int64 reward_twinkle = 5;
   // Empty for a stardust reward.
   string reward_ornament_id = 6;
   bool achieved = 7;

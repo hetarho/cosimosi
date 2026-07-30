@@ -136,8 +136,10 @@ type AchievementEntry struct {
 	Target        int64           `protobuf:"varint,3,opt,name=target,proto3" json:"target,omitempty"`
 	// min(counter, target) — derived server-side, never stored.
 	Progress int64 `protobuf:"varint,4,opt,name=progress,proto3" json:"progress,omitempty"`
-	// GENERAL amount resolved from values; 0 for an ornament reward.
-	RewardTwinkle int32 `protobuf:"varint,5,opt,name=reward_twinkle,json=rewardTwinkle,proto3" json:"reward_twinkle,omitempty"`
+	// GENERAL amount resolved from values; 0 for an ornament reward. int64 to match every other
+	// Twinkle quantity on the wire (twinkle.v1's balances, costs and ledger amounts), so one client
+	// never reads the same currency at two widths.
+	RewardTwinkle int64 `protobuf:"varint,5,opt,name=reward_twinkle,json=rewardTwinkle,proto3" json:"reward_twinkle,omitempty"`
 	// Empty for a stardust reward.
 	RewardOrnamentId string `protobuf:"bytes,6,opt,name=reward_ornament_id,json=rewardOrnamentId,proto3" json:"reward_ornament_id,omitempty"`
 	Achieved         bool   `protobuf:"varint,7,opt,name=achieved,proto3" json:"achieved,omitempty"`
@@ -210,7 +212,7 @@ func (x *AchievementEntry) GetProgress() int64 {
 	return 0
 }
 
-func (x *AchievementEntry) GetRewardTwinkle() int32 {
+func (x *AchievementEntry) GetRewardTwinkle() int64 {
 	if x != nil {
 		return x.RewardTwinkle
 	}
@@ -417,7 +419,7 @@ const file_cosimosi_achievement_v1_achievement_proto_rawDesc = "" +
 	"\x04axis\x18\x02 \x01(\x0e2(.cosimosi.achievement.v1.AchievementAxisR\x04axis\x12\x16\n" +
 	"\x06target\x18\x03 \x01(\x03R\x06target\x12\x1a\n" +
 	"\bprogress\x18\x04 \x01(\x03R\bprogress\x12%\n" +
-	"\x0ereward_twinkle\x18\x05 \x01(\x05R\rrewardTwinkle\x12,\n" +
+	"\x0ereward_twinkle\x18\x05 \x01(\x03R\rrewardTwinkle\x12,\n" +
 	"\x12reward_ornament_id\x18\x06 \x01(\tR\x10rewardOrnamentId\x12\x1a\n" +
 	"\bachieved\x18\a \x01(\bR\bachieved\x12\x18\n" +
 	"\aclaimed\x18\b \x01(\bR\aclaimed\x12\x1f\n" +

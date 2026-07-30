@@ -30,7 +30,7 @@ export function toAchievementView(entry: AchievementEntry): AchievementView {
     axis: entry.axis,
     target: Number(entry.target),
     progress: Number(entry.progress),
-    rewardTwinkle: entry.rewardTwinkle,
+    rewardTwinkle: Number(entry.rewardTwinkle),
     rewardOrnamentId: entry.rewardOrnamentId,
     achieved: entry.achieved,
     claimed: entry.claimed,

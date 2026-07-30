@@ -48,21 +48,17 @@ func (s *Server) ListAchievements(
 	}
 	dto := make([]*achievementv1.AchievementEntry, 0, len(entries))
 	for _, entry := range entries {
-		achievedAt := ""
-		if !entry.AchievedAt.IsZero() {
-			achievedAt = entry.AchievedAt.UTC().Format(time.RFC3339)
-		}
 		dto = append(dto, &achievementv1.AchievementEntry{
 			AchievementId:    entry.ID,
 			Axis:             protoAxis(entry.Axis),
 			Target:           entry.Condition.Target,
 			Progress:         entry.Progress,
-			RewardTwinkle:    int32(entry.Reward.Twinkle()),
+			RewardTwinkle:    int64(entry.Reward.Twinkle()),
 			RewardOrnamentId: entry.Reward.OrnamentID,
 			Achieved:         entry.Achieved,
 			Claimed:          entry.Claimed,
 			RewardSettled:    entry.RewardSettled,
-			AchievedAt:       achievedAt,
+			AchievedAt:       achievedAtWire(entry.AchievedAt),
 		})
 	}
 	return connect.NewResponse(&achievementv1.ListAchievementsResponse{Entries: dto}), nil
@@ -91,6 +87,16 @@ func (s *Server) ClaimAchievement(
 		GrantedOrnamentId: result.OrnamentID,
 		TwinkleTotal:      int64(result.TwinkleTotal),
 	}), nil
+}
+
+// achievedAtWire renders the one time this contract carries. Empty for the zero time rather than a
+// year-1 timestamp: "unachieved" is an absence, and the memory.v1 string-time convention the field's
+// own comment cites spells an absence as "".
+func achievedAtWire(achievedAt time.Time) string {
+	if achievedAt.IsZero() {
+		return ""
+	}
+	return achievedAt.UTC().Format(time.RFC3339)
 }
 
 func userScope(ctx context.Context) (platform.UserScope, error) {
