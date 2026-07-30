@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { VALUES } from '@cosimosi/config'
 
-import { effectiveBrightness, effectiveStrength } from './effective-values.ts'
+import { effectiveBrightness, effectiveStrength, slowFactor } from './effective-values.ts'
 
 interface EffectiveFixture {
   readonly tolerance: number
@@ -47,6 +47,24 @@ describe('memory effective values', () => {
   it('fills EffectiveBrightness with the Epic-D forgetting fade (1.0 at elapsed 0)', () => {
     // Full-brightness input; the forgetting invariants + golden parity live in forgetting.test.ts.
     expect(effectiveBrightness(0, 0.5, 0.5)).toBe(1)
+  })
+
+  it('stretches the decay time-axis by arousal and strength, never compresses it', () => {
+    // The one member of the reused read-time family with no Go fixture of its own: it is shared by
+    // effectiveBrightness, decayStage, decayDepth and the gist timer, so every one of those inherits
+    // the >= 1 guarantee from here. Dividing by a factor below 1 would SPEED a fade [F6][F7].
+    expect(slowFactor(0, 0)).toBe(1)
+    expect(slowFactor(-1, -1)).toBe(1)
+    expect(slowFactor(1, 0)).toBeCloseTo(1 + VALUES.forgetting.arousalSlowCoefficient, 12)
+    expect(slowFactor(0, 1)).toBeCloseTo(1 + VALUES.forgetting.connectionSlowCoefficient, 12)
+
+    let previous = slowFactor(0, 0)
+    for (let step = 1; step <= 10; step += 1) {
+      const got = slowFactor(step / 10, step / 10)
+      expect(got).toBeGreaterThanOrEqual(previous)
+      expect(got).toBeGreaterThanOrEqual(1)
+      previous = got
+    }
   })
 
   it('matches the shared Go golden fixture', () => {

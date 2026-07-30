@@ -1,0 +1,314 @@
+import { describe, expect, it } from 'vitest'
+
+import { VALUES } from '@cosimosi/config'
+import { createEmotion, type Mood } from '@cosimosi/emotion'
+import { NEURON_TYPES } from '@cosimosi/memory'
+import {
+  SEMANTIC_MAX_STAGE,
+  decayStage,
+  effectiveElapsedDays,
+  effectiveStrength,
+} from '@cosimosi/memory-logic'
+
+import type { DemoDiarySet } from './diary-set.ts'
+import { DEMO_DIARY_SETS } from './diary-sets/index.ts'
+import { pickDemoDiarySet } from './pick.ts'
+import { DEMO_BEAT_IDS } from './scenario.ts'
+import { demoBaseStrength, resolveDemoDiarySet, resolveDemoEpoch } from './resolve.ts'
+
+// Fixture INTEGRITY, not golden parity: shipped data cannot drift, but it can be edited into a state
+// where the demo silently stops demonstrating what it promises — a set with no shared neuron shows
+// three unrelated clumps instead of one cluster, and a recall target on the dominant mood makes
+// beat 8's colour shift invisible. Those are the failures a gate has to catch, because the only
+// other way to notice them is to sit and watch the demo.
+
+const LOCALES = ['en', 'ko'] as const
+const DECAY_STAGE_COUNT = VALUES.forgetting.stageWordRemovalRatios.length
+const EPOCH = '2026-01-01'
+
+interface MemberRef {
+  readonly diaryId: string
+  readonly memoryId: string
+  readonly mood: Mood
+  readonly neuronIds: readonly string[]
+}
+
+function members(set: DemoDiarySet): MemberRef[] {
+  return set.structure.diaries.flatMap((diary) =>
+    diary.memories.map((memory) => ({
+      diaryId: diary.id,
+      memoryId: memory.id,
+      mood: memory.mood,
+      neuronIds: memory.activations.map((activation) => activation.neuronId),
+    })),
+  )
+}
+
+function diariesPerNeuron(set: DemoDiarySet): Map<string, Set<string>> {
+  const spread = new Map<string, Set<string>>()
+  for (const member of members(set)) {
+    for (const neuronId of member.neuronIds) {
+      const seen = spread.get(neuronId) ?? new Set<string>()
+      seen.add(member.diaryId)
+      spread.set(neuronId, seen)
+    }
+  }
+  return spread
+}
+
+describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
+  'demo fixture set %s',
+  (_id, set) => {
+    const { structure } = set
+    const neuronIds = new Set(structure.neurons.map((neuron) => neuron.id))
+    const memoryIds = new Set(members(set).map((member) => member.memoryId))
+
+    it('ships three diaries whose every activation names a declared neuron', () => {
+      expect(structure.diaries).toHaveLength(3)
+      for (const member of members(set)) {
+        expect(member.neuronIds.length).toBeGreaterThan(0)
+        for (const neuronId of member.neuronIds) expect(neuronIds.has(neuronId)).toBe(true)
+      }
+    })
+
+    it.each(LOCALES)('carries a complete precomputed split in %s', (locale) => {
+      const text = set.text[locale]
+      for (const neuronId of neuronIds) expect(text.neuronNames[neuronId]).toBeTruthy()
+      for (const diary of structure.diaries) {
+        const diaryText = text.diaries[diary.id]
+        expect(diaryText?.body).toBeTruthy()
+        for (const memory of diary.memories) {
+          const memoryText = diaryText.memories[memory.id]
+          expect(memoryText?.name).toBeTruthy()
+          expect(memoryText.currentText).toBeTruthy()
+          // The two ladders are as long as the domain says they are, so an edit that drops a rung
+          // cannot leave a stage rendering an empty string.
+          expect(memoryText.semanticStages).toHaveLength(SEMANTIC_MAX_STAGE)
+          expect(memoryText.decayStages).toHaveLength(DECAY_STAGE_COUNT)
+          for (const stageText of [...memoryText.semanticStages, ...memoryText.decayStages])
+            expect(stageText.trim()).not.toBe('')
+        }
+      }
+    })
+
+    it('reuses at least one neuron across two or more diaries', () => {
+      const spread = diariesPerNeuron(set)
+      const crossing = [...spread.values()].filter((diaryIds) => diaryIds.size >= 2)
+      expect(crossing.length).toBeGreaterThan(0)
+      // The declaration is not taken on trust — beat 4 rests on it.
+      for (const sharedId of structure.sharedNeuronIds) {
+        expect(spread.get(sharedId)?.size ?? 0).toBeGreaterThanOrEqual(2)
+      }
+    })
+
+    it('links only neurons that co-fire, canonically ordered and inside the production band', () => {
+      const coFiring = new Set(
+        members(set).flatMap((member) =>
+          member.neuronIds.flatMap((a) =>
+            member.neuronIds.filter((b) => a < b).map((b) => `${a}|${b}`),
+          ),
+        ),
+      )
+      const seen = new Set<string>()
+      for (const synapse of structure.synapses) {
+        expect(synapse.neuronAId < synapse.neuronBId).toBe(true)
+        const pair = `${synapse.neuronAId}|${synapse.neuronBId}`
+        expect(seen.has(pair)).toBe(false)
+        seen.add(pair)
+        expect(coFiring.has(pair)).toBe(true)
+        expect(synapse.strength).toBeGreaterThanOrEqual(VALUES.synapse.initialSameMemory)
+        expect(synapse.strength).toBeLessThanOrEqual(VALUES.synapse.strengthCap)
+        expect(synapse.coActivationCount).toBeGreaterThan(0)
+      }
+    })
+
+    it('exercises all three neuron types', () => {
+      const types = new Set(structure.neurons.map((neuron) => neuron.neuronType))
+      for (const type of NEURON_TYPES) expect(types.has(type)).toBe(true)
+    })
+
+    it('recalls a memory whose mood is not the dominant one', () => {
+      const weights = new Map<string, number>()
+      for (const diary of structure.diaries) {
+        for (const memory of diary.memories) {
+          weights.set(memory.mood, (weights.get(memory.mood) ?? 0) + demoBaseStrength(memory.mood))
+        }
+      }
+      expect(weights.size).toBeGreaterThanOrEqual(3)
+
+      const dominant = [...weights.entries()].reduce((best, entry) =>
+        entry[1] > best[1] ? entry : best,
+      )[0]
+      const target = members(set).find((member) => member.memoryId === set.scenario.recallMemoryId)
+      expect(target).toBeDefined()
+      // Otherwise beat 8 ramps the sky to the colour it already had.
+      expect(target?.mood).not.toBe(dominant)
+    })
+
+    it('spreads the diaries far enough apart to forget at different stages', () => {
+      const { snapshot } = resolveDemoDiarySet(set, 'en', EPOCH)
+      const stages = new Set(
+        snapshot.memories.map((memory) =>
+          decayStage(
+            effectiveElapsedDays(
+              snapshot.universeTime,
+              memory.lastRecalledUniverseTime,
+              memory.createdUniverseTime,
+              memory.forgettingOffsetDays,
+            ),
+            memory.emotion.arousal,
+            effectiveStrength(memory.baseStrength, memory.recallCount),
+          ),
+        ),
+      )
+      // Word loss has to read as a gradient across the set, not as one switch flipping.
+      expect(stages.size).toBeGreaterThanOrEqual(2)
+    })
+
+    it('binds every beat to a member that exists, and nothing priced', () => {
+      expect(set.scenario.beats).toEqual(DEMO_BEAT_IDS)
+      expect(structure.diaries.some((diary) => diary.id === set.scenario.firstDiaryId)).toBe(true)
+      expect(memoryIds.has(set.scenario.recallMemoryId)).toBe(true)
+      expect(memoryIds.has(set.scenario.gistRiseMemoryId)).toBe(true)
+      expect(set.scenario.ornamentTastes.length).toBeGreaterThan(0)
+      for (const taste of set.scenario.ornamentTastes) {
+        expect(Object.keys(taste).sort()).toEqual(['kind', 'ornamentId'])
+        expect(taste.ornamentId.startsWith(`${taste.kind.toLowerCase()}.`)).toBe(true)
+      }
+    })
+  },
+)
+
+describe('demo resolution', () => {
+  it('stamps every date from the epoch parameter and nothing else', () => {
+    const set = DEMO_DIARY_SETS[0]
+    const early = resolveDemoDiarySet(set, 'en', '2026-01-01')
+    const late = resolveDemoDiarySet(set, 'en', '2029-06-15')
+
+    expect(early.diaries[0].diaryDate).toBe('2026-01-01')
+    expect(late.diaries[0].diaryDate).toBe('2029-06-15')
+    // Only the calendar moves: every domain fact the render layers read is byte-identical [Z5].
+    expect(late.snapshot.memories.map((memory) => memory.baseStrength)).toEqual(
+      early.snapshot.memories.map((memory) => memory.baseStrength),
+    )
+    expect(late.snapshot.memories.map((memory) => memory.currentText)).toEqual(
+      early.snapshot.memories.map((memory) => memory.currentText),
+    )
+    expect(late.gistTexts).toEqual(early.gistTexts)
+  })
+
+  it('hands back the production mirror shape, no wider and no narrower', () => {
+    // The demo's whole isolation argument is that nothing below the page knows it exists. If a field
+    // were ever added here to carry a demo-only value — a gist string, a coordinate, an isDemo flag —
+    // the shared mirror would have grown for the sandbox's benefit, and this is where that shows up.
+    const { snapshot, diaries } = resolveDemoDiarySet(DEMO_DIARY_SETS[0], 'en', EPOCH)
+    expect(Object.keys(snapshot).sort()).toEqual([
+      'memories',
+      'neurons',
+      'synapses',
+      'universeTime',
+    ])
+    for (const memory of snapshot.memories) {
+      expect(Object.keys(memory).sort()).toEqual([
+        'activations',
+        'baseStrength',
+        'createdUniverseTime',
+        'currentText',
+        'decayStages',
+        'emotion',
+        'forgettingOffsetDays',
+        'id',
+        'lastRecalledUniverseTime',
+        'name',
+        'recallCount',
+        'seed',
+        'semanticStage',
+      ])
+    }
+    for (const neuron of snapshot.neurons)
+      expect(Object.keys(neuron).sort()).toEqual(['connectivity', 'id', 'name', 'neuronType'])
+    for (const synapse of snapshot.synapses)
+      expect(Object.keys(synapse).sort()).toEqual([
+        'coActivationCount',
+        'id',
+        'lastActivatedUniverseTime',
+        'neuronAId',
+        'neuronBId',
+        'strength',
+      ])
+    for (const diary of diaries)
+      expect(Object.keys(diary).sort()).toEqual([
+        'body',
+        'createdUniverseTime',
+        'diaryDate',
+        'id',
+        'memories',
+      ])
+  })
+
+  it('opens on the newest diary date even out of authored order', () => {
+    for (const set of DEMO_DIARY_SETS) {
+      const { snapshot, diaries } = resolveDemoDiarySet(set, 'en', EPOCH)
+      const newest = diaries.map((diary) => diary.diaryDate).sort()[diaries.length - 1]
+      expect(snapshot.universeTime).toBe(newest)
+    }
+  })
+
+  it('is deterministic and locale-complete', () => {
+    for (const set of DEMO_DIARY_SETS) {
+      for (const locale of LOCALES) {
+        expect(resolveDemoDiarySet(set, locale, EPOCH)).toEqual(
+          resolveDemoDiarySet(set, locale, EPOCH),
+        )
+      }
+    }
+  })
+
+  it('derives connectivity from the authored edges and strength from arousal alone', () => {
+    const set = DEMO_DIARY_SETS[0]
+    const { snapshot } = resolveDemoDiarySet(set, 'en', EPOCH)
+    for (const neuron of snapshot.neurons) {
+      const degree = set.structure.synapses.filter(
+        (synapse) => synapse.neuronAId === neuron.id || synapse.neuronBId === neuron.id,
+      ).length
+      expect(neuron.connectivity).toBe(degree)
+    }
+    for (const memory of snapshot.memories) {
+      expect(memory.baseStrength).toBe(demoBaseStrength(memory.emotion.mood))
+      expect(createEmotion(memory.emotion.mood, memory.emotion.intensity)).toEqual(memory.emotion)
+    }
+  })
+
+  it('lands the newest diary on the given today', () => {
+    const set = DEMO_DIARY_SETS[0]
+    const epoch = resolveDemoEpoch('2026-07-30', set)
+    const { diaries } = resolveDemoDiarySet(set, 'en', epoch)
+    expect(diaries[diaries.length - 1].diaryDate).toBe('2026-07-30')
+  })
+
+  it('opens every memory unrecalled and at the foot of the gist ladder', () => {
+    for (const set of DEMO_DIARY_SETS) {
+      for (const memory of resolveDemoDiarySet(set, 'en', EPOCH).snapshot.memories) {
+        expect(memory.recallCount).toBe(0)
+        expect(memory.lastRecalledUniverseTime).toBeNull()
+        expect(memory.semanticStage).toBe(0)
+        expect(memory.forgettingOffsetDays).toBe(0)
+      }
+    }
+  })
+})
+
+describe('set draw', () => {
+  it('is total over the unit interval and set-granular', () => {
+    for (let draw = 0; draw < 1; draw += 0.01) {
+      expect(DEMO_DIARY_SETS).toContain(pickDemoDiarySet(DEMO_DIARY_SETS, draw))
+    }
+    expect(pickDemoDiarySet(DEMO_DIARY_SETS, 0)).toBe(DEMO_DIARY_SETS[0])
+    expect(pickDemoDiarySet(DEMO_DIARY_SETS, 1)).toBe(DEMO_DIARY_SETS[DEMO_DIARY_SETS.length - 1])
+    expect(pickDemoDiarySet(DEMO_DIARY_SETS, Number.NaN)).toBe(DEMO_DIARY_SETS[0])
+    // Every set id is distinct, so a draw names one designed-together triple [Z4].
+    expect(new Set(DEMO_DIARY_SETS.map((set) => set.structure.id)).size).toBe(
+      DEMO_DIARY_SETS.length,
+    )
+  })
+})
