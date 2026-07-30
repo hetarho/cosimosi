@@ -58,8 +58,16 @@ export function usePushToast(): PushToast {
 }
 
 /**
- * The owners whose entries belong to one signed-in session. Named here rather than in either app so
- * the session boundary and the pushing surface cannot disagree about the tag — and so adding a
- * session-scoped toast is one edit in one place.
+ * The achievement unlock notice's identity in the queue — never a user id, which the queue must not
+ * learn. It is declared beside the queue rather than in `@cosimosi/achievement` because the list below
+ * is defined over it, and this package cannot import a domain package to build that list.
  */
-export const SESSION_SCOPED_TOAST_OWNERS = ['achievement-notice'] as const
+export const ACHIEVEMENT_NOTICE_TOAST_OWNER = 'achievement-notice'
+
+/**
+ * The owners whose entries belong to one signed-in session. The session boundary iterates this and
+ * drops each owner's pending entries on a scope change, and each owner pushes under the same
+ * constant — so the dropping surface and the pushing surface cannot disagree about a tag, and adding
+ * a session-scoped toast is one edit here plus the import at the pushing surface.
+ */
+export const SESSION_SCOPED_TOAST_OWNERS = [ACHIEVEMENT_NOTICE_TOAST_OWNER] as const

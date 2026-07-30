@@ -16,6 +16,7 @@ import { usePaletteVersion } from '../../features/change-mood-colors/index.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { DecorationBootstrap } from './decoration-bootstrap.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
+import { WebToastProvider } from './toast-provider.tsx'
 
 describe('DecorationBootstrap', () => {
   afterEach(() => {
@@ -64,13 +65,17 @@ describe('DecorationBootstrap', () => {
       await act(async () => {
         root.render(
           <ObservabilityProvider facade={observability}>
-            <WebAuthProvider facade={facade}>
-              <WebClientCacheProvider queryClient={queryClient} transport={transport}>
-                <DecorationBootstrap>
-                  <PaletteProbe />
-                </DecorationBootstrap>
-              </WebClientCacheProvider>
-            </WebAuthProvider>
+            {/* The cache provider drops session-scoped toasts on a scope change, so the queue has to
+                be above it here exactly as it is in App.tsx. */}
+            <WebToastProvider>
+              <WebAuthProvider facade={facade}>
+                <WebClientCacheProvider queryClient={queryClient} transport={transport}>
+                  <DecorationBootstrap>
+                    <PaletteProbe />
+                  </DecorationBootstrap>
+                </WebClientCacheProvider>
+              </WebAuthProvider>
+            </WebToastProvider>
           </ObservabilityProvider>,
         )
       })

@@ -22,8 +22,8 @@ export function WebToastProvider({ children }: WebToastProviderProps) {
     setQueue((current) => [...current, { ...entry, id }])
   }, [])
   // Dropping by owner is how a session-scoped notice stops existing when its session does: the
-  // achievement host calls it on unmount (which is sign-out), and an error — which has no owner —
-  // is never touched.
+  // session boundary drops every SESSION_SCOPED_TOAST_OWNERS tag on a scope change, and an error —
+  // which carries its own owner — is never touched by it.
   const dropByOwner = useCallback((owner: string) => {
     setQueue((current) => current.filter((entry) => entry.owner !== owner))
   }, [])

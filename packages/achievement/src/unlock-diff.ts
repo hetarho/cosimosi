@@ -1,3 +1,5 @@
+import { VALUES } from '@cosimosi/config'
+
 import type { AchievementView } from './achievement.ts'
 
 // The unlock notice is a DIFF OF A READ, never a push ([A5]): the recorder returns `error` alone, so
@@ -28,4 +30,37 @@ export function newlyAchieved(
   return next.filter(
     (entry) => entry.achieved && !entry.claimed && previous.get(entry.id) === false,
   )
+}
+
+/**
+ * The toast one unlocked achievement becomes — the shape the shared queue's `push` takes, declared
+ * structurally so this package does not import the UI kit.
+ */
+export interface UnlockNoticeToast {
+  variant: 'success'
+  message: string
+  durationMs: number
+  owner: string
+}
+
+// unlockNoticeToasts is the whole decision — WHAT to announce and HOW it reads — as a pure function
+// of two snapshots. Only the pushing and the snapshot bookkeeping are left to the effect, which is
+// what makes the diff, the cap and the first-resolution silence testable without a renderer.
+export function unlockNoticeToasts(
+  previous: AchievedSnapshot | undefined,
+  next: readonly AchievementView[],
+  { owner, formatNotice }: { owner: string; formatNotice: (achievementId: string) => string },
+): readonly UnlockNoticeToast[] {
+  // Capped per resolution, and the rest are DROPPED rather than queued: a diary that crosses several
+  // thresholds should read as one moment, and the tab already lists every one of them.
+  return newlyAchieved(previous, next)
+    .slice(0, VALUES.achievement.unlockNoticeMax)
+    .map((entry) => ({
+      // One line: what it is and where it waits. No reward figure, no button, no navigation — the tab
+      // is where an achievement is confirmed, and the universe must not be interrupted.
+      variant: 'success',
+      message: formatNotice(entry.id),
+      durationMs: VALUES.achievement.claimToastMs,
+      owner,
+    }))
 }

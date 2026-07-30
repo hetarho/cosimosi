@@ -33,6 +33,11 @@ export function extendUserStateResetInventory(platformLeg: PlatformUserStateRese
   return [...USER_STATE_RESET_INVENTORY, platformLeg.name]
 }
 
+// Not everything cleared on a scope change is in this registry, and one thing deliberately is not:
+// the session-scoped toast entries. An entry here is a plain `(nextScopeKey) => void` over a
+// module-level store, while the toast queue is React context — reachable only from a component. Its
+// drop therefore lives in each app's client-cache provider, in the same `onScopeChange` callback that
+// calls this function. A reader looking for "everything cleared on scope change" needs both halves.
 /** Clears shared user state in one order, then delegates the final platform-specific leg. */
 export function resetUserState(nextScopeKey: string, platformLeg: PlatformUserStateReset): void {
   for (const entry of USER_STATE_RESET_REGISTRY) entry.reset(nextScopeKey)

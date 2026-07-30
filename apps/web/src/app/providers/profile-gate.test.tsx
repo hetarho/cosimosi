@@ -16,6 +16,7 @@ import { WebAuthProvider } from './auth-provider.tsx'
 import { DecorationBootstrap } from './decoration-bootstrap.tsx'
 import { ProfileGate } from './profile-gate.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
+import { WebToastProvider } from './toast-provider.tsx'
 
 describe('ProfileGate', () => {
   const disposers: Array<() => void | Promise<void>> = []
@@ -137,15 +138,19 @@ describe('ProfileGate', () => {
     await act(async () => {
       root.render(
         <ObservabilityProvider facade={observability}>
-          <WebAuthProvider facade={facade}>
-            <WebClientCacheProvider queryClient={queryClient} transport={transport}>
-              <ProfileGate>
-                <DecorationBootstrap>
-                  <span>product-child</span>
-                </DecorationBootstrap>
-              </ProfileGate>
-            </WebClientCacheProvider>
-          </WebAuthProvider>
+          {/* The cache provider drops session-scoped toasts on a scope change, so the queue has to be
+              above it here exactly as it is in App.tsx. */}
+          <WebToastProvider>
+            <WebAuthProvider facade={facade}>
+              <WebClientCacheProvider queryClient={queryClient} transport={transport}>
+                <ProfileGate>
+                  <DecorationBootstrap>
+                    <span>product-child</span>
+                  </DecorationBootstrap>
+                </ProfileGate>
+              </WebClientCacheProvider>
+            </WebAuthProvider>
+          </WebToastProvider>
         </ObservabilityProvider>,
       )
     })

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { VALUES } from '@cosimosi/config'
+
 import { AchievementAxis, groupByAxis, type AchievementView } from './achievement.ts'
 import {
   achievementBody,
@@ -8,7 +10,7 @@ import {
   hasAchievementCopy,
 } from './achievement-copy.ts'
 import { claimState, claimableCount } from './progress.ts'
-import { achievedSnapshot, newlyAchieved } from './unlock-diff.ts'
+import { achievedSnapshot, newlyAchieved, unlockNoticeToasts } from './unlock-diff.ts'
 
 function view(overrides: Partial<AchievementView> = {}): AchievementView {
   return {
@@ -81,6 +83,45 @@ describe('unlock diff', () => {
     // unlock — it is a new row. Announcing it would be announcing a deploy.
     const before = achievedSnapshot([view({ id: 'b' })])
     expect(newlyAchieved(before, entries)).toEqual([])
+  })
+})
+
+describe('unlock notices', () => {
+  // An arbitrary tag: the real one is @cosimosi/ui's, and this package deliberately cannot import it.
+  const owner = 'test-owner'
+  const formatNotice = (achievementId: string) => `notice:${achievementId}`
+
+  it('announces nothing on the first resolution of a session', () => {
+    const entries = [view({ id: 'a', achieved: true }), view({ id: 'b', achieved: true })]
+    expect(unlockNoticeToasts(undefined, entries, { owner, formatNotice })).toEqual([])
+  })
+
+  it('composes one line per flip, with the owner tag and the generated dwell', () => {
+    const before = achievedSnapshot([view({ id: 'a' })])
+    const toasts = unlockNoticeToasts(before, [view({ id: 'a', achieved: true })], {
+      owner,
+      formatNotice,
+    })
+    expect(toasts).toEqual([
+      {
+        variant: 'success',
+        message: 'notice:a',
+        durationMs: VALUES.achievement.claimToastMs,
+        owner,
+      },
+    ])
+  })
+
+  it('caps a resolution and drops the remainder rather than queueing it', () => {
+    // A diary that crosses several thresholds should read as one moment; the tab lists every one.
+    const ids = Array.from({ length: VALUES.achievement.unlockNoticeMax + 2 }, (_, i) => `a${i}`)
+    const before = achievedSnapshot(ids.map((id) => view({ id })))
+    const toasts = unlockNoticeToasts(
+      before,
+      ids.map((id) => view({ id, achieved: true })),
+      { owner, formatNotice },
+    )
+    expect(toasts).toHaveLength(VALUES.achievement.unlockNoticeMax)
   })
 })
 

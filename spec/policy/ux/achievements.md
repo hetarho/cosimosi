@@ -52,8 +52,13 @@ resolution and are still unclaimed become notices.
   dwells `achievement.claim_toast_ms` — deliberately shorter than an error's, because an error must be read and an
   achievement only noticed.
 - Its queue is **component state, not a store**: a store surviving sign-out would carry one user's unlock into another's
-  session, so the host's lifetime _is_ the guarantee. It mounts inside the authenticated subtree only, which is
-  simultaneously why a signed-out visitor never fetches the list and why `/demo` cannot mount the watcher.
+  session. It mounts inside the authenticated subtree only, which is simultaneously why a signed-out visitor never
+  fetches the list and why `/demo` cannot mount the watcher. The host's lifetime is not the whole guarantee, though —
+  the shared queue lives above auth, so an already-queued notice is dropped at the **session boundary** rather than on
+  the host's unmount (see [tech/design-system](../../tech/design-system.md), the one-Toast contract).
+- **The host is a shell.** The diff, the cap, the first-resolution silence and the notice's composition all live in
+  `packages/achievement`; each app's `AchievementNoticeHost` resolves only the toast queue and the copy. The two files
+  are identical because there is nothing platform-specific left in them, not because the body was copied.
 
 **Exactly one `Toast` exists in the tree.** Two owners now speak through it — the error path and the unlock notice — so
 `packages/ui` owns a queued-toast context, one forked host per app renders the **head** entry, and both owners push. This

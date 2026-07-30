@@ -7,6 +7,7 @@ export { cx } from './lib/cx.ts'
 
 // The queued-toast seam: one Toast in the tree, two owners pushing into it.
 export {
+  ACHIEVEMENT_NOTICE_TOAST_OWNER,
   SESSION_SCOPED_TOAST_OWNERS,
   ToastQueueContext,
   usePushToast,

@@ -222,3 +222,12 @@ holds the queue and renders **the head entry only** through the shipped `Toast`,
 Two owners push today — the error path and the achievement unlock notice — and two independently-rendered toasts overlap
 into something unreadable. The error provider therefore no longer holds its own state and `Toast`; it pushes. Because
 `ErrorToastContext` and `presentAppError` are untouched, no `useErrorToast` consumer knows this moved.
+
+**A session-scoped owner is dropped at the session boundary, not by its own host.** An entry carries an `owner`, and
+`packages/ui` declares both the tags that belong to one signed-in session (`ACHIEVEMENT_NOTICE_TOAST_OWNER`) and the list
+of them (`SESSION_SCOPED_TOAST_OWNERS`, defined over the tags so the two cannot drift). Each app's client-cache provider
+iterates that list in `SessionScopeBoundary`'s `onScopeChange` and calls `dropByOwner`. That placement is load-bearing:
+the queue lives ABOVE auth (an auth error has to be able to toast), so unmounting a feature's host is not enough — an
+entry waiting behind a long-dwelling error would surface for whoever signs in next. It is a change callback rather than
+an effect keyed on the signed-in identity, so a development double-effect cannot discard notices the incoming session
+just queued. Adding a session-scoped owner is one edit to the list plus the import at the pushing surface.

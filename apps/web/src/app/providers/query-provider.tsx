@@ -13,6 +13,7 @@ import {
   type ClientCacheQueryClient,
 } from '@cosimosi/client-cache'
 import { useObservabilityFacade } from '@cosimosi/observability/react'
+import { SESSION_SCOPED_TOAST_OWNERS, useToastQueue } from '@cosimosi/ui'
 
 import { resetWebLocaleUserState } from '../../shared/lib/locale-storage.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
@@ -32,6 +33,7 @@ export function WebClientCacheProvider({
 }: WebClientCacheProviderProps) {
   const auth = useAuthFacade()
   const observability = useObservabilityFacade()
+  const { dropByOwner } = useToastQueue()
   const baseUrl = apiBaseUrl ?? resolveWebApiBaseUrl(import.meta.env)
   const ownedQueryClient = useRef<ClientCacheQueryClient | null>(null)
   const ownsQueryClient = !queryClient
@@ -43,12 +45,19 @@ export function WebClientCacheProvider({
   const resetScope = useCallback(
     (nextScopeKey: string) => {
       resolvedQueryClient.clear()
+      // Session-scoped toasts die with the session that queued them. The queue lives ABOVE auth (an
+      // auth error has to be able to toast), so unmounting a feature's host is not enough on its own:
+      // an entry waiting behind a long-dwelling error would surface for whoever signs in next. Here
+      // it runs from SessionScopeBoundary's change callback, which fires once per real change and
+      // never on mount — so unlike an effect keyed on the signed-in identity, a development
+      // double-effect cannot throw away notices the incoming session has just queued.
+      for (const owner of SESSION_SCOPED_TOAST_OWNERS) dropByOwner(owner)
       resetUserState(nextScopeKey, {
         name: 'locale',
         reset: resetWebLocaleUserState,
       })
     },
-    [resolvedQueryClient],
+    [dropByOwner, resolvedQueryClient],
   )
 
   useEffect(

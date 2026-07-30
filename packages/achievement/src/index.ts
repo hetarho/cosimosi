@@ -21,4 +21,10 @@ export {
   hasAchievementCopy,
 } from './achievement-copy.ts'
 export { claimState, claimableCount, type ClaimState } from './progress.ts'
-export { achievedSnapshot, newlyAchieved, type AchievedSnapshot } from './unlock-diff.ts'
+export {
+  achievedSnapshot,
+  newlyAchieved,
+  unlockNoticeToasts,
+  type AchievedSnapshot,
+  type UnlockNoticeToast,
+} from './unlock-diff.ts'

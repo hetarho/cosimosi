@@ -20,6 +20,7 @@ import {
 import { createObservabilityFacade } from '@cosimosi/observability'
 import { ObservabilityProvider } from '@cosimosi/observability/react'
 import { useEarnRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
+import { ACHIEVEMENT_NOTICE_TOAST_OWNER, useToastQueue, type ToastQueue } from '@cosimosi/ui'
 import {
   useEpisodicMemoryStore,
   useRecallTargetStore,
@@ -39,6 +40,7 @@ import { useProposalStore } from '../../widgets/writing-flow/index.ts'
 import { resolveWebApiBaseUrl } from './query-config.ts'
 import { WebAuthProvider } from './auth-provider.tsx'
 import { WebClientCacheProvider } from './query-provider.tsx'
+import { WebToastProvider } from './toast-provider.tsx'
 
 const cleanupTasks: Array<() => void> = []
 
@@ -87,9 +89,13 @@ describe('web client cache provider config', () => {
         ObservabilityProvider,
         { facade: observability },
         createElement(
-          WebAuthProvider,
-          { facade },
-          createElement(WebClientCacheProvider, { queryClient, transport }, createElement(Probe)),
+          WebToastProvider,
+          null,
+          createElement(
+            WebAuthProvider,
+            { facade },
+            createElement(WebClientCacheProvider, { queryClient, transport }, createElement(Probe)),
+          ),
         ),
       ),
     )
@@ -144,9 +150,11 @@ describe('web client cache provider config', () => {
     )
     const consent = requestTimeSyncConsent()
 
+    let toastQueue: ToastQueue | null = null
     function Probe() {
       const { userId } = useSessionSnapshot()
       const memoryIds = useEpisodicMemoryStore((state) => state.ids)
+      toastQueue = useToastQueue()
       const value = `${userId}:${memoryIds.join(',') || 'empty'}`
       committed.push(value)
       return createElement('span', null, value)
@@ -159,18 +167,33 @@ describe('web client cache provider config', () => {
             ObservabilityProvider,
             { facade: observability },
             createElement(
-              WebAuthProvider,
-              { facade },
+              WebToastProvider,
+              null,
               createElement(
-                WebClientCacheProvider,
-                { queryClient, transport },
-                createElement(Probe),
+                WebAuthProvider,
+                { facade },
+                createElement(
+                  WebClientCacheProvider,
+                  { queryClient, transport },
+                  createElement(Probe),
+                ),
               ),
             ),
           ),
         )
       })
       expect(container.textContent).toBe('user-a:memory-a')
+      // A notice queued for user-a must not surface for whoever signs in next. The queue lives above
+      // auth, so unmounting the notice's host is not on its own enough — the session boundary drops it.
+      await act(async () => {
+        toastQueue?.push({
+          variant: 'success',
+          message: 'user-a notice',
+          durationMs: 600_000,
+          owner: ACHIEVEMENT_NOTICE_TOAST_OWNER,
+        })
+      })
+      expect(document.body.textContent).toContain('user-a notice')
 
       await act(async () => {
         adapter.emit({
@@ -182,6 +205,7 @@ describe('web client cache provider config', () => {
       })
 
       await expect.poll(() => container.textContent).toBe('user-b:empty')
+      expect(document.body.textContent).not.toContain('user-a notice')
       expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
       expect(committed).not.toContain('user-b:memory-a')
       await expect(consent).resolves.toBe('cancel')
