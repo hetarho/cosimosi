@@ -8,12 +8,22 @@ import { AccountSection } from '../../../features/account-settings/index.ts'
 import { MoodColorSection } from '../../../features/change-mood-colors/index.ts'
 import { ExportDiaries } from '../../../features/export-diaries/index.ts'
 import { InviteLink } from '../../../features/invite-link/index.ts'
+import { ReplayOnboarding } from '../../../features/replay-onboarding/index.ts'
 import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
 import { m } from '../../../shared/i18n/index.ts'
 import { ME_TABS, type MeTabId } from '../model/tabs.ts'
 
-const TAB_VIEWS: Readonly<Record<MeTabId, { title: () => string; Body: ComponentType }>> = {
+// Every tab body is handed the page's exit callback, and the profile tab's last row is the one that
+// uses it: replaying the onboarding tour means leaving /me for the universe the tour narrates. The
+// page still imports no router — the callback is the app layer's.
+interface MeTabBodyProps {
+  onExit: () => void
+}
+
+const TAB_VIEWS: Readonly<
+  Record<MeTabId, { title: () => string; Body: ComponentType<MeTabBodyProps> }>
+> = {
   profile: { title: m.me_tab_profile, Body: ProfileTab },
   stardust: { title: m.me_tab_stardust, Body: TwinkleLedgerTab },
   achievements: { title: m.me_tab_achievements, Body: AchievementList },
@@ -56,19 +66,20 @@ export function MePage({ activeTab, onTabChange, onExit }: MePageProps) {
           aria-labelledby={`${panelId}-tab`}
           className="flex flex-col gap-4"
         >
-          <Body />
+          <Body onExit={onExit} />
         </section>
       </div>
     </main>
   )
 }
 
-function ProfileTab() {
+function ProfileTab({ onExit }: MeTabBodyProps) {
   return (
     <div className="flex flex-col gap-4">
       <AccountProfile />
       <MoodColorSection />
       <InviteLink />
+      <ReplayOnboarding onExit={onExit} />
     </div>
   )
 }

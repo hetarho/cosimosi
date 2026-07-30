@@ -42,6 +42,17 @@ describe('SequenceGuide (web)', () => {
     expect(html).not.toContain('animate-pulse')
   })
 
+  it('puts every part of the chrome above the modal layer', () => {
+    // The onboarding tour points three of its steps INTO the writing dialog, which is a portal at
+    // `z-modal`. On the `z-50` this used to carry, the caption and the always-available skip rendered
+    // behind the very panel they describe — so "the skip is visible on every step" was false for a third
+    // of the run. `z-guide` sits between `z-modal` and `z-toast`: over the dialog, under an error.
+    const html = render()
+    expect(html.match(/z-\[var\(--z-guide\)\]/g)).toHaveLength(3)
+    expect(html).not.toContain('z-50')
+    expect(html).not.toContain('z-40')
+  })
+
   it('renders no chrome at all when no run is active', () => {
     // Between runs the screen is the product's, untouched — the guide is not a persistent frame.
     expect(render({ active: false })).toBe('')

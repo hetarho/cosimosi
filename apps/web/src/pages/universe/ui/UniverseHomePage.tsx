@@ -1,13 +1,22 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { QueryErrorResetBoundary, useQuery } from '@tanstack/react-query'
 
 import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
+import { takeSignupCompletion } from '@cosimosi/auth'
+import { VALUES } from '@cosimosi/config'
+import {
+  ONBOARDING_SCRIPT,
+  takeOnboardingStart,
+  useOnboardingSignalStore,
+  type OnboardingAnchor,
+} from '@cosimosi/onboarding'
 import {
   ObservedErrorBoundary,
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react'
+import { useSequenceRun } from '@cosimosi/sequence/react'
 import { Button } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
 import { useDecorationRequestStore } from '@cosimosi/store'
@@ -20,8 +29,10 @@ import {
 } from '@cosimosi/universe'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
+import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
+import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
 import { DeletionFlowSheet } from '../../../widgets/deletion-flow/index.ts'
 import { RecallFlowSheet } from '../../../widgets/recall-flow/index.ts'
 import { StardustOverlay } from '../../../widgets/stardust/index.ts'
@@ -60,6 +71,46 @@ export function UniverseHomePage({
   // The navigation/selection actor is owned HERE (the app layer) so the canvas and the
   // star-detail panel share one selection — the canvas machine stays the single owner (§3.2).
   const navigationActorRef = useActorRef(universeNavigationMachine)
+
+  // The onboarding run actor is owned here for the same reason the navigation actor is: a run is
+  // control state belonging to the screen it narrates. The tour performs nothing — every state change
+  // during it is the user's own press through the shipped slices below — so this page only starts the
+  // run, forwards reported signals, and mounts the chrome OVER the live scene ([O2]).
+  const tour = useSequenceRun(ONBOARDING_SCRIPT, { captionDwellMs: VALUES.sequence.captionDwellMs })
+  const startTour = tour.start
+  const advanceTour = tour.signal
+  const tourRunning = tour.active
+  const awaitedSignal = tour.step?.advance.on === 'signal' ? tour.step.advance.signal : null
+
+  // "가입 직후, 우주로 들어가기 전" read as: the first caption is the first thing rendered over the
+  // universe on the commit after the profile gate opens. A blocking interstitial route would have to
+  // unmount the canvas that step 1 is about.
+  useEffect(() => {
+    const trigger = takeOnboardingStart(takeSignupCompletion())
+    if (trigger) startTour(`onboarding-${trigger}-${Date.now()}`)
+  }, [startTour])
+
+  // The writing flow reports what it did into a one-slot channel; this is the only place a report
+  // becomes an `ADVANCE`.
+  //
+  // A report the current step is not waiting for is HELD rather than dropped, and that is the whole
+  // reason this reads `awaitedSignal` instead of handing everything to the engine's own guard: several
+  // steps are reading time, and a user who presses the highlighted control before a dwell finishes is
+  // ahead of the caption, not wrong. Dropping the report there would leave the next step waiting forever
+  // for something that already happened — unrecoverable once the launch is the thing that happened.
+  // With no run active a report is inert and cleared, so it can never survive into a later run.
+  const reportedSignal = useOnboardingSignalStore((state) => state.pending)
+  const clearReportedSignal = useOnboardingSignalStore((state) => state.clear)
+  useEffect(() => {
+    if (!reportedSignal) return
+    if (!tourRunning) {
+      clearReportedSignal()
+      return
+    }
+    if (reportedSignal.signal !== awaitedSignal) return
+    advanceTour(reportedSignal.signal)
+    clearReportedSignal()
+  }, [advanceTour, awaitedSignal, clearReportedSignal, reportedSignal, tourRunning])
 
   // First-run welcome ([U2][V7]): a settled universe read with zero episodic memories is a
   // beginning, not an error — the same canvas renders the gray latent field beneath, and the HUD
@@ -160,7 +211,12 @@ export function UniverseHomePage({
               {m.universe_first_run_welcome()}
             </p>
           ) : null}
-          <WritingFlowSheet />
+          {/* An onboarding anchor is registered by wrapping an existing child at a composition site and
+              passing nothing down — no prop, no flag, no callback — which is how the shipped slices
+              beneath stay unaware that a tour exists ([I13]). */}
+          <SequenceAnchor id={'universe-write-entry' satisfies OnboardingAnchor}>
+            <WritingFlowSheet />
+          </SequenceAnchor>
         </div>
       </div>
       {/* Read-only detail panel over the running canvas — opens on selection, remounts nothing (A1). */}
@@ -177,6 +233,17 @@ export function UniverseHomePage({
       <DeletionFlowSheet />
       {/* 우주 꾸미기 — a scrim-less sheet beside the universe it changes, opened from the HUD. */}
       <DecorationPanelSheet />
+      {/* Last, so the caption band, the ring and the always-visible skip sit above the HUD. Nothing
+          beneath is remounted, disabled or blocked: leaving the route ends the run as `abandoned`, and
+          `completed`, `skipped` and `abandoned` all leave exactly nothing behind ([O4]). */}
+      <SequenceGuide
+        active={tour.active}
+        caption={tour.step?.caption ?? null}
+        anchorRect={tour.anchorRect}
+        progress={tour.progress}
+        onSkip={tour.skip}
+        onRemeasure={tour.remeasure}
+      />
     </main>
   )
 }

@@ -1,9 +1,9 @@
 # policy/ux: sequence
 
 > UX policy for the guided-step engine both the public demo and the post-signup onboarding tour run on.
-> Plan [78](../../plan/78.sequence-engine.md) owns the implementation. Exposure policy — when a tour is
-> offered and how a replay is reached — is [80.onboarding-tour](../../plan/80.onboarding-tour.md)'s, not
-> this doc's. Reinforces [O1][O2][O4][O5]; introduces no new invariant.
+> Plan [78](../../plan/78.sequence-engine.md) owns the implementation; the tour's own conduct is the
+> `## Onboarding` section below, from [80.onboarding-tour](../../plan/80.onboarding-tour.md).
+> Reinforces [O1][O2][O4][O5]; introduces no new invariant.
 
 ## Rule
 
@@ -42,10 +42,40 @@ it. Not video. Not a carousel.
 - **Progress is quiet.** A `current / total` readout answers "how much longer" without turning
   guidance into a task list.
 
+## Onboarding
+
+The tour is the same engine over a real signed-in account, so everything above still holds and these are
+the rules that only a live account needs.
+
+- **It runs once, at the moment signup completes, and thereafter only on an explicit replay** from
+  `/me`'s profile tab ([O3][O5]). Entering the universe on any later session starts nothing. There is no
+  "already seen" record on the server or the client to be wrong about: `SignUp` succeeds at most once per
+  account, so "once, just after signup" is a property of the trigger rather than of a flag.
+- **It is never re-offered, never nagged, and never confirmed before a skip** ([O4]). Finishing and
+  skipping are deliberately indistinguishable in their after-state — nothing is recorded for either — and
+  a mis-skip costs one tap in `/me` to undo.
+- **It points and narrates; it never acts for the user.** No memory is seeded, no clock is moved, no
+  stardust is spent, nothing is deleted. Every state change during a run is the user's own press through
+  the shipped writing flow.
+- **It highlights no paid or destructive control.** Recall is _named_ at the eighth step and not
+  performed, because a recall costs stardust and requires consent and a first minute is the wrong place
+  to spend either. The tour's vocabulary is a closed union with no member for a paid, destructive,
+  decorative or clock-moving control, so such a step is a compile error rather than a review finding.
+- **Every caption must be true for an empty first universe and for a replay over a full one**, which is
+  why no caption quotes a value: they are zero-parameter accessors, so a memory's name, a count, a date
+  or a balance cannot appear in one.
+- **A failed split or launch produces no tour-owned error** — the caption simply holds. The tour hears
+  the writing flow's real phase changes, never its intentions, so a request that resolves after the sheet
+  closed moves nothing.
+- **A user ahead of the caption is not wrong.** Several steps are reading time; pressing the highlighted
+  control before one finishes holds the report until the step that waits for it arrives, rather than
+  dropping it and leaving that step waiting forever for something that already happened.
+- **Leaving the universe ends the run.** No outcome survives the screen, and nothing is left behind.
+
 ## Copy Implication
 
 Plain and unhurried — an instruction, not a sales line. No decorative emoji, no translation-ese. Every
 sentence a run puts on screen resolves through the i18n seam, so it is reviewed as public copy once
 rather than per host: the universe may be described as _inspired by_ engram theory, never as working
 like a brain, the 3D positions are never called the brain's real coordinates, and no therapeutic claim
-is made.
+is made. [I12]'s honesty rule applies to the tour too, although it runs behind auth.

@@ -28,6 +28,7 @@
     "@cosimosi/memory": "workspace:*",
     "@cosimosi/memory-logic": "workspace:*",
     "@cosimosi/observability": "workspace:*",
+    "@cosimosi/onboarding": "workspace:*",
     "@cosimosi/sequence": "workspace:*",
     "@cosimosi/state-machine": "workspace:*",
     "@cosimosi/store": "workspace:*",

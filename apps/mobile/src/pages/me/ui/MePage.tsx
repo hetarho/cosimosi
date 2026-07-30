@@ -10,6 +10,7 @@ import { AccountSection } from '../../../features/account-settings/index.ts'
 import { MoodColorSection } from '../../../features/change-mood-colors/index.ts'
 import { ExportDiaries } from '../../../features/export-diaries/index.ts'
 import { InviteLink } from '../../../features/invite-link/index.ts'
+import { ReplayOnboarding } from '../../../features/replay-onboarding/index.ts'
 import { TwinkleLedgerTab } from '../../../features/twinkle-ledger/index.ts'
 import { WithdrawAccount } from '../../../features/withdraw-account/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
@@ -17,7 +18,16 @@ import { useScreenInsets } from '../../../shared/native/index.ts'
 const meTabs = ['profile', 'stardust', 'achievements', 'diary', 'account'] as const
 export type MeTabId = (typeof meTabs)[number]
 
-const tabViews: Readonly<Record<MeTabId, { title: () => string; Body: ComponentType }>> = {
+// Every tab body is handed the screen's back callback, and the profile tab's last row is the one that
+// uses it: replaying the onboarding tour means leaving /me for the universe the tour narrates. The page
+// still names no route — the callback is the navigation layer's.
+interface MeTabBodyProps {
+  onExit: () => void
+}
+
+const tabViews: Readonly<
+  Record<MeTabId, { title: () => string; Body: ComponentType<MeTabBodyProps> }>
+> = {
   profile: { title: m.me_tab_profile, Body: ProfileTab },
   stardust: { title: m.me_tab_stardust, Body: TwinkleLedgerTab },
   achievements: { title: m.me_tab_achievements, Body: AchievementList },
@@ -76,7 +86,7 @@ export function MePage({
         }))}
       />
       <View style={styles.section}>
-        <Body />
+        <Body onExit={onBack} />
       </View>
     </ScrollView>
   )
@@ -86,12 +96,13 @@ function isMeTab(value: string): value is MeTabId {
   return (meTabs as readonly string[]).includes(value)
 }
 
-function ProfileTab() {
+function ProfileTab({ onExit }: MeTabBodyProps) {
   return (
     <View style={styles.accountTab}>
       <AccountProfile />
       <MoodColorSection />
       <InviteLink />
+      <ReplayOnboarding onExit={onExit} />
     </View>
   )
 }

@@ -21,7 +21,9 @@ export function SequenceCaption({
     <div
       aria-live="polite"
       className={cx(
-        'pointer-events-none fixed inset-x-0 z-50 flex justify-center px-6',
+        // `z-guide` sits above `z-modal`: the steps that point INTO the writing dialog would otherwise
+        // put the line behind the very panel it describes.
+        'pointer-events-none fixed inset-x-0 z-[var(--z-guide)] flex justify-center px-6',
         placement === 'top' ? 'top-0 pt-8' : 'bottom-0 pb-8',
       )}
       style={{ minHeight: CAPTION_BAND_HEIGHT_PX }}

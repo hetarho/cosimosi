@@ -80,6 +80,10 @@ export const tokens = {
     dropdown: '1000',
     overlay: '1100',
     modal: '1200',
+    // Guided-step chrome. Above `modal` because a caption and its always-available skip must stay
+    // readable over the very control they point at — the writing sheet is a dialog — and below `toast`
+    // because an error still speaks over guidance.
+    guide: '1250',
     toast: '1300',
     tooltip: '1400',
   },

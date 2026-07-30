@@ -105,6 +105,58 @@ export default defineConfig([
     },
   },
   {
+    // No product slice learns that a guided sequence exists. Anchors are registered by wrapping an
+    // existing child at a COMPOSITION SITE — a page or a widget — so `features/write-diary`,
+    // `features/launch-stars`, `features/recall-star` and every other shipped slice stay unaware, and
+    // the demo's exemptions can never travel into them through a shared import.
+    //
+    // Four slices are exempt because they ARE the sequence's own surface rather than product it points
+    // at: the three chrome slices, and the onboarding replay row, whose single user action is asking for
+    // a run. A slice that exists only because the tour does cannot "learn" something it is — and pushing
+    // its one call up to the page would move an action into a composition site to satisfy the letter of
+    // a rule aimed at `write-diary` and `recall-star`.
+    //
+    // ESLint flat config REPLACES rule options per matching file rather than merging them, so the
+    // three/R3F and i18n bans above have to be restated here or they would be silently lost for every
+    // file in the two largest layers.
+    files: ['src/features/**/*.{ts,tsx}', 'src/entities/**/*.{ts,tsx}'],
+    ignores: [
+      'src/features/highlight-next-control/**',
+      'src/features/show-sequence-caption/**',
+      'src/features/skip-sequence/**',
+      'src/features/replay-onboarding/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['three', 'three/*', '@react-three/fiber'],
+              message:
+                'Import three/R3F only via the @cosimosi/3d-renderer package, not directly in a slice.',
+            },
+            {
+              group: ['@cosimosi/i18n', '@cosimosi/i18n/*'],
+              message:
+                'Import i18n through src/shared/i18n/index.ts; only the seam and locale-storage adapter import the package directly.',
+            },
+            {
+              group: [
+                '@cosimosi/sequence',
+                '@cosimosi/sequence/*',
+                '@cosimosi/onboarding',
+                '@cosimosi/onboarding/*',
+              ],
+              message:
+                'A product slice must not learn that a guided sequence exists. Anchors are registered by wrapping an existing child at a composition site (a page or a widget); the sequence chrome slices are the only exemption.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // The demo isolation closure. Read it as a CLOSURE, not an allowlist: every function in
     // packages/* that issues an RPC takes an ApiTransport as its first argument, and every hook that
     // hides one calls useTransport() from @connectrpc/connect-query. A page starved of both cannot

@@ -19,7 +19,9 @@ export function SequenceSkip({
   onSkip: () => void
 }) {
   return (
-    <div className="fixed right-4 top-4 z-50 flex items-center gap-3">
+    // `z-guide` sits above `z-modal`, so "always visible" survives the steps that point into the
+    // writing dialog — a skip hidden behind a panel is not a skip.
+    <div className="fixed right-4 top-4 z-[var(--z-guide)] flex items-center gap-3">
       <span className="text-xs text-text-muted tabular-nums">
         {m.sequence_progress({ current: progress.current, total: progress.total })}
       </span>

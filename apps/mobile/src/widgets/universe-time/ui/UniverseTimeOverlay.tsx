@@ -18,10 +18,12 @@ import {
   ConfirmTimeSyncDialog,
   useTimeSyncConsentStore,
 } from '../../../features/confirm-time-sync/index.ts'
+import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { UniverseTimeHud } from '../../../features/universe-clock-hud/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
 import { releaseAdvance } from '@cosimosi/universe'
+import type { OnboardingAnchor } from '@cosimosi/onboarding'
 
 // widgets/universe-time (RN fork): the time overlay over the running canvas — the HUD, the
 // acceleration, and the consent modal composed by one machine phase (§3.1/§3.2). Shares model/api
@@ -29,6 +31,11 @@ import { releaseAdvance } from '@cosimosi/universe'
 // three / visual entity (§3.4). Mounted as a direct child of the screen root so the absolute veil
 // and HUD position against the full screen; the veil precedes the HUD so the sweeping date stays
 // crisp above the dimmed scene.
+//
+// The onboarding `universe-clock` anchor is registered HERE, inside the absolutely-positioned HUD box
+// rather than around this widget: every child this component renders is absolute, so a wrapper one
+// layer up would measure a zero-height box spanning the screen. This is a composition site like any
+// other, so `features/universe-clock-hud` still knows nothing about a tour ([I13]).
 export function UniverseTimeOverlay() {
   const insets = useScreenInsets()
   const [snapshot, send] = useMachine(universeTimeMachine)
@@ -117,7 +124,9 @@ export function UniverseTimeOverlay() {
       {/* The clock clears the device chrome by the live inset — it sat under the status bar and the
           dynamic island on any device that has one. */}
       <View style={[styles.hud, { top: insets.top + tokens.spacing[3] }]} pointerEvents="none">
-        <UniverseTimeHud overrideTime={playing ? sweepTime : null} />
+        <SequenceAnchor id={'universe-clock' satisfies OnboardingAnchor}>
+          <UniverseTimeHud overrideTime={playing ? sweepTime : null} />
+        </SequenceAnchor>
       </View>
       <ConfirmTimeSyncDialog open={phase === 'confirming'} onAccept={accept} onReject={reject} />
     </>

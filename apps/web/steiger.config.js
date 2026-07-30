@@ -260,6 +260,17 @@ export default defineConfig([
     },
   },
   {
+    // The onboarding replay row (plan 80) is one user action — starting the tour again — hosted by the
+    // /me profile tab and nowhere else, by design: [O5] puts it in the settings page, and a second
+    // entry point would be the "re-offer" the tour's own policy forbids. Merging it into the page would
+    // put the request in a page and erase the action boundary. Scoped so a genuinely insignificant
+    // future slice still gets flagged.
+    files: ['./src/features/replay-onboarding/**'],
+    rules: {
+      'fsd/insignificant-slice': 'off',
+    },
+  },
+  {
     // The features layer's slice count is spec-governed (one plan authors each slice deliberately;
     // the inventory mirrors apps/mobile 1:1), so the fixed ungrouped-slice threshold (20) is not a
     // drift signal here — regrouping into slice folders would churn every import and the

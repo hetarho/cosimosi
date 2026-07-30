@@ -19,6 +19,7 @@ import { VALUES } from '@cosimosi/config'
 import { defaultMoodPalette, moodColor, resetMoodPalette } from '@cosimosi/emotion'
 import { setClientCacheData } from '@cosimosi/client-cache'
 import { m } from '@cosimosi/i18n'
+import { resetOnboardingUserState, useOnboardingSignalStore } from '@cosimosi/onboarding'
 import { useEarnRequestStore, useTwinkleBalanceStore } from '@cosimosi/twinkle'
 import {
   useAwakenRegistryStore,
@@ -468,11 +469,27 @@ describe('mobile auth gate', () => {
       fireEvent.press(screen.getByText(m.mood_color_onboarding_skip()))
       await waitFor(() => expect(screen.getByText(m.universe_first_run_welcome())).toBeTruthy())
       expect(moodColorWrites).toBe(0)
-      expect(takeSignupCompletion()).toBe(true)
+      // The onboarding owner consumes the signal: the tour's first caption is the first thing rendered
+      // over the universe, with the shipped welcome line and the single 일기 쓰기 affordance untouched
+      // beneath it — no interstitial route, and the canvas is not remounted ([O3]).
+      expect(screen.getByText(m.sequence_tour_welcome_caption())).toBeTruthy()
+      expect(screen.getByText(m.sequence_skip_action())).toBeTruthy()
       expect(takeSignupCompletion()).toBe(false)
+
+      // A user who presses 일기 쓰기 while the welcome step is still reading is AHEAD of the caption,
+      // not wrong. The report is held in the channel until the step that waits for it arrives; dropping
+      // it would leave step 2 waiting forever for an opening that already happened.
+      // Keyed on the split action rather than the sheet title, which is the same sentence as the
+      // affordance that opened it.
+      fireEvent.press(screen.getByText(m.universe_home_write()))
+      await waitFor(() => expect(screen.getByText(m.writing_flow_split_action())).toBeTruthy())
+      expect(useOnboardingSignalStore.getState().pending?.signal).toBe('writing-flow-opened')
     } finally {
       view.unmount()
       fakes.dispose()
+      // The held report and any pending replay are module-level and belong to this account.
+      resetOnboardingUserState()
+      resetMoodPalette()
     }
   })
 

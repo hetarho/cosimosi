@@ -15,9 +15,11 @@ import {
   ConfirmTimeSyncDialog,
   useTimeSyncConsentStore,
 } from '../../../features/confirm-time-sync/index.ts'
+import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { UniverseTimeHud } from '../../../features/universe-clock-hud/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
 import { releaseAdvance } from '@cosimosi/universe'
+import type { OnboardingAnchor } from '@cosimosi/onboarding'
 
 // widgets/universe-time: the time overlay over the running canvas — the HUD, the acceleration, and
 // the consent modal composed by one machine phase (§3.1/§3.2). It imports no three / visual entity
@@ -25,6 +27,11 @@ import { releaseAdvance } from '@cosimosi/universe'
 // the forgetting/consolidation choreographies fill the reserved slot through the same interval
 // seam. Render order matters: the veil (inside AccelerateTime) precedes the HUD so the sweeping
 // date stays crisp above the dimmed scene.
+//
+// The onboarding `universe-clock` anchor is registered HERE rather than one layer up, because the page
+// composes this widget as a fragment whose first element is the full-screen veil while an acceleration
+// plays — a page-level wrapper would hand the highlight the veil's rect. This is a composition site
+// like any other, so `features/universe-clock-hud` still knows nothing about a tour ([I13]).
 export function UniverseTimeOverlay() {
   const [snapshot, send] = useMachine(universeTimeMachine)
   const phase = snapshot.value as UniverseTimePhase
@@ -98,7 +105,9 @@ export function UniverseTimeOverlay() {
       {playing ? (
         <AccelerateTime interval={playing.interval} onTick={setSweepTime} onDone={done} />
       ) : null}
-      <UniverseTimeHud overrideTime={playing ? sweepTime : null} />
+      <SequenceAnchor id={'universe-clock' satisfies OnboardingAnchor}>
+        <UniverseTimeHud overrideTime={playing ? sweepTime : null} />
+      </SequenceAnchor>
       <ConfirmTimeSyncDialog open={phase === 'confirming'} onAccept={accept} onReject={reject} />
     </>
   )

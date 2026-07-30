@@ -1,4 +1,5 @@
 import { resetMoodPalette } from '@cosimosi/emotion'
+import { resetOnboardingUserState } from '@cosimosi/onboarding'
 import { resetSequenceUserState } from '@cosimosi/sequence'
 import { resetStoreUserState } from '@cosimosi/store'
 import { resetTwinkleUserState } from '@cosimosi/twinkle'
@@ -25,6 +26,9 @@ const USER_STATE_RESET_REGISTRY: readonly UserStateResetEntry[] = [
   // The anchor registry is module-level, so an onboarding run's registered controls would otherwise
   // survive into the next account's subtree and let a tour point at a control that is no longer there.
   { name: 'sequence', reset: () => resetSequenceUserState() },
+  // A pending replay request would open a tour in the incoming account's universe, and an unconsumed
+  // signal report would advance it — both are module-level and both belong to whoever was signed in.
+  { name: 'onboarding', reset: () => resetOnboardingUserState() },
   { name: 'signup-completion', reset: resetSignupUserState },
 ]
 

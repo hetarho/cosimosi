@@ -1,10 +1,11 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { createGetUniverseQueryKey, createGetUniverseQueryOptions } from '@cosimosi/api-client'
+import { reportSequenceSignal, type OnboardingAnchor } from '@cosimosi/onboarding'
 import { Alert, Button, Dialog, Skeleton, tokens } from '@cosimosi/ui'
 import {
   advanceAnnouncementFromLaunch,
@@ -15,6 +16,7 @@ import {
   type WritingFlowStatus,
 } from '@cosimosi/universe'
 
+import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { ProposedMemoryList, requestSplitDiary } from '../../../features/split-diary/index.ts'
 import { ReviseControls, requestReviseSplit } from '../../../features/revise-split/index.ts'
 import { LaunchButton, useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
@@ -59,6 +61,13 @@ function PendingPhase({ label, placeholders = 0 }: { label: string; placeholders
 // features by machine phase (§3.1/§3.2). Shares model/api with web verbatim; only this host + the
 // input primitives fork (§3.5). It mounts over the running universe canvas and imports no `three`
 // (§3.4) — the launch's visual consequence is the read model's projection.
+//
+// It is also one of the composition sites an onboarding tour points at. That costs it three anchor
+// wrappers and one effect that reports the phase changes it was already making, and nothing else: the
+// sheet's behaviour is identical with or without a run, because the report takes one id and returns
+// nothing — there is no way from here to learn that a tour exists or to branch on one. A widget is a
+// composition site, not a product slice, so `features/write-diary`, `features/split-diary` and
+// `features/launch-stars` stay untouched beneath the wrappers ([I13]).
 export function WritingFlowSheet() {
   const showError = useErrorToast()
   const [snapshot, send] = useMachine(writingFlowMachine)
@@ -183,6 +192,23 @@ export function WritingFlowSheet() {
     [send],
   )
 
+  // What an onboarding tour hears: the sheet's real phase changes, never its intentions. Reporting from
+  // the promise arms would have advanced a run on a split whose RPC resolved after the sheet was closed
+  // — the machine ignores `SPLIT_OK` in `idle`, so the flow would have stayed put while the tour walked
+  // on to a proposal that is not on screen. A phase the machine actually entered cannot lie that way.
+  //
+  // The launch report fires for a past-dated launch too: the diary was saved, and the tour's next
+  // captions are worded to hold whether or not a memory was created. The [T1] notice is this flow's.
+  const reportedStatus = useRef<WritingFlowStatus>(status)
+  useEffect(() => {
+    const previous = reportedStatus.current
+    reportedStatus.current = status
+    if (previous === 'idle' && status === 'writing') reportSequenceSignal('writing-flow-opened')
+    else if (previous === 'splitting' && status === 'reviewing')
+      reportSequenceSignal('split-succeeded')
+    else if (previous === 'launching' && status === 'done') reportSequenceSignal('launch-succeeded')
+  }, [status])
+
   useEffect(() => {
     if (status !== 'done') return
     resetProposal()
@@ -209,18 +235,23 @@ export function WritingFlowSheet() {
           {error ? <Alert variant="danger">{error}</Alert> : null}
 
           {status === 'writing' ? (
-            <>
-              <WriteDiaryFields />
-              {body.trim().length === 0 ? (
-                <Text style={styles.hint}>{m.writing_flow_empty_body_hint()}</Text>
-              ) : null}
-              {/* The committing action sits last, on the right (§4). */}
-              <View style={styles.actionRow}>
-                <Button color="primary" disabled={body.trim().length === 0} onPress={runSplit}>
-                  {m.writing_flow_split_action()}
-                </Button>
+            // The anchor wraps ONE view rather than the three loose children it used to have, so the
+            // measured rect is the whole draft panel. The inner column repeats the scroll container's
+            // own gap, so the rhythm is unchanged (§4).
+            <SequenceAnchor id={'writing-draft' satisfies OnboardingAnchor}>
+              <View style={styles.draft}>
+                <WriteDiaryFields />
+                {body.trim().length === 0 ? (
+                  <Text style={styles.hint}>{m.writing_flow_empty_body_hint()}</Text>
+                ) : null}
+                {/* The committing action sits last, on the right (§4). */}
+                <View style={styles.actionRow}>
+                  <Button color="primary" disabled={body.trim().length === 0} onPress={runSplit}>
+                    {m.writing_flow_split_action()}
+                  </Button>
+                </View>
               </View>
-            </>
+            </SequenceAnchor>
           ) : null}
 
           {status === 'splitting' ? (
@@ -230,18 +261,20 @@ export function WritingFlowSheet() {
           {status === 'reviewing' ? (
             <>
               <Text style={styles.muted}>{m.writing_flow_review_hint()}</Text>
-              <ReviseControls
-                memories={proposal}
-                busy={busy}
-                onRename={(index, name) => editThen(() => rename(index, name))}
-                onSetMood={(index, mood) => editThen(() => setMood(index, mood))}
-                onSetSourceText={(index, sourceText) =>
-                  editThen(() => setSourceText(index, sourceText))
-                }
-                onMerge={(index) => editThen(() => merge(index))}
-                onSplit={(index) => editThen(() => splitMemory(index))}
-                onRevise={runRevise}
-              />
+              <SequenceAnchor id={'writing-proposal' satisfies OnboardingAnchor}>
+                <ReviseControls
+                  memories={proposal}
+                  busy={busy}
+                  onRename={(index, name) => editThen(() => rename(index, name))}
+                  onSetMood={(index, mood) => editThen(() => setMood(index, mood))}
+                  onSetSourceText={(index, sourceText) =>
+                    editThen(() => setSourceText(index, sourceText))
+                  }
+                  onMerge={(index) => editThen(() => merge(index))}
+                  onSplit={(index) => editThen(() => splitMemory(index))}
+                  onRevise={runRevise}
+                />
+              </SequenceAnchor>
               {/* Decreasing emphasis left to right, the committing action last and the way out
                   beside it as text (§4); a hairline separates the group from the edits above. */}
               <View style={styles.footer}>
@@ -253,11 +286,13 @@ export function WritingFlowSheet() {
                 >
                   {m.writing_flow_back_action()}
                 </Button>
-                <LaunchButton
-                  pastDated={isPastDated(diaryDate, universeTime)}
-                  busy={busy}
-                  onLaunch={runLaunch}
-                />
+                <SequenceAnchor id={'writing-confirm' satisfies OnboardingAnchor}>
+                  <LaunchButton
+                    pastDated={isPastDated(diaryDate, universeTime)}
+                    busy={busy}
+                    onLaunch={runLaunch}
+                  />
+                </SequenceAnchor>
               </View>
             </>
           ) : null}
@@ -281,6 +316,7 @@ export function WritingFlowSheet() {
 const styles = StyleSheet.create({
   // Panel rhythm: a step of 5 between the phase blocks, tighter steps inside each (§4).
   content: { gap: tokens.spacing[5] },
+  draft: { gap: tokens.spacing[5] },
   hint: { color: tokens.color['text-subtle'], fontSize: tokens.fontSize.sm, lineHeight: 24 },
   muted: { color: tokens.color['text-muted'], fontSize: tokens.fontSize.sm, lineHeight: 24 },
   pending: { gap: tokens.spacing[3] },

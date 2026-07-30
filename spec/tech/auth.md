@@ -75,7 +75,9 @@ cross-route action channel:
 `@cosimosi/emotion/react` owns the palette display/confirmed mirror plus its persistence epoch reset.
 
 `@cosimosi/auth/user-state` owns the one ordered `USER_STATE_RESET_REGISTRY`, composed from the universe, Twinkle, palette,
-and signup-completion reset seams. Both app cache providers call `resetUserState` and contribute only one
+store, sequence, onboarding, and signup-completion reset seams. The `onboarding` entry clears a pending replay request and
+the guided-tour signal channel: both are module-level and belong to whoever was signed in, so without it a request placed
+in one account would open a tour in the next one's universe. Both app cache providers call `resetUserState` and contribute only one
 platform-specific entry named `locale`. A reset seam added to the shared registry therefore runs on both platforms
 without maintaining two source lists; platform negotiation remains outside the package.
 

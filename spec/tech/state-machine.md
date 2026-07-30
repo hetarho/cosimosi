@@ -412,6 +412,71 @@ user-state reset inventory. The run needs no entry — it lives in a host-owned 
 host — but the registry is module-level, so without this an onboarding run's registered controls would
 survive into the next account's subtree.
 
+### 6.8.1 The onboarding tour's seams (`@cosimosi/onboarding`)
+
+**Two closed unions are the whole safety argument** (`anchors.ts`). `OnboardingAnchor` has exactly five
+members (`universe-write-entry`, `writing-draft`, `writing-proposal`, `writing-confirm`,
+`universe-clock`) and `OnboardingSignal` exactly three (`writing-flow-opened`, `split-succeeded`,
+`launch-succeeded`), pinned by exhaustive-`Record` tests. Since `SequenceStep` is generic over host-owned
+unions, a step naming anything else is a compile error. What they omit is the design, and each omission
+answers a plausible shortcut:
+
+| Absent member                      | What it would allow                                        | Protected |
+| ---------------------------------- | ---------------------------------------------------------- | --------- |
+| a recall anchor or signal          | a step waiting on a paid reconsolidation                   | [G1]      |
+| a 놓아주기 / delete anchor         | a tutorial that destroys a memory to demonstrate deletion  | [I1]      |
+| a clock or sync anchor/signal      | a step that moves universe time to make dimming visible    | [I10]     |
+| a palette / ornament anchor        | a step that changes a render parameter for effect          | [I11]     |
+| an anchor for a rendered memory    | pointing at an emergent coordinate as if it were a control | [I5]      |
+| any anchor in a `features/*` slice | a product slice learning that a tour exists                | [I13]     |
+
+**Anchors are registered by wrapping an existing child at a composition site** and passing nothing down —
+no prop, no flag, no callback. `pages/universe` wraps the 일기 쓰기 affordance; `widgets/writing-flow`
+wraps its three inner panels; `widgets/universe-time` wraps the HUD. The clock anchor sits in the widget
+rather than the page because the page composes that widget as a fragment of absolutely-positioned
+children: on web its first element is the full-screen acceleration veil, and in RN an absolute child
+escapes a page-level wrapper's box entirely, so either would have measured the wrong rect. All three are
+composition sites, so no shipped product slice imports `@cosimosi/sequence` or `@cosimosi/onboarding` —
+enforced by a `no-restricted-imports` block over `features/**` + `entities/**` in both apps (the three
+chrome slices and `features/replay-onboarding` are exempt, being the sequence's own surface) and proved to
+bite by `scripts/probe-sequence-isolation.mjs` in `test:guards`.
+
+**`reportSequenceSignal(signal): void`** pushes `{signal, nonce}` into a one-slot Zustand channel. The
+signature is the guard: one id in, nothing out, so a reporting site cannot learn whether a run is active,
+cannot read a step index, and cannot branch on either. Its three call sites are **one effect on the
+writing-flow machine's real phase transitions** (`idle→writing`, `splitting→reviewing`,
+`launching→done`), not the promise arms that request them — a split whose RPC resolves after the sheet
+closed leaves the machine in `idle`, and reporting from the arm would have advanced a run past a step the
+user never completed.
+
+**The page owns the run actor** (`useSequenceRun`, the `universeNavigationMachine` precedent) and is the
+only place a report becomes an `ADVANCE`. It holds a report the current step is not waiting for rather
+than dropping it — several steps are reading time, and a user who presses the highlighted control before a
+dwell finishes is ahead of the caption, not wrong; dropping it would leave the next step waiting forever
+for a launch that already happened. With no run active a report is inert and cleared, so it cannot survive
+into a later run. The mobile leg keys its start on **focus** rather than mount (the native stack pushes
+`/me` over the same mounted screen) and abandons the run on blur, which is what web gets for free by
+unmounting the page.
+
+**`takeOnboardingStart(signupCompleted): 'signup' | 'replay' | null`** is the entire exposure policy, a
+take-once read run as the universe comes into view. The signup flag is a **parameter** rather than a read
+because the dependency edge runs `@cosimosi/auth` → `@cosimosi/onboarding` (the reset inventory), so this
+package cannot import auth's one-shot flag; the caller passes `takeSignupCompletion()`. There is no
+durable "seen" fact anywhere: the `users` shape and the `AccountService` RPC inventory are closed, and a
+`localStorage` flag would turn "once, just after signup" into "once per browser". The guarantee is a
+property of the trigger — the profile gate makes `SignUp` reachable only while no `users` row exists.
+
+**Dependency closure:** `@cosimosi/sequence` + `@cosimosi/i18n` + `zustand`, asserted by a manifest test.
+With no transport, no fixture package, no domain-logic package and no read mirror resolvable, "the tour
+created a memory" is unrepresentable rather than merely against the rules.
+
+**Known gap (mobile).** The chrome renders above the writing dialog on web (`z-guide`, between `z-modal`
+and `z-toast`), but React Native's `Modal` presents in its own window above the app tree, so on mobile the
+caption, the ring and the skip are hidden for the three dialog-hosted steps. The run still advances on real
+signals and the dialog's own close is always reachable. Closing it properly needs the sequence chrome to be
+able to render inside the topmost native modal — a `packages/ui` portal seam, or the native `Dialog`
+gaining an overlay slot — which is plan 78's chrome to change, not this unit's.
+
 ## 7. Tests
 
 Every catalog machine has:

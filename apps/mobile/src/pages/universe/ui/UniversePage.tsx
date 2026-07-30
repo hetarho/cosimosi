@@ -1,10 +1,19 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { useTransport } from '@connectrpc/connect-query'
 import { QueryErrorResetBoundary, useQuery } from '@tanstack/react-query'
 
 import { createGetUniverseQueryOptions } from '@cosimosi/api-client'
+import { takeSignupCompletion } from '@cosimosi/auth'
+import { VALUES } from '@cosimosi/config'
+import {
+  ONBOARDING_SCRIPT,
+  takeOnboardingStart,
+  useOnboardingSignalStore,
+  type OnboardingAnchor,
+} from '@cosimosi/onboarding'
+import { useSequenceRun } from '@cosimosi/sequence/react'
 import { Button, tokens } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 import {
@@ -22,9 +31,11 @@ import {
 import { useDecorationRequestStore } from '@cosimosi/store'
 
 import { NebulaNotice } from '../../../entities/nebula/index.ts'
+import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
 import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
+import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'
 import { DeletionFlowSheet } from '../../../widgets/deletion-flow/index.ts'
 import { RecallFlowSheet } from '../../../widgets/recall-flow/index.ts'
 import { StardustOverlay } from '../../../widgets/stardust/index.ts'
@@ -68,6 +79,56 @@ export function UniversePage({
   const insets = useScreenInsets()
   // Only the focused screen consumes the shared deletion target — the diary-reader screen stays
   // mounted underneath in the native stack, so an unfocused sheet must not also open the flow.
+
+  // The onboarding run actor is owned here for the same reason the navigation actor is: a run is
+  // control state belonging to the screen it narrates. The tour performs nothing — every state change
+  // during it is the user's own press through the shipped slices below — so this page only starts the
+  // run, forwards reported signals, and mounts the chrome OVER the live scene ([O2]).
+  const tour = useSequenceRun(ONBOARDING_SCRIPT, { captionDwellMs: VALUES.sequence.captionDwellMs })
+  const startTour = tour.start
+  const advanceTour = tour.signal
+  const abandonTour = tour.abandon
+  const tourRunning = tour.active
+  const awaitedSignal = tour.step?.advance.on === 'signal' ? tour.step.advance.signal : null
+
+  // Keyed on focus rather than on mount, which is the one place this leg has to differ from web's: the
+  // native stack pushes /me OVER this screen and pops back to the same mounted instance, so a replay
+  // requested there would never be read if the take ran only once. Focus also covers the first arrival.
+  useEffect(() => {
+    if (!active) return
+    const trigger = takeOnboardingStart(takeSignupCompletion())
+    if (trigger) startTour(`onboarding-${trigger}-${Date.now()}`)
+  }, [active, startTour])
+
+  // Leaving the universe ends the run — which web gets for free by unmounting the page, and this screen
+  // has to ask for because the native stack keeps it mounted underneath. Without it the dwell timers
+  // would walk the tour to its end behind another screen, with the skip unreachable while they did.
+  // A replay is one tap away in /me, so ending is the cheap outcome.
+  useEffect(() => {
+    if (!active && tourRunning) abandonTour()
+  }, [abandonTour, active, tourRunning])
+
+  // The writing flow reports what it did into a one-slot channel; this is the only place a report
+  // becomes an `ADVANCE`.
+  //
+  // A report the current step is not waiting for is HELD rather than dropped, and that is the whole
+  // reason this reads `awaitedSignal` instead of handing everything to the engine's own guard: several
+  // steps are reading time, and a user who presses the highlighted control before a dwell finishes is
+  // ahead of the caption, not wrong. Dropping the report there would leave the next step waiting forever
+  // for something that already happened — unrecoverable once the launch is the thing that happened.
+  // With no run active a report is inert and cleared, so it can never survive into a later run.
+  const reportedSignal = useOnboardingSignalStore((state) => state.pending)
+  const clearReportedSignal = useOnboardingSignalStore((state) => state.clear)
+  useEffect(() => {
+    if (!reportedSignal) return
+    if (!tourRunning) {
+      clearReportedSignal()
+      return
+    }
+    if (reportedSignal.signal !== awaitedSignal) return
+    advanceTour(reportedSignal.signal)
+    clearReportedSignal()
+  }, [advanceTour, awaitedSignal, clearReportedSignal, reportedSignal, tourRunning])
 
   // First-run welcome ([U2][V7]): a settled universe read with zero episodic memories is a
   // beginning, not an error — the same canvas renders the gray latent field beneath, and the HUD
@@ -165,7 +226,12 @@ export function UniversePage({
       <UniverseTimeOverlay />
       <View style={[styles.hud, { bottom: insets.bottom + tokens.spacing[6] }]}>
         {firstRun ? <Text style={styles.welcome}>{m.universe_first_run_welcome()}</Text> : null}
-        <WritingFlowSheet />
+        {/* An onboarding anchor is registered by wrapping an existing child at a composition site and
+            passing nothing down — no prop, no flag, no callback — which is how the shipped slices
+            beneath stay unaware that a tour exists ([I13]). */}
+        <SequenceAnchor id={'universe-write-entry' satisfies OnboardingAnchor}>
+          <WritingFlowSheet />
+        </SequenceAnchor>
       </View>
       {/* Read-only detail bottom sheet over the running canvas — opens on selection (A1). */}
       <DetailPanel
@@ -181,6 +247,17 @@ export function UniversePage({
       <DeletionFlowSheet active={active} />
       {/* 우주 꾸미기 — a scrim-less sheet beside the universe it changes, opened from the HUD. */}
       <DecorationPanelSheet active={active} />
+      {/* Last, so the caption band, the ring and the always-visible skip sit above the HUD. Nothing
+          beneath is remounted, disabled or blocked: leaving the route ends the run as `abandoned`, and
+          `completed`, `skipped` and `abandoned` all leave exactly nothing behind ([O4]). */}
+      <SequenceGuide
+        active={tour.active}
+        caption={tour.step?.caption ?? null}
+        anchorRect={tour.anchorRect}
+        progress={tour.progress}
+        onSkip={tour.skip}
+        onRemeasure={tour.remeasure}
+      />
     </View>
   )
 }

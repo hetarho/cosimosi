@@ -18,7 +18,10 @@ export function SequenceSpotlight({ rect }: { rect: SequenceRect | null }) {
     <div
       aria-hidden
       className={cx(
-        'pointer-events-none fixed z-40 rounded-xl border-2 border-primary',
+        // Same `z-guide` layer as the caption and the skip, so a ring around a control inside the
+        // writing dialog is not hidden by it. It renders first inside the guide, so equal z-index still
+        // paints it beneath the two it must not cover.
+        'pointer-events-none fixed z-[var(--z-guide)] rounded-xl border-2 border-primary',
         !reducedMotion && 'animate-pulse',
       )}
       style={{

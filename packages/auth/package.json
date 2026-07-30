@@ -18,6 +18,7 @@
     "@cosimosi/api-client": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
+    "@cosimosi/onboarding": "workspace:*",
     "@cosimosi/sequence": "workspace:*",
     "@cosimosi/store": "workspace:*",
     "@cosimosi/twinkle": "workspace:*",
