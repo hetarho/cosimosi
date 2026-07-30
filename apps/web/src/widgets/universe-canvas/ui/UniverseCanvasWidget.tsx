@@ -29,6 +29,7 @@ import {
   universeNavigationMachine,
   useAdvanceSweepStore,
   useEpisodicMemoryStore,
+  useNeuronStore,
   usePendingFlyTargetStore,
   type AwakenAnchor,
   type UniverseNavigationMode,
@@ -134,21 +135,29 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
     },
     [actorRef],
   )
+  // A pick arrives as an INSTANCE index, so it resolves against the same id list the layer indexed its
+  // instances by — the entity stores (CellStarLayer/StarLayer both count off them), never the graph's
+  // lists. The two diverge by design: the episodic store is server truth PLUS the optimistic-launch
+  // tail (react/use-universe), so a just-launched star sits at an index the graph does not carry, and
+  // resolving through the graph drops that pick entirely — leaving the newest star in the universe the
+  // one star that cannot be opened, which is the star a person reaches for right after writing.
+  const episodicIds = useEpisodicMemoryStore((state) => state.ids)
+  const neuronIds = useNeuronStore((state) => state.ids)
   const focusNeuron = useCallback(
-    (index: number) => sendNodeCommand(graph?.neurons[index]?.id, 'focus'),
-    [graph, sendNodeCommand],
+    (index: number) => sendNodeCommand(neuronIds[index], 'focus'),
+    [neuronIds, sendNodeCommand],
   )
   const flyToNeuron = useCallback(
-    (index: number) => sendNodeCommand(graph?.neurons[index]?.id, 'fly'),
-    [graph, sendNodeCommand],
+    (index: number) => sendNodeCommand(neuronIds[index], 'fly'),
+    [neuronIds, sendNodeCommand],
   )
   const focusMemory = useCallback(
-    (index: number) => sendNodeCommand(graph?.episodicMemories[index]?.id, 'focus'),
-    [graph, sendNodeCommand],
+    (index: number) => sendNodeCommand(episodicIds[index], 'focus'),
+    [episodicIds, sendNodeCommand],
   )
   const flyToMemory = useCallback(
-    (index: number) => sendNodeCommand(graph?.episodicMemories[index]?.id, 'fly'),
-    [graph, sendNodeCommand],
+    (index: number) => sendNodeCommand(episodicIds[index], 'fly'),
+    [episodicIds, sendNodeCommand],
   )
   // A gist pick is a SELECT only (read-only routing to the paid view, [R8]) — gist bodies are
   // not sim nodes, so there is no coordinate for the camera to glide to.
@@ -161,13 +170,9 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
   // Hover glimpse: a truncated current decay-stage text so the eroded memory reads as eroded before
   // the panel opens ([F1][R8a]). The label is the preview, the panel is the full read. Keyed by id so
   // pointer-moves within one star don't re-render; the full text + word-loss recovery live in the panel.
-  const episodicIds = useEpisodicMemoryStore((state) => state.ids)
   const [hoveredMemoryId, setHoveredMemoryId] = useState<string | null>(null)
   const handleMemoryHover = useCallback(
     (index: number | null) => {
-      // Resolve against the SAME episodic-store ids StarLayer indexes its instances by — not the
-      // graph's memory list, which lags the store by the optimistic-launch tail (would mis-map or
-      // drop a just-launched star's glimpse).
       const id = index === null ? null : (episodicIds[index] ?? null)
       setHoveredMemoryId((previous) => (previous === id ? previous : id))
     },
