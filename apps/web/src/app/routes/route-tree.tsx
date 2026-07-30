@@ -14,6 +14,7 @@ import {
   DiaryReaderRoute,
   InviteRoute,
   DemoRoute,
+  LandingRoute,
   LoginRoute,
   MeRoute,
   SignupRoute,
@@ -37,7 +38,8 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 
 // The authenticated app subtree (pathless): its guard runs before any product route mounts, so the
 // gate is inherited by every route under it (the universe, the archive, and the my page surface
-// it lands). The diagnostics /test route sits OUTSIDE it (its own gate), and /login is public.
+// it lands). The diagnostics /test route sits OUTSIDE it (its own gate); /login, /demo and the
+// landing at `/` are public.
 const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'authenticated',
@@ -45,9 +47,22 @@ const authenticatedRoute = createRoute({
   component: AuthenticatedLayout,
 })
 
+// The front door. Under `rootRoute` beside /login and /demo, with no `beforeLoad` of any kind: the
+// origin root is a stranger's first contact, so an auth guard here would redirect away the one visitor
+// it exists for. `LandingRoute` resolves by gate decision instead, which keeps `/` a single decision
+// point rather than a URL that means two things at once. Sitting outside the authenticated layout is
+// also what keeps `PaletteBootstrap` and the achievement watcher off it.
+const landingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: LandingRoute,
+})
+
+// The universe has its own path now that `/` is public. It stays under the authenticated subtree, so
+// nothing about its gate changed — only its address.
 const universeRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
-  path: '/',
+  path: '/universe',
   component: UniverseRoute,
 })
 
@@ -135,6 +150,7 @@ const designRoute = createRoute({
 
 export const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([universeRoute, diaryReaderRoute, meRoute, adminRoute]),
+  landingRoute,
   loginRoute,
   signupRoute,
   inviteRoute,

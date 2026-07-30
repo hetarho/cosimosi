@@ -105,6 +105,8 @@ describe('signup shared state', () => {
         'expired',
         'failed',
       ].map((status) => gateDecision(status as Parameters<typeof gateDecision>[0])),
-    ).toEqual(['hold', 'login', 'login', 'universe', 'hold', 'login', 'login'])
+      // `signedOut` → 'landing' is the landing page's one owned arm; signup adds none of its own, and
+      // that is what this row is here to keep true.
+    ).toEqual(['hold', 'landing', 'login', 'universe', 'hold', 'login', 'login'])
   })
 })

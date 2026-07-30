@@ -30,6 +30,11 @@ export function createAppRouter({
 }: CreateAppRouterOptions) {
   return createRouter({
     routeTree,
+    // Pinned rather than left to the default, because the origin now publishes canonical URLs: the
+    // shell's <link rel="canonical"> and the root sitemap both use the slashless form, and the client
+    // router has to agree with them. The root is the sole exception. `/blog/` is outside this router
+    // (the Worker's asset handler serves it), so the blog's own trailing-slash policy cannot conflict.
+    trailingSlash: 'never',
     context: { diagnosticsEnabled, getSessionStatus },
     ...(initialEntries
       ? { history: createMemoryHistory({ initialEntries: [...initialEntries] }) }

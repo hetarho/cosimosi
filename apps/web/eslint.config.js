@@ -157,6 +157,67 @@ export default defineConfig([
     },
   },
   {
+    // The public-page import closure, second surface. The landing is the origin root, so a stranger with
+    // no session is its entire audience — and the same closure argument covers it: every function in
+    // packages/* that issues an RPC takes an ApiTransport as its first argument, and every hook that hides
+    // one calls useTransport(). A page starved of both cannot call the server by accident, whatever barrel
+    // export drifts into scope later.
+    //
+    // Narrower than the demo's block on purpose. The landing is not rule-exempt: it has no sandbox and no
+    // free time travel, so it needs no ban on prices, balances or the AccountService colour writes — it
+    // simply never reaches for them. What it does need is the transport ban, because the one thing the
+    // front door must be unable to do is read somebody's universe.
+    //
+    // ESLint flat config REPLACES rule options per matching file rather than merging them, so the
+    // three/R3F and i18n bans from the general block are restated here.
+    files: ['src/pages/landing/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['three', 'three/*', '@react-three/fiber'],
+              message:
+                'Import three/R3F only via the @cosimosi/3d-renderer package, not directly in a slice.',
+            },
+            {
+              group: ['@cosimosi/i18n', '@cosimosi/i18n/*'],
+              message:
+                'Import i18n through src/shared/i18n/index.ts; only the seam and locale-storage adapter import the package directly.',
+            },
+            {
+              group: ['@connectrpc/*'],
+              message:
+                'The only source of useTransport(). The landing page is the public origin root: it issues no RPC and reads no product data.',
+            },
+            {
+              group: ['@cosimosi/api-client', '@cosimosi/api-client/*', '@cosimosi/client-cache'],
+              message:
+                'The generated clients and the query/cache seam. A visitor has no session, so the front door has nothing to read.',
+            },
+            {
+              group: [
+                '@cosimosi/universe/react',
+                '@cosimosi/twinkle/react',
+                '@cosimosi/memory/react',
+                '@cosimosi/store/react',
+                '@cosimosi/achievement/react',
+              ],
+              message:
+                'Server-backed read mirrors. useUniverse() throws without a session, and the landing has none.',
+            },
+            {
+              group: ['@cosimosi/demo', '@cosimosi/demo/*'],
+              message:
+                'The demo owns its fixtures and its beats. The landing links to /demo by route path and imports nothing of it.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // The demo isolation closure. Read it as a CLOSURE, not an allowlist: every function in
     // packages/* that issues an RPC takes an ApiTransport as its first argument, and every hook that
     // hides one calls useTransport() from @connectrpc/connect-query. A page starved of both cannot

@@ -2,20 +2,28 @@ import { useCallback, useEffect, useMemo } from 'react'
 
 import { Outlet, useLocation, useParams, useSearch } from '@tanstack/react-router'
 
-import { gateDecision, pendingInvite } from '@cosimosi/auth'
+import { gateDecision, pendingInvite, requiresSignIn } from '@cosimosi/auth'
 import type { DiaryConditionsUpdate } from '@cosimosi/universe/react'
 import { useSessionSnapshot } from '@cosimosi/auth/react'
-import { LocaleBootstrap, m } from '../../shared/i18n/index.ts'
+import {
+  LocaleBootstrap,
+  m,
+  setActiveLocale,
+  useActiveLocale,
+  type Locale,
+} from '../../shared/i18n/index.ts'
 
 import { DecorationBootstrap } from '../providers/decoration-bootstrap.tsx'
 import { ProfileGate } from '../providers/profile-gate.tsx'
 import { AdminPage } from '../../pages/admin/index.ts'
 import { DemoPage } from '../../pages/demo/index.ts'
+import { LandingPage } from '../../pages/landing/index.ts'
 import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
 import { diaryQueryFromSearch, searchWithUpdate, type DiarySearchParams } from './diary-search.ts'
 import { LoginPage } from '../../pages/login/index.ts'
 import { MePage, parseMeTab, type MeTabId } from '../../pages/me/index.ts'
 import { UniverseHomePage } from '../../pages/universe/index.ts'
+import { writeStoredLocale } from '../../shared/lib/locale-storage.ts'
 import { loginReturnTarget } from './guards/auth-gate.ts'
 import { useAppNavigate } from './navigation.ts'
 import { AchievementNoticeHost } from '../../features/achievement-notice/index.ts'
@@ -24,9 +32,9 @@ import { AchievementNoticeHost } from '../../features/achievement-notice/index.t
 // components only (react-refresh's only-export-components contract); route-tree.tsx
 // owns the createRoute wiring and the non-component exports.
 
-// The neutral hold shown while the session is bootstrapping/refreshing — no signed-out flash, no
-// universe read yet. The default unauthenticated entry is login, the authenticated one the
-// universe; there is no landing/marketing route between them (v1, [U3][U4]).
+// The neutral hold shown while the session is bootstrapping/refreshing — no signed-out flash and no
+// landing flash either, which is the whole reason `'hold'` survived the front door: a returning user
+// mid-refresh must not be shown marketing for a frame.
 export function AuthHold() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background text-text-muted">
@@ -56,7 +64,7 @@ export function AuthenticatedLayout() {
   const location = useLocation()
   const decision = gateDecision(status)
   useEffect(() => {
-    if (decision === 'login') {
+    if (requiresSignIn(decision)) {
       navigate({ to: '/login', search: { from: location.pathname } })
     }
   }, [decision, navigate, location.pathname])
@@ -77,10 +85,41 @@ export function AuthenticatedLayout() {
   return <AuthHold />
 }
 
+// `/` is the app's single decision point, so no URL means two things at once: a signed-out visitor gets
+// the front door, an authenticated one is forwarded to their universe, and a session still settling
+// holds neutrally rather than flashing either surface ([U4]).
+//
+// The page takes its two destinations and the locale seam as callbacks, because `pages` may not import
+// `app` (§3.1) — `setActiveLocale` plus persistence lives up here with the rest of the i18n wiring, and
+// the page just says which of the two locales the visitor chose.
+export function LandingRoute() {
+  const { status } = useSessionSnapshot()
+  const navigate = useAppNavigate()
+  const locale = useActiveLocale()
+  const decision = gateDecision(status)
+  useEffect(() => {
+    if (decision === 'universe') navigate({ to: '/universe' })
+    else if (decision === 'login') navigate({ to: '/login' })
+  }, [decision, navigate])
+  const onSelectLocale = useCallback((next: Locale) => {
+    setActiveLocale(next)
+    writeStoredLocale(next)
+  }, [])
+  if (decision !== 'landing') return <AuthHold />
+  return (
+    <LandingPage
+      locale={locale}
+      onSelectLocale={onSelectLocale}
+      onTryDemo={() => navigate({ to: '/demo' })}
+      onSignUp={() => navigate({ to: '/signup' })}
+    />
+  )
+}
+
 // The router seam stays confined to this segment: the universe/reader surfaces navigate between
 // each other through callbacks these app-layer route components supply, so no page or widget
 // imports the router. Named components (not inline arrows) so the navigation hook obeys the
-// rules-of-hooks. The universe stays the home route ('/'); the archive is its own ('/diary').
+// rules-of-hooks. The universe lives at '/universe'; the archive is its own ('/diary').
 export function UniverseRoute() {
   const navigate = useAppNavigate()
   return (
@@ -135,7 +174,7 @@ export function DiaryReaderRoute() {
   )
   return (
     <DiaryReaderPage
-      onExit={() => navigate({ to: '/' })}
+      onExit={() => navigate({ to: '/universe' })}
       query={query}
       onQueryChange={onQueryChange}
       view={search.view === 'calendar' ? 'calendar' : 'list'}
@@ -153,7 +192,7 @@ export function MeRoute() {
     <MePage
       activeTab={parseMeTab(search.tab)}
       onTabChange={(tab) => navigate({ to: '/me', search: { tab }, replace: true })}
-      onExit={() => navigate({ to: '/' })}
+      onExit={() => navigate({ to: '/universe' })}
     />
   )
 }
@@ -163,7 +202,7 @@ export function MeRoute() {
 // the authoritative gate — a non-admin's admin.v1 calls are rejected regardless).
 export function AdminRoute() {
   const navigate = useAppNavigate()
-  return <AdminPage onExit={() => navigate({ to: '/' })} />
+  return <AdminPage onExit={() => navigate({ to: '/universe' })} />
 }
 
 // The public demo route. The only thing the page needs from the router is where the closing CTA
@@ -201,7 +240,7 @@ export function SignupRoute() {
   const navigate = useAppNavigate()
   const decision = gateDecision(status)
   useEffect(() => {
-    if (decision === 'universe') navigate({ to: '/' })
+    if (decision === 'universe') navigate({ to: '/universe' })
   }, [decision, navigate])
   if (decision === 'hold') return <AuthHold />
   return <LoginPage mode="signUp" onModeChange={() => navigate({ to: '/login' })} />
@@ -219,7 +258,7 @@ export function InviteRoute() {
   }, [navigate, token])
 
   useEffect(() => {
-    if (decision === 'universe') navigate({ to: '/', replace: true })
+    if (decision === 'universe') navigate({ to: '/universe', replace: true })
   }, [decision, navigate])
   return <AuthHold />
 }

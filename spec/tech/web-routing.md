@@ -27,9 +27,10 @@ never import the library; they navigate through the seam in §4.
 - **Code-based**, not file-based: `createRootRouteWithContext<RouterContext>()` for the root (component renders
   `<Outlet/>`, `notFoundComponent` is the localized screen), `createRoute` per screen, composed with `addChildren`.
   File-based routing is not used — it scatters route files and fights FSD.
-- Current routes: a pathless **`authenticated`** layout route (the auth gate, §8) parenting `/` → `UniverseHomePage`
-  (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/me` → `MePage`
-  (`pages/me`, plan 64); outside it, `/login` and `/signup` → the two `LoginPage` modes,
+- Current routes: a pathless **`authenticated`** layout route (the auth gate, §8) parenting `/universe` →
+  `UniverseHomePage` (`pages/universe`), `/diary` → `DiaryReaderPage` (`pages/diary-reader`, plan 47), and `/me` →
+  `MePage` (`pages/me`, plan 64); outside it, **`/` → `LandingPage`** (`pages/landing`, the public front door, §5b),
+  `/login` and `/signup` → the two `LoginPage` modes,
   `/invite/$token` → invite capture then replacement with `/signup`, `/test` → `TestPage`, and
   `/design` → `DesignShowcasePage` (`pages/design`, the design showcase), and `/demo` → `DemoPage`
   (`pages/demo`, the public trailer, §5a). Because `pages` may not import the router (§4), a route's `component` is a thin **app-layer
@@ -37,7 +38,20 @@ never import the library; they navigate through the seam in §4.
   navigation seam stays inside `app/routes/`.
 - **Adding a route** (done by a presentation plan): add a `createRoute` in `route-tree.tsx`, point it at a `pages/`
   screen, and register it in `addChildren` — **under the `authenticated` layout route** for any product surface (it
-  inherits the auth gate, §8). Nothing outside `app/routes/` changes.
+  inherits the auth gate, §8). A **public** surface goes under `rootRoute` with no `beforeLoad` and, if it is a page a
+  stranger lands on, inside the public-page import closure (§5a/§5b). Nothing outside `app/routes/` changes.
+
+### 5b. The public root (plan 81)
+
+`/` is `landingRoute` under `rootRoute` with **no `beforeLoad`**: an auth guard there would redirect away the one
+visitor the route exists for. `LandingRoute` resolves by gate decision instead — `'landing'` renders the page,
+`'universe'` navigates to `/universe`, `'login'` navigates to `/login`, `'hold'` renders the shipped neutral hold — so
+`/` is the app's single decision point and no URL means two things at once. It also carries the public locale switch:
+`pages` may not import `app`, so `setActiveLocale` + `writeStoredLocale` reach the page as an injected callback, the
+same seam `onOpenReader`/`onExit` use. The landing's import closure bans `@connectrpc/*`, the generated clients, the
+query/cache seam, every server-backed `/react` mirror and `@cosimosi/demo`: the front door cannot obtain a transport,
+so no product read is expressible there. `apps/web/public/{robots.txt,sitemap.xml}` and the shell's SEO block belong to
+this route — see [landing-page.md](landing-page.md).
 
 ## 3. Type safety
 
@@ -192,19 +206,28 @@ slice is not "insignificant" (verified — `lint:fsd` is green with none added).
   `account`. `validateSearch` drops an unknown value; `MeRoute` resolves a missing value to `profile`. Tab changes
   replace the current history entry, remain deep-linkable, and survive reload without introducing a tab state
   machine.
-- **Trailing slashes are not normalized** (`/test/` does not match `/test`). This is unhandled by design for the
-  current two-route set; a presentation plan that introduces a real information architecture owns the trailing-slash
-  policy for its routes.
+- **Trailing slash is pinned to `'never'`** on `createAppRouter`, so the canonical client form is slashless
+  (`/universe`, `/demo`) with the root as the sole exception. It is pinned rather than defaulted because the origin now
+  publishes canonical URLs: the shell's `<link rel="canonical">` and `public/sitemap.xml` use that same form, and the
+  router has to agree with them. `/blog/` is **outside** this router — the Worker's asset handler serves it — so the
+  blog's own `trailingSlash: 'always'` cannot conflict, and no product route's matching behaviour changed. Owned by
+  plan 81, which introduced the first real information architecture.
 
 ## 8. The auth gate (plan 53) — the app-entry contract
 
-**No landing page in v1: the unauthenticated default is `/login`, the authenticated default is the universe (`/`),
-with no intermediate route.** The rule is one pure mapping — `gateDecision(status)` in `packages/auth` (beside the
-[04] facade): `authenticated` → universe; settled `signedOut`/`signingIn`/`expired`/`failed` → login (`failed` is a
-signed-out user from the product's view, never an error screen); `bootstrapping`/`refreshing` → **hold** (neutral,
-never a redirect — no signed-out flash; [04] preserves `userId` through a refresh). That mapping is the single
-insertion seam a v2 landing route would slot into. Both apps express it through their own nav seam (disciplinary
-parity, §3.5):
+**`/` is the public front door; the universe is `/universe`.** The rule is one pure mapping —
+`gateDecision(status)` in `packages/auth` (beside the [04] facade): `authenticated` → universe; settled **`signedOut` →
+landing**; `signingIn`/`expired`/`failed` → login (a returning user whose token died is not a marketing arrival, and
+`failed` is a signed-out user from the product's view, never an error screen); `bootstrapping`/`refreshing` → **hold**
+(neutral, never a redirect — no signed-out flash and no landing flash either; [04] preserves `userId` through a
+refresh).
+
+Widening that union was the dangerous part, because every consumer used to ask `=== 'login'` and a fourth arm would
+have passed all of those comparisons silently. So the same file exports **`requiresSignIn(decision)`** — an exhaustive
+`switch`, true for `'login'` and `'landing'` — and all four consumers (the web guard, the authenticated layout, the
+landing wrapper's sibling checks, the mobile stack selector) branch through it. A future fifth decision is a compile
+error inside one pure function instead of a behaviour change spread across four files. Both apps express the mapping
+through their own nav seam (disciplinary parity, §3.5):
 
 - **Web** — every product route mounts under a pathless **`authenticated` layout route**. Its `beforeLoad` runs
   `authGuardBeforeLoad` (`routes/guards/auth-gate.ts`): a settled signed-out arrival is `redirect`ed to `/login`
@@ -221,8 +244,9 @@ parity, §3.5):
   history entry with `/signup`, so the opaque token leaves the address bar and back history.
   On reaching `authenticated`, `/login` navigates to
   `loginReturnTarget(from)` — `from` is user-visible URL input, validated at use: only an internal single-slash
-  pathname is replayed (never `//host`/absolute URLs and never `/login`, `/signup`, or
-  `/invite/...`), else `/`. While
+  pathname is replayed (never `//host`/absolute URLs and never `/`, `/login`, `/signup`, or
+  `/invite/...` — `/` joins that set because replaying it would bounce a freshly signed-in user back through the
+  marketing gate), else `/universe`. While
   `bootstrapping`/`refreshing` the route renders the neutral hold, not the form (the no-flash rule applies to `/login`
   too); `signingIn` stays on the form.
 - **Mobile mirror** — `app/navigation/NavigationRoot.tsx` selects the authoritative stack from the same snapshot via
@@ -239,6 +263,6 @@ parity, §3.5):
 
 ## 9. Not built here
 
-No SSR / framework mode (pure client SPA), no route-level code-splitting or lazy routes, no route loaders / Query
-prefetching, and no landing/marketing route (v2 — `gateDecision` is its reserved insertion seam). Product feature
-routes remain one-per-presentation-plan, registered under the `authenticated` layout (§8).
+No SSR / framework mode (pure client SPA), no prerendering of the public root (plan 81 records that limitation and its
+trigger for revisiting), no route-level code-splitting or lazy routes, and no route loaders / Query prefetching. Product
+feature routes remain one-per-presentation-plan, registered under the `authenticated` layout (§8).

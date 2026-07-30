@@ -462,7 +462,7 @@ apps/mobile/
 - **IDs.** Backend mints `TEXT` PKs (UUID/nanoid); clients never create IDs. Times stored UTC, displayed local.
 - **Git.** Commit small semantic units with `type(planNN - scope): English title`; the subject is English and the
   body/comment is Korean. Use the relevant plan number for plan-bound work. `gofmt` + ESLint.
-- **Not now:** real prod deployment; Connect server-streaming; multi-user real-time collaboration (the social features
+- **Not now:** Connect server-streaming; multi-user real-time collaboration (the social features
   are async, one-way, and deferred). **Mobile is no longer deferred** — it is a first-class MVP target built alongside
   web (§3.5). These are decisions on record, not work in flight.
 

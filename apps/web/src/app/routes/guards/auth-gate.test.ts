@@ -46,13 +46,15 @@ describe('loginReturnTarget', () => {
   })
 
   it('falls back to the universe when nothing was carried', () => {
-    expect(loginReturnTarget(undefined)).toBe('/')
+    expect(loginReturnTarget(undefined)).toBe('/universe')
   })
 
   // `from` is user-visible URL input: reject anything that is not an internal single-slash
   // pathname, and never return to /login itself (a crafted from must not pin a signed-in user
-  // to the login screen).
+  // to the login screen). `/` joins that set now that the root is the public front door — replaying it
+  // would bounce a freshly signed-in user back through the marketing gate.
   for (const hostile of [
+    '/',
     '/login',
     '/signup',
     '/invite/opaque',
@@ -62,7 +64,7 @@ describe('loginReturnTarget', () => {
     '',
   ]) {
     it(`rejects ${JSON.stringify(hostile)} back to the universe`, () => {
-      expect(loginReturnTarget(hostile)).toBe('/')
+      expect(loginReturnTarget(hostile)).toBe('/universe')
     })
   }
 })

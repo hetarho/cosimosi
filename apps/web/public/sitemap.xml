@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The origin's own sitemap. The blog ships its own at /blog/sitemap.xml, which robots.txt names alongside
+  this one.
+
+  Only the root is listed, though /demo is crawl-allowed too. The app is a client-rendered SPA, so every
+  URL is served the same index.html — whose <link rel="canonical"> points at the root. Listing /demo would
+  ask a crawler to index a URL that then declares itself a duplicate of /, which is a contradiction we
+  would be publishing on purpose. /demo has no crawlable content of its own anyway: it is a JS sandbox.
+  It stays Allow'd so a shared link is never blocked.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://cosimosi.haeram.me/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

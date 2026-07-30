@@ -98,6 +98,10 @@ Preview URL. 빌드 로그 맨 끝(Deploying 단계)에도 같은 URL이 찍힌�
 전제: 리포 클론, Cloudflare에 도메인, Supabase 프로젝트(서울 — **리전은 생성 후 변경 불가**,
 Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
 
+> **origin 루트 파일**: `apps/web/public/robots.txt`·`sitemap.xml`은 앱 소유다(랜딩이 오너 —
+> `spec/tech/landing-page.md` §7). 블로그는 그 아래 `/blog/` 서브패스로 올라가므로, 블로그 산출물을
+> 스테이징에 복사할 때 **루트의 두 파일을 덮어쓰지 않도록** 한다. 블로그는 자기 `/blog/sitemap.xml`만 낸다.
+
 1. **Lightsail**: 서울 → Ubuntu 24.04 LTS → $7 Dual-stack 플랜 → Static IP 부착 →
    방화벽 22/80/443(Any IPv4) → Account → SSH keys에서 기본 키 다운로드 →
    `mv ~/Downloads/*.pem ~/.ssh/lightsail-cosimosi.pem && chmod 400 ~/.ssh/lightsail-cosimosi.pem`
@@ -137,7 +141,8 @@ Data API 불필요하면 끔), GHCR PAT(`read:packages`, classic).
    version `npx wrangler versions upload`, 변수 3종(§3) 입력, 커스텀 도메인 `cosimosi.haeram.me` 연결.
 10. **Supabase Auth**: Google provider(Client ID/Secret — GCP 리디렉션 URI에
     `https://<ref>.supabase.co/auth/v1/callback`), URL Configuration의 Site URL
-    `https://cosimosi.haeram.me` + Redirect URLs 4종 — 웹은 우주가 `/`라서 origin 루트로 돌아온다:
+    `https://cosimosi.haeram.me` + Redirect URLs 4종 — 콜백은 **origin 루트**로 돌아온다. `/`는 이제
+    공개 랜딩이고, 인증된 도착은 랜딩 게이트가 `/universe`로 넘긴다. 즉 URL은 그대로 두고 이유만 바뀐 것:
     `https://cosimosi.haeram.me/` · `http://localhost:1214/` · 프리뷰 와일드카드
     (`https://*-cosimosi.sunlikeperson.workers.dev/`) · 모바일 딥링크 `cosimosi://auth-callback`
     (허용목록에 없는 origin은 Site URL로 폴백해 prod로 떨어진다). OTP 쓰면 이메일 템플릿에 `{{ .Token }}`.

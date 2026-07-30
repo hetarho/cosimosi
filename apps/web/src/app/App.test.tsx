@@ -165,7 +165,7 @@ describe('web auth gate', () => {
   // beforeLoad redirect keeps the universe route (and its GetUniverse read) from mounting. The
   // guard's redirect + from-carry decision table is pinned in guards/auth-gate.test.ts; this is the
   // end-to-end complement: the write action / universe HUD is absent for a signed-out session.
-  it('never mounts the universe for a settled signed-out visitor to /', async () => {
+  it('shows the front door — never the universe — to a settled signed-out visitor at /', async () => {
     const fakes = createTestHarnessFakes()
     const observability = createObservabilityFacade()
     const router = createAppRouter({
@@ -186,6 +186,44 @@ describe('web auth gate', () => {
         />,
       )
       expect(html).not.toContain('Write a diary')
+      // A stranger gets the page, not a password field: the landing's own headline, and the one
+      // definition it exists to state.
+      expect(html).toContain('A diary you can look up at.')
+      expect(html).toContain('Your sky is a mirror, not an average')
+      expect(html).not.toContain('Sign in')
+    } finally {
+      fakes.dispose()
+      observability.dispose()
+    }
+  })
+
+  // A1's second arm: `/` is one URL with one meaning per session state, so an authenticated arrival must
+  // not show the marketing page even for a frame. `LandingRoute` commits only on a settled `'landing'`
+  // decision and holds neutrally otherwise, which is also what covers the mid-refresh case — `refreshing`
+  // maps to `'hold'`, pinned in gate-decision.test.ts.
+  it('renders no landing content at / for an authenticated arrival', async () => {
+    const fakes = createTestHarnessFakes({ userId: 'landing-forward-user' })
+    const observability = createObservabilityFacade()
+    await vi.waitFor(() => expect(fakes.authFacade.snapshot.status).toBe('authenticated'))
+    const router = createAppRouter({
+      diagnosticsEnabled: false,
+      getSessionStatus: () => fakes.authFacade.snapshot.status,
+      initialEntries: ['/'],
+    })
+    await router.load()
+    try {
+      const html = renderToString(
+        <App
+          router={router}
+          authFacade={fakes.authFacade}
+          queryClient={fakes.queryClient}
+          transport={fakes.transport}
+          observabilityFacade={observability}
+          locale="en"
+        />,
+      )
+      expect(html).not.toContain('A diary you can look up at.')
+      expect(html).not.toContain('Your sky is a mirror, not an average')
     } finally {
       fakes.dispose()
       observability.dispose()
@@ -318,7 +356,8 @@ describe('web auth gate', () => {
     const router = createAppRouter({
       diagnosticsEnabled: false,
       getSessionStatus: () => fakes.authFacade.snapshot.status,
-      initialEntries: ['/'],
+      // The universe has its own route now that `/` is the public front door.
+      initialEntries: ['/universe'],
     })
     await router.load()
 

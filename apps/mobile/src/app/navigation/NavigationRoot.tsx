@@ -10,7 +10,7 @@ import {
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
-import { gateDecision, pendingInvite } from '@cosimosi/auth'
+import { gateDecision, pendingInvite, requiresSignIn } from '@cosimosi/auth'
 import { tokens } from '@cosimosi/ui'
 
 import { DesignShowcasePage } from '../../pages/design/index.ts'
@@ -138,8 +138,12 @@ export interface NavigationRootProps {
  * `refreshing` session is provisionally authenticated, so a token refresh keeps the universe stack
  * mounted ("hold in place", no blank). React Navigation swaps the mounted stack whenever the choice
  * changes, so sign-in lands on the universe and sign-out returns to login with no manual reset — and
- * the universe (and its `GetUniverse` read) never mount without a session. There is no landing route
- * between login and the universe (v1). The nav library stays confined to this segment.
+ * the universe (and its `GetUniverse` read) never mount without a session.
+ *
+ * The web front door has no native counterpart, by a stated waiver: a person who installed the app has
+ * already converted, so `'landing'` maps to the login stack here. That is what `requiresSignIn` is for
+ * — the day a fifth gate decision arrives, this line refuses to compile instead of quietly sending a
+ * signed-out visitor into the universe stack. The nav library stays confined to this segment.
  */
 export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps = {}) {
   const { status } = useSessionSnapshot()
@@ -148,8 +152,11 @@ export function NavigationRoot({ linking = mobileLinking }: NavigationRootProps 
   const [inviteEntry, setInviteEntry] = useState(() => pendingInvite.peek() !== null)
   // Settled signed-out routes to login; the initial bootstrap holds on the splash; otherwise
   // (authenticated or a provisionally-authenticated refresh) the universe stack stays mounted.
-  const stack =
-    gateDecision(status) === 'login' ? 'login' : status === 'bootstrapping' ? 'splash' : 'universe'
+  const stack = requiresSignIn(gateDecision(status))
+    ? 'login'
+    : status === 'bootstrapping'
+      ? 'splash'
+      : 'universe'
 
   useEffect(
     () =>

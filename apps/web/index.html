@@ -1,13 +1,65 @@
 <!doctype html>
+<!--
+  `lang="en"` is the shell default only; WebI18nProvider corrects it once the locale is negotiated.
+  Every absolute URL below uses the origin from DEPLOY.md §1, which is the SSOT for it — an address,
+  not a tuning number, so it is written here rather than generated.
+-->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cosimosi</title>
+    <title>cosimosi — a diary you can look up at</title>
+    <meta
+      name="description"
+      content="Write down a day and it rises as a small light. Entries that share a person, a place or an idea hang from the same point; what you never return to grows faint. Inspired by memory research."
+    />
+    <link rel="canonical" href="https://cosimosi.haeram.me/" />
+    <meta name="theme-color" content="#0a0a12" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="cosimosi" />
+    <meta property="og:title" content="cosimosi — a diary you can look up at" />
+    <meta
+      property="og:description"
+      content="Write down a day and it rises as a small light. Entries that share a person, a place or an idea hang from the same point; what you never return to grows faint."
+    />
+    <meta property="og:url" content="https://cosimosi.haeram.me/" />
+    <meta property="og:image" content="https://cosimosi.haeram.me/landing-og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="An empty night sky, faintly lit, before anything has been written."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="cosimosi — a diary you can look up at" />
+    <meta
+      name="twitter:description"
+      content="Write down a day and it rises as a small light. What you never return to grows faint."
+    />
+    <meta name="twitter:image" content="https://cosimosi.haeram.me/landing-og.png" />
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      The landing is client-rendered, so this is what a crawler that does not execute JS sees. It carries
+      the hero line, the one definition a reader must not get wrong, and the way to the static theory
+      notes — which is also the honest limitation: prerendering is deferred, not forgotten, and the
+      trigger for revisiting it is organic search becoming a real acquisition channel.
+    -->
+    <noscript>
+      <h1>cosimosi — a diary you can look up at</h1>
+      <p>
+        Write down a day and it rises as a small light. Entries that share a person, a place or an
+        idea hang from the same point, and what you never return to grows faint.
+      </p>
+      <p>
+        Your sky is a mirror, not an average: its colour leans towards the feelings you return to
+        and re-read, rather than averaging everything you felt.
+      </p>
+      <p><a href="/blog/">Read the notes on where the idea comes from</a></p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
