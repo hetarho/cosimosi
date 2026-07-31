@@ -1,7 +1,7 @@
 # Rendering (as-built)
 
 As-built rules for the 3D rendering substrate (built by [plan/14](../plan/14.rendering-foundation.md) /
-[job/17](../jobs/17.rendering-foundation.md)). Owner doc for renderer/shader/skin rules; other docs reference it.
+[job/17](../jobs/archive/17.rendering-foundation.md)). Owner doc for renderer/shader/skin rules; other docs reference it.
 
 > **Status.** Web is built and verified (typecheck · lint · test · build). Mobile is wired and verified at the
 > source-gate level (typecheck · lint · test · `pod install`); the **on-device/simulator render is pending
