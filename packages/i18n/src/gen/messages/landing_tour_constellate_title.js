@@ -10,7 +10,7 @@ const en_landing_tour_constellate_title = /** @type {(inputs: Landing_Tour_Const
 };
 
 const ko_landing_tour_constellate_title = /** @type {(inputs: Landing_Tour_Constellate_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`서로를 찾아냅니다`)
+	return /** @type {LocalizedString} */ (`서로를 찾아내요`)
 };
 
 /**

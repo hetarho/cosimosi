@@ -10,7 +10,7 @@ const en_landing_play_caption_born = /** @type {(inputs: Landing_Play_Caption_Bo
 };
 
 const ko_landing_play_caption_born = /** @type {(inputs: Landing_Play_Caption_BornInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`방금 쓴 문장이 별이 되었습니다. 색은 고른 기분에서, 형태는 문장에서 왔습니다.`)
+	return /** @type {LocalizedString} */ (`방금 쓴 문장이 별이 됐어요. 색은 고른 기분에서, 모양은 문장에서 왔어요.`)
 };
 
 /**

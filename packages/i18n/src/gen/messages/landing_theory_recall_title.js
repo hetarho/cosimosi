@@ -10,7 +10,7 @@ const en_landing_theory_recall_title = /** @type {(inputs: Landing_Theory_Recall
 };
 
 const ko_landing_theory_recall_title = /** @type {(inputs: Landing_Theory_Recall_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`회상은 다시 짓는 일입니다`)
+	return /** @type {LocalizedString} */ (`떠올리는 건 다시 짓는 일이에요`)
 };
 
 /**

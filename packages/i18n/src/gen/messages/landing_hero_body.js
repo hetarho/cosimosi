@@ -10,7 +10,7 @@ const en_landing_hero_body = /** @type {(inputs: Landing_Hero_BodyInputs) => Loc
 };
 
 const ko_landing_hero_body = /** @type {(inputs: Landing_Hero_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`하루를 적으면 작은 빛이 되어 떠오릅니다. 지금 저 위에는 아무것도 없어요. 나중에 보이는 것은 모두 당신이 쓴 것입니다.`)
+	return /** @type {LocalizedString} */ (`하루를 적으면 작은 빛이 되어 떠올라요. 지금 저 위에는 아무것도 없어요. 나중에 보이는 건 전부 직접 쓴 기록이에요.`)
 };
 
 /**

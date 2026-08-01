@@ -10,7 +10,7 @@ const en_landing_theory_synapse_title = /** @type {(inputs: Landing_Theory_Synap
 };
 
 const ko_landing_theory_synapse_title = /** @type {(inputs: Landing_Theory_Synapse_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`연결은 쓰임에 따라 달라집니다`)
+	return /** @type {LocalizedString} */ (`연결은 쓰는 만큼 달라져요`)
 };
 
 /**

@@ -10,7 +10,7 @@ const en_landing_cta_demo_note = /** @type {(inputs: Landing_Cta_Demo_NoteInputs
 };
 
 const ko_landing_cta_demo_note = /** @type {(inputs: Landing_Cta_Demo_NoteInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`가입 없이. 아무것도 저장되지 않아요.`)
+	return /** @type {LocalizedString} */ (`가입 없이 볼 수 있어요. 아무것도 저장되지 않아요.`)
 };
 
 /**

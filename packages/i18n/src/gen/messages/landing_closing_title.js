@@ -10,7 +10,7 @@ const en_landing_closing_title = /** @type {(inputs: Landing_Closing_TitleInputs
 };
 
 const ko_landing_closing_title = /** @type {(inputs: Landing_Closing_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`한 번 보고 나서, 갖고 싶은지 정하세요.`)
+	return /** @type {LocalizedString} */ (`먼저 한 번 보고, 갖고 싶은지 정해도 늦지 않아요.`)
 };
 
 /**

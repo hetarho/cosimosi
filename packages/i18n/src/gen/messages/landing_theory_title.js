@@ -10,7 +10,7 @@ const en_landing_theory_title = /** @type {(inputs: Landing_Theory_TitleInputs) 
 };
 
 const ko_landing_theory_title = /** @type {(inputs: Landing_Theory_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`이 생각은 어디에서 왔나`)
+	return /** @type {LocalizedString} */ (`이 생각은 어디에서 왔을까요`)
 };
 
 /**

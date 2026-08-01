@@ -10,7 +10,7 @@ const en_landing_tour_write_title = /** @type {(inputs: Landing_Tour_Write_Title
 };
 
 const ko_landing_tour_write_title = /** @type {(inputs: Landing_Tour_Write_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`하루를 씁니다`)
+	return /** @type {LocalizedString} */ (`하루를 써요`)
 };
 
 /**

@@ -10,7 +10,7 @@ const en_landing_play_caption_recalled = /** @type {(inputs: Landing_Play_Captio
 };
 
 const ko_landing_play_caption_recalled = /** @type {(inputs: Landing_Play_Caption_RecalledInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`다시 떠올린 별은 밝기를 되찾고, 조금 더 단단해집니다.`)
+	return /** @type {LocalizedString} */ (`다시 떠올린 별은 밝기를 되찾아요. 그리고 조금 더 단단해져요.`)
 };
 
 /**

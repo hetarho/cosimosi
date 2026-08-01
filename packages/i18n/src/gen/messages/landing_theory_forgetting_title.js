@@ -10,7 +10,7 @@ const en_landing_theory_forgetting_title = /** @type {(inputs: Landing_Theory_Fo
 };
 
 const ko_landing_theory_forgetting_title = /** @type {(inputs: Landing_Theory_Forgetting_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`잊는 일은 대개 길을 잃는 것입니다`)
+	return /** @type {LocalizedString} */ (`잊는 건 지워지는 게 아니라 길을 잃는 거예요`)
 };
 
 /**

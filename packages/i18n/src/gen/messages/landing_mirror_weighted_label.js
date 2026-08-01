@@ -10,7 +10,7 @@ const en_landing_mirror_weighted_label = /** @type {(inputs: Landing_Mirror_Weig
 };
 
 const ko_landing_mirror_weighted_label = /** @type {(inputs: Landing_Mirror_Weighted_LabelInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`실제로 보이는 것: 다시 찾은 만큼 기울어진 색`)
+	return /** @type {LocalizedString} */ (`실제 모습: 다시 찾은 만큼 기울어진 색`)
 };
 
 /**

@@ -10,7 +10,7 @@ const en_landing_theory_spatial_title = /** @type {(inputs: Landing_Theory_Spati
 };
 
 const ko_landing_theory_spatial_title = /** @type {(inputs: Landing_Theory_Spatial_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`뇌는 장소 감각을 다시 씁니다`)
+	return /** @type {LocalizedString} */ (`뇌는 장소 감각으로 생각을 정리해요`)
 };
 
 /**

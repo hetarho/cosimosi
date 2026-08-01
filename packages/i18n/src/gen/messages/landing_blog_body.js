@@ -10,7 +10,7 @@ const en_landing_blog_body = /** @type {(inputs: Landing_Blog_BodyInputs) => Loc
 };
 
 const ko_landing_blog_body = /** @type {(inputs: Landing_Blog_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`다섯 가지 생각의 출처와, 거기서 무엇을 가져오고 무엇을 가져오지 않았는지 궁금한 분들을 위해.`)
+	return /** @type {LocalizedString} */ (`다섯 가지 생각이 어디에서 왔는지, 거기서 무엇을 가져오고 무엇을 덜어냈는지 적어 뒀어요.`)
 };
 
 /**

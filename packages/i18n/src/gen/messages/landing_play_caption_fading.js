@@ -10,7 +10,7 @@ const en_landing_play_caption_fading = /** @type {(inputs: Landing_Play_Caption_
 };
 
 const ko_landing_play_caption_fading = /** @type {(inputs: Landing_Play_Caption_FadingInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`찾지 않는 동안 별은 어두워집니다. 사라지지는 않아요 — 문장은 그대로 남아 있습니다.`)
+	return /** @type {LocalizedString} */ (`찾지 않는 동안 별은 조금씩 어두워져요. 그래도 사라지지는 않아요. 문장은 그대로 남아 있거든요.`)
 };
 
 /**

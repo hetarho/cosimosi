@@ -10,7 +10,7 @@ const en_landing_tour_color_title = /** @type {(inputs: Landing_Tour_Color_Title
 };
 
 const ko_landing_tour_color_title = /** @type {(inputs: Landing_Tour_Color_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`하늘이 당신의 색을 띱니다`)
+	return /** @type {LocalizedString} */ (`하늘이 내 색으로 물들어요`)
 };
 
 /**

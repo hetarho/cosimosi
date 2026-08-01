@@ -10,7 +10,7 @@ const en_landing_play_body = /** @type {(inputs: Landing_Play_BodyInputs) => Loc
 };
 
 const ko_landing_play_body = /** @type {(inputs: Landing_Play_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`짧게 한 줄을 쓰면 그 문장이 별이 되어 떠오릅니다. 시간이 흐르는 동안 내버려 두면 어두워지고, 다시 떠올리면 돌아옵니다. 아래의 별은 실제 우주가 당신의 별을 그리는 방식 그대로 그려집니다.`)
+	return /** @type {LocalizedString} */ (`한 줄만 쓰면 그 문장이 별이 되어 떠올라요. 한동안 찾지 않으면 어두워지고, 다시 떠올리면 돌아와요. 아래 별은 실제 우주가 별을 그리는 방식 그대로 그려져요.`)
 };
 
 /**

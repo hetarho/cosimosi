@@ -10,7 +10,7 @@ const en_landing_tour_color_body = /** @type {(inputs: Landing_Tour_Color_BodyIn
 };
 
 const ko_landing_tour_color_body = /** @type {(inputs: Landing_Tour_Color_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`배경 전체가 당신이 자주 돌아오는 감정으로 가라앉습니다. 한 해가 한눈에 보이는 색을 갖게 됩니다.`)
+	return /** @type {LocalizedString} */ (`배경 전체가 자주 돌아보는 감정의 색으로 물들어요. 한 해를 한눈에 담은 색이 생기는 거예요.`)
 };
 
 /**

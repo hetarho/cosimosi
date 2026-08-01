@@ -10,7 +10,7 @@ const en_landing_theory_forgetting_body = /** @type {(inputs: Landing_Theory_For
 };
 
 const ko_landing_theory_forgetting_body = /** @type {(inputs: Landing_Theory_Forgetting_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`잊음의 많은 부분은 지워짐보다, 아직 있는 것으로 가는 길을 잃는 일처럼 보입니다. 그래서 여기서는 희미해져도 지워지지 않습니다. 당신이 쓴 원본은 언제나 그대로 남습니다.`)
+	return /** @type {LocalizedString} */ (`잊는다는 건 기억이 지워지는 일이라기보다, 아직 남아 있는 기억으로 가는 길을 잃는 일에 가까워 보여요. 그래서 여기서는 희미해질 뿐 지워지지 않아요. 직접 쓴 원본은 언제나 그대로 남아요.`)
 };
 
 /**

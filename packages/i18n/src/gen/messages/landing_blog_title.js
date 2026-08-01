@@ -10,7 +10,7 @@ const en_landing_blog_title = /** @type {(inputs: Landing_Blog_TitleInputs) => L
 };
 
 const ko_landing_blog_title = /** @type {(inputs: Landing_Blog_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`긴 쪽 이야기`)
+	return /** @type {LocalizedString} */ (`더 긴 이야기가 궁금하다면`)
 };
 
 /**

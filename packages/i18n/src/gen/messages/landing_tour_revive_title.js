@@ -10,7 +10,7 @@ const en_landing_tour_revive_title = /** @type {(inputs: Landing_Tour_Revive_Tit
 };
 
 const ko_landing_tour_revive_title = /** @type {(inputs: Landing_Tour_Revive_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`떠올리면 돌아옵니다`)
+	return /** @type {LocalizedString} */ (`떠올리면 돌아와요`)
 };
 
 /**

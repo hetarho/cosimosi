@@ -18,7 +18,10 @@ export function LandingTheory() {
       <ul className="flex flex-col gap-4">
         {LANDING_THEORY_CARDS.map((card) => (
           <li key={card.id}>
-            <Card variant="glass" className="flex flex-col gap-2">
+            <Card
+              variant="glass"
+              className="flex flex-col gap-2 transition duration-300 motion-safe:hover:-translate-y-1 hover:shadow-lg"
+            >
               <h3 className="text-base font-medium text-text">{card.title()}</h3>
               <p className="text-sm leading-6 text-text-muted">{card.body()}</p>
               {/* A plain anchor with an absolute path, never a router link: `/blog/` is static HTML the

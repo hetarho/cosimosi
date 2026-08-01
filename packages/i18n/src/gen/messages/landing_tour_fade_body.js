@@ -10,7 +10,7 @@ const en_landing_tour_fade_body = /** @type {(inputs: Landing_Tour_Fade_BodyInpu
 };
 
 const ko_landing_tour_fade_body = /** @type {(inputs: Landing_Tour_Fade_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`당신이 쓸 때 우주의 시간이 흐릅니다. 다시 들여다보지 않은 것은 희미해지고, 단어를 잃기 시작합니다.`)
+	return /** @type {LocalizedString} */ (`일기를 쓸 때마다 우주의 시간이 흘러요. 오래 들여다보지 않은 기억은 희미해지고, 단어를 잃기 시작해요.`)
 };
 
 /**

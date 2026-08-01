@@ -10,7 +10,7 @@ const en_landing_theory_engram_body = /** @type {(inputs: Landing_Theory_Engram_
 };
 
 const ko_landing_theory_engram_body = /** @type {(inputs: Landing_Theory_Engram_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`연구는 하나의 기억이 특정한 세포 집합에 흔적을 남긴다고 말합니다. 하나의 기억을 찾아낼 수 있는 작은 무엇으로 다루는 발상이 여기서 왔습니다.`)
+	return /** @type {LocalizedString} */ (`하나의 기억이 특정한 세포들에 흔적을 남긴다는 연구가 있어요. 기억 하나하나를 찾아낼 수 있는 작은 존재로 다루는 발상이 여기서 왔어요.`)
 };
 
 /**

@@ -10,7 +10,7 @@ const en_landing_tour_write_body = /** @type {(inputs: Landing_Tour_Write_BodyIn
 };
 
 const ko_landing_tour_write_body = /** @type {(inputs: Landing_Tour_Write_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`한 편의 일기에 한 가지만 담기는 일은 드뭅니다. 그 안의 몇 장면으로 쪼개지고, 각각이 떠오릅니다.`)
+	return /** @type {LocalizedString} */ (`일기 한 편에 한 가지 이야기만 담기는 일은 드물죠. 그래서 일기는 몇 개의 장면으로 나뉘고, 각각 별이 되어 떠올라요.`)
 };
 
 /**

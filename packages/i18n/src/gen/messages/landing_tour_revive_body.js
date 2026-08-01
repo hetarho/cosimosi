@@ -10,7 +10,7 @@ const en_landing_tour_revive_body = /** @type {(inputs: Landing_Tour_Revive_Body
 };
 
 const ko_landing_tour_revive_body = /** @type {(inputs: Landing_Tour_Revive_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`희미해진 것을 다시 찾으면 밝아집니다. 그리고 조금 달라진 채로 돌아옵니다. 기억이 실제로 그렇게 작동하는 것처럼.`)
+	return /** @type {LocalizedString} */ (`희미해진 기억을 다시 찾으면 밝아져요. 다만 조금 달라진 채로 돌아와요. 우리 기억이 원래 그런 것처럼요.`)
 };
 
 /**

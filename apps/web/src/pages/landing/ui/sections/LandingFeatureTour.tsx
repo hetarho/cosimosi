@@ -13,7 +13,10 @@ export function LandingFeatureTour() {
       <ol className="flex flex-col gap-4">
         {LANDING_TOUR_ITEMS.map((item) => (
           <li key={item.id}>
-            <Card variant="glass" className="flex flex-col gap-2">
+            <Card
+              variant="glass"
+              className="flex flex-col gap-2 transition duration-300 motion-safe:hover:-translate-y-1 hover:shadow-lg"
+            >
               <h3 className="text-base font-medium text-text">{item.title()}</h3>
               <p className="text-sm leading-6 text-text-muted">{item.body()}</p>
             </Card>

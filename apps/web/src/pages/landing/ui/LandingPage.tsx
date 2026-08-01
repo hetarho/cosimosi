@@ -8,6 +8,7 @@ import {
 } from '../model/sections.ts'
 import { LandingBackdrop } from './LandingBackdrop.tsx'
 import { LandingLocaleSwitch } from './LandingLocaleSwitch.tsx'
+import { LandingReveal } from './LandingReveal.tsx'
 import { LandingBlogLink } from './sections/LandingBlogLink.tsx'
 import { LandingClosing, LandingDemoCtaSection } from './sections/LandingCtas.tsx'
 import { LandingFeatureTour } from './sections/LandingFeatureTour.tsx'
@@ -60,7 +61,11 @@ export function LandingPage({ locale, onSelectLocale, onTryDemo, onSignUp }: Lan
       <div className="relative z-10">
         {LANDING_SECTIONS.map((id) => {
           const Section = SECTION_VIEWS[id]
-          return <Section key={id} onTryDemo={onTryDemo} onSignUp={onSignUp} />
+          const section = <Section key={id} onTryDemo={onTryDemo} onSignUp={onSignUp} />
+          // The hero is the first paint and must never wait on an observer; everything after it
+          // rises into place as the visitor reaches it.
+          if (id === 'hero') return section
+          return <LandingReveal key={id}>{section}</LandingReveal>
         })}
       </div>
     </main>

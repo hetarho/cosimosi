@@ -10,7 +10,7 @@ const en_landing_theory_synapse_body = /** @type {(inputs: Landing_Theory_Synaps
 };
 
 const ko_landing_theory_synapse_body = /** @type {(inputs: Landing_Theory_Synapse_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`세포 사이의 연결은 함께 쓰이면 강해지고 그렇지 않으면 약해집니다. 여기서는 자주 함께 나타난 두 기록이 서로 가까워지는 이유입니다.`)
+	return /** @type {LocalizedString} */ (`세포 사이의 연결은 함께 쓰이면 강해지고, 그렇지 않으면 약해져요. 자주 함께 나타난 두 기록이 서로 가까워지는 이유예요.`)
 };
 
 /**

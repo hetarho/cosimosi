@@ -10,7 +10,7 @@ const en_landing_play_note = /** @type {(inputs: Landing_Play_NoteInputs) => Loc
 };
 
 const ko_landing_play_note = /** @type {(inputs: Landing_Play_NoteInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`이 별은 이 페이지에만 잠시 떠 있습니다. 아무것도 저장되지 않아요.`)
+	return /** @type {LocalizedString} */ (`이 별은 이 페이지에만 잠시 떠 있어요. 아무것도 저장되지 않아요.`)
 };
 
 /**

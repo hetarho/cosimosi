@@ -10,7 +10,7 @@ const en_landing_tour_fade_title = /** @type {(inputs: Landing_Tour_Fade_TitleIn
 };
 
 const ko_landing_tour_fade_title = /** @type {(inputs: Landing_Tour_Fade_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`다시 찾지 않은 것은 어두워집니다`)
+	return /** @type {LocalizedString} */ (`다시 찾지 않으면 어두워져요`)
 };
 
 /**

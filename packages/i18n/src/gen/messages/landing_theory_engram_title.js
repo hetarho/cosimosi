@@ -10,7 +10,7 @@ const en_landing_theory_engram_title = /** @type {(inputs: Landing_Theory_Engram
 };
 
 const ko_landing_theory_engram_title = /** @type {(inputs: Landing_Theory_Engram_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`기억에는 물리적인 흔적이 있습니다`)
+	return /** @type {LocalizedString} */ (`기억은 물리적인 흔적을 남겨요`)
 };
 
 /**

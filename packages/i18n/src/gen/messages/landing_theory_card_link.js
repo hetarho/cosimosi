@@ -10,7 +10,7 @@ const en_landing_theory_card_link = /** @type {(inputs: Landing_Theory_Card_Link
 };
 
 const ko_landing_theory_card_link = /** @type {(inputs: Landing_Theory_Card_LinkInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`더 읽기`)
+	return /** @type {LocalizedString} */ (`더 알아보기`)
 };
 
 /**

@@ -10,7 +10,7 @@ const en_landing_mirror_body = /** @type {(inputs: Landing_Mirror_BodyInputs) =>
 };
 
 const ko_landing_mirror_body = /** @type {(inputs: Landing_Mirror_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`그 색이 느낀 것 전체의 평균이라고 생각하기 쉽지만, 그렇지 않습니다. 하늘은 당신이 다시 찾아 읽는 감정 쪽으로 기웁니다. 그래서 힘들었던 한 주가 한 해를 다시 칠하지 않고, 조용하지만 계속 돌아보는 것이 드러납니다.`)
+	return /** @type {LocalizedString} */ (`하늘색이 그동안 느낀 감정의 평균이라고 생각하기 쉽지만, 그렇지 않아요. 하늘은 다시 찾아 읽는 감정 쪽으로 기울어요. 그래서 힘들었던 한 주가 한 해 전체를 다시 칠하지 않고, 조용히 자주 돌아보는 마음이 드러나요.`)
 };
 
 /**

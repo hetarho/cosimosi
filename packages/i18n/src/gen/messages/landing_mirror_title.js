@@ -10,7 +10,7 @@ const en_landing_mirror_title = /** @type {(inputs: Landing_Mirror_TitleInputs) 
 };
 
 const ko_landing_mirror_title = /** @type {(inputs: Landing_Mirror_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`당신의 하늘은 평균이 아니라 거울입니다`)
+	return /** @type {LocalizedString} */ (`하늘은 평균이 아니라 거울이에요`)
 };
 
 /**

@@ -10,7 +10,7 @@ const en_landing_tour_constellate_body = /** @type {(inputs: Landing_Tour_Conste
 };
 
 const ko_landing_tour_constellate_body = /** @type {(inputs: Landing_Tour_Constellate_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`두 편이 같은 사람, 같은 장소, 같은 생각에 대한 것이었다면 같은 점에 매달립니다. 아무도 그리지 않은 형태가 나타납니다.`)
+	return /** @type {LocalizedString} */ (`두 편의 일기가 같은 사람, 같은 장소, 같은 생각을 담고 있다면 같은 점에 매달려요. 아무도 그리지 않은 모양이 저절로 나타나요.`)
 };
 
 /**
