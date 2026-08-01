@@ -1,35 +1,29 @@
 /**
  * The landing page's information architecture, as a type rather than a layout convention.
  *
- * The order is prescribed: the empty sky, a sentence the visitor raises and recalls themselves, an
- * invitation to see the real thing move, what the product does in the user's own words, the one
- * definition a new user must not get wrong, where the ideas come from, the way to read further, and
- * only then the ask. The `satisfies` clause restates it, so dropping `'mirror'`, putting the theory
- * cards ahead of the definition, or adding a ninth section without placing it here is a `tsc`
- * failure rather than something a reviewer has to notice.
+ * The order is prescribed: the empty sky, the product's whole arc walked on one canvas, an
+ * invitation to steer the real thing, where the ideas come from, the way to read further, and only
+ * then the ask. The `satisfies` clause restates it, so dropping `'walkthrough'`, putting the theory
+ * cards ahead of it, or adding a seventh section without placing it here is a `tsc` failure rather
+ * than something a reviewer has to notice.
  *
- * `'playground'` sits directly under the hero because it is the page's argument in miniature: before
- * any copy explains fading or recall, the visitor has already watched their own sentence do both.
- *
- * That matters most for `'mirror'`. A visitor who leaves believing the sky averages their feelings will
- * read their own universe wrong for months, so the definition is a required section, not a nice-to-have
- * paragraph that a redesign can quietly drop.
+ * `'walkthrough'` sits directly under the hero because it is the page's argument in full: before
+ * any copy explains splitting, fading or the mirror, the visitor has already watched all of them
+ * happen to one diary. The [M5] definition — the one sentence a visitor must not leave without —
+ * lives inside it as the guarded final step of `WALKTHROUGH_STEPS`, so the compile-time guarantee
+ * the old `'mirror'` section carried moved one level down rather than weakening.
  */
 export const LANDING_SECTIONS = [
   'hero',
-  'playground',
+  'walkthrough',
   'demo-cta-top',
-  'feature-tour',
-  'mirror',
   'theory',
   'blog',
   'closing-cta',
 ] as const satisfies readonly [
   'hero',
-  'playground',
+  'walkthrough',
   'demo-cta-top',
-  'feature-tour',
-  'mirror',
   'theory',
   'blog',
   'closing-cta',

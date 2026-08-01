@@ -1,8 +1,8 @@
 import { m } from '../../../shared/i18n/index.ts'
 
 /**
- * The five research strands the page summarizes, and the five behaviours it describes. Authored
- * content, fixed in count and order by the PRD — not tuning, and not something a values key would help.
+ * The five research strands the page summarizes. Authored content, fixed in count and order by the
+ * PRD — not tuning, and not something a values key would help.
  */
 
 /**
@@ -71,35 +71,4 @@ export const LANDING_THEORY_CARDS = [
   LandingTheoryCard,
   LandingTheoryCard,
   LandingTheoryCard,
-]
-
-export interface LandingTourItem {
-  readonly id: LandingTourId
-  readonly title: () => string
-  readonly body: () => string
-}
-
-export type LandingTourId = 'write' | 'constellate' | 'fade' | 'revive' | 'color'
-
-/**
- * Written from the reader's side — what happens to them, in the order it happens. Each item is a static
- * treatment: five live canvases on a page a stranger opens on mobile data is a battery decision, and
- * anyone who wants to watch it move is one click from the demo.
- */
-export const LANDING_TOUR_ITEMS = [
-  { id: 'write', title: m.landing_tour_write_title, body: m.landing_tour_write_body },
-  {
-    id: 'constellate',
-    title: m.landing_tour_constellate_title,
-    body: m.landing_tour_constellate_body,
-  },
-  { id: 'fade', title: m.landing_tour_fade_title, body: m.landing_tour_fade_body },
-  { id: 'revive', title: m.landing_tour_revive_title, body: m.landing_tour_revive_body },
-  { id: 'color', title: m.landing_tour_color_title, body: m.landing_tour_color_body },
-] as const satisfies readonly [
-  LandingTourItem,
-  LandingTourItem,
-  LandingTourItem,
-  LandingTourItem,
-  LandingTourItem,
 ]

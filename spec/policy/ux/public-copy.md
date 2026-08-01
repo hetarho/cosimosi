@@ -67,16 +67,23 @@ relative one resolves against the app instead. Where the requirement↔evidence 
 
 ### The landing page's information architecture
 
-Seven sections, in this order: the hero, a demo invitation, the feature tour in the user's own words, **the [M5]
-definition**, the five theory cards, the blog link, and the closing CTA pair.
+Six sections, in this order: the hero, **the guided walkthrough**, a demo invitation, the five theory cards, the blog
+link, and the closing CTA pair. The walkthrough absorbed the old feature tour and the standalone [M5] mirror section
+(change 09): instead of reading five cards and a definition, the visitor steps one authored diary through the product's
+whole arc — split, launch, the sky taking colour, the fade, the recall, the mirror — on one canvas.
 
-- **The [M5] definition is a required section**, not a paragraph: the universe's colour is a mirror of the emotions you
-  return to, not their average. A user who leaves believing otherwise will read their own universe wrong for months.
+- **The [M5] definition is required copy with a structural guard**: the universe's colour is a mirror of the emotions
+  you return to, not their average. Its home is the walkthrough's **final step**, pinned by a fixed six-member step
+  tuple exactly as the section order is pinned — a user who leaves believing otherwise will read their own universe
+  wrong for months.
+- **The walkthrough is hardcoded and advance-only** — an authored diary in both languages, precomputed split,
+  deterministic visuals through the shipped production functions, and one action per step named with the product's own
+  verbs. Anyone who wants to steer is one click from the demo.
 - **A demo CTA appears at the top and again at the foot**, and in the closing block the demo comes **before** the signup
   ask. A stranger has no reason to trust a form yet, and the product's whole claim is that it only reads in motion.
-- **The feature tour is written from the reader's side** — what happens to them, in the order it happens — and mounts no
-  canvas. Anyone who wants motion is one click from the demo.
-- **Illustrative visuals are labelled as illustration** on screen, and are never presented as anyone's data.
+- **No meta-disclaimer.** The page carries no "nothing is saved" / "this is an invented example" hedge: a marketing
+  page is self-evidently a marketing page, and nobody mistakes its example for their data. [I12] honesty is untouched —
+  it forbids overclaiming, not confidence; the five claim classes and the denial allowlist stay the gate.
 
 ### One origin
 

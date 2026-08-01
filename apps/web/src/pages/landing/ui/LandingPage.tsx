@@ -11,21 +11,17 @@ import { LandingLocaleSwitch } from './LandingLocaleSwitch.tsx'
 import { LandingReveal } from './LandingReveal.tsx'
 import { LandingBlogLink } from './sections/LandingBlogLink.tsx'
 import { LandingClosing, LandingDemoCtaSection } from './sections/LandingCtas.tsx'
-import { LandingFeatureTour } from './sections/LandingFeatureTour.tsx'
 import { LandingHero } from './sections/LandingHero.tsx'
-import { LandingMirror } from './sections/LandingMirror.tsx'
-import { LandingPlayground } from './sections/LandingPlayground.tsx'
 import { LandingTheory } from './sections/LandingTheory.tsx'
+import { LandingWalkthrough } from './sections/LandingWalkthrough.tsx'
 
 // The section→component map, exhaustive over the id union. Together with the tuple it is the page's ONLY
 // render path: there is no second place a section could be rendered from, and no id can be mapped to
 // nothing, so the prescribed order is a compile-time fact rather than the current shape of some JSX.
 const SECTION_VIEWS: Readonly<Record<LandingSectionId, ComponentType<LandingSectionProps>>> = {
   hero: LandingHero,
-  playground: LandingPlayground,
+  walkthrough: LandingWalkthrough,
   'demo-cta-top': LandingDemoCtaSection,
-  'feature-tour': LandingFeatureTour,
-  mirror: LandingMirror,
   theory: LandingTheory,
   blog: LandingBlogLink,
   'closing-cta': LandingClosing,

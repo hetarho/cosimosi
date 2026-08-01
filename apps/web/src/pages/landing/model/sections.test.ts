@@ -1,31 +1,34 @@
 import { describe, expect, it } from 'vitest'
 
-import { LANDING_THEORY_CARDS, LANDING_TOUR_ITEMS } from '../config/theory-cards.ts'
+import { LANDING_THEORY_CARDS } from '../config/theory-cards.ts'
 import { LANDING_SECTIONS, type LandingSectionId } from './sections.ts'
 
 describe('the landing section order', () => {
-  it('is the prescribed eight, in order', () => {
+  it('is the prescribed six, in order', () => {
     expect(LANDING_SECTIONS).toEqual([
       'hero',
-      'playground',
+      'walkthrough',
       'demo-cta-top',
-      'feature-tour',
-      'mirror',
       'theory',
       'blog',
       'closing-cta',
     ])
   })
 
-  it('states the definition before the theory, and asks last', () => {
-    // The order is an argument, not a layout: show the thing, offer to move it, say what it does, correct
-    // the one misreading that costs months, then explain where it came from — and only then ask.
+  it('carries none of the retired sections', () => {
+    // playground, feature-tour and mirror were absorbed into the walkthrough (change 09); a
+    // reappearing id would mean a second render path for a story the walkthrough now owns.
+    for (const retired of ['playground', 'feature-tour', 'mirror']) {
+      expect(LANDING_SECTIONS).not.toContain(retired)
+    }
+  })
+
+  it('walks the argument before explaining it, and asks last', () => {
+    // The order is an argument, not a layout: show the whole arc (the [M5] mirror is its guarded
+    // final step), offer to steer it, then explain where the ideas come from — and only then ask.
     const at = (id: LandingSectionId) => LANDING_SECTIONS.indexOf(id)
-    // The playground comes before any copy explains fading or recall — the visitor should have
-    // already done both to a sentence of their own by the time the tour narrates them.
-    expect(at('playground')).toBe(at('hero') + 1)
-    expect(at('playground')).toBeLessThan(at('feature-tour'))
-    expect(at('mirror')).toBeLessThan(at('theory'))
+    expect(at('walkthrough')).toBe(at('hero') + 1)
+    expect(at('walkthrough')).toBeLessThan(at('theory'))
     expect(at('demo-cta-top')).toBeLessThan(at('closing-cta'))
     expect(at('closing-cta')).toBe(LANDING_SECTIONS.length - 1)
   })
@@ -62,16 +65,6 @@ describe('the authored content', () => {
     for (const card of LANDING_THEORY_CARDS) {
       expect(card.blogAnchor.startsWith('/blog/#')).toBe(true)
     }
-  })
-
-  it('walks the five behaviours in the order they happen to a user', () => {
-    expect(LANDING_TOUR_ITEMS.map((item) => item.id)).toEqual([
-      'write',
-      'constellate',
-      'fade',
-      'revive',
-      'color',
-    ])
   })
 
   it('carries no citation field on a theory card', () => {

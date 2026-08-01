@@ -186,10 +186,11 @@ describe('web auth gate', () => {
         />,
       )
       expect(html).not.toContain('Write a diary')
-      // A stranger gets the page, not a password field: the landing's own headline, and the one
-      // definition it exists to state.
+      // A stranger gets the page, not a password field: the landing's own headline, and the
+      // walkthrough that now carries the page's argument (its [M5] closing step is pinned by
+      // pages/landing's own model tests).
       expect(html).toContain('A diary you can look up at.')
-      expect(html).toContain('Your sky is a mirror, not an average')
+      expect(html).toContain('Here is one diary, start to finish')
       expect(html).not.toContain('Sign in')
     } finally {
       fakes.dispose()
@@ -223,7 +224,7 @@ describe('web auth gate', () => {
         />,
       )
       expect(html).not.toContain('A diary you can look up at.')
-      expect(html).not.toContain('Your sky is a mirror, not an average')
+      expect(html).not.toContain('Here is one diary, start to finish')
     } finally {
       fakes.dispose()
       observability.dispose()

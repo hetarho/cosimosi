@@ -12,12 +12,9 @@ import type { LandingSectionProps } from '../../model/sections.ts'
 
 export function DemoCta({ onTryDemo }: Pick<LandingSectionProps, 'onTryDemo'>) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <Button color="primary" onClick={onTryDemo}>
-        {m.landing_cta_demo()}
-      </Button>
-      <p className="text-sm text-text-muted">{m.landing_cta_demo_note()}</p>
-    </div>
+    <Button color="primary" onClick={onTryDemo}>
+      {m.landing_cta_demo()}
+    </Button>
   )
 }
 

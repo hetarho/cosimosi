@@ -7,24 +7,62 @@
 
 ## 1. The section order is a type
 
-`model/sections.ts` declares the seven sections as a fixed-length literal tuple with a `satisfies` clause that restates
+`model/sections.ts` declares the six sections as a fixed-length literal tuple with a `satisfies` clause that restates
 it, `LandingSectionId` derived from it, and `ui/LandingPage.tsx` holding an exhaustive
 `Record<LandingSectionId, ComponentType<LandingSectionProps>>` it maps over as the **only** render path.
 
 ```
-hero → demo-cta-top → feature-tour → mirror → theory → blog → closing-cta
+hero → walkthrough → demo-cta-top → theory → blog → closing-cta
 ```
 
-Dropping `'mirror'`, putting `theory` ahead of it, or adding an eighth section without placing it in the tuple is a `tsc`
-failure. That matters most for `mirror`: a visitor who leaves believing the sky averages their feelings will read their
-own universe wrong for months, so the definition is a required section rather than a paragraph a redesign can drop.
+The old `playground`, `feature-tour` and `mirror` sections were retired by change 09 and absorbed into the one
+`walkthrough` section. The [M5] guard the section tuple used to carry moved one level **down** rather than weakening:
+the walkthrough's step tuple (§1a) is a fixed six-member literal tuple ending in the mirror step, so dropping or
+reordering the definition is a `tsc` failure exactly as dropping the old `'mirror'` section was.
 
 CTA order gets the same treatment one level down. `'demo-cta-top'` renders `DemoCta` alone; `'closing-cta'` renders one
 `LandingClosing` that hardcodes `DemoCta` then `SignUpCta` and **exposes no ordering prop**, so demo-before-signup is
-not something a call site can get wrong. Both demo CTAs target `/demo`; the signup CTA targets `/signup`.
+not something a call site can get wrong. Both demo CTAs target `/demo`; the signup CTA targets `/signup`. The demo CTA
+is a single refined label ("우주 미리보기" / "Preview the universe") with **no explanatory note** — the page carries no
+meta-disclaimer at all (policy/ux/public-copy.md).
 
-The page header is chrome, deliberately **not** one of the seven: it carries the wordmark and the language switch and
+The page header is chrome, deliberately **not** one of the six: it carries the wordmark and the language switch and
 nothing that competes with the page's first sentence.
+
+## 1a. The walkthrough — the argument, walked
+
+`model/walkthrough.ts` owns the step contract and the pure model:
+
+- **`WALKTHROUGH_STEPS`** — `split → launch → color → fade → recall → mirror`, `as const satisfies` the restated
+  six-tuple, mirror last. This is the [M5] structural guard's new home.
+- **The progression** is advance-only: `WalkthroughState` is `{ step, acted }`; `actOnWalkthroughStep` (idempotent),
+  `advanceWalkthrough` (forward only, and only once acted), `restartWalkthrough`. No function moves backwards, so every
+  run is a replay of the same story.
+- **`walkthroughSceneFacts(content, state)`** derives everything the section renders — the memories on the canvas, the
+  universe time, the sky stops, the returned-to memory's current reading — pure and total. Every derived fact goes
+  through the shipped production functions: memories are real `EpisodicMemory` values whose `decayStages` are
+  precomputed with `decayStageText` (the same erosion the server persists), the reading is `currentDecayText`, recall
+  resets the anchors and swaps in the authored reconsolidated text with a `reshape`d seed (the changed reading grows a
+  changed form), and the sky is `effectiveStrength`-weighted `toEmotionSlices` — [M5]'s stated mechanism (recall grows
+  strength ([R3]) → that emotion's share of the sky), composed from two shipped rules with no local formula.
+- **The sky arrives at the `color` step**, empty before it — the moment the colour shows up is the moment the caption
+  says it does, the demo's own pattern.
+
+`config/walkthrough-content.ts` holds the authored fixture (one well-written diary in ko and en, its precomputed split
+scenes with names/moods/neurons, the accumulation entries, the recall target and its reconsolidated reading) and
+`WALKTHROUGH_STEP_COPY`, an exhaustive `Record<WalkthroughStepId, …>` of message accessors — a step without copy is a
+`tsc` failure, and the action labels are the product's own verbs (`별 쪼개기` · `별 띄우기` · the 회고 register). The
+content authors **no coordinate** ([I5]): where a star stands is the scene's staged-slot concern.
+
+`ui/LandingWalkthroughScene.tsx` is the playground scene evolved to a cast: the production `UniverseCanvas` +
+`SkySphere` + one `InstancedNodeLayer` over `starChannels`, with staged slot positions (a group portrait has no
+force-sim to emerge positions from), a per-star dot poster beneath it for the no-WebGPU first paint, and the same
+no-`resetKeys` error-boundary posture as the hero. `ui/sections/LandingWalkthrough.tsx` renders caption + one action
+per step + next/restart over it, and renders the `landing_walk_mirror_definition` sentence at the mirror step —
+removing that key from the catalogues fails the build.
+
+The visitor's only inputs are each step's single action and next/restart: no free text, no mood picker, no time
+slider. Deterministic on purpose — the free-play surface is the demo, one click away, and the two must not compete.
 
 ## 2. The hero — the empty universe, and the poster first
 
@@ -52,10 +90,10 @@ bytes. A designed OG card is a later call, not a blocker.
 
 ## 3. Authored content, and what it may not carry
 
-`config/theory-cards.ts` holds the five research strands and the five tour items, both fixed-length tuples with
-`satisfies`. A `LandingTheoryCard` is `{ id, title, body, blogAnchor }` and has **no citation field**: a DOI cannot be a
-rendered datum, so an over-claiming citation could only arrive as prose — which §5 rejects. The landing carries the
-summary a non-specialist reads; papers live one tier down on the blog.
+`config/theory-cards.ts` holds the five research strands as a fixed-length tuple with `satisfies` (the five tour items
+it used to hold retired with the feature-tour section). A `LandingTheoryCard` is `{ id, title, body, blogAnchor }` and
+has **no citation field**: a DOI cannot be a rendered datum, so an over-claiming citation could only arrive as prose —
+which §5 rejects. The landing carries the summary a non-specialist reads; papers live one tier down on the blog.
 
 The five ids are the same strings the blog owns as its closed `pillar` enum and emits as group-heading ids —
 `engram` · `spatial-representation` · `synapse-time` · `reconstructive-recall` · `forgetting-accessibility`. They are
@@ -65,10 +103,10 @@ fails the blog's own build from the other.
 Both blog links are **plain anchors with an absolute path**, never router `Link`s: `/blog/` is Worker-served static HTML
 outside this router, and a client navigation would land in the SPA fallback.
 
-`config/illustration.ts` holds the invented moods and revisit weights the hero ramp and the mirror swatches share.
-Presentation content like a theme table — there is no right answer to converge on, so it is not a tuning value. The
-mirror's two swatch rows are labelled as illustration on screen and are `aria-hidden` (the labelled text above each row
-already says everything the colours do).
+`config/illustration.ts` holds the invented moods and weights of the hero sky's ramp (`HERO_SKY_MOODS` /
+`HERO_SKY_WEIGHTS`) — the mirror-swatch half retired with the mirror section. Presentation content like a theme table:
+there is no right answer to converge on, so it is not a tuning value. The walkthrough's diary lives separately in
+`config/walkthrough-content.ts` (§1a).
 
 ## 4. Locale — the first writer reachable without a session
 
@@ -168,6 +206,7 @@ with it is the store-listing copy, authored under the same rules in
 The unit declares none and adds no group. It _references_ five generated constants the hero reads —
 `rendering.max_pixel_ratio`, `rendering.active_skin`, `rendering.latent_star_count`,
 `rendering.latent_field_radius`, `rendering.latent_star_size` — and consumes them unchanged. Motion timings come from
-the design tokens. The seven section ids, five tour ids and five theory ids are array content whose counts are fixed by
+the design tokens. The six section ids, six walkthrough step ids and five theory ids are array content whose counts are
+fixed by
 the PRD; every string of copy is i18n content; the origin and every path are addresses; the OG raster's 1200×630 is a
 fixed external platform spec; and the copy-honesty patterns are a rule set, not a knob.

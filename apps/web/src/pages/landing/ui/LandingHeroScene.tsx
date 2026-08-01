@@ -16,7 +16,7 @@ import { LatentStarField } from '@cosimosi/universe-render'
 import { useReducedMotion } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { HERO_SKY_MOODS, ILLUSTRATIVE_REVISIT_WEIGHTS } from '../config/illustration.ts'
+import { HERO_SKY_MOODS, HERO_SKY_WEIGHTS } from '../config/illustration.ts'
 
 const HERO_POSTER = '/landing-hero.png'
 
@@ -37,7 +37,7 @@ function LandingHeroCanvas() {
     () =>
       HERO_SKY_MOODS.map((mood) => ({
         color: moodColor(mood),
-        weight: ILLUSTRATIVE_REVISIT_WEIGHTS[mood] ?? 1,
+        weight: HERO_SKY_WEIGHTS[mood] ?? 1,
       })),
     [],
   )
