@@ -4,9 +4,10 @@ import { LANDING_THEORY_CARDS, LANDING_TOUR_ITEMS } from '../config/theory-cards
 import { LANDING_SECTIONS, type LandingSectionId } from './sections.ts'
 
 describe('the landing section order', () => {
-  it('is the prescribed seven, in order', () => {
+  it('is the prescribed eight, in order', () => {
     expect(LANDING_SECTIONS).toEqual([
       'hero',
+      'playground',
       'demo-cta-top',
       'feature-tour',
       'mirror',
@@ -20,6 +21,10 @@ describe('the landing section order', () => {
     // The order is an argument, not a layout: show the thing, offer to move it, say what it does, correct
     // the one misreading that costs months, then explain where it came from — and only then ask.
     const at = (id: LandingSectionId) => LANDING_SECTIONS.indexOf(id)
+    // The playground comes before any copy explains fading or recall — the visitor should have
+    // already done both to a sentence of their own by the time the tour narrates them.
+    expect(at('playground')).toBe(at('hero') + 1)
+    expect(at('playground')).toBeLessThan(at('feature-tour'))
     expect(at('mirror')).toBeLessThan(at('theory'))
     expect(at('demo-cta-top')).toBeLessThan(at('closing-cta'))
     expect(at('closing-cta')).toBe(LANDING_SECTIONS.length - 1)

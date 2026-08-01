@@ -1,4 +1,5 @@
 import { moodColor } from '@cosimosi/emotion'
+import { Card } from '@cosimosi/ui'
 
 import { m } from '../../../../shared/i18n/index.ts'
 import { ILLUSTRATIVE_MOODS, ILLUSTRATIVE_REVISIT_WEIGHTS } from '../../config/illustration.ts'
@@ -26,11 +27,11 @@ export function LandingMirror() {
         <h2 className="text-xl font-medium text-text">{m.landing_mirror_title()}</h2>
         <p className="text-base leading-7 text-text-muted">{m.landing_mirror_body()}</p>
       </div>
-      <div className="flex flex-col gap-4">
+      <Card variant="glass" className="flex flex-col gap-4">
         <SwatchRow label={m.landing_mirror_averaged_label()} slices={averaged} />
         <SwatchRow label={m.landing_mirror_weighted_label()} slices={weighted} />
         <p className="text-xs text-text-subtle">{m.landing_mirror_illustration_note()}</p>
-      </div>
+      </Card>
     </section>
   )
 }

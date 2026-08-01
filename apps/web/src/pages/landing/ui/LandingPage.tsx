@@ -6,12 +6,14 @@ import {
   type LandingSectionId,
   type LandingSectionProps,
 } from '../model/sections.ts'
+import { LandingBackdrop } from './LandingBackdrop.tsx'
 import { LandingLocaleSwitch } from './LandingLocaleSwitch.tsx'
 import { LandingBlogLink } from './sections/LandingBlogLink.tsx'
 import { LandingClosing, LandingDemoCtaSection } from './sections/LandingCtas.tsx'
 import { LandingFeatureTour } from './sections/LandingFeatureTour.tsx'
 import { LandingHero } from './sections/LandingHero.tsx'
 import { LandingMirror } from './sections/LandingMirror.tsx'
+import { LandingPlayground } from './sections/LandingPlayground.tsx'
 import { LandingTheory } from './sections/LandingTheory.tsx'
 
 // The section→component map, exhaustive over the id union. Together with the tuple it is the page's ONLY
@@ -19,6 +21,7 @@ import { LandingTheory } from './sections/LandingTheory.tsx'
 // nothing, so the prescribed order is a compile-time fact rather than the current shape of some JSX.
 const SECTION_VIEWS: Readonly<Record<LandingSectionId, ComponentType<LandingSectionProps>>> = {
   hero: LandingHero,
+  playground: LandingPlayground,
   'demo-cta-top': LandingDemoCtaSection,
   'feature-tour': LandingFeatureTour,
   mirror: LandingMirror,
@@ -44,17 +47,22 @@ export interface LandingPageProps {
 // the universe page uses for the archive and the account home.
 export function LandingPage({ locale, onSelectLocale, onTryDemo, onSignUp }: LandingPageProps) {
   return (
-    <main className="min-h-dvh bg-background text-text">
+    <main className="min-h-dvh text-text">
+      {/* The live sky behind everything, veiled as the visitor scrolls — see LandingBackdrop. The main
+          itself paints no background: an opaque floor here would wall the fixed scene off. */}
+      <LandingBackdrop />
       {/* The header is chrome, not one of the prescribed sections — it carries the language switch and
           nothing that competes with the page's first sentence. */}
-      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 py-4">
+      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-6 py-4">
         <p className="text-sm text-text-muted">{m.landing_wordmark()}</p>
         <LandingLocaleSwitch locale={locale} onSelectLocale={onSelectLocale} />
       </header>
-      {LANDING_SECTIONS.map((id) => {
-        const Section = SECTION_VIEWS[id]
-        return <Section key={id} onTryDemo={onTryDemo} onSignUp={onSignUp} />
-      })}
+      <div className="relative z-10">
+        {LANDING_SECTIONS.map((id) => {
+          const Section = SECTION_VIEWS[id]
+          return <Section key={id} onTryDemo={onTryDemo} onSignUp={onSignUp} />
+        })}
+      </div>
     </main>
   )
 }
