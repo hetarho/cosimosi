@@ -94,6 +94,86 @@ export const WINTER_SEA_SET: DemoDiarySet = {
         ],
       },
     ],
+    extraDiaries: [
+      {
+        id: 'd-winter-sea-4',
+        dayOffset: 135,
+        memories: [
+          {
+            id: 'm-shelf-of-jars',
+            mood: 'CALM',
+            intensity: 0.57,
+            seed: 11_003n,
+            activations: [
+              { neuronId: 'n-kitchen', weight: 0.82 },
+              { neuronId: 'n-mother', weight: 0.74 },
+            ],
+          },
+          {
+            id: 'm-tangerines-by-post',
+            mood: 'LOVE',
+            intensity: 0.68,
+            seed: 11_005n,
+            activations: [
+              { neuronId: 'n-tangerine', weight: 0.85 },
+              { neuronId: 'n-mother', weight: 0.6 },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'd-winter-sea-5',
+        dayOffset: 152,
+        memories: [
+          {
+            id: 'm-goodbye-to-the-kitchen',
+            mood: 'SAD',
+            intensity: 0.74,
+            seed: 12_007n,
+            activations: [
+              { neuronId: 'n-farewell', weight: 0.8 },
+              { neuronId: 'n-kitchen', weight: 0.77 },
+            ],
+          },
+          {
+            id: 'm-tangerine-on-the-wall',
+            mood: 'RELIEF',
+            intensity: 0.6,
+            seed: 12_011n,
+            activations: [
+              { neuronId: 'n-tangerine', weight: 0.7 },
+              { neuronId: 'n-winter-sea', weight: 0.82 },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'd-winter-sea-6',
+        dayOffset: 170,
+        memories: [
+          {
+            id: 'm-kitchen-the-size-of-a-boats',
+            mood: 'CALM',
+            intensity: 0.55,
+            seed: 13_013n,
+            activations: [
+              { neuronId: 'n-kitchen', weight: 0.75 },
+              { neuronId: 'n-winter-sea', weight: 0.68 },
+            ],
+          },
+          {
+            id: 'm-light-left-on',
+            mood: 'LOVE',
+            intensity: 0.66,
+            seed: 13_017n,
+            activations: [
+              { neuronId: 'n-mother', weight: 0.78 },
+              { neuronId: 'n-farewell', weight: 0.52 },
+            ],
+          },
+        ],
+      },
+    ],
     synapses: [
       {
         id: 's-winter-sea-1',
@@ -143,19 +223,46 @@ export const WINTER_SEA_SET: DemoDiarySet = {
         coActivationCount: 1,
         lastActivatedDayOffset: 58,
       },
+      {
+        id: 's-winter-sea-7',
+        neuronAId: 'n-mother',
+        neuronBId: 'n-tangerine',
+        strength: 0.33,
+        coActivationCount: 1,
+        lastActivatedDayOffset: 135,
+      },
+      {
+        id: 's-winter-sea-8',
+        neuronAId: 'n-farewell',
+        neuronBId: 'n-kitchen',
+        strength: 0.34,
+        coActivationCount: 1,
+        lastActivatedDayOffset: 152,
+      },
+      {
+        id: 's-winter-sea-9',
+        neuronAId: 'n-tangerine',
+        neuronBId: 'n-winter-sea',
+        strength: 0.32,
+        coActivationCount: 1,
+        lastActivatedDayOffset: 152,
+      },
+      {
+        id: 's-winter-sea-10',
+        neuronAId: 'n-kitchen',
+        neuronBId: 'n-winter-sea',
+        strength: 0.33,
+        coActivationCount: 1,
+        lastActivatedDayOffset: 170,
+      },
     ],
     sharedNeuronIds: ['n-farewell', 'n-mother', 'n-winter-sea'],
   },
   scenario: {
     beats: DEMO_BEAT_IDS,
     firstDiaryId: 'd-winter-sea-1',
-    // CALM, against a set whose weighted blend leans SAD.
+    // CALM, against on-screen memories whose weighted blend leans LOVE and SAD.
     recallMemoryId: 'm-tangerine-peel',
-    gistRiseMemoryId: 'm-blue-bowl',
-    ornamentTastes: [
-      { kind: 'BACKGROUND', ornamentId: 'background.soft-aurora' },
-      { kind: 'STAR_SHADER', ornamentId: 'star_shader.prism' },
-    ],
   },
   text: {
     en: {
@@ -286,6 +393,123 @@ export const WINTER_SEA_SET: DemoDiarySet = {
             },
           },
         },
+        'd-winter-sea-4': {
+          body: 'Mother is leaving the house with the kitchen, so I went over to help her pack it. Most of it she gave away without hesitating, and then she stood a long time over a shelf of jars she had filled and never opened. While we worked a box of tangerines arrived by post from the island, the way one does every winter, and she sent half of it home with me.',
+          memories: {
+            'm-shelf-of-jars': {
+              name: 'The shelf of jars she never opened',
+              currentText:
+                'She gave most of the kitchen away without hesitating. Then she stood a long time over a shelf of jars she had filled and never opened.',
+              semanticStages: [
+                'She packed the kitchen quickly except for a shelf of jars she had never opened.',
+                'A kitchen given away, one shelf that was hard.',
+                'The jars were the hard part.',
+                'Kept unopened.',
+              ],
+              decayStages: [
+                'She gave most of the xxxx away without hesitating. Then she stood a long time xxxx a xxxx of jars she had filled and xxxx opened.',
+                'She xxxx xxxx of the xxxx away without hesitating. Then she stood a xxxx time xxxx a xxxx of xxxx she had filled and xxxx opened.',
+                'She xxxx xxxx of the xxxx away xxxx hesitating. Then she xxxx a xxxx xxxx xxxx a xxxx of xxxx she xxxx xxxx and xxxx opened.',
+                'She xxxx xxxx of xxxx xxxx xxxx xxxx hesitating. Then she xxxx xxxx xxxx xxxx xxxx xxxx xxxx of xxxx xxxx xxxx xxxx and xxxx opened.',
+              ],
+            },
+            'm-tangerines-by-post': {
+              name: 'Tangerines by post, as every winter',
+              currentText:
+                'A box of tangerines arrived by post while we packed, the way one does every winter. She sent half of it home with me without asking.',
+              semanticStages: [
+                'Tangerines arrived by post mid-packing and she gave me half the box.',
+                'The winter box, divided without a word.',
+                'Half sent home with me.',
+                'As every winter.',
+              ],
+              decayStages: [
+                'A box of tangerines arrived by xxxx while we xxxx the way one does every winter. She xxxx half of it home with me xxxx asking.',
+                'A box of xxxx arrived by xxxx while we xxxx the xxxx xxxx xxxx every winter. She xxxx half of it home with me xxxx asking.',
+                'A xxxx of xxxx arrived by xxxx xxxx we xxxx the xxxx xxxx xxxx xxxx winter. She xxxx xxxx of it xxxx with me xxxx asking.',
+                'A xxxx xxxx xxxx xxxx by xxxx xxxx we xxxx the xxxx xxxx xxxx xxxx winter. She xxxx xxxx xxxx it xxxx xxxx xxxx xxxx asking.',
+              ],
+            },
+          },
+        },
+        'd-winter-sea-5': {
+          body: 'We closed up the house today. Mother said goodbye to the kitchen with the light off, quietly, and I pretended to be busy in the hallway so she could have it to herself. Afterwards we drove out to the sea because it was on the way, which it was not, and ate a tangerine each on the wall above the water without talking much.',
+          memories: {
+            'm-goodbye-to-the-kitchen': {
+              name: 'A goodbye said with the light off',
+              currentText:
+                'Mother said goodbye to the kitchen with the light off, quietly. I pretended to be busy in the hallway so she could have it to herself.',
+              semanticStages: [
+                'Mother took her leave of the kitchen alone while I waited in the hallway.',
+                'A quiet goodbye to a room.',
+                'She had it to herself.',
+                'With the light off.',
+              ],
+              decayStages: [
+                'Mother said goodbye to the xxxx with the xxxx off, quietly. I pretended to be xxxx in the hallway so she could xxxx it to herself.',
+                'Mother xxxx xxxx to the xxxx with the xxxx xxxx quietly. I xxxx to be xxxx in the hallway so she could xxxx it to herself.',
+                'Mother xxxx xxxx xxxx the xxxx with xxxx xxxx xxxx quietly. I xxxx to be xxxx in the xxxx so she xxxx xxxx it xxxx herself.',
+                'Mother xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx quietly. I xxxx xxxx be xxxx xxxx the xxxx so xxxx xxxx xxxx it xxxx herself.',
+              ],
+            },
+            'm-tangerine-on-the-wall': {
+              name: 'A tangerine on the sea wall',
+              currentText:
+                'We drove out to the sea because it was on the way, which it was not. We ate a tangerine each on the wall above the water, not talking much.',
+              semanticStages: [
+                'We detoured to the sea and ate tangerines on the wall, mostly quiet.',
+                'A detour that was not one, fruit above the water.',
+                'Tangerines by the sea.',
+                'On the way.',
+              ],
+              decayStages: [
+                'We xxxx out to the xxxx xxxx it was on the xxxx which it was not. We xxxx a tangerine each on the wall above the water, not talking much.',
+                'We xxxx out to the xxxx xxxx it was on the xxxx which it was not. We xxxx a xxxx xxxx on the xxxx xxxx the xxxx not talking much.',
+                'We xxxx xxxx to the xxxx xxxx it was on xxxx xxxx xxxx it was not. We xxxx a xxxx xxxx on the xxxx xxxx the xxxx xxxx xxxx much.',
+                'We xxxx xxxx xxxx the xxxx xxxx xxxx xxxx on xxxx xxxx xxxx it xxxx not. We xxxx a xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx much.',
+              ],
+            },
+          },
+        },
+        'd-winter-sea-6': {
+          body: 'Mother called from the new place while I was washing up, and for once the call was about nothing at all. Her kitchen is the size of a boat’s now and she says the sea is close enough to hear on quiet nights, which I chose to believe. The light over my own sink was on the whole call, and I left it on a while after.',
+          memories: {
+            'm-kitchen-the-size-of-a-boats': {
+              name: 'A kitchen the size of a boat’s',
+              currentText:
+                'Her kitchen is the size of a boat’s now. She says the sea is close enough to hear on quiet nights, and I chose to believe her.',
+              semanticStages: [
+                'Her new kitchen is tiny and she claims the sea is within earshot.',
+                'A small kitchen near the water.',
+                'The sea within earshot.',
+                'Close enough.',
+              ],
+              decayStages: [
+                'Her xxxx is the xxxx of a boat’s now. She says the sea is xxxx enough to xxxx on quiet nights, and I chose to believe her.',
+                'Her xxxx is the xxxx of a xxxx now. She xxxx the xxxx is xxxx enough to xxxx on quiet xxxx and I chose to xxxx her.',
+                'Her xxxx is the xxxx of a xxxx now. She xxxx xxxx xxxx is xxxx xxxx to xxxx on xxxx xxxx and I xxxx to xxxx her.',
+                'Her xxxx is xxxx xxxx of xxxx xxxx now. She xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx on xxxx xxxx xxxx xxxx xxxx to xxxx her.',
+              ],
+            },
+            'm-light-left-on': {
+              name: 'The light I left on after',
+              currentText:
+                'The light over my own sink was on for the whole call about nothing. I left it on a while after she hung up.',
+              semanticStages: [
+                'We talked about nothing while my sink light burned, and I left it on after.',
+                'A call about nothing, a light kept on.',
+                'Left on a while after.',
+                'Still on.',
+              ],
+              decayStages: [
+                'The light over my own sink was on for the xxxx call about nothing. I left it on a xxxx xxxx she xxxx up.',
+                'The xxxx over my xxxx sink was on for the xxxx call xxxx nothing. I xxxx it on a xxxx xxxx she xxxx up.',
+                'The xxxx xxxx my xxxx xxxx was on for the xxxx xxxx xxxx nothing. I xxxx xxxx on a xxxx xxxx she xxxx up.',
+                'The xxxx xxxx my xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx nothing. I xxxx xxxx on xxxx xxxx xxxx she xxxx up.',
+              ],
+            },
+          },
+        },
       },
     },
     ko: {
@@ -412,6 +636,123 @@ export const WINTER_SEA_SET: DemoDiarySet = {
                 '도로로 걸어 xxxx 작별이 몇 달씩 간격을 xxxx 조각으로 xxxx 것을, 그리고 xxxx xxxx xxxx 부분만 소리 xxxx 말해지는지를 생각했다.',
                 '도로로 xxxx xxxx 작별이 몇 xxxx 간격을 xxxx 조각으로 xxxx 것을, 그리고 xxxx xxxx xxxx 부분만 소리 xxxx xxxx 생각했다.',
                 '도로로 xxxx xxxx xxxx xxxx xxxx xxxx xxxx 조각으로 xxxx xxxx 그리고 xxxx xxxx xxxx 부분만 xxxx xxxx xxxx 생각했다.',
+              ],
+            },
+          },
+        },
+        'd-winter-sea-4': {
+          body: '엄마가 부엌이 딸린 그 집에서 나오게 되어 짐 싸는 것을 도우러 갔다. 살림 대부분은 망설임 없이 내주었는데, 채워두고 한 번도 열지 않은 병들이 놓인 선반 앞에서는 오래 서 있었다. 일하는 사이에 섬에서 귤 한 상자가 택배로 왔다. 해마다 겨울이면 오는 상자다. 엄마는 절반을 내 손에 들려 보냈다.',
+          memories: {
+            'm-shelf-of-jars': {
+              name: '한 번도 열지 않은 병들',
+              currentText:
+                '엄마는 부엌 살림 대부분을 망설임 없이 내주었다. 그러고는 채워두고 한 번도 열지 않은 병들이 놓인 선반 앞에 오래 서 있었다.',
+              semanticStages: [
+                '엄마는 부엌을 금방 정리했지만 열지 않은 병들 앞에서는 오래 멈췄다.',
+                '내준 부엌, 어려웠던 선반 하나.',
+                '병들이 가장 어려웠다.',
+                '열지 않은 채 간직한 것.',
+              ],
+              decayStages: [
+                '엄마는 부엌 살림 대부분을 xxxx 없이 내주었다. 그러고는 채워두고 xxxx 번도 열지 않은 병들이 놓인 xxxx 앞에 오래 서 있었다.',
+                '엄마는 부엌 살림 대부분을 xxxx xxxx 내주었다. 그러고는 채워두고 xxxx 번도 열지 않은 xxxx 놓인 xxxx 앞에 xxxx 서 있었다.',
+                '엄마는 xxxx xxxx 대부분을 xxxx xxxx 내주었다. 그러고는 채워두고 xxxx 번도 열지 xxxx xxxx 놓인 xxxx 앞에 xxxx 서 있었다.',
+                '엄마는 xxxx xxxx xxxx xxxx xxxx 내주었다. 그러고는 채워두고 xxxx 번도 열지 xxxx xxxx xxxx xxxx xxxx xxxx xxxx 있었다.',
+              ],
+            },
+            'm-tangerines-by-post': {
+              name: '해마다 오는 귤 상자',
+              currentText:
+                '짐을 싸는 사이에 귤 한 상자가 택배로 왔다. 해마다 겨울이면 오는 그 상자다. 엄마는 묻지도 않고 절반을 내 손에 들려 보냈다.',
+              semanticStages: [
+                '짐을 싸다가 도착한 귤 상자의 절반을 엄마가 들려 보냈다.',
+                '겨울마다 오는 상자, 말없이 나뉜 절반.',
+                '절반은 내 몫이 되었다.',
+                '해마다 그랬듯이.',
+              ],
+              decayStages: [
+                '짐을 싸는 사이에 귤 한 상자가 xxxx 왔다. 해마다 xxxx 오는 그 상자다. 엄마는 묻지도 xxxx 절반을 내 손에 들려 보냈다.',
+                '짐을 싸는 사이에 귤 한 상자가 xxxx 왔다. 해마다 xxxx 오는 xxxx 상자다. 엄마는 묻지도 xxxx xxxx xxxx 손에 들려 보냈다.',
+                '짐을 싸는 xxxx xxxx 한 상자가 xxxx 왔다. 해마다 xxxx 오는 xxxx 상자다. 엄마는 묻지도 xxxx xxxx xxxx xxxx 들려 보냈다.',
+                '짐을 xxxx xxxx xxxx 한 상자가 xxxx 왔다. 해마다 xxxx 오는 xxxx 상자다. 엄마는 xxxx xxxx xxxx xxxx xxxx xxxx 보냈다.',
+              ],
+            },
+          },
+        },
+        'd-winter-sea-5': {
+          body: '오늘 그 집을 다 비웠다. 엄마는 불을 끈 부엌에 대고 조용히 작별했고, 나는 그 시간이 엄마의 것이 되도록 복도에서 바쁜 척을 했다. 그러고는 가는 길이라며 바다에 들렀다. 사실 가는 길이 아니었다. 방파제에 앉아 귤을 하나씩 까먹었고, 말은 많지 않았다.',
+          memories: {
+            'm-goodbye-to-the-kitchen': {
+              name: '불을 끄고 한 작별',
+              currentText:
+                '엄마는 불을 끈 부엌에 대고 조용히 작별했다. 나는 그 시간이 엄마의 것이 되도록 복도에서 바쁜 척을 했다.',
+              semanticStages: [
+                '엄마가 혼자 부엌과 작별하는 동안 나는 복도에서 기다렸다.',
+                '방 하나에 건넨 조용한 작별.',
+                '그 시간은 엄마의 것이었다.',
+                '불을 끄고.',
+              ],
+              decayStages: [
+                '엄마는 불을 끈 xxxx 대고 조용히 작별했다. 나는 xxxx 시간이 엄마의 것이 되도록 복도에서 바쁜 척을 했다.',
+                '엄마는 불을 끈 xxxx xxxx xxxx 작별했다. 나는 xxxx 시간이 엄마의 것이 되도록 복도에서 바쁜 xxxx 했다.',
+                '엄마는 불을 끈 xxxx xxxx xxxx 작별했다. 나는 xxxx xxxx xxxx 것이 되도록 복도에서 바쁜 xxxx 했다.',
+                '엄마는 xxxx xxxx xxxx xxxx xxxx 작별했다. 나는 xxxx xxxx xxxx 것이 xxxx xxxx 바쁜 xxxx 했다.',
+              ],
+            },
+            'm-tangerine-on-the-wall': {
+              name: '방파제 위의 귤',
+              currentText:
+                '가는 길이라며 바다에 들렀다. 사실 가는 길이 아니었다. 물 위 방파제에 앉아 귤을 하나씩 까먹었고, 말은 많지 않았다.',
+              semanticStages: [
+                '가는 길이 아닌 바다에 들러 방파제에서 귤을 나눠 먹었다.',
+                '핑계 같은 길, 물 위의 귤.',
+                '바닷가의 귤 하나.',
+                '가는 길이라며.',
+              ],
+              decayStages: [
+                '가는 xxxx 바다에 들렀다. 사실 가는 길이 아니었다. 물 위 xxxx 앉아 귤을 하나씩 까먹었고, 말은 많지 않았다.',
+                '가는 xxxx 바다에 들렀다. 사실 xxxx xxxx 아니었다. 물 위 xxxx 앉아 귤을 하나씩 까먹었고, 말은 많지 않았다.',
+                '가는 xxxx 바다에 들렀다. 사실 xxxx xxxx 아니었다. 물 위 xxxx xxxx 귤을 하나씩 xxxx 말은 xxxx 않았다.',
+                '가는 xxxx xxxx 들렀다. 사실 xxxx xxxx 아니었다. 물 xxxx xxxx xxxx 귤을 xxxx xxxx 말은 xxxx 않았다.',
+              ],
+            },
+          },
+        },
+        'd-winter-sea-6': {
+          body: '설거지를 하는데 엄마가 새집에서 전화를 걸어왔고, 모처럼 아무것도 아닌 이야기만 했다. 이제 엄마의 부엌은 배 한 척만 한데, 조용한 밤이면 바다 소리가 들릴 만큼 가깝다고 한다. 나는 그 말을 믿기로 했다. 통화 내내 싱크대 위 불이 켜져 있었고, 끊고 나서도 한동안 그대로 두었다.',
+          memories: {
+            'm-kitchen-the-size-of-a-boats': {
+              name: '배 한 척만 한 부엌',
+              currentText:
+                '엄마의 새 부엌은 배 한 척만 하다. 조용한 밤이면 바다 소리가 들릴 만큼 가깝다고 했고, 나는 그 말을 믿기로 했다.',
+              semanticStages: [
+                '엄마의 작은 새 부엌은 바다 소리가 들릴 만큼 가깝다고 한다.',
+                '물 가까이의 작은 부엌.',
+                '바다가 들리는 거리.',
+                '들릴 만큼 가까이.',
+              ],
+              decayStages: [
+                '엄마의 새 부엌은 배 한 척만 하다. 조용한 밤이면 바다 소리가 xxxx 만큼 xxxx 했고, 나는 그 xxxx 믿기로 했다.',
+                '엄마의 xxxx 부엌은 xxxx xxxx 척만 하다. 조용한 밤이면 바다 소리가 xxxx 만큼 xxxx 했고, 나는 그 xxxx 믿기로 했다.',
+                '엄마의 xxxx 부엌은 xxxx xxxx xxxx 하다. 조용한 밤이면 바다 소리가 xxxx 만큼 xxxx xxxx 나는 xxxx xxxx 믿기로 했다.',
+                '엄마의 xxxx 부엌은 xxxx xxxx xxxx 하다. 조용한 xxxx xxxx xxxx xxxx 만큼 xxxx xxxx 나는 xxxx xxxx xxxx 했다.',
+              ],
+            },
+            'm-light-left-on': {
+              name: '통화가 끝나고 켜둔 불',
+              currentText:
+                '아무것도 아닌 통화를 하는 내내 싱크대 위 불이 켜져 있었다. 엄마가 끊고 나서도 한동안 그대로 두었다.',
+              semanticStages: [
+                '아무것도 아닌 통화 동안 켜져 있던 불을 끊고 나서도 두었다.',
+                '아무 이야기의 통화, 켜둔 불.',
+                '끊고 나서도 한동안.',
+                '아직 켜진 채로.',
+              ],
+              decayStages: [
+                '아무것도 아닌 통화를 하는 내내 싱크대 xxxx xxxx 켜져 있었다. 엄마가 끊고 나서도 한동안 그대로 두었다.',
+                '아무것도 아닌 통화를 하는 내내 싱크대 xxxx xxxx 켜져 있었다. 엄마가 끊고 나서도 xxxx xxxx 두었다.',
+                '아무것도 xxxx 통화를 하는 xxxx 싱크대 xxxx xxxx 켜져 있었다. 엄마가 끊고 xxxx xxxx xxxx 두었다.',
+                '아무것도 xxxx 통화를 xxxx xxxx xxxx xxxx xxxx xxxx 있었다. 엄마가 끊고 xxxx xxxx xxxx 두었다.',
               ],
             },
           },

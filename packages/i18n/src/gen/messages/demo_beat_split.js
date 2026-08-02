@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Beat_SplitInputs */
 
 const en_demo_beat_split = /** @type {(inputs: Demo_Beat_SplitInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`One entry holds several scenes. Split it and see what it was made of.`)
+	return /** @type {LocalizedString} */ (`One entry holds several scenes. Split it into stars and see what it was made of.`)
 };
 
 const ko_demo_beat_split = /** @type {(inputs: Demo_Beat_SplitInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`한 편의 일기에는 여러 장면이 있어요. 쪼개서 무엇으로 이루어졌는지 보세요.`)
+	return /** @type {LocalizedString} */ (`한 편의 일기에는 여러 장면이 있어요. 별 쪼개기로 무엇으로 이루어졌는지 보세요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "One entry holds several scenes. Split it and see what it was made of." |
+* | "One entry holds several scenes. Split it into stars and see what it was made of." |
 *
 * @param {Demo_Beat_SplitInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

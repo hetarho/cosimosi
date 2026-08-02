@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Launch_ActionInputs */
 
 const en_demo_launch_action = /** @type {(inputs: Demo_Launch_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Send it up`)
+	return /** @type {LocalizedString} */ (`Send up the stars`)
 };
 
 const ko_demo_launch_action = /** @type {(inputs: Demo_Launch_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`띄우기`)
+	return /** @type {LocalizedString} */ (`별 띄우기`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Send it up" |
+* | "Send up the stars" |
 *
 * @param {Demo_Launch_ActionInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

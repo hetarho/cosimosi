@@ -10,7 +10,7 @@ const en_demo_diary_read_action = /** @type {(inputs: Demo_Diary_Read_ActionInpu
 };
 
 const ko_demo_diary_read_action = /** @type {(inputs: Demo_Diary_Read_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`읽었어요`)
+	return /** @type {LocalizedString} */ (`다 읽었어요`)
 };
 
 /**

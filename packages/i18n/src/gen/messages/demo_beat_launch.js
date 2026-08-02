@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Beat_LaunchInputs */
 
 const en_demo_beat_launch = /** @type {(inputs: Demo_Beat_LaunchInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Send them up. Each scene becomes a star, and the things it was about become the points it hangs from.`)
+	return /** @type {LocalizedString} */ (`Send up the stars. Each scene becomes one, and the things it was about become the points it hangs from.`)
 };
 
 const ko_demo_beat_launch = /** @type {(inputs: Demo_Beat_LaunchInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`위로 띄워 보세요. 장면 하나가 별이 되고, 그 안에 있던 것들이 별을 붙드는 점이 됩니다.`)
+	return /** @type {LocalizedString} */ (`별 띄우기를 눌러보세요. 장면 하나가 별이 되고, 그 안에 있던 것들이 별을 붙드는 점이 돼요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Send them up. Each scene becomes a star, and the things it was about become the points it hangs from." |
+* | "Send up the stars. Each scene becomes one, and the things it was about become the points it hangs from." |
 *
 * @param {Demo_Beat_LaunchInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

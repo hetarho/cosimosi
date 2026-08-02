@@ -32,10 +32,13 @@ export interface ResolvedDemoDiarySet {
   readonly reconsolidatedTexts: DemoReconsolidatedTexts
 }
 
-// The newest fixture diary lands on the visitor's own today, so the demo never opens on a universe
-// that is visibly years stale. Pure: `today` is a parameter, and this package reads no clock.
+// The newest fixture diary — tutorial triple or free-play extra — lands on the visitor's own today,
+// so the demo never opens on a universe that is visibly years stale. Pure: `today` is a parameter,
+// and this package reads no clock.
 export function resolveDemoEpoch(today: string, set: DemoDiarySet): string {
-  const span = Math.max(...set.structure.diaries.map((diary) => diary.dayOffset))
+  const span = Math.max(
+    ...[...set.structure.diaries, ...set.structure.extraDiaries].map((diary) => diary.dayOffset),
+  )
   return shiftIsoDate(today, -span)
 }
 
@@ -73,7 +76,9 @@ export function resolveDemoDiarySet(
   const reconsolidatedTexts: Record<string, string> = {}
   const diaries: Diary[] = []
 
-  for (const diary of structure.diaries) {
+  // Extras resolve exactly like the triple — one shape, one loop — so a free-play diary is
+  // indistinguishable from a tutorial one everywhere below this function ([Z4][Z5]).
+  for (const diary of [...structure.diaries, ...structure.extraDiaries]) {
     const diaryDate = shiftIsoDate(epoch, diary.dayOffset)
     const diaryText = text.diaries[diary.id]
     if (!diaryText)

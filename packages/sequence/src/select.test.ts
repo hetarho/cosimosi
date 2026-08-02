@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import { defineScript } from './script.ts'
 import { initialSequenceRunSnapshot } from './sequence.machine.ts'
-import { currentStep, isActive, progress, resolveCaptionPlacement } from './select.ts'
+import {
+  currentStep,
+  isActive,
+  progress,
+  resolveCaptionPlacement,
+  resolveCenteredCaptionPlacement,
+} from './select.ts'
 
 type Anchor = 'write' | 'recall'
 type Signal = 'wrote' | 'recalled'
@@ -72,5 +78,23 @@ describe('sequence selectors', () => {
     expect(resolveCaptionPlacement({ x: 0, y: 900, width: 10, height: 10 }, VIEWPORT, BAND)).toBe(
       'bottom',
     )
+  })
+
+  it('floats the opted-in caption at the lower third except over a crossing control', () => {
+    // A control along the top edge leaves the floating band free.
+    expect(
+      resolveCenteredCaptionPlacement({ x: 0, y: 40, width: 200, height: 40 }, VIEWPORT, BAND),
+    ).toBe('center')
+    // No anchor (a narration-only step) floats too.
+    expect(resolveCenteredCaptionPlacement(null, VIEWPORT, BAND)).toBe('center')
+    // A centered dialog reaches into the floating band: the caption yields to the edge resolution
+    // rather than sitting on the very control it describes.
+    expect(
+      resolveCenteredCaptionPlacement({ x: 200, y: 300, width: 400, height: 200 }, VIEWPORT, BAND),
+    ).toBe('bottom')
+    // A mid-crossing control that ALSO owns the bottom band pushes it to the top.
+    expect(
+      resolveCenteredCaptionPlacement({ x: 200, y: 300, width: 400, height: 450 }, VIEWPORT, BAND),
+    ).toBe('top')
   })
 })

@@ -317,5 +317,6 @@ const (
 
 // demo
 const (
-	DemoTimeTravelStepDays = 45
+	DemoTimeTravelMonthDays = 30
+	DemoMaskLiftLingerMs    = 2400
 )

@@ -37,6 +37,7 @@ export {
   isActive,
   progress,
   resolveCaptionPlacement,
+  resolveCenteredCaptionPlacement,
   type CaptionPlacement,
   type SequenceProgress,
   type SequenceRect,

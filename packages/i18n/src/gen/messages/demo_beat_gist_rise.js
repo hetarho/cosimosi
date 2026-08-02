@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Beat_Gist_RiseInputs */
 
 const en_demo_beat_gist_rise = /** @type {(inputs: Demo_Beat_Gist_RiseInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Push time further. Some memories keep only their meaning, and rise.`)
+	return /** @type {LocalizedString} */ (`Let more time pass. Some memories keep only their meaning, and rise.`)
 };
 
 const ko_demo_beat_gist_rise = /** @type {(inputs: Demo_Beat_Gist_RiseInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`시간을 더 밀어보세요. 어떤 기억은 의미만 남기고 위로 올라갑니다.`)
+	return /** @type {LocalizedString} */ (`시간을 더 흘려보내 보세요. 어떤 기억은 의미만 남기고 위로 올라가요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Push time further. Some memories keep only their meaning, and rise." |
+* | "Let more time pass. Some memories keep only their meaning, and rise." |
 *
 * @param {Demo_Beat_Gist_RiseInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

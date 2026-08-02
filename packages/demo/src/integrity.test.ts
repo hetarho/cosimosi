@@ -6,13 +6,14 @@ import { NEURON_TYPES } from '@cosimosi/memory'
 import {
   SEMANTIC_MAX_STAGE,
   decayStage,
+  decayStageText,
   effectiveElapsedDays,
   effectiveStrength,
 } from '@cosimosi/memory-logic'
 
-import type { DemoDiarySet } from './diary-set.ts'
+import type { DemoDiary, DemoDiarySet } from './diary-set.ts'
 import { DEMO_DIARY_SETS } from './diary-sets/index.ts'
-import { pickDemoDiarySet } from './pick.ts'
+import { demoDiaryPool, pickDemoDiary, pickDemoDiarySet } from './pick.ts'
 import { DEMO_BEAT_IDS } from './scenario.ts'
 import { demoBaseStrength, resolveDemoDiarySet, resolveDemoEpoch } from './resolve.ts'
 
@@ -33,8 +34,8 @@ interface MemberRef {
   readonly neuronIds: readonly string[]
 }
 
-function members(set: DemoDiarySet): MemberRef[] {
-  return set.structure.diaries.flatMap((diary) =>
+function membersOf(diaries: readonly DemoDiary[]): MemberRef[] {
+  return diaries.flatMap((diary) =>
     diary.memories.map((memory) => ({
       diaryId: diary.id,
       memoryId: memory.id,
@@ -44,9 +45,14 @@ function members(set: DemoDiarySet): MemberRef[] {
   )
 }
 
-function diariesPerNeuron(set: DemoDiarySet): Map<string, Set<string>> {
+/** Tutorial triple + free-play extras — the whole authored pool. */
+function members(set: DemoDiarySet): MemberRef[] {
+  return membersOf([...set.structure.diaries, ...set.structure.extraDiaries])
+}
+
+function diariesPerNeuron(diaries: readonly DemoDiary[]): Map<string, Set<string>> {
   const spread = new Map<string, Set<string>>()
-  for (const member of members(set)) {
+  for (const member of membersOf(diaries)) {
     for (const neuronId of member.neuronIds) {
       const seen = spread.get(neuronId) ?? new Set<string>()
       seen.add(member.diaryId)
@@ -63,8 +69,11 @@ describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
     const neuronIds = new Set(structure.neurons.map((neuron) => neuron.id))
     const memoryIds = new Set(members(set).map((member) => member.memoryId))
 
-    it('ships three diaries whose every activation names a declared neuron', () => {
+    it('ships three tutorial diaries and a free-play pool, every activation naming a declared neuron', () => {
       expect(structure.diaries).toHaveLength(3)
+      // The pool must outlast the tutorial: the run launches two diaries before free play begins,
+      // so the extras are what a visitor who stays keeps drawing from ([Z4] as amended).
+      expect(structure.extraDiaries.length).toBeGreaterThanOrEqual(3)
       for (const member of members(set)) {
         expect(member.neuronIds.length).toBeGreaterThan(0)
         for (const neuronId of member.neuronIds) expect(neuronIds.has(neuronId)).toBe(true)
@@ -74,7 +83,7 @@ describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
     it.each(LOCALES)('carries a complete precomputed split in %s', (locale) => {
       const text = set.text[locale]
       for (const neuronId of neuronIds) expect(text.neuronNames[neuronId]).toBeTruthy()
-      for (const diary of structure.diaries) {
+      for (const diary of [...structure.diaries, ...structure.extraDiaries]) {
         const diaryText = text.diaries[diary.id]
         expect(diaryText?.body).toBeTruthy()
         for (const memory of diary.memories) {
@@ -92,12 +101,26 @@ describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
     })
 
     it('reuses at least one neuron across two or more diaries', () => {
-      const spread = diariesPerNeuron(set)
+      // Proven over the TUTORIAL triple, because the neuron-reuse beat happens before any extra
+      // can have launched — an overlap that only an extra supplies would arrive too late.
+      const spread = diariesPerNeuron(structure.diaries)
       const crossing = [...spread.values()].filter((diaryIds) => diaryIds.size >= 2)
       expect(crossing.length).toBeGreaterThan(0)
       // The declaration is not taken on trust — beat 4 rests on it.
       for (const sharedId of structure.sharedNeuronIds) {
         expect(spread.get(sharedId)?.size ?? 0).toBeGreaterThanOrEqual(2)
+      }
+    })
+
+    it('keeps every free-play diary attached to the cluster it joins', () => {
+      // An extra that activates only fresh neurons would settle as an unrelated clump; each one
+      // must reuse at least one neuron the tutorial triple already lit ([I4][L2]).
+      const tutorialNeurons = new Set(membersOf(structure.diaries).flatMap((m) => m.neuronIds))
+      for (const extra of structure.extraDiaries) {
+        const reused = membersOf([extra]).some((member) =>
+          member.neuronIds.some((neuronId) => tutorialNeurons.has(neuronId)),
+        )
+        expect(reused).toBe(true)
       }
     })
 
@@ -127,9 +150,12 @@ describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
       for (const type of NEURON_TYPES) expect(types.has(type)).toBe(true)
     })
 
-    it('recalls a memory whose mood is not the dominant one', () => {
+    it('recalls an on-screen memory whose mood is not the dominant one', () => {
+      // Weighed over the first two diaries — exactly what has launched when the recall and colour
+      // beats arrive (beat 4 writes ONE more diary through the flow, not two).
+      const onScreen = structure.diaries.slice(0, 2)
       const weights = new Map<string, number>()
-      for (const diary of structure.diaries) {
+      for (const diary of onScreen) {
         for (const memory of diary.memories) {
           weights.set(memory.mood, (weights.get(memory.mood) ?? 0) + demoBaseStrength(memory.mood))
         }
@@ -139,7 +165,10 @@ describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
       const dominant = [...weights.entries()].reduce((best, entry) =>
         entry[1] > best[1] ? entry : best,
       )[0]
-      const target = members(set).find((member) => member.memoryId === set.scenario.recallMemoryId)
+      const target = membersOf(onScreen).find(
+        (member) => member.memoryId === set.scenario.recallMemoryId,
+      )
+      // The recall beat can only point at a memory that has launched by then.
       expect(target).toBeDefined()
       // Otherwise beat 8 ramps the sky to the colour it already had.
       expect(target?.mood).not.toBe(dominant)
@@ -167,19 +196,30 @@ describe.each(DEMO_DIARY_SETS.map((set) => [set.structure.id, set] as const))(
 
     it('binds every beat to a member that exists, and nothing priced', () => {
       expect(set.scenario.beats).toEqual(DEMO_BEAT_IDS)
-      expect(structure.diaries.some((diary) => diary.id === set.scenario.firstDiaryId)).toBe(true)
+      // Beat 1 shows the pool's first draw, so the scenario's opening diary must BE that draw —
+      // otherwise the tutorial and the draw cursor would disagree about what is on screen.
+      expect(set.scenario.firstDiaryId).toBe(demoDiaryPool(set)[0].id)
       expect(memoryIds.has(set.scenario.recallMemoryId)).toBe(true)
-      expect(memoryIds.has(set.scenario.gistRiseMemoryId)).toBe(true)
       for (const locale of LOCALES) {
         // The recall beat swaps the text, so the target must have something to swap to in every
         // locale — an absence here would show a recall that changed only the memory's form.
         const { reconsolidatedTexts } = resolveDemoDiarySet(set, locale, EPOCH)
         expect(reconsolidatedTexts[set.scenario.recallMemoryId]).toBeTruthy()
       }
-      expect(set.scenario.ornamentTastes.length).toBeGreaterThan(0)
-      for (const taste of set.scenario.ornamentTastes) {
-        expect(Object.keys(taste).sort()).toEqual(['kind', 'ornamentId'])
-        expect(taste.ornamentId.startsWith(`${taste.kind.toLowerCase()}.`)).toBe(true)
+    })
+
+    it.each(LOCALES)('erodes by the production word-loss function in %s', (locale) => {
+      // The stored word-loss ladders ARE `decayStageText` outputs (produced at authoring time with
+      // the memory's own seed, per plan 77's reuse rule). Byte equality is the guard: a hand-edited
+      // stage would be a second erosion rule wearing a fixture's clothes ([Z5][Z6]).
+      const text = set.text[locale]
+      for (const diary of [...structure.diaries, ...structure.extraDiaries]) {
+        for (const memory of diary.memories) {
+          const memoryText = text.diaries[diary.id].memories[memory.id]
+          memoryText.decayStages.forEach((stageText, index) => {
+            expect(stageText).toBe(decayStageText(memoryText.currentText, index + 1, memory.seed))
+          })
+        }
       }
     })
   },
@@ -316,5 +356,32 @@ describe('set draw', () => {
     expect(new Set(DEMO_DIARY_SETS.map((set) => set.structure.id)).size).toBe(
       DEMO_DIARY_SETS.length,
     )
+  })
+})
+
+describe('per-diary draw', () => {
+  const set = DEMO_DIARY_SETS[0]
+  const pool = demoDiaryPool(set)
+
+  it('walks the pool in canonical order — triple first, then the extras', () => {
+    expect(pool.map((diary) => diary.id)).toEqual([
+      ...set.structure.diaries.map((diary) => diary.id),
+      ...set.structure.extraDiaries.map((diary) => diary.id),
+    ])
+  })
+
+  it('is deterministic per draw number, cycles, and never repeats back-to-back', () => {
+    for (let draw = 0; draw < pool.length * 2; draw += 1) {
+      expect(pickDemoDiary(pool, draw)).toBe(pickDemoDiary(pool, draw))
+      // Cycling: outlasting the pool starts over instead of hitting a wall ([Z4] as amended).
+      expect(pickDemoDiary(pool, draw + pool.length)).toBe(pickDemoDiary(pool, draw))
+      expect(pickDemoDiary(pool, draw + 1)).not.toBe(pickDemoDiary(pool, draw))
+    }
+    // One full pass covers every prepared diary exactly once before any repetition.
+    const firstPass = Array.from({ length: pool.length }, (_, draw) => pickDemoDiary(pool, draw))
+    expect(new Set(firstPass).size).toBe(pool.length)
+    // A malformed draw number clamps to the pool's start rather than throwing mid-visit.
+    expect(pickDemoDiary(pool, Number.NaN)).toBe(pool[0])
+    expect(pickDemoDiary(pool, -3)).toBe(pool[0])
   })
 })

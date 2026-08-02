@@ -577,11 +577,17 @@ sequence:
   highlight_pulse_ms: 1800
 
 demo:
-  # [Z2][Z3]-5/7 Universe-days one time-travel press advances the demo clock. Sized so a single press
-  # already shows dimming and the first word loss (the decay stage interval is 30 universe-days,
-  # stretched by the slow factor), and three or four presses reach a gist rise (a gist unit is 10
-  # universe-days, similarly stretched) — the demo's whole job is compressing days into seconds, so a
-  # step small enough to need a dozen presses would defeat it. There is deliberately NO monotonicity,
-  # cost or consent key beside this one: the demo clock is exempt, and that exemption is expressible
-  # only here because no shared code knows the demo exists.
-  time_travel_step_days: 45
+  # [Z2][Z3]-5/7 Universe-days one "+1달" time-jump press advances the demo clock — the largest of the
+  # demo's three time grains (the day and week jumps are the fixed calendar units 1 and 7, not tuning
+  # numbers, so they claim no key). Sized as one legible calendar month, and large enough that a single
+  # press already shows dimming and early word loss on the set's older memories (the decay stage
+  # interval is 30 universe-days, stretched by the slow factor) and moves a gist stage (a gist unit is
+  # 10 universe-days, similarly stretched) — the demo's whole job is compressing days into seconds.
+  # There is deliberately NO monotonicity, cost or consent key beside this one: the demo clock is
+  # exempt, and that exemption is expressible only here because no shared code knows the demo exists.
+  time_travel_month_days: 30
+  # How long the tutorial's covering mask stays lifted after a launch or a time sweep finishes, so
+  # the scene the press just caused — a memory going up, the sky settling after a jump — plays in
+  # the clear before the covering returns. Long enough for the awaken choreography to land, short
+  # enough that the tour does not read as paused.
+  mask_lift_linger_ms: 2400

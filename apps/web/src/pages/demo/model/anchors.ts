@@ -1,22 +1,28 @@
-// The two host-owned string-literal unions `SequenceStep` is generic over. They name **only** the
-// demo-local controls in `DemoControlRail` and the outcomes those controls produce, which buys two
-// things: a typo in the scenario is a compile error, and a control the demo does not own has no
-// member to name — so a step can never point at a product affordance this page never mounted.
+// The two host-owned string-literal unions `SequenceStep` is generic over — and, since the run
+// machine arrived, the namespace its gating derivation speaks. They name **only** the demo-local
+// controls in `DemoControlRail` and the outcomes those controls produce, which buys two things: a
+// typo in the scenario is a compile error, and a control the demo does not own has no member to
+// name — so a step can never point at a product affordance this page never mounted, and the gate
+// can never be asked about one either. A member no beat anchors (`entry-open-action`, the day and
+// week jumps) exists for the gate alone: those controls open only in free play. The signup CTA has
+// NO member on purpose: it is never highlighted and never gated — an exit, like skip, sits above
+// the tour rather than inside it.
 export type DemoAnchor =
   | 'diary-card'
+  | 'write-action'
   | 'split-action'
   | 'launch-action'
-  | 'add-diaries-action'
-  | 'time-travel-action'
+  | 'time-day-action'
+  | 'time-week-action'
+  | 'time-month-action'
   | 'recall-action'
-  | 'taster-rail'
-  | 'signup-action'
+  | 'entry-open-action'
+  | 'decorate-action'
 
 export type DemoSignal =
   | 'diary_read'
   | 'split_revealed'
   | 'launched'
-  | 'diaries_added'
   | 'time_advanced'
   | 'recalled'
   | 'gist_risen'

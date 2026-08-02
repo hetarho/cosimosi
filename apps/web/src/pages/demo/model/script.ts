@@ -28,18 +28,27 @@ const BEAT_CAPTIONS: Readonly<Record<DemoBeatId, () => string>> = {
 // step — a dwell step here would fake progress nobody made. The two beats that are consequences
 // rather than actions (the gist rising, the sky filling) are also signals, fired by the page once it
 // has applied the change, so the caption never runs ahead of what is on screen.
+//
+// The neuron-reuse beat anchors the WRITE control and waits for `launched`: pressing it draws one
+// more prepared diary through the same flow the first diary walked, and the beat is done when that
+// diary goes up — the second `launched` of the run, which the engine's current-step match keeps
+// from colliding with beat 3's. The two time beats anchor the month jump, the grain big enough to
+// show dimming (and a gist stage) in one press.
 const BEAT_STEPS: Readonly<Record<DemoBeatId, { anchor?: DemoAnchor; signal: DemoSignal | null }>> =
   {
     diary_appears: { anchor: 'diary-card', signal: 'diary_read' },
     split: { anchor: 'split-action', signal: 'split_revealed' },
     launch: { anchor: 'launch-action', signal: 'launched' },
-    neuron_reuse: { anchor: 'add-diaries-action', signal: 'diaries_added' },
-    time_accelerates: { anchor: 'time-travel-action', signal: 'time_advanced' },
+    neuron_reuse: { anchor: 'write-action', signal: 'launched' },
+    time_accelerates: { anchor: 'time-month-action', signal: 'time_advanced' },
     recall: { anchor: 'recall-action', signal: 'recalled' },
-    gist_rise: { anchor: 'time-travel-action', signal: 'gist_risen' },
+    gist_rise: { anchor: 'time-month-action', signal: 'gist_risen' },
     color: { signal: 'sky_filled' },
-    ornament_taster: { anchor: 'taster-rail', signal: 'ornament_tasted' },
-    signup_cta: { anchor: 'signup-action', signal: null },
+    ornament_taster: { anchor: 'decorate-action', signal: 'ornament_tasted' },
+    // The closing beat points at NOTHING: highlighting the signup control would read as "the tour
+    // ends by leaving". Its caption names where the door is; the visitor goes when they feel like
+    // it, and the room is already open under the caption.
+    signup_cta: { signal: null },
   }
 
 export const DEMO_SCRIPT: SequenceScript<DemoAnchor, DemoSignal> = defineScript<

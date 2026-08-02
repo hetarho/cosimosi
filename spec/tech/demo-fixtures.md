@@ -20,7 +20,7 @@ packages/demo/
     ├── diary-sets/index.ts   DEMO_DIARY_SETS — a non-empty tuple
     ├── scenario.ts           DEMO_BEAT_IDS + DemoScenario (the per-set bindings)
     ├── resolve.ts            resolveDemoDiarySet / resolveDemoEpoch / demoBaseStrength
-    ├── pick.ts               pickDemoDiarySet(sets, draw01)
+    ├── pick.ts               pickDemoDiarySet(sets, draw01) · demoDiaryPool(set) · pickDemoDiary(pool, n)
     └── integrity.test.ts     the fixture-integrity suite
 ```
 
@@ -43,10 +43,18 @@ locale-completeness guard: a `.ts` data module is outside `lint:raw-strings`' re
 prop list), so nothing else would catch a set that exists in Korean only. Per-locale _member_ completeness is not
 expressible in the type (the text half is keyed by id), so the integrity suite asserts it per locale instead.
 
-Counts are content, never configuration: the pool size is `DEMO_DIARY_SETS.length` and three-per-set is the
-`DemoDiaryTriple` tuple's arity. This **amends PRD [Z4]**'s parenthetical "(풀 크기·세트 수 = `values.yaml`)" — the
-`demo:` group holds exactly one key (`time_travel_step_days`, owned by plan 79), because a count that is the length of a
-content array is not a tuning number.
+A set carries a **tutorial triple plus a non-empty `extraDiaries` free-play pool** (change 10): the extras are
+authored against the same neuron roster — each reuses at least one tutorial neuron so a free-play launch joins the
+cluster ([I4][L2]) — carry the full text half in both locales, and date past the triple so a free-play launch arrives
+as the universe's newest diary. Per-diary draws inside a run come from `demoDiaryPool(set)` (one canonical order:
+triple, then extras) via `pickDemoDiary(pool, drawNumber)` — deterministic per draw number, cycling, never
+back-to-back repeating ([Z4] as amended by change 10).
+
+Counts are content, never configuration: the pool size is `DEMO_DIARY_SETS.length`, three-per-set is the
+`DemoDiaryTriple` tuple's arity, and the extras' depth is `extraDiaries.length` (floored at three by the integrity
+suite). This **amends PRD [Z4]**'s parenthetical "(풀 크기·세트 수 = `values.yaml`)" — the `demo:` group holds
+exactly one key (`time_travel_month_days`, owned by plan 79), because a count that is the length of a content array
+is not a tuning number.
 
 ## 3. Fields the fixture may not have
 
@@ -95,10 +103,12 @@ domain math — the inverse of `elapsedUniverseDays`' difference, which has no m
   `EpisodicMemory`: gist text is a paid `ViewSemantic` read, so the production mirror has no field for it, and widening
   the shared type for the sandbox would be an `isDemo` leak into `packages/memory`;
 - a **`reconsolidatedTexts`** map, likewise beside the snapshot rather than on the mirror. `reconsolidatedText` is
-  optional and authored only on a set's recall target — the only memory any scenario reconsolidates — because in
+  optional and authored only on a set's recall target — the one memory the tutorial teaches recall on — because in
   production the equivalent text is whatever the diarist re-narrates through the recall use-case, so there is no second
   text field on the shared type to widen. The integrity suite proves the target carries one in every locale, since a
-  recall that changed only the star's form would show reconsolidation as a cosmetic event.
+  recall that changed only the star's form would show reconsolidation as a cosmetic event. Free play (change 10)
+  recalls any star; one without the text still re-brightens, re-anchors and reshapes — only the reworded reading is
+  the target's own.
 
 `universeTime` resolves to the newest diary's date — the universe's time right after its last launch. Domain shapes are
 written straight into the stores, skipping the proto/DTO mappers, so no `bigint`↔`int64` handling and no api-client type
@@ -137,29 +147,38 @@ data); `AdvanceClock` / `CanLaunchAt` ([Z2] exempts [I10]; the demo clock is pla
 
 The word-loss texts are stored strings in the fixture — as they are stored columns in production — and were produced by
 running the real `decayStageText` over each authored `currentText` and `seed`. Authoring them by hand would have shipped
-redactions the algorithm does not produce.
+redactions the algorithm does not produce; since change 10 the integrity suite asserts that byte equality across the
+whole corpus, so a hand-edited rung cannot ship.
 
 ## 7. The fixture-integrity suite
 
 Shipped data cannot drift, but it can be edited into a state where the demo silently stops demonstrating what it
 promises. `integrity.test.ts` runs in CI as part of `pnpm test` and fails on:
 
-1. **Cross-diary reuse** — at least one neuron activated from two or more different diaries, and every declared
-   `sharedNeuronIds` member proven to be one (the neuron-reuse beat's precondition).
+1. **Cross-diary reuse** — at least one neuron activated from two or more different tutorial diaries, and every
+   declared `sharedNeuronIds` member proven to be one (the neuron-reuse beat's precondition; proven over the triple,
+   because the beat happens before any extra can have launched).
 2. **Link legality** — every authored synapse canonically ordered (`neuronAId < neuronBId`, [I6]), connecting two
    neurons that co-fire in some memory ([I4]), unique per pair, with `strength` inside
    `[synapse.initial_same_memory, synapse.strength_cap]` so the link layer reads at the production scale.
 3. **Type coverage** — all three `NeuronType`s present.
-4. **Colour headroom** — at least three distinct moods, and the recall target's mood is not the set's
+4. **Colour headroom, over what is on screen** — the first two diaries (the two launched when the colour beat
+   arrives) carry at least three distinct moods and contain the recall target, whose mood is not their
    strength-weighted dominant one ([M4][M5]).
 5. **Decay spread** — at the resolved horizon the set's memories occupy at least two distinct `decayStage`s, so word
    loss reads as a gradient rather than one switch.
-6. **Split completeness, per locale** — every diary and memory has text, every gist ladder is `SEMANTIC_MAX_STAGE` long
-   and every word-loss ladder is `forgetting.stage_word_removal_ratios`' length, with no blank rung.
+6. **Split completeness, per locale** — every diary and memory (extras included) has text, every gist ladder is
+   `SEMANTIC_MAX_STAGE` long and every word-loss ladder is `forgetting.stage_word_removal_ratios`' length, with no
+   blank rung.
 7. **Determinism and epoch-only variance** — resolving twice is deep-equal, and resolving at two epochs changes only the
    calendar.
-8. **Scenario totality** — the ten beat ids in order, each binding naming a member that exists, and every ornament taste
-   carrying exactly `kind` + `ornamentId` whose prefix matches its kind (no price field can appear).
+8. **Scenario totality** — the ten beat ids in order, the first diary equal to the pool's own first draw, the recall
+   target a member that exists, and every ornament taste carrying exactly `kind` + `ornamentId` whose prefix matches
+   its kind (no price field can appear).
+9. **Free-play attachment and erosion fidelity** (change 10) — each set ships ≥3 extras, every extra reuses at least
+   one tutorial neuron, and every word-loss rung in the corpus is byte-identical to
+   `decayStageText(currentText, stage, seed)`; the per-diary draw is deterministic, cycling, and never repeats
+   back-to-back.
 
 This is a **fixture-integrity** suite, not a golden-parity one: the math is pinned elsewhere, and what this catches is a
 content edit that breaks a set's topology.

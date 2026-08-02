@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Recall_ActionInputs */
 
 const en_demo_recall_action = /** @type {(inputs: Demo_Recall_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Remember one`)
+	return /** @type {LocalizedString} */ (`Recall`)
 };
 
 const ko_demo_recall_action = /** @type {(inputs: Demo_Recall_ActionInputs) => LocalizedString} */ () => {
@@ -16,7 +16,7 @@ const ko_demo_recall_action = /** @type {(inputs: Demo_Recall_ActionInputs) => L
 /**
 * | output |
 * | --- |
-* | "Remember one" |
+* | "Recall" |
 *
 * @param {Demo_Recall_ActionInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

@@ -182,6 +182,13 @@ into.
 throwaway files under `pages/demo`, runs ESLint on them, and asserts each forbidden import is reported
 and each permitted one is not. A lint rule nobody has seen fail is a rule nobody knows is wired.
 
+**The run FSM lives inside the closure.** Change 10 added a demo-local XState machine
+(`pages/demo/model/run-machine.ts`) that owns the run's phase — tutorial step ↔ free play — and is
+the single derivation every control's interactivity comes from. It is a `pages/demo` module beside
+plan 78's sequence engine (which keeps the tour's caption/highlight/skip chrome), imported from
+`xstate` directly like any other page-local machine; the import-ban block is **unchanged** and the
+machine adds no new seam — no shared package learned that a demo, a tutorial or a gate exists.
+
 **The precise reading of "frontend-only":** no `apps/api` RPC, no DB write, no LLM port. Platform
 telemetry and the app-shell auth bootstrap run above every route, including this one, and are out of
 scope. **Never mounted on `/demo`:** `UniverseCanvasWidget` (its `useUniverse()` throws

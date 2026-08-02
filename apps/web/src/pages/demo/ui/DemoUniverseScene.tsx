@@ -16,6 +16,7 @@ import {
 import { createForceSimNodeIndex } from '@cosimosi/force-sim'
 import { paletteVersion } from '@cosimosi/emotion'
 import {
+  advanceSkyRate,
   buildUniverseGraph,
   createUniverseSimBridge,
   generateLatentField,
@@ -51,9 +52,35 @@ const noAnchors = () => []
 //
 // Positions come from `createUniverseSimBridge(null)`: the INLINE main-thread bridge, no worker. A
 // public trailer that spawns a worker to lay out eighteen nodes buys latency, not smoothness.
-function DemoCanvasHost({ scene, taste }: { scene: DemoScene; taste: DemoTaste }) {
+function DemoCanvasHost({
+  scene,
+  taste,
+  displayTime,
+  cameraFree,
+  onSelectMemory,
+}: {
+  scene: DemoScene
+  taste: DemoTaste
+  displayTime: string
+  cameraFree: boolean
+  onSelectMemory: (memoryId: string) => void
+}) {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
+
+  // A picked star opens its entry, the demo's one reading surface. The layers hand back instance
+  // indexes counted off the memory store (the product widget's own mapping); the demo has no
+  // navigation rig, so focus and fly both land on the same read — free navigation is the camera
+  // story here, not choreography.
+  const episodicIds = useEpisodicMemoryStore((state) => state.ids)
+  const selectMemoryAt = useCallback(
+    (index: number) => {
+      const memoryId = episodicIds[index]
+      if (memoryId) onSelectMemory(memoryId)
+    },
+    [episodicIds, onSelectMemory],
+  )
+  const selectGist = useCallback((memoryId: string) => onSelectMemory(memoryId), [onSelectMemory])
 
   const snapshot = useMemo(
     () => ({
@@ -108,7 +135,14 @@ function DemoCanvasHost({ scene, taste }: { scene: DemoScene; taste: DemoTaste }
       fov={skin.camera.fov}
       clearColor={skin.sky.night}
     >
-      <SkySphere stops={skyStops} effect={skyEffect} reducedMotion={reducedMotion} />
+      {/* `rateRef` is the shared sky-rate ref the demo's time presentation writes per frame while a
+          jump plays, so the backdrop flows and eases back — the product widget's own wiring. */}
+      <SkySphere
+        stops={skyStops}
+        effect={skyEffect}
+        reducedMotion={reducedMotion}
+        rateRef={advanceSkyRate}
+      />
       <StarField reducedMotion={reducedMotion} />
       <NebulaField
         key={`nebula-${paletteVersion()}`}
@@ -117,18 +151,22 @@ function DemoCanvasHost({ scene, taste }: { scene: DemoScene; taste: DemoTaste }
       />
       <LatentStarField field={latentField} reducedMotion={reducedMotion} />
       <CellStarLayer positions={bridge.coordinates} />
+      {/* The layers project at the DISPLAYED clock — while a time jump plays, the page hands in
+          the sweep's sampled date, so forgetting is watched happening rather than found after. */}
       <StarLayer
         key={`star-${paletteVersion()}-${bodyShape ?? 'default'}`}
         shape={bodyShape}
         positions={bridge.coordinates}
         firstNodeIndex={neuronCount}
-        universeTime={scene.universeTime}
+        universeTime={displayTime}
         reducedMotion={reducedMotion}
+        onFocus={selectMemoryAt}
+        onFly={selectMemoryAt}
       />
       <FilamentLayer
         positions={bridge.coordinates}
         neuronIndexById={nodeIndex.neurons ?? EMPTY_NEURON_INDEX}
-        universeTime={scene.universeTime}
+        universeTime={displayTime}
         reducedMotion={reducedMotion}
       />
       <BandFog
@@ -141,6 +179,7 @@ function DemoCanvasHost({ scene, taste }: { scene: DemoScene; taste: DemoTaste }
         key={`gist-${paletteVersion()}`}
         positions={bridge.coordinates}
         memoryIndexById={nodeIndex.episodicMemories ?? EMPTY_NEURON_INDEX}
+        onSelect={selectGist}
       />
       {/* The awaken's anchors are positions of recently-active neurons on the product canvas. The
           demo hands back none, so the birth point is picked at random from the latent field — which
@@ -150,14 +189,33 @@ function DemoCanvasHost({ scene, taste }: { scene: DemoScene; taste: DemoTaste }
         newNeuronIds={scene.newNeuronIds}
         resolveAnchors={noAnchors}
       />
-      <CameraControls />
+      {/* Free navigation is free play's (and the sky beat's spectators'): while the tour runs, a
+          dragged-away camera would point the ring and the mask hole at a scene the caption is not
+          describing, so the controls simply do not mount until the run is over. */}
+      {cameraFree && <CameraControls />}
       <FrameTick onFrame={pump} />
       <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )
 }
 
-export function DemoUniverseScene({ scene, taste }: { scene: DemoScene; taste: DemoTaste }) {
+export function DemoUniverseScene({
+  scene,
+  taste,
+  displayTime,
+  cameraFree,
+  onSelectMemory,
+}: {
+  scene: DemoScene
+  taste: DemoTaste
+  /** The clock the layers project at — the sweep's sampled date while a jump plays, else the
+   *  committed demo clock. */
+  displayTime: string
+  /** Free-play only: drag/zoom navigation stays unmounted while the tour runs. */
+  cameraFree: boolean
+  /** A star (or gist body) was picked on the canvas. */
+  onSelectMemory: (memoryId: string) => void
+}) {
   // The three read-model singletons are owned for as long as this scene is mounted. They are the same
   // stores the product fills from `GetUniverse`; the demo writes DOMAIN shapes straight in, skipping
   // the proto/DTO mappers, so no `bigint`↔`int64` handling and no api-client type is involved.
@@ -173,7 +231,13 @@ export function DemoUniverseScene({ scene, taste }: { scene: DemoScene; taste: D
 
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>
-      <DemoCanvasHost scene={scene} taste={taste} />
+      <DemoCanvasHost
+        scene={scene}
+        taste={taste}
+        displayTime={displayTime}
+        cameraFree={cameraFree}
+        onSelectMemory={onSelectMemory}
+      />
     </SkinProvider>
   )
 }

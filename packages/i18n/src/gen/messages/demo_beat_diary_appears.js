@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Beat_Diary_AppearsInputs */
 
 const en_demo_beat_diary_appears = /** @type {(inputs: Demo_Beat_Diary_AppearsInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`A diary from someone's ordinary week. Read it, then let it split.`)
+	return /** @type {LocalizedString} */ (`A diary from someone's ordinary week. Take your time with it.`)
 };
 
 const ko_demo_beat_diary_appears = /** @type {(inputs: Demo_Beat_Diary_AppearsInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`누군가의 평범한 한 주에서 온 일기예요. 읽고 나서 쪼개보세요.`)
+	return /** @type {LocalizedString} */ (`누군가의 평범한 한 주에서 온 일기예요. 천천히 읽어보세요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "A diary from someone's ordinary week. Read it, then let it split." |
+* | "A diary from someone's ordinary week. Take your time with it." |
 *
 * @param {Demo_Beat_Diary_AppearsInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

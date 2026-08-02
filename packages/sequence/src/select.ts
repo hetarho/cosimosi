@@ -41,7 +41,7 @@ export interface SequenceViewport {
   readonly height: number
 }
 
-export type CaptionPlacement = 'bottom' | 'top'
+export type CaptionPlacement = 'bottom' | 'top' | 'center'
 
 /**
  * Where the caption band goes. Not cosmetic: the shipped universe page puts the writing sheet
@@ -58,4 +58,24 @@ export function resolveCaptionPlacement(
   const bandTop = viewport.height - Math.max(0, bandHeight)
   const anchorBottom = anchorRect.y + anchorRect.height
   return anchorBottom > bandTop && anchorRect.y < viewport.height ? 'top' : 'bottom'
+}
+
+/**
+ * The floating variant a host opts into when its guidance should sit in the visitor's eyeline
+ * rather than along an edge. `center` renders at the LOWER third — under the screen's own middle,
+ * where the scene the guidance describes usually lives — and still yields: a step whose anchored
+ * control crosses that band falls back to the edge resolution above, because guidance laid over
+ * the very control it describes guides nothing.
+ */
+export function resolveCenteredCaptionPlacement(
+  anchorRect: SequenceRect | null,
+  viewport: SequenceViewport,
+  bandHeight: number,
+): CaptionPlacement {
+  if (!anchorRect) return 'center'
+  const bandTop = (viewport.height * 2) / 3 - Math.max(0, bandHeight) / 2
+  const bandBottom = bandTop + Math.max(0, bandHeight)
+  const anchorBottom = anchorRect.y + anchorRect.height
+  const crossesBand = anchorBottom > bandTop && anchorRect.y < bandBottom
+  return crossesBand ? resolveCaptionPlacement(anchorRect, viewport, bandHeight) : 'center'
 }

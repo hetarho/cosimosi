@@ -13,9 +13,13 @@ export const CAPTION_BAND_HEIGHT_PX = 112
 export function SequenceCaption({
   caption,
   placement,
+  pin,
 }: {
   caption: CaptionAccessor
   placement: CaptionPlacement
+  /** Pixel-pinned position (host-computed, e.g. right under the highlighted control). When given
+   *  it wins over the band classes; exactly one of `top`/`bottom` is set. */
+  pin?: { readonly top?: number; readonly bottom?: number } | null
 }) {
   return (
     <div
@@ -24,11 +28,19 @@ export function SequenceCaption({
         // `z-guide` sits above `z-modal`: the steps that point INTO the writing dialog would otherwise
         // put the line behind the very panel it describes.
         'pointer-events-none fixed inset-x-0 z-[var(--z-guide)] flex justify-center px-6',
-        placement === 'top' ? 'top-0 pt-8' : 'bottom-0 pb-8',
+        // `center` is host-opted (a placement resolver yields it only when asked) and floats the
+        // line at the LOWER third — in the eyeline, but under the scene's own middle, because what
+        // the guidance talks about (the demo's memory cluster, most of the time) lives dead center
+        // and must stay watchable behind it.
+        !pin && placement === 'top' && 'top-0 pt-8',
+        !pin && placement === 'bottom' && 'bottom-0 pb-8',
+        !pin && placement === 'center' && 'top-2/3 -translate-y-1/2 items-center',
       )}
-      style={{ minHeight: CAPTION_BAND_HEIGHT_PX }}
+      style={pin ? { top: pin.top, bottom: pin.bottom } : { minHeight: CAPTION_BAND_HEIGHT_PX }}
     >
-      <p className="max-w-md rounded-lg bg-surface-raised/90 px-4 py-3 text-center text-sm text-text">
+      {/* `text-base` rather than `sm`: this line is the run's one guaranteed channel, and it has to
+          carry from the middle of a page whose everything-else is deliberately dimmed. */}
+      <p className="max-w-lg rounded-lg bg-surface-raised/90 px-5 py-3.5 text-center text-base text-text">
         {caption()}
       </p>
     </div>

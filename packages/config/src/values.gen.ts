@@ -202,6 +202,7 @@ export const VALUES = {
     highlightPulseMs: 1800,
   },
   demo: {
-    timeTravelStepDays: 45,
+    timeTravelMonthDays: 30,
+    maskLiftLingerMs: 2400,
   },
 } as const

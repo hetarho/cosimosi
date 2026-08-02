@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Beat_Neuron_ReuseInputs */
 
 const en_demo_beat_neuron_reuse = /** @type {(inputs: Demo_Beat_Neuron_ReuseInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Add two more entries. Where they share something — a person, a place, an idea — they hang from the same point, and a shape appears that nobody drew.`)
+	return /** @type {LocalizedString} */ (`Write one more entry. Where it shares something — a person, a place — it hangs from the same point, and a shape appears that nobody drew.`)
 };
 
 const ko_demo_beat_neuron_reuse = /** @type {(inputs: Demo_Beat_Neuron_ReuseInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`일기 두 편을 더 넣어보세요. 사람이든 장소든 생각이든 겹치는 것이 있으면 같은 점에 매달리고, 아무도 그리지 않은 형태가 나타납니다.`)
+	return /** @type {LocalizedString} */ (`일기를 한 편 더 써볼까요? 겹치는 사람이나 장소가 있으면 같은 점에 매달리고, 아무도 그리지 않은 형태가 나타나요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Add two more entries. Where they share something — a person, a place, an idea — they hang from the same point, and a shape appears that nobody drew." |
+* | "Write one more entry. Where it shares something — a person, a place — it hangs from the same point, and a shape appears that nobody drew." |
 *
 * @param {Demo_Beat_Neuron_ReuseInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

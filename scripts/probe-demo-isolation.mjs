@@ -25,6 +25,7 @@ const forbidden = [
   ["import { useUniverse } from '@cosimosi/universe/react'", 'a server-backed read mirror'],
   ["import { writeMoodColor } from '@cosimosi/emotion/react'", 'an AccountService write'],
   ["import { ornamentCost } from '@cosimosi/store'", 'a price table'],
+  ["import { useOrnamentCatalog } from '@cosimosi/store/react'", 'the catalog Query seam'],
   ["import { recallCost } from '@cosimosi/twinkle-logic'", 'a cost formula'],
   ["import { StardustOverlay } from '../../../widgets/stardust/index.ts'", 'a currency surface'],
   [
@@ -43,6 +44,7 @@ const permitted = [
   "import { StarLayer } from '@cosimosi/universe-render'",
   "import { UniverseCanvas } from '@cosimosi/3d-renderer'",
   "import { applyMoodColors } from '@cosimosi/emotion/react'",
+  "import { ornamentName } from '@cosimosi/store/i18n'",
   "import { SequenceGuide } from '../../../widgets/sequence-guide/index.ts'",
   "import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'",
 ]

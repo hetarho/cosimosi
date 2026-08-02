@@ -68,6 +68,11 @@ export interface DemoDiarySetStructure {
   readonly id: string
   readonly neurons: readonly DemoNeuron[]
   readonly diaries: DemoDiaryTriple<DemoDiary>
+  /** The free-play pool beyond the tutorial triple ([Z4] as amended by change 10): drawn one at a
+   *  time by `pickDemoDiary` so a visitor can keep writing past the tutorial. Non-empty by type, so
+   *  every set sustains free play; authored against the SAME neuron roster, because a diary that
+   *  shares nothing would settle as an unrelated clump ([I4][L2]). */
+  readonly extraDiaries: readonly [DemoDiary, ...DemoDiary[]]
   readonly synapses: readonly DemoSynapse[]
   /** Declared, then PROVEN by the integrity suite — the beat-4 precondition. */
   readonly sharedNeuronIds: readonly [string, ...string[]]

@@ -247,6 +247,17 @@ export default defineConfig([
               message:
                 'These reach AccountService. The demo may only call applyMoodColors, which stamps the module-level palette and touches no server.',
             },
+            {
+              // A `paths` entry rather than a pattern, because the pattern grammar is
+              // gitignore-style: excluding the package name excludes every subpath with no way to
+              // re-include one. The barrel is what carries ornamentCost/unownedTotal/Decorate;
+              // `@cosimosi/store/react` is banned with the mirrors below, and `@cosimosi/store/i18n`
+              // — the id→name map and group titles, nothing price-shaped — stays importable, which
+              // is how the demo's decoration sheet shows the product's catalog names.
+              name: '@cosimosi/store',
+              message:
+                'The store barrel carries prices, ownership and Decorate. No currency, cost, purchase or payment surface may render on /demo. Only the names subpath (@cosimosi/store/i18n) is open.',
+            },
           ],
           patterns: [
             {
@@ -281,9 +292,10 @@ export default defineConfig([
                 'Server-backed read mirrors. The demo has no session — useUniverse() would throw — and its data is shipped fixtures.',
             },
             {
-              group: ['@cosimosi/twinkle', '@cosimosi/twinkle-logic', '@cosimosi/store'],
+              // The store barrel moved to `paths` above so its i18n subpath can stay open.
+              group: ['@cosimosi/twinkle', '@cosimosi/twinkle-logic'],
               message:
-                'These carry prices, balances, ownership and Decorate. No currency, cost, purchase or payment surface may render on /demo, and the absence of a path to one is what makes that structural.',
+                'These carry balances and cost formulas. No currency, cost, purchase or payment surface may render on /demo, and the absence of a path to one is what makes that structural.',
             },
             {
               // Narrows the normally-legal pages -> widgets edge: the demo composes packages/*

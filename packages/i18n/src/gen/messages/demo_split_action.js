@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Demo_Split_ActionInputs */
 
 const en_demo_split_action = /** @type {(inputs: Demo_Split_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Split it`)
+	return /** @type {LocalizedString} */ (`Split into stars`)
 };
 
 const ko_demo_split_action = /** @type {(inputs: Demo_Split_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`쪼개기`)
+	return /** @type {LocalizedString} */ (`별 쪼개기`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Split it" |
+* | "Split into stars" |
 *
 * @param {Demo_Split_ActionInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

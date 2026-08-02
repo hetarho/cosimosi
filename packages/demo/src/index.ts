@@ -19,14 +19,9 @@ export type {
   DemoNeuron,
   DemoSynapse,
 } from './diary-set.ts'
-export {
-  DEMO_BEAT_IDS,
-  type DemoBeatId,
-  type DemoOrnamentTaste,
-  type DemoScenario,
-} from './scenario.ts'
+export { DEMO_BEAT_IDS, type DemoBeatId, type DemoScenario } from './scenario.ts'
 export { DEMO_DIARY_SETS } from './diary-sets/index.ts'
-export { pickDemoDiarySet } from './pick.ts'
+export { demoDiaryPool, pickDemoDiary, pickDemoDiarySet } from './pick.ts'
 export {
   demoBaseStrength,
   resolveDemoDiarySet,
