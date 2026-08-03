@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { ActorRefFrom } from 'xstate'
 
-import { Button } from '@cosimosi/ui'
+import { Button, cx, usePresence } from '@cosimosi/ui'
 import {
   currentDecayText,
   parseGistNodeId,
@@ -23,6 +23,9 @@ import { STAR_DETAIL_PANEL } from '../config/panel.ts'
 import { GistViewSheet } from './GistViewSheet.tsx'
 
 type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
+
+/** Must match `.panel-leave` in base.css — the timer, not the animation, is what unmounts. */
+const EXIT_MS = 200
 
 // widgets/star-detail ([D1]): the read-only side-sheet that opens over the running canvas when a
 // node is selected — it never remounts the renderer (A1) and imports no three/visual entity (§3.4).
@@ -86,6 +89,15 @@ export function DetailPanel({
   const episodicId = selection.kind === 'episodic' ? selection.memory.id : null
   const provenance = useProvenanceQuery(episodicId, phase === 'provenance')
 
+  // Held one animation past the close so the panel can slide back out the edge it came in from. What is
+  // held is the CONTENT ITSELF, not the selection it was built from: the selection is already gone by
+  // then, and re-deriving a body from a cleared one would empty the panel mid-slide. Re-rendering the
+  // same elements keeps their own state and issues no new read. Both live ABOVE the gist branch below,
+  // because a hook cannot sit behind an early return.
+  const open = phase !== 'closed' && selection.kind !== 'none'
+  const { present, phase: motion } = usePresence(open, EXIT_MS)
+  const heldContent = useRef<ReactNode>(null)
+
   // A gist body opens the priced gist-view over the canvas (A5); closing clears the canvas
   // selection so re-selecting the same body reopens it.
   if (selection.kind === 'gist') {
@@ -98,14 +110,8 @@ export function DetailPanel({
     )
   }
 
-  if (phase === 'closed' || selection.kind === 'none') return null
-
-  return (
-    <aside
-      className="pointer-events-auto absolute top-0 right-0 flex h-full max-w-[90vw] flex-col gap-4 overflow-y-auto border-l border-border bg-surface/95 p-6 backdrop-blur"
-      style={{ width: `${STAR_DETAIL_PANEL.widthRem}rem` }}
-      aria-label={m.star_detail_title()}
-    >
+  const content = open ? (
+    <>
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-base font-medium text-text">
           {selection.kind === 'episodic' ? selection.memory.name : m.star_detail_title_neuron()}
@@ -163,6 +169,22 @@ export function DetailPanel({
           />
         </div>
       )}
+    </>
+  ) : null
+  if (content) heldContent.current = content
+  const shown = content ?? heldContent.current
+  if (!present || !shown) return null
+
+  return (
+    <aside
+      className={cx(
+        'pointer-events-auto absolute top-0 right-0 flex h-full max-w-[90vw] flex-col gap-4 overflow-y-auto border-l border-border bg-surface/95 p-6 backdrop-blur',
+        motion === 'leaving' ? 'panel-leave' : 'panel-enter',
+      )}
+      style={{ width: `${STAR_DETAIL_PANEL.widthRem}rem` }}
+      aria-label={m.star_detail_title()}
+    >
+      {shown}
     </aside>
   )
 }

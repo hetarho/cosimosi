@@ -1,8 +1,13 @@
 import { useId } from 'react'
 
+import { usePresence } from '../a11y/use-presence.ts'
+import { cx } from '../lib/cx.ts'
 import type { SheetOwnProps } from './types.ts'
 
 export type SheetProps = SheetOwnProps
+
+/** Must match `.sheet-leave` in base.css — the timer, not the animation, is what unmounts. */
+const EXIT_MS = 200
 
 /**
  * The scrim-less surface. It renders no backdrop and traps no focus, so what it is about stays
@@ -27,15 +32,21 @@ export function Sheet({
 }: SheetProps) {
   const titleId = useId()
   const descriptionId = useId()
+  // Held past the close so the surface can go back out the edge it came in from. A host that unmounts
+  // the Sheet itself on close skips the leave — the element is gone before this can hold it.
+  const { present, phase } = usePresence(open, EXIT_MS)
 
-  if (!open) return null
+  if (!present) return null
 
   return (
     <section
       aria-labelledby={title ? titleId : undefined}
       aria-label={title ? undefined : ariaLabel}
       aria-describedby={description ? descriptionId : undefined}
-      className="glass-strong pointer-events-auto fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex max-h-[70dvh] flex-col rounded-t-2xl p-5 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[22rem] md:rounded-l-2xl md:rounded-tr-none"
+      className={cx(
+        'glass-strong pointer-events-auto fixed inset-x-0 bottom-0 z-[var(--z-overlay)] flex max-h-[70dvh] flex-col rounded-t-2xl p-5 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[22rem] md:rounded-l-2xl md:rounded-tr-none',
+        phase === 'leaving' ? 'sheet-leave' : 'sheet-enter',
+      )}
     >
       <div className="flex items-start justify-between gap-4">
         {title ? (

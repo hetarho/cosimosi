@@ -10,7 +10,7 @@ const en_landing_walk_mirror_definition = /** @type {(inputs: Landing_Walk_Mirro
 };
 
 const ko_landing_walk_mirror_definition = /** @type {(inputs: Landing_Walk_Mirror_DefinitionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`우주의 색은 내 감정의 평균이 아니라, 내가 자주 떠올리는 감정의 거울이에요.`)
+	return /** @type {LocalizedString} */ (`우주의 색은 내 감정의 평균이 아니라 내가 자주 떠올리는 감정의 거울이에요.`)
 };
 
 /**

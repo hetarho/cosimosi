@@ -25,7 +25,9 @@ export function OrnamentGroupList({ frozen = false }: { readonly frozen?: boolea
     <div className="flex flex-col gap-5">
       {groups.map((group) => (
         <section key={group.kind} aria-label={ORNAMENT_GROUP_TITLES[group.kind]()}>
-          <h3 className="px-3 pb-1 text-xs font-medium tracking-wide text-text-muted">
+          {/* The group title is the panel's own structure, so it carries the brightest ink and a
+              heavier weight than the rows beneath it — a muted, light label read as one more row. */}
+          <h3 className="px-3 pb-1.5 text-xs font-semibold tracking-wide text-text">
             {ORNAMENT_GROUP_TITLES[group.kind]()}
           </h3>
           <ul className="flex flex-col">

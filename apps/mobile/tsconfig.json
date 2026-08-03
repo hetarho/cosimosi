@@ -38,7 +38,16 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     // Causes issues with package.json "exports"
-    "forceConsistentCasingInFileNames": false
+    "forceConsistentCasingInFileNames": false,
+    // Mirrors packages/ui's alias: `@cosimosi/ui`'s native icon set imports `phosphor-react-native`
+    // per glyph, and that subpath is raw TSX whose own source does not typecheck against the
+    // installed react-native-svg. Type it from the declarations the library ships; Metro is
+    // unaffected and still bundles the real subpath.
+    "paths": {
+      "phosphor-react-native/src/icons/*": [
+        "../../node_modules/phosphor-react-native/lib/typescript/icons/*"
+      ]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["**/node_modules", "**/Pods"]

@@ -35,6 +35,16 @@ export interface ButtonOwnProps {
   children?: ReactNode
 }
 
+/**
+ * The shared half of an icon's props (icons.tsx / icons.native.tsx). Only the rendered edge length
+ * is cross-platform: ink comes from the control the icon sits in — `currentColor` on the web, an
+ * explicit token colour on native, where RN has no inherited colour to read.
+ */
+export interface IconOwnProps {
+  /** Edge length in px. Defaults to `ICON_SIZE`, the size design-language §8 pairs with body text. */
+  size?: number
+}
+
 export interface IconButtonOwnProps {
   /** Appearance / emphasis. Default `text`. */
   variant?: ButtonVariant
@@ -102,6 +112,15 @@ export interface SheetOwnProps {
 export interface TooltipOwnProps {
   content: ReactNode
   children: ReactNode
+  /** Which side of the trigger the tip sits on. Default `top`. */
+  side?: 'top' | 'bottom' | 'left'
+  /**
+   * How a `top`/`bottom` tip lines up with its trigger. `center` (default) is right for a control
+   * with room on both sides; `end` pins the tip's right edge to the trigger's, which is what keeps a
+   * tip wider than its control from running off the screen when the control hugs the right edge.
+   * Ignored for `side: 'left'`, which centres on the trigger's height.
+   */
+  align?: 'center' | 'end'
 }
 
 export interface ToastOwnProps {

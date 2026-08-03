@@ -42,9 +42,10 @@ export type WalkthroughStepId = (typeof WALKTHROUGH_STEPS)[number]
 export type WalkthroughStageId = 'diary' | 'scenes' | 'universe'
 
 /**
- * Where the visitor stands: which step, and whether its one action has been taken. Advance-only by
- * construction — there is no function here that moves backwards, so a run can only be replayed from
- * the start, which is what keeps every run identical.
+ * Where the visitor stands: which step, and whether its one action has been taken. The run is a
+ * single fixed sequence walked one state at a time — `retreatWalkthrough` is `advance ∘ act`'s exact
+ * inverse, so stepping back and forward again always lands on the same state and every full run
+ * stays identical.
  */
 export interface WalkthroughState {
   readonly step: WalkthroughStepId
@@ -63,6 +64,14 @@ export function advanceWalkthrough(state: WalkthroughState): WalkthroughState {
   if (!state.acted) return state
   const next = WALKTHROUGH_STEPS[WALKTHROUGH_STEPS.indexOf(state.step) + 1]
   return next === undefined ? state : { step: next, acted: false }
+}
+
+/** Step back one state — the exact inverse of the act/advance walk: an acted step returns to its
+ *  prompt, an unacted step returns to the previous step's result. At the very start it holds. */
+export function retreatWalkthrough(state: WalkthroughState): WalkthroughState {
+  if (state.acted) return { step: state.step, acted: false }
+  const index = WALKTHROUGH_STEPS.indexOf(state.step)
+  return index <= 0 ? state : { step: WALKTHROUGH_STEPS[index - 1], acted: true }
 }
 
 export function restartWalkthrough(): WalkthroughState {

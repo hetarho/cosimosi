@@ -11,33 +11,39 @@ import type { Mood } from '@cosimosi/emotion'
  * Eight of them rather than a handful, because a feeling's weight buys it AREA in the ramp: the more
  * feelings the ramp carries, the more distinct places the sky is divided into, and the more of the
  * palette drifts past a visitor who only stays a moment.
+ *
+ * The mix is chosen for the BRAND, not for a story: the moods whose canonical colours sit nearest
+ * the design system's primary (lavender, hue 298 — FEAR's violet, EMPTINESS's violet-grey, STRESS's
+ * magenta, SAD's blue) carry most of the ramp, and the ones nearest the secondary (chartreuse, hue
+ * 122 — RELIEF's spring green, CALM's teal) are the accent. The landing's sky is the product's own
+ * palette wearing the product's own material. Mood names never render here — only their colours do.
  */
 export const HERO_SKY_MOODS: readonly Mood[] = [
-  'CALM',
-  'GRATITUDE',
-  'LOVE',
-  'JOY',
-  'EXCITEMENT',
-  'TIRED',
+  'FEAR',
+  'EMPTINESS',
   'STRESS',
   'SAD',
+  'RELIEF',
+  'CALM',
+  'LOVE',
+  'TIRED',
 ]
 
 /**
- * The weight each mood holds in the ramp. `CALM` and `GRATITUDE` still lead, so the first sky a
- * visitor sees leans the way the walkthrough later explains: towards what is returned to, not a flat
- * average. The rest are deliberately not tiny — a feeling given a sliver of the ramp is a colour the
- * fold smears away before anyone can name it.
+ * The weight each mood holds in the ramp: the primary-adjacent violets lead (12 of 20 shares), the
+ * secondary-adjacent greens answer them (4 of 20), and rose and dusty blue keep the wash from
+ * reading as a two-colour gradient. None is tiny — a feeling given a sliver of the ramp is a colour
+ * the fold smears away before anyone can name it.
  */
 export const HERO_SKY_WEIGHTS: Readonly<Record<string, number>> = {
-  CALM: 5,
-  GRATITUDE: 4,
-  LOVE: 3,
-  JOY: 3,
-  EXCITEMENT: 2,
-  TIRED: 2,
+  FEAR: 5,
+  EMPTINESS: 4,
   STRESS: 2,
   SAD: 1,
+  RELIEF: 2,
+  CALM: 2,
+  LOVE: 2,
+  TIRED: 2,
 }
 
 /**

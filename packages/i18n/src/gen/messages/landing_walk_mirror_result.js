@@ -10,7 +10,7 @@ const en_landing_walk_mirror_result = /** @type {(inputs: Landing_Walk_Mirror_Re
 };
 
 const ko_landing_walk_mirror_result = /** @type {(inputs: Landing_Walk_Mirror_ResultInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`그 감정의 자리가 넓어졌어요. 힘든 날이 많았더라도, 자주 돌아보는 마음이 하늘에 남아요.`)
+	return /** @type {LocalizedString} */ (`그 감정의 자리가 넓어졌어요. 힘든 날이 많았더라도 자주 돌아보는 마음이 하늘에 남아요.`)
 };
 
 /**

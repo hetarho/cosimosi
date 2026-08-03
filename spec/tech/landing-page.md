@@ -23,8 +23,9 @@ reordering the definition is a `tsc` failure exactly as dropping the old `'mirro
 CTA order gets the same treatment one level down. `'demo-cta-top'` renders `DemoCta` alone; `'closing-cta'` renders one
 `LandingClosing` that hardcodes `DemoCta` then `SignUpCta` and **exposes no ordering prop**, so demo-before-signup is
 not something a call site can get wrong. Both demo CTAs target `/demo`; the signup CTA targets `/signup`. The demo CTA
-is a single refined label ("우주 미리보기" / "Preview the universe") with **no explanatory note** — the page carries no
-meta-disclaimer at all (policy/ux/public-copy.md).
+is a single refined label ("데모" / "Demo"), **outlined** — the low-stakes side door — while the signup CTA is the
+filled primary, and neither carries an explanatory note: the page has no meta-disclaimer at all
+(policy/ux/public-copy.md).
 
 The page header is chrome, deliberately **not** one of the six: it carries the wordmark and the language switch and
 nothing that competes with the page's first sentence.
@@ -35,9 +36,10 @@ nothing that competes with the page's first sentence.
 
 - **`WALKTHROUGH_STEPS`** — `split → launch → color → fade → recall → mirror`, `as const satisfies` the restated
   six-tuple, mirror last. This is the [M5] structural guard's new home.
-- **The progression** is advance-only: `WalkthroughState` is `{ step, acted }`; `actOnWalkthroughStep` (idempotent),
-  `advanceWalkthrough` (forward only, and only once acted), `restartWalkthrough`. No function moves backwards, so every
-  run is a replay of the same story.
+- **The progression** is one fixed sequence, walkable a state at a time in either direction: `WalkthroughState` is
+  `{ step, acted }`; `actOnWalkthroughStep` (idempotent), `advanceWalkthrough` (forward, only once acted),
+  `retreatWalkthrough` (the exact inverse of the act/advance walk — stepping back can never reach a state a forward walk
+  would not have shown), `restartWalkthrough`. Every full run is still a replay of the same story.
 - **`walkthroughSceneFacts(content, state)`** derives everything the section renders — the stage, the memories on the
   canvas, the universe time, the sky stops, the returned-to memory's current reading — pure and total. Every derived fact goes
   through the shipped production functions: memories are real `EpisodicMemory` values whose `decayStages` are
@@ -64,24 +66,27 @@ content authors **no coordinate** ([I5]): where a star stands is the scene's sta
 `SkySphere` + one `InstancedNodeLayer` over `starChannels`, with staged slot positions (a group portrait has no
 force-sim to emerge positions from), a per-star dot poster beneath it for the no-WebGPU first paint, and the same
 no-`resetKeys` error-boundary posture as the hero. `ui/sections/LandingWalkthrough.tsx` renders caption + one action
-per step + next/restart over it, and renders the `landing_walk_mirror_definition` sentence at the mirror step —
+per step + back/next/restart over it, and renders the `landing_walk_mirror_definition` sentence at the mirror ending —
 removing that key from the catalogues fails the build.
 
-**The card does not move as the story does.** The stage is a fixed box (`h-72 sm:h-96`) and the step title and caption
-each keep room for the longest words of the run, so advancing a step changes what is on the stage and nothing else — the
-action stays under the pointer that clicked it. `motion` (`motion/react`) animates each swap: `AnimatePresence mode="wait"`
-keyed by the **stage id** for the stage and by `step:acted` for the words, so the leaving view fades out before the
-arriving one rises in and the diary being consumed by its own split is something a visitor watches happen. The whole
+**The card barely moves as the story does.** The chrome row (`h-8`) and the stage (`h-72 sm:h-96`) are fixed; the
+caption below the stage is sized by what it says, with the captions authored to comparable lengths so stepping changes
+the card's height only slightly (the owner's chosen trade over reserving room for the tallest variant). The chrome is
+hidden rather than removed when it does not apply (replay at the run's ends, back at the start), so nothing reflows. `motion` (`motion/react`) animates each swap: `AnimatePresence mode="wait"`
+keyed by the **stage id** for the stage and by `step:acted` for the words. The stage's swap is a fade-and-rise; the
+caption's is a pure-opacity **word wipe** — every word is its own motion span delayed by reading order, so the old
+caption thins out left to right and the new one surfaces the same way, the text rewriting itself in place. The whole
 section sits in one `<MotionConfig reducedMotion="user">`, which drops the transforms and keeps the fades. The
 choreography's numbers are not authored in the slice: `lib/step-motion.ts` reads `tokens.duration` / `tokens.ease` and
 converts them to Motion's seconds-and-bezier form, so the page moves at the product's pace and a token change carries it.
 
-**Control placement is the ordinary convention, not the story's.** One primary action per step, always in the card's
-bottom-right (the step's own verb → `next` → the replay at the ending); `restart` is secondary chrome, small in the
-top-right beside the step counter, and absent at both ends of the run — nothing to replay at the start, and the ending's
-own action _is_ the replay.
+**Control placement is the ordinary convention, not the story's.** One primary action per step in the card's
+bottom-right (the step's own verb → `next` → the replay at the ending), with `back` as a text button beside it;
+`restart` is secondary chrome, small in the top-left across from the step counter, and hidden at both ends of the run —
+nothing to replay at the start, and the ending's own action _is_ the replay. The card has no title of its own — the
+stage speaks for itself.
 
-The visitor's only inputs are each step's single action and next/restart: no free text, no mood picker, no time
+The visitor's only inputs are each step's single action and back/next/restart: no free text, no mood picker, no time
 slider. Deterministic on purpose — the free-play surface is the demo, one click away, and the two must not compete.
 
 ## 2. The hero — the empty universe, and the poster first
@@ -135,7 +140,10 @@ them gets a sliver the fold smears away before it can be named. `HERO_SKY_RATE` 
 per-frame seam the product's own time acceleration writes) as a constant the hero never touches: the shipped pace is tuned
 for a place you live in, and a visitor here for a few seconds would read 1× as a still image. It accelerates a **drift**,
 not a mechanic — no memory, strength or decay is read from it — and it is the only thing on the page that is sped up. The
-lead pair (`CALM`, `GRATITUDE`) survives the widening, so the first sky still leans the way the walkthrough later explains.
+mix is chosen for the brand: the moods whose canonical colours sit nearest the design system's **primary** (lavender —
+`FEAR`'s violet, `EMPTINESS`'s violet-grey, `STRESS`'s magenta, `SAD`'s blue) carry 12 of the ramp's 20 shares, the ones
+nearest the **secondary** (chartreuse — `RELIEF`, `CALM`) answer with 4, and rose and dusty blue keep the wash from
+reading as a two-colour gradient. Mood names never render on the page — only their colours do.
 
 ## 4. Locale — the first writer reachable without a session
 

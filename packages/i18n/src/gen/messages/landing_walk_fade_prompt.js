@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Landing_Walk_Fade_PromptInputs */
 
 const en_landing_walk_fade_prompt = /** @type {(inputs: Landing_Walk_Fade_PromptInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`And if it were all left alone for a while?`)
+	return /** @type {LocalizedString} */ (`Memory fades a little when it sits untouched. What happens if this sky is left alone for a while?`)
 };
 
 const ko_landing_walk_fade_prompt = /** @type {(inputs: Landing_Walk_Fade_PromptInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`이대로 한참 두면 어떻게 될까요?`)
+	return /** @type {LocalizedString} */ (`기억은 가만히 두면 조금씩 흐려져요. 이 하늘도 한참 그대로 두면 어떻게 될까요?`)
 };
 
 /**
 * | output |
 * | --- |
-* | "And if it were all left alone for a while?" |
+* | "Memory fades a little when it sits untouched. What happens if this sky is left alone for a while?" |
 *
 * @param {Landing_Walk_Fade_PromptInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

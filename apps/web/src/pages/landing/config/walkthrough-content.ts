@@ -16,19 +16,19 @@ import type { WalkthroughContent, WalkthroughStepId } from '../model/walkthrough
 const WALKTHROUGH_TEXT: Readonly<Record<Locale, WalkthroughContent>> = {
   ko: {
     diaryText:
-      '점심에 새로 온 후배와 처음으로 오래 이야기했다. 생각보다 잘 통해서 좀 놀랐다. 오후 회의는 길게 늘어져서 끝날 즈음엔 다들 말이 없어졌다. 퇴근길에 엄마한테 전화가 왔다. 별 얘기는 아니었는데, 끊고 나니 하루가 조금 부드러워져 있었다.',
+      '점심에 새로 온 후배와 처음으로 오래 이야기했다. 생각보다 잘 통해서 좀 놀랐다. 다음엔 같이 커피를 마시기로 했다. 오후 회의는 길게 늘어져서 끝날 즈음엔 다들 말이 없어졌다. 창밖이 어두워지는 걸 다 같이 지켜보기만 했다. 퇴근길에 엄마한테 전화가 왔다. 별 얘기는 아니었는데, 끊고 나니 하루가 조금 부드러워져 있었다.',
     splitScenes: [
       {
         name: '후배와의 첫 대화',
         mood: 'JOY',
-        text: '점심에 새로 온 후배와 처음으로 오래 이야기했다. 생각보다 잘 통해서 좀 놀랐다.',
+        text: '점심에 새로 온 후배와 처음으로 오래 이야기했다. 생각보다 잘 통해서 좀 놀랐다. 다음엔 같이 커피를 마시기로 했다.',
         dayOffset: 0,
         neurons: ['후배', '점심', '회사'],
       },
       {
         name: '끝나지 않던 회의',
         mood: 'TIRED',
-        text: '오후 회의는 길게 늘어져서 끝날 즈음엔 다들 말이 없어졌다.',
+        text: '오후 회의는 길게 늘어져서 끝날 즈음엔 다들 말이 없어졌다. 창밖이 어두워지는 걸 다 같이 지켜보기만 했다.',
         dayOffset: 0,
         neurons: ['회의', '회사'],
       },
@@ -74,19 +74,19 @@ const WALKTHROUGH_TEXT: Readonly<Record<Locale, WalkthroughContent>> = {
   },
   en: {
     diaryText:
-      'Had my first long talk with the new junior over lunch. We got along better than I expected. The afternoon meeting dragged on until everyone had gone quiet. On the way home my mom called. It was nothing in particular, but after we hung up the day felt a little softer.',
+      'Had my first long talk with the new junior over lunch. We got along better than I expected, and we said we would grab coffee sometime. The afternoon meeting dragged on until everyone had gone quiet, all of us just watching it get dark outside. On the way home my mom called. It was nothing in particular, but after we hung up the day felt a little softer.',
     splitScenes: [
       {
         name: 'First talk with the new junior',
         mood: 'JOY',
-        text: 'Had my first long talk with the new junior over lunch. We got along better than I expected.',
+        text: 'Had my first long talk with the new junior over lunch. We got along better than I expected, and we said we would grab coffee sometime.',
         dayOffset: 0,
         neurons: ['junior', 'lunch', 'office'],
       },
       {
         name: 'The meeting that would not end',
         mood: 'TIRED',
-        text: 'The afternoon meeting dragged on until everyone had gone quiet.',
+        text: 'The afternoon meeting dragged on until everyone had gone quiet, all of us just watching it get dark outside.',
         dayOffset: 0,
         neurons: ['meeting', 'office'],
       },
@@ -137,7 +137,6 @@ export function walkthroughContent(locale: Locale): WalkthroughContent {
 }
 
 export interface WalkthroughStepCopy {
-  readonly title: () => string
   readonly prompt: () => string
   readonly action: () => string
   readonly result: () => string
@@ -151,37 +150,31 @@ export interface WalkthroughStepCopy {
  */
 export const WALKTHROUGH_STEP_COPY: Readonly<Record<WalkthroughStepId, WalkthroughStepCopy>> = {
   split: {
-    title: m.landing_walk_split_title,
     prompt: m.landing_walk_split_prompt,
     action: m.landing_walk_split_action,
     result: m.landing_walk_split_result,
   },
   launch: {
-    title: m.landing_walk_launch_title,
     prompt: m.landing_walk_launch_prompt,
     action: m.landing_walk_launch_action,
     result: m.landing_walk_launch_result,
   },
   color: {
-    title: m.landing_walk_color_title,
     prompt: m.landing_walk_color_prompt,
     action: m.landing_walk_color_action,
     result: m.landing_walk_color_result,
   },
   fade: {
-    title: m.landing_walk_fade_title,
     prompt: m.landing_walk_fade_prompt,
     action: m.landing_walk_fade_action,
     result: m.landing_walk_fade_result,
   },
   recall: {
-    title: m.landing_walk_recall_title,
     prompt: m.landing_walk_recall_prompt,
     action: m.landing_walk_recall_action,
     result: m.landing_walk_recall_result,
   },
   mirror: {
-    title: m.landing_walk_mirror_title,
     prompt: m.landing_walk_mirror_prompt,
     action: m.landing_walk_mirror_action,
     result: m.landing_walk_mirror_result,

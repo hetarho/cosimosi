@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Landing_Hero_TitleInputs */
 
 const en_landing_hero_title = /** @type {(inputs: Landing_Hero_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`A diary you can look up at.`)
+	return /** @type {LocalizedString} */ (`A diary that fills a universe`)
 };
 
 const ko_landing_hero_title = /** @type {(inputs: Landing_Hero_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`올려다볼 수 있는 일기.`)
+	return /** @type {LocalizedString} */ (`우주를 채우는 일기`)
 };
 
 /**
 * | output |
 * | --- |
-* | "A diary you can look up at." |
+* | "A diary that fills a universe" |
 *
 * @param {Landing_Hero_TitleInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

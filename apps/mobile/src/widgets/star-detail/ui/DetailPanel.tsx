@@ -1,8 +1,19 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native'
 import type { ActorRefFrom } from 'xstate'
 
-import { Button, tokens } from '@cosimosi/ui'
+import { Button, tokens, usePresence } from '@cosimosi/ui'
 import {
   currentDecayText,
   parseGistNodeId,
@@ -22,6 +33,9 @@ import { m } from '../../../shared/i18n/index.ts'
 import { useMachine, useSelector } from '../../../shared/model/index.ts'
 import { STAR_DETAIL_PANEL } from '../config/panel.ts'
 import { GistViewSheet } from './GistViewSheet.tsx'
+
+/** Matches the leave timing in `PanelSlide` — the timer, not the animation, is what unmounts. */
+const EXIT_MS = 200
 
 type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
 
@@ -84,6 +98,15 @@ export function DetailPanel({
   const episodicId = selection.kind === 'episodic' ? selection.memory.id : null
   const provenance = useProvenanceQuery(episodicId, phase === 'provenance')
 
+  // Held one animation past the close so the panel can slide back out the edge it came in from. What is
+  // held is the CONTENT ITSELF, not the selection it was built from: the selection is already gone by
+  // then, and re-deriving a body from a cleared one would empty the panel mid-slide. Re-rendering the
+  // same elements keeps their own state and issues no new read. Both live ABOVE the gist branch below,
+  // because a hook cannot sit behind an early return.
+  const open = phase !== 'closed' && selection.kind !== 'none'
+  const { present, phase: motion } = usePresence(open, EXIT_MS)
+  const heldContent = useRef<ReactNode>(null)
+
   // A gist body opens the priced gist-view over the canvas (A5); closing clears the canvas
   // selection so re-selecting the same body reopens it.
   if (selection.kind === 'gist') {
@@ -96,10 +119,8 @@ export function DetailPanel({
     )
   }
 
-  if (phase === 'closed' || selection.kind === 'none') return null
-
-  return (
-    <View style={[styles.sheet, { maxHeight: height * STAR_DETAIL_PANEL.maxHeightFraction }]}>
+  const content = open ? (
+    <>
       <View style={styles.header}>
         <Text style={styles.title} numberOfLines={1}>
           {selection.kind === 'episodic' ? selection.memory.name : m.star_detail_title_neuron()}
@@ -169,7 +190,71 @@ export function DetailPanel({
           </>
         )}
       </ScrollView>
-    </View>
+    </>
+  ) : null
+  if (content) heldContent.current = content
+  const shown = content ?? heldContent.current
+  if (!present || !shown) return null
+
+  return (
+    <PanelSlide
+      leaving={motion === 'leaving'}
+      style={[styles.sheet, { maxHeight: height * STAR_DETAIL_PANEL.maxHeightFraction }]}
+    >
+      {shown}
+    </PanelSlide>
+  )
+}
+
+// The slide itself, split out so the panel body above stays a list of features rather than a list of
+// features wrapped in animation plumbing. Mirrors the web `.panel-enter` / `.panel-leave` pair, on the
+// bottom edge this platform's panel lives on.
+function PanelSlide({
+  leaving,
+  style,
+  children,
+}: {
+  readonly leaving: boolean
+  readonly style: StyleProp<ViewStyle>
+  readonly children: ReactNode
+}) {
+  const offset = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    let cancelled = false
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduced) => {
+        if (cancelled) return
+        if (reduced) {
+          offset.setValue(leaving ? 1 : 0)
+          return
+        }
+        Animated.timing(offset, {
+          toValue: leaving ? 1 : 0,
+          duration: leaving ? EXIT_MS : 240,
+          easing: leaving ? Easing.in(Easing.cubic) : Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start()
+      })
+      .catch(() => offset.setValue(leaving ? 1 : 0))
+    return () => {
+      cancelled = true
+    }
+  }, [offset, leaving])
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: offset.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+          transform: [
+            { translateY: offset.interpolate({ inputRange: [0, 1], outputRange: [0, 48] }) },
+          ],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
   )
 }
 

@@ -14,7 +14,7 @@ import {
   type OnboardingAnchor,
 } from '@cosimosi/onboarding'
 import { useSequenceRun } from '@cosimosi/sequence/react'
-import { Button, tokens } from '@cosimosi/ui'
+import { Button, DecorateIcon, DiaryIcon, IconButton, SettingsIcon, tokens } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 import {
   ObservedErrorBoundary,
@@ -30,7 +30,6 @@ import {
 
 import { useDecorationRequestStore } from '@cosimosi/store'
 
-import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useScreenInsets } from '../../../shared/native/index.ts'
@@ -196,34 +195,45 @@ export function UniversePage({
           )}
         </QueryErrorResetBoundary>
       </View>
-      {/* The top chrome is ONE column below the device inset, not three absolutely-placed rows: fixed
-          offsets guessed each row's height, so the balance panel and the account/archive buttons
-          overlapped as soon as either grew — and all of it sat under the status bar. */}
+      {/* The top chrome is ONE column below the device inset, not absolutely-placed rows: fixed
+          offsets guessed each row's height, so the balance and the account/archive buttons overlapped
+          as soon as either grew — and all of it sat under the status bar. The clock is the exception,
+          and deliberately so: it is centred on the SCREEN and out of this column's flow, so it neither
+          pushes the balance reading down nor depends on the reading's width to stay centred. */}
       <View style={[styles.topChrome, { top: insets.top + tokens.spacing[3] }]}>
-        <NebulaNotice />
-        {/* The persistent Twinkle balance + charge host ([G2][G3]). */}
+        <View style={styles.clock} pointerEvents="box-none">
+          <UniverseTimeOverlay />
+        </View>
+        {/* The persistent Twinkle balance + charge host ([G2][G3]), then a dense toolbar of
+            icon-only controls: the account home, 꾸미기 ([P5], a panel over the canvas rather than a
+            route) and the archive ([D2]) — a quiet column against the screen edge instead of a row
+            of labelled buttons competing with the universe. There is no hover on touch, so each
+            one's `label` is the whole of its name (design-language §8). */}
         <View style={styles.topRight}>
           <StardustOverlay onOpenAchievements={onOpenAchievements} />
-        </View>
-        {/* The quiet ways into the archive ([D2]) and the signed-in account home — restrained
-            affordances, not persistent chrome. */}
-        <View style={styles.topRight}>
-          {/* 꾸미기 joins the same restrained row as the archive and the account home ([P5]): the
-              panel opens over the canvas, so the affordance belongs to the HUD, not to a route. */}
-          <Button color="neutral" size="sm" onPress={requestDecoration}>
-            {m.store_open_action()}
-          </Button>
-          <Button color="neutral" size="sm" onPress={onOpenMe}>
-            {m.me_title()}
-          </Button>
-          <Button color="neutral" size="sm" onPress={onOpenDiary}>
-            {m.diary_reader_title()}
-          </Button>
+          <IconButton
+            variant="contained"
+            color="neutral"
+            label={m.universe_home_settings()}
+            icon={<SettingsIcon />}
+            onPress={onOpenMe}
+          />
+          <IconButton
+            variant="contained"
+            color="neutral"
+            label={m.store_open_action()}
+            icon={<DecorateIcon />}
+            onPress={requestDecoration}
+          />
+          <IconButton
+            variant="contained"
+            color="neutral"
+            label={m.diary_reader_title()}
+            icon={<DiaryIcon />}
+            onPress={onOpenDiary}
+          />
         </View>
       </View>
-      {/* Mounted at the screen root so its absolute veil/HUD span the full screen; before the
-          write action so the veil dims the scene + notice but never the primary affordance. */}
-      <UniverseTimeOverlay />
       <View style={[styles.hud, { bottom: insets.bottom + tokens.spacing[6] }]}>
         {firstRun ? <Text style={styles.welcome}>{m.universe_first_run_welcome()}</Text> : null}
         {/* An onboarding anchor is registered by wrapping an existing child at a composition site and
@@ -270,7 +280,9 @@ const styles = StyleSheet.create({
     right: tokens.spacing[4],
     gap: tokens.spacing[2],
   },
-  topRight: { alignItems: 'flex-end', gap: tokens.spacing[2] },
+  // Out of the column's flow and spanning it, so `alignItems: 'center'` inside centres on the screen.
+  clock: { position: 'absolute', left: 0, right: 0, top: 0 },
+  topRight: { alignItems: 'flex-end', gap: tokens.spacing[3] },
   hud: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: tokens.spacing[3] },
   welcome: {
     color: tokens.color['text-muted'],

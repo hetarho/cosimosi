@@ -2,7 +2,7 @@ import { float, pow, smoothstep, vec3 } from 'three/tsl'
 
 import { domainWarp } from '../../shader-art/field'
 import { fbm01 } from '../../shader-art/noise'
-import { skyDir, skyDrift } from './sky-domain.ts'
+import { skyDir, skySpin } from './sky-domain.ts'
 import { emotionField } from './sky-emotion.ts'
 import { skyFinish, skyVoid } from './sky-finish.ts'
 import { skySeconds, type SkyNodeArgs } from './sky-node.ts'
@@ -30,11 +30,18 @@ const DYE_FULL = 0.78
 export function liquidEtherSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
   const t = skySeconds(time, 0.08)
 
-  // Advect the sample frame by an fbm domain warp — the velocity field that smears the dye.
-  const warped = domainWarp(skyDrift(skyDir().mul(2.4), t, [0, 0, 1]), {
+  // Advect the sample frame by an fbm domain warp — the velocity field that smears the dye. The dye
+  // flows by translation (fbm eats unbounded coordinates forever), but the frame the territories are
+  // read at must not (skyDrift's contract: normalize of a translating frame collapses to the drift
+  // axis). So the drift is subtracted back out below before the normalize — the territories keep the
+  // warp the flow computed, on a base frame that only ever spins.
+  const spun = skySpin(skyDir(), t, [0.25, 1, 0.2], 0.1).mul(2.4)
+  const drift = vec3(0, 0, 1).mul(t)
+  const warped = domainWarp(spun.add(drift), {
     amount: 1.2,
     octaves: 4,
   })
+  const anchored = warped.sub(drift)
 
   // The dye's own density. This is what carves the clouds out of the void, so it must NOT come from
   // the emotions: adding a feeling has to divide the fluid, never thicken it.
@@ -49,7 +56,7 @@ export function liquidEtherSkyNode({ gradient, time, count, weights, headroom }:
     gradient,
     count,
     weights,
-    dir: warped.normalize(),
+    dir: anchored.normalize(),
     sharpness: 1.8,
   })
 

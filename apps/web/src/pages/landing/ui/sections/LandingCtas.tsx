@@ -10,9 +10,10 @@ import type { LandingSectionProps } from '../../model/sections.ts'
 // **exposes no ordering prop**, which is what makes "demo before signup" something a call site cannot
 // get wrong rather than something a reviewer has to check.
 
+// Outlined, because the ask that matters is the signup below — the demo is the low-stakes side door.
 export function DemoCta({ onTryDemo }: Pick<LandingSectionProps, 'onTryDemo'>) {
   return (
-    <Button color="primary" onClick={onTryDemo}>
+    <Button color="primary" variant="outlined" onClick={onTryDemo}>
       {m.landing_cta_demo()}
     </Button>
   )
@@ -20,7 +21,7 @@ export function DemoCta({ onTryDemo }: Pick<LandingSectionProps, 'onTryDemo'>) {
 
 function SignUpCta({ onSignUp }: Pick<LandingSectionProps, 'onSignUp'>) {
   return (
-    <Button color="neutral" onClick={onSignUp}>
+    <Button color="primary" onClick={onSignUp}>
       {m.landing_cta_signup()}
     </Button>
   )

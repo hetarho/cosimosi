@@ -639,6 +639,86 @@
   }
 }
 
+/* ── Selected item ────────────────────────────────────────────────────────────
+ * The held choice in a list of choices. It is `.btn-text:hover`'s language — the accent lighting the
+ * glyphs from inside — but held rather than transient, because a list has to say which one is live
+ * even while the pointer is somewhere else. A muted-ink row with a slightly different background was
+ * not enough to find at a glance over a moving universe.
+ *
+ * The accent is `color`, so anything inside without its own colour inherits it, and the bloom is a
+ * filter on the whole item — the same reason `.btn-text` uses one: it hugs the glyphs and eases in on
+ * the item's existing transition.
+ */
+@layer components {
+  .item-selected {
+    color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+    filter: drop-shadow(0 0 6px color-mix(in oklab, var(--color-primary) 45%, transparent));
+  }
+}
+
+/* ── Edge surfaces: arriving and leaving ──────────────────────────────────────
+ * A sheet or a side panel slides in from the edge it lives on and goes back out the same way, so it
+ * reads as having come from somewhere rather than having replaced what was there. The bottom is that
+ * edge on a narrow screen and the right on a wide one, which is where the Sheet itself sits.
+ *
+ * The leave is only possible because `usePresence` holds the element for the duration below — keep the
+ * two in step. Reduced motion collapses both at the top of this file.
+ */
+@keyframes edge-in-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes edge-out-bottom {
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes edge-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes edge-out-right {
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@layer components {
+  .sheet-enter {
+    animation: edge-in-bottom 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* `forwards` so the last frame holds for the few ms between the animation ending and the unmount —
+     without it the panel snaps back to rest and flashes before it goes. */
+  .sheet-leave {
+    animation: edge-out-bottom 200ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  }
+  /* A side panel is on the right edge at every width, so it does not switch axis at a breakpoint. */
+  .panel-enter {
+    animation: edge-in-right 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .panel-leave {
+    animation: edge-out-right 200ms cubic-bezier(0.64, 0, 0.78, 0) forwards;
+  }
+  @media (width >= 48rem) {
+    .sheet-enter {
+      animation-name: edge-in-right;
+    }
+    .sheet-leave {
+      animation-name: edge-out-right;
+    }
+  }
+}
+
 /* ── State preview ────────────────────────────────────────────────────────────
  * `:hover` / `:active` / `:focus-visible` only exist under a live pointer or keyboard, so a
  * catalogue can't show them side by side — and a designer reviewing the language has to see the

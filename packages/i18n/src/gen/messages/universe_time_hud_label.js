@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Universe_Time_Hud_LabelInputs */
 
 const en_universe_time_hud_label = /** @type {(inputs: Universe_Time_Hud_LabelInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Universe time`)
+	return /** @type {LocalizedString} */ (`Time in our universe`)
 };
 
 const ko_universe_time_hud_label = /** @type {(inputs: Universe_Time_Hud_LabelInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`우주의 시간`)
+	return /** @type {LocalizedString} */ (`우리 우주의 시간`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Universe time" |
+* | "Time in our universe" |
 *
 * @param {Universe_Time_Hud_LabelInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

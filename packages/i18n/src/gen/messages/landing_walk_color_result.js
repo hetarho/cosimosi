@@ -10,7 +10,7 @@ const en_landing_walk_color_result = /** @type {(inputs: Landing_Walk_Color_Resu
 };
 
 const ko_landing_walk_color_result = /** @type {(inputs: Landing_Walk_Color_ResultInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`기록이 쌓인 만큼 하늘이 물들었어요. 조용한 날이 많았던 한 주라, 하늘도 조용한 색이에요.`)
+	return /** @type {LocalizedString} */ (`기록이 쌓인 만큼 하늘이 물들었어요. 조용한 날이 많았던 한 주라 하늘도 조용한 색이에요.`)
 };
 
 /**

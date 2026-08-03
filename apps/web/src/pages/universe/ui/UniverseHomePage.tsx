@@ -17,7 +17,7 @@ import {
   type ObservedErrorBoundaryFallbackProps,
 } from '@cosimosi/observability/react'
 import { useSequenceRun } from '@cosimosi/sequence/react'
-import { Button } from '@cosimosi/ui'
+import { Button, DecorateIcon, DiaryIcon, IconButton, SettingsIcon, Tooltip } from '@cosimosi/ui'
 import { m } from '../../../shared/i18n/index.ts'
 import { useDecorationRequestStore } from '@cosimosi/store'
 import {
@@ -28,7 +28,6 @@ import {
   useRecallTargetStore,
 } from '@cosimosi/universe'
 
-import { NebulaNotice } from '../../../entities/nebula/index.ts'
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { DecorationPanelSheet } from '../../../widgets/decoration-panel/index.ts'
@@ -178,30 +177,59 @@ export function UniverseHomePage({
           )}
         </QueryErrorResetBoundary>
       </div>
-      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6">
-        <header className="flex items-start justify-between gap-3">
-          <NebulaNotice />
-          {/* HUD top ([T6]) with the acceleration veil + consent host riding along; the veil is a
-              fixed layer, so the write action below (later in paint order) stays crisp over it. The
-              persistent Twinkle balance + charge host ([G2][G3]) sit beneath it, top-right. */}
-          <div className="flex flex-col items-end gap-3">
+      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4 sm:p-6">
+        {/* The clock is centred on the SCREEN and taken OUT of flow, because the universe's time is
+            the one reading that belongs to the place rather than to a corner of it ([T6]) — and
+            because it must not push the reading beside it down. Everything else in the header is
+            right-aligned flow, so the balance sits flush with the top on every width, from a phone to
+            a desktop, with no breakpoint deciding which of the two gets the top line. */}
+        <header className="relative flex flex-col items-end gap-3">
+          {/* HUD top ([T6]) with the acceleration host riding along; the acceleration renders nothing
+              (the scene says time passing), and the consent modal is fixed, so neither cares that its
+              host is a centred, zero-height box. */}
+          {/* `w-max`: an absolute box offset by `left-1/2` is only offered the remaining half of the
+              header to lay out in, which wrapped the pill's own line on a phone. */}
+          <div className="absolute left-1/2 top-0 w-max -translate-x-1/2">
             <UniverseTimeOverlay />
+          </div>
+          {/* The persistent Twinkle balance + charge host ([G2][G3]), and beneath it the ways out of
+              the canvas. */}
+          <div className="flex flex-col items-end gap-3">
             <StardustOverlay onOpenAchievements={onOpenAchievements} />
-            {/* The quiet way into the archive ([D2]) and the signed-in account home — restrained
-                affordances, not a persistent chrome bar. pointer-events-auto so they stay
-                tappable over the non-interactive HUD. */}
-            <div className="pointer-events-auto flex gap-2">
-              {/* 꾸미기 joins the same restrained row as the archive and the account home ([P5]): the
-                  panel opens over the canvas, so the affordance belongs to the HUD, not to a route. */}
-              <Button color="neutral" size="sm" onClick={requestDecoration}>
-                {m.store_open_action()}
-              </Button>
-              <Button color="neutral" size="sm" onClick={() => onOpenMe?.()}>
-                {m.me_title()}
-              </Button>
-              <Button color="neutral" size="sm" onClick={() => onOpenReader?.()}>
-                {m.diary_reader_title()}
-              </Button>
+            {/* A dense toolbar of icon-only controls: the account home, 꾸미기 ([P5], a panel over
+                the canvas rather than a route) and the archive ([D2]) — a quiet column against the
+                screen edge instead of a row of labelled buttons competing with the universe. Each
+                carries its name in `label` and a tooltip, which §8 makes mandatory the moment an
+                icon stands without one. pointer-events-auto so they stay tappable over the
+                non-interactive HUD. */}
+            <div className="pointer-events-auto flex flex-col gap-2">
+              <Tooltip content={m.universe_home_settings()} side="left">
+                <IconButton
+                  variant="contained"
+                  color="neutral"
+                  label={m.universe_home_settings()}
+                  icon={<SettingsIcon />}
+                  onClick={() => onOpenMe?.()}
+                />
+              </Tooltip>
+              <Tooltip content={m.store_open_action()} side="left">
+                <IconButton
+                  variant="contained"
+                  color="neutral"
+                  label={m.store_open_action()}
+                  icon={<DecorateIcon />}
+                  onClick={requestDecoration}
+                />
+              </Tooltip>
+              <Tooltip content={m.diary_reader_title()} side="left">
+                <IconButton
+                  variant="contained"
+                  color="neutral"
+                  label={m.diary_reader_title()}
+                  icon={<DiaryIcon />}
+                  onClick={() => onOpenReader?.()}
+                />
+              </Tooltip>
             </div>
           </div>
         </header>

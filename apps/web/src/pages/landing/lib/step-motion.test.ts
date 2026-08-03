@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { tokens } from '@cosimosi/ui'
 
-import { CAPTION_MOTION, STAGE_MOTION, sceneMotion } from './step-motion.ts'
+import { CAPTION_MOTION, STAGE_MOTION, sceneMotion, wordFadeMotion } from './step-motion.ts'
 
 // The choreography's whole claim is that the page moves at the PRODUCT's pace — the same durations and
 // the same curve every CSS transition uses. Both parsers fall back silently when handed something they
@@ -26,6 +26,22 @@ describe('the step choreography', () => {
     // Asserted against the token text rather than a copy of the four numbers, so this stays true when
     // the curve is retuned and false the moment the parse gives up.
     for (const value of numbers) expect(tokens.ease.standard).toContain(String(value))
+  })
+
+  it('wipes the caption word by word, in reading order, with opacity alone', () => {
+    const first = wordFadeMotion(0, 10)
+    const mid = wordFadeMotion(5, 10)
+    const last = wordFadeMotion(9, 10)
+    expect(Number(timing(first).delay)).toBe(0)
+    expect(Number(timing(mid).delay)).toBeGreaterThan(0)
+    expect(Number(timing(last).delay)).toBeGreaterThan(Number(timing(mid).delay))
+    // Pure opacity — a word that travelled would smear the line the wipe is drawing.
+    for (const motion of [first, last]) {
+      expect(Object.keys(motion.initial as object)).toEqual(['opacity'])
+      expect(Object.keys(motion.exit as object)).toEqual(['opacity'])
+    }
+    // A one-word caption has nothing to spread across.
+    expect(Number(timing(wordFadeMotion(0, 1)).delay)).toBe(0)
   })
 
   it('staggers the split scenes in the order the day was written', () => {

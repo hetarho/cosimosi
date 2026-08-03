@@ -71,12 +71,14 @@ export function DecorationPanelSheet() {
     }
   }, [actorRef, save, invalidateAchievements])
 
+  // Handed to the Sheet rather than used to unmount it here: the Sheet holds itself for one animation
+  // past a close so it can slide back out the edge it came in from, and returning null on this line
+  // would take the element away before it could.
   const open = phase === 'browsing' || phase === 'saving'
-  if (!open) return null
 
   return (
     <Sheet
-      open
+      open={open}
       onClose={() => actorRef.send({ type: 'CLOSE' })}
       title={m.store_panel_title()}
       closeLabel={m.store_panel_close()}
@@ -90,12 +92,7 @@ export function DecorationPanelSheet() {
         />
       }
     >
-      <div className="flex flex-col gap-5">
-        <OrnamentGroupList frozen={phase === 'saving'} />
-        {/* A feeling's colour is not sold here, and someone looking for it should not have to guess
-            where it went ([P10] as amended). */}
-        <p className="px-3 text-xs text-text-muted">{m.store_mood_color_pointer()}</p>
-      </div>
+      <OrnamentGroupList frozen={phase === 'saving'} />
     </Sheet>
   )
 }

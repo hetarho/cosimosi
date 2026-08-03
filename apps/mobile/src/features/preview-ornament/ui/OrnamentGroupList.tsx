@@ -50,11 +50,13 @@ const styles = StyleSheet.create({
     color: tokens.color['text-muted'],
     fontSize: tokens.fontSize.sm,
   },
+  // The group title is the panel's own structure, so it carries the brightest ink and a heavier
+  // weight than the rows beneath it — a muted, light label read as one more row.
   groupTitle: {
     paddingHorizontal: tokens.spacing[3],
     paddingBottom: tokens.spacing[1],
-    color: tokens.color['text-muted'],
+    color: tokens.color.text,
     fontSize: tokens.fontSize.xs,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 })

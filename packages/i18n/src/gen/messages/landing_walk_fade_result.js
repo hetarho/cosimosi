@@ -10,7 +10,7 @@ const en_landing_walk_fade_result = /** @type {(inputs: Landing_Walk_Fade_Result
 };
 
 const ko_landing_walk_fade_result = /** @type {(inputs: Landing_Walk_Fade_ResultInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`찾지 않은 별은 어두워지고, 문장은 단어를 잃기 시작해요. 그래도 사라지지는 않아요.`)
+	return /** @type {LocalizedString} */ (`찾지 않은 별은 어두워지고 문장은 단어를 잃기 시작해요. 그래도 사라지지는 않아요.`)
 };
 
 /**

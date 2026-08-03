@@ -186,12 +186,21 @@ The primitive API is plan 09's and does not change here; this is how those primi
 
 ## 8. Iconography
 
-- One geometry: a 20-unit viewBox rendered at `size-4`, `currentColor` so the icon inherits the
-  control's ink, 2-unit strokes so weight matches the text beside it.
+- **One family: Phosphor** (`@phosphor-icons/react` on web, `phosphor-react-native` on native), and
+  one place it is named — `packages/ui/src/primitives/icons.tsx` and its `.native` sibling bind each
+  glyph to a **product meaning** and export that. A slice asks for `DiaryIcon`, never for a book, so
+  rebinding a meaning to another glyph — or replacing the family — is a change in the design system
+  and nowhere else. A slice never draws its own SVG.
+- One size: `ICON_SIZE` (16px) unless a specimen says otherwise, and `currentColor` so the icon takes
+  the ink of the control around it. Native has no inherited colour, so each native icon takes an
+  explicit token colour, defaulting to the neutral text token.
 - `aria-hidden` on every icon. An icon-only control carries its name in `label`; an unlabeled icon
   is a guess the user has to make.
 - Icons clarify a label, they do not replace one — except in a dense toolbar, where the tooltip is
-  then mandatory.
+  then mandatory. On touch there is no hover, so `label` is the whole of the name there.
+- The design showcase draws its own outline glyphs (`pages/design/lib/showcase-icons.tsx`). Those are
+  **specimens of control anatomy** — where a leading icon sits, how it dims, what a spinner replaces
+  — not product icons, and nothing outside the showcase imports them.
 
 ## 9. State treatments
 

@@ -124,8 +124,14 @@ win deterministically through the `style={[base, …, props.style]}` array.
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
 **Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog, Sheet,
-Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs, SegmentedControl. **Deferred** (added when a
-Phase-4 slice needs them, promote-on-use): Menu, Slider/Stepper, Drawer.
+Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs, SegmentedControl, and the icon set.
+**Deferred** (added when a Phase-4 slice needs them, promote-on-use): Menu, Slider/Stepper, Drawer.
+
+The **icon set** (`primitives/icons.tsx` + `.native`) is a primitive like any other, and the one place
+a Phosphor glyph is named: it exports icons by product meaning (`DiaryIcon`, `TwinkleSmallIcon`, …), so
+swapping a glyph or the whole family never reaches a slice. Web takes ink from `currentColor`; native,
+which has none to inherit, takes a token colour prop. Native imports per glyph — Metro does not
+tree-shake, and the package root is ~25 MB of icons. See design-language §8.
 
 `Sheet` is the surface that opens **beside** what it is about, and it is a separate primitive rather than a `Dialog`
 setting: it renders no backdrop, traps no focus and is not a portal, so the thing behind it stays visible and

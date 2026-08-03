@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 
-import { tokens } from '@cosimosi/ui'
-
 import {
   isEmptyAdvance,
   universeTimeMachine,
@@ -21,23 +19,21 @@ import {
 import { SequenceAnchor } from '../../../features/highlight-next-control/index.ts'
 import { UniverseTimeHud } from '../../../features/universe-clock-hud/index.ts'
 import { useMachine } from '../../../shared/model/index.ts'
-import { useScreenInsets } from '../../../shared/native/index.ts'
 import { releaseAdvance } from '@cosimosi/universe'
 import type { OnboardingAnchor } from '@cosimosi/onboarding'
 
 // widgets/universe-time (RN fork): the time overlay over the running canvas — the HUD, the
 // acceleration, and the consent modal composed by one machine phase (§3.1/§3.2). Shares model/api
-// with web verbatim; only this host + the veil/HUD/dialog primitives fork (§3.5). It imports no
-// three / visual entity (§3.4). Mounted as a direct child of the screen root so the absolute veil
-// and HUD position against the full screen; the veil precedes the HUD so the sweeping date stays
-// crisp above the dimmed scene.
+// with web verbatim; only this host + the HUD/dialog primitives fork (§3.5). It imports no three /
+// visual entity (§3.4). It lays out as a centred row inside the screen's top chrome, which is what
+// owns the device inset — the acceleration renders nothing (the scene says time passing) and the
+// consent modal is an RN `Modal` at the root, so nothing here needs to position against the screen.
 //
-// The onboarding `universe-clock` anchor is registered HERE, inside the absolutely-positioned HUD box
-// rather than around this widget: every child this component renders is absolute, so a wrapper one
-// layer up would measure a zero-height box spanning the screen. This is a composition site like any
-// other, so `features/universe-clock-hud` still knows nothing about a tour ([I13]).
+// The onboarding `universe-clock` anchor is registered HERE, around the HUD box rather than around
+// this widget: the two siblings beside it draw nothing, so a wrapper one layer up would hand the
+// highlight a box measured from a component with no visible content. This is a composition site like
+// any other, so `features/universe-clock-hud` still knows nothing about a tour ([I13]).
 export function UniverseTimeOverlay() {
-  const insets = useScreenInsets()
   const [snapshot, send] = useMachine(universeTimeMachine)
   const phase = snapshot.value as UniverseTimePhase
 
@@ -121,9 +117,9 @@ export function UniverseTimeOverlay() {
       {playing ? (
         <AccelerateTime interval={playing.interval} onTick={setSweepTime} onDone={done} />
       ) : null}
-      {/* The clock clears the device chrome by the live inset — it sat under the status bar and the
-          dynamic island on any device that has one. */}
-      <View style={[styles.hud, { top: insets.top + tokens.spacing[3] }]} pointerEvents="none">
+      {/* Centred on the screen rather than tucked into a corner ([T6]): the universe's time is a
+          reading that belongs to the place. The device inset is the top chrome's, one layer up. */}
+      <View style={styles.hud} pointerEvents="none">
         <SequenceAnchor id={'universe-clock' satisfies OnboardingAnchor}>
           <UniverseTimeHud overrideTime={playing ? sweepTime : null} />
         </SequenceAnchor>
@@ -134,5 +130,5 @@ export function UniverseTimeOverlay() {
 }
 
 const styles = StyleSheet.create({
-  hud: { position: 'absolute', right: tokens.spacing[4], alignItems: 'flex-end' },
+  hud: { alignItems: 'center' },
 })

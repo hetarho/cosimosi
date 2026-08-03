@@ -325,7 +325,9 @@ describe('mobile auth gate', () => {
     try {
       // The universe stack: the quiet archive entry sits outside the canvas error boundary, so it
       // is present whether or not the (host-stubbed) 3D renderer mounts.
-      await waitFor(() => expect(screen.getByText(m.diary_reader_title())).toBeTruthy())
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: m.diary_reader_title() })).toBeTruthy(),
+      )
       // First-run welcome for a zero-memory read ([V7]) — the same widget tree, no separate route.
       await waitFor(() => expect(screen.getByText(m.universe_first_run_welcome())).toBeTruthy())
     } finally {
@@ -340,7 +342,7 @@ describe('mobile auth gate', () => {
     try {
       await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
       // The universe never mounts for a signed-out session (its GetUniverse read never issues).
-      expect(screen.queryByText(m.diary_reader_title())).toBeNull()
+      expect(screen.queryByRole('button', { name: m.diary_reader_title() })).toBeNull()
     } finally {
       view.unmount()
       fakes.dispose()
@@ -533,9 +535,11 @@ describe('mobile auth gate', () => {
       // still bootstrapping: the splash is mounted and neither the login stack nor the universe is.
       expect(screen.getByText(m.common_loading())).toBeTruthy()
       expect(screen.queryByText(m.login_title())).toBeNull()
-      expect(screen.queryByText(m.diary_reader_title())).toBeNull()
+      expect(screen.queryByRole('button', { name: m.diary_reader_title() })).toBeNull()
       // Once settled, the gate swaps to the universe stack — the splash was a hold, not a route.
-      await waitFor(() => expect(screen.getByText(m.diary_reader_title())).toBeTruthy())
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: m.diary_reader_title() })).toBeTruthy(),
+      )
     } finally {
       view.unmount()
       fakes.dispose()
@@ -550,12 +554,14 @@ describe('mobile auth gate', () => {
     setClientCacheData(fakes.queryClient, createGetUniverseQueryKey(fakes.transport), emptyUniverse)
     const view = renderShell(fakes)
     try {
-      await waitFor(() => expect(screen.getByText(m.diary_reader_title())).toBeTruthy())
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: m.diary_reader_title() })).toBeTruthy(),
+      )
       // The [04] facade action settles the session to signedOut; the gate observes the same
       // snapshot and swaps stacks — the universe view unmounts, nothing is deleted server-side.
       await act(() => fakes.authFacade.signOut())
       await waitFor(() => expect(screen.getByText(m.login_title())).toBeTruthy())
-      expect(screen.queryByText(m.diary_reader_title())).toBeNull()
+      expect(screen.queryByRole('button', { name: m.diary_reader_title() })).toBeNull()
     } finally {
       view.unmount()
       fakes.dispose()
@@ -612,7 +618,9 @@ describe('mobile auth gate', () => {
       fireEvent.press(screen.getByRole('button', { name: m.diary_reader_title() }))
       await waitFor(() => expect(screen.getByText(m.diary_reader_back())).toBeTruthy())
       fireEvent.press(screen.getByRole('button', { name: m.diary_reader_back() }))
-      await waitFor(() => expect(screen.getByRole('button', { name: m.me_title() })).toBeTruthy())
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: m.universe_home_settings() })).toBeTruthy(),
+      )
 
       await act(async () => {
         seedEveryMobileUserState()
@@ -636,7 +644,7 @@ describe('mobile auth gate', () => {
       expectEveryMobileUserStateEmpty()
       expect(fakes.queryClient.getQueryData(['user-a-only'])).toBeUndefined()
 
-      fireEvent.press(screen.getByRole('button', { name: m.me_title() }))
+      fireEvent.press(screen.getByRole('button', { name: m.universe_home_settings() }))
       await waitFor(() => expect(screen.getByText(m.me_tab_profile())).toBeTruthy())
     } finally {
       view.unmount()
@@ -652,8 +660,10 @@ describe('mobile me screen', () => {
 
   async function openMe(fakes: MobileShellFakes) {
     const view = renderShell(fakes)
-    await waitFor(() => expect(screen.getByText(m.me_title())).toBeTruthy())
-    fireEvent.press(screen.getByText(m.me_title()))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: m.universe_home_settings() })).toBeTruthy(),
+    )
+    fireEvent.press(screen.getByRole('button', { name: m.universe_home_settings() }))
     await waitFor(() => expect(screen.getByText(m.me_nickname_label())).toBeTruthy())
     return view
   }

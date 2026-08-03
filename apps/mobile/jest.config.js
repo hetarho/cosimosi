@@ -26,7 +26,7 @@ module.exports = {
     '^.+\\.(js|ts|tsx)$': ['babel-jest', { configFile: require.resolve('./babel.config.js') }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-native-safe-area-context)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|react-native-screens|react-native-safe-area-context|react-native-svg|phosphor-react-native)/)',
   ],
   // The shell smoke tests exercise the shell, not the WebGPU renderer; stub the 3D
   // package so jest doesn't load three (ESM, untransformed in this host config).

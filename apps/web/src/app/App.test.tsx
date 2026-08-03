@@ -189,8 +189,8 @@ describe('web auth gate', () => {
       // A stranger gets the page, not a password field: the landing's own headline, and the
       // walkthrough that now carries the page's argument (its [M5] closing step is pinned by
       // pages/landing's own model tests).
-      expect(html).toContain('A diary you can look up at.')
-      expect(html).toContain('Here is one diary, start to finish')
+      expect(html).toContain('A diary that fills a universe')
+      expect(html).toContain('Step 1 of 6')
       expect(html).not.toContain('Sign in')
     } finally {
       fakes.dispose()

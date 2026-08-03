@@ -14,6 +14,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "jsx": "react-jsx",
+    // `phosphor-react-native` publishes its per-icon subpath as raw TSX (the entry Metro needs, since
+    // it does not tree-shake and the package root is ~25 MB of glyphs). Typechecking that source pulls
+    // the library's own react-native-svg mismatch into this program, so the icons are typed from the
+    // declarations it also ships — an alias for `tsc` only; Metro still resolves the real subpath.
+    "paths": {
+      "phosphor-react-native/src/icons/*": [
+        "../../node_modules/phosphor-react-native/lib/typescript/icons/*"
+      ]
+    },
     // The package holds both DOM (*.tsx) and React Native (*.native.tsx) primitives,
     // so the typecheck must see both type worlds at once. Web uses Tailwind classes;
     // native uses RN StyleSheet built from the shared tokens (native-styles.ts). node

@@ -77,3 +77,21 @@ export function sceneMotion(index: number): StepMotion {
     transition: { duration: STAGE_SECONDS, ease: EASE, delay: index * SCENE_STAGGER },
   }
 }
+
+// How long the caption's wipe takes to travel from its first word to its last, on top of each word's
+// own fade — the shared base duration, so the whole line turns over inside one stage swap.
+const WIPE_SPREAD = STAGE_SECONDS
+
+/** One word of the caption, in reading order — pure opacity, no travel: the old words thin out left
+ *  to right and the new ones surface the same way, so the swap reads as the text rewriting itself in
+ *  place rather than a block moving. `index` is the word's position across the WHOLE caption (the
+ *  mirror ending's definition and result share one sequence), `count` the caption's word total. */
+export function wordFadeMotion(index: number, count: number): StepMotion {
+  const delay = count > 1 ? (index / (count - 1)) * WIPE_SPREAD : 0
+  return {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: { duration: CAPTION_SECONDS, ease: EASE, delay },
+  }
+}

@@ -224,7 +224,16 @@ export function WritingFlowSheet() {
 
   return (
     <>
-      <Button color="primary" className="pointer-events-auto" onClick={open}>
+      {/* The one action the home screen is for, so it is the biggest control on it — but outlined
+          rather than filled: a border and its glow ring hold the emphasis without putting an opaque
+          slab over the universe the screen exists to show (design-language §2.3). */}
+      <Button
+        variant="outlined"
+        color="primary"
+        size="lg"
+        className="pointer-events-auto"
+        onClick={open}
+      >
         {m.universe_home_write()}
       </Button>
       <Dialog

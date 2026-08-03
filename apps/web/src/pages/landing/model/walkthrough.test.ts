@@ -10,6 +10,7 @@ import {
   advanceWalkthrough,
   isLastWalkthroughStep,
   restartWalkthrough,
+  retreatWalkthrough,
   seedFromText,
   walkthroughSceneFacts,
   type WalkthroughState,
@@ -29,7 +30,7 @@ describe('the walkthrough steps', () => {
 })
 
 describe('the walkthrough progression', () => {
-  it('only moves forward, one acted step at a time', () => {
+  it('walks the one fixed sequence, one acted step at a time', () => {
     expect(advanceWalkthrough(INITIAL_WALKTHROUGH_STATE)).toEqual(INITIAL_WALKTHROUGH_STATE)
 
     let state = INITIAL_WALKTHROUGH_STATE
@@ -38,13 +39,30 @@ describe('the walkthrough progression', () => {
       state = state.acted ? advanceWalkthrough(state) : actOnWalkthroughStep(state)
       if (visited[visited.length - 1] !== state.step) visited.push(state.step)
     }
-    // The only path through is the tuple itself; there is no API that moves backwards.
+    // The only path through is the tuple itself.
     expect(visited).toEqual([...WALKTHROUGH_STEPS])
   })
 
-  it('stays at the mirror once there, except for a restart', () => {
+  it('retreats as the exact inverse of the walk, and holds at the very start', () => {
+    expect(retreatWalkthrough(INITIAL_WALKTHROUGH_STATE)).toEqual(INITIAL_WALKTHROUGH_STATE)
+
+    // Walk to the end recording every state, then retreat back through the same states reversed —
+    // stepping back can never reach a state a forward walk would not have shown.
+    const forward: WalkthroughState[] = [INITIAL_WALKTHROUGH_STATE]
+    let state = INITIAL_WALKTHROUGH_STATE
+    while (!(isLastWalkthroughStep(state) && state.acted)) {
+      state = state.acted ? advanceWalkthrough(state) : actOnWalkthroughStep(state)
+      forward.push(state)
+    }
+    for (let i = forward.length - 1; i > 0; i--) {
+      expect(retreatWalkthrough(forward[i])).toEqual(forward[i - 1])
+    }
+  })
+
+  it('stays at the mirror once there, except for a restart or a retreat', () => {
     const end = at('mirror', true)
     expect(advanceWalkthrough(end)).toEqual(end)
+    expect(retreatWalkthrough(end)).toEqual(at('mirror', false))
     expect(restartWalkthrough()).toEqual(INITIAL_WALKTHROUGH_STATE)
   })
 

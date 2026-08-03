@@ -1,7 +1,7 @@
 import { float, normalize, sin, smoothstep, vec3 } from 'three/tsl'
 
 import { gnoise } from '../../shader-art/noise'
-import { skyCloud, skyDir, skyDrift } from './sky-domain.ts'
+import { skyCloud, skyDir, skySpin } from './sky-domain.ts'
 import { emotionField } from './sky-emotion.ts'
 import { skyFinish, skyVoid } from './sky-finish.ts'
 import { skySeconds, type SkyNodeArgs } from './sky-node.ts'
@@ -32,7 +32,10 @@ const WASH_FULL = 0.86
 
 export function grainientSkyNode({ gradient, time, count, weights, headroom }: SkyNodeArgs) {
   const t = skySeconds(time, 0.25)
-  const p = skyDrift(skyDir().mul(1.8), t, [0, 0, 0.4])
+  // The frame moves by ROTATION, because it feeds a normalize below: a translating frame accumulates
+  // until every fragment normalizes to the drift axis and the marble dies to one value (skyDrift's
+  // contract). The spin carries the marble past the viewer forever; the sines and the swirl churn it.
+  const p = skySpin(skyDir(), t, [0.25, 1, 0.2], 0.15).mul(1.8)
 
   // The signature organic turn: one noise sample bends the sample frame, three sines fold it.
   const swirl = gnoise(p)

@@ -34,6 +34,7 @@ export {
   WCAG_AA_LARGE,
 } from './a11y/contrast.ts'
 export { useReducedMotion } from './a11y/use-reduced-motion.native.ts'
+export { usePresence, type Presence, type PresencePhase } from './a11y/use-presence.ts'
 
 // The theme registry — the only list of themes. Native resolves the active theme statically
 // (native-styles.ts bridges `palette` to RN colours); there is no `data-theme` equivalent.
@@ -78,6 +79,7 @@ export type {
   AlertOwnProps,
   CardOwnProps,
   SkeletonOwnProps,
+  IconOwnProps,
   ProgressOwnProps,
   SelectItem,
   SelectOwnProps,
@@ -89,6 +91,17 @@ export type {
 
 export { Button, type ButtonProps } from './primitives/button.native.tsx'
 export { IconButton, type IconButtonProps } from './primitives/icon-button.native.tsx'
+// The icon set — product meanings, not glyph names (icons.native.tsx owns the binding).
+export {
+  ICON_SIZE,
+  DecorateIcon,
+  DiaryIcon,
+  NoticeIcon,
+  SettingsIcon,
+  TwinkleGeneralIcon,
+  TwinkleSmallIcon,
+  type IconProps,
+} from './primitives/icons.native.tsx'
 export { TextField, type TextFieldProps } from './primitives/text-field.native.tsx'
 export { Select, type SelectProps } from './primitives/select.native.tsx'
 export { TextArea, type TextAreaProps } from './primitives/text-area.native.tsx'

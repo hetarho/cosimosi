@@ -10,7 +10,7 @@ const en_landing_theory_recall_body = /** @type {(inputs: Landing_Theory_Recall_
 };
 
 const ko_landing_theory_recall_body = /** @type {(inputs: Landing_Theory_Recall_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`떠올리는 일은 재생보다 재구성에 가까워요. 그래서 떠올리는 것만으로도 기억이 조금 달라질 수 있어요. 다시 찾은 기록이 조금 달라져 돌아오는 이유예요.`)
+	return /** @type {LocalizedString} */ (`떠올리는 일은 재생보다 재구성에 가까워요. 떠올리는 것만으로도 기억은 조금 달라져요. 다시 찾은 기록이 어딘가 달라진 채 돌아오는 것도 그래서예요.`)
 };
 
 /**

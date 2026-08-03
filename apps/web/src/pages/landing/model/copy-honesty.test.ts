@@ -41,7 +41,7 @@ function landingMessages(locale: (typeof CATALOGUES)[number]): Record<string, st
 const REVIEWED_DENIALS: readonly string[] = [
   "It is a diary, not a model of anyone's brain, and you never need to know any of this to use it.",
   '이것은 일기이고, 누군가의 뇌를 재현한 모형이 아닙니다.',
-  '이것은 일기이지, 누군가의 뇌를 재현한 모형이 아니에요.',
+  '이것은 일기이지 누군가의 뇌를 재현한 모형이 아니에요.',
 ]
 
 const reviewed = new Set(REVIEWED_DENIALS.map(normalize))

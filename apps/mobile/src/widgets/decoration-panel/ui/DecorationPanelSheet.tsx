@@ -1,6 +1,4 @@
 import { useCallback, useEffect } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
-
 import {
   decorationMachine,
   useDecorationRequestStore,
@@ -8,7 +6,7 @@ import {
 } from '@cosimosi/store'
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useOrnamentCatalog, useSaveDecoration } from '@cosimosi/store/react'
-import { Sheet, tokens } from '@cosimosi/ui'
+import { Sheet } from '@cosimosi/ui'
 import { m } from '@cosimosi/i18n'
 
 import { SaveDecorationButton } from '../../../features/buy-ornament/index.ts'
@@ -75,12 +73,14 @@ export function DecorationPanelSheet({ active }: { readonly active: boolean }) {
     }
   }, [actorRef, save, invalidateAchievements])
 
+  // Handed to the Sheet rather than used to unmount it here: the Sheet holds itself for one animation
+  // past a close so it can slide back out the edge it came in from, and returning null on this line
+  // would take the element away before it could.
   const open = phase === 'browsing' || phase === 'saving'
-  if (!open) return null
 
   return (
     <Sheet
-      open
+      open={open}
       onClose={() => actorRef.send({ type: 'CLOSE' })}
       title={m.store_panel_title()}
       closeLabel={m.store_panel_close()}
@@ -94,21 +94,7 @@ export function DecorationPanelSheet({ active }: { readonly active: boolean }) {
         />
       }
     >
-      <View style={styles.body}>
-        <OrnamentGroupList frozen={phase === 'saving'} />
-        {/* A feeling's colour is not sold here, and someone looking for it should not have to guess
-            where it went ([P10] as amended). */}
-        <Text style={styles.pointer}>{m.store_mood_color_pointer()}</Text>
-      </View>
+      <OrnamentGroupList frozen={phase === 'saving'} />
     </Sheet>
   )
 }
-
-const styles = StyleSheet.create({
-  body: { gap: tokens.spacing[4] },
-  pointer: {
-    paddingHorizontal: tokens.spacing[3],
-    color: tokens.color['text-muted'],
-    fontSize: tokens.fontSize.xs,
-  },
-})

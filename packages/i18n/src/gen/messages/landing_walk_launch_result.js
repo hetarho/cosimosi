@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Landing_Walk_Launch_ResultInputs */
 
 const en_landing_walk_launch_result = /** @type {(inputs: Landing_Walk_Launch_ResultInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`There they are. The colour came from the feeling; the shape came from the words.`)
+	return /** @type {LocalizedString} */ (`There they are. The colour came from the feeling, the shape came from the words — no two days make the same star.`)
 };
 
 const ko_landing_walk_launch_result = /** @type {(inputs: Landing_Walk_Launch_ResultInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`별이 됐어요. 색은 그때의 감정에서, 모양은 문장에서 왔어요.`)
+	return /** @type {LocalizedString} */ (`별이 됐어요. 색은 그때의 감정에서, 모양은 문장에서 왔어요. 같은 하루라도 똑같은 별은 없어요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "There they are. The colour came from the feeling; the shape came from the words." |
+* | "There they are. The colour came from the feeling, the shape came from the words — no two days make the same star." |
 *
 * @param {Landing_Walk_Launch_ResultInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

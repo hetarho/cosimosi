@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Landing_Cta_DemoInputs */
 
 const en_landing_cta_demo = /** @type {(inputs: Landing_Cta_DemoInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Preview the universe`)
+	return /** @type {LocalizedString} */ (`Demo`)
 };
 
 const ko_landing_cta_demo = /** @type {(inputs: Landing_Cta_DemoInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`우주 미리보기`)
+	return /** @type {LocalizedString} */ (`데모`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Preview the universe" |
+* | "Demo" |
 *
 * @param {Landing_Cta_DemoInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

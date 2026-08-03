@@ -4,7 +4,7 @@ import { VALUES } from '@cosimosi/config'
 import { useEarnRequestStore } from '@cosimosi/twinkle'
 import { useInvalidateAchievements } from '@cosimosi/achievement/react'
 import { useInvalidateTwinkleBalance, useTwinkleBalanceQuery } from '@cosimosi/twinkle/react'
-import { Button } from '@cosimosi/ui'
+import { IconButton, NoticeIcon, Tooltip } from '@cosimosi/ui'
 
 import { EarnGuideSheet, WriteEarnFeedback } from '../../../features/earn-twinkle/index.ts'
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
@@ -64,14 +64,28 @@ export function StardustOverlay({ onOpenAchievements }: { onOpenAchievements?: (
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <TwinkleBalanceHud />
       {/* A restrained proactive way in ([G3]): a shortfall is not the only reason to wonder how
-          별가루 gathers. Shown only while the guide is closed. */}
-      {guideOpen ? null : (
-        <Button color="neutral" size="sm" className="pointer-events-auto" onClick={openGuide}>
-          {m.twinkle_earn_title()}
-        </Button>
-      )}
+          별가루 gathers. It rides in the balance reading's own action slot, because what it explains is
+          the figures beside it — an icon-only control, so its name lives in `label` and the tooltip is
+          mandatory (design-language §8).
+          It stays put while the guide is open: an affordance that vanishes as its own surface opens
+          takes the anchor out from under the thing that just appeared, and leaves a hole in the
+          reading beside it that fills back in on close. */}
+      <TwinkleBalanceHud
+        action={
+          <Tooltip content={m.twinkle_earn_title()} side="bottom" align="end">
+            <IconButton
+              variant="text"
+              color="neutral"
+              size="sm"
+              className="rounded-full"
+              label={m.twinkle_earn_title()}
+              icon={<NoticeIcon />}
+              onClick={openGuide}
+            />
+          </Tooltip>
+        }
+      />
       {earnShown ? (
         <WriteEarnFeedback
           amount={VALUES.twinkle.earnWrite}

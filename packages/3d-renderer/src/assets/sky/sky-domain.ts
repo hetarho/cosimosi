@@ -1,4 +1,16 @@
-import { acos, clamp, dot, float, normalize, positionLocal, vec2, vec3 } from 'three/tsl'
+import {
+  acos,
+  clamp,
+  cos,
+  cross,
+  dot,
+  float,
+  normalize,
+  positionLocal,
+  sin,
+  vec2,
+  vec3,
+} from 'three/tsl'
 
 import { fbm01, ridged, worley } from '../../shader-art/noise.ts'
 import { cellEdge } from '../../shader-art/pattern.ts'
@@ -85,10 +97,32 @@ export function skyRidge(dir: unknown, scale = 1.8, octaves = 3) {
 
 /** Drift a sampling coordinate through the field over time, so structure flows rather than the
  *  sphere's texture sliding under a still field. The offset is a 3D translation of the sample point,
- *  so it has no preferred direction on the surface and introduces no seam. */
+ *  so it has no preferred direction on the surface and introduces no seam.
+ *
+ *  For NOISE INPUTS ONLY — fbm/worley/gnoise eat unbounded coordinates forever. A coordinate that is
+ *  later `normalize()`d must move by `skySpin` instead: a translation accumulates until it dominates
+ *  the coordinate, at which point every fragment normalizes to the velocity axis and the sky
+ *  collapses to a single value — a wash that quietly dies a few minutes in. */
 export function skyDrift(coord: unknown, seconds: unknown, velocity: SkyAnchor) {
   const t = asFloatNode(seconds)
   return asVec3Node(coord).add(vec3(velocity[0], velocity[1], velocity[2]).mul(t))
+}
+
+/** Turn a direction about a fixed axis over time — the endless way to move a frame that will be
+ *  normalized. Rotation preserves length, so the spun coordinate is as alive at hour three as at
+ *  second one, and — being a motion of the sphere's own surface — it introduces no seam. Rodrigues'
+ *  formula; the axis is a build-time constant, unit-length by construction here. */
+export function skySpin(dir: unknown, seconds: unknown, axis: SkyAnchor, rate = 0.1) {
+  const a = unit(axis)
+  const axisNode = vec3(a[0], a[1], a[2])
+  const angle = asFloatNode(seconds).mul(rate)
+  const d = asVec3Node(dir)
+  const c = cos(angle)
+  const s = sin(angle)
+  return d
+    .mul(c)
+    .add(cross(axisNode, d).mul(s))
+    .add(axisNode.mul(dot(axisNode, d)).mul(float(1).sub(c)))
 }
 
 // ── JS vector helpers (build-time only) ──────────────────────────────────────────────────────

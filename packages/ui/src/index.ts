@@ -26,6 +26,7 @@ export {
 } from './a11y/contrast.ts'
 export { useReducedMotion } from './a11y/use-reduced-motion.ts'
 export { useFocusTrap, type FocusTrapOptions } from './a11y/use-focus-trap.ts'
+export { usePresence, type Presence, type PresencePhase } from './a11y/use-presence.ts'
 
 // The theme registry — the only list of themes. Surfaces that show or resolve a theme read it from
 // here rather than repeating the names (palette.ts).
@@ -70,6 +71,7 @@ export type {
   AlertOwnProps,
   CardOwnProps,
   SkeletonOwnProps,
+  IconOwnProps,
   ProgressOwnProps,
   SelectItem,
   SelectOwnProps,
@@ -81,6 +83,17 @@ export type {
 
 export { Button, type ButtonProps } from './primitives/button.tsx'
 export { IconButton, type IconButtonProps } from './primitives/icon-button.tsx'
+// The icon set — product meanings, not glyph names (icons.tsx owns the binding).
+export {
+  ICON_SIZE,
+  DecorateIcon,
+  DiaryIcon,
+  NoticeIcon,
+  SettingsIcon,
+  TwinkleGeneralIcon,
+  TwinkleSmallIcon,
+  type IconProps,
+} from './primitives/icons.tsx'
 export { TextField, type TextFieldProps } from './primitives/text-field.tsx'
 export { Select, type SelectProps } from './primitives/select.tsx'
 export { TextArea, type TextAreaProps } from './primitives/text-area.tsx'

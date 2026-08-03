@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Landing_Hero_BodyInputs */
 
 const en_landing_hero_body = /** @type {(inputs: Landing_Hero_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Write down a day and it rises as a small light. Nothing is up there yet — everything you see later, you wrote.`)
+	return /** @type {LocalizedString} */ (`Write down today and it comes apart into memories; each memory becomes a star and fills the universe. Fill yours with what you remember.`)
 };
 
 const ko_landing_hero_body = /** @type {(inputs: Landing_Hero_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`하루를 적으면 작은 빛이 되어 떠올라요. 지금 저 위에는 아무것도 없어요. 나중에 보이는 건 전부 직접 쓴 기록이에요.`)
+	return /** @type {LocalizedString} */ (`오늘 기록한 일기는 기억으로 쪼개지고 기억은 별이 되어 우주를 채웁니다. 우주를 내 기억으로 채워보세요.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Write down a day and it rises as a small light. Nothing is up there yet — everything you see later, you wrote." |
+* | "Write down today and it comes apart into memories; each memory becomes a star and fills the universe. Fill yours with what you remember." |
 *
 * @param {Landing_Hero_BodyInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

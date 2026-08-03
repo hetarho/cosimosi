@@ -24,7 +24,10 @@ export function Dialog({
   if (!open || typeof document === 'undefined') return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center">
+    // `pointer-events-auto`: a modal is reachable wherever it is composed, including inside a
+    // non-interactive HUD layer, whose `pointer-events: none` would otherwise inherit down and leave
+    // the scrim and every control in here inert.
+    <div className="pointer-events-auto fixed inset-0 z-[var(--z-modal)] flex items-center justify-center">
       <div className="absolute inset-0 bg-overlay" aria-hidden="true" onClick={onClose} />
       <div
         ref={containerRef}
