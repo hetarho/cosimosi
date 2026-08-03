@@ -46,7 +46,9 @@ export function createApiTransport({
 
 export function createApiAuthInterceptor(auth: ApiAuthTokenProvider): Interceptor {
   return (next) => async (req) => {
-    let token: string | null = null
+    // No initializer: both arms assign, so `= null` was dead. try/catch rather than `.catch()`
+    // because a provider may throw synchronously as well as reject.
+    let token: string | null
     try {
       token = await auth.getAccessToken()
     } catch {

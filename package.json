@@ -31,9 +31,11 @@
     "infra:down": "docker compose down",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "lint": "pnpm check:node && pnpm format:check && pnpm lint:web && pnpm lint:mobile && pnpm lint:fsd:layout && pnpm lint:api && pnpm lint:observability && pnpm lint:language && pnpm lint:raw-strings && pnpm lint:style-escapes && pnpm lint:persistence && pnpm lint:spec && pnpm lint:comments && pnpm lint:public-copy",
+    "lint": "pnpm check:node && pnpm format:check && pnpm lint:web && pnpm lint:mobile && pnpm lint:packages && pnpm lint:packages:probe && pnpm lint:fsd:layout && pnpm lint:api && pnpm lint:observability && pnpm lint:language && pnpm lint:raw-strings && pnpm lint:style-escapes && pnpm lint:persistence && pnpm lint:spec && pnpm lint:comments && pnpm lint:public-copy",
     "lint:web": "pnpm --filter @cosimosi/web lint",
     "lint:mobile": "pnpm --filter @cosimosi/mobile lint",
+    "lint:packages": "eslint --config eslint.config.packages.mjs \"packages/**/*.{ts,tsx}\" --max-warnings=0",
+    "lint:packages:probe": "node scripts/probe-packages-lint.mjs",
     "lint:fsd:layout": "node scripts/lint-fsd-layout.mjs",
     "lint:api": "node scripts/go-check.mjs fmt",
     "lint:observability": "node scripts/check-observability-boundaries.mjs",
@@ -119,11 +121,15 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@inlang/paraglide-js": "^2.20.2",
     "concurrently": "^9.2.1",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.7",
     "lint-staged": "17.0.8",
     "prettier": "3.9.4",
+    "typescript-eslint": "^8.65.0",
     "yaml": "^2.9.0"
   },
   "lint-staged": {

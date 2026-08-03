@@ -48,7 +48,12 @@ export interface EmotionFieldArgs {
 // initializer, which a reassignment in an unrolled loop then cannot satisfy; the identity `.add(0)`
 // widens it to the operator-node type (a constant fold at runtime — free). Every node this module
 // hands out is widened the same way, so a recipe can keep chaining without a cast.
+// Both exist only so `typeof` below has something to read; nothing calls them. That is why
+// no-unused-vars is silenced rather than satisfied — the alternative is spelling out TSL's operator-node
+// type by hand, which is the very thing this indirection avoids.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- type witness, see above
 const colorSeed = () => vec3(0, 0, 0).add(0)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- type witness, see above
 const scalarSeed = () => float(0).add(0)
 
 /** A chainable vec3 colour node. */
