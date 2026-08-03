@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 
 import { VALUES } from '@cosimosi/config'
 import {
@@ -16,7 +16,7 @@ import { LatentStarField } from '@cosimosi/universe-render'
 import { useReducedMotion } from '@cosimosi/ui'
 
 import { m } from '../../../shared/i18n/index.ts'
-import { HERO_SKY_MOODS, HERO_SKY_WEIGHTS } from '../config/illustration.ts'
+import { HERO_SKY_MOODS, HERO_SKY_RATE, HERO_SKY_WEIGHTS } from '../config/illustration.ts'
 
 const HERO_POSTER = '/landing-hero.png'
 
@@ -26,9 +26,10 @@ const HERO_POSTER = '/landing-hero.png'
 // navigable, and a marketing page is not where the frame budget the demo needs one click later should
 // go.
 //
-// It is honest twice over. It is literally what a new account looks like, and — because there is no
-// coordinate source on the page at all — there is no position here that any sentence could mis-describe
-// as anatomy.
+// It is honest twice over. It is the same two layers a new account opens on — an illustrative palette
+// drifting at an illustrative pace (config/illustration.ts), and nothing invented beyond those two —
+// and, because there is no coordinate source on the page at all, there is no position here that any
+// sentence could mis-describe as anatomy.
 function LandingHeroCanvas() {
   const { skin } = useSkin()
   const reducedMotion = useReducedMotion()
@@ -41,6 +42,10 @@ function LandingHeroCanvas() {
       })),
     [],
   )
+
+  // The sky reads its rate every frame from a ref, because in the product a rAF loop writes it during
+  // a time acceleration. Here it is a constant the hero never touches — the illustrative pace, held.
+  const rateRef = useRef(HERO_SKY_RATE)
 
   const field = useMemo(
     () =>
@@ -60,7 +65,7 @@ function LandingHeroCanvas() {
       fov={skin.camera.fov}
       clearColor={skin.sky.night}
     >
-      <SkySphere stops={stops} reducedMotion={reducedMotion} />
+      <SkySphere stops={stops} reducedMotion={reducedMotion} rateRef={rateRef} />
       <LatentStarField field={field} reducedMotion={reducedMotion} />
     </UniverseCanvas>
   )

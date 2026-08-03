@@ -31,6 +31,17 @@ export const WALKTHROUGH_STEPS = [
 export type WalkthroughStepId = (typeof WALKTHROUGH_STEPS)[number]
 
 /**
+ * What the stage holds at a given point in the run — exactly ONE of three things, never two at once:
+ * the written day, the scenes the split found in it, or the universe those scenes launched into.
+ *
+ * The exclusivity is the argument. A diary that stayed on screen next to its own split would say the
+ * entry and the scenes coexist; in the product the diary is consumed — splitting it is what produces
+ * the scenes, and launching them is what produces the sky. Each step therefore REPLACES what came
+ * before it, and the visitor watches the same handoff the writing flow performs.
+ */
+export type WalkthroughStageId = 'diary' | 'scenes' | 'universe'
+
+/**
  * Where the visitor stands: which step, and whether its one action has been taken. Advance-only by
  * construction — there is no function here that moves backwards, so a run can only be replayed from
  * the start, which is what keeps every run identical.
@@ -160,7 +171,7 @@ export function walkthroughMemory(entry: WalkthroughEntry, id: string): Episodic
  * persisted decay stages, and the sky through the strength-weighted slices below.
  */
 export interface WalkthroughSceneFacts {
-  readonly splitRevealed: boolean
+  readonly stage: WalkthroughStageId
   readonly memories: readonly EpisodicMemory[]
   readonly universeTime: string
   readonly skyStops: readonly EmotionSlice[]
@@ -219,7 +230,9 @@ export function walkthroughSceneFacts(
   const focus = memories.find((memory) => memory.id === targetId) ?? null
 
   return {
-    splitRevealed: hasHappened(state, 'split'),
+    // Read off the facts rather than off the step list: the universe is on the stage exactly when
+    // there is something in it, so the stage cannot disagree with what the canvas would draw.
+    stage: memories.length > 0 ? 'universe' : hasHappened(state, 'split') ? 'scenes' : 'diary',
     memories,
     universeTime,
     // The sky arrives with the accumulation step, the way the demo's does — the moment the colour

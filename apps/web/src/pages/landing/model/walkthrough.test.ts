@@ -92,6 +92,39 @@ describe('the authored story', () => {
   })
 })
 
+describe('the stage', () => {
+  const content = walkthroughContent('ko')
+  const stage = (state: WalkthroughState) => walkthroughSceneFacts(content, state).stage
+
+  it('holds one thing at a time, and the diary leaves with the split', () => {
+    // The whole point of the stage id: the written day is GONE once it has been split, so the page
+    // never shows an entry sitting next to the scenes that came out of it.
+    expect(stage(at('split', false))).toBe('diary')
+    expect(stage(at('split', true))).toBe('scenes')
+    expect(stage(at('launch', false))).toBe('scenes')
+  })
+
+  it('is the universe from the launch onward, so the canvas mounts once', () => {
+    for (const step of ['launch', 'color', 'fade', 'recall', 'mirror'] as const) {
+      expect(stage(at(step, true)), step).toBe('universe')
+    }
+    // Every step after the launch keeps the same stage id — which is what stops the renderer from
+    // being remounted between steps.
+    expect(stage(at('color', false))).toBe('universe')
+  })
+
+  it('agrees with the memories it is showing', () => {
+    for (const step of WALKTHROUGH_STEPS) {
+      for (const acted of [false, true]) {
+        const facts = walkthroughSceneFacts(content, at(step, acted))
+        expect(facts.stage === 'universe', `${step}/${String(acted)}`).toBe(
+          facts.memories.length > 0,
+        )
+      }
+    }
+  })
+})
+
 describe('the scene facts, through the production functions', () => {
   const content = walkthroughContent('ko')
   const targetId = `landing-walk-scene-${content.recall.sceneIndex}`

@@ -1,8 +1,8 @@
 ---
 change: '{{NN}}'
-plan: { { PLAN } }
+plan: '{{PLAN}}'
 status: planning
-title: { { TITLE } }
+title: '{{TITLE}}'
 ---
 
 # {{NN}}. Change: {{TITLE}}

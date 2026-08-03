@@ -38,8 +38,8 @@ nothing that competes with the page's first sentence.
 - **The progression** is advance-only: `WalkthroughState` is `{ step, acted }`; `actOnWalkthroughStep` (idempotent),
   `advanceWalkthrough` (forward only, and only once acted), `restartWalkthrough`. No function moves backwards, so every
   run is a replay of the same story.
-- **`walkthroughSceneFacts(content, state)`** derives everything the section renders — the memories on the canvas, the
-  universe time, the sky stops, the returned-to memory's current reading — pure and total. Every derived fact goes
+- **`walkthroughSceneFacts(content, state)`** derives everything the section renders — the stage, the memories on the
+  canvas, the universe time, the sky stops, the returned-to memory's current reading — pure and total. Every derived fact goes
   through the shipped production functions: memories are real `EpisodicMemory` values whose `decayStages` are
   precomputed with `decayStageText` (the same erosion the server persists), the reading is `currentDecayText`, recall
   resets the anchors and swaps in the authored reconsolidated text with a `reshape`d seed (the changed reading grows a
@@ -47,6 +47,12 @@ nothing that competes with the page's first sentence.
   strength ([R3]) → that emotion's share of the sky), composed from two shipped rules with no local formula.
 - **The sky arrives at the `color` step**, empty before it — the moment the colour shows up is the moment the caption
   says it does, the demo's own pattern.
+- **`WalkthroughStageId`** — `'diary' | 'scenes' | 'universe'`, and the stage holds exactly ONE of them. The written day
+  is **gone** once the split has happened: a diary sitting beside its own split scenes would say the two coexist, when
+  splitting the entry is what produces the scenes and launching them is what produces the sky. Derived from the facts
+  rather than from the step list (`memories.length > 0` ⇒ `'universe'`), so the stage cannot disagree with what the canvas
+  would draw — and the id stays `'universe'` for every step from the launch onward, which is what keeps the renderer
+  mounted once instead of remounting behind each transition.
 
 `config/walkthrough-content.ts` holds the authored fixture (one well-written diary in ko and en, its precomputed split
 scenes with names/moods/neurons, the accumulation entries, the recall target and its reconsolidated reading) and
@@ -61,6 +67,20 @@ no-`resetKeys` error-boundary posture as the hero. `ui/sections/LandingWalkthrou
 per step + next/restart over it, and renders the `landing_walk_mirror_definition` sentence at the mirror step —
 removing that key from the catalogues fails the build.
 
+**The card does not move as the story does.** The stage is a fixed box (`h-72 sm:h-96`) and the step title and caption
+each keep room for the longest words of the run, so advancing a step changes what is on the stage and nothing else — the
+action stays under the pointer that clicked it. `motion` (`motion/react`) animates each swap: `AnimatePresence mode="wait"`
+keyed by the **stage id** for the stage and by `step:acted` for the words, so the leaving view fades out before the
+arriving one rises in and the diary being consumed by its own split is something a visitor watches happen. The whole
+section sits in one `<MotionConfig reducedMotion="user">`, which drops the transforms and keeps the fades. The
+choreography's numbers are not authored in the slice: `lib/step-motion.ts` reads `tokens.duration` / `tokens.ease` and
+converts them to Motion's seconds-and-bezier form, so the page moves at the product's pace and a token change carries it.
+
+**Control placement is the ordinary convention, not the story's.** One primary action per step, always in the card's
+bottom-right (the step's own verb → `next` → the replay at the ending); `restart` is secondary chrome, small in the
+top-right beside the step counter, and absent at both ends of the run — nothing to replay at the start, and the ending's
+own action _is_ the replay.
+
 The visitor's only inputs are each step's single action and next/restart: no free text, no mood picker, no time
 slider. Deterministic on purpose — the free-play surface is the demo, one click away, and the two must not compete.
 
@@ -72,8 +92,9 @@ slider. Deterministic on purpose — the free-play surface is the demo, one clic
 bridge and no frame pump — the hero is not navigable, and a marketing page is not where the frame budget the demo needs
 one click later should go. `SkySphere` self-animates through `useFrame`, so no host pump is required.
 
-It is honest twice: it is literally what a new account looks like, and — because no coordinate source is mounted at all —
-there is no position on the page that any sentence could mis-describe as anatomy.
+It is honest twice: it is the same two layers a new account opens on — an illustrative palette drifting at an illustrative
+pace (§3), nothing invented beyond those two — and, because no coordinate source is mounted at all, there is no position on
+the page that any sentence could mis-describe as anatomy.
 
 **Fallback order.** The committed raster `public/landing-hero.png` sits **under** the canvas rather than being swapped for
 it, which is what makes "the poster is the default" true rather than aspirational. It is the first paint; the canvas clears
@@ -104,9 +125,17 @@ Both blog links are **plain anchors with an absolute path**, never router `Link`
 outside this router, and a client navigation would land in the SPA fallback.
 
 `config/illustration.ts` holds the invented moods and weights of the hero sky's ramp (`HERO_SKY_MOODS` /
-`HERO_SKY_WEIGHTS`) — the mirror-swatch half retired with the mirror section. Presentation content like a theme table:
-there is no right answer to converge on, so it is not a tuning value. The walkthrough's diary lives separately in
-`config/walkthrough-content.ts` (§1a).
+`HERO_SKY_WEIGHTS`) — the mirror-swatch half retired with the mirror section — plus `HERO_SKY_RATE`. Presentation content
+like a theme table: there is no right answer to converge on, so none of it is a tuning value. The walkthrough's diary lives
+separately in `config/walkthrough-content.ts` (§1a).
+
+**Eight moods, at 2.5×.** A feeling's weight buys it AREA in the emotion ramp, so the ramp's length is what decides how
+much of the palette a visitor sees — eight unequal feelings divide the sky into eight places rather than five, and none of
+them gets a sliver the fold smears away before it can be named. `HERO_SKY_RATE` is handed to `SkySphere`'s `rateRef` (the
+per-frame seam the product's own time acceleration writes) as a constant the hero never touches: the shipped pace is tuned
+for a place you live in, and a visitor here for a few seconds would read 1× as a still image. It accelerates a **drift**,
+not a mechanic — no memory, strength or decay is read from it — and it is the only thing on the page that is sped up. The
+lead pair (`CALM`, `GRATITUDE`) survives the widening, so the first sky still leans the way the walkthrough later explains.
 
 ## 4. Locale — the first writer reachable without a session
 
@@ -206,7 +235,8 @@ with it is the store-listing copy, authored under the same rules in
 The unit declares none and adds no group. It _references_ five generated constants the hero reads —
 `rendering.max_pixel_ratio`, `rendering.active_skin`, `rendering.latent_star_count`,
 `rendering.latent_field_radius`, `rendering.latent_star_size` — and consumes them unchanged. Motion timings come from
-the design tokens. The six section ids, six walkthrough step ids and five theory ids are array content whose counts are
+the design tokens (`lib/step-motion.ts` converts them, §1a); the hero's sky rate and its ramp are presentation content
+(§3). The six section ids, six walkthrough step ids and five theory ids are array content whose counts are
 fixed by
 the PRD; every string of copy is i18n content; the origin and every path are addresses; the OG raster's 1200×630 is a
 fixed external platform spec; and the copy-honesty patterns are a rule set, not a knob.

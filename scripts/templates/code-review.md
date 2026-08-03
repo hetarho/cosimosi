@@ -1,8 +1,8 @@
 ---
 review: '{{NN}}'
 status: report
-title: { { TITLE } }
-created: { { DATE } }
+title: '{{TITLE}}'
+created: '{{DATE}}'
 scope: code-quality
 ---
 
