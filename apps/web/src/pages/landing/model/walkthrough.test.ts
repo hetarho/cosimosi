@@ -196,5 +196,11 @@ describe('the scene facts, through the production functions', () => {
     const share = (facts: (typeof recalled)['facts']) =>
       facts.skyStops.find((stop) => stop.mood === mood)?.weight ?? 0
     expect(share(mirrored.facts)).toBeGreaterThan(share(recalled.facts))
+    // The walkthrough is immune to the demo's ladder bug for one structural reason: the clock stops
+    // at the fade day, so no step after the recall can raise the decay stage off zero and reach the
+    // ladder still authored from the pre-recall text. Pinned, because the immunity is a property of
+    // the step order rather than of anything visible here.
+    expect(mirrored.facts.universeTime).toBe(recalled.facts.universeTime)
+    expect(mirrored.facts.focusText).toBe(content.recall.reconsolidatedText)
   })
 })

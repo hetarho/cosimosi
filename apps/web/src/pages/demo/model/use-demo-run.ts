@@ -12,7 +12,13 @@ import {
   type ResolvedDemoDiarySet,
 } from '@cosimosi/demo'
 import type { Diary, EpisodicMemory, Neuron, Synapse } from '@cosimosi/memory'
-import { effectiveStrength, gistUnitsElapsed, reshape, semanticize } from '@cosimosi/memory-logic'
+import {
+  decayStageText,
+  effectiveStrength,
+  gistUnitsElapsed,
+  reshape,
+  semanticize,
+} from '@cosimosi/memory-logic'
 
 import { getActiveLocale } from '../../../shared/i18n/index.ts'
 
@@ -68,6 +74,11 @@ export interface DemoMemoryFacts {
   readonly lastRecalledUniverseTime: string | null
   readonly seed: bigint
   readonly currentText: string
+  /** Travels with `currentText`, because the two only ever change together: the word-loss ladder is
+   *  the erosion OF that text, so a reconsolidated reading needs its own. Production stores this
+   *  server-side and the next GetUniverse replaces the mirror; the sandbox has neither, so the
+   *  fixture's authored ladder would otherwise outlive the text it was authored from. */
+  readonly decayStages: readonly string[]
   /** The semanticize reset anchor on the demo clock ([C6a]); a recall re-anchors it. */
   readonly gistTimerResetAt: string
   /** [C7] one-way: a re-anchor delays the next stage but never lowers the reached one. */
@@ -218,6 +229,9 @@ export function useDemoRun(initial: { today: string; draw01: number; runId: stri
             lastRecalledUniverseTime: null,
             seed: fixture.seed ?? 0n,
             currentText: fixture.currentText,
+            // Taken from the fixture rather than recomputed, so the never-recalled path stays
+            // byte-identical to the authored ladder instead of merely equal to it.
+            decayStages: fixture.decayStages,
             gistTimerResetAt: clock,
             semanticStageFloor: 0,
           }
@@ -244,6 +258,11 @@ export function useDemoRun(initial: { today: string; draw01: number; runId: stri
         const facts = run.memoryFacts[memoryId]
         const fixture = fixtureMemory(run, memoryId)
         if (!facts || !fixture) return run
+        // The form changes because the memory came back changed [V5]. Entropy is derived from the run
+        // AND the recall count, so every recall reshapes again — and a replay of the same set
+        // reshapes the same way ([Z5]).
+        const seed = BigInt(reshape(Number(facts.seed), recallEntropy(run, facts.recallCount + 1)))
+        const currentText = run.resolved.reconsolidatedTexts[memoryId] ?? facts.currentText
         return {
           ...run,
           memoryFacts: {
@@ -254,13 +273,20 @@ export function useDemoRun(initial: { today: string; draw01: number; runId: stri
               // stage 0 again — recovery is a re-render, never a rewrite ([F5][I8]).
               recallCount: facts.recallCount + 1,
               lastRecalledUniverseTime: run.clock,
-              // The form changes because the memory came back changed [V5]. Entropy is derived
-              // from the run AND the recall count, so every recall reshapes again — and a replay
-              // of the same set reshapes the same way ([Z5]).
-              seed: BigInt(reshape(Number(facts.seed), recallEntropy(run, facts.recallCount + 1))),
-              currentText: run.resolved.reconsolidatedTexts[memoryId] ?? facts.currentText,
+              seed,
+              currentText,
+              // The reading that came back is the one that erodes from here on ([I8]). Recomputed on
+              // EVERY recall, not just when the words moved: the ladder is a function of the text AND
+              // the seed, and the seed reshapes every time — so a memory whose fixture authored no
+              // reconsolidated text would otherwise erode by the previous form's pattern, which is
+              // the same class of bug one level down. Only a launch keeps the authored strings.
+              decayStages: demoDecayLadder(currentText, seed),
               // The gist timer re-anchors; the stage it had reached is kept as the floor ([C7]).
               gistTimerResetAt: run.clock,
+              // Deliberately the PRE-recall `facts`: the floor is the stage reached before the
+              // re-anchor, which is what [C7] means by "delays the next stage, never lowers the
+              // last". Passing the new facts would read the stage back through the reset anchor and
+              // floor it at zero.
               semanticStageFloor: derivedSemanticStage(fixture, facts, run.clock),
             },
           },
@@ -349,14 +375,28 @@ function projectScene(run: DemoRunState): DemoScene {
 function applyFacts(memory: EpisodicMemory, run: DemoRunState): EpisodicMemory {
   const facts = run.memoryFacts[memory.id]
   if (!facts) return memory
+  // Every field the run owns is named here rather than spread in, so a fact added to
+  // `DemoMemoryFacts` cannot silently keep reading the fixture's value the way `decayStages` did:
+  // omitting it from this list is the whole bug, and a list is easier to audit than an absence.
   return {
     ...memory,
     recallCount: facts.recallCount,
     lastRecalledUniverseTime: facts.lastRecalledUniverseTime,
     seed: facts.seed,
     currentText: facts.currentText,
+    decayStages: facts.decayStages,
     semanticStage: derivedSemanticStage(memory, facts, run.clock),
   }
+}
+
+// The word-loss ladder for a text the visitor has changed, by the shipped erosion function over the
+// shipped ratios — the same call the fixtures are authored and pinned with
+// (`packages/demo/src/integrity.test.ts`). One entry per ratio, index 0 holding stage 1, which is the
+// offset `currentDecayText` reads back.
+function demoDecayLadder(currentText: string, seed: bigint): readonly string[] {
+  return VALUES.forgetting.stageWordRemovalRatios.map((_ratio, index) =>
+    decayStageText(currentText, index + 1, seed),
+  )
 }
 
 // The gist stage a memory has reached NOW, from its own timer — the production pair `semanticize`
@@ -387,9 +427,9 @@ function fixtureMemory(run: DemoRunState, memoryId: string): EpisodicMemory | un
 function recallEntropy(run: DemoRunState, nthRecall: number): number {
   let hash = 2166136261
   for (const character of run.set.structure.id) {
-    hash = (Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0) % Number.MAX_SAFE_INTEGER
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0
   }
-  return (hash + nthRecall * 7919) % Number.MAX_SAFE_INTEGER
+  return hash + nthRecall * 7919
 }
 
 // ISO-date arithmetic for the demo clock. Parsed as UTC midnight, so no timezone can move the

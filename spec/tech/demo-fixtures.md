@@ -76,6 +76,21 @@ Two values that _look_ like fixture numbers are derived at resolve time instead:
 `recallCount` opens at 0, `lastRecalledUniverseTime` at `null`, `semanticStage` at 0 and `forgettingOffsetDays` at 0;
 the recall beat mutates the page's demo-local copy, never a second fixture variant.
 
+**The word-loss ladder is authored, but it is not permanent.** A recall replaces the memory's reading with the authored
+`reconsolidatedText`, and the fixture's ladder is the erosion of the text the memory had _before_ that. So the page's
+demo-local copy (`pages/demo/model/use-demo-run.ts`) recomputes the ladder on **every** recall — `decayStageText(text,
+stage, seed)` over `forgetting.stage_word_removal_ratios`, the same call the fixtures were authored with — and carries it
+beside `currentText` in `DemoMemoryFacts`.
+
+**Every** recall, not only the ones that change the words: the ladder is a function of the text **and** the seed, and a
+recall reshapes the seed every time ([V5]). A repeat recall, or the first recall of any memory the fixture wrote no
+`reconsolidatedText` for — in free play, most of them — moves the form without moving the words, and the erosion pattern
+has to move with it. A memory that has not been recalled keeps the authored strings byte for byte.
+
+Production has the same write shape and needs no such rule: the server regenerates the ladder and the next `GetUniverse`
+replaces the mirror. The sandbox has no server and no refetch, which is the entire reason the recompute lives here — a
+fixture author should not read this as a licence to hand-edit a rung (§7 #9 still forbids it).
+
 ## 4. Time
 
 Diary dates are authored as **integer day offsets** from the set's own start. `resolveDemoDiarySet(set, locale, epoch)`

@@ -5,10 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { DEMO_BEAT_IDS, DEMO_DIARY_SETS, demoDiaryPool } from '@cosimosi/demo'
 import type { EpisodicMemory } from '@cosimosi/memory'
-import { SEMANTIC_MAX_STAGE } from '@cosimosi/memory-logic'
+import { SEMANTIC_MAX_STAGE, decayStageText } from '@cosimosi/memory-logic'
 import { resetMoodPalette, paletteVersion } from '@cosimosi/emotion'
 import { applyMoodColors } from '@cosimosi/emotion/react'
 import {
+  currentDecayStage,
+  currentDecayText,
   resetUniverseUserState,
   useEpisodicMemoryStore,
   useNeuronStore,
@@ -217,6 +219,94 @@ describe('the demo run', () => {
     expect(twice.emotion).toEqual(before.emotion)
     expect(twice.baseStrength).toBe(before.baseStrength)
     expect(twice.activations).toEqual(before.activations)
+  })
+
+  // Beat 6 is the demo's most-watched demonstration of [I8] — "come back a little changed" — and it
+  // only holds if the reading the recall produced is the one that erodes afterwards. The clock has to
+  // move AFTER the recall for this to be visible at all, which is exactly what no other test here did.
+  it('erodes the reconsolidated reading after a recall, never the original text', () => {
+    const { result } = mountRun()
+    launchDraft(result)
+    act(() => result.current.drawDiary())
+    launchDraft(result)
+    const targetId = result.current.state.set.scenario.recallMemoryId
+    const original = find(result.current.scene.memories, targetId)
+
+    act(() => result.current.recall(targetId))
+    const recalled = find(result.current.scene.memories, targetId)
+    // The recall itself resets the anchors, so the whole reconsolidated reading is what shows now.
+    expect(currentDecayText(recalled, result.current.state.clock)).toBe(recalled.currentText)
+    expect(recalled.currentText).not.toBe(original.currentText)
+
+    // Now push time until the stage climbs back off zero. The words that go are the reconsolidated
+    // reading's — the ladder authored for the pre-recall text is not what the visitor is reading.
+    let eroded = recalled
+    for (
+      let press = 0;
+      press < 12 && currentDecayStage(eroded, result.current.state.clock) < 1;
+      press += 1
+    ) {
+      act(() => result.current.advanceClock(DEMO_TIME_JUMPS.month))
+      eroded = find(result.current.scene.memories, targetId)
+    }
+    const stage = currentDecayStage(eroded, result.current.state.clock)
+    expect(stage).toBeGreaterThanOrEqual(1)
+    expect(currentDecayText(eroded, result.current.state.clock)).toBe(
+      decayStageText(recalled.currentText, stage, recalled.seed ?? 0n),
+    )
+    // And explicitly NOT the original text's ladder, which is what the fixture still carries.
+    expect(currentDecayText(eroded, result.current.state.clock)).not.toBe(
+      original.decayStages[stage - 1],
+    )
+
+    // The never-recalled path is untouched: every other launched memory still carries the AUTHORED
+    // ladder byte for byte, not a recomputation that merely agrees with it.
+    const untouched = result.current.scene.memories.filter((memory) => memory.id !== targetId)
+    expect(untouched.length).toBeGreaterThan(0)
+    for (const memory of untouched) {
+      const fixture = result.current.state.resolved.snapshot.memories.find(
+        (candidate) => candidate.id === memory.id,
+      )
+      expect(memory.decayStages).toBe(fixture?.decayStages)
+    }
+  })
+
+  // The second half of the same rule, one level down: the ladder is a function of the text AND the
+  // seed. A recall reshapes the seed every time, so a recall that leaves the WORDS alone — a repeat
+  // recall, or the first recall of any memory the fixture wrote no reconsolidated text for, which in
+  // free play is most of them — still has to re-erode. Otherwise the visitor reads the previous
+  // form's word loss under the current form.
+  it('re-erodes on a recall that reshapes the form but not the words', () => {
+    const { result } = mountRun()
+    launchDraft(result)
+    act(() => result.current.drawDiary())
+    launchDraft(result)
+    const targetId = result.current.state.set.scenario.recallMemoryId
+    // Recall twice: the second pass finds `reconsolidatedTexts` already applied, so only the seed moves.
+    act(() => result.current.recall(targetId))
+    const once = find(result.current.scene.memories, targetId)
+    act(() => result.current.recall(targetId))
+    const twice = find(result.current.scene.memories, targetId)
+    expect(twice.currentText).toBe(once.currentText)
+    expect(twice.seed).not.toBe(once.seed)
+
+    let eroded = twice
+    for (
+      let press = 0;
+      press < 12 && currentDecayStage(eroded, result.current.state.clock) < 1;
+      press += 1
+    ) {
+      act(() => result.current.advanceClock(DEMO_TIME_JUMPS.month))
+      eroded = find(result.current.scene.memories, targetId)
+    }
+    const stage = currentDecayStage(eroded, result.current.state.clock)
+    expect(stage).toBeGreaterThanOrEqual(1)
+    expect(currentDecayText(eroded, result.current.state.clock)).toBe(
+      decayStageText(twice.currentText, stage, twice.seed ?? 0n),
+    )
+    expect(currentDecayText(eroded, result.current.state.clock)).not.toBe(
+      once.decayStages[stage - 1],
+    )
   })
 
   it('climbs gist stages per memory as time passes, and a recall re-anchors without lowering', () => {
