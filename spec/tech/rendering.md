@@ -214,7 +214,7 @@ The three **rendering entities** turn the domain-mirror graph into bodies. Their
 > (`StarLayer`/`CellStarLayer`/`FilamentLayer`/`LatentStarField`/`NebulaField`/`AwakenNeuron`) live in
 > **`@cosimosi/universe-render`** (depends on `@cosimosi/3d-renderer` + `@cosimosi/universe`). Both apps import them
 > verbatim — one source, no `*.native` fork (nothing here uses a DOM/RN primitive). The apps keep only the forked
-> DOM/RN sheets (`WritingFlowSheet`, `ReviseControls`, `LaunchButton`, `NebulaNotice`, …) and their session stores.
+> DOM/RN sheets (`WritingFlowSheet`, `ReviseControls`, `LaunchButton`, …) and their session stores.
 
 - **The domain→visual projection is one-way (§3.4).** A channel projection imports the domain read-model **types** from
   `@cosimosi/memory` (formerly the FE mirror's `@x` public API), reads the shared read-time functions
@@ -317,9 +317,9 @@ modeled, or surfaced as an average-tone readout ([M4][M5][I5][§3.4]).
 bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` keeping the **strongest**. Color comes
   solely through the plan-17 `moodColor` seam — no color literal, no valence→hue math; the weight input is
   `EffectiveStrength` (the derived read-time size), the Epic-C recall mirror seam. `ui/NebulaField.tsx` binds the layer
-  with `firstNodeIndex = neuronCount` (memories share the star layer's buffer slots); `ui/NebulaNotice.tsx` is the
-  honest-mirror HUD disclosure (i18n copy, renders no color; the one bit still app-local, a forked DOM/RN component).
-  The read model is read from the shared `@cosimosi/universe` episodic-memory store.
+  with `firstNodeIndex = neuronCount` (memories share the star layer's buffer slots). The read model is read from the
+  shared `@cosimosi/universe` episodic-memory store. The honest-mirror definition is told by the landing walkthrough and
+  the demo, not by an affordance over the sky — the universe screen carries no disclosure component (plan 26).
 - **Layer coexistence.** The nebula (per-memory domain emotion color) composites over the emotion-sky ambiance and
   behind the latent field + bodies. The skin selects the sky effect but does not derive memory meaning; the nebula
   never sets ambiance — neither writes to the domain.
@@ -328,8 +328,7 @@ bleed_radius_coefficient × strength) radius)`, capped at `max_contributors` kee
   `GetUniverse` refetch rebuilds the graph and the sim positions them. The §2.8 optimistic degradation ("position fills
   on next read") therefore never flashes false geometry at the world origin.
 - **Mobile (§3.5).** The projection (`buildContributors`) + the `NebulaField` layer are the shared package modules; the
-  mount passes `nebula.field_resolution_mobile` (coarser kernels). `NebulaNotice` is forked per-app (RN View/Text vs
-  DOM); the `ColorField` TSL layer is shared — no `*.native`.
+  mount passes `nebula.field_resolution_mobile` (coarser kernels). The `ColorField` TSL layer is shared — no `*.native`.
 
 ## Gist-star / z-layer rendering (plan 42 as-built)
 
