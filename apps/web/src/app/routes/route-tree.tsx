@@ -1,26 +1,54 @@
-import { createRootRouteWithContext, createRoute, notFound } from '@tanstack/react-router'
+import {
+  createRootRouteWithContext,
+  createRoute,
+  lazyRouteComponent,
+  notFound,
+} from '@tanstack/react-router'
 
 import { type SessionStatus } from '@cosimosi/auth'
 
-import { DesignShowcasePage } from '../../pages/design/index.ts'
-import { parseMeTab, type MeTabId } from '../../pages/me/index.ts'
-import { TestPage } from '../../pages/test/index.ts'
 import { parseDiarySearch, type DiarySearchParams } from './diary-search.ts'
+import { parseMeSearch, type MeSearchParams } from './me-search.ts'
 import { authGuardBeforeLoad } from './guards/auth-gate.ts'
 import { NotFoundScreen } from './not-found.tsx'
 import {
-  AdminRoute,
   AuthenticatedLayout,
   BlogNotFoundRoute,
-  DiaryReaderRoute,
   InviteRoute,
-  DemoRoute,
   LandingRoute,
   LoginRoute,
-  MeRoute,
   SignupRoute,
-  UniverseRoute,
 } from './route-screens.tsx'
+
+// The signed-in product, the admin console and the demo sandbox are fetched on demand rather than
+// shipped in the entry chunk the landing page blocks on. `lazyRouteComponent` (not bare
+// `React.lazy`) because the route tree is hand-built and this is the API wired into the router's own
+// pending and `.preload()` lifecycle — `router.ts` supplies the one pending state they all share.
+//
+// The importers point at `screens/*`, one module per screen: rolldown draws a chunk boundary per
+// module, so a screen sharing a file with a static one would land back in the entry chunk.
+const UniverseScreen = lazyRouteComponent(
+  () => import('./screens/universe-route.tsx'),
+  'UniverseRoute',
+)
+const DiaryReaderScreen = lazyRouteComponent(
+  () => import('./screens/diary-reader-route.tsx'),
+  'DiaryReaderRoute',
+)
+const MeScreen = lazyRouteComponent(() => import('./screens/me-route.tsx'), 'MeRoute')
+const AdminScreen = lazyRouteComponent(() => import('./screens/admin-route.tsx'), 'AdminRoute')
+const DemoScreen = lazyRouteComponent(() => import('./screens/demo-route.tsx'), 'DemoRoute')
+
+// The two diagnostics surfaces go the same way, and they need no `screens/` wrapper because the
+// router passes them no callbacks. Neither is reachable in a shipped build unless the diagnostics
+// flag is on — 176 kB (measured) of harness and component gallery that a stranger at the front door
+// can never render. Their `beforeLoad` gate runs before the component loads, so a build with the flag
+// off never even fetches the chunk.
+const TestScreen = lazyRouteComponent(() => import('../../pages/test/index.ts'), 'TestPage')
+const DesignScreen = lazyRouteComponent(
+  () => import('../../pages/design/index.ts'),
+  'DesignShowcasePage',
+)
 
 /**
  * Runtime inputs the route tree needs but that the app can't know until it
@@ -64,7 +92,7 @@ const landingRoute = createRoute({
 const universeRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/universe',
-  component: UniverseRoute,
+  component: UniverseScreen,
 })
 
 const diaryReaderRoute = createRoute({
@@ -73,17 +101,14 @@ const diaryReaderRoute = createRoute({
   // [D7][D8]: the archive's conditions live in the address bar, so a filtered, sorted archive is a
   // shareable link and Back restores the previous conditions.
   validateSearch: (search: Record<string, unknown>): DiarySearchParams => parseDiarySearch(search),
-  component: DiaryReaderRoute,
+  component: DiaryReaderScreen,
 })
 
 const meRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/me',
-  validateSearch: (search: Record<string, unknown>): { tab?: MeTabId } => {
-    const tab = parseMeTab(search.tab)
-    return { tab: search.tab === tab ? tab : undefined }
-  },
-  component: MeRoute,
+  validateSearch: (search: Record<string, unknown>): MeSearchParams => parseMeSearch(search),
+  component: MeScreen,
 })
 
 // The admin console mounts under the authenticated subtree (so it inherits the auth gate); the page
@@ -91,7 +116,7 @@ const meRoute = createRoute({
 const adminRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/admin',
-  component: AdminRoute,
+  component: AdminScreen,
 })
 
 const loginRoute = createRoute({
@@ -123,7 +148,7 @@ const inviteRoute = createRoute({
 const demoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/demo',
-  component: DemoRoute,
+  component: DemoScreen,
 })
 
 // The `/blog/**` miss. Public, under `rootRoute` beside /login and /demo, with no `beforeLoad` of any kind:
@@ -145,7 +170,7 @@ const testRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (!context.diagnosticsEnabled) throw notFound()
   },
-  component: TestPage,
+  component: TestScreen,
 })
 
 // The design showcase is the review surface for the 2D language — a dev-only page behind the same
@@ -156,7 +181,7 @@ const designRoute = createRoute({
   beforeLoad: ({ context }) => {
     if (!context.diagnosticsEnabled) throw notFound()
   },
-  component: DesignShowcasePage,
+  component: DesignScreen,
 })
 
 export const routeTree = rootRoute.addChildren([

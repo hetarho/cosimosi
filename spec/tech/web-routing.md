@@ -17,6 +17,9 @@ never import the library; they navigate through the seam in §4.
 | `routes/route-tree.tsx`        | the code-based route tree + `RouterContext` type                                          |
 | `routes/router.ts`             | `createAppRouter(...)` factory + the `declare module … Register` type registration        |
 | `routes/WebRouterProvider.tsx` | reads the diagnostics flag + auth facade, memoizes the router, renders `<RouterProvider>` |
+| `routes/route-screens.tsx`     | the statically-imported route components (the public surface, §5d)                        |
+| `routes/screens/*.tsx`         | one module per dynamically-imported screen (§5d)                                          |
+| `routes/me-search.ts`          | `/me`'s `?tab=` vocabulary + validate-or-drop                                             |
 | `routes/guards/auth-gate.ts`   | the auth guard (`authGuardBeforeLoad`) + the `from` return-target validation              |
 | `routes/not-found.tsx`         | the localized not-found screen                                                            |
 | `routes/navigation.ts`         | the typed navigation seam (`Link`, `useAppNavigate`)                                      |
@@ -91,8 +94,8 @@ Three seams keep the rest of the app router-free:
 - `app/routes/diary-search.ts` is the only place the URL's short keys and the generated
   `GetDiariesRequest` shape meet. Nothing below the app layer holds a hand-written mirror of the
   conditions.
-- `route-screens.tsx` injects the parsed conditions plus a setter as props (the job-58 callback seam),
-  so `pages/*` and `widgets/*` import no router.
+- `screens/diary-reader-route.tsx` injects the parsed conditions plus a setter as props (the job-58
+  callback seam), so `pages/*` and `widgets/*` import no router.
 - The setter takes an **update function** and hands it to `navigate({ search: (previous) => … })`, so a
   merge always happens against the live search. A plain object patch would let two controls touched
   inside one navigation round trip overwrite each other's pick — the debounced keyword and a mood chip
@@ -201,6 +204,40 @@ and the Visitor gets web-funnel behaviours only — the same waiver the admin co
 web↔mobile page peering, so an unstated waiver is a silently broken rule. `steiger` needs **no**
 exemption: every shipped `insignificant-slice` block targets `entities|features|widgets`, and a page
 slice is not "insignificant" (verified — `lint:fsd` is green with none added).
+
+## 5d. The bundle split — which routes ship in the entry chunk
+
+The origin root is the landing page, so whatever rides in the entry chunk is what every cold visitor and
+every crawler downloads before the hero paints. The route seam is therefore also the **chunk boundary**:
+
+| Loaded                             | Routes                                                                                     | Why                                                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **static** (entry chunk)           | `/`, `/login`, `/signup`, `/invite/$token`, `/blog/$`, the pathless `authenticated` layout | the public surface a stranger lands on cold, plus the guard. Lazy-loading the page the visitor asked for would add a round trip to the path the split exists to speed up, and moving the layout behind a dynamic import would let an unauthenticated frame render before `beforeLoad` |
+| **dynamic** (`lazyRouteComponent`) | `/universe`, `/diary`, `/me`, `/admin`, `/demo`, `/test`, `/design`                        | nobody arrives on these cold: the product needs a session, `/demo` is reached from a landing CTA, and the two diagnostics surfaces are unreachable unless the flag is on                                                                                                              |
+
+Rules that keep it working:
+
+- **`lazyRouteComponent`, never bare `React.lazy`.** The route tree is hand-built; `lazyRouteComponent` is
+  the API wired into the router's pending and `.preload()` lifecycle. `router.load()` awaits the chunk,
+  which is why the SSR tests still assert synchronously against a lazily-imported screen.
+- **One module per lazy screen, in `app/routes/screens/`.** Chunks are cut per module, so a screen sharing a
+  file with a static one lands back in the entry chunk. `route-screens.tsx` holds the static half.
+- **A static value import from a page's barrel drags the screen in with it.** `/me`'s `validateSearch`
+  needs the `?tab=` vocabulary in the entry chunk, so `app/routes/me-search.ts` owns it (§3.1's seam,
+  as for `/diary`) and takes `MeTabId` as a **type-only** import — erased, so no runtime edge. A value
+  import from `pages/me` would have pulled `MePage` and its nine features into the entry chunk.
+- **`defaultPendingComponent` is set once** in `createAppRouter`, to the same `AuthHold` a settling session
+  shows. It is not only cosmetic: TanStack wraps a match in `Suspense` **only** when a pending component
+  exists, so without it a lazily-imported screen suspends to the root's `null` fallback — a blank frame.
+- **`build.chunkSizeWarningLimit`** in `apps/web/vite.config.ts` is calibrated just above the largest chunk
+  shipped on purpose (the renderer chunk). Measure before raising it.
+- `route-splitting.test.ts` pins the table above, so converting a screen back to a static import — or
+  quietly making a public page lazy — fails a test rather than silently costing every cold visitor.
+
+**Still open:** the entry chunk is renderer-dominated. `three.js` reaches it as a static dependency of the
+landing's own two scenes, so the next win is a **reduced renderer entry** for `LandingHeroScene` /
+`LandingWalkthroughScene` — a separate change with its own measurement. Preloading a lazy route on link
+intent (`defaultPreload`) is the other unclaimed follow-up.
 
 ## 6. Composition and testing
 

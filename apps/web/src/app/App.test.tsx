@@ -277,6 +277,24 @@ describe('web auth gate', () => {
     }
   })
 
+  // The two public routes that carry no session at all. `/demo` is the one PUBLIC surface behind a
+  // dynamic import, so this is where a guard accidentally inherited by it — or a chunk that fails to
+  // resolve for a visitor who has no session to load it with — would show up. Asserted at the match
+  // rather than through renderToString because both screens mount a live canvas.
+  it.each([
+    ['/demo', '/demo'],
+    ['/blog/anything', '/blog/$'],
+  ])('resolves %s for a signed-out visitor with no redirect', async (entry, routeId) => {
+    const router = createAppRouter({
+      diagnosticsEnabled: false,
+      getSessionStatus: () => 'signedOut',
+      initialEntries: [entry],
+    })
+    await router.load()
+    expect(router.state.redirect).toBeUndefined()
+    expect(router.state.matches.at(-1)?.routeId).toBe(routeId)
+  })
+
   // My page stays under the same authenticated layout — a signed-out
   // arrival is redirected by the shared guard (the page implements no redirect of its own).
   it('redirects a signed-out /me arrival to /login through the shared gate', async () => {

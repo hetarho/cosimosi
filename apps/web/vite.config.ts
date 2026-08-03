@@ -59,6 +59,19 @@ export default defineConfig(({ command, mode }) => {
         '@cosimosi/universe-render',
       ],
     },
+    build: {
+      // Calibrated against a real build, because the stock 500 kB warns on every build here and a
+      // warning that always fires is the same as no gate. The binding chunk is NOT the entry (930 kB)
+      // but the renderer chunk rolldown splits out of it — 1.62 MB of three.js that the landing
+      // page's two scenes import statically, so nothing can defer it short of a reduced renderer
+      // entry (the split boundary is documented in spec/tech/web-routing.md).
+      //
+      // So: just above the renderer chunk. If this fires, something new grew past the largest thing
+      // we ship on purpose — measure before raising it. `pnpm build:web` prints every chunk; the
+      // number to compare against the entry is the sum of the `modulepreload`s in dist/index.html,
+      // because those are what a first paint blocks on, not the entry chunk alone.
+      chunkSizeWarningLimit: 1700,
+    },
     // Fixed dev/preview port (strict = fail rather than fall back to another port).
     server: { port: 1214, strictPort: true },
     preview: { port: 1214, strictPort: true },

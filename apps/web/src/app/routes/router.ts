@@ -3,6 +3,7 @@ import { createMemoryHistory, createRouter } from '@tanstack/react-router'
 import type { SessionStatus } from '@cosimosi/auth'
 
 import { routeTree } from './route-tree.tsx'
+import { AuthHold } from './route-screens.tsx'
 
 export interface CreateAppRouterOptions {
   /** Whether the /test harness route is reachable (the platform diagnostics flag). */
@@ -35,6 +36,13 @@ export function createAppRouter({
     // router has to agree with them. The root is the sole exception. `/blog/` is outside this router
     // (the Worker's asset handler serves it), so the blog's own trailing-slash policy cannot conflict.
     trailingSlash: 'never',
+    // One pending state for the whole app, not a Suspense boundary hand-placed per route. It is the
+    // same neutral hold a settling session shows, so a chunk fetch and a session refresh look
+    // identical instead of teaching the app a second loading language. Setting it is also what puts
+    // a Suspense boundary at the matched route rather than at the root: TanStack only wraps a match
+    // when a pending component exists, so without this a lazily-imported screen would suspend the
+    // whole tree to a null fallback — a blank frame, which is exactly what A5 forbids.
+    defaultPendingComponent: AuthHold,
     context: { diagnosticsEnabled, getSessionStatus },
     ...(initialEntries
       ? { history: createMemoryHistory({ initialEntries: [...initialEntries] }) }

@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect } from 'react'
 
 import { Outlet, useLocation, useParams, useSearch } from '@tanstack/react-router'
 
 import { gateDecision, pendingInvite, requiresSignIn } from '@cosimosi/auth'
-import type { DiaryConditionsUpdate } from '@cosimosi/universe/react'
 import { useSessionSnapshot } from '@cosimosi/auth/react'
 import {
   LocaleBootstrap,
@@ -15,15 +14,9 @@ import {
 
 import { DecorationBootstrap } from '../providers/decoration-bootstrap.tsx'
 import { ProfileGate } from '../providers/profile-gate.tsx'
-import { AdminPage } from '../../pages/admin/index.ts'
-import { DemoPage } from '../../pages/demo/index.ts'
 import { BlogNotFoundPage } from '../../pages/blog-not-found/index.ts'
 import { LandingPage } from '../../pages/landing/index.ts'
-import { DiaryReaderPage } from '../../pages/diary-reader/index.ts'
-import { diaryQueryFromSearch, searchWithUpdate, type DiarySearchParams } from './diary-search.ts'
 import { LoginPage } from '../../pages/login/index.ts'
-import { MePage, parseMeTab, type MeTabId } from '../../pages/me/index.ts'
-import { UniverseHomePage } from '../../pages/universe/index.ts'
 import { writeStoredLocale } from '../../shared/lib/locale-storage.ts'
 import { loginReturnTarget } from './guards/auth-gate.ts'
 import { useAppNavigate } from './navigation.ts'
@@ -32,6 +25,12 @@ import { AchievementNoticeHost } from '../../features/achievement-notice/index.t
 // The route components live apart from the route-tree config so this file exports
 // components only (react-refresh's only-export-components contract); route-tree.tsx
 // owns the createRoute wiring and the non-component exports.
+//
+// This file is the STATIC half of the route surface: the authenticated layout plus every screen a
+// stranger can land on cold (the front door, sign-in, sign-up, invite, the blog miss). It rides in
+// the entry chunk on purpose — lazy-loading the very page the visitor asked for would add a round
+// trip to the path the split exists to speed up. The signed-in product, the admin console and the
+// demo sandbox live in `screens/` and are reached through dynamic imports instead.
 
 // The neutral hold shown while the session is bootstrapping/refreshing — no signed-out flash and no
 // landing flash either, which is the whole reason `'hold'` survived the front door: a returning user
@@ -128,103 +127,6 @@ export function BlogNotFoundRoute() {
       }}
     />
   )
-}
-
-// The router seam stays confined to this segment: the universe/reader surfaces navigate between
-// each other through callbacks these app-layer route components supply, so no page or widget
-// imports the router. Named components (not inline arrows) so the navigation hook obeys the
-// rules-of-hooks. The universe lives at '/universe'; the archive is its own ('/diary').
-export function UniverseRoute() {
-  const navigate = useAppNavigate()
-  return (
-    <UniverseHomePage
-      onOpenReader={() => navigate({ to: '/diary' })}
-      onOpenMe={() => navigate({ to: '/me', search: { tab: 'profile' } })}
-      // Where earning is actually claimed ([A4]) — the app layer owns the tab id because it owns the
-      // route; the page and the widget below it know only the intent.
-      onOpenAchievements={() => navigate({ to: '/me', search: { tab: 'achievements' } })}
-    />
-  )
-}
-
-export function DiaryReaderRoute() {
-  const navigate = useAppNavigate()
-  const search = useSearch({ strict: false }) as DiarySearchParams
-  // Both are held stable across renders because they reach the archive read's query key and the
-  // search feature's commit effect: a fresh object or callback on every render would churn both.
-  const query = useMemo(() => diaryQueryFromSearch(search), [search])
-  // Replace rather than push: a debounced keystroke must not bury the universe under a hundred
-  // history entries, while a deliberate Back still leaves the archive ([D7]).
-  const onQueryChange = useCallback(
-    (update: DiaryConditionsUpdate) =>
-      navigate({
-        to: '/diary',
-        search: (previous: DiarySearchParams) => searchWithUpdate(previous, update),
-        replace: true,
-      }),
-    [navigate],
-  )
-  // Mounting the calendar must add NO history entry — the toggle is a way of looking, not a place — so the
-  // view swap replaces. Stepping a month is a move the reader may want to undo, so it pushes ([D12]).
-  const onViewChange = useCallback(
-    (view: 'list' | 'calendar') =>
-      navigate({
-        to: '/diary',
-        search: (previous: DiarySearchParams): DiarySearchParams => ({
-          ...previous,
-          view: view === 'calendar' ? 'calendar' : undefined,
-        }),
-        replace: true,
-      }),
-    [navigate],
-  )
-  const onMonthChange = useCallback(
-    (month: string) =>
-      navigate({
-        to: '/diary',
-        search: (previous: DiarySearchParams) => ({ ...previous, month }),
-      }),
-    [navigate],
-  )
-  return (
-    <DiaryReaderPage
-      onExit={() => navigate({ to: '/universe' })}
-      query={query}
-      onQueryChange={onQueryChange}
-      view={search.view === 'calendar' ? 'calendar' : 'list'}
-      onViewChange={onViewChange}
-      month={search.month}
-      onMonthChange={onMonthChange}
-    />
-  )
-}
-
-export function MeRoute() {
-  const navigate = useAppNavigate()
-  const search = useSearch({ strict: false }) as { tab?: MeTabId }
-  return (
-    <MePage
-      activeTab={parseMeTab(search.tab)}
-      onTabChange={(tab) => navigate({ to: '/me', search: { tab }, replace: true })}
-      onExit={() => navigate({ to: '/universe' })}
-    />
-  )
-}
-
-// The admin console route (web-only, the admin console). It mounts under the authenticated subtree; the page
-// itself gates on GetAdminSelf and sends a non-admin back to the universe (the BE interceptor is
-// the authoritative gate — a non-admin's admin.v1 calls are rejected regardless).
-export function AdminRoute() {
-  const navigate = useAppNavigate()
-  return <AdminPage onExit={() => navigate({ to: '/universe' })} />
-}
-
-// The public demo route. The only thing the page needs from the router is where the closing CTA
-// goes, so it takes a callback and imports no router — the same seam as UniverseRoute/LoginRoute.
-// There is no session check here on purpose: the demo is for people who do not have one.
-export function DemoRoute() {
-  const navigate = useAppNavigate()
-  return <DemoPage onSignUp={() => navigate({ to: '/signup' })} />
 }
 
 // The login entry: on a successful sign-in the session reaches authenticated, so this returns the
