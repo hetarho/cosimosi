@@ -421,6 +421,12 @@ apps/mobile/
   `View`/`Text`/gesture; web router ↔ RN navigation; the `<Canvas>` host wiring; auth token storage).
 - **Renderer.** `react-native-webgpu` hosts the same three.js `WebGPURenderer` + TSL shaders from `packages/shaders`
   — the scene renders from one shader source on both platforms.
+- **A fork owns its own test.** A `*.native` sibling exists because the platform differs, which means the two arms
+  can fail differently — so coverage follows the fork rather than sitting on whichever arm was written first. It
+  matters most where the fork trades a declarative construct for an **imperative lifecycle**: RN has no CSS animation,
+  so an `Animated.loop` needs a `stop()` on unmount that a CSS class never needed, and a `useNativeDriver: true` loop
+  registers no JS timer — so `apps/mobile/jest.guards.js`' pending-timer guard cannot see the leak either. Where a
+  fork constructs, starts and must tear down anything, its suite asserts the teardown.
 
 > Both apps are **first-class build targets, built together** — not web-first. A feature ships for web (open-beta
 > scope) **and** mobile (MVP scope) in the same work, sharing all pure layers via `packages/` and one TSL shader source.
