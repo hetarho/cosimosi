@@ -336,3 +336,83 @@ func TestClaimRefusesACounterShortOfItsTarget(t *testing.T) {
 		t.Fatalf("a refused claim wrote or paid something: %+v", store)
 	}
 }
+
+// The de-published row: claimed, unsettled, and its achievement no longer in the compiled catalog.
+// Review 11 read the `!published` skip as leaving the user a permanent retry affordance for a reward
+// that can never land. It does not, and this pins why: BOTH reads that touch progress rows are
+// accounted for here. `SettleClaims` skips the row (no payment, no error, no retry), and
+// `ListAchievements` iterates the CATALOG — so a row whose id left it is projected into no Entry at
+// all, and there is nothing for a client to draw an affordance on.
+//
+// That is what makes this a closed row rather than a pending one, and it is why the fix is a test
+// rather than an `abandoned_at` column: the state is already unrepresentable in the read. What this
+// pins precisely is that the read never EXPOSES a de-published progress row — a future read built off
+// progress rows would have to filter them to stay green.
+func TestSettleSkipsAnAchievementThatLeftTheCatalog(t *testing.T) {
+	t.Parallel()
+	repo := newFakeStore()
+	twinkle := &fakeTwinkleGranter{}
+	ornaments := &fakeOrnamentGranter{}
+	service := newClaimService(t, repo, twinkle, ornaments)
+	ctx := context.Background()
+	scope := testScope(t)
+
+	// Arranged directly, because the only way into this state is a deploy: the claim path refuses an
+	// unpublished id, so no sequence of calls against one binary can produce it.
+	const retired = "retired_badge"
+	if _, published := LookupAchievement(retired); published {
+		t.Fatalf("%s is in the catalog; pick an id that is not", retired)
+	}
+	repo.achieve(retired)
+	repo.claimedAt[retired] = repo.achievedAt[retired]
+	repo.claimIDs[retired] = "claim-retired"
+
+	// A payable row alongside it, so this also covers the thing the skip must not do: starve the rest
+	// of the user's rewards.
+	repo.achieve("first_diary")
+	if _, err := service.ClaimAchievement(ctx, scope, "first_diary"); err != nil {
+		t.Fatalf("claim of the payable row failed: %v", err)
+	}
+	paidCalls := twinkle.calls + ornaments.calls
+
+	if err := service.SettleClaims(ctx, scope); err != nil {
+		t.Fatalf("SettleClaims reported the de-published row as a failure: %v", err)
+	}
+	if _, settled := repo.paidAt[retired]; settled {
+		t.Fatal("the de-published row was settled; no leg exists to pay")
+	}
+	if twinkle.calls+ornaments.calls != paidCalls {
+		t.Fatalf("the de-published row paid something: twinkle %d ornament %d", twinkle.calls, ornaments.calls)
+	}
+	// Draining again is silent too: skipping is not a deferred retry, so the row costs one lookup a
+	// drain forever rather than a growing error surface.
+	if err := service.SettleClaims(ctx, scope); err != nil {
+		t.Fatalf("second SettleClaims failed: %v", err)
+	}
+
+	// The half review 11 did not trace. The row is claimed and unsettled in the table, and invisible
+	// to the read — so it cannot be reported as "claimed and still owed".
+	entries, err := service.ListAchievements(ctx, scope)
+	if err != nil {
+		t.Fatalf("ListAchievements failed: %v", err)
+	}
+	for _, entry := range entries {
+		if entry.ID == retired {
+			t.Fatalf("a de-published achievement reached the read: %+v", entry)
+		}
+	}
+	// And the payable row it sits beside is answered normally, settled.
+	var found bool
+	for _, entry := range entries {
+		if entry.ID != "first_diary" {
+			continue
+		}
+		found = true
+		if !entry.Claimed || !entry.RewardSettled {
+			t.Fatalf("the payable row was disturbed: %+v", entry)
+		}
+	}
+	if !found {
+		t.Fatal("the payable row is missing from the read")
+	}
+}

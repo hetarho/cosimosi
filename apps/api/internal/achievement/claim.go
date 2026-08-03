@@ -184,8 +184,15 @@ func (s *Service) SettleClaims(ctx context.Context, scope platform.UserScope) er
 		row, published := LookupAchievement(record.AchievementID)
 		if !published {
 			// A progress write refuses an unpublished id, so this can only be a row whose achievement
-			// left the catalog after it was claimed. No leg exists to pay and no retry will make one
-			// appear, so it is skipped rather than retried forever.
+			// left the catalog after it was claimed — reachable only across a deploy. Note the reward
+			// itself may well have LANDED: stampSettled swallows its error, so a paid leg with a failed
+			// settle stamp leaves exactly this row shape. Either way no leg is left to pay from here and
+			// no retry would make one appear.
+			//
+			// Skipping IS closing it, which is not obvious from here: ListAchievements iterates the
+			// catalog, so a row whose id has left it is projected into no Entry at all and cannot be
+			// answered as claimed-and-still-owed. There is no third state to represent and no affordance
+			// left pointing at it. (Pinned by TestSettleSkipsAnAchievementThatLeftTheCatalog.)
 			continue
 		}
 		if _, err := s.payReward(ctx, scope, row, record.ClaimID); err != nil && failed == nil {

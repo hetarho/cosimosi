@@ -348,6 +348,27 @@ silently give up on a reward the product already told the user they had received
 Both worker roots register the handler — `cmd/worker` (the production queue) and `cmd/api`'s dev worker. An unhandled
 kind of a never-dead-lettered leg would otherwise spin forever.
 
+**The one row the drain skips instead of paying** is a claimed, unsettled row whose achievement has left the catalog.
+Nothing in one binary can produce it — the claim path refuses an unpublished id — so it needs a **deploy** that drops a
+catalog row while some user's claim is still unsettled. There are two ways to be unsettled, and only one of them lost
+anything: the synchronous payout failed, **or** it succeeded and the settle stamp did not (`stampSettled` swallows its
+error by design, so a paid leg with a missing `paid_at` is a normal transient state). Either way no leg is left to pay
+from the drain and no retry would make one appear, so `SettleClaims` skips it.
+
+**Skipping is closing, and the reason is the read.** `ListAchievements` iterates the **catalog** and joins each row to
+the caller's progress record; a progress row whose id has left the catalog is therefore projected into no `Entry` at
+all. It cannot be answered as claimed-and-still-owed, and no client has a row to draw a retry affordance on. `ListProgress`
+has exactly two consumers — that read and the drain — so there is no third surface where the row could resurface. The
+lifecycle needs **no `abandoned_at` column and no third state**: the state it would represent is already unrepresentable
+in the read.
+
+What the row does cost is one catalog lookup per drain, forever, and — in the failed-payout half of those two cases — a
+reward that silently never lands, with no operator signal, since the drain returns `nil` and the job completes normally.
+Both are accepted deliberately; if the signal is ever wanted, the cheap form is observability at the skip, not a
+lifecycle state. `TestSettleSkipsAnAchievementThatLeftTheCatalog` pins the argument — the skip, the absence from the
+read, and the payable row beside it staying untouched — so a read that ever **exposed** a de-published progress row would
+fail a test rather than quietly reopening the affordance.
+
 ## 10. The composition root's five edges (`cmd/api/achievement.go`)
 
 - **Three recorder adapters** (`memory`/`store`/`account`), each type-asserting the producer's opaque tx to
