@@ -120,14 +120,13 @@ export interface WalkthroughContent {
 export const WALKTHROUGH_EPOCH = '2026-01-01'
 
 /**
- * How far the fade step jumps: long enough that the production decay crosses at least one word-loss
- * stage for every memory (the slowest one here crosses at ~2× stage_interval_days once its slow
- * factor is applied), short enough that nothing hits the deepest stage — dim, never gone.
+ * How far the fade step jumps. Both of these are tuned against `forgetting.*` and `synapse.*`, so they
+ * live in `spec/values.yaml` with that reasoning rather than here — see the `landing:` group.
  */
-export const WALKTHROUGH_FADE_SPAN_DAYS = 150
+export const WALKTHROUGH_FADE_SPAN_DAYS = VALUES.landing.walkthroughFadeSpanDays
 
 /** How many recalls the mirror step accumulates on the one returned-to memory. */
-export const WALKTHROUGH_MIRROR_RECALLS = 5
+export const WALKTHROUGH_MIRROR_RECALLS = VALUES.landing.walkthroughMirrorRecalls
 
 /** Day n of the walkthrough clock as the ISO universe-time the domain functions read. */
 export function walkthroughUniverseTime(day: number): string {

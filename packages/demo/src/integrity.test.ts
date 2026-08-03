@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import { describe, expect, it } from 'vitest'
 
 import { VALUES } from '@cosimosi/config'
@@ -383,5 +385,37 @@ describe('per-diary draw', () => {
     // A malformed draw number clamps to the pool's start rather than throwing mid-visit.
     expect(pickDemoDiary(pool, Number.NaN)).toBe(pool[0])
     expect(pickDemoDiary(pool, -3)).toBe(pool[0])
+  })
+})
+
+const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+  dependencies: Record<string, string>
+  devDependencies: Record<string, string>
+  peerDependencies?: Record<string, string>
+}
+
+describe('package isolation', () => {
+  it('declares no dependency that could reach a transport, a price or a read mirror', () => {
+    // This list IS the [I13] argument, not decoration: the demo is formally exempt from the
+    // invariants, and an exempt sandbox is only safe while it cannot reach the real path. Nothing
+    // here can obtain an `ApiTransport` (every RPC-issuing function in `packages/*` takes one as its
+    // first argument), a Twinkle price or balance, or a server-backed read mirror — so a fixture
+    // cannot accidentally become a product write. Anything added has to answer that first.
+    //
+    // What each entry buys: `emotion` for the mood→arousal→strength relationship the fixtures show
+    // rather than hand-tune ([I3]), `memory` for the shapes the resolver returns, `memory-logic` for
+    // the pinned read-time math ([Z5]: nothing is re-implemented), `i18n` for the `Locale` the text
+    // split is keyed by. No `store` ([Z8]), no `twinkle`, no `api-client`, no `universe`.
+    expect(Object.keys(manifest.dependencies).sort()).toEqual([
+      '@cosimosi/emotion',
+      '@cosimosi/i18n',
+      '@cosimosi/memory',
+      '@cosimosi/memory-logic',
+    ])
+    // `config` is a dev dependency because only this file reads `VALUES` — to assert the fixtures
+    // against the shipped ratios. The resolver itself needs no tuning scalar, and a manifest that
+    // said otherwise would overstate what the shipped package pulls in.
+    expect(Object.keys(manifest.devDependencies)).toContain('@cosimosi/config')
+    expect(manifest.peerDependencies).toBeUndefined()
   })
 })

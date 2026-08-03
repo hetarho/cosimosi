@@ -320,3 +320,9 @@ const (
 	DemoTimeTravelMonthDays = 30
 	DemoMaskLiftLingerMs    = 2400
 )
+
+// landing
+const (
+	LandingWalkthroughFadeSpanDays  = 150
+	LandingWalkthroughMirrorRecalls = 5
+)

@@ -205,4 +205,8 @@ export const VALUES = {
     timeTravelMonthDays: 30,
     maskLiftLingerMs: 2400,
   },
+  landing: {
+    walkthroughFadeSpanDays: 150,
+    walkthroughMirrorRecalls: 5,
+  },
 } as const

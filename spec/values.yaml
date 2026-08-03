@@ -591,3 +591,18 @@ demo:
   # the clear before the covering returns. Long enough for the awaken choreography to land, short
   # enough that the tour does not read as paused.
   mask_lift_linger_ms: 2400
+
+landing:
+  # How far the walkthrough's `fade` step pushes its clock, in universe-days. Tuned AGAINST other keys
+  # in this file rather than picked: long enough that `forgetting.stage_interval_days` (30) is crossed
+  # by every memory in the run once each one's slow factor has stretched the axis — the slowest here
+  # needs about 2× the interval — and short enough that none of them reaches the deepest rung of
+  # `forgetting.stage_word_removal_ratios`. Dim and eroded, never gone: the step has to show neglect
+  # as loss the visitor would want to undo, and a memory read down to nothing has nothing to return.
+  walkthrough_fade_span_days: 150
+  # How many recalls the `mirror` step accumulates on the one returned-to memory. It is what tilts the
+  # sky towards that memory's feeling ([M5]), because the sky weighs each memory by its
+  # EffectiveStrength and `synapse.recall_*` growth is what a recall count buys. Enough passes that the
+  # tilt is visible in one screenshot; few enough that the memory does not swamp the sky it is one
+  # voice in.
+  walkthrough_mirror_recalls: 5

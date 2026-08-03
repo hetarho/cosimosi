@@ -13,20 +13,39 @@ generated files are never edited by hand.
 Values are build-time config. They are not remote config, environment config, feature flags, formulas, copy, schema, or
 theme content.
 
-Current groups:
+Current groups. **`spec/values.yaml` is the registry — this list is a reading aid, in file order.** It exists so a
+newcomer can find the right group without scrolling 600 lines of YAML; when the two disagree, the YAML is right.
 
 - `client_cache`: TanStack Query default timing and optimistic rollback windows.
+- `errors`: toast auto-dismiss timing for the error surface.
 - `auth_session`: frontend Supabase access-token refresh skew.
 - `supabase_auth`: API JWKS cache TTL and key-miss refresh rate limit.
+- `account`: profile and nickname bounds, invite capability limits.
 - `rendering`: active universe skin, pixel-ratio cap, and renderer instance bucket capacity.
+- `nebula`: latent-field sampling and blend knobs for the semantic backdrop.
 - `ai`: embedding vector dimension, real-adapter token/call caps, and worker retry/backoff caps.
-- `encode`: diary split bounds (memory count, semantic-neuron minimum), revise/repair retry and output-token caps, and
-  the embedding-assist dedup similarity threshold + top-k consumed by the `Encode` use-case.
 - `emotion`: mood valence/arousal scalar maps, arousal-to-initial-strength bounds, and default memory emotion
   intensity.
+- `palette`: mood-colour editing bounds and recommendation limits.
+- `encode`: diary split bounds (memory count, semantic-neuron minimum), revise/repair retry and output-token caps, and
+  the embedding-assist dedup similarity threshold + top-k consumed by the `Encode` use-case.
 - `synapse`: saturating-LTP coefficient, single strength cap, signal-tiered initial strengths, read-time synapse decay,
   and temporal-link knobs consumed by the future `Link` use-case.
+- `semantic`: gist timer units and semanticization stage bounds.
+- `reconsolidation`: recall-time reshape and neighbour-forgetting knobs.
+- `consolidation`: sleep-pass strengthening knobs.
+- `forgetting`: decay time-axis coefficients, stage interval, word-removal ratios, accessibility cost weight.
+- `twinkle`: earning and balance scalars.
+- `store`: ornament pricing and catalog limits.
+- `achievement`: claim settlement knobs, the recovery decay-stage minimum, notice dwell.
+- `admin`: operator console paging and integrity-check limits.
 - `force_sim`: deterministic layout coefficients, z-band bounds, and seed consumed by `@cosimosi/force-sim`.
+- `diary_reader`: archive paging and search minimum query length.
+- `deletion`: soft-delete retention window.
+- `release`: release-gate scalars.
+- `sequence`: guided-run caption dwell and spotlight pulse period, shared by both hosts.
+- `demo`: the sandbox's time-jump grain and tutorial mask linger ([Z2]).
+- `landing`: the walkthrough's fade span and mirror recall count, both tuned against `forgetting.*`/`synapse.*`.
 
 ## 2. Schema
 

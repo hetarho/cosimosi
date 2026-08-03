@@ -7,7 +7,7 @@ import type { OnboardingAnchor, OnboardingSignal } from './anchors.ts'
 
 const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
   dependencies: Record<string, string>
-  peerDependencies: Record<string, string>
+  peerDependencies?: Record<string, string>
 }
 
 // Exhaustive records: a member added to either union without a row here fails to compile, and a row
@@ -90,6 +90,10 @@ describe('package isolation', () => {
       '@cosimosi/sequence',
       'zustand',
     ])
-    expect(Object.keys(manifest.peerDependencies).sort()).toEqual(['react'])
+    // And no peer either. This package is anchor ids, signal ids and a zustand store — nothing under
+    // src/ imports React and there is no `./react` export for one to live behind, so a peer would be
+    // claiming a seam that does not exist. Adding one is how a React dependency arrives by implication
+    // rather than by decision.
+    expect(manifest.peerDependencies).toBeUndefined()
   })
 })

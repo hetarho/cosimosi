@@ -12,13 +12,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@cosimosi/config": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
+    "@cosimosi/i18n": "workspace:*",
     "@cosimosi/memory": "workspace:*",
     "@cosimosi/memory-logic": "workspace:*"
   },
   "devDependencies": {
-    "@cosimosi/i18n": "workspace:*",
+    "@cosimosi/config": "workspace:*",
     "@types/node": "^24.13.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
