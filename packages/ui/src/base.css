@@ -15,6 +15,21 @@
   }
 }
 
+/* ── Pointer over anything clickable ──────────────────────────────────────────
+ * Tailwind's preflight gives buttons `cursor: default` (the UA behaviour for a native control), so
+ * without this every button in the app — the primitives and the raw `<button>`s inside slices alike —
+ * feels inert under the mouse. Restored here on the ELEMENT rather than in the button primitives,
+ * because the affordance belongs to everything a pointer can activate, and a utility class on two
+ * primitives leaves the rest behind. `:not(:disabled)` keeps a dead control feeling dead.
+ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+}
+
 /* ── Scrollbars ────────────────────────────────────────────────────────────────
  * A subtle translucent pill on a transparent track, matching the dark glass language — the default
  * chrome scrollbar reads as a foreign element otherwise. Standard `scrollbar-*` (Firefox + modern
