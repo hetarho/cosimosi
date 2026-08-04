@@ -79,4 +79,16 @@ export default defineConfig([
       ...COMPILER_MODEL_DEFERRED,
     },
   },
+  // Naming a property beside a rest element is how you OMIT that key, so the binding is unused by
+  // construction — `packages/ui`'s `native-styles.ts` drops the web-only `font` group from the token
+  // map exactly this way, and the omission is the point of the line. This relaxes only that idiom:
+  // every other unused binding still fails, and no site needs a suppression comment to pass. Last
+  // block on purpose — flat config REPLACES a rule's options per matching file, so setting this in
+  // the first block alone would be undone for `packages/ui/**` by the React block above.
+  {
+    files: ['packages/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
+    },
+  },
 ])
