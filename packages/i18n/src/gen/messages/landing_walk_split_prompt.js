@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Landing_Walk_Split_PromptInputs */
 
 const en_landing_walk_split_prompt = /** @type {(inputs: Landing_Walk_Split_PromptInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`A day rarely holds one thing. See for yourself how the entry you just read comes apart into scenes.`)
+	return /** @type {LocalizedString} */ (`A day rarely holds one thing. How many scenes does the entry you just read come apart into?`)
 };
 
 const ko_landing_walk_split_prompt = /** @type {(inputs: Landing_Walk_Split_PromptInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`하루에는 보통 여러 장면이 담겨요. 방금 읽은 일기가 몇 개의 장면으로 나뉘는지 직접 확인해 보세요.`)
+	return /** @type {LocalizedString} */ (`하루에는 보통 여러 장면이 담겨요. 방금 읽은 일기가 몇 개의 장면으로 나뉘는지 볼까요?`)
 };
 
 /**
 * | output |
 * | --- |
-* | "A day rarely holds one thing. See for yourself how the entry you just read comes apart into scenes." |
+* | "A day rarely holds one thing. How many scenes does the entry you just read come apart into?" |
 *
 * @param {Landing_Walk_Split_PromptInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

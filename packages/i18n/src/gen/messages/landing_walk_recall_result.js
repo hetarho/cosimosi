@@ -10,7 +10,7 @@ const en_landing_walk_recall_result = /** @type {(inputs: Landing_Walk_Recall_Re
 };
 
 const ko_landing_walk_recall_result = /** @type {(inputs: Landing_Walk_Recall_ResultInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`밝기를 되찾았어요. 문장도 모양도 조금 달라진 채로요. 우리 기억이 원래 그런 것처럼요.`)
+	return /** @type {LocalizedString} */ (`밝기를 되찾았어요. 문장도 모양도 조금 달라진 채로요. 기억이 원래 그렇게 돌아오니까요.`)
 };
 
 /**

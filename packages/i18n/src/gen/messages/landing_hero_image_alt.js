@@ -10,7 +10,7 @@ const en_landing_hero_image_alt = /** @type {(inputs: Landing_Hero_Image_AltInpu
 };
 
 const ko_landing_hero_image_alt = /** @type {(inputs: Landing_Hero_Image_AltInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`아무것도 쓰이지 않은, 희미하게 밝은 밤하늘.`)
+	return /** @type {LocalizedString} */ (`아직 아무 기록도 없는, 희미하게 밝은 밤하늘.`)
 };
 
 /**

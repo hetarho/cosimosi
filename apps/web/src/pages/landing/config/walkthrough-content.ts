@@ -138,45 +138,39 @@ export function walkthroughContent(locale: Locale): WalkthroughContent {
 
 export interface WalkthroughStepCopy {
   readonly prompt: () => string
-  readonly action: () => string
   readonly result: () => string
 }
 
 /**
- * Each step's words, exhaustive over the step union — a step without copy is a `tsc` failure. The
- * action labels are the product's own verbs where one exists (`writing_flow_split_action`,
- * `writing_flow_launch_action`, the recall register), so the walkthrough and the product read as
- * the same thing. The mirror step's [M5] definition is rendered by the section on top of these.
+ * Each step's words, exhaustive over the step union — a step without copy is a `tsc` failure. Two
+ * sentences per step and nothing else: what is about to happen, then what happened. The step names
+ * no verb of its own, because the visitor's only control is `next` — a caption that told them to
+ * press "별 쪼개기" would name a button the screen does not have. The mirror step's [M5] definition
+ * is rendered by the section on top of these.
  */
 export const WALKTHROUGH_STEP_COPY: Readonly<Record<WalkthroughStepId, WalkthroughStepCopy>> = {
   split: {
     prompt: m.landing_walk_split_prompt,
-    action: m.landing_walk_split_action,
     result: m.landing_walk_split_result,
   },
   launch: {
     prompt: m.landing_walk_launch_prompt,
-    action: m.landing_walk_launch_action,
     result: m.landing_walk_launch_result,
   },
   color: {
     prompt: m.landing_walk_color_prompt,
-    action: m.landing_walk_color_action,
     result: m.landing_walk_color_result,
   },
   fade: {
     prompt: m.landing_walk_fade_prompt,
-    action: m.landing_walk_fade_action,
     result: m.landing_walk_fade_result,
   },
   recall: {
     prompt: m.landing_walk_recall_prompt,
-    action: m.landing_walk_recall_action,
     result: m.landing_walk_recall_result,
   },
   mirror: {
     prompt: m.landing_walk_mirror_prompt,
-    action: m.landing_walk_mirror_action,
     result: m.landing_walk_mirror_result,
   },
 }

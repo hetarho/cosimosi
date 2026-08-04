@@ -23,13 +23,13 @@ import { CAPTION_MOTION, STAGE_MOTION, sceneMotion, wordFadeMotion } from '../..
 import type { LandingSectionProps } from '../../model/sections.ts'
 import { LandingScrollCue } from '../LandingScrollCue.tsx'
 import { LandingWalkthroughScene } from '../LandingWalkthroughScene.tsx'
-import { DemoCta } from './LandingCtas.tsx'
+import { WalkthroughDemoCta } from './LandingCtas.tsx'
 
 /**
  * The page's argument, walked instead of read: one authored diary goes through the product's whole
- * arc — split, launch, the sky taking colour, the fade, the recall, the mirror — on one canvas,
- * each step a caption and a single action in the product's own verbs. Hardcoded on purpose: the
- * story is one fixed sequence, walkable a state at a time in either direction, and anyone who
+ * arc — split, launch, the sky taking colour, the fade, the recall, the mirror — on one canvas, each
+ * step a caption and the change it describes. Hardcoded on purpose: the story is one fixed sequence,
+ * walkable a state at a time in either direction with back/next and nothing else, and anyone who
  * wants to actually steer is one click from the demo. Local state only — the page has no session,
  * no transport, and no way to obtain either.
  *
@@ -50,16 +50,20 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
   const content = useMemo(() => walkthroughContent(locale), [locale])
   const facts = useMemo(() => walkthroughSceneFacts(content, state), [content, state])
 
-  const copy = WALKTHROUGH_STEP_COPY[state.step]
   const atStart = state.step === WALKTHROUGH_STEPS[0] && !state.acted
   const atEnd = isLastWalkthroughStep(state) && state.acted
 
   return (
-    <section className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-6 py-16">
+    // The column starts at the TOP of the screen rather than centred in it. The section is one
+    // `dvh` tall on every device, and on a phone the column is nearly that tall on its own — centred,
+    // the leading margin is split in two and the invitation at the foot lands under the fold, which
+    // is the one thing on this screen that must not. Anchored to the top, the run is fully visible
+    // from the first step, and on a desk the slack falls below, where the scroll cue already lives.
+    <section className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-6 pb-24 pt-14 sm:pt-20">
       {/* One config for the whole run: the preference drops every transform below and keeps the
           fades, so a visitor who asked for less motion still sees each step replace the last. */}
       <MotionConfig reducedMotion="user">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4 sm:gap-5">
           {/* Chrome only, no title — the stage speaks for itself. Replay on the left, small and out
               of the action's way, hidden (not removed, so nothing reflows) at both ends of the run:
               nothing to replay at the start, and the ending's own action IS the replay. The row sits
@@ -103,28 +107,41 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
             </motion.div>
           </AnimatePresence>
 
-          {/* The actions, always the same corner: a step back, and beside it the step's own verb
-              until it is taken, then the way onward — and at the ending, the replay. Back is hidden
-              (not removed) at the start so the primary never moves. */}
-          <div className="flex items-center justify-end gap-2">
+          {/* The actions, always the same corner: back, and the way onward. Two text buttons and
+              nothing else — the run has ONE control, and `next` is it. Each step is two presses (the
+              change, then the move on), so a visitor walks the whole arc without ever choosing what
+              to do; a per-step verb button would offer a choice the story does not have and read as
+              an app the visitor is now operating.
+
+              `next` is the secondary colour with a trailing arrow — the direction is the meaning, and
+              the page's primary filled colour is spent on the two real asks (the demo below, the
+              signup at the foot), which must not have to compete with a slideshow's pager. Back is
+              hidden (not removed) at the start so `next` never moves. */}
+          <div className="flex items-center justify-end gap-1">
             <Button
               color="neutral"
               variant="text"
               className={atStart ? 'invisible' : undefined}
+              leadingIcon={<StepArrow towards="back" />}
               onClick={() => setState(retreatWalkthrough)}
             >
               {m.landing_walk_prev()}
             </Button>
-            {!state.acted ? (
-              <Button color="primary" onClick={() => setState(actOnWalkthroughStep)}>
-                {copy.action()}
-              </Button>
-            ) : atEnd ? (
-              <Button color="primary" onClick={() => setState(restartWalkthrough())}>
+            {atEnd ? (
+              <Button
+                color="secondary"
+                variant="text"
+                onClick={() => setState(restartWalkthrough())}
+              >
                 {m.landing_walk_restart()}
               </Button>
             ) : (
-              <Button color="primary" onClick={() => setState(advanceWalkthrough)}>
+              <Button
+                color="secondary"
+                variant="text"
+                trailingIcon={<StepArrow towards="onward" />}
+                onClick={() => setState(state.acted ? advanceWalkthrough : actOnWalkthroughStep)}
+              >
                 {m.landing_walk_next()}
               </Button>
             )}
@@ -134,7 +151,7 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
               to what the visitor has been watching rather than as a banner, which is the whole reason
               it is here instead of in a section of its own. */}
           <div className="flex justify-center pt-3">
-            <DemoCta onTryDemo={onTryDemo} />
+            <WalkthroughDemoCta onTryDemo={onTryDemo} />
           </div>
         </div>
       </MotionConfig>
@@ -157,13 +174,16 @@ function WalkthroughWords({ step, acted }: { step: WalkthroughStepId; acted: boo
   const bodyWords = body.split(' ')
   const total = definitionWords.length + bodyWords.length
   return (
-    <div className="flex flex-col gap-1.5">
+    // Reading size, not caption size. These two sentences are the only place the argument is stated
+    // in words — the stage shows what happens, the caption says what it means — so they are set a
+    // step above the page's body copy rather than below it.
+    <div className="flex flex-col gap-2">
       {definition === null ? null : (
-        <p className="text-sm font-medium leading-6 text-text sm:text-base sm:leading-7">
+        <p className="text-base font-medium leading-7 text-text sm:text-lg sm:leading-8">
           <WipedWords words={definitionWords} offset={0} total={total} />
         </p>
       )}
-      <p className="text-sm leading-6 text-text-muted sm:text-base sm:leading-7">
+      <p className="text-base leading-7 text-text-muted sm:text-lg sm:leading-8">
         <WipedWords words={bodyWords} offset={definitionWords.length} total={total} />
       </p>
     </div>
@@ -207,12 +227,20 @@ function WalkthroughStage({
 
 // The written day, alone on the stage — the one thing the visitor reads before anything happens to
 // it. It is the stage's whole content, so it is set like a page rather than a note: the label at the
-// top, and the entry in reading-size type centred in the room the stage gives it.
+// top, and the entry in reading-size type.
+//
+// The PANEL is sized by the entry, not by the stage. The stage's box stays the same height on every
+// step (that is what keeps the controls below from moving), but a panel stretched to fill it would
+// draw a wide empty ground around a short entry and read as a layout accident rather than a page.
+// So the panel takes the height its words need, up to the whole box, and sits centred in whatever is
+// left; `overflow-y-auto` is what a long entry on a narrow phone lands in.
 function WalkthroughDiary({ content }: { content: WalkthroughContent }) {
   return (
-    <div className="flex size-full flex-col justify-center gap-3 overflow-y-auto rounded-xl bg-bg/40 p-6 sm:gap-4 sm:px-12">
-      <p className="text-xs text-text-subtle">{m.landing_walk_diary_title()}</p>
-      <p className="text-sm leading-6 text-text sm:text-lg sm:leading-9">{content.diaryText}</p>
+    <div className="flex size-full items-center">
+      <div className="flex max-h-full w-full flex-col gap-3 overflow-y-auto rounded-xl bg-bg/40 p-6 sm:gap-4 sm:px-12 sm:py-8">
+        <p className="text-xs text-text-subtle">{m.landing_walk_diary_title()}</p>
+        <p className="text-sm leading-6 text-text sm:text-lg sm:leading-9">{content.diaryText}</p>
+      </div>
     </div>
   )
 }
@@ -287,5 +315,22 @@ function WalkthroughUniverse({ facts }: { facts: WalkthroughSceneFacts }) {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+// The arrow on each of the two step controls — the direction the press moves the run, drawn rather
+// than named. It is the scroll cue's chevron turned onto its side, so the page's three navigation
+// affordances are visibly one family, and it is `aria-hidden`: the button's own word already says it.
+function StepArrow({ towards }: { towards: 'back' | 'onward' }) {
+  return (
+    <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <path
+        d={towards === 'onward' ? 'M6 3l5 5-5 5' : 'M10 3L5 8l5 5'}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

@@ -77,8 +77,10 @@ whole arc — split, launch, the sky taking colour, the fade, the recall, the mi
   tuple exactly as the section order is pinned — a user who leaves believing otherwise will read their own universe
   wrong for months.
 - **The walkthrough is hardcoded and advance-only** — an authored diary in both languages, precomputed split,
-  deterministic visuals through the shipped production functions, and one action per step named with the product's own
-  verbs. Anyone who wants to steer is one click from the demo.
+  deterministic visuals through the shipped production functions, and two sentences per step (what is about to happen,
+  then what happened) walked with back/next. A step names no verb of its own: the visitor is reading a story, not
+  operating an app, and a caption that told them to press "별 쪼개기" would name a button the screen does not have.
+  Anyone who wants to steer is one click from the demo.
 - **A demo CTA appears at the top and again at the foot**, and in the closing block the demo comes **before** the signup
   ask. A stranger has no reason to trust a form yet, and the product's whole claim is that it only reads in motion.
 - **No meta-disclaimer.** The page carries no "nothing is saved" / "this is an invented example" hedge: a marketing

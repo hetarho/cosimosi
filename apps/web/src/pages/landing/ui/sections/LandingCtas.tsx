@@ -10,18 +10,35 @@ import type { LandingSectionProps } from '../../model/sections.ts'
 // **exposes no ordering prop**, which is what makes "demo before signup" something a call site cannot
 // get wrong rather than something a reviewer has to check.
 //
-// `DemoCta` is exported on its own because its first appearance belongs to the walkthrough screen it
-// closes rather than to a section here; the pairing rule above only governs where both buttons meet.
+// `WalkthroughDemoCta` is exported on its own because that appearance belongs to the walkthrough
+// screen it closes rather than to a section here; the pairing rule above only governs where both
+// buttons meet.
 
 // Outlined, because the ask that matters is the signup below — the demo is the low-stakes side door.
 // Large, because it is the one thing a stranger is meant to reach for on a page they are still
 // skimming; the two read as one pair, so the signup carries the same size rather than the default.
-export function DemoCta({ onTryDemo }: Pick<LandingSectionProps, 'onTryDemo'>) {
+function DemoButton({
+  label,
+  onTryDemo,
+}: Pick<LandingSectionProps, 'onTryDemo'> & { readonly label: string }) {
   return (
     <Button color="primary" variant="outlined" size="lg" onClick={onTryDemo}>
-      {m.landing_cta_demo()}
+      {label}
     </Button>
   )
+}
+
+/**
+ * The invitation that closes the walkthrough screen. Its label is the impatient one — the visitor
+ * has just watched the whole arc happen to someone else's diary, so "지금 바로" is the true offer at
+ * that exact moment. The foot of the page asks the same thing of a colder reader, and says it plainly.
+ */
+export function WalkthroughDemoCta({ onTryDemo }: Pick<LandingSectionProps, 'onTryDemo'>) {
+  return <DemoButton label={m.landing_cta_demo_now()} onTryDemo={onTryDemo} />
+}
+
+function DemoCta({ onTryDemo }: Pick<LandingSectionProps, 'onTryDemo'>) {
+  return <DemoButton label={m.landing_cta_demo()} onTryDemo={onTryDemo} />
 }
 
 function SignUpCta({ onSignUp }: Pick<LandingSectionProps, 'onSignUp'>) {

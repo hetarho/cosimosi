@@ -32,9 +32,13 @@ second render path for something the walkthrough now owns.
 That leaves two CTA placements: the end of `'walkthrough'`, and `'closing-cta'`. The pairing rule lives where both
 buttons meet — `LandingClosing` hardcodes `DemoCta` then `SignUpCta` and **exposes no ordering prop**, so
 demo-before-signup is not something a call site can get wrong. Both demo CTAs target `/demo`; the signup CTA targets
-`/signup`. The demo CTA is a single refined label ("우주 체험해보기" / "Try the universe"), **outlined** — the low-stakes
-side door — while the signup CTA is the filled primary, and neither carries an explanatory note: the page has no
-meta-disclaimer at all (policy/ux/public-copy.md).
+`/signup`. Both demo CTAs are **outlined** — the low-stakes side door — while the signup CTA is the filled primary, and
+neither carries an explanatory note: the page has no meta-disclaimer at all (policy/ux/public-copy.md). The two demo
+buttons share one appearance and one destination but not one label: the walkthrough's says "지금 바로 우주 체험해보기" /
+"Try the universe right now" (`WalkthroughDemoCta`, `landing_cta_demo_now`) because it is read by someone who has just
+watched the whole arc happen to someone else's diary, while the closing pair's is the plain "우주 체험해보기" / "Try the
+universe" for a colder reader. `DemoButton` holds the one appearance both render, so the label is the only difference
+either call site can express.
 
 The page header is chrome, deliberately **not** one of the five: it carries the brand lockup (the flat mark from
 `public/brand/symbol.svg` beside the wordmark, the mark `aria-hidden` because the wordmark already names the product)
@@ -69,25 +73,34 @@ and the language switch, and nothing that competes with the page's first sentenc
 `config/walkthrough-content.ts` holds the authored fixture (one well-written diary in ko and en, its precomputed split
 scenes with names/moods/neurons, the accumulation entries, the recall target and its reconsolidated reading) and
 `WALKTHROUGH_STEP_COPY`, an exhaustive `Record<WalkthroughStepId, …>` of message accessors — a step without copy is a
-`tsc` failure, and the action labels are the product's own verbs (`별 쪼개기` · `별 띄우기` · the 회고 register). The
-content authors **no coordinate** ([I5]): where a star stands is the scene's staged-slot concern.
+`tsc` failure. Each step carries exactly two sentences — what is about to happen, then what happened — and **no verb of
+its own**: the run's only control is `next`, so a caption naming a "별 쪼개기" button would name something the screen
+does not have. The content authors **no coordinate** ([I5]): where a star stands is the scene's staged-slot concern.
 
 `ui/LandingWalkthroughScene.tsx` is the playground scene evolved to a cast: the production `UniverseCanvas` +
 `SkySphere` + one `InstancedNodeLayer` over `starChannels`, with staged slot positions (a group portrait has no
 force-sim to emerge positions from), a per-star dot poster beneath it for the no-WebGPU first paint, and the same
-no-`resetKeys` error-boundary posture as the hero. `ui/sections/LandingWalkthrough.tsx` renders caption + one action
-per step + back/next/restart over it, and renders the `landing_walk_mirror_definition` sentence at the mirror ending —
-removing that key from the catalogues fails the build.
+no-`resetKeys` error-boundary posture as the hero. `ui/sections/LandingWalkthrough.tsx` renders caption + back/next +
+restart over it, and renders the `landing_walk_mirror_definition` sentence at the mirror ending — removing that key from
+the catalogues fails the build.
 
 **The screen has no panel of its own, and that is what marks it as a screen.** There is no glass card around the
-walkthrough: the section is `min-h-dvh` with its column centred, and the surface its controls sit on is the **veiled
+walkthrough: the section is `min-h-dvh` with its column anchored to the top, and the surface its controls sit on is the **veiled
 sky** (§2a) — the veil is at full strength across exactly this stretch. A card here would be a second surface drawn on
 top of a surface, and the room would stop reading as a room. The stage's own views still carry their own grounds (the
 diary's panel, the split's bordered rows, the canvas), so nothing legible sits directly on a live sky.
 
+**The column starts at the top of the screen, not centred in it.** On a phone the column is nearly a whole `dvh` tall on
+its own, and a centred one splits the remaining slack in two — which puts the invitation that closes the screen under
+the fold, the one thing here that must stay visible. Anchored to the top (`pt-14 sm:pt-20 pb-24`), the run reads whole
+from the first step and the slack falls below, where the scroll cue already lives.
+
 **The column barely moves as the story does.** The chrome row (`h-8`) and the stage (`h-80 sm:h-104`) are fixed; the
 caption below the stage is sized by what it says, with the captions authored to comparable lengths so stepping changes
-the column's height only slightly (the owner's chosen trade over reserving room for the tallest variant). The chrome is
+the column's height only slightly (the owner's chosen trade over reserving room for the tallest variant). Inside the
+stage, the diary's **panel** is sized by the entry rather than stretched to the box — a fixed-height ground around a
+short entry reads as a layout accident, so the panel takes the height its words need (`max-h-full`, scrolling past that)
+and sits centred in what is left, while the box itself stays put so the controls below never move. The chrome is
 hidden rather than removed when it does not apply (replay at the run's ends, back at the start), so nothing reflows. `motion` (`motion/react`) animates each swap: `AnimatePresence mode="wait"`
 keyed by the **stage id** for the stage and by `step:acted` for the words. The stage's swap is a fade-and-rise; the
 caption's is a pure-opacity **word wipe** — every word is its own motion span delayed by reading order, so the old
@@ -96,19 +109,22 @@ section sits in one `<MotionConfig reducedMotion="user">`, which drops the trans
 choreography's numbers are not authored in the slice: `lib/step-motion.ts` reads `tokens.duration` / `tokens.ease` and
 converts them to Motion's seconds-and-bezier form, so the page moves at the product's pace and a token change carries it.
 
-**Control placement is the ordinary convention, not the story's.** One primary action per step at the column's
-bottom-right (the step's own verb → `next` → the replay at the ending), with `back` as a text button beside it;
-`restart` is secondary chrome, small in the top-left across from the step counter, and hidden at both ends of the run —
-nothing to replay at the start, and the ending's own action _is_ the replay. The section has no title of its own — the
-stage speaks for itself.
+**The run has one control, and it is `next`.** Both step controls are **text** buttons at the column's bottom-right,
+each carrying the arrow of the direction it moves the run (drawn locally as the scroll cue's chevron turned on its side,
+so the page's navigation affordances read as one family): `back` in the neutral ink, `next` in **secondary**. Each step
+is two presses of the same button — the change, then the move on — so the visitor walks the whole arc without ever
+choosing what to do. A per-step verb button (`별 쪼개기`, `시간 흘려보내기`) offered a choice the story does not have and
+made the screen read as an app being operated; it also spent the page's filled primary on a slideshow's pager, which
+then competed with the two real asks. `next` becomes the replay at the ending. `restart` is secondary chrome, small in
+the top-left across from the step counter, and hidden at both ends of the run — nothing to replay at the start, and the
+ending's own action _is_ the replay. The section has no title of its own — the stage speaks for itself.
 
-**The invitation closes the screen.** `DemoCta` is the last thing in the column, centred, below the step controls; the
-section takes `onTryDemo` from `LandingSectionProps` like any other. Below it, `ui/LandingScrollCue.tsx` repeats the
-hero's cue (§2).
+**The invitation closes the screen.** `WalkthroughDemoCta` is the last thing in the column, centred, below the step
+controls; the section takes `onTryDemo` from `LandingSectionProps` like any other. Below it, `ui/LandingScrollCue.tsx`
+repeats the hero's cue (§2).
 
-The visitor's only inputs are each step's single action, back/next/restart, and those two: no free text, no mood picker,
-no time slider. Deterministic on purpose — the free-play surface is the demo, one click away, and the two must not
-compete.
+The visitor's only inputs are back/next/restart and those two: no free text, no mood picker, no time slider.
+Deterministic on purpose — the free-play surface is the demo, one click away, and the two must not compete.
 
 ## 2. The hero — the empty universe, and the poster first
 

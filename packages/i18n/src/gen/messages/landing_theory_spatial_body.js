@@ -10,7 +10,7 @@ const en_landing_theory_spatial_body = /** @type {(inputs: Landing_Theory_Spatia
 };
 
 const ko_landing_theory_spatial_body = /** @type {(inputs: Landing_Theory_Spatial_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`내가 어디에 있는지 아는 감각이, 아는 것을 정리할 때도 쓰이는 것 같아요. 기억을 목록이 아니라 둘러볼 수 있는 공간으로 보여주는 이유예요.`)
+	return /** @type {LocalizedString} */ (`내가 어디에 있는지 아는 감각이 알고 있는 것을 정리할 때도 쓰인다고 해요. 기억을 목록이 아니라 둘러볼 수 있는 공간으로 보여주는 이유예요.`)
 };
 
 /**

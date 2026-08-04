@@ -10,7 +10,7 @@ const en_landing_walk_fade_prompt = /** @type {(inputs: Landing_Walk_Fade_Prompt
 };
 
 const ko_landing_walk_fade_prompt = /** @type {(inputs: Landing_Walk_Fade_PromptInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`기억은 가만히 두면 조금씩 흐려져요. 이 하늘도 한참 그대로 두면 어떻게 될까요?`)
+	return /** @type {LocalizedString} */ (`기억은 가만히 두면 조금씩 흐려져요. 이 하늘을 한참 그대로 두면 어떻게 될까요?`)
 };
 
 /**

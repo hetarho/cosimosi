@@ -10,7 +10,7 @@ const en_landing_hero_body = /** @type {(inputs: Landing_Hero_BodyInputs) => Loc
 };
 
 const ko_landing_hero_body = /** @type {(inputs: Landing_Hero_BodyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`오늘 기록한 일기는 기억으로 쪼개지고 기억은 별이 되어 우주를 채웁니다. 우주를 내 기억으로 채워보세요.`)
+	return /** @type {LocalizedString} */ (`오늘 쓴 일기는 기억으로 쪼개지고, 기억은 하나씩 별이 되어 밤하늘로 올라가요. 내 기억으로 우주를 채워 보세요.`)
 };
 
 /**
