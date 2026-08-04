@@ -112,6 +112,21 @@ const p = {
   green: ramp(156, 0.74, 0.14), // success
 } as const
 
+/**
+ * The full ramp the active theme draws `primary` from — every step of it, not just the one step the
+ * role holds.
+ *
+ * A role gives a surface ONE colour, which is all a flat surface needs. A shaded solid needs the
+ * ladder the role's step sits on: its faces catch different amounts of light, and each one has to
+ * land on a step of the same hue rather than on a lightness someone computed. This is the only
+ * reason the ramp layer is visible above this file, and it is still colour owned by the palette —
+ * a consumer picks steps, it never names a colour.
+ *
+ * A theme whose `primary` moves to another hue family must move this with it, or a shaded solid
+ * keeps the old theme's hue while every flat surface around it reskins.
+ */
+export const primaryRamp = p.lavender
+
 // ── Layer 2: semantic tokens (role → palette step) ─────────────────────────────
 
 /** Aurora — cool borealis: navy ground · lavender · chartreuse · mint. */

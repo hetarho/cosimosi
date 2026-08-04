@@ -109,5 +109,7 @@ export { Card, type CardProps } from './primitives/card.tsx'
 export { Skeleton, type SkeletonProps } from './primitives/skeleton.tsx'
 export { Progress, type ProgressProps } from './primitives/progress.tsx'
 export { VisuallyHidden, type VisuallyHiddenProps } from './primitives/visually-hidden.tsx'
+// Web only: it draws to a canvas. A native sibling arrives when a mobile surface asks for the solid.
+export { BrandMark, type BrandMarkProps } from './primitives/brand-mark.tsx'
 export { Tabs, type TabsProps } from './primitives/tabs.tsx'
 export { SegmentedControl, type SegmentedControlProps } from './primitives/segmented-control.tsx'
