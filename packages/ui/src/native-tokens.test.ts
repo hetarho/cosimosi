@@ -35,6 +35,15 @@ describe('native token map', () => {
     expect(Object.keys(nativeTokens.radius)).toEqual(Object.keys(tokens.radius))
   })
 
+  it('carries no font family, because a CSS stack is not a React Native family name', () => {
+    // `tokens.font.sans` is a web fallback chain. RN resolves `fontFamily` against a font asset
+    // linked into the native build and silently uses the system face when it cannot — so passing
+    // the stack through would look applied and do nothing. The group returns here converted, or
+    // not at all.
+    expect(tokens.font.sans).toContain('Wanted Sans')
+    expect('font' in nativeTokens).toBe(false)
+  })
+
   it('keeps the groups RN can already use identical to the shared map', () => {
     expect(nativeTokens.spacing).toBe(tokens.spacing)
     expect(nativeTokens.fontSize).toBe(tokens.fontSize)

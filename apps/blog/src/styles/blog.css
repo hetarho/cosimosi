@@ -1,5 +1,13 @@
 /* One stylesheet for the whole blog, imported by the base layout so the index and every post share it
    rather than each carrying its own copy. Astro emits it under `_astro/`, which is why `base` matters. */
+
+/* Same face as the app (packages/ui/src/fonts.css owns the reasoning), imported straight from the
+   package because the blog is a standalone Astro build that deliberately does not depend on
+   @cosimosi/ui. The posts are long-form Korean prose and the stack named `Inter` first, a
+   Latin-only family — so every 한글 paragraph fell through to whatever the OS happened to ship,
+   and the notes read in a different typeface per visitor. */
+@import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';
+
 :root {
   color-scheme: dark;
   --bg: #04050a;
@@ -11,12 +19,15 @@
   --teal: #66f2d5;
   --gold: #f7c76c;
   font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
+    'Wanted Sans Variable',
+    'Wanted Sans',
     -apple-system,
     BlinkMacSystemFont,
+    system-ui,
     'Segoe UI',
+    'Apple SD Gothic Neo',
+    'Noto Sans KR',
+    'Malgun Gothic',
     sans-serif;
 }
 

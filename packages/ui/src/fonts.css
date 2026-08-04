@@ -1,0 +1,25 @@
+/*
+ * Design-system web fonts — the DOM-only companion to theme.gen.css, loaded once at the web
+ * app's composition boundary next to base.css. React Native has no @font-face: a native family
+ * arrives as a linked asset file, which is why `tokens.font` is a web-only group (native-styles.ts).
+ *
+ * Wanted Sans (Wanted Lab, OFL-1.1) is the one family the interface speaks in — Korean and
+ * extended Latin in a single cut, so a mixed 한글/English line has one voice instead of two
+ * fallbacks meeting mid-sentence.
+ *
+ * The **variable dynamic subset** build is the one imported, for two reasons that both matter on a
+ * page that opens onto a live 3D universe:
+ * - *Variable* (weight 400–1000 in one file) means the whole type scale — body through display —
+ *   costs one face rather than one download per weight.
+ * - *Split* carves the family into 92 unicode-range slices, so the browser fetches only the slices
+ *   whose glyphs are actually on screen. The complete build is a single 1.3 MB face; a Korean page
+ *   typically touches a fraction of that, and a user's own diary text pulls the slices it needs as
+ *   it renders. A dynamic subset is the only workable shape here — star names and entries are user
+ *   input, so the glyph set cannot be known at build time.
+ *
+ * Self-hosted through the npm package (not the vendor's jsDelivr URLs) so the version is in the
+ * lockfile, the bytes ship from the app's own origin, and no third party sees a reader's requests.
+ * `font-display: swap` comes from the vendor stylesheet: text paints in the fallback immediately
+ * and re-renders in Wanted Sans, rather than holding the first paint hostage to a font.
+ */
+@import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';

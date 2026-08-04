@@ -13,6 +13,7 @@
     },
     "./theme.css": "./src/theme.gen.css",
     "./base.css": "./src/base.css",
+    "./fonts.css": "./src/fonts.css",
     "./tokens": "./src/tokens.ts"
   },
   "scripts": {
@@ -58,6 +59,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
-    "@phosphor-icons/react": "^2.1.10"
+    "@phosphor-icons/react": "^2.1.10",
+    "wanted-sans": "^1.0.3"
   }
 }

@@ -16,7 +16,8 @@
  * `CSS_TOKEN_GROUPS` lists the groups the generator emits to CSS. Groups outside
  * it (spacing, font sizes) are TS-only — Tailwind's built-in scales already cover
  * those utilities on both platforms, so re-emitting them would only fight the
- * defaults.
+ * defaults. `font` runs the other way — it is the one group React Native cannot
+ * read, so `native-styles.ts` drops it (see the group's own note).
  */
 
 import { palette } from './palette.ts'
@@ -33,6 +34,25 @@ export const tokens = {
    */
   container: {
     measure: 'min(90vw, 40rem)',
+  },
+
+  /**
+   * Type families. Emitted into Tailwind's `--font-*` namespace, so `sans` **replaces** the built-in
+   * `font-sans` stack rather than sitting beside it — every element that never names a family
+   * inherits Wanted Sans through the body rule, and no slice has to opt in.
+   *
+   * One family, not a set of voices. The interface speaks Korean and Latin in the same line, and
+   * Wanted Sans covers both in one cut; a second family bought a second 한글 download, a second
+   * React Native asset link, and a second thing to keep in tune, for a distinction nothing in the
+   * product yet asks for. The stack after it is the vendor's recommended fallback chain — what a
+   * reader sees for the first paint and if the face never arrives.
+   *
+   * Web-only: React Native takes a linked font asset's family name, not a CSS stack, so
+   * `native-styles.ts` drops this group rather than handing RN a string it silently ignores.
+   * The faces themselves load in `fonts.css`.
+   */
+  font: {
+    sans: '"Wanted Sans Variable", "Wanted Sans", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif',
   },
 
   /** Corner radii. */
@@ -115,6 +135,7 @@ export const tokens = {
 export const CSS_TOKEN_GROUPS = [
   'color',
   'container',
+  'font',
   'radius',
   'shadow',
   'duration',

@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '@cosimosi/ui/theme.css';
 @import '@cosimosi/ui/base.css';
+@import '@cosimosi/ui/fonts.css';
 
 /* Tailwind v4 auto-detects content under this app only; the design-system
    primitives live in @cosimosi/ui, so their utility classes must be scanned too. */
@@ -11,7 +12,7 @@
 @layer base {
   body {
     margin: 0;
-    font-family: system-ui, sans-serif;
+    font-family: var(--font-sans);
     background-color: var(--color-bg);
     color: var(--color-text);
   }

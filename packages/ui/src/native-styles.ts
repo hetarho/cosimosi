@@ -52,7 +52,16 @@ export const fontSize = tokens.fontSize
  * a square corner; the screens worked around it by writing `8` and `999` inline, which is how a
  * radius scale stops being a scale. Same source, per-platform encoding — the arrangement the
  * primitives already use. `native-tokens.test.ts` holds the line.
+ *
+ * One group is dropped rather than converted. `font.sans` is a CSS fallback *stack*; RN's
+ * `fontFamily` takes a single family name belonging to a font asset linked into the native build,
+ * and a name it cannot resolve falls back to the system face with no warning. Handing the stack
+ * through would put a token in the map that reads as applied and does nothing — the same silent
+ * failure the conversions above exist to prevent. When Wanted Sans is linked into the RN app,
+ * `fontFamily` joins this map as a converted group; until then the group has no native form.
  */
-export const nativeTokens = { ...tokens, color, radius } as const
+const { font: _webOnlyFont, ...crossPlatform } = tokens
+
+export const nativeTokens = { ...crossPlatform, color, radius } as const
 
 export type NativeTokens = typeof nativeTokens
