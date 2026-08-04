@@ -7,12 +7,12 @@
 
 ## 1. The section order is a type
 
-`model/sections.ts` declares the six sections as a fixed-length literal tuple with a `satisfies` clause that restates
+`model/sections.ts` declares the five sections as a fixed-length literal tuple with a `satisfies` clause that restates
 it, `LandingSectionId` derived from it, and `ui/LandingPage.tsx` holding an exhaustive
 `Record<LandingSectionId, ComponentType<LandingSectionProps>>` it maps over as the **only** render path.
 
 ```
-hero → walkthrough → demo-cta-top → theory → blog → closing-cta
+hero → walkthrough → theory → blog → closing-cta
 ```
 
 The old `playground`, `feature-tour` and `mirror` sections were retired by change 09 and absorbed into the one
@@ -20,15 +20,25 @@ The old `playground`, `feature-tour` and `mirror` sections were retired by chang
 the walkthrough's step tuple (§1a) is a fixed six-member literal tuple ending in the mirror step, so dropping or
 reordering the definition is a `tsc` failure exactly as dropping the old `'mirror'` section was.
 
-CTA order gets the same treatment one level down. `'demo-cta-top'` renders `DemoCta` alone; `'closing-cta'` renders one
-`LandingClosing` that hardcodes `DemoCta` then `SignUpCta` and **exposes no ordering prop**, so demo-before-signup is
-not something a call site can get wrong. Both demo CTAs target `/demo`; the signup CTA targets `/signup`. The demo CTA
-is a single refined label ("데모" / "Demo"), **outlined** — the low-stakes side door — while the signup CTA is the
-filled primary, and neither carries an explanatory note: the page has no meta-disclaimer at all
-(policy/ux/public-copy.md).
+**The first three sections are three screens.** `hero` and `walkthrough` are each `min-h-dvh`, so the page opens as a
+screen of bare sky, then a screen of the argument, and only then begins to scroll like a document. The reading is a
+layout fact rather than a convention: a section that stopped filling a screen would break the rhythm visibly.
 
-The page header is chrome, deliberately **not** one of the six: it carries the wordmark and the language switch and
-nothing that competes with the page's first sentence.
+**The standalone demo invitation is not a section.** It closes the walkthrough screen instead (§1a), because the moment
+the offer earns a click is the moment the argument has just finished making its case — a section of its own put a scroll
+between the two. `model/sections.test.ts` pins `'demo-cta-top'` in its retired-id list, so it cannot come back as a
+second render path for something the walkthrough now owns.
+
+That leaves two CTA placements: the end of `'walkthrough'`, and `'closing-cta'`. The pairing rule lives where both
+buttons meet — `LandingClosing` hardcodes `DemoCta` then `SignUpCta` and **exposes no ordering prop**, so
+demo-before-signup is not something a call site can get wrong. Both demo CTAs target `/demo`; the signup CTA targets
+`/signup`. The demo CTA is a single refined label ("우주 체험해보기" / "Try the universe"), **outlined** — the low-stakes
+side door — while the signup CTA is the filled primary, and neither carries an explanatory note: the page has no
+meta-disclaimer at all (policy/ux/public-copy.md).
+
+The page header is chrome, deliberately **not** one of the five: it carries the brand lockup (the flat mark from
+`public/brand/symbol.svg` beside the wordmark, the mark `aria-hidden` because the wordmark already names the product)
+and the language switch, and nothing that competes with the page's first sentence.
 
 ## 1a. The walkthrough — the argument, walked
 
@@ -69,9 +79,15 @@ no-`resetKeys` error-boundary posture as the hero. `ui/sections/LandingWalkthrou
 per step + back/next/restart over it, and renders the `landing_walk_mirror_definition` sentence at the mirror ending —
 removing that key from the catalogues fails the build.
 
-**The card barely moves as the story does.** The chrome row (`h-8`) and the stage (`h-72 sm:h-96`) are fixed; the
+**The screen has no panel of its own, and that is what marks it as a screen.** There is no glass card around the
+walkthrough: the section is `min-h-dvh` with its column centred, and the surface its controls sit on is the **veiled
+sky** (§2a) — the veil is at full strength across exactly this stretch. A card here would be a second surface drawn on
+top of a surface, and the room would stop reading as a room. The stage's own views still carry their own grounds (the
+diary's panel, the split's bordered rows, the canvas), so nothing legible sits directly on a live sky.
+
+**The column barely moves as the story does.** The chrome row (`h-8`) and the stage (`h-80 sm:h-104`) are fixed; the
 caption below the stage is sized by what it says, with the captions authored to comparable lengths so stepping changes
-the card's height only slightly (the owner's chosen trade over reserving room for the tallest variant). The chrome is
+the column's height only slightly (the owner's chosen trade over reserving room for the tallest variant). The chrome is
 hidden rather than removed when it does not apply (replay at the run's ends, back at the start), so nothing reflows. `motion` (`motion/react`) animates each swap: `AnimatePresence mode="wait"`
 keyed by the **stage id** for the stage and by `step:acted` for the words. The stage's swap is a fade-and-rise; the
 caption's is a pure-opacity **word wipe** — every word is its own motion span delayed by reading order, so the old
@@ -80,14 +96,19 @@ section sits in one `<MotionConfig reducedMotion="user">`, which drops the trans
 choreography's numbers are not authored in the slice: `lib/step-motion.ts` reads `tokens.duration` / `tokens.ease` and
 converts them to Motion's seconds-and-bezier form, so the page moves at the product's pace and a token change carries it.
 
-**Control placement is the ordinary convention, not the story's.** One primary action per step in the card's
+**Control placement is the ordinary convention, not the story's.** One primary action per step at the column's
 bottom-right (the step's own verb → `next` → the replay at the ending), with `back` as a text button beside it;
 `restart` is secondary chrome, small in the top-left across from the step counter, and hidden at both ends of the run —
-nothing to replay at the start, and the ending's own action _is_ the replay. The card has no title of its own — the
+nothing to replay at the start, and the ending's own action _is_ the replay. The section has no title of its own — the
 stage speaks for itself.
 
-The visitor's only inputs are each step's single action and back/next/restart: no free text, no mood picker, no time
-slider. Deterministic on purpose — the free-play surface is the demo, one click away, and the two must not compete.
+**The invitation closes the screen.** `DemoCta` is the last thing in the column, centred, below the step controls; the
+section takes `onTryDemo` from `LandingSectionProps` like any other. Below it, `ui/LandingScrollCue.tsx` repeats the
+hero's cue (§2).
+
+The visitor's only inputs are each step's single action, back/next/restart, and those two: no free text, no mood picker,
+no time slider. Deterministic on purpose — the free-play surface is the demo, one click away, and the two must not
+compete.
 
 ## 2. The hero — the empty universe, and the poster first
 
@@ -113,6 +134,48 @@ nothing of its own, and carries **no** `resetKeys`: retrying WebGPU behind a mar
 procedurally rather than designed: the active skin's bare-night base `#0a0a12`, lit by the same illustrative mood weights
 the hero's ramp uses, with the latent field as faint seeded points. Deterministic, so a regeneration reproduces the same
 bytes. A designed OG card is a later call, not a blocker.
+
+**The mark stands above the headline, and leaves before the screen does.** `BrandMark` (`@cosimosi/ui`, see
+[design-system.md](design-system.md)) draws the trademark as a turning solid. It is **not** the renderer and not a star:
+no GPU context, no `EpisodicMemory`, no channel read from the domain — the stars on this page that mean something are in
+the walkthrough, where the captions name what each is saying. `lib/use-mark-recede.ts` writes `--mark-scale` and
+`--mark-opacity` from scroll position inside a rAF (never through React state, the same contract the veil holds), and the
+hero applies them as a transform, so the box keeps its size and the headline never shifts. Scale runs nearly the whole
+way down while opacity holds near full and then drops as a cube: a mark that faded evenly while shrinking is a smudge
+thinning out, one that stays bright while it gets small is a light going away. Reduced motion pins both at 1.
+
+**The cue is a control, not a decoration.** `ui/LandingScrollCue.tsx` is a real `<button>` (it moves the viewport, so it
+has to be keyboard reachable and has to say what it does — `landing_scroll_cue`), bouncing under `motion-safe`, and it
+finds its own destination: the enclosing `<section>` is one screen, so that section's bottom edge is the next screen's
+top and no ref has to be threaded to it. Under reduced motion the jump is instant rather than smooth — a long smooth
+scroll is exactly the motion the preference is asking to be spared. It appears at the foot of the hero and of the
+walkthrough.
+
+## 2a. The backdrop, and the veil that is not monotonic
+
+`ui/LandingBackdrop.tsx` pins the hero scene `fixed` behind the whole page — mounted **once**, so scrolling never
+restarts the renderer — with a single veil element over it whose only moving part is the `--veil` custom property
+(`lib/use-scroll-veil.ts`, written in a rAF). At full strength the veil is a backdrop blur plus a `bg`-mixed wash, built
+the same way the design system's glass is, so the veiled sky reads as the same material family as the panels over it.
+
+The curve **rises and then falls**, and both halves are load-bearing:
+
+- It **rises** as the hero leaves (over ~0.9 of a viewport, settling before the next screen arrives), because the
+  blurred night is the surface the walkthrough's controls sit on. This is the only thing marking that screen as its own
+  room now that it carries no card of its own (§1a).
+- It **falls** as the walkthrough screen finishes leaving. The clearing is driven from the anchor's **bottom** edge over
+  the last half-viewport, not from its centre: the anchor is a screen-tall section, and a centre would start handing the
+  sky back while the visitor is still working through the argument. The invitation at the foot of that screen is
+  therefore the last thing seen through the blur.
+
+The anchor is passed as an element, not a section id, because the veil needs the measured position — and it is attached
+in `LandingPage` rather than inside the section, because `LandingSectionProps` is deliberately closed to the two
+destinations. The page owns layout, so the page owns the anchor. A measured anchor also means the clearing tracks the
+section wherever the content above pushes it to, rather than a scroll distance that would drift as copy changes.
+
+**The consequence to keep in view:** the theory cards are read over a sky that is coming back into focus. That is why
+they are `Card variant="glass"` and not a flat surface — glass earns its cost only when something is moving behind it —
+but it does mean legibility there depends on the sky's brightness rather than on a fixed contrast pair.
 
 ## 3. Authored content, and what it may not carry
 
@@ -244,7 +307,12 @@ The unit declares none and adds no group. It _references_ five generated constan
 `rendering.max_pixel_ratio`, `rendering.active_skin`, `rendering.latent_star_count`,
 `rendering.latent_field_radius`, `rendering.latent_star_size` — and consumes them unchanged. Motion timings come from
 the design tokens (`lib/step-motion.ts` converts them, §1a); the hero's sky rate and its ramp are presentation content
-(§3). The six section ids, six walkthrough step ids and five theory ids are array content whose counts are
+(§3). The five section ids, six walkthrough step ids and five theory ids are array content whose counts are
 fixed by
 the PRD; every string of copy is i18n content; the origin and every path are addresses; the OG raster's 1200×630 is a
 fixed external platform spec; and the copy-honesty patterns are a rule set, not a knob.
+
+The scroll choreography's numbers are presentation content of the same kind as the sky ramp: the veil's rise runway
+(~0.9 viewport), the clearing's half-viewport window (§2a), and the mark's recede runway and curves (§2) are authored
+where they are read, not in `values.yaml`. None of them is a mechanic — no memory, strength or decay is derived from any
+of them — and there is no right answer to converge on.

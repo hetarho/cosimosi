@@ -19,17 +19,18 @@ It is the **platform-aware exception** to the "packages are DOM/native-free" rul
 it ships DOM (`*.tsx`) and React Native (`*.native.tsx`) siblings, selected by the
 package's `exports` conditions.
 
-| Concern                                        | Location                                                           |
-| ---------------------------------------------- | ------------------------------------------------------------------ |
-| Colour source + theme registry                 | `packages/ui/src/palette.ts`                                       |
-| Canonical token source (DOM-free TS map)       | `packages/ui/src/tokens.ts`                                        |
-| Generated Tailwind `@theme` (web + NativeWind) | `packages/ui/src/theme.gen.css` (committed, via `pnpm gen:tokens`) |
-| Web base styles (reduced-motion, sr-only)      | `packages/ui/src/base.css`                                         |
-| Primitives                                     | `packages/ui/src/primitives/<name>.tsx` + `<name>.native.tsx`      |
-| a11y helpers                                   | `packages/ui/src/a11y/*`                                           |
-| Background seam                                | `packages/ui/src/theme/*`                                          |
-| Web entry (web barrel)                         | `packages/ui/src/index.ts` (`exports` `default`)                   |
-| RN entry (native barrel)                       | `packages/ui/src/index.native.ts` (`exports` `react-native`)       |
+| Concern                                            | Location                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------ |
+| Colour source + theme registry                     | `packages/ui/src/palette.ts`                                       |
+| Canonical token source (DOM-free TS map)           | `packages/ui/src/tokens.ts`                                        |
+| Generated Tailwind `@theme` (web + NativeWind)     | `packages/ui/src/theme.gen.css` (committed, via `pnpm gen:tokens`) |
+| Web base styles (reduced-motion, pointer, sr-only) | `packages/ui/src/base.css`                                         |
+| Web `@font-face` (Wanted Sans, dynamic subset)     | `packages/ui/src/fonts.css`                                        |
+| Primitives                                         | `packages/ui/src/primitives/<name>.tsx` + `<name>.native.tsx`      |
+| a11y helpers                                       | `packages/ui/src/a11y/*`                                           |
+| Background seam                                    | `packages/ui/src/theme/*`                                          |
+| Web entry (web barrel)                             | `packages/ui/src/index.ts` (`exports` `default`)                   |
+| RN entry (native barrel)                           | `packages/ui/src/index.native.ts` (`exports` `react-native`)       |
 
 Apps depend on `@cosimosi/ui`; the package depends only on React (+ `react-dom` /
 `react-native` as platform peers). It imports **no** domain, cache, transport, or
@@ -49,9 +50,20 @@ generated file (`pnpm check:gen` enforces freshness). Two consumers:
   style/color props (e.g. `ActivityIndicator` color), and tests import `tokens`.
 
 Only foundation tokens that should _not_ fight Tailwind's defaults are emitted
-(`CSS_TOKEN_GROUPS` = color, container, radius, shadow, duration, ease, ring, z).
+(`CSS_TOKEN_GROUPS` = color, container, font, radius, shadow, duration, ease, ring, z).
 Spacing and font-size stay TS-only — Tailwind's built-in scales already cover those
 utilities.
+
+**`font` is the one group that deliberately replaces a Tailwind default, and the one group native
+cannot read.** It emits `--font-sans`, so the built-in `font-sans` stack _becomes_ the Wanted Sans
+stack and every element that never names a family inherits it through the web entry's `body` rule —
+no slice opts in, and there is no second way to spell "the interface font". The faces load from
+`fonts.css` (§3). React Native resolves `fontFamily` against a font asset linked into the native
+build and silently falls back to the system face when it cannot, so a CSS fallback _stack_ would be
+a token that reads as applied and does nothing; `native-styles.ts` drops the group rather than pass
+it through, and `native-tokens.test.ts` holds that line. **Known gap:** Wanted Sans is not yet
+linked into the RN app, so mobile still paints in the system face — when it is linked, `font`
+returns to the native map as a converted group (a family name), exactly as colour and radius do.
 
 **Colour is a layer above the token map.** `tokens.color` _is_ the active theme's role map, resolved
 from the registry in `palette.ts` (ramps → semantic roles → themes). The generator emits the active
@@ -73,12 +85,21 @@ numeric product tuning). Tokens live in code, as a token map + generated CSS.
 ## 3. Styling engines
 
 - **Web:** Tailwind CSS v4 via `@tailwindcss/vite`. The entry CSS
-  (`apps/web/src/app/index.css`) imports `tailwindcss`, `@cosimosi/ui/theme.css`,
-  and `@cosimosi/ui/base.css` — the only place tokens enter the web app. Tailwind v4
-  auto-detects content under the app only, so the entry CSS also declares
+  (`apps/web/src/app/styles/index.css`) imports `tailwindcss`, `@cosimosi/ui/theme.css`,
+  `@cosimosi/ui/base.css` and `@cosimosi/ui/fonts.css` — the only place tokens enter the web app.
+  Tailwind v4 auto-detects content under the app only, so the entry CSS also declares
   `@source '…/packages/ui/src/**/*.{ts,tsx}'` — without it the utility classes used
   _inside_ the design-system primitives are never generated and primitives render
   unstyled.
+- **Web fonts:** `fonts.css` imports Wanted Sans from the `wanted-sans` npm package — self-hosted
+  rather than the vendor's jsDelivr URLs, so the version sits in the lockfile, the bytes ship from
+  the app's own origin, and no third party sees a reader's requests. It is the **variable dynamic
+  subset** build: one face covers weight 400–1000, and 92 `unicode-range` slices mean the browser
+  fetches only the glyphs on screen. The subset must be dynamic — star names and diary entries are
+  user input, so the glyph set is unknowable at build time. Vite emits the slices as hashed assets;
+  `font-display: swap` (from the vendor stylesheet) keeps the first paint off the font's critical
+  path. `apps/blog` is a standalone Astro build that deliberately does not depend on
+  `@cosimosi/ui`, so it imports the same package stylesheet directly and names the same stack.
 - **Mobile:** plain React Native `StyleSheet`, built from the same token map via
   `packages/ui/src/native-styles.ts` (rem→px, color/spacing/font-size scalars).
   No NativeWind/Tailwind runtime on native.
@@ -124,8 +145,17 @@ win deterministically through the `style={[base, …, props.style]}` array.
   visible `label` must be given `ariaLabel` so it is never unnamed.
 
 **Shipped now:** Button, IconButton, TextField, TextArea, Select, Switch, Checkbox, Dialog, Sheet,
-Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs, SegmentedControl, and the icon set.
+Tooltip, Toast, Badge, Skeleton, VisuallyHidden, Tabs, SegmentedControl, BrandMark, and the icon set.
 **Deferred** (added when a Phase-4 slice needs them, promote-on-use): Menu, Slider/Stepper, Drawer.
+
+`BrandMark` is the one **web-only** entry, and the one exception to the sibling rule above: it draws the trademark's
+solid to a `<canvas>`, which has no RN counterpart to honour the same props with, so it is exported from `index.ts` and
+not from `index.native.ts`. A `.native` sibling arrives when a mobile surface asks for the solid. It lives here rather
+than in a page because it needs the primary ramp's STEPS (design-language §2.5) and colour may not be named outside this package —
+and because the mark is domain-agnostic and both apps will eventually want it. It is deliberately **not** built on
+`@cosimosi/3d-renderer`: that package hosts the universe, where a body's channels mean stored facts and every canvas
+costs a GPU device, a swapchain and a post chain. A brand mark asserts nothing about anyone's memories and needs none of
+that machinery to draw eleven triangles. See design-language §2.5.
 
 The **icon set** (`primitives/icons.tsx` + `.native`) is a primitive like any other, and the one place
 a Phosphor glyph is named: it exports icons by product meaning (`DiaryIcon`, `TwinkleSmallIcon`, …), so

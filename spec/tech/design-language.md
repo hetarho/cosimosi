@@ -33,7 +33,8 @@ Colour is authored once, in `packages/ui/src/palette.ts`, in two layers:
 
 1. **Primitive ramps** — OKLCH scales (`navy`, `lavender`, `chartreuse`, `mint`, `gold`, `red`,
    `green`), each 11 steps on one shared perceptual lightness scale. These are the only raw colour
-   literals in the codebase.
+   literals in the codebase. Roles are what everything reads; the ramp layer itself is reachable from
+   above in exactly one place, for shaded solids (§2.5).
 2. **Semantic roles** — a theme maps every role to a ramp _step_, never to a literal. Two roles that
    should match cannot drift, because they reference the same step.
 
@@ -85,7 +86,56 @@ statically through `native-styles.ts`.
 
 **Shipped:** `aurora` — cool borealis; navy ground, lavender, chartreuse, mint.
 
+### 2.5 One ramp is visible above the palette, for shaded solids
+
+A role hands a surface **one** colour, which is all a flat surface needs. A shaded solid needs the **ladder** that
+colour's step sits on: its faces catch different amounts of light, and each one has to land on a step of the same hue
+rather than on a lightness someone computed at the call site. So `palette.ts` exports `primaryRamp` — every step of the
+ramp the active theme draws `primary` from — and that is the only place the ramp layer is reachable from above.
+
+It does not weaken §2.1. A consumer picks steps; it still never names a colour, and the literals still live in exactly
+one file. What it does add is an obligation: **a theme whose `primary` moves to another hue family must move
+`primaryRamp` with it**, or a shaded solid keeps the old theme's hue while every flat surface around it reskins.
+
+The one consumer today is `BrandMark` (design-system.md), the trademark drawn as a turning icosahedron. Two decisions
+there are worth stating because they look like tuning and are not:
+
+- **The ladder runs nearly the ramp's full length.** A solid is read as a solid through the SPREAD between neighbouring
+  faces, not through how bright its brightest face is. A narrow ladder — however carefully centred — reads as one flat
+  polygon.
+- **The lambert term is squared before the ladder is sampled.** Light from above and in front leaves most visible faces
+  well lit, so a straight lambert crowds them into the top of the ladder and the solid flattens anyway. Pushing the
+  middle down is what separates the faces evenly.
+
+The highlight mixes toward the theme's `specular` role rather than toward white, which is what that role is for (§2.2).
+
 ## 3. Typography
+
+### 3.1 The family
+
+**One family: Wanted Sans** (Wanted Lab, OFL-1.1), variable, weight 400–1000. It carries Korean and
+extended Latin in a single cut, which is the whole reason it is the choice — the product's copy
+mixes the two inside one line ("별 하나가 EpisodicMemory 하나"), and two families meeting mid-sentence
+show as a shift in weight and baseline that no amount of spacing tuning hides. It is the only
+`font-family` in the design system: `--font-sans` replaces Tailwind's built-in sans stack, so
+nothing opts in and nothing can spell the interface font a second way.
+
+A second family stays **unclaimed on purpose**, not for lack of a case. PRD [D4] makes the contrast
+between the star (a trace) and the entry (an objective record) part of what the product feels like,
+and setting the reading surface ([D2] [D6]) in a serif — a 부리체 such as 마루 부리 — is the cheapest
+way to make that contrast physical. It is deferred because every added family costs a second Korean
+download on a page that already opens onto a live 3D scene, a second React Native asset link, and a
+second face to keep in tune — and it is worth that only once the diary reading surface is real
+enough to judge. When it arrives it arrives as a token (`font.serif`) plus a `@font-face`, and the
+reading route names it; nothing else moves.
+
+**Weight on the universe.** Type sits over a dark, lit 3D canvas, where a letterform reads heavier
+than it does on a light ground. Pick one step down from what a light mock suggests, and never reach
+below `font-normal` — a thin stroke over starfield does not resolve as text, it resolves as more
+starfield. Where a label sits directly on the scene rather than on a glass surface, legibility comes
+from the ground behind it (a shadow or a faint dark halo), not from the family or the weight.
+
+### 3.2 The roles
 
 Six roles, one rhythm. Size carries hierarchy, weight carries emphasis, colour carries nothing but
 importance (`text` → `text-muted` → `text-subtle`).
