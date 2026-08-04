@@ -10,12 +10,12 @@ import { LANDING_THEORY_CARDS } from '../../config/theory-cards.ts'
 // most likely to be read as claiming it is. Whoever wants the papers follows the link, one tier down.
 export function LandingTheory() {
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 py-16">
+    <section className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 pb-16 pt-4">
       <div className="flex flex-col gap-3">
-        <h2 className="text-xl font-medium text-text">{m.landing_theory_title()}</h2>
+        <h2 className="text-2xl font-medium text-text">{m.landing_theory_title()}</h2>
         <p className="text-base leading-7 text-text-muted">{m.landing_theory_intro()}</p>
       </div>
-      <ul className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-6">
         {LANDING_THEORY_CARDS.map((card) => (
           <li key={card.id}>
             <Card

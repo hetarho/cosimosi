@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, RefObject } from 'react'
 
 import { useScrollVeil } from '../lib/use-scroll-veil.ts'
 import { LandingHeroScene } from './LandingHeroScene.tsx'
@@ -16,13 +16,19 @@ const VEIL_STYLE: CSSProperties & Record<'--veil', string> = {
 /**
  * The page's floor: the live empty sky pinned behind everything, and a scroll-driven veil over it.
  * At the top of the page the sky is bare; as the visitor scrolls, the veil blurs and dims it so the
- * sections arriving on top read like glass floating in front of a night that is still there.
+ * sections arriving on top read like glass floating in front of a night that is still there — and
+ * then, across `clearAnchor`, it lifts again and hands the sky back.
  *
  * The scene mounts once for the whole page — fixed, not per-section — so scrolling never restarts
  * the renderer, and the veil is a single element whose only moving part is a custom property.
  */
-export function LandingBackdrop() {
-  const veilRef = useScrollVeil<HTMLDivElement>()
+export function LandingBackdrop({
+  clearAnchor,
+}: {
+  /** The section the veil lifts across; without one the veil rises and stays. */
+  readonly clearAnchor?: RefObject<HTMLElement | null>
+}) {
+  const veilRef = useScrollVeil<HTMLDivElement>(clearAnchor)
 
   return (
     <div aria-hidden className="fixed inset-0">

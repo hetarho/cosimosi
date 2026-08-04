@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Landing_Closing_TitleInputs */
 
 const en_landing_closing_title = /** @type {(inputs: Landing_Closing_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Watch it once. Then decide whether you want one.`)
+	return /** @type {LocalizedString} */ (`Try the universe, or sign in and open your own.`)
 };
 
 const ko_landing_closing_title = /** @type {(inputs: Landing_Closing_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`먼저 한 번 보고 갖고 싶은지 정해도 늦지 않아요.`)
+	return /** @type {LocalizedString} */ (`우주를 체험해보거나 로그인해서 내 우주를 열어보세요`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Watch it once. Then decide whether you want one." |
+* | "Try the universe, or sign in and open your own." |
 *
 * @param {Landing_Closing_TitleInputs} inputs
 * @param {{ locale?: "en" | "ko" }} options

@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import { useRef, type ComponentType } from 'react'
 
 import { m, type Locale } from '../../../shared/i18n/index.ts'
 import {
@@ -10,7 +10,7 @@ import { LandingBackdrop } from './LandingBackdrop.tsx'
 import { LandingLocaleSwitch } from './LandingLocaleSwitch.tsx'
 import { LandingReveal } from './LandingReveal.tsx'
 import { LandingBlogLink } from './sections/LandingBlogLink.tsx'
-import { LandingClosing, LandingDemoCtaSection } from './sections/LandingCtas.tsx'
+import { LandingClosing } from './sections/LandingCtas.tsx'
 import { LandingHero } from './sections/LandingHero.tsx'
 import { LandingTheory } from './sections/LandingTheory.tsx'
 import { LandingWalkthrough } from './sections/LandingWalkthrough.tsx'
@@ -21,7 +21,6 @@ import { LandingWalkthrough } from './sections/LandingWalkthrough.tsx'
 const SECTION_VIEWS: Readonly<Record<LandingSectionId, ComponentType<LandingSectionProps>>> = {
   hero: LandingHero,
   walkthrough: LandingWalkthrough,
-  'demo-cta-top': LandingDemoCtaSection,
   theory: LandingTheory,
   blog: LandingBlogLink,
   'closing-cta': LandingClosing,
@@ -43,15 +42,26 @@ export interface LandingPageProps {
 // Both destinations arrive as callbacks, because a page may not import the router (§3.1) — the same seam
 // the universe page uses for the archive and the account home.
 export function LandingPage({ locale, onSelectLocale, onTryDemo, onSignUp }: LandingPageProps) {
+  // Where the veil lifts: the walkthrough screen, whose bottom edge is the boundary the sky comes back
+  // across. Handed to the backdrop as an element rather than a section id because the veil needs the
+  // measured position, and attached here rather than inside the section because `LandingSectionProps`
+  // is deliberately closed to the two destinations — the page owns layout, so the page owns the anchor.
+  const clearAnchorRef = useRef<HTMLDivElement>(null)
+
   return (
     <main className="min-h-dvh text-text">
       {/* The live sky behind everything, veiled as the visitor scrolls — see LandingBackdrop. The main
           itself paints no background: an opaque floor here would wall the fixed scene off. */}
-      <LandingBackdrop />
+      <LandingBackdrop clearAnchor={clearAnchorRef} />
       {/* The header is chrome, not one of the prescribed sections — it carries the language switch and
           nothing that competes with the page's first sentence. */}
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-6 py-4">
-        <p className="text-sm text-text-muted">{m.landing_wordmark()}</p>
+        {/* Mark then wordmark, as one lockup. The mark is ornamental to assistive technology because
+            the wordmark beside it already names the product — read aloud, the pair would say it twice. */}
+        <div className="flex items-center gap-2">
+          <img aria-hidden src="/brand/symbol.svg" alt="" className="size-5" />
+          <p className="text-sm text-text-muted">{m.landing_wordmark()}</p>
+        </div>
         <LandingLocaleSwitch locale={locale} onSelectLocale={onSelectLocale} />
       </header>
       <div className="relative z-10">
@@ -61,7 +71,17 @@ export function LandingPage({ locale, onSelectLocale, onTryDemo, onSignUp }: Lan
           // The hero is the first paint and must never wait on an observer; everything after it
           // rises into place as the visitor reaches it.
           if (id === 'hero') return section
-          return <LandingReveal key={id}>{section}</LandingReveal>
+          const revealed = <LandingReveal key={id}>{section}</LandingReveal>
+          // The walkthrough screen carries the veil's anchor. The wrapper exists only to be measured,
+          // so it sits outside the reveal — the entrance transform must not move what the veil reads.
+          if (id === 'walkthrough') {
+            return (
+              <div key={id} ref={clearAnchorRef}>
+                {revealed}
+              </div>
+            )
+          }
+          return revealed
         })}
       </div>
     </main>

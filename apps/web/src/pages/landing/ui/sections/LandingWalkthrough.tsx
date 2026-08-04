@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 
 import { moodColor } from '@cosimosi/emotion'
-import { Button, Card } from '@cosimosi/ui'
+import { Button } from '@cosimosi/ui'
 
 import { m, moodLabel, useActiveLocale } from '../../../../shared/i18n/index.ts'
 import {
@@ -20,7 +20,10 @@ import {
 } from '../../model/walkthrough.ts'
 import { WALKTHROUGH_STEP_COPY, walkthroughContent } from '../../config/walkthrough-content.ts'
 import { CAPTION_MOTION, STAGE_MOTION, sceneMotion, wordFadeMotion } from '../../lib/step-motion.ts'
+import type { LandingSectionProps } from '../../model/sections.ts'
+import { LandingScrollCue } from '../LandingScrollCue.tsx'
 import { LandingWalkthroughScene } from '../LandingWalkthroughScene.tsx'
+import { DemoCta } from './LandingCtas.tsx'
 
 /**
  * The page's argument, walked instead of read: one authored diary goes through the product's whole
@@ -33,8 +36,14 @@ import { LandingWalkthroughScene } from '../LandingWalkthroughScene.tsx'
  * The stage is a FIXED box holding exactly one view at a time (`WalkthroughStageId`), and every step
  * change is animated rather than cut: the leaving view fades out before the arriving one rises in, so
  * the diary being consumed by its own split is something the visitor sees happen.
+ *
+ * It owns a whole screen and carries NO panel of its own. The page reads as three rooms — a screen of
+ * bare sky, a screen of this, then everything after — and what tells the visitor they are in this one
+ * is the backdrop: the veil is at full blur across exactly this stretch (LandingBackdrop), so the
+ * blurred night IS the surface the controls sit on. A glass card here would be a second surface drawn
+ * on top of a surface, and the room would stop reading as a room.
  */
-export function LandingWalkthrough() {
+export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
   const locale = useActiveLocale()
   const [state, setState] = useState(INITIAL_WALKTHROUGH_STATE)
 
@@ -46,14 +55,15 @@ export function LandingWalkthrough() {
   const atEnd = isLastWalkthroughStep(state) && state.acted
 
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col px-6 py-16">
+    <section className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-6 py-16">
       {/* One config for the whole run: the preference drops every transform below and keeps the
           fades, so a visitor who asked for less motion still sees each step replace the last. */}
       <MotionConfig reducedMotion="user">
-        <Card variant="glass" className="flex flex-col gap-5 p-5 sm:p-6">
+        <div className="flex flex-col gap-5">
           {/* Chrome only, no title — the stage speaks for itself. Replay on the left, small and out
               of the action's way, hidden (not removed, so nothing reflows) at both ends of the run:
-              nothing to replay at the start, and the ending's own action IS the replay. */}
+              nothing to replay at the start, and the ending's own action IS the replay. The row sits
+              straight on the veiled sky, which is the only surface this section has. */}
           <div className="flex h-8 items-center justify-between gap-3">
             <Button
               color="neutral"
@@ -73,8 +83,10 @@ export function LandingWalkthrough() {
           </div>
 
           {/* The stage: one fixed box for the whole run. Its height is the same on every step, so the
-              action below it never moves — the only thing that changes is what is inside. */}
-          <div className="relative h-72 overflow-hidden rounded-xl sm:h-96">
+              action below it never moves — the only thing that changes is what is inside. Taller than
+              the words and actions need, because the section is a screen and the stage is what the
+              screen is for. */}
+          <div className="relative h-80 overflow-hidden rounded-xl sm:h-104">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={facts.stage} className="absolute inset-0" {...STAGE_MOTION}>
                 <WalkthroughStage content={content} facts={facts} />
@@ -82,7 +94,7 @@ export function LandingWalkthrough() {
             </AnimatePresence>
           </div>
 
-          {/* The words, sized by what they say — the card breathes a little between steps, which is
+          {/* The words, sized by what they say — the column breathes a little between steps, which is
               the trade for not reserving room. The swap is a pure-opacity word wipe (the spans below
               carry it); this wrapper is only the presence boundary. */}
           <AnimatePresence mode="wait" initial={false}>
@@ -117,14 +129,22 @@ export function LandingWalkthrough() {
               </Button>
             )}
           </div>
-        </Card>
+
+          {/* The invitation, closing the screen the argument was just made on. It reads as the answer
+              to what the visitor has been watching rather than as a banner, which is the whole reason
+              it is here instead of in a section of its own. */}
+          <div className="flex justify-center pt-3">
+            <DemoCta onTryDemo={onTryDemo} />
+          </div>
+        </div>
       </MotionConfig>
+      <LandingScrollCue />
     </section>
   )
 }
 
 // One (step, acted) state's words — the mirror ending carries the [M5] definition on top of its
-// result. The captions are authored to comparable lengths so the card barely moves between steps.
+// result. The captions are authored to comparable lengths so the column barely moves between steps.
 // Every word is its own opacity-only motion span, delayed by reading order, so a caption leaves from
 // its first word and the next one arrives the same way — a wipe, not a slide.
 function WalkthroughWords({ step, acted }: { step: WalkthroughStepId; acted: boolean }) {

@@ -4,32 +4,26 @@ import { LANDING_THEORY_CARDS } from '../config/theory-cards.ts'
 import { LANDING_SECTIONS, type LandingSectionId } from './sections.ts'
 
 describe('the landing section order', () => {
-  it('is the prescribed six, in order', () => {
-    expect(LANDING_SECTIONS).toEqual([
-      'hero',
-      'walkthrough',
-      'demo-cta-top',
-      'theory',
-      'blog',
-      'closing-cta',
-    ])
+  it('is the prescribed five, in order', () => {
+    expect(LANDING_SECTIONS).toEqual(['hero', 'walkthrough', 'theory', 'blog', 'closing-cta'])
   })
 
   it('carries none of the retired sections', () => {
-    // playground, feature-tour and mirror were absorbed into the walkthrough (change 09); a
-    // reappearing id would mean a second render path for a story the walkthrough now owns.
-    for (const retired of ['playground', 'feature-tour', 'mirror']) {
+    // playground, feature-tour and mirror were absorbed into the walkthrough (change 09), and the
+    // standalone demo invitation now closes the walkthrough screen instead of holding one of its own.
+    // A reappearing id would mean a second render path for something another section already owns.
+    for (const retired of ['playground', 'feature-tour', 'mirror', 'demo-cta-top']) {
       expect(LANDING_SECTIONS).not.toContain(retired)
     }
   })
 
   it('walks the argument before explaining it, and asks last', () => {
     // The order is an argument, not a layout: show the whole arc (the [M5] mirror is its guarded
-    // final step), offer to steer it, then explain where the ideas come from — and only then ask.
+    // final step) with the offer to steer it at the end of that screen, then explain where the ideas
+    // come from — and only then ask.
     const at = (id: LandingSectionId) => LANDING_SECTIONS.indexOf(id)
     expect(at('walkthrough')).toBe(at('hero') + 1)
     expect(at('walkthrough')).toBeLessThan(at('theory'))
-    expect(at('demo-cta-top')).toBeLessThan(at('closing-cta'))
     expect(at('closing-cta')).toBe(LANDING_SECTIONS.length - 1)
   })
 
