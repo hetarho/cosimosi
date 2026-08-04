@@ -1,6 +1,10 @@
 import { Canvas, extend } from '@react-three/fiber'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as THREE from 'three/webgpu'
+
+import { VALUES } from '@cosimosi/config'
+
+import { resolveToneMapping, type ToneMappingKey } from './tone-mapping.ts'
 
 // Register three/webgpu's catalogue with R3F (runtime side of jsx-elements.ts).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,6 +31,18 @@ export interface UniverseCanvasProps {
    * through (the emotion-lit background sits under the scene, chrome floats over it).
    */
   readonly transparent?: boolean
+  /**
+   * The curve that lands accumulated light on the display. The scene ADDS light everywhere (stars,
+   * the colour field, bloom), so without a curve a dense region clips per channel and reads white
+   * regardless of what colour it was — see `tone-mapping.ts`. three's post pipeline reads this off
+   * the renderer and folds it in after the bloom composite, so PostFX stays unaware of it.
+   *
+   * Defaults to `rendering.tone_mapping`, so every surface hosting a universe gets the shipped curve
+   * without threading a prop; pass it only to deliberately render off-spec.
+   */
+  readonly toneMapping?: ToneMappingKey
+  /** Exposure multiplier applied before the curve; defaults to `rendering.tone_mapping_exposure`. */
+  readonly exposure?: number
 }
 
 /**
@@ -50,8 +66,22 @@ export function UniverseCanvas({
   clearColor = 0x000000,
   forceWebGL = false,
   transparent = false,
+  toneMapping = VALUES.rendering.toneMapping,
+  exposure = VALUES.rendering.toneMappingExposure,
 }: UniverseCanvasProps) {
   const [frameloop, setFrameloop] = useState<'never' | 'always'>('never')
+  const rendererRef = useRef<THREE.WebGPURenderer | null>(null)
+
+  // Applied here rather than only in the `gl` factory (which R3F runs once) so the curve can change
+  // without tearing down the WebGPU device. three's RenderPipeline diffs `renderer.toneMapping`
+  // every frame and rebuilds its output node when it moves, so assignment is all that is needed.
+  useEffect(() => {
+    const renderer = rendererRef.current
+    if (!renderer) return
+    renderer.toneMapping = resolveToneMapping(toneMapping)
+    renderer.toneMappingExposure = exposure
+  }, [toneMapping, exposure, frameloop])
+
   return (
     <Canvas
       frameloop={frameloop}
@@ -72,6 +102,9 @@ export function UniverseCanvas({
         // so transparency needs only a zero-alpha clear: the DOM background behind the canvas then
         // shows through the scene's empty space, and the bloom pipeline preserves the per-pixel alpha.
         renderer.setClearColor(transparent ? 0x000000 : clearColor, transparent ? 0 : 1)
+        renderer.toneMapping = resolveToneMapping(toneMapping)
+        renderer.toneMappingExposure = exposure
+        rendererRef.current = renderer
         // Start the render loop only once WebGPU is ready (see the frameloop note above).
         void renderer.init().then(() => setFrameloop('always'))
         return renderer

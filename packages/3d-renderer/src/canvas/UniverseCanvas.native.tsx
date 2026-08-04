@@ -4,7 +4,11 @@ import { useEffect, useRef } from 'react'
 import { PixelRatio } from 'react-native'
 import { Canvas, type CanvasRef } from 'react-native-webgpu'
 import * as THREE from 'three/webgpu'
+
+import { VALUES } from '@cosimosi/config'
+
 import type { UniverseCanvasProps } from './UniverseCanvas.tsx'
+import { resolveToneMapping } from './tone-mapping.ts'
 
 export type { UniverseCanvasProps } from './UniverseCanvas.tsx'
 
@@ -31,6 +35,8 @@ export function UniverseCanvas({
   far = 1400,
   clearColor = 0x000000,
   forceWebGL = false,
+  toneMapping = VALUES.rendering.toneMapping,
+  exposure = VALUES.rendering.toneMappingExposure,
 }: UniverseCanvasProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const root = useRef<ReconcilerRoot<any> | null>(null)
@@ -70,6 +76,8 @@ export function UniverseCanvas({
           antialias: true,
         })
         gpuRenderer.setClearColor(clearColor, 1)
+        gpuRenderer.toneMapping = resolveToneMapping(toneMapping)
+        gpuRenderer.toneMappingExposure = exposure
         renderer.current = gpuRenderer
         await gpuRenderer.init()
         // react-native-webgpu needs an explicit present() after each on-screen frame (the web
@@ -98,7 +106,7 @@ export function UniverseCanvas({
       renderer.current?.dispose()
       renderer.current = null
     }
-  }, [children, dpr, fov, far, clearColor, forceWebGL])
+  }, [children, dpr, fov, far, clearColor, forceWebGL, toneMapping, exposure])
 
   return <Canvas ref={canvasRef} style={styles.fill} />
 }

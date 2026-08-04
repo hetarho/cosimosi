@@ -37,6 +37,8 @@ const (
 const (
 	RenderingActiveSkin            = "emotion"
 	RenderingMaxPixelRatio         = 2
+	RenderingToneMapping           = "neutral"
+	RenderingToneMappingExposure   = 1
 	RenderingEmotionSkyExposure    = 0.62
 	RenderingInstanceBucketSize    = 4096
 	RenderingStarSizeMin           = 0.7
@@ -92,13 +94,13 @@ var (
 
 // nebula
 const (
-	NebulaBleedRadiusCoefficient = 18
-	NebulaMinBleedRadius         = 4.5
+	NebulaBleedRadiusCoefficient = 6
+	NebulaMinBleedRadius         = 2
 	NebulaFalloffExponent        = 4.5
 	NebulaMaxContributors        = 96
 	NebulaFieldResolutionWeb     = 24
 	NebulaFieldResolutionMobile  = 10
-	NebulaBaseIntensity          = 0.3
+	NebulaBaseIntensity          = 0.42
 )
 
 // ai

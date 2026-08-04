@@ -5,8 +5,9 @@
 // every entry reads the SAME per-instance channels — tint, brightness, seed — that the production
 // star body reads, so a look can be swapped under a live universe without touching any layer.
 //
-// `orb` IS the shipped body (it delegates to createStarBodySource), so the baseline in the
-// comparison is the real thing, never a re-typed copy that could drift from it.
+// `orb` delegates to createStarBodySource, so the ORIGINAL body is in the comparison as the real
+// thing rather than a re-typed copy that could drift from it. It is not what ships — `facet` is
+// (DEFAULT_STAR_SHAPE below), and that is the entry to change when the shipped star's look moves.
 //
 // TSL only (one source → WGSL + GLSL, §3.3). Like the shipped bodies, the graph constants here are
 // the looks' visual grammar — frequency, relief, gain — not values.yaml tuning, and every body is
@@ -165,8 +166,17 @@ function buildFacetBody(animate: boolean): THREE.Mesh {
     0.14,
     1.9,
   )
-  const glow = shade.mul(float(0.55)).add(float(0.72)).mul(float(STAR_EMISSIVE_GAIN))
-  const flare = shade.pow(float(8)).mul(float(0.22))
+  // The key light has to SHAPE the stone, which means the unlit faces must actually go dark. A
+  // 0.72 constant lift put the darkest face at 76% of the brightest — a 1.3:1 spread across twenty
+  // faces, which reads as one saturated tone rather than a cut solid, and holds the whole silhouette
+  // at near-full chroma (the "one flat colour" complaint). Trading most of that lift for gain widens
+  // the spread to roughly 4:1: faces separate, the away side drops into shadow the surrounding colour
+  // field can be seen through, and only the crowns turned toward the light carry full emotion colour.
+  const glow = shade.mul(float(1.1)).add(float(0.16)).mul(float(STAR_EMISSIVE_GAIN))
+  // Broader and stronger than a pinpoint specular: the near-white crest is the one cue that reads as
+  // a SURFACE (rather than a silhouette) once bloom has softened the corners, so it needs enough
+  // width to survive the pass.
+  const flare = shade.pow(float(6)).mul(float(0.34))
   material.colorNode = tint.mul(glow).add(HIGHLIGHT.mul(flare)).mul(brightness)
   return new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), material)
 }

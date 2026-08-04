@@ -25,6 +25,8 @@ export const VALUES = {
   rendering: {
     activeSkin: "emotion",
     maxPixelRatio: 2,
+    toneMapping: "neutral",
+    toneMappingExposure: 1,
     emotionSkyExposure: 0.62,
     emotionSkyOpacity: {"grainient":0.74,"grainstorm":0.82,"iridescence":0.76,"soft_aurora":0.86,"liquid_ether":0.74,"prismatic_burst":0.9,"plasma_wave":0.92,"ferrofluid":0.92,"floating_lines":0.88,"evil_eye":0.92,"lightfall":0.92,"pixel_blast":0.94},
     emotionSkyHeadroom: {"grainient":0.72,"grainstorm":0.66,"iridescence":0.7,"soft_aurora":0.58,"liquid_ether":0.7,"prismatic_burst":0.8,"plasma_wave":0.82,"ferrofluid":0.68,"floating_lines":0.84,"evil_eye":0.8,"lightfall":0.84,"pixel_blast":0.88},
@@ -49,13 +51,13 @@ export const VALUES = {
     gistRiseLayerFog: 0.35,
   },
   nebula: {
-    bleedRadiusCoefficient: 18,
-    minBleedRadius: 4.5,
+    bleedRadiusCoefficient: 6,
+    minBleedRadius: 2,
     falloffExponent: 4.5,
     maxContributors: 96,
     fieldResolutionWeb: 24,
     fieldResolutionMobile: 10,
-    baseIntensity: 0.3,
+    baseIntensity: 0.42,
   },
   ai: {
     embeddingDim: 1024,

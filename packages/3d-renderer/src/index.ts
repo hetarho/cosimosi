@@ -86,3 +86,4 @@ export {
 export { FrameTick } from './layers/FrameTick.tsx'
 export { PostFX, type BloomParams } from './layers/PostFX.tsx'
 export { UniverseCanvas, type UniverseCanvasProps } from './canvas/UniverseCanvas.tsx'
+export { resolveToneMapping, type ToneMappingKey } from './canvas/tone-mapping.ts'

@@ -46,6 +46,18 @@ rendering:
   active_skin: emotion
   # Cap devicePixelRatio so high-DPI screens don't tank the GPU frame budget.
   max_pixel_ratio: 2
+  # The curve that lands accumulated light on the display (key in @cosimosi/3d-renderer
+  # tone-mapping.ts). Every layer here ADDS light — the sky, the colour field, the bodies, the bloom
+  # pass — so a dense region sums past 1 in every channel, and with no curve the framebuffer clips
+  # each channel in turn until the pixel is white whatever colour arrived there. `neutral` is chosen
+  # over the filmic curves because it leaves mid-tones alone and compresses only above ~0.8: the
+  # night between the stars stays dark, while a core that would have clipped is pulled back to its
+  # own hue. See that module for why reinhard/aces/agx were rejected.
+  tone_mapping: neutral
+  # Exposure multiplier applied before the curve. 1.0 = the scene's own light, unscaled; the
+  # per-layer amplitudes (emotion_sky_exposure, nebula.base_intensity) are the intended place to
+  # trim brightness, so this stays neutral unless the whole frame needs a global shift.
+  tone_mapping_exposure: 1.0
   # Overall exposure of the emotion palette before a sky effect shapes it. Kept below 1 because
   # the enclosing sky covers the whole frame and the scene bloom pass amplifies bright regions.
   emotion_sky_exposure: 0.62
@@ -139,12 +151,19 @@ nebula:
   # composite additively behind the bodies, so the universe's global tone is emergent, never
   # stored. Realized as per-contributor soft-glow kernels in world space (see tech/rendering.md).
   #
-  # EffectiveStrength → bleed radius (world units). Stronger stars bleed wider [M4]. Kept modest so
-  # kernels stay local: in a dense cluster many wide kernels sum additively and wash the core to
-  # white, so radius is tuned to bleed between neighbors without flooding the center.
-  bleed_radius_coefficient: 18
+  # EffectiveStrength → bleed radius (world units). Stronger stars bleed wider [M4].
+  #
+  # The binding constraint is the RATIO to the star's own body, not the absolute size: a body is
+  # star_size_min..max (0.7..2.4) world radius, so a kernel of 18 put a 12.6-radius glow around a
+  # 1.9-radius body — nearly 7× the radius, ~44× the area. The body became 2% of its own glow, and
+  # since the bloom pass blurs that whole bright disc back across the body in the composite, the
+  # star's surface (its seed relief and shimmer) was buried under an additive constant no tone curve
+  # could recover. At 6 the glow runs ~2.5× the body radius: still unmistakably a bleed into the
+  # space around the memory, but the memory is an object inside it rather than a speck.
+  bleed_radius_coefficient: 6
   # Floor radius so even the weakest star reads as a tight local glow rather than vanishing [M4].
-  min_bleed_radius: 4.5
+  # Held at the same ~2.5× against star_size_min so the ratio above holds across the whole range.
+  min_bleed_radius: 2.0
   # Local-region density falloff sharpness — higher concentrates color near the star, so overlapping
   # regions still bleed but each keeps a dense core and the diffuse mid-field haze (which is what
   # sums toward white where stars cluster) stays thin.
@@ -158,8 +177,11 @@ nebula:
   field_resolution_mobile: 10
   # Overall additive amplitude per kernel — the primary saturation lever. Held well below 1 so that
   # where many kernels overlap their sum reads as a coexisting blend rather than a blown-out white
-  # core, especially since the bloom PostFX pass amplifies the field further.
-  base_intensity: 0.3
+  # core. It must also stay under the skin's bloom threshold: the field is meant to be bled colour,
+  # not a bloom source, and once the haze crosses that threshold the pass blurs it back over the star
+  # bodies and erases their surfaces. Raised alongside the bleed-radius cut above — a kernel of 6
+  # covers roughly a ninth of the area an 18 did, so the same amplitude delivered far less field.
+  base_intensity: 0.42
 
 ai:
   # Voyage 4-family embeddings default to 1024 dimensions while still allowing smaller/larger Matryoshka outputs.

@@ -28,7 +28,14 @@ export const UNIVERSE_SKINS: Record<SkinKey, UniverseSkin> = {
     // `night` matches the emotion ramp's bare-night base (#0a0a12), so the translucent sphere
     // and the canvas clear read as one continuous sky with no legacy background layer beneath it.
     sky: { effect: 'grainient', night: 0x0a0a12 },
-    bloom: { strength: 0.9, radius: 0.6, threshold: 0.2 },
+    // `threshold` decides WHAT glows, and it has to thread between two failures. At 0.2 the colour
+    // field's diffuse haze qualified, so the pass blurred the whole glow back across the bodies and
+    // buried each star's surface under a flat lift. Pushed too far the other way (0.55+) nothing
+    // qualifies at all and the stars stop emitting — they read as opaque matte solids sitting in
+    // space rather than as light. 0.4 sits above the field's peak amplitude (nebula.base_intensity
+    // times a mood tint, all of it below 0.4) and below a star's lit crowns, so the bodies glow and
+    // the haze does not.
+    bloom: { strength: 0.65, radius: 0.6, threshold: 0.4 },
     camera: { fov: 55 },
   },
 }
