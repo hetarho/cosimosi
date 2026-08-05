@@ -1,4 +1,4 @@
-import type { ReconcilerRoot } from '@react-three/fiber'
+import type { ReconcilerRoot, RootState } from '@react-three/fiber'
 import { createRoot, events, extend, unmountComponentAtNode } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { PixelRatio } from 'react-native'
@@ -17,6 +17,25 @@ export type { UniverseCanvasProps } from './UniverseCanvas.tsx'
 extend(THREE as any)
 
 /**
+ * Resolve the `dpr` prop to a single number against the device's own ratio.
+ *
+ * R3F would otherwise do this itself, but its `calculateDpr` reads
+ * `window.devicePixelRatio` — undefined under React Native, where it falls back to a flat 2 and
+ * ignores the cap's lower bound. So native resolves the range here and hands R3F a number.
+ */
+function resolvePixelRatio(dpr: number | [number, number]): number {
+  if (!Array.isArray(dpr)) return dpr
+  const [min, max] = dpr
+  return Math.min(Math.max(min, PixelRatio.get()), max)
+}
+
+/** The live values the device effect must not re-key on — see the effect split below. */
+type LiveConfig = Pick<
+  Required<UniverseCanvasProps>,
+  'dpr' | 'fov' | 'far' | 'clearColor' | 'toneMapping' | 'exposure'
+>
+
+/**
  * The native renderer host, hosting the SAME shared R3F scene as the web
  * `UniverseCanvas.tsx`. R3F's web `<Canvas>` can't run on React Native — it needs a DOM
  * element + `ResizeObserver` (react-use-measure) that the RN runtime lacks. So on native we
@@ -24,6 +43,19 @@ extend(THREE as any)
  * root (`createRoot(...).configure(...)`) over react-native-webgpu's own canvas surface,
  * with an explicit `size` (no measurement) and a `present()` after each frame. The public
  * props stay identical to web, so slices consume `<UniverseCanvas>` the same way.
+ *
+ * Because the root is manual, this host — not R3F — owns the device lifecycle, and it is split
+ * across three effects that must stay separate:
+ *
+ *   1. **device** — keyed on `forceWebGL` alone, the one prop that picks a different GPU backend.
+ *      Brings up the surface context, the R3F root and the `WebGPURenderer`, and disposes them.
+ *   2. **children** — renders the scene into the existing root. A parent re-render costs this and
+ *      nothing else.
+ *   3. **live config** — writes every other prop onto the already-running root/renderer.
+ *
+ * Anything that leaks from 2 or 3 into 1's dependency array tears the WebGPU device down and
+ * rebuilds it mid-session: a frame-long black canvas, and one fresh native surface context per
+ * change (`getContext` mints a new `GPUCanvasContext` on every call).
  */
 // `transparent` (shared prop) is web-only for now: no native call site passes it, so this host
 // deliberately does not implement the zero-alpha clear. Wire it here if a native surface ever
@@ -42,29 +74,58 @@ export function UniverseCanvas({
   const root = useRef<ReconcilerRoot<any> | null>(null)
   const canvasRef = useRef<CanvasRef>(null)
   const renderer = useRef<THREE.WebGPURenderer | null>(null)
+  const r3fState = useRef<RootState | null>(null)
 
-  // The scene is re-rendered into the root on every prop change (below); memoize nothing here.
+  const live = useRef<LiveConfig>({ dpr, fov, far, clearColor, toneMapping, exposure })
+  live.current = { dpr, fov, far, clearColor, toneMapping, exposure }
+
+  // Applied both from the live-config effect and from `onCreated`: the root's Provider mounts on a
+  // microtask after `render()`, so props that move between the device effect and that callback
+  // would otherwise be dropped on the floor.
+  const applyLiveConfig = useRef(() => {
+    const { dpr: liveDpr, fov: liveFov, far: liveFar, ...tone } = live.current
+    const state = r3fState.current
+    if (state) {
+      const camera = state.camera as THREE.PerspectiveCamera
+      if (camera.isPerspectiveCamera) {
+        camera.fov = liveFov
+        camera.far = liveFar
+        camera.updateProjectionMatrix()
+      }
+      // The store's dpr is the supported resize seam: R3F's subscription answers it with
+      // `gl.setPixelRatio` + `gl.setSize`, which resizes the canvas backing store in place (the
+      // native `GPUCanvasContext` picks the new `canvas.width`/`height` up on the next frame).
+      // Writing `canvas.width` by hand here instead would be undone by that same subscription.
+      state.setDpr(resolvePixelRatio(liveDpr))
+    }
+    const gpuRenderer = renderer.current
+    if (!gpuRenderer) return
+    // three's RenderPipeline diffs these off the renderer every frame, so assignment is the whole
+    // update — same hot-apply the web host uses for tone mapping. Native also re-clears here
+    // because its clear colour is skin-driven and must follow a re-skin without a new device.
+    gpuRenderer.setClearColor(tone.clearColor, 1)
+    gpuRenderer.toneMapping = resolveToneMapping(tone.toneMapping)
+    gpuRenderer.toneMappingExposure = tone.exposure
+  })
+
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const context = canvasRef.current?.getContext('webgpu') as any
     if (!context) return
 
     // context.canvas is a DOM-canvas-shaped shim from react-native-webgpu; the mobile tsconfig
-    // has no DOM lib, so treat it loosely. Size its backing store to the device pixel ratio,
-    // capped by the app's rendering.max_pixel_ratio (passed in via dpr), then keep R3F at dpr 1
-    // so it renders 1:1 into that already-scaled buffer.
+    // has no DOM lib, so treat it loosely.
     const canvas = context.canvas
-    const maxDpr = Array.isArray(dpr) ? dpr[1] : dpr
-    const pixelRatio = Math.min(PixelRatio.get(), maxDpr)
-    canvas.width = canvas.clientWidth * pixelRatio
-    canvas.height = canvas.clientHeight * pixelRatio
-    const size = { top: 0, left: 0, width: canvas.clientWidth, height: canvas.clientHeight }
-
-    if (!root.current) root.current = createRoot(canvas)
-    root.current.configure({
-      size,
+    const initial = live.current
+    const reconciler = createRoot(canvas)
+    root.current = reconciler
+    reconciler.configure({
+      // No measurement on native: the shim reports the surface's own bounds, and R3F multiplies
+      // this logical size by the dpr below to size the drawing buffer.
+      size: { top: 0, left: 0, width: canvas.clientWidth, height: canvas.clientHeight },
+      dpr: resolvePixelRatio(initial.dpr),
       events,
-      camera: { fov, far, position: [0, 0, 90] },
+      camera: { fov: initial.fov, far: initial.far, position: [0, 0, 90] },
       // Async gl factory: R3F awaits it before starting the render loop, so the WebGPU
       // backend is initialized before the first render() (a bare renderer would throw
       // "render() called before the backend is initialized").
@@ -75,9 +136,9 @@ export function UniverseCanvas({
           forceWebGL,
           antialias: true,
         })
-        gpuRenderer.setClearColor(clearColor, 1)
-        gpuRenderer.toneMapping = resolveToneMapping(toneMapping)
-        gpuRenderer.toneMappingExposure = exposure
+        gpuRenderer.setClearColor(initial.clearColor, 1)
+        gpuRenderer.toneMapping = resolveToneMapping(initial.toneMapping)
+        gpuRenderer.toneMappingExposure = initial.exposure
         renderer.current = gpuRenderer
         await gpuRenderer.init()
         // react-native-webgpu needs an explicit present() after each on-screen frame (the web
@@ -94,19 +155,34 @@ export function UniverseCanvas({
         return gpuRenderer
       },
       frameloop: 'always',
-      dpr: 1,
+      onCreated: (state) => {
+        r3fState.current = state
+        applyLiveConfig.current()
+      },
     })
-    root.current.render(children)
 
     return () => {
       unmountComponentAtNode(canvas)
       root.current = null
-      // The manual root doesn't own the factory-created renderer, so dispose the WebGPU
-      // device/pipelines here or a remount (StrictMode / dpr·fov·forceWebGL change) leaks them.
-      renderer.current?.dispose()
+      r3fState.current = null
+      // The manual root doesn't own the factory-created renderer — R3F's own teardown only calls
+      // WebGL-shaped methods (`renderLists?.dispose()`, `forceContextLoss?.()`), neither of which
+      // exists on WebGPURenderer — so the device is ours to release, or a remount (StrictMode, a
+      // forceWebGL flip) leaks it. The ref is cleared before disposing so a second cleanup can
+      // never dispose the same device twice.
+      const disposing = renderer.current
       renderer.current = null
+      disposing?.dispose()
     }
-  }, [children, dpr, fov, far, clearColor, forceWebGL, toneMapping, exposure])
+  }, [forceWebGL])
+
+  useEffect(() => {
+    root.current?.render(children)
+  }, [children])
+
+  useEffect(() => {
+    applyLiveConfig.current()
+  }, [dpr, fov, far, clearColor, toneMapping, exposure])
 
   return <Canvas ref={canvasRef} style={styles.fill} />
 }

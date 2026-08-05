@@ -115,6 +115,38 @@ travelling wave. Reduced motion freezes both that twinkle clock and the field's 
 over `pass(scene, camera)`, parameterized by the skin. It takes the render loop with a positive-priority `useFrame`;
 `renderAsync()` per frame is the documented three WebGPU pattern (the renderer queues).
 
+### Canvas host device lifecycle
+
+R3F v9 predates WebGPU, so **the host owns the device — R3F does not.** Its teardown path
+(`unmountComponentAtNode`) reaches only for `renderLists?.dispose()` and `forceContextLoss?.()`, both WebGL-shaped and
+both absent from `WebGPURenderer`; the optional chaining makes that a silent no-op. Each host therefore releases its own
+renderer, and the two hosts differ only in how React hands them the unmount:
+
+- **Web** (`UniverseCanvas.tsx`) hands the scene to R3F's `<Canvas>`, so a mount-scoped effect's cleanup releases the
+  renderer created by the `gl` factory. It is deferred one macrotask and cancelled by a re-mount, because R3F keeps its
+  root — and with it `state.gl` — across StrictMode's simulated unmount, and re-`configure` skips the `gl` factory
+  whenever a renderer already exists: an inline dispose would leave the dev build holding a released device.
+- **Native** (`UniverseCanvas.native.tsx`) drives a manual root, so it splits the work across three effects —
+  **device** (keyed on `forceWebGL` alone), **children** (`root.render`), and **live config** (everything else). Only a
+  backend switch may cost a device: `WebGPURenderer` cannot move to the WebGL2 path in place. Note that `getContext`
+  mints a _new_ `GPUCanvasContext` on every call, so a device effect that re-keys on ordinary props leaks one native
+  surface context per change on top of the visible black frame.
+
+Everything else hot-applies to the running renderer: `toneMapping`/`toneMappingExposure`/`clearColor` by assignment
+(three's `RenderPipeline` diffs them off the renderer each frame), `fov`/`far` on the live camera followed by
+`updateProjectionMatrix()`, and the pixel ratio through the R3F store's `setDpr` — whose subscription answers with
+`gl.setPixelRatio` + `gl.setSize`, resizing the backing store in place. Two traps live here:
+
+- **Re-calling `configure` does not move the camera.** Its camera block is guarded on `state.camera === lastCamera`,
+  which is false once a camera exists, so `fov`/`far` passed to a second `configure` are silently dropped. Reach the
+  camera captured by `onCreated` instead.
+- **Writing `canvas.width`/`height` by hand does not survive.** The same store subscription recomputes them from
+  `size × dpr`, so the pixel ratio must go through `setDpr` (native resolves the `dpr` range itself — R3F's
+  `calculateDpr` reads `window.devicePixelRatio`, which React Native does not have).
+
+Both hosts carry lifecycle tests beside them (§3.5). They mock the platform modules rather than a GPU, because what
+needs pinning is which effect re-runs on what — the regression that hides behind a working screenshot.
+
 ## Consumers
 
 - **Web:** `apps/web/src/pages/universe` is the **main page (`/`)** — full-bleed `UniverseCanvas` (emotion sky + stars +
@@ -145,6 +177,8 @@ The scene code is shared; native needs build-time wiring (not forked code):
 - **Native build:** `pod install` (autolinks rn-webgpu/Dawn + reanimated + worklets); New Architecture, RN ≥ 0.81; a
   custom dev client (no Expo Go). Verify the render on a simulator/device.
 - **Jest:** host shell tests mock `@cosimosi/3d-renderer` (`jest.mock.3d-renderer.tsx`) so jest never loads three (ESM).
+  That stub is why the mobile arm cannot see the native canvas host at all — its lifecycle test lives in the package's
+  own vitest arm, with `react-native` / `react-native-webgpu` / `three/webgpu` mocked per file.
 
 ## The universe canvas (plan 23 as-built)
 

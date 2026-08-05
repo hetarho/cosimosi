@@ -55,6 +55,9 @@ import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
 const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
+// Hoisted so the canvas host sees one stable array identity: an inline `[1, max]` is a new object
+// every render, and the host keys effects on this prop.
+const CANVAS_DPR: [number, number] = [1, VALUES.rendering.maxPixelRatio]
 
 type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
 
@@ -276,11 +279,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
 
   return (
     <div className="relative h-full w-full">
-      <UniverseCanvas
-        dpr={[1, VALUES.rendering.maxPixelRatio]}
-        fov={skin.camera.fov}
-        clearColor={skin.sky.night}
-      >
+      <UniverseCanvas dpr={CANVAS_DPR} fov={skin.camera.fov} clearColor={skin.sky.night}>
         <SkySphere
           stops={skyStops}
           effect={skyEffect}

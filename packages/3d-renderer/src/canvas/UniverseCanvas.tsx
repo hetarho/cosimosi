@@ -71,6 +71,7 @@ export function UniverseCanvas({
 }: UniverseCanvasProps) {
   const [frameloop, setFrameloop] = useState<'never' | 'always'>('never')
   const rendererRef = useRef<THREE.WebGPURenderer | null>(null)
+  const pendingDispose = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Applied here rather than only in the `gl` factory (which R3F runs once) so the curve can change
   // without tearing down the WebGPU device. three's RenderPipeline diffs `renderer.toneMapping`
@@ -81,6 +82,29 @@ export function UniverseCanvas({
     renderer.toneMapping = resolveToneMapping(toneMapping)
     renderer.toneMappingExposure = exposure
   }, [toneMapping, exposure, frameloop])
+
+  // Releasing the device is ours to do: R3F's unmount path (`unmountComponentAtNode`) only reaches
+  // for `renderLists?.dispose()` and `forceContextLoss?.()`, both WebGL-shaped and both absent from
+  // WebGPURenderer, so its optional chaining quietly no-ops and the device outlives the route.
+  //
+  // The dispose is deferred one macrotask instead of running inline, because R3F keeps its root —
+  // and with it `state.gl` — across StrictMode's simulated unmount/remount, and re-`configure` skips
+  // the `gl` factory whenever a renderer already exists. Disposing inline would therefore hand the
+  // dev build a disposed device on remount. A real unmount has no remount to cancel the timer.
+  useEffect(() => {
+    if (pendingDispose.current !== null) {
+      clearTimeout(pendingDispose.current)
+      pendingDispose.current = null
+    }
+    return () => {
+      pendingDispose.current = setTimeout(() => {
+        pendingDispose.current = null
+        const renderer = rendererRef.current
+        rendererRef.current = null
+        renderer?.dispose()
+      }, 0)
+    }
+  }, [])
 
   return (
     <Canvas
