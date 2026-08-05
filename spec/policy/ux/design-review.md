@@ -35,7 +35,9 @@ work, not a follow-up.
 
 ## 3. The rubrics
 
-Each dimension is scored independently. Both sets are scored on the scale in §4.
+Each dimension is scored independently. Both sets are scored on the scale in §4. The rubric asks the
+questions; what a good answer looks like is owned by [ui-principles.md](ui-principles.md), which maps
+each 2D dimension to the established criteria it is judged against.
 
 ### 3.1 The 2D rubric
 
