@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
-import { cx, useReducedMotion } from '@cosimosi/ui'
+import { cx, tokens, useReducedMotion } from '@cosimosi/ui'
+
+// The entrance moves at the product's pace: a section arriving is a surface crossing the screen,
+// which is the slow token — Tailwind's numeric duration/ease utilities would restate the values.
+const REVEAL_TIMING: CSSProperties = {
+  transitionDuration: tokens.duration.slow,
+  transitionTimingFunction: tokens.ease.standard,
+}
 
 /**
  * Sections arrive the way the page says memories do: they rise into place as the visitor reaches
@@ -38,8 +45,9 @@ export function LandingReveal({ children }: { children: ReactNode }) {
   return (
     <div
       ref={ref}
+      style={REVEAL_TIMING}
       className={cx(
-        'transition-all duration-700 ease-out',
+        'transition-all',
         shown ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
       )}
     >

@@ -21,7 +21,7 @@ import {
 import { moodColor, type EmotionSlice } from '@cosimosi/emotion'
 import { ObservedErrorBoundary } from '@cosimosi/observability/react'
 import { starChannels } from '@cosimosi/universe'
-import { useReducedMotion } from '@cosimosi/ui'
+import { tokens, useReducedMotion } from '@cosimosi/ui'
 
 import type { EpisodicMemory } from '@cosimosi/memory'
 
@@ -141,13 +141,15 @@ function WalkthroughPoster({ memories, universeTime, skyStops }: LandingWalkthro
         return (
           <div
             key={memory.id}
-            className="absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full blur-xs transition-opacity duration-300"
+            className="absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full blur-xs transition-opacity"
             style={{
               left: `${slot.poster[0]}%`,
               top: `${slot.poster[1]}%`,
               backgroundColor: color,
               opacity: channel.brightness,
               boxShadow: `0 0 32px 10px ${color}`,
+              transitionDuration: tokens.duration.slow,
+              transitionTimingFunction: tokens.ease.standard,
             }}
           />
         )

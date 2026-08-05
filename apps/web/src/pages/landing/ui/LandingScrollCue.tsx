@@ -36,7 +36,7 @@ export function LandingScrollCue({ className }: { readonly className?: string })
       onClick={goDown}
       aria-label={m.landing_scroll_cue()}
       className={
-        'absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full p-2 text-text-subtle transition-colors hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring motion-safe:animate-bounce' +
+        'absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full p-2 text-text-subtle transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg motion-safe:animate-bounce' +
         (className === undefined ? '' : ` ${className}`)
       }
     >

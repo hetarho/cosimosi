@@ -24,6 +24,12 @@ reordering the definition is a `tsc` failure exactly as dropping the old `'mirro
 screen of bare sky, then a screen of the argument, and only then begins to scroll like a document. The reading is a
 layout fact rather than a convention: a section that stopped filling a screen would break the rhythm visibly.
 
+**The rooms share one top inset.** `walkthrough` and `theory` — the screen of the argument and the head of the
+document — both open `pt-14 sm:pt-20`, because they are the two places a visitor arrives at a room's top. `theory` used
+to carry `pt-4`, which put its heading flush against the viewport edge for anyone who took the walkthrough's scroll cue,
+and made the two rooms' entrances read as unrelated (design review, 2026-08-06). `blog` and `closing` sit mid-document
+and keep their own smaller rhythm; nobody lands on their top edge.
+
 **The standalone demo invitation is not a section.** It closes the walkthrough screen instead (§1a), because the moment
 the offer earns a click is the moment the argument has just finished making its case — a section of its own put a scroll
 between the two. `model/sections.test.ts` pins `'demo-cta-top'` in its retired-id list, so it cannot come back as a
@@ -90,10 +96,19 @@ sky** (§2a) — the veil is at full strength across exactly this stretch. A car
 top of a surface, and the room would stop reading as a room. The stage's own views still carry their own grounds (the
 diary's panel, the split's bordered rows, the canvas), so nothing legible sits directly on a live sky.
 
-**The column starts at the top of the screen, not centred in it.** On a phone the column is nearly a whole `dvh` tall on
-its own, and a centred one splits the remaining slack in two — which puts the invitation that closes the screen under
-the fold, the one thing here that must stay visible. Anchored to the top (`pt-14 sm:pt-20 pb-24`), the run reads whole
-from the first step and the slack falls below, where the scroll cue already lives.
+**The column takes the screen's slack evenly.** `pt-14 sm:pt-20` and `pb-24` (which clears the scroll cue) are
+**minimum** insets, and `justify-center` splits whatever the screen has left over above and below. The earlier
+top-anchored rule was written on a premise that measurement did not support: the column is ~565 of 844 CSS px on a
+390px phone, not "nearly a whole `dvh`", so anchoring it left a ~190px hole under the invitation and put the screen's
+whole mass in its upper half — the reviewer read the result as not laid out for a phone at all (design review,
+2026-08-06). `min-h-dvh` rather than a fixed height is what makes the centring safe: where the column is taller than
+the screen there is no free space to split, so it degrades to the top anchor. The invitation stays above the fold at
+every size checked — 628 of 640, 688 of 844, 772 of 900 — and never reaches the cue.
+
+**The action zone shares one alignment edge on a phone.** The step controls are `justify-center sm:justify-end`: at
+390px a column that ran the caption left, the pager right and the invitation centred had three alignment edges in a
+space too narrow to read any of them as deliberate (ui-principles §2). From `sm` up the pager takes the column's right
+edge as before.
 
 **The column barely moves as the story does.** The chrome row (`h-8`) and the stage (`h-80 sm:h-104`) are fixed; the
 caption below the stage is sized by what it says, with the captions authored to comparable lengths so stepping changes
@@ -109,7 +124,8 @@ section sits in one `<MotionConfig reducedMotion="user">`, which drops the trans
 choreography's numbers are not authored in the slice: `lib/step-motion.ts` reads `tokens.duration` / `tokens.ease` and
 converts them to Motion's seconds-and-bezier form, so the page moves at the product's pace and a token change carries it.
 
-**The run has one control, and it is `next`.** Both step controls are **text** buttons at the column's bottom-right,
+**The run has one control, and it is `next`.** Both step controls are **text** buttons at the foot of the column
+(centred on a phone, bottom-right from `sm` up — see above),
 each carrying the arrow of the direction it moves the run (drawn locally as the scroll cue's chevron turned on its side,
 so the page's navigation affordances read as one family): `back` in the neutral ink, `next` in **secondary**. Each step
 is two presses of the same button — the change, then the move on — so the visitor walks the whole arc without ever

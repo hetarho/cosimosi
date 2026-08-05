@@ -39,10 +39,12 @@ export function LandingHero() {
         <div ref={markRef} style={RECEDE_STYLE} className="size-24 sm:size-28">
           <BrandMark />
         </div>
-        <h1 className="text-3xl font-medium leading-tight text-text sm:text-4xl">
+        <h1 className="break-keep text-3xl font-semibold leading-tight tracking-tight text-balance text-text sm:text-4xl">
           {m.landing_hero_title()}
         </h1>
-        <p className="text-base leading-7 text-text-muted">{m.landing_hero_body()}</p>
+        <p className="max-w-measure break-keep text-base leading-7 text-text-muted">
+          {m.landing_hero_body()}
+        </p>
       </div>
       {/* The one gesture the layout asks for — and the shortcut for taking it. */}
       <LandingScrollCue />

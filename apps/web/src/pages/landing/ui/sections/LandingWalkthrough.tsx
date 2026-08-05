@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 
 import { moodColor } from '@cosimosi/emotion'
-import { Button } from '@cosimosi/ui'
+import { Badge, Button } from '@cosimosi/ui'
 
 import { m, moodLabel, useActiveLocale } from '../../../../shared/i18n/index.ts'
 import {
@@ -54,12 +54,14 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
   const atEnd = isLastWalkthroughStep(state) && state.acted
 
   return (
-    // The column starts at the TOP of the screen rather than centred in it. The section is one
-    // `dvh` tall on every device, and on a phone the column is nearly that tall on its own — centred,
-    // the leading margin is split in two and the invitation at the foot lands under the fold, which
-    // is the one thing on this screen that must not. Anchored to the top, the run is fully visible
-    // from the first step, and on a desk the slack falls below, where the scroll cue already lives.
-    <section className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-6 pb-24 pt-14 sm:pt-20">
+    // The column takes the SLACK of the screen evenly rather than all of it below. `pt-14`/`pb-24`
+    // are the minimum insets (the bottom one clears the scroll cue), and whatever the screen has left
+    // over is split above and below by `justify-center` — measured, the column is ~565 of 844 CSS px
+    // on a phone, so anchoring it to the top left a ~190px hole under the invitation and put the
+    // screen's whole mass in its upper half. `min-h-dvh` (not a fixed height) is what makes the
+    // centring safe: where the column is taller than the screen there is no free space to split, so
+    // it falls back to the top anchor and the run is never clipped or pushed under the fold.
+    <section className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-6 pb-24 pt-14 sm:pt-20">
       {/* One config for the whole run: the preference drops every transform below and keeps the
           fades, so a visitor who asked for less motion still sees each step replace the last. */}
       <MotionConfig reducedMotion="user">
@@ -73,7 +75,7 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
               color="neutral"
               variant="text"
               size="sm"
-              className={`px-2 text-xs${atStart || atEnd ? ' invisible' : ''}`}
+              className={atStart || atEnd ? 'invisible' : undefined}
               onClick={() => setState(restartWalkthrough())}
             >
               {m.landing_walk_restart()}
@@ -116,8 +118,13 @@ export function LandingWalkthrough({ onTryDemo }: LandingSectionProps) {
               `next` is the secondary colour with a trailing arrow — the direction is the meaning, and
               the page's primary filled colour is spent on the two real asks (the demo below, the
               signup at the foot), which must not have to compete with a slideshow's pager. Back is
-              hidden (not removed) at the start so `next` never moves. */}
-          <div className="flex items-center justify-end gap-1">
+              hidden (not removed) at the start so `next` never moves.
+
+              The row shares the invitation's centre line on a phone and only takes the column's right
+              edge from `sm` up. A 390px column that ran the caption left, the pager right and the
+              invitation centred had three alignment edges in a space too narrow to read them as
+              deliberate (ui-principles §2 — fewer edges, harder commitment to each). */}
+          <div className="flex items-center justify-center gap-1 sm:justify-end">
             <Button
               color="neutral"
               variant="text"
@@ -179,11 +186,11 @@ function WalkthroughWords({ step, acted }: { step: WalkthroughStepId; acted: boo
     // step above the page's body copy rather than below it.
     <div className="flex flex-col gap-2">
       {definition === null ? null : (
-        <p className="text-base font-medium leading-7 text-text sm:text-lg sm:leading-8">
+        <p className="max-w-measure break-keep text-base font-medium leading-7 text-text sm:text-lg sm:leading-8">
           <WipedWords words={definitionWords} offset={0} total={total} />
         </p>
       )}
-      <p className="text-base leading-7 text-text-muted sm:text-lg sm:leading-8">
+      <p className="max-w-measure break-keep text-base leading-7 text-text-muted sm:text-lg sm:leading-8">
         <WipedWords words={bodyWords} offset={definitionWords.length} total={total} />
       </p>
     </div>
@@ -274,14 +281,14 @@ function WalkthroughSplit({ content }: { content: WalkthroughContent }) {
             </span>
           </div>
           <p className="hidden text-sm leading-6 text-text-muted sm:line-clamp-2">{scene.text}</p>
+          {/* The same primitive the product's own split review renders neuron names with
+              (entities/episodic-memory NeuronChips) — the stage claims to show the shipped facts,
+              so the chips must be the shipped chip. */}
           <div className="flex flex-wrap gap-1.5">
             {scene.neurons.map((neuron) => (
-              <span
-                key={neuron}
-                className="rounded-full bg-bg/50 px-2 py-0.5 text-xs text-text-subtle"
-              >
+              <Badge key={neuron} variant="neutral">
                 {neuron}
-              </span>
+              </Badge>
             ))}
           </div>
         </motion.li>
@@ -307,7 +314,9 @@ function WalkthroughUniverse({ facts }: { facts: WalkthroughSceneFacts }) {
         {facts.focusText === null ? null : (
           <motion.p
             key={facts.focusText}
-            className="pointer-events-none absolute inset-x-6 bottom-4 text-center text-sm text-text"
+            // drop-shadow-md is the ground: a label directly on the live scene takes its legibility
+            // from a dark halo, not from weight — the same treatment the on-scene HUDs carry.
+            className="pointer-events-none absolute inset-x-6 bottom-4 break-keep text-center text-sm text-text drop-shadow-md"
             {...CAPTION_MOTION}
           >
             {facts.focusText}

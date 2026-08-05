@@ -30,9 +30,12 @@ export function LandingLocaleSwitch({
           type="button"
           aria-pressed={option === locale}
           onClick={() => onSelectLocale(option)}
+          // `item-selected` is the design system's held-choice treatment — the active locale must be
+          // more than a lightness step, and the ring is the shared keyboard indicator every control
+          // carries (the same recipe as the Button primitives' FOCUS_RING).
           className={cx(
-            'rounded-md px-2 py-1 text-xs',
-            option === locale ? 'text-text' : 'text-text-subtle hover:text-text-muted',
+            'rounded-md px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+            option === locale ? 'item-selected' : 'text-text-subtle hover:text-text-muted',
           )}
         >
           {LOCALE_LABEL[option]()}

@@ -53,7 +53,7 @@ function SignUpCta({ onSignUp }: Pick<LandingSectionProps, 'onSignUp'>) {
 export function LandingClosing({ onTryDemo, onSignUp }: LandingSectionProps) {
   return (
     <section className="flex flex-col items-center gap-6 px-6 py-20">
-      <h2 className="max-w-xl text-center text-2xl font-medium text-text">
+      <h2 className="max-w-xl break-keep text-center text-2xl font-semibold tracking-tight text-balance text-text">
         {m.landing_closing_title()}
       </h2>
       {/* Side by side, demo on the left — the reading order is the same order the column had, and
