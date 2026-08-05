@@ -1101,13 +1101,37 @@ importers:
       '@cosimosi/emotion':
         specifier: workspace:*
         version: link:../emotion
+      '@cosimosi/force-sim':
+        specifier: workspace:*
+        version: link:../force-sim
+      '@cosimosi/memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@cosimosi/state-machine':
+        specifier: workspace:*
+        version: link:../state-machine
+      '@cosimosi/store':
+        specifier: workspace:*
+        version: link:../store
       '@cosimosi/universe':
         specifier: workspace:*
         version: link:../universe
     devDependencies:
+      '@connectrpc/connect-query':
+        specifier: ^2.2.0
+        version: 2.2.0(@bufbuild/protobuf@2.12.1)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.12.1))(@tanstack/query-core@5.101.4)(@tanstack/react-query@5.101.4(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@cosimosi/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@react-three/fiber':
         specifier: ^9.7.0
         version: 9.7.0(patch_hash=56ce79c443d7fd7f0cb8bc88567c06aecb7b8a92924f2985490c9275bbccadd9)(@types/react@19.2.17)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react-native@0.86.0(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@6.0.3))(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.7))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)(three@0.185.1)
+      '@tanstack/react-query':
+        specifier: ^5.101.4
+        version: 5.101.4(react@19.2.7)
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2
@@ -1117,9 +1141,18 @@ importers:
       '@types/three':
         specifier: ^0.185.1
         version: 0.185.4
+      '@xstate/react':
+        specifier: ^6.1.0
+        version: 6.1.0(@types/react@19.2.17)(react@19.2.7)(xstate@5.32.2)
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
       react:
         specifier: ^19.2.7
         version: 19.2.7
+      react-dom:
+        specifier: ^19.2.7
+        version: 19.2.7(react@19.2.7)
       three:
         specifier: ^0.185.1
         version: 0.185.1
@@ -1129,6 +1162,9 @@ importers:
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@types/node@24.13.2)(jsdom@29.1.1)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+      xstate:
+        specifier: ^5.32.2
+        version: 5.32.2
 
 packages:
 

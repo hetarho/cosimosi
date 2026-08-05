@@ -1,323 +1,46 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import type { ActorRefFrom } from 'xstate'
+import { useMemo } from 'react'
 
 import { VALUES } from '@cosimosi/config'
-import {
-  BandFog,
-  FrameTick,
-  NavigationRig,
-  PostFX,
-  SkinProvider,
-  SkySphere,
-  StarField,
-  UniverseCanvas,
-  resolveActiveSkin,
-  useSkin,
-  type NavigationPose,
-} from '@cosimosi/3d-renderer'
-import { createForceSimNodeIndex, forceSimCoordinateOffset } from '@cosimosi/force-sim'
-import {
-  UNIVERSE_CAMERA_RIG,
-  buildUniverseGraph,
-  createUniverseSimBridge,
-  generateLatentField,
-  gistNodeId,
-  recentlyActiveNeuronIds,
-  advanceSkyRate,
-  universeEmotionSlices,
-  universeNavigationMachine,
-  useAdvanceSweepStore,
-  usePendingFlyTargetStore,
-  type AwakenAnchor,
-  type UniverseNavigationMode,
-} from '@cosimosi/universe'
-import { useAppliedOrnaments } from '@cosimosi/store/react'
-import { ornamentRegistryKey, useOrnamentPreviewStore } from '@cosimosi/store'
+import { SkinProvider, UniverseCanvas, resolveActiveSkin, useSkin } from '@cosimosi/3d-renderer'
 import { useReducedMotion } from '@cosimosi/ui'
 import {
-  AwakenNeuron,
-  CellStarLayer,
-  FilamentLayer,
-  GistStarLayer,
-  LatentStarField,
-  NebulaField,
-  StarLayer,
+  UniverseSceneLayers,
+  useUniverseScene,
+  type UniverseNavigationActorRef,
 } from '@cosimosi/universe-render'
 
-import { usePaletteVersion } from '../../../features/change-mood-colors/index.ts'
-import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
-import { useActorRef } from '../../../shared/model/index.ts'
-import { useUniverse } from '@cosimosi/universe/react'
 import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
 
-const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
-const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
 // Hoisted so the canvas host sees one stable array identity: an inline `[1, max]` is a new object
 // every render, and the host keys effects on this prop.
 const CANVAS_DPR: [number, number] = [1, VALUES.rendering.maxPixelRatio]
 
-// The universe scene block: mounts the @cosimosi/3d-renderer canvas host + skin/post
-// pipeline unchanged (no renderer lifecycle, no skin system, no post pipeline of its own)
-// and composes the projected graph inside it. All hooks that need app context run OUT
-// HERE — React context does not cross the R3F reconciler, so canvas children get data
-// via props only. Per-frame flow: the sim bridge swaps the coordinate buffer ref, the
-// package layers read it in useFrame, and the rig polls the machine via getSnapshot() —
-// no 60 fps React state and no per-frame store reads.
-type NavigationActorRef = ActorRefFrom<typeof universeNavigationMachine>
-
-function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: NavigationActorRef }) {
+// The native shell around the shared universe scene — the mirror of the web widget. What forks here
+// is the MVP fidelity budget (fewer latent bodies, a lower-resolution color field) and the sim
+// spawner, which returns null so the bridge runs the sim inline on the JS thread. There is no hover
+// on touch, so no hover handler and no glimpse overlay.
+function UniverseCanvasHost({
+  navigationActorRef,
+}: {
+  navigationActorRef?: UniverseNavigationActorRef
+}) {
   const { skin } = useSkin()
-  const { universe } = useUniverse()
-  const graph = useMemo(() => (universe ? buildUniverseGraph(universe) : null), [universe])
-  const nodeIndex = useMemo(() => (graph ? createForceSimNodeIndex(graph) : null), [graph])
-
-  const bridge = useMemo(() => createUniverseSimBridge(createSimWorkerSpawner()), [])
-  useEffect(() => () => bridge.dispose(), [bridge])
-  useEffect(() => {
-    if (graph) {
-      bridge.start(graph)
-    }
-  }, [bridge, graph])
-
-  // The selection/navigation actor is lifted to the composing screen so the star-detail panel
-  // subscribes to the SAME selection — the canvas machine stays the single owner (§3.2). Mounted
-  // without a lifted ref, it owns its own (parity with web).
-  const ownActorRef = useActorRef(universeNavigationMachine)
-  const actorRef = navigationActorRef ?? ownActorRef
-
-  // Camera hand-off from a cross-route action (the diary jump): a parked fly target is consumed
-  // once the graph carries the node, gliding to the recovered star, then cleared. The reinforced
-  // star already exists in the universe, so the node resolves as soon as the read loads.
-  const flyTargetNodeId = usePendingFlyTargetStore((state) => state.nodeId)
-  const clearFlyTarget = usePendingFlyTargetStore((state) => state.clear)
-  useEffect(() => {
-    if (!flyTargetNodeId || !nodeIndex) return
-    const index = nodeIndex.neurons[flyTargetNodeId] ?? nodeIndex.episodicMemories[flyTargetNodeId]
-    if (index !== undefined) actorRef.send({ type: 'FLY', nodeId: flyTargetNodeId })
-    clearFlyTarget()
-  }, [flyTargetNodeId, nodeIndex, actorRef, clearFlyTarget])
-
-  const pose = useMemo(
-    () => ({
-      mode: 'idle' as UniverseNavigationMode,
-      target: [0, 0, 0] as [number, number, number],
-      targetId: null as string | null,
-    }),
-    [],
-  )
-  const getPose = useCallback((): NavigationPose => {
-    const snapshot = actorRef.getSnapshot()
-    const mode = snapshot.value as UniverseNavigationMode
-    const nodeId = snapshot.context.travelNodeId
-    const buffer = bridge.coordinates.current
-    if (mode === 'idle' || !nodeId || !nodeIndex || !buffer) {
-      return IDLE_POSE
-    }
-    const index = nodeIndex.neurons[nodeId] ?? nodeIndex.episodicMemories[nodeId]
-    if (index === undefined) {
-      return IDLE_POSE
-    }
-    // Polled per glide frame — read the buffer in place, no per-frame allocation.
-    const offset = forceSimCoordinateOffset(index)
-    pose.mode = mode
-    pose.targetId = nodeId
-    pose.target[0] = buffer[offset] ?? 0
-    pose.target[1] = buffer[offset + 1] ?? 0
-    pose.target[2] = buffer[offset + 2] ?? 0
-    return pose
-  }, [actorRef, bridge, nodeIndex, pose])
-
-  const handleArrived = useCallback(() => actorRef.send({ type: 'ARRIVED' }), [actorRef])
-  const pump = useCallback((dt: number) => bridge.pump(dt), [bridge])
-  const sendNodeCommand = useCallback(
-    (nodeId: string | undefined, command: 'focus' | 'fly') => {
-      if (!nodeId) {
-        return
-      }
-      if (command === 'focus') {
-        actorRef.send({ type: 'SELECT', nodeId })
-        actorRef.send({ type: 'FOCUS', nodeId })
-      } else {
-        actorRef.send({ type: 'FLY', nodeId })
-      }
-    },
-    [actorRef],
-  )
-  const focusNeuron = useCallback(
-    (index: number) => sendNodeCommand(graph?.neurons[index]?.id, 'focus'),
-    [graph, sendNodeCommand],
-  )
-  const flyToNeuron = useCallback(
-    (index: number) => sendNodeCommand(graph?.neurons[index]?.id, 'fly'),
-    [graph, sendNodeCommand],
-  )
-  const focusMemory = useCallback(
-    (index: number) => sendNodeCommand(graph?.episodicMemories[index]?.id, 'focus'),
-    [graph, sendNodeCommand],
-  )
-  const flyToMemory = useCallback(
-    (index: number) => sendNodeCommand(graph?.episodicMemories[index]?.id, 'fly'),
-    [graph, sendNodeCommand],
-  )
-  // A gist pick is a SELECT only (read-only routing to the paid view, [R8]) — gist bodies are
-  // not sim nodes, so there is no coordinate for the camera to glide to.
-  const selectGist = useCallback(
-    (memoryId: string, stage: number) =>
-      actorRef.send({ type: 'SELECT', nodeId: gistNodeId(memoryId, stage) }),
-    [actorRef],
-  )
-
-  const neuronCount = graph?.neurons.length ?? 0
-
-  // The emotion-colored layers memoize each memory's mood color into instanced buffers, so a live
-  // palette swap (module-level setMoodPalette) is invisible to their memos. Remounting them on the
-  // palette version recomputes the buffers through the unchanged moodColor seam — a live re-color
-  // with no rendering-package edit and no GetUniverse refetch. Only the color-bearing layers key on
-  // it; neuron/synapse layers carry no emotion color and stay mounted.
-  const paletteVersion = usePaletteVersion()
-
-  // The clock the SCENE projects at. While a time acceleration plays it is the sweep's sampled date,
-  // so the stars' brightness walks down in front of the viewer instead of being found already down;
-  // otherwise it is the committed read clock. It changes at most once per sampled step, never per
-  // frame, so subscribing here costs a handful of renders per acceleration.
-  const sweepTime = useAdvanceSweepStore((state) => state.sampledTime)
-  const sceneTime = sweepTime ?? universe?.universeTime ?? null
-
-  // The enclosing emotion sky ([57]) is the one shipped backdrop: the universe's own emotions
-  // drive its palette ramp ([I3], color only), while the canvas clears to the same bare night.
-  // Slices depend on the palette version so a live palette swap re-colors through the unchanged
-  // moodColor seam (the sphere repaints in place; material count changes alone rebuild it).
-  // What this universe wears ([P4]): the sky and the body shape are the user's, while the skin keeps
-  // the scene defaults that are never for sale — bloom, camera, the bare night ([V10][I11]).
-  //
-  // This is the ONE translation point from decoration ids into rendering vocabulary (§3.4): while a
-  // panel is open the previewed ids win, otherwise the confirmed read does. `widgets/decoration-panel`
-  // never imports the renderer — it installs a preview, and this reads it.
-  const applied = useAppliedOrnaments()
-  const previewActive = useOrnamentPreviewStore((state) => state.previewActive)
-  const previewed = useOrnamentPreviewStore((state) => state.previewed)
-  const wearing = previewActive
-    ? {
-        BACKGROUND: ornamentRegistryKey('BACKGROUND', previewed.BACKGROUND) ?? applied.BACKGROUND,
-        STAR_SHADER:
-          ornamentRegistryKey('STAR_SHADER', previewed.STAR_SHADER) ?? applied.STAR_SHADER,
-      }
-    : applied
-  const skyEffect = wearing.BACKGROUND
   const reducedMotion = useReducedMotion()
-  const skyStops = useMemo(() => {
-    // The version is a genuine input: moodColor reads the module-level palette it stamps.
-    // eslint-disable-next-line no-void
-    void paletteVersion
-    // Every feeling the universe holds goes to the sky. The emotion axis divides the sphere by
-    // weight, so more feelings means smaller territories, never a muddier wash.
-    return universe ? universeEmotionSlices(universe.memories) : []
-  }, [universe, paletteVersion])
-
-  // The launch flow announces genuinely-created neuron ids here; the awaken plays for the fresh
-  // ones (idempotent via the awaken registry). Empty until the first launch of this session.
-  const newNeuronIds = useLaunchedNeuronsStore((state) => state.newNeuronIds)
-
-  // The gray latent field is generated once from the shared seed (web↔mobile agree) and is NOT a
-  // sim node — decorative, static, never attracting real nodes [E7a][I5]. The MVP lowers the count.
-  const latentField = useMemo(
-    () =>
-      generateLatentField({
-        seed: VALUES.forceSim.seed,
-        count: VALUES.rendering.latentStarCountMobile,
-        zMin: VALUES.forceSim.hippocampusZMin,
-        zMax: VALUES.forceSim.hippocampusZMax,
-        radius: VALUES.rendering.latentFieldRadius,
-      }),
-    [],
-  )
-
-  // The awaken's anchor set: positions of recently-active neurons (a client heuristic over the
-  // visible graph, [L4] window used conceptually), read from the live coordinate buffer at trigger
-  // time. Empty → the pick is random. Purely presentation; nothing is sent to the server.
-  const resolveAnchors = useCallback(
-    (excludeIds: ReadonlySet<string>): readonly AwakenAnchor[] => {
-      const buffer = bridge.coordinates.current
-      if (!buffer || !nodeIndex || !universe) {
-        return []
-      }
-      const ids = recentlyActiveNeuronIds({
-        memories: universe.memories,
-        universeTime: universe.universeTime,
-        windowDays: VALUES.synapse.temporalWindowDays,
-        excludeIds,
-      })
-      const anchors: AwakenAnchor[] = []
-      for (const id of ids) {
-        const index = nodeIndex.neurons[id]
-        if (index === undefined) {
-          continue
-        }
-        const offset = forceSimCoordinateOffset(index)
-        anchors.push([buffer[offset] ?? 0, buffer[offset + 1] ?? 0, buffer[offset + 2] ?? 0])
-      }
-      return anchors
-    },
-    [bridge, nodeIndex, universe],
-  )
+  const simSpawner = useMemo(() => createSimWorkerSpawner(), [])
+  const scene = useUniverseScene({
+    simSpawner,
+    latentStarCount: VALUES.rendering.latentStarCountMobile,
+    navigationActorRef,
+  })
 
   return (
     <UniverseCanvas dpr={CANVAS_DPR} fov={skin.camera.fov} clearColor={skin.sky.night}>
-      <SkySphere
-        stops={skyStops}
-        effect={skyEffect}
+      <UniverseSceneLayers
+        scene={scene}
+        bloom={skin.bloom}
         reducedMotion={reducedMotion}
-        rateRef={advanceSkyRate}
+        nebulaResolution={VALUES.nebula.fieldResolutionMobile}
       />
-      <StarField reducedMotion={reducedMotion} />
-      {/* Emotion color field: additive mood-color blend behind the latent field and bodies
-          (renderOrder -2). Reduced fidelity from the same TSL source via fieldResolutionMobile. */}
-      <NebulaField
-        key={`nebula-${paletteVersion}`}
-        positions={bridge.coordinates}
-        firstNodeIndex={neuronCount}
-        resolution={VALUES.nebula.fieldResolutionMobile}
-      />
-      <LatentStarField field={latentField} reducedMotion={reducedMotion} />
-      <CellStarLayer positions={bridge.coordinates} onFocus={focusNeuron} onFly={flyToNeuron} />
-      <StarLayer
-        key={`star-${paletteVersion}-${wearing.STAR_SHADER}`}
-        shape={wearing.STAR_SHADER}
-        positions={bridge.coordinates}
-        firstNodeIndex={neuronCount}
-        universeTime={sceneTime}
-        reducedMotion={reducedMotion}
-        onFocus={focusMemory}
-        onFly={flyToMemory}
-      />
-      <FilamentLayer
-        positions={bridge.coordinates}
-        neuronIndexById={nodeIndex?.neurons ?? EMPTY_NEURON_INDEX}
-        universeTime={sceneTime}
-        reducedMotion={reducedMotion}
-      />
-      {/* The neocortex band ([V9]): gist bodies at the memories' copied x,y, risen z — plus
-          the restrained gap haze that makes the two bands read as depth, never a wall. */}
-      <BandFog
-        zMin={VALUES.forceSim.hippocampusZMax}
-        zMax={VALUES.forceSim.neocortexZMin}
-        radius={VALUES.rendering.latentFieldRadius}
-        intensity={VALUES.rendering.gistRiseLayerFog}
-      />
-      <GistStarLayer
-        key={`gist-${paletteVersion}`}
-        positions={bridge.coordinates}
-        memoryIndexById={nodeIndex?.episodicMemories ?? EMPTY_NEURON_INDEX}
-        onSelect={selectGist}
-      />
-      <AwakenNeuron
-        field={latentField}
-        newNeuronIds={newNeuronIds}
-        resolveAnchors={resolveAnchors}
-      />
-      <NavigationRig getPose={getPose} onArrived={handleArrived} {...UNIVERSE_CAMERA_RIG} />
-      <FrameTick onFrame={pump} />
-      <PostFX bloom={skin.bloom} />
     </UniverseCanvas>
   )
 }
@@ -325,7 +48,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
 export function UniverseCanvasWidget({
   navigationActorRef,
 }: {
-  navigationActorRef?: NavigationActorRef
+  navigationActorRef?: UniverseNavigationActorRef
 } = {}) {
   return (
     <SkinProvider defaultSkin={resolveActiveSkin(VALUES.rendering.activeSkin)}>

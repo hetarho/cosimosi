@@ -15,6 +15,10 @@
     "@cosimosi/3d-renderer": "workspace:*",
     "@cosimosi/config": "workspace:*",
     "@cosimosi/emotion": "workspace:*",
+    "@cosimosi/force-sim": "workspace:*",
+    "@cosimosi/memory": "workspace:*",
+    "@cosimosi/state-machine": "workspace:*",
+    "@cosimosi/store": "workspace:*",
     "@cosimosi/universe": "workspace:*"
   },
   "peerDependencies": {
@@ -23,13 +27,21 @@
     "three": ">=0.185"
   },
   "devDependencies": {
+    "@connectrpc/connect-query": "^2.2.0",
+    "@cosimosi/api-client": "workspace:*",
     "@react-three/fiber": "^9.7.0",
+    "@tanstack/react-query": "^5.101.4",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/three": "^0.185.1",
+    "@xstate/react": "^6.1.0",
+    "jsdom": "^29.1.1",
     "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "three": "^0.185.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "xstate": "^5.32.2"
   }
 }

@@ -134,7 +134,12 @@ export function UniverseCanvas({
           canvas,
           context,
           forceWebGL,
-          antialias: true,
+          // Same choice as the web host, for the same reason: AA lives in the post chain (PostFX),
+          // not the swapchain. A built-in MSAA color buffer fights the post pipeline's resolve
+          // target, and both hosts mount PostFX — so asking for MSAA here bought a multisampled
+          // buffer the composite never resolves from. Native is also the platform least able to
+          // afford paying for it twice.
+          antialias: false,
         })
         gpuRenderer.setClearColor(initial.clearColor, 1)
         gpuRenderer.toneMapping = resolveToneMapping(initial.toneMapping)

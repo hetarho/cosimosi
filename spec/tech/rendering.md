@@ -184,15 +184,33 @@ The scene code is shared; native needs build-time wiring (not forked code):
 
 The first real consumer of the substrate: `widgets/universe-canvas` (web + mobile) renders the per-user memory graph
 on the main page (`/` · mobile `UniversePage`). Its platform-agnostic core — the graph builder, the `UniverseSimBridge`,
-the XState navigation machine, and the camera-rig scalars — is shared verbatim through **`@cosimosi/universe`**; the
-app widget slices hold only the app-context wiring (fetch → stores, scene composition) and the per-app sim-worker
-spawner. Sharing the core through a package — rather than copy-mirroring it into each app — is what keeps web and
+the XState navigation machine, and the camera-rig scalars — is shared verbatim through **`@cosimosi/universe`**.
+Sharing the core through a package — rather than copy-mirroring it into each app — is what keeps web and
 mobile byte-identical (a copy-mirror drifts on formatting alone).
+
+**The host itself is shared too, and that is a rule, not a convenience.** `@cosimosi/universe-render` owns the pair:
+
+- **`useUniverseScene()`** — all the app-context work (the read, the graph and node index, the sim bridge lifecycle, the
+  navigation actor, pick/fly/gist callbacks, the sky slices, the decoration→rendering translation, the latent field, the
+  awaken anchors). It runs **outside** the canvas because React context does not cross the R3F reconciler.
+- **`<UniverseSceneLayers>`** — the layer composition, in the one order that works, taking that result as props.
+
+Each app widget is then a thin shell holding only what genuinely forks: its canvas host, its sim spawner (web spawns a
+module Worker, native returns null and the bridge runs the sim inline), its fidelity budget
+(`latentStarCountMobile`, `fieldResolutionMobile`), and — web only — the hover/glimpse overlay, since touch has no
+hover. **This is what the `ui`-segment platform-marker exemption to promote-on-reuse (§3.1) does not cover:** two files
+that each carry a platform marker are never compared to each other, so a duplicated host can sit there indefinitely.
+It did, for ~330 lines, and drifted twice before being caught by review rather than by a gate — once on pick resolution
+(native resolved through the graph, dropping the optimistic-launch tail) and once on `antialias`. When a shell grows
+logic that is not platform-specific, that logic belongs in the shared pair.
 
 - **Mount, never re-bootstrap.** Presentation units mount `UniverseCanvas` + `SkinProvider` + `PostFX` from the
   package and compose their scene inside; they add no renderer lifecycle, skin system, or post pipeline of their own.
   React context does **not** cross the R3F reconciler — app-context hooks (query/skin/machine) run outside the canvas
   and pass data in as props.
+- **Antialiasing is the post chain's, on both platforms.** Both hosts construct their `WebGPURenderer` with
+  `antialias: false`: a swapchain MSAA color buffer fights the post pipeline's resolve target, and both hosts mount
+  `PostFX`, so requesting MSAA buys a multisampled buffer the composite never resolves from.
 - **The read model** is three Zustand stores (episodic-memory / neuron / synapse; populated once per `GetUniverse`
   fetch), promoted to **`@cosimosi/universe`** (job 35) and shared verbatim by both apps, over `@cosimosi/memory` — the
   shared FE domain types + proto→domain mappers (strict at the boundary: unknown mood/neuron-type or a non-canonical
