@@ -141,7 +141,7 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "@react-three/fiber@9.6.1": "patches/@react-three__fiber@9.6.1.patch"
+      "@react-three/fiber@9.7.0": "patches/@react-three__fiber@9.7.0.patch"
     }
   }
 }

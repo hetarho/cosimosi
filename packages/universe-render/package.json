@@ -23,12 +23,12 @@
     "three": ">=0.185"
   },
   "devDependencies": {
-    "@react-three/fiber": "^9.6.1",
+    "@react-three/fiber": "^9.7.0",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
-    "@types/three": "^0.185.0",
+    "@types/three": "^0.185.1",
     "react": "^19.2.7",
-    "three": "^0.185.0",
+    "three": "^0.185.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   }
