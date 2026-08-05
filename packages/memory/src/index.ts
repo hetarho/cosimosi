@@ -4,6 +4,7 @@
 export type { EpisodicMemory, NeuronActivation } from './episodic-memory.ts'
 export { NEURON_TYPES, isNeuronType, type Neuron, type NeuronType } from './neuron.ts'
 export type { Synapse } from './synapse.ts'
+export { sameFacts, sameRecords, sameUniverseSnapshot } from './equality.ts'
 export {
   emotionFromDto,
   episodicMemoryFromDto,

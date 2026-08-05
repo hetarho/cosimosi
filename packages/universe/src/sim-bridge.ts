@@ -4,6 +4,7 @@ import {
   createForceSimNodeIndex,
   createForceSimulation,
   remapCoordinateBuffer,
+  sameForceSimGraph,
   type ForceSimGraph,
   type ForceSimNodeIndex,
   type ForceSimulation,
@@ -55,6 +56,9 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
   // The node index that laid out the currently displayed buffer, so a refetch can carry existing
   // coordinates across a reorder/resize by stable node id rather than by slot.
   let displayedIndex: ForceSimNodeIndex | null = null
+  // The graph the running worker was started from, so a refetch can recognize its own facts coming
+  // back unchanged (see `sameForceSimGraph`) instead of respawning to reach the same layout.
+  let runningGraph: ForceSimGraph | null = null
 
   const stop = (clearCoordinates: boolean) => {
     worker?.terminate()
@@ -62,6 +66,7 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
     spareBuffers = []
     inFlight = false
     pendingDt = 0
+    runningGraph = null
     if (clearCoordinates) {
       coordinates.current = null
       displayedIndex = null
@@ -71,6 +76,10 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
   return {
     coordinates,
     start(graph) {
+      // Defense in depth beneath the store-level content bail: if the same facts arrive again, the
+      // worker already on screen is producing the right layout, so leave it running. `worker` is
+      // checked too — an errored sim cleared it, and that must still be rebuildable by a refetch.
+      if (worker && runningGraph && sameForceSimGraph(runningGraph, graph)) return
       // Keep the previous buffer on screen through the swap — the new worker's first
       // coords replace it; only dispose() blanks the scene.
       stop(false)
@@ -109,6 +118,9 @@ function createWorkerSimBridge(spawner: SimWorkerSpawner): UniverseSimBridge {
         if (spawned === worker) stop(true)
       }
       worker = spawned
+      // The graph as handed in, NOT the seeded copy — the next refetch's graph carries no position
+      // hints either, so comparing against the seeded one would never match.
+      runningGraph = graph
       // Two buffers ping-pong as transferables (zero-copy): one displayed, one in flight.
       spareBuffers = [new ArrayBuffer(floats * 4), new ArrayBuffer(floats * 4)]
       worker.postMessage({ type: 'init', graph: seededGraph } satisfies SimWorkerRequest)
@@ -136,10 +148,14 @@ function createInlineSimBridge(): UniverseSimBridge {
   // The node index of the currently displayed buffer, so a refetch carries coordinates by id —
   // the same continuity the worker branch gives, so web and mobile don't diverge on refetch.
   let displayedIndex: ForceSimNodeIndex | null = null
+  let runningGraph: ForceSimGraph | null = null
 
   return {
     coordinates,
     start(graph) {
+      // Same equivalence bail as the worker branch — cheaper here (no thread to respawn) but it
+      // still discards a settled layout and restarts alpha decay from the top.
+      if (sim && runningGraph && sameForceSimGraph(runningGraph, graph)) return
       const previous = coordinates.current
       const seededGraph =
         previous && displayedIndex ? carryPreviousPositions(graph, previous, displayedIndex) : graph
@@ -148,6 +164,7 @@ function createInlineSimBridge(): UniverseSimBridge {
       // no async swap window here (the sim is synchronous), so no separate display remap is needed.
       coordinates.current = sim.coordinates
       displayedIndex = sim.nodeIndex
+      runningGraph = graph
     },
     pump(dt) {
       if (!sim) return
@@ -157,6 +174,7 @@ function createInlineSimBridge(): UniverseSimBridge {
       sim = null
       coordinates.current = null
       displayedIndex = null
+      runningGraph = null
     },
   }
 }

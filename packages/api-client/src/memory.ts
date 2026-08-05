@@ -1,4 +1,4 @@
-import type { MessageInitShape } from '@bufbuild/protobuf'
+import { equals, type MessageInitShape } from '@bufbuild/protobuf'
 import {
   createClient,
   createRouterTransport,
@@ -11,7 +11,11 @@ import {
   createQueryOptions,
 } from '@connectrpc/connect-query-core'
 
-import { GetUniverseResponseSchema, MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
+import {
+  GetUniverseResponseSchema,
+  MemoryService,
+  type GetUniverseResponse as GetUniverseResponseMessage,
+} from './gen/cosimosi/memory/v1/memory_pb.ts'
 
 export { MemoryService } from './gen/cosimosi/memory/v1/memory_pb.ts'
 export { DiarySort, ExportFormat } from './gen/cosimosi/memory/v1/memory_pb.ts'
@@ -100,7 +104,23 @@ export function createGetUniverseQueryKey(transport?: Transport) {
 }
 
 export function createGetUniverseQueryOptions(transport: Transport) {
-  return createQueryOptions(MemoryService.method.getUniverse, {}, { transport })
+  return {
+    ...createQueryOptions(MemoryService.method.getUniverse, {}, { transport }),
+    // The whole scene invalidates off this response's identity — the domain mapping, the projected
+    // graph, the sim worker, the sky material, every instance buffer. protobuf-es allocates a fresh
+    // `Message` per response, so without this the cheapest event in the system (a refocus refetch
+    // that changed nothing) rebuilds all of it. Query's default structural sharing cannot help:
+    // it walks plain JSON and leaves `Message` class instances alone.
+    structuralSharing: (previous: unknown, next: unknown) =>
+      previous !== undefined &&
+      equals(
+        GetUniverseResponseSchema,
+        previous as GetUniverseResponseMessage,
+        next as GetUniverseResponseMessage,
+      )
+        ? previous
+        : next,
+  }
 }
 
 // The server-authoritative sync-status read ([R1a]): the client drives the sync-consent decision

@@ -6,6 +6,7 @@ export {
   type ForceSimulation,
 } from './simulation.ts'
 export { carryPreviousPositions, remapCoordinateBuffer } from './carry.ts'
+export { sameForceSimGraph } from './equivalence.ts'
 export {
   FORCE_SIM_COORDINATE_STRIDE,
   createForceSimNodeIndex,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type { ActorRefFrom } from 'xstate'
 
 import { VALUES } from '@cosimosi/config'
@@ -20,7 +20,6 @@ import {
   UNIVERSE_CAMERA_RIG,
   buildUniverseGraph,
   createUniverseSimBridge,
-  currentDecayText,
   generateLatentField,
   gistNodeId,
   recentlyActiveNeuronIds,
@@ -51,7 +50,9 @@ import { usePaletteVersion } from '../../../features/change-mood-colors/index.ts
 import { useLaunchedNeuronsStore } from '../../../features/launch-stars/index.ts'
 import { useActorRef } from '../../../shared/model/index.ts'
 import { useUniverse } from '@cosimosi/universe/react'
+import { setHoveredMemoryIndex } from '../model/hovered-memory-store.ts'
 import { createSimWorkerSpawner } from '../lib/sim-worker-spawner.ts'
+import { HoverGlimpse } from './HoverGlimpse.tsx'
 
 const EMPTY_NEURON_INDEX: Readonly<Record<string, number>> = {}
 const IDLE_POSE: NavigationPose = { mode: 'idle', target: null, targetId: null }
@@ -170,20 +171,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
     [actorRef],
   )
 
-  // Hover glimpse: a truncated current decay-stage text so the eroded memory reads as eroded before
-  // the panel opens ([F1][R8a]). The label is the preview, the panel is the full read. Keyed by id so
-  // pointer-moves within one star don't re-render; the full text + word-loss recovery live in the panel.
-  const [hoveredMemoryId, setHoveredMemoryId] = useState<string | null>(null)
-  const handleMemoryHover = useCallback(
-    (index: number | null) => {
-      const id = index === null ? null : (episodicIds[index] ?? null)
-      setHoveredMemoryId((previous) => (previous === id ? previous : id))
-    },
-    [episodicIds],
-  )
-
   const neuronCount = graph?.neurons.length ?? 0
-  const episodicById = useEpisodicMemoryStore((state) => state.byId)
 
   // The emotion-colored layers memoize each memory's mood color into instanced buffers, so a live
   // palette swap (module-level setMoodPalette) is invisible to their memos. Remounting them on the
@@ -272,11 +260,6 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
     [bridge, nodeIndex, universe],
   )
 
-  const hoveredMemory = hoveredMemoryId ? episodicById[hoveredMemoryId] : undefined
-  const glimpseText = hoveredMemory
-    ? truncateGlimpse(currentDecayText(hoveredMemory, universe?.universeTime ?? null))
-    : ''
-
   return (
     <div className="relative h-full w-full">
       <UniverseCanvas dpr={CANVAS_DPR} fov={skin.camera.fov} clearColor={skin.sky.night}>
@@ -305,7 +288,7 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
           reducedMotion={reducedMotion}
           onFocus={focusMemory}
           onFly={flyToMemory}
-          onHover={handleMemoryHover}
+          onHover={setHoveredMemoryIndex}
         />
         <FilamentLayer
           positions={bridge.coordinates}
@@ -336,24 +319,11 @@ function UniverseCanvasHost({ navigationActorRef }: { navigationActorRef?: Navig
         <FrameTick onFrame={pump} />
         <PostFX bloom={skin.bloom} />
       </UniverseCanvas>
-      {/* Hover glimpse of the eroded memory — shown plainly, no decay warning ([R8a]). The full
-          forgotten text + recovery live in the star-detail panel. */}
-      {glimpseText && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center px-4">
-          <p className="max-w-measure truncate rounded-full border border-border bg-surface/80 px-4 py-1.5 text-sm text-text-muted backdrop-blur">
-            {glimpseText}
-          </p>
-        </div>
-      )}
+      {/* Shown plainly, no decay warning ([R8a]) — and outside the canvas host so a hover
+          never re-renders the scene tree. */}
+      <HoverGlimpse universeTime={universe?.universeTime ?? null} />
     </div>
   )
-}
-
-// The hover label is a glimpse, not the read (the panel holds the full text) — keep it to one line.
-function truncateGlimpse(text: string): string {
-  const trimmed = text.trim()
-  const limit = 60
-  return trimmed.length > limit ? `${trimmed.slice(0, limit)}…` : trimmed
 }
 
 export function UniverseCanvasWidget({

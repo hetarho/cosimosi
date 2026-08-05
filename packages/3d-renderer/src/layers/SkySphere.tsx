@@ -85,6 +85,25 @@ export function createSkyMaterial({
   return mat
 }
 
+/**
+ * Emotion weights as a share of the whole, so the effect reads proportions rather than raw
+ * magnitudes. An all-zero (or empty-of-weight) universe spreads evenly instead of dividing by zero.
+ */
+export function normalizeSkyWeights(stops: readonly GradientStop[]): number[] {
+  const total = stops.reduce((sum, stop) => sum + Math.max(stop.weight, 0), 0)
+  return stops.map((stop) =>
+    total > 0 ? Math.max(stop.weight, 0) / total : 1 / Math.max(stops.length, 1),
+  )
+}
+
+/**
+ * The material memo's key. Fixed precision rather than raw `toString`, so a weight that differs only
+ * in float noise below what a shader can express does not buy a recompile.
+ */
+export function skyWeightsKey(weights: readonly number[]): string {
+  return weights.map((weight) => weight.toFixed(6)).join(',')
+}
+
 export function SkySphere({
   stops,
   effect = DEFAULT_SKY_EFFECT,
@@ -100,15 +119,18 @@ export function SkySphere({
   // Count-structured effects (one line / eye / ring per emotion) bake structure from these, so the
   // material must rebuild when they change — a mere color swap still just repaints the ramp (below).
   const count = stops.length
-  const weights = useMemo(() => {
-    const total = stops.reduce((sum, s) => sum + Math.max(s.weight, 0), 0)
-    return stops.map((s) =>
-      total > 0 ? Math.max(s.weight, 0) / total : 1 / Math.max(stops.length, 1),
-    )
-  }, [stops])
   const resolved = resolveSkyEffect(effect)
   const effectOpacity = opacity ?? resolved.opacity
   const headroom = resolved.headroom
+
+  // The weights are re-derived from their own VALUE key, so the array's identity moves only when a
+  // weight actually moves. `stops` is rebuilt from every GetUniverse response, and keying the
+  // material on that identity recompiles the sky's TSL shader on any refetch — including one that
+  // carried the same emotions, which is the most expensive work in the scene bought by the cheapest
+  // event. Round-tripping through the key rather than memoizing on `stops` keeps the material memo's
+  // dependency list honest instead of hiding the real key behind a lint suppression.
+  const weightsKey = skyWeightsKey(normalizeSkyWeights(stops))
+  const weights = useMemo(() => weightsKey.split(',').map(Number), [weightsKey])
 
   const material = useMemo(() => {
     return createSkyMaterial({

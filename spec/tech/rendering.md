@@ -215,7 +215,9 @@ mobile byte-identical (a copy-mirror drifts on formatting alone).
   has no standard Worker, so its per-app spawner returns null and the bridge runs the sim inline on the JS thread — the
   bridge/sim/scene stay shared and a future RN worker primitive slots in behind the spawner seam. On a refetch the
   bridge resizes the coordinate buffer to the new graph and carries existing node coordinates across the swap, so a
-  growth refetch never flashes stale/origin geometry. A worker/sim error terminates the bridge and reads as an
+  growth refetch never flashes stale/origin geometry — and when the refetch brought the same graph back
+  (`sameForceSimGraph`: every force/placement input, ordered), it keeps the running worker rather than respawning to
+  reach the layout it is already producing. Plan 23 owns the full content-vs-identity rule and its other two seams. A worker/sim error terminates the bridge and reads as an
   **empty** universe (never a zero-stacked one); the shared graph builder coerces out-of-range **and non-finite**
   stored magnitudes into the sim's finite domain so a skewed or corrupt row cannot kill the scene, and structurally
   emits neuron↔neuron edges only [I4][I6] from connectivity alone [I3].

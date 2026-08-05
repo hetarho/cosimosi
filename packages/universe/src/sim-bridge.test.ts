@@ -87,3 +87,91 @@ describe('inline sim bridge — refetch continuity (R002 web/mobile parity)', ()
     expect(distance).toBeLessThan(DEFAULT_FORCE_SIM_VALUES.linkDistance * 0.1)
   })
 })
+
+const richGraph = (): ForceSimGraph => ({
+  neurons: [
+    { id: 'A', connectivity: 2 },
+    { id: 'B', connectivity: 1 },
+  ],
+  synapses: [{ sourceNeuronId: 'A', targetNeuronId: 'B', strength: 0.4 }],
+  episodicMemories: [{ id: 'M1' }],
+  activations: [{ episodicMemoryId: 'M1', neuronId: 'A', weight: 0.8 }],
+})
+
+describe('worker sim bridge — equivalent-graph no-op (R003)', () => {
+  const startedBridge = () => {
+    const workers: FakeWorker[] = []
+    const bridge = createUniverseSimBridge(() => {
+      const w = fakeWorker()
+      workers.push(w)
+      return w.worker
+    })
+    bridge.start(richGraph())
+    return { bridge, workers }
+  }
+
+  it('keeps the running worker when a refetch brings the same facts back', () => {
+    const { bridge, workers } = startedBridge()
+    bridge.start(richGraph())
+    expect(workers).toHaveLength(1)
+  })
+
+  it('respawns on a connectivity change', () => {
+    const { bridge, workers } = startedBridge()
+    const changed = richGraph()
+    bridge.start({
+      ...changed,
+      neurons: [{ id: 'A', connectivity: 5 }, changed.neurons[1]!],
+    })
+    expect(workers).toHaveLength(2)
+  })
+
+  it('respawns on an activation-weight change', () => {
+    const { bridge, workers } = startedBridge()
+    const changed = richGraph()
+    bridge.start({
+      ...changed,
+      activations: [{ episodicMemoryId: 'M1', neuronId: 'A', weight: 0.1 }],
+    })
+    expect(workers).toHaveLength(2)
+  })
+
+  it('respawns on a synapse-strength change', () => {
+    const { bridge, workers } = startedBridge()
+    const changed = richGraph()
+    bridge.start({
+      ...changed,
+      synapses: [{ sourceNeuronId: 'A', targetNeuronId: 'B', strength: 0.9 }],
+    })
+    expect(workers).toHaveLength(2)
+  })
+
+  it('respawns on a node reorder — slot order is the buffer layout, not an incidental detail', () => {
+    const { bridge, workers } = startedBridge()
+    const changed = richGraph()
+    bridge.start({ ...changed, neurons: [changed.neurons[1]!, changed.neurons[0]!] })
+    expect(workers).toHaveLength(2)
+  })
+
+  it('rebuilds after a sim error even though the graph is unchanged', () => {
+    const { bridge, workers } = startedBridge()
+    // An errored sim reads as an empty universe and clears the worker; the next refetch must be
+    // able to bring it back, so the equivalence bail cannot swallow that start().
+    workers[0]!.worker.onmessage?.({ data: { type: 'error', message: 'boom' } })
+    bridge.start(richGraph())
+    expect(workers).toHaveLength(2)
+  })
+})
+
+describe('inline sim bridge — equivalent-graph no-op (R003)', () => {
+  it('keeps the settled layout instead of restarting alpha decay', () => {
+    const bridge = createUniverseSimBridge(null)
+    bridge.start(richGraph())
+    for (let i = 0; i < 30; i++) bridge.pump(1 / 60)
+    const settled = Array.from(bridge.coordinates.current!)
+
+    bridge.start(richGraph())
+
+    expect(Array.from(bridge.coordinates.current!)).toEqual(settled)
+  })
+})

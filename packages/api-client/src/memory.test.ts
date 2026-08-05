@@ -81,6 +81,31 @@ describe('memory transport facade', () => {
     expect(createMemoryServiceQueryKey()[1].serviceName).toContain('MemoryService')
   })
 
+  it('hands back the previous GetUniverse response when a refetch changed nothing (R003)', async () => {
+    // The whole scene invalidates off this response's identity: the domain mapping, the projected
+    // graph, the sim worker, the sky material, every instance buffer. protobuf-es allocates a fresh
+    // Message per response, so without structural sharing a refocus refetch that carried identical
+    // facts would rebuild all of it. Query's default sharing walks plain JSON and skips Messages.
+    const transport = createMemoryMockTransport(universeFixture)
+    const options = createGetUniverseQueryOptions(transport)
+    const share = options.structuralSharing
+
+    const first = await createMemoryClient(transport).getUniverse({})
+    const second = await createMemoryClient(transport).getUniverse({})
+    expect(second).not.toBe(first)
+
+    expect(share(first, second)).toBe(first)
+    // A first load has nothing to share with, and a genuine change must pass straight through.
+    expect(share(undefined, first)).toBe(first)
+    const changed = await createMemoryClient(
+      createMemoryMockTransport(() => {
+        const fixture = universeFixture()
+        return { ...fixture, universeTime: '2026-07-09' }
+      }),
+    ).getUniverse({})
+    expect(share(first, changed)).toBe(changed)
+  })
+
   it('creates paginated Query options for GetDiaries mirroring the universe read', () => {
     const transport = createMemoryMockTransport(universeFixture)
     const options = createGetDiariesQueryOptions({ pageSize: 20, pageToken: '' }, transport)
